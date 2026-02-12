@@ -25,7 +25,7 @@ Useful flags:
 .\scripts\release-google-play.ps1 -SkipVerify
 .\scripts\release-google-play.ps1 -SkipBuild
 .\scripts\release-google-play.ps1 -SkipDeployCheck
-.\scripts\release-google-play.ps1 -PackageId io.github.unschoolers.calcul8tr
+.\scripts\release-google-play.ps1 -PackageId io.calcul8tr
 ```
 
 Deploy your latest web build to:
@@ -55,13 +55,12 @@ keytool -list -v -keystore calcul8tr-upload.jks -alias calcul8tr-upload
 From this repo:
 
 ```bash
-npm run assetlinks -- --package=io.github.unschoolers.calcul8tr --fingerprint=AA:BB:CC:...:ZZ
+npm run assetlinks -- --package=io.calcul8tr --fingerprint=AA:BB:CC:...:ZZ
 ```
 
 This updates:
 
 - `public/.well-known/assetlinks.json`
-- `/.well-known/assetlinks.json`
 
 Commit and deploy this file to GitHub Pages before building the final Android release.
 
@@ -82,7 +81,7 @@ bubblewrap init --manifest=https://unschoolers.github.io/Calcul8/manifest.webman
 When prompted, use:
 
 - Start URL: `https://unschoolers.github.io/Calcul8/`
-- Application ID/package: `io.github.unschoolers.calcul8tr` (or your final package)
+- Application ID/package: `io.calcul8tr` (or your final package)
 - Keystore: your `calcul8tr-upload.jks`
 
 Build Android App Bundle:

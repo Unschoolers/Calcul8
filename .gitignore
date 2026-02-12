@@ -2,6 +2,21 @@ node_modules
 dist
 .bubblewrap
 android
+# Bubblewrap / TWA generated Android project artifacts
+.gradle/
+app/
+build/
+gradle/
+gradlew
+gradlew.bat
+build.gradle
+settings.gradle
+gradle.properties
+local.properties
+manifest-checksum.txt
+store_icon.png
+app-release-*.apk
+*.aab
 *.jks
 *.keystore
 *.pem
@@ -14,3 +29,5 @@ android
 keystore.properties
 play-credentials.json
 service-account*.json
+
+.well-known/

@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-  [string]$PackageId = "io.github.unschoolers.calcul8tr",
+  [string]$PackageId = "io.calcul8tr",
   [string]$KeystorePath = "calcul8tr-upload.jks",
   [string]$KeyAlias = "calcul8tr-upload",
   [string]$ManifestUrl = "https://unschoolers.github.io/Calcul8/manifest.webmanifest",

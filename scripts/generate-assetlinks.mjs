@@ -17,21 +17,27 @@ if (!packageName || !fingerprint) {
   process.exit(1);
 }
 
+const normalizedFingerprint = fingerprint.toUpperCase();
+const sha256FingerprintPattern = /^(?:[0-9A-F]{2}:){31}[0-9A-F]{2}$/;
+if (!sha256FingerprintPattern.test(normalizedFingerprint)) {
+  console.error(
+    "Invalid fingerprint. Expected SHA-256 format: AA:BB:CC:...:ZZ (32 bytes, colon-separated)."
+  );
+  process.exit(1);
+}
+
 const payload = [
   {
     relation: ["delegate_permission/common.handle_all_urls"],
     target: {
       namespace: "android_app",
       package_name: packageName,
-      sha256_cert_fingerprints: [fingerprint]
+      sha256_cert_fingerprints: [normalizedFingerprint]
     }
   }
 ];
 
-const outputDirs = [
-  path.resolve("public", ".well-known"),
-  path.resolve(".well-known")
-];
+const outputDirs = [path.resolve("public", ".well-known")];
 
 for (const outputDir of outputDirs) {
   const outputFile = path.join(outputDir, "assetlinks.json");
