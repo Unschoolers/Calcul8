@@ -1,0 +1,43 @@
+{
+  "name": "calcul8",
+  "version": "1.0.0",
+  "description": "calcul8tr PWA",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "build:prod": "vite build && node scripts/obfuscate.mjs",
+    "preview": "vite preview",
+    "test": "node --test --test-isolation=none tests/calculations.test.ts",
+    "security:scan": "node scripts/security-scan.mjs",
+    "typecheck": "tsc --noEmit",
+    "verify": "npm run security:scan && npm run test && npm run typecheck && npm run build",
+    "assetlinks": "node scripts/generate-assetlinks.mjs",
+    "release:play": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/release-google-play.ps1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Unschoolers/Calcul8.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Unschoolers/Calcul8/issues"
+  },
+  "homepage": "https://github.com/Unschoolers/Calcul8#readme",
+  "dependencies": {
+    "chart.js": "^4.5.1",
+    "vue": "^3.5.28",
+    "vuetify": "^3.11.8"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.4",
+    "javascript-obfuscator": "^5.3.0",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1",
+    "vite-plugin-pwa": "^1.2.0",
+    "vite-plugin-vuetify": "^2.1.3"
+  }
+}

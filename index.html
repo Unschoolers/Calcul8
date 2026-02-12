@@ -9,14 +9,12 @@
   <meta name="theme-color" content="#E63946" />
   <meta name="apple-mobile-web-app-title" content="calcul8tr" />
   <title>calcul8tr</title>
+  <link rel="icon" type="image/png" href="icons/icon-192.png" />
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <link href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" rel="stylesheet" />
 
   <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900" rel="stylesheet" />
-  <link href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" rel="stylesheet" />
-  <link href="https://cdn.jsdelivr.net/npm/vuetify@3.11.8/dist/vuetify.min.css" rel="stylesheet" />
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-
   <style>
     .profit-positive { color: #34c759; font-weight: 700; }
     .profit-negative { color: #ff3b30; font-weight: 700; }
@@ -41,12 +39,38 @@
     .interaction-disabled { opacity: 0.55; }
     .purchase-summary-card { border-radius: 14px !important; }
     .app-logo-svg { width: 24px; height: 24px; display: block; }
-    .fab-primary { position: fixed; right: 1rem; z-index: 1000; }
-    .fab-add-preset { bottom: 10rem; }
-    .fab-calculate { bottom: 5rem; }
-    .fab-overflow-wrap { position: fixed; right: 1rem; z-index: 1300; }
-    .fab-overflow-config { bottom: 15rem; }
-    .fab-overflow-sales { bottom: 5rem; }
+    .fab-primary {
+      position: fixed !important;
+      right: max(1rem, env(safe-area-inset-right)) !important;
+      left: auto !important;
+      inset-inline-end: max(1rem, env(safe-area-inset-right)) !important;
+      inset-inline-start: auto !important;
+      z-index: 1000;
+    }
+    .fab-add-preset {
+      bottom: calc(10rem + env(safe-area-inset-bottom)) !important;
+      inset-block-end: calc(10rem + env(safe-area-inset-bottom)) !important;
+    }
+    .fab-calculate {
+      bottom: calc(5rem + env(safe-area-inset-bottom)) !important;
+      inset-block-end: calc(5rem + env(safe-area-inset-bottom)) !important;
+    }
+    .fab-overflow-wrap {
+      position: fixed;
+      right: max(1rem, env(safe-area-inset-right));
+      left: auto;
+      inset-inline-end: max(1rem, env(safe-area-inset-right));
+      inset-inline-start: auto;
+      z-index: 1300;
+    }
+    .fab-overflow-config {
+      bottom: calc(15rem + env(safe-area-inset-bottom));
+      inset-block-end: calc(15rem + env(safe-area-inset-bottom));
+    }
+    .fab-overflow-sales {
+      bottom: calc(5rem + env(safe-area-inset-bottom));
+      inset-block-end: calc(5rem + env(safe-area-inset-bottom));
+    }
     .v-speed-dial__content { z-index: 1301 !important; }
     @media (prefers-reduced-motion: reduce) {
       html { scroll-behavior: auto; }
@@ -346,187 +370,40 @@
               <v-window-item value="live" :transition="false" :reverse-transition="false">
                 <v-container fluid class="pa-2">
                   <v-row dense>
-                    <!-- Pack Card -->
                     <v-col cols="12">
-                      <v-card elevation="0" rounded="xl" class="live-pricing-card">
-                        <v-card-text class="pa-4">
-                          <v-row align="center" dense>
-                            <v-col cols="3" class="text-center">
-                              <v-avatar color="primary" size="48">
-                                <v-icon color="white" size="28">mdi-package</v-icon>
-                              </v-avatar>
-                              <div class="text-caption mt-1 font-weight-medium">Pack</div>
-                            </v-col>
-
-                            <v-col cols="6" class="text-center">
-                              <div class="text-h4 font-weight-bold mb-1">${{ livePackPrice }}</div>
-                              <v-chip
-                                :color="calculateProfit(totalPacks, livePackPrice) >= 0 ? 'success' : 'error'"
-                                size="small"
-                                class="font-weight-bold"
-                              >
-                                {{ calculateProfit(totalPacks, livePackPrice) >= 0 ? '+' : '' }}${{ safeFixed(calculateProfit(totalPacks, livePackPrice)) }}
-                              </v-chip>
-                            </v-col>
-
-                            <v-col cols="3" class="text-center">
-                              <v-btn
-                                icon="mdi-minus"
-                                size="small"
-                                color="error"
-                                variant="tonal"
-                                class="mb-1"
-                                @click="livePackPrice -= 1"
-                              ></v-btn>
-                              <v-btn
-                                icon="mdi-plus"
-                                size="small"
-                                color="success"
-                                variant="tonal"
-                                @click="livePackPrice += 1"
-                              ></v-btn>
-                            </v-col>
-                          </v-row>
-
-                          <v-divider class="my-3"></v-divider>
-                          <v-row dense class="text-center">
-                            <v-col cols="6">
-                              <div class="text-caption text-medium-emphasis">At ${{ livePackPrice - 1 }}</div>
-                              <div class="text-body-2 font-weight-bold" :class="calculateProfit(totalPacks, livePackPrice - 1) >= 0 ? 'text-success' : 'text-error'">
-                                {{ calculateProfit(totalPacks, livePackPrice - 1) >= 0 ? '+' : '' }}${{ safeFixed(calculateProfit(totalPacks, livePackPrice - 1)) }}
-                              </div>
-                            </v-col>
-                            <v-col cols="6">
-                              <div class="text-caption text-medium-emphasis">At ${{ livePackPrice + 1 }}</div>
-                              <div class="text-body-2 font-weight-bold" :class="calculateProfit(totalPacks, livePackPrice + 1) >= 0 ? 'text-success' : 'text-error'">
-                                {{ calculateProfit(totalPacks, livePackPrice + 1) >= 0 ? '+' : '' }}${{ safeFixed(calculateProfit(totalPacks, livePackPrice + 1)) }}
-                              </div>
-                            </v-col>
-                          </v-row>
-                        </v-card-text>
-                      </v-card>
+                      <live-price-card
+                        v-model="livePackPrice"
+                        label="Pack"
+                        icon="mdi-package"
+                        avatar-color="primary"
+                        :units="totalPacks"
+                        :calculate-profit="calculateProfit"
+                        :safe-fixed="safeFixed"
+                      ></live-price-card>
                     </v-col>
 
-                    <!-- Box Card -->
                     <v-col cols="12">
-                      <v-card elevation="0" rounded="xl" class="live-pricing-card">
-                        <v-card-text class="pa-4">
-                          <v-row align="center" dense>
-                            <v-col cols="3" class="text-center">
-                              <v-avatar color="secondary" size="48">
-                                <v-icon color="white" size="28">mdi-cube-outline</v-icon>
-                              </v-avatar>
-                              <div class="text-caption mt-1 font-weight-medium">Box</div>
-                            </v-col>
-
-                            <v-col cols="6" class="text-center">
-                              <div class="text-h4 font-weight-bold mb-1">${{ liveBoxPriceSell }}</div>
-                              <v-chip
-                                :color="calculateProfit(boxesPurchased, liveBoxPriceSell) >= 0 ? 'success' : 'error'"
-                                size="small"
-                                class="font-weight-bold"
-                              >
-                                {{ calculateProfit(boxesPurchased, liveBoxPriceSell) >= 0 ? '+' : '' }}${{ safeFixed(calculateProfit(boxesPurchased, liveBoxPriceSell)) }}
-                              </v-chip>
-                            </v-col>
-
-                            <v-col cols="3" class="text-center">
-                              <v-btn
-                                icon="mdi-minus"
-                                size="small"
-                                color="error"
-                                variant="tonal"
-                                class="mb-1"
-                                @click="liveBoxPriceSell -= 1"
-                              ></v-btn>
-                              <v-btn
-                                icon="mdi-plus"
-                                size="small"
-                                color="success"
-                                variant="tonal"
-                                @click="liveBoxPriceSell += 1"
-                              ></v-btn>
-                            </v-col>
-                          </v-row>
-
-                          <v-divider class="my-3"></v-divider>
-                          <v-row dense class="text-center">
-                            <v-col cols="6">
-                              <div class="text-caption text-medium-emphasis">At ${{ liveBoxPriceSell - 1 }}</div>
-                              <div class="text-body-2 font-weight-bold" :class="calculateProfit(boxesPurchased, liveBoxPriceSell - 1) >= 0 ? 'text-success' : 'text-error'">
-                                {{ calculateProfit(boxesPurchased, liveBoxPriceSell - 1) >= 0 ? '+' : '' }}${{ safeFixed(calculateProfit(boxesPurchased, liveBoxPriceSell - 1)) }}
-                              </div>
-                            </v-col>
-                            <v-col cols="6">
-                              <div class="text-caption text-medium-emphasis">At ${{ liveBoxPriceSell + 1 }}</div>
-                              <div class="text-body-2 font-weight-bold" :class="calculateProfit(boxesPurchased, liveBoxPriceSell + 1) >= 0 ? 'text-success' : 'text-error'">
-                                {{ calculateProfit(boxesPurchased, liveBoxPriceSell + 1) >= 0 ? '+' : '' }}${{ safeFixed(calculateProfit(boxesPurchased, liveBoxPriceSell + 1)) }}
-                              </div>
-                            </v-col>
-                          </v-row>
-                        </v-card-text>
-                      </v-card>
+                      <live-price-card
+                        v-model="liveBoxPriceSell"
+                        label="Box"
+                        icon="mdi-cube-outline"
+                        avatar-color="secondary"
+                        :units="boxesPurchased"
+                        :calculate-profit="calculateProfit"
+                        :safe-fixed="safeFixed"
+                      ></live-price-card>
                     </v-col>
 
-                    <!-- RTYH Card -->
                     <v-col cols="12">
-                      <v-card elevation="0" rounded="xl" class="live-pricing-card">
-                        <v-card-text class="pa-4">
-                          <v-row align="center" dense>
-                            <v-col cols="3" class="text-center">
-                              <v-avatar color="primary" size="48">
-                                <v-icon color="white" size="28">mdi-cards-playing-outline</v-icon>
-                              </v-avatar>
-                              <div class="text-caption mt-1 font-weight-medium">RTYH</div>
-                            </v-col>
-
-                            <v-col cols="6" class="text-center">
-                              <div class="text-h4 font-weight-bold mb-1">${{ liveSpotPrice }}</div>
-                              <v-chip
-                                :color="calculateProfit(80, liveSpotPrice) >= 0 ? 'success' : 'error'"
-                                size="small"
-                                class="font-weight-bold"
-                              >
-                                {{ calculateProfit(80, liveSpotPrice) >= 0 ? '+' : '' }}${{ safeFixed(calculateProfit(80, liveSpotPrice)) }}
-                              </v-chip>
-                            </v-col>
-
-                            <v-col cols="3" class="text-center">
-                              <v-btn
-                                icon="mdi-minus"
-                                size="small"
-                                color="error"
-                                variant="tonal"
-                                class="mb-1"
-                                @click="liveSpotPrice -= 1"
-                              ></v-btn>
-                              <v-btn
-                                icon="mdi-plus"
-                                size="small"
-                                color="success"
-                                variant="tonal"
-                                @click="liveSpotPrice += 1"
-                              ></v-btn>
-                            </v-col>
-                          </v-row>
-
-                          <v-divider class="my-3"></v-divider>
-                          <v-row dense class="text-center">
-                            <v-col cols="6">
-                              <div class="text-caption text-medium-emphasis">At ${{ liveSpotPrice - 1 }}</div>
-                              <div class="text-body-2 font-weight-bold" :class="calculateProfit(80, liveSpotPrice - 1) >= 0 ? 'text-success' : 'text-error'">
-                                {{ calculateProfit(80, liveSpotPrice - 1) >= 0 ? '+' : '' }}${{ safeFixed(calculateProfit(80, liveSpotPrice - 1)) }}
-                              </div>
-                            </v-col>
-                            <v-col cols="6">
-                              <div class="text-caption text-medium-emphasis">At ${{ liveSpotPrice + 1 }}</div>
-                              <div class="text-body-2 font-weight-bold" :class="calculateProfit(80, liveSpotPrice + 1) >= 0 ? 'text-success' : 'text-error'">
-                                {{ calculateProfit(80, liveSpotPrice + 1) >= 0 ? '+' : '' }}${{ safeFixed(calculateProfit(80, liveSpotPrice + 1)) }}
-                              </div>
-                            </v-col>
-                          </v-row>
-                        </v-card-text>
-                      </v-card>
+                      <live-price-card
+                        v-model="liveSpotPrice"
+                        label="RTYH"
+                        icon="mdi-cards-playing-outline"
+                        avatar-color="primary"
+                        :units="80"
+                        :calculate-profit="calculateProfit"
+                        :safe-fixed="safeFixed"
+                      ></live-price-card>
                     </v-col>
                   </v-row>
                 </v-container>
@@ -909,9 +786,6 @@
       <input type="file" ref="fileInput" style="display:none" accept=".json" @change="handleFileImport" />
     </v-app>
   </div>
-
-  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/vuetify@3.11.8/dist/vuetify.min.js"></script>
-  <script src="app.js"></script>
+  <script type="module" src="/src/main.ts"></script>
 </body>
 </html>

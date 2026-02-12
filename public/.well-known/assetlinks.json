@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "io.github.unschoolers.calcul8tr",
+      "sha256_cert_fingerprints": [
+        "0A:EE:98:AF:75:B0:E7:B0:22:3A:F6:77:18:1E:85:47:CA:FC:EC:93:88:E3:02:E6:5D:DA:00:7C:D5:35:37:67"
+      ]
+    }
+  }
+]

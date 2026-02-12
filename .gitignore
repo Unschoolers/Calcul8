@@ -1,0 +1,16 @@
+node_modules
+dist
+.bubblewrap
+android
+*.jks
+*.keystore
+*.pem
+*.p12
+*.key
+*.crt
+.env
+.env.*
+!.env.example
+keystore.properties
+play-credentials.json
+service-account*.json
