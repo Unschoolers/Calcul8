@@ -251,6 +251,19 @@
                           @input="onPurchaseConfigChange"
                         ></v-text-field>
 
+                        <v-text-field
+                          v-model.number="purchaseShippingCost"
+                          label="Purchase Shipping (CAD)"
+                          type="number"
+                          variant="outlined"
+                          density="compact"
+                          step="0.01"
+                          :min="0"
+                          class="mt-2"
+                          hide-details
+                          @input="onPurchaseConfigChange"
+                        ></v-text-field>
+
                         <v-alert v-if="conversionInfo" type="info" density="compact" class="mt-2">
                           {{ conversionInfo }}
                         </v-alert>
@@ -287,6 +300,7 @@
                             <div class="text-caption">Total Purchase Cost</div>
                             <div class="text-h6 font-weight-bold">${{ formatCurrency(totalCaseCost) }}</div>
                             <div class="text-caption mt-1">{{ boxesPurchased }} boxes × {{ packsPerBox }} packs = {{ totalPacks }} packs</div>
+                            <div class="text-caption">Includes ${{ formatCurrency(purchaseShippingCostCAD) }} shipping</div>
                           </v-card-text>
                         </v-card>
                       </v-card-text>
@@ -324,6 +338,19 @@
                           class="mb-2"
                           hide-details
                           :rules="[v => v !== null && v !== '' || 'Selling tax is required']"
+                          @input="onPurchaseConfigChange"
+                        ></v-text-field>
+
+                        <v-text-field
+                          v-model.number="sellingShippingPerOrder"
+                          label="Buyer Shipping per Order (CAD)"
+                          type="number"
+                          variant="outlined"
+                          density="compact"
+                          step="0.01"
+                          :min="0"
+                          class="mb-2"
+                          hide-details
                           @input="onPurchaseConfigChange"
                         ></v-text-field>
 
@@ -533,7 +560,7 @@
                             {{ sale.quantity }}x {{ sale.type.toUpperCase() }} @ ${{ formatCurrency(sale.price) }}
                           </v-list-item-title>
                           <v-list-item-subtitle>
-                            {{ sale.packsCount }} packs • {{ formatDate(sale.date) }} • ${{ formatCurrency(sale.quantity * sale.price) }} total
+                            {{ sale.packsCount }} packs • {{ formatDate(sale.date) }} • Ship ${{ formatCurrency(sale.buyerShipping || 0) }} • ${{ formatCurrency(sale.quantity * sale.price) }} total
                           </v-list-item-subtitle>
 
                           <template v-slot:append>
@@ -750,6 +777,7 @@
             ></v-text-field>
 
             <v-text-field v-model.number="newSale.price" label="Price per Unit" type="number" variant="outlined" :disabled="!hasPresetSelected" prefix="$" class="mb-2"></v-text-field>
+            <v-text-field v-model.number="newSale.buyerShipping" label="Buyer Shipping (per order)" type="number" variant="outlined" :disabled="!hasPresetSelected" prefix="$" :min="0" class="mb-2"></v-text-field>
             <v-text-field v-model="newSale.date" label="Date" type="date" variant="outlined" :disabled="!hasPresetSelected"></v-text-field>
           </v-card-text>
 

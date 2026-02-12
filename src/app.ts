@@ -67,8 +67,10 @@ export const appOptions = defineComponent({
       costInputMode: "perBox", // 'perBox' or 'total'
       currency: "CAD",
       exchangeRate: DEFAULT_VALUES.EXCHANGE_RATE,
+      purchaseShippingCost: DEFAULT_VALUES.PURCHASE_SHIPPING_COST,
       purchaseTaxPercent: DEFAULT_VALUES.PURCHASE_TAX_RATE_PERCENT,
       sellingTaxPercent: DEFAULT_VALUES.SELLING_TAX_RATE_PERCENT,
+      sellingShippingPerOrder: DEFAULT_VALUES.SELLING_SHIPPING_PER_ORDER,
       includeTax: true,
 
       // Default Selling Prices
@@ -92,6 +94,7 @@ export const appOptions = defineComponent({
         quantity: 1,
         packsCount: null,
         price: 0,
+        buyerShipping: DEFAULT_VALUES.SELLING_SHIPPING_PER_ORDER,
         date: new Date().toISOString().split("T")[0]
       },
 
@@ -211,6 +214,9 @@ else if (this.presets.length > 0) {
         DEFAULT_VALUES.EXCHANGE_RATE
       );
     },
+    purchaseShippingCostCAD(): number {
+      return Number(this.purchaseShippingCost) || 0;
+    },
     purchaseCostInputLabel(): string {
       return this.costInputMode === "total" ? "Total Purchase (No Tax)" : "Price per Box (No Tax)";
     },
@@ -236,6 +242,7 @@ else if (this.presets.length > 0) {
       return calculateTotalCaseCost({
         boxesPurchased: this.boxesPurchased,
         pricePerBoxCad: this.boxPriceCostCAD,
+        purchaseShippingCad: this.purchaseShippingCostCAD,
         purchaseTaxPercent: this.purchaseTaxPercent,
         includeTax: this.includeTax,
         currency: this.currency
@@ -244,7 +251,7 @@ else if (this.presets.length > 0) {
 
     conversionInfo(): string {
       if (this.currency === "USD") {
-        const totalInCAD = this.boxPriceCostCAD * (this.boxesPurchased || 0);
+        const totalInCAD = (this.boxPriceCostCAD * (this.boxesPurchased || 0)) + this.purchaseShippingCostCAD;
         return `≈ $${this.formatCurrency(totalInCAD)} CAD total`;
       }
       return "";
@@ -321,7 +328,12 @@ else if (this.presets.length > 0) {
 loadSalesForPresetId(presetId: number): Sale[] {
   try {
     const stored = localStorage.getItem(this.getSalesStorageKey(presetId));
-    return stored ? (JSON.parse(stored) as Sale[]) : [];
+    if (!stored) return [];
+    const parsed = JSON.parse(stored) as Array<Sale & { buyerShipping?: number }>;
+    return parsed.map((sale) => ({
+      ...sale,
+      buyerShipping: Number(sale.buyerShipping) || 0
+    }));
   } catch {
     return [];
   }
@@ -329,8 +341,8 @@ loadSalesForPresetId(presetId: number): Sale[] {
 
 
     // ===== Whatnot fee helper =====
-    netFromGross(grossRevenue: number, units: number): number {
-      return calculateNetFromGross(grossRevenue, units, this.sellingTaxPercent);
+    netFromGross(grossRevenue: number, buyerShippingPerOrder = 0, orderCount = 1): number {
+      return calculateNetFromGross(grossRevenue, this.sellingTaxPercent, buyerShippingPerOrder, orderCount);
     },
 
     // ===== Exchange Rate =====
@@ -384,8 +396,10 @@ loadSalesForPresetId(presetId: number): Sale[] {
         costInputMode: this.costInputMode,
         currency: this.currency,
         exchangeRate: this.exchangeRate,
+        purchaseShippingCost: this.purchaseShippingCost,
         purchaseTaxPercent: this.purchaseTaxPercent,
         sellingTaxPercent: this.sellingTaxPercent,
+        sellingShippingPerOrder: this.sellingShippingPerOrder,
         includeTax: this.includeTax,
         spotPrice: this.spotPrice,
         boxPriceSell: this.boxPriceSell,
@@ -441,6 +455,7 @@ loadSalesForPresetId(presetId: number): Sale[] {
       this.costInputMode = preset.costInputMode ?? "perBox";
       this.currency = preset.currency ?? "CAD";
       this.exchangeRate = preset.exchangeRate ?? DEFAULT_VALUES.EXCHANGE_RATE;
+      this.purchaseShippingCost = preset.purchaseShippingCost ?? DEFAULT_VALUES.PURCHASE_SHIPPING_COST;
       // Backward compatibility: older presets had a single taxRatePercent.
       const legacyTax = preset.taxRatePercent;
       this.purchaseTaxPercent =
@@ -451,6 +466,7 @@ loadSalesForPresetId(presetId: number): Sale[] {
         preset.sellingTaxPercent ??
         legacyTax ??
         DEFAULT_VALUES.SELLING_TAX_RATE_PERCENT;
+      this.sellingShippingPerOrder = preset.sellingShippingPerOrder ?? DEFAULT_VALUES.SELLING_SHIPPING_PER_ORDER;
       this.includeTax = preset.includeTax ?? true;
       this.spotPrice = preset.spotPrice ?? DEFAULT_VALUES.SPOT_PRICE;
       this.boxPriceSell = preset.boxPriceSell ?? DEFAULT_VALUES.BOX_PRICE_SELL;
@@ -616,7 +632,8 @@ handleFileImport(event: Event): void {
         units,
         pricePerUnit,
         this.totalCaseCost,
-        this.sellingTaxPercent
+        this.sellingTaxPercent,
+        this.sellingShippingPerOrder
       );
     },
 
@@ -637,7 +654,8 @@ handleFileImport(event: Event): void {
         targetProfitPercent: this.targetProfitPercent,
         boxesPurchased: this.boxesPurchased,
         totalPacks: this.totalPacks,
-        sellingTaxPercent: this.sellingTaxPercent
+        sellingTaxPercent: this.sellingTaxPercent,
+        sellingShippingPerOrder: this.sellingShippingPerOrder
       });
       this.spotPrice = nextPrices.spotPrice;
       this.boxPriceSell = nextPrices.boxPriceSell;
@@ -653,6 +671,12 @@ handleFileImport(event: Event): void {
       this.recalculateDefaultPrices({ closeModal: true });
     },
     onPurchaseConfigChange(): void {
+      if (this.purchaseShippingCost == null || Number.isNaN(Number(this.purchaseShippingCost))) {
+        this.purchaseShippingCost = DEFAULT_VALUES.PURCHASE_SHIPPING_COST;
+      }
+      if (Number(this.purchaseShippingCost) < 0) {
+        this.purchaseShippingCost = 0;
+      }
       if (this.purchaseTaxPercent == null || Number.isNaN(Number(this.purchaseTaxPercent))) {
         this.purchaseTaxPercent = DEFAULT_VALUES.PURCHASE_TAX_RATE_PERCENT;
       }
@@ -665,11 +689,17 @@ handleFileImport(event: Event): void {
       if (Number(this.sellingTaxPercent) < 0) {
         this.sellingTaxPercent = 0;
       }
+      if (this.sellingShippingPerOrder == null || Number.isNaN(Number(this.sellingShippingPerOrder))) {
+        this.sellingShippingPerOrder = DEFAULT_VALUES.SELLING_SHIPPING_PER_ORDER;
+      }
+      if (Number(this.sellingShippingPerOrder) < 0) {
+        this.sellingShippingPerOrder = 0;
+      }
       this.recalculateDefaultPrices();
     },
 
     calculatePriceForUnits(units: number, targetNetRevenue: number): number {
-      return calculateUnitPrice(units, targetNetRevenue, this.sellingTaxPercent);
+      return calculateUnitPrice(units, targetNetRevenue, this.sellingTaxPercent, this.sellingShippingPerOrder);
     },
 
     // ===== Sales Storage =====
@@ -679,7 +709,15 @@ handleFileImport(event: Event): void {
       try {
         const key = `rtyh_sales_${this.currentPresetId}`;
         const stored = localStorage.getItem(key);
-        this.sales = stored ? (JSON.parse(stored) as Sale[]) : [];
+        if (!stored) {
+          this.sales = [];
+          return;
+        }
+        const parsed = JSON.parse(stored) as Array<Sale & { buyerShipping?: number }>;
+        this.sales = parsed.map((sale) => ({
+          ...sale,
+          buyerShipping: Number(sale.buyerShipping) || 0
+        }));
       } catch (error) {
         console.error("Failed to load sales:", error);
         this.sales = [];
@@ -701,6 +739,7 @@ handleFileImport(event: Event): void {
     saveSale(): void {
       const quantity = Number(this.newSale.quantity);
       const price = Number(this.newSale.price);
+      const buyerShipping = Number(this.newSale.buyerShipping);
       const rtyhPacks = Number(this.newSale.packsCount);
 
       if (!Number.isFinite(quantity) || quantity <= 0) {
@@ -710,6 +749,10 @@ handleFileImport(event: Event): void {
 
       if (!Number.isFinite(price) || price < 0) {
         this.notify("Please enter a valid price (0 or greater)", "warning");
+        return;
+      }
+      if (!Number.isFinite(buyerShipping) || buyerShipping < 0) {
+        this.notify("Please enter a valid buyer shipping amount (0 or greater)", "warning");
         return;
       }
 
@@ -733,6 +776,7 @@ handleFileImport(event: Event): void {
         quantity,
         packsCount: packsCount || 0,
         price,
+        buyerShipping,
         date: this.newSale.date
       };
 
@@ -760,6 +804,7 @@ handleFileImport(event: Event): void {
         quantity: sale.quantity,
         packsCount: sale.type === "rtyh" ? sale.packsCount : null,
         price: sale.price,
+        buyerShipping: sale.buyerShipping ?? 0,
         date: sale.date
       };
       this.showAddSaleModal = true;
@@ -788,6 +833,7 @@ handleFileImport(event: Event): void {
         quantity: 1,
         packsCount: null,
         price: 0,
+        buyerShipping: this.sellingShippingPerOrder,
         date: new Date().toISOString().split("T")[0]
       };
     },
@@ -823,7 +869,7 @@ handleFileImport(event: Event): void {
 
       // UNSOLD: estimate net value if sold at current packPrice (apply fees)
       const grossUnsold = unsoldPacks * (this.packPrice || 0);
-      const unsoldNet = this.netFromGross(grossUnsold, unsoldPacks);
+      const unsoldNet = this.netFromGross(grossUnsold, this.sellingShippingPerOrder, unsoldPacks);
 
       this.salesChart = new Chart(ctx, {
         type: "doughnut",

@@ -23,27 +23,34 @@ export function calculateBoxPriceCostCad(
 export function calculateTotalCaseCost(params: {
   boxesPurchased: number;
   pricePerBoxCad: number;
+  purchaseShippingCad: number;
   purchaseTaxPercent: number;
   includeTax: boolean;
   currency: CurrencyCode;
 }): number {
   const boxes = Number(params.boxesPurchased) || 0;
   const basePrice = (Number(params.pricePerBoxCad) || 0) * boxes;
+  const shippingCost = Number(params.purchaseShippingCad) || 0;
   const purchaseTaxRate = toRate(params.purchaseTaxPercent);
   const withTax = params.includeTax ? basePrice * (1 + purchaseTaxRate) : basePrice;
   const customs = params.currency === "USD" ? withTax * TAX_RATES.CUSTOMS : 0;
-  return withTax + customs;
+  return withTax + customs + shippingCost;
 }
 
-export function calculateNetFromGross(grossRevenue: number, units: number, sellingTaxPercent: number): number {
+export function calculateNetFromGross(
+  grossRevenue: number,
+  sellingTaxPercent: number,
+  buyerShippingPerOrder = 0,
+  orderCount = 1
+): number {
   const gross = Number(grossRevenue) || 0;
-  const qty = Number(units) || 0;
   const buyerTaxRate = toRate(sellingTaxPercent);
-  const orderTotal = gross * (1 + buyerTaxRate);
-
+  const orders = Math.max(1, Number(orderCount) || 1);
+  const shippingTotal = (Number(buyerShippingPerOrder) || 0) * orders;
+  const orderTotal = (gross * (1 + buyerTaxRate)) + shippingTotal;
   const commission = gross * WHATNOT_FEES.COMMISSION;
   const processingPct = orderTotal * WHATNOT_FEES.PROCESSING;
-  const processingFixed = WHATNOT_FEES.FIXED * qty;
+  const processingFixed = WHATNOT_FEES.FIXED * orders;
 
   return gross - commission - processingPct - processingFixed;
 }
@@ -51,7 +58,8 @@ export function calculateNetFromGross(grossRevenue: number, units: number, selli
 export function calculateTotalRevenue(sales: Sale[], sellingTaxPercent: number): number {
   return sales.reduce((sum, sale) => {
     const grossRevenue = (sale.quantity || 0) * (sale.price || 0);
-    return sum + calculateNetFromGross(grossRevenue, sale.quantity || 0, sellingTaxPercent);
+    const buyerShipping = Number(sale.buyerShipping) || 0;
+    return sum + calculateNetFromGross(grossRevenue, sellingTaxPercent, buyerShipping, 1);
   }, 0);
 }
 
@@ -85,20 +93,27 @@ export function calculateProfitForListing(
   units: number,
   pricePerUnit: number,
   totalCaseCost: number,
-  sellingTaxPercent: number
+  sellingTaxPercent: number,
+  buyerShippingPerOrder = 0
 ): number {
   const safeUnits = Number(units) || 0;
   const safePrice = Number(pricePerUnit) || 0;
   const grossRevenue = safeUnits * safePrice;
-  const netRevenue = calculateNetFromGross(grossRevenue, safeUnits, sellingTaxPercent);
+  const netRevenue = calculateNetFromGross(grossRevenue, sellingTaxPercent, buyerShippingPerOrder, safeUnits);
   return netRevenue - totalCaseCost;
 }
 
-export function calculatePriceForUnits(units: number, targetNetRevenue: number, sellingTaxPercent: number): number {
+export function calculatePriceForUnits(
+  units: number,
+  targetNetRevenue: number,
+  sellingTaxPercent: number,
+  buyerShippingPerOrder = 0
+): number {
   const u = Number(units) || 1;
   const buyerTaxRate = toRate(sellingTaxPercent);
   const effectiveFeeRate = 1 - WHATNOT_FEES.COMMISSION - (WHATNOT_FEES.PROCESSING * (1 + buyerTaxRate));
-  const fixedFees = WHATNOT_FEES.FIXED * u;
+  const perOrderFixed = WHATNOT_FEES.FIXED + (WHATNOT_FEES.PROCESSING * (Number(buyerShippingPerOrder) || 0));
+  const fixedFees = perOrderFixed * u;
   if (effectiveFeeRate <= 0) return 0;
 
   const price = (targetNetRevenue + fixedFees) / (u * effectiveFeeRate);
@@ -111,13 +126,14 @@ export function calculateDefaultSellingPrices(params: {
   boxesPurchased: number;
   totalPacks: number;
   sellingTaxPercent: number;
+  sellingShippingPerOrder: number;
 }): { spotPrice: number; boxPriceSell: number; packPrice: number } {
   const targetProfit = (params.totalCaseCost * (Number(params.targetProfitPercent) || 0)) / 100;
   const requiredNetRevenue = params.totalCaseCost + targetProfit;
   return {
-    spotPrice: calculatePriceForUnits(UNITS_PER_CASE.SPOT, requiredNetRevenue, params.sellingTaxPercent),
-    boxPriceSell: calculatePriceForUnits(params.boxesPurchased, requiredNetRevenue, params.sellingTaxPercent),
-    packPrice: calculatePriceForUnits(params.totalPacks, requiredNetRevenue, params.sellingTaxPercent)
+    spotPrice: calculatePriceForUnits(UNITS_PER_CASE.SPOT, requiredNetRevenue, params.sellingTaxPercent, params.sellingShippingPerOrder),
+    boxPriceSell: calculatePriceForUnits(params.boxesPurchased, requiredNetRevenue, params.sellingTaxPercent, params.sellingShippingPerOrder),
+    packPrice: calculatePriceForUnits(params.totalPacks, requiredNetRevenue, params.sellingTaxPercent, params.sellingShippingPerOrder)
   };
 }
 
@@ -132,7 +148,7 @@ export function calculateSparklineData(sales: Sale[], totalCaseCost: number, sel
 
   sortedSales.forEach((sale) => {
     const grossRevenue = (sale.quantity || 0) * (sale.price || 0);
-    const netRevenue = calculateNetFromGross(grossRevenue, sale.quantity || 0, sellingTaxPercent);
+    const netRevenue = calculateNetFromGross(grossRevenue, sellingTaxPercent, sale.buyerShipping || 0, 1);
     cumulativeProfit += netRevenue;
     data.push(cumulativeProfit);
   });
@@ -147,7 +163,7 @@ export function calculateSparklineGradient(sales: Sale[], totalCaseCost: number,
 
   sortedSales.forEach((sale) => {
     const grossRevenue = (sale.quantity || 0) * (sale.price || 0);
-    const netRevenue = calculateNetFromGross(grossRevenue, sale.quantity || 0, sellingTaxPercent);
+    const netRevenue = calculateNetFromGross(grossRevenue, sellingTaxPercent, sale.buyerShipping || 0, 1);
     cumulativeProfit += netRevenue;
   });
 

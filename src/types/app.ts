@@ -27,6 +27,7 @@ export interface NewSaleDraft {
   quantity: number;
   packsCount: number | null;
   price: number;
+  buyerShipping: number;
   date: string;
 }
 
@@ -36,6 +37,7 @@ export interface Sale {
   quantity: number;
   packsCount: number;
   price: number;
+  buyerShipping: number;
   date: string;
 }
 
@@ -46,8 +48,10 @@ export interface PresetSetup {
   costInputMode: CostInputMode;
   currency: CurrencyCode;
   exchangeRate: number;
+  purchaseShippingCost: number;
   purchaseTaxPercent: number;
   sellingTaxPercent: number;
+  sellingShippingPerOrder: number;
   includeTax: boolean;
   spotPrice: number;
   boxPriceSell: number;
@@ -107,4 +111,3 @@ export interface AppState extends PresetSetup {
   newPresetName: string;
   lastFetchTime: number | null;
 }
-

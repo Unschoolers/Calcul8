@@ -3,7 +3,7 @@ export const APP_VERSION = "2026-02-12.2";
 export const WHATNOT_FEES = {
   COMMISSION: 0.08, // 8% commission
   PROCESSING: 0.029, // 2.9% processing
-  FIXED: 0.3 // $0.30 per transaction
+  FIXED: 0.3 // $0.30 per order
 };
 
 export const TAX_RATES = {
@@ -20,7 +20,9 @@ export const DEFAULT_VALUES = {
   PACK_PRICE: 7,
   EXCHANGE_RATE: 1.4,
   PURCHASE_TAX_RATE_PERCENT: 15,
-  SELLING_TAX_RATE_PERCENT: 15
+  SELLING_TAX_RATE_PERCENT: 15,
+  PURCHASE_SHIPPING_COST: 0,
+  SELLING_SHIPPING_PER_ORDER: 0
 };
 
 export const UNITS_PER_CASE = {

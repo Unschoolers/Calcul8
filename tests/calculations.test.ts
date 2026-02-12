@@ -26,25 +26,62 @@ test("calculateTotalCaseCost applies purchase tax and USD customs", () => {
   const cadCost = calculateTotalCaseCost({
     boxesPurchased: 10,
     pricePerBoxCad: 100,
+    purchaseShippingCad: 25,
     purchaseTaxPercent: 15,
     includeTax: true,
     currency: "CAD"
   });
-  assert.equal(cadCost, 1150);
+  assert.equal(cadCost, 1175);
 
   const usdCost = calculateTotalCaseCost({
     boxesPurchased: 10,
     pricePerBoxCad: 100,
+    purchaseShippingCad: 25,
     purchaseTaxPercent: 15,
     includeTax: true,
     currency: "USD"
   });
-  assert.equal(usdCost, 1207.5);
+  assert.equal(usdCost, 1232.5);
 });
 
 test("calculateNetFromGross matches expected fee formula", () => {
-  const net = calculateNetFromGross(84.15, 1, 15);
-  assert.ok(Math.abs(net - 74.3115975) < 0.000001);
+  // Example:
+  // gross = 84.15, buyer shipping = 8.63, buyer tax = 12.06
+  // buyer tax rate in this order = 12.06 / 84.15
+  const gross = 84.15;
+  const buyerShipping = 8.63;
+  const buyerTaxPercent = (12.06 / 84.15) * 100;
+  const expectedNet = 74.08;
+  const net = calculateNetFromGross(gross, buyerTaxPercent, buyerShipping, 1);
+  assert.ok(Math.abs(net - expectedNet) < 0.02);
+});
+
+test("calculateNetFromGross applies 8% commission on full sale price", () => {
+  const gross = 2000;
+  const sellingTaxPercent = 15;
+  const orderTotal = gross * 1.15;
+
+  const expectedCommission = gross * 0.08;
+  const expectedProcessing = orderTotal * 0.029;
+  const expectedFixed = 0.3;
+  const expectedNet = gross - expectedCommission - expectedProcessing - expectedFixed;
+
+  const net = calculateNetFromGross(gross, sellingTaxPercent, 0, 1);
+  assert.ok(Math.abs(net - expectedNet) < 0.000001);
+});
+
+test("calculateNetFromGross uses $0.30 per order (order count aware)", () => {
+  const gross = 120;
+  const taxPercent = 15;
+  const expectedCommission = gross * 0.08;
+  const expectedProcessing = (gross * 1.15) * 0.029;
+  const expectedNet = gross - expectedCommission - expectedProcessing - 0.3;
+
+  const netSingleOrder = calculateNetFromGross(gross, taxPercent, 0, 1);
+  const netMultiOrder = calculateNetFromGross(gross, taxPercent, 0, 10);
+
+  assert.ok(Math.abs(netSingleOrder - expectedNet) < 0.000001);
+  assert.ok(netMultiOrder < netSingleOrder);
 });
 
 test("calculatePriceForUnits and calculateDefaultSellingPrices are consistent", () => {
@@ -55,15 +92,16 @@ test("calculatePriceForUnits and calculateDefaultSellingPrices are consistent", 
   const sellingTaxPercent = 15;
   const requiredNetRevenue = totalCaseCost + (totalCaseCost * targetProfitPercent) / 100;
 
-  const byUnitsPack = calculatePriceForUnits(totalPacks, requiredNetRevenue, sellingTaxPercent);
-  const byUnitsBox = calculatePriceForUnits(boxesPurchased, requiredNetRevenue, sellingTaxPercent);
+  const byUnitsPack = calculatePriceForUnits(totalPacks, requiredNetRevenue, sellingTaxPercent, 0);
+  const byUnitsBox = calculatePriceForUnits(boxesPurchased, requiredNetRevenue, sellingTaxPercent, 0);
 
   const defaults = calculateDefaultSellingPrices({
     totalCaseCost,
     targetProfitPercent,
     boxesPurchased,
     totalPacks,
-    sellingTaxPercent
+    sellingTaxPercent,
+    sellingShippingPerOrder: 0
   });
 
   assert.equal(defaults.packPrice, byUnitsPack);
@@ -73,15 +111,15 @@ test("calculatePriceForUnits and calculateDefaultSellingPrices are consistent", 
 
 test("calculateProfitForListing returns net minus case cost", () => {
   const totalCaseCost = 1000;
-  const profit = calculateProfitForListing(100, 15, totalCaseCost, 15);
-  const expected = calculateNetFromGross(1500, 100, 15) - totalCaseCost;
+  const profit = calculateProfitForListing(100, 15, totalCaseCost, 15, 0);
+  const expected = calculateNetFromGross(1500, 15, 0, 100) - totalCaseCost;
   assert.equal(profit, expected);
 });
 
 test("sales aggregates and status are calculated correctly", () => {
   const sales: Sale[] = [
-    { id: 1, type: "pack", quantity: 2, packsCount: 2, price: 10, date: "2026-01-01" },
-    { id: 2, type: "box", quantity: 1, packsCount: 16, price: 100, date: "2026-01-02" }
+    { id: 1, type: "pack", quantity: 2, packsCount: 2, price: 10, buyerShipping: 0, date: "2026-01-01" },
+    { id: 2, type: "box", quantity: 1, packsCount: 16, price: 100, buyerShipping: 0, date: "2026-01-02" }
   ];
 
   assert.equal(calculateTotalPacks(2, 16, 16), 32);
@@ -97,8 +135,8 @@ test("sales aggregates and status are calculated correctly", () => {
 
 test("sparkline helpers return normalized series and valid gradient", () => {
   const sales: Sale[] = [
-    { id: 1, type: "pack", quantity: 1, packsCount: 1, price: 8, date: "2026-01-02" },
-    { id: 2, type: "pack", quantity: 1, packsCount: 1, price: 9, date: "2026-01-03" }
+    { id: 1, type: "pack", quantity: 1, packsCount: 1, price: 8, buyerShipping: 0, date: "2026-01-02" },
+    { id: 2, type: "pack", quantity: 1, packsCount: 1, price: 9, buyerShipping: 0, date: "2026-01-03" }
   ];
 
   const data = calculateSparklineData(sales, 100, 15);
@@ -108,4 +146,3 @@ test("sparkline helpers return normalized series and valid gradient", () => {
   const gradient = calculateSparklineGradient(sales, 100, 15);
   assert.equal(gradient.length, 2);
 });
-
