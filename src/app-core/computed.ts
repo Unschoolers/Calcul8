@@ -47,7 +47,7 @@ export const appComputed: AppComputedObject = {
   },
 
   purchaseCostInputLabel(): string {
-    return this.costInputMode === "total" ? "Total Purchase (No Tax)" : "Price per Box (No Tax)";
+    return this.costInputMode === "total" ? "Total Purchase" : "Price per Box (No Tax)";
   },
 
   purchaseCostInputValue: {
