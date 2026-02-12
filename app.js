@@ -1,7 +1,7 @@
 // app.js
 const { createApp } = Vue;
 const { createVuetify } = Vuetify;
-const APP_VERSION = "2026-02-12";
+const APP_VERSION = "2026-02-12.2";
 
 // Vuetify theme configuration
 const vuetify = createVuetify({

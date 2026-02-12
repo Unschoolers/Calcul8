@@ -1,7 +1,8 @@
-const CACHE_NAME = "calcul8tr-v1";
+const CACHE_NAME = "calcul8tr-v2";
 
 const APP_SHELL = [
   "./",
+  "./index.html",
   "./app.html",
   "./app.js",
   "./manifest.webmanifest",
