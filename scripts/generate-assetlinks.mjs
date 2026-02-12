@@ -28,10 +28,14 @@ const payload = [
   }
 ];
 
-const outputDir = path.resolve("public", ".well-known");
-const outputFile = path.join(outputDir, "assetlinks.json");
+const outputDirs = [
+  path.resolve("public", ".well-known"),
+  path.resolve(".well-known")
+];
 
-fs.mkdirSync(outputDir, { recursive: true });
-fs.writeFileSync(outputFile, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
-
-console.log(`Generated ${outputFile}`);
+for (const outputDir of outputDirs) {
+  const outputFile = path.join(outputDir, "assetlinks.json");
+  fs.mkdirSync(outputDir, { recursive: true });
+  fs.writeFileSync(outputFile, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+  console.log(`Generated ${outputFile}`);
+}

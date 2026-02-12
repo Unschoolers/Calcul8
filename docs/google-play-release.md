@@ -61,6 +61,7 @@ npm run assetlinks -- --package=io.github.unschoolers.calcul8tr --fingerprint=AA
 This updates:
 
 - `public/.well-known/assetlinks.json`
+- `/.well-known/assetlinks.json`
 
 Commit and deploy this file to GitHub Pages before building the final Android release.
 
