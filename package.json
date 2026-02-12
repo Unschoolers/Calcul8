@@ -9,7 +9,7 @@
     "build": "vite build",
     "build:prod": "vite build && node scripts/obfuscate.mjs",
     "preview": "vite preview",
-    "test": "node --test --test-isolation=none tests/calculations.test.ts",
+    "test": "node --test tests/calculations.test.ts",
     "security:scan": "node scripts/security-scan.mjs",
     "typecheck": "tsc --noEmit",
     "verify": "npm run security:scan && npm run test && npm run typecheck && npm run build",
