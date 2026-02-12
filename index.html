@@ -452,31 +452,6 @@
                           hide-details
                           @input="autoSaveSetup(); syncLivePricesFromDefaults()"
                         ></v-text-field>
-
-                        <v-card
-                          elevation="0"
-                          class="mt-3 purchase-summary-card"
-                          :color="requiredBoxPriceFromNow === null ? 'error' : (requiredBoxPriceFromNow <= boxPriceSell ? 'success' : 'warning')"
-                          dark
-                        >
-                          <v-card-text class="py-2 px-3">
-                            <div class="text-caption">Target Tracker (From Current Sales)</div>
-                            <div v-if="requiredBoxPriceFromNow === null" class="text-body-2 font-weight-medium">
-                              No boxes left to adjust, but target is not reached.
-                            </div>
-                            <div v-else-if="requiredBoxPriceFromNow <= 0" class="text-body-2 font-weight-medium">
-                              Target already reached. You can undercut and stay above target.
-                            </div>
-                            <div v-else>
-                              <div class="text-h6 font-weight-bold">
-                                Avg box needed: ${{ formatCurrency(requiredBoxPriceFromNow, 0) }}
-                              </div>
-                              <div class="text-caption">
-                                Remaining: {{ formatCurrency(remainingBoxesEquivalent, 2) }} box equiv • Net still needed: ${{ formatCurrency(remainingNetRevenueForTarget) }}
-                              </div>
-                            </div>
-                          </v-card-text>
-                        </v-card>
                       </v-card-text>
                     </v-card>
                   </v-col>
@@ -497,6 +472,7 @@
                         :units="totalPacks"
                         :calculate-profit="calculateProfit"
                         :safe-fixed="safeFixed"
+                        :avg-price-needed="requiredPackPriceFromNow"
                       ></live-price-card>
                     </v-col>
 
@@ -509,6 +485,7 @@
                         :units="boxesPurchased"
                         :calculate-profit="calculateProfit"
                         :safe-fixed="safeFixed"
+                        :avg-price-needed="requiredBoxPriceFromNow"
                       ></live-price-card>
                     </v-col>
 
@@ -521,6 +498,7 @@
                         :units="80"
                         :calculate-profit="calculateProfit"
                         :safe-fixed="safeFixed"
+                        :avg-price-needed="requiredSpotPriceFromNow"
                       ></live-price-card>
                     </v-col>
                   </v-row>
@@ -651,7 +629,7 @@
                             {{ sale.quantity }}x {{ sale.type.toUpperCase() }} @ ${{ formatCurrency(sale.price) }}
                           </v-list-item-title>
                           <v-list-item-subtitle>
-                            {{ sale.packsCount }} packs • {{ formatDate(sale.date) }} • Ship ${{ formatCurrency(sale.buyerShipping || 0) }} • ${{ formatCurrency(sale.quantity * sale.price) }} total
+                            {{ formatDate(sale.date) }} • Profit {{ calculateSaleProfit(sale) >= 0 ? '+' : '' }}${{ formatCurrency(calculateSaleProfit(sale)) }}
                           </v-list-item-subtitle>
 
                           <template v-slot:append>

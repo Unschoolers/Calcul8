@@ -33,6 +33,10 @@ export const LivePriceCard = defineComponent({
     safeFixed: {
       type: Function as PropType<CurrencyFormatter>,
       required: true
+    },
+    avgPriceNeeded: {
+      type: Number as PropType<number | null>,
+      default: null
     }
   },
   emits: ["update:modelValue"],
@@ -87,6 +91,13 @@ export const LivePriceCard = defineComponent({
         </v-row>
 
         <v-divider class="my-3"></v-divider>
+        <div class="text-caption text-medium-emphasis text-center mb-2">
+          Avg price needed considering sales:
+          <span class="font-weight-bold">
+            <template v-if="avgPriceNeeded === null">N/A</template>
+            <template v-else>\${{ safeFixed(avgPriceNeeded, 0) }}</template>
+          </span>
+        </div>
         <v-row dense class="text-center">
           <v-col cols="6">
             <div class="text-caption text-medium-emphasis">At \${{ modelValue - 1 }}</div>
