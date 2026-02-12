@@ -1,0 +1,880 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>RTYH Calculator</title>
+
+  <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/vuetify@3.11.8/dist/vuetify.min.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <style>
+    .profit-positive { color: #34c759; font-weight: 700; }
+    .profit-negative { color: #ff3b30; font-weight: 700; }
+    .current-price { background: rgba(255, 184, 0, 0.15) !important; border-left: 3px solid #FFB800 !important; font-weight: 700; }
+    .gradient-text { background: linear-gradient(135deg, #E63946 0%, #FF6B6B 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    html { scroll-behavior: auto; }
+    body { overscroll-behavior-y: none; }
+    .v-btn { min-height: 44px; min-width: 44px; }
+    .app-shell { max-width: 920px; margin: 0 auto; }
+    .v-card { border-radius: 20px !important; }
+    .profit-glow { box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    .live-card { transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1); border-radius: 16px !important; }
+    .live-card:active { transform: none; }
+    .live-pricing-card { border: 1px solid rgba(var(--v-theme-on-surface), 0.08) !important; transition: border-color 0.15s ease; }
+    .live-pricing-card:hover { border-color: rgba(var(--v-theme-on-surface), 0.12) !important; }
+    .match-height .v-col { display: flex; }
+    .match-height .v-card { width: 100%; }
+    canvas { transition: opacity 0.15s ease-out; }
+    .v-speed-dial .v-btn { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.16) !important; transition: box-shadow 0.15s ease; }
+    .v-speed-dial .v-btn:hover { transform: none; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2) !important; }
+    .v-speed-dial .v-btn:active { transform: none; }
+    .interaction-disabled { opacity: 0.55; }
+    .purchase-summary-card { border-radius: 14px !important; }
+    .fab-primary { position: fixed; right: 1rem; z-index: 1000; }
+    .fab-add-preset { bottom: 10rem; }
+    .fab-calculate { bottom: 5rem; }
+    .fab-overflow-wrap { position: fixed; right: 1rem; z-index: 1300; }
+    .fab-overflow-config { bottom: 15rem; }
+    .fab-overflow-sales { bottom: 5rem; }
+    .v-speed-dial__content { z-index: 1301 !important; }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after {
+        animation: none !important;
+        transition: none !important;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app">
+    <v-app>
+      <v-main>
+        <v-container fluid class="pa-4 app-shell">
+          <!-- Header -->
+          <v-row justify="center" class="mb-4" align="center">
+            <v-col cols="12" class="text-center">
+              <v-btn
+                icon
+                @click="toggleTheme"
+                style="position: absolute; top: 16px; right: 16px;"
+                elevation="2"
+              >
+                <v-icon>{{ isDark ? 'mdi-weather-sunny' : 'mdi-weather-night' }}</v-icon>
+              </v-btn>
+
+              <h1 class="text-h4 text-md-h3 font-weight-bold gradient-text mb-2">
+                <v-icon size="40" class="gradient-text">mdi-cards-playing-outline</v-icon>
+                RTYH Calculator
+              </h1>
+              <p class="text-subtitle-2">Union Arena Profitability</p>
+            </v-col>
+          </v-row>
+
+          <!-- Preset Selector -->
+          <v-card class="mb-4" elevation="4">
+            <v-card-text class="py-2">
+              <v-select
+                v-model="currentPresetId"
+                :items="presetItems"
+                label="Preset"
+                prepend-inner-icon="mdi-bookmark"
+                variant="outlined"
+                density="compact"
+                hide-details
+                @update:model-value="loadPreset"
+              ></v-select>
+            </v-card-text>
+          </v-card>
+
+          <v-alert v-if="!hasPresetSelected" type="warning" variant="tonal" class="mb-4">
+            Create or select a preset to use Live pricing and Sales tracking.
+          </v-alert>
+
+
+          <!-- Tab Content -->
+          <div :class="{ 'interaction-disabled': !hasPresetSelected }" :style="!hasPresetSelected ? 'pointer-events: none;' : null">
+            <v-window v-model="currentTab" :transition="false" :reverse-transition="false">
+              <!-- CONFIG -->
+              <v-window-item value="config" :transition="false" :reverse-transition="false">
+                <v-row>
+                  <!-- Purchase Cost -->
+                  <v-col cols="12" md="6">
+                    <v-card elevation="4">
+                      <v-card-title class="text-subtitle-1">
+                        <v-icon class="mr-2">mdi-package-variant</v-icon>
+                        Purchasing
+                      </v-card-title>
+                      <v-divider></v-divider>
+                      <v-card-text>
+                        <v-btn-toggle
+                          v-model="costInputMode"
+                          mandatory
+                          density="compact"
+                          variant="outlined"
+                          class="mb-2"
+                          @update:model-value="onPurchaseConfigChange"
+                        >
+                          <v-btn value="perBox" size="small">Per Box</v-btn>
+                          <v-btn value="total" size="small">Total</v-btn>
+                        </v-btn-toggle>
+
+                        <v-row dense>
+                          <v-col cols="8">
+                            <v-text-field
+                              v-model.number="purchaseCostInputValue"
+                              :label="purchaseCostInputLabel"
+                              type="number"
+                              variant="outlined"
+                              density="compact"
+                              hide-details
+                              @input="onPurchaseConfigChange"
+                            ></v-text-field>
+                          </v-col>
+                          <v-col cols="4">
+                            <v-btn-toggle
+                              v-model="currency"
+                              mandatory
+                              divided
+                              density="compact"
+                              variant="outlined"
+                              @update:model-value="onPurchaseConfigChange"
+                            >
+                              <v-btn value="CAD" title="CAD">🇨🇦</v-btn>
+                              <v-btn value="USD" title="USD">🇺🇸</v-btn>
+                            </v-btn-toggle>
+                          </v-col>
+                        </v-row>
+
+                        <v-text-field
+                          v-model.number="boxesPurchased"
+                          label="Boxes Purchased"
+                          type="number"
+                          variant="outlined"
+                          density="compact"
+                          :min="1"
+                          class="mt-2"
+                          hide-details
+                          @input="onPurchaseConfigChange"
+                        ></v-text-field>
+
+                        <v-text-field
+                          v-model.number="packsPerBox"
+                          label="Packs per Box"
+                          type="number"
+                          variant="outlined"
+                          density="compact"
+                          :min="1"
+                          class="mt-2"
+                          hide-details
+                          @input="onPurchaseConfigChange"
+                        ></v-text-field>
+
+                        <v-text-field
+                          v-if="currency === 'USD'"
+                          v-model.number="exchangeRate"
+                          label="USD to CAD Rate"
+                          type="number"
+                          variant="outlined"
+                          density="compact"
+                          step="0.01"
+                          class="mt-2"
+                          hide-details
+                          @input="onPurchaseConfigChange"
+                        ></v-text-field>
+
+                        <v-alert v-if="conversionInfo" type="info" density="compact" class="mt-2">
+                          {{ conversionInfo }}
+                        </v-alert>
+
+                        <v-text-field
+                          v-model.number="purchaseTaxPercent"
+                          label="Purchase Taxes %"
+                          type="number"
+                          variant="outlined"
+                          density="compact"
+                          step="0.01"
+                          :min="0"
+                          class="mt-2"
+                          hide-details
+                          :rules="[v => v !== null && v !== '' || 'Purchase tax is required']"
+                          @input="onPurchaseConfigChange"
+                        ></v-text-field>
+
+                        <v-checkbox
+                          v-model="includeTax"
+                          :label="`Include ${purchaseTaxPercent || 0}% purchase tax`"
+                          density="compact"
+                          hide-details
+                          @change="onPurchaseConfigChange"
+                        ></v-checkbox>
+
+                        <v-card
+                          elevation="0"
+                          color="info"
+                          dark
+                          class="mt-3 purchase-summary-card"
+                        >
+                          <v-card-text class="py-2 px-3">
+                            <div class="text-caption">Total Purchase Cost</div>
+                            <div class="text-h6 font-weight-bold">${{ formatCurrency(totalCaseCost) }}</div>
+                            <div class="text-caption mt-1">{{ boxesPurchased }} boxes × {{ packsPerBox }} packs = {{ totalPacks }} packs</div>
+                          </v-card-text>
+                        </v-card>
+                      </v-card-text>
+                    </v-card>
+                  </v-col>
+
+                  <!-- Default Prices -->
+                  <v-col cols="12" md="6">
+                    <v-card elevation="4">
+                      <v-card-title class="text-subtitle-1">
+                        <v-icon class="mr-2">mdi-cash-multiple</v-icon>
+                        Selling
+                      </v-card-title>
+                      <v-divider></v-divider>
+                      <v-card-text>
+                        <v-text-field
+                          :model-value="targetProfitPercent ? targetProfitPercent + '%' : 'Not set'"
+                          label="Target Profit %"
+                          variant="outlined"
+                          density="compact"
+                          hide-details
+                          readonly
+                          class="mb-2"
+                          prepend-inner-icon="mdi-calculator"
+                        ></v-text-field>
+
+                        <v-text-field
+                          v-model.number="sellingTaxPercent"
+                          label="Selling Taxes %"
+                          type="number"
+                          variant="outlined"
+                          density="compact"
+                          step="0.01"
+                          :min="0"
+                          class="mb-2"
+                          hide-details
+                          :rules="[v => v !== null && v !== '' || 'Selling tax is required']"
+                          @input="onPurchaseConfigChange"
+                        ></v-text-field>
+
+                        <v-text-field
+                          v-model.number="spotPrice"
+                          label="RTYH Spot (CAD)"
+                          type="number"
+                          variant="outlined"
+                          density="compact"
+                          hide-details
+                          class="mb-2"
+                          @input="autoSaveSetup(); syncLivePricesFromDefaults()"
+                        ></v-text-field>
+
+                        <v-text-field
+                          v-model.number="boxPriceSell"
+                          label="Box Selling Price (CAD)"
+                          type="number"
+                          variant="outlined"
+                          density="compact"
+                          hide-details
+                          class="mb-2"
+                          @input="autoSaveSetup(); syncLivePricesFromDefaults()"
+                        ></v-text-field>
+
+                        <v-text-field
+                          v-model.number="packPrice"
+                          label="Pack (CAD)"
+                          type="number"
+                          variant="outlined"
+                          density="compact"
+                          step="0.5"
+                          hide-details
+                          @input="autoSaveSetup(); syncLivePricesFromDefaults()"
+                        ></v-text-field>
+                      </v-card-text>
+                    </v-card>
+                  </v-col>
+                </v-row>
+
+              </v-window-item>
+
+              <!-- LIVE -->
+              <v-window-item value="live" :transition="false" :reverse-transition="false">
+                <v-container fluid class="pa-2">
+                  <v-row dense>
+                    <!-- Pack Card -->
+                    <v-col cols="12">
+                      <v-card elevation="0" rounded="xl" class="live-pricing-card">
+                        <v-card-text class="pa-4">
+                          <v-row align="center" dense>
+                            <v-col cols="3" class="text-center">
+                              <v-avatar color="primary" size="48">
+                                <v-icon color="white" size="28">mdi-package</v-icon>
+                              </v-avatar>
+                              <div class="text-caption mt-1 font-weight-medium">Pack</div>
+                            </v-col>
+
+                            <v-col cols="6" class="text-center">
+                              <div class="text-h4 font-weight-bold mb-1">${{ livePackPrice }}</div>
+                              <v-chip
+                                :color="calculateProfit(totalPacks, livePackPrice) >= 0 ? 'success' : 'error'"
+                                size="small"
+                                class="font-weight-bold"
+                              >
+                                {{ calculateProfit(totalPacks, livePackPrice) >= 0 ? '+' : '' }}${{ safeFixed(calculateProfit(totalPacks, livePackPrice)) }}
+                              </v-chip>
+                            </v-col>
+
+                            <v-col cols="3" class="text-center">
+                              <v-btn
+                                icon="mdi-minus"
+                                size="small"
+                                color="error"
+                                variant="tonal"
+                                class="mb-1"
+                                @click="livePackPrice -= 1"
+                              ></v-btn>
+                              <v-btn
+                                icon="mdi-plus"
+                                size="small"
+                                color="success"
+                                variant="tonal"
+                                @click="livePackPrice += 1"
+                              ></v-btn>
+                            </v-col>
+                          </v-row>
+
+                          <v-divider class="my-3"></v-divider>
+                          <v-row dense class="text-center">
+                            <v-col cols="6">
+                              <div class="text-caption text-medium-emphasis">At ${{ livePackPrice - 1 }}</div>
+                              <div class="text-body-2 font-weight-bold" :class="calculateProfit(totalPacks, livePackPrice - 1) >= 0 ? 'text-success' : 'text-error'">
+                                {{ calculateProfit(totalPacks, livePackPrice - 1) >= 0 ? '+' : '' }}${{ safeFixed(calculateProfit(totalPacks, livePackPrice - 1)) }}
+                              </div>
+                            </v-col>
+                            <v-col cols="6">
+                              <div class="text-caption text-medium-emphasis">At ${{ livePackPrice + 1 }}</div>
+                              <div class="text-body-2 font-weight-bold" :class="calculateProfit(totalPacks, livePackPrice + 1) >= 0 ? 'text-success' : 'text-error'">
+                                {{ calculateProfit(totalPacks, livePackPrice + 1) >= 0 ? '+' : '' }}${{ safeFixed(calculateProfit(totalPacks, livePackPrice + 1)) }}
+                              </div>
+                            </v-col>
+                          </v-row>
+                        </v-card-text>
+                      </v-card>
+                    </v-col>
+
+                    <!-- Box Card -->
+                    <v-col cols="12">
+                      <v-card elevation="0" rounded="xl" class="live-pricing-card">
+                        <v-card-text class="pa-4">
+                          <v-row align="center" dense>
+                            <v-col cols="3" class="text-center">
+                              <v-avatar color="secondary" size="48">
+                                <v-icon color="white" size="28">mdi-cube-outline</v-icon>
+                              </v-avatar>
+                              <div class="text-caption mt-1 font-weight-medium">Box</div>
+                            </v-col>
+
+                            <v-col cols="6" class="text-center">
+                              <div class="text-h4 font-weight-bold mb-1">${{ liveBoxPriceSell }}</div>
+                              <v-chip
+                                :color="calculateProfit(boxesPurchased, liveBoxPriceSell) >= 0 ? 'success' : 'error'"
+                                size="small"
+                                class="font-weight-bold"
+                              >
+                                {{ calculateProfit(boxesPurchased, liveBoxPriceSell) >= 0 ? '+' : '' }}${{ safeFixed(calculateProfit(boxesPurchased, liveBoxPriceSell)) }}
+                              </v-chip>
+                            </v-col>
+
+                            <v-col cols="3" class="text-center">
+                              <v-btn
+                                icon="mdi-minus"
+                                size="small"
+                                color="error"
+                                variant="tonal"
+                                class="mb-1"
+                                @click="liveBoxPriceSell -= 1"
+                              ></v-btn>
+                              <v-btn
+                                icon="mdi-plus"
+                                size="small"
+                                color="success"
+                                variant="tonal"
+                                @click="liveBoxPriceSell += 1"
+                              ></v-btn>
+                            </v-col>
+                          </v-row>
+
+                          <v-divider class="my-3"></v-divider>
+                          <v-row dense class="text-center">
+                            <v-col cols="6">
+                              <div class="text-caption text-medium-emphasis">At ${{ liveBoxPriceSell - 1 }}</div>
+                              <div class="text-body-2 font-weight-bold" :class="calculateProfit(boxesPurchased, liveBoxPriceSell - 1) >= 0 ? 'text-success' : 'text-error'">
+                                {{ calculateProfit(boxesPurchased, liveBoxPriceSell - 1) >= 0 ? '+' : '' }}${{ safeFixed(calculateProfit(boxesPurchased, liveBoxPriceSell - 1)) }}
+                              </div>
+                            </v-col>
+                            <v-col cols="6">
+                              <div class="text-caption text-medium-emphasis">At ${{ liveBoxPriceSell + 1 }}</div>
+                              <div class="text-body-2 font-weight-bold" :class="calculateProfit(boxesPurchased, liveBoxPriceSell + 1) >= 0 ? 'text-success' : 'text-error'">
+                                {{ calculateProfit(boxesPurchased, liveBoxPriceSell + 1) >= 0 ? '+' : '' }}${{ safeFixed(calculateProfit(boxesPurchased, liveBoxPriceSell + 1)) }}
+                              </div>
+                            </v-col>
+                          </v-row>
+                        </v-card-text>
+                      </v-card>
+                    </v-col>
+
+                    <!-- RTYH Card -->
+                    <v-col cols="12">
+                      <v-card elevation="0" rounded="xl" class="live-pricing-card">
+                        <v-card-text class="pa-4">
+                          <v-row align="center" dense>
+                            <v-col cols="3" class="text-center">
+                              <v-avatar color="primary" size="48">
+                                <v-icon color="white" size="28">mdi-cards-playing-outline</v-icon>
+                              </v-avatar>
+                              <div class="text-caption mt-1 font-weight-medium">RTYH</div>
+                            </v-col>
+
+                            <v-col cols="6" class="text-center">
+                              <div class="text-h4 font-weight-bold mb-1">${{ liveSpotPrice }}</div>
+                              <v-chip
+                                :color="calculateProfit(80, liveSpotPrice) >= 0 ? 'success' : 'error'"
+                                size="small"
+                                class="font-weight-bold"
+                              >
+                                {{ calculateProfit(80, liveSpotPrice) >= 0 ? '+' : '' }}${{ safeFixed(calculateProfit(80, liveSpotPrice)) }}
+                              </v-chip>
+                            </v-col>
+
+                            <v-col cols="3" class="text-center">
+                              <v-btn
+                                icon="mdi-minus"
+                                size="small"
+                                color="error"
+                                variant="tonal"
+                                class="mb-1"
+                                @click="liveSpotPrice -= 1"
+                              ></v-btn>
+                              <v-btn
+                                icon="mdi-plus"
+                                size="small"
+                                color="success"
+                                variant="tonal"
+                                @click="liveSpotPrice += 1"
+                              ></v-btn>
+                            </v-col>
+                          </v-row>
+
+                          <v-divider class="my-3"></v-divider>
+                          <v-row dense class="text-center">
+                            <v-col cols="6">
+                              <div class="text-caption text-medium-emphasis">At ${{ liveSpotPrice - 1 }}</div>
+                              <div class="text-body-2 font-weight-bold" :class="calculateProfit(80, liveSpotPrice - 1) >= 0 ? 'text-success' : 'text-error'">
+                                {{ calculateProfit(80, liveSpotPrice - 1) >= 0 ? '+' : '' }}${{ safeFixed(calculateProfit(80, liveSpotPrice - 1)) }}
+                              </div>
+                            </v-col>
+                            <v-col cols="6">
+                              <div class="text-caption text-medium-emphasis">At ${{ liveSpotPrice + 1 }}</div>
+                              <div class="text-body-2 font-weight-bold" :class="calculateProfit(80, liveSpotPrice + 1) >= 0 ? 'text-success' : 'text-error'">
+                                {{ calculateProfit(80, liveSpotPrice + 1) >= 0 ? '+' : '' }}${{ safeFixed(calculateProfit(80, liveSpotPrice + 1)) }}
+                              </div>
+                            </v-col>
+                          </v-row>
+                        </v-card-text>
+                      </v-card>
+                    </v-col>
+                  </v-row>
+                </v-container>
+              </v-window-item>
+
+              <!-- SALES -->
+              <v-window-item value="sales" :transition="false" :reverse-transition="false">
+                <v-row>
+                  <!-- Status Card -->
+                  <v-col cols="12" md="6">
+                    <v-card :color="salesStatus.color" dark elevation="4">
+                      <v-card-text>
+                        <div class="text-h6 mb-2">
+                          <v-icon class="mr-2">{{ salesStatus.icon }}</v-icon>
+                          {{ salesStatus.title }}
+                        </div>
+                        <div class="text-h4 mb-2">{{ salesStatus.profit >= 0 ? '+' : '' }}${{ formatCurrency(salesStatus.profit) }}</div>
+                        <v-divider class="my-2" style="opacity: 0.3;"></v-divider>
+                        <div class="text-caption">
+                          Revenue: ${{ formatCurrency(salesStatus.revenue) }} |
+                          Cost: ${{ formatCurrency(totalCaseCost) }}
+                        </div>
+                        <v-progress-linear
+                          :model-value="salesProgress"
+                          height="8"
+                          rounded
+                          class="mt-3"
+                          color="white"
+                        ></v-progress-linear>
+                        <div class="text-caption mt-1">
+                          {{ soldPacksCount }} / {{ totalPacks }} packs sold ({{ salesProgress.toFixed(1) }}%)
+                        </div>
+                      </v-card-text>
+                    </v-card>
+                  </v-col>
+
+                  <!-- Pie / Sparkline -->
+                  <v-col cols="12" md="6">
+                    <v-card elevation="4" style="position: relative;">
+                      <v-btn
+                        icon
+                        size="small"
+                        variant="text"
+                        @click="toggleChartView"
+                        style="position: absolute; top: 0.5rem; right: 0.5rem; z-index: 10;"
+                      >
+                        <v-icon>{{ chartView === 'pie' ? 'mdi-chart-line' : 'mdi-chart-pie' }}</v-icon>
+                      </v-btn>
+
+                      <v-card-text>
+                        <canvas
+                          v-if="chartView === 'pie'"
+                          ref="salesChart"
+                          style="max-height: 250px;"
+                        ></canvas>
+
+                        <div v-else class="pa-4">
+                          <div class="text-h6 mb-2 text-center">Profit Journey</div>
+
+                          <div v-if="sales.length === 0" class="text-center py-8">
+                            <v-icon size="48" color="grey">mdi-chart-line</v-icon>
+                            <p class="text-body-2 mt-4 text-grey">No sales yet. Add your first sale to see your profit journey!</p>
+                          </div>
+
+                          <div v-else>
+                            <div
+                              class="text-h4 font-weight-bold text-center mb-4"
+                              :class="(totalRevenue - totalCaseCost) >= 0 ? 'profit-positive' : 'profit-negative'"
+                            >
+                              {{ (totalRevenue - totalCaseCost) >= 0 ? '+' : '' }}${{ formatCurrency(totalRevenue - totalCaseCost) }}
+                            </div>
+
+                            <v-sparkline
+                              :model-value="sparklineData"
+                              :gradient="sparklineGradient"
+                              :smooth="16"
+                              :line-width="3"
+                              :padding="8"
+                              auto-draw
+                              auto-line-width
+                              fill
+                              :height="120"
+                              stroke-linecap="round"
+                            ></v-sparkline>
+
+                            <div class="d-flex justify-space-between text-caption mt-2">
+                              <span class="text-medium-emphasis">$0</span>
+                              <span class="text-medium-emphasis">${{ formatCurrency(totalRevenue) }} revenue</span>
+                            </div>
+                          </div>
+                        </div>
+                      </v-card-text>
+                    </v-card>
+                  </v-col>
+                </v-row>
+
+                <!-- Sales History -->
+                <v-row class="mt-4">
+                  <v-col cols="12">
+                    <v-card elevation="4">
+                      <v-card-title class="d-flex align-center justify-space-between">
+                        <div>
+                          <v-icon class="mr-2">mdi-history</v-icon>
+                          Sales History
+                        </div>
+                        <v-chip color="secondary" v-if="sales.length > 0">
+                          {{ sales.length }} sale{{ sales.length > 1 ? 's' : '' }}
+                        </v-chip>
+                      </v-card-title>
+                      <v-divider></v-divider>
+
+                      <v-card-text v-if="sales.length === 0" class="text-center py-8">
+                        <v-icon size="64" color="grey">mdi-package-variant-closed</v-icon>
+                        <p class="text-h6 mt-4 text-grey">No sales yet</p>
+                        <p class="text-caption">Click the + button to add your first sale</p>
+                      </v-card-text>
+
+                      <v-list v-else>
+                        <v-list-item v-for="sale in sortedSales" :key="sale.id" class="my-1">
+                          <template v-slot:prepend>
+                            <v-avatar :color="getSaleColor(sale.type)" size="40">
+                              <v-icon color="white">{{ getSaleIcon(sale.type) }}</v-icon>
+                            </v-avatar>
+                          </template>
+
+                          <v-list-item-title>
+                            {{ sale.quantity }}x {{ sale.type.toUpperCase() }} @ ${{ formatCurrency(sale.price) }}
+                          </v-list-item-title>
+                          <v-list-item-subtitle>
+                            {{ sale.packsCount }} packs • {{ formatDate(sale.date) }} • ${{ formatCurrency(sale.quantity * sale.price) }} total
+                          </v-list-item-subtitle>
+
+                          <template v-slot:append>
+                            <v-btn icon="mdi-pencil" size="small" variant="text" @click="editSale(sale)"></v-btn>
+                            <v-btn icon="mdi-delete" size="small" variant="text" @click="deleteSale(sale.id)"></v-btn>
+                          </template>
+                        </v-list-item>
+                      </v-list>
+                    </v-card>
+                  </v-col>
+                </v-row>
+              </v-window-item>
+            </v-window>
+          </div>
+
+          <div style="height: calc(5rem + env(safe-area-inset-bottom));"></div>
+        </v-container>
+
+        <!-- Bottom Nav -->
+        <v-bottom-navigation v-model="currentTab" color="primary" grow elevation="8">
+          <v-btn value="config" :ripple="false">
+            <v-icon>mdi-cog</v-icon>
+            <span>Config</span>
+          </v-btn>
+<v-btn value="live" :disabled="!hasPresetSelected" :ripple="false">
+  <v-icon>mdi-target</v-icon>
+  <span>Live</span>
+</v-btn>
+
+<v-btn value="sales" :disabled="!hasPresetSelected" :ripple="false">
+  <v-icon>mdi-chart-line</v-icon>
+  <span>Sales</span>
+</v-btn>
+
+        </v-bottom-navigation>
+      </v-main>
+
+      <!-- Primary FABs - Config -->
+      <v-fab
+        v-if="currentTab === 'config'"
+        icon="mdi-bookmark-plus"
+        color="primary"
+        size="large"
+        title="Add preset"
+        @click="showNewPresetModal = true"
+        class="fab-primary fab-add-preset"
+      ></v-fab>
+
+      <v-fab
+        v-if="currentTab === 'config'"
+        icon="mdi-calculator"
+        color="secondary"
+        size="large"
+        title="Calculate prices"
+        :disabled="!hasPresetSelected"
+        @click="showProfitCalculator = true"
+        class="fab-primary fab-calculate"
+      ></v-fab>
+
+      <!-- Overflow Menu - Config -->
+      <div v-if="currentTab === 'config'" class="fab-overflow-wrap fab-overflow-config">
+        <v-menu
+          v-model="speedDialOpen"
+          transition="fade-transition"
+          location="top end"
+          :offset="12"
+        >
+          <template v-slot:activator="{ props }">
+            <v-fab v-bind="props" icon="mdi-dots-vertical" color="surface" size="large"></v-fab>
+          </template>
+
+          <v-card min-width="190" elevation="6">
+            <v-list density="compact" nav>
+              <v-list-item
+                prepend-icon="mdi-export"
+                title="Export Presets"
+                :disabled="!hasPresetSelected"
+                @click="exportPresets(); speedDialOpen = false"
+              ></v-list-item>
+              <v-list-item
+                prepend-icon="mdi-import"
+                title="Import Presets"
+                @click="importPresets(); speedDialOpen = false"
+              ></v-list-item>
+              <v-list-item
+                prepend-icon="mdi-delete"
+                title="Delete Preset"
+                :disabled="!currentPresetId"
+                @click="deleteCurrentPreset(); speedDialOpen = false"
+              ></v-list-item>
+            </v-list>
+          </v-card>
+        </v-menu>
+      </div>
+
+      <v-fab
+        v-if="currentTab === 'live'"
+        icon="mdi-restore"
+        color="surface"
+        size="large"
+        title="Reset live prices"
+        @click="resetLivePrices"
+        class="fab-primary fab-calculate"
+      ></v-fab>
+
+      <!-- Overflow Menu - Sales -->
+      <div v-if="currentTab === 'sales'" class="fab-overflow-wrap fab-overflow-sales">
+        <v-menu
+          v-model="speedDialOpenSales"
+          transition="fade-transition"
+          location="top end"
+          :offset="12"
+        >
+          <template v-slot:activator="{ props }">
+            <v-fab v-bind="props" icon="mdi-cart-plus" color="primary" size="large"></v-fab>
+          </template>
+
+          <v-card min-width="180" elevation="6">
+            <v-list density="compact" nav>
+              <v-list-item
+                prepend-icon="mdi-cart-plus"
+                title="Add Sale"
+                :disabled="!hasPresetSelected"
+                @click="showAddSaleModal = true; speedDialOpenSales = false"
+              ></v-list-item>
+              <v-list-item
+                prepend-icon="mdi-file-export"
+                title="Export Sales"
+                :disabled="!hasPresetSelected"
+                @click="exportSales(); speedDialOpenSales = false"
+              ></v-list-item>
+            </v-list>
+          </v-card>
+        </v-menu>
+      </div>
+
+      <!-- New Preset Modal -->
+      <v-dialog v-model="showNewPresetModal" max-width="400">
+        <v-card>
+          <v-card-title>New Preset</v-card-title>
+          <v-card-text>
+            <v-text-field v-model="newPresetName" label="Preset name" variant="outlined" @keyup.enter="createNewPreset"></v-text-field>
+          </v-card-text>
+          <v-card-actions>
+            <v-spacer></v-spacer>
+            <v-btn text @click="showNewPresetModal = false">Cancel</v-btn>
+            <v-btn color="primary" @click="createNewPreset">Create</v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
+
+      <!-- Profit Calculator Modal -->
+      <v-dialog v-model="showProfitCalculator" max-width="400">
+        <v-card>
+          <v-card-title>
+            <v-icon class="mr-2">mdi-calculator</v-icon>
+            Auto-Calculate Prices
+          </v-card-title>
+          <v-card-text>
+            <v-text-field
+              v-model.number="targetProfitPercent"
+              label="Target Profit %"
+              type="number"
+              variant="outlined"
+              :disabled="!hasPresetSelected"
+              suffix="%"
+              :min="0"
+              :max="100"
+              hint="All prices will be rounded to nearest dollar"
+              persistent-hint
+            ></v-text-field>
+          </v-card-text>
+          <v-card-actions>
+            <v-spacer></v-spacer>
+            <v-btn text @click="showProfitCalculator = false">Cancel</v-btn>
+            <v-btn color="secondary" @click="calculateOptimalPrices" :disabled="!hasPresetSelected">Apply</v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
+
+      <!-- Add/Edit Sale Modal -->
+      <v-dialog v-model="showAddSaleModal" max-width="500">
+        <v-card>
+          <v-card-title>
+            <v-icon class="mr-2">mdi-cart-plus</v-icon>
+            {{ editingSale ? 'Edit Sale' : 'Add Sale' }}
+          </v-card-title>
+          <v-card-text>
+            <v-select
+              v-model="newSale.type"
+              :items="[
+                { title: 'Pack', value: 'pack' },
+                { title: 'Box', value: 'box' },
+                { title: 'RTYH Spot', value: 'rtyh' }
+              ]"
+              label="Sale Type"
+              variant="outlined"
+              :disabled="!hasPresetSelected"
+              class="mb-2"
+            ></v-select>
+
+            <v-text-field v-model.number="newSale.quantity" label="Quantity" type="number" variant="outlined" :disabled="!hasPresetSelected" :min="1" class="mb-2"></v-text-field>
+
+            <v-text-field
+              v-if="newSale.type === 'rtyh'"
+              v-model.number="newSale.packsCount"
+              label="Packs Sold (Required for RTYH)"
+              type="number"
+              variant="outlined"
+              :disabled="!hasPresetSelected"
+              :min="1"
+              :rules="[v => !!v || 'Required for RTYH']"
+              class="mb-2"
+            ></v-text-field>
+
+            <v-text-field v-model.number="newSale.price" label="Price per Unit" type="number" variant="outlined" :disabled="!hasPresetSelected" prefix="$" class="mb-2"></v-text-field>
+            <v-text-field v-model="newSale.date" label="Date" type="date" variant="outlined" :disabled="!hasPresetSelected"></v-text-field>
+          </v-card-text>
+
+          <v-card-actions>
+            <v-spacer></v-spacer>
+            <v-btn text @click="cancelSale">Cancel</v-btn>
+            <v-btn color="primary" @click="saveSale" :disabled="!hasPresetSelected">{{ editingSale ? 'Update' : 'Add' }}</v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
+
+      <v-dialog v-model="confirmDialog" max-width="420">
+        <v-card>
+          <v-card-title>{{ confirmTitle }}</v-card-title>
+          <v-card-text>{{ confirmText }}</v-card-text>
+          <v-card-actions>
+            <v-spacer></v-spacer>
+            <v-btn variant="text" @click="cancelConfirmAction">Cancel</v-btn>
+            <v-btn :color="confirmColor" @click="runConfirmAction">Confirm</v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
+
+      <v-snackbar
+        v-model="snackbar.show"
+        :color="snackbar.color"
+        location="bottom"
+        timeout="2400"
+      >
+        {{ snackbar.text }}
+      </v-snackbar>
+
+      <!-- Hidden file input -->
+      <input type="file" ref="fileInput" style="display:none" accept=".json" @change="handleFileImport" />
+    </v-app>
+  </div>
+
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vuetify@3.11.8/dist/vuetify.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
