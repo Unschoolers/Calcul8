@@ -1,6 +1,7 @@
 // app.js
 const { createApp } = Vue;
 const { createVuetify } = Vuetify;
+const APP_VERSION = "2026-02-12";
 
 // Vuetify theme configuration
 const vuetify = createVuetify({
@@ -994,10 +995,49 @@ handleFileImport(event) {
 
     registerServiceWorker() {
       if (!("serviceWorker" in navigator)) return;
-      window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./sw.js").catch((error) => {
+      window.addEventListener("load", async () => {
+        let refreshing = false;
+
+        try {
+          const swUrl = `./sw.js?v=${encodeURIComponent(APP_VERSION)}`;
+          const registration = await navigator.serviceWorker.register(swUrl, {
+            updateViaCache: "none"
+          });
+
+          const activateWaitingWorker = () => {
+            if (registration.waiting) {
+              registration.waiting.postMessage("SKIP_WAITING");
+            }
+          };
+
+          if (registration.waiting && navigator.serviceWorker.controller) {
+            activateWaitingWorker();
+          }
+
+          registration.addEventListener("updatefound", () => {
+            const newWorker = registration.installing;
+            if (!newWorker) return;
+
+            newWorker.addEventListener("statechange", () => {
+              if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
+                activateWaitingWorker();
+              }
+            });
+          });
+
+          navigator.serviceWorker.addEventListener("controllerchange", () => {
+            if (refreshing) return;
+            refreshing = true;
+            window.location.reload();
+          });
+
+          await registration.update();
+          window.setInterval(() => {
+            registration.update().catch(() => {});
+          }, 60 * 1000);
+        } catch (error) {
           console.warn("Service worker registration failed:", error);
-        });
+        }
       });
     }
   }
