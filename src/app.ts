@@ -270,6 +270,31 @@ else if (this.presets.length > 0) {
     salesProgress(): number {
       return calculateSalesProgress(this.soldPacksCount, this.totalPacks);
     },
+    targetNetRevenue(): number {
+      const targetProfit = (this.totalCaseCost * (Number(this.targetProfitPercent) || 0)) / 100;
+      return this.totalCaseCost + targetProfit;
+    },
+    remainingNetRevenueForTarget(): number {
+      return this.targetNetRevenue - this.totalRevenue;
+    },
+    remainingPacksCount(): number {
+      return Math.max(0, this.totalPacks - this.soldPacksCount);
+    },
+    remainingBoxesEquivalent(): number {
+      const packsPerBox = Number(this.packsPerBox) || 0;
+      if (packsPerBox <= 0) return 0;
+      return this.remainingPacksCount / packsPerBox;
+    },
+    requiredBoxPriceFromNow(): number | null {
+      if (this.remainingNetRevenueForTarget <= 0) return 0;
+      if (this.remainingBoxesEquivalent <= 0) return null;
+      return calculateUnitPrice(
+        this.remainingBoxesEquivalent,
+        this.remainingNetRevenueForTarget,
+        this.sellingTaxPercent,
+        this.sellingShippingPerOrder
+      );
+    },
 
     salesStatus() {
       return calculateSalesStatus(this.totalRevenue, this.totalCaseCost, this.salesProgress);
