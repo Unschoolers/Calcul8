@@ -16,15 +16,58 @@
 
   <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900" rel="stylesheet" />
   <style>
+    :root {
+      --bg-wash-a: rgba(230, 57, 70, 0.08);
+      --bg-wash-b: rgba(255, 184, 0, 0.07);
+      --bg-wash-c: rgba(52, 199, 89, 0.06);
+    }
     .profit-positive { color: #34c759; font-weight: 700; }
     .profit-negative { color: #ff3b30; font-weight: 700; }
     .current-price { background: rgba(255, 184, 0, 0.15) !important; border-left: 3px solid #FFB800 !important; font-weight: 700; }
     .gradient-text { background: linear-gradient(135deg, #E63946 0%, #FF6B6B 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
     html { scroll-behavior: auto; }
-    body { overscroll-behavior-y: none; }
+    body {
+      overscroll-behavior-y: none;
+      background:
+        radial-gradient(70rem 50rem at -10% -15%, var(--bg-wash-a), transparent 55%),
+        radial-gradient(40rem 35rem at 110% 15%, var(--bg-wash-b), transparent 58%),
+        radial-gradient(50rem 40rem at 40% 120%, var(--bg-wash-c), transparent 62%);
+      background-color: rgb(var(--v-theme-background, 18, 18, 18));
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.18;
+      background-image:
+        linear-gradient(120deg, transparent 0 48%, rgba(255, 255, 255, 0.06) 49% 51%, transparent 52% 100%),
+        linear-gradient(300deg, transparent 0 46%, rgba(255, 255, 255, 0.04) 47% 49%, transparent 50% 100%);
+      background-size: 100% 100%, 100% 100%;
+    }
     .v-btn { min-height: 44px; min-width: 44px; }
-    .app-shell { max-width: 920px; margin: 0 auto; }
+    .app-shell { max-width: 920px; margin: 0 auto; position: relative; z-index: 1; }
+    .preset-card {
+      position: sticky;
+      top: calc(0.5rem + env(safe-area-inset-top));
+      z-index: 20;
+      backdrop-filter: blur(6px);
+    }
     .v-card { border-radius: 20px !important; }
+    .config-card {
+      border: 1px solid rgba(var(--v-theme-on-surface), 0.09);
+      background: rgba(var(--v-theme-surface), 0.94);
+      backdrop-filter: blur(4px);
+    }
+    .config-card .v-card-title {
+      padding-top: 0.85rem;
+      padding-bottom: 0.75rem;
+    }
+    .config-card .v-card-text {
+      padding-top: 0.85rem;
+      padding-bottom: 0.9rem;
+    }
     .profit-glow { box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
     .live-card { transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1); border-radius: 16px !important; }
     .live-card:active { transform: none; }
@@ -72,6 +115,29 @@
       inset-block-end: calc(5rem + env(safe-area-inset-bottom));
     }
     .v-speed-dial__content { z-index: 1301 !important; }
+    @media (max-width: 600px) {
+      .app-shell {
+        padding-left: 0.75rem !important;
+        padding-right: 0.75rem !important;
+        padding-top: 0.6rem !important;
+      }
+      .config-card {
+        border-radius: 16px !important;
+      }
+      .config-card .v-card-title {
+        font-size: 0.96rem !important;
+      }
+      .config-card .v-input {
+        margin-top: 0.35rem !important;
+        margin-bottom: 0.05rem !important;
+      }
+      .config-card .v-selection-control {
+        margin-top: 0.25rem !important;
+      }
+      .purchase-summary-card .text-h6 {
+        font-size: 1rem !important;
+      }
+    }
     @media (prefers-reduced-motion: reduce) {
       html { scroll-behavior: auto; }
       *, *::before, *::after {
@@ -140,7 +206,7 @@
           </v-alert>
 
           <!-- Preset Selector -->
-          <v-card class="mb-4" elevation="4">
+          <v-card class="mb-4 preset-card" elevation="4">
             <v-card-text class="py-2">
               <v-select
                 v-model="currentPresetId"
@@ -165,10 +231,10 @@
             <v-window v-model="currentTab" :transition="false" :reverse-transition="false">
               <!-- CONFIG -->
               <v-window-item value="config" :transition="false" :reverse-transition="false">
-                <v-row>
+                <v-row class="config-layout">
                   <!-- Purchase Cost -->
                   <v-col cols="12" md="6">
-                    <v-card elevation="4">
+                    <v-card elevation="4" class="config-card">
                       <v-card-title class="text-subtitle-1">
                         <v-icon class="mr-2">mdi-package-variant</v-icon>
                         Purchasing
@@ -309,7 +375,7 @@
 
                   <!-- Default Prices -->
                   <v-col cols="12" md="6">
-                    <v-card elevation="4">
+                    <v-card elevation="4" class="config-card">
                       <v-card-title class="text-subtitle-1">
                         <v-icon class="mr-2">mdi-cash-multiple</v-icon>
                         Selling
