@@ -75,6 +75,13 @@ createApp({
         text: "",
         color: "info"
       },
+      isOffline: !navigator.onLine,
+      deferredInstallPrompt: null,
+      showInstallPrompt: false,
+      onlineListener: null,
+      offlineListener: null,
+      beforeInstallPromptListener: null,
+      appInstalledListener: null,
       confirmDialog: false,
       confirmTitle: "",
       confirmText: "",
@@ -144,6 +151,15 @@ else if (this.presets.length > 0) {
     this.getExchangeRate();
     this.loadSalesFromStorage();
     this.syncLivePricesFromDefaults();
+    this.setupPwaUiHandlers();
+    this.registerServiceWorker();
+  },
+
+  beforeUnmount() {
+    if (this.onlineListener) window.removeEventListener("online", this.onlineListener);
+    if (this.offlineListener) window.removeEventListener("offline", this.offlineListener);
+    if (this.beforeInstallPromptListener) window.removeEventListener("beforeinstallprompt", this.beforeInstallPromptListener);
+    if (this.appInstalledListener) window.removeEventListener("appinstalled", this.appInstalledListener);
   },
 
   watch: {
@@ -937,6 +953,52 @@ handleFileImport(event) {
     formatDate(dateStr) {
       const date = new Date(dateStr);
       return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    },
+
+    setupPwaUiHandlers() {
+      this.onlineListener = () => {
+        this.isOffline = false;
+        this.notify("Back online", "success");
+      };
+      this.offlineListener = () => {
+        this.isOffline = true;
+      };
+      this.beforeInstallPromptListener = (event) => {
+        event.preventDefault();
+        this.deferredInstallPrompt = event;
+        this.showInstallPrompt = true;
+      };
+      this.appInstalledListener = () => {
+        this.showInstallPrompt = false;
+        this.deferredInstallPrompt = null;
+      };
+
+      window.addEventListener("online", this.onlineListener);
+      window.addEventListener("offline", this.offlineListener);
+      window.addEventListener("beforeinstallprompt", this.beforeInstallPromptListener);
+      window.addEventListener("appinstalled", this.appInstalledListener);
+    },
+
+    async promptInstall() {
+      if (!this.deferredInstallPrompt) return;
+
+      this.deferredInstallPrompt.prompt();
+      const result = await this.deferredInstallPrompt.userChoice;
+      this.showInstallPrompt = false;
+      this.deferredInstallPrompt = null;
+
+      if (result?.outcome === "accepted") {
+        this.notify("Install started", "success");
+      }
+    },
+
+    registerServiceWorker() {
+      if (!("serviceWorker" in navigator)) return;
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./sw.js").catch((error) => {
+          console.warn("Service worker registration failed:", error);
+        });
+      });
     }
   }
 })

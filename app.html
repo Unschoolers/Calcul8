@@ -6,7 +6,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <title>RTYH Calculator</title>
+  <meta name="theme-color" content="#E63946" />
+  <meta name="apple-mobile-web-app-title" content="calcul8tr" />
+  <title>calcul8tr</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
 
   <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900" rel="stylesheet" />
   <link href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" rel="stylesheet" />
@@ -36,6 +40,7 @@
     .v-speed-dial .v-btn:active { transform: none; }
     .interaction-disabled { opacity: 0.55; }
     .purchase-summary-card { border-radius: 14px !important; }
+    .app-logo-svg { width: 24px; height: 24px; display: block; }
     .fab-primary { position: fixed; right: 1rem; z-index: 1000; }
     .fab-add-preset { bottom: 10rem; }
     .fab-calculate { bottom: 5rem; }
@@ -56,27 +61,59 @@
 <body>
   <div id="app">
     <v-app>
+      <v-app-bar density="compact" flat border>
+        <template v-slot:prepend>
+          <div class="d-flex align-center pl-2">
+            <svg
+              class="app-logo-svg"
+              viewBox="0 0 64 64"
+              xmlns="http://www.w3.org/2000/svg"
+              role="img"
+              aria-label="calcul8tr logo"
+            >
+              <rect x="0" y="0" width="64" height="64" rx="14" fill="#E63946"></rect>
+              <text
+                x="32"
+                y="38"
+                text-anchor="middle"
+                fill="#FFFFFF"
+                font-family="Segoe UI, Arial, sans-serif"
+                font-size="26"
+                font-weight="700"
+              >
+                c8
+              </text>
+            </svg>
+          </div>
+        </template>
+
+        <v-app-bar-title class="text-body-1">calcul8tr</v-app-bar-title>
+
+        <template v-slot:append>
+          <v-btn
+            v-if="showInstallPrompt"
+            color="primary"
+            variant="text"
+            size="small"
+            prepend-icon="mdi-download"
+            @click="promptInstall"
+          >
+            Install
+          </v-btn>
+          <v-btn
+            icon
+            @click="toggleTheme"
+          >
+            <v-icon>{{ isDark ? 'mdi-weather-sunny' : 'mdi-weather-night' }}</v-icon>
+          </v-btn>
+        </template>
+      </v-app-bar>
+
       <v-main>
         <v-container fluid class="pa-4 app-shell">
-          <!-- Header -->
-          <v-row justify="center" class="mb-4" align="center">
-            <v-col cols="12" class="text-center">
-              <v-btn
-                icon
-                @click="toggleTheme"
-                style="position: absolute; top: 16px; right: 16px;"
-                elevation="2"
-              >
-                <v-icon>{{ isDark ? 'mdi-weather-sunny' : 'mdi-weather-night' }}</v-icon>
-              </v-btn>
-
-              <h1 class="text-h4 text-md-h3 font-weight-bold gradient-text mb-2">
-                <v-icon size="40" class="gradient-text">mdi-cards-playing-outline</v-icon>
-                RTYH Calculator
-              </h1>
-              <p class="text-subtitle-2">Union Arena Profitability</p>
-            </v-col>
-          </v-row>
+          <v-alert v-if="isOffline" type="warning" variant="tonal" density="compact" class="mb-3">
+            You are offline. Changes are saved locally.
+          </v-alert>
 
           <!-- Preset Selector -->
           <v-card class="mb-4" elevation="4">
