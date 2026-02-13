@@ -1,4 +1,6 @@
-export const APP_VERSION = "2026-02-12.2";
+declare const __APP_VERSION__: string;
+
+export const APP_VERSION = __APP_VERSION__;
 
 export const WHATNOT_FEES = {
   COMMISSION: 0.08, // 8% commission

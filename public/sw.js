@@ -1,4 +1,5 @@
-const CACHE_NAME = "calcul8tr-v3";
+const swVersion = new URL(self.location.href).searchParams.get("v") || "dev";
+const CACHE_NAME = `calcul8tr-${swVersion}`;
 
 const CORE_ASSETS = [
   "./",

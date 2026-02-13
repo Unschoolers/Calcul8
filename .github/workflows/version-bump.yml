@@ -1,0 +1,54 @@
+name: Auto Version Bump
+
+on:
+  push:
+    branches: ["main"]
+    paths-ignore:
+      - "package.json"
+      - "package-lock.json"
+      - "apps/api/package.json"
+      - "apps/api/package-lock.json"
+      - "twa-manifest.json"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  bump:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Bump root version (patch)
+        run: npm version patch --no-git-tag-version
+
+      - name: Bump API version (patch)
+        run: npm --prefix apps/api version patch --no-git-tag-version
+
+      - name: Sync TWA version fields
+        run: node scripts/sync-twa-version.mjs
+
+      - name: Commit and push version changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json apps/api/package.json apps/api/package-lock.json twa-manifest.json
+          if git diff --cached --quiet; then
+            echo "No version changes to commit."
+            exit 0
+          fi
+          git commit -m "chore(release): bump versions [skip ci]"
+          git push
+
