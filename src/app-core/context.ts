@@ -85,8 +85,10 @@ export interface AppMethodState {
   getSaleColor(type: SaleType): string;
   getSaleIcon(type: SaleType): string;
   formatDate(dateStr: string): string;
+  initGoogleAutoLogin(): void;
   setupPwaUiHandlers(): void;
   promptInstall(): Promise<void>;
+  debugLogEntitlement(forceRefresh?: boolean): Promise<void>;
   unregisterServiceWorkersForDev(): Promise<void>;
   registerServiceWorker(): void;
 }

@@ -15,7 +15,7 @@ export async function syncPull(
   }
 
   try {
-    const userId = resolveUserId(request, config);
+    const userId = await resolveUserId(request, config);
     const snapshot = await getSyncSnapshot(config, userId);
 
     return jsonResponse(request, config, 200, {

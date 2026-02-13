@@ -3,6 +3,7 @@ export type ApiEnvironment = "dev" | "prod";
 export interface ApiConfig {
   apiEnv: ApiEnvironment;
   authBypassDev: boolean;
+  googleClientId: string;
   allowedOrigins: string[];
   cosmosEndpoint: string;
   cosmosKey: string;

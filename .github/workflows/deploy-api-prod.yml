@@ -9,9 +9,11 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-and-deploy:
+  verify:
     runs-on: ubuntu-latest
-    environment: prod-backend
+    timeout-minutes: 15
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout
@@ -21,10 +23,39 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
+          cache-dependency-path: apps/api/package-lock.json
 
       - name: Install dependencies
         working-directory: apps/api
-        run: npm install
+        run: npm ci
+
+      - name: Run API tests
+        working-directory: apps/api
+        run: npm run test
+
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: verify
+    environment: prod-backend
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/api/package-lock.json
+
+      - name: Install dependencies
+        working-directory: apps/api
+        run: npm ci
 
       - name: Build API
         working-directory: apps/api

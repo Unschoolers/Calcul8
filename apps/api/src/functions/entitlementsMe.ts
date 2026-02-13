@@ -15,7 +15,7 @@ export async function entitlementsMe(
   }
 
   try {
-    const userId = resolveUserId(request, config);
+    const userId = await resolveUserId(request, config);
     const entitlement = await getEntitlement(config, userId);
 
     return jsonResponse(request, config, 200, {

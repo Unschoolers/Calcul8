@@ -65,7 +65,7 @@ export async function syncPush(
   }
 
   try {
-    const userId = resolveUserId(request, config);
+    const userId = await resolveUserId(request, config);
     const payload = await parseSyncPushPayload(request);
     const existingSnapshot = await getSyncSnapshot(config, userId);
 

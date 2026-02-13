@@ -12,7 +12,8 @@
     "clean": "rimraf dist",
     "start": "func start",
     "start:build": "npm run build && func start",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "npm run build && node dist/lib/auth.test.js"
   },
   "dependencies": {
     "@azure/cosmos": "^4.3.0",

@@ -24,6 +24,8 @@ cp local.settings.json.example local.settings.json
 ```
 
 3. Fill `local.settings.json` with your Cosmos values.
+   Also set:
+   - `GOOGLE_OAUTH_CLIENT_ID` (your Google OAuth Web client ID)
 
 4. Run:
 
@@ -38,6 +40,9 @@ npm run start:build
   - `AUTH_BYPASS_DEV=true`
 
 This is intentionally temporary. Replace with Google token validation before production rollout.
+
+If `Authorization: Bearer <google-id-token>` is provided, API now validates it against Google token info endpoint
+and uses `sub` as `userId`.
 
 ## Cosmos containers
 

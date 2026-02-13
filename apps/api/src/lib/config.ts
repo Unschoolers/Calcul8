@@ -36,6 +36,7 @@ export function getConfig(): ApiConfig {
   cachedConfig = {
     apiEnv,
     authBypassDev: parseBool(readEnv("AUTH_BYPASS_DEV"), apiEnv === "dev"),
+    googleClientId: readEnv("GOOGLE_OAUTH_CLIENT_ID"),
     allowedOrigins: parseAllowedOrigins(readEnv("ALLOWED_ORIGINS")),
     cosmosEndpoint: requireEnv("COSMOSDB_ENDPOINT"),
     cosmosKey: requireEnv("COSMOSDB_KEY"),
