@@ -59,6 +59,6 @@ Recommended partition key for both containers: `/userId`.
 
 ## Security notes
 
-- Never put Cosmos keys in frontend code!
+- Never put Cosmos keys in frontend code.
 - Restrict CORS via `ALLOWED_ORIGINS`.
 - Move to real auth (Google OIDC validation) for prod.
