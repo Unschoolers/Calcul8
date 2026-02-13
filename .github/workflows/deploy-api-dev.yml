@@ -35,4 +35,5 @@ jobs:
         with:
           app-name: ${{ vars.AZURE_FUNCTIONAPP_NAME_DEV }}
           package: apps/api
+          sku: flexconsumption
           publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE_DEV }}
