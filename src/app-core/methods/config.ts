@@ -358,6 +358,10 @@ export const configMethods: ThisType<AppContext> & Pick<
   },
 
   calculateOptimalPrices(): void {
+    if (!this.canUsePaidActions) {
+      this.notify("Pro access required to apply auto-calculated prices", "warning");
+      return;
+    }
     this.recalculateDefaultPrices({ closeModal: true });
   },
 

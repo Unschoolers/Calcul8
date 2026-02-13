@@ -45,6 +45,11 @@ export const salesMethods: ThisType<AppContext> & Pick<
   },
 
   saveSale(): void {
+    if (!this.canUsePaidActions) {
+      this.notify("Pro access required to add or update sales", "warning");
+      return;
+    }
+
     const quantity = Number(this.newSale.quantity);
     const price = Number(this.newSale.price);
     const buyerShipping = Number(this.newSale.buyerShipping);

@@ -79,6 +79,7 @@ export interface BeforeInstallPromptEvent extends Event {
 }
 
 export interface AppState extends PresetSetup {
+  hasProAccess: boolean;
   currentTab: AppTab;
   showNewPresetModal: boolean;
   speedDialOpen: boolean;

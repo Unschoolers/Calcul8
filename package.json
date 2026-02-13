@@ -14,7 +14,10 @@
     "typecheck": "tsc --noEmit",
     "verify": "npm run security:scan && npm run test && npm run typecheck && npm run build",
     "assetlinks": "node scripts/generate-assetlinks.mjs",
-    "release:play": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/release-google-play.ps1"
+    "release:play": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/release-google-play.ps1",
+    "api:install": "npm --prefix apps/api install",
+    "api:build": "npm --prefix apps/api run build",
+    "api:start": "npm --prefix apps/api run start:build"
   },
   "repository": {
     "type": "git",

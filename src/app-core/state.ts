@@ -3,6 +3,7 @@ import type { AppState } from "../types/app.ts";
 
 export function createInitialState(): AppState {
   return {
+    hasProAccess: localStorage.getItem("rtyh_pro_access") === "1",
     // UI State
     currentTab: "config",
     showNewPresetModal: false,

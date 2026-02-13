@@ -31,3 +31,8 @@ play-credentials.json
 service-account*.json
 
 .well-known/
+
+# Azure Functions API local artifacts
+apps/api/local.settings.json
+apps/api/dist/
+apps/api/.azure/

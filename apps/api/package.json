@@ -1,0 +1,26 @@
+{
+  "name": "calcul8-api",
+  "version": "1.0.0",
+  "private": true,
+  "description": "calcul8tr backend API (Azure Functions + Cosmos DB)",
+  "main": "dist/index.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p .",
+    "clean": "rimraf dist",
+    "start": "func start",
+    "start:build": "npm run build && func start",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@azure/cosmos": "^4.3.0",
+    "@azure/functions": "^4.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.6",
+    "rimraf": "^6.0.1",
+    "typescript": "^5.9.3"
+  }
+}

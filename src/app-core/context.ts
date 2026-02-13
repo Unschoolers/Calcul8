@@ -14,6 +14,7 @@ import type {
 export interface AppComputedState {
   isDark: boolean;
   hasPresetSelected: boolean;
+  canUsePaidActions: boolean;
   presetItems: Array<{ title: string; value: number | null }>;
   totalPacks: number;
   boxPriceCostCAD: number;
@@ -125,6 +126,7 @@ export type PurchaseCostInputComputed = {
 export interface AppComputedObject {
   isDark(this: AppContext): boolean;
   hasPresetSelected(this: AppContext): boolean;
+  canUsePaidActions(this: AppContext): boolean;
   presetItems(this: AppContext): Array<{ title: string; value: number | null }>;
   totalPacks(this: AppContext): number;
   boxPriceCostCAD(this: AppContext): number;

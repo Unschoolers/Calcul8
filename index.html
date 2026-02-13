@@ -801,11 +801,21 @@
               hint="All prices will be rounded to nearest dollar"
               persistent-hint
             ></v-text-field>
+            <v-alert
+              v-if="hasPresetSelected && !hasProAccess"
+              type="info"
+              variant="tonal"
+              density="compact"
+              icon="mdi-lock"
+              class="mt-3"
+            >
+              Pro feature. Upgrade to apply auto-calculated prices.
+            </v-alert>
           </v-card-text>
           <v-card-actions>
             <v-spacer></v-spacer>
             <v-btn text @click="showProfitCalculator = false">Cancel</v-btn>
-            <v-btn color="secondary" @click="calculateOptimalPrices" :disabled="!hasPresetSelected">Apply</v-btn>
+            <v-btn color="secondary" @click="calculateOptimalPrices" :disabled="!canUsePaidActions">Apply</v-btn>
           </v-card-actions>
         </v-card>
       </v-dialog>
@@ -818,6 +828,16 @@
             {{ editingSale ? 'Edit Sale' : 'Add Sale' }}
           </v-card-title>
           <v-card-text>
+            <v-alert
+              v-if="hasPresetSelected && !hasProAccess"
+              type="info"
+              variant="tonal"
+              density="compact"
+              icon="mdi-lock"
+              class="mb-3"
+            >
+              Pro feature. Upgrade to add or edit sales.
+            </v-alert>
             <v-select
               v-model="newSale.type"
               :items="[
@@ -853,7 +873,7 @@
           <v-card-actions>
             <v-spacer></v-spacer>
             <v-btn text @click="cancelSale">Cancel</v-btn>
-            <v-btn color="primary" @click="saveSale" :disabled="!hasPresetSelected">{{ editingSale ? 'Update' : 'Add' }}</v-btn>
+            <v-btn color="primary" @click="saveSale" :disabled="!canUsePaidActions">{{ editingSale ? 'Update' : 'Add' }}</v-btn>
           </v-card-actions>
         </v-card>
       </v-dialog>

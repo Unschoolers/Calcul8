@@ -15,6 +15,9 @@ import {
   calculateTotalPacks,
   calculateTotalRevenue
 } from "../src/domain/calculations.ts";
+import { appComputed } from "../src/app-core/computed.ts";
+import { configMethods } from "../src/app-core/methods/config.ts";
+import { salesMethods } from "../src/app-core/methods/sales.ts";
 import type { Sale } from "../src/types/app.ts";
 
 test("calculateBoxPriceCostCad handles CAD and USD", () => {
@@ -145,4 +148,236 @@ test("sparkline helpers return normalized series and valid gradient", () => {
 
   const gradient = calculateSparklineGradient(sales, 100, 15);
   assert.equal(gradient.length, 2);
+});
+
+test("canUsePaidActions requires preset + pro access", () => {
+  const blockedNoPreset = appComputed.canUsePaidActions.call({
+    hasPresetSelected: false,
+    hasProAccess: true
+  } as unknown as Parameters<typeof appComputed.canUsePaidActions>[0]);
+  assert.equal(blockedNoPreset, false);
+
+  const blockedNoPro = appComputed.canUsePaidActions.call({
+    hasPresetSelected: true,
+    hasProAccess: false
+  } as unknown as Parameters<typeof appComputed.canUsePaidActions>[0]);
+  assert.equal(blockedNoPro, false);
+
+  const allowed = appComputed.canUsePaidActions.call({
+    hasPresetSelected: true,
+    hasProAccess: true
+  } as unknown as Parameters<typeof appComputed.canUsePaidActions>[0]);
+  assert.equal(allowed, true);
+});
+
+test("calculateOptimalPrices is blocked when paywall is locked", () => {
+  let notifiedMessage = "";
+  let recalculated = false;
+
+  configMethods.calculateOptimalPrices.call({
+    canUsePaidActions: false,
+    notify(message: string) {
+      notifiedMessage = message;
+    },
+    recalculateDefaultPrices() {
+      recalculated = true;
+    }
+  } as unknown as Parameters<typeof configMethods.calculateOptimalPrices>[0]);
+
+  assert.equal(recalculated, false);
+  assert.equal(notifiedMessage, "Pro access required to apply auto-calculated prices");
+});
+
+test("calculateOptimalPrices calls recalculate when paywall is unlocked", () => {
+  let closeModalValue: boolean | null = null;
+
+  configMethods.calculateOptimalPrices.call({
+    canUsePaidActions: true,
+    notify() {
+      // noop
+    },
+    recalculateDefaultPrices(opts?: { closeModal?: boolean }) {
+      closeModalValue = opts?.closeModal ?? null;
+    }
+  } as unknown as Parameters<typeof configMethods.calculateOptimalPrices>[0]);
+
+  assert.equal(closeModalValue, true);
+});
+
+test("saveSale is blocked when paywall is locked", () => {
+  let notified = "";
+
+  salesMethods.saveSale.call({
+    canUsePaidActions: false,
+    notify(message: string) {
+      notified = message;
+    }
+  } as unknown as Parameters<typeof salesMethods.saveSale>[0]);
+
+  assert.equal(notified, "Pro access required to add or update sales");
+});
+
+test("saveSale computes packsCount for pack/box/rtyh and stores buyerShipping", () => {
+  const scenarios = [
+    {
+      draft: { type: "pack", quantity: 3, packsCount: null, expectedPacks: 3 },
+      packsPerBox: 16
+    },
+    {
+      draft: { type: "box", quantity: 2, packsCount: null, expectedPacks: 32 },
+      packsPerBox: 16
+    },
+    {
+      draft: { type: "rtyh", quantity: 1, packsCount: 9, expectedPacks: 9 },
+      packsPerBox: 16
+    }
+  ] as const;
+
+  for (const scenario of scenarios) {
+    let cancelCalled = false;
+    const sales: Sale[] = [];
+
+    salesMethods.saveSale.call({
+      canUsePaidActions: true,
+      packsPerBox: scenario.packsPerBox,
+      editingSale: null,
+      sales,
+      newSale: {
+        type: scenario.draft.type,
+        quantity: scenario.draft.quantity,
+        packsCount: scenario.draft.packsCount,
+        price: 25,
+        buyerShipping: 5,
+        date: "2026-02-13"
+      },
+      notify() {
+        // noop
+      },
+      cancelSale() {
+        cancelCalled = true;
+      }
+    } as unknown as Parameters<typeof salesMethods.saveSale>[0]);
+
+    assert.equal(sales.length, 1);
+    assert.equal(sales[0]?.packsCount, scenario.draft.expectedPacks);
+    assert.equal(sales[0]?.buyerShipping, 5);
+    assert.equal(cancelCalled, true);
+  }
+});
+
+test("saveSale validates negative buyer shipping", () => {
+  let notifiedMessage = "";
+  const sales: Sale[] = [];
+
+  salesMethods.saveSale.call({
+    canUsePaidActions: true,
+    packsPerBox: 16,
+    editingSale: null,
+    sales,
+    newSale: {
+      type: "pack",
+      quantity: 1,
+      packsCount: null,
+      price: 10,
+      buyerShipping: -1,
+      date: "2026-02-13"
+    },
+    notify(message: string) {
+      notifiedMessage = message;
+    },
+    cancelSale() {
+      // noop
+    }
+  } as unknown as Parameters<typeof salesMethods.saveSale>[0]);
+
+  assert.equal(sales.length, 0);
+  assert.equal(notifiedMessage, "Please enter a valid buyer shipping amount (0 or greater)");
+});
+
+test("saveSale updates existing sale in edit mode", () => {
+  const originalSale: Sale = {
+    id: 1001,
+    type: "pack",
+    quantity: 1,
+    packsCount: 1,
+    price: 7,
+    buyerShipping: 2,
+    date: "2026-02-10"
+  };
+  const sales: Sale[] = [originalSale];
+
+  salesMethods.saveSale.call({
+    canUsePaidActions: true,
+    packsPerBox: 16,
+    editingSale: originalSale,
+    sales,
+    newSale: {
+      type: "pack",
+      quantity: 4,
+      packsCount: null,
+      price: 8,
+      buyerShipping: 3,
+      date: "2026-02-13"
+    },
+    notify() {
+      // noop
+    },
+    cancelSale() {
+      // noop
+    }
+  } as unknown as Parameters<typeof salesMethods.saveSale>[0]);
+
+  assert.equal(sales.length, 1);
+  assert.equal(sales[0]?.id, 1001);
+  assert.equal(sales[0]?.quantity, 4);
+  assert.equal(sales[0]?.buyerShipping, 3);
+});
+
+test("required price computed values handle reached/empty/remaining cases", () => {
+  const reachedTargetPack = appComputed.requiredPackPriceFromNow.call({
+    remainingNetRevenueForTarget: 0,
+    remainingPacksCount: 10,
+    sellingTaxPercent: 15,
+    sellingShippingPerOrder: 5
+  } as unknown as Parameters<typeof appComputed.requiredPackPriceFromNow>[0]);
+  assert.equal(reachedTargetPack, 0);
+
+  const noInventoryPack = appComputed.requiredPackPriceFromNow.call({
+    remainingNetRevenueForTarget: 100,
+    remainingPacksCount: 0,
+    sellingTaxPercent: 15,
+    sellingShippingPerOrder: 5
+  } as unknown as Parameters<typeof appComputed.requiredPackPriceFromNow>[0]);
+  assert.equal(noInventoryPack, null);
+
+  const noInventoryBox = appComputed.requiredBoxPriceFromNow.call({
+    remainingNetRevenueForTarget: 100,
+    remainingBoxesEquivalent: 0,
+    sellingTaxPercent: 15,
+    sellingShippingPerOrder: 5
+  } as unknown as Parameters<typeof appComputed.requiredBoxPriceFromNow>[0]);
+  assert.equal(noInventoryBox, null);
+
+  const noInventorySpot = appComputed.requiredSpotPriceFromNow.call({
+    remainingNetRevenueForTarget: 100,
+    remainingSpotsEquivalent: 0,
+    sellingTaxPercent: 15,
+    sellingShippingPerOrder: 5
+  } as unknown as Parameters<typeof appComputed.requiredSpotPriceFromNow>[0]);
+  assert.equal(noInventorySpot, null);
+
+  const remainingRevenue = 720;
+  const remainingPacks = 48;
+  const tax = 15;
+  const ship = 4;
+  const expectedPack = calculatePriceForUnits(remainingPacks, remainingRevenue, tax, ship);
+
+  const computedPack = appComputed.requiredPackPriceFromNow.call({
+    remainingNetRevenueForTarget: remainingRevenue,
+    remainingPacksCount: remainingPacks,
+    sellingTaxPercent: tax,
+    sellingShippingPerOrder: ship
+  } as unknown as Parameters<typeof appComputed.requiredPackPriceFromNow>[0]);
+
+  assert.equal(computedPack, expectedPack);
 });

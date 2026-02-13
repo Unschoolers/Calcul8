@@ -22,6 +22,10 @@ export const appComputed: AppComputedObject = {
     return !!this.currentPresetId;
   },
 
+  canUsePaidActions(): boolean {
+    return this.hasPresetSelected && this.hasProAccess;
+  },
+
   presetItems() {
     return [
       { title: "-- Select preset --", value: null },

@@ -1,0 +1,35 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Web: Start Vite Dev Server",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npm run dev",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Web: Open Chrome (localhost:5173)",
+      "type": "pwa-chrome",
+      "request": "launch",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}"
+    },
+    {
+      "name": "API: Start Azure Functions",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npm run api:start",
+      "cwd": "${workspaceFolder}"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Run Web + API",
+      "configurations": [
+        "Web: Start Vite Dev Server",
+        "API: Start Azure Functions"
+      ]
+    }
+  ]
+}
