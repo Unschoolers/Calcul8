@@ -235,13 +235,11 @@ test("saveSale computes packsCount for pack/box/rtyh and stores buyerShipping", 
 
   for (const scenario of scenarios) {
     let cancelCalled = false;
-    const sales: Sale[] = [];
-
-    salesMethods.saveSale.call({
+    const context = {
       canUsePaidActions: true,
       packsPerBox: scenario.packsPerBox,
       editingSale: null,
-      sales,
+      sales: [] as Sale[],
       newSale: {
         type: scenario.draft.type,
         quantity: scenario.draft.quantity,
@@ -256,11 +254,13 @@ test("saveSale computes packsCount for pack/box/rtyh and stores buyerShipping", 
       cancelSale() {
         cancelCalled = true;
       }
-    } as unknown as Parameters<typeof salesMethods.saveSale>[0]);
+    } as unknown as Parameters<typeof salesMethods.saveSale>[0];
 
-    assert.equal(sales.length, 1);
-    assert.equal(sales[0]?.packsCount, scenario.draft.expectedPacks);
-    assert.equal(sales[0]?.buyerShipping, 5);
+    salesMethods.saveSale.call(context);
+
+    assert.equal(context.sales.length, 1);
+    assert.equal(context.sales[0]?.packsCount, scenario.draft.expectedPacks);
+    assert.equal(context.sales[0]?.buyerShipping, 5);
     assert.equal(cancelCalled, true);
   }
 });
