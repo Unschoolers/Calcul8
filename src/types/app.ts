@@ -80,6 +80,12 @@ export interface BeforeInstallPromptEvent extends Event {
 
 export interface AppState extends PresetSetup {
   hasProAccess: boolean;
+  showManualPurchaseVerify: boolean;
+  showVerifyPurchaseModal: boolean;
+  isVerifyingPurchase: boolean;
+  purchaseTokenInput: string;
+  purchaseProductIdInput: string;
+  purchasePackageNameInput: string;
   currentTab: AppTab;
   showNewPresetModal: boolean;
   speedDialOpen: boolean;

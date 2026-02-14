@@ -3,6 +3,7 @@
 This is a separate deployable backend project for:
 
 - `GET /api/entitlements/me`
+- `POST /api/entitlements/verify-play`
 - `POST /api/sync/pull`
 - `POST /api/sync/push`
 
@@ -26,6 +27,10 @@ cp local.settings.json.example local.settings.json
 3. Fill `local.settings.json` with your Cosmos values.
    Also set:
    - `GOOGLE_OAUTH_CLIENT_ID` (your Google OAuth Web client ID)
+   - `GOOGLE_PLAY_PACKAGE_NAME` (Android package id, for example `io.calcul8tr`)
+   - `GOOGLE_PLAY_PRO_PRODUCT_IDS` (comma-separated in-app product ids that unlock Pro)
+   - `GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL`
+   - `GOOGLE_PLAY_SERVICE_ACCOUNT_PRIVATE_KEY`
 
 4. Run:
 
@@ -44,6 +49,21 @@ This is intentionally temporary. Replace with Google token validation before pro
 If `Authorization: Bearer <google-id-token>` is provided, API now validates it against Google token info endpoint
 and uses `sub` as `userId`.
 
+## Entitlement verification flow
+
+1. Frontend gets a Google ID token.
+2. Frontend sends `POST /api/entitlements/verify-play` with:
+   - `purchaseToken` (required)
+   - `productId` (optional if configured in API env)
+   - `packageName` (optional if configured in API env)
+3. API verifies purchase with Google Play Developer API.
+4. On success API upserts entitlement in Cosmos (`hasProAccess=true`, `purchaseSource=google_play`).
+5. Frontend calls `GET /api/entitlements/me` to read current access.
+
+Note:
+- `GET /api/entitlements/me` now auto-creates a baseline entitlement row on first authenticated request
+  (`hasProAccess=false`) so each user has a record from first login.
+
 ## Cosmos containers
 
 Recommended partition key for both containers: `/userId`.
@@ -52,6 +72,7 @@ Recommended partition key for both containers: `/userId`.
   - `id`: `entitlement:<userId>`
   - `userId`
   - `hasProAccess`
+  - `purchaseSource`
   - `updatedAt`
 
 - `sync_data` container:
@@ -67,3 +88,4 @@ Recommended partition key for both containers: `/userId`.
 - Never put Cosmos keys in frontend code.
 - Restrict CORS via `ALLOWED_ORIGINS`.
 - Move to real auth (Google OIDC validation) for prod.
+- Never commit `local.settings.json`; keep secrets in Function App settings and GitHub secrets.

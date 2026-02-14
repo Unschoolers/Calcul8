@@ -27,6 +27,14 @@ function parseAllowedOrigins(raw: string): string[] {
     .filter((part) => part.length > 0);
 }
 
+function parseCsv(raw: string): string[] {
+  if (!raw) return [];
+  return raw
+    .split(",")
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0);
+}
+
 export function getConfig(): ApiConfig {
   if (cachedConfig) return cachedConfig;
 
@@ -37,6 +45,10 @@ export function getConfig(): ApiConfig {
     apiEnv,
     authBypassDev: parseBool(readEnv("AUTH_BYPASS_DEV"), apiEnv === "dev"),
     googleClientId: readEnv("GOOGLE_OAUTH_CLIENT_ID"),
+    googlePlayPackageName: readEnv("GOOGLE_PLAY_PACKAGE_NAME"),
+    googlePlayProProductIds: parseCsv(readEnv("GOOGLE_PLAY_PRO_PRODUCT_IDS")),
+    googlePlayServiceAccountEmail: readEnv("GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL"),
+    googlePlayServiceAccountPrivateKey: readEnv("GOOGLE_PLAY_SERVICE_ACCOUNT_PRIVATE_KEY").replace(/\\n/g, "\n"),
     allowedOrigins: parseAllowedOrigins(readEnv("ALLOWED_ORIGINS")),
     cosmosEndpoint: requireEnv("COSMOSDB_ENDPOINT"),
     cosmosKey: requireEnv("COSMOSDB_KEY"),

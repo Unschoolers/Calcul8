@@ -86,6 +86,8 @@ export interface AppMethodState {
   getSaleIcon(type: SaleType): string;
   formatDate(dateStr: string): string;
   initGoogleAutoLogin(): void;
+  openVerifyPurchaseModal(): void;
+  verifyPlayPurchase(): Promise<void>;
   setupPwaUiHandlers(): void;
   promptInstall(): Promise<void>;
   debugLogEntitlement(forceRefresh?: boolean): Promise<void>;

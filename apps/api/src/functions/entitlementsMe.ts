@@ -1,7 +1,7 @@
 import { app, type HttpRequest, type HttpResponseInit, type InvocationContext } from "@azure/functions";
 import { resolveUserId } from "../lib/auth";
 import { getConfig } from "../lib/config";
-import { getEntitlement } from "../lib/cosmos";
+import { getEntitlement, upsertEntitlement } from "../lib/cosmos";
 import { errorResponse, handleCorsPreflight, jsonResponse } from "../lib/http";
 
 export async function entitlementsMe(
@@ -16,12 +16,20 @@ export async function entitlementsMe(
 
   try {
     const userId = await resolveUserId(request, config);
-    const entitlement = await getEntitlement(config, userId);
+    const existingEntitlement = await getEntitlement(config, userId);
+    const entitlement = existingEntitlement
+      ?? await upsertEntitlement(config, {
+        id: `entitlement:${userId}`,
+        userId,
+        hasProAccess: false,
+        updatedAt: new Date().toISOString()
+      });
 
     return jsonResponse(request, config, 200, {
       userId,
       hasProAccess: entitlement?.hasProAccess ?? false,
-      updatedAt: entitlement?.updatedAt ?? null
+      updatedAt: entitlement?.updatedAt ?? null,
+      purchaseSource: entitlement?.purchaseSource ?? null
     });
   } catch (error) {
     context.error("GET /entitlements/me failed", error);

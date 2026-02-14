@@ -4,6 +4,10 @@ export interface ApiConfig {
   apiEnv: ApiEnvironment;
   authBypassDev: boolean;
   googleClientId: string;
+  googlePlayPackageName: string;
+  googlePlayProProductIds: string[];
+  googlePlayServiceAccountEmail: string;
+  googlePlayServiceAccountPrivateKey: string;
   allowedOrigins: string[];
   cosmosEndpoint: string;
   cosmosKey: string;

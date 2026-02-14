@@ -96,6 +96,8 @@ export const uiMethods: ThisType<AppContext> & Pick<
   | "getSaleIcon"
   | "formatDate"
   | "initGoogleAutoLogin"
+  | "openVerifyPurchaseModal"
+  | "verifyPlayPurchase"
   | "debugLogEntitlement"
 > = {
   toggleTheme(): void {
@@ -191,6 +193,92 @@ export const uiMethods: ThisType<AppContext> & Pick<
     });
 
     googleId.prompt();
+  },
+
+  openVerifyPurchaseModal(): void {
+    if (!this.showManualPurchaseVerify) {
+      return;
+    }
+
+    const googleIdToken = (localStorage.getItem(GOOGLE_TOKEN_KEY) || "").trim();
+    if (!googleIdToken) {
+      this.notify("Sign in with Google first to verify your purchase.", "warning");
+      return;
+    }
+
+    this.showVerifyPurchaseModal = true;
+  },
+
+  async verifyPlayPurchase(): Promise<void> {
+    const configuredApiBase = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim() || "";
+    if (!configuredApiBase) {
+      this.notify("Missing API configuration (VITE_API_BASE_URL).", "error");
+      return;
+    }
+
+    const purchaseToken = this.purchaseTokenInput.trim();
+    if (!purchaseToken) {
+      this.notify("Enter a purchase token to continue.", "warning");
+      return;
+    }
+
+    const googleIdToken = (localStorage.getItem(GOOGLE_TOKEN_KEY) || "").trim();
+    if (!googleIdToken) {
+      this.notify("Sign in with Google first to verify your purchase.", "warning");
+      return;
+    }
+
+    const base = configuredApiBase.replace(/\/+$/, "");
+    const payload: Record<string, string> = {
+      purchaseToken
+    };
+    const productId = this.purchaseProductIdInput.trim();
+    const packageName = this.purchasePackageNameInput.trim();
+    if (productId) payload.productId = productId;
+    if (packageName) payload.packageName = packageName;
+
+    this.isVerifyingPurchase = true;
+
+    try {
+      const response = await fetch(`${base}/entitlements/verify-play`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${googleIdToken}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (response.status === 401) {
+        localStorage.removeItem(GOOGLE_TOKEN_KEY);
+        this.notify("Your sign-in expired. Please sign in again.", "warning");
+        return;
+      }
+
+      if (!response.ok) {
+        let message = `Purchase verification failed (${response.status}).`;
+        try {
+          const errorBody = (await response.json()) as { error?: string };
+          if (typeof errorBody.error === "string" && errorBody.error.trim()) {
+            message = errorBody.error.trim();
+          }
+        } catch {
+          // Keep fallback message when response body is not JSON.
+        }
+        this.notify(message, "error");
+        return;
+      }
+
+      await this.debugLogEntitlement(true);
+      this.purchaseTokenInput = "";
+      this.showVerifyPurchaseModal = false;
+      this.notify("Purchase verified. Pro features unlocked.", "success");
+    } catch (error) {
+      console.warn("[calcul8tr] Purchase verification error", error);
+      this.notify("Could not verify purchase. Please try again.", "error");
+    } finally {
+      this.isVerifyingPurchase = false;
+    }
   },
 
   async debugLogEntitlement(forceRefresh = false): Promise<void> {

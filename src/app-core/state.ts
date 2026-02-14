@@ -2,8 +2,18 @@ import { DEFAULT_VALUES } from "../constants.ts";
 import type { AppState } from "../types/app.ts";
 
 export function createInitialState(): AppState {
+  const showManualPurchaseVerify =
+    import.meta.env.DEV ||
+    String(import.meta.env.VITE_SHOW_MANUAL_PURCHASE_VERIFY || "").toLowerCase() === "true";
+
   return {
     hasProAccess: localStorage.getItem("rtyh_pro_access") === "1",
+    showManualPurchaseVerify,
+    showVerifyPurchaseModal: false,
+    isVerifyingPurchase: false,
+    purchaseTokenInput: "",
+    purchaseProductIdInput: "",
+    purchasePackageNameInput: "",
     // UI State
     currentTab: "config",
     showNewPresetModal: false,

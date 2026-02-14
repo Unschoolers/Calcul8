@@ -1,11 +1,8 @@
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import vuetify from "vite-plugin-vuetify";
-import { readFileSync } from "node:fs";
+import packageJson from "./package.json";
 
-const packageJson = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8")) as {
-  version?: string;
-};
 const appVersion = packageJson.version ?? "0.0.0";
 
 export default defineConfig({

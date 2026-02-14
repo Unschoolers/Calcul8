@@ -11,6 +11,7 @@
     "noImplicitThis": true,
     "useUnknownInCatchVariables": true,
     "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
     "skipLibCheck": true,
     "allowJs": false,
     "types": ["vite/client"]
