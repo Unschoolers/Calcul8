@@ -2,6 +2,10 @@ import type { ApiConfig, ApiEnvironment } from "../types";
 
 let cachedConfig: ApiConfig | null = null;
 
+export function resetConfigForTests(): void {
+  cachedConfig = null;
+}
+
 function readEnv(name: string): string {
   return (process.env[name] ?? "").trim();
 }

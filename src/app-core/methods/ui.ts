@@ -1,21 +1,6 @@
 import type { Sale, SaleType, UiColor } from "../../types/app.ts";
 import type { AppContext, AppMethodState } from "../context.ts";
-
-interface GoogleCredentialResponse {
-  credential?: string;
-}
-
-interface GoogleIdentityConfig {
-  client_id: string;
-  auto_select?: boolean;
-  itp_support?: boolean;
-  callback: (response: GoogleCredentialResponse) => void;
-}
-
-interface GoogleIdentityApi {
-  initialize(config: GoogleIdentityConfig): void;
-  prompt(): void;
-}
+import { initGoogleAutoLoginWithRetry, type GoogleIdentityApi } from "../utils/googleAutoLogin.ts";
 
 interface GoogleAccountsApi {
   id: GoogleIdentityApi;
@@ -48,7 +33,11 @@ const ENTITLEMENT_CACHE_KEY = "rtyh_entitlement_cache_v1";
 const PRO_ACCESS_KEY = "rtyh_pro_access";
 const GOOGLE_TOKEN_KEY = "rtyh_google_id_token";
 const DEBUG_USER_KEY = "rtyh_debug_user_id";
+const SYNC_CLIENT_VERSION_KEY = "rtyh_sync_client_version";
 const PROD_API_BASE_FALLBACK = "https://calcul8te-d5fyc8eyadawhkgd.canadacentral-01.azurewebsites.net/api";
+const CLOUD_SYNC_INTERVAL_MS = 60 * 1000;
+const GOOGLE_INIT_RETRY_COUNT = 20;
+const GOOGLE_INIT_RETRY_DELAY_MS = 250;
 
 function resolveApiBaseUrl(): string {
   const configuredApiBase = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim() || "";
@@ -112,6 +101,9 @@ export const uiMethods: ThisType<AppContext> & Pick<
   | "initGoogleAutoLogin"
   | "openVerifyPurchaseModal"
   | "verifyPlayPurchase"
+  | "startCloudSyncScheduler"
+  | "stopCloudSyncScheduler"
+  | "pushCloudSync"
   | "debugLogEntitlement"
 > = {
   toggleTheme(): void {
@@ -188,25 +180,19 @@ export const uiMethods: ThisType<AppContext> & Pick<
 
   initGoogleAutoLogin(): void {
     const clientId = (import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined)?.trim() || "";
-    const googleId = window.google?.accounts?.id;
-
-    if (!clientId || !googleId) {
-      return;
-    }
-
-    googleId.initialize({
-      client_id: clientId,
-      auto_select: true,
-      itp_support: true,
-      callback: (response: GoogleCredentialResponse) => {
-        const idToken = response.credential?.trim();
-        if (!idToken) return;
+    initGoogleAutoLoginWithRetry({
+      clientId,
+      getGoogleIdentity: () => window.google?.accounts?.id,
+      onCredential: (idToken: string) => {
         localStorage.setItem(GOOGLE_TOKEN_KEY, idToken);
         void this.debugLogEntitlement(true);
+      },
+      retryCount: GOOGLE_INIT_RETRY_COUNT,
+      retryDelayMs: GOOGLE_INIT_RETRY_DELAY_MS,
+      schedule: (callback: () => void, delayMs: number) => {
+        window.setTimeout(callback, delayMs);
       }
     });
-
-    googleId.prompt();
   },
 
   openVerifyPurchaseModal(): void {
@@ -291,6 +277,83 @@ export const uiMethods: ThisType<AppContext> & Pick<
       this.notify("Could not verify purchase. Please try again.", "error");
     } finally {
       this.isVerifyingPurchase = false;
+    }
+  },
+
+  startCloudSyncScheduler(): void {
+    if (this.cloudSyncIntervalId != null) return;
+    this.cloudSyncIntervalId = window.setInterval(() => {
+      void this.pushCloudSync();
+    }, CLOUD_SYNC_INTERVAL_MS);
+  },
+
+  stopCloudSyncScheduler(): void {
+    if (this.cloudSyncIntervalId == null) return;
+    window.clearInterval(this.cloudSyncIntervalId);
+    this.cloudSyncIntervalId = null;
+  },
+
+  async pushCloudSync(force = false): Promise<void> {
+    const base = resolveApiBaseUrl();
+    if (!base) return;
+
+    const googleIdToken = (localStorage.getItem(GOOGLE_TOKEN_KEY) || "").trim();
+    if (!googleIdToken) return;
+
+    const salesByPreset: Record<string, Sale[]> = {};
+    for (const preset of this.presets) {
+      salesByPreset[String(preset.id)] = this.loadSalesForPresetId(preset.id);
+    }
+
+    const payloadSignature = JSON.stringify({
+      presets: this.presets,
+      salesByPreset
+    });
+    if (!force && this.lastSyncedPayloadHash === payloadSignature) {
+      return;
+    }
+
+    const previousVersionRaw = localStorage.getItem(SYNC_CLIENT_VERSION_KEY) || "0";
+    const previousVersion = Number(previousVersionRaw);
+    const clientVersion = Number.isFinite(previousVersion) ? previousVersion : 0;
+
+    try {
+      const response = await fetch(`${base}/sync/push`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${googleIdToken}`
+        },
+        body: JSON.stringify({
+          presets: this.presets,
+          salesByPreset,
+          clientVersion
+        })
+      });
+
+      if (response.status === 401) {
+        localStorage.removeItem(GOOGLE_TOKEN_KEY);
+        console.warn("[calcul8tr] Cloud sync skipped: auth expired");
+        return;
+      }
+
+      if (!response.ok) {
+        console.warn("[calcul8tr] Cloud sync push failed", {
+          status: response.status,
+          statusText: response.statusText
+        });
+        return;
+      }
+
+      const body = (await response.json()) as { version?: unknown };
+      const serverVersion = Number(body.version);
+      if (Number.isFinite(serverVersion)) {
+        localStorage.setItem(SYNC_CLIENT_VERSION_KEY, String(serverVersion));
+      }
+      this.lastSyncedPayloadHash = payloadSignature;
+      console.info("[calcul8tr] Cloud sync pushed");
+    } catch (error) {
+      console.warn("[calcul8tr] Cloud sync push error", error);
     }
   },
 

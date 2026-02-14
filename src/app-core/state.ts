@@ -84,6 +84,8 @@ export function createInitialState(): AppState {
     newPresetName: "",
 
     // Exchange Rate Cache
-    lastFetchTime: null
+    lastFetchTime: null,
+    cloudSyncIntervalId: null,
+    lastSyncedPayloadHash: null
   };
 }

@@ -13,7 +13,7 @@
     "start": "func start",
     "start:build": "npm run build && func start",
     "typecheck": "tsc --noEmit",
-    "test": "npm run build && node dist/lib/auth.test.js"
+    "test": "npm run build && node dist/lib/auth.test.js && node dist/lib/config.test.js"
   },
   "dependencies": {
     "@azure/cosmos": "^4.3.0",

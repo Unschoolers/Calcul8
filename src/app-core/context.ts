@@ -88,6 +88,9 @@ export interface AppMethodState {
   initGoogleAutoLogin(): void;
   openVerifyPurchaseModal(): void;
   verifyPlayPurchase(): Promise<void>;
+  pushCloudSync(force?: boolean): Promise<void>;
+  startCloudSyncScheduler(): void;
+  stopCloudSyncScheduler(): void;
   setupPwaUiHandlers(): void;
   promptInstall(): Promise<void>;
   debugLogEntitlement(forceRefresh?: boolean): Promise<void>;

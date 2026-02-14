@@ -117,4 +117,6 @@ export interface AppState extends PresetSetup {
   currentPresetId: number | null;
   newPresetName: string;
   lastFetchTime: number | null;
+  cloudSyncIntervalId: number | null;
+  lastSyncedPayloadHash: string | null;
 }

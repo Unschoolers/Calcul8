@@ -18,6 +18,7 @@ export const appLifecycle: AppLifecycleObject = {
     this.syncLivePricesFromDefaults();
     this.initGoogleAutoLogin();
     void this.debugLogEntitlement(!import.meta.env.DEV);
+    this.startCloudSyncScheduler();
 
     if (import.meta.env.DEV) {
       void this.unregisterServiceWorkersForDev();
@@ -28,6 +29,7 @@ export const appLifecycle: AppLifecycleObject = {
   },
 
   beforeUnmount() {
+    this.stopCloudSyncScheduler();
     if (this.onlineListener) window.removeEventListener("online", this.onlineListener);
     if (this.offlineListener) window.removeEventListener("offline", this.offlineListener);
     if (this.beforeInstallPromptListener) window.removeEventListener("beforeinstallprompt", this.beforeInstallPromptListener);
