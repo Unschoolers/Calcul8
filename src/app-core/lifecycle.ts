@@ -17,7 +17,7 @@ export const appLifecycle: AppLifecycleObject = {
     this.loadSalesFromStorage();
     this.syncLivePricesFromDefaults();
     this.initGoogleAutoLogin();
-    void this.debugLogEntitlement();
+    void this.debugLogEntitlement(!import.meta.env.DEV);
 
     if (import.meta.env.DEV) {
       void this.unregisterServiceWorkersForDev();
