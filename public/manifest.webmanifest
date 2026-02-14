@@ -1,10 +1,10 @@
 {
-  "id": "./",
+  "id": "/Calcul8/",
   "name": "calcul8tr",
   "short_name": "calcul8tr",
   "description": "Union Arena profitability calculator",
-  "start_url": "./",
-  "scope": "./",
+  "start_url": "/Calcul8/",
+  "scope": "/Calcul8/",
   "lang": "en-CA",
   "display": "standalone",
   "orientation": "portrait",
