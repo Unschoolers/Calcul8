@@ -10,9 +10,15 @@ let cosmosCache: CosmosCache | null = null;
 
 function isNotFoundError(error: unknown): boolean {
   if (typeof error !== "object" || error === null) return false;
-  if (!("code" in error)) return false;
   const code = (error as { code?: unknown }).code;
-  return code === 404;
+  const statusCode = (error as { statusCode?: unknown }).statusCode;
+
+  return (
+    code === 404 ||
+    statusCode === 404 ||
+    code === "NotFound" ||
+    code === "notfound"
+  );
 }
 
 function entitlementId(userId: string): string {
