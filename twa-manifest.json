@@ -20,8 +20,8 @@
     "path": "calcul8tr-upload.jks",
     "alias": "calcul8tr-upload"
   },
-  "appVersionName": "1.0.5",
-  "appVersionCode": 6,
+  "appVersionName": "1.0.6",
+  "appVersionCode": 7,
   "shortcuts": [],
   "generatorApp": "bubblewrap-cli",
   "webManifestUrl": "https://unschoolers.github.io/Calcul8/manifest.webmanifest",
@@ -43,5 +43,5 @@
   "fileHandlers": [],
   "launchHandlerClientMode": "",
   "displayOverride": [],
-  "appVersion": "1.0.5"
+  "appVersion": "1.0.6"
 }
