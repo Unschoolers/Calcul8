@@ -12,7 +12,7 @@ function makeConfig(overrides: Partial<ApiConfig> = {}): ApiConfig {
     googlePlayPackageName: "io.calcul8tr",
     googlePlayProProductIds: ["pro_access"],
     googlePlayServiceAccountEmail: "service@example.iam.gserviceaccount.com",
-    googlePlayServiceAccountPrivateKey: "-----BEGIN PRIVATE KEY-----\nTEST\n-----END PRIVATE KEY-----",
+    googlePlayServiceAccountPrivateKey: "test-private-key-placeholder",
     allowedOrigins: [],
     cosmosEndpoint: "https://example.documents.azure.com:443/",
     cosmosKey: "fake-key",
