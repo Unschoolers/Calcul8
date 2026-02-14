@@ -48,6 +48,20 @@ const ENTITLEMENT_CACHE_KEY = "rtyh_entitlement_cache_v1";
 const PRO_ACCESS_KEY = "rtyh_pro_access";
 const GOOGLE_TOKEN_KEY = "rtyh_google_id_token";
 const DEBUG_USER_KEY = "rtyh_debug_user_id";
+const PROD_API_BASE_FALLBACK = "https://calcul8te-d5fyc8eyadawhkgd.canadacentral-01.azurewebsites.net/api";
+
+function resolveApiBaseUrl(): string {
+  const configuredApiBase = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim() || "";
+  if (configuredApiBase) {
+    return configuredApiBase.replace(/\/+$/, "");
+  }
+
+  if (!import.meta.env.DEV && window.location.hostname === "unschoolers.github.io") {
+    return PROD_API_BASE_FALLBACK;
+  }
+
+  return "";
+}
 
 function getEntitlementTtlMs(): number {
   const raw = (import.meta.env.VITE_ENTITLEMENT_TTL_MINUTES as string | undefined)?.trim() || "";
@@ -210,8 +224,8 @@ export const uiMethods: ThisType<AppContext> & Pick<
   },
 
   async verifyPlayPurchase(): Promise<void> {
-    const configuredApiBase = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim() || "";
-    if (!configuredApiBase) {
+    const base = resolveApiBaseUrl();
+    if (!base) {
       this.notify("Missing API configuration (VITE_API_BASE_URL).", "error");
       return;
     }
@@ -228,7 +242,6 @@ export const uiMethods: ThisType<AppContext> & Pick<
       return;
     }
 
-    const base = configuredApiBase.replace(/\/+$/, "");
     const payload: Record<string, string> = {
       purchaseToken
     };
@@ -282,13 +295,11 @@ export const uiMethods: ThisType<AppContext> & Pick<
   },
 
   async debugLogEntitlement(forceRefresh = false): Promise<void> {
-    const configuredApiBase = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim() || "";
-    if (!configuredApiBase) {
+    const base = resolveApiBaseUrl();
+    if (!base) {
       console.info("[calcul8tr] Entitlement sync skipped: VITE_API_BASE_URL is not set.");
       return;
     }
-
-    const base = configuredApiBase.replace(/\/+$/, "");
     const debugUserId = localStorage.getItem(DEBUG_USER_KEY) || "debug-user";
     const googleIdToken = (localStorage.getItem(GOOGLE_TOKEN_KEY) || "").trim();
 
