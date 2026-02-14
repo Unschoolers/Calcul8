@@ -1,6 +1,6 @@
 {
   "name": "calcul8-api",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "private": true,
   "description": "calcul8tr backend API (Azure Functions + Cosmos DB)",
   "main": "dist/index.js",
