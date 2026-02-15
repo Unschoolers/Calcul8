@@ -1,4 +1,4 @@
-const CACHE_NAME = "calcul8tr-v3";
+const CACHE_NAME = "whatfees-v3";
 
 const CORE_ASSETS = [
   "./",

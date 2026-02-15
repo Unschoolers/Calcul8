@@ -56,7 +56,7 @@ export function getConfig(): ApiConfig {
     allowedOrigins: parseAllowedOrigins(readEnv("ALLOWED_ORIGINS")),
     cosmosEndpoint: requireEnv("COSMOSDB_ENDPOINT"),
     cosmosKey: requireEnv("COSMOSDB_KEY"),
-    cosmosDatabaseId: readEnv("COSMOSDB_DATABASE_ID") || "calcul8tr",
+    cosmosDatabaseId: readEnv("COSMOSDB_DATABASE_ID") || "whatfees",
     entitlementsContainerId: readEnv("COSMOSDB_ENTITLEMENTS_CONTAINER_ID") || "entitlements",
     syncContainerId: readEnv("COSMOSDB_SYNC_CONTAINER_ID") || "sync_data"
   };

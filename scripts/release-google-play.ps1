@@ -1,8 +1,8 @@
 [CmdletBinding()]
 param(
-  [string]$PackageId = "io.calcul8tr",
-  [string]$KeystorePath = "calcul8tr-upload.jks",
-  [string]$KeyAlias = "calcul8tr-upload",
+  [string]$PackageId = "io.whatfees",
+  [string]$KeystorePath = "whatfees-upload.jks",
+  [string]$KeyAlias = "whatfees-upload",
   [string]$ManifestUrl = "https://unschoolers.github.io/Calcul8/manifest.webmanifest",
   [string]$PagesAssetlinksUrl = "https://unschoolers.github.io/Calcul8/.well-known/assetlinks.json",
   [switch]$SkipVerify,
@@ -92,7 +92,7 @@ try {
   if (-not $resolvedKeystorePath) {
     Write-Step "Generating Android upload key ($KeystorePath)"
 
-    $defaultDname = "CN=calcul8tr, OU=Mobile, O=Unschoolers, L=Montreal, ST=Quebec, C=CA"
+    $defaultDname = "CN=whatfees, OU=Mobile, O=Unschoolers, L=Montreal, ST=Quebec, C=CA"
     $dname = Read-Host "Distinguished Name (DN) [`"$defaultDname`"]"
     if ([string]::IsNullOrWhiteSpace($dname)) {
       $dname = $defaultDname

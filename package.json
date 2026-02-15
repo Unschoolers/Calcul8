@@ -1,7 +1,7 @@
 {
-  "name": "calcul8",
+  "name": "whatfees",
   "version": "1.0.10",
-  "description": "calcul8tr PWA",
+  "description": "whatfees PWA",
   "private": true,
   "type": "module",
   "scripts": {
@@ -21,15 +21,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Unschoolers/Calcul8.git"
+    "url": "git+https://github.com/Unschoolers/WhatFees.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/Unschoolers/Calcul8/issues"
+    "url": "https://github.com/Unschoolers/WhatFees/issues"
   },
-  "homepage": "https://github.com/Unschoolers/Calcul8#readme",
+  "homepage": "https://github.com/Unschoolers/WhatFees#readme",
   "dependencies": {
     "chart.js": "^4.5.1",
     "vue": "^3.5.28",

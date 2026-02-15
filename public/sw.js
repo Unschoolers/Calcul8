@@ -1,5 +1,5 @@
 const swVersion = new URL(self.location.href).searchParams.get("v") || "dev";
-const CACHE_NAME = `calcul8tr-${swVersion}`;
+const CACHE_NAME = `whatfees-${swVersion}`;
 
 const CORE_ASSETS = [
   "./",

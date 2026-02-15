@@ -1,4 +1,4 @@
-# calcul8 API (Azure Functions)
+# WhatFees API (Azure Functions)
 
 This is a separate deployable backend project for:
 
@@ -27,7 +27,7 @@ cp local.settings.json.example local.settings.json
 3. Fill `local.settings.json` with your Cosmos values.
    Also set:
    - `GOOGLE_OAUTH_CLIENT_ID` (your Google OAuth Web client ID)
-   - `GOOGLE_PLAY_PACKAGE_NAME` (Android package id, for example `io.calcul8tr`)
+   - `GOOGLE_PLAY_PACKAGE_NAME` (Android package id, for example `io.whatfees`)
    - `GOOGLE_PLAY_PRO_PRODUCT_IDS` (comma-separated in-app product ids that unlock Pro)
    - `GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL`
    - `GOOGLE_PLAY_SERVICE_ACCOUNT_PRIVATE_KEY`

@@ -1,8 +1,8 @@
 {
-  "name": "calcul8-api",
+  "name": "whatfees-api",
   "version": "1.0.10",
   "private": true,
-  "description": "calcul8tr backend API (Azure Functions + Cosmos DB)",
+  "description": "whatfees backend API (Azure Functions + Cosmos DB)",
   "main": "dist/index.js",
   "engines": {
     "node": ">=20"

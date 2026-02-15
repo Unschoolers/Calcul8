@@ -88,7 +88,15 @@
 
   <script>
     const GOOGLE_CLIENT_ID = "718293345043-ddbenv1fv8ee7erh6af7stbajjuhua80.apps.googleusercontent.com";
-    const API_BASE_URL = "https://calcul8te-d5fyc8eyadawhkgd.canadacentral-01.azurewebsites.net/api";
+    const API_BASE_URL = (() => {
+      const queryValue = new URLSearchParams(window.location.search).get("api") || "";
+      const storedValue = localStorage.getItem("whatfees_api_base_url") || "";
+      const resolved = (queryValue || storedValue).trim().replace(/\/+$/, "");
+      if (resolved) {
+        localStorage.setItem("whatfees_api_base_url", resolved);
+      }
+      return resolved;
+    })();
     const TOKEN_KEY = "rtyh_google_id_token";
 
     const statusEl = document.getElementById("status");
@@ -128,6 +136,9 @@
     async function apiPost(path) {
       const token = getToken();
       if (!token) throw new Error("Please sign in first.");
+      if (!API_BASE_URL) {
+        throw new Error("API endpoint is not configured. Open this page with ?api=https://your-api-host/api");
+      }
       const res = await fetch(`${API_BASE_URL}${path}`, {
         method: "POST",
         headers: {

@@ -1,4 +1,4 @@
-# calcul8tr
+# WhatFees
 
 PWA profitability calculator (Vue 3 + Vuetify + TypeScript + Vite).
 

@@ -1,4 +1,4 @@
-# calcul8tr Google Play Release Guide (TWA)
+# whatfees Google Play Release Guide (TWA)
 
 Google Play requires an Android package (`.aab`).  
 For this project, the standard path is **TWA (Trusted Web Activity)** using Bubblewrap.
@@ -25,7 +25,7 @@ Useful flags:
 .\scripts\release-google-play.ps1 -SkipVerify
 .\scripts\release-google-play.ps1 -SkipBuild
 .\scripts\release-google-play.ps1 -SkipDeployCheck
-.\scripts\release-google-play.ps1 -PackageId io.calcul8tr
+.\scripts\release-google-play.ps1 -PackageId io.whatfees
 ```
 
 Deploy your latest web build to:
@@ -41,13 +41,13 @@ Then validate:
 ## 2) Create Android signing key (one-time)
 
 ```bash
-keytool -genkeypair -v -keystore calcul8tr-upload.jks -alias calcul8tr-upload -keyalg RSA -keysize 2048 -validity 10000
+keytool -genkeypair -v -keystore whatfees-upload.jks -alias whatfees-upload -keyalg RSA -keysize 2048 -validity 10000
 ```
 
 Get SHA-256 fingerprint (needed for Digital Asset Links):
 
 ```bash
-keytool -list -v -keystore calcul8tr-upload.jks -alias calcul8tr-upload
+keytool -list -v -keystore whatfees-upload.jks -alias whatfees-upload
 ```
 
 ## 3) Generate `assetlinks.json`
@@ -55,7 +55,7 @@ keytool -list -v -keystore calcul8tr-upload.jks -alias calcul8tr-upload
 From this repo:
 
 ```bash
-npm run assetlinks -- --package=io.calcul8tr --fingerprint=AA:BB:CC:...:ZZ
+npm run assetlinks -- --package=io.whatfees --fingerprint=AA:BB:CC:...:ZZ
 ```
 
 This updates:
@@ -81,8 +81,8 @@ bubblewrap init --manifest=https://unschoolers.github.io/Calcul8/manifest.webman
 When prompted, use:
 
 - Start URL: `https://unschoolers.github.io/Calcul8/`
-- Application ID/package: `io.calcul8tr` (or your final package)
-- Keystore: your `calcul8tr-upload.jks`
+- Application ID/package: `io.whatfees` (or your final package)
+- Keystore: your `whatfees-upload.jks`
 
 Build Android App Bundle:
 

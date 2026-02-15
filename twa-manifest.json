@@ -1,8 +1,8 @@
 {
-  "packageId": "io.calcul8tr",
+  "packageId": "io.whatfees",
   "host": "unschoolers.github.io",
-  "name": "calcul8tr",
-  "launcherName": "c8",
+  "name": "WhatFees",
+  "launcherName": "WhatFees",
   "display": "standalone",
   "themeColor": "#E63946",
   "themeColorDark": "#000000",
@@ -17,8 +17,8 @@
   "maskableIconUrl": "https://unschoolers.github.io/Calcul8/icons/icon-512.png",
   "splashScreenFadeOutDuration": 300,
   "signingKey": {
-    "path": "calcul8tr-upload.jks",
-    "alias": "calcul8tr-upload"
+    "path": "whatfees-upload.jks",
+    "alias": "whatfees-upload"
   },
   "appVersionName": "1.0.10",
   "appVersionCode": 11,

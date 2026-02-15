@@ -34,7 +34,6 @@ const PRO_ACCESS_KEY = "rtyh_pro_access";
 const GOOGLE_TOKEN_KEY = "rtyh_google_id_token";
 const DEBUG_USER_KEY = "rtyh_debug_user_id";
 const SYNC_CLIENT_VERSION_KEY = "rtyh_sync_client_version";
-const PROD_API_BASE_FALLBACK = "https://calcul8te-d5fyc8eyadawhkgd.canadacentral-01.azurewebsites.net/api";
 const CLOUD_SYNC_INTERVAL_MS = 60 * 1000;
 const SYNC_STATUS_RESET_MS = 2500;
 const GOOGLE_INIT_RETRY_COUNT = 20;
@@ -45,11 +44,6 @@ function resolveApiBaseUrl(): string {
   if (configuredApiBase) {
     return configuredApiBase.replace(/\/+$/, "");
   }
-
-  if (!import.meta.env.DEV && window.location.hostname === "unschoolers.github.io") {
-    return PROD_API_BASE_FALLBACK;
-  }
-
   return "";
 }
 
@@ -293,7 +287,7 @@ export const uiMethods: ThisType<AppContext> & Pick<
       this.showVerifyPurchaseModal = false;
       this.notify("Purchase verified. Pro features unlocked.", "success");
     } catch (error) {
-      console.warn("[calcul8tr] Purchase verification error", error);
+      console.warn("[whatfees] Purchase verification error", error);
       this.notify("Could not verify purchase. Please try again.", "error");
     } finally {
       this.isVerifyingPurchase = false;
@@ -367,7 +361,7 @@ export const uiMethods: ThisType<AppContext> & Pick<
           this.syncStatus = "idle";
           this.syncStatusResetTimeoutId = null;
         }, SYNC_STATUS_RESET_MS);
-        console.warn("[calcul8tr] Cloud sync skipped: auth expired");
+        console.warn("[whatfees] Cloud sync skipped: auth expired");
         return;
       }
 
@@ -377,7 +371,7 @@ export const uiMethods: ThisType<AppContext> & Pick<
           this.syncStatus = "idle";
           this.syncStatusResetTimeoutId = null;
         }, SYNC_STATUS_RESET_MS);
-        console.warn("[calcul8tr] Cloud sync push failed", {
+        console.warn("[whatfees] Cloud sync push failed", {
           status: response.status,
           statusText: response.statusText
         });
@@ -395,21 +389,21 @@ export const uiMethods: ThisType<AppContext> & Pick<
         this.syncStatus = "idle";
         this.syncStatusResetTimeoutId = null;
       }, SYNC_STATUS_RESET_MS);
-      console.info("[calcul8tr] Cloud sync pushed");
+      console.info("[whatfees] Cloud sync pushed");
     } catch (error) {
       this.syncStatus = "error";
       this.syncStatusResetTimeoutId = window.setTimeout(() => {
         this.syncStatus = "idle";
         this.syncStatusResetTimeoutId = null;
       }, SYNC_STATUS_RESET_MS);
-      console.warn("[calcul8tr] Cloud sync push error", error);
+      console.warn("[whatfees] Cloud sync push error", error);
     }
   },
 
   async debugLogEntitlement(forceRefresh = false): Promise<void> {
     const base = resolveApiBaseUrl();
     if (!base) {
-      console.info("[calcul8tr] Entitlement sync skipped: VITE_API_BASE_URL is not set.");
+      console.info("[whatfees] Entitlement sync skipped: VITE_API_BASE_URL is not set.");
       return;
     }
     const debugUserId = localStorage.getItem(DEBUG_USER_KEY) || "debug-user";
@@ -420,7 +414,7 @@ export const uiMethods: ThisType<AppContext> & Pick<
     if (!forceRefresh && cached && Date.now() - cached.cachedAt < ttlMs) {
       this.hasProAccess = cached.hasProAccess;
       localStorage.setItem(PRO_ACCESS_KEY, cached.hasProAccess ? "1" : "0");
-      console.info("[calcul8tr] Entitlement cache hit", {
+      console.info("[whatfees] Entitlement cache hit", {
         userId: cached.userId,
         hasProAccess: cached.hasProAccess,
         updatedAt: cached.updatedAt
@@ -451,7 +445,7 @@ export const uiMethods: ThisType<AppContext> & Pick<
       }
 
       if (!response.ok) {
-        console.warn("[calcul8tr] Entitlement debug fetch failed", {
+        console.warn("[whatfees] Entitlement debug fetch failed", {
           status: response.status,
           statusText: response.statusText
         });
@@ -472,13 +466,13 @@ export const uiMethods: ThisType<AppContext> & Pick<
         cachedAt: Date.now()
       });
 
-      console.log("[calcul8tr] Entitlement sync", {
+      console.log("[whatfees] Entitlement sync", {
         userId,
         hasProAccess,
         updatedAt
       });
     } catch (error) {
-      console.warn("[calcul8tr] Entitlement sync error", error);
+      console.warn("[whatfees] Entitlement sync error", error);
     }
   }
 };

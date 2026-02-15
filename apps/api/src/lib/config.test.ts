@@ -53,7 +53,7 @@ test("config defaults to dev and sensible defaults", () => {
       const config = getConfig();
       assert.equal(config.apiEnv, "dev");
       assert.equal(config.authBypassDev, true);
-      assert.equal(config.cosmosDatabaseId, "calcul8tr");
+      assert.equal(config.cosmosDatabaseId, "whatfees");
       assert.equal(config.entitlementsContainerId, "entitlements");
       assert.equal(config.syncContainerId, "sync_data");
       assert.deepEqual(config.allowedOrigins, []);
