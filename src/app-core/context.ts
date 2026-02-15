@@ -92,6 +92,8 @@ export interface AppMethodState {
   startCloudSyncScheduler(): void;
   stopCloudSyncScheduler(): void;
   setupPwaUiHandlers(): void;
+  startOfflineReconnectScheduler(): void;
+  stopOfflineReconnectScheduler(): void;
   promptInstall(): Promise<void>;
   debugLogEntitlement(forceRefresh?: boolean): Promise<void>;
   unregisterServiceWorkersForDev(): Promise<void>;

@@ -1,5 +1,6 @@
 import type { HttpRequest } from "@azure/functions";
 import type { ApiConfig } from "../types";
+import { fetchWithRetry } from "./retry";
 
 export class HttpError extends Error {
   readonly status: number;
@@ -21,7 +22,16 @@ interface GoogleTokenInfoResponse {
 }
 
 async function verifyGoogleIdToken(idToken: string, config: ApiConfig): Promise<string | null> {
-  const response = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`);
+  const response = await fetchWithRetry(
+    `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`,
+    {
+      method: "GET"
+    },
+    {
+      maxAttempts: 3,
+      timeoutMs: 8_000
+    }
+  );
   if (!response.ok) return null;
 
   const payload = (await response.json()) as GoogleTokenInfoResponse;

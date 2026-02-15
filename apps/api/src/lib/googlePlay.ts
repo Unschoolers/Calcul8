@@ -1,6 +1,7 @@
 import { createSign } from "node:crypto";
 import { HttpError } from "./auth";
 import type { ApiConfig } from "../types";
+import { fetchWithRetry } from "./retry";
 
 const ANDROID_PUBLISHER_SCOPE = "https://www.googleapis.com/auth/androidpublisher";
 const OAUTH_TOKEN_URL = "https://oauth2.googleapis.com/token";
@@ -89,13 +90,20 @@ async function getGoogleApiAccessToken(config: ApiConfig): Promise<string> {
     assertion
   });
 
-  const response = await fetch(OAUTH_TOKEN_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded"
+  const response = await fetchWithRetry(
+    OAUTH_TOKEN_URL,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded"
+      },
+      body: tokenRequestBody.toString()
     },
-    body: tokenRequestBody.toString()
-  });
+    {
+      maxAttempts: 3,
+      timeoutMs: 10_000
+    }
+  );
 
   if (!response.ok) {
     throw new HttpError(502, "Failed to obtain Google Play access token.");
@@ -131,11 +139,18 @@ export async function verifyPlayProductPurchase(
     encodeURIComponent(input.purchaseToken)
   ].join("/");
 
-  const response = await fetch(endpoint, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`
+  const response = await fetchWithRetry(
+    endpoint,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`
+      }
+    },
+    {
+      maxAttempts: 3,
+      timeoutMs: 10_000
     }
-  });
+  );
 
   if (response.status === 404) {
     return {
@@ -170,4 +185,3 @@ export async function verifyPlayProductPurchase(
     purchaseTimeMillis
   };
 }
-

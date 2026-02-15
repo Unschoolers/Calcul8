@@ -88,6 +88,7 @@ export function createInitialState(): AppState {
     cloudSyncIntervalId: null,
     lastSyncedPayloadHash: null,
     syncStatus: "idle",
-    syncStatusResetTimeoutId: null
+    syncStatusResetTimeoutId: null,
+    offlineReconnectIntervalId: null
   };
 }

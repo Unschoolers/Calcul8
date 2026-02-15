@@ -14,6 +14,8 @@ interface CosmosCache {
 }
 
 let cosmosCache: CosmosCache | null = null;
+const COSMOS_MAX_RETRY_ATTEMPTS = 3;
+const COSMOS_BASE_RETRY_DELAY_MS = 200;
 
 function isNotFoundError(error: unknown): boolean {
   if (typeof error !== "object" || error === null) return false;
@@ -26,6 +28,57 @@ function isNotFoundError(error: unknown): boolean {
     code === "NotFound" ||
     code === "notfound"
   );
+}
+
+function isRetryableCosmosError(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false;
+  const statusCode = (error as { statusCode?: unknown }).statusCode;
+  const code = (error as { code?: unknown }).code;
+
+  return (
+    statusCode === 408 ||
+    statusCode === 429 ||
+    statusCode === 449 ||
+    statusCode === 500 ||
+    statusCode === 503 ||
+    code === "RequestTimeout" ||
+    code === "TooManyRequests"
+  );
+}
+
+function getRetryAfterMs(error: unknown): number | null {
+  if (typeof error !== "object" || error === null) return null;
+  const retryAfterInMs = (error as { retryAfterInMs?: unknown }).retryAfterInMs;
+  if (typeof retryAfterInMs === "number" && Number.isFinite(retryAfterInMs) && retryAfterInMs >= 0) {
+    return retryAfterInMs;
+  }
+  return null;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+async function withCosmosRetry<T>(operation: () => Promise<T>): Promise<T> {
+  let attempt = 0;
+
+  while (true) {
+    attempt += 1;
+    try {
+      return await operation();
+    } catch (error) {
+      if (!isRetryableCosmosError(error) || attempt >= COSMOS_MAX_RETRY_ATTEMPTS) {
+        throw error;
+      }
+
+      const retryAfterMs = getRetryAfterMs(error);
+      const exponentialDelayMs = COSMOS_BASE_RETRY_DELAY_MS * Math.pow(2, attempt - 1);
+      const jitterMs = Math.round(Math.random() * 100);
+      await sleep(retryAfterMs ?? exponentialDelayMs + jitterMs);
+    }
+  }
 }
 
 function entitlementId(userId: string): string {
@@ -69,7 +122,7 @@ export async function getEntitlement(
   const id = entitlementId(userId);
 
   try {
-    const { resource } = await entitlements.item(id, userId).read<EntitlementDocument>();
+    const { resource } = await withCosmosRetry(() => entitlements.item(id, userId).read<EntitlementDocument>());
     return resource ?? null;
   } catch (error) {
     if (isNotFoundError(error)) return null;
@@ -82,10 +135,12 @@ export async function upsertEntitlement(
   entitlement: EntitlementDocument
 ): Promise<EntitlementDocument> {
   const { entitlements } = getContainers(config);
-  const { resource } = await entitlements.items.upsert<EntitlementDocument>({
-    ...entitlement,
-    id: entitlementId(entitlement.userId)
-  });
+  const { resource } = await withCosmosRetry(() =>
+    entitlements.items.upsert<EntitlementDocument>({
+      ...entitlement,
+      id: entitlementId(entitlement.userId)
+    })
+  );
 
   if (!resource) {
     throw new Error("Failed to upsert entitlement.");
@@ -102,7 +157,7 @@ export async function deleteEntitlement(
   const id = entitlementId(userId);
 
   try {
-    await entitlements.item(id, userId).delete();
+    await withCosmosRetry(() => entitlements.item(id, userId).delete());
   } catch (error) {
     if (isNotFoundError(error)) return;
     throw error;
@@ -117,7 +172,7 @@ export async function getSyncSnapshot(
   const id = syncSnapshotId(userId);
 
   try {
-    const { resource } = await syncSnapshots.item(id, userId).read<SyncSnapshotDocument>();
+    const { resource } = await withCosmosRetry(() => syncSnapshots.item(id, userId).read<SyncSnapshotDocument>());
     return resource ?? null;
   } catch (error) {
     if (isNotFoundError(error)) return null;
@@ -147,7 +202,7 @@ export async function getSyncPresetDocuments(
   const iterator = syncSnapshots.items.query<SyncPresetDocument>(querySpec, {
     partitionKey: userId
   });
-  const { resources } = await iterator.fetchAll();
+  const { resources } = await withCosmosRetry(() => iterator.fetchAll());
   return resources ?? [];
 }
 
@@ -159,7 +214,7 @@ export async function getSyncMetaDocument(
   const id = syncMetaId(userId);
 
   try {
-    const { resource } = await syncSnapshots.item(id, userId).read<SyncMetaDocument>();
+    const { resource } = await withCosmosRetry(() => syncSnapshots.item(id, userId).read<SyncMetaDocument>());
     return resource ?? null;
   } catch (error) {
     if (isNotFoundError(error)) return null;
@@ -305,7 +360,7 @@ export async function upsertSyncSnapshotIncremental(
       updatedAt: input.updatedAt
     };
 
-    await syncSnapshots.items.upsert<SyncPresetDocument>(document);
+    await withCosmosRetry(() => syncSnapshots.items.upsert<SyncPresetDocument>(document));
     upsertedCount += 1;
   }
 
@@ -313,7 +368,7 @@ export async function upsertSyncSnapshotIncremental(
   for (const presetId of diff.deletePresetIds) {
     const id = syncPresetId(input.userId, presetId);
     try {
-      await syncSnapshots.item(id, input.userId).delete();
+      await withCosmosRetry(() => syncSnapshots.item(id, input.userId).delete());
       deletedCount += 1;
     } catch (error) {
       if (!isNotFoundError(error)) throw error;
@@ -330,7 +385,7 @@ export async function upsertSyncSnapshotIncremental(
       version: input.version,
       updatedAt: input.updatedAt
     };
-    await syncSnapshots.items.upsert<SyncMetaDocument>(metaDocument);
+    await withCosmosRetry(() => syncSnapshots.items.upsert<SyncMetaDocument>(metaDocument));
   }
 
   return {
@@ -345,10 +400,12 @@ export async function upsertSyncSnapshot(
   snapshot: SyncSnapshotDocument
 ): Promise<SyncSnapshotDocument> {
   const { syncSnapshots } = getContainers(config);
-  const { resource } = await syncSnapshots.items.upsert<SyncSnapshotDocument>({
-    ...snapshot,
-    id: syncSnapshotId(snapshot.userId)
-  });
+  const { resource } = await withCosmosRetry(() =>
+    syncSnapshots.items.upsert<SyncSnapshotDocument>({
+      ...snapshot,
+      id: syncSnapshotId(snapshot.userId)
+    })
+  );
 
   if (!resource) {
     throw new Error("Failed to upsert sync snapshot.");
@@ -365,7 +422,7 @@ export async function deleteSyncSnapshot(
   const id = syncSnapshotId(userId);
 
   try {
-    await syncSnapshots.item(id, userId).delete();
+    await withCosmosRetry(() => syncSnapshots.item(id, userId).delete());
   } catch (error) {
     if (isNotFoundError(error)) return;
     throw error;
@@ -381,20 +438,20 @@ export async function deleteAllSyncData(
   const presetDocuments = await getSyncPresetDocuments(config, userId);
   for (const document of presetDocuments) {
     try {
-      await syncSnapshots.item(document.id, userId).delete();
+      await withCosmosRetry(() => syncSnapshots.item(document.id, userId).delete());
     } catch (error) {
       if (!isNotFoundError(error)) throw error;
     }
   }
 
   const deletions = [
-    syncSnapshots.item(syncMetaId(userId), userId).delete(),
-    syncSnapshots.item(syncSnapshotId(userId), userId).delete()
+    () => syncSnapshots.item(syncMetaId(userId), userId).delete(),
+    () => syncSnapshots.item(syncSnapshotId(userId), userId).delete()
   ];
 
   for (const deletion of deletions) {
     try {
-      await deletion;
+      await withCosmosRetry(deletion);
     } catch (error) {
       if (!isNotFoundError(error)) throw error;
     }

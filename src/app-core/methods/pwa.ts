@@ -4,15 +4,24 @@ import type { AppContext, AppMethodState } from "../context.ts";
 
 export const pwaMethods: ThisType<AppContext> & Pick<
   AppMethodState,
-  "setupPwaUiHandlers" | "promptInstall" | "unregisterServiceWorkersForDev" | "registerServiceWorker"
+  | "setupPwaUiHandlers"
+  | "startOfflineReconnectScheduler"
+  | "stopOfflineReconnectScheduler"
+  | "promptInstall"
+  | "unregisterServiceWorkersForDev"
+  | "registerServiceWorker"
 > = {
   setupPwaUiHandlers(): void {
     this.onlineListener = () => {
       this.isOffline = false;
       this.notify("Back online", "success");
+      this.stopOfflineReconnectScheduler();
+      void this.debugLogEntitlement(true);
+      void this.pushCloudSync(true);
     };
     this.offlineListener = () => {
       this.isOffline = true;
+      this.startOfflineReconnectScheduler();
     };
     this.beforeInstallPromptListener = (event: Event) => {
       const promptEvent = event as BeforeInstallPromptEvent;
@@ -29,6 +38,35 @@ export const pwaMethods: ThisType<AppContext> & Pick<
     window.addEventListener("offline", this.offlineListener);
     window.addEventListener("beforeinstallprompt", this.beforeInstallPromptListener);
     window.addEventListener("appinstalled", this.appInstalledListener);
+
+    if (this.isOffline) {
+      this.startOfflineReconnectScheduler();
+    }
+  },
+
+  startOfflineReconnectScheduler(): void {
+    if (this.offlineReconnectIntervalId != null) return;
+
+    this.offlineReconnectIntervalId = window.setInterval(() => {
+      if (!this.isOffline) {
+        this.stopOfflineReconnectScheduler();
+        return;
+      }
+
+      if (!navigator.onLine) return;
+
+      this.isOffline = false;
+      this.notify("Connection restored. Syncing…", "info");
+      this.stopOfflineReconnectScheduler();
+      void this.debugLogEntitlement(true);
+      void this.pushCloudSync(true);
+    }, 60 * 1000);
+  },
+
+  stopOfflineReconnectScheduler(): void {
+    if (this.offlineReconnectIntervalId == null) return;
+    window.clearInterval(this.offlineReconnectIntervalId);
+    this.offlineReconnectIntervalId = null;
   },
 
   async promptInstall(): Promise<void> {

@@ -122,4 +122,5 @@ export interface AppState extends PresetSetup {
   lastSyncedPayloadHash: string | null;
   syncStatus: SyncStatus;
   syncStatusResetTimeoutId: number | null;
+  offlineReconnectIntervalId: number | null;
 }

@@ -30,6 +30,7 @@ export const appLifecycle: AppLifecycleObject = {
 
   beforeUnmount() {
     this.stopCloudSyncScheduler();
+    this.stopOfflineReconnectScheduler();
     if (this.syncStatusResetTimeoutId != null) {
       window.clearTimeout(this.syncStatusResetTimeoutId);
       this.syncStatusResetTimeoutId = null;

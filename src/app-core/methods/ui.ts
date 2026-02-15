@@ -38,11 +38,16 @@ const CLOUD_SYNC_INTERVAL_MS = 60 * 1000;
 const SYNC_STATUS_RESET_MS = 2500;
 const GOOGLE_INIT_RETRY_COUNT = 20;
 const GOOGLE_INIT_RETRY_DELAY_MS = 250;
+const API_MAX_RETRY_ATTEMPTS = 3;
+const API_BASE_RETRY_DELAY_MS = 500;
+const API_FETCH_TIMEOUT_MS = 12_000;
 
 function resolveApiBaseUrl(): string {
   const configuredApiBase = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim() || "";
   if (configuredApiBase) {
-    return configuredApiBase.replace(/\/+$/, "");
+    const normalized = configuredApiBase.replace(/\/+$/, "");
+    localStorage.setItem("whatfees_api_base_url", normalized);
+    return normalized;
   }
   return "";
 }
@@ -83,6 +88,88 @@ function clearEntitlementCache(): void {
   localStorage.removeItem(ENTITLEMENT_CACHE_KEY);
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
+function isRetryableStatus(status: number): boolean {
+  return status === 408 || status === 429 || (status >= 500 && status <= 599);
+}
+
+function isRetryableError(error: unknown): boolean {
+  if (error instanceof DOMException && error.name === "AbortError") return true;
+  return error instanceof TypeError;
+}
+
+function parseRetryAfterMs(headers: Headers): number | null {
+  const retryAfter = headers.get("retry-after");
+  if (!retryAfter) return null;
+
+  const seconds = Number(retryAfter);
+  if (Number.isFinite(seconds) && seconds >= 0) {
+    return Math.round(seconds * 1000);
+  }
+
+  const dateMs = Date.parse(retryAfter);
+  if (Number.isFinite(dateMs)) {
+    return Math.max(0, dateMs - Date.now());
+  }
+
+  return null;
+}
+
+interface FetchRetryOptions {
+  maxAttempts?: number;
+  baseDelayMs?: number;
+  timeoutMs?: number;
+}
+
+async function fetchWithRetry(
+  input: string,
+  init: RequestInit,
+  {
+    maxAttempts = API_MAX_RETRY_ATTEMPTS,
+    baseDelayMs = API_BASE_RETRY_DELAY_MS,
+    timeoutMs = API_FETCH_TIMEOUT_MS
+  }: FetchRetryOptions = {}
+): Promise<Response> {
+  let attempt = 0;
+
+  while (true) {
+    attempt += 1;
+
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const response = await fetch(input, {
+        ...init,
+        signal: controller.signal
+      });
+
+      if (!isRetryableStatus(response.status) || attempt >= maxAttempts) {
+        return response;
+      }
+
+      const retryAfterMs = parseRetryAfterMs(response.headers);
+      const exponentialDelayMs = baseDelayMs * Math.pow(2, attempt - 1);
+      const jitterMs = Math.round(Math.random() * 200);
+      await sleep(retryAfterMs ?? exponentialDelayMs + jitterMs);
+    } catch (error) {
+      if (!isRetryableError(error) || attempt >= maxAttempts) {
+        throw error;
+      }
+      const exponentialDelayMs = baseDelayMs * Math.pow(2, attempt - 1);
+      const jitterMs = Math.round(Math.random() * 200);
+      await sleep(exponentialDelayMs + jitterMs);
+    } finally {
+      window.clearTimeout(timeoutId);
+    }
+  }
+}
+
 export const uiMethods: ThisType<AppContext> & Pick<
   AppMethodState,
   | "toggleTheme"
@@ -106,7 +193,7 @@ export const uiMethods: ThisType<AppContext> & Pick<
   | "debugLogEntitlement"
 > = {
   toggleTheme(): void {
-    this.$vuetify.theme.global.name = this.isDark ? "unionArenaLight" : "unionArenaDark";
+    this.$vuetify.theme.change(this.isDark ? "unionArenaLight" : "unionArenaDark");
   },
 
   notify(message: string, color: UiColor = "info"): void {
@@ -249,7 +336,7 @@ export const uiMethods: ThisType<AppContext> & Pick<
     this.isVerifyingPurchase = true;
 
     try {
-      const response = await fetch(`${base}/entitlements/verify-play`, {
+      const response = await fetchWithRetry(`${base}/entitlements/verify-play`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -310,6 +397,11 @@ export const uiMethods: ThisType<AppContext> & Pick<
   async pushCloudSync(force = false): Promise<void> {
     const base = resolveApiBaseUrl();
     if (!base) return;
+    if (!navigator.onLine) {
+      this.isOffline = true;
+      this.startOfflineReconnectScheduler();
+      return;
+    }
 
     const googleIdToken = (localStorage.getItem(GOOGLE_TOKEN_KEY) || "").trim();
     if (!googleIdToken) return;
@@ -337,7 +429,7 @@ export const uiMethods: ThisType<AppContext> & Pick<
     }
 
     try {
-      const response = await fetch(`${base}/sync/push`, {
+      const response = await fetchWithRetry(`${base}/sync/push`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -391,6 +483,10 @@ export const uiMethods: ThisType<AppContext> & Pick<
       }, SYNC_STATUS_RESET_MS);
       console.info("[whatfees] Cloud sync pushed");
     } catch (error) {
+      if (!navigator.onLine) {
+        this.isOffline = true;
+        this.startOfflineReconnectScheduler();
+      }
       this.syncStatus = "error";
       this.syncStatusResetTimeoutId = window.setTimeout(() => {
         this.syncStatus = "idle";
@@ -429,7 +525,7 @@ export const uiMethods: ThisType<AppContext> & Pick<
     const fallbackHeaders: Record<string, string> = { "x-user-id": debugUserId };
 
     try {
-      let response = await fetch(`${base}/entitlements/me`, {
+      let response = await fetchWithRetry(`${base}/entitlements/me`, {
         headers: authHeaders
       });
 
@@ -439,7 +535,7 @@ export const uiMethods: ThisType<AppContext> & Pick<
         localStorage.removeItem(PRO_ACCESS_KEY);
         this.hasProAccess = false;
         this.initGoogleAutoLogin();
-        response = await fetch(`${base}/entitlements/me`, {
+        response = await fetchWithRetry(`${base}/entitlements/me`, {
           headers: fallbackHeaders
         });
       }
@@ -472,6 +568,10 @@ export const uiMethods: ThisType<AppContext> & Pick<
         updatedAt
       });
     } catch (error) {
+      if (!navigator.onLine) {
+        this.isOffline = true;
+        this.startOfflineReconnectScheduler();
+      }
       console.warn("[whatfees] Entitlement sync error", error);
     }
   }
