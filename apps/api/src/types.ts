@@ -33,6 +33,25 @@ export interface SyncSnapshotDocument {
   updatedAt: string;
 }
 
+export interface SyncPresetDocument {
+  id: string;
+  docType: "sync_preset";
+  userId: string;
+  presetId: string;
+  preset: unknown;
+  sales: unknown[];
+  version: number;
+  updatedAt: string;
+}
+
+export interface SyncMetaDocument {
+  id: string;
+  docType: "sync_meta";
+  userId: string;
+  version: number;
+  updatedAt: string;
+}
+
 export interface SyncPushPayload {
   presets: unknown[];
   salesByPreset: Record<string, unknown[]>;

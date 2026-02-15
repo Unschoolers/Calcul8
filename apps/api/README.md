@@ -75,13 +75,23 @@ Recommended partition key for both containers: `/userId`.
   - `purchaseSource`
   - `updatedAt`
 
-- `sync_data` container:
-  - `id`: `sync:<userId>`
-  - `userId`
-  - `presets` (array)
-  - `salesByPreset` (object of arrays)
-  - `version`
-  - `updatedAt`
+- `sync_data` container (incremental model):
+  - preset docs:
+    - `id`: `sync:preset:<userId>:<presetId>`
+    - `docType`: `sync_preset`
+    - `userId`
+    - `presetId`
+    - `preset`
+    - `sales`
+    - `version`
+    - `updatedAt`
+  - meta doc:
+    - `id`: `sync:meta:<userId>`
+    - `docType`: `sync_meta`
+    - `userId`
+    - `version`
+    - `updatedAt`
+  - legacy `sync:<userId>` snapshots are still readable for backward compatibility.
 
 ## Security notes
 

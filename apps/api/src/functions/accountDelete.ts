@@ -1,7 +1,7 @@
 import { app, type HttpRequest, type HttpResponseInit, type InvocationContext } from "@azure/functions";
 import { resolveUserId } from "../lib/auth";
 import { getConfig } from "../lib/config";
-import { deleteEntitlement, deleteSyncSnapshot } from "../lib/cosmos";
+import { deleteAllSyncData, deleteEntitlement } from "../lib/cosmos";
 import { errorResponse, handleCorsPreflight, jsonResponse } from "../lib/http";
 
 export async function accountDelete(
@@ -19,7 +19,7 @@ export async function accountDelete(
 
     await Promise.all([
       deleteEntitlement(config, userId),
-      deleteSyncSnapshot(config, userId)
+      deleteAllSyncData(config, userId)
     ]);
 
     return jsonResponse(request, config, 200, {
@@ -39,4 +39,3 @@ app.http("accountDelete", {
   route: "account/delete",
   handler: accountDelete
 });
-

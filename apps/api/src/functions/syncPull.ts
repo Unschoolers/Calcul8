@@ -1,7 +1,7 @@
 import { app, type HttpRequest, type HttpResponseInit, type InvocationContext } from "@azure/functions";
 import { resolveUserId } from "../lib/auth";
 import { getConfig } from "../lib/config";
-import { getSyncSnapshot } from "../lib/cosmos";
+import { getEffectiveSyncSnapshot } from "../lib/cosmos";
 import { errorResponse, handleCorsPreflight, jsonResponse } from "../lib/http";
 
 export async function syncPull(
@@ -16,7 +16,7 @@ export async function syncPull(
 
   try {
     const userId = await resolveUserId(request, config);
-    const snapshot = await getSyncSnapshot(config, userId);
+    const snapshot = await getEffectiveSyncSnapshot(config, userId);
 
     return jsonResponse(request, config, 200, {
       userId,

@@ -1,7 +1,7 @@
 import { app, type HttpRequest, type HttpResponseInit, type InvocationContext } from "@azure/functions";
 import { resolveUserId } from "../lib/auth";
 import { getConfig } from "../lib/config";
-import { getEntitlement, getSyncSnapshot } from "../lib/cosmos";
+import { getEffectiveSyncSnapshot, getEntitlement } from "../lib/cosmos";
 import { errorResponse, handleCorsPreflight, jsonResponse } from "../lib/http";
 
 export async function accountExport(
@@ -17,7 +17,7 @@ export async function accountExport(
   try {
     const userId = await resolveUserId(request, config);
     const entitlement = await getEntitlement(config, userId);
-    const syncSnapshot = await getSyncSnapshot(config, userId);
+    const syncSnapshot = await getEffectiveSyncSnapshot(config, userId);
 
     return jsonResponse(request, config, 200, {
       userId,
@@ -37,4 +37,3 @@ app.http("accountExport", {
   route: "account/export",
   handler: accountExport
 });
-
