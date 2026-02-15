@@ -30,6 +30,10 @@ export const appLifecycle: AppLifecycleObject = {
 
   beforeUnmount() {
     this.stopCloudSyncScheduler();
+    if (this.syncStatusResetTimeoutId != null) {
+      window.clearTimeout(this.syncStatusResetTimeoutId);
+      this.syncStatusResetTimeoutId = null;
+    }
     if (this.onlineListener) window.removeEventListener("online", this.onlineListener);
     if (this.offlineListener) window.removeEventListener("offline", this.offlineListener);
     if (this.beforeInstallPromptListener) window.removeEventListener("beforeinstallprompt", this.beforeInstallPromptListener);

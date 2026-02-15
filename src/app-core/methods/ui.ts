@@ -36,6 +36,7 @@ const DEBUG_USER_KEY = "rtyh_debug_user_id";
 const SYNC_CLIENT_VERSION_KEY = "rtyh_sync_client_version";
 const PROD_API_BASE_FALLBACK = "https://calcul8te-d5fyc8eyadawhkgd.canadacentral-01.azurewebsites.net/api";
 const CLOUD_SYNC_INTERVAL_MS = 60 * 1000;
+const SYNC_STATUS_RESET_MS = 2500;
 const GOOGLE_INIT_RETRY_COUNT = 20;
 const GOOGLE_INIT_RETRY_DELAY_MS = 250;
 
@@ -82,6 +83,10 @@ function readEntitlementCache(): EntitlementCachePayload | null {
 
 function writeEntitlementCache(payload: EntitlementCachePayload): void {
   localStorage.setItem(ENTITLEMENT_CACHE_KEY, JSON.stringify(payload));
+}
+
+function clearEntitlementCache(): void {
+  localStorage.removeItem(ENTITLEMENT_CACHE_KEY);
 }
 
 export const uiMethods: ThisType<AppContext> & Pick<
@@ -180,6 +185,17 @@ export const uiMethods: ThisType<AppContext> & Pick<
 
   initGoogleAutoLogin(): void {
     const clientId = (import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined)?.trim() || "";
+    const existingToken = (localStorage.getItem(GOOGLE_TOKEN_KEY) || "").trim();
+    if (existingToken) {
+      return;
+    }
+
+    const cachedEntitlement = readEntitlementCache();
+    if (cachedEntitlement?.hasProAccess) {
+      this.hasProAccess = true;
+      return;
+    }
+
     initGoogleAutoLoginWithRetry({
       clientId,
       getGoogleIdentity: () => window.google?.accounts?.id,
@@ -250,6 +266,10 @@ export const uiMethods: ThisType<AppContext> & Pick<
 
       if (response.status === 401) {
         localStorage.removeItem(GOOGLE_TOKEN_KEY);
+        clearEntitlementCache();
+        localStorage.removeItem(PRO_ACCESS_KEY);
+        this.hasProAccess = false;
+        this.initGoogleAutoLogin();
         this.notify("Your sign-in expired. Please sign in again.", "warning");
         return;
       }
@@ -316,6 +336,11 @@ export const uiMethods: ThisType<AppContext> & Pick<
     const previousVersionRaw = localStorage.getItem(SYNC_CLIENT_VERSION_KEY) || "0";
     const previousVersion = Number(previousVersionRaw);
     const clientVersion = Number.isFinite(previousVersion) ? previousVersion : 0;
+    this.syncStatus = "syncing";
+    if (this.syncStatusResetTimeoutId != null) {
+      window.clearTimeout(this.syncStatusResetTimeoutId);
+      this.syncStatusResetTimeoutId = null;
+    }
 
     try {
       const response = await fetch(`${base}/sync/push`, {
@@ -333,11 +358,25 @@ export const uiMethods: ThisType<AppContext> & Pick<
 
       if (response.status === 401) {
         localStorage.removeItem(GOOGLE_TOKEN_KEY);
+        clearEntitlementCache();
+        localStorage.removeItem(PRO_ACCESS_KEY);
+        this.hasProAccess = false;
+        this.initGoogleAutoLogin();
+        this.syncStatus = "error";
+        this.syncStatusResetTimeoutId = window.setTimeout(() => {
+          this.syncStatus = "idle";
+          this.syncStatusResetTimeoutId = null;
+        }, SYNC_STATUS_RESET_MS);
         console.warn("[calcul8tr] Cloud sync skipped: auth expired");
         return;
       }
 
       if (!response.ok) {
+        this.syncStatus = "error";
+        this.syncStatusResetTimeoutId = window.setTimeout(() => {
+          this.syncStatus = "idle";
+          this.syncStatusResetTimeoutId = null;
+        }, SYNC_STATUS_RESET_MS);
         console.warn("[calcul8tr] Cloud sync push failed", {
           status: response.status,
           statusText: response.statusText
@@ -351,8 +390,18 @@ export const uiMethods: ThisType<AppContext> & Pick<
         localStorage.setItem(SYNC_CLIENT_VERSION_KEY, String(serverVersion));
       }
       this.lastSyncedPayloadHash = payloadSignature;
+      this.syncStatus = "success";
+      this.syncStatusResetTimeoutId = window.setTimeout(() => {
+        this.syncStatus = "idle";
+        this.syncStatusResetTimeoutId = null;
+      }, SYNC_STATUS_RESET_MS);
       console.info("[calcul8tr] Cloud sync pushed");
     } catch (error) {
+      this.syncStatus = "error";
+      this.syncStatusResetTimeoutId = window.setTimeout(() => {
+        this.syncStatus = "idle";
+        this.syncStatusResetTimeoutId = null;
+      }, SYNC_STATUS_RESET_MS);
       console.warn("[calcul8tr] Cloud sync push error", error);
     }
   },
@@ -392,6 +441,10 @@ export const uiMethods: ThisType<AppContext> & Pick<
 
       if (googleIdToken && response.status === 401) {
         localStorage.removeItem(GOOGLE_TOKEN_KEY);
+        clearEntitlementCache();
+        localStorage.removeItem(PRO_ACCESS_KEY);
+        this.hasProAccess = false;
+        this.initGoogleAutoLogin();
         response = await fetch(`${base}/entitlements/me`, {
           headers: fallbackHeaders
         });

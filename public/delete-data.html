@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WhatFees - Data Access & Deletion</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 2rem 1rem;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f6f7f9;
+      color: #111827;
+    }
+    .wrap {
+      max-width: 840px;
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 12px;
+      padding: 1.25rem;
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
+    }
+    h1 { margin: 0 0 0.5rem; }
+    p { line-height: 1.55; }
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin: 1rem 0;
+    }
+    button {
+      border: 1px solid #d1d5db;
+      background: #ffffff;
+      border-radius: 8px;
+      padding: 0.55rem 0.85rem;
+      cursor: pointer;
+      font-size: 0.95rem;
+    }
+    button.primary {
+      border-color: #e63946;
+      background: #e63946;
+      color: #fff;
+    }
+    button.danger {
+      border-color: #dc2626;
+      color: #fff;
+      background: #dc2626;
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    pre {
+      background: #111827;
+      color: #e5e7eb;
+      border-radius: 8px;
+      padding: 0.9rem;
+      overflow: auto;
+      min-height: 8rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .muted { color: #6b7280; font-size: 0.92rem; }
+    .ok { color: #047857; }
+    .warn { color: #b45309; }
+    .err { color: #b91c1c; }
+  </style>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+  <main class="wrap">
+    <h1>Data Access & Deletion</h1>
+    <p class="muted">
+      Use this page to view or delete your WhatFees account data stored on our backend.
+    </p>
+    <p id="status" class="warn">Not signed in.</p>
+
+    <div class="row">
+      <button id="signInBtn" class="primary">Sign in with Google</button>
+      <button id="viewBtn" disabled>View my data</button>
+      <button id="deleteBtn" class="danger" disabled>Delete my data</button>
+      <button id="signOutBtn" disabled>Sign out</button>
+    </div>
+
+    <pre id="output">No data loaded yet.</pre>
+    <p class="muted">Support: <a href="mailto:unschoolers.contact@gmail.com">unschoolers.contact@gmail.com</a></p>
+  </main>
+
+  <script>
+    const GOOGLE_CLIENT_ID = "718293345043-ddbenv1fv8ee7erh6af7stbajjuhua80.apps.googleusercontent.com";
+    const API_BASE_URL = "https://calcul8te-d5fyc8eyadawhkgd.canadacentral-01.azurewebsites.net/api";
+    const TOKEN_KEY = "rtyh_google_id_token";
+
+    const statusEl = document.getElementById("status");
+    const outputEl = document.getElementById("output");
+    const signInBtn = document.getElementById("signInBtn");
+    const viewBtn = document.getElementById("viewBtn");
+    const deleteBtn = document.getElementById("deleteBtn");
+    const signOutBtn = document.getElementById("signOutBtn");
+
+    function setStatus(text, cls) {
+      statusEl.textContent = text;
+      statusEl.className = cls || "";
+    }
+
+    function getToken() {
+      return (localStorage.getItem(TOKEN_KEY) || "").trim();
+    }
+
+    function setToken(token) {
+      localStorage.setItem(TOKEN_KEY, token);
+    }
+
+    function clearToken() {
+      localStorage.removeItem(TOKEN_KEY);
+    }
+
+    function updateUi() {
+      const loggedIn = !!getToken();
+      viewBtn.disabled = !loggedIn;
+      deleteBtn.disabled = !loggedIn;
+      signOutBtn.disabled = !loggedIn;
+      signInBtn.disabled = loggedIn;
+      if (!loggedIn) setStatus("Not signed in.", "warn");
+      if (loggedIn) setStatus("Signed in.", "ok");
+    }
+
+    async function apiPost(path) {
+      const token = getToken();
+      if (!token) throw new Error("Please sign in first.");
+      const res = await fetch(`${API_BASE_URL}${path}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        }
+      });
+      let data = null;
+      try {
+        data = await res.json();
+      } catch {}
+      if (!res.ok) {
+        const msg = data && data.error ? data.error : `HTTP ${res.status}`;
+        if (res.status === 401) {
+          clearToken();
+          updateUi();
+        }
+        throw new Error(msg);
+      }
+      return data;
+    }
+
+    function initGoogle() {
+      if (!window.google || !window.google.accounts || !window.google.accounts.id) {
+        setTimeout(initGoogle, 250);
+        return;
+      }
+      window.google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        auto_select: false,
+        callback: (response) => {
+          const token = (response && response.credential ? response.credential : "").trim();
+          if (!token) return;
+          setToken(token);
+          updateUi();
+          setStatus("Signed in.", "ok");
+        }
+      });
+    }
+
+    signInBtn.addEventListener("click", () => {
+      if (!window.google || !window.google.accounts || !window.google.accounts.id) {
+        setStatus("Google Sign-In is still loading, try again.", "warn");
+        return;
+      }
+      window.google.accounts.id.prompt();
+    });
+
+    signOutBtn.addEventListener("click", () => {
+      clearToken();
+      updateUi();
+      outputEl.textContent = "Signed out.";
+    });
+
+    viewBtn.addEventListener("click", async () => {
+      try {
+        setStatus("Loading your data...", "warn");
+        const data = await apiPost("/account/export");
+        outputEl.textContent = JSON.stringify(data, null, 2);
+        setStatus("Data export loaded.", "ok");
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to load data.";
+        outputEl.textContent = message;
+        setStatus(message, "err");
+      }
+    });
+
+    deleteBtn.addEventListener("click", async () => {
+      const confirmed = window.confirm("Delete all account data from cloud? This cannot be undone.");
+      if (!confirmed) return;
+      try {
+        setStatus("Deleting your data...", "warn");
+        const data = await apiPost("/account/delete");
+        outputEl.textContent = JSON.stringify(data, null, 2);
+        setStatus("Your cloud data was deleted.", "ok");
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to delete data.";
+        outputEl.textContent = message;
+        setStatus(message, "err");
+      }
+    });
+
+    initGoogle();
+    updateUi();
+  </script>
+</body>
+</html>

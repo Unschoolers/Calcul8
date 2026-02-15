@@ -10,7 +10,7 @@
   <meta name="apple-mobile-web-app-title" content="calcul8tr" />
   <title>calcul8tr</title>
   <link rel="icon" type="image/png" href="icons/icon-192.png" />
-  <link rel="manifest" href="/Calcul8/manifest.webmanifest" />
+  <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
   <link href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" rel="stylesheet" />
 
@@ -189,6 +189,29 @@
             @click="promptInstall"
           >
             Install
+          </v-btn>
+          <v-btn
+            v-if="syncStatus !== 'idle'"
+            icon
+            variant="text"
+            size="small"
+            :title="syncStatus === 'syncing' ? 'Syncing' : (syncStatus === 'success' ? 'Synced' : 'Sync failed')"
+            aria-label="Cloud sync status"
+          >
+            <v-progress-circular
+              v-if="syncStatus === 'syncing'"
+              indeterminate
+              size="16"
+              width="2"
+              color="primary"
+            ></v-progress-circular>
+            <v-icon
+              v-else
+              :color="syncStatus === 'success' ? 'success' : 'error'"
+              size="18"
+            >
+              {{ syncStatus === 'success' ? 'mdi-check-circle-outline' : 'mdi-alert-circle-outline' }}
+            </v-icon>
           </v-btn>
           <v-btn
             icon

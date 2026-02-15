@@ -5,6 +5,7 @@ export type CostInputMode = "perBox" | "total";
 export type CurrencyCode = "CAD" | "USD";
 export type SaleType = "pack" | "box" | "rtyh";
 export type ChartViewMode = "pie" | "sparkline";
+export type SyncStatus = "idle" | "syncing" | "success" | "error";
 export type UiColor =
   | "info"
   | "success"
@@ -119,4 +120,6 @@ export interface AppState extends PresetSetup {
   lastFetchTime: number | null;
   cloudSyncIntervalId: number | null;
   lastSyncedPayloadHash: string | null;
+  syncStatus: SyncStatus;
+  syncStatusResetTimeoutId: number | null;
 }

@@ -79,6 +79,21 @@ export async function upsertEntitlement(
   return resource;
 }
 
+export async function deleteEntitlement(
+  config: ApiConfig,
+  userId: string
+): Promise<void> {
+  const { entitlements } = getContainers(config);
+  const id = entitlementId(userId);
+
+  try {
+    await entitlements.item(id, userId).delete();
+  } catch (error) {
+    if (isNotFoundError(error)) return;
+    throw error;
+  }
+}
+
 export async function getSyncSnapshot(
   config: ApiConfig,
   userId: string
@@ -110,4 +125,19 @@ export async function upsertSyncSnapshot(
   }
 
   return resource;
+}
+
+export async function deleteSyncSnapshot(
+  config: ApiConfig,
+  userId: string
+): Promise<void> {
+  const { syncSnapshots } = getContainers(config);
+  const id = syncSnapshotId(userId);
+
+  try {
+    await syncSnapshots.item(id, userId).delete();
+  } catch (error) {
+    if (isNotFoundError(error)) return;
+    throw error;
+  }
 }
