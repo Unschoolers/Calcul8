@@ -1,6 +1,6 @@
 import type { AppContext, AppMethodState } from "../../context.ts";
 import { initGoogleAutoLoginWithRetry } from "../../utils/googleAutoLogin.ts";
-import { getPlayBillingService, purchasePlayProduct } from "../../utils/playBilling.ts";
+import { extractPurchaseTokenFromResult, getPlayBillingService, purchasePlayProduct, type DigitalGoodsService } from "../../utils/playBilling.ts";
 import {
   DEBUG_USER_KEY,
   GOOGLE_INIT_RETRY_COUNT,
@@ -17,6 +17,25 @@ import {
   writeEntitlementCache,
   type EntitlementApiResponse
 } from "./shared.ts";
+
+function formatPlayPurchaseError(error: unknown): string {
+  if (error instanceof Error) {
+    const message = `${error.name}${error.message ? `: ${error.message}` : ""}`.trim();
+    return message || "Unknown purchase error.";
+  }
+  if (typeof error === "string") {
+    return error;
+  }
+  if (typeof error === "object" && error !== null) {
+    const code = (error as { code?: unknown }).code;
+    const message = (error as { message?: unknown }).message;
+    const parts: string[] = [];
+    if (typeof code === "string" && code.trim()) parts.push(`code=${code.trim()}`);
+    if (typeof message === "string" && message.trim()) parts.push(message.trim());
+    if (parts.length > 0) return parts.join(" | ");
+  }
+  return "Unknown purchase error.";
+}
 
 export const uiEntitlementMethods: ThisType<AppContext> & Pick<
   AppMethodState,
@@ -94,9 +113,10 @@ export const uiEntitlementMethods: ThisType<AppContext> & Pick<
     }
 
     this.isVerifyingPurchase = true;
+    let playBilling: DigitalGoodsService | null = null;
 
     try {
-      const playBilling = await getPlayBillingService();
+      playBilling = await getPlayBillingService();
       if (!playBilling) {
         this.notify("Google Play billing is not available in this environment.", "warning");
         return;
@@ -126,8 +146,34 @@ export const uiEntitlementMethods: ThisType<AppContext> & Pick<
         this.notify("Purchase cancelled.", "info");
         return;
       }
+      // Recovery path: if purchase API fails (for example already-owned), try reading existing purchases.
+      if (playBilling && typeof playBilling.listPurchases === "function") {
+        try {
+          const listedPurchases = await playBilling.listPurchases();
+          const existing = extractPurchaseTokenFromResult(listedPurchases, productId);
+          if (existing.purchaseToken) {
+            const verified = await submitPlayPurchaseVerification(this, {
+              baseUrl: base,
+              googleIdToken,
+              purchaseToken: existing.purchaseToken,
+              productId: existing.itemId ?? productId,
+              packageName: this.purchasePackageNameInput.trim()
+            });
+            if (verified) {
+              this.purchaseTokenInput = "";
+              this.showVerifyPurchaseModal = false;
+              this.notify("Existing purchase found and verified. Pro features unlocked.", "success");
+              return;
+            }
+          }
+        } catch (recoveryError) {
+          console.warn("[whatfees] Play purchase recovery failed", recoveryError);
+        }
+      }
+
       console.warn("[whatfees] Play purchase error", error);
-      this.notify("Could not complete Google Play purchase. Please try again.", "error");
+      const detail = formatPlayPurchaseError(error);
+      this.notify(`Could not complete Google Play purchase. ${detail}`, "error");
     } finally {
       this.isVerifyingPurchase = false;
     }
