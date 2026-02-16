@@ -66,7 +66,14 @@ export const uiSyncMethods: ThisType<AppContext> & Pick<
         : {};
       const cloudVersion = Number(snapshot.version ?? 0);
       const localVersion = Number(localStorage.getItem(SYNC_CLIENT_VERSION_KEY) || "0");
-      const shouldApplyCloud = Number.isFinite(cloudVersion) && (cloudVersion > localVersion || (localVersion <= 0 && cloudPresets.length > 0));
+      const cloudHasSales = Object.values(cloudSalesByPreset).some((sales) => Array.isArray(sales) && sales.length > 0);
+      const cloudHasData = cloudPresets.length > 0 || cloudHasSales;
+      const localHasSales = this.presets.some((preset) => this.loadSalesForPresetId(preset.id).length > 0);
+      const localHasData = this.presets.length > 0 || localHasSales;
+      const shouldApplyCloud = Number.isFinite(cloudVersion) && (
+        cloudVersion > localVersion ||
+        (!localHasData && cloudHasData)
+      );
       if (!shouldApplyCloud) {
         return;
       }

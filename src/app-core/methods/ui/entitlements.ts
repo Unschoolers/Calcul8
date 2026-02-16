@@ -193,6 +193,9 @@ export const uiEntitlementMethods: ThisType<AppContext> & Pick<
         hasProAccess: cached.hasProAccess,
         updatedAt: cached.updatedAt
       });
+      if (googleIdToken) {
+        await this.pullCloudSync();
+      }
       return;
     }
 
