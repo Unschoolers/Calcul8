@@ -14,8 +14,35 @@
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
   <link href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" rel="stylesheet" />
 
-  <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900" rel="stylesheet" />
   <style>
+    @font-face {
+      font-family: "Roboto";
+      font-style: normal;
+      font-weight: 300;
+      font-display: block;
+      src: url("/fonts/roboto-300.woff2") format("woff2");
+    }
+    @font-face {
+      font-family: "Roboto";
+      font-style: normal;
+      font-weight: 400;
+      font-display: block;
+      src: url("/fonts/roboto-400.woff2") format("woff2");
+    }
+    @font-face {
+      font-family: "Roboto";
+      font-style: normal;
+      font-weight: 500;
+      font-display: block;
+      src: url("/fonts/roboto-500.woff2") format("woff2");
+    }
+    @font-face {
+      font-family: "Roboto";
+      font-style: normal;
+      font-weight: 700;
+      font-display: block;
+      src: url("/fonts/roboto-700.woff2") format("woff2");
+    }
     :root {
       --bg-wash-a: rgba(230, 57, 70, 0.08);
       --bg-wash-b: rgba(255, 184, 0, 0.07);
@@ -27,6 +54,7 @@
     .gradient-text { background: linear-gradient(135deg, #E63946 0%, #FF6B6B 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
     html { scroll-behavior: auto; }
     body {
+      font-family: "Roboto", "Helvetica Neue", Arial, sans-serif;
       overscroll-behavior-y: none;
       background:
         radial-gradient(70rem 50rem at -10% -15%, var(--bg-wash-a), transparent 55%),
@@ -47,6 +75,86 @@
       background-size: 100% 100%, 100% 100%;
     }
     .v-btn { min-height: 44px; min-width: 44px; }
+    #startup-splash {
+      position: fixed;
+      inset: 0;
+      z-index: 3000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background:
+        radial-gradient(90% 70% at 50% 30%, rgba(255, 196, 0, 0.2), transparent 70%),
+        linear-gradient(145deg, #0a0a0a 0%, #111111 55%, #171717 100%);
+      opacity: 1;
+      transition: opacity 220ms ease;
+      pointer-events: all;
+    }
+    body.app-ready #startup-splash {
+      opacity: 0;
+      pointer-events: none;
+    }
+    .splash-card {
+      width: min(80vw, 320px);
+      min-width: min(80vw, 320px);
+      max-width: min(80vw, 320px);
+      min-height: 206px;
+      border-radius: 24px;
+      padding: 1.1rem 1.2rem 0.9rem;
+      border: 1px solid rgba(255, 208, 0, 0.4);
+      background: linear-gradient(170deg, rgba(255, 208, 0, 0.12), rgba(0, 0, 0, 0.58));
+      box-shadow: 0 14px 40px rgba(0, 0, 0, 0.45);
+      text-align: center;
+      backdrop-filter: blur(4px);
+      box-sizing: border-box;
+    }
+    .splash-logo {
+      width: 72px;
+      height: 72px;
+      border-radius: 16px;
+      display: block;
+      margin: 0 auto 0.55rem;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+      animation: splashPulse 1.2s ease-in-out infinite;
+    }
+    .splash-title {
+      margin: 0;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      color: #ffd34d;
+      font-size: 1.25rem;
+      line-height: 1.25;
+      min-height: 1.56rem;
+    }
+    .splash-subtitle {
+      margin: 0.18rem 0 0.65rem;
+      font-size: 0.8rem;
+      color: rgba(255, 255, 255, 0.78);
+      line-height: 1.2;
+      min-height: 0.96rem;
+    }
+    .splash-trend {
+      width: 100%;
+      height: 26px;
+      display: block;
+    }
+    .splash-trend path {
+      stroke: #ffd34d;
+      stroke-width: 3;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-dasharray: 100;
+      stroke-dashoffset: 100;
+      will-change: stroke-dashoffset;
+      animation: drawTrend 900ms ease forwards;
+    }
+    @keyframes splashPulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.04); }
+    }
+    @keyframes drawTrend {
+      to { stroke-dashoffset: 0; }
+    }
     .app-shell { max-width: 920px; margin: 0 auto; position: relative; z-index: 1; }
     .preset-card {
       position: sticky;
@@ -154,6 +262,16 @@
 </head>
 
 <body>
+  <div id="startup-splash" aria-hidden="true">
+    <div class="splash-card">
+      <img src="icons/icon-192.png" alt="WhatFees" class="splash-logo" />
+      <p class="splash-title">WhatFees</p>
+      <p class="splash-subtitle">Track fees like a pro</p>
+      <svg class="splash-trend" viewBox="0 0 200 30" preserveAspectRatio="none" role="presentation">
+        <path pathLength="100" d="M4 22 L44 18 L78 21 L112 12 L148 14 L196 6"></path>
+      </svg>
+    </div>
+  </div>
   <div id="app">
     <v-app>
       <v-app-bar density="compact" flat border>
