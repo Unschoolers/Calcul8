@@ -19,3 +19,19 @@ export function shouldAcknowledgePurchase(acknowledgementState: number | null): 
   return acknowledgementState !== 1;
 }
 
+export function hasValidProPurchase(
+  purchases: PlayPurchaseDocument[],
+  allowedProductIds: string[]
+): boolean {
+  const allowed = new Set(allowedProductIds.map((id) => id.trim()).filter((id) => id.length > 0));
+
+  return purchases.some((purchase) => {
+    if (purchase.purchaseState !== 0) {
+      return false;
+    }
+    if (allowed.size === 0) {
+      return true;
+    }
+    return allowed.has(purchase.productId);
+  });
+}

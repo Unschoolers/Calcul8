@@ -4,6 +4,7 @@ import type { PlayPurchaseDocument } from "../types";
 import { HttpError } from "./auth";
 import {
   assertPurchaseNotLinkedToDifferentUser,
+  hasValidProPurchase,
   hashPurchaseToken,
   shouldAcknowledgePurchase
 } from "./playEntitlements";
@@ -53,4 +54,25 @@ test("shouldAcknowledgePurchase only skips acknowledged purchases", () => {
   assert.equal(shouldAcknowledgePurchase(1), false);
   assert.equal(shouldAcknowledgePurchase(0), true);
   assert.equal(shouldAcknowledgePurchase(null), true);
+});
+
+test("hasValidProPurchase matches successful purchase with allowed product id", () => {
+  const valid = buildPurchase("user-1");
+  assert.equal(hasValidProPurchase([valid], ["pro_access"]), true);
+});
+
+test("hasValidProPurchase ignores non-matching product ids", () => {
+  const validDifferentProduct = {
+    ...buildPurchase("user-1"),
+    productId: "other_product"
+  };
+  assert.equal(hasValidProPurchase([validDifferentProduct], ["pro_access"]), false);
+});
+
+test("hasValidProPurchase ignores unsuccessful purchase states", () => {
+  const cancelled = {
+    ...buildPurchase("user-1"),
+    purchaseState: 1
+  };
+  assert.equal(hasValidProPurchase([cancelled], ["pro_access"]), false);
 });

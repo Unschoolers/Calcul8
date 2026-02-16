@@ -138,7 +138,7 @@ export const uiEntitlementMethods: ThisType<AppContext> & Pick<
         baseUrl: base,
         googleIdToken,
         purchaseToken: purchase.purchaseToken,
-        productId: purchase.itemId ?? productId,
+        productId,
         packageName: this.purchasePackageNameInput.trim()
       });
       if (!verified) return;
@@ -162,7 +162,7 @@ export const uiEntitlementMethods: ThisType<AppContext> & Pick<
               baseUrl: base,
               googleIdToken,
               purchaseToken: existing.purchaseToken,
-              productId: existing.itemId ?? productId,
+              productId,
               packageName: this.purchasePackageNameInput.trim()
             });
             if (verified) {
