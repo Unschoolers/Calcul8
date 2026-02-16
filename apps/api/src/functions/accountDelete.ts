@@ -1,7 +1,7 @@
 import { app, type HttpRequest, type HttpResponseInit, type InvocationContext } from "@azure/functions";
 import { resolveUserId } from "../lib/auth";
 import { getConfig } from "../lib/config";
-import { deleteAllSyncData, deleteEntitlement } from "../lib/cosmos";
+import { deleteAllSyncData, deleteEntitlement, deletePlayPurchasesForUser } from "../lib/cosmos";
 import { errorResponse, handleCorsPreflight, jsonResponse } from "../lib/http";
 
 export async function accountDelete(
@@ -19,6 +19,7 @@ export async function accountDelete(
 
     await Promise.all([
       deleteEntitlement(config, userId),
+      deletePlayPurchasesForUser(config, userId),
       deleteAllSyncData(config, userId)
     ]);
 

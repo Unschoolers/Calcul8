@@ -24,6 +24,21 @@ export interface EntitlementDocument {
   updatedAt: string;
 }
 
+export interface PlayPurchaseDocument {
+  id: string;
+  docType: "play_purchase";
+  userId: string;
+  purchaseTokenHash: string;
+  packageName: string;
+  productId: string;
+  orderId: string | null;
+  purchaseState: number | null;
+  acknowledgementState: number | null;
+  consumptionState: number | null;
+  purchaseTimeMillis: string | null;
+  updatedAt: string;
+}
+
 export interface SyncSnapshotDocument {
   id: string;
   userId: string;

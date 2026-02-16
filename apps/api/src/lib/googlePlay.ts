@@ -30,6 +30,12 @@ interface VerifyPlayPurchaseInput {
   purchaseToken: string;
 }
 
+interface AcknowledgePlayPurchaseInput {
+  packageName: string;
+  productId: string;
+  purchaseToken: string;
+}
+
 export interface VerifyPlayPurchaseResult {
   isValid: boolean;
   orderId: string | null;
@@ -184,4 +190,42 @@ export async function verifyPlayProductPurchase(
     consumptionState,
     purchaseTimeMillis
   };
+}
+
+export async function acknowledgePlayProductPurchase(
+  config: ApiConfig,
+  input: AcknowledgePlayPurchaseInput
+): Promise<void> {
+  const accessToken = await getGoogleApiAccessToken(config);
+
+  const endpoint = [
+    "https://androidpublisher.googleapis.com/androidpublisher/v3/applications",
+    encodeURIComponent(input.packageName),
+    "purchases/products",
+    encodeURIComponent(input.productId),
+    "tokens",
+    encodeURIComponent(input.purchaseToken) + ":acknowledge"
+  ].join("/");
+
+  const response = await fetchWithRetry(
+    endpoint,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({})
+    },
+    {
+      maxAttempts: 3,
+      timeoutMs: 10_000
+    }
+  );
+
+  if (response.ok || response.status === 409) {
+    return;
+  }
+
+  throw new HttpError(502, "Google Play purchase acknowledgement failed.");
 }

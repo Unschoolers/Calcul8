@@ -11,13 +11,24 @@ export function calculateTotalPacks(boxesPurchased: number, packsPerBox: number,
 
 export function calculateBoxPriceCostCad(
   boxPriceCost: number,
-  currency: CurrencyCode,
+  buyCurrency: CurrencyCode,
+  sellingCurrency: CurrencyCode,
   exchangeRate: number,
   defaultExchangeRate: number
 ): number {
   const price = Number(boxPriceCost) || 0;
   const rate = Number(exchangeRate) || defaultExchangeRate;
-  return currency === "USD" ? price * rate : price;
+  if (buyCurrency === sellingCurrency) {
+    return price;
+  }
+  // Convert both ways using USD->CAD exchange rate.
+  if (buyCurrency === "USD" && sellingCurrency === "CAD") {
+    return price * rate;
+  }
+  if (buyCurrency === "CAD" && sellingCurrency === "USD") {
+    return rate > 0 ? price / rate : price;
+  }
+  return price;
 }
 
 export function calculateTotalCaseCost(params: {

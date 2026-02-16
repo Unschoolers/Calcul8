@@ -87,6 +87,7 @@ export interface AppMethodState {
   formatDate(dateStr: string): string;
   initGoogleAutoLogin(): void;
   openVerifyPurchaseModal(): void;
+  startPlayPurchase(): Promise<void>;
   verifyPlayPurchase(): Promise<void>;
   pushCloudSync(force?: boolean): Promise<void>;
   startCloudSyncScheduler(): void;

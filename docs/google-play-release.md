@@ -113,8 +113,24 @@ Output will include an `.aab` suitable for Play upload.
 - Content rating questionnaire
 - Target audience + ads declaration (if applicable)
 - Upload the `.aab` to Internal testing first
+- In-app product configured and active (for example `pro_access`) if you use Pro unlock
 
-## 6) Update flow note
+## 6) Pro purchase wiring (production)
+
+Set frontend build env:
+
+- `VITE_API_BASE_URL=https://<your-function-app>.azurewebsites.net/api`
+- `VITE_GOOGLE_CLIENT_ID=<google web client id>`
+- `VITE_PLAY_PRO_PRODUCT_ID=<play in-app product id>`
+
+Set backend Function App settings:
+
+- `GOOGLE_PLAY_PACKAGE_NAME=io.whatfees`
+- `GOOGLE_PLAY_PRO_PRODUCT_IDS=pro_access`
+- `GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL=<service-account-email>`
+- `GOOGLE_PLAY_SERVICE_ACCOUNT_PRIVATE_KEY=<full private key with \n>`
+
+## 7) Update flow note
 
 This repo is configured so that:
 

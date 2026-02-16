@@ -21,8 +21,10 @@ import { salesMethods } from "../src/app-core/methods/sales.ts";
 import type { Sale } from "../src/types/app.ts";
 
 test("calculateBoxPriceCostCad handles CAD and USD", () => {
-  assert.equal(calculateBoxPriceCostCad(100, "CAD", 1.4, 1.4), 100);
-  assert.equal(calculateBoxPriceCostCad(100, "USD", 1.4, 1.4), 140);
+  assert.equal(calculateBoxPriceCostCad(100, "CAD", "CAD", 1.4, 1.4), 100);
+  assert.equal(calculateBoxPriceCostCad(100, "USD", "CAD", 1.4, 1.4), 140);
+  assert.equal(calculateBoxPriceCostCad(100, "USD", "USD", 1.4, 1.4), 100);
+  assert.equal(calculateBoxPriceCostCad(140, "CAD", "USD", 1.4, 1.4), 100);
 });
 
 test("calculateTotalCaseCost applies purchase tax and USD customs", () => {

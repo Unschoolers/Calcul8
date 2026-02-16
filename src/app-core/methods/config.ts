@@ -9,6 +9,42 @@ import type { Preset, PresetSetup, Sale } from "../../types/app.ts";
 import type { AppContext, AppMethodState } from "../context.ts";
 
 type ImportablePreset = Preset & { sales?: Sale[] };
+type ExchangeRateCacheRecord = {
+  cadRate: number;
+  fetchedAt: number;
+};
+
+const EXCHANGE_RATE_CACHE_KEY = "whatfees_exchange_rate_usd_cad_v1";
+const EXCHANGE_RATE_CACHE_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
+
+function isExchangeRateCacheRecord(value: unknown): value is ExchangeRateCacheRecord {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as { cadRate?: unknown; fetchedAt?: unknown };
+  const cadRate = Number(candidate.cadRate);
+  const fetchedAt = Number(candidate.fetchedAt);
+  return Number.isFinite(cadRate) && cadRate > 0 && Number.isFinite(fetchedAt) && fetchedAt > 0;
+}
+
+function readExchangeRateCache(): ExchangeRateCacheRecord | null {
+  try {
+    const raw = localStorage.getItem(EXCHANGE_RATE_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as unknown;
+    if (!isExchangeRateCacheRecord(parsed)) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeExchangeRateCache(cadRate: number, fetchedAt: number): void {
+  try {
+    const payload: ExchangeRateCacheRecord = { cadRate, fetchedAt };
+    localStorage.setItem(EXCHANGE_RATE_CACHE_KEY, JSON.stringify(payload));
+  } catch {
+    // Ignore localStorage write errors (e.g. quota exceeded/private mode restrictions).
+  }
+}
 
 export const configMethods: ThisType<AppContext> & Pick<
   AppMethodState,
@@ -58,22 +94,40 @@ export const configMethods: ThisType<AppContext> & Pick<
   },
 
   async getExchangeRate(): Promise<void> {
-    const CACHE_DURATION = 60 * 60 * 1000;
+    const now = Date.now();
+    const cachedRate = readExchangeRateCache();
 
-    if (this.exchangeRate && this.lastFetchTime && Date.now() - this.lastFetchTime < CACHE_DURATION) {
+    if (cachedRate && now - cachedRate.fetchedAt < EXCHANGE_RATE_CACHE_DURATION_MS) {
+      this.exchangeRate = cachedRate.cadRate;
+      this.lastFetchTime = cachedRate.fetchedAt;
+      return;
+    }
+
+    if (this.exchangeRate && this.lastFetchTime && now - this.lastFetchTime < EXCHANGE_RATE_CACHE_DURATION_MS) {
       return;
     }
 
     try {
       const response = await fetch("https://open.er-api.com/v6/latest/USD");
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const data = await response.json();
+      const data = (await response.json()) as { rates?: { CAD?: number } };
+      const nextRate = Number(data?.rates?.CAD);
 
-      if (data?.rates?.CAD) {
-        this.exchangeRate = data.rates.CAD;
-        this.lastFetchTime = Date.now();
+      if (Number.isFinite(nextRate) && nextRate > 0) {
+        this.exchangeRate = nextRate;
+        this.lastFetchTime = now;
+        writeExchangeRateCache(nextRate, now);
+        return;
       }
+
+      throw new Error("Missing CAD rate in response payload");
     } catch (error) {
+      if (cachedRate) {
+        console.warn("Failed to refresh exchange rate, using cached rate:", error);
+        this.exchangeRate = cachedRate.cadRate;
+        this.lastFetchTime = cachedRate.fetchedAt;
+        return;
+      }
       console.warn("Failed to fetch exchange rate, using default:", error);
       this.exchangeRate = DEFAULT_VALUES.EXCHANGE_RATE;
     }
@@ -105,6 +159,7 @@ export const configMethods: ThisType<AppContext> & Pick<
       packsPerBox: this.packsPerBox,
       costInputMode: this.costInputMode,
       currency: this.currency,
+      sellingCurrency: this.sellingCurrency,
       exchangeRate: this.exchangeRate,
       purchaseShippingCost: this.purchaseShippingCost,
       purchaseTaxPercent: this.purchaseTaxPercent,
@@ -165,6 +220,7 @@ export const configMethods: ThisType<AppContext> & Pick<
     this.packsPerBox = preset.packsPerBox ?? DEFAULT_VALUES.PACKS_PER_BOX;
     this.costInputMode = preset.costInputMode ?? "perBox";
     this.currency = preset.currency ?? "CAD";
+    this.sellingCurrency = preset.sellingCurrency ?? "CAD";
     this.exchangeRate = preset.exchangeRate ?? DEFAULT_VALUES.EXCHANGE_RATE;
     this.purchaseShippingCost = preset.purchaseShippingCost ?? DEFAULT_VALUES.PURCHASE_SHIPPING_COST;
 

@@ -2,6 +2,7 @@ import { CosmosClient, type Container } from "@azure/cosmos";
 import type {
   ApiConfig,
   EntitlementDocument,
+  PlayPurchaseDocument,
   SyncMetaDocument,
   SyncPresetDocument,
   SyncSnapshotDocument
@@ -85,6 +86,10 @@ function entitlementId(userId: string): string {
   return `entitlement:${userId}`;
 }
 
+function playPurchaseId(purchaseTokenHash: string): string {
+  return `play_purchase:${purchaseTokenHash}`;
+}
+
 function syncSnapshotId(userId: string): string {
   return `sync:${userId}`;
 }
@@ -149,6 +154,65 @@ export async function upsertEntitlement(
   return resource;
 }
 
+export async function getPlayPurchaseByTokenHash(
+  config: ApiConfig,
+  purchaseTokenHash: string
+): Promise<PlayPurchaseDocument | null> {
+  const { entitlements } = getContainers(config);
+  const querySpec = {
+    query: "SELECT TOP 1 * FROM c WHERE c.docType = @docType AND c.purchaseTokenHash = @purchaseTokenHash",
+    parameters: [
+      { name: "@docType", value: "play_purchase" },
+      { name: "@purchaseTokenHash", value: purchaseTokenHash }
+    ]
+  };
+
+  const iterator = entitlements.items.query<PlayPurchaseDocument>(querySpec, {
+    maxItemCount: 1
+  });
+  const { resources } = await withCosmosRetry(() => iterator.fetchAll());
+  return resources?.[0] ?? null;
+}
+
+export async function listPlayPurchasesForUser(
+  config: ApiConfig,
+  userId: string
+): Promise<PlayPurchaseDocument[]> {
+  const { entitlements } = getContainers(config);
+  const querySpec = {
+    query: "SELECT * FROM c WHERE c.userId = @userId AND c.docType = @docType",
+    parameters: [
+      { name: "@userId", value: userId },
+      { name: "@docType", value: "play_purchase" }
+    ]
+  };
+
+  const iterator = entitlements.items.query<PlayPurchaseDocument>(querySpec, {
+    partitionKey: userId
+  });
+  const { resources } = await withCosmosRetry(() => iterator.fetchAll());
+  return resources ?? [];
+}
+
+export async function upsertPlayPurchase(
+  config: ApiConfig,
+  purchase: PlayPurchaseDocument
+): Promise<PlayPurchaseDocument> {
+  const { entitlements } = getContainers(config);
+  const { resource } = await withCosmosRetry(() =>
+    entitlements.items.upsert<PlayPurchaseDocument>({
+      ...purchase,
+      id: playPurchaseId(purchase.purchaseTokenHash)
+    })
+  );
+
+  if (!resource) {
+    throw new Error("Failed to upsert play purchase.");
+  }
+
+  return resource;
+}
+
 export async function deleteEntitlement(
   config: ApiConfig,
   userId: string
@@ -161,6 +225,22 @@ export async function deleteEntitlement(
   } catch (error) {
     if (isNotFoundError(error)) return;
     throw error;
+  }
+}
+
+export async function deletePlayPurchasesForUser(
+  config: ApiConfig,
+  userId: string
+): Promise<void> {
+  const { entitlements } = getContainers(config);
+  const purchases = await listPlayPurchasesForUser(config, userId);
+
+  for (const purchase of purchases) {
+    try {
+      await withCosmosRetry(() => entitlements.item(purchase.id, userId).delete());
+    } catch (error) {
+      if (!isNotFoundError(error)) throw error;
+    }
   }
 }
 

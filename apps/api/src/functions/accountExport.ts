@@ -1,7 +1,7 @@
 import { app, type HttpRequest, type HttpResponseInit, type InvocationContext } from "@azure/functions";
 import { resolveUserId } from "../lib/auth";
 import { getConfig } from "../lib/config";
-import { getEffectiveSyncSnapshot, getEntitlement } from "../lib/cosmos";
+import { getEffectiveSyncSnapshot, getEntitlement, listPlayPurchasesForUser } from "../lib/cosmos";
 import { errorResponse, handleCorsPreflight, jsonResponse } from "../lib/http";
 
 export async function accountExport(
@@ -16,13 +16,17 @@ export async function accountExport(
 
   try {
     const userId = await resolveUserId(request, config);
-    const entitlement = await getEntitlement(config, userId);
-    const syncSnapshot = await getEffectiveSyncSnapshot(config, userId);
+    const [entitlement, syncSnapshot, playPurchases] = await Promise.all([
+      getEntitlement(config, userId),
+      getEffectiveSyncSnapshot(config, userId),
+      listPlayPurchasesForUser(config, userId)
+    ]);
 
     return jsonResponse(request, config, 200, {
       userId,
       exportedAt: new Date().toISOString(),
       entitlement: entitlement ?? null,
+      playPurchases,
       syncSnapshot: syncSnapshot ?? null
     });
   } catch (error) {

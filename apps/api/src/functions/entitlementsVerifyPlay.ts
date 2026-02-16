@@ -1,9 +1,10 @@
 import { app, type HttpRequest, type HttpResponseInit, type InvocationContext } from "@azure/functions";
 import { HttpError, resolveUserId } from "../lib/auth";
 import { getConfig } from "../lib/config";
-import { upsertEntitlement } from "../lib/cosmos";
-import { verifyPlayProductPurchase } from "../lib/googlePlay";
+import { getPlayPurchaseByTokenHash, upsertEntitlement, upsertPlayPurchase } from "../lib/cosmos";
+import { acknowledgePlayProductPurchase, verifyPlayProductPurchase } from "../lib/googlePlay";
 import { errorResponse, handleCorsPreflight, jsonResponse } from "../lib/http";
+import { assertPurchaseNotLinkedToDifferentUser, hashPurchaseToken, shouldAcknowledgePurchase } from "../lib/playEntitlements";
 
 interface VerifyPlayPurchaseBody {
   purchaseToken: string;
@@ -85,6 +86,11 @@ export async function entitlementsVerifyPlay(
     const body = await parseVerifyBody(request);
     const packageName = resolvePackageName(body.packageName, config.googlePlayPackageName);
     const productId = resolveProductId(body.productId, config.googlePlayProProductIds);
+    const purchaseTokenHash = hashPurchaseToken(body.purchaseToken);
+
+    const existingPurchase = await getPlayPurchaseByTokenHash(config, purchaseTokenHash);
+    assertPurchaseNotLinkedToDifferentUser(existingPurchase, userId);
+
     const verification = await verifyPlayProductPurchase(config, {
       packageName,
       productId,
@@ -95,14 +101,40 @@ export async function entitlementsVerifyPlay(
       throw new HttpError(402, "Google Play purchase is not valid.");
     }
 
+    let acknowledgementState = verification.acknowledgementState;
+    if (shouldAcknowledgePurchase(acknowledgementState)) {
+      await acknowledgePlayProductPurchase(config, {
+        packageName,
+        productId,
+        purchaseToken: body.purchaseToken
+      });
+      acknowledgementState = 1;
+    }
+
     const updatedAt = new Date().toISOString();
-    await upsertEntitlement(config, {
-      id: `entitlement:${userId}`,
-      userId,
-      hasProAccess: true,
-      purchaseSource: "google_play",
-      updatedAt
-    });
+    await Promise.all([
+      upsertEntitlement(config, {
+        id: `entitlement:${userId}`,
+        userId,
+        hasProAccess: true,
+        purchaseSource: "google_play",
+        updatedAt
+      }),
+      upsertPlayPurchase(config, {
+        id: `play_purchase:${purchaseTokenHash}`,
+        docType: "play_purchase",
+        userId,
+        purchaseTokenHash,
+        packageName,
+        productId,
+        orderId: verification.orderId,
+        purchaseState: verification.purchaseState,
+        acknowledgementState,
+        consumptionState: verification.consumptionState,
+        purchaseTimeMillis: verification.purchaseTimeMillis,
+        updatedAt
+      })
+    ]);
 
     return jsonResponse(request, config, 200, {
       ok: true,
@@ -115,7 +147,7 @@ export async function entitlementsVerifyPlay(
         productId,
         orderId: verification.orderId,
         purchaseState: verification.purchaseState,
-        acknowledgementState: verification.acknowledgementState,
+        acknowledgementState,
         consumptionState: verification.consumptionState,
         purchaseTimeMillis: verification.purchaseTimeMillis
       }

@@ -9,6 +9,12 @@ npm ci
 npm run dev
 ```
 
+Frontend env for Play purchase flow:
+
+- `VITE_API_BASE_URL=https://<your-function-app>.azurewebsites.net/api`
+- `VITE_GOOGLE_CLIENT_ID=<google web client id>`
+- `VITE_PLAY_PRO_PRODUCT_ID=<play in-app product id, e.g. pro_access>`
+
 ## Quality checks
 
 ```bash

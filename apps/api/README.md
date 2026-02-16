@@ -58,7 +58,9 @@ and uses `sub` as `userId`.
    - `packageName` (optional if configured in API env)
 3. API verifies purchase with Google Play Developer API.
 4. On success API upserts entitlement in Cosmos (`hasProAccess=true`, `purchaseSource=google_play`).
-5. Frontend calls `GET /api/entitlements/me` to read current access.
+5. API stores a hashed purchase token record and rejects token reuse across different users.
+6. API acknowledges the Google Play purchase when needed.
+7. Frontend calls `GET /api/entitlements/me` to read current access.
 
 Note:
 - `GET /api/entitlements/me` now auto-creates a baseline entitlement row on first authenticated request

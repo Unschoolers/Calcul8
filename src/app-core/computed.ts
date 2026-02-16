@@ -41,6 +41,7 @@ export const appComputed: AppComputedObject = {
     return calculateBoxPriceCostCad(
       this.boxPriceCost,
       this.currency,
+      this.sellingCurrency,
       this.exchangeRate,
       DEFAULT_VALUES.EXCHANGE_RATE
     );
@@ -84,9 +85,9 @@ export const appComputed: AppComputedObject = {
   },
 
   conversionInfo(): string {
-    if (this.currency === "USD") {
-      const totalInCAD = (this.boxPriceCostCAD * (this.boxesPurchased || 0)) + this.purchaseShippingCostCAD;
-      return `≈ $${this.formatCurrency(totalInCAD)} CAD total`;
+    if (this.currency !== this.sellingCurrency) {
+      const convertedTotal = (this.boxPriceCostCAD * (this.boxesPurchased || 0)) + this.purchaseShippingCostCAD;
+      return `Converted purchase from ${this.currency} to ${this.sellingCurrency}. ≈ $${this.formatCurrency(convertedTotal)} ${this.sellingCurrency} total`;
     }
     return "";
   },

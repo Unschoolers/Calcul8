@@ -325,7 +325,7 @@
                         ></v-text-field>
 
                         <v-text-field
-                          v-if="currency === 'USD'"
+                          v-if="currency !== sellingCurrency"
                           v-model.number="exchangeRate"
                           label="USD to CAD Rate"
                           type="number"
@@ -402,6 +402,19 @@
                       </v-card-title>
                       <v-divider></v-divider>
                       <v-card-text>
+                        <v-btn-toggle
+                          v-model="sellingCurrency"
+                          mandatory
+                          divided
+                          density="compact"
+                          variant="outlined"
+                          class="mb-2"
+                          @update:model-value="onPurchaseConfigChange"
+                        >
+                          <v-btn value="CAD" title="CAD">🇨🇦</v-btn>
+                          <v-btn value="USD" title="USD">🇺🇸</v-btn>
+                        </v-btn-toggle>
+
                         <v-text-field
                           :model-value="targetProfitPercent ? targetProfitPercent + '%' : 'Not set'"
                           label="Target Profit %"
@@ -429,7 +442,7 @@
 
                         <v-text-field
                           v-model.number="sellingShippingPerOrder"
-                          label="Average Buyer Shipping (CAD)"
+                          :label="`Average Buyer Shipping (${sellingCurrency})`"
                           type="number"
                           variant="outlined"
                           density="compact"
@@ -442,7 +455,7 @@
 
                         <v-text-field
                           v-model.number="spotPrice"
-                          label="RTYH Spot (CAD)"
+                          :label="`RTYH Spot (${sellingCurrency})`"
                           type="number"
                           variant="outlined"
                           density="compact"
@@ -453,7 +466,7 @@
 
                         <v-text-field
                           v-model.number="boxPriceSell"
-                          label="Box Selling Price (CAD)"
+                          :label="`Box Selling Price (${sellingCurrency})`"
                           type="number"
                           variant="outlined"
                           density="compact"
@@ -464,7 +477,7 @@
 
                         <v-text-field
                           v-model.number="packPrice"
-                          label="Pack (CAD)"
+                          :label="`Pack (${sellingCurrency})`"
                           type="number"
                           variant="outlined"
                           density="compact"
@@ -869,6 +882,18 @@
               class="mt-3"
             >
               Pro feature. Upgrade to apply auto-calculated prices.
+              <div class="mt-2">
+                <v-btn
+                  size="small"
+                  color="primary"
+                  variant="flat"
+                  prepend-icon="mdi-google-play"
+                  :loading="isVerifyingPurchase"
+                  @click="startPlayPurchase"
+                >
+                  Unlock Pro
+                </v-btn>
+              </div>
               <div v-if="showManualPurchaseVerify" class="mt-2">
                 <v-btn size="small" variant="text" prepend-icon="mdi-check-decagram" @click="openVerifyPurchaseModal">
                   Verify Purchase
@@ -901,6 +926,18 @@
               class="mb-3"
             >
               Pro feature. Upgrade to add or edit sales.
+              <div class="mt-2">
+                <v-btn
+                  size="small"
+                  color="primary"
+                  variant="flat"
+                  prepend-icon="mdi-google-play"
+                  :loading="isVerifyingPurchase"
+                  @click="startPlayPurchase"
+                >
+                  Unlock Pro
+                </v-btn>
+              </div>
               <div v-if="showManualPurchaseVerify" class="mt-2">
                 <v-btn size="small" variant="text" prepend-icon="mdi-check-decagram" @click="openVerifyPurchaseModal">
                   Verify Purchase
