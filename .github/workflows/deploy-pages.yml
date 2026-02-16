@@ -43,12 +43,17 @@ jobs:
             echo "Current value: ${VITE_API_BASE_URL}"
             exit 1
           fi
+          if [ -z "${VITE_GOOGLE_CLIENT_ID}" ]; then
+            echo "VITE_GOOGLE_CLIENT_ID is empty in github-pages environment."
+            exit 1
+          fi
           if [ -z "${VITE_PLAY_PRO_PRODUCT_ID}" ]; then
             echo "VITE_PLAY_PRO_PRODUCT_ID is empty in github-pages environment."
             exit 1
           fi
         env:
           VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
+          VITE_GOOGLE_CLIENT_ID: ${{ vars.VITE_GOOGLE_CLIENT_ID }}
           VITE_PLAY_PRO_PRODUCT_ID: ${{ vars.VITE_PLAY_PRO_PRODUCT_ID }}
 
       - name: Build production bundle
