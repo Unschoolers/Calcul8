@@ -12,10 +12,98 @@ import {
 
 export const uiSyncMethods: ThisType<AppContext> & Pick<
   AppMethodState,
+  | "pullCloudSync"
   | "startCloudSyncScheduler"
   | "stopCloudSyncScheduler"
   | "pushCloudSync"
 > = {
+  async pullCloudSync(): Promise<void> {
+    const base = resolveApiBaseUrl();
+    if (!base) return;
+    if (!navigator.onLine) {
+      this.isOffline = true;
+      this.startOfflineReconnectScheduler();
+      return;
+    }
+
+    const googleIdToken = (localStorage.getItem(GOOGLE_TOKEN_KEY) || "").trim();
+    if (!googleIdToken) return;
+
+    try {
+      const response = await fetchWithRetry(`${base}/sync/pull`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${googleIdToken}`
+        }
+      });
+
+      if (response.status === 401) {
+        handleExpiredAuth(this);
+        return;
+      }
+      if (!response.ok) {
+        console.warn("[whatfees] Cloud sync pull failed", {
+          status: response.status,
+          statusText: response.statusText
+        });
+        return;
+      }
+
+      const body = (await response.json()) as {
+        snapshot?: {
+          presets?: unknown[];
+          salesByPreset?: Record<string, unknown[]>;
+          version?: number;
+          updatedAt?: string | null;
+        };
+      };
+      const snapshot = body.snapshot;
+      if (!snapshot) return;
+
+      const cloudPresets = Array.isArray(snapshot.presets) ? snapshot.presets : [];
+      const cloudSalesByPreset = snapshot.salesByPreset && typeof snapshot.salesByPreset === "object"
+        ? snapshot.salesByPreset
+        : {};
+      const cloudVersion = Number(snapshot.version ?? 0);
+      const localVersion = Number(localStorage.getItem(SYNC_CLIENT_VERSION_KEY) || "0");
+      const shouldApplyCloud = Number.isFinite(cloudVersion) && (cloudVersion > localVersion || (localVersion <= 0 && cloudPresets.length > 0));
+      if (!shouldApplyCloud) {
+        return;
+      }
+
+      this.presets = cloudPresets as typeof this.presets;
+      this.savePresetsToStorage();
+
+      Object.entries(cloudSalesByPreset).forEach(([presetId, sales]) => {
+        if (!Array.isArray(sales)) return;
+        localStorage.setItem(this.getSalesStorageKey(Number(presetId)), JSON.stringify(sales));
+      });
+
+      if (this.currentPresetId && this.presets.some((p) => p.id === this.currentPresetId)) {
+        this.loadPreset();
+      } else if (this.presets.length > 0) {
+        this.currentPresetId = this.presets[0].id;
+        this.loadPreset();
+      } else {
+        this.currentPresetId = null;
+        this.sales = [];
+      }
+
+      if (Number.isFinite(cloudVersion)) {
+        localStorage.setItem(SYNC_CLIENT_VERSION_KEY, String(cloudVersion));
+      }
+      this.lastSyncedPayloadHash = null;
+      this.notify("Cloud data synced", "success");
+      console.info("[whatfees] Cloud sync pulled", { version: cloudVersion });
+    } catch (error) {
+      if (!navigator.onLine) {
+        this.isOffline = true;
+        this.startOfflineReconnectScheduler();
+      }
+      console.warn("[whatfees] Cloud sync pull error", error);
+    }
+  },
+
   startCloudSyncScheduler(): void {
     if (this.cloudSyncIntervalId != null) return;
     this.cloudSyncIntervalId = window.setInterval(() => {

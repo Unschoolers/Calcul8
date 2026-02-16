@@ -71,4 +71,5 @@ export interface SyncPushPayload {
   presets: unknown[];
   salesByPreset: Record<string, unknown[]>;
   clientVersion?: number;
+  allowEmptyOverwrite?: boolean;
 }

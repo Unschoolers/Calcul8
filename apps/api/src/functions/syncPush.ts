@@ -3,6 +3,7 @@ import { HttpError, resolveUserId } from "../lib/auth";
 import { getConfig } from "../lib/config";
 import { getEffectiveSyncSnapshot, upsertSyncSnapshotIncremental } from "../lib/cosmos";
 import { errorResponse, handleCorsPreflight, jsonResponse } from "../lib/http";
+import { assertSafeSyncPush } from "../lib/syncSafety";
 import type { SyncPushPayload } from "../types";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -74,10 +75,15 @@ async function parseSyncPushPayload(request: HttpRequest): Promise<SyncPushPaylo
     throw new HttpError(400, "Field 'clientVersion' must be a number when provided.");
   }
 
+  if (payload.allowEmptyOverwrite != null && typeof payload.allowEmptyOverwrite !== "boolean") {
+    throw new HttpError(400, "Field 'allowEmptyOverwrite' must be a boolean when provided.");
+  }
+
   return {
     presets,
     salesByPreset,
-    clientVersion: typeof clientVersion === "number" ? clientVersion : undefined
+    clientVersion: typeof clientVersion === "number" ? clientVersion : undefined,
+    allowEmptyOverwrite: payload.allowEmptyOverwrite === true
   };
 }
 
@@ -95,6 +101,12 @@ export async function syncPush(
     const userId = await resolveUserId(request, config);
     const payload = await parseSyncPushPayload(request);
     const existingSnapshot = await getEffectiveSyncSnapshot(config, userId);
+    assertSafeSyncPush(
+      existingSnapshot,
+      payload.presets,
+      payload.salesByPreset,
+      payload.allowEmptyOverwrite === true
+    );
 
     const previousVersion = existingSnapshot?.version ?? 0;
     const candidateVersion = Math.floor(payload.clientVersion ?? 0);

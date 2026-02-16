@@ -21,6 +21,7 @@ export const uiMethods: ThisType<AppContext> & Pick<
   | "openVerifyPurchaseModal"
   | "startPlayPurchase"
   | "verifyPlayPurchase"
+  | "pullCloudSync"
   | "startCloudSyncScheduler"
   | "stopCloudSyncScheduler"
   | "pushCloudSync"

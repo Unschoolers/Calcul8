@@ -89,6 +89,7 @@ export interface AppMethodState {
   openVerifyPurchaseModal(): void;
   startPlayPurchase(): Promise<void>;
   verifyPlayPurchase(): Promise<void>;
+  pullCloudSync(): Promise<void>;
   pushCloudSync(force?: boolean): Promise<void>;
   startCloudSyncScheduler(): void;
   stopCloudSyncScheduler(): void;

@@ -241,6 +241,10 @@ export const uiEntitlementMethods: ThisType<AppContext> & Pick<
         hasProAccess,
         updatedAt
       });
+
+      if (googleIdToken) {
+        await this.pullCloudSync();
+      }
     } catch (error) {
       if (!navigator.onLine) {
         this.isOffline = true;
