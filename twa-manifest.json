@@ -21,7 +21,7 @@
     "alias": "whatfees-upload"
   },
   "appVersionName": "1.0.22",
-  "appVersionCode": 26,
+  "appVersionCode": 27,
   "shortcuts": [],
   "generatorApp": "bubblewrap-cli",
   "webManifestUrl": "https://app.whatfees.ca/manifest.webmanifest",
