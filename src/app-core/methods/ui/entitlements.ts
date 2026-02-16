@@ -1,6 +1,12 @@
 import type { AppContext, AppMethodState } from "../../context.ts";
 import { initGoogleAutoLoginWithRetry } from "../../utils/googleAutoLogin.ts";
-import { extractPurchaseTokenFromResult, getPlayBillingService, purchasePlayProduct, type DigitalGoodsService } from "../../utils/playBilling.ts";
+import {
+  extractPurchaseTokenFromResult,
+  getPlayBillingService,
+  isPlayBillingPaymentRequestSupported,
+  purchasePlayProduct,
+  type DigitalGoodsService
+} from "../../utils/playBilling.ts";
 import {
   DEBUG_USER_KEY,
   GOOGLE_INIT_RETRY_COUNT,
@@ -117,7 +123,7 @@ export const uiEntitlementMethods: ThisType<AppContext> & Pick<
 
     try {
       playBilling = await getPlayBillingService();
-      if (!playBilling) {
+      if (!playBilling && !isPlayBillingPaymentRequestSupported()) {
         this.notify("Google Play billing is not available in this environment.", "warning");
         return;
       }

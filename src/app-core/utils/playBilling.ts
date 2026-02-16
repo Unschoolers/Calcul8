@@ -1,12 +1,13 @@
 export const PLAY_BILLING_SERVICE_PROVIDER = "https://play.google.com/billing";
 
 export interface DigitalGoodsService {
-  purchase(itemId: string): Promise<unknown>;
+  purchase?: (itemId: string) => Promise<unknown>;
   listPurchases?: () => Promise<unknown>;
 }
 
 interface DigitalGoodsWindow {
   getDigitalGoodsService?: (serviceProvider: string) => Promise<DigitalGoodsService>;
+  PaymentRequest?: typeof PaymentRequest;
 }
 
 declare global {
@@ -87,17 +88,78 @@ export async function getPlayBillingService(
   }
 }
 
+export function isPlayBillingPaymentRequestSupported(
+  win: DigitalGoodsWindow = window
+): boolean {
+  return typeof win.PaymentRequest === "function";
+}
+
+async function purchaseViaPaymentRequest(
+  productId: string,
+  win: DigitalGoodsWindow = window
+): Promise<unknown> {
+  if (!isPlayBillingPaymentRequestSupported(win)) {
+    throw new Error("PaymentRequest API is not available in this environment.");
+  }
+
+  const request = new win.PaymentRequest(
+    [
+      {
+        supportedMethods: PLAY_BILLING_SERVICE_PROVIDER,
+        // Google Play Billing PaymentRequest requires SKU in method data.
+        data: { sku: productId, skuId: productId }
+      }
+    ],
+    {
+      total: {
+        label: "WhatFees Pro",
+        amount: {
+          currency: "USD",
+          value: "0.00"
+        }
+      }
+    }
+  );
+
+  const response = await request.show();
+  try {
+    if (typeof response === "object" && response !== null) {
+      const details = (response as { details?: unknown }).details;
+      if (details != null) {
+        return details;
+      }
+    }
+    return response;
+  } finally {
+    try {
+      if (
+        typeof response === "object" &&
+        response !== null &&
+        typeof (response as { complete?: unknown }).complete === "function"
+      ) {
+        await (response as { complete: (status: PaymentComplete) => Promise<void> }).complete("success");
+      }
+    } catch {
+      // Ignore completion errors from platform/browser implementations.
+    }
+  }
+}
+
 export async function purchasePlayProduct(
-  service: DigitalGoodsService,
-  productId: string
+  service: DigitalGoodsService | null,
+  productId: string,
+  win: DigitalGoodsWindow = window
 ): Promise<PlayPurchaseTokenResult> {
-  const purchaseResult = await service.purchase(productId);
+  const purchaseResult = service && typeof service.purchase === "function"
+    ? await service.purchase(productId)
+    : await purchaseViaPaymentRequest(productId, win);
+
   const tokenFromPurchase = extractPurchaseTokenFromResult(purchaseResult, productId);
   if (tokenFromPurchase.purchaseToken) {
     return tokenFromPurchase;
   }
 
-  if (typeof service.listPurchases !== "function") {
+  if (!service || typeof service.listPurchases !== "function") {
     return tokenFromPurchase;
   }
 
