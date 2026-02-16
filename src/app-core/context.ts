@@ -108,6 +108,7 @@ export interface AppVueContext {
   };
   $vuetify: {
     theme: {
+      change(name: "unionArenaDark" | "unionArenaLight"): void;
       global: {
         name: string;
       };
