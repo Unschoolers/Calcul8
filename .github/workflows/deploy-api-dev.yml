@@ -11,9 +11,25 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     environment: dev
 
     steps:
+      - name: Validate deployment env wiring
+        shell: bash
+        env:
+          AZURE_FUNCTIONAPP_NAME_DEV: ${{ vars.AZURE_FUNCTIONAPP_NAME_DEV }}
+          AZURE_FUNCTIONAPP_PUBLISH_PROFILE_DEV: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE_DEV }}
+        run: |
+          if [ -z "${AZURE_FUNCTIONAPP_NAME_DEV}" ]; then
+            echo "Missing vars.AZURE_FUNCTIONAPP_NAME_DEV in dev environment."
+            exit 1
+          fi
+          if [ -z "${AZURE_FUNCTIONAPP_PUBLISH_PROFILE_DEV}" ]; then
+            echo "Missing secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE_DEV in dev environment."
+            exit 1
+          fi
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -24,7 +40,11 @@ jobs:
 
       - name: Install dependencies
         working-directory: apps/api
-        run: npm install
+        run: npm ci
+
+      - name: Run API tests
+        working-directory: apps/api
+        run: npm run test
 
       - name: Build API
         working-directory: apps/api

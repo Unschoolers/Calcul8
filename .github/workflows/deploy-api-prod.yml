@@ -34,6 +34,10 @@ jobs:
         working-directory: apps/api
         run: npm run test
 
+      - name: API typecheck
+        working-directory: apps/api
+        run: npm run typecheck
+
   deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -43,6 +47,21 @@ jobs:
       contents: read
 
     steps:
+      - name: Validate deployment env wiring
+        shell: bash
+        env:
+          AZURE_FUNCTIONAPP_NAME_PROD: ${{ vars.AZURE_FUNCTIONAPP_NAME_PROD }}
+          AZURE_FUNCTIONAPP_PUBLISH_PROFILE_PROD: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE_PROD }}
+        run: |
+          if [ -z "${AZURE_FUNCTIONAPP_NAME_PROD}" ]; then
+            echo "Missing vars.AZURE_FUNCTIONAPP_NAME_PROD in prod-backend environment."
+            exit 1
+          fi
+          if [ -z "${AZURE_FUNCTIONAPP_PUBLISH_PROFILE_PROD}" ]; then
+            echo "Missing secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE_PROD in prod-backend environment."
+            exit 1
+          fi
+
       - name: Checkout
         uses: actions/checkout@v4
 

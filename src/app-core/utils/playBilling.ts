@@ -21,8 +21,15 @@ export interface PlayPurchaseTokenResult {
 
 interface PurchaseLike {
   itemId?: unknown;
+  productId?: unknown;
+  sku?: unknown;
+  skuId?: unknown;
   purchaseToken?: unknown;
   token?: unknown;
+  purchase_data?: unknown;
+  purchaseData?: unknown;
+  details?: unknown;
+  data?: unknown;
 }
 
 function normalizeString(value: unknown): string | null {
@@ -38,7 +45,10 @@ function normalizePurchaseLike(value: unknown): PlayPurchaseTokenResult {
 
   const candidate = value as PurchaseLike;
   const purchaseToken = normalizeString(candidate.purchaseToken) ?? normalizeString(candidate.token);
-  const itemId = normalizeString(candidate.itemId);
+  const itemId = normalizeString(candidate.itemId)
+    ?? normalizeString(candidate.productId)
+    ?? normalizeString(candidate.sku)
+    ?? normalizeString(candidate.skuId);
 
   return {
     purchaseToken,
@@ -46,9 +56,55 @@ function normalizePurchaseLike(value: unknown): PlayPurchaseTokenResult {
   };
 }
 
-function toPurchaseResultArray(value: unknown): unknown[] {
-  if (Array.isArray(value)) return value;
-  return [value];
+function tryParseJson(value: string): unknown | null {
+  const trimmed = value.trim();
+  if (!(trimmed.startsWith("{") || trimmed.startsWith("["))) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    return null;
+  }
+}
+
+function collectPurchaseCandidates(
+  value: unknown,
+  output: PlayPurchaseTokenResult[],
+  seen: Set<object>,
+  depth = 0
+): void {
+  if (depth > 6 || value == null) return;
+
+  if (typeof value === "string") {
+    const parsed = tryParseJson(value);
+    if (parsed != null) {
+      collectPurchaseCandidates(parsed, output, seen, depth + 1);
+    }
+    return;
+  }
+
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      collectPurchaseCandidates(item, output, seen, depth + 1);
+    }
+    return;
+  }
+
+  if (typeof value !== "object") {
+    return;
+  }
+
+  if (seen.has(value)) return;
+  seen.add(value);
+
+  output.push(normalizePurchaseLike(value));
+
+  const record = value as Record<string, unknown>;
+  for (const nested of Object.values(record)) {
+    collectPurchaseCandidates(nested, output, seen, depth + 1);
+  }
 }
 
 export function extractPurchaseTokenFromResult(
@@ -56,9 +112,9 @@ export function extractPurchaseTokenFromResult(
   preferredItemId?: string
 ): PlayPurchaseTokenResult {
   const preferred = normalizeString(preferredItemId);
-  const results = toPurchaseResultArray(value)
-    .map(normalizePurchaseLike)
-    .filter((item) => item.purchaseToken);
+  const candidates: PlayPurchaseTokenResult[] = [];
+  collectPurchaseCandidates(value, candidates, new Set<object>());
+  const results = candidates.filter((item) => item.purchaseToken);
 
   if (results.length === 0) {
     return { purchaseToken: null, itemId: null };

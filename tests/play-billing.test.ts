@@ -32,3 +32,23 @@ test("extractPurchaseTokenFromResult returns null token when missing", () => {
   assert.equal(result.purchaseToken, null);
 });
 
+test("extractPurchaseTokenFromResult parses stringified JSON payload", () => {
+  const result = extractPurchaseTokenFromResult(
+    "{\"productId\":\"pro_access\",\"purchaseToken\":\"token-json\"}",
+    "pro_access"
+  );
+
+  assert.equal(result.itemId, "pro_access");
+  assert.equal(result.purchaseToken, "token-json");
+});
+
+test("extractPurchaseTokenFromResult parses nested purchaseData JSON", () => {
+  const result = extractPurchaseTokenFromResult({
+    details: {
+      purchaseData: "{\"sku\":\"pro_access\",\"token\":\"token-nested\"}"
+    }
+  }, "pro_access");
+
+  assert.equal(result.itemId, "pro_access");
+  assert.equal(result.purchaseToken, "token-nested");
+});
