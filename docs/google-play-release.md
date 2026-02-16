@@ -36,6 +36,7 @@ Useful flags:
 .\scripts\release-google-play.ps1 -SkipBuild
 .\scripts\release-google-play.ps1 -SkipDeployCheck
 .\scripts\release-google-play.ps1 -PackageId io.whatfees
+.\scripts\release-google-play.ps1 -PlaySigningFingerprint AA:BB:CC:...:ZZ
 ```
 
 Deploy your latest web build to:
@@ -54,11 +55,15 @@ Then validate:
 keytool -genkeypair -v -keystore whatfees-upload.jks -alias whatfees-upload -keyalg RSA -keysize 2048 -validity 10000
 ```
 
-Get SHA-256 fingerprint (needed for Digital Asset Links):
+Get SHA-256 fingerprint for the upload key (useful for signing/debug only):
 
 ```bash
 keytool -list -v -keystore whatfees-upload.jks -alias whatfees-upload
 ```
+
+For production `assetlinks.json`, use the **Play App Signing** SHA-256 fingerprint from:
+
+- Google Play Console -> App integrity -> App signing key certificate
 
 ## 3) Generate `assetlinks.json`
 
@@ -67,6 +72,11 @@ From this repo:
 ```bash
 npm run assetlinks -- --package=io.whatfees --fingerprint=AA:BB:CC:...:ZZ
 ```
+
+Important:
+
+- Use the **Play App Signing** SHA-256 for released builds.
+- Using the upload key fingerprint can cause TWA trust verification to fail (URL bar may appear).
 
 This updates:
 

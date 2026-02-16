@@ -3,6 +3,7 @@ param(
   [string]$PackageId = "io.whatfees",
   [string]$KeystorePath = "whatfees-upload.jks",
   [string]$KeyAlias = "whatfees-upload",
+  [string]$PlaySigningFingerprint = "",
   [string]$ManifestUrl = "https://unschoolers.github.io/Calcul8/manifest.webmanifest",
   [string]$PagesAssetlinksUrl = "https://unschoolers.github.io/Calcul8/.well-known/assetlinks.json",
   [switch]$SkipVerify,
@@ -68,6 +69,13 @@ function Read-JsonFile {
   }
 
   return $content | ConvertFrom-Json
+}
+
+function Assert-Sha256Fingerprint {
+  param([string]$Fingerprint)
+  if ($Fingerprint -notmatch "^(?:[0-9A-F]{2}:){31}[0-9A-F]{2}$") {
+    throw "Invalid SHA-256 fingerprint format: '$Fingerprint'. Expected AA:BB:...:ZZ"
+  }
 }
 
 function Get-BubblewrapCommand {
@@ -170,21 +178,37 @@ try {
     Write-Step "Using existing keystore: $($resolvedKeystorePath.Path)"
   }
 
-  Write-Step "Extracting SHA-256 certificate fingerprint"
-  $storePassForListSecure = Read-Host "Keystore password for fingerprint lookup" -AsSecureString
-  $storePassForList = Convert-SecureToPlainText $storePassForListSecure
-  $listOutput = & keytool -list -v -keystore $resolvedKeystorePath.Path -alias $KeyAlias -storepass $storePassForList 2>&1
-  if ($LASTEXITCODE -ne 0) {
-    throw "keytool fingerprint lookup failed."
-  }
+  Write-Step "Selecting SHA-256 fingerprint for Digital Asset Links"
+  $fingerprint = ""
+  if (-not [string]::IsNullOrWhiteSpace($PlaySigningFingerprint)) {
+    $fingerprint = $PlaySigningFingerprint.Trim().ToUpperInvariant()
+    Assert-Sha256Fingerprint -Fingerprint $fingerprint
+    Write-Host "Using -PlaySigningFingerprint value (recommended)." -ForegroundColor Green
+  } else {
+    $manualFingerprint = Read-Host "Play App Signing SHA-256 fingerprint from Play Console (recommended). Press Enter to fallback to upload key fingerprint"
+    if (-not [string]::IsNullOrWhiteSpace($manualFingerprint)) {
+      $fingerprint = $manualFingerprint.Trim().ToUpperInvariant()
+      Assert-Sha256Fingerprint -Fingerprint $fingerprint
+      Write-Host "Using Play App Signing fingerprint entered manually." -ForegroundColor Green
+    } else {
+      Write-Host "No Play App Signing fingerprint provided. Falling back to upload key fingerprint (may break TWA trust in production)." -ForegroundColor Yellow
+      $storePassForListSecure = Read-Host "Keystore password for upload-key fingerprint lookup" -AsSecureString
+      $storePassForList = Convert-SecureToPlainText $storePassForListSecure
+      $listOutput = & keytool -list -v -keystore $resolvedKeystorePath.Path -alias $KeyAlias -storepass $storePassForList 2>&1
+      if ($LASTEXITCODE -ne 0) {
+        throw "keytool fingerprint lookup failed."
+      }
 
-  $listText = ($listOutput | Out-String)
-  $fingerprintMatch = [regex]::Match($listText, "SHA256:\s*([0-9A-F:]+)")
-  if (-not $fingerprintMatch.Success) {
-    throw "Could not parse SHA-256 fingerprint from keytool output."
+      $listText = ($listOutput | Out-String)
+      $fingerprintMatch = [regex]::Match($listText, "SHA256:\s*([0-9A-F:]+)")
+      if (-not $fingerprintMatch.Success) {
+        throw "Could not parse SHA-256 fingerprint from keytool output."
+      }
+      $fingerprint = $fingerprintMatch.Groups[1].Value.Trim().ToUpperInvariant()
+      Assert-Sha256Fingerprint -Fingerprint $fingerprint
+      Write-Host "Detected upload-key SHA-256 fingerprint: $fingerprint" -ForegroundColor Yellow
+    }
   }
-  $fingerprint = $fingerprintMatch.Groups[1].Value.Trim()
-  Write-Host "Detected SHA-256 fingerprint: $fingerprint" -ForegroundColor Green
 
   Write-Step "Generating Digital Asset Links file"
   Invoke-Checked "npm" @("run", "assetlinks", "--", "--package=$PackageId", "--fingerprint=$fingerprint")

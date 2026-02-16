@@ -12,7 +12,7 @@ const fingerprint = readArg("fingerprint");
 
 if (!packageName || !fingerprint) {
   console.error(
-    "Usage: npm run assetlinks -- --package=com.example.app --fingerprint=AA:BB:...:ZZ"
+    "Usage: npm run assetlinks -- --package=com.example.app --fingerprint=AA:BB:...:ZZ (use Play App Signing SHA-256 for production)"
   );
   process.exit(1);
 }
