@@ -1,6 +1,6 @@
 {
   "packageId": "io.whatfees",
-  "host": "unschoolers.github.io",
+  "host": "app.whatfees.ca",
   "name": "WhatFees",
   "launcherName": "WhatFees",
   "display": "standalone",
@@ -10,21 +10,21 @@
   "navigationColorDark": "#000000",
   "navigationDividerColor": "#000000",
   "navigationDividerColorDark": "#000000",
-  "backgroundColor": "#121212",
+  "backgroundColor": "#FFCB05",
   "enableNotifications": true,
-  "startUrl": "/Calcul8/",
-  "iconUrl": "https://unschoolers.github.io/Calcul8/icons/icon-512.png",
-  "maskableIconUrl": "https://unschoolers.github.io/Calcul8/icons/icon-512.png",
+  "startUrl": "/",
+  "iconUrl": "https://app.whatfees.ca/icons/icon-512.png",
+  "maskableIconUrl": "https://app.whatfees.ca/icons/icon-512.png",
   "splashScreenFadeOutDuration": 300,
   "signingKey": {
     "path": "whatfees-upload.jks",
     "alias": "whatfees-upload"
   },
-  "appVersionName": "1.0.20",
-  "appVersionCode": 23,
+  "appVersionName": "1.0.21",
+  "appVersionCode": 24,
   "shortcuts": [],
   "generatorApp": "bubblewrap-cli",
-  "webManifestUrl": "https://unschoolers.github.io/Calcul8/manifest.webmanifest",
+  "webManifestUrl": "https://app.whatfees.ca/manifest.webmanifest",
   "fallbackType": "customtabs",
   "features": {
     "playBilling": {
@@ -37,7 +37,7 @@
   "enableSiteSettingsShortcut": true,
   "isChromeOSOnly": false,
   "isMetaQuest": false,
-  "fullScopeUrl": "https://unschoolers.github.io/Calcul8/",
+  "fullScopeUrl": "https://app.whatfees.ca/",
   "minSdkVersion": 21,
   "orientation": "portrait",
   "fingerprints": [],
@@ -47,5 +47,5 @@
   "fileHandlers": [],
   "launchHandlerClientMode": "",
   "displayOverride": [],
-  "appVersion": "1.0.20"
+  "appVersion": "1.0.21"
 }

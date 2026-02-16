@@ -41,13 +41,13 @@ Useful flags:
 
 Deploy your latest web build to:
 
-- `https://unschoolers.github.io/Calcul8/`
+- `https://app.whatfees.ca/`
 
 Then validate:
 
-- `https://unschoolers.github.io/Calcul8/manifest.webmanifest`
-- `https://unschoolers.github.io/Calcul8/sw.js`
-- `https://unschoolers.github.io/Calcul8/.well-known/assetlinks.json`
+- `https://app.whatfees.ca/manifest.webmanifest`
+- `https://app.whatfees.ca/sw.js`
+- `https://app.whatfees.ca/.well-known/assetlinks.json`
 
 ## 2) Create Android signing key (one-time)
 
@@ -95,12 +95,12 @@ npm i -g @bubblewrap/cli
 Initialize:
 
 ```bash
-bubblewrap init --manifest=https://unschoolers.github.io/Calcul8/manifest.webmanifest
+bubblewrap init --manifest=https://app.whatfees.ca/manifest.webmanifest
 ```
 
 When prompted, use:
 
-- Start URL: `https://unschoolers.github.io/Calcul8/`
+- Start URL: `https://app.whatfees.ca/`
 - Application ID/package: `io.whatfees` (or your final package)
 - Keystore: your `whatfees-upload.jks`
 

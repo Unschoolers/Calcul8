@@ -82,18 +82,29 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      background:
-        radial-gradient(90% 70% at 50% 30%, rgba(255, 196, 0, 0.2), transparent 70%),
-        linear-gradient(145deg, #0a0a0a 0%, #111111 55%, #171717 100%);
+      background: #ffcb05;
       opacity: 1;
       transition: opacity 220ms ease;
       pointer-events: all;
+      overflow: hidden;
+    }
+    #startup-splash::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(90% 70% at 50% 30%, rgba(255, 196, 0, 0.2), transparent 70%),
+        linear-gradient(145deg, #0a0a0a 0%, #111111 55%, #171717 100%);
+      opacity: 0;
+      animation: splashBgToDark 240ms ease-out 70ms forwards;
     }
     body.app-ready #startup-splash {
       opacity: 0;
       pointer-events: none;
     }
     .splash-card {
+      position: relative;
+      z-index: 1;
       width: min(80vw, 320px);
       min-width: min(80vw, 320px);
       max-width: min(80vw, 320px);
@@ -114,7 +125,11 @@
       display: block;
       margin: 0 auto 0.55rem;
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
-      animation: splashPulse 1.2s ease-in-out infinite;
+      opacity: 0;
+      transform: scale(0.92);
+      animation:
+        splashLogoIn 260ms ease-out 80ms forwards,
+        splashPulse 1.2s ease-in-out 360ms infinite;
     }
     .splash-title {
       margin: 0;
@@ -152,8 +167,21 @@
       0%, 100% { transform: scale(1); }
       50% { transform: scale(1.04); }
     }
+    @keyframes splashLogoIn {
+      from {
+        opacity: 0;
+        transform: scale(0.92);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
     @keyframes drawTrend {
       to { stroke-dashoffset: 0; }
+    }
+    @keyframes splashBgToDark {
+      to { opacity: 1; }
     }
     .app-shell { max-width: 920px; margin: 0 auto; position: relative; z-index: 1; }
     .preset-card {
