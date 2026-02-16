@@ -20,8 +20,8 @@
     "path": "whatfees-upload.jks",
     "alias": "whatfees-upload"
   },
-  "appVersionName": "1.0.15",
-  "appVersionCode": 18,
+  "appVersionName": "1.0.16",
+  "appVersionCode": 19,
   "shortcuts": [],
   "generatorApp": "bubblewrap-cli",
   "webManifestUrl": "https://unschoolers.github.io/Calcul8/manifest.webmanifest",
@@ -47,5 +47,5 @@
   "fileHandlers": [],
   "launchHandlerClientMode": "",
   "displayOverride": [],
-  "appVersion": "1.0.15"
+  "appVersion": "1.0.16"
 }
