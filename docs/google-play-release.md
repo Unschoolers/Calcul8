@@ -19,10 +19,20 @@ Or run the automated PowerShell flow (recommended on Windows):
 npm run release:play
 ```
 
+`release:play` now does this automatically:
+
+- `npm run verify` (unless skipped)
+- `npm run build:prod` (unless skipped)
+- syncs `twa-manifest.json` version fields from root `package.json`
+- generates `public/.well-known/assetlinks.json`
+- builds the TWA `.aab` with Bubblewrap
+
 Useful flags:
 
 ```powershell
 .\scripts\release-google-play.ps1 -SkipVerify
+.\scripts\release-google-play.ps1 -SkipWebBuild
+.\scripts\release-google-play.ps1 -SkipTwaVersionSync
 .\scripts\release-google-play.ps1 -SkipBuild
 .\scripts\release-google-play.ps1 -SkipDeployCheck
 .\scripts\release-google-play.ps1 -PackageId io.whatfees

@@ -6,6 +6,8 @@ param(
   [string]$ManifestUrl = "https://unschoolers.github.io/Calcul8/manifest.webmanifest",
   [string]$PagesAssetlinksUrl = "https://unschoolers.github.io/Calcul8/.well-known/assetlinks.json",
   [switch]$SkipVerify,
+  [switch]$SkipWebBuild,
+  [switch]$SkipTwaVersionSync,
   [switch]$SkipBuild,
   [switch]$SkipDeployCheck
 )
@@ -54,6 +56,20 @@ function Invoke-Checked {
   }
 }
 
+function Read-JsonFile {
+  param([string]$Path)
+  if (-not (Test-Path -LiteralPath $Path)) {
+    return $null
+  }
+
+  $content = Get-Content -LiteralPath $Path -Raw
+  if ([string]::IsNullOrWhiteSpace($content)) {
+    return $null
+  }
+
+  return $content | ConvertFrom-Json
+}
+
 function Get-BubblewrapCommand {
   if (Get-Command bubblewrap -ErrorAction SilentlyContinue) {
     return @{
@@ -75,6 +91,7 @@ Push-Location $repoRoot
 try {
   Write-Step "Pre-flight checks"
   Require-Command "npm" "Install Node.js/npm."
+  Require-Command "node" "Install Node.js."
   Require-Command "keytool" "Install JDK and ensure keytool is in PATH."
 
   if (-not $SkipBuild) {
@@ -86,6 +103,29 @@ try {
     Invoke-Checked "npm" @("run", "verify")
   } else {
     Write-Host "Skipping verify step by request." -ForegroundColor Yellow
+  }
+
+  if (-not $SkipWebBuild) {
+    Write-Step "Running npm run build:prod"
+    Invoke-Checked "npm" @("run", "build:prod")
+  } else {
+    Write-Host "Skipping build:prod step by request." -ForegroundColor Yellow
+  }
+
+  if (-not $SkipTwaVersionSync) {
+    Write-Step "Syncing TWA version from package.json"
+    Invoke-Checked "node" @("scripts/sync-twa-version.mjs")
+
+    $twaManifestPath = Join-Path $repoRoot "twa-manifest.json"
+    $twaManifest = Read-JsonFile -Path $twaManifestPath
+    if ($null -ne $twaManifest) {
+      Write-Host "TWA version synced -> name: $($twaManifest.appVersionName), code: $($twaManifest.appVersionCode)" -ForegroundColor Green
+      if ($twaManifest.packageId -and $twaManifest.packageId -ne $PackageId) {
+        Write-Host "Warning: PackageId argument '$PackageId' differs from twa-manifest packageId '$($twaManifest.packageId)'." -ForegroundColor Yellow
+      }
+    }
+  } else {
+    Write-Host "Skipping TWA version sync by request." -ForegroundColor Yellow
   }
 
   $resolvedKeystorePath = Resolve-Path -LiteralPath $KeystorePath -ErrorAction SilentlyContinue
@@ -189,6 +229,13 @@ try {
     }
 
     Invoke-Checked $bubblewrap.Exe ($bubblewrap.Prefix + @("build"))
+
+    $bundlePath = Join-Path $repoRoot "app-release-bundle.aab"
+    if (Test-Path -LiteralPath $bundlePath) {
+      Write-Host "Generated Android App Bundle: $bundlePath" -ForegroundColor Green
+    } else {
+      Write-Host "Warning: app-release-bundle.aab not found at repo root." -ForegroundColor Yellow
+    }
   } else {
     Write-Host "Skipping Bubblewrap build by request." -ForegroundColor Yellow
   }
