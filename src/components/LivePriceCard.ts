@@ -72,21 +72,26 @@ export const LivePriceCard = defineComponent({
           </v-col>
 
           <v-col cols="3" class="text-center">
-            <v-btn
-              icon="mdi-minus"
-              size="small"
-              color="error"
-              variant="tonal"
-              class="mb-1"
-              @click="changePrice(-1)"
-            ></v-btn>
-            <v-btn
-              icon="mdi-plus"
-              size="small"
-              color="success"
-              variant="tonal"
-              @click="changePrice(1)"
-            ></v-btn>
+            <div class="d-flex flex-column align-center justify-center ga-1">
+              <v-btn
+                icon="mdi-minus"
+                size="small"
+                color="error"
+                variant="tonal"
+                :title="'Decrease ' + label + ' price'"
+                :aria-label="'Decrease ' + label + ' price'"
+                @click="changePrice(-1)"
+              ></v-btn>
+              <v-btn
+                icon="mdi-plus"
+                size="small"
+                color="success"
+                variant="tonal"
+                :title="'Increase ' + label + ' price'"
+                :aria-label="'Increase ' + label + ' price'"
+                @click="changePrice(1)"
+              ></v-btn>
+            </div>
           </v-col>
         </v-row>
 

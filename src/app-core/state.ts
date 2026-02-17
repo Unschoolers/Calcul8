@@ -2,6 +2,7 @@ import { DEFAULT_VALUES } from "../constants.ts";
 import type { AppState } from "../types/app.ts";
 
 export function createInitialState(): AppState {
+  const todayDate = new Date().toISOString().split("T")[0];
   const showManualPurchaseVerify =
     import.meta.env.DEV ||
     String(import.meta.env.VITE_SHOW_MANUAL_PURCHASE_VERIFY || "").toLowerCase() === "true";
@@ -46,6 +47,7 @@ export function createInitialState(): AppState {
     currency: "CAD",
     sellingCurrency: "CAD",
     exchangeRate: DEFAULT_VALUES.EXCHANGE_RATE,
+    purchaseDate: todayDate,
     purchaseShippingCost: DEFAULT_VALUES.PURCHASE_SHIPPING_COST,
     purchaseTaxPercent: DEFAULT_VALUES.PURCHASE_TAX_RATE_PERCENT,
     sellingTaxPercent: DEFAULT_VALUES.SELLING_TAX_RATE_PERCENT,
@@ -70,15 +72,18 @@ export function createInitialState(): AppState {
     editingSale: null,
     newSale: {
       type: "pack",
-      quantity: 1,
-      packsCount: null,
-      price: 0,
-      buyerShipping: DEFAULT_VALUES.SELLING_SHIPPING_PER_ORDER,
-      date: new Date().toISOString().split("T")[0]
-    },
+        quantity: 1,
+        packsCount: null,
+        price: 0,
+        buyerShipping: DEFAULT_VALUES.SELLING_SHIPPING_PER_ORDER,
+        date: todayDate
+      },
 
     salesChart: null,
     chartView: "pie",
+    portfolioChart: null,
+    portfolioChartView: "breakdown",
+    portfolioPresetFilterIds: [],
 
     // Presets
     presets: [],

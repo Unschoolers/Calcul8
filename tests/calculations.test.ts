@@ -165,6 +165,7 @@ test("preset and portfolio summaries aggregate correctly", () => {
     currency: "CAD",
     sellingCurrency: "CAD",
     exchangeRate: 1.4,
+    purchaseDate: "2026-02-01",
     purchaseShippingCost: 0,
     purchaseTaxPercent: 0,
     sellingTaxPercent: 15,
@@ -218,6 +219,7 @@ test("preset performance summary handles empty sales with conversion, tax, custo
     currency: "USD",
     sellingCurrency: "CAD",
     exchangeRate: 1.5,
+    purchaseDate: "2026-02-01",
     purchaseShippingCost: 20,
     purchaseTaxPercent: 10,
     sellingTaxPercent: 15,
@@ -252,6 +254,7 @@ test("preset performance summary uses latest sale date and shipping-aware revenu
     currency: "CAD",
     sellingCurrency: "CAD",
     exchangeRate: 1.4,
+    purchaseDate: "2026-02-01",
     purchaseShippingCost: 0,
     purchaseTaxPercent: 0,
     sellingTaxPercent: 15,
@@ -523,6 +526,87 @@ test("saveSale updates existing sale in edit mode", () => {
   assert.equal(sales[0]?.buyerShipping, 3);
 });
 
+test("openAddSaleModal defaults sale price from live values with config fallback", () => {
+  const context = {
+    showAddSaleModal: false,
+    editingSale: {
+      id: 99,
+      type: "pack",
+      quantity: 1,
+      packsCount: 1,
+      price: 1,
+      buyerShipping: 0,
+      date: "2026-01-01"
+    } as Sale,
+    livePackPrice: 11,
+    packPrice: 7,
+    liveBoxPriceSell: 120,
+    boxPriceSell: 100,
+    liveSpotPrice: Number.NaN,
+    spotPrice: 25,
+    sellingShippingPerOrder: 4,
+    newSale: {
+      type: "pack",
+      quantity: 1,
+      packsCount: null,
+      price: 0,
+      buyerShipping: 0,
+      date: "2026-01-01"
+    }
+  } as unknown as Parameters<typeof salesMethods.openAddSaleModal>[0];
+
+  salesMethods.openAddSaleModal.call(context, "pack");
+  assert.equal(context.showAddSaleModal, true);
+  assert.equal(context.editingSale, null);
+  assert.equal(context.newSale.type, "pack");
+  assert.equal(context.newSale.price, 11);
+  assert.equal(context.newSale.buyerShipping, 4);
+
+  salesMethods.openAddSaleModal.call(context, "rtyh");
+  assert.equal(context.newSale.type, "rtyh");
+  assert.equal(context.newSale.price, 25);
+});
+
+test("onNewSaleTypeChange updates default price for new sales only", () => {
+  const createContext = (editingSale: Sale | null) =>
+    ({
+      editingSale,
+      livePackPrice: 12,
+      packPrice: 8,
+      liveBoxPriceSell: 115,
+      boxPriceSell: 95,
+      liveSpotPrice: 30,
+      spotPrice: 20,
+      newSale: {
+        type: "pack",
+        quantity: 1,
+        packsCount: null,
+        price: 12,
+        buyerShipping: 0,
+        date: "2026-02-13"
+      }
+    }) as unknown as Parameters<typeof salesMethods.onNewSaleTypeChange>[0];
+
+  const createMode = createContext(null);
+  salesMethods.onNewSaleTypeChange.call(createMode, "box");
+  assert.equal(createMode.newSale.type, "box");
+  assert.equal(createMode.newSale.price, 115);
+
+  const editMode = createContext({
+    id: 5,
+    type: "box",
+    quantity: 1,
+    packsCount: 16,
+    price: 88,
+    buyerShipping: 0,
+    date: "2026-02-13"
+  });
+  editMode.newSale.price = 88;
+  salesMethods.onNewSaleTypeChange.call(editMode, "rtyh");
+  assert.equal(editMode.newSale.type, "rtyh");
+  assert.equal(editMode.newSale.price, 88);
+});
+
 test("required price computed values handle reached/empty/remaining cases", () => {
   const reachedTargetPack = appComputed.requiredPackPriceFromNow.call({
     remainingNetRevenueForTarget: 0,
@@ -570,4 +654,107 @@ test("required price computed values handle reached/empty/remaining cases", () =
   } as unknown as Parameters<typeof appComputed.requiredPackPriceFromNow>[0]);
 
   assert.equal(computedPack, expectedPack);
+});
+
+test("allPresetPerformance uses in-memory sales for active preset before storage sync", () => {
+  const activePreset: Preset = {
+    id: 101,
+    name: "Active",
+    boxPriceCost: 100,
+    boxesPurchased: 1,
+    packsPerBox: 16,
+    costInputMode: "perBox",
+    currency: "CAD",
+    sellingCurrency: "CAD",
+    exchangeRate: 1.4,
+    purchaseDate: "2026-02-01",
+    purchaseShippingCost: 0,
+    purchaseTaxPercent: 0,
+    sellingTaxPercent: 15,
+    sellingShippingPerOrder: 0,
+    includeTax: false,
+    spotPrice: 25,
+    boxPriceSell: 100,
+    packPrice: 8,
+    targetProfitPercent: 15
+  };
+
+  const otherPreset: Preset = {
+    ...activePreset,
+    id: 202,
+    name: "Other"
+  };
+
+  const activeInMemorySales: Sale[] = [
+    { id: 1, type: "pack", quantity: 2, packsCount: 2, price: 10, buyerShipping: 0, date: "2026-02-10" }
+  ];
+  const otherStoredSales: Sale[] = [
+    { id: 2, type: "pack", quantity: 1, packsCount: 1, price: 12, buyerShipping: 0, date: "2026-02-11" }
+  ];
+
+  const context = {
+    presets: [activePreset, otherPreset],
+    currentPresetId: activePreset.id,
+    sales: activeInMemorySales,
+    loadSalesForPresetId(presetId: number): Sale[] {
+      if (presetId === activePreset.id) return [];
+      if (presetId === otherPreset.id) return otherStoredSales;
+      return [];
+    }
+  } as unknown as Parameters<typeof appComputed.allPresetPerformance>[0];
+
+  const rows = appComputed.allPresetPerformance.call(context);
+  const activeRow = rows.find((row) => row.presetId === activePreset.id);
+  const otherRow = rows.find((row) => row.presetId === otherPreset.id);
+
+  assert.equal(activeRow?.salesCount, 1);
+  assert.equal(otherRow?.salesCount, 1);
+});
+
+test("portfolioSelectedPresetIds defaults to all presets when filter is empty", () => {
+  const ids = appComputed.portfolioSelectedPresetIds.call({
+    presets: [{ id: 11 }, { id: 22 }, { id: 33 }],
+    portfolioPresetFilterIds: []
+  } as unknown as Parameters<typeof appComputed.portfolioSelectedPresetIds>[0]);
+
+  assert.deepEqual(ids, [11, 22, 33]);
+});
+
+test("allPresetPerformance applies portfolio preset filter", () => {
+  const presetA: Preset = {
+    id: 301,
+    name: "A",
+    boxPriceCost: 100,
+    boxesPurchased: 1,
+    packsPerBox: 16,
+    costInputMode: "perBox",
+    currency: "CAD",
+    sellingCurrency: "CAD",
+    exchangeRate: 1.4,
+    purchaseDate: "2026-02-01",
+    purchaseShippingCost: 0,
+    purchaseTaxPercent: 0,
+    sellingTaxPercent: 15,
+    sellingShippingPerOrder: 0,
+    includeTax: false,
+    spotPrice: 25,
+    boxPriceSell: 100,
+    packPrice: 8,
+    targetProfitPercent: 15
+  };
+  const presetB: Preset = { ...presetA, id: 302, name: "B" };
+
+  const context = {
+    presets: [presetA, presetB],
+    portfolioSelectedPresetIds: [presetA.id],
+    currentPresetId: presetA.id,
+    sales: [],
+    loadSalesForPresetId(): Sale[] {
+      return [];
+    }
+  } as unknown as Parameters<typeof appComputed.allPresetPerformance>[0];
+
+  const rows = appComputed.allPresetPerformance.call(context);
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0]?.presetId, presetA.id);
 });

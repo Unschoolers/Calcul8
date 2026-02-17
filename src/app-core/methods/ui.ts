@@ -13,6 +13,7 @@ export const uiMethods: ThisType<AppContext> & Pick<
   | "formatCurrency"
   | "safeFixed"
   | "toggleChartView"
+  | "togglePortfolioChartView"
   | "calculateSaleProfit"
   | "getSaleColor"
   | "getSaleIcon"

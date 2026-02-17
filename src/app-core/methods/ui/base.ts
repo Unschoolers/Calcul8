@@ -11,6 +11,7 @@ export const uiBaseMethods: ThisType<AppContext> & Pick<
   | "formatCurrency"
   | "safeFixed"
   | "toggleChartView"
+  | "togglePortfolioChartView"
   | "calculateSaleProfit"
   | "getSaleColor"
   | "getSaleIcon"
@@ -61,6 +62,10 @@ export const uiBaseMethods: ThisType<AppContext> & Pick<
 
   toggleChartView(): void {
     this.chartView = this.chartView === "pie" ? "sparkline" : "pie";
+  },
+
+  togglePortfolioChartView(): void {
+    this.portfolioChartView = this.portfolioChartView === "breakdown" ? "trend" : "breakdown";
   },
 
   calculateSaleProfit(sale: Sale): number {

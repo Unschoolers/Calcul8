@@ -35,6 +35,16 @@ export const appComputed: AppComputedObject = {
     ];
   },
 
+  portfolioPresetFilterItems() {
+    return this.presets.map((preset) => ({ title: preset.name, value: preset.id }));
+  },
+
+  portfolioSelectedPresetIds(): number[] {
+    const allPresetIds = this.presets.map((preset) => preset.id);
+    const selectedIds = this.portfolioPresetFilterIds.filter((id) => allPresetIds.includes(id));
+    return selectedIds.length > 0 ? selectedIds : allPresetIds;
+  },
+
   totalPacks(): number {
     return calculateTotalPacks(this.boxesPurchased, this.packsPerBox, DEFAULT_VALUES.PACKS_PER_BOX);
   },
@@ -180,10 +190,18 @@ export const appComputed: AppComputedObject = {
   },
 
   allPresetPerformance() {
-    const rows = this.presets.map((preset) => {
-      const sales = this.loadSalesForPresetId(preset.id);
+    const selectedPresetIds = Array.isArray(this.portfolioSelectedPresetIds)
+      ? this.portfolioSelectedPresetIds
+      : this.presets.map((preset) => preset.id);
+    const selectedPresetIdSet = new Set(selectedPresetIds);
+    const rows = this.presets
+      .filter((preset) => selectedPresetIdSet.has(preset.id))
+      .map((preset) => {
+      const sales = this.currentPresetId === preset.id
+        ? this.sales
+        : this.loadSalesForPresetId(preset.id);
       return calculatePresetPerformanceSummary(preset, sales, DEFAULT_VALUES.EXCHANGE_RATE);
-    });
+      });
     return rows.sort((a, b) => b.totalProfit - a.totalProfit);
   },
 

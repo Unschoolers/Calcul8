@@ -1,4 +1,12 @@
 import type { AppLifecycleObject } from "./context.ts";
+import type { AppTab } from "../types/app.ts";
+
+const LAST_TAB_STORAGE_KEY = "whatfees_last_tab";
+const PORTFOLIO_FILTER_STORAGE_KEY = "whatfees_portfolio_filter_ids";
+
+function isAppTab(value: unknown): value is AppTab {
+  return value === "config" || value === "live" || value === "sales" || value === "portfolio";
+}
 
 export const appLifecycle: AppLifecycleObject = {
   mounted() {
@@ -11,6 +19,30 @@ export const appLifecycle: AppLifecycleObject = {
     } else if (this.presets.length > 0) {
       this.currentPresetId = this.presets[0].id;
       this.loadPreset();
+    }
+
+    try {
+      const rawFilter = localStorage.getItem(PORTFOLIO_FILTER_STORAGE_KEY);
+      if (rawFilter) {
+        const parsed = JSON.parse(rawFilter) as unknown;
+        if (Array.isArray(parsed)) {
+          const validPresetIds = new Set(this.presets.map((preset) => preset.id));
+          this.portfolioPresetFilterIds = parsed
+            .map((value) => Number(value))
+            .filter((id) => Number.isFinite(id) && validPresetIds.has(id));
+        }
+      }
+    } catch {
+      // Ignore storage/JSON parsing errors.
+    }
+
+    try {
+      const savedTab = localStorage.getItem(LAST_TAB_STORAGE_KEY);
+      if (isAppTab(savedTab) && (savedTab === "config" || this.currentPresetId)) {
+        this.currentTab = savedTab;
+      }
+    } catch {
+      // Ignore storage read errors.
     }
 
     this.getExchangeRate();
@@ -31,6 +63,14 @@ export const appLifecycle: AppLifecycleObject = {
   beforeUnmount() {
     this.stopCloudSyncScheduler();
     this.stopOfflineReconnectScheduler();
+    if (this.salesChart) {
+      this.salesChart.destroy();
+      this.salesChart = null;
+    }
+    if (this.portfolioChart) {
+      this.portfolioChart.destroy();
+      this.portfolioChart = null;
+    }
     if (this.syncStatusResetTimeoutId != null) {
       window.clearTimeout(this.syncStatusResetTimeoutId);
       this.syncStatusResetTimeoutId = null;

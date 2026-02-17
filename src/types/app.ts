@@ -5,6 +5,7 @@ export type CostInputMode = "perBox" | "total";
 export type CurrencyCode = "CAD" | "USD";
 export type SaleType = "pack" | "box" | "rtyh";
 export type ChartViewMode = "pie" | "sparkline";
+export type PortfolioChartViewMode = "breakdown" | "trend";
 export type SyncStatus = "idle" | "syncing" | "success" | "error";
 export type UiColor =
   | "info"
@@ -50,6 +51,7 @@ export interface PresetSetup {
   currency: CurrencyCode;
   sellingCurrency: CurrencyCode;
   exchangeRate: number;
+  purchaseDate: string;
   purchaseShippingCost: number;
   purchaseTaxPercent: number;
   sellingTaxPercent: number;
@@ -64,6 +66,7 @@ export interface PresetSetup {
 export interface Preset extends PresetSetup {
   id: number;
   name: string;
+  createdAt?: string;
   taxRatePercent?: number;
 }
 
@@ -138,6 +141,9 @@ export interface AppState extends PresetSetup {
   newSale: NewSaleDraft;
   salesChart: ChartJS<"doughnut", number[], string> | null;
   chartView: ChartViewMode;
+  portfolioChart: ChartJS<"doughnut", number[], string> | ChartJS<"line", number[], string> | null;
+  portfolioChartView: PortfolioChartViewMode;
+  portfolioPresetFilterIds: number[];
   presets: Preset[];
   currentPresetId: number | null;
   newPresetName: string;

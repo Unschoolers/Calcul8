@@ -18,6 +18,8 @@ export interface AppComputedState {
   hasPresetSelected: boolean;
   canUsePaidActions: boolean;
   presetItems: Array<{ title: string; value: number | null }>;
+  portfolioPresetFilterItems: Array<{ title: string; value: number }>;
+  portfolioSelectedPresetIds: number[];
   totalPacks: number;
   boxPriceCostCAD: number;
   purchaseShippingCostCAD: number;
@@ -83,12 +85,16 @@ export interface AppMethodState {
   calculatePriceForUnits(units: number, targetNetRevenue: number): number;
   loadSalesFromStorage(): void;
   saveSalesToStorage(): void;
+  openAddSaleModal(saleType?: SaleType): void;
+  onNewSaleTypeChange(type: SaleType): void;
   saveSale(): void;
   editSale(sale: Sale): void;
   deleteSale(id: number): void;
   cancelSale(): void;
   initSalesChart(): void;
+  initPortfolioChart(): void;
   toggleChartView(): void;
+  togglePortfolioChartView(): void;
   calculateSaleProfit(sale: Sale): number;
   getSaleColor(type: SaleType): string;
   getSaleIcon(type: SaleType): string;
@@ -115,6 +121,7 @@ export interface AppVueContext {
   $refs: {
     fileInput?: HTMLInputElement;
     salesChart?: HTMLCanvasElement;
+    portfolioChart?: HTMLCanvasElement;
   };
   $vuetify: {
     theme: {
@@ -132,6 +139,11 @@ export interface AppWatchObject {
   currentTab(this: AppContext, newTab: AppTab): void;
   currentPresetId(this: AppContext, newVal: number | null): void;
   chartView(this: AppContext): void;
+  portfolioChartView(this: AppContext): void;
+  portfolioPresetFilterIds: {
+    handler(this: AppContext): void;
+    deep: true;
+  };
   sales: {
     handler(this: AppContext): void;
     deep: true;
@@ -148,6 +160,8 @@ export interface AppComputedObject {
   hasPresetSelected(this: AppContext): boolean;
   canUsePaidActions(this: AppContext): boolean;
   presetItems(this: AppContext): Array<{ title: string; value: number | null }>;
+  portfolioPresetFilterItems(this: AppContext): Array<{ title: string; value: number }>;
+  portfolioSelectedPresetIds(this: AppContext): number[];
   totalPacks(this: AppContext): number;
   boxPriceCostCAD(this: AppContext): number;
   purchaseShippingCostCAD(this: AppContext): number;

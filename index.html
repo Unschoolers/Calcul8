@@ -75,6 +75,28 @@
       background-size: 100% 100%, 100% 100%;
     }
     .v-btn { min-height: 44px; min-width: 44px; }
+    .skip-link {
+      position: absolute;
+      top: -48px;
+      left: 12px;
+      z-index: 5000;
+      padding: 0.5rem 0.75rem;
+      border-radius: 8px;
+      color: #111;
+      background: #ffcb05;
+      font-weight: 700;
+      text-decoration: none;
+      transition: top 0.15s ease;
+    }
+    .skip-link:focus {
+      top: 10px;
+    }
+    .v-btn:focus-visible,
+    .v-fab:focus-visible,
+    .v-list-item:focus-visible {
+      outline: 3px solid rgba(255, 203, 5, 0.95) !important;
+      outline-offset: 2px !important;
+    }
     #startup-splash {
       position: fixed;
       inset: 0;
@@ -332,6 +354,7 @@
 </head>
 
 <body>
+  <a href="#app-main" class="skip-link">Skip to main content</a>
   <div id="startup-splash" aria-hidden="true">
     <div class="splash-card">
       <img src="icons/icon-192.png" alt="WhatFees" class="splash-logo" />
@@ -400,6 +423,8 @@
           </v-btn>
           <v-btn
             icon
+            :title="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
+            :aria-label="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
             @click="toggleTheme"
           >
             <v-icon>{{ isDark ? 'mdi-weather-sunny' : 'mdi-weather-night' }}</v-icon>
@@ -407,14 +432,14 @@
         </template>
       </v-app-bar>
 
-      <v-main>
+      <v-main id="app-main" tabindex="-1">
         <v-container fluid class="pa-4 app-shell">
           <v-alert v-if="isOffline" type="warning" variant="tonal" density="compact" class="mb-3">
             You are offline. Changes are saved locally.
           </v-alert>
 
           <!-- Preset Selector -->
-          <v-card class="mb-4 preset-card" elevation="4">
+          <v-card v-if="currentTab !== 'portfolio'" class="mb-4 preset-card" elevation="4">
             <v-card-text class="py-2">
               <v-select
                 v-model="currentPresetId"
@@ -510,6 +535,17 @@
                           class="mt-2"
                           hide-details
                           @input="onPurchaseConfigChange"
+                        ></v-text-field>
+
+                        <v-text-field
+                          v-model="purchaseDate"
+                          label="Purchase Date"
+                          type="date"
+                          variant="outlined"
+                          density="compact"
+                          class="mt-2"
+                          hide-details
+                          @change="onPurchaseConfigChange"
                         ></v-text-field>
 
                         <v-text-field
@@ -764,6 +800,8 @@
                         icon
                         size="small"
                         variant="text"
+                        :title="chartView === 'pie' ? 'Show sparkline chart' : 'Show pie chart'"
+                        :aria-label="chartView === 'pie' ? 'Show sparkline chart' : 'Show pie chart'"
                         @click="toggleChartView"
                         style="position: absolute; top: 0.5rem; right: 0.5rem; z-index: 10;"
                       >
@@ -772,12 +810,14 @@
 
                       <v-card-text>
                         <canvas
-                          v-if="chartView === 'pie'"
+                          v-show="chartView === 'pie'"
                           ref="salesChart"
+                          role="img"
+                          aria-label="Sales chart showing sold versus unsold net value."
                           style="max-height: 250px;"
                         ></canvas>
 
-                        <div v-else class="pa-4">
+                        <div v-show="chartView !== 'pie'" class="pa-4">
                           <div class="text-h6 mb-2 text-center">Profit Journey</div>
 
                           <div v-if="sales.length === 0" class="text-center py-8">
@@ -854,8 +894,22 @@
                           </v-list-item-subtitle>
 
                           <template v-slot:append>
-                            <v-btn icon="mdi-pencil" size="small" variant="text" @click="editSale(sale)"></v-btn>
-                            <v-btn icon="mdi-delete" size="small" variant="text" @click="deleteSale(sale.id)"></v-btn>
+                            <v-btn
+                              icon="mdi-pencil"
+                              size="small"
+                              variant="text"
+                              title="Edit sale"
+                              aria-label="Edit sale"
+                              @click="editSale(sale)"
+                            ></v-btn>
+                            <v-btn
+                              icon="mdi-delete"
+                              size="small"
+                              variant="text"
+                              title="Delete sale"
+                              aria-label="Delete sale"
+                              @click="deleteSale(sale.id)"
+                            ></v-btn>
                           </template>
                         </v-list-item>
                       </v-list>
@@ -866,6 +920,25 @@
 
               <!-- PORTFOLIO -->
               <v-window-item value="portfolio" :transition="false" :reverse-transition="false" eager>
+                <v-card class="mb-4 config-card" elevation="4">
+                  <v-card-text class="py-2">
+                    <v-select
+                      v-model="portfolioPresetFilterIds"
+                      :items="portfolioPresetFilterItems"
+                      label="Portfolio Filter"
+                      prepend-inner-icon="mdi-filter-variant"
+                      variant="outlined"
+                      density="compact"
+                      multiple
+                      chips
+                      closable-chips
+                      clearable
+                      hint="Showing all presets unless you choose specific ones."
+                      persistent-hint
+                    ></v-select>
+                  </v-card-text>
+                </v-card>
+
                 <v-row>
                   <v-col cols="12" sm="6" md="4">
                     <v-card elevation="4" class="config-card">
@@ -903,7 +976,40 @@
                 </v-row>
 
                 <v-row class="mt-4">
-                  <v-col cols="12">
+                  <v-col cols="12" md="6">
+                    <v-card elevation="4" style="position: relative;">
+                      <v-btn
+                        icon
+                        size="small"
+                        variant="text"
+                        style="position: absolute; top: 0.5rem; right: 0.5rem; z-index: 10;"
+                        :title="portfolioChartView === 'breakdown' ? 'Switch to trend view' : 'Switch to breakdown view'"
+                        :aria-label="portfolioChartView === 'breakdown' ? 'Switch to trend view' : 'Switch to breakdown view'"
+                        @click="togglePortfolioChartView"
+                      >
+                        <v-icon>{{ portfolioChartView === "breakdown" ? "mdi-chart-line" : "mdi-chart-donut" }}</v-icon>
+                      </v-btn>
+                      <v-card-text>
+                        <div class="text-caption text-medium-emphasis mb-2">
+                          {{ portfolioChartView === "breakdown" ? "Revenue by preset" : "Cumulative portfolio profit trend" }}
+                        </div>
+                        <div v-if="!hasPortfolioData" class="text-caption text-medium-emphasis py-6 text-center">
+                          No chart data yet.
+                        </div>
+                        <canvas
+                          v-else
+                          ref="portfolioChart"
+                          role="img"
+                          :aria-label="portfolioChartView === 'breakdown'
+                            ? 'Portfolio revenue breakdown chart by preset.'
+                            : 'Portfolio cumulative profit trend chart.'"
+                          style="max-height: 250px;"
+                        ></canvas>
+                      </v-card-text>
+                    </v-card>
+                  </v-col>
+
+                  <v-col cols="12" md="6">
                     <v-card elevation="4">
                       <v-card-title class="d-flex align-center justify-space-between">
                         <div>
@@ -978,7 +1084,14 @@
         </v-container>
 
         <!-- Bottom Nav -->
-        <v-bottom-navigation v-model="currentTab" color="primary" grow elevation="8" mandatory>
+        <v-bottom-navigation
+          v-model="currentTab"
+          color="primary"
+          grow
+          elevation="8"
+          mandatory
+          aria-label="Primary navigation"
+        >
           <v-btn value="config" :ripple="false">
             <v-icon>mdi-cog</v-icon>
             <span>Config</span>
@@ -1008,6 +1121,7 @@
         color="primary"
         size="large"
         title="Add preset"
+        aria-label="Add preset"
         @click="showNewPresetModal = true"
         class="fab-primary fab-add-preset"
       ></v-fab>
@@ -1018,6 +1132,7 @@
         color="secondary"
         size="large"
         title="Calculate prices"
+        aria-label="Open auto-calculate prices"
         :disabled="!hasPresetSelected"
         @click="showProfitCalculator = true"
         class="fab-primary fab-calculate"
@@ -1032,7 +1147,14 @@
           :offset="12"
         >
           <template v-slot:activator="{ props }">
-            <v-fab v-bind="props" icon="mdi-dots-vertical" color="surface" size="large"></v-fab>
+            <v-fab
+              v-bind="props"
+              icon="mdi-dots-vertical"
+              color="surface"
+              size="large"
+              title="More preset actions"
+              aria-label="More preset actions"
+            ></v-fab>
           </template>
 
           <v-card min-width="190" elevation="6">
@@ -1065,40 +1187,23 @@
         color="surface"
         size="large"
         title="Reset live prices"
+        aria-label="Reset live prices"
         @click="resetLivePrices"
         class="fab-primary fab-calculate"
       ></v-fab>
 
-      <!-- Overflow Menu - Sales -->
-      <div v-if="currentTab === 'sales'" class="fab-overflow-wrap fab-overflow-sales">
-        <v-menu
-          v-model="speedDialOpenSales"
-          transition="fade-transition"
-          location="top end"
-          :offset="12"
-        >
-          <template v-slot:activator="{ props }">
-            <v-fab v-bind="props" icon="mdi-cart-plus" color="primary" size="large"></v-fab>
-          </template>
-
-          <v-card min-width="180" elevation="6">
-            <v-list density="compact" nav>
-              <v-list-item
-                prepend-icon="mdi-cart-plus"
-                title="Add Sale"
-                :disabled="!hasPresetSelected"
-                @click="showAddSaleModal = true; speedDialOpenSales = false"
-              ></v-list-item>
-              <v-list-item
-                prepend-icon="mdi-file-export"
-                title="Export Current Sales"
-                :disabled="!hasPresetSelected"
-                @click="exportSales(); speedDialOpenSales = false"
-              ></v-list-item>
-            </v-list>
-          </v-card>
-        </v-menu>
-      </div>
+      <!-- Primary FAB - Sales -->
+      <v-fab
+        v-if="currentTab === 'sales'"
+        icon="mdi-cart-plus"
+        color="primary"
+        size="large"
+        title="Add sale"
+        aria-label="Add sale"
+        :disabled="!hasPresetSelected"
+        @click="openAddSaleModal()"
+        class="fab-primary fab-calculate"
+      ></v-fab>
 
       <!-- New Preset Modal -->
       <v-dialog v-model="showNewPresetModal" max-width="400">
@@ -1256,6 +1361,7 @@
               variant="outlined"
               :disabled="!hasPresetSelected"
               class="mb-2"
+              @update:model-value="onNewSaleTypeChange"
             ></v-select>
 
             <v-text-field v-model.number="newSale.quantity" label="Quantity" type="number" variant="outlined" :disabled="!hasPresetSelected" :min="1" class="mb-2"></v-text-field>
@@ -1293,7 +1399,13 @@
               <v-icon class="mr-2">mdi-table</v-icon>
               Portfolio Report
             </div>
-            <v-btn icon="mdi-close" variant="text" @click="showPortfolioReportModal = false"></v-btn>
+            <v-btn
+              icon="mdi-close"
+              variant="text"
+              title="Close report"
+              aria-label="Close report"
+              @click="showPortfolioReportModal = false"
+            ></v-btn>
           </v-card-title>
           <v-divider></v-divider>
 
@@ -1390,6 +1502,9 @@
         :color="snackbar.color"
         location="bottom"
         timeout="2400"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
       >
         {{ snackbar.text }}
       </v-snackbar>

@@ -16,6 +16,32 @@ type ExchangeRateCacheRecord = {
 
 const EXCHANGE_RATE_CACHE_KEY = "whatfees_exchange_rate_usd_cad_v1";
 const EXCHANGE_RATE_CACHE_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
+const DATE_ONLY_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+
+function getTodayDate(): string {
+  return new Date().toISOString().split("T")[0];
+}
+
+function isValidDateOnly(value: unknown): value is string {
+  return typeof value === "string" && DATE_ONLY_REGEX.test(value);
+}
+
+function toDateOnly(value: unknown): string | null {
+  if (isValidDateOnly(value)) return value;
+  if (typeof value !== "string" || !value.trim()) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toISOString().split("T")[0];
+}
+
+function inferDateFromPresetId(presetId: number): string | null {
+  const timestamp = Number(presetId);
+  // Millisecond timestamp roughly between 2000 and 2100.
+  if (!Number.isFinite(timestamp) || timestamp < 946684800000 || timestamp > 4102444800000) {
+    return null;
+  }
+  return new Date(timestamp).toISOString().split("T")[0];
+}
 
 function isExchangeRateCacheRecord(value: unknown): value is ExchangeRateCacheRecord {
   if (!value || typeof value !== "object") return false;
@@ -198,7 +224,23 @@ export const configMethods: ThisType<AppContext> & Pick<
   loadPresetsFromStorage(): void {
     try {
       const stored = localStorage.getItem("rtyh_presets");
-      if (stored) this.presets = JSON.parse(stored) as Preset[];
+      if (stored) {
+        const parsed = JSON.parse(stored) as Preset[];
+        const todayDate = getTodayDate();
+        this.presets = parsed.map((preset) => ({
+          ...preset,
+          purchaseDate:
+            toDateOnly(preset.purchaseDate) ??
+            toDateOnly(preset.createdAt) ??
+            inferDateFromPresetId(preset.id) ??
+            todayDate,
+          createdAt:
+            toDateOnly(preset.createdAt) ??
+            toDateOnly(preset.purchaseDate) ??
+            inferDateFromPresetId(preset.id) ??
+            todayDate
+        }));
+      }
     } catch (error) {
       console.error("Failed to load presets:", error);
       this.presets = [];
@@ -223,6 +265,7 @@ export const configMethods: ThisType<AppContext> & Pick<
       currency: this.currency,
       sellingCurrency: this.sellingCurrency,
       exchangeRate: this.exchangeRate,
+      purchaseDate: this.purchaseDate,
       purchaseShippingCost: this.purchaseShippingCost,
       purchaseTaxPercent: this.purchaseTaxPercent,
       sellingTaxPercent: this.sellingTaxPercent,
@@ -260,7 +303,13 @@ export const configMethods: ThisType<AppContext> & Pick<
     if (!name) return this.notify("Please enter a preset name", "warning");
     if (this.presets.some((p) => p.name === name)) return this.notify("A preset with this name already exists", "warning");
 
-    const newPreset = { id: Date.now(), name, ...this.getCurrentSetup() };
+    const todayDate = getTodayDate();
+    const newPreset = {
+      id: Date.now(),
+      name,
+      createdAt: todayDate,
+      ...this.getCurrentSetup()
+    };
     this.presets.push(newPreset);
     this.savePresetsToStorage();
 
@@ -276,6 +325,7 @@ export const configMethods: ThisType<AppContext> & Pick<
 
     const preset = this.presets.find((p) => p.id === this.currentPresetId);
     if (!preset) return;
+    const todayDate = getTodayDate();
 
     this.boxPriceCost = preset.boxPriceCost ?? DEFAULT_VALUES.BOX_PRICE;
     this.boxesPurchased = preset.boxesPurchased ?? DEFAULT_VALUES.BOXES_PURCHASED;
@@ -284,6 +334,11 @@ export const configMethods: ThisType<AppContext> & Pick<
     this.currency = preset.currency ?? "CAD";
     this.sellingCurrency = preset.sellingCurrency ?? "CAD";
     this.exchangeRate = preset.exchangeRate ?? DEFAULT_VALUES.EXCHANGE_RATE;
+    this.purchaseDate =
+      toDateOnly(preset.purchaseDate) ??
+      toDateOnly(preset.createdAt) ??
+      inferDateFromPresetId(preset.id) ??
+      todayDate;
     this.purchaseShippingCost = preset.purchaseShippingCost ?? DEFAULT_VALUES.PURCHASE_SHIPPING_COST;
 
     const legacyTax = preset.taxRatePercent;
@@ -304,21 +359,42 @@ export const configMethods: ThisType<AppContext> & Pick<
 
     this.syncLivePricesFromDefaults();
     this.loadSalesFromStorage();
+    void this.$nextTick(() => {
+      if (this.currentTab === "sales") {
+        this.initSalesChart();
+        return;
+      }
+      if (this.currentTab === "portfolio") {
+        this.initPortfolioChart();
+      }
+    });
   },
 
   deleteCurrentPreset(): void {
     if (!this.currentPresetId) return;
     const preset = this.presets.find((p) => p.id === this.currentPresetId);
     if (!preset) return;
+    const presetIdToDelete = preset.id;
+    const linkedSalesCount = this.loadSalesForPresetId(presetIdToDelete).length;
 
     this.askConfirmation(
       {
         title: "Delete Preset?",
-        text: `Delete "${preset.name}" permanently?`,
+        text: linkedSalesCount > 0
+          ? `Delete "${preset.name}" and ${linkedSalesCount} linked sale${linkedSalesCount === 1 ? "" : "s"} permanently?`
+          : `Delete "${preset.name}" permanently?`,
         color: "error"
       },
       () => {
-        this.presets = this.presets.filter((p) => p.id !== this.currentPresetId);
+        this.presets = this.presets.filter((p) => p.id !== presetIdToDelete);
+        try {
+          localStorage.removeItem(this.getSalesStorageKey(presetIdToDelete));
+          if (Number(localStorage.getItem("rtyh_last_preset_id")) === presetIdToDelete) {
+            localStorage.removeItem("rtyh_last_preset_id");
+          }
+        } catch {
+          // Ignore localStorage cleanup failures.
+        }
         this.savePresetsToStorage();
         this.currentPresetId = null;
         this.notify("Preset deleted", "info");
@@ -440,9 +516,22 @@ export const configMethods: ThisType<AppContext> & Pick<
           return;
         }
 
+        const todayDate = getTodayDate();
         const cleanedPresets: Preset[] = presetsArr.map((p) => {
           const { sales, ...rest } = p;
-          return rest;
+          return {
+            ...rest,
+            purchaseDate:
+              toDateOnly((rest as Preset).purchaseDate) ??
+              toDateOnly((rest as Preset).createdAt) ??
+              inferDateFromPresetId((rest as Preset).id) ??
+              todayDate,
+            createdAt:
+              toDateOnly((rest as Preset).createdAt) ??
+              toDateOnly((rest as Preset).purchaseDate) ??
+              inferDateFromPresetId((rest as Preset).id) ??
+              todayDate
+          };
         });
 
         this.presets = cleanedPresets;
@@ -517,6 +606,7 @@ export const configMethods: ThisType<AppContext> & Pick<
   },
 
   onPurchaseConfigChange(): void {
+    this.purchaseDate = toDateOnly(this.purchaseDate) ?? getTodayDate();
     if (this.purchaseShippingCost == null || Number.isNaN(Number(this.purchaseShippingCost))) {
       this.purchaseShippingCost = DEFAULT_VALUES.PURCHASE_SHIPPING_COST;
     }
