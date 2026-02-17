@@ -121,7 +121,23 @@ export async function entitlementsVerifyPlay(
     }
 
     if (!verification.isValid) {
-      throw new HttpError(402, "Google Play purchase is not valid.");
+      const purchaseStateLabel = verification.purchaseState === null
+        ? "UNKNOWN"
+        : String(verification.purchaseState);
+      const returnedProductIds = verification.productIds.length > 0
+        ? verification.productIds.join(",")
+        : "(none)";
+      const allowedProductIdsLabel = allowedProductIds.length > 0
+        ? allowedProductIds.join(",")
+        : "(none)";
+
+      throw new HttpError(
+        402,
+        `Google Play purchase is not valid. ` +
+        `purchaseState=${purchaseStateLabel}; ` +
+        `returnedProductIds=${returnedProductIds}; ` +
+        `allowedProductIds=${allowedProductIdsLabel}.`
+      );
     }
     if (!verification.productId) {
       throw new HttpError(502, "Could not determine purchased product ID from Google Play response.");
