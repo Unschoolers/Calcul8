@@ -1,6 +1,6 @@
 {
   "name": "whatfees-api",
-  "version": "1.0.38",
+  "version": "1.0.39",
   "private": true,
   "description": "whatfees backend API (Azure Functions + Cosmos DB)",
   "main": "dist/index.js",
