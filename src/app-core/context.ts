@@ -70,6 +70,8 @@ export interface AppMethodState {
   exportPresets(): void;
   exportSales(): void;
   exportPortfolioReport(): void;
+  openPortfolioReportModal(): void;
+  copyPortfolioReportTable(): Promise<void>;
   importPresets(): void;
   handleFileImport(event: Event): void;
   calculateProfit(units: number, pricePerUnit: number): number;

@@ -46,6 +46,65 @@ function writeExchangeRateCache(cadRate: number, fetchedAt: number): void {
   }
 }
 
+function sanitizeTsvCell(value: string | number | null | undefined): string {
+  if (value == null) return "";
+  return String(value).replace(/[\t\r\n]+/g, " ").trim();
+}
+
+function fallbackCopyToClipboard(text: string): boolean {
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "true");
+  textarea.style.position = "fixed";
+  textarea.style.top = "-9999px";
+  textarea.style.left = "-9999px";
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+
+  let success = false;
+  try {
+    success = document.execCommand("copy");
+  } catch {
+    success = false;
+  } finally {
+    document.body.removeChild(textarea);
+  }
+  return success;
+}
+
+function buildPortfolioReportTsv(context: AppContext): string {
+  const exportedAt = new Date().toISOString();
+  const totals = context.portfolioTotals;
+  const lines: string[] = [
+    `Report\t${sanitizeTsvCell("WhatFees Portfolio")}`,
+    `Exported At\t${sanitizeTsvCell(exportedAt)}`,
+    "",
+    "Section\tPreset Count\tProfitable Presets\tSales Count\tTotal Revenue\tTotal Cost\tTotal Profit",
+    `Totals\t${totals.presetCount}\t${totals.profitablePresetCount}\t${totals.totalSalesCount}\t${context.formatCurrency(totals.totalRevenue)}\t${context.formatCurrency(totals.totalCost)}\t${context.formatCurrency(totals.totalProfit)}`,
+    "",
+    "Preset\tSales\tSold Packs\tTotal Packs\tRevenue\tCost\tProfit\tMargin %\tLast Sale"
+  ];
+
+  for (const row of context.allPresetPerformance) {
+    lines.push(
+      [
+        sanitizeTsvCell(row.presetName),
+        row.salesCount,
+        row.soldPacks,
+        row.totalPacks,
+        context.formatCurrency(row.totalRevenue),
+        context.formatCurrency(row.totalCost),
+        context.formatCurrency(row.totalProfit),
+        row.marginPercent == null ? "" : context.formatCurrency(row.marginPercent, 2),
+        row.lastSaleDate ? sanitizeTsvCell(context.formatDate(row.lastSaleDate)) : ""
+      ].join("\t")
+    );
+  }
+
+  return lines.join("\n");
+}
+
 export const configMethods: ThisType<AppContext> & Pick<
   AppMethodState,
   | "getSalesStorageKey"
@@ -64,6 +123,8 @@ export const configMethods: ThisType<AppContext> & Pick<
   | "exportPresets"
   | "exportSales"
   | "exportPortfolioReport"
+  | "openPortfolioReportModal"
+  | "copyPortfolioReportTable"
   | "importPresets"
   | "handleFileImport"
   | "calculateProfit"
@@ -309,28 +370,36 @@ export const configMethods: ThisType<AppContext> & Pick<
   },
 
   exportPortfolioReport(): void {
+    this.openPortfolioReportModal();
+  },
+
+  openPortfolioReportModal(): void {
     if (!this.hasPortfolioData) {
-      this.notify("No portfolio data to export", "warning");
+      this.notify("No portfolio data yet", "warning");
+      return;
+    }
+    this.showPortfolioReportModal = true;
+  },
+
+  async copyPortfolioReportTable(): Promise<void> {
+    if (!this.hasPortfolioData) {
+      this.notify("No portfolio data yet", "warning");
       return;
     }
 
-    const payload = {
-      exportedAt: new Date().toISOString(),
-      totals: this.portfolioTotals,
-      presets: this.allPresetPerformance
-    };
-
-    const dataStr = JSON.stringify(payload, null, 2);
-    const blob = new Blob([dataStr], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `whatfees-portfolio-${Date.now()}.json`;
-    link.click();
-
-    URL.revokeObjectURL(url);
-    this.notify("Portfolio report exported", "success");
+    const tsv = buildPortfolioReportTsv(this);
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(tsv);
+      } else {
+        const copied = fallbackCopyToClipboard(tsv);
+        if (!copied) throw new Error("Clipboard copy fallback failed");
+      }
+      this.notify("Portfolio table copied. Paste into Sheets or Excel.", "success");
+    } catch (error) {
+      console.warn("Failed to copy portfolio table:", error);
+      this.notify("Could not copy table. Please try again.", "error");
+    }
   },
 
   importPresets(): void {

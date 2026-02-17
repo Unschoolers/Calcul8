@@ -256,6 +256,48 @@
       inset-block-end: calc(5rem + env(safe-area-inset-bottom));
     }
     .v-speed-dial__content { z-index: 1301 !important; }
+    .tabs-window .v-window__container,
+    .tabs-window .v-window-item {
+      transition: none !important;
+    }
+    .tabs-window,
+    .tabs-window .v-window__container {
+      overflow: visible !important;
+    }
+    .tabs-window .v-window__container {
+      height: auto !important;
+      min-height: 1px;
+    }
+    .tabs-window .v-window-item {
+      will-change: auto;
+      transform: none !important;
+      position: static !important;
+      display: none !important;
+    }
+    .tabs-window .v-window-item.v-window-item--active {
+      display: block !important;
+    }
+    .portfolio-report-table {
+      width: 100%;
+      min-width: 720px;
+      border-collapse: collapse;
+      font-size: 0.86rem;
+    }
+    .portfolio-report-table th,
+    .portfolio-report-table td {
+      padding: 0.52rem 0.6rem;
+      border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.09);
+      text-align: left;
+      white-space: nowrap;
+    }
+    .portfolio-report-table th {
+      font-weight: 700;
+      color: rgba(var(--v-theme-on-surface), 0.78);
+      background: rgba(var(--v-theme-on-surface), 0.04);
+    }
+    .portfolio-report-table tbody tr:nth-child(even) {
+      background: rgba(var(--v-theme-on-surface), 0.02);
+    }
     @media (max-width: 600px) {
       .app-shell {
         padding-left: 0.75rem !important;
@@ -394,9 +436,9 @@
 
           <!-- Tab Content -->
           <div :class="{ 'interaction-disabled': !hasPresetSelected }" :style="!hasPresetSelected ? 'pointer-events: none;' : null">
-            <v-window v-model="currentTab" :transition="false" :reverse-transition="false">
+            <v-window v-model="currentTab" :transition="false" :reverse-transition="false" :touch="false" class="tabs-window">
               <!-- CONFIG -->
-              <v-window-item value="config" :transition="false" :reverse-transition="false">
+              <v-window-item value="config" :transition="false" :reverse-transition="false" eager>
                 <v-row class="config-layout">
                   <!-- Purchase Cost -->
                   <v-col cols="12" md="6">
@@ -639,7 +681,7 @@
               </v-window-item>
 
               <!-- LIVE -->
-              <v-window-item value="live" :transition="false" :reverse-transition="false">
+              <v-window-item value="live" :transition="false" :reverse-transition="false" eager>
                 <v-container fluid class="pa-2">
                   <v-row dense>
                     <v-col cols="12">
@@ -685,7 +727,7 @@
               </v-window-item>
 
               <!-- SALES -->
-              <v-window-item value="sales" :transition="false" :reverse-transition="false">
+              <v-window-item value="sales" :transition="false" :reverse-transition="false" eager>
                 <v-row>
                   <!-- Status Card -->
                   <v-col cols="12" md="6">
@@ -823,7 +865,7 @@
               </v-window-item>
 
               <!-- PORTFOLIO -->
-              <v-window-item value="portfolio" :transition="false" :reverse-transition="false">
+              <v-window-item value="portfolio" :transition="false" :reverse-transition="false" eager>
                 <v-row>
                   <v-col cols="12" sm="6" md="4">
                     <v-card elevation="4" class="config-card">
@@ -876,11 +918,11 @@
                             color="primary"
                             variant="tonal"
                             size="small"
-                            prepend-icon="mdi-file-export"
+                            prepend-icon="mdi-table"
                             :disabled="!hasPortfolioData"
-                            @click="exportPortfolioReport"
+                            @click="openPortfolioReportModal"
                           >
-                            Export
+                            Report
                           </v-btn>
                         </div>
                       </v-card-title>
@@ -905,11 +947,17 @@
                           </template>
 
                           <v-list-item-title>{{ row.presetName }}</v-list-item-title>
-                          <v-list-item-subtitle>
-                            {{ row.salesCount }} sale{{ row.salesCount === 1 ? '' : 's' }} •
-                            Revenue ${{ formatCurrency(row.totalRevenue) }} •
-                            Cost ${{ formatCurrency(row.totalCost) }}
-                            <span v-if="row.lastSaleDate"> • Last sale {{ formatDate(row.lastSaleDate) }}</span>
+                          <v-list-item-subtitle class="d-flex flex-column ga-1">
+                            <div>
+                              {{ row.salesCount }} sale{{ row.salesCount === 1 ? '' : 's' }}
+                            </div>
+                            <div>
+                              Revenue ${{ formatCurrency(row.totalRevenue) }} •
+                              Cost ${{ formatCurrency(row.totalCost) }}
+                            </div>
+                            <div v-if="row.lastSaleDate">
+                              Last sale {{ formatDate(row.lastSaleDate) }}
+                            </div>
                           </v-list-item-subtitle>
 
                           <template v-slot:append>
@@ -930,7 +978,7 @@
         </v-container>
 
         <!-- Bottom Nav -->
-        <v-bottom-navigation v-model="currentTab" color="primary" grow elevation="8">
+        <v-bottom-navigation v-model="currentTab" color="primary" grow elevation="8" mandatory>
           <v-btn value="config" :ripple="false">
             <v-icon>mdi-cog</v-icon>
             <span>Config</span>
@@ -1233,6 +1281,94 @@
             <v-spacer></v-spacer>
             <v-btn text @click="cancelSale">Cancel</v-btn>
             <v-btn color="primary" @click="saveSale" :disabled="!canUsePaidActions">{{ editingSale ? 'Update' : 'Add' }}</v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
+
+      <!-- Portfolio Report Modal -->
+      <v-dialog v-model="showPortfolioReportModal" max-width="980" scrollable>
+        <v-card>
+          <v-card-title class="d-flex align-center justify-space-between">
+            <div>
+              <v-icon class="mr-2">mdi-table</v-icon>
+              Portfolio Report
+            </div>
+            <v-btn icon="mdi-close" variant="text" @click="showPortfolioReportModal = false"></v-btn>
+          </v-card-title>
+          <v-divider></v-divider>
+
+          <v-card-text>
+            <v-alert type="info" variant="tonal" density="compact" class="mb-4">
+              Copy this table, then paste into Excel or Google Sheets.
+            </v-alert>
+
+            <v-row dense class="mb-3">
+              <v-col cols="12" sm="4">
+                <v-card variant="tonal" color="primary">
+                  <v-card-text class="py-2">
+                    <div class="text-caption">Total Revenue</div>
+                    <div class="text-subtitle-1 font-weight-bold">${{ formatCurrency(portfolioTotals.totalRevenue) }}</div>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+              <v-col cols="12" sm="4">
+                <v-card variant="tonal" color="secondary">
+                  <v-card-text class="py-2">
+                    <div class="text-caption">Total Cost</div>
+                    <div class="text-subtitle-1 font-weight-bold">${{ formatCurrency(portfolioTotals.totalCost) }}</div>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+              <v-col cols="12" sm="4">
+                <v-card variant="tonal" :color="portfolioTotals.totalProfit >= 0 ? 'success' : 'error'">
+                  <v-card-text class="py-2">
+                    <div class="text-caption">Total Profit / Loss</div>
+                    <div class="text-subtitle-1 font-weight-bold">
+                      {{ portfolioTotals.totalProfit >= 0 ? '+' : '' }}${{ formatCurrency(portfolioTotals.totalProfit) }}
+                    </div>
+                  </v-card-text>
+                </v-card>
+              </v-col>
+            </v-row>
+
+            <div style="overflow-x: auto;">
+              <table class="portfolio-report-table">
+                <thead>
+                  <tr>
+                    <th>Preset</th>
+                    <th>Sales</th>
+                    <th>Sold Packs</th>
+                    <th>Total Packs</th>
+                    <th>Revenue</th>
+                    <th>Cost</th>
+                    <th>Profit</th>
+                    <th>Margin %</th>
+                    <th>Last Sale</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="row in allPresetPerformance" :key="`report-${row.presetId}`">
+                    <td>{{ row.presetName }}</td>
+                    <td>{{ row.salesCount }}</td>
+                    <td>{{ row.soldPacks }}</td>
+                    <td>{{ row.totalPacks }}</td>
+                    <td>${{ formatCurrency(row.totalRevenue) }}</td>
+                    <td>${{ formatCurrency(row.totalCost) }}</td>
+                    <td>{{ row.totalProfit >= 0 ? '+' : '' }}${{ formatCurrency(row.totalProfit) }}</td>
+                    <td>{{ row.marginPercent == null ? '-' : `${formatCurrency(row.marginPercent, 2)}%` }}</td>
+                    <td>{{ row.lastSaleDate ? formatDate(row.lastSaleDate) : '-' }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </v-card-text>
+
+          <v-card-actions>
+            <v-spacer></v-spacer>
+            <v-btn variant="text" @click="showPortfolioReportModal = false">Close</v-btn>
+            <v-btn color="primary" prepend-icon="mdi-content-copy" :disabled="!hasPortfolioData" @click="copyPortfolioReportTable">
+              Copy Table
+            </v-btn>
           </v-card-actions>
         </v-card>
       </v-dialog>

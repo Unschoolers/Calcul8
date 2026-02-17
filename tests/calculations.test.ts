@@ -207,6 +207,139 @@ test("preset and portfolio summaries aggregate correctly", () => {
   assert.equal(totals.totalProfit, rowA.totalProfit + rowB.totalProfit);
 });
 
+test("preset performance summary handles empty sales with conversion, tax, customs, and shipping", () => {
+  const preset: Preset = {
+    id: 3,
+    name: "USD Case",
+    boxPriceCost: 100,
+    boxesPurchased: 2,
+    packsPerBox: 12,
+    costInputMode: "perBox",
+    currency: "USD",
+    sellingCurrency: "CAD",
+    exchangeRate: 1.5,
+    purchaseShippingCost: 20,
+    purchaseTaxPercent: 10,
+    sellingTaxPercent: 15,
+    sellingShippingPerOrder: 0,
+    includeTax: true,
+    spotPrice: 25,
+    boxPriceSell: 100,
+    packPrice: 8,
+    targetProfitPercent: 15
+  };
+
+  const summary = calculatePresetPerformanceSummary(preset, [], 1.4);
+
+  assert.equal(summary.salesCount, 0);
+  assert.equal(summary.totalRevenue, 0);
+  assert.equal(summary.totalCost, 366.5);
+  assert.equal(summary.totalProfit, -366.5);
+  assert.equal(summary.marginPercent, null);
+  assert.equal(summary.soldPacks, 0);
+  assert.equal(summary.totalPacks, 24);
+  assert.equal(summary.lastSaleDate, null);
+});
+
+test("preset performance summary uses latest sale date and shipping-aware revenue", () => {
+  const preset: Preset = {
+    id: 4,
+    name: "Date + Shipping",
+    boxPriceCost: 80,
+    boxesPurchased: 1,
+    packsPerBox: 16,
+    costInputMode: "perBox",
+    currency: "CAD",
+    sellingCurrency: "CAD",
+    exchangeRate: 1.4,
+    purchaseShippingCost: 0,
+    purchaseTaxPercent: 0,
+    sellingTaxPercent: 15,
+    sellingShippingPerOrder: 0,
+    includeTax: false,
+    spotPrice: 25,
+    boxPriceSell: 100,
+    packPrice: 8,
+    targetProfitPercent: 15
+  };
+
+  const sales: Sale[] = [
+    { id: 10, type: "pack", quantity: 1, packsCount: 1, price: 10, buyerShipping: 5, date: "2026-01-10" },
+    { id: 11, type: "pack", quantity: 2, packsCount: 2, price: 9, buyerShipping: 0, date: "2026-01-12" },
+    { id: 12, type: "box", quantity: 1, packsCount: 16, price: 120, buyerShipping: 3, date: "2026-01-11" }
+  ];
+
+  const expectedRevenue = sales.reduce((sum, sale) => {
+    const gross = sale.quantity * sale.price;
+    return sum + calculateNetFromGross(gross, preset.sellingTaxPercent, sale.buyerShipping ?? 0, 1);
+  }, 0);
+
+  const summary = calculatePresetPerformanceSummary(preset, sales, 1.4);
+
+  assert.equal(summary.lastSaleDate, "2026-01-12");
+  assert.equal(summary.totalRevenue, expectedRevenue);
+  assert.equal(summary.salesCount, 3);
+  assert.equal(summary.soldPacks, 19);
+});
+
+test("portfolio totals handle empty rows and only count strictly positive presets as profitable", () => {
+  const emptyTotals = calculatePortfolioTotals([]);
+  assert.deepEqual(emptyTotals, {
+    presetCount: 0,
+    profitablePresetCount: 0,
+    totalSalesCount: 0,
+    totalRevenue: 0,
+    totalCost: 0,
+    totalProfit: 0
+  });
+
+  const totals = calculatePortfolioTotals([
+    {
+      presetId: 1,
+      presetName: "Positive",
+      salesCount: 2,
+      totalRevenue: 200,
+      totalCost: 150,
+      totalProfit: 50,
+      marginPercent: 25,
+      soldPacks: 10,
+      totalPacks: 16,
+      lastSaleDate: "2026-01-01"
+    },
+    {
+      presetId: 2,
+      presetName: "Break-even",
+      salesCount: 1,
+      totalRevenue: 100,
+      totalCost: 100,
+      totalProfit: 0,
+      marginPercent: 0,
+      soldPacks: 5,
+      totalPacks: 16,
+      lastSaleDate: "2026-01-02"
+    },
+    {
+      presetId: 3,
+      presetName: "Negative",
+      salesCount: 3,
+      totalRevenue: 90,
+      totalCost: 120,
+      totalProfit: -30,
+      marginPercent: -33.3333,
+      soldPacks: 7,
+      totalPacks: 16,
+      lastSaleDate: "2026-01-03"
+    }
+  ]);
+
+  assert.equal(totals.presetCount, 3);
+  assert.equal(totals.profitablePresetCount, 1);
+  assert.equal(totals.totalSalesCount, 6);
+  assert.equal(totals.totalRevenue, 390);
+  assert.equal(totals.totalCost, 370);
+  assert.equal(totals.totalProfit, 20);
+});
+
 test("canUsePaidActions requires preset + pro access", () => {
   const blockedNoPreset = appComputed.canUsePaidActions.call({
     hasPresetSelected: false,

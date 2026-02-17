@@ -106,6 +106,7 @@ export interface AppState extends PresetSetup {
   hasProAccess: boolean;
   showManualPurchaseVerify: boolean;
   showVerifyPurchaseModal: boolean;
+  showPortfolioReportModal: boolean;
   isVerifyingPurchase: boolean;
   purchaseTokenInput: string;
   purchaseProductIdInput: string;

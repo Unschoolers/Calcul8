@@ -10,6 +10,7 @@ export function createInitialState(): AppState {
     hasProAccess: localStorage.getItem("rtyh_pro_access") === "1",
     showManualPurchaseVerify,
     showVerifyPurchaseModal: false,
+    showPortfolioReportModal: false,
     isVerifyingPurchase: false,
     purchaseTokenInput: "",
     purchaseProductIdInput: "",
