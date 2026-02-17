@@ -44,11 +44,15 @@ function normalizePurchaseLike(value: unknown): PlayPurchaseTokenResult {
   }
 
   const candidate = value as PurchaseLike;
-  const purchaseToken = normalizeString(candidate.purchaseToken) ?? normalizeString(candidate.token);
   const itemId = normalizeString(candidate.itemId)
     ?? normalizeString(candidate.productId)
     ?? normalizeString(candidate.sku)
     ?? normalizeString(candidate.skuId);
+  const explicitPurchaseToken = normalizeString(candidate.purchaseToken);
+  const genericToken = normalizeString(candidate.token);
+  // Some payloads contain unrelated generic "token" fields (auth/session tokens).
+  // Only treat generic token as a purchase token when the same object also identifies an item.
+  const purchaseToken = explicitPurchaseToken ?? (itemId ? genericToken : null);
 
   return {
     purchaseToken,
