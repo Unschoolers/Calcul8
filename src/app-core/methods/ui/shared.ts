@@ -15,6 +15,13 @@ export interface EntitlementApiResponse {
   updatedAt?: string | null;
 }
 
+interface VerifyPlayPurchaseApiResponse {
+  ok?: boolean;
+  pending?: boolean;
+  message?: string;
+  error?: string;
+}
+
 interface EntitlementCachePayload {
   userId: string | null;
   hasProAccess: boolean;
@@ -219,11 +226,30 @@ export async function submitPlayPurchaseVerification(
     return false;
   }
 
+  if (response.status === 202) {
+    let message = "Purchase is pending. Complete payment and check again shortly.";
+    try {
+      const body = (await response.json()) as VerifyPlayPurchaseApiResponse;
+      if (typeof body.message === "string" && body.message.trim()) {
+        message = body.message.trim();
+      }
+    } catch {
+      // Keep fallback when response payload isn't JSON.
+    }
+    app.notify(message, "info");
+    window.setTimeout(() => {
+      void app.debugLogEntitlement(true);
+    }, 10_000);
+    return false;
+  }
+
   if (!response.ok) {
     let message = `Purchase verification failed (${response.status}).`;
     try {
-      const errorBody = (await response.json()) as { error?: string };
-      if (typeof errorBody.error === "string" && errorBody.error.trim()) {
+      const errorBody = (await response.json()) as VerifyPlayPurchaseApiResponse;
+      if (typeof errorBody.message === "string" && errorBody.message.trim()) {
+        message = errorBody.message.trim();
+      } else if (typeof errorBody.error === "string" && errorBody.error.trim()) {
         message = errorBody.error.trim();
       }
     } catch {

@@ -11,14 +11,6 @@ interface GoogleTokenResponse {
   expires_in?: number;
 }
 
-interface GooglePlayProductPurchaseResponse {
-  orderId?: string;
-  purchaseState?: number;
-  acknowledgementState?: number;
-  consumptionState?: number;
-  purchaseTimeMillis?: string;
-}
-
 interface GoogleApiErrorPayload {
   error?: {
     code?: number;
@@ -38,8 +30,8 @@ interface CachedToken {
 
 interface VerifyPlayPurchaseInput {
   packageName: string;
-  productId: string;
   purchaseToken: string;
+  allowedProductIds: string[];
 }
 
 interface AcknowledgePlayPurchaseInput {
@@ -50,6 +42,8 @@ interface AcknowledgePlayPurchaseInput {
 
 export interface VerifyPlayPurchaseResult {
   isValid: boolean;
+  productId: string | null;
+  productIds: string[];
   orderId: string | null;
   purchaseState: number | null;
   acknowledgementState: number | null;
@@ -57,7 +51,120 @@ export interface VerifyPlayPurchaseResult {
   purchaseTimeMillis: string | null;
 }
 
+interface GooglePlayProductsV2PurchaseStateContext {
+  purchaseState?: string;
+}
+
+interface GooglePlayProductsV2ProductOfferDetails {
+  productId?: string;
+}
+
+interface GooglePlayProductsV2ProductLineItem {
+  productOfferDetails?: GooglePlayProductsV2ProductOfferDetails;
+  productId?: string;
+}
+
+interface GooglePlayProductsV2Response {
+  productLineItem?: GooglePlayProductsV2ProductLineItem[];
+  purchaseStateContext?: GooglePlayProductsV2PurchaseStateContext;
+  orderId?: string;
+  purchaseCompletionTime?: string;
+  acknowledgementState?: string;
+}
+
+interface NormalizedProductsV2Purchase {
+  isValid: boolean;
+  productIds: string[];
+  orderId: string | null;
+  purchaseState: number | null;
+  acknowledgementState: number | null;
+  purchaseTimeMillis: string | null;
+}
+
 let cachedToken: CachedToken | null = null;
+
+function asTrimmedString(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+export function getProductIdsFromProductsV2Response(payload: unknown): string[] {
+  if (typeof payload !== "object" || payload === null || Array.isArray(payload)) {
+    return [];
+  }
+
+  const lineItems = (payload as { productLineItem?: unknown }).productLineItem;
+  if (!Array.isArray(lineItems)) return [];
+
+  const productIds = new Set<string>();
+  for (const item of lineItems) {
+    if (typeof item !== "object" || item === null || Array.isArray(item)) continue;
+    const lineItemProductId = asTrimmedString((item as { productId?: unknown }).productId);
+    if (lineItemProductId) {
+      productIds.add(lineItemProductId);
+    }
+    const offerDetails = (item as { productOfferDetails?: unknown }).productOfferDetails;
+    if (typeof offerDetails !== "object" || offerDetails === null || Array.isArray(offerDetails)) {
+      continue;
+    }
+    const offerProductId = asTrimmedString((offerDetails as { productId?: unknown }).productId);
+    if (offerProductId) {
+      productIds.add(offerProductId);
+    }
+  }
+
+  return Array.from(productIds);
+}
+
+function parseProductsV2PurchaseState(rawPurchaseState: string | undefined): number | null {
+  if (!rawPurchaseState) return null;
+  const normalized = rawPurchaseState.trim().toUpperCase();
+  if (normalized === "PURCHASED") return 0;
+  if (normalized === "PENDING") return 2;
+  if (normalized === "CANCELLED") return 1;
+  return null;
+}
+
+function parseProductsV2AcknowledgementState(rawAcknowledgementState: string | undefined): number | null {
+  if (!rawAcknowledgementState) return null;
+  const normalized = rawAcknowledgementState.trim().toUpperCase();
+  if (normalized === "ACKNOWLEDGEMENT_STATE_ACKNOWLEDGED" || normalized === "ACKNOWLEDGED") {
+    return 1;
+  }
+  if (normalized === "ACKNOWLEDGEMENT_STATE_PENDING" || normalized === "PENDING") {
+    return 0;
+  }
+  return null;
+}
+
+function parsePurchaseCompletionTimeToMillis(rawPurchaseCompletionTime: string | undefined): string | null {
+  if (!rawPurchaseCompletionTime) return null;
+  const timestamp = Date.parse(rawPurchaseCompletionTime);
+  if (!Number.isFinite(timestamp)) return null;
+  return String(Math.trunc(timestamp));
+}
+
+export function normalizeProductsV2PurchasePayload(payload: unknown): NormalizedProductsV2Purchase {
+  const parsed = (typeof payload === "object" && payload !== null && !Array.isArray(payload)
+    ? payload as GooglePlayProductsV2Response
+    : {}) as GooglePlayProductsV2Response;
+
+  const productIds = getProductIdsFromProductsV2Response(parsed);
+  const purchaseState = parseProductsV2PurchaseState(parsed.purchaseStateContext?.purchaseState);
+  const acknowledgementState = parseProductsV2AcknowledgementState(parsed.acknowledgementState);
+  const orderId = asTrimmedString(parsed.orderId);
+  const purchaseTimeMillis = parsePurchaseCompletionTimeToMillis(parsed.purchaseCompletionTime);
+
+  return {
+    isValid: purchaseState === 0,
+    productIds,
+    orderId,
+    purchaseState,
+    acknowledgementState,
+    purchaseTimeMillis
+  };
+}
 
 function sanitizeGoogleApiErrorText(raw: string): string {
   const trimmed = raw.trim();
@@ -170,9 +277,7 @@ export async function verifyPlayProductPurchase(
   const endpoint = [
     "https://androidpublisher.googleapis.com/androidpublisher/v3/applications",
     encodeURIComponent(input.packageName),
-    "purchases/products",
-    encodeURIComponent(input.productId),
-    "tokens",
+    "purchases/productsv2/tokens",
     encodeURIComponent(input.purchaseToken)
   ].join("/");
 
@@ -192,6 +297,8 @@ export async function verifyPlayProductPurchase(
   if (response.status === 404) {
     return {
       isValid: false,
+      productId: null,
+      productIds: [],
       orderId: null,
       purchaseState: null,
       acknowledgementState: null,
@@ -207,22 +314,24 @@ export async function verifyPlayProductPurchase(
     throw new HttpError(502, `Google Play purchase verification failed (HTTP ${response.status})${suffix}`);
   }
 
-  const payload = (await response.json()) as GooglePlayProductPurchaseResponse;
-  const purchaseState = typeof payload.purchaseState === "number" ? payload.purchaseState : null;
-  const acknowledgementState = typeof payload.acknowledgementState === "number"
-    ? payload.acknowledgementState
-    : null;
-  const consumptionState = typeof payload.consumptionState === "number" ? payload.consumptionState : null;
-  const orderId = typeof payload.orderId === "string" ? payload.orderId : null;
-  const purchaseTimeMillis = typeof payload.purchaseTimeMillis === "string" ? payload.purchaseTimeMillis : null;
+  const payload = (await response.json()) as GooglePlayProductsV2Response;
+  const normalized = normalizeProductsV2PurchasePayload(payload);
+  const allowedProductIds = new Set(input.allowedProductIds.map((id) => id.trim()).filter((id) => id.length > 0));
+  const matchingProductId = normalized.productIds.find((id) => allowedProductIds.has(id)) ?? null;
+  const productId = allowedProductIds.size === 0
+    ? (normalized.productIds[0] ?? null)
+    : matchingProductId;
+  const isAllowedProduct = allowedProductIds.size === 0 || !!matchingProductId;
 
   return {
-    isValid: purchaseState === 0,
-    orderId,
-    purchaseState,
-    acknowledgementState,
-    consumptionState,
-    purchaseTimeMillis
+    isValid: normalized.isValid && isAllowedProduct,
+    productId,
+    productIds: normalized.productIds,
+    orderId: normalized.orderId,
+    purchaseState: normalized.purchaseState,
+    acknowledgementState: normalized.acknowledgementState,
+    consumptionState: null,
+    purchaseTimeMillis: normalized.purchaseTimeMillis
   };
 }
 

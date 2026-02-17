@@ -60,12 +60,9 @@ function resolvePackageName(requestPackageName: string | undefined, configuredPa
   return packageName;
 }
 
-function resolveProductId(requestProductId: string | undefined, configuredProductIds: string[]): string {
-  const productId = (requestProductId ?? "").trim() || configuredProductIds[0] || "";
-  if (!productId) {
-    throw new HttpError(500, "Missing Google Play product configuration.");
-  }
-  if (configuredProductIds.length > 0 && !configuredProductIds.includes(productId)) {
+function resolveRequestedProductId(requestProductId: string | undefined, configuredProductIds: string[]): string {
+  const productId = (requestProductId ?? "").trim();
+  if (productId && configuredProductIds.length > 0 && !configuredProductIds.includes(productId)) {
     throw new HttpError(400, "Field 'productId' is not allowed.");
   }
   return productId;
@@ -85,7 +82,13 @@ export async function entitlementsVerifyPlay(
     const userId = await resolveUserId(request, config);
     const body = await parseVerifyBody(request);
     const packageName = resolvePackageName(body.packageName, config.googlePlayPackageName);
-    const productId = resolveProductId(body.productId, config.googlePlayProProductIds);
+    const requestedProductId = resolveRequestedProductId(body.productId, config.googlePlayProProductIds);
+    const allowedProductIds = config.googlePlayProProductIds.length > 0
+      ? config.googlePlayProProductIds
+      : (requestedProductId ? [requestedProductId] : []);
+    if (allowedProductIds.length === 0) {
+      throw new HttpError(500, "Missing Google Play product configuration.");
+    }
     const purchaseTokenHash = hashPurchaseToken(body.purchaseToken);
 
     const existingPurchase = await getPlayPurchaseByTokenHash(config, purchaseTokenHash);
@@ -93,19 +96,42 @@ export async function entitlementsVerifyPlay(
 
     const verification = await verifyPlayProductPurchase(config, {
       packageName,
-      productId,
-      purchaseToken: body.purchaseToken
+      purchaseToken: body.purchaseToken,
+      allowedProductIds
     });
+
+    if (verification.purchaseState === 2) {
+      return jsonResponse(request, config, 202, {
+        ok: false,
+        pending: true,
+        userId,
+        hasProAccess: false,
+        message: "Purchase is pending. Complete payment and check again shortly.",
+        verification: {
+          packageName,
+          productId: verification.productId,
+          productIds: verification.productIds,
+          orderId: verification.orderId,
+          purchaseState: verification.purchaseState,
+          acknowledgementState: verification.acknowledgementState,
+          consumptionState: verification.consumptionState,
+          purchaseTimeMillis: verification.purchaseTimeMillis
+        }
+      });
+    }
 
     if (!verification.isValid) {
       throw new HttpError(402, "Google Play purchase is not valid.");
+    }
+    if (!verification.productId) {
+      throw new HttpError(502, "Could not determine purchased product ID from Google Play response.");
     }
 
     let acknowledgementState = verification.acknowledgementState;
     if (shouldAcknowledgePurchase(acknowledgementState)) {
       await acknowledgePlayProductPurchase(config, {
         packageName,
-        productId,
+        productId: verification.productId,
         purchaseToken: body.purchaseToken
       });
       acknowledgementState = 1;
@@ -126,7 +152,7 @@ export async function entitlementsVerifyPlay(
         userId,
         purchaseTokenHash,
         packageName,
-        productId,
+        productId: verification.productId,
         orderId: verification.orderId,
         purchaseState: verification.purchaseState,
         acknowledgementState,
@@ -144,7 +170,8 @@ export async function entitlementsVerifyPlay(
       updatedAt,
       verification: {
         packageName,
-        productId,
+        productId: verification.productId,
+        productIds: verification.productIds,
         orderId: verification.orderId,
         purchaseState: verification.purchaseState,
         acknowledgementState,
