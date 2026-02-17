@@ -19,6 +19,18 @@ interface GooglePlayProductPurchaseResponse {
   purchaseTimeMillis?: string;
 }
 
+interface GoogleApiErrorPayload {
+  error?: {
+    code?: number;
+    message?: string;
+    status?: string;
+    errors?: Array<{
+      reason?: string;
+      message?: string;
+    }>;
+  };
+}
+
 interface CachedToken {
   accessToken: string;
   expiresAtMs: number;
@@ -46,6 +58,25 @@ export interface VerifyPlayPurchaseResult {
 }
 
 let cachedToken: CachedToken | null = null;
+
+function sanitizeGoogleApiErrorText(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return "";
+  try {
+    const parsed = JSON.parse(trimmed) as GoogleApiErrorPayload;
+    const message = parsed.error?.message?.trim();
+    const reason = parsed.error?.errors?.[0]?.reason?.trim();
+    const status = parsed.error?.status?.trim();
+
+    const details = [message, reason, status]
+      .filter((value): value is string => typeof value === "string" && value.length > 0)
+      .join(" | ");
+
+    return details || trimmed.slice(0, 300);
+  } catch {
+    return trimmed.slice(0, 300);
+  }
+}
 
 function base64UrlEncode(value: string): string {
   return Buffer.from(value, "utf8")
@@ -170,7 +201,10 @@ export async function verifyPlayProductPurchase(
   }
 
   if (!response.ok) {
-    throw new HttpError(502, "Google Play purchase verification failed.");
+    const responseText = await response.text();
+    const details = sanitizeGoogleApiErrorText(responseText);
+    const suffix = details ? `: ${details}` : "";
+    throw new HttpError(502, `Google Play purchase verification failed (HTTP ${response.status})${suffix}`);
   }
 
   const payload = (await response.json()) as GooglePlayProductPurchaseResponse;

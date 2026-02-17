@@ -112,7 +112,7 @@ export const uiEntitlementMethods: ThisType<AppContext> & Pick<
     }
 
     const configuredProductId = (import.meta.env.VITE_PLAY_PRO_PRODUCT_ID as string | undefined)?.trim() || "";
-    const productId = this.purchaseProductIdInput.trim() || configuredProductId;
+    const productId = configuredProductId || this.purchaseProductIdInput.trim();
     if (!productId) {
       this.notify("Missing Play product configuration (VITE_PLAY_PRO_PRODUCT_ID).", "error");
       return;
@@ -138,12 +138,13 @@ export const uiEntitlementMethods: ThisType<AppContext> & Pick<
         baseUrl: base,
         googleIdToken,
         purchaseToken: purchase.purchaseToken,
-        productId,
-        packageName: this.purchasePackageNameInput.trim()
+        productId
       });
       if (!verified) return;
 
       this.purchaseTokenInput = "";
+      this.purchaseProductIdInput = "";
+      this.purchasePackageNameInput = "";
       this.showVerifyPurchaseModal = false;
       this.notify("Purchase verified. Pro features unlocked.", "success");
     } catch (error) {
@@ -162,11 +163,12 @@ export const uiEntitlementMethods: ThisType<AppContext> & Pick<
               baseUrl: base,
               googleIdToken,
               purchaseToken: existing.purchaseToken,
-              productId,
-              packageName: this.purchasePackageNameInput.trim()
+              productId
             });
             if (verified) {
               this.purchaseTokenInput = "";
+              this.purchaseProductIdInput = "";
+              this.purchasePackageNameInput = "";
               this.showVerifyPurchaseModal = false;
               this.notify("Existing purchase found and verified. Pro features unlocked.", "success");
               return;
