@@ -68,14 +68,6 @@ function resolveRequestedProductId(requestProductId: string | undefined, configu
   return productId;
 }
 
-function stringifyForLogs(value: unknown): string {
-  try {
-    return JSON.stringify(value);
-  } catch {
-    return "[unserializable]";
-  }
-}
-
 export async function entitlementsVerifyPlay(
   request: HttpRequest,
   context: InvocationContext
@@ -114,59 +106,18 @@ export async function entitlementsVerifyPlay(
         pending: true,
         userId,
         hasProAccess: false,
-        message: "Purchase is pending. Complete payment and check again shortly.",
-        verification: {
-          packageName,
-          productId: verification.productId,
-          productIds: verification.productIds,
-          kind: verification.kind,
-          rawPurchaseState: verification.rawPurchaseState,
-          rawAcknowledgementState: verification.rawAcknowledgementState,
-          lineItemCount: verification.lineItemCount,
-          orderId: verification.orderId,
-          purchaseState: verification.purchaseState,
-          acknowledgementState: verification.acknowledgementState,
-          consumptionState: verification.consumptionState,
-          purchaseTimeMillis: verification.purchaseTimeMillis
-        }
+        message: "Purchase is pending. Complete payment and check again shortly."
       });
     }
 
     if (!verification.isValid) {
-      const purchaseStateLabel = verification.purchaseState === null
-        ? "UNKNOWN"
-        : String(verification.purchaseState);
-      const rawPurchaseStateLabel = verification.rawPurchaseState ?? "UNKNOWN";
-      const rawAcknowledgementStateLabel = verification.rawAcknowledgementState ?? "UNKNOWN";
-      const returnedProductIds = verification.productIds.length > 0
-        ? verification.productIds.join(",")
-        : "(none)";
-      const allowedProductIdsLabel = allowedProductIds.length > 0
-        ? allowedProductIds.join(",")
-        : "(none)";
-      const kindLabel = verification.kind ?? "(none)";
-      const lineItemCountLabel = String(verification.lineItemCount);
-      const rawResponseJson = stringifyForLogs(verification.rawResponse);
-
-      context.warn("Google Play verify-play raw response", {
+      context.warn("Google Play purchase invalid", {
         packageName,
-        requestedProductId,
         allowedProductIds,
-        verificationRawResponse: verification.rawResponse
+        purchaseState: verification.purchaseState,
+        returnedProductIds: verification.productIds
       });
-
-      throw new HttpError(
-        402,
-        `Google Play purchase is not valid. ` +
-        `purchaseState=${purchaseStateLabel}; ` +
-        `rawPurchaseState=${rawPurchaseStateLabel}; ` +
-        `rawAcknowledgementState=${rawAcknowledgementStateLabel}; ` +
-        `kind=${kindLabel}; ` +
-        `lineItemCount=${lineItemCountLabel}; ` +
-        `returnedProductIds=${returnedProductIds}; ` +
-        `allowedProductIds=${allowedProductIdsLabel}; ` +
-        `rawResponse=${rawResponseJson}.`
-      );
+      throw new HttpError(402, "Google Play purchase is not valid.");
     }
     if (!verification.productId) {
       throw new HttpError(502, "Could not determine purchased product ID from Google Play response.");
@@ -212,21 +163,7 @@ export async function entitlementsVerifyPlay(
       userId,
       hasProAccess: true,
       purchaseSource: "google_play",
-      updatedAt,
-      verification: {
-        packageName,
-        productId: verification.productId,
-        productIds: verification.productIds,
-        kind: verification.kind,
-        rawPurchaseState: verification.rawPurchaseState,
-        rawAcknowledgementState: verification.rawAcknowledgementState,
-        lineItemCount: verification.lineItemCount,
-        orderId: verification.orderId,
-        purchaseState: verification.purchaseState,
-        acknowledgementState,
-        consumptionState: verification.consumptionState,
-        purchaseTimeMillis: verification.purchaseTimeMillis
-      }
+      updatedAt
     });
   } catch (error) {
     context.error("POST /entitlements/verify-play failed", error);

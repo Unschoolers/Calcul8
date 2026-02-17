@@ -44,11 +44,6 @@ export interface VerifyPlayPurchaseResult {
   isValid: boolean;
   productId: string | null;
   productIds: string[];
-  kind: string | null;
-  rawPurchaseState: string | null;
-  rawAcknowledgementState: string | null;
-  lineItemCount: number;
-  rawResponse: unknown | null;
   orderId: string | null;
   purchaseState: number | null;
   acknowledgementState: number | null;
@@ -75,16 +70,11 @@ interface GooglePlayProductsV2Response {
   orderId?: string;
   purchaseCompletionTime?: string;
   acknowledgementState?: string;
-  kind?: string;
 }
 
 interface NormalizedProductsV2Purchase {
   isValid: boolean;
   productIds: string[];
-  kind: string | null;
-  rawPurchaseState: string | null;
-  rawAcknowledgementState: string | null;
-  lineItemCount: number;
   orderId: string | null;
   purchaseState: number | null;
   acknowledgementState: number | null;
@@ -161,22 +151,14 @@ export function normalizeProductsV2PurchasePayload(payload: unknown): Normalized
     : {}) as GooglePlayProductsV2Response;
 
   const productIds = getProductIdsFromProductsV2Response(parsed);
-  const rawPurchaseState = asTrimmedString(parsed.purchaseStateContext?.purchaseState);
-  const rawAcknowledgementState = asTrimmedString(parsed.acknowledgementState);
-  const purchaseState = parseProductsV2PurchaseState(rawPurchaseState ?? undefined);
-  const acknowledgementState = parseProductsV2AcknowledgementState(rawAcknowledgementState ?? undefined);
+  const purchaseState = parseProductsV2PurchaseState(asTrimmedString(parsed.purchaseStateContext?.purchaseState) ?? undefined);
+  const acknowledgementState = parseProductsV2AcknowledgementState(asTrimmedString(parsed.acknowledgementState) ?? undefined);
   const orderId = asTrimmedString(parsed.orderId);
   const purchaseTimeMillis = parsePurchaseCompletionTimeToMillis(parsed.purchaseCompletionTime);
-  const kind = asTrimmedString(parsed.kind);
-  const lineItemCount = Array.isArray(parsed.productLineItem) ? parsed.productLineItem.length : 0;
 
   return {
     isValid: purchaseState === 0,
     productIds,
-    kind,
-    rawPurchaseState,
-    rawAcknowledgementState,
-    lineItemCount,
     orderId,
     purchaseState,
     acknowledgementState,
@@ -317,11 +299,6 @@ export async function verifyPlayProductPurchase(
       isValid: false,
       productId: null,
       productIds: [],
-      kind: null,
-      rawPurchaseState: null,
-      rawAcknowledgementState: null,
-      lineItemCount: 0,
-      rawResponse: null,
       orderId: null,
       purchaseState: null,
       acknowledgementState: null,
@@ -350,11 +327,6 @@ export async function verifyPlayProductPurchase(
     isValid: normalized.isValid && isAllowedProduct,
     productId,
     productIds: normalized.productIds,
-    kind: normalized.kind,
-    rawPurchaseState: normalized.rawPurchaseState,
-    rawAcknowledgementState: normalized.rawAcknowledgementState,
-    lineItemCount: normalized.lineItemCount,
-    rawResponse: payload,
     orderId: normalized.orderId,
     purchaseState: normalized.purchaseState,
     acknowledgementState: normalized.acknowledgementState,

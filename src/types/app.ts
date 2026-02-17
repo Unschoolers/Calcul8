@@ -1,6 +1,6 @@
 import type { Chart as ChartJS } from "chart.js";
 
-export type AppTab = "config" | "live" | "sales";
+export type AppTab = "config" | "live" | "sales" | "portfolio";
 export type CostInputMode = "perBox" | "total";
 export type CurrencyCode = "CAD" | "USD";
 export type SaleType = "pack" | "box" | "rtyh";
@@ -73,6 +73,28 @@ export interface SalesStatus {
   title: string;
   profit: number;
   revenue: number;
+}
+
+export interface PresetPerformanceSummary {
+  presetId: number;
+  presetName: string;
+  salesCount: number;
+  totalRevenue: number;
+  totalCost: number;
+  totalProfit: number;
+  marginPercent: number | null;
+  soldPacks: number;
+  totalPacks: number;
+  lastSaleDate: string | null;
+}
+
+export interface PortfolioTotals {
+  presetCount: number;
+  profitablePresetCount: number;
+  totalSalesCount: number;
+  totalRevenue: number;
+  totalCost: number;
+  totalProfit: number;
 }
 
 export interface BeforeInstallPromptEvent extends Event {

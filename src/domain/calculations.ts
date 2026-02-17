@@ -1,5 +1,12 @@
 import { TAX_RATES, UNITS_PER_CASE, WHATNOT_FEES } from "../constants.ts";
-import type { CurrencyCode, Sale, SalesStatus } from "../types/app.ts";
+import type {
+  CurrencyCode,
+  PortfolioTotals,
+  Preset,
+  PresetPerformanceSummary,
+  Sale,
+  SalesStatus
+} from "../types/app.ts";
 
 export function toRate(percent: number): number {
   return Math.max(0, Number(percent) || 0) / 100;
@@ -182,4 +189,72 @@ export function calculateSparklineGradient(sales: Sale[], totalCaseCost: number,
   if (finalProfit < -100) return ["#FF3B30", "#FF6B6B"];
   if (finalProfit < 100) return ["#FFB800", "#FFA000"];
   return ["#34C759", "#4CD964"];
+}
+
+export function calculatePresetPerformanceSummary(
+  preset: Preset,
+  sales: Sale[],
+  defaultExchangeRate: number
+): PresetPerformanceSummary {
+  const totalPacks = calculateTotalPacks(preset.boxesPurchased, preset.packsPerBox, 16);
+  const soldPacks = calculateSoldPacksCount(sales);
+  const pricePerBoxCad = calculateBoxPriceCostCad(
+    preset.boxPriceCost,
+    preset.currency,
+    preset.sellingCurrency,
+    preset.exchangeRate,
+    defaultExchangeRate
+  );
+  const totalCost = calculateTotalCaseCost({
+    boxesPurchased: preset.boxesPurchased,
+    pricePerBoxCad,
+    purchaseShippingCad: preset.purchaseShippingCost,
+    purchaseTaxPercent: preset.purchaseTaxPercent,
+    includeTax: preset.includeTax,
+    currency: preset.currency
+  });
+  const totalRevenue = calculateTotalRevenue(sales, preset.sellingTaxPercent);
+  const totalProfit = totalRevenue - totalCost;
+  const marginPercent = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : null;
+
+  let lastSaleDate: string | null = null;
+  for (const sale of sales) {
+    if (!lastSaleDate || sale.date > lastSaleDate) {
+      lastSaleDate = sale.date;
+    }
+  }
+
+  return {
+    presetId: preset.id,
+    presetName: preset.name,
+    salesCount: sales.length,
+    totalRevenue,
+    totalCost,
+    totalProfit,
+    marginPercent,
+    soldPacks,
+    totalPacks,
+    lastSaleDate
+  };
+}
+
+export function calculatePortfolioTotals(rows: PresetPerformanceSummary[]): PortfolioTotals {
+  return rows.reduce<PortfolioTotals>(
+    (acc, row) => ({
+      presetCount: acc.presetCount + 1,
+      profitablePresetCount: acc.profitablePresetCount + (row.totalProfit > 0 ? 1 : 0),
+      totalSalesCount: acc.totalSalesCount + row.salesCount,
+      totalRevenue: acc.totalRevenue + row.totalRevenue,
+      totalCost: acc.totalCost + row.totalCost,
+      totalProfit: acc.totalProfit + row.totalProfit
+    }),
+    {
+      presetCount: 0,
+      profitablePresetCount: 0,
+      totalSalesCount: 0,
+      totalRevenue: 0,
+      totalCost: 0,
+      totalProfit: 0
+    }
+  );
 }

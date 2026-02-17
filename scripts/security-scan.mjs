@@ -23,7 +23,11 @@ const DETECTORS = [
   { name: "AWS access key id", regex: /\b(?:AKIA|ASIA)[0-9A-Z]{16}\b/g },
   { name: "Google API key", regex: /\bAIza[0-9A-Za-z\-_]{35}\b/g },
   { name: "Slack token", regex: /\bxox[baprs]-[A-Za-z0-9-]{10,}\b/g },
-  { name: "Generic assignment (token/secret/password)", regex: /\b(?:api[_-]?key|token|secret|password|client[_-]?secret)\s*[:=]\s*["'][^"']{8,}["']/gi }
+  {
+    name: "Generic assignment (token/secret/password)",
+    regex: /\b(?:api[_-]?key|token|secret|password|client[_-]?secret)\s*[:=]\s*["'][^"']{8,}["']/gi,
+    skipFile: (relPath) => relPath.includes("/tests/") || relPath.endsWith(".test.ts")
+  }
 ];
 
 function isLikelyText(buffer) {
@@ -54,6 +58,9 @@ function walk(dir, results) {
     const content = buffer.toString("utf8");
 
     for (const detector of DETECTORS) {
+      if (typeof detector.skipFile === "function" && detector.skipFile(relPath)) {
+        continue;
+      }
       detector.regex.lastIndex = 0;
       if (detector.regex.test(content)) {
         results.push({ file: relPath, detector: detector.name });

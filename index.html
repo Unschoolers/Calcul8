@@ -821,6 +821,108 @@
                   </v-col>
                 </v-row>
               </v-window-item>
+
+              <!-- PORTFOLIO -->
+              <v-window-item value="portfolio" :transition="false" :reverse-transition="false">
+                <v-row>
+                  <v-col cols="12" sm="6" md="4">
+                    <v-card elevation="4" class="config-card">
+                      <v-card-text>
+                        <div class="text-caption text-medium-emphasis">Global Profit / Loss</div>
+                        <div class="text-h5 font-weight-bold" :class="portfolioTotals.totalProfit >= 0 ? 'profit-positive' : 'profit-negative'">
+                          {{ portfolioTotals.totalProfit >= 0 ? '+' : '' }}${{ formatCurrency(portfolioTotals.totalProfit) }}
+                        </div>
+                        <div class="text-caption mt-1">
+                          {{ portfolioTotals.profitablePresetCount }} / {{ portfolioTotals.presetCount }} preset{{ portfolioTotals.presetCount === 1 ? '' : 's' }} profitable
+                        </div>
+                      </v-card-text>
+                    </v-card>
+                  </v-col>
+
+                  <v-col cols="12" sm="6" md="4">
+                    <v-card elevation="4" class="config-card">
+                      <v-card-text>
+                        <div class="text-caption text-medium-emphasis">Total Net Revenue</div>
+                        <div class="text-h5 font-weight-bold">${{ formatCurrency(portfolioTotals.totalRevenue) }}</div>
+                        <div class="text-caption mt-1">{{ portfolioTotals.totalSalesCount }} sale{{ portfolioTotals.totalSalesCount === 1 ? '' : 's' }}</div>
+                      </v-card-text>
+                    </v-card>
+                  </v-col>
+
+                  <v-col cols="12" sm="6" md="4">
+                    <v-card elevation="4" class="config-card">
+                      <v-card-text>
+                        <div class="text-caption text-medium-emphasis">Total Cost Basis</div>
+                        <div class="text-h5 font-weight-bold">${{ formatCurrency(portfolioTotals.totalCost) }}</div>
+                        <div class="text-caption mt-1">Across all presets</div>
+                      </v-card-text>
+                    </v-card>
+                  </v-col>
+                </v-row>
+
+                <v-row class="mt-4">
+                  <v-col cols="12">
+                    <v-card elevation="4">
+                      <v-card-title class="d-flex align-center justify-space-between">
+                        <div>
+                          <v-icon class="mr-2">mdi-view-grid-outline</v-icon>
+                          Preset Performance
+                        </div>
+                        <div class="d-flex align-center ga-2">
+                          <v-chip color="secondary" v-if="hasPortfolioData">
+                            {{ allPresetPerformance.length }} preset{{ allPresetPerformance.length === 1 ? '' : 's' }}
+                          </v-chip>
+                          <v-btn
+                            color="primary"
+                            variant="tonal"
+                            size="small"
+                            prepend-icon="mdi-file-export"
+                            :disabled="!hasPortfolioData"
+                            @click="exportPortfolioReport"
+                          >
+                            Export
+                          </v-btn>
+                        </div>
+                      </v-card-title>
+                      <v-divider></v-divider>
+
+                      <v-card-text v-if="!hasPortfolioData" class="text-center py-8">
+                        <v-icon size="64" color="grey">mdi-chart-box-outline</v-icon>
+                        <p class="text-h6 mt-4 text-grey">No preset data yet</p>
+                        <p class="text-caption">Create presets and add sales to see your global performance.</p>
+                      </v-card-text>
+
+                      <v-list v-else>
+                        <v-list-item
+                          v-for="row in allPresetPerformance"
+                          :key="row.presetId"
+                          class="my-1"
+                        >
+                          <template v-slot:prepend>
+                            <v-avatar :color="row.totalProfit >= 0 ? 'success' : 'error'" size="38">
+                              <v-icon color="white">mdi-bookmark</v-icon>
+                            </v-avatar>
+                          </template>
+
+                          <v-list-item-title>{{ row.presetName }}</v-list-item-title>
+                          <v-list-item-subtitle>
+                            {{ row.salesCount }} sale{{ row.salesCount === 1 ? '' : 's' }} •
+                            Revenue ${{ formatCurrency(row.totalRevenue) }} •
+                            Cost ${{ formatCurrency(row.totalCost) }}
+                            <span v-if="row.lastSaleDate"> • Last sale {{ formatDate(row.lastSaleDate) }}</span>
+                          </v-list-item-subtitle>
+
+                          <template v-slot:append>
+                            <v-chip :color="row.totalProfit >= 0 ? 'success' : 'error'" variant="flat">
+                              {{ row.totalProfit >= 0 ? '+' : '' }}${{ formatCurrency(row.totalProfit) }}
+                            </v-chip>
+                          </template>
+                        </v-list-item>
+                      </v-list>
+                    </v-card>
+                  </v-col>
+                </v-row>
+              </v-window-item>
             </v-window>
           </div>
 
@@ -841,6 +943,11 @@
 <v-btn value="sales" :disabled="!hasPresetSelected" :ripple="false">
   <v-icon>mdi-chart-line</v-icon>
   <span>Sales</span>
+</v-btn>
+
+<v-btn value="portfolio" :disabled="!hasPresetSelected" :ripple="false">
+  <v-icon>mdi-briefcase-outline</v-icon>
+  <span>Portfolio</span>
 </v-btn>
 
         </v-bottom-navigation>
@@ -936,7 +1043,7 @@
               ></v-list-item>
               <v-list-item
                 prepend-icon="mdi-file-export"
-                title="Export Sales"
+                title="Export Current Sales"
                 :disabled="!hasPresetSelected"
                 @click="exportSales(); speedDialOpenSales = false"
               ></v-list-item>

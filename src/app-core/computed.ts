@@ -2,6 +2,8 @@ import { DEFAULT_VALUES, UNITS_PER_CASE } from "../constants.ts";
 import {
   calculateBoxPriceCostCad,
   calculatePriceForUnits as calculateUnitPrice,
+  calculatePortfolioTotals,
+  calculatePresetPerformanceSummary,
   calculateSalesProgress,
   calculateSalesStatus,
   calculateSoldPacksCount,
@@ -175,5 +177,21 @@ export const appComputed: AppComputedObject = {
 
   sparklineGradient(): string[] {
     return calculateSparklineGradient(this.sales, this.totalCaseCost, this.sellingTaxPercent);
+  },
+
+  allPresetPerformance() {
+    const rows = this.presets.map((preset) => {
+      const sales = this.loadSalesForPresetId(preset.id);
+      return calculatePresetPerformanceSummary(preset, sales, DEFAULT_VALUES.EXCHANGE_RATE);
+    });
+    return rows.sort((a, b) => b.totalProfit - a.totalProfit);
+  },
+
+  portfolioTotals() {
+    return calculatePortfolioTotals(this.allPresetPerformance);
+  },
+
+  hasPortfolioData(): boolean {
+    return this.allPresetPerformance.length > 0;
   }
 };

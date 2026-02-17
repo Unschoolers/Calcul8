@@ -52,3 +52,15 @@ test("extractPurchaseTokenFromResult parses nested purchaseData JSON", () => {
   assert.equal(result.itemId, "pro_access");
   assert.equal(result.purchaseToken, "token-nested");
 });
+
+test("extractPurchaseTokenFromResult ignores unrelated generic token without item identity", () => {
+  const result = extractPurchaseTokenFromResult({
+    token: "not-a-purchase-token",
+    details: {
+      authToken: "another-non-purchase-token"
+    }
+  }, "pro_access");
+
+  assert.equal(result.itemId, null);
+  assert.equal(result.purchaseToken, null);
+});

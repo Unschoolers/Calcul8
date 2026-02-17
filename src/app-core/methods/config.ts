@@ -63,6 +63,7 @@ export const configMethods: ThisType<AppContext> & Pick<
   | "deleteCurrentPreset"
   | "exportPresets"
   | "exportSales"
+  | "exportPortfolioReport"
   | "importPresets"
   | "handleFileImport"
   | "calculateProfit"
@@ -305,6 +306,31 @@ export const configMethods: ThisType<AppContext> & Pick<
 
     URL.revokeObjectURL(url);
     this.notify("Sales exported", "success");
+  },
+
+  exportPortfolioReport(): void {
+    if (!this.hasPortfolioData) {
+      this.notify("No portfolio data to export", "warning");
+      return;
+    }
+
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      totals: this.portfolioTotals,
+      presets: this.allPresetPerformance
+    };
+
+    const dataStr = JSON.stringify(payload, null, 2);
+    const blob = new Blob([dataStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `whatfees-portfolio-${Date.now()}.json`;
+    link.click();
+
+    URL.revokeObjectURL(url);
+    this.notify("Portfolio report exported", "success");
   },
 
   importPresets(): void {

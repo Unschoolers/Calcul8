@@ -6,6 +6,8 @@ import {
   calculateNetFromGross,
   calculatePriceForUnits,
   calculateProfitForListing,
+  calculatePortfolioTotals,
+  calculatePresetPerformanceSummary,
   calculateSalesProgress,
   calculateSalesStatus,
   calculateSoldPacksCount,
@@ -18,7 +20,7 @@ import {
 import { appComputed } from "../src/app-core/computed.ts";
 import { configMethods } from "../src/app-core/methods/config.ts";
 import { salesMethods } from "../src/app-core/methods/sales.ts";
-import type { Sale } from "../src/types/app.ts";
+import type { Preset, Sale } from "../src/types/app.ts";
 
 test("calculateBoxPriceCostCad handles CAD and USD", () => {
   assert.equal(calculateBoxPriceCostCad(100, "CAD", "CAD", 1.4, 1.4), 100);
@@ -150,6 +152,59 @@ test("sparkline helpers return normalized series and valid gradient", () => {
 
   const gradient = calculateSparklineGradient(sales, 100, 15);
   assert.equal(gradient.length, 2);
+});
+
+test("preset and portfolio summaries aggregate correctly", () => {
+  const presetA: Preset = {
+    id: 1,
+    name: "Preset A",
+    boxPriceCost: 100,
+    boxesPurchased: 1,
+    packsPerBox: 10,
+    costInputMode: "perBox",
+    currency: "CAD",
+    sellingCurrency: "CAD",
+    exchangeRate: 1.4,
+    purchaseShippingCost: 0,
+    purchaseTaxPercent: 0,
+    sellingTaxPercent: 15,
+    sellingShippingPerOrder: 0,
+    includeTax: false,
+    spotPrice: 10,
+    boxPriceSell: 100,
+    packPrice: 10,
+    targetProfitPercent: 15
+  };
+
+  const presetB: Preset = {
+    ...presetA,
+    id: 2,
+    name: "Preset B",
+    boxPriceCost: 80
+  };
+
+  const salesA: Sale[] = [
+    { id: 1, type: "pack", quantity: 2, packsCount: 2, price: 10, buyerShipping: 0, date: "2026-02-10" }
+  ];
+  const salesB: Sale[] = [
+    { id: 2, type: "box", quantity: 1, packsCount: 10, price: 120, buyerShipping: 0, date: "2026-02-11" }
+  ];
+
+  const rowA = calculatePresetPerformanceSummary(presetA, salesA, 1.4);
+  const rowB = calculatePresetPerformanceSummary(presetB, salesB, 1.4);
+  const totals = calculatePortfolioTotals([rowA, rowB]);
+
+  assert.equal(rowA.presetName, "Preset A");
+  assert.equal(rowA.salesCount, 1);
+  assert.equal(rowA.lastSaleDate, "2026-02-10");
+  assert.equal(rowB.presetName, "Preset B");
+  assert.equal(rowB.salesCount, 1);
+
+  assert.equal(totals.presetCount, 2);
+  assert.equal(totals.totalSalesCount, 2);
+  assert.equal(totals.totalRevenue, rowA.totalRevenue + rowB.totalRevenue);
+  assert.equal(totals.totalCost, rowA.totalCost + rowB.totalCost);
+  assert.equal(totals.totalProfit, rowA.totalProfit + rowB.totalProfit);
 });
 
 test("canUsePaidActions requires preset + pro access", () => {

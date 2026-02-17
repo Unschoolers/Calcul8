@@ -3,7 +3,9 @@ import type {
   AppTab,
   BeforeInstallPromptEvent,
   CostInputMode,
+  PortfolioTotals,
   Preset,
+  PresetPerformanceSummary,
   PresetSetup,
   Sale,
   SaleType,
@@ -38,6 +40,9 @@ export interface AppComputedState {
   sortedSales: Sale[];
   sparklineData: number[];
   sparklineGradient: string[];
+  allPresetPerformance: PresetPerformanceSummary[];
+  portfolioTotals: PortfolioTotals;
+  hasPortfolioData: boolean;
 }
 
 export interface AppMethodState {
@@ -64,6 +69,7 @@ export interface AppMethodState {
   deleteCurrentPreset(): void;
   exportPresets(): void;
   exportSales(): void;
+  exportPortfolioReport(): void;
   importPresets(): void;
   handleFileImport(event: Event): void;
   calculateProfit(units: number, pricePerUnit: number): number;
@@ -162,6 +168,9 @@ export interface AppComputedObject {
   sortedSales(this: AppContext): Sale[];
   sparklineData(this: AppContext): number[];
   sparklineGradient(this: AppContext): string[];
+  allPresetPerformance(this: AppContext): PresetPerformanceSummary[];
+  portfolioTotals(this: AppContext): PortfolioTotals;
+  hasPortfolioData(this: AppContext): boolean;
 }
 
 export interface AppLifecycleObject {
