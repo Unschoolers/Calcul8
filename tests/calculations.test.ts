@@ -18,9 +18,51 @@ import {
   calculateTotalRevenue
 } from "../src/domain/calculations.ts";
 import { appComputed } from "../src/app-core/computed.ts";
+import { appWatch } from "../src/app-core/watch.ts";
 import { configMethods } from "../src/app-core/methods/config.ts";
 import { salesMethods } from "../src/app-core/methods/sales.ts";
 import type { Preset, Sale } from "../src/types/app.ts";
+
+type MockStorage = {
+  getItem(key: string): string | null;
+  setItem(key: string, value: string): void;
+  removeItem(key: string): void;
+  clear(): void;
+};
+
+function withMockedLocalStorage(run: (storage: MockStorage, data: Map<string, string>) => void): void {
+  const original = (globalThis as { localStorage?: MockStorage }).localStorage;
+  const data = new Map<string, string>();
+
+  const storage: MockStorage = {
+    getItem(key: string): string | null {
+      return data.has(key) ? data.get(key)! : null;
+    },
+    setItem(key: string, value: string): void {
+      data.set(key, String(value));
+    },
+    removeItem(key: string): void {
+      data.delete(key);
+    },
+    clear(): void {
+      data.clear();
+    }
+  };
+
+  Object.defineProperty(globalThis, "localStorage", {
+    configurable: true,
+    value: storage
+  });
+
+  try {
+    run(storage, data);
+  } finally {
+    Object.defineProperty(globalThis, "localStorage", {
+      configurable: true,
+      value: original
+    });
+  }
+}
 
 test("calculateBoxPriceCostCad handles CAD and USD", () => {
   assert.equal(calculateBoxPriceCostCad(100, "CAD", "CAD", 1.4, 1.4), 100);
@@ -363,6 +405,89 @@ test("canUsePaidActions requires preset + pro access", () => {
   assert.equal(allowed, true);
 });
 
+test("watch.currentTab persists selected tab and triggers portfolio chart init", () => {
+  withMockedLocalStorage((_storage, data) => {
+    let portfolioInitCalled = false;
+    let nextTickCalled = false;
+
+    const context = {
+      speedDialOpen: true,
+      speedDialOpenSales: true,
+      portfolioChart: null,
+      $nextTick(callback: () => void) {
+        nextTickCalled = true;
+        callback();
+      },
+      initSalesChart() {
+        // noop
+      },
+      initPortfolioChart() {
+        portfolioInitCalled = true;
+      }
+    } as unknown as Parameters<typeof appWatch.currentTab>[0];
+
+    appWatch.currentTab.call(context, "portfolio");
+
+    assert.equal(data.get("whatfees_last_tab"), "portfolio");
+    assert.equal(context.speedDialOpen, false);
+    assert.equal(context.speedDialOpenSales, false);
+    assert.equal(nextTickCalled, true);
+    assert.equal(portfolioInitCalled, true);
+  });
+});
+
+test("watch.currentTab destroys existing portfolio chart when leaving portfolio", () => {
+  withMockedLocalStorage(() => {
+    let destroyed = false;
+
+    const context = {
+      speedDialOpen: false,
+      speedDialOpenSales: false,
+      portfolioChart: {
+        destroy() {
+          destroyed = true;
+        }
+      },
+      $nextTick() {
+        // noop
+      },
+      initSalesChart() {
+        // noop
+      },
+      initPortfolioChart() {
+        // noop
+      }
+    } as unknown as Parameters<typeof appWatch.currentTab>[0];
+
+    appWatch.currentTab.call(context, "sales");
+
+    assert.equal(destroyed, true);
+    assert.equal(context.portfolioChart, null);
+  });
+});
+
+test("watch.portfolioPresetFilterIds persists filter and refreshes chart in portfolio tab", () => {
+  withMockedLocalStorage((_storage, data) => {
+    let portfolioInitCalled = false;
+
+    const context = {
+      currentTab: "portfolio",
+      portfolioPresetFilterIds: [101, 202],
+      $nextTick(callback: () => void) {
+        callback();
+      },
+      initPortfolioChart() {
+        portfolioInitCalled = true;
+      }
+    } as unknown as Parameters<NonNullable<typeof appWatch.portfolioPresetFilterIds>["handler"]>[0];
+
+    appWatch.portfolioPresetFilterIds.handler.call(context);
+
+    assert.equal(data.get("whatfees_portfolio_filter_ids"), JSON.stringify([101, 202]));
+    assert.equal(portfolioInitCalled, true);
+  });
+});
+
 test("calculateOptimalPrices is blocked when paywall is locked", () => {
   let notifiedMessage = "";
   let recalculated = false;
@@ -397,8 +522,48 @@ test("calculateOptimalPrices calls recalculate when paywall is unlocked", () => 
   assert.equal(closeModalValue, true);
 });
 
+test("syncLivePricesFromDefaults copies config selling prices into live prices", () => {
+  const context = {
+    spotPrice: 22,
+    boxPriceSell: 111,
+    packPrice: 8,
+    liveSpotPrice: 0,
+    liveBoxPriceSell: 0,
+    livePackPrice: 0
+  } as unknown as Parameters<typeof configMethods.syncLivePricesFromDefaults>[0];
+
+  configMethods.syncLivePricesFromDefaults.call(context);
+
+  assert.equal(context.liveSpotPrice, 22);
+  assert.equal(context.liveBoxPriceSell, 111);
+  assert.equal(context.livePackPrice, 8);
+});
+
+test("resetLivePrices syncs from config defaults and notifies", () => {
+  let syncCalled = false;
+  let notifyMessage = "";
+  let notifyColor = "";
+
+  const context = {
+    syncLivePricesFromDefaults() {
+      syncCalled = true;
+    },
+    notify(message: string, color: string) {
+      notifyMessage = message;
+      notifyColor = color;
+    }
+  } as unknown as Parameters<typeof configMethods.resetLivePrices>[0];
+
+  configMethods.resetLivePrices.call(context);
+
+  assert.equal(syncCalled, true);
+  assert.equal(notifyMessage, "Live prices reset to config defaults");
+  assert.equal(notifyColor, "info");
+});
+
 test("recalculateDefaultPrices syncs live prices even when current tab is live", () => {
   let syncCalled = false;
+  let saved = false;
 
   const context = {
     currentTab: "live",
@@ -416,13 +581,17 @@ test("recalculateDefaultPrices syncs live prices even when current tab is live",
       syncCalled = true;
     },
     autoSaveSetup() {
-      // noop
+      saved = true;
     }
   } as unknown as Parameters<typeof configMethods.recalculateDefaultPrices>[0];
 
   configMethods.recalculateDefaultPrices.call(context, { closeModal: true });
 
   assert.equal(syncCalled, true);
+  assert.equal(saved, true);
+  assert.ok(context.spotPrice > 0);
+  assert.ok(context.boxPriceSell > 0);
+  assert.ok(context.packPrice > 0);
   assert.equal(context.showProfitCalculator, false);
 });
 
