@@ -48,6 +48,7 @@ export interface VerifyPlayPurchaseResult {
   rawPurchaseState: string | null;
   rawAcknowledgementState: string | null;
   lineItemCount: number;
+  rawResponse: unknown | null;
   orderId: string | null;
   purchaseState: number | null;
   acknowledgementState: number | null;
@@ -320,6 +321,7 @@ export async function verifyPlayProductPurchase(
       rawPurchaseState: null,
       rawAcknowledgementState: null,
       lineItemCount: 0,
+      rawResponse: null,
       orderId: null,
       purchaseState: null,
       acknowledgementState: null,
@@ -352,6 +354,7 @@ export async function verifyPlayProductPurchase(
     rawPurchaseState: normalized.rawPurchaseState,
     rawAcknowledgementState: normalized.rawAcknowledgementState,
     lineItemCount: normalized.lineItemCount,
+    rawResponse: payload,
     orderId: normalized.orderId,
     purchaseState: normalized.purchaseState,
     acknowledgementState: normalized.acknowledgementState,

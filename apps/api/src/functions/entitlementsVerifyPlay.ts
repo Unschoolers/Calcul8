@@ -68,6 +68,14 @@ function resolveRequestedProductId(requestProductId: string | undefined, configu
   return productId;
 }
 
+function stringifyForLogs(value: unknown): string {
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return "[unserializable]";
+  }
+}
+
 export async function entitlementsVerifyPlay(
   request: HttpRequest,
   context: InvocationContext
@@ -138,6 +146,14 @@ export async function entitlementsVerifyPlay(
         : "(none)";
       const kindLabel = verification.kind ?? "(none)";
       const lineItemCountLabel = String(verification.lineItemCount);
+      const rawResponseJson = stringifyForLogs(verification.rawResponse);
+
+      context.warn("Google Play verify-play raw response", {
+        packageName,
+        requestedProductId,
+        allowedProductIds,
+        verificationRawResponse: verification.rawResponse
+      });
 
       throw new HttpError(
         402,
@@ -148,7 +164,8 @@ export async function entitlementsVerifyPlay(
         `kind=${kindLabel}; ` +
         `lineItemCount=${lineItemCountLabel}; ` +
         `returnedProductIds=${returnedProductIds}; ` +
-        `allowedProductIds=${allowedProductIdsLabel}.`
+        `allowedProductIds=${allowedProductIdsLabel}; ` +
+        `rawResponse=${rawResponseJson}.`
       );
     }
     if (!verification.productId) {
