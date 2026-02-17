@@ -3,6 +3,7 @@
 This is a separate deployable backend project for:
 
 - `GET /api/entitlements/me`
+- `POST /api/entitlements/verify/{provider}`
 - `POST /api/entitlements/verify-play`
 - `POST /api/sync/pull`
 - `POST /api/sync/push`
@@ -61,6 +62,11 @@ and uses `sub` as `userId`.
 5. API stores a hashed purchase token record and rejects token reuse across different users.
 6. API acknowledges the Google Play purchase when needed.
 7. Frontend calls `GET /api/entitlements/me` to read current access.
+
+Provider routing note:
+- Preferred endpoint is now `POST /api/entitlements/verify/{provider}`.
+- Current supported provider is `play` (so `POST /api/entitlements/verify/play`).
+- Legacy `POST /api/entitlements/verify-play` remains supported for backward compatibility.
 
 Note:
 - `GET /api/entitlements/me` now auto-creates a baseline entitlement row on first authenticated request

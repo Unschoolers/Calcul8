@@ -15,9 +15,11 @@ import {
   PRO_ACCESS_KEY,
   clearEntitlementCache,
   fetchWithRetry,
+  getSupportedPurchaseProviders,
   getEntitlementTtlMs,
   handleExpiredAuth,
   readEntitlementCache,
+  resolvePurchaseProvider,
   resolveApiBaseUrl,
   submitPlayPurchaseVerification,
   writeEntitlementCache,
@@ -106,10 +108,21 @@ function isAlreadyOwnedPurchaseError(error: unknown): boolean {
     || detail.includes("owned item");
 }
 
+async function hasPlayPurchaseSupport(): Promise<boolean> {
+  if (typeof window.getDigitalGoodsService !== "function") {
+    return false;
+  }
+
+  const service = await getPlayBillingService();
+  return !!service;
+}
+
 export const uiEntitlementMethods: ThisType<AppContext> & Pick<
   AppMethodState,
   | "initGoogleAutoLogin"
   | "openVerifyPurchaseModal"
+  | "startProPurchase"
+  | "verifyProPurchase"
   | "startPlayPurchase"
   | "verifyPlayPurchase"
   | "debugLogEntitlement"
@@ -154,6 +167,58 @@ export const uiEntitlementMethods: ThisType<AppContext> & Pick<
     }
 
     this.showVerifyPurchaseModal = true;
+  },
+
+  async startProPurchase(): Promise<void> {
+    const provider = resolvePurchaseProvider();
+
+    if (provider === "auto") {
+      const playAvailable = await hasPlayPurchaseSupport();
+      if (playAvailable) {
+        await this.startPlayPurchase();
+        return;
+      }
+      this.notify("Purchasing is not supported in this browser yet. Please use the Android app for now.", "info");
+      return;
+    }
+
+    if (provider === "play") {
+      await this.startPlayPurchase();
+      return;
+    }
+
+    const supported = getSupportedPurchaseProviders();
+    const supportedText = supported.join(", ");
+    this.notify(
+      `${provider} purchases are not enabled yet. Supported provider${supported.length === 1 ? "" : "s"}: ${supportedText}.`,
+      "info"
+    );
+  },
+
+  async verifyProPurchase(): Promise<void> {
+    const provider = resolvePurchaseProvider();
+
+    if (provider === "auto") {
+      const playAvailable = await hasPlayPurchaseSupport();
+      if (playAvailable) {
+        await this.verifyPlayPurchase();
+        return;
+      }
+      this.notify("Purchase verification is not supported in this browser yet. Please use the Android app for now.", "info");
+      return;
+    }
+
+    if (provider === "play") {
+      await this.verifyPlayPurchase();
+      return;
+    }
+
+    const supported = getSupportedPurchaseProviders();
+    const supportedText = supported.join(", ");
+    this.notify(
+      `${provider} verification is not enabled yet. Supported provider${supported.length === 1 ? "" : "s"}: ${supportedText}.`,
+      "info"
+    );
   },
 
   async startPlayPurchase(): Promise<void> {

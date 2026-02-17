@@ -20,6 +20,8 @@ export const uiMethods: ThisType<AppContext> & Pick<
   | "formatDate"
   | "initGoogleAutoLogin"
   | "openVerifyPurchaseModal"
+  | "startProPurchase"
+  | "verifyProPurchase"
   | "startPlayPurchase"
   | "verifyPlayPurchase"
   | "pullCloudSync"

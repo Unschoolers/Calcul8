@@ -5,6 +5,7 @@ import { getPlayPurchaseByTokenHash, upsertEntitlement, upsertPlayPurchase } fro
 import { acknowledgePlayProductPurchase, verifyPlayProductPurchase } from "../lib/googlePlay";
 import { errorResponse, handleCorsPreflight, jsonResponse } from "../lib/http";
 import { assertPurchaseNotLinkedToDifferentUser, hashPurchaseToken, shouldAcknowledgePurchase } from "../lib/playEntitlements";
+import type { ApiConfig } from "../types";
 
 interface VerifyPlayPurchaseBody {
   purchaseToken: string;
@@ -68,16 +69,11 @@ function resolveRequestedProductId(requestProductId: string | undefined, configu
   return productId;
 }
 
-export async function entitlementsVerifyPlay(
+export async function verifyPlayEntitlementRequest(
   request: HttpRequest,
-  context: InvocationContext
+  context: InvocationContext,
+  config: ApiConfig
 ): Promise<HttpResponseInit> {
-  const config = getConfig();
-
-  if (request.method === "OPTIONS") {
-    return handleCorsPreflight(request, config);
-  }
-
   try {
     const userId = await resolveUserId(request, config);
     const body = await parseVerifyBody(request);
@@ -169,6 +165,19 @@ export async function entitlementsVerifyPlay(
     context.error("POST /entitlements/verify-play failed", error);
     return errorResponse(request, config, error, "Failed to verify Google Play purchase.");
   }
+}
+
+export async function entitlementsVerifyPlay(
+  request: HttpRequest,
+  context: InvocationContext
+): Promise<HttpResponseInit> {
+  const config = getConfig();
+
+  if (request.method === "OPTIONS") {
+    return handleCorsPreflight(request, config);
+  }
+
+  return verifyPlayEntitlementRequest(request, context, config);
 }
 
 app.http("entitlementsVerifyPlay", {

@@ -111,9 +111,11 @@ function focusSaleQuantityInput(context: AppContext): void {
       return;
     }
 
-    const input = quantityRef.$el?.querySelector("input");
-    if (input instanceof HTMLInputElement) {
-      input.focus();
+    if (typeof quantityRef === "object" && quantityRef !== null && "$el" in quantityRef) {
+      const input = quantityRef.$el?.querySelector("input");
+      if (input instanceof HTMLInputElement) {
+        input.focus();
+      }
     }
   };
 

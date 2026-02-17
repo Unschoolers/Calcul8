@@ -1,4 +1,5 @@
 import "./functions/entitlementsMe";
+import "./functions/entitlementsVerify";
 import "./functions/entitlementsVerifyPlay";
 import "./functions/accountExport";
 import "./functions/accountDelete";

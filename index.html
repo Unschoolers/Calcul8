@@ -1301,7 +1301,7 @@
           <v-card-actions>
             <v-spacer></v-spacer>
             <v-btn text @click="showVerifyPurchaseModal = false">Cancel</v-btn>
-            <v-btn color="primary" :loading="isVerifyingPurchase" @click="verifyPlayPurchase">Verify</v-btn>
+            <v-btn color="primary" :loading="isVerifyingPurchase" @click="verifyProPurchase">Verify</v-btn>
           </v-card-actions>
         </v-card>
       </v-dialog>
@@ -1342,7 +1342,7 @@
                   variant="flat"
                   prepend-icon="mdi-google-play"
                   :loading="isVerifyingPurchase"
-                  @click="startPlayPurchase"
+                  @click="startProPurchase"
                 >
                   Unlock Pro
                 </v-btn>
@@ -1386,7 +1386,7 @@
                   variant="flat"
                   prepend-icon="mdi-google-play"
                   :loading="isVerifyingPurchase"
-                  @click="startPlayPurchase"
+                  @click="startProPurchase"
                 >
                   Unlock Pro
                 </v-btn>
