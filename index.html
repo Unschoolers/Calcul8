@@ -254,12 +254,20 @@
       z-index: 1000;
     }
     .fab-add-preset {
-      bottom: calc(10rem + env(safe-area-inset-bottom)) !important;
-      inset-block-end: calc(10rem + env(safe-area-inset-bottom)) !important;
+      bottom: calc(5rem + env(safe-area-inset-bottom)) !important;
+      inset-block-end: calc(5rem + env(safe-area-inset-bottom)) !important;
     }
     .fab-calculate {
       bottom: calc(5rem + env(safe-area-inset-bottom)) !important;
       inset-block-end: calc(5rem + env(safe-area-inset-bottom)) !important;
+    }
+    .fab-live-reset {
+      bottom: calc(15rem + env(safe-area-inset-bottom)) !important;
+      inset-block-end: calc(15rem + env(safe-area-inset-bottom)) !important;
+    }
+    .fab-live-calc {
+      bottom: calc(10rem + env(safe-area-inset-bottom)) !important;
+      inset-block-end: calc(10rem + env(safe-area-inset-bottom)) !important;
     }
     .fab-overflow-wrap {
       position: fixed;
@@ -270,8 +278,8 @@
       z-index: 1300;
     }
     .fab-overflow-config {
-      bottom: calc(15rem + env(safe-area-inset-bottom));
-      inset-block-end: calc(15rem + env(safe-area-inset-bottom));
+      bottom: calc(10rem + env(safe-area-inset-bottom));
+      inset-block-end: calc(10rem + env(safe-area-inset-bottom));
     }
     .fab-overflow-sales {
       bottom: calc(5rem + env(safe-area-inset-bottom));
@@ -319,6 +327,20 @@
     }
     .portfolio-report-table tbody tr:nth-child(even) {
       background: rgba(var(--v-theme-on-surface), 0.02);
+    }
+    .price-link-list {
+      border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+      border-radius: 12px;
+      background: rgba(var(--v-theme-on-surface), 0.02);
+      padding: 0.2rem;
+    }
+    .price-link-list .v-list-item {
+      border-radius: 10px;
+      margin: 0.12rem 0;
+      min-height: 48px;
+    }
+    .price-link-list .v-list-item:hover {
+      background: rgba(var(--v-theme-primary), 0.08);
     }
     @media (max-width: 600px) {
       .app-shell {
@@ -677,38 +699,39 @@
                           @input="onPurchaseConfigChange"
                         ></v-text-field>
 
-                        <v-text-field
-                          v-model.number="spotPrice"
-                          :label="`RTYH Spot (${sellingCurrency})`"
-                          type="number"
-                          variant="outlined"
-                          density="compact"
-                          hide-details
-                          class="mb-2"
-                          @input="autoSaveSetup(); syncLivePricesFromDefaults()"
-                        ></v-text-field>
+                        <div class="text-caption text-medium-emphasis mb-2">
+                          Price values are read-only here. Update them in Live.
+                        </div>
 
-                        <v-text-field
-                          v-model.number="boxPriceSell"
-                          :label="`Box Selling Price (${sellingCurrency})`"
-                          type="number"
-                          variant="outlined"
-                          density="compact"
-                          hide-details
-                          class="mb-2"
-                          @input="autoSaveSetup(); syncLivePricesFromDefaults()"
-                        ></v-text-field>
-
-                        <v-text-field
-                          v-model.number="packPrice"
-                          :label="`Pack (${sellingCurrency})`"
-                          type="number"
-                          variant="outlined"
-                          density="compact"
-                          step="0.5"
-                          hide-details
-                          @input="autoSaveSetup(); syncLivePricesFromDefaults()"
-                        ></v-text-field>
+                        <v-list density="compact" nav lines="one" class="price-link-list">
+                          <v-list-item
+                            :title="`RTYH Spot (${sellingCurrency})`"
+                            :subtitle="`$${formatCurrency(spotPrice)}`"
+                            @click="currentTab = 'live'"
+                          >
+                            <template #append>
+                              <v-icon size="18">mdi-open-in-new</v-icon>
+                            </template>
+                          </v-list-item>
+                          <v-list-item
+                            :title="`Box Selling Price (${sellingCurrency})`"
+                            :subtitle="`$${formatCurrency(boxPriceSell)}`"
+                            @click="currentTab = 'live'"
+                          >
+                            <template #append>
+                              <v-icon size="18">mdi-open-in-new</v-icon>
+                            </template>
+                          </v-list-item>
+                          <v-list-item
+                            :title="`Pack (${sellingCurrency})`"
+                            :subtitle="`$${formatCurrency(packPrice)}`"
+                            @click="currentTab = 'live'"
+                          >
+                            <template #append>
+                              <v-icon size="18">mdi-open-in-new</v-icon>
+                            </template>
+                          </v-list-item>
+                        </v-list>
                       </v-card-text>
                     </v-card>
                   </v-col>
@@ -1127,15 +1150,15 @@
       ></v-fab>
 
       <v-fab
-        v-if="currentTab === 'config'"
+        v-if="currentTab === 'live'"
         icon="mdi-calculator"
         color="secondary"
         size="large"
-        title="Calculate prices"
+        title="Auto-calculate prices"
         aria-label="Open auto-calculate prices"
         :disabled="!hasPresetSelected"
         @click="showProfitCalculator = true"
-        class="fab-primary fab-calculate"
+        class="fab-primary fab-live-calc"
       ></v-fab>
 
       <!-- Overflow Menu - Config -->
@@ -1189,6 +1212,18 @@
         title="Reset live prices"
         aria-label="Reset live prices"
         @click="resetLivePrices"
+        class="fab-primary fab-live-reset"
+      ></v-fab>
+
+      <v-fab
+        v-if="currentTab === 'live'"
+        icon="mdi-content-save-check-outline"
+        color="primary"
+        size="large"
+        title="Apply live prices to config"
+        aria-label="Apply live prices to config"
+        :disabled="!hasPresetSelected"
+        @click="applyLivePricesToDefaults"
         class="fab-primary fab-calculate"
       ></v-fab>
 
@@ -1319,7 +1354,7 @@
               label="Target Profit %"
               type="number"
               variant="outlined"
-              :disabled="!hasPresetSelected"
+              :disabled="!canUsePaidActions"
               suffix="%"
               :min="0"
               :max="100"

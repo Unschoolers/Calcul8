@@ -216,6 +216,10 @@ export function handleExpiredAuth(app: AppContext): void {
   clearEntitlementCache();
   localStorage.removeItem(PRO_ACCESS_KEY);
   app.hasProAccess = false;
+  if (app.hasPresetSelected && Number(app.targetProfitPercent) !== 0) {
+    app.targetProfitPercent = 0;
+    app.autoSaveSetup();
+  }
   app.initGoogleAutoLogin();
 }
 

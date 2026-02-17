@@ -66,6 +66,7 @@ export interface AppMethodState {
   autoSaveSetup(): void;
   syncLivePricesFromDefaults(): void;
   resetLivePrices(): void;
+  applyLivePricesToDefaults(): void;
   createNewPreset(): void;
   loadPreset(): void;
   deleteCurrentPreset(): void;

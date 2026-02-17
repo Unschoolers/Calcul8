@@ -143,6 +143,7 @@ export const configMethods: ThisType<AppContext> & Pick<
   | "autoSaveSetup"
   | "syncLivePricesFromDefaults"
   | "resetLivePrices"
+  | "applyLivePricesToDefaults"
   | "createNewPreset"
   | "loadPreset"
   | "deleteCurrentPreset"
@@ -298,6 +299,19 @@ export const configMethods: ThisType<AppContext> & Pick<
     this.notify("Live prices reset to config defaults", "info");
   },
 
+  applyLivePricesToDefaults(): void {
+    if (!this.currentPresetId) {
+      this.notify("Select a preset first", "warning");
+      return;
+    }
+
+    this.spotPrice = Number(this.liveSpotPrice) || 0;
+    this.boxPriceSell = Number(this.liveBoxPriceSell) || 0;
+    this.packPrice = Number(this.livePackPrice) || 0;
+    this.autoSaveSetup();
+    this.notify("Live prices saved to config", "success");
+  },
+
   createNewPreset(): void {
     const name = (this.newPresetName || "").trim();
     if (!name) return this.notify("Please enter a preset name", "warning");
@@ -355,7 +369,14 @@ export const configMethods: ThisType<AppContext> & Pick<
     this.spotPrice = preset.spotPrice ?? DEFAULT_VALUES.SPOT_PRICE;
     this.boxPriceSell = preset.boxPriceSell ?? DEFAULT_VALUES.BOX_PRICE_SELL;
     this.packPrice = preset.packPrice ?? DEFAULT_VALUES.PACK_PRICE;
-    this.targetProfitPercent = preset.targetProfitPercent ?? 15;
+    const parsedTargetProfit = Number(preset.targetProfitPercent);
+    if (!this.hasProAccess) {
+      this.targetProfitPercent = 0;
+    } else if (Number.isFinite(parsedTargetProfit) && parsedTargetProfit >= 0) {
+      this.targetProfitPercent = parsedTargetProfit;
+    } else {
+      this.targetProfitPercent = 15;
+    }
 
     this.syncLivePricesFromDefaults();
     this.loadSalesFromStorage();

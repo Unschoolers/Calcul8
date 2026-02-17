@@ -3,12 +3,13 @@ import type { AppState } from "../types/app.ts";
 
 export function createInitialState(): AppState {
   const todayDate = new Date().toISOString().split("T")[0];
+  const hasProAccess = localStorage.getItem("rtyh_pro_access") === "1";
   const showManualPurchaseVerify =
     import.meta.env.DEV ||
     String(import.meta.env.VITE_SHOW_MANUAL_PURCHASE_VERIFY || "").toLowerCase() === "true";
 
   return {
-    hasProAccess: localStorage.getItem("rtyh_pro_access") === "1",
+    hasProAccess,
     showManualPurchaseVerify,
     showVerifyPurchaseModal: false,
     showPortfolioReportModal: false,
@@ -63,7 +64,7 @@ export function createInitialState(): AppState {
     livePackPrice: DEFAULT_VALUES.PACK_PRICE,
 
     // Auto-calculate profit
-    targetProfitPercent: 15,
+    targetProfitPercent: hasProAccess ? 15 : 0,
     showProfitCalculator: false,
 
     // Sales tracking

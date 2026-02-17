@@ -397,6 +397,164 @@ test("calculateOptimalPrices calls recalculate when paywall is unlocked", () => 
   assert.equal(closeModalValue, true);
 });
 
+test("applyLivePricesToDefaults saves live prices into config defaults", () => {
+  let saved = false;
+  let notified = "";
+
+  const context = {
+    currentPresetId: 123,
+    liveSpotPrice: 31,
+    liveBoxPriceSell: 122,
+    livePackPrice: 9,
+    spotPrice: 0,
+    boxPriceSell: 0,
+    packPrice: 0,
+    autoSaveSetup() {
+      saved = true;
+    },
+    notify(message: string) {
+      notified = message;
+    }
+  } as unknown as Parameters<typeof configMethods.applyLivePricesToDefaults>[0];
+
+  configMethods.applyLivePricesToDefaults.call(context);
+
+  assert.equal(context.spotPrice, 31);
+  assert.equal(context.boxPriceSell, 122);
+  assert.equal(context.packPrice, 9);
+  assert.equal(saved, true);
+  assert.equal(notified, "Live prices saved to config");
+});
+
+test("applyLivePricesToDefaults is blocked when no preset is selected", () => {
+  let saved = false;
+  let notified = "";
+
+  const context = {
+    currentPresetId: null,
+    liveSpotPrice: 31,
+    liveBoxPriceSell: 122,
+    livePackPrice: 9,
+    spotPrice: 10,
+    boxPriceSell: 20,
+    packPrice: 30,
+    autoSaveSetup() {
+      saved = true;
+    },
+    notify(message: string) {
+      notified = message;
+    }
+  } as unknown as Parameters<typeof configMethods.applyLivePricesToDefaults>[0];
+
+  configMethods.applyLivePricesToDefaults.call(context);
+
+  assert.equal(context.spotPrice, 10);
+  assert.equal(context.boxPriceSell, 20);
+  assert.equal(context.packPrice, 30);
+  assert.equal(saved, false);
+  assert.equal(notified, "Select a preset first");
+});
+
+test("loadPreset forces target profit to 0 for non-pro users", async () => {
+  const preset: Preset = {
+    id: 5001,
+    name: "Locked preset",
+    boxPriceCost: 90,
+    boxesPurchased: 1,
+    packsPerBox: 16,
+    costInputMode: "perBox",
+    currency: "CAD",
+    sellingCurrency: "CAD",
+    exchangeRate: 1.4,
+    purchaseDate: "2026-02-01",
+    purchaseShippingCost: 0,
+    purchaseTaxPercent: 0,
+    sellingTaxPercent: 15,
+    sellingShippingPerOrder: 0,
+    includeTax: false,
+    spotPrice: 20,
+    boxPriceSell: 95,
+    packPrice: 7,
+    targetProfitPercent: 27
+  };
+
+  const context = {
+    hasProAccess: false,
+    currentPresetId: preset.id,
+    presets: [preset],
+    currentTab: "config",
+    syncLivePricesFromDefaults() {
+      // noop
+    },
+    loadSalesFromStorage() {
+      // noop
+    },
+    initSalesChart() {
+      // noop
+    },
+    initPortfolioChart() {
+      // noop
+    },
+    $nextTick(callback: () => void) {
+      callback();
+      return Promise.resolve();
+    }
+  } as unknown as Parameters<typeof configMethods.loadPreset>[0];
+
+  configMethods.loadPreset.call(context);
+  assert.equal(context.targetProfitPercent, 0);
+});
+
+test("loadPreset defaults target profit to 15 for pro users when missing", () => {
+  const preset: Preset = {
+    id: 5002,
+    name: "Pro preset",
+    boxPriceCost: 90,
+    boxesPurchased: 1,
+    packsPerBox: 16,
+    costInputMode: "perBox",
+    currency: "CAD",
+    sellingCurrency: "CAD",
+    exchangeRate: 1.4,
+    purchaseDate: "2026-02-01",
+    purchaseShippingCost: 0,
+    purchaseTaxPercent: 0,
+    sellingTaxPercent: 15,
+    sellingShippingPerOrder: 0,
+    includeTax: false,
+    spotPrice: 20,
+    boxPriceSell: 95,
+    packPrice: 7,
+    targetProfitPercent: Number.NaN
+  };
+
+  const context = {
+    hasProAccess: true,
+    currentPresetId: preset.id,
+    presets: [preset],
+    currentTab: "config",
+    syncLivePricesFromDefaults() {
+      // noop
+    },
+    loadSalesFromStorage() {
+      // noop
+    },
+    initSalesChart() {
+      // noop
+    },
+    initPortfolioChart() {
+      // noop
+    },
+    $nextTick(callback: () => void) {
+      callback();
+      return Promise.resolve();
+    }
+  } as unknown as Parameters<typeof configMethods.loadPreset>[0];
+
+  configMethods.loadPreset.call(context);
+  assert.equal(context.targetProfitPercent, 15);
+});
+
 test("saveSale is blocked when paywall is locked", () => {
   let notified = "";
 

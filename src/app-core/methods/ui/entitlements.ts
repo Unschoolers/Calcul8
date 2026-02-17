@@ -108,6 +108,24 @@ function isAlreadyOwnedPurchaseError(error: unknown): boolean {
     || detail.includes("owned item");
 }
 
+function applyTargetProfitAccessDefaults(app: AppContext): void {
+  if (!app.hasPresetSelected) return;
+
+  if (!app.hasProAccess) {
+    if (Number(app.targetProfitPercent) !== 0) {
+      app.targetProfitPercent = 0;
+      app.autoSaveSetup();
+    }
+    return;
+  }
+
+  const currentTarget = Number(app.targetProfitPercent);
+  if (!Number.isFinite(currentTarget) || currentTarget <= 0) {
+    app.targetProfitPercent = 15;
+    app.autoSaveSetup();
+  }
+}
+
 async function hasPlayPurchaseSupport(): Promise<boolean> {
   if (typeof window.getDigitalGoodsService !== "function") {
     return false;
@@ -137,6 +155,7 @@ export const uiEntitlementMethods: ThisType<AppContext> & Pick<
     const cachedEntitlement = readEntitlementCache();
     if (cachedEntitlement?.hasProAccess) {
       this.hasProAccess = true;
+      applyTargetProfitAccessDefaults(this);
       return;
     }
 
@@ -412,6 +431,7 @@ export const uiEntitlementMethods: ThisType<AppContext> & Pick<
     if (!forceRefresh && cached && Date.now() - cached.cachedAt < ttlMs) {
       this.hasProAccess = cached.hasProAccess;
       localStorage.setItem(PRO_ACCESS_KEY, cached.hasProAccess ? "1" : "0");
+      applyTargetProfitAccessDefaults(this);
       console.info("[whatfees] Entitlement cache hit", {
         userId: cached.userId,
         hasProAccess: cached.hasProAccess,
@@ -456,6 +476,7 @@ export const uiEntitlementMethods: ThisType<AppContext> & Pick<
 
       this.hasProAccess = hasProAccess;
       localStorage.setItem(PRO_ACCESS_KEY, hasProAccess ? "1" : "0");
+      applyTargetProfitAccessDefaults(this);
       writeEntitlementCache({
         userId,
         hasProAccess,
