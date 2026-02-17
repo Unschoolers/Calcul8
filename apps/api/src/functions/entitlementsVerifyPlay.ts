@@ -111,6 +111,10 @@ export async function entitlementsVerifyPlay(
           packageName,
           productId: verification.productId,
           productIds: verification.productIds,
+          kind: verification.kind,
+          rawPurchaseState: verification.rawPurchaseState,
+          rawAcknowledgementState: verification.rawAcknowledgementState,
+          lineItemCount: verification.lineItemCount,
           orderId: verification.orderId,
           purchaseState: verification.purchaseState,
           acknowledgementState: verification.acknowledgementState,
@@ -124,17 +128,25 @@ export async function entitlementsVerifyPlay(
       const purchaseStateLabel = verification.purchaseState === null
         ? "UNKNOWN"
         : String(verification.purchaseState);
+      const rawPurchaseStateLabel = verification.rawPurchaseState ?? "UNKNOWN";
+      const rawAcknowledgementStateLabel = verification.rawAcknowledgementState ?? "UNKNOWN";
       const returnedProductIds = verification.productIds.length > 0
         ? verification.productIds.join(",")
         : "(none)";
       const allowedProductIdsLabel = allowedProductIds.length > 0
         ? allowedProductIds.join(",")
         : "(none)";
+      const kindLabel = verification.kind ?? "(none)";
+      const lineItemCountLabel = String(verification.lineItemCount);
 
       throw new HttpError(
         402,
         `Google Play purchase is not valid. ` +
         `purchaseState=${purchaseStateLabel}; ` +
+        `rawPurchaseState=${rawPurchaseStateLabel}; ` +
+        `rawAcknowledgementState=${rawAcknowledgementStateLabel}; ` +
+        `kind=${kindLabel}; ` +
+        `lineItemCount=${lineItemCountLabel}; ` +
         `returnedProductIds=${returnedProductIds}; ` +
         `allowedProductIds=${allowedProductIdsLabel}.`
       );
@@ -188,6 +200,10 @@ export async function entitlementsVerifyPlay(
         packageName,
         productId: verification.productId,
         productIds: verification.productIds,
+        kind: verification.kind,
+        rawPurchaseState: verification.rawPurchaseState,
+        rawAcknowledgementState: verification.rawAcknowledgementState,
+        lineItemCount: verification.lineItemCount,
         orderId: verification.orderId,
         purchaseState: verification.purchaseState,
         acknowledgementState,
