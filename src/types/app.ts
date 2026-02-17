@@ -26,7 +26,7 @@ export interface SnackbarState {
 
 export interface NewSaleDraft {
   type: SaleType;
-  quantity: number;
+  quantity: number | null;
   packsCount: number | null;
   price: number;
   buyerShipping: number;

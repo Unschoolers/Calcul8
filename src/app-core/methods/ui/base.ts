@@ -83,7 +83,7 @@ export const uiBaseMethods: ThisType<AppContext> & Pick<
   },
 
   getSaleIcon(type: SaleType): string {
-    if (type === "pack") return "mdi-package";
+    if (type === "pack") return "mdi-tag-outline";
     if (type === "box") return "mdi-cube-outline";
     return "mdi-cards-playing-outline";
   },

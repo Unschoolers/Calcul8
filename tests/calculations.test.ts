@@ -559,6 +559,7 @@ test("openAddSaleModal defaults sale price from live values with config fallback
   assert.equal(context.showAddSaleModal, true);
   assert.equal(context.editingSale, null);
   assert.equal(context.newSale.type, "pack");
+  assert.equal(context.newSale.quantity, null);
   assert.equal(context.newSale.price, 11);
   assert.equal(context.newSale.buyerShipping, 4);
 

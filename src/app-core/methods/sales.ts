@@ -93,6 +93,38 @@ function refreshChartsForCurrentTab(context: AppContext): void {
   runRefresh();
 }
 
+function focusSaleQuantityInput(context: AppContext): void {
+  const scheduleNextTick = (context as Partial<AppContext>).$nextTick;
+  const runFocus = () => {
+    if (!context.$refs) return;
+    const refs = context.$refs as {
+      saleQuantityInput?:
+        | HTMLInputElement
+        | { focus?: () => void; $el?: Element | null }
+        | null;
+    };
+    const quantityRef = refs.saleQuantityInput;
+    if (!quantityRef) return;
+
+    if (typeof quantityRef.focus === "function") {
+      quantityRef.focus();
+      return;
+    }
+
+    const input = quantityRef.$el?.querySelector("input");
+    if (input instanceof HTMLInputElement) {
+      input.focus();
+    }
+  };
+
+  if (typeof scheduleNextTick === "function") {
+    void scheduleNextTick.call(context, runFocus);
+    return;
+  }
+
+  runFocus();
+}
+
 export const salesMethods: ThisType<AppContext> & Pick<
   AppMethodState,
   | "loadSalesFromStorage"
@@ -143,13 +175,14 @@ export const salesMethods: ThisType<AppContext> & Pick<
     this.editingSale = null;
     this.newSale = {
       type: saleType,
-      quantity: 1,
+      quantity: null,
       packsCount: null,
       price: nextPrice,
       buyerShipping: Number(this.sellingShippingPerOrder) || 0,
       date: new Date().toISOString().split("T")[0]
     };
     this.showAddSaleModal = true;
+    focusSaleQuantityInput(this);
   },
 
   onNewSaleTypeChange(type: SaleType): void {
@@ -235,6 +268,7 @@ export const salesMethods: ThisType<AppContext> & Pick<
       date: sale.date
     };
     this.showAddSaleModal = true;
+    focusSaleQuantityInput(this);
   },
 
   deleteSale(id: number): void {
@@ -257,7 +291,7 @@ export const salesMethods: ThisType<AppContext> & Pick<
     this.editingSale = null;
     this.newSale = {
       type: "pack",
-      quantity: 1,
+      quantity: null,
       packsCount: null,
       price: 0,
       buyerShipping: this.sellingShippingPerOrder,
@@ -391,8 +425,8 @@ export const salesMethods: ThisType<AppContext> & Pick<
         this.currentPresetId === preset.id ? this.sales : this.loadSalesForPresetId(preset.id)
       ])
     );
-    const labels: string[] = ["Start"];
-    const values: number[] = [0];
+    const labels: string[] = [];
+    const values: number[] = [];
     const todayDate = new Date().toISOString().split("T")[0];
 
     const netByDate = new Map<string, number>();
@@ -430,6 +464,8 @@ export const salesMethods: ThisType<AppContext> & Pick<
     const sortedDates = [...new Set([...costByDate.keys(), ...netByDate.keys()])].sort(
       (a, b) => new Date(a).getTime() - new Date(b).getTime()
     );
+
+    if (sortedDates.length === 0) return;
 
     let cumulativeProfit = 0;
     for (const date of sortedDates) {

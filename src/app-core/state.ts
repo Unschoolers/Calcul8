@@ -72,17 +72,17 @@ export function createInitialState(): AppState {
     editingSale: null,
     newSale: {
       type: "pack",
-        quantity: 1,
-        packsCount: null,
-        price: 0,
-        buyerShipping: DEFAULT_VALUES.SELLING_SHIPPING_PER_ORDER,
-        date: todayDate
-      },
+      quantity: null,
+      packsCount: null,
+      price: 0,
+      buyerShipping: DEFAULT_VALUES.SELLING_SHIPPING_PER_ORDER,
+      date: todayDate
+    },
 
     salesChart: null,
     chartView: "pie",
     portfolioChart: null,
-    portfolioChartView: "breakdown",
+    portfolioChartView: "trend",
     portfolioPresetFilterIds: [],
 
     // Presets

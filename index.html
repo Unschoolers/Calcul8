@@ -724,7 +724,7 @@
                       <live-price-card
                         v-model="livePackPrice"
                         label="Pack"
-                        icon="mdi-package"
+                        icon="mdi-tag-outline"
                         avatar-color="primary"
                         :units="totalPacks"
                         :calculate-profit="calculateProfit"
@@ -751,7 +751,7 @@
                         v-model="liveSpotPrice"
                         label="RTYH"
                         icon="mdi-cards-playing-outline"
-                        avatar-color="primary"
+                        avatar-color="success"
                         :units="80"
                         :calculate-profit="calculateProfit"
                         :safe-fixed="safeFixed"
@@ -1193,17 +1193,64 @@
       ></v-fab>
 
       <!-- Primary FAB - Sales -->
-      <v-fab
-        v-if="currentTab === 'sales'"
-        icon="mdi-cart-plus"
-        color="primary"
-        size="large"
-        title="Add sale"
-        aria-label="Add sale"
-        :disabled="!hasPresetSelected"
-        @click="openAddSaleModal()"
-        class="fab-primary fab-calculate"
-      ></v-fab>
+      <div v-if="currentTab === 'sales'" class="fab-overflow-wrap fab-overflow-sales">
+        <v-speed-dial
+          v-model="speedDialOpenSales"
+          location="top center"
+          transition="scale-transition"
+          :open-on-hover="false"
+          :close-on-content-click="false"
+        >
+          <template v-slot:activator="{ props: activatorProps }">
+            <v-fab
+              v-bind="activatorProps"
+              icon="mdi-cart-plus"
+              color="primary"
+              size="large"
+              title="Add sale"
+              aria-label="Add sale"
+              :disabled="!hasPresetSelected"
+            ></v-fab>
+          </template>
+
+          <v-btn
+            :key="'pack'"
+            icon="mdi-tag-outline"
+            color="primary"
+            variant="elevated"
+            size="small"
+            class="sales-speed-action"
+            :title="'Add pack sale'"
+            :aria-label="'Add pack sale'"
+            :disabled="!hasPresetSelected"
+            @click="openAddSaleModal('pack'); speedDialOpenSales = false"
+          ></v-btn>
+          <v-btn
+            :key="'box'"
+            icon="mdi-cube-outline"
+            color="secondary"
+            variant="elevated"
+            size="small"
+            class="sales-speed-action"
+            :title="'Add box sale'"
+            :aria-label="'Add box sale'"
+            :disabled="!hasPresetSelected"
+            @click="openAddSaleModal('box'); speedDialOpenSales = false"
+          ></v-btn>
+          <v-btn
+            :key="'rtyh'"
+            icon="mdi-cards-playing-outline"
+            color="success"
+            variant="elevated"
+            size="small"
+            class="sales-speed-action"
+            :title="'Add RTYH sale'"
+            :aria-label="'Add RTYH sale'"
+            :disabled="!hasPresetSelected"
+            @click="openAddSaleModal('rtyh'); speedDialOpenSales = false"
+          ></v-btn>
+        </v-speed-dial>
+      </div>
 
       <!-- New Preset Modal -->
       <v-dialog v-model="showNewPresetModal" max-width="400">
@@ -1364,7 +1411,7 @@
               @update:model-value="onNewSaleTypeChange"
             ></v-select>
 
-            <v-text-field v-model.number="newSale.quantity" label="Quantity" type="number" variant="outlined" :disabled="!hasPresetSelected" :min="1" class="mb-2"></v-text-field>
+            <v-text-field ref="saleQuantityInput" v-model.number="newSale.quantity" label="Quantity" type="number" variant="outlined" :disabled="!hasPresetSelected" :min="1" class="mb-2"></v-text-field>
 
             <v-text-field
               v-if="newSale.type === 'rtyh'"
