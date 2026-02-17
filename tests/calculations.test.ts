@@ -397,6 +397,35 @@ test("calculateOptimalPrices calls recalculate when paywall is unlocked", () => 
   assert.equal(closeModalValue, true);
 });
 
+test("recalculateDefaultPrices syncs live prices even when current tab is live", () => {
+  let syncCalled = false;
+
+  const context = {
+    currentTab: "live",
+    totalCaseCost: 1000,
+    targetProfitPercent: 15,
+    boxesPurchased: 10,
+    totalPacks: 160,
+    sellingTaxPercent: 15,
+    sellingShippingPerOrder: 0,
+    spotPrice: 0,
+    boxPriceSell: 0,
+    packPrice: 0,
+    showProfitCalculator: true,
+    syncLivePricesFromDefaults() {
+      syncCalled = true;
+    },
+    autoSaveSetup() {
+      // noop
+    }
+  } as unknown as Parameters<typeof configMethods.recalculateDefaultPrices>[0];
+
+  configMethods.recalculateDefaultPrices.call(context, { closeModal: true });
+
+  assert.equal(syncCalled, true);
+  assert.equal(context.showProfitCalculator, false);
+});
+
 test("applyLivePricesToDefaults saves live prices into config defaults", () => {
   let saved = false;
   let notified = "";

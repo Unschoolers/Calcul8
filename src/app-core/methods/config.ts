@@ -611,9 +611,7 @@ export const configMethods: ThisType<AppContext> & Pick<
     this.boxPriceSell = nextPrices.boxPriceSell;
     this.packPrice = nextPrices.packPrice;
 
-    if (this.currentTab !== "live") {
-      this.syncLivePricesFromDefaults();
-    }
+    this.syncLivePricesFromDefaults();
     this.autoSaveSetup();
     if (closeModal) this.showProfitCalculator = false;
   },
