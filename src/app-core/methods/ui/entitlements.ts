@@ -43,6 +43,69 @@ function formatPlayPurchaseError(error: unknown): string {
   return "Unknown purchase error.";
 }
 
+function isAlreadyOwnedPurchaseError(error: unknown): boolean {
+  if (typeof error === "object" && error !== null) {
+    const candidate = error as {
+      code?: unknown;
+      responseCode?: unknown;
+      reason?: unknown;
+      details?: { responseCode?: unknown; reason?: unknown } | unknown;
+      result?: { responseCode?: unknown; reason?: unknown } | unknown;
+    };
+
+    const rawCodes = [
+      candidate.code,
+      candidate.responseCode,
+      (typeof candidate.details === "object" && candidate.details !== null
+        ? (candidate.details as { responseCode?: unknown }).responseCode
+        : undefined),
+      (typeof candidate.result === "object" && candidate.result !== null
+        ? (candidate.result as { responseCode?: unknown }).responseCode
+        : undefined)
+    ];
+
+    for (const rawCode of rawCodes) {
+      if (rawCode === 7) return true; // BillingResponseCode.ITEM_ALREADY_OWNED
+      if (typeof rawCode === "string") {
+        const normalized = rawCode.trim().toUpperCase();
+        if (
+          normalized === "ITEM_ALREADY_OWNED" ||
+          normalized === "ALREADY_OWNED" ||
+          normalized === "7"
+        ) {
+          return true;
+        }
+      }
+    }
+
+    const rawReasons = [
+      candidate.reason,
+      (typeof candidate.details === "object" && candidate.details !== null
+        ? (candidate.details as { reason?: unknown }).reason
+        : undefined),
+      (typeof candidate.result === "object" && candidate.result !== null
+        ? (candidate.result as { reason?: unknown }).reason
+        : undefined)
+    ];
+
+    for (const rawReason of rawReasons) {
+      if (typeof rawReason === "string") {
+        const normalized = rawReason.trim().toUpperCase();
+        if (normalized === "ITEM_ALREADY_OWNED" || normalized === "ALREADY_OWNED") {
+          return true;
+        }
+      }
+    }
+  }
+
+  // Fallback for runtimes that only expose unstructured messages.
+  const detail = formatPlayPurchaseError(error).toLowerCase();
+  return detail.includes("already own")
+    || detail.includes("already owned")
+    || detail.includes("item already")
+    || detail.includes("owned item");
+}
+
 export const uiEntitlementMethods: ThisType<AppContext> & Pick<
   AppMethodState,
   | "initGoogleAutoLogin"
@@ -94,6 +157,10 @@ export const uiEntitlementMethods: ThisType<AppContext> & Pick<
   },
 
   async startPlayPurchase(): Promise<void> {
+    if (this.isVerifyingPurchase) {
+      return;
+    }
+
     if (this.hasProAccess) {
       this.notify("Pro is already unlocked on this account.", "info");
       return;
@@ -128,6 +195,33 @@ export const uiEntitlementMethods: ThisType<AppContext> & Pick<
         return;
       }
 
+      // Fast path: if user already owns the product, verify entitlement directly
+      // instead of attempting a fresh purchase flow.
+      if (playBilling && typeof playBilling.listPurchases === "function") {
+        try {
+          const listedPurchases = await playBilling.listPurchases();
+          const existing = extractPurchaseTokenFromResult(listedPurchases, productId);
+          if (existing.purchaseToken) {
+            const verified = await submitPlayPurchaseVerification(this, {
+              baseUrl: base,
+              googleIdToken,
+              purchaseToken: existing.purchaseToken,
+              productId
+            });
+            if (verified) {
+              this.purchaseTokenInput = "";
+              this.purchaseProductIdInput = "";
+              this.purchasePackageNameInput = "";
+              this.showVerifyPurchaseModal = false;
+              this.notify("Existing purchase found and verified. Pro features unlocked.", "success");
+              return;
+            }
+          }
+        } catch (existingPurchaseError) {
+          console.warn("[whatfees] Existing purchase pre-check failed", existingPurchaseError);
+        }
+      }
+
       const purchase = await purchasePlayProduct(playBilling, productId);
       if (!purchase.purchaseToken) {
         this.notify("Could not read purchase token from Google Play.", "error");
@@ -149,12 +243,14 @@ export const uiEntitlementMethods: ThisType<AppContext> & Pick<
       this.notify("Purchase verified. Pro features unlocked.", "success");
     } catch (error) {
       const name = error instanceof Error ? error.name : "";
-      if (name === "AbortError") {
-        this.notify("Purchase cancelled.", "info");
-        return;
-      }
-      // Recovery path: if purchase API fails (for example already-owned), try reading existing purchases.
-      if (playBilling && typeof playBilling.listPurchases === "function") {
+      const isAbortError = name === "AbortError";
+      const isAlreadyOwnedError = isAlreadyOwnedPurchaseError(error);
+      const canTryRecovery = !!playBilling
+        && typeof playBilling.listPurchases === "function"
+        && (!isAbortError || isAlreadyOwnedError);
+
+      // Recovery path: if purchase API fails (especially already-owned), try reading existing purchases.
+      if (canTryRecovery) {
         try {
           const listedPurchases = await playBilling.listPurchases();
           const existing = extractPurchaseTokenFromResult(listedPurchases, productId);
@@ -179,6 +275,11 @@ export const uiEntitlementMethods: ThisType<AppContext> & Pick<
         }
       }
 
+      if (isAbortError && !isAlreadyOwnedError) {
+        this.notify("Purchase cancelled.", "info");
+        return;
+      }
+
       console.warn("[whatfees] Play purchase error", error);
       const detail = formatPlayPurchaseError(error);
       this.notify(`Could not complete Google Play purchase. ${detail}`, "error");
@@ -188,6 +289,10 @@ export const uiEntitlementMethods: ThisType<AppContext> & Pick<
   },
 
   async verifyPlayPurchase(): Promise<void> {
+    if (this.isVerifyingPurchase) {
+      return;
+    }
+
     const base = resolveApiBaseUrl();
     if (!base) {
       this.notify("Missing API configuration (VITE_API_BASE_URL).", "error");
