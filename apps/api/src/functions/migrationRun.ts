@@ -1,8 +1,8 @@
 import { app, type HttpRequest, type HttpResponseInit, type InvocationContext } from "@azure/functions";
-import { HttpError, resolveUserId } from "../lib/auth";
+import { HttpError } from "../lib/auth";
 import { getConfig } from "../lib/config";
 import { errorResponse, jsonResponse, maybeHandleCorsPreflight } from "../lib/http";
-import { assertMigrationAdminAccess } from "../lib/migrations/adminAuth";
+import { assertMigrationAdminAccess, resolveMigrationActor } from "../lib/migrations/adminAuth";
 import { getMigrationById } from "../lib/migrations/registry";
 import { runMigration } from "../lib/migrations/runner";
 
@@ -54,7 +54,7 @@ export async function migrationRun(
 
   try {
     assertMigrationAdminAccess(request, config.migrationsAdminKey, config.apiEnv);
-    const userId = await resolveUserId(request, config);
+    const actor = resolveMigrationActor(request);
 
     let body: unknown;
     try {
@@ -73,7 +73,7 @@ export async function migrationRun(
       migration,
       config,
       dryRun: payload.dryRun,
-      triggeredByUserId: userId,
+      triggeredByUserId: actor,
       note: payload.note
     });
 

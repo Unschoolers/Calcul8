@@ -131,16 +131,16 @@ Request body:
 ```
 
 Headers:
-- `Authorization: Bearer <google-id-token>` (required)
-- `x-migration-key: <MIGRATIONS_ADMIN_KEY>` (required in prod if configured)
+- `x-migration-key: <MIGRATIONS_ADMIN_KEY>` (required in prod)
+- `x-admin-id: <optional-audit-label>` (optional)
 
 List runs:
 
 `GET /api/admin/migrations/runs?migrationId=first_migration&limit=20`
 
 Headers:
-- `Authorization: Bearer <google-id-token>` (required)
-- `x-migration-key: <MIGRATIONS_ADMIN_KEY>` (required in prod if configured)
+- `x-migration-key: <MIGRATIONS_ADMIN_KEY>` (required in prod)
+- `x-admin-id: <optional-audit-label>` (optional)
 
 ## Security notes
 

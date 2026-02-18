@@ -1,9 +1,9 @@
 import { app, type HttpRequest, type HttpResponseInit, type InvocationContext } from "@azure/functions";
-import { HttpError, resolveUserId } from "../lib/auth";
+import { HttpError } from "../lib/auth";
 import { getConfig } from "../lib/config";
 import { listMigrationRuns } from "../lib/cosmos";
 import { errorResponse, jsonResponse, maybeHandleCorsPreflight } from "../lib/http";
-import { assertMigrationAdminAccess } from "../lib/migrations/adminAuth";
+import { assertMigrationAdminAccess, resolveMigrationActor } from "../lib/migrations/adminAuth";
 
 function getQueryParam(request: HttpRequest, key: string): string | null {
   if (request.query && typeof request.query.get === "function") {
@@ -41,14 +41,14 @@ export async function migrationRunsList(
 
   try {
     assertMigrationAdminAccess(request, config.migrationsAdminKey, config.apiEnv);
-    const requestedByUserId = await resolveUserId(request, config);
+    const requestedBy = resolveMigrationActor(request);
     const migrationId = (getQueryParam(request, "migrationId") ?? "").trim() || undefined;
     const limit = parseLimit(getQueryParam(request, "limit"));
 
     const runs = await listMigrationRuns(config, { migrationId, limit });
     return jsonResponse(request, config, 200, {
       ok: true,
-      requestedByUserId,
+      requestedBy,
       migrationId: migrationId ?? null,
       limit,
       count: runs.length,
@@ -66,4 +66,3 @@ app.http("migrationRunsList", {
   route: "admin/migrations/runs",
   handler: migrationRunsList
 });
-

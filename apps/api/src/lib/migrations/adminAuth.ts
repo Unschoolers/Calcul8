@@ -19,3 +19,8 @@ export function assertMigrationAdminAccess(
   }
 }
 
+export function resolveMigrationActor(request: HttpRequest): string {
+  const raw = (request.headers.get("x-admin-id") ?? "").trim();
+  if (!raw) return "migration-admin";
+  return raw.slice(0, 128);
+}

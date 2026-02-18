@@ -1,0 +1,129 @@
+name: Run Migration (Prod)
+
+on:
+  workflow_dispatch:
+    inputs:
+      migration_id:
+        description: "Migration id from registry (e.g. first_migration)"
+        required: true
+        default: "first_migration"
+      dry_run:
+        description: "Run as dry-run"
+        required: true
+        type: boolean
+        default: true
+      note:
+        description: "Audit note stored with the migration run"
+        required: false
+        default: "manual GitHub Actions run"
+      list_limit:
+        description: "How many recent runs to fetch after execution (1-100)"
+        required: false
+        default: "20"
+      list_only:
+        description: "Skip run call and only list recent runs"
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: migration-prod
+  cancel-in-progress: false
+
+jobs:
+  run:
+    name: Execute migration in prod
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: prod-backend
+
+    steps:
+      - name: Validate migration wiring
+        shell: bash
+        env:
+          MIGRATIONS_API_BASE_URL: ${{ vars.MIGRATIONS_API_BASE_URL }}
+          MIGRATIONS_ADMIN_KEY_PROD: ${{ secrets.MIGRATIONS_ADMIN_KEY_PROD }}
+        run: |
+          if [ -z "${MIGRATIONS_API_BASE_URL}" ]; then
+            echo "Missing vars.MIGRATIONS_API_BASE_URL in prod-backend environment."
+            echo "Expected format: https://<function-host>/api"
+            exit 1
+          fi
+          if [[ "${MIGRATIONS_API_BASE_URL}" != https://*"/api" ]]; then
+            echo "MIGRATIONS_API_BASE_URL must start with https:// and end with /api."
+            echo "Current value: ${MIGRATIONS_API_BASE_URL}"
+            exit 1
+          fi
+          if [ -z "${MIGRATIONS_ADMIN_KEY_PROD}" ]; then
+            echo "Missing secrets.MIGRATIONS_ADMIN_KEY_PROD in prod-backend environment."
+            exit 1
+          fi
+
+      - name: Run migration
+        if: ${{ inputs.list_only != true }}
+        shell: bash
+        env:
+          MIGRATIONS_API_BASE_URL: ${{ vars.MIGRATIONS_API_BASE_URL }}
+          MIGRATIONS_ADMIN_KEY_PROD: ${{ secrets.MIGRATIONS_ADMIN_KEY_PROD }}
+          MIGRATION_ID: ${{ inputs.migration_id }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          NOTE: ${{ inputs.note }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          payload="$(jq -cn \
+            --arg migrationId "${MIGRATION_ID}" \
+            --arg note "${NOTE}" \
+            --argjson dryRun "${DRY_RUN}" \
+            '{migrationId: $migrationId, dryRun: $dryRun, note: $note}')"
+
+          echo "POST ${MIGRATIONS_API_BASE_URL}/admin/migrations/run"
+          response_with_status="$(curl -sS -X POST "${MIGRATIONS_API_BASE_URL}/admin/migrations/run" \
+            -H "Content-Type: application/json" \
+            -H "x-migration-key: ${MIGRATIONS_ADMIN_KEY_PROD}" \
+            -H "x-admin-id: github-actions:${ACTOR}" \
+            -d "${payload}" \
+            -w $'\n%{http_code}')"
+
+          status="$(echo "${response_with_status}" | tail -n1)"
+          body="$(echo "${response_with_status}" | sed '$d')"
+          echo "${body}" | jq .
+          if [ "${status}" -lt 200 ] || [ "${status}" -gt 299 ]; then
+            echo "Migration run request failed with HTTP ${status}."
+            exit 1
+          fi
+
+      - name: List migration runs
+        shell: bash
+        env:
+          MIGRATIONS_API_BASE_URL: ${{ vars.MIGRATIONS_API_BASE_URL }}
+          MIGRATIONS_ADMIN_KEY_PROD: ${{ secrets.MIGRATIONS_ADMIN_KEY_PROD }}
+          MIGRATION_ID: ${{ inputs.migration_id }}
+          LIST_LIMIT: ${{ inputs.list_limit }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          if ! [[ "${LIST_LIMIT}" =~ ^[0-9]+$ ]]; then
+            echo "list_limit must be numeric."
+            exit 1
+          fi
+          if [ "${LIST_LIMIT}" -lt 1 ] || [ "${LIST_LIMIT}" -gt 100 ]; then
+            echo "list_limit must be between 1 and 100."
+            exit 1
+          fi
+
+          query="migrationId=${MIGRATION_ID}&limit=${LIST_LIMIT}"
+          echo "GET ${MIGRATIONS_API_BASE_URL}/admin/migrations/runs?${query}"
+          response_with_status="$(curl -sS "${MIGRATIONS_API_BASE_URL}/admin/migrations/runs?${query}" \
+            -H "x-migration-key: ${MIGRATIONS_ADMIN_KEY_PROD}" \
+            -H "x-admin-id: github-actions:${ACTOR}" \
+            -w $'\n%{http_code}')"
+
+          status="$(echo "${response_with_status}" | tail -n1)"
+          body="$(echo "${response_with_status}" | sed '$d')"
+          echo "${body}" | jq .
+          if [ "${status}" -lt 200 ] || [ "${status}" -gt 299 ]; then
+            echo "Migration list request failed with HTTP ${status}."
+            exit 1
+          fi
