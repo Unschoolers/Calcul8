@@ -2,27 +2,24 @@ import { CosmosClient, type Container } from "@azure/cosmos";
 import type {
   ApiConfig,
   EntitlementDocument,
+  MigrationRunDocument,
   PlayPurchaseDocument,
   SyncMetaDocument,
   SyncPresetDocument,
   SyncSnapshotDocument
 } from "../types";
 import { calculateSyncPresetDiff, type SyncPresetState } from "./syncDiff";
-import { extractCanonicalSyncShape } from "./syncShape";
 
 interface CosmosCache {
   entitlements: Container;
   syncSnapshots: Container;
+  migrationRuns: Container;
 }
 
 let cosmosCache: CosmosCache | null = null;
 const COSMOS_MAX_RETRY_ATTEMPTS = 3;
 const COSMOS_BASE_RETRY_DELAY_MS = 200;
 const EPOCH_DATE_ISO = "1970-01-01T00:00:00.000Z";
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
 
 function isNotFoundError(error: unknown): boolean {
   if (typeof error !== "object" || error === null) return false;
@@ -108,29 +105,6 @@ function syncMetaId(userId: string): string {
   return `sync:meta:${userId}`;
 }
 
-function normalizeSyncVersion(value: unknown): number {
-  return typeof value === "number" && Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0;
-}
-
-function normalizeSyncUpdatedAt(value: unknown): string {
-  return typeof value === "string" && value.length > 0 ? value : EPOCH_DATE_ISO;
-}
-
-function normalizeSyncSnapshotDocument(raw: unknown, fallbackUserId: string): SyncSnapshotDocument | null {
-  if (!isRecord(raw)) return null;
-  const canonicalShape = extractCanonicalSyncShape(raw);
-  if (!canonicalShape) return null;
-
-  return {
-    id: typeof raw.id === "string" ? raw.id : syncSnapshotId(fallbackUserId),
-    userId: typeof raw.userId === "string" ? raw.userId : fallbackUserId,
-    presets: canonicalShape.presets,
-    salesByPreset: canonicalShape.salesByPreset,
-    version: normalizeSyncVersion(raw.version),
-    updatedAt: normalizeSyncUpdatedAt(raw.updatedAt)
-  };
-}
-
 function getContainers(config: ApiConfig): CosmosCache {
   if (cosmosCache) return cosmosCache;
 
@@ -142,10 +116,59 @@ function getContainers(config: ApiConfig): CosmosCache {
 
   cosmosCache = {
     entitlements: database.container(config.entitlementsContainerId),
-    syncSnapshots: database.container(config.syncContainerId)
+    syncSnapshots: database.container(config.syncContainerId),
+    migrationRuns: database.container(config.migrationRunsContainerId)
   };
 
   return cosmosCache;
+}
+
+export async function upsertMigrationRun(
+  config: ApiConfig,
+  document: MigrationRunDocument
+): Promise<MigrationRunDocument> {
+  const { migrationRuns } = getContainers(config);
+  const { resource } = await withCosmosRetry(() =>
+    migrationRuns.items.upsert<MigrationRunDocument>(document)
+  );
+
+  if (!resource) {
+    throw new Error("Failed to upsert migration run.");
+  }
+
+  return resource;
+}
+
+interface ListMigrationRunsOptions {
+  migrationId?: string;
+  limit?: number;
+}
+
+export async function listMigrationRuns(
+  config: ApiConfig,
+  { migrationId, limit = 20 }: ListMigrationRunsOptions = {}
+): Promise<MigrationRunDocument[]> {
+  const { migrationRuns } = getContainers(config);
+  const safeLimit = Number.isFinite(limit) ? Math.max(1, Math.min(100, Math.floor(limit))) : 20;
+
+  const querySpec = migrationId
+    ? {
+      query: `SELECT TOP ${safeLimit} * FROM c WHERE c.docType = @docType AND c.migrationId = @migrationId ORDER BY c.startedAt DESC`,
+      parameters: [
+        { name: "@docType", value: "migration_run" },
+        { name: "@migrationId", value: migrationId }
+      ]
+    }
+    : {
+      query: `SELECT TOP ${safeLimit} * FROM c WHERE c.docType = @docType ORDER BY c.startedAt DESC`,
+      parameters: [{ name: "@docType", value: "migration_run" }]
+    };
+
+  const iterator = migrationRuns.items.query<MigrationRunDocument>(querySpec, {
+    maxItemCount: safeLimit
+  });
+  const { resources } = await withCosmosRetry(() => iterator.fetchAll());
+  return resources ?? [];
 }
 
 export async function getEntitlement(
@@ -273,29 +296,6 @@ export async function deletePlayPurchasesForUser(
   }
 }
 
-export async function getSyncSnapshot(
-  config: ApiConfig,
-  userId: string
-): Promise<SyncSnapshotDocument | null> {
-  const { syncSnapshots } = getContainers(config);
-  const id = syncSnapshotId(userId);
-
-  try {
-    const { resource } = await withCosmosRetry(() => syncSnapshots.item(id, userId).read<Record<string, unknown>>());
-    return normalizeSyncSnapshotDocument(resource, userId);
-  } catch (error) {
-    if (isNotFoundError(error)) return null;
-    throw error;
-  }
-}
-
-export async function getLegacySyncSnapshot(
-  config: ApiConfig,
-  userId: string
-): Promise<SyncSnapshotDocument | null> {
-  return getSyncSnapshot(config, userId);
-}
-
 export async function getSyncPresetDocuments(
   config: ApiConfig,
   userId: string
@@ -352,8 +352,8 @@ export async function getSyncSnapshotFromPresetDocuments(
     return null;
   }
 
-  const presets = presetDocuments.map((document) => document.preset);
-  const salesByPreset = Object.fromEntries(
+  const lots = presetDocuments.map((document) => document.preset);
+  const salesByLot = Object.fromEntries(
     presetDocuments.map((document) => [
       document.presetId,
       Array.isArray(document.sales) ? document.sales : []
@@ -376,8 +376,8 @@ export async function getSyncSnapshotFromPresetDocuments(
   return {
     id: syncSnapshotId(userId),
     userId,
-    presets,
-    salesByPreset,
+    lots,
+    salesByLot,
     version: maxVersion,
     updatedAt: latestUpdatedAt
   };
@@ -387,30 +387,26 @@ export async function getEffectiveSyncSnapshot(
   config: ApiConfig,
   userId: string
 ): Promise<SyncSnapshotDocument | null> {
-  const fromPresetDocs = await getSyncSnapshotFromPresetDocuments(config, userId);
-  if (fromPresetDocs) {
-    return fromPresetDocs;
-  }
-  return getLegacySyncSnapshot(config, userId);
+  return getSyncSnapshotFromPresetDocuments(config, userId);
 }
 
 interface IncrementalSyncUpsertInput {
   userId: string;
-  presets: unknown[];
-  salesByPreset: Record<string, unknown[]>;
+  lots: unknown[];
+  salesByLot: Record<string, unknown[]>;
   version: number;
   updatedAt: string;
 }
 
 function buildIncomingPresetStates(
-  presets: unknown[],
-  salesByPreset: Record<string, unknown[]>
+  lots: unknown[],
+  salesByLot: Record<string, unknown[]>
 ): SyncPresetState[] {
-  return presets.flatMap((preset): SyncPresetState[] => {
-    if (typeof preset !== "object" || preset === null || Array.isArray(preset)) {
+  return lots.flatMap((lot): SyncPresetState[] => {
+    if (typeof lot !== "object" || lot === null || Array.isArray(lot)) {
       return [];
     }
-    const presetIdRaw = (preset as { id?: unknown }).id;
+    const presetIdRaw = (lot as { id?: unknown }).id;
     if (typeof presetIdRaw !== "string" && typeof presetIdRaw !== "number") {
       return [];
     }
@@ -418,8 +414,8 @@ function buildIncomingPresetStates(
     const presetId = String(presetIdRaw);
     return [{
       presetId,
-      preset,
-      sales: Array.isArray(salesByPreset[presetId]) ? salesByPreset[presetId] : []
+      preset: lot,
+      sales: Array.isArray(salesByLot[presetId]) ? salesByLot[presetId] : []
     }];
   });
 }
@@ -437,7 +433,7 @@ export async function upsertSyncSnapshotIncremental(
   const { syncSnapshots } = getContainers(config);
   const existingDocuments = await getSyncPresetDocuments(config, input.userId);
   const existingStates = existingDocuments.map(toPresetState);
-  const incomingStates = buildIncomingPresetStates(input.presets, input.salesByPreset);
+  const incomingStates = buildIncomingPresetStates(input.lots, input.salesByLot);
   const diff = calculateSyncPresetDiff(existingStates, incomingStates);
 
   const incomingById = new Map<string, SyncPresetState>();
@@ -494,40 +490,6 @@ export async function upsertSyncSnapshotIncremental(
     upsertedCount,
     deletedCount
   };
-}
-
-export async function upsertSyncSnapshot(
-  config: ApiConfig,
-  snapshot: SyncSnapshotDocument
-): Promise<SyncSnapshotDocument> {
-  const { syncSnapshots } = getContainers(config);
-  const { resource } = await withCosmosRetry(() =>
-    syncSnapshots.items.upsert<SyncSnapshotDocument>({
-      ...snapshot,
-      id: syncSnapshotId(snapshot.userId)
-    })
-  );
-
-  if (!resource) {
-    throw new Error("Failed to upsert sync snapshot.");
-  }
-
-  return resource;
-}
-
-export async function deleteSyncSnapshot(
-  config: ApiConfig,
-  userId: string
-): Promise<void> {
-  const { syncSnapshots } = getContainers(config);
-  const id = syncSnapshotId(userId);
-
-  try {
-    await withCosmosRetry(() => syncSnapshots.item(id, userId).delete());
-  } catch (error) {
-    if (isNotFoundError(error)) return;
-    throw error;
-  }
 }
 
 export async function deleteAllSyncData(

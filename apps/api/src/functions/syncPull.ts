@@ -3,14 +3,13 @@ import { resolveUserId } from "../lib/auth";
 import { getConfig } from "../lib/config";
 import { getEffectiveSyncSnapshot } from "../lib/cosmos";
 import { errorResponse, jsonResponse, maybeHandleCorsPreflight } from "../lib/http";
-import { withDualSyncShape } from "../lib/syncShape";
 
-const EMPTY_SYNC_SNAPSHOT = withDualSyncShape({
-  presets: [],
-  salesByPreset: {},
+const EMPTY_SYNC_SNAPSHOT = {
+  lots: [],
+  salesByLot: {},
   version: 0,
   updatedAt: null
-});
+};
 
 export async function syncPull(
   request: HttpRequest,
@@ -23,11 +22,10 @@ export async function syncPull(
   try {
     const userId = await resolveUserId(request, config);
     const snapshot = await getEffectiveSyncSnapshot(config, userId);
-    const normalizedSnapshot = snapshot ? withDualSyncShape(snapshot) : EMPTY_SYNC_SNAPSHOT;
 
     return jsonResponse(request, config, 200, {
       userId,
-      snapshot: normalizedSnapshot
+      snapshot: snapshot ?? EMPTY_SYNC_SNAPSHOT
     });
   } catch (error) {
     context.error("POST /sync/pull failed", error);

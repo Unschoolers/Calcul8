@@ -5,3 +5,5 @@ import "./functions/accountExport";
 import "./functions/accountDelete";
 import "./functions/syncPull";
 import "./functions/syncPush";
+import "./functions/migrationRun";
+import "./functions/migrationRunsList";

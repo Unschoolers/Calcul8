@@ -1,8 +1,8 @@
 import { HttpError } from "./auth";
 
-interface CanonicalSyncShape {
-  presets: unknown[];
-  salesByPreset: Record<string, unknown[]>;
+interface SyncLotsShape {
+  lots: unknown[];
+  salesByLot: Record<string, unknown[]>;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -18,71 +18,28 @@ function isRecordOfArrays(value: unknown): value is Record<string, unknown[]> {
   return Object.values(value).every((entry) => Array.isArray(entry));
 }
 
-function getCanonicalPresetsForParse(payload: Record<string, unknown>): unknown[] {
+function getLotsForParse(payload: Record<string, unknown>): unknown[] {
   const lots = payload.lots;
-  const presets = payload.presets;
-  const source = lots ?? presets;
-
-  if (!isUnknownArray(source)) {
-    throw new HttpError(400, "Field 'lots' (or legacy 'presets') must be an array.");
+  if (!isUnknownArray(lots)) {
+    throw new HttpError(400, "Field 'lots' must be an array.");
   }
-
-  return source;
+  return lots;
 }
 
-function getCanonicalSalesForParse(payload: Record<string, unknown>): Record<string, unknown[]> {
+function getSalesByLotForParse(payload: Record<string, unknown>): Record<string, unknown[]> {
   const salesByLot = payload.salesByLot;
-  const salesByPreset = payload.salesByPreset;
-  const source = salesByLot ?? salesByPreset ?? {};
-
-  if (!isRecordOfArrays(source)) {
-    throw new HttpError(400, "Field 'salesByLot' (or legacy 'salesByPreset') must be an object of arrays.");
+  if (salesByLot == null) {
+    return {};
   }
-
-  return source;
+  if (!isRecordOfArrays(salesByLot)) {
+    throw new HttpError(400, "Field 'salesByLot' must be an object of arrays.");
+  }
+  return salesByLot;
 }
 
-export function parseCanonicalSyncShape(payload: Record<string, unknown>): CanonicalSyncShape {
+export function parseSyncLotsShape(payload: Record<string, unknown>): SyncLotsShape {
   return {
-    presets: getCanonicalPresetsForParse(payload),
-    salesByPreset: getCanonicalSalesForParse(payload)
-  };
-}
-
-function getCanonicalPresetsForExtract(source: Record<string, unknown>): unknown[] | null {
-  if (isUnknownArray(source.lots)) return source.lots;
-  if (isUnknownArray(source.presets)) return source.presets;
-  return null;
-}
-
-function getCanonicalSalesForExtract(source: Record<string, unknown>): Record<string, unknown[]> | null {
-  if (isRecordOfArrays(source.salesByLot)) return source.salesByLot;
-  if (isRecordOfArrays(source.salesByPreset)) return source.salesByPreset;
-  if (source.salesByLot == null && source.salesByPreset == null) return {};
-  return null;
-}
-
-export function extractCanonicalSyncShape(raw: unknown): CanonicalSyncShape | null {
-  if (!isRecord(raw)) return null;
-  const presets = getCanonicalPresetsForExtract(raw);
-  if (!presets) return null;
-
-  const salesByPreset = getCanonicalSalesForExtract(raw);
-  if (!salesByPreset) return null;
-
-  return {
-    presets,
-    salesByPreset
-  };
-}
-
-export function withDualSyncShape<T extends CanonicalSyncShape>(snapshot: T): T & {
-  lots: unknown[];
-  salesByLot: Record<string, unknown[]>;
-} {
-  return {
-    ...snapshot,
-    lots: snapshot.presets,
-    salesByLot: snapshot.salesByPreset
+    lots: getLotsForParse(payload),
+    salesByLot: getSalesByLotForParse(payload)
   };
 }

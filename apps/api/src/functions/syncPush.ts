@@ -3,7 +3,7 @@ import { HttpError, resolveUserId } from "../lib/auth";
 import { getConfig } from "../lib/config";
 import { getEffectiveSyncSnapshot, upsertSyncSnapshotIncremental } from "../lib/cosmos";
 import { errorResponse, jsonResponse, maybeHandleCorsPreflight } from "../lib/http";
-import { parseCanonicalSyncShape } from "../lib/syncShape";
+import { parseSyncLotsShape } from "../lib/syncShape";
 import { assertSafeSyncPush } from "../lib/syncSafety";
 import type { SyncPushPayload } from "../types";
 
@@ -11,27 +11,27 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function hasPresetId(value: unknown): boolean {
+function hasLotId(value: unknown): boolean {
   if (!isRecord(value)) return false;
   const id = value.id;
   return typeof id === "string" || typeof id === "number";
 }
 
-function parsePresetIds(presets: unknown[]): string[] {
+function parseLotIds(lots: unknown[]): string[] {
   const ids: string[] = [];
   const seen = new Set<string>();
 
-  for (const preset of presets) {
-    if (!hasPresetId(preset)) {
-      throw new HttpError(400, "Each lot (legacy preset) must be an object containing an 'id' field.");
+  for (const lot of lots) {
+    if (!hasLotId(lot)) {
+      throw new HttpError(400, "Each lot must be an object containing an 'id' field.");
     }
 
-    const presetId = String((preset as { id: string | number }).id);
-    if (seen.has(presetId)) {
-      throw new HttpError(400, `Duplicate lot id '${presetId}' in payload.`);
+    const lotId = String((lot as { id: string | number }).id);
+    if (seen.has(lotId)) {
+      throw new HttpError(400, `Duplicate lot id '${lotId}' in payload.`);
     }
-    seen.add(presetId);
-    ids.push(presetId);
+    seen.add(lotId);
+    ids.push(lotId);
   }
 
   return ids;
@@ -50,10 +50,10 @@ async function parseSyncPushPayload(request: HttpRequest): Promise<SyncPushPaylo
     throw new HttpError(400, "Request body must be an object.");
   }
 
-  const canonicalShape = parseCanonicalSyncShape(payload);
+  const syncShape = parseSyncLotsShape(payload);
   const clientVersion = payload.clientVersion;
 
-  parsePresetIds(canonicalShape.presets);
+  parseLotIds(syncShape.lots);
 
   if (clientVersion != null && (typeof clientVersion !== "number" || !Number.isFinite(clientVersion))) {
     throw new HttpError(400, "Field 'clientVersion' must be a number when provided.");
@@ -64,8 +64,8 @@ async function parseSyncPushPayload(request: HttpRequest): Promise<SyncPushPaylo
   }
 
   return {
-    presets: canonicalShape.presets,
-    salesByPreset: canonicalShape.salesByPreset,
+    lots: syncShape.lots,
+    salesByLot: syncShape.salesByLot,
     clientVersion: typeof clientVersion === "number" ? clientVersion : undefined,
     allowEmptyOverwrite: payload.allowEmptyOverwrite === true
   };
@@ -85,8 +85,8 @@ export async function syncPush(
     const existingSnapshot = await getEffectiveSyncSnapshot(config, userId);
     assertSafeSyncPush(
       existingSnapshot,
-      payload.presets,
-      payload.salesByPreset,
+      payload.lots,
+      payload.salesByLot,
       payload.allowEmptyOverwrite === true
     );
 
@@ -97,8 +97,8 @@ export async function syncPush(
 
     const syncResult = await upsertSyncSnapshotIncremental(config, {
       userId,
-      presets: payload.presets,
-      salesByPreset: payload.salesByPreset,
+      lots: payload.lots,
+      salesByLot: payload.salesByLot,
       version,
       updatedAt
     });

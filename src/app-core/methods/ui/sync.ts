@@ -12,23 +12,19 @@ import {
 
 type SyncPayload = {
   lots: unknown[];
-  presets: unknown[];
   salesByLot: Record<string, Sale[]>;
-  salesByPreset: Record<string, Sale[]>;
   clientVersion?: number;
 };
 
 function createSyncPayload(context: AppContext, clientVersion?: number): SyncPayload {
-  const salesByPreset: Record<string, Sale[]> = {};
+  const salesByLot: Record<string, Sale[]> = {};
   for (const preset of context.presets) {
-    salesByPreset[String(preset.id)] = context.loadSalesForPresetId(preset.id);
+    salesByLot[String(preset.id)] = context.loadSalesForPresetId(preset.id);
   }
 
   return {
     lots: context.presets,
-    presets: context.presets,
-    salesByLot: salesByPreset,
-    salesByPreset,
+    salesByLot,
     clientVersion
   };
 }
@@ -36,9 +32,7 @@ function createSyncPayload(context: AppContext, clientVersion?: number): SyncPay
 function getSyncPayloadSignature(payload: SyncPayload): string {
   return JSON.stringify({
     lots: payload.lots,
-    presets: payload.presets,
-    salesByLot: payload.salesByLot,
-    salesByPreset: payload.salesByPreset
+    salesByLot: payload.salesByLot
   });
 }
 
@@ -100,9 +94,7 @@ export const uiSyncMethods: ThisType<AppContext> & Pick<
       const body = (await response.json()) as {
         snapshot?: {
           lots?: unknown[];
-          presets?: unknown[];
           salesByLot?: Record<string, unknown[]>;
-          salesByPreset?: Record<string, unknown[]>;
           version?: number;
           updatedAt?: string | null;
         };
@@ -118,19 +110,16 @@ export const uiSyncMethods: ThisType<AppContext> & Pick<
         return;
       }
 
-      const cloudPresets = Array.isArray(snapshot.lots)
-        ? snapshot.lots
-        : (Array.isArray(snapshot.presets) ? snapshot.presets : []);
-      const rawCloudSalesByPreset = snapshot.salesByLot ?? snapshot.salesByPreset;
-      const cloudSalesByPreset = rawCloudSalesByPreset && typeof rawCloudSalesByPreset === "object"
-        ? rawCloudSalesByPreset
+      const cloudLots = Array.isArray(snapshot.lots) ? snapshot.lots : [];
+      const cloudSalesByLot = snapshot.salesByLot && typeof snapshot.salesByLot === "object"
+        ? snapshot.salesByLot
         : {};
-      const cloudVersion = Number(snapshot.version ?? 0);
-      const localVersion = Number(localStorage.getItem(SYNC_CLIENT_VERSION_KEY) || "0");
-      const cloudHasSales = Object.values(cloudSalesByPreset).some((sales) => Array.isArray(sales) && sales.length > 0);
-      const cloudHasData = cloudPresets.length > 0 || cloudHasSales;
+      const cloudHasSales = Object.values(cloudSalesByLot).some((sales) => Array.isArray(sales) && sales.length > 0);
+      const cloudHasData = cloudLots.length > 0 || cloudHasSales;
       const localHasSales = this.presets.some((preset) => this.loadSalesForPresetId(preset.id).length > 0);
       const localHasData = this.presets.length > 0 || localHasSales;
+      const cloudVersion = Number(snapshot.version ?? 0);
+      const localVersion = Number(localStorage.getItem(SYNC_CLIENT_VERSION_KEY) || "0");
       const shouldApplyCloud = Number.isFinite(cloudVersion) && (
         cloudVersion > localVersion ||
         (!localHasData && cloudHasData)
@@ -145,10 +134,10 @@ export const uiSyncMethods: ThisType<AppContext> & Pick<
         return;
       }
 
-      this.presets = cloudPresets as typeof this.presets;
+      this.presets = cloudLots as typeof this.presets;
       this.savePresetsToStorage();
 
-      Object.entries(cloudSalesByPreset).forEach(([presetId, sales]) => {
+      Object.entries(cloudSalesByLot).forEach(([presetId, sales]) => {
         if (!Array.isArray(sales)) return;
         localStorage.setItem(this.getSalesStorageKey(Number(presetId)), JSON.stringify(sales));
       });

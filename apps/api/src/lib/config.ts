@@ -48,6 +48,7 @@ export function getConfig(): ApiConfig {
   cachedConfig = {
     apiEnv,
     authBypassDev: parseBool(readEnv("AUTH_BYPASS_DEV"), apiEnv === "dev"),
+    migrationsAdminKey: readEnv("MIGRATIONS_ADMIN_KEY"),
     googleClientId: readEnv("GOOGLE_OAUTH_CLIENT_ID"),
     googlePlayPackageName: readEnv("GOOGLE_PLAY_PACKAGE_NAME"),
     googlePlayProProductIds: parseCsv(readEnv("GOOGLE_PLAY_PRO_PRODUCT_IDS")),
@@ -58,7 +59,8 @@ export function getConfig(): ApiConfig {
     cosmosKey: requireEnv("COSMOSDB_KEY"),
     cosmosDatabaseId: readEnv("COSMOSDB_DATABASE_ID") || "whatfees",
     entitlementsContainerId: readEnv("COSMOSDB_ENTITLEMENTS_CONTAINER_ID") || "entitlements",
-    syncContainerId: readEnv("COSMOSDB_SYNC_CONTAINER_ID") || "sync_data"
+    syncContainerId: readEnv("COSMOSDB_SYNC_CONTAINER_ID") || "sync_data",
+    migrationRunsContainerId: readEnv("COSMOSDB_MIGRATION_RUNS_CONTAINER_ID") || "migration_runs"
   };
 
   return cachedConfig;

@@ -7,6 +7,8 @@ This is a separate deployable backend project for:
 - `POST /api/entitlements/verify-play`
 - `POST /api/sync/pull`
 - `POST /api/sync/push`
+- `POST /api/admin/migrations/run`
+- `GET /api/admin/migrations/runs`
 
 It is designed to stay independent from the frontend deployment (GitHub Pages).
 
@@ -32,6 +34,8 @@ cp local.settings.json.example local.settings.json
    - `GOOGLE_PLAY_PRO_PRODUCT_IDS` (comma-separated in-app product ids that unlock Pro)
    - `GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL`
    - `GOOGLE_PLAY_SERVICE_ACCOUNT_PRIVATE_KEY`
+   - `COSMOSDB_MIGRATION_RUNS_CONTAINER_ID` (optional, default `migration_runs`)
+   - `MIGRATIONS_ADMIN_KEY` (recommended in prod for admin migration endpoint)
 
 4. Run:
 
@@ -99,7 +103,44 @@ Recommended partition key for both containers: `/userId`.
     - `userId`
     - `version`
     - `updatedAt`
-  - legacy `sync:<userId>` snapshots are still readable for backward compatibility.
+
+- `migration_runs` container:
+  - `id`: `migration_run:<migrationId>:<timestamp>:<random>`
+  - `docType`: `migration_run`
+  - `migrationId`
+  - `status`: `running|succeeded|failed`
+  - `dryRun`
+  - `startedAt`
+  - `completedAt`
+  - `triggeredByUserId`
+  - `note`
+  - `result` / `errorMessage`
+
+## Run a migration
+
+`POST /api/admin/migrations/run`
+
+Request body:
+
+```json
+{
+  "migrationId": "first_migration",
+  "dryRun": false,
+  "note": "manual smoke test"
+}
+```
+
+Headers:
+- `Authorization: Bearer <google-id-token>` (required)
+- `x-migration-key: <MIGRATIONS_ADMIN_KEY>` (required in prod if configured)
+
+List runs:
+
+`GET /api/admin/migrations/runs?migrationId=first_migration&limit=20`
+
+Headers:
+- `Authorization: Bearer <google-id-token>` (required)
+- `x-migration-key: <MIGRATIONS_ADMIN_KEY>` (required in prod if configured)
 
 ## Security notes
 

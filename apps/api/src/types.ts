@@ -3,6 +3,7 @@ export type ApiEnvironment = "dev" | "prod";
 export interface ApiConfig {
   apiEnv: ApiEnvironment;
   authBypassDev: boolean;
+  migrationsAdminKey: string;
   googleClientId: string;
   googlePlayPackageName: string;
   googlePlayProProductIds: string[];
@@ -14,6 +15,7 @@ export interface ApiConfig {
   cosmosDatabaseId: string;
   entitlementsContainerId: string;
   syncContainerId: string;
+  migrationRunsContainerId: string;
 }
 
 export interface EntitlementDocument {
@@ -42,8 +44,8 @@ export interface PlayPurchaseDocument {
 export interface SyncSnapshotDocument {
   id: string;
   userId: string;
-  presets: unknown[];
-  salesByPreset: Record<string, unknown[]>;
+  lots: unknown[];
+  salesByLot: Record<string, unknown[]>;
   version: number;
   updatedAt: string;
 }
@@ -68,8 +70,24 @@ export interface SyncMetaDocument {
 }
 
 export interface SyncPushPayload {
-  presets: unknown[];
-  salesByPreset: Record<string, unknown[]>;
+  lots: unknown[];
+  salesByLot: Record<string, unknown[]>;
   clientVersion?: number;
   allowEmptyOverwrite?: boolean;
+}
+
+export type MigrationRunStatus = "running" | "succeeded" | "failed";
+
+export interface MigrationRunDocument {
+  id: string;
+  docType: "migration_run";
+  migrationId: string;
+  status: MigrationRunStatus;
+  dryRun: boolean;
+  startedAt: string;
+  completedAt: string | null;
+  triggeredByUserId: string;
+  note?: string;
+  result?: Record<string, unknown> | null;
+  errorMessage?: string;
 }

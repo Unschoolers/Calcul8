@@ -46,6 +46,7 @@ test("config defaults to dev and sensible defaults", () => {
       COSMOSDB_DATABASE_ID: undefined,
       COSMOSDB_ENTITLEMENTS_CONTAINER_ID: undefined,
       COSMOSDB_SYNC_CONTAINER_ID: undefined,
+      COSMOSDB_MIGRATION_RUNS_CONTAINER_ID: undefined,
       ALLOWED_ORIGINS: undefined,
       GOOGLE_PLAY_PRO_PRODUCT_IDS: undefined
     },
@@ -56,6 +57,8 @@ test("config defaults to dev and sensible defaults", () => {
       assert.equal(config.cosmosDatabaseId, "whatfees");
       assert.equal(config.entitlementsContainerId, "entitlements");
       assert.equal(config.syncContainerId, "sync_data");
+      assert.equal(config.migrationRunsContainerId, "migration_runs");
+      assert.equal(config.migrationsAdminKey, "");
       assert.deepEqual(config.allowedOrigins, []);
       assert.deepEqual(config.googlePlayProProductIds, []);
     }
@@ -67,12 +70,16 @@ test("config parses prod and explicit false auth bypass", () => {
     {
       ...requiredBaseEnv(),
       API_ENV: "prod",
-      AUTH_BYPASS_DEV: "false"
+      AUTH_BYPASS_DEV: "false",
+      COSMOSDB_MIGRATION_RUNS_CONTAINER_ID: "migration_runs_custom",
+      MIGRATIONS_ADMIN_KEY: "top-secret"
     },
     () => {
       const config = getConfig();
       assert.equal(config.apiEnv, "prod");
       assert.equal(config.authBypassDev, false);
+      assert.equal(config.migrationRunsContainerId, "migration_runs_custom");
+      assert.equal(config.migrationsAdminKey, "top-secret");
     }
   );
 });

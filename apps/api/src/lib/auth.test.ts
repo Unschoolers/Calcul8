@@ -8,6 +8,7 @@ function makeConfig(overrides: Partial<ApiConfig> = {}): ApiConfig {
   return {
     apiEnv: "dev",
     authBypassDev: true,
+    migrationsAdminKey: "",
     googleClientId: "test-client.apps.googleusercontent.com",
     googlePlayPackageName: "io.whatfees",
     googlePlayProProductIds: ["pro_access"],
@@ -19,6 +20,7 @@ function makeConfig(overrides: Partial<ApiConfig> = {}): ApiConfig {
     cosmosDatabaseId: "whatfees_dev",
     entitlementsContainerId: "entitlements",
     syncContainerId: "sync_data",
+    migrationRunsContainerId: "migration_runs",
     ...overrides
   };
 }

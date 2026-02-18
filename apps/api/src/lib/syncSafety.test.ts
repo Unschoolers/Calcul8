@@ -10,8 +10,8 @@ function makeSnapshot(
   return {
     id: "sync:user-1",
     userId: "user-1",
-    presets: [],
-    salesByPreset: {},
+    lots: [],
+    salesByLot: {},
     version: 1,
     updatedAt: "2026-02-17T00:00:00.000Z",
     ...overrides
@@ -27,13 +27,13 @@ test("isEmptySyncPayload detects empty data", () => {
 test("hasSnapshotData detects existing cloud data", () => {
   assert.equal(hasSnapshotData(null), false);
   assert.equal(hasSnapshotData(makeSnapshot()), false);
-  assert.equal(hasSnapshotData(makeSnapshot({ presets: [{ id: 1 }] })), true);
-  assert.equal(hasSnapshotData(makeSnapshot({ salesByPreset: { "1": [{ id: 10 }] } })), true);
+  assert.equal(hasSnapshotData(makeSnapshot({ lots: [{ id: 1 }] })), true);
+  assert.equal(hasSnapshotData(makeSnapshot({ salesByLot: { "1": [{ id: 10 }] } })), true);
 });
 
 test("assertSafeSyncPush blocks empty overwrite when cloud already has data", () => {
   const existing = makeSnapshot({
-    presets: [{ id: 1, name: "Main" }]
+    lots: [{ id: 1, name: "Main" }]
   });
 
   assert.throws(
@@ -44,7 +44,7 @@ test("assertSafeSyncPush blocks empty overwrite when cloud already has data", ()
 
 test("assertSafeSyncPush allows explicit empty overwrite", () => {
   const existing = makeSnapshot({
-    presets: [{ id: 1, name: "Main" }]
+    lots: [{ id: 1, name: "Main" }]
   });
 
   assert.doesNotThrow(() => assertSafeSyncPush(existing, [], {}, true));
@@ -52,11 +52,10 @@ test("assertSafeSyncPush allows explicit empty overwrite", () => {
 
 test("assertSafeSyncPush allows non-empty push when cloud has data", () => {
   const existing = makeSnapshot({
-    presets: [{ id: 1, name: "Main" }]
+    lots: [{ id: 1, name: "Main" }]
   });
 
   assert.doesNotThrow(() =>
     assertSafeSyncPush(existing, [{ id: 1, name: "Main" }], { "1": [] }, false)
   );
 });
-
