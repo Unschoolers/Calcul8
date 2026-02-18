@@ -1,5 +1,5 @@
 import Chart from "chart.js/auto";
-import { calculateNetFromGross } from "../../domain/calculations.ts";
+import { calculateNetFromGross, calculateSparklineData } from "../../domain/calculations.ts";
 import type { Sale, SaleType } from "../../types/app.ts";
 import type { AppContext, AppMethodState } from "../context.ts";
 
@@ -144,17 +144,7 @@ export const salesMethods: ThisType<AppContext> & Pick<
     if (!this.currentPresetId) return;
 
     try {
-      const key = this.getSalesStorageKey(this.currentPresetId);
-      const stored = localStorage.getItem(key);
-      if (!stored) {
-        this.sales = [];
-        return;
-      }
-      const parsed = JSON.parse(stored) as Array<Sale & { buyerShipping?: number }>;
-      this.sales = parsed.map((sale) => ({
-        ...sale,
-        buyerShipping: Number(sale.buyerShipping) || 0
-      }));
+      this.sales = this.loadSalesForPresetId(this.currentPresetId);
     } catch (error) {
       console.error("Failed to load sales:", error);
       this.sales = [];
@@ -305,15 +295,86 @@ export const salesMethods: ThisType<AppContext> & Pick<
     safeDestroyChart(this.salesChart);
     this.salesChart = null;
 
-    if (this.chartView !== "pie") {
-      return;
-    }
-
-    const chartCanvas = this.$refs.salesChart;
+    const chartCanvas = this.chartView === "pie"
+      ? this.$refs.salesChart
+      : this.$refs.salesTrendChart;
     if (!chartCanvas) return;
 
     const ctx = chartCanvas.getContext("2d");
     if (!ctx) return;
+    if (this.chartView !== "pie") {
+      if (this.sales.length === 0) return;
+
+      const sortedSales = [...this.sales].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      const data = calculateSparklineData(this.sales, this.totalCaseCost, this.sellingTaxPercent);
+      const labels = ["Start", ...sortedSales.map((sale) => this.formatDate(sale.date))];
+      const finalValue = data[data.length - 1] ?? 0;
+      const lineColor = finalValue > 0 ? "#34C759" : "#FF3B30";
+      const fillColor = finalValue > 0 ? "rgba(52, 199, 89, 0.16)" : "rgba(255, 59, 48, 0.16)";
+
+      this.salesChart = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels,
+          datasets: [
+            {
+              data,
+              borderColor: lineColor,
+              backgroundColor: fillColor,
+              borderWidth: 3,
+              pointRadius: 0,
+              pointHoverRadius: 3,
+              tension: 0.3,
+              fill: true
+            }
+          ]
+        },
+        options: {
+          animation: false,
+          responsive: true,
+          maintainAspectRatio: false,
+          layout: {
+            padding: {
+              top: 2,
+              bottom: 2,
+              left: 2,
+              right: 2
+            }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                title(items: Array<{ dataIndex?: number }>) {
+                  const index = Number(items?.[0]?.dataIndex ?? 0);
+                  return labels[index] ?? "Sale";
+                },
+                label: (context) => `Progress: $${this.formatCurrency(Number(context.parsed?.y || 0))}`
+              }
+            }
+          },
+          scales: {
+            x: {
+              display: true,
+              grid: { display: false },
+              ticks: {
+                autoSkip: true,
+                maxTicksLimit: 5,
+                maxRotation: 0
+              }
+            },
+            y: {
+              display: true,
+              grid: { display: true, color: "rgba(255,255,255,0.08)" },
+              ticks: {
+                callback: (value) => `$${this.formatCurrency(Number(value), 0)}`
+              }
+            }
+          }
+        }
+      });
+      return;
+    }
 
     const soldPacks = this.soldPacksCount;
     const totalPacks = this.totalPacks;
@@ -341,7 +402,7 @@ export const salesMethods: ThisType<AppContext> & Pick<
       options: {
         animation: false,
         responsive: true,
-        maintainAspectRatio: true,
+        maintainAspectRatio: false,
         plugins: {
           legend: {
             position: "bottom",

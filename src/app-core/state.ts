@@ -1,9 +1,18 @@
 import { DEFAULT_VALUES } from "../constants.ts";
+import {
+  getLegacyStorageKeys,
+  migrateLegacyStorageKeys,
+  readStorageWithLegacy,
+  STORAGE_KEYS
+} from "./storageKeys.ts";
 import type { AppState } from "../types/app.ts";
 
 export function createInitialState(): AppState {
+  migrateLegacyStorageKeys();
+  const legacyKeys = getLegacyStorageKeys();
   const todayDate = new Date().toISOString().split("T")[0];
-  const hasProAccess = localStorage.getItem("rtyh_pro_access") === "1";
+  const purchaseUiMode = localStorage.getItem(STORAGE_KEYS.PURCHASE_UI_MODE) === "expert" ? "expert" : "simple";
+  const hasProAccess = readStorageWithLegacy(STORAGE_KEYS.PRO_ACCESS, legacyKeys.PRO_ACCESS) === "1";
   const showManualPurchaseVerify =
     import.meta.env.DEV ||
     String(import.meta.env.VITE_SHOW_MANUAL_PURCHASE_VERIFY || "").toLowerCase() === "true";
@@ -17,6 +26,7 @@ export function createInitialState(): AppState {
     purchaseTokenInput: "",
     purchaseProductIdInput: "",
     purchasePackageNameInput: "",
+    purchaseUiMode,
     // UI State
     currentTab: "config",
     showNewPresetModal: false,
@@ -30,6 +40,7 @@ export function createInitialState(): AppState {
     isOffline: !navigator.onLine,
     deferredInstallPrompt: null,
     showInstallPrompt: false,
+    googleAvatarLoadFailed: false,
     onlineListener: null,
     offlineListener: null,
     beforeInstallPromptListener: null,

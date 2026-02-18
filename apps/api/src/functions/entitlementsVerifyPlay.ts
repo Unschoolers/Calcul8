@@ -3,7 +3,7 @@ import { HttpError, resolveUserId } from "../lib/auth";
 import { getConfig } from "../lib/config";
 import { getPlayPurchaseByTokenHash, upsertEntitlement, upsertPlayPurchase } from "../lib/cosmos";
 import { acknowledgePlayProductPurchase, verifyPlayProductPurchase } from "../lib/googlePlay";
-import { errorResponse, handleCorsPreflight, jsonResponse } from "../lib/http";
+import { errorResponse, jsonResponse, maybeHandleCorsPreflight } from "../lib/http";
 import { assertPurchaseNotLinkedToDifferentUser, hashPurchaseToken, shouldAcknowledgePurchase } from "../lib/playEntitlements";
 import type { ApiConfig } from "../types";
 
@@ -172,10 +172,8 @@ export async function entitlementsVerifyPlay(
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   const config = getConfig();
-
-  if (request.method === "OPTIONS") {
-    return handleCorsPreflight(request, config);
-  }
+  const preflightResponse = maybeHandleCorsPreflight(request, config);
+  if (preflightResponse) return preflightResponse;
 
   return verifyPlayEntitlementRequest(request, context, config);
 }

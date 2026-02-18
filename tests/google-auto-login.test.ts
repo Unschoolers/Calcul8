@@ -1,6 +1,14 @@
 import assert from "node:assert/strict";
-import test from "node:test";
-import { initGoogleAutoLoginWithRetry, type GoogleIdentityApi } from "../src/app-core/utils/googleAutoLogin.ts";
+import test, { beforeEach } from "node:test";
+import {
+  __resetGoogleAutoLoginForTests,
+  initGoogleAutoLoginWithRetry,
+  type GoogleIdentityApi
+} from "../src/app-core/utils/googleAutoLogin.ts";
+
+beforeEach(() => {
+  __resetGoogleAutoLoginForTests();
+});
 
 function createGoogleIdentity() {
   let callback: ((response: { credential?: string }) => void) | null = null;
@@ -52,7 +60,7 @@ test("auto login initializes immediately when Google API is ready", () => {
   assert.equal(google.initialized, 1);
   assert.equal(google.prompted, 1);
   assert.deepEqual(receivedTokens, ["token-1"]);
-  assert.equal(scheduled.length, 0);
+  assert.equal(scheduled.length, 1);
 });
 
 test("auto login retries until Google API becomes ready", () => {
@@ -115,4 +123,40 @@ test("auto login stops after retries are exhausted", () => {
   assert.equal(google.initialized, 0);
   assert.equal(google.prompted, 0);
   assert.equal(getCalls, 3);
+});
+
+test("auto login does not start a second prompt while one is in flight", () => {
+  const google = createGoogleIdentity();
+  const queue: Array<() => void> = [];
+  const tokens: string[] = [];
+
+  initGoogleAutoLoginWithRetry({
+    clientId: "client-id",
+    getGoogleIdentity: () => google.api,
+    onCredential: (token) => tokens.push(token),
+    retryCount: 2,
+    retryDelayMs: 250,
+    schedule: (callback) => {
+      queue.push(callback);
+    }
+  });
+
+  initGoogleAutoLoginWithRetry({
+    clientId: "client-id",
+    getGoogleIdentity: () => google.api,
+    onCredential: (token) => tokens.push(token),
+    retryCount: 2,
+    retryDelayMs: 250,
+    schedule: (callback) => {
+      queue.push(callback);
+    }
+  });
+
+  assert.equal(google.prompted, 1);
+  google.emitCredential("token-after");
+  assert.deepEqual(tokens, ["token-after"]);
+
+  while (queue.length > 0) {
+    queue.shift()?.();
+  }
 });

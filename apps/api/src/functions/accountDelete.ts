@@ -2,17 +2,15 @@ import { app, type HttpRequest, type HttpResponseInit, type InvocationContext } 
 import { resolveUserId } from "../lib/auth";
 import { getConfig } from "../lib/config";
 import { deleteAllSyncData, deleteEntitlement, deletePlayPurchasesForUser } from "../lib/cosmos";
-import { errorResponse, handleCorsPreflight, jsonResponse } from "../lib/http";
+import { errorResponse, jsonResponse, maybeHandleCorsPreflight } from "../lib/http";
 
 export async function accountDelete(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   const config = getConfig();
-
-  if (request.method === "OPTIONS") {
-    return handleCorsPreflight(request, config);
-  }
+  const preflightResponse = maybeHandleCorsPreflight(request, config);
+  if (preflightResponse) return preflightResponse;
 
   try {
     const userId = await resolveUserId(request, config);
@@ -23,10 +21,11 @@ export async function accountDelete(
       deleteAllSyncData(config, userId)
     ]);
 
+    const deletedAt = new Date().toISOString();
     return jsonResponse(request, config, 200, {
       ok: true,
       userId,
-      deletedAt: new Date().toISOString()
+      deletedAt
     });
   } catch (error) {
     context.error("POST /account/delete failed", error);

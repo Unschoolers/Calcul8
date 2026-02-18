@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="theme-color" content="#E63946" />
   <meta name="apple-mobile-web-app-title" content="WhatFees" />
@@ -245,6 +245,21 @@
       display: block;
       border-radius: 6px;
     }
+    .account-avatar-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 999px;
+      display: block;
+    }
+    .sync-spinning {
+      animation: sync-spin 0.9s linear infinite;
+      transform-origin: center;
+    }
+    @keyframes sync-spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
     .fab-primary {
       position: fixed !important;
       right: max(1rem, env(safe-area-inset-right)) !important;
@@ -256,6 +271,20 @@
     .fab-add-preset {
       bottom: calc(5rem + env(safe-area-inset-bottom)) !important;
       inset-block-end: calc(5rem + env(safe-area-inset-bottom)) !important;
+    }
+    .fab-attention,
+    .fab-attention .v-btn {
+      border-radius: 999px !important;
+    }
+    .fab-attention .v-btn {
+      animation: fab-breathe 1.6s ease-in-out infinite;
+      background-color: rgb(var(--v-theme-primary)) !important;
+      will-change: filter;
+    }
+    @keyframes fab-breathe {
+      0% { filter: brightness(0.7); }
+      50% { filter: brightness(1.25); }
+      100% { filter: brightness(0.7); }
     }
     .fab-calculate {
       bottom: calc(5rem + env(safe-area-inset-bottom)) !important;
@@ -306,6 +335,15 @@
     }
     .tabs-window .v-window-item.v-window-item--active {
       display: block !important;
+    }
+    .sales-chart-container {
+      min-height: 250px;
+    }
+    .sales-chart-canvas {
+      width: 100% !important;
+      height: 250px !important;
+      max-height: 250px !important;
+      display: block;
     }
     .portfolio-report-table {
       width: 100%;
@@ -427,13 +465,12 @@
             aria-label="Cloud sync status"
             @click="debugLogEntitlement(true)"
           >
-            <v-progress-circular
+            <v-icon
               v-if="syncStatus === 'syncing'"
-              indeterminate
-              size="16"
-              width="2"
               color="primary"
-            ></v-progress-circular>
+              size="18"
+              class="sync-spinning"
+            >mdi-sync</v-icon>
             <v-icon
               v-else-if="syncStatus === 'success' || syncStatus === 'error'"
               :color="syncStatus === 'success' ? 'success' : 'error'"
@@ -451,6 +488,28 @@
           >
             <v-icon>{{ isDark ? 'mdi-weather-sunny' : 'mdi-weather-night' }}</v-icon>
           </v-btn>
+          <v-btn
+            icon
+            variant="text"
+            size="small"
+            :title="isGoogleSignedIn
+              ? (googleProfileEmail ? `Signed in as ${googleProfileEmail} • Tap to re-check access` : 'Signed in • Tap to re-check access')
+              : 'Sign in with Google'"
+            :aria-label="isGoogleSignedIn ? 'Account status' : 'Sign in with Google'"
+            @click="promptGoogleSignIn"
+          >
+            <v-avatar v-if="googleProfilePicture && !googleAvatarLoadFailed" size="24">
+              <img
+                :src="googleProfilePicture"
+                :alt="googleProfileName || 'Google profile picture'"
+                class="account-avatar-img"
+                referrerpolicy="no-referrer"
+                @error="googleAvatarLoadFailed = true"
+                @load="googleAvatarLoadFailed = false"
+              />
+            </v-avatar>
+            <v-icon v-else size="20">{{ isGoogleSignedIn ? 'mdi-account-circle-outline' : 'mdi-login' }}</v-icon>
+          </v-btn>
         </template>
       </v-app-bar>
 
@@ -460,29 +519,29 @@
             You are offline. Changes are saved locally.
           </v-alert>
 
-          <!-- Preset Selector -->
+          <!-- Lot Selector -->
           <v-card v-if="currentTab !== 'portfolio'" class="mb-4 preset-card" elevation="4">
             <v-card-text class="py-2">
               <v-select
-                v-model="currentPresetId"
-                :items="presetItems"
-                label="Preset"
+                v-model="currentLotId"
+                :items="lotItems"
+                label="Lot"
                 prepend-inner-icon="mdi-bookmark"
                 variant="outlined"
                 density="compact"
                 hide-details
-                @update:model-value="loadPreset"
+                @update:model-value="loadLot"
               ></v-select>
             </v-card-text>
           </v-card>
 
-          <v-alert v-if="!hasPresetSelected" type="warning" variant="tonal" class="mb-4">
-            Create or select a preset to use Live pricing and Sales tracking.
+          <v-alert v-if="!hasLotSelected" type="warning" variant="tonal" class="mb-4">
+            Create or select a lot to use Live pricing and Sales tracking.
           </v-alert>
 
 
           <!-- Tab Content -->
-          <div :class="{ 'interaction-disabled': !hasPresetSelected }" :style="!hasPresetSelected ? 'pointer-events: none;' : null">
+          <div :class="{ 'interaction-disabled': !hasLotSelected }" :style="!hasLotSelected ? 'pointer-events: none;' : null">
             <v-window v-model="currentTab" :transition="false" :reverse-transition="false" :touch="false" class="tabs-window">
               <!-- CONFIG -->
               <v-window-item value="config" :transition="false" :reverse-transition="false" eager>
@@ -497,19 +556,23 @@
                       <v-divider></v-divider>
                       <v-card-text>
                         <v-btn-toggle
-                          v-model="costInputMode"
+                          v-model="purchaseUiMode"
                           mandatory
+                          divided
                           density="compact"
                           variant="outlined"
                           class="mb-2"
-                          @update:model-value="onPurchaseConfigChange"
                         >
-                          <v-btn value="perBox" size="small">Per Box</v-btn>
-                          <v-btn value="total" size="small">Total</v-btn>
+                          <v-btn value="simple" size="small">Simple</v-btn>
+                          <v-btn value="expert" size="small">Expert</v-btn>
                         </v-btn-toggle>
 
+                        <div v-if="purchaseUiMode === 'simple'" class="text-caption text-medium-emphasis mb-2">
+                          Switch to Expert for taxes, shipping, date, and exchange settings.
+                        </div>
+
                         <v-row dense>
-                          <v-col cols="6">
+                          <v-col :cols="purchaseUiMode === 'simple' ? 8 : 6">
                             <v-text-field
                               v-model.number="purchaseCostInputValue"
                               :label="purchaseCostInputLabel"
@@ -520,7 +583,7 @@
                               @input="onPurchaseConfigChange"
                             ></v-text-field>
                           </v-col>
-                          <v-col cols="6">
+                          <v-col :cols="purchaseUiMode === 'simple' ? 4 : 6">
                             <v-btn-toggle
                               v-model="currency"
                               mandatory
@@ -559,6 +622,19 @@
                           @input="onPurchaseConfigChange"
                         ></v-text-field>
 
+                        <template v-if="purchaseUiMode === 'expert'">
+                          <v-btn-toggle
+                          v-model="costInputMode"
+                          mandatory
+                          density="compact"
+                          variant="outlined"
+                          class="mb-2"
+                          @update:model-value="onPurchaseConfigChange"
+                        >
+                          <v-btn value="perBox" size="small">Per Box</v-btn>
+                          <v-btn value="total" size="small">Total</v-btn>
+                        </v-btn-toggle>
+
                         <v-text-field
                           v-model="purchaseDate"
                           label="Purchase Date"
@@ -585,7 +661,7 @@
 
                         <v-text-field
                           v-model.number="purchaseShippingCost"
-                          label="Purchase Shipping (CAD)"
+                          :label="`Purchase Shipping (${currency})`"
                           type="number"
                           variant="outlined"
                           density="compact"
@@ -621,6 +697,7 @@
                           hide-details
                           @change="onPurchaseConfigChange"
                         ></v-checkbox>
+                        </template>
 
                         <v-card
                           elevation="0"
@@ -632,7 +709,7 @@
                             <div class="text-caption">Total Purchase Cost</div>
                             <div class="text-h6 font-weight-bold">${{ formatCurrency(totalCaseCost) }}</div>
                             <div class="text-caption mt-1">{{ boxesPurchased }} boxes × {{ packsPerBox }} packs = {{ totalPacks }} packs</div>
-                            <div class="text-caption">Includes ${{ formatCurrency(purchaseShippingCostCAD) }} shipping</div>
+                            <div class="text-caption">Includes ${{ formatCurrency(purchaseShippingCostCAD) }} {{ sellingCurrency }} shipping</div>
                           </v-card-text>
                         </v-card>
                       </v-card-text>
@@ -831,48 +908,28 @@
                         <v-icon>{{ chartView === 'pie' ? 'mdi-chart-line' : 'mdi-chart-pie' }}</v-icon>
                       </v-btn>
 
-                      <v-card-text>
+                      <v-card-text class="sales-chart-container">
                         <canvas
-                          v-show="chartView === 'pie'"
+                          v-if="chartView === 'pie'"
                           ref="salesChart"
+                          class="sales-chart-canvas"
                           role="img"
                           aria-label="Sales chart showing sold versus unsold net value."
-                          style="max-height: 250px;"
                         ></canvas>
 
-                        <div v-show="chartView !== 'pie'" class="pa-4">
-                          <div class="text-h6 mb-2 text-center">Profit Journey</div>
-
+                        <div v-else class="pa-0">
                           <div v-if="sales.length === 0" class="text-center py-8">
                             <v-icon size="48" color="grey">mdi-chart-line</v-icon>
                             <p class="text-body-2 mt-4 text-grey">No sales yet. Add your first sale to see your profit journey!</p>
                           </div>
 
                           <div v-else>
-                            <div
-                              class="text-h4 font-weight-bold text-center mb-4"
-                              :class="(totalRevenue - totalCaseCost) >= 0 ? 'profit-positive' : 'profit-negative'"
-                            >
-                              {{ (totalRevenue - totalCaseCost) >= 0 ? '+' : '' }}${{ formatCurrency(totalRevenue - totalCaseCost) }}
-                            </div>
-
-                            <v-sparkline
-                              :model-value="sparklineData"
-                              :gradient="sparklineGradient"
-                              :smooth="16"
-                              :line-width="3"
-                              :padding="8"
-                              auto-draw
-                              auto-line-width
-                              fill
-                              :height="120"
-                              stroke-linecap="round"
-                            ></v-sparkline>
-
-                            <div class="d-flex justify-space-between text-caption mt-2">
-                              <span class="text-medium-emphasis">$0</span>
-                              <span class="text-medium-emphasis">${{ formatCurrency(totalRevenue) }} revenue</span>
-                            </div>
+                            <canvas
+                              ref="salesTrendChart"
+                              class="sales-chart-canvas"
+                              role="img"
+                              aria-label="Sales trend chart showing cumulative profit journey over sales."
+                            ></canvas>
                           </div>
                         </div>
                       </v-card-text>
@@ -946,8 +1003,8 @@
                 <v-card class="mb-4 config-card" elevation="4">
                   <v-card-text class="py-2">
                     <v-select
-                      v-model="portfolioPresetFilterIds"
-                      :items="portfolioPresetFilterItems"
+                      v-model="portfolioLotFilterIds"
+                      :items="portfolioLotFilterItems"
                       label="Portfolio Filter"
                       prepend-inner-icon="mdi-filter-variant"
                       variant="outlined"
@@ -956,9 +1013,9 @@
                       chips
                       closable-chips
                       clearable
-                      hint="Showing all presets unless you choose specific ones."
-                      persistent-hint
-                    ></v-select>
+                       hint="Showing all lots unless you choose specific ones."
+                       persistent-hint
+                     ></v-select>
                   </v-card-text>
                 </v-card>
 
@@ -971,7 +1028,7 @@
                           {{ portfolioTotals.totalProfit >= 0 ? '+' : '' }}${{ formatCurrency(portfolioTotals.totalProfit) }}
                         </div>
                         <div class="text-caption mt-1">
-                          {{ portfolioTotals.profitablePresetCount }} / {{ portfolioTotals.presetCount }} preset{{ portfolioTotals.presetCount === 1 ? '' : 's' }} profitable
+                          {{ portfolioTotals.profitablePresetCount }} / {{ portfolioTotals.presetCount }} lot{{ portfolioTotals.presetCount === 1 ? '' : 's' }} profitable
                         </div>
                       </v-card-text>
                     </v-card>
@@ -992,7 +1049,7 @@
                       <v-card-text>
                         <div class="text-caption text-medium-emphasis">Total Cost Basis</div>
                         <div class="text-h5 font-weight-bold">${{ formatCurrency(portfolioTotals.totalCost) }}</div>
-                        <div class="text-caption mt-1">Across all presets</div>
+                        <div class="text-caption mt-1">Across all lots</div>
                       </v-card-text>
                     </v-card>
                   </v-col>
@@ -1014,7 +1071,7 @@
                       </v-btn>
                       <v-card-text>
                         <div class="text-caption text-medium-emphasis mb-2">
-                          {{ portfolioChartView === "breakdown" ? "Revenue by preset" : "Cumulative portfolio profit trend" }}
+                          {{ portfolioChartView === "breakdown" ? "Revenue by lot" : "Cumulative portfolio profit trend" }}
                         </div>
                         <div v-if="!hasPortfolioData" class="text-caption text-medium-emphasis py-6 text-center">
                           No chart data yet.
@@ -1024,7 +1081,7 @@
                           ref="portfolioChart"
                           role="img"
                           :aria-label="portfolioChartView === 'breakdown'
-                            ? 'Portfolio revenue breakdown chart by preset.'
+                            ? 'Portfolio revenue breakdown chart by lot.'
                             : 'Portfolio cumulative profit trend chart.'"
                           style="max-height: 250px;"
                         ></canvas>
@@ -1037,11 +1094,11 @@
                       <v-card-title class="d-flex align-center justify-space-between">
                         <div>
                           <v-icon class="mr-2">mdi-view-grid-outline</v-icon>
-                          Preset Performance
+                          Lot Performance
                         </div>
                         <div class="d-flex align-center ga-2">
                           <v-chip color="secondary" v-if="hasPortfolioData">
-                            {{ allPresetPerformance.length }} preset{{ allPresetPerformance.length === 1 ? '' : 's' }}
+                            {{ allLotPerformance.length }} lot{{ allLotPerformance.length === 1 ? '' : 's' }}
                           </v-chip>
                           <v-btn
                             color="primary"
@@ -1059,14 +1116,14 @@
 
                       <v-card-text v-if="!hasPortfolioData" class="text-center py-8">
                         <v-icon size="64" color="grey">mdi-chart-box-outline</v-icon>
-                        <p class="text-h6 mt-4 text-grey">No preset data yet</p>
-                        <p class="text-caption">Create presets and add sales to see your global performance.</p>
+                        <p class="text-h6 mt-4 text-grey">No lot data yet</p>
+                        <p class="text-caption">Create lots and add sales to see your global performance.</p>
                       </v-card-text>
 
                       <v-list v-else>
                         <v-list-item
-                          v-for="row in allPresetPerformance"
-                          :key="row.presetId"
+                          v-for="row in allLotPerformance"
+                          :key="row.lotId"
                           class="my-1"
                         >
                           <template v-slot:prepend>
@@ -1075,7 +1132,7 @@
                             </v-avatar>
                           </template>
 
-                          <v-list-item-title>{{ row.presetName }}</v-list-item-title>
+                          <v-list-item-title>{{ row.lotName }}</v-list-item-title>
                           <v-list-item-subtitle class="d-flex flex-column ga-1">
                             <div>
                               {{ row.salesCount }} sale{{ row.salesCount === 1 ? '' : 's' }}
@@ -1119,17 +1176,17 @@
             <v-icon>mdi-cog</v-icon>
             <span>Config</span>
           </v-btn>
-<v-btn value="live" :disabled="!hasPresetSelected" :ripple="false">
+<v-btn value="live" :disabled="!hasLotSelected" :ripple="false">
   <v-icon>mdi-target</v-icon>
   <span>Live</span>
 </v-btn>
 
-<v-btn value="sales" :disabled="!hasPresetSelected" :ripple="false">
+<v-btn value="sales" :disabled="!hasLotSelected" :ripple="false">
   <v-icon>mdi-chart-line</v-icon>
   <span>Sales</span>
 </v-btn>
 
-<v-btn value="portfolio" :disabled="!hasPresetSelected" :ripple="false">
+<v-btn value="portfolio" :disabled="!hasLotSelected" :ripple="false">
   <v-icon>mdi-briefcase-outline</v-icon>
   <span>Portfolio</span>
 </v-btn>
@@ -1143,10 +1200,10 @@
         icon="mdi-bookmark-plus"
         color="primary"
         size="large"
-        title="Add preset"
-        aria-label="Add preset"
-        @click="showNewPresetModal = true"
-        class="fab-primary fab-add-preset"
+        title="Add lot"
+        aria-label="Add lot"
+        @click="showNewLotModal = true"
+        :class="['fab-primary', 'fab-add-preset', { 'fab-attention': presets.length === 0 }]"
       ></v-fab>
 
       <v-fab
@@ -1156,7 +1213,7 @@
         size="large"
         title="Auto-calculate prices"
         aria-label="Open auto-calculate prices"
-        :disabled="!hasPresetSelected"
+        :disabled="!hasLotSelected"
         @click="showProfitCalculator = true"
         class="fab-primary fab-live-calc"
       ></v-fab>
@@ -1175,29 +1232,29 @@
               icon="mdi-dots-vertical"
               color="surface"
               size="large"
-              title="More preset actions"
-              aria-label="More preset actions"
-            ></v-fab>
+               title="More lot actions"
+               aria-label="More lot actions"
+             ></v-fab>
           </template>
 
           <v-card min-width="190" elevation="6">
             <v-list density="compact" nav>
               <v-list-item
                 prepend-icon="mdi-export"
-                title="Export Presets"
-                :disabled="!hasPresetSelected"
-                @click="exportPresets(); speedDialOpen = false"
+                title="Export Lots"
+                :disabled="!hasLotSelected"
+                @click="exportLots(); speedDialOpen = false"
               ></v-list-item>
               <v-list-item
                 prepend-icon="mdi-import"
-                title="Import Presets"
-                @click="importPresets(); speedDialOpen = false"
+                title="Import Lots"
+                @click="importLots(); speedDialOpen = false"
               ></v-list-item>
               <v-list-item
                 prepend-icon="mdi-delete"
-                title="Delete Preset"
-                :disabled="!currentPresetId"
-                @click="deleteCurrentPreset(); speedDialOpen = false"
+                title="Delete Lot"
+                :disabled="!currentLotId"
+                @click="deleteCurrentLot(); speedDialOpen = false"
               ></v-list-item>
             </v-list>
           </v-card>
@@ -1217,12 +1274,12 @@
 
       <v-fab
         v-if="currentTab === 'live'"
-        icon="mdi-content-save-check-outline"
+        icon="mdi-content-save-outline"
         color="primary"
         size="large"
         title="Apply live prices to config"
         aria-label="Apply live prices to config"
-        :disabled="!hasPresetSelected"
+        :disabled="!hasLotSelected"
         @click="applyLivePricesToDefaults"
         class="fab-primary fab-calculate"
       ></v-fab>
@@ -1244,7 +1301,7 @@
               size="large"
               title="Add sale"
               aria-label="Add sale"
-              :disabled="!hasPresetSelected"
+                :disabled="!hasLotSelected"
             ></v-fab>
           </template>
 
@@ -1257,7 +1314,7 @@
             class="sales-speed-action"
             :title="'Add pack sale'"
             :aria-label="'Add pack sale'"
-            :disabled="!hasPresetSelected"
+                :disabled="!hasLotSelected"
             @click="openAddSaleModal('pack'); speedDialOpenSales = false"
           ></v-btn>
           <v-btn
@@ -1269,7 +1326,7 @@
             class="sales-speed-action"
             :title="'Add box sale'"
             :aria-label="'Add box sale'"
-            :disabled="!hasPresetSelected"
+                :disabled="!hasLotSelected"
             @click="openAddSaleModal('box'); speedDialOpenSales = false"
           ></v-btn>
           <v-btn
@@ -1281,23 +1338,23 @@
             class="sales-speed-action"
             :title="'Add RTYH sale'"
             :aria-label="'Add RTYH sale'"
-            :disabled="!hasPresetSelected"
+                :disabled="!hasLotSelected"
             @click="openAddSaleModal('rtyh'); speedDialOpenSales = false"
           ></v-btn>
         </v-speed-dial>
       </div>
 
-      <!-- New Preset Modal -->
-      <v-dialog v-model="showNewPresetModal" max-width="400">
+      <!-- New Lot Modal -->
+      <v-dialog v-model="showNewLotModal" max-width="400">
         <v-card>
-          <v-card-title>New Preset</v-card-title>
+          <v-card-title>New Lot</v-card-title>
           <v-card-text>
-            <v-text-field v-model="newPresetName" label="Preset name" variant="outlined" @keyup.enter="createNewPreset"></v-text-field>
+            <v-text-field v-model="lotNameDraft" label="Lot name" variant="outlined" @keyup.enter="createNewLot"></v-text-field>
           </v-card-text>
           <v-card-actions>
             <v-spacer></v-spacer>
-            <v-btn text @click="showNewPresetModal = false">Cancel</v-btn>
-            <v-btn color="primary" @click="createNewPreset">Create</v-btn>
+            <v-btn text @click="showNewLotModal = false">Cancel</v-btn>
+            <v-btn color="primary" @click="createNewLot">Create</v-btn>
           </v-card-actions>
         </v-card>
       </v-dialog>
@@ -1362,7 +1419,7 @@
               persistent-hint
             ></v-text-field>
             <v-alert
-              v-if="hasPresetSelected && !hasProAccess"
+                v-if="hasLotSelected && !hasProAccess"
               type="info"
               variant="tonal"
               density="compact"
@@ -1406,7 +1463,7 @@
           </v-card-title>
           <v-card-text>
             <v-alert
-              v-if="hasPresetSelected && !hasProAccess"
+                v-if="hasLotSelected && !hasProAccess"
               type="info"
               variant="tonal"
               density="compact"
@@ -1441,12 +1498,12 @@
               ]"
               label="Sale Type"
               variant="outlined"
-              :disabled="!hasPresetSelected"
+                :disabled="!hasLotSelected"
               class="mb-2"
               @update:model-value="onNewSaleTypeChange"
             ></v-select>
 
-            <v-text-field ref="saleQuantityInput" v-model.number="newSale.quantity" label="Quantity" type="number" variant="outlined" :disabled="!hasPresetSelected" :min="1" class="mb-2"></v-text-field>
+              <v-text-field ref="saleQuantityInput" v-model.number="newSale.quantity" label="Quantity" type="number" variant="outlined" :disabled="!hasLotSelected" :min="1" class="mb-2"></v-text-field>
 
             <v-text-field
               v-if="newSale.type === 'rtyh'"
@@ -1454,15 +1511,15 @@
               label="Packs Sold (Required for RTYH)"
               type="number"
               variant="outlined"
-              :disabled="!hasPresetSelected"
+                :disabled="!hasLotSelected"
               :min="1"
               :rules="[v => !!v || 'Required for RTYH']"
               class="mb-2"
             ></v-text-field>
 
-            <v-text-field v-model.number="newSale.price" label="Price per Unit" type="number" variant="outlined" :disabled="!hasPresetSelected" prefix="$" class="mb-2"></v-text-field>
-            <v-text-field v-model.number="newSale.buyerShipping" label="Buyer Shipping (per order)" type="number" variant="outlined" :disabled="!hasPresetSelected" prefix="$" :min="0" class="mb-2"></v-text-field>
-            <v-text-field v-model="newSale.date" label="Date" type="date" variant="outlined" :disabled="!hasPresetSelected"></v-text-field>
+              <v-text-field v-model.number="newSale.price" label="Price per Unit" type="number" variant="outlined" :disabled="!hasLotSelected" prefix="$" class="mb-2"></v-text-field>
+              <v-text-field v-model.number="newSale.buyerShipping" label="Buyer Shipping (per order)" type="number" variant="outlined" :disabled="!hasLotSelected" prefix="$" :min="0" class="mb-2"></v-text-field>
+              <v-text-field v-model="newSale.date" label="Date" type="date" variant="outlined" :disabled="!hasLotSelected"></v-text-field>
           </v-card-text>
 
           <v-card-actions>
@@ -1529,7 +1586,7 @@
               <table class="portfolio-report-table">
                 <thead>
                   <tr>
-                    <th>Preset</th>
+                <th>Lot</th>
                     <th>Sales</th>
                     <th>Sold Packs</th>
                     <th>Total Packs</th>
@@ -1541,8 +1598,8 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="row in allPresetPerformance" :key="`report-${row.presetId}`">
-                    <td>{{ row.presetName }}</td>
+                <tr v-for="row in allLotPerformance" :key="`report-${row.lotId}`">
+                  <td>{{ row.lotName }}</td>
                     <td>{{ row.salesCount }}</td>
                     <td>{{ row.soldPacks }}</td>
                     <td>{{ row.totalPacks }}</td>

@@ -2,17 +2,16 @@ import { app, type HttpRequest, type HttpResponseInit, type InvocationContext } 
 import { resolveUserId } from "../lib/auth";
 import { getConfig } from "../lib/config";
 import { getEffectiveSyncSnapshot, getEntitlement, listPlayPurchasesForUser } from "../lib/cosmos";
-import { errorResponse, handleCorsPreflight, jsonResponse } from "../lib/http";
+import { errorResponse, jsonResponse, maybeHandleCorsPreflight } from "../lib/http";
+import { withDualSyncShape } from "../lib/syncShape";
 
 export async function accountExport(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   const config = getConfig();
-
-  if (request.method === "OPTIONS") {
-    return handleCorsPreflight(request, config);
-  }
+  const preflightResponse = maybeHandleCorsPreflight(request, config);
+  if (preflightResponse) return preflightResponse;
 
   try {
     const userId = await resolveUserId(request, config);
@@ -22,12 +21,13 @@ export async function accountExport(
       listPlayPurchasesForUser(config, userId)
     ]);
 
+    const exportedAt = new Date().toISOString();
     return jsonResponse(request, config, 200, {
       userId,
-      exportedAt: new Date().toISOString(),
+      exportedAt,
       entitlement: entitlement ?? null,
       playPurchases,
-      syncSnapshot: syncSnapshot ?? null
+      syncSnapshot: syncSnapshot ? withDualSyncShape(syncSnapshot) : null
     });
   } catch (error) {
     context.error("POST /account/export failed", error);

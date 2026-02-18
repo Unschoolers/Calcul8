@@ -8,6 +8,7 @@ import type {
   SyncSnapshotDocument
 } from "../types";
 import { calculateSyncPresetDiff, type SyncPresetState } from "./syncDiff";
+import { extractCanonicalSyncShape } from "./syncShape";
 
 interface CosmosCache {
   entitlements: Container;
@@ -17,6 +18,11 @@ interface CosmosCache {
 let cosmosCache: CosmosCache | null = null;
 const COSMOS_MAX_RETRY_ATTEMPTS = 3;
 const COSMOS_BASE_RETRY_DELAY_MS = 200;
+const EPOCH_DATE_ISO = "1970-01-01T00:00:00.000Z";
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
 
 function isNotFoundError(error: unknown): boolean {
   if (typeof error !== "object" || error === null) return false;
@@ -100,6 +106,29 @@ function syncPresetId(userId: string, presetId: string): string {
 
 function syncMetaId(userId: string): string {
   return `sync:meta:${userId}`;
+}
+
+function normalizeSyncVersion(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0;
+}
+
+function normalizeSyncUpdatedAt(value: unknown): string {
+  return typeof value === "string" && value.length > 0 ? value : EPOCH_DATE_ISO;
+}
+
+function normalizeSyncSnapshotDocument(raw: unknown, fallbackUserId: string): SyncSnapshotDocument | null {
+  if (!isRecord(raw)) return null;
+  const canonicalShape = extractCanonicalSyncShape(raw);
+  if (!canonicalShape) return null;
+
+  return {
+    id: typeof raw.id === "string" ? raw.id : syncSnapshotId(fallbackUserId),
+    userId: typeof raw.userId === "string" ? raw.userId : fallbackUserId,
+    presets: canonicalShape.presets,
+    salesByPreset: canonicalShape.salesByPreset,
+    version: normalizeSyncVersion(raw.version),
+    updatedAt: normalizeSyncUpdatedAt(raw.updatedAt)
+  };
 }
 
 function getContainers(config: ApiConfig): CosmosCache {
@@ -252,8 +281,8 @@ export async function getSyncSnapshot(
   const id = syncSnapshotId(userId);
 
   try {
-    const { resource } = await withCosmosRetry(() => syncSnapshots.item(id, userId).read<SyncSnapshotDocument>());
-    return resource ?? null;
+    const { resource } = await withCosmosRetry(() => syncSnapshots.item(id, userId).read<Record<string, unknown>>());
+    return normalizeSyncSnapshotDocument(resource, userId);
   } catch (error) {
     if (isNotFoundError(error)) return null;
     throw error;
@@ -310,10 +339,6 @@ function toPresetState(document: SyncPresetDocument): SyncPresetState {
   };
 }
 
-function compareIsoDate(a: string, b: string): string {
-  return a >= b ? a : b;
-}
-
 export async function getSyncSnapshotFromPresetDocuments(
   config: ApiConfig,
   userId: string
@@ -327,26 +352,26 @@ export async function getSyncSnapshotFromPresetDocuments(
     return null;
   }
 
-  const presets: unknown[] = [];
-  const salesByPreset: Record<string, unknown[]> = {};
-  let maxVersion = 0;
-  let latestUpdatedAt = "1970-01-01T00:00:00.000Z";
+  const presets = presetDocuments.map((document) => document.preset);
+  const salesByPreset = Object.fromEntries(
+    presetDocuments.map((document) => [
+      document.presetId,
+      Array.isArray(document.sales) ? document.sales : []
+    ])
+  ) as Record<string, unknown[]>;
 
-  for (const document of presetDocuments) {
-    presets.push(document.preset);
-    salesByPreset[document.presetId] = Array.isArray(document.sales) ? document.sales : [];
-    maxVersion = Math.max(maxVersion, document.version || 0);
-    if (typeof document.updatedAt === "string") {
-      latestUpdatedAt = compareIsoDate(latestUpdatedAt, document.updatedAt);
-    }
-  }
-
-  if (metaDocument) {
-    maxVersion = Math.max(maxVersion, metaDocument.version || 0);
-    if (typeof metaDocument.updatedAt === "string") {
-      latestUpdatedAt = compareIsoDate(latestUpdatedAt, metaDocument.updatedAt);
-    }
-  }
+  const maxVersion = Math.max(
+    0,
+    metaDocument?.version ?? 0,
+    ...presetDocuments.map((document) => document.version || 0)
+  );
+  const latestUpdatedAt = [
+    metaDocument?.updatedAt,
+    ...presetDocuments.map((document) => document.updatedAt)
+  ]
+    .filter((value): value is string => typeof value === "string")
+    .toSorted()
+    .at(-1) ?? EPOCH_DATE_ISO;
 
   return {
     id: syncSnapshotId(userId),
@@ -381,26 +406,22 @@ function buildIncomingPresetStates(
   presets: unknown[],
   salesByPreset: Record<string, unknown[]>
 ): SyncPresetState[] {
-  const states: SyncPresetState[] = [];
-
-  for (const preset of presets) {
+  return presets.flatMap((preset): SyncPresetState[] => {
     if (typeof preset !== "object" || preset === null || Array.isArray(preset)) {
-      continue;
+      return [];
     }
     const presetIdRaw = (preset as { id?: unknown }).id;
     if (typeof presetIdRaw !== "string" && typeof presetIdRaw !== "number") {
-      continue;
+      return [];
     }
 
     const presetId = String(presetIdRaw);
-    states.push({
+    return [{
       presetId,
       preset,
       sales: Array.isArray(salesByPreset[presetId]) ? salesByPreset[presetId] : []
-    });
-  }
-
-  return states;
+    }];
+  });
 }
 
 interface IncrementalSyncUpsertResult {

@@ -1,8 +1,13 @@
 import type { AppLifecycleObject } from "./context.ts";
 import type { AppTab } from "../types/app.ts";
+import {
+  getLegacyStorageKeys,
+  migrateLegacyStorageKeys,
+  readStorageWithLegacy,
+  STORAGE_KEYS
+} from "./storageKeys.ts";
 
-const LAST_TAB_STORAGE_KEY = "whatfees_last_tab";
-const PORTFOLIO_FILTER_STORAGE_KEY = "whatfees_portfolio_filter_ids";
+const LEGACY_KEYS = getLegacyStorageKeys();
 
 function isAppTab(value: unknown): value is AppTab {
   return value === "config" || value === "live" || value === "sales" || value === "portfolio";
@@ -10,9 +15,10 @@ function isAppTab(value: unknown): value is AppTab {
 
 export const appLifecycle: AppLifecycleObject = {
   mounted() {
+    migrateLegacyStorageKeys();
     this.loadPresetsFromStorage();
 
-    const last = Number(localStorage.getItem("rtyh_last_preset_id"));
+    const last = Number(readStorageWithLegacy(STORAGE_KEYS.LAST_LOT_ID, LEGACY_KEYS.LAST_LOT_ID));
     if (last && this.presets.some((p) => p.id === last)) {
       this.currentPresetId = last;
       this.loadPreset();
@@ -22,7 +28,7 @@ export const appLifecycle: AppLifecycleObject = {
     }
 
     try {
-      const rawFilter = localStorage.getItem(PORTFOLIO_FILTER_STORAGE_KEY);
+      const rawFilter = localStorage.getItem(STORAGE_KEYS.PORTFOLIO_FILTER_IDS);
       if (rawFilter) {
         const parsed = JSON.parse(rawFilter) as unknown;
         if (Array.isArray(parsed)) {
@@ -37,7 +43,7 @@ export const appLifecycle: AppLifecycleObject = {
     }
 
     try {
-      const savedTab = localStorage.getItem(LAST_TAB_STORAGE_KEY);
+      const savedTab = localStorage.getItem(STORAGE_KEYS.LAST_TAB);
       if (isAppTab(savedTab) && (savedTab === "config" || this.currentPresetId)) {
         this.currentTab = savedTab;
       }

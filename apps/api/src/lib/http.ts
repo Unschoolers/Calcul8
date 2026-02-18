@@ -28,6 +28,14 @@ export function handleCorsPreflight(request: HttpRequest, config: ApiConfig): Ht
   };
 }
 
+export function maybeHandleCorsPreflight(
+  request: HttpRequest,
+  config: ApiConfig
+): HttpResponseInit | null {
+  if (request.method !== "OPTIONS") return null;
+  return handleCorsPreflight(request, config);
+}
+
 export function jsonResponse(
   request: HttpRequest,
   config: ApiConfig,

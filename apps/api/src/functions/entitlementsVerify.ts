@@ -1,22 +1,21 @@
 import { app, type HttpRequest, type HttpResponseInit, type InvocationContext } from "@azure/functions";
 import { getConfig } from "../lib/config";
-import { errorResponse, handleCorsPreflight, jsonResponse } from "../lib/http";
+import { errorResponse, jsonResponse, maybeHandleCorsPreflight } from "../lib/http";
 import { verifyPlayEntitlementRequest } from "./entitlementsVerifyPlay";
 
 function resolveProvider(request: HttpRequest): string {
-  const raw = (request.params?.provider ?? "").trim().toLowerCase();
-  return raw;
+  return (request.params?.provider ?? "").trim().toLowerCase();
 }
+
+const SUPPORTED_PURCHASE_PROVIDERS = ["play"] as const;
 
 export async function entitlementsVerify(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   const config = getConfig();
-
-  if (request.method === "OPTIONS") {
-    return handleCorsPreflight(request, config);
-  }
+  const preflightResponse = maybeHandleCorsPreflight(request, config);
+  if (preflightResponse) return preflightResponse;
 
   try {
     const provider = resolveProvider(request);
@@ -27,7 +26,7 @@ export async function entitlementsVerify(
 
     return jsonResponse(request, config, 501, {
       error: `Purchase provider '${provider || "unknown"}' is not supported.`,
-      supportedProviders: ["play"]
+      supportedProviders: SUPPORTED_PURCHASE_PROVIDERS
     });
   } catch (error) {
     context.error("POST /entitlements/verify/{provider} failed", error);
@@ -41,4 +40,3 @@ app.http("entitlementsVerify", {
   route: "entitlements/verify/{provider}",
   handler: entitlementsVerify
 });
-

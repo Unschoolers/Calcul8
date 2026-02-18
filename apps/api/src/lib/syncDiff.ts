@@ -17,15 +17,8 @@ export function calculateSyncPresetDiff(
   existing: SyncPresetState[],
   incoming: SyncPresetState[]
 ): SyncPresetDiff {
-  const existingMap = new Map<string, SyncPresetState>();
-  const incomingMap = new Map<string, SyncPresetState>();
-
-  for (const item of existing) {
-    existingMap.set(item.presetId, item);
-  }
-  for (const item of incoming) {
-    incomingMap.set(item.presetId, item);
-  }
+  const existingMap = new Map(existing.map((item) => [item.presetId, item] as const));
+  const incomingMap = new Map(incoming.map((item) => [item.presetId, item] as const));
 
   const upsertPresetIds: string[] = [];
   const deletePresetIds: string[] = [];

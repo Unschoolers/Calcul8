@@ -10,6 +10,38 @@ import {
   resolveApiBaseUrl
 } from "./shared.ts";
 
+type SyncPayload = {
+  lots: unknown[];
+  presets: unknown[];
+  salesByLot: Record<string, Sale[]>;
+  salesByPreset: Record<string, Sale[]>;
+  clientVersion?: number;
+};
+
+function createSyncPayload(context: AppContext, clientVersion?: number): SyncPayload {
+  const salesByPreset: Record<string, Sale[]> = {};
+  for (const preset of context.presets) {
+    salesByPreset[String(preset.id)] = context.loadSalesForPresetId(preset.id);
+  }
+
+  return {
+    lots: context.presets,
+    presets: context.presets,
+    salesByLot: salesByPreset,
+    salesByPreset,
+    clientVersion
+  };
+}
+
+function getSyncPayloadSignature(payload: SyncPayload): string {
+  return JSON.stringify({
+    lots: payload.lots,
+    presets: payload.presets,
+    salesByLot: payload.salesByLot,
+    salesByPreset: payload.salesByPreset
+  });
+}
+
 export const uiSyncMethods: ThisType<AppContext> & Pick<
   AppMethodState,
   | "pullCloudSync"
@@ -29,6 +61,12 @@ export const uiSyncMethods: ThisType<AppContext> & Pick<
     const googleIdToken = (localStorage.getItem(GOOGLE_TOKEN_KEY) || "").trim();
     if (!googleIdToken) return;
 
+    this.syncStatus = "syncing";
+    if (this.syncStatusResetTimeoutId != null) {
+      window.clearTimeout(this.syncStatusResetTimeoutId);
+      this.syncStatusResetTimeoutId = null;
+    }
+
     try {
       const response = await fetchWithRetry(`${base}/sync/pull`, {
         method: "POST",
@@ -39,9 +77,19 @@ export const uiSyncMethods: ThisType<AppContext> & Pick<
 
       if (response.status === 401) {
         handleExpiredAuth(this);
+        this.syncStatus = "error";
+        this.syncStatusResetTimeoutId = window.setTimeout(() => {
+          this.syncStatus = "idle";
+          this.syncStatusResetTimeoutId = null;
+        }, SYNC_STATUS_RESET_MS);
         return;
       }
       if (!response.ok) {
+        this.syncStatus = "error";
+        this.syncStatusResetTimeoutId = window.setTimeout(() => {
+          this.syncStatus = "idle";
+          this.syncStatusResetTimeoutId = null;
+        }, SYNC_STATUS_RESET_MS);
         console.warn("[whatfees] Cloud sync pull failed", {
           status: response.status,
           statusText: response.statusText
@@ -51,18 +99,31 @@ export const uiSyncMethods: ThisType<AppContext> & Pick<
 
       const body = (await response.json()) as {
         snapshot?: {
+          lots?: unknown[];
           presets?: unknown[];
+          salesByLot?: Record<string, unknown[]>;
           salesByPreset?: Record<string, unknown[]>;
           version?: number;
           updatedAt?: string | null;
         };
       };
       const snapshot = body.snapshot;
-      if (!snapshot) return;
+      if (!snapshot) {
+        this.lastSyncedPayloadHash = getSyncPayloadSignature(createSyncPayload(this));
+        this.syncStatus = "success";
+        this.syncStatusResetTimeoutId = window.setTimeout(() => {
+          this.syncStatus = "idle";
+          this.syncStatusResetTimeoutId = null;
+        }, SYNC_STATUS_RESET_MS);
+        return;
+      }
 
-      const cloudPresets = Array.isArray(snapshot.presets) ? snapshot.presets : [];
-      const cloudSalesByPreset = snapshot.salesByPreset && typeof snapshot.salesByPreset === "object"
-        ? snapshot.salesByPreset
+      const cloudPresets = Array.isArray(snapshot.lots)
+        ? snapshot.lots
+        : (Array.isArray(snapshot.presets) ? snapshot.presets : []);
+      const rawCloudSalesByPreset = snapshot.salesByLot ?? snapshot.salesByPreset;
+      const cloudSalesByPreset = rawCloudSalesByPreset && typeof rawCloudSalesByPreset === "object"
+        ? rawCloudSalesByPreset
         : {};
       const cloudVersion = Number(snapshot.version ?? 0);
       const localVersion = Number(localStorage.getItem(SYNC_CLIENT_VERSION_KEY) || "0");
@@ -75,6 +136,12 @@ export const uiSyncMethods: ThisType<AppContext> & Pick<
         (!localHasData && cloudHasData)
       );
       if (!shouldApplyCloud) {
+        this.lastSyncedPayloadHash = getSyncPayloadSignature(createSyncPayload(this));
+        this.syncStatus = "success";
+        this.syncStatusResetTimeoutId = window.setTimeout(() => {
+          this.syncStatus = "idle";
+          this.syncStatusResetTimeoutId = null;
+        }, SYNC_STATUS_RESET_MS);
         return;
       }
 
@@ -99,7 +166,12 @@ export const uiSyncMethods: ThisType<AppContext> & Pick<
       if (Number.isFinite(cloudVersion)) {
         localStorage.setItem(SYNC_CLIENT_VERSION_KEY, String(cloudVersion));
       }
-      this.lastSyncedPayloadHash = null;
+      this.lastSyncedPayloadHash = getSyncPayloadSignature(createSyncPayload(this));
+      this.syncStatus = "success";
+      this.syncStatusResetTimeoutId = window.setTimeout(() => {
+        this.syncStatus = "idle";
+        this.syncStatusResetTimeoutId = null;
+      }, SYNC_STATUS_RESET_MS);
       this.notify("Cloud data synced", "success");
       console.info("[whatfees] Cloud sync pulled", { version: cloudVersion });
     } catch (error) {
@@ -107,6 +179,11 @@ export const uiSyncMethods: ThisType<AppContext> & Pick<
         this.isOffline = true;
         this.startOfflineReconnectScheduler();
       }
+      this.syncStatus = "error";
+      this.syncStatusResetTimeoutId = window.setTimeout(() => {
+        this.syncStatus = "idle";
+        this.syncStatusResetTimeoutId = null;
+      }, SYNC_STATUS_RESET_MS);
       console.warn("[whatfees] Cloud sync pull error", error);
     }
   },
@@ -136,22 +213,14 @@ export const uiSyncMethods: ThisType<AppContext> & Pick<
     const googleIdToken = (localStorage.getItem(GOOGLE_TOKEN_KEY) || "").trim();
     if (!googleIdToken) return;
 
-    const salesByPreset: Record<string, Sale[]> = {};
-    for (const preset of this.presets) {
-      salesByPreset[String(preset.id)] = this.loadSalesForPresetId(preset.id);
-    }
-
-    const payloadSignature = JSON.stringify({
-      presets: this.presets,
-      salesByPreset
-    });
-    if (!force && this.lastSyncedPayloadHash === payloadSignature) {
-      return;
-    }
-
     const previousVersionRaw = localStorage.getItem(SYNC_CLIENT_VERSION_KEY) || "0";
     const previousVersion = Number(previousVersionRaw);
     const clientVersion = Number.isFinite(previousVersion) ? previousVersion : 0;
+    const syncPayload = createSyncPayload(this, clientVersion);
+    const payloadSignature = getSyncPayloadSignature(syncPayload);
+    if (!force && this.lastSyncedPayloadHash === payloadSignature) {
+      return;
+    }
     this.syncStatus = "syncing";
     if (this.syncStatusResetTimeoutId != null) {
       window.clearTimeout(this.syncStatusResetTimeoutId);
@@ -165,11 +234,7 @@ export const uiSyncMethods: ThisType<AppContext> & Pick<
           "Content-Type": "application/json",
           Authorization: `Bearer ${googleIdToken}`
         },
-        body: JSON.stringify({
-          presets: this.presets,
-          salesByPreset,
-          clientVersion
-        })
+        body: JSON.stringify(syncPayload)
       });
 
       if (response.status === 401) {

@@ -208,7 +208,13 @@ export function calculatePresetPerformanceSummary(
   const totalCost = calculateTotalCaseCost({
     boxesPurchased: preset.boxesPurchased,
     pricePerBoxCad,
-    purchaseShippingCad: preset.purchaseShippingCost,
+    purchaseShippingCad: calculateBoxPriceCostCad(
+      preset.purchaseShippingCost,
+      preset.currency,
+      preset.sellingCurrency,
+      preset.exchangeRate,
+      defaultExchangeRate
+    ),
     purchaseTaxPercent: preset.purchaseTaxPercent,
     includeTax: preset.includeTax,
     currency: preset.currency

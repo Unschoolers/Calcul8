@@ -1,5 +1,11 @@
 import type { AppContext } from "../../context.ts";
 import type { GoogleIdentityApi } from "../../utils/googleAutoLogin.ts";
+import {
+  getLegacyStorageKeys,
+  readStorageWithLegacy,
+  removeStorageWithLegacy,
+  STORAGE_KEYS
+} from "../../storageKeys.ts";
 
 interface GoogleAccountsApi {
   id: GoogleIdentityApi;
@@ -58,11 +64,14 @@ declare global {
   }
 }
 
-export const ENTITLEMENT_CACHE_KEY = "rtyh_entitlement_cache_v1";
-export const PRO_ACCESS_KEY = "rtyh_pro_access";
-export const GOOGLE_TOKEN_KEY = "rtyh_google_id_token";
-export const DEBUG_USER_KEY = "rtyh_debug_user_id";
-export const SYNC_CLIENT_VERSION_KEY = "rtyh_sync_client_version";
+const LEGACY_KEYS = getLegacyStorageKeys();
+
+export const ENTITLEMENT_CACHE_KEY = STORAGE_KEYS.ENTITLEMENT_CACHE;
+export const PRO_ACCESS_KEY = STORAGE_KEYS.PRO_ACCESS;
+export const GOOGLE_TOKEN_KEY = STORAGE_KEYS.GOOGLE_ID_TOKEN;
+export const GOOGLE_PROFILE_CACHE_KEY = STORAGE_KEYS.GOOGLE_PROFILE_CACHE;
+export const DEBUG_USER_KEY = STORAGE_KEYS.DEBUG_USER_ID;
+export const SYNC_CLIENT_VERSION_KEY = STORAGE_KEYS.SYNC_CLIENT_VERSION;
 export const CLOUD_SYNC_INTERVAL_MS = 60 * 1000;
 export const SYNC_STATUS_RESET_MS = 2500;
 export const GOOGLE_INIT_RETRY_COUNT = 20;
@@ -88,7 +97,7 @@ export function resolveApiBaseUrl(): string {
   const configuredApiBase = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim() || "";
   if (configuredApiBase) {
     const normalized = configuredApiBase.replace(/\/+$/, "");
-    localStorage.setItem("whatfees_api_base_url", normalized);
+    localStorage.setItem(STORAGE_KEYS.API_BASE_URL, normalized);
     return normalized;
   }
   return "";
@@ -104,7 +113,7 @@ export function getEntitlementTtlMs(): number {
 }
 
 export function readEntitlementCache(): { userId: string | null; hasProAccess: boolean; updatedAt: string | null; cachedAt: number } | null {
-  const raw = localStorage.getItem(ENTITLEMENT_CACHE_KEY);
+  const raw = readStorageWithLegacy(ENTITLEMENT_CACHE_KEY, LEGACY_KEYS.ENTITLEMENT_CACHE);
   if (!raw) return null;
 
   try {
@@ -132,7 +141,7 @@ export function writeEntitlementCache(payload: {
 }
 
 export function clearEntitlementCache(): void {
-  localStorage.removeItem(ENTITLEMENT_CACHE_KEY);
+  removeStorageWithLegacy(ENTITLEMENT_CACHE_KEY, LEGACY_KEYS.ENTITLEMENT_CACHE);
 }
 
 function sleep(ms: number): Promise<void> {
@@ -212,9 +221,10 @@ export async function fetchWithRetry(
 }
 
 export function handleExpiredAuth(app: AppContext): void {
-  localStorage.removeItem(GOOGLE_TOKEN_KEY);
+  removeStorageWithLegacy(GOOGLE_TOKEN_KEY, LEGACY_KEYS.GOOGLE_ID_TOKEN);
+  removeStorageWithLegacy(GOOGLE_PROFILE_CACHE_KEY, LEGACY_KEYS.GOOGLE_PROFILE_CACHE);
   clearEntitlementCache();
-  localStorage.removeItem(PRO_ACCESS_KEY);
+  removeStorageWithLegacy(PRO_ACCESS_KEY, LEGACY_KEYS.PRO_ACCESS);
   app.hasProAccess = false;
   if (app.hasPresetSelected && Number(app.targetProfitPercent) !== 0) {
     app.targetProfitPercent = 0;

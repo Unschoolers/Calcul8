@@ -21,6 +21,7 @@ import { appComputed } from "../src/app-core/computed.ts";
 import { appWatch } from "../src/app-core/watch.ts";
 import { configMethods } from "../src/app-core/methods/config.ts";
 import { salesMethods } from "../src/app-core/methods/sales.ts";
+import { getLegacySalesStorageKey } from "../src/app-core/storageKeys.ts";
 import type { Preset, Sale } from "../src/types/app.ts";
 
 type MockStorage = {
@@ -277,8 +278,8 @@ test("preset performance summary handles empty sales with conversion, tax, custo
 
   assert.equal(summary.salesCount, 0);
   assert.equal(summary.totalRevenue, 0);
-  assert.equal(summary.totalCost, 366.5);
-  assert.equal(summary.totalProfit, -366.5);
+  assert.equal(summary.totalCost, 376.5);
+  assert.equal(summary.totalProfit, -376.5);
   assert.equal(summary.marginPercent, null);
   assert.equal(summary.soldPacks, 0);
   assert.equal(summary.totalPacks, 24);
@@ -488,6 +489,24 @@ test("watch.portfolioPresetFilterIds persists filter and refreshes chart in port
   });
 });
 
+test("watch.purchaseUiMode persists mode and enforces total mode in simple", () => {
+  withMockedLocalStorage((_storage, data) => {
+    let purchaseConfigChanged = false;
+    const context = {
+      costInputMode: "perBox",
+      onPurchaseConfigChange() {
+        purchaseConfigChanged = true;
+      }
+    } as unknown as Parameters<typeof appWatch.purchaseUiMode>[0];
+
+    appWatch.purchaseUiMode.call(context, "simple");
+
+    assert.equal(data.get("whatfees_purchase_ui_mode"), "simple");
+    assert.equal(context.costInputMode, "total");
+    assert.equal(purchaseConfigChanged, true);
+  });
+});
+
 test("calculateOptimalPrices is blocked when paywall is locked", () => {
   let notifiedMessage = "";
   let recalculated = false;
@@ -650,7 +669,7 @@ test("applyLivePricesToDefaults is blocked when no preset is selected", () => {
   assert.equal(context.boxPriceSell, 20);
   assert.equal(context.packPrice, 30);
   assert.equal(saved, false);
-  assert.equal(notified, "Select a preset first");
+  assert.equal(notified, "Select a lot first");
 });
 
 test("loadPreset forces target profit to 0 for non-pro users", async () => {
@@ -922,6 +941,33 @@ test("openAddSaleModal defaults sale price from live values with config fallback
   salesMethods.openAddSaleModal.call(context, "rtyh");
   assert.equal(context.newSale.type, "rtyh");
   assert.equal(context.newSale.price, 25);
+});
+
+test("loadSalesFromStorage restores legacy sales key instead of writing empty current sales", () => {
+  withMockedLocalStorage((_, data) => {
+    const presetId = 901;
+    const legacyKey = getLegacySalesStorageKey(presetId);
+    data.set(
+      legacyKey,
+      JSON.stringify([{ id: 1, type: "pack", quantity: 2, packsCount: 2, price: 9, date: "2026-02-18" }])
+    );
+
+    const context = {
+      currentPresetId: presetId,
+      sales: [],
+      getSalesStorageKey: configMethods.getSalesStorageKey,
+      loadSalesForPresetId: configMethods.loadSalesForPresetId
+    } as unknown as Parameters<typeof salesMethods.loadSalesFromStorage>[0];
+
+    salesMethods.loadSalesFromStorage.call(context);
+
+    assert.equal(context.sales.length, 1);
+    assert.equal(context.sales[0]?.price, 9);
+    assert.equal(
+      data.get(context.getSalesStorageKey(presetId)),
+      JSON.stringify([{ id: 1, type: "pack", quantity: 2, packsCount: 2, price: 9, date: "2026-02-18" }])
+    );
+  });
 });
 
 test("onNewSaleTypeChange updates default price for new sales only", () => {

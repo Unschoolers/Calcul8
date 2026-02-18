@@ -19,6 +19,7 @@ export const uiMethods: ThisType<AppContext> & Pick<
   | "getSaleIcon"
   | "formatDate"
   | "initGoogleAutoLogin"
+  | "promptGoogleSignIn"
   | "openVerifyPurchaseModal"
   | "startProPurchase"
   | "verifyProPurchase"

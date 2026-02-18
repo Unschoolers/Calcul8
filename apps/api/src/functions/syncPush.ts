@@ -2,21 +2,13 @@ import { app, type HttpRequest, type HttpResponseInit, type InvocationContext } 
 import { HttpError, resolveUserId } from "../lib/auth";
 import { getConfig } from "../lib/config";
 import { getEffectiveSyncSnapshot, upsertSyncSnapshotIncremental } from "../lib/cosmos";
-import { errorResponse, handleCorsPreflight, jsonResponse } from "../lib/http";
+import { errorResponse, jsonResponse, maybeHandleCorsPreflight } from "../lib/http";
+import { parseCanonicalSyncShape } from "../lib/syncShape";
 import { assertSafeSyncPush } from "../lib/syncSafety";
 import type { SyncPushPayload } from "../types";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function isUnknownArray(value: unknown): value is unknown[] {
-  return Array.isArray(value);
-}
-
-function isSalesByPreset(value: unknown): value is Record<string, unknown[]> {
-  if (!isRecord(value)) return false;
-  return Object.values(value).every((entry) => Array.isArray(entry));
 }
 
 function hasPresetId(value: unknown): boolean {
@@ -31,12 +23,12 @@ function parsePresetIds(presets: unknown[]): string[] {
 
   for (const preset of presets) {
     if (!hasPresetId(preset)) {
-      throw new HttpError(400, "Each preset must be an object containing an 'id' field.");
+      throw new HttpError(400, "Each lot (legacy preset) must be an object containing an 'id' field.");
     }
 
     const presetId = String((preset as { id: string | number }).id);
     if (seen.has(presetId)) {
-      throw new HttpError(400, `Duplicate preset id '${presetId}' in payload.`);
+      throw new HttpError(400, `Duplicate lot id '${presetId}' in payload.`);
     }
     seen.add(presetId);
     ids.push(presetId);
@@ -58,18 +50,10 @@ async function parseSyncPushPayload(request: HttpRequest): Promise<SyncPushPaylo
     throw new HttpError(400, "Request body must be an object.");
   }
 
-  const presets = payload.presets;
-  const salesByPreset = payload.salesByPreset;
+  const canonicalShape = parseCanonicalSyncShape(payload);
   const clientVersion = payload.clientVersion;
 
-  if (!isUnknownArray(presets)) {
-    throw new HttpError(400, "Field 'presets' must be an array.");
-  }
-  parsePresetIds(presets);
-
-  if (!isSalesByPreset(salesByPreset)) {
-    throw new HttpError(400, "Field 'salesByPreset' must be an object of arrays.");
-  }
+  parsePresetIds(canonicalShape.presets);
 
   if (clientVersion != null && (typeof clientVersion !== "number" || !Number.isFinite(clientVersion))) {
     throw new HttpError(400, "Field 'clientVersion' must be a number when provided.");
@@ -80,8 +64,8 @@ async function parseSyncPushPayload(request: HttpRequest): Promise<SyncPushPaylo
   }
 
   return {
-    presets,
-    salesByPreset,
+    presets: canonicalShape.presets,
+    salesByPreset: canonicalShape.salesByPreset,
     clientVersion: typeof clientVersion === "number" ? clientVersion : undefined,
     allowEmptyOverwrite: payload.allowEmptyOverwrite === true
   };
@@ -92,10 +76,8 @@ export async function syncPush(
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   const config = getConfig();
-
-  if (request.method === "OPTIONS") {
-    return handleCorsPreflight(request, config);
-  }
+  const preflightResponse = maybeHandleCorsPreflight(request, config);
+  if (preflightResponse) return preflightResponse;
 
   try {
     const userId = await resolveUserId(request, config);

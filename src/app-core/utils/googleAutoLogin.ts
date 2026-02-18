@@ -23,6 +23,15 @@ interface InitGoogleAutoLoginInput {
   schedule: (callback: () => void, delayMs: number) => void;
 }
 
+const PROMPT_COOLDOWN_MS = 1500;
+let promptInFlight = false;
+let lastPromptAt = 0;
+
+export function __resetGoogleAutoLoginForTests(): void {
+  promptInFlight = false;
+  lastPromptAt = 0;
+}
+
 export function initGoogleAutoLoginWithRetry(input: InitGoogleAutoLoginInput): void {
   const {
     clientId,
@@ -50,13 +59,24 @@ export function initGoogleAutoLoginWithRetry(input: InitGoogleAutoLoginInput): v
       auto_select: true,
       itp_support: true,
       callback: (response: GoogleCredentialResponse) => {
+        promptInFlight = false;
         const idToken = response.credential?.trim();
         if (!idToken) return;
         onCredential(idToken);
       }
     });
 
+    const now = Date.now();
+    if (promptInFlight || now - lastPromptAt < PROMPT_COOLDOWN_MS) {
+      return;
+    }
+
+    promptInFlight = true;
+    lastPromptAt = now;
     googleId.prompt();
+    schedule(() => {
+      promptInFlight = false;
+    }, PROMPT_COOLDOWN_MS);
   };
 
   tryInit(retryCount);

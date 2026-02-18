@@ -2,6 +2,7 @@ import type { Chart as ChartJS } from "chart.js";
 
 export type AppTab = "config" | "live" | "sales" | "portfolio";
 export type CostInputMode = "perBox" | "total";
+export type PurchaseUiMode = "simple" | "expert";
 export type CurrencyCode = "CAD" | "USD";
 export type SaleType = "pack" | "box" | "rtyh";
 export type ChartViewMode = "pie" | "sparkline";
@@ -114,6 +115,7 @@ export interface AppState extends PresetSetup {
   purchaseTokenInput: string;
   purchaseProductIdInput: string;
   purchasePackageNameInput: string;
+  purchaseUiMode: PurchaseUiMode;
   currentTab: AppTab;
   showNewPresetModal: boolean;
   speedDialOpen: boolean;
@@ -122,6 +124,7 @@ export interface AppState extends PresetSetup {
   isOffline: boolean;
   deferredInstallPrompt: BeforeInstallPromptEvent | null;
   showInstallPrompt: boolean;
+  googleAvatarLoadFailed: boolean;
   onlineListener: (() => void) | null;
   offlineListener: (() => void) | null;
   beforeInstallPromptListener: ((event: Event) => void) | null;
@@ -139,7 +142,7 @@ export interface AppState extends PresetSetup {
   showAddSaleModal: boolean;
   editingSale: Sale | null;
   newSale: NewSaleDraft;
-  salesChart: ChartJS<"doughnut", number[], string> | null;
+  salesChart: ChartJS<"doughnut", number[], string> | ChartJS<"line", number[], string> | null;
   chartView: ChartViewMode;
   portfolioChart: ChartJS<"doughnut", number[], string> | ChartJS<"line", number[], string> | null;
   portfolioChartView: PortfolioChartViewMode;

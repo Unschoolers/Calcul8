@@ -1,12 +1,10 @@
 import type { AppWatchObject } from "./context.ts";
-
-const LAST_TAB_STORAGE_KEY = "whatfees_last_tab";
-const PORTFOLIO_FILTER_STORAGE_KEY = "whatfees_portfolio_filter_ids";
+import { STORAGE_KEYS } from "./storageKeys.ts";
 
 export const appWatch: AppWatchObject = {
   currentTab(newTab) {
     try {
-      localStorage.setItem(LAST_TAB_STORAGE_KEY, newTab);
+      localStorage.setItem(STORAGE_KEYS.LAST_TAB, newTab);
     } catch {
       // Ignore storage errors (private mode/quota restrictions).
     }
@@ -29,8 +27,21 @@ export const appWatch: AppWatchObject = {
     }
   },
 
+  purchaseUiMode(newMode) {
+    try {
+      localStorage.setItem(STORAGE_KEYS.PURCHASE_UI_MODE, newMode);
+    } catch {
+      // Ignore storage errors (private mode/quota restrictions).
+    }
+
+    if (newMode === "simple" && this.costInputMode !== "total") {
+      this.costInputMode = "total";
+      this.onPurchaseConfigChange();
+    }
+  },
+
   currentPresetId(newVal) {
-    if (newVal) localStorage.setItem("rtyh_last_preset_id", String(newVal));
+    if (newVal) localStorage.setItem(STORAGE_KEYS.LAST_LOT_ID, String(newVal));
 
     if (!newVal) {
       this.currentTab = "config";
@@ -58,7 +69,7 @@ export const appWatch: AppWatchObject = {
     handler() {
       try {
         localStorage.setItem(
-          PORTFOLIO_FILTER_STORAGE_KEY,
+          STORAGE_KEYS.PORTFOLIO_FILTER_IDS,
           JSON.stringify(this.portfolioPresetFilterIds)
         );
       } catch {

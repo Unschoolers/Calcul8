@@ -17,7 +17,7 @@ export const pwaMethods: ThisType<AppContext> & Pick<
       this.notify("Back online", "success");
       this.stopOfflineReconnectScheduler();
       void this.debugLogEntitlement(true);
-      void this.pushCloudSync(true);
+      void this.pushCloudSync();
     };
     this.offlineListener = () => {
       this.isOffline = true;
@@ -59,7 +59,7 @@ export const pwaMethods: ThisType<AppContext> & Pick<
       this.notify("Connection restored. Syncing…", "info");
       this.stopOfflineReconnectScheduler();
       void this.debugLogEntitlement(true);
-      void this.pushCloudSync(true);
+      void this.pushCloudSync();
     }, 60 * 1000);
   },
 

@@ -97,24 +97,23 @@ export function getProductIdsFromProductsV2Response(payload: unknown): string[] 
   const lineItems = (payload as { productLineItem?: unknown }).productLineItem;
   if (!Array.isArray(lineItems)) return [];
 
-  const productIds = new Set<string>();
-  for (const item of lineItems) {
-    if (typeof item !== "object" || item === null || Array.isArray(item)) continue;
-    const lineItemProductId = asTrimmedString((item as { productId?: unknown }).productId);
-    if (lineItemProductId) {
-      productIds.add(lineItemProductId);
-    }
-    const offerDetails = (item as { productOfferDetails?: unknown }).productOfferDetails;
-    if (typeof offerDetails !== "object" || offerDetails === null || Array.isArray(offerDetails)) {
-      continue;
-    }
-    const offerProductId = asTrimmedString((offerDetails as { productId?: unknown }).productId);
-    if (offerProductId) {
-      productIds.add(offerProductId);
-    }
-  }
+  const productIds = lineItems.flatMap((item) => {
+    if (typeof item !== "object" || item === null || Array.isArray(item)) return [];
 
-  return Array.from(productIds);
+    const lineItemProductId = asTrimmedString((item as { productId?: unknown }).productId);
+    const offerDetails = (item as { productOfferDetails?: unknown }).productOfferDetails;
+    const offerProductId = (
+      typeof offerDetails === "object" && offerDetails !== null && !Array.isArray(offerDetails)
+    )
+      ? asTrimmedString((offerDetails as { productId?: unknown }).productId)
+      : null;
+
+    return [lineItemProductId, offerProductId].filter(
+      (value): value is string => typeof value === "string" && value.length > 0
+    );
+  });
+
+  return [...new Set(productIds)];
 }
 
 function parseProductsV2PurchaseState(rawPurchaseState: string | undefined): number | null {
