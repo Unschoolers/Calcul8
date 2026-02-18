@@ -20,53 +20,77 @@ function getErrorMessage(error: unknown): string {
   return "Unknown migration error";
 }
 
-export async function runMigration(input: RunMigrationInput): Promise<MigrationRunDocument> {
-  const startedAt = new Date().toISOString();
-  const runId = createMigrationRunId(input.migration.id);
+type MigrationRunWriter = (
+  config: ApiConfig,
+  document: MigrationRunDocument
+) => Promise<MigrationRunDocument>;
 
-  const runningDocument: MigrationRunDocument = {
-    id: runId,
-    docType: "migration_run",
-    migrationId: input.migration.id,
-    status: "running",
-    dryRun: input.dryRun,
-    startedAt,
-    completedAt: null,
-    triggeredByUserId: input.triggeredByUserId,
-    note: input.note,
-    result: null
-  };
+export function createMigrationRunner(writeMigrationRun: MigrationRunWriter = upsertMigrationRun) {
+  return async function runMigration(input: RunMigrationInput): Promise<MigrationRunDocument> {
+    const startedAt = new Date().toISOString();
+    const runId = createMigrationRunId(input.migration.id);
 
-  await upsertMigrationRun(input.config, runningDocument);
-
-  try {
-    const result = await input.migration.run({
-      runId,
+    const runningDocument: MigrationRunDocument = {
+      id: runId,
+      docType: "migration_run",
+      migrationId: input.migration.id,
+      status: "running",
       dryRun: input.dryRun,
       startedAt,
+      completedAt: null,
       triggeredByUserId: input.triggeredByUserId,
       note: input.note,
-      config: input.config
-    });
-
-    const succeededDocument: MigrationRunDocument = {
-      ...runningDocument,
-      status: "succeeded",
-      completedAt: new Date().toISOString(),
-      result: result ?? { message: "Migration completed." }
-    };
-
-    return upsertMigrationRun(input.config, succeededDocument);
-  } catch (error) {
-    const failedDocument: MigrationRunDocument = {
-      ...runningDocument,
-      status: "failed",
-      completedAt: new Date().toISOString(),
-      errorMessage: getErrorMessage(error),
       result: null
     };
 
-    await upsertMigrationRun(input.config, failedDocument);
-    throw error;
-  }
+    await writeMigrationRun(input.config, runningDocument);
+
+    try {
+      const context = {
+        runId,
+        dryRun: input.dryRun,
+        startedAt,
+        triggeredByUserId: input.triggeredByUserId,
+        note: input.note,
+        config: input.config
+      };
+
+      const plan = await input.migration.analyze(context);
+
+      const result = input.dryRun
+        ? {
+          mode: "dry_run",
+          message: "Dry run completed. No writes were executed.",
+          plan
+        }
+        : {
+          mode: "applied",
+          plan,
+          applyResult: await input.migration.apply(context, plan)
+            ?? { message: "Migration applied." }
+        };
+
+      const succeededDocument: MigrationRunDocument = {
+        ...runningDocument,
+        status: "succeeded",
+        completedAt: new Date().toISOString(),
+        result
+      };
+
+      return writeMigrationRun(input.config, succeededDocument);
+    } catch (error) {
+      const failedDocument: MigrationRunDocument = {
+        ...runningDocument,
+        status: "failed",
+        completedAt: new Date().toISOString(),
+        errorMessage: getErrorMessage(error),
+        result: null
+      };
+
+      await writeMigrationRun(input.config, failedDocument);
+      throw error;
+    }
+  };
 }
+
+export const runMigration = createMigrationRunner();

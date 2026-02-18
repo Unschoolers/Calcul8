@@ -9,8 +9,12 @@ export interface MigrationContext {
   config: ApiConfig;
 }
 
+export type MigrationPlan = Record<string, unknown>;
+export type MigrationApplyResult = Record<string, unknown> | void;
+
 export interface MigrationDefinition {
   id: string;
   description: string;
-  run: (context: MigrationContext) => Promise<Record<string, unknown> | void>;
+  analyze: (context: MigrationContext) => Promise<MigrationPlan>;
+  apply: (context: MigrationContext, plan: MigrationPlan) => Promise<MigrationApplyResult>;
 }

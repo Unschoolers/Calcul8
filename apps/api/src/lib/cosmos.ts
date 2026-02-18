@@ -179,6 +179,27 @@ export async function upsertMigrationMarker(
   return resource;
 }
 
+export async function getMigrationMarker(
+  config: ApiConfig,
+  migrationId: string
+): Promise<MigrationMarkerDocument | null> {
+  const { migrationRuns } = getContainers(config);
+  const markerId = migrationMarkerId(migrationId);
+  const querySpec = {
+    query: "SELECT TOP 1 * FROM c WHERE c.id = @id AND c.docType = @docType",
+    parameters: [
+      { name: "@id", value: markerId },
+      { name: "@docType", value: "migration_marker" }
+    ]
+  };
+
+  const iterator = migrationRuns.items.query<MigrationMarkerDocument>(querySpec, {
+    maxItemCount: 1
+  });
+  const { resources } = await withCosmosRetry(() => iterator.fetchAll());
+  return resources?.[0] ?? null;
+}
+
 interface ListMigrationRunsOptions {
   migrationId?: string;
   limit?: number;

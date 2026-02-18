@@ -149,8 +149,8 @@ Headers:
 - `x-admin-id: <optional-audit-label>` (optional)
 
 Dry-run behavior:
-- `dryRun=true`: returns a preview result only (no migration data writes).
-- `dryRun=false`: executes migration writes.
+- `dryRun=true`: runs `analyze` only and returns preview plan (no migration data writes).
+- `dryRun=false`: runs `analyze`, then `apply` with that plan.
 - Both modes still write a `migration_run` audit record.
 
 ## Security notes
