@@ -126,6 +126,10 @@ Recommended partition key for both containers: `/userId`.
 
 `POST /api/admin/migrations/run`
 
+Alias route:
+
+`POST /api/migrations/run`
+
 Request body:
 
 ```json
@@ -143,6 +147,10 @@ Headers:
 List runs:
 
 `GET /api/admin/migrations/runs?migrationId=first_migration&limit=20`
+
+Alias route:
+
+`GET /api/migrations/runs?migrationId=first_migration&limit=20`
 
 Headers:
 - `x-migration-key: <MIGRATIONS_ADMIN_KEY>` (required in prod)

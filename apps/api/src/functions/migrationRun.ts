@@ -97,3 +97,10 @@ app.http("migrationRun", {
   route: "admin/migrations/run",
   handler: migrationRun
 });
+
+app.http("migrationRunAlias", {
+  methods: ["POST", "OPTIONS"],
+  authLevel: "anonymous",
+  route: "migrations/run",
+  handler: migrationRun
+});

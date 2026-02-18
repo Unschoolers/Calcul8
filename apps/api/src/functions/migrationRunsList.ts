@@ -66,3 +66,10 @@ app.http("migrationRunsList", {
   route: "admin/migrations/runs",
   handler: migrationRunsList
 });
+
+app.http("migrationRunsListAlias", {
+  methods: ["GET", "OPTIONS"],
+  authLevel: "anonymous",
+  route: "migrations/runs",
+  handler: migrationRunsList
+});
