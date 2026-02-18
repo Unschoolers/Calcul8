@@ -91,3 +91,14 @@ export interface MigrationRunDocument {
   result?: Record<string, unknown> | null;
   errorMessage?: string;
 }
+
+export interface MigrationMarkerDocument {
+  id: string;
+  docType: "migration_marker";
+  migrationId: string;
+  updatedAt: string;
+  lastRunId: string;
+  triggeredByUserId: string;
+  note: string;
+  result: Record<string, unknown> | null;
+}

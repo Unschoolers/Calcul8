@@ -115,6 +115,12 @@ Recommended partition key for both containers: `/userId`.
   - `triggeredByUserId`
   - `note`
   - `result` / `errorMessage`
+  - optional marker docs for smoke/metadata migrations:
+    - `id`: `migration_marker:<migrationId>`
+    - `docType`: `migration_marker`
+    - `migrationId`
+    - `updatedAt`
+    - `lastRunId`
 
 ## Run a migration
 
@@ -141,6 +147,11 @@ List runs:
 Headers:
 - `x-migration-key: <MIGRATIONS_ADMIN_KEY>` (required in prod)
 - `x-admin-id: <optional-audit-label>` (optional)
+
+Dry-run behavior:
+- `dryRun=true`: returns a preview result only (no migration data writes).
+- `dryRun=false`: executes migration writes.
+- Both modes still write a `migration_run` audit record.
 
 ## Security notes
 

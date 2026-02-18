@@ -2,6 +2,7 @@ import { CosmosClient, type Container } from "@azure/cosmos";
 import type {
   ApiConfig,
   EntitlementDocument,
+  MigrationMarkerDocument,
   MigrationRunDocument,
   PlayPurchaseDocument,
   SyncMetaDocument,
@@ -105,6 +106,10 @@ function syncMetaId(userId: string): string {
   return `sync:meta:${userId}`;
 }
 
+function migrationMarkerId(migrationId: string): string {
+  return `migration_marker:${migrationId}`;
+}
+
 function getContainers(config: ApiConfig): CosmosCache {
   if (cosmosCache) return cosmosCache;
 
@@ -134,6 +139,41 @@ export async function upsertMigrationRun(
 
   if (!resource) {
     throw new Error("Failed to upsert migration run.");
+  }
+
+  return resource;
+}
+
+export interface UpsertMigrationMarkerInput {
+  migrationId: string;
+  runId: string;
+  triggeredByUserId: string;
+  note: string;
+  result: Record<string, unknown> | null;
+}
+
+export async function upsertMigrationMarker(
+  config: ApiConfig,
+  input: UpsertMigrationMarkerInput
+): Promise<MigrationMarkerDocument> {
+  const { migrationRuns } = getContainers(config);
+  const document: MigrationMarkerDocument = {
+    id: migrationMarkerId(input.migrationId),
+    docType: "migration_marker",
+    migrationId: input.migrationId,
+    updatedAt: new Date().toISOString(),
+    lastRunId: input.runId,
+    triggeredByUserId: input.triggeredByUserId,
+    note: input.note,
+    result: input.result
+  };
+
+  const { resource } = await withCosmosRetry(() =>
+    migrationRuns.items.upsert<MigrationMarkerDocument>(document)
+  );
+
+  if (!resource) {
+    throw new Error("Failed to upsert migration marker.");
   }
 
   return resource;
