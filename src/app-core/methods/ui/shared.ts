@@ -26,6 +26,9 @@ interface VerifyPlayPurchaseApiResponse {
   pending?: boolean;
   message?: string;
   error?: string;
+  userId?: string;
+  hasProAccess?: boolean;
+  updatedAt?: string | null;
 }
 
 export type PurchaseProvider = "auto" | "play" | "stripe";
@@ -321,6 +324,30 @@ export async function submitPlayPurchaseVerification(
     return false;
   }
 
-  await app.debugLogEntitlement(true);
+  let verifiedPayload: VerifyPlayPurchaseApiResponse | null = null;
+  try {
+    verifiedPayload = (await response.json()) as VerifyPlayPurchaseApiResponse;
+  } catch {
+    verifiedPayload = null;
+  }
+
+  const hasProAccess =
+    typeof verifiedPayload?.hasProAccess === "boolean" ? verifiedPayload.hasProAccess : true;
+  const userId = typeof verifiedPayload?.userId === "string" ? verifiedPayload.userId : null;
+  const updatedAt = typeof verifiedPayload?.updatedAt === "string" ? verifiedPayload.updatedAt : null;
+
+  app.hasProAccess = hasProAccess;
+  localStorage.setItem(PRO_ACCESS_KEY, hasProAccess ? "1" : "0");
+  writeEntitlementCache({
+    userId,
+    hasProAccess,
+    updatedAt,
+    cachedAt: Date.now()
+  });
+
+  // Keep server as source-of-truth, but don't block immediate UI unlock on this extra fetch.
+  void app.debugLogEntitlement(true).catch((error: unknown) => {
+    console.warn("[whatfees] Post-purchase entitlement refresh failed", error);
+  });
   return true;
 }
