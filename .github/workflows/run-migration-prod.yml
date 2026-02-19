@@ -46,6 +46,7 @@ jobs:
         env:
           MIGRATIONS_API_BASE_URL: ${{ vars.MIGRATIONS_API_BASE_URL }}
           MIGRATIONS_ADMIN_KEY_PROD: ${{ secrets.MIGRATIONS_ADMIN_KEY_PROD }}
+          MIGRATIONS_FUNCTION_CODE_PROD: ${{ secrets.MIGRATIONS_FUNCTION_CODE_PROD }}
         run: |
           if [ -z "${MIGRATIONS_API_BASE_URL}" ]; then
             echo "Missing vars.MIGRATIONS_API_BASE_URL in prod-backend environment."
@@ -68,6 +69,7 @@ jobs:
         env:
           MIGRATIONS_API_BASE_URL: ${{ vars.MIGRATIONS_API_BASE_URL }}
           MIGRATIONS_ADMIN_KEY_PROD: ${{ secrets.MIGRATIONS_ADMIN_KEY_PROD }}
+          MIGRATIONS_FUNCTION_CODE_PROD: ${{ secrets.MIGRATIONS_FUNCTION_CODE_PROD }}
           MIGRATION_ID: ${{ inputs.migration_id }}
           DRY_RUN: ${{ inputs.dry_run }}
           NOTE: ${{ inputs.note }}
@@ -79,8 +81,13 @@ jobs:
             --argjson dryRun "${DRY_RUN}" \
             '{migrationId: $migrationId, dryRun: $dryRun, note: $note}')"
 
-          echo "POST ${MIGRATIONS_API_BASE_URL}/admin/migrations/run"
-          response_with_status="$(curl -sS -X POST "${MIGRATIONS_API_BASE_URL}/admin/migrations/run" \
+          run_url="${MIGRATIONS_API_BASE_URL}/migrations/run"
+          if [ -n "${MIGRATIONS_FUNCTION_CODE_PROD}" ]; then
+            run_url="${run_url}?code=${MIGRATIONS_FUNCTION_CODE_PROD}"
+          fi
+
+          echo "POST ${run_url}"
+          response_with_status="$(curl -sS -X POST "${run_url}" \
             -H "Content-Type: application/json" \
             -H "x-migration-key: ${MIGRATIONS_ADMIN_KEY_PROD}" \
             -H "x-admin-id: github-actions:${ACTOR}" \
@@ -100,6 +107,7 @@ jobs:
         env:
           MIGRATIONS_API_BASE_URL: ${{ vars.MIGRATIONS_API_BASE_URL }}
           MIGRATIONS_ADMIN_KEY_PROD: ${{ secrets.MIGRATIONS_ADMIN_KEY_PROD }}
+          MIGRATIONS_FUNCTION_CODE_PROD: ${{ secrets.MIGRATIONS_FUNCTION_CODE_PROD }}
           MIGRATION_ID: ${{ inputs.migration_id }}
           LIST_LIMIT: ${{ inputs.list_limit }}
           ACTOR: ${{ github.actor }}
@@ -114,8 +122,13 @@ jobs:
           fi
 
           query="migrationId=${MIGRATION_ID}&limit=${LIST_LIMIT}"
-          echo "GET ${MIGRATIONS_API_BASE_URL}/admin/migrations/runs?${query}"
-          response_with_status="$(curl -sS "${MIGRATIONS_API_BASE_URL}/admin/migrations/runs?${query}" \
+          list_url="${MIGRATIONS_API_BASE_URL}/migrations/runs?${query}"
+          if [ -n "${MIGRATIONS_FUNCTION_CODE_PROD}" ]; then
+            list_url="${list_url}&code=${MIGRATIONS_FUNCTION_CODE_PROD}"
+          fi
+
+          echo "GET ${list_url}"
+          response_with_status="$(curl -sS "${list_url}" \
             -H "x-migration-key: ${MIGRATIONS_ADMIN_KEY_PROD}" \
             -H "x-admin-id: github-actions:${ACTOR}" \
             -w $'\n%{http_code}')"
