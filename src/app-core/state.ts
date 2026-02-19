@@ -55,6 +55,7 @@ export function createInitialState(): AppState {
     boxPriceCost: DEFAULT_VALUES.BOX_PRICE,
     boxesPurchased: DEFAULT_VALUES.BOXES_PURCHASED,
     packsPerBox: DEFAULT_VALUES.PACKS_PER_BOX,
+    spotsPerBox: DEFAULT_VALUES.SPOTS_PER_BOX,
     costInputMode: "perBox",
     currency: "CAD",
     sellingCurrency: "CAD",

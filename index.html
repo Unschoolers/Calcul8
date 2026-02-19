@@ -776,6 +776,19 @@
                           @input="onPurchaseConfigChange"
                         ></v-text-field>
 
+                        <v-text-field
+                          v-model.number="spotsPerBox"
+                          label="RTYH Spots per Box"
+                          type="number"
+                          variant="outlined"
+                          density="compact"
+                          step="1"
+                          :min="1"
+                          class="mb-2"
+                          hide-details
+                          @input="onPurchaseConfigChange"
+                        ></v-text-field>
+
                         <div class="text-caption text-medium-emphasis mb-2">
                           Price values are read-only here. Update them in Live.
                         </div>
@@ -852,7 +865,7 @@
                         label="RTYH"
                         icon="mdi-cards-playing-outline"
                         avatar-color="success"
-                        :units="80"
+                        :units="totalSpots"
                         :calculate-profit="calculateProfit"
                         :safe-fixed="safeFixed"
                         :avg-price-needed="requiredSpotPriceFromNow"

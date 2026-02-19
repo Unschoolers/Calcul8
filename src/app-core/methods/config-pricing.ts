@@ -28,6 +28,7 @@ export const configPricingMethods: ConfigMethodSubset<
       totalCaseCost: this.totalCaseCost,
       targetProfitPercent: this.targetProfitPercent,
       boxesPurchased: this.boxesPurchased,
+      totalSpots: this.totalSpots,
       totalPacks: this.totalPacks,
       sellingTaxPercent: this.sellingTaxPercent,
       sellingShippingPerOrder: this.sellingShippingPerOrder
@@ -74,6 +75,9 @@ export const configPricingMethods: ConfigMethodSubset<
     }
     if (Number(this.sellingShippingPerOrder) < 0) {
       this.sellingShippingPerOrder = 0;
+    }
+    if (this.spotsPerBox == null || Number.isNaN(Number(this.spotsPerBox)) || Number(this.spotsPerBox) <= 0) {
+      this.spotsPerBox = DEFAULT_VALUES.SPOTS_PER_BOX;
     }
     this.recalculateDefaultPrices();
   },

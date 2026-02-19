@@ -33,6 +33,7 @@ export interface AppComputedState {
   portfolioPresetFilterItems: Array<{ title: string; value: number }>;
   portfolioSelectedPresetIds: number[];
   totalPacks: number;
+  totalSpots: number;
   boxPriceCostCAD: number;
   purchaseShippingCostCAD: number;
   purchaseCostInputLabel: string;
@@ -221,6 +222,7 @@ export interface AppComputedObject {
   portfolioPresetFilterItems(this: AppContext): Array<{ title: string; value: number }>;
   portfolioSelectedPresetIds(this: AppContext): number[];
   totalPacks(this: AppContext): number;
+  totalSpots(this: AppContext): number;
   boxPriceCostCAD(this: AppContext): number;
   purchaseShippingCostCAD(this: AppContext): number;
   purchaseCostInputLabel(this: AppContext): string;

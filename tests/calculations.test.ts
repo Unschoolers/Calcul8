@@ -11,6 +11,7 @@ import {
   calculateSalesProgress,
   calculateSalesStatus,
   calculateSoldPacksCount,
+  calculateTotalSpots,
   calculateSparklineData,
   calculateSparklineGradient,
   calculateTotalCaseCost,
@@ -139,6 +140,7 @@ test("calculatePriceForUnits and calculateDefaultSellingPrices are consistent", 
   const targetProfitPercent = 15;
   const totalPacks = 160;
   const boxesPurchased = 10;
+  const totalSpots = 50;
   const sellingTaxPercent = 15;
   const requiredNetRevenue = totalCaseCost + (totalCaseCost * targetProfitPercent) / 100;
 
@@ -149,6 +151,7 @@ test("calculatePriceForUnits and calculateDefaultSellingPrices are consistent", 
     totalCaseCost,
     targetProfitPercent,
     boxesPurchased,
+    totalSpots,
     totalPacks,
     sellingTaxPercent,
     sellingShippingPerOrder: 0
@@ -157,6 +160,36 @@ test("calculatePriceForUnits and calculateDefaultSellingPrices are consistent", 
   assert.equal(defaults.packPrice, byUnitsPack);
   assert.equal(defaults.boxPriceSell, byUnitsBox);
   assert.ok(defaults.spotPrice > 0);
+});
+
+test("calculateTotalSpots scales RTYH spots with boxes purchased", () => {
+  assert.equal(calculateTotalSpots(16), 80);
+  assert.equal(calculateTotalSpots(8), 40);
+  assert.equal(calculateTotalSpots(4), 20);
+  assert.equal(calculateTotalSpots(0), 0);
+  assert.equal(calculateTotalSpots(10, 6), 60);
+});
+
+test("calculateDefaultSellingPrices uses provided totalSpots for RTYH price", () => {
+  const base = {
+    totalCaseCost: 1000,
+    targetProfitPercent: 15,
+    boxesPurchased: 10,
+    totalPacks: 160,
+    sellingTaxPercent: 15,
+    sellingShippingPerOrder: 0
+  };
+
+  const fewerSpots = calculateDefaultSellingPrices({
+    ...base,
+    totalSpots: 50
+  });
+  const moreSpots = calculateDefaultSellingPrices({
+    ...base,
+    totalSpots: 80
+  });
+
+  assert.ok(fewerSpots.spotPrice > moreSpots.spotPrice);
 });
 
 test("calculateProfitForListing returns net minus case cost", () => {
@@ -1057,6 +1090,16 @@ test("required price computed values handle reached/empty/remaining cases", () =
   } as unknown as Parameters<typeof appComputed.requiredPackPriceFromNow>[0]);
 
   assert.equal(computedPack, expectedPack);
+});
+
+test("remainingSpotsEquivalent uses dynamic totalSpots instead of fixed 80", () => {
+  const remainingSpots = appComputed.remainingSpotsEquivalent.call({
+    remainingPacksCount: 64,
+    totalPacks: 128,
+    totalSpots: 40
+  } as unknown as Parameters<typeof appComputed.remainingSpotsEquivalent>[0]);
+
+  assert.equal(remainingSpots, 20);
 });
 
 test("allPresetPerformance uses in-memory sales for active preset before storage sync", () => {

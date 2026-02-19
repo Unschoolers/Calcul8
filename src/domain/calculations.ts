@@ -1,4 +1,4 @@
-import { TAX_RATES, UNITS_PER_CASE, WHATNOT_FEES } from "../constants.ts";
+import { DEFAULT_VALUES, TAX_RATES, WHATNOT_FEES } from "../constants.ts";
 import type {
   CurrencyCode,
   PortfolioTotals,
@@ -14,6 +14,16 @@ export function toRate(percent: number): number {
 
 export function calculateTotalPacks(boxesPurchased: number, packsPerBox: number, defaultPacksPerBox = 16): number {
   return (Number(boxesPurchased) || 0) * (Number(packsPerBox) || defaultPacksPerBox);
+}
+
+export function calculateTotalSpots(
+  boxesPurchased: number,
+  spotsPerBox = DEFAULT_VALUES.SPOTS_PER_BOX
+): number {
+  const boxes = Number(boxesPurchased) || 0;
+  const spots = Number(spotsPerBox) || 0;
+  if (boxes <= 0 || spots <= 0) return 0;
+  return boxes * spots;
 }
 
 export function calculateBoxPriceCostCad(
@@ -142,6 +152,7 @@ export function calculateDefaultSellingPrices(params: {
   totalCaseCost: number;
   targetProfitPercent: number;
   boxesPurchased: number;
+  totalSpots: number;
   totalPacks: number;
   sellingTaxPercent: number;
   sellingShippingPerOrder: number;
@@ -149,7 +160,7 @@ export function calculateDefaultSellingPrices(params: {
   const targetProfit = (params.totalCaseCost * (Number(params.targetProfitPercent) || 0)) / 100;
   const requiredNetRevenue = params.totalCaseCost + targetProfit;
   return {
-    spotPrice: calculatePriceForUnits(UNITS_PER_CASE.SPOT, requiredNetRevenue, params.sellingTaxPercent, params.sellingShippingPerOrder),
+    spotPrice: calculatePriceForUnits(params.totalSpots, requiredNetRevenue, params.sellingTaxPercent, params.sellingShippingPerOrder),
     boxPriceSell: calculatePriceForUnits(params.boxesPurchased, requiredNetRevenue, params.sellingTaxPercent, params.sellingShippingPerOrder),
     packPrice: calculatePriceForUnits(params.totalPacks, requiredNetRevenue, params.sellingTaxPercent, params.sellingShippingPerOrder)
   };

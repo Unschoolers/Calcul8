@@ -48,6 +48,7 @@ export interface PresetSetup {
   boxPriceCost: number;
   boxesPurchased: number;
   packsPerBox: number;
+  spotsPerBox?: number;
   costInputMode: CostInputMode;
   currency: CurrencyCode;
   sellingCurrency: CurrencyCode;

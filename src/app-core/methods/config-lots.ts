@@ -29,6 +29,7 @@ export const configLotMethods: ConfigMethodSubset<
       boxPriceCost: this.boxPriceCost,
       boxesPurchased: this.boxesPurchased,
       packsPerBox: this.packsPerBox,
+      spotsPerBox: this.spotsPerBox,
       costInputMode: this.costInputMode,
       currency: this.currency,
       sellingCurrency: this.sellingCurrency,
@@ -119,6 +120,7 @@ export const configLotMethods: ConfigMethodSubset<
     this.boxPriceCost = preset.boxPriceCost ?? DEFAULT_VALUES.BOX_PRICE;
     this.boxesPurchased = preset.boxesPurchased ?? DEFAULT_VALUES.BOXES_PURCHASED;
     this.packsPerBox = preset.packsPerBox ?? DEFAULT_VALUES.PACKS_PER_BOX;
+    this.spotsPerBox = preset.spotsPerBox ?? DEFAULT_VALUES.SPOTS_PER_BOX;
     this.costInputMode = preset.costInputMode ?? "perBox";
     this.currency = preset.currency ?? "CAD";
     this.sellingCurrency = preset.sellingCurrency ?? "CAD";

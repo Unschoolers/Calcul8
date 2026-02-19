@@ -1,7 +1,8 @@
-import { DEFAULT_VALUES, UNITS_PER_CASE } from "../constants.ts";
+import { DEFAULT_VALUES } from "../constants.ts";
 import { GOOGLE_PROFILE_CACHE_KEY, GOOGLE_TOKEN_KEY } from "./methods/ui/shared.ts";
 import {
   calculateBoxPriceCostCad,
+  calculateTotalSpots,
   calculatePriceForUnits as calculateUnitPrice,
   calculatePortfolioTotals,
   calculatePresetPerformanceSummary,
@@ -189,6 +190,10 @@ export const appComputed: AppComputedObject = {
     return calculateTotalPacks(this.boxesPurchased, this.packsPerBox, DEFAULT_VALUES.PACKS_PER_BOX);
   },
 
+  totalSpots(): number {
+    return calculateTotalSpots(this.boxesPurchased, this.spotsPerBox);
+  },
+
   boxPriceCostCAD(): number {
     return calculateBoxPriceCostCad(
       this.boxPriceCost,
@@ -285,7 +290,7 @@ export const appComputed: AppComputedObject = {
 
   remainingSpotsEquivalent(): number {
     if (this.totalPacks <= 0) return 0;
-    return (this.remainingPacksCount / this.totalPacks) * UNITS_PER_CASE.SPOT;
+    return (this.remainingPacksCount / this.totalPacks) * this.totalSpots;
   },
 
   requiredPackPriceFromNow(): number | null {
