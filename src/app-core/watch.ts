@@ -13,7 +13,10 @@ export const appWatch: AppWatchObject = {
     this.speedDialOpenSales = false;
 
     if (newTab !== "portfolio" && this.portfolioChart) {
-      this.portfolioChart.destroy();
+      const maybeDestroy = (this.portfolioChart as { destroy?: () => void }).destroy;
+      if (typeof maybeDestroy === "function") {
+        maybeDestroy.call(this.portfolioChart);
+      }
       this.portfolioChart = null;
     }
 
@@ -47,7 +50,10 @@ export const appWatch: AppWatchObject = {
       this.currentTab = "config";
       this.sales = [];
       if (this.salesChart) {
-        this.salesChart.destroy();
+        const maybeDestroy = (this.salesChart as { destroy?: () => void }).destroy;
+        if (typeof maybeDestroy === "function") {
+          maybeDestroy.call(this.salesChart);
+        }
         this.salesChart = null;
       }
     }

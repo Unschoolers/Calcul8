@@ -210,23 +210,23 @@
           <div :class="{ 'interaction-disabled': !hasLotSelected }" :style="!hasLotSelected ? 'pointer-events: none;' : null">
             <v-window v-model="currentTab" :transition="false" :reverse-transition="false" :touch="false" class="tabs-window">
               <!-- CONFIG -->
-              <v-window-item value="config" :transition="false" :reverse-transition="false" eager>
-                <config-window></config-window>
+              <v-window-item key="config" value="config" :transition="false" :reverse-transition="false" eager>
+                <config-window :ctx="$root"></config-window>
               </v-window-item>
 
               <!-- LIVE -->
-              <v-window-item value="live" :transition="false" :reverse-transition="false" eager>
-                <live-window></live-window>
+              <v-window-item key="live" value="live" :transition="false" :reverse-transition="false" eager>
+                <live-window :ctx="$root"></live-window>
               </v-window-item>
 
               <!-- SALES -->
-              <v-window-item value="sales" :transition="false" :reverse-transition="false" eager>
-                <sales-window></sales-window>
+              <v-window-item key="sales" value="sales" :transition="false" :reverse-transition="false" eager>
+                <sales-window ref="salesWindow" :ctx="$root"></sales-window>
               </v-window-item>
 
               <!-- PORTFOLIO -->
-              <v-window-item value="portfolio" :transition="false" :reverse-transition="false" eager>
-                <portfolio-window></portfolio-window>
+              <v-window-item key="portfolio" value="portfolio" :transition="false" :reverse-transition="false" eager>
+                <portfolio-window ref="portfolioWindow" :ctx="$root"></portfolio-window>
               </v-window-item>
             </v-window>
           </div>

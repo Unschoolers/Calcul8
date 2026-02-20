@@ -70,11 +70,17 @@ export const appLifecycle: AppLifecycleObject = {
     this.stopCloudSyncScheduler();
     this.stopOfflineReconnectScheduler();
     if (this.salesChart) {
-      this.salesChart.destroy();
+      const maybeDestroy = (this.salesChart as { destroy?: () => void }).destroy;
+      if (typeof maybeDestroy === "function") {
+        maybeDestroy.call(this.salesChart);
+      }
       this.salesChart = null;
     }
     if (this.portfolioChart) {
-      this.portfolioChart.destroy();
+      const maybeDestroy = (this.portfolioChart as { destroy?: () => void }).destroy;
+      if (typeof maybeDestroy === "function") {
+        maybeDestroy.call(this.portfolioChart);
+      }
       this.portfolioChart = null;
     }
     if (this.syncStatusResetTimeoutId != null) {

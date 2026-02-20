@@ -127,6 +127,28 @@ function focusSaleQuantityInput(context: AppContext): void {
   runFocus();
 }
 
+function resolveCanvasRef(
+  context: AppContext,
+  windowRefName: "salesWindow" | "portfolioWindow",
+  canvasRefName: string
+): HTMLCanvasElement | null {
+  if (!context.$refs) return null;
+  const rootRefs = context.$refs as Record<string, unknown>;
+
+  const direct = rootRefs[canvasRefName];
+  if (direct instanceof HTMLCanvasElement) {
+    return direct;
+  }
+
+  const windowComponent = rootRefs[windowRefName] as { $refs?: Record<string, unknown> } | undefined;
+  const nested = windowComponent?.$refs?.[canvasRefName];
+  if (nested instanceof HTMLCanvasElement) {
+    return nested;
+  }
+
+  return null;
+}
+
 export const salesMethods: ThisType<AppContext> & Pick<
   AppMethodState,
   | "loadSalesFromStorage"
@@ -296,9 +318,13 @@ export const salesMethods: ThisType<AppContext> & Pick<
     this.salesChart = null;
 
     const chartCanvas = this.chartView === "pie"
-      ? this.$refs.salesChart
-      : this.$refs.salesTrendChart;
+      ? resolveCanvasRef(this, "salesWindow", "salesChart")
+      : resolveCanvasRef(this, "salesWindow", "salesTrendChart");
     if (!chartCanvas) return;
+    const existingSalesChart = Chart.getChart(chartCanvas);
+    if (existingSalesChart) {
+      safeDestroyChart(existingSalesChart);
+    }
 
     const ctx = chartCanvas.getContext("2d");
     if (!ctx) return;
@@ -429,8 +455,12 @@ export const salesMethods: ThisType<AppContext> & Pick<
 
     if (this.currentTab !== "portfolio") return;
 
-    const chartCanvas = this.$refs.portfolioChart;
+    const chartCanvas = resolveCanvasRef(this, "portfolioWindow", "portfolioChart");
     if (!chartCanvas) return;
+    const existingPortfolioChart = Chart.getChart(chartCanvas);
+    if (existingPortfolioChart) {
+      safeDestroyChart(existingPortfolioChart);
+    }
 
     const ctx = chartCanvas.getContext("2d");
     if (!ctx) return;

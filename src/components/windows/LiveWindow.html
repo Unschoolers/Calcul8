@@ -7,8 +7,8 @@
                         icon="mdi-tag-outline"
                         avatar-color="primary"
                         :units="totalPacks"
-                        :calculate-profit="calculateProfit"
-                        :safe-fixed="safeFixed"
+                        :calculate-profit="profitForLive"
+                        :safe-fixed="safeFixedForLive"
                         :avg-price-needed="requiredPackPriceFromNow"
                       ></live-price-card>
                     </v-col>
@@ -20,8 +20,8 @@
                         icon="mdi-cube-outline"
                         avatar-color="secondary"
                         :units="boxesPurchased"
-                        :calculate-profit="calculateProfit"
-                        :safe-fixed="safeFixed"
+                        :calculate-profit="profitForLive"
+                        :safe-fixed="safeFixedForLive"
                         :avg-price-needed="requiredBoxPriceFromNow"
                       ></live-price-card>
                     </v-col>
@@ -33,8 +33,8 @@
                         icon="mdi-cards-playing-outline"
                         avatar-color="success"
                         :units="totalSpots"
-                        :calculate-profit="calculateProfit"
-                        :safe-fixed="safeFixed"
+                        :calculate-profit="profitForLive"
+                        :safe-fixed="safeFixedForLive"
                         :avg-price-needed="requiredSpotPriceFromNow"
                       ></live-price-card>
                     </v-col>

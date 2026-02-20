@@ -1,15 +1,38 @@
 import template from "./LiveWindow.html?raw";
 import "./LiveWindow.css";
-import { createWindowContextBridge } from "./bridge.ts";
 import { LivePriceCard } from "../LivePriceCard.ts";
+import type { PropType } from "vue";
 
 export const LiveWindow = {
   name: "LiveWindow",
+  props: {
+    ctx: {
+      type: Object as PropType<Record<string, unknown>>,
+      required: true
+    }
+  },
   components: {
     LivePriceCard
   },
-  setup() {
-    return createWindowContextBridge();
+  methods: {
+    profitForLive(units: number, pricePerUnit: number): number {
+      const fn = (this as Record<string, unknown>).calculateProfit;
+      if (typeof fn === "function") {
+        return (fn as (u: number, p: number) => number)(units, pricePerUnit);
+      }
+      return 0;
+    },
+    safeFixedForLive(value: number, decimals = 2): string {
+      const fn = (this as Record<string, unknown>).safeFixed;
+      if (typeof fn === "function") {
+        return (fn as (v: number, d?: number) => string)(value, decimals);
+      }
+      if (value == null || Number.isNaN(Number(value))) return "0.00";
+      return Number(value).toFixed(decimals);
+    }
+  },
+  setup(props: { ctx: Record<string, unknown> }) {
+    return props.ctx;
   },
   template
 };

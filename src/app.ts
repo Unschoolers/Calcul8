@@ -18,11 +18,6 @@ export const appOptions = {
     PortfolioWindow
   },
   data: createInitialState,
-  provide() {
-    return {
-      appCtx: this
-    };
-  },
   mounted: appLifecycle.mounted,
   beforeUnmount: appLifecycle.beforeUnmount,
   watch: { ...appWatch },

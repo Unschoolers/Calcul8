@@ -46,7 +46,17 @@ export const LivePriceCard = defineComponent({
       this.$emit("update:modelValue", current + delta);
     },
     profitAt(price: number) {
-      return this.calculateProfit(this.units, price);
+      const fn = this.calculateProfit;
+      if (typeof fn !== "function") return 0;
+      return fn(this.units, price);
+    },
+    formatAt(value: number, decimals = 2): string {
+      const fn = this.safeFixed;
+      if (typeof fn !== "function") {
+        if (value == null || Number.isNaN(Number(value))) return "0.00";
+        return Number(value).toFixed(decimals);
+      }
+      return fn(value, decimals);
     }
   },
   template: `
@@ -67,7 +77,7 @@ export const LivePriceCard = defineComponent({
               size="small"
               class="font-weight-bold"
             >
-              {{ profitAt(modelValue) >= 0 ? '+' : '' }}\${{ safeFixed(profitAt(modelValue)) }}
+              {{ profitAt(modelValue) >= 0 ? '+' : '' }}\${{ formatAt(profitAt(modelValue)) }}
             </v-chip>
           </v-col>
 
@@ -100,20 +110,20 @@ export const LivePriceCard = defineComponent({
           Avg price needed considering sales:
           <span class="font-weight-bold">
             <template v-if="avgPriceNeeded === null">N/A</template>
-            <template v-else>\${{ safeFixed(avgPriceNeeded, 0) }}</template>
+            <template v-else>\${{ formatAt(avgPriceNeeded, 0) }}</template>
           </span>
         </div>
         <v-row dense class="text-center">
           <v-col cols="6">
             <div class="text-caption text-medium-emphasis">At \${{ modelValue - 1 }}</div>
             <div class="text-body-2 font-weight-bold" :class="profitAt(modelValue - 1) >= 0 ? 'text-success' : 'text-error'">
-              {{ profitAt(modelValue - 1) >= 0 ? '+' : '' }}\${{ safeFixed(profitAt(modelValue - 1)) }}
+              {{ profitAt(modelValue - 1) >= 0 ? '+' : '' }}\${{ formatAt(profitAt(modelValue - 1)) }}
             </div>
           </v-col>
           <v-col cols="6">
             <div class="text-caption text-medium-emphasis">At \${{ modelValue + 1 }}</div>
             <div class="text-body-2 font-weight-bold" :class="profitAt(modelValue + 1) >= 0 ? 'text-success' : 'text-error'">
-              {{ profitAt(modelValue + 1) >= 0 ? '+' : '' }}\${{ safeFixed(profitAt(modelValue + 1)) }}
+              {{ profitAt(modelValue + 1) >= 0 ? '+' : '' }}\${{ formatAt(profitAt(modelValue + 1)) }}
             </div>
           </v-col>
         </v-row>
