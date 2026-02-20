@@ -1,38 +1,31 @@
-import type { Preset, Sale } from "../../types/app.ts";
+import type { Lot, Sale } from "../../types/app.ts";
 import type { AppContext, AppMethodState } from "../context.ts";
 
-export type ImportablePreset = Preset & { sales?: Sale[] };
+export type ImportableLot = Lot & { sales?: Sale[] };
 
 export type ConfigMethodSubset<K extends keyof AppMethodState> = ThisType<AppContext> & Pick<AppMethodState, K>;
 
 export type ConfigMethods = ConfigMethodSubset<
   | "getSalesStorageKey"
-  | "loadSalesForPresetId"
+  | "loadSalesForLotId"
   | "netFromGross"
   | "getExchangeRate"
   | "loadLotsFromStorage"
-  | "loadPresetsFromStorage"
   | "saveLotsToStorage"
-  | "savePresetsToStorage"
   | "getCurrentSetup"
   | "autoSaveSetup"
   | "syncLivePricesFromDefaults"
   | "resetLivePrices"
   | "applyLivePricesToDefaults"
   | "createNewLot"
-  | "createNewPreset"
   | "loadLot"
-  | "loadPreset"
   | "deleteCurrentLot"
-  | "deleteCurrentPreset"
   | "exportLots"
-  | "exportPresets"
   | "exportSales"
   | "exportPortfolioReport"
   | "openPortfolioReportModal"
   | "copyPortfolioReportTable"
   | "importLots"
-  | "importPresets"
   | "handleFileImport"
   | "calculateProfit"
   | "recalculateDefaultPrices"
@@ -59,8 +52,8 @@ export function toDateOnly(value: unknown): string | null {
   return date.toISOString().split("T")[0];
 }
 
-export function inferDateFromPresetId(presetId: number): string | null {
-  const timestamp = Number(presetId);
+export function inferDateFromLotId(lotId: number): string | null {
+  const timestamp = Number(lotId);
   // Millisecond timestamp roughly between 2000 and 2100.
   if (!Number.isFinite(timestamp) || timestamp < 946684800000 || timestamp > 4102444800000) {
     return null;

@@ -1,0 +1,282 @@
+                <v-row class="config-layout">
+                  <!-- Purchase Cost -->
+                  <v-col cols="12" md="6">
+                    <v-card elevation="4" class="config-card">
+                      <v-card-title class="text-subtitle-1">
+                        <v-icon class="mr-2">mdi-package-variant</v-icon>
+                        Purchasing
+                      </v-card-title>
+                      <v-divider></v-divider>
+                      <v-card-text>
+                        <v-btn-toggle
+                          v-model="purchaseUiMode"
+                          mandatory
+                          divided
+                          density="compact"
+                          variant="outlined"
+                          class="mb-2"
+                        >
+                          <v-btn value="simple" size="small">Simple</v-btn>
+                          <v-btn value="expert" size="small">Expert</v-btn>
+                        </v-btn-toggle>
+
+                        <div v-if="purchaseUiMode === 'simple'" class="text-caption text-medium-emphasis mb-2">
+                          Switch to Expert for taxes, shipping, date, and exchange settings.
+                        </div>
+
+                        <v-row dense>
+                          <v-col :cols="purchaseUiMode === 'simple' ? 8 : 6">
+                            <v-text-field
+                              v-model.number="purchaseCostInputValue"
+                              :label="purchaseCostInputLabel"
+                              type="number"
+                              variant="outlined"
+                              density="compact"
+                              hide-details
+                              @input="onPurchaseConfigChange"
+                            ></v-text-field>
+                          </v-col>
+                          <v-col :cols="purchaseUiMode === 'simple' ? 4 : 6">
+                            <v-btn-toggle
+                              v-model="currency"
+                              mandatory
+                              divided
+                              density="compact"
+                              variant="outlined"
+                              @update:model-value="onPurchaseConfigChange"
+                            >
+                              <v-btn value="CAD" title="CAD">🇨🇦</v-btn>
+                              <v-btn value="USD" title="USD">🇺🇸</v-btn>
+                            </v-btn-toggle>
+                          </v-col>
+                        </v-row>
+
+                        <v-text-field
+                          v-model.number="boxesPurchased"
+                          label="Boxes Purchased"
+                          type="number"
+                          variant="outlined"
+                          density="compact"
+                          :min="1"
+                          class="mt-2"
+                          hide-details
+                          @input="onPurchaseConfigChange"
+                        ></v-text-field>
+
+                        <v-text-field
+                          v-model.number="packsPerBox"
+                          label="Packs per Box"
+                          type="number"
+                          variant="outlined"
+                          density="compact"
+                          :min="1"
+                          class="mt-2"
+                          hide-details
+                          @input="onPurchaseConfigChange"
+                        ></v-text-field>
+
+                        <template v-if="purchaseUiMode === 'expert'">
+                          <v-btn-toggle
+                          v-model="costInputMode"
+                          mandatory
+                          density="compact"
+                          variant="outlined"
+                          class="mb-2"
+                          @update:model-value="onPurchaseConfigChange"
+                        >
+                          <v-btn value="perBox" size="small">Per Box</v-btn>
+                          <v-btn value="total" size="small">Total</v-btn>
+                        </v-btn-toggle>
+
+                        <v-text-field
+                          v-model="purchaseDate"
+                          label="Purchase Date"
+                          type="date"
+                          variant="outlined"
+                          density="compact"
+                          class="mt-2"
+                          hide-details
+                          @change="onPurchaseConfigChange"
+                        ></v-text-field>
+
+                        <v-text-field
+                          v-if="currency !== sellingCurrency"
+                          v-model.number="exchangeRate"
+                          label="USD to CAD Rate"
+                          type="number"
+                          variant="outlined"
+                          density="compact"
+                          step="0.01"
+                          class="mt-2"
+                          hide-details
+                          @input="onPurchaseConfigChange"
+                        ></v-text-field>
+
+                        <v-text-field
+                          v-model.number="purchaseShippingCost"
+                          :label="`Purchase Shipping (${currency})`"
+                          type="number"
+                          variant="outlined"
+                          density="compact"
+                          step="0.01"
+                          :min="0"
+                          class="mt-2"
+                          hide-details
+                          @input="onPurchaseConfigChange"
+                        ></v-text-field>
+
+                        <v-alert v-if="conversionInfo" type="info" density="compact" class="mt-2">
+                          {{ conversionInfo }}
+                        </v-alert>
+
+                        <v-text-field
+                          v-model.number="purchaseTaxPercent"
+                          label="Purchase Taxes %"
+                          type="number"
+                          variant="outlined"
+                          density="compact"
+                          step="0.01"
+                          :min="0"
+                          class="mt-2"
+                          hide-details
+                          :rules="[v => v !== null && v !== '' || 'Purchase tax is required']"
+                          @input="onPurchaseConfigChange"
+                        ></v-text-field>
+
+                        <v-checkbox
+                          v-model="includeTax"
+                          :label="`Include ${purchaseTaxPercent || 0}% purchase tax`"
+                          density="compact"
+                          hide-details
+                          @change="onPurchaseConfigChange"
+                        ></v-checkbox>
+                        </template>
+
+                        <v-card
+                          elevation="0"
+                          color="info"
+                          dark
+                          class="mt-3 purchase-summary-card"
+                        >
+                          <v-card-text class="py-2 px-3">
+                            <div class="text-caption">Total Purchase Cost</div>
+                            <div class="text-h6 font-weight-bold">${{ formatCurrency(totalCaseCost) }}</div>
+                            <div class="text-caption mt-1">{{ boxesPurchased }} boxes × {{ packsPerBox }} packs = {{ totalPacks }} packs</div>
+                            <div class="text-caption">Includes ${{ formatCurrency(purchaseShippingCostCAD) }} {{ sellingCurrency }} shipping</div>
+                          </v-card-text>
+                        </v-card>
+                      </v-card-text>
+                    </v-card>
+                  </v-col>
+
+                  <!-- Default Prices -->
+                  <v-col cols="12" md="6">
+                    <v-card elevation="4" class="config-card">
+                      <v-card-title class="text-subtitle-1">
+                        <v-icon class="mr-2">mdi-cash-multiple</v-icon>
+                        Selling
+                      </v-card-title>
+                      <v-divider></v-divider>
+                      <v-card-text>
+                        <v-btn-toggle
+                          v-model="sellingCurrency"
+                          mandatory
+                          divided
+                          density="compact"
+                          variant="outlined"
+                          class="mb-2"
+                          @update:model-value="onPurchaseConfigChange"
+                        >
+                          <v-btn value="CAD" title="CAD">🇨🇦</v-btn>
+                          <v-btn value="USD" title="USD">🇺🇸</v-btn>
+                        </v-btn-toggle>
+
+                        <v-text-field
+                          :model-value="targetProfitPercent ? targetProfitPercent + '%' : 'Not set'"
+                          label="Target Profit %"
+                          variant="outlined"
+                          density="compact"
+                          hide-details
+                          readonly
+                          class="mb-2"
+                          prepend-inner-icon="mdi-calculator"
+                        ></v-text-field>
+
+                        <v-text-field
+                          v-model.number="sellingTaxPercent"
+                          label="Selling Taxes %"
+                          type="number"
+                          variant="outlined"
+                          density="compact"
+                          step="0.01"
+                          :min="0"
+                          class="mb-2"
+                          hide-details
+                          :rules="[v => v !== null && v !== '' || 'Selling tax is required']"
+                          @input="onPurchaseConfigChange"
+                        ></v-text-field>
+
+                        <v-text-field
+                          v-model.number="sellingShippingPerOrder"
+                          :label="`Average Buyer Shipping (${sellingCurrency})`"
+                          type="number"
+                          variant="outlined"
+                          density="compact"
+                          step="0.01"
+                          :min="0"
+                          class="mb-2"
+                          hide-details
+                          @input="onPurchaseConfigChange"
+                        ></v-text-field>
+
+                        <v-text-field
+                          v-model.number="spotsPerBox"
+                          label="RTYH Spots per Box"
+                          type="number"
+                          variant="outlined"
+                          density="compact"
+                          step="1"
+                          :min="1"
+                          class="mb-2"
+                          hide-details
+                          @input="onPurchaseConfigChange"
+                        ></v-text-field>
+
+                        <div class="text-caption text-medium-emphasis mb-2">
+                          Price values are read-only here. Update them in Live.
+                        </div>
+
+                        <v-list density="compact" nav lines="one" class="price-link-list">
+                          <v-list-item
+                            :title="`RTYH Spot (${sellingCurrency})`"
+                            :subtitle="`$${formatCurrency(spotPrice)}`"
+                            @click="currentTab = 'live'"
+                          >
+                            <template #append>
+                              <v-icon size="18">mdi-open-in-new</v-icon>
+                            </template>
+                          </v-list-item>
+                          <v-list-item
+                            :title="`Box Selling Price (${sellingCurrency})`"
+                            :subtitle="`$${formatCurrency(boxPriceSell)}`"
+                            @click="currentTab = 'live'"
+                          >
+                            <template #append>
+                              <v-icon size="18">mdi-open-in-new</v-icon>
+                            </template>
+                          </v-list-item>
+                          <v-list-item
+                            :title="`Pack (${sellingCurrency})`"
+                            :subtitle="`$${formatCurrency(packPrice)}`"
+                            @click="currentTab = 'live'"
+                          >
+                            <template #append>
+                              <v-icon size="18">mdi-open-in-new</v-icon>
+                            </template>
+                          </v-list-item>
+                        </v-list>
+                      </v-card-text>
+                    </v-card>
+                  </v-col>
+                </v-row>
+

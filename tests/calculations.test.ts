@@ -7,7 +7,7 @@ import {
   calculatePriceForUnits,
   calculateProfitForListing,
   calculatePortfolioTotals,
-  calculatePresetPerformanceSummary,
+  calculateLotPerformanceSummary,
   calculateSalesProgress,
   calculateSalesStatus,
   calculateSoldPacksCount,
@@ -23,7 +23,7 @@ import { appWatch } from "../src/app-core/watch.ts";
 import { configMethods } from "../src/app-core/methods/config.ts";
 import { salesMethods } from "../src/app-core/methods/sales.ts";
 import { getLegacySalesStorageKey } from "../src/app-core/storageKeys.ts";
-import type { Preset, Sale } from "../src/types/app.ts";
+import type { Lot, Sale } from "../src/types/app.ts";
 
 type MockStorage = {
   getItem(key: string): string | null;
@@ -231,9 +231,9 @@ test("sparkline helpers return normalized series and valid gradient", () => {
 });
 
 test("preset and portfolio summaries aggregate correctly", () => {
-  const presetA: Preset = {
+  const presetA: Lot = {
     id: 1,
-    name: "Preset A",
+    name: "Lot A",
     boxPriceCost: 100,
     boxesPurchased: 1,
     packsPerBox: 10,
@@ -253,10 +253,10 @@ test("preset and portfolio summaries aggregate correctly", () => {
     targetProfitPercent: 15
   };
 
-  const presetB: Preset = {
+  const presetB: Lot = {
     ...presetA,
     id: 2,
-    name: "Preset B",
+    name: "Lot B",
     boxPriceCost: 80
   };
 
@@ -267,17 +267,17 @@ test("preset and portfolio summaries aggregate correctly", () => {
     { id: 2, type: "box", quantity: 1, packsCount: 10, price: 120, buyerShipping: 0, date: "2026-02-11" }
   ];
 
-  const rowA = calculatePresetPerformanceSummary(presetA, salesA, 1.4);
-  const rowB = calculatePresetPerformanceSummary(presetB, salesB, 1.4);
+  const rowA = calculateLotPerformanceSummary(presetA, salesA, 1.4);
+  const rowB = calculateLotPerformanceSummary(presetB, salesB, 1.4);
   const totals = calculatePortfolioTotals([rowA, rowB]);
 
-  assert.equal(rowA.presetName, "Preset A");
+  assert.equal(rowA.lotName, "Lot A");
   assert.equal(rowA.salesCount, 1);
   assert.equal(rowA.lastSaleDate, "2026-02-10");
-  assert.equal(rowB.presetName, "Preset B");
+  assert.equal(rowB.lotName, "Lot B");
   assert.equal(rowB.salesCount, 1);
 
-  assert.equal(totals.presetCount, 2);
+  assert.equal(totals.lotCount, 2);
   assert.equal(totals.totalSalesCount, 2);
   assert.equal(totals.totalRevenue, rowA.totalRevenue + rowB.totalRevenue);
   assert.equal(totals.totalCost, rowA.totalCost + rowB.totalCost);
@@ -285,7 +285,7 @@ test("preset and portfolio summaries aggregate correctly", () => {
 });
 
 test("preset performance summary handles empty sales with conversion, tax, customs, and shipping", () => {
-  const preset: Preset = {
+  const preset: Lot = {
     id: 3,
     name: "USD Case",
     boxPriceCost: 100,
@@ -307,7 +307,7 @@ test("preset performance summary handles empty sales with conversion, tax, custo
     targetProfitPercent: 15
   };
 
-  const summary = calculatePresetPerformanceSummary(preset, [], 1.4);
+  const summary = calculateLotPerformanceSummary(preset, [], 1.4);
 
   assert.equal(summary.salesCount, 0);
   assert.equal(summary.totalRevenue, 0);
@@ -320,7 +320,7 @@ test("preset performance summary handles empty sales with conversion, tax, custo
 });
 
 test("preset performance summary uses latest sale date and shipping-aware revenue", () => {
-  const preset: Preset = {
+  const preset: Lot = {
     id: 4,
     name: "Date + Shipping",
     boxPriceCost: 80,
@@ -353,7 +353,7 @@ test("preset performance summary uses latest sale date and shipping-aware revenu
     return sum + calculateNetFromGross(gross, preset.sellingTaxPercent, sale.buyerShipping ?? 0, 1);
   }, 0);
 
-  const summary = calculatePresetPerformanceSummary(preset, sales, 1.4);
+  const summary = calculateLotPerformanceSummary(preset, sales, 1.4);
 
   assert.equal(summary.lastSaleDate, "2026-01-12");
   assert.equal(summary.totalRevenue, expectedRevenue);
@@ -361,11 +361,11 @@ test("preset performance summary uses latest sale date and shipping-aware revenu
   assert.equal(summary.soldPacks, 19);
 });
 
-test("portfolio totals handle empty rows and only count strictly positive presets as profitable", () => {
+test("portfolio totals handle empty rows and only count strictly positive lots as profitable", () => {
   const emptyTotals = calculatePortfolioTotals([]);
   assert.deepEqual(emptyTotals, {
-    presetCount: 0,
-    profitablePresetCount: 0,
+    lotCount: 0,
+    profitableLotCount: 0,
     totalSalesCount: 0,
     totalRevenue: 0,
     totalCost: 0,
@@ -374,8 +374,8 @@ test("portfolio totals handle empty rows and only count strictly positive preset
 
   const totals = calculatePortfolioTotals([
     {
-      presetId: 1,
-      presetName: "Positive",
+      lotId: 1,
+      lotName: "Positive",
       salesCount: 2,
       totalRevenue: 200,
       totalCost: 150,
@@ -386,8 +386,8 @@ test("portfolio totals handle empty rows and only count strictly positive preset
       lastSaleDate: "2026-01-01"
     },
     {
-      presetId: 2,
-      presetName: "Break-even",
+      lotId: 2,
+      lotName: "Break-even",
       salesCount: 1,
       totalRevenue: 100,
       totalCost: 100,
@@ -398,8 +398,8 @@ test("portfolio totals handle empty rows and only count strictly positive preset
       lastSaleDate: "2026-01-02"
     },
     {
-      presetId: 3,
-      presetName: "Negative",
+      lotId: 3,
+      lotName: "Negative",
       salesCount: 3,
       totalRevenue: 90,
       totalCost: 120,
@@ -411,8 +411,8 @@ test("portfolio totals handle empty rows and only count strictly positive preset
     }
   ]);
 
-  assert.equal(totals.presetCount, 3);
-  assert.equal(totals.profitablePresetCount, 1);
+  assert.equal(totals.lotCount, 3);
+  assert.equal(totals.profitableLotCount, 1);
   assert.equal(totals.totalSalesCount, 6);
   assert.equal(totals.totalRevenue, 390);
   assert.equal(totals.totalCost, 370);
@@ -421,19 +421,19 @@ test("portfolio totals handle empty rows and only count strictly positive preset
 
 test("canUsePaidActions requires preset + pro access", () => {
   const blockedNoPreset = appComputed.canUsePaidActions.call({
-    hasPresetSelected: false,
+    hasLotSelected: false,
     hasProAccess: true
   } as unknown as Parameters<typeof appComputed.canUsePaidActions>[0]);
   assert.equal(blockedNoPreset, false);
 
   const blockedNoPro = appComputed.canUsePaidActions.call({
-    hasPresetSelected: true,
+    hasLotSelected: true,
     hasProAccess: false
   } as unknown as Parameters<typeof appComputed.canUsePaidActions>[0]);
   assert.equal(blockedNoPro, false);
 
   const allowed = appComputed.canUsePaidActions.call({
-    hasPresetSelected: true,
+    hasLotSelected: true,
     hasProAccess: true
   } as unknown as Parameters<typeof appComputed.canUsePaidActions>[0]);
   assert.equal(allowed, true);
@@ -500,22 +500,22 @@ test("watch.currentTab destroys existing portfolio chart when leaving portfolio"
   });
 });
 
-test("watch.portfolioPresetFilterIds persists filter and refreshes chart in portfolio tab", () => {
+test("watch.portfolioLotFilterIds persists filter and refreshes chart in portfolio tab", () => {
   withMockedLocalStorage((_storage, data) => {
     let portfolioInitCalled = false;
 
     const context = {
       currentTab: "portfolio",
-      portfolioPresetFilterIds: [101, 202],
+      portfolioLotFilterIds: [101, 202],
       $nextTick(callback: () => void) {
         callback();
       },
       initPortfolioChart() {
         portfolioInitCalled = true;
       }
-    } as unknown as Parameters<NonNullable<typeof appWatch.portfolioPresetFilterIds>["handler"]>[0];
+    } as unknown as Parameters<NonNullable<typeof appWatch.portfolioLotFilterIds>["handler"]>[0];
 
-    appWatch.portfolioPresetFilterIds.handler.call(context);
+    appWatch.portfolioLotFilterIds.handler.call(context);
 
     assert.equal(data.get("whatfees_portfolio_filter_ids"), JSON.stringify([101, 202]));
     assert.equal(portfolioInitCalled, true);
@@ -652,7 +652,7 @@ test("applyLivePricesToDefaults saves live prices into config defaults", () => {
   let notified = "";
 
   const context = {
-    currentPresetId: 123,
+    currentLotId: 123,
     liveSpotPrice: 31,
     liveBoxPriceSell: 122,
     livePackPrice: 9,
@@ -681,7 +681,7 @@ test("applyLivePricesToDefaults is blocked when no preset is selected", () => {
   let notified = "";
 
   const context = {
-    currentPresetId: null,
+    currentLotId: null,
     liveSpotPrice: 31,
     liveBoxPriceSell: 122,
     livePackPrice: 9,
@@ -705,7 +705,7 @@ test("applyLivePricesToDefaults is blocked when no preset is selected", () => {
   assert.equal(notified, "Select a lot first");
 });
 
-test("createNewPreset in simple mode resets purchase defaults for new lots", () => {
+test("createNewLot in simple mode resets purchase defaults for new lots", () => {
   const todayDate = new Date().toISOString().split("T")[0];
   let saved = false;
   let loaded = false;
@@ -713,10 +713,10 @@ test("createNewPreset in simple mode resets purchase defaults for new lots", () 
 
   const context = {
     purchaseUiMode: "simple",
-    newPresetName: "Simple lot",
-    presets: [] as Preset[],
-    currentPresetId: null as number | null,
-    showNewPresetModal: true,
+    newLotName: "Simple lot",
+    lots: [] as Lot[],
+    currentLotId: null as number | null,
+    showNewLotModal: true,
     getCurrentSetup() {
       return {
         boxPriceCost: 80,
@@ -739,42 +739,42 @@ test("createNewPreset in simple mode resets purchase defaults for new lots", () 
         targetProfitPercent: 12
       };
     },
-    savePresetsToStorage() {
+    saveLotsToStorage() {
       saved = true;
     },
-    loadPreset() {
+    loadLot() {
       loaded = true;
     },
     notify(message: string) {
       notified = message;
     }
-  } as unknown as Parameters<typeof configMethods.createNewPreset>[0];
+  } as unknown as Parameters<typeof configMethods.createNewLot>[0];
 
-  configMethods.createNewPreset.call(context);
+  configMethods.createNewLot.call(context);
 
   assert.equal(saved, true);
   assert.equal(loaded, true);
   assert.equal(notified, "Lot created");
-  assert.equal(context.presets.length, 1);
-  assert.equal(context.showNewPresetModal, false);
-  assert.equal(context.newPresetName, "");
+  assert.equal(context.lots.length, 1);
+  assert.equal(context.showNewLotModal, false);
+  assert.equal(context.newLotName, "");
 
-  const newPreset = context.presets[0]!;
+  const newPreset = context.lots[0]!;
   assert.equal(newPreset.purchaseDate, todayDate);
   assert.equal(newPreset.purchaseShippingCost, 0);
   assert.equal(newPreset.purchaseTaxPercent, 0);
   assert.equal(newPreset.sellingTaxPercent, 15);
 });
 
-test("createNewPreset in expert mode uses 15 selling tax for the first lot", () => {
+test("createNewLot in expert mode uses 15 selling tax for the first lot", () => {
   let saved = false;
 
   const context = {
     purchaseUiMode: "expert",
-    newPresetName: "Expert lot",
-    presets: [] as Preset[],
-    currentPresetId: null as number | null,
-    showNewPresetModal: true,
+    newLotName: "Expert lot",
+    lots: [] as Lot[],
+    currentLotId: null as number | null,
+    showNewLotModal: true,
     getCurrentSetup() {
       return {
         boxPriceCost: 80,
@@ -797,30 +797,30 @@ test("createNewPreset in expert mode uses 15 selling tax for the first lot", () 
         targetProfitPercent: 12
       };
     },
-    savePresetsToStorage() {
+    saveLotsToStorage() {
       saved = true;
     },
-    loadPreset() {
+    loadLot() {
       // noop
     },
     notify() {
       // noop
     }
-  } as unknown as Parameters<typeof configMethods.createNewPreset>[0];
+  } as unknown as Parameters<typeof configMethods.createNewLot>[0];
 
-  configMethods.createNewPreset.call(context);
+  configMethods.createNewLot.call(context);
 
   assert.equal(saved, true);
-  assert.equal(context.presets.length, 1);
-  const newPreset = context.presets[0]!;
+  assert.equal(context.lots.length, 1);
+  const newPreset = context.lots[0]!;
   assert.equal(newPreset.purchaseDate, "2025-01-01");
   assert.equal(newPreset.purchaseShippingCost, 17);
   assert.equal(newPreset.purchaseTaxPercent, 11);
   assert.equal(newPreset.sellingTaxPercent, 15);
 });
 
-test("createNewPreset uses previous lot selling tax for second+ lots", () => {
-  const existingLot: Preset = {
+test("createNewLot uses previous lot selling tax for second+ lots", () => {
+  const existingLot: Lot = {
     id: 9001,
     name: "Existing lot",
     boxPriceCost: 70,
@@ -845,10 +845,10 @@ test("createNewPreset uses previous lot selling tax for second+ lots", () => {
 
   const context = {
     purchaseUiMode: "expert",
-    newPresetName: "Second lot",
-    presets: [existingLot] as Preset[],
-    currentPresetId: existingLot.id,
-    showNewPresetModal: true,
+    newLotName: "Second lot",
+    lots: [existingLot] as Lot[],
+    currentLotId: existingLot.id,
+    showNewLotModal: true,
     getCurrentSetup() {
       return {
         boxPriceCost: 80,
@@ -871,26 +871,26 @@ test("createNewPreset uses previous lot selling tax for second+ lots", () => {
         targetProfitPercent: 12
       };
     },
-    savePresetsToStorage() {
+    saveLotsToStorage() {
       // noop
     },
-    loadPreset() {
+    loadLot() {
       // noop
     },
     notify() {
       // noop
     }
-  } as unknown as Parameters<typeof configMethods.createNewPreset>[0];
+  } as unknown as Parameters<typeof configMethods.createNewLot>[0];
 
-  configMethods.createNewPreset.call(context);
+  configMethods.createNewLot.call(context);
 
-  assert.equal(context.presets.length, 2);
-  const newPreset = context.presets[1]!;
+  assert.equal(context.lots.length, 2);
+  const newPreset = context.lots[1]!;
   assert.equal(newPreset.sellingTaxPercent, 9.5);
 });
 
-test("loadPreset forces target profit to 0 for non-pro users", async () => {
-  const preset: Preset = {
+test("loadLot forces target profit to 0 for non-pro users", async () => {
+  const preset: Lot = {
     id: 5001,
     name: "Locked preset",
     boxPriceCost: 90,
@@ -914,8 +914,8 @@ test("loadPreset forces target profit to 0 for non-pro users", async () => {
 
   const context = {
     hasProAccess: false,
-    currentPresetId: preset.id,
-    presets: [preset],
+    currentLotId: preset.id,
+    lots: [preset],
     currentTab: "config",
     syncLivePricesFromDefaults() {
       // noop
@@ -933,14 +933,14 @@ test("loadPreset forces target profit to 0 for non-pro users", async () => {
       callback();
       return Promise.resolve();
     }
-  } as unknown as Parameters<typeof configMethods.loadPreset>[0];
+  } as unknown as Parameters<typeof configMethods.loadLot>[0];
 
-  configMethods.loadPreset.call(context);
+  configMethods.loadLot.call(context);
   assert.equal(context.targetProfitPercent, 0);
 });
 
-test("loadPreset defaults target profit to 15 for pro users when missing", () => {
-  const preset: Preset = {
+test("loadLot defaults target profit to 15 for pro users when missing", () => {
+  const preset: Lot = {
     id: 5002,
     name: "Pro preset",
     boxPriceCost: 90,
@@ -964,8 +964,8 @@ test("loadPreset defaults target profit to 15 for pro users when missing", () =>
 
   const context = {
     hasProAccess: true,
-    currentPresetId: preset.id,
-    presets: [preset],
+    currentLotId: preset.id,
+    lots: [preset],
     currentTab: "config",
     syncLivePricesFromDefaults() {
       // noop
@@ -983,9 +983,9 @@ test("loadPreset defaults target profit to 15 for pro users when missing", () =>
       callback();
       return Promise.resolve();
     }
-  } as unknown as Parameters<typeof configMethods.loadPreset>[0];
+  } as unknown as Parameters<typeof configMethods.loadLot>[0];
 
-  configMethods.loadPreset.call(context);
+  configMethods.loadLot.call(context);
   assert.equal(context.targetProfitPercent, 15);
 });
 
@@ -1162,18 +1162,18 @@ test("openAddSaleModal defaults sale price from live values with config fallback
 
 test("loadSalesFromStorage restores legacy sales key instead of writing empty current sales", () => {
   withMockedLocalStorage((_, data) => {
-    const presetId = 901;
-    const legacyKey = getLegacySalesStorageKey(presetId);
+    const lotId = 901;
+    const legacyKey = getLegacySalesStorageKey(lotId);
     data.set(
       legacyKey,
       JSON.stringify([{ id: 1, type: "pack", quantity: 2, packsCount: 2, price: 9, date: "2026-02-18" }])
     );
 
     const context = {
-      currentPresetId: presetId,
+      currentLotId: lotId,
       sales: [],
       getSalesStorageKey: configMethods.getSalesStorageKey,
-      loadSalesForPresetId: configMethods.loadSalesForPresetId
+      loadSalesForLotId: configMethods.loadSalesForLotId
     } as unknown as Parameters<typeof salesMethods.loadSalesFromStorage>[0];
 
     salesMethods.loadSalesFromStorage.call(context);
@@ -1181,7 +1181,7 @@ test("loadSalesFromStorage restores legacy sales key instead of writing empty cu
     assert.equal(context.sales.length, 1);
     assert.equal(context.sales[0]?.price, 9);
     assert.equal(
-      data.get(context.getSalesStorageKey(presetId)),
+      data.get(context.getSalesStorageKey(lotId)),
       JSON.stringify([{ id: 1, type: "pack", quantity: 2, packsCount: 2, price: 9, date: "2026-02-18" }])
     );
   });
@@ -1286,8 +1286,8 @@ test("remainingSpotsEquivalent uses dynamic totalSpots instead of fixed 80", () 
   assert.equal(remainingSpots, 20);
 });
 
-test("allPresetPerformance uses in-memory sales for active preset before storage sync", () => {
-  const activePreset: Preset = {
+test("allLotPerformance uses in-memory sales for active preset before storage sync", () => {
+  const activePreset: Lot = {
     id: 101,
     name: "Active",
     boxPriceCost: 100,
@@ -1309,7 +1309,7 @@ test("allPresetPerformance uses in-memory sales for active preset before storage
     targetProfitPercent: 15
   };
 
-  const otherPreset: Preset = {
+  const otherPreset: Lot = {
     ...activePreset,
     id: 202,
     name: "Other"
@@ -1323,35 +1323,35 @@ test("allPresetPerformance uses in-memory sales for active preset before storage
   ];
 
   const context = {
-    presets: [activePreset, otherPreset],
-    currentPresetId: activePreset.id,
+    lots: [activePreset, otherPreset],
+    currentLotId: activePreset.id,
     sales: activeInMemorySales,
-    loadSalesForPresetId(presetId: number): Sale[] {
-      if (presetId === activePreset.id) return [];
-      if (presetId === otherPreset.id) return otherStoredSales;
+    loadSalesForLotId(lotId: number): Sale[] {
+      if (lotId === activePreset.id) return [];
+      if (lotId === otherPreset.id) return otherStoredSales;
       return [];
     }
-  } as unknown as Parameters<typeof appComputed.allPresetPerformance>[0];
+  } as unknown as Parameters<typeof appComputed.allLotPerformance>[0];
 
-  const rows = appComputed.allPresetPerformance.call(context);
-  const activeRow = rows.find((row) => row.presetId === activePreset.id);
-  const otherRow = rows.find((row) => row.presetId === otherPreset.id);
+  const rows = appComputed.allLotPerformance.call(context);
+  const activeRow = rows.find((row) => row.lotId === activePreset.id);
+  const otherRow = rows.find((row) => row.lotId === otherPreset.id);
 
   assert.equal(activeRow?.salesCount, 1);
   assert.equal(otherRow?.salesCount, 1);
 });
 
-test("portfolioSelectedPresetIds defaults to all presets when filter is empty", () => {
-  const ids = appComputed.portfolioSelectedPresetIds.call({
-    presets: [{ id: 11 }, { id: 22 }, { id: 33 }],
-    portfolioPresetFilterIds: []
-  } as unknown as Parameters<typeof appComputed.portfolioSelectedPresetIds>[0]);
+test("portfolioSelectedLotIds defaults to all lots when filter is empty", () => {
+  const ids = appComputed.portfolioSelectedLotIds.call({
+    lots: [{ id: 11 }, { id: 22 }, { id: 33 }],
+    portfolioLotFilterIds: []
+  } as unknown as Parameters<typeof appComputed.portfolioSelectedLotIds>[0]);
 
   assert.deepEqual(ids, [11, 22, 33]);
 });
 
-test("allPresetPerformance applies portfolio preset filter", () => {
-  const presetA: Preset = {
+test("allLotPerformance applies portfolio preset filter", () => {
+  const presetA: Lot = {
     id: 301,
     name: "A",
     boxPriceCost: 100,
@@ -1372,19 +1372,19 @@ test("allPresetPerformance applies portfolio preset filter", () => {
     packPrice: 8,
     targetProfitPercent: 15
   };
-  const presetB: Preset = { ...presetA, id: 302, name: "B" };
+  const presetB: Lot = { ...presetA, id: 302, name: "B" };
 
   const context = {
-    presets: [presetA, presetB],
-    portfolioSelectedPresetIds: [presetA.id],
-    currentPresetId: presetA.id,
+    lots: [presetA, presetB],
+    portfolioSelectedLotIds: [presetA.id],
+    currentLotId: presetA.id,
     sales: [],
-    loadSalesForPresetId(): Sale[] {
+    loadSalesForLotId(): Sale[] {
       return [];
     }
-  } as unknown as Parameters<typeof appComputed.allPresetPerformance>[0];
+  } as unknown as Parameters<typeof appComputed.allLotPerformance>[0];
 
-  const rows = appComputed.allPresetPerformance.call(context);
+  const rows = appComputed.allLotPerformance.call(context);
   assert.equal(rows.length, 1);
-  assert.equal(rows[0]?.presetId, presetA.id);
+  assert.equal(rows[0]?.lotId, presetA.id);
 });

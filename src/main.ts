@@ -1,5 +1,6 @@
 import { createApp } from "vue";
 import "vuetify/styles";
+import "./styles/app.css";
 import { appOptions } from "./app.ts";
 import { vuetify } from "./vuetify.ts";
 

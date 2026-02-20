@@ -40,7 +40,7 @@ export const appWatch: AppWatchObject = {
     }
   },
 
-  currentPresetId(newVal) {
+  currentLotId(newVal) {
     if (newVal) localStorage.setItem(STORAGE_KEYS.LAST_LOT_ID, String(newVal));
 
     if (!newVal) {
@@ -65,12 +65,12 @@ export const appWatch: AppWatchObject = {
     }
   },
 
-  portfolioPresetFilterIds: {
+  portfolioLotFilterIds: {
     handler() {
       try {
         localStorage.setItem(
           STORAGE_KEYS.PORTFOLIO_FILTER_IDS,
-          JSON.stringify(this.portfolioPresetFilterIds)
+          JSON.stringify(this.portfolioLotFilterIds)
         );
       } catch {
         // Ignore storage errors (private mode/quota restrictions).

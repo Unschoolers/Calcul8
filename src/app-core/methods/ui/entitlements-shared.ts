@@ -152,7 +152,7 @@ export function isAlreadyOwnedPurchaseError(error: unknown): boolean {
 }
 
 export function applyTargetProfitAccessDefaults(app: AppContext): void {
-  if (!app.hasPresetSelected) return;
+  if (!app.hasLotSelected) return;
 
   if (!app.hasProAccess) {
     if (Number(app.targetProfitPercent) !== 0) {

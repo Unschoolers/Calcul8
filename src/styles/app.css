@@ -1,0 +1,317 @@
+    @font-face {
+      font-family: "Roboto";
+      font-style: normal;
+      font-weight: 300;
+      font-display: block;
+      src: url("/fonts/roboto-300.woff2") format("woff2");
+    }
+    @font-face {
+      font-family: "Roboto";
+      font-style: normal;
+      font-weight: 400;
+      font-display: block;
+      src: url("/fonts/roboto-400.woff2") format("woff2");
+    }
+    @font-face {
+      font-family: "Roboto";
+      font-style: normal;
+      font-weight: 500;
+      font-display: block;
+      src: url("/fonts/roboto-500.woff2") format("woff2");
+    }
+    @font-face {
+      font-family: "Roboto";
+      font-style: normal;
+      font-weight: 700;
+      font-display: block;
+      src: url("/fonts/roboto-700.woff2") format("woff2");
+    }
+    :root {
+      --bg-wash-a: rgba(230, 57, 70, 0.08);
+      --bg-wash-b: rgba(255, 184, 0, 0.07);
+      --bg-wash-c: rgba(52, 199, 89, 0.06);
+    }
+    .profit-positive { color: #34c759; font-weight: 700; }
+    .profit-negative { color: #ff3b30; font-weight: 700; }
+    .current-price { background: rgba(255, 184, 0, 0.15) !important; border-left: 3px solid #FFB800 !important; font-weight: 700; }
+    .gradient-text { background: linear-gradient(135deg, #E63946 0%, #FF6B6B 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    html { scroll-behavior: auto; }
+    body {
+      font-family: "Roboto", "Helvetica Neue", Arial, sans-serif;
+      overscroll-behavior-y: none;
+      background:
+        radial-gradient(70rem 50rem at -10% -15%, var(--bg-wash-a), transparent 55%),
+        radial-gradient(40rem 35rem at 110% 15%, var(--bg-wash-b), transparent 58%),
+        radial-gradient(50rem 40rem at 40% 120%, var(--bg-wash-c), transparent 62%);
+      background-color: rgb(var(--v-theme-background, 18, 18, 18));
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.18;
+      background-image:
+        linear-gradient(120deg, transparent 0 48%, rgba(255, 255, 255, 0.06) 49% 51%, transparent 52% 100%),
+        linear-gradient(300deg, transparent 0 46%, rgba(255, 255, 255, 0.04) 47% 49%, transparent 50% 100%);
+      background-size: 100% 100%, 100% 100%;
+    }
+    .v-btn { min-height: 44px; min-width: 44px; }
+    .skip-link {
+      position: absolute;
+      top: -48px;
+      left: 12px;
+      z-index: 5000;
+      padding: 0.5rem 0.75rem;
+      border-radius: 8px;
+      color: #111;
+      background: #ffcb05;
+      font-weight: 700;
+      text-decoration: none;
+      transition: top 0.15s ease;
+    }
+    .skip-link:focus {
+      top: 10px;
+    }
+    .v-btn:focus-visible,
+    .v-fab:focus-visible,
+    .v-list-item:focus-visible {
+      outline: 3px solid rgba(255, 203, 5, 0.95) !important;
+      outline-offset: 2px !important;
+    }
+    #startup-splash {
+      position: fixed;
+      inset: 0;
+      z-index: 3000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #ffcb05;
+      opacity: 1;
+      transition: opacity 220ms ease;
+      pointer-events: all;
+      overflow: hidden;
+    }
+    #startup-splash::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(90% 70% at 50% 30%, rgba(255, 196, 0, 0.2), transparent 70%),
+        linear-gradient(145deg, #0a0a0a 0%, #111111 55%, #171717 100%);
+      opacity: 0;
+      animation: splashBgToDark 240ms ease-out 70ms forwards;
+    }
+    body.app-ready #startup-splash {
+      opacity: 0;
+      pointer-events: none;
+    }
+    .splash-card {
+      position: relative;
+      z-index: 1;
+      width: min(80vw, 320px);
+      min-width: min(80vw, 320px);
+      max-width: min(80vw, 320px);
+      min-height: 206px;
+      border-radius: 24px;
+      padding: 1.1rem 1.2rem 0.9rem;
+      border: 1px solid rgba(255, 208, 0, 0.4);
+      background: linear-gradient(170deg, rgba(255, 208, 0, 0.12), rgba(0, 0, 0, 0.58));
+      box-shadow: 0 14px 40px rgba(0, 0, 0, 0.45);
+      text-align: center;
+      backdrop-filter: blur(4px);
+      box-sizing: border-box;
+    }
+    .splash-logo {
+      width: 72px;
+      height: 72px;
+      border-radius: 16px;
+      display: block;
+      margin: 0 auto 0.55rem;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+      opacity: 0;
+      transform: scale(0.92);
+      animation:
+        splashLogoIn 260ms ease-out 80ms forwards,
+        splashPulse 1.2s ease-in-out 360ms infinite;
+    }
+    .splash-title {
+      margin: 0;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      color: #ffd34d;
+      font-size: 1.25rem;
+      line-height: 1.25;
+      min-height: 1.56rem;
+    }
+    .splash-subtitle {
+      margin: 0.18rem 0 0.65rem;
+      font-size: 0.8rem;
+      color: rgba(255, 255, 255, 0.78);
+      line-height: 1.2;
+      min-height: 0.96rem;
+    }
+    .splash-trend {
+      width: 100%;
+      height: 26px;
+      display: block;
+    }
+    .splash-trend path {
+      stroke: #ffd34d;
+      stroke-width: 3;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-dasharray: 100;
+      stroke-dashoffset: 100;
+      will-change: stroke-dashoffset;
+      animation: drawTrend 900ms ease forwards;
+    }
+    @keyframes splashPulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.04); }
+    }
+    @keyframes splashLogoIn {
+      from {
+        opacity: 0;
+        transform: scale(0.92);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+    @keyframes drawTrend {
+      to { stroke-dashoffset: 0; }
+    }
+    @keyframes splashBgToDark {
+      to { opacity: 1; }
+    }
+    .app-shell { max-width: 920px; margin: 0 auto; position: relative; z-index: 1; }
+    .preset-card {
+      position: sticky;
+      top: calc(0.5rem + env(safe-area-inset-top));
+      z-index: 20;
+      backdrop-filter: blur(6px);
+    }
+    .v-card { border-radius: 20px !important; }
+    .profit-glow { box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    .match-height .v-col { display: flex; }
+    .match-height .v-card { width: 100%; }
+    canvas { transition: opacity 0.15s ease-out; }
+    .v-speed-dial .v-btn { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.16) !important; transition: box-shadow 0.15s ease; }
+    .v-speed-dial .v-btn:hover { transform: none; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2) !important; }
+    .v-speed-dial .v-btn:active { transform: none; }
+    .interaction-disabled { opacity: 0.55; }
+    .app-logo-img {
+      width: 24px;
+      height: 24px;
+      display: block;
+      border-radius: 6px;
+    }
+    .account-avatar-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 999px;
+      display: block;
+    }
+    .sync-spinning {
+      animation: sync-spin 0.9s linear infinite;
+      transform-origin: center;
+    }
+    @keyframes sync-spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    .fab-primary {
+      position: fixed !important;
+      right: max(1rem, env(safe-area-inset-right)) !important;
+      left: auto !important;
+      inset-inline-end: max(1rem, env(safe-area-inset-right)) !important;
+      inset-inline-start: auto !important;
+      z-index: 1000;
+    }
+    .fab-add-preset {
+      bottom: calc(5rem + env(safe-area-inset-bottom)) !important;
+      inset-block-end: calc(5rem + env(safe-area-inset-bottom)) !important;
+    }
+    .fab-attention,
+    .fab-attention .v-btn {
+      border-radius: 999px !important;
+    }
+    .fab-attention .v-btn {
+      animation: fab-breathe 1.6s ease-in-out infinite;
+      background-color: rgb(var(--v-theme-primary)) !important;
+      will-change: filter;
+    }
+    @keyframes fab-breathe {
+      0% { filter: brightness(0.7); }
+      50% { filter: brightness(1.25); }
+      100% { filter: brightness(0.7); }
+    }
+    .fab-calculate {
+      bottom: calc(5rem + env(safe-area-inset-bottom)) !important;
+      inset-block-end: calc(5rem + env(safe-area-inset-bottom)) !important;
+    }
+    .fab-live-reset {
+      bottom: calc(15rem + env(safe-area-inset-bottom)) !important;
+      inset-block-end: calc(15rem + env(safe-area-inset-bottom)) !important;
+    }
+    .fab-live-calc {
+      bottom: calc(10rem + env(safe-area-inset-bottom)) !important;
+      inset-block-end: calc(10rem + env(safe-area-inset-bottom)) !important;
+    }
+    .fab-overflow-wrap {
+      position: fixed;
+      right: max(1rem, env(safe-area-inset-right));
+      left: auto;
+      inset-inline-end: max(1rem, env(safe-area-inset-right));
+      inset-inline-start: auto;
+      z-index: 1300;
+    }
+    .fab-overflow-config {
+      bottom: calc(10rem + env(safe-area-inset-bottom));
+      inset-block-end: calc(10rem + env(safe-area-inset-bottom));
+    }
+    .fab-overflow-sales {
+      bottom: calc(5rem + env(safe-area-inset-bottom));
+      inset-block-end: calc(5rem + env(safe-area-inset-bottom));
+    }
+    .v-speed-dial__content { z-index: 1301 !important; }
+    .tabs-window .v-window__container,
+    .tabs-window .v-window-item {
+      transition: none !important;
+    }
+    .tabs-window,
+    .tabs-window .v-window__container {
+      overflow: visible !important;
+    }
+    .tabs-window .v-window__container {
+      height: auto !important;
+      min-height: 1px;
+    }
+    .tabs-window .v-window-item {
+      will-change: auto;
+      transform: none !important;
+      position: static !important;
+      display: none !important;
+    }
+    .tabs-window .v-window-item.v-window-item--active {
+      display: block !important;
+    }
+    @media (max-width: 600px) {
+      .app-shell {
+        padding-left: 0.75rem !important;
+        padding-right: 0.75rem !important;
+        padding-top: 0.6rem !important;
+      }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after {
+        animation: none !important;
+        transition: none !important;
+      }
+    }

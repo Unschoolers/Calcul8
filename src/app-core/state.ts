@@ -29,7 +29,7 @@ export function createInitialState(): AppState {
     purchaseUiMode,
     // UI State
     currentTab: "config",
-    showNewPresetModal: false,
+    showNewLotModal: false,
     speedDialOpen: false,
     speedDialOpenSales: false,
     snackbar: {
@@ -96,12 +96,12 @@ export function createInitialState(): AppState {
     chartView: "pie",
     portfolioChart: null,
     portfolioChartView: "trend",
-    portfolioPresetFilterIds: [],
+    portfolioLotFilterIds: [],
 
     // Presets
-    presets: [],
-    currentPresetId: null,
-    newPresetName: "",
+    lots: [],
+    currentLotId: null,
+    newLotName: "",
 
     // Exchange Rate Cache
     lastFetchTime: null,

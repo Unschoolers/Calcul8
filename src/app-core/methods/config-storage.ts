@@ -1,6 +1,6 @@
 import { DEFAULT_VALUES } from "../../constants.ts";
 import { calculateNetFromGross } from "../../domain/calculations.ts";
-import type { Preset, Sale } from "../../types/app.ts";
+import type { Lot, Sale } from "../../types/app.ts";
 import {
   getLegacySalesStorageKey,
   getLegacyStorageKeys,
@@ -9,7 +9,7 @@ import {
   readStorageWithLegacy,
   STORAGE_KEYS
 } from "../storageKeys.ts";
-import { type ConfigMethodSubset, getTodayDate, inferDateFromPresetId, toDateOnly } from "./config-shared.ts";
+import { type ConfigMethodSubset, getTodayDate, inferDateFromLotId, toDateOnly } from "./config-shared.ts";
 
 type ExchangeRateCacheRecord = {
   cadRate: number;
@@ -51,22 +51,20 @@ function writeExchangeRateCache(cadRate: number, fetchedAt: number): void {
 
 export const configStorageMethods: ConfigMethodSubset<
   | "getSalesStorageKey"
-  | "loadSalesForPresetId"
+  | "loadSalesForLotId"
   | "netFromGross"
   | "getExchangeRate"
   | "loadLotsFromStorage"
-  | "loadPresetsFromStorage"
   | "saveLotsToStorage"
-  | "savePresetsToStorage"
 > = {
-  getSalesStorageKey(presetId: number): string {
-    return getWhatfeesSalesStorageKey(presetId);
+  getSalesStorageKey(lotId: number): string {
+    return getWhatfeesSalesStorageKey(lotId);
   },
 
-  loadSalesForPresetId(presetId: number): Sale[] {
+  loadSalesForLotId(lotId: number): Sale[] {
     try {
-      migrateLegacySalesKey(presetId);
-      const stored = readStorageWithLegacy(this.getSalesStorageKey(presetId), getLegacySalesStorageKey(presetId));
+      migrateLegacySalesKey(lotId);
+      const stored = readStorageWithLegacy(this.getSalesStorageKey(lotId), getLegacySalesStorageKey(lotId));
       if (!stored) return [];
       const parsed = JSON.parse(stored) as Array<Sale & { buyerShipping?: number }>;
       return parsed.map((sale) => ({
@@ -123,45 +121,37 @@ export const configStorageMethods: ConfigMethodSubset<
   },
 
   loadLotsFromStorage(): void {
-    this.loadPresetsFromStorage();
-  },
-
-  loadPresetsFromStorage(): void {
     try {
       const stored = readStorageWithLegacy(STORAGE_KEYS.PRESETS, LEGACY_KEYS.PRESETS);
       if (stored) {
-        const parsed = JSON.parse(stored) as Preset[];
+        const parsed = JSON.parse(stored) as Lot[];
         const todayDate = getTodayDate();
-        this.presets = parsed.map((preset) => ({
-          ...preset,
+        this.lots = parsed.map((lot) => ({
+          ...lot,
           purchaseDate:
-            toDateOnly(preset.purchaseDate) ??
-            toDateOnly(preset.createdAt) ??
-            inferDateFromPresetId(preset.id) ??
+            toDateOnly(lot.purchaseDate) ??
+            toDateOnly(lot.createdAt) ??
+            inferDateFromLotId(lot.id) ??
             todayDate,
           createdAt:
-            toDateOnly(preset.createdAt) ??
-            toDateOnly(preset.purchaseDate) ??
-            inferDateFromPresetId(preset.id) ??
+            toDateOnly(lot.createdAt) ??
+            toDateOnly(lot.purchaseDate) ??
+            inferDateFromLotId(lot.id) ??
             todayDate
         }));
       }
     } catch (error) {
-      console.error("Failed to load presets:", error);
-      this.presets = [];
-    }
-  },
-
-  savePresetsToStorage(): void {
-    try {
-      localStorage.setItem(STORAGE_KEYS.PRESETS, JSON.stringify(this.presets));
-    } catch (error) {
-      console.error("Failed to save presets:", error);
-      this.notify("Could not save lots. Storage may be full.", "error");
+      console.error("Failed to load lots:", error);
+      this.lots = [];
     }
   },
 
   saveLotsToStorage(): void {
-    this.savePresetsToStorage();
+    try {
+      localStorage.setItem(STORAGE_KEYS.PRESETS, JSON.stringify(this.lots));
+    } catch (error) {
+      console.error("Failed to save lots:", error);
+      this.notify("Could not save lots. Storage may be full.", "error");
+    }
   }
 };

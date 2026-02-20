@@ -5,7 +5,7 @@ import {
   calculateTotalSpots,
   calculatePriceForUnits as calculateUnitPrice,
   calculatePortfolioTotals,
-  calculatePresetPerformanceSummary,
+  calculateLotPerformanceSummary as calculateLotPerformanceSummary,
   calculateSalesProgress,
   calculateSalesStatus,
   calculateSoldPacksCount,
@@ -94,96 +94,38 @@ export const appComputed: AppComputedObject = {
     return resolveGoogleProfile(token).picture || "";
   },
 
-  currentLotId: {
-    get() {
-      return this.currentPresetId;
-    },
-    set(newValue) {
-      if (newValue === null || newValue === undefined || newValue === "") {
-        this.currentPresetId = null;
-        return;
-      }
-      const parsed = Number(newValue);
-      this.currentPresetId = Number.isFinite(parsed) ? parsed : null;
-    }
-  },
-
-  showNewLotModal: {
-    get() {
-      return this.showNewPresetModal;
-    },
-    set(newValue) {
-      this.showNewPresetModal = Boolean(newValue);
-    }
-  },
-
   lotNameDraft: {
     get() {
-      return this.newPresetName;
+      return this.newLotName;
     },
     set(newValue) {
-      this.newPresetName = String(newValue ?? "");
+      this.newLotName = String(newValue ?? "");
     }
-  },
-
-  hasPresetSelected(): boolean {
-    return !!this.currentPresetId;
   },
 
   hasLotSelected(): boolean {
-    return this.hasPresetSelected;
+    return !!this.currentLotId;
   },
 
   canUsePaidActions(): boolean {
-    const hasSelection =
-      typeof this.hasLotSelected === "boolean"
-        ? this.hasLotSelected
-        : this.hasPresetSelected;
-    return hasSelection && this.hasProAccess;
-  },
-
-  presetItems() {
-    return [
-      { title: "-- Select lot --", value: null },
-      ...this.presets.map((p) => ({ title: p.name, value: p.id }))
-    ];
+    return this.hasLotSelected && this.hasProAccess;
   },
 
   lotItems() {
-    return this.presetItems;
-  },
-
-  portfolioLotFilterIds: {
-    get() {
-      return this.portfolioPresetFilterIds;
-    },
-    set(newValue) {
-      if (!Array.isArray(newValue)) {
-        this.portfolioPresetFilterIds = [];
-        return;
-      }
-      this.portfolioPresetFilterIds = newValue
-        .map((id) => Number(id))
-        .filter((id) => Number.isFinite(id));
-    }
+    return [
+      { title: "-- Select lot --", value: null },
+      ...this.lots.map((lot) => ({ title: lot.name, value: lot.id }))
+    ];
   },
 
   portfolioLotFilterItems() {
-    return this.portfolioPresetFilterItems;
+    return this.lots.map((lot) => ({ title: lot.name, value: lot.id }));
   },
 
   portfolioSelectedLotIds(): number[] {
-    return this.portfolioSelectedPresetIds;
-  },
-
-  portfolioPresetFilterItems() {
-    return this.presets.map((preset) => ({ title: preset.name, value: preset.id }));
-  },
-
-  portfolioSelectedPresetIds(): number[] {
-    const allPresetIds = this.presets.map((preset) => preset.id);
-    const selectedIds = this.portfolioPresetFilterIds.filter((id) => allPresetIds.includes(id));
-    return selectedIds.length > 0 ? selectedIds : allPresetIds;
+    const allLotIds = this.lots.map((lot) => lot.id);
+    const selectedIds = this.portfolioLotFilterIds.filter((id) => allLotIds.includes(id));
+    return selectedIds.length > 0 ? selectedIds : allLotIds;
   },
 
   totalPacks(): number {
@@ -342,32 +284,31 @@ export const appComputed: AppComputedObject = {
     return calculateSparklineGradient(this.sales, this.totalCaseCost, this.sellingTaxPercent);
   },
 
-  allPresetPerformance() {
-    const selectedPresetIds = Array.isArray(this.portfolioSelectedPresetIds)
-      ? this.portfolioSelectedPresetIds
-      : this.presets.map((preset) => preset.id);
-    const selectedPresetIdSet = new Set(selectedPresetIds);
-    const rows = this.presets
-      .filter((preset) => selectedPresetIdSet.has(preset.id))
-      .map((preset) => {
-      const sales = this.currentPresetId === preset.id
-        ? this.sales
-        : this.loadSalesForPresetId(preset.id);
-      return calculatePresetPerformanceSummary(preset, sales, DEFAULT_VALUES.EXCHANGE_RATE);
+  allLotPerformance() {
+    const selectedLotIds = Array.isArray(this.portfolioSelectedLotIds)
+      ? this.portfolioSelectedLotIds
+      : this.lots.map((lot) => lot.id);
+    const selectedLotIdSet = new Set(selectedLotIds);
+
+    const rows = this.lots
+      .filter((lot) => selectedLotIdSet.has(lot.id))
+      .map((lot) => {
+        const sales = this.currentLotId === lot.id
+          ? this.sales
+          : this.loadSalesForLotId(lot.id);
+        const summary = calculateLotPerformanceSummary(lot, sales, DEFAULT_VALUES.EXCHANGE_RATE);
+        return {
+          ...summary,
+          lotId: summary.lotId,
+          lotName: summary.lotName
+        };
       });
+
     return rows.sort((a, b) => b.totalProfit - a.totalProfit);
   },
 
-  allLotPerformance() {
-    return this.allPresetPerformance.map((row) => ({
-      ...row,
-      lotId: row.presetId,
-      lotName: row.presetName
-    }));
-  },
-
   portfolioTotals() {
-    return calculatePortfolioTotals(this.allPresetPerformance);
+    return calculatePortfolioTotals(this.allLotPerformance);
   },
 
   hasPortfolioData(): boolean {

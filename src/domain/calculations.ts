@@ -2,8 +2,8 @@ import { DEFAULT_VALUES, TAX_RATES, WHATNOT_FEES } from "../constants.ts";
 import type {
   CurrencyCode,
   PortfolioTotals,
-  Preset,
-  PresetPerformanceSummary,
+  Lot,
+  LotPerformanceSummary,
   Sale,
   SalesStatus
 } from "../types/app.ts";
@@ -202,35 +202,35 @@ export function calculateSparklineGradient(sales: Sale[], totalCaseCost: number,
   return ["#34C759", "#4CD964"];
 }
 
-export function calculatePresetPerformanceSummary(
-  preset: Preset,
+export function calculateLotPerformanceSummary(
+  lot: Lot,
   sales: Sale[],
   defaultExchangeRate: number
-): PresetPerformanceSummary {
-  const totalPacks = calculateTotalPacks(preset.boxesPurchased, preset.packsPerBox, 16);
+): LotPerformanceSummary {
+  const totalPacks = calculateTotalPacks(lot.boxesPurchased, lot.packsPerBox, 16);
   const soldPacks = calculateSoldPacksCount(sales);
   const pricePerBoxCad = calculateBoxPriceCostCad(
-    preset.boxPriceCost,
-    preset.currency,
-    preset.sellingCurrency,
-    preset.exchangeRate,
+    lot.boxPriceCost,
+    lot.currency,
+    lot.sellingCurrency,
+    lot.exchangeRate,
     defaultExchangeRate
   );
   const totalCost = calculateTotalCaseCost({
-    boxesPurchased: preset.boxesPurchased,
+    boxesPurchased: lot.boxesPurchased,
     pricePerBoxCad,
     purchaseShippingCad: calculateBoxPriceCostCad(
-      preset.purchaseShippingCost,
-      preset.currency,
-      preset.sellingCurrency,
-      preset.exchangeRate,
+      lot.purchaseShippingCost,
+      lot.currency,
+      lot.sellingCurrency,
+      lot.exchangeRate,
       defaultExchangeRate
     ),
-    purchaseTaxPercent: preset.purchaseTaxPercent,
-    includeTax: preset.includeTax,
-    currency: preset.currency
+    purchaseTaxPercent: lot.purchaseTaxPercent,
+    includeTax: lot.includeTax,
+    currency: lot.currency
   });
-  const totalRevenue = calculateTotalRevenue(sales, preset.sellingTaxPercent);
+  const totalRevenue = calculateTotalRevenue(sales, lot.sellingTaxPercent);
   const totalProfit = totalRevenue - totalCost;
   const marginPercent = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : null;
 
@@ -242,8 +242,8 @@ export function calculatePresetPerformanceSummary(
   }
 
   return {
-    presetId: preset.id,
-    presetName: preset.name,
+    lotId: lot.id,
+    lotName: lot.name,
     salesCount: sales.length,
     totalRevenue,
     totalCost,
@@ -255,19 +255,19 @@ export function calculatePresetPerformanceSummary(
   };
 }
 
-export function calculatePortfolioTotals(rows: PresetPerformanceSummary[]): PortfolioTotals {
+export function calculatePortfolioTotals(rows: LotPerformanceSummary[]): PortfolioTotals {
   return rows.reduce<PortfolioTotals>(
     (acc, row) => ({
-      presetCount: acc.presetCount + 1,
-      profitablePresetCount: acc.profitablePresetCount + (row.totalProfit > 0 ? 1 : 0),
+      lotCount: acc.lotCount + 1,
+      profitableLotCount: acc.profitableLotCount + (row.totalProfit > 0 ? 1 : 0),
       totalSalesCount: acc.totalSalesCount + row.salesCount,
       totalRevenue: acc.totalRevenue + row.totalRevenue,
       totalCost: acc.totalCost + row.totalCost,
       totalProfit: acc.totalProfit + row.totalProfit
     }),
     {
-      presetCount: 0,
-      profitablePresetCount: 0,
+      lotCount: 0,
+      profitableLotCount: 0,
       totalSalesCount: 0,
       totalRevenue: 0,
       totalCost: 0,

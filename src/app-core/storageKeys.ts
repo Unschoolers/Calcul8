@@ -95,16 +95,16 @@ export function migrateLegacyStorageKeys(): void {
   migrateAllLegacySalesKeys();
 }
 
-export function getSalesStorageKey(presetId: number): string {
-  return `${SALES_PREFIX}${presetId}`;
+export function getSalesStorageKey(lotId: number): string {
+  return `${SALES_PREFIX}${lotId}`;
 }
 
-export function getLegacySalesStorageKey(presetId: number): string {
-  return `${LEGACY_SALES_PREFIX}${presetId}`;
+export function getLegacySalesStorageKey(lotId: number): string {
+  return `${LEGACY_SALES_PREFIX}${lotId}`;
 }
 
-export function migrateLegacySalesKey(presetId: number): void {
-  migrateValue(getLegacySalesStorageKey(presetId), getSalesStorageKey(presetId));
+export function migrateLegacySalesKey(lotId: number): void {
+  migrateValue(getLegacySalesStorageKey(lotId), getSalesStorageKey(lotId));
 }
 
 function migrateAllLegacySalesKeys(): void {

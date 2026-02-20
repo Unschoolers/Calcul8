@@ -1,6 +1,6 @@
-import type { Preset } from "../../types/app.ts";
+import type { Lot } from "../../types/app.ts";
 import type { AppContext } from "../context.ts";
-import { type ConfigMethodSubset, type ImportablePreset, getTodayDate, inferDateFromPresetId, toDateOnly } from "./config-shared.ts";
+import { type ConfigMethodSubset, type ImportableLot, getTodayDate, inferDateFromLotId, toDateOnly } from "./config-shared.ts";
 
 function sanitizeTsvCell(value: string | number | null | undefined): string {
   if (value == null) return "";
@@ -37,15 +37,15 @@ function buildPortfolioReportTsv(context: AppContext): string {
     `Exported At\t${sanitizeTsvCell(exportedAt)}`,
     "",
     "Section\tLot Count\tProfitable Lots\tSales Count\tTotal Revenue\tTotal Cost\tTotal Profit",
-    `Totals\t${totals.presetCount}\t${totals.profitablePresetCount}\t${totals.totalSalesCount}\t${context.formatCurrency(totals.totalRevenue)}\t${context.formatCurrency(totals.totalCost)}\t${context.formatCurrency(totals.totalProfit)}`,
+    `Totals\t${totals.lotCount}\t${totals.profitableLotCount}\t${totals.totalSalesCount}\t${context.formatCurrency(totals.totalRevenue)}\t${context.formatCurrency(totals.totalCost)}\t${context.formatCurrency(totals.totalProfit)}`,
     "",
     "Lot\tSales\tSold Packs\tTotal Packs\tRevenue\tCost\tProfit\tMargin %\tLast Sale"
   ];
 
-  for (const row of context.allPresetPerformance) {
+  for (const row of context.allLotPerformance) {
     lines.push(
       [
-        sanitizeTsvCell(row.presetName),
+        sanitizeTsvCell(row.lotName),
         row.salesCount,
         row.soldPacks,
         row.totalPacks,
@@ -63,21 +63,15 @@ function buildPortfolioReportTsv(context: AppContext): string {
 
 export const configIoMethods: ConfigMethodSubset<
   | "exportLots"
-  | "exportPresets"
   | "exportSales"
   | "exportPortfolioReport"
   | "openPortfolioReportModal"
   | "copyPortfolioReportTable"
   | "importLots"
-  | "importPresets"
   | "handleFileImport"
 > = {
   exportLots(): void {
-    this.exportPresets();
-  },
-
-  exportPresets(): void {
-    if (this.presets.length === 0) {
+    if (this.lots.length === 0) {
       this.notify("No lots to export", "warning");
       return;
     }
@@ -85,15 +79,10 @@ export const configIoMethods: ConfigMethodSubset<
     const bundle = {
       version: 2,
       exportedAt: new Date().toISOString(),
-      lastPresetId: this.currentPresetId ?? null,
-      lastLotId: this.currentPresetId ?? null,
-      lots: this.presets.map((p) => ({
+      lastLotId: this.currentLotId ?? null,
+      lots: this.lots.map((p) => ({
         ...p,
-        sales: this.loadSalesForPresetId(p.id)
-      })),
-      presets: this.presets.map((p) => ({
-        ...p,
-        sales: this.loadSalesForPresetId(p.id)
+        sales: this.loadSalesForLotId(p.id)
       }))
     };
 
@@ -117,7 +106,7 @@ export const configIoMethods: ConfigMethodSubset<
 
     const link = document.createElement("a");
     link.href = url;
-    link.download = `rtyh-sales-${this.currentPresetId}-${Date.now()}.json`;
+    link.download = `rtyh-sales-${this.currentLotId}-${Date.now()}.json`;
     link.click();
 
     URL.revokeObjectURL(url);
@@ -158,10 +147,6 @@ export const configIoMethods: ConfigMethodSubset<
   },
 
   importLots(): void {
-    this.importPresets();
-  },
-
-  importPresets(): void {
     this.$refs.fileInput?.click();
   },
 
@@ -180,72 +165,72 @@ export const configIoMethods: ConfigMethodSubset<
         }
         const imported = JSON.parse(raw) as unknown;
 
-        let presetsArr: ImportablePreset[] = [];
-        let lastPresetId: number | null = null;
+        let importedLots: ImportableLot[] = [];
+        let lastLotId: number | null = null;
 
         if (Array.isArray(imported)) {
-          presetsArr = imported as ImportablePreset[];
+          importedLots = imported as ImportableLot[];
         } else if (imported && typeof imported === "object") {
           const payload = imported as {
-            lots?: ImportablePreset[];
-            presets?: ImportablePreset[];
+            lots?: ImportableLot[];
+            presets?: ImportableLot[];
             lastLotId?: number | null;
             lastPresetId?: number | null;
           };
           if (Array.isArray(payload.lots)) {
-            presetsArr = payload.lots;
+            importedLots = payload.lots;
           } else if (Array.isArray(payload.presets)) {
-            presetsArr = payload.presets;
+            importedLots = payload.presets;
           } else {
             this.notify("Invalid file format. Please upload a valid JSON file.", "error");
             return;
           }
-          lastPresetId = payload.lastLotId ?? payload.lastPresetId ?? null;
+          lastLotId = payload.lastLotId ?? payload.lastPresetId ?? null;
         } else {
           this.notify("Invalid file format. Please upload a valid JSON file.", "error");
           return;
         }
 
-        if (presetsArr.length === 0) {
+        if (importedLots.length === 0) {
           this.notify("No valid lots found in file", "warning");
           return;
         }
 
         const todayDate = getTodayDate();
-        const cleanedPresets: Preset[] = presetsArr.map((p) => {
+        const cleanedLots: Lot[] = importedLots.map((p) => {
           const { sales, ...rest } = p;
           return {
             ...rest,
             purchaseDate:
-              toDateOnly((rest as Preset).purchaseDate) ??
-              toDateOnly((rest as Preset).createdAt) ??
-              inferDateFromPresetId((rest as Preset).id) ??
+              toDateOnly((rest as Lot).purchaseDate) ??
+              toDateOnly((rest as Lot).createdAt) ??
+              inferDateFromLotId((rest as Lot).id) ??
               todayDate,
             createdAt:
-              toDateOnly((rest as Preset).createdAt) ??
-              toDateOnly((rest as Preset).purchaseDate) ??
-              inferDateFromPresetId((rest as Preset).id) ??
+              toDateOnly((rest as Lot).createdAt) ??
+              toDateOnly((rest as Lot).purchaseDate) ??
+              inferDateFromLotId((rest as Lot).id) ??
               todayDate
           };
         });
 
-        this.presets = cleanedPresets;
-        this.savePresetsToStorage();
+        this.lots = cleanedLots;
+        this.saveLotsToStorage();
 
-        presetsArr.forEach((p) => {
+        importedLots.forEach((p) => {
           if (p && p.id != null && Array.isArray(p.sales)) {
             localStorage.setItem(this.getSalesStorageKey(p.id), JSON.stringify(p.sales));
           }
         });
 
         const candidateId =
-          (lastPresetId && this.presets.some((p) => p.id === lastPresetId))
-            ? lastPresetId
-            : this.presets[0].id;
+          (lastLotId && this.lots.some((p) => p.id === lastLotId))
+            ? lastLotId
+            : this.lots[0].id;
 
-        this.currentPresetId = candidateId;
-        this.loadPreset();
-        this.notify(`Imported ${this.presets.length} lot(s)`, "success");
+        this.currentLotId = candidateId;
+        this.loadLot();
+        this.notify(`Imported ${this.lots.length} lot(s)`, "success");
       } catch (error) {
         console.error("Import error:", error);
         this.notify("Invalid file format. Please upload a valid JSON file.", "error");

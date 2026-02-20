@@ -44,7 +44,7 @@ export interface Sale {
   date: string;
 }
 
-export interface PresetSetup {
+export interface LotSetup {
   boxPriceCost: number;
   boxesPurchased: number;
   packsPerBox: number;
@@ -65,7 +65,7 @@ export interface PresetSetup {
   targetProfitPercent: number;
 }
 
-export interface Preset extends PresetSetup {
+export interface Lot extends LotSetup {
   id: number;
   name: string;
   createdAt?: string;
@@ -80,9 +80,9 @@ export interface SalesStatus {
   revenue: number;
 }
 
-export interface PresetPerformanceSummary {
-  presetId: number;
-  presetName: string;
+export interface LotPerformanceSummary {
+  lotId: number;
+  lotName: string;
   salesCount: number;
   totalRevenue: number;
   totalCost: number;
@@ -94,8 +94,8 @@ export interface PresetPerformanceSummary {
 }
 
 export interface PortfolioTotals {
-  presetCount: number;
-  profitablePresetCount: number;
+  lotCount: number;
+  profitableLotCount: number;
   totalSalesCount: number;
   totalRevenue: number;
   totalCost: number;
@@ -107,7 +107,7 @@ export interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
 }
 
-export interface AppState extends PresetSetup {
+export interface AppState extends LotSetup {
   hasProAccess: boolean;
   showManualPurchaseVerify: boolean;
   showVerifyPurchaseModal: boolean;
@@ -118,7 +118,7 @@ export interface AppState extends PresetSetup {
   purchasePackageNameInput: string;
   purchaseUiMode: PurchaseUiMode;
   currentTab: AppTab;
-  showNewPresetModal: boolean;
+  showNewLotModal: boolean;
   speedDialOpen: boolean;
   speedDialOpenSales: boolean;
   snackbar: SnackbarState;
@@ -147,10 +147,10 @@ export interface AppState extends PresetSetup {
   chartView: ChartViewMode;
   portfolioChart: ChartJS<"doughnut", number[], string> | ChartJS<"line", number[], string> | null;
   portfolioChartView: PortfolioChartViewMode;
-  portfolioPresetFilterIds: number[];
-  presets: Preset[];
-  currentPresetId: number | null;
-  newPresetName: string;
+  portfolioLotFilterIds: number[];
+  lots: Lot[];
+  currentLotId: number | null;
+  newLotName: string;
   lastFetchTime: number | null;
   cloudSyncIntervalId: number | null;
   lastSyncedPayloadHash: string | null;

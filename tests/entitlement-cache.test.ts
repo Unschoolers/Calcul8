@@ -80,7 +80,7 @@ test("initGoogleAutoLogin keeps pro access from entitlement cache without login 
       let autoSaveCalled = false;
 
       const context = {
-        hasPresetSelected: true,
+        hasLotSelected: true,
         hasProAccess: false,
         targetProfitPercent: 0,
         autoSaveSetup() {

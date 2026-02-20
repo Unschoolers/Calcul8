@@ -1,0 +1,59 @@
+.config-card {
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.09);
+  background: rgba(var(--v-theme-surface), 0.94);
+  backdrop-filter: blur(4px);
+}
+
+.config-card .v-card-title {
+  padding-top: 0.85rem;
+  padding-bottom: 0.75rem;
+}
+
+.config-card .v-card-text {
+  padding-top: 0.85rem;
+  padding-bottom: 0.9rem;
+}
+
+.purchase-summary-card {
+  border-radius: 14px !important;
+}
+
+.price-link-list {
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  border-radius: 12px;
+  background: rgba(var(--v-theme-on-surface), 0.02);
+  padding: 0.2rem;
+}
+
+.price-link-list .v-list-item {
+  border-radius: 10px;
+  margin: 0.12rem 0;
+  min-height: 48px;
+}
+
+.price-link-list .v-list-item:hover {
+  background: rgba(var(--v-theme-primary), 0.08);
+}
+
+@media (max-width: 600px) {
+  .config-card {
+    border-radius: 16px !important;
+  }
+
+  .config-card .v-card-title {
+    font-size: 0.96rem !important;
+  }
+
+  .config-card .v-input {
+    margin-top: 0.35rem !important;
+    margin-bottom: 0.05rem !important;
+  }
+
+  .config-card .v-selection-control {
+    margin-top: 0.25rem !important;
+  }
+
+  .purchase-summary-card .text-h6 {
+    font-size: 1rem !important;
+  }
+}

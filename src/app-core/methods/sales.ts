@@ -44,8 +44,8 @@ function toDateOnly(value: unknown): string | null {
   return date.toISOString().split("T")[0];
 }
 
-function inferDateFromPresetId(presetId: number): string | null {
-  const timestamp = Number(presetId);
+function inferDateFromLotId(lotId: number): string | null {
+  const timestamp = Number(lotId);
   if (!Number.isFinite(timestamp) || timestamp < 946684800000 || timestamp > 4102444800000) {
     return null;
   }
@@ -141,10 +141,10 @@ export const salesMethods: ThisType<AppContext> & Pick<
   | "initPortfolioChart"
 > = {
   loadSalesFromStorage(): void {
-    if (!this.currentPresetId) return;
+    if (!this.currentLotId) return;
 
     try {
-      this.sales = this.loadSalesForPresetId(this.currentPresetId);
+      this.sales = this.loadSalesForLotId(this.currentLotId);
     } catch (error) {
       console.error("Failed to load sales:", error);
       this.sales = [];
@@ -152,10 +152,10 @@ export const salesMethods: ThisType<AppContext> & Pick<
   },
 
   saveSalesToStorage(): void {
-    if (!this.currentPresetId) return;
+    if (!this.currentLotId) return;
 
     try {
-      const key = this.getSalesStorageKey(this.currentPresetId);
+      const key = this.getSalesStorageKey(this.currentLotId);
       localStorage.setItem(key, JSON.stringify(this.sales));
     } catch (error) {
       console.error("Failed to save sales:", error);
@@ -436,10 +436,10 @@ export const salesMethods: ThisType<AppContext> & Pick<
     if (!ctx) return;
 
     if (this.portfolioChartView === "breakdown") {
-      const rows = this.allPresetPerformance.filter((row) => row.totalRevenue > 0);
+      const rows = this.allLotPerformance.filter((row) => row.totalRevenue > 0);
       if (rows.length === 0) return;
 
-      const labels = rows.map((row) => `${row.presetName} • $${this.formatCurrency(row.totalRevenue)}`);
+      const labels = rows.map((row) => `${row.lotName} • $${this.formatCurrency(row.totalRevenue)}`);
       const data = rows.map((row) => row.totalRevenue);
       const colors = rows.map((_, index) => PORTFOLIO_CHART_COLORS[index % PORTFOLIO_CHART_COLORS.length]);
 
@@ -478,14 +478,14 @@ export const salesMethods: ThisType<AppContext> & Pick<
       return;
     }
 
-    const selectedPresetIdSet = new Set(this.portfolioSelectedPresetIds);
-    const filteredPresets = this.presets.filter((preset) => selectedPresetIdSet.has(preset.id));
-    const presetById = new Map(filteredPresets.map((preset) => [preset.id, preset]));
-    const performanceByPresetId = new Map(this.allPresetPerformance.map((row) => [row.presetId, row]));
-    const salesByPresetId = new Map(
-      filteredPresets.map((preset) => [
-        preset.id,
-        this.currentPresetId === preset.id ? this.sales : this.loadSalesForPresetId(preset.id)
+    const selectedLotIdSet = new Set(this.portfolioSelectedLotIds);
+    const filteredLots = this.lots.filter((lot) => selectedLotIdSet.has(lot.id));
+    const lotById = new Map(filteredLots.map((lot) => [lot.id, lot]));
+    const performanceByLotId = new Map(this.allLotPerformance.map((row) => [row.lotId, row]));
+    const salesByLotId = new Map(
+      filteredLots.map((lot) => [
+        lot.id,
+        this.currentLotId === lot.id ? this.sales : this.loadSalesForLotId(lot.id)
       ])
     );
     const labels: string[] = [];
@@ -495,28 +495,28 @@ export const salesMethods: ThisType<AppContext> & Pick<
     const netByDate = new Map<string, number>();
     const costByDate = new Map<string, number>();
 
-    for (const preset of filteredPresets) {
-      const sales = salesByPresetId.get(preset.id) ?? [];
-      const performance = performanceByPresetId.get(preset.id);
+    for (const lot of filteredLots) {
+      const sales = salesByLotId.get(lot.id) ?? [];
+      const performance = performanceByLotId.get(lot.id);
       if (!performance) continue;
 
-      const presetCreatedDate =
-        toDateOnly(preset.purchaseDate) ??
-        toDateOnly(preset.createdAt) ??
-        inferDateFromPresetId(preset.id) ??
+      const lotCreatedDate =
+        toDateOnly(lot.purchaseDate) ??
+        toDateOnly(lot.createdAt) ??
+        inferDateFromLotId(lot.id) ??
         getEarliestSaleDate(sales) ??
         todayDate;
-      costByDate.set(presetCreatedDate, (costByDate.get(presetCreatedDate) ?? 0) - performance.totalCost);
+      costByDate.set(lotCreatedDate, (costByDate.get(lotCreatedDate) ?? 0) - performance.totalCost);
 
       for (const sale of sales) {
-        const presetFromMap = presetById.get(preset.id);
-        if (!presetFromMap) continue;
+        const lotFromMap = lotById.get(lot.id);
+        if (!lotFromMap) continue;
         const saleDate = toDateOnly(sale.date);
         if (!saleDate) continue;
         const grossRevenue = (sale.quantity || 0) * (sale.price || 0);
         const netRevenue = calculateNetFromGross(
           grossRevenue,
-          presetFromMap.sellingTaxPercent,
+          lotFromMap.sellingTaxPercent,
           sale.buyerShipping || 0,
           1
         );

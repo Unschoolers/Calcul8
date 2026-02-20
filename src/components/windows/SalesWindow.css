@@ -1,0 +1,10 @@
+.sales-chart-container {
+  min-height: 250px;
+}
+
+.sales-chart-canvas {
+  width: 100% !important;
+  height: 250px !important;
+  max-height: 250px !important;
+  display: block;
+}

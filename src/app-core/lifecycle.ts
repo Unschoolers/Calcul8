@@ -16,15 +16,15 @@ function isAppTab(value: unknown): value is AppTab {
 export const appLifecycle: AppLifecycleObject = {
   mounted() {
     migrateLegacyStorageKeys();
-    this.loadPresetsFromStorage();
+    this.loadLotsFromStorage();
 
     const last = Number(readStorageWithLegacy(STORAGE_KEYS.LAST_LOT_ID, LEGACY_KEYS.LAST_LOT_ID));
-    if (last && this.presets.some((p) => p.id === last)) {
-      this.currentPresetId = last;
-      this.loadPreset();
-    } else if (this.presets.length > 0) {
-      this.currentPresetId = this.presets[0].id;
-      this.loadPreset();
+    if (last && this.lots.some((p) => p.id === last)) {
+      this.currentLotId = last;
+      this.loadLot();
+    } else if (this.lots.length > 0) {
+      this.currentLotId = this.lots[0].id;
+      this.loadLot();
     }
 
     try {
@@ -32,10 +32,10 @@ export const appLifecycle: AppLifecycleObject = {
       if (rawFilter) {
         const parsed = JSON.parse(rawFilter) as unknown;
         if (Array.isArray(parsed)) {
-          const validPresetIds = new Set(this.presets.map((preset) => preset.id));
-          this.portfolioPresetFilterIds = parsed
+          const validLotIds = new Set(this.lots.map((lot) => lot.id));
+          this.portfolioLotFilterIds = parsed
             .map((value) => Number(value))
-            .filter((id) => Number.isFinite(id) && validPresetIds.has(id));
+            .filter((id) => Number.isFinite(id) && validLotIds.has(id));
         }
       }
     } catch {
@@ -44,7 +44,7 @@ export const appLifecycle: AppLifecycleObject = {
 
     try {
       const savedTab = localStorage.getItem(STORAGE_KEYS.LAST_TAB);
-      if (isAppTab(savedTab) && (savedTab === "config" || this.currentPresetId)) {
+      if (isAppTab(savedTab) && (savedTab === "config" || this.currentLotId)) {
         this.currentTab = savedTab;
       }
     } catch {

@@ -1,5 +1,5 @@
 import { DEFAULT_VALUES } from "../../constants.ts";
-import type { PresetSetup } from "../../types/app.ts";
+import type { LotSetup } from "../../types/app.ts";
 import {
   getLegacySalesStorageKey,
   getLegacyStorageKeys,
@@ -7,7 +7,7 @@ import {
   removeStorageWithLegacy,
   STORAGE_KEYS
 } from "../storageKeys.ts";
-import { type ConfigMethodSubset, getTodayDate, inferDateFromPresetId, toDateOnly } from "./config-shared.ts";
+import { type ConfigMethodSubset, getTodayDate, inferDateFromLotId, toDateOnly } from "./config-shared.ts";
 
 const LEGACY_KEYS = getLegacyStorageKeys();
 
@@ -18,13 +18,10 @@ export const configLotMethods: ConfigMethodSubset<
   | "resetLivePrices"
   | "applyLivePricesToDefaults"
   | "createNewLot"
-  | "createNewPreset"
   | "loadLot"
-  | "loadPreset"
   | "deleteCurrentLot"
-  | "deleteCurrentPreset"
 > = {
-  getCurrentSetup(): PresetSetup {
+  getCurrentSetup(): LotSetup {
     return {
       boxPriceCost: this.boxPriceCost,
       boxesPurchased: this.boxesPurchased,
@@ -48,12 +45,12 @@ export const configLotMethods: ConfigMethodSubset<
   },
 
   autoSaveSetup(): void {
-    if (!this.currentPresetId) return;
-    const preset = this.presets.find((p) => p.id === this.currentPresetId);
-    if (!preset) return;
+    if (!this.currentLotId) return;
+    const lot = this.lots.find((p) => p.id === this.currentLotId);
+    if (!lot) return;
 
-    Object.assign(preset, this.getCurrentSetup());
-    this.savePresetsToStorage();
+    Object.assign(lot, this.getCurrentSetup());
+    this.saveLotsToStorage();
   },
 
   syncLivePricesFromDefaults(): void {
@@ -68,7 +65,7 @@ export const configLotMethods: ConfigMethodSubset<
   },
 
   applyLivePricesToDefaults(): void {
-    if (!this.currentPresetId) {
+    if (!this.currentLotId) {
       this.notify("Select a lot first", "warning");
       return;
     }
@@ -81,21 +78,17 @@ export const configLotMethods: ConfigMethodSubset<
   },
 
   createNewLot(): void {
-    this.createNewPreset();
-  },
-
-  createNewPreset(): void {
-    const name = (this.newPresetName || "").trim();
+    const name = (this.newLotName || "").trim();
     if (!name) return this.notify("Please enter a lot name", "warning");
-    if (this.presets.some((p) => p.name === name)) return this.notify("A lot with this name already exists", "warning");
+    if (this.lots.some((p) => p.name === name)) return this.notify("A lot with this name already exists", "warning");
 
     const todayDate = getTodayDate();
     const setup = this.getCurrentSetup();
-    const selectedPreset = this.currentPresetId ? this.presets.find((p) => p.id === this.currentPresetId) : null;
-    const fallbackPreviousPreset = this.presets.length > 0 ? this.presets[this.presets.length - 1] : null;
+    const selectedLot = this.currentLotId ? this.lots.find((p) => p.id === this.currentLotId) : null;
+    const fallbackPreviousLot = this.lots.length > 0 ? this.lots[this.lots.length - 1] : null;
     const previousSellingTaxRaw =
-      selectedPreset?.sellingTaxPercent ??
-      fallbackPreviousPreset?.sellingTaxPercent ??
+      selectedLot?.sellingTaxPercent ??
+      fallbackPreviousLot?.sellingTaxPercent ??
       DEFAULT_VALUES.SELLING_TAX_RATE_PERCENT;
     const previousSellingTax = Number(previousSellingTaxRaw);
     setup.sellingTaxPercent =
@@ -109,63 +102,59 @@ export const configLotMethods: ConfigMethodSubset<
       setup.purchaseTaxPercent = 0;
     }
 
-    const newPreset = {
+    const newLot = {
       id: Date.now(),
       name,
       createdAt: todayDate,
       ...setup
     };
-    this.presets.push(newPreset);
-    this.savePresetsToStorage();
+    this.lots.push(newLot);
+    this.saveLotsToStorage();
 
-    this.currentPresetId = newPreset.id;
-    this.loadPreset();
-    this.newPresetName = "";
-    this.showNewPresetModal = false;
+    this.currentLotId = newLot.id;
+    this.loadLot();
+    this.newLotName = "";
+    this.showNewLotModal = false;
     this.notify("Lot created", "success");
   },
 
   loadLot(): void {
-    this.loadPreset();
-  },
+    if (!this.currentLotId) return;
 
-  loadPreset(): void {
-    if (!this.currentPresetId) return;
-
-    const preset = this.presets.find((p) => p.id === this.currentPresetId);
-    if (!preset) return;
+    const lot = this.lots.find((p) => p.id === this.currentLotId);
+    if (!lot) return;
     const todayDate = getTodayDate();
 
-    this.boxPriceCost = preset.boxPriceCost ?? DEFAULT_VALUES.BOX_PRICE;
-    this.boxesPurchased = preset.boxesPurchased ?? DEFAULT_VALUES.BOXES_PURCHASED;
-    this.packsPerBox = preset.packsPerBox ?? DEFAULT_VALUES.PACKS_PER_BOX;
-    this.spotsPerBox = preset.spotsPerBox ?? DEFAULT_VALUES.SPOTS_PER_BOX;
-    this.costInputMode = preset.costInputMode ?? "perBox";
-    this.currency = preset.currency ?? "CAD";
-    this.sellingCurrency = preset.sellingCurrency ?? "CAD";
-    this.exchangeRate = preset.exchangeRate ?? DEFAULT_VALUES.EXCHANGE_RATE;
+    this.boxPriceCost = lot.boxPriceCost ?? DEFAULT_VALUES.BOX_PRICE;
+    this.boxesPurchased = lot.boxesPurchased ?? DEFAULT_VALUES.BOXES_PURCHASED;
+    this.packsPerBox = lot.packsPerBox ?? DEFAULT_VALUES.PACKS_PER_BOX;
+    this.spotsPerBox = lot.spotsPerBox ?? DEFAULT_VALUES.SPOTS_PER_BOX;
+    this.costInputMode = lot.costInputMode ?? "perBox";
+    this.currency = lot.currency ?? "CAD";
+    this.sellingCurrency = lot.sellingCurrency ?? "CAD";
+    this.exchangeRate = lot.exchangeRate ?? DEFAULT_VALUES.EXCHANGE_RATE;
     this.purchaseDate =
-      toDateOnly(preset.purchaseDate) ??
-      toDateOnly(preset.createdAt) ??
-      inferDateFromPresetId(preset.id) ??
+      toDateOnly(lot.purchaseDate) ??
+      toDateOnly(lot.createdAt) ??
+      inferDateFromLotId(lot.id) ??
       todayDate;
-    this.purchaseShippingCost = preset.purchaseShippingCost ?? DEFAULT_VALUES.PURCHASE_SHIPPING_COST;
+    this.purchaseShippingCost = lot.purchaseShippingCost ?? DEFAULT_VALUES.PURCHASE_SHIPPING_COST;
 
-    const legacyTax = preset.taxRatePercent;
+    const legacyTax = lot.taxRatePercent;
     this.purchaseTaxPercent =
-      preset.purchaseTaxPercent ??
+      lot.purchaseTaxPercent ??
       legacyTax ??
       DEFAULT_VALUES.PURCHASE_TAX_RATE_PERCENT;
     this.sellingTaxPercent =
-      preset.sellingTaxPercent ??
+      lot.sellingTaxPercent ??
       legacyTax ??
       DEFAULT_VALUES.SELLING_TAX_RATE_PERCENT;
-    this.sellingShippingPerOrder = preset.sellingShippingPerOrder ?? DEFAULT_VALUES.SELLING_SHIPPING_PER_ORDER;
-    this.includeTax = preset.includeTax ?? true;
-    this.spotPrice = preset.spotPrice ?? DEFAULT_VALUES.SPOT_PRICE;
-    this.boxPriceSell = preset.boxPriceSell ?? DEFAULT_VALUES.BOX_PRICE_SELL;
-    this.packPrice = preset.packPrice ?? DEFAULT_VALUES.PACK_PRICE;
-    const parsedTargetProfit = Number(preset.targetProfitPercent);
+    this.sellingShippingPerOrder = lot.sellingShippingPerOrder ?? DEFAULT_VALUES.SELLING_SHIPPING_PER_ORDER;
+    this.includeTax = lot.includeTax ?? true;
+    this.spotPrice = lot.spotPrice ?? DEFAULT_VALUES.SPOT_PRICE;
+    this.boxPriceSell = lot.boxPriceSell ?? DEFAULT_VALUES.BOX_PRICE_SELL;
+    this.packPrice = lot.packPrice ?? DEFAULT_VALUES.PACK_PRICE;
+    const parsedTargetProfit = Number(lot.targetProfitPercent);
     if (!this.hasProAccess) {
       this.targetProfitPercent = 0;
     } else if (Number.isFinite(parsedTargetProfit) && parsedTargetProfit >= 0) {
@@ -188,35 +177,31 @@ export const configLotMethods: ConfigMethodSubset<
   },
 
   deleteCurrentLot(): void {
-    this.deleteCurrentPreset();
-  },
-
-  deleteCurrentPreset(): void {
-    if (!this.currentPresetId) return;
-    const preset = this.presets.find((p) => p.id === this.currentPresetId);
-    if (!preset) return;
-    const presetIdToDelete = preset.id;
-    const linkedSalesCount = this.loadSalesForPresetId(presetIdToDelete).length;
+    if (!this.currentLotId) return;
+    const lot = this.lots.find((p) => p.id === this.currentLotId);
+    if (!lot) return;
+    const lotIdToDelete = lot.id;
+    const linkedSalesCount = this.loadSalesForLotId(lotIdToDelete).length;
 
     this.askConfirmation(
       {
         title: "Delete Lot?",
         text: linkedSalesCount > 0
-          ? `Delete "${preset.name}" and ${linkedSalesCount} linked sale${linkedSalesCount === 1 ? "" : "s"} permanently?`
-          : `Delete "${preset.name}" permanently?`,
+          ? `Delete "${lot.name}" and ${linkedSalesCount} linked sale${linkedSalesCount === 1 ? "" : "s"} permanently?`
+          : `Delete "${lot.name}" permanently?`,
         color: "error"
       },
       () => {
-        this.presets = this.presets.filter((p) => p.id !== presetIdToDelete);
+        this.lots = this.lots.filter((p) => p.id !== lotIdToDelete);
         removeStorageWithLegacy(
-          this.getSalesStorageKey(presetIdToDelete),
-          getLegacySalesStorageKey(presetIdToDelete)
+          this.getSalesStorageKey(lotIdToDelete),
+          getLegacySalesStorageKey(lotIdToDelete)
         );
-        if (Number(readStorageWithLegacy(STORAGE_KEYS.LAST_LOT_ID, LEGACY_KEYS.LAST_LOT_ID)) === presetIdToDelete) {
+        if (Number(readStorageWithLegacy(STORAGE_KEYS.LAST_LOT_ID, LEGACY_KEYS.LAST_LOT_ID)) === lotIdToDelete) {
           removeStorageWithLegacy(STORAGE_KEYS.LAST_LOT_ID, LEGACY_KEYS.LAST_LOT_ID);
         }
-        this.savePresetsToStorage();
-        this.currentPresetId = null;
+        this.saveLotsToStorage();
+        this.currentLotId = null;
         this.notify("Lot deleted", "info");
       }
     );

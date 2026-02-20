@@ -1,0 +1,17 @@
+.live-card {
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 16px !important;
+}
+
+.live-card:active {
+  transform: none;
+}
+
+.live-pricing-card {
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08) !important;
+  transition: border-color 0.15s ease;
+}
+
+.live-pricing-card:hover {
+  border-color: rgba(var(--v-theme-on-surface), 0.12) !important;
+}

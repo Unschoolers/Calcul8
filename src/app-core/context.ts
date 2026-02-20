@@ -3,10 +3,10 @@ import type {
   AppTab,
   BeforeInstallPromptEvent,
   CostInputMode,
+  Lot,
+  LotPerformanceSummary,
+  LotSetup,
   PortfolioTotals,
-  Preset,
-  PresetPerformanceSummary,
-  PresetSetup,
   Sale,
   SaleType,
   SalesStatus,
@@ -19,19 +19,12 @@ export interface AppComputedState {
   googleProfileName: string;
   googleProfileEmail: string;
   googleProfilePicture: string;
-  currentLotId: number | null;
-  showNewLotModal: boolean;
   lotNameDraft: string;
-  hasPresetSelected: boolean;
   hasLotSelected: boolean;
   canUsePaidActions: boolean;
-  presetItems: Array<{ title: string; value: number | null }>;
   lotItems: Array<{ title: string; value: number | null }>;
-  portfolioLotFilterIds: number[];
   portfolioLotFilterItems: Array<{ title: string; value: number }>;
   portfolioSelectedLotIds: number[];
-  portfolioPresetFilterItems: Array<{ title: string; value: number }>;
-  portfolioSelectedPresetIds: number[];
   totalPacks: number;
   totalSpots: number;
   boxPriceCostCAD: number;
@@ -55,8 +48,7 @@ export interface AppComputedState {
   sortedSales: Sale[];
   sparklineData: number[];
   sparklineGradient: string[];
-  allLotPerformance: Array<PresetPerformanceSummary & { lotId: number; lotName: string }>;
-  allPresetPerformance: PresetPerformanceSummary[];
+  allLotPerformance: Array<LotPerformanceSummary & { lotId: number; lotName: string }>;
   portfolioTotals: PortfolioTotals;
   hasPortfolioData: boolean;
 }
@@ -70,33 +62,26 @@ export interface AppMethodState {
   ): void;
   runConfirmAction(): void;
   cancelConfirmAction(): void;
-  getSalesStorageKey(presetId: number): string;
-  loadSalesForPresetId(presetId: number): Sale[];
+  getSalesStorageKey(lotId: number): string;
+  loadSalesForLotId(lotId: number): Sale[];
   netFromGross(grossRevenue: number, buyerShippingPerOrder?: number, orderCount?: number): number;
   getExchangeRate(): Promise<void>;
   loadLotsFromStorage(): void;
-  loadPresetsFromStorage(): void;
   saveLotsToStorage(): void;
-  savePresetsToStorage(): void;
-  getCurrentSetup(): PresetSetup;
+  getCurrentSetup(): LotSetup;
   autoSaveSetup(): void;
   syncLivePricesFromDefaults(): void;
   resetLivePrices(): void;
   applyLivePricesToDefaults(): void;
   createNewLot(): void;
-  createNewPreset(): void;
   loadLot(): void;
-  loadPreset(): void;
   deleteCurrentLot(): void;
-  deleteCurrentPreset(): void;
   exportLots(): void;
-  exportPresets(): void;
   exportSales(): void;
   exportPortfolioReport(): void;
   openPortfolioReportModal(): void;
   copyPortfolioReportTable(): Promise<void>;
   importLots(): void;
-  importPresets(): void;
   handleFileImport(event: Event): void;
   calculateProfit(units: number, pricePerUnit: number): number;
   formatCurrency(value: number | null | undefined, decimals?: number): string;
@@ -164,10 +149,10 @@ export type AppContext = AppState & AppComputedState & AppMethodState & AppVueCo
 export interface AppWatchObject {
   currentTab(this: AppContext, newTab: AppTab): void;
   purchaseUiMode(this: AppContext, newMode: "simple" | "expert"): void;
-  currentPresetId(this: AppContext, newVal: number | null): void;
+  currentLotId(this: AppContext, newVal: number | null): void;
   chartView(this: AppContext): void;
   portfolioChartView(this: AppContext): void;
-  portfolioPresetFilterIds: {
+  portfolioLotFilterIds: {
     handler(this: AppContext): void;
     deep: true;
   };
@@ -208,19 +193,12 @@ export interface AppComputedObject {
   googleProfileName(this: AppContext): string;
   googleProfileEmail(this: AppContext): string;
   googleProfilePicture(this: AppContext): string;
-  currentLotId: NullableNumberProxyComputed;
-  showNewLotModal: BooleanProxyComputed;
   lotNameDraft: StringProxyComputed;
-  hasPresetSelected(this: AppContext): boolean;
   hasLotSelected(this: AppContext): boolean;
   canUsePaidActions(this: AppContext): boolean;
-  presetItems(this: AppContext): Array<{ title: string; value: number | null }>;
   lotItems(this: AppContext): Array<{ title: string; value: number | null }>;
-  portfolioLotFilterIds: NumberArrayProxyComputed;
   portfolioLotFilterItems(this: AppContext): Array<{ title: string; value: number }>;
   portfolioSelectedLotIds(this: AppContext): number[];
-  portfolioPresetFilterItems(this: AppContext): Array<{ title: string; value: number }>;
-  portfolioSelectedPresetIds(this: AppContext): number[];
   totalPacks(this: AppContext): number;
   totalSpots(this: AppContext): number;
   boxPriceCostCAD(this: AppContext): number;
@@ -244,8 +222,7 @@ export interface AppComputedObject {
   sortedSales(this: AppContext): Sale[];
   sparklineData(this: AppContext): number[];
   sparklineGradient(this: AppContext): string[];
-  allLotPerformance(this: AppContext): Array<PresetPerformanceSummary & { lotId: number; lotName: string }>;
-  allPresetPerformance(this: AppContext): PresetPerformanceSummary[];
+  allLotPerformance(this: AppContext): Array<LotPerformanceSummary & { lotId: number; lotName: string }>;
   portfolioTotals(this: AppContext): PortfolioTotals;
   hasPortfolioData(this: AppContext): boolean;
 }
@@ -260,8 +237,8 @@ export type ThemeName = "unionArenaDark" | "unionArenaLight";
 export interface AppImportBundle {
   version: number;
   exportedAt: string;
-  lastPresetId: number | null;
-  presets: Array<Preset & { sales?: Sale[] }>;
+  lastLotId: number | null;
+  lots: Array<Lot & { sales?: Sale[] }>;
 }
 
 export interface PromptResult {

@@ -1,0 +1,24 @@
+.portfolio-report-table {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+}
+
+.portfolio-report-table th,
+.portfolio-report-table td {
+  padding: 0.52rem 0.6rem;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.09);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.portfolio-report-table th {
+  font-weight: 700;
+  color: rgba(var(--v-theme-on-surface), 0.78);
+  background: rgba(var(--v-theme-on-surface), 0.04);
+}
+
+.portfolio-report-table tbody tr:nth-child(even) {
+  background: rgba(var(--v-theme-on-surface), 0.02);
+}

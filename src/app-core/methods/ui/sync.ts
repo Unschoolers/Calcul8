@@ -18,12 +18,12 @@ type SyncPayload = {
 
 function createSyncPayload(context: AppContext, clientVersion?: number): SyncPayload {
   const salesByLot: Record<string, Sale[]> = {};
-  for (const preset of context.presets) {
-    salesByLot[String(preset.id)] = context.loadSalesForPresetId(preset.id);
+  for (const lot of context.lots) {
+    salesByLot[String(lot.id)] = context.loadSalesForLotId(lot.id);
   }
 
   return {
-    lots: context.presets,
+    lots: context.lots,
     salesByLot,
     clientVersion
   };
@@ -116,8 +116,8 @@ export const uiSyncMethods: ThisType<AppContext> & Pick<
         : {};
       const cloudHasSales = Object.values(cloudSalesByLot).some((sales) => Array.isArray(sales) && sales.length > 0);
       const cloudHasData = cloudLots.length > 0 || cloudHasSales;
-      const localHasSales = this.presets.some((preset) => this.loadSalesForPresetId(preset.id).length > 0);
-      const localHasData = this.presets.length > 0 || localHasSales;
+      const localHasSales = this.lots.some((lot) => this.loadSalesForLotId(lot.id).length > 0);
+      const localHasData = this.lots.length > 0 || localHasSales;
       const cloudVersion = Number(snapshot.version ?? 0);
       const localVersion = Number(localStorage.getItem(SYNC_CLIENT_VERSION_KEY) || "0");
       const shouldApplyCloud = Number.isFinite(cloudVersion) && (
@@ -134,21 +134,21 @@ export const uiSyncMethods: ThisType<AppContext> & Pick<
         return;
       }
 
-      this.presets = cloudLots as typeof this.presets;
-      this.savePresetsToStorage();
+      this.lots = cloudLots as typeof this.lots;
+      this.saveLotsToStorage();
 
-      Object.entries(cloudSalesByLot).forEach(([presetId, sales]) => {
+      Object.entries(cloudSalesByLot).forEach(([lotId, sales]) => {
         if (!Array.isArray(sales)) return;
-        localStorage.setItem(this.getSalesStorageKey(Number(presetId)), JSON.stringify(sales));
+        localStorage.setItem(this.getSalesStorageKey(Number(lotId)), JSON.stringify(sales));
       });
 
-      if (this.currentPresetId && this.presets.some((p) => p.id === this.currentPresetId)) {
-        this.loadPreset();
-      } else if (this.presets.length > 0) {
-        this.currentPresetId = this.presets[0].id;
-        this.loadPreset();
+      if (this.currentLotId && this.lots.some((p) => p.id === this.currentLotId)) {
+        this.loadLot();
+      } else if (this.lots.length > 0) {
+        this.currentLotId = this.lots[0].id;
+        this.loadLot();
       } else {
-        this.currentPresetId = null;
+        this.currentLotId = null;
         this.sales = [];
       }
 

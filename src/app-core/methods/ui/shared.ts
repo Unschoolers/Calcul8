@@ -258,7 +258,7 @@ export function handleExpiredAuth(app: AppContext): void {
   clearEntitlementCache();
   removeStorageWithLegacy(PRO_ACCESS_KEY, LEGACY_KEYS.PRO_ACCESS);
   app.hasProAccess = false;
-  if (app.hasPresetSelected && Number(app.targetProfitPercent) !== 0) {
+  if (app.hasLotSelected && Number(app.targetProfitPercent) !== 0) {
     app.targetProfitPercent = 0;
     app.autoSaveSetup();
   }
