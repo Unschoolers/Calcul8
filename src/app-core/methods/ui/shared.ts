@@ -46,6 +46,7 @@ export interface VerifyPlayPurchaseRequest {
   purchaseToken: string;
   productId?: string;
   packageName?: string;
+  idempotencyKey?: string;
 }
 
 interface SubmitPurchaseVerificationRequest {
@@ -153,6 +154,34 @@ function sleep(ms: number): Promise<void> {
   });
 }
 
+function bytesToHex(bytes: Uint8Array): string {
+  return Array.from(bytes)
+    .map((value) => value.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+async function buildPurchaseIdempotencyKey(
+  provider: string,
+  purchaseToken: string,
+  productId: string
+): Promise<string> {
+  const seed = `${provider}:${purchaseToken}:${productId}`;
+  const cryptoApi = window.crypto;
+  if (cryptoApi?.subtle && typeof TextEncoder !== "undefined") {
+    const encoded = new TextEncoder().encode(seed);
+    const digest = await cryptoApi.subtle.digest("SHA-256", encoded);
+    const hex = bytesToHex(new Uint8Array(digest));
+    return `${provider}_${hex.slice(0, 48)}`;
+  }
+
+  let hash = 0;
+  for (let index = 0; index < seed.length; index += 1) {
+    hash = ((hash << 5) - hash) + seed.charCodeAt(index);
+    hash |= 0;
+  }
+  return `${provider}_${Math.abs(hash).toString(16)}_${seed.length}`;
+}
+
 function isRetryableStatus(status: number): boolean {
   return status === 408 || status === 429 || (status >= 500 && status <= 599);
 }
@@ -237,7 +266,6 @@ export function handleExpiredAuth(app: AppContext): void {
 }
 
 async function postPurchaseVerification(
-  app: AppContext,
   request: SubmitPurchaseVerificationRequest
 ): Promise<Response> {
   const { provider, baseUrl, googleIdToken, body } = request;
@@ -247,38 +275,34 @@ async function postPurchaseVerification(
   };
 
   const genericRoute = `${baseUrl}/entitlements/verify/${provider}`;
-  let response = await fetchWithRetry(genericRoute, {
+  return fetchWithRetry(genericRoute, {
     method: "POST",
     headers,
     body: JSON.stringify(body)
   });
-
-  // Backward compatibility while old /verify-play endpoint still exists in older deployments.
-  if (provider === "play" && (response.status === 404 || response.status === 405)) {
-    response = await fetchWithRetry(`${baseUrl}/entitlements/verify-play`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(body)
-    });
-  }
-
-  return response;
 }
 
 export async function submitPlayPurchaseVerification(
   app: AppContext,
   payload: VerifyPlayPurchaseRequest
 ): Promise<boolean> {
-  const body: Record<string, string> = {
-    purchaseToken: payload.purchaseToken
-  };
-
   const productId = (payload.productId ?? "").trim();
   const packageName = (payload.packageName ?? "").trim();
+  const idempotencyKey = (payload.idempotencyKey ?? "").trim() || await buildPurchaseIdempotencyKey(
+    "play",
+    payload.purchaseToken,
+    productId
+  );
+
+  const body: Record<string, string> = {
+    purchaseToken: payload.purchaseToken,
+    idempotencyKey
+  };
+
   if (productId) body.productId = productId;
   if (packageName) body.packageName = packageName;
 
-  const response = await postPurchaseVerification(app, {
+  const response = await postPurchaseVerification({
     provider: "play",
     baseUrl: payload.baseUrl,
     googleIdToken: payload.googleIdToken,

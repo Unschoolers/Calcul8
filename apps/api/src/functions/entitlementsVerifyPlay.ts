@@ -1,7 +1,13 @@
 import { app, type HttpRequest, type HttpResponseInit, type InvocationContext } from "@azure/functions";
 import { HttpError, resolveUserId } from "../lib/auth";
 import { getConfig } from "../lib/config";
-import { getPlayPurchaseByTokenHash, upsertEntitlement, upsertPlayPurchase } from "../lib/cosmos";
+import {
+  createPurchaseVerificationResult,
+  getPlayPurchaseByTokenHash,
+  getPurchaseVerificationResult,
+  upsertEntitlement,
+  upsertPlayPurchase
+} from "../lib/cosmos";
 import { acknowledgePlayProductPurchase, verifyPlayProductPurchase } from "../lib/googlePlay";
 import { errorResponse, jsonResponse, maybeHandleCorsPreflight } from "../lib/http";
 import { assertPurchaseNotLinkedToDifferentUser, hashPurchaseToken, shouldAcknowledgePurchase } from "../lib/playEntitlements";
@@ -11,6 +17,7 @@ interface VerifyPlayPurchaseBody {
   purchaseToken: string;
   productId?: string;
   packageName?: string;
+  idempotencyKey: string;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -33,6 +40,7 @@ async function parseVerifyBody(request: HttpRequest): Promise<VerifyPlayPurchase
   const purchaseTokenValue = payload.purchaseToken;
   const productIdValue = payload.productId;
   const packageNameValue = payload.packageName;
+  const idempotencyKeyValue = payload.idempotencyKey;
 
   if (typeof purchaseTokenValue !== "string" || purchaseTokenValue.trim().length === 0) {
     throw new HttpError(400, "Field 'purchaseToken' is required.");
@@ -46,10 +54,20 @@ async function parseVerifyBody(request: HttpRequest): Promise<VerifyPlayPurchase
     throw new HttpError(400, "Field 'packageName' must be a string when provided.");
   }
 
+  if (typeof idempotencyKeyValue !== "string" || idempotencyKeyValue.trim().length === 0) {
+    throw new HttpError(400, "Field 'idempotencyKey' is required.");
+  }
+
+  const idempotencyKey = idempotencyKeyValue.trim();
+  if (!/^[A-Za-z0-9:_-]{8,120}$/.test(idempotencyKey)) {
+    throw new HttpError(400, "Field 'idempotencyKey' has an invalid format.");
+  }
+
   return {
     purchaseToken: purchaseTokenValue.trim(),
     productId: typeof productIdValue === "string" ? productIdValue.trim() : undefined,
-    packageName: typeof packageNameValue === "string" ? packageNameValue.trim() : undefined
+    packageName: typeof packageNameValue === "string" ? packageNameValue.trim() : undefined,
+    idempotencyKey
   };
 }
 
@@ -72,11 +90,31 @@ function resolveRequestedProductId(requestProductId: string | undefined, configu
 export async function verifyPlayEntitlementRequest(
   request: HttpRequest,
   context: InvocationContext,
-  config: ApiConfig
+  config: ApiConfig,
+  routeLabel = "/entitlements/verify/play"
 ): Promise<HttpResponseInit> {
   try {
     const userId = await resolveUserId(request, config);
     const body = await parseVerifyBody(request);
+    const existingVerificationResult = await getPurchaseVerificationResult(config, {
+      userId,
+      provider: "play",
+      idempotencyKey: body.idempotencyKey
+    });
+    if (existingVerificationResult) {
+      context.info("Replaying idempotent Play verification response", {
+        route: routeLabel,
+        userId,
+        provider: "play"
+      });
+      return jsonResponse(
+        request,
+        config,
+        existingVerificationResult.responseStatus,
+        existingVerificationResult.responseBody
+      );
+    }
+
     const packageName = resolvePackageName(body.packageName, config.googlePlayPackageName);
     const requestedProductId = resolveRequestedProductId(body.productId, config.googlePlayProProductIds);
     const allowedProductIds = config.googlePlayProProductIds.length > 0
@@ -108,6 +146,7 @@ export async function verifyPlayEntitlementRequest(
 
     if (!verification.isValid) {
       context.warn("Google Play purchase invalid", {
+        route: routeLabel,
         packageName,
         allowedProductIds,
         purchaseState: verification.purchaseState,
@@ -130,6 +169,13 @@ export async function verifyPlayEntitlementRequest(
     }
 
     const updatedAt = new Date().toISOString();
+    const successPayload: Record<string, unknown> = {
+      ok: true,
+      userId,
+      hasProAccess: true,
+      purchaseSource: "google_play",
+      updatedAt
+    };
     await Promise.all([
       upsertEntitlement(config, {
         id: `entitlement:${userId}`,
@@ -153,16 +199,32 @@ export async function verifyPlayEntitlementRequest(
         updatedAt
       })
     ]);
-
-    return jsonResponse(request, config, 200, {
-      ok: true,
+    await createPurchaseVerificationResult(config, {
       userId,
-      hasProAccess: true,
-      purchaseSource: "google_play",
-      updatedAt
+      provider: "play",
+      idempotencyKey: body.idempotencyKey,
+      responseStatus: 200,
+      responseBody: successPayload,
+      createdAt: updatedAt
     });
+
+    return jsonResponse(request, config, 200, successPayload);
   } catch (error) {
-    context.error("POST /entitlements/verify-play failed", error);
+    if (error instanceof HttpError) {
+      if (error.status >= 500) {
+        context.error(`POST ${routeLabel} failed`, {
+          status: error.status,
+          message: error.message
+        });
+      } else {
+        context.warn(`POST ${routeLabel} rejected`, {
+          status: error.status,
+          message: error.message
+        });
+      }
+    } else {
+      context.error(`POST ${routeLabel} failed`, error);
+    }
     return errorResponse(request, config, error, "Failed to verify Google Play purchase.");
   }
 }
@@ -175,7 +237,7 @@ export async function entitlementsVerifyPlay(
   const preflightResponse = maybeHandleCorsPreflight(request, config);
   if (preflightResponse) return preflightResponse;
 
-  return verifyPlayEntitlementRequest(request, context, config);
+  return verifyPlayEntitlementRequest(request, context, config, "/entitlements/verify-play");
 }
 
 app.http("entitlementsVerifyPlay", {

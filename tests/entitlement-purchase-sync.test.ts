@@ -182,3 +182,64 @@ test("submitPlayPurchaseVerification defaults to Pro=true on successful response
     }
   });
 });
+
+test("submitPlayPurchaseVerification sends deterministic idempotencyKey", async () => {
+  await withMockedLocalStorage(async () => {
+    const originalFetch = globalThis.fetch;
+    const originalWindow = (globalThis as { window?: Window }).window;
+    Object.defineProperty(globalThis, "window", { configurable: true, value: globalThis });
+
+    const capturedBodies: Array<Record<string, unknown>> = [];
+    Object.defineProperty(globalThis, "fetch", {
+      configurable: true,
+      value: async (_input: unknown, init?: RequestInit) => {
+        const parsed = JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>;
+        capturedBodies.push(parsed);
+        return new Response("{}", {
+          status: 200,
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+    });
+
+    const app = {
+      hasProAccess: false,
+      notify(): void {
+        // Not used in this test path.
+      },
+      async debugLogEntitlement(): Promise<void> {
+        // noop
+      }
+    };
+
+    try {
+      await submitPlayPurchaseVerification(app as never, {
+        baseUrl: "https://api.example.test",
+        googleIdToken: "google-id-token",
+        purchaseToken: "purchase-token",
+        productId: "pro_access"
+      });
+      await submitPlayPurchaseVerification(app as never, {
+        baseUrl: "https://api.example.test",
+        googleIdToken: "google-id-token",
+        purchaseToken: "purchase-token",
+        productId: "pro_access"
+      });
+
+      assert.equal(capturedBodies.length, 2);
+      const idempotencyKeyOne = String(capturedBodies[0]?.idempotencyKey ?? "");
+      const idempotencyKeyTwo = String(capturedBodies[1]?.idempotencyKey ?? "");
+      assert.match(idempotencyKeyOne, /^play_[A-Za-z0-9_-]{8,120}$/);
+      assert.equal(idempotencyKeyOne, idempotencyKeyTwo);
+    } finally {
+      Object.defineProperty(globalThis, "fetch", {
+        configurable: true,
+        value: originalFetch
+      });
+      Object.defineProperty(globalThis, "window", {
+        configurable: true,
+        value: originalWindow
+      });
+    }
+  });
+});

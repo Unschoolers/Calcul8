@@ -1,13 +1,11 @@
 import { app, type HttpRequest, type HttpResponseInit, type InvocationContext } from "@azure/functions";
 import { getConfig } from "../lib/config";
 import { errorResponse, jsonResponse, maybeHandleCorsPreflight } from "../lib/http";
-import { verifyPlayEntitlementRequest } from "./entitlementsVerifyPlay";
+import { getSupportedPurchaseProviders, resolvePurchaseVerifier } from "./purchaseVerifiers";
 
 function resolveProvider(request: HttpRequest): string {
   return (request.params?.provider ?? "").trim().toLowerCase();
 }
-
-const SUPPORTED_PURCHASE_PROVIDERS = ["play"] as const;
 
 export async function entitlementsVerify(
   request: HttpRequest,
@@ -19,14 +17,15 @@ export async function entitlementsVerify(
 
   try {
     const provider = resolveProvider(request);
+    const verifier = resolvePurchaseVerifier(provider);
 
-    if (provider === "play") {
-      return verifyPlayEntitlementRequest(request, context, config);
+    if (verifier) {
+      return verifier(request, context, config, "/entitlements/verify/{provider}");
     }
 
     return jsonResponse(request, config, 501, {
       error: `Purchase provider '${provider || "unknown"}' is not supported.`,
-      supportedProviders: SUPPORTED_PURCHASE_PROVIDERS
+      supportedProviders: getSupportedPurchaseProviders()
     });
   } catch (error) {
     context.error("POST /entitlements/verify/{provider} failed", error);

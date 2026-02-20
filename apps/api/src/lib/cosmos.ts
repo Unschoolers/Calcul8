@@ -4,6 +4,7 @@ import type {
   EntitlementDocument,
   MigrationMarkerDocument,
   MigrationRunDocument,
+  PurchaseVerificationResultDocument,
   PlayPurchaseDocument,
   SyncMetaDocument,
   SyncPresetDocument,
@@ -33,6 +34,14 @@ function isNotFoundError(error: unknown): boolean {
     code === "NotFound" ||
     code === "notfound"
   );
+}
+
+function isConflictError(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false;
+  const code = (error as { code?: unknown }).code;
+  const statusCode = (error as { statusCode?: unknown }).statusCode;
+
+  return code === 409 || statusCode === 409 || code === "Conflict" || code === "conflict";
 }
 
 function isRetryableCosmosError(error: unknown): boolean {
@@ -92,6 +101,10 @@ function entitlementId(userId: string): string {
 
 function playPurchaseId(purchaseTokenHash: string): string {
   return `play_purchase:${purchaseTokenHash}`;
+}
+
+function purchaseVerificationResultId(userId: string, provider: string, idempotencyKey: string): string {
+  return `purchase_verify:${userId}:${provider}:${idempotencyKey}`;
 }
 
 function syncSnapshotId(userId: string): string {
@@ -324,6 +337,82 @@ export async function upsertPlayPurchase(
   }
 
   return resource;
+}
+
+interface PurchaseVerificationResultLookupInput {
+  userId: string;
+  provider: string;
+  idempotencyKey: string;
+}
+
+export async function getPurchaseVerificationResult(
+  config: ApiConfig,
+  input: PurchaseVerificationResultLookupInput
+): Promise<PurchaseVerificationResultDocument | null> {
+  const { entitlements } = getContainers(config);
+  const id = purchaseVerificationResultId(input.userId, input.provider, input.idempotencyKey);
+
+  try {
+    const { resource } = await withCosmosRetry(() =>
+      entitlements.item(id, input.userId).read<PurchaseVerificationResultDocument>()
+    );
+    if (!resource || resource.docType !== "purchase_verification_result") {
+      return null;
+    }
+    return resource;
+  } catch (error) {
+    if (isNotFoundError(error)) return null;
+    throw error;
+  }
+}
+
+interface CreatePurchaseVerificationResultInput {
+  userId: string;
+  provider: string;
+  idempotencyKey: string;
+  responseStatus: number;
+  responseBody: Record<string, unknown>;
+  createdAt: string;
+}
+
+export async function createPurchaseVerificationResult(
+  config: ApiConfig,
+  input: CreatePurchaseVerificationResultInput
+): Promise<PurchaseVerificationResultDocument> {
+  const { entitlements } = getContainers(config);
+  const document: PurchaseVerificationResultDocument = {
+    id: purchaseVerificationResultId(input.userId, input.provider, input.idempotencyKey),
+    docType: "purchase_verification_result",
+    userId: input.userId,
+    provider: input.provider,
+    idempotencyKey: input.idempotencyKey,
+    responseStatus: input.responseStatus,
+    responseBody: input.responseBody,
+    createdAt: input.createdAt,
+    updatedAt: input.createdAt
+  };
+
+  try {
+    const { resource } = await withCosmosRetry(() =>
+      entitlements.items.create<PurchaseVerificationResultDocument>(document)
+    );
+
+    if (!resource) {
+      throw new Error("Failed to create purchase verification result.");
+    }
+
+    return resource;
+  } catch (error) {
+    if (isConflictError(error)) {
+      const existing = await getPurchaseVerificationResult(config, {
+        userId: input.userId,
+        provider: input.provider,
+        idempotencyKey: input.idempotencyKey
+      });
+      if (existing) return existing;
+    }
+    throw error;
+  }
 }
 
 export async function deleteEntitlement(

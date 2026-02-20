@@ -41,6 +41,18 @@ export interface PlayPurchaseDocument {
   updatedAt: string;
 }
 
+export interface PurchaseVerificationResultDocument {
+  id: string;
+  docType: "purchase_verification_result";
+  userId: string;
+  provider: string;
+  idempotencyKey: string;
+  responseStatus: number;
+  responseBody: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface SyncSnapshotDocument {
   id: string;
   userId: string;
