@@ -18,6 +18,13 @@
   border-radius: 14px !important;
 }
 
+.purchase-breakdown-sticky {
+  position: sticky;
+  top: calc(4.25rem + env(safe-area-inset-top));
+  z-index: 12;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+}
+
 .price-link-list {
   border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
   border-radius: 12px;
@@ -55,5 +62,9 @@
 
   .purchase-summary-card .text-h6 {
     font-size: 1rem !important;
+  }
+
+  .purchase-breakdown-sticky {
+    position: static;
   }
 }

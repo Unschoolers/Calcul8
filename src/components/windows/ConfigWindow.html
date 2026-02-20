@@ -32,6 +32,7 @@
                               type="number"
                               variant="outlined"
                               density="compact"
+                              prefix="$"
                               hide-details
                               @input="onPurchaseConfigChange"
                             ></v-text-field>
@@ -118,6 +119,7 @@
                           type="number"
                           variant="outlined"
                           density="compact"
+                          prefix="$"
                           step="0.01"
                           :min="0"
                           class="mt-2"
@@ -152,19 +154,34 @@
                         ></v-checkbox>
                         </template>
 
-                        <v-card
-                          elevation="0"
-                          color="info"
-                          dark
-                          class="mt-3 purchase-summary-card"
+                      </v-card-text>
+                    </v-card>
+
+                    <v-card elevation="2" class="mt-3 config-card purchase-breakdown-sticky">
+                      <v-card-text class="py-2 px-3">
+                        <div class="text-caption text-medium-emphasis">Live Cost Breakdown</div>
+                        <div class="text-h6 font-weight-bold">${{ fmtCurrency(totalCaseCost) }} {{ sellingCurrency }}</div>
+                        <div class="text-caption mt-1">Total {{ totalPacks }} packs</div>
+                        <div class="d-flex flex-wrap ga-2 mt-2">
+                          <v-chip size="small" variant="tonal">
+                            /Box ${{ boxesPurchased > 0 ? fmtCurrency(totalCaseCost / boxesPurchased) : "0.00" }}
+                          </v-chip>
+                          <v-chip size="small" variant="tonal">
+                            /Pack ${{ totalPacks > 0 ? fmtCurrency(totalCaseCost / totalPacks) : "0.00" }}
+                          </v-chip>
+                        </div>
+                        <div class="text-caption mt-2">
+                          Includes ${{ fmtCurrency(purchaseShippingCostCAD) }} {{ sellingCurrency }} shipping
+                        </div>
+                        <v-alert
+                          v-if="Number(purchaseCostInputValue) <= 0 || Number(boxesPurchased) < 1 || Number(packsPerBox) < 1"
+                          type="warning"
+                          density="compact"
+                          variant="tonal"
+                          class="mt-2"
                         >
-                          <v-card-text class="py-2 px-3">
-                            <div class="text-caption">Total Purchase Cost</div>
-                            <div class="text-h6 font-weight-bold">${{ formatCurrency(totalCaseCost) }}</div>
-                            <div class="text-caption mt-1">{{ boxesPurchased }} boxes × {{ packsPerBox }} packs = {{ totalPacks }} packs</div>
-                            <div class="text-caption">Includes ${{ formatCurrency(purchaseShippingCostCAD) }} {{ sellingCurrency }} shipping</div>
-                          </v-card-text>
-                        </v-card>
+                          Enter a valid total purchase, boxes, and packs per box.
+                        </v-alert>
                       </v-card-text>
                     </v-card>
                   </v-col>
@@ -222,6 +239,7 @@
                           type="number"
                           variant="outlined"
                           density="compact"
+                          prefix="$"
                           step="0.01"
                           :min="0"
                           class="mb-2"
@@ -249,7 +267,7 @@
                         <v-list density="compact" nav lines="one" class="price-link-list">
                           <v-list-item
                             :title="`RTYH Spot (${sellingCurrency})`"
-                            :subtitle="`$${formatCurrency(spotPrice)}`"
+                            :subtitle="`$${fmtCurrency(spotPrice)}`"
                             @click="currentTab = 'live'"
                           >
                             <template #append>
@@ -258,7 +276,7 @@
                           </v-list-item>
                           <v-list-item
                             :title="`Box Selling Price (${sellingCurrency})`"
-                            :subtitle="`$${formatCurrency(boxPriceSell)}`"
+                            :subtitle="`$${fmtCurrency(boxPriceSell)}`"
                             @click="currentTab = 'live'"
                           >
                             <template #append>
@@ -267,7 +285,7 @@
                           </v-list-item>
                           <v-list-item
                             :title="`Pack (${sellingCurrency})`"
-                            :subtitle="`$${formatCurrency(packPrice)}`"
+                            :subtitle="`$${fmtCurrency(packPrice)}`"
                             @click="currentTab = 'live'"
                           >
                             <template #append>
@@ -279,4 +297,5 @@
                     </v-card>
                   </v-col>
                 </v-row>
+
 

@@ -13,6 +13,69 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
   <link href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" rel="stylesheet" />
+  <style>
+    [v-cloak] { display: none !important; }
+    body {
+      margin: 0;
+      background: #ffcb05;
+    }
+    #startup-splash {
+      position: fixed;
+      inset: 0;
+      z-index: 3000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #ffcb05;
+    }
+    .splash-card {
+      position: relative;
+      width: min(80vw, 320px);
+      min-height: 206px;
+      padding: 1.1rem 1.2rem 0.9rem;
+      border-radius: 24px;
+      border: 1px solid rgba(255, 208, 0, 0.4);
+      background: linear-gradient(170deg, rgba(255, 208, 0, 0.12), rgba(0, 0, 0, 0.58));
+      box-shadow: 0 14px 40px rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(4px);
+      text-align: center;
+      display: none;
+    }
+    body.splash-rich .splash-card { display: block; }
+    .splash-logo {
+      width: 72px;
+      height: 72px;
+      border-radius: 16px;
+      display: block;
+      margin: 0 auto 0.55rem;
+    }
+    .splash-title {
+      margin: 0;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      color: #ffd34d;
+      font-size: 1.25rem;
+      line-height: 1.25;
+    }
+    .splash-subtitle {
+      margin: 0.18rem 0 0.65rem;
+      font-size: 0.8rem;
+      color: rgba(255, 255, 255, 0.78);
+      line-height: 1.2;
+    }
+    .splash-trend {
+      width: 100%;
+      height: 26px;
+      display: block;
+    }
+    .splash-trend path {
+      fill: none;
+      stroke: #111;
+      stroke-width: 3;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+  </style>
 
 </head>
 
@@ -28,7 +91,7 @@
       </svg>
     </div>
   </div>
-  <div id="app">
+  <div id="app" v-cloak>
     <v-app>
       <v-app-bar density="compact" flat border>
         <template v-slot:prepend>
