@@ -705,6 +705,190 @@ test("applyLivePricesToDefaults is blocked when no preset is selected", () => {
   assert.equal(notified, "Select a lot first");
 });
 
+test("createNewPreset in simple mode resets purchase defaults for new lots", () => {
+  const todayDate = new Date().toISOString().split("T")[0];
+  let saved = false;
+  let loaded = false;
+  let notified = "";
+
+  const context = {
+    purchaseUiMode: "simple",
+    newPresetName: "Simple lot",
+    presets: [] as Preset[],
+    currentPresetId: null as number | null,
+    showNewPresetModal: true,
+    getCurrentSetup() {
+      return {
+        boxPriceCost: 80,
+        boxesPurchased: 3,
+        packsPerBox: 16,
+        spotsPerBox: 5,
+        costInputMode: "total" as const,
+        currency: "CAD" as const,
+        sellingCurrency: "CAD" as const,
+        exchangeRate: 1.36,
+        purchaseDate: "2025-01-01",
+        purchaseShippingCost: 17,
+        purchaseTaxPercent: 15,
+        sellingTaxPercent: 15,
+        sellingShippingPerOrder: 9,
+        includeTax: false,
+        spotPrice: 20,
+        boxPriceSell: 100,
+        packPrice: 7,
+        targetProfitPercent: 12
+      };
+    },
+    savePresetsToStorage() {
+      saved = true;
+    },
+    loadPreset() {
+      loaded = true;
+    },
+    notify(message: string) {
+      notified = message;
+    }
+  } as unknown as Parameters<typeof configMethods.createNewPreset>[0];
+
+  configMethods.createNewPreset.call(context);
+
+  assert.equal(saved, true);
+  assert.equal(loaded, true);
+  assert.equal(notified, "Lot created");
+  assert.equal(context.presets.length, 1);
+  assert.equal(context.showNewPresetModal, false);
+  assert.equal(context.newPresetName, "");
+
+  const newPreset = context.presets[0]!;
+  assert.equal(newPreset.purchaseDate, todayDate);
+  assert.equal(newPreset.purchaseShippingCost, 0);
+  assert.equal(newPreset.purchaseTaxPercent, 0);
+  assert.equal(newPreset.sellingTaxPercent, 15);
+});
+
+test("createNewPreset in expert mode uses 15 selling tax for the first lot", () => {
+  let saved = false;
+
+  const context = {
+    purchaseUiMode: "expert",
+    newPresetName: "Expert lot",
+    presets: [] as Preset[],
+    currentPresetId: null as number | null,
+    showNewPresetModal: true,
+    getCurrentSetup() {
+      return {
+        boxPriceCost: 80,
+        boxesPurchased: 3,
+        packsPerBox: 16,
+        spotsPerBox: 5,
+        costInputMode: "total" as const,
+        currency: "CAD" as const,
+        sellingCurrency: "CAD" as const,
+        exchangeRate: 1.36,
+        purchaseDate: "2025-01-01",
+        purchaseShippingCost: 17,
+        purchaseTaxPercent: 11,
+        sellingTaxPercent: 13,
+        sellingShippingPerOrder: 9,
+        includeTax: false,
+        spotPrice: 20,
+        boxPriceSell: 100,
+        packPrice: 7,
+        targetProfitPercent: 12
+      };
+    },
+    savePresetsToStorage() {
+      saved = true;
+    },
+    loadPreset() {
+      // noop
+    },
+    notify() {
+      // noop
+    }
+  } as unknown as Parameters<typeof configMethods.createNewPreset>[0];
+
+  configMethods.createNewPreset.call(context);
+
+  assert.equal(saved, true);
+  assert.equal(context.presets.length, 1);
+  const newPreset = context.presets[0]!;
+  assert.equal(newPreset.purchaseDate, "2025-01-01");
+  assert.equal(newPreset.purchaseShippingCost, 17);
+  assert.equal(newPreset.purchaseTaxPercent, 11);
+  assert.equal(newPreset.sellingTaxPercent, 15);
+});
+
+test("createNewPreset uses previous lot selling tax for second+ lots", () => {
+  const existingLot: Preset = {
+    id: 9001,
+    name: "Existing lot",
+    boxPriceCost: 70,
+    boxesPurchased: 2,
+    packsPerBox: 16,
+    spotsPerBox: 5,
+    costInputMode: "total",
+    currency: "CAD",
+    sellingCurrency: "CAD",
+    exchangeRate: 1.36,
+    purchaseDate: "2026-02-01",
+    purchaseShippingCost: 0,
+    purchaseTaxPercent: 0,
+    sellingTaxPercent: 9.5,
+    sellingShippingPerOrder: 0,
+    includeTax: false,
+    spotPrice: 18,
+    boxPriceSell: 85,
+    packPrice: 6,
+    targetProfitPercent: 0
+  };
+
+  const context = {
+    purchaseUiMode: "expert",
+    newPresetName: "Second lot",
+    presets: [existingLot] as Preset[],
+    currentPresetId: existingLot.id,
+    showNewPresetModal: true,
+    getCurrentSetup() {
+      return {
+        boxPriceCost: 80,
+        boxesPurchased: 3,
+        packsPerBox: 16,
+        spotsPerBox: 5,
+        costInputMode: "total" as const,
+        currency: "CAD" as const,
+        sellingCurrency: "CAD" as const,
+        exchangeRate: 1.36,
+        purchaseDate: "2025-01-01",
+        purchaseShippingCost: 17,
+        purchaseTaxPercent: 11,
+        sellingTaxPercent: 13,
+        sellingShippingPerOrder: 9,
+        includeTax: false,
+        spotPrice: 20,
+        boxPriceSell: 100,
+        packPrice: 7,
+        targetProfitPercent: 12
+      };
+    },
+    savePresetsToStorage() {
+      // noop
+    },
+    loadPreset() {
+      // noop
+    },
+    notify() {
+      // noop
+    }
+  } as unknown as Parameters<typeof configMethods.createNewPreset>[0];
+
+  configMethods.createNewPreset.call(context);
+
+  assert.equal(context.presets.length, 2);
+  const newPreset = context.presets[1]!;
+  assert.equal(newPreset.sellingTaxPercent, 9.5);
+});
+
 test("loadPreset forces target profit to 0 for non-pro users", async () => {
   const preset: Preset = {
     id: 5001,

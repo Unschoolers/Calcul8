@@ -90,11 +90,30 @@ export const configLotMethods: ConfigMethodSubset<
     if (this.presets.some((p) => p.name === name)) return this.notify("A lot with this name already exists", "warning");
 
     const todayDate = getTodayDate();
+    const setup = this.getCurrentSetup();
+    const selectedPreset = this.currentPresetId ? this.presets.find((p) => p.id === this.currentPresetId) : null;
+    const fallbackPreviousPreset = this.presets.length > 0 ? this.presets[this.presets.length - 1] : null;
+    const previousSellingTaxRaw =
+      selectedPreset?.sellingTaxPercent ??
+      fallbackPreviousPreset?.sellingTaxPercent ??
+      DEFAULT_VALUES.SELLING_TAX_RATE_PERCENT;
+    const previousSellingTax = Number(previousSellingTaxRaw);
+    setup.sellingTaxPercent =
+      Number.isFinite(previousSellingTax) && previousSellingTax >= 0
+        ? previousSellingTax
+        : DEFAULT_VALUES.SELLING_TAX_RATE_PERCENT;
+
+    if (this.purchaseUiMode === "simple") {
+      setup.purchaseDate = todayDate;
+      setup.purchaseShippingCost = 0;
+      setup.purchaseTaxPercent = 0;
+    }
+
     const newPreset = {
       id: Date.now(),
       name,
       createdAt: todayDate,
-      ...this.getCurrentSetup()
+      ...setup
     };
     this.presets.push(newPreset);
     this.savePresetsToStorage();
