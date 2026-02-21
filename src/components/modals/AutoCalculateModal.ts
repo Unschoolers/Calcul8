@@ -1,6 +1,6 @@
 import template from "./AutoCalculateModal.html?raw";
 import { inject, type PropType } from "vue";
-import { createWindowContextBridge, resolveWindowContext } from "../windows/contextBridge.ts";
+import { createWindowContextBridge } from "../windows/contextBridge.ts";
 
 export const AutoCalculateModal = {
   name: "AutoCalculateModal",
@@ -13,7 +13,7 @@ export const AutoCalculateModal = {
   setup(props: { ctx: Record<string, unknown> }) {
     const injectedCtx = inject<Record<string, unknown> | null>("appCtx", null);
     const source = (injectedCtx ?? props.ctx) as Record<string, unknown>;
-    return createWindowContextBridge(resolveWindowContext(source));
+    return createWindowContextBridge(source);
   },
   template
 };

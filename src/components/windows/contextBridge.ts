@@ -1,8 +1,14 @@
 import { getCurrentInstance } from "vue";
 
 type WindowContext = Record<string, unknown>;
+type MaybeWindowContext = WindowContext | null | undefined;
 
-function looksLikeAppContext(ctx: WindowContext | null | undefined): ctx is WindowContext {
+function getInternalCtx(ctx: MaybeWindowContext): WindowContext | undefined {
+  if (!ctx || typeof ctx !== "object") return undefined;
+  return (ctx as { $?: { ctx?: Record<string, unknown> } }).$?.ctx as WindowContext | undefined;
+}
+
+function looksLikeAppContext(ctx: MaybeWindowContext): ctx is WindowContext {
   if (!ctx || typeof ctx !== "object") return false;
   return (
     Reflect.has(ctx, "currentTab") &&
@@ -16,25 +22,17 @@ function looksLikeAppContext(ctx: WindowContext | null | undefined): ctx is Wind
 }
 
 export function resolveWindowContext(ctx: WindowContext): WindowContext {
-  if (looksLikeAppContext(ctx)) {
-    return ctx;
-  }
+  const candidates: MaybeWindowContext[] = [
+    ctx,
+    (ctx as { $root?: unknown }).$root as MaybeWindowContext,
+    getInternalCtx(ctx),
+    getCurrentInstance()?.proxy?.$root as unknown as MaybeWindowContext
+  ];
 
-  const rootFromCtx = (ctx as { $root?: unknown }).$root as WindowContext | undefined;
-  if (looksLikeAppContext(rootFromCtx)) {
-    return rootFromCtx;
-  }
-
-  const internalCtx = (ctx as { $?: { ctx?: Record<string, unknown> } }).$?.ctx as
-    | WindowContext
-    | undefined;
-  if (looksLikeAppContext(internalCtx)) {
-    return internalCtx;
-  }
-
-  const fallbackRoot = getCurrentInstance()?.proxy?.$root as unknown as WindowContext | undefined;
-  if (looksLikeAppContext(fallbackRoot)) {
-    return fallbackRoot;
+  for (const candidate of candidates) {
+    if (looksLikeAppContext(candidate)) {
+      return candidate;
+    }
   }
 
   return ctx;
@@ -42,8 +40,7 @@ export function resolveWindowContext(ctx: WindowContext): WindowContext {
 
 export function createWindowContextBridge(ctx: WindowContext): Record<string, unknown> {
   const sourceCtx = resolveWindowContext(ctx);
-
-  const internalCtx = (sourceCtx as { $?: { ctx?: Record<string, unknown> } }).$?.ctx;
+  const internalCtx = getInternalCtx(sourceCtx);
 
   const readValue = (key: string | symbol): unknown => {
     const directValue = Reflect.get(sourceCtx, key, sourceCtx);

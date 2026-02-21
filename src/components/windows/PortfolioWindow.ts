@@ -1,7 +1,7 @@
 import template from "./PortfolioWindow.html?raw";
 import "./PortfolioWindow.css";
 import { inject, type PropType } from "vue";
-import { createWindowContextBridge, resolveWindowContext } from "./contextBridge.ts";
+import { createWindowContextBridge } from "./contextBridge.ts";
 
 export const PortfolioWindow = {
   name: "PortfolioWindow",
@@ -24,7 +24,7 @@ export const PortfolioWindow = {
   setup(props: { ctx: Record<string, unknown> }) {
     const injectedCtx = inject<Record<string, unknown> | null>("appCtx", null);
     const source = (injectedCtx ?? props.ctx) as Record<string, unknown>;
-    return createWindowContextBridge(resolveWindowContext(source));
+    return createWindowContextBridge(source);
   },
   template
 };

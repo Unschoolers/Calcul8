@@ -1,7 +1,7 @@
 import template from "./ConfigWindow.html?raw";
 import "./ConfigWindow.css";
 import { inject, type PropType } from "vue";
-import { createWindowContextBridge, resolveWindowContext } from "./contextBridge.ts";
+import { createWindowContextBridge } from "./contextBridge.ts";
 
 export const ConfigWindow = {
   name: "ConfigWindow",
@@ -20,7 +20,7 @@ export const ConfigWindow = {
   setup(props: { ctx: Record<string, unknown> }) {
     const injectedCtx = inject<Record<string, unknown> | null>("appCtx", null);
     const source = (injectedCtx ?? props.ctx) as Record<string, unknown>;
-    return createWindowContextBridge(resolveWindowContext(source));
+    return createWindowContextBridge(source);
   },
   template
 };
