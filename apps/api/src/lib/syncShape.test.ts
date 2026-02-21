@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { test } from "vitest";
 import { HttpError } from "./auth";
 import { parseSyncLotsShape } from "./syncShape";
 
@@ -28,3 +28,4 @@ test("parseSyncLotsShape rejects invalid shape", () => {
     (error: unknown) => error instanceof HttpError && error.status === 400
   );
 });
+

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test, { beforeEach } from "node:test";
+import { beforeEach, test } from "vitest";
 import {
   __resetGoogleAutoLoginForTests,
   initGoogleAutoLoginWithRetry,
@@ -160,3 +160,4 @@ test("auto login does not start a second prompt while one is in flight", () => {
     queue.shift()?.();
   }
 });
+

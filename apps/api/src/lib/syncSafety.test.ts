@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 import { HttpError } from "./auth";
 import { assertSafeSyncPush, hasSnapshotData, isEmptySyncPayload } from "./syncSafety";
 import type { SyncSnapshotDocument } from "../types";
@@ -59,3 +59,4 @@ test("assertSafeSyncPush allows non-empty push when cloud has data", () => {
     assertSafeSyncPush(existing, [{ id: 1, name: "Main" }], { "1": [] }, false)
   );
 });
+

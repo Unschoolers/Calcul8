@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 import {
   getLegacySalesStorageKey,
   getSalesStorageKey,
@@ -105,3 +105,4 @@ test("readStorageWithLegacy promotes richer legacy payload over empty canonical 
     assert.equal(data.get(newKey), legacySales);
   });
 });
+

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 import { calculateSyncPresetDiff, type SyncPresetState } from "./syncDiff";
 
 function state(
@@ -52,3 +52,4 @@ test("calculateSyncPresetDiff deletes missing presets", () => {
   assert.deepEqual(diff.upsertPresetIds, []);
   assert.deepEqual(diff.deletePresetIds, ["2"]);
 });
+

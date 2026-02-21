@@ -13,7 +13,8 @@
     "start": "func start",
     "start:build": "npm run build && func start",
     "typecheck": "tsc --noEmit",
-    "test": "npm run build && node dist/lib/auth.test.js && node dist/lib/config.test.js && node dist/lib/googlePlay.test.js && node dist/lib/syncDiff.test.js && node dist/lib/playEntitlements.test.js && node dist/lib/syncSafety.test.js && node dist/lib/syncShape.test.js && node dist/lib/migrations.test.js"
+    "test": "vitest run --config vitest.config.mjs",
+    "test:watch": "vitest --config vitest.config.mjs"
   },
   "dependencies": {
     "@azure/cosmos": "^4.3.0",
@@ -22,6 +23,7 @@
   "devDependencies": {
     "@types/node": "^22.18.6",
     "rimraf": "^6.0.1",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
   }
 }

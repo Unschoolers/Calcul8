@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 import { uiEntitlementMethods } from "../src/app-core/methods/ui/entitlements.ts";
 import { ENTITLEMENT_CACHE_KEY } from "../src/app-core/methods/ui/shared.ts";
 
@@ -54,8 +54,41 @@ function withMockedLocalStorage(run: (data: Map<string, string>) => Promise<void
   }
 }
 
+function withMockedWindow(run: () => Promise<void> | void): Promise<void> | void {
+  const globals = globalThis as typeof globalThis & { window?: unknown };
+  const originalWindow = globals.window;
+
+  Object.defineProperty(globals, "window", {
+    configurable: true,
+    value: {
+      setTimeout: globalThis.setTimeout.bind(globalThis),
+      clearTimeout: globalThis.clearTimeout.bind(globalThis),
+      google: undefined
+    }
+  });
+
+  const restore = () => {
+    Object.defineProperty(globals, "window", {
+      configurable: true,
+      value: originalWindow
+    });
+  };
+
+  try {
+    const result = run();
+    if (result && typeof (result as Promise<void>).then === "function") {
+      return (result as Promise<void>).finally(restore);
+    }
+    restore();
+    return;
+  } catch (error) {
+    restore();
+    throw error;
+  }
+}
+
 test("initGoogleAutoLogin keeps pro access from entitlement cache without login token", async () => {
-  await withMockedLocalStorage(async (data) => {
+  await withMockedWindow(async () => withMockedLocalStorage(async (data) => {
     data.set(
       ENTITLEMENT_CACHE_KEY,
       JSON.stringify({
@@ -81,7 +114,6 @@ test("initGoogleAutoLogin keeps pro access from entitlement cache without login 
 
       const context = {
         hasLotSelected: true,
-        hasProAccess: false,
         targetProfitPercent: 0,
         autoSaveSetup() {
           autoSaveCalled = true;
@@ -101,5 +133,6 @@ test("initGoogleAutoLogin keeps pro access from entitlement cache without login 
         value: originalFetch
       });
     }
-  });
+  }));
 });
+

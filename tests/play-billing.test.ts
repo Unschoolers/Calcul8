@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 import { extractPurchaseTokenFromResult } from "../src/app-core/utils/playBilling.ts";
 
 test("extractPurchaseTokenFromResult reads token from object payload", () => {
@@ -64,3 +64,4 @@ test("extractPurchaseTokenFromResult ignores unrelated generic token without ite
   assert.equal(result.itemId, null);
   assert.equal(result.purchaseToken, null);
 });
+

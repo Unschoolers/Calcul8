@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 import { getConfig, resetConfigForTests } from "./config";
 
 function withEnv(overrides: Record<string, string | undefined>, run: () => void): void {
@@ -126,3 +126,4 @@ test("config throws when required Cosmos variables are missing", () => {
     }
   );
 });
+

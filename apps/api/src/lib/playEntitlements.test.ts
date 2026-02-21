@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 import type { PlayPurchaseDocument } from "../types";
 import { HttpError } from "./auth";
 import {
@@ -76,3 +76,4 @@ test("hasValidProPurchase ignores unsuccessful purchase states", () => {
   };
   assert.equal(hasValidProPurchase([cancelled], ["pro_access"]), false);
 });
+

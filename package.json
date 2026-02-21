@@ -9,7 +9,11 @@
     "build": "vite build",
     "build:prod": "vite build && node scripts/obfuscate.mjs",
     "preview": "vite preview",
-    "test": "node tests/calculations.test.ts && node tests/google-auto-login.test.ts && node tests/entitlement-cache.test.ts && node tests/entitlement-purchase-sync.test.ts && node tests/play-billing.test.ts && node tests/storage-keys.test.ts",
+    "test": "vitest run --config vitest.config.mjs",
+    "test:watch": "vitest --config vitest.config.mjs",
+    "test:coverage": "vitest run --config vitest.config.mjs --coverage",
+    "coverage:hotpaths": "node scripts/coverage-hotpaths.mjs",
+    "test:coverage:hotpaths": "npm run test:coverage && npm run coverage:hotpaths",
     "security:scan": "node scripts/security-scan.mjs",
     "typecheck": "tsc --noEmit",
     "verify": "npm run security:scan && npm run test && npm run typecheck && npm run build",
@@ -36,9 +40,11 @@
     "vuetify": "^3.11.8"
   },
   "devDependencies": {
+    "@vitest/coverage-v8": "^3.2.4",
     "@vitejs/plugin-vue": "^6.0.4",
     "javascript-obfuscator": "^5.3.0",
     "typescript": "^5.9.3",
+    "vitest": "^3.2.4",
     "vite": "^7.3.1",
     "vite-plugin-pwa": "^1.2.0",
     "vite-plugin-vuetify": "^2.1.3"

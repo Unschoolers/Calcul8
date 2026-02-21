@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { test } from "vitest";
 import { MIGRATION_REGISTRY, getMigrationById } from "./migrations/registry";
 import { createFirstMigration } from "./migrations/definitions/firstMigration";
 import { createMigrationRunner } from "./migrations/runner";
@@ -162,3 +162,4 @@ test("runner real run executes analyze then apply", async () => {
   assert.equal(run.status, "succeeded");
   assert.equal((run.result as { mode?: string })?.mode, "applied");
 });
+

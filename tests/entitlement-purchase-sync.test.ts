@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 import {
   ENTITLEMENT_CACHE_KEY,
   PRO_ACCESS_KEY,
@@ -243,3 +243,4 @@ test("submitPlayPurchaseVerification sends deterministic idempotencyKey", async 
     }
   });
 });
+

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 import type { HttpRequest } from "@azure/functions";
 import { HttpError, resolveUserId } from "./auth";
 import type { ApiConfig } from "../types";
@@ -176,3 +176,4 @@ test("valid bearer token resolves userId from Google sub", async () => {
     globalThis.fetch = originalFetch;
   }
 });
+

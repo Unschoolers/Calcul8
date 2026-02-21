@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 import {
   calculateBoxPriceCostCad,
   calculateDefaultSellingPrices,
@@ -552,19 +552,22 @@ test("watch.purchaseUiMode persists mode and enforces total mode in simple", () 
 test("calculateOptimalPrices is blocked when paywall is locked", () => {
   let notifiedMessage = "";
   let recalculated = false;
-
-  configMethods.calculateOptimalPrices.call({
+  const context = {
     canUsePaidActions: false,
+    showProfitCalculator: true,
     notify(message: string) {
       notifiedMessage = message;
     },
     recalculateDefaultPrices() {
       recalculated = true;
     }
-  } as unknown as Parameters<typeof configMethods.calculateOptimalPrices>[0]);
+  } as unknown as Parameters<typeof configMethods.calculateOptimalPrices>[0];
+
+  configMethods.calculateOptimalPrices.call(context);
 
   assert.equal(recalculated, false);
   assert.equal(notifiedMessage, "Pro access required to apply auto-calculated prices");
+  assert.equal(context.showProfitCalculator, true);
 });
 
 test("calculateOptimalPrices calls recalculate when paywall is unlocked", () => {
@@ -1481,3 +1484,4 @@ test("allLotPerformance applies portfolio preset filter", () => {
   assert.equal(rows.length, 1);
   assert.equal(rows[0]?.lotId, presetA.id);
 });
+

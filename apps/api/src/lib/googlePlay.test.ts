@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 import { getProductIdsFromProductsV2Response, normalizeProductsV2PurchasePayload } from "./googlePlay";
 
 test("getProductIdsFromProductsV2Response extracts ids from line items", () => {
@@ -108,3 +108,4 @@ test("normalizeProductsV2PurchasePayload handles unknown purchase state safely",
   assert.equal(normalized.purchaseState, null);
   assert.equal(normalized.acknowledgementState, null);
 });
+
