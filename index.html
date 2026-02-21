@@ -470,60 +470,7 @@
       </v-dialog>
 
       <!-- Profit Calculator Modal -->
-      <v-dialog v-model="showProfitCalculator" max-width="400">
-        <v-card>
-          <v-card-title>
-            <v-icon class="mr-2">mdi-calculator</v-icon>
-            Auto-Calculate Prices
-          </v-card-title>
-          <v-card-text>
-            <v-text-field
-              v-model.number="targetProfitPercent"
-              label="Target Profit %"
-              type="number"
-              variant="outlined"
-              :disabled="!canUsePaidActions"
-              suffix="%"
-              :min="0"
-              :max="100"
-              hint="All prices will be rounded to nearest dollar"
-              persistent-hint
-            ></v-text-field>
-            <v-alert
-                v-if="hasLotSelected && !hasProAccess"
-              type="info"
-              variant="tonal"
-              density="compact"
-              icon="mdi-lock"
-              class="mt-3"
-            >
-              Pro feature. Upgrade to apply auto-calculated prices.
-              <div class="mt-2">
-                <v-btn
-                  size="small"
-                  color="primary"
-                  variant="flat"
-                  prepend-icon="mdi-google-play"
-                  :loading="isVerifyingPurchase"
-                  @click="startProPurchase"
-                >
-                  Unlock Pro
-                </v-btn>
-              </div>
-              <div v-if="showManualPurchaseVerify" class="mt-2">
-                <v-btn size="small" variant="text" prepend-icon="mdi-check-decagram" @click="openVerifyPurchaseModal">
-                  Verify Purchase
-                </v-btn>
-              </div>
-            </v-alert>
-          </v-card-text>
-          <v-card-actions>
-            <v-spacer></v-spacer>
-            <v-btn text @click="showProfitCalculator = false">Cancel</v-btn>
-            <v-btn color="secondary" @click="calculateOptimalPrices" :disabled="!canUsePaidActions">Apply</v-btn>
-          </v-card-actions>
-        </v-card>
-      </v-dialog>
+      <auto-calculate-modal :ctx="$root"></auto-calculate-modal>
 
       <!-- Add/Edit Sale Modal -->
       <v-dialog v-model="showAddSaleModal" max-width="500">

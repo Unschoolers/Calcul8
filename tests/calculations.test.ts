@@ -22,6 +22,7 @@ import { appComputed } from "../src/app-core/computed.ts";
 import { appWatch } from "../src/app-core/watch.ts";
 import { configMethods } from "../src/app-core/methods/config.ts";
 import { salesMethods } from "../src/app-core/methods/sales.ts";
+import { uiBaseMethods } from "../src/app-core/methods/ui/base.ts";
 import { getLegacySalesStorageKey } from "../src/app-core/storageKeys.ts";
 import type { Lot, Sale } from "../src/types/app.ts";
 
@@ -31,6 +32,14 @@ type MockStorage = {
   removeItem(key: string): void;
   clear(): void;
 };
+
+function getTodayLocalDate(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
 
 function withMockedLocalStorage(run: (storage: MockStorage, data: Map<string, string>) => void): void {
   const original = (globalThis as { localStorage?: MockStorage }).localStorage;
@@ -706,7 +715,7 @@ test("applyLivePricesToDefaults is blocked when no preset is selected", () => {
 });
 
 test("createNewLot in simple mode resets purchase defaults for new lots", () => {
-  const todayDate = new Date().toISOString().split("T")[0];
+  const todayDate = getTodayLocalDate();
   let saved = false;
   let loaded = false;
   let notified = "";
@@ -767,6 +776,7 @@ test("createNewLot in simple mode resets purchase defaults for new lots", () => 
 });
 
 test("createNewLot in expert mode uses 15 selling tax for the first lot", () => {
+  const todayDate = getTodayLocalDate();
   let saved = false;
 
   const context = {
@@ -813,7 +823,7 @@ test("createNewLot in expert mode uses 15 selling tax for the first lot", () => 
   assert.equal(saved, true);
   assert.equal(context.lots.length, 1);
   const newPreset = context.lots[0]!;
-  assert.equal(newPreset.purchaseDate, "2025-01-01");
+  assert.equal(newPreset.purchaseDate, todayDate);
   assert.equal(newPreset.purchaseShippingCost, 17);
   assert.equal(newPreset.purchaseTaxPercent, 11);
   assert.equal(newPreset.sellingTaxPercent, 15);
@@ -1050,6 +1060,64 @@ test("saveSale computes packsCount for pack/box/rtyh and stores buyerShipping", 
   }
 });
 
+test("saveSale normalizes slash date input to YYYY-MM-DD", () => {
+  const context = {
+    canUsePaidActions: true,
+    packsPerBox: 16,
+    editingSale: null,
+    sales: [] as Sale[],
+    newSale: {
+      type: "pack",
+      quantity: 1,
+      packsCount: null,
+      price: 25,
+      buyerShipping: 0,
+      date: "2/21/2026"
+    },
+    notify() {
+      // noop
+    },
+    cancelSale() {
+      // noop
+    }
+  } as unknown as Parameters<typeof salesMethods.saveSale>[0];
+
+  salesMethods.saveSale.call(context);
+
+  assert.equal(context.sales.length, 1);
+  assert.equal(context.sales[0]?.date, "2026-02-21");
+});
+
+test("saveSale falls back to local today date when date input is invalid", () => {
+  const todayDate = getTodayLocalDate();
+
+  const context = {
+    canUsePaidActions: true,
+    packsPerBox: 16,
+    editingSale: null,
+    sales: [] as Sale[],
+    newSale: {
+      type: "pack",
+      quantity: 1,
+      packsCount: null,
+      price: 25,
+      buyerShipping: 0,
+      date: ""
+    },
+    notify() {
+      // noop
+    },
+    cancelSale() {
+      // noop
+    }
+  } as unknown as Parameters<typeof salesMethods.saveSale>[0];
+
+  salesMethods.saveSale.call(context);
+
+  assert.equal(context.sales.length, 1);
+  assert.equal(context.sales[0]?.date, todayDate);
+});
+
 test("saveSale validates negative buyer shipping", () => {
   let notifiedMessage = "";
   const sales: Sale[] = [];
@@ -1077,6 +1145,31 @@ test("saveSale validates negative buyer shipping", () => {
 
   assert.equal(sales.length, 0);
   assert.equal(notifiedMessage, "Please enter a valid buyer shipping amount (0 or greater)");
+});
+
+test("formatDate keeps date-only values in local time", () => {
+  const expected = new Date(2026, 1, 21).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric"
+  });
+
+  const fromIsoDateOnly = uiBaseMethods.formatDate.call(
+    {} as unknown as Parameters<typeof uiBaseMethods.formatDate>[0],
+    "2026-02-21"
+  );
+  const fromSlashDate = uiBaseMethods.formatDate.call(
+    {} as unknown as Parameters<typeof uiBaseMethods.formatDate>[0],
+    "2/21/2026"
+  );
+  const invalidRaw = uiBaseMethods.formatDate.call(
+    {} as unknown as Parameters<typeof uiBaseMethods.formatDate>[0],
+    "not-a-date"
+  );
+
+  assert.equal(fromIsoDateOnly, expected);
+  assert.equal(fromSlashDate, expected);
+  assert.equal(invalidRaw, "not-a-date");
 });
 
 test("saveSale updates existing sale in edit mode", () => {

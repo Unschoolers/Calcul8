@@ -22,11 +22,11 @@
                     <v-card elevation="4" class="config-card">
                       <v-card-text>
                         <div class="text-caption text-medium-emphasis">Global Profit / Loss</div>
-                        <div class="text-h5 font-weight-bold" :class="portfolioTotals.totalProfit >= 0 ? 'profit-positive' : 'profit-negative'">
-                          {{ portfolioTotals.totalProfit >= 0 ? '+' : '' }}${{ formatCurrency(portfolioTotals.totalProfit) }}
+                        <div class="text-h5 font-weight-bold" :class="(portfolioTotals?.totalProfit ?? 0) >= 0 ? 'profit-positive' : 'profit-negative'">
+                          {{ (portfolioTotals?.totalProfit ?? 0) >= 0 ? '+' : '' }}${{ fmtCurrency(portfolioTotals?.totalProfit ?? 0) }}
                         </div>
                         <div class="text-caption mt-1">
-                          {{ portfolioTotals.profitableLotCount }} / {{ portfolioTotals.lotCount }} lot{{ portfolioTotals.lotCount === 1 ? '' : 's' }} profitable
+                          {{ portfolioTotals?.profitableLotCount ?? 0 }} / {{ portfolioTotals?.lotCount ?? 0 }} lot{{ (portfolioTotals?.lotCount ?? 0) === 1 ? '' : 's' }} profitable
                         </div>
                       </v-card-text>
                     </v-card>
@@ -36,8 +36,8 @@
                     <v-card elevation="4" class="config-card">
                       <v-card-text>
                         <div class="text-caption text-medium-emphasis">Total Net Revenue</div>
-                        <div class="text-h5 font-weight-bold">${{ formatCurrency(portfolioTotals.totalRevenue) }}</div>
-                        <div class="text-caption mt-1">{{ portfolioTotals.totalSalesCount }} sale{{ portfolioTotals.totalSalesCount === 1 ? '' : 's' }}</div>
+                        <div class="text-h5 font-weight-bold">${{ fmtCurrency(portfolioTotals?.totalRevenue ?? 0) }}</div>
+                        <div class="text-caption mt-1">{{ portfolioTotals?.totalSalesCount ?? 0 }} sale{{ (portfolioTotals?.totalSalesCount ?? 0) === 1 ? '' : 's' }}</div>
                       </v-card-text>
                     </v-card>
                   </v-col>
@@ -46,7 +46,7 @@
                     <v-card elevation="4" class="config-card">
                       <v-card-text>
                         <div class="text-caption text-medium-emphasis">Total Cost Basis</div>
-                        <div class="text-h5 font-weight-bold">${{ formatCurrency(portfolioTotals.totalCost) }}</div>
+                        <div class="text-h5 font-weight-bold">${{ fmtCurrency(portfolioTotals?.totalCost ?? 0) }}</div>
                         <div class="text-caption mt-1">Across all lots</div>
                       </v-card-text>
                     </v-card>
@@ -96,7 +96,7 @@
                         </div>
                         <div class="d-flex align-center ga-2">
                           <v-chip color="secondary" v-if="hasPortfolioData">
-                            {{ allLotPerformance.length }} lot{{ allLotPerformance.length === 1 ? '' : 's' }}
+                            {{ allLotPerformance?.length ?? 0 }} lot{{ (allLotPerformance?.length ?? 0) === 1 ? '' : 's' }}
                           </v-chip>
                           <v-btn
                             color="primary"
@@ -120,7 +120,7 @@
 
                       <v-list v-else>
                         <v-list-item
-                          v-for="row in allLotPerformance"
+                          v-for="row in (allLotPerformance || [])"
                           :key="row.lotId"
                           class="my-1"
                         >
@@ -136,8 +136,8 @@
                               {{ row.salesCount }} sale{{ row.salesCount === 1 ? '' : 's' }}
                             </div>
                             <div>
-                              Revenue ${{ formatCurrency(row.totalRevenue) }} •
-                              Cost ${{ formatCurrency(row.totalCost) }}
+                              Revenue ${{ fmtCurrency(row.totalRevenue) }} •
+                              Cost ${{ fmtCurrency(row.totalCost) }}
                             </div>
                             <div v-if="row.lastSaleDate">
                               Last sale {{ formatDate(row.lastSaleDate) }}
@@ -146,7 +146,7 @@
 
                           <template v-slot:append>
                             <v-chip :color="row.totalProfit >= 0 ? 'success' : 'error'" variant="flat">
-                              {{ row.totalProfit >= 0 ? '+' : '' }}${{ formatCurrency(row.totalProfit) }}
+                              {{ row.totalProfit >= 0 ? '+' : '' }}${{ fmtCurrency(row.totalProfit) }}
                             </v-chip>
                           </template>
                         </v-list-item>

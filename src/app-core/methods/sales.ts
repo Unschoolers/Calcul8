@@ -2,6 +2,7 @@ import Chart from "chart.js/auto";
 import { calculateNetFromGross, calculateSparklineData } from "../../domain/calculations.ts";
 import type { Sale, SaleType } from "../../types/app.ts";
 import type { AppContext, AppMethodState } from "../context.ts";
+import { getTodayDate } from "./config-shared.ts";
 
 function firstFiniteNonNegative(...values: Array<number | null | undefined>): number | null {
   for (const value of values) {
@@ -36,12 +37,19 @@ const PORTFOLIO_CHART_COLORS = [
 
 const DATE_ONLY_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
+function formatLocalDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 function toDateOnly(value: unknown): string | null {
   if (typeof value !== "string" || !value.trim()) return null;
   if (DATE_ONLY_REGEX.test(value)) return value;
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return null;
-  return date.toISOString().split("T")[0];
+  return formatLocalDate(date);
 }
 
 function inferDateFromLotId(lotId: number): string | null {
@@ -49,7 +57,7 @@ function inferDateFromLotId(lotId: number): string | null {
   if (!Number.isFinite(timestamp) || timestamp < 946684800000 || timestamp > 4102444800000) {
     return null;
   }
-  return new Date(timestamp).toISOString().split("T")[0];
+  return formatLocalDate(new Date(timestamp));
 }
 
 function getEarliestSaleDate(sales: Sale[]): string | null {
@@ -193,7 +201,7 @@ export const salesMethods: ThisType<AppContext> & Pick<
       packsCount: null,
       price: nextPrice,
       buyerShipping: Number(this.sellingShippingPerOrder) || 0,
-      date: new Date().toISOString().split("T")[0]
+      date: getTodayDate()
     };
     this.showAddSaleModal = true;
     focusSaleQuantityInput(this);
@@ -245,6 +253,8 @@ export const salesMethods: ThisType<AppContext> & Pick<
       packsCount = rtyhPacks;
     }
 
+    const normalizedSaleDate = toDateOnly(this.newSale.date) ?? getTodayDate();
+
     const sale: Sale = {
       id: this.editingSale ? this.editingSale.id : Date.now(),
       type: this.newSale.type,
@@ -252,7 +262,7 @@ export const salesMethods: ThisType<AppContext> & Pick<
       packsCount: packsCount || 0,
       price,
       buyerShipping,
-      date: this.newSale.date
+      date: normalizedSaleDate
     };
 
     if (this.editingSale) {
@@ -279,7 +289,7 @@ export const salesMethods: ThisType<AppContext> & Pick<
       packsCount: sale.type === "rtyh" ? sale.packsCount : null,
       price: sale.price,
       buyerShipping: sale.buyerShipping ?? 0,
-      date: sale.date
+      date: toDateOnly(sale.date) ?? getTodayDate()
     };
     this.showAddSaleModal = true;
     focusSaleQuantityInput(this);
@@ -309,7 +319,7 @@ export const salesMethods: ThisType<AppContext> & Pick<
       packsCount: null,
       price: 0,
       buyerShipping: this.sellingShippingPerOrder,
-      date: new Date().toISOString().split("T")[0]
+      date: getTodayDate()
     };
   },
 
@@ -520,7 +530,7 @@ export const salesMethods: ThisType<AppContext> & Pick<
     );
     const labels: string[] = [];
     const values: number[] = [];
-    const todayDate = new Date().toISOString().split("T")[0];
+    const todayDate = getTodayDate();
 
     const netByDate = new Map<string, number>();
     const costByDate = new Map<string, number>();

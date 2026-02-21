@@ -1,20 +1,13 @@
-import template from "./ConfigWindow.html?raw";
-import "./ConfigWindow.css";
+import template from "./AutoCalculateModal.html?raw";
 import { inject, type PropType } from "vue";
-import { createWindowContextBridge, resolveWindowContext } from "./contextBridge.ts";
+import { createWindowContextBridge, resolveWindowContext } from "../windows/contextBridge.ts";
 
-export const ConfigWindow = {
-  name: "ConfigWindow",
+export const AutoCalculateModal = {
+  name: "AutoCalculateModal",
   props: {
     ctx: {
       type: Object as PropType<Record<string, unknown>>,
       required: true
-    }
-  },
-  methods: {
-    fmtCurrency(value: number | null | undefined, decimals = 2): string {
-      if (value == null || Number.isNaN(Number(value))) return "0.00";
-      return Number(value).toFixed(decimals);
     }
   },
   setup(props: { ctx: Record<string, unknown> }) {

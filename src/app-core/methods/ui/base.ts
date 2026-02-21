@@ -1,6 +1,13 @@
 import type { Sale, SaleType, UiColor } from "../../../types/app.ts";
 import type { AppContext, AppMethodState } from "../../context.ts";
 
+const DATE_ONLY_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+const SLASH_DATE_REGEX = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
+
+function formatLocalDate(date: Date): string {
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
 export const uiBaseMethods: ThisType<AppContext> & Pick<
   AppMethodState,
   | "toggleTheme"
@@ -89,7 +96,32 @@ export const uiBaseMethods: ThisType<AppContext> & Pick<
   },
 
   formatDate(dateStr: string): string {
+    if (!dateStr) return "";
+
+    // Keep date-only values in local time to avoid UTC day shift (e.g. 2026-02-21 showing as Feb 20).
+    if (DATE_ONLY_REGEX.test(dateStr)) {
+      const [year, month, day] = dateStr.split("-").map((part) => Number(part));
+      const localDate = new Date(year, month - 1, day);
+      if (!Number.isNaN(localDate.getTime())) {
+        return formatLocalDate(localDate);
+      }
+    }
+
+    const slashMatch = dateStr.match(SLASH_DATE_REGEX);
+    if (slashMatch) {
+      const month = Number(slashMatch[1]);
+      const day = Number(slashMatch[2]);
+      const year = Number(slashMatch[3]);
+      const localDate = new Date(year, month - 1, day);
+      if (!Number.isNaN(localDate.getTime())) {
+        return formatLocalDate(localDate);
+      }
+    }
+
     const date = new Date(dateStr);
-    return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    if (Number.isNaN(date.getTime())) {
+      return dateStr;
+    }
+    return formatLocalDate(date);
   }
 };

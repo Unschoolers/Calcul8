@@ -36,8 +36,15 @@ export type ConfigMethods = ConfigMethodSubset<
 
 const DATE_ONLY_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
+function formatLocalDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export function getTodayDate(): string {
-  return new Date().toISOString().split("T")[0];
+  return formatLocalDate(new Date());
 }
 
 function isValidDateOnly(value: unknown): value is string {
@@ -49,7 +56,7 @@ export function toDateOnly(value: unknown): string | null {
   if (typeof value !== "string" || !value.trim()) return null;
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return null;
-  return date.toISOString().split("T")[0];
+  return formatLocalDate(date);
 }
 
 export function inferDateFromLotId(lotId: number): string | null {
@@ -58,5 +65,5 @@ export function inferDateFromLotId(lotId: number): string | null {
   if (!Number.isFinite(timestamp) || timestamp < 946684800000 || timestamp > 4102444800000) {
     return null;
   }
-  return new Date(timestamp).toISOString().split("T")[0];
+  return formatLocalDate(new Date(timestamp));
 }

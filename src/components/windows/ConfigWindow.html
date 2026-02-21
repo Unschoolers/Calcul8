@@ -14,11 +14,26 @@
                           divided
                           density="compact"
                           variant="outlined"
-                          class="mb-2"
+                          class="mb-2 segment-toggle"
                         >
                           <v-btn value="simple" size="small">Simple</v-btn>
                           <v-btn value="expert" size="small">Expert</v-btn>
                         </v-btn-toggle>
+
+                        <div v-if="purchaseUiMode === 'expert'" class="mb-2">
+                          <div class="text-caption text-medium-emphasis mb-1">Cost input mode</div>
+                          <v-btn-toggle
+                            v-model="costInputMode"
+                            mandatory
+                            density="compact"
+                            variant="tonal"
+                            class="pill-toggle"
+                            @update:model-value="onPurchaseConfigChange"
+                          >
+                            <v-btn value="perBox" size="small">Per Box</v-btn>
+                            <v-btn value="total" size="small">Total</v-btn>
+                          </v-btn-toggle>
+                        </div>
 
                         <div v-if="purchaseUiMode === 'simple'" class="text-caption text-medium-emphasis mb-2">
                           Switch to Expert for taxes, shipping, date, and exchange settings.
@@ -41,9 +56,9 @@
                             <v-btn-toggle
                               v-model="currency"
                               mandatory
-                              divided
                               density="compact"
-                              variant="outlined"
+                              variant="tonal"
+                              class="pill-toggle"
                               @update:model-value="onPurchaseConfigChange"
                             >
                               <v-btn value="CAD" title="CAD">🇨🇦</v-btn>
@@ -77,18 +92,6 @@
                         ></v-text-field>
 
                         <template v-if="purchaseUiMode === 'expert'">
-                          <v-btn-toggle
-                          v-model="costInputMode"
-                          mandatory
-                          density="compact"
-                          variant="outlined"
-                          class="mb-2"
-                          @update:model-value="onPurchaseConfigChange"
-                        >
-                          <v-btn value="perBox" size="small">Per Box</v-btn>
-                          <v-btn value="total" size="small">Total</v-btn>
-                        </v-btn-toggle>
-
                         <v-text-field
                           v-model="purchaseDate"
                           label="Purchase Date"
@@ -173,6 +176,12 @@
                         <div class="text-caption mt-2">
                           Includes ${{ fmtCurrency(purchaseShippingCostCAD) }} {{ sellingCurrency }} shipping
                         </div>
+                        <div class="text-caption text-medium-emphasis mt-1">
+                          Purchase tax: {{ fmtCurrency(purchaseTaxPercent, 2) }}% {{ includeTax ? "(included in total)" : "(not included)" }}
+                        </div>
+                        <div class="text-caption text-medium-emphasis mt-1">
+                          Bought on {{ purchaseDate ? formatDate(purchaseDate) : "Not set" }}
+                        </div>
                         <v-alert
                           v-if="Number(purchaseCostInputValue) <= 0 || Number(boxesPurchased) < 1 || Number(packsPerBox) < 1"
                           type="warning"
@@ -198,26 +207,41 @@
                         <v-btn-toggle
                           v-model="sellingCurrency"
                           mandatory
-                          divided
                           density="compact"
-                          variant="outlined"
-                          class="mb-2"
+                          variant="tonal"
+                          class="mb-2 pill-toggle"
                           @update:model-value="onPurchaseConfigChange"
                         >
                           <v-btn value="CAD" title="CAD">🇨🇦</v-btn>
                           <v-btn value="USD" title="USD">🇺🇸</v-btn>
                         </v-btn-toggle>
 
-                        <v-text-field
-                          :model-value="targetProfitPercent ? targetProfitPercent + '%' : 'Not set'"
-                          label="Target Profit %"
-                          variant="outlined"
-                          density="compact"
-                          hide-details
-                          readonly
-                          class="mb-2"
-                          prepend-inner-icon="mdi-calculator"
-                        ></v-text-field>
+                        <v-row dense class="align-center mb-2">
+                          <v-col cols="10">
+                            <v-text-field
+                              :model-value="targetProfitPercent ? targetProfitPercent + '%' : 'Not set'"
+                              label="Target Profit %"
+                              variant="outlined"
+                              density="compact"
+                              hide-details
+                              readonly
+                              class="mb-0"
+                              prepend-inner-icon="mdi-calculator"
+                            ></v-text-field>
+                          </v-col>
+                          <v-col cols="2" class="d-flex justify-end">
+                            <v-btn
+                              icon="mdi-calculator-variant-outline"
+                              size="small"
+                              color="secondary"
+                              variant="tonal"
+                              title="Open auto-calculate prices"
+                              aria-label="Open auto-calculate prices"
+                              :disabled="!hasLotSelected"
+                              @click="showProfitCalculator = true"
+                            ></v-btn>
+                          </v-col>
+                        </v-row>
 
                         <v-text-field
                           v-model.number="sellingTaxPercent"
@@ -259,11 +283,14 @@
                           hide-details
                           @input="onPurchaseConfigChange"
                         ></v-text-field>
+                      </v-card-text>
+                    </v-card>
 
+                    <v-card elevation="2" class="mt-3 config-card">
+                      <v-card-text class="py-2 px-3">
                         <div class="text-caption text-medium-emphasis mb-2">
                           Price values are read-only here. Update them in Live.
                         </div>
-
                         <v-list density="compact" nav lines="one" class="price-link-list">
                           <v-list-item
                             :title="`RTYH Spot (${sellingCurrency})`"

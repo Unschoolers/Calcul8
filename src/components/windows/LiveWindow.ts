@@ -1,7 +1,8 @@
 import template from "./LiveWindow.html?raw";
 import "./LiveWindow.css";
 import { LivePriceCard } from "../LivePriceCard.ts";
-import type { PropType } from "vue";
+import { inject, type PropType } from "vue";
+import { createWindowContextBridge, resolveWindowContext } from "./contextBridge.ts";
 
 export const LiveWindow = {
   name: "LiveWindow",
@@ -32,7 +33,9 @@ export const LiveWindow = {
     }
   },
   setup(props: { ctx: Record<string, unknown> }) {
-    return props.ctx;
+    const injectedCtx = inject<Record<string, unknown> | null>("appCtx", null);
+    const source = (injectedCtx ?? props.ctx) as Record<string, unknown>;
+    return createWindowContextBridge(resolveWindowContext(source));
   },
   template
 };

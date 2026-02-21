@@ -1,17 +1,17 @@
                 <v-row>
                   <!-- Status Card -->
                   <v-col cols="12" md="6">
-                    <v-card :color="salesStatus.color" dark elevation="4">
+                    <v-card :color="salesStatus?.color || 'grey'" dark elevation="4">
                       <v-card-text>
                         <div class="text-h6 mb-2">
-                          <v-icon class="mr-2">{{ salesStatus.icon }}</v-icon>
-                          {{ salesStatus.title }}
+                          <v-icon class="mr-2">{{ salesStatus?.icon || 'mdi-information' }}</v-icon>
+                          {{ salesStatus?.title || 'No Sales Yet' }}
                         </div>
-                        <div class="text-h4 mb-2">{{ salesStatus.profit >= 0 ? '+' : '' }}${{ formatCurrency(salesStatus.profit) }}</div>
+                        <div class="text-h4 mb-2">{{ (salesStatus?.profit ?? 0) >= 0 ? '+' : '' }}${{ fmtCurrency(salesStatus?.profit ?? 0) }}</div>
                         <v-divider class="my-2" style="opacity: 0.3;"></v-divider>
                         <div class="text-caption">
-                          Revenue: ${{ formatCurrency(salesStatus.revenue) }} |
-                          Cost: ${{ formatCurrency(totalCaseCost) }}
+                          Revenue: ${{ fmtCurrency(salesStatus?.revenue ?? 0) }} |
+                          Cost: ${{ fmtCurrency(totalCaseCost) }}
                         </div>
                         <v-progress-linear
                           :model-value="salesProgress"
@@ -21,7 +21,7 @@
                           color="white"
                         ></v-progress-linear>
                         <div class="text-caption mt-1">
-                          {{ soldPacksCount }} / {{ totalPacks }} packs sold ({{ salesProgress.toFixed(1) }}%)
+                          {{ soldPacksCount }} / {{ totalPacks }} packs sold ({{ Number(salesProgress ?? 0).toFixed(1) }}%)
                         </div>
                       </v-card-text>
                     </v-card>
@@ -52,7 +52,7 @@
                         ></canvas>
 
                         <div v-else class="pa-0">
-                          <div v-if="sales.length === 0" class="text-center py-8">
+                          <div v-if="(sales?.length ?? 0) === 0" class="text-center py-8">
                             <v-icon size="48" color="grey">mdi-chart-line</v-icon>
                             <p class="text-body-2 mt-4 text-grey">No sales yet. Add your first sale to see your profit journey!</p>
                           </div>
@@ -80,20 +80,20 @@
                           <v-icon class="mr-2">mdi-history</v-icon>
                           Sales History
                         </div>
-                        <v-chip color="secondary" v-if="sales.length > 0">
-                          {{ sales.length }} sale{{ sales.length > 1 ? 's' : '' }}
+                        <v-chip color="secondary" v-if="(sales?.length ?? 0) > 0">
+                          {{ sales?.length ?? 0 }} sale{{ (sales?.length ?? 0) > 1 ? 's' : '' }}
                         </v-chip>
                       </v-card-title>
                       <v-divider></v-divider>
 
-                      <v-card-text v-if="sales.length === 0" class="text-center py-8">
+                      <v-card-text v-if="(sales?.length ?? 0) === 0" class="text-center py-8">
                         <v-icon size="64" color="grey">mdi-package-variant-closed</v-icon>
                         <p class="text-h6 mt-4 text-grey">No sales yet</p>
                         <p class="text-caption">Click the + button to add your first sale</p>
                       </v-card-text>
 
                       <v-list v-else>
-                        <v-list-item v-for="sale in sortedSales" :key="sale.id" class="my-1">
+                        <v-list-item v-for="sale in (sortedSales || [])" :key="sale.id" class="my-1">
                           <template v-slot:prepend>
                             <v-avatar :color="getSaleColor(sale.type)" size="40">
                               <v-icon color="white">{{ getSaleIcon(sale.type) }}</v-icon>
@@ -101,10 +101,10 @@
                           </template>
 
                           <v-list-item-title>
-                            {{ sale.quantity }}x {{ sale.type.toUpperCase() }} @ ${{ formatCurrency(sale.price) }}
+                            {{ sale.quantity }}x {{ sale.type.toUpperCase() }} @ ${{ fmtCurrency(sale.price) }}
                           </v-list-item-title>
                           <v-list-item-subtitle>
-                            {{ formatDate(sale.date) }} • Profit {{ calculateSaleProfit(sale) >= 0 ? '+' : '' }}${{ formatCurrency(calculateSaleProfit(sale)) }}
+                            {{ formatDate(sale.date) }} • Profit {{ calculateSaleProfit(sale) >= 0 ? '+' : '' }}${{ fmtCurrency(calculateSaleProfit(sale)) }}
                           </v-list-item-subtitle>
 
                           <template v-slot:append>

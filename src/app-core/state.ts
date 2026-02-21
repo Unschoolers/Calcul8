@@ -7,10 +7,18 @@ import {
 } from "./storageKeys.ts";
 import type { AppState } from "../types/app.ts";
 
+function getLocalTodayDate(): string {
+  const date = new Date();
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export function createInitialState(): AppState {
   migrateLegacyStorageKeys();
   const legacyKeys = getLegacyStorageKeys();
-  const todayDate = new Date().toISOString().split("T")[0];
+  const todayDate = getLocalTodayDate();
   const purchaseUiMode = localStorage.getItem(STORAGE_KEYS.PURCHASE_UI_MODE) === "expert" ? "expert" : "simple";
   const hasProAccess = readStorageWithLegacy(STORAGE_KEYS.PRO_ACCESS, legacyKeys.PRO_ACCESS) === "1";
   const showManualPurchaseVerify =

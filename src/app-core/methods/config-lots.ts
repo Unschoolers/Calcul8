@@ -95,9 +95,9 @@ export const configLotMethods: ConfigMethodSubset<
       Number.isFinite(previousSellingTax) && previousSellingTax >= 0
         ? previousSellingTax
         : DEFAULT_VALUES.SELLING_TAX_RATE_PERCENT;
+    setup.purchaseDate = todayDate;
 
     if (this.purchaseUiMode === "simple") {
-      setup.purchaseDate = todayDate;
       setup.purchaseShippingCost = 0;
       setup.purchaseTaxPercent = 0;
     }

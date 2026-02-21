@@ -7,6 +7,13 @@
 .config-card .v-card-title {
   padding-top: 0.85rem;
   padding-bottom: 0.75rem;
+  background: rgba(var(--v-theme-secondary), 0.08);
+  border-bottom: 1px solid rgba(var(--v-theme-secondary), 0.22);
+  color: rgb(var(--v-theme-secondary));
+}
+
+.config-card .v-card-title .v-icon {
+  color: rgb(var(--v-theme-secondary)) !important;
 }
 
 .config-card .v-card-text {
@@ -14,15 +21,46 @@
   padding-bottom: 0.9rem;
 }
 
-.purchase-summary-card {
-  border-radius: 14px !important;
+.segment-toggle {
+  gap: 0.2rem;
+  overflow: visible !important;
 }
 
-.purchase-breakdown-sticky {
-  position: sticky;
-  top: calc(4.25rem + env(safe-area-inset-top));
-  z-index: 12;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+.segment-toggle .v-btn {
+  border-radius: 10px !important;
+  text-transform: none;
+  letter-spacing: 0.01em;
+  min-height: 36px !important;
+  height: 36px !important;
+}
+
+.segment-toggle .v-btn.v-btn--active {
+  background: rgba(var(--v-theme-secondary), 0.18) !important;
+  border-color: rgba(var(--v-theme-secondary), 0.55) !important;
+  color: rgb(var(--v-theme-secondary)) !important;
+}
+
+.pill-toggle {
+  gap: 0.35rem;
+  overflow: visible !important;
+}
+
+.pill-toggle .v-btn {
+  border-radius: 999px !important;
+  text-transform: none;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  min-width: 64px;
+  min-height: 36px !important;
+  height: 36px !important;
+}
+
+.pill-toggle .v-btn.v-btn--active {
+  color: rgb(var(--v-theme-secondary)) !important;
+}
+
+.purchase-summary-card {
+  border-radius: 14px !important;
 }
 
 .price-link-list {
@@ -62,9 +100,5 @@
 
   .purchase-summary-card .text-h6 {
     font-size: 1rem !important;
-  }
-
-  .purchase-breakdown-sticky {
-    position: static;
   }
 }
