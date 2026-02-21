@@ -14,7 +14,33 @@ Frontend env for Play purchase flow:
 - `VITE_API_BASE_URL=https://<your-function-app>.azurewebsites.net/api`
 - `VITE_GOOGLE_CLIENT_ID=<google web client id>`
 - `VITE_PLAY_PRO_PRODUCT_ID=<play in-app product id, e.g. pro_access>`
-- `VITE_PURCHASE_PROVIDER` (optional debug override: `auto` default, or `play`/`stripe`)
+- `VITE_PURCHASE_PROVIDER` (optional debug override: `auto` default, `play` supported today)
+
+## Testing
+
+Frontend tests:
+
+```bash
+npm run test
+```
+
+API tests:
+
+```bash
+npm run test:api
+```
+
+Run all tests:
+
+```bash
+npm run test:all
+```
+
+Coverage + hot paths:
+
+```bash
+npm run test:coverage:hotpaths
+```
 
 ## Quality checks
 

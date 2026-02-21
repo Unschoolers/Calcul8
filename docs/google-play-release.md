@@ -10,6 +10,7 @@ Run locally:
 ```bash
 npm ci
 npm run verify
+npm run test:api
 npm run build:prod
 ```
 
@@ -132,7 +133,7 @@ Set frontend build env:
 - `VITE_API_BASE_URL=https://<your-function-app>.azurewebsites.net/api`
 - `VITE_GOOGLE_CLIENT_ID=<google web client id>`
 - `VITE_PLAY_PRO_PRODUCT_ID=<play in-app product id>`
-- `VITE_PURCHASE_PROVIDER` (optional debug override: `auto` default, or `play`/`stripe`)
+- `VITE_PURCHASE_PROVIDER` (optional debug override: `auto` default, `play` supported today)
 
 Set backend Function App settings:
 
@@ -149,4 +150,6 @@ This repo is configured so that:
 - New SW activates quickly
 - Client reloads on `controllerchange`
 
-For each release, bump `APP_VERSION` in `src/constants.ts` before deploy.
+For each release, bump root `package.json` version before deploy.
+`__APP_VERSION__` is injected from `package.json` at build time, and
+`release:play` also syncs TWA version fields via `scripts/sync-twa-version.mjs`.
