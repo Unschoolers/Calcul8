@@ -11,6 +11,8 @@
     "preview": "vite preview",
     "test": "vitest run --config vitest.config.mjs",
     "test:watch": "vitest --config vitest.config.mjs",
+    "test:api": "npm --prefix apps/api run test",
+    "test:all": "npm run test && npm run test:api",
     "test:coverage": "vitest run --config vitest.config.mjs --coverage",
     "coverage:hotpaths": "node scripts/coverage-hotpaths.mjs",
     "test:coverage:hotpaths": "npm run test:coverage && npm run coverage:hotpaths",
