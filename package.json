@@ -1,6 +1,6 @@
 {
   "name": "whatfees",
-  "version": "1.0.64",
+  "version": "1.0.65",
   "description": "whatfees PWA",
   "private": true,
   "type": "module",
