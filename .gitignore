@@ -36,3 +36,7 @@ service-account*.json
 apps/api/local.settings.json
 apps/api/dist/
 apps/api/.azure/
+
+# Test coverage artifacts
+coverage/
+*.ts.html
