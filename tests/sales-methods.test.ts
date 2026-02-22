@@ -332,7 +332,7 @@ test("initSalesChart creates pie chart and destroys stale sales chart safely", (
     $refs: {
       salesWindow: {
         $refs: {
-          salesChart: pieCanvas
+          salesChartCanvas: pieCanvas
         }
       }
     }
@@ -352,7 +352,7 @@ test("initPortfolioChart creates breakdown doughnut chart", () => {
     $refs: {
       portfolioWindow: {
         $refs: {
-          portfolioChart: portfolioCanvas
+          portfolioChartCanvas: portfolioCanvas
         }
       }
     }
@@ -402,7 +402,7 @@ test("initPortfolioChart creates cumulative trend chart", () => {
     $refs: {
       portfolioWindow: {
         $refs: {
-          portfolioChart: portfolioCanvas
+          portfolioChartCanvas: portfolioCanvas
         }
       }
     }

@@ -1,6 +1,7 @@
 import type { Chart as ChartJS } from "chart.js";
 
 export type AppTab = "config" | "live" | "sales" | "portfolio";
+export type LotType = "bulk" | "singles";
 export type CostInputMode = "perBox" | "total";
 export type PurchaseUiMode = "simple" | "expert";
 export type CurrencyCode = "CAD" | "USD";
@@ -30,6 +31,7 @@ export interface NewSaleDraft {
   quantity: number | null;
   packsCount: number | null;
   price: number;
+  memo?: string;
   buyerShipping: number;
   date: string;
 }
@@ -40,6 +42,8 @@ export interface Sale {
   quantity: number;
   packsCount: number;
   price: number;
+  priceIsTotal?: boolean;
+  memo?: string;
   buyerShipping: number;
   date: string;
 }
@@ -68,6 +72,7 @@ export interface LotSetup {
 export interface Lot extends LotSetup {
   id: number;
   name: string;
+  lotType?: LotType;
   createdAt?: string;
   taxRatePercent?: number;
 }
@@ -119,6 +124,7 @@ export interface AppState extends LotSetup {
   purchaseUiMode: PurchaseUiMode;
   currentTab: AppTab;
   showNewLotModal: boolean;
+  showRenameLotModal: boolean;
   speedDialOpen: boolean;
   speedDialOpenSales: boolean;
   snackbar: SnackbarState;
@@ -151,6 +157,8 @@ export interface AppState extends LotSetup {
   lots: Lot[];
   currentLotId: number | null;
   newLotName: string;
+  renameLotName: string;
+  newLotType: LotType;
   lastFetchTime: number | null;
   cloudSyncIntervalId: number | null;
   lastSyncedPayloadHash: string | null;

@@ -45,7 +45,7 @@
                       <v-card-text class="sales-chart-container">
                         <canvas
                           v-if="chartView === 'pie'"
-                          ref="salesChart"
+                          ref="salesChartCanvas"
                           class="sales-chart-canvas"
                           role="img"
                           aria-label="Sales chart showing sold versus unsold net value."
@@ -101,10 +101,17 @@
                           </template>
 
                           <v-list-item-title>
-                            {{ sale.quantity }}x {{ sale.type.toUpperCase() }} @ ${{ fmtCurrency(sale.price) }}
+                            {{ currentLotType === 'singles'
+                              ? `${sale.quantity}x CARD • Total $${fmtCurrency(sale.price)}`
+                              : `${sale.quantity}x ${sale.type.toUpperCase()} @ $${fmtCurrency(sale.price)}` }}
                           </v-list-item-title>
-                          <v-list-item-subtitle>
-                            {{ formatDate(sale.date) }} • Profit {{ calculateSaleProfit(sale) >= 0 ? '+' : '' }}${{ fmtCurrency(calculateSaleProfit(sale)) }}
+                          <v-list-item-subtitle class="d-flex flex-column ga-1">
+                            <div>
+                              {{ formatDate(sale.date) }} • Profit {{ calculateSaleProfit(sale) >= 0 ? '+' : '' }}${{ fmtCurrency(calculateSaleProfit(sale)) }}
+                            </div>
+                            <div v-if="sale.memo" class="text-medium-emphasis">
+                              {{ sale.memo }}
+                            </div>
                           </v-list-item-subtitle>
 
                           <template v-slot:append>

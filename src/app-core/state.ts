@@ -38,6 +38,7 @@ export function createInitialState(): AppState {
     // UI State
     currentTab: "config",
     showNewLotModal: false,
+    showRenameLotModal: false,
     speedDialOpen: false,
     speedDialOpenSales: false,
     snackbar: {
@@ -96,6 +97,7 @@ export function createInitialState(): AppState {
       quantity: null,
       packsCount: null,
       price: 0,
+      memo: "",
       buyerShipping: DEFAULT_VALUES.SELLING_SHIPPING_PER_ORDER,
       date: todayDate
     },
@@ -110,6 +112,8 @@ export function createInitialState(): AppState {
     lots: [],
     currentLotId: null,
     newLotName: "",
+    renameLotName: "",
+    newLotType: "bulk",
 
     // Exchange Rate Cache
     lastFetchTime: null,

@@ -44,7 +44,10 @@ export const appLifecycle: AppLifecycleObject = {
 
     try {
       const savedTab = localStorage.getItem(STORAGE_KEYS.LAST_TAB);
-      if (isAppTab(savedTab) && (savedTab === "config" || this.currentLotId)) {
+      const currentLot = this.currentLotId ? this.lots.find((lot) => lot.id === this.currentLotId) : null;
+      const currentLotType = currentLot?.lotType === "singles" ? "singles" : "bulk";
+      const canRestoreSavedTab = savedTab !== "live" || currentLotType !== "singles";
+      if (isAppTab(savedTab) && (savedTab === "config" || this.currentLotId) && canRestoreSavedTab) {
         this.currentTab = savedTab;
       }
     } catch {

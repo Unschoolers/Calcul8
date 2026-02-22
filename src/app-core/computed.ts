@@ -103,8 +103,18 @@ export const appComputed: AppComputedObject = {
     }
   },
 
+  currentLotType() {
+    if (!this.currentLotId) return "bulk";
+    const currentLot = this.lots.find((lot) => lot.id === this.currentLotId);
+    return currentLot?.lotType === "singles" ? "singles" : "bulk";
+  },
+
   hasLotSelected(): boolean {
     return !!this.currentLotId;
+  },
+
+  isLiveTabDisabled(): boolean {
+    return !this.hasLotSelected || this.currentLotType === "singles";
   },
 
   canUsePaidActions(): boolean {
@@ -269,6 +279,16 @@ export const appComputed: AppComputedObject = {
   },
 
   salesStatus() {
+    if (this.currentLotType === "singles") {
+      const profit = this.totalRevenue - this.totalCaseCost;
+      if ((this.sales?.length ?? 0) === 0) {
+        return { color: "grey", icon: "mdi-information", title: "No Sales Yet", profit: 0, revenue: 0 };
+      }
+      if (profit < 0) {
+        return { color: "error", icon: "mdi-alert-circle", title: "Net Negative", profit, revenue: this.totalRevenue };
+      }
+      return { color: "success", icon: "mdi-check-circle", title: "Net Positive", profit, revenue: this.totalRevenue };
+    }
     return calculateSalesStatus(this.totalRevenue, this.totalCaseCost, this.salesProgress);
   },
 

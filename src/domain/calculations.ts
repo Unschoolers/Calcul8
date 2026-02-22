@@ -83,9 +83,18 @@ export function calculateNetFromGross(
   return gross - commission - processingPct - processingFixed;
 }
 
+export function getGrossRevenueForSale(sale: Pick<Sale, "quantity" | "price" | "priceIsTotal">): number {
+  const quantity = Number(sale.quantity) || 0;
+  const price = Number(sale.price) || 0;
+  if (sale.priceIsTotal) {
+    return Math.max(0, price);
+  }
+  return quantity * price;
+}
+
 export function calculateTotalRevenue(sales: Sale[], sellingTaxPercent: number): number {
   return sales.reduce((sum, sale) => {
-    const grossRevenue = (sale.quantity || 0) * (sale.price || 0);
+    const grossRevenue = getGrossRevenueForSale(sale);
     const buyerShipping = Number(sale.buyerShipping) || 0;
     return sum + calculateNetFromGross(grossRevenue, sellingTaxPercent, buyerShipping, 1);
   }, 0);
@@ -176,7 +185,7 @@ export function calculateSparklineData(sales: Sale[], totalCaseCost: number, sel
   const data = [cumulativeProfit];
 
   sortedSales.forEach((sale) => {
-    const grossRevenue = (sale.quantity || 0) * (sale.price || 0);
+    const grossRevenue = getGrossRevenueForSale(sale);
     const netRevenue = calculateNetFromGross(grossRevenue, sellingTaxPercent, sale.buyerShipping || 0, 1);
     cumulativeProfit += netRevenue;
     data.push(cumulativeProfit);
@@ -191,7 +200,7 @@ export function calculateSparklineGradient(sales: Sale[], totalCaseCost: number,
   let cumulativeProfit = -totalCaseCost;
 
   sortedSales.forEach((sale) => {
-    const grossRevenue = (sale.quantity || 0) * (sale.price || 0);
+    const grossRevenue = getGrossRevenueForSale(sale);
     const netRevenue = calculateNetFromGross(grossRevenue, sellingTaxPercent, sale.buyerShipping || 0, 1);
     cumulativeProfit += netRevenue;
   });

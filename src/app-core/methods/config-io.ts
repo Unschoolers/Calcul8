@@ -201,6 +201,7 @@ export const configIoMethods: ConfigMethodSubset<
           const { sales, ...rest } = p;
           return {
             ...rest,
+            lotType: (rest as Lot).lotType === "singles" ? "singles" : "bulk",
             purchaseDate:
               toDateOnly((rest as Lot).purchaseDate) ??
               toDateOnly((rest as Lot).createdAt) ??

@@ -69,6 +69,7 @@ export const configStorageMethods: ConfigMethodSubset<
       const parsed = JSON.parse(stored) as Array<Sale & { buyerShipping?: number }>;
       return parsed.map((sale) => ({
         ...sale,
+        memo: typeof sale.memo === "string" ? sale.memo : undefined,
         buyerShipping: Number(sale.buyerShipping) || 0
       }));
     } catch {
@@ -128,6 +129,7 @@ export const configStorageMethods: ConfigMethodSubset<
         const todayDate = getTodayDate();
         this.lots = parsed.map((lot) => ({
           ...lot,
+          lotType: lot.lotType === "singles" ? "singles" : "bulk",
           purchaseDate:
             toDateOnly(lot.purchaseDate) ??
             toDateOnly(lot.createdAt) ??

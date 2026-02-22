@@ -55,19 +55,12 @@ export async function migrationRunsList(
       runs
     });
   } catch (error) {
-    context.error("GET /admin/migrations/runs failed", error);
+    context.error("GET /migrations/runs failed", error);
     return errorResponse(request, config, error, "Failed to list migration runs.");
   }
 }
 
 app.http("migrationRunsList", {
-  methods: ["GET", "OPTIONS"],
-  authLevel: "anonymous",
-  route: "admin/migrations/runs",
-  handler: migrationRunsList
-});
-
-app.http("migrationRunsListAlias", {
   methods: ["GET", "OPTIONS"],
   authLevel: "anonymous",
   route: "migrations/runs",

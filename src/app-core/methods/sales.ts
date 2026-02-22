@@ -1,5 +1,5 @@
 import Chart from "chart.js/auto";
-import { calculateNetFromGross, calculateSparklineData } from "../../domain/calculations.ts";
+import { calculateNetFromGross, calculateSparklineData, getGrossRevenueForSale } from "../../domain/calculations.ts";
 import type { Sale, SaleType } from "../../types/app.ts";
 import type { AppContext, AppMethodState } from "../context.ts";
 import { getTodayDate } from "./config-shared.ts";
@@ -193,13 +193,17 @@ export const salesMethods: ThisType<AppContext> & Pick<
   },
 
   openAddSaleModal(saleType: SaleType = "pack"): void {
-    const nextPrice = resolveDefaultSaleUnitPrice(this, saleType);
+    const normalizedType: SaleType = this.currentLotType === "singles" ? "pack" : saleType;
+    const nextPrice = this.currentLotType === "singles"
+      ? 0
+      : resolveDefaultSaleUnitPrice(this, normalizedType);
     this.editingSale = null;
     this.newSale = {
-      type: saleType,
+      type: normalizedType,
       quantity: null,
       packsCount: null,
       price: nextPrice,
+      memo: "",
       buyerShipping: Number(this.sellingShippingPerOrder) || 0,
       date: getTodayDate()
     };
@@ -208,6 +212,10 @@ export const salesMethods: ThisType<AppContext> & Pick<
   },
 
   onNewSaleTypeChange(type: SaleType): void {
+    if (this.currentLotType === "singles") {
+      this.newSale.type = "pack";
+      return;
+    }
     const nextType: SaleType = type === "box" || type === "rtyh" ? type : "pack";
     this.newSale.type = nextType;
     if (this.editingSale) return;
@@ -223,7 +231,9 @@ export const salesMethods: ThisType<AppContext> & Pick<
     const quantity = Number(this.newSale.quantity);
     const price = Number(this.newSale.price);
     const buyerShipping = Number(this.newSale.buyerShipping);
+    const memo = typeof this.newSale.memo === "string" ? this.newSale.memo.trim() : "";
     const rtyhPacks = Number(this.newSale.packsCount);
+    const isSinglesLot = this.currentLotType === "singles";
 
     if (!Number.isFinite(quantity) || quantity <= 0) {
       this.notify("Please enter a valid quantity greater than 0", "warning");
@@ -239,15 +249,17 @@ export const salesMethods: ThisType<AppContext> & Pick<
       return;
     }
 
-    if (this.newSale.type === "rtyh" && (!Number.isFinite(rtyhPacks) || rtyhPacks <= 0)) {
+    if (!isSinglesLot && this.newSale.type === "rtyh" && (!Number.isFinite(rtyhPacks) || rtyhPacks <= 0)) {
       this.notify("Please enter the number of packs sold for RTYH", "warning");
       return;
     }
 
+    const normalizedSaleType: SaleType = isSinglesLot ? "pack" : this.newSale.type;
+
     let packsCount: number;
-    if (this.newSale.type === "pack") {
+    if (normalizedSaleType === "pack") {
       packsCount = quantity;
-    } else if (this.newSale.type === "box") {
+    } else if (normalizedSaleType === "box") {
       packsCount = quantity * this.packsPerBox;
     } else {
       packsCount = rtyhPacks;
@@ -257,10 +269,12 @@ export const salesMethods: ThisType<AppContext> & Pick<
 
     const sale: Sale = {
       id: this.editingSale ? this.editingSale.id : Date.now(),
-      type: this.newSale.type,
+      type: normalizedSaleType,
       quantity,
       packsCount: packsCount || 0,
       price,
+      priceIsTotal: isSinglesLot ? true : undefined,
+      memo: memo || undefined,
       buyerShipping,
       date: normalizedSaleDate
     };
@@ -288,6 +302,7 @@ export const salesMethods: ThisType<AppContext> & Pick<
       quantity: sale.quantity,
       packsCount: sale.type === "rtyh" ? sale.packsCount : null,
       price: sale.price,
+      memo: sale.memo ?? "",
       buyerShipping: sale.buyerShipping ?? 0,
       date: toDateOnly(sale.date) ?? getTodayDate()
     };
@@ -318,6 +333,7 @@ export const salesMethods: ThisType<AppContext> & Pick<
       quantity: null,
       packsCount: null,
       price: 0,
+      memo: "",
       buyerShipping: this.sellingShippingPerOrder,
       date: getTodayDate()
     };
@@ -328,7 +344,7 @@ export const salesMethods: ThisType<AppContext> & Pick<
     this.salesChart = null;
 
     const chartCanvas = this.chartView === "pie"
-      ? resolveCanvasRef(this, "salesWindow", "salesChart")
+      ? resolveCanvasRef(this, "salesWindow", "salesChartCanvas")
       : resolveCanvasRef(this, "salesWindow", "salesTrendChart");
     if (!chartCanvas) return;
     const existingSalesChart = Chart.getChart(chartCanvas);
@@ -465,7 +481,7 @@ export const salesMethods: ThisType<AppContext> & Pick<
 
     if (this.currentTab !== "portfolio") return;
 
-    const chartCanvas = resolveCanvasRef(this, "portfolioWindow", "portfolioChart");
+    const chartCanvas = resolveCanvasRef(this, "portfolioWindow", "portfolioChartCanvas");
     if (!chartCanvas) return;
     const existingPortfolioChart = Chart.getChart(chartCanvas);
     if (existingPortfolioChart) {
@@ -553,7 +569,7 @@ export const salesMethods: ThisType<AppContext> & Pick<
         if (!lotFromMap) continue;
         const saleDate = toDateOnly(sale.date);
         if (!saleDate) continue;
-        const grossRevenue = (sale.quantity || 0) * (sale.price || 0);
+        const grossRevenue = getGrossRevenueForSale(sale);
         const netRevenue = calculateNetFromGross(
           grossRevenue,
           lotFromMap.sellingTaxPercent,

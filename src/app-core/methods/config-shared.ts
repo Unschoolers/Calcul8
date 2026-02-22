@@ -18,6 +18,8 @@ export type ConfigMethods = ConfigMethodSubset<
   | "resetLivePrices"
   | "applyLivePricesToDefaults"
   | "createNewLot"
+  | "openRenameLotModal"
+  | "renameCurrentLot"
   | "loadLot"
   | "deleteCurrentLot"
   | "exportLots"

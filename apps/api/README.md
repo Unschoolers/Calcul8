@@ -7,8 +7,8 @@ This is a separate deployable backend project for:
 - `POST /api/entitlements/verify-play`
 - `POST /api/sync/pull`
 - `POST /api/sync/push`
-- `POST /api/admin/migrations/run`
-- `GET /api/admin/migrations/runs`
+- `POST /api/migrations/run`
+- `GET /api/migrations/runs`
 
 It is designed to stay independent from the frontend deployment (GitHub Pages).
 
@@ -124,10 +124,6 @@ Recommended partition key for both containers: `/userId`.
 
 ## Run a migration
 
-`POST /api/admin/migrations/run`
-
-Alias route:
-
 `POST /api/migrations/run`
 
 Request body:
@@ -145,10 +141,6 @@ Headers:
 - `x-admin-id: <optional-audit-label>` (optional)
 
 List runs:
-
-`GET /api/admin/migrations/runs?migrationId=first_migration&limit=20`
-
-Alias route:
 
 `GET /api/migrations/runs?migrationId=first_migration&limit=20`
 

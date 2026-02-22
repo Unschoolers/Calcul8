@@ -1,0 +1,84 @@
+<v-row class="config-layout">
+  <v-col cols="12">
+    <v-card elevation="4" class="config-card singles-banner-card">
+      <v-card-title class="text-subtitle-1">
+        <v-icon class="mr-2">mdi-cards-outline</v-icon>
+        Singles Mode
+      </v-card-title>
+      <v-divider></v-divider>
+      <v-card-text>
+        <v-alert type="info" variant="tonal" density="compact" class="mb-3">
+          This lot tracks single-card sales. Live pricing is disabled for Singles lots.
+        </v-alert>
+        <v-btn color="primary" variant="flat" prepend-icon="mdi-chart-line" @click="currentTab = 'sales'">
+          Go To Sales
+        </v-btn>
+      </v-card-text>
+    </v-card>
+  </v-col>
+
+  <v-col cols="12" md="6">
+    <v-card elevation="4" class="config-card">
+      <v-card-title class="text-subtitle-1">
+        <v-icon class="mr-2">mdi-cash-multiple</v-icon>
+        Selling Defaults
+      </v-card-title>
+      <v-divider></v-divider>
+      <v-card-text>
+        <v-btn-toggle
+          v-model="sellingCurrency"
+          mandatory
+          density="compact"
+          variant="tonal"
+          class="mb-2 pill-toggle"
+          @update:model-value="onPurchaseConfigChange"
+        >
+          <v-btn value="CAD" title="CAD">🇨🇦</v-btn>
+          <v-btn value="USD" title="USD">🇺🇸</v-btn>
+        </v-btn-toggle>
+
+        <v-text-field
+          v-model.number="sellingTaxPercent"
+          label="Selling Taxes %"
+          type="number"
+          variant="outlined"
+          density="compact"
+          step="0.01"
+          :min="0"
+          class="mb-2"
+          hide-details
+          @input="onPurchaseConfigChange"
+        ></v-text-field>
+
+        <v-text-field
+          v-model.number="sellingShippingPerOrder"
+          :label="`Average Buyer Shipping (${sellingCurrency})`"
+          type="number"
+          variant="outlined"
+          density="compact"
+          prefix="$"
+          step="0.01"
+          :min="0"
+          class="mb-2"
+          hide-details
+          @input="onPurchaseConfigChange"
+        ></v-text-field>
+      </v-card-text>
+    </v-card>
+  </v-col>
+
+  <v-col cols="12" md="6">
+    <v-card elevation="4" class="config-card">
+      <v-card-title class="text-subtitle-1">
+        <v-icon class="mr-2">mdi-information-outline</v-icon>
+        Notes
+      </v-card-title>
+      <v-divider></v-divider>
+      <v-card-text>
+        <div class="text-body-2 text-medium-emphasis">
+          Use Sales to track each card sale directly. Portfolio will still aggregate totals by lot.
+        </div>
+      </v-card-text>
+    </v-card>
+  </v-col>
+</v-row>

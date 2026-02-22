@@ -18,6 +18,8 @@ export const configLotMethods: ConfigMethodSubset<
   | "resetLivePrices"
   | "applyLivePricesToDefaults"
   | "createNewLot"
+  | "openRenameLotModal"
+  | "renameCurrentLot"
   | "loadLot"
   | "deleteCurrentLot"
 > = {
@@ -74,6 +76,7 @@ export const configLotMethods: ConfigMethodSubset<
     this.boxPriceSell = Number(this.liveBoxPriceSell) || 0;
     this.packPrice = Number(this.livePackPrice) || 0;
     this.autoSaveSetup();
+    void this.pushCloudSync();
     this.notify("Live prices saved to config", "success");
   },
 
@@ -84,6 +87,7 @@ export const configLotMethods: ConfigMethodSubset<
 
     const todayDate = getTodayDate();
     const setup = this.getCurrentSetup();
+    const nextLotType = this.newLotType === "singles" ? "singles" : "bulk";
     const selectedLot = this.currentLotId ? this.lots.find((p) => p.id === this.currentLotId) : null;
     const fallbackPreviousLot = this.lots.length > 0 ? this.lots[this.lots.length - 1] : null;
     const previousSellingTaxRaw =
@@ -102,10 +106,24 @@ export const configLotMethods: ConfigMethodSubset<
       setup.purchaseTaxPercent = 0;
     }
 
+    if (nextLotType === "singles") {
+      setup.costInputMode = "total";
+      setup.boxPriceCost = 0;
+      setup.boxesPurchased = 0;
+      setup.packsPerBox = 1;
+      setup.purchaseShippingCost = 0;
+      setup.purchaseTaxPercent = 0;
+      setup.includeTax = false;
+      setup.spotPrice = 0;
+      setup.boxPriceSell = 0;
+      setup.packPrice = 0;
+    }
+
     const newLot = {
       id: Date.now(),
       name,
       createdAt: todayDate,
+      lotType: nextLotType,
       ...setup
     };
     this.lots.push(newLot);
@@ -114,8 +132,61 @@ export const configLotMethods: ConfigMethodSubset<
     this.currentLotId = newLot.id;
     this.loadLot();
     this.newLotName = "";
+    this.newLotType = nextLotType;
     this.showNewLotModal = false;
     this.notify("Lot created", "success");
+  },
+
+  openRenameLotModal(): void {
+    if (!this.currentLotId) {
+      this.notify("Select a lot first", "warning");
+      return;
+    }
+    const lot = this.lots.find((p) => p.id === this.currentLotId);
+    if (!lot) return;
+    this.renameLotName = lot.name;
+    this.showRenameLotModal = true;
+  },
+
+  renameCurrentLot(): void {
+    if (!this.currentLotId) {
+      this.notify("Select a lot first", "warning");
+      return;
+    }
+
+    const lot = this.lots.find((p) => p.id === this.currentLotId);
+    if (!lot) return;
+
+    const nextName = String(this.renameLotName || "").trim();
+    if (!nextName) {
+      this.notify("Please enter a lot name", "warning");
+      return;
+    }
+
+    const nextNameKey = nextName.toLocaleLowerCase();
+    const hasDuplicate = this.lots.some(
+      (candidate) => candidate.id !== lot.id && String(candidate.name || "").trim().toLocaleLowerCase() === nextNameKey
+    );
+    if (hasDuplicate) {
+      this.notify("A lot with this name already exists", "warning");
+      return;
+    }
+
+    if (lot.name === nextName) {
+      this.showRenameLotModal = false;
+      return;
+    }
+
+    lot.name = nextName;
+    this.saveLotsToStorage();
+    this.showRenameLotModal = false;
+    this.renameLotName = "";
+
+    if (this.currentTab === "portfolio") {
+      void this.$nextTick(() => this.initPortfolioChart());
+    }
+
+    this.notify("Lot renamed", "success");
   },
 
   loadLot(): void {
@@ -123,6 +194,7 @@ export const configLotMethods: ConfigMethodSubset<
 
     const lot = this.lots.find((p) => p.id === this.currentLotId);
     if (!lot) return;
+    this.newLotType = lot.lotType === "singles" ? "singles" : "bulk";
     const todayDate = getTodayDate();
 
     this.boxPriceCost = lot.boxPriceCost ?? DEFAULT_VALUES.BOX_PRICE;
@@ -164,6 +236,9 @@ export const configLotMethods: ConfigMethodSubset<
     }
 
     this.syncLivePricesFromDefaults();
+    if (lot.lotType === "singles" && this.currentTab === "live") {
+      this.currentTab = "config";
+    }
     this.loadSalesFromStorage();
     void this.$nextTick(() => {
       if (this.currentTab === "sales") {

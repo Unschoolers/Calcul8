@@ -1,6 +1,7 @@
 import { LivePriceCard } from "./components/LivePriceCard.ts";
 import { AutoCalculateModal } from "./components/modals/AutoCalculateModal.ts";
 import { ConfigWindow } from "./components/windows/ConfigWindow.ts";
+import { SinglesConfigWindow } from "./components/windows/SinglesConfigWindow.ts";
 import { LiveWindow } from "./components/windows/LiveWindow.ts";
 import { SalesWindow } from "./components/windows/SalesWindow.ts";
 import { PortfolioWindow } from "./components/windows/PortfolioWindow.ts";
@@ -15,6 +16,7 @@ export const appOptions = {
     LivePriceCard,
     AutoCalculateModal,
     ConfigWindow,
+    SinglesConfigWindow,
     LiveWindow,
     SalesWindow,
     PortfolioWindow

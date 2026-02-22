@@ -4,6 +4,7 @@ import type {
   BeforeInstallPromptEvent,
   CostInputMode,
   Lot,
+  LotType,
   LotPerformanceSummary,
   LotSetup,
   PortfolioTotals,
@@ -20,7 +21,9 @@ export interface AppComputedState {
   googleProfileEmail: string;
   googleProfilePicture: string;
   lotNameDraft: string;
+  currentLotType: LotType;
   hasLotSelected: boolean;
+  isLiveTabDisabled: boolean;
   canUsePaidActions: boolean;
   lotItems: Array<{ title: string; value: number | null }>;
   portfolioLotFilterItems: Array<{ title: string; value: number }>;
@@ -74,6 +77,8 @@ export interface AppMethodState {
   resetLivePrices(): void;
   applyLivePricesToDefaults(): void;
   createNewLot(): void;
+  openRenameLotModal(): void;
+  renameCurrentLot(): void;
   loadLot(): void;
   deleteCurrentLot(): void;
   exportLots(): void;
@@ -194,7 +199,9 @@ export interface AppComputedObject {
   googleProfileEmail(this: AppContext): string;
   googleProfilePicture(this: AppContext): string;
   lotNameDraft: StringProxyComputed;
+  currentLotType(this: AppContext): LotType;
   hasLotSelected(this: AppContext): boolean;
+  isLiveTabDisabled(this: AppContext): boolean;
   canUsePaidActions(this: AppContext): boolean;
   lotItems(this: AppContext): Array<{ title: string; value: number | null }>;
   portfolioLotFilterItems(this: AppContext): Array<{ title: string; value: number }>;

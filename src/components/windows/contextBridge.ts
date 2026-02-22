@@ -3,6 +3,10 @@ import { getCurrentInstance } from "vue";
 type WindowContext = Record<string, unknown>;
 type MaybeWindowContext = WindowContext | null | undefined;
 
+function isReservedVueKey(key: string | symbol): boolean {
+  return typeof key === "string" && (key.startsWith("$") || key.startsWith("_"));
+}
+
 function getInternalCtx(ctx: MaybeWindowContext): WindowContext | undefined {
   if (!ctx || typeof ctx !== "object") return undefined;
   return (ctx as { $?: { ctx?: Record<string, unknown> } }).$?.ctx as WindowContext | undefined;
@@ -63,27 +67,14 @@ export function createWindowContextBridge(ctx: WindowContext): Record<string, un
     return false;
   };
 
-  const listKeys = (): Array<string | symbol> => {
-    const keys = new Set<string | symbol>(Reflect.ownKeys(sourceCtx));
-    if (internalCtx) {
-      for (const key of Reflect.ownKeys(internalCtx)) {
-        keys.add(key);
-      }
-    }
-    return [...keys];
-  };
-
   return new Proxy(
     {},
     {
       has(_target, key: string | symbol) {
         return hasKey(key);
       },
-      ownKeys() {
-        return listKeys();
-      },
       getOwnPropertyDescriptor(_target, key: string | symbol) {
-        if (!hasKey(key)) {
+        if (!hasKey(key) || isReservedVueKey(key)) {
           return undefined;
         }
         return {

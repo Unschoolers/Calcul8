@@ -86,19 +86,12 @@ export async function migrationRun(
       run
     });
   } catch (error) {
-    context.error("POST /admin/migrations/run failed", error);
+    context.error("POST /migrations/run failed", error);
     return errorResponse(request, config, error, "Failed to run migration.");
   }
 }
 
 app.http("migrationRun", {
-  methods: ["POST", "OPTIONS"],
-  authLevel: "anonymous",
-  route: "admin/migrations/run",
-  handler: migrationRun
-});
-
-app.http("migrationRunAlias", {
   methods: ["POST", "OPTIONS"],
   authLevel: "anonymous",
   route: "migrations/run",

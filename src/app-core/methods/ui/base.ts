@@ -1,5 +1,6 @@
 import type { Sale, SaleType, UiColor } from "../../../types/app.ts";
 import type { AppContext, AppMethodState } from "../../context.ts";
+import { getGrossRevenueForSale } from "../../../domain/calculations.ts";
 
 const DATE_ONLY_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 const SLASH_DATE_REGEX = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
@@ -76,7 +77,7 @@ export const uiBaseMethods: ThisType<AppContext> & Pick<
   },
 
   calculateSaleProfit(sale: Sale): number {
-    const grossRevenue = (sale.quantity || 0) * (sale.price || 0);
+    const grossRevenue = getGrossRevenueForSale(sale);
     const netRevenue = this.netFromGross(grossRevenue, sale.buyerShipping || 0, 1);
     const costPerPack = this.totalPacks > 0 ? (this.totalCaseCost / this.totalPacks) : 0;
     const allocatedCost = (sale.packsCount || 0) * costPerPack;

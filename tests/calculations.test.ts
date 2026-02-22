@@ -674,6 +674,9 @@ test("applyLivePricesToDefaults saves live prices into config defaults", () => {
     autoSaveSetup() {
       saved = true;
     },
+    pushCloudSync() {
+      return Promise.resolve();
+    },
     notify(message: string) {
       notified = message;
     }
@@ -900,6 +903,70 @@ test("createNewLot uses previous lot selling tax for second+ lots", () => {
   assert.equal(context.lots.length, 2);
   const newPreset = context.lots[1]!;
   assert.equal(newPreset.sellingTaxPercent, 9.5);
+});
+
+test("openRenameLotModal pre-fills selected lot name and opens modal", () => {
+  const context = {
+    currentLotId: 2,
+    lots: [
+      { id: 1, name: "Alpha" },
+      { id: 2, name: "Beta" }
+    ],
+    renameLotName: "",
+    showRenameLotModal: false,
+    notify() {
+      // noop
+    }
+  } as unknown as Parameters<typeof configMethods.openRenameLotModal>[0];
+
+  configMethods.openRenameLotModal.call(context);
+
+  assert.equal(context.showRenameLotModal, true);
+  assert.equal(context.renameLotName, "Beta");
+});
+
+test("renameCurrentLot rejects duplicates and renames unique names", () => {
+  let savedCount = 0;
+  let notifiedMessage = "";
+  let chartRefreshCount = 0;
+
+  const context = {
+    currentLotId: 2,
+    currentTab: "portfolio",
+    lots: [
+      { id: 1, name: "Alpha" },
+      { id: 2, name: "Beta" }
+    ],
+    renameLotName: " alpha ",
+    showRenameLotModal: true,
+    saveLotsToStorage() {
+      savedCount += 1;
+    },
+    initPortfolioChart() {
+      chartRefreshCount += 1;
+    },
+    $nextTick(callback: () => void) {
+      callback();
+    },
+    notify(message: string) {
+      notifiedMessage = message;
+    }
+  } as unknown as Parameters<typeof configMethods.renameCurrentLot>[0];
+
+  configMethods.renameCurrentLot.call(context);
+  assert.equal(savedCount, 0);
+  assert.equal(notifiedMessage, "A lot with this name already exists");
+  assert.equal(context.lots[1]?.name, "Beta");
+
+  context.renameLotName = "Gamma";
+  configMethods.renameCurrentLot.call(context);
+
+  assert.equal(savedCount, 1);
+  assert.equal(chartRefreshCount, 1);
+  assert.equal(context.lots[1]?.name, "Gamma");
+  assert.equal(context.showRenameLotModal, false);
+  assert.equal(context.renameLotName, "");
+  assert.equal(notifiedMessage, "Lot renamed");
 });
 
 test("loadLot forces target profit to 0 for non-pro users", async () => {
