@@ -98,16 +98,6 @@
                           <v-chip color="secondary" v-if="hasPortfolioData">
                             {{ allLotPerformance?.length ?? 0 }} lot{{ (allLotPerformance?.length ?? 0) === 1 ? '' : 's' }}
                           </v-chip>
-                          <v-btn
-                            color="primary"
-                            variant="tonal"
-                            size="small"
-                            prepend-icon="mdi-table"
-                            :disabled="!hasPortfolioData"
-                            @click="openPortfolioReportModal"
-                          >
-                            Report
-                          </v-btn>
                         </div>
                       </v-card-title>
                       <v-divider></v-divider>

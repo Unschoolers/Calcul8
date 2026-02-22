@@ -51,7 +51,7 @@ export interface AppComputedState {
   sortedSales: Sale[];
   sparklineData: number[];
   sparklineGradient: string[];
-  allLotPerformance: Array<LotPerformanceSummary & { lotId: number; lotName: string }>;
+  allLotPerformance: Array<LotPerformanceSummary & { lotId: number; lotName: string; lotType: "Bulk" | "Singles" }>;
   portfolioTotals: PortfolioTotals;
   hasPortfolioData: boolean;
 }
@@ -229,7 +229,7 @@ export interface AppComputedObject {
   sortedSales(this: AppContext): Sale[];
   sparklineData(this: AppContext): number[];
   sparklineGradient(this: AppContext): string[];
-  allLotPerformance(this: AppContext): Array<LotPerformanceSummary & { lotId: number; lotName: string }>;
+  allLotPerformance(this: AppContext): Array<LotPerformanceSummary & { lotId: number; lotName: string; lotType: "Bulk" | "Singles" }>;
   portfolioTotals(this: AppContext): PortfolioTotals;
   hasPortfolioData(this: AppContext): boolean;
 }

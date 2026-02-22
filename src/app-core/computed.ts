@@ -320,7 +320,8 @@ export const appComputed: AppComputedObject = {
         return {
           ...summary,
           lotId: summary.lotId,
-          lotName: summary.lotName
+          lotName: summary.lotName,
+          lotType: lot.lotType === "singles" ? "Singles" : "Bulk"
         };
       });
 

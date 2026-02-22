@@ -263,6 +263,10 @@
       bottom: calc(10rem + env(safe-area-inset-bottom)) !important;
       inset-block-end: calc(10rem + env(safe-area-inset-bottom)) !important;
     }
+    .fab-portfolio-report {
+      bottom: calc(5rem + env(safe-area-inset-bottom)) !important;
+      inset-block-end: calc(5rem + env(safe-area-inset-bottom)) !important;
+    }
     .fab-overflow-wrap {
       position: fixed;
       right: max(1rem, env(safe-area-inset-right));

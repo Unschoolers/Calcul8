@@ -459,6 +459,18 @@
         </v-speed-dial>
       </div>
 
+      <v-fab
+        v-if="currentTab === 'portfolio'"
+        icon="mdi-table"
+        color="primary"
+        size="large"
+        title="Open portfolio report"
+        aria-label="Open portfolio report"
+        :disabled="!hasPortfolioData"
+        @click="openPortfolioReportModal"
+        class="fab-primary fab-portfolio-report"
+      ></v-fab>
+
       <!-- New Lot Modal -->
       <v-dialog v-model="showNewLotModal" max-width="400">
         <v-card>
@@ -705,6 +717,7 @@
                 <thead>
                   <tr>
                 <th>Lot</th>
+                    <th>Type</th>
                     <th>Sales</th>
                     <th>Sold Packs</th>
                     <th>Total Packs</th>
@@ -718,6 +731,7 @@
                 <tbody>
                 <tr v-for="row in allLotPerformance" :key="`report-${row.lotId}`">
                   <td>{{ row.lotName }}</td>
+                    <td>{{ row.lotType }}</td>
                     <td>{{ row.salesCount }}</td>
                     <td>{{ row.soldPacks }}</td>
                     <td>{{ row.totalPacks }}</td>
