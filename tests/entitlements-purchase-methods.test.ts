@@ -190,6 +190,51 @@ test("startPlayPurchase verifies existing purchase before new purchase", async (
   });
 });
 
+test("startPlayPurchase recovers already-owned error without requiring a second tap", async () => {
+  await withMockedLocalStorage(async (data) => {
+    data.set("whatfees_google_id_token", "google-token");
+
+    const alreadyOwnedError = new Error("ITEM_ALREADY_OWNED");
+    const listPurchases = vi
+      .fn<() => Promise<unknown>>()
+      .mockResolvedValueOnce({ data: "precheck-empty" })
+      .mockResolvedValueOnce({ data: "precheck-empty" })
+      .mockResolvedValueOnce({ data: "precheck-empty" })
+      .mockResolvedValueOnce({ data: "precheck-empty" })
+      .mockResolvedValueOnce({ data: "recovery-empty" })
+      .mockResolvedValueOnce({ data: "recovery-has-token" });
+
+    getPlayBillingServiceMock.mockResolvedValue({ listPurchases });
+    purchasePlayProductMock.mockRejectedValue(alreadyOwnedError);
+    isAlreadyOwnedPurchaseErrorMock.mockReturnValue(true);
+    extractPurchaseTokenFromResultMock
+      .mockReturnValueOnce({ purchaseToken: null, itemId: null })
+      .mockReturnValueOnce({ purchaseToken: null, itemId: null })
+      .mockReturnValueOnce({ purchaseToken: null, itemId: null })
+      .mockReturnValueOnce({ purchaseToken: null, itemId: null })
+      .mockReturnValueOnce({ purchaseToken: null, itemId: null })
+      .mockReturnValueOnce({ purchaseToken: "recovered_token", itemId: "pro_access" });
+
+    const ctx = createContext({
+      purchaseProductIdInput: "pro_access",
+      purchaseTokenInput: "will-be-cleared",
+      purchasePackageNameInput: "io.app.pkg"
+    });
+
+    await uiEntitlementPurchaseMethods.startPlayPurchase.call(ctx as never);
+
+    assert.equal(purchasePlayProductMock.mock.calls.length, 1);
+    assert.equal(listPurchases.mock.calls.length, 6);
+    assert.equal(submitPlayPurchaseVerificationMock.mock.calls.length, 1);
+    assert.equal((ctx.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0], "Existing purchase found and verified. Pro features unlocked.");
+    assert.equal(ctx.purchaseTokenInput, "");
+    assert.equal(ctx.purchaseProductIdInput, "");
+    assert.equal(ctx.purchasePackageNameInput, "");
+    assert.equal(ctx.showVerifyPurchaseModal, false);
+    assert.equal(ctx.isVerifyingPurchase, false);
+  });
+});
+
 test("verifyPlayPurchase validates token then verifies and closes modal", async () => {
   await withMockedLocalStorage(async (data) => {
     data.set("whatfees_google_id_token", "google-token");
@@ -222,4 +267,3 @@ test("verifyPlayPurchase warns when token is missing", async () => {
     assert.equal(submitPlayPurchaseVerificationMock.mock.calls.length, 0);
   });
 });
-

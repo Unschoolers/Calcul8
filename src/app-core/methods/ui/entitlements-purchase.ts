@@ -19,6 +19,17 @@ import {
   type UiEntitlementMethodSubset
 } from "./entitlements-shared.ts";
 
+const PLAY_PURCHASE_RECOVERY_MAX_ATTEMPTS = 10;
+const PLAY_PURCHASE_RECOVERY_BASE_DELAY_MS = 250;
+const PLAY_PURCHASE_RECOVERY_MAX_DELAY_MS = 1200;
+const PLAY_PURCHASE_PRECHECK_ATTEMPTS = 4;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    globalThis.setTimeout(resolve, ms);
+  });
+}
+
 export const uiEntitlementPurchaseMethods: UiEntitlementMethodSubset<
   "startProPurchase" | "verifyProPurchase" | "startPlayPurchase" | "verifyPlayPurchase"
 > = {
@@ -105,15 +116,21 @@ export const uiEntitlementPurchaseMethods: UiEntitlementMethodSubset<
 
     this.isVerifyingPurchase = true;
     let playBilling: DigitalGoodsService | null = null;
-
-    try {
-      playBilling = await getPlayBillingService();
-      if (!playBilling && !isPlayBillingPaymentRequestSupported()) {
-        this.notify("Google Play billing is not available in this environment.", "warning");
-        return;
+    const resetPurchaseInputs = () => {
+      this.purchaseTokenInput = "";
+      this.purchaseProductIdInput = "";
+      this.purchasePackageNameInput = "";
+      this.showVerifyPurchaseModal = false;
+    };
+    const tryRecoverExistingPurchase = async (
+      attempts: number,
+      successMessage: string
+    ): Promise<boolean> => {
+      if (!playBilling || typeof playBilling.listPurchases !== "function") {
+        return false;
       }
 
-      if (playBilling && typeof playBilling.listPurchases === "function") {
+      for (let attempt = 0; attempt < attempts; attempt += 1) {
         try {
           const listedPurchases = await playBilling.listPurchases();
           const existing = extractPurchaseTokenFromResult(listedPurchases, productId);
@@ -125,21 +142,60 @@ export const uiEntitlementPurchaseMethods: UiEntitlementMethodSubset<
               productId
             });
             if (verified) {
-              this.purchaseTokenInput = "";
-              this.purchaseProductIdInput = "";
-              this.purchasePackageNameInput = "";
-              this.showVerifyPurchaseModal = false;
-              this.notify("Existing purchase found and verified. Pro features unlocked.", "success");
-              return;
+              resetPurchaseInputs();
+              this.notify(successMessage, "success");
+              return true;
             }
           }
-        } catch (existingPurchaseError) {
-          console.warn("[whatfees] Existing purchase pre-check failed", existingPurchaseError);
+        } catch (error) {
+          if (attempt === attempts - 1) {
+            console.warn("[whatfees] Play purchase recovery failed", error);
+          }
+        }
+
+        if (attempt < attempts - 1) {
+          // Try once more immediately, then back off to let Play purchase records propagate.
+          const delayMs = attempt === 0
+            ? 0
+            : Math.min(
+              PLAY_PURCHASE_RECOVERY_MAX_DELAY_MS,
+              PLAY_PURCHASE_RECOVERY_BASE_DELAY_MS * Math.pow(2, attempt - 1)
+            );
+          if (delayMs > 0) {
+            await sleep(delayMs);
+          }
+        }
+      }
+
+      return false;
+    };
+
+    try {
+      playBilling = await getPlayBillingService();
+      if (!playBilling && !isPlayBillingPaymentRequestSupported()) {
+        this.notify("Google Play billing is not available in this environment.", "warning");
+        return;
+      }
+
+      if (playBilling && typeof playBilling.listPurchases === "function") {
+        const preCheckRecovered = await tryRecoverExistingPurchase(
+          PLAY_PURCHASE_PRECHECK_ATTEMPTS,
+          "Existing purchase found and verified. Pro features unlocked."
+        );
+        if (preCheckRecovered) {
+          return;
         }
       }
 
       const purchase = await purchasePlayProduct(playBilling, productId);
       if (!purchase.purchaseToken) {
+        const postPurchaseRecovered = await tryRecoverExistingPurchase(
+          PLAY_PURCHASE_RECOVERY_MAX_ATTEMPTS,
+          "Purchase verified. Pro features unlocked."
+        );
+        if (postPurchaseRecovered) {
+          return;
+        }
         this.notify("Could not read purchase token from Google Play.", "error");
         return;
       }
@@ -166,32 +222,22 @@ export const uiEntitlementPurchaseMethods: UiEntitlementMethodSubset<
         && (!isAbortError || isAlreadyOwnedError);
 
       if (canTryRecovery) {
-        try {
-          const listedPurchases = await playBilling.listPurchases();
-          const existing = extractPurchaseTokenFromResult(listedPurchases, productId);
-          if (existing.purchaseToken) {
-            const verified = await submitPlayPurchaseVerification(this, {
-              baseUrl: base,
-              googleIdToken,
-              purchaseToken: existing.purchaseToken,
-              productId
-            });
-            if (verified) {
-              this.purchaseTokenInput = "";
-              this.purchaseProductIdInput = "";
-              this.purchasePackageNameInput = "";
-              this.showVerifyPurchaseModal = false;
-              this.notify("Existing purchase found and verified. Pro features unlocked.", "success");
-              return;
-            }
-          }
-        } catch (recoveryError) {
-          console.warn("[whatfees] Play purchase recovery failed", recoveryError);
+        const recovered = await tryRecoverExistingPurchase(
+          PLAY_PURCHASE_RECOVERY_MAX_ATTEMPTS,
+          "Existing purchase found and verified. Pro features unlocked."
+        );
+        if (recovered) {
+          return;
         }
       }
 
       if (isAbortError && !isAlreadyOwnedError) {
         this.notify("Purchase cancelled.", "info");
+        return;
+      }
+
+      if (isAlreadyOwnedError) {
+        this.notify("Google Play still syncing this purchase. Please wait a few seconds and try again.", "info");
         return;
       }
 
