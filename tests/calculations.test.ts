@@ -3,6 +3,7 @@ import { test } from "vitest";
 import {
   calculateBoxPriceCostCad,
   calculateDefaultSellingPrices,
+  calculateSinglesPurchaseTotals,
   calculateNetFromGross,
   calculatePriceForUnits,
   calculateProfitForListing,
@@ -102,6 +103,17 @@ test("calculateTotalCaseCost applies purchase tax and USD customs", () => {
     currency: "USD"
   });
   assert.equal(usdCost, 1232.5);
+});
+
+test("calculateSinglesPurchaseTotals aggregates quantity, cost, and market value", () => {
+  const totals = calculateSinglesPurchaseTotals([
+    { id: 1, item: "Card A", cost: 12, quantity: 2, marketValue: 18 },
+    { id: 2, item: "Card B", cost: 4.5, quantity: 3, marketValue: 6.25 }
+  ]);
+
+  assert.equal(totals.totalQuantity, 5);
+  assert.equal(totals.totalCost, 37.5);
+  assert.equal(totals.totalMarketValue, 54.75);
 });
 
 test("calculateNetFromGross matches expected fee formula", () => {
@@ -370,6 +382,77 @@ test("preset performance summary uses latest sale date and shipping-aware revenu
   assert.equal(summary.soldPacks, 19);
 });
 
+test("preset performance summary uses singles purchase grid as cost basis", () => {
+  const preset: Lot = {
+    id: 44,
+    name: "Singles Cost Basis",
+    lotType: "singles",
+    boxPriceCost: 0,
+    boxesPurchased: 0,
+    packsPerBox: 1,
+    costInputMode: "total",
+    currency: "CAD",
+    sellingCurrency: "CAD",
+    exchangeRate: 1.4,
+    purchaseDate: "2026-02-01",
+    purchaseShippingCost: 0,
+    purchaseTaxPercent: 0,
+    sellingTaxPercent: 15,
+    sellingShippingPerOrder: 0,
+    includeTax: false,
+    spotPrice: 0,
+    boxPriceSell: 0,
+    packPrice: 0,
+    targetProfitPercent: 15,
+    singlesPurchases: [
+      { id: 1, item: "Card A", cost: 10, quantity: 2, marketValue: 14 },
+      { id: 2, item: "Card B", cost: 5, quantity: 1, marketValue: 7 }
+    ]
+  };
+
+  const sales: Sale[] = [
+    { id: 1, type: "pack", quantity: 2, packsCount: 2, price: 20, buyerShipping: 0, date: "2026-02-10" }
+  ];
+
+  const summary = calculateLotPerformanceSummary(preset, sales, 1.4);
+  assert.equal(summary.totalCost, 25);
+  assert.equal(summary.totalPacks, 3);
+  assert.equal(summary.soldPacks, 2);
+});
+
+test("preset performance summary treats zero-cost singles rows as no cost-basis packs", () => {
+  const preset: Lot = {
+    id: 45,
+    name: "Singles Zero Cost",
+    lotType: "singles",
+    boxPriceCost: 0,
+    boxesPurchased: 0,
+    packsPerBox: 1,
+    costInputMode: "total",
+    currency: "CAD",
+    sellingCurrency: "CAD",
+    exchangeRate: 1.4,
+    purchaseDate: "2026-02-01",
+    purchaseShippingCost: 0,
+    purchaseTaxPercent: 0,
+    sellingTaxPercent: 15,
+    sellingShippingPerOrder: 0,
+    includeTax: false,
+    spotPrice: 0,
+    boxPriceSell: 0,
+    packPrice: 0,
+    targetProfitPercent: 15,
+    singlesPurchases: [
+      { id: 1, item: "Card A", cost: 0, quantity: 2, marketValue: 14 },
+      { id: 2, item: "Card B", cost: 0, quantity: 1, marketValue: 7 }
+    ]
+  };
+
+  const summary = calculateLotPerformanceSummary(preset, [], 1.4);
+  assert.equal(summary.totalCost, 0);
+  assert.equal(summary.totalPacks, 0);
+});
+
 test("portfolio totals handle empty rows and only count strictly positive lots as profitable", () => {
   const emptyTotals = calculatePortfolioTotals([]);
   assert.deepEqual(emptyTotals, {
@@ -446,6 +529,173 @@ test("canUsePaidActions requires preset + pro access", () => {
     hasProAccess: true
   } as unknown as Parameters<typeof appComputed.canUsePaidActions>[0]);
   assert.equal(allowed, true);
+});
+
+test("computed totalCaseCost uses singles purchase cost and 100% fallback when grid is empty", () => {
+  const withRows = appComputed.totalCaseCost.call({
+    currentLotType: "singles",
+    singlesPurchaseTotalQuantity: 4,
+    singlesPurchaseTotalCost: 42
+  } as unknown as Parameters<typeof appComputed.totalCaseCost>[0]);
+  assert.equal(withRows, 42);
+
+  const emptyRows = appComputed.totalCaseCost.call({
+    currentLotType: "singles",
+    singlesPurchaseTotalQuantity: 0,
+    singlesPurchaseTotalCost: 99
+  } as unknown as Parameters<typeof appComputed.totalCaseCost>[0]);
+  assert.equal(emptyRows, 0);
+});
+
+test("computed totalPacks uses singles quantity even when total cost is zero", () => {
+  const withCost = appComputed.totalPacks.call({
+    currentLotType: "singles",
+    singlesPurchases: [{ id: 1 }],
+    singlesPurchaseTotalQuantity: 4,
+    singlesPurchaseTotalCost: 42,
+    singlesSoldCountByPurchaseId: {},
+    sales: []
+  } as unknown as Parameters<typeof appComputed.totalPacks>[0]);
+  assert.equal(withCost, 4);
+
+  const zeroCost = appComputed.totalPacks.call({
+    currentLotType: "singles",
+    singlesPurchases: [{ id: 1 }],
+    singlesPurchaseTotalQuantity: 4,
+    singlesPurchaseTotalCost: 0,
+    singlesSoldCountByPurchaseId: {},
+    sales: []
+  } as unknown as Parameters<typeof appComputed.totalPacks>[0]);
+  assert.equal(zeroCost, 4);
+});
+
+test("computed totalPacks in singles includes tracked sold plus remaining cards", () => {
+  const total = appComputed.totalPacks.call({
+    currentLotType: "singles",
+    singlesPurchases: [{ id: 11 }, { id: 12 }],
+    singlesPurchaseTotalQuantity: 6,
+    singlesSoldCountByPurchaseId: { 11: 4, 12: 3 },
+    sales: []
+  } as unknown as Parameters<typeof appComputed.totalPacks>[0]);
+  assert.equal(total, 13);
+});
+
+test("computed totalPacks in singles is at least all sold cards from sales list", () => {
+  const total = appComputed.totalPacks.call({
+    currentLotType: "singles",
+    singlesPurchases: [{ id: 1 }],
+    singlesPurchaseTotalQuantity: 7,
+    singlesSoldCountByPurchaseId: {},
+    sales: [
+      { id: 1, type: "pack", quantity: 1, packsCount: 1, price: 10, date: "2026-02-01" },
+      { id: 2, type: "pack", quantity: 6, packsCount: 6, price: 10, date: "2026-02-02" }
+    ]
+  } as unknown as Parameters<typeof appComputed.totalPacks>[0]);
+  assert.equal(total, 7);
+});
+
+test("computed totalPacks in singles ignores linked sold counts for deleted entries", () => {
+  const total = appComputed.totalPacks.call({
+    currentLotType: "singles",
+    singlesPurchases: [{ id: 10 }, { id: 20 }, { id: 30 }, { id: 40 }, { id: 50 }, { id: 60 }, { id: 70 }],
+    singlesPurchaseTotalQuantity: 6,
+    singlesSoldCountByPurchaseId: { 10: 1, 999: 3 },
+    sales: [
+      { id: 1, type: "pack", quantity: 1, packsCount: 1, price: 10, date: "2026-02-01" },
+      { id: 2, type: "pack", quantity: 2, packsCount: 2, price: 10, date: "2026-02-02" },
+      { id: 3, type: "pack", quantity: 1, packsCount: 1, price: 10, date: "2026-02-03" },
+      { id: 4, type: "pack", quantity: 3, packsCount: 3, price: 10, date: "2026-02-04" }
+    ]
+  } as unknown as Parameters<typeof appComputed.totalPacks>[0]);
+  assert.equal(total, 7);
+});
+
+test("computed singlesSoldCountByPurchaseId sums sold quantity for valid linked entries", () => {
+  const result = appComputed.singlesSoldCountByPurchaseId.call({
+    sales: [
+      { id: 1, type: "pack", quantity: 1, packsCount: 1, singlesPurchaseEntryId: 10, price: 5, date: "2026-02-01" },
+      { id: 2, type: "pack", quantity: 2, packsCount: 2, singlesPurchaseEntryId: 10, price: 6, date: "2026-02-02" },
+      { id: 3, type: "pack", quantity: 1, packsCount: 1, singlesPurchaseEntryId: 12, price: 7, date: "2026-02-03" },
+      { id: 4, type: "pack", quantity: 1, packsCount: 1, singlesPurchaseEntryId: 0, price: 7, date: "2026-02-04" }
+    ]
+  } as unknown as Parameters<typeof appComputed.singlesSoldCountByPurchaseId>[0]);
+
+  assert.deepEqual(result, { 10: 3, 12: 1 });
+});
+
+test("computed soldPacksCount in singles uses all sales quantities", () => {
+  const count = appComputed.soldPacksCount.call({
+    currentLotType: "singles",
+    sales: [
+      { id: 1, type: "pack", quantity: 4, packsCount: 4, price: 10, date: "2026-02-01" },
+      { id: 2, type: "pack", quantity: 3, packsCount: 3, price: 9, date: "2026-02-02" }
+    ]
+  } as unknown as Parameters<typeof appComputed.soldPacksCount>[0]);
+  assert.equal(count, 7);
+});
+
+test("computed singlesTrackedSoldCount and singlesTrackedTotalCount only use current listed entries", () => {
+  const trackedSold = appComputed.singlesTrackedSoldCount.call({
+    currentLotType: "singles",
+    singlesPurchases: [{ id: 10 }, { id: 20 }, { id: 30 }],
+    singlesSoldCountByPurchaseId: { 10: 1, 20: 2, 999: 5 }
+  } as unknown as Parameters<typeof appComputed.singlesTrackedSoldCount>[0]);
+  assert.equal(trackedSold, 3);
+
+  const trackedTotal = appComputed.singlesTrackedTotalCount.call({
+    currentLotType: "singles",
+    singlesPurchaseTotalQuantity: 4,
+    singlesTrackedSoldCount: trackedSold
+  } as unknown as Parameters<typeof appComputed.singlesTrackedTotalCount>[0]);
+  assert.equal(trackedTotal, 7);
+});
+
+test("computed singlesUnlinkedSoldCount shows delta between total sold and tracked sold", () => {
+  const unlinked = appComputed.singlesUnlinkedSoldCount.call({
+    currentLotType: "singles",
+    soldPacksCount: 10,
+    singlesTrackedSoldCount: 7
+  } as unknown as Parameters<typeof appComputed.singlesUnlinkedSoldCount>[0]);
+  assert.equal(unlinked, 3);
+});
+
+test("computed singlesSaleCardOptions includes selected sold-out card and renders details", () => {
+  const options = appComputed.singlesSaleCardOptions.call({
+    currentLotType: "singles",
+    newSale: { singlesPurchaseEntryId: 20 },
+    singlesSoldCountByPurchaseId: { 20: 3, 30: 1 },
+    singlesPurchases: [
+      { id: 20, item: "Sold Out", cardNumber: "020", cost: 2, quantity: 0, marketValue: 3 },
+      { id: 30, item: "In Stock", cardNumber: "030", cost: 4, quantity: 2, marketValue: 5 }
+    ]
+  } as unknown as Parameters<typeof appComputed.singlesSaleCardOptions>[0]);
+
+  assert.equal(options.length, 2);
+  const soldOut = options.find((option) => option.value === 20);
+  const inStock = options.find((option) => option.value === 30);
+  assert.equal(soldOut?.quantity, 0);
+  assert.equal(soldOut?.soldCount, 3);
+  assert.equal(soldOut?.costBasis, 0);
+  assert.equal(inStock?.quantity, 2);
+  assert.equal(inStock?.costBasis, 8);
+});
+
+test("computed selectedSinglesSaleMaxQuantity restores editing quantity for same linked card", () => {
+  const sameCard = appComputed.selectedSinglesSaleMaxQuantity.call({
+    currentLotType: "singles",
+    newSale: { singlesPurchaseEntryId: 50 },
+    editingSale: { singlesPurchaseEntryId: 50, quantity: 2 },
+    singlesPurchases: [{ id: 50, item: "Card", cost: 1, quantity: 0, marketValue: 1 }]
+  } as unknown as Parameters<typeof appComputed.selectedSinglesSaleMaxQuantity>[0]);
+  assert.equal(sameCard, 2);
+
+  const differentCard = appComputed.selectedSinglesSaleMaxQuantity.call({
+    currentLotType: "singles",
+    newSale: { singlesPurchaseEntryId: 51 },
+    editingSale: { singlesPurchaseEntryId: 50, quantity: 2 },
+    singlesPurchases: [{ id: 51, item: "Card", cost: 1, quantity: 1, marketValue: 1 }]
+  } as unknown as Parameters<typeof appComputed.selectedSinglesSaleMaxQuantity>[0]);
+  assert.equal(differentCard, 1);
 });
 
 test("watch.currentTab persists selected tab and triggers portfolio chart init", () => {

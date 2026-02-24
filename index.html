@@ -93,6 +93,7 @@
   </div>
   <div id="app" v-cloak>
     <v-app>
+      <template v-if="isGoogleSignedIn">
       <v-app-bar density="compact" flat border>
         <template v-slot:prepend>
           <div class="d-flex align-center pl-2">
@@ -594,6 +595,40 @@
                 </v-btn>
               </div>
             </v-alert>
+            <v-autocomplete
+              v-if="currentLotType === 'singles'"
+              v-model="newSale.singlesPurchaseEntryId"
+              :items="singlesSaleCardOptions"
+              item-title="title"
+              item-value="value"
+              label="Card Sold (optional)"
+              variant="outlined"
+              :disabled="!hasLotSelected"
+              clearable
+              class="mb-2"
+              :hint="newSale.singlesPurchaseEntryId ? `Max quantity: ${selectedSinglesSaleMaxQuantity ?? 0}` : 'Select a card to link this sale to inventory.'"
+              persistent-hint
+              @update:model-value="onSinglesSaleCardSelectionChange"
+            >
+              <template #item="{ props, item }">
+                <v-list-item v-bind="props">
+                  <v-list-item-title class="text-body-2 font-weight-medium">
+                    {{ item.raw.item }}
+                    <span v-if="item.raw.cardNumber" class="text-medium-emphasis">#{{ item.raw.cardNumber }}</span>
+                  </v-list-item-title>
+                  <v-list-item-subtitle class="text-caption">
+                    Qty {{ item.raw.quantity }} · Cost ${{ formatCurrency(item.raw.cost) }} · Market ${{ formatCurrency(item.raw.marketValue) }} · Total Cost ${{ formatCurrency(item.raw.costBasis) }}
+                  </v-list-item-subtitle>
+                </v-list-item>
+              </template>
+              <template #selection="{ item }">
+                <div class="text-body-2 text-truncate">
+                  {{ item.raw.item }}
+                  <span v-if="item.raw.cardNumber" class="text-medium-emphasis">#{{ item.raw.cardNumber }}</span>
+                  · Qty {{ item.raw.quantity }} · Total Cost ${{ formatCurrency(item.raw.costBasis) }}
+                </div>
+              </template>
+            </v-autocomplete>
             <v-select
               v-if="currentLotType !== 'singles'"
               v-model="newSale.type"
@@ -617,6 +652,9 @@
                 variant="outlined"
                 :disabled="!hasLotSelected"
                 :min="1"
+                :max="currentLotType === 'singles' && newSale.singlesPurchaseEntryId ? (selectedSinglesSaleMaxQuantity ?? undefined) : undefined"
+                :hint="currentLotType === 'singles' && newSale.singlesPurchaseEntryId ? `Up to ${selectedSinglesSaleMaxQuantity ?? 0} for selected card` : undefined"
+                :persistent-hint="currentLotType === 'singles' && !!newSale.singlesPurchaseEntryId"
                 class="mb-2"
               ></v-text-field>
 
@@ -782,6 +820,38 @@
 
       <!-- Hidden file input -->
       <input type="file" ref="fileInput" style="display:none" accept=".json" @change="handleFileImport" />
+      </template>
+
+      <template v-else>
+        <v-main id="app-main" tabindex="-1">
+          <v-container fluid class="auth-gate-shell">
+            <v-card class="auth-gate-card" elevation="8" max-width="430">
+              <v-card-text class="pa-6 pa-sm-8 text-center">
+                <img
+                  src="icons/icon-192.png"
+                  alt="WhatFees"
+                  class="auth-gate-logo"
+                />
+                <p class="text-overline auth-gate-overline mb-2">WhatFees</p>
+                <h1 class="text-h5 font-weight-bold mb-2 auth-gate-title">Sign in to continue</h1>
+                <p class="text-body-2 text-medium-emphasis mb-6">
+                  Your lots, cloud sync, and Pro access are tied to your Google account.
+                </p>
+
+                <v-btn
+                  block
+                  size="large"
+                  color="primary"
+                  prepend-icon="mdi-google"
+                  @click="promptGoogleSignIn"
+                >
+                  Continue with Google
+                </v-btn>
+              </v-card-text>
+            </v-card>
+          </v-container>
+        </v-main>
+      </template>
     </v-app>
   </div>
   <script type="module" src="/src/main.ts"></script>

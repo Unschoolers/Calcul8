@@ -74,7 +74,6 @@ export const ENTITLEMENT_CACHE_KEY = STORAGE_KEYS.ENTITLEMENT_CACHE;
 export const PRO_ACCESS_KEY = STORAGE_KEYS.PRO_ACCESS;
 export const GOOGLE_TOKEN_KEY = STORAGE_KEYS.GOOGLE_ID_TOKEN;
 export const GOOGLE_PROFILE_CACHE_KEY = STORAGE_KEYS.GOOGLE_PROFILE_CACHE;
-export const DEBUG_USER_KEY = STORAGE_KEYS.DEBUG_USER_ID;
 export const SYNC_CLIENT_VERSION_KEY = STORAGE_KEYS.SYNC_CLIENT_VERSION;
 export const CLOUD_SYNC_INTERVAL_MS = 2 * 1000;
 export const SYNC_STATUS_RESET_MS = 2500;
@@ -111,7 +110,7 @@ export function getEntitlementTtlMs(): number {
   const raw = (import.meta.env.VITE_ENTITLEMENT_TTL_MINUTES as string | undefined)?.trim() || "";
   const minutes = Number(raw);
   if (!Number.isFinite(minutes) || minutes <= 0) {
-    return 6 * 60 * 60 * 1000;
+    return 7 * 24 * 60 * 60 * 1000;
   }
   return minutes * 60 * 1000;
 }
@@ -255,14 +254,12 @@ export async function fetchWithRetry(
 export function handleExpiredAuth(app: AppContext): void {
   removeStorageWithLegacy(GOOGLE_TOKEN_KEY, LEGACY_KEYS.GOOGLE_ID_TOKEN);
   removeStorageWithLegacy(GOOGLE_PROFILE_CACHE_KEY, LEGACY_KEYS.GOOGLE_PROFILE_CACHE);
-  clearEntitlementCache();
-  removeStorageWithLegacy(PRO_ACCESS_KEY, LEGACY_KEYS.PRO_ACCESS);
-  app.hasProAccess = false;
-  if (app.hasLotSelected && Number(app.targetProfitPercent) !== 0) {
-    app.targetProfitPercent = 0;
-    app.autoSaveSetup();
+  app.googleAuthEpoch += 1;
+  const cached = readEntitlementCache();
+  if (cached) {
+    app.hasProAccess = cached.hasProAccess;
+    localStorage.setItem(PRO_ACCESS_KEY, cached.hasProAccess ? "1" : "0");
   }
-  app.initGoogleAutoLogin();
 }
 
 async function postPurchaseVerification(

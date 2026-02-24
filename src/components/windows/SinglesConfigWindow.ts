@@ -2,7 +2,21 @@ import template from "./SinglesConfigWindow.html?raw";
 import "./ConfigWindow.css";
 import "./SinglesConfigWindow.css";
 import { inject, type PropType } from "vue";
+import type { SinglesPurchaseEntry } from "../../types/app.ts";
 import { createWindowContextBridge } from "./contextBridge.ts";
+
+const SINGLES_INFO_NOTICE_DISMISSED_KEY = "whatfees_singles_info_notice_dismissed_v1";
+type SinglesDesktopSortKey = "item" | "cardNumber" | "cost" | "quantity" | "marketValue" | "costBasis";
+const DESKTOP_VIRTUAL_THRESHOLD = 150;
+const DESKTOP_VIRTUAL_ROW_HEIGHT = 52;
+const DESKTOP_VIRTUAL_VIEWPORT_HEIGHT = 560;
+const DESKTOP_VIRTUAL_BUFFER_ROWS = 6;
+
+function normalizeSinglesSearchTokens(query: unknown): string[] {
+  const normalized = String(query || "").trim().toLocaleLowerCase();
+  if (!normalized) return [];
+  return normalized.split(/\s+/).filter((token) => token.length > 0);
+}
 
 export const SinglesConfigWindow = {
   name: "SinglesConfigWindow",
@@ -11,6 +25,412 @@ export const SinglesConfigWindow = {
       type: Object as PropType<Record<string, unknown>>,
       required: true
     }
+  },
+  data() {
+    return {
+      showSinglesInfoNotice: true,
+      showSinglesRowEditor: false,
+      showFullySoldSingles: true,
+      singlesSearchQuery: "",
+      isDesktopSelectMode: false,
+      selectedDesktopRowIds: [] as number[],
+      desktopSortBy: null as SinglesDesktopSortKey | null,
+      desktopSortDesc: false,
+      desktopRowsScrollTop: 0,
+      editingSinglesRowId: null as number | null,
+      editingSinglesRow: {
+        item: "",
+        cardNumber: "",
+        cost: 0,
+        quantity: 1,
+        marketValue: 0
+      }
+    };
+  },
+  computed: {
+    visibleSinglesPurchases(): SinglesPurchaseEntry[] {
+      const rows = Array.isArray(this.singlesPurchases)
+        ? this.singlesPurchases as SinglesPurchaseEntry[]
+        : [];
+      const soldFilteredRows = this.showFullySoldSingles
+        ? rows
+        : rows.filter((entry) => !this.isSinglesEntryFullySold(entry));
+
+      const tokens = normalizeSinglesSearchTokens(this.singlesSearchQuery);
+      if (tokens.length === 0) return soldFilteredRows;
+
+      return soldFilteredRows.filter((entry) => {
+        const itemText = String(entry.item || "").toLocaleLowerCase();
+        const cardNumberText = String(entry.cardNumber || "").toLocaleLowerCase();
+        const haystack = `${cardNumberText} ${itemText}`;
+        return tokens.every((token) => haystack.includes(token));
+      });
+    },
+
+    hasSinglesSearchQuery(): boolean {
+      return normalizeSinglesSearchTokens(this.singlesSearchQuery).length > 0;
+    },
+
+    desktopSortedSinglesPurchases(): SinglesPurchaseEntry[] {
+      const rows = Array.isArray(this.visibleSinglesPurchases)
+        ? [...this.visibleSinglesPurchases as SinglesPurchaseEntry[]]
+        : [];
+
+      if (!this.desktopSortBy) return rows;
+
+      const sortBy = this.desktopSortBy;
+      const direction = this.desktopSortDesc ? -1 : 1;
+      const withIndex = rows.map((entry, index) => ({ entry, index }));
+      const getRemainingQuantity = (entry: SinglesPurchaseEntry): number => {
+        const remainingQuantity = Number(entry.quantity);
+        if (!Number.isFinite(remainingQuantity) || remainingQuantity <= 0) return 0;
+        return Math.floor(remainingQuantity);
+      };
+
+      withIndex.sort((a, b) => {
+        const entryA = a.entry;
+        const entryB = b.entry;
+
+        if (sortBy === "item" || sortBy === "cardNumber") {
+          const valueA = String(sortBy === "item" ? entryA.item : entryA.cardNumber || "").trim();
+          const valueB = String(sortBy === "item" ? entryB.item : entryB.cardNumber || "").trim();
+          const compare = valueA.localeCompare(valueB, undefined, { numeric: true, sensitivity: "base" });
+          if (compare !== 0) return compare * direction;
+          return a.index - b.index;
+        }
+
+        const valueA = sortBy === "cost"
+          ? Math.max(0, Number(entryA.cost) || 0)
+          : sortBy === "quantity"
+            ? getRemainingQuantity(entryA)
+            : sortBy === "marketValue"
+              ? Math.max(0, Number(entryA.marketValue) || 0)
+              : Math.max(0, (Number(entryA.cost) || 0) * getRemainingQuantity(entryA));
+        const valueB = sortBy === "cost"
+          ? Math.max(0, Number(entryB.cost) || 0)
+          : sortBy === "quantity"
+            ? getRemainingQuantity(entryB)
+            : sortBy === "marketValue"
+              ? Math.max(0, Number(entryB.marketValue) || 0)
+              : Math.max(0, (Number(entryB.cost) || 0) * getRemainingQuantity(entryB));
+
+        if (valueA !== valueB) return (valueA - valueB) * direction;
+        return a.index - b.index;
+      });
+
+      return withIndex.map((row) => row.entry);
+    },
+
+    useDesktopVirtualization(): boolean {
+      return (this.desktopSortedSinglesPurchases as SinglesPurchaseEntry[]).length >= DESKTOP_VIRTUAL_THRESHOLD;
+    },
+
+    desktopVirtualStartIndex(): number {
+      if (!this.useDesktopVirtualization) return 0;
+      const firstVisibleIndex = Math.floor(Math.max(0, this.desktopRowsScrollTop) / DESKTOP_VIRTUAL_ROW_HEIGHT);
+      return Math.max(0, firstVisibleIndex - DESKTOP_VIRTUAL_BUFFER_ROWS);
+    },
+
+    desktopVirtualEndIndex(): number {
+      const totalRows = (this.desktopSortedSinglesPurchases as SinglesPurchaseEntry[]).length;
+      if (!this.useDesktopVirtualization) return totalRows;
+      const visibleRows = Math.ceil(DESKTOP_VIRTUAL_VIEWPORT_HEIGHT / DESKTOP_VIRTUAL_ROW_HEIGHT);
+      return Math.min(
+        totalRows,
+        this.desktopVirtualStartIndex + visibleRows + (DESKTOP_VIRTUAL_BUFFER_ROWS * 2)
+      );
+    },
+
+    desktopRenderedRows(): SinglesPurchaseEntry[] {
+      const rows = this.desktopSortedSinglesPurchases as SinglesPurchaseEntry[];
+      if (!this.useDesktopVirtualization) return rows;
+      return rows.slice(this.desktopVirtualStartIndex, this.desktopVirtualEndIndex);
+    },
+
+    desktopTopSpacerPx(): number {
+      if (!this.useDesktopVirtualization) return 0;
+      return this.desktopVirtualStartIndex * DESKTOP_VIRTUAL_ROW_HEIGHT;
+    },
+
+    desktopBottomSpacerPx(): number {
+      if (!this.useDesktopVirtualization) return 0;
+      const totalRows = (this.desktopSortedSinglesPurchases as SinglesPurchaseEntry[]).length;
+      return Math.max(0, (totalRows - this.desktopVirtualEndIndex) * DESKTOP_VIRTUAL_ROW_HEIGHT);
+    }
+  },
+  methods: {
+    fmtCurrency(value: number | null | undefined, decimals = 2): string {
+      if (value == null || Number.isNaN(Number(value))) return "0.00";
+      return Number(value).toFixed(decimals);
+    },
+
+    getSinglesSoldQuantity(entryId: number): number {
+      const soldById = this.singlesSoldCountByPurchaseId as Record<number, number> | undefined;
+      const soldQuantity = Number(soldById?.[entryId] ?? 0);
+      if (!Number.isFinite(soldQuantity) || soldQuantity <= 0) return 0;
+      return Math.floor(soldQuantity);
+    },
+
+    getSinglesEntryRemainingQuantity(entry: SinglesPurchaseEntry): number {
+      const remainingQuantity = Number(entry.quantity);
+      if (!Number.isFinite(remainingQuantity) || remainingQuantity <= 0) return 0;
+      return Math.floor(remainingQuantity);
+    },
+
+    getSinglesEntryTotalQuantity(entry: SinglesPurchaseEntry): number {
+      return this.getSinglesEntryRemainingQuantity(entry) + this.getSinglesSoldQuantity(entry.id);
+    },
+
+    getSinglesEntryStockLabel(entry: SinglesPurchaseEntry): string {
+      const remainingQuantity = this.getSinglesEntryRemainingQuantity(entry);
+      const totalQuantity = this.getSinglesEntryTotalQuantity(entry);
+      return `${remainingQuantity}/${totalQuantity}`;
+    },
+
+    isSinglesEntryFullySold(entry: SinglesPurchaseEntry): boolean {
+      const remainingQuantity = this.getSinglesEntryRemainingQuantity(entry);
+      const soldQuantity = this.getSinglesSoldQuantity(entry.id);
+      const totalQuantity = remainingQuantity + soldQuantity;
+      return totalQuantity > 0 && remainingQuantity === 0 && soldQuantity > 0;
+    },
+
+    resetSinglesRowDraft(): void {
+      this.editingSinglesRow = {
+        item: "",
+        cardNumber: "",
+        cost: 0,
+        quantity: 1,
+        marketValue: 0
+      };
+    },
+
+    handleAddSinglesPurchase(): void {
+      const isMobile = Boolean(this.$vuetify?.display?.smAndDown);
+      if (isMobile) {
+        this.openSinglesRowEditor();
+        return;
+      }
+      this.addSinglesPurchaseRow();
+    },
+
+    openSinglesRowEditor(entry?: SinglesPurchaseEntry): void {
+      if (entry) {
+        this.editingSinglesRowId = entry.id;
+        this.editingSinglesRow = {
+          item: String(entry.item || ""),
+          cardNumber: String(entry.cardNumber || ""),
+          cost: Number(entry.cost) || 0,
+          quantity: Number(entry.quantity) || 1,
+          marketValue: Number(entry.marketValue) || 0
+        };
+      } else {
+        this.editingSinglesRowId = null;
+        this.resetSinglesRowDraft();
+      }
+      this.showSinglesRowEditor = true;
+    },
+
+    closeSinglesRowEditor(): void {
+      this.showSinglesRowEditor = false;
+      this.editingSinglesRowId = null;
+      this.resetSinglesRowDraft();
+    },
+
+    saveSinglesRowEditor(): void {
+      const nextItem = String(this.editingSinglesRow.item || "").trim();
+      const nextCardNumber = String(this.editingSinglesRow.cardNumber || "").trim();
+      const parsedCost = Number(this.editingSinglesRow.cost);
+      const parsedQuantity = Number(this.editingSinglesRow.quantity);
+      const parsedMarketValue = Number(this.editingSinglesRow.marketValue);
+
+      if (!nextItem) {
+        this.notify("Item is required.", "warning");
+        return;
+      }
+      if (!Number.isFinite(parsedCost) || parsedCost < 0) {
+        this.notify("Cost is required.", "warning");
+        return;
+      }
+      if (!Number.isFinite(parsedQuantity) || parsedQuantity < 0) {
+        this.notify("Quantity must be 0 or greater.", "warning");
+        return;
+      }
+
+      const nextCost = parsedCost;
+      const nextQuantity = Math.floor(parsedQuantity);
+      const nextMarketValue = Number.isFinite(parsedMarketValue) && parsedMarketValue >= 0 ? parsedMarketValue : 0;
+
+      if (this.editingSinglesRowId == null) {
+        this.singlesPurchases = [
+          ...this.singlesPurchases,
+          {
+            id: Date.now(),
+            item: nextItem,
+            cardNumber: nextCardNumber,
+            cost: nextCost,
+            quantity: nextQuantity,
+            marketValue: nextMarketValue
+          }
+        ];
+      } else {
+        this.singlesPurchases = this.singlesPurchases.map((entry: SinglesPurchaseEntry) => (
+          entry.id === this.editingSinglesRowId
+            ? {
+              ...entry,
+              item: nextItem,
+              cardNumber: nextCardNumber,
+              cost: nextCost,
+              quantity: nextQuantity,
+              marketValue: nextMarketValue
+            }
+            : entry
+        ));
+      }
+
+      this.onSinglesPurchaseRowsChange();
+      this.closeSinglesRowEditor();
+    },
+
+    removeSinglesRowFromEditor(): void {
+      if (this.editingSinglesRowId == null) {
+        this.closeSinglesRowEditor();
+        return;
+      }
+      this.confirmRemoveSinglesPurchaseRow(this.editingSinglesRowId, true);
+    },
+
+    confirmRemoveSinglesPurchaseRow(rowId: number, closeEditor = false): void {
+      this.askConfirmation(
+        {
+          title: "Delete Row?",
+          text: "Remove this singles purchase row?",
+          color: "error"
+        },
+        () => {
+          this.removeSinglesPurchaseRow(rowId);
+          if (closeEditor) {
+            this.closeSinglesRowEditor();
+          }
+        }
+      );
+    },
+
+    loadSinglesInfoNoticeState(): void {
+      try {
+        this.showSinglesInfoNotice = localStorage.getItem(SINGLES_INFO_NOTICE_DISMISSED_KEY) !== "1";
+      } catch {
+        this.showSinglesInfoNotice = true;
+      }
+    },
+
+    dismissSinglesInfoNotice(): void {
+      this.showSinglesInfoNotice = false;
+      try {
+        localStorage.setItem(SINGLES_INFO_NOTICE_DISMISSED_KEY, "1");
+      } catch {
+        // Ignore storage failures.
+      }
+    },
+
+    onDesktopRowsScroll(event: Event): void {
+      if (!this.useDesktopVirtualization) return;
+      const target = event.target as HTMLElement | null;
+      this.desktopRowsScrollTop = Number(target?.scrollTop) || 0;
+    },
+
+    onSinglesSearchInput(): void {
+      this.resetDesktopRowsScroll();
+    },
+
+    resetDesktopRowsScroll(): void {
+      this.desktopRowsScrollTop = 0;
+      const scroller = (this.$refs as Record<string, unknown> | undefined)?.desktopRowsScroller as
+        | { scrollTop?: number }
+        | undefined;
+      if (scroller && typeof scroller === "object") {
+        scroller.scrollTop = 0;
+      }
+    },
+
+    toggleDesktopSelectMode(): void {
+      this.isDesktopSelectMode = !this.isDesktopSelectMode;
+      if (!this.isDesktopSelectMode) {
+        this.clearDesktopSelection();
+      }
+    },
+
+    clearDesktopSelection(): void {
+      this.selectedDesktopRowIds = [];
+    },
+
+    isDesktopRowSelected(rowId: number): boolean {
+      return this.selectedDesktopRowIds.includes(rowId);
+    },
+
+    toggleDesktopRowSelection(rowId: number): void {
+      if (this.isDesktopRowSelected(rowId)) {
+        this.selectedDesktopRowIds = this.selectedDesktopRowIds.filter((id) => id !== rowId);
+        return;
+      }
+      this.selectedDesktopRowIds = [...this.selectedDesktopRowIds, rowId];
+    },
+
+    handleDesktopRowClick(entry: SinglesPurchaseEntry): void {
+      if (this.isDesktopSelectMode) {
+        this.toggleDesktopRowSelection(entry.id);
+        return;
+      }
+      this.openSinglesRowEditor(entry);
+    },
+
+    deleteSelectedDesktopRows(): void {
+      const selectedSet = new Set((this.selectedDesktopRowIds || []).map((value) => Number(value)));
+      const selectedCount = selectedSet.size;
+      if (selectedCount <= 0) return;
+
+      this.askConfirmation(
+        {
+          title: "Delete Selected Rows?",
+          text: `Remove ${selectedCount} selected row${selectedCount === 1 ? "" : "s"}?`,
+          color: "error"
+        },
+        () => {
+          this.singlesPurchases = (this.singlesPurchases as SinglesPurchaseEntry[])
+            .filter((entry) => !selectedSet.has(Number(entry.id)));
+          this.onSinglesPurchaseRowsChange();
+          this.clearDesktopSelection();
+          this.isDesktopSelectMode = false;
+          this.notify(`Deleted ${selectedCount} row${selectedCount === 1 ? "" : "s"}.`, "info");
+        }
+      );
+    },
+
+    toggleDesktopSort(sortBy: SinglesDesktopSortKey): void {
+      if (this.desktopSortBy !== sortBy) {
+        this.desktopSortBy = sortBy;
+        this.desktopSortDesc = false;
+        this.resetDesktopRowsScroll();
+        return;
+      }
+
+      if (!this.desktopSortDesc) {
+        this.desktopSortDesc = true;
+        this.resetDesktopRowsScroll();
+        return;
+      }
+
+      this.desktopSortBy = null;
+      this.desktopSortDesc = false;
+      this.resetDesktopRowsScroll();
+    },
+
+    sortIconFor(sortBy: SinglesDesktopSortKey): string {
+      if (this.desktopSortBy !== sortBy) return "mdi-swap-vertical";
+      return this.desktopSortDesc ? "mdi-arrow-down" : "mdi-arrow-up";
+    }
+  },
+  mounted() {
+    this.loadSinglesInfoNoticeState();
   },
   setup(props: { ctx: Record<string, unknown> }) {
     const injectedCtx = inject<Record<string, unknown> | null>("appCtx", null);

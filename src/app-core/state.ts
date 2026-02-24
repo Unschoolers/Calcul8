@@ -49,6 +49,7 @@ export function createInitialState(): AppState {
     isOffline: !navigator.onLine,
     deferredInstallPrompt: null,
     showInstallPrompt: false,
+    googleAuthEpoch: 0,
     googleAvatarLoadFailed: false,
     onlineListener: null,
     offlineListener: null,
@@ -96,6 +97,7 @@ export function createInitialState(): AppState {
       type: "pack",
       quantity: null,
       packsCount: null,
+      singlesPurchaseEntryId: null,
       price: 0,
       memo: "",
       buyerShipping: DEFAULT_VALUES.SELLING_SHIPPING_PER_ORDER,
@@ -110,6 +112,15 @@ export function createInitialState(): AppState {
 
     // Presets
     lots: [],
+    singlesPurchases: [],
+    showSinglesCsvMapperModal: false,
+    singlesCsvImportHeaders: [],
+    singlesCsvImportRows: [],
+    singlesCsvMapItem: null,
+    singlesCsvMapCardNumber: null,
+    singlesCsvMapCost: null,
+    singlesCsvMapQuantity: null,
+    singlesCsvMapMarketValue: null,
     currentLotId: null,
     newLotName: "",
     renameLotName: "",
@@ -124,3 +135,4 @@ export function createInitialState(): AppState {
     offlineReconnectIntervalId: null
   };
 }
+

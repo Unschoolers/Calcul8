@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { beforeEach, test, vi } from "vitest";
+import { afterEach, beforeEach, test, vi } from "vitest";
 import type { ApiConfig } from "../types";
 
 vi.mock("@azure/functions", () => ({
@@ -101,12 +101,29 @@ function createContext() {
   };
 }
 
+const originalFetch = globalThis.fetch;
+
 beforeEach(() => {
   vi.clearAllMocks();
+  globalThis.fetch = (async (input: unknown) => {
+    const raw = String(input);
+    const tokenMatch = /[?&]id_token=([^&]+)/.exec(raw);
+    const decodedToken = tokenMatch ? decodeURIComponent(tokenMatch[1]) : "unknown-user";
+    return {
+      ok: true,
+      json: async () => ({
+        sub: decodedToken
+      })
+    } as Response;
+  }) as typeof fetch;
   getPurchaseVerificationResultMock.mockResolvedValue(null);
   getPlayPurchaseByTokenHashMock.mockResolvedValue(null);
   hashPurchaseTokenMock.mockReturnValue("token-hash");
   shouldAcknowledgePurchaseMock.mockReturnValue(false);
+});
+
+afterEach(() => {
+  globalThis.fetch = originalFetch;
 });
 
 test("verifyPlayEntitlementRequest replays stored idempotent response", async () => {
@@ -121,7 +138,7 @@ test("verifyPlayEntitlementRequest replays stored idempotent response", async ()
         purchaseToken: "token",
         idempotencyKey: "idem_key_1234"
       },
-      { "x-user-id": "user-1" }
+      { authorization: "Bearer user-1" }
     ) as never,
     createContext() as never,
     createConfig()
@@ -150,7 +167,7 @@ test("verifyPlayEntitlementRequest returns pending for purchaseState=2", async (
         purchaseToken: "token",
         idempotencyKey: "idem_key_1234"
       },
-      { "x-user-id": "user-2" }
+      { authorization: "Bearer user-2" }
     ) as never,
     createContext() as never,
     createConfig()
@@ -179,7 +196,7 @@ test("verifyPlayEntitlementRequest persists entitlement for valid purchase", asy
         purchaseToken: "token",
         idempotencyKey: "idem_key_1234"
       },
-      { "x-user-id": "user-3" }
+      { authorization: "Bearer user-3" }
     ) as never,
     createContext() as never,
     createConfig()
@@ -212,7 +229,7 @@ test("verifyPlayEntitlementRequest returns 402 for invalid purchase", async () =
         purchaseToken: "token",
         idempotencyKey: "idem_key_1234"
       },
-      { "x-user-id": "user-4" }
+      { authorization: "Bearer user-4" }
     ) as never,
     context as never,
     createConfig()

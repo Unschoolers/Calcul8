@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { beforeEach, test, vi } from "vitest";
+import { afterEach, beforeEach, test, vi } from "vitest";
 import type { ApiConfig } from "../types";
 
 vi.mock("@azure/functions", () => ({
@@ -67,14 +67,31 @@ function createContext() {
   };
 }
 
+const originalFetch = globalThis.fetch;
+
 beforeEach(() => {
   vi.clearAllMocks();
+  globalThis.fetch = (async (input: unknown) => {
+    const raw = String(input);
+    const tokenMatch = /[?&]id_token=([^&]+)/.exec(raw);
+    const decodedToken = tokenMatch ? decodeURIComponent(tokenMatch[1]) : "unknown-user";
+    return {
+      ok: true,
+      json: async () => ({
+        sub: decodedToken
+      })
+    } as Response;
+  }) as typeof fetch;
   getConfigMock.mockReturnValue(createConfig());
+});
+
+afterEach(() => {
+  globalThis.fetch = originalFetch;
 });
 
 test("syncPull returns empty snapshot when no cloud state exists", async () => {
   getEffectiveSyncSnapshotMock.mockResolvedValue(null);
-  const request = createRequest("POST", { "x-user-id": "user-1" });
+  const request = createRequest("POST", { authorization: "Bearer user-1" });
   const context = createContext();
 
   const response = await syncPull(request as never, context as never);
@@ -97,7 +114,7 @@ test("syncPull returns existing snapshot payload", async () => {
     version: 8,
     updatedAt: "2026-02-21T00:00:00.000Z"
   });
-  const request = createRequest("POST", { "x-user-id": "user-2" });
+  const request = createRequest("POST", { authorization: "Bearer user-2" });
   const context = createContext();
 
   const response = await syncPull(request as never, context as never);
@@ -107,7 +124,7 @@ test("syncPull returns existing snapshot payload", async () => {
 
 test("syncPull returns server error when snapshot read fails", async () => {
   getEffectiveSyncSnapshotMock.mockRejectedValue(new Error("boom"));
-  const request = createRequest("POST", { "x-user-id": "user-3" });
+  const request = createRequest("POST", { authorization: "Bearer user-3" });
   const context = createContext();
 
   const response = await syncPull(request as never, context as never);

@@ -58,7 +58,7 @@ export const appLifecycle: AppLifecycleObject = {
     this.loadSalesFromStorage();
     this.syncLivePricesFromDefaults();
     this.initGoogleAutoLogin();
-    void this.debugLogEntitlement(!import.meta.env.DEV);
+    void this.debugLogEntitlement(false);
     this.startCloudSyncScheduler();
 
     if (import.meta.env.DEV) {

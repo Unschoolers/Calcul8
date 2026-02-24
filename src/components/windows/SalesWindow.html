@@ -14,14 +14,32 @@
                           Cost: ${{ fmtCurrency(totalCaseCost) }}
                         </div>
                         <v-progress-linear
-                          :model-value="salesProgress"
+                          :model-value="currentLotType === 'singles'
+                            ? (singlesTrackedTotalCount > 0
+                              ? (singlesTrackedSoldCount / singlesTrackedTotalCount) * 100
+                              : 0)
+                            : salesProgress"
                           height="8"
                           rounded
                           class="mt-3"
                           color="white"
                         ></v-progress-linear>
-                        <div class="text-caption mt-1">
+                        <div v-if="currentLotType !== 'singles'" class="text-caption mt-1">
                           {{ soldPacksCount }} / {{ totalPacks }} packs sold ({{ Number(salesProgress ?? 0).toFixed(1) }}%)
+                        </div>
+                        <div v-else class="text-caption mt-1 d-flex flex-column ga-1">
+                          <div>
+                            {{ soldPacksCount }} total card sale{{ soldPacksCount === 1 ? '' : 's' }} logged
+                          </div>
+                          <div>
+                            Tracked inventory: {{ singlesTrackedSoldCount }} / {{ singlesTrackedTotalCount }} cards sold
+                            ({{ singlesTrackedTotalCount > 0
+                              ? ((singlesTrackedSoldCount / singlesTrackedTotalCount) * 100).toFixed(1)
+                              : '0.0' }}%)
+                          </div>
+                          <div v-if="singlesUnlinkedSoldCount > 0">
+                            Unlinked card sales: {{ singlesUnlinkedSoldCount }}
+                          </div>
                         </div>
                       </v-card-text>
                     </v-card>
@@ -48,7 +66,9 @@
                           ref="salesChartCanvas"
                           class="sales-chart-canvas"
                           role="img"
-                          aria-label="Sales chart showing sold versus unsold net value."
+                          :aria-label="currentLotType === 'singles'
+                            ? 'Sales chart showing sold versus remaining cards.'
+                            : 'Sales chart showing sold versus unsold net value.'"
                         ></canvas>
 
                         <div v-else class="pa-0">
@@ -100,10 +120,27 @@
                             </v-avatar>
                           </template>
 
-                          <v-list-item-title>
-                            {{ currentLotType === 'singles'
-                              ? `${sale.quantity}x CARD • Total $${fmtCurrency(sale.price)}`
-                              : `${sale.quantity}x ${sale.type.toUpperCase()} @ $${fmtCurrency(sale.price)}` }}
+                          <v-list-item-title class="d-flex align-center ga-2">
+                            <span>
+                              {{ currentLotType === 'singles'
+                                ? `${sale.quantity}x CARD • Total $${fmtCurrency(sale.price)}`
+                                : `${sale.quantity}x ${sale.type.toUpperCase()} @ $${fmtCurrency(sale.price)}` }}
+                            </span>
+                            <v-tooltip
+                              v-if="isUnlinkedSinglesSale(sale)"
+                              text="Sale not linked to a card"
+                              location="top"
+                            >
+                              <template #activator="{ props }">
+                                <v-icon
+                                  v-bind="props"
+                                  size="14"
+                                  color="warning"
+                                  aria-label="Unlinked card sale"
+                                  title="Sale not linked to a card"
+                                >mdi-link-variant-off</v-icon>
+                              </template>
+                            </v-tooltip>
                           </v-list-item-title>
                           <v-list-item-subtitle class="d-flex flex-column ga-1">
                             <div>

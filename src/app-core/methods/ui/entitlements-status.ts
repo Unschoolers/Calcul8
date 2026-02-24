@@ -1,5 +1,4 @@
 import {
-  DEBUG_USER_KEY,
   fetchWithRetry,
   getEntitlementTtlMs,
   GOOGLE_TOKEN_KEY,
@@ -19,12 +18,15 @@ export const uiEntitlementStatusMethods: UiEntitlementMethodSubset<"debugLogEnti
       console.info("[whatfees] Entitlement sync skipped: VITE_API_BASE_URL is not set.");
       return;
     }
-    const debugUserId = localStorage.getItem(DEBUG_USER_KEY) || "debug-user";
     const googleIdToken = (localStorage.getItem(GOOGLE_TOKEN_KEY) || "").trim();
 
     const cached = readEntitlementCache();
     const ttlMs = getEntitlementTtlMs();
-    if (!forceRefresh && cached && Date.now() - cached.cachedAt < ttlMs) {
+    const shouldUseCache = !!cached && (
+      !googleIdToken ||
+      (!forceRefresh && Date.now() - cached.cachedAt < ttlMs)
+    );
+    if (shouldUseCache && cached) {
       this.hasProAccess = cached.hasProAccess;
       localStorage.setItem(PRO_ACCESS_KEY, cached.hasProAccess ? "1" : "0");
       applyTargetProfitAccessDefaults(this);
@@ -39,22 +41,22 @@ export const uiEntitlementStatusMethods: UiEntitlementMethodSubset<"debugLogEnti
       return;
     }
 
-    const authHeaders: Record<string, string> = googleIdToken
-      ? { Authorization: `Bearer ${googleIdToken}` }
-      : { "x-user-id": debugUserId };
-
-    const fallbackHeaders: Record<string, string> = { "x-user-id": debugUserId };
+    if (!googleIdToken) {
+      console.info("[whatfees] Entitlement sync skipped: Google sign-in token is missing.");
+      return;
+    }
 
     try {
-      let response = await fetchWithRetry(`${base}/entitlements/me`, {
-        headers: authHeaders
+      const response = await fetchWithRetry(`${base}/entitlements/me`, {
+        headers: {
+          Authorization: `Bearer ${googleIdToken}`
+        }
       });
 
-      if (googleIdToken && response.status === 401) {
+      if (response.status === 401) {
         handleExpiredAuth(this);
-        response = await fetchWithRetry(`${base}/entitlements/me`, {
-          headers: fallbackHeaders
-        });
+        this.notify("Your sign-in expired. Please sign in again.", "warning");
+        return;
       }
 
       if (!response.ok) {

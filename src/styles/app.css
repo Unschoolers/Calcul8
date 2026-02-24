@@ -189,6 +189,38 @@
       to { opacity: 1; }
     }
     .app-shell { max-width: 920px; margin: 0 auto; position: relative; z-index: 1; }
+    .auth-gate-shell {
+      min-height: 100dvh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: max(1rem, env(safe-area-inset-top)) 1rem max(1rem, env(safe-area-inset-bottom));
+    }
+    .auth-gate-card {
+      width: min(100%, 430px);
+      border: 1px solid rgba(255, 184, 0, 0.25);
+      background:
+        radial-gradient(85% 60% at 12% 0%, rgba(230, 57, 70, 0.15), transparent 65%),
+        radial-gradient(70% 58% at 88% 100%, rgba(255, 184, 0, 0.14), transparent 72%),
+        rgba(var(--v-theme-surface), 0.95);
+      backdrop-filter: blur(6px);
+    }
+    .auth-gate-logo {
+      width: 72px;
+      height: 72px;
+      border-radius: 16px;
+      display: block;
+      margin: 0 auto 0.9rem;
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+    }
+    .auth-gate-overline {
+      letter-spacing: 0.14em;
+      color: rgb(var(--v-theme-secondary));
+      font-weight: 700;
+    }
+    .auth-gate-title {
+      line-height: 1.2;
+    }
     .preset-card {
       position: sticky;
       top: calc(0.5rem + env(safe-area-inset-top));

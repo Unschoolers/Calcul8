@@ -10,6 +10,7 @@ import type {
   PortfolioTotals,
   Sale,
   SaleType,
+  SinglesSaleCardOption,
   SalesStatus,
   UiColor
 } from "../types/app.ts";
@@ -28,6 +29,15 @@ export interface AppComputedState {
   lotItems: Array<{ title: string; value: number | null }>;
   portfolioLotFilterItems: Array<{ title: string; value: number }>;
   portfolioSelectedLotIds: number[];
+  singlesPurchaseTotalQuantity: number;
+  singlesPurchaseTotalCost: number;
+  singlesPurchaseTotalMarketValue: number;
+  singlesSoldCountByPurchaseId: Record<number, number>;
+  singlesTrackedSoldCount: number;
+  singlesTrackedTotalCount: number;
+  singlesUnlinkedSoldCount: number;
+  singlesSaleCardOptions: SinglesSaleCardOption[];
+  selectedSinglesSaleMaxQuantity: number | null;
   totalPacks: number;
   totalSpots: number;
   boxPriceCostCAD: number;
@@ -76,6 +86,13 @@ export interface AppMethodState {
   syncLivePricesFromDefaults(): void;
   resetLivePrices(): void;
   applyLivePricesToDefaults(): void;
+  addSinglesPurchaseRow(): void;
+  removeSinglesPurchaseRow(rowId: number): void;
+  clearSinglesPurchases(): void;
+  onSinglesPurchaseRowsChange(): void;
+  importSinglesPurchasesCsv(): void;
+  confirmSinglesPurchasesCsvImport(): void;
+  cancelSinglesPurchasesCsvImport(): void;
   createNewLot(): void;
   openRenameLotModal(): void;
   renameCurrentLot(): void;
@@ -99,6 +116,7 @@ export interface AppMethodState {
   saveSalesToStorage(): void;
   openAddSaleModal(saleType?: SaleType): void;
   onNewSaleTypeChange(type: SaleType): void;
+  onSinglesSaleCardSelectionChange(value: number | null): void;
   saveSale(): void;
   editSale(sale: Sale): void;
   deleteSale(id: number): void;
@@ -206,6 +224,15 @@ export interface AppComputedObject {
   lotItems(this: AppContext): Array<{ title: string; value: number | null }>;
   portfolioLotFilterItems(this: AppContext): Array<{ title: string; value: number }>;
   portfolioSelectedLotIds(this: AppContext): number[];
+  singlesPurchaseTotalQuantity(this: AppContext): number;
+  singlesPurchaseTotalCost(this: AppContext): number;
+  singlesPurchaseTotalMarketValue(this: AppContext): number;
+  singlesSoldCountByPurchaseId(this: AppContext): Record<number, number>;
+  singlesTrackedSoldCount(this: AppContext): number;
+  singlesTrackedTotalCount(this: AppContext): number;
+  singlesUnlinkedSoldCount(this: AppContext): number;
+  singlesSaleCardOptions(this: AppContext): SinglesSaleCardOption[];
+  selectedSinglesSaleMaxQuantity(this: AppContext): number | null;
   totalPacks(this: AppContext): number;
   totalSpots(this: AppContext): number;
   boxPriceCostCAD(this: AppContext): number;

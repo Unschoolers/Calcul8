@@ -58,18 +58,7 @@ test("prod rejects x-user-id header without bearer token", async () => {
   );
 });
 
-test("dev bypass accepts x-user-id when enabled", async () => {
-  const config = makeConfig({
-    apiEnv: "dev",
-    authBypassDev: true
-  });
-  const request = makeRequest({ "x-user-id": "qa-user" });
-
-  const userId = await resolveUserId(request, config);
-  assert.equal(userId, "qa-user");
-});
-
-test("dev bypass requires x-user-id when enabled and no bearer is present", async () => {
+test("dev also rejects unauthenticated request without bearer token", async () => {
   const config = makeConfig({
     apiEnv: "dev",
     authBypassDev: true
@@ -81,10 +70,7 @@ test("dev bypass requires x-user-id when enabled and no bearer is present", asyn
     (error: unknown) => {
       assert.ok(error instanceof HttpError);
       assert.equal(error.status, 401);
-      assert.equal(
-        error.message,
-        "Missing x-user-id. In dev mode, send x-user-id header until Google auth is wired."
-      );
+      assert.equal(error.message, "Authentication is required.");
       return true;
     }
   );

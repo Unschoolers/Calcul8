@@ -57,19 +57,5 @@ export async function resolveUserId(request: HttpRequest, config: ApiConfig): Pr
     }
   }
 
-  const isDevBypassEnabled = config.authBypassDev && config.apiEnv === "dev";
-  if (isDevBypassEnabled) {
-    const headerUserId = request.headers.get("x-user-id");
-    if (headerUserId) {
-      const userId = sanitizeUserId(headerUserId);
-      if (userId.length > 0) return userId;
-    }
-
-    throw new HttpError(
-      401,
-      "Missing x-user-id. In dev mode, send x-user-id header until Google auth is wired."
-    );
-  }
-
   throw new HttpError(401, "Authentication is required.");
 }

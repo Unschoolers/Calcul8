@@ -32,6 +32,33 @@ export function __resetGoogleAutoLoginForTests(): void {
   lastPromptAt = 0;
 }
 
+export function requestGoogleIdentityPrompt(
+  googleId: GoogleIdentityApi,
+  schedule: (callback: () => void, delayMs: number) => void,
+  cooldownMs = PROMPT_COOLDOWN_MS
+): boolean {
+  const now = Date.now();
+  if (promptInFlight || now - lastPromptAt < cooldownMs) {
+    return false;
+  }
+
+  promptInFlight = true;
+  lastPromptAt = now;
+
+  try {
+    googleId.prompt();
+  } catch {
+    promptInFlight = false;
+    throw new Error("Google sign-in prompt failed to open.");
+  }
+
+  schedule(() => {
+    promptInFlight = false;
+  }, cooldownMs);
+
+  return true;
+}
+
 export function initGoogleAutoLoginWithRetry(input: InitGoogleAutoLoginInput): void {
   const {
     clientId,
@@ -66,17 +93,7 @@ export function initGoogleAutoLoginWithRetry(input: InitGoogleAutoLoginInput): v
       }
     });
 
-    const now = Date.now();
-    if (promptInFlight || now - lastPromptAt < PROMPT_COOLDOWN_MS) {
-      return;
-    }
-
-    promptInFlight = true;
-    lastPromptAt = now;
-    googleId.prompt();
-    schedule(() => {
-      promptInFlight = false;
-    }, PROMPT_COOLDOWN_MS);
+    requestGoogleIdentityPrompt(googleId, schedule, PROMPT_COOLDOWN_MS);
   };
 
   tryInit(retryCount);

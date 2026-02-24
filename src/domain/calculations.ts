@@ -5,7 +5,8 @@ import type {
   Lot,
   LotPerformanceSummary,
   Sale,
-  SalesStatus
+  SalesStatus,
+  SinglesPurchaseEntry
 } from "../types/app.ts";
 
 export function toRate(percent: number): number {
@@ -63,6 +64,37 @@ export function calculateTotalCaseCost(params: {
   const withTax = params.includeTax ? basePrice * (1 + purchaseTaxRate) : basePrice;
   const customs = params.currency === "USD" ? withTax * TAX_RATES.CUSTOMS : 0;
   return withTax + customs + shippingCost;
+}
+
+export function calculateSinglesPurchaseTotals(
+  entries: SinglesPurchaseEntry[] | undefined
+): { totalQuantity: number; totalCost: number; totalMarketValue: number } {
+  if (!Array.isArray(entries) || entries.length === 0) {
+    return {
+      totalQuantity: 0,
+      totalCost: 0,
+      totalMarketValue: 0
+    };
+  }
+
+  return entries.reduce(
+    (acc, entry) => {
+      const quantity = Math.max(0, Math.floor(Number(entry.quantity) || 0));
+      const cost = Math.max(0, Number(entry.cost) || 0);
+      const marketValue = Math.max(0, Number(entry.marketValue) || 0);
+
+      return {
+        totalQuantity: acc.totalQuantity + quantity,
+        totalCost: acc.totalCost + (cost * quantity),
+        totalMarketValue: acc.totalMarketValue + (marketValue * quantity)
+      };
+    },
+    {
+      totalQuantity: 0,
+      totalCost: 0,
+      totalMarketValue: 0
+    }
+  );
 }
 
 export function calculateNetFromGross(
@@ -216,29 +248,34 @@ export function calculateLotPerformanceSummary(
   sales: Sale[],
   defaultExchangeRate: number
 ): LotPerformanceSummary {
-  const totalPacks = calculateTotalPacks(lot.boxesPurchased, lot.packsPerBox, 16);
+  const isSinglesLot = lot.lotType === "singles";
+  const singlesTotals = calculateSinglesPurchaseTotals(lot.singlesPurchases);
+  const totalPacks = isSinglesLot
+    ? (singlesTotals.totalCost > 0 ? singlesTotals.totalQuantity : 0)
+    : calculateTotalPacks(lot.boxesPurchased, lot.packsPerBox, 16);
   const soldPacks = calculateSoldPacksCount(sales);
-  const pricePerBoxCad = calculateBoxPriceCostCad(
-    lot.boxPriceCost,
-    lot.currency,
-    lot.sellingCurrency,
-    lot.exchangeRate,
-    defaultExchangeRate
-  );
-  const totalCost = calculateTotalCaseCost({
-    boxesPurchased: lot.boxesPurchased,
-    pricePerBoxCad,
-    purchaseShippingCad: calculateBoxPriceCostCad(
-      lot.purchaseShippingCost,
-      lot.currency,
-      lot.sellingCurrency,
-      lot.exchangeRate,
-      defaultExchangeRate
-    ),
-    purchaseTaxPercent: lot.purchaseTaxPercent,
-    includeTax: lot.includeTax,
-    currency: lot.currency
-  });
+  const totalCost = isSinglesLot
+    ? singlesTotals.totalCost
+    : calculateTotalCaseCost({
+      boxesPurchased: lot.boxesPurchased,
+      pricePerBoxCad: calculateBoxPriceCostCad(
+        lot.boxPriceCost,
+        lot.currency,
+        lot.sellingCurrency,
+        lot.exchangeRate,
+        defaultExchangeRate
+      ),
+      purchaseShippingCad: calculateBoxPriceCostCad(
+        lot.purchaseShippingCost,
+        lot.currency,
+        lot.sellingCurrency,
+        lot.exchangeRate,
+        defaultExchangeRate
+      ),
+      purchaseTaxPercent: lot.purchaseTaxPercent,
+      includeTax: lot.includeTax,
+      currency: lot.currency
+    });
   const totalRevenue = calculateTotalRevenue(sales, lot.sellingTaxPercent);
   const totalProfit = totalRevenue - totalCost;
   const marginPercent = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : null;

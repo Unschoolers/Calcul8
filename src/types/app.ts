@@ -30,6 +30,7 @@ export interface NewSaleDraft {
   type: SaleType;
   quantity: number | null;
   packsCount: number | null;
+  singlesPurchaseEntryId?: number | null;
   price: number;
   memo?: string;
   buyerShipping: number;
@@ -41,11 +42,41 @@ export interface Sale {
   type: SaleType;
   quantity: number;
   packsCount: number;
+  singlesPurchaseEntryId?: number;
   price: number;
   priceIsTotal?: boolean;
   memo?: string;
   buyerShipping: number;
   date: string;
+}
+
+export interface SinglesSaleCardOption {
+  title: string;
+  value: number;
+  item: string;
+  cardNumber: string;
+  cost: number;
+  marketValue: number;
+  quantity: number;
+  costBasis: number;
+  soldCount: number;
+}
+
+export interface SinglesPurchaseEntry {
+  id: number;
+  item: string;
+  cardNumber?: string;
+  cost: number;
+  quantity: number;
+  marketValue: number;
+}
+
+export interface SinglesCsvColumnMapping {
+  item: number | null;
+  cardNumber: number | null;
+  cost: number | null;
+  quantity: number | null;
+  marketValue: number | null;
 }
 
 export interface LotSetup {
@@ -73,6 +104,7 @@ export interface Lot extends LotSetup {
   id: number;
   name: string;
   lotType?: LotType;
+  singlesPurchases?: SinglesPurchaseEntry[];
   createdAt?: string;
   taxRatePercent?: number;
 }
@@ -131,6 +163,7 @@ export interface AppState extends LotSetup {
   isOffline: boolean;
   deferredInstallPrompt: BeforeInstallPromptEvent | null;
   showInstallPrompt: boolean;
+  googleAuthEpoch: number;
   googleAvatarLoadFailed: boolean;
   onlineListener: (() => void) | null;
   offlineListener: (() => void) | null;
@@ -155,6 +188,15 @@ export interface AppState extends LotSetup {
   portfolioChartView: PortfolioChartViewMode;
   portfolioLotFilterIds: number[];
   lots: Lot[];
+  singlesPurchases: SinglesPurchaseEntry[];
+  showSinglesCsvMapperModal: boolean;
+  singlesCsvImportHeaders: string[];
+  singlesCsvImportRows: string[][];
+  singlesCsvMapItem: number | null;
+  singlesCsvMapCardNumber: number | null;
+  singlesCsvMapCost: number | null;
+  singlesCsvMapQuantity: number | null;
+  singlesCsvMapMarketValue: number | null;
   currentLotId: number | null;
   newLotName: string;
   renameLotName: string;
@@ -166,3 +208,4 @@ export interface AppState extends LotSetup {
   syncStatusResetTimeoutId: number | null;
   offlineReconnectIntervalId: number | null;
 }
+

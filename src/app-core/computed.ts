@@ -2,6 +2,7 @@ import { DEFAULT_VALUES } from "../constants.ts";
 import { GOOGLE_PROFILE_CACHE_KEY, GOOGLE_TOKEN_KEY } from "./methods/ui/shared.ts";
 import {
   calculateBoxPriceCostCad,
+  calculateSinglesPurchaseTotals,
   calculateTotalSpots,
   calculatePriceForUnits as calculateUnitPrice,
   calculatePortfolioTotals,
@@ -67,28 +68,56 @@ function resolveGoogleProfile(idToken: string): GoogleJwtPayload {
   };
 }
 
+function toPositiveIntOrNull(value: unknown): number | null {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) return null;
+  return Math.floor(parsed);
+}
+
+function getTrackedSinglesSoldCount(
+  entries: Array<{ id: number }> | undefined,
+  soldByEntryId: Record<number, number> | undefined
+): number {
+  const existingEntryIds = new Set(
+    (entries || [])
+      .map((entry) => Number(entry.id))
+      .filter((entryId) => Number.isFinite(entryId) && entryId > 0)
+  );
+
+  return Object.entries(soldByEntryId || {})
+    .reduce((sum, [entryId, value]) => {
+      const numericEntryId = Number(entryId);
+      if (!existingEntryIds.has(numericEntryId)) return sum;
+      return sum + Math.max(0, Math.floor(Number(value) || 0));
+    }, 0);
+}
+
 export const appComputed: AppComputedObject = {
   isDark(): boolean {
     return this.$vuetify.theme.global.name === "unionArenaDark";
   },
 
   isGoogleSignedIn(): boolean {
+    void this.googleAuthEpoch;
     return Boolean((localStorage.getItem(GOOGLE_TOKEN_KEY) || "").trim());
   },
 
   googleProfileName(): string {
+    void this.googleAuthEpoch;
     const token = (localStorage.getItem(GOOGLE_TOKEN_KEY) || "").trim();
     if (!token) return "";
     return resolveGoogleProfile(token).name || "";
   },
 
   googleProfileEmail(): string {
+    void this.googleAuthEpoch;
     const token = (localStorage.getItem(GOOGLE_TOKEN_KEY) || "").trim();
     if (!token) return "";
     return resolveGoogleProfile(token).email || "";
   },
 
   googleProfilePicture(): string {
+    void this.googleAuthEpoch;
     const token = (localStorage.getItem(GOOGLE_TOKEN_KEY) || "").trim();
     if (!token) return "";
     return resolveGoogleProfile(token).picture || "";
@@ -138,8 +167,117 @@ export const appComputed: AppComputedObject = {
     return selectedIds.length > 0 ? selectedIds : allLotIds;
   },
 
+  singlesPurchaseTotalQuantity(): number {
+    return calculateSinglesPurchaseTotals(this.singlesPurchases).totalQuantity;
+  },
+
+  singlesPurchaseTotalCost(): number {
+    return calculateSinglesPurchaseTotals(this.singlesPurchases).totalCost;
+  },
+
+  singlesPurchaseTotalMarketValue(): number {
+    return calculateSinglesPurchaseTotals(this.singlesPurchases).totalMarketValue;
+  },
+
+  singlesSoldCountByPurchaseId(): Record<number, number> {
+    const counts: Record<number, number> = {};
+    for (const sale of this.sales || []) {
+      const entryId = toPositiveIntOrNull(sale.singlesPurchaseEntryId);
+      if (!entryId) continue;
+      const soldQuantity = Math.max(0, Math.floor(Number(sale.quantity) || 0));
+      if (soldQuantity <= 0) continue;
+      counts[entryId] = (counts[entryId] || 0) + soldQuantity;
+    }
+    return counts;
+  },
+
+  singlesSaleCardOptions() {
+    if (this.currentLotType !== "singles") return [];
+
+    const selectedEntryId = toPositiveIntOrNull(this.newSale?.singlesPurchaseEntryId);
+    const soldCounts = this.singlesSoldCountByPurchaseId;
+
+    return (this.singlesPurchases || [])
+      .filter((entry) => {
+        const quantity = Math.max(0, Math.floor(Number(entry.quantity) || 0));
+        if (quantity > 0) return true;
+        return selectedEntryId != null && entry.id === selectedEntryId;
+      })
+      .map((entry) => {
+        const quantity = Math.max(0, Math.floor(Number(entry.quantity) || 0));
+        const unitCost = Math.max(0, Number(entry.cost) || 0);
+        const marketValue = Math.max(0, Number(entry.marketValue) || 0);
+        const cardNumber = String(entry.cardNumber || "").trim();
+        const titleSuffix = cardNumber ? ` #${cardNumber}` : "";
+        return {
+          title: `${entry.item || "Unnamed card"}${titleSuffix}`,
+          value: entry.id,
+          item: entry.item || "Unnamed card",
+          cardNumber,
+          cost: unitCost,
+          marketValue,
+          quantity,
+          costBasis: quantity * unitCost,
+          soldCount: soldCounts[entry.id] || 0
+        };
+      })
+      .sort((a, b) => a.item.localeCompare(b.item));
+  },
+
+  selectedSinglesSaleMaxQuantity(): number | null {
+    if (this.currentLotType !== "singles") return null;
+
+    const selectedEntryId = toPositiveIntOrNull(this.newSale?.singlesPurchaseEntryId);
+    if (!selectedEntryId) return null;
+
+    const selectedEntry = (this.singlesPurchases || []).find((entry) => entry.id === selectedEntryId);
+    if (!selectedEntry) return null;
+
+    const remainingQuantity = Math.max(0, Math.floor(Number(selectedEntry.quantity) || 0));
+    const editingSelectedEntryId = toPositiveIntOrNull(this.editingSale?.singlesPurchaseEntryId);
+    const editingQuantity = Math.max(0, Math.floor(Number(this.editingSale?.quantity) || 0));
+    if (editingSelectedEntryId && editingSelectedEntryId === selectedEntryId) {
+      return remainingQuantity + editingQuantity;
+    }
+
+    return remainingQuantity;
+  },
+
   totalPacks(): number {
+    if (this.currentLotType === "singles") {
+      const remainingCards = Math.max(0, Number(this.singlesPurchaseTotalQuantity) || 0);
+      const soldCardsFromLinkedRows = getTrackedSinglesSoldCount(
+        this.singlesPurchases,
+        this.singlesSoldCountByPurchaseId
+      );
+      const soldCardsFromAllSales = Array.isArray(this.sales)
+        ? Math.max(0, calculateSoldPacksCount(this.sales))
+        : 0;
+      const trackedInventoryTotal = remainingCards + soldCardsFromLinkedRows;
+      return Math.max(trackedInventoryTotal, soldCardsFromAllSales);
+    }
     return calculateTotalPacks(this.boxesPurchased, this.packsPerBox, DEFAULT_VALUES.PACKS_PER_BOX);
+  },
+
+  singlesTrackedSoldCount(): number {
+    if (this.currentLotType !== "singles") return 0;
+    return getTrackedSinglesSoldCount(
+      this.singlesPurchases,
+      this.singlesSoldCountByPurchaseId
+    );
+  },
+
+  singlesTrackedTotalCount(): number {
+    if (this.currentLotType !== "singles") return 0;
+    const remainingCards = Math.max(0, Number(this.singlesPurchaseTotalQuantity) || 0);
+    return remainingCards + this.singlesTrackedSoldCount;
+  },
+
+  singlesUnlinkedSoldCount(): number {
+    if (this.currentLotType !== "singles") return 0;
+    const soldCards = Math.max(0, Number(this.soldPacksCount) || 0);
+    const trackedSoldCards = Math.max(0, Number(this.singlesTrackedSoldCount) || 0);
+    return Math.max(0, soldCards - trackedSoldCards);
   },
 
   totalSpots(): number {
@@ -191,6 +329,9 @@ export const appComputed: AppComputedObject = {
   },
 
   totalCaseCost(): number {
+    if (this.currentLotType === "singles") {
+      return this.singlesPurchaseTotalQuantity > 0 ? this.singlesPurchaseTotalCost : 0;
+    }
     return calculateTotalCaseCost({
       boxesPurchased: this.boxesPurchased,
       pricePerBoxCad: this.boxPriceCostCAD,
@@ -210,7 +351,7 @@ export const appComputed: AppComputedObject = {
   },
 
   soldPacksCount(): number {
-    return calculateSoldPacksCount(this.sales);
+    return calculateSoldPacksCount(Array.isArray(this.sales) ? this.sales : []);
   },
 
   totalRevenue(): number {

@@ -1,6 +1,6 @@
 import Chart from "chart.js/auto";
 import { calculateNetFromGross, calculateSparklineData, getGrossRevenueForSale } from "../../domain/calculations.ts";
-import type { Sale, SaleType } from "../../types/app.ts";
+import type { Sale, SaleType, SinglesPurchaseEntry } from "../../types/app.ts";
 import type { AppContext, AppMethodState } from "../context.ts";
 import { getTodayDate } from "./config-shared.ts";
 
@@ -157,12 +157,56 @@ function resolveCanvasRef(
   return null;
 }
 
+function normalizeSinglesPurchaseEntryId(value: unknown): number | null {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) return null;
+  return Math.floor(parsed);
+}
+
+function getSinglesPurchaseEntryById(context: AppContext, entryId: number): SinglesPurchaseEntry | null {
+  return context.singlesPurchases.find((entry) => entry.id === entryId) ?? null;
+}
+
+function applySinglesPurchaseQuantityDeltas(
+  context: AppContext,
+  deltas: Array<{ entryId: number; delta: number }>
+): boolean {
+  if (deltas.length === 0) return true;
+
+  const nextEntries = [...context.singlesPurchases];
+  const indexById = new Map<number, number>();
+  nextEntries.forEach((entry, index) => {
+    indexById.set(entry.id, index);
+  });
+
+  for (const { entryId, delta } of deltas) {
+    if (!delta) continue;
+    const index = indexById.get(entryId);
+    if (index == null) return false;
+
+    const currentEntry = nextEntries[index];
+    const currentQty = Math.max(0, Math.floor(Number(currentEntry.quantity) || 0));
+    const nextQty = currentQty + delta;
+    if (nextQty < 0) return false;
+
+    nextEntries[index] = {
+      ...currentEntry,
+      quantity: nextQty
+    };
+  }
+
+  context.singlesPurchases = nextEntries;
+  context.onSinglesPurchaseRowsChange();
+  return true;
+}
+
 export const salesMethods: ThisType<AppContext> & Pick<
   AppMethodState,
   | "loadSalesFromStorage"
   | "saveSalesToStorage"
   | "openAddSaleModal"
   | "onNewSaleTypeChange"
+  | "onSinglesSaleCardSelectionChange"
   | "saveSale"
   | "editSale"
   | "deleteSale"
@@ -202,6 +246,7 @@ export const salesMethods: ThisType<AppContext> & Pick<
       type: normalizedType,
       quantity: null,
       packsCount: null,
+      singlesPurchaseEntryId: null,
       price: nextPrice,
       memo: "",
       buyerShipping: Number(this.sellingShippingPerOrder) || 0,
@@ -218,8 +263,30 @@ export const salesMethods: ThisType<AppContext> & Pick<
     }
     const nextType: SaleType = type === "box" || type === "rtyh" ? type : "pack";
     this.newSale.type = nextType;
+    this.newSale.singlesPurchaseEntryId = null;
     if (this.editingSale) return;
     this.newSale.price = resolveDefaultSaleUnitPrice(this, nextType);
+  },
+
+  onSinglesSaleCardSelectionChange(value: number | null): void {
+    if (this.currentLotType !== "singles") return;
+
+    const selectedEntryId = normalizeSinglesPurchaseEntryId(value);
+    this.newSale.singlesPurchaseEntryId = selectedEntryId;
+    if (!selectedEntryId) return;
+
+    const selectedEntry = getSinglesPurchaseEntryById(this, selectedEntryId);
+    if (!selectedEntry) return;
+
+    const maxAllowed = this.selectedSinglesSaleMaxQuantity;
+    const currentQuantity = Number(this.newSale.quantity);
+    if (!Number.isFinite(currentQuantity) || currentQuantity <= 0) {
+      this.newSale.quantity = 1;
+      return;
+    }
+    if (Number.isFinite(maxAllowed) && maxAllowed != null && currentQuantity > maxAllowed) {
+      this.newSale.quantity = maxAllowed;
+    }
   },
 
   saveSale(): void {
@@ -234,9 +301,23 @@ export const salesMethods: ThisType<AppContext> & Pick<
     const memo = typeof this.newSale.memo === "string" ? this.newSale.memo.trim() : "";
     const rtyhPacks = Number(this.newSale.packsCount);
     const isSinglesLot = this.currentLotType === "singles";
+    const selectedSinglesPurchaseEntryId = isSinglesLot
+      ? normalizeSinglesPurchaseEntryId(this.newSale.singlesPurchaseEntryId)
+      : null;
+    const previousSelectedSinglesPurchaseEntryId = isSinglesLot
+      ? normalizeSinglesPurchaseEntryId(this.editingSale?.singlesPurchaseEntryId)
+      : null;
+    const previousSaleQuantity = isSinglesLot
+      ? Math.max(0, Math.floor(Number(this.editingSale?.quantity) || 0))
+      : 0;
+    let editingIndex = -1;
 
     if (!Number.isFinite(quantity) || quantity <= 0) {
       this.notify("Please enter a valid quantity greater than 0", "warning");
+      return;
+    }
+    if (isSinglesLot && !Number.isInteger(quantity)) {
+      this.notify("Cards sold must be a whole number.", "warning");
       return;
     }
 
@@ -252,6 +333,50 @@ export const salesMethods: ThisType<AppContext> & Pick<
     if (!isSinglesLot && this.newSale.type === "rtyh" && (!Number.isFinite(rtyhPacks) || rtyhPacks <= 0)) {
       this.notify("Please enter the number of packs sold for RTYH", "warning");
       return;
+    }
+
+    if (selectedSinglesPurchaseEntryId) {
+      const selectedEntry = getSinglesPurchaseEntryById(this, selectedSinglesPurchaseEntryId);
+      if (!selectedEntry) {
+        this.notify("Selected card is no longer available.", "warning");
+        return;
+      }
+      const remainingQuantity = Math.max(0, Math.floor(Number(selectedEntry.quantity) || 0));
+      const maxAllowed = previousSelectedSinglesPurchaseEntryId === selectedSinglesPurchaseEntryId
+        ? remainingQuantity + previousSaleQuantity
+        : remainingQuantity;
+      if (quantity > maxAllowed) {
+        this.notify(`Quantity exceeds selected card stock (${maxAllowed} available).`, "warning");
+        return;
+      }
+    }
+
+    if (this.editingSale) {
+      editingIndex = this.sales.findIndex((s) => s.id === this.editingSale?.id);
+      if (editingIndex === -1) {
+        this.notify("Could not find the sale to update. Please try again.", "error");
+        return;
+      }
+    }
+
+    if (isSinglesLot) {
+      const quantityDeltas: Array<{ entryId: number; delta: number }> = [];
+      if (previousSelectedSinglesPurchaseEntryId && previousSaleQuantity > 0) {
+        quantityDeltas.push({
+          entryId: previousSelectedSinglesPurchaseEntryId,
+          delta: previousSaleQuantity
+        });
+      }
+      if (selectedSinglesPurchaseEntryId && quantity > 0) {
+        quantityDeltas.push({
+          entryId: selectedSinglesPurchaseEntryId,
+          delta: -quantity
+        });
+      }
+      if (!applySinglesPurchaseQuantityDeltas(this, quantityDeltas)) {
+        this.notify("Could not update selected card quantity. Please refresh and try again.", "error");
+        return;
+      }
     }
 
     const normalizedSaleType: SaleType = isSinglesLot ? "pack" : this.newSale.type;
@@ -272,6 +397,7 @@ export const salesMethods: ThisType<AppContext> & Pick<
       type: normalizedSaleType,
       quantity,
       packsCount: packsCount || 0,
+      singlesPurchaseEntryId: isSinglesLot ? (selectedSinglesPurchaseEntryId ?? undefined) : undefined,
       price,
       priceIsTotal: isSinglesLot ? true : undefined,
       memo: memo || undefined,
@@ -280,12 +406,7 @@ export const salesMethods: ThisType<AppContext> & Pick<
     };
 
     if (this.editingSale) {
-      const index = this.sales.findIndex((s) => s.id === this.editingSale?.id);
-      if (index === -1) {
-        this.notify("Could not find the sale to update. Please try again.", "error");
-        return;
-      }
-      this.sales.splice(index, 1, sale);
+      this.sales.splice(editingIndex, 1, sale);
       this.sales = [...this.sales];
     } else {
       this.sales = [...this.sales, sale];
@@ -301,6 +422,7 @@ export const salesMethods: ThisType<AppContext> & Pick<
       type: sale.type,
       quantity: sale.quantity,
       packsCount: sale.type === "rtyh" ? sale.packsCount : null,
+      singlesPurchaseEntryId: normalizeSinglesPurchaseEntryId(sale.singlesPurchaseEntryId),
       price: sale.price,
       memo: sale.memo ?? "",
       buyerShipping: sale.buyerShipping ?? 0,
@@ -318,6 +440,15 @@ export const salesMethods: ThisType<AppContext> & Pick<
         color: "error"
       },
       () => {
+        const saleToDelete = this.sales.find((sale) => sale.id === id) ?? null;
+        const linkedEntryId = normalizeSinglesPurchaseEntryId(saleToDelete?.singlesPurchaseEntryId);
+        const linkedQuantity = Math.max(0, Math.floor(Number(saleToDelete?.quantity) || 0));
+        if (this.currentLotType === "singles" && linkedEntryId && linkedQuantity > 0) {
+          void applySinglesPurchaseQuantityDeltas(this, [{
+            entryId: linkedEntryId,
+            delta: linkedQuantity
+          }]);
+        }
         this.sales = this.sales.filter((s) => s.id !== id);
         this.notify("Sale deleted", "info");
         refreshChartsForCurrentTab(this);
@@ -332,6 +463,7 @@ export const salesMethods: ThisType<AppContext> & Pick<
       type: "pack",
       quantity: null,
       packsCount: null,
+      singlesPurchaseEntryId: null,
       price: 0,
       memo: "",
       buyerShipping: this.sellingShippingPerOrder,
@@ -431,21 +563,31 @@ export const salesMethods: ThisType<AppContext> & Pick<
     const soldPacks = this.soldPacksCount;
     const totalPacks = this.totalPacks;
     const unsoldPacks = Math.max(0, totalPacks - soldPacks);
+    const isSinglesLot = this.currentLotType === "singles";
     const soldNet = this.totalRevenue;
-
     const grossUnsold = unsoldPacks * (this.packPrice || 0);
     const unsoldNet = this.netFromGross(grossUnsold, this.sellingShippingPerOrder, unsoldPacks);
+
+    const labels = isSinglesLot
+      ? [
+        `Sold cards: ${soldPacks}`,
+        `Remaining cards: ${unsoldPacks}`
+      ]
+      : [
+        `Sold (Net): $${this.formatCurrency(soldNet)} | ${soldPacks} packs`,
+        `Unsold (Net est.): $${this.formatCurrency(unsoldNet)} | ${unsoldPacks} packs`
+      ];
+    const data = isSinglesLot
+      ? [Math.max(0, soldPacks), Math.max(0, unsoldPacks)]
+      : [Math.max(0, soldNet), Math.max(0, unsoldNet)];
 
     this.salesChart = new Chart(ctx, {
       type: "doughnut",
       data: {
-        labels: [
-          `Sold (Net): $${this.formatCurrency(soldNet)} | ${soldPacks} packs`,
-          `Unsold (Net est.): $${this.formatCurrency(unsoldNet)} | ${unsoldPacks} packs`
-        ],
+        labels,
         datasets: [
           {
-            data: [Math.max(0, soldNet), Math.max(0, unsoldNet)],
+            data,
             backgroundColor: ["#34C759", "#FF3B30"],
             borderWidth: 0
           }

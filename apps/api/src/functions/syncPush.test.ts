@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { beforeEach, test, vi } from "vitest";
+import { afterEach, beforeEach, test, vi } from "vitest";
 import type { ApiConfig } from "../types";
 
 vi.mock("@azure/functions", () => ({
@@ -88,9 +88,26 @@ function createContext() {
   };
 }
 
+const originalFetch = globalThis.fetch;
+
 beforeEach(() => {
   vi.clearAllMocks();
+  globalThis.fetch = (async (input: unknown) => {
+    const raw = String(input);
+    const tokenMatch = /[?&]id_token=([^&]+)/.exec(raw);
+    const decodedToken = tokenMatch ? decodeURIComponent(tokenMatch[1]) : "unknown-user";
+    return {
+      ok: true,
+      json: async () => ({
+        sub: decodedToken
+      })
+    } as Response;
+  }) as typeof fetch;
   getConfigMock.mockReturnValue(createConfig());
+});
+
+afterEach(() => {
+  globalThis.fetch = originalFetch;
 });
 
 test("syncPush returns unchanged state when upsert reports no changes", async () => {
@@ -115,7 +132,7 @@ test("syncPush returns unchanged state when upsert reports no changes", async ()
       clientVersion: 2
     },
     "POST",
-    { "x-user-id": "user-a" }
+    { authorization: "Bearer user-a" }
   );
   const context = createContext();
 
@@ -152,7 +169,7 @@ test("syncPush computes next version and returns changed payload", async () => {
       clientVersion: 9
     },
     "POST",
-    { "x-user-id": "user-b" }
+    { authorization: "Bearer user-b" }
   );
   const context = createContext();
 
@@ -173,7 +190,7 @@ test("syncPush rejects duplicate lot ids with 400", async () => {
   const request = createRequest(
     { lots: [{ id: 1 }, { id: 1 }], salesByLot: { "1": [] } },
     "POST",
-    { "x-user-id": "user-c" }
+    { authorization: "Bearer user-c" }
   );
   const context = createContext();
 

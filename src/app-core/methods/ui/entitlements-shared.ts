@@ -1,5 +1,5 @@
 import type { AppContext, AppMethodState } from "../../context.ts";
-import { initGoogleAutoLoginWithRetry } from "../../utils/googleAutoLogin.ts";
+import { initGoogleAutoLoginWithRetry, requestGoogleIdentityPrompt } from "../../utils/googleAutoLogin.ts";
 import { getPlayBillingService } from "../../utils/playBilling.ts";
 
 export type UiEntitlementMethodKeys =
@@ -178,4 +178,4 @@ export async function hasPlayPurchaseSupport(): Promise<boolean> {
   return !!service;
 }
 
-export { initGoogleAutoLoginWithRetry };
+export { initGoogleAutoLoginWithRetry, requestGoogleIdentityPrompt };

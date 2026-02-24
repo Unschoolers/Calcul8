@@ -9,6 +9,7 @@ import {
   applyTargetProfitAccessDefaults,
   cacheGoogleProfileFromToken,
   initGoogleAutoLoginWithRetry,
+  requestGoogleIdentityPrompt,
   type UiEntitlementMethodSubset
 } from "./entitlements-shared.ts";
 
@@ -63,6 +64,7 @@ export const uiEntitlementSignInMethods: UiEntitlementMethodSubset<
       logAuthDebug("init:auto:skip_prompt_existing_token", {
         tokenLength: existingToken.length
       });
+      this.googleAuthEpoch += 1;
       cacheGoogleProfileFromToken(existingToken, GOOGLE_PROFILE_CACHE_KEY);
       return;
     }
@@ -75,6 +77,7 @@ export const uiEntitlementSignInMethods: UiEntitlementMethodSubset<
           tokenLength: idToken.length
         });
         localStorage.setItem(GOOGLE_TOKEN_KEY, idToken);
+        this.googleAuthEpoch += 1;
         this.googleAvatarLoadFailed = false;
         cacheGoogleProfileFromToken(idToken, GOOGLE_PROFILE_CACHE_KEY);
         void this.debugLogEntitlement(true);
@@ -99,6 +102,7 @@ export const uiEntitlementSignInMethods: UiEntitlementMethodSubset<
       logAuthDebug("signin:manual:skip_existing_token", {
         tokenLength: existingToken.length
       });
+      this.googleAuthEpoch += 1;
       void this.debugLogEntitlement(true);
       return;
     }
@@ -145,6 +149,7 @@ export const uiEntitlementSignInMethods: UiEntitlementMethodSubset<
             tokenLength: idToken.length
           });
           localStorage.setItem(GOOGLE_TOKEN_KEY, idToken);
+          this.googleAuthEpoch += 1;
           this.googleAvatarLoadFailed = false;
           cacheGoogleProfileFromToken(idToken, GOOGLE_PROFILE_CACHE_KEY);
           this.notify("Signed in with Google.", "success");
@@ -153,7 +158,15 @@ export const uiEntitlementSignInMethods: UiEntitlementMethodSubset<
       });
 
       logAuthDebug("signin:manual:prompt");
-      googleId.prompt();
+      const prompted = requestGoogleIdentityPrompt(
+        googleId,
+        (callback: () => void, delayMs: number) => {
+          (currentWindow?.setTimeout ?? globalThis.setTimeout)(callback, delayMs);
+        }
+      );
+      if (!prompted) {
+        logAuthDebug("signin:manual:prompt_suppressed_inflight");
+      }
     } catch (error) {
       logAuthWarn("signin:manual:exception", {
         error: error instanceof Error ? error.message : String(error)
