@@ -125,7 +125,7 @@ type SinglesDesktopSortKeyWithMeta =
   | "condition"
   | "language";
 
-export const SinglesConfigWindow = {
+export const SinglesConfigWindow: any = {
   name: "SinglesConfigWindow",
   props: {
     ctx: {
@@ -182,7 +182,7 @@ export const SinglesConfigWindow = {
     };
   },
   computed: {
-    visibleSinglesPurchases(): SinglesPurchaseEntry[] {
+    visibleSinglesPurchases(this: any): SinglesPurchaseEntry[] {
       const rows = Array.isArray(this.singlesPurchases)
         ? this.singlesPurchases as SinglesPurchaseEntry[]
         : [];
@@ -201,11 +201,11 @@ export const SinglesConfigWindow = {
       });
     },
 
-    hasSinglesSearchQuery(): boolean {
+    hasSinglesSearchQuery(this: any): boolean {
       return normalizeSinglesSearchTokens(this.singlesSearchQuery).length > 0;
     },
 
-    mobileRenderedSinglesPurchases(): SinglesPurchaseEntry[] {
+    mobileRenderedSinglesPurchases(this: any): SinglesPurchaseEntry[] {
       const rows = Array.isArray(this.visibleSinglesPurchases)
         ? this.visibleSinglesPurchases as SinglesPurchaseEntry[]
         : [];
@@ -213,7 +213,7 @@ export const SinglesConfigWindow = {
       return rows.slice(0, cappedCount);
     },
 
-    hasMoreMobileSinglesRows(): boolean {
+    hasMoreMobileSinglesRows(this: any): boolean {
       const totalRows = Array.isArray(this.visibleSinglesPurchases)
         ? this.visibleSinglesPurchases.length
         : 0;
@@ -221,7 +221,7 @@ export const SinglesConfigWindow = {
       return totalRows > renderedCount;
     },
 
-    remainingMobileSinglesRows(): number {
+    remainingMobileSinglesRows(this: any): number {
       const totalRows = Array.isArray(this.visibleSinglesPurchases)
         ? this.visibleSinglesPurchases.length
         : 0;
@@ -229,7 +229,7 @@ export const SinglesConfigWindow = {
       return Math.max(0, totalRows - renderedCount);
     },
 
-    nextMobileSinglesBatchCount(): number {
+    nextMobileSinglesBatchCount(this: any): number {
       const totalRows = Array.isArray(this.visibleSinglesPurchases)
         ? this.visibleSinglesPurchases.length
         : 0;
@@ -238,7 +238,7 @@ export const SinglesConfigWindow = {
       return Math.min(MOBILE_RENDER_BATCH_COUNT, remainingRows);
     },
 
-    desktopSortedSinglesPurchases(): SinglesPurchaseEntry[] {
+    desktopSortedSinglesPurchases(this: any): SinglesPurchaseEntry[] {
       const rows = Array.isArray(this.visibleSinglesPurchases)
         ? [...this.visibleSinglesPurchases as SinglesPurchaseEntry[]]
         : [];
@@ -304,17 +304,17 @@ export const SinglesConfigWindow = {
       return withIndex.map((row) => row.entry);
     },
 
-    useDesktopVirtualization(): boolean {
+    useDesktopVirtualization(this: any): boolean {
       return (this.desktopSortedSinglesPurchases as SinglesPurchaseEntry[]).length >= DESKTOP_VIRTUAL_THRESHOLD;
     },
 
-    desktopVirtualStartIndex(): number {
+    desktopVirtualStartIndex(this: any): number {
       if (!this.useDesktopVirtualization) return 0;
       const firstVisibleIndex = Math.floor(Math.max(0, this.desktopRowsScrollTop) / DESKTOP_VIRTUAL_ROW_HEIGHT);
       return Math.max(0, firstVisibleIndex - DESKTOP_VIRTUAL_BUFFER_ROWS);
     },
 
-    desktopVirtualEndIndex(): number {
+    desktopVirtualEndIndex(this: any): number {
       const totalRows = (this.desktopSortedSinglesPurchases as SinglesPurchaseEntry[]).length;
       if (!this.useDesktopVirtualization) return totalRows;
       const visibleRows = Math.ceil(DESKTOP_VIRTUAL_VIEWPORT_HEIGHT / DESKTOP_VIRTUAL_ROW_HEIGHT);
@@ -324,32 +324,32 @@ export const SinglesConfigWindow = {
       );
     },
 
-    desktopRenderedRows(): SinglesPurchaseEntry[] {
+    desktopRenderedRows(this: any): SinglesPurchaseEntry[] {
       const rows = this.desktopSortedSinglesPurchases as SinglesPurchaseEntry[];
       if (!this.useDesktopVirtualization) return rows;
       return rows.slice(this.desktopVirtualStartIndex, this.desktopVirtualEndIndex);
     },
 
-    desktopTopSpacerPx(): number {
+    desktopTopSpacerPx(this: any): number {
       if (!this.useDesktopVirtualization) return 0;
       return this.desktopVirtualStartIndex * DESKTOP_VIRTUAL_ROW_HEIGHT;
     },
 
-    desktopBottomSpacerPx(): number {
+    desktopBottomSpacerPx(this: any): number {
       if (!this.useDesktopVirtualization) return 0;
       const totalRows = (this.desktopSortedSinglesPurchases as SinglesPurchaseEntry[]).length;
       return Math.max(0, (totalRows - this.desktopVirtualEndIndex) * DESKTOP_VIRTUAL_ROW_HEIGHT);
     },
 
-    csvColumnOptions(): Array<{ title: string; value: number }> {
+    csvColumnOptions(this: any): Array<{ title: string; value: number }> {
       const headers = Array.isArray(this.singlesCsvImportHeaders) ? this.singlesCsvImportHeaders : [];
-      return headers.map((header, index) => ({
+      return headers.map((header: string, index: number) => ({
         title: String(header || `Column ${index + 1}`),
         value: index
       }));
     },
 
-    requiredCsvMappedCount(): number {
+    requiredCsvMappedCount(this: any): number {
       const headersLength = Array.isArray(this.singlesCsvImportHeaders) ? this.singlesCsvImportHeaders.length : 0;
       let count = 0;
       if (isValidCsvColumnIndex(this.singlesCsvMapItem, headersLength)) count += 1;
@@ -357,7 +357,7 @@ export const SinglesConfigWindow = {
       return count;
     },
 
-    optionalCsvMappedCount(): number {
+    optionalCsvMappedCount(this: any): number {
       const headersLength = Array.isArray(this.singlesCsvImportHeaders) ? this.singlesCsvImportHeaders.length : 0;
       let count = 0;
       if (isValidCsvColumnIndex(this.singlesCsvMapCost, headersLength)) count += 1;
@@ -368,11 +368,11 @@ export const SinglesConfigWindow = {
       return count;
     },
 
-    requiredCsvMappingsComplete(): boolean {
+    requiredCsvMappingsComplete(this: any): boolean {
       return this.requiredCsvMappedCount >= 2;
     },
 
-    csvMappedFieldLabelsByColumn(): Record<number, string> {
+    csvMappedFieldLabelsByColumn(this: any): Record<number, string> {
       const headersLength = Array.isArray(this.singlesCsvImportHeaders) ? this.singlesCsvImportHeaders.length : 0;
       const labelsByColumn: Record<number, string[]> = {};
       const addLabel = (columnIndex: unknown, label: string): void => {
@@ -397,43 +397,43 @@ export const SinglesConfigWindow = {
     }
   },
   methods: {
-    fmtCurrency(value: number | null | undefined, decimals = 2): string {
+    fmtCurrency(this: any, value: number | null | undefined, decimals = 2): string {
       if (value == null || Number.isNaN(Number(value))) return "0.00";
       return Number(value).toFixed(decimals);
     },
 
-    getSinglesSoldQuantity(entryId: number): number {
+    getSinglesSoldQuantity(this: any, entryId: number): number {
       const soldById = this.singlesSoldCountByPurchaseId as Record<number, number> | undefined;
       const soldQuantity = Number(soldById?.[entryId] ?? 0);
       if (!Number.isFinite(soldQuantity) || soldQuantity <= 0) return 0;
       return Math.floor(soldQuantity);
     },
 
-    getSinglesEntryRemainingQuantity(entry: SinglesPurchaseEntry): number {
+    getSinglesEntryRemainingQuantity(this: any, entry: SinglesPurchaseEntry): number {
       const totalQuantity = this.getSinglesEntryTotalQuantity(entry);
       const soldQuantity = this.getSinglesSoldQuantity(entry.id);
       return Math.max(0, totalQuantity - soldQuantity);
     },
 
-    getSinglesEntryTotalQuantity(entry: SinglesPurchaseEntry): number {
+    getSinglesEntryTotalQuantity(this: any, entry: SinglesPurchaseEntry): number {
       const totalQuantity = Number(entry.quantity);
       if (!Number.isFinite(totalQuantity) || totalQuantity <= 0) return 0;
       return Math.floor(totalQuantity);
     },
 
-    getSinglesEntryStockLabel(entry: SinglesPurchaseEntry): string {
+    getSinglesEntryStockLabel(this: any, entry: SinglesPurchaseEntry): string {
       const remainingQuantity = this.getSinglesEntryRemainingQuantity(entry);
       const totalQuantity = this.getSinglesEntryTotalQuantity(entry);
       return `${remainingQuantity}/${totalQuantity}`;
     },
 
-    isSinglesEntryFullySold(entry: SinglesPurchaseEntry): boolean {
+    isSinglesEntryFullySold(this: any, entry: SinglesPurchaseEntry): boolean {
       const remainingQuantity = this.getSinglesEntryRemainingQuantity(entry);
       const totalQuantity = this.getSinglesEntryTotalQuantity(entry);
       return totalQuantity > 0 && remainingQuantity === 0;
     },
 
-    resetSinglesRowDraft(): void {
+    resetSinglesRowDraft(this: any): void {
       this.editingSinglesRow = {
         item: "",
         cardNumber: "",
@@ -450,7 +450,7 @@ export const SinglesConfigWindow = {
       this.cancelSinglesItemSearch();
     },
 
-    resolveCardsApiBaseUrl(): string {
+    resolveCardsApiBaseUrl(this: any): string {
       const configuredBase = String((import.meta.env.VITE_API_BASE_URL as string | undefined) || "").trim();
       if (configuredBase) return configuredBase.replace(/\/+$/, "");
       const cachedBase = String(localStorage.getItem(STORAGE_KEYS.API_BASE_URL) || "").trim();
@@ -458,7 +458,7 @@ export const SinglesConfigWindow = {
       return "";
     },
 
-    cancelSinglesItemSearch(): void {
+    cancelSinglesItemSearch(this: any): void {
       if (this.singlesItemSearchTimerId) {
         clearTimeout(this.singlesItemSearchTimerId);
         this.singlesItemSearchTimerId = null;
@@ -469,7 +469,7 @@ export const SinglesConfigWindow = {
       }
     },
 
-    onSinglesItemSearchUpdate(nextValue: string): void {
+    onSinglesItemSearchUpdate(this: any, nextValue: string): void {
       this.singlesItemSearchText = String(nextValue || "");
       const query = this.singlesItemSearchText.trim();
       this.cancelSinglesItemSearch();
@@ -486,7 +486,7 @@ export const SinglesConfigWindow = {
       }, SINGLES_CARD_SEARCH_DEBOUNCE_MS);
     },
 
-    async fetchSinglesItemSuggestions(query: string): Promise<void> {
+    async fetchSinglesItemSuggestions(this: any, query: string): Promise<void> {
       const apiBase = this.resolveCardsApiBaseUrl();
       if (!apiBase) {
         this.singlesItemSuggestions = [];
@@ -550,7 +550,7 @@ export const SinglesConfigWindow = {
       }
     },
 
-    onSinglesItemSelected(selected: string | SinglesCardSuggestion | null): void {
+    onSinglesItemSelected(this: any, selected: string | SinglesCardSuggestion | null): void {
       if (!selected || typeof selected === "string") return;
       this.editingSinglesRow.item = selected.name;
       if (!String(this.editingSinglesRow.cardNumber || "").trim() && selected.cardNo) {
@@ -562,17 +562,17 @@ export const SinglesConfigWindow = {
       }
     },
 
-    formatSuggestionRarity(value: unknown): string {
+    formatSuggestionRarity(this: any, value: unknown): string {
       const rarity = String(value || "").trim();
       if (!rarity) return "—";
       return rarity;
     },
 
-    handleAddSinglesPurchase(): void {
+    handleAddSinglesPurchase(this: any): void {
       this.openSinglesRowEditor();
     },
 
-    openSinglesRowEditor(entry?: SinglesPurchaseEntry): void {
+    openSinglesRowEditor(this: any, entry?: SinglesPurchaseEntry): void {
       if (entry) {
         this.editingSinglesRowId = entry.id;
         this.editingSinglesRow = {
@@ -594,13 +594,13 @@ export const SinglesConfigWindow = {
       this.showSinglesRowEditor = true;
     },
 
-    closeSinglesRowEditor(): void {
+    closeSinglesRowEditor(this: any): void {
       this.showSinglesRowEditor = false;
       this.editingSinglesRowId = null;
       this.resetSinglesRowDraft();
     },
 
-    saveSinglesRowEditor(): void {
+    saveSinglesRowEditor(this: any): void {
       const nextItem = String(this.editingSinglesRow.item || "").trim();
       const nextCardNumber = String(this.editingSinglesRow.cardNumber || "").trim();
       const nextCondition = String(this.editingSinglesRow.condition || "").trim();
@@ -665,7 +665,7 @@ export const SinglesConfigWindow = {
       this.closeSinglesRowEditor();
     },
 
-    removeSinglesRowFromEditor(): void {
+    removeSinglesRowFromEditor(this: any): void {
       if (this.editingSinglesRowId == null) {
         this.closeSinglesRowEditor();
         return;
@@ -673,7 +673,7 @@ export const SinglesConfigWindow = {
       this.confirmRemoveSinglesPurchaseRow(this.editingSinglesRowId, true);
     },
 
-    confirmRemoveSinglesPurchaseRow(rowId: number, closeEditor = false): void {
+    confirmRemoveSinglesPurchaseRow(this: any, rowId: number, closeEditor = false): void {
       this.askConfirmation(
         {
           title: "Delete Row?",
@@ -689,7 +689,7 @@ export const SinglesConfigWindow = {
       );
     },
 
-    loadSinglesInfoNoticeState(): void {
+    loadSinglesInfoNoticeState(this: any): void {
       try {
         this.showSinglesInfoNotice = localStorage.getItem(SINGLES_INFO_NOTICE_DISMISSED_KEY) !== "1";
       } catch {
@@ -697,7 +697,7 @@ export const SinglesConfigWindow = {
       }
     },
 
-    dismissSinglesInfoNotice(): void {
+    dismissSinglesInfoNotice(this: any): void {
       this.showSinglesInfoNotice = false;
       try {
         localStorage.setItem(SINGLES_INFO_NOTICE_DISMISSED_KEY, "1");
@@ -706,22 +706,22 @@ export const SinglesConfigWindow = {
       }
     },
 
-    onDesktopRowsScroll(event: Event): void {
+    onDesktopRowsScroll(this: any, event: Event): void {
       if (!this.useDesktopVirtualization) return;
       const target = event.target as HTMLElement | null;
       this.desktopRowsScrollTop = Number(target?.scrollTop) || 0;
     },
 
-    onSinglesSearchInput(): void {
+    onSinglesSearchInput(this: any): void {
       this.resetMobileRowsPagination();
       this.resetDesktopRowsScroll();
     },
 
-    resetMobileRowsPagination(): void {
+    resetMobileRowsPagination(this: any): void {
       this.mobileRenderCount = MOBILE_RENDER_INITIAL_COUNT;
     },
 
-    loadMoreMobileRows(): void {
+    loadMoreMobileRows(this: any): void {
       const nextCount = this.mobileRenderCount + MOBILE_RENDER_BATCH_COUNT;
       const maxCount = Array.isArray(this.visibleSinglesPurchases)
         ? this.visibleSinglesPurchases.length
@@ -729,13 +729,13 @@ export const SinglesConfigWindow = {
       this.mobileRenderCount = Math.min(nextCount, maxCount);
     },
 
-    toggleShowFullySoldSingles(): void {
+    toggleShowFullySoldSingles(this: any): void {
       this.showFullySoldSingles = !this.showFullySoldSingles;
       this.resetMobileRowsPagination();
       this.resetDesktopRowsScroll();
     },
 
-    resetDesktopRowsScroll(): void {
+    resetDesktopRowsScroll(this: any): void {
       this.desktopRowsScrollTop = 0;
       const scroller = (this.$refs as Record<string, unknown> | undefined)?.desktopRowsScroller as
         | { scrollTop?: number }
@@ -745,30 +745,30 @@ export const SinglesConfigWindow = {
       }
     },
 
-    toggleDesktopSelectMode(): void {
+    toggleDesktopSelectMode(this: any): void {
       this.isDesktopSelectMode = !this.isDesktopSelectMode;
       if (!this.isDesktopSelectMode) {
         this.clearDesktopSelection();
       }
     },
 
-    clearDesktopSelection(): void {
+    clearDesktopSelection(this: any): void {
       this.selectedDesktopRowIds = [];
     },
 
-    isDesktopRowSelected(rowId: number): boolean {
+    isDesktopRowSelected(this: any, rowId: number): boolean {
       return this.selectedDesktopRowIds.includes(rowId);
     },
 
-    toggleDesktopRowSelection(rowId: number): void {
+    toggleDesktopRowSelection(this: any, rowId: number): void {
       if (this.isDesktopRowSelected(rowId)) {
-        this.selectedDesktopRowIds = this.selectedDesktopRowIds.filter((id) => id !== rowId);
+        this.selectedDesktopRowIds = this.selectedDesktopRowIds.filter((id: number) => id !== rowId);
         return;
       }
       this.selectedDesktopRowIds = [...this.selectedDesktopRowIds, rowId];
     },
 
-    handleDesktopRowClick(entry: SinglesPurchaseEntry): void {
+    handleDesktopRowClick(this: any, entry: SinglesPurchaseEntry): void {
       if (this.isDesktopSelectMode) {
         this.toggleDesktopRowSelection(entry.id);
         return;
@@ -776,8 +776,8 @@ export const SinglesConfigWindow = {
       this.openSinglesRowEditor(entry);
     },
 
-    deleteSelectedDesktopRows(): void {
-      const selectedSet = new Set((this.selectedDesktopRowIds || []).map((value) => Number(value)));
+    deleteSelectedDesktopRows(this: any): void {
+      const selectedSet = new Set((this.selectedDesktopRowIds || []).map((value: unknown) => Number(value)));
       const selectedCount = selectedSet.size;
       if (selectedCount <= 0) return;
 
@@ -798,7 +798,7 @@ export const SinglesConfigWindow = {
       );
     },
 
-    toggleDesktopSort(sortBy: SinglesDesktopSortKeyWithMeta): void {
+    toggleDesktopSort(this: any, sortBy: SinglesDesktopSortKeyWithMeta): void {
       if (this.desktopSortBy !== sortBy) {
         this.desktopSortBy = sortBy;
         this.desktopSortDesc = false;
@@ -817,30 +817,30 @@ export const SinglesConfigWindow = {
       this.resetDesktopRowsScroll();
     },
 
-    sortIconFor(sortBy: SinglesDesktopSortKeyWithMeta): string {
+    sortIconFor(this: any, sortBy: SinglesDesktopSortKeyWithMeta): string {
       if (this.desktopSortBy !== sortBy) return "mdi-swap-vertical";
       return this.desktopSortDesc ? "mdi-arrow-down" : "mdi-arrow-up";
     },
 
-    csvMappedFieldLabel(columnIndex: number): string {
+    csvMappedFieldLabel(this: any, columnIndex: number): string {
       const labelsByColumn = this.csvMappedFieldLabelsByColumn as Record<number, string>;
       return String(labelsByColumn?.[columnIndex] || "");
     },
 
-    isCsvColumnMapped(columnIndex: number): boolean {
+    isCsvColumnMapped(this: any, columnIndex: number): boolean {
       return this.csvMappedFieldLabel(columnIndex).length > 0;
     },
 
-    conditionShortLabel(value: unknown): string {
+    conditionShortLabel(this: any, value: unknown): string {
       return toConditionAbbreviation(value);
     },
 
-    languageShortLabel(value: unknown): string {
+    languageShortLabel(this: any, value: unknown): string {
       return toLanguageAbbreviation(value);
     }
   },
   watch: {
-    visibleSinglesPurchases(): void {
+    visibleSinglesPurchases(this: any): void {
       const maxCount = Array.isArray(this.visibleSinglesPurchases)
         ? this.visibleSinglesPurchases.length
         : 0;
@@ -849,11 +849,11 @@ export const SinglesConfigWindow = {
       }
     }
   },
-  mounted() {
+  mounted(this: any) {
     this.loadSinglesInfoNoticeState();
     this.resetMobileRowsPagination();
   },
-  beforeUnmount() {
+  beforeUnmount(this: any) {
     this.cancelSinglesItemSearch();
   },
   setup(props: { ctx: Record<string, unknown> }) {
