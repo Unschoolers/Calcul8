@@ -1,5 +1,17 @@
 # Entitlement Scope Refactor: Impact + Pre-Refactor Step
 
+## Status Snapshot (2026-02-25)
+Implemented since this prep doc was written:
+- API sync routes now accept optional `workspaceId`.
+- Workspace scope membership authz is enforced for sync pull/push.
+- Workspace management routes exist (`create`, `list members`, `add member`, `remove member`).
+- Workspace membership persistence model is in place (`workspace_membership` docs).
+
+Still pending:
+- Workspace entitlement licensing gate (membership + entitlement, not membership-only).
+- Workspace entitlement read path in `GET /entitlements/me`.
+- Team/workspace frontend context selector and propagation.
+
 ## Intent
 Prepare for scope-based entitlements (user + workspace/team) with minimal risk and no immediate behavior change.
 

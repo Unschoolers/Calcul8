@@ -53,12 +53,25 @@ export interface PurchaseVerificationResultDocument {
   updatedAt: string;
 }
 
+export type WorkspaceRole = "owner" | "admin" | "member";
+
+export interface WorkspaceDocument {
+  id: string;
+  docType: "workspace";
+  userId: string;
+  workspaceId: string;
+  name: string;
+  ownerUserId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface WorkspaceMembershipDocument {
   id: string;
   docType: "workspace_membership";
   userId: string;
   workspaceId: string;
-  role?: string;
+  role?: WorkspaceRole;
   status?: "active" | "disabled" | "removed";
   updatedAt: string;
 }

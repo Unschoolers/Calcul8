@@ -7,3 +7,4 @@ import "./functions/syncPull";
 import "./functions/syncPush";
 import "./functions/migrationRun";
 import "./functions/migrationRunsList";
+import "./functions/workspaces";

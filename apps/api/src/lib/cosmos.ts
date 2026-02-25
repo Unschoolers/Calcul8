@@ -6,7 +6,9 @@ import type {
   MigrationRunDocument,
   PurchaseVerificationResultDocument,
   PlayPurchaseDocument,
+  WorkspaceDocument,
   WorkspaceMembershipDocument,
+  WorkspaceRole,
   SyncMetaDocument,
   SyncPresetDocument,
   SyncSnapshotDocument
@@ -127,6 +129,10 @@ function migrationMarkerId(migrationId: string): string {
 
 function workspaceMembershipId(userId: string, workspaceId: string): string {
   return `m:${userId}:${workspaceId}`;
+}
+
+function workspaceDocumentId(workspaceId: string): string {
+  return `workspace:${workspaceId}`;
 }
 
 function getContainers(config: ApiConfig): CosmosCache {
@@ -286,11 +292,43 @@ export async function upsertEntitlement(
   return resource;
 }
 
-export async function hasWorkspaceMembership(
+export interface CreateWorkspaceWithOwnerInput {
+  workspaceId: string;
+  name: string;
+  ownerUserId: string;
+}
+
+export interface CreateWorkspaceWithOwnerResult {
+  workspace: WorkspaceDocument;
+  ownerMembership: WorkspaceMembershipDocument;
+}
+
+export async function getWorkspaceById(
+  config: ApiConfig,
+  workspaceId: string
+): Promise<WorkspaceDocument | null> {
+  const { entitlements } = getContainers(config);
+  const id = workspaceDocumentId(workspaceId);
+  const querySpec = {
+    query: "SELECT TOP 1 * FROM c WHERE c.id = @id AND c.docType = @docType",
+    parameters: [
+      { name: "@id", value: id },
+      { name: "@docType", value: "workspace" }
+    ]
+  };
+
+  const iterator = entitlements.items.query<WorkspaceDocument>(querySpec, {
+    maxItemCount: 1
+  });
+  const { resources } = await withCosmosRetry(() => iterator.fetchAll());
+  return resources?.[0] ?? null;
+}
+
+export async function getWorkspaceMembership(
   config: ApiConfig,
   userId: string,
   workspaceId: string
-): Promise<boolean> {
+): Promise<WorkspaceMembershipDocument | null> {
   const { entitlements } = getContainers(config);
   const id = workspaceMembershipId(userId, workspaceId);
 
@@ -298,15 +336,141 @@ export async function hasWorkspaceMembership(
     const { resource } = await withCosmosRetry(() =>
       entitlements.item(id, userId).read<WorkspaceMembershipDocument>()
     );
-    if (!resource) return false;
-    if (resource.docType !== "workspace_membership") return false;
-    if (resource.userId !== userId || resource.workspaceId !== workspaceId) return false;
-    if (resource.status === "disabled" || resource.status === "removed") return false;
-    return true;
+    if (!resource) return null;
+    if (resource.docType !== "workspace_membership") return null;
+    if (resource.userId !== userId || resource.workspaceId !== workspaceId) return null;
+    return resource;
   } catch (error) {
-    if (isNotFoundError(error)) return false;
+    if (isNotFoundError(error)) return null;
     throw error;
   }
+}
+
+export async function listWorkspaceMemberships(
+  config: ApiConfig,
+  workspaceId: string
+): Promise<WorkspaceMembershipDocument[]> {
+  const { entitlements } = getContainers(config);
+  const querySpec = {
+    query: "SELECT * FROM c WHERE c.docType = @docType AND c.workspaceId = @workspaceId AND (NOT IS_DEFINED(c.status) OR c.status = @activeStatus)",
+    parameters: [
+      { name: "@docType", value: "workspace_membership" },
+      { name: "@workspaceId", value: workspaceId },
+      { name: "@activeStatus", value: "active" }
+    ]
+  };
+
+  const iterator = entitlements.items.query<WorkspaceMembershipDocument>(querySpec);
+  const { resources } = await withCosmosRetry(() => iterator.fetchAll());
+  return resources ?? [];
+}
+
+interface UpsertWorkspaceMembershipInput {
+  userId: string;
+  workspaceId: string;
+  role: WorkspaceRole;
+  status?: "active" | "disabled" | "removed";
+}
+
+export async function upsertWorkspaceMembership(
+  config: ApiConfig,
+  input: UpsertWorkspaceMembershipInput
+): Promise<WorkspaceMembershipDocument> {
+  const { entitlements } = getContainers(config);
+  const document: WorkspaceMembershipDocument = {
+    id: workspaceMembershipId(input.userId, input.workspaceId),
+    docType: "workspace_membership",
+    userId: input.userId,
+    workspaceId: input.workspaceId,
+    role: input.role,
+    status: input.status ?? "active",
+    updatedAt: new Date().toISOString()
+  };
+
+  const { resource } = await withCosmosRetry(() =>
+    entitlements.items.upsert<WorkspaceMembershipDocument>(document)
+  );
+
+  if (!resource) {
+    throw new Error("Failed to upsert workspace membership.");
+  }
+
+  return resource;
+}
+
+export async function createWorkspaceWithOwner(
+  config: ApiConfig,
+  input: CreateWorkspaceWithOwnerInput
+): Promise<CreateWorkspaceWithOwnerResult> {
+  const { entitlements } = getContainers(config);
+  const now = new Date().toISOString();
+  const workspace: WorkspaceDocument = {
+    id: workspaceDocumentId(input.workspaceId),
+    docType: "workspace",
+    userId: input.ownerUserId,
+    workspaceId: input.workspaceId,
+    name: input.name,
+    ownerUserId: input.ownerUserId,
+    createdAt: now,
+    updatedAt: now
+  };
+
+  try {
+    const { resource } = await withCosmosRetry(() =>
+      entitlements.items.create<WorkspaceDocument>(workspace)
+    );
+    if (!resource) {
+      throw new Error("Failed to create workspace.");
+    }
+
+    const ownerMembership = await upsertWorkspaceMembership(config, {
+      userId: input.ownerUserId,
+      workspaceId: input.workspaceId,
+      role: "owner",
+      status: "active"
+    });
+
+    return {
+      workspace: resource,
+      ownerMembership
+    };
+  } catch (error) {
+    if (isConflictError(error)) {
+      throw new Error("Workspace already exists.");
+    }
+    throw error;
+  }
+}
+
+export async function deactivateWorkspaceMembership(
+  config: ApiConfig,
+  userId: string,
+  workspaceId: string
+): Promise<boolean> {
+  const existing = await getWorkspaceMembership(config, userId, workspaceId);
+  if (!existing) return false;
+  if (existing.status === "disabled" || existing.status === "removed") {
+    return false;
+  }
+
+  await upsertWorkspaceMembership(config, {
+    userId,
+    workspaceId,
+    role: existing.role ?? "member",
+    status: "removed"
+  });
+  return true;
+}
+
+export async function hasWorkspaceMembership(
+  config: ApiConfig,
+  userId: string,
+  workspaceId: string
+): Promise<boolean> {
+  const membership = await getWorkspaceMembership(config, userId, workspaceId);
+  if (!membership) return false;
+  if (membership.status === "disabled" || membership.status === "removed") return false;
+  return true;
 }
 
 export async function getPlayPurchaseByTokenHash(

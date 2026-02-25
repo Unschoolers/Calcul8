@@ -7,6 +7,10 @@ This is a separate deployable backend project for:
 - `POST /api/entitlements/verify-play`
 - `POST /api/sync/pull`
 - `POST /api/sync/push`
+- `POST /api/workspaces`
+- `GET /api/workspaces/{workspaceId}/members`
+- `POST /api/workspaces/{workspaceId}/members`
+- `DELETE /api/workspaces/{workspaceId}/members/{memberUserId}`
 - `POST /api/migrations/run`
 - `GET /api/migrations/runs`
 
@@ -43,16 +47,26 @@ cp local.settings.json.example local.settings.json
 npm run start:build
 ```
 
-## Auth behavior (current scaffold)
+## Auth behavior
 
-- Dev-only bypass is supported via `x-user-id` header when:
-  - `API_ENV=dev`
-  - `AUTH_BYPASS_DEV=true`
+- Requests must include `Authorization: Bearer <google-id-token>`.
+- API validates the Google ID token via Google token info endpoint and uses token `sub` as `userId`.
+- Missing or invalid tokens return `401`.
 
-This is intentionally temporary. Replace with Google token validation before production rollout.
+## Sync scope behavior
 
-If `Authorization: Bearer <google-id-token>` is provided, API now validates it against Google token info endpoint
-and uses `sub` as `userId`.
+- `POST /api/sync/pull` and `POST /api/sync/push` support optional `workspaceId`.
+- Personal sync scope:
+  - partition key: `<googleSub>` (legacy personal scope format kept for compatibility).
+- Workspace sync scope:
+  - partition key: `ws:<workspaceId>`.
+- Workspace sync reads/writes are authorized only when caller has active workspace membership.
+
+## Known limitations (current snapshot)
+
+- Workspace entitlement licensing is not enforced yet (membership-gated today).
+- Workspace create and owner-membership create are separate writes (non-transactional).
+- Duplicate workspace create conflict handling should be hardened to always return `409`.
 
 ## Entitlement verification flow
 
@@ -81,13 +95,40 @@ Note:
 Recommended partition key for both containers: `/userId`.
 
 - `entitlements` container:
-  - `id`: `entitlement:<userId>`
-  - `userId`
-  - `hasProAccess`
-  - `purchaseSource`
-  - `updatedAt`
+  - user entitlement docs:
+    - `id`: `entitlement:<userId>`
+    - `userId`
+    - `hasProAccess`
+    - `purchaseSource`
+    - `updatedAt`
+  - Google Play purchase docs:
+    - `id`: `play_purchase:<purchaseTokenHash>`
+    - `docType`: `play_purchase`
+    - `userId`
+    - purchase metadata fields
+  - purchase verification idempotency docs:
+    - `id`: `purchase_verify:<userId>:<provider>:<idempotencyKey>`
+    - `docType`: `purchase_verification_result`
+    - cached response payload
+  - workspace docs:
+    - `id`: `workspace:<workspaceId>`
+    - `docType`: `workspace`
+    - `workspaceId`
+    - `name`
+    - `ownerUserId`
+  - workspace membership docs:
+    - `id`: `m:<userId>:<workspaceId>`
+    - `docType`: `workspace_membership`
+    - `userId`
+    - `workspaceId`
+    - `role`: `owner|admin|member`
+    - `status`: `active|disabled|removed`
+    - `updatedAt`
 
 - `sync_data` container (incremental model):
+  - partition key (`userId`) is a scope key:
+    - personal: `<googleSub>`
+    - workspace: `ws:<workspaceId>`
   - preset docs:
     - `id`: `sync:preset:<userId>:<presetId>`
     - `docType`: `sync_preset`
@@ -157,5 +198,5 @@ Dry-run behavior:
 
 - Never put Cosmos keys in frontend code.
 - Restrict CORS via `ALLOWED_ORIGINS`.
-- Move to real auth (Google OIDC validation) for prod.
+- Google token validation is required for all authenticated routes.
 - Never commit `local.settings.json`; keep secrets in Function App settings and GitHub secrets.
