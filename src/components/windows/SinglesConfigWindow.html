@@ -165,7 +165,6 @@
               <col class="singles-col-price">
               <col class="singles-col-qty">
               <col class="singles-col-market">
-              <col class="singles-col-cost">
               <col class="singles-col-actions">
             </colgroup>
             <thead>
@@ -216,7 +215,7 @@
                     :class="['singles-sort-btn', 'singles-sort-btn--right', { 'is-active': desktopSortBy === 'cost' }]"
                     @click="toggleDesktopSort('cost')"
                   >
-                    <span>Cost</span>
+                    <span>Total Cost</span>
                     <v-icon size="14">{{ sortIconFor('cost') }}</v-icon>
                   </button>
                 </th>
@@ -236,18 +235,8 @@
                     :class="['singles-sort-btn', 'singles-sort-btn--right', { 'is-active': desktopSortBy === 'marketValue' }]"
                     @click="toggleDesktopSort('marketValue')"
                   >
-                    <span>Market Value</span>
+                    <span>Total Market</span>
                     <v-icon size="14">{{ sortIconFor('marketValue') }}</v-icon>
-                  </button>
-                </th>
-                <th class="text-right">
-                  <button
-                    type="button"
-                    :class="['singles-sort-btn', 'singles-sort-btn--right', { 'is-active': desktopSortBy === 'costBasis' }]"
-                    @click="toggleDesktopSort('costBasis')"
-                  >
-                    <span>Total Cost</span>
-                    <v-icon size="14">{{ sortIconFor('costBasis') }}</v-icon>
                   </button>
                 </th>
                 <th></th>
@@ -255,7 +244,7 @@
             </thead>
             <tbody>
               <tr v-if="useDesktopVirtualization && desktopTopSpacerPx > 0" class="singles-virtual-spacer-row">
-                <td colspan="9" :style="{ height: `${desktopTopSpacerPx}px` }"></td>
+                <td colspan="8" :style="{ height: `${desktopTopSpacerPx}px` }"></td>
               </tr>
               <tr
                 v-for="entry in desktopRenderedRows"
@@ -295,7 +284,7 @@
                   {{ languageShortLabel(entry.language) }}
                 </td>
                 <td class="text-right text-body-2">
-                  ${{ fmtCurrency(entry.cost) }}
+                  ${{ fmtCurrency((Number(entry.cost) || 0) * (Number(entry.quantity) || 0)) }}
                   <span class="text-caption text-medium-emphasis ml-1">{{ entry.currency || currency }}</span>
                 </td>
                 <td>
@@ -304,11 +293,7 @@
                   </div>
                 </td>
                 <td class="text-right text-body-2">
-                  ${{ fmtCurrency(entry.marketValue) }}
-                </td>
-                <td class="text-right text-body-2 font-weight-medium">
-                  ${{ fmtCurrency((Number(entry.cost) || 0) * (Number(entry.quantity) || 0)) }}
-                  <span class="text-caption text-medium-emphasis ml-1">{{ entry.currency || currency }}</span>
+                  ${{ fmtCurrency((Number(entry.marketValue) || 0) * (Number(entry.quantity) || 0)) }}
                 </td>
                 <td class="text-right">
                   <div v-if="!isDesktopSelectMode" class="singles-row-actions">
@@ -332,7 +317,7 @@
                 </td>
               </tr>
               <tr v-if="useDesktopVirtualization && desktopBottomSpacerPx > 0" class="singles-virtual-spacer-row">
-                <td colspan="9" :style="{ height: `${desktopBottomSpacerPx}px` }"></td>
+                <td colspan="8" :style="{ height: `${desktopBottomSpacerPx}px` }"></td>
               </tr>
             </tbody>
           </v-table>
@@ -373,7 +358,7 @@
                   <span class="singles-mobile-chip">
                     C ${{ fmtCurrency((Number(entry.cost) || 0) * (Number(entry.quantity) || 0)) }} {{ entry.currency || currency }}
                   </span>
-                  <span class="singles-mobile-chip">M ${{ fmtCurrency(entry.marketValue) }}</span>
+                  <span class="singles-mobile-chip">M ${{ fmtCurrency((Number(entry.marketValue) || 0) * (Number(entry.quantity) || 0)) }}</span>
                 </div>
               </v-list-item-subtitle>
               <template #append>
@@ -456,6 +441,32 @@
             <v-btn value="USD" title="USD">🇺🇸</v-btn>
           </v-btn-toggle>
         </div>
+        <v-row dense class="align-center mb-2">
+          <v-col cols="10">
+            <v-text-field
+              :model-value="targetProfitPercent ? targetProfitPercent + '%' : 'Not set'"
+              label="Target Profit %"
+              variant="outlined"
+              density="compact"
+              hide-details
+              readonly
+              class="mb-0"
+              prepend-inner-icon="mdi-calculator"
+            ></v-text-field>
+          </v-col>
+          <v-col cols="2" class="d-flex justify-end">
+            <v-btn
+              icon="mdi-calculator-variant-outline"
+              size="small"
+              color="secondary"
+              variant="tonal"
+              title="Open auto-calculate prices"
+              aria-label="Open auto-calculate prices"
+              :disabled="!hasLotSelected"
+              @click="showProfitCalculator = true"
+            ></v-btn>
+          </v-col>
+        </v-row>
 
         <v-text-field
           v-model.number="sellingTaxPercent"

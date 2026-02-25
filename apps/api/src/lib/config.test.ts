@@ -47,6 +47,7 @@ test("config defaults to dev and sensible defaults", () => {
       COSMOSDB_ENTITLEMENTS_CONTAINER_ID: undefined,
       COSMOSDB_SYNC_CONTAINER_ID: undefined,
       COSMOSDB_MIGRATION_RUNS_CONTAINER_ID: undefined,
+      COSMOSDB_CARD_CATALOG_CONTAINER_ID: undefined,
       ALLOWED_ORIGINS: undefined,
       GOOGLE_PLAY_PRO_PRODUCT_IDS: undefined
     },
@@ -58,6 +59,7 @@ test("config defaults to dev and sensible defaults", () => {
       assert.equal(config.entitlementsContainerId, "entitlements");
       assert.equal(config.syncContainerId, "sync_data");
       assert.equal(config.migrationRunsContainerId, "migration_runs");
+      assert.equal(config.cardCatalogContainerId, "card_catalog");
       assert.equal(config.migrationsAdminKey, "");
       assert.deepEqual(config.allowedOrigins, []);
       assert.deepEqual(config.googlePlayProProductIds, []);

@@ -8,3 +8,4 @@ import "./functions/syncPush";
 import "./functions/migrationRun";
 import "./functions/migrationRunsList";
 import "./functions/workspaces";
+import "./functions/cardsSearch";

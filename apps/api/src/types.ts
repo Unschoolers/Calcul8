@@ -16,6 +16,7 @@ export interface ApiConfig {
   entitlementsContainerId: string;
   syncContainerId: string;
   migrationRunsContainerId: string;
+  cardCatalogContainerId?: string;
 }
 
 export interface EntitlementDocument {

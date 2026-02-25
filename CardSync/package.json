@@ -1,0 +1,22 @@
+{
+  "name": "cardsync",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Local CosmosDB card catalog sync utility",
+  "scripts": {
+    "build": "tsc -p .",
+    "start": "node dist/index.js",
+    "fetch:ua": "npm run build && node dist/index.js fetch-ua",
+    "import:file": "npm run build && node dist/index.js import-file",
+    "sync": "npm run import:file"
+  },
+  "dependencies": {
+    "@azure/cosmos": "^4.3.0",
+    "dotenv": "^16.6.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.6",
+    "typescript": "^5.9.3"
+  }
+}

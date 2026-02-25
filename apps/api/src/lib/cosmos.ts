@@ -20,6 +20,7 @@ interface CosmosCache {
   entitlements: Container;
   syncSnapshots: Container;
   migrationRuns: Container;
+  cardCatalog: Container;
 }
 
 let cosmosCache: CosmosCache | null = null;
@@ -147,10 +148,85 @@ function getContainers(config: ApiConfig): CosmosCache {
   cosmosCache = {
     entitlements: database.container(config.entitlementsContainerId),
     syncSnapshots: database.container(config.syncContainerId),
-    migrationRuns: database.container(config.migrationRunsContainerId)
+    migrationRuns: database.container(config.migrationRunsContainerId),
+    cardCatalog: database.container(config.cardCatalogContainerId || "card_catalog")
   };
 
   return cosmosCache;
+}
+
+interface SearchCardsInput {
+  game: string;
+  query: string;
+  limit: number;
+}
+
+export interface CardCatalogSearchResult {
+  id: string;
+  game: string;
+  cardNo: string;
+  name: string;
+  series?: string;
+  seriesName?: string;
+  image?: string;
+  rarity?: string;
+  marketPrice?: number | null;
+}
+
+export async function searchCardCatalog(
+  config: ApiConfig,
+  input: SearchCardsInput
+): Promise<CardCatalogSearchResult[]> {
+  const { cardCatalog } = getContainers(config);
+  const safeGame = String(input.game || "").trim().toLowerCase();
+  const safeQuery = String(input.query || "").trim().toLowerCase();
+  const safeLimit = Math.max(1, Math.min(25, Math.floor(Number(input.limit) || 10)));
+
+  if (!safeGame || !safeQuery) return [];
+
+  const querySpec = {
+    query: `SELECT TOP ${safeLimit}
+      c.id,
+      c.game,
+      c.cardNo,
+      c.name,
+      c.series,
+      c.seriesName,
+      c.image,
+      c.rarity,
+      c.marketPrice
+      FROM c
+      WHERE c.pk = @pk
+      AND c.game = @game
+      AND (
+        CONTAINS(LOWER(c.name), @query)
+        OR CONTAINS(LOWER(c.cardNo), @query)
+      )
+      ORDER BY c.cardNo`,
+    parameters: [
+      { name: "@pk", value: safeGame },
+      { name: "@game", value: safeGame },
+      { name: "@query", value: safeQuery }
+    ]
+  };
+
+  const iterator = cardCatalog.items.query<CardCatalogSearchResult>(querySpec, {
+    partitionKey: safeGame,
+    maxItemCount: safeLimit
+  });
+
+  const { resources } = await withCosmosRetry(() => iterator.fetchAll());
+  return (resources || []).map((row) => ({
+    id: String(row.id || ""),
+    game: String(row.game || safeGame),
+    cardNo: String(row.cardNo || ""),
+    name: String(row.name || ""),
+    series: typeof row.series === "string" ? row.series : undefined,
+    seriesName: typeof row.seriesName === "string" ? row.seriesName : undefined,
+    image: typeof row.image === "string" ? row.image : undefined,
+    rarity: typeof row.rarity === "string" ? row.rarity : undefined,
+    marketPrice: Number.isFinite(Number(row.marketPrice)) ? Number(row.marketPrice) : null
+  }));
 }
 
 export async function upsertMigrationRun(

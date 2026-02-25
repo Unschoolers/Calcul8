@@ -60,7 +60,7 @@ test("visibleSinglesPurchases filters fully sold rows and tokenized search", () 
     singlesSoldCountByPurchaseId: { 1: 1, 2: 1 },
     singlesPurchases: [
       { id: 1, item: "Pikachu", cardNumber: "025", cost: 1, currency: "CAD", quantity: 0, marketValue: 0 },
-      { id: 2, item: "Charizard", cardNumber: "123", cost: 1, currency: "CAD", quantity: 1, marketValue: 0 },
+      { id: 2, item: "Charizard", cardNumber: "123", cost: 1, currency: "CAD", quantity: 2, marketValue: 0 },
       { id: 3, item: "Charmander", cardNumber: "004", cost: 1, currency: "CAD", quantity: 2, marketValue: 0 }
     ] satisfies SinglesPurchaseEntry[]
   });
@@ -74,9 +74,29 @@ test("visibleSinglesPurchases filters fully sold rows and tokenized search", () 
   assert.equal(rows[0]?.item, "Charizard");
 });
 
+test("stock helpers compute remaining quantity from total quantity and linked sold count", () => {
+  const context = createContext({
+    singlesSoldCountByPurchaseId: { 42: 1 }
+  });
+  const entry: SinglesPurchaseEntry = {
+    id: 42,
+    item: "Charizard",
+    cardNumber: "123",
+    cost: 23,
+    currency: "CAD",
+    quantity: 1,
+    marketValue: 50
+  };
+
+  assert.equal(context.getSinglesEntryTotalQuantity(entry), 1);
+  assert.equal(context.getSinglesEntryRemainingQuantity(entry), 0);
+  assert.equal(context.getSinglesEntryStockLabel(entry), "0/1");
+  assert.equal(context.isSinglesEntryFullySold(entry), true);
+});
+
 test("desktopSortedSinglesPurchases sorts by numeric and text columns", () => {
   const context = createContext({
-    desktopSortBy: "costBasis",
+    desktopSortBy: "cost",
     desktopSortDesc: true,
     visibleSinglesPurchases: [
       { id: 1, item: "Beta", cardNumber: "2", condition: "Good", language: "French", cost: 1, quantity: 2, marketValue: 0 },

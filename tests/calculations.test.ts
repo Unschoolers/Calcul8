@@ -657,7 +657,7 @@ test("computed totalPacks uses singles quantity even when total cost is zero", (
   assert.equal(zeroCost, 4);
 });
 
-test("computed totalPacks in singles includes tracked sold plus remaining cards", () => {
+test("computed totalPacks in singles uses tracked inventory total when it covers sales", () => {
   const total = appComputed.totalPacks.call({
     currentLotType: "singles",
     singlesPurchases: [{ id: 11 }, { id: 12 }],
@@ -665,7 +665,7 @@ test("computed totalPacks in singles includes tracked sold plus remaining cards"
     singlesSoldCountByPurchaseId: { 11: 4, 12: 3 },
     sales: []
   } as unknown as Parameters<typeof appComputed.totalPacks>[0]);
-  assert.equal(total, 13);
+  assert.equal(total, 6);
 });
 
 test("computed totalPacks in singles is at least all sold cards from sales list", () => {
@@ -735,7 +735,7 @@ test("computed singlesTrackedSoldCount and singlesTrackedTotalCount only use cur
     singlesPurchaseTotalQuantity: 4,
     singlesTrackedSoldCount: trackedSold
   } as unknown as Parameters<typeof appComputed.singlesTrackedTotalCount>[0]);
-  assert.equal(trackedTotal, 7);
+  assert.equal(trackedTotal, 4);
 });
 
 test("computed singlesUnlinkedSoldCount shows delta between total sold and tracked sold", () => {
@@ -747,15 +747,19 @@ test("computed singlesUnlinkedSoldCount shows delta between total sold and track
   assert.equal(unlinked, 3);
 });
 
-test("computed singlesSaleCardOptions includes selected sold-out card and renders details", () => {
+test("computed singlesSaleCardOptions computes remaining quantity from total and sold", () => {
   const options = appComputed.singlesSaleCardOptions.call({
     currentLotType: "singles",
     newSale: { singlesPurchaseEntryId: 20 },
+    sellingTaxPercent: 15,
     singlesSoldCountByPurchaseId: { 20: 3, 30: 1 },
     singlesPurchases: [
-      { id: 20, item: "Sold Out", cardNumber: "020", cost: 2, quantity: 0, marketValue: 3 },
-      { id: 30, item: "In Stock", cardNumber: "030", cost: 4, quantity: 2, marketValue: 5 }
-    ]
+      { id: 20, item: "Sold Out", cardNumber: "020", cost: 2, quantity: 3, marketValue: 3 },
+      { id: 30, item: "In Stock", cardNumber: "030", cost: 4, quantity: 3, marketValue: 5 }
+    ],
+    currency: "CAD",
+    sellingCurrency: "CAD",
+    exchangeRate: 1.4
   } as unknown as Parameters<typeof appComputed.singlesSaleCardOptions>[0]);
 
   assert.equal(options.length, 2);
@@ -763,9 +767,11 @@ test("computed singlesSaleCardOptions includes selected sold-out card and render
   const inStock = options.find((option) => option.value === 30);
   assert.equal(soldOut?.quantity, 0);
   assert.equal(soldOut?.soldCount, 3);
-  assert.equal(soldOut?.costBasis, 0);
+  assert.equal(soldOut?.costBasis, 6);
+  assert.equal(soldOut?.profitablePrice, 0);
   assert.equal(inStock?.quantity, 2);
-  assert.equal(inStock?.costBasis, 8);
+  assert.equal(inStock?.costBasis, 12);
+  assert.equal(Math.abs((inStock?.profitablePrice ?? 0) - 9.36) < 0.01, true);
 });
 
 test("computed selectedSinglesSaleMaxQuantity restores editing quantity for same linked card", () => {
@@ -773,7 +779,8 @@ test("computed selectedSinglesSaleMaxQuantity restores editing quantity for same
     currentLotType: "singles",
     newSale: { singlesPurchaseEntryId: 50 },
     editingSale: { singlesPurchaseEntryId: 50, quantity: 2 },
-    singlesPurchases: [{ id: 50, item: "Card", cost: 1, quantity: 0, marketValue: 1 }]
+    singlesSoldCountByPurchaseId: { 50: 2 },
+    singlesPurchases: [{ id: 50, item: "Card", cost: 1, quantity: 2, marketValue: 1 }]
   } as unknown as Parameters<typeof appComputed.selectedSinglesSaleMaxQuantity>[0]);
   assert.equal(sameCard, 2);
 
@@ -784,6 +791,47 @@ test("computed selectedSinglesSaleMaxQuantity restores editing quantity for same
     singlesPurchases: [{ id: 51, item: "Card", cost: 1, quantity: 1, marketValue: 1 }]
   } as unknown as Parameters<typeof appComputed.selectedSinglesSaleMaxQuantity>[0]);
   assert.equal(differentCard, 1);
+});
+
+test("computed saleEditorProfitPreview shows live singles profit value and percent", () => {
+  const preview = appComputed.saleEditorProfitPreview.call({
+    currentLotType: "singles",
+    showAddSaleModal: true,
+    currency: "CAD",
+    sellingCurrency: "CAD",
+    exchangeRate: 1.4,
+    singlesPurchases: [{ id: 123, item: "Charizard", cost: 23, quantity: 2, marketValue: 50, currency: "CAD" }],
+    newSale: { singlesPurchaseEntryId: 123, quantity: 2, price: 100, buyerShipping: 0 },
+    netFromGross(grossRevenue: number) {
+      return grossRevenue - 10;
+    }
+  } as unknown as Parameters<typeof appComputed.saleEditorProfitPreview>[0]);
+
+  assert.equal(preview?.sign, "-");
+  assert.equal(preview?.colorClass, "text-error");
+  assert.equal(preview?.basisLabel, "Market");
+  assert.equal(preview?.value, -10);
+  assert.equal(Math.abs((preview?.percent ?? 0) - (-10)) < 0.0001, true);
+});
+
+test("computed saleEditorProfitPreview defaults to 100% when no linked card cost exists", () => {
+  const preview = appComputed.saleEditorProfitPreview.call({
+    currentLotType: "singles",
+    showAddSaleModal: true,
+    currency: "CAD",
+    sellingCurrency: "CAD",
+    exchangeRate: 1.4,
+    singlesPurchases: [],
+    newSale: { singlesPurchaseEntryId: null, quantity: 1, price: 20, buyerShipping: 0 },
+    netFromGross(grossRevenue: number) {
+      return grossRevenue;
+    }
+  } as unknown as Parameters<typeof appComputed.saleEditorProfitPreview>[0]);
+
+  assert.equal(preview?.value, 20);
+  assert.equal(preview?.percent, 100);
+  assert.equal(preview?.colorClass, "text-success");
+  assert.equal(preview?.basisLabel, "Cost");
 });
 
 test("watch.currentTab persists selected tab and triggers portfolio chart init", () => {
@@ -1575,6 +1623,64 @@ test("formatDate keeps date-only values in local time", () => {
   assert.equal(fromIsoDateOnly, expected);
   assert.equal(fromSlashDate, expected);
   assert.equal(invalidRaw, "not-a-date");
+});
+
+test("calculateSaleProfit in singles uses linked card cost multiplied by sold quantity", () => {
+  const sale: Sale = {
+    id: 1,
+    type: "pack",
+    quantity: 3,
+    packsCount: 3,
+    singlesPurchaseEntryId: 101,
+    price: 30,
+    buyerShipping: 0,
+    date: "2026-02-21"
+  };
+
+  const profit = uiBaseMethods.calculateSaleProfit.call({
+    currentLotType: "singles",
+    singlesPurchases: [
+      { id: 101, item: "Card A", cost: 10, currency: "CAD", quantity: 5, marketValue: 12 }
+    ],
+    currency: "CAD",
+    sellingCurrency: "CAD",
+    exchangeRate: 1.4,
+    totalPacks: 100,
+    totalCaseCost: 1000,
+    netFromGross(grossRevenue: number) {
+      return grossRevenue;
+    }
+  } as unknown as Parameters<typeof uiBaseMethods.calculateSaleProfit>[0], sale);
+
+  // Gross = 3 * 30 = 90. Linked cost allocation = 3 * 10 = 30.
+  assert.equal(profit, 60);
+});
+
+test("calculateSaleProfit in singles without linked card returns net revenue with zero cost basis", () => {
+  const sale: Sale = {
+    id: 2,
+    type: "pack",
+    quantity: 1,
+    packsCount: 1,
+    price: 10,
+    buyerShipping: 0,
+    date: "2026-02-21"
+  };
+
+  const profit = uiBaseMethods.calculateSaleProfit.call({
+    currentLotType: "singles",
+    singlesPurchases: [],
+    currency: "CAD",
+    sellingCurrency: "CAD",
+    exchangeRate: 1.4,
+    totalPacks: 100,
+    totalCaseCost: 1000,
+    netFromGross() {
+      return 7;
+    }
+  } as unknown as Parameters<typeof uiBaseMethods.calculateSaleProfit>[0], sale);
+
+  assert.equal(profit, 7);
 });
 
 test("saveSale updates existing sale in edit mode", () => {

@@ -32,7 +32,7 @@ export interface NewSaleDraft {
   quantity: number | null;
   packsCount: number | null;
   singlesPurchaseEntryId?: number | null;
-  price: number;
+  price: number | null;
   memo?: string;
   buyerShipping: number;
   date: string;
@@ -60,6 +60,7 @@ export interface SinglesSaleCardOption {
   marketValue: number;
   quantity: number;
   costBasis: number;
+  profitablePrice: number;
   soldCount: number;
 }
 

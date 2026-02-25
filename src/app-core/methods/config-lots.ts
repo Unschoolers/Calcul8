@@ -337,7 +337,7 @@ export const configLotMethods: ConfigMethodSubset<
 
     const todayDate = getTodayDate();
     const setup = this.getCurrentSetup();
-    const nextLotType = this.newLotType === "singles" ? "singles" : "bulk";
+    const nextLotType: Lot["lotType"] = this.newLotType === "singles" ? "singles" : "bulk";
     const selectedLot = this.currentLotId ? this.lots.find((p) => p.id === this.currentLotId) : null;
     const fallbackPreviousLot = this.lots.length > 0 ? this.lots[this.lots.length - 1] : null;
     const previousSellingTaxRaw =
@@ -369,12 +369,12 @@ export const configLotMethods: ConfigMethodSubset<
       setup.packPrice = 0;
     }
 
-    const newLot = {
+    const newLot: Lot = {
       id: Date.now(),
       name,
       createdAt: todayDate,
       lotType: nextLotType,
-      singlesPurchases: nextLotType === "singles" ? [] : undefined,
+      singlesPurchases: nextLotType === "singles" ? [] as SinglesPurchaseEntry[] : undefined,
       ...setup
     };
     this.lots.push(newLot);

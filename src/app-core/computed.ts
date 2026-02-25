@@ -1,4 +1,4 @@
-import { DEFAULT_VALUES } from "../constants.ts";
+import { DEFAULT_VALUES, WHATNOT_FEES } from "../constants.ts";
 import { GOOGLE_PROFILE_CACHE_KEY, GOOGLE_TOKEN_KEY } from "./methods/ui/shared.ts";
 import {
   calculateBoxPriceCostCad,
@@ -74,6 +74,21 @@ function toPositiveIntOrNull(value: unknown): number | null {
   return Math.floor(parsed);
 }
 
+function toNonNegativeInt(value: unknown): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) return 0;
+  return Math.floor(parsed);
+}
+
+function getSinglesRemainingQuantity(
+  entry: { id: number; quantity: number },
+  soldByEntryId: Record<number, number> | undefined
+): number {
+  const totalQuantity = toNonNegativeInt(entry.quantity);
+  const soldQuantity = toNonNegativeInt(soldByEntryId?.[entry.id]);
+  return Math.max(0, totalQuantity - soldQuantity);
+}
+
 function getTrackedSinglesSoldCount(
   entries: Array<{ id: number }> | undefined,
   soldByEntryId: Record<number, number> | undefined
@@ -90,6 +105,40 @@ function getTrackedSinglesSoldCount(
       if (!existingEntryIds.has(numericEntryId)) return sum;
       return sum + Math.max(0, Math.floor(Number(value) || 0));
     }, 0);
+}
+
+function calculateProfitableOrderPrice(
+  targetNetRevenue: number,
+  sellingTaxPercent: number,
+  buyerShippingPerOrder: number
+): number {
+  const targetNet = Math.max(0, Number(targetNetRevenue) || 0);
+  if (targetNet <= 0) return 0;
+  const buyerTaxRate = Math.max(0, Number(sellingTaxPercent) || 0) / 100;
+  const shipping = Math.max(0, Number(buyerShippingPerOrder) || 0);
+  const effectiveRate = 1 - WHATNOT_FEES.COMMISSION - (WHATNOT_FEES.PROCESSING * (1 + buyerTaxRate));
+  if (effectiveRate <= 0) return 0;
+  const fixedFees = WHATNOT_FEES.FIXED + (WHATNOT_FEES.PROCESSING * shipping);
+  return (targetNet + fixedFees) / effectiveRate;
+}
+
+function getSinglesEntryUnitCostInSellingCurrency(
+  entry: { cost: number; currency?: string },
+  purchaseCurrency: "CAD" | "USD",
+  sellingCurrency: "CAD" | "USD",
+  exchangeRate: number
+): number {
+  const unitCost = Math.max(0, Number(entry.cost) || 0);
+  const entryCurrency = entry.currency === "USD" || entry.currency === "CAD"
+    ? entry.currency
+    : purchaseCurrency;
+  return calculateBoxPriceCostCad(
+    unitCost,
+    entryCurrency,
+    sellingCurrency,
+    exchangeRate,
+    DEFAULT_VALUES.EXCHANGE_RATE
+  );
 }
 
 export const appComputed: AppComputedObject = {
@@ -211,19 +260,28 @@ export const appComputed: AppComputedObject = {
 
     const selectedEntryId = toPositiveIntOrNull(this.newSale?.singlesPurchaseEntryId);
     const soldCounts = this.singlesSoldCountByPurchaseId;
+    const buyerShippingPerOrder = Math.max(0, Number(this.newSale?.buyerShipping) || 0);
 
     return (this.singlesPurchases || [])
       .filter((entry) => {
-        const quantity = Math.max(0, Math.floor(Number(entry.quantity) || 0));
-        if (quantity > 0) return true;
+        const remainingQuantity = getSinglesRemainingQuantity(entry, soldCounts);
+        if (remainingQuantity > 0) return true;
         return selectedEntryId != null && entry.id === selectedEntryId;
       })
       .map((entry) => {
-        const quantity = Math.max(0, Math.floor(Number(entry.quantity) || 0));
+        const totalQuantity = toNonNegativeInt(entry.quantity);
+        const quantity = getSinglesRemainingQuantity(entry, soldCounts);
         const unitCost = Math.max(0, Number(entry.cost) || 0);
         const marketValue = Math.max(0, Number(entry.marketValue) || 0);
+        const convertedUnitCost = getSinglesEntryUnitCostInSellingCurrency(
+          entry,
+          this.currency,
+          this.sellingCurrency,
+          this.exchangeRate
+        );
         const cardNumber = String(entry.cardNumber || "").trim();
         const titleSuffix = cardNumber ? ` #${cardNumber}` : "";
+        const remainingCostBasis = quantity * convertedUnitCost;
         return {
           title: `${entry.item || "Unnamed card"}${titleSuffix}`,
           value: entry.id,
@@ -232,7 +290,12 @@ export const appComputed: AppComputedObject = {
           cost: unitCost,
           marketValue,
           quantity,
-          costBasis: quantity * unitCost,
+          costBasis: totalQuantity * unitCost,
+          profitablePrice: calculateProfitableOrderPrice(
+            remainingCostBasis,
+            this.sellingTaxPercent,
+            buyerShippingPerOrder
+          ),
           soldCount: soldCounts[entry.id] || 0
         };
       })
@@ -248,7 +311,8 @@ export const appComputed: AppComputedObject = {
     const selectedEntry = (this.singlesPurchases || []).find((entry) => entry.id === selectedEntryId);
     if (!selectedEntry) return null;
 
-    const remainingQuantity = Math.max(0, Math.floor(Number(selectedEntry.quantity) || 0));
+    const soldCounts = this.singlesSoldCountByPurchaseId;
+    const remainingQuantity = getSinglesRemainingQuantity(selectedEntry, soldCounts);
     const editingSelectedEntryId = toPositiveIntOrNull(this.editingSale?.singlesPurchaseEntryId);
     const editingQuantity = Math.max(0, Math.floor(Number(this.editingSale?.quantity) || 0));
     if (editingSelectedEntryId && editingSelectedEntryId === selectedEntryId) {
@@ -258,17 +322,51 @@ export const appComputed: AppComputedObject = {
     return remainingQuantity;
   },
 
+  saleEditorProfitPreview() {
+    if (this.currentLotType !== "singles" || !this.showAddSaleModal) return null;
+
+    const grossRevenue = Math.max(0, Number(this.newSale?.price) || 0);
+    const quantity = Math.max(0, Math.floor(Number(this.newSale?.quantity) || 0));
+    const buyerShipping = Math.max(0, Number(this.newSale?.buyerShipping) || 0);
+    const netRevenue = this.netFromGross(grossRevenue, buyerShipping, 1);
+
+    const selectedEntryId = toPositiveIntOrNull(this.newSale?.singlesPurchaseEntryId);
+    const selectedEntry = selectedEntryId
+      ? (this.singlesPurchases || []).find((entry) => entry.id === selectedEntryId)
+      : null;
+    const unitCost = selectedEntry
+      ? getSinglesEntryUnitCostInSellingCurrency(
+        selectedEntry,
+        this.currency,
+        this.sellingCurrency,
+        this.exchangeRate
+      )
+      : 0;
+    const unitMarket = Math.max(0, Number(selectedEntry?.marketValue) || 0);
+    const totalCost = unitCost * quantity;
+    const totalMarket = unitMarket * quantity;
+    const basisValue = totalMarket > 0 ? totalMarket : totalCost;
+    const basisLabel = totalMarket > 0 ? "Market" as const : "Cost" as const;
+    const basisProfit = netRevenue - basisValue;
+    const percent = basisValue > 0
+      ? (basisProfit / basisValue) * 100
+      : (basisProfit >= 0 ? 100 : 0);
+
+    return {
+      value: basisProfit,
+      percent,
+      sign: basisProfit >= 0 ? "+" as const : "-" as const,
+      colorClass: basisProfit >= 0 ? "text-success" : "text-error",
+      basisLabel
+    };
+  },
+
   totalPacks(): number {
     if (this.currentLotType === "singles") {
-      const remainingCards = Math.max(0, Number(this.singlesPurchaseTotalQuantity) || 0);
-      const soldCardsFromLinkedRows = getTrackedSinglesSoldCount(
-        this.singlesPurchases,
-        this.singlesSoldCountByPurchaseId
-      );
+      const trackedInventoryTotal = Math.max(0, Number(this.singlesPurchaseTotalQuantity) || 0);
       const soldCardsFromAllSales = Array.isArray(this.sales)
         ? Math.max(0, calculateSoldPacksCount(this.sales))
         : 0;
-      const trackedInventoryTotal = remainingCards + soldCardsFromLinkedRows;
       return Math.max(trackedInventoryTotal, soldCardsFromAllSales);
     }
     return calculateTotalPacks(this.boxesPurchased, this.packsPerBox, DEFAULT_VALUES.PACKS_PER_BOX);
@@ -284,8 +382,7 @@ export const appComputed: AppComputedObject = {
 
   singlesTrackedTotalCount(): number {
     if (this.currentLotType !== "singles") return 0;
-    const remainingCards = Math.max(0, Number(this.singlesPurchaseTotalQuantity) || 0);
-    return remainingCards + this.singlesTrackedSoldCount;
+    return Math.max(0, Number(this.singlesPurchaseTotalQuantity) || 0);
   },
 
   singlesUnlinkedSoldCount(): number {
@@ -484,11 +581,12 @@ export const appComputed: AppComputedObject = {
           ? this.sales
           : this.loadSalesForLotId(lot.id);
         const summary = calculateLotPerformanceSummary(lot, sales, DEFAULT_VALUES.EXCHANGE_RATE);
+        const lotType: "Bulk" | "Singles" = lot.lotType === "singles" ? "Singles" : "Bulk";
         return {
           ...summary,
           lotId: summary.lotId,
           lotName: summary.lotName,
-          lotType: lot.lotType === "singles" ? "Singles" : "Bulk"
+          lotType
         };
       });
 

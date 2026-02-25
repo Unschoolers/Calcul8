@@ -606,7 +606,7 @@
                         <span v-if="item.raw.cardNumber" class="text-medium-emphasis">#{{ item.raw.cardNumber }}</span>
                       </v-list-item-title>
                       <v-list-item-subtitle class="text-caption">
-                        Qty {{ item.raw.quantity }} · Cost ${{ formatCurrency(item.raw.cost) }} · Market ${{ formatCurrency(item.raw.marketValue) }} · Total Cost ${{ formatCurrency(item.raw.costBasis) }}
+                        Qty {{ item.raw.quantity }} · Total Cost ${{ formatCurrency(item.raw.costBasis) }}
                       </v-list-item-subtitle>
                     </v-list-item>
                   </template>
@@ -614,7 +614,7 @@
                     <div class="text-body-2 text-truncate">
                       {{ item.raw.item }}
                       <span v-if="item.raw.cardNumber" class="text-medium-emphasis">#{{ item.raw.cardNumber }}</span>
-                      · Qty {{ item.raw.quantity }} · Total Cost ${{ formatCurrency(item.raw.costBasis) }}
+                      · Qty {{ item.raw.quantity }}
                     </div>
                   </template>
                 </v-autocomplete>
@@ -668,6 +668,14 @@
                       prefix="$"
                       hide-details="auto"
                     ></v-text-field>
+                    <div
+                      v-if="currentLotType === 'singles' && saleEditorProfitPreview"
+                      class="sale-editor-helper text-caption"
+                      :class="saleEditorProfitPreview.colorClass"
+                    >
+                      Profit {{ saleEditorProfitPreview.sign }}${{ formatCurrency(Math.abs(saleEditorProfitPreview.value)) }}
+                      ({{ saleEditorProfitPreview.sign }}{{ formatCurrency(Math.abs(saleEditorProfitPreview.percent), 1) }}% vs {{ saleEditorProfitPreview.basisLabel }})
+                    </div>
                   </v-col>
 
                   <v-col v-if="newSale.type === 'rtyh'" cols="12" sm="6">

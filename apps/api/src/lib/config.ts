@@ -60,7 +60,8 @@ export function getConfig(): ApiConfig {
     cosmosDatabaseId: readEnv("COSMOSDB_DATABASE_ID") || "whatfees",
     entitlementsContainerId: readEnv("COSMOSDB_ENTITLEMENTS_CONTAINER_ID") || "entitlements",
     syncContainerId: readEnv("COSMOSDB_SYNC_CONTAINER_ID") || "sync_data",
-    migrationRunsContainerId: readEnv("COSMOSDB_MIGRATION_RUNS_CONTAINER_ID") || "migration_runs"
+    migrationRunsContainerId: readEnv("COSMOSDB_MIGRATION_RUNS_CONTAINER_ID") || "migration_runs",
+    cardCatalogContainerId: readEnv("COSMOSDB_CARD_CATALOG_CONTAINER_ID") || "card_catalog"
   };
 
   return cachedConfig;

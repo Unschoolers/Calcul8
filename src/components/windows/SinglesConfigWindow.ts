@@ -6,7 +6,7 @@ import type { SinglesPurchaseEntry } from "../../types/app.ts";
 import { createWindowContextBridge } from "./contextBridge.ts";
 
 const SINGLES_INFO_NOTICE_DISMISSED_KEY = "whatfees_singles_info_notice_dismissed_v1";
-type SinglesDesktopSortKey = "item" | "cardNumber" | "cost" | "quantity" | "marketValue" | "costBasis";
+type SinglesDesktopSortKey = "item" | "cardNumber" | "cost" | "quantity" | "marketValue";
 const DESKTOP_VIRTUAL_THRESHOLD = 150;
 const DESKTOP_VIRTUAL_ROW_HEIGHT = 52;
 const DESKTOP_VIRTUAL_VIEWPORT_HEIGHT = 560;
@@ -219,10 +219,10 @@ export const SinglesConfigWindow = {
       const sortBy = this.desktopSortBy;
       const direction = this.desktopSortDesc ? -1 : 1;
       const withIndex = rows.map((entry, index) => ({ entry, index }));
-      const getRemainingQuantity = (entry: SinglesPurchaseEntry): number => {
-        const remainingQuantity = Number(entry.quantity);
-        if (!Number.isFinite(remainingQuantity) || remainingQuantity <= 0) return 0;
-        return Math.floor(remainingQuantity);
+      const getTotalQuantity = (entry: SinglesPurchaseEntry): number => {
+        const totalQuantity = Number(entry.quantity);
+        if (!Number.isFinite(totalQuantity) || totalQuantity <= 0) return 0;
+        return Math.floor(totalQuantity);
       };
 
       withIndex.sort((a, b) => {
@@ -254,19 +254,19 @@ export const SinglesConfigWindow = {
         }
 
         const valueA = sortBy === "cost"
-          ? Math.max(0, Number(entryA.cost) || 0)
+          ? Math.max(0, (Number(entryA.cost) || 0) * getTotalQuantity(entryA))
           : sortBy === "quantity"
-            ? getRemainingQuantity(entryA)
+            ? getTotalQuantity(entryA)
             : sortBy === "marketValue"
-              ? Math.max(0, Number(entryA.marketValue) || 0)
-              : Math.max(0, (Number(entryA.cost) || 0) * getRemainingQuantity(entryA));
+              ? Math.max(0, (Number(entryA.marketValue) || 0) * getTotalQuantity(entryA))
+              : 0;
         const valueB = sortBy === "cost"
-          ? Math.max(0, Number(entryB.cost) || 0)
+          ? Math.max(0, (Number(entryB.cost) || 0) * getTotalQuantity(entryB))
           : sortBy === "quantity"
-            ? getRemainingQuantity(entryB)
+            ? getTotalQuantity(entryB)
             : sortBy === "marketValue"
-              ? Math.max(0, Number(entryB.marketValue) || 0)
-              : Math.max(0, (Number(entryB.cost) || 0) * getRemainingQuantity(entryB));
+              ? Math.max(0, (Number(entryB.marketValue) || 0) * getTotalQuantity(entryB))
+              : 0;
 
         if (valueA !== valueB) return (valueA - valueB) * direction;
         return a.index - b.index;
@@ -381,13 +381,15 @@ export const SinglesConfigWindow = {
     },
 
     getSinglesEntryRemainingQuantity(entry: SinglesPurchaseEntry): number {
-      const remainingQuantity = Number(entry.quantity);
-      if (!Number.isFinite(remainingQuantity) || remainingQuantity <= 0) return 0;
-      return Math.floor(remainingQuantity);
+      const totalQuantity = this.getSinglesEntryTotalQuantity(entry);
+      const soldQuantity = this.getSinglesSoldQuantity(entry.id);
+      return Math.max(0, totalQuantity - soldQuantity);
     },
 
     getSinglesEntryTotalQuantity(entry: SinglesPurchaseEntry): number {
-      return this.getSinglesEntryRemainingQuantity(entry) + this.getSinglesSoldQuantity(entry.id);
+      const totalQuantity = Number(entry.quantity);
+      if (!Number.isFinite(totalQuantity) || totalQuantity <= 0) return 0;
+      return Math.floor(totalQuantity);
     },
 
     getSinglesEntryStockLabel(entry: SinglesPurchaseEntry): string {
@@ -398,9 +400,8 @@ export const SinglesConfigWindow = {
 
     isSinglesEntryFullySold(entry: SinglesPurchaseEntry): boolean {
       const remainingQuantity = this.getSinglesEntryRemainingQuantity(entry);
-      const soldQuantity = this.getSinglesSoldQuantity(entry.id);
-      const totalQuantity = remainingQuantity + soldQuantity;
-      return totalQuantity > 0 && remainingQuantity === 0 && soldQuantity > 0;
+      const totalQuantity = this.getSinglesEntryTotalQuantity(entry);
+      return totalQuantity > 0 && remainingQuantity === 0;
     },
 
     resetSinglesRowDraft(): void {

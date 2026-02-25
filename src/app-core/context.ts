@@ -38,6 +38,13 @@ export interface AppComputedState {
   singlesUnlinkedSoldCount: number;
   singlesSaleCardOptions: SinglesSaleCardOption[];
   selectedSinglesSaleMaxQuantity: number | null;
+  saleEditorProfitPreview: {
+    value: number;
+    percent: number;
+    sign: "+" | "-";
+    colorClass: string;
+    basisLabel: "Market" | "Cost";
+  } | null;
   totalPacks: number;
   totalSpots: number;
   boxPriceCostCAD: number;
@@ -229,6 +236,13 @@ export interface AppComputedObject {
   singlesUnlinkedSoldCount(this: AppContext): number;
   singlesSaleCardOptions(this: AppContext): SinglesSaleCardOption[];
   selectedSinglesSaleMaxQuantity(this: AppContext): number | null;
+  saleEditorProfitPreview(this: AppContext): {
+    value: number;
+    percent: number;
+    sign: "+" | "-";
+    colorClass: string;
+    basisLabel: "Market" | "Cost";
+  } | null;
   totalPacks(this: AppContext): number;
   totalSpots(this: AppContext): number;
   boxPriceCostCAD(this: AppContext): number;

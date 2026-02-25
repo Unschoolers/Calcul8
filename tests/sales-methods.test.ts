@@ -110,6 +110,8 @@ function createContext(overrides: Ctx = {}): Ctx {
     spotPrice: 8,
     boxPriceSell: 80,
     canUsePaidActions: true,
+    hasProAccess: true,
+    targetProfitPercent: 15,
     editingSale: null,
     singlesPurchases: [],
     onSinglesPurchaseRowsChange: vi.fn(),
@@ -125,6 +127,9 @@ function createContext(overrides: Ctx = {}): Ctx {
     },
     showAddSaleModal: false,
     netFromGross: vi.fn((gross: number) => gross * 0.9),
+    calculatePriceForUnits: vi.fn((units: number, targetNetRevenue: number) =>
+      Math.round((Number(targetNetRevenue) || 0) / Math.max(1, Number(units) || 1))
+    ),
     formatCurrency: (value: number) => value.toFixed(2),
     formatDate: (value: string) => `D:${value}`,
     loadSalesForLotId: vi.fn().mockReturnValue([]),
@@ -272,16 +277,12 @@ test("cancelSale resets modal and draft values", () => {
   assert.equal((ctx.newSale as Sale).date, "2026-02-21");
 });
 
-test("saveSale links selected singles card and decrements remaining quantity", () => {
-  let onRowsChangeCalls = 0;
+test("saveSale links selected singles card without mutating purchase quantity", () => {
   const ctx = createContext({
     currentLotType: "singles",
     singlesPurchases: [
       { id: 11, item: "Card A", cardNumber: "001", cost: 10, quantity: 3, marketValue: 12 }
     ],
-    onSinglesPurchaseRowsChange() {
-      onRowsChangeCalls += 1;
-    },
     newSale: {
       type: "pack",
       quantity: 2,
@@ -297,8 +298,7 @@ test("saveSale links selected singles card and decrements remaining quantity", (
 
   assert.equal((ctx.sales as Sale[]).length, 1);
   assert.equal((ctx.sales as Sale[])[0]?.singlesPurchaseEntryId, 11);
-  assert.equal((ctx.singlesPurchases as Array<{ id: number; quantity: number }>)[0]?.quantity, 1);
-  assert.equal(onRowsChangeCalls, 1);
+  assert.equal((ctx.singlesPurchases as Array<{ id: number; quantity: number }>)[0]?.quantity, 3);
 });
 
 test("onSinglesSaleCardSelectionChange sets selection and defaults quantity to 1", () => {
@@ -348,6 +348,192 @@ test("onSinglesSaleCardSelectionChange caps quantity by selected max", () => {
   assert.equal((ctx.newSale as { quantity?: number | null }).quantity, 2);
 });
 
+test("onSinglesSaleCardSelectionChange defaults singles sale price to total cost for non-pro", () => {
+  const calculatePriceForUnits = vi.fn(() => 45);
+  const ctx = createContext({
+    currentLotType: "singles",
+    hasProAccess: false,
+    targetProfitPercent: 15,
+    currency: "CAD",
+    sellingCurrency: "CAD",
+    exchangeRate: 1.4,
+    calculatePriceForUnits,
+    selectedSinglesSaleMaxQuantity: 5,
+    singlesPurchases: [
+      { id: 99, item: "Card NP", cost: 23, quantity: 5, marketValue: 40, currency: "CAD" }
+    ],
+    newSale: {
+      type: "pack",
+      quantity: 2,
+      packsCount: null,
+      singlesPurchaseEntryId: null,
+      price: 0,
+      buyerShipping: 0,
+      date: "2026-02-21"
+    }
+  });
+
+  salesMethods.onSinglesSaleCardSelectionChange.call(ctx as never, 99);
+
+  assert.deepEqual(calculatePriceForUnits.mock.calls[0], [2, 80]);
+  assert.equal((ctx.newSale as { price?: number }).price, 45);
+});
+
+test("onSinglesSaleCardSelectionChange sets price even when quantity starts empty", () => {
+  const calculatePriceForUnits = vi.fn(() => 40);
+  const ctx = createContext({
+    currentLotType: "singles",
+    hasProAccess: false,
+    currency: "CAD",
+    sellingCurrency: "CAD",
+    exchangeRate: 1.4,
+    calculatePriceForUnits,
+    selectedSinglesSaleMaxQuantity: 5,
+    singlesPurchases: [
+      { id: 109, item: "Card Z", cost: 23, quantity: 5, marketValue: 40, currency: "CAD" }
+    ],
+    newSale: {
+      type: "pack",
+      quantity: null,
+      packsCount: null,
+      singlesPurchaseEntryId: null,
+      price: 0,
+      buyerShipping: 0,
+      date: "2026-02-21"
+    }
+  });
+
+  salesMethods.onSinglesSaleCardSelectionChange.call(ctx as never, 109);
+
+  assert.equal((ctx.newSale as { quantity?: number | null }).quantity, 1);
+  assert.deepEqual(calculatePriceForUnits.mock.calls[0], [1, 40]);
+  assert.equal((ctx.newSale as { price?: number }).price, 40);
+});
+
+test("onSinglesSaleCardSelectionChange defaults singles sale price using target profit for pro", () => {
+  const calculatePriceForUnits = vi.fn(() => 54);
+  const ctx = createContext({
+    currentLotType: "singles",
+    hasProAccess: true,
+    targetProfitPercent: 20,
+    currency: "CAD",
+    sellingCurrency: "CAD",
+    exchangeRate: 1.4,
+    calculatePriceForUnits,
+    selectedSinglesSaleMaxQuantity: 5,
+    singlesPurchases: [
+      { id: 100, item: "Card P", cost: 23, quantity: 5, marketValue: 40, currency: "CAD" }
+    ],
+    newSale: {
+      type: "pack",
+      quantity: 2,
+      packsCount: null,
+      singlesPurchaseEntryId: null,
+      price: 0,
+      buyerShipping: 0,
+      date: "2026-02-21"
+    }
+  });
+
+  salesMethods.onSinglesSaleCardSelectionChange.call(ctx as never, 100);
+
+  assert.deepEqual(calculatePriceForUnits.mock.calls[0], [2, 96]);
+  assert.equal((ctx.newSale as { price?: number }).price, 54);
+});
+
+test("onSinglesSaleCardSelectionChange pro pricing falls back to cost when market is not set", () => {
+  const calculatePriceForUnits = vi.fn(() => 31);
+  const ctx = createContext({
+    currentLotType: "singles",
+    hasProAccess: true,
+    targetProfitPercent: 20,
+    currency: "CAD",
+    sellingCurrency: "CAD",
+    exchangeRate: 1.4,
+    calculatePriceForUnits,
+    selectedSinglesSaleMaxQuantity: 5,
+    singlesPurchases: [
+      { id: 101, item: "Card P2", cost: 23, quantity: 5, marketValue: 0, currency: "CAD" }
+    ],
+    newSale: {
+      type: "pack",
+      quantity: 1,
+      packsCount: null,
+      singlesPurchaseEntryId: null,
+      price: 0,
+      buyerShipping: 0,
+      date: "2026-02-21"
+    }
+  });
+
+  salesMethods.onSinglesSaleCardSelectionChange.call(ctx as never, 101);
+
+  assert.deepEqual(calculatePriceForUnits.mock.calls[0], [1, 27.599999999999998]);
+  assert.equal((ctx.newSale as { price?: number }).price, 31);
+});
+
+test("onSinglesSaleCardSelectionChange updates total price while editing when selecting a new card", () => {
+  const calculatePriceForUnits = vi.fn(() => 62);
+  const ctx = createContext({
+    currentLotType: "singles",
+    hasProAccess: true,
+    targetProfitPercent: 10,
+    editingSale: {
+      id: 1,
+      type: "pack",
+      quantity: 1,
+      packsCount: 1,
+      singlesPurchaseEntryId: 200,
+      price: 25,
+      date: "2026-02-21"
+    },
+    currency: "CAD",
+    sellingCurrency: "CAD",
+    exchangeRate: 1.4,
+    calculatePriceForUnits,
+    selectedSinglesSaleMaxQuantity: 5,
+    singlesPurchases: [
+      { id: 200, item: "Old", cost: 10, quantity: 5, marketValue: 20, currency: "CAD" },
+      { id: 201, item: "New", cost: 12, quantity: 5, marketValue: 50, currency: "CAD" }
+    ],
+    newSale: {
+      type: "pack",
+      quantity: 1,
+      packsCount: null,
+      singlesPurchaseEntryId: 200,
+      price: 25,
+      buyerShipping: 0,
+      date: "2026-02-21"
+    }
+  });
+
+  salesMethods.onSinglesSaleCardSelectionChange.call(ctx as never, 201);
+
+  assert.equal((ctx.newSale as { singlesPurchaseEntryId?: number | null }).singlesPurchaseEntryId, 201);
+  assert.deepEqual(calculatePriceForUnits.mock.calls[0], [1, 55.00000000000001]);
+  assert.equal((ctx.newSale as { price?: number }).price, 62);
+});
+
+test("onSinglesSaleCardSelectionChange clears total price when card is deselected", () => {
+  const ctx = createContext({
+    currentLotType: "singles",
+    newSale: {
+      type: "pack",
+      quantity: 1,
+      packsCount: null,
+      singlesPurchaseEntryId: 200,
+      price: 55,
+      buyerShipping: 0,
+      date: "2026-02-21"
+    }
+  });
+
+  salesMethods.onSinglesSaleCardSelectionChange.call(ctx as never, null);
+
+  assert.equal((ctx.newSale as { singlesPurchaseEntryId?: number | null }).singlesPurchaseEntryId, null);
+  assert.equal((ctx.newSale as { price?: number | null }).price, null);
+});
+
 test("saveSale blocks singles linked quantity above available stock", () => {
   const notify = vi.fn();
   const ctx = createContext({
@@ -376,7 +562,29 @@ test("saveSale blocks singles linked quantity above available stock", () => {
   );
 });
 
-test("saveSale editing singles sale can reassign card and updates both quantities", () => {
+test("saveSale requires total price when singles sale is not linked to a card", () => {
+  const notify = vi.fn();
+  const ctx = createContext({
+    currentLotType: "singles",
+    newSale: {
+      type: "pack",
+      quantity: 1,
+      packsCount: null,
+      singlesPurchaseEntryId: null,
+      price: 0,
+      buyerShipping: 0,
+      date: "2026-02-21"
+    },
+    notify
+  });
+
+  salesMethods.saveSale.call(ctx as never);
+
+  assert.equal((ctx.sales as Sale[]).length, 0);
+  assert.equal(notify.mock.calls[0]?.[0], "Please enter a total price when no card is linked.");
+});
+
+test("saveSale editing singles sale can reassign card without mutating purchase quantities", () => {
   const existingSale: Sale = {
     id: 900,
     type: "pack",
@@ -393,7 +601,7 @@ test("saveSale editing singles sale can reassign card and updates both quantitie
     editingSale: existingSale,
     sales: [existingSale],
     singlesPurchases: [
-      { id: 11, item: "Card A", cardNumber: "001", cost: 10, quantity: 0, marketValue: 11 },
+      { id: 11, item: "Card A", cardNumber: "001", cost: 10, quantity: 1, marketValue: 11 },
       { id: 22, item: "Card B", cardNumber: "002", cost: 9, quantity: 2, marketValue: 10 }
     ],
     newSale: {
@@ -414,7 +622,7 @@ test("saveSale editing singles sale can reassign card and updates both quantitie
   const quantities = (ctx.singlesPurchases as Array<{ id: number; quantity: number }>)
     .reduce<Record<number, number>>((acc, entry) => ({ ...acc, [entry.id]: entry.quantity }), {});
   assert.equal(quantities[11], 1);
-  assert.equal(quantities[22], 0);
+  assert.equal(quantities[22], 2);
 });
 
 test("saveSale editing singles sale tolerates missing previously linked card row", () => {
@@ -429,7 +637,6 @@ test("saveSale editing singles sale tolerates missing previously linked card row
     date: "2026-02-21"
   };
 
-  const notify = vi.fn();
   const ctx = createContext({
     currentLotType: "singles",
     editingSale: existingSale,
@@ -445,31 +652,22 @@ test("saveSale editing singles sale tolerates missing previously linked card row
       price: 20,
       buyerShipping: 0,
       date: "2026-02-21"
-    },
-    notify
+    }
   });
 
   salesMethods.saveSale.call(ctx as never);
 
   assert.equal((ctx.sales as Sale[]).length, 1);
   assert.equal((ctx.sales as Sale[])[0]?.singlesPurchaseEntryId, 22);
-  assert.equal((ctx.singlesPurchases as Array<{ id: number; quantity: number }>)[0]?.quantity, 1);
-  assert.equal(
-    notify.mock.calls.some((call) => String(call[0]).includes("Could not update selected card quantity")),
-    false
-  );
+  assert.equal((ctx.singlesPurchases as Array<{ id: number; quantity: number }>)[0]?.quantity, 2);
 });
 
-test("deleteSale restores linked singles card quantity", () => {
-  let onRowsChangeCalls = 0;
+test("deleteSale removes sale without mutating linked singles purchase quantity", () => {
   const ctx = createContext({
     currentLotType: "singles",
     singlesPurchases: [
-      { id: 31, item: "Card C", cardNumber: "003", cost: 5, quantity: 0, marketValue: 6 }
+      { id: 31, item: "Card C", cardNumber: "003", cost: 5, quantity: 1, marketValue: 6 }
     ],
-    onSinglesPurchaseRowsChange() {
-      onRowsChangeCalls += 1;
-    },
     sales: [
       {
         id: 1,
@@ -487,7 +685,6 @@ test("deleteSale restores linked singles card quantity", () => {
 
   assert.equal((ctx.singlesPurchases as Array<{ id: number; quantity: number }>)[0]?.quantity, 1);
   assert.equal((ctx.sales as Sale[]).length, 0);
-  assert.equal(onRowsChangeCalls, 1);
 });
 
 test("initSalesChart line mode returns early when no sales", () => {

@@ -1,6 +1,7 @@
 import type { Sale, SaleType, UiColor } from "../../../types/app.ts";
 import type { AppContext, AppMethodState } from "../../context.ts";
-import { getGrossRevenueForSale } from "../../../domain/calculations.ts";
+import { calculateBoxPriceCostCad, getGrossRevenueForSale } from "../../../domain/calculations.ts";
+import { DEFAULT_VALUES } from "../../../constants.ts";
 
 const DATE_ONLY_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 const SLASH_DATE_REGEX = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
@@ -79,6 +80,31 @@ export const uiBaseMethods: ThisType<AppContext> & Pick<
   calculateSaleProfit(sale: Sale): number {
     const grossRevenue = getGrossRevenueForSale(sale);
     const netRevenue = this.netFromGross(grossRevenue, sale.buyerShipping || 0, 1);
+
+    if (this.currentLotType === "singles") {
+      const linkedEntryId = Number(sale.singlesPurchaseEntryId);
+      if (Number.isFinite(linkedEntryId) && linkedEntryId > 0) {
+        const entry = (this.singlesPurchases || []).find((candidate) => candidate.id === Math.floor(linkedEntryId));
+        if (entry) {
+          const soldQuantity = Math.max(0, Math.floor(Number(sale.quantity) || 0));
+          const unitCost = Math.max(0, Number(entry.cost) || 0);
+          const entryCurrency = entry.currency === "USD" || entry.currency === "CAD"
+            ? entry.currency
+            : this.currency;
+          const convertedUnitCost = calculateBoxPriceCostCad(
+            unitCost,
+            entryCurrency,
+            this.sellingCurrency,
+            this.exchangeRate,
+            DEFAULT_VALUES.EXCHANGE_RATE
+          );
+          return netRevenue - (convertedUnitCost * soldQuantity);
+        }
+      }
+      // Unlinked singles sales have no cost basis from inventory rows.
+      return netRevenue;
+    }
+
     const costPerPack = this.totalPacks > 0 ? (this.totalCaseCost / this.totalPacks) : 0;
     const allocatedCost = (sale.packsCount || 0) * costPerPack;
     return netRevenue - allocatedCost;

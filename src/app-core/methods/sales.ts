@@ -1,5 +1,11 @@
 import Chart from "chart.js/auto";
-import { calculateNetFromGross, calculateSparklineData, getGrossRevenueForSale } from "../../domain/calculations.ts";
+import {
+  calculateBoxPriceCostCad,
+  calculateNetFromGross,
+  calculateSparklineData,
+  getGrossRevenueForSale
+} from "../../domain/calculations.ts";
+import { DEFAULT_VALUES } from "../../constants.ts";
 import type { Sale, SaleType, SinglesPurchaseEntry } from "../../types/app.ts";
 import type { AppContext, AppMethodState } from "../context.ts";
 import { getTodayDate } from "./config-shared.ts";
@@ -167,37 +173,19 @@ function getSinglesPurchaseEntryById(context: AppContext, entryId: number): Sing
   return context.singlesPurchases.find((entry) => entry.id === entryId) ?? null;
 }
 
-function applySinglesPurchaseQuantityDeltas(
-  context: AppContext,
-  deltas: Array<{ entryId: number; delta: number }>
-): boolean {
-  if (deltas.length === 0) return true;
+function getSinglesSoldQuantityForEntry(context: AppContext, entryId: number): number {
+  const soldMapQuantity = Math.max(
+    0,
+    Math.floor(Number(context.singlesSoldCountByPurchaseId?.[entryId]) || 0)
+  );
+  if (soldMapQuantity > 0) return soldMapQuantity;
 
-  const nextEntries = [...context.singlesPurchases];
-  const indexById = new Map<number, number>();
-  nextEntries.forEach((entry, index) => {
-    indexById.set(entry.id, index);
-  });
-
-  for (const { entryId, delta } of deltas) {
-    if (!delta) continue;
-    const index = indexById.get(entryId);
-    if (index == null) return false;
-
-    const currentEntry = nextEntries[index];
-    const currentQty = Math.max(0, Math.floor(Number(currentEntry.quantity) || 0));
-    const nextQty = currentQty + delta;
-    if (nextQty < 0) return false;
-
-    nextEntries[index] = {
-      ...currentEntry,
-      quantity: nextQty
-    };
-  }
-
-  context.singlesPurchases = nextEntries;
-  context.onSinglesPurchaseRowsChange();
-  return true;
+  return (context.sales || []).reduce((sum, sale) => {
+    const linkedEntryId = normalizeSinglesPurchaseEntryId(sale.singlesPurchaseEntryId);
+    if (linkedEntryId !== entryId) return sum;
+    const quantity = Math.max(0, Math.floor(Number(sale.quantity) || 0));
+    return sum + quantity;
+  }, 0);
 }
 
 export const salesMethods: ThisType<AppContext> & Pick<
@@ -273,7 +261,10 @@ export const salesMethods: ThisType<AppContext> & Pick<
 
     const selectedEntryId = normalizeSinglesPurchaseEntryId(value);
     this.newSale.singlesPurchaseEntryId = selectedEntryId;
-    if (!selectedEntryId) return;
+    if (!selectedEntryId) {
+      this.newSale.price = null;
+      return;
+    }
 
     const selectedEntry = getSinglesPurchaseEntryById(this, selectedEntryId);
     if (!selectedEntry) return;
@@ -282,11 +273,33 @@ export const salesMethods: ThisType<AppContext> & Pick<
     const currentQuantity = Number(this.newSale.quantity);
     if (!Number.isFinite(currentQuantity) || currentQuantity <= 0) {
       this.newSale.quantity = 1;
-      return;
     }
     if (Number.isFinite(maxAllowed) && maxAllowed != null && currentQuantity > maxAllowed) {
       this.newSale.quantity = maxAllowed;
     }
+
+    const saleQuantity = Math.max(1, Math.floor(Number(this.newSale.quantity) || 1));
+    const unitCost = Math.max(0, Number(selectedEntry.cost) || 0);
+    const purchaseCurrency = selectedEntry.currency === "USD" || selectedEntry.currency === "CAD"
+      ? selectedEntry.currency
+      : (this.currency === "USD" ? "USD" : "CAD");
+    const convertedUnitCost = calculateBoxPriceCostCad(
+      unitCost,
+      purchaseCurrency,
+      this.sellingCurrency,
+      this.exchangeRate,
+      DEFAULT_VALUES.EXCHANGE_RATE
+    );
+    const totalCost = convertedUnitCost * saleQuantity;
+
+    const unitMarket = Math.max(0, Number(selectedEntry.marketValue) || 0);
+    const totalMarket = unitMarket * saleQuantity;
+    const targetBase = totalMarket > 0 ? totalMarket : totalCost;
+    const targetProfitPercent = this.hasProAccess
+      ? Math.max(0, Number(this.targetProfitPercent) || 0)
+      : 0;
+    const targetNetRevenue = targetBase * (1 + (targetProfitPercent / 100));
+    this.newSale.price = this.calculatePriceForUnits(saleQuantity, targetNetRevenue);
   },
 
   saveSale(): void {
@@ -325,6 +338,10 @@ export const salesMethods: ThisType<AppContext> & Pick<
       this.notify("Please enter a valid price (0 or greater)", "warning");
       return;
     }
+    if (isSinglesLot && !selectedSinglesPurchaseEntryId && price <= 0) {
+      this.notify("Please enter a total price when no card is linked.", "warning");
+      return;
+    }
     if (!Number.isFinite(buyerShipping) || buyerShipping < 0) {
       this.notify("Please enter a valid buyer shipping amount (0 or greater)", "warning");
       return;
@@ -341,7 +358,9 @@ export const salesMethods: ThisType<AppContext> & Pick<
         this.notify("Selected card is no longer available.", "warning");
         return;
       }
-      const remainingQuantity = Math.max(0, Math.floor(Number(selectedEntry.quantity) || 0));
+      const totalQuantity = Math.max(0, Math.floor(Number(selectedEntry.quantity) || 0));
+      const soldQuantity = getSinglesSoldQuantityForEntry(this, selectedSinglesPurchaseEntryId);
+      const remainingQuantity = Math.max(0, totalQuantity - soldQuantity);
       const maxAllowed = previousSelectedSinglesPurchaseEntryId === selectedSinglesPurchaseEntryId
         ? remainingQuantity + previousSaleQuantity
         : remainingQuantity;
@@ -355,29 +374,6 @@ export const salesMethods: ThisType<AppContext> & Pick<
       editingIndex = this.sales.findIndex((s) => s.id === this.editingSale?.id);
       if (editingIndex === -1) {
         this.notify("Could not find the sale to update. Please try again.", "error");
-        return;
-      }
-    }
-
-    if (isSinglesLot) {
-      const quantityDeltas: Array<{ entryId: number; delta: number }> = [];
-      const previousEntryStillExists = previousSelectedSinglesPurchaseEntryId
-        ? !!getSinglesPurchaseEntryById(this, previousSelectedSinglesPurchaseEntryId)
-        : false;
-      if (previousSelectedSinglesPurchaseEntryId && previousSaleQuantity > 0 && previousEntryStillExists) {
-        quantityDeltas.push({
-          entryId: previousSelectedSinglesPurchaseEntryId,
-          delta: previousSaleQuantity
-        });
-      }
-      if (selectedSinglesPurchaseEntryId && quantity > 0) {
-        quantityDeltas.push({
-          entryId: selectedSinglesPurchaseEntryId,
-          delta: -quantity
-        });
-      }
-      if (!applySinglesPurchaseQuantityDeltas(this, quantityDeltas)) {
-        this.notify("Could not update selected card quantity. Please refresh and try again.", "error");
         return;
       }
     }
@@ -443,15 +439,6 @@ export const salesMethods: ThisType<AppContext> & Pick<
         color: "error"
       },
       () => {
-        const saleToDelete = this.sales.find((sale) => sale.id === id) ?? null;
-        const linkedEntryId = normalizeSinglesPurchaseEntryId(saleToDelete?.singlesPurchaseEntryId);
-        const linkedQuantity = Math.max(0, Math.floor(Number(saleToDelete?.quantity) || 0));
-        if (this.currentLotType === "singles" && linkedEntryId && linkedQuantity > 0) {
-          void applySinglesPurchaseQuantityDeltas(this, [{
-            entryId: linkedEntryId,
-            delta: linkedQuantity
-          }]);
-        }
         this.sales = this.sales.filter((s) => s.id !== id);
         this.notify("Sale deleted", "info");
         refreshChartsForCurrentTab(this);
