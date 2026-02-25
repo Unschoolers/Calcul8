@@ -21,32 +21,43 @@ export const SalesWindow = {
     };
   },
   computed: {
-    visibleSortedSales(): Sale[] {
-      const sales = Array.isArray(this.sortedSales) ? this.sortedSales as Sale[] : [];
-      const limit = Math.max(0, Number(this.salesHistoryRenderCount) || 0);
+    visibleSortedSales(this: Record<string, unknown>): Sale[] {
+      const vm = this as Record<string, unknown>;
+      const sales = Array.isArray(vm.sortedSales) ? vm.sortedSales as Sale[] : [];
+      const limit = Math.max(0, Number(vm.salesHistoryRenderCount) || 0);
       return sales.slice(0, limit);
     },
 
-    hasMoreSalesHistory(): boolean {
-      const totalCount = Array.isArray(this.sortedSales) ? this.sortedSales.length : 0;
-      return totalCount > (this.visibleSortedSales as Sale[]).length;
+    hasMoreSalesHistory(this: Record<string, unknown>): boolean {
+      const vm = this as Record<string, unknown>;
+      const sales = Array.isArray(vm.sortedSales) ? vm.sortedSales as Sale[] : [];
+      const limit = Math.max(0, Number(vm.salesHistoryRenderCount) || 0);
+      return sales.length > limit;
     },
 
-    remainingSalesHistoryCount(): number {
-      const totalCount = Array.isArray(this.sortedSales) ? this.sortedSales.length : 0;
-      return Math.max(0, totalCount - (this.visibleSortedSales as Sale[]).length);
+    remainingSalesHistoryCount(this: Record<string, unknown>): number {
+      const vm = this as Record<string, unknown>;
+      const sales = Array.isArray(vm.sortedSales) ? vm.sortedSales as Sale[] : [];
+      const limit = Math.max(0, Number(vm.salesHistoryRenderCount) || 0);
+      return Math.max(0, sales.length - limit);
     },
 
-    nextSalesHistoryBatchCount(): number {
-      return Math.min(SALES_HISTORY_RENDER_BATCH_SIZE, this.remainingSalesHistoryCount);
+    nextSalesHistoryBatchCount(this: Record<string, unknown>): number {
+      const vm = this as Record<string, unknown>;
+      const sales = Array.isArray(vm.sortedSales) ? vm.sortedSales as Sale[] : [];
+      const limit = Math.max(0, Number(vm.salesHistoryRenderCount) || 0);
+      const remaining = Math.max(0, sales.length - limit);
+      return Math.min(SALES_HISTORY_RENDER_BATCH_SIZE, remaining);
     }
   },
   watch: {
-    currentLotId() {
-      this.resetSalesHistoryRenderCount();
+    currentLotId(this: Record<string, unknown>) {
+      const vm = this as Record<string, unknown> & { resetSalesHistoryRenderCount?: () => void };
+      vm.resetSalesHistoryRenderCount?.();
     },
-    currentLotType() {
-      this.resetSalesHistoryRenderCount();
+    currentLotType(this: Record<string, unknown>) {
+      const vm = this as Record<string, unknown> & { resetSalesHistoryRenderCount?: () => void };
+      vm.resetSalesHistoryRenderCount?.();
     }
   },
   methods: {
@@ -133,15 +144,18 @@ export const SalesWindow = {
     },
 
     resetSalesHistoryRenderCount(): void {
-      this.salesHistoryRenderCount = SALES_HISTORY_INITIAL_RENDER_COUNT;
+      const vm = this as Record<string, unknown> & { salesHistoryRenderCount?: number };
+      vm.salesHistoryRenderCount = SALES_HISTORY_INITIAL_RENDER_COUNT;
     },
 
     loadMoreSalesHistory(): void {
-      this.salesHistoryRenderCount += SALES_HISTORY_RENDER_BATCH_SIZE;
+      const vm = this as Record<string, unknown> & { salesHistoryRenderCount?: number };
+      vm.salesHistoryRenderCount = Number(vm.salesHistoryRenderCount || 0) + SALES_HISTORY_RENDER_BATCH_SIZE;
     }
   },
-  mounted() {
-    this.resetSalesHistoryRenderCount();
+  mounted(this: Record<string, unknown>) {
+    const vm = this as Record<string, unknown> & { resetSalesHistoryRenderCount?: () => void };
+    vm.resetSalesHistoryRenderCount?.();
   },
   setup(props: { ctx: Record<string, unknown> }) {
     const injectedCtx = inject<Record<string, unknown> | null>("appCtx", null);
