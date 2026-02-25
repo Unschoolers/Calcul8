@@ -9,6 +9,116 @@
   display: block;
 }
 
+.sales-status-card {
+  --sales-status-accent-rgb: var(--v-theme-primary);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.09);
+  background:
+    radial-gradient(120% 120% at 100% 0%, rgba(var(--sales-status-accent-rgb), 0.16), transparent 55%),
+    linear-gradient(165deg, rgba(var(--v-theme-surface), 0.98), rgba(var(--v-theme-surface), 0.95));
+}
+
+.sales-status-card--success {
+  --sales-status-accent-rgb: var(--v-theme-success);
+}
+
+.sales-status-card--error {
+  --sales-status-accent-rgb: var(--v-theme-error);
+}
+
+.sales-status-card--warning {
+  --sales-status-accent-rgb: var(--v-theme-secondary);
+}
+
+.sales-status-card--secondary {
+  --sales-status-accent-rgb: var(--v-theme-secondary);
+}
+
+.sales-status-card--primary {
+  --sales-status-accent-rgb: var(--v-theme-primary);
+}
+
+.sales-status-card--neutral {
+  --sales-status-accent-rgb: var(--v-theme-on-surface);
+}
+
+.sales-status-content {
+  padding-top: 0.95rem;
+  padding-bottom: 0.85rem;
+}
+
+.sales-status-head {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.sales-status-icon-wrap {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(var(--sales-status-accent-rgb), 1);
+  background: rgba(var(--sales-status-accent-rgb), 0.13);
+  border: 1px solid rgba(var(--sales-status-accent-rgb), 0.33);
+}
+
+.sales-status-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: rgba(var(--v-theme-on-surface), 0.93);
+}
+
+.sales-status-value {
+  margin-top: 0.45rem;
+  font-size: 2.25rem;
+  line-height: 1.06;
+  letter-spacing: -0.01em;
+  font-weight: 700;
+  color: rgba(var(--v-theme-on-surface), 0.94);
+}
+
+.sales-status-card--success .sales-status-value {
+  color: rgba(var(--v-theme-success), 0.95);
+}
+
+.sales-status-card--error .sales-status-value {
+  color: rgba(var(--v-theme-error), 0.95);
+}
+
+.sales-status-card--warning .sales-status-value {
+  color: rgba(var(--v-theme-secondary), 0.95);
+}
+
+.sales-status-summary {
+  margin-top: 0.5rem;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.45rem;
+  font-size: 0.86rem;
+  color: rgba(var(--v-theme-on-surface), 0.74);
+}
+
+.sales-status-progress {
+  margin-top: 0.65rem;
+}
+
+.sales-status-line {
+  margin-top: 0.42rem;
+  font-size: 0.85rem;
+  color: rgba(var(--v-theme-on-surface), 0.78);
+}
+
+.sales-status-lines {
+  margin-top: 0.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
 .sales-history-card {
   border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
   background:
@@ -67,11 +177,11 @@
 }
 
 .sales-history-profit.is-positive {
-  color: #8fe6b1;
+  color: rgb(var(--v-theme-success));
 }
 
 .sales-history-profit.is-negative {
-  color: #ff9a91;
+  color: rgb(var(--v-theme-error));
 }
 
 .sales-history-memo {
@@ -86,18 +196,16 @@
 .sales-history-actions {
   display: inline-flex;
   align-items: center;
-  gap: 0.1rem;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
-  border-radius: 999px;
-  padding: 0.1rem;
-  background: rgba(var(--v-theme-on-surface), 0.03);
+  gap: 0.45rem;
 }
 
-.sales-history-actions .v-btn {
-  width: 32px !important;
-  min-width: 32px !important;
-  height: 32px !important;
-  min-height: 32px !important;
+.sales-history-action-btn {
+  width: 40px !important;
+  min-width: 40px !important;
+  height: 40px !important;
+  min-height: 40px !important;
+  border-radius: 10px;
+  background: rgba(var(--v-theme-on-surface), 0.03);
 }
 
 .sales-history-loadmore {
@@ -106,7 +214,44 @@
   min-height: 44px !important;
 }
 
+.v-theme--unionArenaLight .sales-history-card {
+  border-color: rgba(var(--v-theme-on-surface), 0.12);
+  background:
+    radial-gradient(75% 100% at 0% 0%, rgba(var(--v-theme-secondary), 0.08), transparent 62%),
+    rgba(var(--v-theme-surface), 0.98);
+}
+
+.v-theme--unionArenaLight .sales-history-title-bar {
+  border-bottom-color: rgba(var(--v-theme-on-surface), 0.12);
+}
+
+.v-theme--unionArenaLight .sales-history-list .v-list-item {
+  border-color: rgba(var(--v-theme-on-surface), 0.14);
+  background: rgba(var(--v-theme-surface), 0.95);
+}
+
+.v-theme--unionArenaLight .sales-history-item-subtitle {
+  color: rgba(var(--v-theme-on-surface), 0.76);
+}
+
+.v-theme--unionArenaLight .sales-history-action-btn {
+  background: rgba(var(--v-theme-on-surface), 0.06);
+}
+
 @media (max-width: 600px) {
+  .sales-status-title {
+    font-size: 1.18rem;
+  }
+
+  .sales-status-value {
+    font-size: 1.95rem;
+  }
+
+  .sales-status-summary,
+  .sales-status-line {
+    font-size: 0.8rem;
+  }
+
   .sales-history-title-bar {
     padding-top: 0.68rem;
     padding-bottom: 0.6rem;
@@ -124,10 +269,14 @@
     font-size: 1rem;
   }
 
-  .sales-history-actions .v-btn {
-    width: 30px !important;
-    min-width: 30px !important;
-    height: 30px !important;
-    min-height: 30px !important;
+  .sales-history-actions {
+    gap: 0.5rem;
+  }
+
+  .sales-history-action-btn {
+    width: 40px !important;
+    min-width: 40px !important;
+    height: 40px !important;
+    min-height: 40px !important;
   }
 }

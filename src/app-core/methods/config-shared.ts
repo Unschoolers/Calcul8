@@ -1,7 +1,4 @@
-import type { Lot, Sale } from "../../types/app.ts";
 import type { AppContext, AppMethodState } from "../context.ts";
-
-export type ImportableLot = Lot & { sales?: Sale[] };
 
 export type ConfigMethodSubset<K extends keyof AppMethodState> = ThisType<AppContext> & Pick<AppMethodState, K>;
 
@@ -29,13 +26,10 @@ export type ConfigMethods = ConfigMethodSubset<
   | "renameCurrentLot"
   | "loadLot"
   | "deleteCurrentLot"
-  | "exportLots"
   | "exportSales"
   | "exportPortfolioReport"
   | "openPortfolioReportModal"
   | "copyPortfolioReportTable"
-  | "importLots"
-  | "handleFileImport"
   | "calculateProfit"
   | "recalculateDefaultPrices"
   | "calculateOptimalPrices"

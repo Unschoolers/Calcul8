@@ -1,3 +1,84 @@
+.portfolio-kpi-card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.09);
+  background:
+    radial-gradient(120% 130% at 100% 0%, rgba(var(--kpi-accent-rgb), 0.14), transparent 55%),
+    linear-gradient(165deg, rgba(var(--v-theme-surface), 0.98), rgba(var(--v-theme-surface), 0.94));
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+}
+
+.portfolio-kpi-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto auto 0;
+  width: 100%;
+  height: 3px;
+  background: linear-gradient(90deg, rgba(var(--kpi-accent-rgb), 0.9), rgba(var(--kpi-accent-rgb), 0.25));
+}
+
+.portfolio-kpi-card--profit-positive {
+  --kpi-accent-rgb: var(--v-theme-success);
+}
+
+.portfolio-kpi-card--profit-negative {
+  --kpi-accent-rgb: var(--v-theme-error);
+}
+
+.portfolio-kpi-card--revenue {
+  --kpi-accent-rgb: var(--v-theme-secondary);
+}
+
+.portfolio-kpi-card--cost {
+  --kpi-accent-rgb: var(--v-theme-primary);
+}
+
+.portfolio-kpi-content {
+  padding-top: 0.9rem;
+  padding-bottom: 0.85rem;
+}
+
+.portfolio-kpi-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin-bottom: 0.45rem;
+}
+
+.portfolio-kpi-label {
+  font-size: 0.74rem;
+  line-height: 1.2;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: rgba(var(--v-theme-on-surface), 0.65);
+}
+
+.portfolio-kpi-icon-wrap {
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(var(--kpi-accent-rgb), 1);
+  background: rgba(var(--kpi-accent-rgb), 0.12);
+  border: 1px solid rgba(var(--kpi-accent-rgb), 0.3);
+}
+
+.portfolio-kpi-value {
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  color: rgba(var(--v-theme-on-surface), 0.92);
+}
+
+.portfolio-kpi-meta {
+  margin-top: 0.35rem;
+  font-size: 0.83rem;
+  color: rgba(var(--v-theme-on-surface), 0.72);
+}
+
 .portfolio-report-table {
   width: 100%;
   min-width: 720px;
@@ -21,4 +102,10 @@
 
 .portfolio-report-table tbody tr:nth-child(even) {
   background: rgba(var(--v-theme-on-surface), 0.02);
+}
+
+@media (max-width: 600px) {
+  .portfolio-kpi-value {
+    font-size: 2rem !important;
+  }
 }

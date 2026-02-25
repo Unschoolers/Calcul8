@@ -792,7 +792,6 @@ test("watch.currentTab persists selected tab and triggers portfolio chart init",
     let nextTickCalled = false;
 
     const context = {
-      speedDialOpen: true,
       speedDialOpenSales: true,
       portfolioChart: null,
       $nextTick(callback: () => void) {
@@ -810,7 +809,6 @@ test("watch.currentTab persists selected tab and triggers portfolio chart init",
     appWatch.currentTab.call(context, "portfolio");
 
     assert.equal(data.get("whatfees_last_tab"), "portfolio");
-    assert.equal(context.speedDialOpen, false);
     assert.equal(context.speedDialOpenSales, false);
     assert.equal(nextTickCalled, true);
     assert.equal(portfolioInitCalled, true);
@@ -822,7 +820,6 @@ test("watch.currentTab destroys existing portfolio chart when leaving portfolio"
     let destroyed = false;
 
     const context = {
-      speedDialOpen: false,
       speedDialOpenSales: false,
       portfolioChart: {
         destroy() {

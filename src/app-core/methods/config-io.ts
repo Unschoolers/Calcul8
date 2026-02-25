@@ -1,6 +1,5 @@
-import type { Lot } from "../../types/app.ts";
 import type { AppContext } from "../context.ts";
-import { type ConfigMethodSubset, type ImportableLot, getTodayDate, inferDateFromLotId, toDateOnly } from "./config-shared.ts";
+import { type ConfigMethodSubset } from "./config-shared.ts";
 
 function sanitizeTsvCell(value: string | number | null | undefined): string {
   if (value == null) return "";
@@ -63,41 +62,11 @@ function buildPortfolioReportTsv(context: AppContext): string {
 }
 
 export const configIoMethods: ConfigMethodSubset<
-  | "exportLots"
   | "exportSales"
   | "exportPortfolioReport"
   | "openPortfolioReportModal"
   | "copyPortfolioReportTable"
-  | "importLots"
-  | "handleFileImport"
 > = {
-  exportLots(): void {
-    if (this.lots.length === 0) {
-      this.notify("No lots to export", "warning");
-      return;
-    }
-
-    const bundle = {
-      version: 2,
-      exportedAt: new Date().toISOString(),
-      lastLotId: this.currentLotId ?? null,
-      lots: this.lots.map((p) => ({
-        ...p,
-        sales: this.loadSalesForLotId(p.id)
-      }))
-    };
-
-    const dataStr = JSON.stringify(bundle, null, 2);
-    const blob = new Blob([dataStr], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `rtyh-bundle-${Date.now()}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
-    this.notify("Lots exported", "success");
-  },
-
   exportSales(): void {
     if (this.sales.length === 0) return this.notify("No sales to export", "warning");
 
@@ -145,107 +114,5 @@ export const configIoMethods: ConfigMethodSubset<
       console.warn("Failed to copy portfolio table:", error);
       this.notify("Could not copy table. Please try again.", "error");
     }
-  },
-
-  importLots(): void {
-    this.$refs.fileInput?.click();
-  },
-
-  handleFileImport(event: Event): void {
-    const target = event.target as HTMLInputElement | null;
-    const file = target?.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (e: ProgressEvent<FileReader>) => {
-      try {
-        const raw = e.target?.result;
-        if (typeof raw !== "string") {
-          this.notify("Invalid file format. Please upload a valid JSON file.", "error");
-          return;
-        }
-        const imported = JSON.parse(raw) as unknown;
-
-        let importedLots: ImportableLot[] = [];
-        let lastLotId: number | null = null;
-
-        if (Array.isArray(imported)) {
-          importedLots = imported as ImportableLot[];
-        } else if (imported && typeof imported === "object") {
-          const payload = imported as {
-            lots?: ImportableLot[];
-            presets?: ImportableLot[];
-            lastLotId?: number | null;
-            lastPresetId?: number | null;
-          };
-          if (Array.isArray(payload.lots)) {
-            importedLots = payload.lots;
-          } else if (Array.isArray(payload.presets)) {
-            importedLots = payload.presets;
-          } else {
-            this.notify("Invalid file format. Please upload a valid JSON file.", "error");
-            return;
-          }
-          lastLotId = payload.lastLotId ?? payload.lastPresetId ?? null;
-        } else {
-          this.notify("Invalid file format. Please upload a valid JSON file.", "error");
-          return;
-        }
-
-        if (importedLots.length === 0) {
-          this.notify("No valid lots found in file", "warning");
-          return;
-        }
-
-        const todayDate = getTodayDate();
-        const cleanedLots: Lot[] = importedLots.map((p) => {
-          const { sales, ...rest } = p;
-          return {
-            ...rest,
-            lotType: (rest as Lot).lotType === "singles" ? "singles" : "bulk",
-            purchaseDate:
-              toDateOnly((rest as Lot).purchaseDate) ??
-              toDateOnly((rest as Lot).createdAt) ??
-              inferDateFromLotId((rest as Lot).id) ??
-              todayDate,
-            createdAt:
-              toDateOnly((rest as Lot).createdAt) ??
-              toDateOnly((rest as Lot).purchaseDate) ??
-              inferDateFromLotId((rest as Lot).id) ??
-              todayDate
-          };
-        });
-
-        this.lots = cleanedLots;
-        this.saveLotsToStorage();
-
-        importedLots.forEach((p) => {
-          if (p && p.id != null && Array.isArray(p.sales)) {
-            localStorage.setItem(this.getSalesStorageKey(p.id), JSON.stringify(p.sales));
-          }
-        });
-
-        const candidateId =
-          (lastLotId && this.lots.some((p) => p.id === lastLotId))
-            ? lastLotId
-            : this.lots[0].id;
-
-        this.currentLotId = candidateId;
-        this.loadLot();
-        this.notify(`Imported ${this.lots.length} lot(s)`, "success");
-      } catch (error) {
-        console.error("Import error:", error);
-        this.notify("Invalid file format. Please upload a valid JSON file.", "error");
-      } finally {
-        if (target) target.value = "";
-      }
-    };
-
-    reader.onerror = () => {
-      this.notify("Error reading file", "error");
-      if (target) target.value = "";
-    };
-
-    reader.readAsText(file);
   }
 };

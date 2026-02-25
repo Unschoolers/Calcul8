@@ -15,7 +15,6 @@ export const appWatch: AppWatchObject = {
       // Ignore storage errors (private mode/quota restrictions).
     }
 
-    this.speedDialOpen = false;
     this.speedDialOpenSales = false;
 
     if (newTab !== "portfolio" && this.portfolioChart) {

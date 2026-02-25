@@ -189,8 +189,8 @@
           <!-- Lot Selector -->
           <v-card v-if="currentTab !== 'portfolio'" class="mb-4 preset-card" elevation="4">
             <v-card-text class="py-2">
-              <v-row dense align="center">
-                <v-col cols="8" sm="9">
+              <v-row dense align="center" class="lot-selector-row">
+                <v-col cols="12" sm="8" md="9" class="lot-selector-select-col">
                   <v-select
                     v-model="currentLotId"
                     :items="lotItems"
@@ -202,26 +202,41 @@
                     @update:model-value="loadLot"
                   ></v-select>
                 </v-col>
-                <v-col cols="4" sm="3" class="d-flex align-center justify-end">
-                  <v-btn
-                    v-if="hasLotSelected"
-                    icon="mdi-pencil"
-                    size="small"
-                    variant="text"
-                    color="secondary"
-                    title="Rename lot"
-                    aria-label="Rename lot"
-                    class="mr-1"
-                    @click="openRenameLotModal"
-                  ></v-btn>
-                  <v-chip
-                    v-if="hasLotSelected"
-                    size="small"
-                    variant="tonal"
-                    :prepend-icon="currentLotType === 'singles' ? 'mdi-cards-outline' : 'mdi-package-variant-closed'"
-                  >
-                    {{ currentLotType === 'singles' ? 'Singles' : 'Bulk' }}
-                  </v-chip>
+                <v-col cols="12" sm="4" md="3" class="lot-selector-meta-col">
+                  <div class="lot-selector-meta">
+                    <v-chip
+                      v-if="hasLotSelected"
+                      size="small"
+                      variant="tonal"
+                      class="lot-type-chip"
+                      :prepend-icon="currentLotType === 'singles' ? 'mdi-cards-outline' : 'mdi-package-variant-closed'"
+                    >
+                      {{ currentLotType === 'singles' ? 'Singles' : 'Bulk' }}
+                    </v-chip>
+                    <div class="lot-selector-actions">
+                      <v-btn
+                        v-if="hasLotSelected"
+                        icon="mdi-pencil"
+                        size="small"
+                        variant="tonal"
+                        color="secondary"
+                        class="lot-rename-btn"
+                        title="Edit lot"
+                        aria-label="Edit lot"
+                        @click="openRenameLotModal"
+                      ></v-btn>
+                      <v-btn
+                        icon="mdi-bookmark-plus"
+                        size="small"
+                        variant="tonal"
+                        color="primary"
+                        class="lot-add-btn"
+                        title="Add lot"
+                        aria-label="Add lot"
+                        @click="showNewLotModal = true"
+                      ></v-btn>
+                    </div>
+                  </div>
                 </v-col>
               </v-row>
             </v-card-text>
@@ -239,6 +254,7 @@
               <v-window-item key="config" value="config" :transition="false" :reverse-transition="false" eager>
                 <singles-config-window
                   v-if="hasLotSelected && currentLotType === 'singles'"
+                  ref="singlesConfigWindow"
                   :ctx="$root"
                 ></singles-config-window>
                 <config-window v-else :ctx="$root"></config-window>
@@ -297,14 +313,14 @@
 
       <!-- Primary FABs - Config -->
       <v-fab
-        v-if="currentTab === 'config'"
-        icon="mdi-bookmark-plus"
+        v-if="currentTab === 'config' && hasLotSelected && currentLotType === 'singles'"
+        icon="mdi-plus"
         color="primary"
         size="large"
-        title="Add lot"
-        aria-label="Add lot"
-        @click="showNewLotModal = true"
-        :class="['fab-primary', 'fab-add-preset', { 'fab-attention': lots.length === 0 }]"
+        title="Add card"
+        aria-label="Add card"
+        @click="$refs.singlesConfigWindow?.handleAddSinglesPurchase?.()"
+        class="fab-primary fab-add-preset"
       ></v-fab>
 
       <v-fab
@@ -318,49 +334,6 @@
         @click="showProfitCalculator = true"
         class="fab-primary fab-live-calc"
       ></v-fab>
-
-      <!-- Overflow Menu - Config -->
-      <div v-if="currentTab === 'config'" class="fab-overflow-wrap fab-overflow-config">
-        <v-menu
-          v-model="speedDialOpen"
-          transition="fade-transition"
-          location="top end"
-          :offset="12"
-        >
-          <template v-slot:activator="{ props }">
-            <v-fab
-              v-bind="props"
-              icon="mdi-dots-vertical"
-              color="surface"
-              size="large"
-               title="More lot actions"
-               aria-label="More lot actions"
-             ></v-fab>
-          </template>
-
-          <v-card min-width="190" elevation="6">
-            <v-list density="compact" nav>
-              <v-list-item
-                prepend-icon="mdi-export"
-                title="Export Lots"
-                :disabled="!hasLotSelected"
-                @click="exportLots(); speedDialOpen = false"
-              ></v-list-item>
-              <v-list-item
-                prepend-icon="mdi-import"
-                title="Import Lots"
-                @click="importLots(); speedDialOpen = false"
-              ></v-list-item>
-              <v-list-item
-                prepend-icon="mdi-delete"
-                title="Delete Lot"
-                :disabled="!currentLotId"
-                @click="deleteCurrentLot(); speedDialOpen = false"
-              ></v-list-item>
-            </v-list>
-          </v-card>
-        </v-menu>
-      </div>
 
       <v-fab
         v-if="currentTab === 'live'"
@@ -498,10 +471,10 @@
         </v-card>
       </v-dialog>
 
-      <!-- Rename Lot Modal -->
+      <!-- Edit Lot Modal -->
       <v-dialog v-model="showRenameLotModal" max-width="400">
         <v-card>
-          <v-card-title>Rename Lot</v-card-title>
+          <v-card-title>Edit Lot</v-card-title>
           <v-card-text>
             <v-text-field
               v-model="renameLotName"
@@ -511,6 +484,14 @@
             ></v-text-field>
           </v-card-text>
           <v-card-actions>
+            <v-btn
+              variant="text"
+              color="error"
+              :disabled="!currentLotId"
+              @click="showRenameLotModal = false; deleteCurrentLot()"
+            >
+              Delete
+            </v-btn>
             <v-spacer></v-spacer>
             <v-btn text @click="showRenameLotModal = false">Cancel</v-btn>
             <v-btn color="primary" @click="renameCurrentLot">Save</v-btn>
@@ -871,8 +852,6 @@
         {{ snackbar.text }}
       </v-snackbar>
 
-      <!-- Hidden file input -->
-      <input type="file" ref="fileInput" style="display:none" accept=".json" @change="handleFileImport" />
       </template>
 
       <template v-else>

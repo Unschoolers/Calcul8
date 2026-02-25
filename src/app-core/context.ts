@@ -98,13 +98,10 @@ export interface AppMethodState {
   renameCurrentLot(): void;
   loadLot(): void;
   deleteCurrentLot(): void;
-  exportLots(): void;
   exportSales(): void;
   exportPortfolioReport(): void;
   openPortfolioReportModal(): void;
   copyPortfolioReportTable(): Promise<void>;
-  importLots(): void;
-  handleFileImport(event: Event): void;
   calculateProfit(units: number, pricePerUnit: number): number;
   formatCurrency(value: number | null | undefined, decimals?: number): string;
   safeFixed(value: number, decimals?: number): string;
@@ -152,7 +149,6 @@ export interface AppMethodState {
 export interface AppVueContext {
   $nextTick(callback: () => void): Promise<void>;
   $refs: {
-    fileInput?: HTMLInputElement;
     salesChart?: HTMLCanvasElement;
     salesTrendChart?: HTMLCanvasElement;
     portfolioChart?: HTMLCanvasElement;
@@ -267,13 +263,6 @@ export interface AppLifecycleObject {
 }
 
 export type ThemeName = "unionArenaDark" | "unionArenaLight";
-
-export interface AppImportBundle {
-  version: number;
-  exportedAt: string;
-  lastLotId: number | null;
-  lots: Array<Lot & { sales?: Sale[] }>;
-}
 
 export interface PromptResult {
   outcome: "accepted" | "dismissed";

@@ -163,7 +163,6 @@ export interface AppState extends LotSetup {
   currentTab: AppTab;
   showNewLotModal: boolean;
   showRenameLotModal: boolean;
-  speedDialOpen: boolean;
   speedDialOpenSales: boolean;
   snackbar: SnackbarState;
   isOffline: boolean;

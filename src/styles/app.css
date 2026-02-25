@@ -227,6 +227,39 @@
       z-index: 20;
       backdrop-filter: blur(6px);
     }
+    .lot-selector-row {
+      row-gap: 0.35rem;
+    }
+    .lot-selector-meta-col {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+    }
+    .lot-selector-meta {
+      width: 100%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 0.35rem;
+    }
+    .lot-selector-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      margin-left: auto;
+    }
+    .lot-type-chip {
+      max-width: 100%;
+    }
+    .lot-type-chip .v-chip__content {
+      white-space: nowrap;
+    }
+    .lot-rename-btn {
+      flex-shrink: 0;
+    }
+    .lot-add-btn {
+      flex-shrink: 0;
+    }
     .v-card { border-radius: 20px !important; }
     .profit-glow { box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
     .match-height .v-col { display: flex; }
@@ -307,10 +340,6 @@
       inset-inline-start: auto;
       z-index: 1300;
     }
-    .fab-overflow-config {
-      bottom: calc(10rem + env(safe-area-inset-bottom));
-      inset-block-end: calc(10rem + env(safe-area-inset-bottom));
-    }
     .fab-overflow-sales {
       bottom: calc(5rem + env(safe-area-inset-bottom));
       inset-block-end: calc(5rem + env(safe-area-inset-bottom));
@@ -384,6 +413,18 @@
         padding-left: 0.75rem !important;
         padding-right: 0.75rem !important;
         padding-top: 0.6rem !important;
+      }
+      .lot-selector-meta-col {
+        justify-content: flex-start;
+      }
+      .lot-selector-meta {
+        justify-content: space-between;
+      }
+      .lot-type-chip {
+        max-width: calc(100% - 3rem);
+      }
+      .lot-selector-actions {
+        margin-left: 0;
       }
       .sale-editor-dialog .v-overlay__content {
         width: calc(100vw - 0.9rem) !important;

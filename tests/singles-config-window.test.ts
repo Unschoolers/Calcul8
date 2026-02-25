@@ -121,6 +121,59 @@ test("virtualization computed values derive from scroll position", () => {
   assert.equal(getComputed<number>("desktopBottomSpacerPx").call(context), 8996);
 });
 
+test("mobile pagination renders in batches and can load more rows", () => {
+  const entries = Array.from({ length: 145 }, (_, index) => ({
+    id: index + 1,
+    item: `Card ${index + 1}`,
+    cardNumber: String(index + 1),
+    cost: 1,
+    currency: "CAD",
+    quantity: 1,
+    marketValue: 1
+  })) satisfies SinglesPurchaseEntry[];
+
+  const context = createContext({
+    visibleSinglesPurchases: entries
+  });
+
+  assert.equal(getComputed<SinglesPurchaseEntry[]>("mobileRenderedSinglesPurchases").call(context).length, 60);
+  assert.equal(getComputed<boolean>("hasMoreMobileSinglesRows").call(context), true);
+  assert.equal(getComputed<number>("remainingMobileSinglesRows").call(context), 85);
+  assert.equal(getComputed<number>("nextMobileSinglesBatchCount").call(context), 60);
+
+  context.loadMoreMobileRows();
+  assert.equal(context.mobileRenderCount, 120);
+  assert.equal(getComputed<number>("remainingMobileSinglesRows").call(context), 25);
+  assert.equal(getComputed<number>("nextMobileSinglesBatchCount").call(context), 25);
+
+  context.loadMoreMobileRows();
+  assert.equal(context.mobileRenderCount, 145);
+  assert.equal(getComputed<boolean>("hasMoreMobileSinglesRows").call(context), false);
+});
+
+test("search and sold-filter toggles reset mobile pagination", () => {
+  const context = createContext({
+    mobileRenderCount: 240,
+    showFullySoldSingles: true,
+    desktopRowsScrollTop: 120,
+    $refs: {
+      desktopRowsScroller: {
+        scrollTop: 44
+      }
+    }
+  });
+
+  context.onSinglesSearchInput();
+  assert.equal(context.mobileRenderCount, 60);
+  assert.equal(context.desktopRowsScrollTop, 0);
+
+  context.mobileRenderCount = 180;
+  context.toggleShowFullySoldSingles();
+  assert.equal(context.showFullySoldSingles, false);
+  assert.equal(context.mobileRenderCount, 60);
+  assert.equal(context.desktopRowsScrollTop, 0);
+});
+
 test("CSV mapping computed helpers track required/optional columns and labels", () => {
   const context = createContext({
     singlesCsvImportHeaders: ["Name", "Qty", "Price", "Card #", "Condition", "Language", "Market"],

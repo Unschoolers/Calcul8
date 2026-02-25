@@ -19,13 +19,29 @@
 
                 <v-row>
                   <v-col cols="12" sm="6" md="4">
-                    <v-card elevation="4" class="config-card">
-                      <v-card-text>
-                        <div class="text-caption text-medium-emphasis">Global Profit / Loss</div>
-                        <div class="text-h5 font-weight-bold" :class="(portfolioTotals?.totalProfit ?? 0) >= 0 ? 'profit-positive' : 'profit-negative'">
+                    <v-card
+                      elevation="4"
+                      :class="[
+                        'config-card',
+                        'portfolio-kpi-card',
+                        (portfolioTotals?.totalProfit ?? 0) >= 0
+                          ? 'portfolio-kpi-card--profit-positive'
+                          : 'portfolio-kpi-card--profit-negative'
+                      ]"
+                    >
+                      <v-card-text class="portfolio-kpi-content">
+                        <div class="portfolio-kpi-head">
+                          <div class="portfolio-kpi-label">Global Profit / Loss</div>
+                          <div class="portfolio-kpi-icon-wrap">
+                            <v-icon size="16">
+                              {{ (portfolioTotals?.totalProfit ?? 0) >= 0 ? 'mdi-trending-up' : 'mdi-trending-down' }}
+                            </v-icon>
+                          </div>
+                        </div>
+                        <div class="text-h4 font-weight-bold portfolio-kpi-value" :class="(portfolioTotals?.totalProfit ?? 0) >= 0 ? 'profit-positive' : 'profit-negative'">
                           {{ (portfolioTotals?.totalProfit ?? 0) >= 0 ? '+' : '' }}${{ fmtCurrency(portfolioTotals?.totalProfit ?? 0) }}
                         </div>
-                        <div class="text-caption mt-1">
+                        <div class="portfolio-kpi-meta">
                           {{ portfolioTotals?.profitableLotCount ?? 0 }} / {{ portfolioTotals?.lotCount ?? 0 }} lot{{ (portfolioTotals?.lotCount ?? 0) === 1 ? '' : 's' }} profitable
                         </div>
                       </v-card-text>
@@ -33,21 +49,31 @@
                   </v-col>
 
                   <v-col cols="12" sm="6" md="4">
-                    <v-card elevation="4" class="config-card">
-                      <v-card-text>
-                        <div class="text-caption text-medium-emphasis">Total Net Revenue</div>
-                        <div class="text-h5 font-weight-bold">${{ fmtCurrency(portfolioTotals?.totalRevenue ?? 0) }}</div>
-                        <div class="text-caption mt-1">{{ portfolioTotals?.totalSalesCount ?? 0 }} sale{{ (portfolioTotals?.totalSalesCount ?? 0) === 1 ? '' : 's' }}</div>
+                    <v-card elevation="4" class="config-card portfolio-kpi-card portfolio-kpi-card--revenue">
+                      <v-card-text class="portfolio-kpi-content">
+                        <div class="portfolio-kpi-head">
+                          <div class="portfolio-kpi-label">Total Net Revenue</div>
+                          <div class="portfolio-kpi-icon-wrap">
+                            <v-icon size="16">mdi-cash-multiple</v-icon>
+                          </div>
+                        </div>
+                        <div class="text-h4 font-weight-bold portfolio-kpi-value">${{ fmtCurrency(portfolioTotals?.totalRevenue ?? 0) }}</div>
+                        <div class="portfolio-kpi-meta">{{ portfolioTotals?.totalSalesCount ?? 0 }} sale{{ (portfolioTotals?.totalSalesCount ?? 0) === 1 ? '' : 's' }}</div>
                       </v-card-text>
                     </v-card>
                   </v-col>
 
                   <v-col cols="12" sm="6" md="4">
-                    <v-card elevation="4" class="config-card">
-                      <v-card-text>
-                        <div class="text-caption text-medium-emphasis">Total Cost</div>
-                        <div class="text-h5 font-weight-bold">${{ fmtCurrency(portfolioTotals?.totalCost ?? 0) }}</div>
-                        <div class="text-caption mt-1">Across all lots</div>
+                    <v-card elevation="4" class="config-card portfolio-kpi-card portfolio-kpi-card--cost">
+                      <v-card-text class="portfolio-kpi-content">
+                        <div class="portfolio-kpi-head">
+                          <div class="portfolio-kpi-label">Total Cost</div>
+                          <div class="portfolio-kpi-icon-wrap">
+                            <v-icon size="16">mdi-receipt-text-outline</v-icon>
+                          </div>
+                        </div>
+                        <div class="text-h4 font-weight-bold portfolio-kpi-value">${{ fmtCurrency(portfolioTotals?.totalCost ?? 0) }}</div>
+                        <div class="portfolio-kpi-meta">Across all lots</div>
                       </v-card-text>
                     </v-card>
                   </v-col>

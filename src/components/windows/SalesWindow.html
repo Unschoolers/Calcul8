@@ -1,17 +1,26 @@
                 <v-row>
                   <!-- Status Card -->
                   <v-col cols="12" md="6">
-                    <v-card :color="salesStatus?.color || 'grey'" dark elevation="4">
-                      <v-card-text>
-                        <div class="text-h6 mb-2">
-                          <v-icon class="mr-2">{{ salesStatus?.icon || 'mdi-information' }}</v-icon>
-                          {{ salesStatus?.title || 'No Sales Yet' }}
+                    <v-card
+                      elevation="4"
+                      :class="['sales-status-card', salesStatusToneClass()]"
+                    >
+                      <v-card-text class="sales-status-content">
+                        <div class="sales-status-head">
+                          <div class="sales-status-icon-wrap">
+                            <v-icon size="18">{{ salesStatus?.icon || 'mdi-information' }}</v-icon>
+                          </div>
+                          <div class="sales-status-title">
+                            {{ salesStatus?.title || 'No Sales Yet' }}
+                          </div>
                         </div>
-                        <div class="text-h4 mb-2">{{ (salesStatus?.profit ?? 0) >= 0 ? '+' : '' }}${{ fmtCurrency(salesStatus?.profit ?? 0) }}</div>
-                        <v-divider class="my-2" style="opacity: 0.3;"></v-divider>
-                        <div class="text-caption">
-                          Revenue: ${{ fmtCurrency(salesStatus?.revenue ?? 0) }} |
-                          Cost: ${{ fmtCurrency(totalCaseCost) }}
+                        <div class="sales-status-value">
+                          {{ (salesStatus?.profit ?? 0) >= 0 ? '+' : '' }}${{ fmtCurrency(salesStatus?.profit ?? 0) }}
+                        </div>
+                        <div class="sales-status-summary">
+                          <span>Revenue: ${{ fmtCurrency(salesStatus?.revenue ?? 0) }}</span>
+                          <span>•</span>
+                          <span>Cost: ${{ fmtCurrency(totalCaseCost) }}</span>
                         </div>
                         <v-progress-linear
                           :model-value="currentLotType === 'singles'
@@ -21,23 +30,23 @@
                             : salesProgress"
                           height="8"
                           rounded
-                          class="mt-3"
-                          color="white"
+                          class="sales-status-progress"
+                          :color="salesStatusProgressColor()"
                         ></v-progress-linear>
-                        <div v-if="currentLotType !== 'singles'" class="text-caption mt-1">
+                        <div v-if="currentLotType !== 'singles'" class="sales-status-line">
                           {{ soldPacksCount }} / {{ totalPacks }} packs sold ({{ Number(salesProgress ?? 0).toFixed(1) }}%)
                         </div>
-                        <div v-else class="text-caption mt-1 d-flex flex-column ga-1">
-                          <div>
+                        <div v-else class="sales-status-lines">
+                          <div class="sales-status-line">
                             {{ soldPacksCount }} total card sale{{ soldPacksCount === 1 ? '' : 's' }} logged
                           </div>
-                          <div>
+                          <div class="sales-status-line">
                             Tracked inventory: {{ singlesTrackedSoldCount }} / {{ singlesTrackedTotalCount }} cards sold
                             ({{ singlesTrackedTotalCount > 0
                               ? ((singlesTrackedSoldCount / singlesTrackedTotalCount) * 100).toFixed(1)
                               : '0.0' }}%)
                           </div>
-                          <div v-if="singlesUnlinkedSoldCount > 0">
+                          <div v-if="singlesUnlinkedSoldCount > 0" class="sales-status-line">
                             Unlinked card sales: {{ singlesUnlinkedSoldCount }}
                           </div>
                         </div>
@@ -159,21 +168,26 @@
                           <template v-slot:append>
                             <div class="sales-history-actions">
                               <v-btn
-                                icon="mdi-pencil"
+                                class="sales-history-action-btn"
                                 size="small"
                                 variant="text"
                                 title="Edit sale"
                                 aria-label="Edit sale"
                                 @click="editSale(sale)"
-                              ></v-btn>
+                              >
+                                <v-icon size="16">mdi-pencil-outline</v-icon>
+                              </v-btn>
                               <v-btn
-                                icon="mdi-delete"
+                                class="sales-history-action-btn"
                                 size="small"
                                 variant="text"
+                                color="error"
                                 title="Delete sale"
                                 aria-label="Delete sale"
                                 @click="deleteSale(sale.id)"
-                              ></v-btn>
+                              >
+                                <v-icon size="16">mdi-trash-can-outline</v-icon>
+                              </v-btn>
                             </div>
                           </template>
                         </v-list-item>

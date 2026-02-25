@@ -23,7 +23,7 @@ export const vuetify = createVuetify({
         dark: false,
         colors: {
           primary: "#E63946",
-          secondary: "#FFB800",
+          secondary: "#D99A00",
           error: "#FF3B30",
           success: "#34C759",
           background: "#FFFFFF",

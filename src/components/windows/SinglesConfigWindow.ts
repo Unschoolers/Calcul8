@@ -11,6 +11,8 @@ const DESKTOP_VIRTUAL_THRESHOLD = 150;
 const DESKTOP_VIRTUAL_ROW_HEIGHT = 52;
 const DESKTOP_VIRTUAL_VIEWPORT_HEIGHT = 560;
 const DESKTOP_VIRTUAL_BUFFER_ROWS = 6;
+const MOBILE_RENDER_INITIAL_COUNT = 60;
+const MOBILE_RENDER_BATCH_COUNT = 60;
 
 function normalizeSinglesSearchTokens(query: unknown): string[] {
   const normalized = String(query || "").trim().toLocaleLowerCase();
@@ -119,6 +121,7 @@ export const SinglesConfigWindow = {
       desktopSortBy: null as SinglesDesktopSortKeyWithMeta | null,
       desktopSortDesc: false,
       desktopRowsScrollTop: 0,
+      mobileRenderCount: MOBILE_RENDER_INITIAL_COUNT,
       editingSinglesRowId: null as number | null,
       editingSinglesRow: {
         item: "",
@@ -171,6 +174,39 @@ export const SinglesConfigWindow = {
 
     hasSinglesSearchQuery(): boolean {
       return normalizeSinglesSearchTokens(this.singlesSearchQuery).length > 0;
+    },
+
+    mobileRenderedSinglesPurchases(): SinglesPurchaseEntry[] {
+      const rows = Array.isArray(this.visibleSinglesPurchases)
+        ? this.visibleSinglesPurchases as SinglesPurchaseEntry[]
+        : [];
+      const cappedCount = Math.max(0, Math.floor(Number(this.mobileRenderCount) || 0));
+      return rows.slice(0, cappedCount);
+    },
+
+    hasMoreMobileSinglesRows(): boolean {
+      const totalRows = Array.isArray(this.visibleSinglesPurchases)
+        ? this.visibleSinglesPurchases.length
+        : 0;
+      const renderedCount = Math.max(0, Math.floor(Number(this.mobileRenderCount) || 0));
+      return totalRows > renderedCount;
+    },
+
+    remainingMobileSinglesRows(): number {
+      const totalRows = Array.isArray(this.visibleSinglesPurchases)
+        ? this.visibleSinglesPurchases.length
+        : 0;
+      const renderedCount = Math.max(0, Math.floor(Number(this.mobileRenderCount) || 0));
+      return Math.max(0, totalRows - renderedCount);
+    },
+
+    nextMobileSinglesBatchCount(): number {
+      const totalRows = Array.isArray(this.visibleSinglesPurchases)
+        ? this.visibleSinglesPurchases.length
+        : 0;
+      const renderedCount = Math.max(0, Math.floor(Number(this.mobileRenderCount) || 0));
+      const remainingRows = Math.max(0, totalRows - renderedCount);
+      return Math.min(MOBILE_RENDER_BATCH_COUNT, remainingRows);
     },
 
     desktopSortedSinglesPurchases(): SinglesPurchaseEntry[] {
@@ -525,6 +561,25 @@ export const SinglesConfigWindow = {
     },
 
     onSinglesSearchInput(): void {
+      this.resetMobileRowsPagination();
+      this.resetDesktopRowsScroll();
+    },
+
+    resetMobileRowsPagination(): void {
+      this.mobileRenderCount = MOBILE_RENDER_INITIAL_COUNT;
+    },
+
+    loadMoreMobileRows(): void {
+      const nextCount = this.mobileRenderCount + MOBILE_RENDER_BATCH_COUNT;
+      const maxCount = Array.isArray(this.visibleSinglesPurchases)
+        ? this.visibleSinglesPurchases.length
+        : 0;
+      this.mobileRenderCount = Math.min(nextCount, maxCount);
+    },
+
+    toggleShowFullySoldSingles(): void {
+      this.showFullySoldSingles = !this.showFullySoldSingles;
+      this.resetMobileRowsPagination();
       this.resetDesktopRowsScroll();
     },
 
@@ -632,8 +687,19 @@ export const SinglesConfigWindow = {
       return toLanguageAbbreviation(value);
     }
   },
+  watch: {
+    visibleSinglesPurchases(): void {
+      const maxCount = Array.isArray(this.visibleSinglesPurchases)
+        ? this.visibleSinglesPurchases.length
+        : 0;
+      if (this.mobileRenderCount > maxCount) {
+        this.mobileRenderCount = maxCount;
+      }
+    }
+  },
   mounted() {
     this.loadSinglesInfoNoticeState();
+    this.resetMobileRowsPagination();
   },
   setup(props: { ctx: Record<string, unknown> }) {
     const injectedCtx = inject<Record<string, unknown> | null>("appCtx", null);

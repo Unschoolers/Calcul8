@@ -50,6 +50,28 @@ export const SalesWindow = {
     }
   },
   methods: {
+    salesStatusToneClass(): string {
+      const salesStatus = (this as Record<string, unknown>).salesStatus as { color?: string } | undefined;
+      const rawColor = String(salesStatus?.color || "").toLowerCase();
+      if (rawColor === "success") return "sales-status-card--success";
+      if (rawColor === "error") return "sales-status-card--error";
+      if (rawColor === "warning") return "sales-status-card--warning";
+      if (rawColor === "primary") return "sales-status-card--primary";
+      if (rawColor === "secondary") return "sales-status-card--secondary";
+      return "sales-status-card--neutral";
+    },
+
+    salesStatusProgressColor(): string {
+      const salesStatus = (this as Record<string, unknown>).salesStatus as { color?: string } | undefined;
+      const rawColor = String(salesStatus?.color || "").toLowerCase();
+      if (rawColor === "success") return "success";
+      if (rawColor === "error") return "error";
+      if (rawColor === "warning") return "warning";
+      if (rawColor === "primary") return "primary";
+      if (rawColor === "secondary") return "secondary";
+      return "primary";
+    },
+
     fmtCurrency(value: number | null | undefined, decimals = 2): string {
       const fn = (this as Record<string, unknown>).formatCurrency;
       if (typeof fn === "function") {

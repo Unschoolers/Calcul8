@@ -39,7 +39,6 @@ export function createInitialState(): AppState {
     currentTab: "config",
     showNewLotModal: false,
     showRenameLotModal: false,
-    speedDialOpen: false,
     speedDialOpenSales: false,
     snackbar: {
       show: false,
