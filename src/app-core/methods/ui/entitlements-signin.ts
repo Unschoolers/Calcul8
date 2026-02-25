@@ -28,17 +28,27 @@ function logAuthWarn(event: string, details: Record<string, unknown> = {}): void
   console.warn("[whatfees][auth]", event, details);
 }
 
+function readGoogleClientId(): string {
+  const viteEnv = (import.meta as ImportMeta & { env?: Record<string, unknown> }).env;
+  const viteClientId = typeof viteEnv?.VITE_GOOGLE_CLIENT_ID === "string"
+    ? viteEnv.VITE_GOOGLE_CLIENT_ID
+    : "";
+  if (viteClientId.trim()) return viteClientId.trim();
+
+  const processEnv = (globalThis as { process?: { env?: Record<string, unknown> } }).process?.env;
+  const processClientId = typeof processEnv?.VITE_GOOGLE_CLIENT_ID === "string"
+    ? processEnv.VITE_GOOGLE_CLIENT_ID
+    : "";
+  return processClientId.trim();
+}
+
 export const uiEntitlementSignInMethods: UiEntitlementMethodSubset<
   "initGoogleAutoLogin" | "promptGoogleSignIn" | "openVerifyPurchaseModal"
 > = {
   initGoogleAutoLogin(): void {
     const currentWindow = (globalThis as { window?: Window }).window;
     const origin = currentWindow?.location?.origin ?? "(unknown)";
-    const viteEnv = (import.meta as ImportMeta & { env?: Record<string, unknown> }).env;
-    const clientId = (typeof viteEnv?.VITE_GOOGLE_CLIENT_ID === "string"
-      ? viteEnv.VITE_GOOGLE_CLIENT_ID
-      : ""
-    ).trim();
+    const clientId = readGoogleClientId();
     const existingToken = (localStorage.getItem(GOOGLE_TOKEN_KEY) || "").trim();
     const hasGoogleApi = !!currentWindow?.google?.accounts?.id;
 
@@ -107,11 +117,7 @@ export const uiEntitlementSignInMethods: UiEntitlementMethodSubset<
       return;
     }
 
-    const viteEnv = (import.meta as ImportMeta & { env?: Record<string, unknown> }).env;
-    const clientId = (typeof viteEnv?.VITE_GOOGLE_CLIENT_ID === "string"
-      ? viteEnv.VITE_GOOGLE_CLIENT_ID
-      : ""
-    ).trim();
+    const clientId = readGoogleClientId();
     if (!clientId) {
       logAuthWarn("signin:manual:missing_client_id");
       this.notify("Google sign-in is not configured.", "error");
