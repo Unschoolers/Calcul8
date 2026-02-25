@@ -309,6 +309,68 @@
   margin-top: 10px;
 }
 
+.singles-card-suggestion-item {
+  border-radius: 10px;
+  margin: 4px 8px;
+  padding-inline: 8px;
+}
+
+.singles-card-suggestion-rarity {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.4rem;
+  margin-right: 0.5rem;
+  padding: 0.08rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #3d2a00;
+  background: linear-gradient(135deg, #ffd86b 0%, #ffbf3f 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+
+.singles-card-suggestion-title {
+  font-size: 0.88rem;
+  line-height: 1.2;
+  font-weight: 600;
+}
+
+.singles-card-suggestion-subtitle {
+  font-size: 0.73rem;
+  line-height: 1.1;
+  color: rgba(var(--v-theme-on-surface), 0.62) !important;
+}
+
+.singles-card-selection {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.34rem;
+  min-width: 0;
+}
+
+.singles-card-selection-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.singles-card-selection-number {
+  color: rgba(var(--v-theme-on-surface), 0.65);
+  font-size: 0.82rem;
+}
+
+.v-theme--unionArenaDark .singles-card-suggestion-rarity {
+  color: #fff6d8;
+  background: linear-gradient(135deg, #d4a315 0%, #b88900 100%);
+}
+
+.singles-card-suggestions-menu .v-list {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
 .singles-import-card .v-card-text {
   padding-top: 14px;
 }

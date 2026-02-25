@@ -538,14 +538,53 @@
           <div class="text-caption text-medium-emphasis mb-2 font-weight-bold">Core</div>
           <v-row dense>
             <v-col cols="8">
-              <v-text-field
+              <v-combobox
                 v-model="editingSinglesRow.item"
+                v-model:search="singlesItemSearchText"
+                :items="singlesItemSuggestions"
+                item-title="title"
+                item-value="name"
+                :menu-props="{ contentClass: 'singles-card-suggestions-menu' }"
                 label="Item"
                 variant="outlined"
                 density="comfortable"
+                :loading="singlesItemSearchLoading"
+                no-filter
                 hide-details
                 placeholder="Card name"
-              ></v-text-field>
+                @update:search="onSinglesItemSearchUpdate"
+                @update:model-value="onSinglesItemSelected"
+              >
+                <template #item="{ props, item }">
+                  <v-list-item
+                    v-bind="props"
+                    class="singles-card-suggestion-item"
+                    :title="undefined"
+                    :subtitle="undefined"
+                  >
+                    <template #prepend>
+                      <span class="singles-card-suggestion-rarity">
+                        {{ formatSuggestionRarity(item?.raw?.rarity) }}
+                      </span>
+                    </template>
+                    <v-list-item-title class="singles-card-suggestion-title">
+                      {{ item?.raw?.name || item?.title }}
+                    </v-list-item-title>
+                    <v-list-item-subtitle class="singles-card-suggestion-subtitle">
+                      <span v-if="item?.raw?.cardNo">#{{ item.raw.cardNo }}</span>
+                      <span v-if="item?.raw?.marketPrice != null">
+                        • M ${{ fmtCurrency(item.raw.marketPrice) }}
+                      </span>
+                    </v-list-item-subtitle>
+                  </v-list-item>
+                </template>
+                <template #selection="{ item }">
+                  <div class="singles-card-selection">
+                    <span class="singles-card-selection-name">{{ item?.raw?.name || item?.title }}</span>
+                    <span v-if="item?.raw?.cardNo" class="singles-card-selection-number">#{{ item.raw.cardNo }}</span>
+                  </div>
+                </template>
+              </v-combobox>
             </v-col>
             <v-col cols="4">
               <v-text-field

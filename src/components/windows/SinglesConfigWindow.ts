@@ -3,6 +3,7 @@ import "./ConfigWindow.css";
 import "./SinglesConfigWindow.css";
 import { inject, type PropType } from "vue";
 import type { SinglesPurchaseEntry } from "../../types/app.ts";
+import { STORAGE_KEYS } from "../../app-core/storageKeys.ts";
 import { createWindowContextBridge } from "./contextBridge.ts";
 
 const SINGLES_INFO_NOTICE_DISMISSED_KEY = "whatfees_singles_info_notice_dismissed_v1";
@@ -13,6 +14,28 @@ const DESKTOP_VIRTUAL_VIEWPORT_HEIGHT = 560;
 const DESKTOP_VIRTUAL_BUFFER_ROWS = 6;
 const MOBILE_RENDER_INITIAL_COUNT = 60;
 const MOBILE_RENDER_BATCH_COUNT = 60;
+const SINGLES_CARD_SEARCH_DEBOUNCE_MS = 250;
+const SINGLES_CARD_SEARCH_LIMIT = 10;
+
+type CardSearchApiItem = {
+  name?: string;
+  cardNo?: string;
+  rarity?: string;
+  marketPrice?: number | null;
+};
+
+type SinglesCardSuggestion = {
+  title: string;
+  name: string;
+  cardNo: string;
+  rarity: string;
+  marketPrice: number | null;
+};
+
+function resolveCardsSearchGame(): string {
+  const game = String((import.meta.env.VITE_CARDS_SEARCH_GAME as string | undefined) || "ua").trim().toLowerCase();
+  return game || "ua";
+}
 
 function normalizeSinglesSearchTokens(query: unknown): string[] {
   const normalized = String(query || "").trim().toLocaleLowerCase();
@@ -133,6 +156,12 @@ export const SinglesConfigWindow = {
         quantity: 1,
         marketValue: 0
       },
+      singlesItemSearchText: "",
+      singlesItemSearchLoading: false,
+      singlesItemSuggestions: [] as SinglesCardSuggestion[],
+      singlesItemSearchTimerId: null as ReturnType<typeof setTimeout> | null,
+      singlesItemSearchAbortController: null as AbortController | null,
+      singlesItemSearchRequestSeq: 0,
       singlesConditionOptions: [
         "Near Mint",
         "Mint",
@@ -415,6 +444,128 @@ export const SinglesConfigWindow = {
         quantity: 1,
         marketValue: 0
       };
+      this.singlesItemSearchText = "";
+      this.singlesItemSuggestions = [];
+      this.singlesItemSearchLoading = false;
+      this.cancelSinglesItemSearch();
+    },
+
+    resolveCardsApiBaseUrl(): string {
+      const configuredBase = String((import.meta.env.VITE_API_BASE_URL as string | undefined) || "").trim();
+      if (configuredBase) return configuredBase.replace(/\/+$/, "");
+      const cachedBase = String(localStorage.getItem(STORAGE_KEYS.API_BASE_URL) || "").trim();
+      if (cachedBase) return cachedBase.replace(/\/+$/, "");
+      return "";
+    },
+
+    cancelSinglesItemSearch(): void {
+      if (this.singlesItemSearchTimerId) {
+        clearTimeout(this.singlesItemSearchTimerId);
+        this.singlesItemSearchTimerId = null;
+      }
+      if (this.singlesItemSearchAbortController) {
+        this.singlesItemSearchAbortController.abort();
+        this.singlesItemSearchAbortController = null;
+      }
+    },
+
+    onSinglesItemSearchUpdate(nextValue: string): void {
+      this.singlesItemSearchText = String(nextValue || "");
+      const query = this.singlesItemSearchText.trim();
+      this.cancelSinglesItemSearch();
+
+      if (query.length < 2) {
+        this.singlesItemSuggestions = [];
+        this.singlesItemSearchLoading = false;
+        return;
+      }
+
+      this.singlesItemSearchTimerId = setTimeout(() => {
+        this.singlesItemSearchTimerId = null;
+        void this.fetchSinglesItemSuggestions(query);
+      }, SINGLES_CARD_SEARCH_DEBOUNCE_MS);
+    },
+
+    async fetchSinglesItemSuggestions(query: string): Promise<void> {
+      const apiBase = this.resolveCardsApiBaseUrl();
+      if (!apiBase) {
+        this.singlesItemSuggestions = [];
+        return;
+      }
+
+      const requestSeq = this.singlesItemSearchRequestSeq + 1;
+      this.singlesItemSearchRequestSeq = requestSeq;
+      const controller = new AbortController();
+      this.singlesItemSearchAbortController = controller;
+      this.singlesItemSearchLoading = true;
+
+      try {
+        const game = resolveCardsSearchGame();
+        const url = new URL(`${apiBase}/cards/search`);
+        url.searchParams.set("game", game);
+        url.searchParams.set("q", query);
+        url.searchParams.set("limit", String(SINGLES_CARD_SEARCH_LIMIT));
+
+        const response = await fetch(url.toString(), {
+          method: "GET",
+          signal: controller.signal
+        });
+        if (!response.ok) throw new Error(`Cards search failed (${response.status})`);
+
+        const payload = await response.json() as { items?: CardSearchApiItem[] };
+        const items = Array.isArray(payload.items) ? payload.items : [];
+        const suggestions = items
+          .map((item) => {
+            const name = String(item.name || "").trim();
+            if (!name) return null;
+            const cardNo = String(item.cardNo || "").trim();
+            const rarity = String(item.rarity || "").trim();
+            const marketPriceRaw = Number(item.marketPrice);
+            const marketPrice = Number.isFinite(marketPriceRaw) ? marketPriceRaw : null;
+            return {
+              title: cardNo ? `${name} #${cardNo}` : name,
+              name,
+              cardNo,
+              rarity,
+              marketPrice
+            } satisfies SinglesCardSuggestion;
+          })
+          .filter((item): item is SinglesCardSuggestion => item != null);
+
+        if (this.singlesItemSearchRequestSeq !== requestSeq) return;
+        this.singlesItemSuggestions = suggestions;
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        console.warn("Failed to fetch card suggestions", error);
+        if (this.singlesItemSearchRequestSeq === requestSeq) {
+          this.singlesItemSuggestions = [];
+        }
+      } finally {
+        if (this.singlesItemSearchAbortController === controller) {
+          this.singlesItemSearchAbortController = null;
+        }
+        if (this.singlesItemSearchRequestSeq === requestSeq) {
+          this.singlesItemSearchLoading = false;
+        }
+      }
+    },
+
+    onSinglesItemSelected(selected: string | SinglesCardSuggestion | null): void {
+      if (!selected || typeof selected === "string") return;
+      this.editingSinglesRow.item = selected.name;
+      if (!String(this.editingSinglesRow.cardNumber || "").trim() && selected.cardNo) {
+        this.editingSinglesRow.cardNumber = selected.cardNo;
+      }
+      const parsedMarket = Number(selected.marketPrice);
+      if ((Number(this.editingSinglesRow.marketValue) || 0) <= 0 && Number.isFinite(parsedMarket) && parsedMarket > 0) {
+        this.editingSinglesRow.marketValue = parsedMarket;
+      }
+    },
+
+    formatSuggestionRarity(value: unknown): string {
+      const rarity = String(value || "").trim();
+      if (!rarity) return "—";
+      return rarity;
     },
 
     handleAddSinglesPurchase(): void {
@@ -701,6 +852,9 @@ export const SinglesConfigWindow = {
   mounted() {
     this.loadSinglesInfoNoticeState();
     this.resetMobileRowsPagination();
+  },
+  beforeUnmount() {
+    this.cancelSinglesItemSearch();
   },
   setup(props: { ctx: Record<string, unknown> }) {
     const injectedCtx = inject<Record<string, unknown> | null>("appCtx", null);
