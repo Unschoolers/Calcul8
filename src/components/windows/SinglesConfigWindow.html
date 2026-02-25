@@ -692,6 +692,25 @@
           </v-btn-toggle>
         </div>
 
+        <v-alert
+          :type="singlesCsvImportMode === 'sync' ? 'error' : 'info'"
+          :icon="singlesCsvImportMode === 'sync' ? 'mdi-alert-octagon' : 'mdi-information-outline'"
+          variant="tonal"
+          density="compact"
+          class="mb-3"
+        >
+          <template v-if="singlesCsvImportMode === 'merge'">
+            <strong>Merge:</strong> Update matching cards and keep cards that are not in the file.
+          </template>
+          <template v-else-if="singlesCsvImportMode === 'append'">
+            <strong>Append:</strong> Add imported rows only. Existing cards stay unchanged.
+          </template>
+          <template v-else>
+            <strong>Sync (destructive):</strong> Replaces your current singles list with this CSV import.
+            Existing cards not present in the file will be removed.
+          </template>
+        </v-alert>
+
         <div class="d-flex align-center justify-space-between flex-wrap ga-2 mb-3">
           <div class="text-caption text-medium-emphasis">Import purchase currency</div>
           <v-btn-toggle
@@ -705,16 +724,6 @@
             <v-btn value="USD" title="USD">🇺🇸</v-btn>
           </v-btn-toggle>
         </div>
-
-        <v-alert
-          v-if="singlesCsvImportMode === 'sync'"
-          type="warning"
-          variant="tonal"
-          density="compact"
-          class="mb-3"
-        >
-          Sync replaces your current singles list, then imports the CSV rows.
-        </v-alert>
 
         <v-row dense>
           <v-col cols="12">
