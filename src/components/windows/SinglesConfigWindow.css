@@ -221,20 +221,20 @@
 
 .singles-mobile-name-wrap {
   display: flex;
-  align-items: center;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.3rem;
   min-width: 0;
 }
 
 .singles-mobile-name {
-  display: inline-block;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
 }
 
 .singles-mobile-number {
-  margin-left: 0.35rem;
   font-size: 0.78rem;
   color: rgba(var(--v-theme-on-surface), 0.64);
   white-space: nowrap;
@@ -243,6 +243,8 @@
 .singles-mobile-subtitle {
   line-height: 1.15;
   color: rgba(var(--v-theme-on-surface), 0.78) !important;
+  position: relative;
+  padding-right: 86px;
 }
 
 .singles-mobile-meta-line {
@@ -276,8 +278,12 @@
 .singles-mobile-actions {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  margin-left: 0.15rem;
+  gap: 0.35rem;
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  margin-top: 0;
+  z-index: 1;
 }
 
 .singles-mobile-action-btn {

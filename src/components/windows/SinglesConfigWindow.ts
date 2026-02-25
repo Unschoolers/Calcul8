@@ -5,6 +5,8 @@ import { inject, type PropType } from "vue";
 import type { SinglesPurchaseEntry } from "../../types/app.ts";
 import { STORAGE_KEYS } from "../../app-core/storageKeys.ts";
 import { createWindowContextBridge } from "./contextBridge.ts";
+import { singlesImportComputed, singlesImportMethods } from "./singles/useSinglesImport.ts";
+import { SinglesCsvImportDialog } from "./singles/SinglesCsvImportDialog.ts";
 
 const SINGLES_INFO_NOTICE_DISMISSED_KEY = "whatfees_singles_info_notice_dismissed_v1";
 type SinglesDesktopSortKey = "item" | "cardNumber" | "cost" | "quantity" | "marketValue";
@@ -41,10 +43,6 @@ function normalizeSinglesSearchTokens(query: unknown): string[] {
   const normalized = String(query || "").trim().toLocaleLowerCase();
   if (!normalized) return [];
   return normalized.split(/\s+/).filter((token) => token.length > 0);
-}
-
-function isValidCsvColumnIndex(value: unknown, headersLength: number): value is number {
-  return Number.isInteger(value) && Number(value) >= 0 && Number(value) < headersLength;
 }
 
 function createNextSinglesEntryId(entries: SinglesPurchaseEntry[]): number {
@@ -127,6 +125,9 @@ type SinglesDesktopSortKeyWithMeta =
 
 export const SinglesConfigWindow: any = {
   name: "SinglesConfigWindow",
+  components: {
+    SinglesCsvImportDialog
+  },
   props: {
     ctx: {
       type: Object as PropType<Record<string, unknown>>,
@@ -182,6 +183,7 @@ export const SinglesConfigWindow: any = {
     };
   },
   computed: {
+    ...singlesImportComputed,
     visibleSinglesPurchases(this: any): SinglesPurchaseEntry[] {
       const rows = Array.isArray(this.singlesPurchases)
         ? this.singlesPurchases as SinglesPurchaseEntry[]
@@ -339,64 +341,10 @@ export const SinglesConfigWindow: any = {
       if (!this.useDesktopVirtualization) return 0;
       const totalRows = (this.desktopSortedSinglesPurchases as SinglesPurchaseEntry[]).length;
       return Math.max(0, (totalRows - this.desktopVirtualEndIndex) * DESKTOP_VIRTUAL_ROW_HEIGHT);
-    },
-
-    csvColumnOptions(this: any): Array<{ title: string; value: number }> {
-      const headers = Array.isArray(this.singlesCsvImportHeaders) ? this.singlesCsvImportHeaders : [];
-      return headers.map((header: string, index: number) => ({
-        title: String(header || `Column ${index + 1}`),
-        value: index
-      }));
-    },
-
-    requiredCsvMappedCount(this: any): number {
-      const headersLength = Array.isArray(this.singlesCsvImportHeaders) ? this.singlesCsvImportHeaders.length : 0;
-      let count = 0;
-      if (isValidCsvColumnIndex(this.singlesCsvMapItem, headersLength)) count += 1;
-      if (isValidCsvColumnIndex(this.singlesCsvMapQuantity, headersLength)) count += 1;
-      return count;
-    },
-
-    optionalCsvMappedCount(this: any): number {
-      const headersLength = Array.isArray(this.singlesCsvImportHeaders) ? this.singlesCsvImportHeaders.length : 0;
-      let count = 0;
-      if (isValidCsvColumnIndex(this.singlesCsvMapCost, headersLength)) count += 1;
-      if (isValidCsvColumnIndex(this.singlesCsvMapCardNumber, headersLength)) count += 1;
-      if (isValidCsvColumnIndex(this.singlesCsvMapCondition, headersLength)) count += 1;
-      if (isValidCsvColumnIndex(this.singlesCsvMapLanguage, headersLength)) count += 1;
-      if (isValidCsvColumnIndex(this.singlesCsvMapMarketValue, headersLength)) count += 1;
-      return count;
-    },
-
-    requiredCsvMappingsComplete(this: any): boolean {
-      return this.requiredCsvMappedCount >= 2;
-    },
-
-    csvMappedFieldLabelsByColumn(this: any): Record<number, string> {
-      const headersLength = Array.isArray(this.singlesCsvImportHeaders) ? this.singlesCsvImportHeaders.length : 0;
-      const labelsByColumn: Record<number, string[]> = {};
-      const addLabel = (columnIndex: unknown, label: string): void => {
-        if (!isValidCsvColumnIndex(columnIndex, headersLength)) return;
-        if (!labelsByColumn[columnIndex]) {
-          labelsByColumn[columnIndex] = [];
-        }
-        labelsByColumn[columnIndex].push(label);
-      };
-
-      addLabel(this.singlesCsvMapItem, "Item");
-      addLabel(this.singlesCsvMapQuantity, "Qty");
-      addLabel(this.singlesCsvMapCost, "Cost");
-      addLabel(this.singlesCsvMapCardNumber, "Number");
-      addLabel(this.singlesCsvMapCondition, "Condition");
-      addLabel(this.singlesCsvMapLanguage, "Language");
-      addLabel(this.singlesCsvMapMarketValue, "Market");
-
-      return Object.fromEntries(
-        Object.entries(labelsByColumn).map(([columnIndex, labels]) => [Number(columnIndex), labels.join(" + ")])
-      );
     }
   },
   methods: {
+    ...singlesImportMethods,
     fmtCurrency(this: any, value: number | null | undefined, decimals = 2): string {
       if (value == null || Number.isNaN(Number(value))) return "0.00";
       return Number(value).toFixed(decimals);
@@ -820,15 +768,6 @@ export const SinglesConfigWindow: any = {
     sortIconFor(this: any, sortBy: SinglesDesktopSortKeyWithMeta): string {
       if (this.desktopSortBy !== sortBy) return "mdi-swap-vertical";
       return this.desktopSortDesc ? "mdi-arrow-down" : "mdi-arrow-up";
-    },
-
-    csvMappedFieldLabel(this: any, columnIndex: number): string {
-      const labelsByColumn = this.csvMappedFieldLabelsByColumn as Record<number, string>;
-      return String(labelsByColumn?.[columnIndex] || "");
-    },
-
-    isCsvColumnMapped(this: any, columnIndex: number): boolean {
-      return this.csvMappedFieldLabel(columnIndex).length > 0;
     },
 
     conditionShortLabel(this: any, value: unknown): string {
