@@ -53,6 +53,16 @@ export interface PurchaseVerificationResultDocument {
   updatedAt: string;
 }
 
+export interface WorkspaceMembershipDocument {
+  id: string;
+  docType: "workspace_membership";
+  userId: string;
+  workspaceId: string;
+  role?: string;
+  status?: "active" | "disabled" | "removed";
+  updatedAt: string;
+}
+
 export interface SyncSnapshotDocument {
   id: string;
   userId: string;

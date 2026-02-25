@@ -12,12 +12,14 @@ const {
   getConfigMock,
   getEffectiveSyncSnapshotMock,
   upsertSyncSnapshotIncrementalMock,
+  hasWorkspaceMembershipMock,
   parseSyncLotsShapeMock,
   assertSafeSyncPushMock
 } = vi.hoisted(() => ({
   getConfigMock: vi.fn(),
   getEffectiveSyncSnapshotMock: vi.fn(),
   upsertSyncSnapshotIncrementalMock: vi.fn(),
+  hasWorkspaceMembershipMock: vi.fn(),
   parseSyncLotsShapeMock: vi.fn(),
   assertSafeSyncPushMock: vi.fn()
 }));
@@ -28,7 +30,8 @@ vi.mock("../lib/config", () => ({
 
 vi.mock("../lib/cosmos", () => ({
   getEffectiveSyncSnapshot: getEffectiveSyncSnapshotMock,
-  upsertSyncSnapshotIncremental: upsertSyncSnapshotIncrementalMock
+  upsertSyncSnapshotIncremental: upsertSyncSnapshotIncrementalMock,
+  hasWorkspaceMembership: hasWorkspaceMembershipMock
 }));
 
 vi.mock("../lib/syncShape", () => ({
@@ -92,6 +95,7 @@ const originalFetch = globalThis.fetch;
 
 beforeEach(() => {
   vi.clearAllMocks();
+  hasWorkspaceMembershipMock.mockResolvedValue(true);
   globalThis.fetch = (async (input: unknown) => {
     const raw = String(input);
     const tokenMatch = /[?&]id_token=([^&]+)/.exec(raw);
@@ -145,6 +149,7 @@ test("syncPush returns unchanged state when upsert reports no changes", async ()
     updatedAt: "2026-02-21T10:00:00.000Z",
     changed: false
   });
+  assert.equal(hasWorkspaceMembershipMock.mock.calls.length, 0);
 });
 
 test("syncPush computes next version and returns changed payload", async () => {
@@ -202,7 +207,7 @@ test("syncPush rejects duplicate lot ids with 400", async () => {
   );
 });
 
-test("syncPush accepts optional workspaceId payload field but still uses personal scope", async () => {
+test("syncPush uses workspace partition when workspaceId is provided", async () => {
   parseSyncLotsShapeMock.mockReturnValue({
     lots: [{ id: 20 }],
     salesByLot: { "20": [] }
@@ -231,7 +236,34 @@ test("syncPush accepts optional workspaceId payload field but still uses persona
 
   const response = await syncPush(request as never, context as never);
   assert.equal(response.status, 200);
-  assert.equal(getEffectiveSyncSnapshotMock.mock.calls[0]?.[1], "user-ws");
-  assert.equal(upsertSyncSnapshotIncrementalMock.mock.calls[0]?.[1]?.userId, "user-ws");
-  assert.equal(context.warn.mock.calls.length, 1);
+  assert.equal(getEffectiveSyncSnapshotMock.mock.calls[0]?.[1], "ws:team-42");
+  assert.equal(upsertSyncSnapshotIncrementalMock.mock.calls[0]?.[1]?.userId, "ws:team-42");
+  assert.equal(hasWorkspaceMembershipMock.mock.calls[0]?.[1], "user-ws");
+  assert.equal(hasWorkspaceMembershipMock.mock.calls[0]?.[2], "team-42");
+  assert.equal(context.warn.mock.calls.length, 0);
+});
+
+test("syncPush rejects workspace sync when user is not a member", async () => {
+  parseSyncLotsShapeMock.mockReturnValue({
+    lots: [{ id: 21 }],
+    salesByLot: { "21": [] }
+  });
+  hasWorkspaceMembershipMock.mockResolvedValue(false);
+
+  const request = createRequest(
+    {
+      lots: [{ id: 21 }],
+      salesByLot: { "21": [] },
+      workspaceId: "team-nope"
+    },
+    "POST",
+    { authorization: "Bearer user-denied" }
+  );
+  const context = createContext();
+
+  const response = await syncPush(request as never, context as never);
+  assert.equal(response.status, 403);
+  assert.equal((response.jsonBody as { error: string }).error, "User is not a member of this workspace.");
+  assert.equal(getEffectiveSyncSnapshotMock.mock.calls.length, 0);
+  assert.equal(upsertSyncSnapshotIncrementalMock.mock.calls.length, 0);
 });

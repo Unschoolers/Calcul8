@@ -8,9 +8,10 @@ vi.mock("@azure/functions", () => ({
   }
 }));
 
-const { getConfigMock, getEffectiveSyncSnapshotMock } = vi.hoisted(() => ({
+const { getConfigMock, getEffectiveSyncSnapshotMock, hasWorkspaceMembershipMock } = vi.hoisted(() => ({
   getConfigMock: vi.fn(),
-  getEffectiveSyncSnapshotMock: vi.fn()
+  getEffectiveSyncSnapshotMock: vi.fn(),
+  hasWorkspaceMembershipMock: vi.fn()
 }));
 
 vi.mock("../lib/config", () => ({
@@ -18,7 +19,8 @@ vi.mock("../lib/config", () => ({
 }));
 
 vi.mock("../lib/cosmos", () => ({
-  getEffectiveSyncSnapshot: getEffectiveSyncSnapshotMock
+  getEffectiveSyncSnapshot: getEffectiveSyncSnapshotMock,
+  hasWorkspaceMembership: hasWorkspaceMembershipMock
 }));
 
 import { syncPull } from "./syncPull";
@@ -87,6 +89,7 @@ const originalFetch = globalThis.fetch;
 
 beforeEach(() => {
   vi.clearAllMocks();
+  hasWorkspaceMembershipMock.mockResolvedValue(true);
   globalThis.fetch = (async (input: unknown) => {
     const raw = String(input);
     const tokenMatch = /[?&]id_token=([^&]+)/.exec(raw);
@@ -121,6 +124,7 @@ test("syncPull returns empty snapshot when no cloud state exists", async () => {
       updatedAt: null
     }
   });
+  assert.equal(hasWorkspaceMembershipMock.mock.calls.length, 0);
 });
 
 test("syncPull returns existing snapshot payload", async () => {
@@ -149,7 +153,7 @@ test("syncPull returns server error when snapshot read fails", async () => {
   assert.equal(context.error.mock.calls.length, 1);
 });
 
-test("syncPull accepts optional workspaceId payload field but still uses personal scope", async () => {
+test("syncPull uses workspace partition when workspaceId is provided", async () => {
   getEffectiveSyncSnapshotMock.mockResolvedValue({
     lots: [{ id: 10 }],
     salesByLot: { "10": [] },
@@ -161,6 +165,19 @@ test("syncPull accepts optional workspaceId payload field but still uses persona
 
   const response = await syncPull(request as never, context as never);
   assert.equal(response.status, 200);
-  assert.equal(getEffectiveSyncSnapshotMock.mock.calls[0]?.[1], "user-ws");
-  assert.equal(context.warn.mock.calls.length, 1);
+  assert.equal(getEffectiveSyncSnapshotMock.mock.calls[0]?.[1], "ws:team-42");
+  assert.equal(hasWorkspaceMembershipMock.mock.calls[0]?.[1], "user-ws");
+  assert.equal(hasWorkspaceMembershipMock.mock.calls[0]?.[2], "team-42");
+  assert.equal(context.warn.mock.calls.length, 0);
+});
+
+test("syncPull rejects workspace sync when user is not a member", async () => {
+  hasWorkspaceMembershipMock.mockResolvedValue(false);
+  const request = createRequest("POST", { authorization: "Bearer user-ws" }, { workspaceId: "team-42" });
+  const context = createContext();
+
+  const response = await syncPull(request as never, context as never);
+  assert.equal(response.status, 403);
+  assert.equal((response.jsonBody as { error: string }).error, "User is not a member of this workspace.");
+  assert.equal(getEffectiveSyncSnapshotMock.mock.calls.length, 0);
 });

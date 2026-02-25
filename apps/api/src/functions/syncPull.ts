@@ -1,9 +1,10 @@
 import { app, type HttpRequest, type HttpResponseInit, type InvocationContext } from "@azure/functions";
 import { resolveUserId } from "../lib/auth";
 import { getConfig } from "../lib/config";
-import { getEffectiveSyncSnapshot } from "../lib/cosmos";
+import { getEffectiveSyncSnapshot, hasWorkspaceMembership } from "../lib/cosmos";
 import { errorResponse, jsonResponse, maybeHandleCorsPreflight } from "../lib/http";
 import { parseOptionalWorkspaceId } from "../lib/syncScope";
+import { assertSyncScopeAccess, resolveSyncScope, shouldWarnWorkspaceScopeFallback } from "../lib/syncScopeResolution";
 import type { SyncPullPayload } from "../types";
 
 const EMPTY_SYNC_SNAPSHOT = {
@@ -44,13 +45,20 @@ export async function syncPull(
   try {
     const userId = await resolveUserId(request, config);
     const payload = await parseSyncPullPayload(request);
-    if (payload.workspaceId) {
+    const syncScope = resolveSyncScope(userId, payload.workspaceId);
+    await assertSyncScopeAccess(
+      syncScope,
+      (actorUserId, workspaceId) => hasWorkspaceMembership(config, actorUserId, workspaceId)
+    );
+
+    if (shouldWarnWorkspaceScopeFallback(syncScope)) {
       context.warn("workspaceId provided but workspace sync scope is not enabled yet; using personal scope.", {
         userId,
-        workspaceId: payload.workspaceId
+        workspaceId: payload.workspaceId,
+        partitionKey: syncScope.partitionKey
       });
     }
-    const snapshot = await getEffectiveSyncSnapshot(config, userId);
+    const snapshot = await getEffectiveSyncSnapshot(config, syncScope.partitionKey);
 
     return jsonResponse(request, config, 200, {
       userId,

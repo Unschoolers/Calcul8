@@ -6,6 +6,7 @@ import type {
   MigrationRunDocument,
   PurchaseVerificationResultDocument,
   PlayPurchaseDocument,
+  WorkspaceMembershipDocument,
   SyncMetaDocument,
   SyncPresetDocument,
   SyncSnapshotDocument
@@ -122,6 +123,10 @@ function syncMetaId(userId: string): string {
 
 function migrationMarkerId(migrationId: string): string {
   return `migration_marker:${migrationId}`;
+}
+
+function workspaceMembershipId(userId: string, workspaceId: string): string {
+  return `m:${userId}:${workspaceId}`;
 }
 
 function getContainers(config: ApiConfig): CosmosCache {
@@ -279,6 +284,29 @@ export async function upsertEntitlement(
   }
 
   return resource;
+}
+
+export async function hasWorkspaceMembership(
+  config: ApiConfig,
+  userId: string,
+  workspaceId: string
+): Promise<boolean> {
+  const { entitlements } = getContainers(config);
+  const id = workspaceMembershipId(userId, workspaceId);
+
+  try {
+    const { resource } = await withCosmosRetry(() =>
+      entitlements.item(id, userId).read<WorkspaceMembershipDocument>()
+    );
+    if (!resource) return false;
+    if (resource.docType !== "workspace_membership") return false;
+    if (resource.userId !== userId || resource.workspaceId !== workspaceId) return false;
+    if (resource.status === "disabled" || resource.status === "removed") return false;
+    return true;
+  } catch (error) {
+    if (isNotFoundError(error)) return false;
+    throw error;
+  }
 }
 
 export async function getPlayPurchaseByTokenHash(

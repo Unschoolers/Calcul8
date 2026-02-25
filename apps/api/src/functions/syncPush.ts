@@ -1,9 +1,10 @@
 import { app, type HttpRequest, type HttpResponseInit, type InvocationContext } from "@azure/functions";
 import { HttpError, resolveUserId } from "../lib/auth";
 import { getConfig } from "../lib/config";
-import { getEffectiveSyncSnapshot, upsertSyncSnapshotIncremental } from "../lib/cosmos";
+import { getEffectiveSyncSnapshot, hasWorkspaceMembership, upsertSyncSnapshotIncremental } from "../lib/cosmos";
 import { errorResponse, jsonResponse, maybeHandleCorsPreflight } from "../lib/http";
 import { parseOptionalWorkspaceId } from "../lib/syncScope";
+import { assertSyncScopeAccess, resolveSyncScope, shouldWarnWorkspaceScopeFallback } from "../lib/syncScopeResolution";
 import { parseSyncLotsShape } from "../lib/syncShape";
 import { assertSafeSyncPush } from "../lib/syncSafety";
 import type { SyncPushPayload } from "../types";
@@ -85,13 +86,21 @@ export async function syncPush(
   try {
     const userId = await resolveUserId(request, config);
     const payload = await parseSyncPushPayload(request);
-    if (payload.workspaceId) {
+    const syncScope = resolveSyncScope(userId, payload.workspaceId);
+    await assertSyncScopeAccess(
+      syncScope,
+      (actorUserId, workspaceId) => hasWorkspaceMembership(config, actorUserId, workspaceId)
+    );
+
+    if (shouldWarnWorkspaceScopeFallback(syncScope)) {
       context.warn("workspaceId provided but workspace sync scope is not enabled yet; using personal scope.", {
         userId,
-        workspaceId: payload.workspaceId
+        workspaceId: payload.workspaceId,
+        partitionKey: syncScope.partitionKey
       });
     }
-    const existingSnapshot = await getEffectiveSyncSnapshot(config, userId);
+
+    const existingSnapshot = await getEffectiveSyncSnapshot(config, syncScope.partitionKey);
     assertSafeSyncPush(
       existingSnapshot,
       payload.lots,
@@ -105,7 +114,7 @@ export async function syncPush(
     const updatedAt = new Date().toISOString();
 
     const syncResult = await upsertSyncSnapshotIncremental(config, {
-      userId,
+      userId: syncScope.partitionKey,
       lots: payload.lots,
       salesByLot: payload.salesByLot,
       version,
