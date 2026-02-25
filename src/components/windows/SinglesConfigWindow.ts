@@ -18,6 +18,88 @@ function normalizeSinglesSearchTokens(query: unknown): string[] {
   return normalized.split(/\s+/).filter((token) => token.length > 0);
 }
 
+function isValidCsvColumnIndex(value: unknown, headersLength: number): value is number {
+  return Number.isInteger(value) && Number(value) >= 0 && Number(value) < headersLength;
+}
+
+function createNextSinglesEntryId(entries: SinglesPurchaseEntry[]): number {
+  const highestId = entries.reduce((maxId, entry) => {
+    const candidateId = Number(entry.id);
+    if (!Number.isFinite(candidateId) || candidateId <= 0) return maxId;
+    return Math.max(maxId, Math.floor(candidateId));
+  }, 0);
+  return Math.max(Date.now(), highestId + 1);
+}
+
+function toConditionAbbreviation(value: unknown): string {
+  const normalized = String(value || "").trim().toLocaleLowerCase();
+  if (!normalized) return "—";
+
+  const map: Record<string, string> = {
+    "near mint": "NM",
+    near: "NM",
+    nm: "NM",
+    mint: "M",
+    m: "M",
+    new: "N",
+    n: "N",
+    good: "G",
+    g: "G",
+    "light played": "LP",
+    lp: "LP",
+    "moderately played": "MP",
+    mp: "MP",
+    "heavily played": "HP",
+    hp: "HP",
+    damaged: "DMG",
+    dmg: "DMG",
+    poor: "P"
+  };
+
+  if (map[normalized]) return map[normalized];
+  const compact = normalized.replace(/[^a-z0-9]/g, "");
+  if (!compact) return "—";
+  return compact.slice(0, Math.min(3, compact.length)).toUpperCase();
+}
+
+function toLanguageAbbreviation(value: unknown): string {
+  const normalized = String(value || "").trim().toLocaleLowerCase();
+  if (!normalized) return "—";
+
+  const map: Record<string, string> = {
+    english: "En",
+    en: "En",
+    french: "Fr",
+    fr: "Fr",
+    spanish: "Es",
+    es: "Es",
+    german: "De",
+    de: "De",
+    italian: "It",
+    it: "It",
+    portuguese: "Pt",
+    pt: "Pt",
+    japanese: "Jp",
+    jp: "Jp",
+    korean: "Kr",
+    kr: "Kr",
+    chinese: "Zh",
+    zh: "Zh",
+    russian: "Ru",
+    ru: "Ru"
+  };
+
+  if (map[normalized]) return map[normalized];
+  const compact = normalized.replace(/[^a-z0-9]/g, "");
+  if (!compact) return "—";
+  return `${compact.slice(0, 1).toUpperCase()}${compact.slice(1, 2).toLowerCase()}`;
+}
+
+type SinglesDesktopSortKeyWithMeta =
+  | SinglesDesktopSortKey
+  | "condition"
+  | "language";
+
 export const SinglesConfigWindow = {
   name: "SinglesConfigWindow",
   props: {
@@ -34,17 +116,37 @@ export const SinglesConfigWindow = {
       singlesSearchQuery: "",
       isDesktopSelectMode: false,
       selectedDesktopRowIds: [] as number[],
-      desktopSortBy: null as SinglesDesktopSortKey | null,
+      desktopSortBy: null as SinglesDesktopSortKeyWithMeta | null,
       desktopSortDesc: false,
       desktopRowsScrollTop: 0,
       editingSinglesRowId: null as number | null,
       editingSinglesRow: {
         item: "",
         cardNumber: "",
+        condition: "",
+        language: "",
         cost: 0,
+        currency: "CAD" as "CAD" | "USD",
         quantity: 1,
         marketValue: 0
-      }
+      },
+      singlesConditionOptions: [
+        "Near Mint",
+        "Mint",
+        "New",
+        "Good",
+        "Light Played",
+        "Moderately Played",
+        "Heavily Played",
+        "Damaged"
+      ],
+      singlesLanguageOptions: [
+        "English",
+        "French",
+        "Japanese",
+        "Chinese",
+        "Spanish"
+      ]
     };
   },
   computed: {
@@ -91,9 +193,25 @@ export const SinglesConfigWindow = {
         const entryA = a.entry;
         const entryB = b.entry;
 
-        if (sortBy === "item" || sortBy === "cardNumber") {
-          const valueA = String(sortBy === "item" ? entryA.item : entryA.cardNumber || "").trim();
-          const valueB = String(sortBy === "item" ? entryB.item : entryB.cardNumber || "").trim();
+        if (sortBy === "item" || sortBy === "cardNumber" || sortBy === "condition" || sortBy === "language") {
+          const valueA = String(
+            sortBy === "item"
+              ? entryA.item
+              : sortBy === "cardNumber"
+                ? entryA.cardNumber || ""
+                : sortBy === "condition"
+                  ? entryA.condition || ""
+                  : entryA.language || ""
+          ).trim();
+          const valueB = String(
+            sortBy === "item"
+              ? entryB.item
+              : sortBy === "cardNumber"
+                ? entryB.cardNumber || ""
+                : sortBy === "condition"
+                  ? entryB.condition || ""
+                  : entryB.language || ""
+          ).trim();
           const compare = valueA.localeCompare(valueB, undefined, { numeric: true, sensitivity: "base" });
           if (compare !== 0) return compare * direction;
           return a.index - b.index;
@@ -156,6 +274,61 @@ export const SinglesConfigWindow = {
       if (!this.useDesktopVirtualization) return 0;
       const totalRows = (this.desktopSortedSinglesPurchases as SinglesPurchaseEntry[]).length;
       return Math.max(0, (totalRows - this.desktopVirtualEndIndex) * DESKTOP_VIRTUAL_ROW_HEIGHT);
+    },
+
+    csvColumnOptions(): Array<{ title: string; value: number }> {
+      const headers = Array.isArray(this.singlesCsvImportHeaders) ? this.singlesCsvImportHeaders : [];
+      return headers.map((header, index) => ({
+        title: String(header || `Column ${index + 1}`),
+        value: index
+      }));
+    },
+
+    requiredCsvMappedCount(): number {
+      const headersLength = Array.isArray(this.singlesCsvImportHeaders) ? this.singlesCsvImportHeaders.length : 0;
+      let count = 0;
+      if (isValidCsvColumnIndex(this.singlesCsvMapItem, headersLength)) count += 1;
+      if (isValidCsvColumnIndex(this.singlesCsvMapQuantity, headersLength)) count += 1;
+      return count;
+    },
+
+    optionalCsvMappedCount(): number {
+      const headersLength = Array.isArray(this.singlesCsvImportHeaders) ? this.singlesCsvImportHeaders.length : 0;
+      let count = 0;
+      if (isValidCsvColumnIndex(this.singlesCsvMapCost, headersLength)) count += 1;
+      if (isValidCsvColumnIndex(this.singlesCsvMapCardNumber, headersLength)) count += 1;
+      if (isValidCsvColumnIndex(this.singlesCsvMapCondition, headersLength)) count += 1;
+      if (isValidCsvColumnIndex(this.singlesCsvMapLanguage, headersLength)) count += 1;
+      if (isValidCsvColumnIndex(this.singlesCsvMapMarketValue, headersLength)) count += 1;
+      return count;
+    },
+
+    requiredCsvMappingsComplete(): boolean {
+      return this.requiredCsvMappedCount >= 2;
+    },
+
+    csvMappedFieldLabelsByColumn(): Record<number, string> {
+      const headersLength = Array.isArray(this.singlesCsvImportHeaders) ? this.singlesCsvImportHeaders.length : 0;
+      const labelsByColumn: Record<number, string[]> = {};
+      const addLabel = (columnIndex: unknown, label: string): void => {
+        if (!isValidCsvColumnIndex(columnIndex, headersLength)) return;
+        if (!labelsByColumn[columnIndex]) {
+          labelsByColumn[columnIndex] = [];
+        }
+        labelsByColumn[columnIndex].push(label);
+      };
+
+      addLabel(this.singlesCsvMapItem, "Item");
+      addLabel(this.singlesCsvMapQuantity, "Qty");
+      addLabel(this.singlesCsvMapCost, "Cost");
+      addLabel(this.singlesCsvMapCardNumber, "Number");
+      addLabel(this.singlesCsvMapCondition, "Condition");
+      addLabel(this.singlesCsvMapLanguage, "Language");
+      addLabel(this.singlesCsvMapMarketValue, "Market");
+
+      return Object.fromEntries(
+        Object.entries(labelsByColumn).map(([columnIndex, labels]) => [Number(columnIndex), labels.join(" + ")])
+      );
     }
   },
   methods: {
@@ -198,19 +371,17 @@ export const SinglesConfigWindow = {
       this.editingSinglesRow = {
         item: "",
         cardNumber: "",
+        condition: "",
+        language: "",
         cost: 0,
+        currency: this.currency === "USD" ? "USD" : "CAD",
         quantity: 1,
         marketValue: 0
       };
     },
 
     handleAddSinglesPurchase(): void {
-      const isMobile = Boolean(this.$vuetify?.display?.smAndDown);
-      if (isMobile) {
-        this.openSinglesRowEditor();
-        return;
-      }
-      this.addSinglesPurchaseRow();
+      this.openSinglesRowEditor();
     },
 
     openSinglesRowEditor(entry?: SinglesPurchaseEntry): void {
@@ -219,7 +390,12 @@ export const SinglesConfigWindow = {
         this.editingSinglesRow = {
           item: String(entry.item || ""),
           cardNumber: String(entry.cardNumber || ""),
+          condition: String(entry.condition || ""),
+          language: String(entry.language || ""),
           cost: Number(entry.cost) || 0,
+          currency: entry.currency === "USD" || entry.currency === "CAD"
+            ? entry.currency
+            : (this.currency === "USD" ? "USD" : "CAD"),
           quantity: Number(entry.quantity) || 1,
           marketValue: Number(entry.marketValue) || 0
         };
@@ -239,7 +415,10 @@ export const SinglesConfigWindow = {
     saveSinglesRowEditor(): void {
       const nextItem = String(this.editingSinglesRow.item || "").trim();
       const nextCardNumber = String(this.editingSinglesRow.cardNumber || "").trim();
+      const nextCondition = String(this.editingSinglesRow.condition || "").trim();
+      const nextLanguage = String(this.editingSinglesRow.language || "").trim();
       const parsedCost = Number(this.editingSinglesRow.cost);
+      const nextCurrency = this.editingSinglesRow.currency === "USD" ? "USD" : "CAD";
       const parsedQuantity = Number(this.editingSinglesRow.quantity);
       const parsedMarketValue = Number(this.editingSinglesRow.marketValue);
 
@@ -261,13 +440,17 @@ export const SinglesConfigWindow = {
       const nextMarketValue = Number.isFinite(parsedMarketValue) && parsedMarketValue >= 0 ? parsedMarketValue : 0;
 
       if (this.editingSinglesRowId == null) {
+        const nextId = createNextSinglesEntryId(this.singlesPurchases as SinglesPurchaseEntry[]);
         this.singlesPurchases = [
           ...this.singlesPurchases,
           {
-            id: Date.now(),
+            id: nextId,
             item: nextItem,
             cardNumber: nextCardNumber,
+            condition: nextCondition,
+            language: nextLanguage,
             cost: nextCost,
+            currency: nextCurrency,
             quantity: nextQuantity,
             marketValue: nextMarketValue
           }
@@ -279,7 +462,10 @@ export const SinglesConfigWindow = {
               ...entry,
               item: nextItem,
               cardNumber: nextCardNumber,
+              condition: nextCondition,
+              language: nextLanguage,
               cost: nextCost,
+              currency: nextCurrency,
               quantity: nextQuantity,
               marketValue: nextMarketValue
             }
@@ -405,7 +591,7 @@ export const SinglesConfigWindow = {
       );
     },
 
-    toggleDesktopSort(sortBy: SinglesDesktopSortKey): void {
+    toggleDesktopSort(sortBy: SinglesDesktopSortKeyWithMeta): void {
       if (this.desktopSortBy !== sortBy) {
         this.desktopSortBy = sortBy;
         this.desktopSortDesc = false;
@@ -424,9 +610,26 @@ export const SinglesConfigWindow = {
       this.resetDesktopRowsScroll();
     },
 
-    sortIconFor(sortBy: SinglesDesktopSortKey): string {
+    sortIconFor(sortBy: SinglesDesktopSortKeyWithMeta): string {
       if (this.desktopSortBy !== sortBy) return "mdi-swap-vertical";
       return this.desktopSortDesc ? "mdi-arrow-down" : "mdi-arrow-up";
+    },
+
+    csvMappedFieldLabel(columnIndex: number): string {
+      const labelsByColumn = this.csvMappedFieldLabelsByColumn as Record<number, string>;
+      return String(labelsByColumn?.[columnIndex] || "");
+    },
+
+    isCsvColumnMapped(columnIndex: number): boolean {
+      return this.csvMappedFieldLabel(columnIndex).length > 0;
+    },
+
+    conditionShortLabel(value: unknown): string {
+      return toConditionAbbreviation(value);
+    },
+
+    languageShortLabel(value: unknown): string {
+      return toLanguageAbbreviation(value);
     }
   },
   mounted() {

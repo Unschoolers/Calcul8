@@ -86,6 +86,11 @@ export interface SyncPushPayload {
   salesByLot: Record<string, unknown[]>;
   clientVersion?: number;
   allowEmptyOverwrite?: boolean;
+  workspaceId?: string;
+}
+
+export interface SyncPullPayload {
+  workspaceId?: string;
 }
 
 export type MigrationRunStatus = "running" | "succeeded" | "failed";

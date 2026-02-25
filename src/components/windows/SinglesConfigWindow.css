@@ -33,7 +33,7 @@
 }
 
 .singles-grid-table {
-  min-width: 860px;
+  min-width: 1080px;
   table-layout: fixed;
 }
 
@@ -91,11 +91,19 @@
 }
 
 .singles-col-item {
-  width: 36%;
+  width: 30%;
 }
 
 .singles-col-card {
-  width: 12%;
+  width: 9%;
+}
+
+.singles-col-condition {
+  width: 7%;
+}
+
+.singles-col-language {
+  width: 7%;
 }
 
 .singles-col-price {
@@ -103,19 +111,19 @@
 }
 
 .singles-col-qty {
-  width: 9%;
+  width: 8%;
 }
 
 .singles-col-market {
-  width: 11%;
+  width: 10%;
 }
 
 .singles-col-cost {
-  width: 14%;
+  width: 12%;
 }
 
 .singles-col-actions {
-  width: 8%;
+  width: 7%;
 }
 
 .singles-desktop-row {
@@ -150,6 +158,14 @@
   background: rgba(255, 255, 255, 0.02);
 }
 
+.singles-mobile-title {
+  line-height: 1.25;
+}
+
+.singles-mobile-subtitle {
+  line-height: 1.2;
+}
+
 .singles-editor-sheet {
   border-top-left-radius: 18px;
   border-top-right-radius: 18px;
@@ -157,6 +173,17 @@
 
 .singles-editor-form {
   padding-top: 14px;
+}
+
+.singles-editor-section {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.singles-editor-section + .singles-editor-section {
+  margin-top: 10px;
 }
 
 .singles-import-card .v-card-text {
@@ -177,6 +204,18 @@
   white-space: nowrap;
   font-size: 0.75rem;
   letter-spacing: 0.02em;
+}
+
+.singles-import-preview-chip {
+  text-transform: none;
+}
+
+.singles-import-preview-table th.is-mapped {
+  background: rgba(var(--v-theme-primary), 0.14);
+}
+
+.singles-import-preview-table td.is-mapped {
+  background: rgba(var(--v-theme-primary), 0.06);
 }
 
 @media (max-width: 959px) {

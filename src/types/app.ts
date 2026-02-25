@@ -5,6 +5,7 @@ export type LotType = "bulk" | "singles";
 export type CostInputMode = "perBox" | "total";
 export type PurchaseUiMode = "simple" | "expert";
 export type CurrencyCode = "CAD" | "USD";
+export type SinglesCsvImportMode = "merge" | "sync" | "append";
 export type SaleType = "pack" | "box" | "rtyh";
 export type ChartViewMode = "pie" | "sparkline";
 export type PortfolioChartViewMode = "breakdown" | "trend";
@@ -66,7 +67,10 @@ export interface SinglesPurchaseEntry {
   id: number;
   item: string;
   cardNumber?: string;
+  condition?: string;
+  language?: string;
   cost: number;
+  currency?: CurrencyCode;
   quantity: number;
   marketValue: number;
 }
@@ -74,6 +78,8 @@ export interface SinglesPurchaseEntry {
 export interface SinglesCsvColumnMapping {
   item: number | null;
   cardNumber: number | null;
+  condition: number | null;
+  language: number | null;
   cost: number | null;
   quantity: number | null;
   marketValue: number | null;
@@ -192,8 +198,12 @@ export interface AppState extends LotSetup {
   showSinglesCsvMapperModal: boolean;
   singlesCsvImportHeaders: string[];
   singlesCsvImportRows: string[][];
+  singlesCsvImportCurrency: CurrencyCode;
+  singlesCsvImportMode: SinglesCsvImportMode;
   singlesCsvMapItem: number | null;
   singlesCsvMapCardNumber: number | null;
+  singlesCsvMapCondition: number | null;
+  singlesCsvMapLanguage: number | null;
   singlesCsvMapCost: number | null;
   singlesCsvMapQuantity: number | null;
   singlesCsvMapMarketValue: number | null;

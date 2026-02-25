@@ -3,6 +3,7 @@ import { HttpError, resolveUserId } from "../lib/auth";
 import { getConfig } from "../lib/config";
 import { getEffectiveSyncSnapshot, upsertSyncSnapshotIncremental } from "../lib/cosmos";
 import { errorResponse, jsonResponse, maybeHandleCorsPreflight } from "../lib/http";
+import { parseOptionalWorkspaceId } from "../lib/syncScope";
 import { parseSyncLotsShape } from "../lib/syncShape";
 import { assertSafeSyncPush } from "../lib/syncSafety";
 import type { SyncPushPayload } from "../types";
@@ -52,6 +53,7 @@ async function parseSyncPushPayload(request: HttpRequest): Promise<SyncPushPaylo
 
   const syncShape = parseSyncLotsShape(payload);
   const clientVersion = payload.clientVersion;
+  const workspaceId = parseOptionalWorkspaceId(payload.workspaceId);
 
   parseLotIds(syncShape.lots);
 
@@ -67,7 +69,8 @@ async function parseSyncPushPayload(request: HttpRequest): Promise<SyncPushPaylo
     lots: syncShape.lots,
     salesByLot: syncShape.salesByLot,
     clientVersion: typeof clientVersion === "number" ? clientVersion : undefined,
-    allowEmptyOverwrite: payload.allowEmptyOverwrite === true
+    allowEmptyOverwrite: payload.allowEmptyOverwrite === true,
+    workspaceId
   };
 }
 
@@ -82,6 +85,12 @@ export async function syncPush(
   try {
     const userId = await resolveUserId(request, config);
     const payload = await parseSyncPushPayload(request);
+    if (payload.workspaceId) {
+      context.warn("workspaceId provided but workspace sync scope is not enabled yet; using personal scope.", {
+        userId,
+        workspaceId: payload.workspaceId
+      });
+    }
     const existingSnapshot = await getEffectiveSyncSnapshot(config, userId);
     assertSafeSyncPush(
       existingSnapshot,

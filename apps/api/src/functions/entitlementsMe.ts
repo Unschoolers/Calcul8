@@ -4,6 +4,7 @@ import { getConfig } from "../lib/config";
 import { getEntitlement, listPlayPurchasesForUser, upsertEntitlement } from "../lib/cosmos";
 import { errorResponse, jsonResponse, maybeHandleCorsPreflight } from "../lib/http";
 import { hasValidProPurchase } from "../lib/playEntitlements";
+import { buildLegacyUserEntitlementDocumentId } from "../lib/scopeKeys";
 
 export async function entitlementsMe(
   request: HttpRequest,
@@ -18,7 +19,7 @@ export async function entitlementsMe(
     const existingEntitlement = await getEntitlement(config, userId);
     let entitlement = existingEntitlement
       ?? await upsertEntitlement(config, {
-        id: `entitlement:${userId}`,
+        id: buildLegacyUserEntitlementDocumentId(userId),
         userId,
         hasProAccess: false,
         updatedAt: new Date().toISOString()

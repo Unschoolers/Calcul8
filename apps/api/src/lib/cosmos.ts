@@ -11,6 +11,7 @@ import type {
   SyncSnapshotDocument
 } from "../types";
 import { calculateSyncPresetDiff, type SyncPresetState } from "./syncDiff";
+import { buildLegacyUserEntitlementDocumentId } from "./scopeKeys";
 
 interface CosmosCache {
   entitlements: Container;
@@ -96,7 +97,7 @@ async function withCosmosRetry<T>(operation: () => Promise<T>): Promise<T> {
 }
 
 function entitlementId(userId: string): string {
-  return `entitlement:${userId}`;
+  return buildLegacyUserEntitlementDocumentId(userId);
 }
 
 function playPurchaseId(purchaseTokenHash: string): string {

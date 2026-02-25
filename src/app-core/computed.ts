@@ -172,7 +172,22 @@ export const appComputed: AppComputedObject = {
   },
 
   singlesPurchaseTotalCost(): number {
-    return calculateSinglesPurchaseTotals(this.singlesPurchases).totalCost;
+    if (!Array.isArray(this.singlesPurchases) || this.singlesPurchases.length === 0) return 0;
+    return this.singlesPurchases.reduce((sum, entry) => {
+      const quantity = Math.max(0, Math.floor(Number(entry.quantity) || 0));
+      const unitCost = Math.max(0, Number(entry.cost) || 0);
+      const entryCurrency = entry.currency === "USD" || entry.currency === "CAD"
+        ? entry.currency
+        : (this.currency === "USD" ? "USD" : "CAD");
+      const convertedUnitCost = calculateBoxPriceCostCad(
+        unitCost,
+        entryCurrency,
+        this.sellingCurrency,
+        this.exchangeRate,
+        DEFAULT_VALUES.EXCHANGE_RATE
+      );
+      return sum + (convertedUnitCost * quantity);
+    }, 0);
   },
 
   singlesPurchaseTotalMarketValue(): number {
@@ -343,8 +358,19 @@ export const appComputed: AppComputedObject = {
   },
 
   conversionInfo(): string {
-    if (this.currency !== this.sellingCurrency) {
-      const convertedTotal = (this.boxPriceCostCAD * (this.boxesPurchased || 0)) + this.purchaseShippingCostCAD;
+    const hasSinglesConversion = this.currentLotType === "singles" && (this.singlesPurchases || []).some((entry) => {
+      const entryCurrency = entry.currency === "USD" || entry.currency === "CAD"
+        ? entry.currency
+        : (this.currency === "USD" ? "USD" : "CAD");
+      return entryCurrency !== this.sellingCurrency;
+    });
+    if (hasSinglesConversion || this.currency !== this.sellingCurrency) {
+      const convertedTotal = this.currentLotType === "singles"
+        ? this.singlesPurchaseTotalCost
+        : (this.boxPriceCostCAD * (this.boxesPurchased || 0)) + this.purchaseShippingCostCAD;
+      if (this.currentLotType === "singles") {
+        return `Converted purchase costs to ${this.sellingCurrency}. ≈ $${this.formatCurrency(convertedTotal)} ${this.sellingCurrency} total`;
+      }
       return `Converted purchase from ${this.currency} to ${this.sellingCurrency}. ≈ $${this.formatCurrency(convertedTotal)} ${this.sellingCurrency} total`;
     }
     return "";

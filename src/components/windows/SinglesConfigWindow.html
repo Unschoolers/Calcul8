@@ -4,7 +4,7 @@
       <v-card-title class="text-subtitle-1 d-flex align-center justify-space-between flex-wrap ga-2">
         <div class="d-flex align-center">
           <v-icon class="mr-2">mdi-table-large</v-icon>
-          Singles Purchases
+          Singles Purchasing
         </div>
         <div class="d-flex align-center singles-action-icons">
           <v-tooltip text="Import CSV" location="top">
@@ -70,6 +70,35 @@
       </v-card-title>
       <v-divider></v-divider>
       <v-card-text>
+        <div class="d-flex align-center justify-space-between flex-wrap ga-2 mb-3">
+          <div class="text-caption text-medium-emphasis">Default purchase currency</div>
+          <v-btn-toggle
+            v-model="currency"
+            mandatory
+            density="compact"
+            variant="tonal"
+            class="pill-toggle"
+            @update:model-value="onPurchaseConfigChange"
+          >
+            <v-btn value="CAD" title="CAD">🇨🇦</v-btn>
+            <v-btn value="USD" title="USD">🇺🇸</v-btn>
+          </v-btn-toggle>
+        </div>
+        <v-text-field
+          v-if="currency !== sellingCurrency"
+          v-model.number="exchangeRate"
+          label="USD to CAD Rate"
+          type="number"
+          variant="outlined"
+          density="compact"
+          step="0.01"
+          hide-details
+          class="mb-3"
+          @input="onPurchaseConfigChange"
+        ></v-text-field>
+        <v-alert v-if="conversionInfo" type="info" density="compact" class="mb-3">
+          {{ conversionInfo }}
+        </v-alert>
         <v-alert
           v-if="showSinglesInfoNotice"
           type="info"
@@ -145,6 +174,8 @@
             <colgroup>
               <col class="singles-col-item">
               <col class="singles-col-card">
+              <col class="singles-col-condition">
+              <col class="singles-col-language">
               <col class="singles-col-price">
               <col class="singles-col-qty">
               <col class="singles-col-market">
@@ -171,6 +202,26 @@
                   >
                     <span>Number</span>
                     <v-icon size="14">{{ sortIconFor('cardNumber') }}</v-icon>
+                  </button>
+                </th>
+                <th class="text-right">
+                  <button
+                    type="button"
+                    :class="['singles-sort-btn', 'singles-sort-btn--right', { 'is-active': desktopSortBy === 'condition' }]"
+                    @click="toggleDesktopSort('condition')"
+                  >
+                    <span>Condition</span>
+                    <v-icon size="14">{{ sortIconFor('condition') }}</v-icon>
+                  </button>
+                </th>
+                <th class="text-right">
+                  <button
+                    type="button"
+                    :class="['singles-sort-btn', 'singles-sort-btn--right', { 'is-active': desktopSortBy === 'language' }]"
+                    @click="toggleDesktopSort('language')"
+                  >
+                    <span>Language</span>
+                    <v-icon size="14">{{ sortIconFor('language') }}</v-icon>
                   </button>
                 </th>
                 <th class="text-right">
@@ -218,7 +269,7 @@
             </thead>
             <tbody>
               <tr v-if="useDesktopVirtualization && desktopTopSpacerPx > 0" class="singles-virtual-spacer-row">
-                <td colspan="7" :style="{ height: `${desktopTopSpacerPx}px` }"></td>
+                <td colspan="9" :style="{ height: `${desktopTopSpacerPx}px` }"></td>
               </tr>
               <tr
                 v-for="entry in desktopRenderedRows"
@@ -251,8 +302,15 @@
                 <td>
                   <span class="text-body-2 text-medium-emphasis">{{ entry.cardNumber || "—" }}</span>
                 </td>
+                <td class="text-right text-body-2 text-medium-emphasis" :title="entry.condition || '—'">
+                  {{ conditionShortLabel(entry.condition) }}
+                </td>
+                <td class="text-right text-body-2 text-medium-emphasis" :title="entry.language || '—'">
+                  {{ languageShortLabel(entry.language) }}
+                </td>
                 <td class="text-right text-body-2">
                   ${{ fmtCurrency(entry.cost) }}
+                  <span class="text-caption text-medium-emphasis ml-1">{{ entry.currency || currency }}</span>
                 </td>
                 <td>
                   <div class="text-body-2 text-right">
@@ -264,6 +322,7 @@
                 </td>
                 <td class="text-right text-body-2 font-weight-medium">
                   ${{ fmtCurrency((Number(entry.cost) || 0) * (Number(entry.quantity) || 0)) }}
+                  <span class="text-caption text-medium-emphasis ml-1">{{ entry.currency || currency }}</span>
                 </td>
                 <td class="text-right">
                   <div v-if="!isDesktopSelectMode" class="singles-row-actions">
@@ -287,7 +346,7 @@
                 </td>
               </tr>
               <tr v-if="useDesktopVirtualization && desktopBottomSpacerPx > 0" class="singles-virtual-spacer-row">
-                <td colspan="7" :style="{ height: `${desktopBottomSpacerPx}px` }"></td>
+                <td colspan="9" :style="{ height: `${desktopBottomSpacerPx}px` }"></td>
               </tr>
             </tbody>
           </v-table>
@@ -299,9 +358,10 @@
               v-for="entry in visibleSinglesPurchases"
               :key="`mobile-${entry.id}`"
               class="singles-mobile-item"
+              lines="two"
               @click="openSinglesRowEditor(entry)"
             >
-              <v-list-item-title class="text-body-2 font-weight-medium">
+              <v-list-item-title class="text-body-2 font-weight-medium singles-mobile-title">
                 <v-icon
                   v-if="isSinglesEntryFullySold(entry)"
                   size="14"
@@ -312,9 +372,11 @@
                 >mdi-check-circle</v-icon>
                 {{ entry.item || "Unnamed card" }}
                 <span v-if="entry.cardNumber" class="text-caption text-medium-emphasis ml-1">#{{ entry.cardNumber }}</span>
+                <span v-if="entry.cardNumber" class="text-caption text-medium-emphasis ml-1">·</span>
+                <span class="text-caption text-medium-emphasis ml-1">{{ getSinglesEntryStockLabel(entry) }}</span>
               </v-list-item-title>
-              <v-list-item-subtitle class="text-caption">
-                Qty {{ getSinglesEntryStockLabel(entry) }} · Cost ${{ fmtCurrency((Number(entry.cost) || 0) * (Number(entry.quantity) || 0)) }} · Market ${{ fmtCurrency(entry.marketValue) }}
+              <v-list-item-subtitle class="text-caption singles-mobile-subtitle">
+                {{ conditionShortLabel(entry.condition) }} · {{ languageShortLabel(entry.language) }} · C ${{ fmtCurrency((Number(entry.cost) || 0) * (Number(entry.quantity) || 0)) }} {{ entry.currency || currency }} · M ${{ fmtCurrency(entry.marketValue) }}
               </v-list-item-subtitle>
               <template #append>
                 <div class="d-flex align-center ga-1">
@@ -344,7 +406,7 @@
         <v-row dense class="mt-2">
           <v-col cols="12" sm="4">
             <v-chip variant="tonal" color="primary" size="small" class="w-100 justify-space-between">
-              <span>Total Cost</span>
+              <span>Total Cost ({{ sellingCurrency }})</span>
               <strong>${{ fmtCurrency(singlesPurchaseTotalCost) }}</strong>
             </v-chip>
           </v-col>
@@ -369,21 +431,24 @@
     <v-card elevation="4" class="config-card">
       <v-card-title class="text-subtitle-1">
         <v-icon class="mr-2">mdi-cash-multiple</v-icon>
-        Selling
+        Singles Selling
       </v-card-title>
       <v-divider></v-divider>
       <v-card-text>
-        <v-btn-toggle
-          v-model="sellingCurrency"
-          mandatory
-          density="compact"
-          variant="tonal"
-          class="mb-2 pill-toggle"
-          @update:model-value="onPurchaseConfigChange"
-        >
-          <v-btn value="CAD" title="CAD">🇨🇦</v-btn>
-          <v-btn value="USD" title="USD">🇺🇸</v-btn>
-        </v-btn-toggle>
+        <div class="d-flex align-center justify-space-between flex-wrap ga-2 mb-3">
+          <div class="text-caption text-medium-emphasis">Selling currency</div>
+          <v-btn-toggle
+            v-model="sellingCurrency"
+            mandatory
+            density="compact"
+            variant="tonal"
+            class="pill-toggle"
+            @update:model-value="onPurchaseConfigChange"
+          >
+            <v-btn value="CAD" title="CAD">🇨🇦</v-btn>
+            <v-btn value="USD" title="USD">🇺🇸</v-btn>
+          </v-btn-toggle>
+        </div>
 
         <v-text-field
           v-model.number="sellingTaxPercent"
@@ -451,64 +516,118 @@
       </v-card-title>
       <v-divider></v-divider>
       <v-card-text class="singles-editor-form">
-        <v-text-field
-          v-model="editingSinglesRow.item"
-          label="Item"
-          variant="outlined"
-          density="comfortable"
-          hide-details
-          class="mb-3"
-          placeholder="Card name"
-        ></v-text-field>
-        <v-text-field
-          v-model="editingSinglesRow.cardNumber"
-          label="Number"
-          variant="outlined"
-          density="comfortable"
-          hide-details
-          class="mb-3"
-          placeholder="Optional"
-        ></v-text-field>
-        <v-row dense>
-          <v-col cols="6">
-            <v-text-field
-              v-model.number="editingSinglesRow.cost"
-              label="Cost"
-              type="number"
-              min="0"
-              step="0.01"
-              prefix="$"
-              variant="outlined"
-              density="comfortable"
-              hide-details
-            ></v-text-field>
-          </v-col>
-          <v-col cols="6">
-            <v-text-field
-              v-model.number="editingSinglesRow.quantity"
-              label="Qty"
-              type="number"
-              min="0"
-              step="1"
-              variant="outlined"
-              density="comfortable"
-              hide-details
-            ></v-text-field>
-          </v-col>
-          <v-col cols="12">
-            <v-text-field
-              v-model.number="editingSinglesRow.marketValue"
-              label="Market Value"
-              type="number"
-              min="0"
-              step="0.01"
-              prefix="$"
-              variant="outlined"
-              density="comfortable"
-              hide-details
-            ></v-text-field>
-          </v-col>
-        </v-row>
+        <div class="singles-editor-section">
+          <div class="text-caption text-medium-emphasis mb-2 font-weight-bold">Core</div>
+          <v-row dense>
+            <v-col cols="8">
+              <v-text-field
+                v-model="editingSinglesRow.item"
+                label="Item"
+                variant="outlined"
+                density="comfortable"
+                hide-details
+                placeholder="Card name"
+              ></v-text-field>
+            </v-col>
+            <v-col cols="4">
+              <v-text-field
+                v-model="editingSinglesRow.cardNumber"
+                label="Number"
+                variant="outlined"
+                density="comfortable"
+                hide-details
+                placeholder="Optional"
+              ></v-text-field>
+            </v-col>
+            <v-col cols="6">
+              <v-text-field
+                v-model.number="editingSinglesRow.quantity"
+                label="Quantity"
+                type="number"
+                min="0"
+                step="1"
+                variant="outlined"
+                density="comfortable"
+                hide-details
+              ></v-text-field>
+            </v-col>
+            <v-col cols="6">
+              <v-text-field
+                v-model.number="editingSinglesRow.cost"
+                :label="`Cost (${editingSinglesRow.currency})`"
+                type="number"
+                min="0"
+                step="0.01"
+                prefix="$"
+                variant="outlined"
+                density="comfortable"
+                hide-details
+              ></v-text-field>
+            </v-col>
+          </v-row>
+        </div>
+
+        <div class="singles-editor-section">
+          <div class="text-caption text-medium-emphasis mb-2 font-weight-bold">Pricing</div>
+          <v-row dense>
+            <v-col cols="6">
+              <div class="text-caption text-medium-emphasis mb-1">Currency</div>
+              <v-btn-toggle
+                v-model="editingSinglesRow.currency"
+                mandatory
+                density="compact"
+                variant="tonal"
+                class="pill-toggle"
+              >
+                <v-btn value="CAD" title="CAD">🇨🇦</v-btn>
+                <v-btn value="USD" title="USD">🇺🇸</v-btn>
+              </v-btn-toggle>
+            </v-col>
+            <v-col cols="6">
+              <v-text-field
+                v-model.number="editingSinglesRow.marketValue"
+                label="Market Value"
+                type="number"
+                min="0"
+                step="0.01"
+                prefix="$"
+                variant="outlined"
+                density="comfortable"
+                hide-details
+              ></v-text-field>
+            </v-col>
+          </v-row>
+        </div>
+
+        <div class="singles-editor-section">
+          <div class="text-caption text-medium-emphasis mb-2 font-weight-bold">Attributes</div>
+          <v-row dense>
+            <v-col cols="6">
+              <v-combobox
+                v-model="editingSinglesRow.condition"
+                :items="singlesConditionOptions"
+                label="Condition"
+                variant="outlined"
+                density="comfortable"
+                hide-details
+                placeholder="Near Mint"
+                clearable
+              ></v-combobox>
+            </v-col>
+            <v-col cols="6">
+              <v-combobox
+                v-model="editingSinglesRow.language"
+                :items="singlesLanguageOptions"
+                label="Language"
+                variant="outlined"
+                density="comfortable"
+                hide-details
+                placeholder="English"
+                clearable
+              ></v-combobox>
+            </v-col>
+          </v-row>
+        </div>
       </v-card-text>
     </v-card>
   </v-bottom-sheet>
@@ -525,84 +644,180 @@
           Choose which CSV columns map to each field before importing.
         </div>
 
+        <div class="d-flex align-center justify-space-between flex-wrap ga-2 mb-3">
+          <div class="d-flex align-center ga-2 flex-wrap">
+            <v-chip
+              size="small"
+              :color="requiredCsvMappingsComplete ? 'success' : 'warning'"
+              variant="tonal"
+            >
+              {{ requiredCsvMappedCount }}/2 required mapped
+            </v-chip>
+            <v-chip size="small" variant="tonal">
+              {{ optionalCsvMappedCount }}/5 optional mapped
+            </v-chip>
+          </div>
+        </div>
+
+        <div class="d-flex align-center justify-space-between flex-wrap ga-2 mb-3">
+          <div class="text-caption text-medium-emphasis">Import mode</div>
+          <v-btn-toggle
+            v-model="singlesCsvImportMode"
+            mandatory
+            density="compact"
+            variant="tonal"
+            class="pill-toggle"
+          >
+            <v-btn value="merge" title="Merge">Merge</v-btn>
+            <v-btn value="sync" title="Sync">Sync</v-btn>
+            <v-btn value="append" title="Append">Append</v-btn>
+          </v-btn-toggle>
+        </div>
+
+        <div class="d-flex align-center justify-space-between flex-wrap ga-2 mb-3">
+          <div class="text-caption text-medium-emphasis">Import purchase currency</div>
+          <v-btn-toggle
+            v-model="singlesCsvImportCurrency"
+            mandatory
+            density="compact"
+            variant="tonal"
+            class="pill-toggle"
+          >
+            <v-btn value="CAD" title="CAD">🇨🇦</v-btn>
+            <v-btn value="USD" title="USD">🇺🇸</v-btn>
+          </v-btn-toggle>
+        </div>
+
+        <v-alert
+          v-if="singlesCsvImportMode === 'sync'"
+          type="warning"
+          variant="tonal"
+          density="compact"
+          class="mb-3"
+        >
+          Sync replaces your current singles list, then imports the CSV rows.
+        </v-alert>
+
         <v-row dense>
           <v-col cols="12">
-            <div class="text-caption text-medium-emphasis mb-1">Required</div>
+            <div class="d-flex align-center ga-1 text-caption text-medium-emphasis mb-1">
+              <v-icon size="14" color="warning">mdi-asterisk</v-icon>
+              <span>Required fields</span>
+            </div>
           </v-col>
           <v-col cols="12" md="6">
             <v-select
               v-model="singlesCsvMapItem"
-              :items="singlesCsvImportHeaders.map((header, index) => ({ title: header, value: index }))"
+              :items="csvColumnOptions"
               item-title="title"
               item-value="value"
-              label="Item (Required)"
+              label="Item"
               variant="outlined"
               density="compact"
               clearable
+              placeholder="Select column"
+              no-data-text="No columns found"
               hide-details
             ></v-select>
           </v-col>
           <v-col cols="12" md="6">
             <v-select
               v-model="singlesCsvMapQuantity"
-              :items="singlesCsvImportHeaders.map((header, index) => ({ title: header, value: index }))"
+              :items="csvColumnOptions"
               item-title="title"
               item-value="value"
-              label="Quantity (Required)"
+              label="Quantity"
               variant="outlined"
               density="compact"
               clearable
+              placeholder="Select column"
+              no-data-text="No columns found"
               hide-details
             ></v-select>
           </v-col>
 
           <v-col cols="12" class="mt-1">
-            <div class="text-caption text-medium-emphasis mb-1">Optional</div>
+            <div class="d-flex align-center ga-1 text-caption text-medium-emphasis mb-1">
+              <v-icon size="14">mdi-plus-circle-outline</v-icon>
+              <span>Optional fields</span>
+            </div>
           </v-col>
           <v-col cols="12" md="4">
             <v-select
               v-model="singlesCsvMapCost"
-              :items="singlesCsvImportHeaders.map((header, index) => ({ title: header, value: index }))"
+              :items="csvColumnOptions"
               item-title="title"
               item-value="value"
-              label="Cost (Optional)"
+              label="Cost"
               variant="outlined"
               density="compact"
               clearable
+              placeholder="Select column"
+              no-data-text="No columns found"
+              hide-details
+            ></v-select>
+          </v-col>
+          <v-col cols="12" md="4">
+            <v-select
+              v-model="singlesCsvMapCondition"
+              :items="csvColumnOptions"
+              item-title="title"
+              item-value="value"
+              label="Condition"
+              variant="outlined"
+              density="compact"
+              clearable
+              placeholder="Select column"
+              no-data-text="No columns found"
+              hide-details
+            ></v-select>
+          </v-col>
+          <v-col cols="12" md="4">
+            <v-select
+              v-model="singlesCsvMapLanguage"
+              :items="csvColumnOptions"
+              item-title="title"
+              item-value="value"
+              label="Language"
+              variant="outlined"
+              density="compact"
+              clearable
+              placeholder="Select column"
+              no-data-text="No columns found"
               hide-details
             ></v-select>
           </v-col>
           <v-col cols="12" md="4">
             <v-select
               v-model="singlesCsvMapCardNumber"
-              :items="singlesCsvImportHeaders.map((header, index) => ({ title: header, value: index }))"
+              :items="csvColumnOptions"
               item-title="title"
               item-value="value"
-              label="Number (Optional)"
+              label="Number"
               variant="outlined"
               density="compact"
               clearable
+              placeholder="Select column"
+              no-data-text="No columns found"
               hide-details
             ></v-select>
           </v-col>
           <v-col cols="12" md="4">
             <v-select
               v-model="singlesCsvMapMarketValue"
-              :items="singlesCsvImportHeaders.map((header, index) => ({ title: header, value: index }))"
+              :items="csvColumnOptions"
               item-title="title"
               item-value="value"
-              label="Market Value (Optional)"
+              label="Market Value"
               variant="outlined"
               density="compact"
               clearable
+              placeholder="Select column"
+              no-data-text="No columns found"
               hide-details
             ></v-select>
           </v-col>
         </v-row>
-
-        <v-alert type="info" variant="tonal" density="compact" class="mt-3">
-          Item and Quantity are required. Cost, Market Value, and Number are optional.
-        </v-alert>
 
         <div class="text-caption text-medium-emphasis mt-4 mb-2">
           CSV Preview (first 5 rows)
@@ -611,8 +826,23 @@
           <v-table density="compact" class="singles-import-preview-table">
             <thead>
               <tr>
-                <th v-for="(header, index) in singlesCsvImportHeaders" :key="`preview-header-${index}`">
-                  {{ header || `Column ${index + 1}` }}
+                <th
+                  v-for="(header, index) in singlesCsvImportHeaders"
+                  :key="`preview-header-${index}`"
+                  :class="{ 'is-mapped': isCsvColumnMapped(index) }"
+                >
+                  <div class="d-flex align-center ga-1">
+                    <span>{{ header || `Column ${index + 1}` }}</span>
+                    <v-chip
+                      v-if="csvMappedFieldLabel(index)"
+                      size="x-small"
+                      color="primary"
+                      variant="tonal"
+                      class="singles-import-preview-chip"
+                    >
+                      {{ csvMappedFieldLabel(index) }}
+                    </v-chip>
+                  </div>
                 </th>
               </tr>
             </thead>
@@ -621,7 +851,11 @@
                 v-for="(row, rowIndex) in singlesCsvImportRows.slice(0, 5)"
                 :key="`preview-row-${rowIndex}`"
               >
-                <td v-for="(header, colIndex) in singlesCsvImportHeaders" :key="`preview-cell-${rowIndex}-${colIndex}`">
+                <td
+                  v-for="(header, colIndex) in singlesCsvImportHeaders"
+                  :key="`preview-cell-${rowIndex}-${colIndex}`"
+                  :class="{ 'is-mapped': isCsvColumnMapped(colIndex) }"
+                >
                   {{ row[colIndex] || "—" }}
                 </td>
               </tr>
@@ -635,10 +869,9 @@
           Cancel
         </v-btn>
         <v-btn color="primary" variant="flat" @click="confirmSinglesPurchasesCsvImport">
-          Import Rows
+          Import
         </v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>
 </v-row>
-

@@ -250,12 +250,27 @@ export function calculateLotPerformanceSummary(
 ): LotPerformanceSummary {
   const isSinglesLot = lot.lotType === "singles";
   const singlesTotals = calculateSinglesPurchaseTotals(lot.singlesPurchases);
+  const singlesTotalCostInSellingCurrency = (lot.singlesPurchases || []).reduce((sum, entry) => {
+    const quantity = Math.max(0, Math.floor(Number(entry.quantity) || 0));
+    const unitCost = Math.max(0, Number(entry.cost) || 0);
+    const entryCurrency = entry.currency === "USD" || entry.currency === "CAD"
+      ? entry.currency
+      : lot.currency;
+    const convertedUnitCost = calculateBoxPriceCostCad(
+      unitCost,
+      entryCurrency,
+      lot.sellingCurrency,
+      lot.exchangeRate,
+      defaultExchangeRate
+    );
+    return sum + (convertedUnitCost * quantity);
+  }, 0);
   const totalPacks = isSinglesLot
-    ? (singlesTotals.totalCost > 0 ? singlesTotals.totalQuantity : 0)
+    ? (singlesTotalCostInSellingCurrency > 0 ? singlesTotals.totalQuantity : 0)
     : calculateTotalPacks(lot.boxesPurchased, lot.packsPerBox, 16);
   const soldPacks = calculateSoldPacksCount(sales);
   const totalCost = isSinglesLot
-    ? singlesTotals.totalCost
+    ? singlesTotalCostInSellingCurrency
     : calculateTotalCaseCost({
       boxesPurchased: lot.boxesPurchased,
       pricePerBoxCad: calculateBoxPriceCostCad(

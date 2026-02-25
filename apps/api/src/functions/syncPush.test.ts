@@ -201,3 +201,37 @@ test("syncPush rejects duplicate lot ids with 400", async () => {
     "Duplicate lot id '1' in payload."
   );
 });
+
+test("syncPush accepts optional workspaceId payload field but still uses personal scope", async () => {
+  parseSyncLotsShapeMock.mockReturnValue({
+    lots: [{ id: 20 }],
+    salesByLot: { "20": [] }
+  });
+  getEffectiveSyncSnapshotMock.mockResolvedValue({
+    version: 1,
+    updatedAt: "2026-02-21T10:00:00.000Z"
+  });
+  upsertSyncSnapshotIncrementalMock.mockResolvedValue({
+    changed: true,
+    upsertedCount: 1,
+    deletedCount: 0
+  });
+
+  const request = createRequest(
+    {
+      lots: [{ id: 20 }],
+      salesByLot: { "20": [] },
+      clientVersion: 1,
+      workspaceId: "team-42"
+    },
+    "POST",
+    { authorization: "Bearer user-ws" }
+  );
+  const context = createContext();
+
+  const response = await syncPush(request as never, context as never);
+  assert.equal(response.status, 200);
+  assert.equal(getEffectiveSyncSnapshotMock.mock.calls[0]?.[1], "user-ws");
+  assert.equal(upsertSyncSnapshotIncrementalMock.mock.calls[0]?.[1]?.userId, "user-ws");
+  assert.equal(context.warn.mock.calls.length, 1);
+});

@@ -11,6 +11,7 @@ import {
 import { acknowledgePlayProductPurchase, verifyPlayProductPurchase } from "../lib/googlePlay";
 import { errorResponse, jsonResponse, maybeHandleCorsPreflight } from "../lib/http";
 import { assertPurchaseNotLinkedToDifferentUser, hashPurchaseToken, shouldAcknowledgePurchase } from "../lib/playEntitlements";
+import { buildLegacyUserEntitlementDocumentId } from "../lib/scopeKeys";
 import type { ApiConfig } from "../types";
 
 interface VerifyPlayPurchaseBody {
@@ -178,7 +179,7 @@ export async function verifyPlayEntitlementRequest(
     };
     await Promise.all([
       upsertEntitlement(config, {
-        id: `entitlement:${userId}`,
+        id: buildLegacyUserEntitlementDocumentId(userId),
         userId,
         hasProAccess: true,
         purchaseSource: "google_play",

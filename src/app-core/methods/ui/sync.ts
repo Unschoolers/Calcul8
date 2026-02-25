@@ -1,40 +1,19 @@
-import type { Sale } from "../../../types/app.ts";
 import type { AppContext, AppMethodState } from "../../context.ts";
 import {
   CLOUD_SYNC_INTERVAL_MS,
   GOOGLE_TOKEN_KEY,
   SYNC_CLIENT_VERSION_KEY,
-  SYNC_STATUS_RESET_MS,
-  fetchWithRetry,
   handleExpiredAuth,
   resolveApiBaseUrl
 } from "./shared.ts";
-
-type SyncPayload = {
-  lots: unknown[];
-  salesByLot: Record<string, Sale[]>;
-  clientVersion?: number;
-};
-
-function createSyncPayload(context: AppContext, clientVersion?: number): SyncPayload {
-  const salesByLot: Record<string, Sale[]> = {};
-  for (const lot of context.lots) {
-    salesByLot[String(lot.id)] = context.loadSalesForLotId(lot.id);
-  }
-
-  return {
-    lots: context.lots,
-    salesByLot,
-    clientVersion
-  };
-}
-
-function getSyncPayloadSignature(payload: SyncPayload): string {
-  return JSON.stringify({
-    lots: payload.lots,
-    salesByLot: payload.salesByLot
-  });
-}
+import {
+  applyCloudSnapshotToLocal,
+  parseCloudSnapshot,
+  shouldApplyCloudSnapshot
+} from "./sync-apply.ts";
+import { requestCloudSyncPull, requestCloudSyncPush, type SyncPullResponseBody, type SyncPushResponseBody } from "./sync-network.ts";
+import { createSyncPayload, getSyncPayloadSignature } from "./sync-payload.ts";
+import { setSyncStatusError, setSyncStatusSuccess, startSyncStatus } from "./sync-status.ts";
 
 export const uiSyncMethods: ThisType<AppContext> & Pick<
   AppMethodState,
@@ -55,35 +34,18 @@ export const uiSyncMethods: ThisType<AppContext> & Pick<
     const googleIdToken = (localStorage.getItem(GOOGLE_TOKEN_KEY) || "").trim();
     if (!googleIdToken) return;
 
-    this.syncStatus = "syncing";
-    if (this.syncStatusResetTimeoutId != null) {
-      window.clearTimeout(this.syncStatusResetTimeoutId);
-      this.syncStatusResetTimeoutId = null;
-    }
+    startSyncStatus(this);
 
     try {
-      const response = await fetchWithRetry(`${base}/sync/pull`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${googleIdToken}`
-        }
-      });
+      const response = await requestCloudSyncPull(base, googleIdToken);
 
       if (response.status === 401) {
         handleExpiredAuth(this);
-        this.syncStatus = "error";
-        this.syncStatusResetTimeoutId = window.setTimeout(() => {
-          this.syncStatus = "idle";
-          this.syncStatusResetTimeoutId = null;
-        }, SYNC_STATUS_RESET_MS);
+        setSyncStatusError(this);
         return;
       }
       if (!response.ok) {
-        this.syncStatus = "error";
-        this.syncStatusResetTimeoutId = window.setTimeout(() => {
-          this.syncStatus = "idle";
-          this.syncStatusResetTimeoutId = null;
-        }, SYNC_STATUS_RESET_MS);
+        setSyncStatusError(this);
         console.warn("[whatfees] Cloud sync pull failed", {
           status: response.status,
           statusText: response.statusText
@@ -91,88 +53,40 @@ export const uiSyncMethods: ThisType<AppContext> & Pick<
         return;
       }
 
-      const body = (await response.json()) as {
-        snapshot?: {
-          lots?: unknown[];
-          salesByLot?: Record<string, unknown[]>;
-          version?: number;
-          updatedAt?: string | null;
-        };
-      };
-      const snapshot = body.snapshot;
-      if (!snapshot) {
+      const body = (await response.json()) as SyncPullResponseBody;
+      if (!body.snapshot) {
         this.lastSyncedPayloadHash = getSyncPayloadSignature(createSyncPayload(this));
-        this.syncStatus = "success";
-        this.syncStatusResetTimeoutId = window.setTimeout(() => {
-          this.syncStatus = "idle";
-          this.syncStatusResetTimeoutId = null;
-        }, SYNC_STATUS_RESET_MS);
+        setSyncStatusSuccess(this);
         return;
       }
 
-      const cloudLots = Array.isArray(snapshot.lots) ? snapshot.lots : [];
-      const cloudSalesByLot = snapshot.salesByLot && typeof snapshot.salesByLot === "object"
-        ? snapshot.salesByLot
-        : {};
-      const cloudHasSales = Object.values(cloudSalesByLot).some((sales) => Array.isArray(sales) && sales.length > 0);
-      const cloudHasData = cloudLots.length > 0 || cloudHasSales;
+      const parsedSnapshot = parseCloudSnapshot(body.snapshot);
       const localHasSales = this.lots.some((lot) => this.loadSalesForLotId(lot.id).length > 0);
       const localHasData = this.lots.length > 0 || localHasSales;
-      const cloudVersion = Number(snapshot.version ?? 0);
       const localVersion = Number(localStorage.getItem(SYNC_CLIENT_VERSION_KEY) || "0");
-      const shouldApplyCloud = Number.isFinite(cloudVersion) && (
-        cloudVersion > localVersion ||
-        (!localHasData && cloudHasData)
-      );
+      const shouldApplyCloud = shouldApplyCloudSnapshot({
+        cloudVersion: parsedSnapshot.version,
+        localVersion,
+        localHasData,
+        cloudHasData: parsedSnapshot.hasData
+      });
       if (!shouldApplyCloud) {
         this.lastSyncedPayloadHash = getSyncPayloadSignature(createSyncPayload(this));
-        this.syncStatus = "success";
-        this.syncStatusResetTimeoutId = window.setTimeout(() => {
-          this.syncStatus = "idle";
-          this.syncStatusResetTimeoutId = null;
-        }, SYNC_STATUS_RESET_MS);
+        setSyncStatusSuccess(this);
         return;
       }
 
-      this.lots = cloudLots as typeof this.lots;
-      this.saveLotsToStorage();
-
-      Object.entries(cloudSalesByLot).forEach(([lotId, sales]) => {
-        if (!Array.isArray(sales)) return;
-        localStorage.setItem(this.getSalesStorageKey(Number(lotId)), JSON.stringify(sales));
-      });
-
-      if (this.currentLotId && this.lots.some((p) => p.id === this.currentLotId)) {
-        this.loadLot();
-      } else if (this.lots.length > 0) {
-        this.currentLotId = this.lots[0].id;
-        this.loadLot();
-      } else {
-        this.currentLotId = null;
-        this.sales = [];
-      }
-
-      if (Number.isFinite(cloudVersion)) {
-        localStorage.setItem(SYNC_CLIENT_VERSION_KEY, String(cloudVersion));
-      }
+      applyCloudSnapshotToLocal(this, parsedSnapshot);
       this.lastSyncedPayloadHash = getSyncPayloadSignature(createSyncPayload(this));
-      this.syncStatus = "success";
-      this.syncStatusResetTimeoutId = window.setTimeout(() => {
-        this.syncStatus = "idle";
-        this.syncStatusResetTimeoutId = null;
-      }, SYNC_STATUS_RESET_MS);
+      setSyncStatusSuccess(this);
       this.notify("Cloud data synced", "success");
-      console.info("[whatfees] Cloud sync pulled", { version: cloudVersion });
+      console.info("[whatfees] Cloud sync pulled", { version: parsedSnapshot.version });
     } catch (error) {
       if (!navigator.onLine) {
         this.isOffline = true;
         this.startOfflineReconnectScheduler();
       }
-      this.syncStatus = "error";
-      this.syncStatusResetTimeoutId = window.setTimeout(() => {
-        this.syncStatus = "idle";
-        this.syncStatusResetTimeoutId = null;
-      }, SYNC_STATUS_RESET_MS);
+      setSyncStatusError(this);
       console.warn("[whatfees] Cloud sync pull error", error);
     }
   },
@@ -210,39 +124,20 @@ export const uiSyncMethods: ThisType<AppContext> & Pick<
     if (!force && this.lastSyncedPayloadHash === payloadSignature) {
       return;
     }
-    this.syncStatus = "syncing";
-    if (this.syncStatusResetTimeoutId != null) {
-      window.clearTimeout(this.syncStatusResetTimeoutId);
-      this.syncStatusResetTimeoutId = null;
-    }
+    startSyncStatus(this);
 
     try {
-      const response = await fetchWithRetry(`${base}/sync/push`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${googleIdToken}`
-        },
-        body: JSON.stringify(syncPayload)
-      });
+      const response = await requestCloudSyncPush(base, googleIdToken, syncPayload);
 
       if (response.status === 401) {
         handleExpiredAuth(this);
-        this.syncStatus = "error";
-        this.syncStatusResetTimeoutId = window.setTimeout(() => {
-          this.syncStatus = "idle";
-          this.syncStatusResetTimeoutId = null;
-        }, SYNC_STATUS_RESET_MS);
+        setSyncStatusError(this);
         console.warn("[whatfees] Cloud sync skipped: auth expired");
         return;
       }
 
       if (!response.ok) {
-        this.syncStatus = "error";
-        this.syncStatusResetTimeoutId = window.setTimeout(() => {
-          this.syncStatus = "idle";
-          this.syncStatusResetTimeoutId = null;
-        }, SYNC_STATUS_RESET_MS);
+        setSyncStatusError(this);
         console.warn("[whatfees] Cloud sync push failed", {
           status: response.status,
           statusText: response.statusText
@@ -250,28 +145,20 @@ export const uiSyncMethods: ThisType<AppContext> & Pick<
         return;
       }
 
-      const body = (await response.json()) as { version?: unknown };
+      const body = (await response.json()) as SyncPushResponseBody;
       const serverVersion = Number(body.version);
       if (Number.isFinite(serverVersion)) {
         localStorage.setItem(SYNC_CLIENT_VERSION_KEY, String(serverVersion));
       }
       this.lastSyncedPayloadHash = payloadSignature;
-      this.syncStatus = "success";
-      this.syncStatusResetTimeoutId = window.setTimeout(() => {
-        this.syncStatus = "idle";
-        this.syncStatusResetTimeoutId = null;
-      }, SYNC_STATUS_RESET_MS);
+      setSyncStatusSuccess(this);
       console.info("[whatfees] Cloud sync pushed");
     } catch (error) {
       if (!navigator.onLine) {
         this.isOffline = true;
         this.startOfflineReconnectScheduler();
       }
-      this.syncStatus = "error";
-      this.syncStatusResetTimeoutId = window.setTimeout(() => {
-        this.syncStatus = "idle";
-        this.syncStatusResetTimeoutId = null;
-      }, SYNC_STATUS_RESET_MS);
+      setSyncStatusError(this);
       console.warn("[whatfees] Cloud sync push error", error);
     }
   }

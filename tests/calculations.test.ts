@@ -420,6 +420,71 @@ test("preset performance summary uses singles purchase grid as cost basis", () =
   assert.equal(summary.soldPacks, 2);
 });
 
+test("preset performance summary converts singles cost basis from purchase to selling currency", () => {
+  const preset: Lot = {
+    id: 46,
+    name: "Singles FX Cost Basis",
+    lotType: "singles",
+    boxPriceCost: 0,
+    boxesPurchased: 0,
+    packsPerBox: 1,
+    costInputMode: "total",
+    currency: "USD",
+    sellingCurrency: "CAD",
+    exchangeRate: 1.5,
+    purchaseDate: "2026-02-01",
+    purchaseShippingCost: 0,
+    purchaseTaxPercent: 0,
+    sellingTaxPercent: 15,
+    sellingShippingPerOrder: 0,
+    includeTax: false,
+    spotPrice: 0,
+    boxPriceSell: 0,
+    packPrice: 0,
+    targetProfitPercent: 15,
+    singlesPurchases: [
+      { id: 1, item: "Card A", cost: 10, quantity: 2, marketValue: 14 }
+    ]
+  };
+
+  const summary = calculateLotPerformanceSummary(preset, [], 1.4);
+  assert.equal(summary.totalCost, 30);
+  assert.equal(summary.totalPacks, 2);
+});
+
+test("preset performance summary converts singles cost basis per purchase currency", () => {
+  const preset: Lot = {
+    id: 47,
+    name: "Singles Mixed FX",
+    lotType: "singles",
+    boxPriceCost: 0,
+    boxesPurchased: 0,
+    packsPerBox: 1,
+    costInputMode: "total",
+    currency: "CAD",
+    sellingCurrency: "CAD",
+    exchangeRate: 1.5,
+    purchaseDate: "2026-02-01",
+    purchaseShippingCost: 0,
+    purchaseTaxPercent: 0,
+    sellingTaxPercent: 15,
+    sellingShippingPerOrder: 0,
+    includeTax: false,
+    spotPrice: 0,
+    boxPriceSell: 0,
+    packPrice: 0,
+    targetProfitPercent: 15,
+    singlesPurchases: [
+      { id: 1, item: "Card A", cost: 10, currency: "USD", quantity: 2, marketValue: 14 },
+      { id: 2, item: "Card B", cost: 4, currency: "CAD", quantity: 1, marketValue: 7 }
+    ]
+  };
+
+  const summary = calculateLotPerformanceSummary(preset, [], 1.4);
+  assert.equal(summary.totalCost, 34);
+  assert.equal(summary.totalPacks, 3);
+});
+
 test("preset performance summary treats zero-cost singles rows as no cost-basis packs", () => {
   const preset: Lot = {
     id: 45,
@@ -545,6 +610,29 @@ test("computed totalCaseCost uses singles purchase cost and 100% fallback when g
     singlesPurchaseTotalCost: 99
   } as unknown as Parameters<typeof appComputed.totalCaseCost>[0]);
   assert.equal(emptyRows, 0);
+});
+
+test("computed singlesPurchaseTotalCost converts purchase currency to selling currency", () => {
+  const converted = appComputed.singlesPurchaseTotalCost.call({
+    singlesPurchases: [{ id: 1, item: "Card A", cost: 10, quantity: 2, marketValue: 0 }],
+    currency: "USD",
+    sellingCurrency: "CAD",
+    exchangeRate: 1.5
+  } as unknown as Parameters<typeof appComputed.singlesPurchaseTotalCost>[0]);
+  assert.equal(converted, 30);
+});
+
+test("computed singlesPurchaseTotalCost converts each row from its own currency", () => {
+  const converted = appComputed.singlesPurchaseTotalCost.call({
+    singlesPurchases: [
+      { id: 1, item: "Card A", cost: 10, currency: "USD", quantity: 2, marketValue: 0 },
+      { id: 2, item: "Card B", cost: 4, currency: "CAD", quantity: 1, marketValue: 0 }
+    ],
+    currency: "CAD",
+    sellingCurrency: "CAD",
+    exchangeRate: 1.5
+  } as unknown as Parameters<typeof appComputed.singlesPurchaseTotalCost>[0]);
+  assert.equal(converted, 34);
 });
 
 test("computed totalPacks uses singles quantity even when total cost is zero", () => {

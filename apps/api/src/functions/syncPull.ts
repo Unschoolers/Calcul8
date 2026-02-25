@@ -3,6 +3,8 @@ import { resolveUserId } from "../lib/auth";
 import { getConfig } from "../lib/config";
 import { getEffectiveSyncSnapshot } from "../lib/cosmos";
 import { errorResponse, jsonResponse, maybeHandleCorsPreflight } from "../lib/http";
+import { parseOptionalWorkspaceId } from "../lib/syncScope";
+import type { SyncPullPayload } from "../types";
 
 const EMPTY_SYNC_SNAPSHOT = {
   lots: [],
@@ -10,6 +12,26 @@ const EMPTY_SYNC_SNAPSHOT = {
   version: 0,
   updatedAt: null
 };
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+async function parseSyncPullPayload(request: HttpRequest): Promise<SyncPullPayload> {
+  if (typeof request.json !== "function") {
+    return {};
+  }
+
+  try {
+    const payload = await request.json();
+    if (!isRecord(payload)) return {};
+    return {
+      workspaceId: parseOptionalWorkspaceId(payload.workspaceId)
+    };
+  } catch {
+    return {};
+  }
+}
 
 export async function syncPull(
   request: HttpRequest,
@@ -21,6 +43,13 @@ export async function syncPull(
 
   try {
     const userId = await resolveUserId(request, config);
+    const payload = await parseSyncPullPayload(request);
+    if (payload.workspaceId) {
+      context.warn("workspaceId provided but workspace sync scope is not enabled yet; using personal scope.", {
+        userId,
+        workspaceId: payload.workspaceId
+      });
+    }
     const snapshot = await getEffectiveSyncSnapshot(config, userId);
 
     return jsonResponse(request, config, 200, {

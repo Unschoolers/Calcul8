@@ -106,8 +106,12 @@ function createContext(overrides: Ctx = {}): Ctx {
     singlesPurchases: [],
     singlesCsvImportHeaders: [],
     singlesCsvImportRows: [],
+    singlesCsvImportCurrency: "CAD",
+    singlesCsvImportMode: "merge",
     singlesCsvMapItem: null,
     singlesCsvMapCardNumber: null,
+    singlesCsvMapCondition: null,
+    singlesCsvMapLanguage: null,
     singlesCsvMapCost: null,
     singlesCsvMapQuantity: null,
     singlesCsvMapMarketValue: null,
@@ -204,6 +208,37 @@ test("add/remove/clear singles rows only mutate in singles mode", () => {
   assert.equal((bulkCtx.singlesPurchases as unknown[]).length, 1);
 });
 
+test("addSinglesPurchaseRow generates a non-colliding id when Date.now matches an existing row id", () => {
+  const dateNowSpy = vi.spyOn(Date, "now").mockReturnValue(5000);
+  try {
+    const ctx = createContext({
+      currentLotType: "singles",
+      singlesPurchases: [
+        {
+          id: 5000,
+          item: "Card A",
+          cardNumber: "001",
+          condition: "",
+          language: "",
+          cost: 1,
+          currency: "CAD",
+          quantity: 1,
+          marketValue: 1
+        }
+      ],
+      onSinglesPurchaseRowsChange: vi.fn()
+    });
+
+    configLotMethods.addSinglesPurchaseRow.call(ctx as never);
+
+    const rows = ctx.singlesPurchases as Array<{ id: number }>;
+    assert.equal(rows.length, 2);
+    assert.equal(rows[1]?.id, 5001);
+  } finally {
+    dateNowSpy.mockRestore();
+  }
+});
+
 test("onSinglesPurchaseRowsChange normalizes entries and writes to selected singles lot", () => {
   const lot = makeLot({
     id: 900,
@@ -219,6 +254,8 @@ test("onSinglesPurchaseRowsChange normalizes entries and writes to selected sing
         id: 0,
         item: "  Card A  ",
         cardNumber: " 007 ",
+        condition: "  Near Mint ",
+        language: " English ",
         cost: -10,
         quantity: "3.9",
         marketValue: "4.25"
@@ -241,6 +278,8 @@ test("onSinglesPurchaseRowsChange normalizes entries and writes to selected sing
     id: number;
     item: string;
     cardNumber: string;
+    condition: string;
+    language: string;
     cost: number;
     quantity: number;
     marketValue: number;
@@ -249,11 +288,15 @@ test("onSinglesPurchaseRowsChange normalizes entries and writes to selected sing
   assert.equal(rows[0]?.id > 0, true);
   assert.equal(rows[0]?.item, "Card A");
   assert.equal(rows[0]?.cardNumber, "007");
+  assert.equal(rows[0]?.condition, "Near Mint");
+  assert.equal(rows[0]?.language, "English");
   assert.equal(rows[0]?.cost, 0);
   assert.equal(rows[0]?.quantity, 3);
   assert.equal(rows[0]?.marketValue, 4.25);
   assert.equal(rows[1]?.item, "");
   assert.equal(rows[1]?.cardNumber, "");
+  assert.equal(rows[1]?.condition, "");
+  assert.equal(rows[1]?.language, "");
   assert.equal(rows[1]?.cost, 0);
   assert.equal(rows[1]?.quantity, 0);
   assert.equal(rows[1]?.marketValue, 0);
@@ -264,7 +307,7 @@ test("onSinglesPurchaseRowsChange normalizes entries and writes to selected sing
 
 test("importSinglesPurchasesCsv infers header mapping aliases", () => {
   installCsvEnvironment(
-    "Item,Card Number,Price,Qty,Market Value\nPikachu,025,$3.50,2,$5.00\nCharizard,006,12.75,1,15"
+    "Item,Card Number,Condition,Language,Price,Qty,Market Value\nPikachu,025,Near Mint,English,$3.50,2,$5.00\nCharizard,006,Good,French,12.75,1,15"
   );
   const ctx = createContext({
     currentLotType: "singles"
@@ -273,12 +316,16 @@ test("importSinglesPurchasesCsv infers header mapping aliases", () => {
   configLotMethods.importSinglesPurchasesCsv.call(ctx as never);
 
   assert.equal(ctx.showSinglesCsvMapperModal, true);
-  assert.deepEqual(ctx.singlesCsvImportHeaders, ["Item", "Card Number", "Price", "Qty", "Market Value"]);
+  assert.deepEqual(ctx.singlesCsvImportHeaders, ["Item", "Card Number", "Condition", "Language", "Price", "Qty", "Market Value"]);
   assert.equal(ctx.singlesCsvMapItem, 0);
   assert.equal(ctx.singlesCsvMapCardNumber, 1);
-  assert.equal(ctx.singlesCsvMapCost, 2);
-  assert.equal(ctx.singlesCsvMapQuantity, 3);
-  assert.equal(ctx.singlesCsvMapMarketValue, 4);
+  assert.equal(ctx.singlesCsvMapCondition, 2);
+  assert.equal(ctx.singlesCsvMapLanguage, 3);
+  assert.equal(ctx.singlesCsvMapCost, 4);
+  assert.equal(ctx.singlesCsvMapQuantity, 5);
+  assert.equal(ctx.singlesCsvMapMarketValue, 6);
+  assert.equal(ctx.singlesCsvImportCurrency, "CAD");
+  assert.equal(ctx.singlesCsvImportMode, "merge");
 });
 
 test("importSinglesPurchasesCsv generates empty mapping when no header aliases match", () => {
@@ -296,9 +343,13 @@ test("importSinglesPurchasesCsv generates empty mapping when no header aliases m
   assert.equal((ctx.singlesCsvImportRows as string[][]).length, 2);
   assert.equal(ctx.singlesCsvMapItem, null);
   assert.equal(ctx.singlesCsvMapCardNumber, null);
+  assert.equal(ctx.singlesCsvMapCondition, null);
+  assert.equal(ctx.singlesCsvMapLanguage, null);
   assert.equal(ctx.singlesCsvMapCost, null);
   assert.equal(ctx.singlesCsvMapQuantity, null);
   assert.equal(ctx.singlesCsvMapMarketValue, null);
+  assert.equal(ctx.singlesCsvImportCurrency, "CAD");
+  assert.equal(ctx.singlesCsvImportMode, "merge");
 });
 
 test("importSinglesPurchasesCsv reports read errors when file content is not text", () => {
@@ -351,18 +402,21 @@ test("confirmSinglesPurchasesCsvImport imports mapped rows with optional cost ma
     currentLotId: 404,
     currentLotType: "singles",
     singlesPurchases: [],
-    singlesCsvImportHeaders: ["Name", "Qty", "Card #", "Market"],
+    singlesCsvImportHeaders: ["Name", "Qty", "Card #", "Condition", "Language", "Market"],
     singlesCsvImportRows: [
-      [" Pikachu ", "2", "025", "$5.50"],
-      ["No Quantity", "", "001", "$1"],
-      ["Zero Qty", "0", "002", "$2"],
-      ["Charmander", "3.8", "004", "$2.75"]
+      [" Pikachu ", "2", "025", "Near Mint", "English", "$5.50"],
+      ["No Quantity", "", "001", "Good", "French", "$1"],
+      ["Zero Qty", "0", "002", "Good", "French", "$2"],
+      ["Charmander", "3.8", "004", "Good", "French", "$2.75"]
     ],
+    singlesCsvImportCurrency: "USD",
     singlesCsvMapItem: 0,
     singlesCsvMapCardNumber: 2,
+    singlesCsvMapCondition: 3,
+    singlesCsvMapLanguage: 4,
     singlesCsvMapCost: null,
     singlesCsvMapQuantity: 1,
-    singlesCsvMapMarketValue: 3,
+    singlesCsvMapMarketValue: 5,
     onSinglesPurchaseRowsChange: vi.fn(() => {
       configLotMethods.onSinglesPurchaseRowsChange.call(ctx as never);
     }),
@@ -376,17 +430,26 @@ test("confirmSinglesPurchasesCsvImport imports mapped rows with optional cost ma
   const rows = ctx.singlesPurchases as Array<{
     item: string;
     cardNumber: string;
+    condition?: string;
+    language?: string;
     cost: number;
+    currency?: string;
     quantity: number;
     marketValue: number;
   }>;
   assert.equal(rows.length, 2);
   assert.equal(rows[0]?.item, "Pikachu");
   assert.equal(rows[0]?.cardNumber, "025");
+  assert.equal(rows[0]?.condition, "Near Mint");
+  assert.equal(rows[0]?.language, "English");
   assert.equal(rows[0]?.cost, 0);
+  assert.equal(rows[0]?.currency, "USD");
   assert.equal(rows[0]?.quantity, 2);
   assert.equal(rows[0]?.marketValue, 5.5);
   assert.equal(rows[1]?.item, "Charmander");
+  assert.equal(rows[1]?.condition, "Good");
+  assert.equal(rows[1]?.language, "French");
+  assert.equal(rows[1]?.currency, "USD");
   assert.equal(rows[1]?.quantity, 3);
   assert.equal((ctx.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0], "Imported 2 items from CSV (2 skipped: missing Item or Quantity).");
   assert.equal(ctx.showSinglesCsvMapperModal, false);
@@ -430,6 +493,8 @@ test("confirmSinglesPurchasesCsvImport merges matching item + card number into e
     ],
     singlesCsvMapItem: 0,
     singlesCsvMapCardNumber: 2,
+    singlesCsvMapCondition: null,
+    singlesCsvMapLanguage: null,
     singlesCsvMapCost: null,
     singlesCsvMapQuantity: 1,
     singlesCsvMapMarketValue: null,
@@ -458,6 +523,147 @@ test("confirmSinglesPurchasesCsvImport merges matching item + card number into e
     "Imported 1 item from CSV (2 merged into existing rows)."
   );
   assert.equal(lot.singlesPurchases?.length, 2);
+});
+
+test("confirmSinglesPurchasesCsvImport sync mode replaces existing rows then merges duplicates from import", () => {
+  const lot = makeLot({
+    id: 606,
+    lotType: "singles",
+    singlesPurchases: [
+      {
+        id: 10,
+        item: "Old Card",
+        cardNumber: "001",
+        cost: 2,
+        quantity: 2,
+        marketValue: 3
+      }
+    ]
+  });
+  const ctx = createContext({
+    lots: [lot],
+    currentLotId: 606,
+    currentLotType: "singles",
+    singlesPurchases: [
+      {
+        id: 10,
+        item: "Old Card",
+        cardNumber: "001",
+        cost: 2,
+        quantity: 2,
+        marketValue: 3
+      }
+    ],
+    singlesCsvImportHeaders: ["Name", "Qty", "Card #"],
+    singlesCsvImportRows: [
+      ["Pikachu", "5", "025"],
+      ["Pikachu", "1", "025"],
+      ["Charmander", "2", "004"]
+    ],
+    singlesCsvImportCurrency: "USD",
+    singlesCsvImportMode: "sync",
+    singlesCsvMapItem: 0,
+    singlesCsvMapCardNumber: 2,
+    singlesCsvMapCondition: null,
+    singlesCsvMapLanguage: null,
+    singlesCsvMapCost: null,
+    singlesCsvMapQuantity: 1,
+    singlesCsvMapMarketValue: null,
+    onSinglesPurchaseRowsChange: vi.fn(() => {
+      configLotMethods.onSinglesPurchaseRowsChange.call(ctx as never);
+    }),
+    cancelSinglesPurchasesCsvImport: vi.fn(() => {
+      configLotMethods.cancelSinglesPurchasesCsvImport.call(ctx as never);
+    })
+  });
+
+  configLotMethods.confirmSinglesPurchasesCsvImport.call(ctx as never);
+
+  const rows = ctx.singlesPurchases as Array<{
+    item: string;
+    cardNumber: string;
+    quantity: number;
+    currency?: string;
+  }>;
+  assert.equal(rows.length, 2);
+  assert.equal(rows.some((entry) => entry.item === "Old Card"), false);
+  const pikachu = rows.find((entry) => entry.item === "Pikachu" && entry.cardNumber === "025");
+  const charmander = rows.find((entry) => entry.item === "Charmander" && entry.cardNumber === "004");
+  assert.equal(pikachu?.quantity, 6);
+  assert.equal(pikachu?.currency, "USD");
+  assert.equal(charmander?.quantity, 2);
+  assert.equal(charmander?.currency, "USD");
+  assert.equal(
+    (ctx.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0],
+    "Synced 2 items from CSV (1 existing row replaced; 1 merged into existing rows)."
+  );
+  assert.equal(lot.singlesPurchases?.length, 2);
+});
+
+test("confirmSinglesPurchasesCsvImport append mode appends rows without merging", () => {
+  const lot = makeLot({
+    id: 707,
+    lotType: "singles",
+    singlesPurchases: [
+      {
+        id: 11,
+        item: "Pikachu",
+        cardNumber: "025",
+        cost: 2,
+        quantity: 2,
+        marketValue: 3
+      }
+    ]
+  });
+  const ctx = createContext({
+    lots: [lot],
+    currentLotId: 707,
+    currentLotType: "singles",
+    singlesPurchases: [
+      {
+        id: 11,
+        item: "Pikachu",
+        cardNumber: "025",
+        cost: 2,
+        quantity: 2,
+        marketValue: 3
+      }
+    ],
+    singlesCsvImportHeaders: ["Name", "Qty", "Card #"],
+    singlesCsvImportRows: [
+      ["Pikachu", "5", "025"],
+      ["Pikachu", "1", "025"],
+      ["Charmander", "2", "004"]
+    ],
+    singlesCsvImportMode: "append",
+    singlesCsvMapItem: 0,
+    singlesCsvMapCardNumber: 2,
+    singlesCsvMapCondition: null,
+    singlesCsvMapLanguage: null,
+    singlesCsvMapCost: null,
+    singlesCsvMapQuantity: 1,
+    singlesCsvMapMarketValue: null,
+    onSinglesPurchaseRowsChange: vi.fn(() => {
+      configLotMethods.onSinglesPurchaseRowsChange.call(ctx as never);
+    }),
+    cancelSinglesPurchasesCsvImport: vi.fn(() => {
+      configLotMethods.cancelSinglesPurchasesCsvImport.call(ctx as never);
+    })
+  });
+
+  configLotMethods.confirmSinglesPurchasesCsvImport.call(ctx as never);
+
+  const rows = ctx.singlesPurchases as Array<{ item: string; cardNumber: string; quantity: number }>;
+  assert.equal(rows.length, 4);
+  const pikachuRows = rows.filter((entry) => entry.item === "Pikachu" && entry.cardNumber === "025");
+  assert.equal(pikachuRows.length, 3);
+  assert.equal(pikachuRows[0]?.quantity, 2);
+  assert.equal(pikachuRows[1]?.quantity, 5);
+  assert.equal(pikachuRows[2]?.quantity, 1);
+  assert.equal(
+    (ctx.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0],
+    "Appended 3 items from CSV."
+  );
 });
 
 test("applyLivePricesToDefaults updates saved config when lot is selected", async () => {
@@ -532,8 +738,12 @@ test("loadLot resets mapper state and applies singles/pro access rules", () => {
     showSinglesCsvMapperModal: true,
     singlesCsvImportHeaders: ["A"],
     singlesCsvImportRows: [["B"]],
+    singlesCsvImportCurrency: "USD",
+    singlesCsvImportMode: "sync",
     singlesCsvMapItem: 0,
     singlesCsvMapCardNumber: 1,
+    singlesCsvMapCondition: 5,
+    singlesCsvMapLanguage: 6,
     singlesCsvMapCost: 2,
     singlesCsvMapQuantity: 3,
     singlesCsvMapMarketValue: 4,
@@ -549,7 +759,11 @@ test("loadLot resets mapper state and applies singles/pro access rules", () => {
   assert.equal(ctx.showSinglesCsvMapperModal, false);
   assert.deepEqual(ctx.singlesCsvImportHeaders, []);
   assert.deepEqual(ctx.singlesCsvImportRows, []);
+  assert.equal(ctx.singlesCsvImportCurrency, "CAD");
+  assert.equal(ctx.singlesCsvImportMode, "merge");
   assert.equal(ctx.singlesCsvMapItem, null);
+  assert.equal(ctx.singlesCsvMapCondition, null);
+  assert.equal(ctx.singlesCsvMapLanguage, null);
   assert.equal(ctx.newLotType, "singles");
   assert.match(purchaseDate, /^\d{4}-\d{2}-\d{2}$/);
   assert.equal(ctx.purchaseTaxPercent, 11);

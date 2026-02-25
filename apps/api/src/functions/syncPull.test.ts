@@ -43,13 +43,23 @@ function createConfig(): ApiConfig {
   };
 }
 
-function createRequest(method = "POST", headers: Record<string, string> = {}) {
+function createRequest(
+  method = "POST",
+  headers: Record<string, string> = {},
+  body?: unknown
+) {
   const normalized = new Map<string, string>();
   for (const [key, value] of Object.entries(headers)) {
     normalized.set(key.toLowerCase(), value);
   }
 
-  return {
+  const request: {
+    method: string;
+    headers: {
+      get(name: string): string | null;
+    };
+    json?: () => Promise<unknown>;
+  } = {
     method,
     headers: {
       get(name: string) {
@@ -57,6 +67,12 @@ function createRequest(method = "POST", headers: Record<string, string> = {}) {
       }
     }
   };
+
+  if (body !== undefined) {
+    request.json = async () => body;
+  }
+
+  return request;
 }
 
 function createContext() {
@@ -131,4 +147,20 @@ test("syncPull returns server error when snapshot read fails", async () => {
   assert.equal(response.status, 500);
   assert.equal((response.jsonBody as { error: string }).error, "Failed to load cloud sync data.");
   assert.equal(context.error.mock.calls.length, 1);
+});
+
+test("syncPull accepts optional workspaceId payload field but still uses personal scope", async () => {
+  getEffectiveSyncSnapshotMock.mockResolvedValue({
+    lots: [{ id: 10 }],
+    salesByLot: { "10": [] },
+    version: 8,
+    updatedAt: "2026-02-21T00:00:00.000Z"
+  });
+  const request = createRequest("POST", { authorization: "Bearer user-ws" }, { workspaceId: "team-42" });
+  const context = createContext();
+
+  const response = await syncPull(request as never, context as never);
+  assert.equal(response.status, 200);
+  assert.equal(getEffectiveSyncSnapshotMock.mock.calls[0]?.[1], "user-ws");
+  assert.equal(context.warn.mock.calls.length, 1);
 });

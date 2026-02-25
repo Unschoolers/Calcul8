@@ -1,5 +1,12 @@
 import { DEFAULT_VALUES } from "../../constants.ts";
-import type { Lot, LotSetup, SinglesCsvColumnMapping, SinglesPurchaseEntry } from "../../types/app.ts";
+import type { Lot, LotSetup, SinglesPurchaseEntry } from "../../types/app.ts";
+import {
+  applySinglesCsvImportRows,
+  buildSinglesCsvImportDraft,
+  isValidCsvColumnIndex,
+  parseSinglesCsvRowsWithMapping,
+  summarizeSinglesCsvImportOutcome
+} from "./config-lots-import.ts";
 import {
   getLegacySalesStorageKey,
   getLegacyStorageKeys,
@@ -10,42 +17,6 @@ import {
 import { type ConfigMethodSubset, getTodayDate, inferDateFromLotId, toDateOnly } from "./config-shared.ts";
 
 const LEGACY_KEYS = getLegacyStorageKeys();
-const CSV_ITEM_ALIASES = [
-  "item",
-  "card",
-  "cardname",
-  "name",
-  "title",
-  "product"
-];
-const CSV_CARD_NUMBER_ALIASES = [
-  "number",
-  "cardnumber",
-  "cardno",
-  "collectornumber",
-  "setnumber",
-  "cardid"
-];
-const CSV_COST_ALIASES = [
-  "price",
-  "purchaseprice",
-  "buyprice",
-  "cost",
-  "paid"
-];
-const CSV_QUANTITY_ALIASES = [
-  "quantity",
-  "qty",
-  "count",
-  "owned"
-];
-const CSV_MARKET_VALUE_ALIASES = [
-  "marketvalue",
-  "market",
-  "marketprice",
-  "value",
-  "mv"
-];
 
 function toNonNegativeNumber(value: unknown): number {
   const parsed = Number(value);
@@ -60,225 +31,51 @@ function toNonNegativeInteger(value: unknown, fallback = 0): number {
   return rounded >= 0 ? rounded : fallback;
 }
 
+function createNextSinglesEntryId(entries: SinglesPurchaseEntry[]): number {
+  const highestId = entries.reduce((maxId, entry) => {
+    const candidateId = Number(entry.id);
+    if (!Number.isFinite(candidateId) || candidateId <= 0) return maxId;
+    return Math.max(maxId, Math.floor(candidateId));
+  }, 0);
+  return Math.max(Date.now(), highestId + 1);
+}
+
 function normalizeSinglesPurchaseEntries(
-  entries: SinglesPurchaseEntry[] | undefined
+  entries: SinglesPurchaseEntry[] | undefined,
+  fallbackCurrency: "CAD" | "USD" = "CAD"
 ): SinglesPurchaseEntry[] {
   if (!Array.isArray(entries)) return [];
+  const usedIds = new Set<number>();
+  let nextGeneratedId = createNextSinglesEntryId(entries);
 
-  return entries.map((entry, index) => {
-    const id = Number(entry.id);
+  return entries.map((entry) => {
+    const parsedId = Number(entry.id);
+    let id = Number.isFinite(parsedId) && parsedId > 0
+      ? Math.floor(parsedId)
+      : 0;
+    if (id <= 0 || usedIds.has(id)) {
+      while (usedIds.has(nextGeneratedId)) {
+        nextGeneratedId += 1;
+      }
+      id = nextGeneratedId;
+      nextGeneratedId += 1;
+    }
+    usedIds.add(id);
+    const currency = entry.currency === "USD" || entry.currency === "CAD"
+      ? entry.currency
+      : fallbackCurrency;
     return {
-      id: Number.isFinite(id) && id > 0 ? id : Date.now() + index,
+      id,
       item: typeof entry.item === "string" ? entry.item.trim() : "",
       cardNumber: typeof entry.cardNumber === "string" ? entry.cardNumber.trim() : "",
+      condition: typeof entry.condition === "string" ? entry.condition.trim() : "",
+      language: typeof entry.language === "string" ? entry.language.trim() : "",
       cost: toNonNegativeNumber(entry.cost),
+      currency,
       quantity: toNonNegativeInteger(entry.quantity),
       marketValue: toNonNegativeNumber(entry.marketValue)
     };
   });
-}
-
-function normalizeCsvToken(value: string): string {
-  return value.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
-}
-
-function parseCurrencyLikeNumber(value: string): number {
-  const cleaned = value
-    .replace(/[$,]/g, "")
-    .replace(/[^\d.-]/g, "")
-    .trim();
-  const parsed = Number(cleaned);
-  if (!Number.isFinite(parsed) || parsed < 0) return 0;
-  return parsed;
-}
-
-function parsePositiveIntegerOrNull(value: string): number | null {
-  const trimmed = value.trim();
-  if (!trimmed) return null;
-  const parsed = Number(trimmed);
-  if (!Number.isFinite(parsed)) return null;
-  const rounded = Math.floor(parsed);
-  if (rounded <= 0) return null;
-  return rounded;
-}
-
-function parseCsvRows(raw: string): string[][] {
-  const rows: string[][] = [];
-  let row: string[] = [];
-  let cell = "";
-  let inQuotes = false;
-
-  for (let index = 0; index < raw.length; index += 1) {
-    const current = raw[index];
-    const next = raw[index + 1];
-
-    if (current === "\"") {
-      if (inQuotes && next === "\"") {
-        cell += "\"";
-        index += 1;
-      } else {
-        inQuotes = !inQuotes;
-      }
-      continue;
-    }
-
-    if (!inQuotes && current === ",") {
-      row.push(cell.trim());
-      cell = "";
-      continue;
-    }
-
-    if (!inQuotes && (current === "\n" || current === "\r")) {
-      if (current === "\r" && next === "\n") {
-        index += 1;
-      }
-      row.push(cell.trim());
-      if (row.some((part) => part.length > 0)) {
-        rows.push(row);
-      }
-      row = [];
-      cell = "";
-      continue;
-    }
-
-    cell += current;
-  }
-
-  if (cell.length > 0 || row.length > 0) {
-    row.push(cell.trim());
-    if (row.some((part) => part.length > 0)) {
-      rows.push(row);
-    }
-  }
-
-  return rows;
-}
-
-function resolveCsvColumnIndex(headers: string[], aliases: string[]): number {
-  const normalizedAliases = new Set(aliases.map((alias) => normalizeCsvToken(alias)));
-  return headers.findIndex((header) => normalizedAliases.has(normalizeCsvToken(header)));
-}
-
-function isValidCsvColumnIndex(index: number | null, headersLength: number): index is number {
-  return Number.isInteger(index) && Number(index) >= 0 && Number(index) < headersLength;
-}
-
-function inferSinglesCsvAliasMapping(headers: string[]): SinglesCsvColumnMapping {
-  const itemIndex = resolveCsvColumnIndex(headers, CSV_ITEM_ALIASES);
-  const cardNumberIndex = resolveCsvColumnIndex(headers, CSV_CARD_NUMBER_ALIASES);
-  const costIndex = resolveCsvColumnIndex(headers, CSV_COST_ALIASES);
-  const quantityIndex = resolveCsvColumnIndex(headers, CSV_QUANTITY_ALIASES);
-  const marketValueIndex = resolveCsvColumnIndex(headers, CSV_MARKET_VALUE_ALIASES);
-  return {
-    item: itemIndex >= 0 ? itemIndex : null,
-    cardNumber: cardNumberIndex >= 0 ? cardNumberIndex : null,
-    cost: costIndex >= 0 ? costIndex : null,
-    quantity: quantityIndex >= 0 ? quantityIndex : null,
-    marketValue: marketValueIndex >= 0 ? marketValueIndex : null
-  };
-}
-
-function inferSinglesCsvMapping(headers: string[]): SinglesCsvColumnMapping {
-  return inferSinglesCsvAliasMapping(headers);
-}
-
-function normalizeCsvHeaders(headers: string[], totalColumns: number): string[] {
-  return Array.from({ length: totalColumns }, (_, index) => {
-    const raw = headers[index] ?? "";
-    return raw.trim() || `Column ${index + 1}`;
-  });
-}
-
-function buildSinglesCsvImportDraft(raw: string): {
-  headers: string[];
-  rows: string[][];
-  mapping: SinglesCsvColumnMapping;
-} | null {
-  const rows = parseCsvRows(raw);
-  if (rows.length === 0) return null;
-
-  const firstRow = rows[0];
-  const inferredHeaderMapping = inferSinglesCsvAliasMapping(firstRow);
-  const hasHeaderMatch = [
-    inferredHeaderMapping.item,
-    inferredHeaderMapping.cardNumber,
-    inferredHeaderMapping.cost,
-    inferredHeaderMapping.quantity,
-    inferredHeaderMapping.marketValue
-  ]
-    .some((index) => isValidCsvColumnIndex(index, firstRow.length));
-  const dataRows = hasHeaderMatch ? rows.slice(1) : rows;
-  if (dataRows.length === 0) return null;
-
-  const maxColumns = Math.max(
-    hasHeaderMatch ? firstRow.length : 0,
-    ...dataRows.map((row) => row.length)
-  );
-  if (maxColumns <= 0) return null;
-
-  const headers = hasHeaderMatch
-    ? normalizeCsvHeaders(firstRow, maxColumns)
-    : normalizeCsvHeaders([], maxColumns);
-
-  return {
-    headers,
-    rows: dataRows,
-    mapping: inferSinglesCsvMapping(headers)
-  };
-}
-
-function parseSinglesCsvRowsWithMapping(
-  rows: string[][],
-  headersLength: number,
-  mapping: SinglesCsvColumnMapping
-): {
-  entries: Array<Omit<SinglesPurchaseEntry, "id">>;
-  skippedCount: number;
-} {
-  const parsedRows: Array<Omit<SinglesPurchaseEntry, "id">> = [];
-  let skippedCount = 0;
-  for (let index = 0; index < rows.length; index += 1) {
-    const row = rows[index];
-    if (!row.some((cell) => String(cell || "").trim().length > 0)) {
-      continue;
-    }
-
-    const rawItem = isValidCsvColumnIndex(mapping.item, headersLength) ? row[mapping.item] ?? "" : "";
-    const rawCardNumber = isValidCsvColumnIndex(mapping.cardNumber, headersLength) ? row[mapping.cardNumber] ?? "" : "";
-    const rawCost = isValidCsvColumnIndex(mapping.cost, headersLength) ? row[mapping.cost] ?? "" : "";
-    const rawQuantity = isValidCsvColumnIndex(mapping.quantity, headersLength) ? row[mapping.quantity] ?? "" : "";
-    const rawMarketValue = isValidCsvColumnIndex(mapping.marketValue, headersLength) ? row[mapping.marketValue] ?? "" : "";
-
-    const item = rawItem.trim();
-    const cost = parseCurrencyLikeNumber(rawCost);
-    const quantity = parsePositiveIntegerOrNull(rawQuantity);
-    if (!item || quantity == null) {
-      skippedCount += 1;
-      continue;
-    }
-    const marketValue = parseCurrencyLikeNumber(rawMarketValue);
-    const cardNumber = rawCardNumber.trim();
-
-    parsedRows.push({
-      item,
-      cardNumber,
-      cost,
-      quantity,
-      marketValue
-    });
-  }
-
-  return {
-    entries: parsedRows,
-    skippedCount
-  };
-}
-
-function toSinglesMergeKey(item: unknown, cardNumber: unknown): string | null {
-  const normalizedItem = String(item || "").trim().toLocaleLowerCase();
-  const normalizedCardNumber = String(cardNumber || "").trim().toLocaleLowerCase();
-  if (!normalizedItem || !normalizedCardNumber) return null;
-  return `${normalizedItem}::${normalizedCardNumber}`;
 }
 
 function resolveCurrentLot(lots: Lot[], lotId: number | null): Lot | null {
@@ -364,14 +161,18 @@ export const configLotMethods: ConfigMethodSubset<
 
   addSinglesPurchaseRow(): void {
     if (this.currentLotType !== "singles") return;
+    const nextId = createNextSinglesEntryId(this.singlesPurchases);
 
     this.singlesPurchases = [
       ...this.singlesPurchases,
       {
-        id: Date.now(),
+        id: nextId,
         item: "",
         cardNumber: "",
+        condition: "",
+        language: "",
         cost: 0,
+        currency: this.currency === "USD" ? "USD" : "CAD",
         quantity: 1,
         marketValue: 0
       }
@@ -398,7 +199,10 @@ export const configLotMethods: ConfigMethodSubset<
   onSinglesPurchaseRowsChange(): void {
     if (this.currentLotType !== "singles") return;
 
-    const normalizedRows = normalizeSinglesPurchaseEntries(this.singlesPurchases);
+    const normalizedRows = normalizeSinglesPurchaseEntries(
+      this.singlesPurchases,
+      this.currency === "USD" ? "USD" : "CAD"
+    );
     this.singlesPurchases = normalizedRows;
 
     const lot = resolveCurrentLot(this.lots, this.currentLotId);
@@ -435,8 +239,12 @@ export const configLotMethods: ConfigMethodSubset<
 
           this.singlesCsvImportHeaders = draft.headers;
           this.singlesCsvImportRows = draft.rows;
+          this.singlesCsvImportCurrency = this.currency === "USD" ? "USD" : "CAD";
+          this.singlesCsvImportMode = "merge";
           this.singlesCsvMapItem = draft.mapping.item;
           this.singlesCsvMapCardNumber = draft.mapping.cardNumber;
+          this.singlesCsvMapCondition = draft.mapping.condition;
+          this.singlesCsvMapLanguage = draft.mapping.language;
           this.singlesCsvMapCost = draft.mapping.cost;
           this.singlesCsvMapQuantity = draft.mapping.quantity;
           this.singlesCsvMapMarketValue = draft.mapping.marketValue;
@@ -474,82 +282,49 @@ export const configLotMethods: ConfigMethodSubset<
     const parsedResult = parseSinglesCsvRowsWithMapping(rows, headers.length, {
       item: this.singlesCsvMapItem,
       cardNumber: this.singlesCsvMapCardNumber,
+      condition: this.singlesCsvMapCondition,
+      language: this.singlesCsvMapLanguage,
       cost: this.singlesCsvMapCost,
       quantity: this.singlesCsvMapQuantity,
       marketValue: this.singlesCsvMapMarketValue
-    });
-    const parsed = parsedResult.entries;
-
-    if (parsed.length === 0) {
+    }, this.singlesCsvImportCurrency === "USD" ? "USD" : "CAD");
+    if (parsedResult.entries.length === 0) {
       this.notify("No valid rows found with current mapping.", "warning");
       return;
     }
 
-    const nextRows: SinglesPurchaseEntry[] = this.singlesPurchases
-      .map((entry) => ({ ...entry }));
-    const mergeIndexByKey = new Map<string, number>();
-    nextRows.forEach((entry, index) => {
-      const key = toSinglesMergeKey(entry.item, entry.cardNumber);
-      if (!key) return;
-      if (!mergeIndexByKey.has(key)) {
-        mergeIndexByKey.set(key, index);
-      }
+    const appliedImport = applySinglesCsvImportRows({
+      existingRows: this.singlesPurchases,
+      parsedRows: parsedResult.entries,
+      importMode: this.singlesCsvImportMode
     });
 
-    let mergedCount = 0;
-    let addedCount = 0;
-    let nextId = Date.now();
-
-    parsed.forEach((row) => {
-      const mergeKey = toSinglesMergeKey(row.item, row.cardNumber);
-      if (mergeKey) {
-        const existingIndex = mergeIndexByKey.get(mergeKey);
-        if (existingIndex != null) {
-          const existing = nextRows[existingIndex];
-          const existingQuantity = Math.max(0, Math.floor(Number(existing.quantity) || 0));
-          nextRows[existingIndex] = {
-            ...existing,
-            quantity: existingQuantity + 1
-          };
-          mergedCount += 1;
-          return;
-        }
-      }
-
-      const nextRow: SinglesPurchaseEntry = {
-        id: nextId,
-        ...row
-      };
-      nextId += 1;
-      nextRows.push(nextRow);
-      addedCount += 1;
-      if (mergeKey) {
-        mergeIndexByKey.set(mergeKey, nextRows.length - 1);
-      }
-    });
-
-    this.singlesPurchases = nextRows;
+    this.singlesPurchases = appliedImport.rows;
     this.onSinglesPurchaseRowsChange();
     this.cancelSinglesPurchasesCsvImport();
-    const summaryParts: string[] = [];
-    if (mergedCount > 0) {
-      summaryParts.push(`${mergedCount} merged into existing rows`);
-    }
-    if (parsedResult.skippedCount > 0) {
-      summaryParts.push(`${parsedResult.skippedCount} skipped: missing Item or Quantity`);
-    }
-    const summarySuffix = summaryParts.length > 0
-      ? ` (${summaryParts.join("; ")})`
-      : "";
-    this.notify(`Imported ${addedCount} item${addedCount === 1 ? "" : "s"} from CSV${summarySuffix}.`, "success");
+    this.notify(
+      summarizeSinglesCsvImportOutcome({
+        mode: appliedImport.mode,
+        addedCount: appliedImport.addedCount,
+        mergedCount: appliedImport.mergedCount,
+        ambiguousCount: appliedImport.ambiguousCount,
+        replacedCount: appliedImport.replacedCount,
+        skippedCount: parsedResult.skippedCount
+      }),
+      "success"
+    );
   },
 
   cancelSinglesPurchasesCsvImport(): void {
     this.showSinglesCsvMapperModal = false;
     this.singlesCsvImportHeaders = [];
     this.singlesCsvImportRows = [];
+    this.singlesCsvImportCurrency = this.currency === "USD" ? "USD" : "CAD";
+    this.singlesCsvImportMode = "merge";
     this.singlesCsvMapItem = null;
     this.singlesCsvMapCardNumber = null;
+    this.singlesCsvMapCondition = null;
+    this.singlesCsvMapLanguage = null;
     this.singlesCsvMapCost = null;
     this.singlesCsvMapQuantity = null;
     this.singlesCsvMapMarketValue = null;
@@ -673,8 +448,12 @@ export const configLotMethods: ConfigMethodSubset<
     this.showSinglesCsvMapperModal = false;
     this.singlesCsvImportHeaders = [];
     this.singlesCsvImportRows = [];
+    this.singlesCsvImportCurrency = lot.currency === "USD" ? "USD" : "CAD";
+    this.singlesCsvImportMode = "merge";
     this.singlesCsvMapItem = null;
     this.singlesCsvMapCardNumber = null;
+    this.singlesCsvMapCondition = null;
+    this.singlesCsvMapLanguage = null;
     this.singlesCsvMapCost = null;
     this.singlesCsvMapQuantity = null;
     this.singlesCsvMapMarketValue = null;
@@ -711,7 +490,7 @@ export const configLotMethods: ConfigMethodSubset<
     this.boxPriceSell = lot.boxPriceSell ?? DEFAULT_VALUES.BOX_PRICE_SELL;
     this.packPrice = lot.packPrice ?? DEFAULT_VALUES.PACK_PRICE;
     this.singlesPurchases = lot.lotType === "singles"
-      ? normalizeSinglesPurchaseEntries(lot.singlesPurchases)
+      ? normalizeSinglesPurchaseEntries(lot.singlesPurchases, lot.currency === "USD" ? "USD" : "CAD")
       : [];
     const parsedTargetProfit = Number(lot.targetProfitPercent);
     if (!this.hasProAccess) {

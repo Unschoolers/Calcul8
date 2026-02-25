@@ -3,13 +3,17 @@ import {
   getEntitlementTtlMs,
   GOOGLE_TOKEN_KEY,
   handleExpiredAuth,
-  PRO_ACCESS_KEY,
   readEntitlementCache,
   resolveApiBaseUrl,
-  writeEntitlementCache,
   type EntitlementApiResponse
 } from "./shared.ts";
-import { applyTargetProfitAccessDefaults, type UiEntitlementMethodSubset } from "./entitlements-shared.ts";
+import { type UiEntitlementMethodSubset } from "./entitlements-shared.ts";
+import {
+  applyCachedEntitlement,
+  applyFetchedEntitlement,
+  parseEntitlementPayload,
+  shouldUseCachedEntitlement
+} from "./entitlements-status-service.ts";
 
 export const uiEntitlementStatusMethods: UiEntitlementMethodSubset<"debugLogEntitlement"> = {
   async debugLogEntitlement(forceRefresh = false): Promise<void> {
@@ -22,14 +26,18 @@ export const uiEntitlementStatusMethods: UiEntitlementMethodSubset<"debugLogEnti
 
     const cached = readEntitlementCache();
     const ttlMs = getEntitlementTtlMs();
-    const shouldUseCache = !!cached && (
-      !googleIdToken ||
-      (!forceRefresh && Date.now() - cached.cachedAt < ttlMs)
-    );
+    const shouldUseCache = !!cached && shouldUseCachedEntitlement({
+      cachedAt: cached.cachedAt,
+      googleIdToken,
+      forceRefresh,
+      ttlMs
+    });
     if (shouldUseCache && cached) {
-      this.hasProAccess = cached.hasProAccess;
-      localStorage.setItem(PRO_ACCESS_KEY, cached.hasProAccess ? "1" : "0");
-      applyTargetProfitAccessDefaults(this);
+      applyCachedEntitlement(this, {
+        userId: cached.userId,
+        hasProAccess: cached.hasProAccess,
+        updatedAt: cached.updatedAt
+      });
       console.info("[whatfees] Entitlement cache hit", {
         userId: cached.userId,
         hasProAccess: cached.hasProAccess,
@@ -68,24 +76,13 @@ export const uiEntitlementStatusMethods: UiEntitlementMethodSubset<"debugLogEnti
       }
 
       const data = (await response.json()) as EntitlementApiResponse;
-      const hasProAccess = Boolean(data.hasProAccess);
-      const userId = typeof data.userId === "string" ? data.userId : null;
-      const updatedAt = typeof data.updatedAt === "string" ? data.updatedAt : null;
-
-      this.hasProAccess = hasProAccess;
-      localStorage.setItem(PRO_ACCESS_KEY, hasProAccess ? "1" : "0");
-      applyTargetProfitAccessDefaults(this);
-      writeEntitlementCache({
-        userId,
-        hasProAccess,
-        updatedAt,
-        cachedAt: Date.now()
-      });
+      const entitlementPayload = parseEntitlementPayload(data);
+      applyFetchedEntitlement(this, entitlementPayload);
 
       console.log("[whatfees] Entitlement sync", {
-        userId,
-        hasProAccess,
-        updatedAt
+        userId: entitlementPayload.userId,
+        hasProAccess: entitlementPayload.hasProAccess,
+        updatedAt: entitlementPayload.updatedAt
       });
 
       if (googleIdToken) {
