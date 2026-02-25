@@ -122,7 +122,12 @@
                       </v-card-text>
 
                       <v-list v-else class="sales-history-list" density="compact">
-                        <v-list-item v-for="sale in (visibleSortedSales || [])" :key="sale.id" class="my-1">
+                        <v-list-item
+                          v-for="sale in (visibleSortedSales || [])"
+                          :key="sale.id"
+                          class="my-1 sales-history-row"
+                          @click="editSale(sale)"
+                        >
                           <template v-slot:prepend>
                             <v-avatar :color="getSaleColor(sale.type)" size="40">
                               <v-icon color="white">{{ getSaleIcon(sale.type) }}</v-icon>
@@ -171,20 +176,10 @@
                                 class="sales-history-action-btn"
                                 size="small"
                                 variant="text"
-                                title="Edit sale"
-                                aria-label="Edit sale"
-                                @click="editSale(sale)"
-                              >
-                                <v-icon size="16">mdi-pencil-outline</v-icon>
-                              </v-btn>
-                              <v-btn
-                                class="sales-history-action-btn"
-                                size="small"
-                                variant="text"
                                 color="error"
                                 title="Delete sale"
                                 aria-label="Delete sale"
-                                @click="deleteSale(sale.id)"
+                                @click.stop="deleteSale(sale.id)"
                               >
                                 <v-icon size="16">mdi-trash-can-outline</v-icon>
                               </v-btn>

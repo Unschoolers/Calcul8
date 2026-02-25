@@ -149,6 +149,16 @@
   min-height: 72px;
 }
 
+.sales-history-row {
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.sales-history-row:hover {
+  background: rgba(var(--v-theme-on-surface), 0.05);
+  border-color: rgba(var(--v-theme-on-surface), 0.14);
+}
+
 .sales-history-item-title {
   min-width: 0;
 }

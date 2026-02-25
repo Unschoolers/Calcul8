@@ -298,17 +298,10 @@
                 <td class="text-right">
                   <div v-if="!isDesktopSelectMode" class="singles-row-actions">
                     <v-btn
-                      icon="mdi-pencil-outline"
+                      icon="mdi-trash-can-outline"
                       size="x-small"
                       variant="text"
-                      title="Edit row"
-                      aria-label="Edit row"
-                      @click.stop="openSinglesRowEditor(entry)"
-                    ></v-btn>
-                    <v-btn
-                      icon="mdi-close"
-                      size="x-small"
-                      variant="text"
+                      color="error"
                       title="Remove row"
                       aria-label="Remove row"
                       @click.stop="confirmRemoveSinglesPurchaseRow(entry.id)"
@@ -361,16 +354,6 @@
                   <span class="singles-mobile-chip">M ${{ fmtCurrency((Number(entry.marketValue) || 0) * (Number(entry.quantity) || 0)) }}</span>
                 </div>
                 <div class="singles-mobile-actions">
-                  <v-btn
-                    class="singles-mobile-action-btn"
-                    size="small"
-                    variant="text"
-                    title="Edit row"
-                    aria-label="Edit row"
-                    @click.stop="openSinglesRowEditor(entry)"
-                  >
-                    <v-icon size="16">mdi-pencil-outline</v-icon>
-                  </v-btn>
                   <v-btn
                     class="singles-mobile-action-btn"
                     size="small"
