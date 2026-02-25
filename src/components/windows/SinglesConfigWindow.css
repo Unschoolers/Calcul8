@@ -191,9 +191,14 @@
 }
 
 .singles-import-preview-wrap {
-  overflow-x: auto;
+  overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 10px;
+}
+
+.singles-import-preview-wrap .v-table__wrapper {
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .singles-import-preview-table {
@@ -225,5 +230,15 @@
 
   .singles-mobile-list {
     display: block;
+  }
+}
+
+@media (max-width: 600px) {
+  .singles-import-card {
+    overflow-x: clip;
+  }
+
+  .singles-import-card .v-card-text {
+    overflow-x: hidden;
   }
 }

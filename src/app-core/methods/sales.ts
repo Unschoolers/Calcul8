@@ -361,7 +361,10 @@ export const salesMethods: ThisType<AppContext> & Pick<
 
     if (isSinglesLot) {
       const quantityDeltas: Array<{ entryId: number; delta: number }> = [];
-      if (previousSelectedSinglesPurchaseEntryId && previousSaleQuantity > 0) {
+      const previousEntryStillExists = previousSelectedSinglesPurchaseEntryId
+        ? !!getSinglesPurchaseEntryById(this, previousSelectedSinglesPurchaseEntryId)
+        : false;
+      if (previousSelectedSinglesPurchaseEntryId && previousSaleQuantity > 0 && previousEntryStillExists) {
         quantityDeltas.push({
           entryId: previousSelectedSinglesPurchaseEntryId,
           delta: previousSaleQuantity

@@ -417,6 +417,49 @@ test("saveSale editing singles sale can reassign card and updates both quantitie
   assert.equal(quantities[22], 0);
 });
 
+test("saveSale editing singles sale tolerates missing previously linked card row", () => {
+  const existingSale: Sale = {
+    id: 901,
+    type: "pack",
+    quantity: 1,
+    packsCount: 1,
+    singlesPurchaseEntryId: 999,
+    price: 10,
+    buyerShipping: 0,
+    date: "2026-02-21"
+  };
+
+  const notify = vi.fn();
+  const ctx = createContext({
+    currentLotType: "singles",
+    editingSale: existingSale,
+    sales: [existingSale],
+    singlesPurchases: [
+      { id: 22, item: "Card B", cardNumber: "002", cost: 9, quantity: 2, marketValue: 10 }
+    ],
+    newSale: {
+      type: "pack",
+      quantity: 1,
+      packsCount: null,
+      singlesPurchaseEntryId: 22,
+      price: 20,
+      buyerShipping: 0,
+      date: "2026-02-21"
+    },
+    notify
+  });
+
+  salesMethods.saveSale.call(ctx as never);
+
+  assert.equal((ctx.sales as Sale[]).length, 1);
+  assert.equal((ctx.sales as Sale[])[0]?.singlesPurchaseEntryId, 22);
+  assert.equal((ctx.singlesPurchases as Array<{ id: number; quantity: number }>)[0]?.quantity, 1);
+  assert.equal(
+    notify.mock.calls.some((call) => String(call[0]).includes("Could not update selected card quantity")),
+    false
+  );
+});
+
 test("deleteSale restores linked singles card quantity", () => {
   let onRowsChangeCalls = 0;
   const ctx = createContext({

@@ -112,8 +112,8 @@
                         <p class="text-caption">Click the + button to add your first sale</p>
                       </v-card-text>
 
-                      <v-list v-else>
-                        <v-list-item v-for="sale in (sortedSales || [])" :key="sale.id" class="my-1">
+                      <v-list v-else class="sales-history-list">
+                        <v-list-item v-for="sale in (visibleSortedSales || [])" :key="sale.id" class="my-1">
                           <template v-slot:prepend>
                             <v-avatar :color="getSaleColor(sale.type)" size="40">
                               <v-icon color="white">{{ getSaleIcon(sale.type) }}</v-icon>
@@ -122,9 +122,7 @@
 
                           <v-list-item-title class="d-flex align-center ga-2">
                             <span>
-                              {{ currentLotType === 'singles'
-                                ? `${sale.quantity}x CARD • Total $${fmtCurrency(sale.price)}`
-                                : `${sale.quantity}x ${sale.type.toUpperCase()} @ $${fmtCurrency(sale.price)}` }}
+                              {{ saleListTitle(sale) }}
                             </span>
                             <v-tooltip
                               v-if="isUnlinkedSinglesSale(sale)"
@@ -169,6 +167,18 @@
                               @click="deleteSale(sale.id)"
                             ></v-btn>
                           </template>
+                        </v-list-item>
+
+                        <v-list-item v-if="hasMoreSalesHistory" class="justify-center">
+                          <v-btn
+                            variant="text"
+                            size="small"
+                            prepend-icon="mdi-chevron-down"
+                            @click="loadMoreSalesHistory"
+                          >
+                            Load {{ nextSalesHistoryBatchCount }} more
+                            <span class="text-medium-emphasis ml-1">({{ remainingSalesHistoryCount }} left)</span>
+                          </v-btn>
                         </v-list-item>
                       </v-list>
                     </v-card>
