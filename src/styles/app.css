@@ -337,11 +337,68 @@
     .tabs-window .v-window-item.v-window-item--active {
       display: block !important;
     }
+    .sale-editor-card {
+      border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+      background:
+        radial-gradient(60% 120% at 0% 0%, rgba(var(--v-theme-primary), 0.08), transparent 60%),
+        rgba(var(--v-theme-surface), 0.96);
+    }
+    .sale-editor-title {
+      padding-top: 0.85rem;
+      padding-bottom: 0.7rem;
+      border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+    }
+    .sale-editor-content {
+      padding-top: 0.85rem;
+      padding-bottom: 0.75rem;
+    }
+    .sale-editor-form {
+      display: grid;
+      gap: 0.65rem;
+    }
+    .sale-editor-section {
+      border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+      border-radius: 12px;
+      padding: 0.65rem;
+      background: rgba(var(--v-theme-on-surface), 0.02);
+    }
+    .sale-editor-section-label {
+      font-size: 0.72rem;
+      letter-spacing: 0.04em;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: rgba(var(--v-theme-on-surface), 0.62);
+      margin-bottom: 0.4rem;
+    }
+    .sale-editor-helper {
+      margin-top: 0.3rem;
+      line-height: 1.2;
+    }
+    .sale-editor-actions {
+      border-top: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+      padding-top: 0.55rem;
+      padding-bottom: 0.55rem;
+    }
     @media (max-width: 600px) {
       .app-shell {
         padding-left: 0.75rem !important;
         padding-right: 0.75rem !important;
         padding-top: 0.6rem !important;
+      }
+      .sale-editor-dialog .v-overlay__content {
+        width: calc(100vw - 0.9rem) !important;
+        max-width: none !important;
+        margin: 0.45rem !important;
+      }
+      .sale-editor-title {
+        padding-top: 0.75rem;
+        padding-bottom: 0.6rem;
+      }
+      .sale-editor-content {
+        padding-top: 0.7rem;
+      }
+      .sale-editor-section {
+        padding: 0.55rem;
       }
     }
     @media (prefers-reduced-motion: reduce) {

@@ -93,15 +93,21 @@ export const SalesWindow = {
 
     saleListTitle(sale: Sale): string {
       const lotType = (this as Record<string, unknown>).currentLotType;
+      const isMobile = Boolean(
+        ((this as Record<string, unknown>).$vuetify as { display?: { smAndDown?: boolean } } | undefined)
+          ?.display
+          ?.smAndDown
+      );
+      const priceLabel = isMobile ? `$${this.fmtCurrency(sale.price)}` : `Total $${this.fmtCurrency(sale.price)}`;
       if (lotType !== "singles") {
         return `${sale.quantity}x ${sale.type.toUpperCase()} @ $${this.fmtCurrency(sale.price)}`;
       }
 
       const linkedLabel = this.getLinkedSinglesSaleLabel(sale);
       if (linkedLabel) {
-        return `${sale.quantity}x ${linkedLabel} • Total $${this.fmtCurrency(sale.price)}`;
+        return `${sale.quantity}x ${linkedLabel} • ${priceLabel}`;
       }
-      return `${sale.quantity}x CARD • Total $${this.fmtCurrency(sale.price)}`;
+      return `${sale.quantity}x CARD • ${priceLabel}`;
     },
 
     resetSalesHistoryRenderCount(): void {

@@ -404,22 +404,16 @@
         </div>
 
         <v-row dense class="mt-2">
-          <v-col cols="12" sm="4">
+          <v-col cols="6">
             <v-chip variant="tonal" color="primary" size="small" class="w-100 justify-space-between">
               <span>Total Cost ({{ sellingCurrency }})</span>
               <strong>${{ fmtCurrency(singlesPurchaseTotalCost) }}</strong>
             </v-chip>
           </v-col>
-          <v-col cols="12" sm="4">
+          <v-col cols="6">
             <v-chip variant="tonal" color="secondary" size="small" class="w-100 justify-space-between">
               <span>Total Market</span>
               <strong>${{ fmtCurrency(singlesPurchaseTotalMarketValue) }}</strong>
-            </v-chip>
-          </v-col>
-          <v-col cols="12" sm="4">
-            <v-chip variant="tonal" size="small" class="w-100 justify-space-between">
-              <span>Total Qty</span>
-              <strong>{{ singlesPurchaseTotalQuantity }}</strong>
             </v-chip>
           </v-col>
         </v-row>

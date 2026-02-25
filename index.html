@@ -561,15 +561,22 @@
       <auto-calculate-modal :ctx="$root"></auto-calculate-modal>
 
       <!-- Add/Edit Sale Modal -->
-      <v-dialog v-model="showAddSaleModal" max-width="500">
-        <v-card>
-          <v-card-title>
-            <v-icon class="mr-2">mdi-cart-plus</v-icon>
-            {{ editingSale ? 'Edit Sale' : 'Add Sale' }}
+      <v-dialog v-model="showAddSaleModal" max-width="560" class="sale-editor-dialog">
+        <v-card class="sale-editor-card">
+          <v-card-title class="sale-editor-title">
+            <div class="d-flex align-center">
+              <v-icon class="mr-2">mdi-cart-plus</v-icon>
+              <div>
+                <div>{{ editingSale ? 'Edit Sale' : 'Add Sale' }}</div>
+                <div class="text-caption text-medium-emphasis">
+                  {{ currentLotType === 'singles' ? 'Track card-level sale details' : 'Record this sale event' }}
+                </div>
+              </div>
+            </div>
           </v-card-title>
-          <v-card-text>
+          <v-card-text class="sale-editor-content">
             <v-alert
-                v-if="hasLotSelected && !hasProAccess"
+              v-if="hasLotSelected && !hasProAccess"
               type="info"
               variant="tonal"
               density="compact"
@@ -595,102 +602,148 @@
                 </v-btn>
               </div>
             </v-alert>
-            <v-autocomplete
-              v-if="currentLotType === 'singles'"
-              v-model="newSale.singlesPurchaseEntryId"
-              :items="singlesSaleCardOptions"
-              item-title="title"
-              item-value="value"
-              label="Card Sold (optional)"
-              variant="outlined"
-              :disabled="!hasLotSelected"
-              clearable
-              class="mb-2"
-              :hint="newSale.singlesPurchaseEntryId ? `Max quantity: ${selectedSinglesSaleMaxQuantity ?? 0}` : 'Select a card to link this sale to inventory.'"
-              persistent-hint
-              @update:model-value="onSinglesSaleCardSelectionChange"
-            >
-              <template #item="{ props, item }">
-                <v-list-item v-bind="props">
-                  <v-list-item-title class="text-body-2 font-weight-medium">
-                    {{ item.raw.item }}
-                    <span v-if="item.raw.cardNumber" class="text-medium-emphasis">#{{ item.raw.cardNumber }}</span>
-                  </v-list-item-title>
-                  <v-list-item-subtitle class="text-caption">
-                    Qty {{ item.raw.quantity }} · Cost ${{ formatCurrency(item.raw.cost) }} · Market ${{ formatCurrency(item.raw.marketValue) }} · Total Cost ${{ formatCurrency(item.raw.costBasis) }}
-                  </v-list-item-subtitle>
-                </v-list-item>
-              </template>
-              <template #selection="{ item }">
-                <div class="text-body-2 text-truncate">
-                  {{ item.raw.item }}
-                  <span v-if="item.raw.cardNumber" class="text-medium-emphasis">#{{ item.raw.cardNumber }}</span>
-                  · Qty {{ item.raw.quantity }} · Total Cost ${{ formatCurrency(item.raw.costBasis) }}
+
+            <div class="sale-editor-form">
+              <div v-if="currentLotType === 'singles'" class="sale-editor-section">
+                <div class="sale-editor-section-label">Card Link</div>
+                <v-autocomplete
+                  v-model="newSale.singlesPurchaseEntryId"
+                  :items="singlesSaleCardOptions"
+                  item-title="title"
+                  item-value="value"
+                  label="Card Sold (optional)"
+                  variant="outlined"
+                  :disabled="!hasLotSelected"
+                  clearable
+                  hide-details="auto"
+                  @update:model-value="onSinglesSaleCardSelectionChange"
+                >
+                  <template #item="{ props, item }">
+                    <v-list-item v-bind="props">
+                      <v-list-item-title class="text-body-2 font-weight-medium">
+                        {{ item.raw.item }}
+                        <span v-if="item.raw.cardNumber" class="text-medium-emphasis">#{{ item.raw.cardNumber }}</span>
+                      </v-list-item-title>
+                      <v-list-item-subtitle class="text-caption">
+                        Qty {{ item.raw.quantity }} · Cost ${{ formatCurrency(item.raw.cost) }} · Market ${{ formatCurrency(item.raw.marketValue) }} · Total Cost ${{ formatCurrency(item.raw.costBasis) }}
+                      </v-list-item-subtitle>
+                    </v-list-item>
+                  </template>
+                  <template #selection="{ item }">
+                    <div class="text-body-2 text-truncate">
+                      {{ item.raw.item }}
+                      <span v-if="item.raw.cardNumber" class="text-medium-emphasis">#{{ item.raw.cardNumber }}</span>
+                      · Qty {{ item.raw.quantity }} · Total Cost ${{ formatCurrency(item.raw.costBasis) }}
+                    </div>
+                  </template>
+                </v-autocomplete>
+                <div class="sale-editor-helper text-caption text-medium-emphasis">
+                  {{ newSale.singlesPurchaseEntryId
+                    ? `Up to ${selectedSinglesSaleMaxQuantity ?? 0} for selected card`
+                    : 'Select a card to link this sale to inventory.' }}
                 </div>
-              </template>
-            </v-autocomplete>
-            <v-select
-              v-if="currentLotType !== 'singles'"
-              v-model="newSale.type"
-              :items="[
-                { title: 'Pack', value: 'pack' },
-                { title: 'Box', value: 'box' },
-                { title: 'RTYH Spot', value: 'rtyh' }
-              ]"
-              label="Sale Type"
-              variant="outlined"
-                :disabled="!hasLotSelected"
-              class="mb-2"
-              @update:model-value="onNewSaleTypeChange"
-            ></v-select>
+              </div>
 
-              <v-text-field
-                ref="saleQuantityInput"
-                v-model.number="newSale.quantity"
-                :label="currentLotType === 'singles' ? 'Cards Sold' : 'Quantity'"
-                type="number"
-                variant="outlined"
-                :disabled="!hasLotSelected"
-                :min="1"
-                :max="currentLotType === 'singles' && newSale.singlesPurchaseEntryId ? (selectedSinglesSaleMaxQuantity ?? undefined) : undefined"
-                :hint="currentLotType === 'singles' && newSale.singlesPurchaseEntryId ? `Up to ${selectedSinglesSaleMaxQuantity ?? 0} for selected card` : undefined"
-                :persistent-hint="currentLotType === 'singles' && !!newSale.singlesPurchaseEntryId"
-                class="mb-2"
-              ></v-text-field>
+              <div class="sale-editor-section">
+                <div class="sale-editor-section-label">Sale Details</div>
+                <v-row dense>
+                  <v-col v-if="currentLotType !== 'singles'" cols="12" sm="6">
+                    <v-select
+                      v-model="newSale.type"
+                      :items="[
+                        { title: 'Pack', value: 'pack' },
+                        { title: 'Box', value: 'box' },
+                        { title: 'RTYH Spot', value: 'rtyh' }
+                      ]"
+                      label="Sale Type"
+                      variant="outlined"
+                      :disabled="!hasLotSelected"
+                      hide-details="auto"
+                      @update:model-value="onNewSaleTypeChange"
+                    ></v-select>
+                  </v-col>
 
-            <v-text-field
-              v-if="newSale.type === 'rtyh'"
-              v-model.number="newSale.packsCount"
-              label="Packs Sold (Required for RTYH)"
-              type="number"
-              variant="outlined"
-                :disabled="!hasLotSelected"
-              :min="1"
-              :rules="[v => !!v || 'Required for RTYH']"
-              class="mb-2"
-            ></v-text-field>
+                  <v-col cols="12" sm="6">
+                    <v-text-field
+                      ref="saleQuantityInput"
+                      v-model.number="newSale.quantity"
+                      :label="currentLotType === 'singles' ? 'Cards Sold' : 'Quantity'"
+                      type="number"
+                      variant="outlined"
+                      :disabled="!hasLotSelected"
+                      :min="1"
+                      :max="currentLotType === 'singles' && newSale.singlesPurchaseEntryId ? (selectedSinglesSaleMaxQuantity ?? undefined) : undefined"
+                      hide-details="auto"
+                    ></v-text-field>
+                  </v-col>
 
-              <v-text-field
-                v-model.number="newSale.price"
-                :label="currentLotType === 'singles' ? 'Total Price' : 'Price per Unit'"
-                type="number"
-                variant="outlined"
-                :disabled="!hasLotSelected"
-                prefix="$"
-                class="mb-2"
-              ></v-text-field>
-              <v-text-field
-                v-model="newSale.memo"
-                label="Memo (optional)"
-                variant="outlined"
-                :disabled="!hasLotSelected"
-                class="mb-2"
-              ></v-text-field>
-              <v-text-field v-model.number="newSale.buyerShipping" label="Buyer Shipping (per order)" type="number" variant="outlined" :disabled="!hasLotSelected" prefix="$" :min="0" class="mb-2"></v-text-field>
-              <v-text-field v-model="newSale.date" label="Date" type="date" variant="outlined" :disabled="!hasLotSelected"></v-text-field>
+                  <v-col cols="12" sm="6">
+                    <v-text-field
+                      v-model.number="newSale.price"
+                      :label="currentLotType === 'singles' ? 'Total Price' : 'Price per Unit'"
+                      type="number"
+                      variant="outlined"
+                      :disabled="!hasLotSelected"
+                      prefix="$"
+                      hide-details="auto"
+                    ></v-text-field>
+                  </v-col>
+
+                  <v-col v-if="newSale.type === 'rtyh'" cols="12" sm="6">
+                    <v-text-field
+                      v-model.number="newSale.packsCount"
+                      label="Packs Sold (RTYH)"
+                      type="number"
+                      variant="outlined"
+                      :disabled="!hasLotSelected"
+                      :min="1"
+                      :rules="[v => !!v || 'Required for RTYH']"
+                      hide-details="auto"
+                    ></v-text-field>
+                  </v-col>
+                </v-row>
+              </div>
+
+              <div class="sale-editor-section">
+                <div class="sale-editor-section-label">Notes & Delivery</div>
+                <v-row dense>
+                  <v-col cols="12">
+                    <v-text-field
+                      v-model="newSale.memo"
+                      label="Notes"
+                      variant="outlined"
+                      :disabled="!hasLotSelected"
+                      hide-details
+                    ></v-text-field>
+                  </v-col>
+                  <v-col cols="12" sm="6">
+                    <v-text-field
+                      v-model.number="newSale.buyerShipping"
+                      label="Buyer Shipping (per order)"
+                      type="number"
+                      variant="outlined"
+                      :disabled="!hasLotSelected"
+                      prefix="$"
+                      :min="0"
+                      hide-details="auto"
+                    ></v-text-field>
+                  </v-col>
+                  <v-col cols="12" sm="6">
+                    <v-text-field
+                      v-model="newSale.date"
+                      label="Date"
+                      type="date"
+                      variant="outlined"
+                      :disabled="!hasLotSelected"
+                      hide-details="auto"
+                    ></v-text-field>
+                  </v-col>
+                </v-row>
+              </div>
+            </div>
           </v-card-text>
 
-          <v-card-actions>
+          <v-card-actions class="sale-editor-actions">
             <v-spacer></v-spacer>
             <v-btn text @click="cancelSale">Cancel</v-btn>
             <v-btn color="primary" @click="saveSale" :disabled="!canUsePaidActions">{{ editingSale ? 'Update' : 'Add' }}</v-btn>

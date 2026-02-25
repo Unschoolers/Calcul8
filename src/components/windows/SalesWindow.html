@@ -94,13 +94,13 @@
                 <!-- Sales History -->
                 <v-row class="mt-4">
                   <v-col cols="12">
-                    <v-card elevation="4">
-                      <v-card-title class="d-flex align-center justify-space-between">
+                    <v-card elevation="4" class="sales-history-card">
+                      <v-card-title class="d-flex align-center justify-space-between sales-history-title-bar">
                         <div>
                           <v-icon class="mr-2">mdi-history</v-icon>
                           Sales History
                         </div>
-                        <v-chip color="secondary" v-if="(sales?.length ?? 0) > 0">
+                        <v-chip color="secondary" v-if="(sales?.length ?? 0) > 0" class="sales-history-count-chip">
                           {{ sales?.length ?? 0 }} sale{{ (sales?.length ?? 0) > 1 ? 's' : '' }}
                         </v-chip>
                       </v-card-title>
@@ -112,7 +112,7 @@
                         <p class="text-caption">Click the + button to add your first sale</p>
                       </v-card-text>
 
-                      <v-list v-else class="sales-history-list">
+                      <v-list v-else class="sales-history-list" density="compact">
                         <v-list-item v-for="sale in (visibleSortedSales || [])" :key="sale.id" class="my-1">
                           <template v-slot:prepend>
                             <v-avatar :color="getSaleColor(sale.type)" size="40">
@@ -120,8 +120,8 @@
                             </v-avatar>
                           </template>
 
-                          <v-list-item-title class="d-flex align-center ga-2">
-                            <span>
+                          <v-list-item-title class="d-flex align-center ga-2 sales-history-item-title">
+                            <span class="sales-history-item-main">
                               {{ saleListTitle(sale) }}
                             </span>
                             <v-tooltip
@@ -140,36 +140,45 @@
                               </template>
                             </v-tooltip>
                           </v-list-item-title>
-                          <v-list-item-subtitle class="d-flex flex-column ga-1">
-                            <div>
-                              {{ formatDate(sale.date) }} • Profit {{ calculateSaleProfit(sale) >= 0 ? '+' : '' }}${{ fmtCurrency(calculateSaleProfit(sale)) }}
-                            </div>
-                            <div v-if="sale.memo" class="text-medium-emphasis">
+                          <v-list-item-subtitle class="sales-history-item-subtitle">
+                            <span>{{ formatDate(sale.date) }}</span>
+                            <span>•</span>
+                            <span
+                              :class="[
+                                'sales-history-profit',
+                                calculateSaleProfit(sale) >= 0 ? 'is-positive' : 'is-negative'
+                              ]"
+                            >
+                              Profit {{ calculateSaleProfit(sale) >= 0 ? '+' : '' }}${{ fmtCurrency(calculateSaleProfit(sale)) }}
+                            </span>
+                            <div v-if="sale.memo" class="sales-history-memo">
                               {{ sale.memo }}
                             </div>
                           </v-list-item-subtitle>
 
                           <template v-slot:append>
-                            <v-btn
-                              icon="mdi-pencil"
-                              size="small"
-                              variant="text"
-                              title="Edit sale"
-                              aria-label="Edit sale"
-                              @click="editSale(sale)"
-                            ></v-btn>
-                            <v-btn
-                              icon="mdi-delete"
-                              size="small"
-                              variant="text"
-                              title="Delete sale"
-                              aria-label="Delete sale"
-                              @click="deleteSale(sale.id)"
-                            ></v-btn>
+                            <div class="sales-history-actions">
+                              <v-btn
+                                icon="mdi-pencil"
+                                size="small"
+                                variant="text"
+                                title="Edit sale"
+                                aria-label="Edit sale"
+                                @click="editSale(sale)"
+                              ></v-btn>
+                              <v-btn
+                                icon="mdi-delete"
+                                size="small"
+                                variant="text"
+                                title="Delete sale"
+                                aria-label="Delete sale"
+                                @click="deleteSale(sale.id)"
+                              ></v-btn>
+                            </div>
                           </template>
                         </v-list-item>
 
-                        <v-list-item v-if="hasMoreSalesHistory" class="justify-center">
+                        <v-list-item v-if="hasMoreSalesHistory" class="justify-center sales-history-loadmore">
                           <v-btn
                             variant="text"
                             size="small"
