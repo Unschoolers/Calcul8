@@ -44,6 +44,26 @@ function decodeGoogleJwtPayload(idToken: string): GoogleJwtPayload | null {
   }
 }
 
+function resolveDefaultSinglesCatalogSourceFromEnv(): "ua" | "pokemon" | "none" {
+  const raw = String((import.meta.env.VITE_CARDS_SEARCH_GAME as string | undefined) || "ua")
+    .trim()
+    .toLowerCase();
+  if (raw === "none") return "none";
+  if (raw === "pokemon" || raw === "pkmn") return "pokemon";
+  return "ua";
+}
+
+function normalizeSinglesCatalogSource(
+  value: unknown,
+  fallback: "ua" | "pokemon" | "none" = resolveDefaultSinglesCatalogSourceFromEnv()
+): "ua" | "pokemon" | "none" {
+  const raw = String(value || "").trim().toLowerCase();
+  if (raw === "none") return "none";
+  if (raw === "pokemon" || raw === "pkmn") return "pokemon";
+  if (raw === "ua") return "ua";
+  return fallback;
+}
+
 function readCachedGoogleProfile(): GoogleJwtPayload | null {
   try {
     const raw = localStorage.getItem(GOOGLE_PROFILE_CACHE_KEY);
@@ -141,6 +161,145 @@ function getSinglesEntryUnitCostInSellingCurrency(
   );
 }
 
+type SaleEditorNormalizedLine = {
+  singlesPurchaseEntryId: number | null;
+  quantity: number;
+  price: number;
+};
+
+type SaleEditorLineProfitPreview = {
+  value: number;
+  unitValue: number | null;
+  quantity: number;
+  percent: number;
+  sign: "+" | "-";
+  colorClass: string;
+  basisLabel: "Market" | "Cost";
+  basisValue: number;
+  marketBasisValue: number;
+  costBasisValue: number;
+} | null;
+
+function getSaleEditorNormalizedLines(newSale: {
+  singlesItems?: Array<{ singlesPurchaseEntryId?: number | null; quantity?: number | null; price?: number | null }>;
+  singlesPurchaseEntryId?: number | null;
+  quantity?: number | null;
+  price?: number | null;
+}): SaleEditorNormalizedLine[] {
+  const draftLines = Array.isArray(newSale?.singlesItems) && newSale.singlesItems.length > 0
+    ? newSale.singlesItems
+    : [{
+      singlesPurchaseEntryId: newSale?.singlesPurchaseEntryId ?? null,
+      quantity: newSale?.quantity ?? 0,
+      price: newSale?.price ?? 0
+    }];
+
+  return draftLines.map((line) => ({
+    singlesPurchaseEntryId: toPositiveIntOrNull(line.singlesPurchaseEntryId),
+    quantity: toNonNegativeInt(line.quantity),
+    price: Math.max(0, Number(line.price) || 0)
+  }));
+}
+
+function getSaleEditorLineProfitPreviews(context: {
+  currentLotType: string;
+  showAddSaleModal: boolean;
+  newSale: {
+    singlesItems?: Array<{ singlesPurchaseEntryId?: number | null; quantity?: number | null; price?: number | null }>;
+    singlesPurchaseEntryId?: number | null;
+    quantity?: number | null;
+    price?: number | null;
+    buyerShipping?: number | null;
+  };
+  netFromGross: (grossRevenue: number, buyerShippingPerOrder?: number, orderCount?: number) => number;
+  singlesPurchases: Array<{ id: number; marketValue: number; cost: number; currency?: string }>;
+  currency: "CAD" | "USD";
+  sellingCurrency: "CAD" | "USD";
+  exchangeRate: number;
+}): SaleEditorLineProfitPreview[] {
+  if (context.currentLotType !== "singles" || !context.showAddSaleModal) return [];
+
+  const normalizedLines = getSaleEditorNormalizedLines(context.newSale);
+  const grossRevenue = normalizedLines.reduce((sum, line) => sum + line.price, 0);
+  const buyerShipping = Math.max(0, Number(context.newSale?.buyerShipping) || 0);
+  const netRevenue = context.netFromGross(grossRevenue, buyerShipping, 1);
+
+  return normalizedLines.map((line): SaleEditorLineProfitPreview => {
+    const hasMeaningfulInput = line.quantity > 0 || line.price > 0 || line.singlesPurchaseEntryId != null;
+    if (!hasMeaningfulInput) return null;
+
+    const lineNetRevenue = grossRevenue > 0
+      ? (netRevenue * (line.price / grossRevenue))
+      : 0;
+
+    const selectedEntry = line.singlesPurchaseEntryId
+      ? (context.singlesPurchases || []).find((entry) => entry.id === line.singlesPurchaseEntryId)
+      : null;
+    const unitCost = selectedEntry
+      ? getSinglesEntryUnitCostInSellingCurrency(
+        selectedEntry,
+        context.currency,
+        context.sellingCurrency,
+        context.exchangeRate
+      )
+      : 0;
+    const unitMarket = Math.max(0, Number(selectedEntry?.marketValue) || 0);
+    const marketBasisValue = unitMarket > 0 ? (unitMarket * line.quantity) : 0;
+    const costBasisValue = unitMarket > 0 ? 0 : (unitCost * line.quantity);
+    const basisValue = marketBasisValue + costBasisValue;
+    const basisLabel = marketBasisValue > 0 ? "Market" as const : "Cost" as const;
+    const basisProfit = lineNetRevenue - basisValue;
+    const percent = basisValue > 0
+      ? (basisProfit / basisValue) * 100
+      : (basisProfit >= 0 ? 100 : 0);
+    const unitValue = line.quantity > 0 ? basisProfit / line.quantity : null;
+
+    return {
+      value: basisProfit,
+      unitValue,
+      quantity: line.quantity,
+      percent,
+      sign: basisProfit >= 0 ? "+" as const : "-" as const,
+      colorClass: basisProfit >= 0 ? "text-success" : "text-error",
+      basisLabel,
+      basisValue,
+      marketBasisValue,
+      costBasisValue
+    };
+  });
+}
+
+type SaleLineLike = {
+  singlesPurchaseEntryId?: number;
+  quantity: number;
+  price: number;
+};
+
+function getSaleSinglesLines(sale: {
+  singlesItems?: Array<{ singlesPurchaseEntryId?: number; quantity: number; price: number }>;
+  singlesPurchaseEntryId?: number;
+  quantity: number;
+  price: number;
+}): SaleLineLike[] {
+  if (Array.isArray(sale.singlesItems) && sale.singlesItems.length > 0) {
+    return sale.singlesItems
+      .map((line) => ({
+        singlesPurchaseEntryId: toPositiveIntOrNull(line.singlesPurchaseEntryId) ?? undefined,
+        quantity: toNonNegativeInt(line.quantity),
+        price: Math.max(0, Number(line.price) || 0)
+      }))
+      .filter((line) => line.quantity > 0);
+  }
+
+  const legacyQuantity = toNonNegativeInt(sale.quantity);
+  if (legacyQuantity <= 0) return [];
+  return [{
+    singlesPurchaseEntryId: toPositiveIntOrNull(sale.singlesPurchaseEntryId) ?? undefined,
+    quantity: legacyQuantity,
+    price: Math.max(0, Number(sale.price) || 0)
+  }];
+}
+
 export const appComputed: AppComputedObject = {
   isDark(): boolean {
     return this.$vuetify.theme.global.name === "unionArenaDark";
@@ -185,6 +344,13 @@ export const appComputed: AppComputedObject = {
     if (!this.currentLotId) return "bulk";
     const currentLot = this.lots.find((lot) => lot.id === this.currentLotId);
     return currentLot?.lotType === "singles" ? "singles" : "bulk";
+  },
+
+  currentLotCatalogSource(): "ua" | "pokemon" | "none" {
+    if (!this.currentLotId) return "none";
+    const currentLot = this.lots.find((lot) => lot.id === this.currentLotId);
+    if (currentLot?.lotType !== "singles") return "none";
+    return normalizeSinglesCatalogSource(currentLot.singlesCatalogSource);
   },
 
   hasLotSelected(): boolean {
@@ -246,11 +412,14 @@ export const appComputed: AppComputedObject = {
   singlesSoldCountByPurchaseId(): Record<number, number> {
     const counts: Record<number, number> = {};
     for (const sale of this.sales || []) {
-      const entryId = toPositiveIntOrNull(sale.singlesPurchaseEntryId);
-      if (!entryId) continue;
-      const soldQuantity = Math.max(0, Math.floor(Number(sale.quantity) || 0));
-      if (soldQuantity <= 0) continue;
-      counts[entryId] = (counts[entryId] || 0) + soldQuantity;
+      const saleLines = getSaleSinglesLines(sale);
+      for (const line of saleLines) {
+        const entryId = toPositiveIntOrNull(line.singlesPurchaseEntryId);
+        if (!entryId) continue;
+        const soldQuantity = toNonNegativeInt(line.quantity);
+        if (soldQuantity <= 0) continue;
+        counts[entryId] = (counts[entryId] || 0) + soldQuantity;
+      }
     }
     return counts;
   },
@@ -258,7 +427,15 @@ export const appComputed: AppComputedObject = {
   singlesSaleCardOptions() {
     if (this.currentLotType !== "singles") return [];
 
+    const selectedEntryIds = new Set<number>();
     const selectedEntryId = toPositiveIntOrNull(this.newSale?.singlesPurchaseEntryId);
+    if (selectedEntryId) selectedEntryIds.add(selectedEntryId);
+    if (Array.isArray(this.newSale?.singlesItems)) {
+      for (const line of this.newSale.singlesItems) {
+        const lineEntryId = toPositiveIntOrNull(line.singlesPurchaseEntryId);
+        if (lineEntryId) selectedEntryIds.add(lineEntryId);
+      }
+    }
     const soldCounts = this.singlesSoldCountByPurchaseId;
     const buyerShippingPerOrder = Math.max(0, Number(this.newSale?.buyerShipping) || 0);
 
@@ -266,7 +443,7 @@ export const appComputed: AppComputedObject = {
       .filter((entry) => {
         const remainingQuantity = getSinglesRemainingQuantity(entry, soldCounts);
         if (remainingQuantity > 0) return true;
-        return selectedEntryId != null && entry.id === selectedEntryId;
+        return selectedEntryIds.has(entry.id);
       })
       .map((entry) => {
         const totalQuantity = toNonNegativeInt(entry.quantity);
@@ -283,9 +460,9 @@ export const appComputed: AppComputedObject = {
         const titleSuffix = cardNumber ? ` #${cardNumber}` : "";
         const remainingCostBasis = quantity * convertedUnitCost;
         return {
-          title: `${entry.item || "Unnamed card"}${titleSuffix}`,
+          title: `${entry.item || "Unnamed item"}${titleSuffix}`,
           value: entry.id,
-          item: entry.item || "Unnamed card",
+          item: entry.item || "Unnamed item",
           cardNumber,
           cost: unitCost,
           marketValue,
@@ -305,7 +482,10 @@ export const appComputed: AppComputedObject = {
   selectedSinglesSaleMaxQuantity(): number | null {
     if (this.currentLotType !== "singles") return null;
 
-    const selectedEntryId = toPositiveIntOrNull(this.newSale?.singlesPurchaseEntryId);
+    const firstLine = Array.isArray(this.newSale?.singlesItems) && this.newSale.singlesItems.length > 0
+      ? this.newSale.singlesItems[0]
+      : null;
+    const selectedEntryId = toPositiveIntOrNull(firstLine?.singlesPurchaseEntryId ?? this.newSale?.singlesPurchaseEntryId);
     if (!selectedEntryId) return null;
 
     const selectedEntry = (this.singlesPurchases || []).find((entry) => entry.id === selectedEntryId);
@@ -322,42 +502,45 @@ export const appComputed: AppComputedObject = {
     return remainingQuantity;
   },
 
+  saleEditorLineProfitPreviews() {
+    return getSaleEditorLineProfitPreviews(this);
+  },
+
   saleEditorProfitPreview() {
     if (this.currentLotType !== "singles" || !this.showAddSaleModal) return null;
 
-    const grossRevenue = Math.max(0, Number(this.newSale?.price) || 0);
-    const quantity = Math.max(0, Math.floor(Number(this.newSale?.quantity) || 0));
-    const buyerShipping = Math.max(0, Number(this.newSale?.buyerShipping) || 0);
-    const netRevenue = this.netFromGross(grossRevenue, buyerShipping, 1);
+    const linePreviewSource = Array.isArray(this.saleEditorLineProfitPreviews)
+      ? this.saleEditorLineProfitPreviews
+      : getSaleEditorLineProfitPreviews(this);
+    const linePreviews = (linePreviewSource || []).filter(
+      (line): line is Exclude<SaleEditorLineProfitPreview, null> => line != null
+    );
+    if (linePreviews.length === 0) return null;
 
-    const selectedEntryId = toPositiveIntOrNull(this.newSale?.singlesPurchaseEntryId);
-    const selectedEntry = selectedEntryId
-      ? (this.singlesPurchases || []).find((entry) => entry.id === selectedEntryId)
-      : null;
-    const unitCost = selectedEntry
-      ? getSinglesEntryUnitCostInSellingCurrency(
-        selectedEntry,
-        this.currency,
-        this.sellingCurrency,
-        this.exchangeRate
-      )
-      : 0;
-    const unitMarket = Math.max(0, Number(selectedEntry?.marketValue) || 0);
-    const totalCost = unitCost * quantity;
-    const totalMarket = unitMarket * quantity;
-    const basisValue = totalMarket > 0 ? totalMarket : totalCost;
-    const basisLabel = totalMarket > 0 ? "Market" as const : "Cost" as const;
-    const basisProfit = netRevenue - basisValue;
+    const basisProfit = linePreviews.reduce((sum, line) => sum + line.value, 0);
+    const totalQuantity = linePreviews.reduce((sum, line) => sum + line.quantity, 0);
+    const marketBasisValue = linePreviews.reduce((sum, line) => sum + line.marketBasisValue, 0);
+    const costBasisValue = linePreviews.reduce((sum, line) => sum + line.costBasisValue, 0);
+    const basisValue = marketBasisValue + costBasisValue;
+    const basisLabel = marketBasisValue > 0 && costBasisValue > 0
+      ? "Mixed" as const
+      : (marketBasisValue > 0 ? "Market" as const : "Cost" as const);
     const percent = basisValue > 0
       ? (basisProfit / basisValue) * 100
       : (basisProfit >= 0 ? 100 : 0);
+    const unitValue = totalQuantity > 0 ? basisProfit / totalQuantity : null;
 
     return {
       value: basisProfit,
+      unitValue,
+      quantity: totalQuantity,
       percent,
       sign: basisProfit >= 0 ? "+" as const : "-" as const,
       colorClass: basisProfit >= 0 ? "text-success" : "text-error",
-      basisLabel
+      basisLabel,
+      basisValue,
+      marketBasisValue,
+      costBasisValue
     };
   },
 

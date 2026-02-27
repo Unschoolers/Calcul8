@@ -10,6 +10,7 @@ import type {
   PortfolioTotals,
   Sale,
   SaleType,
+  SinglesCatalogSource,
   SinglesSaleCardOption,
   SalesStatus,
   UiColor
@@ -23,6 +24,7 @@ export interface AppComputedState {
   googleProfilePicture: string;
   lotNameDraft: string;
   currentLotType: LotType;
+  currentLotCatalogSource: SinglesCatalogSource;
   hasLotSelected: boolean;
   isLiveTabDisabled: boolean;
   canUsePaidActions: boolean;
@@ -38,12 +40,29 @@ export interface AppComputedState {
   singlesUnlinkedSoldCount: number;
   singlesSaleCardOptions: SinglesSaleCardOption[];
   selectedSinglesSaleMaxQuantity: number | null;
-  saleEditorProfitPreview: {
+  saleEditorLineProfitPreviews: Array<{
     value: number;
+    unitValue: number | null;
+    quantity: number;
     percent: number;
     sign: "+" | "-";
     colorClass: string;
     basisLabel: "Market" | "Cost";
+    basisValue: number;
+    marketBasisValue: number;
+    costBasisValue: number;
+  } | null>;
+  saleEditorProfitPreview: {
+    value: number;
+    unitValue: number | null;
+    quantity: number;
+    percent: number;
+    sign: "+" | "-";
+    colorClass: string;
+    basisLabel: "Market" | "Cost" | "Mixed";
+    basisValue: number;
+    marketBasisValue: number;
+    costBasisValue: number;
   } | null;
   totalPacks: number;
   totalSpots: number;
@@ -101,6 +120,7 @@ export interface AppMethodState {
   confirmSinglesPurchasesCsvImport(): void;
   cancelSinglesPurchasesCsvImport(): void;
   createNewLot(): void;
+  setCurrentLotCatalogSource(source: SinglesCatalogSource): void;
   openRenameLotModal(): void;
   renameCurrentLot(): void;
   loadLot(): void;
@@ -121,6 +141,12 @@ export interface AppMethodState {
   openAddSaleModal(saleType?: SaleType): void;
   onNewSaleTypeChange(type: SaleType): void;
   onSinglesSaleCardSelectionChange(value: number | null): void;
+  addSinglesSaleLine(): void;
+  removeSinglesSaleLine(lineIndex: number): void;
+  onSinglesSaleLineCardSelectionChange(lineIndex: number, value: number | null): void;
+  onSinglesSaleLineQuantityChange(lineIndex: number): void;
+  onSinglesSaleLinePriceChange(): void;
+  getSinglesSaleLineMaxQuantity(lineIndex: number): number | null;
   saveSale(): void;
   editSale(sale: Sale): void;
   deleteSale(id: number): void;
@@ -221,6 +247,7 @@ export interface AppComputedObject {
   googleProfilePicture(this: AppContext): string;
   lotNameDraft: StringProxyComputed;
   currentLotType(this: AppContext): LotType;
+  currentLotCatalogSource(this: AppContext): SinglesCatalogSource;
   hasLotSelected(this: AppContext): boolean;
   isLiveTabDisabled(this: AppContext): boolean;
   canUsePaidActions(this: AppContext): boolean;
@@ -236,12 +263,29 @@ export interface AppComputedObject {
   singlesUnlinkedSoldCount(this: AppContext): number;
   singlesSaleCardOptions(this: AppContext): SinglesSaleCardOption[];
   selectedSinglesSaleMaxQuantity(this: AppContext): number | null;
-  saleEditorProfitPreview(this: AppContext): {
+  saleEditorLineProfitPreviews(this: AppContext): Array<{
     value: number;
+    unitValue: number | null;
+    quantity: number;
     percent: number;
     sign: "+" | "-";
     colorClass: string;
     basisLabel: "Market" | "Cost";
+    basisValue: number;
+    marketBasisValue: number;
+    costBasisValue: number;
+  } | null>;
+  saleEditorProfitPreview(this: AppContext): {
+    value: number;
+    unitValue: number | null;
+    quantity: number;
+    percent: number;
+    sign: "+" | "-";
+    colorClass: string;
+    basisLabel: "Market" | "Cost" | "Mixed";
+    basisValue: number;
+    marketBasisValue: number;
+    costBasisValue: number;
   } | null;
   totalPacks(this: AppContext): number;
   totalSpots(this: AppContext): number;

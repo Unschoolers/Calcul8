@@ -7,6 +7,15 @@ import {
 } from "./storageKeys.ts";
 import type { AppState } from "../types/app.ts";
 
+function resolveDefaultSinglesCatalogSourceFromEnv(): "ua" | "pokemon" | "none" {
+  const raw = String((import.meta.env.VITE_CARDS_SEARCH_GAME as string | undefined) || "ua")
+    .trim()
+    .toLowerCase();
+  if (raw === "none") return "none";
+  if (raw === "pokemon" || raw === "pkmn") return "pokemon";
+  return "ua";
+}
+
 function getLocalTodayDate(): string {
   const date = new Date();
   const year = date.getFullYear();
@@ -97,6 +106,14 @@ export function createInitialState(): AppState {
       quantity: null,
       packsCount: null,
       singlesPurchaseEntryId: null,
+      singlesItems: [
+        {
+          lineId: 1,
+          singlesPurchaseEntryId: null,
+          quantity: 1,
+          price: null
+        }
+      ],
       price: 0,
       memo: "",
       buyerShipping: DEFAULT_VALUES.SELLING_SHIPPING_PER_ORDER,
@@ -128,6 +145,7 @@ export function createInitialState(): AppState {
     newLotName: "",
     renameLotName: "",
     newLotType: "bulk",
+    newLotCatalogSource: resolveDefaultSinglesCatalogSourceFromEnv(),
 
     // Exchange Rate Cache
     lastFetchTime: null,

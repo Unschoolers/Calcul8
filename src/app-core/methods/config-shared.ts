@@ -22,6 +22,7 @@ export type ConfigMethods = ConfigMethodSubset<
   | "confirmSinglesPurchasesCsvImport"
   | "cancelSinglesPurchasesCsvImport"
   | "createNewLot"
+  | "setCurrentLotCatalogSource"
   | "openRenameLotModal"
   | "renameCurrentLot"
   | "loadLot"

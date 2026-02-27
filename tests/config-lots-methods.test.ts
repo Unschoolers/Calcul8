@@ -118,6 +118,7 @@ function createContext(overrides: Ctx = {}): Ctx {
     showSinglesCsvMapperModal: false,
     newLotName: "",
     newLotType: "bulk",
+    newLotCatalogSource: "ua",
     renameLotName: "",
     showRenameLotModal: false,
     purchaseUiMode: "expert",
@@ -693,6 +694,28 @@ test("applyLivePricesToDefaults updates saved config when lot is selected", asyn
   assert.equal((noLotCtx.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0], "Select a lot first");
 });
 
+test("createNewLot uses selected catalog source for new singles lots", () => {
+  const ctx = createContext({
+    lots: [makeLot({ id: 1, lotType: "bulk" })],
+    currentLotId: 1,
+    newLotName: "Pokemon Singles",
+    newLotType: "singles",
+    newLotCatalogSource: "pokemon",
+    showNewLotModal: true,
+    getCurrentSetup: vi.fn(() => configLotMethods.getCurrentSetup.call(ctx as never)),
+    loadLot: vi.fn(() => {
+      configLotMethods.loadLot.call(ctx as never);
+    })
+  });
+
+  configLotMethods.createNewLot.call(ctx as never);
+
+  const createdLot = (ctx.lots as Lot[]).find((lot) => lot.name === "Pokemon Singles");
+  assert.equal(createdLot?.lotType, "singles");
+  assert.equal(createdLot?.singlesCatalogSource, "pokemon");
+  assert.equal(ctx.showNewLotModal, false);
+});
+
 test("renameCurrentLot closes modal when name is unchanged", () => {
   const ctx = createContext({
     currentLotId: 101,
@@ -705,6 +728,68 @@ test("renameCurrentLot closes modal when name is unchanged", () => {
 
   assert.equal(ctx.showRenameLotModal, false);
   assert.equal((ctx.saveLotsToStorage as ReturnType<typeof vi.fn>).mock.calls.length, 0);
+  assert.equal((ctx.notify as ReturnType<typeof vi.fn>).mock.calls.length, 0);
+});
+
+test("setCurrentLotCatalogSource updates current singles lot and persists changes", async () => {
+  const lot = makeLot({
+    id: 101,
+    lotType: "singles",
+    singlesCatalogSource: "ua",
+    singlesPurchases: [
+      {
+        id: 1,
+        item: "Card A",
+        cardNumber: "001",
+        condition: "",
+        language: "",
+        cost: 1,
+        currency: "CAD",
+        quantity: 1,
+        marketValue: 1
+      }
+    ]
+  });
+  const ctx = createContext({
+    lots: [lot],
+    currentLotId: 101,
+    saveLotsToStorage: vi.fn(),
+    pushCloudSync: vi.fn(async () => undefined),
+    notify: vi.fn()
+  });
+
+  configLotMethods.setCurrentLotCatalogSource.call(ctx as never, "pokemon");
+  await Promise.resolve();
+
+  assert.equal(lot.singlesCatalogSource, "pokemon");
+  assert.equal((ctx.saveLotsToStorage as ReturnType<typeof vi.fn>).mock.calls.length, 1);
+  assert.equal((ctx.pushCloudSync as ReturnType<typeof vi.fn>).mock.calls.length, 1);
+  assert.equal(
+    (ctx.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0],
+    "Catalog source updated. This only affects future autocomplete suggestions; existing items stay unchanged."
+  );
+});
+
+test("setCurrentLotCatalogSource is a no-op for non-singles lots", async () => {
+  const lot = makeLot({
+    id: 202,
+    lotType: "bulk",
+    singlesCatalogSource: undefined
+  });
+  const ctx = createContext({
+    lots: [lot],
+    currentLotId: 202,
+    saveLotsToStorage: vi.fn(),
+    pushCloudSync: vi.fn(async () => undefined),
+    notify: vi.fn()
+  });
+
+  configLotMethods.setCurrentLotCatalogSource.call(ctx as never, "pokemon");
+  await Promise.resolve();
+
+  assert.equal(lot.singlesCatalogSource, undefined);
+  assert.equal((ctx.saveLotsToStorage as ReturnType<typeof vi.fn>).mock.calls.length, 0);
+  assert.equal((ctx.pushCloudSync as ReturnType<typeof vi.fn>).mock.calls.length, 0);
   assert.equal((ctx.notify as ReturnType<typeof vi.fn>).mock.calls.length, 0);
 });
 

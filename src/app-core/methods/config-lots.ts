@@ -1,5 +1,5 @@
 import { DEFAULT_VALUES } from "../../constants.ts";
-import type { Lot, LotSetup, SinglesPurchaseEntry } from "../../types/app.ts";
+import type { Lot, LotSetup, SinglesCatalogSource, SinglesPurchaseEntry } from "../../types/app.ts";
 import {
   applySinglesCsvImportRows,
   buildSinglesCsvImportDraft,
@@ -83,6 +83,26 @@ function resolveCurrentLot(lots: Lot[], lotId: number | null): Lot | null {
   return lots.find((lot) => lot.id === lotId) ?? null;
 }
 
+function resolveDefaultSinglesCatalogSourceFromEnv(): "ua" | "pokemon" | "none" {
+  const raw = String((import.meta.env.VITE_CARDS_SEARCH_GAME as string | undefined) || "ua")
+    .trim()
+    .toLowerCase();
+  if (raw === "none") return "none";
+  if (raw === "pokemon" || raw === "pkmn") return "pokemon";
+  return "ua";
+}
+
+function normalizeSinglesCatalogSource(
+  value: unknown,
+  fallback: "ua" | "pokemon" | "none" = resolveDefaultSinglesCatalogSourceFromEnv()
+): "ua" | "pokemon" | "none" {
+  const raw = String(value || "").trim().toLowerCase();
+  if (raw === "none") return "none";
+  if (raw === "pokemon" || raw === "pkmn") return "pokemon";
+  if (raw === "ua") return "ua";
+  return fallback;
+}
+
 export const configLotMethods: ConfigMethodSubset<
   | "getCurrentSetup"
   | "autoSaveSetup"
@@ -97,6 +117,7 @@ export const configLotMethods: ConfigMethodSubset<
   | "confirmSinglesPurchasesCsvImport"
   | "cancelSinglesPurchasesCsvImport"
   | "createNewLot"
+  | "setCurrentLotCatalogSource"
   | "openRenameLotModal"
   | "renameCurrentLot"
   | "loadLot"
@@ -339,6 +360,17 @@ export const configLotMethods: ConfigMethodSubset<
     const setup = this.getCurrentSetup();
     const nextLotType: Lot["lotType"] = this.newLotType === "singles" ? "singles" : "bulk";
     const selectedLot = this.currentLotId ? this.lots.find((p) => p.id === this.currentLotId) : null;
+    const selectedLotCatalogSource = normalizeSinglesCatalogSource(
+      selectedLot?.lotType === "singles" ? selectedLot.singlesCatalogSource : undefined
+    );
+    const draftCatalogSource = normalizeSinglesCatalogSource(
+      this.newLotCatalogSource,
+      selectedLotCatalogSource
+    );
+    const nextSinglesCatalogSource: "ua" | "pokemon" | "none" =
+      nextLotType === "singles"
+        ? draftCatalogSource
+        : "none";
     const fallbackPreviousLot = this.lots.length > 0 ? this.lots[this.lots.length - 1] : null;
     const previousSellingTaxRaw =
       selectedLot?.sellingTaxPercent ??
@@ -374,6 +406,7 @@ export const configLotMethods: ConfigMethodSubset<
       name,
       createdAt: todayDate,
       lotType: nextLotType,
+      singlesCatalogSource: nextLotType === "singles" ? nextSinglesCatalogSource : undefined,
       singlesPurchases: nextLotType === "singles" ? [] as SinglesPurchaseEntry[] : undefined,
       ...setup
     };
@@ -384,8 +417,34 @@ export const configLotMethods: ConfigMethodSubset<
     this.loadLot();
     this.newLotName = "";
     this.newLotType = nextLotType;
+    this.newLotCatalogSource = nextSinglesCatalogSource;
     this.showNewLotModal = false;
     this.notify("Lot created", "success");
+  },
+
+  setCurrentLotCatalogSource(nextValue: SinglesCatalogSource): void {
+    if (!this.currentLotId) return;
+
+    const lot = this.lots.find((candidate) => candidate.id === this.currentLotId);
+    if (!lot || lot.lotType !== "singles") return;
+
+    const normalizedSource = normalizeSinglesCatalogSource(
+      nextValue,
+      normalizeSinglesCatalogSource(lot.singlesCatalogSource)
+    );
+    if (lot.singlesCatalogSource === normalizedSource) return;
+
+    const hadExistingItems = Array.isArray(lot.singlesPurchases) && lot.singlesPurchases.length > 0;
+    lot.singlesCatalogSource = normalizedSource;
+    this.saveLotsToStorage();
+    void this.pushCloudSync();
+
+    if (hadExistingItems) {
+      this.notify(
+        "Catalog source updated. This only affects future autocomplete suggestions; existing items stay unchanged.",
+        "info"
+      );
+    }
   },
 
   openRenameLotModal(): void {
@@ -445,6 +504,9 @@ export const configLotMethods: ConfigMethodSubset<
 
     const lot = this.lots.find((p) => p.id === this.currentLotId);
     if (!lot) return;
+    if (lot.lotType === "singles") {
+      lot.singlesCatalogSource = normalizeSinglesCatalogSource(lot.singlesCatalogSource);
+    }
     this.showSinglesCsvMapperModal = false;
     this.singlesCsvImportHeaders = [];
     this.singlesCsvImportRows = [];
@@ -458,6 +520,9 @@ export const configLotMethods: ConfigMethodSubset<
     this.singlesCsvMapQuantity = null;
     this.singlesCsvMapMarketValue = null;
     this.newLotType = lot.lotType === "singles" ? "singles" : "bulk";
+    this.newLotCatalogSource = lot.lotType === "singles"
+      ? normalizeSinglesCatalogSource(lot.singlesCatalogSource)
+      : this.newLotCatalogSource;
     const todayDate = getTodayDate();
 
     this.boxPriceCost = lot.boxPriceCost ?? DEFAULT_VALUES.BOX_PRICE;

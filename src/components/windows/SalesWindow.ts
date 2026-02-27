@@ -96,6 +96,16 @@ export const SalesWindow = {
       const lotType = (this as Record<string, unknown>).currentLotType;
       if (lotType !== "singles") return false;
 
+      if (Array.isArray(sale?.singlesItems) && sale.singlesItems.length > 0) {
+        const entries = ((this as Record<string, unknown>).singlesPurchases || []) as SinglesPurchaseEntry[];
+        return sale.singlesItems.some((line) => {
+          const rawId = Number(line?.singlesPurchaseEntryId);
+          if (!Number.isFinite(rawId) || rawId <= 0) return true;
+          const entryId = Math.floor(rawId);
+          return !entries.some((entry) => Number(entry.id) === entryId);
+        });
+      }
+
       const rawId = Number(sale?.singlesPurchaseEntryId);
       if (!Number.isFinite(rawId) || rawId <= 0) return true;
 
@@ -107,6 +117,26 @@ export const SalesWindow = {
     getLinkedSinglesSaleLabel(sale: Sale): string {
       const lotType = (this as Record<string, unknown>).currentLotType;
       if (lotType !== "singles") return "";
+
+      if (Array.isArray(sale?.singlesItems) && sale.singlesItems.length > 0) {
+        const entries = ((this as Record<string, unknown>).singlesPurchases || []) as SinglesPurchaseEntry[];
+        const linkedEntryIds = sale.singlesItems
+          .map((line) => Number(line?.singlesPurchaseEntryId))
+          .filter((value) => Number.isFinite(value) && value > 0)
+          .map((value) => Math.floor(value));
+        const uniqueIds = [...new Set(linkedEntryIds)];
+        if (uniqueIds.length !== 1) {
+          return uniqueIds.length > 1 ? `${uniqueIds.length} items` : "";
+        }
+        const entry = entries.find((candidate) => Number(candidate.id) === uniqueIds[0]);
+        if (!entry) return "";
+        const item = String(entry.item || "").trim();
+        const cardNumber = String(entry.cardNumber || "").trim();
+        if (item && cardNumber) return `${item} #${cardNumber}`;
+        if (item) return item;
+        if (cardNumber) return `#${cardNumber}`;
+        return "";
+      }
 
       const rawId = Number(sale?.singlesPurchaseEntryId);
       if (!Number.isFinite(rawId) || rawId <= 0) return "";
@@ -140,7 +170,7 @@ export const SalesWindow = {
       if (linkedLabel) {
         return `${sale.quantity}x ${linkedLabel} • ${priceLabel}`;
       }
-      return `${sale.quantity}x CARD • ${priceLabel}`;
+      return `${sale.quantity}x ITEM • ${priceLabel}`;
     },
 
     resetSalesHistoryRenderCount(): void {

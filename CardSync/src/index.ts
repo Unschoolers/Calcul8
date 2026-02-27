@@ -13,6 +13,35 @@ type CardSyncDoc = JsonRecord & {
   game: string;
 };
 
+type PokemonSetSummary = {
+  id: string;
+  name: string;
+  series: string;
+  printedTotal: number | null;
+  total: number | null;
+};
+
+function asRecord(value: unknown): JsonRecord | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  return value as JsonRecord;
+}
+
+function toTrimmedString(value: unknown): string {
+  return String(value ?? "").trim();
+}
+
+function toFiniteNumber(value: unknown): number | null {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function normalizeMarketPrice(value: unknown): number | null {
+  const parsed = toFiniteNumber(value);
+  if (parsed == null) return null;
+  if (parsed < 0) return null;
+  return parsed;
+}
+
 function loadEnvFiles(): void {
   const sourceDir = path.dirname(fileURLToPath(import.meta.url));
   const projectRoot = path.resolve(sourceDir, "..");
@@ -48,6 +77,7 @@ export type ImportCardsToCosmosOptions = {
   batchSize?: number;
   concurrency?: number;
   dryRun?: boolean;
+  pokemonSetsById?: Map<string, PokemonSetSummary>;
 };
 
 function parseArgs(argv: string[]): Record<string, string | boolean> {
@@ -224,16 +254,154 @@ function sanitizeIdPart(value: unknown): string {
     .replace(/[^a-zA-Z0-9:_\-.]/g, "");
 }
 
-function getStableCardKey(row: JsonRecord): string {
+function getStableCardKey(row: JsonRecord, game: string): string {
+  const normalizedGame = game.trim().toLowerCase();
+
+  // Pokemon card numbers (e.g. "64/128") are not globally unique,
+  // so prefer original source ids for deterministic upserts.
+  if (normalizedGame === "pokemon" || normalizedGame === "pkmn") {
+    const originalId = sanitizeIdPart(row.originalId);
+    if (originalId) return originalId;
+    const sourceId = sanitizeIdPart(row.id);
+    if (sourceId) return sourceId;
+    const cardNo = sanitizeIdPart(row.cardNo);
+    if (cardNo) return cardNo;
+    throw new Error("Missing originalId/id/cardNo; cannot generate stable id for pokemon row.");
+  }
+
   const cardNo = sanitizeIdPart(row.cardNo);
   if (cardNo) return cardNo;
   const originalId = sanitizeIdPart(row.originalId);
   if (originalId) return originalId;
-  throw new Error("Missing both cardNo and originalId; cannot generate stable id.");
+  const sourceId = sanitizeIdPart(row.id);
+  if (sourceId) return sourceId;
+  throw new Error("Missing cardNo/originalId/id; cannot generate stable id.");
+}
+
+function parsePokemonSetIdFromCardId(cardId: string): string {
+  const trimmed = cardId.trim();
+  if (!trimmed) return "";
+  const dashIndex = trimmed.indexOf("-");
+  if (dashIndex <= 0) return "";
+  return trimmed.slice(0, dashIndex).trim().toLowerCase();
+}
+
+async function loadPokemonSetsById(filePath: string): Promise<Map<string, PokemonSetSummary>> {
+  const absolutePath = path.resolve(filePath);
+  const raw = await fs.readFile(absolutePath, "utf8");
+  const parsed = JSON.parse(raw) as unknown;
+  if (!Array.isArray(parsed)) {
+    throw new Error("Pokemon sets file must be a JSON array.");
+  }
+
+  const map = new Map<string, PokemonSetSummary>();
+  for (const row of parsed) {
+    const record = asRecord(row);
+    if (!record) continue;
+    const id = toTrimmedString(record.id).toLowerCase();
+    if (!id) continue;
+
+    map.set(id, {
+      id,
+      name: toTrimmedString(record.name),
+      series: toTrimmedString(record.series),
+      printedTotal: toFiniteNumber(record.printedTotal),
+      total: toFiniteNumber(record.total)
+    });
+  }
+  return map;
+}
+
+function extractPokemonMarketPrice(row: JsonRecord): number | null {
+  const directMarket = normalizeMarketPrice(row.marketPrice);
+  if (directMarket != null) return directMarket;
+
+  const tcgplayer = asRecord(row.tcgplayer);
+  const tcgPrices = asRecord(tcgplayer?.prices);
+  if (tcgPrices) {
+    let best: number | null = null;
+    for (const value of Object.values(tcgPrices)) {
+      const variant = asRecord(value);
+      const market = normalizeMarketPrice(variant?.market);
+      if (market == null) continue;
+      if (best == null || market > best) best = market;
+    }
+    if (best != null) return best;
+  }
+
+  const cardmarket = asRecord(row.cardmarket);
+  const cardmarketPrices = asRecord(cardmarket?.prices);
+  if (cardmarketPrices) {
+    const averageSellPrice = normalizeMarketPrice(cardmarketPrices.averageSellPrice);
+    if (averageSellPrice != null) return averageSellPrice;
+    const trendPrice = normalizeMarketPrice(cardmarketPrices.trendPrice);
+    if (trendPrice != null) return trendPrice;
+  }
+
+  return null;
+}
+
+function normalizePokemonCardRow(
+  row: JsonRecord,
+  pokemonSetsById?: Map<string, PokemonSetSummary>
+): JsonRecord {
+  const setFromRow = asRecord(row.set);
+  const images = asRecord(row.images);
+
+  const rawId = toTrimmedString(row.id);
+  const idPrefix = parsePokemonSetIdFromCardId(rawId);
+  const setCode = (toTrimmedString(setFromRow?.id) || idPrefix).toLowerCase();
+  const setFromIndex = setCode ? pokemonSetsById?.get(setCode) : undefined;
+
+  const number = toTrimmedString(row.number);
+  const printedTotal =
+    toFiniteNumber(setFromRow?.printedTotal)
+    ?? setFromIndex?.printedTotal
+    ?? setFromIndex?.total
+    ?? null;
+  const numberWithTotal = number && printedTotal ? `${number}/${Math.floor(printedTotal)}` : number;
+  const cardNo = toTrimmedString(row.cardNo) || numberWithTotal || rawId;
+
+  const name = toTrimmedString(row.name) || (rawId ? `Pokemon ${rawId}` : "Unknown Pokemon");
+  const series = toTrimmedString(row.series) || setFromIndex?.series || setCode || "pokemon";
+  const seriesName = toTrimmedString(row.seriesName) || setFromIndex?.name || toTrimmedString(setFromRow?.name) || "Pokemon";
+  const image =
+    toTrimmedString(row.image)
+    || toTrimmedString(images?.small)
+    || toTrimmedString(images?.large);
+  const rarity = toTrimmedString(row.rarity);
+  const marketPrice = extractPokemonMarketPrice(row);
+
+  return {
+    ...row,
+    cardNo,
+    originalId: toTrimmedString(row.originalId) || rawId,
+    setId: setCode || undefined,
+    name,
+    series,
+    seriesName,
+    number,
+    setPrintedTotal: printedTotal,
+    image,
+    rarity,
+    marketPrice
+  };
+}
+
+function normalizeCardRowForGame(
+  row: JsonRecord,
+  game: string,
+  pokemonSetsById?: Map<string, PokemonSetSummary>
+): JsonRecord {
+  const normalizedGame = game.trim().toLowerCase();
+  if (normalizedGame === "pokemon" || normalizedGame === "pkmn") {
+    return normalizePokemonCardRow(row, pokemonSetsById);
+  }
+  return row;
 }
 
 function toCardSyncDoc(row: JsonRecord, game: string, pk: string): CardSyncDoc {
-  const stableKey = getStableCardKey(row);
+  const stableKey = getStableCardKey(row, game);
   return {
     ...row,
     id: `${game}:${stableKey}`,
@@ -305,7 +473,9 @@ export async function importCardsToCosmosFromRows(
   const concurrency = Math.max(1, Math.floor(options.concurrency ?? 4));
   const dryRun = Boolean(options.dryRun);
 
-  const docs = rows.map((row) => toCardSyncDoc(row, game, pk));
+  const docs = rows
+    .map((row) => normalizeCardRowForGame(row, game, options.pokemonSetsById))
+    .map((row) => toCardSyncDoc(row, game, pk));
   console.log(`Prepared ${docs.length} docs for game=${game}, pk=${pk}.`);
 
   if (dryRun) {
@@ -337,6 +507,9 @@ async function main(): Promise<void> {
   const databaseId = (process.env.COSMOS_DATABASE ?? "").trim();
   const containerId = (process.env.COSMOS_CONTAINER ?? "").trim();
   const game = ((args.game as string | undefined) ?? process.env.CARDSYNC_GAME ?? "ua").trim().toLowerCase();
+  const pokemonSetsFile = ((args["pokemon-sets-file"] as string | undefined)
+    ?? process.env.CARDSYNC_POKEMON_SETS_FILE
+    ?? "").trim();
   const batchSize = toInt((args["batch-size"] as string | undefined) ?? process.env.CARDSYNC_BATCH_SIZE, 100);
   const concurrency = toInt((args.concurrency as string | undefined) ?? process.env.CARDSYNC_CONCURRENCY, 4);
   const dryRun = Boolean(args["dry-run"]) || toBool(process.env.CARDSYNC_DRY_RUN, false);
@@ -362,13 +535,23 @@ async function main(): Promise<void> {
     if (!file) throw new Error("Missing --file <path-to-json-array>.");
     if (!databaseId) throw new Error("Missing COSMOS_DATABASE.");
     if (!containerId) throw new Error("Missing COSMOS_CONTAINER.");
+    let pokemonSetsById: Map<string, PokemonSetSummary> | undefined;
+    if ((game === "pokemon" || game === "pkmn") && pokemonSetsFile) {
+      console.log(`Loading Pokemon sets from ${pokemonSetsFile}...`);
+      pokemonSetsById = await loadPokemonSetsById(pokemonSetsFile);
+      console.log(`Loaded ${pokemonSetsById.size} pokemon set record(s).`);
+    } else if (game === "pokemon" || game === "pkmn") {
+      console.log("Pokemon sets file not provided. Card numbers will not include set totals.");
+    }
+
     await importCardsToCosmosFromFile(file, {
       game,
       databaseId,
       containerId,
       batchSize,
       concurrency,
-      dryRun
+      dryRun,
+      pokemonSetsById
     });
     return;
   }

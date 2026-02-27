@@ -213,6 +213,19 @@
                     >
                       {{ currentLotType === 'singles' ? 'Singles' : 'Bulk' }}
                     </v-chip>
+                    <v-chip
+                      v-if="hasLotSelected && currentLotType === 'singles'"
+                      size="small"
+                      variant="tonal"
+                      class="lot-catalog-chip"
+                      prepend-icon="mdi-database-search-outline"
+                    >
+                      {{
+                        currentLotCatalogSource === 'pokemon'
+                          ? 'Pokemon'
+                          : (currentLotCatalogSource === 'none' ? 'Custom' : 'Union Arena')
+                      }}
+                    </v-chip>
                     <div class="lot-selector-actions">
                       <v-btn
                         v-if="hasLotSelected"
@@ -311,18 +324,6 @@
         </v-bottom-navigation>
       </v-main>
 
-      <!-- Primary FABs - Config -->
-      <v-fab
-        v-if="currentTab === 'config' && hasLotSelected && currentLotType === 'singles'"
-        icon="mdi-plus"
-        color="primary"
-        size="large"
-        title="Add card"
-        aria-label="Add card"
-        @click="$refs.singlesConfigWindow?.handleAddSinglesPurchase?.()"
-        class="fab-primary fab-add-preset"
-      ></v-fab>
-
       <v-fab
         v-if="currentTab === 'live'"
         icon="mdi-calculator"
@@ -387,21 +388,21 @@
             variant="elevated"
             size="small"
             class="sales-speed-action"
-            title="Add card sale"
-            aria-label="Add card sale"
+            title="Add item sale"
+            aria-label="Add item sale"
             :disabled="!hasLotSelected"
             @click="openAddSaleModal('pack'); speedDialOpenSales = false"
           ></v-btn>
           <template v-else>
             <v-btn
-              :key="'pack'"
+              :key="'item'"
               icon="mdi-tag-outline"
               color="primary"
               variant="elevated"
               size="small"
               class="sales-speed-action"
-              :title="'Add pack sale'"
-              :aria-label="'Add pack sale'"
+              :title="'Add item sale'"
+              :aria-label="'Add item sale'"
                   :disabled="!hasLotSelected"
               @click="openAddSaleModal('pack'); speedDialOpenSales = false"
             ></v-btn>
@@ -462,6 +463,21 @@
               <v-btn value="bulk" size="small">Bulk</v-btn>
               <v-btn value="singles" size="small">Singles</v-btn>
             </v-btn-toggle>
+            <div v-if="newLotType === 'singles'" class="mt-3">
+              <div class="text-caption text-medium-emphasis mb-2">Item catalog source</div>
+              <v-btn-toggle
+                v-model="newLotCatalogSource"
+                mandatory
+                divided
+                density="compact"
+                variant="outlined"
+                class="segment-toggle"
+              >
+                <v-btn value="ua" size="small">Union Arena</v-btn>
+                <v-btn value="pokemon" size="small">Pokemon</v-btn>
+                <v-btn value="none" size="small">Custom</v-btn>
+              </v-btn-toggle>
+            </div>
           </v-card-text>
           <v-card-actions>
             <v-spacer></v-spacer>
@@ -482,6 +498,29 @@
               variant="outlined"
               @keyup.enter="renameCurrentLot"
             ></v-text-field>
+            <div v-if="currentLotType === 'singles'" class="mt-3">
+              <div class="text-caption text-medium-emphasis mb-2">Item catalog source</div>
+              <v-btn-toggle
+                :model-value="currentLotCatalogSource"
+                mandatory
+                divided
+                density="compact"
+                variant="outlined"
+                class="segment-toggle"
+                @update:model-value="setCurrentLotCatalogSource"
+              >
+                <v-btn value="ua" size="small">Union Arena</v-btn>
+                <v-btn value="pokemon" size="small">Pokemon</v-btn>
+                <v-btn value="none" size="small">Custom</v-btn>
+              </v-btn-toggle>
+              <div class="text-caption text-medium-emphasis mt-2">
+                {{
+                  currentLotCatalogSource === 'none'
+                    ? 'Custom mode: autocomplete is disabled for this lot.'
+                    : 'Autocomplete suggestions use the selected catalog source.'
+                }}
+              </div>
+            </div>
           </v-card-text>
           <v-card-actions>
             <v-btn
@@ -542,7 +581,14 @@
       <auto-calculate-modal :ctx="$root"></auto-calculate-modal>
 
       <!-- Add/Edit Sale Modal -->
-      <v-dialog v-model="showAddSaleModal" max-width="560" class="sale-editor-dialog">
+      <v-dialog
+        v-model="showAddSaleModal"
+        max-width="560"
+        class="sale-editor-dialog"
+        scrollable
+        :fullscreen="$vuetify?.display?.smAndDown"
+        transition="dialog-bottom-transition"
+      >
         <v-card class="sale-editor-card">
           <v-card-title class="sale-editor-title">
             <div class="d-flex align-center">
@@ -550,7 +596,7 @@
               <div>
                 <div>{{ editingSale ? 'Edit Sale' : 'Add Sale' }}</div>
                 <div class="text-caption text-medium-emphasis">
-                  {{ currentLotType === 'singles' ? 'Track card-level sale details' : 'Record this sale event' }}
+                  {{ currentLotType === 'singles' ? 'Track item-level sale details' : 'Record this sale event' }}
                 </div>
               </div>
             </div>
@@ -585,54 +631,165 @@
             </v-alert>
 
             <div class="sale-editor-form">
-              <div v-if="currentLotType === 'singles'" class="sale-editor-section">
-                <div class="sale-editor-section-label">Card Link</div>
-                <v-autocomplete
-                  v-model="newSale.singlesPurchaseEntryId"
-                  :items="singlesSaleCardOptions"
-                  item-title="title"
-                  item-value="value"
-                  label="Card Sold (optional)"
-                  variant="outlined"
-                  :disabled="!hasLotSelected"
-                  clearable
-                  hide-details="auto"
-                  @update:model-value="onSinglesSaleCardSelectionChange"
-                >
-                  <template #item="{ props, item }">
-                    <v-list-item v-bind="props">
-                      <v-list-item-title class="text-body-2 font-weight-medium">
-                        {{ item.raw.item }}
-                        <span v-if="item.raw.cardNumber" class="text-medium-emphasis">#{{ item.raw.cardNumber }}</span>
-                      </v-list-item-title>
-                      <v-list-item-subtitle class="text-caption">
-                        Qty {{ item.raw.quantity }} · Total Cost ${{ formatCurrency(item.raw.costBasis) }}
-                      </v-list-item-subtitle>
-                    </v-list-item>
-                  </template>
-                  <template #selection="{ item }">
-                    <div class="text-body-2 text-truncate">
-                      {{ item.raw.item }}
-                      <span v-if="item.raw.cardNumber" class="text-medium-emphasis">#{{ item.raw.cardNumber }}</span>
-                      · Qty {{ item.raw.quantity }}
+              <div v-if="currentLotType === 'singles'" class="sale-editor-section sale-editor-section--singles">
+                <div class="sale-editor-section-label">Items Sold</div>
+                <div class="sale-editor-singles-lines">
+                  <div
+                    v-for="(line, lineIndex) in (newSale.singlesItems || [])"
+                    :key="line.lineId || lineIndex"
+                    class="sale-editor-singles-line"
+                  >
+                    <v-row dense class="sale-editor-singles-grid">
+                      <v-col :cols="$vuetify?.display?.smAndDown ? 12 : 7">
+                        <v-autocomplete
+                          v-model="line.singlesPurchaseEntryId"
+                          :items="singlesSaleCardOptions"
+                          item-title="title"
+                          item-value="value"
+                          label="Item (optional)"
+                          variant="outlined"
+                          density="compact"
+                          :disabled="!hasLotSelected"
+                          clearable
+                          hide-details="auto"
+                          @update:model-value="onSinglesSaleLineCardSelectionChange(lineIndex, $event)"
+                        >
+                          <template #item="{ props, item }">
+                            <v-list-item v-bind="props">
+                              <v-list-item-title class="text-body-2 font-weight-medium">
+                                {{ item.raw.item }}
+                                <span v-if="item.raw.cardNumber" class="text-medium-emphasis">#{{ item.raw.cardNumber }}</span>
+                              </v-list-item-title>
+                              <v-list-item-subtitle class="text-caption">
+                                Qty {{ item.raw.quantity }} · Total Cost ${{ formatCurrency(item.raw.costBasis) }}
+                              </v-list-item-subtitle>
+                            </v-list-item>
+                          </template>
+                          <template #selection="{ item }">
+                            <div class="text-body-2 text-truncate">
+                              {{ item.raw.item }}
+                              <span v-if="item.raw.cardNumber" class="text-medium-emphasis">#{{ item.raw.cardNumber }}</span>
+                            </div>
+                          </template>
+                        </v-autocomplete>
+                      </v-col>
+                      <v-col :cols="$vuetify?.display?.smAndDown ? 4 : 2">
+                        <v-text-field
+                          v-model.number="line.quantity"
+                          label="Qty"
+                          type="number"
+                          variant="outlined"
+                          density="compact"
+                          :disabled="!hasLotSelected"
+                          :min="1"
+                          :max="line.singlesPurchaseEntryId ? (getSinglesSaleLineMaxQuantity(lineIndex) ?? undefined) : undefined"
+                          hide-details="auto"
+                          @update:model-value="onSinglesSaleLineQuantityChange(lineIndex)"
+                        ></v-text-field>
+                      </v-col>
+                      <v-col :cols="$vuetify?.display?.smAndDown ? 6 : 2">
+                        <v-text-field
+                          v-model.number="line.price"
+                          label="Total"
+                          type="number"
+                          variant="outlined"
+                          density="compact"
+                          :disabled="!hasLotSelected"
+                          prefix="$"
+                          hide-details="auto"
+                          @update:model-value="onSinglesSaleLinePriceChange"
+                        ></v-text-field>
+                      </v-col>
+                      <v-col
+                        :cols="$vuetify?.display?.smAndDown ? 2 : 1"
+                        class="d-flex align-center justify-end"
+                      >
+                        <v-btn
+                          v-if="(newSale.singlesItems?.length || 0) > 1"
+                          icon
+                          size="small"
+                          variant="text"
+                          color="error"
+                          class="sale-editor-singles-line-delete"
+                          title="Remove line"
+                          aria-label="Remove line"
+                          @click="removeSinglesSaleLine(lineIndex)"
+                        >
+                          <v-icon size="18">mdi-trash-can-outline</v-icon>
+                        </v-btn>
+                      </v-col>
+                    </v-row>
+
+                    <div class="sale-editor-singles-meta">
+                      <div
+                        v-if="line.singlesPurchaseEntryId || Number(line.price || 0) <= 0"
+                        class="sale-editor-singles-stock text-caption text-medium-emphasis"
+                      >
+                        {{ line.singlesPurchaseEntryId
+                          ? `Up to ${getSinglesSaleLineMaxQuantity(lineIndex) ?? 0} available`
+                          : 'Unlinked line requires a total price.' }}
+                      </div>
+                      <div
+                        v-if="
+                          (line.singlesPurchaseEntryId || Number(line.price || 0) > 0)
+                          && saleEditorLineProfitPreviews
+                          && saleEditorLineProfitPreviews[lineIndex]
+                        "
+                        class="sale-editor-singles-profit-pill text-caption"
+                        :class="saleEditorLineProfitPreviews[lineIndex].colorClass"
+                      >
+                        {{ saleEditorLineProfitPreviews[lineIndex].sign }}${{ formatCurrency(Math.abs(saleEditorLineProfitPreviews[lineIndex].value)) }}
+                        · {{ saleEditorLineProfitPreviews[lineIndex].sign }}{{ formatCurrency(Math.abs(saleEditorLineProfitPreviews[lineIndex].percent), 1) }}%
+                        <span v-if="(saleEditorLineProfitPreviews[lineIndex].quantity || 0) > 1 && saleEditorLineProfitPreviews[lineIndex].unitValue != null">
+                          · /unit {{ saleEditorLineProfitPreviews[lineIndex].sign }}${{ formatCurrency(Math.abs(saleEditorLineProfitPreviews[lineIndex].unitValue)) }}
+                        </span>
+                      </div>
                     </div>
-                  </template>
-                </v-autocomplete>
-                <div class="sale-editor-helper text-caption text-medium-emphasis">
-                  {{ newSale.singlesPurchaseEntryId
-                    ? `Up to ${selectedSinglesSaleMaxQuantity ?? 0} for selected card`
-                    : 'Select a card to link this sale to inventory.' }}
+                  </div>
+                </div>
+                <div class="sale-editor-singles-footer">
+                  <div
+                    v-if="saleEditorProfitPreview"
+                    class="sale-editor-singles-total text-caption"
+                    :class="saleEditorProfitPreview.colorClass"
+                  >
+                    <div class="sale-editor-singles-total-main">
+                      Total Profit {{ saleEditorProfitPreview.sign }}${{ formatCurrency(Math.abs(saleEditorProfitPreview.value)) }}
+                      ({{ saleEditorProfitPreview.sign }}{{ formatCurrency(Math.abs(saleEditorProfitPreview.percent), 1) }}% vs {{ saleEditorProfitPreview.basisLabel }} ${{ formatCurrency(saleEditorProfitPreview.basisValue) }})
+                    </div>
+                    <div
+                      v-if="(saleEditorProfitPreview.quantity || 0) > 1 && saleEditorProfitPreview.unitValue != null"
+                      class="sale-editor-singles-total-sub"
+                    >
+                      Per unit {{ saleEditorProfitPreview.sign }}${{ formatCurrency(Math.abs(saleEditorProfitPreview.unitValue)) }}
+                    </div>
+                  </div>
+                  <div class="sale-editor-singles-add-wrap">
+                    <v-btn
+                      size="small"
+                      variant="tonal"
+                      color="secondary"
+                      prepend-icon="mdi-plus-circle-outline"
+                      class="sale-editor-singles-add-btn"
+                      @click="addSinglesSaleLine"
+                    >
+                      Add item
+                    </v-btn>
+                  </div>
                 </div>
               </div>
 
-              <div class="sale-editor-section">
+              <div
+                v-if="currentLotType !== 'singles'"
+                class="sale-editor-section"
+              >
                 <div class="sale-editor-section-label">Sale Details</div>
                 <v-row dense>
-                  <v-col v-if="currentLotType !== 'singles'" cols="12" sm="6">
+                  <v-col cols="12" sm="6">
                     <v-select
                       v-model="newSale.type"
                       :items="[
-                        { title: 'Pack', value: 'pack' },
+                        { title: 'Item', value: 'pack' },
                         { title: 'Box', value: 'box' },
                         { title: 'RTYH Spot', value: 'rtyh' }
                       ]"
@@ -648,12 +805,11 @@
                     <v-text-field
                       ref="saleQuantityInput"
                       v-model.number="newSale.quantity"
-                      :label="currentLotType === 'singles' ? 'Cards Sold' : 'Quantity'"
+                      label="Quantity"
                       type="number"
                       variant="outlined"
                       :disabled="!hasLotSelected"
                       :min="1"
-                      :max="currentLotType === 'singles' && newSale.singlesPurchaseEntryId ? (selectedSinglesSaleMaxQuantity ?? undefined) : undefined"
                       hide-details="auto"
                     ></v-text-field>
                   </v-col>
@@ -661,27 +817,19 @@
                   <v-col cols="12" sm="6">
                     <v-text-field
                       v-model.number="newSale.price"
-                      :label="currentLotType === 'singles' ? 'Total Price' : 'Price per Unit'"
+                      label="Price per Unit"
                       type="number"
                       variant="outlined"
                       :disabled="!hasLotSelected"
                       prefix="$"
                       hide-details="auto"
                     ></v-text-field>
-                    <div
-                      v-if="currentLotType === 'singles' && saleEditorProfitPreview"
-                      class="sale-editor-helper text-caption"
-                      :class="saleEditorProfitPreview.colorClass"
-                    >
-                      Profit {{ saleEditorProfitPreview.sign }}${{ formatCurrency(Math.abs(saleEditorProfitPreview.value)) }}
-                      ({{ saleEditorProfitPreview.sign }}{{ formatCurrency(Math.abs(saleEditorProfitPreview.percent), 1) }}% vs {{ saleEditorProfitPreview.basisLabel }})
-                    </div>
                   </v-col>
 
                   <v-col v-if="newSale.type === 'rtyh'" cols="12" sm="6">
                     <v-text-field
                       v-model.number="newSale.packsCount"
-                      label="Packs Sold (RTYH)"
+                      label="Items Sold (RTYH)"
                       type="number"
                       variant="outlined"
                       :disabled="!hasLotSelected"
@@ -696,15 +844,6 @@
               <div class="sale-editor-section">
                 <div class="sale-editor-section-label">Notes & Delivery</div>
                 <v-row dense>
-                  <v-col cols="12">
-                    <v-text-field
-                      v-model="newSale.memo"
-                      label="Notes"
-                      variant="outlined"
-                      :disabled="!hasLotSelected"
-                      hide-details
-                    ></v-text-field>
-                  </v-col>
                   <v-col cols="12" sm="6">
                     <v-text-field
                       v-model.number="newSale.buyerShipping"
@@ -725,6 +864,15 @@
                       variant="outlined"
                       :disabled="!hasLotSelected"
                       hide-details="auto"
+                    ></v-text-field>
+                  </v-col>
+                  <v-col cols="12">
+                    <v-text-field
+                      v-model="newSale.memo"
+                      label="Notes"
+                      variant="outlined"
+                      :disabled="!hasLotSelected"
+                      hide-details
                     ></v-text-field>
                   </v-col>
                 </v-row>
@@ -799,8 +947,8 @@
                 <th>Lot</th>
                     <th>Type</th>
                     <th>Sales</th>
-                    <th>Sold Packs</th>
-                    <th>Total Packs</th>
+                    <th>Sold Items</th>
+                    <th>Total Items</th>
                     <th>Revenue</th>
                     <th>Cost</th>
                     <th>Profit</th>

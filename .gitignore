@@ -40,3 +40,13 @@ apps/api/.azure/
 # Test coverage artifacts
 coverage/
 *.ts.html
+
+# Local dataset clones
+pokemondata_real/
+
+# Local Pokemon dataset exports
+pokemon-all.json
+tmp-pokemon.json
+CardSync/pokemon-all.json
+CardSync/tmp-pokemon.json
+CardSync/en.json

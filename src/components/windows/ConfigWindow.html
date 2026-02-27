@@ -81,7 +81,7 @@
 
                         <v-text-field
                           v-model.number="packsPerBox"
-                          label="Packs per Box"
+                          label="Items per Box"
                           type="number"
                           variant="outlined"
                           density="compact"
@@ -164,13 +164,13 @@
                       <v-card-text class="py-2 px-3">
                         <div class="text-caption text-medium-emphasis">Live Cost Breakdown</div>
                         <div class="text-h6 font-weight-bold">${{ fmtCurrency(totalCaseCost) }} {{ sellingCurrency }}</div>
-                        <div class="text-caption mt-1">Total {{ totalPacks }} packs</div>
+                        <div class="text-caption mt-1">Total {{ totalPacks }} items</div>
                         <div class="d-flex flex-wrap ga-2 mt-2">
                           <v-chip size="small" variant="tonal">
                             /Box ${{ boxesPurchased > 0 ? fmtCurrency(totalCaseCost / boxesPurchased) : "0.00" }}
                           </v-chip>
                           <v-chip size="small" variant="tonal">
-                            /Pack ${{ totalPacks > 0 ? fmtCurrency(totalCaseCost / totalPacks) : "0.00" }}
+                            /Item ${{ totalPacks > 0 ? fmtCurrency(totalCaseCost / totalPacks) : "0.00" }}
                           </v-chip>
                         </div>
                         <div class="text-caption mt-2">
@@ -189,7 +189,7 @@
                           variant="tonal"
                           class="mt-2"
                         >
-                          Enter a valid total purchase, boxes, and packs per box.
+                          Enter a valid total purchase, boxes, and items per box.
                         </v-alert>
                       </v-card-text>
                     </v-card>
@@ -311,7 +311,7 @@
                             </template>
                           </v-list-item>
                           <v-list-item
-                            :title="`Pack (${sellingCurrency})`"
+                            :title="`Item (${sellingCurrency})`"
                             :subtitle="`$${fmtCurrency(packPrice)}`"
                             @click="currentTab = 'live'"
                           >
@@ -324,5 +324,4 @@
                     </v-card>
                   </v-col>
                 </v-row>
-
 

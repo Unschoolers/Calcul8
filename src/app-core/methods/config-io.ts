@@ -38,7 +38,7 @@ function buildPortfolioReportTsv(context: AppContext): string {
     "Section\tLot Count\tProfitable Lots\tSales Count\tTotal Revenue\tTotal Cost\tTotal Profit",
     `Totals\t${totals.lotCount}\t${totals.profitableLotCount}\t${totals.totalSalesCount}\t${context.formatCurrency(totals.totalRevenue)}\t${context.formatCurrency(totals.totalCost)}\t${context.formatCurrency(totals.totalProfit)}`,
     "",
-    "Lot\tType\tSales\tSold Packs\tTotal Packs\tRevenue\tCost\tProfit\tMargin %\tLast Sale"
+    "Lot\tType\tSales\tSold Items\tTotal Items\tRevenue\tCost\tProfit\tMargin %\tLast Sale"
   ];
 
   for (const row of context.allLotPerformance) {

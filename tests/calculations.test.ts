@@ -834,6 +834,69 @@ test("computed saleEditorProfitPreview defaults to 100% when no linked card cost
   assert.equal(preview?.basisLabel, "Cost");
 });
 
+test("computed saleEditorLineProfitPreviews returns per-line profit entries", () => {
+  const linePreviews = appComputed.saleEditorLineProfitPreviews.call({
+    currentLotType: "singles",
+    showAddSaleModal: true,
+    currency: "CAD",
+    sellingCurrency: "CAD",
+    exchangeRate: 1.4,
+    singlesPurchases: [
+      { id: 1, item: "Card A", cost: 10, quantity: 4, marketValue: 20, currency: "CAD" },
+      { id: 2, item: "Card B", cost: 8, quantity: 2, marketValue: 0, currency: "CAD" }
+    ],
+    newSale: {
+      singlesItems: [
+        { lineId: 1, singlesPurchaseEntryId: 1, quantity: 2, price: 60 },
+        { lineId: 2, singlesPurchaseEntryId: 2, quantity: 1, price: 20 }
+      ],
+      buyerShipping: 0
+    },
+    netFromGross(grossRevenue: number) {
+      return grossRevenue;
+    }
+  } as unknown as Parameters<typeof appComputed.saleEditorLineProfitPreviews>[0]);
+
+  assert.equal(linePreviews.length, 2);
+  assert.equal(linePreviews[0]?.basisLabel, "Market");
+  assert.equal(linePreviews[0]?.basisValue, 40);
+  assert.equal(linePreviews[1]?.basisLabel, "Cost");
+  assert.equal(linePreviews[1]?.basisValue, 8);
+});
+
+test("computed saleEditorProfitPreview aggregates basis across singles line items", () => {
+  const preview = appComputed.saleEditorProfitPreview.call({
+    currentLotType: "singles",
+    showAddSaleModal: true,
+    currency: "CAD",
+    sellingCurrency: "CAD",
+    exchangeRate: 1.4,
+    singlesPurchases: [
+      { id: 1, item: "Card A", cost: 20, quantity: 3, marketValue: 50, currency: "CAD" },
+      { id: 2, item: "Card B", cost: 10, quantity: 1, marketValue: 0, currency: "CAD" }
+    ],
+    newSale: {
+      singlesItems: [
+        { lineId: 1, singlesPurchaseEntryId: 1, quantity: 2, price: 120 },
+        { lineId: 2, singlesPurchaseEntryId: 2, quantity: 1, price: 20 }
+      ],
+      buyerShipping: 0
+    },
+    netFromGross(grossRevenue: number) {
+      return grossRevenue;
+    }
+  } as unknown as Parameters<typeof appComputed.saleEditorProfitPreview>[0]);
+
+  // Basis: 2*50 (market) + 1*10 (cost fallback) = 110. Revenue=140 => +30.
+  assert.equal(preview?.value, 30);
+  assert.equal(preview?.quantity, 3);
+  assert.equal(preview?.unitValue, 10);
+  assert.equal(preview?.basisLabel, "Mixed");
+  assert.equal(preview?.marketBasisValue, 100);
+  assert.equal(preview?.costBasisValue, 10);
+  assert.equal(preview?.sign, "+");
+});
+
 test("watch.currentTab persists selected tab and triggers portfolio chart init", () => {
   withMockedLocalStorage((_storage, data) => {
     let portfolioInitCalled = false;
@@ -1681,6 +1744,42 @@ test("calculateSaleProfit in singles without linked card returns net revenue wit
   } as unknown as Parameters<typeof uiBaseMethods.calculateSaleProfit>[0], sale);
 
   assert.equal(profit, 7);
+});
+
+test("calculateSaleProfit in singles uses summed line-item cost basis", () => {
+  const sale: Sale = {
+    id: 3,
+    type: "pack",
+    quantity: 3,
+    packsCount: 3,
+    price: 90,
+    priceIsTotal: true,
+    singlesItems: [
+      { singlesPurchaseEntryId: 10, quantity: 2, price: 60 },
+      { singlesPurchaseEntryId: 11, quantity: 1, price: 30 }
+    ],
+    buyerShipping: 0,
+    date: "2026-02-21"
+  };
+
+  const profit = uiBaseMethods.calculateSaleProfit.call({
+    currentLotType: "singles",
+    singlesPurchases: [
+      { id: 10, item: "Card A", cost: 15, currency: "CAD", quantity: 5, marketValue: 12 },
+      { id: 11, item: "Card B", cost: 20, currency: "CAD", quantity: 5, marketValue: 12 }
+    ],
+    currency: "CAD",
+    sellingCurrency: "CAD",
+    exchangeRate: 1.4,
+    totalPacks: 100,
+    totalCaseCost: 1000,
+    netFromGross(grossRevenue: number) {
+      return grossRevenue;
+    }
+  } as unknown as Parameters<typeof uiBaseMethods.calculateSaleProfit>[0], sale);
+
+  // Revenue 90 - basis (2*15 + 1*20 = 50) = 40.
+  assert.equal(profit, 40);
 });
 
 test("saveSale updates existing sale in edit mode", () => {

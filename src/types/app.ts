@@ -2,6 +2,7 @@ import type { Chart as ChartJS } from "chart.js";
 
 export type AppTab = "config" | "live" | "sales" | "portfolio";
 export type LotType = "bulk" | "singles";
+export type SinglesCatalogSource = "ua" | "pokemon" | "none";
 export type CostInputMode = "perBox" | "total";
 export type PurchaseUiMode = "simple" | "expert";
 export type CurrencyCode = "CAD" | "USD";
@@ -32,10 +33,24 @@ export interface NewSaleDraft {
   quantity: number | null;
   packsCount: number | null;
   singlesPurchaseEntryId?: number | null;
+  singlesItems?: SinglesSaleDraftLine[];
   price: number | null;
   memo?: string;
   buyerShipping: number;
   date: string;
+}
+
+export interface SinglesSaleDraftLine {
+  lineId: number;
+  singlesPurchaseEntryId: number | null;
+  quantity: number | null;
+  price: number | null;
+}
+
+export interface SinglesSaleLine {
+  singlesPurchaseEntryId?: number;
+  quantity: number;
+  price: number;
 }
 
 export interface Sale {
@@ -44,6 +59,7 @@ export interface Sale {
   quantity: number;
   packsCount: number;
   singlesPurchaseEntryId?: number;
+  singlesItems?: SinglesSaleLine[];
   price: number;
   priceIsTotal?: boolean;
   memo?: string;
@@ -111,6 +127,7 @@ export interface Lot extends LotSetup {
   id: number;
   name: string;
   lotType?: LotType;
+  singlesCatalogSource?: SinglesCatalogSource;
   singlesPurchases?: SinglesPurchaseEntry[];
   createdAt?: string;
   taxRatePercent?: number;
@@ -211,6 +228,7 @@ export interface AppState extends LotSetup {
   newLotName: string;
   renameLotName: string;
   newLotType: LotType;
+  newLotCatalogSource: SinglesCatalogSource;
   lastFetchTime: number | null;
   cloudSyncIntervalId: number | null;
   lastSyncedPayloadHash: string | null;

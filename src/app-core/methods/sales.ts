@@ -6,7 +6,13 @@ import {
   getGrossRevenueForSale
 } from "../../domain/calculations.ts";
 import { DEFAULT_VALUES } from "../../constants.ts";
-import type { Sale, SaleType, SinglesPurchaseEntry } from "../../types/app.ts";
+import type {
+  Sale,
+  SaleType,
+  SinglesPurchaseEntry,
+  SinglesSaleDraftLine,
+  SinglesSaleLine
+} from "../../types/app.ts";
 import type { AppContext, AppMethodState } from "../context.ts";
 import { getTodayDate } from "./config-shared.ts";
 
@@ -169,6 +175,222 @@ function normalizeSinglesPurchaseEntryId(value: unknown): number | null {
   return Math.floor(parsed);
 }
 
+function normalizeWholeQuantity(value: unknown): number | null {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) return null;
+  const whole = Math.floor(parsed);
+  return whole > 0 ? whole : null;
+}
+
+function normalizeNonNegativePrice(value: unknown): number | null {
+  if (value == null || value === "") return null;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) return null;
+  return parsed;
+}
+
+function createEmptySinglesSaleDraftLine(): SinglesSaleDraftLine {
+  return {
+    lineId: Date.now() + Math.floor(Math.random() * 1000),
+    singlesPurchaseEntryId: null,
+    quantity: 1,
+    price: null
+  };
+}
+
+function getDraftSinglesSaleLinesFromSale(sale: Sale | null | undefined): SinglesSaleDraftLine[] {
+  if (!sale) return [createEmptySinglesSaleDraftLine()];
+
+  if (Array.isArray(sale.singlesItems) && sale.singlesItems.length > 0) {
+    return sale.singlesItems.map((line, index) => ({
+      lineId: Date.now() + index,
+      singlesPurchaseEntryId: normalizeSinglesPurchaseEntryId(line.singlesPurchaseEntryId),
+      quantity: normalizeWholeQuantity(line.quantity) ?? 1,
+      price: normalizeNonNegativePrice(line.price)
+    }));
+  }
+
+  return [{
+    lineId: Date.now(),
+    singlesPurchaseEntryId: normalizeSinglesPurchaseEntryId(sale.singlesPurchaseEntryId),
+    quantity: normalizeWholeQuantity(sale.quantity) ?? 1,
+    price: normalizeNonNegativePrice(sale.price)
+  }];
+}
+
+function ensureDraftSinglesSaleLines(context: AppContext): SinglesSaleDraftLine[] {
+  if (!Array.isArray(context.newSale.singlesItems) || context.newSale.singlesItems.length === 0) {
+    const seededLine: SinglesSaleDraftLine = {
+      lineId: Date.now() + Math.floor(Math.random() * 1000),
+      singlesPurchaseEntryId: normalizeSinglesPurchaseEntryId(context.newSale.singlesPurchaseEntryId),
+      quantity: normalizeWholeQuantity(context.newSale.quantity) ?? 1,
+      price: normalizeNonNegativePrice(context.newSale.price)
+    };
+    context.newSale.singlesItems = [seededLine];
+    return context.newSale.singlesItems;
+  }
+  return context.newSale.singlesItems;
+}
+
+function normalizeDraftSinglesSaleLines(context: AppContext): SinglesSaleLine[] {
+  const lines = ensureDraftSinglesSaleLines(context);
+  return lines
+    .map((line) => {
+      const quantity = normalizeWholeQuantity(line.quantity);
+      const price = normalizeNonNegativePrice(line.price);
+      if (!quantity || price == null) return null;
+      return {
+        singlesPurchaseEntryId: normalizeSinglesPurchaseEntryId(line.singlesPurchaseEntryId) ?? undefined,
+        quantity,
+        price
+      } as SinglesSaleLine;
+    })
+    .filter((line): line is SinglesSaleLine => line != null);
+}
+
+function getLinkedQuantityMapForSinglesLines(lines: SinglesSaleLine[]): Map<number, number> {
+  const quantities = new Map<number, number>();
+  for (const line of lines) {
+    const entryId = normalizeSinglesPurchaseEntryId(line.singlesPurchaseEntryId);
+    const quantity = normalizeWholeQuantity(line.quantity);
+    if (!entryId || !quantity) continue;
+    quantities.set(entryId, (quantities.get(entryId) || 0) + quantity);
+  }
+  return quantities;
+}
+
+function getLinkedQuantityMapForSale(sale: Sale | null | undefined): Map<number, number> {
+  if (!sale) return new Map<number, number>();
+  if (Array.isArray(sale.singlesItems) && sale.singlesItems.length > 0) {
+    return getLinkedQuantityMapForSinglesLines(sale.singlesItems);
+  }
+
+  const quantities = new Map<number, number>();
+  const entryId = normalizeSinglesPurchaseEntryId(sale.singlesPurchaseEntryId);
+  const quantity = normalizeWholeQuantity(sale.quantity);
+  if (entryId && quantity) {
+    quantities.set(entryId, quantity);
+  }
+  return quantities;
+}
+
+function calculateSinglesTargetLinePrice(
+  context: AppContext,
+  selectedEntry: SinglesPurchaseEntry,
+  quantity: number
+): number {
+  const saleQuantity = Math.max(1, Math.floor(Number(quantity) || 1));
+  const unitCost = Math.max(0, Number(selectedEntry.cost) || 0);
+  const purchaseCurrency = selectedEntry.currency === "USD" || selectedEntry.currency === "CAD"
+    ? selectedEntry.currency
+    : (context.currency === "USD" ? "USD" : "CAD");
+  const convertedUnitCost = calculateBoxPriceCostCad(
+    unitCost,
+    purchaseCurrency,
+    context.sellingCurrency,
+    context.exchangeRate,
+    DEFAULT_VALUES.EXCHANGE_RATE
+  );
+  const totalCost = convertedUnitCost * saleQuantity;
+
+  const unitMarket = Math.max(0, Number(selectedEntry.marketValue) || 0);
+  const totalMarket = unitMarket * saleQuantity;
+  const targetBase = totalMarket > 0 ? totalMarket : totalCost;
+  const targetProfitPercent = context.hasProAccess
+    ? Math.max(0, Number(context.targetProfitPercent) || 0)
+    : 0;
+  const targetNetRevenue = targetBase * (1 + (targetProfitPercent / 100));
+  return context.calculatePriceForUnits(saleQuantity, targetNetRevenue);
+}
+
+function syncSinglesSaleDraftSummary(context: AppContext): void {
+  const lines = ensureDraftSinglesSaleLines(context);
+  const normalizedLines = normalizeDraftSinglesSaleLines(context);
+  const totalQuantity = normalizedLines.reduce((sum, line) => sum + line.quantity, 0);
+  const totalPrice = normalizedLines.reduce((sum, line) => sum + line.price, 0);
+  const linkedIds = new Set(
+    normalizedLines
+      .map((line) => normalizeSinglesPurchaseEntryId(line.singlesPurchaseEntryId))
+      .filter((id): id is number => id != null)
+  );
+
+  context.newSale.quantity = totalQuantity > 0 ? totalQuantity : null;
+  context.newSale.price = normalizedLines.length > 0 ? totalPrice : null;
+  context.newSale.singlesPurchaseEntryId = linkedIds.size === 1 && lines.length === 1
+    ? (linkedIds.values().next().value as number)
+    : null;
+}
+
+function computeSinglesSaleLineMaxQuantity(context: AppContext, lineIndex: number): number | null {
+  const lines = ensureDraftSinglesSaleLines(context);
+  const line = lines[lineIndex];
+  if (!line) return null;
+
+  const selectedEntryId = normalizeSinglesPurchaseEntryId(line.singlesPurchaseEntryId);
+  if (!selectedEntryId) return null;
+  const selectedEntry = getSinglesPurchaseEntryById(context, selectedEntryId);
+  if (!selectedEntry) return null;
+
+  const totalQuantity = normalizeWholeQuantity(selectedEntry.quantity) ?? 0;
+  const soldQuantity = getSinglesSoldQuantityForEntry(context, selectedEntryId);
+  const editingQuantities = getLinkedQuantityMapForSale(context.editingSale);
+  const releasedQuantity = editingQuantities.get(selectedEntryId) || 0;
+  const availableForDraft = Math.max(0, totalQuantity - soldQuantity + releasedQuantity);
+
+  const requestedInOtherLines = lines.reduce((sum, draftLine, index) => {
+    if (index === lineIndex) return sum;
+    const draftEntryId = normalizeSinglesPurchaseEntryId(draftLine.singlesPurchaseEntryId);
+    if (draftEntryId !== selectedEntryId) return sum;
+    return sum + (normalizeWholeQuantity(draftLine.quantity) ?? 0);
+  }, 0);
+
+  return Math.max(0, availableForDraft - requestedInOtherLines);
+}
+
+function applySinglesSaleLineCardSelection(context: AppContext, lineIndex: number, value: number | null): void {
+  const lines = ensureDraftSinglesSaleLines(context);
+  const line = lines[lineIndex];
+  if (!line) return;
+
+  const selectedEntryId = normalizeSinglesPurchaseEntryId(value);
+  line.singlesPurchaseEntryId = selectedEntryId;
+  if (!selectedEntryId) {
+    line.price = null;
+    syncSinglesSaleDraftSummary(context);
+    return;
+  }
+
+  const selectedEntry = getSinglesPurchaseEntryById(context, selectedEntryId);
+  if (!selectedEntry) {
+    syncSinglesSaleDraftSummary(context);
+    return;
+  }
+
+  const currentQuantity = normalizeWholeQuantity(line.quantity) ?? 1;
+  const maxAllowed = computeSinglesSaleLineMaxQuantity(context, lineIndex);
+  const cappedQuantity = maxAllowed == null
+    ? currentQuantity
+    : Math.max(1, Math.min(currentQuantity, maxAllowed));
+  line.quantity = cappedQuantity;
+  line.price = calculateSinglesTargetLinePrice(context, selectedEntry, cappedQuantity);
+  syncSinglesSaleDraftSummary(context);
+}
+
+function applySinglesSaleLineQuantityChange(context: AppContext, lineIndex: number): void {
+  const lines = ensureDraftSinglesSaleLines(context);
+  const line = lines[lineIndex];
+  if (!line) return;
+
+  const normalizedQuantity = normalizeWholeQuantity(line.quantity) ?? 1;
+  const maxAllowed = computeSinglesSaleLineMaxQuantity(context, lineIndex);
+  const cappedQuantity = maxAllowed == null
+    ? normalizedQuantity
+    : Math.max(1, Math.min(normalizedQuantity, maxAllowed));
+  line.quantity = cappedQuantity;
+
+  syncSinglesSaleDraftSummary(context);
+}
+
 function getSinglesPurchaseEntryById(context: AppContext, entryId: number): SinglesPurchaseEntry | null {
   return context.singlesPurchases.find((entry) => entry.id === entryId) ?? null;
 }
@@ -181,6 +403,16 @@ function getSinglesSoldQuantityForEntry(context: AppContext, entryId: number): n
   if (soldMapQuantity > 0) return soldMapQuantity;
 
   return (context.sales || []).reduce((sum, sale) => {
+    if (Array.isArray(sale.singlesItems) && sale.singlesItems.length > 0) {
+      const lineSum = sale.singlesItems.reduce((lineTotal, line) => {
+        const linkedEntryId = normalizeSinglesPurchaseEntryId(line.singlesPurchaseEntryId);
+        if (linkedEntryId !== entryId) return lineTotal;
+        const quantity = normalizeWholeQuantity(line.quantity) ?? 0;
+        return lineTotal + quantity;
+      }, 0);
+      return sum + lineSum;
+    }
+
     const linkedEntryId = normalizeSinglesPurchaseEntryId(sale.singlesPurchaseEntryId);
     if (linkedEntryId !== entryId) return sum;
     const quantity = Math.max(0, Math.floor(Number(sale.quantity) || 0));
@@ -195,6 +427,12 @@ export const salesMethods: ThisType<AppContext> & Pick<
   | "openAddSaleModal"
   | "onNewSaleTypeChange"
   | "onSinglesSaleCardSelectionChange"
+  | "addSinglesSaleLine"
+  | "removeSinglesSaleLine"
+  | "onSinglesSaleLineCardSelectionChange"
+  | "onSinglesSaleLineQuantityChange"
+  | "onSinglesSaleLinePriceChange"
+  | "getSinglesSaleLineMaxQuantity"
   | "saveSale"
   | "editSale"
   | "deleteSale"
@@ -227,7 +465,7 @@ export const salesMethods: ThisType<AppContext> & Pick<
   openAddSaleModal(saleType: SaleType = "pack"): void {
     const normalizedType: SaleType = this.currentLotType === "singles" ? "pack" : saleType;
     const nextPrice = this.currentLotType === "singles"
-      ? 0
+      ? null
       : resolveDefaultSaleUnitPrice(this, normalizedType);
     this.editingSale = null;
     this.newSale = {
@@ -235,11 +473,15 @@ export const salesMethods: ThisType<AppContext> & Pick<
       quantity: null,
       packsCount: null,
       singlesPurchaseEntryId: null,
+      singlesItems: this.currentLotType === "singles" ? [createEmptySinglesSaleDraftLine()] : undefined,
       price: nextPrice,
       memo: "",
       buyerShipping: Number(this.sellingShippingPerOrder) || 0,
       date: getTodayDate()
     };
+    if (this.currentLotType === "singles") {
+      syncSinglesSaleDraftSummary(this);
+    }
     this.showAddSaleModal = true;
     focusSaleQuantityInput(this);
   },
@@ -252,54 +494,54 @@ export const salesMethods: ThisType<AppContext> & Pick<
     const nextType: SaleType = type === "box" || type === "rtyh" ? type : "pack";
     this.newSale.type = nextType;
     this.newSale.singlesPurchaseEntryId = null;
+    this.newSale.singlesItems = undefined;
     if (this.editingSale) return;
     this.newSale.price = resolveDefaultSaleUnitPrice(this, nextType);
   },
 
   onSinglesSaleCardSelectionChange(value: number | null): void {
     if (this.currentLotType !== "singles") return;
+    applySinglesSaleLineCardSelection(this, 0, value);
+  },
 
-    const selectedEntryId = normalizeSinglesPurchaseEntryId(value);
-    this.newSale.singlesPurchaseEntryId = selectedEntryId;
-    if (!selectedEntryId) {
-      this.newSale.price = null;
+  addSinglesSaleLine(): void {
+    if (this.currentLotType !== "singles") return;
+    const lines = ensureDraftSinglesSaleLines(this);
+    lines.push(createEmptySinglesSaleDraftLine());
+    syncSinglesSaleDraftSummary(this);
+  },
+
+  removeSinglesSaleLine(lineIndex: number): void {
+    if (this.currentLotType !== "singles") return;
+    const lines = ensureDraftSinglesSaleLines(this);
+    if (lineIndex < 0 || lineIndex >= lines.length) return;
+    if (lines.length <= 1) {
+      lines[0] = createEmptySinglesSaleDraftLine();
+      syncSinglesSaleDraftSummary(this);
       return;
     }
+    lines.splice(lineIndex, 1);
+    syncSinglesSaleDraftSummary(this);
+  },
 
-    const selectedEntry = getSinglesPurchaseEntryById(this, selectedEntryId);
-    if (!selectedEntry) return;
+  getSinglesSaleLineMaxQuantity(lineIndex: number): number | null {
+    if (this.currentLotType !== "singles") return null;
+    return computeSinglesSaleLineMaxQuantity(this, lineIndex);
+  },
 
-    const maxAllowed = this.selectedSinglesSaleMaxQuantity;
-    const currentQuantity = Number(this.newSale.quantity);
-    if (!Number.isFinite(currentQuantity) || currentQuantity <= 0) {
-      this.newSale.quantity = 1;
-    }
-    if (Number.isFinite(maxAllowed) && maxAllowed != null && currentQuantity > maxAllowed) {
-      this.newSale.quantity = maxAllowed;
-    }
+  onSinglesSaleLineCardSelectionChange(lineIndex: number, value: number | null): void {
+    if (this.currentLotType !== "singles") return;
+    applySinglesSaleLineCardSelection(this, lineIndex, value);
+  },
 
-    const saleQuantity = Math.max(1, Math.floor(Number(this.newSale.quantity) || 1));
-    const unitCost = Math.max(0, Number(selectedEntry.cost) || 0);
-    const purchaseCurrency = selectedEntry.currency === "USD" || selectedEntry.currency === "CAD"
-      ? selectedEntry.currency
-      : (this.currency === "USD" ? "USD" : "CAD");
-    const convertedUnitCost = calculateBoxPriceCostCad(
-      unitCost,
-      purchaseCurrency,
-      this.sellingCurrency,
-      this.exchangeRate,
-      DEFAULT_VALUES.EXCHANGE_RATE
-    );
-    const totalCost = convertedUnitCost * saleQuantity;
+  onSinglesSaleLineQuantityChange(lineIndex: number): void {
+    if (this.currentLotType !== "singles") return;
+    applySinglesSaleLineQuantityChange(this, lineIndex);
+  },
 
-    const unitMarket = Math.max(0, Number(selectedEntry.marketValue) || 0);
-    const totalMarket = unitMarket * saleQuantity;
-    const targetBase = totalMarket > 0 ? totalMarket : totalCost;
-    const targetProfitPercent = this.hasProAccess
-      ? Math.max(0, Number(this.targetProfitPercent) || 0)
-      : 0;
-    const targetNetRevenue = targetBase * (1 + (targetProfitPercent / 100));
-    this.newSale.price = this.calculatePriceForUnits(saleQuantity, targetNetRevenue);
+  onSinglesSaleLinePriceChange(): void {
+    if (this.currentLotType !== "singles") return;
+    syncSinglesSaleDraftSummary(this);
   },
 
   saveSale(): void {
@@ -308,72 +550,92 @@ export const salesMethods: ThisType<AppContext> & Pick<
       return;
     }
 
-    const quantity = Number(this.newSale.quantity);
-    const price = Number(this.newSale.price);
     const buyerShipping = Number(this.newSale.buyerShipping);
     const memo = typeof this.newSale.memo === "string" ? this.newSale.memo.trim() : "";
     const rtyhPacks = Number(this.newSale.packsCount);
     const isSinglesLot = this.currentLotType === "singles";
-    const selectedSinglesPurchaseEntryId = isSinglesLot
-      ? normalizeSinglesPurchaseEntryId(this.newSale.singlesPurchaseEntryId)
-      : null;
-    const previousSelectedSinglesPurchaseEntryId = isSinglesLot
-      ? normalizeSinglesPurchaseEntryId(this.editingSale?.singlesPurchaseEntryId)
-      : null;
-    const previousSaleQuantity = isSinglesLot
-      ? Math.max(0, Math.floor(Number(this.editingSale?.quantity) || 0))
-      : 0;
     let editingIndex = -1;
+    let quantity = Number(this.newSale.quantity);
+    let price = Number(this.newSale.price);
+    let singlesItems: SinglesSaleLine[] | undefined;
+    let selectedSinglesPurchaseEntryId: number | null = null;
 
-    if (!Number.isFinite(quantity) || quantity <= 0) {
-      this.notify("Please enter a valid quantity greater than 0", "warning");
-      return;
-    }
-    if (isSinglesLot && !Number.isInteger(quantity)) {
-      this.notify("Cards sold must be a whole number.", "warning");
-      return;
-    }
-
-    if (!Number.isFinite(price) || price < 0) {
-      this.notify("Please enter a valid price (0 or greater)", "warning");
-      return;
-    }
-    if (isSinglesLot && !selectedSinglesPurchaseEntryId && price <= 0) {
-      this.notify("Please enter a total price when no card is linked.", "warning");
-      return;
-    }
     if (!Number.isFinite(buyerShipping) || buyerShipping < 0) {
       this.notify("Please enter a valid buyer shipping amount (0 or greater)", "warning");
       return;
     }
 
     if (!isSinglesLot && this.newSale.type === "rtyh" && (!Number.isFinite(rtyhPacks) || rtyhPacks <= 0)) {
-      this.notify("Please enter the number of packs sold for RTYH", "warning");
+      this.notify("Please enter the number of items sold for RTYH", "warning");
       return;
-    }
-
-    if (selectedSinglesPurchaseEntryId) {
-      const selectedEntry = getSinglesPurchaseEntryById(this, selectedSinglesPurchaseEntryId);
-      if (!selectedEntry) {
-        this.notify("Selected card is no longer available.", "warning");
-        return;
-      }
-      const totalQuantity = Math.max(0, Math.floor(Number(selectedEntry.quantity) || 0));
-      const soldQuantity = getSinglesSoldQuantityForEntry(this, selectedSinglesPurchaseEntryId);
-      const remainingQuantity = Math.max(0, totalQuantity - soldQuantity);
-      const maxAllowed = previousSelectedSinglesPurchaseEntryId === selectedSinglesPurchaseEntryId
-        ? remainingQuantity + previousSaleQuantity
-        : remainingQuantity;
-      if (quantity > maxAllowed) {
-        this.notify(`Quantity exceeds selected card stock (${maxAllowed} available).`, "warning");
-        return;
-      }
     }
 
     if (this.editingSale) {
       editingIndex = this.sales.findIndex((s) => s.id === this.editingSale?.id);
       if (editingIndex === -1) {
         this.notify("Could not find the sale to update. Please try again.", "error");
+        return;
+      }
+    }
+
+    if (isSinglesLot) {
+      singlesItems = normalizeDraftSinglesSaleLines(this);
+      if (singlesItems.length === 0) {
+        this.notify("Please add at least one item sale line.", "warning");
+        return;
+      }
+
+      for (const line of singlesItems) {
+        if (!Number.isInteger(line.quantity) || line.quantity <= 0) {
+          this.notify("Items sold must be a whole number.", "warning");
+          return;
+        }
+        if (!Number.isFinite(line.price) || line.price < 0) {
+          this.notify("Please enter a valid price (0 or greater)", "warning");
+          return;
+        }
+        const lineEntryId = normalizeSinglesPurchaseEntryId(line.singlesPurchaseEntryId);
+        if (!lineEntryId && line.price <= 0) {
+          this.notify("Please enter a total price when no item is linked.", "warning");
+          return;
+        }
+      }
+
+      const previousLinkedQuantities = getLinkedQuantityMapForSale(this.editingSale);
+      const requestedQuantities = getLinkedQuantityMapForSinglesLines(singlesItems);
+      for (const [entryId, requestedQuantity] of requestedQuantities.entries()) {
+        const selectedEntry = getSinglesPurchaseEntryById(this, entryId);
+        if (!selectedEntry) {
+          this.notify("Selected item is no longer available.", "warning");
+          return;
+        }
+        const totalQuantity = normalizeWholeQuantity(selectedEntry.quantity) ?? 0;
+        const soldQuantity = getSinglesSoldQuantityForEntry(this, entryId);
+        const releasedQuantity = previousLinkedQuantities.get(entryId) || 0;
+        const maxAllowed = Math.max(0, totalQuantity - soldQuantity + releasedQuantity);
+        if (requestedQuantity > maxAllowed) {
+          this.notify(`Quantity exceeds selected item stock (${maxAllowed} available).`, "warning");
+          return;
+        }
+      }
+
+      quantity = singlesItems.reduce((sum, line) => sum + line.quantity, 0);
+      price = singlesItems.reduce((sum, line) => sum + line.price, 0);
+      const uniqueLinkedIds = new Set(
+        singlesItems
+          .map((line) => normalizeSinglesPurchaseEntryId(line.singlesPurchaseEntryId))
+          .filter((entryId): entryId is number => entryId != null)
+      );
+      selectedSinglesPurchaseEntryId = uniqueLinkedIds.size === 1 && singlesItems.length === 1
+        ? (uniqueLinkedIds.values().next().value as number)
+        : null;
+    } else {
+      if (!Number.isFinite(quantity) || quantity <= 0) {
+        this.notify("Please enter a valid quantity greater than 0", "warning");
+        return;
+      }
+      if (!Number.isFinite(price) || price < 0) {
+        this.notify("Please enter a valid price (0 or greater)", "warning");
         return;
       }
     }
@@ -397,6 +659,7 @@ export const salesMethods: ThisType<AppContext> & Pick<
       quantity,
       packsCount: packsCount || 0,
       singlesPurchaseEntryId: isSinglesLot ? (selectedSinglesPurchaseEntryId ?? undefined) : undefined,
+      singlesItems: isSinglesLot ? singlesItems : undefined,
       price,
       priceIsTotal: isSinglesLot ? true : undefined,
       memo: memo || undefined,
@@ -417,16 +680,23 @@ export const salesMethods: ThisType<AppContext> & Pick<
 
   editSale(sale: Sale): void {
     this.editingSale = sale;
+    const singlesItems = this.currentLotType === "singles"
+      ? getDraftSinglesSaleLinesFromSale(sale)
+      : undefined;
     this.newSale = {
       type: sale.type,
       quantity: sale.quantity,
       packsCount: sale.type === "rtyh" ? sale.packsCount : null,
       singlesPurchaseEntryId: normalizeSinglesPurchaseEntryId(sale.singlesPurchaseEntryId),
+      singlesItems,
       price: sale.price,
       memo: sale.memo ?? "",
       buyerShipping: sale.buyerShipping ?? 0,
       date: toDateOnly(sale.date) ?? getTodayDate()
     };
+    if (this.currentLotType === "singles") {
+      syncSinglesSaleDraftSummary(this);
+    }
     this.showAddSaleModal = true;
     focusSaleQuantityInput(this);
   },
@@ -454,6 +724,7 @@ export const salesMethods: ThisType<AppContext> & Pick<
       quantity: null,
       packsCount: null,
       singlesPurchaseEntryId: null,
+      singlesItems: [createEmptySinglesSaleDraftLine()],
       price: 0,
       memo: "",
       buyerShipping: this.sellingShippingPerOrder,
@@ -560,12 +831,12 @@ export const salesMethods: ThisType<AppContext> & Pick<
 
     const labels = isSinglesLot
       ? [
-        `Sold cards: ${soldPacks}`,
-        `Remaining cards: ${unsoldPacks}`
+        `Sold items: ${soldPacks}`,
+        `Remaining items: ${unsoldPacks}`
       ]
       : [
-        `Sold (Net): $${this.formatCurrency(soldNet)} | ${soldPacks} packs`,
-        `Unsold (Net est.): $${this.formatCurrency(unsoldNet)} | ${unsoldPacks} packs`
+        `Sold (Net): $${this.formatCurrency(soldNet)} | ${soldPacks} items`,
+        `Unsold (Net est.): $${this.formatCurrency(unsoldNet)} | ${unsoldPacks} items`
       ];
     const data = isSinglesLot
       ? [Math.max(0, soldPacks), Math.max(0, unsoldPacks)]

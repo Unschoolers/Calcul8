@@ -390,3 +390,88 @@ test("load/dismiss singles info notice reads and writes localStorage safely", ()
 
   vi.unstubAllGlobals();
 });
+
+test("setCurrentSinglesCatalogSource persists on current singles lot and toggles manual mode", () => {
+  const saveLotsToStorage = vi.fn();
+  const notify = vi.fn();
+  const context = createContext({
+    currentLotId: 12,
+    lots: [
+      {
+        id: 12,
+        lotType: "singles",
+        singlesCatalogSource: "ua",
+        singlesPurchases: [{ id: 1, item: "Card A" }]
+      }
+    ],
+    saveLotsToStorage,
+    notify,
+    singlesItemSuggestions: [{ title: "X", name: "X", cardNo: "", rarity: "", marketPrice: null }],
+    singlesItemSearchLoading: true
+  });
+  context.cancelSinglesItemSearch = vi.fn();
+
+  context.setCurrentSinglesCatalogSource("none");
+
+  const currentLot = (context.lots as Array<Record<string, unknown>>)[0];
+  assert.equal(currentLot?.singlesCatalogSource, "none");
+  assert.equal(saveLotsToStorage.mock.calls.length, 1);
+  assert.equal((context.cancelSinglesItemSearch as ReturnType<typeof vi.fn>).mock.calls.length, 1);
+  assert.deepEqual(context.singlesItemSuggestions, []);
+  assert.equal(context.singlesItemSearchLoading, false);
+  assert.equal(notify.mock.calls.length, 1);
+  assert.equal(
+    String(notify.mock.calls[0]?.[0] || "").includes("future autocomplete suggestions"),
+    true
+  );
+  context.currentSinglesCatalogSource = "none";
+  assert.equal(getComputed<boolean>("showCatalogSuggestions").call(context), false);
+});
+
+test("fetchSinglesItemSuggestions uses lot catalog source as cards search game", async () => {
+  const fetchMock = vi.fn(async () => ({
+    ok: true,
+    json: async () => ({
+      items: [
+        {
+          name: "Rukia Kuchiki",
+          cardNo: "UE01BT/BLC-1-051",
+          rarity: "C",
+          marketPrice: 0.22
+        }
+      ]
+    })
+  }));
+  vi.stubGlobal("fetch", fetchMock);
+
+  try {
+    const context = createContext({
+      currentLotId: 44,
+      lots: [
+        {
+          id: 44,
+          lotType: "singles",
+          singlesCatalogSource: "pokemon"
+        }
+      ],
+      resolveCardsApiBaseUrl: () => "https://api.example.com"
+    });
+    context.currentSinglesCatalogSource = "pokemon";
+
+    await context.fetchSinglesItemSuggestions("rukia");
+
+    assert.equal(fetchMock.mock.calls.length, 1);
+    const requestUrl = String(fetchMock.mock.calls[0]?.[0] || "");
+    assert.equal(requestUrl.includes("game=pokemon"), true);
+    assert.equal(requestUrl.includes("q=rukia"), true);
+    assert.equal(requestUrl.includes("limit=10"), true);
+    assert.equal((context.singlesItemSuggestions as Array<{ name: string }>)[0]?.name, "Rukia Kuchiki");
+
+    context.currentSinglesCatalogSource = "none";
+    await context.fetchSinglesItemSuggestions("rukia");
+    assert.equal(fetchMock.mock.calls.length, 1);
+    assert.deepEqual(context.singlesItemSuggestions, []);
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});

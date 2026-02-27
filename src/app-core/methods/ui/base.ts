@@ -82,6 +82,31 @@ export const uiBaseMethods: ThisType<AppContext> & Pick<
     const netRevenue = this.netFromGross(grossRevenue, sale.buyerShipping || 0, 1);
 
     if (this.currentLotType === "singles") {
+      if (Array.isArray(sale.singlesItems) && sale.singlesItems.length > 0) {
+        const allocatedCost = sale.singlesItems.reduce((sum, line) => {
+          const linkedEntryId = Number(line.singlesPurchaseEntryId);
+          if (!Number.isFinite(linkedEntryId) || linkedEntryId <= 0) return sum;
+          const entry = (this.singlesPurchases || []).find((candidate) => candidate.id === Math.floor(linkedEntryId));
+          if (!entry) return sum;
+
+          const soldQuantity = Math.max(0, Math.floor(Number(line.quantity) || 0));
+          const unitCost = Math.max(0, Number(entry.cost) || 0);
+          const entryCurrency = entry.currency === "USD" || entry.currency === "CAD"
+            ? entry.currency
+            : this.currency;
+          const convertedUnitCost = calculateBoxPriceCostCad(
+            unitCost,
+            entryCurrency,
+            this.sellingCurrency,
+            this.exchangeRate,
+            DEFAULT_VALUES.EXCHANGE_RATE
+          );
+          return sum + (convertedUnitCost * soldQuantity);
+        }, 0);
+
+        return netRevenue - allocatedCost;
+      }
+
       const linkedEntryId = Number(sale.singlesPurchaseEntryId);
       if (Number.isFinite(linkedEntryId) && linkedEntryId > 0) {
         const entry = (this.singlesPurchases || []).find((candidate) => candidate.id === Math.floor(linkedEntryId));

@@ -34,20 +34,20 @@
                           :color="salesStatusProgressColor()"
                         ></v-progress-linear>
                         <div v-if="currentLotType !== 'singles'" class="sales-status-line">
-                          {{ soldPacksCount }} / {{ totalPacks }} packs sold ({{ Number(salesProgress ?? 0).toFixed(1) }}%)
+                          {{ soldPacksCount }} / {{ totalPacks }} items sold ({{ Number(salesProgress ?? 0).toFixed(1) }}%)
                         </div>
                         <div v-else class="sales-status-lines">
                           <div class="sales-status-line">
-                            {{ soldPacksCount }} total card sale{{ soldPacksCount === 1 ? '' : 's' }} logged
+                            {{ soldPacksCount }} total item sale{{ soldPacksCount === 1 ? '' : 's' }} logged
                           </div>
                           <div class="sales-status-line">
-                            Tracked inventory: {{ singlesTrackedSoldCount }} / {{ singlesTrackedTotalCount }} cards sold
+                            Tracked inventory: {{ singlesTrackedSoldCount }} / {{ singlesTrackedTotalCount }} items sold
                             ({{ singlesTrackedTotalCount > 0
                               ? ((singlesTrackedSoldCount / singlesTrackedTotalCount) * 100).toFixed(1)
                               : '0.0' }}%)
                           </div>
                           <div v-if="singlesUnlinkedSoldCount > 0" class="sales-status-line">
-                            Unlinked card sales: {{ singlesUnlinkedSoldCount }}
+                            Unlinked item sales: {{ singlesUnlinkedSoldCount }}
                           </div>
                         </div>
                       </v-card-text>
@@ -76,7 +76,7 @@
                           class="sales-chart-canvas"
                           role="img"
                           :aria-label="currentLotType === 'singles'
-                            ? 'Sales chart showing sold versus remaining cards.'
+                            ? 'Sales chart showing sold versus remaining items.'
                             : 'Sales chart showing sold versus unsold net value.'"
                         ></canvas>
 
@@ -140,7 +140,7 @@
                             </span>
                             <v-tooltip
                               v-if="isUnlinkedSinglesSale(sale)"
-                              text="Sale not linked to a card"
+                              text="Sale not linked to an item"
                               location="top"
                             >
                               <template #activator="{ props }">
@@ -148,8 +148,8 @@
                                   v-bind="props"
                                   size="14"
                                   color="warning"
-                                  aria-label="Unlinked card sale"
-                                  title="Sale not linked to a card"
+                                  aria-label="Unlinked item sale"
+                                  title="Sale not linked to an item"
                                 >mdi-link-variant-off</v-icon>
                               </template>
                             </v-tooltip>

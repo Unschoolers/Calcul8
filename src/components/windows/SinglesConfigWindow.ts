@@ -16,8 +16,9 @@ const DESKTOP_VIRTUAL_VIEWPORT_HEIGHT = 560;
 const DESKTOP_VIRTUAL_BUFFER_ROWS = 6;
 const MOBILE_RENDER_INITIAL_COUNT = 60;
 const MOBILE_RENDER_BATCH_COUNT = 60;
-const SINGLES_CARD_SEARCH_DEBOUNCE_MS = 250;
+const SINGLES_CARD_SEARCH_DEBOUNCE_MS = 400;
 const SINGLES_CARD_SEARCH_LIMIT = 10;
+type SinglesCatalogSource = "ua" | "pokemon" | "none";
 
 type CardSearchApiItem = {
   name?: string;
@@ -34,9 +35,22 @@ type SinglesCardSuggestion = {
   marketPrice: number | null;
 };
 
-function resolveCardsSearchGame(): string {
+function resolveDefaultSinglesCatalogSourceFromEnv(): SinglesCatalogSource {
   const game = String((import.meta.env.VITE_CARDS_SEARCH_GAME as string | undefined) || "ua").trim().toLowerCase();
-  return game || "ua";
+  if (game === "none") return "none";
+  if (game === "pokemon" || game === "pkmn") return "pokemon";
+  return "ua";
+}
+
+function normalizeSinglesCatalogSource(
+  value: unknown,
+  fallback: SinglesCatalogSource = resolveDefaultSinglesCatalogSourceFromEnv()
+): SinglesCatalogSource {
+  const raw = String(value || "").trim().toLowerCase();
+  if (raw === "none") return "none";
+  if (raw === "pokemon" || raw === "pkmn") return "pokemon";
+  if (raw === "ua") return "ua";
+  return fallback;
 }
 
 function normalizeSinglesSearchTokens(query: unknown): string[] {
@@ -138,6 +152,7 @@ export const SinglesConfigWindow: any = {
     return {
       showSinglesInfoNotice: true,
       showSinglesRowEditor: false,
+      showCatalogSourceSheet: false,
       showFullySoldSingles: true,
       singlesSearchQuery: "",
       isDesktopSelectMode: false,
@@ -184,6 +199,32 @@ export const SinglesConfigWindow: any = {
   },
   computed: {
     ...singlesImportComputed,
+    currentSinglesCatalogSource: {
+      get(this: any): SinglesCatalogSource {
+        if (!this.currentLotId) return "none";
+        const lot = (this.lots as Array<Record<string, unknown>>).find((candidate) => candidate.id === this.currentLotId);
+        if (!lot || lot.lotType !== "singles") return "none";
+        return normalizeSinglesCatalogSource(
+          lot.singlesCatalogSource,
+          normalizeSinglesCatalogSource(this.currentLotCatalogSource)
+        );
+      },
+      set(this: any, nextValue: SinglesCatalogSource): void {
+        this.setCurrentSinglesCatalogSource(nextValue);
+      }
+    },
+
+    showCatalogSuggestions(this: any): boolean {
+      return this.currentSinglesCatalogSource !== "none";
+    },
+
+    currentSinglesCatalogSourceLabel(this: any): string {
+      const source = normalizeSinglesCatalogSource(this.currentSinglesCatalogSource);
+      if (source === "pokemon") return "Pokemon";
+      if (source === "none") return "Custom";
+      return "Union Arena";
+    },
+
     visibleSinglesPurchases(this: any): SinglesPurchaseEntry[] {
       const rows = Array.isArray(this.singlesPurchases)
         ? this.singlesPurchases as SinglesPurchaseEntry[]
@@ -422,7 +463,7 @@ export const SinglesConfigWindow: any = {
       const query = this.singlesItemSearchText.trim();
       this.cancelSinglesItemSearch();
 
-      if (query.length < 2) {
+      if (!this.showCatalogSuggestions || query.length < 2) {
         this.singlesItemSuggestions = [];
         this.singlesItemSearchLoading = false;
         return;
@@ -435,6 +476,12 @@ export const SinglesConfigWindow: any = {
     },
 
     async fetchSinglesItemSuggestions(this: any, query: string): Promise<void> {
+      const catalogSource = normalizeSinglesCatalogSource(this.currentSinglesCatalogSource);
+      if (catalogSource === "none") {
+        this.singlesItemSuggestions = [];
+        this.singlesItemSearchLoading = false;
+        return;
+      }
       const apiBase = this.resolveCardsApiBaseUrl();
       if (!apiBase) {
         this.singlesItemSuggestions = [];
@@ -448,9 +495,8 @@ export const SinglesConfigWindow: any = {
       this.singlesItemSearchLoading = true;
 
       try {
-        const game = resolveCardsSearchGame();
         const url = new URL(`${apiBase}/cards/search`);
-        url.searchParams.set("game", game);
+        url.searchParams.set("game", catalogSource);
         url.searchParams.set("q", query);
         url.searchParams.set("limit", String(SINGLES_CARD_SEARCH_LIMIT));
 
@@ -496,6 +542,33 @@ export const SinglesConfigWindow: any = {
           this.singlesItemSearchLoading = false;
         }
       }
+    },
+
+    setCurrentSinglesCatalogSource(this: any, nextValue: SinglesCatalogSource): void {
+      if (!this.currentLotId) return;
+      const normalized = normalizeSinglesCatalogSource(nextValue);
+      const lot = (this.lots as Array<Record<string, unknown>>).find((candidate) => candidate.id === this.currentLotId);
+      if (!lot || lot.lotType !== "singles") return;
+      if (lot.singlesCatalogSource === normalized) return;
+      const hasExistingItems = Array.isArray(lot.singlesPurchases) && lot.singlesPurchases.length > 0;
+
+      lot.singlesCatalogSource = normalized;
+      this.saveLotsToStorage?.();
+      this.cancelSinglesItemSearch();
+      this.singlesItemSuggestions = [];
+      this.singlesItemSearchLoading = false;
+
+      if (hasExistingItems) {
+        this.notify(
+          "Catalog source updated. This only affects future autocomplete suggestions; existing items stay unchanged.",
+          "info"
+        );
+      }
+    },
+
+    chooseSinglesCatalogSource(this: any, nextValue: SinglesCatalogSource): void {
+      this.setCurrentSinglesCatalogSource(nextValue);
+      this.showCatalogSourceSheet = false;
     },
 
     onSinglesItemSelected(this: any, selected: string | SinglesCardSuggestion | null): void {
