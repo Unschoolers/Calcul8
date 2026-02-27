@@ -40,8 +40,7 @@ function createContext(overrides: Partial<AnyContext> = {}): AnyContext {
     askConfirmation: vi.fn(),
     onSinglesPurchaseRowsChange: vi.fn(),
     removeSinglesPurchaseRow: vi.fn(),
-    $refs: {},
-    ...overrides
+    $refs: {}
   };
 
   for (const [name, method] of Object.entries(SinglesConfigWindow.methods as Record<string, unknown>)) {
@@ -49,6 +48,8 @@ function createContext(overrides: Partial<AnyContext> = {}): AnyContext {
       context[name] = (method as (...args: unknown[]) => unknown).bind(context);
     }
   }
+
+  Object.assign(context, overrides);
 
   return context;
 }

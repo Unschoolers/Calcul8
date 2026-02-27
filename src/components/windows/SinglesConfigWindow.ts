@@ -442,7 +442,8 @@ export const SinglesConfigWindow: any = {
     resolveCardsApiBaseUrl(this: any): string {
       const configuredBase = String((import.meta.env.VITE_API_BASE_URL as string | undefined) || "").trim();
       if (configuredBase) return configuredBase.replace(/\/+$/, "");
-      const cachedBase = String(localStorage.getItem(STORAGE_KEYS.API_BASE_URL) || "").trim();
+      const storage = (globalThis as { localStorage?: { getItem?: (key: string) => string | null } }).localStorage;
+      const cachedBase = String(storage?.getItem?.(STORAGE_KEYS.API_BASE_URL) || "").trim();
       if (cachedBase) return cachedBase.replace(/\/+$/, "");
       return "";
     },
