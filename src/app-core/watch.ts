@@ -3,12 +3,6 @@ import { STORAGE_KEYS } from "./storageKeys.ts";
 
 export const appWatch: AppWatchObject = {
   currentTab(newTab) {
-    if (newTab === "live" && this.currentLotType === "singles") {
-      this.currentTab = "config";
-      this.notify("Live tab is disabled for Singles lots", "info");
-      return;
-    }
-
     try {
       localStorage.setItem(STORAGE_KEYS.LAST_TAB, newTab);
     } catch {
@@ -49,6 +43,7 @@ export const appWatch: AppWatchObject = {
   },
 
   currentLotId(newVal) {
+    this.clearLiveSinglesSelection();
     if (newVal) localStorage.setItem(STORAGE_KEYS.LAST_LOT_ID, String(newVal));
 
     if (!newVal) {

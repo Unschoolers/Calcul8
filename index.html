@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="theme-color" content="#E63946" />
@@ -181,7 +181,7 @@
       </v-app-bar>
 
       <v-main id="app-main" tabindex="-1">
-        <v-container fluid class="pa-4 app-shell">
+        <v-container fluid class="pa-4 app-shell fill-height">
           <v-alert v-if="isOffline" type="warning" variant="tonal" density="compact" class="mb-3">
             You are offline. Changes are saved locally.
           </v-alert>
@@ -262,9 +262,14 @@
 
           <!-- Tab Content -->
           <div :class="{ 'interaction-disabled': !hasLotSelected }" :style="!hasLotSelected ? 'pointer-events: none;' : null">
-            <v-window v-model="currentTab" :transition="false" :reverse-transition="false" :touch="false" class="tabs-window">
+            <v-window
+              v-model="currentTab"
+              :class="['tabs-window', { 'tabs-window--allow-sticky': currentTab === 'live' && currentLotType === 'singles' }]"
+              transition="tab-slide-fast"
+              reverse-transition="tab-slide-fast-reverse"
+            >
               <!-- CONFIG -->
-              <v-window-item key="config" value="config" :transition="false" :reverse-transition="false" eager>
+              <v-window-item key="config" value="config" eager>
                 <singles-config-window
                   v-if="hasLotSelected && currentLotType === 'singles'"
                   ref="singlesConfigWindow"
@@ -274,17 +279,17 @@
               </v-window-item>
 
               <!-- LIVE -->
-              <v-window-item key="live" value="live" :transition="false" :reverse-transition="false" eager>
-                <live-window :ctx="$root"></live-window>
+              <v-window-item key="live" value="live" eager>
+                <live-window ref="liveWindow" :ctx="$root"></live-window>
               </v-window-item>
 
               <!-- SALES -->
-              <v-window-item key="sales" value="sales" :transition="false" :reverse-transition="false" eager>
+              <v-window-item key="sales" value="sales" eager>
                 <sales-window ref="salesWindow" :ctx="$root"></sales-window>
               </v-window-item>
 
               <!-- PORTFOLIO -->
-              <v-window-item key="portfolio" value="portfolio" :transition="false" :reverse-transition="false" eager>
+              <v-window-item key="portfolio" value="portfolio" eager>
                 <portfolio-window ref="portfolioWindow" :ctx="$root"></portfolio-window>
               </v-window-item>
             </v-window>
@@ -337,18 +342,37 @@
       ></v-fab>
 
       <v-fab
+        v-if="currentTab === 'live' && currentLotType === 'singles'"
+        icon="mdi-broom"
+        color="error"
+        size="large"
+        title="Clear selected live singles"
+        aria-label="Clear selected live singles"
+        :disabled="!hasLotSelected || effectiveLiveSinglesIds.length === 0"
+        @click="askConfirmation(
+          {
+            title: 'Clear live singles list?',
+            text: 'This will remove all selected cards from Live Singles.',
+            color: 'error'
+          },
+          () => clearLiveSinglesSelection()
+        )"
+        class="fab-primary fab-live-clear"
+      ></v-fab>
+
+      <v-fab
         v-if="currentTab === 'live'"
         icon="mdi-restore"
         color="surface"
         size="large"
-        title="Reset live prices"
-        aria-label="Reset live prices"
+        :title="currentLotType === 'singles' ? 'Reset live singles prices' : 'Reset live prices'"
+        :aria-label="currentLotType === 'singles' ? 'Reset live singles prices' : 'Reset live prices'"
         @click="resetLivePrices"
         class="fab-primary fab-live-reset"
       ></v-fab>
 
       <v-fab
-        v-if="currentTab === 'live'"
+        v-if="currentTab === 'live' && currentLotType !== 'singles'"
         icon="mdi-content-save-outline"
         color="primary"
         size="large"

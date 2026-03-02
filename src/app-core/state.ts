@@ -68,6 +68,8 @@ export function createInitialState(): AppState {
     confirmText: "",
     confirmColor: "error",
     confirmAction: null,
+    liveSinglesManualIds: [],
+    liveSinglesExternalIds: [],
 
     // Pricing Configuration
     boxPriceCost: DEFAULT_VALUES.BOX_PRICE,

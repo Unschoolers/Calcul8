@@ -854,7 +854,7 @@ test("loadLot resets mapper state and applies singles/pro access rules", () => {
   assert.equal(ctx.purchaseTaxPercent, 11);
   assert.equal(ctx.sellingTaxPercent, 11);
   assert.equal(ctx.targetProfitPercent, 0);
-  assert.equal(ctx.currentTab, "config");
+  assert.equal(ctx.currentTab, "live");
   assert.equal((ctx.loadSalesFromStorage as ReturnType<typeof vi.fn>).mock.calls.length, 1);
   assert.equal((ctx.syncLivePricesFromDefaults as ReturnType<typeof vi.fn>).mock.calls.length, 1);
   const singlesRows = ctx.singlesPurchases as Array<{ item: string; quantity: number }>;

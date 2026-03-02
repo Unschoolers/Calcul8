@@ -162,6 +162,10 @@ export const configLotMethods: ConfigMethodSubset<
   },
 
   resetLivePrices(): void {
+    if (this.currentLotType === "singles") {
+      this.resetLiveSinglesPricing();
+      return;
+    }
     this.syncLivePricesFromDefaults();
     this.notify("Live prices reset to config defaults", "info");
   },
@@ -567,9 +571,6 @@ export const configLotMethods: ConfigMethodSubset<
     }
 
     this.syncLivePricesFromDefaults();
-    if (lot.lotType === "singles" && this.currentTab === "live") {
-      this.currentTab = "config";
-    }
     this.loadSalesFromStorage();
     void this.$nextTick(() => {
       if (this.currentTab === "sales") {

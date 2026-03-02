@@ -1,42 +1,48 @@
-                <v-container fluid class="pa-2">
-                  <v-row dense>
-                    <v-col cols="12">
-                      <live-price-card
-                        v-model="livePackPrice"
-                        label="Item"
-                        icon="mdi-tag-outline"
-                        avatar-color="primary"
-                        :units="totalPacks"
-                        :calculate-profit="profitForLive"
-                        :safe-fixed="safeFixedForLive"
-                        :avg-price-needed="requiredPackPriceFromNow"
-                      ></live-price-card>
-                    </v-col>
+<v-container fluid class="pa-2 live-window-shell">
+  <div v-if="currentLotType === 'singles'" class="live-singles-shell">
+    <live-singles-panel ref="liveSinglesPanel"></live-singles-panel>
+  </div>
+  <v-row v-else dense>
+    <v-col cols="12">
+      <live-price-card
+        v-model="livePackPrice"
+        label="Item"
+        icon="mdi-tag-outline"
+        avatar-color="primary"
+        :units="totalPacks"
+        :calculate-profit="profitForLive"
+        :safe-fixed="safeFixedForLive"
+        :avg-price-needed="requiredPackPriceFromNow"
+        :profit-basis="totalCaseCost"
+      ></live-price-card>
+    </v-col>
 
-                    <v-col cols="12">
-                      <live-price-card
-                        v-model="liveBoxPriceSell"
-                        label="Box"
-                        icon="mdi-cube-outline"
-                        avatar-color="secondary"
-                        :units="boxesPurchased"
-                        :calculate-profit="profitForLive"
-                        :safe-fixed="safeFixedForLive"
-                        :avg-price-needed="requiredBoxPriceFromNow"
-                      ></live-price-card>
-                    </v-col>
+    <v-col cols="12">
+      <live-price-card
+        v-model="liveBoxPriceSell"
+        label="Box"
+        icon="mdi-cube-outline"
+        avatar-color="secondary"
+        :units="boxesPurchased"
+        :calculate-profit="profitForLive"
+        :safe-fixed="safeFixedForLive"
+        :avg-price-needed="requiredBoxPriceFromNow"
+        :profit-basis="totalCaseCost"
+      ></live-price-card>
+    </v-col>
 
-                    <v-col cols="12">
-                      <live-price-card
-                        v-model="liveSpotPrice"
-                        label="RTYH"
-                        icon="mdi-cards-playing-outline"
-                        avatar-color="success"
-                        :units="totalSpots"
-                        :calculate-profit="profitForLive"
-                        :safe-fixed="safeFixedForLive"
-                        :avg-price-needed="requiredSpotPriceFromNow"
-                      ></live-price-card>
-                    </v-col>
-                  </v-row>
-                </v-container>
+    <v-col cols="12">
+      <live-price-card
+        v-model="liveSpotPrice"
+        label="RTYH"
+        icon="mdi-cards-playing-outline"
+        avatar-color="success"
+        :units="totalSpots"
+        :calculate-profit="profitForLive"
+        :safe-fixed="safeFixedForLive"
+        :avg-price-needed="requiredSpotPriceFromNow"
+        :profit-basis="totalCaseCost"
+      ></live-price-card>
+    </v-col>
+  </v-row>
+</v-container>

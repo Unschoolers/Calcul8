@@ -188,7 +188,34 @@
     @keyframes splashBgToDark {
       to { opacity: 1; }
     }
-    .app-shell { max-width: 920px; margin: 0 auto; position: relative; z-index: 1; }
+    .app-shell {
+      max-width: 1440px;
+      margin: 0 auto;
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      min-height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+    .v-container.app-shell {
+      max-width: 1440px !important;
+      margin-inline: auto !important;
+    }
+    .app-shell.fill-height {
+      align-items: stretch;
+      flex-wrap: nowrap;
+    }
+    .app-shell > * {
+      width: 100%;
+    }
+    .app-shell > .interaction-disabled {
+      flex: 1 1 auto;
+      min-height: 0;
+    }
+    .app-shell .tabs-window {
+      min-height: 100%;
+    }
     .auth-gate-shell {
       min-height: 100dvh;
       display: flex;
@@ -328,6 +355,10 @@
       bottom: calc(10rem + env(safe-area-inset-bottom)) !important;
       inset-block-end: calc(10rem + env(safe-area-inset-bottom)) !important;
     }
+    .fab-live-clear {
+      bottom: calc(5rem + env(safe-area-inset-bottom)) !important;
+      inset-block-end: calc(5rem + env(safe-area-inset-bottom)) !important;
+    }
     .fab-portfolio-report {
       bottom: calc(5rem + env(safe-area-inset-bottom)) !important;
       inset-block-end: calc(5rem + env(safe-area-inset-bottom)) !important;
@@ -345,26 +376,54 @@
       inset-block-end: calc(5rem + env(safe-area-inset-bottom));
     }
     .v-speed-dial__content { z-index: 1301 !important; }
-    .tabs-window .v-window__container,
-    .tabs-window .v-window-item {
-      transition: none !important;
+    .tabs-window {
+      overflow: hidden;
     }
-    .tabs-window,
-    .tabs-window .v-window__container {
-      overflow: visible !important;
+    .tabs-window.tabs-window--allow-sticky {
+      overflow: visible;
     }
     .tabs-window .v-window__container {
-      height: auto !important;
       min-height: 1px;
+      transition: none;
+    }
+    .tabs-window.tabs-window--allow-sticky .v-window__container,
+    .tabs-window.tabs-window--allow-sticky .v-window-item {
+      overflow: visible;
     }
     .tabs-window .v-window-item {
-      will-change: auto;
-      transform: none !important;
-      position: static !important;
-      display: none !important;
+      will-change: transform, opacity;
     }
-    .tabs-window .v-window-item.v-window-item--active {
-      display: block !important;
+    .tab-slide-fast-enter-active,
+    .tab-slide-fast-leave-active,
+    .tab-slide-fast-reverse-enter-active,
+    .tab-slide-fast-reverse-leave-active {
+      transition: transform 110ms cubic-bezier(0.2, 0, 0, 1), opacity 110ms ease;
+    }
+    .tab-slide-fast-enter-from,
+    .tab-slide-fast-reverse-leave-to {
+      transform: translateX(16px);
+      opacity: 0.85;
+    }
+    .tab-slide-fast-leave-to,
+    .tab-slide-fast-reverse-enter-from {
+      transform: translateX(-16px);
+      opacity: 0.85;
+    }
+    @media (hover: hover) and (pointer: fine) {
+      .tabs-window .tab-slide-fast-enter-active,
+      .tabs-window .tab-slide-fast-leave-active,
+      .tabs-window .tab-slide-fast-reverse-enter-active,
+      .tabs-window .tab-slide-fast-reverse-leave-active {
+        transition: none !important;
+        animation: none !important;
+      }
+      .tabs-window .tab-slide-fast-enter-from,
+      .tabs-window .tab-slide-fast-leave-to,
+      .tabs-window .tab-slide-fast-reverse-enter-from,
+      .tabs-window .tab-slide-fast-reverse-leave-to {
+        transform: none !important;
+        opacity: 1 !important;
+      }
     }
     .sale-editor-card {
       border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
@@ -492,6 +551,9 @@
       z-index: 2;
     }
     @media (max-width: 600px) {
+      .tabs-window .v-window__container {
+        transition: height 110ms cubic-bezier(0.2, 0, 0, 1);
+      }
       .app-shell {
         padding-left: 0.75rem !important;
         padding-right: 0.75rem !important;

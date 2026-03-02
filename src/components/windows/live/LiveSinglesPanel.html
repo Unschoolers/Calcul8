@@ -1,0 +1,220 @@
+<v-card elevation="0" rounded="xl" class="live-singles-panel">
+  <v-card-text class="pa-4">
+    <div class="live-singles-head">
+      <div class="text-subtitle-2 font-weight-medium">Singles Live List</div>
+      <div class="text-caption text-medium-emphasis">
+        Add cards, then price them as individual items or as one bundle.
+      </div>
+    </div>
+
+    <div class="live-singles-composer">
+      <div class="live-singles-toolbar">
+        <v-btn-toggle
+          v-model="liveSinglesPricingMode"
+          mandatory
+          density="compact"
+          variant="tonal"
+          class="live-singles-mode-toggle"
+        >
+          <v-btn value="individual" size="small">Individual</v-btn>
+          <v-btn value="bundle" size="small">Bundle</v-btn>
+        </v-btn-toggle>
+      </div>
+
+      <v-row dense>
+        <v-col cols="12" md="9">
+          <v-autocomplete
+            v-model="liveSinglesSelectedId"
+            :items="liveSinglesAutocompleteItems"
+            item-title="title"
+            item-value="value"
+            label="Search card"
+            placeholder="Type name or number"
+            variant="outlined"
+            density="compact"
+            hide-details
+            clearable
+          >
+            <template #item="{ props, item }">
+              <v-list-item v-bind="props">
+                <v-list-item-title class="text-body-2">{{ item.raw.title }}</v-list-item-title>
+                <v-list-item-subtitle class="text-caption">{{ item.raw.subtitle }}</v-list-item-subtitle>
+              </v-list-item>
+            </template>
+          </v-autocomplete>
+        </v-col>
+        <v-col cols="12" md="3">
+          <v-btn
+            block
+            color="primary"
+            variant="tonal"
+            prepend-icon="mdi-plus"
+            :disabled="liveSinglesSelectedId == null"
+            @click="addLiveSinglesFromPicker"
+          >
+            Add
+          </v-btn>
+        </v-col>
+      </v-row>
+    </div>
+
+    <v-alert
+      v-if="!hasLiveSinglesSelection"
+      type="info"
+      density="compact"
+      variant="tonal"
+      class="mt-3"
+    >
+      No cards selected yet.
+    </v-alert>
+
+    <template v-else>
+      <v-card
+        v-if="liveSinglesPricingMode === 'bundle'"
+        elevation="0"
+        rounded="lg"
+        class="live-singles-bundle-card mt-3"
+      >
+        <v-card-text class="pa-3">
+          <v-row dense align="center">
+            <v-col cols="8" class="text-center">
+              <div class="text-caption text-medium-emphasis">Bundle Total Price</div>
+              <div class="text-h4 font-weight-bold mb-1">${{ fmtCurrency(liveSinglesEffectiveBundlePrice, 2) }}</div>
+              <v-chip size="small" :color="liveSinglesBundleProfit >= 0 ? 'success' : 'error'" class="font-weight-medium">
+                {{ liveSinglesBundleProfit >= 0 ? '+' : '' }}${{ fmtCurrency(liveSinglesBundleProfit, 2) }}
+                ({{ fmtCurrency(liveSinglesBundleProfitPercent, 1) }}%) est. profit
+              </v-chip>
+            </v-col>
+              <v-col cols="4" class="text-center">
+                <div class="d-flex flex-column align-center justify-center ga-1">
+                  <v-btn
+                    icon="mdi-minus"
+                    size="small"
+                    variant="tonal"
+                    color="error"
+                    class="live-singles-step-btn"
+                    @click="adjustBundlePrice(-1)"
+                  ></v-btn>
+                  <v-btn
+                    icon="mdi-plus"
+                    size="small"
+                    variant="tonal"
+                    color="success"
+                    class="live-singles-step-btn"
+                    @click="adjustBundlePrice(1)"
+                  ></v-btn>
+                </div>
+              </v-col>
+          </v-row>
+          <div class="text-caption text-medium-emphasis mt-2">
+            Suggested from fees + target profit: ${{ fmtCurrency(liveSinglesSuggestedBundlePrice, 2) }}
+          </div>
+        </v-card-text>
+      </v-card>
+
+      <div class="live-singles-list mt-2">
+      <v-card
+        v-for="entry in effectiveLiveSinglesEntries"
+        :key="`live-singles-${entry.id}`"
+        elevation="0"
+        rounded="lg"
+        class="live-singles-list-item"
+      >
+        <v-card-text class="pa-3">
+          <div class="live-singles-item-header">
+            <div class="live-singles-item-title-wrap">
+              <v-icon size="16" class="live-singles-item-icon">mdi-cards-outline</v-icon>
+              <div class="live-singles-item-title text-body-2 font-weight-medium">
+                {{ entry.item || "Unnamed item" }}
+                <span v-if="entry.cardNumber" class="text-medium-emphasis">#{{ entry.cardNumber }}</span>
+              </div>
+            </div>
+            <v-btn
+              icon="mdi-close"
+              size="x-small"
+              variant="text"
+              class="live-singles-remove-btn"
+              aria-label="Remove card from live list"
+              @click="removeLiveSinglesEntry(entry.id)"
+            ></v-btn>
+          </div>
+
+          <div class="live-singles-item-meta text-caption text-medium-emphasis">
+            <span>
+              Stock {{ getStockLabel(entry) }}
+            </span>
+            <span class="live-singles-item-meta-sep">|</span>
+            <span>
+              Basis ${{ fmtCurrency(resolveEntryBasis(entry), 2) }}
+            </span>
+            <span class="live-singles-item-meta-sep">|</span>
+            <span>
+              Market ${{ fmtCurrency(entry.marketValue, 2) }}
+            </span>
+          </div>
+
+          <div class="live-singles-item-body">
+            <template v-if="liveSinglesPricingMode === 'individual'">
+              <div class="live-singles-price-block">
+                <div class="text-h6 font-weight-bold">${{ fmtCurrency(getIndividualPrice(entry), 2) }}</div>
+                <v-chip
+                  size="x-small"
+                  :color="getIndividualProfit(entry) >= 0 ? 'success' : 'error'"
+                >
+                  {{ getIndividualProfit(entry) >= 0 ? '+' : '' }}${{ fmtCurrency(getIndividualProfit(entry), 2) }}
+                  ({{ fmtCurrency(getIndividualProfitPercent(entry), 1) }}%)
+                </v-chip>
+              </div>
+              <div class="live-singles-controls">
+                <v-btn
+                  icon="mdi-minus"
+                  size="x-small"
+                  variant="tonal"
+                  color="error"
+                  class="live-singles-step-btn"
+                  @click="adjustIndividualPrice(entry.id, -1)"
+                ></v-btn>
+                <v-btn
+                  icon="mdi-plus"
+                  size="x-small"
+                  variant="tonal"
+                  color="success"
+                  class="live-singles-step-btn"
+                  @click="adjustIndividualPrice(entry.id, 1)"
+                ></v-btn>
+              </div>
+            </template>
+            <template v-else>
+              <div class="live-singles-price-block">
+                <div class="text-subtitle-1 font-weight-bold">
+                  ${{ fmtCurrency(getBundleAllocationForEntry(entry.id)?.share || 0, 2) }}
+                </div>
+                <div class="text-caption text-medium-emphasis">
+                  {{ fmtCurrency(getBundleAllocationForEntry(entry.id)?.percent || 0, 1) }}% share
+                </div>
+              </div>
+              <div class="live-singles-controls">
+                <v-icon size="16" color="medium-emphasis">mdi-link-variant</v-icon>
+              </div>
+            </template>
+          </div>
+        </v-card-text>
+      </v-card>
+      </div>
+
+      <v-card elevation="0" rounded="lg" class="live-singles-summary-card mt-3">
+        <v-card-text class="py-2 px-3">
+          <div v-if="liveSinglesPricingMode === 'individual'" class="text-caption text-medium-emphasis">
+            {{ liveSinglesSelectedCount }} items · Total ${{ fmtCurrency(liveSinglesIndividualTotalPrice, 2) }} ·
+            Profit {{ liveSinglesIndividualTotalProfit >= 0 ? '+' : '' }}${{ fmtCurrency(liveSinglesIndividualTotalProfit, 2) }}
+            ({{ fmtCurrency(liveSinglesIndividualTotalProfitPercent, 1) }}%)
+          </div>
+          <div v-else class="text-caption text-medium-emphasis">
+            {{ liveSinglesSelectedCount }} items · Bundle ${{ fmtCurrency(liveSinglesEffectiveBundlePrice, 2) }} ·
+            Profit {{ liveSinglesBundleProfit >= 0 ? '+' : '' }}${{ fmtCurrency(liveSinglesBundleProfit, 2) }}
+          </div>
+        </v-card-text>
+      </v-card>
+    </template>
+  </v-card-text>
+</v-card>

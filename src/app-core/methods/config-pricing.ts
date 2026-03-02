@@ -47,6 +47,12 @@ export const configPricingMethods: ConfigMethodSubset<
       this.notify("Pro access required to apply auto-calculated prices", "warning");
       return;
     }
+    if (this.currentLotType === "singles") {
+      this.autoSaveSetup();
+      this.applyLiveSinglesSuggestedPricing();
+      this.showProfitCalculator = false;
+      return;
+    }
     this.recalculateDefaultPrices({ closeModal: true });
   },
 

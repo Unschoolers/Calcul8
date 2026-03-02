@@ -100,6 +100,21 @@ function toNonNegativeInt(value: unknown): number {
   return Math.floor(parsed);
 }
 
+function normalizeLiveSelectionIds(values: unknown): number[] {
+  if (!Array.isArray(values)) return [];
+  const normalizedIds: number[] = [];
+  const seenIds = new Set<number>();
+  for (const value of values) {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed <= 0) continue;
+    const normalized = Math.floor(parsed);
+    if (seenIds.has(normalized)) continue;
+    seenIds.add(normalized);
+    normalizedIds.push(normalized);
+  }
+  return normalizedIds;
+}
+
 function getSinglesRemainingQuantity(
   entry: { id: number; quantity: number },
   soldByEntryId: Record<number, number> | undefined
@@ -358,7 +373,7 @@ export const appComputed: AppComputedObject = {
   },
 
   isLiveTabDisabled(): boolean {
-    return !this.hasLotSelected || this.currentLotType === "singles";
+    return !this.hasLotSelected;
   },
 
   canUsePaidActions(): boolean {
@@ -422,6 +437,48 @@ export const appComputed: AppComputedObject = {
       }
     }
     return counts;
+  },
+
+  effectiveLiveSinglesIds(): number[] {
+    if (this.currentLotType !== "singles") return [];
+
+    const mergedIds = [
+      ...normalizeLiveSelectionIds(this.liveSinglesManualIds),
+      ...normalizeLiveSelectionIds(this.liveSinglesExternalIds)
+    ];
+    if (mergedIds.length === 0) return [];
+
+    const validEntryIds = new Set(
+      (this.singlesPurchases || [])
+        .map((entry) => toPositiveIntOrNull(entry.id))
+        .filter((entryId): entryId is number => entryId != null)
+    );
+
+    const filteredIds: number[] = [];
+    const seenIds = new Set<number>();
+    for (const id of mergedIds) {
+      if (!validEntryIds.has(id) || seenIds.has(id)) continue;
+      seenIds.add(id);
+      filteredIds.push(id);
+    }
+    return filteredIds;
+  },
+
+  effectiveLiveSinglesEntries() {
+    if (this.currentLotType !== "singles") return [];
+    const ids = this.effectiveLiveSinglesIds;
+    if (!Array.isArray(ids) || ids.length === 0) return [];
+
+    const entryById = new Map(
+      (this.singlesPurchases || []).map((entry) => [Number(entry.id), entry])
+    );
+    const resolvedEntries = [] as typeof this.singlesPurchases;
+    for (const id of ids) {
+      const entry = entryById.get(id);
+      if (!entry) continue;
+      resolvedEntries.push(entry);
+    }
+    return resolvedEntries;
   },
 
   singlesSaleCardOptions() {

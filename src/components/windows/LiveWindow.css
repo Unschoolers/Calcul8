@@ -3,6 +3,15 @@
   border-radius: 16px !important;
 }
 
+.live-window-shell {
+  width: 100%;
+}
+
+.live-singles-shell {
+  width: min(100%, 1120px);
+  margin: 0 auto;
+}
+
 .live-card:active {
   transform: none;
 }
@@ -14,4 +23,10 @@
 
 .live-pricing-card:hover {
   border-color: rgba(var(--v-theme-on-surface), 0.12) !important;
+}
+
+@media (max-width: 600px) {
+  .live-singles-shell {
+    width: 100%;
+  }
 }

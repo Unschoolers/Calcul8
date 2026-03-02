@@ -11,6 +11,8 @@ export type SaleType = "pack" | "box" | "rtyh";
 export type ChartViewMode = "pie" | "sparkline";
 export type PortfolioChartViewMode = "breakdown" | "trend";
 export type SyncStatus = "idle" | "syncing" | "success" | "error";
+export type LiveSinglesSelectionSource = "manual" | "external";
+export type LiveSinglesSelectionMode = "replace" | "merge";
 export type UiColor =
   | "info"
   | "success"
@@ -197,6 +199,8 @@ export interface AppState extends LotSetup {
   confirmText: string;
   confirmColor: UiColor;
   confirmAction: (() => void) | null;
+  liveSinglesManualIds: number[];
+  liveSinglesExternalIds: number[];
   liveSpotPrice: number;
   liveBoxPriceSell: number;
   livePackPrice: number;

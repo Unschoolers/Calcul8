@@ -3,6 +3,8 @@ import type {
   AppTab,
   BeforeInstallPromptEvent,
   CostInputMode,
+  LiveSinglesSelectionMode,
+  LiveSinglesSelectionSource,
   Lot,
   LotType,
   LotPerformanceSummary,
@@ -11,6 +13,7 @@ import type {
   Sale,
   SaleType,
   SinglesCatalogSource,
+  SinglesPurchaseEntry,
   SinglesSaleCardOption,
   SalesStatus,
   UiColor
@@ -38,6 +41,8 @@ export interface AppComputedState {
   singlesTrackedSoldCount: number;
   singlesTrackedTotalCount: number;
   singlesUnlinkedSoldCount: number;
+  effectiveLiveSinglesIds: number[];
+  effectiveLiveSinglesEntries: SinglesPurchaseEntry[];
   singlesSaleCardOptions: SinglesSaleCardOption[];
   selectedSinglesSaleMaxQuantity: number | null;
   saleEditorLineProfitPreviews: Array<{
@@ -112,6 +117,15 @@ export interface AppMethodState {
   syncLivePricesFromDefaults(): void;
   resetLivePrices(): void;
   applyLivePricesToDefaults(): void;
+  setLiveSinglesSelection(
+    ids: number[],
+    opts?: { source?: LiveSinglesSelectionSource; mode?: LiveSinglesSelectionMode }
+  ): void;
+  addLiveSinglesSelection(id: number, source?: LiveSinglesSelectionSource): void;
+  removeLiveSinglesSelection(id: number, source?: LiveSinglesSelectionSource): void;
+  clearLiveSinglesSelection(source?: LiveSinglesSelectionSource): void;
+  applyLiveSinglesSuggestedPricing(): void;
+  resetLiveSinglesPricing(): void;
   addSinglesPurchaseRow(): void;
   removeSinglesPurchaseRow(rowId: number): void;
   clearSinglesPurchases(): void;
@@ -261,6 +275,8 @@ export interface AppComputedObject {
   singlesTrackedSoldCount(this: AppContext): number;
   singlesTrackedTotalCount(this: AppContext): number;
   singlesUnlinkedSoldCount(this: AppContext): number;
+  effectiveLiveSinglesIds(this: AppContext): number[];
+  effectiveLiveSinglesEntries(this: AppContext): SinglesPurchaseEntry[];
   singlesSaleCardOptions(this: AppContext): SinglesSaleCardOption[];
   selectedSinglesSaleMaxQuantity(this: AppContext): number | null;
   saleEditorLineProfitPreviews(this: AppContext): Array<{

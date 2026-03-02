@@ -37,6 +37,10 @@ export const LivePriceCard = defineComponent({
     avgPriceNeeded: {
       type: Number as PropType<number | null>,
       default: null
+    },
+    profitBasis: {
+      type: Number as PropType<number | null>,
+      default: null
     }
   },
   emits: ["update:modelValue"],
@@ -57,6 +61,12 @@ export const LivePriceCard = defineComponent({
         return Number(value).toFixed(decimals);
       }
       return fn(value, decimals);
+    },
+    profitPercentAt(price: number): number {
+      const basis = Number(this.profitBasis);
+      const profit = this.profitAt(price);
+      if (!Number.isFinite(basis) || basis <= 0) return profit >= 0 ? 100 : 0;
+      return (profit / basis) * 100;
     }
   },
   template: `
@@ -78,6 +88,7 @@ export const LivePriceCard = defineComponent({
               class="font-weight-bold"
             >
               {{ profitAt(modelValue) >= 0 ? '+' : '' }}\${{ formatAt(profitAt(modelValue)) }}
+              ({{ formatAt(profitPercentAt(modelValue), 1) }}%)
             </v-chip>
           </v-col>
 
