@@ -47,7 +47,7 @@ export const LiveSinglesPanel = {
     ctx: {
       type: Object as PropType<Record<string, unknown>>,
       required: false,
-      default: undefined
+      default: (): undefined => undefined
     }
   },
   data() {
@@ -89,8 +89,10 @@ export const LiveSinglesPanel = {
             subtitle: `${remainingQuantity}/${totalQuantity} in stock`
           } satisfies LiveSinglesAutocompleteItem;
         })
-        .filter((item): item is LiveSinglesAutocompleteItem => item != null)
-        .sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: "base" }));
+        .filter((item: LiveSinglesAutocompleteItem | null): item is LiveSinglesAutocompleteItem => item != null)
+        .sort((a: LiveSinglesAutocompleteItem, b: LiveSinglesAutocompleteItem) => (
+          a.title.localeCompare(b.title, undefined, { sensitivity: "base" })
+        ));
     },
 
     hasLiveSinglesSelection(this: any): boolean {
@@ -171,14 +173,14 @@ export const LiveSinglesPanel = {
       if (!Array.isArray(this.effectiveLiveSinglesEntries) || this.effectiveLiveSinglesEntries.length === 0) return [];
 
       const bundlePrice = this.liveSinglesEffectiveBundlePrice;
-      const basisByEntry = this.effectiveLiveSinglesEntries.map((entry: SinglesPurchaseEntry) => ({
+      const basisByEntry: Array<{ id: number; basis: number }> = this.effectiveLiveSinglesEntries.map((entry: SinglesPurchaseEntry) => ({
         id: entry.id,
         basis: this.resolveEntryBasis(entry)
       }));
-      const totalBasis = basisByEntry.reduce((sum: number, entry) => sum + entry.basis, 0);
+      const totalBasis = basisByEntry.reduce((sum: number, entry: { id: number; basis: number }) => sum + entry.basis, 0);
       const equalShare = basisByEntry.length > 0 ? (bundlePrice / basisByEntry.length) : 0;
 
-      return basisByEntry.map((entry) => {
+      return basisByEntry.map((entry: { id: number; basis: number }) => {
         const ratio = totalBasis > 0 ? entry.basis / totalBasis : (basisByEntry.length > 0 ? 1 / basisByEntry.length : 0);
         const share = totalBasis > 0 ? bundlePrice * ratio : equalShare;
         return {
