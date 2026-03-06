@@ -68,6 +68,18 @@ class MockHtmlCanvasElement {
 
 type Ctx = Record<string, unknown>;
 
+function makeSale(overrides: Partial<Sale> = {}): Sale {
+  return {
+    id: 1,
+    type: "pack",
+    quantity: 1,
+    packsCount: 1,
+    price: 10,
+    date: "2026-02-21",
+    ...overrides
+  };
+}
+
 function createContext(overrides: Ctx = {}): Ctx {
   return {
     currentTab: "sales",
@@ -200,6 +212,85 @@ test("saveSalesToStorage catches storage errors", () => {
 
   assert.equal(consoleSpy.mock.calls.length > 0, true);
   consoleSpy.mockRestore();
+});
+
+test("loadSalesFromStorage handles loader errors and resets sales", () => {
+  const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+  const ctx = createContext({
+    sales: [makeSale({ id: 99 })],
+    loadSalesForLotId: vi.fn(() => {
+      throw new Error("boom");
+    })
+  });
+
+  salesMethods.loadSalesFromStorage.call(ctx as never);
+
+  assert.deepEqual(ctx.sales, []);
+  assert.equal(consoleSpy.mock.calls.length > 0, true);
+  consoleSpy.mockRestore();
+});
+
+test("onNewSaleTypeChange updates bulk draft type and default price when not editing", () => {
+  const ctx = createContext({
+    currentLotType: "bulk",
+    editingSale: null,
+    newSale: {
+      type: "pack",
+      quantity: 1,
+      packsCount: 4,
+      singlesPurchaseEntryId: 10,
+      singlesItems: [{ lineId: 1, singlesPurchaseEntryId: 10, quantity: 1, price: 5 }],
+      price: 123,
+      buyerShipping: 0,
+      date: "2026-02-21"
+    }
+  });
+
+  salesMethods.onNewSaleTypeChange.call(ctx as never, "rtyh");
+
+  assert.equal((ctx.newSale as { type?: string }).type, "rtyh");
+  assert.equal((ctx.newSale as { singlesPurchaseEntryId?: number | null }).singlesPurchaseEntryId, null);
+  assert.equal((ctx.newSale as { singlesItems?: unknown }).singlesItems, undefined);
+  assert.equal((ctx.newSale as { price?: number }).price, 11);
+});
+
+test("onNewSaleTypeChange keeps existing price while editing an existing sale", () => {
+  const ctx = createContext({
+    currentLotType: "bulk",
+    editingSale: makeSale({ id: 42, price: 77 }),
+    newSale: {
+      type: "pack",
+      quantity: 1,
+      packsCount: null,
+      singlesPurchaseEntryId: null,
+      price: 321,
+      buyerShipping: 0,
+      date: "2026-02-21"
+    }
+  });
+
+  salesMethods.onNewSaleTypeChange.call(ctx as never, "box");
+
+  assert.equal((ctx.newSale as { type?: string }).type, "box");
+  assert.equal((ctx.newSale as { price?: number }).price, 321);
+});
+
+test("onNewSaleTypeChange forces pack type for singles lots", () => {
+  const ctx = createContext({
+    currentLotType: "singles",
+    newSale: {
+      type: "box",
+      quantity: 1,
+      packsCount: null,
+      singlesPurchaseEntryId: null,
+      price: 10,
+      buyerShipping: 0,
+      date: "2026-02-21"
+    }
+  });
+
+  salesMethods.onNewSaleTypeChange.call(ctx as never, "rtyh");
+  assert.equal((ctx.newSale as { type?: string }).type, "pack");
 });
 
 test("saveSale shows error when editing sale is missing from list", () => {
@@ -649,6 +740,78 @@ test("onSinglesSaleLineQuantityChange keeps unlinked line price as entered", () 
   assert.equal((ctx.newSale as { price?: number | null }).price, 55);
 });
 
+test("addSinglesSaleLine and removeSinglesSaleLine mutate line collection safely", () => {
+  const ctx = createContext({
+    currentLotType: "singles",
+    newSale: {
+      type: "pack",
+      quantity: 1,
+      packsCount: null,
+      singlesPurchaseEntryId: null,
+      singlesItems: [
+        {
+          lineId: 1,
+          singlesPurchaseEntryId: 401,
+          quantity: 2,
+          price: 50
+        }
+      ],
+      price: 50,
+      buyerShipping: 0,
+      date: "2026-02-21"
+    }
+  });
+
+  salesMethods.addSinglesSaleLine.call(ctx as never);
+  assert.equal(((ctx.newSale as { singlesItems?: unknown[] }).singlesItems || []).length, 2);
+
+  salesMethods.removeSinglesSaleLine.call(ctx as never, 1);
+  assert.equal(((ctx.newSale as { singlesItems?: unknown[] }).singlesItems || []).length, 1);
+
+  salesMethods.removeSinglesSaleLine.call(ctx as never, 0);
+  const lines = ((ctx.newSale as { singlesItems?: Array<{ singlesPurchaseEntryId?: number | null; quantity?: number; price?: number | null }> }).singlesItems || []);
+  assert.equal(lines.length, 1);
+  assert.equal(lines[0]?.singlesPurchaseEntryId ?? null, null);
+  assert.equal(lines[0]?.quantity, 1);
+  assert.equal(lines[0]?.price ?? null, null);
+});
+
+test("getSinglesSaleLineMaxQuantity releases editing quantity and excludes other draft lines", () => {
+  const editingSale: Sale = {
+    id: 10,
+    type: "pack",
+    quantity: 2,
+    packsCount: 2,
+    singlesPurchaseEntryId: 51,
+    price: 20,
+    date: "2026-02-21"
+  };
+
+  const ctx = createContext({
+    currentLotType: "singles",
+    editingSale,
+    singlesSoldCountByPurchaseId: { 51: 4 },
+    singlesPurchases: [
+      { id: 51, item: "Card Max", cost: 5, quantity: 5, marketValue: 6, currency: "CAD" }
+    ],
+    newSale: {
+      type: "pack",
+      quantity: null,
+      packsCount: null,
+      singlesPurchaseEntryId: null,
+      singlesItems: [
+        { lineId: 1, singlesPurchaseEntryId: 51, quantity: 1, price: 10 },
+        { lineId: 2, singlesPurchaseEntryId: 51, quantity: 1, price: 10 }
+      ],
+      price: null,
+      buyerShipping: 0,
+      date: "2026-02-21"
+    }
+  });
+
+  assert.equal(salesMethods.getSinglesSaleLineMaxQuantity.call(ctx as never, 0), 2);
+});
+
 test("saveSale blocks singles linked quantity above available stock", () => {
   const notify = vi.fn();
   const ctx = createContext({
@@ -762,6 +925,82 @@ test("saveSale blocks singles lines when duplicate linked quantity exceeds stock
   );
 });
 
+test("saveSale blocks singles lines linked to removed inventory entries", () => {
+  const notify = vi.fn();
+  const ctx = createContext({
+    currentLotType: "singles",
+    singlesPurchases: [],
+    newSale: {
+      type: "pack",
+      quantity: null,
+      packsCount: null,
+      singlesPurchaseEntryId: null,
+      singlesItems: [
+        { lineId: 1, singlesPurchaseEntryId: 999, quantity: 1, price: 12 }
+      ],
+      price: null,
+      buyerShipping: 0,
+      date: "2026-02-21"
+    },
+    notify
+  });
+
+  salesMethods.saveSale.call(ctx as never);
+
+  assert.equal((ctx.sales as Sale[]).length, 0);
+  assert.equal(notify.mock.calls[0]?.[0], "Selected item is no longer available.");
+});
+
+test("saveSale stores RTYH packsCount and normalizes invalid date", () => {
+  const ctx = createContext({
+    currentLotType: "bulk",
+    newSale: {
+      type: "rtyh",
+      quantity: 3,
+      packsCount: 7,
+      singlesPurchaseEntryId: null,
+      price: 15,
+      buyerShipping: 0,
+      date: "invalid-date"
+    }
+  });
+
+  salesMethods.saveSale.call(ctx as never);
+
+  assert.equal((ctx.sales as Sale[]).length, 1);
+  const saved = (ctx.sales as Sale[])[0]!;
+  assert.equal(saved.type, "rtyh");
+  assert.equal(saved.packsCount, 7);
+  assert.equal(saved.date, "2026-02-21");
+});
+
+test("saveSale refreshes charts for portfolio tab through $nextTick scheduler", () => {
+  const initPortfolioChart = vi.fn();
+  const initSalesChart = vi.fn();
+  const nextTick = vi.fn((cb: () => void) => cb());
+  const ctx = createContext({
+    currentTab: "portfolio",
+    initPortfolioChart,
+    initSalesChart,
+    $nextTick: nextTick,
+    newSale: {
+      type: "pack",
+      quantity: 1,
+      packsCount: null,
+      singlesPurchaseEntryId: null,
+      price: 10,
+      buyerShipping: 0,
+      date: "2026-02-21"
+    }
+  });
+
+  salesMethods.saveSale.call(ctx as never);
+
+  assert.equal(nextTick.mock.calls.length, 1);
+  assert.equal(initPortfolioChart.mock.calls.length, 1);
+  assert.equal(initSalesChart.mock.calls.length, 0);
+});
+
 test("saveSale editing singles sale can reassign card without mutating purchase quantities", () => {
   const existingSale: Sale = {
     id: 900,
@@ -838,6 +1077,43 @@ test("saveSale editing singles sale tolerates missing previously linked card row
   assert.equal((ctx.sales as Sale[]).length, 1);
   assert.equal((ctx.sales as Sale[])[0]?.singlesPurchaseEntryId, 22);
   assert.equal((ctx.singlesPurchases as Array<{ id: number; quantity: number }>)[0]?.quantity, 2);
+});
+
+test("editSale initializes singles draft lines from legacy linked sale and normalizes date", () => {
+  const sale: Sale = {
+    id: 333,
+    type: "pack",
+    quantity: 2,
+    packsCount: 2,
+    singlesPurchaseEntryId: 55,
+    price: 40,
+    buyerShipping: 1,
+    date: "not-a-date"
+  };
+  const focusInput = new MockHtmlInputElement();
+  const ctx = createContext({
+    currentLotType: "singles",
+    $refs: {
+      saleQuantityInput: focusInput
+    }
+  });
+
+  salesMethods.editSale.call(ctx as never, sale);
+
+  assert.equal(ctx.showAddSaleModal, true);
+  const newSale = ctx.newSale as {
+    date: string;
+    quantity: number;
+    price: number;
+    singlesItems?: Array<{ singlesPurchaseEntryId?: number | null; quantity?: number; price?: number | null }>;
+  };
+  assert.equal(newSale.date, "2026-02-21");
+  assert.equal(newSale.quantity, 2);
+  assert.equal(newSale.price, 40);
+  assert.equal((newSale.singlesItems || [])[0]?.singlesPurchaseEntryId, 55);
+  assert.equal((newSale.singlesItems || [])[0]?.quantity, 2);
+  assert.equal((newSale.singlesItems || [])[0]?.price, 40);
+  assert.equal(focusInput.focus.mock.calls.length, 1);
 });
 
 test("deleteSale removes sale without mutating linked singles purchase quantity", () => {
