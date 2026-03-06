@@ -300,7 +300,8 @@ function calculateSinglesTargetLinePrice(
     ? Math.max(0, Number(context.targetProfitPercent) || 0)
     : 0;
   const targetNetRevenue = targetBase * (1 + (targetProfitPercent / 100));
-  return context.calculatePriceForUnits(saleQuantity, targetNetRevenue);
+  const unitPrice = context.calculatePriceForUnits(saleQuantity, targetNetRevenue);
+  return unitPrice * saleQuantity;
 }
 
 function syncSinglesSaleDraftSummary(context: AppContext): void {
@@ -376,10 +377,13 @@ function applySinglesSaleLineCardSelection(context: AppContext, lineIndex: numbe
   syncSinglesSaleDraftSummary(context);
 }
 
-function applySinglesSaleLineQuantityChange(context: AppContext, lineIndex: number): void {
+function applySinglesSaleLineQuantityChange(context: AppContext, lineIndex: number, value?: unknown): void {
   const lines = ensureDraftSinglesSaleLines(context);
   const line = lines[lineIndex];
   if (!line) return;
+  if (value !== undefined) {
+    line.quantity = value as number;
+  }
 
   const normalizedQuantity = normalizeWholeQuantity(line.quantity) ?? 1;
   const maxAllowed = computeSinglesSaleLineMaxQuantity(context, lineIndex);
@@ -387,6 +391,13 @@ function applySinglesSaleLineQuantityChange(context: AppContext, lineIndex: numb
     ? normalizedQuantity
     : Math.max(1, Math.min(normalizedQuantity, maxAllowed));
   line.quantity = cappedQuantity;
+  const selectedEntryId = normalizeSinglesPurchaseEntryId(line.singlesPurchaseEntryId);
+  if (selectedEntryId != null) {
+    const selectedEntry = getSinglesPurchaseEntryById(context, selectedEntryId);
+    if (selectedEntry) {
+      line.price = calculateSinglesTargetLinePrice(context, selectedEntry, cappedQuantity);
+    }
+  }
 
   syncSinglesSaleDraftSummary(context);
 }
@@ -534,9 +545,9 @@ export const salesMethods: ThisType<AppContext> & Pick<
     applySinglesSaleLineCardSelection(this, lineIndex, value);
   },
 
-  onSinglesSaleLineQuantityChange(lineIndex: number): void {
+  onSinglesSaleLineQuantityChange(lineIndex: number, value?: unknown): void {
     if (this.currentLotType !== "singles") return;
-    applySinglesSaleLineQuantityChange(this, lineIndex);
+    applySinglesSaleLineQuantityChange(this, lineIndex, value);
   },
 
   onSinglesSaleLinePriceChange(): void {

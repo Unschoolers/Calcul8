@@ -158,7 +158,7 @@ export interface AppMethodState {
   addSinglesSaleLine(): void;
   removeSinglesSaleLine(lineIndex: number): void;
   onSinglesSaleLineCardSelectionChange(lineIndex: number, value: number | null): void;
-  onSinglesSaleLineQuantityChange(lineIndex: number): void;
+  onSinglesSaleLineQuantityChange(lineIndex: number, value?: unknown): void;
   onSinglesSaleLinePriceChange(): void;
   getSinglesSaleLineMaxQuantity(lineIndex: number): number | null;
   saveSale(): void;

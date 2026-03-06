@@ -376,7 +376,7 @@ test("onSinglesSaleCardSelectionChange defaults singles sale price to total cost
   salesMethods.onSinglesSaleCardSelectionChange.call(ctx as never, 99);
 
   assert.deepEqual(calculatePriceForUnits.mock.calls[0], [2, 80]);
-  assert.equal((ctx.newSale as { price?: number }).price, 45);
+  assert.equal((ctx.newSale as { price?: number }).price, 90);
 });
 
 test("onSinglesSaleCardSelectionChange sets price even when quantity starts empty", () => {
@@ -438,7 +438,7 @@ test("onSinglesSaleCardSelectionChange defaults singles sale price using target 
   salesMethods.onSinglesSaleCardSelectionChange.call(ctx as never, 100);
 
   assert.deepEqual(calculatePriceForUnits.mock.calls[0], [2, 96]);
-  assert.equal((ctx.newSale as { price?: number }).price, 54);
+  assert.equal((ctx.newSale as { price?: number }).price, 108);
 });
 
 test("onSinglesSaleCardSelectionChange pro pricing falls back to cost when market is not set", () => {
@@ -569,13 +569,20 @@ test("onSinglesSaleLineCardSelectionChange uses line quantity for default line p
   salesMethods.onSinglesSaleLineCardSelectionChange.call(ctx as never, 0, 301);
 
   assert.deepEqual(calculatePriceForUnits.mock.calls[0], [2, 114.99999999999999]);
-  assert.equal((ctx.newSale as { price?: number | null }).price, 77);
+  assert.equal((ctx.newSale as { price?: number | null }).price, 154);
   assert.equal((ctx.newSale as { quantity?: number | null }).quantity, 2);
 });
 
-test("onSinglesSaleLineQuantityChange updates qty without auto-changing entered line price", () => {
+test("onSinglesSaleLineQuantityChange updates qty and recalculates linked line price", () => {
+  const calculatePriceForUnits = vi.fn(() => 88);
   const ctx = createContext({
     currentLotType: "singles",
+    hasProAccess: true,
+    targetProfitPercent: 15,
+    currency: "CAD",
+    sellingCurrency: "CAD",
+    exchangeRate: 1.4,
+    calculatePriceForUnits,
     singlesPurchases: [
       { id: 401, item: "Card Q", cost: 10, quantity: 20, marketValue: 12, currency: "CAD" }
     ],
@@ -598,8 +605,42 @@ test("onSinglesSaleLineQuantityChange updates qty without auto-changing entered 
     }
   });
 
-  (ctx.newSale as { singlesItems: Array<{ quantity: number }> }).singlesItems[0]!.quantity = 12;
-  salesMethods.onSinglesSaleLineQuantityChange.call(ctx as never, 0);
+  (ctx.newSale as { singlesItems: Array<{ quantity: number }> }).singlesItems[0]!.quantity = 1;
+  salesMethods.onSinglesSaleLineQuantityChange.call(ctx as never, 0, 12);
+
+  const line = (ctx.newSale as { singlesItems: Array<{ quantity: number; price: number }> }).singlesItems[0]!;
+  assert.equal(line.quantity, 12);
+  assert.equal(calculatePriceForUnits.mock.calls.length, 1);
+  assert.deepEqual(calculatePriceForUnits.mock.calls[0], [12, 165.6]);
+  assert.equal(line.price, 1056);
+  assert.equal((ctx.newSale as { quantity?: number | null }).quantity, 12);
+  assert.equal((ctx.newSale as { price?: number | null }).price, 1056);
+});
+
+test("onSinglesSaleLineQuantityChange keeps unlinked line price as entered", () => {
+  const ctx = createContext({
+    currentLotType: "singles",
+    newSale: {
+      type: "pack",
+      quantity: 1,
+      packsCount: null,
+      singlesPurchaseEntryId: null,
+      singlesItems: [
+        {
+          lineId: 1,
+          singlesPurchaseEntryId: null,
+          quantity: 1,
+          price: 55
+        }
+      ],
+      price: 55,
+      buyerShipping: 0,
+      date: "2026-02-21"
+    }
+  });
+
+  (ctx.newSale as { singlesItems: Array<{ quantity: number }> }).singlesItems[0]!.quantity = 1;
+  salesMethods.onSinglesSaleLineQuantityChange.call(ctx as never, 0, 12);
 
   const line = (ctx.newSale as { singlesItems: Array<{ quantity: number; price: number }> }).singlesItems[0]!;
   assert.equal(line.quantity, 12);

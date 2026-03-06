@@ -664,7 +664,7 @@
                     class="sale-editor-singles-line"
                   >
                     <v-row dense class="sale-editor-singles-grid">
-                      <v-col :cols="$vuetify?.display?.smAndDown ? 12 : 7">
+                      <v-col :cols="$vuetify?.display?.smAndDown ? 12 : 6">
                         <v-autocomplete
                           v-model="line.singlesPurchaseEntryId"
                           :items="singlesSaleCardOptions"
@@ -708,10 +708,10 @@
                           :min="1"
                           :max="line.singlesPurchaseEntryId ? (getSinglesSaleLineMaxQuantity(lineIndex) ?? undefined) : undefined"
                           hide-details="auto"
-                          @update:model-value="onSinglesSaleLineQuantityChange(lineIndex)"
+                          @update:model-value="onSinglesSaleLineQuantityChange(lineIndex, $event)"
                         ></v-text-field>
                       </v-col>
-                      <v-col :cols="$vuetify?.display?.smAndDown ? 6 : 2">
+                      <v-col :cols="$vuetify?.display?.smAndDown ? 6 : 3">
                         <v-text-field
                           v-model.number="line.price"
                           label="Total"
