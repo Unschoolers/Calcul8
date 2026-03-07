@@ -1989,6 +1989,283 @@ test("remainingSpotsEquivalent uses dynamic totalSpots instead of fixed 80", () 
   assert.equal(remainingSpots, 20);
 });
 
+test("liveForecastScenarios builds bulk forecasts from current live prices", () => {
+  const scenarios = appComputed.liveForecastScenarios.call({
+    currentLotType: "bulk",
+    remainingPacksCount: 10,
+    remainingBoxesEquivalent: 2.5,
+    remainingSpotsEquivalent: 5,
+    livePackPrice: 9,
+    liveBoxPriceSell: 30,
+    liveSpotPrice: 6,
+    totalRevenue: 100,
+    totalCaseCost: 200,
+    sellingTaxPercent: 15,
+    sellingShippingPerOrder: 2,
+    netFromGross(grossRevenue: number, _shipping?: number, orderCount?: number) {
+      return grossRevenue - (orderCount || 0);
+    }
+  } as unknown as Parameters<typeof appComputed.liveForecastScenarios>[0]);
+
+  assert.equal(scenarios.length, 3);
+  assert.equal(scenarios[0]?.id, "item");
+  assert.equal(scenarios[0]?.units, 10);
+  assert.equal(scenarios[0]?.estimatedNetRemaining, 80);
+  assert.equal(scenarios[0]?.forecastRevenue, 180);
+  assert.equal(scenarios[0]?.forecastProfit, -20);
+});
+
+test("liveForecastScenarios builds singles forecast from remaining inventory suggested prices", () => {
+  const scenarios = appComputed.liveForecastScenarios.call({
+    currentLotType: "singles",
+    singlesPurchases: [
+      { id: 1, item: "A", quantity: 3, cost: 5, marketValue: 0, currency: "CAD" },
+      { id: 2, item: "B", quantity: 2, cost: 2, marketValue: 4, currency: "CAD" }
+    ],
+    singlesSoldCountByPurchaseId: {
+      1: 1,
+      2: 0
+    },
+    hasProAccess: true,
+    targetProfitPercent: 10,
+    currency: "CAD",
+    sellingCurrency: "CAD",
+    exchangeRate: 1.4,
+    calculatePriceForUnits(_units: number, targetNetRevenue: number) {
+      return targetNetRevenue + 1;
+    },
+    totalRevenue: 20,
+    totalCaseCost: 50,
+    sellingTaxPercent: 15,
+    sellingShippingPerOrder: 0,
+    netFromGross(grossRevenue: number) {
+      return grossRevenue;
+    }
+  } as unknown as Parameters<typeof appComputed.liveForecastScenarios>[0]);
+
+  assert.equal(scenarios.length, 1);
+  assert.equal(scenarios[0]?.id, "singles-suggested");
+  assert.equal(scenarios[0]?.units, 4);
+  assert.ok(Math.abs((scenarios[0]?.unitPrice || 0) - 5.95) < 0.000001);
+  assert.ok(Math.abs((scenarios[0]?.estimatedNetRemaining || 0) - 23.8) < 0.000001);
+  assert.ok(Math.abs((scenarios[0]?.forecastProfit || 0) - (-6.2)) < 0.000001);
+});
+
+test("bestLiveForecastScenario returns null on empty and highest-profit scenario otherwise", () => {
+  const none = appComputed.bestLiveForecastScenario.call({
+    liveForecastScenarios: []
+  } as unknown as Parameters<typeof appComputed.bestLiveForecastScenario>[0]);
+  assert.equal(none, null);
+
+  const best = appComputed.bestLiveForecastScenario.call({
+    liveForecastScenarios: [
+      {
+        id: "item",
+        label: "Item live price",
+        unitLabel: "item",
+        units: 1,
+        unitPrice: 1,
+        estimatedNetRemaining: 1,
+        forecastRevenue: 1,
+        forecastProfit: -10,
+        forecastMarginPercent: -5
+      },
+      {
+        id: "box",
+        label: "Box live price",
+        unitLabel: "box",
+        units: 1,
+        unitPrice: 1,
+        estimatedNetRemaining: 1,
+        forecastRevenue: 1,
+        forecastProfit: 20,
+        forecastMarginPercent: 10
+      }
+    ]
+  } as unknown as Parameters<typeof appComputed.bestLiveForecastScenario>[0]);
+  assert.equal(best?.id, "box");
+});
+
+test("portfolioForecastScenarios aggregates forecast across selected lots", () => {
+  const scenarios = appComputed.portfolioForecastScenarios.call({
+    lots: [
+      {
+        id: 1,
+        name: "Lot A",
+        lotType: "bulk",
+        boxPriceCost: 100,
+        boxesPurchased: 2,
+        packsPerBox: 10,
+        spotsPerBox: 5,
+        costInputMode: "perBox",
+        currency: "CAD",
+        sellingCurrency: "CAD",
+        exchangeRate: 1.4,
+        purchaseDate: "2026-02-01",
+        purchaseShippingCost: 0,
+        purchaseTaxPercent: 0,
+        sellingTaxPercent: 0,
+        sellingShippingPerOrder: 0,
+        includeTax: false,
+        spotPrice: 4,
+        boxPriceSell: 90,
+        packPrice: 10,
+        targetProfitPercent: 15
+      },
+      {
+        id: 2,
+        name: "Lot B",
+        lotType: "bulk",
+        boxPriceCost: 100,
+        boxesPurchased: 1,
+        packsPerBox: 5,
+        spotsPerBox: 8,
+        costInputMode: "perBox",
+        currency: "CAD",
+        sellingCurrency: "CAD",
+        exchangeRate: 1.4,
+        purchaseDate: "2026-02-01",
+        purchaseShippingCost: 0,
+        purchaseTaxPercent: 0,
+        sellingTaxPercent: 0,
+        sellingShippingPerOrder: 0,
+        includeTax: false,
+        spotPrice: 3,
+        boxPriceSell: 50,
+        packPrice: 20,
+        targetProfitPercent: 15
+      }
+    ],
+    portfolioSelectedLotIds: [1, 2],
+    allLotPerformance: [
+      {
+        lotId: 1,
+        lotName: "Lot A",
+        lotType: "Bulk",
+        salesCount: 1,
+        totalRevenue: 100,
+        totalCost: 200,
+        totalProfit: -100,
+        marginPercent: null,
+        soldPacks: 5,
+        totalPacks: 20,
+        lastSaleDate: null
+      },
+      {
+        lotId: 2,
+        lotName: "Lot B",
+        lotType: "Bulk",
+        salesCount: 1,
+        totalRevenue: 50,
+        totalCost: 100,
+        totalProfit: -50,
+        marginPercent: null,
+        soldPacks: 0,
+        totalPacks: 10,
+        lastSaleDate: null
+      }
+    ],
+    currentLotId: 1,
+    livePackPrice: 12,
+    liveBoxPriceSell: 100,
+    liveSpotPrice: 6,
+    hasProAccess: true
+  } as unknown as Parameters<typeof appComputed.portfolioForecastScenarios>[0]);
+
+  const item = scenarios.find((scenario) => scenario.id === "item");
+  const box = scenarios.find((scenario) => scenario.id === "box");
+  const rtyh = scenarios.find((scenario) => scenario.id === "rtyh");
+
+  assert.equal(item?.units, 25);
+  assert.ok(Math.abs((item?.unitPrice || 0) - 15.2) < 0.000001);
+  assert.equal(Math.round(item?.forecastProfit || 0), 181);
+
+  assert.ok(Math.abs((box?.units || 0) - 3.5) < 0.000001);
+  assert.equal(Math.round(box?.forecastProfit || 0), 72);
+
+  assert.ok(Math.abs((rtyh?.units || 0) - 15.5) < 0.000001);
+  assert.equal(Math.round(rtyh?.forecastProfit || 0), -93);
+});
+
+test("bestPortfolioForecastScenario returns highest aggregated forecast", () => {
+  const best = appComputed.bestPortfolioForecastScenario.call({
+    portfolioForecastScenarios: [
+      {
+        id: "item",
+        label: "Item",
+        unitLabel: "item",
+        units: 10,
+        unitPrice: 2,
+        estimatedNetRemaining: 20,
+        forecastRevenue: 100,
+        forecastProfit: 50,
+        forecastMarginPercent: 10
+      },
+      {
+        id: "box",
+        label: "Box",
+        unitLabel: "box",
+        units: 4,
+        unitPrice: 10,
+        estimatedNetRemaining: 40,
+        forecastRevenue: 120,
+        forecastProfit: 70,
+        forecastMarginPercent: 14
+      }
+    ]
+  } as unknown as Parameters<typeof appComputed.bestPortfolioForecastScenario>[0]);
+
+  assert.equal(best?.id, "box");
+});
+
+test("averagePortfolioForecastScenario returns mean forecast across selling modes", () => {
+  const average = appComputed.averagePortfolioForecastScenario.call({
+    portfolioForecastScenarios: [
+      {
+        id: "item",
+        label: "Item",
+        unitLabel: "item",
+        units: 10,
+        unitPrice: 2,
+        estimatedNetRemaining: 20,
+        forecastRevenue: 140,
+        forecastProfit: 40,
+        forecastMarginPercent: 20
+      },
+      {
+        id: "box",
+        label: "Box",
+        unitLabel: "box",
+        units: 4,
+        unitPrice: 10,
+        estimatedNetRemaining: 40,
+        forecastRevenue: 120,
+        forecastProfit: 20,
+        forecastMarginPercent: 10
+      },
+      {
+        id: "rtyh",
+        label: "RTYH",
+        unitLabel: "spot",
+        units: 8,
+        unitPrice: 5,
+        estimatedNetRemaining: 30,
+        forecastRevenue: 90,
+        forecastProfit: -10,
+        forecastMarginPercent: -5
+      }
+    ],
+    portfolioTotals: {
+      totalCost: 200
+    }
+  } as unknown as Parameters<typeof appComputed.averagePortfolioForecastScenario>[0]);
+
+  assert.equal(average?.modeCount, 3);
+  assert.ok(Math.abs((average?.forecastRevenue || 0) - 116.6666667) < 0.0001);
+  assert.ok(Math.abs((average?.forecastProfit || 0) - 16.6666667) < 0.0001);
+  assert.ok(Math.abs((average?.forecastMarginPercent || 0) - 8.3333333) < 0.0001);
+});
+
 test("allLotPerformance uses in-memory sales for active preset before storage sync", () => {
   const activePreset: Lot = {
     id: 101,
@@ -2042,6 +2319,8 @@ test("allLotPerformance uses in-memory sales for active preset before storage sy
 
   assert.equal(activeRow?.salesCount, 1);
   assert.equal(otherRow?.salesCount, 1);
+  assert.equal(typeof activeRow?.forecastProfitAverage, "number");
+  assert.equal(typeof activeRow?.forecastScenarioCount, "number");
 });
 
 test("portfolioSelectedLotIds defaults to all lots when filter is empty", () => {

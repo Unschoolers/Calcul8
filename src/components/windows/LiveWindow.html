@@ -13,6 +13,10 @@
         :calculate-profit="profitForLive"
         :safe-fixed="safeFixedForLive"
         :avg-price-needed="requiredPackPriceFromNow"
+        :forecast-profit="liveScenarioProfit('item')"
+        :forecast-percent="liveScenarioPercent('item')"
+        :needed-profit="liveScenarioProfitAtNeeded('item')"
+        :needed-percent="liveScenarioPercentAtNeeded('item')"
         :profit-basis="totalCaseCost"
       ></live-price-card>
     </v-col>
@@ -27,6 +31,10 @@
         :calculate-profit="profitForLive"
         :safe-fixed="safeFixedForLive"
         :avg-price-needed="requiredBoxPriceFromNow"
+        :forecast-profit="liveScenarioProfit('box')"
+        :forecast-percent="liveScenarioPercent('box')"
+        :needed-profit="liveScenarioProfitAtNeeded('box')"
+        :needed-percent="liveScenarioPercentAtNeeded('box')"
         :profit-basis="totalCaseCost"
       ></live-price-card>
     </v-col>
@@ -41,6 +49,10 @@
         :calculate-profit="profitForLive"
         :safe-fixed="safeFixedForLive"
         :avg-price-needed="requiredSpotPriceFromNow"
+        :forecast-profit="liveScenarioProfit('rtyh')"
+        :forecast-percent="liveScenarioPercent('rtyh')"
+        :needed-profit="liveScenarioProfitAtNeeded('rtyh')"
+        :needed-percent="liveScenarioPercentAtNeeded('rtyh')"
         :profit-basis="totalCaseCost"
       ></live-price-card>
     </v-col>

@@ -1316,9 +1316,70 @@ test("initPortfolioChart creates cumulative trend chart", () => {
 
   salesMethods.initPortfolioChart.call(ctx as never);
   assert.equal(chartCtorMock.mock.calls.length, 1);
-  const config = chartCtorMock.mock.calls[0]?.[1] as { type: string };
+  const config = chartCtorMock.mock.calls[0]?.[1] as {
+    type: string;
+    data: { datasets: Array<{ label?: string; data?: number[] }> };
+  };
   assert.equal(config.type, "line");
   assert.equal(calculateNetFromGrossMock.mock.calls.length > 0, true);
+  assert.equal(config.data.datasets.length, 2);
+  assert.equal(config.data.datasets[0]?.label, "Actual cumulative P/L");
+  assert.equal(config.data.datasets[1]?.label, "Target P/L");
+});
+
+test("initPortfolioChart creates sell-through bar chart", () => {
+  const portfolioCanvas = new MockHtmlCanvasElement();
+  const ctx = createContext({
+    currentTab: "portfolio",
+    portfolioChartView: "sellthrough",
+    lots: [
+      {
+        id: 1700000000001,
+        name: "Lot S",
+        purchaseDate: "2026-02-01",
+        createdAt: "2026-02-01",
+        sellingTaxPercent: 15
+      }
+    ],
+    currentLotId: 1700000000001,
+    sales: [
+      {
+        id: 11,
+        type: "pack",
+        quantity: 2,
+        packsCount: 2,
+        price: 12,
+        buyerShipping: 1,
+        date: "2026-02-21"
+      }
+    ],
+    allLotPerformance: [
+      {
+        lotId: 1700000000001,
+        lotName: "Lot S",
+        totalRevenue: 120,
+        totalCost: 80,
+        totalPacks: 10
+      }
+    ],
+    portfolioSelectedLotIds: [1700000000001],
+    $refs: {
+      portfolioWindow: {
+        $refs: {
+          portfolioChartCanvas: portfolioCanvas
+        }
+      }
+    }
+  });
+
+  salesMethods.initPortfolioChart.call(ctx as never);
+  assert.equal(chartCtorMock.mock.calls.length, 1);
+  const config = chartCtorMock.mock.calls[0]?.[1] as {
+    type: string;
+    data: { datasets: Array<{ label?: string }> };
+  };
+  assert.equal(config.type, "bar");
+  assert.equal(config.data.datasets[0]?.label, "Sell-through %");
 });
 
 test("initPortfolioChart returns early when tab is not portfolio", () => {

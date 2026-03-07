@@ -5,6 +5,7 @@ import {
   calculateSinglesPurchaseTotals,
   calculateTotalSpots,
   calculatePriceForUnits as calculateUnitPrice,
+  calculateNetFromGross,
   calculatePortfolioTotals,
   calculateLotPerformanceSummary as calculateLotPerformanceSummary,
   calculateSalesProgress,
@@ -289,6 +290,61 @@ type SaleLineLike = {
   quantity: number;
   price: number;
 };
+
+type LiveForecastScenario = {
+  id: "item" | "box" | "rtyh" | "singles-suggested";
+  label: string;
+  unitLabel: "item" | "box" | "spot";
+  units: number;
+  unitPrice: number;
+  estimatedNetRemaining: number;
+  forecastRevenue: number;
+  forecastProfit: number;
+  forecastMarginPercent: number | null;
+};
+
+function buildLiveForecastScenario(
+  context: {
+    totalRevenue: number;
+    totalCaseCost: number;
+    sellingTaxPercent: number;
+    sellingShippingPerOrder: number;
+    netFromGross: (grossRevenue: number, buyerShippingPerOrder?: number, orderCount?: number) => number;
+  },
+  payload: {
+    id: LiveForecastScenario["id"];
+    label: string;
+    unitLabel: LiveForecastScenario["unitLabel"];
+    units: number;
+    unitPrice: number;
+  }
+): LiveForecastScenario {
+  const units = Math.max(0, Number(payload.units) || 0);
+  const unitPrice = Math.max(0, Number(payload.unitPrice) || 0);
+  const grossRemaining = units * unitPrice;
+  const estimatedNetRemaining = units > 0
+    ? context.netFromGross(
+      grossRemaining,
+      context.sellingShippingPerOrder,
+      units
+    )
+    : 0;
+  const forecastRevenue = Math.max(0, Number(context.totalRevenue) || 0) + estimatedNetRemaining;
+  const totalCost = Math.max(0, Number(context.totalCaseCost) || 0);
+  const forecastProfit = forecastRevenue - totalCost;
+  const forecastMarginPercent = totalCost > 0 ? ((forecastProfit / totalCost) * 100) : null;
+  return {
+    id: payload.id,
+    label: payload.label,
+    unitLabel: payload.unitLabel,
+    units,
+    unitPrice,
+    estimatedNetRemaining,
+    forecastRevenue,
+    forecastProfit,
+    forecastMarginPercent
+  };
+}
 
 function getSaleSinglesLines(sale: {
   singlesItems?: Array<{ singlesPurchaseEntryId?: number; quantity: number; price: number }>;
@@ -782,6 +838,257 @@ export const appComputed: AppComputedObject = {
     );
   },
 
+  liveForecastScenarios(): LiveForecastScenario[] {
+    if (this.currentLotType === "singles") {
+      const soldById = this.singlesSoldCountByPurchaseId || {};
+      const targetProfitPercent = this.hasProAccess
+        ? Math.max(0, Number(this.targetProfitPercent) || 0)
+        : 0;
+      let units = 0;
+      let grossRemaining = 0;
+
+      for (const entry of this.singlesPurchases || []) {
+        const remainingQuantity = getSinglesRemainingQuantity(entry, soldById);
+        if (remainingQuantity <= 0) continue;
+        const marketValue = Math.max(0, Number(entry.marketValue) || 0);
+        const unitBasis = marketValue > 0
+          ? marketValue
+          : getSinglesEntryUnitCostInSellingCurrency(
+            entry,
+            this.currency,
+            this.sellingCurrency,
+            this.exchangeRate
+          );
+        const targetNetRevenue = unitBasis * (1 + (targetProfitPercent / 100));
+        const unitPrice = Math.max(0, this.calculatePriceForUnits(1, targetNetRevenue));
+        units += remainingQuantity;
+        grossRemaining += unitPrice * remainingQuantity;
+      }
+
+      if (units <= 0) return [];
+      const averageUnitPrice = grossRemaining / units;
+      return [
+        buildLiveForecastScenario(this, {
+          id: "singles-suggested",
+          label: "Suggested item pricing",
+          unitLabel: "item",
+          units,
+          unitPrice: averageUnitPrice
+        })
+      ];
+    }
+
+    return [
+      buildLiveForecastScenario(this, {
+        id: "item",
+        label: "Item live price",
+        unitLabel: "item",
+        units: this.remainingPacksCount,
+        unitPrice: this.livePackPrice
+      }),
+      buildLiveForecastScenario(this, {
+        id: "box",
+        label: "Box live price",
+        unitLabel: "box",
+        units: this.remainingBoxesEquivalent,
+        unitPrice: this.liveBoxPriceSell
+      }),
+      buildLiveForecastScenario(this, {
+        id: "rtyh",
+        label: "RTYH live price",
+        unitLabel: "spot",
+        units: this.remainingSpotsEquivalent,
+        unitPrice: this.liveSpotPrice
+      })
+    ].filter((scenario) => scenario.units > 0 || scenario.unitPrice > 0);
+  },
+
+  bestLiveForecastScenario(): LiveForecastScenario | null {
+    const scenarios = this.liveForecastScenarios;
+    if (!Array.isArray(scenarios) || scenarios.length === 0) return null;
+    return [...scenarios].sort((a, b) => b.forecastProfit - a.forecastProfit)[0] ?? null;
+  },
+
+  portfolioForecastScenarios(): Array<LiveForecastScenario & { id: "item" | "box" | "rtyh" }> {
+    const selectedLotIds = new Set(
+      Array.isArray(this.portfolioSelectedLotIds) && this.portfolioSelectedLotIds.length > 0
+        ? this.portfolioSelectedLotIds
+        : (this.lots || []).map((lot) => lot.id)
+    );
+    const selectedLots = (this.lots || []).filter((lot) => selectedLotIds.has(lot.id));
+    if (selectedLots.length === 0) return [];
+
+    const performanceByLotId = new Map((this.allLotPerformance || []).map((row) => [row.lotId, row]));
+    const totalSelectedRevenue = selectedLots.reduce((sum, lot) => {
+      return sum + (performanceByLotId.get(lot.id)?.totalRevenue || 0);
+    }, 0);
+    const totalSelectedCost = selectedLots.reduce((sum, lot) => {
+      return sum + (performanceByLotId.get(lot.id)?.totalCost || 0);
+    }, 0);
+
+    let itemUnits = 0;
+    let itemGross = 0;
+    let itemNetRemaining = 0;
+
+    let boxUnits = 0;
+    let boxGross = 0;
+    let boxNetRemaining = 0;
+
+    let spotUnits = 0;
+    let spotGross = 0;
+    let spotNetRemaining = 0;
+
+    for (const lot of selectedLots) {
+      const row = performanceByLotId.get(lot.id);
+      if (!row) continue;
+      const remainingItems = Math.max(0, (Number(row.totalPacks) || 0) - (Number(row.soldPacks) || 0));
+      if (remainingItems <= 0) continue;
+
+      const lotTaxPercent = Math.max(0, Number(lot.sellingTaxPercent) || 0);
+      const lotShipping = Math.max(0, Number(lot.sellingShippingPerOrder) || 0);
+      const isCurrentLot = lot.id === this.currentLotId;
+
+      let itemUnitPrice = 0;
+      if (lot.lotType === "singles") {
+        const avgBasis = Number(row.totalPacks) > 0 ? (Number(row.totalCost) || 0) / Number(row.totalPacks) : 0;
+        const lotTargetProfitPercent = this.hasProAccess ? Math.max(0, Number(lot.targetProfitPercent) || 0) : 0;
+        const targetNetPerItem = avgBasis * (1 + (lotTargetProfitPercent / 100));
+        itemUnitPrice = Math.max(0, calculateUnitPrice(1, targetNetPerItem, lotTaxPercent, lotShipping));
+      } else {
+        itemUnitPrice = Math.max(
+          0,
+          Number(isCurrentLot ? this.livePackPrice : lot.packPrice) || 0
+        );
+      }
+
+      const lotItemGross = remainingItems * itemUnitPrice;
+      itemUnits += remainingItems;
+      itemGross += lotItemGross;
+      itemNetRemaining += calculateNetFromGross(lotItemGross, lotTaxPercent, lotShipping, remainingItems);
+
+      if (lot.lotType === "singles") continue;
+
+      const packsPerBox = Math.max(0, Number(lot.packsPerBox) || 0);
+      if (packsPerBox > 0) {
+        const lotBoxUnits = remainingItems / packsPerBox;
+        const boxUnitPrice = Math.max(
+          0,
+          Number(isCurrentLot ? this.liveBoxPriceSell : lot.boxPriceSell) || 0
+        );
+        const lotBoxGross = lotBoxUnits * boxUnitPrice;
+        boxUnits += lotBoxUnits;
+        boxGross += lotBoxGross;
+        boxNetRemaining += calculateNetFromGross(lotBoxGross, lotTaxPercent, lotShipping, lotBoxUnits);
+      }
+
+      const lotTotalPacks = Math.max(0, Number(row.totalPacks) || 0);
+      if (lotTotalPacks > 0) {
+        const lotSpotsTotal = calculateTotalSpots(lot.boxesPurchased, lot.spotsPerBox || DEFAULT_VALUES.SPOTS_PER_BOX);
+        const lotSpotUnits = (remainingItems / lotTotalPacks) * lotSpotsTotal;
+        if (lotSpotUnits > 0) {
+          const spotUnitPrice = Math.max(
+            0,
+            Number(isCurrentLot ? this.liveSpotPrice : lot.spotPrice) || 0
+          );
+          const lotSpotGross = lotSpotUnits * spotUnitPrice;
+          spotUnits += lotSpotUnits;
+          spotGross += lotSpotGross;
+          spotNetRemaining += calculateNetFromGross(lotSpotGross, lotTaxPercent, lotShipping, lotSpotUnits);
+        }
+      }
+    }
+
+    const buildScenario = (
+      payload: {
+        id: "item" | "box" | "rtyh";
+        label: string;
+        unitLabel: "item" | "box" | "spot";
+        units: number;
+        gross: number;
+        estimatedNetRemaining: number;
+      }
+    ): (LiveForecastScenario & { id: "item" | "box" | "rtyh" }) | null => {
+      if (payload.units <= 0) return null;
+      const unitPrice = payload.gross / payload.units;
+      const forecastRevenue = totalSelectedRevenue + payload.estimatedNetRemaining;
+      const forecastProfit = forecastRevenue - totalSelectedCost;
+      const forecastMarginPercent = totalSelectedCost > 0 ? ((forecastProfit / totalSelectedCost) * 100) : null;
+      return {
+        id: payload.id,
+        label: payload.label,
+        unitLabel: payload.unitLabel,
+        units: payload.units,
+        unitPrice,
+        estimatedNetRemaining: payload.estimatedNetRemaining,
+        forecastRevenue,
+        forecastProfit,
+        forecastMarginPercent
+      };
+    };
+
+    const scenarios = [
+      buildScenario({
+        id: "item",
+        label: "Item live price (all selected lots)",
+        unitLabel: "item",
+        units: itemUnits,
+        gross: itemGross,
+        estimatedNetRemaining: itemNetRemaining
+      }),
+      buildScenario({
+        id: "box",
+        label: "Box live price (bulk selected lots)",
+        unitLabel: "box",
+        units: boxUnits,
+        gross: boxGross,
+        estimatedNetRemaining: boxNetRemaining
+      }),
+      buildScenario({
+        id: "rtyh",
+        label: "RTYH live price (bulk selected lots)",
+        unitLabel: "spot",
+        units: spotUnits,
+        gross: spotGross,
+        estimatedNetRemaining: spotNetRemaining
+      })
+    ].filter((scenario): scenario is LiveForecastScenario & { id: "item" | "box" | "rtyh" } => scenario != null);
+
+    return scenarios;
+  },
+
+  averagePortfolioForecastScenario(): {
+    label: string;
+    modeCount: number;
+    forecastRevenue: number;
+    forecastProfit: number;
+    forecastMarginPercent: number | null;
+  } | null {
+    const scenarios = this.portfolioForecastScenarios;
+    if (!Array.isArray(scenarios) || scenarios.length === 0) return null;
+    const modeCount = scenarios.length;
+    const totalForecastRevenue = scenarios.reduce((sum, scenario) => sum + (Number(scenario.forecastRevenue) || 0), 0);
+    const totalForecastProfit = scenarios.reduce((sum, scenario) => sum + (Number(scenario.forecastProfit) || 0), 0);
+    const forecastRevenue = totalForecastRevenue / modeCount;
+    const forecastProfit = totalForecastProfit / modeCount;
+    const selectedTotalCost = this.portfolioTotals?.totalCost || 0;
+    const forecastMarginPercent = selectedTotalCost > 0
+      ? ((forecastProfit / selectedTotalCost) * 100)
+      : null;
+    return {
+      label: "Average forecast (all selling modes)",
+      modeCount,
+      forecastRevenue,
+      forecastProfit,
+      forecastMarginPercent
+    };
+  },
+
+  bestPortfolioForecastScenario(): (LiveForecastScenario & { id: "item" | "box" | "rtyh" }) | null {
+    const scenarios = this.portfolioForecastScenarios;
+    if (!Array.isArray(scenarios) || scenarios.length === 0) return null;
+    return [...scenarios].sort((a, b) => b.forecastProfit - a.forecastProfit)[0] ?? null;
+  },
+
   salesStatus() {
     if (this.currentLotType === "singles") {
       const profit = this.totalRevenue - this.totalCaseCost;
@@ -821,12 +1128,77 @@ export const appComputed: AppComputedObject = {
           ? this.sales
           : this.loadSalesForLotId(lot.id);
         const summary = calculateLotPerformanceSummary(lot, sales, DEFAULT_VALUES.EXCHANGE_RATE);
+        const remainingItems = Math.max(0, (Number(summary.totalPacks) || 0) - (Number(summary.soldPacks) || 0));
+        const isCurrentLot = lot.id === this.currentLotId;
+        const lotTaxPercent = Math.max(0, Number(lot.sellingTaxPercent) || 0);
+        const lotShipping = Math.max(0, Number(lot.sellingShippingPerOrder) || 0);
+
+        const forecastRevenues: number[] = [];
+        const forecastProfits: number[] = [];
+        const pushForecast = (units: number, unitPrice: number): void => {
+          if (units <= 0) return;
+          const grossRemaining = units * Math.max(0, unitPrice || 0);
+          const estimatedNetRemaining = calculateNetFromGross(
+            grossRemaining,
+            lotTaxPercent,
+            lotShipping,
+            units
+          );
+          const forecastRevenue = (Number(summary.totalRevenue) || 0) + estimatedNetRemaining;
+          forecastRevenues.push(forecastRevenue);
+          forecastProfits.push(forecastRevenue - (Number(summary.totalCost) || 0));
+        };
+
+        if (remainingItems > 0) {
+          let itemUnitPrice = 0;
+          if (lot.lotType === "singles") {
+            const avgBasis = Number(summary.totalPacks) > 0
+              ? (Number(summary.totalCost) || 0) / Number(summary.totalPacks)
+              : 0;
+            const lotTargetProfitPercent = this.hasProAccess ? Math.max(0, Number(lot.targetProfitPercent) || 0) : 0;
+            const targetNetPerItem = avgBasis * (1 + (lotTargetProfitPercent / 100));
+            itemUnitPrice = Math.max(0, calculateUnitPrice(1, targetNetPerItem, lotTaxPercent, lotShipping));
+          } else {
+            itemUnitPrice = Math.max(0, Number(isCurrentLot ? this.livePackPrice : lot.packPrice) || 0);
+          }
+          pushForecast(remainingItems, itemUnitPrice);
+
+          if (lot.lotType !== "singles") {
+            const packsPerBox = Math.max(0, Number(lot.packsPerBox) || 0);
+            if (packsPerBox > 0) {
+              const boxUnits = remainingItems / packsPerBox;
+              const boxUnitPrice = Math.max(0, Number(isCurrentLot ? this.liveBoxPriceSell : lot.boxPriceSell) || 0);
+              pushForecast(boxUnits, boxUnitPrice);
+            }
+
+            const lotTotalPacks = Math.max(0, Number(summary.totalPacks) || 0);
+            if (lotTotalPacks > 0) {
+              const lotSpotsTotal = calculateTotalSpots(lot.boxesPurchased, lot.spotsPerBox || DEFAULT_VALUES.SPOTS_PER_BOX);
+              const spotUnits = (remainingItems / lotTotalPacks) * lotSpotsTotal;
+              if (spotUnits > 0) {
+                const spotUnitPrice = Math.max(0, Number(isCurrentLot ? this.liveSpotPrice : lot.spotPrice) || 0);
+                pushForecast(spotUnits, spotUnitPrice);
+              }
+            }
+          }
+        }
+
+        const forecastScenarioCount = forecastProfits.length;
+        const forecastProfitAverage = forecastScenarioCount > 0
+          ? forecastProfits.reduce((sum, value) => sum + value, 0) / forecastScenarioCount
+          : null;
+        const forecastRevenueAverage = forecastScenarioCount > 0
+          ? forecastRevenues.reduce((sum, value) => sum + value, 0) / forecastScenarioCount
+          : null;
         const lotType: "Bulk" | "Singles" = lot.lotType === "singles" ? "Singles" : "Bulk";
         return {
           ...summary,
           lotId: summary.lotId,
           lotName: summary.lotName,
-          lotType
+          lotType,
+          forecastProfitAverage,
+          forecastRevenueAverage,
+          forecastScenarioCount
         };
       });
 

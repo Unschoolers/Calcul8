@@ -17,7 +17,8 @@ export const SalesWindow = {
   },
   data() {
     return {
-      salesHistoryRenderCount: SALES_HISTORY_INITIAL_RENDER_COUNT
+      salesHistoryRenderCount: SALES_HISTORY_INITIAL_RENDER_COUNT,
+      liveForecastScenarioIndex: 0
     };
   },
   computed: {
@@ -48,6 +49,50 @@ export const SalesWindow = {
       const limit = Math.max(0, Number(vm.salesHistoryRenderCount) || 0);
       const remaining = Math.max(0, sales.length - limit);
       return Math.min(SALES_HISTORY_RENDER_BATCH_SIZE, remaining);
+    },
+
+    visibleLiveForecastScenarios(this: Record<string, unknown>): Array<Record<string, unknown>> {
+      const vm = this as Record<string, unknown>;
+      const scenarios = Array.isArray(vm.liveForecastScenarios)
+        ? (vm.liveForecastScenarios as Array<Record<string, unknown>>)
+        : [];
+      if (scenarios.length === 0) return [];
+      const isMobile = Boolean(
+        (vm.$vuetify as { display?: { smAndDown?: boolean } } | undefined)?.display?.smAndDown
+      );
+      if (!isMobile) return scenarios;
+      const index = Math.max(0, Number(vm.liveForecastScenarioIndex) || 0) % scenarios.length;
+      return [scenarios[index]!];
+    },
+
+    hasMultipleLiveForecastScenarios(this: Record<string, unknown>): boolean {
+      const vm = this as Record<string, unknown>;
+      const scenarios = Array.isArray(vm.liveForecastScenarios)
+        ? (vm.liveForecastScenarios as Array<Record<string, unknown>>)
+        : [];
+      return scenarios.length > 1;
+    },
+
+    activeLiveForecastPosition(this: Record<string, unknown>): number {
+      const vm = this as Record<string, unknown>;
+      const scenarios = Array.isArray(vm.liveForecastScenarios)
+        ? (vm.liveForecastScenarios as Array<Record<string, unknown>>)
+        : [];
+      if (scenarios.length === 0) return 0;
+      const index = Math.max(0, Number(vm.liveForecastScenarioIndex) || 0) % scenarios.length;
+      return index + 1;
+    },
+
+    bulkBoxProgressText(this: Record<string, unknown>): string {
+      const packsPerBox = Math.max(0, Number(this.packsPerBox) || 0);
+      if (packsPerBox <= 0) return "";
+      const soldPacks = Math.max(0, Number(this.soldPacksCount) || 0);
+      const totalPacks = Math.max(0, Number(this.totalPacks) || 0);
+      const fmtUnits = this.fmtUnits as ((value: number | null | undefined) => string) | undefined;
+      const format = typeof fmtUnits === "function"
+        ? (value: number) => fmtUnits.call(this, value)
+        : (value: number) => String(value);
+      return `${format(soldPacks / packsPerBox)} / ${format(totalPacks / packsPerBox)} boxes`;
     }
   },
   watch: {
@@ -90,6 +135,14 @@ export const SalesWindow = {
       }
       if (value == null || Number.isNaN(Number(value))) return "0.00";
       return Number(value).toFixed(decimals);
+    },
+
+    fmtUnits(value: number | null | undefined): string {
+      const numeric = Number(value) || 0;
+      if (Math.abs(numeric - Math.round(numeric)) < 0.0001) {
+        return String(Math.round(numeric));
+      }
+      return this.fmtCurrency(numeric, 2);
     },
 
     isUnlinkedSinglesSale(sale: Sale): boolean {
@@ -181,6 +234,18 @@ export const SalesWindow = {
     loadMoreSalesHistory(): void {
       const vm = this as Record<string, unknown> & { salesHistoryRenderCount?: number };
       vm.salesHistoryRenderCount = Number(vm.salesHistoryRenderCount || 0) + SALES_HISTORY_RENDER_BATCH_SIZE;
+    },
+
+    cycleLiveForecastScenario(direction: -1 | 1): void {
+      const vm = this as Record<string, unknown> & {
+        liveForecastScenarios?: unknown;
+        liveForecastScenarioIndex?: number;
+      };
+      const scenarios = Array.isArray(vm.liveForecastScenarios) ? vm.liveForecastScenarios : [];
+      if (scenarios.length <= 1) return;
+      const current = Math.max(0, Number(vm.liveForecastScenarioIndex) || 0);
+      const next = (current + direction + scenarios.length) % scenarios.length;
+      vm.liveForecastScenarioIndex = next;
     }
   },
   mounted(this: Record<string, unknown>) {

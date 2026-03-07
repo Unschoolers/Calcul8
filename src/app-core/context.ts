@@ -88,11 +88,71 @@ export interface AppComputedState {
   requiredPackPriceFromNow: number | null;
   requiredBoxPriceFromNow: number | null;
   requiredSpotPriceFromNow: number | null;
+  liveForecastScenarios: Array<{
+    id: "item" | "box" | "rtyh" | "singles-suggested";
+    label: string;
+    unitLabel: "item" | "box" | "spot";
+    units: number;
+    unitPrice: number;
+    estimatedNetRemaining: number;
+    forecastRevenue: number;
+    forecastProfit: number;
+    forecastMarginPercent: number | null;
+  }>;
+  bestLiveForecastScenario: {
+    id: "item" | "box" | "rtyh" | "singles-suggested";
+    label: string;
+    unitLabel: "item" | "box" | "spot";
+    units: number;
+    unitPrice: number;
+    estimatedNetRemaining: number;
+    forecastRevenue: number;
+    forecastProfit: number;
+    forecastMarginPercent: number | null;
+  } | null;
+  portfolioForecastScenarios: Array<{
+    id: "item" | "box" | "rtyh";
+    label: string;
+    unitLabel: "item" | "box" | "spot";
+    units: number;
+    unitPrice: number;
+    estimatedNetRemaining: number;
+    forecastRevenue: number;
+    forecastProfit: number;
+    forecastMarginPercent: number | null;
+  }>;
+  averagePortfolioForecastScenario: {
+    label: string;
+    modeCount: number;
+    forecastRevenue: number;
+    forecastProfit: number;
+    forecastMarginPercent: number | null;
+  } | null;
+  bestPortfolioForecastScenario: {
+    id: "item" | "box" | "rtyh";
+    label: string;
+    unitLabel: "item" | "box" | "spot";
+    units: number;
+    unitPrice: number;
+    estimatedNetRemaining: number;
+    forecastRevenue: number;
+    forecastProfit: number;
+    forecastMarginPercent: number | null;
+  } | null;
   salesStatus: SalesStatus;
   sortedSales: Sale[];
   sparklineData: number[];
   sparklineGradient: string[];
-  allLotPerformance: Array<LotPerformanceSummary & { lotId: number; lotName: string; lotType: "Bulk" | "Singles" }>;
+  allLotPerformance: Array<
+    LotPerformanceSummary & {
+      lotId: number;
+      lotName: string;
+      lotType: "Bulk" | "Singles";
+      forecastProfitAverage: number | null;
+      forecastRevenueAverage: number | null;
+      forecastScenarioCount: number;
+    }
+  >;
   portfolioTotals: PortfolioTotals;
   hasPortfolioData: boolean;
 }
@@ -322,11 +382,71 @@ export interface AppComputedObject {
   requiredPackPriceFromNow(this: AppContext): number | null;
   requiredBoxPriceFromNow(this: AppContext): number | null;
   requiredSpotPriceFromNow(this: AppContext): number | null;
+  liveForecastScenarios(this: AppContext): Array<{
+    id: "item" | "box" | "rtyh" | "singles-suggested";
+    label: string;
+    unitLabel: "item" | "box" | "spot";
+    units: number;
+    unitPrice: number;
+    estimatedNetRemaining: number;
+    forecastRevenue: number;
+    forecastProfit: number;
+    forecastMarginPercent: number | null;
+  }>;
+  bestLiveForecastScenario(this: AppContext): {
+    id: "item" | "box" | "rtyh" | "singles-suggested";
+    label: string;
+    unitLabel: "item" | "box" | "spot";
+    units: number;
+    unitPrice: number;
+    estimatedNetRemaining: number;
+    forecastRevenue: number;
+    forecastProfit: number;
+    forecastMarginPercent: number | null;
+  } | null;
+  portfolioForecastScenarios(this: AppContext): Array<{
+    id: "item" | "box" | "rtyh";
+    label: string;
+    unitLabel: "item" | "box" | "spot";
+    units: number;
+    unitPrice: number;
+    estimatedNetRemaining: number;
+    forecastRevenue: number;
+    forecastProfit: number;
+    forecastMarginPercent: number | null;
+  }>;
+  averagePortfolioForecastScenario(this: AppContext): {
+    label: string;
+    modeCount: number;
+    forecastRevenue: number;
+    forecastProfit: number;
+    forecastMarginPercent: number | null;
+  } | null;
+  bestPortfolioForecastScenario(this: AppContext): {
+    id: "item" | "box" | "rtyh";
+    label: string;
+    unitLabel: "item" | "box" | "spot";
+    units: number;
+    unitPrice: number;
+    estimatedNetRemaining: number;
+    forecastRevenue: number;
+    forecastProfit: number;
+    forecastMarginPercent: number | null;
+  } | null;
   salesStatus(this: AppContext): SalesStatus;
   sortedSales(this: AppContext): Sale[];
   sparklineData(this: AppContext): number[];
   sparklineGradient(this: AppContext): string[];
-  allLotPerformance(this: AppContext): Array<LotPerformanceSummary & { lotId: number; lotName: string; lotType: "Bulk" | "Singles" }>;
+  allLotPerformance(this: AppContext): Array<
+    LotPerformanceSummary & {
+      lotId: number;
+      lotName: string;
+      lotType: "Bulk" | "Singles";
+      forecastProfitAverage: number | null;
+      forecastRevenueAverage: number | null;
+      forecastScenarioCount: number;
+    }
+  >;
   portfolioTotals(this: AppContext): PortfolioTotals;
   hasPortfolioData(this: AppContext): boolean;
 }

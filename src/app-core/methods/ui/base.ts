@@ -74,7 +74,11 @@ export const uiBaseMethods: ThisType<AppContext> & Pick<
   },
 
   togglePortfolioChartView(): void {
-    this.portfolioChartView = this.portfolioChartView === "breakdown" ? "trend" : "breakdown";
+    this.portfolioChartView = this.portfolioChartView === "breakdown"
+      ? "trend"
+      : this.portfolioChartView === "trend"
+        ? "sellthrough"
+        : "breakdown";
   },
 
   calculateSaleProfit(sale: Sale): number {

@@ -71,3 +71,42 @@ test("LiveWindow safeFixedForLive uses safeFixed when available and has fallback
   assert.equal(LiveWindow.methods.safeFixedForLive.call({} as never, 12.345, 2), "12.35");
   assert.equal(LiveWindow.methods.safeFixedForLive.call({} as never, Number.NaN, 2), "0.00");
 });
+
+test("LiveWindow live scenario helpers read forecast values from scenarios", () => {
+  const vm = {
+    liveForecastScenarios: [
+      { id: "item", forecastProfit: 123.45, forecastMarginPercent: 12.8 },
+      { id: "box", forecastProfit: -20, forecastMarginPercent: -5 }
+    ],
+    getLiveForecastScenario: LiveWindow.methods.getLiveForecastScenario
+  };
+
+  assert.equal(LiveWindow.methods.liveScenarioProfit.call(vm as never, "item"), 123.45);
+  assert.equal(LiveWindow.methods.liveScenarioPercent.call(vm as never, "item"), 12.8);
+  assert.equal(LiveWindow.methods.liveScenarioProfit.call(vm as never, "rtyh"), null);
+});
+
+test("LiveWindow needed-price forecast helpers compute from remaining units", () => {
+  const netFromGross = (gross: number, shipping = 0, orders = 1) => gross - ((shipping || 0) * (orders || 1));
+  const vm = {
+    requiredPackPriceFromNow: 81,
+    requiredBoxPriceFromNow: 120,
+    requiredSpotPriceFromNow: null,
+    remainingPacksCount: 10,
+    remainingBoxesEquivalent: 2,
+    remainingSpotsEquivalent: 0,
+    totalRevenue: 100,
+    totalCaseCost: 500,
+    sellingShippingPerOrder: 1,
+    netFromGross,
+    getNeededPriceForMode: LiveWindow.methods.getNeededPriceForMode,
+    getRemainingUnitsForMode: LiveWindow.methods.getRemainingUnitsForMode,
+    liveScenarioProfitAtNeeded: LiveWindow.methods.liveScenarioProfitAtNeeded
+  };
+
+  assert.equal(LiveWindow.methods.getNeededPriceForMode.call(vm as never, "item"), 81);
+  assert.equal(LiveWindow.methods.getRemainingUnitsForMode.call(vm as never, "box"), 2);
+  assert.equal(LiveWindow.methods.liveScenarioProfitAtNeeded.call(vm as never, "item"), 400);
+  assert.equal(LiveWindow.methods.liveScenarioPercentAtNeeded.call(vm as never, "item"), 80);
+  assert.equal(LiveWindow.methods.liveScenarioProfitAtNeeded.call(vm as never, "rtyh"), null);
+});

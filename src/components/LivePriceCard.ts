@@ -38,6 +38,22 @@ export const LivePriceCard = defineComponent({
       type: Number as PropType<number | null>,
       default: null
     },
+    forecastProfit: {
+      type: Number as PropType<number | null>,
+      default: null
+    },
+    forecastPercent: {
+      type: Number as PropType<number | null>,
+      default: null
+    },
+    neededProfit: {
+      type: Number as PropType<number | null>,
+      default: null
+    },
+    neededPercent: {
+      type: Number as PropType<number | null>,
+      default: null
+    },
     profitBasis: {
       type: Number as PropType<number | null>,
       default: null
@@ -67,6 +83,33 @@ export const LivePriceCard = defineComponent({
       const profit = this.profitAt(price);
       if (!Number.isFinite(basis) || basis <= 0) return profit >= 0 ? 100 : 0;
       return (profit / basis) * 100;
+    },
+    displayProfit(): number {
+      const explicit = Number(this.forecastProfit);
+      if (Number.isFinite(explicit)) return explicit;
+      return this.profitAt(this.modelValue);
+    },
+    displayProfitPercent(): number {
+      const explicit = Number(this.forecastPercent);
+      if (Number.isFinite(explicit)) return explicit;
+      return this.profitPercentAt(this.modelValue);
+    },
+    neededDisplayProfit(): number | null {
+      const explicit = Number(this.neededProfit);
+      if (Number.isFinite(explicit)) return explicit;
+      if (this.avgPriceNeeded == null) return null;
+      return this.profitAt(this.avgPriceNeeded);
+    },
+    neededDisplayPercent(): number | null {
+      const explicit = Number(this.neededPercent);
+      if (Number.isFinite(explicit)) return explicit;
+      if (this.avgPriceNeeded == null) return null;
+      return this.profitPercentAt(this.avgPriceNeeded);
+    },
+    deltaVsNeeded(): number | null {
+      const needed = this.neededDisplayProfit();
+      if (needed == null) return null;
+      return this.displayProfit() - needed;
     }
   },
   template: `
@@ -83,12 +126,12 @@ export const LivePriceCard = defineComponent({
           <v-col cols="6" class="text-center">
             <div class="text-h4 font-weight-bold mb-1">\${{ modelValue }}</div>
             <v-chip
-              :color="profitAt(modelValue) >= 0 ? 'success' : 'error'"
+              :color="displayProfit() >= 0 ? 'success' : 'error'"
               size="small"
               class="font-weight-bold"
             >
-              {{ profitAt(modelValue) >= 0 ? '+' : '' }}\${{ formatAt(profitAt(modelValue)) }}
-              ({{ formatAt(profitPercentAt(modelValue), 1) }}%)
+              {{ displayProfit() >= 0 ? '+' : '' }}\${{ formatAt(displayProfit()) }}
+              ({{ formatAt(displayProfitPercent(), 1) }}%)
             </v-chip>
           </v-col>
 
@@ -118,11 +161,26 @@ export const LivePriceCard = defineComponent({
 
         <v-divider class="my-3"></v-divider>
         <div class="text-caption text-medium-emphasis text-center mb-2">
-          Avg price needed considering sales:
-          <span class="font-weight-bold">
-            <template v-if="avgPriceNeeded === null">N/A</template>
-            <template v-else>\${{ formatAt(avgPriceNeeded, 0) }}</template>
-          </span>
+          <template v-if="avgPriceNeeded == null || neededDisplayProfit() == null || deltaVsNeeded() == null">
+            Need N/A
+          </template>
+          <template v-else>
+            Min to target \${{ formatAt(avgPriceNeeded, 0) }} →
+            <span
+              class="font-weight-bold"
+              :class="(neededDisplayProfit() || 0) >= 0 ? 'text-success' : 'text-error'"
+            >
+              {{ (neededDisplayProfit() || 0) >= 0 ? '+' : '' }}\${{ formatAt(neededDisplayProfit() || 0) }}
+              ({{ formatAt(neededDisplayPercent() || 0, 1) }}%)
+            </span>
+            · Δ
+            <span
+              class="font-weight-bold"
+              :class="(deltaVsNeeded() || 0) >= 0 ? 'text-success' : 'text-error'"
+            >
+              {{ (deltaVsNeeded() || 0) >= 0 ? '+' : '' }}\${{ formatAt(deltaVsNeeded() || 0) }}
+            </span>
+          </template>
         </div>
         <v-row dense class="text-center">
           <v-col cols="6">

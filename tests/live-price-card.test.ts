@@ -6,6 +6,8 @@ type CardCtx = {
   modelValue: number;
   units: number;
   profitBasis: number | null;
+  forecastProfit?: number | null;
+  forecastPercent?: number | null;
   calculateProfit: ((units: number, pricePerUnit: number) => number) | null;
   safeFixed: ((value: number, decimals?: number) => string) | null;
   $emit: ReturnType<typeof vi.fn>;
@@ -77,3 +79,36 @@ test("profitPercentAt handles positive basis and zero/invalid basis", () => {
   assert.equal(profitPercentAt.call(context, 14), 0);
 });
 
+test("displayProfit and displayProfitPercent prefer explicit forecast values", () => {
+  const context = createContext({
+    modelValue: 85,
+    calculateProfit: (_units, pricePerUnit) => pricePerUnit - 10,
+    profitBasis: 100,
+    forecastProfit: 136.33,
+    forecastPercent: 12.8
+  });
+
+  const displayProfit = getMethod<(this: CardCtx) => number>("displayProfit");
+  const displayProfitPercent = getMethod<(this: CardCtx) => number>("displayProfitPercent");
+  assert.equal(displayProfit.call(context), 136.33);
+  assert.equal(displayProfitPercent.call(context), 12.8);
+});
+
+test("needed display helpers and delta use needed values", () => {
+  const context = createContext({
+    modelValue: 85,
+    forecastProfit: 174.88,
+    forecastPercent: 16.5,
+    avgPriceNeeded: 81,
+    neededProfit: 120,
+    neededPercent: 15
+  });
+
+  const neededDisplayProfit = getMethod<(this: CardCtx) => number | null>("neededDisplayProfit");
+  const neededDisplayPercent = getMethod<(this: CardCtx) => number | null>("neededDisplayPercent");
+  const deltaVsNeeded = getMethod<(this: CardCtx) => number | null>("deltaVsNeeded");
+
+  assert.equal(neededDisplayProfit.call(context), 120);
+  assert.equal(neededDisplayPercent.call(context), 15);
+  assert.ok(Math.abs((deltaVsNeeded.call(context) || 0) - 54.88) < 0.000001);
+});

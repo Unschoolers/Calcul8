@@ -79,6 +79,64 @@
   color: rgba(var(--v-theme-on-surface), 0.72);
 }
 
+.portfolio-kpi-carousel-shell {
+  margin-bottom: 0.2rem;
+}
+
+.portfolio-kpi-pager-head {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.2rem;
+  margin-bottom: 0.22rem;
+}
+
+.portfolio-kpi-pager-btn {
+  width: 22px !important;
+  min-width: 22px !important;
+  height: 22px !important;
+  min-height: 22px !important;
+}
+
+.portfolio-kpi-pager-index {
+  min-width: 2.4rem;
+  text-align: center;
+  font-size: 0.74rem;
+  color: rgba(var(--v-theme-on-surface), 0.7);
+}
+
+.portfolio-kpi-pager-window {
+  margin: 0;
+}
+
+.portfolio-kpi-slide {
+  width: 100%;
+}
+
+.portfolio-kpi-pager-dots {
+  margin-top: 0.34rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.34rem;
+}
+
+.portfolio-kpi-pager-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  border: 0;
+  padding: 0;
+  background: rgba(var(--v-theme-on-surface), 0.28);
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.15s ease;
+}
+
+.portfolio-kpi-pager-dot.is-active {
+  background: rgba(var(--v-theme-primary), 0.92);
+  transform: scale(1.15);
+}
+
 .portfolio-report-table {
   width: 100%;
   min-width: 720px;
@@ -105,6 +163,11 @@
 }
 
 @media (max-width: 600px) {
+  .portfolio-kpi-pager-index {
+    font-size: 0.7rem;
+    min-width: 2.2rem;
+  }
+
   .portfolio-kpi-value {
     font-size: 2rem !important;
   }

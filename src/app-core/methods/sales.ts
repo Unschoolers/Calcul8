@@ -964,6 +964,7 @@ export const salesMethods: ThisType<AppContext> & Pick<
 
     const netByDate = new Map<string, number>();
     const costByDate = new Map<string, number>();
+    const soldByDate = new Map<string, number>();
 
     for (const lot of filteredLots) {
       const sales = salesByLotId.get(lot.id) ?? [];
@@ -991,14 +992,78 @@ export const salesMethods: ThisType<AppContext> & Pick<
           1
         );
         netByDate.set(saleDate, (netByDate.get(saleDate) ?? 0) + netRevenue);
+        const soldUnits = Math.max(0, Number(sale.packsCount) || 0);
+        if (soldUnits > 0) {
+          soldByDate.set(saleDate, (soldByDate.get(saleDate) ?? 0) + soldUnits);
+        }
       }
     }
 
-    const sortedDates = [...new Set([...costByDate.keys(), ...netByDate.keys()])].sort(
+    const sortedDates = [...new Set([...costByDate.keys(), ...netByDate.keys(), ...soldByDate.keys()])].sort(
       (a, b) => new Date(a).getTime() - new Date(b).getTime()
     );
 
     if (sortedDates.length === 0) return;
+
+    if (this.portfolioChartView === "sellthrough") {
+      const totalSelectedItems = filteredLots.reduce((sum, lot) => {
+        const performance = performanceByLotId.get(lot.id);
+        return sum + Math.max(0, Number(performance?.totalPacks) || 0);
+      }, 0);
+      if (totalSelectedItems <= 0) return;
+
+      let cumulativeSold = 0;
+      for (const date of sortedDates) {
+        cumulativeSold += soldByDate.get(date) ?? 0;
+        labels.push(this.formatDate(date));
+        values.push((cumulativeSold / totalSelectedItems) * 100);
+      }
+
+      const maxValue = values.reduce((max, value) => Math.max(max, value), 0);
+      const yMax = Math.max(100, Math.ceil(maxValue / 10) * 10);
+
+      this.portfolioChart = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels,
+          datasets: [
+            {
+              label: "Sell-through %",
+              data: values,
+              backgroundColor: "rgba(247, 181, 0, 0.35)",
+              borderColor: "#F7B500",
+              borderWidth: 1.5,
+              borderRadius: 4,
+              maxBarThickness: 18
+            }
+          ]
+        },
+        options: {
+          animation: false,
+          responsive: true,
+          maintainAspectRatio: true,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (context) => `Sell-through: ${this.formatCurrency(Number(context.parsed?.y || 0), 1)}%`
+              }
+            }
+          },
+          scales: {
+            x: { grid: { display: false } },
+            y: {
+              min: 0,
+              max: yMax,
+              ticks: {
+                callback: (value) => `${this.formatCurrency(Number(value), 0)}%`
+              }
+            }
+          }
+        }
+      });
+      return;
+    }
 
     let cumulativeProfit = 0;
     for (const date of sortedDates) {
@@ -1006,6 +1071,14 @@ export const salesMethods: ThisType<AppContext> & Pick<
       labels.push(this.formatDate(date));
       values.push(cumulativeProfit);
     }
+
+    const targetProfit = filteredLots.reduce((sum, lot) => {
+      const performance = performanceByLotId.get(lot.id);
+      if (!performance) return sum;
+      const lotTargetPercent = Math.max(0, Number(lot.targetProfitPercent) || 0);
+      return sum + ((performance.totalCost || 0) * (lotTargetPercent / 100));
+    }, 0);
+    const targetValues = labels.map(() => targetProfit);
 
     const finalProfit = values[values.length - 1] ?? 0;
     const lineColor = finalProfit >= 0 ? "#34C759" : "#FF3B30";
@@ -1017,6 +1090,7 @@ export const salesMethods: ThisType<AppContext> & Pick<
         labels,
         datasets: [
           {
+            label: "Actual cumulative P/L",
             data: values,
             borderColor: lineColor,
             backgroundColor: fillColor,
@@ -1024,6 +1098,18 @@ export const salesMethods: ThisType<AppContext> & Pick<
             pointRadius: 2,
             tension: 0.25,
             fill: true
+          },
+          {
+            label: "Target P/L",
+            data: targetValues,
+            borderColor: "#F7B500",
+            backgroundColor: "transparent",
+            borderWidth: 2,
+            borderDash: [7, 5],
+            pointRadius: 0,
+            pointHoverRadius: 0,
+            tension: 0,
+            fill: false
           }
         ]
       },
@@ -1032,10 +1118,20 @@ export const salesMethods: ThisType<AppContext> & Pick<
         responsive: true,
         maintainAspectRatio: true,
         plugins: {
-          legend: { display: false },
+          legend: {
+            display: true,
+            position: "top",
+            labels: {
+              boxWidth: 14,
+              usePointStyle: true
+            }
+          },
           tooltip: {
             callbacks: {
-              label: (context) => `Cumulative P/L: $${this.formatCurrency(Number(context.parsed?.y || 0))}`
+              label: (context) => {
+                const datasetLabel = String(context.dataset?.label || "Value");
+                return `${datasetLabel}: $${this.formatCurrency(Number(context.parsed?.y || 0))}`;
+              }
             }
           }
         },

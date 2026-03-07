@@ -74,6 +74,25 @@ test("SalesWindow status tone and progress colors map expected values", () => {
   assert.equal(SalesWindow.methods.salesStatusProgressColor.call(vm as never), "primary");
 });
 
+test("SalesWindow bulkBoxProgressText returns formatted box-equivalent progress", () => {
+  const vm = {
+    packsPerBox: 16,
+    soldPacksCount: 192,
+    totalPacks: 256,
+    fmtUnits: SalesWindow.methods.fmtUnits,
+    fmtCurrency: SalesWindow.methods.fmtCurrency,
+    formatCurrency: (value: number | null | undefined, decimals = 2) => Number(value || 0).toFixed(decimals)
+  };
+  assert.equal(SalesWindow.computed.bulkBoxProgressText.call(vm as never), "12 / 16 boxes");
+
+  const noBoxVm = {
+    packsPerBox: 0,
+    soldPacksCount: 10,
+    totalPacks: 20
+  };
+  assert.equal(SalesWindow.computed.bulkBoxProgressText.call(noBoxVm as never), "");
+});
+
 test("SalesWindow fmtCurrency uses context formatter and fallback formatting", () => {
   const vmWithFormatter = {
     formatCurrency: (value: number | null | undefined, decimals = 2) => `fmt:${value}:${decimals}`
@@ -164,4 +183,43 @@ test("SalesWindow render count helpers mutate expected values", () => {
   assert.equal(vm.salesHistoryRenderCount, 80);
   SalesWindow.methods.loadMoreSalesHistory.call(vm as never);
   assert.equal(vm.salesHistoryRenderCount, 160);
+});
+
+test("SalesWindow forecast visibility shows one scenario on mobile and all on desktop", () => {
+  const scenarios = [
+    { id: "item" },
+    { id: "box" },
+    { id: "rtyh" }
+  ];
+  const mobileVm = {
+    liveForecastScenarios: scenarios,
+    liveForecastScenarioIndex: 1,
+    $vuetify: { display: { smAndDown: true } }
+  };
+  const desktopVm = {
+    liveForecastScenarios: scenarios,
+    liveForecastScenarioIndex: 1,
+    $vuetify: { display: { smAndDown: false } }
+  };
+
+  const mobileVisible = SalesWindow.computed.visibleLiveForecastScenarios.call(mobileVm as never);
+  const desktopVisible = SalesWindow.computed.visibleLiveForecastScenarios.call(desktopVm as never);
+
+  assert.equal(mobileVisible.length, 1);
+  assert.equal(String(mobileVisible[0]?.id), "box");
+  assert.equal(desktopVisible.length, 3);
+  assert.equal(SalesWindow.computed.hasMultipleLiveForecastScenarios.call(mobileVm as never), true);
+  assert.equal(SalesWindow.computed.activeLiveForecastPosition.call(mobileVm as never), 2);
+});
+
+test("SalesWindow forecast carousel cycles index with wrap-around", () => {
+  const vm = {
+    liveForecastScenarios: [{ id: "item" }, { id: "box" }, { id: "rtyh" }],
+    liveForecastScenarioIndex: 0
+  };
+
+  SalesWindow.methods.cycleLiveForecastScenario.call(vm as never, -1);
+  assert.equal(vm.liveForecastScenarioIndex, 2);
+  SalesWindow.methods.cycleLiveForecastScenario.call(vm as never, 1);
+  assert.equal(vm.liveForecastScenarioIndex, 0);
 });
