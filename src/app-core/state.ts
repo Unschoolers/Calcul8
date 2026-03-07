@@ -5,16 +5,8 @@ import {
   readStorageWithLegacy,
   STORAGE_KEYS
 } from "./storageKeys.ts";
+import { resolveDefaultSinglesCatalogSourceFromEnv } from "./shared/singles-catalog-source.ts";
 import type { AppState } from "../types/app.ts";
-
-function resolveDefaultSinglesCatalogSourceFromEnv(): "ua" | "pokemon" | "none" {
-  const raw = String((import.meta.env.VITE_CARDS_SEARCH_GAME as string | undefined) || "ua")
-    .trim()
-    .toLowerCase();
-  if (raw === "none") return "none";
-  if (raw === "pokemon" || raw === "pkmn") return "pokemon";
-  return "ua";
-}
 
 function getLocalTodayDate(): string {
   const date = new Date();

@@ -1270,6 +1270,43 @@ test("initPortfolioChart creates breakdown doughnut chart", () => {
   assert.equal(config.type, "doughnut");
 });
 
+test("initPortfolioChart uses right-side legend for mobile breakdown", () => {
+  const portfolioCanvas = new MockHtmlCanvasElement();
+  const ctx = createContext({
+    currentTab: "portfolio",
+    portfolioChartView: "breakdown",
+    $vuetify: {
+      display: {
+        smAndDown: true
+      }
+    },
+    $refs: {
+      portfolioWindow: {
+        $refs: {
+          portfolioChartCanvas: portfolioCanvas
+        }
+      }
+    }
+  });
+
+  salesMethods.initPortfolioChart.call(ctx as never);
+  assert.equal(chartCtorMock.mock.calls.length, 1);
+  const config = chartCtorMock.mock.calls[0]?.[1] as {
+    type: string;
+    data: { labels: string[] };
+    options: {
+      maintainAspectRatio: boolean;
+      aspectRatio: number;
+      plugins: { legend: { position: string } };
+    };
+  };
+  assert.equal(config.type, "doughnut");
+  assert.equal(config.options.plugins.legend.position, "right");
+  assert.equal(config.options.maintainAspectRatio, true);
+  assert.equal(config.options.aspectRatio, 2);
+  assert.equal(config.data.labels[0], "Lot 1");
+});
+
 test("initPortfolioChart creates cumulative trend chart", () => {
   const portfolioCanvas = new MockHtmlCanvasElement();
   const ctx = createContext({

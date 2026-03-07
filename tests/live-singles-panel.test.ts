@@ -82,6 +82,51 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+test("panel helper methods and aggregate computed totals cover fallback branches", () => {
+  const context = createContext({
+    currentLotType: "bulk",
+    effectiveLiveSinglesIds: [1, 2],
+    effectiveLiveSinglesEntries: [
+      entry({ id: 1, cost: 10, currency: undefined, marketValue: 0 }),
+      entry({ id: 2, cost: 2, currency: "CAD", marketValue: 5 })
+    ],
+    liveSinglesIndividualPrices: { 1: 12, 2: 7 },
+    singlesSoldCountByPurchaseId: { 1: 3 },
+    currency: "USD",
+    sellingCurrency: "CAD",
+    exchangeRate: 2,
+    netFromGross: (gross) => gross - 1
+  });
+
+  assert.deepEqual(getComputed<Array<{ title: string }>>("liveSinglesAutocompleteItems").call(context), []);
+  assert.equal(getComputed<number>("liveSinglesSelectedCount").call(context), 2);
+  assert.equal(getComputed<number>("liveSinglesIndividualTotalPrice").call(context), 19);
+  assert.equal(getComputed<number>("liveSinglesIndividualTotalProfit").call(context), -8);
+  assert.equal(getComputed<number>("liveSinglesIndividualTotalProfitPercent").call(context), -32);
+
+  assert.equal(getMethod<(this: PanelCtx, e: SinglesPurchaseEntry) => string>("getStockLabel").call(context, entry({ id: 1, quantity: 6 })), "3/6");
+  assert.equal(getMethod<(this: PanelCtx, e: SinglesPurchaseEntry) => number>("getEntryCostInSellingCurrency").call(context, entry({ id: 1, cost: 10, currency: undefined })), 20);
+  assert.equal(getMethod<(this: PanelCtx, e: SinglesPurchaseEntry) => number>("getIndividualProfit").call(context, entry({ id: 1, marketValue: 0, cost: 10, currency: undefined })), -9);
+  assert.equal(getMethod<(this: PanelCtx, e: SinglesPurchaseEntry) => number>("getIndividualProfitPercent").call(context, entry({ id: 1, marketValue: 0, cost: 10, currency: undefined })), -45);
+  assert.equal(getMethod<(this: PanelCtx, value: number | null | undefined, d?: number) => string>("fmtCurrency").call(context, 3.456, 2), "3.46");
+
+  context.safeFixed = undefined as unknown as PanelCtx["safeFixed"];
+  assert.equal(getMethod<(this: PanelCtx, value: number | null | undefined, d?: number) => string>("fmtCurrency").call(context, Number.NaN, 2), "0.00");
+  assert.equal(getMethod<(this: PanelCtx, value: number | null | undefined, d?: number) => string>("fmtCurrency").call(context, 12.345, 1), "12.3");
+
+  context.calculatePriceForUnits = undefined as unknown as PanelCtx["calculatePriceForUnits"];
+  context.targetProfitPercent = 12;
+  assert.equal(getMethod<(this: PanelCtx, e: SinglesPurchaseEntry) => number>("getSuggestedIndividualPrice").call(context, entry({ id: 8, marketValue: 0, cost: 10, currency: undefined })), 22.4);
+
+  context.netFromGross = undefined as unknown as PanelCtx["netFromGross"];
+  context.liveSinglesBundlePrice = 25;
+  assert.equal(getComputed<number>("liveSinglesBundleProfit").call(context), 0);
+  assert.equal(getMethod<(this: PanelCtx, e: SinglesPurchaseEntry) => number>("getIndividualProfit").call(context, entry({ id: 2, marketValue: 5, cost: 2 })), 2);
+
+  context.effectiveLiveSinglesIds = undefined as unknown as PanelCtx["effectiveLiveSinglesIds"];
+  getMethod<(this: PanelCtx) => void>("syncLiveSinglesPricingState").call(context);
+});
+
 test("live singles autocomplete filters stock and sorts by title", () => {
   const context = createContext({
     effectiveLiveSinglesIds: [2],
@@ -234,4 +279,64 @@ test("apply/reset pricing and storage hooks behave as expected", () => {
   context.loadLiveSinglesModeFromStorage = vi.fn();
   (LiveSinglesPanel.mounted as (this: PanelCtx) => void).call(context);
   assert.equal((context.loadLiveSinglesModeFromStorage as ReturnType<typeof vi.fn>).mock.calls.length, 1);
+});
+
+test("guard paths and setup paths behave safely for live singles panel", () => {
+  const context = createContext({
+    effectiveLiveSinglesEntries: [entry({ id: 9, marketValue: 6, cost: 1 })],
+    liveSinglesIndividualPrices: {}
+  });
+
+  getMethod<(this: PanelCtx, entryId: number, value: unknown) => void>("onIndividualPriceInput").call(context, 0, 3);
+  assert.deepEqual(context.liveSinglesIndividualPrices, {});
+
+  getMethod<(this: PanelCtx, entryId: number, direction: -1 | 1) => void>("adjustIndividualPrice").call(context, 9, 1);
+  assert.equal((context.liveSinglesIndividualPrices as Record<number, number>)[9], 7.6);
+
+  context.liveSinglesSelectedId = 0;
+  getMethod<(this: PanelCtx) => void>("addLiveSinglesFromPicker").call(context);
+  assert.equal(context.addLiveSinglesSelection.mock.calls.length, 0);
+
+  context.effectiveLiveSinglesEntries = [];
+  context.liveSinglesIndividualPrices = { 9: 99 };
+  context.liveSinglesBundlePrice = 99;
+  context.liveSinglesBundleSelectionKey = "9";
+  getMethod<(this: PanelCtx) => void>("panelApplySuggestedLiveSinglesPricing").call(context);
+  assert.deepEqual(context.liveSinglesIndividualPrices, {});
+  assert.equal(context.liveSinglesBundlePrice, null);
+  assert.equal(context.liveSinglesBundleSelectionKey, "");
+
+  context.effectiveLiveSinglesEntries = undefined as unknown as PanelCtx["effectiveLiveSinglesEntries"];
+  getMethod<(this: PanelCtx) => void>("panelApplySuggestedLiveSinglesPricing").call(context);
+  assert.deepEqual(context.liveSinglesIndividualPrices, {});
+
+  assert.equal(getMethod<(this: PanelCtx, entryId: number) => { id: number; share: number; percent: number } | null>("getBundleAllocationForEntry").call(context, -1), null);
+  assert.equal(getMethod<(this: PanelCtx, entryId: number) => { id: number; share: number; percent: number } | null>("getBundleAllocationForEntry").call(context, 9), null);
+
+  const getItemThrow = vi.fn(() => {
+    throw new Error("read fail");
+  });
+  const setItemThrow = vi.fn(() => {
+    throw new Error("write fail");
+  });
+  vi.stubGlobal("localStorage", {
+    getItem: getItemThrow,
+    setItem: setItemThrow
+  });
+
+  getMethod<(this: PanelCtx) => void>("loadLiveSinglesModeFromStorage").call(context);
+  context.liveSinglesPricingMode = "bundle";
+  getMethod<(this: PanelCtx) => void>("persistLiveSinglesMode").call(context);
+  assert.equal(context.liveSinglesPricingMode, "bundle");
+
+  const defaultCtxFactory = (LiveSinglesPanel.props as Record<string, { default?: () => unknown }>).ctx.default;
+  assert.equal(typeof defaultCtxFactory, "function");
+  assert.equal(defaultCtxFactory?.(), undefined);
+
+  const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+  const bridge = (LiveSinglesPanel.setup as (props: { ctx?: Record<string, unknown> }) => Record<string, unknown>)({
+    ctx: { sampleValue: 42 }
+  });
+  warnSpy.mockRestore();
+  assert.equal(bridge.sampleValue, 42);
 });

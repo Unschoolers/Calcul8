@@ -2,9 +2,13 @@ import template from "./PortfolioWindow.html?raw";
 import "./PortfolioWindow.css";
 import { inject, type PropType } from "vue";
 import { createWindowContextBridge } from "./contextBridge.ts";
+import { PortfolioKpiCard } from "./PortfolioKpiCard.ts";
 
 export const PortfolioWindow = {
   name: "PortfolioWindow",
+  components: {
+    PortfolioKpiCard
+  },
   props: {
     ctx: {
       type: Object as PropType<Record<string, unknown>>,
@@ -53,10 +57,29 @@ export const PortfolioWindow = {
       this.mobileKpiIndex = next;
     },
 
-    mobileKpiDisplayIndex(this: Record<string, unknown>): number {
-      const getIndex = this.mobileKpiEffectiveIndex as (() => number) | undefined;
-      const current = typeof getIndex === "function" ? getIndex.call(this) : 0;
-      return current + 1;
+    portfolioLotFilterPrimaryLabel(this: Record<string, unknown>): string {
+      const selected = Array.isArray(this.portfolioLotFilterIds)
+        ? this.portfolioLotFilterIds
+        : [];
+      const items = Array.isArray(this.portfolioLotFilterItems)
+        ? this.portfolioLotFilterItems as Array<{ title?: string; value?: number }>
+        : [];
+
+      if (selected.length === 0) {
+        return "All lots";
+      }
+
+      const first = items.find((item) => Number(item?.value) === Number(selected[0]));
+      return typeof first?.title === "string" && first.title.trim().length > 0
+        ? first.title
+        : "Selected lots";
+    },
+
+    portfolioLotFilterRemainingCount(this: Record<string, unknown>): number {
+      const selected = Array.isArray(this.portfolioLotFilterIds)
+        ? this.portfolioLotFilterIds
+        : [];
+      return Math.max(0, selected.length - 1);
     },
 
     nextPortfolioChartView(this: Record<string, unknown>): "breakdown" | "trend" | "sellthrough" {

@@ -15,6 +15,7 @@ import type {
 } from "../../types/app.ts";
 import type { AppContext, AppMethodState } from "../context.ts";
 import { getTodayDate } from "./config-shared.ts";
+import { toPositiveIntOrNull as normalizeSinglesPurchaseEntryId } from "../shared/singles-normalizers.ts";
 
 function firstFiniteNonNegative(...values: Array<number | null | undefined>): number | null {
   for (const value of values) {
@@ -94,6 +95,11 @@ function safeDestroyChart(chart: Chart | null): void {
   }
 }
 
+function isSmallDisplay(context: AppContext): boolean {
+  const vuetify = (context as unknown as { $vuetify?: { display?: { smAndDown?: boolean } } }).$vuetify;
+  return Boolean(vuetify?.display?.smAndDown);
+}
+
 function refreshChartsForCurrentTab(context: AppContext): void {
   const runRefresh = () => {
     if (context.currentTab === "sales") {
@@ -167,12 +173,6 @@ function resolveCanvasRef(
   }
 
   return null;
-}
-
-function normalizeSinglesPurchaseEntryId(value: unknown): number | null {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed) || parsed <= 0) return null;
-  return Math.floor(parsed);
 }
 
 function normalizeWholeQuantity(value: unknown): number | null {
@@ -909,7 +909,8 @@ export const salesMethods: ThisType<AppContext> & Pick<
       const rows = this.allLotPerformance.filter((row) => row.totalRevenue > 0);
       if (rows.length === 0) return;
 
-      const labels = rows.map((row) => `${row.lotName} • $${this.formatCurrency(row.totalRevenue)}`);
+      const compactLegend = isSmallDisplay(this);
+      const labels = rows.map((row) => row.lotName);
       const data = rows.map((row) => row.totalRevenue);
       const colors = rows.map((_, index) => PORTFOLIO_CHART_COLORS[index % PORTFOLIO_CHART_COLORS.length]);
 
@@ -929,17 +930,23 @@ export const salesMethods: ThisType<AppContext> & Pick<
           animation: false,
           responsive: true,
           maintainAspectRatio: true,
+          aspectRatio: 2,
           plugins: {
             legend: {
-              position: "bottom",
+              position: compactLegend ? "right" : "bottom",
               labels: {
-                padding: 14,
-                font: { size: 12 }
+                padding: compactLegend ? 10 : 14,
+                font: { size: compactLegend ? 11 : 12 },
+                boxWidth: compactLegend ? 10 : 14
               }
             },
             tooltip: {
               callbacks: {
-                label: (context) => `${context.label}`
+                label: (context) => {
+                  const row = rows[context.dataIndex ?? 0];
+                  if (!row) return String(context.label ?? "");
+                  return `${row.lotName}: $${this.formatCurrency(row.totalRevenue)}`;
+                }
               }
             }
           }

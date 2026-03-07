@@ -9,6 +9,7 @@ import {
   readStorageWithLegacy,
   STORAGE_KEYS
 } from "../storageKeys.ts";
+import { normalizeSinglesCatalogSource } from "../shared/singles-catalog-source.ts";
 import { type ConfigMethodSubset, getTodayDate, inferDateFromLotId, toDateOnly } from "./config-shared.ts";
 
 type ExchangeRateCacheRecord = {
@@ -19,26 +20,6 @@ type ExchangeRateCacheRecord = {
 const EXCHANGE_RATE_CACHE_KEY = STORAGE_KEYS.EXCHANGE_RATE_CACHE;
 const EXCHANGE_RATE_CACHE_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
 const LEGACY_KEYS = getLegacyStorageKeys();
-
-function resolveDefaultSinglesCatalogSourceFromEnv(): "ua" | "pokemon" | "none" {
-  const raw = String((import.meta.env.VITE_CARDS_SEARCH_GAME as string | undefined) || "ua")
-    .trim()
-    .toLowerCase();
-  if (raw === "none") return "none";
-  if (raw === "pokemon" || raw === "pkmn") return "pokemon";
-  return "ua";
-}
-
-function normalizeSinglesCatalogSource(
-  value: unknown,
-  fallback: "ua" | "pokemon" | "none" = resolveDefaultSinglesCatalogSourceFromEnv()
-): "ua" | "pokemon" | "none" {
-  const raw = String(value || "").trim().toLowerCase();
-  if (raw === "none") return "none";
-  if (raw === "pokemon" || raw === "pkmn") return "pokemon";
-  if (raw === "ua") return "ua";
-  return fallback;
-}
 
 function isExchangeRateCacheRecord(value: unknown): value is ExchangeRateCacheRecord {
   if (!value || typeof value !== "object") return false;

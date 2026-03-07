@@ -30,13 +30,22 @@
             item-value="value"
             label="Search card"
             placeholder="Type name or number"
+            name="live-singles-card-search"
+            autocomplete="new-password"
+            autocapitalize="off"
+            autocorrect="off"
+            spellcheck="false"
             variant="outlined"
             density="compact"
             hide-details
             clearable
           >
             <template #item="{ props, item }">
-              <v-list-item v-bind="props">
+              <v-list-item
+                v-bind="props"
+                :title="undefined"
+                :subtitle="undefined"
+              >
                 <v-list-item-title class="text-body-2">{{ item.raw.title }}</v-list-item-title>
                 <v-list-item-subtitle class="text-caption">{{ item.raw.subtitle }}</v-list-item-subtitle>
               </v-list-item>

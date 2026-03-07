@@ -8,6 +8,40 @@
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
 }
 
+.portfolio-filter-selection {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  max-width: 210px;
+}
+
+.portfolio-filter-selection-chip {
+  max-width: 158px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.11);
+}
+
+.portfolio-filter-selection-chip .v-chip__content {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.portfolio-filter-selection-chip--more {
+  max-width: none;
+  flex: 0 0 auto;
+}
+
+@media (max-width: 600px) {
+  .portfolio-filter-selection {
+    max-width: 165px;
+  }
+
+  .portfolio-filter-selection-chip {
+    max-width: 118px;
+  }
+}
+
 .portfolio-kpi-card::before {
   content: "";
   position: absolute;
@@ -84,11 +118,11 @@
 }
 
 .portfolio-kpi-pager-head {
-  display: flex;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) 22px;
   align-items: center;
-  justify-content: flex-end;
-  gap: 0.2rem;
-  margin-bottom: 0.22rem;
+  gap: 0.18rem;
+  margin-bottom: 0.14rem;
 }
 
 .portfolio-kpi-pager-btn {
@@ -96,13 +130,6 @@
   min-width: 22px !important;
   height: 22px !important;
   min-height: 22px !important;
-}
-
-.portfolio-kpi-pager-index {
-  min-width: 2.4rem;
-  text-align: center;
-  font-size: 0.74rem;
-  color: rgba(var(--v-theme-on-surface), 0.7);
 }
 
 .portfolio-kpi-pager-window {
@@ -114,7 +141,7 @@
 }
 
 .portfolio-kpi-pager-dots {
-  margin-top: 0.34rem;
+  margin-top: 0;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -162,13 +189,116 @@
   background: rgba(var(--v-theme-on-surface), 0.02);
 }
 
-@media (max-width: 600px) {
-  .portfolio-kpi-pager-index {
-    font-size: 0.7rem;
-    min-width: 2.2rem;
-  }
+.portfolio-chart-card {
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.09);
+}
 
+.portfolio-chart-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.45rem;
+}
+
+.portfolio-chart-toggle-btn {
+  color: rgba(var(--v-theme-on-surface), 0.72) !important;
+  margin-right: -0.35rem;
+  margin-top: -0.2rem;
+}
+
+.portfolio-chart-toggle-btn:hover {
+  color: rgba(var(--v-theme-on-surface), 0.92) !important;
+}
+
+.portfolio-lot-row {
+  padding-top: 0.3rem;
+  padding-bottom: 0.35rem;
+}
+
+.portfolio-lot-title {
+  font-weight: 600;
+  letter-spacing: 0.005em;
+}
+
+.portfolio-lot-subtitle {
+  margin-top: 0.2rem;
+}
+
+.portfolio-lot-meta-line {
+  color: rgba(var(--v-theme-on-surface), 0.76);
+  line-height: 1.22;
+}
+
+.portfolio-lot-meta-secondary {
+  color: rgba(var(--v-theme-on-surface), 0.62);
+}
+
+.portfolio-lot-finance-line {
+  display: flex;
+  align-items: center;
+  gap: 0.32rem;
+  flex-wrap: wrap;
+}
+
+.portfolio-lot-status-avatar {
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.14);
+  background: rgba(var(--v-theme-on-surface), 0.06);
+}
+
+.portfolio-lot-status-avatar.is-positive {
+  border-color: rgba(var(--v-theme-success), 0.35);
+  background: rgba(var(--v-theme-success), 0.18);
+}
+
+.portfolio-lot-status-avatar.is-negative {
+  border-color: rgba(var(--v-theme-error), 0.35);
+  background: rgba(var(--v-theme-error), 0.18);
+}
+
+.portfolio-lot-status-icon.is-positive {
+  color: rgb(var(--v-theme-success));
+}
+
+.portfolio-lot-status-icon.is-negative {
+  color: rgb(var(--v-theme-error));
+}
+
+.portfolio-lot-profit-chip {
+  min-width: 94px;
+  justify-content: center;
+  font-weight: 700;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+}
+
+.portfolio-lot-forecast-line {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.portfolio-lot-value-chip {
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+  color: rgba(var(--v-theme-on-surface), 0.78) !important;
+  background: rgba(var(--v-theme-on-surface), 0.05) !important;
+  font-weight: 600;
+}
+
+.portfolio-lot-forecast-chip {
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.09);
+  font-weight: 600;
+}
+
+@media (max-width: 600px) {
   .portfolio-kpi-value {
     font-size: 2rem !important;
+  }
+
+  .portfolio-lot-meta-line {
+    color: rgba(var(--v-theme-on-surface), 0.8);
+  }
+
+  .portfolio-lot-profit-chip {
+    min-width: 86px;
   }
 }

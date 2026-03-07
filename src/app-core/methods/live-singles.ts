@@ -1,22 +1,6 @@
 import type { LiveSinglesSelectionMode, LiveSinglesSelectionSource } from "../../types/app.ts";
 import { type ConfigMethodSubset } from "./config-shared.ts";
-
-function normalizeLiveSinglesIds(values: unknown): number[] {
-  if (!Array.isArray(values)) return [];
-  const nextIds: number[] = [];
-  const seenIds = new Set<number>();
-
-  for (const value of values) {
-    const parsed = Number(value);
-    if (!Number.isFinite(parsed) || parsed <= 0) continue;
-    const normalized = Math.floor(parsed);
-    if (seenIds.has(normalized)) continue;
-    seenIds.add(normalized);
-    nextIds.push(normalized);
-  }
-
-  return nextIds;
-}
+import { normalizeUniquePositiveIntIds } from "../shared/singles-normalizers.ts";
 
 function mergeLiveSinglesIds(baseIds: number[], incomingIds: number[]): number[] {
   if (incomingIds.length === 0) return [...baseIds];
@@ -58,8 +42,8 @@ export const liveSinglesMethods: ConfigMethodSubset<
   ): void {
     const source = opts?.source === "external" ? "external" : "manual";
     const mode = opts?.mode === "merge" ? "merge" : "replace";
-    const nextIds = normalizeLiveSinglesIds(ids);
-    const currentIds = normalizeLiveSinglesIds(
+    const nextIds = normalizeUniquePositiveIntIds(ids);
+    const currentIds = normalizeUniquePositiveIntIds(
       source === "external" ? this.liveSinglesExternalIds : this.liveSinglesManualIds
     );
 
@@ -82,7 +66,7 @@ export const liveSinglesMethods: ConfigMethodSubset<
     const parsedId = Number(id);
     if (!Number.isFinite(parsedId) || parsedId <= 0) return;
     const normalizedId = Math.floor(parsedId);
-    const currentIds = normalizeLiveSinglesIds(
+    const currentIds = normalizeUniquePositiveIntIds(
       source === "external" ? this.liveSinglesExternalIds : this.liveSinglesManualIds
     );
     const nextIds = currentIds.filter((entryId) => entryId !== normalizedId);
@@ -106,7 +90,6 @@ export const liveSinglesMethods: ConfigMethodSubset<
   applyLiveSinglesSuggestedPricing(): void {
     if (this.currentLotType !== "singles") return;
     if (!Array.isArray(this.effectiveLiveSinglesIds) || this.effectiveLiveSinglesIds.length === 0) {
-      this.notify("Add one or more cards to the live list first", "warning");
       return;
     }
     const liveWindow = resolveLiveWindowVm(this);

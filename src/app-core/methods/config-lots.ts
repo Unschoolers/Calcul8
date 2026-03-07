@@ -14,22 +14,11 @@ import {
   removeStorageWithLegacy,
   STORAGE_KEYS
 } from "../storageKeys.ts";
+import { normalizeSinglesCatalogSource } from "../shared/singles-catalog-source.ts";
 import { type ConfigMethodSubset, getTodayDate, inferDateFromLotId, toDateOnly } from "./config-shared.ts";
+import { toNonNegativeInt as toNonNegativeInteger, toNonNegativeNumber } from "../shared/singles-normalizers.ts";
 
 const LEGACY_KEYS = getLegacyStorageKeys();
-
-function toNonNegativeNumber(value: unknown): number {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed) || parsed < 0) return 0;
-  return parsed;
-}
-
-function toNonNegativeInteger(value: unknown, fallback = 0): number {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed)) return fallback;
-  const rounded = Math.floor(parsed);
-  return rounded >= 0 ? rounded : fallback;
-}
 
 function createNextSinglesEntryId(entries: SinglesPurchaseEntry[]): number {
   const highestId = entries.reduce((maxId, entry) => {
@@ -81,26 +70,6 @@ function normalizeSinglesPurchaseEntries(
 function resolveCurrentLot(lots: Lot[], lotId: number | null): Lot | null {
   if (!lotId) return null;
   return lots.find((lot) => lot.id === lotId) ?? null;
-}
-
-function resolveDefaultSinglesCatalogSourceFromEnv(): "ua" | "pokemon" | "none" {
-  const raw = String((import.meta.env.VITE_CARDS_SEARCH_GAME as string | undefined) || "ua")
-    .trim()
-    .toLowerCase();
-  if (raw === "none") return "none";
-  if (raw === "pokemon" || raw === "pkmn") return "pokemon";
-  return "ua";
-}
-
-function normalizeSinglesCatalogSource(
-  value: unknown,
-  fallback: "ua" | "pokemon" | "none" = resolveDefaultSinglesCatalogSourceFromEnv()
-): "ua" | "pokemon" | "none" {
-  const raw = String(value || "").trim().toLowerCase();
-  if (raw === "none") return "none";
-  if (raw === "pokemon" || raw === "pkmn") return "pokemon";
-  if (raw === "ua") return "ua";
-  return fallback;
 }
 
 export const configLotMethods: ConfigMethodSubset<

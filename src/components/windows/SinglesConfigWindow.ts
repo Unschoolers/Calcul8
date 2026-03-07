@@ -2,8 +2,9 @@ import template from "./SinglesConfigWindow.html?raw";
 import "./ConfigWindow.css";
 import "./SinglesConfigWindow.css";
 import { inject, type PropType } from "vue";
-import type { SinglesPurchaseEntry } from "../../types/app.ts";
+import type { SinglesCatalogSource, SinglesPurchaseEntry } from "../../types/app.ts";
 import { STORAGE_KEYS } from "../../app-core/storageKeys.ts";
+import { normalizeSinglesCatalogSource } from "../../app-core/shared/singles-catalog-source.ts";
 import { createWindowContextBridge } from "./contextBridge.ts";
 import { singlesImportComputed, singlesImportMethods } from "./singles/useSinglesImport.ts";
 import { SinglesCsvImportDialog } from "./singles/SinglesCsvImportDialog.ts";
@@ -18,7 +19,6 @@ const MOBILE_RENDER_INITIAL_COUNT = 60;
 const MOBILE_RENDER_BATCH_COUNT = 60;
 const SINGLES_CARD_SEARCH_DEBOUNCE_MS = 400;
 const SINGLES_CARD_SEARCH_LIMIT = 10;
-type SinglesCatalogSource = "ua" | "pokemon" | "none";
 
 type CardSearchApiItem = {
   name?: string;
@@ -29,29 +29,12 @@ type CardSearchApiItem = {
 
 type SinglesCardSuggestion = {
   title: string;
+  value: string;
   name: string;
   cardNo: string;
   rarity: string;
   marketPrice: number | null;
 };
-
-function resolveDefaultSinglesCatalogSourceFromEnv(): SinglesCatalogSource {
-  const game = String((import.meta.env.VITE_CARDS_SEARCH_GAME as string | undefined) || "ua").trim().toLowerCase();
-  if (game === "none") return "none";
-  if (game === "pokemon" || game === "pkmn") return "pokemon";
-  return "ua";
-}
-
-function normalizeSinglesCatalogSource(
-  value: unknown,
-  fallback: SinglesCatalogSource = resolveDefaultSinglesCatalogSourceFromEnv()
-): SinglesCatalogSource {
-  const raw = String(value || "").trim().toLowerCase();
-  if (raw === "none") return "none";
-  if (raw === "pokemon" || raw === "pkmn") return "pokemon";
-  if (raw === "ua") return "ua";
-  return fallback;
-}
 
 function normalizeSinglesSearchTokens(query: unknown): string[] {
   const normalized = String(query || "").trim().toLocaleLowerCase();
@@ -510,7 +493,7 @@ export const SinglesConfigWindow: any = {
         const payload = await response.json() as { items?: CardSearchApiItem[] };
         const items = Array.isArray(payload.items) ? payload.items : [];
         const suggestions = items
-          .map((item) => {
+          .map((item, index) => {
             const name = String(item.name || "").trim();
             if (!name) return null;
             const cardNo = String(item.cardNo || "").trim();
@@ -519,6 +502,7 @@ export const SinglesConfigWindow: any = {
             const marketPrice = Number.isFinite(marketPriceRaw) ? marketPriceRaw : null;
             return {
               title: cardNo ? `${name} #${cardNo}` : name,
+              value: `${name}|${cardNo}|${rarity}|${index}`,
               name,
               cardNo,
               rarity,
@@ -573,12 +557,16 @@ export const SinglesConfigWindow: any = {
     },
 
     onSinglesItemSelected(this: any, selected: string | SinglesCardSuggestion | null): void {
-      if (!selected || typeof selected === "string") return;
-      this.editingSinglesRow.item = selected.name;
-      if (!String(this.editingSinglesRow.cardNumber || "").trim() && selected.cardNo) {
-        this.editingSinglesRow.cardNumber = selected.cardNo;
+      if (!selected) return;
+      const resolved = typeof selected === "string"
+        ? (this.singlesItemSuggestions as SinglesCardSuggestion[]).find((item) => item.value === selected) || null
+        : selected;
+      if (!resolved) return;
+      this.editingSinglesRow.item = resolved.name;
+      if (!String(this.editingSinglesRow.cardNumber || "").trim() && resolved.cardNo) {
+        this.editingSinglesRow.cardNumber = resolved.cardNo;
       }
-      const parsedMarket = Number(selected.marketPrice);
+      const parsedMarket = Number(resolved.marketPrice);
       if ((Number(this.editingSinglesRow.marketValue) || 0) <= 0 && Number.isFinite(parsedMarket) && parsedMarket > 0) {
         this.editingSinglesRow.marketValue = parsedMarket;
       }

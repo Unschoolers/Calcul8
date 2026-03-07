@@ -5,6 +5,11 @@ import type { SinglesPurchaseEntry } from "../../../types/app.ts";
 import { DEFAULT_VALUES } from "../../../constants.ts";
 import { STORAGE_KEYS } from "../../../app-core/storageKeys.ts";
 import { calculateBoxPriceCostCad } from "../../../domain/calculations.ts";
+import {
+  toNonNegativeInt as toWholeNonNegative,
+  toNonNegativeNumber,
+  toPositiveIntOrNull as toPositiveInt
+} from "../../../app-core/shared/singles-normalizers.ts";
 import { createWindowContextBridge } from "../contextBridge.ts";
 
 type LiveSinglesAutocompleteItem = {
@@ -14,24 +19,6 @@ type LiveSinglesAutocompleteItem = {
 };
 
 type LiveSinglesPricingMode = "individual" | "bundle";
-
-function toPositiveInt(value: unknown): number | null {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed) || parsed <= 0) return null;
-  return Math.floor(parsed);
-}
-
-function toWholeNonNegative(value: unknown): number {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed) || parsed <= 0) return 0;
-  return Math.floor(parsed);
-}
-
-function toNonNegativeNumber(value: unknown): number {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed) || parsed <= 0) return 0;
-  return parsed;
-}
 
 function roundCurrency(value: number): number {
   return Math.round((value + Number.EPSILON) * 100) / 100;

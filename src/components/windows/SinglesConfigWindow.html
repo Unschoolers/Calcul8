@@ -390,26 +390,46 @@
           </div>
         </div>
 
-        <v-btn
-          block
-          color="primary"
-          variant="tonal"
-          prepend-icon="mdi-plus"
-          class="singles-add-row-btn mt-2"
-          title="Add item"
-          aria-label="Add item"
-          @click="handleAddSinglesPurchase"
-        >
-          Add item
-        </v-btn>
+        <div class="singles-add-row-fab-wrap mt-2">
+          <v-btn
+            color="primary"
+            variant="elevated"
+            class="singles-add-row-fab singles-add-row-fab--desktop"
+            prepend-icon="mdi-plus"
+            title="Add item"
+            aria-label="Add item"
+            @click="handleAddSinglesPurchase"
+          >
+            Add item
+          </v-btn>
+          <v-btn
+            color="primary"
+            variant="elevated"
+            class="singles-add-row-fab singles-add-row-fab--mobile"
+            icon="mdi-plus"
+            title="Add item"
+            aria-label="Add item"
+            @click="handleAddSinglesPurchase"
+          ></v-btn>
+        </div>
 
         <div class="singles-summary-row mt-2">
-          <div class="singles-summary-pill">
-            <span class="singles-summary-label">Total Cost ({{ sellingCurrency }})</span>
+          <div class="singles-summary-pill singles-summary-pill--cost">
+            <span class="singles-summary-pill__lead">
+              <span class="singles-summary-pill__icon" aria-hidden="true">
+                <v-icon size="14">mdi-cash-minus</v-icon>
+              </span>
+              <span class="singles-summary-label">Total Cost ({{ sellingCurrency }})</span>
+            </span>
             <strong class="singles-summary-value">${{ fmtCurrency(singlesPurchaseTotalCost) }}</strong>
           </div>
-          <div class="singles-summary-pill">
-            <span class="singles-summary-label">Total Market</span>
+          <div class="singles-summary-pill singles-summary-pill--market">
+            <span class="singles-summary-pill__lead">
+              <span class="singles-summary-pill__icon" aria-hidden="true">
+                <v-icon size="14">mdi-chart-line</v-icon>
+              </span>
+              <span class="singles-summary-label">Total Market</span>
+            </span>
             <strong class="singles-summary-value">${{ fmtCurrency(singlesPurchaseTotalMarketValue) }}</strong>
           </div>
         </div>
@@ -440,7 +460,7 @@
           </v-btn-toggle>
         </div>
         <v-row dense class="align-center mb-2">
-          <v-col cols="10">
+          <v-col cols="9">
             <v-text-field
               :model-value="targetProfitPercent ? targetProfitPercent + '%' : 'Not set'"
               label="Target Profit %"
@@ -452,17 +472,20 @@
               prepend-inner-icon="mdi-calculator"
             ></v-text-field>
           </v-col>
-          <v-col cols="2" class="d-flex justify-end">
+          <v-col cols="3" class="d-flex justify-end">
             <v-btn
-              icon="mdi-calculator-variant-outline"
+              prepend-icon="mdi-calculator-variant-outline"
               size="small"
               color="secondary"
               variant="tonal"
+              class="selling-auto-btn"
               title="Open auto-calculate prices"
               aria-label="Open auto-calculate prices"
               :disabled="!hasLotSelected"
               @click="showProfitCalculator = true"
-            ></v-btn>
+            >
+              Auto
+            </v-btn>
           </v-col>
         </v-row>
 
@@ -541,7 +564,7 @@
                 v-model:search="singlesItemSearchText"
                 :items="singlesItemSuggestions"
                 item-title="title"
-                item-value="name"
+                item-value="value"
                 :menu-props="{ contentClass: 'singles-card-suggestions-menu' }"
                 label="Item"
                 variant="outlined"

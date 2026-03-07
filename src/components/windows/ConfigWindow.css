@@ -1,15 +1,28 @@
 .config-card {
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.09);
-  background: rgba(var(--v-theme-surface), 0.94);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.14);
+  background: rgba(var(--v-theme-surface), 0.96);
   backdrop-filter: blur(4px);
+  box-shadow:
+    0 12px 26px rgba(19, 28, 45, 0.08),
+    0 2px 8px rgba(19, 28, 45, 0.06);
+}
+
+.v-theme--unionArenaDark .config-card {
+  border-color: rgba(var(--v-theme-on-surface), 0.22);
+  background: rgba(var(--v-theme-surface), 0.94);
+  box-shadow:
+    0 14px 30px rgba(0, 0, 0, 0.34),
+    0 2px 10px rgba(0, 0, 0, 0.24);
 }
 
 .config-card .v-card-title {
   padding-top: 0.85rem;
   padding-bottom: 0.75rem;
-  background: rgba(var(--v-theme-secondary), 0.08);
-  border-bottom: 1px solid rgba(var(--v-theme-secondary), 0.22);
+  background: rgba(var(--v-theme-secondary), 0.11);
+  border-bottom: 1px solid rgba(var(--v-theme-secondary), 0.3);
   color: rgb(var(--v-theme-secondary));
+  font-weight: 700;
+  letter-spacing: 0.01em;
 }
 
 .config-card .v-card-title .v-icon {

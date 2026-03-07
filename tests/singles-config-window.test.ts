@@ -407,7 +407,7 @@ test("setCurrentSinglesCatalogSource persists on current singles lot and toggles
     ],
     saveLotsToStorage,
     notify,
-    singlesItemSuggestions: [{ title: "X", name: "X", cardNo: "", rarity: "", marketPrice: null }],
+    singlesItemSuggestions: [{ title: "X", value: "X|||0", name: "X", cardNo: "", rarity: "", marketPrice: null }],
     singlesItemSearchLoading: true
   });
   context.cancelSinglesItemSearch = vi.fn();
@@ -475,4 +475,243 @@ test("fetchSinglesItemSuggestions uses lot catalog source as cards search game",
   } finally {
     vi.unstubAllGlobals();
   }
+});
+
+test("catalog source computed getters/setters and labels normalize values", () => {
+  const context = createContext({
+    currentLotId: 9,
+    lots: [
+      { id: 9, lotType: "singles", singlesCatalogSource: "pkmn" }
+    ],
+    currentLotCatalogSource: "ua",
+    setCurrentSinglesCatalogSource: vi.fn(),
+    showCatalogSourceSheet: true
+  });
+
+  const sourceComputed = (SinglesConfigWindow.computed as Record<string, { get?: (this: AnyContext) => unknown; set?: (this: AnyContext, v: unknown) => void }>).currentSinglesCatalogSource;
+  assert.equal(sourceComputed.get?.call(context), "pokemon");
+  sourceComputed.set?.call(context, "none");
+  assert.deepEqual((context.setCurrentSinglesCatalogSource as ReturnType<typeof vi.fn>).mock.calls[0], ["none"]);
+
+  context.currentSinglesCatalogSource = "none";
+  assert.equal(getComputed<boolean>("showCatalogSuggestions").call(context), false);
+  assert.equal(getComputed<string>("currentSinglesCatalogSourceLabel").call(context), "Custom");
+
+  context.currentSinglesCatalogSource = "pokemon";
+  assert.equal(getComputed<string>("currentSinglesCatalogSourceLabel").call(context), "Pokemon");
+
+  context.currentSinglesCatalogSource = "ua";
+  assert.equal(getComputed<string>("currentSinglesCatalogSourceLabel").call(context), "Union Arena");
+
+  context.chooseSinglesCatalogSource("pokemon");
+  assert.equal(context.showCatalogSourceSheet, false);
+  assert.equal((context.setCurrentSinglesCatalogSource as ReturnType<typeof vi.fn>).mock.calls.length, 2);
+});
+
+test("search update, cancel, and cards api resolution cover debounce and fallback branches", async () => {
+  vi.useFakeTimers();
+  const clearTimeoutSpy = vi.spyOn(globalThis, "clearTimeout");
+  try {
+    const abortSpy = vi.fn();
+    const context = createContext({
+      showCatalogSuggestions: true,
+      singlesItemSearchAbortController: { abort: abortSpy },
+      singlesItemSearchTimerId: setTimeout(() => {}, 99999),
+      fetchSinglesItemSuggestions: vi.fn(),
+      singlesItemSuggestions: [{ title: "old" }],
+      singlesItemSearchLoading: true
+    });
+
+    context.cancelSinglesItemSearch();
+    assert.equal(clearTimeoutSpy.mock.calls.length > 0, true);
+    assert.equal(abortSpy.mock.calls.length, 1);
+    assert.equal(context.singlesItemSearchTimerId, null);
+    assert.equal(context.singlesItemSearchAbortController, null);
+
+    context.showCatalogSuggestions = false;
+    context.onSinglesItemSearchUpdate("abc");
+    assert.deepEqual(context.singlesItemSuggestions, []);
+    assert.equal(context.singlesItemSearchLoading, false);
+
+    context.showCatalogSuggestions = true;
+    context.onSinglesItemSearchUpdate("a");
+    assert.deepEqual(context.singlesItemSuggestions, []);
+    assert.equal(context.singlesItemSearchLoading, false);
+
+    context.onSinglesItemSearchUpdate("ab");
+    vi.advanceTimersByTime(400);
+    await vi.runAllTimersAsync();
+    assert.deepEqual((context.fetchSinglesItemSuggestions as ReturnType<typeof vi.fn>).mock.calls[0], ["ab"]);
+
+    vi.stubEnv("VITE_API_BASE_URL", "");
+    const storage = { getItem: vi.fn(() => "https://api.example.com///") };
+    vi.stubGlobal("localStorage", storage);
+    assert.equal(context.resolveCardsApiBaseUrl(), "https://api.example.com");
+    storage.getItem.mockReturnValue("");
+    assert.equal(context.resolveCardsApiBaseUrl(), "");
+  } finally {
+    clearTimeoutSpy.mockRestore();
+    vi.useRealTimers();
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  }
+});
+
+test("fetchSinglesItemSuggestions handles missing base, failed response, and aborted fetch", async () => {
+  const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+  const context = createContext({
+    currentSinglesCatalogSource: "pokemon",
+    resolveCardsApiBaseUrl: () => "",
+    singlesItemSuggestions: [{ title: "keep" }]
+  });
+
+  await context.fetchSinglesItemSuggestions("query");
+  assert.deepEqual(context.singlesItemSuggestions, []);
+
+  const failedFetch = vi.fn(async () => ({ ok: false, status: 500 }));
+  vi.stubGlobal("fetch", failedFetch);
+  context.resolveCardsApiBaseUrl = () => "https://api.example.com";
+  await context.fetchSinglesItemSuggestions("query");
+  assert.equal(context.singlesItemSearchLoading, false);
+  assert.equal(context.singlesItemSearchAbortController, null);
+  assert.deepEqual(context.singlesItemSuggestions, []);
+
+  const abortedFetch = vi.fn(async (_url: string, init?: { signal?: AbortSignal }) => {
+    init?.signal?.dispatchEvent(new Event("abort"));
+    (init?.signal as AbortSignal & { aborted?: boolean }).aborted = true;
+    throw new Error("aborted");
+  });
+  vi.stubGlobal("fetch", abortedFetch);
+  await context.fetchSinglesItemSuggestions("query");
+  assert.equal(context.singlesItemSearchLoading, false);
+  warnSpy.mockRestore();
+  vi.unstubAllGlobals();
+});
+
+test("row editor helpers handle selection, editing branch, and remove confirmation paths", () => {
+  const context = createContext({
+    editingSinglesRow: {
+      item: "",
+      cardNumber: "",
+      condition: "",
+      language: "",
+      cost: 0,
+      currency: "CAD",
+      quantity: 1,
+      marketValue: 0
+    },
+    closeSinglesRowEditor: vi.fn(),
+    removeSinglesPurchaseRow: vi.fn(),
+    askConfirmation: vi.fn((_payload, onConfirm: () => void) => onConfirm())
+  });
+
+  context.handleAddSinglesPurchase();
+  assert.equal(context.showSinglesRowEditor, true);
+  assert.equal(context.editingSinglesRowId, null);
+
+  const selected = {
+    title: "A #1",
+    value: "A|1|C|0",
+    name: "A",
+    cardNo: "1",
+    rarity: "C",
+    marketPrice: 2.5
+  };
+  context.onSinglesItemSelected(selected);
+  assert.equal(context.editingSinglesRow.item, "A");
+  assert.equal(context.editingSinglesRow.cardNumber, "1");
+  assert.equal(context.editingSinglesRow.marketValue, 2.5);
+
+  context.editingSinglesRow.item = "";
+  context.editingSinglesRow.cardNumber = "";
+  context.editingSinglesRow.marketValue = 0;
+  context.singlesItemSuggestions = [selected];
+  context.onSinglesItemSelected(selected.value);
+  assert.equal(context.editingSinglesRow.item, "A");
+  assert.equal(context.editingSinglesRow.cardNumber, "1");
+  assert.equal(context.editingSinglesRow.marketValue, 2.5);
+
+  context.onSinglesItemSelected("typed value");
+  context.onSinglesItemSelected(null);
+  assert.equal(context.formatSuggestionRarity(""), "—");
+  assert.equal(context.formatSuggestionRarity("Rare"), "Rare");
+
+  context.currency = "USD";
+  context.openSinglesRowEditor();
+  assert.equal(context.editingSinglesRowId, null);
+  assert.equal(context.showSinglesRowEditor, true);
+
+  context.openSinglesRowEditor({
+    id: 7,
+    item: "Edit",
+    cardNumber: "E7",
+    condition: "",
+    language: "",
+    cost: 1,
+    currency: "CAD",
+    quantity: 2,
+    marketValue: 3
+  } as SinglesPurchaseEntry);
+  assert.equal(context.editingSinglesRowId, 7);
+  assert.equal(context.editingSinglesRow.item, "Edit");
+
+  context.removeSinglesRowFromEditor();
+  assert.equal((context.removeSinglesPurchaseRow as ReturnType<typeof vi.fn>).mock.calls.length, 1);
+  assert.equal((context.closeSinglesRowEditor as ReturnType<typeof vi.fn>).mock.calls.length, 1);
+
+  context.editingSinglesRowId = null;
+  context.removeSinglesRowFromEditor();
+  assert.equal((context.closeSinglesRowEditor as ReturnType<typeof vi.fn>).mock.calls.length, 2);
+});
+
+test("desktop selection, scroll, icons, watcher, and lifecycle branches execute", () => {
+  const context = createContext({
+    useDesktopVirtualization: false,
+    desktopRowsScrollTop: 5,
+    selectedDesktopRowIds: [1, 2],
+    isDesktopSelectMode: false,
+    mobileRenderCount: 10,
+    visibleSinglesPurchases: [{ id: 1 }],
+    loadSinglesInfoNoticeState: vi.fn(),
+    resetMobileRowsPagination: vi.fn(),
+    cancelSinglesItemSearch: vi.fn()
+  });
+
+  context.onDesktopRowsScroll({ target: { scrollTop: 999 } } as unknown as Event);
+  assert.equal(context.desktopRowsScrollTop, 5);
+
+  context.useDesktopVirtualization = true;
+  context.onDesktopRowsScroll({ target: { scrollTop: 77 } } as unknown as Event);
+  assert.equal(context.desktopRowsScrollTop, 77);
+
+  context.toggleDesktopSelectMode();
+  assert.equal(context.isDesktopSelectMode, true);
+  context.toggleDesktopSelectMode();
+  assert.equal(context.isDesktopSelectMode, false);
+  assert.deepEqual(context.selectedDesktopRowIds, []);
+
+  assert.equal(context.sortIconFor("item"), "mdi-swap-vertical");
+  context.desktopSortBy = "item";
+  context.desktopSortDesc = false;
+  assert.equal(context.sortIconFor("item"), "mdi-arrow-up");
+  context.desktopSortDesc = true;
+  assert.equal(context.sortIconFor("item"), "mdi-arrow-down");
+
+  const watchHandler = (SinglesConfigWindow.watch as Record<string, (this: AnyContext) => void>).visibleSinglesPurchases;
+  watchHandler.call(context);
+  assert.equal(context.mobileRenderCount, 1);
+
+  (SinglesConfigWindow.mounted as (this: AnyContext) => void).call(context);
+  assert.equal((context.loadSinglesInfoNoticeState as ReturnType<typeof vi.fn>).mock.calls.length, 1);
+  assert.equal((context.resetMobileRowsPagination as ReturnType<typeof vi.fn>).mock.calls.length, 1);
+
+  (SinglesConfigWindow.beforeUnmount as (this: AnyContext) => void).call(context);
+  assert.equal((context.cancelSinglesItemSearch as ReturnType<typeof vi.fn>).mock.calls.length, 1);
+
+  const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+  const bridge = (SinglesConfigWindow.setup as (props: { ctx: Record<string, unknown> }) => Record<string, unknown>)({
+    ctx: { testValue: 123 }
+  });
+  warnSpy.mockRestore();
+  assert.equal(bridge.testValue, 123);
 });
