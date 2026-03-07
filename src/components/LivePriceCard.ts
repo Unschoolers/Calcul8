@@ -160,26 +160,30 @@ export const LivePriceCard = defineComponent({
         </v-row>
 
         <v-divider class="my-3"></v-divider>
-        <div class="text-caption text-medium-emphasis text-center mb-2">
+        <div class="text-caption text-medium-emphasis text-center mb-2 live-price-target-summary">
           <template v-if="avgPriceNeeded == null || neededDisplayProfit() == null || deltaVsNeeded() == null">
             Need N/A
           </template>
           <template v-else>
-            Min to target \${{ formatAt(avgPriceNeeded, 0) }} →
-            <span
-              class="font-weight-bold"
-              :class="(neededDisplayProfit() || 0) >= 0 ? 'text-success' : 'text-error'"
-            >
-              {{ (neededDisplayProfit() || 0) >= 0 ? '+' : '' }}\${{ formatAt(neededDisplayProfit() || 0) }}
-              ({{ formatAt(neededDisplayPercent() || 0, 1) }}%)
-            </span>
-            · Δ
-            <span
-              class="font-weight-bold"
-              :class="(deltaVsNeeded() || 0) >= 0 ? 'text-success' : 'text-error'"
-            >
-              {{ (deltaVsNeeded() || 0) >= 0 ? '+' : '' }}\${{ formatAt(deltaVsNeeded() || 0) }}
-            </span>
+            <div class="live-price-target-line">
+              Min to target \${{ formatAt(avgPriceNeeded, 0) }} →
+              <span
+                class="font-weight-bold"
+                :class="(neededDisplayProfit() || 0) >= 0 ? 'text-success' : 'text-error'"
+              >
+                {{ (neededDisplayProfit() || 0) >= 0 ? '+' : '' }}\${{ formatAt(neededDisplayProfit() || 0) }}
+                ({{ formatAt(neededDisplayPercent() || 0, 1) }}%)
+              </span>
+            </div>
+            <div class="live-price-target-line live-price-target-line--delta">
+              Δ
+              <span
+                class="font-weight-bold"
+                :class="(deltaVsNeeded() || 0) >= 0 ? 'text-success' : 'text-error'"
+              >
+                {{ (deltaVsNeeded() || 0) >= 0 ? '+' : '' }}\${{ formatAt(deltaVsNeeded() || 0) }}
+              </span>
+            </div>
           </template>
         </div>
         <v-row dense class="text-center">

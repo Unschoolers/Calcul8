@@ -25,8 +25,33 @@
   border-color: rgba(var(--v-theme-on-surface), 0.12) !important;
 }
 
+.live-price-target-summary {
+  line-height: 1.35;
+}
+
+.live-price-target-line {
+  display: inline;
+}
+
+.live-price-target-line--delta::before {
+  content: " \00b7 ";
+  opacity: 0.75;
+}
+
 @media (max-width: 600px) {
   .live-singles-shell {
     width: 100%;
+  }
+
+  .live-price-target-line {
+    display: block;
+  }
+
+  .live-price-target-line--delta {
+    margin-top: 0.14rem;
+  }
+
+  .live-price-target-line--delta::before {
+    content: "";
   }
 }
