@@ -6,6 +6,7 @@ import {
   readStorageWithLegacy,
   STORAGE_KEYS
 } from "./storageKeys.ts";
+import { handleStripeCheckoutReturn } from "./methods/ui/entitlements-stripe.ts";
 
 const LEGACY_KEYS = getLegacyStorageKeys();
 
@@ -55,7 +56,12 @@ export const appLifecycle: AppLifecycleObject = {
     this.loadSalesFromStorage();
     this.syncLivePricesFromDefaults();
     this.initGoogleAutoLogin();
-    void this.debugLogEntitlement(false);
+    void (async () => {
+      const stripeReturn = await handleStripeCheckoutReturn(this);
+      if (stripeReturn !== "success") {
+        await this.debugLogEntitlement(false);
+      }
+    })();
     this.startCloudSyncScheduler();
 
     if (import.meta.env.DEV) {
