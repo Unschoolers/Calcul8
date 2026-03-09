@@ -11,6 +11,9 @@ This is a separate deployable backend project for:
 - `GET /api/workspaces/{workspaceId}/members`
 - `POST /api/workspaces/{workspaceId}/members`
 - `DELETE /api/workspaces/{workspaceId}/members/{memberUserId}`
+- `GET /api/auth/me`
+- `POST /api/auth/logout`
+- `POST /api/auth/logout-all`
 - `POST /api/migrations/run`
 - `GET /api/migrations/runs`
 
@@ -39,6 +42,11 @@ cp local.settings.json.example local.settings.json
    - `GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL`
    - `GOOGLE_PLAY_SERVICE_ACCOUNT_PRIVATE_KEY`
    - `COSMOSDB_MIGRATION_RUNS_CONTAINER_ID` (optional, default `migration_runs`)
+   - `COSMOSDB_SESSIONS_CONTAINER_ID` (optional, default `sessions`)
+   - `SESSION_COOKIE_NAME` (optional, default `whatfees_session`)
+   - `SESSION_IDLE_TTL_SECONDS` (optional, default `604800`)
+   - `SESSION_ABSOLUTE_TTL_SECONDS` (optional, default `2592000`)
+   - `SESSION_TOUCH_INTERVAL_SECONDS` (optional, default `900`)
    - `MIGRATIONS_ADMIN_KEY` (recommended in prod for admin migration endpoint)
 
 4. Run:
@@ -49,9 +57,21 @@ npm run start:build
 
 ## Auth behavior
 
-- Requests must include `Authorization: Bearer <google-id-token>`.
-- API validates the Google ID token via Google token info endpoint and uses token `sub` as `userId`.
-- Missing or invalid tokens return `401`.
+- API supports session cookies + bearer token fallback.
+- Session cookie:
+  - `HttpOnly`
+  - `SameSite=Lax` in `dev`, `SameSite=None; Secure` in `prod`
+  - sliding idle expiration + absolute expiration
+- CSRF protection for cookie-authenticated unsafe methods (`POST`/`DELETE`):
+  - client must send header `x-csrf-token`
+  - API returns/refreshes this token in response header `x-csrf-token` on authenticated responses
+  - if `Authorization: Bearer ...` is used, bearer auth path remains accepted as fallback
+- Bearer fallback:
+  - `Authorization: Bearer <google-id-token>`
+  - API validates token via Google token info endpoint and uses `sub` as `userId`.
+  - Valid bearer auth can bootstrap/refresh the session cookie.
+- Missing/invalid auth returns `401`.
+- Frontend requests should use `credentials: include` so cookie auth works cross-origin.
 
 ## Sync scope behavior
 
@@ -162,6 +182,15 @@ Recommended partition key for both containers: `/userId`.
     - `migrationId`
     - `updatedAt`
     - `lastRunId`
+
+- `sessions` container:
+  - `id`: `<random-session-id>`
+  - `docType`: `session`
+  - `userId`
+  - `createdAt`
+  - `lastSeenAt`
+  - `idleExpiresAt`
+  - `absoluteExpiresAt`
 
 ## Run a migration
 

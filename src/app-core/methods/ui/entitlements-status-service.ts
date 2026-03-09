@@ -15,8 +15,8 @@ export function shouldUseCachedEntitlement(params: {
   ttlMs: number;
 }): boolean {
   if (!Number.isFinite(params.cachedAt)) return false;
-  if (!params.googleIdToken) return true;
   if (params.forceRefresh) return false;
+  if (!params.googleIdToken) return true;
   return Date.now() - Number(params.cachedAt) < params.ttlMs;
 }
 

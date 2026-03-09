@@ -2,7 +2,7 @@ import { app, type HttpRequest, type HttpResponseInit, type InvocationContext } 
 import { resolveUserId } from "../lib/auth";
 import { getConfig } from "../lib/config";
 import { getEntitlement, listPlayPurchasesForUser, upsertEntitlement } from "../lib/cosmos";
-import { errorResponse, jsonResponse, maybeHandleCorsPreflight } from "../lib/http";
+import { errorResponse, jsonResponse, maybeHandleCorsPreflight, maybeHandleGlobalRateLimit } from "../lib/http";
 import { hasValidProPurchase } from "../lib/playEntitlements";
 import { buildLegacyUserEntitlementDocumentId } from "../lib/scopeKeys";
 
@@ -13,6 +13,9 @@ export async function entitlementsMe(
   const config = getConfig();
   const preflightResponse = maybeHandleCorsPreflight(request, config);
   if (preflightResponse) return preflightResponse;
+
+  const rateLimitResponse = maybeHandleGlobalRateLimit(request, config);
+  if (rateLimitResponse) return rateLimitResponse;
 
   try {
     const userId = await resolveUserId(request, config);

@@ -43,22 +43,17 @@ export const uiEntitlementStatusMethods: UiEntitlementMethodSubset<"debugLogEnti
         hasProAccess: cached.hasProAccess,
         updatedAt: cached.updatedAt
       });
-      if (googleIdToken) {
-        await this.pullCloudSync();
-      }
-      return;
-    }
-
-    if (!googleIdToken) {
-      console.info("[whatfees] Entitlement sync skipped: Google sign-in token is missing.");
+      await this.pullCloudSync();
       return;
     }
 
     try {
+      const headers: Record<string, string> = {};
+      if (googleIdToken) {
+        headers.Authorization = `Bearer ${googleIdToken}`;
+      }
       const response = await fetchWithRetry(`${base}/entitlements/me`, {
-        headers: {
-          Authorization: `Bearer ${googleIdToken}`
-        }
+        headers
       });
 
       if (response.status === 401) {
@@ -85,9 +80,7 @@ export const uiEntitlementStatusMethods: UiEntitlementMethodSubset<"debugLogEnti
         updatedAt: entitlementPayload.updatedAt
       });
 
-      if (googleIdToken) {
-        await this.pullCloudSync();
-      }
+      await this.pullCloudSync();
     } catch (error) {
       if (!navigator.onLine) {
         this.isOffline = true;

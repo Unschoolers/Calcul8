@@ -102,10 +102,6 @@ export const uiEntitlementPurchaseMethods: UiEntitlementMethodSubset<
     }
 
     const googleIdToken = (localStorage.getItem(GOOGLE_TOKEN_KEY) || "").trim();
-    if (!googleIdToken) {
-      this.notify("Sign in with Google first to continue.", "warning");
-      return;
-    }
 
     const configuredProductId = (import.meta.env.VITE_PLAY_PRO_PRODUCT_ID as string | undefined)?.trim() || "";
     const productId = configuredProductId || this.purchaseProductIdInput.trim();
@@ -267,10 +263,6 @@ export const uiEntitlementPurchaseMethods: UiEntitlementMethodSubset<
     }
 
     const googleIdToken = (localStorage.getItem(GOOGLE_TOKEN_KEY) || "").trim();
-    if (!googleIdToken) {
-      this.notify("Sign in with Google first to verify your purchase.", "warning");
-      return;
-    }
 
     this.isVerifyingPurchase = true;
 

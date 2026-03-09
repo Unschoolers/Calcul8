@@ -32,7 +32,6 @@ export const uiSyncMethods: ThisType<AppContext> & Pick<
     }
 
     const googleIdToken = (localStorage.getItem(GOOGLE_TOKEN_KEY) || "").trim();
-    if (!googleIdToken) return;
 
     startSyncStatus(this);
 
@@ -114,7 +113,6 @@ export const uiSyncMethods: ThisType<AppContext> & Pick<
     }
 
     const googleIdToken = (localStorage.getItem(GOOGLE_TOKEN_KEY) || "").trim();
-    if (!googleIdToken) return;
 
     const previousVersionRaw = localStorage.getItem(SYNC_CLIENT_VERSION_KEY) || "0";
     const previousVersion = Number(previousVersionRaw);

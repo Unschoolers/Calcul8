@@ -9,7 +9,7 @@ import {
   upsertPlayPurchase
 } from "../lib/cosmos";
 import { acknowledgePlayProductPurchase, verifyPlayProductPurchase } from "../lib/googlePlay";
-import { errorResponse, jsonResponse, maybeHandleCorsPreflight } from "../lib/http";
+import { errorResponse, jsonResponse, maybeHandleCorsPreflight, maybeHandleGlobalRateLimit } from "../lib/http";
 import { assertPurchaseNotLinkedToDifferentUser, hashPurchaseToken, shouldAcknowledgePurchase } from "../lib/playEntitlements";
 import { buildLegacyUserEntitlementDocumentId } from "../lib/scopeKeys";
 import type { ApiConfig } from "../types";
@@ -237,6 +237,9 @@ export async function entitlementsVerifyPlay(
   const config = getConfig();
   const preflightResponse = maybeHandleCorsPreflight(request, config);
   if (preflightResponse) return preflightResponse;
+
+  const rateLimitResponse = maybeHandleGlobalRateLimit(request, config);
+  if (rateLimitResponse) return rateLimitResponse;
 
   return verifyPlayEntitlementRequest(request, context, config, "/entitlements/verify-play");
 }

@@ -161,3 +161,25 @@ test("startCloudSyncScheduler and stopCloudSyncScheduler manage interval", () =>
   uiSyncMethods.stopCloudSyncScheduler.call(ctx);
   assert.equal(ctx.cloudSyncIntervalId, null);
 });
+
+test("pullCloudSync still attempts server sync when local Google token is missing", async () => {
+  vi.stubGlobal("localStorage", createMockStorage({
+    whatfees_sync_client_version: "1"
+  }));
+  const ctx = createContext();
+  fetchWithRetryMock.mockResolvedValue({
+    ok: true,
+    status: 200,
+    statusText: "OK",
+    json: async () => ({
+      snapshot: {
+        lots: [],
+        salesByLot: {},
+        version: 1
+      }
+    })
+  });
+
+  await uiSyncMethods.pullCloudSync.call(ctx);
+  assert.equal(fetchWithRetryMock.mock.calls.length, 1);
+});

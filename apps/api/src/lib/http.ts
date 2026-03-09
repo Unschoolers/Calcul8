@@ -1,6 +1,7 @@
 import type { HttpRequest, HttpResponseInit } from "@azure/functions";
 import type { ApiConfig } from "../types";
-import { HttpError } from "./auth";
+import { consumeAuthResponseHeaders, HttpError } from "./auth";
+import { checkGlobalRateLimit } from "./rateLimit";
 
 function isAllowedOrigin(origin: string, allowedOrigins: string[]): boolean {
   if (allowedOrigins.includes("*")) return true;
@@ -14,7 +15,9 @@ function buildCorsHeaders(request: HttpRequest, config: ApiConfig): HeadersInit 
 
   return {
     "Access-Control-Allow-Origin": origin,
-    "Access-Control-Allow-Headers": "Content-Type, Authorization, x-user-id, x-migration-key, x-admin-id",
+    "Access-Control-Allow-Credentials": "true",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, x-csrf-token, x-user-id, x-migration-key, x-admin-id",
+    "Access-Control-Expose-Headers": "x-csrf-token",
     "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
     "Access-Control-Max-Age": "86400",
     Vary: "Origin"
@@ -36,17 +39,49 @@ export function maybeHandleCorsPreflight(
   return handleCorsPreflight(request, config);
 }
 
+export function maybeHandleGlobalRateLimit(
+  request: HttpRequest,
+  config: ApiConfig
+): HttpResponseInit | null {
+  if (process.env.NODE_ENV === "test") return null;
+
+  const decision = checkGlobalRateLimit(request);
+  if (decision.allowed) return null;
+
+  return jsonResponse(
+    request,
+    config,
+    429,
+    {
+      error: "Too many requests. Please retry shortly."
+    },
+    {
+      "Retry-After": String(decision.retryAfterSeconds ?? 1),
+      "X-RateLimit-Limit": String(decision.limit),
+      "X-RateLimit-Remaining": "0",
+      "X-RateLimit-Window-Seconds": String(decision.windowSeconds)
+    }
+  );
+}
+
 export function jsonResponse(
   request: HttpRequest,
   config: ApiConfig,
   status: number,
-  payload: unknown
+  payload: unknown,
+  extraHeaders?: Record<string, string>
 ): HttpResponseInit {
+  const authHeaders = typeof consumeAuthResponseHeaders === "function"
+    ? consumeAuthResponseHeaders(request)
+    : {};
+
   return {
     status,
     headers: {
       "Content-Type": "application/json; charset=utf-8",
-      ...buildCorsHeaders(request, config)
+      ...buildCorsHeaders(request, config),
+      ...authHeaders,
+      ...(extraHeaders ?? {})
     },
     jsonBody: payload
   };

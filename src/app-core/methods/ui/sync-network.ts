@@ -14,26 +14,31 @@ export interface SyncPushResponseBody {
   version?: unknown;
 }
 
-export async function requestCloudSyncPull(baseUrl: string, googleIdToken: string): Promise<Response> {
+export async function requestCloudSyncPull(baseUrl: string, googleIdToken?: string): Promise<Response> {
+  const headers: Record<string, string> = {};
+  if (googleIdToken && googleIdToken.trim()) {
+    headers.Authorization = `Bearer ${googleIdToken.trim()}`;
+  }
   return fetchWithRetry(`${baseUrl}/sync/pull`, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${googleIdToken}`
-    }
+    headers
   });
 }
 
 export async function requestCloudSyncPush(
   baseUrl: string,
-  googleIdToken: string,
+  googleIdToken: string | undefined,
   payload: SyncPayload
 ): Promise<Response> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json"
+  };
+  if (googleIdToken && googleIdToken.trim()) {
+    headers.Authorization = `Bearer ${googleIdToken.trim()}`;
+  }
   return fetchWithRetry(`${baseUrl}/sync/push`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${googleIdToken}`
-    },
+    headers,
     body: JSON.stringify(payload)
   });
 }

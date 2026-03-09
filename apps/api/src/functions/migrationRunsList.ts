@@ -2,7 +2,7 @@ import { app, type HttpRequest, type HttpResponseInit, type InvocationContext } 
 import { HttpError } from "../lib/auth";
 import { getConfig } from "../lib/config";
 import { listMigrationRuns } from "../lib/cosmos";
-import { errorResponse, jsonResponse, maybeHandleCorsPreflight } from "../lib/http";
+import { errorResponse, jsonResponse, maybeHandleCorsPreflight, maybeHandleGlobalRateLimit } from "../lib/http";
 import { assertMigrationAdminAccess, resolveMigrationActor } from "../lib/migrations/adminAuth";
 
 function getQueryParam(request: HttpRequest, key: string): string | null {
@@ -38,6 +38,9 @@ export async function migrationRunsList(
   const config = getConfig();
   const preflightResponse = maybeHandleCorsPreflight(request, config);
   if (preflightResponse) return preflightResponse;
+
+  const rateLimitResponse = maybeHandleGlobalRateLimit(request, config);
+  if (rateLimitResponse) return rateLimitResponse;
 
   try {
     assertMigrationAdminAccess(request, config.migrationsAdminKey, config.apiEnv);

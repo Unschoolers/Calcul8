@@ -10,7 +10,7 @@ import {
   listWorkspaceMemberships,
   upsertWorkspaceMembership
 } from "../lib/cosmos";
-import { errorResponse, jsonResponse, maybeHandleCorsPreflight } from "../lib/http";
+import { errorResponse, jsonResponse, maybeHandleCorsPreflight, maybeHandleGlobalRateLimit } from "../lib/http";
 import type { WorkspaceMembershipDocument, WorkspaceRole } from "../types";
 
 function parseWorkspaceIdFromParams(request: HttpRequest): string {
@@ -99,6 +99,9 @@ export async function workspacesCreate(
   const preflightResponse = maybeHandleCorsPreflight(request, config);
   if (preflightResponse) return preflightResponse;
 
+  const rateLimitResponse = maybeHandleGlobalRateLimit(request, config);
+  if (rateLimitResponse) return rateLimitResponse;
+
   try {
     const ownerUserId = await resolveUserId(request, config);
     const payload = parseCreateWorkspaceBody(await request.json());
@@ -136,6 +139,9 @@ export async function workspaceMembersList(
   const preflightResponse = maybeHandleCorsPreflight(request, config);
   if (preflightResponse) return preflightResponse;
 
+  const rateLimitResponse = maybeHandleGlobalRateLimit(request, config);
+  if (rateLimitResponse) return rateLimitResponse;
+
   try {
     const actorUserId = await resolveUserId(request, config);
     const workspaceId = parseWorkspaceIdFromParams(request);
@@ -164,6 +170,9 @@ export async function workspaceMembersAdd(
   const preflightResponse = maybeHandleCorsPreflight(request, config);
   if (preflightResponse) return preflightResponse;
 
+  const rateLimitResponse = maybeHandleGlobalRateLimit(request, config);
+  if (rateLimitResponse) return rateLimitResponse;
+
   try {
     const actorUserId = await resolveUserId(request, config);
     const workspaceId = parseWorkspaceIdFromParams(request);
@@ -188,6 +197,24 @@ export async function workspaceMembersAdd(
   }
 }
 
+export async function workspaceMembers(
+  request: HttpRequest,
+  context: InvocationContext
+): Promise<HttpResponseInit> {
+  const method = String(request.method || "GET").toUpperCase();
+  if (method === "GET" || method === "OPTIONS") {
+    return workspaceMembersList(request, context);
+  }
+  if (method === "POST") {
+    return workspaceMembersAdd(request, context);
+  }
+
+  const config = getConfig();
+  return jsonResponse(request, config, 405, {
+    error: "Method not allowed."
+  });
+}
+
 export async function workspaceMembersRemove(
   request: HttpRequest,
   context: InvocationContext
@@ -195,6 +222,9 @@ export async function workspaceMembersRemove(
   const config = getConfig();
   const preflightResponse = maybeHandleCorsPreflight(request, config);
   if (preflightResponse) return preflightResponse;
+
+  const rateLimitResponse = maybeHandleGlobalRateLimit(request, config);
+  if (rateLimitResponse) return rateLimitResponse;
 
   try {
     const actorUserId = await resolveUserId(request, config);
@@ -229,18 +259,11 @@ app.http("workspacesCreate", {
   handler: workspacesCreate
 });
 
-app.http("workspaceMembersList", {
-  methods: ["GET", "OPTIONS"],
+app.http("workspaceMembers", {
+  methods: ["GET", "POST", "OPTIONS"],
   authLevel: "anonymous",
   route: "workspaces/{workspaceId}/members",
-  handler: workspaceMembersList
-});
-
-app.http("workspaceMembersAdd", {
-  methods: ["POST", "OPTIONS"],
-  authLevel: "anonymous",
-  route: "workspaces/{workspaceId}/members",
-  handler: workspaceMembersAdd
+  handler: workspaceMembers
 });
 
 app.http("workspaceMembersRemove", {

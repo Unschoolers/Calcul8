@@ -145,14 +145,33 @@ test("debugLogEntitlement uses cached entitlement and pulls cloud sync when toke
   });
 });
 
-test("debugLogEntitlement skips when token is missing and cache path is not used", async () => {
+test("debugLogEntitlement fetches entitlement when token is missing (cookie-first)", async () => {
   await withMockedLocalStorage(async () => {
+    fetchWithRetryMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      json: async () => ({
+        userId: "u_cookie",
+        hasProAccess: false,
+        updatedAt: "2026-03-09T00:00:00Z"
+      })
+    });
+    parseEntitlementPayloadMock.mockReturnValue({
+      userId: "u_cookie",
+      hasProAccess: false,
+      updatedAt: "2026-03-09T00:00:00Z"
+    });
     const context = createContext();
 
     await uiEntitlementStatusMethods.debugLogEntitlement.call(context as never);
 
-    assert.equal(fetchWithRetryMock.mock.calls.length, 0);
-    assert.equal((context.pullCloudSync as ReturnType<typeof vi.fn>).mock.calls.length, 0);
+    assert.equal(fetchWithRetryMock.mock.calls.length, 1);
+    const init = fetchWithRetryMock.mock.calls[0]?.[1] as { headers?: Record<string, string> } | undefined;
+    assert.ok(init);
+    assert.deepEqual(init?.headers ?? {}, {});
+    assert.equal(applyFetchedEntitlementMock.mock.calls.length, 1);
+    assert.equal((context.pullCloudSync as ReturnType<typeof vi.fn>).mock.calls.length, 1);
   });
 });
 

@@ -195,6 +195,12 @@ test("status-service cache policy and payload parsing handle edge cases", () => 
     assert.equal(shouldUseCachedEntitlement({
       cachedAt: 999_500,
       googleIdToken: "",
+      forceRefresh: true,
+      ttlMs: 1000
+    }), false);
+    assert.equal(shouldUseCachedEntitlement({
+      cachedAt: 999_500,
+      googleIdToken: "",
       forceRefresh: false,
       ttlMs: 1000
     }), true);

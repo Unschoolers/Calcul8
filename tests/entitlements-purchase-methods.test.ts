@@ -147,14 +147,15 @@ test("startProPurchase shows info when provider unsupported", async () => {
   assert.equal((ctx.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0], "stripe purchases are not enabled yet. Supported provider: play.");
 });
 
-test("startPlayPurchase requires Google sign-in token", async () => {
+test("startPlayPurchase can proceed without local Google token (cookie-first)", async () => {
   await withMockedLocalStorage(async () => {
     const ctx = createContext();
     resolveApiBaseUrlMock.mockReturnValue("https://api.example.test");
 
     await uiEntitlementPurchaseMethods.startPlayPurchase.call(ctx as never);
 
-    assert.equal((ctx.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0], "Sign in with Google first to continue.");
+    assert.equal(submitPlayPurchaseVerificationMock.mock.calls.length, 1);
+    assert.equal((ctx.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0], "Purchase verified. Pro features unlocked.");
   });
 });
 

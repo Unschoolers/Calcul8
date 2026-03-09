@@ -10,6 +10,7 @@ export const STORAGE_KEYS = {
   PRO_ACCESS: "whatfees_pro_access",
   GOOGLE_ID_TOKEN: "whatfees_google_id_token",
   GOOGLE_PROFILE_CACHE: "whatfees_google_profile_cache_v1",
+  CSRF_TOKEN: "whatfees_csrf_token_v1",
   DEBUG_USER_ID: "whatfees_debug_user_id",
   SYNC_CLIENT_VERSION: "whatfees_sync_client_version",
   API_BASE_URL: "whatfees_api_base_url"

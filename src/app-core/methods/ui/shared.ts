@@ -42,7 +42,7 @@ interface EntitlementCachePayload {
 
 export interface VerifyPlayPurchaseRequest {
   baseUrl: string;
-  googleIdToken: string;
+  googleIdToken?: string;
   purchaseToken: string;
   productId?: string;
   packageName?: string;
@@ -52,7 +52,7 @@ export interface VerifyPlayPurchaseRequest {
 interface SubmitPurchaseVerificationRequest {
   provider: PurchaseProvider;
   baseUrl: string;
-  googleIdToken: string;
+  googleIdToken?: string;
   body: Record<string, string>;
 }
 
@@ -74,6 +74,7 @@ export const ENTITLEMENT_CACHE_KEY = STORAGE_KEYS.ENTITLEMENT_CACHE;
 export const PRO_ACCESS_KEY = STORAGE_KEYS.PRO_ACCESS;
 export const GOOGLE_TOKEN_KEY = STORAGE_KEYS.GOOGLE_ID_TOKEN;
 export const GOOGLE_PROFILE_CACHE_KEY = STORAGE_KEYS.GOOGLE_PROFILE_CACHE;
+export const CSRF_TOKEN_KEY = STORAGE_KEYS.CSRF_TOKEN;
 export const SYNC_CLIENT_VERSION_KEY = STORAGE_KEYS.SYNC_CLIENT_VERSION;
 export const CLOUD_SYNC_INTERVAL_MS = 2 * 1000;
 export const SYNC_STATUS_RESET_MS = 2500;
@@ -207,6 +208,11 @@ function parseRetryAfterMs(headers: Headers): number | null {
   return null;
 }
 
+function isUnsafeMethod(method: string | undefined): boolean {
+  const normalized = String(method || "GET").trim().toUpperCase();
+  return normalized !== "GET" && normalized !== "HEAD" && normalized !== "OPTIONS";
+}
+
 export async function fetchWithRetry(
   input: string,
   init: RequestInit,
@@ -223,12 +229,23 @@ export async function fetchWithRetry(
 
     const controller = new AbortController();
     const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+    const requestHeaders = new Headers(init.headers ?? {});
+    const csrfToken = (localStorage.getItem(CSRF_TOKEN_KEY) || "").trim();
+    if (isUnsafeMethod(init.method) && csrfToken && !requestHeaders.has("x-csrf-token")) {
+      requestHeaders.set("x-csrf-token", csrfToken);
+    }
 
     try {
       const response = await fetch(input, {
         ...init,
+        headers: requestHeaders,
+        credentials: init.credentials ?? "include",
         signal: controller.signal
       });
+      const responseCsrfToken = (response.headers.get("x-csrf-token") || "").trim();
+      if (responseCsrfToken) {
+        localStorage.setItem(CSRF_TOKEN_KEY, responseCsrfToken);
+      }
 
       if (!isRetryableStatus(response.status) || attempt >= maxAttempts) {
         return response;
@@ -254,6 +271,7 @@ export async function fetchWithRetry(
 export function handleExpiredAuth(app: AppContext): void {
   removeStorageWithLegacy(GOOGLE_TOKEN_KEY, LEGACY_KEYS.GOOGLE_ID_TOKEN);
   removeStorageWithLegacy(GOOGLE_PROFILE_CACHE_KEY, LEGACY_KEYS.GOOGLE_PROFILE_CACHE);
+  removeStorageWithLegacy(CSRF_TOKEN_KEY);
   app.googleAuthEpoch += 1;
   const cached = readEntitlementCache();
   if (cached) {
@@ -267,9 +285,11 @@ async function postPurchaseVerification(
 ): Promise<Response> {
   const { provider, baseUrl, googleIdToken, body } = request;
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${googleIdToken}`
+    "Content-Type": "application/json"
   };
+  if (googleIdToken && googleIdToken.trim()) {
+    headers.Authorization = `Bearer ${googleIdToken.trim()}`;
+  }
 
   const genericRoute = `${baseUrl}/entitlements/verify/${provider}`;
   return fetchWithRetry(genericRoute, {

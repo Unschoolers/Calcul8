@@ -17,6 +17,21 @@ export interface ApiConfig {
   syncContainerId: string;
   migrationRunsContainerId: string;
   cardCatalogContainerId?: string;
+  sessionsContainerId?: string;
+  sessionCookieName?: string;
+  sessionIdleTtlSeconds?: number;
+  sessionAbsoluteTtlSeconds?: number;
+  sessionTouchIntervalSeconds?: number;
+}
+
+export interface SessionDocument {
+  id: string;
+  docType: "session";
+  userId: string;
+  createdAt: string;
+  lastSeenAt: string;
+  idleExpiresAt: string;
+  absoluteExpiresAt: string;
 }
 
 export interface EntitlementDocument {

@@ -9,3 +9,4 @@ import "./functions/migrationRun";
 import "./functions/migrationRunsList";
 import "./functions/workspaces";
 import "./functions/cardsSearch";
+import "./functions/auth";
