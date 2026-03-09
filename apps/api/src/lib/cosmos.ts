@@ -25,7 +25,15 @@ interface CosmosCache {
   sessions: Container;
 }
 
+export interface ExternalSyncSourceConfig {
+  endpoint: string;
+  key: string;
+  databaseId: string;
+  syncContainerId: string;
+}
+
 let cosmosCache: CosmosCache | null = null;
+const syncSourceContainerCache = new Map<string, Container>();
 const COSMOS_MAX_RETRY_ATTEMPTS = 3;
 const COSMOS_BASE_RETRY_DELAY_MS = 200;
 const EPOCH_DATE_ISO = "1970-01-01T00:00:00.000Z";
@@ -156,6 +164,29 @@ function getContainers(config: ApiConfig): CosmosCache {
   };
 
   return cosmosCache;
+}
+
+function getExternalSyncContainer(source: ExternalSyncSourceConfig): Container {
+  const endpoint = String(source.endpoint || "").trim();
+  const key = String(source.key || "").trim();
+  const databaseId = String(source.databaseId || "").trim();
+  const syncContainerId = String(source.syncContainerId || "").trim();
+
+  if (!endpoint || !key || !databaseId || !syncContainerId) {
+    throw new Error("Invalid external sync source configuration.");
+  }
+
+  const cacheKey = `${endpoint}|${databaseId}|${syncContainerId}|${key}`;
+  const cached = syncSourceContainerCache.get(cacheKey);
+  if (cached) return cached;
+
+  const client = new CosmosClient({
+    endpoint,
+    key
+  });
+  const container = client.database(databaseId).container(syncContainerId);
+  syncSourceContainerCache.set(cacheKey, container);
+  return container;
 }
 
 export async function createSession(
@@ -827,6 +858,13 @@ export async function getSyncPresetDocuments(
   userId: string
 ): Promise<SyncPresetDocument[]> {
   const { syncSnapshots } = getContainers(config);
+  return getSyncPresetDocumentsFromContainer(syncSnapshots, userId);
+}
+
+async function getSyncPresetDocumentsFromContainer(
+  container: Container,
+  userId: string
+): Promise<SyncPresetDocument[]> {
   const querySpec = {
     query: "SELECT * FROM c WHERE c.userId = @userId AND c.docType = @docType",
     parameters: [
@@ -834,7 +872,7 @@ export async function getSyncPresetDocuments(
       { name: "@docType", value: "sync_preset" }
     ]
   };
-  const iterator = syncSnapshots.items.query<SyncPresetDocument>(querySpec, {
+  const iterator = container.items.query<SyncPresetDocument>(querySpec, {
     partitionKey: userId
   });
   const { resources } = await withCosmosRetry(() => iterator.fetchAll());
@@ -846,10 +884,17 @@ export async function getSyncMetaDocument(
   userId: string
 ): Promise<SyncMetaDocument | null> {
   const { syncSnapshots } = getContainers(config);
+  return getSyncMetaDocumentFromContainer(syncSnapshots, userId);
+}
+
+async function getSyncMetaDocumentFromContainer(
+  container: Container,
+  userId: string
+): Promise<SyncMetaDocument | null> {
   const id = syncMetaId(userId);
 
   try {
-    const { resource } = await withCosmosRetry(() => syncSnapshots.item(id, userId).read<SyncMetaDocument>());
+    const { resource } = await withCosmosRetry(() => container.item(id, userId).read<SyncMetaDocument>());
     return resource ?? null;
   } catch (error) {
     if (isNotFoundError(error)) return null;
@@ -869,9 +914,17 @@ export async function getSyncSnapshotFromPresetDocuments(
   config: ApiConfig,
   userId: string
 ): Promise<SyncSnapshotDocument | null> {
+  const { syncSnapshots } = getContainers(config);
+  return getSyncSnapshotFromContainer(syncSnapshots, userId);
+}
+
+async function getSyncSnapshotFromContainer(
+  container: Container,
+  userId: string
+): Promise<SyncSnapshotDocument | null> {
   const [presetDocuments, metaDocument] = await Promise.all([
-    getSyncPresetDocuments(config, userId),
-    getSyncMetaDocument(config, userId)
+    getSyncPresetDocumentsFromContainer(container, userId),
+    getSyncMetaDocumentFromContainer(container, userId)
   ]);
 
   if (presetDocuments.length === 0) {
@@ -914,6 +967,14 @@ export async function getEffectiveSyncSnapshot(
   userId: string
 ): Promise<SyncSnapshotDocument | null> {
   return getSyncSnapshotFromPresetDocuments(config, userId);
+}
+
+export async function getEffectiveSyncSnapshotFromExternalSource(
+  source: ExternalSyncSourceConfig,
+  userId: string
+): Promise<SyncSnapshotDocument | null> {
+  const container = getExternalSyncContainer(source);
+  return getSyncSnapshotFromContainer(container, userId);
 }
 
 interface IncrementalSyncUpsertInput {

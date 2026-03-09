@@ -16,6 +16,12 @@ import { requestCloudSyncPull, requestCloudSyncPush, type SyncPullResponseBody, 
 import { createSyncPayload, getSyncPayloadSignature } from "./sync-payload.ts";
 import { setSyncStatusError, setSyncStatusSuccess, startSyncStatus } from "./sync-status.ts";
 
+const STORAGE_RESET_RECOVERY_COOLDOWN_MS = 30_000;
+
+type SyncRecoveryState = {
+  __syncStorageResetRecoveryAtMs?: number;
+};
+
 function isLocalSyncCacheReset(context: AppContext): boolean {
   if (!context.lastSyncedPayloadHash) return false;
   if (!Array.isArray(context.lots) || context.lots.length === 0) return false;
@@ -34,6 +40,21 @@ function isLocalSyncCacheReset(context: AppContext): boolean {
   } catch {
     return false;
   }
+}
+
+function shouldAttemptStorageResetRecovery(context: AppContext): boolean {
+  const state = context as AppContext & SyncRecoveryState;
+  const nowMs = Date.now();
+  const lastAttemptMs = Number(state.__syncStorageResetRecoveryAtMs ?? 0);
+  if (
+    Number.isFinite(lastAttemptMs)
+    && lastAttemptMs > 0
+    && nowMs - lastAttemptMs < STORAGE_RESET_RECOVERY_COOLDOWN_MS
+  ) {
+    return false;
+  }
+  state.__syncStorageResetRecoveryAtMs = nowMs;
+  return true;
 }
 
 export const uiSyncMethods: ThisType<AppContext> & Pick<
@@ -137,8 +158,9 @@ export const uiSyncMethods: ThisType<AppContext> & Pick<
 
     if (isLocalSyncCacheReset(this)) {
       console.warn("[whatfees] Cloud sync push skipped: local cache reset detected, pulling first");
-      this.notify("Local cache reset detected. Restoring cloud data before upload.", "warning");
-      await this.pullCloudSync();
+      if (shouldAttemptStorageResetRecovery(this)) {
+        await this.pullCloudSync();
+      }
       return;
     }
 

@@ -35,6 +35,8 @@ export function createInitialState(): AppState {
     purchaseTokenInput: "",
     purchaseProductIdInput: "",
     purchasePackageNameInput: "",
+    adminImportSourceUserId: "",
+    isAdminImportInProgress: false,
     purchaseUiMode,
     // UI State
     currentTab: "config",

@@ -179,6 +179,8 @@ export interface AppState extends LotSetup {
   purchaseTokenInput: string;
   purchaseProductIdInput: string;
   purchasePackageNameInput: string;
+  adminImportSourceUserId: string;
+  isAdminImportInProgress: boolean;
   purchaseUiMode: PurchaseUiMode;
   currentTab: AppTab;
   showNewLotModal: boolean;

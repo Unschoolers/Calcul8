@@ -33,6 +33,8 @@ export type ConfigMethods = ConfigMethodSubset<
   | "renameCurrentLot"
   | "loadLot"
   | "deleteCurrentLot"
+  | "canUseAdminLotSyncTools"
+  | "importLotsFromUserId"
   | "exportSales"
   | "exportPortfolioReport"
   | "openPortfolioReportModal"

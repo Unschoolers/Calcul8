@@ -15,6 +15,10 @@ export interface ApiConfig {
   cosmosDatabaseId: string;
   entitlementsContainerId: string;
   syncContainerId: string;
+  syncImportSourceCosmosEndpoint?: string;
+  syncImportSourceCosmosKey?: string;
+  syncImportSourceCosmosDatabaseId?: string;
+  syncImportSourceSyncContainerId?: string;
   migrationRunsContainerId: string;
   cardCatalogContainerId?: string;
   sessionsContainerId?: string;

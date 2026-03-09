@@ -199,6 +199,8 @@ export interface AppMethodState {
   renameCurrentLot(): void;
   loadLot(): void;
   deleteCurrentLot(): void;
+  canUseAdminLotSyncTools(): boolean;
+  importLotsFromUserId(): Promise<void>;
   exportSales(): void;
   exportPortfolioReport(): void;
   openPortfolioReportModal(): void;

@@ -7,6 +7,7 @@ This is a separate deployable backend project for:
 - `POST /api/entitlements/verify-play`
 - `POST /api/sync/pull`
 - `POST /api/sync/push`
+- `POST /api/ops/sync/import-user`
 - `POST /api/workspaces`
 - `GET /api/workspaces/{workspaceId}/members`
 - `POST /api/workspaces/{workspaceId}/members`
@@ -43,6 +44,10 @@ cp local.settings.json.example local.settings.json
    - `GOOGLE_PLAY_SERVICE_ACCOUNT_PRIVATE_KEY`
    - `COSMOSDB_MIGRATION_RUNS_CONTAINER_ID` (optional, default `migration_runs`)
    - `COSMOSDB_SESSIONS_CONTAINER_ID` (optional, default `sessions`)
+   - `SYNC_IMPORT_SOURCE_COSMOSDB_ENDPOINT` (optional, defaults to `COSMOSDB_ENDPOINT`)
+   - `SYNC_IMPORT_SOURCE_COSMOSDB_KEY` (optional, defaults to `COSMOSDB_KEY`)
+   - `SYNC_IMPORT_SOURCE_COSMOSDB_DATABASE_ID` (optional, defaults to `COSMOSDB_DATABASE_ID` or `whatfees`)
+   - `SYNC_IMPORT_SOURCE_COSMOSDB_SYNC_CONTAINER_ID` (optional, defaults to `COSMOSDB_SYNC_CONTAINER_ID` or `sync_data`)
    - `SESSION_COOKIE_NAME` (optional, default `whatfees_session`)
    - `SESSION_IDLE_TTL_SECONDS` (optional, default `604800`)
    - `SESSION_ABSOLUTE_TTL_SECONDS` (optional, default `2592000`)
@@ -81,6 +86,13 @@ npm run start:build
 - Workspace sync scope:
   - partition key: `ws:<workspaceId>`.
 - Workspace sync reads/writes are authorized only when caller has active workspace membership.
+
+## Admin sync import (prod -> dev)
+
+- `POST /api/ops/sync/import-user` copies sync data from a source `userId` into the caller account.
+- This endpoint is restricted in code to admin user id `107850224060485991888`.
+- Write target always uses `COSMOSDB_*` settings (your local/dev environment).
+- Read source uses `SYNC_IMPORT_SOURCE_COSMOSDB_*` when provided; otherwise it falls back to `COSMOSDB_*`.
 
 ## Known limitations (current snapshot)
 

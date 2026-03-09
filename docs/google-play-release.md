@@ -134,6 +134,7 @@ Set frontend build env:
 - `VITE_GOOGLE_CLIENT_ID=<google web client id>`
 - `VITE_PLAY_PRO_PRODUCT_ID=<play in-app product id>`
 - `VITE_PURCHASE_PROVIDER` (optional debug override: `auto` default, `play` supported today)
+- `VITE_ENABLE_ADMIN_SYNC_IMPORT` (optional, default `false`; set `true` only for admin/debug sessions)
 
 Set backend Function App settings:
 

@@ -15,6 +15,7 @@ Frontend env for Play purchase flow:
 - `VITE_GOOGLE_CLIENT_ID=<google web client id>`
 - `VITE_PLAY_PRO_PRODUCT_ID=<play in-app product id, e.g. pro_access>`
 - `VITE_PURCHASE_PROVIDER` (optional debug override: `auto` default, `play` supported today)
+- `VITE_ENABLE_ADMIN_SYNC_IMPORT` (optional, default `false`; set `true` to show admin sync import UI)
 
 ## Testing
 

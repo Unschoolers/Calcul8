@@ -68,6 +68,14 @@ export function getConfig(): ApiConfig {
     cosmosDatabaseId: readEnv("COSMOSDB_DATABASE_ID") || "whatfees",
     entitlementsContainerId: readEnv("COSMOSDB_ENTITLEMENTS_CONTAINER_ID") || "entitlements",
     syncContainerId: readEnv("COSMOSDB_SYNC_CONTAINER_ID") || "sync_data",
+    syncImportSourceCosmosEndpoint: readEnv("SYNC_IMPORT_SOURCE_COSMOSDB_ENDPOINT") || requireEnv("COSMOSDB_ENDPOINT"),
+    syncImportSourceCosmosKey: readEnv("SYNC_IMPORT_SOURCE_COSMOSDB_KEY") || requireEnv("COSMOSDB_KEY"),
+    syncImportSourceCosmosDatabaseId: readEnv("SYNC_IMPORT_SOURCE_COSMOSDB_DATABASE_ID")
+      || readEnv("COSMOSDB_DATABASE_ID")
+      || "whatfees",
+    syncImportSourceSyncContainerId: readEnv("SYNC_IMPORT_SOURCE_COSMOSDB_SYNC_CONTAINER_ID")
+      || readEnv("COSMOSDB_SYNC_CONTAINER_ID")
+      || "sync_data",
     migrationRunsContainerId: readEnv("COSMOSDB_MIGRATION_RUNS_CONTAINER_ID") || "migration_runs",
     cardCatalogContainerId: readEnv("COSMOSDB_CARD_CATALOG_CONTAINER_ID") || "card_catalog",
     sessionsContainerId: readEnv("COSMOSDB_SESSIONS_CONTAINER_ID") || "sessions",

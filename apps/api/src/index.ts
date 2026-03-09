@@ -10,3 +10,4 @@ import "./functions/migrationRunsList";
 import "./functions/workspaces";
 import "./functions/cardsSearch";
 import "./functions/auth";
+import "./functions/syncImportUser";

@@ -242,5 +242,37 @@ test("pushCloudSync skips upload and pulls cloud when local storage was cleared 
 
   assert.equal(fetchWithRetryMock.mock.calls.length, 0);
   assert.equal(pullCloudSyncMock.mock.calls.length, 1);
-  assert.equal(ctx.notify.mock.calls.length, 1);
+  assert.equal(ctx.notify.mock.calls.length, 0);
+});
+
+test("pushCloudSync throttles repeated recovery pulls after local storage reset", async () => {
+  vi.stubGlobal("localStorage", createMockStorage({
+    whatfees_google_token: "token-abc"
+  }));
+
+  const ctx = createContext();
+  ctx.lastSyncedPayloadHash = "{\"lots\":[{\"id\":1}],\"salesByLot\":{\"1\":[{\"id\":5}]}}";
+  ctx.sales = [
+    {
+      id: 5,
+      type: "pack",
+      quantity: 1,
+      packsCount: 1,
+      price: 20,
+      date: "2026-03-09"
+    }
+  ];
+  const pullCloudSyncMock = vi.fn(async () => undefined);
+  ctx.pullCloudSync = pullCloudSyncMock;
+
+  const dateNowSpy = vi.spyOn(Date, "now");
+  dateNowSpy.mockReturnValue(1_000);
+  await uiSyncMethods.pushCloudSync.call(ctx, false);
+
+  dateNowSpy.mockReturnValue(2_000);
+  await uiSyncMethods.pushCloudSync.call(ctx, false);
+
+  assert.equal(fetchWithRetryMock.mock.calls.length, 0);
+  assert.equal(pullCloudSyncMock.mock.calls.length, 1);
+  dateNowSpy.mockRestore();
 });

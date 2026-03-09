@@ -46,6 +46,10 @@ test("config defaults to dev and sensible defaults", () => {
       COSMOSDB_DATABASE_ID: undefined,
       COSMOSDB_ENTITLEMENTS_CONTAINER_ID: undefined,
       COSMOSDB_SYNC_CONTAINER_ID: undefined,
+      SYNC_IMPORT_SOURCE_COSMOSDB_ENDPOINT: undefined,
+      SYNC_IMPORT_SOURCE_COSMOSDB_KEY: undefined,
+      SYNC_IMPORT_SOURCE_COSMOSDB_DATABASE_ID: undefined,
+      SYNC_IMPORT_SOURCE_COSMOSDB_SYNC_CONTAINER_ID: undefined,
       COSMOSDB_MIGRATION_RUNS_CONTAINER_ID: undefined,
       COSMOSDB_CARD_CATALOG_CONTAINER_ID: undefined,
       COSMOSDB_SESSIONS_CONTAINER_ID: undefined,
@@ -63,6 +67,10 @@ test("config defaults to dev and sensible defaults", () => {
       assert.equal(config.cosmosDatabaseId, "whatfees");
       assert.equal(config.entitlementsContainerId, "entitlements");
       assert.equal(config.syncContainerId, "sync_data");
+      assert.equal(config.syncImportSourceCosmosEndpoint, "https://example.documents.azure.com:443/");
+      assert.equal(config.syncImportSourceCosmosKey, "fake-key");
+      assert.equal(config.syncImportSourceCosmosDatabaseId, "whatfees");
+      assert.equal(config.syncImportSourceSyncContainerId, "sync_data");
       assert.equal(config.migrationRunsContainerId, "migration_runs");
       assert.equal(config.cardCatalogContainerId, "card_catalog");
       assert.equal(config.sessionsContainerId, "sessions");
@@ -73,6 +81,29 @@ test("config defaults to dev and sensible defaults", () => {
       assert.equal(config.migrationsAdminKey, "");
       assert.deepEqual(config.allowedOrigins, []);
       assert.deepEqual(config.googlePlayProProductIds, []);
+    }
+  );
+});
+
+test("config supports explicit source Cosmos override for sync import", () => {
+  withEnv(
+    {
+      ...requiredBaseEnv(),
+      COSMOSDB_DATABASE_ID: "whatfees-dev",
+      COSMOSDB_SYNC_CONTAINER_ID: "sync_data_dev",
+      SYNC_IMPORT_SOURCE_COSMOSDB_ENDPOINT: "https://prod.documents.azure.com:443/",
+      SYNC_IMPORT_SOURCE_COSMOSDB_KEY: "prod-key",
+      SYNC_IMPORT_SOURCE_COSMOSDB_DATABASE_ID: "whatfees-prod",
+      SYNC_IMPORT_SOURCE_COSMOSDB_SYNC_CONTAINER_ID: "sync_data_prod"
+    },
+    () => {
+      const config = getConfig();
+      assert.equal(config.cosmosDatabaseId, "whatfees-dev");
+      assert.equal(config.syncContainerId, "sync_data_dev");
+      assert.equal(config.syncImportSourceCosmosEndpoint, "https://prod.documents.azure.com:443/");
+      assert.equal(config.syncImportSourceCosmosKey, "prod-key");
+      assert.equal(config.syncImportSourceCosmosDatabaseId, "whatfees-prod");
+      assert.equal(config.syncImportSourceSyncContainerId, "sync_data_prod");
     }
   );
 });

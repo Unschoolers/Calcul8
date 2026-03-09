@@ -155,15 +155,10 @@
           >
             <v-icon>{{ isDark ? 'mdi-weather-sunny' : 'mdi-weather-night' }}</v-icon>
           </v-btn>
-          <v-btn
-            icon
-            variant="text"
-            size="small"
-            :title="isGoogleSignedIn
-              ? (googleProfileEmail ? `Signed in as ${googleProfileEmail} • Tap to re-check access` : 'Signed in • Tap to re-check access')
-              : 'Sign in with Google'"
-            :aria-label="isGoogleSignedIn ? 'Account status' : 'Sign in with Google'"
-            @click="promptGoogleSignIn"
+          <div
+            class="d-inline-flex align-center justify-center px-1"
+            :title="googleProfileEmail ? `Signed in as ${googleProfileEmail}` : 'Signed in'"
+            aria-label="Account status"
           >
             <v-avatar v-if="googleProfilePicture && !googleAvatarLoadFailed" size="24">
               <img
@@ -175,8 +170,8 @@
                 @load="googleAvatarLoadFailed = false"
               />
             </v-avatar>
-            <v-icon v-else size="20">{{ isGoogleSignedIn ? 'mdi-account-circle-outline' : 'mdi-login' }}</v-icon>
-          </v-btn>
+            <v-icon v-else size="20">mdi-account-circle-outline</v-icon>
+          </div>
         </template>
       </v-app-bar>
 
