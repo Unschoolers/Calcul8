@@ -5,6 +5,8 @@ const {
   resolvePurchaseProviderMock,
   getSupportedPurchaseProvidersMock,
   resolveApiBaseUrlMock,
+  fetchWithRetryMock,
+  handleExpiredAuthMock,
   submitPlayPurchaseVerificationMock,
   hasPlayPurchaseSupportMock,
   getPlayBillingServiceMock,
@@ -15,8 +17,10 @@ const {
   formatPlayPurchaseErrorMock
 } = vi.hoisted(() => ({
   resolvePurchaseProviderMock: vi.fn(),
-  getSupportedPurchaseProvidersMock: vi.fn(() => ["play"]),
+  getSupportedPurchaseProvidersMock: vi.fn(() => ["play", "stripe"]),
   resolveApiBaseUrlMock: vi.fn(),
+  fetchWithRetryMock: vi.fn(),
+  handleExpiredAuthMock: vi.fn(),
   submitPlayPurchaseVerificationMock: vi.fn(),
   hasPlayPurchaseSupportMock: vi.fn(),
   getPlayBillingServiceMock: vi.fn(),
@@ -32,6 +36,8 @@ vi.mock("../src/app-core/methods/ui/shared.ts", () => ({
   getSupportedPurchaseProviders: getSupportedPurchaseProvidersMock,
   GOOGLE_TOKEN_KEY: "whatfees_google_id_token",
   resolveApiBaseUrl: resolveApiBaseUrlMock,
+  fetchWithRetry: fetchWithRetryMock,
+  handleExpiredAuth: handleExpiredAuthMock,
   submitPlayPurchaseVerification: submitPlayPurchaseVerificationMock
 }));
 
@@ -122,6 +128,15 @@ beforeEach(() => {
   vi.clearAllMocks();
   resolvePurchaseProviderMock.mockReturnValue("auto");
   resolveApiBaseUrlMock.mockReturnValue("https://api.example.test");
+  fetchWithRetryMock.mockResolvedValue({
+    ok: true,
+    status: 200,
+    async json() {
+      return {
+        checkoutUrl: "https://checkout.stripe.com/c/pay/cs_test_123"
+      };
+    }
+  });
   hasPlayPurchaseSupportMock.mockResolvedValue(false);
   getPlayBillingServiceMock.mockResolvedValue(null);
   submitPlayPurchaseVerificationMock.mockResolvedValue(true);
@@ -138,13 +153,77 @@ test("startProPurchase routes to Play flow when provider is auto and Play suppor
   assert.equal((ctx.startPlayPurchase as ReturnType<typeof vi.fn>).mock.calls.length, 1);
 });
 
+test("startProPurchase falls back to Stripe checkout when provider is auto and Play is unavailable", async () => {
+  await withMockedLocalStorage(async () => {
+    const ctx = createContext();
+    resolvePurchaseProviderMock.mockReturnValue("auto");
+    hasPlayPurchaseSupportMock.mockResolvedValue(false);
+    resolveApiBaseUrlMock.mockReturnValue("https://api.example.test");
+
+    const assignMock = vi.fn();
+    const originalWindow = (globalThis as { window?: unknown }).window;
+    Object.defineProperty(globalThis, "window", {
+      configurable: true,
+      value: {
+        location: {
+          assign: assignMock
+        }
+      }
+    });
+
+    try {
+      await uiEntitlementPurchaseMethods.startProPurchase.call(ctx as never);
+    } finally {
+      Object.defineProperty(globalThis, "window", {
+        configurable: true,
+        value: originalWindow
+      });
+    }
+
+    assert.equal(fetchWithRetryMock.mock.calls.length, 1);
+    assert.equal(assignMock.mock.calls[0]?.[0], "https://checkout.stripe.com/c/pay/cs_test_123");
+  });
+});
+
 test("startProPurchase shows info when provider unsupported", async () => {
   const ctx = createContext();
-  resolvePurchaseProviderMock.mockReturnValue("stripe");
+  resolvePurchaseProviderMock.mockReturnValue("custom-gateway");
 
   await uiEntitlementPurchaseMethods.startProPurchase.call(ctx as never);
 
-  assert.equal((ctx.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0], "stripe purchases are not enabled yet. Supported provider: play.");
+  assert.equal((ctx.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0], "custom-gateway purchases are not enabled yet. Supported providers: play, stripe.");
+});
+
+test("startProPurchase routes to Stripe checkout when provider is stripe", async () => {
+  await withMockedLocalStorage(async () => {
+    const ctx = createContext();
+    resolvePurchaseProviderMock.mockReturnValue("stripe");
+    resolveApiBaseUrlMock.mockReturnValue("https://api.example.test");
+
+    const assignMock = vi.fn();
+    const originalWindow = (globalThis as { window?: unknown }).window;
+    Object.defineProperty(globalThis, "window", {
+      configurable: true,
+      value: {
+        location: {
+          assign: assignMock
+        }
+      }
+    });
+
+    try {
+      await uiEntitlementPurchaseMethods.startProPurchase.call(ctx as never);
+    } finally {
+      Object.defineProperty(globalThis, "window", {
+        configurable: true,
+        value: originalWindow
+      });
+    }
+
+    assert.equal(fetchWithRetryMock.mock.calls.length, 1);
+    assert.equal(fetchWithRetryMock.mock.calls[0]?.[0], "https://api.example.test/billing/checkout-session");
+    assert.equal(assignMock.mock.calls[0]?.[0], "https://checkout.stripe.com/c/pay/cs_test_123");
+  });
 });
 
 test("startPlayPurchase can proceed without local Google token (cookie-first)", async () => {
@@ -267,4 +346,31 @@ test("verifyPlayPurchase warns when token is missing", async () => {
     assert.equal((ctx.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0], "Enter a purchase token to continue.");
     assert.equal(submitPlayPurchaseVerificationMock.mock.calls.length, 0);
   });
+});
+
+test("verifyProPurchase refreshes entitlement when provider is stripe", async () => {
+  const ctx = createContext({
+    hasProAccess: true,
+    debugLogEntitlement: vi.fn(async () => undefined)
+  });
+  resolvePurchaseProviderMock.mockReturnValue("stripe");
+
+  await uiEntitlementPurchaseMethods.verifyProPurchase.call(ctx as never);
+
+  assert.equal((ctx.debugLogEntitlement as ReturnType<typeof vi.fn>).mock.calls.length, 1);
+  assert.equal((ctx.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0], "Purchase verified. Pro features unlocked.");
+});
+
+test("verifyProPurchase falls back to Stripe verification when provider is auto and Play is unavailable", async () => {
+  const ctx = createContext({
+    hasProAccess: false,
+    debugLogEntitlement: vi.fn(async () => undefined)
+  });
+  resolvePurchaseProviderMock.mockReturnValue("auto");
+  hasPlayPurchaseSupportMock.mockResolvedValue(false);
+
+  await uiEntitlementPurchaseMethods.verifyProPurchase.call(ctx as never);
+
+  assert.equal((ctx.debugLogEntitlement as ReturnType<typeof vi.fn>).mock.calls.length, 1);
+  assert.equal((ctx.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0], "No completed Stripe purchase found yet. Try again in a few seconds.");
 });

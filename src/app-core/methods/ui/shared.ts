@@ -94,7 +94,7 @@ export function resolvePurchaseProvider(): PurchaseProvider {
 }
 
 export function getSupportedPurchaseProviders(): PurchaseProvider[] {
-  return ["play"];
+  return ["play", "stripe"];
 }
 
 export function resolveApiBaseUrl(): string {

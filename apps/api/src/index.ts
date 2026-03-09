@@ -11,3 +11,5 @@ import "./functions/workspaces";
 import "./functions/cardsSearch";
 import "./functions/auth";
 import "./functions/syncImportUser";
+import "./functions/billingCheckoutSession";
+import "./functions/billingWebhook";

@@ -79,6 +79,11 @@ test("config defaults to dev and sensible defaults", () => {
       assert.equal(config.sessionAbsoluteTtlSeconds, 30 * 24 * 60 * 60);
       assert.equal(config.sessionTouchIntervalSeconds, 15 * 60);
       assert.equal(config.migrationsAdminKey, "");
+      assert.equal(config.stripeSecretKey, "");
+      assert.equal(config.stripeWebhookSecret, "");
+      assert.equal(config.stripeOneTimePriceId, "");
+      assert.equal(config.stripeSuccessUrl, "");
+      assert.equal(config.stripeCancelUrl, "");
       assert.deepEqual(config.allowedOrigins, []);
       assert.deepEqual(config.googlePlayProProductIds, []);
     }

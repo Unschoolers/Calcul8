@@ -5,6 +5,8 @@ This is a separate deployable backend project for:
 - `GET /api/entitlements/me`
 - `POST /api/entitlements/verify/{provider}`
 - `POST /api/entitlements/verify-play`
+- `POST /api/billing/checkout-session`
+- `POST /api/billing/webhook`
 - `POST /api/sync/pull`
 - `POST /api/sync/push`
 - `POST /api/ops/sync/import-user`
@@ -53,6 +55,12 @@ cp local.settings.json.example local.settings.json
    - `SESSION_ABSOLUTE_TTL_SECONDS` (optional, default `2592000`)
    - `SESSION_TOUCH_INTERVAL_SECONDS` (optional, default `900`)
    - `MIGRATIONS_ADMIN_KEY` (recommended in prod for admin migration endpoint)
+   - Stripe checkout (optional):
+     - `STRIPE_SECRET_KEY`
+     - `STRIPE_WEBHOOK_SECRET`
+     - `STRIPE_ONE_TIME_PRICE_ID`
+     - `STRIPE_SUCCESS_URL`
+     - `STRIPE_CANCEL_URL`
 
 4. Run:
 

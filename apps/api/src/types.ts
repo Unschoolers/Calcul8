@@ -4,6 +4,11 @@ export interface ApiConfig {
   apiEnv: ApiEnvironment;
   authBypassDev: boolean;
   migrationsAdminKey: string;
+  stripeSecretKey?: string;
+  stripeWebhookSecret?: string;
+  stripeOneTimePriceId?: string;
+  stripeSuccessUrl?: string;
+  stripeCancelUrl?: string;
   googleClientId: string;
   googlePlayPackageName: string;
   googlePlayProProductIds: string[];
