@@ -4,18 +4,22 @@ import { fetchWithRetry } from "./retry";
 const STRIPE_API_BASE_URL = "https://api.stripe.com/v1";
 const STRIPE_WEBHOOK_DEFAULT_TOLERANCE_SECONDS = 5 * 60;
 
+export type StripeCheckoutUiMode = "hosted" | "embedded";
+
 export interface CreateStripeCheckoutSessionInput {
   secretKey: string;
   priceId: string;
   successUrl: string;
   cancelUrl: string;
   clientReferenceId: string;
+  uiMode?: StripeCheckoutUiMode;
   metadata?: Record<string, string>;
 }
 
 export interface StripeCheckoutSession {
   id: string;
   url: string;
+  client_secret?: string;
   mode?: string;
   payment_status?: string;
   client_reference_id?: string;
@@ -55,6 +59,7 @@ export async function createStripeCheckoutSession(
   const successUrl = normalizeConfigValue(input.successUrl);
   const cancelUrl = normalizeConfigValue(input.cancelUrl);
   const clientReferenceId = normalizeConfigValue(input.clientReferenceId);
+  const uiMode: StripeCheckoutUiMode = input.uiMode === "embedded" ? "embedded" : "hosted";
 
   if (!secretKey) {
     throw new Error("Missing Stripe secret key.");
@@ -62,7 +67,7 @@ export async function createStripeCheckoutSession(
   if (!priceId) {
     throw new Error("Missing Stripe one-time price id.");
   }
-  if (!successUrl || !cancelUrl) {
+  if (!successUrl || (uiMode === "hosted" && !cancelUrl)) {
     throw new Error("Missing Stripe checkout redirect URLs.");
   }
   if (!clientReferenceId) {
@@ -71,8 +76,13 @@ export async function createStripeCheckoutSession(
 
   const params = new URLSearchParams();
   params.append("mode", "payment");
-  params.append("success_url", successUrl);
-  params.append("cancel_url", cancelUrl);
+  if (uiMode === "embedded") {
+    params.append("ui_mode", "embedded");
+    params.append("return_url", successUrl);
+  } else {
+    params.append("success_url", successUrl);
+    params.append("cancel_url", cancelUrl);
+  }
   params.append("line_items[0][price]", priceId);
   params.append("line_items[0][quantity]", "1");
   params.append("client_reference_id", clientReferenceId);
@@ -102,13 +112,24 @@ export async function createStripeCheckoutSession(
   const payload = (await response.json()) as Partial<StripeCheckoutSession>;
   const id = String(payload.id || "").trim();
   const url = String(payload.url || "").trim();
-  if (!id || !url) {
+  const clientSecret = String(payload.client_secret || "").trim();
+
+  if (!id) {
     throw new Error("Stripe checkout session response was missing required fields.");
+  }
+
+  if (uiMode === "embedded" && !clientSecret) {
+    throw new Error("Stripe embedded checkout session did not return client_secret.");
+  }
+
+  if (uiMode === "hosted" && !url) {
+    throw new Error("Stripe hosted checkout session did not return url.");
   }
 
   return {
     id,
     url,
+    client_secret: clientSecret || undefined,
     mode: typeof payload.mode === "string" ? payload.mode : undefined,
     payment_status: typeof payload.payment_status === "string" ? payload.payment_status : undefined,
     client_reference_id: typeof payload.client_reference_id === "string"

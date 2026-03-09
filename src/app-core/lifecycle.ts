@@ -6,7 +6,7 @@ import {
   readStorageWithLegacy,
   STORAGE_KEYS
 } from "./storageKeys.ts";
-import { handleStripeCheckoutReturn } from "./methods/ui/entitlements-stripe.ts";
+import { closeStripeEmbeddedCheckout, handleStripeCheckoutReturn } from "./methods/ui/entitlements-stripe.ts";
 
 const LEGACY_KEYS = getLegacyStorageKeys();
 
@@ -73,6 +73,7 @@ export const appLifecycle: AppLifecycleObject = {
   },
 
   beforeUnmount() {
+    void closeStripeEmbeddedCheckout(this);
     this.stopCloudSyncScheduler();
     this.stopOfflineReconnectScheduler();
     if (this.salesChart) {

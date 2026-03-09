@@ -7,13 +7,140 @@ import {
 } from "./shared.ts";
 
 const STRIPE_RETURN_POLL_DELAYS_MS = [0, 800, 1400, 2200];
+const STRIPE_EMBEDDED_CHECKOUT_MOUNT_ID = "stripe-embedded-checkout";
 
 type StripeCheckoutReturnState = "none" | "success" | "cancel";
+
+interface StripeCheckoutPayload {
+  checkoutUrl: string | null;
+  clientSecret: string | null;
+}
+
+interface StripeEmbeddedCheckout {
+  mount(target: string): void;
+  destroy?: () => void;
+  unmount?: () => void;
+}
+
+interface StripeEmbeddedCheckoutInstance {
+  initEmbeddedCheckout(options: {
+    fetchClientSecret: () => Promise<string>;
+    onComplete?: () => void | Promise<void>;
+  }): Promise<StripeEmbeddedCheckout>;
+}
+
+type StripeFactory = (publishableKey: string) => StripeEmbeddedCheckoutInstance;
+
+declare global {
+  interface Window {
+    Stripe?: StripeFactory;
+  }
+}
+
+let activeEmbeddedCheckout: StripeEmbeddedCheckout | null = null;
+let activeEmbeddedCheckoutVersion = 0;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => {
     globalThis.setTimeout(resolve, ms);
   });
+}
+
+function resolveStripePublishableKey(): string {
+  return String(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || "").trim();
+}
+
+function readCheckoutPayload(payload: Record<string, unknown> | null): StripeCheckoutPayload {
+  const checkoutUrl = typeof payload?.checkoutUrl === "string" && payload.checkoutUrl.trim()
+    ? payload.checkoutUrl.trim()
+    : null;
+  const clientSecret = typeof payload?.clientSecret === "string" && payload.clientSecret.trim()
+    ? payload.clientSecret.trim()
+    : null;
+
+  return {
+    checkoutUrl,
+    clientSecret
+  };
+}
+
+async function teardownEmbeddedCheckout(): Promise<void> {
+  if (!activeEmbeddedCheckout) return;
+
+  try {
+    if (typeof activeEmbeddedCheckout.destroy === "function") {
+      activeEmbeddedCheckout.destroy();
+    } else if (typeof activeEmbeddedCheckout.unmount === "function") {
+      activeEmbeddedCheckout.unmount();
+    }
+  } catch (error) {
+    console.warn("[whatfees] Failed to teardown embedded checkout", error);
+  } finally {
+    activeEmbeddedCheckout = null;
+  }
+}
+
+async function mountEmbeddedCheckout(app: AppContext, clientSecret: string): Promise<boolean> {
+  const currentWindow = (globalThis as { window?: Window }).window;
+  const stripeFactory = currentWindow?.Stripe;
+  const publishableKey = resolveStripePublishableKey();
+
+  if (!publishableKey || typeof stripeFactory !== "function") {
+    return false;
+  }
+
+  const currentDocument = (globalThis as { document?: Document }).document;
+  const mountTarget = currentDocument?.getElementById(STRIPE_EMBEDDED_CHECKOUT_MOUNT_ID);
+  if (!mountTarget) {
+    return false;
+  }
+
+  await teardownEmbeddedCheckout();
+  mountTarget.innerHTML = "";
+
+  const version = ++activeEmbeddedCheckoutVersion;
+  const stripe = stripeFactory(publishableKey);
+  if (!stripe || typeof stripe.initEmbeddedCheckout !== "function") {
+    return false;
+  }
+
+  const embeddedCheckout = await stripe.initEmbeddedCheckout({
+    fetchClientSecret: async () => clientSecret,
+    onComplete: () => {
+      void (async () => {
+        if (version !== activeEmbeddedCheckoutVersion) return;
+        await teardownEmbeddedCheckout();
+        app.showStripeCheckoutModal = false;
+        app.stripeCheckoutClientSecret = "";
+        await runStripeVerificationFlow(app);
+      })();
+    }
+  });
+
+  if (version !== activeEmbeddedCheckoutVersion || !app.showStripeCheckoutModal) {
+    await teardownEmbeddedCheckout();
+    return false;
+  }
+
+  activeEmbeddedCheckout = embeddedCheckout;
+  embeddedCheckout.mount(`#${STRIPE_EMBEDDED_CHECKOUT_MOUNT_ID}`);
+  return true;
+}
+
+async function refreshStripeEntitlement(app: AppContext): Promise<boolean> {
+  for (let attempt = 0; attempt < STRIPE_RETURN_POLL_DELAYS_MS.length; attempt += 1) {
+    const delayMs = STRIPE_RETURN_POLL_DELAYS_MS[attempt] || 0;
+    if (delayMs > 0) {
+      await sleep(delayMs);
+    }
+
+    await app.debugLogEntitlement(true);
+    if (app.hasProAccess) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 function parseStripeCheckoutReturn(): {
@@ -80,8 +207,9 @@ function cleanStripeCheckoutReturnUrl(cleanedPath: string | null): void {
 async function startStripeCheckout(
   app: AppContext,
   baseUrl: string,
-  googleIdToken: string
-): Promise<string | null> {
+  googleIdToken: string,
+  uiMode: "embedded" | "hosted" = "embedded"
+): Promise<StripeCheckoutPayload | null> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json"
   };
@@ -92,7 +220,9 @@ async function startStripeCheckout(
   const response = await fetchWithRetry(`${baseUrl}/billing/checkout-session`, {
     method: "POST",
     headers,
-    body: "{}"
+    body: JSON.stringify({
+      uiMode
+    })
   });
 
   if (response.status === 401) {
@@ -116,13 +246,13 @@ async function startStripeCheckout(
     return null;
   }
 
-  const checkoutUrl = typeof payload?.checkoutUrl === "string" ? payload.checkoutUrl.trim() : "";
-  if (!checkoutUrl) {
-    app.notify("Stripe checkout did not return a redirect URL.", "error");
+  const checkoutPayload = readCheckoutPayload(payload);
+  if (!checkoutPayload.clientSecret && !checkoutPayload.checkoutUrl) {
+    app.notify("Stripe checkout did not return a usable session.", "error");
     return null;
   }
 
-  return checkoutUrl;
+  return checkoutPayload;
 }
 
 export async function runStripePurchaseFlow(app: AppContext): Promise<void> {
@@ -144,10 +274,38 @@ export async function runStripePurchaseFlow(app: AppContext): Promise<void> {
 
   app.isVerifyingPurchase = true;
   try {
-    const checkoutUrl = await startStripeCheckout(app, base, googleIdToken);
-    if (!checkoutUrl) return;
+    const checkoutPayload = await startStripeCheckout(app, base, googleIdToken, "embedded");
+    if (!checkoutPayload) return;
+
+    const publishableKey = resolveStripePublishableKey();
+    const hasEmbeddedInputs = !!publishableKey && !!checkoutPayload.clientSecret;
+    if (hasEmbeddedInputs) {
+      app.stripeCheckoutClientSecret = checkoutPayload.clientSecret || "";
+      app.showStripeCheckoutModal = true;
+      await app.$nextTick(() => undefined);
+      const mounted = await mountEmbeddedCheckout(app, app.stripeCheckoutClientSecret);
+      if (mounted) {
+        return;
+      }
+
+      app.showStripeCheckoutModal = false;
+      app.stripeCheckoutClientSecret = "";
+      console.warn("[whatfees] Embedded checkout unavailable, falling back to redirect checkout");
+    }
+
+    let redirectUrl = checkoutPayload.checkoutUrl || "";
+    if (!redirectUrl) {
+      const hostedPayload = await startStripeCheckout(app, base, googleIdToken, "hosted");
+      redirectUrl = hostedPayload?.checkoutUrl || "";
+    }
+
+    if (!redirectUrl) {
+      app.notify("Stripe checkout is unavailable right now. Please try again.", "error");
+      return;
+    }
+
     app.notify("Redirecting to secure checkout...", "info");
-    window.location.assign(checkoutUrl);
+    window.location.assign(redirectUrl);
   } catch (error) {
     console.warn("[whatfees] Stripe checkout start failed", error);
     app.notify("Could not start Stripe checkout. Please try again.", "error");
@@ -157,11 +315,27 @@ export async function runStripePurchaseFlow(app: AppContext): Promise<void> {
 }
 
 export async function runStripeVerificationFlow(app: AppContext): Promise<void> {
-  await app.debugLogEntitlement(true);
-  if (app.hasProAccess) {
+  const hasAccess = await refreshStripeEntitlement(app);
+  if (hasAccess) {
     app.notify("Purchase verified. Pro features unlocked.", "success");
   } else {
     app.notify("No completed Stripe purchase found yet. Try again in a few seconds.", "info");
+  }
+}
+
+export async function closeStripeEmbeddedCheckout(
+  app: AppContext,
+  options: {
+    notifyCanceled?: boolean;
+  } = {}
+): Promise<void> {
+  const { notifyCanceled = false } = options;
+  activeEmbeddedCheckoutVersion += 1;
+  await teardownEmbeddedCheckout();
+  app.showStripeCheckoutModal = false;
+  app.stripeCheckoutClientSecret = "";
+  if (notifyCanceled) {
+    app.notify("Checkout canceled. No charge was made.", "info");
   }
 }
 
@@ -178,17 +352,10 @@ export async function handleStripeCheckoutReturn(app: AppContext): Promise<Strip
     return "cancel";
   }
 
-  for (let attempt = 0; attempt < STRIPE_RETURN_POLL_DELAYS_MS.length; attempt += 1) {
-    const delayMs = STRIPE_RETURN_POLL_DELAYS_MS[attempt] || 0;
-    if (delayMs > 0) {
-      await sleep(delayMs);
-    }
-
-    await app.debugLogEntitlement(true);
-    if (app.hasProAccess) {
-      app.notify("Purchase verified. Pro features unlocked.", "success");
-      return "success";
-    }
+  const hasAccess = await refreshStripeEntitlement(app);
+  if (hasAccess) {
+    app.notify("Purchase verified. Pro features unlocked.", "success");
+    return "success";
   }
 
   app.notify("Payment received. Pro unlock is still syncing. Please try Sync in a few seconds.", "info");

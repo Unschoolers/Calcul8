@@ -596,6 +596,28 @@
         </v-card>
       </v-dialog>
 
+      <!-- Embedded Stripe Checkout Modal -->
+      <v-dialog
+        v-model="showStripeCheckoutModal"
+        max-width="560"
+        :fullscreen="$vuetify?.display?.smAndDown"
+        persistent
+      >
+        <v-card>
+          <v-card-title>
+            <v-icon class="mr-2">mdi-credit-card-lock-outline</v-icon>
+            Secure Checkout
+          </v-card-title>
+          <v-card-text>
+            <div id="stripe-embedded-checkout" class="stripe-embedded-checkout"></div>
+          </v-card-text>
+          <v-card-actions>
+            <v-spacer></v-spacer>
+            <v-btn text @click="closeStripeCheckoutModal">Cancel Checkout</v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
+
       <!-- Profit Calculator Modal -->
       <auto-calculate-modal :ctx="$root"></auto-calculate-modal>
 
@@ -1061,6 +1083,7 @@
       </template>
     </v-app>
   </div>
+  <script src="https://js.stripe.com/v3/"></script>
   <script type="module" src="/src/main.ts"></script>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 </body>

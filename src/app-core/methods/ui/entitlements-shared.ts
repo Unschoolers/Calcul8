@@ -8,6 +8,7 @@ export type UiEntitlementMethodKeys =
   | "openVerifyPurchaseModal"
   | "startProPurchase"
   | "verifyProPurchase"
+  | "closeStripeCheckoutModal"
   | "startPlayPurchase"
   | "verifyPlayPurchase"
   | "debugLogEntitlement";

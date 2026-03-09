@@ -23,6 +23,7 @@ export const uiMethods: ThisType<AppContext> & Pick<
   | "openVerifyPurchaseModal"
   | "startProPurchase"
   | "verifyProPurchase"
+  | "closeStripeCheckoutModal"
   | "startPlayPurchase"
   | "verifyPlayPurchase"
   | "pullCloudSync"

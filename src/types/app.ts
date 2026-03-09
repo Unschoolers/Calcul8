@@ -174,8 +174,10 @@ export interface AppState extends LotSetup {
   hasProAccess: boolean;
   showManualPurchaseVerify: boolean;
   showVerifyPurchaseModal: boolean;
+  showStripeCheckoutModal: boolean;
   showPortfolioReportModal: boolean;
   isVerifyingPurchase: boolean;
+  stripeCheckoutClientSecret: string;
   purchaseTokenInput: string;
   purchaseProductIdInput: string;
   purchasePackageNameInput: string;

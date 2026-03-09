@@ -9,6 +9,7 @@ export const uiEntitlementMethods: UiEntitlementMethodSubset<
   | "openVerifyPurchaseModal"
   | "startProPurchase"
   | "verifyProPurchase"
+  | "closeStripeCheckoutModal"
   | "startPlayPurchase"
   | "verifyPlayPurchase"
   | "debugLogEntitlement"

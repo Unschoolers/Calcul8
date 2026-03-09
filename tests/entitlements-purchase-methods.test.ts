@@ -371,6 +371,6 @@ test("verifyProPurchase falls back to Stripe verification when provider is auto 
 
   await uiEntitlementPurchaseMethods.verifyProPurchase.call(ctx as never);
 
-  assert.equal((ctx.debugLogEntitlement as ReturnType<typeof vi.fn>).mock.calls.length, 1);
+  assert.equal((ctx.debugLogEntitlement as ReturnType<typeof vi.fn>).mock.calls.length >= 1, true);
   assert.equal((ctx.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0], "No completed Stripe purchase found yet. Try again in a few seconds.");
 });

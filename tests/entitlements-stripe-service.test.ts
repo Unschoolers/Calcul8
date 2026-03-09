@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { beforeEach, test, vi } from "vitest";
+import { afterEach, beforeEach, test, vi } from "vitest";
 
 const {
   resolveApiBaseUrlMock,
@@ -99,6 +99,11 @@ beforeEach(() => {
   });
 });
 
+afterEach(() => {
+  vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
+});
+
 test("runStripePurchaseFlow creates checkout session and redirects", async () => {
   await withMockedLocalStorage(async (data) => {
     data.set("whatfees_google_id_token", "google-token");
@@ -145,6 +150,124 @@ test("runStripePurchaseFlow handles 401 by expiring auth state", async () => {
 
     assert.equal(handleExpiredAuthMock.mock.calls.length, 1);
     assert.equal((ctx.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0], "Your sign-in expired. Please sign in again.");
+  });
+});
+
+test("runStripePurchaseFlow opens embedded checkout when client secret and Stripe key are available", async () => {
+  await withMockedLocalStorage(async (data) => {
+    data.set("whatfees_google_id_token", "google-token");
+    vi.stubEnv("VITE_STRIPE_PUBLISHABLE_KEY", "pk_test_123");
+
+    fetchWithRetryMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      async json() {
+        return {
+          clientSecret: "cs_test_embedded_secret_123"
+        };
+      }
+    });
+
+    const assignMock = vi.fn();
+    const stripeMountMock = vi.fn();
+    const stripeInitEmbeddedCheckoutMock = vi.fn(async () => ({
+      mount: stripeMountMock,
+      destroy: vi.fn()
+    }));
+    const stripeFactoryMock = vi.fn(() => ({
+      initEmbeddedCheckout: stripeInitEmbeddedCheckoutMock
+    }));
+
+    Object.defineProperty(globalThis, "window", {
+      configurable: true,
+      value: {
+        Stripe: stripeFactoryMock,
+        location: {
+          assign: assignMock
+        },
+        setTimeout: globalThis.setTimeout,
+        clearTimeout: globalThis.clearTimeout
+      }
+    });
+
+    Object.defineProperty(globalThis, "document", {
+      configurable: true,
+      value: {
+        getElementById: vi.fn(() => ({ innerHTML: "" }))
+      }
+    });
+
+    const ctx = createContext({
+      showStripeCheckoutModal: false,
+      stripeCheckoutClientSecret: "",
+      $nextTick: vi.fn(async (cb: () => void) => {
+        cb();
+      })
+    });
+
+    await runStripePurchaseFlow(ctx as never);
+
+    assert.equal(ctx.showStripeCheckoutModal, true);
+    assert.equal(ctx.stripeCheckoutClientSecret, "cs_test_embedded_secret_123");
+    assert.equal(stripeFactoryMock.mock.calls[0]?.[0], "pk_test_123");
+    assert.equal(stripeInitEmbeddedCheckoutMock.mock.calls.length, 1);
+    assert.equal(stripeMountMock.mock.calls.length, 1);
+    assert.equal(assignMock.mock.calls.length, 0);
+  });
+});
+
+test("runStripePurchaseFlow falls back to hosted checkout when embedded mount is unavailable", async () => {
+  await withMockedLocalStorage(async () => {
+    vi.stubEnv("VITE_STRIPE_PUBLISHABLE_KEY", "pk_test_123");
+
+    fetchWithRetryMock
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        async json() {
+          return {
+            clientSecret: "cs_test_embedded_secret_123"
+          };
+        }
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        async json() {
+          return {
+            checkoutUrl: "https://checkout.stripe.com/c/pay/cs_test_123"
+          };
+        }
+      });
+
+    const assignMock = vi.fn();
+    Object.defineProperty(globalThis, "window", {
+      configurable: true,
+      value: {
+        location: {
+          assign: assignMock
+        },
+        setTimeout: globalThis.setTimeout,
+        clearTimeout: globalThis.clearTimeout
+      }
+    });
+
+    const ctx = createContext({
+      showStripeCheckoutModal: false,
+      stripeCheckoutClientSecret: "",
+      $nextTick: vi.fn(async (cb: () => void) => {
+        cb();
+      })
+    });
+
+    await runStripePurchaseFlow(ctx as never);
+
+    assert.equal(fetchWithRetryMock.mock.calls.length, 2);
+    const firstPayload = JSON.parse(String(fetchWithRetryMock.mock.calls[0]?.[1]?.body || "{}")) as { uiMode?: string };
+    const secondPayload = JSON.parse(String(fetchWithRetryMock.mock.calls[1]?.[1]?.body || "{}")) as { uiMode?: string };
+    assert.equal(firstPayload.uiMode, "embedded");
+    assert.equal(secondPayload.uiMode, "hosted");
+    assert.equal(assignMock.mock.calls[0]?.[0], "https://checkout.stripe.com/c/pay/cs_test_123");
   });
 });
 

@@ -18,7 +18,11 @@ import {
   isAlreadyOwnedPurchaseError,
   type UiEntitlementMethodSubset
 } from "./entitlements-shared.ts";
-import { runStripePurchaseFlow, runStripeVerificationFlow } from "./entitlements-stripe.ts";
+import {
+  closeStripeEmbeddedCheckout,
+  runStripePurchaseFlow,
+  runStripeVerificationFlow
+} from "./entitlements-stripe.ts";
 
 const PLAY_PURCHASE_RECOVERY_MAX_ATTEMPTS = 10;
 const PLAY_PURCHASE_RECOVERY_BASE_DELAY_MS = 250;
@@ -32,7 +36,7 @@ function sleep(ms: number): Promise<void> {
 }
 
 export const uiEntitlementPurchaseMethods: UiEntitlementMethodSubset<
-  "startProPurchase" | "verifyProPurchase" | "startPlayPurchase" | "verifyPlayPurchase"
+  "startProPurchase" | "verifyProPurchase" | "closeStripeCheckoutModal" | "startPlayPurchase" | "verifyPlayPurchase"
 > = {
   async startProPurchase(): Promise<void> {
     const configuredProvider = resolvePurchaseProvider();
@@ -80,6 +84,10 @@ export const uiEntitlementPurchaseMethods: UiEntitlementMethodSubset<
       `${provider} verification is not enabled yet. Supported provider${supported.length === 1 ? "" : "s"}: ${supportedText}.`,
       "info"
     );
+  },
+
+  async closeStripeCheckoutModal(): Promise<void> {
+    await closeStripeEmbeddedCheckout(this, { notifyCanceled: true });
   },
 
   async startPlayPurchase(): Promise<void> {

@@ -240,6 +240,7 @@ export interface AppMethodState {
   openVerifyPurchaseModal(): void;
   startProPurchase(): Promise<void>;
   verifyProPurchase(): Promise<void>;
+  closeStripeCheckoutModal(): Promise<void>;
   startPlayPurchase(): Promise<void>;
   verifyPlayPurchase(): Promise<void>;
   pullCloudSync(): Promise<void>;

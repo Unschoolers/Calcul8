@@ -78,6 +78,9 @@ function createRequest(method = "POST", headers: Record<string, string> = {}) {
       get(name: string) {
         return normalized.get(name.toLowerCase()) ?? null;
       }
+    },
+    async json() {
+      return {};
     }
   };
 }
@@ -111,6 +114,31 @@ test("billingCheckoutSession creates checkout session for authenticated user", a
   assert.equal(createStripeCheckoutSessionMock.mock.calls[0]?.[0]?.clientReferenceId, "user-1");
   assert.equal((response.jsonBody as { ok: boolean }).ok, true);
   assert.equal((response.jsonBody as { checkoutUrl: string }).checkoutUrl, "https://checkout.stripe.com/c/pay/cs_test_123");
+});
+
+test("billingCheckoutSession supports embedded checkout mode and returns client secret", async () => {
+  const request = {
+    ...createRequest("POST", { origin: "https://app.whatfees.ca" }),
+    async json() {
+      return {
+        uiMode: "embedded"
+      };
+    }
+  };
+  const context = createContext();
+
+  createStripeCheckoutSessionMock.mockResolvedValue({
+    id: "cs_test_embedded_123",
+    client_secret: "cs_test_embedded_secret_123"
+  });
+
+  const response = await billingCheckoutSession(request as never, context as never);
+
+  assert.equal(response.status, 200);
+  assert.equal(createStripeCheckoutSessionMock.mock.calls.length, 1);
+  assert.equal(createStripeCheckoutSessionMock.mock.calls[0]?.[0]?.uiMode, "embedded");
+  assert.equal((response.jsonBody as { sessionId: string }).sessionId, "cs_test_embedded_123");
+  assert.equal((response.jsonBody as { clientSecret: string }).clientSecret, "cs_test_embedded_secret_123");
 });
 
 test("billingCheckoutSession returns 500 when Stripe session creation fails", async () => {

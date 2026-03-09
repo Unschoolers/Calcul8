@@ -626,3 +626,8 @@
         transition: none !important;
       }
     }
+
+    .stripe-embedded-checkout {
+      width: 100%;
+      min-height: 420px;
+    }
