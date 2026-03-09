@@ -2,18 +2,15 @@ import { app, type HttpRequest, type HttpResponseInit, type InvocationContext } 
 import { clearSessionCookie, resolveUserId, revokeSessionFromRequest } from "../lib/auth";
 import { getConfig } from "../lib/config";
 import { revokeAllSessionsForUser } from "../lib/cosmos";
-import { errorResponse, jsonResponse, maybeHandleCorsPreflight, maybeHandleGlobalRateLimit } from "../lib/http";
+import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../lib/http";
 
 export async function authMe(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   const config = getConfig();
-  const preflightResponse = maybeHandleCorsPreflight(request, config);
-  if (preflightResponse) return preflightResponse;
-
-  const rateLimitResponse = maybeHandleGlobalRateLimit(request, config);
-  if (rateLimitResponse) return rateLimitResponse;
+  const guardResponse = maybeHandleHttpGuards(request, config);
+  if (guardResponse) return guardResponse;
 
   try {
     const userId = await resolveUserId(request, config);
@@ -32,11 +29,8 @@ export async function authLogout(
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   const config = getConfig();
-  const preflightResponse = maybeHandleCorsPreflight(request, config);
-  if (preflightResponse) return preflightResponse;
-
-  const rateLimitResponse = maybeHandleGlobalRateLimit(request, config);
-  if (rateLimitResponse) return rateLimitResponse;
+  const guardResponse = maybeHandleHttpGuards(request, config);
+  if (guardResponse) return guardResponse;
 
   try {
     // Keep this endpoint idempotent: missing auth still clears cookie client-side.
@@ -62,11 +56,8 @@ export async function authLogoutAll(
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   const config = getConfig();
-  const preflightResponse = maybeHandleCorsPreflight(request, config);
-  if (preflightResponse) return preflightResponse;
-
-  const rateLimitResponse = maybeHandleGlobalRateLimit(request, config);
-  if (rateLimitResponse) return rateLimitResponse;
+  const guardResponse = maybeHandleHttpGuards(request, config);
+  if (guardResponse) return guardResponse;
 
   try {
     const userId = await resolveUserId(request, config, { issueSessionCookie: false });

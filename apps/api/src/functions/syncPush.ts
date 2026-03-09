@@ -2,7 +2,7 @@ import { app, type HttpRequest, type HttpResponseInit, type InvocationContext } 
 import { HttpError, resolveUserId } from "../lib/auth";
 import { getConfig } from "../lib/config";
 import { getEffectiveSyncSnapshot, hasWorkspaceMembership, upsertSyncSnapshotIncremental } from "../lib/cosmos";
-import { errorResponse, jsonResponse, maybeHandleCorsPreflight, maybeHandleGlobalRateLimit } from "../lib/http";
+import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../lib/http";
 import { parseOptionalWorkspaceId } from "../lib/syncScope";
 import { assertSyncScopeAccess, resolveSyncScope, shouldWarnWorkspaceScopeFallback } from "../lib/syncScopeResolution";
 import { parseSyncLotsShape } from "../lib/syncShape";
@@ -80,11 +80,8 @@ export async function syncPush(
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   const config = getConfig();
-  const preflightResponse = maybeHandleCorsPreflight(request, config);
-  if (preflightResponse) return preflightResponse;
-
-  const rateLimitResponse = maybeHandleGlobalRateLimit(request, config);
-  if (rateLimitResponse) return rateLimitResponse;
+  const guardResponse = maybeHandleHttpGuards(request, config);
+  if (guardResponse) return guardResponse;
 
   try {
     const userId = await resolveUserId(request, config);

@@ -10,7 +10,7 @@ import {
   listWorkspaceMemberships,
   upsertWorkspaceMembership
 } from "../lib/cosmos";
-import { errorResponse, jsonResponse, maybeHandleCorsPreflight, maybeHandleGlobalRateLimit } from "../lib/http";
+import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../lib/http";
 import type { WorkspaceMembershipDocument, WorkspaceRole } from "../types";
 
 function parseWorkspaceIdFromParams(request: HttpRequest): string {
@@ -96,11 +96,8 @@ export async function workspacesCreate(
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   const config = getConfig();
-  const preflightResponse = maybeHandleCorsPreflight(request, config);
-  if (preflightResponse) return preflightResponse;
-
-  const rateLimitResponse = maybeHandleGlobalRateLimit(request, config);
-  if (rateLimitResponse) return rateLimitResponse;
+  const guardResponse = maybeHandleHttpGuards(request, config);
+  if (guardResponse) return guardResponse;
 
   try {
     const ownerUserId = await resolveUserId(request, config);
@@ -136,11 +133,8 @@ export async function workspaceMembersList(
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   const config = getConfig();
-  const preflightResponse = maybeHandleCorsPreflight(request, config);
-  if (preflightResponse) return preflightResponse;
-
-  const rateLimitResponse = maybeHandleGlobalRateLimit(request, config);
-  if (rateLimitResponse) return rateLimitResponse;
+  const guardResponse = maybeHandleHttpGuards(request, config);
+  if (guardResponse) return guardResponse;
 
   try {
     const actorUserId = await resolveUserId(request, config);
@@ -167,11 +161,8 @@ export async function workspaceMembersAdd(
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   const config = getConfig();
-  const preflightResponse = maybeHandleCorsPreflight(request, config);
-  if (preflightResponse) return preflightResponse;
-
-  const rateLimitResponse = maybeHandleGlobalRateLimit(request, config);
-  if (rateLimitResponse) return rateLimitResponse;
+  const guardResponse = maybeHandleHttpGuards(request, config);
+  if (guardResponse) return guardResponse;
 
   try {
     const actorUserId = await resolveUserId(request, config);
@@ -220,11 +211,8 @@ export async function workspaceMembersRemove(
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   const config = getConfig();
-  const preflightResponse = maybeHandleCorsPreflight(request, config);
-  if (preflightResponse) return preflightResponse;
-
-  const rateLimitResponse = maybeHandleGlobalRateLimit(request, config);
-  if (rateLimitResponse) return rateLimitResponse;
+  const guardResponse = maybeHandleHttpGuards(request, config);
+  if (guardResponse) return guardResponse;
 
   try {
     const actorUserId = await resolveUserId(request, config);

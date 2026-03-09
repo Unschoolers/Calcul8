@@ -64,6 +64,16 @@ export function maybeHandleGlobalRateLimit(
   );
 }
 
+export function maybeHandleHttpGuards(
+  request: HttpRequest,
+  config: ApiConfig
+): HttpResponseInit | null {
+  const preflightResponse = maybeHandleCorsPreflight(request, config);
+  if (preflightResponse) return preflightResponse;
+
+  return maybeHandleGlobalRateLimit(request, config);
+}
+
 export function jsonResponse(
   request: HttpRequest,
   config: ApiConfig,

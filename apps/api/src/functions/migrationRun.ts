@@ -1,7 +1,7 @@
 import { app, type HttpRequest, type HttpResponseInit, type InvocationContext } from "@azure/functions";
 import { HttpError } from "../lib/auth";
 import { getConfig } from "../lib/config";
-import { errorResponse, jsonResponse, maybeHandleCorsPreflight, maybeHandleGlobalRateLimit } from "../lib/http";
+import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../lib/http";
 import { assertMigrationAdminAccess, resolveMigrationActor } from "../lib/migrations/adminAuth";
 import { getMigrationById } from "../lib/migrations/registry";
 import { runMigration } from "../lib/migrations/runner";
@@ -49,11 +49,8 @@ export async function migrationRun(
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   const config = getConfig();
-  const preflightResponse = maybeHandleCorsPreflight(request, config);
-  if (preflightResponse) return preflightResponse;
-
-  const rateLimitResponse = maybeHandleGlobalRateLimit(request, config);
-  if (rateLimitResponse) return rateLimitResponse;
+  const guardResponse = maybeHandleHttpGuards(request, config);
+  if (guardResponse) return guardResponse;
 
   try {
     assertMigrationAdminAccess(request, config.migrationsAdminKey, config.apiEnv);

@@ -1,6 +1,6 @@
 import { app, type HttpRequest, type HttpResponseInit, type InvocationContext } from "@azure/functions";
 import { getConfig } from "../lib/config";
-import { errorResponse, jsonResponse, maybeHandleCorsPreflight, maybeHandleGlobalRateLimit } from "../lib/http";
+import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../lib/http";
 import { getSupportedPurchaseProviders, resolvePurchaseVerifier } from "./purchaseVerifiers";
 
 function resolveProvider(request: HttpRequest): string {
@@ -12,11 +12,8 @@ export async function entitlementsVerify(
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   const config = getConfig();
-  const preflightResponse = maybeHandleCorsPreflight(request, config);
-  if (preflightResponse) return preflightResponse;
-
-  const rateLimitResponse = maybeHandleGlobalRateLimit(request, config);
-  if (rateLimitResponse) return rateLimitResponse;
+  const guardResponse = maybeHandleHttpGuards(request, config);
+  if (guardResponse) return guardResponse;
 
   try {
     const provider = resolveProvider(request);

@@ -64,7 +64,8 @@ function createContext() {
     getSalesStorageKey: (lotId: number) => `whatfees_sales_${lotId}`,
     loadLot: vi.fn(),
     notify: vi.fn(),
-    pushCloudSync: vi.fn()
+    pushCloudSync: vi.fn(),
+    pullCloudSync: vi.fn(async () => undefined)
   };
 }
 
@@ -81,7 +82,8 @@ beforeEach(() => {
   vi.stubGlobal("navigator", { onLine: true });
   vi.stubGlobal("localStorage", createMockStorage({
     whatfees_google_token: "token-abc",
-    whatfees_sync_client_version: "2"
+    whatfees_sync_client_version: "2",
+    whatfees_presets: JSON.stringify([{ id: 1 }])
   }));
   resolveApiBaseUrlMock.mockReturnValue("https://api.example");
 });
@@ -164,7 +166,8 @@ test("startCloudSyncScheduler and stopCloudSyncScheduler manage interval", () =>
 
 test("pullCloudSync still attempts server sync when local Google token is missing", async () => {
   vi.stubGlobal("localStorage", createMockStorage({
-    whatfees_sync_client_version: "1"
+    whatfees_sync_client_version: "1",
+    whatfees_presets: JSON.stringify([{ id: 1 }])
   }));
   const ctx = createContext();
   fetchWithRetryMock.mockResolvedValue({
@@ -182,4 +185,62 @@ test("pullCloudSync still attempts server sync when local Google token is missin
 
   await uiSyncMethods.pullCloudSync.call(ctx);
   assert.equal(fetchWithRetryMock.mock.calls.length, 1);
+});
+
+test("pushCloudSync uses in-memory sales for active lot when building payload", async () => {
+  const ctx = createContext();
+  ctx.sales = [
+    {
+      id: 11,
+      type: "pack",
+      quantity: 1,
+      packsCount: 1,
+      price: 99,
+      date: "2026-03-09"
+    }
+  ];
+  ctx.loadSalesForLotId = vi.fn().mockReturnValue([]);
+  fetchWithRetryMock.mockResolvedValue({
+    ok: true,
+    status: 200,
+    statusText: "OK",
+    json: async () => ({ version: 3 })
+  });
+
+  await uiSyncMethods.pushCloudSync.call(ctx, true);
+
+  assert.equal(fetchWithRetryMock.mock.calls.length, 1);
+  const requestInit = fetchWithRetryMock.mock.calls[0]?.[1] as { body?: string };
+  const parsedBody = JSON.parse(String(requestInit?.body ?? "{}")) as {
+    salesByLot?: Record<string, Array<{ id: number }>>;
+  };
+  assert.equal(Array.isArray(parsedBody.salesByLot?.["1"]), true);
+  assert.equal(parsedBody.salesByLot?.["1"]?.[0]?.id, 11);
+});
+
+test("pushCloudSync skips upload and pulls cloud when local storage was cleared mid-session", async () => {
+  vi.stubGlobal("localStorage", createMockStorage({
+    whatfees_google_token: "token-abc"
+  }));
+
+  const ctx = createContext();
+  ctx.lastSyncedPayloadHash = "{\"lots\":[{\"id\":1}],\"salesByLot\":{\"1\":[{\"id\":5}]}}";
+  ctx.sales = [
+    {
+      id: 5,
+      type: "pack",
+      quantity: 1,
+      packsCount: 1,
+      price: 20,
+      date: "2026-03-09"
+    }
+  ];
+  const pullCloudSyncMock = vi.fn(async () => undefined);
+  ctx.pullCloudSync = pullCloudSyncMock;
+
+  await uiSyncMethods.pushCloudSync.call(ctx, false);
+
+  assert.equal(fetchWithRetryMock.mock.calls.length, 0);
+  assert.equal(pullCloudSyncMock.mock.calls.length, 1);
+  assert.equal(ctx.notify.mock.calls.length, 1);
 });

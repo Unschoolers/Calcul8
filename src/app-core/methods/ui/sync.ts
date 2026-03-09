@@ -6,6 +6,7 @@ import {
   handleExpiredAuth,
   resolveApiBaseUrl
 } from "./shared.ts";
+import { STORAGE_KEYS } from "../../storageKeys.ts";
 import {
   applyCloudSnapshotToLocal,
   parseCloudSnapshot,
@@ -14,6 +15,26 @@ import {
 import { requestCloudSyncPull, requestCloudSyncPush, type SyncPullResponseBody, type SyncPushResponseBody } from "./sync-network.ts";
 import { createSyncPayload, getSyncPayloadSignature } from "./sync-payload.ts";
 import { setSyncStatusError, setSyncStatusSuccess, startSyncStatus } from "./sync-status.ts";
+
+function isLocalSyncCacheReset(context: AppContext): boolean {
+  if (!context.lastSyncedPayloadHash) return false;
+  if (!Array.isArray(context.lots) || context.lots.length === 0) return false;
+
+  try {
+    const hasPersistedLots = !!localStorage.getItem(STORAGE_KEYS.PRESETS);
+    if (hasPersistedLots) return false;
+
+    const hasAnyInMemorySales = Array.isArray(context.sales) && context.sales.length > 0;
+    const hasAnyPersistedSales = context.lots.some((lot) => {
+      const key = context.getSalesStorageKey(lot.id);
+      return !!localStorage.getItem(key);
+    });
+
+    return hasAnyInMemorySales || !hasAnyPersistedSales;
+  } catch {
+    return false;
+  }
+}
 
 export const uiSyncMethods: ThisType<AppContext> & Pick<
   AppMethodState,
@@ -113,6 +134,13 @@ export const uiSyncMethods: ThisType<AppContext> & Pick<
     }
 
     const googleIdToken = (localStorage.getItem(GOOGLE_TOKEN_KEY) || "").trim();
+
+    if (isLocalSyncCacheReset(this)) {
+      console.warn("[whatfees] Cloud sync push skipped: local cache reset detected, pulling first");
+      this.notify("Local cache reset detected. Restoring cloud data before upload.", "warning");
+      await this.pullCloudSync();
+      return;
+    }
 
     const previousVersionRaw = localStorage.getItem(SYNC_CLIENT_VERSION_KEY) || "0";
     const previousVersion = Number(previousVersionRaw);

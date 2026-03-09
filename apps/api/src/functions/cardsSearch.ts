@@ -2,7 +2,7 @@ import { app, type HttpRequest, type HttpResponseInit, type InvocationContext } 
 import { HttpError } from "../lib/auth";
 import { getConfig } from "../lib/config";
 import { searchCardCatalog } from "../lib/cosmos";
-import { errorResponse, jsonResponse, maybeHandleCorsPreflight, maybeHandleGlobalRateLimit } from "../lib/http";
+import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../lib/http";
 
 function getQueryParam(request: HttpRequest, key: string): string | null {
   if (request.query && typeof request.query.get === "function") {
@@ -35,11 +35,8 @@ export async function cardsSearch(
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   const config = getConfig();
-  const preflightResponse = maybeHandleCorsPreflight(request, config);
-  if (preflightResponse) return preflightResponse;
-
-  const rateLimitResponse = maybeHandleGlobalRateLimit(request, config);
-  if (rateLimitResponse) return rateLimitResponse;
+  const guardResponse = maybeHandleHttpGuards(request, config);
+  if (guardResponse) return guardResponse;
 
   try {
     const game = (getQueryParam(request, "game") ?? "").trim().toLowerCase();
