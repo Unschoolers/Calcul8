@@ -44,7 +44,7 @@ export const configPricingMethods: ConfigMethodSubset<
 
   calculateOptimalPrices(): void {
     if (!this.canUsePaidActions) {
-      this.notify("Pro access required to apply auto-calculated prices", "warning");
+      this.notify("Pro access required to apply calculated prices", "warning");
       return;
     }
     if (this.currentLotType === "singles") {

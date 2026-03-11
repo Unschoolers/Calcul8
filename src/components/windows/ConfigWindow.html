@@ -252,16 +252,16 @@
                             ></v-text-field>
                           </v-col>
                           <v-col cols="2" class="d-flex justify-end">
-                            <v-btn
-                              icon="mdi-calculator-variant-outline"
-                              size="small"
-                              color="secondary"
-                              variant="tonal"
-                              :title="hasProAccess ? 'Open auto-calculate prices' : 'Upgrade to unlock auto-calculate prices'"
-                              :aria-label="hasProAccess ? 'Open auto-calculate prices' : 'Upgrade to unlock auto-calculate prices'"
-                              :disabled="!hasLotSelected"
-                              @click="accessProFeature('autoCalculate')"
-                            ></v-btn>
+                              <v-btn
+                                icon="mdi-calculator"
+                                size="small"
+                                color="secondary"
+                                variant="tonal"
+                              :title="hasProAccess ? 'Open price calculator' : 'Upgrade to unlock price calculator'"
+                              :aria-label="hasProAccess ? 'Open price calculator' : 'Upgrade to unlock price calculator'"
+                                :disabled="!hasLotSelected"
+                                @click="accessProFeature('autoCalculate')"
+                              ></v-btn>
                           </v-col>
                         </v-row>
 

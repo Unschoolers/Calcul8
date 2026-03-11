@@ -10,8 +10,11 @@
                           <div class="sales-status-icon-wrap">
                             <v-icon size="18">{{ salesStatus?.icon || 'mdi-information' }}</v-icon>
                           </div>
-                          <div class="sales-status-title">
-                            {{ salesStatus?.title || 'No Sales Yet' }}
+                          <div class="sales-status-title-wrap">
+                            <div class="sales-status-eyebrow">Sales Snapshot</div>
+                            <div class="sales-status-title">
+                              {{ salesStatus?.title || 'No Sales Yet' }}
+                            </div>
                           </div>
                         </div>
                         <div class="sales-status-value">
@@ -57,20 +60,34 @@
 
                   <!-- Pie / Sparkline -->
                   <v-col cols="12" md="6">
-                    <v-card elevation="4" style="position: relative;">
-                      <v-btn
-                        icon
-                        size="small"
-                        variant="text"
-                        :title="chartView === 'pie' ? 'Show sparkline chart' : 'Show pie chart'"
-                        :aria-label="chartView === 'pie' ? 'Show sparkline chart' : 'Show pie chart'"
-                        @click="toggleChartView"
-                        style="position: absolute; top: 0.5rem; right: 0.5rem; z-index: 10;"
-                      >
-                        <v-icon>{{ chartView === 'pie' ? 'mdi-chart-line' : 'mdi-chart-pie' }}</v-icon>
-                      </v-btn>
-
+                    <v-card elevation="4" class="sales-section-card sales-chart-card">
                       <v-card-text class="sales-chart-container">
+                        <div class="sales-section-head sales-chart-head">
+                          <div class="sales-section-head-main">
+                            <v-icon size="16">mdi-chart-areaspline</v-icon>
+                            <div class="sales-section-head-copy">
+                              <div class="sales-section-eyebrow">Sales Chart</div>
+                              <div class="sales-section-subtitle">
+                                {{ chartView === 'pie'
+                                  ? (currentLotType === 'singles'
+                                    ? 'Sold versus remaining items'
+                                    : 'Sold versus unsold net value')
+                                  : 'Cumulative profit journey over sales' }}
+                              </div>
+                            </div>
+                          </div>
+                          <v-btn
+                            icon
+                            size="small"
+                            variant="text"
+                            class="sales-section-toggle-btn"
+                            :title="chartView === 'pie' ? 'Show sparkline chart' : 'Show pie chart'"
+                            :aria-label="chartView === 'pie' ? 'Show sparkline chart' : 'Show pie chart'"
+                            @click="toggleChartView"
+                          >
+                            <v-icon>{{ chartView === 'pie' ? 'mdi-chart-line' : 'mdi-chart-pie' }}</v-icon>
+                          </v-btn>
+                        </div>
                         <canvas
                           v-if="chartView === 'pie'"
                           ref="salesChartCanvas"
@@ -103,10 +120,10 @@
 
                 <v-row class="mt-3" v-if="(liveForecastScenarios?.length ?? 0) > 0">
                   <v-col cols="12">
-                    <v-card elevation="4" class="sales-forecast-card">
-                      <v-card-title class="sales-forecast-title-bar">
-                        <div class="d-flex align-center ga-2">
-                          <v-icon size="18">mdi-crystal-ball</v-icon>
+                    <v-card elevation="4" class="sales-section-card sales-forecast-card">
+                      <v-card-title class="sales-section-title-bar sales-forecast-title-bar">
+                        <div class="sales-section-title-group">
+                          <v-icon size="16">mdi-crystal-ball</v-icon>
                           <span>Live Forecast</span>
                         </div>
                         <div class="sales-forecast-title-actions">
@@ -175,11 +192,11 @@
                 <!-- Sales History -->
                 <v-row class="mt-4">
                   <v-col cols="12">
-                    <v-card elevation="4" class="sales-history-card">
-                      <v-card-title class="d-flex align-center justify-space-between sales-history-title-bar">
-                        <div>
-                          <v-icon class="mr-2">mdi-history</v-icon>
-                          Sales History
+                    <v-card elevation="4" class="sales-section-card sales-history-card">
+                      <v-card-title class="d-flex align-center justify-space-between sales-section-title-bar sales-history-title-bar">
+                        <div class="sales-section-title-group">
+                          <v-icon size="16">mdi-history</v-icon>
+                          <span>Sales History</span>
                         </div>
                         <v-chip color="secondary" v-if="(sales?.length ?? 0) > 0" class="sales-history-count-chip">
                           {{ sales?.length ?? 0 }} sale{{ (sales?.length ?? 0) > 1 ? 's' : '' }}

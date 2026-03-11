@@ -1,10 +1,21 @@
 .config-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 14px !important;
   border: 1px solid rgba(var(--v-theme-on-surface), 0.14);
   background: rgba(var(--v-theme-surface), 0.96);
   backdrop-filter: blur(4px);
   box-shadow:
     0 12px 26px rgba(19, 28, 45, 0.08),
     0 2px 8px rgba(19, 28, 45, 0.06);
+}
+
+.config-card:not(.config-summary-hero)::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: linear-gradient(90deg, rgba(var(--v-theme-secondary), 0.95), rgba(var(--v-theme-secondary), 0.22));
 }
 
 .v-theme--unionArenaDark .config-card {
@@ -16,17 +27,27 @@
 }
 
 .config-card .v-card-title {
-  padding-top: 0.85rem;
-  padding-bottom: 0.75rem;
-  background: rgba(var(--v-theme-secondary), 0.11);
-  border-bottom: 1px solid rgba(var(--v-theme-secondary), 0.3);
-  color: rgb(var(--v-theme-secondary));
-  font-weight: 700;
-  letter-spacing: 0.01em;
+  min-height: 0;
+  padding: 1rem 1.15rem 0.35rem;
+  background: transparent;
+  border-bottom: 0;
+  color: rgba(var(--v-theme-secondary), 0.96);
+  font-size: 0.8rem !important;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-transform: uppercase;
 }
 
 .config-card .v-card-title .v-icon {
+  margin-right: 0.45rem !important;
+  font-size: 1rem !important;
   color: rgb(var(--v-theme-secondary)) !important;
+}
+
+.config-card .v-divider {
+  margin: 0 1.15rem;
+  border-color: rgba(var(--v-theme-secondary), 0.18);
 }
 
 .config-card .v-card-text {

@@ -569,11 +569,11 @@
 .selling-auto-btn {
   text-transform: none;
   font-weight: 700;
-  min-width: 76px;
+  min-width: 40px;
 }
 
 .selling-auto-btn .v-btn__content {
-  gap: 0.25rem;
+  gap: 0;
 }
 
 .singles-editor-sheet {
