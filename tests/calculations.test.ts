@@ -1320,7 +1320,7 @@ test("calculateOptimalPrices is blocked when paywall is locked", () => {
   configMethods.calculateOptimalPrices.call(context);
 
   assert.equal(recalculated, false);
-  assert.equal(notifiedMessage, "Pro access required to apply auto-calculated prices");
+  assert.equal(notifiedMessage, "Pro access required to apply calculated prices");
   assert.equal(context.showProfitCalculator, true);
 });
 
