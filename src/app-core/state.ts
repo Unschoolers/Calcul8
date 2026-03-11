@@ -34,6 +34,7 @@ export function createInitialState(): AppState {
     showVerifyPurchaseModal: false,
     showStripeCheckoutModal: false,
     showPortfolioReportModal: false,
+    portfolioReportExpandedLotIds: [],
     isVerifyingPurchase: false,
     stripeCheckoutClientSecret: "",
     purchaseTokenInput: "",

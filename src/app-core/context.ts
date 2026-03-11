@@ -225,6 +225,7 @@ export interface AppMethodState {
   exportPortfolioReport(): void;
   openPortfolioReportModal(): void;
   copyPortfolioReportTable(): Promise<void>;
+  savePortfolioReportTable(): void;
   calculateProfit(units: number, pricePerUnit: number): number;
   formatCurrency(value: number | null | undefined, decimals?: number): string;
   safeFixed(value: number, decimals?: number): string;
@@ -251,6 +252,7 @@ export interface AppMethodState {
   initPortfolioChart(): void;
   toggleChartView(): void;
   togglePortfolioChartView(): void;
+  togglePortfolioReportLot(lotId: number): void;
   accessProFeature(target: "autoCalculate" | "portfolioReport" | "salesTracking" | "expertMode"): Promise<void>;
   requestPurchaseUiMode(mode: "simple" | "expert"): Promise<void>;
   calculateSaleProfit(sale: Sale): number;

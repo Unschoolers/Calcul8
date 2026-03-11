@@ -13,7 +13,7 @@ test("PortfolioWindow formatting helpers use fallback and formatter", () => {
   assert.equal(PortfolioWindow.methods.fmtCurrency.call(fallback as never, null, 2), "0.00");
 });
 
-test("PortfolioWindow chart view helpers rotate through all three views", () => {
+test("PortfolioWindow chart view helpers rotate through all four views", () => {
   const breakdownVm = {
     portfolioChartView: "breakdown",
     nextPortfolioChartView: PortfolioWindow.methods.nextPortfolioChartView
@@ -26,14 +26,20 @@ test("PortfolioWindow chart view helpers rotate through all three views", () => 
     portfolioChartView: "sellthrough",
     nextPortfolioChartView: PortfolioWindow.methods.nextPortfolioChartView
   };
+  const marginVm = {
+    portfolioChartView: "margin",
+    nextPortfolioChartView: PortfolioWindow.methods.nextPortfolioChartView
+  };
 
   assert.equal(PortfolioWindow.methods.nextPortfolioChartView.call(breakdownVm as never), "trend");
   assert.equal(PortfolioWindow.methods.nextPortfolioChartView.call(trendVm as never), "sellthrough");
-  assert.equal(PortfolioWindow.methods.nextPortfolioChartView.call(sellthroughVm as never), "breakdown");
+  assert.equal(PortfolioWindow.methods.nextPortfolioChartView.call(sellthroughVm as never), "margin");
+  assert.equal(PortfolioWindow.methods.nextPortfolioChartView.call(marginVm as never), "breakdown");
 
   assert.equal(PortfolioWindow.methods.portfolioChartToggleIcon.call(breakdownVm as never), "mdi-chart-line");
   assert.equal(PortfolioWindow.methods.portfolioChartToggleIcon.call(trendVm as never), "mdi-chart-bar");
-  assert.equal(PortfolioWindow.methods.portfolioChartToggleIcon.call(sellthroughVm as never), "mdi-chart-donut");
+  assert.equal(PortfolioWindow.methods.portfolioChartToggleIcon.call(sellthroughVm as never), "mdi-percent-outline");
+  assert.equal(PortfolioWindow.methods.portfolioChartToggleIcon.call(marginVm as never), "mdi-chart-donut");
 });
 
 test("PortfolioWindow portfolio filter helpers keep hidden ids out of the visible summary", () => {

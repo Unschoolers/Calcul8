@@ -3,6 +3,7 @@ import { test } from "vitest";
 import type { Lot, LotPerformanceSummary, Sale } from "../src/types/app.ts";
 import {
   buildPortfolioBreakdownChartConfig,
+  buildPortfolioMarginChartConfig,
   buildPortfolioHistoryChartConfig,
   buildSalesPieChartConfig,
   buildSalesTrendChartConfig
@@ -55,7 +56,9 @@ function makeLot(overrides: Partial<Lot> = {}): Lot {
   };
 }
 
-function makePerformance(overrides: Partial<LotPerformanceSummary & { lotId: number; lotName: string }> = {}) {
+function makePerformance(
+  overrides: Partial<LotPerformanceSummary & { lotId: number; lotName: string; realizedCost?: number; realizedProfit?: number; realizedMarginPercent?: number | null }> = {}
+) {
   return {
     lotId: 1700000000000,
     lotName: "Lot 1",
@@ -64,6 +67,9 @@ function makePerformance(overrides: Partial<LotPerformanceSummary & { lotId: num
     totalCost: 80,
     totalProfit: 40,
     marginPercent: 50,
+    realizedCost: 80,
+    realizedProfit: 40,
+    realizedMarginPercent: 33.3333,
     soldPacks: 2,
     totalPacks: 10,
     lastSaleDate: "2026-02-21",
@@ -124,6 +130,25 @@ test("buildPortfolioBreakdownChartConfig uses right-side legend for compact mode
   assert.equal(config?.data.labels?.[0], "Lot 1");
 });
 
+test("buildPortfolioMarginChartConfig creates a sorted horizontal bar chart", () => {
+  const config = buildPortfolioMarginChartConfig({
+    rows: [
+      makePerformance({ lotId: 1, lotName: "Lot 1", realizedMarginPercent: 12.5, realizedProfit: 25 }),
+      makePerformance({ lotId: 2, lotName: "Lot 2", realizedMarginPercent: -4.5, realizedProfit: -9 }),
+      makePerformance({ lotId: 3, lotName: "Lot 3", realizedMarginPercent: 33.3, realizedProfit: 50 }),
+      makePerformance({ lotId: 4, lotName: "Lot 4", salesCount: 0, realizedMarginPercent: null, realizedProfit: 0 })
+    ],
+    compactMode: true,
+    formatCurrency
+  });
+
+  assert.equal(config?.type, "bar");
+  assert.equal(config?.options?.indexAxis, "y");
+  assert.deepEqual(config?.data.labels, ["Lot 3", "Lot 1", "Lot 2"]);
+  assert.deepEqual(config?.data.datasets[0]?.data, [33.3, 12.5, -4.5]);
+  assert.equal(config?.data.datasets[0]?.label, "Sold profit margin %");
+});
+
 test("buildPortfolioHistoryChartConfig creates a trend config with target dataset", () => {
   const config = buildPortfolioHistoryChartConfig({
     portfolioChartView: "trend",
@@ -157,7 +182,13 @@ test("buildPortfolioHistoryChartConfig uses compact mobile labels and legend set
   assert.equal(config?.type, "line");
   assert.ok((config?.data.labels?.[0] || "").startsWith("M:"));
   assert.equal(config?.options?.plugins?.legend?.position, "bottom");
+  assert.equal(config?.options?.scales?.x?.type, "category");
+  assert.equal(config?.options?.scales?.x?.offset, false);
+  assert.equal(config?.options?.scales?.x?.ticks?.callback, undefined);
   assert.equal(config?.options?.scales?.x?.ticks?.maxTicksLimit, 4);
+  assert.equal(config?.data.datasets[0]?.pointHoverRadius, 6);
+  assert.equal(config?.data.datasets[0]?.pointHitRadius, 16);
+  assert.equal(config?.options?.interaction?.intersect, false);
 });
 
 test("buildPortfolioHistoryChartConfig creates a sell-through bar config", () => {
@@ -191,7 +222,15 @@ test("buildPortfolioHistoryChartConfig uses compact tick settings for sell-throu
 
   assert.equal(config?.type, "bar");
   assert.ok((config?.data.labels?.[0] || "").startsWith("M:"));
+  assert.equal(config?.options?.scales?.x?.type, "category");
+  assert.equal(config?.options?.scales?.x?.offset, false);
+  assert.equal(config?.options?.scales?.x?.ticks?.callback, undefined);
   assert.equal(config?.options?.scales?.x?.ticks?.maxTicksLimit, 4);
+  assert.equal(config?.options?.layout?.padding?.left, 6);
+  assert.equal(config?.options?.layout?.padding?.right, 10);
+  assert.equal(config?.data.datasets[0]?.clip, false);
+  assert.equal(config?.data.datasets[0]?.categoryPercentage, 0.96);
+  assert.equal(config?.data.datasets[0]?.barPercentage, 0.92);
 });
 
 test("buildPortfolioHistoryChartConfig uses historical inventory for past sell-through bars", () => {

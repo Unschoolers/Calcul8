@@ -20,6 +20,7 @@ import {
 } from "./sales-core.ts";
 import {
   buildPortfolioBreakdownChartConfig,
+  buildPortfolioMarginChartConfig,
   buildPortfolioHistoryChartConfig,
   buildSalesPieChartConfig,
   buildSalesTrendChartConfig
@@ -61,7 +62,10 @@ function isSmallDisplay(context: AppContext): boolean {
 }
 
 function formatCompactChartDate(value: string): string {
-  const date = new Date(value);
+  const dateOnlyMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const date = dateOnlyMatch
+    ? new Date(Number(dateOnlyMatch[1]), Number(dateOnlyMatch[2]) - 1, Number(dateOnlyMatch[3]))
+    : new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return new Intl.DateTimeFormat("en-US", {
     month: "short",
@@ -582,6 +586,17 @@ export const salesMethods: ThisType<AppContext> & Pick<
       });
       if (!breakdownConfig) return;
       this.portfolioChart = new Chart(ctx, breakdownConfig);
+      return;
+    }
+
+    if (this.portfolioChartView === "margin") {
+      const marginConfig = buildPortfolioMarginChartConfig({
+        rows: this.allLotPerformance,
+        compactMode: isSmallDisplay(this),
+        formatCurrency: (value, decimals) => this.formatCurrency(value, decimals)
+      });
+      if (!marginConfig) return;
+      this.portfolioChart = new Chart(ctx, marginConfig);
       return;
     }
 

@@ -59,6 +59,43 @@ function createImportContext(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function createPortfolioReportContext(overrides: Record<string, unknown> = {}) {
+  return {
+    hasPortfolioData: true,
+    portfolioTotals: {
+      lotCount: 1,
+      profitableLotCount: 1,
+      totalSalesCount: 2,
+      totalRevenue: 100,
+      totalCost: 80,
+      totalProfit: 20
+    },
+    allLotPerformance: [
+      {
+        lotId: 1,
+        lotName: "Lot A",
+        lotType: "Bulk",
+        salesCount: 2,
+        soldPacks: 5,
+        totalPacks: 16,
+        totalRevenue: 100,
+        totalCost: 80,
+        totalProfit: 20,
+        marginPercent: 20,
+        realizedCost: 80,
+        realizedProfit: 20,
+        realizedMarginPercent: 20,
+        forecastProfitAverage: 24,
+        lastSaleDate: "2026-02-21"
+      }
+    ],
+    formatCurrency: (value: number) => value.toFixed(2),
+    formatDate: (date: string) => date,
+    notify: vi.fn(),
+    ...overrides
+  };
+}
+
 beforeEach(() => {
   vi.restoreAllMocks();
   vi.clearAllMocks();
@@ -78,7 +115,6 @@ afterEach(() => {
 });
 
 test("copyPortfolioReportTable uses clipboard API when available", async () => {
-  const notify = vi.fn();
   const writeText = vi.fn(async () => undefined);
   const originalNavigator = globalThis.navigator;
   Object.defineProperty(globalThis, "navigator", {
@@ -89,34 +125,7 @@ test("copyPortfolioReportTable uses clipboard API when available", async () => {
   });
 
   try {
-    const ctx = {
-      hasPortfolioData: true,
-      portfolioTotals: {
-        lotCount: 1,
-        profitableLotCount: 1,
-        totalSalesCount: 2,
-        totalRevenue: 100,
-        totalCost: 80,
-        totalProfit: 20
-      },
-      allLotPerformance: [
-        {
-          lotId: 1,
-          lotName: "Lot A",
-          salesCount: 2,
-          soldPacks: 5,
-          totalPacks: 16,
-          totalRevenue: 100,
-          totalCost: 80,
-          totalProfit: 20,
-          marginPercent: 20,
-          lastSaleDate: "2026-02-21"
-        }
-      ],
-      formatCurrency: (value: number) => value.toFixed(2),
-      formatDate: (date: string) => date,
-      notify
-    };
+    const ctx = createPortfolioReportContext();
 
     await configIoMethods.copyPortfolioReportTable.call(ctx as never);
 
@@ -124,12 +133,74 @@ test("copyPortfolioReportTable uses clipboard API when available", async () => {
     const tsv = String(writeText.mock.calls[0]?.[0] ?? "");
     assert.equal(tsv.includes("WhatFees Portfolio"), true);
     assert.equal(tsv.includes("Lot A"), true);
-    assert.equal(notify.mock.calls.at(-1)?.[0], "Portfolio table copied. Paste into Sheets or Excel.");
+    assert.equal(tsv.includes("Realized Status"), true);
+    assert.equal(tsv.includes("Current Lot P/L"), true);
+    assert.equal(tsv.includes("Forecast Avg"), true);
+    assert.equal(tsv.includes("Realized sales"), true);
+    assert.equal(ctx.notify.mock.calls.at(-1)?.[0], "Portfolio table copied. Paste into Sheets or Excel.");
   } finally {
     Object.defineProperty(globalThis, "navigator", {
       configurable: true,
       value: originalNavigator
     });
+  }
+});
+
+test("savePortfolioReportTable downloads the same TSV payload", () => {
+  const createObjectURL = vi.fn(() => "blob:portfolio-report");
+  const revokeObjectURL = vi.fn();
+  const click = vi.fn();
+  const originalCreateObjectURL = URL.createObjectURL;
+  const originalRevokeObjectURL = URL.revokeObjectURL;
+  const originalBlob = globalThis.Blob;
+  const originalDocument = globalThis.document;
+
+  vi.stubGlobal("Blob", vi.fn(function BlobMock(this: { parts: unknown[]; options: unknown }, parts: unknown[], options: unknown) {
+    this.parts = parts;
+    this.options = options;
+  }) as unknown as typeof Blob);
+  URL.createObjectURL = createObjectURL;
+  URL.revokeObjectURL = revokeObjectURL;
+  vi.stubGlobal("document", {
+    createElement(tagName: string) {
+      if (tagName.toLowerCase() === "a") {
+        return {
+          href: "",
+          download: "",
+          click
+        } as unknown as HTMLAnchorElement;
+      }
+      throw new Error(`Unexpected element creation: ${tagName}`);
+    }
+  });
+
+  try {
+    const ctx = createPortfolioReportContext();
+
+    configIoMethods.savePortfolioReportTable.call(ctx as never);
+
+    assert.equal(createObjectURL.mock.calls.length, 1);
+    assert.equal(click.mock.calls.length, 1);
+    assert.equal(revokeObjectURL.mock.calls.length, 1);
+    const blobInstance = createObjectURL.mock.calls[0]?.[0] as { parts?: unknown[] };
+    const tsv = String(blobInstance?.parts?.[0] ?? "");
+    assert.equal(tsv.includes("WhatFees Portfolio"), true);
+    assert.equal(tsv.includes("Lot A"), true);
+    assert.equal(tsv.includes("Current Lot P/L"), true);
+    assert.equal(ctx.notify.mock.calls.at(-1)?.[0], "Portfolio report saved.");
+  } finally {
+    URL.createObjectURL = originalCreateObjectURL;
+    URL.revokeObjectURL = originalRevokeObjectURL;
+    if (originalBlob === undefined) {
+      delete (globalThis as { Blob?: typeof Blob }).Blob;
+    } else {
+      vi.stubGlobal("Blob", originalBlob);
+    }
+    if (originalDocument === undefined) {
+      delete (globalThis as { document?: Document }).document;
+    } else {
+      vi.stubGlobal("document", originalDocument);
+    }
   }
 });
 

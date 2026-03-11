@@ -43,15 +43,17 @@ function fallbackCopyToClipboard(text: string): boolean {
 
 function buildPortfolioReportTsv(context: AppContext): string {
   const exportedAt = new Date().toISOString();
+  const exportedDateOnly = exportedAt.slice(0, 10);
   const totals = context.portfolioTotals;
   const lines: string[] = [
     `Report\t${sanitizeTsvCell("WhatFees Portfolio")}`,
+    `Data Analysis On\t${sanitizeTsvCell(context.formatDate(exportedDateOnly))}`,
     `Exported At\t${sanitizeTsvCell(exportedAt)}`,
     "",
     "Section\tLot Count\tProfitable Lots\tSales Count\tTotal Revenue\tTotal Cost\tTotal Profit",
     `Totals\t${totals.lotCount}\t${totals.profitableLotCount}\t${totals.totalSalesCount}\t${context.formatCurrency(totals.totalRevenue)}\t${context.formatCurrency(totals.totalCost)}\t${context.formatCurrency(totals.totalProfit)}`,
     "",
-    "Lot\tType\tSales\tSold Items\tTotal Items\tRevenue\tCost\tProfit\tMargin %\tLast Sale"
+    "Lot\tType\tRealized Status\tSales\tSold Items\tTotal Items\tSold Revenue\tSold Cost\tRealized Profit\tCurrent Lot P/L\tSold Margin %\tForecast Avg\tLast Sale"
   ];
 
   for (const row of context.allLotPerformance) {
@@ -59,13 +61,16 @@ function buildPortfolioReportTsv(context: AppContext): string {
       [
         sanitizeTsvCell(row.lotName),
         sanitizeTsvCell(row.lotType),
+        row.salesCount > 0 ? "Realized sales" : "No sales yet",
         row.salesCount,
         row.soldPacks,
         row.totalPacks,
         context.formatCurrency(row.totalRevenue),
-        context.formatCurrency(row.totalCost),
+        row.salesCount > 0 ? context.formatCurrency(row.realizedCost ?? 0) : "",
+        row.salesCount > 0 ? context.formatCurrency(row.realizedProfit ?? 0) : "",
         context.formatCurrency(row.totalProfit),
-        row.marginPercent == null ? "" : context.formatCurrency(row.marginPercent, 2),
+        row.salesCount > 0 && row.realizedMarginPercent != null ? context.formatCurrency(row.realizedMarginPercent, 2) : "",
+        row.forecastProfitAverage == null ? "" : context.formatCurrency(row.forecastProfitAverage),
         row.lastSaleDate ? sanitizeTsvCell(context.formatDate(row.lastSaleDate)) : ""
       ].join("\t")
     );
@@ -81,6 +86,7 @@ export const configIoMethods: ConfigMethodSubset<
   | "exportPortfolioReport"
   | "openPortfolioReportModal"
   | "copyPortfolioReportTable"
+  | "savePortfolioReportTable"
 > = {
   canUseAdminLotSyncTools(): boolean {
     if (!isAdminSyncImportEnabled()) return false;
@@ -181,19 +187,20 @@ export const configIoMethods: ConfigMethodSubset<
     this.openPortfolioReportModal();
   },
 
-  openPortfolioReportModal(): void {
-    if (!this.hasPortfolioData) {
-      this.notify("No portfolio data yet", "warning");
-      return;
-    }
-    this.showPortfolioReportModal = true;
-  },
+    openPortfolioReportModal(): void {
+      if (!this.hasPortfolioData) {
+        this.notify("No portfolio data yet", "warning");
+        return;
+      }
+      this.portfolioReportExpandedLotIds = [];
+      this.showPortfolioReportModal = true;
+    },
 
   async copyPortfolioReportTable(): Promise<void> {
-    if (!this.hasPortfolioData) {
-      this.notify("No portfolio data yet", "warning");
-      return;
-    }
+      if (!this.hasPortfolioData) {
+        this.notify("No portfolio data yet", "warning");
+        return;
+      }
 
     const tsv = buildPortfolioReportTsv(this);
     try {
@@ -204,9 +211,31 @@ export const configIoMethods: ConfigMethodSubset<
         if (!copied) throw new Error("Clipboard copy fallback failed");
       }
       this.notify("Portfolio table copied. Paste into Sheets or Excel.", "success");
-    } catch (error) {
-      console.warn("Failed to copy portfolio table:", error);
-      this.notify("Could not copy table. Please try again.", "error");
+      } catch (error) {
+        console.warn("Failed to copy portfolio table:", error);
+        this.notify("Could not copy table. Please try again.", "error");
+      }
+    },
+
+    savePortfolioReportTable(): void {
+      if (!this.hasPortfolioData) {
+        this.notify("No portfolio data yet", "warning");
+        return;
+      }
+
+      const tsv = buildPortfolioReportTsv(this);
+      const exportedDateOnly = new Date().toISOString().slice(0, 10);
+      const blob = new Blob([tsv], { type: "text/tab-separated-values;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+
+      try {
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `whatfees-portfolio-report-${exportedDateOnly}.tsv`;
+        link.click();
+        this.notify("Portfolio report saved.", "success");
+      } finally {
+        URL.revokeObjectURL(url);
+      }
     }
-  }
-};
+  };

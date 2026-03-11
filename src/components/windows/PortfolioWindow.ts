@@ -123,26 +123,29 @@ export const PortfolioWindow = {
       return Math.max(0, selected.length - 1);
     },
 
-    nextPortfolioChartView(this: Record<string, unknown>): "breakdown" | "trend" | "sellthrough" {
+    nextPortfolioChartView(this: Record<string, unknown>): "breakdown" | "trend" | "sellthrough" | "margin" {
       const current = String(this.portfolioChartView || "trend");
       if (current === "breakdown") return "trend";
       if (current === "trend") return "sellthrough";
+      if (current === "sellthrough") return "margin";
       return "breakdown";
     },
 
     portfolioChartToggleTitle(this: Record<string, unknown>): string {
-      const nextView = this.nextPortfolioChartView as (() => "breakdown" | "trend" | "sellthrough") | undefined;
+      const nextView = this.nextPortfolioChartView as (() => "breakdown" | "trend" | "sellthrough" | "margin") | undefined;
       const next = typeof nextView === "function" ? nextView.call(this) : "trend";
       if (next === "breakdown") return "Switch to breakdown view";
       if (next === "trend") return "Switch to trend view";
+      if (next === "margin") return "Switch to sold profit margin view";
       return "Switch to sell-through view";
     },
 
     portfolioChartToggleIcon(this: Record<string, unknown>): string {
-      const nextView = this.nextPortfolioChartView as (() => "breakdown" | "trend" | "sellthrough") | undefined;
+      const nextView = this.nextPortfolioChartView as (() => "breakdown" | "trend" | "sellthrough" | "margin") | undefined;
       const next = typeof nextView === "function" ? nextView.call(this) : "trend";
       if (next === "breakdown") return "mdi-chart-donut";
       if (next === "trend") return "mdi-chart-line";
+      if (next === "margin") return "mdi-percent-outline";
       return "mdi-chart-bar";
     },
 
@@ -150,6 +153,7 @@ export const PortfolioWindow = {
       const current = String(this.portfolioChartView || "trend");
       if (current === "breakdown") return "Revenue by lot";
       if (current === "sellthrough") return "Sell-through over time (%)";
+      if (current === "margin") return "Sold profit margin by lot (%)";
       return "Cumulative portfolio profit trend";
     },
 
@@ -160,6 +164,9 @@ export const PortfolioWindow = {
       }
       if (current === "sellthrough") {
         return "Portfolio sell-through percentage over time chart.";
+      }
+      if (current === "margin") {
+        return "Portfolio sold profit margin percentage chart by lot.";
       }
       return "Portfolio cumulative profit trend chart.";
     },

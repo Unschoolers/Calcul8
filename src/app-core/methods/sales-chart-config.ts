@@ -26,6 +26,31 @@ type PortfolioPerformanceRow = LotPerformanceSummary & {
   lotName: string;
 };
 
+function buildPortfolioDateAxis(
+  labels: string[],
+  compactMode: boolean | undefined,
+  opts: { offset?: boolean } = {}
+) {
+  void labels;
+  return {
+    type: "category" as const,
+    offset: Boolean(opts.offset),
+    grid: { display: false },
+    ticks: compactMode
+      ? {
+        autoSkip: true,
+        maxTicksLimit: 4,
+        maxRotation: 0,
+        minRotation: 0,
+        font: { size: 10 }
+      }
+      : {
+        autoSkip: true,
+        maxRotation: 0
+      }
+  };
+}
+
 function getEarliestSaleDate(sales: Sale[]): string | null {
   let earliest: string | null = null;
   for (const sale of sales) {
@@ -228,6 +253,75 @@ export function buildPortfolioBreakdownChartConfig(params: {
   };
 }
 
+export function buildPortfolioMarginChartConfig(params: {
+  rows: PortfolioPerformanceRow[];
+  compactMode: boolean;
+  formatCurrency: FormatCurrency;
+}): ChartConfiguration<"bar", number[], string> | null {
+  const rows = params.rows
+    .filter((row) => row.salesCount > 0 && Number.isFinite(Number(row.realizedMarginPercent)))
+    .map((row) => ({
+      ...row,
+      realizedMarginPercent: Number(row.realizedMarginPercent)
+    }))
+    .sort((a, b) => b.realizedMarginPercent - a.realizedMarginPercent);
+  if (rows.length === 0) return null;
+
+  return {
+    type: "bar",
+    data: {
+      labels: rows.map((row) => row.lotName),
+      datasets: [
+        {
+          label: "Sold profit margin %",
+          data: rows.map((row) => row.realizedMarginPercent),
+          backgroundColor: rows.map((row) => row.realizedMarginPercent >= 0 ? "rgba(52, 199, 89, 0.75)" : "rgba(255, 59, 48, 0.75)"),
+          borderRadius: 6,
+          maxBarThickness: params.compactMode ? 18 : 24
+        }
+      ]
+    },
+    options: {
+      animation: false,
+      responsive: true,
+      maintainAspectRatio: true,
+      indexAxis: "y",
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (context) => {
+              const row = rows[context.dataIndex ?? 0];
+              if (!row) return String(context.formattedValue ?? "");
+              const marginValue = `${params.formatCurrency(row.realizedMarginPercent, 1)}%`;
+              return `${row.lotName}: Sold margin ${marginValue}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: {
+            callback: (value) => `${params.formatCurrency(Number(value), 0)}%`,
+            font: params.compactMode ? { size: 10 } : undefined
+          },
+          grid: {
+            color: "rgba(255, 255, 255, 0.08)"
+          }
+        },
+        y: {
+          ticks: {
+            font: params.compactMode ? { size: 10 } : undefined
+          },
+          grid: {
+            display: false
+          }
+        }
+      }
+    }
+  };
+}
+
 export function buildPortfolioHistoryChartConfig(params: {
   portfolioChartView: "trend" | "sellthrough";
   filteredLots: Lot[];
@@ -312,24 +406,33 @@ export function buildPortfolioHistoryChartConfig(params: {
       data: {
         labels,
         datasets: [
-          {
-            label: "Sell-through %",
-            data: values,
-            backgroundColor: "rgba(247, 181, 0, 0.35)",
-            borderColor: "#F7B500",
-            borderWidth: 1.5,
-            borderRadius: 4,
-            maxBarThickness: 18
-          }
-        ]
-      },
-      options: {
-        animation: false,
-        responsive: true,
-        maintainAspectRatio: true,
-        plugins: {
-          legend: { display: false },
-          tooltip: {
+            {
+              label: "Sell-through %",
+              data: values,
+              backgroundColor: "rgba(247, 181, 0, 0.35)",
+              borderColor: "#F7B500",
+              borderWidth: 1.5,
+              borderRadius: 4,
+              clip: false,
+              categoryPercentage: params.compactMode ? 0.96 : 0.9,
+              barPercentage: params.compactMode ? 0.92 : 0.82,
+              maxBarThickness: params.compactMode ? 24 : 32
+            }
+          ]
+        },
+        options: {
+          animation: false,
+          responsive: true,
+          maintainAspectRatio: true,
+          layout: {
+            padding: {
+              left: params.compactMode ? 6 : 4,
+              right: params.compactMode ? 10 : 8
+            }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
             callbacks: {
               label: (context) => `Sell-through: ${params.formatCurrency(Number(context.parsed?.y || 0), 1)}%`
             }
@@ -337,17 +440,8 @@ export function buildPortfolioHistoryChartConfig(params: {
         },
         scales: {
           x: {
-            grid: { display: false },
-            ticks: params.compactMode
-              ? {
-                autoSkip: true,
-                maxTicksLimit: 4,
-                maxRotation: 0,
-                minRotation: 0,
-                font: { size: 10 }
-              }
-              : undefined
-          },
+            ...buildPortfolioDateAxis(labels, params.compactMode, { offset: false })
+            },
           y: {
             min: 0,
             max: yMax,
@@ -378,6 +472,9 @@ export function buildPortfolioHistoryChartConfig(params: {
   const finalProfit = values[values.length - 1] ?? 0;
   const lineColor = finalProfit >= 0 ? "#34C759" : "#FF3B30";
   const fillColor = finalProfit >= 0 ? "rgba(52, 199, 89, 0.18)" : "rgba(255, 59, 48, 0.18)";
+  const pointRadius = params.compactMode ? 2 : 2;
+  const pointHoverRadius = params.compactMode ? 6 : 5;
+  const pointHitRadius = params.compactMode ? 16 : 12;
 
   return {
     type: "line",
@@ -390,7 +487,9 @@ export function buildPortfolioHistoryChartConfig(params: {
           borderColor: lineColor,
           backgroundColor: fillColor,
           borderWidth: 3,
-          pointRadius: 2,
+          pointRadius,
+          pointHoverRadius,
+          pointHitRadius,
           tension: 0.25,
           fill: true
         },
@@ -412,6 +511,10 @@ export function buildPortfolioHistoryChartConfig(params: {
       animation: false,
       responsive: true,
       maintainAspectRatio: true,
+      interaction: {
+        mode: "nearest",
+        intersect: false
+      },
       plugins: {
         legend: {
           display: true,
@@ -433,16 +536,7 @@ export function buildPortfolioHistoryChartConfig(params: {
       },
       scales: {
         x: {
-          grid: { display: false },
-          ticks: params.compactMode
-            ? {
-              autoSkip: true,
-              maxTicksLimit: 4,
-              maxRotation: 0,
-              minRotation: 0,
-              font: { size: 10 }
-            }
-            : undefined
+          ...buildPortfolioDateAxis(labels, params.compactMode, { offset: false })
         },
         y: {
           ticks: {
@@ -453,3 +547,4 @@ export function buildPortfolioHistoryChartConfig(params: {
     }
   };
 }
+

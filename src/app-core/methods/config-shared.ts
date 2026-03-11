@@ -39,6 +39,7 @@ export type ConfigMethods = ConfigMethodSubset<
   | "exportPortfolioReport"
   | "openPortfolioReportModal"
   | "copyPortfolioReportTable"
+  | "savePortfolioReportTable"
   | "calculateProfit"
   | "recalculateDefaultPrices"
   | "calculateOptimalPrices"

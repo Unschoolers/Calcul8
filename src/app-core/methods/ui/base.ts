@@ -20,6 +20,7 @@ export const uiBaseMethods: ThisType<AppContext> & Pick<
   | "safeFixed"
   | "toggleChartView"
   | "togglePortfolioChartView"
+  | "togglePortfolioReportLot"
   | "accessProFeature"
   | "requestPurchaseUiMode"
   | "calculateSaleProfit"
@@ -79,7 +80,15 @@ export const uiBaseMethods: ThisType<AppContext> & Pick<
       ? "trend"
       : this.portfolioChartView === "trend"
         ? "sellthrough"
-        : "breakdown";
+        : this.portfolioChartView === "sellthrough"
+          ? "margin"
+          : "breakdown";
+  },
+
+  togglePortfolioReportLot(lotId: number): void {
+    this.portfolioReportExpandedLotIds = this.portfolioReportExpandedLotIds.includes(lotId)
+      ? this.portfolioReportExpandedLotIds.filter((id) => id !== lotId)
+      : [...this.portfolioReportExpandedLotIds, lotId];
   },
 
   async accessProFeature(target): Promise<void> {

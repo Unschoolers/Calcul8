@@ -9,7 +9,7 @@ export type CurrencyCode = "CAD" | "USD";
 export type SinglesCsvImportMode = "merge" | "sync" | "append";
 export type SaleType = "pack" | "box" | "rtyh";
 export type ChartViewMode = "pie" | "sparkline";
-export type PortfolioChartViewMode = "breakdown" | "trend" | "sellthrough";
+export type PortfolioChartViewMode = "breakdown" | "trend" | "sellthrough" | "margin";
 export type PortfolioLotTypeFilter = "both" | "bulk" | "singles";
 export type SyncStatus = "idle" | "syncing" | "success" | "error";
 export type LiveSinglesSelectionSource = "manual" | "external";
@@ -152,6 +152,9 @@ export interface LotPerformanceSummary {
   totalCost: number;
   totalProfit: number;
   marginPercent: number | null;
+  realizedCost?: number;
+  realizedProfit?: number;
+  realizedMarginPercent?: number | null;
   soldPacks: number;
   totalPacks: number;
   lastSaleDate: string | null;
@@ -177,6 +180,7 @@ export interface AppState extends LotSetup {
   showVerifyPurchaseModal: boolean;
   showStripeCheckoutModal: boolean;
   showPortfolioReportModal: boolean;
+  portfolioReportExpandedLotIds: number[];
   isVerifyingPurchase: boolean;
   stripeCheckoutClientSecret: string;
   purchaseTokenInput: string;

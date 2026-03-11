@@ -298,6 +298,213 @@
   background: rgba(var(--v-theme-on-surface), 0.02);
 }
 
+.portfolio-report-content {
+  position: relative;
+  padding-inline: 1rem !important;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.portfolio-report-content::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+.portfolio-report-content::before,
+.portfolio-report-content::after {
+  content: "";
+  position: sticky;
+  left: 0;
+  right: 0;
+  display: block;
+  height: 14px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.portfolio-report-content::before {
+  top: 0;
+  margin-bottom: -14px;
+  background: linear-gradient(180deg, rgba(var(--v-theme-surface), 0.96), rgba(var(--v-theme-surface), 0));
+}
+
+.portfolio-report-content::after {
+  bottom: 0;
+  margin-top: -14px;
+  background: linear-gradient(0deg, rgba(var(--v-theme-surface), 0.96), rgba(var(--v-theme-surface), 0));
+}
+
+.portfolio-report-actions {
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  background: rgba(var(--v-theme-surface), 0.92);
+  backdrop-filter: blur(8px);
+}
+
+.portfolio-report-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 0.9rem;
+}
+
+.portfolio-report-card {
+  cursor: pointer;
+  border-radius: 16px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  background:
+    radial-gradient(110% 120% at 100% 0%, rgba(var(--v-theme-secondary), 0.08), transparent 58%),
+    linear-gradient(165deg, rgba(var(--v-theme-surface), 0.98), rgba(var(--v-theme-surface), 0.95));
+  padding: 0.95rem;
+}
+
+.portfolio-report-card:focus-visible {
+  outline: 2px solid rgba(var(--v-theme-secondary), 0.9);
+  outline-offset: 2px;
+}
+
+.portfolio-report-card.is-expanded {
+  border-color: rgba(var(--v-theme-on-surface), 0.12);
+  box-shadow: inset 0 0 0 1px rgba(var(--v-theme-secondary), 0.08);
+}
+
+.portfolio-report-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.85rem;
+}
+
+.portfolio-report-card-title-wrap {
+  min-width: 0;
+}
+
+.portfolio-report-card-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: rgba(var(--v-theme-on-surface), 0.94);
+}
+
+.portfolio-report-card-type-icon {
+  color: rgba(var(--v-theme-secondary), 0.96) !important;
+  flex: 0 0 auto;
+}
+
+.portfolio-report-card-toggle {
+  color: rgba(var(--v-theme-on-surface), 0.84) !important;
+  margin-right: -0.35rem;
+  margin-top: -0.2rem;
+}
+
+.portfolio-report-card-toggle:hover {
+  color: rgba(var(--v-theme-on-surface), 0.98) !important;
+}
+
+.portfolio-report-card-summary {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem 0.8rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.portfolio-report-card-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem 0.8rem;
+}
+
+.portfolio-report-card-details {
+  margin-top: 0.85rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+}
+
+.portfolio-report-card-details .portfolio-report-card-label {
+  font-size: 0.68rem;
+}
+
+.portfolio-report-card-details .portfolio-report-card-value {
+  font-size: 0.84rem;
+}
+
+.portfolio-report-card-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+  min-width: 0;
+}
+
+.portfolio-report-card-metric--full {
+  grid-column: 1 / -1;
+}
+
+.portfolio-report-card-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  font-weight: 700;
+  color: rgba(var(--v-theme-on-surface), 0.56);
+}
+
+.portfolio-report-card-value {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), 0.9);
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.portfolio-report-card-value.is-positive {
+  color: rgba(var(--v-theme-success), 1);
+}
+
+.portfolio-report-card-value.is-negative {
+  color: rgba(var(--v-theme-error), 1);
+}
+
+.portfolio-report-card-value.is-neutral {
+  color: rgba(var(--v-theme-on-surface), 0.68);
+}
+
+@media (max-width: 600px) {
+  .portfolio-report-dialog {
+    width: min(96vw, 980px) !important;
+    max-width: min(96vw, 980px) !important;
+  }
+
+  .portfolio-report-content {
+    padding-inline: 0.8rem !important;
+  }
+
+  .portfolio-report-card-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .portfolio-report-card {
+    padding: 0.8rem;
+  }
+
+  .portfolio-report-card-head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.55rem;
+  }
+
+  .portfolio-report-card-toggle {
+    align-self: flex-end;
+    margin-top: -2.3rem;
+  }
+}
+
 .portfolio-chart-head {
   display: flex;
   align-items: flex-start;
@@ -366,13 +573,6 @@
   color: rgba(var(--v-theme-on-surface), 0.62);
 }
 
-.portfolio-lot-finance-line {
-  display: flex;
-  align-items: center;
-  gap: 0.32rem;
-  flex-wrap: wrap;
-}
-
 .portfolio-lot-status-avatar {
   border: 1px solid rgba(var(--v-theme-on-surface), 0.14);
   background: rgba(var(--v-theme-on-surface), 0.06);
@@ -388,6 +588,11 @@
   background: rgba(var(--v-theme-error), 0.18);
 }
 
+.portfolio-lot-status-avatar.is-neutral {
+  border-color: rgba(var(--v-theme-on-surface), 0.14);
+  background: rgba(var(--v-theme-on-surface), 0.08);
+}
+
 .portfolio-lot-status-icon.is-positive {
   color: rgb(var(--v-theme-success));
 }
@@ -396,24 +601,20 @@
   color: rgb(var(--v-theme-error));
 }
 
+.portfolio-lot-status-icon.is-neutral {
+  color: rgba(var(--v-theme-on-surface), 0.72);
+}
+
 .portfolio-lot-profit-chip {
   min-width: 94px;
   justify-content: center;
   font-weight: 700;
   border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
 }
-
 .portfolio-lot-forecast-line {
   display: flex;
   align-items: center;
   gap: 0.35rem;
-}
-
-.portfolio-lot-value-chip {
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
-  color: rgba(var(--v-theme-on-surface), 0.78) !important;
-  background: rgba(var(--v-theme-on-surface), 0.05) !important;
-  font-weight: 600;
 }
 
 .portfolio-lot-forecast-chip {
@@ -443,3 +644,4 @@
     min-width: 86px;
   }
 }
+

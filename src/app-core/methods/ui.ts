@@ -14,6 +14,7 @@ export const uiMethods: ThisType<AppContext> & Pick<
   | "safeFixed"
   | "toggleChartView"
   | "togglePortfolioChartView"
+  | "togglePortfolioReportLot"
   | "accessProFeature"
   | "requestPurchaseUiMode"
   | "calculateSaleProfit"

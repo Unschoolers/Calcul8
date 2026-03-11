@@ -1,5 +1,6 @@
 import { DEFAULT_VALUES } from "../../constants.ts";
 import {
+  calculateSaleProfit,
   calculatePortfolioTotals,
   calculateLotPerformanceSummary as calculateLotPerformanceSummary
 } from "../../domain/calculations.ts";
@@ -189,6 +190,25 @@ export const portfolioComputed: Pick<
           ? this.sales
           : this.loadSalesForLotId(lot.id);
         const summary = calculateLotPerformanceSummary(lot, sales, DEFAULT_VALUES.EXCHANGE_RATE);
+        const realizedProfit = sales.reduce((sum, sale) => {
+          return sum + calculateSaleProfit({
+            sale,
+            lotType: lot.lotType === "singles" ? "singles" : "bulk",
+            sellingTaxPercent: lot.sellingTaxPercent,
+            totalCaseCost: summary.totalCost,
+            totalPacks: summary.totalPacks,
+            purchaseCurrency: lot.currency,
+            sellingCurrency: lot.sellingCurrency,
+            exchangeRate: lot.exchangeRate,
+            singlesPurchases: lot.singlesPurchases,
+            defaultExchangeRate: DEFAULT_VALUES.EXCHANGE_RATE
+          });
+        }, 0);
+        const realizedRevenue = summary.totalRevenue;
+        const realizedCost = Math.max(0, realizedRevenue - realizedProfit);
+        const realizedMarginPercent = realizedRevenue > 0
+          ? ((realizedProfit / realizedRevenue) * 100)
+          : null;
         const projections = computeLotModeProjections({
           lot,
           summary: {
@@ -214,13 +234,16 @@ export const portfolioComputed: Pick<
           lotId: summary.lotId,
           lotName: summary.lotName,
           lotType,
+          realizedCost,
+          realizedProfit,
+          realizedMarginPercent,
           forecastProfitAverage: forecastSummary.forecastProfitAverage,
           forecastRevenueAverage: forecastSummary.forecastRevenueAverage,
           forecastScenarioCount: forecastSummary.forecastScenarioCount
         };
       });
 
-    return rows.sort((a, b) => b.totalProfit - a.totalProfit);
+    return rows.sort((a, b) => (b.realizedProfit ?? 0) - (a.realizedProfit ?? 0));
   },
 
   portfolioTotals() {
@@ -231,6 +254,7 @@ export const portfolioComputed: Pick<
     return this.allLotPerformance.length > 0;
   }
 };
+
 
 
 

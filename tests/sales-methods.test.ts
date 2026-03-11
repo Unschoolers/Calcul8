@@ -1419,6 +1419,48 @@ test("initPortfolioChart creates sell-through bar chart", () => {
   assert.equal(config.data.datasets[0]?.label, "Sell-through %");
 });
 
+test("initPortfolioChart creates profit margin chart", () => {
+  const portfolioCanvas = new MockHtmlCanvasElement();
+  const ctx = createContext({
+    currentTab: "portfolio",
+    portfolioChartView: "margin",
+    allLotPerformance: [
+      {
+        lotId: 1700000000002,
+        lotName: "Lot M",
+        salesCount: 1,
+        totalRevenue: 140,
+        totalCost: 100,
+        totalProfit: 40,
+        marginPercent: 40,
+        realizedCost: 100,
+        realizedProfit: 40,
+        realizedMarginPercent: 28.6
+      }
+    ],
+    portfolioSelectedLotIds: [1700000000002],
+    $refs: {
+      portfolioWindow: {
+        $refs: {
+          portfolioChartCanvas: portfolioCanvas
+        }
+      }
+    }
+  });
+
+  salesMethods.initPortfolioChart.call(ctx as never);
+  assert.equal(chartCtorMock.mock.calls.length, 1);
+  const config = chartCtorMock.mock.calls[0]?.[1] as {
+    type: string;
+    options: { indexAxis?: string };
+    data: { datasets: Array<{ label?: string; data?: number[] }> };
+  };
+  assert.equal(config.type, "bar");
+  assert.equal(config.options.indexAxis, "y");
+  assert.equal(config.data.datasets[0]?.label, "Sold profit margin %");
+  assert.deepEqual(config.data.datasets[0]?.data, [28.6]);
+});
+
 test("initPortfolioChart returns early when tab is not portfolio", () => {
   const ctx = createContext({
     currentTab: "sales"

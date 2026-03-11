@@ -334,11 +334,11 @@
                             <v-avatar
                               size="38"
                               class="portfolio-lot-status-avatar"
-                              :class="row.totalProfit >= 0 ? 'is-positive' : 'is-negative'"
+                              :class="row.salesCount === 0 ? 'is-neutral' : (row.realizedProfit >= 0 ? 'is-positive' : 'is-negative')"
                             >
                               <v-icon
                                 class="portfolio-lot-status-icon"
-                                :class="row.totalProfit >= 0 ? 'is-positive' : 'is-negative'"
+                                :class="row.salesCount === 0 ? 'is-neutral' : (row.realizedProfit >= 0 ? 'is-positive' : 'is-negative')"
                               >
                                 mdi-bookmark
                               </v-icon>
@@ -348,17 +348,22 @@
                           <v-list-item-title class="portfolio-lot-title">{{ row.lotName }}</v-list-item-title>
                           <v-list-item-subtitle class="portfolio-lot-subtitle d-flex flex-column ga-1">
                             <div class="portfolio-lot-meta-line">
-                              {{ row.salesCount }} sale{{ row.salesCount === 1 ? '' : 's' }}
-                              <span v-if="row.lastSaleDate" class="portfolio-lot-meta-secondary">
+                              <span v-if="row.salesCount > 0">
+                                {{ row.salesCount }} sale{{ row.salesCount === 1 ? '' : 's' }}
+                              </span>
+                              <span v-else>No sales yet</span>
+                              <span v-if="row.salesCount > 0 && row.lastSaleDate" class="portfolio-lot-meta-secondary">
                                 • Last sale {{ formatDate(row.lastSaleDate) }}
                               </span>
                             </div>
-                            <div class="portfolio-lot-meta-line portfolio-lot-finance-line">
-                              <v-chip size="x-small" variant="tonal" class="portfolio-lot-value-chip">
-                                Revenue ${{ fmtCurrency(row.totalRevenue) }}
-                              </v-chip>
-                              <v-chip size="x-small" variant="tonal" class="portfolio-lot-value-chip">
-                                Cost ${{ fmtCurrency(row.totalCost) }}
+                            <div v-if="row.realizedMarginPercent != null" class="portfolio-lot-meta-line portfolio-lot-forecast-line">
+                              <v-chip
+                                size="x-small"
+                                variant="tonal"
+                                :color="row.realizedProfit >= 0 ? 'success' : 'error'"
+                                class="portfolio-lot-forecast-chip"
+                              >
+                                Sold margin {{ row.realizedMarginPercent >= 0 ? '+' : '' }}{{ fmtCurrency(row.realizedMarginPercent, 1) }}%
                               </v-chip>
                             </div>
                             <div v-if="row.forecastProfitAverage != null" class="portfolio-lot-meta-line portfolio-lot-forecast-line">
@@ -375,12 +380,13 @@
 
                           <template v-slot:append>
                             <v-chip
+                              v-if="row.salesCount > 0"
                               size="small"
                               variant="tonal"
-                              :color="row.totalProfit >= 0 ? 'success' : 'error'"
+                              :color="row.realizedProfit >= 0 ? 'success' : 'error'"
                               class="portfolio-lot-profit-chip"
                             >
-                              {{ row.totalProfit >= 0 ? '+' : '' }}${{ fmtCurrency(row.totalProfit) }}
+                              {{ row.realizedProfit >= 0 ? '+' : '' }}${{ fmtCurrency(row.realizedProfit ?? 0) }}
                             </v-chip>
                           </template>
                         </v-list-item>
@@ -388,6 +394,7 @@
                     </v-card>
                   </v-col>
                 </v-row>
+
 
 
 
