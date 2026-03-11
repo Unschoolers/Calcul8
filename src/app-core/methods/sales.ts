@@ -60,6 +60,15 @@ function isSmallDisplay(context: AppContext): boolean {
   return Boolean(vuetify?.display?.smAndDown);
 }
 
+function formatCompactChartDate(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric"
+  }).format(date);
+}
+
 function refreshChartsForCurrentTab(context: AppContext): void {
   const runRefresh = () => {
     if (context.currentTab === "sales") {
@@ -591,6 +600,8 @@ export const salesMethods: ThisType<AppContext> & Pick<
       salesByLotId,
       formatCurrency: (value, decimals) => this.formatCurrency(value, decimals),
       formatDate: (value) => this.formatDate(value),
+      formatCompactDate: (value) => formatCompactChartDate(value),
+      compactMode: isSmallDisplay(this),
       todayDate: getTodayDate()
     });
     if (!historyConfig) return;

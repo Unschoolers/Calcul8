@@ -235,6 +235,8 @@ export function buildPortfolioHistoryChartConfig(params: {
   salesByLotId: Map<number, Sale[]>;
   formatCurrency: FormatCurrency;
   formatDate: FormatDate;
+  formatCompactDate?: FormatDate;
+  compactMode?: boolean;
   todayDate?: string;
 }): ChartConfiguration<"line", number[], string> | ChartConfiguration<"bar", number[], string> | null {
   const lotById = new Map(params.filteredLots.map((lot) => [lot.id, lot]));
@@ -242,6 +244,9 @@ export function buildPortfolioHistoryChartConfig(params: {
   const labels: string[] = [];
   const values: number[] = [];
   const todayDate = params.todayDate ?? getTodayDate();
+  const formatLabel = params.compactMode && typeof params.formatCompactDate === "function"
+    ? params.formatCompactDate
+    : params.formatDate;
 
   const netByDate = new Map<string, number>();
   const costByDate = new Map<string, number>();
@@ -295,7 +300,7 @@ export function buildPortfolioHistoryChartConfig(params: {
     if (sellThroughTimeline.length === 0) return null;
 
     for (const point of sellThroughTimeline) {
-      labels.push(params.formatDate(point.date));
+      labels.push(formatLabel(point.date));
       values.push(point.percentage);
     }
 
@@ -331,7 +336,18 @@ export function buildPortfolioHistoryChartConfig(params: {
           }
         },
         scales: {
-          x: { grid: { display: false } },
+          x: {
+            grid: { display: false },
+            ticks: params.compactMode
+              ? {
+                autoSkip: true,
+                maxTicksLimit: 4,
+                maxRotation: 0,
+                minRotation: 0,
+                font: { size: 10 }
+              }
+              : undefined
+          },
           y: {
             min: 0,
             max: yMax,
@@ -347,7 +363,7 @@ export function buildPortfolioHistoryChartConfig(params: {
   let cumulativeProfit = 0;
   for (const date of sortedDates) {
     cumulativeProfit += (costByDate.get(date) ?? 0) + (netByDate.get(date) ?? 0);
-    labels.push(params.formatDate(date));
+    labels.push(formatLabel(date));
     values.push(cumulativeProfit);
   }
 
@@ -399,9 +415,10 @@ export function buildPortfolioHistoryChartConfig(params: {
       plugins: {
         legend: {
           display: true,
-          position: "top",
+          position: params.compactMode ? "bottom" : "top",
           labels: {
-            boxWidth: 14,
+            boxWidth: params.compactMode ? 10 : 14,
+            font: params.compactMode ? { size: 10 } : undefined,
             usePointStyle: true
           }
         },
@@ -415,7 +432,18 @@ export function buildPortfolioHistoryChartConfig(params: {
         }
       },
       scales: {
-        x: { grid: { display: false } },
+        x: {
+          grid: { display: false },
+          ticks: params.compactMode
+            ? {
+              autoSkip: true,
+              maxTicksLimit: 4,
+              maxRotation: 0,
+              minRotation: 0,
+              font: { size: 10 }
+            }
+            : undefined
+        },
         y: {
           ticks: {
             callback: (value) => `$${params.formatCurrency(Number(value), 0)}`

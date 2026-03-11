@@ -141,6 +141,25 @@ test("buildPortfolioHistoryChartConfig creates a trend config with target datase
   assert.equal(config?.data.datasets[1]?.label, "Target P/L");
 });
 
+test("buildPortfolioHistoryChartConfig uses compact mobile labels and legend settings", () => {
+  const config = buildPortfolioHistoryChartConfig({
+    portfolioChartView: "trend",
+    filteredLots: [makeLot()],
+    allLotPerformance: [makePerformance()],
+    salesByLotId: new Map([[1700000000000, [makeSale({ quantity: 2, packsCount: 2, price: 12, buyerShipping: 1 })]]]),
+    formatCurrency,
+    formatDate,
+    formatCompactDate: (value) => `M:${value.slice(5)}`,
+    compactMode: true,
+    todayDate: "2026-02-22"
+  });
+
+  assert.equal(config?.type, "line");
+  assert.ok((config?.data.labels?.[0] || "").startsWith("M:"));
+  assert.equal(config?.options?.plugins?.legend?.position, "bottom");
+  assert.equal(config?.options?.scales?.x?.ticks?.maxTicksLimit, 4);
+});
+
 test("buildPortfolioHistoryChartConfig creates a sell-through bar config", () => {
   const config = buildPortfolioHistoryChartConfig({
     portfolioChartView: "sellthrough",
@@ -155,6 +174,24 @@ test("buildPortfolioHistoryChartConfig creates a sell-through bar config", () =>
   assert.equal(config?.type, "bar");
   assert.equal(config?.data.datasets[0]?.label, "Sell-through %");
   assert.equal(config?.options?.scales?.y?.max, 100);
+});
+
+test("buildPortfolioHistoryChartConfig uses compact tick settings for sell-through mobile charts", () => {
+  const config = buildPortfolioHistoryChartConfig({
+    portfolioChartView: "sellthrough",
+    filteredLots: [makeLot()],
+    allLotPerformance: [makePerformance()],
+    salesByLotId: new Map([[1700000000000, [makeSale({ quantity: 2, packsCount: 2, price: 12, buyerShipping: 1 })]]]),
+    formatCurrency,
+    formatDate,
+    formatCompactDate: (value) => `M:${value.slice(5)}`,
+    compactMode: true,
+    todayDate: "2026-02-22"
+  });
+
+  assert.equal(config?.type, "bar");
+  assert.ok((config?.data.labels?.[0] || "").startsWith("M:"));
+  assert.equal(config?.options?.scales?.x?.ticks?.maxTicksLimit, 4);
 });
 
 test("buildPortfolioHistoryChartConfig uses historical inventory for past sell-through bars", () => {
