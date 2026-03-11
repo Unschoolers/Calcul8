@@ -294,6 +294,25 @@
       overflow: hidden;
       text-overflow: ellipsis;
     }
+    .lot-selector-group-label {
+      display: flex;
+      align-items: center;
+      gap: 0.26rem;
+      margin: 0.45rem 0.9rem 0.24rem;
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: rgb(var(--v-theme-secondary));
+      pointer-events: none;
+    }
+    .lot-selector-group-label::after {
+      content: "";
+      flex: 1 1 auto;
+      height: 1px;
+      margin-left: 0.4rem;
+      background: linear-gradient(90deg, rgba(var(--v-theme-secondary), 0.34), rgba(var(--v-theme-secondary), 0.04));
+    }
     .lot-type-chip {
       max-width: 100%;
     }

@@ -188,11 +188,17 @@
                 <v-col cols="12" sm="9" md="10" class="lot-selector-select-col">
                   <v-autocomplete
                     v-model="currentLotId"
-                    :items="lotItems"
+                    v-model:search="lotSearchQuery"
+                    :items="visibleLotItems"
                     item-title="title"
                     item-value="value"
                     label="Lot"
                     placeholder="Search lots"
+                    autocomplete="off"
+                    autocorrect="off"
+                    autocapitalize="off"
+                    spellcheck="false"
+                    no-filter
                     prepend-inner-icon="mdi-bookmark"
                     variant="outlined"
                     density="compact"
@@ -208,23 +214,31 @@
                     </template>
 
                     <template #item="{ props, item }">
-                      <v-list-item
-                        v-bind="props"
-                        :title="undefined"
-                        :subtitle="undefined"
-                      >
-                        <template #prepend>
-                          <v-icon size="18" class="mr-2">
+                      <div>
+                        <div v-if="item.raw.groupLabel" class="lot-selector-group-label">
+                          <v-icon size="14" class="mr-1">
                             {{ item.raw.lotType === 'singles' ? 'mdi-cards-outline' : 'mdi-cube-outline' }}
                           </v-icon>
-                        </template>
-                        <v-list-item-title class="text-body-2 font-weight-medium">
-                          {{ item.raw.title }}
-                        </v-list-item-title>
-                        <v-list-item-subtitle class="text-caption">
-                          {{ item.raw.subtitle }}
-                        </v-list-item-subtitle>
-                      </v-list-item>
+                          {{ item.raw.groupLabel }}
+                        </div>
+                        <v-list-item
+                          v-bind="props"
+                          :title="undefined"
+                          :subtitle="undefined"
+                        >
+                          <template #prepend>
+                            <v-icon size="18" class="mr-2">
+                              {{ item.raw.lotType === 'singles' ? 'mdi-cards-outline' : 'mdi-cube-outline' }}
+                            </v-icon>
+                          </template>
+                          <v-list-item-title class="text-body-2 font-weight-medium">
+                            {{ item.raw.title }}
+                          </v-list-item-title>
+                          <v-list-item-subtitle class="text-caption">
+                            {{ item.raw.subtitle }}
+                          </v-list-item-subtitle>
+                        </v-list-item>
+                      </div>
                     </template>
                   </v-autocomplete>
                 </v-col>
@@ -1126,5 +1140,6 @@
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 </body>
 </html>
+
 
 

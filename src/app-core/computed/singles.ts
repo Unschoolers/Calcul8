@@ -16,7 +16,7 @@ import {
   toNonNegativeInt,
   toPositiveIntOrNull
 } from "./singles-helpers.ts";
-import { inferDateFromLotId, toDateOnly } from "../methods/config-shared.ts";
+import { buildLotOptionItems, filterLotOptionItems } from "../shared/lot-option-items.ts";
 
 type SaleEditorNormalizedLine = {
   singlesPurchaseEntryId: number | null;
@@ -36,20 +36,6 @@ type SaleEditorLineProfitPreview = {
   marketBasisValue: number;
   costBasisValue: number;
 } | null;
-
-function formatLotItemSubtitle(lot: {
-  purchaseDate?: string;
-  createdAt?: string;
-  id: number;
-  lotType?: "bulk" | "singles";
-}): string {
-  const purchaseDate =
-    toDateOnly(lot.purchaseDate) ??
-    toDateOnly(lot.createdAt) ??
-    inferDateFromLotId(lot.id);
-  const lotTypeLabel = lot.lotType === "singles" ? "Singles" : "Bulk";
-  return purchaseDate ? `${lotTypeLabel} • ${purchaseDate}` : lotTypeLabel;
-}
 
 function getSaleEditorNormalizedLines(newSale: {
   singlesItems?: Array<{ singlesPurchaseEntryId?: number | null; quantity?: number | null; price?: number | null }>;
@@ -116,6 +102,7 @@ export const singlesComputed: Pick<
   "isLiveTabDisabled" |
   "canUsePaidActions" |
   "lotItems" |
+  "visibleLotItems" |
   "singlesPurchaseTotalQuantity" |
   "singlesPurchaseTotalCost" |
   "singlesPurchaseTotalMarketValue" |
@@ -153,12 +140,13 @@ export const singlesComputed: Pick<
   },
 
   lotItems() {
-    return this.lots.map((lot) => ({
-      title: lot.name,
-      value: lot.id,
-      subtitle: formatLotItemSubtitle(lot),
-      lotType: lot.lotType === "singles" ? "singles" : "bulk"
-    }));
+    const bulkLots = this.lots.filter((lot) => lot.lotType !== "singles");
+    const singlesLots = this.lots.filter((lot) => lot.lotType === "singles");
+    return buildLotOptionItems([...bulkLots, ...singlesLots]);
+  },
+
+  visibleLotItems() {
+    return filterLotOptionItems(this.lotItems, this.lotSearchQuery);
   },
 
   singlesPurchaseTotalQuantity(): number {
@@ -326,3 +314,6 @@ export const singlesComputed: Pick<
     return calculateSinglesSaleProfitPreview(linePreviewSource || []);
   }
 };
+
+
+

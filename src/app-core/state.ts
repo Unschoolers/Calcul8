@@ -123,6 +123,7 @@ export function createInitialState(): AppState {
     salesChart: null,
     chartView: "pie",
     portfolioChart: null,
+    lotSearchQuery: "",
     portfolioChartView: "trend",
     portfolioLotTypeFilter: "both",
     portfolioLotFilterIds: [],
@@ -157,4 +158,5 @@ export function createInitialState(): AppState {
     offlineReconnectIntervalId: null
   };
 }
+
 

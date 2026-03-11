@@ -54,3 +54,23 @@ test("PortfolioWindow portfolio filter helpers keep hidden ids out of the visibl
   assert.equal(PortfolioWindow.methods.portfolioLotFilterRemainingCount.call(vm as never), 1);
   assert.equal(PortfolioWindow.methods.portfolioLotFilterDefaultLabel.call(vm as never), "All singles lots");
 });
+
+test("PortfolioWindow filter search regrouping keeps bulk items together", () => {
+  const vm = {
+    portfolioLotFilterItems: [
+      { title: "Bleach volume 2", value: 11, subtitle: "Bulk • 2026-02-01", lotType: "bulk", groupLabel: "Bulk lots" },
+      { title: "One punch man", value: 22, subtitle: "Bulk • 2026-02-14", lotType: "bulk", groupLabel: null },
+      { title: "Union arena singles", value: 33, subtitle: "Singles • 2026-02-21", lotType: "singles", groupLabel: "Singles lots" },
+      { title: "Kaiju #8", value: 44, subtitle: "Bulk • 2026-03-01", lotType: "bulk", groupLabel: null }
+    ],
+    portfolioLotFilterSearchQuery: "a"
+  };
+
+  const visibleItems = PortfolioWindow.methods.portfolioVisibleLotFilterItems.call(vm as never);
+  assert.deepEqual(visibleItems.map((item: { title: string; groupLabel?: string | null }) => [item.title, item.groupLabel ?? null]), [
+    ["Bleach volume 2", "Bulk lots"],
+    ["One punch man", null],
+    ["Kaiju #8", null],
+    ["Union arena singles", "Singles lots"]
+  ]);
+});

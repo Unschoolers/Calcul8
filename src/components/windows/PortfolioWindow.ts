@@ -2,6 +2,7 @@ import template from "./PortfolioWindow.html?raw";
 import "./PortfolioWindow.css";
 import { inject, type PropType } from "vue";
 import { createWindowContextBridge } from "./contextBridge.ts";
+import { filterLotOptionItems } from "../../app-core/shared/lot-option-items.ts";
 import { PortfolioKpiCard } from "./PortfolioKpiCard.ts";
 
 export const PortfolioWindow = {
@@ -17,7 +18,8 @@ export const PortfolioWindow = {
   },
   data() {
     return {
-      mobileKpiIndex: 0
+      mobileKpiIndex: 0,
+      portfolioLotFilterSearchQuery: ""
     };
   },
   methods: {
@@ -34,6 +36,18 @@ export const PortfolioWindow = {
           .filter((value) => Number.isFinite(value))
       );
       return selected.filter((id) => visibleIds.has(Number(id)));
+    },
+    portfolioVisibleLotFilterItems(this: Record<string, unknown>) {
+      const items = Array.isArray(this.portfolioLotFilterItems)
+        ? this.portfolioLotFilterItems as Array<{
+          title: string;
+          value: number;
+          subtitle: string;
+          lotType: "bulk" | "singles";
+          groupLabel?: string | null;
+        }>
+        : [];
+      return filterLotOptionItems(items, String(this.portfolioLotFilterSearchQuery || ""));
     },
 
     portfolioLotFilterDefaultLabel(this: Record<string, unknown>): string {
@@ -166,3 +180,4 @@ export const PortfolioWindow = {
   },
   template
 };
+

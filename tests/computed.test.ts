@@ -198,22 +198,50 @@ test("list and portfolio filter item computed values mirror lots", () => {
     title: "A",
     value: 11,
     subtitle: "Bulk • 2026-02-01",
-    lotType: "bulk"
+    lotType: "bulk",
+    groupLabel: "Bulk lots"
   });
   assert.deepEqual(lotItems[1], {
     title: "B",
     value: 22,
     subtitle: "Singles • 2026-03-01",
-    lotType: "singles"
+    lotType: "singles",
+    groupLabel: "Singles lots"
   });
+
+  const visibleLotItems = appComputed.visibleLotItems.call({
+    lotItems: [
+      { title: "Alpha bulk", value: 11, subtitle: "Bulk • 2026-02-01", lotType: "bulk", groupLabel: "Bulk lots" },
+      { title: "Union arena singles", value: 22, subtitle: "Singles • 2026-03-01", lotType: "singles", groupLabel: "Singles lots" },
+      { title: "Kagurabachi", value: 33, subtitle: "Bulk • 2026-03-03", lotType: "bulk", groupLabel: null }
+    ],
+    lotSearchQuery: "a"
+  } as unknown as Parameters<typeof appComputed.visibleLotItems>[0]);
+  assert.deepEqual(visibleLotItems.map((item) => [item.title, item.groupLabel]), [
+    ["Alpha bulk", "Bulk lots"],
+    ["Kagurabachi", null],
+    ["Union arena singles", "Singles lots"]
+  ]);
 
   const filterItems = appComputed.portfolioLotFilterItems.call({
     lots,
     portfolioLotTypeFilter: "both"
   } as unknown as Parameters<typeof appComputed.portfolioLotFilterItems>[0]);
   assert.deepEqual(filterItems, [
-    { title: "A", value: 11 },
-    { title: "B", value: 22 }
+    {
+      title: "A",
+      value: 11,
+      subtitle: "Bulk • 2026-02-01",
+      lotType: "bulk",
+      groupLabel: "Bulk lots"
+    },
+    {
+      title: "B",
+      value: 22,
+      subtitle: "Singles • 2026-03-01",
+      lotType: "singles",
+      groupLabel: "Singles lots"
+    }
   ]);
 
   const singlesOnly = appComputed.portfolioLotFilterItems.call({
@@ -221,7 +249,13 @@ test("list and portfolio filter item computed values mirror lots", () => {
     portfolioLotTypeFilter: "singles"
   } as unknown as Parameters<typeof appComputed.portfolioLotFilterItems>[0]);
   assert.deepEqual(singlesOnly, [
-    { title: "B", value: 22 }
+    {
+      title: "B",
+      value: 22,
+      subtitle: "Singles • 2026-03-01",
+      lotType: "singles",
+      groupLabel: "Singles lots"
+    }
   ]);
 });
 
@@ -482,3 +516,6 @@ test("portfolio summary wrappers return expected totals and presence flags", () 
   } as unknown as Parameters<typeof appComputed.hasPortfolioData>[0]);
   assert.equal(noData, false);
 });
+
+
+

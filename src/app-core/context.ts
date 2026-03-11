@@ -37,8 +37,22 @@ export interface AppComputedState {
     value: number;
     subtitle: string;
     lotType: LotType;
+    groupLabel?: string | null;
   }>;
-  portfolioLotFilterItems: Array<{ title: string; value: number }>;
+  visibleLotItems: Array<{
+    title: string;
+    value: number;
+    subtitle: string;
+    lotType: LotType;
+    groupLabel?: string | null;
+  }>;
+  portfolioLotFilterItems: Array<{
+    title: string;
+    value: number;
+    subtitle: string;
+    lotType: LotType;
+    groupLabel?: string | null;
+  }>;
   portfolioSelectedLotIds: number[];
   singlesPurchaseTotalQuantity: number;
   singlesPurchaseTotalCost: number;
@@ -342,8 +356,22 @@ export interface AppComputedObject {
     value: number;
     subtitle: string;
     lotType: LotType;
+    groupLabel?: string | null;
   }>;
-  portfolioLotFilterItems(this: AppContext): Array<{ title: string; value: number }>;
+  visibleLotItems(this: AppContext): Array<{
+    title: string;
+    value: number;
+    subtitle: string;
+    lotType: LotType;
+    groupLabel?: string | null;
+  }>;
+  portfolioLotFilterItems(this: AppContext): Array<{
+    title: string;
+    value: number;
+    subtitle: string;
+    lotType: LotType;
+    groupLabel?: string | null;
+  }>;
   portfolioSelectedLotIds(this: AppContext): number[];
   singlesPurchaseTotalQuantity(this: AppContext): number;
   singlesPurchaseTotalCost(this: AppContext): number;
@@ -485,3 +513,7 @@ export type BeforeInstallPromptHandler = (event: BeforeInstallPromptEvent) => vo
 export interface ChangeCostModePayload {
   costInputMode: CostInputMode;
 }
+
+
+
+

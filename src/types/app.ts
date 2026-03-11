@@ -220,6 +220,7 @@ export interface AppState extends LotSetup {
   portfolioChartView: PortfolioChartViewMode;
   portfolioLotTypeFilter: PortfolioLotTypeFilter;
   portfolioLotFilterIds: number[];
+  lotSearchQuery: string;
   lots: Lot[];
   singlesPurchases: SinglesPurchaseEntry[];
   showSinglesCsvMapperModal: boolean;
@@ -246,4 +247,5 @@ export interface AppState extends LotSetup {
   syncStatusResetTimeoutId: number | null;
   offlineReconnectIntervalId: number | null;
 }
+
 

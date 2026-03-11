@@ -3,6 +3,7 @@ import {
   calculatePortfolioTotals,
   calculateLotPerformanceSummary as calculateLotPerformanceSummary
 } from "../../domain/calculations.ts";
+import { buildLotOptionItems } from "../shared/lot-option-items.ts";
 import type { AppComputedObject } from "../context.ts";
 import {
   pickBestForecastScenario,
@@ -41,9 +42,9 @@ export const portfolioComputed: Pick<
     const filter = this.portfolioLotTypeFilter === "bulk" || this.portfolioLotTypeFilter === "singles"
       ? this.portfolioLotTypeFilter
       : "both";
-    return this.lots
-      .filter((lot) => lotMatchesPortfolioTypeFilter(lot, filter))
-      .map((lot) => ({ title: lot.name, value: lot.id }));
+    return buildLotOptionItems(
+      this.lots.filter((lot) => lotMatchesPortfolioTypeFilter(lot, filter))
+    );
   },
 
   portfolioSelectedLotIds(): number[] {
@@ -230,3 +231,6 @@ export const portfolioComputed: Pick<
     return this.allLotPerformance.length > 0;
   }
 };
+
+
+

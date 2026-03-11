@@ -13,15 +13,24 @@
                         <v-btn value="singles" prepend-icon="mdi-cards-outline">Singles</v-btn>
                       </v-btn-toggle>
 
-                      <v-select
+                      <v-autocomplete
                         v-model="portfolioLotFilterIds"
-                        :items="portfolioLotFilterItems"
+                        v-model:search="portfolioLotFilterSearchQuery"
+                        :items="portfolioVisibleLotFilterItems()"
+                        item-title="title"
+                        item-value="value"
                         label="Portfolio Filter"
+                        placeholder="Search lots"
+                        autocomplete="off"
+                        autocorrect="off"
+                        autocapitalize="off"
+                        spellcheck="false"
                         prepend-inner-icon="mdi-filter-variant"
                         variant="outlined"
                         density="compact"
                         multiple
                         clearable
+                        no-filter
                         hide-details="auto"
                         class="portfolio-filter-select"
                       >
@@ -40,7 +49,35 @@
                             </v-chip>
                           </div>
                         </template>
-                      </v-select>
+
+                        <template #item="{ props, item }">
+                          <div>
+                            <div v-if="item.raw.groupLabel" class="lot-selector-group-label">
+                              <v-icon size="14" class="mr-1">
+                                {{ item.raw.lotType === 'singles' ? 'mdi-cards-outline' : 'mdi-cube-outline' }}
+                              </v-icon>
+                              {{ item.raw.groupLabel }}
+                            </div>
+                            <v-list-item
+                              v-bind="props"
+                              :title="undefined"
+                              :subtitle="undefined"
+                            >
+                              <template #prepend>
+                                <v-icon size="18" class="mr-2">
+                                  {{ item.raw.lotType === 'singles' ? 'mdi-cards-outline' : 'mdi-cube-outline' }}
+                                </v-icon>
+                              </template>
+                              <v-list-item-title class="text-body-2 font-weight-medium">
+                                {{ item.raw.title }}
+                              </v-list-item-title>
+                              <v-list-item-subtitle class="text-caption">
+                                {{ item.raw.subtitle }}
+                              </v-list-item-subtitle>
+                            </v-list-item>
+                          </div>
+                        </template>
+                      </v-autocomplete>
                     </div>
                   </v-card-text>
                 </v-card>
@@ -351,3 +388,6 @@
                     </v-card>
                   </v-col>
                 </v-row>
+
+
+
