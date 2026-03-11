@@ -1,0 +1,7 @@
+src/
+dist/**/*.test.js
+local.settings.json
+README.md
+tsconfig.json
+vitest.config.ts
+vitest.config.mjs

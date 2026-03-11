@@ -83,6 +83,10 @@ jobs:
         working-directory: apps/api
         run: npm run build
 
+      - name: Prune dev dependencies
+        working-directory: apps/api
+        run: npm prune --omit=dev
+
       - name: Deploy to Azure Functions (Prod)
         uses: Azure/functions-action@v1
         with:
