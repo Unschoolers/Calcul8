@@ -129,8 +129,20 @@
     flex: 1 1 0;
   }
 
+  .portfolio-filter-select :deep(.v-field) {
+    min-height: 48px;
+  }
+
+  .portfolio-filter-select :deep(.v-field__input) {
+    min-height: 48px;
+    padding-top: 0;
+    padding-bottom: 0;
+    align-items: center;
+  }
+
   .portfolio-filter-selection {
     max-width: 165px;
+    min-height: 24px;
   }
 
   .portfolio-filter-selection-chip {
