@@ -121,6 +121,7 @@
 
   .portfolio-filter-type-toggle,
   .portfolio-filter-select {
+    flex: 0 0 auto;
     width: 100%;
     min-width: 0;
   }
