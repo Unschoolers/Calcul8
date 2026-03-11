@@ -351,10 +351,10 @@
         icon="mdi-calculator"
         color="secondary"
         size="large"
-        title="Auto-calculate prices"
-        aria-label="Open auto-calculate prices"
+        :title="hasProAccess ? 'Auto-calculate prices' : 'Upgrade to unlock auto-calculate prices'"
+        :aria-label="hasProAccess ? 'Open auto-calculate prices' : 'Upgrade to unlock auto-calculate prices'"
         :disabled="!hasLotSelected"
-        @click="showProfitCalculator = true"
+        @click="hasProAccess ? (showProfitCalculator = true) : startProPurchase()"
         class="fab-primary fab-live-calc"
       ></v-fab>
 
@@ -401,7 +401,7 @@
       ></v-fab>
 
       <!-- Primary FAB - Sales -->
-      <div v-if="currentTab === 'sales'" class="fab-overflow-wrap fab-overflow-sales">
+      <div v-if="currentTab === 'sales' && hasProAccess" class="fab-overflow-wrap fab-overflow-sales">
         <v-speed-dial
           v-model="speedDialOpenSales"
           location="top center"
@@ -476,14 +476,30 @@
       </div>
 
       <v-fab
+        v-else-if="currentTab === 'sales'"
+        icon="mdi-cart-plus"
+        color="primary"
+        size="large"
+        title="Upgrade to unlock sales tracking"
+        aria-label="Upgrade to unlock sales tracking"
+        :disabled="!hasLotSelected"
+        @click="startProPurchase()"
+        class="fab-primary"
+      ></v-fab>
+
+      <v-fab
         v-if="currentTab === 'portfolio'"
         icon="mdi-table"
         color="primary"
         size="large"
-        title="Open portfolio report"
-        aria-label="Open portfolio report"
+        :title="!hasPortfolioData
+          ? 'Open portfolio report'
+          : (hasProAccess ? 'Open portfolio report' : 'Upgrade to unlock portfolio reports')"
+        :aria-label="!hasPortfolioData
+          ? 'Open portfolio report'
+          : (hasProAccess ? 'Open portfolio report' : 'Upgrade to unlock portfolio reports')"
         :disabled="!hasPortfolioData"
-        @click="openPortfolioReportModal"
+        @click="hasProAccess ? openPortfolioReportModal() : startProPurchase()"
         class="fab-primary fab-portfolio-report"
       ></v-fab>
 

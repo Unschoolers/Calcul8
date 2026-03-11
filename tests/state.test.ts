@@ -119,8 +119,9 @@ test("createInitialState runs storage migration and initializes expert/pro state
 });
 
 test("createInitialState initializes simple/non-pro defaults and empty collections", async () => {
-  await withMockedLocalStorage(async () => {
+  await withMockedLocalStorage(async (data) => {
     vi.stubGlobal("navigator", { onLine: true });
+    data.set(STORAGE_KEYS.PURCHASE_UI_MODE, "expert");
     readStorageWithLegacyMock.mockReturnValue("0");
 
     const state = createInitialState();

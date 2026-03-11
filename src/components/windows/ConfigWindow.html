@@ -1,3 +1,44 @@
+                <v-card elevation="3" class="mb-3 config-card purchase-summary-card config-summary-hero">
+                  <v-card-text class="config-summary-hero__body">
+                    <div class="config-summary-hero__eyebrow">Current Cost Basis</div>
+                    <div class="config-summary-hero__main">
+                      <div class="config-summary-hero__value-wrap">
+                        <div class="config-summary-hero__value">${{ fmtCurrency(totalCaseCost) }} {{ sellingCurrency }}</div>
+                        <div class="config-summary-hero__sub">
+                          Total {{ totalPacks }} items
+                        </div>
+                      </div>
+
+                      <div class="config-summary-hero__stats">
+                        <div class="config-summary-pill">
+                          <span class="config-summary-pill__label">/Box</span>
+                          <strong>${{ boxesPurchased > 0 ? fmtCurrency(totalCaseCost / boxesPurchased) : "0.00" }}</strong>
+                        </div>
+                        <div class="config-summary-pill">
+                          <span class="config-summary-pill__label">/Item</span>
+                          <strong>${{ totalPacks > 0 ? fmtCurrency(totalCaseCost / totalPacks) : "0.00" }}</strong>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="config-summary-hero__meta">
+                      <span>Shipping ${{ fmtCurrency(purchaseShippingCostCAD) }} {{ sellingCurrency }}</span>
+                      <span>Tax {{ fmtCurrency(purchaseTaxPercent, 2) }}% {{ includeTax ? "included" : "not included" }}</span>
+                      <span>Bought {{ purchaseDate ? formatDate(purchaseDate) : "Not set" }}</span>
+                    </div>
+
+                    <v-alert
+                      v-if="Number(purchaseCostInputValue) <= 0 || Number(boxesPurchased) < 1 || Number(packsPerBox) < 1"
+                      type="warning"
+                      density="compact"
+                      variant="tonal"
+                      class="mt-3"
+                    >
+                      Enter a valid total purchase, boxes, and items per box.
+                    </v-alert>
+                  </v-card-text>
+                </v-card>
+
                 <v-row class="config-layout">
                   <!-- Purchase Cost -->
                   <v-col cols="12" md="6">
@@ -9,15 +50,25 @@
                       <v-divider></v-divider>
                       <v-card-text>
                         <v-btn-toggle
-                          v-model="purchaseUiMode"
+                          :model-value="hasProAccess ? purchaseUiMode : 'simple'"
                           mandatory
                           divided
                           density="compact"
                           variant="outlined"
                           class="mb-2 segment-toggle"
+                          @update:model-value="!hasProAccess && $event === 'expert'
+                            ? startProPurchase()
+                            : (purchaseUiMode = $event)"
                         >
                           <v-btn value="simple" size="small">Simple</v-btn>
-                          <v-btn value="expert" size="small">Expert</v-btn>
+                          <v-btn
+                            value="expert"
+                            size="small"
+                            :prepend-icon="hasProAccess ? undefined : 'mdi-lock-outline'"
+                            :title="hasProAccess ? 'Expert' : 'Upgrade to Pro to unlock Expert mode'"
+                          >
+                            Expert
+                          </v-btn>
                         </v-btn-toggle>
 
                         <div v-if="purchaseUiMode === 'expert'" class="mb-2">
@@ -36,7 +87,11 @@
                         </div>
 
                         <div v-if="purchaseUiMode === 'simple'" class="text-caption text-medium-emphasis mb-2">
-                          Switch to Expert for taxes, shipping, date, and exchange settings.
+                          {{
+                            hasProAccess
+                              ? 'Switch to Expert for taxes, shipping, date, and exchange settings.'
+                              : 'Upgrade to Pro to unlock Expert taxes, shipping, date, and exchange settings.'
+                          }}
                         </div>
 
                         <v-row dense>
@@ -160,39 +215,6 @@
                       </v-card-text>
                     </v-card>
 
-                    <v-card elevation="2" class="mt-3 config-card purchase-breakdown-sticky">
-                      <v-card-text class="py-2 px-3">
-                        <div class="text-caption text-medium-emphasis">Live Cost Breakdown</div>
-                        <div class="text-h6 font-weight-bold">${{ fmtCurrency(totalCaseCost) }} {{ sellingCurrency }}</div>
-                        <div class="text-caption mt-1">Total {{ totalPacks }} items</div>
-                        <div class="d-flex flex-wrap ga-2 mt-2">
-                          <v-chip size="small" variant="tonal">
-                            /Box ${{ boxesPurchased > 0 ? fmtCurrency(totalCaseCost / boxesPurchased) : "0.00" }}
-                          </v-chip>
-                          <v-chip size="small" variant="tonal">
-                            /Item ${{ totalPacks > 0 ? fmtCurrency(totalCaseCost / totalPacks) : "0.00" }}
-                          </v-chip>
-                        </div>
-                        <div class="text-caption mt-2">
-                          Includes ${{ fmtCurrency(purchaseShippingCostCAD) }} {{ sellingCurrency }} shipping
-                        </div>
-                        <div class="text-caption text-medium-emphasis mt-1">
-                          Purchase tax: {{ fmtCurrency(purchaseTaxPercent, 2) }}% {{ includeTax ? "(included in total)" : "(not included)" }}
-                        </div>
-                        <div class="text-caption text-medium-emphasis mt-1">
-                          Bought on {{ purchaseDate ? formatDate(purchaseDate) : "Not set" }}
-                        </div>
-                        <v-alert
-                          v-if="Number(purchaseCostInputValue) <= 0 || Number(boxesPurchased) < 1 || Number(packsPerBox) < 1"
-                          type="warning"
-                          density="compact"
-                          variant="tonal"
-                          class="mt-2"
-                        >
-                          Enter a valid total purchase, boxes, and items per box.
-                        </v-alert>
-                      </v-card-text>
-                    </v-card>
                   </v-col>
 
                   <!-- Default Prices -->
@@ -219,7 +241,9 @@
                         <v-row dense class="align-center mb-2">
                           <v-col cols="10">
                             <v-text-field
-                              :model-value="targetProfitPercent ? targetProfitPercent + '%' : 'Not set'"
+                              :model-value="!hasProAccess
+                                ? 'Upgrade to set target profit'
+                                : (targetProfitPercent ? targetProfitPercent + '%' : 'Not set')"
                               label="Target Profit %"
                               variant="outlined"
                               density="compact"
@@ -235,10 +259,10 @@
                               size="small"
                               color="secondary"
                               variant="tonal"
-                              title="Open auto-calculate prices"
-                              aria-label="Open auto-calculate prices"
+                              :title="hasProAccess ? 'Open auto-calculate prices' : 'Upgrade to unlock auto-calculate prices'"
+                              :aria-label="hasProAccess ? 'Open auto-calculate prices' : 'Upgrade to unlock auto-calculate prices'"
                               :disabled="!hasLotSelected"
-                              @click="showProfitCalculator = true"
+                              @click="hasProAccess ? (showProfitCalculator = true) : startProPurchase()"
                             ></v-btn>
                           </v-col>
                         </v-row>
@@ -286,42 +310,6 @@
                       </v-card-text>
                     </v-card>
 
-                    <v-card elevation="2" class="mt-3 config-card">
-                      <v-card-text class="py-2 px-3">
-                        <div class="text-caption text-medium-emphasis mb-2">
-                          Price values are read-only here. Update them in Live.
-                        </div>
-                        <v-list density="compact" nav lines="one" class="price-link-list">
-                          <v-list-item
-                            :title="`RTYH Spot (${sellingCurrency})`"
-                            :subtitle="`$${fmtCurrency(spotPrice)}`"
-                            @click="currentTab = 'live'"
-                          >
-                            <template #append>
-                              <v-icon size="18">mdi-open-in-new</v-icon>
-                            </template>
-                          </v-list-item>
-                          <v-list-item
-                            :title="`Box Selling Price (${sellingCurrency})`"
-                            :subtitle="`$${fmtCurrency(boxPriceSell)}`"
-                            @click="currentTab = 'live'"
-                          >
-                            <template #append>
-                              <v-icon size="18">mdi-open-in-new</v-icon>
-                            </template>
-                          </v-list-item>
-                          <v-list-item
-                            :title="`Item (${sellingCurrency})`"
-                            :subtitle="`$${fmtCurrency(packPrice)}`"
-                            @click="currentTab = 'live'"
-                          >
-                            <template #append>
-                              <v-icon size="18">mdi-open-in-new</v-icon>
-                            </template>
-                          </v-list-item>
-                        </v-list>
-                      </v-card-text>
-                    </v-card>
                   </v-col>
                 </v-row>
 

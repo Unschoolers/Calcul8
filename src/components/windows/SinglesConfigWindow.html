@@ -462,7 +462,9 @@
         <v-row dense class="align-center mb-2">
           <v-col cols="9">
             <v-text-field
-              :model-value="targetProfitPercent ? targetProfitPercent + '%' : 'Not set'"
+              :model-value="!hasProAccess
+                ? 'Upgrade to set target profit'
+                : (targetProfitPercent ? targetProfitPercent + '%' : 'Not set')"
               label="Target Profit %"
               variant="outlined"
               density="compact"
@@ -479,10 +481,10 @@
               color="secondary"
               variant="tonal"
               class="selling-auto-btn"
-              title="Open auto-calculate prices"
-              aria-label="Open auto-calculate prices"
+              :title="hasProAccess ? 'Open auto-calculate prices' : 'Upgrade to unlock auto-calculate prices'"
+              :aria-label="hasProAccess ? 'Open auto-calculate prices' : 'Upgrade to unlock auto-calculate prices'"
               :disabled="!hasLotSelected"
-              @click="showProfitCalculator = true"
+              @click="hasProAccess ? (showProfitCalculator = true) : startProPurchase()"
             >
               Auto
             </v-btn>
