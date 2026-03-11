@@ -1,5 +1,8 @@
-import { DEFAULT_VALUES, WHATNOT_FEES } from "../../constants.ts";
-import { calculateBoxPriceCostCad } from "../../domain/calculations.ts";
+import { WHATNOT_FEES } from "../../constants.ts";
+import {
+  getSaleSinglesLines as getNormalizedSaleSinglesLines,
+  getSinglesEntryUnitCostInSellingCurrency as getConvertedSinglesEntryUnitCost
+} from "../../domain/calculations.ts";
 import {
   normalizeSinglesCatalogSource,
   resolveDefaultSinglesCatalogSourceFromEnv
@@ -65,17 +68,7 @@ export function getSinglesEntryUnitCostInSellingCurrency(
   sellingCurrency: "CAD" | "USD",
   exchangeRate: number
 ): number {
-  const unitCost = Math.max(0, Number(entry.cost) || 0);
-  const entryCurrency = entry.currency === "USD" || entry.currency === "CAD"
-    ? entry.currency
-    : purchaseCurrency;
-  return calculateBoxPriceCostCad(
-    unitCost,
-    entryCurrency,
-    sellingCurrency,
-    exchangeRate,
-    DEFAULT_VALUES.EXCHANGE_RATE
-  );
+  return getConvertedSinglesEntryUnitCost(entry, purchaseCurrency, sellingCurrency, exchangeRate);
 }
 
 type SaleLineLike = {
@@ -90,21 +83,10 @@ export function getSaleSinglesLines(sale: {
   quantity: number;
   price: number;
 }): SaleLineLike[] {
-  if (Array.isArray(sale.singlesItems) && sale.singlesItems.length > 0) {
-    return sale.singlesItems
-      .map((line) => ({
-        singlesPurchaseEntryId: toPositiveIntOrNull(line.singlesPurchaseEntryId) ?? undefined,
-        quantity: toNonNegativeInt(line.quantity),
-        price: Math.max(0, Number(line.price) || 0)
-      }))
-      .filter((line) => line.quantity > 0);
-  }
-
-  const legacyQuantity = toNonNegativeInt(sale.quantity);
-  if (legacyQuantity <= 0) return [];
-  return [{
-    singlesPurchaseEntryId: toPositiveIntOrNull(sale.singlesPurchaseEntryId) ?? undefined,
-    quantity: legacyQuantity,
-    price: Math.max(0, Number(sale.price) || 0)
-  }];
+  return getNormalizedSaleSinglesLines(sale)
+    .map((line) => ({
+      singlesPurchaseEntryId: toPositiveIntOrNull(line.singlesPurchaseEntryId) ?? undefined,
+      quantity: toNonNegativeInt(line.quantity),
+      price: Math.max(0, Number(line.price) || 0)
+    }));
 }

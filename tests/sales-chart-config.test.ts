@@ -1,0 +1,158 @@
+import assert from "node:assert/strict";
+import { test } from "vitest";
+import type { Lot, LotPerformanceSummary, Sale } from "../src/types/app.ts";
+import {
+  buildPortfolioBreakdownChartConfig,
+  buildPortfolioHistoryChartConfig,
+  buildSalesPieChartConfig,
+  buildSalesTrendChartConfig
+} from "../src/app-core/methods/sales-chart-config.ts";
+
+function formatCurrency(value: number, decimals = 2): string {
+  return Number(value).toFixed(decimals);
+}
+
+function formatDate(value: string): string {
+  return `D:${value}`;
+}
+
+function makeSale(overrides: Partial<Sale> = {}): Sale {
+  return {
+    id: 1,
+    type: "pack",
+    quantity: 1,
+    packsCount: 1,
+    price: 10,
+    buyerShipping: 0,
+    date: "2026-02-21",
+    ...overrides
+  };
+}
+
+function makeLot(overrides: Partial<Lot> = {}): Lot {
+  return {
+    id: 1700000000000,
+    name: "Lot 1",
+    boxPriceCost: 0,
+    boxesPurchased: 0,
+    packsPerBox: 16,
+    spotsPerBox: 16,
+    costInputMode: "perBox",
+    currency: "CAD",
+    sellingCurrency: "CAD",
+    exchangeRate: 1.4,
+    purchaseDate: "2026-02-01",
+    purchaseShippingCost: 0,
+    purchaseTaxPercent: 0,
+    sellingTaxPercent: 15,
+    sellingShippingPerOrder: 3,
+    includeTax: true,
+    spotPrice: 0,
+    boxPriceSell: 0,
+    packPrice: 0,
+    targetProfitPercent: 15,
+    ...overrides
+  };
+}
+
+function makePerformance(overrides: Partial<LotPerformanceSummary & { lotId: number; lotName: string }> = {}) {
+  return {
+    lotId: 1700000000000,
+    lotName: "Lot 1",
+    salesCount: 1,
+    totalRevenue: 120,
+    totalCost: 80,
+    totalProfit: 40,
+    marginPercent: 50,
+    soldPacks: 2,
+    totalPacks: 10,
+    lastSaleDate: "2026-02-21",
+    ...overrides
+  };
+}
+
+test("buildSalesTrendChartConfig returns null when there are no sales", () => {
+  const config = buildSalesTrendChartConfig({
+    sales: [],
+    totalCaseCost: 100,
+    sellingTaxPercent: 15,
+    formatCurrency,
+    formatDate
+  });
+
+  assert.equal(config, null);
+});
+
+test("buildSalesTrendChartConfig returns a line config with start label", () => {
+  const config = buildSalesTrendChartConfig({
+    sales: [makeSale({ date: "2026-02-20" })],
+    totalCaseCost: 100,
+    sellingTaxPercent: 15,
+    formatCurrency,
+    formatDate
+  });
+
+  assert.equal(config?.type, "line");
+  assert.deepEqual(config?.data.labels, ["Start", "D:2026-02-20"]);
+  assert.equal(config?.data.datasets[0]?.borderColor, "#34C759");
+});
+
+test("buildSalesPieChartConfig uses card inventory labels for singles lots", () => {
+  const config = buildSalesPieChartConfig({
+    soldPacks: 3,
+    totalPacks: 10,
+    currentLotType: "singles",
+    soldNet: 77,
+    unsoldNet: 21,
+    formatCurrency
+  });
+
+  assert.equal(config.type, "doughnut");
+  assert.deepEqual(config.data.labels, ["Sold items: 3", "Remaining items: 7"]);
+  assert.deepEqual(config.data.datasets[0]?.data, [3, 7]);
+});
+
+test("buildPortfolioBreakdownChartConfig uses right-side legend for compact mode", () => {
+  const config = buildPortfolioBreakdownChartConfig({
+    rows: [makePerformance()],
+    compactLegend: true,
+    formatCurrency
+  });
+
+  assert.equal(config?.type, "doughnut");
+  assert.equal(config?.options?.plugins?.legend?.position, "right");
+  assert.equal(config?.data.labels?.[0], "Lot 1");
+});
+
+test("buildPortfolioHistoryChartConfig creates a trend config with target dataset", () => {
+  const config = buildPortfolioHistoryChartConfig({
+    portfolioChartView: "trend",
+    filteredLots: [makeLot()],
+    allLotPerformance: [makePerformance()],
+    salesByLotId: new Map([[1700000000000, [makeSale({ quantity: 2, packsCount: 2, price: 12, buyerShipping: 1 })]]]),
+    formatCurrency,
+    formatDate,
+    todayDate: "2026-02-22"
+  });
+
+  assert.equal(config?.type, "line");
+  assert.equal(config?.data.datasets.length, 2);
+  assert.equal(config?.data.datasets[0]?.label, "Actual cumulative P/L");
+  assert.equal(config?.data.datasets[1]?.label, "Target P/L");
+});
+
+test("buildPortfolioHistoryChartConfig creates a sell-through bar config", () => {
+  const config = buildPortfolioHistoryChartConfig({
+    portfolioChartView: "sellthrough",
+    filteredLots: [makeLot()],
+    allLotPerformance: [makePerformance()],
+    salesByLotId: new Map([[1700000000000, [makeSale({ quantity: 2, packsCount: 2, price: 12, buyerShipping: 1 })]]]),
+    formatCurrency,
+    formatDate,
+    todayDate: "2026-02-22"
+  });
+
+  assert.equal(config?.type, "bar");
+  assert.equal(config?.data.datasets[0]?.label, "Sell-through %");
+  assert.equal(config?.options?.scales?.y?.max, 100);
+});

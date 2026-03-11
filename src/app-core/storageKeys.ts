@@ -2,6 +2,7 @@ export const STORAGE_KEYS = {
   LAST_TAB: "whatfees_last_tab",
   LIVE_SINGLES_MODE: "whatfees_live_singles_mode",
   PORTFOLIO_FILTER_IDS: "whatfees_portfolio_filter_ids",
+  PORTFOLIO_FILTER_TYPE: "whatfees_portfolio_filter_type",
   PURCHASE_UI_MODE: "whatfees_purchase_ui_mode",
   LAST_LOT_ID: "whatfees_last_lot_id",
   PRESETS: "whatfees_presets",

@@ -8,7 +8,11 @@ export type SyncPayload = {
   workspaceId?: string;
 };
 
-export function createSyncPayload(context: AppContext, clientVersion?: number): SyncPayload {
+export type SyncPayloadContext = Pick<AppContext, "lots" | "currentLotId" | "sales" | "loadSalesForLotId"> & {
+  workspaceId?: unknown;
+};
+
+export function createSyncPayload(context: SyncPayloadContext, clientVersion?: number): SyncPayload {
   const salesByLot: Record<string, Sale[]> = {};
   for (const lot of context.lots) {
     const isCurrentLot = context.currentLotId === lot.id;
@@ -23,7 +27,7 @@ export function createSyncPayload(context: AppContext, clientVersion?: number): 
     clientVersion
   };
 
-  const rawWorkspaceId = (context as AppContext & { workspaceId?: unknown }).workspaceId;
+  const rawWorkspaceId = context.workspaceId;
   if (typeof rawWorkspaceId === "string") {
     const normalizedWorkspaceId = rawWorkspaceId.trim();
     if (normalizedWorkspaceId) {

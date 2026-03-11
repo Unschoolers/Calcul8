@@ -1,6 +1,7 @@
 import { DEFAULT_VALUES } from "../../constants.ts";
 import {
-  calculateNetFromGross,
+  createForecastProjectionFromUnitPrice,
+  createForecastScenarioFromProjection,
   calculatePriceForUnits as calculateUnitPrice,
   calculateTotalSpots
 } from "../../domain/calculations.ts";
@@ -81,12 +82,12 @@ export function computeLotModeProjections(payload: {
     );
   }
 
-  const itemGross = remainingItems * itemUnitPrice;
-  const item: PortfolioModeProjection = {
+  const item = createForecastProjectionFromUnitPrice({
     units: remainingItems,
-    gross: itemGross,
-    estimatedNetRemaining: calculateNetFromGross(itemGross, lotTaxPercent, lotShipping, remainingItems)
-  };
+    unitPrice: itemUnitPrice,
+    sellingTaxPercent: lotTaxPercent,
+    shippingPerOrder: lotShipping
+  });
 
   if (lotType === "singles") {
     return { item, box: null, rtyh: null };
@@ -100,12 +101,12 @@ export function computeLotModeProjections(payload: {
       0,
       Number(payload.isCurrentLot ? payload.liveBoxPriceSell : payload.lot.boxPriceSell) || 0
     );
-    const boxGross = boxUnits * boxUnitPrice;
-    box = {
+    box = createForecastProjectionFromUnitPrice({
       units: boxUnits,
-      gross: boxGross,
-      estimatedNetRemaining: calculateNetFromGross(boxGross, lotTaxPercent, lotShipping, boxUnits)
-    };
+      unitPrice: boxUnitPrice,
+      sellingTaxPercent: lotTaxPercent,
+      shippingPerOrder: lotShipping
+    });
   }
 
   let rtyh: PortfolioModeProjection | null = null;
@@ -120,12 +121,12 @@ export function computeLotModeProjections(payload: {
         0,
         Number(payload.isCurrentLot ? payload.liveSpotPrice : payload.lot.spotPrice) || 0
       );
-      const spotGross = spotUnits * spotUnitPrice;
-      rtyh = {
+      rtyh = createForecastProjectionFromUnitPrice({
         units: spotUnits,
-        gross: spotGross,
-        estimatedNetRemaining: calculateNetFromGross(spotGross, lotTaxPercent, lotShipping, spotUnits)
-      };
+        unitPrice: spotUnitPrice,
+        sellingTaxPercent: lotTaxPercent,
+        shippingPerOrder: lotShipping
+      });
     }
   }
 
@@ -140,22 +141,7 @@ export function buildScenarioFromProjection<Id extends PortfolioForecastModeId>(
   baseRevenue: number;
   baseCost: number;
 }): ForecastScenario<Id> | null {
-  if (!payload.projection || payload.projection.units <= 0) return null;
-  const unitPrice = payload.projection.gross / payload.projection.units;
-  return createForecastScenario(
-    {
-      baseRevenue: payload.baseRevenue,
-      baseCost: payload.baseCost
-    },
-    {
-      id: payload.id,
-      label: payload.label,
-      unitLabel: payload.unitLabel,
-      units: payload.projection.units,
-      unitPrice,
-      estimatedNetRemaining: payload.projection.estimatedNetRemaining
-    }
-  );
+  return createForecastScenarioFromProjection(payload);
 }
 
 export function summarizeForecastAverage(payload: {

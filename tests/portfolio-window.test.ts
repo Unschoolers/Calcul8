@@ -35,3 +35,22 @@ test("PortfolioWindow chart view helpers rotate through all three views", () => 
   assert.equal(PortfolioWindow.methods.portfolioChartToggleIcon.call(trendVm as never), "mdi-chart-bar");
   assert.equal(PortfolioWindow.methods.portfolioChartToggleIcon.call(sellthroughVm as never), "mdi-chart-donut");
 });
+
+test("PortfolioWindow portfolio filter helpers keep hidden ids out of the visible summary", () => {
+  const vm = {
+    portfolioLotTypeFilter: "singles",
+    portfolioLotFilterIds: [11, 22, 33],
+    portfolioLotFilterItems: [
+      { title: "Singles A", value: 22 },
+      { title: "Singles B", value: 33 }
+    ],
+    portfolioVisibleLotFilterIds: PortfolioWindow.methods.portfolioVisibleLotFilterIds,
+    portfolioLotFilterDefaultLabel: PortfolioWindow.methods.portfolioLotFilterDefaultLabel
+  };
+
+  const visible = PortfolioWindow.methods.portfolioVisibleLotFilterIds.call(vm as never);
+  assert.deepEqual(visible, [22, 33]);
+  assert.equal(PortfolioWindow.methods.portfolioLotFilterPrimaryLabel.call(vm as never), "Singles A");
+  assert.equal(PortfolioWindow.methods.portfolioLotFilterRemainingCount.call(vm as never), 1);
+  assert.equal(PortfolioWindow.methods.portfolioLotFilterDefaultLabel.call(vm as never), "All singles lots");
+});

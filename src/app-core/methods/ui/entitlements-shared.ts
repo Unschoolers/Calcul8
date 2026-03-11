@@ -16,6 +16,11 @@ export type UiEntitlementMethodKeys =
 export type UiEntitlementMethodSubset<K extends UiEntitlementMethodKeys> =
   ThisType<AppContext> & Pick<AppMethodState, K>;
 
+export type TargetProfitAccessApp = Pick<
+  AppContext,
+  "hasLotSelected" | "hasProAccess" | "targetProfitPercent" | "autoSaveSetup"
+>;
+
 interface GoogleProfileClaims {
   name?: string;
   email?: string;
@@ -152,7 +157,7 @@ export function isAlreadyOwnedPurchaseError(error: unknown): boolean {
     || detail.includes("owned item");
 }
 
-export function applyTargetProfitAccessDefaults(app: AppContext): void {
+export function applyTargetProfitAccessDefaults(app: TargetProfitAccessApp): void {
   if (!app.hasLotSelected) return;
 
   if (!app.hasProAccess) {

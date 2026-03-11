@@ -17,6 +17,15 @@ import {
 
 type PortfolioForecastScenario = ForecastScenario<"item" | "box" | "rtyh">;
 
+function lotMatchesPortfolioTypeFilter(
+  lot: { lotType?: string } | undefined,
+  filter: "both" | "bulk" | "singles"
+): boolean {
+  if (filter === "both") return true;
+  const lotType = lot?.lotType === "singles" ? "singles" : "bulk";
+  return lotType === filter;
+}
+
 export const portfolioComputed: Pick<
   AppComputedObject,
   "portfolioLotFilterItems" |
@@ -29,13 +38,23 @@ export const portfolioComputed: Pick<
   "hasPortfolioData"
 > = {
   portfolioLotFilterItems() {
-    return this.lots.map((lot) => ({ title: lot.name, value: lot.id }));
+    const filter = this.portfolioLotTypeFilter === "bulk" || this.portfolioLotTypeFilter === "singles"
+      ? this.portfolioLotTypeFilter
+      : "both";
+    return this.lots
+      .filter((lot) => lotMatchesPortfolioTypeFilter(lot, filter))
+      .map((lot) => ({ title: lot.name, value: lot.id }));
   },
 
   portfolioSelectedLotIds(): number[] {
+    const filter = this.portfolioLotTypeFilter === "bulk" || this.portfolioLotTypeFilter === "singles"
+      ? this.portfolioLotTypeFilter
+      : "both";
+    const lotsById = new Map(this.lots.map((lot) => [lot.id, lot] as const));
     const allLotIds = this.lots.map((lot) => lot.id);
     const selectedIds = this.portfolioLotFilterIds.filter((id) => allLotIds.includes(id));
-    return selectedIds.length > 0 ? selectedIds : allLotIds;
+    const baseIds = selectedIds.length > 0 ? selectedIds : allLotIds;
+    return baseIds.filter((id) => lotMatchesPortfolioTypeFilter(lotsById.get(id), filter));
   },
 
   portfolioForecastScenarios(): PortfolioForecastScenario[] {

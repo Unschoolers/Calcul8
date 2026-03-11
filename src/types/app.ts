@@ -10,6 +10,7 @@ export type SinglesCsvImportMode = "merge" | "sync" | "append";
 export type SaleType = "pack" | "box" | "rtyh";
 export type ChartViewMode = "pie" | "sparkline";
 export type PortfolioChartViewMode = "breakdown" | "trend" | "sellthrough";
+export type PortfolioLotTypeFilter = "both" | "bulk" | "singles";
 export type SyncStatus = "idle" | "syncing" | "success" | "error";
 export type LiveSinglesSelectionSource = "manual" | "external";
 export type LiveSinglesSelectionMode = "replace" | "merge";
@@ -217,6 +218,7 @@ export interface AppState extends LotSetup {
   chartView: ChartViewMode;
   portfolioChart: ChartJS<"doughnut", number[], string> | ChartJS<"line", number[], string> | ChartJS<"bar", number[], string> | null;
   portfolioChartView: PortfolioChartViewMode;
+  portfolioLotTypeFilter: PortfolioLotTypeFilter;
   portfolioLotFilterIds: number[];
   lots: Lot[];
   singlesPurchases: SinglesPurchaseEntry[];

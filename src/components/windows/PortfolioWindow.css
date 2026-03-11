@@ -15,6 +15,22 @@
   max-width: 210px;
 }
 
+.portfolio-filter-toolbar {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.portfolio-filter-type-toggle {
+  flex: 0 0 auto;
+}
+
+.portfolio-filter-select {
+  flex: 1 1 280px;
+  min-width: 220px;
+}
+
 .portfolio-filter-selection-chip {
   max-width: 158px;
   border: 1px solid rgba(var(--v-theme-on-surface), 0.11);
@@ -33,6 +49,21 @@
 }
 
 @media (max-width: 600px) {
+  .portfolio-filter-toolbar {
+    flex-direction: column;
+    gap: 0.55rem;
+  }
+
+  .portfolio-filter-type-toggle,
+  .portfolio-filter-select {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .portfolio-filter-type-toggle .v-btn {
+    flex: 1 1 0;
+  }
+
   .portfolio-filter-selection {
     max-width: 165px;
   }

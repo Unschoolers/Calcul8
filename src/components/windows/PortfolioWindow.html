@@ -1,32 +1,47 @@
                 <v-card class="mb-4 config-card" elevation="4">
                   <v-card-text class="py-2">
-                    <v-select
-                      v-model="portfolioLotFilterIds"
-                      :items="portfolioLotFilterItems"
-                      label="Portfolio Filter"
-                      prepend-inner-icon="mdi-filter-variant"
-                      variant="outlined"
-                      density="compact"
-                      multiple
-                      clearable
-                      hide-details="auto"
-                     >
-                      <template #selection="{ index }">
-                        <div v-if="index === 0" class="portfolio-filter-selection">
-                          <v-chip size="x-small" variant="tonal" class="portfolio-filter-selection-chip">
-                            {{ portfolioLotFilterPrimaryLabel() }}
-                          </v-chip>
-                          <v-chip
-                            v-if="portfolioLotFilterRemainingCount() > 0"
-                            size="x-small"
-                            variant="tonal"
-                            class="portfolio-filter-selection-chip portfolio-filter-selection-chip--more"
-                          >
-                            +{{ portfolioLotFilterRemainingCount() }}
-                          </v-chip>
-                        </div>
-                      </template>
-                     </v-select>
+                    <div class="portfolio-filter-toolbar">
+                      <v-btn-toggle
+                        v-model="portfolioLotTypeFilter"
+                        mandatory
+                        density="compact"
+                        variant="tonal"
+                        class="portfolio-filter-type-toggle"
+                      >
+                        <v-btn value="both" prepend-icon="mdi-view-grid-outline">Both</v-btn>
+                        <v-btn value="bulk" prepend-icon="mdi-cube-outline">Bulk</v-btn>
+                        <v-btn value="singles" prepend-icon="mdi-cards-outline">Singles</v-btn>
+                      </v-btn-toggle>
+
+                      <v-select
+                        v-model="portfolioLotFilterIds"
+                        :items="portfolioLotFilterItems"
+                        label="Portfolio Filter"
+                        prepend-inner-icon="mdi-filter-variant"
+                        variant="outlined"
+                        density="compact"
+                        multiple
+                        clearable
+                        hide-details="auto"
+                        class="portfolio-filter-select"
+                      >
+                        <template #selection="{ index }">
+                          <div v-if="index === 0" class="portfolio-filter-selection">
+                            <v-chip size="x-small" variant="tonal" class="portfolio-filter-selection-chip">
+                              {{ portfolioLotFilterPrimaryLabel() }}
+                            </v-chip>
+                            <v-chip
+                              v-if="portfolioLotFilterRemainingCount() > 0"
+                              size="x-small"
+                              variant="tonal"
+                              class="portfolio-filter-selection-chip portfolio-filter-selection-chip--more"
+                            >
+                              +{{ portfolioLotFilterRemainingCount() }}
+                            </v-chip>
+                          </div>
+                        </template>
+                      </v-select>
+                    </div>
                   </v-card-text>
                 </v-card>
 

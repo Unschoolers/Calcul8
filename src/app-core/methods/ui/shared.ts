@@ -268,7 +268,7 @@ export async function fetchWithRetry(
   }
 }
 
-export function handleExpiredAuth(app: AppContext): void {
+export function handleExpiredAuth(app: AuthSessionApp): void {
   removeStorageWithLegacy(GOOGLE_TOKEN_KEY, LEGACY_KEYS.GOOGLE_ID_TOKEN);
   removeStorageWithLegacy(GOOGLE_PROFILE_CACHE_KEY, LEGACY_KEYS.GOOGLE_PROFILE_CACHE);
   removeStorageWithLegacy(CSRF_TOKEN_KEY);
@@ -300,7 +300,7 @@ async function postPurchaseVerification(
 }
 
 export async function submitPlayPurchaseVerification(
-  app: AppContext,
+  app: PurchaseVerificationApp,
   payload: VerifyPlayPurchaseRequest
 ): Promise<boolean> {
   const productId = (payload.productId ?? "").trim();
@@ -392,3 +392,8 @@ export async function submitPlayPurchaseVerification(
   });
   return true;
 }
+export type AuthSessionApp = Pick<AppContext, "googleAuthEpoch" | "hasProAccess">;
+export type PurchaseVerificationApp = Pick<
+  AppContext,
+  "googleAuthEpoch" | "hasProAccess" | "notify" | "debugLogEntitlement"
+>;

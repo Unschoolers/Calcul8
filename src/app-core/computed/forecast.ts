@@ -1,6 +1,7 @@
 import { DEFAULT_VALUES } from "../../constants.ts";
 import {
   calculateBoxPriceCostCad,
+  createForecastScenarioFromUnitPrice,
   calculatePriceForUnits as calculateUnitPrice,
   calculateSalesProgress,
   calculateSalesStatus,
@@ -19,8 +20,6 @@ import {
   getTrackedSinglesSoldCount
 } from "./singles-helpers.ts";
 import {
-  createForecastScenario,
-  estimateNetRemainingFromUnitPrice,
   pickBestForecastScenario,
   type ForecastScenario
 } from "./forecast-scenarios.ts";
@@ -33,7 +32,6 @@ function buildLiveForecastScenario(
     totalCaseCost: number;
     sellingTaxPercent: number;
     sellingShippingPerOrder: number;
-    netFromGross: (grossRevenue: number, buyerShippingPerOrder?: number, orderCount?: number) => number;
   },
   payload: {
     id: LiveForecastScenario["id"];
@@ -43,28 +41,17 @@ function buildLiveForecastScenario(
     unitPrice: number;
   }
 ): LiveForecastScenario {
-  const units = Math.max(0, Number(payload.units) || 0);
-  const unitPrice = Math.max(0, Number(payload.unitPrice) || 0);
-  const estimatedNetRemaining = estimateNetRemainingFromUnitPrice({
-    units,
-    unitPrice,
-    shippingPerOrder: context.sellingShippingPerOrder,
-    netFromGross: context.netFromGross
+  return createForecastScenarioFromUnitPrice({
+    id: payload.id,
+    label: payload.label,
+    unitLabel: payload.unitLabel,
+    units: payload.units,
+    unitPrice: payload.unitPrice,
+    baseRevenue: Math.max(0, Number(context.totalRevenue) || 0),
+    baseCost: Math.max(0, Number(context.totalCaseCost) || 0),
+    sellingTaxPercent: context.sellingTaxPercent,
+    shippingPerOrder: context.sellingShippingPerOrder
   });
-  return createForecastScenario(
-    {
-      baseRevenue: Math.max(0, Number(context.totalRevenue) || 0),
-      baseCost: Math.max(0, Number(context.totalCaseCost) || 0)
-    },
-    {
-      id: payload.id,
-      label: payload.label,
-      unitLabel: payload.unitLabel,
-      units,
-      unitPrice,
-      estimatedNetRemaining
-    }
-  );
 }
 
 export const forecastComputed: Pick<

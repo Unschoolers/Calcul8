@@ -145,12 +145,16 @@ beforeEach(() => {
 });
 
 test("startProPurchase routes to Play flow when provider is auto and Play supported", async () => {
-  const ctx = createContext();
-  hasPlayPurchaseSupportMock.mockResolvedValue(true);
+  await withMockedLocalStorage(async () => {
+    const ctx = createContext();
+    hasPlayPurchaseSupportMock.mockResolvedValue(true);
 
-  await uiEntitlementPurchaseMethods.startProPurchase.call(ctx as never);
+    await uiEntitlementPurchaseMethods.startProPurchase.call(ctx as never);
 
-  assert.equal((ctx.startPlayPurchase as ReturnType<typeof vi.fn>).mock.calls.length, 1);
+    assert.equal(purchasePlayProductMock.mock.calls.length, 1);
+    assert.equal(submitPlayPurchaseVerificationMock.mock.calls.length, 1);
+    assert.equal((ctx.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0], "Purchase verified. Pro features unlocked.");
+  });
 });
 
 test("startProPurchase falls back to Stripe checkout when provider is auto and Play is unavailable", async () => {

@@ -21,6 +21,28 @@ export const PortfolioWindow = {
     };
   },
   methods: {
+    portfolioVisibleLotFilterIds(this: Record<string, unknown>): number[] {
+      const selected = Array.isArray(this.portfolioLotFilterIds)
+        ? this.portfolioLotFilterIds
+        : [];
+      const items = Array.isArray(this.portfolioLotFilterItems)
+        ? this.portfolioLotFilterItems as Array<{ value?: number }>
+        : [];
+      const visibleIds = new Set(
+        items
+          .map((item) => Number(item?.value))
+          .filter((value) => Number.isFinite(value))
+      );
+      return selected.filter((id) => visibleIds.has(Number(id)));
+    },
+
+    portfolioLotFilterDefaultLabel(this: Record<string, unknown>): string {
+      const filter = String(this.portfolioLotTypeFilter || "both");
+      if (filter === "bulk") return "All bulk lots";
+      if (filter === "singles") return "All singles lots";
+      return "All lots";
+    },
+
     mobileKpiSlideCount(this: Record<string, unknown>): number {
       return this.averagePortfolioForecastScenario ? 4 : 3;
     },
@@ -58,15 +80,19 @@ export const PortfolioWindow = {
     },
 
     portfolioLotFilterPrimaryLabel(this: Record<string, unknown>): string {
-      const selected = Array.isArray(this.portfolioLotFilterIds)
-        ? this.portfolioLotFilterIds
+      const getVisibleSelected = this.portfolioVisibleLotFilterIds as (() => number[]) | undefined;
+      const selected = typeof getVisibleSelected === "function"
+        ? getVisibleSelected.call(this)
         : [];
       const items = Array.isArray(this.portfolioLotFilterItems)
         ? this.portfolioLotFilterItems as Array<{ title?: string; value?: number }>
         : [];
 
       if (selected.length === 0) {
-        return "All lots";
+        const getDefaultLabel = this.portfolioLotFilterDefaultLabel as (() => string) | undefined;
+        return typeof getDefaultLabel === "function"
+          ? getDefaultLabel.call(this)
+          : "All lots";
       }
 
       const first = items.find((item) => Number(item?.value) === Number(selected[0]));
@@ -76,8 +102,9 @@ export const PortfolioWindow = {
     },
 
     portfolioLotFilterRemainingCount(this: Record<string, unknown>): number {
-      const selected = Array.isArray(this.portfolioLotFilterIds)
-        ? this.portfolioLotFilterIds
+      const getVisibleSelected = this.portfolioVisibleLotFilterIds as (() => number[]) | undefined;
+      const selected = typeof getVisibleSelected === "function"
+        ? getVisibleSelected.call(this)
         : [];
       return Math.max(0, selected.length - 1);
     },

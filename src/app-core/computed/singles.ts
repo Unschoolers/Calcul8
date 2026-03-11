@@ -1,4 +1,10 @@
-import { calculateSinglesPurchaseTotals } from "../../domain/calculations.ts";
+import {
+  calculateNetFromGross,
+  calculateSinglesLineProfitPreview,
+  calculateSinglesPurchaseTotals,
+  calculateSinglesPurchaseTotalCostInSellingCurrency,
+  calculateSinglesSaleProfitPreview
+} from "../../domain/calculations.ts";
 import type { AppComputedObject } from "../context.ts";
 import {
   calculateProfitableOrderPrice,
@@ -61,7 +67,7 @@ function getSaleEditorLineProfitPreviews(context: {
     price?: number | null;
     buyerShipping?: number | null;
   };
-  netFromGross: (grossRevenue: number, buyerShippingPerOrder?: number, orderCount?: number) => number;
+  sellingTaxPercent: number;
   singlesPurchases: Array<{ id: number; marketValue: number; cost: number; currency?: string }>;
   currency: "CAD" | "USD";
   sellingCurrency: "CAD" | "USD";
@@ -72,50 +78,18 @@ function getSaleEditorLineProfitPreviews(context: {
   const normalizedLines = getSaleEditorNormalizedLines(context.newSale);
   const grossRevenue = normalizedLines.reduce((sum, line) => sum + line.price, 0);
   const buyerShipping = Math.max(0, Number(context.newSale?.buyerShipping) || 0);
-  const netRevenue = context.netFromGross(grossRevenue, buyerShipping, 1);
+  const netRevenue = calculateNetFromGross(grossRevenue, context.sellingTaxPercent, buyerShipping, 1);
 
   return normalizedLines.map((line): SaleEditorLineProfitPreview => {
-    const hasMeaningfulInput = line.quantity > 0 || line.price > 0 || line.singlesPurchaseEntryId != null;
-    if (!hasMeaningfulInput) return null;
-
-    const lineNetRevenue = grossRevenue > 0
-      ? (netRevenue * (line.price / grossRevenue))
-      : 0;
-
-    const selectedEntry = line.singlesPurchaseEntryId
-      ? (context.singlesPurchases || []).find((entry) => entry.id === line.singlesPurchaseEntryId)
-      : null;
-    const unitCost = selectedEntry
-      ? getSinglesEntryUnitCostInSellingCurrency(
-        selectedEntry,
-        context.currency,
-        context.sellingCurrency,
-        context.exchangeRate
-      )
-      : 0;
-    const unitMarket = Math.max(0, Number(selectedEntry?.marketValue) || 0);
-    const marketBasisValue = unitMarket > 0 ? (unitMarket * line.quantity) : 0;
-    const costBasisValue = unitMarket > 0 ? 0 : (unitCost * line.quantity);
-    const basisValue = marketBasisValue + costBasisValue;
-    const basisLabel = marketBasisValue > 0 ? "Market" as const : "Cost" as const;
-    const basisProfit = lineNetRevenue - basisValue;
-    const percent = basisValue > 0
-      ? (basisProfit / basisValue) * 100
-      : (basisProfit >= 0 ? 100 : 0);
-    const unitValue = line.quantity > 0 ? basisProfit / line.quantity : null;
-
-    return {
-      value: basisProfit,
-      unitValue,
-      quantity: line.quantity,
-      percent,
-      sign: basisProfit >= 0 ? "+" as const : "-" as const,
-      colorClass: basisProfit >= 0 ? "text-success" : "text-error",
-      basisLabel,
-      basisValue,
-      marketBasisValue,
-      costBasisValue
-    };
+    return calculateSinglesLineProfitPreview({
+      line,
+      grossRevenue,
+      netRevenue,
+      singlesPurchases: context.singlesPurchases,
+      purchaseCurrency: context.currency,
+      sellingCurrency: context.sellingCurrency,
+      exchangeRate: context.exchangeRate
+    });
   });
 }
 
@@ -175,17 +149,12 @@ export const singlesComputed: Pick<
   },
 
   singlesPurchaseTotalCost(): number {
-    if (!Array.isArray(this.singlesPurchases) || this.singlesPurchases.length === 0) return 0;
-    return this.singlesPurchases.reduce((sum, entry) => {
-      const quantity = Math.max(0, Math.floor(Number(entry.quantity) || 0));
-      const convertedUnitCost = getSinglesEntryUnitCostInSellingCurrency(
-        entry,
-        this.currency,
-        this.sellingCurrency,
-        this.exchangeRate
-      );
-      return sum + (convertedUnitCost * quantity);
-    }, 0);
+    return calculateSinglesPurchaseTotalCostInSellingCurrency({
+      entries: this.singlesPurchases,
+      purchaseCurrency: this.currency,
+      sellingCurrency: this.sellingCurrency,
+      exchangeRate: this.exchangeRate
+    });
   },
 
   singlesPurchaseTotalMarketValue(): number {
@@ -337,35 +306,6 @@ export const singlesComputed: Pick<
     const linePreviewSource = Array.isArray(this.saleEditorLineProfitPreviews)
       ? this.saleEditorLineProfitPreviews
       : getSaleEditorLineProfitPreviews(this);
-    const linePreviews = (linePreviewSource || []).filter(
-      (line): line is Exclude<SaleEditorLineProfitPreview, null> => line != null
-    );
-    if (linePreviews.length === 0) return null;
-
-    const basisProfit = linePreviews.reduce((sum, line) => sum + line.value, 0);
-    const totalQuantity = linePreviews.reduce((sum, line) => sum + line.quantity, 0);
-    const marketBasisValue = linePreviews.reduce((sum, line) => sum + line.marketBasisValue, 0);
-    const costBasisValue = linePreviews.reduce((sum, line) => sum + line.costBasisValue, 0);
-    const basisValue = marketBasisValue + costBasisValue;
-    const basisLabel = marketBasisValue > 0 && costBasisValue > 0
-      ? "Mixed" as const
-      : (marketBasisValue > 0 ? "Market" as const : "Cost" as const);
-    const percent = basisValue > 0
-      ? (basisProfit / basisValue) * 100
-      : (basisProfit >= 0 ? 100 : 0);
-    const unitValue = totalQuantity > 0 ? basisProfit / totalQuantity : null;
-
-    return {
-      value: basisProfit,
-      unitValue,
-      quantity: totalQuantity,
-      percent,
-      sign: basisProfit >= 0 ? "+" as const : "-" as const,
-      colorClass: basisProfit >= 0 ? "text-success" : "text-error",
-      basisLabel,
-      basisValue,
-      marketBasisValue,
-      costBasisValue
-    };
+    return calculateSinglesSaleProfitPreview(linePreviewSource || []);
   }
 };

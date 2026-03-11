@@ -1,5 +1,5 @@
 import type { AppLifecycleObject } from "./context.ts";
-import type { AppTab } from "../types/app.ts";
+import type { AppTab, PortfolioLotTypeFilter } from "../types/app.ts";
 import {
   getLegacyStorageKeys,
   migrateLegacyStorageKeys,
@@ -12,6 +12,10 @@ const LEGACY_KEYS = getLegacyStorageKeys();
 
 function isAppTab(value: unknown): value is AppTab {
   return value === "config" || value === "live" || value === "sales" || value === "portfolio";
+}
+
+function isPortfolioLotTypeFilter(value: unknown): value is PortfolioLotTypeFilter {
+  return value === "both" || value === "bulk" || value === "singles";
 }
 
 export const appLifecycle: AppLifecycleObject = {
@@ -41,6 +45,15 @@ export const appLifecycle: AppLifecycleObject = {
       }
     } catch {
       // Ignore storage/JSON parsing errors.
+    }
+
+    try {
+      const savedTypeFilter = localStorage.getItem(STORAGE_KEYS.PORTFOLIO_FILTER_TYPE);
+      if (isPortfolioLotTypeFilter(savedTypeFilter)) {
+        this.portfolioLotTypeFilter = savedTypeFilter;
+      }
+    } catch {
+      // Ignore storage read errors.
     }
 
     try {

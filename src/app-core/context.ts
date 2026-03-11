@@ -9,6 +9,7 @@ import type {
   LotType,
   LotPerformanceSummary,
   LotSetup,
+  PortfolioLotTypeFilter,
   PortfolioTotals,
   Sale,
   SaleType,
@@ -281,6 +282,7 @@ export interface AppWatchObject {
   currentLotId(this: AppContext, newVal: number | null): void;
   chartView(this: AppContext): void;
   portfolioChartView(this: AppContext): void;
+  portfolioLotTypeFilter(this: AppContext, newValue: PortfolioLotTypeFilter): void;
   portfolioLotFilterIds: {
     handler(this: AppContext): void;
     deep: true;

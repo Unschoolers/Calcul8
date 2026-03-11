@@ -4,9 +4,16 @@ import {
   calculateBoxPriceCostCad,
   calculateDefaultSellingPrices,
   calculateSinglesPurchaseTotals,
+  calculateSinglesPurchaseTotalCostInSellingCurrency,
+  calculateSinglesLineProfitPreview,
+  calculateSinglesSaleProfitPreview,
+  createForecastProjectionFromUnitPrice,
+  createForecastScenarioFromProjection,
+  createForecastScenarioFromUnitPrice,
   calculateNetFromGross,
   calculatePriceForUnits,
   calculateProfitForListing,
+  calculateSaleProfit,
   calculatePortfolioTotals,
   calculateLotPerformanceSummary,
   calculateSalesProgress,
@@ -20,6 +27,7 @@ import {
   calculateTotalRevenue
 } from "../src/domain/calculations.ts";
 import { appComputed } from "../src/app-core/computed.ts";
+import { appLifecycle } from "../src/app-core/lifecycle.ts";
 import { appWatch } from "../src/app-core/watch.ts";
 import { configMethods } from "../src/app-core/methods/config.ts";
 import { salesMethods } from "../src/app-core/methods/sales.ts";
@@ -114,6 +122,22 @@ test("calculateSinglesPurchaseTotals aggregates quantity, cost, and market value
   assert.equal(totals.totalQuantity, 5);
   assert.equal(totals.totalCost, 37.5);
   assert.equal(totals.totalMarketValue, 54.75);
+});
+
+test("calculateSinglesPurchaseTotalCostInSellingCurrency converts mixed-currency singles rows", () => {
+  const totalCost = calculateSinglesPurchaseTotalCostInSellingCurrency({
+    entries: [
+      { id: 1, item: "Card A", cost: 10, currency: "USD", quantity: 2, marketValue: 0 },
+      { id: 2, item: "Card B", cost: 4, currency: "CAD", quantity: 3, marketValue: 0 },
+      { id: 3, item: "Card C", cost: -5, currency: "CAD", quantity: 2, marketValue: 0 }
+    ],
+    purchaseCurrency: "CAD",
+    sellingCurrency: "CAD",
+    exchangeRate: 1.5,
+    defaultExchangeRate: 1.4
+  });
+
+  assert.equal(totalCost, 42);
 });
 
 test("calculateNetFromGross matches expected fee formula", () => {
@@ -218,6 +242,228 @@ test("calculateProfitForListing returns net minus case cost", () => {
   const profit = calculateProfitForListing(100, 15, totalCaseCost, 15, 0);
   const expected = calculateNetFromGross(1500, 15, 0, 100) - totalCaseCost;
   assert.equal(profit, expected);
+});
+
+test("calculateSaleProfit allocates bulk lot cost per sold pack", () => {
+  const profit = calculateSaleProfit({
+    sale: {
+      id: 1,
+      type: "box",
+      quantity: 1,
+      packsCount: 16,
+      price: 160,
+      buyerShipping: 0,
+      date: "2026-03-01"
+    },
+    lotType: "bulk",
+    sellingTaxPercent: 15,
+    totalCaseCost: 100,
+    totalPacks: 20,
+    purchaseCurrency: "CAD",
+    sellingCurrency: "CAD",
+    exchangeRate: 1.4,
+    singlesPurchases: []
+  });
+
+  const expectedNet = calculateNetFromGross(160, 15, 0, 1);
+  assert.equal(profit, expectedNet - 80);
+});
+
+test("calculateSaleProfit uses converted cost basis for linked singles sales", () => {
+  const profit = calculateSaleProfit({
+    sale: {
+      id: 2,
+      type: "pack",
+      quantity: 3,
+      packsCount: 3,
+      singlesPurchaseEntryId: 101,
+      price: 30,
+      buyerShipping: 0,
+      date: "2026-03-01"
+    },
+    lotType: "singles",
+    sellingTaxPercent: 15,
+    totalCaseCost: 0,
+    totalPacks: 0,
+    purchaseCurrency: "USD",
+    sellingCurrency: "CAD",
+    exchangeRate: 1.5,
+    singlesPurchases: [
+      { id: 101, item: "Card A", cost: 10, currency: "USD", quantity: 5, marketValue: 12 }
+    ]
+  });
+
+  const expectedNet = calculateNetFromGross(90, 15, 0, 1);
+  assert.equal(profit, expectedNet - 45);
+});
+
+test("calculateSaleProfit sums multi-line singles basis and ignores unlinked lines", () => {
+  const profit = calculateSaleProfit({
+    sale: {
+      id: 3,
+      type: "pack",
+      quantity: 3,
+      packsCount: 3,
+      price: 90,
+      priceIsTotal: true,
+      singlesItems: [
+        { singlesPurchaseEntryId: 10, quantity: 2, price: 60 },
+        { singlesPurchaseEntryId: 11, quantity: 1, price: 20 },
+        { quantity: 1, price: 10 }
+      ],
+      buyerShipping: 0,
+      date: "2026-03-01"
+    },
+    lotType: "singles",
+    sellingTaxPercent: 15,
+    totalCaseCost: 0,
+    totalPacks: 0,
+    purchaseCurrency: "CAD",
+    sellingCurrency: "CAD",
+    exchangeRate: 1.4,
+    singlesPurchases: [
+      { id: 10, item: "Card A", cost: 15, currency: "CAD", quantity: 5, marketValue: 12 },
+      { id: 11, item: "Card B", cost: 20, currency: "CAD", quantity: 5, marketValue: 12 }
+    ]
+  });
+
+  const expectedNet = calculateNetFromGross(90, 15, 0, 1);
+  assert.equal(profit, expectedNet - 50);
+});
+
+test("calculateSinglesLineProfitPreview allocates net revenue proportionally and prefers market basis", () => {
+  const preview = calculateSinglesLineProfitPreview({
+    line: { singlesPurchaseEntryId: 10, quantity: 2, price: 60 },
+    grossRevenue: 80,
+    netRevenue: 72,
+    singlesPurchases: [
+      { id: 10, item: "Card A", cost: 15, marketValue: 20, quantity: 3, currency: "CAD" }
+    ],
+    purchaseCurrency: "CAD",
+    sellingCurrency: "CAD",
+    exchangeRate: 1.4
+  });
+
+  assert.equal(preview?.value, 14);
+  assert.equal(preview?.basisLabel, "Market");
+  assert.equal(preview?.marketBasisValue, 40);
+  assert.equal(preview?.costBasisValue, 0);
+  assert.equal(preview?.unitValue, 7);
+  assert.equal(preview?.percent, 35);
+  assert.equal(preview?.sign, "+");
+});
+
+test("calculateSinglesLineProfitPreview falls back to converted cost basis and ignores blank draft rows", () => {
+  const preview = calculateSinglesLineProfitPreview({
+    line: { singlesPurchaseEntryId: 10, quantity: 1, price: 20 },
+    grossRevenue: 20,
+    netRevenue: 18,
+    singlesPurchases: [
+      { id: 10, item: "Card A", cost: 10, marketValue: 0, quantity: 3, currency: "USD" }
+    ],
+    purchaseCurrency: "USD",
+    sellingCurrency: "CAD",
+    exchangeRate: 1.5
+  });
+
+  const blank = calculateSinglesLineProfitPreview({
+    line: { singlesPurchaseEntryId: null, quantity: 0, price: 0 },
+    grossRevenue: 20,
+    netRevenue: 18,
+    singlesPurchases: [],
+    purchaseCurrency: "CAD",
+    sellingCurrency: "CAD",
+    exchangeRate: 1.4
+  });
+
+  assert.equal(preview?.basisLabel, "Cost");
+  assert.equal(preview?.basisValue, 15);
+  assert.equal(preview?.value, 3);
+  assert.equal(blank, null);
+});
+
+test("calculateSinglesSaleProfitPreview aggregates mixed basis previews", () => {
+  const preview = calculateSinglesSaleProfitPreview([
+    {
+      value: 20,
+      unitValue: 10,
+      quantity: 2,
+      percent: 20,
+      sign: "+",
+      colorClass: "text-success",
+      basisLabel: "Market",
+      basisValue: 100,
+      marketBasisValue: 100,
+      costBasisValue: 0
+    },
+    {
+      value: -5,
+      unitValue: -5,
+      quantity: 1,
+      percent: -50,
+      sign: "-",
+      colorClass: "text-error",
+      basisLabel: "Cost",
+      basisValue: 10,
+      marketBasisValue: 0,
+      costBasisValue: 10
+    }
+  ]);
+
+  assert.equal(preview?.value, 15);
+  assert.equal(preview?.quantity, 3);
+  assert.equal(preview?.unitValue, 5);
+  assert.equal(preview?.basisLabel, "Mixed");
+  assert.equal(preview?.basisValue, 110);
+  assert.equal(preview?.marketBasisValue, 100);
+  assert.equal(preview?.costBasisValue, 10);
+  assert.ok(Math.abs((preview?.percent ?? 0) - 13.6363636364) < 0.0001);
+});
+
+test("createForecastProjectionFromUnitPrice derives gross and net remaining from fee formula", () => {
+  const projection = createForecastProjectionFromUnitPrice({
+    units: 4,
+    unitPrice: 7.5,
+    sellingTaxPercent: 15,
+    shippingPerOrder: 2
+  });
+
+  assert.equal(projection.gross, 30);
+  assert.equal(projection.estimatedNetRemaining, calculateNetFromGross(30, 15, 2, 4));
+});
+
+test("createForecastScenarioFromUnitPrice and projection use the same scenario math", () => {
+  const fromUnitPrice = createForecastScenarioFromUnitPrice({
+    id: "item",
+    label: "Item live price",
+    unitLabel: "item",
+    units: 10,
+    unitPrice: 9,
+    baseRevenue: 100,
+    baseCost: 200,
+    sellingTaxPercent: 15,
+    shippingPerOrder: 0
+  });
+
+  const projection = createForecastProjectionFromUnitPrice({
+    units: 10,
+    unitPrice: 9,
+    sellingTaxPercent: 15,
+    shippingPerOrder: 0
+  });
+  const fromProjection = createForecastScenarioFromProjection({
+    id: "item",
+    label: "Item live price",
+    unitLabel: "item",
+    projection,
+    baseRevenue: 100,
+    baseCost: 200
+  });
+
+  assert.equal(fromUnitPrice.id, "item");
+  assert.equal(fromUnitPrice.forecastRevenue, fromProjection?.forecastRevenue);
+  assert.equal(fromUnitPrice.forecastProfit, fromProjection?.forecastProfit);
+  assert.equal(fromUnitPrice.forecastMarginPercent, fromProjection?.forecastMarginPercent);
 });
 
 test("sales aggregates and status are calculated correctly", () => {
@@ -797,38 +1043,35 @@ test("computed saleEditorProfitPreview shows live singles profit value and perce
   const preview = appComputed.saleEditorProfitPreview.call({
     currentLotType: "singles",
     showAddSaleModal: true,
+    sellingTaxPercent: 15,
     currency: "CAD",
     sellingCurrency: "CAD",
     exchangeRate: 1.4,
     singlesPurchases: [{ id: 123, item: "Charizard", cost: 23, quantity: 2, marketValue: 50, currency: "CAD" }],
-    newSale: { singlesPurchaseEntryId: 123, quantity: 2, price: 100, buyerShipping: 0 },
-    netFromGross(grossRevenue: number) {
-      return grossRevenue - 10;
-    }
+    newSale: { singlesPurchaseEntryId: 123, quantity: 2, price: 100, buyerShipping: 0 }
   } as unknown as Parameters<typeof appComputed.saleEditorProfitPreview>[0]);
 
   assert.equal(preview?.sign, "-");
   assert.equal(preview?.colorClass, "text-error");
   assert.equal(preview?.basisLabel, "Market");
-  assert.equal(preview?.value, -10);
-  assert.equal(Math.abs((preview?.percent ?? 0) - (-10)) < 0.0001, true);
+  const expectedValue = calculateNetFromGross(100, 15, 0, 1) - 100;
+  assert.equal(preview?.value, expectedValue);
+  assert.equal(Math.abs((preview?.percent ?? 0) - ((expectedValue / 100) * 100)) < 0.0001, true);
 });
 
 test("computed saleEditorProfitPreview defaults to 100% when no linked card cost exists", () => {
   const preview = appComputed.saleEditorProfitPreview.call({
     currentLotType: "singles",
     showAddSaleModal: true,
+    sellingTaxPercent: 15,
     currency: "CAD",
     sellingCurrency: "CAD",
     exchangeRate: 1.4,
     singlesPurchases: [],
-    newSale: { singlesPurchaseEntryId: null, quantity: 1, price: 20, buyerShipping: 0 },
-    netFromGross(grossRevenue: number) {
-      return grossRevenue;
-    }
+    newSale: { singlesPurchaseEntryId: null, quantity: 1, price: 20, buyerShipping: 0 }
   } as unknown as Parameters<typeof appComputed.saleEditorProfitPreview>[0]);
 
-  assert.equal(preview?.value, 20);
+  assert.equal(preview?.value, calculateNetFromGross(20, 15, 0, 1));
   assert.equal(preview?.percent, 100);
   assert.equal(preview?.colorClass, "text-success");
   assert.equal(preview?.basisLabel, "Cost");
@@ -838,6 +1081,7 @@ test("computed saleEditorLineProfitPreviews returns per-line profit entries", ()
   const linePreviews = appComputed.saleEditorLineProfitPreviews.call({
     currentLotType: "singles",
     showAddSaleModal: true,
+    sellingTaxPercent: 15,
     currency: "CAD",
     sellingCurrency: "CAD",
     exchangeRate: 1.4,
@@ -851,9 +1095,6 @@ test("computed saleEditorLineProfitPreviews returns per-line profit entries", ()
         { lineId: 2, singlesPurchaseEntryId: 2, quantity: 1, price: 20 }
       ],
       buyerShipping: 0
-    },
-    netFromGross(grossRevenue: number) {
-      return grossRevenue;
     }
   } as unknown as Parameters<typeof appComputed.saleEditorLineProfitPreviews>[0]);
 
@@ -862,12 +1103,16 @@ test("computed saleEditorLineProfitPreviews returns per-line profit entries", ()
   assert.equal(linePreviews[0]?.basisValue, 40);
   assert.equal(linePreviews[1]?.basisLabel, "Cost");
   assert.equal(linePreviews[1]?.basisValue, 8);
+  const expectedNet = calculateNetFromGross(80, 15, 0, 1);
+  assert.equal(linePreviews[0]?.value, (expectedNet * (60 / 80)) - 40);
+  assert.equal(linePreviews[1]?.value, (expectedNet * (20 / 80)) - 8);
 });
 
 test("computed saleEditorProfitPreview aggregates basis across singles line items", () => {
   const preview = appComputed.saleEditorProfitPreview.call({
     currentLotType: "singles",
     showAddSaleModal: true,
+    sellingTaxPercent: 15,
     currency: "CAD",
     sellingCurrency: "CAD",
     exchangeRate: 1.4,
@@ -881,16 +1126,13 @@ test("computed saleEditorProfitPreview aggregates basis across singles line item
         { lineId: 2, singlesPurchaseEntryId: 2, quantity: 1, price: 20 }
       ],
       buyerShipping: 0
-    },
-    netFromGross(grossRevenue: number) {
-      return grossRevenue;
     }
   } as unknown as Parameters<typeof appComputed.saleEditorProfitPreview>[0]);
 
-  // Basis: 2*50 (market) + 1*10 (cost fallback) = 110. Revenue=140 => +30.
-  assert.equal(preview?.value, 30);
+  const expectedValue = calculateNetFromGross(140, 15, 0, 1) - 110;
+  assert.equal(preview?.value, expectedValue);
   assert.equal(preview?.quantity, 3);
-  assert.equal(preview?.unitValue, 10);
+  assert.equal(preview?.unitValue, expectedValue / 3);
   assert.equal(preview?.basisLabel, "Mixed");
   assert.equal(preview?.marketBasisValue, 100);
   assert.equal(preview?.costBasisValue, 10);
@@ -973,6 +1215,27 @@ test("watch.portfolioLotFilterIds persists filter and refreshes chart in portfol
     appWatch.portfolioLotFilterIds.handler.call(context);
 
     assert.equal(data.get("whatfees_portfolio_filter_ids"), JSON.stringify([101, 202]));
+    assert.equal(portfolioInitCalled, true);
+  });
+});
+
+test("watch.portfolioLotTypeFilter persists type scope and refreshes chart in portfolio tab", () => {
+  withMockedLocalStorage((_storage, data) => {
+    let portfolioInitCalled = false;
+
+    const context = {
+      currentTab: "portfolio",
+      $nextTick(callback: () => void) {
+        callback();
+      },
+      initPortfolioChart() {
+        portfolioInitCalled = true;
+      }
+    } as unknown as Parameters<typeof appWatch.portfolioLotTypeFilter>[0];
+
+    appWatch.portfolioLotTypeFilter.call(context, "singles");
+
+    assert.equal(data.get("whatfees_portfolio_filter_type"), "singles");
     assert.equal(portfolioInitCalled, true);
   });
 });
@@ -1705,18 +1968,16 @@ test("calculateSaleProfit in singles uses linked card cost multiplied by sold qu
     singlesPurchases: [
       { id: 101, item: "Card A", cost: 10, currency: "CAD", quantity: 5, marketValue: 12 }
     ],
+    sellingTaxPercent: 15,
     currency: "CAD",
     sellingCurrency: "CAD",
     exchangeRate: 1.4,
     totalPacks: 100,
-    totalCaseCost: 1000,
-    netFromGross(grossRevenue: number) {
-      return grossRevenue;
-    }
+    totalCaseCost: 1000
   } as unknown as Parameters<typeof uiBaseMethods.calculateSaleProfit>[0], sale);
 
-  // Gross = 3 * 30 = 90. Linked cost allocation = 3 * 10 = 30.
-  assert.equal(profit, 60);
+  const expectedNet = calculateNetFromGross(90, 15, 0, 1);
+  assert.equal(profit, expectedNet - 30);
 });
 
 test("calculateSaleProfit in singles without linked card returns net revenue with zero cost basis", () => {
@@ -1733,17 +1994,15 @@ test("calculateSaleProfit in singles without linked card returns net revenue wit
   const profit = uiBaseMethods.calculateSaleProfit.call({
     currentLotType: "singles",
     singlesPurchases: [],
+    sellingTaxPercent: 15,
     currency: "CAD",
     sellingCurrency: "CAD",
     exchangeRate: 1.4,
     totalPacks: 100,
-    totalCaseCost: 1000,
-    netFromGross() {
-      return 7;
-    }
+    totalCaseCost: 1000
   } as unknown as Parameters<typeof uiBaseMethods.calculateSaleProfit>[0], sale);
 
-  assert.equal(profit, 7);
+  assert.equal(profit, calculateNetFromGross(10, 15, 0, 1));
 });
 
 test("calculateSaleProfit in singles uses summed line-item cost basis", () => {
@@ -1768,18 +2027,16 @@ test("calculateSaleProfit in singles uses summed line-item cost basis", () => {
       { id: 10, item: "Card A", cost: 15, currency: "CAD", quantity: 5, marketValue: 12 },
       { id: 11, item: "Card B", cost: 20, currency: "CAD", quantity: 5, marketValue: 12 }
     ],
+    sellingTaxPercent: 15,
     currency: "CAD",
     sellingCurrency: "CAD",
     exchangeRate: 1.4,
     totalPacks: 100,
-    totalCaseCost: 1000,
-    netFromGross(grossRevenue: number) {
-      return grossRevenue;
-    }
+    totalCaseCost: 1000
   } as unknown as Parameters<typeof uiBaseMethods.calculateSaleProfit>[0], sale);
 
-  // Revenue 90 - basis (2*15 + 1*20 = 50) = 40.
-  assert.equal(profit, 40);
+  const expectedNet = calculateNetFromGross(90, 15, 0, 1);
+  assert.equal(profit, expectedNet - 50);
 });
 
 test("saveSale updates existing sale in edit mode", () => {
@@ -2010,9 +2267,10 @@ test("liveForecastScenarios builds bulk forecasts from current live prices", () 
   assert.equal(scenarios.length, 3);
   assert.equal(scenarios[0]?.id, "item");
   assert.equal(scenarios[0]?.units, 10);
-  assert.equal(scenarios[0]?.estimatedNetRemaining, 80);
-  assert.equal(scenarios[0]?.forecastRevenue, 180);
-  assert.equal(scenarios[0]?.forecastProfit, -20);
+  const expectedItemNetRemaining = calculateNetFromGross(90, 15, 2, 10);
+  assert.equal(scenarios[0]?.estimatedNetRemaining, expectedItemNetRemaining);
+  assert.equal(scenarios[0]?.forecastRevenue, 100 + expectedItemNetRemaining);
+  assert.equal(scenarios[0]?.forecastProfit, (100 + expectedItemNetRemaining) - 200);
 });
 
 test("liveForecastScenarios builds singles forecast from remaining inventory suggested prices", () => {
@@ -2047,8 +2305,9 @@ test("liveForecastScenarios builds singles forecast from remaining inventory sug
   assert.equal(scenarios[0]?.id, "singles-suggested");
   assert.equal(scenarios[0]?.units, 4);
   assert.ok(Math.abs((scenarios[0]?.unitPrice || 0) - 5.95) < 0.000001);
-  assert.ok(Math.abs((scenarios[0]?.estimatedNetRemaining || 0) - 23.8) < 0.000001);
-  assert.ok(Math.abs((scenarios[0]?.forecastProfit || 0) - (-6.2)) < 0.000001);
+  const expectedSinglesNetRemaining = calculateNetFromGross(23.8, 15, 0, 4);
+  assert.ok(Math.abs((scenarios[0]?.estimatedNetRemaining || 0) - expectedSinglesNetRemaining) < 0.000001);
+  assert.ok(Math.abs((scenarios[0]?.forecastProfit || 0) - ((20 + expectedSinglesNetRemaining) - 50)) < 0.000001);
 });
 
 test("bestLiveForecastScenario returns null on empty and highest-profit scenario otherwise", () => {
@@ -2326,10 +2585,76 @@ test("allLotPerformance uses in-memory sales for active preset before storage sy
 test("portfolioSelectedLotIds defaults to all lots when filter is empty", () => {
   const ids = appComputed.portfolioSelectedLotIds.call({
     lots: [{ id: 11 }, { id: 22 }, { id: 33 }],
-    portfolioLotFilterIds: []
+    portfolioLotFilterIds: [],
+    portfolioLotTypeFilter: "both"
   } as unknown as Parameters<typeof appComputed.portfolioSelectedLotIds>[0]);
 
   assert.deepEqual(ids, [11, 22, 33]);
+});
+
+test("portfolioSelectedLotIds applies type scope without dropping saved lot ids", () => {
+  const ids = appComputed.portfolioSelectedLotIds.call({
+    lots: [
+      { id: 11, lotType: "bulk" },
+      { id: 22, lotType: "singles" },
+      { id: 33, lotType: "singles" }
+    ],
+    portfolioLotFilterIds: [11, 22],
+    portfolioLotTypeFilter: "singles"
+  } as unknown as Parameters<typeof appComputed.portfolioSelectedLotIds>[0]);
+
+  assert.deepEqual(ids, [22]);
+});
+
+test("mounted restores persisted portfolio lot type filter", () => {
+  withMockedLocalStorage((_storage, data) => {
+    data.set("whatfees_portfolio_filter_type", "bulk");
+
+    const context = {
+      lots: [] as Lot[],
+      currentLotId: null,
+      portfolioLotFilterIds: [] as number[],
+      portfolioLotTypeFilter: "both" as const,
+      currentTab: "config",
+      loadLotsFromStorage() {
+        this.lots = [];
+      },
+      loadLot() {
+        // noop
+      },
+      getExchangeRate() {
+        // noop
+      },
+      loadSalesFromStorage() {
+        // noop
+      },
+      syncLivePricesFromDefaults() {
+        // noop
+      },
+      initGoogleAutoLogin() {
+        // noop
+      },
+      debugLogEntitlement() {
+        return Promise.resolve();
+      },
+      startCloudSyncScheduler() {
+        // noop
+      },
+      unregisterServiceWorkersForDev() {
+        return Promise.resolve();
+      },
+      setupPwaUiHandlers() {
+        // noop
+      },
+      registerServiceWorker() {
+        // noop
+      }
+    } as unknown as Parameters<typeof appLifecycle.mounted>[0];
+
+    appLifecycle.mounted.call(context);
+
+    assert.equal(context.portfolioLotTypeFilter, "bulk");
+  });
 });
 
 test("allLotPerformance applies portfolio preset filter", () => {

@@ -46,7 +46,12 @@ export function shouldApplyCloudSnapshot(params: {
   return !params.localHasData && params.cloudHasData;
 }
 
-export function applyCloudSnapshotToLocal(context: AppContext, snapshot: ParsedCloudSnapshot): void {
+export type SyncApplyApp = Pick<
+  AppContext,
+  "lots" | "saveLotsToStorage" | "getSalesStorageKey" | "currentLotId" | "loadLot" | "sales"
+>;
+
+export function applyCloudSnapshotToLocal(context: SyncApplyApp, snapshot: ParsedCloudSnapshot): void {
   context.lots = snapshot.lots as typeof context.lots;
   context.saveLotsToStorage();
 

@@ -71,6 +71,18 @@ export const appWatch: AppWatchObject = {
     }
   },
 
+  portfolioLotTypeFilter(newValue) {
+    try {
+      localStorage.setItem(STORAGE_KEYS.PORTFOLIO_FILTER_TYPE, newValue);
+    } catch {
+      // Ignore storage errors (private mode/quota restrictions).
+    }
+
+    if (this.currentTab === "portfolio") {
+      this.$nextTick(() => this.initPortfolioChart());
+    }
+  },
+
   portfolioLotFilterIds: {
     handler() {
       try {

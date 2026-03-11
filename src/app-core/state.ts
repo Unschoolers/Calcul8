@@ -122,6 +122,7 @@ export function createInitialState(): AppState {
     chartView: "pie",
     portfolioChart: null,
     portfolioChartView: "trend",
+    portfolioLotTypeFilter: "both",
     portfolioLotFilterIds: [],
 
     // Presets

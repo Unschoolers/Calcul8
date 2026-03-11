@@ -186,8 +186,8 @@ test("lot type/source and selection helpers normalize data for singles", () => {
 
 test("list and portfolio filter item computed values mirror lots", () => {
   const lots = [
-    { id: 11, name: "A" },
-    { id: 22, name: "B" }
+    { id: 11, name: "A", lotType: "bulk" },
+    { id: 22, name: "B", lotType: "singles" }
   ];
 
   const lotItems = appComputed.lotItems.call({
@@ -198,10 +198,19 @@ test("list and portfolio filter item computed values mirror lots", () => {
   assert.equal(lotItems[2]?.title, "B");
 
   const filterItems = appComputed.portfolioLotFilterItems.call({
-    lots
+    lots,
+    portfolioLotTypeFilter: "both"
   } as unknown as Parameters<typeof appComputed.portfolioLotFilterItems>[0]);
   assert.deepEqual(filterItems, [
     { title: "A", value: 11 },
+    { title: "B", value: 22 }
+  ]);
+
+  const singlesOnly = appComputed.portfolioLotFilterItems.call({
+    lots,
+    portfolioLotTypeFilter: "singles"
+  } as unknown as Parameters<typeof appComputed.portfolioLotFilterItems>[0]);
+  assert.deepEqual(singlesOnly, [
     { title: "B", value: 22 }
   ]);
 });
