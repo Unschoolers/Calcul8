@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { beforeEach, test, vi } from "vitest";
+import { afterEach, beforeEach, test, vi } from "vitest";
 
 const {
   resolvePurchaseProviderMock,
@@ -144,6 +144,10 @@ beforeEach(() => {
   extractPurchaseTokenFromResultMock.mockReturnValue({ purchaseToken: null, itemId: null });
 });
 
+afterEach(() => {
+  vi.useRealTimers();
+});
+
 test("startProPurchase routes to Play flow when provider is auto and Play supported", async () => {
   await withMockedLocalStorage(async () => {
     const ctx = createContext();
@@ -276,6 +280,7 @@ test("startPlayPurchase verifies existing purchase before new purchase", async (
 
 test("startPlayPurchase recovers already-owned error without requiring a second tap", async () => {
   await withMockedLocalStorage(async (data) => {
+    vi.useFakeTimers();
     data.set("whatfees_google_id_token", "google-token");
 
     const alreadyOwnedError = new Error("ITEM_ALREADY_OWNED");
@@ -305,7 +310,9 @@ test("startPlayPurchase recovers already-owned error without requiring a second 
       purchasePackageNameInput: "io.app.pkg"
     });
 
-    await uiEntitlementPurchaseMethods.startPlayPurchase.call(ctx as never);
+    const purchasePromise = uiEntitlementPurchaseMethods.startPlayPurchase.call(ctx as never);
+    await vi.runAllTimersAsync();
+    await purchasePromise;
 
     assert.equal(purchasePlayProductMock.mock.calls.length, 1);
     assert.equal(listPurchases.mock.calls.length, 6);
@@ -316,6 +323,8 @@ test("startPlayPurchase recovers already-owned error without requiring a second 
     assert.equal(ctx.purchasePackageNameInput, "");
     assert.equal(ctx.showVerifyPurchaseModal, false);
     assert.equal(ctx.isVerifyingPurchase, false);
+
+    vi.useRealTimers();
   });
 });
 
@@ -366,6 +375,7 @@ test("verifyProPurchase refreshes entitlement when provider is stripe", async ()
 });
 
 test("verifyProPurchase falls back to Stripe verification when provider is auto and Play is unavailable", async () => {
+  vi.useFakeTimers();
   const ctx = createContext({
     hasProAccess: false,
     debugLogEntitlement: vi.fn(async () => undefined)
@@ -373,8 +383,12 @@ test("verifyProPurchase falls back to Stripe verification when provider is auto 
   resolvePurchaseProviderMock.mockReturnValue("auto");
   hasPlayPurchaseSupportMock.mockResolvedValue(false);
 
-  await uiEntitlementPurchaseMethods.verifyProPurchase.call(ctx as never);
+  const verifyPromise = uiEntitlementPurchaseMethods.verifyProPurchase.call(ctx as never);
+  await vi.runAllTimersAsync();
+  await verifyPromise;
 
   assert.equal((ctx.debugLogEntitlement as ReturnType<typeof vi.fn>).mock.calls.length >= 1, true);
   assert.equal((ctx.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0], "No completed Stripe purchase found yet. Try again in a few seconds.");
+
+  vi.useRealTimers();
 });

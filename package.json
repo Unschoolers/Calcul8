@@ -15,7 +15,7 @@
     "test:all": "npm run test && npm run test:api",
     "test:coverage": "vitest run --config vitest.config.mjs --coverage",
     "coverage:hotpaths": "node scripts/coverage-hotpaths.mjs",
-    "test:coverage:hotpaths": "npm run test:coverage && npm run coverage:hotpaths",
+    "test:coverage:hotpaths": "vitest run --config vitest.coverage-hotpaths.config.mjs --coverage && npm run coverage:hotpaths",
     "security:scan": "node scripts/security-scan.mjs",
     "typecheck": "tsc --noEmit",
     "verify": "npm run security:scan && npm run test && npm run typecheck && npm run build",

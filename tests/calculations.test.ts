@@ -2084,6 +2084,88 @@ test("calculateSaleProfit in singles uses summed line-item cost basis", () => {
   assert.equal(profit, expectedNet - 50);
 });
 
+test("accessProFeature routes locked users into purchase flow", async () => {
+  let purchaseStarted = 0;
+  const context = {
+    hasProAccess: false,
+    startProPurchase: async () => {
+      purchaseStarted += 1;
+    },
+    showProfitCalculator: false,
+    speedDialOpenSales: false,
+    purchaseUiMode: "simple",
+    openPortfolioReportModal: () => {
+      throw new Error("report should stay locked");
+    }
+  } as unknown as Parameters<typeof uiBaseMethods.accessProFeature>[0];
+
+  await uiBaseMethods.accessProFeature.call(context, "autoCalculate");
+  await uiBaseMethods.accessProFeature.call(context, "portfolioReport");
+  await uiBaseMethods.accessProFeature.call(context, "salesTracking");
+
+  assert.equal(purchaseStarted, 3);
+  assert.equal(context.showProfitCalculator, false);
+  assert.equal(context.speedDialOpenSales, false);
+  assert.equal(context.purchaseUiMode, "simple");
+});
+
+test("accessProFeature opens unlocked features directly", async () => {
+  let reportOpened = 0;
+  const context = {
+    hasProAccess: true,
+    startProPurchase: async () => {
+      throw new Error("purchase flow should not run");
+    },
+    showProfitCalculator: false,
+    speedDialOpenSales: false,
+    purchaseUiMode: "simple",
+    openPortfolioReportModal: () => {
+      reportOpened += 1;
+    }
+  } as unknown as Parameters<typeof uiBaseMethods.accessProFeature>[0];
+
+  await uiBaseMethods.accessProFeature.call(context, "autoCalculate");
+  await uiBaseMethods.accessProFeature.call(context, "portfolioReport");
+  await uiBaseMethods.accessProFeature.call(context, "salesTracking");
+  await uiBaseMethods.accessProFeature.call(context, "expertMode");
+
+  assert.equal(context.showProfitCalculator, true);
+  assert.equal(reportOpened, 1);
+  assert.equal(context.speedDialOpenSales, true);
+  assert.equal(context.purchaseUiMode, "expert");
+});
+
+test("requestPurchaseUiMode upgrades locked expert requests and applies allowed changes", async () => {
+  let requestedUpgrade = 0;
+  const lockedContext = {
+    hasProAccess: false,
+    purchaseUiMode: "simple",
+    accessProFeature: async (target: string) => {
+      if (target === "expertMode") {
+        requestedUpgrade += 1;
+      }
+    }
+  } as unknown as Parameters<typeof uiBaseMethods.requestPurchaseUiMode>[0];
+
+  await uiBaseMethods.requestPurchaseUiMode.call(lockedContext, "expert");
+  assert.equal(requestedUpgrade, 1);
+  assert.equal(lockedContext.purchaseUiMode, "simple");
+
+  const unlockedContext = {
+    hasProAccess: true,
+    purchaseUiMode: "simple",
+    accessProFeature: async () => {
+      throw new Error("should not request upgrade");
+    }
+  } as unknown as Parameters<typeof uiBaseMethods.requestPurchaseUiMode>[0];
+
+  await uiBaseMethods.requestPurchaseUiMode.call(unlockedContext, "expert");
+  assert.equal(unlockedContext.purchaseUiMode, "expert");
+
+  await uiBaseMethods.requestPurchaseUiMode.call(unlockedContext, "simple");
+  assert.equal(unlockedContext.purchaseUiMode, "simple");
+});
+
 test("saveSale updates existing sale in edit mode", () => {
   const originalSale: Sale = {
     id: 1001,

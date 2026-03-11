@@ -237,6 +237,8 @@ export interface AppMethodState {
   initPortfolioChart(): void;
   toggleChartView(): void;
   togglePortfolioChartView(): void;
+  accessProFeature(target: "autoCalculate" | "portfolioReport" | "salesTracking" | "expertMode"): Promise<void>;
+  requestPurchaseUiMode(mode: "simple" | "expert"): Promise<void>;
   calculateSaleProfit(sale: Sale): number;
   getSaleColor(type: SaleType): string;
   getSaleIcon(type: SaleType): string;

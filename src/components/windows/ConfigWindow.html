@@ -50,15 +50,13 @@
                       <v-divider></v-divider>
                       <v-card-text>
                         <v-btn-toggle
-                          :model-value="hasProAccess ? purchaseUiMode : 'simple'"
+                          :model-value="purchaseUiMode"
                           mandatory
                           divided
                           density="compact"
                           variant="outlined"
                           class="mb-2 segment-toggle"
-                          @update:model-value="!hasProAccess && $event === 'expert'
-                            ? startProPurchase()
-                            : (purchaseUiMode = $event)"
+                          @update:model-value="requestPurchaseUiMode($event)"
                         >
                           <v-btn value="simple" size="small">Simple</v-btn>
                           <v-btn
@@ -262,7 +260,7 @@
                               :title="hasProAccess ? 'Open auto-calculate prices' : 'Upgrade to unlock auto-calculate prices'"
                               :aria-label="hasProAccess ? 'Open auto-calculate prices' : 'Upgrade to unlock auto-calculate prices'"
                               :disabled="!hasLotSelected"
-                              @click="hasProAccess ? (showProfitCalculator = true) : startProPurchase()"
+                              @click="accessProFeature('autoCalculate')"
                             ></v-btn>
                           </v-col>
                         </v-row>

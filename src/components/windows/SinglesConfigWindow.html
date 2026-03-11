@@ -484,7 +484,7 @@
               :title="hasProAccess ? 'Open auto-calculate prices' : 'Upgrade to unlock auto-calculate prices'"
               :aria-label="hasProAccess ? 'Open auto-calculate prices' : 'Upgrade to unlock auto-calculate prices'"
               :disabled="!hasLotSelected"
-              @click="hasProAccess ? (showProfitCalculator = true) : startProPurchase()"
+              @click="accessProFeature('autoCalculate')"
             >
               Auto
             </v-btn>

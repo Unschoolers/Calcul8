@@ -11,12 +11,14 @@ test("auto-calculate modal is controlled by showProfitCalculator", () => {
   assert.match(modalTemplate, /<v-dialog\s+v-model="showProfitCalculator"/);
 });
 
-test("both Live FAB and Config quick button open the same auto-calc modal state", () => {
+test("both Live FAB and Config quick button use the same centralized auto-calc access method", () => {
   const appTemplate = read("index.html");
   const configWindowTemplate = read("src/components/windows/ConfigWindow.html");
+  const singlesWindowTemplate = read("src/components/windows/SinglesConfigWindow.html");
 
-  assert.match(appTemplate, /@click="showProfitCalculator = true"/);
-  assert.match(configWindowTemplate, /@click="showProfitCalculator = true"/);
+  assert.match(appTemplate, /@click="accessProFeature\('autoCalculate'\)"/);
+  assert.match(configWindowTemplate, /@click="accessProFeature\('autoCalculate'\)"/);
+  assert.match(singlesWindowTemplate, /@click="accessProFeature\('autoCalculate'\)"/);
   assert.match(appTemplate, /<auto-calculate-modal\s+:ctx="\$root"><\/auto-calculate-modal>/);
 });
 

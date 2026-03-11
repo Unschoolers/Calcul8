@@ -2,20 +2,64 @@ name: CI
 
 on:
   push:
-    branches: ["**"]
   pull_request:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: 22
+
 jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      web: ${{ steps.filter.outputs.web }}
+      api: ${{ steps.filter.outputs.api }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Detect changed areas
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            web:
+              - 'index.html'
+              - 'manifest.webmanifest'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'tsconfig*.json'
+              - 'vite*.config.*'
+              - 'vitest*.config.*'
+              - 'src/**'
+              - 'tests/**'
+              - 'scripts/**'
+              - 'icons/**'
+              - '.github/workflows/ci.yml'
+            api:
+              - 'apps/api/**'
+              - '.github/workflows/ci.yml'
+
   validate-web:
+    name: Validate web
+    needs: changes
+    if: ${{ needs.changes.outputs.web == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
 
       - name: Install dependencies
@@ -34,15 +78,18 @@ jobs:
         run: npm run build
 
   validate-api:
+    name: Validate API
+    needs: changes
+    if: ${{ needs.changes.outputs.api == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
           cache-dependency-path: apps/api/package-lock.json
 

@@ -354,7 +354,7 @@
         :title="hasProAccess ? 'Auto-calculate prices' : 'Upgrade to unlock auto-calculate prices'"
         :aria-label="hasProAccess ? 'Open auto-calculate prices' : 'Upgrade to unlock auto-calculate prices'"
         :disabled="!hasLotSelected"
-        @click="hasProAccess ? (showProfitCalculator = true) : startProPurchase()"
+        @click="accessProFeature('autoCalculate')"
         class="fab-primary fab-live-calc"
       ></v-fab>
 
@@ -483,7 +483,7 @@
         title="Upgrade to unlock sales tracking"
         aria-label="Upgrade to unlock sales tracking"
         :disabled="!hasLotSelected"
-        @click="startProPurchase()"
+        @click="accessProFeature('salesTracking')"
         class="fab-primary"
       ></v-fab>
 
@@ -499,7 +499,7 @@
           ? 'Open portfolio report'
           : (hasProAccess ? 'Open portfolio report' : 'Upgrade to unlock portfolio reports')"
         :disabled="!hasPortfolioData"
-        @click="hasProAccess ? openPortfolioReportModal() : startProPurchase()"
+        @click="accessProFeature('portfolioReport')"
         class="fab-primary fab-portfolio-report"
       ></v-fab>
 

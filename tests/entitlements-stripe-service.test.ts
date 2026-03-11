@@ -272,6 +272,7 @@ test("runStripePurchaseFlow falls back to hosted checkout when embedded mount is
 });
 
 test("runStripeVerificationFlow refreshes entitlement and notifies", async () => {
+  vi.useFakeTimers();
   const ctx = createContext({
     hasProAccess: false,
     debugLogEntitlement: vi.fn(async () => {
@@ -279,13 +280,16 @@ test("runStripeVerificationFlow refreshes entitlement and notifies", async () =>
     })
   });
 
-  await runStripeVerificationFlow(ctx as never);
+  const verificationPromise = runStripeVerificationFlow(ctx as never);
+  await vi.runAllTimersAsync();
+  await verificationPromise;
 
   assert.equal((ctx.debugLogEntitlement as ReturnType<typeof vi.fn>).mock.calls.length, 1);
   assert.equal((ctx.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0], "Purchase verified. Pro features unlocked.");
 });
 
 test("handleStripeCheckoutReturn force-refreshes entitlement on success return and cleans URL", async () => {
+  vi.useFakeTimers();
   const ctx = createContext({
     hasProAccess: false,
     debugLogEntitlement: vi.fn(async () => {
@@ -316,7 +320,9 @@ test("handleStripeCheckoutReturn force-refreshes entitlement on success return a
   });
 
   try {
-    await handleStripeCheckoutReturn(ctx as never);
+    const returnPromise = handleStripeCheckoutReturn(ctx as never);
+    await vi.runAllTimersAsync();
+    await returnPromise;
   } finally {
     Object.defineProperty(globalThis, "window", {
       configurable: true,
