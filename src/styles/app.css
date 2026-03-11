@@ -275,6 +275,25 @@
       gap: 0.35rem;
       margin-left: auto;
     }
+    .lot-selector-selection {
+      min-width: 0;
+      max-width: 100%;
+      line-height: 1.15;
+    }
+    .lot-selector-selection__title {
+      font-size: 0.98rem;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .lot-selector-selection__subtitle {
+      font-size: 0.72rem;
+      color: rgba(var(--v-theme-on-surface), 0.62);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
     .lot-type-chip {
       max-width: 100%;
     }
@@ -560,13 +579,10 @@
         padding-top: 0.6rem !important;
       }
       .lot-selector-meta-col {
-        justify-content: flex-start;
+        justify-content: flex-end;
       }
       .lot-selector-meta {
-        justify-content: space-between;
-      }
-      .lot-type-chip {
-        max-width: calc(100% - 3rem);
+        justify-content: flex-end;
       }
       .lot-selector-actions {
         margin-left: 0;

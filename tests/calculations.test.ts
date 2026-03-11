@@ -11,6 +11,7 @@ import {
   createForecastScenarioFromProjection,
   createForecastScenarioFromUnitPrice,
   calculateNetFromGross,
+  calculatePortfolioSellThroughTimeline,
   calculatePriceForUnits,
   calculateProfitForListing,
   calculateSaleProfit,
@@ -242,6 +243,50 @@ test("calculateProfitForListing returns net minus case cost", () => {
   const profit = calculateProfitForListing(100, 15, totalCaseCost, 15, 0);
   const expected = calculateNetFromGross(1500, 15, 0, 100) - totalCaseCost;
   assert.equal(profit, expected);
+});
+
+test("calculatePortfolioSellThroughTimeline keeps past sell-through based on inventory available at the time", () => {
+  const timeline = calculatePortfolioSellThroughTimeline({
+    lots: [
+      {
+        id: 1706745600000,
+        purchaseDate: "2026-02-01"
+      },
+      {
+        id: 1740787200000,
+        purchaseDate: "2026-03-01"
+      }
+    ],
+    allLotPerformance: [
+      {
+        lotId: 1706745600000,
+        totalPacks: 10
+      },
+      {
+        lotId: 1740787200000,
+        totalPacks: 10
+      }
+    ],
+    salesByLotId: new Map([
+      [1706745600000, [{ date: "2026-02-10", packsCount: 2 }]],
+      [1740787200000, []]
+    ]),
+    todayDate: "2026-03-10"
+  });
+
+  assert.deepEqual(
+    timeline.map((point) => ({
+      date: point.date,
+      availableUnits: point.availableUnits,
+      soldUnits: point.soldUnits,
+      percentage: Number(point.percentage.toFixed(2))
+    })),
+    [
+      { date: "2026-02-01", availableUnits: 10, soldUnits: 0, percentage: 0 },
+      { date: "2026-02-10", availableUnits: 10, soldUnits: 2, percentage: 20 },
+      { date: "2026-03-01", availableUnits: 20, soldUnits: 2, percentage: 10 }
+    ]
+  );
 });
 
 test("calculateSaleProfit allocates bulk lot cost per sold pack", () => {

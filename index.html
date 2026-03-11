@@ -185,29 +185,51 @@
           <v-card v-if="currentTab !== 'portfolio'" class="mb-4 preset-card" elevation="4">
             <v-card-text class="py-2">
               <v-row dense align="center" class="lot-selector-row">
-                <v-col cols="12" sm="8" md="9" class="lot-selector-select-col">
-                  <v-select
+                <v-col cols="12" sm="9" md="10" class="lot-selector-select-col">
+                  <v-autocomplete
                     v-model="currentLotId"
                     :items="lotItems"
+                    item-title="title"
+                    item-value="value"
                     label="Lot"
+                    placeholder="Search lots"
                     prepend-inner-icon="mdi-bookmark"
                     variant="outlined"
                     density="compact"
                     hide-details
+                    clearable
                     @update:model-value="loadLot"
-                  ></v-select>
+                  >
+                    <template #selection="{ item }">
+                      <div v-if="item?.raw" class="lot-selector-selection">
+                        <div class="lot-selector-selection__title">{{ item.raw.title }}</div>
+                        <div class="lot-selector-selection__subtitle">{{ item.raw.subtitle }}</div>
+                      </div>
+                    </template>
+
+                    <template #item="{ props, item }">
+                      <v-list-item
+                        v-bind="props"
+                        :title="undefined"
+                        :subtitle="undefined"
+                      >
+                        <template #prepend>
+                          <v-icon size="18" class="mr-2">
+                            {{ item.raw.lotType === 'singles' ? 'mdi-cards-outline' : 'mdi-cube-outline' }}
+                          </v-icon>
+                        </template>
+                        <v-list-item-title class="text-body-2 font-weight-medium">
+                          {{ item.raw.title }}
+                        </v-list-item-title>
+                        <v-list-item-subtitle class="text-caption">
+                          {{ item.raw.subtitle }}
+                        </v-list-item-subtitle>
+                      </v-list-item>
+                    </template>
+                  </v-autocomplete>
                 </v-col>
-                <v-col cols="12" sm="4" md="3" class="lot-selector-meta-col">
+                <v-col cols="12" sm="3" md="2" class="lot-selector-meta-col">
                   <div class="lot-selector-meta">
-                    <v-chip
-                      v-if="hasLotSelected"
-                      size="small"
-                      variant="tonal"
-                      class="lot-type-chip"
-                      :prepend-icon="currentLotType === 'singles' ? 'mdi-cards-outline' : 'mdi-package-variant-closed'"
-                    >
-                      {{ currentLotType === 'singles' ? 'Singles' : 'Bulk' }}
-                    </v-chip>
                     <v-chip
                       v-if="hasLotSelected && currentLotType === 'singles'"
                       size="small"

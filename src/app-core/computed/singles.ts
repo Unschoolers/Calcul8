@@ -16,6 +16,7 @@ import {
   toNonNegativeInt,
   toPositiveIntOrNull
 } from "./singles-helpers.ts";
+import { inferDateFromLotId, toDateOnly } from "../methods/config-shared.ts";
 
 type SaleEditorNormalizedLine = {
   singlesPurchaseEntryId: number | null;
@@ -35,6 +36,20 @@ type SaleEditorLineProfitPreview = {
   marketBasisValue: number;
   costBasisValue: number;
 } | null;
+
+function formatLotItemSubtitle(lot: {
+  purchaseDate?: string;
+  createdAt?: string;
+  id: number;
+  lotType?: "bulk" | "singles";
+}): string {
+  const purchaseDate =
+    toDateOnly(lot.purchaseDate) ??
+    toDateOnly(lot.createdAt) ??
+    inferDateFromLotId(lot.id);
+  const lotTypeLabel = lot.lotType === "singles" ? "Singles" : "Bulk";
+  return purchaseDate ? `${lotTypeLabel} • ${purchaseDate}` : lotTypeLabel;
+}
 
 function getSaleEditorNormalizedLines(newSale: {
   singlesItems?: Array<{ singlesPurchaseEntryId?: number | null; quantity?: number | null; price?: number | null }>;
@@ -138,10 +153,12 @@ export const singlesComputed: Pick<
   },
 
   lotItems() {
-    return [
-      { title: "-- Select lot --", value: null },
-      ...this.lots.map((lot) => ({ title: lot.name, value: lot.id }))
-    ];
+    return this.lots.map((lot) => ({
+      title: lot.name,
+      value: lot.id,
+      subtitle: formatLotItemSubtitle(lot),
+      lotType: lot.lotType === "singles" ? "singles" : "bulk"
+    }));
   },
 
   singlesPurchaseTotalQuantity(): number {

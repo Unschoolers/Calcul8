@@ -192,6 +192,64 @@ export type ForecastProjection = {
   estimatedNetRemaining: number;
 };
 
+export type PortfolioSellThroughPoint = {
+  date: string;
+  availableUnits: number;
+  soldUnits: number;
+  percentage: number;
+};
+
+const DATE_ONLY_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+
+function formatLocalDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function toDateOnly(value: unknown): string | null {
+  if (typeof value === "string" && DATE_ONLY_REGEX.test(value)) return value;
+  if (typeof value !== "string" || !value.trim()) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return formatLocalDate(date);
+}
+
+function inferDateFromLotId(lotId: number): string | null {
+  const timestamp = Number(lotId);
+  if (!Number.isFinite(timestamp) || timestamp < 946684800000 || timestamp > 4102444800000) {
+    return null;
+  }
+  return formatLocalDate(new Date(timestamp));
+}
+
+function getEarliestSaleDate(sales: Array<Pick<Sale, "date">>): string | null {
+  let earliest: string | null = null;
+  for (const sale of sales) {
+    const dateKey = toDateOnly(sale.date);
+    if (!dateKey) continue;
+    if (!earliest || dateKey < earliest) {
+      earliest = dateKey;
+    }
+  }
+  return earliest;
+}
+
+function resolvePortfolioLotStartDate(
+  lot: Pick<Lot, "id" | "purchaseDate" | "createdAt">,
+  sales: Array<Pick<Sale, "date">>,
+  todayDate: string
+): string {
+  return (
+    toDateOnly(lot.purchaseDate) ??
+    toDateOnly(lot.createdAt) ??
+    inferDateFromLotId(lot.id) ??
+    getEarliestSaleDate(sales) ??
+    todayDate
+  );
+}
+
 function buildSinglesProfitPresentation<TBasisLabel extends "Market" | "Cost" | "Mixed">(params: {
   value: number;
   quantity: number;
@@ -669,6 +727,57 @@ export function calculateSparklineGradient(sales: Sale[], totalCaseCost: number,
   if (finalProfit < -100) return ["#FF3B30", "#FF6B6B"];
   if (finalProfit < 100) return ["#FFB800", "#FFA000"];
   return ["#34C759", "#4CD964"];
+}
+
+export function calculatePortfolioSellThroughTimeline(params: {
+  lots: Array<Pick<Lot, "id" | "purchaseDate" | "createdAt">>;
+  allLotPerformance: Array<Pick<LotPerformanceSummary, "lotId" | "totalPacks">>;
+  salesByLotId: Map<number, Array<Pick<Sale, "date" | "packsCount">>>;
+  todayDate?: string;
+}): PortfolioSellThroughPoint[] {
+  const performanceByLotId = new Map(
+    params.allLotPerformance.map((row) => [row.lotId, row] as const)
+  );
+  const inventoryAddedByDate = new Map<string, number>();
+  const soldByDate = new Map<string, number>();
+  const fallbackToday = toDateOnly(params.todayDate) ?? formatLocalDate(new Date());
+
+  for (const lot of params.lots) {
+    const sales = params.salesByLotId.get(lot.id) ?? [];
+    const totalPacks = Math.max(0, Number(performanceByLotId.get(lot.id)?.totalPacks) || 0);
+    if (totalPacks > 0) {
+      const startDate = resolvePortfolioLotStartDate(lot, sales, fallbackToday);
+      inventoryAddedByDate.set(startDate, (inventoryAddedByDate.get(startDate) ?? 0) + totalPacks);
+    }
+
+    for (const sale of sales) {
+      const saleDate = toDateOnly(sale.date);
+      if (!saleDate) continue;
+      const soldUnits = Math.max(0, Number(sale.packsCount) || 0);
+      if (soldUnits <= 0) continue;
+      soldByDate.set(saleDate, (soldByDate.get(saleDate) ?? 0) + soldUnits);
+    }
+  }
+
+  const sortedDates = [...new Set([...inventoryAddedByDate.keys(), ...soldByDate.keys()])].sort();
+  if (sortedDates.length === 0) return [];
+
+  const timeline: PortfolioSellThroughPoint[] = [];
+  let availableUnits = 0;
+  let soldUnits = 0;
+
+  for (const date of sortedDates) {
+    availableUnits += inventoryAddedByDate.get(date) ?? 0;
+    soldUnits += soldByDate.get(date) ?? 0;
+    timeline.push({
+      date,
+      availableUnits,
+      soldUnits,
+      percentage: availableUnits > 0 ? (soldUnits / availableUnits) * 100 : 0
+    });
+  }
+
+  return timeline;
 }
 
 export function calculateLotPerformanceSummary(

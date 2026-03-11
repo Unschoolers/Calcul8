@@ -186,16 +186,26 @@ test("lot type/source and selection helpers normalize data for singles", () => {
 
 test("list and portfolio filter item computed values mirror lots", () => {
   const lots = [
-    { id: 11, name: "A", lotType: "bulk" },
-    { id: 22, name: "B", lotType: "singles" }
+    { id: 11, name: "A", lotType: "bulk", purchaseDate: "2026-02-01" },
+    { id: 22, name: "B", lotType: "singles", purchaseDate: "2026-03-01" }
   ];
 
   const lotItems = appComputed.lotItems.call({
     lots
   } as unknown as Parameters<typeof appComputed.lotItems>[0]);
-  assert.equal(lotItems.length, 3);
-  assert.equal(lotItems[0]?.value, null);
-  assert.equal(lotItems[2]?.title, "B");
+  assert.equal(lotItems.length, 2);
+  assert.deepEqual(lotItems[0], {
+    title: "A",
+    value: 11,
+    subtitle: "Bulk • 2026-02-01",
+    lotType: "bulk"
+  });
+  assert.deepEqual(lotItems[1], {
+    title: "B",
+    value: 22,
+    subtitle: "Singles • 2026-03-01",
+    lotType: "singles"
+  });
 
   const filterItems = appComputed.portfolioLotFilterItems.call({
     lots,

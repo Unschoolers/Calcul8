@@ -156,3 +156,52 @@ test("buildPortfolioHistoryChartConfig creates a sell-through bar config", () =>
   assert.equal(config?.data.datasets[0]?.label, "Sell-through %");
   assert.equal(config?.options?.scales?.y?.max, 100);
 });
+
+test("buildPortfolioHistoryChartConfig uses historical inventory for past sell-through bars", () => {
+  const lot1 = makeLot({
+    id: 1706745600000,
+    purchaseDate: "2026-02-01"
+  });
+  const lot2 = makeLot({
+    id: 1740787200000,
+    purchaseDate: "2026-03-01",
+    name: "Lot 2"
+  });
+  const config = buildPortfolioHistoryChartConfig({
+    portfolioChartView: "sellthrough",
+    filteredLots: [lot1, lot2],
+    allLotPerformance: [
+      makePerformance({
+        lotId: 1706745600000,
+        lotName: "Lot 1",
+        totalPacks: 10
+      }),
+      makePerformance({
+        lotId: 1740787200000,
+        lotName: "Lot 2",
+        totalPacks: 10,
+        totalRevenue: 0,
+        totalCost: 80,
+        totalProfit: -80,
+        marginPercent: null,
+        soldPacks: 0,
+        salesCount: 0,
+        lastSaleDate: null
+      })
+    ],
+    salesByLotId: new Map([
+      [1706745600000, [makeSale({ date: "2026-02-10", packsCount: 2 })]],
+      [1740787200000, []]
+    ]),
+    formatCurrency,
+    formatDate,
+    todayDate: "2026-03-10"
+  });
+
+  assert.equal(config?.type, "bar");
+  assert.deepEqual(config?.data.labels, ["D:2026-02-01", "D:2026-02-10", "D:2026-03-01"]);
+  assert.deepEqual(
+    (config?.data.datasets[0]?.data || []).map((value) => Number(Number(value).toFixed(2))),
+    [0, 20, 10]
+  );
+});

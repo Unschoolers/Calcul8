@@ -32,7 +32,12 @@ export interface AppComputedState {
   hasLotSelected: boolean;
   isLiveTabDisabled: boolean;
   canUsePaidActions: boolean;
-  lotItems: Array<{ title: string; value: number | null }>;
+  lotItems: Array<{
+    title: string;
+    value: number;
+    subtitle: string;
+    lotType: LotType;
+  }>;
   portfolioLotFilterItems: Array<{ title: string; value: number }>;
   portfolioSelectedLotIds: number[];
   singlesPurchaseTotalQuantity: number;
@@ -330,7 +335,12 @@ export interface AppComputedObject {
   hasLotSelected(this: AppContext): boolean;
   isLiveTabDisabled(this: AppContext): boolean;
   canUsePaidActions(this: AppContext): boolean;
-  lotItems(this: AppContext): Array<{ title: string; value: number | null }>;
+  lotItems(this: AppContext): Array<{
+    title: string;
+    value: number;
+    subtitle: string;
+    lotType: LotType;
+  }>;
   portfolioLotFilterItems(this: AppContext): Array<{ title: string; value: number }>;
   portfolioSelectedLotIds(this: AppContext): number[];
   singlesPurchaseTotalQuantity(this: AppContext): number;

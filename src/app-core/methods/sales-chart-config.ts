@@ -1,5 +1,10 @@
 import type { ChartConfiguration } from "chart.js";
-import { calculateNetFromGross, calculateSparklineData, getGrossRevenueForSale } from "../../domain/calculations.ts";
+import {
+  calculateNetFromGross,
+  calculatePortfolioSellThroughTimeline,
+  calculateSparklineData,
+  getGrossRevenueForSale
+} from "../../domain/calculations.ts";
 import type { Lot, LotPerformanceSummary, LotType, Sale } from "../../types/app.ts";
 import { getTodayDate, inferDateFromLotId, toDateOnly } from "./config-shared.ts";
 
@@ -281,17 +286,17 @@ export function buildPortfolioHistoryChartConfig(params: {
   if (sortedDates.length === 0) return null;
 
   if (params.portfolioChartView === "sellthrough") {
-    const totalSelectedItems = params.filteredLots.reduce((sum, lot) => {
-      const performance = performanceByLotId.get(lot.id);
-      return sum + Math.max(0, Number(performance?.totalPacks) || 0);
-    }, 0);
-    if (totalSelectedItems <= 0) return null;
+    const sellThroughTimeline = calculatePortfolioSellThroughTimeline({
+      lots: params.filteredLots,
+      allLotPerformance: params.allLotPerformance,
+      salesByLotId: params.salesByLotId,
+      todayDate
+    });
+    if (sellThroughTimeline.length === 0) return null;
 
-    let cumulativeSold = 0;
-    for (const date of sortedDates) {
-      cumulativeSold += soldByDate.get(date) ?? 0;
-      labels.push(params.formatDate(date));
-      values.push((cumulativeSold / totalSelectedItems) * 100);
+    for (const point of sellThroughTimeline) {
+      labels.push(params.formatDate(point.date));
+      values.push(point.percentage);
     }
 
     const maxValue = values.reduce((max, value) => Math.max(max, value), 0);
