@@ -96,7 +96,9 @@ export const SalesWindow = {
     },
 
     salesHistorySummaryLabel(this: Record<string, unknown>): string {
-      return `${this.salesHistorySoldPercent.toFixed(1)}%`;
+      const vm = this as Record<string, unknown>;
+      const percent = Number(vm.salesHistorySoldPercent) || 0;
+      return `${percent.toFixed(1)}%`;
     },
 
     salesHistorySoldPercent(this: Record<string, unknown>): number {
@@ -110,7 +112,15 @@ export const SalesWindow = {
     },
 
     salesStatusSummaryLine(this: Record<string, unknown>): string {
-      return `Rev $${this.fmtCurrency(this.salesStatus?.revenue ?? 0)} • Cost $${this.fmtCurrency(this.totalCaseCost)}`;
+      const vm = this as Record<string, unknown> & {
+        fmtCurrency?: (value: number | null | undefined, decimals?: number) => string;
+        salesStatus?: { revenue?: number } | null;
+        totalCaseCost?: number;
+      };
+      const format = typeof vm.fmtCurrency === "function"
+        ? vm.fmtCurrency.bind(this)
+        : (value: number | null | undefined) => Number(value || 0).toFixed(2);
+      return `Rev $${format(vm.salesStatus?.revenue ?? 0)} • Cost $${format(vm.totalCaseCost)}`;
     },
 
     salesStatusProgressLine(this: Record<string, unknown>): string {
@@ -129,8 +139,9 @@ export const SalesWindow = {
       const soldPacks = Math.max(0, Number(this.soldPacksCount) || 0);
       const totalPacks = Math.max(0, Number(this.totalPacks) || 0);
       const parts: string[] = [];
-      if (this.bulkBoxProgressText) {
-        parts.push(this.bulkBoxProgressText);
+      const bulkBoxProgressText = String(this.bulkBoxProgressText || "");
+      if (bulkBoxProgressText) {
+        parts.push(bulkBoxProgressText);
       }
       parts.push(`${soldPacks} / ${totalPacks} items`);
       return parts.join(" • ");
