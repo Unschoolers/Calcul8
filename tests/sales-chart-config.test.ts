@@ -125,18 +125,21 @@ test("buildPortfolioBreakdownChartConfig uses right-side legend for compact mode
     formatCurrency
   });
 
-  assert.equal(config?.type, "doughnut");
-  assert.equal(config?.options?.plugins?.legend?.position, "right");
+  assert.equal(config?.type, "pie");
+  assert.equal(config?.options?.plugins?.legend?.display, true);
+  assert.equal(config?.options?.plugins?.legend?.position, "bottom");
   assert.equal(config?.data.labels?.[0], "Lot 1");
+  assert.equal(config?.data.datasets[0]?.backgroundColor?.[0], "#D7A300");
+  assert.equal(config?.data.datasets[0]?.borderColor, "rgba(247, 181, 0, 0.9)");
 });
 
-test("buildPortfolioMarginChartConfig creates a sorted horizontal bar chart", () => {
+test("buildPortfolioMarginChartConfig creates a sorted horizontal bar chart and keeps unsold lots at 0%", () => {
   const config = buildPortfolioMarginChartConfig({
     rows: [
       makePerformance({ lotId: 1, lotName: "Lot 1", realizedMarginPercent: 12.5, realizedProfit: 25 }),
       makePerformance({ lotId: 2, lotName: "Lot 2", realizedMarginPercent: -4.5, realizedProfit: -9 }),
       makePerformance({ lotId: 3, lotName: "Lot 3", realizedMarginPercent: 33.3, realizedProfit: 50 }),
-      makePerformance({ lotId: 4, lotName: "Lot 4", salesCount: 0, realizedMarginPercent: null, realizedProfit: 0 })
+      makePerformance({ lotId: 4, lotName: "Lot 4", salesCount: 0, soldPacks: 0, totalPacks: 10, realizedMarginPercent: null, realizedProfit: 0 })
     ],
     compactMode: true,
     formatCurrency
@@ -144,8 +147,8 @@ test("buildPortfolioMarginChartConfig creates a sorted horizontal bar chart", ()
 
   assert.equal(config?.type, "bar");
   assert.equal(config?.options?.indexAxis, "y");
-  assert.deepEqual(config?.data.labels, ["Lot 3", "Lot 1", "Lot 2"]);
-  assert.deepEqual(config?.data.datasets[0]?.data, [33.3, 12.5, -4.5]);
+  assert.deepEqual(config?.data.labels, ["Lot 3", "Lot 1", "Lot 4", "Lot 2"]);
+  assert.deepEqual(config?.data.datasets[0]?.data, [33.3, 12.5, 0, -4.5]);
   assert.equal(config?.data.datasets[0]?.label, "Sold profit margin %");
 });
 
@@ -164,6 +167,8 @@ test("buildPortfolioHistoryChartConfig creates a trend config with target datase
   assert.equal(config?.data.datasets.length, 2);
   assert.equal(config?.data.datasets[0]?.label, "Actual cumulative P/L");
   assert.equal(config?.data.datasets[1]?.label, "Target P/L");
+  assert.equal(typeof config?.data.datasets[0]?.segment?.borderColor, "function");
+  assert.ok(Array.isArray(config?.data.datasets[0]?.pointBackgroundColor));
 });
 
 test("buildPortfolioHistoryChartConfig uses compact mobile labels and legend settings", () => {
@@ -204,6 +209,8 @@ test("buildPortfolioHistoryChartConfig creates a sell-through bar config", () =>
 
   assert.equal(config?.type, "bar");
   assert.equal(config?.data.datasets[0]?.label, "Sell-through %");
+  assert.equal(config?.data.datasets[1]?.label, "Trend");
+  assert.equal(config?.data.datasets[1]?.type, "line");
   assert.equal(config?.options?.scales?.y?.max, 100);
 });
 
@@ -223,12 +230,12 @@ test("buildPortfolioHistoryChartConfig uses compact tick settings for sell-throu
   assert.equal(config?.type, "bar");
   assert.ok((config?.data.labels?.[0] || "").startsWith("M:"));
   assert.equal(config?.options?.scales?.x?.type, "category");
-  assert.equal(config?.options?.scales?.x?.offset, false);
+  assert.equal(config?.options?.scales?.x?.offset, true);
   assert.equal(config?.options?.scales?.x?.ticks?.callback, undefined);
   assert.equal(config?.options?.scales?.x?.ticks?.maxTicksLimit, 4);
-  assert.equal(config?.options?.layout?.padding?.left, 6);
-  assert.equal(config?.options?.layout?.padding?.right, 10);
-  assert.equal(config?.data.datasets[0]?.clip, false);
+  assert.equal(config?.options?.layout?.padding?.left, 4);
+  assert.equal(config?.options?.layout?.padding?.right, 4);
+  assert.equal(config?.data.datasets[0]?.clip, 8);
   assert.equal(config?.data.datasets[0]?.categoryPercentage, 0.96);
   assert.equal(config?.data.datasets[0]?.barPercentage, 0.92);
 });
@@ -275,9 +282,9 @@ test("buildPortfolioHistoryChartConfig uses historical inventory for past sell-t
   });
 
   assert.equal(config?.type, "bar");
-  assert.deepEqual(config?.data.labels, ["D:2026-02-01", "D:2026-02-10", "D:2026-03-01"]);
+  assert.deepEqual(config?.data.labels, ["D:2026-02-10", "D:2026-03-01"]);
   assert.deepEqual(
     (config?.data.datasets[0]?.data || []).map((value) => Number(Number(value).toFixed(2))),
-    [0, 20, 10]
+    [20, 10]
   );
 });

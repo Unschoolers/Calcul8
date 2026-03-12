@@ -245,7 +245,7 @@ test("calculateProfitForListing returns net minus case cost", () => {
   assert.equal(profit, expected);
 });
 
-test("calculatePortfolioSellThroughTimeline keeps past sell-through based on inventory available at the time", () => {
+test("calculatePortfolioSellThroughTimeline trims the leading zero baseline but keeps later inventory-driven changes", () => {
   const timeline = calculatePortfolioSellThroughTimeline({
     lots: [
       {
@@ -277,14 +277,14 @@ test("calculatePortfolioSellThroughTimeline keeps past sell-through based on inv
   assert.deepEqual(
     timeline.map((point) => ({
       date: point.date,
+      label: point.label,
       availableUnits: point.availableUnits,
       soldUnits: point.soldUnits,
       percentage: Number(point.percentage.toFixed(2))
     })),
     [
-      { date: "2026-02-01", availableUnits: 10, soldUnits: 0, percentage: 0 },
-      { date: "2026-02-10", availableUnits: 10, soldUnits: 2, percentage: 20 },
-      { date: "2026-03-01", availableUnits: 20, soldUnits: 2, percentage: 10 }
+      { date: "2026-02-10", label: "2026-02-10", availableUnits: 10, soldUnits: 2, percentage: 20 },
+      { date: "2026-03-01", label: "2026-03-01", availableUnits: 20, soldUnits: 2, percentage: 10 }
     ]
   );
 });

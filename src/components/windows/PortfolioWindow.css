@@ -555,6 +555,11 @@
   padding-bottom: 0.35rem;
 }
 
+.portfolio-lot-row .v-list-item__append {
+  align-self: flex-start;
+  margin-top: 0.15rem;
+}
+
 .portfolio-lot-title {
   font-weight: 600;
   letter-spacing: 0.005em;
@@ -613,13 +618,22 @@
 }
 .portfolio-lot-forecast-line {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.35rem;
 }
 
+.portfolio-lot-signal-row {
+  flex-wrap: wrap;
+}
+
 .portfolio-lot-forecast-chip {
+  flex: 0 0 auto;
   border: 1px solid rgba(var(--v-theme-on-surface), 0.09);
   font-weight: 600;
+}
+
+.portfolio-lot-risk-chip {
+  border-color: rgba(var(--v-theme-error), 0.22);
 }
 
 @media (max-width: 600px) {

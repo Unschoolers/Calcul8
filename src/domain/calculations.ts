@@ -194,6 +194,7 @@ export type ForecastProjection = {
 
 export type PortfolioSellThroughPoint = {
   date: string;
+  label: string;
   availableUnits: number;
   soldUnits: number;
   percentage: number;
@@ -771,13 +772,16 @@ export function calculatePortfolioSellThroughTimeline(params: {
     soldUnits += soldByDate.get(date) ?? 0;
     timeline.push({
       date,
+      label: date,
       availableUnits,
       soldUnits,
       percentage: availableUnits > 0 ? (soldUnits / availableUnits) * 100 : 0
     });
   }
 
-  return timeline;
+  let firstMeaningfulIndex = timeline.findIndex((point) => point.soldUnits > 0 || point.percentage > 0);
+  if (firstMeaningfulIndex < 0) firstMeaningfulIndex = 0;
+  return timeline.slice(firstMeaningfulIndex);
 }
 
 export function calculateLotPerformanceSummary(

@@ -366,8 +366,21 @@
                                 Sold margin {{ row.realizedMarginPercent >= 0 ? '+' : '' }}{{ fmtCurrency(row.realizedMarginPercent, 1) }}%
                               </v-chip>
                             </div>
-                            <div v-if="row.forecastProfitAverage != null" class="portfolio-lot-meta-line portfolio-lot-forecast-line">
+                            <div
+                              v-if="row.totalProfit < 0 || row.forecastProfitAverage != null"
+                              class="portfolio-lot-meta-line portfolio-lot-forecast-line portfolio-lot-signal-row"
+                            >
                               <v-chip
+                                v-if="row.totalProfit < 0"
+                                size="x-small"
+                                variant="tonal"
+                                color="error"
+                                class="portfolio-lot-forecast-chip portfolio-lot-risk-chip"
+                              >
+                                Current lot -${{ fmtCurrency(Math.abs(row.totalProfit)) }}
+                              </v-chip>
+                              <v-chip
+                                v-if="row.forecastProfitAverage != null"
                                 size="x-small"
                                 variant="tonal"
                                 :color="row.forecastProfitAverage >= 0 ? 'success' : 'error'"
