@@ -24,28 +24,52 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Detect changed areas
         id: filter
-        uses: step-security/paths-filter@v3
-        with:
-          filters: |
-            web:
-              - 'index.html'
-              - 'manifest.webmanifest'
-              - 'package.json'
-              - 'package-lock.json'
-              - 'tsconfig*.json'
-              - 'vite*.config.*'
-              - 'vitest*.config.*'
-              - 'src/**'
-              - 'tests/**'
-              - 'scripts/**'
-              - 'icons/**'
-              - '.github/workflows/ci.yml'
-            api:
-              - 'apps/api/**'
-              - '.github/workflows/ci.yml'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          web=false
+          api=false
+
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            base_sha="${{ github.event.pull_request.base.sha }}"
+          else
+            base_sha="${{ github.event.before }}"
+          fi
+
+          head_sha="${{ github.sha }}"
+
+          if [ -z "${base_sha}" ] || [ "${base_sha}" = "0000000000000000000000000000000000000000" ]; then
+            changed_files="$(git ls-files)"
+          else
+            changed_files="$(git diff --name-only "${base_sha}" "${head_sha}")"
+          fi
+
+          while IFS= read -r file; do
+            [ -n "${file}" ] || continue
+
+            case "${file}" in
+              index.html|manifest.webmanifest|package.json|package-lock.json|tsconfig*.json|vite*.config.*|vitest*.config.*|src/*|tests/*|scripts/*|icons/*|.github/workflows/ci.yml)
+                web=true
+                ;;
+            esac
+
+            case "${file}" in
+              apps/api/*|.github/workflows/ci.yml)
+                api=true
+                ;;
+            esac
+          done <<EOF
+          ${changed_files}
+          EOF
+
+          echo "web=${web}" >> "${GITHUB_OUTPUT}"
+          echo "api=${api}" >> "${GITHUB_OUTPUT}"
 
   validate-web:
     name: Validate web
