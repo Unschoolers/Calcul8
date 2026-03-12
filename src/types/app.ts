@@ -218,9 +218,9 @@ export interface AppState extends LotSetup {
   showAddSaleModal: boolean;
   editingSale: Sale | null;
   newSale: NewSaleDraft;
-  salesChart: ChartJS<"doughnut", number[], string> | ChartJS<"line", number[], string> | null;
+  salesChart: ChartJS | null;
   chartView: ChartViewMode;
-  portfolioChart: ChartJS<"doughnut", number[], string> | ChartJS<"line", number[], string> | ChartJS<"bar", number[], string> | null;
+  portfolioChart: ChartJS | null;
   portfolioChartView: PortfolioChartViewMode;
   portfolioLotTypeFilter: PortfolioLotTypeFilter;
   portfolioLotFilterIds: number[];

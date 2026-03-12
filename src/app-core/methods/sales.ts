@@ -46,7 +46,7 @@ function resolveDefaultSaleUnitPrice(context: AppContext, type: SaleType): numbe
   return firstFiniteNonNegative(context.livePackPrice, context.packPrice) ?? 0;
 }
 
-function safeDestroyChart(chart: Chart | null): void {
+function safeDestroyChart(chart: { stop: () => void; destroy: () => void } | null): void {
   if (!chart) return;
   try {
     chart.stop();

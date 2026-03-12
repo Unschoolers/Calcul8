@@ -1,4 +1,7 @@
-import type { ChartConfiguration } from "chart.js";
+import type {
+  ChartConfiguration,
+  TooltipItem
+} from "chart.js";
 import {
   calculateNetFromGross,
   calculatePortfolioSellThroughTimeline,
@@ -477,12 +480,13 @@ export function buildPortfolioHistoryChartConfig(params: {
     const maxValue = [...values, ...trendValues].reduce((max, value) => Math.max(max, value), 0);
     const yMax = Math.max(100, Math.ceil(maxValue / 10) * 10);
 
-    return {
+    const sellThroughConfig = {
       type: "bar",
       data: {
         labels,
         datasets: [
           {
+            type: "bar",
             label: "Sell-through %",
             data: values,
             backgroundColor: "rgba(247, 181, 0, 0.35)",
@@ -523,7 +527,7 @@ export function buildPortfolioHistoryChartConfig(params: {
           legend: { display: false },
           tooltip: {
             callbacks: {
-              label: (context) => {
+              label: (context: TooltipItem<"bar">) => {
                 const value = Number(context.parsed?.y || 0);
                 if (context.dataset?.label === "Trend") {
                   return `Trend: ${params.formatCurrency(value, 1)}%`;
@@ -541,12 +545,13 @@ export function buildPortfolioHistoryChartConfig(params: {
             min: 0,
             max: yMax,
             ticks: {
-              callback: (value) => `${params.formatCurrency(Number(value), 0)}%`
+              callback: (value: string | number) => `${params.formatCurrency(Number(value), 0)}%`
             }
           }
         }
       }
-    };
+    } as unknown as ChartConfiguration<"bar", number[], string>;
+    return sellThroughConfig;
   }
 
   let cumulativeProfit = 0;
@@ -631,7 +636,7 @@ export function buildPortfolioHistoryChartConfig(params: {
         },
         tooltip: {
           callbacks: {
-            label: (context) => {
+            label: (context: TooltipItem<"line">) => {
               const datasetLabel = String(context.dataset?.label || "Value");
               return `${datasetLabel}: $${params.formatCurrency(Number(context.parsed?.y || 0))}`;
             }
