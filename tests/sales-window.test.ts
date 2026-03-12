@@ -144,10 +144,9 @@ test("SalesWindow singles link helpers detect unlinked and generate labels", () 
   assert.equal(SalesWindow.methods.getLinkedSinglesSaleLabel.call(vm as never, legacyUnlinked), "");
 });
 
-test("SalesWindow saleListTitle formats bulk and singles labels with mobile/desktop price text", () => {
+test("SalesWindow saleListTitle formats explicit bulk and singles labels", () => {
   const vm = {
     currentLotType: "bulk",
-    $vuetify: { display: { smAndDown: false } },
     fmtCurrency: SalesWindow.methods.fmtCurrency,
     getLinkedSinglesSaleLabel: SalesWindow.methods.getLinkedSinglesSaleLabel,
     formatCurrency: (value: number | null | undefined, decimals = 2) => Number(value || 0).toFixed(decimals),
@@ -156,23 +155,23 @@ test("SalesWindow saleListTitle formats bulk and singles labels with mobile/desk
     ] satisfies SinglesPurchaseEntry[]
   };
   const bulkSale = makeSale({ quantity: 2, type: "box", price: 99 });
-  assert.equal(SalesWindow.methods.saleListTitle.call(vm as never, bulkSale), "2x BOX @ $99.00");
+  assert.equal(SalesWindow.methods.saleListTitle.call(vm as never, bulkSale), "2 boxes @ $99.00");
 
   vm.currentLotType = "singles";
   const singlesSale = makeSale({ quantity: 1, price: 50, singlesPurchaseEntryId: 10 });
   assert.equal(
     SalesWindow.methods.saleListTitle.call(vm as never, singlesSale),
-    "1x Charizard #123 • Total $50.00"
+    "1 item • Charizard #123 • $50.00"
   );
 
-  vm.$vuetify.display.smAndDown = true;
+  const rtyhSale = makeSale({ quantity: 3, type: "rtyh", price: 12 });
   assert.equal(
-    SalesWindow.methods.saleListTitle.call(vm as never, singlesSale),
-    "1x Charizard #123 • $50.00"
+    SalesWindow.methods.saleListTitle.call({ ...vm, currentLotType: "bulk" } as never, rtyhSale),
+    "3 RTYH @ $12.00"
   );
 
   const unlinkedSingles = makeSale({ quantity: 3, price: 12, singlesPurchaseEntryId: null });
-  assert.equal(SalesWindow.methods.saleListTitle.call(vm as never, unlinkedSingles), "3x ITEM • $12.00");
+  assert.equal(SalesWindow.methods.saleListTitle.call(vm as never, unlinkedSingles), "3 items • $12.00");
 });
 
 test("SalesWindow render count helpers mutate expected values", () => {

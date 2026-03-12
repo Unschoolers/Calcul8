@@ -19,7 +19,8 @@ export const PortfolioWindow = {
   data() {
     return {
       mobileKpiIndex: 0,
-      portfolioLotFilterSearchQuery: ""
+      portfolioLotFilterSearchQuery: "",
+      portfolioLotFilterMenuOpen: false
     };
   },
   methods: {
@@ -48,6 +49,35 @@ export const PortfolioWindow = {
         }>
         : [];
       return filterLotOptionItems(items, String(this.portfolioLotFilterSearchQuery || ""));
+    },
+
+    portfolioLotFilterItemSelected(this: Record<string, unknown>, value: number): boolean {
+      const selected = Array.isArray(this.portfolioLotFilterIds)
+        ? this.portfolioLotFilterIds
+        : [];
+      return selected.some((id) => Number(id) === Number(value));
+    },
+
+    closePortfolioLotFilter(this: Record<string, unknown>): void {
+      this.portfolioLotFilterMenuOpen = false;
+      const blurFilter = this.blurPortfolioLotFilter as (() => void) | undefined;
+      if (typeof blurFilter === "function") {
+        blurFilter.call(this);
+      }
+    },
+
+    blurPortfolioLotFilter(this: Record<string, unknown>): void {
+      const filterRef = (this.$refs as { portfolioLotFilterSelect?: { blur?: () => void } | undefined } | undefined)?.portfolioLotFilterSelect;
+      if (typeof filterRef?.blur === "function") {
+        filterRef.blur();
+      }
+    },
+
+    closePortfolioLotFilterOnEnter(this: Record<string, unknown>): void {
+      const closeFilter = this.closePortfolioLotFilter as (() => void) | undefined;
+      if (typeof closeFilter === "function") {
+        closeFilter.call(this);
+      }
     },
 
     portfolioLotFilterDefaultLabel(this: Record<string, unknown>): string {
@@ -121,6 +151,117 @@ export const PortfolioWindow = {
         ? getVisibleSelected.call(this)
         : [];
       return Math.max(0, selected.length - 1);
+    },
+
+    portfolioLotStatusTone(this: Record<string, unknown>, row: {
+      salesCount?: number;
+      totalProfit?: number;
+      forecastProfitAverage?: number | null;
+    }): "positive" | "negative" | "neutral" {
+      const totalProfit = Number(row?.totalProfit ?? 0);
+      const forecastProfitAverage = row?.forecastProfitAverage;
+      if (totalProfit < 0) return "negative";
+      if (totalProfit > 0) return "positive";
+      if (typeof forecastProfitAverage === "number" && forecastProfitAverage !== 0) {
+        return forecastProfitAverage > 0 ? "positive" : "negative";
+      }
+      return row?.salesCount ? "positive" : "neutral";
+    },
+
+    portfolioLotIsIncomplete(this: Record<string, unknown>, row: {
+      soldPacks?: number;
+      totalPacks?: number;
+    }): boolean {
+      return Number(row?.soldPacks ?? 0) < Number(row?.totalPacks ?? 0);
+    },
+
+    portfolioLotPrimaryProfitLabel(this: Record<string, unknown>, row: {
+      salesCount?: number;
+      realizedProfit?: number;
+      forecastProfitAverage?: number | null;
+      soldPacks?: number;
+      totalPacks?: number;
+      totalProfit?: number;
+    }): string {
+      const isIncomplete = this.portfolioLotIsIncomplete as ((r: typeof row) => boolean) | undefined;
+      const incomplete = typeof isIncomplete === "function" ? isIncomplete.call(this, row) : false;
+      const format = this.fmtCurrency as ((value: number | null | undefined, decimals?: number) => string) | undefined;
+
+      if (incomplete && typeof row?.forecastProfitAverage === "number") {
+        const value = row.forecastProfitAverage;
+        const formatted = typeof format === "function" ? format.call(this, Math.abs(value)) : String(Math.abs(value));
+        return value >= 0 ? `≈ $${formatted}` : `≈ -$${formatted}`;
+      }
+
+      if ((row?.salesCount ?? 0) > 0) {
+        const value = Number(row?.realizedProfit ?? 0);
+        const formatted = typeof format === "function" ? format.call(this, Math.abs(value)) : String(Math.abs(value));
+        return `${value >= 0 ? "" : "-"}$${formatted}`;
+      }
+
+      const value = Number(row?.totalProfit ?? 0);
+      const formatted = typeof format === "function" ? format.call(this, Math.abs(value)) : String(Math.abs(value));
+      return `${value >= 0 ? "" : "-"}$${formatted}`;
+    },
+
+    portfolioLotPrimaryProfitChipColor(this: Record<string, unknown>, row: {
+      salesCount?: number;
+      realizedProfit?: number;
+      forecastProfitAverage?: number | null;
+      soldPacks?: number;
+      totalPacks?: number;
+      totalProfit?: number;
+    }): "success" | "error" | "secondary" {
+      const isIncomplete = this.portfolioLotIsIncomplete as ((r: typeof row) => boolean) | undefined;
+      const incomplete = typeof isIncomplete === "function" ? isIncomplete.call(this, row) : false;
+      if (incomplete && typeof row?.forecastProfitAverage === "number") {
+        return row.forecastProfitAverage >= 0 ? "success" : "error";
+      }
+      if ((row?.salesCount ?? 0) > 0) {
+        return Number(row?.realizedProfit ?? 0) >= 0 ? "success" : "error";
+      }
+      return Number(row?.totalProfit ?? 0) >= 0 ? "success" : "secondary";
+    },
+
+    portfolioAtRiskLotCount(this: Record<string, unknown>): number {
+      const rows = Array.isArray(this.allLotPerformance)
+        ? this.allLotPerformance as Array<{ totalProfit?: number }>
+        : [];
+      return rows.filter((row) => Number(row?.totalProfit ?? 0) < 0).length;
+    },
+
+    portfolioLotPerformanceUnderAmount(this: Record<string, unknown>): string {
+      const rows = Array.isArray(this.allLotPerformance)
+        ? this.allLotPerformance as Array<{ totalProfit?: number }>
+        : [];
+      const underAmount = rows.reduce((sum, row) => {
+        const totalProfit = Number(row?.totalProfit ?? 0);
+        return totalProfit < 0 ? sum + Math.abs(totalProfit) : sum;
+      }, 0);
+      const format = this.fmtCurrency as ((value: number | null | undefined, decimals?: number) => string) | undefined;
+      return typeof format === "function"
+        ? format.call(this, underAmount, 0)
+        : String(Math.round(underAmount));
+    },
+
+    portfolioLotPerformanceOverAmount(this: Record<string, unknown>): string {
+      const rows = Array.isArray(this.allLotPerformance)
+        ? this.allLotPerformance as Array<{ totalProfit?: number }>
+        : [];
+      const overAmount = rows.reduce((sum, row) => {
+        const totalProfit = Number(row?.totalProfit ?? 0);
+        return totalProfit > 0 ? sum + totalProfit : sum;
+      }, 0);
+      const format = this.fmtCurrency as ((value: number | null | undefined, decimals?: number) => string) | undefined;
+      return typeof format === "function"
+        ? format.call(this, overAmount, 0)
+        : String(Math.round(overAmount));
+    },
+
+    portfolioLotPerformanceKpiColor(this: Record<string, unknown>): "success" | "error" {
+      const getAtRiskCount = this.portfolioAtRiskLotCount as (() => number) | undefined;
+      const atRiskCount = typeof getAtRiskCount === "function" ? getAtRiskCount.call(this) : 0;
+      return atRiskCount > 0 ? "error" : "success";
     },
 
     nextPortfolioChartView(this: Record<string, unknown>): "breakdown" | "trend" | "sellthrough" | "margin" {

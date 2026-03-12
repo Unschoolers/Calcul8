@@ -1,5 +1,5 @@
                 <v-row>
-                  <!-- Status Card -->
+                  <!-- Snapshot + History -->
                   <v-col cols="12" md="6">
                     <v-card
                       elevation="4"
@@ -21,9 +21,7 @@
                           {{ (salesStatus?.profit ?? 0) >= 0 ? '+' : '' }}${{ fmtCurrency(salesStatus?.profit ?? 0) }}
                         </div>
                         <div class="sales-status-summary">
-                          <span>Revenue: ${{ fmtCurrency(salesStatus?.revenue ?? 0) }}</span>
-                          <span>•</span>
-                          <span>Cost: ${{ fmtCurrency(totalCaseCost) }}</span>
+                          {{ salesStatusSummaryLine }}
                         </div>
                         <v-progress-linear
                           :model-value="currentLotType === 'singles'
@@ -34,34 +32,115 @@
                           height="8"
                           rounded
                           class="sales-status-progress"
-                          :color="salesStatusProgressColor()"
+                          :color="salesStatusProgressFillColor()"
                         ></v-progress-linear>
-                        <div v-if="currentLotType !== 'singles'" class="sales-status-line">
-                          {{ soldPacksCount }} / {{ totalPacks }} items sold ({{ Number(salesProgress ?? 0).toFixed(1) }}%)
-                          <span v-if="bulkBoxProgressText"> • {{ bulkBoxProgressText }}</span>
-                        </div>
-                        <div v-else class="sales-status-lines">
-                          <div class="sales-status-line">
-                            {{ soldPacksCount }} total item sale{{ soldPacksCount === 1 ? '' : 's' }} logged
-                          </div>
-                          <div class="sales-status-line">
-                            Tracked inventory: {{ singlesTrackedSoldCount }} / {{ singlesTrackedTotalCount }} items sold
-                            ({{ singlesTrackedTotalCount > 0
-                              ? ((singlesTrackedSoldCount / singlesTrackedTotalCount) * 100).toFixed(1)
-                              : '0.0' }}%)
-                          </div>
-                          <div v-if="singlesUnlinkedSoldCount > 0" class="sales-status-line">
-                            Unlinked item sales: {{ singlesUnlinkedSoldCount }}
-                          </div>
+                        <div class="sales-status-line">
+                          {{ salesStatusProgressLine }}
                         </div>
                       </v-card-text>
                     </v-card>
+
+                    <v-card elevation="4" class="mt-3 sales-section-card sales-history-card">
+                      <v-card-title class="d-flex align-center justify-space-between sales-section-title-bar sales-history-title-bar">
+                        <div class="sales-section-title-group">
+                          <v-icon size="16">mdi-history</v-icon>
+                          <span>Sales History</span>
+                        </div>
+                        <div v-if="(sales?.length ?? 0) > 0" class="sales-history-summary">
+                          <span class="sales-history-summary-label">Sold</span>
+                          <span class="sales-history-summary-value" :style="salesHistorySummaryValueStyle()">{{ salesHistorySummaryLabel }}</span>
+                        </div>
+                      </v-card-title>
+                      <v-divider></v-divider>
+
+                      <v-card-text v-if="(sales?.length ?? 0) === 0" class="text-center py-8">
+                        <v-icon size="64" color="grey">mdi-package-variant-closed</v-icon>
+                        <p class="text-h6 mt-4 text-grey">No sales yet</p>
+                        <p class="text-caption">Click the + button to add your first sale</p>
+                      </v-card-text>
+
+                      <v-list v-else class="sales-history-list" density="compact">
+                        <v-list-item
+                          v-for="sale in (visibleSortedSales || [])"
+                          :key="sale.id"
+                          class="my-1 sales-history-row"
+                          @click="editSale(sale)"
+                        >
+                          <template v-slot:prepend>
+                            <v-avatar class="sales-history-type-token" size="28">
+                              <v-icon size="16" :color="getSaleColor(sale.type)">{{ getSaleIcon(sale.type) }}</v-icon>
+                            </v-avatar>
+                          </template>
+
+                          <v-list-item-title class="sales-history-row-head">
+                            <div class="sales-history-row-main">
+                              <span class="sales-history-item-main">
+                                {{ saleListTitle(sale) }}
+                              </span>
+                              <v-tooltip
+                                v-if="isUnlinkedSinglesSale(sale)"
+                                text="Sale not linked to an item"
+                                location="top"
+                              >
+                                <template #activator="{ props }">
+                                  <v-icon
+                                    v-bind="props"
+                                    size="14"
+                                    color="warning"
+                                    aria-label="Unlinked item sale"
+                                    title="Sale not linked to an item"
+                                  >mdi-link-variant-off</v-icon>
+                                </template>
+                              </v-tooltip>
+                            </div>
+                            <div class="sales-history-row-side">
+                              <span
+                                :class="[
+                                  'sales-history-profit-pill',
+                                  calculateSaleProfit(sale) >= 0 ? 'is-positive' : 'is-negative'
+                                ]"
+                              >
+                                Profit {{ calculateSaleProfit(sale) >= 0 ? '+' : '' }}${{ fmtCurrency(calculateSaleProfit(sale)) }}
+                              </span>
+                              <v-btn
+                                class="sales-history-action-btn"
+                                size="small"
+                                variant="text"
+                                title="Delete sale"
+                                aria-label="Delete sale"
+                                @click.stop="deleteSale(sale.id)"
+                              >
+                                <v-icon size="16">mdi-trash-can-outline</v-icon>
+                              </v-btn>
+                            </div>
+                          </v-list-item-title>
+                          <v-list-item-subtitle class="sales-history-item-subtitle">
+                            <span class="sales-history-date">{{ formatDate(sale.date) }}</span>
+                            <div v-if="sale.memo" class="sales-history-memo">
+                              {{ sale.memo }}
+                            </div>
+                          </v-list-item-subtitle>
+                        </v-list-item>
+
+                        <v-list-item v-if="hasMoreSalesHistory" class="justify-center sales-history-loadmore">
+                          <v-btn
+                            variant="text"
+                            size="small"
+                            prepend-icon="mdi-chevron-down"
+                            @click="loadMoreSalesHistory"
+                          >
+                            Load {{ nextSalesHistoryBatchCount }} more
+                            <span class="text-medium-emphasis ml-1">({{ remainingSalesHistoryCount }} left)</span>
+                          </v-btn>
+                        </v-list-item>
+                      </v-list>
+                    </v-card>
                   </v-col>
 
-                  <!-- Pie / Sparkline -->
+                  <!-- Chart + Forecast -->
                   <v-col cols="12" md="6">
                     <v-card elevation="4" class="sales-section-card sales-chart-card">
-                      <v-card-text class="sales-chart-container">
+                      <v-card-text>
                         <div class="sales-section-head sales-chart-head">
                           <div class="sales-section-head-main">
                             <v-icon size="16">mdi-chart-areaspline</v-icon>
@@ -91,8 +170,8 @@
                         <canvas
                           v-if="chartView === 'pie'"
                           ref="salesChartCanvas"
-                          class="sales-chart-canvas"
                           role="img"
+                          style="max-height: 250px;"
                           :aria-label="currentLotType === 'singles'
                             ? 'Sales chart showing sold versus remaining items.'
                             : 'Sales chart showing sold versus unsold net value.'"
@@ -107,27 +186,22 @@
                           <div v-else>
                             <canvas
                               ref="salesTrendChart"
-                              class="sales-chart-canvas"
                               role="img"
+                              style="max-height: 250px;"
                               aria-label="Sales trend chart showing cumulative profit journey over sales."
                             ></canvas>
                           </div>
                         </div>
                       </v-card-text>
                     </v-card>
-                  </v-col>
-                </v-row>
 
-                <v-row class="mt-3" v-if="(liveForecastScenarios?.length ?? 0) > 0">
-                  <v-col cols="12">
-                    <v-card elevation="4" class="sales-section-card sales-forecast-card">
+                    <v-card v-if="(liveForecastScenarios?.length ?? 0) > 0" elevation="4" class="mt-3 sales-section-card sales-forecast-card">
                       <v-card-title class="sales-section-title-bar sales-forecast-title-bar">
                         <div class="sales-section-title-group">
                           <v-icon size="16">mdi-crystal-ball</v-icon>
                           <span>Live Forecast</span>
                         </div>
                         <div class="sales-forecast-title-actions">
-                          <v-chip size="small" variant="tonal" color="primary">Estimate</v-chip>
                           <div
                             v-if="$vuetify?.display?.smAndDown && hasMultipleLiveForecastScenarios"
                             class="sales-forecast-carousel"
@@ -185,109 +259,6 @@
                           </div>
                         </div>
                       </v-card-text>
-                    </v-card>
-                  </v-col>
-                </v-row>
-
-                <!-- Sales History -->
-                <v-row class="mt-4">
-                  <v-col cols="12">
-                    <v-card elevation="4" class="sales-section-card sales-history-card">
-                      <v-card-title class="d-flex align-center justify-space-between sales-section-title-bar sales-history-title-bar">
-                        <div class="sales-section-title-group">
-                          <v-icon size="16">mdi-history</v-icon>
-                          <span>Sales History</span>
-                        </div>
-                        <v-chip color="secondary" v-if="(sales?.length ?? 0) > 0" class="sales-history-count-chip">
-                          {{ sales?.length ?? 0 }} sale{{ (sales?.length ?? 0) > 1 ? 's' : '' }}
-                        </v-chip>
-                      </v-card-title>
-                      <v-divider></v-divider>
-
-                      <v-card-text v-if="(sales?.length ?? 0) === 0" class="text-center py-8">
-                        <v-icon size="64" color="grey">mdi-package-variant-closed</v-icon>
-                        <p class="text-h6 mt-4 text-grey">No sales yet</p>
-                        <p class="text-caption">Click the + button to add your first sale</p>
-                      </v-card-text>
-
-                      <v-list v-else class="sales-history-list" density="compact">
-                        <v-list-item
-                          v-for="sale in (visibleSortedSales || [])"
-                          :key="sale.id"
-                          class="my-1 sales-history-row"
-                          @click="editSale(sale)"
-                        >
-                          <template v-slot:prepend>
-                            <v-avatar :color="getSaleColor(sale.type)" size="40">
-                              <v-icon color="white">{{ getSaleIcon(sale.type) }}</v-icon>
-                            </v-avatar>
-                          </template>
-
-                          <v-list-item-title class="d-flex align-center ga-2 sales-history-item-title">
-                            <span class="sales-history-item-main">
-                              {{ saleListTitle(sale) }}
-                            </span>
-                            <v-tooltip
-                              v-if="isUnlinkedSinglesSale(sale)"
-                              text="Sale not linked to an item"
-                              location="top"
-                            >
-                              <template #activator="{ props }">
-                                <v-icon
-                                  v-bind="props"
-                                  size="14"
-                                  color="warning"
-                                  aria-label="Unlinked item sale"
-                                  title="Sale not linked to an item"
-                                >mdi-link-variant-off</v-icon>
-                              </template>
-                            </v-tooltip>
-                          </v-list-item-title>
-                          <v-list-item-subtitle class="sales-history-item-subtitle">
-                            <span>{{ formatDate(sale.date) }}</span>
-                            <span>•</span>
-                            <span
-                              :class="[
-                                'sales-history-profit',
-                                calculateSaleProfit(sale) >= 0 ? 'is-positive' : 'is-negative'
-                              ]"
-                            >
-                              Profit {{ calculateSaleProfit(sale) >= 0 ? '+' : '' }}${{ fmtCurrency(calculateSaleProfit(sale)) }}
-                            </span>
-                            <div v-if="sale.memo" class="sales-history-memo">
-                              {{ sale.memo }}
-                            </div>
-                          </v-list-item-subtitle>
-
-                          <template v-slot:append>
-                            <div class="sales-history-actions">
-                              <v-btn
-                                class="sales-history-action-btn"
-                                size="small"
-                                variant="text"
-                                color="error"
-                                title="Delete sale"
-                                aria-label="Delete sale"
-                                @click.stop="deleteSale(sale.id)"
-                              >
-                                <v-icon size="16">mdi-trash-can-outline</v-icon>
-                              </v-btn>
-                            </div>
-                          </template>
-                        </v-list-item>
-
-                        <v-list-item v-if="hasMoreSalesHistory" class="justify-center sales-history-loadmore">
-                          <v-btn
-                            variant="text"
-                            size="small"
-                            prepend-icon="mdi-chevron-down"
-                            @click="loadMoreSalesHistory"
-                          >
-                            Load {{ nextSalesHistoryBatchCount }} more
-                            <span class="text-medium-emphasis ml-1">({{ remainingSalesHistoryCount }} left)</span>
-                          </v-btn>
-                        </v-list-item>
-                      </v-list>
                     </v-card>
                   </v-col>
                 </v-row>

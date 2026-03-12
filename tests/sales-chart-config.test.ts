@@ -83,24 +83,30 @@ test("buildSalesTrendChartConfig returns null when there are no sales", () => {
     totalCaseCost: 100,
     sellingTaxPercent: 15,
     formatCurrency,
-    formatDate
+    formatDate,
+    formatCompactDate: (value) => `C:${value}`
   });
 
   assert.equal(config, null);
 });
 
-test("buildSalesTrendChartConfig returns a line config with start label", () => {
+test("buildSalesTrendChartConfig uses the first sale date for the initial label", () => {
   const config = buildSalesTrendChartConfig({
     sales: [makeSale({ date: "2026-02-20" })],
     totalCaseCost: 100,
     sellingTaxPercent: 15,
     formatCurrency,
-    formatDate
+    formatDate,
+    formatCompactDate: (value) => `C:${value}`
   });
 
   assert.equal(config?.type, "line");
-  assert.deepEqual(config?.data.labels, ["Start", "D:2026-02-20"]);
+  assert.deepEqual(config?.data.labels, ["", "C:2026-02-20"]);
   assert.equal(config?.data.datasets[0]?.borderColor, "#34C759");
+  assert.deepEqual(config?.data.datasets[0]?.pointRadius, [0, 3]);
+  assert.deepEqual(config?.data.datasets[0]?.pointHoverRadius, [0, 5]);
+  const tooltipTitle = (config?.options?.plugins?.tooltip?.callbacks?.title as ((items: Array<{ dataIndex?: number }>) => string) | undefined)?.([{ dataIndex: 1 }]);
+  assert.equal(tooltipTitle, "D:2026-02-20");
 });
 
 test("buildSalesPieChartConfig uses card inventory labels for singles lots", () => {
@@ -110,12 +116,17 @@ test("buildSalesPieChartConfig uses card inventory labels for singles lots", () 
     currentLotType: "singles",
     soldNet: 77,
     unsoldNet: 21,
-    formatCurrency
+    formatCurrency,
+    compactMode: true
   });
 
-  assert.equal(config.type, "doughnut");
+  assert.equal(config.type, "pie");
   assert.deepEqual(config.data.labels, ["Sold items: 3", "Remaining items: 7"]);
   assert.deepEqual(config.data.datasets[0]?.data, [3, 7]);
+  assert.deepEqual(config.data.datasets[0]?.backgroundColor, ["#D7A300", "#8A6A1F"]);
+  assert.equal(config.options?.maintainAspectRatio, true);
+  assert.equal(config.options?.aspectRatio, 2);
+  assert.equal(config.options?.plugins?.legend?.position, "bottom");
 });
 
 test("buildPortfolioBreakdownChartConfig uses right-side legend for compact mode", () => {

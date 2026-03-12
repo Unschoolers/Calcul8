@@ -539,7 +539,8 @@ export const salesMethods: ThisType<AppContext> & Pick<
         totalCaseCost: this.totalCaseCost,
         sellingTaxPercent: this.sellingTaxPercent,
         formatCurrency: (value, decimals) => this.formatCurrency(value, decimals),
-        formatDate: (value) => this.formatDate(value)
+        formatDate: (value) => this.formatDate(value),
+        formatCompactDate: (value) => formatCompactChartDate(value)
       });
       if (!trendConfig) return;
       this.salesChart = new Chart(ctx, trendConfig);
@@ -558,7 +559,8 @@ export const salesMethods: ThisType<AppContext> & Pick<
       currentLotType: this.currentLotType,
       soldNet,
       unsoldNet,
-      formatCurrency: (value, decimals) => this.formatCurrency(value, decimals)
+      formatCurrency: (value, decimals) => this.formatCurrency(value, decimals),
+      compactMode: isSmallDisplay(this)
     }));
   },
 

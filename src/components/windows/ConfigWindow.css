@@ -187,6 +187,11 @@
   color: rgba(var(--v-theme-on-surface), 0.62);
 }
 
+.config-summary-pill__meta {
+  font-size: 0.72rem;
+  color: rgba(var(--v-theme-on-surface), 0.54);
+}
+
 .config-summary-hero__meta {
   margin-top: 0.85rem;
   display: flex;

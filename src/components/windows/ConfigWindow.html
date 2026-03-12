@@ -5,18 +5,20 @@
                       <div class="config-summary-hero__value-wrap">
                         <div class="config-summary-hero__value">${{ fmtCurrency(totalCaseCost) }} {{ sellingCurrency }}</div>
                         <div class="config-summary-hero__sub">
-                          Total {{ totalPacks }} items
+                          Per-unit cost breakdown
                         </div>
                       </div>
 
                       <div class="config-summary-hero__stats">
                         <div class="config-summary-pill">
-                          <span class="config-summary-pill__label">/Box</span>
+                          <span class="config-summary-pill__label">{{ boxesPurchased }} box{{ boxesPurchased === 1 ? '' : 'es' }}</span>
                           <strong>${{ boxesPurchased > 0 ? fmtCurrency(totalCaseCost / boxesPurchased) : "0.00" }}</strong>
+                          <span class="config-summary-pill__meta">per box</span>
                         </div>
                         <div class="config-summary-pill">
-                          <span class="config-summary-pill__label">/Item</span>
+                          <span class="config-summary-pill__label">{{ totalPacks }} item{{ totalPacks === 1 ? '' : 's' }}</span>
                           <strong>${{ totalPacks > 0 ? fmtCurrency(totalCaseCost / totalPacks) : "0.00" }}</strong>
+                          <span class="config-summary-pill__meta">per item</span>
                         </div>
                       </div>
                     </div>

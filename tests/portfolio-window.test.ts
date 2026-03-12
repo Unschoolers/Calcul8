@@ -80,3 +80,56 @@ test("PortfolioWindow filter search regrouping keeps bulk items together", () =>
     ["Union arena singles", "Singles lots"]
   ]);
 });
+
+test("PortfolioWindow enter closes and blurs the portfolio filter even when search has text", () => {
+  let blurred = false;
+  const vm = {
+    portfolioLotFilterItems: [
+      { title: "Bleach volume 2", value: 11, subtitle: "Bulk • 2026-02-01", lotType: "bulk", groupLabel: "Bulk lots" },
+      { title: "Kagurabachi", value: 22, subtitle: "Bulk • 2026-03-03", lotType: "bulk", groupLabel: null }
+    ],
+    portfolioLotFilterIds: [11],
+    portfolioLotFilterSearchQuery: "kag",
+    portfolioLotFilterMenuOpen: true,
+    $refs: {
+      portfolioLotFilterSelect: {
+        blur() {
+          blurred = true;
+        }
+      }
+    },
+    blurPortfolioLotFilter: PortfolioWindow.methods.blurPortfolioLotFilter,
+    closePortfolioLotFilter: PortfolioWindow.methods.closePortfolioLotFilter
+  };
+
+  PortfolioWindow.methods.closePortfolioLotFilterOnEnter.call(vm as never);
+
+  assert.deepEqual(vm.portfolioLotFilterIds, [11]);
+  assert.equal(vm.portfolioLotFilterSearchQuery, "kag");
+  assert.equal(vm.portfolioLotFilterMenuOpen, false);
+  assert.equal(blurred, true);
+});
+
+test("PortfolioWindow enter closes the portfolio filter menu when search is empty", () => {
+  let blurred = false;
+  const vm = {
+    portfolioLotFilterIds: [22],
+    portfolioLotFilterSearchQuery: "",
+    portfolioLotFilterMenuOpen: true,
+    $refs: {
+      portfolioLotFilterSelect: {
+        blur() {
+          blurred = true;
+        }
+      }
+    },
+    blurPortfolioLotFilter: PortfolioWindow.methods.blurPortfolioLotFilter,
+    closePortfolioLotFilter: PortfolioWindow.methods.closePortfolioLotFilter
+  };
+
+  PortfolioWindow.methods.closePortfolioLotFilterOnEnter.call(vm as never);
+
+  assert.deepEqual(vm.portfolioLotFilterIds, [22]);
+  assert.equal(vm.portfolioLotFilterMenuOpen, false);
+  assert.equal(blurred, true);
+});

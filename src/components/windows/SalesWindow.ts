@@ -93,6 +93,47 @@ export const SalesWindow = {
         ? (value: number) => fmtUnits.call(this, value)
         : (value: number) => String(value);
       return `${format(soldPacks / packsPerBox)} / ${format(totalPacks / packsPerBox)} boxes`;
+    },
+
+    salesHistorySummaryLabel(this: Record<string, unknown>): string {
+      return `${this.salesHistorySoldPercent.toFixed(1)}%`;
+    },
+
+    salesHistorySoldPercent(this: Record<string, unknown>): number {
+      const lotType = String(this.currentLotType || "bulk");
+      if (lotType === "singles") {
+        const trackedTotal = Math.max(0, Number(this.singlesTrackedTotalCount) || 0);
+        const trackedSold = Math.max(0, Number(this.singlesTrackedSoldCount) || 0);
+        return trackedTotal > 0 ? (trackedSold / trackedTotal) * 100 : 0;
+      }
+      return Math.max(0, Number(this.salesProgress) || 0);
+    },
+
+    salesStatusSummaryLine(this: Record<string, unknown>): string {
+      return `Rev $${this.fmtCurrency(this.salesStatus?.revenue ?? 0)} • Cost $${this.fmtCurrency(this.totalCaseCost)}`;
+    },
+
+    salesStatusProgressLine(this: Record<string, unknown>): string {
+      const lotType = String(this.currentLotType || "bulk");
+      if (lotType === "singles") {
+        const trackedSold = Math.max(0, Number(this.singlesTrackedSoldCount) || 0);
+        const trackedTotal = Math.max(0, Number(this.singlesTrackedTotalCount) || 0);
+        const parts = [`${trackedSold} / ${trackedTotal} items`];
+        const unlinkedSold = Math.max(0, Number(this.singlesUnlinkedSoldCount) || 0);
+        if (unlinkedSold > 0) {
+          parts.push(`${unlinkedSold} unlinked`);
+        }
+        return parts.join(" • ");
+      }
+
+      const soldPacks = Math.max(0, Number(this.soldPacksCount) || 0);
+      const totalPacks = Math.max(0, Number(this.totalPacks) || 0);
+      const parts: string[] = [];
+      if (this.bulkBoxProgressText) {
+        parts.push(this.bulkBoxProgressText);
+      }
+      parts.push(`${soldPacks} / ${totalPacks} items`);
+      return parts.join(" • ");
     }
   },
   watch: {
@@ -126,6 +167,20 @@ export const SalesWindow = {
       if (rawColor === "primary") return "primary";
       if (rawColor === "secondary") return "secondary";
       return "primary";
+    },
+
+    salesStatusProgressFillColor(this: Record<string, unknown>): string {
+      const lotType = String(this.currentLotType || "bulk");
+      const percent = lotType === "singles"
+        ? (Math.max(0, Number(this.singlesTrackedTotalCount) || 0) > 0
+          ? (Math.max(0, Number(this.singlesTrackedSoldCount) || 0) / Math.max(1, Number(this.singlesTrackedTotalCount) || 0)) * 100
+          : 0)
+        : Math.max(0, Number(this.salesProgress) || 0);
+      const clamped = Math.max(0, Math.min(100, percent));
+      const hue = clamped <= 50
+        ? 4 + ((48 - 4) * (clamped / 50))
+        : 48 + ((135 - 48) * ((clamped - 50) / 50));
+      return `hsl(${hue.toFixed(1)}deg 82% 56%)`;
     },
 
     fmtCurrency(value: number | null | undefined, decimals = 2): string {
@@ -209,21 +264,22 @@ export const SalesWindow = {
 
     saleListTitle(sale: Sale): string {
       const lotType = (this as Record<string, unknown>).currentLotType;
-      const isMobile = Boolean(
-        ((this as Record<string, unknown>).$vuetify as { display?: { smAndDown?: boolean } } | undefined)
-          ?.display
-          ?.smAndDown
-      );
-      const priceLabel = isMobile ? `$${this.fmtCurrency(sale.price)}` : `Total $${this.fmtCurrency(sale.price)}`;
+      const priceLabel = `$${this.fmtCurrency(sale.price)}`;
+      const quantity = Math.max(0, Number(sale.quantity) || 0);
+      const typeLabel = sale.type === "box"
+        ? (quantity === 1 ? "box" : "boxes")
+        : sale.type === "rtyh"
+          ? "RTYH"
+          : (quantity === 1 ? "item" : "items");
       if (lotType !== "singles") {
-        return `${sale.quantity}x ${sale.type.toUpperCase()} @ $${this.fmtCurrency(sale.price)}`;
+        return `${quantity} ${typeLabel} @ ${priceLabel}`;
       }
 
       const linkedLabel = this.getLinkedSinglesSaleLabel(sale);
       if (linkedLabel) {
-        return `${sale.quantity}x ${linkedLabel} • ${priceLabel}`;
+        return `${quantity} ${typeLabel} • ${linkedLabel} • ${priceLabel}`;
       }
-      return `${sale.quantity}x ITEM • ${priceLabel}`;
+      return `${quantity} ${typeLabel} • ${priceLabel}`;
     },
 
     resetSalesHistoryRenderCount(): void {
@@ -246,6 +302,16 @@ export const SalesWindow = {
       const current = Math.max(0, Number(vm.liveForecastScenarioIndex) || 0);
       const next = (current + direction + scenarios.length) % scenarios.length;
       vm.liveForecastScenarioIndex = next;
+    },
+
+    salesHistorySummaryValueStyle(this: Record<string, unknown>): Record<string, string> {
+      const percent = Math.max(0, Math.min(100, Number(this.salesHistorySoldPercent) || 0));
+      const hue = percent <= 50
+        ? 4 + ((48 - 4) * (percent / 50))
+        : 48 + ((135 - 48) * ((percent - 50) / 50));
+      return {
+        color: `hsl(${hue.toFixed(1)}deg 82% 56%)`
+      };
     }
   },
   mounted(this: Record<string, unknown>) {

@@ -137,28 +137,37 @@ export function buildSalesTrendChartConfig(params: {
   sellingTaxPercent: number;
   formatCurrency: FormatCurrency;
   formatDate: FormatDate;
+  formatCompactDate: FormatDate;
 }): ChartConfiguration<"line", number[], string> | null {
   if (params.sales.length === 0) return null;
 
   const sortedSales = [...params.sales].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   const data = calculateSparklineData(params.sales, params.totalCaseCost, params.sellingTaxPercent);
-  const labels = ["Start", ...sortedSales.map((sale) => params.formatDate(sale.date))];
+  const fullLabels = ["", ...sortedSales.map((sale) => params.formatDate(sale.date))];
+  const compactLabels = ["", ...sortedSales.map((sale) => params.formatCompactDate(sale.date))];
   const finalValue = data[data.length - 1] ?? 0;
   const lineColor = finalValue > 0 ? "#34C759" : "#FF3B30";
   const fillColor = finalValue > 0 ? "rgba(52, 199, 89, 0.16)" : "rgba(255, 59, 48, 0.16)";
+  const pointRadius = data.map((_, index) => (index === 0 ? 0 : 3));
+  const pointHoverRadius = data.map((_, index) => (index === 0 ? 0 : 5));
+  const pointHitRadius = data.map((_, index) => (index === 0 ? 0 : 10));
 
   return {
     type: "line",
     data: {
-      labels,
+      labels: compactLabels,
       datasets: [
         {
           data,
           borderColor: lineColor,
           backgroundColor: fillColor,
           borderWidth: 3,
-          pointRadius: 0,
-          pointHoverRadius: 3,
+          pointRadius,
+          pointHoverRadius,
+          pointHitRadius,
+          pointBackgroundColor: lineColor,
+          pointBorderColor: "#171717",
+          pointBorderWidth: 1.5,
           tension: 0.3,
           fill: true
         }
@@ -182,7 +191,7 @@ export function buildSalesTrendChartConfig(params: {
           callbacks: {
             title(items: Array<{ dataIndex?: number }>) {
               const index = Number(items?.[0]?.dataIndex ?? 0);
-              return labels[index] ?? "Sale";
+              return fullLabels[index] || fullLabels[1] || "Sale";
             },
             label: (context) => `Progress: $${params.formatCurrency(Number(context.parsed?.y || 0))}`
           }
@@ -217,7 +226,8 @@ export function buildSalesPieChartConfig(params: {
   soldNet: number;
   unsoldNet: number;
   formatCurrency: FormatCurrency;
-}): ChartConfiguration<"doughnut", number[], string> {
+  compactMode?: boolean;
+}): ChartConfiguration<"pie", number[], string> {
   const unsoldPacks = Math.max(0, params.totalPacks - params.soldPacks);
   const isSinglesLot = params.currentLotType === "singles";
   const labels = isSinglesLot
@@ -232,29 +242,36 @@ export function buildSalesPieChartConfig(params: {
   const data = isSinglesLot
     ? [Math.max(0, params.soldPacks), Math.max(0, unsoldPacks)]
     : [Math.max(0, params.soldNet), Math.max(0, params.unsoldNet)];
+  const colors = [
+    PORTFOLIO_BREAKDOWN_COLORS[0],
+    PORTFOLIO_BREAKDOWN_COLORS[2]
+  ];
 
   return {
-    type: "doughnut",
+    type: "pie",
     data: {
       labels,
       datasets: [
         {
           data,
-          backgroundColor: ["#34C759", "#FF3B30"],
-          borderWidth: 0
+          backgroundColor: colors,
+          borderColor: "rgba(247, 181, 0, 0.9)",
+          borderWidth: 1
         }
       ]
     },
     options: {
       animation: false,
       responsive: true,
-      maintainAspectRatio: false,
+      maintainAspectRatio: true,
+      aspectRatio: 2,
       plugins: {
         legend: {
           position: "bottom",
           labels: {
-            padding: 15,
-            font: { size: 12 }
+            padding: params.compactMode ? 8 : 14,
+            font: { size: params.compactMode ? 10 : 12 },
+            boxWidth: params.compactMode ? 9 : 14
           }
         },
         tooltip: {

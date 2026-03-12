@@ -14,7 +14,9 @@
                       </v-btn-toggle>
 
                       <v-autocomplete
+                        ref="portfolioLotFilterSelect"
                         v-model="portfolioLotFilterIds"
+                        v-model:menu="portfolioLotFilterMenuOpen"
                         v-model:search="portfolioLotFilterSearchQuery"
                         :items="portfolioVisibleLotFilterItems()"
                         item-title="title"
@@ -33,6 +35,7 @@
                         no-filter
                         hide-details="auto"
                         class="portfolio-filter-select"
+                        @keydown.enter.prevent="closePortfolioLotFilterOnEnter"
                       >
                         <template #selection="{ index }">
                           <div v-if="index === 0" class="portfolio-filter-selection">
@@ -74,6 +77,16 @@
                               <v-list-item-subtitle class="text-caption">
                                 {{ item.raw.subtitle }}
                               </v-list-item-subtitle>
+                              <template #append>
+                                <v-icon
+                                  v-if="portfolioLotFilterItemSelected(item.raw.value)"
+                                  size="14"
+                                  color="secondary"
+                                  class="portfolio-filter-item-check"
+                                >
+                                  mdi-check
+                                </v-icon>
+                              </template>
                             </v-list-item>
                           </div>
                         </template>
@@ -308,12 +321,18 @@
                       <v-card-title class="d-flex align-center justify-space-between portfolio-section-title-bar">
                         <div class="portfolio-section-title-group">
                           <v-icon size="16">mdi-view-grid-outline</v-icon>
-                          <span>Lot Performance</span>
+                          <span>Performance</span>
                         </div>
-                        <div class="d-flex align-center ga-2">
-                          <v-chip color="secondary" v-if="hasPortfolioData">
-                            {{ allLotPerformance?.length ?? 0 }} lot{{ (allLotPerformance?.length ?? 0) === 1 ? '' : 's' }}
-                          </v-chip>
+                        <div v-if="hasPortfolioData" class="portfolio-performance-summary">
+                          <div class="portfolio-performance-summary-stat is-error">
+                            <span class="portfolio-performance-summary-label">Under</span>
+                            <span class="portfolio-performance-summary-value">${{ portfolioLotPerformanceUnderAmount() }}</span>
+                          </div>
+                          <div class="portfolio-performance-summary-divider" aria-hidden="true"></div>
+                          <div class="portfolio-performance-summary-stat is-success">
+                            <span class="portfolio-performance-summary-label">Over</span>
+                            <span class="portfolio-performance-summary-value">${{ portfolioLotPerformanceOverAmount() }}</span>
+                          </div>
                         </div>
                       </v-card-title>
                       <v-divider></v-divider>
@@ -330,76 +349,57 @@
                           :key="row.lotId"
                           class="portfolio-lot-row"
                         >
-                          <template v-slot:prepend>
-                            <v-avatar
-                              size="38"
-                              class="portfolio-lot-status-avatar"
-                              :class="row.salesCount === 0 ? 'is-neutral' : (row.realizedProfit >= 0 ? 'is-positive' : 'is-negative')"
-                            >
-                              <v-icon
-                                class="portfolio-lot-status-icon"
-                                :class="row.salesCount === 0 ? 'is-neutral' : (row.realizedProfit >= 0 ? 'is-positive' : 'is-negative')"
+                            <template v-slot:prepend>
+                              <v-avatar
+                                size="38"
+                                class="portfolio-lot-status-avatar"
+                                :class="`is-${portfolioLotStatusTone(row)}`"
                               >
-                                mdi-bookmark
-                              </v-icon>
-                            </v-avatar>
-                          </template>
+                                <v-icon
+                                  class="portfolio-lot-status-icon"
+                                  :class="`is-${portfolioLotStatusTone(row)}`"
+                                >
+                                  mdi-bookmark
+                                </v-icon>
+                              </v-avatar>
+                            </template>
 
-                          <v-list-item-title class="portfolio-lot-title">{{ row.lotName }}</v-list-item-title>
-                          <v-list-item-subtitle class="portfolio-lot-subtitle d-flex flex-column ga-1">
-                            <div class="portfolio-lot-meta-line">
-                              <span v-if="row.salesCount > 0">
-                                {{ row.salesCount }} sale{{ row.salesCount === 1 ? '' : 's' }}
-                              </span>
-                              <span v-else>No sales yet</span>
-                              <span v-if="row.salesCount > 0 && row.lastSaleDate" class="portfolio-lot-meta-secondary">
-                                • Last sale {{ formatDate(row.lastSaleDate) }}
-                              </span>
-                            </div>
-                            <div v-if="row.realizedMarginPercent != null" class="portfolio-lot-meta-line portfolio-lot-forecast-line">
-                              <v-chip
-                                size="x-small"
-                                variant="tonal"
+                            <v-list-item-title class="portfolio-lot-title">{{ row.lotName }}</v-list-item-title>
+                            <v-list-item-subtitle class="portfolio-lot-subtitle d-flex flex-column ga-1">
+                              <div v-if="row.salesCount === 0" class="portfolio-lot-meta-line portfolio-lot-empty-state">
+                                No sales yet
+                              </div>
+                              <div v-if="row.realizedMarginPercent != null" class="portfolio-lot-meta-line portfolio-lot-forecast-line">
+                                <v-chip
+                                  size="x-small"
+                                  variant="tonal"
                                 :color="row.realizedProfit >= 0 ? 'success' : 'error'"
                                 class="portfolio-lot-forecast-chip"
                               >
                                 Sold margin {{ row.realizedMarginPercent >= 0 ? '+' : '' }}{{ fmtCurrency(row.realizedMarginPercent, 1) }}%
                               </v-chip>
-                            </div>
-                            <div
-                              v-if="row.totalProfit < 0 || row.forecastProfitAverage != null"
-                              class="portfolio-lot-meta-line portfolio-lot-forecast-line portfolio-lot-signal-row"
-                            >
-                              <v-chip
-                                v-if="row.totalProfit < 0"
-                                size="x-small"
-                                variant="tonal"
-                                color="error"
-                                class="portfolio-lot-forecast-chip portfolio-lot-risk-chip"
-                              >
-                                Current lot -${{ fmtCurrency(Math.abs(row.totalProfit)) }}
-                              </v-chip>
-                              <v-chip
-                                v-if="row.forecastProfitAverage != null"
-                                size="x-small"
-                                variant="tonal"
-                                :color="row.forecastProfitAverage >= 0 ? 'success' : 'error'"
-                                class="portfolio-lot-forecast-chip"
-                              >
-                                Forecast avg {{ row.forecastProfitAverage >= 0 ? '+' : '' }}${{ fmtCurrency(row.forecastProfitAverage) }}
-                              </v-chip>
-                            </div>
-                          </v-list-item-subtitle>
+                              </div>
+                              <div class="portfolio-lot-meta-line portfolio-lot-forecast-line portfolio-lot-signal-row">
+                                <v-chip
+                                  size="x-small"
+                                  variant="tonal"
+                                  :color="row.totalProfit < 0 ? 'error' : undefined"
+                                  class="portfolio-lot-forecast-chip portfolio-lot-risk-chip"
+                                  :class="{ 'portfolio-lot-risk-chip--neutral': row.totalProfit >= 0 }"
+                                >
+                                  Risk ${{ fmtCurrency(Math.max(0, -(row.totalProfit ?? 0))) }}
+                                </v-chip>
+                              </div>
+                            </v-list-item-subtitle>
 
                           <template v-slot:append>
                             <v-chip
-                              v-if="row.salesCount > 0"
                               size="small"
                               variant="tonal"
-                              :color="row.realizedProfit >= 0 ? 'success' : 'error'"
+                              :color="portfolioLotPrimaryProfitChipColor(row)"
                               class="portfolio-lot-profit-chip"
                             >
-                              {{ row.realizedProfit >= 0 ? '+' : '' }}${{ fmtCurrency(row.realizedProfit ?? 0) }}
+                              {{ portfolioLotPrimaryProfitLabel(row) }}
                             </v-chip>
                           </template>
                         </v-list-item>

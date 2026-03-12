@@ -1217,7 +1217,7 @@ test("initSalesChart creates pie chart and destroys stale sales chart safely", (
   salesMethods.initSalesChart.call(ctx as never);
   assert.equal(chartCtorMock.mock.calls.length, 1);
   const config = chartCtorMock.mock.calls[0]?.[1] as { type: string };
-  assert.equal(config.type, "doughnut");
+  assert.equal(config.type, "pie");
 });
 
 test("initSalesChart uses card inventory labels in singles pie mode", () => {
@@ -1245,7 +1245,7 @@ test("initSalesChart uses card inventory labels in singles pie mode", () => {
       datasets: Array<{ data: number[] }>;
     };
   };
-  assert.equal(config.type, "doughnut");
+  assert.equal(config.type, "pie");
   assert.deepEqual(config.data.labels, ["Sold items: 3", "Remaining items: 7"]);
   assert.deepEqual(config.data.datasets[0]?.data, [3, 7]);
 });
