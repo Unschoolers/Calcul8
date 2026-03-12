@@ -1267,7 +1267,7 @@ test("initPortfolioChart creates breakdown doughnut chart", () => {
   salesMethods.initPortfolioChart.call(ctx as never);
   assert.equal(chartCtorMock.mock.calls.length, 1);
   const config = chartCtorMock.mock.calls[0]?.[1] as { type: string };
-  assert.equal(config.type, "doughnut");
+  assert.equal(config.type, "pie");
 });
 
 test("initPortfolioChart uses right-side legend for mobile breakdown", () => {
@@ -1300,8 +1300,8 @@ test("initPortfolioChart uses right-side legend for mobile breakdown", () => {
       plugins: { legend: { position: string } };
     };
   };
-  assert.equal(config.type, "doughnut");
-  assert.equal(config.options.plugins.legend.position, "right");
+  assert.equal(config.type, "pie");
+  assert.equal(config.options.plugins.legend.position, "bottom");
   assert.equal(config.options.maintainAspectRatio, true);
   assert.equal(config.options.aspectRatio, 2);
   assert.equal(config.data.labels[0], "Lot 1");
