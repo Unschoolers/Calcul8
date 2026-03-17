@@ -25,7 +25,10 @@ export const uiSyncMethods: ThisType<AppContext> & Pick<
     stopCloudSyncSchedulerService(this);
   },
 
-  async pushCloudSync(force = false): Promise<void> {
-    await runCloudSyncPush(this, force);
+  async pushCloudSync(
+    force = false,
+    options: { allowEmptyOverwrite?: boolean } = {}
+  ): Promise<void> {
+    await runCloudSyncPush(this, force, {}, options);
   }
 };

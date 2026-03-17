@@ -5,6 +5,7 @@ export type SyncPayload = {
   lots: unknown[];
   salesByLot: Record<string, Sale[]>;
   clientVersion?: number;
+  allowEmptyOverwrite?: boolean;
   workspaceId?: string;
 };
 

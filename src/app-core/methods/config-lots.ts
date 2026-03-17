@@ -589,6 +589,9 @@ export const configLotMethods: ConfigMethodSubset<
         this.saveLotsToStorage();
         this.currentLotId = null;
         this.notify("Lot deleted", "info");
+        void this.pushCloudSync(true, {
+          allowEmptyOverwrite: this.lots.length === 0
+        });
       }
     );
   }
