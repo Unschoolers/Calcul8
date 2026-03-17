@@ -639,12 +639,15 @@
                 variant="outlined"
                 density="comfortable"
                 :loading="singlesItemSearchLoading"
+                :clearable="Boolean(editingSinglesRow.item || singlesItemSearchText)"
                 no-filter
                 hide-details
                 :no-data-text="showCatalogSuggestions ? 'Type 2+ characters to search' : 'Autocomplete disabled for this lot'"
                 :placeholder="showCatalogSuggestions ? 'Search by name, number, or rarity' : 'Item name'"
+                @click:clear="clearSinglesCatalogSelection"
                 @focus="maybeOpenSinglesItemSuggestions"
                 @click:control="maybeOpenSinglesItemSuggestions"
+                @keydown.backspace="onSinglesItemBackspace"
                 @update:search="onSinglesItemSearchUpdate"
                 @update:model-value="onSinglesCatalogSelectionChange"
               >

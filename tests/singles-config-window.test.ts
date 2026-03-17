@@ -1121,6 +1121,48 @@ test("catalog editor selection stays unique for duplicate names", () => {
   assert.equal(items[1]?.title, "Goreinu #UEX04BT/HTR-2-013-ALT1");
 });
 
+test("catalog editor clears active selection while the user edits search text", () => {
+  const context = createContext({
+    showCatalogSuggestions: true,
+    editingSinglesRow: {
+      item: "Goreinu",
+      cardNumber: "UEX04BT/HTR-2-013-ALT1",
+      image: "https://img.example.com/goreinu-alt1.jpg",
+      condition: "",
+      language: "",
+      cost: 0,
+      currency: "CAD",
+      quantity: 1,
+      marketValue: 0.92
+    },
+    singlesItemSearchText: "",
+    singlesItemSuggestions: [
+      {
+        title: "Goreinu #UEX04BT/HTR-2-013-ALT1",
+        value: "Goreinu|UEX04BT/HTR-2-013-ALT1|R",
+        name: "Goreinu",
+        cardNo: "UEX04BT/HTR-2-013-ALT1",
+        image: "https://img.example.com/goreinu-alt1.jpg",
+        rarity: "R",
+        marketPrice: 0.92
+      }
+    ]
+  });
+
+  assert.equal(
+    getComputed<string | null>("currentSinglesEditorSelectionValue").call(context),
+    "Goreinu|UEX04BT/HTR-2-013-ALT1|R"
+  );
+
+  context.onSinglesItemSearchUpdate("gor");
+
+  assert.equal(context.editingSinglesRow.item, "");
+  assert.equal(context.editingSinglesRow.cardNumber, "");
+  assert.equal(context.editingSinglesRow.image, "");
+  assert.equal(context.singlesItemSearchText, "gor");
+  assert.equal(getComputed<string | null>("currentSinglesEditorSelectionValue").call(context), null);
+});
+
 test("catalog selection change picks the matching duplicate instead of the first same-name card", () => {
   const context = createContext({
     showCatalogSuggestions: true,
@@ -1151,6 +1193,81 @@ test("catalog selection change picks the matching duplicate instead of the first
 
   assert.equal((context.onSinglesItemSelected as ReturnType<typeof vi.fn>).mock.calls.length, 1);
   assert.equal((context.onSinglesItemSelected as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]?.cardNo, "UEX04BT/HTR-2-013-ALT1");
+});
+
+test("catalog editor clear action resets both selection and search text", () => {
+  const context = createContext({
+    showCatalogSuggestions: true,
+    editingSinglesRow: {
+      item: "Mari Makinami Illustrious",
+      cardNumber: "UE15BT/EVA-1-017-ALT1",
+      image: "https://img.example.com/mari.jpg",
+      condition: "",
+      language: "",
+      cost: 0,
+      currency: "CAD",
+      quantity: 1,
+      marketValue: 15
+    },
+    singlesItemSearchText: "mar",
+    singlesItemSuggestions: [
+      {
+        title: "Mari Makinami Illustrious #UE15BT/EVA-1-017-ALT1",
+        value: "Mari Makinami Illustrious|UE15BT/EVA-1-017-ALT1|SR",
+        name: "Mari Makinami Illustrious",
+        cardNo: "UE15BT/EVA-1-017-ALT1",
+        image: "https://img.example.com/mari.jpg",
+        rarity: "SR",
+        marketPrice: 15
+      }
+    ],
+    singlesItemMenuOpen: true,
+    singlesItemSearchLoading: true,
+    cancelSinglesItemSearch: vi.fn()
+  });
+
+  context.clearSinglesCatalogSelection();
+
+  assert.equal(context.editingSinglesRow.item, "");
+  assert.equal(context.editingSinglesRow.cardNumber, "");
+  assert.equal(context.editingSinglesRow.image, "");
+  assert.equal(context.singlesItemSearchText, "");
+  assert.equal(context.singlesItemMenuOpen, false);
+  assert.equal(context.singlesItemSearchLoading, false);
+  assert.deepEqual(context.singlesItemSuggestions, []);
+  assert.equal((context.cancelSinglesItemSearch as ReturnType<typeof vi.fn>).mock.calls.length, 1);
+});
+
+test("catalog editor backspace releases a selected card into editable search text", () => {
+  const context = createContext({
+    showCatalogSuggestions: true,
+    editingSinglesRow: {
+      item: "Rei Ayanami",
+      cardNumber: "UE15BT/EVA-1-004-ALT1",
+      image: "https://img.example.com/rei.jpg",
+      condition: "",
+      language: "",
+      cost: 0,
+      currency: "CAD",
+      quantity: 1,
+      marketValue: 46
+    },
+    singlesItemSearchText: ""
+  });
+  const event = {
+    preventDefault: vi.fn()
+  } as unknown as KeyboardEvent;
+
+  context.onSinglesItemBackspace(event);
+
+  assert.equal((event.preventDefault as ReturnType<typeof vi.fn>).mock.calls.length, 1);
+  assert.equal(context.editingSinglesRow.item, "");
+  assert.equal(context.editingSinglesRow.cardNumber, "");
+  assert.equal(context.editingSinglesRow.image, "");
+  assert.equal(context.singlesItemSearchText, "Rei Ayanami");
+  assert.equal(getComputed<string | null>("currentSinglesEditorSelectionValue").call(context), null);
+
+  context.cancelSinglesItemSearch();
 });
 
 test("image preview opens only for valid images and closes cleanly", () => {

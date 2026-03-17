@@ -415,6 +415,8 @@ export const SinglesConfigWindow: any = {
     },
 
     currentSinglesEditorSelectionValue(this: any): string | null {
+      const activeSearch = String(this.singlesItemSearchText || "").trim();
+      if (activeSearch) return null;
       const item = String(this.editingSinglesRow?.item || "").trim();
       if (!item) return null;
       const cardNo = String(this.editingSinglesRow?.cardNumber || "").trim();
@@ -821,6 +823,9 @@ export const SinglesConfigWindow: any = {
       const query = this.singlesItemSearchText.trim();
       const currentItem = String(this.editingSinglesRow?.item || "").trim();
       if (query.toLocaleLowerCase() !== currentItem.toLocaleLowerCase()) {
+        if (this.showCatalogSuggestions) {
+          this.editingSinglesRow.item = "";
+        }
         this.editingSinglesRow.image = "";
         if (this.showCatalogSuggestions) {
           this.editingSinglesRow.cardNumber = "";
@@ -946,6 +951,32 @@ export const SinglesConfigWindow: any = {
         this.editingSinglesRow.marketValue = parsedMarket;
       }
       void this.preloadSinglesEditorPreview();
+    },
+
+    clearSinglesCatalogSelection(this: any): void {
+      this.cancelSinglesItemSearch();
+      this.editingSinglesRow.item = "";
+      this.editingSinglesRow.cardNumber = "";
+      this.editingSinglesRow.image = "";
+      this.singlesItemSearchText = "";
+      this.singlesItemSuggestions = [];
+      this.singlesItemMenuOpen = false;
+      this.singlesItemSearchLoading = false;
+    },
+
+    onSinglesItemBackspace(this: any, event: KeyboardEvent): void {
+      if (!this.showCatalogSuggestions) return;
+      const activeSearch = String(this.singlesItemSearchText || "");
+      if (activeSearch.length > 0) return;
+
+      const selectedItem = String(this.editingSinglesRow?.item || "").trim();
+      if (!selectedItem) return;
+
+      event.preventDefault();
+      this.editingSinglesRow.item = "";
+      this.editingSinglesRow.cardNumber = "";
+      this.editingSinglesRow.image = "";
+      this.onSinglesItemSearchUpdate(selectedItem);
     },
 
     maybeOpenSinglesItemSuggestions(this: any): void {
