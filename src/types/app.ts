@@ -70,6 +70,10 @@ export interface Sale {
   memo?: string;
   buyerShipping: number;
   date: string;
+  version?: number;
+  updatedAt?: string;
+  updatedBy?: string;
+  mutationId?: string;
 }
 
 export interface SinglesSaleCardOption {
@@ -255,6 +259,7 @@ export interface AppState extends LotSetup {
   liveSpotPrice: number;
   liveBoxPriceSell: number;
   livePackPrice: number;
+  currentLivePricingVersion: number | null;
   showProfitCalculator: boolean;
   sales: Sale[];
   showAddSaleModal: boolean;

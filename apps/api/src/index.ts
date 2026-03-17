@@ -8,6 +8,7 @@ import "./functions/syncPush";
 import "./functions/migrationRun";
 import "./functions/migrationRunsList";
 import "./functions/workspaces";
+import "./functions/salesLive";
 import "./functions/cardsSearch";
 import "./functions/auth";
 import "./functions/syncImportUser";

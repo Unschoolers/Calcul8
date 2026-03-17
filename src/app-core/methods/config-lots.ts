@@ -19,6 +19,13 @@ import { normalizeSinglesCatalogSource } from "../shared/singles-catalog-source.
 import { type ConfigMethodSubset, getTodayDate, inferDateFromLotId, toDateOnly } from "./config-shared.ts";
 import { toNonNegativeInt as toNonNegativeInteger, toNonNegativeNumber } from "../shared/singles-normalizers.ts";
 import { getActiveStorageScope } from "../workspace-scope.ts";
+import {
+  canUseAuthoritativeSalesLiveApi,
+  fetchAuthoritativeLivePricing,
+  fetchAuthoritativeSales,
+  SalesLiveApiError,
+  saveAuthoritativeLivePricing
+} from "./sales-live-api.ts";
 
 const LEGACY_KEYS = getLegacyStorageKeys();
 
@@ -148,12 +155,41 @@ export const configLotMethods: ConfigMethodSubset<
       return;
     }
 
-    this.spotPrice = Number(this.liveSpotPrice) || 0;
-    this.boxPriceSell = Number(this.liveBoxPriceSell) || 0;
-    this.packPrice = Number(this.livePackPrice) || 0;
-    this.autoSaveSetup();
-    void this.pushCloudSync();
-    this.notify("Live prices saved to config", "success");
+    if (!canUseAuthoritativeSalesLiveApi()) {
+      this.spotPrice = Number(this.liveSpotPrice) || 0;
+      this.boxPriceSell = Number(this.liveBoxPriceSell) || 0;
+      this.packPrice = Number(this.livePackPrice) || 0;
+      this.currentLivePricingVersion = null;
+      this.autoSaveSetup();
+      void this.pushCloudSync();
+      this.notify("Live prices saved to config", "success");
+      return;
+    }
+
+    const lotId = this.currentLotId;
+    void (async () => {
+      try {
+        const saved = await saveAuthoritativeLivePricing(this, lotId, this);
+        this.currentLivePricingVersion = saved.version;
+        this.notify("Live prices saved", "success");
+      } catch (error) {
+        if (error instanceof SalesLiveApiError && error.status === 409) {
+          const latest = await fetchAuthoritativeLivePricing(this, lotId).catch(() => null);
+          if (latest) {
+            this.liveSpotPrice = latest.liveSpotPrice;
+            this.liveBoxPriceSell = latest.liveBoxPriceSell;
+            this.livePackPrice = latest.livePackPrice;
+            this.currentLivePricingVersion = latest.version;
+          }
+          this.notify("Live pricing changed in the cloud. Pulled latest saved prices.", "warning");
+          return;
+        }
+        const message = error instanceof Error && error.message.trim()
+          ? error.message
+          : "Failed to save live pricing.";
+        this.notify(message, "error");
+      }
+    })();
   },
 
   addSinglesPurchaseRow(): void {
@@ -542,8 +578,34 @@ export const configLotMethods: ConfigMethodSubset<
       this.targetProfitPercent = 15;
     }
 
+    this.currentLivePricingVersion = null;
     this.syncLivePricesFromDefaults();
     this.loadSalesFromStorage();
+    if (canUseAuthoritativeSalesLiveApi()) {
+      const selectedLotId = lot.id;
+      void (async () => {
+        try {
+          const [latestSales, latestLivePricing] = await Promise.all([
+            fetchAuthoritativeSales(this, selectedLotId),
+            fetchAuthoritativeLivePricing(this, selectedLotId)
+          ]);
+          if (this.currentLotId !== selectedLotId) return;
+          if (latestSales) {
+            this.sales = latestSales;
+          }
+          if (latestLivePricing) {
+            this.liveSpotPrice = latestLivePricing.liveSpotPrice;
+            this.liveBoxPriceSell = latestLivePricing.liveBoxPriceSell;
+            this.livePackPrice = latestLivePricing.livePackPrice;
+            this.currentLivePricingVersion = latestLivePricing.version;
+          } else {
+            this.currentLivePricingVersion = null;
+          }
+        } catch (error) {
+          console.warn("Failed to hydrate authoritative lot data", error);
+        }
+      })();
+    }
     void this.$nextTick(() => {
       if (this.currentTab === "sales") {
         this.initSalesChart();

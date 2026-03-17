@@ -1,0 +1,9 @@
+{
+  "name": "whatfees-data-migrator",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "run": "node index.mjs",
+    "dry-run": "node index.mjs --dry-run"
+  }
+}

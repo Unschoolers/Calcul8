@@ -6,6 +6,7 @@ interface RunMigrationInput {
   migration: MigrationDefinition;
   config: ApiConfig;
   dryRun: boolean;
+  force?: boolean;
   triggeredByUserId: string;
   note: string;
 }
@@ -56,6 +57,16 @@ export function createMigrationRunner(writeMigrationRun: MigrationRunWriter = up
       };
 
       const plan = await input.migration.analyze(context);
+      const rerunPolicy = input.migration.rerunPolicy ?? "once";
+      const alreadyApplied =
+        (plan as { alreadyApplied?: unknown }).alreadyApplied === true
+        || (plan as { markerExists?: unknown }).markerExists === true;
+
+      if (!input.dryRun && !input.force && rerunPolicy === "once" && alreadyApplied) {
+        throw new Error(
+          `Migration '${input.migration.id}' was already applied. Use force to rerun it if you really intend to.`
+        );
+      }
 
       const result = input.dryRun
         ? {

@@ -9,6 +9,7 @@ import { runMigration } from "../lib/migrations/runner";
 interface MigrationRunRequestBody {
   migrationId: string;
   dryRun: boolean;
+  force: boolean;
   note: string;
 }
 
@@ -20,6 +21,7 @@ function parseMigrationRunRequestBody(raw: unknown): MigrationRunRequestBody {
   const payload = raw as {
     migrationId?: unknown;
     dryRun?: unknown;
+    force?: unknown;
     note?: unknown;
   };
 
@@ -35,9 +37,14 @@ function parseMigrationRunRequestBody(raw: unknown): MigrationRunRequestBody {
     throw new HttpError(400, "Field 'note' must be a string when provided.");
   }
 
+  if (payload.force != null && typeof payload.force !== "boolean") {
+    throw new HttpError(400, "Field 'force' must be a boolean when provided.");
+  }
+
   return {
     migrationId: payload.migrationId.trim(),
     dryRun: payload.dryRun !== false,
+    force: payload.force === true,
     note: typeof payload.note === "string" && payload.note.trim().length > 0
       ? payload.note.trim()
       : "manual run"
@@ -73,6 +80,7 @@ export async function migrationRun(
       migration,
       config,
       dryRun: payload.dryRun,
+      force: payload.force,
       triggeredByUserId: actor,
       note: payload.note
     });

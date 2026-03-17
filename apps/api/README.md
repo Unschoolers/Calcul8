@@ -44,6 +44,7 @@ cp local.settings.json.example local.settings.json
    - `GOOGLE_PLAY_PRO_PRODUCT_IDS` (comma-separated in-app product ids that unlock Pro)
    - `GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL`
    - `GOOGLE_PLAY_SERVICE_ACCOUNT_PRIVATE_KEY`
+   - `MIGRATION_COSMOSDB_DATABASE_ID` (optional, defaults to `COSMOSDB_DATABASE_ID`; used by `apps/data-migrator`)
    - `COSMOSDB_MIGRATION_RUNS_CONTAINER_ID` (optional, default `migration_runs`)
    - `COSMOSDB_SESSIONS_CONTAINER_ID` (optional, default `sessions`)
    - `SYNC_IMPORT_SOURCE_COSMOSDB_ENDPOINT` (optional, defaults to `COSMOSDB_ENDPOINT`)
@@ -101,6 +102,18 @@ npm run start:build
 - This endpoint is restricted in code to admin user id `107850224060485991888`.
 - Write target always uses `COSMOSDB_*` settings (your local/dev environment).
 - Read source uses `SYNC_IMPORT_SOURCE_COSMOSDB_*` when provided; otherwise it falls back to `COSMOSDB_*`.
+
+## Data migrator target database
+
+- `apps/data-migrator` uses the normal API config plus an optional override:
+  - `MIGRATION_COSMOSDB_DATABASE_ID`
+- For local development, the CLI auto-loads `apps/api/local.settings.json` before reading env vars.
+- Explicit shell environment variables still win over values from `local.settings.json`.
+- If set, the CLI runs migrations against that database id.
+- If omitted, it falls back to `COSMOSDB_DATABASE_ID` only after an interactive confirmation prompt.
+- For non-interactive/scripted runs, pass `--yes` to allow that fallback without a prompt.
+- Migrations default to one-time apply behavior. Use `--force` only if you intentionally want to rerun an already-applied migration.
+- The Azure Functions API itself continues to use `COSMOSDB_DATABASE_ID`.
 
 ## Known limitations (current snapshot)
 
@@ -222,6 +235,7 @@ Request body:
 {
   "migrationId": "first_migration",
   "dryRun": false,
+  "force": false,
   "note": "manual smoke test"
 }
 ```
@@ -242,6 +256,7 @@ Dry-run behavior:
 - `dryRun=true`: runs `analyze` only and returns preview plan (no migration data writes).
 - `dryRun=false`: runs `analyze`, then `apply` with that plan.
 - Both modes still write a `migration_run` audit record.
+- Migrations default to run-once behavior. If `analyze` reports the migration as already applied, a real run is blocked unless `force=true`.
 
 ## Security notes
 

@@ -23,11 +23,13 @@ export function createFirstMigration(
   return {
     id: "first_migration",
     description: "Smoke migration: writes a marker in migration_runs.",
+    rerunPolicy: "once",
     async analyze(context) {
       const marker = await readMarker(context.config, "first_migration");
       return {
         message: "Analyze first_migration marker state.",
         markerId: "migration_marker:first_migration",
+        alreadyApplied: marker != null,
         markerExists: marker != null,
         previousRunId: marker?.lastRunId ?? null,
         checkedAt: new Date().toISOString()

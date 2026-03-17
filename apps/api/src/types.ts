@@ -18,6 +18,7 @@ export interface ApiConfig {
   cosmosEndpoint: string;
   cosmosKey: string;
   cosmosDatabaseId: string;
+  migrationCosmosDatabaseId: string;
   entitlementsContainerId: string;
   syncContainerId: string;
   syncImportSourceCosmosEndpoint?: string;
@@ -147,6 +148,38 @@ export interface SyncMetaDocument {
   userId: string;
   version: number;
   updatedAt: string;
+  salesMode?: "snapshot" | "entity";
+  livePricingMode?: "lot_defaults" | "entity";
+}
+
+export interface SaleDocument {
+  id: string;
+  docType: "sale";
+  userId: string;
+  scopeKey: string;
+  lotId: string;
+  saleId: string;
+  sale: unknown;
+  version: number;
+  updatedAt: string;
+  updatedBy: string;
+  mutationId: string;
+  deletedAt?: string | null;
+}
+
+export interface LotLivePricingDocument {
+  id: string;
+  docType: "lot_live_pricing";
+  userId: string;
+  scopeKey: string;
+  lotId: string;
+  livePackPrice: number;
+  liveBoxPriceSell: number;
+  liveSpotPrice: number;
+  version: number;
+  updatedAt: string;
+  updatedBy: string;
+  mutationId: string;
 }
 
 export interface SyncPushPayload {

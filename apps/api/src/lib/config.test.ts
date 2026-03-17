@@ -44,6 +44,7 @@ test("config defaults to dev and sensible defaults", () => {
       API_ENV: undefined,
       AUTH_BYPASS_DEV: undefined,
       COSMOSDB_DATABASE_ID: undefined,
+      MIGRATION_COSMOSDB_DATABASE_ID: undefined,
       COSMOSDB_ENTITLEMENTS_CONTAINER_ID: undefined,
       COSMOSDB_SYNC_CONTAINER_ID: undefined,
       SYNC_IMPORT_SOURCE_COSMOSDB_ENDPOINT: undefined,
@@ -65,6 +66,7 @@ test("config defaults to dev and sensible defaults", () => {
       assert.equal(config.apiEnv, "dev");
       assert.equal(config.authBypassDev, true);
       assert.equal(config.cosmosDatabaseId, "whatfees");
+      assert.equal(config.migrationCosmosDatabaseId, "whatfees");
       assert.equal(config.entitlementsContainerId, "entitlements");
       assert.equal(config.syncContainerId, "sync_data");
       assert.equal(config.syncImportSourceCosmosEndpoint, "https://example.documents.azure.com:443/");
@@ -109,6 +111,21 @@ test("config supports explicit source Cosmos override for sync import", () => {
       assert.equal(config.syncImportSourceCosmosKey, "prod-key");
       assert.equal(config.syncImportSourceCosmosDatabaseId, "whatfees-prod");
       assert.equal(config.syncImportSourceSyncContainerId, "sync_data_prod");
+    }
+  );
+});
+
+test("config supports explicit migration Cosmos database override", () => {
+  withEnv(
+    {
+      ...requiredBaseEnv(),
+      COSMOSDB_DATABASE_ID: "whatfees-dev",
+      MIGRATION_COSMOSDB_DATABASE_ID: "whatfees-migration-target"
+    },
+    () => {
+      const config = getConfig();
+      assert.equal(config.cosmosDatabaseId, "whatfees-dev");
+      assert.equal(config.migrationCosmosDatabaseId, "whatfees-migration-target");
     }
   );
 });

@@ -2,6 +2,55 @@ import { APP_VERSION } from "../../constants.ts";
 import type { BeforeInstallPromptEvent } from "../../types/app.ts";
 import type { AppContext, AppMethodState } from "../context.ts";
 
+const DISMISSED_APP_UPDATE_SESSION_KEY = "whatfees_dismissed_app_update_worker";
+
+function getSessionStorage(): Storage | null {
+  try {
+    return window.sessionStorage ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function getWorkerScriptUrl(worker: ServiceWorker | null | undefined): string | null {
+  const scriptUrl = typeof worker?.scriptURL === "string" ? worker.scriptURL.trim() : "";
+  return scriptUrl || null;
+}
+
+function getDismissedAppUpdateScriptUrl(): string | null {
+  const storage = getSessionStorage();
+  if (!storage) return null;
+
+  try {
+    return storage.getItem(DISMISSED_APP_UPDATE_SESSION_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function clearDismissedAppUpdate(): void {
+  const storage = getSessionStorage();
+  if (!storage) return;
+
+  try {
+    storage.removeItem(DISMISSED_APP_UPDATE_SESSION_KEY);
+  } catch {
+    // Ignore storage failures.
+  }
+}
+
+function dismissAppUpdateForWorker(worker: ServiceWorker | null | undefined): void {
+  const storage = getSessionStorage();
+  const scriptUrl = getWorkerScriptUrl(worker);
+  if (!storage || !scriptUrl) return;
+
+  try {
+    storage.setItem(DISMISSED_APP_UPDATE_SESSION_KEY, scriptUrl);
+  } catch {
+    // Ignore storage failures.
+  }
+}
+
 export const pwaMethods: ThisType<AppContext> & Pick<
   AppMethodState,
   | "setupPwaUiHandlers"
@@ -88,12 +137,14 @@ export const pwaMethods: ThisType<AppContext> & Pick<
     if (!this.appUpdateWorker) return;
     this.isApplyingAppUpdate = true;
     this.showAppUpdatePrompt = false;
+    clearDismissedAppUpdate();
     this.notify("Refreshing to update WhatFees…", "info");
     this.appUpdateWorker.postMessage("SKIP_WAITING");
   },
 
   dismissAppUpdate(): void {
     this.showAppUpdatePrompt = false;
+    dismissAppUpdateForWorker(this.appUpdateWorker);
   },
 
   async unregisterServiceWorkersForDev(): Promise<void> {
@@ -122,10 +173,20 @@ export const pwaMethods: ThisType<AppContext> & Pick<
         });
 
         const queueWaitingWorker = () => {
-          if (!registration.waiting || !navigator.serviceWorker.controller) return;
-          this.appUpdateWorker = registration.waiting;
-          this.showAppUpdatePrompt = true;
+          const waitingWorker = registration.waiting;
+          if (!waitingWorker || !navigator.serviceWorker.controller) return;
+
+          this.appUpdateWorker = waitingWorker;
           this.isApplyingAppUpdate = false;
+
+          const waitingScriptUrl = getWorkerScriptUrl(waitingWorker);
+          if (waitingScriptUrl && waitingScriptUrl === getDismissedAppUpdateScriptUrl()) {
+            this.showAppUpdatePrompt = false;
+            return;
+          }
+
+          clearDismissedAppUpdate();
+          this.showAppUpdatePrompt = true;
         };
 
         if (registration.waiting && navigator.serviceWorker.controller) {
@@ -148,6 +209,7 @@ export const pwaMethods: ThisType<AppContext> & Pick<
           refreshing = true;
           this.isApplyingAppUpdate = false;
           this.appUpdateWorker = null;
+          clearDismissedAppUpdate();
           window.location.reload();
         });
 

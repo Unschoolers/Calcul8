@@ -25,6 +25,14 @@ import {
   buildSalesPieChartConfig,
   buildSalesTrendChartConfig
 } from "./sales-chart-config.ts";
+import {
+  cacheAuthoritativeSales,
+  canUseAuthoritativeSalesLiveApi,
+  deleteAuthoritativeSale,
+  fetchAuthoritativeSales,
+  SalesLiveApiError,
+  saveAuthoritativeSale
+} from "./sales-live-api.ts";
 
 function firstFiniteNonNegative(...values: Array<number | null | undefined>): number | null {
   for (const value of values) {
@@ -453,15 +461,51 @@ export const salesMethods: ThisType<AppContext> & Pick<
       return;
     }
 
-    if (this.editingSale) {
-      this.sales.splice(saveResult.editingIndex, 1, saveResult.sale);
-      this.sales = [...this.sales];
-    } else {
-      this.sales = [...this.sales, saveResult.sale];
+    const currentLotId = this.currentLotId;
+    const editingSaleId = this.editingSale?.id ?? null;
+    const baseVersion = this.editingSale?.version ?? 0;
+
+    if (!currentLotId || !canUseAuthoritativeSalesLiveApi()) {
+      if (this.editingSale) {
+        this.sales.splice(saveResult.editingIndex, 1, saveResult.sale);
+        this.sales = [...this.sales];
+      } else {
+        this.sales = [...this.sales, saveResult.sale];
+      }
+
+      this.cancelSale();
+      refreshChartsForCurrentTab(this);
+      return;
     }
 
-    this.cancelSale();
-    refreshChartsForCurrentTab(this);
+    const pendingSale = saveResult.sale;
+    void (async () => {
+      try {
+        const savedSale = await saveAuthoritativeSale(this, currentLotId, pendingSale, baseVersion);
+        if (editingSaleId != null) {
+          this.sales = this.sales.map((sale) => sale.id === editingSaleId ? savedSale : sale);
+        } else {
+          this.sales = [...this.sales, savedSale];
+        }
+        cacheAuthoritativeSales(this, currentLotId, this.sales);
+        this.cancelSale();
+        refreshChartsForCurrentTab(this);
+      } catch (error) {
+        if (error instanceof SalesLiveApiError && error.status === 409) {
+          const latestSales = await fetchAuthoritativeSales(this, currentLotId).catch(() => null);
+          if (latestSales) {
+            this.sales = latestSales;
+            cacheAuthoritativeSales(this, currentLotId, latestSales);
+          }
+          this.notify("Sales changed in the cloud. Pulled latest sales and canceled your save.", "warning");
+          return;
+        }
+        const message = error instanceof Error && error.message.trim()
+          ? error.message
+          : "Failed to save sale.";
+        this.notify(message, "error");
+      }
+    })();
   },
 
   editSale(sale: Sale): void {
@@ -495,9 +539,38 @@ export const salesMethods: ThisType<AppContext> & Pick<
         color: "error"
       },
       () => {
-        this.sales = this.sales.filter((s) => s.id !== id);
-        this.notify("Sale deleted", "info");
-        refreshChartsForCurrentTab(this);
+        const currentLotId = this.currentLotId;
+        const sale = this.sales.find((entry) => entry.id === id) ?? null;
+        if (!currentLotId || !sale || !canUseAuthoritativeSalesLiveApi()) {
+          this.sales = this.sales.filter((s) => s.id !== id);
+          this.notify("Sale deleted", "info");
+          refreshChartsForCurrentTab(this);
+          return;
+        }
+
+        void (async () => {
+          try {
+            await deleteAuthoritativeSale(this, currentLotId, id, sale.version ?? 0);
+            this.sales = this.sales.filter((entry) => entry.id !== id);
+            cacheAuthoritativeSales(this, currentLotId, this.sales);
+            this.notify("Sale deleted", "info");
+            refreshChartsForCurrentTab(this);
+          } catch (error) {
+            if (error instanceof SalesLiveApiError && error.status === 409) {
+              const latestSales = await fetchAuthoritativeSales(this, currentLotId).catch(() => null);
+              if (latestSales) {
+                this.sales = latestSales;
+                cacheAuthoritativeSales(this, currentLotId, latestSales);
+              }
+              this.notify("Sales changed in the cloud. Pulled latest sales instead of deleting.", "warning");
+              return;
+            }
+            const message = error instanceof Error && error.message.trim()
+              ? error.message
+              : "Failed to delete sale.";
+            this.notify(message, "error");
+          }
+        })();
       }
     );
   },

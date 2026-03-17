@@ -14,17 +14,9 @@ export type SyncPayloadContext = Pick<AppContext, "lots" | "currentLotId" | "sal
 };
 
 export function createSyncPayload(context: SyncPayloadContext, clientVersion?: number): SyncPayload {
-  const salesByLot: Record<string, Sale[]> = {};
-  for (const lot of context.lots) {
-    const isCurrentLot = context.currentLotId === lot.id;
-    salesByLot[String(lot.id)] = isCurrentLot
-      ? [...context.sales]
-      : context.loadSalesForLotId(lot.id);
-  }
-
   const payload: SyncPayload = {
     lots: context.lots,
-    salesByLot,
+    salesByLot: {},
     clientVersion
   };
 

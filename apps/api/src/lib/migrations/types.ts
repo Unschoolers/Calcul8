@@ -11,10 +11,12 @@ export interface MigrationContext {
 
 export type MigrationPlan = Record<string, unknown>;
 export type MigrationApplyResult = Record<string, unknown> | void;
+export type MigrationRerunPolicy = "once" | "repeatable";
 
 export interface MigrationDefinition {
   id: string;
   description: string;
+  rerunPolicy?: MigrationRerunPolicy;
   analyze: (context: MigrationContext) => Promise<MigrationPlan>;
   apply: (context: MigrationContext, plan: MigrationPlan) => Promise<MigrationApplyResult>;
 }

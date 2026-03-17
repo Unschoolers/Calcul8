@@ -5,6 +5,7 @@ import { pwaMethods } from "../src/app-core/methods/pwa.ts";
 import type { BeforeInstallPromptEvent } from "../src/types/app.ts";
 
 type PwaContext = Record<string, unknown>;
+const DISMISSED_APP_UPDATE_SESSION_KEY = "whatfees_dismissed_app_update_worker";
 
 function createContext(overrides: PwaContext = {}): PwaContext {
   return {
@@ -28,11 +29,37 @@ function createContext(overrides: PwaContext = {}): PwaContext {
   };
 }
 
+function createStorageMock(): Storage {
+  const values = new Map<string, string>();
+
+  return {
+    get length() {
+      return values.size;
+    },
+    clear() {
+      values.clear();
+    },
+    getItem(key: string) {
+      return values.has(key) ? values.get(key) ?? null : null;
+    },
+    key(index: number) {
+      return Array.from(values.keys())[index] ?? null;
+    },
+    removeItem(key: string) {
+      values.delete(key);
+    },
+    setItem(key: string, value: string) {
+      values.set(key, String(value));
+    }
+  } as Storage;
+}
+
 function stubWindow(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   const baseWindow = {
     addEventListener: vi.fn(),
     setInterval: vi.fn(() => 1),
     clearInterval: vi.fn(),
+    sessionStorage: createStorageMock(),
     location: {
       reload: vi.fn()
     }
@@ -268,6 +295,7 @@ test("registerServiceWorker queues updates and refreshes only after applyAppUpda
 
   const swListeners = new Map<string, () => void>();
   const waitingWorker = {
+    scriptURL: "https://app.whatfees.ca/sw.js?v=1",
     postMessage: vi.fn()
   };
   let stateChangeListener: (() => void) | null = null;
@@ -339,7 +367,12 @@ test("registerServiceWorker queues updates and refreshes only after applyAppUpda
 });
 
 test("dismissAppUpdate hides the prompt without applying the worker", () => {
+  const sessionStorage = createStorageMock();
+  stubWindow({
+    sessionStorage
+  });
   const waitingWorker = {
+    scriptURL: "https://app.whatfees.ca/sw.js?v=2",
     postMessage: vi.fn()
   };
   const context = createContext({
@@ -351,6 +384,98 @@ test("dismissAppUpdate hides the prompt without applying the worker", () => {
 
   assert.equal(context.showAppUpdatePrompt, false);
   assert.equal(waitingWorker.postMessage.mock.calls.length, 0);
+  assert.equal(
+    sessionStorage.getItem(DISMISSED_APP_UPDATE_SESSION_KEY),
+    "https://app.whatfees.ca/sw.js?v=2"
+  );
+});
+
+test("registerServiceWorker keeps a dismissed waiting worker hidden until a different update appears", async () => {
+  const waitingWorker = {
+    scriptURL: "https://app.whatfees.ca/sw.js?v=2",
+    postMessage: vi.fn()
+  };
+  const newerWaitingWorker = {
+    scriptURL: "https://app.whatfees.ca/sw.js?v=3",
+    postMessage: vi.fn()
+  };
+  const sessionStorage = createStorageMock();
+  const swListeners = new Map<string, () => void>();
+  let registration = {
+    waiting: waitingWorker,
+    installing: null,
+    addEventListener: vi.fn(),
+    update: vi.fn(async () => undefined)
+  };
+  const register = vi.fn(async () => registration);
+  vi.stubGlobal("navigator", {
+    serviceWorker: {
+      controller: {},
+      register,
+      addEventListener: vi.fn((eventName: string, callback: () => void) => {
+        swListeners.set(eventName, callback);
+      })
+    }
+  });
+
+  const firstWindowListeners = new Map<string, (...args: unknown[]) => unknown>();
+  stubWindow({
+    sessionStorage,
+    addEventListener: vi.fn((eventName: string, callback: (...args: unknown[]) => unknown) => {
+      firstWindowListeners.set(eventName, callback);
+    })
+  });
+
+  const firstContext = createContext();
+  pwaMethods.registerServiceWorker.call(firstContext as never);
+  const firstLoadListener = firstWindowListeners.get("load") as (() => Promise<void>) | undefined;
+  await firstLoadListener?.();
+  assert.equal(firstContext.showAppUpdatePrompt, true);
+
+  pwaMethods.dismissAppUpdate.call(firstContext as never);
+  assert.equal(firstContext.showAppUpdatePrompt, false);
+  assert.equal(
+    sessionStorage.getItem(DISMISSED_APP_UPDATE_SESSION_KEY),
+    "https://app.whatfees.ca/sw.js?v=2"
+  );
+
+  const secondWindowListeners = new Map<string, (...args: unknown[]) => unknown>();
+  stubWindow({
+    sessionStorage,
+    addEventListener: vi.fn((eventName: string, callback: (...args: unknown[]) => unknown) => {
+      secondWindowListeners.set(eventName, callback);
+    })
+  });
+
+  const secondContext = createContext();
+  pwaMethods.registerServiceWorker.call(secondContext as never);
+  const secondLoadListener = secondWindowListeners.get("load") as (() => Promise<void>) | undefined;
+  await secondLoadListener?.();
+  assert.equal(secondContext.showAppUpdatePrompt, false);
+  assert.equal(secondContext.appUpdateWorker, waitingWorker);
+
+  registration = {
+    waiting: newerWaitingWorker,
+    installing: null,
+    addEventListener: vi.fn(),
+    update: vi.fn(async () => undefined)
+  };
+
+  const thirdWindowListeners = new Map<string, (...args: unknown[]) => unknown>();
+  stubWindow({
+    sessionStorage,
+    addEventListener: vi.fn((eventName: string, callback: (...args: unknown[]) => unknown) => {
+      thirdWindowListeners.set(eventName, callback);
+    })
+  });
+
+  const thirdContext = createContext();
+  pwaMethods.registerServiceWorker.call(thirdContext as never);
+  const thirdLoadListener = thirdWindowListeners.get("load") as (() => Promise<void>) | undefined;
+  await thirdLoadListener?.();
+  assert.equal(thirdContext.showAppUpdatePrompt, true);
+  assert.equal(thirdContext.appUpdateWorker, newerWaitingWorker);
+  assert.equal(sessionStorage.getItem(DISMISSED_APP_UPDATE_SESSION_KEY), null);
 });
 
 test("registerServiceWorker no-ops without service worker support and warns on register failure", async () => {

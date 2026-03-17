@@ -133,7 +133,7 @@ test("syncPush returns unchanged state when upsert reports no changes", async ()
     {
       lots: [{ id: 1 }],
       salesByLot: { "1": [] },
-      clientVersion: 2
+      clientVersion: 5
     },
     "POST",
     { authorization: "Bearer user-a" }
@@ -184,6 +184,36 @@ test("syncPush computes next version and returns changed payload", async () => {
   const upsertArgs = upsertSyncSnapshotIncrementalMock.mock.calls[0]?.[1];
   assert.equal(upsertArgs.version, 10);
   assert.equal((response.jsonBody as { changed: boolean }).changed, true);
+});
+
+test("syncPush rejects stale clientVersion when cloud version is newer", async () => {
+  parseSyncLotsShapeMock.mockReturnValue({
+    lots: [{ id: 10 }],
+    salesByLot: { "10": [] }
+  });
+  getEffectiveSyncSnapshotMock.mockResolvedValue({
+    version: 7,
+    updatedAt: "2026-02-21T10:00:00.000Z"
+  });
+
+  const request = createRequest(
+    {
+      lots: [{ id: 10 }],
+      salesByLot: { "10": [] },
+      clientVersion: 6
+    },
+    "POST",
+    { authorization: "Bearer user-stale" }
+  );
+  const context = createContext();
+
+  const response = await syncPush(request as never, context as never);
+  assert.equal(response.status, 409);
+  assert.equal(
+    (response.jsonBody as { error: string }).error,
+    "Cloud data changed since your last sync. Pull latest data and retry."
+  );
+  assert.equal(upsertSyncSnapshotIncrementalMock.mock.calls.length, 0);
 });
 
 test("syncPush rejects duplicate lot ids with 400", async () => {

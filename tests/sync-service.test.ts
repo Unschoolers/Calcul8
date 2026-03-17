@@ -119,6 +119,41 @@ test("runCloudSyncPush handles auth expiry and marks sync as error", async () =>
   assert.equal(app.syncStatus, "error");
 });
 
+test("runCloudSyncPush pulls latest data on stale-version conflict", async () => {
+  const app = createApp();
+  const requestCloudSyncPush = vi.fn().mockResolvedValue({
+    ok: false,
+    status: 409,
+    statusText: "Conflict",
+    json: async () => ({
+      error: "Cloud data changed since your last sync. Pull latest data and retry."
+    })
+  });
+
+  await runCloudSyncPush(app, false, {
+    requestCloudSyncPush,
+    createSyncPayload: () => ({ lots: [{ id: 1 }], salesByLot: { "1": [] } }),
+    getSyncPayloadSignature: () => "sig",
+    startSyncStatus: (target) => {
+      target.syncStatus = "syncing";
+    },
+    setSyncStatusSuccess: (target) => {
+      target.syncStatus = "success";
+    },
+    setSyncStatusError: (target) => {
+      target.syncStatus = "error";
+    }
+  });
+
+  assert.equal(requestCloudSyncPush.mock.calls.length, 1);
+  assert.equal(app.pullCloudSync.mock.calls.length, 1);
+  assert.equal(app.syncStatus, "error");
+  assert.deepEqual(
+    app.notify.mock.calls.at(-1),
+    ["Cloud data changed. Pulled latest data. Please retry your change.", "warning"]
+  );
+});
+
 test("runCloudSyncPush forwards intentional empty-overwrite flag for confirmed destructive syncs", async () => {
   const app = createApp();
   app.lots = [];

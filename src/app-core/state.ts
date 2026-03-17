@@ -133,6 +133,7 @@ export function createInitialState(): AppState {
     liveSpotPrice: DEFAULT_VALUES.SPOT_PRICE,
     liveBoxPriceSell: DEFAULT_VALUES.BOX_PRICE_SELL,
     livePackPrice: DEFAULT_VALUES.PACK_PRICE,
+    currentLivePricingVersion: null,
 
     // Auto-calculate profit
     targetProfitPercent: hasProAccess ? 15 : 0,

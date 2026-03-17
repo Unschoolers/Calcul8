@@ -63,11 +63,6 @@ export function applyCloudSnapshotToLocal(context: SyncApplyApp, snapshot: Parse
   context.lots = snapshot.lots as typeof context.lots;
   context.saveLotsToStorage();
 
-  Object.entries(snapshot.salesByLot).forEach(([lotId, sales]) => {
-    if (!Array.isArray(sales)) return;
-    localStorage.setItem(context.getSalesStorageKey(Number(lotId)), JSON.stringify(sales));
-  });
-
   if (context.currentLotId && context.lots.some((lot) => lot.id === context.currentLotId)) {
     context.loadLot();
   } else if (context.lots.length > 0) {

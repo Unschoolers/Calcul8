@@ -55,6 +55,18 @@ export type {
   CreateWorkspaceWithOwnerResult
 } from "./cosmos/workspaceRepository";
 export type { ExternalSyncSourceConfig } from "./cosmos/core";
+export {
+  EntityVersionConflictError,
+  deleteSaleDocument,
+  getLotLivePricing,
+  getSaleDocument,
+  getSyncMetaWithModes,
+  listSalesForLot,
+  listSyncScopeKeys,
+  setSyncScopeEntityModes,
+  upsertLotLivePricing,
+  upsertSaleDocument
+} from "./cosmos/salesRepository";
 import { calculateSyncPresetDiff, type SyncPresetState } from "./syncDiff";
 
 export async function createSession(
@@ -673,12 +685,14 @@ async function getSyncSnapshotFromContainer(
   }
 
   const lots = presetDocuments.map((document) => document.preset);
-  const salesByLot = Object.fromEntries(
-    presetDocuments.map((document) => [
-      document.presetId,
-      Array.isArray(document.sales) ? document.sales : []
-    ])
-  ) as Record<string, unknown[]>;
+  const salesByLot = metaDocument?.salesMode === "entity"
+    ? {}
+    : Object.fromEntries(
+      presetDocuments.map((document) => [
+        document.presetId,
+        Array.isArray(document.sales) ? document.sales : []
+      ])
+    ) as Record<string, unknown[]>;
 
   const maxVersion = Math.max(
     0,
@@ -803,12 +817,15 @@ export async function upsertSyncSnapshotIncremental(
   const changed = upsertedCount > 0 || deletedCount > 0;
 
   if (changed) {
+    const existingMetaDocument = await getSyncMetaDocument(config, input.userId);
     const metaDocument: SyncMetaDocument = {
       id: syncMetaId(input.userId),
       docType: "sync_meta",
       userId: input.userId,
       version: input.version,
-      updatedAt: input.updatedAt
+      updatedAt: input.updatedAt,
+      salesMode: existingMetaDocument?.salesMode,
+      livePricingMode: existingMetaDocument?.livePricingMode
     };
     await withCosmosRetry(() => syncSnapshots.items.upsert<SyncMetaDocument>(metaDocument));
   }

@@ -99,7 +99,7 @@ test("pushCloudSync skips network when payload hash is unchanged", async () => {
   const ctx = createContext();
   ctx.lastSyncedPayloadHash = JSON.stringify({
     lots: ctx.lots,
-    salesByLot: { "1": [] }
+    salesByLot: {}
   });
 
   await uiSyncMethods.pushCloudSync.call(ctx, false);
@@ -213,7 +213,7 @@ test("pullCloudSync sends workspaceId when the active scope is shared", async ()
   assert.deepEqual(JSON.parse(String(requestInit.body)), { workspaceId: "team-42" });
 });
 
-test("pushCloudSync uses in-memory sales for active lot when building payload", async () => {
+test("pushCloudSync omits sales from snapshot payloads now that sales are entity-backed", async () => {
   const ctx = createContext();
   ctx.sales = [
     {
@@ -240,8 +240,7 @@ test("pushCloudSync uses in-memory sales for active lot when building payload", 
   const parsedBody = JSON.parse(String(requestInit?.body ?? "{}")) as {
     salesByLot?: Record<string, Array<{ id: number }>>;
   };
-  assert.equal(Array.isArray(parsedBody.salesByLot?.["1"]), true);
-  assert.equal(parsedBody.salesByLot?.["1"]?.[0]?.id, 11);
+  assert.deepEqual(parsedBody.salesByLot, {});
 });
 
 test("pushCloudSync skips upload and pulls cloud when local storage was cleared mid-session", async () => {

@@ -24,6 +24,14 @@ export function syncMetaId(userId: string): string {
   return `sync:meta:${userId}`;
 }
 
+export function saleDocumentId(scopeKey: string, lotId: string, saleId: string): string {
+  return `sale:${scopeKey}:${lotId}:${saleId}`;
+}
+
+export function lotLivePricingDocumentId(scopeKey: string, lotId: string): string {
+  return `lot_live_pricing:${scopeKey}:${lotId}`;
+}
+
 export function migrationMarkerId(migrationId: string): string {
   return `migration_marker:${migrationId}`;
 }

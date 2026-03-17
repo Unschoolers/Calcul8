@@ -75,6 +75,19 @@ async function parseSyncPushPayload(request: HttpRequest): Promise<SyncPushPaylo
   };
 }
 
+function assertSyncPushVersion(
+  existingVersion: number,
+  clientVersion: number | undefined
+): void {
+  if (clientVersion == null) return;
+  if (clientVersion < existingVersion) {
+    throw new HttpError(
+      409,
+      "Cloud data changed since your last sync. Pull latest data and retry."
+    );
+  }
+}
+
 export async function syncPush(
   request: HttpRequest,
   context: InvocationContext
@@ -101,6 +114,8 @@ export async function syncPush(
     }
 
     const existingSnapshot = await getEffectiveSyncSnapshot(config, syncScope.partitionKey);
+    const previousVersion = existingSnapshot?.version ?? 0;
+    assertSyncPushVersion(previousVersion, payload.clientVersion);
     assertSafeSyncPush(
       existingSnapshot,
       payload.lots,
@@ -108,7 +123,6 @@ export async function syncPush(
       payload.allowEmptyOverwrite === true
     );
 
-    const previousVersion = existingSnapshot?.version ?? 0;
     const candidateVersion = Math.floor(payload.clientVersion ?? 0);
     const version = Math.max(previousVersion + 1, candidateVersion + 1);
     const updatedAt = new Date().toISOString();

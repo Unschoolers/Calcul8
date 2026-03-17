@@ -291,6 +291,13 @@ export async function runCloudSyncPush(
       await app.handleWorkspaceAccessLost(app.activeWorkspaceId ?? undefined);
       return;
     }
+    if (response.status === 409) {
+      resolvedDeps.setSyncStatusError(app);
+      await app.pullCloudSync();
+      app.notify("Cloud data changed. Pulled latest data. Please retry your change.", "warning");
+      console.warn("[whatfees] Cloud sync push conflict: pulled latest snapshot");
+      return;
+    }
 
     if (!response.ok) {
       resolvedDeps.setSyncStatusError(app);

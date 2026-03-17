@@ -71,6 +71,9 @@ export function getConfig(): ApiConfig {
     cosmosEndpoint: requireEnv("COSMOSDB_ENDPOINT"),
     cosmosKey: requireEnv("COSMOSDB_KEY"),
     cosmosDatabaseId: readEnv("COSMOSDB_DATABASE_ID") || "whatfees",
+    migrationCosmosDatabaseId: readEnv("MIGRATION_COSMOSDB_DATABASE_ID")
+      || readEnv("COSMOSDB_DATABASE_ID")
+      || "whatfees",
     entitlementsContainerId: readEnv("COSMOSDB_ENTITLEMENTS_CONTAINER_ID") || "entitlements",
     syncContainerId: readEnv("COSMOSDB_SYNC_CONTAINER_ID") || "sync_data",
     syncImportSourceCosmosEndpoint: readEnv("SYNC_IMPORT_SOURCE_COSMOSDB_ENDPOINT") || requireEnv("COSMOSDB_ENDPOINT"),
