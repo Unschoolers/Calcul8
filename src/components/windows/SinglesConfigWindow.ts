@@ -8,6 +8,8 @@ import { normalizeSinglesCatalogSource } from "../../app-core/shared/singles-cat
 import { createWindowContextBridge } from "./contextBridge.ts";
 import { singlesImportComputed, singlesImportMethods } from "./singles/useSinglesImport.ts";
 import { SinglesCsvImportDialog } from "./singles/SinglesCsvImportDialog.ts";
+import { SinglesPurchasingCard } from "./singles/SinglesPurchasingCard.ts";
+import { SinglesSellingCard } from "./singles/SinglesSellingCard.ts";
 import { AdminSyncImportCard } from "./AdminSyncImportCard.ts";
 
 const SINGLES_INFO_NOTICE_DISMISSED_KEY = "whatfees_singles_info_notice_dismissed_v1";
@@ -219,6 +221,8 @@ type SinglesDesktopSortKeyWithMeta =
 export const SinglesConfigWindow: any = {
   name: "SinglesConfigWindow",
   components: {
+    SinglesPurchasingCard,
+    SinglesSellingCard,
     SinglesCsvImportDialog,
     AdminSyncImportCard
   },
@@ -243,6 +247,7 @@ export const SinglesConfigWindow: any = {
       desktopSortBy: null as SinglesDesktopSortKeyWithMeta | null,
       desktopSortDesc: false,
       desktopRowsScrollTop: 0,
+      desktopRowsScrollerEl: null as { scrollTop?: number } | null,
       mobileRenderCount: MOBILE_RENDER_INITIAL_COUNT,
       mobileSortBy: "item" as SinglesMobileSortKey,
       editingSinglesRowId: null as number | null,
@@ -1258,12 +1263,22 @@ export const SinglesConfigWindow: any = {
 
     resetDesktopRowsScroll(this: any): void {
       this.desktopRowsScrollTop = 0;
-      const scroller = (this.$refs as Record<string, unknown> | undefined)?.desktopRowsScroller as
+      const scroller = this.desktopRowsScrollerEl as
         | { scrollTop?: number }
-        | undefined;
+        | null;
       if (scroller && typeof scroller === "object") {
         scroller.scrollTop = 0;
       }
+    },
+
+    setDesktopRowsScrollerRef(this: any, element: unknown): void {
+      this.desktopRowsScrollerEl = (element && typeof element === "object")
+        ? element as { scrollTop?: number }
+        : null;
+    },
+
+    getWindowComponentContext(this: any): Record<string, unknown> {
+      return this as Record<string, unknown>;
     },
 
     toggleDesktopSelectMode(this: any): void {

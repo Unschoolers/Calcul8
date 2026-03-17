@@ -78,7 +78,10 @@ export interface PurchaseVerificationResultDocument {
   updatedAt: string;
 }
 
-export type WorkspaceRole = "owner" | "admin" | "member";
+export type WorkspaceRole = "owner" | "member";
+export type WorkspaceStatus = "active" | "deleted";
+export type WorkspaceMembershipStatus = "active" | "disabled" | "removed";
+export type WorkspaceJoinLinkStatus = "active" | "revoked" | "expired" | "used";
 
 export interface WorkspaceDocument {
   id: string;
@@ -87,6 +90,7 @@ export interface WorkspaceDocument {
   workspaceId: string;
   name: string;
   ownerUserId: string;
+  status?: WorkspaceStatus;
   createdAt: string;
   updatedAt: string;
 }
@@ -97,7 +101,23 @@ export interface WorkspaceMembershipDocument {
   userId: string;
   workspaceId: string;
   role?: WorkspaceRole;
-  status?: "active" | "disabled" | "removed";
+  status?: WorkspaceMembershipStatus;
+  updatedAt: string;
+}
+
+export interface WorkspaceJoinLinkDocument {
+  id: string;
+  docType: "workspace_join_link";
+  userId: string;
+  inviteId: string;
+  workspaceId: string;
+  createdByUserId: string;
+  role: "member";
+  status: WorkspaceJoinLinkStatus;
+  tokenHash: string;
+  expiresAt: string;
+  usedByUserId?: string;
+  usedAt?: string;
   updatedAt: string;
 }
 

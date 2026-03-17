@@ -1,0 +1,58 @@
+- Prefer small, focused files and avoid adding new monolithic files; do not create new files over 1000 lines unless there is no clean alternative.
+- Split logic by responsibility instead of stacking unrelated behavior into one place.
+- Reuse existing components, methods, helpers, and types before creating new ones.
+- Prefer composable frontend logic in `src/app-core` over inline logic in `index.html`.
+- Keep UI components presentational when possible and move business logic into shared methods/helpers.
+- Keep API function handlers thin and move reusable backend logic into `apps/api/src/lib`.
+- Keep storage key composition centralized in `src/app-core/storageKeys.ts`.
+- Keep scope-aware behavior centralized so Personal and shared workspace data never bleed into each other.
+- Preserve backward compatibility for existing personal storage and sync behavior unless a task explicitly requires a migration.
+- Prefer additive changes over destructive rewrites.
+- Do not silently change or remove legacy behavior that existing users depend on.
+- Use TypeScript everywhere and prefer explicit types for public shapes, API payloads, and shared helpers.
+- Frontend code must compile with `noImplicitAny` and `noImplicitThis`; avoid loose implicit types.
+- Backend code should stay `strict` TypeScript compatible.
+- Validate and normalize all external input at boundaries.
+- Treat backend request bodies, query params, and route params as untrusted.
+- Prefer narrow helper functions that encode validation and normalization once.
+- Use type guards when they improve safety and eliminate nullable/unknown ambiguity.
+- Keep runtime behavior and type-level behavior aligned; do not fake types to satisfy the compiler.
+- Write tests for every feature and bug fix.
+- Prefer TDD or, at minimum, add or update tests in the same task as the implementation.
+- Add focused unit tests around helpers, state transitions, normalization, validation, and edge cases.
+- Add regression tests for every bug that was found in development or manual QA.
+- Favor small targeted test files over broad integration tests when a focused test can lock the behavior.
+- Verify both frontend and API behavior when a feature crosses the app and backend boundary.
+- Run the smallest relevant test suite while iterating, then run broader verification before closing work.
+- At minimum, run `npm run typecheck`, the relevant Vitest suites, and `npm run build` for frontend changes.
+- At minimum, run `npm --prefix apps/api run build` and relevant API Vitest suites for backend changes.
+- Prefer `npm run verify` before release work or high-risk merges.
+- Keep offline-first behavior in mind; local data should continue to work when the network is unavailable.
+- Do not block core app usage on network-only operations when a local-first fallback exists.
+- Cloud sync changes must be safe against accidental data loss and empty overwrites.
+- Keep sync payloads deterministic and scoped correctly.
+- Handle auth expiry, 401s, 403s, and offline states explicitly.
+- Prefer safe recovery paths when local cache or local storage is reset unexpectedly.
+- Keep notifications clear and user-friendly for sync, auth, and workspace actions.
+- Mobile UX is a first-class target; prefer touch-friendly controls, compact layouts, and safe-area-aware spacing.
+- Follow standard Android/TWA expectations for mobile behavior, installability, and release readiness.
+- Keep the PWA working as a standalone app and avoid changes that break manifest, service worker, or install flows.
+- Prefer responsive layouts that work on both desktop and mobile without duplicating business logic.
+- Avoid desktop-only assumptions in dialogs, buttons, charts, and navigation.
+- Preserve current Vuetify patterns and theme structure unless there is a deliberate design change.
+- Reuse existing chart builders and formatting helpers instead of re-implementing chart logic inline.
+- Normalize dates, currencies, quantities, and ids consistently through shared helpers.
+- Keep naming consistent with the project vocabulary; prefer `owner` and `member` for workspace roles.
+- Prefer stable internal ids and user-friendly display names; do not force users to invent technical identifiers unless necessary.
+- Generate internal identifiers on the backend when uniqueness is a backend concern.
+- Keep public API responses predictable and minimal.
+- Prefer server-generated source-of-truth values for ids, entitlement state, and membership state.
+- Treat all committed data as public forever.
+- Never commit secrets, private keys, keystores, service account files, tokens, or credentials.
+- Run `npm run security:scan` before push and `npm run verify` before release or sensitive changes.
+- Keep Play signing material offline and out of source control.
+- Keep `assetlinks.json` public-only and free of secret material.
+- Prefer environment-driven configuration for deploy-specific settings.
+- Keep release paths reproducible with the existing scripts instead of introducing ad hoc manual steps.
+- When changing behavior, update tests first or alongside the change so the expected behavior is documented in code.
+- When a feature requires product or UX tradeoffs, keep the MVP lean and defer billing, admin layers, or extra complexity until the core flow is solid.

@@ -4,6 +4,7 @@ import type { Lot, Sale } from "../../types/app.ts";
 import {
   getLegacySalesStorageKey,
   getLegacyStorageKeys,
+  getScopedPresetsStorageKey,
   getSalesStorageKey as getWhatfeesSalesStorageKey,
   migrateLegacySalesKey,
   readStorageWithLegacy,
@@ -11,6 +12,7 @@ import {
 } from "../storageKeys.ts";
 import { normalizeSinglesCatalogSource } from "../shared/singles-catalog-source.ts";
 import { type ConfigMethodSubset, getTodayDate, inferDateFromLotId, toDateOnly } from "./config-shared.ts";
+import { getActiveStorageScope } from "../workspace-scope.ts";
 
 type ExchangeRateCacheRecord = {
   cadRate: number;
@@ -59,13 +61,19 @@ export const configStorageMethods: ConfigMethodSubset<
   | "saveLotsToStorage"
 > = {
   getSalesStorageKey(lotId: number): string {
-    return getWhatfeesSalesStorageKey(lotId);
+    return getWhatfeesSalesStorageKey(lotId, getActiveStorageScope(this));
   },
 
   loadSalesForLotId(lotId: number): Sale[] {
     try {
-      migrateLegacySalesKey(lotId);
-      const stored = readStorageWithLegacy(this.getSalesStorageKey(lotId), getLegacySalesStorageKey(lotId));
+      const isPersonalScope = this.activeScopeType !== "workspace" || !this.activeWorkspaceId;
+      if (isPersonalScope) {
+        migrateLegacySalesKey(lotId);
+      }
+      const storageKey = this.getSalesStorageKey(lotId);
+      const stored = isPersonalScope
+        ? readStorageWithLegacy(storageKey, getLegacySalesStorageKey(lotId))
+        : localStorage.getItem(storageKey);
       if (!stored) return [];
       const parsed = JSON.parse(stored) as Array<Sale & { buyerShipping?: number }>;
       return parsed.map((sale) => ({
@@ -142,7 +150,10 @@ export const configStorageMethods: ConfigMethodSubset<
 
   loadLotsFromStorage(): void {
     try {
-      const stored = readStorageWithLegacy(STORAGE_KEYS.PRESETS, LEGACY_KEYS.PRESETS);
+      const storageKey = getScopedPresetsStorageKey(getActiveStorageScope(this));
+      const stored = this.activeScopeType === "workspace" && this.activeWorkspaceId
+        ? localStorage.getItem(storageKey)
+        : readStorageWithLegacy(storageKey, LEGACY_KEYS.PRESETS);
       if (stored) {
         const parsed = JSON.parse(stored) as Lot[];
         const todayDate = getTodayDate();
@@ -172,7 +183,10 @@ export const configStorageMethods: ConfigMethodSubset<
 
   saveLotsToStorage(): void {
     try {
-      localStorage.setItem(STORAGE_KEYS.PRESETS, JSON.stringify(this.lots));
+      localStorage.setItem(
+        getScopedPresetsStorageKey(getActiveStorageScope(this)),
+        JSON.stringify(this.lots)
+      );
     } catch (error) {
       console.error("Failed to save lots:", error);
       this.notify("Could not save lots. Storage may be full.", "error");

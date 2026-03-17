@@ -54,6 +54,8 @@ function createApp() {
     syncStatus: "idle" as "idle" | "syncing" | "success" | "error",
     isOffline: false,
     lastSyncedPayloadHash: "",
+    activeScopeType: "personal" as "personal" | "workspace",
+    activeWorkspaceId: null as string | null,
     loadSalesForLotId: vi.fn().mockReturnValue([]),
     startOfflineReconnectScheduler: vi.fn(),
     saveLotsToStorage: vi.fn(),
@@ -61,6 +63,7 @@ function createApp() {
     loadLot: vi.fn(),
     notify: vi.fn(),
     pullCloudSync: vi.fn(async () => undefined),
+    handleWorkspaceAccessLost: vi.fn(async () => undefined),
     googleAuthEpoch: 0,
     hasProAccess: false
   };
@@ -210,4 +213,41 @@ test("runCloudSyncPush skips upload and pulls cloud when local storage was clear
   });
 
   assert.equal(pullCloudSyncMock.mock.calls.length, 1);
+});
+
+test("runCloudSyncPull passes workspaceId for shared scopes", async () => {
+  const app = createApp();
+  app.activeScopeType = "workspace";
+  app.activeWorkspaceId = "team-42";
+  const requestCloudSyncPull = vi.fn().mockResolvedValue({
+    ok: true,
+    status: 200,
+    statusText: "OK",
+    json: async () => ({
+      snapshot: {
+        lots: [],
+        salesByLot: {},
+        version: 1
+      }
+    })
+  });
+
+  await runCloudSyncPull(app, {
+    requestCloudSyncPull,
+    createSyncPayload: () => ({ lots: [], salesByLot: {}, workspaceId: "team-42" }),
+    getSyncPayloadSignature: () => "sig",
+    parseCloudSnapshot: () => ({
+      lots: [],
+      salesByLot: {},
+      version: 1,
+      hasData: false
+    }),
+    shouldApplyCloudSnapshot: () => false,
+    applyCloudSnapshotToLocal: vi.fn(),
+    startSyncStatus: vi.fn(),
+    setSyncStatusSuccess: vi.fn(),
+    setSyncStatusError: vi.fn()
+  });
+
+  assert.equal(requestCloudSyncPull.mock.calls[0]?.[2], "team-42");
 });

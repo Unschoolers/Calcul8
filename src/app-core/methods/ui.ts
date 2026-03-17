@@ -2,6 +2,7 @@ import type { AppContext, AppMethodState } from "../context.ts";
 import { uiBaseMethods } from "./ui/base.ts";
 import { uiEntitlementMethods } from "./ui/entitlements.ts";
 import { uiSyncMethods } from "./ui/sync.ts";
+import { uiWorkspaceMethods } from "./ui/workspaces.ts";
 
 export const uiMethods: ThisType<AppContext> & Pick<
   AppMethodState,
@@ -34,8 +35,22 @@ export const uiMethods: ThisType<AppContext> & Pick<
   | "stopCloudSyncScheduler"
   | "pushCloudSync"
   | "debugLogEntitlement"
+  | "refreshWorkspaces"
+  | "switchToPersonalWorkspace"
+  | "switchToWorkspace"
+  | "createWorkspace"
+  | "openWorkspaceMembersModal"
+  | "createWorkspaceJoinLink"
+  | "previewPendingWorkspaceInvite"
+  | "acceptPendingWorkspaceInvite"
+  | "dismissPendingWorkspaceInvite"
+  | "openLeaveWorkspaceModal"
+  | "leaveCurrentWorkspace"
+  | "removeWorkspaceMember"
+  | "handleWorkspaceAccessLost"
 > = {
   ...uiBaseMethods,
   ...uiEntitlementMethods,
-  ...uiSyncMethods
+  ...uiSyncMethods,
+  ...uiWorkspaceMethods
 };

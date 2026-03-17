@@ -1,11 +1,11 @@
-import { createApp } from "vue";
+import { createApp, type Component } from "vue";
 import "vuetify/styles";
 import "./styles/app.css";
 import { appOptions } from "./app.ts";
 import { vuetify } from "./vuetify.ts";
 
 const splashShownAt = performance.now();
-const app = createApp(appOptions);
+const app = createApp(appOptions as unknown as Component);
 app.use(vuetify).mount("#app");
 
 const MIN_SPLASH_MS = 800;

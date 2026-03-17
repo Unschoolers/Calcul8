@@ -2,11 +2,14 @@ import type { AppContext } from "../../context.ts";
 import {
   CLOUD_SYNC_INTERVAL_MS,
   GOOGLE_TOKEN_KEY,
-  SYNC_CLIENT_VERSION_KEY,
   handleExpiredAuth,
   resolveApiBaseUrl
 } from "./shared.ts";
-import { STORAGE_KEYS } from "../../storageKeys.ts";
+import {
+  getScopedLastSyncedPayloadHashKey,
+  getScopedPresetsStorageKey,
+  getScopedSyncClientVersionKey
+} from "../../storageKeys.ts";
 import {
   applyCloudSnapshotToLocal,
   parseCloudSnapshot,
@@ -16,6 +19,7 @@ import {
 import { requestCloudSyncPull, requestCloudSyncPush, type SyncPullResponseBody, type SyncPushResponseBody } from "./sync-network.ts";
 import { createSyncPayload, getSyncPayloadSignature, type SyncPayload } from "./sync-payload.ts";
 import { setSyncStatusError, setSyncStatusSuccess, startSyncStatus } from "./sync-status.ts";
+import { getActiveStorageScope, getActiveWorkspaceId } from "../../workspace-scope.ts";
 
 const STORAGE_RESET_RECOVERY_COOLDOWN_MS = 30_000;
 
@@ -35,6 +39,8 @@ export type SyncApp = Pick<
   | "lastSyncedPayloadHash"
   | "googleAuthEpoch"
   | "hasProAccess"
+  | "activeScopeType"
+  | "activeWorkspaceId"
   | "loadSalesForLotId"
   | "getSalesStorageKey"
   | "saveLotsToStorage"
@@ -42,6 +48,7 @@ export type SyncApp = Pick<
   | "notify"
   | "startOfflineReconnectScheduler"
   | "pullCloudSync"
+  | "handleWorkspaceAccessLost"
 >;
 
 type SyncServiceDeps = {
@@ -59,8 +66,9 @@ type SyncServiceDeps = {
   setSyncStatusSuccess: (app: SyncApp) => void;
   setSyncStatusError: (app: SyncApp) => void;
   handleExpiredAuth: (app: Pick<SyncApp, "googleAuthEpoch" | "hasProAccess">) => void;
-  getStoredClientVersion: () => number;
-  setStoredClientVersion: (version: number) => void;
+  getStoredClientVersion: (app: SyncApp) => number;
+  setStoredClientVersion: (app: SyncApp, version: number) => void;
+  setStoredLastSyncedPayloadHash: (app: SyncApp, signature: string | null) => void;
   hasStorageItem: (key: string) => boolean;
   now: () => number;
 };
@@ -71,7 +79,13 @@ const defaultDeps: SyncServiceDeps = {
   isOnline: () => navigator.onLine,
   requestCloudSyncPull,
   requestCloudSyncPush,
-  createSyncPayload: (app, clientVersion) => createSyncPayload(app, clientVersion),
+  createSyncPayload: (app, clientVersion) => createSyncPayload({
+    lots: app.lots,
+    currentLotId: app.currentLotId,
+    sales: app.sales,
+    loadSalesForLotId: app.loadSalesForLotId,
+    workspaceId: getActiveWorkspaceId(app)
+  }, clientVersion),
   getSyncPayloadSignature,
   parseCloudSnapshot,
   shouldApplyCloudSnapshot,
@@ -80,13 +94,26 @@ const defaultDeps: SyncServiceDeps = {
   setSyncStatusSuccess,
   setSyncStatusError,
   handleExpiredAuth,
-  getStoredClientVersion: () => {
-    const raw = localStorage.getItem(SYNC_CLIENT_VERSION_KEY) || "0";
+  getStoredClientVersion: (app) => {
+    const raw = localStorage.getItem(
+      getScopedSyncClientVersionKey(getActiveStorageScope(app))
+    ) || "0";
     const parsed = Number(raw);
     return Number.isFinite(parsed) ? parsed : 0;
   },
-  setStoredClientVersion: (version) => {
-    localStorage.setItem(SYNC_CLIENT_VERSION_KEY, String(version));
+  setStoredClientVersion: (app, version) => {
+    localStorage.setItem(
+      getScopedSyncClientVersionKey(getActiveStorageScope(app)),
+      String(version)
+    );
+  },
+  setStoredLastSyncedPayloadHash: (app, signature) => {
+    const key = getScopedLastSyncedPayloadHashKey(getActiveStorageScope(app));
+    if (signature) {
+      localStorage.setItem(key, signature);
+      return;
+    }
+    localStorage.removeItem(key);
   },
   hasStorageItem: (key) => !!localStorage.getItem(key),
   now: () => Date.now()
@@ -97,7 +124,7 @@ function isLocalSyncCacheReset(app: SyncApp, deps: SyncServiceDeps): boolean {
   if (!Array.isArray(app.lots) || app.lots.length === 0) return false;
 
   try {
-    if (deps.hasStorageItem(STORAGE_KEYS.PRESETS)) return false;
+    if (deps.hasStorageItem(getScopedPresetsStorageKey(getActiveStorageScope(app)))) return false;
 
     const hasAnyInMemorySales = Array.isArray(app.sales) && app.sales.length > 0;
     const hasAnyPersistedSales = app.lots.some((lot) => deps.hasStorageItem(app.getSalesStorageKey(lot.id)));
@@ -132,11 +159,16 @@ export async function runCloudSyncPull(app: SyncApp, deps: Partial<SyncServiceDe
   resolvedDeps.startSyncStatus(app);
 
   try {
-    const response = await resolvedDeps.requestCloudSyncPull(base, googleIdToken);
+    const response = await resolvedDeps.requestCloudSyncPull(base, googleIdToken, getActiveWorkspaceId(app));
 
     if (response.status === 401) {
       resolvedDeps.handleExpiredAuth(app);
       resolvedDeps.setSyncStatusError(app);
+      return;
+    }
+    if (response.status === 403 && app.activeScopeType === "workspace") {
+      resolvedDeps.setSyncStatusError(app);
+      await app.handleWorkspaceAccessLost(app.activeWorkspaceId ?? undefined);
       return;
     }
     if (!response.ok) {
@@ -150,7 +182,9 @@ export async function runCloudSyncPull(app: SyncApp, deps: Partial<SyncServiceDe
 
     const body = (await response.json()) as SyncPullResponseBody;
     if (!body.snapshot) {
-      app.lastSyncedPayloadHash = resolvedDeps.getSyncPayloadSignature(resolvedDeps.createSyncPayload(app));
+      const signature = resolvedDeps.getSyncPayloadSignature(resolvedDeps.createSyncPayload(app));
+      app.lastSyncedPayloadHash = signature;
+      resolvedDeps.setStoredLastSyncedPayloadHash(app, signature);
       resolvedDeps.setSyncStatusSuccess(app);
       return;
     }
@@ -158,7 +192,7 @@ export async function runCloudSyncPull(app: SyncApp, deps: Partial<SyncServiceDe
     const parsedSnapshot = resolvedDeps.parseCloudSnapshot(body.snapshot);
     const localHasSales = app.lots.some((lot) => app.loadSalesForLotId(lot.id).length > 0);
     const localHasData = app.lots.length > 0 || localHasSales;
-    const localVersion = resolvedDeps.getStoredClientVersion();
+    const localVersion = resolvedDeps.getStoredClientVersion(app);
     const shouldApplyCloud = resolvedDeps.shouldApplyCloudSnapshot({
       cloudVersion: parsedSnapshot.version,
       localVersion,
@@ -166,13 +200,17 @@ export async function runCloudSyncPull(app: SyncApp, deps: Partial<SyncServiceDe
       cloudHasData: parsedSnapshot.hasData
     });
     if (!shouldApplyCloud) {
-      app.lastSyncedPayloadHash = resolvedDeps.getSyncPayloadSignature(resolvedDeps.createSyncPayload(app));
+      const signature = resolvedDeps.getSyncPayloadSignature(resolvedDeps.createSyncPayload(app));
+      app.lastSyncedPayloadHash = signature;
+      resolvedDeps.setStoredLastSyncedPayloadHash(app, signature);
       resolvedDeps.setSyncStatusSuccess(app);
       return;
     }
 
     resolvedDeps.applyCloudSnapshotToLocal(app, parsedSnapshot);
-    app.lastSyncedPayloadHash = resolvedDeps.getSyncPayloadSignature(resolvedDeps.createSyncPayload(app));
+    const signature = resolvedDeps.getSyncPayloadSignature(resolvedDeps.createSyncPayload(app));
+    app.lastSyncedPayloadHash = signature;
+    resolvedDeps.setStoredLastSyncedPayloadHash(app, signature);
     resolvedDeps.setSyncStatusSuccess(app);
     app.notify("Cloud data synced", "success");
     console.info("[whatfees] Cloud sync pulled", { version: parsedSnapshot.version });
@@ -223,7 +261,7 @@ export async function runCloudSyncPush(
     return;
   }
 
-  const clientVersion = resolvedDeps.getStoredClientVersion();
+  const clientVersion = resolvedDeps.getStoredClientVersion(app);
   const syncPayload = resolvedDeps.createSyncPayload(app, clientVersion);
   const payloadSignature = resolvedDeps.getSyncPayloadSignature(syncPayload);
   if (!force && app.lastSyncedPayloadHash === payloadSignature) {
@@ -240,6 +278,11 @@ export async function runCloudSyncPush(
       console.warn("[whatfees] Cloud sync skipped: auth expired");
       return;
     }
+    if (response.status === 403 && app.activeScopeType === "workspace") {
+      resolvedDeps.setSyncStatusError(app);
+      await app.handleWorkspaceAccessLost(app.activeWorkspaceId ?? undefined);
+      return;
+    }
 
     if (!response.ok) {
       resolvedDeps.setSyncStatusError(app);
@@ -253,9 +296,10 @@ export async function runCloudSyncPush(
     const body = (await response.json()) as SyncPushResponseBody;
     const serverVersion = Number(body.version);
     if (Number.isFinite(serverVersion)) {
-      resolvedDeps.setStoredClientVersion(serverVersion);
+      resolvedDeps.setStoredClientVersion(app, serverVersion);
     }
     app.lastSyncedPayloadHash = payloadSignature;
+    resolvedDeps.setStoredLastSyncedPayloadHash(app, payloadSignature);
     resolvedDeps.setSyncStatusSuccess(app);
     console.info("[whatfees] Cloud sync pushed");
   } catch (error) {

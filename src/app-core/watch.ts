@@ -1,5 +1,6 @@
 import type { AppWatchObject } from "./context.ts";
-import { STORAGE_KEYS } from "./storageKeys.ts";
+import { getScopedLastLotStorageKey, STORAGE_KEYS } from "./storageKeys.ts";
+import { getActiveStorageScope } from "./workspace-scope.ts";
 
 export const appWatch: AppWatchObject = {
   currentTab(newTab) {
@@ -42,9 +43,29 @@ export const appWatch: AppWatchObject = {
     }
   },
 
+  googleAuthEpoch() {
+    if (!this.isGoogleSignedIn) {
+      this.availableWorkspaces = [];
+      this.workspaceMembers = [];
+      this.showWorkspaceMembersModal = false;
+      return;
+    }
+
+    void this.refreshWorkspaces();
+
+    if (this.pendingWorkspaceInviteToken) {
+      void this.previewPendingWorkspaceInvite();
+    }
+  },
+
   currentLotId(newVal) {
     this.clearLiveSinglesSelection();
-    if (newVal) localStorage.setItem(STORAGE_KEYS.LAST_LOT_ID, String(newVal));
+    if (newVal) {
+      localStorage.setItem(
+        getScopedLastLotStorageKey(getActiveStorageScope(this)),
+        String(newVal)
+      );
+    }
 
     if (!newVal) {
       this.currentTab = "config";

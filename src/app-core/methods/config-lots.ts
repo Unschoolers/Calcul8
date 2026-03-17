@@ -10,6 +10,7 @@ import {
 import {
   getLegacySalesStorageKey,
   getLegacyStorageKeys,
+  getScopedLastLotStorageKey,
   readStorageWithLegacy,
   removeStorageWithLegacy,
   STORAGE_KEYS
@@ -17,6 +18,7 @@ import {
 import { normalizeSinglesCatalogSource } from "../shared/singles-catalog-source.ts";
 import { type ConfigMethodSubset, getTodayDate, inferDateFromLotId, toDateOnly } from "./config-shared.ts";
 import { toNonNegativeInt as toNonNegativeInteger, toNonNegativeNumber } from "../shared/singles-normalizers.ts";
+import { getActiveStorageScope } from "../workspace-scope.ts";
 
 const LEGACY_KEYS = getLegacyStorageKeys();
 
@@ -574,8 +576,15 @@ export const configLotMethods: ConfigMethodSubset<
           this.getSalesStorageKey(lotIdToDelete),
           getLegacySalesStorageKey(lotIdToDelete)
         );
-        if (Number(readStorageWithLegacy(STORAGE_KEYS.LAST_LOT_ID, LEGACY_KEYS.LAST_LOT_ID)) === lotIdToDelete) {
-          removeStorageWithLegacy(STORAGE_KEYS.LAST_LOT_ID, LEGACY_KEYS.LAST_LOT_ID);
+        const lastLotStorageKey = getScopedLastLotStorageKey(getActiveStorageScope(this));
+        const storedLastLotId = this.activeScopeType === "workspace" && this.activeWorkspaceId
+          ? localStorage.getItem(lastLotStorageKey)
+          : readStorageWithLegacy(STORAGE_KEYS.LAST_LOT_ID, LEGACY_KEYS.LAST_LOT_ID);
+        if (Number(storedLastLotId) === lotIdToDelete) {
+          removeStorageWithLegacy(
+            lastLotStorageKey,
+            this.activeScopeType === "workspace" && this.activeWorkspaceId ? undefined : LEGACY_KEYS.LAST_LOT_ID
+          );
         }
         this.saveLotsToStorage();
         this.currentLotId = null;

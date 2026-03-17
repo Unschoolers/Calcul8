@@ -1,0 +1,468 @@
+<v-col cols="12">
+  <v-card elevation="4" class="singles-grid-card">
+    <v-card-title class="text-subtitle-1 singles-section-title-bar">
+      <div class="singles-section-title-group">
+        <v-icon size="16">mdi-table-large</v-icon>
+        <span>Purchasing</span>
+      </div>
+    </v-card-title>
+    <v-divider></v-divider>
+    <v-card-text>
+      <div class="d-flex align-center justify-space-between flex-wrap ga-2 mb-3">
+        <div class="text-caption text-medium-emphasis">Default purchase currency</div>
+        <v-btn-toggle
+          v-model="currency"
+          mandatory
+          density="compact"
+          variant="tonal"
+          class="pill-toggle"
+          @update:model-value="onPurchaseConfigChange"
+        >
+          <v-btn value="CAD" title="CAD">🇨🇦</v-btn>
+          <v-btn value="USD" title="USD">🇺🇸</v-btn>
+        </v-btn-toggle>
+      </div>
+      <div
+        v-if="!showCatalogSuggestions"
+        class="text-caption text-medium-emphasis mb-3"
+      >
+        Custom mode: autocomplete is disabled for this lot.
+      </div>
+      <v-text-field
+        v-if="currency !== sellingCurrency"
+        v-model.number="exchangeRate"
+        label="USD to CAD Rate"
+        type="number"
+        variant="outlined"
+        density="compact"
+        step="0.01"
+        hide-details
+        class="mb-3"
+        @input="onPurchaseConfigChange"
+      ></v-text-field>
+      <v-alert v-if="conversionInfo" type="info" density="compact" class="mb-3">
+        {{ conversionInfo }}
+      </v-alert>
+      <v-alert
+        v-if="showSinglesInfoNotice"
+        type="info"
+        variant="tonal"
+        density="compact"
+        closable
+        class="mb-3"
+        @click:close="dismissSinglesInfoNotice"
+      >
+        Singles lots track item-by-item sales inventory. Use Live tab to build a live singles list.
+      </v-alert>
+      <div class="singles-mobile-sticky-tools">
+        <v-text-field
+          v-model="singlesSearchQuery"
+          variant="outlined"
+          density="compact"
+          hide-details
+          prepend-inner-icon="mdi-magnify"
+          class="singles-search-input mb-3"
+          placeholder="Search name or number"
+          @update:model-value="onSinglesSearchInput"
+        >
+          <template #append-inner>
+            <div class="singles-search-actions">
+              <v-tooltip text="Import CSV" location="top">
+                <template #activator="{ props }">
+                  <v-btn
+                    v-bind="props"
+                    icon="mdi-file-delimited"
+                    size="x-small"
+                    variant="text"
+                    class="singles-search-action-btn"
+                    title="Import CSV"
+                    aria-label="Import CSV"
+                    @click.stop="importSinglesPurchasesCsv"
+                  ></v-btn>
+                </template>
+              </v-tooltip>
+              <v-tooltip :text="showFullySoldSingles ? 'Hide sold-out items' : 'Show sold-out items'" location="top">
+                <template #activator="{ props }">
+                  <v-btn
+                    v-bind="props"
+                    :icon="showFullySoldSingles ? 'mdi-eye-off-outline' : 'mdi-eye-outline'"
+                    size="x-small"
+                    variant="text"
+                    class="singles-search-action-btn"
+                    :color="showFullySoldSingles ? undefined : 'success'"
+                    title="Toggle sold-out visibility"
+                    aria-label="Toggle sold-out visibility"
+                    @click.stop="toggleShowFullySoldSingles"
+                  ></v-btn>
+                </template>
+              </v-tooltip>
+              <v-tooltip
+                v-if="$vuetify?.display?.mdAndUp"
+                :text="isDesktopSelectMode ? 'Exit select mode' : 'Select multiple rows'"
+                location="top"
+              >
+                <template #activator="{ props }">
+                  <v-btn
+                    v-bind="props"
+                    :icon="isDesktopSelectMode ? 'mdi-close-box-multiple-outline' : 'mdi-checkbox-multiple-marked-outline'"
+                    size="x-small"
+                    variant="text"
+                    class="singles-search-action-btn"
+                    :color="isDesktopSelectMode ? 'primary' : undefined"
+                    title="Toggle select mode"
+                    aria-label="Toggle select mode"
+                    @click.stop="toggleDesktopSelectMode"
+                  ></v-btn>
+                </template>
+              </v-tooltip>
+            </div>
+          </template>
+        </v-text-field>
+
+        <div
+          v-if="$vuetify?.display?.smAndDown && visibleSinglesPurchases.length > 0"
+          class="singles-mobile-toolbar"
+        >
+          <div class="singles-mobile-toolbar-copy">
+            <div class="singles-mobile-toolbar-count">
+              {{ visibleSinglesPurchases.length }} item{{ visibleSinglesPurchases.length === 1 ? '' : 's' }}
+            </div>
+            <div class="singles-mobile-toolbar-state">
+              {{ showFullySoldSingles ? 'Showing sold-out items' : 'In-stock focus' }}
+            </div>
+          </div>
+          <v-btn
+            size="small"
+            variant="tonal"
+            class="singles-mobile-toolbar-sort"
+            prepend-icon="mdi-sort"
+            @click="cycleMobileSort"
+          >
+            {{ mobileSortLabel }}
+          </v-btn>
+        </div>
+      </div>
+      <v-alert
+        v-if="singlesPurchases.length === 0"
+        type="info"
+        variant="tonal"
+        density="compact"
+        class="mb-3"
+      >
+        Add your item purchases here. When empty, profit stats assume 100%.
+      </v-alert>
+      <v-alert
+        v-else-if="hasSinglesSearchQuery && visibleSinglesPurchases.length === 0"
+        type="info"
+        variant="tonal"
+        density="compact"
+        class="mb-3"
+      >
+        No items match your search.
+      </v-alert>
+      <v-alert
+        v-else-if="!hasSinglesSearchQuery && visibleSinglesPurchases.length === 0"
+        type="info"
+        variant="tonal"
+        density="compact"
+        class="mb-3"
+      >
+        All items are sold out and hidden by the current filter.
+      </v-alert>
+      <div v-if="isDesktopSelectMode" class="singles-bulk-bar singles-desktop-grid">
+        <div class="text-caption text-medium-emphasis">
+          {{ selectedDesktopRowIds.length }} selected
+        </div>
+        <v-btn
+          icon="mdi-delete-outline"
+          size="small"
+          variant="text"
+          color="error"
+          title="Delete selected rows"
+          aria-label="Delete selected rows"
+          :disabled="selectedDesktopRowIds.length === 0"
+          @click="deleteSelectedDesktopRows"
+        ></v-btn>
+      </div>
+
+      <div
+        :ref="setDesktopRowsScrollerRef"
+        :class="['singles-grid-wrap', 'singles-desktop-grid', { 'is-virtualized': useDesktopVirtualization }]"
+        @scroll.passive="onDesktopRowsScroll"
+      >
+        <v-table density="compact" class="singles-grid-table">
+          <colgroup>
+            <col class="singles-col-item">
+            <col class="singles-col-card">
+            <col class="singles-col-condition">
+            <col class="singles-col-language">
+            <col class="singles-col-price">
+            <col class="singles-col-qty">
+            <col class="singles-col-market">
+            <col class="singles-col-actions">
+          </colgroup>
+          <thead>
+            <tr>
+              <th>
+                <button
+                  type="button"
+                  :class="['singles-sort-btn', { 'is-active': desktopSortBy === 'item' }]"
+                  @click="toggleDesktopSort('item')"
+                >
+                  <span>Item</span>
+                  <v-icon size="14">{{ sortIconFor('item') }}</v-icon>
+                </button>
+              </th>
+              <th>
+                <button
+                  type="button"
+                  :class="['singles-sort-btn', { 'is-active': desktopSortBy === 'cardNumber' }]"
+                  @click="toggleDesktopSort('cardNumber')"
+                >
+                  <span>Number</span>
+                  <v-icon size="14">{{ sortIconFor('cardNumber') }}</v-icon>
+                </button>
+              </th>
+              <th class="text-right">
+                <button
+                  type="button"
+                  :class="['singles-sort-btn', 'singles-sort-btn--right', { 'is-active': desktopSortBy === 'condition' }]"
+                  @click="toggleDesktopSort('condition')"
+                >
+                  <span>Condition</span>
+                  <v-icon size="14">{{ sortIconFor('condition') }}</v-icon>
+                </button>
+              </th>
+              <th class="text-right">
+                <button
+                  type="button"
+                  :class="['singles-sort-btn', 'singles-sort-btn--right', { 'is-active': desktopSortBy === 'language' }]"
+                  @click="toggleDesktopSort('language')"
+                >
+                  <span>Language</span>
+                  <v-icon size="14">{{ sortIconFor('language') }}</v-icon>
+                </button>
+              </th>
+              <th class="text-right">
+                <button
+                  type="button"
+                  :class="['singles-sort-btn', 'singles-sort-btn--right', { 'is-active': desktopSortBy === 'cost' }]"
+                  @click="toggleDesktopSort('cost')"
+                >
+                  <span>Total Cost</span>
+                  <v-icon size="14">{{ sortIconFor('cost') }}</v-icon>
+                </button>
+              </th>
+              <th class="text-right">
+                <button
+                  type="button"
+                  :class="['singles-sort-btn', 'singles-sort-btn--right', { 'is-active': desktopSortBy === 'quantity' }]"
+                  @click="toggleDesktopSort('quantity')"
+                >
+                  <span>Qty</span>
+                  <v-icon size="14">{{ sortIconFor('quantity') }}</v-icon>
+                </button>
+              </th>
+              <th class="text-right">
+                <button
+                  type="button"
+                  :class="['singles-sort-btn', 'singles-sort-btn--right', { 'is-active': desktopSortBy === 'marketValue' }]"
+                  @click="toggleDesktopSort('marketValue')"
+                >
+                  <span>Total Market</span>
+                  <v-icon size="14">{{ sortIconFor('marketValue') }}</v-icon>
+                </button>
+              </th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-if="useDesktopVirtualization && desktopTopSpacerPx > 0" class="singles-virtual-spacer-row">
+              <td colspan="8" :style="{ height: `${desktopTopSpacerPx}px` }"></td>
+            </tr>
+            <tr
+              v-for="entry in desktopRenderedRows"
+              :key="entry.id"
+              :class="[
+                'singles-desktop-row',
+                { 'is-selected': isDesktopRowSelected(entry.id) }
+              ]"
+              @click="handleDesktopRowClick(entry)"
+            >
+              <td>
+                <div class="singles-row-main">
+                  <v-icon
+                    v-if="isDesktopSelectMode"
+                    size="14"
+                    :color="isDesktopRowSelected(entry.id) ? 'primary' : 'grey'"
+                  >
+                    {{ isDesktopRowSelected(entry.id) ? 'mdi-checkbox-marked' : 'mdi-checkbox-blank-outline' }}
+                  </v-icon>
+                  <button
+                    type="button"
+                    class="singles-row-thumb singles-thumb-button"
+                    :aria-label="`Preview ${entry.item || 'card'} image`"
+                    @click.stop="openSinglesImagePreview(getSinglesEntryPreviewImage(entry), entry.item)"
+                  >
+                    <img
+                      v-if="getSinglesEntryPreviewImage(entry)"
+                      :src="getSinglesEntryPreviewImage(entry)"
+                      alt=""
+                      loading="lazy"
+                    >
+                    <v-icon v-else size="16">mdi-cards-outline</v-icon>
+                  </button>
+                  <div class="singles-row-copy">
+                    <div class="singles-row-title">
+                      <v-icon
+                        v-if="isSinglesEntryFullySold(entry)"
+                        size="14"
+                        color="success"
+                        title="Fully sold"
+                        aria-label="Fully sold"
+                      >mdi-check-circle</v-icon>
+                      <span class="text-body-2 singles-row-name">{{ entry.item || "Unnamed item" }}</span>
+                    </div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <span class="text-body-2 text-medium-emphasis">{{ entry.cardNumber || "—" }}</span>
+              </td>
+              <td class="text-right text-body-2 text-medium-emphasis" :title="entry.condition || '—'">
+                {{ conditionShortLabel(entry.condition) }}
+              </td>
+              <td class="text-right text-body-2 text-medium-emphasis" :title="entry.language || '—'">
+                {{ languageShortLabel(entry.language) }}
+              </td>
+              <td class="text-right text-body-2">
+                ${{ fmtCurrency((Number(entry.cost) || 0) * (Number(entry.quantity) || 0)) }}
+                <span class="text-caption text-medium-emphasis ml-1">{{ entry.currency || currency }}</span>
+              </td>
+              <td>
+                <div class="text-body-2 text-right">
+                  {{ getSinglesEntryStockLabel(entry) }}
+                </div>
+              </td>
+              <td class="text-right text-body-2">
+                ${{ fmtCurrency((Number(entry.marketValue) || 0) * (Number(entry.quantity) || 0)) }}
+              </td>
+              <td class="text-right">
+                <div v-if="!isDesktopSelectMode" class="singles-row-actions">
+                  <v-btn
+                    icon="mdi-trash-can-outline"
+                    size="x-small"
+                    variant="text"
+                    color="error"
+                    title="Remove row"
+                    aria-label="Remove row"
+                    @click.stop="confirmRemoveSinglesPurchaseRow(entry.id)"
+                  ></v-btn>
+                </div>
+              </td>
+            </tr>
+            <tr v-if="useDesktopVirtualization && desktopBottomSpacerPx > 0" class="singles-virtual-spacer-row">
+              <td colspan="8" :style="{ height: `${desktopBottomSpacerPx}px` }"></td>
+            </tr>
+          </tbody>
+        </v-table>
+      </div>
+
+      <div class="singles-mobile-list">
+        <v-list v-if="visibleSinglesPurchases.length > 0" density="compact" class="pa-0">
+          <v-list-item
+            v-for="entry in mobileRenderedSinglesPurchases"
+            :key="`mobile-${entry.id}`"
+            :class="['singles-mobile-item', { 'is-sold': isSinglesEntryFullySold(entry) }]"
+            lines="two"
+            @click="openSinglesRowEditor(entry)"
+          >
+            <template #prepend>
+              <button
+                type="button"
+                class="singles-mobile-thumb singles-thumb-button"
+                :aria-label="`Preview ${entry.item || 'card'} image`"
+                @click.stop="openSinglesImagePreview(getSinglesEntryPreviewImage(entry), entry.item)"
+              >
+                <img
+                  v-if="getSinglesEntryPreviewImage(entry)"
+                  :src="getSinglesEntryPreviewImage(entry)"
+                  alt=""
+                  loading="lazy"
+                >
+                <v-icon v-else size="16">mdi-cards-outline</v-icon>
+              </button>
+            </template>
+            <v-list-item-title class="text-body-2 font-weight-medium singles-mobile-title">
+              <div class="singles-mobile-head">
+                <div class="singles-mobile-name-wrap">
+                  <v-icon
+                    v-if="isSinglesEntryFullySold(entry)"
+                    size="14"
+                    color="success"
+                    class="mr-1"
+                    title="Fully sold"
+                    aria-label="Fully sold"
+                  >mdi-check-circle</v-icon>
+                  <span class="singles-mobile-name">{{ entry.item || "Unnamed item" }}</span>
+                  <span v-if="entry.cardNumber" class="singles-mobile-number">#{{ entry.cardNumber }}</span>
+                </div>
+              </div>
+            </v-list-item-title>
+            <v-list-item-subtitle class="text-caption singles-mobile-subtitle">
+              <div class="singles-mobile-meta-primary">
+                <span class="singles-mobile-chip singles-mobile-chip--stock">{{ getSinglesEntryStockLabel(entry) }}</span>
+                <span class="singles-mobile-value">M ${{ fmtCurrency((Number(entry.marketValue) || 0) * (Number(entry.quantity) || 0)) }}</span>
+                <span class="singles-mobile-value-muted">
+                  C ${{ fmtCurrency((Number(entry.cost) || 0) * (Number(entry.quantity) || 0)) }} {{ entry.currency || currency }}
+                </span>
+              </div>
+              <div
+                v-if="entry.condition || entry.language"
+                class="singles-mobile-meta-secondary"
+              >
+                <span v-if="entry.condition">{{ conditionShortLabel(entry.condition) }}</span>
+                <span v-if="entry.language">{{ languageShortLabel(entry.language) }}</span>
+              </div>
+            </v-list-item-subtitle>
+            <template #append>
+              <v-icon size="18" class="singles-mobile-chevron">mdi-chevron-right</v-icon>
+            </template>
+          </v-list-item>
+        </v-list>
+        <div v-if="hasMoreMobileSinglesRows" class="singles-mobile-load-more">
+          <v-btn
+            variant="text"
+            size="small"
+            prepend-icon="mdi-chevron-down"
+            @click="loadMoreMobileRows"
+          >
+            Load {{ nextMobileSinglesBatchCount }} more
+            <span class="text-medium-emphasis ml-1">({{ remainingMobileSinglesRows }} left)</span>
+          </v-btn>
+        </div>
+      </div>
+
+      <div class="singles-summary-row mt-2">
+        <div class="singles-summary-pill singles-summary-pill--cost">
+          <span class="singles-summary-pill__lead">
+            <span class="singles-summary-pill__icon" aria-hidden="true">
+              <v-icon size="14">mdi-cash-minus</v-icon>
+            </span>
+            <span class="singles-summary-label">Total Cost ({{ sellingCurrency }})</span>
+          </span>
+          <strong class="singles-summary-value">${{ fmtCurrency(singlesPurchaseTotalCost) }}</strong>
+        </div>
+        <div class="singles-summary-pill singles-summary-pill--market">
+          <span class="singles-summary-pill__lead">
+            <span class="singles-summary-pill__icon" aria-hidden="true">
+              <v-icon size="14">mdi-chart-line</v-icon>
+            </span>
+            <span class="singles-summary-label">Total Market</span>
+          </span>
+          <strong class="singles-summary-value">${{ fmtCurrency(singlesPurchaseTotalMarketValue) }}</strong>
+        </div>
+      </div>
+    </v-card-text>
+  </v-card>
+</v-col>

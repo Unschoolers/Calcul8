@@ -37,7 +37,7 @@ vi.mock("../src/app-core/storageKeys.ts", async () => {
 });
 
 import { configStorageMethods } from "../src/app-core/methods/config-storage.ts";
-import { STORAGE_KEYS } from "../src/app-core/storageKeys.ts";
+import { getScopedPresetsStorageKey, STORAGE_KEYS } from "../src/app-core/storageKeys.ts";
 
 type MockStorage = {
   getItem(key: string): string | null;
@@ -97,6 +97,8 @@ function withMockedLocalStorage(
 
 function createContext(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
+    activeScopeType: "personal",
+    activeWorkspaceId: null,
     sellingTaxPercent: 15,
     exchangeRate: 1.4,
     lastFetchTime: null,
@@ -120,6 +122,14 @@ afterEach(() => {
 test("getSalesStorageKey returns namespaced key", () => {
   const key = configStorageMethods.getSalesStorageKey.call(createContext() as never, 42);
   assert.equal(key, "whatfees_sales_42");
+});
+
+test("getSalesStorageKey includes workspace scope for shared workspaces", () => {
+  const key = configStorageMethods.getSalesStorageKey.call(createContext({
+    activeScopeType: "workspace",
+    activeWorkspaceId: "team-42"
+  }) as never, 42);
+  assert.equal(key, "whatfees_sales_team-42__42");
 });
 
 test("loadSalesForLotId migrates legacy key and normalizes loaded sales", () => {
@@ -306,6 +316,30 @@ test("loadLotsFromStorage normalizes lot type and date fields", () => {
   assert.match(lots[1]?.createdAt || "", /^\d{4}-\d{2}-\d{2}$/);
 });
 
+test("loadLotsFromStorage reads workspace-scoped presets without touching personal storage", async () => {
+  await withMockedLocalStorage(async (data) => {
+    data.set(
+      getScopedPresetsStorageKey({
+        scopeType: "workspace",
+        workspaceId: "team-42"
+      }),
+      JSON.stringify([{ id: 7, name: "Shared", purchaseDate: "2026-02-23" }])
+    );
+
+    const context = createContext({
+      activeScopeType: "workspace",
+      activeWorkspaceId: "team-42",
+      lots: []
+    });
+    configStorageMethods.loadLotsFromStorage.call(context as never);
+
+    const lots = context.lots as Array<{ id: number; name: string }>;
+    assert.equal(lots.length, 1);
+    assert.equal(lots[0]?.id, 7);
+    assert.equal(readStorageWithLegacyMock.mock.calls.length, 0);
+  });
+});
+
 test("loadLotsFromStorage handles parse failures by clearing lots", () => {
   readStorageWithLegacyMock.mockReturnValue("not-json");
   const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
@@ -339,5 +373,23 @@ test("saveLotsToStorage writes JSON and notifies on storage failure", async () =
     } finally {
       errorSpy.mockRestore();
     }
+  });
+});
+
+test("saveLotsToStorage writes to workspace-scoped presets for shared workspaces", async () => {
+  await withMockedLocalStorage(async (data) => {
+    const context = createContext({
+      activeScopeType: "workspace",
+      activeWorkspaceId: "team-42",
+      lots: [{ id: 9, name: "Shared Lot" }]
+    });
+
+    configStorageMethods.saveLotsToStorage.call(context as never);
+
+    assert.equal(
+      typeof data.get(getScopedPresetsStorageKey({ scopeType: "workspace", workspaceId: "team-42" })),
+      "string"
+    );
+    assert.equal(data.has(STORAGE_KEYS.PRESETS), false);
   });
 });

@@ -1,4 +1,4 @@
-import { CosmosClient, type Container } from "@azure/cosmos";
+import type { Container } from "@azure/cosmos";
 import type {
   ApiConfig,
   EntitlementDocument,
@@ -6,188 +6,56 @@ import type {
   MigrationRunDocument,
   PurchaseVerificationResultDocument,
   PlayPurchaseDocument,
-  WorkspaceDocument,
-  WorkspaceMembershipDocument,
-  WorkspaceRole,
   SyncMetaDocument,
   SyncPresetDocument,
   SyncSnapshotDocument,
   SessionDocument
 } from "../types";
+import {
+  EPOCH_DATE_ISO,
+  getContainers,
+  getExternalSyncContainer,
+  isConflictError,
+  isNotFoundError,
+  withCosmosRetry,
+  type ExternalSyncSourceConfig
+} from "./cosmos/core";
+import {
+  entitlementId,
+  migrationMarkerId,
+  playPurchaseId,
+  purchaseVerificationResultId,
+  syncMetaId,
+  syncPresetId,
+  syncSnapshotId
+} from "./cosmos/ids";
+export {
+  createWorkspaceJoinLink,
+  createWorkspaceWithOwner,
+  deactivateWorkspaceMembership,
+  getWorkspaceById,
+  getWorkspaceJoinLinkByInviteId,
+  getWorkspaceJoinLinkByTokenHash,
+  getWorkspaceMembership,
+  hasWorkspaceMembership,
+  listWorkspaceJoinLinks,
+  listWorkspaceMemberships,
+  listWorkspaceMembershipsForUser,
+  listWorkspacesForUser,
+  markWorkspaceJoinLinkUsed,
+  revokeWorkspaceJoinLink,
+  softDeleteWorkspace,
+  transferWorkspaceOwnership,
+  upsertWorkspaceDocument,
+  upsertWorkspaceMembership
+} from "./cosmos/workspaceRepository";
+export type {
+  CreateWorkspaceJoinLinkInput,
+  CreateWorkspaceWithOwnerInput,
+  CreateWorkspaceWithOwnerResult
+} from "./cosmos/workspaceRepository";
+export type { ExternalSyncSourceConfig } from "./cosmos/core";
 import { calculateSyncPresetDiff, type SyncPresetState } from "./syncDiff";
-import { buildLegacyUserEntitlementDocumentId } from "./scopeKeys";
-
-interface CosmosCache {
-  entitlements: Container;
-  syncSnapshots: Container;
-  migrationRuns: Container;
-  cardCatalog: Container;
-  sessions: Container;
-}
-
-export interface ExternalSyncSourceConfig {
-  endpoint: string;
-  key: string;
-  databaseId: string;
-  syncContainerId: string;
-}
-
-let cosmosCache: CosmosCache | null = null;
-const syncSourceContainerCache = new Map<string, Container>();
-const COSMOS_MAX_RETRY_ATTEMPTS = 3;
-const COSMOS_BASE_RETRY_DELAY_MS = 200;
-const EPOCH_DATE_ISO = "1970-01-01T00:00:00.000Z";
-
-function isNotFoundError(error: unknown): boolean {
-  if (typeof error !== "object" || error === null) return false;
-  const code = (error as { code?: unknown }).code;
-  const statusCode = (error as { statusCode?: unknown }).statusCode;
-
-  return (
-    code === 404 ||
-    statusCode === 404 ||
-    code === "NotFound" ||
-    code === "notfound"
-  );
-}
-
-function isConflictError(error: unknown): boolean {
-  if (typeof error !== "object" || error === null) return false;
-  const code = (error as { code?: unknown }).code;
-  const statusCode = (error as { statusCode?: unknown }).statusCode;
-
-  return code === 409 || statusCode === 409 || code === "Conflict" || code === "conflict";
-}
-
-function isRetryableCosmosError(error: unknown): boolean {
-  if (typeof error !== "object" || error === null) return false;
-  const statusCode = (error as { statusCode?: unknown }).statusCode;
-  const code = (error as { code?: unknown }).code;
-
-  return (
-    statusCode === 408 ||
-    statusCode === 429 ||
-    statusCode === 449 ||
-    statusCode === 500 ||
-    statusCode === 503 ||
-    code === "RequestTimeout" ||
-    code === "TooManyRequests"
-  );
-}
-
-function getRetryAfterMs(error: unknown): number | null {
-  if (typeof error !== "object" || error === null) return null;
-  const retryAfterInMs = (error as { retryAfterInMs?: unknown }).retryAfterInMs;
-  if (typeof retryAfterInMs === "number" && Number.isFinite(retryAfterInMs) && retryAfterInMs >= 0) {
-    return retryAfterInMs;
-  }
-  return null;
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
-}
-
-async function withCosmosRetry<T>(operation: () => Promise<T>): Promise<T> {
-  let attempt = 0;
-
-  while (true) {
-    attempt += 1;
-    try {
-      return await operation();
-    } catch (error) {
-      if (!isRetryableCosmosError(error) || attempt >= COSMOS_MAX_RETRY_ATTEMPTS) {
-        throw error;
-      }
-
-      const retryAfterMs = getRetryAfterMs(error);
-      const exponentialDelayMs = COSMOS_BASE_RETRY_DELAY_MS * Math.pow(2, attempt - 1);
-      const jitterMs = Math.round(Math.random() * 100);
-      await sleep(retryAfterMs ?? exponentialDelayMs + jitterMs);
-    }
-  }
-}
-
-function entitlementId(userId: string): string {
-  return buildLegacyUserEntitlementDocumentId(userId);
-}
-
-function playPurchaseId(purchaseTokenHash: string): string {
-  return `play_purchase:${purchaseTokenHash}`;
-}
-
-function purchaseVerificationResultId(userId: string, provider: string, idempotencyKey: string): string {
-  return `purchase_verify:${userId}:${provider}:${idempotencyKey}`;
-}
-
-function syncSnapshotId(userId: string): string {
-  return `sync:${userId}`;
-}
-
-function syncPresetId(userId: string, presetId: string): string {
-  return `sync:preset:${userId}:${presetId}`;
-}
-
-function syncMetaId(userId: string): string {
-  return `sync:meta:${userId}`;
-}
-
-function migrationMarkerId(migrationId: string): string {
-  return `migration_marker:${migrationId}`;
-}
-
-function workspaceMembershipId(userId: string, workspaceId: string): string {
-  return `m:${userId}:${workspaceId}`;
-}
-
-function workspaceDocumentId(workspaceId: string): string {
-  return `workspace:${workspaceId}`;
-}
-
-function getContainers(config: ApiConfig): CosmosCache {
-  if (cosmosCache) return cosmosCache;
-
-  const client = new CosmosClient({
-    endpoint: config.cosmosEndpoint,
-    key: config.cosmosKey
-  });
-  const database = client.database(config.cosmosDatabaseId);
-
-  cosmosCache = {
-    entitlements: database.container(config.entitlementsContainerId),
-    syncSnapshots: database.container(config.syncContainerId),
-    migrationRuns: database.container(config.migrationRunsContainerId),
-    cardCatalog: database.container(config.cardCatalogContainerId || "card_catalog"),
-    sessions: database.container(config.sessionsContainerId || "sessions")
-  };
-
-  return cosmosCache;
-}
-
-function getExternalSyncContainer(source: ExternalSyncSourceConfig): Container {
-  const endpoint = String(source.endpoint || "").trim();
-  const key = String(source.key || "").trim();
-  const databaseId = String(source.databaseId || "").trim();
-  const syncContainerId = String(source.syncContainerId || "").trim();
-
-  if (!endpoint || !key || !databaseId || !syncContainerId) {
-    throw new Error("Invalid external sync source configuration.");
-  }
-
-  const cacheKey = `${endpoint}|${databaseId}|${syncContainerId}|${key}`;
-  const cached = syncSourceContainerCache.get(cacheKey);
-  if (cached) return cached;
-
-  const client = new CosmosClient({
-    endpoint,
-    key
-  });
-  const container = client.database(databaseId).container(syncContainerId);
-  syncSourceContainerCache.set(cacheKey, container);
-  return container;
-}
 
 export async function createSession(
   config: ApiConfig,
@@ -558,187 +426,6 @@ export async function upsertEntitlement(
   }
 
   return resource;
-}
-
-export interface CreateWorkspaceWithOwnerInput {
-  workspaceId: string;
-  name: string;
-  ownerUserId: string;
-}
-
-export interface CreateWorkspaceWithOwnerResult {
-  workspace: WorkspaceDocument;
-  ownerMembership: WorkspaceMembershipDocument;
-}
-
-export async function getWorkspaceById(
-  config: ApiConfig,
-  workspaceId: string
-): Promise<WorkspaceDocument | null> {
-  const { entitlements } = getContainers(config);
-  const id = workspaceDocumentId(workspaceId);
-  const querySpec = {
-    query: "SELECT TOP 1 * FROM c WHERE c.id = @id AND c.docType = @docType",
-    parameters: [
-      { name: "@id", value: id },
-      { name: "@docType", value: "workspace" }
-    ]
-  };
-
-  const iterator = entitlements.items.query<WorkspaceDocument>(querySpec, {
-    maxItemCount: 1
-  });
-  const { resources } = await withCosmosRetry(() => iterator.fetchAll());
-  return resources?.[0] ?? null;
-}
-
-export async function getWorkspaceMembership(
-  config: ApiConfig,
-  userId: string,
-  workspaceId: string
-): Promise<WorkspaceMembershipDocument | null> {
-  const { entitlements } = getContainers(config);
-  const id = workspaceMembershipId(userId, workspaceId);
-
-  try {
-    const { resource } = await withCosmosRetry(() =>
-      entitlements.item(id, userId).read<WorkspaceMembershipDocument>()
-    );
-    if (!resource) return null;
-    if (resource.docType !== "workspace_membership") return null;
-    if (resource.userId !== userId || resource.workspaceId !== workspaceId) return null;
-    return resource;
-  } catch (error) {
-    if (isNotFoundError(error)) return null;
-    throw error;
-  }
-}
-
-export async function listWorkspaceMemberships(
-  config: ApiConfig,
-  workspaceId: string
-): Promise<WorkspaceMembershipDocument[]> {
-  const { entitlements } = getContainers(config);
-  const querySpec = {
-    query: "SELECT * FROM c WHERE c.docType = @docType AND c.workspaceId = @workspaceId AND (NOT IS_DEFINED(c.status) OR c.status = @activeStatus)",
-    parameters: [
-      { name: "@docType", value: "workspace_membership" },
-      { name: "@workspaceId", value: workspaceId },
-      { name: "@activeStatus", value: "active" }
-    ]
-  };
-
-  const iterator = entitlements.items.query<WorkspaceMembershipDocument>(querySpec);
-  const { resources } = await withCosmosRetry(() => iterator.fetchAll());
-  return resources ?? [];
-}
-
-interface UpsertWorkspaceMembershipInput {
-  userId: string;
-  workspaceId: string;
-  role: WorkspaceRole;
-  status?: "active" | "disabled" | "removed";
-}
-
-export async function upsertWorkspaceMembership(
-  config: ApiConfig,
-  input: UpsertWorkspaceMembershipInput
-): Promise<WorkspaceMembershipDocument> {
-  const { entitlements } = getContainers(config);
-  const document: WorkspaceMembershipDocument = {
-    id: workspaceMembershipId(input.userId, input.workspaceId),
-    docType: "workspace_membership",
-    userId: input.userId,
-    workspaceId: input.workspaceId,
-    role: input.role,
-    status: input.status ?? "active",
-    updatedAt: new Date().toISOString()
-  };
-
-  const { resource } = await withCosmosRetry(() =>
-    entitlements.items.upsert<WorkspaceMembershipDocument>(document)
-  );
-
-  if (!resource) {
-    throw new Error("Failed to upsert workspace membership.");
-  }
-
-  return resource;
-}
-
-export async function createWorkspaceWithOwner(
-  config: ApiConfig,
-  input: CreateWorkspaceWithOwnerInput
-): Promise<CreateWorkspaceWithOwnerResult> {
-  const { entitlements } = getContainers(config);
-  const now = new Date().toISOString();
-  const workspace: WorkspaceDocument = {
-    id: workspaceDocumentId(input.workspaceId),
-    docType: "workspace",
-    userId: input.ownerUserId,
-    workspaceId: input.workspaceId,
-    name: input.name,
-    ownerUserId: input.ownerUserId,
-    createdAt: now,
-    updatedAt: now
-  };
-
-  try {
-    const { resource } = await withCosmosRetry(() =>
-      entitlements.items.create<WorkspaceDocument>(workspace)
-    );
-    if (!resource) {
-      throw new Error("Failed to create workspace.");
-    }
-
-    const ownerMembership = await upsertWorkspaceMembership(config, {
-      userId: input.ownerUserId,
-      workspaceId: input.workspaceId,
-      role: "owner",
-      status: "active"
-    });
-
-    return {
-      workspace: resource,
-      ownerMembership
-    };
-  } catch (error) {
-    if (isConflictError(error)) {
-      throw new Error("Workspace already exists.");
-    }
-    throw error;
-  }
-}
-
-export async function deactivateWorkspaceMembership(
-  config: ApiConfig,
-  userId: string,
-  workspaceId: string
-): Promise<boolean> {
-  const existing = await getWorkspaceMembership(config, userId, workspaceId);
-  if (!existing) return false;
-  if (existing.status === "disabled" || existing.status === "removed") {
-    return false;
-  }
-
-  await upsertWorkspaceMembership(config, {
-    userId,
-    workspaceId,
-    role: existing.role ?? "member",
-    status: "removed"
-  });
-  return true;
-}
-
-export async function hasWorkspaceMembership(
-  config: ApiConfig,
-  userId: string,
-  workspaceId: string
-): Promise<boolean> {
-  const membership = await getWorkspaceMembership(config, userId, workspaceId);
-  if (!membership) return false;
-  if (membership.status === "disabled" || membership.status === "removed") return false;
-  return true;
 }
 
 export async function getPlayPurchaseByTokenHash(

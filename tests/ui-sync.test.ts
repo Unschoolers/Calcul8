@@ -58,6 +58,8 @@ function createContext() {
     syncStatus: "idle",
     isOffline: false,
     lastSyncedPayloadHash: "",
+    activeScopeType: "personal",
+    activeWorkspaceId: null as string | null,
     loadSalesForLotId: vi.fn().mockReturnValue([]),
     startOfflineReconnectScheduler: vi.fn(),
     saveLotsToStorage: vi.fn(),
@@ -65,7 +67,8 @@ function createContext() {
     loadLot: vi.fn(),
     notify: vi.fn(),
     pushCloudSync: vi.fn(),
-    pullCloudSync: vi.fn(async () => undefined)
+    pullCloudSync: vi.fn(async () => undefined),
+    handleWorkspaceAccessLost: vi.fn(async () => undefined)
   };
 }
 
@@ -185,6 +188,29 @@ test("pullCloudSync still attempts server sync when local Google token is missin
 
   await uiSyncMethods.pullCloudSync.call(ctx);
   assert.equal(fetchWithRetryMock.mock.calls.length, 1);
+});
+
+test("pullCloudSync sends workspaceId when the active scope is shared", async () => {
+  const ctx = createContext();
+  ctx.activeScopeType = "workspace";
+  ctx.activeWorkspaceId = "team-42";
+  fetchWithRetryMock.mockResolvedValue({
+    ok: true,
+    status: 200,
+    statusText: "OK",
+    json: async () => ({
+      snapshot: {
+        lots: [],
+        salesByLot: {},
+        version: 1
+      }
+    })
+  });
+
+  await uiSyncMethods.pullCloudSync.call(ctx);
+
+  const requestInit = fetchWithRetryMock.mock.calls[0]?.[1] as { body?: string };
+  assert.deepEqual(JSON.parse(String(requestInit.body)), { workspaceId: "team-42" });
 });
 
 test("pushCloudSync uses in-memory sales for active lot when building payload", async () => {

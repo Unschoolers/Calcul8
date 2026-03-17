@@ -2,11 +2,14 @@ import type { AppLifecycleObject } from "./context.ts";
 import type { AppTab, PortfolioLotTypeFilter } from "../types/app.ts";
 import {
   getLegacyStorageKeys,
+  getScopedLastLotStorageKey,
+  getScopedLastSyncedPayloadHashKey,
   migrateLegacyStorageKeys,
   readStorageWithLegacy,
   STORAGE_KEYS
 } from "./storageKeys.ts";
 import { closeStripeEmbeddedCheckout, handleStripeCheckoutReturn } from "./methods/ui/entitlements-stripe.ts";
+import { getActiveStorageScope } from "./workspace-scope.ts";
 
 const LEGACY_KEYS = getLegacyStorageKeys();
 
@@ -21,9 +24,22 @@ function isPortfolioLotTypeFilter(value: unknown): value is PortfolioLotTypeFilt
 export const appLifecycle: AppLifecycleObject = {
   mounted() {
     migrateLegacyStorageKeys();
+    try {
+      const inviteToken = new URLSearchParams(window.location.search).get("invite");
+      this.pendingWorkspaceInviteToken = String(inviteToken || "").trim();
+    } catch {
+      this.pendingWorkspaceInviteToken = "";
+    }
+
     this.loadLotsFromStorage();
 
-    const last = Number(readStorageWithLegacy(STORAGE_KEYS.LAST_LOT_ID, LEGACY_KEYS.LAST_LOT_ID));
+    const storageScope = getActiveStorageScope(this);
+    const scopedLastLotKey = getScopedLastLotStorageKey(storageScope);
+    const last = Number(
+      storageScope.scopeType === "workspace"
+        ? localStorage.getItem(scopedLastLotKey)
+        : readStorageWithLegacy(scopedLastLotKey, LEGACY_KEYS.LAST_LOT_ID)
+    );
     if (last && this.lots.some((p) => p.id === last)) {
       this.currentLotId = last;
       this.loadLot();
@@ -54,6 +70,14 @@ export const appLifecycle: AppLifecycleObject = {
       }
     } catch {
       // Ignore storage read errors.
+    }
+
+    try {
+      this.lastSyncedPayloadHash = localStorage.getItem(
+        getScopedLastSyncedPayloadHashKey(storageScope)
+      );
+    } catch {
+      this.lastSyncedPayloadHash = null;
     }
 
     try {

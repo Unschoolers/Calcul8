@@ -14,6 +14,8 @@ export type PortfolioLotTypeFilter = "both" | "bulk" | "singles";
 export type SyncStatus = "idle" | "syncing" | "success" | "error";
 export type LiveSinglesSelectionSource = "manual" | "external";
 export type LiveSinglesSelectionMode = "replace" | "merge";
+export type WorkspaceScopeType = "personal" | "workspace";
+export type WorkspaceRole = "owner" | "member";
 export type UiColor =
   | "info"
   | "success"
@@ -170,6 +172,21 @@ export interface PortfolioTotals {
   totalProfit: number;
 }
 
+export interface WorkspaceSummary {
+  workspaceId: string;
+  name: string;
+  role: WorkspaceRole;
+  status: "active";
+}
+
+export interface WorkspaceMember {
+  userId: string;
+  workspaceId: string;
+  role: WorkspaceRole;
+  status: "active" | "disabled" | "removed";
+  updatedAt: string;
+}
+
 export interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
@@ -190,6 +207,27 @@ export interface AppState extends LotSetup {
   adminImportSourceUserId: string;
   isAdminImportInProgress: boolean;
   purchaseUiMode: PurchaseUiMode;
+  activeScopeType: WorkspaceScopeType;
+  activeWorkspaceId: string | null;
+  availableWorkspaces: WorkspaceSummary[];
+  isWorkspaceLoading: boolean;
+  showCreateWorkspaceModal: boolean;
+  isCreatingWorkspace: boolean;
+  newWorkspaceName: string;
+  showWorkspaceMembersModal: boolean;
+  workspaceMembers: WorkspaceMember[];
+  isWorkspaceMembersLoading: boolean;
+  isCreatingWorkspaceJoinLink: boolean;
+  showLeaveWorkspaceModal: boolean;
+  leaveWorkspaceTransferMemberUserId: string;
+  leaveWorkspaceDeleteConfirmation: boolean;
+  isLeavingWorkspace: boolean;
+  pendingWorkspaceInviteToken: string;
+  pendingWorkspaceInviteWorkspaceId: string | null;
+  pendingWorkspaceInviteWorkspaceName: string;
+  showWorkspaceJoinDialog: boolean;
+  isResolvingWorkspaceInvite: boolean;
+  isAcceptingWorkspaceInvite: boolean;
   currentTab: AppTab;
   showNewLotModal: boolean;
   showRenameLotModal: boolean;

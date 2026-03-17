@@ -138,6 +138,9 @@ test("createInitialState initializes simple/non-pro defaults and empty collectio
     assert.equal(state.singlesCsvImportMode, "merge");
     assert.equal(state.singlesCsvMapItem, null);
     assert.equal(state.singlesCsvMapMarketValue, null);
+    assert.equal(state.activeScopeType, "personal");
+    assert.equal(state.activeWorkspaceId, null);
+    assert.deepEqual(state.availableWorkspaces, []);
     assert.equal(state.cloudSyncIntervalId, null);
     assert.equal(state.offlineReconnectIntervalId, null);
   });
@@ -151,5 +154,18 @@ test("createInitialState enables manual verify when VITE flag is true", async ()
     const state = createInitialState();
 
     assert.equal(state.showManualPurchaseVerify, true);
+  });
+});
+
+test("createInitialState restores saved workspace scope when workspace selection exists", async () => {
+  await withMockedLocalStorage(async (data) => {
+    vi.stubGlobal("navigator", { onLine: true });
+    data.set(STORAGE_KEYS.ACTIVE_SCOPE_TYPE, "workspace");
+    data.set(STORAGE_KEYS.ACTIVE_WORKSPACE_ID, "team-42");
+
+    const state = createInitialState();
+
+    assert.equal(state.activeScopeType, "workspace");
+    assert.equal(state.activeWorkspaceId, "team-42");
   });
 });

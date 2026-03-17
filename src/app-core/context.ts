@@ -17,7 +17,10 @@ import type {
   SinglesPurchaseEntry,
   SinglesSaleCardOption,
   SalesStatus,
-  UiColor
+  UiColor,
+  WorkspaceMember,
+  WorkspaceScopeType,
+  WorkspaceSummary
 } from "../types/app.ts";
 
 export interface AppComputedState {
@@ -175,6 +178,10 @@ export interface AppComputedState {
   >;
   portfolioTotals: PortfolioTotals;
   hasPortfolioData: boolean;
+  isWorkspaceScopeActive: boolean;
+  currentWorkspaceSummary: WorkspaceSummary | null;
+  currentWorkspaceName: string;
+  isCurrentWorkspaceOwner: boolean;
 }
 
 export interface AppMethodState {
@@ -278,6 +285,19 @@ export interface AppMethodState {
   applyAppUpdate(): void;
   dismissAppUpdate(): void;
   debugLogEntitlement(forceRefresh?: boolean): Promise<void>;
+  refreshWorkspaces(): Promise<void>;
+  switchToPersonalWorkspace(): Promise<void>;
+  switchToWorkspace(workspaceId: string): Promise<void>;
+  createWorkspace(): Promise<void>;
+  openWorkspaceMembersModal(): Promise<void>;
+  createWorkspaceJoinLink(): Promise<void>;
+  previewPendingWorkspaceInvite(): Promise<void>;
+  acceptPendingWorkspaceInvite(): Promise<void>;
+  dismissPendingWorkspaceInvite(): void;
+  openLeaveWorkspaceModal(): Promise<void>;
+  leaveCurrentWorkspace(): Promise<void>;
+  removeWorkspaceMember(memberUserId: string): Promise<void>;
+  handleWorkspaceAccessLost(workspaceId?: string): Promise<void>;
   unregisterServiceWorkersForDev(): Promise<void>;
   registerServiceWorker(): void;
 }
@@ -304,6 +324,7 @@ export type AppContext = AppState & AppComputedState & AppMethodState & AppVueCo
 export interface AppWatchObject {
   currentTab(this: AppContext, newTab: AppTab): void;
   purchaseUiMode(this: AppContext, newMode: "simple" | "expert"): void;
+  googleAuthEpoch(this: AppContext): void;
   currentLotId(this: AppContext, newVal: number | null): void;
   chartView(this: AppContext): void;
   portfolioChartView(this: AppContext): void;
@@ -349,6 +370,10 @@ export interface AppComputedObject {
   googleProfileName(this: AppContext): string;
   googleProfileEmail(this: AppContext): string;
   googleProfilePicture(this: AppContext): string;
+  isWorkspaceScopeActive(this: AppContext): boolean;
+  currentWorkspaceSummary(this: AppContext): WorkspaceSummary | null;
+  currentWorkspaceName(this: AppContext): string;
+  isCurrentWorkspaceOwner(this: AppContext): boolean;
   lotNameDraft: StringProxyComputed;
   currentLotType(this: AppContext): LotType;
   currentLotCatalogSource(this: AppContext): SinglesCatalogSource;

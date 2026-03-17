@@ -158,11 +158,12 @@ async function purchaseViaPaymentRequest(
   productId: string,
   win: DigitalGoodsWindow = window
 ): Promise<unknown> {
-  if (!isPlayBillingPaymentRequestSupported(win)) {
+  const PaymentRequestCtor = win.PaymentRequest;
+  if (typeof PaymentRequestCtor !== "function") {
     throw new Error("PaymentRequest API is not available in this environment.");
   }
 
-  const request = new win.PaymentRequest(
+  const request = new PaymentRequestCtor(
     [
       {
         supportedMethods: PLAY_BILLING_SERVICE_PROVIDER,

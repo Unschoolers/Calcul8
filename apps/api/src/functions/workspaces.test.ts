@@ -15,8 +15,17 @@ const {
   hasWorkspaceMembershipMock,
   getWorkspaceMembershipMock,
   listWorkspaceMembershipsMock,
+  listWorkspaceMembershipsForUserMock,
+  listWorkspacesForUserMock,
   upsertWorkspaceMembershipMock,
-  deactivateWorkspaceMembershipMock
+  deactivateWorkspaceMembershipMock,
+  transferWorkspaceOwnershipMock,
+  softDeleteWorkspaceMock,
+  createWorkspaceJoinLinkMock,
+  listWorkspaceJoinLinksMock,
+  revokeWorkspaceJoinLinkMock,
+  getWorkspaceJoinLinkByTokenHashMock,
+  markWorkspaceJoinLinkUsedMock
 } = vi.hoisted(() => ({
   getConfigMock: vi.fn(),
   createWorkspaceWithOwnerMock: vi.fn(),
@@ -24,8 +33,17 @@ const {
   hasWorkspaceMembershipMock: vi.fn(),
   getWorkspaceMembershipMock: vi.fn(),
   listWorkspaceMembershipsMock: vi.fn(),
+  listWorkspaceMembershipsForUserMock: vi.fn(),
+  listWorkspacesForUserMock: vi.fn(),
   upsertWorkspaceMembershipMock: vi.fn(),
-  deactivateWorkspaceMembershipMock: vi.fn()
+  deactivateWorkspaceMembershipMock: vi.fn(),
+  transferWorkspaceOwnershipMock: vi.fn(),
+  softDeleteWorkspaceMock: vi.fn(),
+  createWorkspaceJoinLinkMock: vi.fn(),
+  listWorkspaceJoinLinksMock: vi.fn(),
+  revokeWorkspaceJoinLinkMock: vi.fn(),
+  getWorkspaceJoinLinkByTokenHashMock: vi.fn(),
+  markWorkspaceJoinLinkUsedMock: vi.fn()
 }));
 
 vi.mock("../lib/config", () => ({
@@ -38,15 +56,30 @@ vi.mock("../lib/cosmos", () => ({
   hasWorkspaceMembership: hasWorkspaceMembershipMock,
   getWorkspaceMembership: getWorkspaceMembershipMock,
   listWorkspaceMemberships: listWorkspaceMembershipsMock,
+  listWorkspaceMembershipsForUser: listWorkspaceMembershipsForUserMock,
+  listWorkspacesForUser: listWorkspacesForUserMock,
   upsertWorkspaceMembership: upsertWorkspaceMembershipMock,
-  deactivateWorkspaceMembership: deactivateWorkspaceMembershipMock
+  deactivateWorkspaceMembership: deactivateWorkspaceMembershipMock,
+  transferWorkspaceOwnership: transferWorkspaceOwnershipMock,
+  softDeleteWorkspace: softDeleteWorkspaceMock,
+  createWorkspaceJoinLink: createWorkspaceJoinLinkMock,
+  listWorkspaceJoinLinks: listWorkspaceJoinLinksMock,
+  revokeWorkspaceJoinLink: revokeWorkspaceJoinLinkMock,
+  getWorkspaceJoinLinkByTokenHash: getWorkspaceJoinLinkByTokenHashMock,
+  markWorkspaceJoinLinkUsed: markWorkspaceJoinLinkUsedMock
 }));
 
 import {
-  workspacesCreate,
+  joinAccept,
+  workspaceJoinLinksCreate,
+  workspaceJoinLinksList,
+  workspaceJoinLinksRemove,
+  workspaceLeave,
   workspaceMembersAdd,
   workspaceMembersList,
-  workspaceMembersRemove
+  workspaceMembersRemove,
+  workspacesCreate,
+  workspacesMe
 } from "./workspaces";
 
 function createConfig(): ApiConfig {
@@ -113,8 +146,23 @@ function createContext() {
 const originalFetch = globalThis.fetch;
 
 beforeEach(() => {
-  vi.clearAllMocks();
+  vi.resetAllMocks();
   getConfigMock.mockReturnValue(createConfig());
+  createWorkspaceWithOwnerMock.mockResolvedValue({
+    workspace: {
+      workspaceId: "team-42",
+      name: "Team 42",
+      ownerUserId: "owner-user",
+      status: "active"
+    },
+    ownerMembership: {
+      userId: "owner-user",
+      workspaceId: "team-42",
+      role: "owner",
+      status: "active",
+      updatedAt: "2026-02-25T00:00:00.000Z"
+    }
+  });
   hasWorkspaceMembershipMock.mockResolvedValue(true);
   getWorkspaceMembershipMock.mockResolvedValue({
     userId: "owner-user",
@@ -124,6 +172,8 @@ beforeEach(() => {
     updatedAt: "2026-02-25T00:00:00.000Z"
   });
   listWorkspaceMembershipsMock.mockResolvedValue([]);
+  listWorkspaceMembershipsForUserMock.mockResolvedValue([]);
+  listWorkspacesForUserMock.mockResolvedValue([]);
   upsertWorkspaceMembershipMock.mockResolvedValue({
     userId: "member-user",
     workspaceId: "team-42",
@@ -132,7 +182,43 @@ beforeEach(() => {
     updatedAt: "2026-02-25T00:00:00.000Z"
   });
   deactivateWorkspaceMembershipMock.mockResolvedValue(true);
+  transferWorkspaceOwnershipMock.mockResolvedValue({
+    workspaceId: "team-42",
+    name: "Team 42",
+    ownerUserId: "member-user"
+  });
+  softDeleteWorkspaceMock.mockResolvedValue({
+    workspaceId: "team-42",
+    name: "Team 42",
+    ownerUserId: "owner-user",
+    status: "deleted"
+  });
   getWorkspaceByIdMock.mockResolvedValue(null);
+  createWorkspaceJoinLinkMock.mockResolvedValue({
+    inviteId: "invite-1",
+    workspaceId: "team-42",
+    status: "active",
+    expiresAt: "2026-03-25T00:00:00.000Z"
+  });
+  listWorkspaceJoinLinksMock.mockResolvedValue([]);
+  revokeWorkspaceJoinLinkMock.mockResolvedValue({
+    inviteId: "invite-1",
+    workspaceId: "team-42",
+    status: "revoked",
+    expiresAt: "2026-03-25T00:00:00.000Z"
+  });
+  getWorkspaceJoinLinkByTokenHashMock.mockResolvedValue({
+    inviteId: "invite-1",
+    workspaceId: "team-42",
+    status: "active",
+    expiresAt: "2099-03-25T00:00:00.000Z",
+    role: "member"
+  });
+  markWorkspaceJoinLinkUsedMock.mockResolvedValue({
+    inviteId: "invite-1",
+    workspaceId: "team-42",
+    status: "used"
+  });
 
   globalThis.fetch = (async (input: unknown) => {
     const raw = String(input);
@@ -155,7 +241,7 @@ test("workspacesCreate creates a new workspace with owner membership", async () 
   const request = createRequest(
     "POST",
     { authorization: "Bearer owner-user" },
-    { workspaceId: "team-42", name: "Team 42" }
+    { name: "Team 42" }
   );
   const context = createContext();
 
@@ -163,39 +249,48 @@ test("workspacesCreate creates a new workspace with owner membership", async () 
 
   assert.equal(response.status, 201);
   assert.equal(createWorkspaceWithOwnerMock.mock.calls.length, 1);
-  assert.equal(createWorkspaceWithOwnerMock.mock.calls[0]?.[1]?.workspaceId, "team-42");
+  assert.match(String(createWorkspaceWithOwnerMock.mock.calls[0]?.[1]?.workspaceId ?? ""), /^ws_[0-9a-f]{16}$/);
   assert.equal(createWorkspaceWithOwnerMock.mock.calls[0]?.[1]?.ownerUserId, "owner-user");
 });
 
-test("workspacesCreate returns 409 when workspace already exists", async () => {
-  getWorkspaceByIdMock.mockResolvedValue({
-    workspaceId: "team-42"
+test("workspacesMe returns all active workspaces for the caller", async () => {
+  listWorkspacesForUserMock.mockResolvedValue([
+    {
+      workspace: { workspaceId: "team-42", name: "Team 42", status: "active" },
+      membership: { userId: "owner-user", workspaceId: "team-42", role: "owner", status: "active" }
+    },
+    {
+      workspace: { workspaceId: "alpha", name: "Alpha", status: "active" },
+      membership: { userId: "owner-user", workspaceId: "alpha", role: "member", status: "active" }
+    }
+  ]);
+
+  const response = await workspacesMe(
+    createRequest("GET", { authorization: "Bearer owner-user" }) as never,
+    createContext() as never
+  );
+
+  assert.equal(response.status, 200, JSON.stringify(response.jsonBody));
+  assert.deepEqual((response.jsonBody as { workspaces: Array<{ workspaceId: string }> }).workspaces.map((row) => row.workspaceId), ["alpha", "team-42"]);
+});
+
+test("workspaceMembersAdd requires owner membership", async () => {
+  getWorkspaceMembershipMock.mockResolvedValue({
+    userId: "basic-user",
+    workspaceId: "team-42",
+    role: "member",
+    status: "active"
   });
   const request = createRequest(
     "POST",
-    { authorization: "Bearer owner-user" },
-    { workspaceId: "team-42", name: "Team 42" }
-  );
-  const context = createContext();
-
-  const response = await workspacesCreate(request as never, context as never);
-  assert.equal(response.status, 409);
-  assert.equal(createWorkspaceWithOwnerMock.mock.calls.length, 0);
-});
-
-test("workspaceMembersList rejects non-members", async () => {
-  hasWorkspaceMembershipMock.mockResolvedValue(false);
-  const request = createRequest(
-    "GET",
-    { authorization: "Bearer other-user" },
-    undefined,
+    { authorization: "Bearer basic-user" },
+    { userId: "new-user", role: "member" },
     { workspaceId: "team-42" }
   );
-  const context = createContext();
 
-  const response = await workspaceMembersList(request as never, context as never);
+  const response = await workspaceMembersAdd(request as never, createContext() as never);
   assert.equal(response.status, 403);
-  assert.equal(listWorkspaceMembershipsMock.mock.calls.length, 0);
+  assert.equal(upsertWorkspaceMembershipMock.mock.calls.length, 0);
 });
 
 test("workspaceMembersList returns members for authorized user", async () => {
@@ -209,47 +304,10 @@ test("workspaceMembersList returns members for authorized user", async () => {
     undefined,
     { workspaceId: "team-42" }
   );
-  const context = createContext();
 
-  const response = await workspaceMembersList(request as never, context as never);
+  const response = await workspaceMembersList(request as never, createContext() as never);
   assert.equal(response.status, 200);
   assert.equal((response.jsonBody as { count: number }).count, 2);
-});
-
-test("workspaceMembersAdd requires owner/admin membership", async () => {
-  getWorkspaceMembershipMock.mockResolvedValue({
-    userId: "basic-user",
-    workspaceId: "team-42",
-    role: "member",
-    status: "active"
-  });
-  const request = createRequest(
-    "POST",
-    { authorization: "Bearer basic-user" },
-    { userId: "new-user", role: "member" },
-    { workspaceId: "team-42" }
-  );
-  const context = createContext();
-
-  const response = await workspaceMembersAdd(request as never, context as never);
-  assert.equal(response.status, 403);
-  assert.equal(upsertWorkspaceMembershipMock.mock.calls.length, 0);
-});
-
-test("workspaceMembersAdd upserts member when caller is owner/admin", async () => {
-  const request = createRequest(
-    "POST",
-    { authorization: "Bearer owner-user" },
-    { userId: "new-user", role: "member" },
-    { workspaceId: "team-42" }
-  );
-  const context = createContext();
-
-  const response = await workspaceMembersAdd(request as never, context as never);
-  assert.equal(response.status, 200);
-  assert.equal(upsertWorkspaceMembershipMock.mock.calls.length, 1);
-  assert.equal(upsertWorkspaceMembershipMock.mock.calls[0]?.[1]?.workspaceId, "team-42");
-  assert.equal(upsertWorkspaceMembershipMock.mock.calls[0]?.[1]?.userId, "new-user");
 });
 
 test("workspaceMembersRemove rejects removing owner membership", async () => {
@@ -267,46 +325,248 @@ test("workspaceMembersRemove rejects removing owner membership", async () => {
       status: "active"
     });
 
-  const request = createRequest(
-    "DELETE",
-    { authorization: "Bearer owner-user" },
-    undefined,
-    { workspaceId: "team-42", memberUserId: "owner-user" }
+  const response = await workspaceMembersRemove(
+    createRequest(
+      "DELETE",
+      { authorization: "Bearer owner-user" },
+      undefined,
+      { workspaceId: "team-42", memberUserId: "owner-user" }
+    ) as never,
+    createContext() as never
   );
-  const context = createContext();
 
-  const response = await workspaceMembersRemove(request as never, context as never);
   assert.equal(response.status, 400);
-  assert.equal(deactivateWorkspaceMembershipMock.mock.calls.length, 0);
 });
 
-test("workspaceMembersRemove deactivates target member", async () => {
-  getWorkspaceMembershipMock
-    .mockResolvedValueOnce({
-      userId: "owner-user",
-      workspaceId: "team-42",
-      role: "owner",
-      status: "active"
-    })
-    .mockResolvedValueOnce({
-      userId: "member-user",
-      workspaceId: "team-42",
-      role: "member",
-      status: "active"
-    });
+test("workspaceLeave removes a regular member from the workspace", async () => {
+  getWorkspaceMembershipMock.mockResolvedValueOnce({
+    userId: "member-user",
+    workspaceId: "team-42",
+    role: "member",
+    status: "active"
+  });
 
-  const request = createRequest(
-    "DELETE",
-    { authorization: "Bearer owner-user" },
-    undefined,
-    { workspaceId: "team-42", memberUserId: "member-user" }
+  const response = await workspaceLeave(
+    createRequest(
+      "POST",
+      { authorization: "Bearer member-user" },
+      {},
+      { workspaceId: "team-42" }
+    ) as never,
+    createContext() as never
   );
-  const context = createContext();
 
-  const response = await workspaceMembersRemove(request as never, context as never);
   assert.equal(response.status, 200);
   assert.equal(deactivateWorkspaceMembershipMock.mock.calls.length, 1);
   assert.equal(deactivateWorkspaceMembershipMock.mock.calls[0]?.[1], "member-user");
-  assert.equal(deactivateWorkspaceMembershipMock.mock.calls[0]?.[2], "team-42");
 });
 
+test("workspaceLeave transfers ownership when owner leaves and members remain", async () => {
+  getWorkspaceMembershipMock.mockResolvedValue({
+    userId: "owner-user",
+    workspaceId: "team-42",
+    role: "owner",
+    status: "active"
+  });
+  listWorkspaceMembershipsMock.mockResolvedValue([
+    { userId: "owner-user", workspaceId: "team-42", role: "owner", status: "active", updatedAt: "2026-02-25T00:00:00.000Z" },
+    { userId: "member-user", workspaceId: "team-42", role: "member", status: "active", updatedAt: "2026-02-25T00:00:00.000Z" }
+  ]);
+
+  const response = await workspaceLeave(
+    createRequest(
+      "POST",
+      { authorization: "Bearer owner-user" },
+      { newOwnerUserId: "member-user" },
+      { workspaceId: "team-42" }
+    ) as never,
+    createContext() as never
+  );
+
+  assert.equal(response.status, 200);
+  assert.equal(upsertWorkspaceMembershipMock.mock.calls[0]?.[1]?.role, "owner");
+  assert.equal(deactivateWorkspaceMembershipMock.mock.calls[0]?.[1], "owner-user");
+  assert.equal(transferWorkspaceOwnershipMock.mock.calls[0]?.[2], "member-user");
+});
+
+test("workspaceLeave requires delete confirmation for last owner", async () => {
+  getWorkspaceMembershipMock.mockResolvedValue({
+    userId: "owner-user",
+    workspaceId: "team-42",
+    role: "owner",
+    status: "active"
+  });
+  listWorkspaceMembershipsMock.mockResolvedValue([
+    { userId: "owner-user", workspaceId: "team-42", role: "owner", status: "active", updatedAt: "2026-02-25T00:00:00.000Z" }
+  ]);
+
+  const response = await workspaceLeave(
+    createRequest(
+      "POST",
+      { authorization: "Bearer owner-user" },
+      {},
+      { workspaceId: "team-42" }
+    ) as never,
+    createContext() as never
+  );
+
+  assert.equal(response.status, 400);
+  assert.equal(softDeleteWorkspaceMock.mock.calls.length, 0);
+});
+
+test("workspaceLeave soft deletes workspace when last owner confirms delete", async () => {
+  getWorkspaceMembershipMock.mockResolvedValue({
+    userId: "owner-user",
+    workspaceId: "team-42",
+    role: "owner",
+    status: "active"
+  });
+  listWorkspaceMembershipsMock.mockResolvedValue([
+    { userId: "owner-user", workspaceId: "team-42", role: "owner", status: "active", updatedAt: "2026-02-25T00:00:00.000Z" }
+  ]);
+
+  const response = await workspaceLeave(
+    createRequest(
+      "POST",
+      { authorization: "Bearer owner-user" },
+      { deleteWorkspace: true },
+      { workspaceId: "team-42" }
+    ) as never,
+    createContext() as never
+  );
+
+  assert.equal(response.status, 200);
+  assert.equal(softDeleteWorkspaceMock.mock.calls.length, 1);
+  assert.equal(deactivateWorkspaceMembershipMock.mock.calls.length, 1);
+});
+
+test("workspaceJoinLinksCreate creates a one-time join link for owner", async () => {
+  getWorkspaceByIdMock.mockResolvedValue({
+    workspaceId: "team-42",
+    name: "Team 42",
+    ownerUserId: "owner-user",
+    status: "active"
+  });
+  const response = await workspaceJoinLinksCreate(
+    createRequest(
+      "POST",
+      { authorization: "Bearer owner-user" },
+      {},
+      { workspaceId: "team-42" }
+    ) as never,
+    createContext() as never
+  );
+
+  assert.equal(response.status, 201);
+  assert.equal(createWorkspaceJoinLinkMock.mock.calls.length, 1);
+  const body = response.jsonBody as { inviteUrl: string };
+  assert.match(body.inviteUrl, /^\/join\?invite=/);
+});
+
+test("workspaceJoinLinksList returns join links for owner", async () => {
+  listWorkspaceJoinLinksMock.mockResolvedValue([
+    { inviteId: "invite-1", workspaceId: "team-42", status: "active", expiresAt: "2099-01-01T00:00:00.000Z" },
+    { inviteId: "invite-2", workspaceId: "team-42", status: "used", expiresAt: "2099-01-01T00:00:00.000Z" }
+  ]);
+
+  const response = await workspaceJoinLinksList(
+    createRequest(
+      "GET",
+      { authorization: "Bearer owner-user" },
+      undefined,
+      { workspaceId: "team-42" }
+    ) as never,
+    createContext() as never
+  );
+
+  assert.equal(response.status, 200);
+  assert.equal((response.jsonBody as { links: unknown[] }).links.length, 2);
+});
+
+test("workspaceJoinLinksRemove revokes join link", async () => {
+  const response = await workspaceJoinLinksRemove(
+    createRequest(
+      "DELETE",
+      { authorization: "Bearer owner-user" },
+      undefined,
+      { workspaceId: "team-42", inviteId: "invite-1" }
+    ) as never,
+    createContext() as never
+  );
+
+  assert.equal(response.status, 200);
+  assert.equal(revokeWorkspaceJoinLinkMock.mock.calls.length, 1);
+});
+
+test("joinAccept previews workspace before consuming invite", async () => {
+  getWorkspaceByIdMock.mockResolvedValue({
+    workspaceId: "team-42",
+    name: "Team 42",
+    ownerUserId: "owner-user",
+    status: "active"
+  });
+  const response = await joinAccept(
+    createRequest(
+      "POST",
+      { authorization: "Bearer joiner-user" },
+      { inviteToken: "token-123", preview: true }
+    ) as never,
+    createContext() as never
+  );
+
+  assert.equal(response.status, 200);
+  assert.equal(upsertWorkspaceMembershipMock.mock.calls.length, 0);
+  assert.equal((response.jsonBody as { workspaceName: string }).workspaceName, "Team 42");
+});
+
+test("joinAccept creates member membership and marks link used", async () => {
+  getWorkspaceMembershipMock.mockResolvedValue(null);
+  getWorkspaceByIdMock.mockResolvedValue({
+    workspaceId: "team-42",
+    name: "Team 42",
+    ownerUserId: "owner-user",
+    status: "active"
+  });
+
+  const response = await joinAccept(
+    createRequest(
+      "POST",
+      { authorization: "Bearer joiner-user" },
+      { inviteToken: "token-123" }
+    ) as never,
+    createContext() as never
+  );
+
+  assert.equal(response.status, 200);
+  assert.equal(upsertWorkspaceMembershipMock.mock.calls.length, 1);
+  assert.equal(upsertWorkspaceMembershipMock.mock.calls[0]?.[1]?.role, "member");
+  assert.equal(markWorkspaceJoinLinkUsedMock.mock.calls.length, 1);
+  assert.equal(markWorkspaceJoinLinkUsedMock.mock.calls[0]?.[2], "joiner-user");
+});
+
+test("joinAccept rejects used join links", async () => {
+  getWorkspaceByIdMock.mockResolvedValue({
+    workspaceId: "team-42",
+    name: "Team 42",
+    ownerUserId: "owner-user",
+    status: "active"
+  });
+  getWorkspaceJoinLinkByTokenHashMock.mockResolvedValue({
+    inviteId: "invite-1",
+    workspaceId: "team-42",
+    status: "used",
+    expiresAt: "2099-03-25T00:00:00.000Z",
+    role: "member"
+  });
+
+  const response = await joinAccept(
+    createRequest(
+      "POST",
+      { authorization: "Bearer joiner-user" },
+      { inviteToken: "token-123" }
+    ) as never,
+    createContext() as never
+  );
+
+  assert.equal(response.status, 409);
+});

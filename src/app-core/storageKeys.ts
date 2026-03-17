@@ -4,6 +4,8 @@ export const STORAGE_KEYS = {
   PORTFOLIO_FILTER_IDS: "whatfees_portfolio_filter_ids",
   PORTFOLIO_FILTER_TYPE: "whatfees_portfolio_filter_type",
   PURCHASE_UI_MODE: "whatfees_purchase_ui_mode",
+  ACTIVE_SCOPE_TYPE: "whatfees_active_scope_type",
+  ACTIVE_WORKSPACE_ID: "whatfees_active_workspace_id",
   LAST_LOT_ID: "whatfees_last_lot_id",
   PRESETS: "whatfees_presets",
   EXCHANGE_RATE_CACHE: "whatfees_exchange_rate_usd_cad_v1",
@@ -14,6 +16,7 @@ export const STORAGE_KEYS = {
   CSRF_TOKEN: "whatfees_csrf_token_v1",
   DEBUG_USER_ID: "whatfees_debug_user_id",
   SYNC_CLIENT_VERSION: "whatfees_sync_client_version",
+  LAST_SYNCED_PAYLOAD_HASH: "whatfees_last_synced_payload_hash",
   API_BASE_URL: "whatfees_api_base_url"
 } as const;
 
@@ -30,6 +33,25 @@ const LEGACY_STORAGE_KEYS = {
 
 const SALES_PREFIX = "whatfees_sales_";
 const LEGACY_SALES_PREFIX = "rtyh_sales_";
+const WORKSPACE_SCOPE_SEGMENT = "__ws__";
+
+export type AppStorageScope = {
+  scopeType: "personal" | "workspace";
+  workspaceId?: string | null;
+};
+
+function normalizeWorkspaceScopeId(workspaceId: string | null | undefined): string {
+  return encodeURIComponent(String(workspaceId || "").trim());
+}
+
+function isWorkspaceScope(scope: AppStorageScope): boolean {
+  return scope.scopeType === "workspace" && !!normalizeWorkspaceScopeId(scope.workspaceId);
+}
+
+function buildScopedStorageKey(baseKey: string, scope: AppStorageScope): string {
+  if (!isWorkspaceScope(scope)) return baseKey;
+  return `${baseKey}${WORKSPACE_SCOPE_SEGMENT}${normalizeWorkspaceScopeId(scope.workspaceId)}`;
+}
 
 function parseJsonLoose(value: string): unknown {
   try {
@@ -98,12 +120,31 @@ export function migrateLegacyStorageKeys(): void {
   migrateAllLegacySalesKeys();
 }
 
-export function getSalesStorageKey(lotId: number): string {
-  return `${SALES_PREFIX}${lotId}`;
+export function getSalesStorageKey(lotId: number, scope: AppStorageScope = { scopeType: "personal" }): string {
+  if (!isWorkspaceScope(scope)) {
+    return `${SALES_PREFIX}${lotId}`;
+  }
+  return `${SALES_PREFIX}${normalizeWorkspaceScopeId(scope.workspaceId)}__${lotId}`;
 }
 
 export function getLegacySalesStorageKey(lotId: number): string {
   return `${LEGACY_SALES_PREFIX}${lotId}`;
+}
+
+export function getScopedPresetsStorageKey(scope: AppStorageScope): string {
+  return buildScopedStorageKey(STORAGE_KEYS.PRESETS, scope);
+}
+
+export function getScopedLastLotStorageKey(scope: AppStorageScope): string {
+  return buildScopedStorageKey(STORAGE_KEYS.LAST_LOT_ID, scope);
+}
+
+export function getScopedSyncClientVersionKey(scope: AppStorageScope): string {
+  return buildScopedStorageKey(STORAGE_KEYS.SYNC_CLIENT_VERSION, scope);
+}
+
+export function getScopedLastSyncedPayloadHashKey(scope: AppStorageScope): string {
+  return buildScopedStorageKey(STORAGE_KEYS.LAST_SYNCED_PAYLOAD_HASH, scope);
 }
 
 export function migrateLegacySalesKey(lotId: number): void {

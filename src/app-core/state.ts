@@ -16,6 +16,21 @@ function getLocalTodayDate(): string {
   return `${year}-${month}-${day}`;
 }
 
+function resolveSavedScope(): Pick<AppState, "activeScopeType" | "activeWorkspaceId"> {
+  const rawScopeType = String(localStorage.getItem(STORAGE_KEYS.ACTIVE_SCOPE_TYPE) || "").trim().toLowerCase();
+  const activeWorkspaceId = String(localStorage.getItem(STORAGE_KEYS.ACTIVE_WORKSPACE_ID) || "").trim() || null;
+  if (rawScopeType === "workspace" && activeWorkspaceId) {
+    return {
+      activeScopeType: "workspace",
+      activeWorkspaceId
+    };
+  }
+  return {
+    activeScopeType: "personal",
+    activeWorkspaceId: null
+  };
+}
+
 export function createInitialState(): AppState {
   migrateLegacyStorageKeys();
   const legacyKeys = getLegacyStorageKeys();
@@ -24,6 +39,7 @@ export function createInitialState(): AppState {
   const purchaseUiMode = hasProAccess && localStorage.getItem(STORAGE_KEYS.PURCHASE_UI_MODE) === "expert"
     ? "expert"
     : "simple";
+  const savedScope = resolveSavedScope();
   const showManualPurchaseVerify =
     import.meta.env.DEV ||
     String(import.meta.env.VITE_SHOW_MANUAL_PURCHASE_VERIFY || "").toLowerCase() === "true";
@@ -43,6 +59,27 @@ export function createInitialState(): AppState {
     adminImportSourceUserId: "",
     isAdminImportInProgress: false,
     purchaseUiMode,
+    activeScopeType: savedScope.activeScopeType,
+    activeWorkspaceId: savedScope.activeWorkspaceId,
+    availableWorkspaces: [],
+    isWorkspaceLoading: false,
+    showCreateWorkspaceModal: false,
+    isCreatingWorkspace: false,
+    newWorkspaceName: "",
+    showWorkspaceMembersModal: false,
+    workspaceMembers: [],
+    isWorkspaceMembersLoading: false,
+    isCreatingWorkspaceJoinLink: false,
+    showLeaveWorkspaceModal: false,
+    leaveWorkspaceTransferMemberUserId: "",
+    leaveWorkspaceDeleteConfirmation: false,
+    isLeavingWorkspace: false,
+    pendingWorkspaceInviteToken: "",
+    pendingWorkspaceInviteWorkspaceId: null,
+    pendingWorkspaceInviteWorkspaceName: "",
+    showWorkspaceJoinDialog: false,
+    isResolvingWorkspaceInvite: false,
+    isAcceptingWorkspaceInvite: false,
     // UI State
     currentTab: "config",
     showNewLotModal: false,

@@ -108,6 +108,59 @@
         <v-app-bar-title class="text-body-1">WhatFees</v-app-bar-title>
 
         <template v-slot:append>
+          <v-menu location="bottom end" offset="8">
+            <template #activator="{ props: workspaceMenuProps }">
+              <v-btn
+                v-bind="workspaceMenuProps"
+                variant="tonal"
+                size="small"
+                color="primary"
+                prepend-icon="mdi-account-group-outline"
+                :loading="isWorkspaceLoading"
+                class="mr-2"
+              >
+                {{ currentWorkspaceName }}
+              </v-btn>
+            </template>
+
+            <v-list density="compact" min-width="260">
+              <v-list-subheader>Workspace</v-list-subheader>
+              <v-list-item
+                title="Personal"
+                prepend-icon="mdi-home-account"
+                :active="activeScopeType === 'personal'"
+                @click="switchToPersonalWorkspace"
+              ></v-list-item>
+              <v-list-item
+                v-for="workspace in availableWorkspaces"
+                :key="workspace.workspaceId"
+                :title="workspace.name"
+                :subtitle="workspace.role === 'owner' ? 'Owner' : 'Member'"
+                prepend-icon="mdi-account-multiple-outline"
+                :active="activeWorkspaceId === workspace.workspaceId"
+                @click="switchToWorkspace(workspace.workspaceId)"
+              ></v-list-item>
+              <v-divider class="my-1"></v-divider>
+              <v-list-item
+                v-if="activeScopeType === 'personal'"
+                title="Create shared workspace"
+                prepend-icon="mdi-plus-circle-outline"
+                @click="showCreateWorkspaceModal = true"
+              ></v-list-item>
+              <v-list-item
+                v-if="isWorkspaceScopeActive"
+                title="Workspace members"
+                prepend-icon="mdi-account-cog-outline"
+                @click="openWorkspaceMembersModal"
+              ></v-list-item>
+              <v-list-item
+                v-if="isWorkspaceScopeActive"
+                title="Leave workspace"
+                prepend-icon="mdi-exit-to-app"
+                @click="openLeaveWorkspaceModal"
+              ></v-list-item>
+            </v-list>
+          </v-menu>
           <v-btn
             v-if="showInstallPrompt"
             color="primary"
@@ -521,6 +574,171 @@
         @click="accessProFeature('portfolioReport')"
         class="fab-primary fab-portfolio-report"
       ></v-fab>
+
+      <v-dialog v-model="showCreateWorkspaceModal" max-width="460">
+        <v-card>
+          <v-card-title>Create Shared Workspace</v-card-title>
+          <v-card-text>
+            <p class="text-body-2 text-medium-emphasis mb-4">
+              This starts a new shared workspace and copies your current Personal data into it.
+            </p>
+            <v-text-field
+              v-model="newWorkspaceName"
+              label="Workspace name"
+              variant="outlined"
+              density="comfortable"
+              @keyup.enter="createWorkspace"
+            ></v-text-field>
+          </v-card-text>
+          <v-card-actions>
+            <v-spacer></v-spacer>
+            <v-btn variant="text" @click="showCreateWorkspaceModal = false">Cancel</v-btn>
+            <v-btn
+              color="primary"
+              :loading="isCreatingWorkspace"
+              :disabled="activeScopeType !== 'personal'"
+              @click="createWorkspace"
+            >
+              Create workspace
+            </v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
+
+      <v-dialog v-model="showWorkspaceMembersModal" max-width="640">
+        <v-card>
+          <v-card-title class="d-flex align-center justify-space-between">
+            <span>{{ currentWorkspaceName }} Members</span>
+            <div class="d-flex align-center ga-2">
+              <v-btn
+                v-if="isCurrentWorkspaceOwner"
+                size="small"
+                variant="tonal"
+                color="primary"
+                prepend-icon="mdi-link-variant"
+                :loading="isCreatingWorkspaceJoinLink"
+                @click="createWorkspaceJoinLink"
+              >
+                Invite member
+              </v-btn>
+              <v-btn
+                icon="mdi-close"
+                variant="text"
+                size="small"
+                @click="showWorkspaceMembersModal = false"
+              ></v-btn>
+            </div>
+          </v-card-title>
+          <v-card-text>
+            <v-progress-linear
+              v-if="isWorkspaceMembersLoading"
+              indeterminate
+              color="primary"
+              class="mb-4"
+            ></v-progress-linear>
+            <v-list v-else lines="two" density="comfortable">
+              <v-list-item
+                v-for="member in workspaceMembers"
+                :key="`${member.workspaceId}-${member.userId}`"
+                :title="member.userId"
+                :subtitle="member.role === 'owner' ? 'Owner' : 'Member'"
+              >
+                <template #append>
+                  <v-btn
+                    v-if="isCurrentWorkspaceOwner && member.role !== 'owner'"
+                    size="small"
+                    variant="text"
+                    color="error"
+                    @click="removeWorkspaceMember(member.userId)"
+                  >
+                    Remove
+                  </v-btn>
+                </template>
+              </v-list-item>
+              <v-list-item v-if="!workspaceMembers.length" title="No members found"></v-list-item>
+            </v-list>
+          </v-card-text>
+          <v-card-actions>
+            <v-spacer></v-spacer>
+            <v-btn variant="text" @click="showWorkspaceMembersModal = false">Close</v-btn>
+            <v-btn color="error" variant="tonal" @click="openLeaveWorkspaceModal">Leave workspace</v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
+
+      <v-dialog v-model="showLeaveWorkspaceModal" max-width="480">
+        <v-card>
+          <v-card-title>Leave Workspace</v-card-title>
+          <v-card-text>
+            <p class="text-body-2 text-medium-emphasis mb-4">
+              {{
+                isCurrentWorkspaceOwner
+                  ? 'Owners need to transfer ownership before leaving, or confirm deletion if they are the last member.'
+                  : 'You will lose access to this shared workspace and return to Personal mode.'
+              }}
+            </p>
+
+            <v-select
+              v-if="isCurrentWorkspaceOwner && workspaceMembers.some(member => member.role === 'member' && member.status === 'active')"
+              v-model="leaveWorkspaceTransferMemberUserId"
+              :items="workspaceMembers
+                .filter(member => member.role === 'member' && member.status === 'active')
+                .map(member => ({ title: member.userId, value: member.userId }))"
+              item-title="title"
+              item-value="value"
+              label="New owner"
+              variant="outlined"
+              density="comfortable"
+              hint="Choose the member who should become owner when you leave."
+              persistent-hint
+            ></v-select>
+
+            <v-checkbox
+              v-else-if="isCurrentWorkspaceOwner"
+              v-model="leaveWorkspaceDeleteConfirmation"
+              color="error"
+              label="I understand this will delete the workspace for everyone."
+              hide-details
+            ></v-checkbox>
+          </v-card-text>
+          <v-card-actions>
+            <v-spacer></v-spacer>
+            <v-btn variant="text" @click="showLeaveWorkspaceModal = false">Cancel</v-btn>
+            <v-btn
+              color="error"
+              :loading="isLeavingWorkspace"
+              @click="leaveCurrentWorkspace"
+            >
+              Leave workspace
+            </v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
+
+      <v-dialog v-model="showWorkspaceJoinDialog" max-width="460">
+        <v-card>
+          <v-card-title>Join Workspace</v-card-title>
+          <v-card-text>
+            <p class="text-body-1 mb-2">
+              Join <strong>{{ pendingWorkspaceInviteWorkspaceName || pendingWorkspaceInviteWorkspaceId || 'this workspace' }}</strong>?
+            </p>
+            <p class="text-body-2 text-medium-emphasis">
+              This will add a new shared workspace alongside your Personal workspace.
+            </p>
+          </v-card-text>
+          <v-card-actions>
+            <v-spacer></v-spacer>
+            <v-btn variant="text" @click="dismissPendingWorkspaceInvite">Cancel</v-btn>
+            <v-btn
+              color="primary"
+              :loading="isAcceptingWorkspaceInvite"
+              @click="acceptPendingWorkspaceInvite"
+            >
+              Join workspace
+            </v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
 
       <!-- New Lot Modal -->
       <v-dialog v-model="showNewLotModal" max-width="400">
@@ -1225,7 +1443,7 @@
         role="status"
         aria-live="polite"
         aria-atomic="true"
-        close-on-content-click="false"
+        :close-on-content-click="false"
       >
         A new version of WhatFees is available.
         <template #actions>
@@ -1259,9 +1477,15 @@
                   class="auth-gate-logo"
                 />
                 <p class="text-overline auth-gate-overline mb-2">WhatFees</p>
-                <h1 class="text-h5 font-weight-bold mb-2 auth-gate-title">Sign in to continue</h1>
+                <h1 class="text-h5 font-weight-bold mb-2 auth-gate-title">
+                  {{ pendingWorkspaceInviteToken ? 'Sign in to join workspace' : 'Sign in to continue' }}
+                </h1>
                 <p class="text-body-2 text-medium-emphasis mb-6">
-                  Your lots, cloud sync, and Pro access are tied to your Google account.
+                  {{
+                    pendingWorkspaceInviteToken
+                      ? 'Use your Google account to accept this workspace invite and keep your Personal workspace too.'
+                      : 'Your lots, cloud sync, and Pro access are tied to your Google account.'
+                  }}
                 </p>
 
                 <v-btn

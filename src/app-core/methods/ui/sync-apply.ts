@@ -1,5 +1,6 @@
-import { SYNC_CLIENT_VERSION_KEY } from "./shared.ts";
 import type { AppContext } from "../../context.ts";
+import { getScopedSyncClientVersionKey } from "../../storageKeys.ts";
+import { getActiveStorageScope } from "../../workspace-scope.ts";
 
 export interface ParsedCloudSnapshot {
   lots: unknown[];
@@ -48,7 +49,14 @@ export function shouldApplyCloudSnapshot(params: {
 
 export type SyncApplyApp = Pick<
   AppContext,
-  "lots" | "saveLotsToStorage" | "getSalesStorageKey" | "currentLotId" | "loadLot" | "sales"
+  | "lots"
+  | "saveLotsToStorage"
+  | "getSalesStorageKey"
+  | "currentLotId"
+  | "loadLot"
+  | "sales"
+  | "activeScopeType"
+  | "activeWorkspaceId"
 >;
 
 export function applyCloudSnapshotToLocal(context: SyncApplyApp, snapshot: ParsedCloudSnapshot): void {
@@ -71,6 +79,9 @@ export function applyCloudSnapshotToLocal(context: SyncApplyApp, snapshot: Parse
   }
 
   if (Number.isFinite(snapshot.version)) {
-    localStorage.setItem(SYNC_CLIENT_VERSION_KEY, String(snapshot.version));
+    localStorage.setItem(
+      getScopedSyncClientVersionKey(getActiveStorageScope(context)),
+      String(snapshot.version)
+    );
   }
 }
