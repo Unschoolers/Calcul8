@@ -26,6 +26,7 @@ import {
   SalesLiveApiError,
   saveAuthoritativeLivePricing
 } from "./sales-live-api.ts";
+import { markLivePricingPollingBaseline } from "./ui/lot-entity-polling.ts";
 
 type QueuedLivePricingSaveContext = {
   currentLotId: number | null;
@@ -117,6 +118,12 @@ async function flushQueuedLivePricingSave(
       livePackPrice: saved.livePackPrice,
       baseVersion: saved.version ?? 0
     });
+    markLivePricingPollingBaseline(context as object, {
+      liveSpotPrice: saved.liveSpotPrice,
+      liveBoxPriceSell: saved.liveBoxPriceSell,
+      livePackPrice: saved.livePackPrice,
+      currentLivePricingVersion: saved.version
+    });
     if (notifySuccess) {
       context.notify("Live prices saved", "success");
     }
@@ -134,6 +141,12 @@ async function flushQueuedLivePricingSave(
           liveBoxPriceSell: latest.liveBoxPriceSell,
           livePackPrice: latest.livePackPrice,
           baseVersion: latest.version ?? 0
+        });
+        markLivePricingPollingBaseline(context as object, {
+          liveSpotPrice: latest.liveSpotPrice,
+          liveBoxPriceSell: latest.liveBoxPriceSell,
+          livePackPrice: latest.livePackPrice,
+          currentLivePricingVersion: latest.version
         });
       }
       context.notify("Live pricing changed in the cloud. Pulled latest saved prices.", "warning");
@@ -714,6 +727,12 @@ export const configLotMethods: ConfigMethodSubset<
 
     this.currentLivePricingVersion = null;
     this.syncLivePricesFromDefaults();
+    markLivePricingPollingBaseline(this as object, {
+      liveSpotPrice: this.liveSpotPrice,
+      liveBoxPriceSell: this.liveBoxPriceSell,
+      livePackPrice: this.livePackPrice,
+      currentLivePricingVersion: this.currentLivePricingVersion
+    });
     this.loadSalesFromStorage();
     if (canUseAuthoritativeSalesLiveApi()) {
       const selectedLotId = lot.id;
@@ -740,10 +759,22 @@ export const configLotMethods: ConfigMethodSubset<
               livePackPrice: latestLivePricing.livePackPrice,
               baseVersion: latestLivePricing.version ?? 0
             });
+            markLivePricingPollingBaseline(this as object, {
+              liveSpotPrice: latestLivePricing.liveSpotPrice,
+              liveBoxPriceSell: latestLivePricing.liveBoxPriceSell,
+              livePackPrice: latestLivePricing.livePackPrice,
+              currentLivePricingVersion: latestLivePricing.version
+            });
           } else {
             this.currentLivePricingVersion = null;
             const state = getLivePricingQueueState(this as object);
             state.lastSavedHash = null;
+            markLivePricingPollingBaseline(this as object, {
+              liveSpotPrice: this.liveSpotPrice,
+              liveBoxPriceSell: this.liveBoxPriceSell,
+              livePackPrice: this.livePackPrice,
+              currentLivePricingVersion: this.currentLivePricingVersion
+            });
           }
         } catch (error) {
           console.warn("Failed to hydrate authoritative lot data", error);

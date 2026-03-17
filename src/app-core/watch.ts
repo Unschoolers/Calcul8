@@ -1,5 +1,6 @@
 import type { AppWatchObject } from "./context.ts";
 import { getScopedLastLotStorageKey, STORAGE_KEYS } from "./storageKeys.ts";
+import { pollAuthoritativeLotEntities, startLotEntityPolling, stopLotEntityPolling } from "./methods/ui/lot-entity-polling.ts";
 import { getActiveStorageScope } from "./workspace-scope.ts";
 
 export const appWatch: AppWatchObject = {
@@ -45,12 +46,15 @@ export const appWatch: AppWatchObject = {
 
   googleAuthEpoch() {
     if (!this.isGoogleSignedIn) {
+      stopLotEntityPolling(this);
       this.availableWorkspaces = [];
       this.workspaceMembers = [];
       this.showWorkspaceMembersModal = false;
       return;
     }
 
+    startLotEntityPolling(this);
+    void pollAuthoritativeLotEntities(this);
     void this.refreshWorkspaces();
 
     if (this.pendingWorkspaceInviteToken) {
@@ -68,6 +72,7 @@ export const appWatch: AppWatchObject = {
     }
 
     if (!newVal) {
+      stopLotEntityPolling(this);
       this.currentTab = "config";
       this.sales = [];
       if (this.salesChart) {
@@ -77,7 +82,11 @@ export const appWatch: AppWatchObject = {
         }
         this.salesChart = null;
       }
+      return;
     }
+
+    startLotEntityPolling(this);
+    void pollAuthoritativeLotEntities(this);
   },
 
   chartView() {

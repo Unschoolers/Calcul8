@@ -7,6 +7,7 @@ import { STORAGE_KEYS } from "../../app-core/storageKeys.ts";
 import { normalizeSinglesCatalogSource } from "../../app-core/shared/singles-catalog-source.ts";
 import { createWindowContextBridge } from "./contextBridge.ts";
 import { singlesImportComputed, singlesImportMethods } from "./singles/useSinglesImport.ts";
+import { singlesRowEditorMethods } from "./singles/useSinglesRowEditor.ts";
 import { SinglesCsvImportDialog } from "./singles/SinglesCsvImportDialog.ts";
 import { SinglesPurchasingCard } from "./singles/SinglesPurchasingCard.ts";
 import { SinglesSellingCard } from "./singles/SinglesSellingCard.ts";
@@ -33,15 +34,6 @@ const DESKTOP_VIRTUAL_VIEWPORT_HEIGHT = 560;
 const DESKTOP_VIRTUAL_BUFFER_ROWS = 6;
 const MOBILE_RENDER_INITIAL_COUNT = 30;
 const MOBILE_RENDER_BATCH_COUNT = 30;
-
-function createNextSinglesEntryId(entries: SinglesPurchaseEntry[]): number {
-  const highestId = entries.reduce((maxId, entry) => {
-    const candidateId = Number(entry.id);
-    if (!Number.isFinite(candidateId) || candidateId <= 0) return maxId;
-    return Math.max(maxId, Math.floor(candidateId));
-  }, 0);
-  return Math.max(Date.now(), highestId + 1);
-}
 
 function toConditionAbbreviation(value: unknown): string {
   const normalized = String(value || "").trim().toLocaleLowerCase();
@@ -570,65 +562,12 @@ export const SinglesConfigWindow: any = {
       return totalQuantity > 0 && remainingQuantity === 0;
     },
 
-    getEditingSinglesQuantity(this: any): number {
-      const quantity = Number(this.editingSinglesRow?.quantity);
-      if (!Number.isFinite(quantity) || quantity < 1) return 1;
-      return Math.floor(quantity);
-    },
-
     formatSinglesEditorItemLabel(this: any, item: unknown, cardNumber: unknown): string {
       const safeItem = String(item || "").trim();
       const safeCardNumber = String(cardNumber || "").trim();
       if (!safeItem) return "";
       if (!this.showCatalogSuggestions || !safeCardNumber) return safeItem;
       return `${safeItem} #${safeCardNumber}`;
-    },
-
-    setEditingSinglesQuantity(this: any, nextQuantity: unknown): void {
-      const parsedQuantity = Number(nextQuantity);
-      if (!Number.isFinite(parsedQuantity) || parsedQuantity < 1) {
-        this.editingSinglesRow.quantity = 1;
-        return;
-      }
-      this.editingSinglesRow.quantity = Math.floor(parsedQuantity);
-    },
-
-    increaseEditingSinglesQuantity(this: any): void {
-      this.setEditingSinglesQuantity(this.getEditingSinglesQuantity() + 1);
-    },
-
-    decreaseEditingSinglesQuantity(this: any): void {
-      this.setEditingSinglesQuantity(this.getEditingSinglesQuantity() - 1);
-    },
-
-    resetSinglesRowDraft(
-      this: any,
-      options?: {
-        currency?: "CAD" | "USD";
-        condition?: string;
-        language?: string;
-      }
-    ): void {
-      const nextCurrency = options?.currency === "USD" || options?.currency === "CAD"
-        ? options.currency
-        : (this.currency === "USD" ? "USD" : "CAD");
-      this.editingSinglesRow = {
-        item: "",
-        cardNumber: "",
-        image: "",
-        condition: String(options?.condition || ""),
-        language: String(options?.language || ""),
-        cost: 0,
-        currency: nextCurrency,
-        quantity: 1,
-        marketValue: 0
-      };
-      this.singlesItemSearchText = "";
-      this.singlesItemMenuOpen = false;
-      this.singlesEditorPreviewLoading = false;
-      this.singlesItemSuggestions = [];
-      this.singlesItemSearchLoading = false;
-      this.cancelSinglesItemSearch();
     },
 
     resolveCardsApiBaseUrl(this: any): string {
@@ -952,147 +891,6 @@ export const SinglesConfigWindow: any = {
       return rarity;
     },
 
-    handleAddSinglesPurchase(this: any): void {
-      this.openSinglesRowEditor();
-    },
-
-    openSinglesRowEditor(this: any, entry?: SinglesPurchaseEntry): void {
-      if (entry) {
-        this.editingSinglesRowId = entry.id;
-        this.editingSinglesRow = {
-          item: String(entry.item || ""),
-          cardNumber: String(entry.cardNumber || ""),
-          image: String(entry.image || ""),
-          condition: String(entry.condition || ""),
-          language: String(entry.language || ""),
-          cost: Number(entry.cost) || 0,
-          currency: entry.currency === "USD" || entry.currency === "CAD"
-            ? entry.currency
-            : (this.currency === "USD" ? "USD" : "CAD"),
-          quantity: Number(entry.quantity) || 1,
-          marketValue: Number(entry.marketValue) || 0
-        };
-        this.suppressNextSinglesItemSearchUpdate = true;
-        this.singlesItemSearchText = "";
-      } else {
-        this.editingSinglesRowId = null;
-        this.resetSinglesRowDraft();
-      }
-      this.showSinglesRowEditor = true;
-      this.singlesItemMenuOpen = false;
-      void this.preloadSinglesEditorPreview();
-    },
-
-    closeSinglesRowEditor(this: any): void {
-      this.showSinglesRowEditor = false;
-      this.singlesEditorPreviewLoading = false;
-      this.editingSinglesRowId = null;
-      this.resetSinglesRowDraft();
-    },
-
-    saveSinglesRowEditor(this: any, mode: "close" | "new" = "close"): void {
-      const nextItem = String(this.editingSinglesRow.item || "").trim();
-      const nextCardNumber = String(this.editingSinglesRow.cardNumber || "").trim();
-      const nextImage = String(this.editingSinglesRow.image || "").trim();
-      const nextCondition = String(this.editingSinglesRow.condition || "").trim();
-      const nextLanguage = String(this.editingSinglesRow.language || "").trim();
-      const parsedCost = Number(this.editingSinglesRow.cost);
-      const nextCurrency = this.editingSinglesRow.currency === "USD" ? "USD" : "CAD";
-      const parsedQuantity = Number(this.editingSinglesRow.quantity);
-      const parsedMarketValue = Number(this.editingSinglesRow.marketValue);
-
-      if (!nextItem) {
-        this.notify("Item is required.", "warning");
-        return;
-      }
-      if (!Number.isFinite(parsedCost) || parsedCost < 0) {
-        this.notify("Cost is required.", "warning");
-        return;
-      }
-      if (!Number.isFinite(parsedQuantity) || parsedQuantity < 0) {
-        this.notify("Quantity must be 0 or greater.", "warning");
-        return;
-      }
-
-      const nextCost = parsedCost;
-      const nextQuantity = Math.floor(parsedQuantity);
-      const nextMarketValue = Number.isFinite(parsedMarketValue) && parsedMarketValue >= 0 ? parsedMarketValue : 0;
-      const isAdding = this.editingSinglesRowId == null;
-
-      if (isAdding) {
-        const nextId = createNextSinglesEntryId(this.singlesPurchases as SinglesPurchaseEntry[]);
-        this.singlesPurchases = [
-          ...this.singlesPurchases,
-          {
-            id: nextId,
-            item: nextItem,
-            cardNumber: nextCardNumber,
-            image: nextImage,
-            condition: nextCondition,
-            language: nextLanguage,
-            cost: nextCost,
-            currency: nextCurrency,
-            quantity: nextQuantity,
-            marketValue: nextMarketValue
-          }
-        ];
-      } else {
-        this.singlesPurchases = this.singlesPurchases.map((entry: SinglesPurchaseEntry) => (
-          entry.id === this.editingSinglesRowId
-            ? {
-              ...entry,
-              item: nextItem,
-              cardNumber: nextCardNumber,
-              image: nextImage,
-              condition: nextCondition,
-              language: nextLanguage,
-              cost: nextCost,
-              currency: nextCurrency,
-              quantity: nextQuantity,
-              marketValue: nextMarketValue
-            }
-            : entry
-        ));
-      }
-
-      this.onSinglesPurchaseRowsChange();
-      if (isAdding && mode === "new") {
-        this.editingSinglesRowId = null;
-        this.resetSinglesRowDraft({
-          currency: nextCurrency,
-          condition: nextCondition,
-          language: nextLanguage
-        });
-        this.showSinglesRowEditor = true;
-        return;
-      }
-      this.closeSinglesRowEditor();
-    },
-
-    removeSinglesRowFromEditor(this: any): void {
-      if (this.editingSinglesRowId == null) {
-        this.closeSinglesRowEditor();
-        return;
-      }
-      this.confirmRemoveSinglesPurchaseRow(this.editingSinglesRowId, true);
-    },
-
-    confirmRemoveSinglesPurchaseRow(this: any, rowId: number, closeEditor = false): void {
-      this.askConfirmation(
-        {
-          title: "Delete Row?",
-          text: "Remove this singles purchase row?",
-          color: "error"
-        },
-        () => {
-          this.removeSinglesPurchaseRow(rowId);
-          if (closeEditor) {
-            this.closeSinglesRowEditor();
-          }
-        }
-      );
-    },
-
     loadSinglesInfoNoticeState(this: any): void {
       try {
         this.showSinglesInfoNotice = localStorage.getItem(SINGLES_INFO_NOTICE_DISMISSED_KEY) !== "1";
@@ -1258,7 +1056,8 @@ export const SinglesConfigWindow: any = {
 
     languageShortLabel(this: any, value: unknown): string {
       return toLanguageAbbreviation(value);
-    }
+    },
+    ...singlesRowEditorMethods
   },
   watch: {
     visibleSinglesPurchases(this: any): void {
