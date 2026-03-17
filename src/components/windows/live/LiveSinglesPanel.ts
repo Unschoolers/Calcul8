@@ -16,6 +16,10 @@ type LiveSinglesAutocompleteItem = {
   title: string;
   value: number;
   subtitle: string;
+  name: string;
+  cardNumber: string;
+  image: string;
+  searchText: string;
 };
 
 type LiveSinglesPricingMode = "individual" | "bundle";
@@ -26,6 +30,16 @@ function roundCurrency(value: number): number {
 
 function isLiveSinglesPricingMode(value: unknown): value is LiveSinglesPricingMode {
   return value === "individual" || value === "bundle";
+}
+
+function normalizeLiveSinglesSearchValue(value: unknown): string {
+  return String(value || "")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9]+/g, " ")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 export const LiveSinglesPanel = {
@@ -40,6 +54,7 @@ export const LiveSinglesPanel = {
   data() {
     return {
       liveSinglesSelectedId: null as number | null,
+      liveSinglesSearchText: "",
       liveSinglesPricingMode: "individual" as LiveSinglesPricingMode,
       liveSinglesIndividualPrices: {} as Record<number, number>,
       liveSinglesBundlePrice: null as number | null,
@@ -56,6 +71,8 @@ export const LiveSinglesPanel = {
           .filter((value: number | null): value is number => value != null)
       );
       const soldById = (this.singlesSoldCountByPurchaseId || {}) as Record<number, number>;
+      const normalizedQuery = normalizeLiveSinglesSearchValue(this.liveSinglesSearchText);
+      const queryTokens = normalizedQuery.split(/\s+/).filter(Boolean);
 
       return (this.singlesPurchases || [])
         .map((entry: SinglesPurchaseEntry) => {
@@ -70,13 +87,32 @@ export const LiveSinglesPanel = {
           const itemName = String(entry.item || "").trim() || "Unnamed item";
           const cardNumber = String(entry.cardNumber || "").trim();
           const title = cardNumber ? `${itemName} #${cardNumber}` : itemName;
+          const marketValue = toNonNegativeNumber(entry.marketValue);
+          const subtitle = `${remainingQuantity}/${totalQuantity} in stock${marketValue > 0 ? ` • M $${this.fmtCurrency(marketValue, 2)}` : ""}`;
+          const image = String(entry.image || "").trim();
+          const searchText = normalizeLiveSinglesSearchValue([
+            itemName,
+            cardNumber,
+            title,
+            subtitle
+          ].join(" "));
+
           return {
             title,
             value: entryId,
-            subtitle: `${remainingQuantity}/${totalQuantity} in stock`
+            subtitle,
+            name: itemName,
+            cardNumber,
+            image,
+            searchText
           } satisfies LiveSinglesAutocompleteItem;
         })
         .filter((item: LiveSinglesAutocompleteItem | null): item is LiveSinglesAutocompleteItem => item != null)
+        .filter((item: LiveSinglesAutocompleteItem) => (
+          queryTokens.length === 0
+            ? true
+            : queryTokens.every((token) => item.searchText.includes(token))
+        ))
         .sort((a: LiveSinglesAutocompleteItem, b: LiveSinglesAutocompleteItem) => (
           a.title.localeCompare(b.title, undefined, { sensitivity: "base" })
         ));
@@ -340,11 +376,20 @@ export const LiveSinglesPanel = {
       this.liveSinglesBundlePrice = next;
     },
 
-    addLiveSinglesFromPicker(this: any): void {
-      const selectedId = toPositiveInt(this.liveSinglesSelectedId);
-      if (!selectedId) return;
+    onLiveSinglesPickerSelection(this: any, value: unknown): void {
+      const selectedId = toPositiveInt(value);
+      if (!selectedId) {
+        this.liveSinglesSelectedId = null;
+        this.liveSinglesSearchText = "";
+        return;
+      }
       this.addLiveSinglesSelection(selectedId, "manual");
       this.liveSinglesSelectedId = null;
+      this.liveSinglesSearchText = "";
+    },
+
+    addLiveSinglesFromPicker(this: any): void {
+      this.onLiveSinglesPickerSelection(this.liveSinglesSelectedId);
     },
 
     removeLiveSinglesEntry(this: any, entryId: number): void {

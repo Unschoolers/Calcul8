@@ -8,6 +8,7 @@
     "build": "tsc -p .",
     "start": "node dist/index.js",
     "fetch:ua": "npm run build && node dist/index.js fetch-ua",
+    "filter:file": "npm run build && node dist/index.js filter-file",
     "import:file": "npm run build && node dist/index.js import-file",
     "sync": "npm run import:file"
   },

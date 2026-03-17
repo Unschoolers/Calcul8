@@ -12,6 +12,9 @@ Small local TypeScript utility to upsert card JSON arrays into Cosmos DB.
    - set `EXBURST_API_KEY` and `EXBURST_BEARER_TOKEN`
 3. Run fetch:
    - `npm --prefix CardSync run fetch:ua -- --out ".\\ua-export.json"`
+   - `npm --prefix CardSync run fetch:ua -- --series "kgr" --out ".\\ua-kagurabachi.json"`
+4. Optionally filter an existing export to one set:
+   - `npm --prefix CardSync run filter:file -- --file ".\\ua-export.json" --out ".\\ua-kagurabachi.json" --contains "kagurabachi"`
 4. Run import:
    - `npm --prefix CardSync run import:file -- --file ".\\ua-export.json" --game ua`
    - for Pokemon JSON arrays: `npm --prefix CardSync run import:file -- --file ".\\pokemon-export.json" --game pokemon --pokemon-sets-file ".\\pokemondata_real\\sets\\en.json"`
@@ -46,10 +49,18 @@ Each input row is upserted as:
     - `--out <path>` optional, write fetched array to JSON file
     - `--limit <n>` default `1000`
     - `--offset <n>` default `0`
+    - `--name <text>` optional `ilike` filter on `name`
+    - `--series <text>` optional `ilike` filter on `series`
+    - `--series-name <text>` optional `ilike` filter on `seriesName`
+    - `--abbreviation <text>` optional `ilike` filter on `abbreviation`
     - `--include-unpublished` optional
 
 - `import-file`:
   - imports a local JSON array into Cosmos
+
+- `filter-file`:
+  - filters a local JSON array into a smaller JSON array
+  - useful for splitting a large UA export into one set/series file before import
 
 ## CLI Options (import-file)
 
@@ -58,13 +69,42 @@ Each input row is upserted as:
 - `--pokemon-sets-file <path>` optional, used when `--game pokemon|pkmn` to enrich set names and `number/printedTotal`
 - `--batch-size <n>` default: env or `100`
 - `--concurrency <n>` default: env or `4`
+- `--missing-only` query Cosmos first and import only docs whose `id` is not already present
 - `--dry-run` only validate/transform, no writes
+
+## CLI Options (filter-file)
+
+- `--file <path>` required
+- `--out <path>` required
+- `--contains <text>` case-insensitive substring match across `name`, `cardNo`, `originalId`, `series`, `seriesName`, `abbreviation`
+- `--series <text>` filter on `series`
+- `--series-name <text>` filter on `seriesName`
+- `--abbreviation <text>` filter on `abbreviation`
 
 ## Notes
 
 - Safe to re-run due to `upsert`.
+- `--missing-only` is useful for “new set only” imports when you want to skip cards already present in the catalog.
 - This tool writes directly to the configured container. Use `--dry-run` first against prod.
 - Exported methods:
   - `fetchUnionArenaCards()`
   - `importCardsToCosmosFromRows()`
   - `importCardsToCosmosFromFile()`
+
+## Example: import only cards missing from Cosmos
+
+- full file, but skip anything already in the container:
+  - `npm --prefix CardSync run import:file -- --file ".\\ua-export.json" --game ua --missing-only`
+
+- useful flow for a new UA set like Kagurabachi:
+  - fetch only the target set:
+    - `npm --prefix CardSync run fetch:ua -- --series "kgr" --out ".\\ua-kagurabachi.json"`
+  - import only missing catalog rows:
+    - `npm --prefix CardSync run import:file -- --file ".\\ua-kagurabachi.json" --game ua --missing-only`
+
+- other fetch examples:
+  - `npm --prefix CardSync run fetch:ua -- --name "chihiro" --out ".\\ua-chihiro.json"`
+  - `npm --prefix CardSync run fetch:ua -- --series-name "kagurabachi" --out ".\\ua-kagurabachi.json"`
+  - `npm --prefix CardSync run fetch:ua -- --abbreviation "UE08BT" --out ".\\ua-ue08bt.json"`
+
+Because UA docs use stable ids based on `cardNo` in `src/index.ts`, existing catalog rows are detected reliably before writing.

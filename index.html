@@ -186,24 +186,17 @@
             <v-card-text class="py-2">
               <v-row dense align="center" class="lot-selector-row">
                 <v-col cols="12" sm="9" md="10" class="lot-selector-select-col">
-                  <v-autocomplete
+                  <v-select
                     v-model="currentLotId"
-                    v-model:search="lotSearchQuery"
-                    :items="visibleLotItems"
+                    :items="lotItems"
                     item-title="title"
                     item-value="value"
                     label="Lot"
-                    placeholder="Search lots"
-                    autocomplete="off"
-                    autocorrect="off"
-                    autocapitalize="off"
-                    spellcheck="false"
-                    no-filter
                     prepend-inner-icon="mdi-bookmark"
                     variant="outlined"
                     density="compact"
                     hide-details
-                    clearable
+                    menu-icon="mdi-chevron-down"
                     @update:model-value="loadLot"
                   >
                     <template #selection="{ item }">
@@ -240,7 +233,7 @@
                         </v-list-item>
                       </div>
                     </template>
-                  </v-autocomplete>
+                  </v-select>
                 </v-col>
                 <v-col cols="12" sm="3" md="2" class="lot-selector-meta-col">
                   <div class="lot-selector-meta">
@@ -295,7 +288,7 @@
           <div :class="{ 'interaction-disabled': !hasLotSelected }" :style="!hasLotSelected ? 'pointer-events: none;' : null">
             <v-window
               v-model="currentTab"
-              :class="['tabs-window', { 'tabs-window--allow-sticky': currentTab === 'live' && currentLotType === 'singles' }]"
+              :class="['tabs-window', { 'tabs-window--allow-sticky': currentLotType === 'singles' && (currentTab === 'live' || currentTab === 'config') }]"
               transition="tab-slide-fast"
               reverse-transition="tab-slide-fast-reverse"
             >
@@ -359,6 +352,18 @@
 
         </v-bottom-navigation>
       </v-main>
+
+      <v-fab
+        v-if="currentTab === 'config' && currentLotType === 'singles'"
+        icon="mdi-plus"
+        color="primary"
+        size="large"
+        title="Add singles purchase"
+        aria-label="Add singles purchase"
+        :disabled="!hasLotSelected"
+        @click="$refs.singlesConfigWindow?.handleAddSinglesPurchase?.()"
+        class="fab-primary fab-add-preset"
+      ></v-fab>
 
       <v-fab
         v-if="currentTab === 'live'"

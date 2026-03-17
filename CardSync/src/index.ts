@@ -68,6 +68,10 @@ export type FetchUnionArenaCardsOptions = {
   initialOffset?: number;
   publishedOnly?: boolean;
   logProgress?: boolean;
+  name?: string;
+  series?: string;
+  seriesName?: string;
+  abbreviation?: string;
 };
 
 export type ImportCardsToCosmosOptions = {
@@ -77,7 +81,15 @@ export type ImportCardsToCosmosOptions = {
   batchSize?: number;
   concurrency?: number;
   dryRun?: boolean;
+  missingOnly?: boolean;
   pokemonSetsById?: Map<string, PokemonSetSummary>;
+};
+
+type FilterJsonRowsOptions = {
+  contains?: string;
+  series?: string;
+  seriesName?: string;
+  abbreviation?: string;
 };
 
 function parseArgs(argv: string[]): Record<string, string | boolean> {
@@ -109,6 +121,20 @@ function toBool(value: string | undefined, fallback = false): boolean {
   if (["1", "true", "yes", "y"].includes(normalized)) return true;
   if (["0", "false", "no", "n"].includes(normalized)) return false;
   return fallback;
+}
+
+function normalizeFilterText(value: unknown): string {
+  return String(value ?? "")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
+function toIlikePattern(value: string | undefined): string | null {
+  const trimmed = (value ?? "").trim();
+  if (!trimmed) return null;
+  return `ilike.%${trimmed}%`;
 }
 
 function normalizeSecret(value: string | undefined): string {
@@ -165,6 +191,10 @@ export async function fetchUnionArenaCards(
   const publishedOnly = options.publishedOnly ?? true;
   const logProgress = options.logProgress ?? true;
   const headers = getExburstHeaders();
+  const nameFilter = toIlikePattern(options.name);
+  const seriesFilter = toIlikePattern(options.series);
+  const seriesNameFilter = toIlikePattern(options.seriesName);
+  const abbreviationFilter = toIlikePattern(options.abbreviation);
 
   const selectFields = [
     "name",
@@ -208,6 +238,18 @@ export async function fetchUnionArenaCards(
     url.searchParams.set("order", "cardNo.asc");
     url.searchParams.set("offset", String(offset));
     url.searchParams.set("limit", String(limit));
+    if (nameFilter) {
+      url.searchParams.set("name", nameFilter);
+    }
+    if (seriesFilter) {
+      url.searchParams.set("series", seriesFilter);
+    }
+    if (seriesNameFilter) {
+      url.searchParams.set("seriesName", seriesNameFilter);
+    }
+    if (abbreviationFilter) {
+      url.searchParams.set("abbreviation", abbreviationFilter);
+    }
 
     if (logProgress) {
       console.log(`Fetching offset ${offset}...`);
@@ -400,6 +442,33 @@ function normalizeCardRowForGame(
   return row;
 }
 
+function filterJsonRows(rows: JsonRecord[], options: FilterJsonRowsOptions): JsonRecord[] {
+  const contains = normalizeFilterText(options.contains);
+  const series = normalizeFilterText(options.series);
+  const seriesName = normalizeFilterText(options.seriesName);
+  const abbreviation = normalizeFilterText(options.abbreviation);
+
+  return rows.filter((row) => {
+    const rowSeries = normalizeFilterText(row.series);
+    const rowSeriesName = normalizeFilterText(row.seriesName);
+    const rowAbbreviation = normalizeFilterText(row.abbreviation);
+    const searchable = normalizeFilterText([
+      row.name,
+      row.cardNo,
+      row.originalId,
+      row.series,
+      row.seriesName,
+      row.abbreviation
+    ].join(" "));
+
+    if (contains && !searchable.includes(contains)) return false;
+    if (series && !rowSeries.includes(series)) return false;
+    if (seriesName && !rowSeriesName.includes(seriesName)) return false;
+    if (abbreviation && !rowAbbreviation.includes(abbreviation)) return false;
+    return true;
+  });
+}
+
 function toCardSyncDoc(row: JsonRecord, game: string, pk: string): CardSyncDoc {
   const stableKey = getStableCardKey(row, game);
   return {
@@ -424,6 +493,11 @@ async function readJsonArray(filePath: string): Promise<JsonRecord[]> {
     }
     return row as JsonRecord;
   });
+}
+
+async function writeJsonArray(filePath: string, rows: JsonRecord[]): Promise<void> {
+  const absolutePath = path.resolve(filePath);
+  await fs.writeFile(absolutePath, JSON.stringify(rows, null, 2), "utf8");
 }
 
 function getContainerFromEnv(databaseId: string, containerId: string): Container {
@@ -462,6 +536,38 @@ async function upsertWithConcurrency(
   }
 }
 
+async function fetchExistingDocIds(
+  container: Container,
+  pk: string,
+  ids: string[],
+  chunkSize = 250
+): Promise<Set<string>> {
+  const existingIds = new Set<string>();
+  const uniqueIds = Array.from(new Set(ids.filter((value) => value.trim().length > 0)));
+
+  for (let offset = 0; offset < uniqueIds.length; offset += chunkSize) {
+    const chunk = uniqueIds.slice(offset, offset + chunkSize);
+    if (chunk.length === 0) continue;
+
+    const querySpec = {
+      query: "SELECT VALUE c.id FROM c WHERE c.pk = @pk AND ARRAY_CONTAINS(@ids, c.id)",
+      parameters: [
+        { name: "@pk", value: pk },
+        { name: "@ids", value: chunk }
+      ]
+    };
+
+    const { resources } = await container.items.query<string>(querySpec).fetchAll();
+    for (const id of resources) {
+      if (typeof id === "string" && id.trim()) {
+        existingIds.add(id);
+      }
+    }
+  }
+
+  return existingIds;
+}
+
 export async function importCardsToCosmosFromRows(
   rows: JsonRecord[],
   options: ImportCardsToCosmosOptions
@@ -472,22 +578,40 @@ export async function importCardsToCosmosFromRows(
   const batchSize = Math.max(1, Math.floor(options.batchSize ?? 100));
   const concurrency = Math.max(1, Math.floor(options.concurrency ?? 4));
   const dryRun = Boolean(options.dryRun);
+  const missingOnly = Boolean(options.missingOnly);
 
-  const docs = rows
+  let docs = rows
     .map((row) => normalizeCardRowForGame(row, game, options.pokemonSetsById))
     .map((row) => toCardSyncDoc(row, game, pk));
   console.log(`Prepared ${docs.length} docs for game=${game}, pk=${pk}.`);
+
+  let container: Container | null = null;
+  if (missingOnly || !dryRun) {
+    container = getContainerFromEnv(options.databaseId, options.containerId);
+  }
+
+  if (missingOnly && container) {
+    console.log(`Checking existing docs in ${options.databaseId}/${options.containerId}...`);
+    const existingIds = await fetchExistingDocIds(container, pk, docs.map((doc) => doc.id));
+    const beforeCount = docs.length;
+    docs = docs.filter((doc) => !existingIds.has(doc.id));
+    console.log(`Filtered out ${beforeCount - docs.length} existing doc(s); ${docs.length} missing doc(s) remain.`);
+  }
 
   if (dryRun) {
     console.log("Dry run enabled. No writes executed.");
     return;
   }
 
-  const container = getContainerFromEnv(options.databaseId, options.containerId);
+  if (docs.length === 0) {
+    console.log("No docs to write.");
+    return;
+  }
+
   console.log(
     `Upserting into ${options.databaseId}/${options.containerId} with batchSize=${batchSize}, concurrency=${concurrency}...`
   );
-  await upsertWithConcurrency(container, docs, batchSize, concurrency);
+  await upsertWithConcurrency(container as Container, docs, batchSize, concurrency);
   console.log("Done.");
 }
 
@@ -513,13 +637,18 @@ async function main(): Promise<void> {
   const batchSize = toInt((args["batch-size"] as string | undefined) ?? process.env.CARDSYNC_BATCH_SIZE, 100);
   const concurrency = toInt((args.concurrency as string | undefined) ?? process.env.CARDSYNC_CONCURRENCY, 4);
   const dryRun = Boolean(args["dry-run"]) || toBool(process.env.CARDSYNC_DRY_RUN, false);
+  const missingOnly = Boolean(args["missing-only"]) || toBool(process.env.CARDSYNC_MISSING_ONLY, false);
 
   if (command === "fetch-ua") {
     const cards = await fetchUnionArenaCards({
       limit: toInt((args.limit as string | undefined), 1000),
       initialOffset: toInt((args.offset as string | undefined), 0),
       publishedOnly: !Boolean(args["include-unpublished"]),
-      logProgress: true
+      logProgress: true,
+      name: (args.name as string | undefined)?.trim(),
+      series: (args.series as string | undefined)?.trim(),
+      seriesName: (args["series-name"] as string | undefined)?.trim(),
+      abbreviation: (args.abbreviation as string | undefined)?.trim()
     });
     const outPath = (args.out as string | undefined)?.trim();
     if (outPath) {
@@ -527,6 +656,25 @@ async function main(): Promise<void> {
       await fs.writeFile(absoluteOutPath, JSON.stringify(cards, null, 2), "utf8");
       console.log(`Saved to ${absoluteOutPath}`);
     }
+    return;
+  }
+
+  if (command === "filter-file") {
+    const file = (args.file as string | undefined)?.trim();
+    const out = (args.out as string | undefined)?.trim();
+    if (!file) throw new Error("Missing --file <path-to-json-array>.");
+    if (!out) throw new Error("Missing --out <path-to-output-json>.");
+
+    const rows = await readJsonArray(file);
+    const filtered = filterJsonRows(rows, {
+      contains: (args.contains as string | undefined)?.trim(),
+      series: (args.series as string | undefined)?.trim(),
+      seriesName: (args["series-name"] as string | undefined)?.trim(),
+      abbreviation: (args.abbreviation as string | undefined)?.trim()
+    });
+
+    await writeJsonArray(out, filtered);
+    console.log(`Filtered ${filtered.length}/${rows.length} row(s) to ${path.resolve(out)}`);
     return;
   }
 
@@ -551,13 +699,14 @@ async function main(): Promise<void> {
       batchSize,
       concurrency,
       dryRun,
+      missingOnly,
       pokemonSetsById
     });
     return;
   }
 
   throw new Error(
-    "Missing or invalid command. Use: fetch-ua | import-file"
+    "Missing or invalid command. Use: fetch-ua | filter-file | import-file"
   );
 }
 

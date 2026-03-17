@@ -157,10 +157,20 @@ test("mobile pagination renders in batches and can load more rows", () => {
     visibleSinglesPurchases: entries
   });
 
-  assert.equal(getComputed<SinglesPurchaseEntry[]>("mobileRenderedSinglesPurchases").call(context).length, 60);
+  assert.equal(getComputed<SinglesPurchaseEntry[]>("mobileRenderedSinglesPurchases").call(context).length, 30);
   assert.equal(getComputed<boolean>("hasMoreMobileSinglesRows").call(context), true);
+  assert.equal(getComputed<number>("remainingMobileSinglesRows").call(context), 115);
+  assert.equal(getComputed<number>("nextMobileSinglesBatchCount").call(context), 30);
+
+  context.loadMoreMobileRows();
+  assert.equal(context.mobileRenderCount, 60);
   assert.equal(getComputed<number>("remainingMobileSinglesRows").call(context), 85);
-  assert.equal(getComputed<number>("nextMobileSinglesBatchCount").call(context), 60);
+  assert.equal(getComputed<number>("nextMobileSinglesBatchCount").call(context), 30);
+
+  context.loadMoreMobileRows();
+  assert.equal(context.mobileRenderCount, 90);
+  assert.equal(getComputed<number>("remainingMobileSinglesRows").call(context), 55);
+  assert.equal(getComputed<number>("nextMobileSinglesBatchCount").call(context), 30);
 
   context.loadMoreMobileRows();
   assert.equal(context.mobileRenderCount, 120);
@@ -170,6 +180,35 @@ test("mobile pagination renders in batches and can load more rows", () => {
   context.loadMoreMobileRows();
   assert.equal(context.mobileRenderCount, 145);
   assert.equal(getComputed<boolean>("hasMoreMobileSinglesRows").call(context), false);
+});
+
+test("mobile sorting cycles through recent, name, and market views", () => {
+  const entries = [
+    { id: 1, item: "Zoro", cardNumber: "003", cost: 1, currency: "CAD", quantity: 1, marketValue: 5 },
+    { id: 2, item: "Asta", cardNumber: "001", cost: 1, currency: "CAD", quantity: 1, marketValue: 10 },
+    { id: 3, item: "Ichigo", cardNumber: "002", cost: 1, currency: "CAD", quantity: 2, marketValue: 4 }
+  ] satisfies SinglesPurchaseEntry[];
+  const context = createContext({
+    visibleSinglesPurchases: entries,
+    mobileSortBy: "item"
+  });
+
+  assert.deepEqual(getComputed<SinglesPurchaseEntry[]>("mobileSortedSinglesPurchases").call(context).map((entry) => entry.id), [2, 3, 1]);
+  assert.equal(getComputed<string>("mobileSortLabel").call(context), "Name");
+
+  context.cycleMobileSort();
+  assert.equal(context.mobileSortBy, "marketValue");
+  assert.equal(context.mobileRenderCount, 30);
+  assert.deepEqual(getComputed<SinglesPurchaseEntry[]>("mobileSortedSinglesPurchases").call(context).map((entry) => entry.id), [2, 3, 1]);
+  assert.equal(getComputed<string>("mobileSortLabel").call(context), "Market");
+
+  context.cycleMobileSort();
+  assert.equal(context.mobileSortBy, "recent");
+  assert.deepEqual(getComputed<SinglesPurchaseEntry[]>("mobileSortedSinglesPurchases").call(context).map((entry) => entry.id), [1, 2, 3]);
+  assert.equal(getComputed<string>("mobileSortLabel").call(context), "Recent");
+
+  context.cycleMobileSort();
+  assert.equal(context.mobileSortBy, "item");
 });
 
 test("search and sold-filter toggles reset mobile pagination", () => {
@@ -185,13 +224,13 @@ test("search and sold-filter toggles reset mobile pagination", () => {
   });
 
   context.onSinglesSearchInput();
-  assert.equal(context.mobileRenderCount, 60);
+  assert.equal(context.mobileRenderCount, 30);
   assert.equal(context.desktopRowsScrollTop, 0);
 
   context.mobileRenderCount = 180;
   context.toggleShowFullySoldSingles();
   assert.equal(context.showFullySoldSingles, false);
-  assert.equal(context.mobileRenderCount, 60);
+  assert.equal(context.mobileRenderCount, 30);
   assert.equal(context.desktopRowsScrollTop, 0);
 });
 
@@ -238,6 +277,7 @@ test("saveSinglesRowEditor validates and creates row with non-colliding id", () 
       editingSinglesRow: {
         item: "  New Card  ",
         cardNumber: " 123 ",
+        image: "https://img.example.com/new-card.jpg",
         condition: " Near Mint ",
         language: " English ",
         cost: 2.25,
@@ -254,12 +294,81 @@ test("saveSinglesRowEditor validates and creates row with non-colliding id", () 
     assert.equal(rows.length, 2);
     assert.equal(rows[1]?.id, 5001);
     assert.equal(rows[1]?.item, "New Card");
+    assert.equal(rows[1]?.image, "https://img.example.com/new-card.jpg");
     assert.equal(rows[1]?.quantity, 2);
     assert.equal((context.onSinglesPurchaseRowsChange as ReturnType<typeof vi.fn>).mock.calls.length, 1);
     assert.equal(context.showSinglesRowEditor, false);
   } finally {
     dateNowSpy.mockRestore();
   }
+});
+
+test("saveSinglesRowEditor can save and keep adding with preserved context", () => {
+  const dateNowSpy = vi.spyOn(Date, "now").mockReturnValue(6000);
+  try {
+    const context = createContext({
+      singlesPurchases: [],
+      editingSinglesRowId: null,
+      editingSinglesRow: {
+        item: "Rei Ayanami",
+        cardNumber: "UE15BT/EVA-1-004-ALT1",
+        image: "https://img.example.com/rei.jpg",
+        condition: "Near Mint",
+        language: "Japanese",
+        cost: 46,
+        currency: "USD",
+        quantity: 1,
+        marketValue: 50
+      },
+      showSinglesRowEditor: true
+    });
+
+    context.saveSinglesRowEditor("new");
+
+    const rows = context.singlesPurchases as SinglesPurchaseEntry[];
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0]?.item, "Rei Ayanami");
+    assert.equal(context.showSinglesRowEditor, true);
+    assert.equal(context.editingSinglesRowId, null);
+    assert.equal(context.editingSinglesRow.item, "");
+    assert.equal(context.editingSinglesRow.cardNumber, "");
+    assert.equal(context.editingSinglesRow.image, "");
+    assert.equal(context.editingSinglesRow.cost, 0);
+    assert.equal(context.editingSinglesRow.marketValue, 0);
+    assert.equal(context.editingSinglesRow.currency, "USD");
+    assert.equal(context.editingSinglesRow.condition, "Near Mint");
+    assert.equal(context.editingSinglesRow.language, "Japanese");
+    assert.equal(context.editingSinglesRow.quantity, 1);
+  } finally {
+    dateNowSpy.mockRestore();
+  }
+});
+
+test("editing quantity stepper stays compact and never drops below one", () => {
+  const context = createContext({
+    editingSinglesRow: {
+      item: "Rei Ayanami",
+      cardNumber: "UE15BT/EVA-1-004-ALT1",
+      image: "",
+      condition: "",
+      language: "",
+      cost: 1,
+      currency: "CAD",
+      quantity: 1,
+      marketValue: 2
+    }
+  });
+
+  assert.equal(context.getEditingSinglesQuantity(), 1);
+  context.decreaseEditingSinglesQuantity();
+  assert.equal(context.editingSinglesRow.quantity, 1);
+
+  context.increaseEditingSinglesQuantity();
+  context.increaseEditingSinglesQuantity();
+  assert.equal(context.editingSinglesRow.quantity, 3);
+
+  context.setEditingSinglesQuantity(0);
+  assert.equal(context.editingSinglesRow.quantity, 1);
 });
 
 test("saveSinglesRowEditor updates existing row and rejects invalid input", () => {
@@ -272,6 +381,7 @@ test("saveSinglesRowEditor updates existing row and rejects invalid input", () =
     editingSinglesRow: {
       item: "  Updated ",
       cardNumber: " 22 ",
+      image: "https://img.example.com/updated.jpg",
       condition: " Good ",
       language: " French ",
       cost: 3,
@@ -285,6 +395,7 @@ test("saveSinglesRowEditor updates existing row and rejects invalid input", () =
   const rows = context.singlesPurchases as SinglesPurchaseEntry[];
   assert.equal(rows[1]?.item, "Updated");
   assert.equal(rows[1]?.cardNumber, "22");
+  assert.equal(rows[1]?.image, "https://img.example.com/updated.jpg");
   assert.equal(rows[1]?.quantity, 4);
 
   context.editingSinglesRowId = null;
@@ -437,6 +548,7 @@ test("fetchSinglesItemSuggestions uses lot catalog source as cards search game",
         {
           name: "Rukia Kuchiki",
           cardNo: "UE01BT/BLC-1-051",
+          image: "https://img.example.com/rukia.jpg",
           rarity: "C",
           marketPrice: 0.22
         }
@@ -465,13 +577,243 @@ test("fetchSinglesItemSuggestions uses lot catalog source as cards search game",
     const requestUrl = String(fetchMock.mock.calls[0]?.[0] || "");
     assert.equal(requestUrl.includes("game=pokemon"), true);
     assert.equal(requestUrl.includes("q=rukia"), true);
-    assert.equal(requestUrl.includes("limit=10"), true);
+    assert.equal(requestUrl.includes("limit=25"), true);
     assert.equal((context.singlesItemSuggestions as Array<{ name: string }>)[0]?.name, "Rukia Kuchiki");
+    assert.equal(
+      (context.singlesItemSuggestions as Array<{ image: string }>)[0]?.image,
+      "https://img.example.com/rukia.jpg"
+    );
 
     context.currentSinglesCatalogSource = "none";
     await context.fetchSinglesItemSuggestions("rukia");
     assert.equal(fetchMock.mock.calls.length, 1);
     assert.deepEqual(context.singlesItemSuggestions, []);
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});
+
+test("fetchSinglesItemSuggestions filters multi-field queries across name, number, and rarity", async () => {
+  const fetchMock = vi.fn(async () => ({
+    ok: true,
+    json: async () => ({
+      items: [
+        {
+          name: "Rei Ayanami",
+          cardNo: "UE15BT/EVA-1-004-ALT1",
+          image: "https://img.example.com/rei-r.jpg",
+          rarity: "R★",
+          marketPrice: 46
+        },
+        {
+          name: "Rei Ayanami",
+          cardNo: "UE15BT/EVA-1-003",
+          image: "https://img.example.com/rei-c.jpg",
+          rarity: "R",
+          marketPrice: 12
+        }
+      ]
+    })
+  }));
+  vi.stubGlobal("fetch", fetchMock);
+
+  try {
+    const context = createContext({
+      currentSinglesCatalogSource: "ua",
+      resolveCardsApiBaseUrl: () => "https://api.example.com"
+    });
+
+    await context.fetchSinglesItemSuggestions("rei r*");
+
+    const requestUrl = new URL(String(fetchMock.mock.calls[0]?.[0] || ""));
+    assert.equal(requestUrl.searchParams.get("q"), "rei r*");
+    assert.equal((context.singlesItemSuggestions as Array<{ rarity: string }>).length, 1);
+    assert.equal((context.singlesItemSuggestions as Array<{ rarity: string }>)[0]?.rarity, "R★");
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});
+
+test("fetchSinglesItemSuggestions supports rarity-only wildcard queries like r*", async () => {
+  const fetchMock = vi.fn(async () => ({
+    ok: true,
+    json: async () => ({
+      items: [
+        {
+          name: "Rei Ayanami",
+          cardNo: "UE15BT/EVA-1-004-ALT1",
+          image: "https://img.example.com/rei-r.jpg",
+          rarity: "R★",
+          marketPrice: 46
+        },
+        {
+          name: "Asuka Shikinami Langley",
+          cardNo: "UE15BT/EVA-1-012-ALT1",
+          image: "https://img.example.com/asuka-c.jpg",
+          rarity: "R",
+          marketPrice: 10
+        }
+      ]
+    })
+  }));
+  vi.stubGlobal("fetch", fetchMock);
+
+  try {
+    const context = createContext({
+      currentSinglesCatalogSource: "ua",
+      resolveCardsApiBaseUrl: () => "https://api.example.com"
+    });
+
+    await context.fetchSinglesItemSuggestions("r*");
+
+    const requestUrl = new URL(String(fetchMock.mock.calls[0]?.[0] || ""));
+    assert.equal(requestUrl.searchParams.get("q"), "r*");
+    assert.equal((context.singlesItemSuggestions as Array<{ rarity: string }>).length, 1);
+    assert.equal((context.singlesItemSuggestions as Array<{ rarity: string }>)[0]?.rarity, "R★");
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});
+
+test("fetchSinglesItemSuggestions supports multi-star rarity queries like sr** and sr***", async () => {
+  const fetchMock = vi.fn(async () => ({
+    ok: true,
+    json: async () => ({
+      items: [
+        {
+          name: "Rei Ayanami",
+          cardNo: "UE15BT/EVA-1-004-ALT1",
+          image: "https://img.example.com/rei-sr2.jpg",
+          rarity: "SR★★",
+          marketPrice: 46
+        },
+        {
+          name: "Asuka Shikinami Langley",
+          cardNo: "UE15BT/EVA-1-012-ALT1",
+          image: "https://img.example.com/asuka-sr3.jpg",
+          rarity: "SR★★★",
+          marketPrice: 10
+        },
+        {
+          name: "Mari Makinami Illustrious",
+          cardNo: "UE15BT/EVA-1-017",
+          image: "https://img.example.com/mari-sr.jpg",
+          rarity: "SR",
+          marketPrice: 8
+        }
+      ]
+    })
+  }));
+  vi.stubGlobal("fetch", fetchMock);
+
+  try {
+    const context = createContext({
+      currentSinglesCatalogSource: "ua",
+      resolveCardsApiBaseUrl: () => "https://api.example.com"
+    });
+
+    await context.fetchSinglesItemSuggestions("sr**");
+    assert.equal((context.singlesItemSuggestions as Array<{ rarity: string }>).length, 2);
+    assert.deepEqual(
+      (context.singlesItemSuggestions as Array<{ rarity: string }>).map((item) => item.rarity),
+      ["SR★★", "SR★★★"]
+    );
+
+    await context.fetchSinglesItemSuggestions("sr***");
+    assert.equal((context.singlesItemSuggestions as Array<{ rarity: string }>).length, 1);
+    assert.equal((context.singlesItemSuggestions as Array<{ rarity: string }>)[0]?.rarity, "SR★★★");
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});
+
+test("fetchSinglesItemSuggestions keeps full multi-token rarity queries like sr** eva", async () => {
+  const fetchMock = vi.fn(async () => ({
+    ok: true,
+    json: async () => ({
+      items: [
+        {
+          name: "Evangelion Proto Type-00",
+          cardNo: "UE15BT/EVA-1-080-ALT2",
+          image: "https://exburst.dev/uaen/cards/sd/UE15BT_EVA-1-080_p2.webp",
+          rarity: "SR★★",
+          marketPrice: 188.19
+        },
+        {
+          name: "Shanks",
+          cardNo: "OP11-118",
+          image: "https://img.example.com/shanks.jpg",
+          rarity: "SR★★",
+          marketPrice: 99
+        }
+      ]
+    })
+  }));
+  vi.stubGlobal("fetch", fetchMock);
+
+  try {
+    const context = createContext({
+      currentSinglesCatalogSource: "ua",
+      resolveCardsApiBaseUrl: () => "https://api.example.com"
+    });
+
+    await context.fetchSinglesItemSuggestions("sr** eva");
+
+    const requestUrl = new URL(String(fetchMock.mock.calls[0]?.[0] || ""));
+    assert.equal(requestUrl.searchParams.get("q"), "sr** eva");
+    assert.equal((context.singlesItemSuggestions as Array<{ name: string }>).length, 1);
+    assert.equal(
+      (context.singlesItemSuggestions as Array<{ name: string }>)[0]?.name,
+      "Evangelion Proto Type-00"
+    );
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});
+
+test("preloadSinglesEditorPreview caches and resolves the editor image", async () => {
+  const fetchMock = vi.fn(async () => ({
+    ok: true,
+    json: async () => ({
+      items: [
+        {
+          name: "Rei Ayanami",
+          cardNo: "UE15BT/EVA-1-004-ALT1",
+          image: "https://img.example.com/rei-large.jpg",
+          rarity: "SR",
+          marketPrice: 46
+        }
+      ]
+    })
+  }));
+  vi.stubGlobal("fetch", fetchMock);
+
+  try {
+    const context = createContext({
+      currentSinglesCatalogSource: "ua",
+      showCatalogSuggestions: true,
+      resolveCardsApiBaseUrl: () => "https://api.example.com",
+      editingSinglesRow: {
+        item: "Rei Ayanami",
+        cardNumber: "UE15BT/EVA-1-004-ALT1",
+        condition: "",
+        language: "",
+        cost: 0,
+        currency: "CAD",
+        quantity: 1,
+        marketValue: 46
+      }
+    });
+
+    await context.preloadSinglesEditorPreview();
+
+    assert.equal(fetchMock.mock.calls.length, 1);
+    assert.equal(context.singlesEditorPreviewLoading, false);
+    assert.equal(context.editingSinglesRow.image, "https://img.example.com/rei-large.jpg");
+    assert.equal(
+      getComputed<string>("editingSinglesPreviewImage").call(context),
+      "https://img.example.com/rei-large.jpg"
+    );
   } finally {
     vi.unstubAllGlobals();
   }
@@ -519,7 +861,18 @@ test("search update, cancel, and cards api resolution cover debounce and fallbac
       singlesItemSearchTimerId: setTimeout(() => {}, 99999),
       fetchSinglesItemSuggestions: vi.fn(),
       singlesItemSuggestions: [{ title: "old" }],
-      singlesItemSearchLoading: true
+      singlesItemSearchLoading: true,
+      editingSinglesRow: {
+        item: "Old Card",
+        image: "https://img.example.com/old.jpg",
+        cardNumber: "OLD-001",
+        condition: "",
+        language: "",
+        cost: 0,
+        currency: "CAD",
+        quantity: 1,
+        marketValue: 0
+      }
     });
 
     context.cancelSinglesItemSearch();
@@ -531,11 +884,15 @@ test("search update, cancel, and cards api resolution cover debounce and fallbac
     context.showCatalogSuggestions = false;
     context.onSinglesItemSearchUpdate("abc");
     assert.deepEqual(context.singlesItemSuggestions, []);
+    assert.equal(context.singlesItemMenuOpen, false);
     assert.equal(context.singlesItemSearchLoading, false);
 
     context.showCatalogSuggestions = true;
     context.onSinglesItemSearchUpdate("a");
     assert.deepEqual(context.singlesItemSuggestions, []);
+    assert.equal(context.singlesItemMenuOpen, false);
+    assert.equal(context.editingSinglesRow.image, "");
+    assert.equal(context.editingSinglesRow.cardNumber, "");
     assert.equal(context.singlesItemSearchLoading, false);
 
     context.onSinglesItemSearchUpdate("ab");
@@ -590,6 +947,7 @@ test("fetchSinglesItemSuggestions handles missing base, failed response, and abo
 
 test("row editor helpers handle selection, editing branch, and remove confirmation paths", () => {
   const context = createContext({
+    showCatalogSuggestions: true,
     editingSinglesRow: {
       item: "",
       cardNumber: "",
@@ -611,16 +969,20 @@ test("row editor helpers handle selection, editing branch, and remove confirmati
 
   const selected = {
     title: "A #1",
-    value: "A|1|C|0",
+    value: "A|1|C",
     name: "A",
     cardNo: "1",
+    image: "https://img.example.com/a.jpg",
     rarity: "C",
     marketPrice: 2.5
   };
   context.onSinglesItemSelected(selected);
   assert.equal(context.editingSinglesRow.item, "A");
   assert.equal(context.editingSinglesRow.cardNumber, "1");
+  assert.equal(context.editingSinglesRow.image, "https://img.example.com/a.jpg");
   assert.equal(context.editingSinglesRow.marketValue, 2.5);
+  assert.equal(context.singlesItemSearchText, "");
+  assert.equal(context.singlesItemMenuOpen, false);
 
   context.editingSinglesRow.item = "";
   context.editingSinglesRow.cardNumber = "";
@@ -630,6 +992,14 @@ test("row editor helpers handle selection, editing branch, and remove confirmati
   assert.equal(context.editingSinglesRow.item, "A");
   assert.equal(context.editingSinglesRow.cardNumber, "1");
   assert.equal(context.editingSinglesRow.marketValue, 2.5);
+
+  context.editingSinglesRow.cardNumber = "OLD";
+  context.onSinglesItemSelected({
+    ...selected,
+    value: "A|2|C",
+    cardNo: "2"
+  });
+  assert.equal(context.editingSinglesRow.cardNumber, "2");
 
   context.onSinglesItemSelected("typed value");
   context.onSinglesItemSelected(null);
@@ -654,6 +1024,7 @@ test("row editor helpers handle selection, editing branch, and remove confirmati
   } as SinglesPurchaseEntry);
   assert.equal(context.editingSinglesRowId, 7);
   assert.equal(context.editingSinglesRow.item, "Edit");
+  assert.equal(context.singlesItemSearchText, "");
 
   context.removeSinglesRowFromEditor();
   assert.equal((context.removeSinglesPurchaseRow as ReturnType<typeof vi.fn>).mock.calls.length, 1);
@@ -662,6 +1033,141 @@ test("row editor helpers handle selection, editing branch, and remove confirmati
   context.editingSinglesRowId = null;
   context.removeSinglesRowFromEditor();
   assert.equal((context.closeSinglesRowEditor as ReturnType<typeof vi.fn>).mock.calls.length, 2);
+});
+
+test("maybeOpenSinglesItemSuggestions reopens cached results or fetches for current text", () => {
+  const fetchSinglesItemSuggestions = vi.fn();
+  const context = createContext({
+    showCatalogSuggestions: true,
+    editingSinglesRow: {
+      item: "Rei Ayanami",
+      cardNumber: "",
+      condition: "",
+      language: "",
+      cost: 0,
+      currency: "CAD",
+      quantity: 1,
+      marketValue: 0
+    },
+    singlesItemSearchText: "",
+    singlesItemSuggestions: [],
+    fetchSinglesItemSuggestions
+  });
+
+  context.maybeOpenSinglesItemSuggestions();
+  assert.deepEqual(fetchSinglesItemSuggestions.mock.calls[0], ["Rei Ayanami"]);
+  assert.equal(context.singlesItemSearchText, "");
+  assert.equal(context.singlesItemMenuOpen, false);
+
+  context.singlesItemSearchText = "rei";
+  context.singlesItemSuggestions = [
+    {
+      title: "Rei",
+      value: "Rei|||0",
+      name: "Rei",
+      cardNo: "",
+      image: "",
+      rarity: "",
+      marketPrice: null
+    }
+  ];
+  context.maybeOpenSinglesItemSuggestions();
+  assert.equal(context.singlesItemMenuOpen, true);
+});
+
+test("catalog editor selection stays unique for duplicate names", () => {
+  const context = createContext({
+    showCatalogSuggestions: true,
+    editingSinglesRow: {
+      item: "Goreinu",
+      cardNumber: "UEX04BT/HTR-2-013-ALT1",
+      image: "https://img.example.com/goreinu-alt1.jpg",
+      condition: "",
+      language: "",
+      cost: 0,
+      currency: "CAD",
+      quantity: 1,
+      marketValue: 0.92
+    },
+    singlesItemSuggestions: [
+      {
+        title: "Goreinu #UE02BT/HTR-1-004",
+        value: "Goreinu|UE02BT/HTR-1-004|C",
+        name: "Goreinu",
+        cardNo: "UE02BT/HTR-1-004",
+        image: "https://img.example.com/goreinu-a.jpg",
+        rarity: "C",
+        marketPrice: 0.07
+      },
+      {
+        title: "Goreinu #UEX04BT/HTR-2-013-ALT1",
+        value: "Goreinu|UEX04BT/HTR-2-013-ALT1|R",
+        name: "Goreinu",
+        cardNo: "UEX04BT/HTR-2-013-ALT1",
+        image: "https://img.example.com/goreinu-alt1.jpg",
+        rarity: "R",
+        marketPrice: 0.92
+      }
+    ]
+  });
+
+  assert.equal(
+    getComputed<string | null>("currentSinglesEditorSelectionValue").call(context),
+    "Goreinu|UEX04BT/HTR-2-013-ALT1|R"
+  );
+
+  const items = getComputed<Array<{ title: string }>>("singlesEditorCatalogItems").call(context);
+  assert.equal(items[0]?.title, "Goreinu #UE02BT/HTR-1-004");
+  assert.equal(items[1]?.title, "Goreinu #UEX04BT/HTR-2-013-ALT1");
+});
+
+test("catalog selection change picks the matching duplicate instead of the first same-name card", () => {
+  const context = createContext({
+    showCatalogSuggestions: true,
+    onSinglesItemSelected: vi.fn(),
+    singlesEditorCatalogItems: [
+      {
+        title: "Goreinu #UE02BT/HTR-1-004",
+        value: "Goreinu|UE02BT/HTR-1-004|C",
+        name: "Goreinu",
+        cardNo: "UE02BT/HTR-1-004",
+        image: "https://img.example.com/goreinu-a.jpg",
+        rarity: "C",
+        marketPrice: 0.07
+      },
+      {
+        title: "Goreinu #UEX04BT/HTR-2-013-ALT1",
+        value: "Goreinu|UEX04BT/HTR-2-013-ALT1|R",
+        name: "Goreinu",
+        cardNo: "UEX04BT/HTR-2-013-ALT1",
+        image: "https://img.example.com/goreinu-alt1.jpg",
+        rarity: "R",
+        marketPrice: 0.92
+      }
+    ]
+  });
+
+  context.onSinglesCatalogSelectionChange("Goreinu|UEX04BT/HTR-2-013-ALT1|R");
+
+  assert.equal((context.onSinglesItemSelected as ReturnType<typeof vi.fn>).mock.calls.length, 1);
+  assert.equal((context.onSinglesItemSelected as ReturnType<typeof vi.fn>).mock.calls[0]?.[0]?.cardNo, "UEX04BT/HTR-2-013-ALT1");
+});
+
+test("image preview opens only for valid images and closes cleanly", () => {
+  const context = createContext();
+
+  context.openSinglesImagePreview("", "Card A");
+  assert.equal(context.showSinglesImagePreview, false);
+
+  context.openSinglesImagePreview("https://img.example.com/card-a.jpg", "Card A");
+  assert.equal(context.showSinglesImagePreview, true);
+  assert.equal(context.singlesImagePreviewSrc, "https://img.example.com/card-a.jpg");
+  assert.equal(context.singlesImagePreviewTitle, "Card A");
+
+  context.closeSinglesImagePreview();
+  assert.equal(context.showSinglesImagePreview, false);
+  assert.equal(context.singlesImagePreviewSrc, "");
+  assert.equal(context.singlesImagePreviewTitle, "");
 });
 
 test("desktop selection, scroll, icons, watcher, and lifecycle branches execute", () => {

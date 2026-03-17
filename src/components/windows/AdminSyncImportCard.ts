@@ -1,24 +1,13 @@
-import template from "./ConfigWindow.html?raw";
-import "./ConfigWindow.css";
+import template from "./AdminSyncImportCard.html?raw";
 import { inject, type PropType } from "vue";
 import { createWindowContextBridge } from "./contextBridge.ts";
-import { AdminSyncImportCard } from "./AdminSyncImportCard.ts";
 
-export const ConfigWindow = {
-  name: "ConfigWindow",
-  components: {
-    AdminSyncImportCard
-  },
+export const AdminSyncImportCard = {
+  name: "AdminSyncImportCard",
   props: {
     ctx: {
       type: Object as PropType<Record<string, unknown>>,
       required: true
-    }
-  },
-  methods: {
-    fmtCurrency(value: number | null | undefined, decimals = 2): string {
-      if (value == null || Number.isNaN(Number(value))) return "0.00";
-      return Number(value).toFixed(decimals);
     }
   },
   setup(props: { ctx: Record<string, unknown> }) {

@@ -147,6 +147,26 @@ test("live singles autocomplete filters stock and sorts by title", () => {
   assert.equal(items[1]?.title, "Zed #10");
 });
 
+test("live singles autocomplete can search by card number with the same picker fields", () => {
+  const context = createContext({
+    liveSinglesSearchText: "eva-017",
+    singlesPurchases: [
+      entry({ id: 1, item: "Mari Makinami Illustrious", cardNumber: "UE15BT/EVA-1-017-ALT1", image: "https://example.com/mari.webp", marketValue: 15 }),
+      entry({ id: 2, item: "Goreinu", cardNumber: "UEX04BT/HTR-2-013-ALT1", marketValue: 1 })
+    ]
+  });
+
+  const items = getComputed<Array<{ value: number; name: string; cardNumber: string; image: string }>>(
+    "liveSinglesAutocompleteItems"
+  ).call(context);
+
+  assert.equal(items.length, 1);
+  assert.equal(items[0]?.value, 1);
+  assert.equal(items[0]?.name, "Mari Makinami Illustrious");
+  assert.equal(items[0]?.cardNumber, "UE15BT/EVA-1-017-ALT1");
+  assert.equal(items[0]?.image, "https://example.com/mari.webp");
+});
+
 test("bundle metrics and allocations are derived from selected entries", () => {
   const context = createContext({
     effectiveLiveSinglesIds: [1, 2],
@@ -221,9 +241,13 @@ test("individual and bundle price mutators update values and selection state", (
   getMethod<(this: PanelCtx, direction: -1 | 1) => void>("adjustBundlePrice").call(context, 1);
   assert.equal(context.liveSinglesBundlePrice, 13.4);
 
+  getMethod<(this: PanelCtx, value: unknown) => void>("onLiveSinglesPickerSelection").call(context, 6);
+  assert.deepEqual(context.addLiveSinglesSelection.mock.calls[0], [6, "manual"]);
+  assert.equal(context.liveSinglesSelectedId, null);
+
   context.liveSinglesSelectedId = 7;
   getMethod<(this: PanelCtx) => void>("addLiveSinglesFromPicker").call(context);
-  assert.deepEqual(context.addLiveSinglesSelection.mock.calls[0], [7, "manual"]);
+  assert.deepEqual(context.addLiveSinglesSelection.mock.calls[1], [7, "manual"]);
   assert.equal(context.liveSinglesSelectedId, null);
 
   getMethod<(this: PanelCtx, entryId: number) => void>("removeLiveSinglesEntry").call(context, 7);
@@ -292,6 +316,10 @@ test("guard paths and setup paths behave safely for live singles panel", () => {
 
   getMethod<(this: PanelCtx, entryId: number, direction: -1 | 1) => void>("adjustIndividualPrice").call(context, 9, 1);
   assert.equal((context.liveSinglesIndividualPrices as Record<number, number>)[9], 7.6);
+
+  getMethod<(this: PanelCtx, value: unknown) => void>("onLiveSinglesPickerSelection").call(context, 0);
+  assert.equal(context.addLiveSinglesSelection.mock.calls.length, 0);
+  assert.equal(context.liveSinglesSelectedId, null);
 
   context.liveSinglesSelectedId = 0;
   getMethod<(this: PanelCtx) => void>("addLiveSinglesFromPicker").call(context);

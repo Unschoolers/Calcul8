@@ -255,6 +255,7 @@ test("onSinglesPurchaseRowsChange normalizes entries and writes to selected sing
         id: 0,
         item: "  Card A  ",
         cardNumber: " 007 ",
+        image: " https://img.example.com/card-a.jpg ",
         condition: "  Near Mint ",
         language: " English ",
         cost: -10,
@@ -279,6 +280,7 @@ test("onSinglesPurchaseRowsChange normalizes entries and writes to selected sing
     id: number;
     item: string;
     cardNumber: string;
+    image: string;
     condition: string;
     language: string;
     cost: number;
@@ -289,6 +291,7 @@ test("onSinglesPurchaseRowsChange normalizes entries and writes to selected sing
   assert.equal(rows[0]?.id > 0, true);
   assert.equal(rows[0]?.item, "Card A");
   assert.equal(rows[0]?.cardNumber, "007");
+  assert.equal(rows[0]?.image, "https://img.example.com/card-a.jpg");
   assert.equal(rows[0]?.condition, "Near Mint");
   assert.equal(rows[0]?.language, "English");
   assert.equal(rows[0]?.cost, 0);
@@ -296,6 +299,7 @@ test("onSinglesPurchaseRowsChange normalizes entries and writes to selected sing
   assert.equal(rows[0]?.marketValue, 4.25);
   assert.equal(rows[1]?.item, "");
   assert.equal(rows[1]?.cardNumber, "");
+  assert.equal(rows[1]?.image, "");
   assert.equal(rows[1]?.condition, "");
   assert.equal(rows[1]?.language, "");
   assert.equal(rows[1]?.cost, 0);

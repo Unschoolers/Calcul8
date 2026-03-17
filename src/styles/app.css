@@ -588,6 +588,12 @@
       background: rgba(var(--v-theme-surface), 0.98);
       z-index: 2;
     }
+    @media (min-width: 960px) {
+      .preset-card {
+        position: static;
+        top: auto;
+      }
+    }
     @media (max-width: 600px) {
       .tabs-window .v-window__container {
         transition: height 110ms cubic-bezier(0.2, 0, 0, 1);

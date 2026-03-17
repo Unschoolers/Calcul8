@@ -18,7 +18,7 @@ function getQueryParam(request: HttpRequest, key: string): string | null {
 }
 
 function parseLimit(rawLimit: string | null): number {
-  if (!rawLimit) return 10;
+  if (!rawLimit) return 25;
   const parsed = Number(rawLimit);
   if (!Number.isFinite(parsed)) {
     throw new HttpError(400, "Query param 'limit' must be a number.");
@@ -76,4 +76,3 @@ app.http("cardsSearch", {
   route: "cards/search",
   handler: cardsSearch
 });
-

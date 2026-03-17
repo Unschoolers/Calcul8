@@ -55,69 +55,94 @@
         >
           Singles lots track item-by-item sales inventory. Use Live tab to build a live singles list.
         </v-alert>
-        <v-text-field
-          v-model="singlesSearchQuery"
-          variant="outlined"
-          density="compact"
-          hide-details
-          prepend-inner-icon="mdi-magnify"
-          class="singles-search-input mb-3"
-          placeholder="Search name or number"
-          @update:model-value="onSinglesSearchInput"
-        >
-          <template #append-inner>
-            <div class="singles-search-actions">
-              <v-tooltip text="Import CSV" location="top">
-                <template #activator="{ props }">
-                  <v-btn
-                    v-bind="props"
-                    icon="mdi-file-delimited"
-                    size="x-small"
-                    variant="text"
-                    class="singles-search-action-btn"
-                    title="Import CSV"
-                    aria-label="Import CSV"
-                    @click.stop="importSinglesPurchasesCsv"
-                  ></v-btn>
-                </template>
-              </v-tooltip>
-              <v-tooltip :text="showFullySoldSingles ? 'Hide sold-out items' : 'Show sold-out items'" location="top">
-                <template #activator="{ props }">
-                  <v-btn
-                    v-bind="props"
-                    :icon="showFullySoldSingles ? 'mdi-eye-off-outline' : 'mdi-eye-outline'"
-                    size="x-small"
-                    variant="text"
-                    class="singles-search-action-btn"
-                    :color="showFullySoldSingles ? undefined : 'success'"
-                    title="Toggle sold-out visibility"
-                    aria-label="Toggle sold-out visibility"
-                    @click.stop="toggleShowFullySoldSingles"
-                  ></v-btn>
-                </template>
-              </v-tooltip>
-              <v-tooltip
-                v-if="$vuetify?.display?.mdAndUp"
-                :text="isDesktopSelectMode ? 'Exit select mode' : 'Select multiple rows'"
-                location="top"
-              >
-                <template #activator="{ props }">
-                  <v-btn
-                    v-bind="props"
-                    :icon="isDesktopSelectMode ? 'mdi-close-box-multiple-outline' : 'mdi-checkbox-multiple-marked-outline'"
-                    size="x-small"
-                    variant="text"
-                    class="singles-search-action-btn"
-                    :color="isDesktopSelectMode ? 'primary' : undefined"
-                    title="Toggle select mode"
-                    aria-label="Toggle select mode"
-                    @click.stop="toggleDesktopSelectMode"
-                  ></v-btn>
-                </template>
-              </v-tooltip>
+        <div class="singles-mobile-sticky-tools">
+          <v-text-field
+            v-model="singlesSearchQuery"
+            variant="outlined"
+            density="compact"
+            hide-details
+            prepend-inner-icon="mdi-magnify"
+            class="singles-search-input mb-3"
+            placeholder="Search name or number"
+            @update:model-value="onSinglesSearchInput"
+          >
+            <template #append-inner>
+              <div class="singles-search-actions">
+                <v-tooltip text="Import CSV" location="top">
+                  <template #activator="{ props }">
+                    <v-btn
+                      v-bind="props"
+                      icon="mdi-file-delimited"
+                      size="x-small"
+                      variant="text"
+                      class="singles-search-action-btn"
+                      title="Import CSV"
+                      aria-label="Import CSV"
+                      @click.stop="importSinglesPurchasesCsv"
+                    ></v-btn>
+                  </template>
+                </v-tooltip>
+                <v-tooltip :text="showFullySoldSingles ? 'Hide sold-out items' : 'Show sold-out items'" location="top">
+                  <template #activator="{ props }">
+                    <v-btn
+                      v-bind="props"
+                      :icon="showFullySoldSingles ? 'mdi-eye-off-outline' : 'mdi-eye-outline'"
+                      size="x-small"
+                      variant="text"
+                      class="singles-search-action-btn"
+                      :color="showFullySoldSingles ? undefined : 'success'"
+                      title="Toggle sold-out visibility"
+                      aria-label="Toggle sold-out visibility"
+                      @click.stop="toggleShowFullySoldSingles"
+                    ></v-btn>
+                  </template>
+                </v-tooltip>
+                <v-tooltip
+                  v-if="$vuetify?.display?.mdAndUp"
+                  :text="isDesktopSelectMode ? 'Exit select mode' : 'Select multiple rows'"
+                  location="top"
+                >
+                  <template #activator="{ props }">
+                    <v-btn
+                      v-bind="props"
+                      :icon="isDesktopSelectMode ? 'mdi-close-box-multiple-outline' : 'mdi-checkbox-multiple-marked-outline'"
+                      size="x-small"
+                      variant="text"
+                      class="singles-search-action-btn"
+                      :color="isDesktopSelectMode ? 'primary' : undefined"
+                      title="Toggle select mode"
+                      aria-label="Toggle select mode"
+                      @click.stop="toggleDesktopSelectMode"
+                    ></v-btn>
+                  </template>
+                </v-tooltip>
+              </div>
+            </template>
+          </v-text-field>
+
+          <div
+            v-if="$vuetify?.display?.smAndDown && visibleSinglesPurchases.length > 0"
+            class="singles-mobile-toolbar"
+          >
+            <div class="singles-mobile-toolbar-copy">
+              <div class="singles-mobile-toolbar-count">
+                {{ visibleSinglesPurchases.length }} item{{ visibleSinglesPurchases.length === 1 ? '' : 's' }}
+              </div>
+              <div class="singles-mobile-toolbar-state">
+                {{ showFullySoldSingles ? 'Showing sold-out items' : 'In-stock focus' }}
+              </div>
             </div>
-          </template>
-        </v-text-field>
+            <v-btn
+              size="small"
+              variant="tonal"
+              class="singles-mobile-toolbar-sort"
+              prepend-icon="mdi-sort"
+              @click="cycleMobileSort"
+            >
+              {{ mobileSortLabel }}
+            </v-btn>
+          </div>
+        </div>
         <v-alert
           v-if="singlesPurchases.length === 0"
           type="info"
@@ -266,7 +291,7 @@
                 @click="handleDesktopRowClick(entry)"
               >
                 <td>
-                  <div class="d-flex align-center ga-1">
+                  <div class="singles-row-main">
                     <v-icon
                       v-if="isDesktopSelectMode"
                       size="14"
@@ -274,14 +299,32 @@
                     >
                       {{ isDesktopRowSelected(entry.id) ? 'mdi-checkbox-marked' : 'mdi-checkbox-blank-outline' }}
                     </v-icon>
-                    <v-icon
-                      v-if="isSinglesEntryFullySold(entry)"
-                      size="14"
-                      color="success"
-                      title="Fully sold"
-                      aria-label="Fully sold"
-                    >mdi-check-circle</v-icon>
-                    <span class="text-body-2">{{ entry.item || "Unnamed item" }}</span>
+                    <button
+                      type="button"
+                      class="singles-row-thumb singles-thumb-button"
+                      :aria-label="`Preview ${entry.item || 'card'} image`"
+                      @click.stop="openSinglesImagePreview(getSinglesEntryPreviewImage(entry), entry.item)"
+                    >
+                      <img
+                        v-if="getSinglesEntryPreviewImage(entry)"
+                        :src="getSinglesEntryPreviewImage(entry)"
+                        alt=""
+                        loading="lazy"
+                      >
+                      <v-icon v-else size="16">mdi-cards-outline</v-icon>
+                    </button>
+                    <div class="singles-row-copy">
+                      <div class="singles-row-title">
+                        <v-icon
+                          v-if="isSinglesEntryFullySold(entry)"
+                          size="14"
+                          color="success"
+                          title="Fully sold"
+                          aria-label="Fully sold"
+                        >mdi-check-circle</v-icon>
+                        <span class="text-body-2 singles-row-name">{{ entry.item || "Unnamed item" }}</span>
+                      </div>
+                    </div>
                   </div>
                 </td>
                 <td>
@@ -331,10 +374,26 @@
             <v-list-item
               v-for="entry in mobileRenderedSinglesPurchases"
               :key="`mobile-${entry.id}`"
-              class="singles-mobile-item"
+              :class="['singles-mobile-item', { 'is-sold': isSinglesEntryFullySold(entry) }]"
               lines="two"
               @click="openSinglesRowEditor(entry)"
             >
+              <template #prepend>
+                <button
+                  type="button"
+                  class="singles-mobile-thumb singles-thumb-button"
+                  :aria-label="`Preview ${entry.item || 'card'} image`"
+                  @click.stop="openSinglesImagePreview(getSinglesEntryPreviewImage(entry), entry.item)"
+                >
+                  <img
+                    v-if="getSinglesEntryPreviewImage(entry)"
+                    :src="getSinglesEntryPreviewImage(entry)"
+                    alt=""
+                    loading="lazy"
+                  >
+                  <v-icon v-else size="16">mdi-cards-outline</v-icon>
+                </button>
+              </template>
               <v-list-item-title class="text-body-2 font-weight-medium singles-mobile-title">
                 <div class="singles-mobile-head">
                   <div class="singles-mobile-name-wrap">
@@ -352,28 +411,23 @@
                 </div>
               </v-list-item-title>
               <v-list-item-subtitle class="text-caption singles-mobile-subtitle">
-                <div class="singles-mobile-meta-line">
+                <div class="singles-mobile-meta-primary">
                   <span class="singles-mobile-chip singles-mobile-chip--stock">{{ getSinglesEntryStockLabel(entry) }}</span>
-                  <span class="singles-mobile-chip">{{ conditionShortLabel(entry.condition) }}</span>
-                  <span class="singles-mobile-chip">{{ languageShortLabel(entry.language) }}</span>
-                  <span class="singles-mobile-chip">
+                  <span class="singles-mobile-value">M ${{ fmtCurrency((Number(entry.marketValue) || 0) * (Number(entry.quantity) || 0)) }}</span>
+                  <span class="singles-mobile-value-muted">
                     C ${{ fmtCurrency((Number(entry.cost) || 0) * (Number(entry.quantity) || 0)) }} {{ entry.currency || currency }}
                   </span>
-                  <span class="singles-mobile-chip">M ${{ fmtCurrency((Number(entry.marketValue) || 0) * (Number(entry.quantity) || 0)) }}</span>
+                </div>
+                <div
+                  v-if="entry.condition || entry.language"
+                  class="singles-mobile-meta-secondary"
+                >
+                  <span v-if="entry.condition">{{ conditionShortLabel(entry.condition) }}</span>
+                  <span v-if="entry.language">{{ languageShortLabel(entry.language) }}</span>
                 </div>
               </v-list-item-subtitle>
               <template #append>
-                <v-btn
-                  class="singles-mobile-action-btn"
-                  size="small"
-                  variant="text"
-                  color="default"
-                  title="Remove row"
-                  aria-label="Remove row"
-                  @click.stop="confirmRemoveSinglesPurchaseRow(entry.id)"
-                >
-                  <v-icon size="18">mdi-trash-can-outline</v-icon>
-                </v-btn>
+                <v-icon size="18" class="singles-mobile-chevron">mdi-chevron-right</v-icon>
               </template>
             </v-list-item>
           </v-list>
@@ -388,29 +442,6 @@
               <span class="text-medium-emphasis ml-1">({{ remainingMobileSinglesRows }} left)</span>
             </v-btn>
           </div>
-        </div>
-
-        <div class="singles-add-row-fab-wrap mt-2">
-          <v-btn
-            color="primary"
-            variant="elevated"
-            class="singles-add-row-fab singles-add-row-fab--desktop"
-            prepend-icon="mdi-plus"
-            title="Add item"
-            aria-label="Add item"
-            @click="handleAddSinglesPurchase"
-          >
-            Add item
-          </v-btn>
-          <v-btn
-            color="primary"
-            variant="elevated"
-            class="singles-add-row-fab singles-add-row-fab--mobile"
-            icon="mdi-plus"
-            title="Add item"
-            aria-label="Add item"
-            @click="handleAddSinglesPurchase"
-          ></v-btn>
         </div>
 
         <div class="singles-summary-row mt-2">
@@ -521,53 +552,86 @@
     </v-card>
   </v-col>
 
+  <admin-sync-import-card :ctx="ctx"></admin-sync-import-card>
+
   <v-bottom-sheet v-model="showSinglesRowEditor" inset>
     <v-card class="singles-editor-sheet">
-      <v-card-title class="text-subtitle-1 d-flex align-center justify-space-between singles-editor-title-bar">
+      <v-card-title class="text-subtitle-1 singles-editor-title-bar">
         <div class="singles-section-title-group">
           <v-icon size="16">mdi-pencil-box-outline</v-icon>
           <span>{{ editingSinglesRowId == null ? "Add Purchase" : "Edit Purchase" }}</span>
         </div>
-        <div class="d-flex align-center ga-1">
-          <v-btn
-            v-if="editingSinglesRowId !== null"
-            icon="mdi-trash-can-outline"
-            size="small"
-            variant="text"
-            color="error"
-            title="Delete row"
-            aria-label="Delete row"
-            @click="removeSinglesRowFromEditor"
-          ></v-btn>
-          <v-btn
-            icon="mdi-close"
-            size="small"
-            variant="text"
-            title="Close editor"
-            aria-label="Close editor"
-            @click="closeSinglesRowEditor"
-          ></v-btn>
-          <v-btn
-            icon="mdi-check"
-            size="small"
-            variant="tonal"
-            color="primary"
-            title="Save row"
-            aria-label="Save row"
-            @click="saveSinglesRowEditor"
-          ></v-btn>
-        </div>
       </v-card-title>
       <v-divider></v-divider>
       <v-card-text class="singles-editor-form">
+        <div
+          class="singles-editor-preview"
+        >
+          <button
+            type="button"
+            :class="['singles-editor-preview-card', { 'singles-thumb-button': editingSinglesPreviewImage }]"
+            :disabled="!editingSinglesPreviewImage"
+            :aria-label="editingSinglesPreviewImage ? `Preview ${editingSinglesRow.item || 'card'} image` : 'No image available'"
+            @click="openSinglesImagePreview(editingSinglesPreviewImage, editingSinglesRow.item)"
+          >
+            <img
+              v-if="editingSinglesPreviewImage"
+              :src="editingSinglesPreviewImage"
+              alt=""
+              loading="lazy"
+            >
+            <div v-else class="singles-editor-preview-card__fallback">
+              <v-progress-circular
+                v-if="singlesEditorPreviewLoading"
+                indeterminate
+                size="22"
+                width="2"
+                color="primary"
+              ></v-progress-circular>
+              <v-icon v-else size="30">mdi-cards-outline</v-icon>
+            </div>
+          </button>
+          <div class="singles-editor-preview-copy">
+            <div class="singles-editor-preview-eyebrow">Card Preview</div>
+            <div class="singles-editor-preview-title">
+              {{ editingSinglesRow.item || "Choose an item" }}
+            </div>
+            <div
+              v-if="editingSinglesRow.cardNumber || editingSinglesRow.condition || editingSinglesRow.language"
+              class="singles-editor-preview-meta"
+            >
+              <span v-if="editingSinglesRow.cardNumber">#{{ editingSinglesRow.cardNumber }}</span>
+              <span v-if="editingSinglesRow.condition">• {{ conditionShortLabel(editingSinglesRow.condition) }}</span>
+              <span v-if="editingSinglesRow.language">• {{ languageShortLabel(editingSinglesRow.language) }}</span>
+            </div>
+            <div class="singles-editor-preview-values">
+              <div class="singles-editor-preview-pill">
+                <span class="singles-editor-preview-pill__label">Market</span>
+                <span class="singles-editor-preview-pill__value">
+                  ${{ fmtCurrency(editingSinglesRow.marketValue) }}
+                </span>
+              </div>
+              <div class="singles-editor-preview-pill">
+                <span class="singles-editor-preview-pill__label">Cost</span>
+                <span class="singles-editor-preview-pill__value">
+                  ${{ fmtCurrency(editingSinglesRow.cost) }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="singles-editor-section">
-          <div class="text-caption text-medium-emphasis mb-2 font-weight-bold">Core</div>
+          <div class="singles-editor-section-head">
+            <div class="singles-editor-section-title">Core</div>
+          </div>
           <v-row dense>
-            <v-col cols="8">
-              <v-combobox
-                v-model="editingSinglesRow.item"
+            <v-col cols="12" :md="showCatalogSuggestions ? 8 : 8">
+              <v-autocomplete
+                :model-value="currentSinglesEditorSelectionValue"
                 v-model:search="singlesItemSearchText"
-                :items="singlesItemSuggestions"
+                v-model:menu="singlesItemMenuOpen"
+                :items="singlesEditorCatalogItems"
                 item-title="title"
                 item-value="value"
                 :menu-props="{ contentClass: 'singles-card-suggestions-menu' }"
@@ -578,10 +642,25 @@
                 no-filter
                 hide-details
                 :no-data-text="showCatalogSuggestions ? 'Type 2+ characters to search' : 'Autocomplete disabled for this lot'"
-                placeholder="Item name"
+                :placeholder="showCatalogSuggestions ? 'Search by name, number, or rarity' : 'Item name'"
+                @focus="maybeOpenSinglesItemSuggestions"
+                @click:control="maybeOpenSinglesItemSuggestions"
                 @update:search="onSinglesItemSearchUpdate"
-                @update:model-value="onSinglesItemSelected"
+                @update:model-value="onSinglesCatalogSelectionChange"
               >
+                <template #selection="{ item }">
+                  <div class="singles-card-selection">
+                    <span class="singles-card-selection-name">
+                      {{ item?.raw?.name || editingSinglesRow.item || item?.title || "" }}
+                    </span>
+                    <span
+                      v-if="item?.raw?.cardNo || editingSinglesRow.cardNumber"
+                      class="singles-card-selection-number"
+                    >
+                      #{{ item?.raw?.cardNo || editingSinglesRow.cardNumber }}
+                    </span>
+                  </div>
+                </template>
                 <template #item="{ props, item }">
                   <v-list-item
                     v-bind="props"
@@ -590,30 +669,59 @@
                     :subtitle="undefined"
                   >
                     <template #prepend>
-                      <span class="singles-card-suggestion-rarity">
-                        {{ formatSuggestionRarity(item?.raw?.rarity) }}
-                      </span>
+                      <div class="singles-card-suggestion-media">
+                        <div class="singles-card-suggestion-thumb" aria-hidden="true">
+                          <img
+                            v-if="item?.raw?.image"
+                            :src="item.raw.image"
+                            alt=""
+                            loading="lazy"
+                          >
+                          <v-icon v-else size="16">mdi-cards-outline</v-icon>
+                        </div>
+                      </div>
                     </template>
                     <v-list-item-title class="singles-card-suggestion-title">
                       {{ item?.raw?.name || item?.title }}
                     </v-list-item-title>
                     <v-list-item-subtitle class="singles-card-suggestion-subtitle">
                       <span v-if="item?.raw?.cardNo">#{{ item.raw.cardNo }}</span>
+                      <span>
+                        • {{ formatSuggestionRarity(item?.raw?.rarity) }}
+                      </span>
                       <span v-if="item?.raw?.marketPrice != null">
                         • M ${{ fmtCurrency(item.raw.marketPrice) }}
                       </span>
                     </v-list-item-subtitle>
                   </v-list-item>
                 </template>
-                <template #selection="{ item }">
-                  <div class="singles-card-selection">
-                    <span class="singles-card-selection-name">{{ item?.raw?.name || item?.title }}</span>
-                    <span v-if="item?.raw?.cardNo" class="singles-card-selection-number">#{{ item.raw.cardNo }}</span>
-                  </div>
-                </template>
-              </v-combobox>
+              </v-autocomplete>
             </v-col>
-            <v-col cols="4">
+            <v-col v-if="showCatalogSuggestions" cols="12" md="4">
+              <div class="singles-editor-qty-card">
+                <div class="singles-editor-qty-label">Quantity</div>
+                <div class="singles-editor-qty-stepper" role="group" aria-label="Quantity">
+                  <button
+                    type="button"
+                    class="singles-editor-qty-btn"
+                    aria-label="Decrease quantity"
+                    @click="decreaseEditingSinglesQuantity"
+                  >
+                    <v-icon size="16">mdi-minus</v-icon>
+                  </button>
+                  <div class="singles-editor-qty-value">{{ getEditingSinglesQuantity() }}</div>
+                  <button
+                    type="button"
+                    class="singles-editor-qty-btn is-plus"
+                    aria-label="Increase quantity"
+                    @click="increaseEditingSinglesQuantity"
+                  >
+                    <v-icon size="16">mdi-plus</v-icon>
+                  </button>
+                </div>
+              </div>
+            </v-col>
+            <v-col v-if="!showCatalogSuggestions" cols="12" md="4">
               <v-text-field
                 v-model="editingSinglesRow.cardNumber"
                 label="Number"
@@ -623,7 +731,7 @@
                 placeholder="Optional"
               ></v-text-field>
             </v-col>
-            <v-col cols="6">
+            <v-col v-if="!showCatalogSuggestions" cols="12" sm="6">
               <v-text-field
                 v-model.number="editingSinglesRow.quantity"
                 label="Quantity"
@@ -635,7 +743,30 @@
                 hide-details
               ></v-text-field>
             </v-col>
-            <v-col cols="6">
+          </v-row>
+        </div>
+
+        <div class="singles-editor-section">
+          <div class="singles-editor-section-head">
+            <div class="singles-editor-section-title">Pricing</div>
+          </div>
+          <v-row dense>
+            <v-col cols="12">
+              <div class="singles-editor-currency-wrap">
+                <div class="singles-editor-currency-label">Currency</div>
+                <v-btn-toggle
+                  v-model="editingSinglesRow.currency"
+                  mandatory
+                  density="comfortable"
+                  variant="tonal"
+                  class="pill-toggle singles-editor-currency-toggle"
+                >
+                  <v-btn value="CAD" title="CAD">🇨🇦</v-btn>
+                  <v-btn value="USD" title="USD">🇺🇸</v-btn>
+                </v-btn-toggle>
+              </div>
+            </v-col>
+            <v-col cols="12" sm="6">
               <v-text-field
                 v-model.number="editingSinglesRow.cost"
                 :label="`Cost (${editingSinglesRow.currency})`"
@@ -648,26 +779,7 @@
                 hide-details
               ></v-text-field>
             </v-col>
-          </v-row>
-        </div>
-
-        <div class="singles-editor-section">
-          <div class="text-caption text-medium-emphasis mb-2 font-weight-bold">Pricing</div>
-          <v-row dense>
-            <v-col cols="6">
-              <div class="text-caption text-medium-emphasis mb-1">Currency</div>
-              <v-btn-toggle
-                v-model="editingSinglesRow.currency"
-                mandatory
-                density="compact"
-                variant="tonal"
-                class="pill-toggle"
-              >
-                <v-btn value="CAD" title="CAD">🇨🇦</v-btn>
-                <v-btn value="USD" title="USD">🇺🇸</v-btn>
-              </v-btn-toggle>
-            </v-col>
-            <v-col cols="6">
+            <v-col cols="12" sm="6">
               <v-text-field
                 v-model.number="editingSinglesRow.marketValue"
                 label="Market Value"
@@ -684,9 +796,12 @@
         </div>
 
         <div class="singles-editor-section">
-          <div class="text-caption text-medium-emphasis mb-2 font-weight-bold">Attributes</div>
+          <div class="singles-editor-section-head">
+            <div class="singles-editor-section-title">Attributes</div>
+            <div class="singles-editor-section-note">Optional</div>
+          </div>
           <v-row dense>
-            <v-col cols="6">
+            <v-col cols="12" sm="6">
               <v-combobox
                 v-model="editingSinglesRow.condition"
                 :items="singlesConditionOptions"
@@ -698,7 +813,7 @@
                 clearable
               ></v-combobox>
             </v-col>
-            <v-col cols="6">
+            <v-col cols="12" sm="6">
               <v-combobox
                 v-model="editingSinglesRow.language"
                 :items="singlesLanguageOptions"
@@ -713,8 +828,68 @@
           </v-row>
         </div>
       </v-card-text>
+      <v-divider></v-divider>
+      <v-card-actions class="singles-editor-actions">
+        <v-btn
+          v-if="editingSinglesRowId !== null"
+          prepend-icon="mdi-trash-can-outline"
+          variant="text"
+          color="error"
+          class="singles-editor-actions__delete"
+          @click="removeSinglesRowFromEditor"
+        >
+          Delete
+        </v-btn>
+        <v-spacer></v-spacer>
+        <v-btn
+          variant="text"
+          @click="closeSinglesRowEditor"
+        >
+          Cancel
+        </v-btn>
+        <v-btn
+          v-if="editingSinglesRowId == null"
+          variant="tonal"
+          color="secondary"
+          @click="saveSinglesRowEditor('new')"
+        >
+          Save + New
+        </v-btn>
+        <v-btn
+          variant="flat"
+          color="primary"
+          @click="saveSinglesRowEditor()"
+        >
+          Save
+        </v-btn>
+      </v-card-actions>
     </v-card>
   </v-bottom-sheet>
+
+  <v-dialog v-model="showSinglesImagePreview" max-width="420" class="singles-image-preview-dialog">
+    <div class="singles-image-preview-shell" @click="closeSinglesImagePreview">
+      <div class="singles-image-preview-frame" @click.stop>
+        <button
+          type="button"
+          class="singles-image-preview-close"
+          aria-label="Close image preview"
+          @click="closeSinglesImagePreview"
+        >
+          <v-icon size="18">mdi-close</v-icon>
+        </button>
+        <img
+          v-if="singlesImagePreviewSrc"
+          :src="singlesImagePreviewSrc"
+          :alt="singlesImagePreviewTitle || 'Card preview'"
+          class="singles-image-preview-img"
+          @click="closeSinglesImagePreview"
+        >
+        <div v-if="singlesImagePreviewTitle" class="singles-image-preview-title">
+          {{ singlesImagePreviewTitle }}
+        </div>
+      </div>
+    </div>
+  </v-dialog>
 
   <singles-csv-import-dialog :ctx="ctx"></singles-csv-import-dialog>
 </v-row>

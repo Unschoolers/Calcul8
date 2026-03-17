@@ -87,6 +87,7 @@ export interface SinglesPurchaseEntry {
   id: number;
   item: string;
   cardNumber?: string;
+  image?: string;
   condition?: string;
   language?: string;
   cost: number;
