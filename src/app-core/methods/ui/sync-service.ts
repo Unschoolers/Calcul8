@@ -73,6 +73,10 @@ type SyncServiceDeps = {
   now: () => number;
 };
 
+type SyncPushOptions = {
+  allowEmptyOverwrite?: boolean;
+};
+
 const defaultDeps: SyncServiceDeps = {
   resolveApiBaseUrl,
   getGoogleIdToken: () => (localStorage.getItem(GOOGLE_TOKEN_KEY) || "").trim(),
@@ -240,7 +244,8 @@ export function stopCloudSyncScheduler(app: Pick<SyncApp, "cloudSyncIntervalId">
 export async function runCloudSyncPush(
   app: SyncApp,
   force = false,
-  deps: Partial<SyncServiceDeps> = {}
+  deps: Partial<SyncServiceDeps> = {},
+  options: SyncPushOptions = {}
 ): Promise<void> {
   const resolvedDeps = { ...defaultDeps, ...deps } satisfies SyncServiceDeps;
   const base = resolvedDeps.resolveApiBaseUrl();
@@ -263,6 +268,9 @@ export async function runCloudSyncPush(
 
   const clientVersion = resolvedDeps.getStoredClientVersion(app);
   const syncPayload = resolvedDeps.createSyncPayload(app, clientVersion);
+  if (options.allowEmptyOverwrite === true) {
+    syncPayload.allowEmptyOverwrite = true;
+  }
   const payloadSignature = resolvedDeps.getSyncPayloadSignature(syncPayload);
   if (!force && app.lastSyncedPayloadHash === payloadSignature) {
     return;

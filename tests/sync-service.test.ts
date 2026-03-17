@@ -119,6 +119,39 @@ test("runCloudSyncPush handles auth expiry and marks sync as error", async () =>
   assert.equal(app.syncStatus, "error");
 });
 
+test("runCloudSyncPush forwards intentional empty-overwrite flag for confirmed destructive syncs", async () => {
+  const app = createApp();
+  app.lots = [];
+  app.currentLotId = null;
+
+  const requestCloudSyncPush = vi.fn().mockResolvedValue({
+    ok: true,
+    status: 200,
+    statusText: "OK",
+    json: async () => ({
+      version: 3
+    })
+  });
+
+  await runCloudSyncPush(app, true, {
+    requestCloudSyncPush,
+    createSyncPayload: () => ({ lots: [], salesByLot: {} }),
+    getSyncPayloadSignature: () => "sig-empty",
+    startSyncStatus: vi.fn(),
+    setSyncStatusSuccess: vi.fn(),
+    setSyncStatusError: vi.fn()
+  }, {
+    allowEmptyOverwrite: true
+  });
+
+  assert.equal(requestCloudSyncPush.mock.calls.length, 1);
+  assert.deepEqual(requestCloudSyncPush.mock.calls[0]?.[2], {
+    lots: [],
+    salesByLot: {},
+    allowEmptyOverwrite: true
+  });
+});
+
 test("runCloudSyncPull applies newer cloud snapshot and stores version", async () => {
   const storage = createMockStorage({
     whatfees_google_token: "token-abc",

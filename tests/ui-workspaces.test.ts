@@ -200,6 +200,22 @@ test("switchToWorkspace refreshes once and warns if workspace remains unavailabl
   assert.deepEqual(ctx.notify.mock.calls.at(-1), ["That workspace is no longer available.", "warning"]);
 });
 
+test("switchToPersonalWorkspace restores personal scope and clears saved workspace selection", async () => {
+  const ctx = createContext();
+  ctx.activeScopeType = "workspace";
+  ctx.activeWorkspaceId = "ws_team";
+
+  await uiWorkspaceMethods.switchToPersonalWorkspace.call(ctx);
+
+  assert.equal(ctx.activeScopeType, "personal");
+  assert.equal(ctx.activeWorkspaceId, null);
+  assert.equal(ctx.loadLotsFromStorage.mock.calls.length, 1);
+  assert.equal(ctx.loadLot.mock.calls.length, 1);
+  assert.equal(ctx.pullCloudSync.mock.calls.length, 1);
+  assert.equal(localStorage.getItem("whatfees_active_scope_type"), "personal");
+  assert.equal(localStorage.getItem("whatfees_active_workspace_id"), null);
+});
+
 test("createWorkspace creates, seeds, refreshes, and switches to the new workspace", async () => {
   const ctx = createContext();
   ctx.newWorkspaceName = "Team Alpha";
@@ -223,6 +239,17 @@ test("createWorkspace creates, seeds, refreshes, and switches to the new workspa
   assert.equal(ctx.switchToWorkspace.mock.calls[0]?.[0], "ws_created");
   assert.equal(ctx.newWorkspaceName, "");
   assert.equal(ctx.showCreateWorkspaceModal, false);
+});
+
+test("createWorkspace warns when called outside personal scope", async () => {
+  const ctx = createContext();
+  ctx.activeScopeType = "workspace";
+  ctx.newWorkspaceName = "Team Alpha";
+
+  await uiWorkspaceMethods.createWorkspace.call(ctx);
+
+  assert.equal(fetchWithRetryMock.mock.calls.length, 0);
+  assert.deepEqual(ctx.notify.mock.calls.at(-1), ["Create shared workspaces from Personal mode for now.", "warning"]);
 });
 
 test("openWorkspaceMembersModal loads normalized members and opens the modal", async () => {
@@ -258,6 +285,35 @@ test("createWorkspaceJoinLink copies the absolute invite URL", async () => {
   assert.deepEqual(ctx.notify.mock.calls.at(-1), ["Invite link copied", "success"]);
 });
 
+test("createWorkspaceJoinLink falls back to prompt when clipboard support is unavailable", async () => {
+  const ctx = createContext();
+  ctx.activeWorkspaceId = "ws_team";
+  vi.stubGlobal("navigator", {});
+  fetchWithRetryMock.mockResolvedValue(createResponse({
+    inviteUrl: "/join?invite=share-token"
+  }));
+
+  await uiWorkspaceMethods.createWorkspaceJoinLink.call(ctx);
+
+  assert.equal((window.prompt as ReturnType<typeof vi.fn>).mock.calls.length, 1);
+  assert.deepEqual(ctx.notify.mock.calls.at(-1), ["Invite link ready to share", "success"]);
+});
+
+test("previewPendingWorkspaceInvite opens the join dialog on successful preview", async () => {
+  const ctx = createContext();
+  ctx.pendingWorkspaceInviteToken = "invite-token";
+  fetchWithRetryMock.mockResolvedValue(createResponse({
+    workspaceId: "ws_joined",
+    workspaceName: "Joined Team"
+  }));
+
+  await uiWorkspaceMethods.previewPendingWorkspaceInvite.call(ctx);
+
+  assert.equal(ctx.pendingWorkspaceInviteWorkspaceId, "ws_joined");
+  assert.equal(ctx.pendingWorkspaceInviteWorkspaceName, "Joined Team");
+  assert.equal(ctx.showWorkspaceJoinDialog, true);
+});
+
 test("previewPendingWorkspaceInvite resets pending state when preview request fails", async () => {
   const ctx = createContext();
   ctx.pendingWorkspaceInviteToken = "invite-token";
@@ -270,6 +326,22 @@ test("previewPendingWorkspaceInvite resets pending state when preview request fa
   assert.equal(ctx.pendingWorkspaceInviteToken, "");
   assert.equal(ctx.pendingWorkspaceInviteWorkspaceId, null);
   assert.equal(ctx.showWorkspaceJoinDialog, false);
+});
+
+test("dismissPendingWorkspaceInvite clears local invite state and removes invite query param", () => {
+  const ctx = createContext();
+  ctx.pendingWorkspaceInviteToken = "invite-token";
+  ctx.pendingWorkspaceInviteWorkspaceId = "ws_joined";
+  ctx.pendingWorkspaceInviteWorkspaceName = "Joined Team";
+  ctx.showWorkspaceJoinDialog = true;
+
+  uiWorkspaceMethods.dismissPendingWorkspaceInvite.call(ctx);
+
+  assert.equal(ctx.pendingWorkspaceInviteToken, "");
+  assert.equal(ctx.pendingWorkspaceInviteWorkspaceId, null);
+  assert.equal(ctx.pendingWorkspaceInviteWorkspaceName, "");
+  assert.equal(ctx.showWorkspaceJoinDialog, false);
+  assert.equal((window.history.replaceState as ReturnType<typeof vi.fn>).mock.calls.length, 1);
 });
 
 test("acceptPendingWorkspaceInvite refreshes and switches to the joined workspace", async () => {
@@ -290,6 +362,26 @@ test("acceptPendingWorkspaceInvite refreshes and switches to the joined workspac
   assert.equal(ctx.pendingWorkspaceInviteToken, "");
 });
 
+test("openLeaveWorkspaceModal preloads members for owners and resets confirmation state", async () => {
+  const ctx = createContext();
+  ctx.activeWorkspaceId = "ws_team";
+  ctx.isCurrentWorkspaceOwner = true;
+  ctx.leaveWorkspaceDeleteConfirmation = true;
+  fetchWithRetryMock.mockResolvedValue(createResponse({
+    memberships: [
+      { userId: "owner-1", workspaceId: "ws_team", role: "owner", status: "active", updatedAt: "2026-03-17T00:00:00Z" },
+      { userId: "member-1", workspaceId: "ws_team", role: "member", status: "active", updatedAt: "2026-03-17T00:00:00Z" }
+    ]
+  }));
+
+  await uiWorkspaceMethods.openLeaveWorkspaceModal.call(ctx);
+
+  assert.equal(fetchWithRetryMock.mock.calls.length, 1);
+  assert.equal(ctx.leaveWorkspaceTransferMemberUserId, "member-1");
+  assert.equal(ctx.leaveWorkspaceDeleteConfirmation, false);
+  assert.equal(ctx.showLeaveWorkspaceModal, true);
+});
+
 test("leaveCurrentWorkspace requires transfer selection for owner with remaining members", async () => {
   const ctx = createContext();
   ctx.activeWorkspaceId = "ws_team";
@@ -303,6 +395,54 @@ test("leaveCurrentWorkspace requires transfer selection for owner with remaining
 
   assert.equal(fetchWithRetryMock.mock.calls.length, 0);
   assert.deepEqual(ctx.notify.mock.calls.at(-1), ["Choose a new owner before leaving.", "warning"]);
+});
+
+test("leaveCurrentWorkspace transfers ownership, refreshes, and returns to personal scope", async () => {
+  const ctx = createContext();
+  ctx.activeWorkspaceId = "ws_team";
+  ctx.activeScopeType = "workspace";
+  ctx.isCurrentWorkspaceOwner = true;
+  ctx.showLeaveWorkspaceModal = true;
+  ctx.showWorkspaceMembersModal = true;
+  ctx.leaveWorkspaceTransferMemberUserId = "member-1";
+  ctx.workspaceMembers = [
+    { userId: "member-1", workspaceId: "ws_team", role: "member", status: "active", updatedAt: "2026-03-17T00:00:00Z" }
+  ];
+  ctx.refreshWorkspaces = vi.fn(async () => undefined);
+  fetchWithRetryMock.mockResolvedValue(createResponse({
+    newOwnerUserId: "member-1"
+  }));
+
+  await uiWorkspaceMethods.leaveCurrentWorkspace.call(ctx);
+
+  const requestInit = fetchWithRetryMock.mock.calls[0]?.[1] as { body?: string };
+  assert.deepEqual(JSON.parse(String(requestInit.body)), { newOwnerUserId: "member-1" });
+  assert.equal(ctx.activeScopeType, "personal");
+  assert.equal(ctx.activeWorkspaceId, null);
+  assert.equal(ctx.refreshWorkspaces.mock.calls.length, 1);
+  assert.equal(ctx.showLeaveWorkspaceModal, false);
+  assert.equal(ctx.showWorkspaceMembersModal, false);
+  assert.deepEqual(ctx.notify.mock.calls.at(-1), ["Ownership transferred and workspace left", "success"]);
+});
+
+test("leaveCurrentWorkspace deletes the workspace for the last owner after confirmation", async () => {
+  const ctx = createContext();
+  ctx.activeWorkspaceId = "ws_team";
+  ctx.activeScopeType = "workspace";
+  ctx.isCurrentWorkspaceOwner = true;
+  ctx.leaveWorkspaceDeleteConfirmation = true;
+  ctx.refreshWorkspaces = vi.fn(async () => undefined);
+  fetchWithRetryMock.mockResolvedValue(createResponse({
+    deletedWorkspace: true
+  }));
+
+  await uiWorkspaceMethods.leaveCurrentWorkspace.call(ctx);
+
+  const requestInit = fetchWithRetryMock.mock.calls[0]?.[1] as { body?: string };
+  assert.deepEqual(JSON.parse(String(requestInit.body)), { deleteWorkspace: true });
+  assert.equal(ctx.activeScopeType, "personal");
+  assert.equal(ctx.activeWorkspaceId, null);
+  assert.deepEqual(ctx.notify.mock.calls.at(-1), ["Workspace deleted", "success"]);
 });
 
 test("removeWorkspaceMember removes member locally after success", async () => {
@@ -336,4 +476,24 @@ test("handleWorkspaceAccessLost refreshes and falls back to personal when curren
     ctx.notify.mock.calls.at(-1),
     ["You no longer have access to that workspace. Switched back to Personal.", "warning"]
   );
+});
+
+test("handleWorkspaceAccessLost does nothing when the workspace is still available", async () => {
+  const ctx = createContext();
+  ctx.activeScopeType = "workspace";
+  ctx.activeWorkspaceId = "ws_team";
+  ctx.refreshWorkspaces = vi.fn(async () => {
+    ctx.availableWorkspaces = [{
+      workspaceId: "ws_team",
+      name: "Team",
+      role: "owner",
+      status: "active"
+    }];
+  });
+
+  await uiWorkspaceMethods.handleWorkspaceAccessLost.call(ctx, "ws_team");
+
+  assert.equal(ctx.activeScopeType, "workspace");
+  assert.equal(ctx.activeWorkspaceId, "ws_team");
+  assert.equal(ctx.notify.mock.calls.length, 0);
 });

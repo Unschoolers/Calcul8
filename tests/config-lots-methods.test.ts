@@ -892,7 +892,24 @@ test("deleteCurrentLot removes lot, linked sales keys, and last-lot key when nee
   assert.equal((removeStorageWithLegacyMock.mock.calls[1] ?? [])[1], "legacy_last_lot_id");
   assert.equal(ctx.currentLotId, null);
   assert.equal((ctx.saveLotsToStorage as ReturnType<typeof vi.fn>).mock.calls.length, 1);
+  assert.deepEqual((ctx.pushCloudSync as ReturnType<typeof vi.fn>).mock.calls[0], [true, { allowEmptyOverwrite: false }]);
   assert.equal((ctx.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0], "Lot deleted");
+});
+
+test("deleteCurrentLot allows empty cloud overwrite when deleting the final lot", () => {
+  const lotId = 999;
+  readStorageWithLegacyMock.mockReturnValue(String(lotId));
+  const ctx = createContext({
+    currentLotId: lotId,
+    lots: [makeLot({ id: lotId, name: "Last Lot" })],
+    loadSalesForLotId: vi.fn(() => []),
+    saveLotsToStorage: vi.fn()
+  });
+
+  configLotMethods.deleteCurrentLot.call(ctx as never);
+
+  assert.equal((ctx.lots as Array<{ id: number }>).length, 0);
+  assert.deepEqual((ctx.pushCloudSync as ReturnType<typeof vi.fn>).mock.calls[0], [true, { allowEmptyOverwrite: true }]);
 });
 
 
