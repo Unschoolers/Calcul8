@@ -12,6 +12,9 @@ function createContext(overrides: PwaContext = {}): PwaContext {
     offlineReconnectIntervalId: null,
     deferredInstallPrompt: null,
     showInstallPrompt: false,
+    showAppUpdatePrompt: false,
+    isApplyingAppUpdate: false,
+    appUpdateWorker: null,
     onlineListener: null,
     offlineListener: null,
     beforeInstallPromptListener: null,
@@ -253,7 +256,7 @@ test("unregisterServiceWorkersForDev warns on cleanup failure and no-ops without
   assert.equal(warnSpy.mock.calls[0]?.[0], "Failed to clean service workers in dev:");
 });
 
-test("registerServiceWorker registers on load, handles updates, and refreshes once on controllerchange", async () => {
+test("registerServiceWorker queues updates and refreshes only after applyAppUpdate", async () => {
   const windowListeners = new Map<string, (...args: unknown[]) => unknown>();
   const setInterval = vi.fn(() => 88);
   const windowMock = stubWindow({
@@ -298,7 +301,8 @@ test("registerServiceWorker registers on load, handles updates, and refreshes on
     }
   });
 
-  pwaMethods.registerServiceWorker.call(createContext() as never);
+  const context = createContext();
+  pwaMethods.registerServiceWorker.call(context as never);
   assert.equal((windowMock.addEventListener as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0], "load");
 
   const loadListener = windowListeners.get("load") as (() => Promise<void>) | undefined;
@@ -308,20 +312,45 @@ test("registerServiceWorker registers on load, handles updates, and refreshes on
   assert.equal(register.mock.calls.length, 1);
   assert.equal(register.mock.calls[0]?.[0], `./sw.js?v=${encodeURIComponent(APP_VERSION)}`);
   assert.deepEqual(register.mock.calls[0]?.[1], { updateViaCache: "none" });
-  assert.equal(waitingWorker.postMessage.mock.calls.length, 1);
+  assert.equal(context.showAppUpdatePrompt, true);
+  assert.equal(context.appUpdateWorker, waitingWorker);
+  assert.equal(waitingWorker.postMessage.mock.calls.length, 0);
 
   updateFoundListener?.();
   assert.equal(installingWorker.addEventListener.mock.calls.length, 1);
   installingWorker.state = "installed";
   stateChangeListener?.();
-  assert.equal(waitingWorker.postMessage.mock.calls.length, 2);
+  assert.equal(context.showAppUpdatePrompt, true);
+  assert.equal(context.appUpdateWorker, waitingWorker);
+  assert.equal(waitingWorker.postMessage.mock.calls.length, 0);
 
   assert.equal(registration.update.mock.calls.length, 1);
   assert.equal(setInterval.mock.calls[0]?.[1], 60 * 1000);
 
+  pwaMethods.applyAppUpdate.call(context as never);
+  assert.equal(context.isApplyingAppUpdate, true);
+  assert.equal(context.showAppUpdatePrompt, false);
+  assert.equal(waitingWorker.postMessage.mock.calls.length, 1);
+
   swListeners.get("controllerchange")?.();
   swListeners.get("controllerchange")?.();
   assert.equal(windowMock.location.reload.mock.calls.length, 1);
+  assert.equal(context.appUpdateWorker, null);
+});
+
+test("dismissAppUpdate hides the prompt without applying the worker", () => {
+  const waitingWorker = {
+    postMessage: vi.fn()
+  };
+  const context = createContext({
+    showAppUpdatePrompt: true,
+    appUpdateWorker: waitingWorker
+  });
+
+  pwaMethods.dismissAppUpdate.call(context as never);
+
+  assert.equal(context.showAppUpdatePrompt, false);
+  assert.equal(waitingWorker.postMessage.mock.calls.length, 0);
 });
 
 test("registerServiceWorker no-ops without service worker support and warns on register failure", async () => {

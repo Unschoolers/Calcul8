@@ -1218,6 +1218,23 @@
       </v-dialog>
 
       <v-snackbar
+        v-model="showAppUpdatePrompt"
+        color="secondary"
+        location="top"
+        :timeout="-1"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        close-on-content-click="false"
+      >
+        A new version of WhatFees is available.
+        <template #actions>
+          <v-btn variant="text" @click="dismissAppUpdate">Later</v-btn>
+          <v-btn variant="flat" color="secondary" @click="applyAppUpdate">Refresh</v-btn>
+        </template>
+      </v-snackbar>
+
+      <v-snackbar
         v-model="snackbar.show"
         :color="snackbar.color"
         location="bottom"

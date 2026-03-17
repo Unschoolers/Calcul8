@@ -275,6 +275,8 @@ export interface AppMethodState {
   startOfflineReconnectScheduler(): void;
   stopOfflineReconnectScheduler(): void;
   promptInstall(): Promise<void>;
+  applyAppUpdate(): void;
+  dismissAppUpdate(): void;
   debugLogEntitlement(forceRefresh?: boolean): Promise<void>;
   unregisterServiceWorkersForDev(): Promise<void>;
   registerServiceWorker(): void;

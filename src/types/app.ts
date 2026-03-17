@@ -204,6 +204,9 @@ export interface AppState extends LotSetup {
   offlineListener: (() => void) | null;
   beforeInstallPromptListener: ((event: Event) => void) | null;
   appInstalledListener: (() => void) | null;
+  showAppUpdatePrompt: boolean;
+  isApplyingAppUpdate: boolean;
+  appUpdateWorker: ServiceWorker | null;
   confirmDialog: boolean;
   confirmTitle: string;
   confirmText: string;

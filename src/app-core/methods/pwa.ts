@@ -8,6 +8,8 @@ export const pwaMethods: ThisType<AppContext> & Pick<
   | "startOfflineReconnectScheduler"
   | "stopOfflineReconnectScheduler"
   | "promptInstall"
+  | "applyAppUpdate"
+  | "dismissAppUpdate"
   | "unregisterServiceWorkersForDev"
   | "registerServiceWorker"
 > = {
@@ -82,6 +84,18 @@ export const pwaMethods: ThisType<AppContext> & Pick<
     }
   },
 
+  applyAppUpdate(): void {
+    if (!this.appUpdateWorker) return;
+    this.isApplyingAppUpdate = true;
+    this.showAppUpdatePrompt = false;
+    this.notify("Refreshing to update WhatFees…", "info");
+    this.appUpdateWorker.postMessage("SKIP_WAITING");
+  },
+
+  dismissAppUpdate(): void {
+    this.showAppUpdatePrompt = false;
+  },
+
   async unregisterServiceWorkersForDev(): Promise<void> {
     if (!("serviceWorker" in navigator)) return;
     try {
@@ -107,14 +121,15 @@ export const pwaMethods: ThisType<AppContext> & Pick<
           updateViaCache: "none"
         });
 
-        const activateWaitingWorker = () => {
-          if (registration.waiting) {
-            registration.waiting.postMessage("SKIP_WAITING");
-          }
+        const queueWaitingWorker = () => {
+          if (!registration.waiting || !navigator.serviceWorker.controller) return;
+          this.appUpdateWorker = registration.waiting;
+          this.showAppUpdatePrompt = true;
+          this.isApplyingAppUpdate = false;
         };
 
         if (registration.waiting && navigator.serviceWorker.controller) {
-          activateWaitingWorker();
+          queueWaitingWorker();
         }
 
         registration.addEventListener("updatefound", () => {
@@ -123,14 +138,16 @@ export const pwaMethods: ThisType<AppContext> & Pick<
 
           newWorker.addEventListener("statechange", () => {
             if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
-              activateWaitingWorker();
+              queueWaitingWorker();
             }
           });
         });
 
         navigator.serviceWorker.addEventListener("controllerchange", () => {
-          if (refreshing) return;
+          if (refreshing || !this.isApplyingAppUpdate) return;
           refreshing = true;
+          this.isApplyingAppUpdate = false;
+          this.appUpdateWorker = null;
           window.location.reload();
         });
 
