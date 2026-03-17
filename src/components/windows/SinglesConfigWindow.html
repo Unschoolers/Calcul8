@@ -554,7 +554,7 @@
 
   <admin-sync-import-card :ctx="ctx"></admin-sync-import-card>
 
-  <v-bottom-sheet v-model="showSinglesRowEditor" inset>
+  <v-bottom-sheet v-model="showSinglesRowEditor" inset class="singles-editor-sheet-dialog">
     <v-card class="singles-editor-sheet">
       <v-card-title class="text-subtitle-1 singles-editor-title-bar">
         <div class="singles-section-title-group">
@@ -625,7 +625,7 @@
           <div class="singles-editor-section-head">
             <div class="singles-editor-section-title">Core</div>
           </div>
-          <v-row dense>
+          <v-row dense class="singles-editor-core-row">
             <v-col cols="12" :md="showCatalogSuggestions ? 8 : 8">
               <v-autocomplete
                 :model-value="currentSinglesEditorSelectionValue"
@@ -810,7 +810,7 @@
                 density="comfortable"
                 hide-details
                 placeholder="Near Mint"
-                clearable
+                :clearable="Boolean(editingSinglesRow.condition)"
               ></v-combobox>
             </v-col>
             <v-col cols="12" sm="6">
@@ -822,7 +822,7 @@
                 density="comfortable"
                 hide-details
                 placeholder="English"
-                clearable
+                :clearable="Boolean(editingSinglesRow.language)"
               ></v-combobox>
             </v-col>
           </v-row>

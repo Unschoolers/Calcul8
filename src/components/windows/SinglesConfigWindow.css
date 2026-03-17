@@ -19,15 +19,18 @@
 .singles-editor-sheet::before {
   content: "";
   position: absolute;
-  inset: 0 0 auto 0;
-  height: 3px;
+  left: 0.75rem;
+  right: 0.75rem;
+  top: 0.55rem;
+  height: 2px;
+  border-radius: 999px;
   background: linear-gradient(90deg, rgba(var(--v-theme-secondary), 0.95), rgba(var(--v-theme-secondary), 0.22));
 }
 
 .singles-section-title-bar,
 .singles-editor-title-bar {
   min-height: 0;
-  padding: 1rem 1.15rem 0.65rem;
+  padding: 0.78rem 1.15rem 0.44rem;
   background: transparent !important;
   border-bottom: 0 !important;
   color: rgba(var(--v-theme-secondary), 0.96) !important;
@@ -41,7 +44,7 @@
 .singles-section-title-group {
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.4rem;
 }
 
 .singles-section-title-bar .v-icon,
@@ -61,7 +64,7 @@
 .singles-grid-card .v-divider,
 .singles-selling-card .v-divider,
 .singles-editor-sheet .v-divider {
-  margin: 0 1.15rem;
+  margin: 0 1.15rem 0.15rem;
   border-color: rgba(var(--v-theme-secondary), 0.18);
 }
 
@@ -1233,6 +1236,86 @@
 }
 
 @media (min-width: 960px) {
+  .singles-editor-sheet-dialog .v-overlay__content {
+    width: min(calc(100vw - 3.5rem), 980px) !important;
+    max-width: min(calc(100vw - 3.5rem), 980px) !important;
+    margin: 0 auto 1.15rem !important;
+  }
+
+  .singles-editor-sheet {
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+  }
+
+  .singles-editor-form {
+    gap: 14px;
+  }
+
+  .singles-editor-core-row {
+    align-items: end;
+  }
+
+  .singles-editor-preview {
+    grid-template-columns: 82px minmax(0, 1fr);
+    gap: 0.8rem;
+    padding: 0.72rem 0.82rem;
+  }
+
+  .singles-editor-preview-card {
+    width: 82px;
+    height: 116px;
+    border-radius: 13px;
+  }
+
+  .singles-editor-preview-title {
+    font-size: 0.98rem;
+  }
+
+  .singles-editor-preview-meta {
+    font-size: 0.77rem;
+  }
+
+  .singles-editor-preview-values {
+    margin-top: 0.55rem;
+  }
+
+  .singles-editor-preview-pill {
+    padding: 0.3rem 0.54rem;
+  }
+
+  .singles-editor-qty-card {
+    width: 100%;
+    max-width: 258px;
+    margin-left: auto;
+    gap: 0.28rem;
+  }
+
+  .singles-editor-qty-label {
+    min-height: 18px;
+    display: inline-flex;
+    align-items: flex-end;
+    font-size: 0.72rem;
+  }
+
+  .singles-editor-qty-stepper {
+    gap: 0.32rem;
+    padding: 0.22rem;
+    min-height: 48px;
+    border-radius: 14px;
+  }
+
+  .singles-editor-qty-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+  }
+
+  .singles-editor-qty-value {
+    height: 38px;
+    border-radius: 10px;
+    font-size: 0.94rem;
+  }
+
   .singles-grid-card {
     overflow: visible !important;
   }
