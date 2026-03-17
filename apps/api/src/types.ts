@@ -52,6 +52,18 @@ export interface EntitlementDocument {
   updatedAt: string;
 }
 
+export type UserProfileDisplayNameSource = "provider" | "user";
+
+export interface UserProfileDocument {
+  id: string;
+  docType: "user_profile";
+  userId: string;
+  displayName: string;
+  displayNameSource: UserProfileDisplayNameSource;
+  photoUrl?: string;
+  updatedAt: string;
+}
+
 export interface PlayPurchaseDocument {
   id: string;
   docType: "play_purchase";

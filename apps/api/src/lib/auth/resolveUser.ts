@@ -1,10 +1,11 @@
 import type { HttpRequest } from "@azure/functions";
 import type { ApiConfig } from "../../types";
+import { upsertUserProfile } from "../cosmos";
 import { hasBearerAuthHeader, isUnsafeMethod, parseSessionIdFromCookie, CSRF_HEADER_NAME } from "./cookies";
 import { createSessionCsrfToken } from "./csrf";
 import { HttpError } from "./errors";
 import { googleBearerAuthProvider } from "./providers/google";
-import type { BearerAuthProvider } from "./providers/types";
+import type { BearerAuthIdentity, BearerAuthProvider } from "./providers/types";
 import { resolveUserIdFromSession, tryIssueSessionCookie } from "./sessions";
 
 interface ResolveUserIdOptions {
@@ -19,7 +20,7 @@ async function resolveUserIdFromBearer(
   request: HttpRequest,
   config: ApiConfig,
   providers: BearerAuthProvider[]
-): Promise<string | null> {
+): Promise<BearerAuthIdentity | null> {
   const authHeader = request.headers.get("authorization") || "";
   const isBearer = authHeader.toLowerCase().startsWith("bearer ");
   if (!isBearer) return null;
@@ -28,9 +29,9 @@ async function resolveUserIdFromBearer(
   if (!bearerToken) return null;
 
   for (const provider of providers) {
-    const userId = await provider.resolveUserIdFromBearerToken(bearerToken, config);
-    if (userId) {
-      return userId;
+    const identity = await provider.resolveIdentityFromBearerToken(bearerToken, config);
+    if (identity) {
+      return identity;
     }
   }
 
@@ -55,12 +56,24 @@ export async function resolveUserId(
     return sessionUserId;
   }
 
-  const bearerUserId = await resolveUserIdFromBearer(request, config, DEFAULT_BEARER_AUTH_PROVIDERS);
-  if (bearerUserId) {
-    if (options.issueSessionCookie !== false) {
-      await tryIssueSessionCookie(request, config, bearerUserId);
+  const bearerIdentity = await resolveUserIdFromBearer(request, config, DEFAULT_BEARER_AUTH_PROVIDERS);
+  if (bearerIdentity) {
+    if (bearerIdentity.displayName) {
+      try {
+        await upsertUserProfile(config, {
+          userId: bearerIdentity.userId,
+          displayName: bearerIdentity.displayName,
+          displayNameSource: "provider",
+          photoUrl: bearerIdentity.photoUrl
+        });
+      } catch {
+        // Keep auth resilient even if profile enrichment fails.
+      }
     }
-    return bearerUserId;
+    if (options.issueSessionCookie !== false) {
+      await tryIssueSessionCookie(request, config, bearerIdentity.userId);
+    }
+    return bearerIdentity.userId;
   }
 
   throw new HttpError(401, "Authentication is required.");

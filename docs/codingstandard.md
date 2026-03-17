@@ -1,3 +1,4 @@
+- Prefer root-cause, maintainable fixes over environment-specific patches or one-off workarounds; when something only works because of a hack, step back and design the cleaner seam.
 - Prefer small, focused files and avoid adding new monolithic files; do not create new files over 1000 lines unless there is no clean alternative.
 - Split logic by responsibility instead of stacking unrelated behavior into one place.
 - Reuse existing components, methods, helpers, and types before creating new ones.
@@ -6,11 +7,13 @@
 - Keep API function handlers thin and move reusable backend logic into `apps/api/src/lib`.
 - Keep storage key composition centralized in `src/app-core/storageKeys.ts`.
 - Keep scope-aware behavior centralized so Personal and shared workspace data never bleed into each other.
+- Prefer local-first state updates for user actions, then queue/coalesce backend writes when possible instead of firing duplicate immediate saves from the UI.
+- Guard backend writes against duplicate submits with debounce, queueing, or in-flight protection where repeated clicks are likely.
 - Preserve backward compatibility for existing personal storage and sync behavior unless a task explicitly requires a migration.
 - Prefer additive changes over destructive rewrites.
 - Do not silently change or remove legacy behavior that existing users depend on.
 - Use TypeScript everywhere and prefer explicit types for public shapes, API payloads, and shared helpers.
-- Frontend code must compile with `noImplicitAny` and `noImplicitThis`; avoid loose implicit types.
+- Frontend code should stay `strict` TypeScript compatible.
 - Backend code should stay `strict` TypeScript compatible.
 - Validate and normalize all external input at boundaries.
 - Treat backend request bodies, query params, and route params as untrusted.
@@ -34,6 +37,8 @@
 - Handle auth expiry, 401s, 403s, and offline states explicitly.
 - Prefer safe recovery paths when local cache or local storage is reset unexpectedly.
 - Keep notifications clear and user-friendly for sync, auth, and workspace actions.
+- For shared or cloud-authoritative entities, use optimistic concurrency and handle `409` conflicts explicitly instead of allowing silent last-write-wins overwrites.
+- New shared/entity-backed documents should be event-ready when practical by carrying stable ids plus `version`, `updatedAt`, `updatedBy`, and `mutationId`.
 - Mobile UX is a first-class target; prefer touch-friendly controls, compact layouts, and safe-area-aware spacing.
 - Follow standard Android/TWA expectations for mobile behavior, installability, and release readiness.
 - Keep the PWA working as a standalone app and avoid changes that break manifest, service worker, or install flows.
@@ -47,6 +52,11 @@
 - Generate internal identifiers on the backend when uniqueness is a backend concern.
 - Keep public API responses predictable and minimal.
 - Prefer server-generated source-of-truth values for ids, entitlement state, and membership state.
+- Keep auth provider-neutral in shared code; isolate Google/Apple/provider-specific behavior in provider modules.
+- Prefer session-first authenticated app traffic and reserve bearer-token flows for sign-in/bootstrap or provider-specific verification paths.
+- Keep billing/access data separate from profile/identity data; use distinct documents for entitlements and user-facing profile info.
+- Seed profile/display information lazily and safely; provider data is a default, not the long-term source of truth for user identity.
+- In Azure Functions, avoid registering duplicate route templates across separate handlers; use one route registration per path and dispatch by HTTP method when needed.
 - Treat all committed data as public forever.
 - Never commit secrets, private keys, keystores, service account files, tokens, or credentials.
 - Run `npm run security:scan` before push and `npm run verify` before release or sensitive changes.
@@ -54,5 +64,7 @@
 - Keep `assetlinks.json` public-only and free of secret material.
 - Prefer environment-driven configuration for deploy-specific settings.
 - Keep release paths reproducible with the existing scripts instead of introducing ad hoc manual steps.
+- Prefer one-time migrations to be idempotent, dry-runnable, and executed through the shared migration runner rather than ad hoc scripts.
+- For production data migrations, use a reviewed dry-run first, then a deliberate apply step; do not hide one-time data migrations inside automatic deploy steps.
 - When changing behavior, update tests first or alongside the change so the expected behavior is documented in code.
 - When a feature requires product or UX tradeoffs, keep the MVP lean and defer billing, admin layers, or extra complexity until the core flow is solid.

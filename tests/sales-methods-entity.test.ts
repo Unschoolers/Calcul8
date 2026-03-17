@@ -112,6 +112,34 @@ test("saveSale uses authoritative API and appends the saved sale metadata", asyn
   assert.equal(cacheAuthoritativeSalesMock.mock.calls.length, 1);
 });
 
+test("saveSale ignores duplicate submit clicks while the authoritative save is in flight", async () => {
+  let resolveSave: ((value: unknown) => void) | null = null;
+  const savePromise = new Promise((resolve) => {
+    resolveSave = resolve;
+  });
+  const ctx = createContext();
+  saveAuthoritativeSaleMock.mockReturnValue(savePromise);
+
+  salesMethods.saveSale.call(ctx as never);
+  salesMethods.saveSale.call(ctx as never);
+  await Promise.resolve();
+
+  assert.equal(saveAuthoritativeSaleMock.mock.calls.length, 1);
+
+  resolveSave?.({
+    id: 1,
+    type: "pack",
+    quantity: 1,
+    packsCount: 1,
+    price: 10,
+    buyerShipping: 0,
+    date: "2026-03-17",
+    version: 2
+  });
+  await Promise.resolve();
+  await Promise.resolve();
+});
+
 test("deleteSale reloads latest sales on authoritative conflict", async () => {
   const latestSales = [
     {

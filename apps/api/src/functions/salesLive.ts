@@ -322,6 +322,21 @@ export async function lotSalesDelete(
   }
 }
 
+async function lotSalesRoute(
+  request: HttpRequest,
+  context: InvocationContext
+): Promise<HttpResponseInit> {
+  switch (request.method) {
+    case "GET":
+    case "OPTIONS":
+      return lotSalesList(request, context);
+    case "POST":
+      return lotSalesUpsert(request, context);
+    default:
+      return errorResponse(request, getConfig(), new HttpError(405, "Method not allowed."), "Method not allowed.");
+  }
+}
+
 export async function lotLivePricingGet(
   request: HttpRequest,
   context: InvocationContext
@@ -407,18 +422,26 @@ export async function lotLivePricingSave(
   }
 }
 
-app.http("lotSalesList", {
-  methods: ["GET", "OPTIONS"],
-  authLevel: "anonymous",
-  route: "lots/{lotId}/sales",
-  handler: lotSalesList
-});
+async function lotLivePricingRoute(
+  request: HttpRequest,
+  context: InvocationContext
+): Promise<HttpResponseInit> {
+  switch (request.method) {
+    case "GET":
+    case "OPTIONS":
+      return lotLivePricingGet(request, context);
+    case "POST":
+      return lotLivePricingSave(request, context);
+    default:
+      return errorResponse(request, getConfig(), new HttpError(405, "Method not allowed."), "Method not allowed.");
+  }
+}
 
-app.http("lotSalesUpsert", {
-  methods: ["POST", "OPTIONS"],
+app.http("lotSalesRoute", {
+  methods: ["GET", "POST", "OPTIONS"],
   authLevel: "anonymous",
   route: "lots/{lotId}/sales",
-  handler: lotSalesUpsert
+  handler: lotSalesRoute
 });
 
 app.http("lotSalesDelete", {
@@ -428,16 +451,9 @@ app.http("lotSalesDelete", {
   handler: lotSalesDelete
 });
 
-app.http("lotLivePricingGet", {
-  methods: ["GET", "OPTIONS"],
+app.http("lotLivePricingRoute", {
+  methods: ["GET", "POST", "OPTIONS"],
   authLevel: "anonymous",
   route: "lots/{lotId}/live-pricing",
-  handler: lotLivePricingGet
-});
-
-app.http("lotLivePricingSave", {
-  methods: ["POST", "OPTIONS"],
-  authLevel: "anonymous",
-  route: "lots/{lotId}/live-pricing",
-  handler: lotLivePricingSave
+  handler: lotLivePricingRoute
 });

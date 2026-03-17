@@ -12,6 +12,10 @@ export function purchaseVerificationResultId(userId: string, provider: string, i
   return `purchase_verify:${userId}:${provider}:${idempotencyKey}`;
 }
 
+export function userProfileId(userId: string): string {
+  return `profile:${userId}`;
+}
+
 export function syncSnapshotId(userId: string): string {
   return `sync:${userId}`;
 }

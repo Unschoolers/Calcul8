@@ -34,6 +34,25 @@ import {
   saveAuthoritativeSale
 } from "./sales-live-api.ts";
 
+type SaleMutationState = {
+  isSavingSale: boolean;
+  deletingSaleIds: Set<number>;
+};
+
+const saleMutationStateByContext = new WeakMap<object, SaleMutationState>();
+
+function getSaleMutationState(context: object): SaleMutationState {
+  let state = saleMutationStateByContext.get(context);
+  if (!state) {
+    state = {
+      isSavingSale: false,
+      deletingSaleIds: new Set<number>()
+    };
+    saleMutationStateByContext.set(context, state);
+  }
+  return state;
+}
+
 function firstFiniteNonNegative(...values: Array<number | null | undefined>): number | null {
   for (const value of values) {
     const next = Number(value);
@@ -480,6 +499,11 @@ export const salesMethods: ThisType<AppContext> & Pick<
 
     const pendingSale = saveResult.sale;
     void (async () => {
+      const mutationState = getSaleMutationState(this as object);
+      if (mutationState.isSavingSale) {
+        return;
+      }
+      mutationState.isSavingSale = true;
       try {
         const savedSale = await saveAuthoritativeSale(this, currentLotId, pendingSale, baseVersion);
         if (editingSaleId != null) {
@@ -504,6 +528,8 @@ export const salesMethods: ThisType<AppContext> & Pick<
           ? error.message
           : "Failed to save sale.";
         this.notify(message, "error");
+      } finally {
+        mutationState.isSavingSale = false;
       }
     })();
   },
@@ -549,6 +575,11 @@ export const salesMethods: ThisType<AppContext> & Pick<
         }
 
         void (async () => {
+          const mutationState = getSaleMutationState(this as object);
+          if (mutationState.deletingSaleIds.has(id)) {
+            return;
+          }
+          mutationState.deletingSaleIds.add(id);
           try {
             await deleteAuthoritativeSale(this, currentLotId, id, sale.version ?? 0);
             this.sales = this.sales.filter((entry) => entry.id !== id);
@@ -569,6 +600,8 @@ export const salesMethods: ThisType<AppContext> & Pick<
               ? error.message
               : "Failed to delete sale.";
             this.notify(message, "error");
+          } finally {
+            mutationState.deletingSaleIds.delete(id);
           }
         })();
       }

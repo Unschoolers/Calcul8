@@ -6,6 +6,8 @@ import type {
   MigrationRunDocument,
   PurchaseVerificationResultDocument,
   PlayPurchaseDocument,
+  UserProfileDisplayNameSource,
+  UserProfileDocument,
   SyncMetaDocument,
   SyncPresetDocument,
   SyncSnapshotDocument,
@@ -25,6 +27,7 @@ import {
   migrationMarkerId,
   playPurchaseId,
   purchaseVerificationResultId,
+  userProfileId,
   syncMetaId,
   syncPresetId,
   syncSnapshotId
@@ -435,6 +438,93 @@ export async function upsertEntitlement(
 
   if (!resource) {
     throw new Error("Failed to upsert entitlement.");
+  }
+
+  return resource;
+}
+
+export async function getUserProfile(
+  config: ApiConfig,
+  userId: string
+): Promise<UserProfileDocument | null> {
+  const { entitlements } = getContainers(config);
+  const id = userProfileId(userId);
+
+  try {
+    const { resource } = await withCosmosRetry(() =>
+      entitlements.item(id, userId).read<UserProfileDocument>()
+    );
+    if (!resource || resource.docType !== "user_profile") {
+      return null;
+    }
+    return resource;
+  } catch (error) {
+    if (isNotFoundError(error)) return null;
+    throw error;
+  }
+}
+
+export async function listUserProfiles(
+  config: ApiConfig,
+  userIds: string[]
+): Promise<UserProfileDocument[]> {
+  const normalizedUserIds = [...new Set(
+    userIds
+      .map((value) => String(value || "").trim())
+      .filter((value) => value.length > 0)
+  )];
+
+  const profiles = await Promise.all(
+    normalizedUserIds.map((userId) => getUserProfile(config, userId))
+  );
+
+  return profiles.filter((profile): profile is UserProfileDocument => profile != null);
+}
+
+interface UpsertUserProfileInput {
+  userId: string;
+  displayName: string;
+  displayNameSource: UserProfileDisplayNameSource;
+  photoUrl?: string;
+}
+
+export async function upsertUserProfile(
+  config: ApiConfig,
+  input: UpsertUserProfileInput
+): Promise<UserProfileDocument> {
+  const { entitlements } = getContainers(config);
+  const now = new Date().toISOString();
+  const normalizedUserId = String(input.userId || "").trim();
+  const normalizedDisplayName = String(input.displayName || "").trim();
+  const normalizedPhotoUrl = String(input.photoUrl || "").trim();
+  const existing = await getUserProfile(config, normalizedUserId);
+
+  const shouldPreserveUserManagedName =
+    existing?.displayNameSource === "user"
+    && existing.displayName.trim().length > 0;
+
+  const document: UserProfileDocument = {
+    id: userProfileId(normalizedUserId),
+    docType: "user_profile",
+    userId: normalizedUserId,
+    displayName: shouldPreserveUserManagedName
+      ? existing.displayName
+      : normalizedDisplayName,
+    displayNameSource: shouldPreserveUserManagedName
+      ? "user"
+      : input.displayNameSource,
+    photoUrl: shouldPreserveUserManagedName
+      ? (existing?.photoUrl || normalizedPhotoUrl || undefined)
+      : (normalizedPhotoUrl || existing?.photoUrl || undefined),
+    updatedAt: now
+  };
+
+  const { resource } = await withCosmosRetry(() =>
+    entitlements.items.upsert<UserProfileDocument>(document)
+  );
+
+  if (!resource) {
+    throw new Error("Failed to upsert user profile.");
   }
 
   return resource;

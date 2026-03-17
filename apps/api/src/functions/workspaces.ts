@@ -10,6 +10,7 @@ import {
   getWorkspaceJoinLinkByTokenHash,
   getWorkspaceMembership,
   hasWorkspaceMembership,
+  listUserProfiles,
   listWorkspaceJoinLinks,
   listWorkspaceMemberships,
   listWorkspacesForUser,
@@ -21,6 +22,7 @@ import {
 } from "../lib/cosmos";
 import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../lib/http";
 import type {
+  UserProfileDocument,
   WorkspaceDocument,
   WorkspaceJoinLinkDocument,
   WorkspaceMembershipDocument,
@@ -201,6 +203,18 @@ function getJoinLinkState(link: WorkspaceJoinLinkDocument): WorkspaceJoinLinkDoc
   return "active";
 }
 
+function buildWorkspaceMemberPayload(
+  membership: WorkspaceMembershipDocument,
+  profilesByUserId: Map<string, UserProfileDocument>
+): Record<string, unknown> {
+  const profile = profilesByUserId.get(membership.userId);
+  return {
+    ...membership,
+    displayName: profile?.displayName || undefined,
+    photoUrl: profile?.photoUrl || undefined
+  };
+}
+
 export async function workspacesCreate(
   request: HttpRequest,
   context: InvocationContext
@@ -277,10 +291,17 @@ export async function workspaceMembersList(
     }
 
     const memberships = await listWorkspaceMemberships(config, workspaceId);
+    const profiles = await listUserProfiles(
+      config,
+      memberships.map((membership) => membership.userId)
+    );
+    const profilesByUserId = new Map(
+      profiles.map((profile) => [profile.userId, profile] as const)
+    );
     return jsonResponse(request, config, 200, {
       workspaceId,
       count: memberships.length,
-      memberships
+      memberships: memberships.map((membership) => buildWorkspaceMemberPayload(membership, profilesByUserId))
     });
   } catch (error) {
     context.error("GET /workspaces/{workspaceId}/members failed", error);

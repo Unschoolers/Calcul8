@@ -7,19 +7,22 @@ const {
   createSessionMock,
   getSessionMock,
   touchSessionMock,
-  deleteSessionMock
+  deleteSessionMock,
+  upsertUserProfileMock
 } = vi.hoisted(() => ({
   createSessionMock: vi.fn(),
   getSessionMock: vi.fn(),
   touchSessionMock: vi.fn(),
-  deleteSessionMock: vi.fn()
+  deleteSessionMock: vi.fn(),
+  upsertUserProfileMock: vi.fn()
 }));
 
 vi.mock("./cosmos", () => ({
   createSession: createSessionMock,
   getSession: getSessionMock,
   touchSession: touchSessionMock,
-  deleteSession: deleteSessionMock
+  deleteSession: deleteSessionMock,
+  upsertUserProfile: upsertUserProfileMock
 }));
 
 import {
@@ -43,6 +46,7 @@ function makeConfig(overrides: Partial<ApiConfig> = {}): ApiConfig {
     cosmosEndpoint: "https://example.documents.azure.com:443/",
     cosmosKey: "fake-key",
     cosmosDatabaseId: "whatfees_dev",
+    migrationCosmosDatabaseId: "whatfees_dev",
     entitlementsContainerId: "entitlements",
     syncContainerId: "sync_data",
     migrationRunsContainerId: "migration_runs",
@@ -91,6 +95,7 @@ beforeEach(() => {
   touchSessionMock.mockResolvedValue(undefined);
   deleteSessionMock.mockResolvedValue(undefined);
   createSessionMock.mockImplementation(async (_config: ApiConfig, input: SessionDocument) => input);
+  upsertUserProfileMock.mockResolvedValue(undefined);
 });
 
 test("rejects unauthenticated request", async () => {
@@ -116,7 +121,9 @@ test("valid bearer token resolves user and issues session cookie", async () => {
       ok: true,
       json: async () => ({
         aud: "test-client.apps.googleusercontent.com",
-        sub: "google-user-42"
+        sub: "google-user-42",
+        name: "Alice Test",
+        picture: "https://example.test/avatar.png"
       })
     }) as Response) as typeof fetch;
 
@@ -124,6 +131,13 @@ test("valid bearer token resolves user and issues session cookie", async () => {
     const userId = await resolveUserId(request, makeConfig());
     assert.equal(userId, "google-user-42");
     assert.equal(createSessionMock.mock.calls.length, 1);
+    assert.equal(upsertUserProfileMock.mock.calls.length, 1);
+    assert.deepEqual(upsertUserProfileMock.mock.calls[0]?.[1], {
+      userId: "google-user-42",
+      displayName: "Alice Test",
+      displayNameSource: "provider",
+      photoUrl: "https://example.test/avatar.png"
+    });
 
     const authHeaders = consumeAuthResponseHeaders(request);
     const setCookie = authHeaders["Set-Cookie"] ?? "";

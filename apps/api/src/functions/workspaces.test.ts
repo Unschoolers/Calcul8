@@ -16,6 +16,7 @@ const {
   getWorkspaceMembershipMock,
   listWorkspaceMembershipsMock,
   listWorkspaceMembershipsForUserMock,
+  listUserProfilesMock,
   listWorkspacesForUserMock,
   upsertWorkspaceMembershipMock,
   deactivateWorkspaceMembershipMock,
@@ -34,6 +35,7 @@ const {
   getWorkspaceMembershipMock: vi.fn(),
   listWorkspaceMembershipsMock: vi.fn(),
   listWorkspaceMembershipsForUserMock: vi.fn(),
+  listUserProfilesMock: vi.fn(),
   listWorkspacesForUserMock: vi.fn(),
   upsertWorkspaceMembershipMock: vi.fn(),
   deactivateWorkspaceMembershipMock: vi.fn(),
@@ -57,6 +59,7 @@ vi.mock("../lib/cosmos", () => ({
   getWorkspaceMembership: getWorkspaceMembershipMock,
   listWorkspaceMemberships: listWorkspaceMembershipsMock,
   listWorkspaceMembershipsForUser: listWorkspaceMembershipsForUserMock,
+  listUserProfiles: listUserProfilesMock,
   listWorkspacesForUser: listWorkspacesForUserMock,
   upsertWorkspaceMembership: upsertWorkspaceMembershipMock,
   deactivateWorkspaceMembership: deactivateWorkspaceMembershipMock,
@@ -96,6 +99,7 @@ function createConfig(): ApiConfig {
     cosmosEndpoint: "https://example.documents.azure.com:443/",
     cosmosKey: "key",
     cosmosDatabaseId: "whatfees",
+    migrationCosmosDatabaseId: "whatfees",
     entitlementsContainerId: "entitlements",
     syncContainerId: "sync_data",
     migrationRunsContainerId: "migration_runs"
@@ -173,6 +177,7 @@ beforeEach(() => {
   });
   listWorkspaceMembershipsMock.mockResolvedValue([]);
   listWorkspaceMembershipsForUserMock.mockResolvedValue([]);
+  listUserProfilesMock.mockResolvedValue([]);
   listWorkspacesForUserMock.mockResolvedValue([]);
   upsertWorkspaceMembershipMock.mockResolvedValue({
     userId: "member-user",
@@ -298,6 +303,9 @@ test("workspaceMembersList returns members for authorized user", async () => {
     { userId: "owner-user", workspaceId: "team-42", role: "owner", status: "active", updatedAt: "2026-02-25T00:00:00.000Z" },
     { userId: "member-user", workspaceId: "team-42", role: "member", status: "active", updatedAt: "2026-02-25T00:00:00.000Z" }
   ]);
+  listUserProfilesMock.mockResolvedValue([
+    { userId: "owner-user", displayName: "Owner Name", photoUrl: "https://example.test/owner.png" }
+  ]);
   const request = createRequest(
     "GET",
     { authorization: "Bearer owner-user" },
@@ -308,6 +316,8 @@ test("workspaceMembersList returns members for authorized user", async () => {
   const response = await workspaceMembersList(request as never, createContext() as never);
   assert.equal(response.status, 200);
   assert.equal((response.jsonBody as { count: number }).count, 2);
+  assert.equal((response.jsonBody as { memberships: Array<{ displayName?: string }> }).memberships[0]?.displayName, "Owner Name");
+  assert.equal((response.jsonBody as { memberships: Array<{ displayName?: string }> }).memberships[1]?.displayName, undefined);
 });
 
 test("workspaceMembersRemove rejects removing owner membership", async () => {

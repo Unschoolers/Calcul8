@@ -189,6 +189,8 @@ export interface WorkspaceMember {
   role: WorkspaceRole;
   status: "active" | "disabled" | "removed";
   updatedAt: string;
+  displayName?: string;
+  photoUrl?: string;
 }
 
 export interface BeforeInstallPromptEvent extends Event {

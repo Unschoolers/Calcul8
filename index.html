@@ -640,9 +640,16 @@
               <v-list-item
                 v-for="member in workspaceMembers"
                 :key="`${member.workspaceId}-${member.userId}`"
-                :title="member.userId"
                 :subtitle="member.role === 'owner' ? 'Owner' : 'Member'"
               >
+                <template #title>
+                  <div class="d-flex align-center ga-2 flex-wrap">
+                    <span>{{ member.displayName || member.userId }}</span>
+                    <v-chip size="x-small" variant="outlined">
+                      {{ member.userId.slice(0, 8) }}...{{ member.userId.slice(-4) }}
+                    </v-chip>
+                  </div>
+                </template>
                 <template #append>
                   <v-btn
                     v-if="isCurrentWorkspaceOwner && member.role !== 'owner'"

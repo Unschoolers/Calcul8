@@ -78,7 +78,7 @@ function createContext() {
     activeScopeType: "personal" as "personal" | "workspace",
     activeWorkspaceId: null as string | null,
     availableWorkspaces: [] as Array<{ workspaceId: string; name: string; role: "owner" | "member"; status: "active" }>,
-    workspaceMembers: [] as Array<{ userId: string; workspaceId: string; role: "owner" | "member"; status: "active" | "removed" | "disabled"; updatedAt: string }>,
+    workspaceMembers: [] as Array<{ userId: string; workspaceId: string; role: "owner" | "member"; status: "active" | "removed" | "disabled"; updatedAt: string; displayName?: string; photoUrl?: string }>,
     pendingWorkspaceInviteToken: "",
     pendingWorkspaceInviteWorkspaceId: null as string | null,
     pendingWorkspaceInviteWorkspaceName: "",
@@ -257,7 +257,7 @@ test("openWorkspaceMembersModal loads normalized members and opens the modal", a
   ctx.activeWorkspaceId = "ws_team";
   fetchWithRetryMock.mockResolvedValue(createResponse({
     memberships: [
-      { userId: "owner-1", workspaceId: "ws_team", role: "owner", status: "active", updatedAt: "2026-03-17T00:00:00Z" },
+      { userId: "owner-1", workspaceId: "ws_team", role: "owner", status: "active", updatedAt: "2026-03-17T00:00:00Z", displayName: "Owner Name", photoUrl: "https://example.test/avatar.png" },
       { userId: "member-1", workspaceId: "ws_team", role: "member", status: "active", updatedAt: "2026-03-17T00:00:00Z" },
       { userId: "", workspaceId: "ws_team", role: "member", status: "active", updatedAt: "2026-03-17T00:00:00Z" }
     ]
@@ -266,6 +266,8 @@ test("openWorkspaceMembersModal loads normalized members and opens the modal", a
   await uiWorkspaceMethods.openWorkspaceMembersModal.call(ctx);
 
   assert.equal(ctx.workspaceMembers.length, 2);
+  assert.equal(ctx.workspaceMembers[0]?.displayName, "Owner Name");
+  assert.equal(ctx.workspaceMembers[0]?.photoUrl, "https://example.test/avatar.png");
   assert.equal(ctx.leaveWorkspaceTransferMemberUserId, "member-1");
   assert.equal(ctx.showWorkspaceMembersModal, true);
 });

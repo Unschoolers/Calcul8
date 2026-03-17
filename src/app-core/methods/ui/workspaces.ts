@@ -97,6 +97,8 @@ function normalizeWorkspaceMember(value: unknown): WorkspaceMember | null {
     role?: unknown;
     status?: unknown;
     updatedAt?: unknown;
+    displayName?: unknown;
+    photoUrl?: unknown;
   };
   const userId = String(candidate.userId ?? "").trim();
   const workspaceId = String(candidate.workspaceId ?? "").trim();
@@ -112,7 +114,13 @@ function normalizeWorkspaceMember(value: unknown): WorkspaceMember | null {
     workspaceId,
     role,
     status,
-    updatedAt
+    updatedAt,
+    displayName: typeof candidate.displayName === "string" && candidate.displayName.trim()
+      ? candidate.displayName.trim()
+      : undefined,
+    photoUrl: typeof candidate.photoUrl === "string" && candidate.photoUrl.trim()
+      ? candidate.photoUrl.trim()
+      : undefined
   };
 }
 

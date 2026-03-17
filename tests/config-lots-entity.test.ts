@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { beforeEach, test, vi } from "vitest";
+import { afterEach, beforeEach, test, vi } from "vitest";
 
 const {
   canUseAuthoritativeSalesLiveApiMock,
@@ -128,7 +128,12 @@ beforeEach(() => {
   ctx = createContext();
 });
 
+afterEach(() => {
+  vi.useRealTimers();
+});
+
 test("applyLivePricesToDefaults saves authoritative live pricing and updates version", async () => {
+  vi.useFakeTimers();
   saveAuthoritativeLivePricingMock.mockResolvedValue({
     liveSpotPrice: 11,
     liveBoxPriceSell: 22,
@@ -137,13 +142,29 @@ test("applyLivePricesToDefaults saves authoritative live pricing and updates ver
   });
 
   configLotMethods.applyLivePricesToDefaults.call(ctx as never);
-  await Promise.resolve();
-  await Promise.resolve();
+  await vi.runAllTimersAsync();
 
   assert.equal(saveAuthoritativeLivePricingMock.mock.calls.length, 1);
   assert.equal(ctx.currentLivePricingVersion, 5);
   assert.equal((ctx.autoSaveSetup as ReturnType<typeof vi.fn>).mock.calls.length, 0);
   assert.deepEqual((ctx.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1), ["Live prices saved", "success"]);
+});
+
+test("applyLivePricesToDefaults coalesces repeated clicks into one authoritative save", async () => {
+  vi.useFakeTimers();
+  saveAuthoritativeLivePricingMock.mockResolvedValue({
+    liveSpotPrice: 11,
+    liveBoxPriceSell: 22,
+    livePackPrice: 33,
+    version: 5
+  });
+
+  configLotMethods.applyLivePricesToDefaults.call(ctx as never);
+  configLotMethods.applyLivePricesToDefaults.call(ctx as never);
+  configLotMethods.applyLivePricesToDefaults.call(ctx as never);
+  await vi.advanceTimersByTimeAsync(500);
+
+  assert.equal(saveAuthoritativeLivePricingMock.mock.calls.length, 1);
 });
 
 test("loadLot hydrates authoritative sales and live pricing after local defaults", async () => {

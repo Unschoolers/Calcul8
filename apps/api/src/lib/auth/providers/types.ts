@@ -1,6 +1,12 @@
 import type { ApiConfig } from "../../../types";
 
+export interface BearerAuthIdentity {
+  userId: string;
+  displayName?: string;
+  photoUrl?: string;
+}
+
 export interface BearerAuthProvider {
   readonly name: string;
-  resolveUserIdFromBearerToken(token: string, config: ApiConfig): Promise<string | null>;
+  resolveIdentityFromBearerToken(token: string, config: ApiConfig): Promise<BearerAuthIdentity | null>;
 }

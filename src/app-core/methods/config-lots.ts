@@ -27,6 +27,162 @@ import {
   saveAuthoritativeLivePricing
 } from "./sales-live-api.ts";
 
+type QueuedLivePricingSaveContext = {
+  currentLotId: number | null;
+  liveSpotPrice: number;
+  liveBoxPriceSell: number;
+  livePackPrice: number;
+  currentLivePricingVersion: number | null;
+  notify(message: string, color?: string): void;
+};
+
+type QueuedLivePricingSnapshot = {
+  lotId: number;
+  liveSpotPrice: number;
+  liveBoxPriceSell: number;
+  livePackPrice: number;
+  baseVersion: number;
+};
+
+type LivePricingQueueState = {
+  timeoutId: number | null;
+  inFlight: boolean;
+  queuedSnapshot: QueuedLivePricingSnapshot | null;
+  lastSavedHash: string | null;
+};
+
+const LIVE_PRICING_SAVE_DELAY_MS = 500;
+const livePricingQueueStateByContext = new WeakMap<object, LivePricingQueueState>();
+
+function getLivePricingQueueState(context: object): LivePricingQueueState {
+  let state = livePricingQueueStateByContext.get(context);
+  if (!state) {
+    state = {
+      timeoutId: null,
+      inFlight: false,
+      queuedSnapshot: null,
+      lastSavedHash: null
+    };
+    livePricingQueueStateByContext.set(context, state);
+  }
+  return state;
+}
+
+function createLivePricingHash(snapshot: QueuedLivePricingSnapshot): string {
+  return JSON.stringify({
+    lotId: snapshot.lotId,
+    liveSpotPrice: Number(snapshot.liveSpotPrice) || 0,
+    liveBoxPriceSell: Number(snapshot.liveBoxPriceSell) || 0,
+    livePackPrice: Number(snapshot.livePackPrice) || 0,
+    baseVersion: Math.max(0, Number(snapshot.baseVersion) || 0)
+  });
+}
+
+async function flushQueuedLivePricingSave(
+  context: QueuedLivePricingSaveContext & {
+    currentLivePricingVersion: number | null;
+    liveSpotPrice: number;
+    liveBoxPriceSell: number;
+    livePackPrice: number;
+  },
+  notifySuccess = true
+): Promise<void> {
+  const state = getLivePricingQueueState(context as object);
+  if (state.inFlight || !state.queuedSnapshot) {
+    return;
+  }
+
+  const snapshot = state.queuedSnapshot;
+  const snapshotHash = createLivePricingHash(snapshot);
+  if (state.lastSavedHash === snapshotHash) {
+    state.queuedSnapshot = null;
+    return;
+  }
+
+  state.inFlight = true;
+  state.queuedSnapshot = null;
+
+  try {
+    const saved = await saveAuthoritativeLivePricing(context as never, snapshot.lotId, {
+      liveSpotPrice: snapshot.liveSpotPrice,
+      liveBoxPriceSell: snapshot.liveBoxPriceSell,
+      livePackPrice: snapshot.livePackPrice,
+      currentLivePricingVersion: snapshot.baseVersion
+    } as never);
+    context.currentLivePricingVersion = saved.version;
+    state.lastSavedHash = createLivePricingHash({
+      lotId: snapshot.lotId,
+      liveSpotPrice: saved.liveSpotPrice,
+      liveBoxPriceSell: saved.liveBoxPriceSell,
+      livePackPrice: saved.livePackPrice,
+      baseVersion: saved.version ?? 0
+    });
+    if (notifySuccess) {
+      context.notify("Live prices saved", "success");
+    }
+  } catch (error) {
+    if (error instanceof SalesLiveApiError && error.status === 409) {
+      const latest = await fetchAuthoritativeLivePricing(context as never, snapshot.lotId).catch(() => null);
+      if (latest) {
+        context.liveSpotPrice = latest.liveSpotPrice;
+        context.liveBoxPriceSell = latest.liveBoxPriceSell;
+        context.livePackPrice = latest.livePackPrice;
+        context.currentLivePricingVersion = latest.version;
+        state.lastSavedHash = createLivePricingHash({
+          lotId: snapshot.lotId,
+          liveSpotPrice: latest.liveSpotPrice,
+          liveBoxPriceSell: latest.liveBoxPriceSell,
+          livePackPrice: latest.livePackPrice,
+          baseVersion: latest.version ?? 0
+        });
+      }
+      context.notify("Live pricing changed in the cloud. Pulled latest saved prices.", "warning");
+    } else {
+      const message = error instanceof Error && error.message.trim()
+        ? error.message
+        : "Failed to save live pricing.";
+      context.notify(message, "error");
+    }
+  } finally {
+    state.inFlight = false;
+    if (state.queuedSnapshot) {
+      void flushQueuedLivePricingSave(context, notifySuccess);
+    }
+  }
+}
+
+function queueAuthoritativeLivePricingSave(
+  context: QueuedLivePricingSaveContext & {
+    currentLivePricingVersion: number | null;
+    liveSpotPrice: number;
+    liveBoxPriceSell: number;
+    livePackPrice: number;
+  },
+  lotId: number
+): void {
+  const state = getLivePricingQueueState(context as object);
+  const nextSnapshot: QueuedLivePricingSnapshot = {
+    lotId,
+    liveSpotPrice: Number(context.liveSpotPrice) || 0,
+    liveBoxPriceSell: Number(context.liveBoxPriceSell) || 0,
+    livePackPrice: Number(context.livePackPrice) || 0,
+    baseVersion: context.currentLivePricingVersion ?? 0
+  };
+  const nextHash = createLivePricingHash(nextSnapshot);
+  if (state.lastSavedHash === nextHash && !state.inFlight) {
+    return;
+  }
+
+  state.queuedSnapshot = nextSnapshot;
+  if (state.timeoutId != null) {
+    globalThis.clearTimeout(state.timeoutId);
+  }
+  state.timeoutId = globalThis.setTimeout(() => {
+    state.timeoutId = null;
+    void flushQueuedLivePricingSave(context, true);
+  }, LIVE_PRICING_SAVE_DELAY_MS);
+}
+
 const LEGACY_KEYS = getLegacyStorageKeys();
 
 function createNextSinglesEntryId(entries: SinglesPurchaseEntry[]): number {
@@ -167,29 +323,7 @@ export const configLotMethods: ConfigMethodSubset<
     }
 
     const lotId = this.currentLotId;
-    void (async () => {
-      try {
-        const saved = await saveAuthoritativeLivePricing(this, lotId, this);
-        this.currentLivePricingVersion = saved.version;
-        this.notify("Live prices saved", "success");
-      } catch (error) {
-        if (error instanceof SalesLiveApiError && error.status === 409) {
-          const latest = await fetchAuthoritativeLivePricing(this, lotId).catch(() => null);
-          if (latest) {
-            this.liveSpotPrice = latest.liveSpotPrice;
-            this.liveBoxPriceSell = latest.liveBoxPriceSell;
-            this.livePackPrice = latest.livePackPrice;
-            this.currentLivePricingVersion = latest.version;
-          }
-          this.notify("Live pricing changed in the cloud. Pulled latest saved prices.", "warning");
-          return;
-        }
-        const message = error instanceof Error && error.message.trim()
-          ? error.message
-          : "Failed to save live pricing.";
-        this.notify(message, "error");
-      }
-    })();
+    queueAuthoritativeLivePricingSave(this, lotId);
   },
 
   addSinglesPurchaseRow(): void {
@@ -598,8 +732,18 @@ export const configLotMethods: ConfigMethodSubset<
             this.liveBoxPriceSell = latestLivePricing.liveBoxPriceSell;
             this.livePackPrice = latestLivePricing.livePackPrice;
             this.currentLivePricingVersion = latestLivePricing.version;
+            const state = getLivePricingQueueState(this as object);
+            state.lastSavedHash = createLivePricingHash({
+              lotId: selectedLotId,
+              liveSpotPrice: latestLivePricing.liveSpotPrice,
+              liveBoxPriceSell: latestLivePricing.liveBoxPriceSell,
+              livePackPrice: latestLivePricing.livePackPrice,
+              baseVersion: latestLivePricing.version ?? 0
+            });
           } else {
             this.currentLivePricingVersion = null;
+            const state = getLivePricingQueueState(this as object);
+            state.lastSavedHash = null;
           }
         } catch (error) {
           console.warn("Failed to hydrate authoritative lot data", error);
