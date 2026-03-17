@@ -1,10 +1,10 @@
 import type { AppContext } from "../../context.ts";
 import {
   fetchWithRetry,
-  GOOGLE_TOKEN_KEY,
   handleExpiredAuth,
   resolveApiBaseUrl
 } from "./shared.ts";
+import { buildAuthenticatedHeaders } from "../../auth/index.ts";
 
 const STRIPE_RETURN_POLL_DELAYS_MS = [0, 800, 1400, 2200];
 const STRIPE_EMBEDDED_CHECKOUT_MOUNT_ID = "stripe-embedded-checkout";
@@ -214,19 +214,13 @@ function cleanStripeCheckoutReturnUrl(cleanedPath: string | null): void {
 async function startStripeCheckout(
   app: StripePurchaseApp,
   baseUrl: string,
-  googleIdToken: string,
   uiMode: "embedded" | "hosted" = "embedded"
 ): Promise<StripeCheckoutPayload | null> {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json"
-  };
-  if (googleIdToken.trim()) {
-    headers.Authorization = `Bearer ${googleIdToken.trim()}`;
-  }
-
   const response = await fetchWithRetry(`${baseUrl}/billing/checkout-session`, {
     method: "POST",
-    headers,
+    headers: buildAuthenticatedHeaders("session-preferred", {
+      "Content-Type": "application/json"
+    }),
     body: JSON.stringify({
       uiMode
     })
@@ -277,11 +271,9 @@ export async function runStripePurchaseFlow(app: StripePurchaseApp): Promise<voi
     return;
   }
 
-  const googleIdToken = (localStorage.getItem(GOOGLE_TOKEN_KEY) || "").trim();
-
   app.isVerifyingPurchase = true;
   try {
-    const checkoutPayload = await startStripeCheckout(app, base, googleIdToken, "embedded");
+    const checkoutPayload = await startStripeCheckout(app, base, "embedded");
     if (!checkoutPayload) return;
 
     const publishableKey = resolveStripePublishableKey();
@@ -302,7 +294,7 @@ export async function runStripePurchaseFlow(app: StripePurchaseApp): Promise<voi
 
     let redirectUrl = checkoutPayload.checkoutUrl || "";
     if (!redirectUrl) {
-      const hostedPayload = await startStripeCheckout(app, base, googleIdToken, "hosted");
+      const hostedPayload = await startStripeCheckout(app, base, "hosted");
       redirectUrl = hostedPayload?.checkoutUrl || "";
     }
 

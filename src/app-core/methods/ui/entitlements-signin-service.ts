@@ -2,10 +2,13 @@ import type { AppContext } from "../../context.ts";
 import {
   GOOGLE_INIT_RETRY_COUNT,
   GOOGLE_INIT_RETRY_DELAY_MS,
-  GOOGLE_PROFILE_CACHE_KEY,
-  GOOGLE_TOKEN_KEY,
   readEntitlementCache
 } from "./shared.ts";
+import {
+  GOOGLE_PROFILE_CACHE_KEY,
+  getStoredGoogleIdToken,
+  setStoredGoogleIdToken
+} from "../../auth/index.ts";
 import {
   applyTargetProfitAccessDefaults,
   cacheGoogleProfileFromToken,
@@ -79,9 +82,9 @@ const defaultDeps: SignInDeps = {
   requestGoogleIdentityPrompt,
   getGoogleClientId: readGoogleClientId,
   getWindow: () => (globalThis as { window?: Window }).window,
-  getGoogleIdToken: () => (localStorage.getItem(GOOGLE_TOKEN_KEY) || "").trim(),
+  getGoogleIdToken: () => getStoredGoogleIdToken(),
   setGoogleIdToken: (token) => {
-    localStorage.setItem(GOOGLE_TOKEN_KEY, token);
+    setStoredGoogleIdToken(token);
   },
   schedule: (callback, delayMs) => {
     const currentWindow = (globalThis as { window?: Window }).window;

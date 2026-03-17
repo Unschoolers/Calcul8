@@ -1,4 +1,5 @@
 import { fetchWithRetry } from "./shared.ts";
+import { buildAuthenticatedHeaders, type FrontendAuthMode } from "../../auth/index.ts";
 import type { SyncPayload } from "./sync-payload.ts";
 
 export interface SyncPullResponseBody {
@@ -16,36 +17,28 @@ export interface SyncPushResponseBody {
 
 export async function requestCloudSyncPull(
   baseUrl: string,
-  googleIdToken?: string,
-  workspaceId?: string
+  workspaceId?: string,
+  authMode: FrontendAuthMode = "session-preferred"
 ): Promise<Response> {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json"
-  };
-  if (googleIdToken && googleIdToken.trim()) {
-    headers.Authorization = `Bearer ${googleIdToken.trim()}`;
-  }
   return fetchWithRetry(`${baseUrl}/sync/pull`, {
     method: "POST",
-    headers,
+    headers: buildAuthenticatedHeaders(authMode, {
+      "Content-Type": "application/json"
+    }),
     body: JSON.stringify(workspaceId ? { workspaceId } : {})
   });
 }
 
 export async function requestCloudSyncPush(
   baseUrl: string,
-  googleIdToken: string | undefined,
-  payload: SyncPayload
+  payload: SyncPayload,
+  authMode: FrontendAuthMode = "session-preferred"
 ): Promise<Response> {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json"
-  };
-  if (googleIdToken && googleIdToken.trim()) {
-    headers.Authorization = `Bearer ${googleIdToken.trim()}`;
-  }
   return fetchWithRetry(`${baseUrl}/sync/push`, {
     method: "POST",
-    headers,
+    headers: buildAuthenticatedHeaders(authMode, {
+      "Content-Type": "application/json"
+    }),
     body: JSON.stringify(payload)
   });
 }

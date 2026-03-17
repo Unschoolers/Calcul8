@@ -5,11 +5,11 @@ import {
   type EntitlementApiResponse,
   fetchWithRetry,
   getEntitlementTtlMs,
-  GOOGLE_TOKEN_KEY,
   handleExpiredAuth,
   readEntitlementCache,
   resolveApiBaseUrl
 } from "./shared.ts";
+import { buildAuthenticatedHeaders, getStoredGoogleIdToken } from "../../auth/index.ts";
 import { applyTargetProfitAccessDefaults, type TargetProfitAccessApp } from "./entitlements-shared.ts";
 
 interface ParsedEntitlementPayload {
@@ -76,7 +76,7 @@ export function applyFetchedEntitlement(app: EntitlementMutationApp, payload: Pa
 
 const defaultDeps: EntitlementStatusDeps = {
   resolveApiBaseUrl,
-  getGoogleIdToken: () => (localStorage.getItem(GOOGLE_TOKEN_KEY) || "").trim(),
+  getGoogleIdToken: () => getStoredGoogleIdToken(),
   readEntitlementCache,
   getEntitlementTtlMs,
   fetchWithRetry,
@@ -125,12 +125,8 @@ export async function syncEntitlementStatus(
   }
 
   try {
-    const headers: Record<string, string> = {};
-    if (googleIdToken) {
-      headers.Authorization = `Bearer ${googleIdToken}`;
-    }
     const response = await resolvedDeps.fetchWithRetry(`${base}/entitlements/me`, {
-      headers
+      headers: buildAuthenticatedHeaders("session-preferred")
     });
 
     if (response.status === 401) {

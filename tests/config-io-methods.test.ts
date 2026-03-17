@@ -285,7 +285,8 @@ test("importLotsFromUserId imports and then pulls cloud sync on success", async 
     headers?: Record<string, string>;
     body?: string;
   };
-  assert.equal(requestInit.headers?.Authorization, "Bearer id-token");
+  assert.equal(requestInit.headers?.Authorization, undefined);
+  assert.equal(requestInit.headers?.["Content-Type"], "application/json");
   assert.equal(JSON.parse(String(requestInit.body)).sourceUserId, "1234567890");
   assert.equal(ctx.pullCloudSync.mock.calls.length, 1);
   assert.equal(ctx.notify.mock.calls.at(-1)?.[0], "Imported cloud sync data from user 1234567890.");

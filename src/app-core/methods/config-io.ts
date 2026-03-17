@@ -2,11 +2,11 @@ import type { AppContext } from "../context.ts";
 import { type ConfigMethodSubset } from "./config-shared.ts";
 import {
   fetchWithRetry,
-  GOOGLE_TOKEN_KEY,
   handleExpiredAuth,
   readEntitlementCache,
   resolveApiBaseUrl
 } from "./ui/shared.ts";
+import { buildAuthenticatedHeaders } from "../auth/index.ts";
 
 const ADMIN_SYNC_USER_ID = "107850224060485991888";
 
@@ -119,17 +119,11 @@ export const configIoMethods: ConfigMethodSubset<
 
     this.isAdminImportInProgress = true;
     try {
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json"
-      };
-      const googleIdToken = (localStorage.getItem(GOOGLE_TOKEN_KEY) || "").trim();
-      if (googleIdToken) {
-        headers.Authorization = `Bearer ${googleIdToken}`;
-      }
-
       const response = await fetchWithRetry(`${baseUrl}/ops/sync/import-user`, {
         method: "POST",
-        headers,
+        headers: buildAuthenticatedHeaders("session-preferred", {
+          "Content-Type": "application/json"
+        }),
         body: JSON.stringify({
           sourceUserId
         })

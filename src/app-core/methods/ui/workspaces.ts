@@ -2,6 +2,7 @@ import type { AppContext, AppMethodState } from "../../context.ts";
 import { fetchWithRetry, GOOGLE_TOKEN_KEY, handleExpiredAuth, resolveApiBaseUrl } from "./shared.ts";
 import { requestCloudSyncPush } from "./sync-network.ts";
 import { createSyncPayload } from "./sync-payload.ts";
+import { buildAuthenticatedHeaders, getStoredGoogleIdToken } from "../../auth/index.ts";
 import {
   getLegacyStorageKeys,
   getScopedLastLotStorageKey,
@@ -47,18 +48,7 @@ type LeaveWorkspaceResponse = {
 };
 
 function getGoogleIdToken(): string {
-  return (localStorage.getItem(GOOGLE_TOKEN_KEY) || "").trim();
-}
-
-function buildAuthorizedHeaders(
-  googleIdToken: string,
-  extraHeaders: Record<string, string> = {}
-): Record<string, string> {
-  const headers: Record<string, string> = { ...extraHeaders };
-  if (googleIdToken) {
-    headers.Authorization = `Bearer ${googleIdToken}`;
-  }
-  return headers;
+  return getStoredGoogleIdToken();
 }
 
 async function parseApiError(response: Response, fallbackMessage: string): Promise<string> {
@@ -257,7 +247,7 @@ async function fetchWorkspaceJson(
 
   const response = await fetchWithRetry(`${baseUrl}${path}`, {
     ...init,
-    headers: buildAuthorizedHeaders(googleIdToken, init.headers as Record<string, string> | undefined)
+    headers: buildAuthenticatedHeaders("session-preferred", init.headers as Record<string, string> | undefined)
   });
 
   if (response.status === 401) {
@@ -414,7 +404,7 @@ export const uiWorkspaceMethods: ThisType<AppContext> & Pick<
         workspaceId: createdWorkspaceId
       });
 
-      const seedResponse = await requestCloudSyncPush(baseUrl, googleIdToken, seedPayload);
+      const seedResponse = await requestCloudSyncPush(baseUrl, seedPayload, "session-preferred");
       if (!seedResponse.ok && seedResponse.status !== 409) {
         this.notify(
           await parseApiError(seedResponse, "Workspace created, but initial data copy failed."),

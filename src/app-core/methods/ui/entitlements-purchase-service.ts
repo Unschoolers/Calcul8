@@ -8,11 +8,11 @@ import {
 } from "../../utils/playBilling.ts";
 import {
   getSupportedPurchaseProviders,
-  GOOGLE_TOKEN_KEY,
   resolvePurchaseProvider,
   resolveApiBaseUrl,
   submitPlayPurchaseVerification
 } from "./shared.ts";
+import { getStoredGoogleIdToken } from "../../auth/index.ts";
 import {
   formatPlayPurchaseError,
   hasPlayPurchaseSupport,
@@ -80,7 +80,7 @@ const defaultDeps: PurchaseServiceDeps = {
   runStripeVerificationFlow,
   closeStripeEmbeddedCheckout,
   resolveApiBaseUrl,
-  getGoogleIdToken: () => (localStorage.getItem(GOOGLE_TOKEN_KEY) || "").trim(),
+  getGoogleIdToken: () => getStoredGoogleIdToken(),
   getConfiguredPlayProductId: () => (import.meta.env.VITE_PLAY_PRO_PRODUCT_ID as string | undefined)?.trim() || "",
   getPlayBillingService,
   isPlayBillingPaymentRequestSupported,

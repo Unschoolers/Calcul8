@@ -126,7 +126,7 @@ beforeEach(() => {
   const historyReplaceState = vi.fn();
   vi.stubGlobal("window", {
     location: {
-      href: "https://app.example.test/join?invite=abc123",
+      href: "https://app.example.test/?invite=abc123",
       origin: "https://app.example.test"
     },
     history: {
@@ -141,7 +141,7 @@ beforeEach(() => {
     }
   });
   vi.stubGlobal("localStorage", createMockStorage({
-    whatfees_google_token: "token-123",
+    whatfees_google_id_token: "token-123",
     whatfees_active_scope_type: "personal",
     whatfees_last_lot_id: "1"
   }));
@@ -274,14 +274,14 @@ test("createWorkspaceJoinLink copies the absolute invite URL", async () => {
   const ctx = createContext();
   ctx.activeWorkspaceId = "ws_team";
   fetchWithRetryMock.mockResolvedValue(createResponse({
-    inviteUrl: "/join?invite=share-token"
+    inviteUrl: "/?invite=share-token"
   }));
 
   await uiWorkspaceMethods.createWorkspaceJoinLink.call(ctx);
 
   const writeText = navigator.clipboard?.writeText as ReturnType<typeof vi.fn>;
   assert.equal(writeText.mock.calls.length, 1);
-  assert.equal(writeText.mock.calls[0]?.[0], "https://app.example.test/join?invite=share-token");
+  assert.equal(writeText.mock.calls[0]?.[0], "https://app.example.test/?invite=share-token");
   assert.deepEqual(ctx.notify.mock.calls.at(-1), ["Invite link copied", "success"]);
 });
 
@@ -290,7 +290,7 @@ test("createWorkspaceJoinLink falls back to prompt when clipboard support is una
   ctx.activeWorkspaceId = "ws_team";
   vi.stubGlobal("navigator", {});
   fetchWithRetryMock.mockResolvedValue(createResponse({
-    inviteUrl: "/join?invite=share-token"
+    inviteUrl: "/?invite=share-token"
   }));
 
   await uiWorkspaceMethods.createWorkspaceJoinLink.call(ctx);

@@ -145,11 +145,12 @@ test("runCloudSyncPush forwards intentional empty-overwrite flag for confirmed d
   });
 
   assert.equal(requestCloudSyncPush.mock.calls.length, 1);
-  assert.deepEqual(requestCloudSyncPush.mock.calls[0]?.[2], {
+  assert.deepEqual(requestCloudSyncPush.mock.calls[0]?.[1], {
     lots: [],
     salesByLot: {},
     allowEmptyOverwrite: true
   });
+  assert.equal(requestCloudSyncPush.mock.calls[0]?.[2], "session-preferred");
 });
 
 test("runCloudSyncPull applies newer cloud snapshot and stores version", async () => {
@@ -282,5 +283,6 @@ test("runCloudSyncPull passes workspaceId for shared scopes", async () => {
     setSyncStatusError: vi.fn()
   });
 
-  assert.equal(requestCloudSyncPull.mock.calls[0]?.[2], "team-42");
+  assert.equal(requestCloudSyncPull.mock.calls[0]?.[1], "team-42");
+  assert.equal(requestCloudSyncPull.mock.calls[0]?.[2], "session-preferred");
 });

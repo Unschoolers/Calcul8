@@ -488,7 +488,7 @@ test("workspaceJoinLinksCreate creates a one-time join link for owner", async ()
   assert.equal(response.status, 201);
   assert.equal(createWorkspaceJoinLinkMock.mock.calls.length, 1);
   const body = response.jsonBody as { inviteUrl: string };
-  assert.match(body.inviteUrl, /^\/join\?invite=/);
+  assert.match(body.inviteUrl, /^\/\?invite=/);
 });
 
 test("workspaceJoinLinksCreate rejects deleted workspaces", async () => {

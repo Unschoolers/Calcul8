@@ -1,10 +1,10 @@
 import type { AppContext } from "../../context.ts";
 import {
   CLOUD_SYNC_INTERVAL_MS,
-  GOOGLE_TOKEN_KEY,
   handleExpiredAuth,
   resolveApiBaseUrl
 } from "./shared.ts";
+import { getStoredGoogleIdToken } from "../../auth/index.ts";
 import {
   getScopedLastSyncedPayloadHashKey,
   getScopedPresetsStorageKey,
@@ -79,7 +79,7 @@ type SyncPushOptions = {
 
 const defaultDeps: SyncServiceDeps = {
   resolveApiBaseUrl,
-  getGoogleIdToken: () => (localStorage.getItem(GOOGLE_TOKEN_KEY) || "").trim(),
+  getGoogleIdToken: () => getStoredGoogleIdToken(),
   isOnline: () => navigator.onLine,
   requestCloudSyncPull,
   requestCloudSyncPush,
@@ -163,7 +163,7 @@ export async function runCloudSyncPull(app: SyncApp, deps: Partial<SyncServiceDe
   resolvedDeps.startSyncStatus(app);
 
   try {
-    const response = await resolvedDeps.requestCloudSyncPull(base, googleIdToken, getActiveWorkspaceId(app));
+    const response = await resolvedDeps.requestCloudSyncPull(base, getActiveWorkspaceId(app), "session-preferred");
 
     if (response.status === 401) {
       resolvedDeps.handleExpiredAuth(app);
@@ -278,7 +278,7 @@ export async function runCloudSyncPush(
   resolvedDeps.startSyncStatus(app);
 
   try {
-    const response = await resolvedDeps.requestCloudSyncPush(base, googleIdToken, syncPayload);
+    const response = await resolvedDeps.requestCloudSyncPush(base, syncPayload, "session-preferred");
 
     if (response.status === 401) {
       resolvedDeps.handleExpiredAuth(app);

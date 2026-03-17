@@ -189,7 +189,7 @@ function hashJoinToken(token: string): string {
 }
 
 function buildJoinInvitePath(inviteToken: string): string {
-  return `/join?invite=${encodeURIComponent(inviteToken)}`;
+  return `/?invite=${encodeURIComponent(inviteToken)}`;
 }
 
 function getJoinLinkState(link: WorkspaceJoinLinkDocument): WorkspaceJoinLinkDocument["status"] {

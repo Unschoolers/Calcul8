@@ -1,6 +1,14 @@
 import type { AppContext } from "../../context.ts";
 import type { GoogleIdentityApi } from "../../utils/googleAutoLogin.ts";
 import {
+  AUTH_CSRF_TOKEN_KEY,
+  GOOGLE_AUTH_PROFILE_CACHE_KEY,
+  GOOGLE_AUTH_TOKEN_KEY,
+  getStoredCsrfToken,
+  setStoredCsrfToken,
+  handleExpiredAuthState
+} from "../../auth/index.ts";
+import {
   getLegacyStorageKeys,
   readStorageWithLegacy,
   removeStorageWithLegacy,
@@ -72,9 +80,9 @@ const LEGACY_KEYS = getLegacyStorageKeys();
 
 export const ENTITLEMENT_CACHE_KEY = STORAGE_KEYS.ENTITLEMENT_CACHE;
 export const PRO_ACCESS_KEY = STORAGE_KEYS.PRO_ACCESS;
-export const GOOGLE_TOKEN_KEY = STORAGE_KEYS.GOOGLE_ID_TOKEN;
-export const GOOGLE_PROFILE_CACHE_KEY = STORAGE_KEYS.GOOGLE_PROFILE_CACHE;
-export const CSRF_TOKEN_KEY = STORAGE_KEYS.CSRF_TOKEN;
+export const GOOGLE_TOKEN_KEY = GOOGLE_AUTH_TOKEN_KEY;
+export const GOOGLE_PROFILE_CACHE_KEY = GOOGLE_AUTH_PROFILE_CACHE_KEY;
+export const CSRF_TOKEN_KEY = AUTH_CSRF_TOKEN_KEY;
 export const SYNC_CLIENT_VERSION_KEY = STORAGE_KEYS.SYNC_CLIENT_VERSION;
 export const CLOUD_SYNC_INTERVAL_MS = 2 * 1000;
 export const SYNC_STATUS_RESET_MS = 2500;
@@ -230,7 +238,7 @@ export async function fetchWithRetry(
     const controller = new AbortController();
     const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
     const requestHeaders = new Headers(init.headers ?? {});
-    const csrfToken = (localStorage.getItem(CSRF_TOKEN_KEY) || "").trim();
+    const csrfToken = getStoredCsrfToken();
     if (isUnsafeMethod(init.method) && csrfToken && !requestHeaders.has("x-csrf-token")) {
       requestHeaders.set("x-csrf-token", csrfToken);
     }
@@ -244,7 +252,7 @@ export async function fetchWithRetry(
       });
       const responseCsrfToken = (response.headers.get("x-csrf-token") || "").trim();
       if (responseCsrfToken) {
-        localStorage.setItem(CSRF_TOKEN_KEY, responseCsrfToken);
+        setStoredCsrfToken(responseCsrfToken);
       }
 
       if (!isRetryableStatus(response.status) || attempt >= maxAttempts) {
@@ -269,10 +277,7 @@ export async function fetchWithRetry(
 }
 
 export function handleExpiredAuth(app: AuthSessionApp): void {
-  removeStorageWithLegacy(GOOGLE_TOKEN_KEY, LEGACY_KEYS.GOOGLE_ID_TOKEN);
-  removeStorageWithLegacy(GOOGLE_PROFILE_CACHE_KEY, LEGACY_KEYS.GOOGLE_PROFILE_CACHE);
-  removeStorageWithLegacy(CSRF_TOKEN_KEY);
-  app.googleAuthEpoch += 1;
+  handleExpiredAuthState(app);
   const cached = readEntitlementCache();
   if (cached) {
     app.hasProAccess = cached.hasProAccess;
