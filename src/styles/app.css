@@ -249,10 +249,10 @@
       line-height: 1.2;
     }
     .preset-card {
-      position: sticky;
-      top: calc(0.5rem + env(safe-area-inset-top));
-      z-index: 20;
-      backdrop-filter: blur(6px);
+      position: static;
+      top: auto;
+      z-index: auto;
+      backdrop-filter: none;
     }
     .lot-selector-row {
       row-gap: 0.35rem;
@@ -587,12 +587,6 @@
       bottom: 0;
       background: rgba(var(--v-theme-surface), 0.98);
       z-index: 2;
-    }
-    @media (min-width: 960px) {
-      .preset-card {
-        position: static;
-        top: auto;
-      }
     }
     @media (max-width: 600px) {
       .tabs-window .v-window__container {

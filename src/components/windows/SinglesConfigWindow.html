@@ -1,6 +1,6 @@
 <v-row class="config-layout">
   <v-col cols="12">
-    <v-card elevation="4" class="config-card singles-grid-card">
+    <v-card elevation="4" class="singles-grid-card">
       <v-card-title class="text-subtitle-1 singles-section-title-bar">
         <div class="singles-section-title-group">
           <v-icon size="16">mdi-table-large</v-icon>
@@ -469,7 +469,7 @@
   </v-col>
 
   <v-col cols="12">
-    <v-card elevation="4" class="config-card singles-selling-card">
+    <v-card elevation="4" class="singles-selling-card">
       <v-card-title class="text-subtitle-1 singles-section-title-bar">
         <div class="singles-section-title-group">
           <v-icon size="16">mdi-cash-multiple</v-icon>
@@ -557,9 +557,23 @@
   <v-bottom-sheet v-model="showSinglesRowEditor" inset class="singles-editor-sheet-dialog">
     <v-card class="singles-editor-sheet">
       <v-card-title class="text-subtitle-1 singles-editor-title-bar">
-        <div class="singles-section-title-group">
-          <v-icon size="16">mdi-pencil-box-outline</v-icon>
-          <span>{{ editingSinglesRowId == null ? "Add Purchase" : "Edit Purchase" }}</span>
+        <div class="singles-editor-title-bar__row">
+          <div class="singles-section-title-group">
+            <v-icon size="16">mdi-pencil-box-outline</v-icon>
+            <span>{{ editingSinglesRowId == null ? "Add Purchase" : "Edit Purchase" }}</span>
+          </div>
+          <div v-if="editingSinglesRowId !== null" class="singles-editor-title-bar__actions">
+            <v-btn
+              icon="mdi-trash-can-outline"
+              size="small"
+              variant="text"
+              color="error"
+              class="singles-editor-title-bar__delete"
+              title="Delete purchase"
+              aria-label="Delete purchase"
+              @click="removeSinglesRowFromEditor"
+            ></v-btn>
+          </div>
         </div>
       </v-card-title>
       <v-divider></v-divider>
@@ -833,38 +847,41 @@
       </v-card-text>
       <v-divider></v-divider>
       <v-card-actions class="singles-editor-actions">
-        <v-btn
-          v-if="editingSinglesRowId !== null"
-          prepend-icon="mdi-trash-can-outline"
-          variant="text"
-          color="error"
-          class="singles-editor-actions__delete"
-          @click="removeSinglesRowFromEditor"
-        >
-          Delete
-        </v-btn>
-        <v-spacer></v-spacer>
-        <v-btn
-          variant="text"
-          @click="closeSinglesRowEditor"
-        >
-          Cancel
-        </v-btn>
-        <v-btn
-          v-if="editingSinglesRowId == null"
-          variant="tonal"
-          color="secondary"
-          @click="saveSinglesRowEditor('new')"
-        >
-          Save + New
-        </v-btn>
-        <v-btn
-          variant="flat"
-          color="primary"
-          @click="saveSinglesRowEditor()"
-        >
-          Save
-        </v-btn>
+        <div class="singles-editor-actions__row singles-editor-actions__row--main">
+          <v-btn
+            variant="text"
+            class="singles-editor-actions__cancel"
+            @click="closeSinglesRowEditor"
+          >
+            Cancel
+          </v-btn>
+          <div
+            :class="[
+              'singles-editor-actions__primary',
+              editingSinglesRowId == null
+                ? 'singles-editor-actions__primary--add'
+                : 'singles-editor-actions__primary--edit'
+            ]"
+          >
+            <v-btn
+              v-if="editingSinglesRowId == null"
+              variant="tonal"
+              color="secondary"
+              class="singles-editor-actions__save-more"
+              @click="saveSinglesRowEditor('new')"
+            >
+              Save + New
+            </v-btn>
+            <v-btn
+              variant="flat"
+              color="primary"
+              class="singles-editor-actions__save"
+              @click="saveSinglesRowEditor()"
+            >
+              Save
+            </v-btn>
+          </div>
+        </div>
       </v-card-actions>
     </v-card>
   </v-bottom-sheet>

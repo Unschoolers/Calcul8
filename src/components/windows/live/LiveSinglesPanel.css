@@ -1,8 +1,47 @@
 .live-singles-panel {
+  position: relative;
+  overflow: hidden;
   border: 1px solid rgba(var(--v-theme-on-surface), 0.08) !important;
   background:
     radial-gradient(120% 180% at 100% 0%, rgba(var(--v-theme-primary), 0.05), transparent 45%),
     rgba(var(--v-theme-surface), 0.92);
+}
+
+.live-singles-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  clip-path: inset(0 round 14px 14px 0 0);
+  background: linear-gradient(90deg, rgba(var(--v-theme-secondary), 0.95), rgba(var(--v-theme-secondary), 0.22));
+}
+
+.live-singles-title-bar {
+  min-height: 0;
+  padding: 1rem 1.15rem 0.35rem;
+  background: transparent !important;
+  border-bottom: 0 !important;
+  color: rgba(var(--v-theme-secondary), 0.96) !important;
+  font-size: 0.8rem !important;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.live-singles-title-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.live-singles-title-bar .v-icon {
+  color: rgb(var(--v-theme-secondary)) !important;
+}
+
+.live-singles-panel .v-divider {
+  margin: 0 1.15rem;
+  border-color: rgba(var(--v-theme-secondary), 0.18);
 }
 
 .live-singles-head {
@@ -238,6 +277,11 @@
 }
 
 @media (max-width: 600px) {
+  .live-singles-title-bar {
+    padding-left: 0.95rem;
+    padding-right: 0.95rem;
+  }
+
   .live-singles-panel > .v-card-text {
     padding: 0.9rem !important;
   }
