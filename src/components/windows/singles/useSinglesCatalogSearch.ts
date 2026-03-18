@@ -55,6 +55,7 @@ type SinglesCatalogSearchContext = {
   cacheSinglesSuggestionImages(suggestions: SinglesCardSuggestion[]): void;
   setCurrentSinglesCatalogSource(nextValue: SinglesCatalogSource): void;
   onSinglesItemSelected(selected: string | SinglesCardSuggestion | null): void;
+  onSinglesItemSearchUpdate(nextValue: string): void;
   preloadSinglesEditorPreview(): Promise<void>;
   cancelSinglesItemSearch(): void;
   fetchSinglesItemSuggestions(query: string): Promise<void>;
