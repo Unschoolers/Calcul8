@@ -206,14 +206,19 @@ function getJoinLinkState(link: WorkspaceJoinLinkDocument): WorkspaceJoinLinkDoc
 
 function buildWorkspaceMemberPayload(
   membership: WorkspaceMembershipDocument,
-  profilesByUserId: Map<string, UserProfileDocument>
+  profile?: UserProfileDocument | null
 ): Record<string, unknown> {
-  const profile = profilesByUserId.get(membership.userId);
+  const snapshotDisplayName = String(membership.displayName || "").trim();
+  const snapshotPhotoUrl = String(membership.photoUrl || "").trim();
   return {
     ...membership,
-    displayName: profile?.displayName || undefined,
-    photoUrl: profile?.photoUrl || undefined
+    displayName: snapshotDisplayName || profile?.displayName || undefined,
+    photoUrl: snapshotPhotoUrl || profile?.photoUrl || undefined
   };
+}
+
+function hasWorkspaceMemberProfileSnapshot(membership: WorkspaceMembershipDocument): boolean {
+  return String(membership.displayName || "").trim().length > 0;
 }
 
 function logWorkspaceTelemetry(
@@ -334,17 +339,47 @@ export async function workspaceMembersList(
     }
 
     const memberships = await listWorkspaceMemberships(config, workspaceId);
-    const profiles = await listUserProfiles(
-      config,
-      memberships.map((membership) => membership.userId)
+    const membershipsMissingSnapshot = memberships.filter((membership) => !hasWorkspaceMemberProfileSnapshot(membership));
+    const profiles = membershipsMissingSnapshot.length > 0
+      ? await listUserProfiles(
+        config,
+        membershipsMissingSnapshot.map((membership) => membership.userId)
+      )
+      : [];
+    const profilesByUserId = new Map(profiles.map((profile) => [profile.userId, profile] as const));
+    const responseMemberships = memberships.map((membership) =>
+      buildWorkspaceMemberPayload(membership, profilesByUserId.get(membership.userId))
     );
-    const profilesByUserId = new Map(
-      profiles.map((profile) => [profile.userId, profile] as const)
-    );
+
+    const backfillTargets = membershipsMissingSnapshot
+      .map((membership) => ({
+        membership,
+        profile: profilesByUserId.get(membership.userId)
+      }))
+      .filter((entry): entry is { membership: WorkspaceMembershipDocument; profile: UserProfileDocument } =>
+        !!entry.profile?.displayName?.trim()
+      );
+
+    if (backfillTargets.length > 0) {
+      await Promise.allSettled(
+        backfillTargets.map(({ membership, profile }) =>
+          upsertWorkspaceMembership(config, {
+            userId: membership.userId,
+            workspaceId: membership.workspaceId,
+            role: membership.role ?? "member",
+            status: membership.status ?? "active",
+            displayName: profile.displayName,
+            photoUrl: profile.photoUrl,
+            updatedAt: membership.updatedAt
+          })
+        )
+      );
+    }
+
     return jsonResponse(request, config, 200, {
       workspaceId,
       count: memberships.length,
-      memberships: memberships.map((membership) => buildWorkspaceMemberPayload(membership, profilesByUserId))
+      memberships: responseMemberships
     });
   } catch (error) {
     logWorkspaceTelemetry(request, context, "workspace_members", error);
@@ -516,7 +551,9 @@ export async function workspaceLeave(
       userId: payload.newOwnerUserId,
       workspaceId,
       role: "owner",
-      status: "active"
+      status: "active",
+      displayName: targetMembership.displayName,
+      photoUrl: targetMembership.photoUrl
     });
     await deactivateWorkspaceMembership(config, actorUserId, workspaceId);
     await transferWorkspaceOwnership(config, workspaceId, payload.newOwnerUserId);

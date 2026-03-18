@@ -5,6 +5,8 @@
 - Keep frontend and backend `strict` TypeScript compatible, with explicit types for shared/public shapes.
 - Centralize storage keys, scope keys, entitlement ids, sync scope composition, and other cross-cutting identifiers in shared helpers.
 - Keep scope-aware behavior centralized so personal and workspace data never bleed into each other, and preserve personal-mode legacy migrations unless a task explicitly includes migration work.
+- Make all UI styling theme-aware: prefer `var(--v-theme-*)` tokens over hardcoded light/dark colors, verify both light and dark mode before merging, and avoid dark-theme-only assumptions like white text, white borders, or translucent white surfaces.
+- In modals and panels, keep action hierarchy obvious: header actions are for scoped/destructive icon actions, section cards own their related primary actions, and footers should usually stay for close/confirm controls only.
 - Prefer local-first behavior and safe recovery when the network is unavailable, auth expires, or local storage resets unexpectedly.
 - Keep sync deterministic, scoped, session-first, and safe against accidental data loss; explicitly handle conflict/auth/error paths instead of allowing silent destructive overwrites.
 - Guard repeated writes and async UI flows with debounce, in-flight protection, cancellation, or equivalent controls when stale or duplicate work is possible.

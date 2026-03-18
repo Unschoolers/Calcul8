@@ -30,6 +30,9 @@ interface UpsertWorkspaceMembershipInput {
   workspaceId: string;
   role: WorkspaceRole;
   status?: WorkspaceMembershipStatus;
+  displayName?: string;
+  photoUrl?: string;
+  updatedAt?: string;
 }
 
 export interface CreateWorkspaceJoinLinkInput {
@@ -182,7 +185,9 @@ export async function upsertWorkspaceMembership(
     workspaceId: input.workspaceId,
     role: input.role,
     status: input.status ?? "active",
-    updatedAt: new Date().toISOString()
+    displayName: String(input.displayName || "").trim() || undefined,
+    photoUrl: String(input.photoUrl || "").trim() || undefined,
+    updatedAt: input.updatedAt || new Date().toISOString()
   };
 
   const { resource } = await withCosmosRetry(() =>
@@ -256,7 +261,9 @@ export async function deactivateWorkspaceMembership(
     userId,
     workspaceId,
     role: existing.role ?? "member",
-    status: "removed"
+    status: "removed",
+    displayName: existing.displayName,
+    photoUrl: existing.photoUrl
   });
   return true;
 }

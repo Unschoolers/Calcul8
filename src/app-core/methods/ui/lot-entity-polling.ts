@@ -13,6 +13,7 @@ const LOT_ENTITY_POLL_INTERVAL_MS = 30_000;
 type LotEntityPollingApp = Pick<
   AppContext,
   | "currentLotId"
+  | "currentTab"
   | "sales"
   | "liveSpotPrice"
   | "liveBoxPriceSell"
@@ -24,6 +25,22 @@ type LotEntityPollingApp = Pick<
 const lotEntityPollingIntervals = new WeakMap<object, number>();
 const lotEntityPollingInFlight = new WeakSet<object>();
 const livePricingBaselineHashes = new WeakMap<object, string | null>();
+
+function shouldPollSales(app: Pick<LotEntityPollingApp, "currentTab">): boolean {
+  return app.currentTab === "live" || app.currentTab === "sales" || app.currentTab === "portfolio";
+}
+
+function shouldPollLivePricing(app: Pick<LotEntityPollingApp, "currentTab">): boolean {
+  return app.currentTab === "live" || app.currentTab === "portfolio";
+}
+
+function shouldRunLotEntityPolling(app: LotEntityPollingApp): boolean {
+  if (app.isOffline || !app.currentLotId || !canUseAuthoritativeSalesLiveApi()) {
+    return false;
+  }
+
+  return shouldPollSales(app) || shouldPollLivePricing(app);
+}
 
 function createSalesHash(sales: Sale[]): string {
   return JSON.stringify(
@@ -76,7 +93,7 @@ function applyLivePricingSnapshot(app: LotEntityPollingApp, livePricing: LotLive
 }
 
 export async function pollAuthoritativeLotEntities(app: LotEntityPollingApp): Promise<void> {
-  if (app.isOffline || !app.currentLotId || !canUseAuthoritativeSalesLiveApi()) {
+  if (!shouldRunLotEntityPolling(app)) {
     return;
   }
 
@@ -86,11 +103,19 @@ export async function pollAuthoritativeLotEntities(app: LotEntityPollingApp): Pr
 
   lotEntityPollingInFlight.add(app as object);
   const activeLotId = app.currentLotId;
+  if (activeLotId == null) {
+    lotEntityPollingInFlight.delete(app as object);
+    return;
+  }
 
   try {
     const [latestSales, latestLivePricing] = await Promise.all([
-      fetchAuthoritativeSales(app as never, activeLotId),
-      fetchAuthoritativeLivePricing(app as never, activeLotId)
+      shouldPollSales(app)
+        ? fetchAuthoritativeSales(app as never, activeLotId)
+        : Promise.resolve(null),
+      shouldPollLivePricing(app)
+        ? fetchAuthoritativeLivePricing(app as never, activeLotId)
+        : Promise.resolve(null)
     ]);
 
     if (app.currentLotId !== activeLotId) {
@@ -135,11 +160,28 @@ export async function pollAuthoritativeLotEntities(app: LotEntityPollingApp): Pr
 }
 
 export function startLotEntityPolling(app: LotEntityPollingApp): void {
-  stopLotEntityPolling(app);
+  if (!shouldRunLotEntityPolling(app)) {
+    stopLotEntityPolling(app);
+    return;
+  }
+
+  if (lotEntityPollingIntervals.has(app as object)) {
+    return;
+  }
+
   const intervalId = globalThis.setInterval(() => {
     void pollAuthoritativeLotEntities(app);
   }, LOT_ENTITY_POLL_INTERVAL_MS);
   lotEntityPollingIntervals.set(app as object, intervalId);
+}
+
+export function refreshLotEntityPolling(app: LotEntityPollingApp): void {
+  if (shouldRunLotEntityPolling(app)) {
+    startLotEntityPolling(app);
+    return;
+  }
+
+  stopLotEntityPolling(app);
 }
 
 export function stopLotEntityPolling(app: object): void {

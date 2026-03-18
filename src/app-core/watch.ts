@@ -1,6 +1,6 @@
 import type { AppWatchObject } from "./context.ts";
 import { getScopedLastLotStorageKey, STORAGE_KEYS } from "./storageKeys.ts";
-import { pollAuthoritativeLotEntities, startLotEntityPolling, stopLotEntityPolling } from "./methods/ui/lot-entity-polling.ts";
+import { pollAuthoritativeLotEntities, refreshLotEntityPolling, stopLotEntityPolling } from "./methods/ui/lot-entity-polling.ts";
 import { getActiveStorageScope } from "./workspace-scope.ts";
 
 export const appWatch: AppWatchObject = {
@@ -22,13 +22,21 @@ export const appWatch: AppWatchObject = {
     }
 
     if (newTab === "sales") {
+      refreshLotEntityPolling(this);
+      void pollAuthoritativeLotEntities(this);
       this.$nextTick(() => this.initSalesChart());
       return;
     }
 
     if (newTab === "portfolio") {
+      refreshLotEntityPolling(this);
+      void pollAuthoritativeLotEntities(this);
       this.$nextTick(() => this.initPortfolioChart());
+      return;
     }
+
+    refreshLotEntityPolling(this);
+    void pollAuthoritativeLotEntities(this);
   },
 
   purchaseUiMode(newMode) {
@@ -66,7 +74,7 @@ export const appWatch: AppWatchObject = {
       return;
     }
 
-    startLotEntityPolling(this);
+    refreshLotEntityPolling(this);
     void pollAuthoritativeLotEntities(this);
     void this.refreshWorkspaces();
 
@@ -98,7 +106,7 @@ export const appWatch: AppWatchObject = {
       return;
     }
 
-    startLotEntityPolling(this);
+    refreshLotEntityPolling(this);
     void pollAuthoritativeLotEntities(this);
   },
 

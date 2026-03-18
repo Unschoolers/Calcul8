@@ -35,7 +35,8 @@ import {
   markWorkspaceJoinLinkUsed,
   revokeWorkspaceJoinLink,
   softDeleteWorkspace,
-  transferWorkspaceOwnership
+  transferWorkspaceOwnership,
+  upsertWorkspaceMembership
 } from "./workspaceRepository";
 
 function createConfig(): ApiConfig {
@@ -172,6 +173,29 @@ test("deactivateWorkspaceMembership marks active memberships as removed", async 
   assert.equal(entitlements.items.upsert.mock.calls.length, 1);
   assert.equal(entitlements.items.upsert.mock.calls[0]?.[0]?.status, "removed");
   assert.equal(entitlements.items.upsert.mock.calls[0]?.[0]?.role, "owner");
+  assert.equal(entitlements.items.upsert.mock.calls[0]?.[0]?.displayName, undefined);
+});
+
+test("upsertWorkspaceMembership stores optional profile snapshots and preserves custom updatedAt", async () => {
+  const entitlements = createEntitlementsContainer();
+  entitlements.items.upsert.mockImplementation(async (document: WorkspaceMembershipDocument) => ({
+    resource: document
+  }));
+  getContainersMock.mockReturnValue({ entitlements });
+
+  const membership = await upsertWorkspaceMembership(createConfig(), {
+    userId: "user-1",
+    workspaceId: "ws-1",
+    role: "member",
+    status: "active",
+    displayName: "User One",
+    photoUrl: "https://example.test/user-1.png",
+    updatedAt: "2026-03-18T00:00:00.000Z"
+  });
+
+  assert.equal(membership.displayName, "User One");
+  assert.equal(membership.photoUrl, "https://example.test/user-1.png");
+  assert.equal(membership.updatedAt, "2026-03-18T00:00:00.000Z");
 });
 
 test("createWorkspaceWithOwner maps Cosmos conflicts to a friendly error", async () => {

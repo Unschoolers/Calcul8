@@ -248,6 +248,46 @@
     .auth-gate-title {
       line-height: 1.2;
     }
+    .v-theme--unionArenaLight #app-main {
+      position: relative;
+      background: transparent;
+    }
+    .v-theme--unionArenaLight #app-main::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      opacity: 1;
+      background-color: rgb(var(--v-theme-background));
+      background-image:
+        radial-gradient(52rem 34rem at 2% 10%, rgba(183, 121, 0, 0.2), transparent 64%),
+        radial-gradient(40rem 26rem at 98% 12%, rgba(230, 57, 70, 0.11), transparent 66%),
+        radial-gradient(60rem 38rem at 50% 18%, rgba(255, 255, 255, 0.72), transparent 58%),
+        linear-gradient(180deg, rgba(255, 253, 249, 0.99) 0%, rgba(246, 241, 235, 0.98) 38%, rgba(234, 228, 220, 0.99) 100%),
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1600 1200'%3E%3Cg fill='none'%3E%3Cg stroke='%23221F1A' stroke-opacity='.095' stroke-width='1.45'%3E%3Cpath d='M-80 132c118-58 254-66 408-24 154 42 308 42 462 0 154-42 308-34 462 24 154 58 290 66 408 24'/%3E%3Cpath d='M-80 232c118-58 254-66 408-24 154 42 308 42 462 0 154-42 308-34 462 24 154 58 290 66 408 24'/%3E%3Cpath d='M-80 332c118-58 254-66 408-24 154 42 308 42 462 0 154-42 308-34 462 24 154 58 290 66 408 24'/%3E%3Cpath d='M-80 432c118-58 254-66 408-24 154 42 308 42 462 0 154-42 308-34 462 24 154 58 290 66 408 24'/%3E%3Cpath d='M-80 532c118-58 254-66 408-24 154 42 308 42 462 0 154-42 308-34 462 24 154 58 290 66 408 24'/%3E%3Cpath d='M-80 632c118-58 254-66 408-24 154 42 308 42 462 0 154-42 308-34 462 24 154 58 290 66 408 24'/%3E%3Cpath d='M-80 732c118-58 254-66 408-24 154 42 308 42 462 0 154-42 308-34 462 24 154 58 290 66 408 24'/%3E%3Cpath d='M-80 832c118-58 254-66 408-24 154 42 308 42 462 0 154-42 308-34 462 24 154 58 290 66 408 24'/%3E%3Cpath d='M-80 932c118-58 254-66 408-24 154 42 308 42 462 0 154-42 308-34 462 24 154 58 290 66 408 24'/%3E%3Cpath d='M-80 1032c118-58 254-66 408-24 154 42 308 42 462 0 154-42 308-34 462 24 154 58 290 66 408 24'/%3E%3C/g%3E%3Cg stroke='%23B77900' stroke-opacity='.16' stroke-width='2.2'%3E%3Cpath d='M1002 132c86 30 182 28 288-8 106-36 202-34 288 10'/%3E%3Cpath d='M1082 238c76 26 160 24 252-8 92-32 174-30 246 10'/%3E%3Cpath d='M94 946c62 22 130 20 204-6 74-26 140-24 198 6'/%3E%3C/g%3E%3Cg fill='%23221F1A' fill-opacity='.08'%3E%3Ccircle cx='98' cy='94' r='2.4'/%3E%3Ccircle cx='238' cy='164' r='2'/%3E%3Ccircle cx='1332' cy='112' r='2.1'/%3E%3Ccircle cx='1390' cy='486' r='1.9'/%3E%3Ccircle cx='196' cy='724' r='2'/%3E%3Ccircle cx='1188' cy='818' r='2.1'/%3E%3Ccircle cx='838' cy='1008' r='1.9'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+      background-repeat: no-repeat, no-repeat, no-repeat, no-repeat, no-repeat;
+      background-size: 1120px 620px, 720px 420px, 1280px 760px, 100% 100%, cover;
+      background-position: left -260px top -140px, right -120px top -90px, center 60px, center top, center top;
+    }
+    .v-theme--unionArenaLight #app-main::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.8;
+      background-image:
+        linear-gradient(90deg, rgba(34, 31, 26, 0.06) 1px, transparent 1px),
+        linear-gradient(rgba(34, 31, 26, 0.045) 1px, transparent 1px),
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='360' viewBox='0 0 360 360'%3E%3Cg fill='none'%3E%3Cg stroke='%23221F1A' stroke-opacity='.06' stroke-width='1'%3E%3Cpath d='M26 76c28 10 56 10 84 0'/%3E%3Cpath d='M222 96c22 8 44 8 66 0'/%3E%3Cpath d='M98 244c20 8 40 8 60 0'/%3E%3Cpath d='M244 276c24 8 48 8 72 0'/%3E%3C/g%3E%3Cg fill='%23221F1A' fill-opacity='.075'%3E%3Ccircle cx='34' cy='34' r='1.2'/%3E%3Ccircle cx='96' cy='62' r='1.05'/%3E%3Ccircle cx='158' cy='48' r='1'/%3E%3Ccircle cx='226' cy='96' r='1.05'/%3E%3Ccircle cx='292' cy='54' r='1.15'/%3E%3Ccircle cx='62' cy='148' r='1.05'/%3E%3Ccircle cx='128' cy='132' r='1'/%3E%3Ccircle cx='194' cy='176' r='1.05'/%3E%3Ccircle cx='264' cy='146' r='1.05'/%3E%3Ccircle cx='36' cy='262' r='1.15'/%3E%3Ccircle cx='104' cy='298' r='1.05'/%3E%3Ccircle cx='172' cy='268' r='1'/%3E%3Ccircle cx='238' cy='306' r='1.05'/%3E%3Ccircle cx='308' cy='270' r='1.15'/%3E%3C/g%3E%3Cg fill='%23B77900' fill-opacity='.07'%3E%3Ccircle cx='198' cy='26' r='1.05'/%3E%3Ccircle cx='286' cy='202' r='1'/%3E%3Ccircle cx='144' cy='322' r='1'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+      background-repeat: repeat;
+      background-size: 180px 180px, 180px 180px, 360px 360px;
+    }
+    .v-theme--unionArenaLight #app-main > * {
+      position: relative;
+      z-index: 1;
+    }
     .preset-card {
       position: static;
       top: auto;
@@ -402,7 +442,7 @@
       font-size: 0.98rem;
       font-weight: 800;
       letter-spacing: -0.015em;
-      color: rgba(255, 255, 255, 0.96);
+      color: rgba(var(--v-theme-on-surface), 0.94);
     }
     .app-bar-brand-copy__tagline {
       display: block;
@@ -411,7 +451,7 @@
       font-weight: 700;
       letter-spacing: 0.11em;
       text-transform: uppercase;
-      color: rgba(255, 255, 255, 0.56);
+      color: rgba(var(--v-theme-on-surface), 0.56);
     }
     .app-bar-scope-chip {
       display: inline-flex;
@@ -436,14 +476,14 @@
         box-shadow 160ms ease;
     }
     .app-bar-scope-chip--personal {
-      color: rgba(255, 255, 255, 0.78);
+      color: rgba(var(--v-theme-on-surface), 0.74);
     }
     .app-bar-scope-chip--workspace {
       color: rgb(var(--v-theme-primary));
     }
     .account-menu-activator {
-      width: 44px;
-      height: 44px;
+      width: 40px;
+      height: 40px;
     }
     .account-avatar-img {
       width: 100%;
@@ -472,7 +512,10 @@
       font-size: 0.95rem;
     }
     .account-menu-header__copy {
+      display: flex;
+      flex-direction: column;
       min-width: 0;
+      flex: 1 1 auto;
     }
     .account-menu-header__name {
       font-weight: 700;
@@ -483,10 +526,35 @@
     }
     .account-menu-header__email {
       font-size: 0.82rem;
-      color: rgba(255, 255, 255, 0.62);
+      color: rgba(var(--v-theme-on-surface), 0.62);
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+    }
+    .v-theme--unionArenaLight .v-app-bar {
+      background:
+        linear-gradient(180deg, rgba(var(--v-theme-surface), 0.98), rgba(var(--v-theme-surface), 0.94)) !important;
+      border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.12) !important;
+      box-shadow: 0 8px 24px rgba(44, 36, 28, 0.08);
+    }
+    .v-theme--unionArenaLight .v-bottom-navigation {
+      background: rgba(var(--v-theme-surface), 0.985) !important;
+      border-top: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+      box-shadow: 0 -10px 24px rgba(44, 36, 28, 0.06);
+    }
+    .v-theme--unionArenaLight .preset-card {
+      border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+      background:
+        linear-gradient(180deg, rgba(var(--v-theme-surface-bright), 0.98), rgba(var(--v-theme-surface), 0.96));
+      box-shadow:
+        0 14px 32px rgba(44, 36, 28, 0.08),
+        0 2px 8px rgba(44, 36, 28, 0.05);
+    }
+    .v-theme--unionArenaLight .lot-selector-selection__subtitle {
+      color: rgba(var(--v-theme-on-surface), 0.72);
+    }
+    .v-theme--unionArenaLight .app-bar-scope-chip--workspace {
+      color: rgba(var(--v-theme-primary), 0.98);
     }
     .account-menu-header__workspace {
       margin-top: 0.32rem;
@@ -504,6 +572,7 @@
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      min-width: 0;
     }
     @media (max-width: 640px) {
       .app-bar-title-wrap {
@@ -539,16 +608,15 @@
     }
     .workspace-members-card {
       overflow: hidden;
-      border: 1px solid rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
       background:
         radial-gradient(120% 120% at 0% 0%, rgba(var(--v-theme-primary), 0.14), transparent 52%),
-        linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0));
+        linear-gradient(180deg, rgba(var(--v-theme-on-surface), 0.02), rgba(var(--v-theme-on-surface), 0));
       background-color: rgba(var(--v-theme-surface), 0.98);
     }
     .workspace-members-card__title {
       display: flex;
       align-items: flex-start;
-      justify-content: space-between;
       gap: 1rem;
       padding: 1.25rem 1.25rem 0.85rem;
     }
@@ -560,8 +628,20 @@
       font-weight: 700;
       letter-spacing: 0.14em;
       text-transform: uppercase;
-      color: rgba(255, 255, 255, 0.55);
+      color: rgba(var(--v-theme-on-surface), 0.56);
       margin-bottom: 0.32rem;
+    }
+    .workspace-members-card__headline-row {
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+      min-width: 0;
+    }
+    .workspace-members-card__header-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      flex-shrink: 0;
     }
     .workspace-members-card__headline {
       font-size: clamp(1.2rem, 2vw, 1.55rem);
@@ -569,14 +649,21 @@
       line-height: 1.1;
       color: rgb(var(--v-theme-on-surface));
       overflow-wrap: anywhere;
+      min-width: 0;
+      flex: 1 1 auto;
     }
-    .workspace-members-card__subtitle {
-      margin-top: 0.28rem;
-      font-size: 0.92rem;
-      color: rgba(255, 255, 255, 0.68);
+    .workspace-members-card__invite-btn,
+    .workspace-members-card__leave-btn {
+      flex-shrink: 0;
     }
     .workspace-members-card__invite-btn {
-      flex-shrink: 0;
+      border: 1px solid rgba(var(--v-theme-secondary), 0.16);
+      background: rgba(var(--v-theme-secondary), 0.08);
+      color: rgb(var(--v-theme-secondary));
+      box-shadow: none;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      text-transform: none;
     }
     .workspace-members-card__content {
       display: flex;
@@ -584,39 +671,21 @@
       gap: 1rem;
       padding-top: 0;
     }
-    .workspace-members-summary {
-      display: grid;
-      grid-template-columns: auto 1fr;
-      gap: 0.85rem;
-      padding: 0.95rem 1rem;
-      border-radius: 16px;
-      border: 1px solid rgba(255, 255, 255, 0.06);
-      background: rgba(255, 255, 255, 0.03);
-    }
-    .workspace-members-summary__icon {
-      width: 2.35rem;
-      height: 2.35rem;
-      border-radius: 999px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      color: rgb(var(--v-theme-primary));
-      background: rgba(var(--v-theme-primary), 0.12);
-    }
-    .workspace-members-summary__title {
-      font-weight: 700;
-      color: rgb(var(--v-theme-on-surface));
-    }
-    .workspace-members-summary__body {
-      margin-top: 0.2rem;
-      font-size: 0.92rem;
-      color: rgba(255, 255, 255, 0.7);
-      line-height: 1.45;
+    .workspace-members-section__header {
+      font-size: 0.76rem;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgba(var(--v-theme-on-surface), 0.54);
+      padding: 0 0.15rem;
     }
     .workspace-member-list {
       display: flex;
       flex-direction: column;
       gap: 0.85rem;
+    }
+    .workspace-member-list--loading {
+      pointer-events: none;
     }
     .workspace-member-card-row {
       display: flex;
@@ -625,10 +694,13 @@
       gap: 1rem;
       padding: 0.95rem 1rem;
       border-radius: 18px;
-      border: 1px solid rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
       background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.015));
-      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
+        linear-gradient(180deg, rgba(var(--v-theme-on-surface), 0.03), rgba(var(--v-theme-on-surface), 0.015));
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
+    }
+    .workspace-member-card-row--skeleton {
+      justify-content: flex-start;
     }
     .workspace-member-card-row__identity {
       display: flex;
@@ -639,7 +711,7 @@
     }
     .workspace-member-card-row__avatar {
       flex-shrink: 0;
-      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+      box-shadow: inset 0 0 0 1px rgba(var(--v-theme-on-surface), 0.08);
       background: linear-gradient(145deg, rgba(var(--v-theme-primary), 0.9), rgba(var(--v-theme-secondary), 0.9));
       color: white;
     }
@@ -651,6 +723,36 @@
     .workspace-member-card-row__copy {
       min-width: 0;
       flex: 1 1 auto;
+    }
+    .workspace-member-card-row__copy--skeleton {
+      display: flex;
+      flex-direction: column;
+      gap: 0.55rem;
+    }
+    .workspace-member-card-row__skeleton-avatar .v-skeleton-loader__avatar {
+      width: 52px;
+      height: 52px;
+      margin: 0;
+    }
+    .workspace-member-card-row__skeleton-name,
+    .workspace-member-card-row__skeleton-id,
+    .workspace-member-card-row__skeleton-meta {
+      max-width: 100%;
+    }
+    .workspace-member-card-row__skeleton-name .v-skeleton-loader__text {
+      width: 11rem;
+      max-width: 65%;
+      margin: 0;
+    }
+    .workspace-member-card-row__skeleton-id .v-skeleton-loader__text {
+      width: 14rem;
+      max-width: 88%;
+      margin: 0;
+    }
+    .workspace-member-card-row__skeleton-meta .v-skeleton-loader__text {
+      width: 9rem;
+      max-width: 48%;
+      margin: 0;
     }
     .workspace-member-card-row__name-row {
       display: flex;
@@ -667,7 +769,7 @@
       margin-top: 0.22rem;
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       font-size: 0.8rem;
-      color: rgba(255, 255, 255, 0.5);
+      color: rgba(var(--v-theme-on-surface), 0.5);
       overflow-wrap: anywhere;
     }
     .workspace-member-card-row__meta {
@@ -676,7 +778,7 @@
       flex-wrap: wrap;
       gap: 0.45rem 0.8rem;
       font-size: 0.82rem;
-      color: rgba(255, 255, 255, 0.64);
+      color: rgba(var(--v-theme-on-surface), 0.64);
     }
     .workspace-member-card-row__actions {
       flex-shrink: 0;
@@ -688,8 +790,8 @@
       text-align: center;
       padding: 1.4rem 1rem 1rem;
       border-radius: 18px;
-      border: 1px dashed rgba(255, 255, 255, 0.1);
-      background: rgba(255, 255, 255, 0.02);
+      border: 1px dashed rgba(var(--v-theme-on-surface), 0.12);
+      background: rgba(var(--v-theme-on-surface), 0.02);
     }
     .workspace-members-empty__title {
       margin-top: 0.7rem;
@@ -699,7 +801,7 @@
     .workspace-members-empty__body {
       margin-top: 0.25rem;
       font-size: 0.92rem;
-      color: rgba(255, 255, 255, 0.68);
+      color: rgba(var(--v-theme-on-surface), 0.68);
     }
     .workspace-members-card__actions {
       padding: 0.35rem 1.25rem 1.1rem;
@@ -790,11 +892,7 @@
     }
     @media (max-width: 680px) {
       .workspace-members-card__title {
-        flex-direction: column;
-        align-items: stretch;
-      }
-      .workspace-members-card__invite-btn {
-        width: 100%;
+        padding-bottom: 0.65rem;
       }
       .workspace-member-card-row {
         flex-direction: column;

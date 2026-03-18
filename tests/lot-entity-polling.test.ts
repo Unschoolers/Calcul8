@@ -23,6 +23,7 @@ vi.mock("../src/app-core/methods/sales-live-api.ts", () => ({
 import {
   markLivePricingPollingBaseline,
   pollAuthoritativeLotEntities,
+  refreshLotEntityPolling,
   startLotEntityPolling,
   stopLotEntityPolling
 } from "../src/app-core/methods/ui/lot-entity-polling.ts";
@@ -30,6 +31,7 @@ import {
 function createContext(overrides: Record<string, unknown> = {}) {
   return {
     currentLotId: 7,
+    currentTab: "live",
     sales: [],
     liveSpotPrice: 1,
     liveBoxPriceSell: 2,
@@ -125,6 +127,28 @@ test("pollAuthoritativeLotEntities does not overwrite unsaved local live pricing
   assert.equal(context.currentLivePricingVersion, 1);
 });
 
+test("pollAuthoritativeLotEntities skips all authoritative requests on config tab", async () => {
+  const context = createContext({
+    currentTab: "config"
+  });
+
+  await pollAuthoritativeLotEntities(context as never);
+
+  assert.equal(fetchAuthoritativeSalesMock.mock.calls.length, 0);
+  assert.equal(fetchAuthoritativeLivePricingMock.mock.calls.length, 0);
+});
+
+test("pollAuthoritativeLotEntities only fetches sales on sales tab", async () => {
+  const context = createContext({
+    currentTab: "sales"
+  });
+
+  await pollAuthoritativeLotEntities(context as never);
+
+  assert.equal(fetchAuthoritativeSalesMock.mock.calls.length, 1);
+  assert.equal(fetchAuthoritativeLivePricingMock.mock.calls.length, 0);
+});
+
 test("startLotEntityPolling polls every 30 seconds until stopped", async () => {
   vi.useFakeTimers();
   const context = createContext();
@@ -137,4 +161,17 @@ test("startLotEntityPolling polls every 30 seconds until stopped", async () => {
 
   assert.equal(fetchAuthoritativeSalesMock.mock.calls.length, 2);
   assert.equal(fetchAuthoritativeLivePricingMock.mock.calls.length, 2);
+});
+
+test("refreshLotEntityPolling stops polling when current tab does not need authoritative data", async () => {
+  vi.useFakeTimers();
+  const context = createContext();
+
+  startLotEntityPolling(context as never);
+  context.currentTab = "config";
+  refreshLotEntityPolling(context as never);
+  await vi.advanceTimersByTimeAsync(30_000);
+
+  assert.equal(fetchAuthoritativeSalesMock.mock.calls.length, 0);
+  assert.equal(fetchAuthoritativeLivePricingMock.mock.calls.length, 0);
 });

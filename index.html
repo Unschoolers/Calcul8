@@ -127,18 +127,18 @@
         </v-app-bar-title>
 
         <template v-slot:append>
-          <v-menu location="bottom end" offset="10">
+          <v-menu location="bottom end" offset="10" :transition="false">
             <template #activator="{ props: accountMenuProps }">
               <v-btn
                 v-bind="accountMenuProps"
                 icon
                 variant="text"
-                size="large"
+                size="default"
                 class="account-menu-activator"
                 :title="googleProfileEmail ? `Signed in as ${googleProfileEmail}` : 'Signed in'"
                 aria-label="Account menu"
               >
-                <v-avatar v-if="googleProfilePicture && !googleAvatarLoadFailed" size="30">
+                <v-avatar v-if="googleProfilePicture && !googleAvatarLoadFailed" size="28">
                   <img
                     :src="googleProfilePicture"
                     :alt="googleProfileName || 'Google profile picture'"
@@ -205,15 +205,9 @@
               ></v-list-item>
               <v-list-item
                 v-if="isWorkspaceScopeActive"
-                title="Workspace members"
+                title="Workspace"
                 prepend-icon="mdi-account-cog-outline"
                 @click="openWorkspaceMembersModal"
-              ></v-list-item>
-              <v-list-item
-                v-if="isWorkspaceScopeActive"
-                title="Leave workspace"
-                prepend-icon="mdi-exit-to-app"
-                @click="openLeaveWorkspaceModal"
               ></v-list-item>
 
               <v-divider class="my-1"></v-divider>
@@ -691,67 +685,81 @@
           <v-card-title class="workspace-members-card__title">
             <div class="workspace-members-card__title-copy">
               <div class="workspace-members-card__eyebrow">Shared Workspace</div>
-              <div class="workspace-members-card__headline">{{ currentWorkspaceName }}</div>
-              <div class="workspace-members-card__subtitle">
-                {{
-                  workspaceMembers.length === 1
-                    ? '1 member in this workspace'
-                    : `${workspaceMembers.length} members in this workspace`
-                }}
+              <div class="workspace-members-card__headline-row">
+                <div class="workspace-members-card__headline">{{ currentWorkspaceName }}</div>
+                <div class="workspace-members-card__header-actions">
+                  <v-btn
+                    v-if="isCurrentWorkspaceOwner"
+                    size="small"
+                    variant="tonal"
+                    color="secondary"
+                    prepend-icon="mdi-link-variant"
+                    class="workspace-members-card__invite-btn"
+                    title="Invite link"
+                    aria-label="Invite link"
+                    :loading="isCreatingWorkspaceJoinLink"
+                    @click="createWorkspaceJoinLink"
+                  >
+                    Invite
+                  </v-btn>
+                  <v-btn
+                    icon="mdi-exit-to-app"
+                    size="small"
+                    variant="tonal"
+                    color="error"
+                    class="workspace-members-card__leave-btn"
+                    title="Leave workspace"
+                    aria-label="Leave workspace"
+                    @click="openLeaveWorkspaceModal"
+                  ></v-btn>
+                </div>
               </div>
-            </div>
-            <div class="d-flex align-center ga-2">
-              <v-btn
-                v-if="isCurrentWorkspaceOwner"
-                size="small"
-                variant="tonal"
-                color="primary"
-                prepend-icon="mdi-link-variant"
-                class="workspace-members-card__invite-btn"
-                :loading="isCreatingWorkspaceJoinLink"
-                @click="createWorkspaceJoinLink"
-              >
-                Copy invite link
-              </v-btn>
-              <v-btn
-                icon="mdi-close"
-                variant="text"
-                size="small"
-                @click="showWorkspaceMembersModal = false"
-              ></v-btn>
             </div>
           </v-card-title>
           <v-card-text class="workspace-members-card__content">
-            <v-progress-linear
-              v-if="isWorkspaceMembersLoading"
-              indeterminate
-              color="primary"
-              class="mb-4"
-            ></v-progress-linear>
-
-            <div v-else class="workspace-members-summary">
-              <div class="workspace-members-summary__icon">
-                <v-icon size="18">mdi-account-group-outline</v-icon>
-              </div>
-              <div class="workspace-members-summary__copy">
-                <div class="workspace-members-summary__title">
-                  {{
-                    isCurrentWorkspaceOwner
-                      ? 'Invite people and manage access from here.'
-                      : 'This shared workspace syncs data across every active member.'
-                  }}
-                </div>
-                <div class="workspace-members-summary__body">
-                  {{
-                    isCurrentWorkspaceOwner
-                      ? 'Sharing an invite link adds a new member to this workspace.'
-                      : 'Only the workspace owner can remove members or create invite links.'
-                  }}
-                </div>
+            <div class="workspace-members-section">
+              <div class="workspace-members-section__header">
+                {{
+                  isWorkspaceMembersLoading
+                    ? 'Members'
+                    : `Members (${workspaceMembers.length})`
+                }}
               </div>
             </div>
 
-            <div v-if="!isWorkspaceMembersLoading && workspaceMembers.length" class="workspace-member-list">
+            <div
+              v-if="isWorkspaceMembersLoading"
+              class="workspace-member-list workspace-member-list--loading"
+            >
+              <article
+                v-for="skeletonIndex in 2"
+                :key="`workspace-member-skeleton-${skeletonIndex}`"
+                class="workspace-member-card-row workspace-member-card-row--skeleton"
+              >
+                <div class="workspace-member-card-row__identity">
+                  <v-skeleton-loader
+                    type="avatar"
+                    class="workspace-member-card-row__skeleton-avatar"
+                  ></v-skeleton-loader>
+                  <div class="workspace-member-card-row__copy workspace-member-card-row__copy--skeleton">
+                    <v-skeleton-loader
+                      type="text"
+                      class="workspace-member-card-row__skeleton-name"
+                    ></v-skeleton-loader>
+                    <v-skeleton-loader
+                      type="text"
+                      class="workspace-member-card-row__skeleton-id"
+                    ></v-skeleton-loader>
+                    <v-skeleton-loader
+                      type="text"
+                      class="workspace-member-card-row__skeleton-meta"
+                    ></v-skeleton-loader>
+                  </div>
+                </div>
+              </article>
+            </div>
+
+            <div v-else-if="workspaceMembers.length" class="workspace-member-list">
               <article
                 v-for="member in workspaceMembers"
                 :key="`${member.workspaceId}-${member.userId}`"
@@ -815,10 +823,7 @@
               </article>
             </div>
 
-            <div
-              v-else-if="!isWorkspaceMembersLoading"
-              class="workspace-members-empty"
-            >
+            <div v-else class="workspace-members-empty">
               <v-icon size="34" color="medium-emphasis">mdi-account-off-outline</v-icon>
               <div class="workspace-members-empty__title">No members found</div>
               <div class="workspace-members-empty__body">
@@ -827,9 +832,8 @@
             </div>
           </v-card-text>
           <v-card-actions class="workspace-members-card__actions">
-            <v-btn variant="text" @click="showWorkspaceMembersModal = false">Close</v-btn>
             <v-spacer></v-spacer>
-            <v-btn color="error" variant="tonal" @click="openLeaveWorkspaceModal">Leave workspace</v-btn>
+            <v-btn variant="text" @click="showWorkspaceMembersModal = false">Close</v-btn>
           </v-card-actions>
         </v-card>
       </v-dialog>

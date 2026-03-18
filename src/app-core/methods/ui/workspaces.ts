@@ -437,6 +437,8 @@ export const uiWorkspaceMethods: ThisType<AppContext> & Pick<
       return;
     }
 
+    this.workspaceMembers = [];
+    this.showWorkspaceMembersModal = true;
     this.isWorkspaceMembersLoading = true;
     try {
       const result = await fetchWorkspaceJson(
@@ -452,7 +454,6 @@ export const uiWorkspaceMethods: ThisType<AppContext> & Pick<
       const body = result.body as WorkspaceMembersResponse;
       this.workspaceMembers = normalizeWorkspaceMembers(body.memberships);
       this.leaveWorkspaceTransferMemberUserId = getTransferCandidates(this)[0]?.userId ?? "";
-      this.showWorkspaceMembersModal = true;
     } finally {
       this.isWorkspaceMembersLoading = false;
     }

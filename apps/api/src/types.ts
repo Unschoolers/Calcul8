@@ -115,6 +115,8 @@ export interface WorkspaceMembershipDocument {
   workspaceId: string;
   role?: WorkspaceRole;
   status?: WorkspaceMembershipStatus;
+  displayName?: string;
+  photoUrl?: string;
   updatedAt: string;
 }
 

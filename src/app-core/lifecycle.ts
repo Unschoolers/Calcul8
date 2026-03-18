@@ -9,7 +9,7 @@ import {
   STORAGE_KEYS
 } from "./storageKeys.ts";
 import { closeStripeEmbeddedCheckout, handleStripeCheckoutReturn } from "./methods/ui/entitlements-stripe.ts";
-import { startLotEntityPolling, stopLotEntityPolling } from "./methods/ui/lot-entity-polling.ts";
+import { refreshLotEntityPolling, stopLotEntityPolling } from "./methods/ui/lot-entity-polling.ts";
 import { getActiveStorageScope } from "./workspace-scope.ts";
 
 const LEGACY_KEYS = getLegacyStorageKeys();
@@ -101,7 +101,7 @@ export const appLifecycle: AppLifecycleObject = {
       }
     })();
     this.startCloudSyncScheduler();
-    startLotEntityPolling(this);
+    refreshLotEntityPolling(this);
 
     if (import.meta.env.DEV) {
       void this.unregisterServiceWorkersForDev();

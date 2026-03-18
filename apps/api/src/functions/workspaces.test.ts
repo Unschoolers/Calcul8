@@ -309,11 +309,19 @@ test("workspaceMembersAdd requires owner membership", async () => {
 
 test("workspaceMembersList returns members for authorized user", async () => {
   listWorkspaceMembershipsMock.mockResolvedValue([
-    { userId: "owner-user", workspaceId: "team-42", role: "owner", status: "active", updatedAt: "2026-02-25T00:00:00.000Z" },
+    {
+      userId: "owner-user",
+      workspaceId: "team-42",
+      role: "owner",
+      status: "active",
+      displayName: "Owner Snapshot",
+      photoUrl: "https://example.test/owner-snapshot.png",
+      updatedAt: "2026-02-25T00:00:00.000Z"
+    },
     { userId: "member-user", workspaceId: "team-42", role: "member", status: "active", updatedAt: "2026-02-25T00:00:00.000Z" }
   ]);
   listUserProfilesMock.mockResolvedValue([
-    { userId: "owner-user", displayName: "Owner Name", photoUrl: "https://example.test/owner.png" }
+    { userId: "member-user", displayName: "Member Name", photoUrl: "https://example.test/member.png" }
   ]);
   const request = createRequest(
     "GET",
@@ -325,8 +333,13 @@ test("workspaceMembersList returns members for authorized user", async () => {
   const response = await workspaceMembersList(request as never, createContext() as never);
   assert.equal(response.status, 200);
   assert.equal((response.jsonBody as { count: number }).count, 2);
-  assert.equal((response.jsonBody as { memberships: Array<{ displayName?: string }> }).memberships[0]?.displayName, "Owner Name");
-  assert.equal((response.jsonBody as { memberships: Array<{ displayName?: string }> }).memberships[1]?.displayName, undefined);
+  assert.deepEqual(listUserProfilesMock.mock.calls[0]?.[1], ["member-user"]);
+  assert.equal(upsertWorkspaceMembershipMock.mock.calls.length, 1);
+  assert.equal(upsertWorkspaceMembershipMock.mock.calls[0]?.[1]?.userId, "member-user");
+  assert.equal(upsertWorkspaceMembershipMock.mock.calls[0]?.[1]?.displayName, "Member Name");
+  assert.equal(upsertWorkspaceMembershipMock.mock.calls[0]?.[1]?.updatedAt, "2026-02-25T00:00:00.000Z");
+  assert.equal((response.jsonBody as { memberships: Array<{ displayName?: string }> }).memberships[0]?.displayName, "Owner Snapshot");
+  assert.equal((response.jsonBody as { memberships: Array<{ displayName?: string }> }).memberships[1]?.displayName, "Member Name");
 });
 
 test("workspaceMembersRemove rejects removing owner membership", async () => {
