@@ -68,3 +68,4 @@
 - For production data migrations, use a reviewed dry-run first, then a deliberate apply step; do not hide one-time data migrations inside automatic deploy steps.
 - When changing behavior, update tests first or alongside the change so the expected behavior is documented in code.
 - When a feature requires product or UX tradeoffs, keep the MVP lean and defer billing, admin layers, or extra complexity until the core flow is solid.
+- update api to [api.whatfees.ca](https://api.whatfees.ca/api)
