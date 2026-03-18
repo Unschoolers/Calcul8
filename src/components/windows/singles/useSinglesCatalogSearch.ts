@@ -29,6 +29,7 @@ type SinglesCatalogSearchContext = {
   currentLotId: number | string | null;
   lots: Array<Record<string, unknown>>;
   currentLotCatalogSource?: SinglesCatalogSource;
+  currentSinglesCatalogSource: SinglesCatalogSource;
   showCatalogSourceSheet: boolean;
   showSinglesImagePreview: boolean;
   singlesImagePreviewSrc: string;
@@ -45,10 +46,13 @@ type SinglesCatalogSearchContext = {
   singlesItemSearchAbortController: AbortController | null;
   singlesItemSearchRequestSeq: number;
   singlesEditorPreviewRequestSeq: number;
-  showCatalogSuggestions?: boolean;
-  singlesEditorCatalogItems?: SinglesCardSuggestion[];
+  showCatalogSuggestions: boolean;
+  singlesEditorCatalogItems: SinglesCardSuggestion[];
   saveLotsToStorage?(): void;
   notify(message: string, color?: string): void;
+  formatSinglesEditorItemLabel(item: unknown, cardNumber: unknown): string;
+  resolveCardsApiBaseUrl(): string;
+  cacheSinglesSuggestionImages(suggestions: SinglesCardSuggestion[]): void;
   setCurrentSinglesCatalogSource(nextValue: SinglesCatalogSource): void;
   onSinglesItemSelected(selected: string | SinglesCardSuggestion | null): void;
   preloadSinglesEditorPreview(): Promise<void>;
