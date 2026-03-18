@@ -186,6 +186,8 @@ export function createInitialState(): AppState {
     singlesCsvMapQuantity: null,
     singlesCsvMapMarketValue: null,
     currentLotId: null,
+    isHydratingLotConfig: false,
+    lotHydrationRevision: 0,
     newLotName: "",
     renameLotName: "",
     renameLotIsComplete: false,

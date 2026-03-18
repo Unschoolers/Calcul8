@@ -97,14 +97,14 @@
                         <v-row dense>
                           <v-col :cols="purchaseUiMode === 'simple' ? 8 : 6">
                             <v-text-field
-                              v-model.number="purchaseCostInputValue"
+                              :model-value="purchaseCostInputValue"
                               :label="purchaseCostInputLabel"
                               type="number"
                               variant="outlined"
                               density="compact"
                               prefix="$"
                               hide-details
-                              @input="onPurchaseConfigChange"
+                              @update:model-value="updatePurchaseCostInput"
                             ></v-text-field>
                           </v-col>
                           <v-col :cols="purchaseUiMode === 'simple' ? 4 : 6">

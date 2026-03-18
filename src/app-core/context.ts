@@ -230,6 +230,7 @@ export interface AppMethodState {
   confirmSinglesPurchasesCsvImport(): void;
   cancelSinglesPurchasesCsvImport(): void;
   createNewLot(): void;
+  selectLot(lotId: number | null): void;
   setCurrentLotCatalogSource(source: SinglesCatalogSource): void;
   openRenameLotModal(): void;
   renameCurrentLot(): void;
@@ -247,6 +248,7 @@ export interface AppMethodState {
   safeFixed(value: number, decimals?: number): string;
   recalculateDefaultPrices(opts?: { closeModal?: boolean }): void;
   calculateOptimalPrices(): void;
+  updatePurchaseCostInput(value: unknown): void;
   onPurchaseConfigChange(): void;
   calculatePriceForUnits(units: number, targetNetRevenue: number): number;
   loadSalesFromStorage(): void;

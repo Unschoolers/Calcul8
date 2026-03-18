@@ -290,6 +290,8 @@ export interface AppState extends LotSetup {
   singlesCsvMapQuantity: number | null;
   singlesCsvMapMarketValue: number | null;
   currentLotId: number | null;
+  isHydratingLotConfig: boolean;
+  lotHydrationRevision: number;
   newLotName: string;
   renameLotName: string;
   renameLotIsComplete: boolean;

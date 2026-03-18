@@ -1332,6 +1332,18 @@ test("watch.boxesPurchased keeps total purchase anchored in total modes", () => 
   assert.equal(perBoxContext.boxPriceCost, 40);
 });
 
+test("watch.boxesPurchased ignores lot hydration so fixed totals stay fixed on load", () => {
+  const hydrationContext = {
+    isHydratingLotConfig: true,
+    purchaseUiMode: "simple",
+    costInputMode: "total",
+    boxPriceCost: 25
+  } as unknown as Parameters<typeof appWatch.boxesPurchased>[0];
+
+  appWatch.boxesPurchased.call(hydrationContext, 5, 2);
+  assert.equal(hydrationContext.boxPriceCost, 25);
+});
+
 test("calculateOptimalPrices is blocked when paywall is locked", () => {
   let notifiedMessage = "";
   let recalculated = false;
@@ -1440,6 +1452,38 @@ test("recalculateDefaultPrices syncs live prices even when current tab is live",
   assert.ok(context.boxPriceSell > 0);
   assert.ok(context.packPrice > 0);
   assert.equal(context.showProfitCalculator, false);
+});
+
+test("updatePurchaseCostInput applies the entered total before recalculating and saving", () => {
+  let changeCalls = 0;
+  const context = {
+    purchaseUiMode: "simple",
+    costInputMode: "total",
+    boxPriceCost: 10,
+    boxesPurchased: 2,
+    onPurchaseConfigChange() {
+      changeCalls += 1;
+      assert.equal(this.boxPriceCost, 277.5);
+    }
+  } as unknown as Parameters<typeof configMethods.updatePurchaseCostInput>[0] & {
+    boxPriceCost: number;
+    boxesPurchased: number;
+  };
+
+  Object.defineProperty(context, "purchaseCostInputValue", {
+    configurable: true,
+    get() {
+      return this.boxPriceCost * this.boxesPurchased;
+    },
+    set(value: number) {
+      this.boxPriceCost = this.boxesPurchased > 0 ? value / this.boxesPurchased : 0;
+    }
+  });
+
+  configMethods.updatePurchaseCostInput.call(context, "555");
+
+  assert.equal(context.boxPriceCost, 277.5);
+  assert.equal(changeCalls, 1);
 });
 
 test("applyLivePricesToDefaults saves live prices into config defaults", () => {

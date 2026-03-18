@@ -28,6 +28,7 @@ export type ConfigMethods = ConfigMethodSubset<
   | "confirmSinglesPurchasesCsvImport"
   | "cancelSinglesPurchasesCsvImport"
   | "createNewLot"
+  | "selectLot"
   | "setCurrentLotCatalogSource"
   | "openRenameLotModal"
   | "renameCurrentLot"
@@ -43,6 +44,7 @@ export type ConfigMethods = ConfigMethodSubset<
   | "calculateProfit"
   | "recalculateDefaultPrices"
   | "calculateOptimalPrices"
+  | "updatePurchaseCostInput"
   | "onPurchaseConfigChange"
   | "calculatePriceForUnits"
 >;

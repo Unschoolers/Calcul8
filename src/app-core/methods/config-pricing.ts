@@ -10,6 +10,7 @@ export const configPricingMethods: ConfigMethodSubset<
   | "calculateProfit"
   | "recalculateDefaultPrices"
   | "calculateOptimalPrices"
+  | "updatePurchaseCostInput"
   | "onPurchaseConfigChange"
   | "calculatePriceForUnits"
 > = {
@@ -54,6 +55,12 @@ export const configPricingMethods: ConfigMethodSubset<
       return;
     }
     this.recalculateDefaultPrices({ closeModal: true });
+  },
+
+  updatePurchaseCostInput(value: unknown): void {
+    const normalized = typeof value === "number" ? value : Number(value);
+    this.purchaseCostInputValue = Number.isFinite(normalized) ? normalized : 0;
+    this.onPurchaseConfigChange();
   },
 
   onPurchaseConfigChange(): void {

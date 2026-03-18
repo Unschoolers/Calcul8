@@ -53,6 +53,8 @@ export const appWatch: AppWatchObject = {
   },
 
   boxesPurchased(newValue, oldValue) {
+    if (this.isHydratingLotConfig) return;
+
     const isTotalPurchaseMode = this.purchaseUiMode === "simple" || this.costInputMode === "total";
     if (!isTotalPurchaseMode) return;
 

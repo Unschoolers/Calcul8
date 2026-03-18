@@ -265,6 +265,7 @@ export const configLotMethods: ConfigMethodSubset<
   | "confirmSinglesPurchasesCsvImport"
   | "cancelSinglesPurchasesCsvImport"
   | "createNewLot"
+  | "selectLot"
   | "setCurrentLotCatalogSource"
   | "openRenameLotModal"
   | "renameCurrentLot"
@@ -582,6 +583,24 @@ export const configLotMethods: ConfigMethodSubset<
     this.notify("Lot created", "success");
   },
 
+  selectLot(lotId: number | null): void {
+    const parsedLotId = Number(lotId);
+    const nextLotId = Number.isFinite(parsedLotId) && parsedLotId > 0
+      ? parsedLotId
+      : null;
+
+    if (nextLotId === this.currentLotId) return;
+
+    if (this.currentLotId) {
+      this.autoSaveSetup();
+    }
+
+    this.currentLotId = nextLotId;
+    if (nextLotId) {
+      this.loadLot();
+    }
+  },
+
   setCurrentLotCatalogSource(nextValue: SinglesCatalogSource): void {
     if (!this.currentLotId) return;
 
@@ -697,45 +716,56 @@ export const configLotMethods: ConfigMethodSubset<
       : this.newLotCatalogSource;
     const todayDate = getTodayDate();
 
-    this.boxPriceCost = lot.boxPriceCost ?? DEFAULT_VALUES.BOX_PRICE;
-    this.boxesPurchased = lot.boxesPurchased ?? DEFAULT_VALUES.BOXES_PURCHASED;
-    this.packsPerBox = lot.packsPerBox ?? DEFAULT_VALUES.PACKS_PER_BOX;
-    this.spotsPerBox = lot.spotsPerBox ?? DEFAULT_VALUES.SPOTS_PER_BOX;
-    this.costInputMode = lot.costInputMode ?? "perBox";
-    this.currency = lot.currency ?? "CAD";
-    this.sellingCurrency = lot.sellingCurrency ?? "CAD";
-    this.exchangeRate = lot.exchangeRate ?? DEFAULT_VALUES.EXCHANGE_RATE;
-    this.purchaseDate =
-      toDateOnly(lot.purchaseDate) ??
-      toDateOnly(lot.createdAt) ??
-      inferDateFromLotId(lot.id) ??
-      todayDate;
-    this.purchaseShippingCost = lot.purchaseShippingCost ?? DEFAULT_VALUES.PURCHASE_SHIPPING_COST;
+    const hydrationRevision = (Number(this.lotHydrationRevision) || 0) + 1;
+    this.lotHydrationRevision = hydrationRevision;
+    this.isHydratingLotConfig = true;
+    try {
+      this.boxPriceCost = lot.boxPriceCost ?? DEFAULT_VALUES.BOX_PRICE;
+      this.boxesPurchased = lot.boxesPurchased ?? DEFAULT_VALUES.BOXES_PURCHASED;
+      this.packsPerBox = lot.packsPerBox ?? DEFAULT_VALUES.PACKS_PER_BOX;
+      this.spotsPerBox = lot.spotsPerBox ?? DEFAULT_VALUES.SPOTS_PER_BOX;
+      this.costInputMode = lot.costInputMode ?? "perBox";
+      this.currency = lot.currency ?? "CAD";
+      this.sellingCurrency = lot.sellingCurrency ?? "CAD";
+      this.exchangeRate = lot.exchangeRate ?? DEFAULT_VALUES.EXCHANGE_RATE;
+      this.purchaseDate =
+        toDateOnly(lot.purchaseDate) ??
+        toDateOnly(lot.createdAt) ??
+        inferDateFromLotId(lot.id) ??
+        todayDate;
+      this.purchaseShippingCost = lot.purchaseShippingCost ?? DEFAULT_VALUES.PURCHASE_SHIPPING_COST;
 
-    const legacyTax = lot.taxRatePercent;
-    this.purchaseTaxPercent =
-      lot.purchaseTaxPercent ??
-      legacyTax ??
-      DEFAULT_VALUES.PURCHASE_TAX_RATE_PERCENT;
-    this.sellingTaxPercent =
-      lot.sellingTaxPercent ??
-      legacyTax ??
-      DEFAULT_VALUES.SELLING_TAX_RATE_PERCENT;
-    this.sellingShippingPerOrder = lot.sellingShippingPerOrder ?? DEFAULT_VALUES.SELLING_SHIPPING_PER_ORDER;
-    this.includeTax = lot.includeTax ?? true;
-    this.spotPrice = lot.spotPrice ?? DEFAULT_VALUES.SPOT_PRICE;
-    this.boxPriceSell = lot.boxPriceSell ?? DEFAULT_VALUES.BOX_PRICE_SELL;
-    this.packPrice = lot.packPrice ?? DEFAULT_VALUES.PACK_PRICE;
-    this.singlesPurchases = lot.lotType === "singles"
-      ? normalizeSinglesPurchaseEntries(lot.singlesPurchases, lot.currency === "USD" ? "USD" : "CAD")
-      : [];
-    const parsedTargetProfit = Number(lot.targetProfitPercent);
-    if (!this.hasProAccess) {
-      this.targetProfitPercent = 0;
-    } else if (Number.isFinite(parsedTargetProfit) && parsedTargetProfit >= 0) {
-      this.targetProfitPercent = parsedTargetProfit;
-    } else {
-      this.targetProfitPercent = 15;
+      const legacyTax = lot.taxRatePercent;
+      this.purchaseTaxPercent =
+        lot.purchaseTaxPercent ??
+        legacyTax ??
+        DEFAULT_VALUES.PURCHASE_TAX_RATE_PERCENT;
+      this.sellingTaxPercent =
+        lot.sellingTaxPercent ??
+        legacyTax ??
+        DEFAULT_VALUES.SELLING_TAX_RATE_PERCENT;
+      this.sellingShippingPerOrder = lot.sellingShippingPerOrder ?? DEFAULT_VALUES.SELLING_SHIPPING_PER_ORDER;
+      this.includeTax = lot.includeTax ?? true;
+      this.spotPrice = lot.spotPrice ?? DEFAULT_VALUES.SPOT_PRICE;
+      this.boxPriceSell = lot.boxPriceSell ?? DEFAULT_VALUES.BOX_PRICE_SELL;
+      this.packPrice = lot.packPrice ?? DEFAULT_VALUES.PACK_PRICE;
+      this.singlesPurchases = lot.lotType === "singles"
+        ? normalizeSinglesPurchaseEntries(lot.singlesPurchases, lot.currency === "USD" ? "USD" : "CAD")
+        : [];
+      const parsedTargetProfit = Number(lot.targetProfitPercent);
+      if (!this.hasProAccess) {
+        this.targetProfitPercent = 0;
+      } else if (Number.isFinite(parsedTargetProfit) && parsedTargetProfit >= 0) {
+        this.targetProfitPercent = parsedTargetProfit;
+      } else {
+        this.targetProfitPercent = 15;
+      }
+    } finally {
+      void this.$nextTick(() => {
+        if (this.lotHydrationRevision === hydrationRevision) {
+          this.isHydratingLotConfig = false;
+        }
+      });
     }
 
     this.currentLivePricingVersion = null;

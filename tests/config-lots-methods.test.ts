@@ -720,6 +720,47 @@ test("createNewLot uses selected catalog source for new singles lots", () => {
   assert.equal(ctx.showNewLotModal, false);
 });
 
+test("selectLot saves the current lot before switching to the next one", () => {
+  const lotA = makeLot({
+    id: 1,
+    name: "Lot A",
+    lotType: "bulk",
+    boxPriceCost: 70,
+    boxesPurchased: 16,
+    costInputMode: "total"
+  });
+  const lotB = makeLot({
+    id: 2,
+    name: "Lot B",
+    lotType: "bulk",
+    boxPriceCost: 13.0078125,
+    boxesPurchased: 16,
+    costInputMode: "total"
+  });
+  let loadedLotId: number | null = null;
+
+  const ctx = createContext({
+    lots: [lotA, lotB],
+    currentLotId: 1,
+    currentLotType: "bulk",
+    boxPriceCost: 34.6875,
+    boxesPurchased: 16,
+    costInputMode: "total",
+    getCurrentSetup: vi.fn(() => configLotMethods.getCurrentSetup.call(ctx as never)),
+    autoSaveSetup: vi.fn(() => configLotMethods.autoSaveSetup.call(ctx as never)),
+    loadLot: vi.fn(() => {
+      loadedLotId = ctx.currentLotId as number | null;
+    })
+  });
+
+  configLotMethods.selectLot.call(ctx as never, 2);
+
+  assert.equal(lotA.boxPriceCost, 34.6875);
+  assert.equal(ctx.currentLotId, 2);
+  assert.equal(loadedLotId, 2);
+  assert.equal((ctx.autoSaveSetup as ReturnType<typeof vi.fn>).mock.calls.length, 1);
+});
+
 test("renameCurrentLot closes modal when name is unchanged", () => {
   const ctx = createContext({
     currentLotId: 101,

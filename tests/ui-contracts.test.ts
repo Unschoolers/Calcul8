@@ -22,3 +22,17 @@ test("both Live FAB and Config quick button use the same centralized auto-calc a
   assert.match(appTemplate, /<auto-calculate-modal\s+:ctx="\$root"><\/auto-calculate-modal>/);
 });
 
+test("config purchase total field saves through the model update event", () => {
+  const configWindowTemplate = read("src/components/windows/ConfigWindow.html");
+
+  assert.match(configWindowTemplate, /:model-value="purchaseCostInputValue"/);
+  assert.match(configWindowTemplate, /@update:model-value="updatePurchaseCostInput"/);
+});
+
+test("lot selector uses the explicit switch handler", () => {
+  const appTemplate = read("index.html");
+
+  assert.match(appTemplate, /:model-value="currentLotId"/);
+  assert.match(appTemplate, /@update:model-value="selectLot"/);
+});
+
