@@ -1,8 +1,8 @@
 import {
   getMigrationMarker,
-  upsertMigrationMarker,
-  type UpsertMigrationMarkerInput
-} from "../../cosmos";
+  upsertMigrationMarker
+} from "../../cosmos/migrationRepository";
+import type { UpsertMigrationMarkerInput } from "../../cosmos/migrationRepository";
 import type { ApiConfig, MigrationMarkerDocument } from "../../../types";
 import type { MigrationDefinition } from "../types";
 

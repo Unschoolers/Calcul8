@@ -1,6 +1,6 @@
 import type { HttpRequest } from "@azure/functions";
 import type { ApiConfig } from "../../types";
-import { upsertUserProfile } from "../cosmos";
+import { upsertUserProfile } from "../cosmos/entitlementRepository";
 import { logAuthTelemetry, type TelemetryLogger, type WorkspaceScope } from "../telemetry";
 import { hasBearerAuthHeader, isUnsafeMethod, parseSessionIdFromCookie, CSRF_HEADER_NAME } from "./cookies";
 import { createSessionCsrfToken } from "./csrf";

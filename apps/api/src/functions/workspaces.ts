@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { app, type HttpRequest, type HttpResponseInit, type InvocationContext } from "@azure/functions";
 import { HttpError, resolveUserId } from "../lib/auth";
+import { listUserProfiles } from "../lib/cosmos/entitlementRepository";
 import { getConfig } from "../lib/config";
 import {
   createWorkspaceJoinLink,
@@ -10,7 +11,6 @@ import {
   getWorkspaceJoinLinkByTokenHash,
   getWorkspaceMembership,
   hasWorkspaceMembership,
-  listUserProfiles,
   listWorkspaceJoinLinks,
   listWorkspaceMemberships,
   listWorkspacesForUser,
@@ -19,7 +19,7 @@ import {
   softDeleteWorkspace,
   transferWorkspaceOwnership,
   upsertWorkspaceMembership
-} from "../lib/cosmos";
+} from "../lib/cosmos/workspaceRepository";
 import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../lib/http";
 import { logApiTelemetry } from "../lib/telemetry";
 import type {

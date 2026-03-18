@@ -24,7 +24,7 @@ vi.mock("../lib/config", () => ({
   getConfig: getConfigMock
 }));
 
-vi.mock("../lib/cosmos", () => ({
+vi.mock("../lib/cosmos/entitlementRepository", () => ({
   getEntitlement: getEntitlementMock,
   upsertEntitlement: upsertEntitlementMock
 }));

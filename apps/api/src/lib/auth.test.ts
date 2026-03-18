@@ -21,7 +21,10 @@ vi.mock("./cosmos", () => ({
   createSession: createSessionMock,
   getSession: getSessionMock,
   touchSession: touchSessionMock,
-  deleteSession: deleteSessionMock,
+  deleteSession: deleteSessionMock
+}));
+
+vi.mock("./cosmos/entitlementRepository", () => ({
   upsertUserProfile: upsertUserProfileMock
 }));
 

@@ -9,6 +9,7 @@ const LEGACY_KEYS = getLegacyStorageKeys();
 export const AUTH_CSRF_TOKEN_KEY = STORAGE_KEYS.CSRF_TOKEN;
 export const GOOGLE_AUTH_TOKEN_KEY = STORAGE_KEYS.GOOGLE_ID_TOKEN;
 export const GOOGLE_AUTH_PROFILE_CACHE_KEY = STORAGE_KEYS.GOOGLE_PROFILE_CACHE;
+export const GOOGLE_AUTO_SIGNIN_DISABLED_KEY = STORAGE_KEYS.GOOGLE_AUTO_SIGNIN_DISABLED;
 
 export function getStoredCsrfToken(): string {
   return (localStorage.getItem(AUTH_CSRF_TOKEN_KEY) || "").trim();
@@ -36,4 +37,16 @@ export function clearStoredGoogleIdToken(): void {
 
 export function clearStoredGoogleProfileCache(): void {
   removeStorageWithLegacy(GOOGLE_AUTH_PROFILE_CACHE_KEY, LEGACY_KEYS.GOOGLE_PROFILE_CACHE);
+}
+
+export function isGoogleAutoSignInDisabled(): boolean {
+  return (localStorage.getItem(GOOGLE_AUTO_SIGNIN_DISABLED_KEY) || "").trim() === "1";
+}
+
+export function disableGoogleAutoSignIn(): void {
+  localStorage.setItem(GOOGLE_AUTO_SIGNIN_DISABLED_KEY, "1");
+}
+
+export function enableGoogleAutoSignIn(): void {
+  localStorage.removeItem(GOOGLE_AUTO_SIGNIN_DISABLED_KEY);
 }

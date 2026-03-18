@@ -17,7 +17,7 @@ vi.mock("../lib/config", () => ({
   getConfig: getConfigMock
 }));
 
-vi.mock("../lib/cosmos", () => ({
+vi.mock("../lib/cosmos/cardCatalogRepository", () => ({
   searchCardCatalog: searchCardCatalogMock
 }));
 

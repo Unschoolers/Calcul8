@@ -32,7 +32,7 @@ const {
   shouldAcknowledgePurchaseMock: vi.fn()
 }));
 
-vi.mock("../lib/cosmos", () => ({
+vi.mock("../lib/cosmos/entitlementRepository", () => ({
   getPurchaseVerificationResult: getPurchaseVerificationResultMock,
   getPlayPurchaseByTokenHash: getPlayPurchaseByTokenHashMock,
   upsertEntitlement: upsertEntitlementMock,

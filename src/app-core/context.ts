@@ -294,6 +294,8 @@ export interface AppMethodState {
   applyAppUpdate(): void;
   dismissAppUpdate(): void;
   debugLogEntitlement(forceRefresh?: boolean): Promise<void>;
+  logoutCurrentSession(): Promise<void>;
+  clearPersonalAccountData(): Promise<void>;
   refreshWorkspaces(): Promise<void>;
   switchToPersonalWorkspace(): Promise<void>;
   switchToWorkspace(workspaceId: string): Promise<void>;

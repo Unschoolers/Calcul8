@@ -1,7 +1,7 @@
 import { app, type HttpRequest, type HttpResponseInit, type InvocationContext } from "@azure/functions";
 import { HttpError } from "../lib/auth";
+import { searchCardCatalog } from "../lib/cosmos/cardCatalogRepository";
 import { getConfig } from "../lib/config";
-import { searchCardCatalog } from "../lib/cosmos";
 import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../lib/http";
 
 function getQueryParam(request: HttpRequest, key: string): string | null {

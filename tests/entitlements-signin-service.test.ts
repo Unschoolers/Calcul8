@@ -161,6 +161,22 @@ test("initGoogleAutoLoginFlow applies cached entitlement and skips prompt when t
   });
 });
 
+test("initGoogleAutoLoginFlow stays signed out after an intentional logout", async () => {
+  await withMockedLocalStorage(async (data) => {
+    stubWindow({
+      initialize: vi.fn(),
+      prompt: vi.fn()
+    });
+    data.set("whatfees_google_auto_signin_disabled_v1", "1");
+    const context = createContext();
+
+    initGoogleAutoLoginFlow(context as never);
+
+    assert.equal(initGoogleAutoLoginWithRetryMock.mock.calls.length, 0);
+    assert.equal(context.googleAuthEpoch, 0);
+  });
+});
+
 test("initGoogleAutoLoginFlow starts retry flow and credential callback persists token", async () => {
   await withMockedLocalStorage(async (data) => {
     const setTimeoutSpy = vi.fn();
@@ -207,12 +223,14 @@ test("promptGoogleSignInFlow initializes, prompts, and handles credential callba
     const context = createContext({
       googleAvatarLoadFailed: true
     });
+    data.set("whatfees_google_auto_signin_disabled_v1", "1");
 
     promptGoogleSignInFlow(context as never);
     callback?.({ credential: "  signed-token  " });
 
     assert.equal(initialize.mock.calls.length, 1);
     assert.equal(requestGoogleIdentityPromptMock.mock.calls.length, 1);
+    assert.equal(data.get("whatfees_google_auto_signin_disabled_v1"), undefined);
     assert.equal(data.get("whatfees_google_id_token"), "signed-token");
     assert.equal(context.googleAuthEpoch, 1);
     assert.equal(context.googleAvatarLoadFailed, false);

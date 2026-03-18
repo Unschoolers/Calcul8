@@ -1,15 +1,15 @@
 import { app, type HttpRequest, type HttpResponseInit, type InvocationContext } from "@azure/functions";
 import { HttpError, resolveUserId } from "../lib/auth";
-import { getConfig } from "../lib/config";
 import {
   deleteSaleDocument,
   EntityVersionConflictError,
   getLotLivePricing,
-  hasWorkspaceMembership,
   listSalesForLot,
   upsertLotLivePricing,
   upsertSaleDocument
-} from "../lib/cosmos";
+} from "../lib/cosmos/salesRepository";
+import { hasWorkspaceMembership } from "../lib/cosmos/workspaceRepository";
+import { getConfig } from "../lib/config";
 import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../lib/http";
 import { parseOptionalWorkspaceId } from "../lib/syncScope";
 import { assertSyncScopeAccess, resolveSyncScope } from "../lib/syncScopeResolution";

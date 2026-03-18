@@ -18,8 +18,11 @@ vi.mock("../lib/config", () => ({
   getConfig: getConfigMock
 }));
 
-vi.mock("../lib/cosmos", () => ({
+vi.mock("../lib/cosmos/syncSnapshotRepository", () => ({
   getEffectiveSyncSnapshot: getEffectiveSyncSnapshotMock,
+}));
+
+vi.mock("../lib/cosmos/workspaceRepository", () => ({
   hasWorkspaceMembership: hasWorkspaceMembershipMock
 }));
 

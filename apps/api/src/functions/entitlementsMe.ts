@@ -1,7 +1,7 @@
 import { app, type HttpRequest, type HttpResponseInit, type InvocationContext } from "@azure/functions";
 import { resolveUserId } from "../lib/auth";
+import { getEntitlement, listPlayPurchasesForUser, upsertEntitlement } from "../lib/cosmos/entitlementRepository";
 import { getConfig } from "../lib/config";
-import { getEntitlement, listPlayPurchasesForUser, upsertEntitlement } from "../lib/cosmos";
 import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../lib/http";
 import { hasValidProPurchase } from "../lib/playEntitlements";
 import { buildLegacyUserEntitlementDocumentId } from "../lib/scopeKeys";

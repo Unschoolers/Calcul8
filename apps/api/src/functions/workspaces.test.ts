@@ -52,14 +52,17 @@ vi.mock("../lib/config", () => ({
   getConfig: getConfigMock
 }));
 
-vi.mock("../lib/cosmos", () => ({
+vi.mock("../lib/cosmos/entitlementRepository", () => ({
+  listUserProfiles: listUserProfilesMock
+}));
+
+vi.mock("../lib/cosmos/workspaceRepository", () => ({
   createWorkspaceWithOwner: createWorkspaceWithOwnerMock,
   getWorkspaceById: getWorkspaceByIdMock,
   hasWorkspaceMembership: hasWorkspaceMembershipMock,
   getWorkspaceMembership: getWorkspaceMembershipMock,
   listWorkspaceMemberships: listWorkspaceMembershipsMock,
   listWorkspaceMembershipsForUser: listWorkspaceMembershipsForUserMock,
-  listUserProfiles: listUserProfilesMock,
   listWorkspacesForUser: listWorkspacesForUserMock,
   upsertWorkspaceMembership: upsertWorkspaceMembershipMock,
   deactivateWorkspaceMembership: deactivateWorkspaceMembershipMock,

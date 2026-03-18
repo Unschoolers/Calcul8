@@ -1,13 +1,13 @@
 import { app, type HttpRequest, type HttpResponseInit, type InvocationContext } from "@azure/functions";
 import { HttpError, resolveUserId } from "../lib/auth";
-import { getConfig } from "../lib/config";
 import {
   createPurchaseVerificationResult,
   getPlayPurchaseByTokenHash,
   getPurchaseVerificationResult,
   upsertEntitlement,
   upsertPlayPurchase
-} from "../lib/cosmos";
+} from "../lib/cosmos/entitlementRepository";
+import { getConfig } from "../lib/config";
 import { acknowledgePlayProductPurchase, verifyPlayProductPurchase } from "../lib/googlePlay";
 import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../lib/http";
 import { assertPurchaseNotLinkedToDifferentUser, hashPurchaseToken, shouldAcknowledgePurchase } from "../lib/playEntitlements";

@@ -1,7 +1,7 @@
 import { app, type HttpRequest, type HttpResponseInit, type InvocationContext } from "@azure/functions";
 import { clearSessionCookie, HttpError, resolveUserId, revokeSessionFromRequest } from "../lib/auth";
 import { getConfig } from "../lib/config";
-import { revokeAllSessionsForUser } from "../lib/cosmos";
+import { revokeAllSessionsForUser } from "../lib/cosmos/sessionRepository";
 import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../lib/http";
 import { logApiTelemetry } from "../lib/telemetry";
 

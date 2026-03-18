@@ -1,7 +1,8 @@
 import { app, type HttpRequest, type HttpResponseInit, type InvocationContext } from "@azure/functions";
 import { resolveUserId } from "../lib/auth";
 import { getConfig } from "../lib/config";
-import { getEffectiveSyncSnapshot, getEntitlement, listPlayPurchasesForUser } from "../lib/cosmos";
+import { getEntitlement, listPlayPurchasesForUser } from "../lib/cosmos/entitlementRepository";
+import { getEffectiveSyncSnapshot } from "../lib/cosmos/syncSnapshotRepository";
 import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../lib/http";
 
 export async function accountExport(

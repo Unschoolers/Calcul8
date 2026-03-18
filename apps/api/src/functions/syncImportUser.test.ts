@@ -47,14 +47,17 @@ vi.mock("../lib/auth", () => ({
   consumeAuthResponseHeaders: vi.fn(() => ({}))
 }));
 
-vi.mock("../lib/cosmos", () => ({
+vi.mock("../lib/cosmos/syncSnapshotRepository", () => ({
   getEffectiveSyncSnapshot: getEffectiveSyncSnapshotMock,
   getEffectiveSyncSnapshotFromExternalSource: getEffectiveSyncSnapshotFromExternalSourceMock,
   getSyncMetaDocumentFromExternalSource: getSyncMetaDocumentFromExternalSourceMock,
   getSyncScopeEntityDocumentsFromExternalSource: getSyncScopeEntityDocumentsFromExternalSourceMock,
   replaceSyncScopeEntityDocuments: replaceSyncScopeEntityDocumentsMock,
-  setSyncScopeEntityModes: setSyncScopeEntityModesMock,
   upsertSyncSnapshotIncremental: upsertSyncSnapshotIncrementalMock
+}));
+
+vi.mock("../lib/cosmos/salesRepository", () => ({
+  setSyncScopeEntityModes: setSyncScopeEntityModesMock
 }));
 
 import { syncImportUser } from "./syncImportUser";

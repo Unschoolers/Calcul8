@@ -1,7 +1,9 @@
 import { app, type HttpRequest, type HttpResponseInit, type InvocationContext } from "@azure/functions";
-import { resolveUserId } from "../lib/auth";
+import { clearSessionCookie, resolveUserId } from "../lib/auth";
 import { getConfig } from "../lib/config";
-import { deleteAllSyncData, deleteEntitlement, deletePlayPurchasesForUser } from "../lib/cosmos";
+import { revokeAllSessionsForUser } from "../lib/cosmos/sessionRepository";
+import { deleteEntitlement, deletePlayPurchasesForUser, deleteUserProfile } from "../lib/cosmos/entitlementRepository";
+import { deleteAllSyncData } from "../lib/cosmos/syncSnapshotRepository";
 import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../lib/http";
 
 export async function accountDelete(
@@ -17,9 +19,12 @@ export async function accountDelete(
 
     await Promise.all([
       deleteEntitlement(config, userId),
+      deleteUserProfile(config, userId),
       deletePlayPurchasesForUser(config, userId),
-      deleteAllSyncData(config, userId)
+      deleteAllSyncData(config, userId),
+      revokeAllSessionsForUser(config, userId)
     ]);
+    await clearSessionCookie(request, config);
 
     const deletedAt = new Date().toISOString();
     return jsonResponse(request, config, 200, {

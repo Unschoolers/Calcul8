@@ -1,7 +1,7 @@
 import { app, type HttpRequest, type HttpResponseInit, type InvocationContext } from "@azure/functions";
 import { HttpError } from "../lib/auth";
+import { listMigrationRuns } from "../lib/cosmos/migrationRepository";
 import { getConfig } from "../lib/config";
-import { listMigrationRuns } from "../lib/cosmos";
 import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../lib/http";
 import { assertMigrationAdminAccess, resolveMigrationActor } from "../lib/migrations/adminAuth";
 

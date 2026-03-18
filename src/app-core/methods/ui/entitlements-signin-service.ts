@@ -6,7 +6,9 @@ import {
 } from "./shared.ts";
 import {
   GOOGLE_PROFILE_CACHE_KEY,
+  enableGoogleAutoSignIn,
   getStoredGoogleIdToken,
+  isGoogleAutoSignInDisabled,
   setStoredGoogleIdToken
 } from "../../auth/index.ts";
 import {
@@ -41,6 +43,8 @@ type SignInDeps = {
   getGoogleClientId: () => string;
   getWindow: () => Window | undefined;
   getGoogleIdToken: () => string;
+  isGoogleAutoSignInDisabled: () => boolean;
+  enableGoogleAutoSignIn: () => void;
   setGoogleIdToken: (token: string) => void;
   schedule: (callback: () => void, delayMs: number) => void;
 };
@@ -83,6 +87,8 @@ const defaultDeps: SignInDeps = {
   getGoogleClientId: readGoogleClientId,
   getWindow: () => (globalThis as { window?: Window }).window,
   getGoogleIdToken: () => getStoredGoogleIdToken(),
+  isGoogleAutoSignInDisabled: () => isGoogleAutoSignInDisabled(),
+  enableGoogleAutoSignIn: () => enableGoogleAutoSignIn(),
   setGoogleIdToken: (token) => {
     setStoredGoogleIdToken(token);
   },
@@ -116,6 +122,11 @@ export function initGoogleAutoLoginFlow(app: SignInApp, deps: Partial<SignInDeps
     });
     app.hasProAccess = true;
     resolvedDeps.applyTargetProfitAccessDefaults(app);
+  }
+
+  if (resolvedDeps.isGoogleAutoSignInDisabled()) {
+    logAuthDebug("init:auto:disabled_after_signout");
+    return;
   }
 
   if (existingToken) {
@@ -156,6 +167,7 @@ export function promptGoogleSignInFlow(app: SignInApp, deps: Partial<SignInDeps>
 
   const existingToken = resolvedDeps.getGoogleIdToken();
   if (existingToken) {
+    resolvedDeps.enableGoogleAutoSignIn();
     logAuthDebug("signin:manual:skip_existing_token", {
       tokenLength: existingToken.length
     });
@@ -182,6 +194,7 @@ export function promptGoogleSignInFlow(app: SignInApp, deps: Partial<SignInDeps>
   }
 
   try {
+    resolvedDeps.enableGoogleAutoSignIn();
     logAuthDebug("signin:manual:initialize", {
       clientId: summarizeClientId(clientId)
     });
@@ -201,6 +214,7 @@ export function promptGoogleSignInFlow(app: SignInApp, deps: Partial<SignInDeps>
         logAuthDebug("signin:manual:credential_received", {
           tokenLength: idToken.length
         });
+        resolvedDeps.enableGoogleAutoSignIn();
         resolvedDeps.setGoogleIdToken(idToken);
         app.googleAuthEpoch += 1;
         app.googleAvatarLoadFailed = false;

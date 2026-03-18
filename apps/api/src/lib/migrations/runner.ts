@@ -1,4 +1,4 @@
-import { upsertMigrationRun } from "../cosmos";
+import { upsertMigrationRun } from "../cosmos/migrationRepository";
 import type { ApiConfig, MigrationRunDocument } from "../../types";
 import type { MigrationDefinition } from "./types";
 

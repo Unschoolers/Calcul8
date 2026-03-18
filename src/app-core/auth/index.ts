@@ -1,12 +1,16 @@
 export {
   AUTH_CSRF_TOKEN_KEY,
+  GOOGLE_AUTO_SIGNIN_DISABLED_KEY,
   GOOGLE_AUTH_PROFILE_CACHE_KEY,
   GOOGLE_AUTH_TOKEN_KEY,
+  disableGoogleAutoSignIn,
+  enableGoogleAutoSignIn,
   clearStoredCsrfToken,
   clearStoredGoogleProfileCache,
   clearStoredGoogleIdToken,
   getStoredCsrfToken,
   getStoredGoogleIdToken,
+  isGoogleAutoSignInDisabled,
   setStoredCsrfToken,
   setStoredGoogleIdToken
 } from "./storage.ts";

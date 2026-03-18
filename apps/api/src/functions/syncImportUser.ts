@@ -1,15 +1,15 @@
 import { app, type HttpRequest, type HttpResponseInit, type InvocationContext } from "@azure/functions";
 import { HttpError, resolveUserId } from "../lib/auth";
-import { getConfig } from "../lib/config";
+import { setSyncScopeEntityModes } from "../lib/cosmos/salesRepository";
 import {
   getEffectiveSyncSnapshot,
   getEffectiveSyncSnapshotFromExternalSource,
   getSyncMetaDocumentFromExternalSource,
   getSyncScopeEntityDocumentsFromExternalSource,
   replaceSyncScopeEntityDocuments,
-  setSyncScopeEntityModes,
   upsertSyncSnapshotIncremental
-} from "../lib/cosmos";
+} from "../lib/cosmos/syncSnapshotRepository";
+import { getConfig } from "../lib/config";
 import type { ApiConfig } from "../types";
 import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../lib/http";
 

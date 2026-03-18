@@ -32,14 +32,17 @@ vi.mock("../lib/config", () => ({
   getConfig: getConfigMock
 }));
 
-vi.mock("../lib/cosmos", () => ({
+vi.mock("../lib/cosmos/salesRepository", () => ({
   EntityVersionConflictError: EntityVersionConflictErrorMock,
-  hasWorkspaceMembership: hasWorkspaceMembershipMock,
   listSalesForLot: listSalesForLotMock,
   upsertSaleDocument: upsertSaleDocumentMock,
   deleteSaleDocument: deleteSaleDocumentMock,
   getLotLivePricing: getLotLivePricingMock,
   upsertLotLivePricing: upsertLotLivePricingMock
+}));
+
+vi.mock("../lib/cosmos/workspaceRepository", () => ({
+  hasWorkspaceMembership: hasWorkspaceMembershipMock
 }));
 
 import {

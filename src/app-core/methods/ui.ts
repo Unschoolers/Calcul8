@@ -1,4 +1,5 @@
 import type { AppContext, AppMethodState } from "../context.ts";
+import { uiAccountMethods } from "./ui/account.ts";
 import { uiBaseMethods } from "./ui/base.ts";
 import { uiEntitlementMethods } from "./ui/entitlements.ts";
 import { uiSyncMethods } from "./ui/sync.ts";
@@ -35,6 +36,8 @@ export const uiMethods: ThisType<AppContext> & Pick<
   | "stopCloudSyncScheduler"
   | "pushCloudSync"
   | "debugLogEntitlement"
+  | "logoutCurrentSession"
+  | "clearPersonalAccountData"
   | "refreshWorkspaces"
   | "switchToPersonalWorkspace"
   | "switchToWorkspace"
@@ -50,6 +53,7 @@ export const uiMethods: ThisType<AppContext> & Pick<
   | "handleWorkspaceAccessLost"
 > = {
   ...uiBaseMethods,
+  ...uiAccountMethods,
   ...uiEntitlementMethods,
   ...uiSyncMethods,
   ...uiWorkspaceMethods

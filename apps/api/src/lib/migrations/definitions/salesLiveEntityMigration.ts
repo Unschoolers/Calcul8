@@ -1,13 +1,17 @@
 import {
-  getEffectiveSyncSnapshot,
   getMigrationMarker,
+  upsertMigrationMarker
+} from "../../cosmos/migrationRepository";
+import type { UpsertMigrationMarkerInput } from "../../cosmos/migrationRepository";
+import {
+  getEffectiveSyncSnapshot
+} from "../../cosmos/syncSnapshotRepository";
+import {
   listSyncScopeKeys,
   setSyncScopeEntityModes,
   upsertLotLivePricing,
-  upsertMigrationMarker,
-  upsertSaleDocument,
-  type UpsertMigrationMarkerInput
-} from "../../cosmos";
+  upsertSaleDocument
+} from "../../cosmos/salesRepository";
 import type { ApiConfig, MigrationMarkerDocument, SyncSnapshotDocument } from "../../../types";
 import type { MigrationDefinition } from "../types";
 

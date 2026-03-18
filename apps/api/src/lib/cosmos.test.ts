@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { buildCardCatalogSearchClause } from "./cosmos";
+import { buildCardCatalogSearchClause } from "./cosmos/cardCatalogRepository";
 
 test("buildCardCatalogSearchClause matches tokens across name, number, and rarity", () => {
   const result = buildCardCatalogSearchClause("rei r*");

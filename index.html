@@ -95,35 +95,92 @@
     <v-app>
       <template v-if="isGoogleSignedIn">
       <v-app-bar density="compact" flat border>
-        <template v-slot:prepend>
-          <div class="d-flex align-center pl-2">
-            <img
-              src="icons/icon-192.png"
-              alt="WhatFees icon"
-              class="app-logo-img"
-            />
+        <v-app-bar-title>
+          <div class="app-bar-title-wrap">
+            <span class="app-bar-brand-lockup" aria-hidden="true">
+              <span class="app-bar-brand-badge">
+                <img
+                  src="icons/icon-192.png"
+                  alt=""
+                  class="app-bar-brand-badge__img"
+                />
+              </span>
+              <span class="app-bar-brand-copy">
+                <span class="app-bar-brand-copy__name">whatfees</span>
+                <span class="app-bar-brand-copy__tagline">Track sales like a pro</span>
+              </span>
+            </span>
+            <span
+              class="app-bar-scope-chip"
+              :class="activeScopeType === 'workspace' ? 'app-bar-scope-chip--workspace' : 'app-bar-scope-chip--personal'"
+            >
+              <v-icon size="13" class="mr-1">
+                {{ activeScopeType === 'workspace' ? 'mdi-account-group-outline' : 'mdi-home-account' }}
+              </v-icon>
+              {{
+                activeScopeType === 'workspace'
+                  ? currentWorkspaceName
+                  : 'Personal'
+              }}
+            </span>
           </div>
-        </template>
-
-        <v-app-bar-title class="text-body-1">WhatFees</v-app-bar-title>
+        </v-app-bar-title>
 
         <template v-slot:append>
-          <v-menu location="bottom end" offset="8">
-            <template #activator="{ props: workspaceMenuProps }">
+          <v-menu location="bottom end" offset="10">
+            <template #activator="{ props: accountMenuProps }">
               <v-btn
-                v-bind="workspaceMenuProps"
-                variant="tonal"
-                size="small"
-                color="primary"
-                prepend-icon="mdi-account-group-outline"
-                :loading="isWorkspaceLoading"
-                class="mr-2"
+                v-bind="accountMenuProps"
+                icon
+                variant="text"
+                size="large"
+                class="account-menu-activator"
+                :title="googleProfileEmail ? `Signed in as ${googleProfileEmail}` : 'Signed in'"
+                aria-label="Account menu"
               >
-                {{ currentWorkspaceName }}
+                <v-avatar v-if="googleProfilePicture && !googleAvatarLoadFailed" size="30">
+                  <img
+                    :src="googleProfilePicture"
+                    :alt="googleProfileName || 'Google profile picture'"
+                    class="account-avatar-img"
+                    referrerpolicy="no-referrer"
+                    @error="googleAvatarLoadFailed = true"
+                    @load="googleAvatarLoadFailed = false"
+                  />
+                </v-avatar>
+                <v-icon v-else size="26">mdi-account-circle-outline</v-icon>
               </v-btn>
             </template>
 
-            <v-list density="compact" min-width="260">
+            <v-list min-width="320" class="account-menu-list">
+              <div class="account-menu-header">
+                <v-avatar size="42" class="account-menu-header__avatar">
+                  <img
+                    v-if="googleProfilePicture && !googleAvatarLoadFailed"
+                    :src="googleProfilePicture"
+                    :alt="googleProfileName || 'Google profile picture'"
+                    class="account-avatar-img"
+                    referrerpolicy="no-referrer"
+                  />
+                  <span v-else class="account-menu-header__initial">
+                    {{ (googleProfileName || googleProfileEmail || '?').slice(0, 1).toUpperCase() }}
+                  </span>
+                </v-avatar>
+                <div class="account-menu-header__copy">
+                  <div class="account-menu-header__name">
+                    {{ googleProfileName || 'Google account' }}
+                  </div>
+                  <div class="account-menu-header__email">
+                    {{ googleProfileEmail || 'Signed in' }}
+                  </div>
+                  <div class="account-menu-header__workspace">
+                    {{ currentWorkspaceName }}
+                  </div>
+                </div>
+              </div>
+
+              <v-divider class="my-1"></v-divider>
+
               <v-list-subheader>Workspace</v-list-subheader>
               <v-list-item
                 title="Personal"
@@ -140,7 +197,6 @@
                 :active="activeWorkspaceId === workspace.workspaceId"
                 @click="switchToWorkspace(workspace.workspaceId)"
               ></v-list-item>
-              <v-divider class="my-1"></v-divider>
               <v-list-item
                 v-if="activeScopeType === 'personal'"
                 title="Create shared workspace"
@@ -159,72 +215,70 @@
                 prepend-icon="mdi-exit-to-app"
                 @click="openLeaveWorkspaceModal"
               ></v-list-item>
+
+              <v-divider class="my-1"></v-divider>
+
+              <v-list-subheader>App</v-list-subheader>
+              <v-list-item
+                v-if="showInstallPrompt"
+                title="Install app"
+                prepend-icon="mdi-download"
+                @click="promptInstall"
+              ></v-list-item>
+              <v-list-item
+                :title="syncStatus === 'syncing'
+                  ? 'Syncing'
+                  : (syncStatus === 'success'
+                    ? 'Re-check Pro access'
+                    : (syncStatus === 'error'
+                      ? 'Review sync status'
+                      : 'Check sync status'))"
+                :subtitle="syncStatus === 'syncing'
+                  ? 'Cloud sync in progress'
+                  : (syncStatus === 'success'
+                    ? 'Synced successfully'
+                    : (syncStatus === 'error'
+                      ? 'Last sync needs attention'
+                      : 'Tap to re-check Pro access'))"
+                :prepend-icon="syncStatus === 'syncing'
+                  ? 'mdi-sync'
+                  : (syncStatus === 'success'
+                    ? 'mdi-check-circle-outline'
+                    : (syncStatus === 'error'
+                      ? 'mdi-alert-circle-outline'
+                      : 'mdi-sync'))"
+                @click="debugLogEntitlement(true)"
+              ></v-list-item>
+              <v-list-item
+                :title="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
+                :prepend-icon="isDark ? 'mdi-weather-sunny' : 'mdi-weather-night'"
+                @click="toggleTheme"
+              ></v-list-item>
+
+              <v-divider class="my-1"></v-divider>
+
+              <v-list-subheader>Account</v-list-subheader>
+              <v-list-item
+                title="Sign out"
+                prepend-icon="mdi-logout"
+                @click="logoutCurrentSession"
+              ></v-list-item>
+              <v-list-item
+                title="Clear my data"
+                subtitle="Clears your personal cloud and local app data"
+                prepend-icon="mdi-delete-alert-outline"
+                base-color="error"
+                @click="askConfirmation(
+                  {
+                    title: 'Clear your personal data?',
+                    text: 'This removes your personal cloud data, local app data, and signs you out. Shared workspaces are not deleted.',
+                    color: 'error'
+                  },
+                  () => clearPersonalAccountData()
+                )"
+              ></v-list-item>
             </v-list>
           </v-menu>
-          <v-btn
-            v-if="showInstallPrompt"
-            color="primary"
-            variant="text"
-            size="small"
-            prepend-icon="mdi-download"
-            @click="promptInstall"
-          >
-            Install
-          </v-btn>
-          <v-btn
-            icon
-            variant="text"
-            size="small"
-            :title="syncStatus === 'syncing'
-              ? 'Syncing'
-              : (syncStatus === 'success'
-                ? 'Synced • Tap to re-check Pro access'
-                : (syncStatus === 'error'
-                  ? 'Sync failed • Tap to re-check Pro access'
-                  : 'Tap to re-check Pro access'))"
-            aria-label="Cloud sync status"
-            @click="debugLogEntitlement(true)"
-          >
-            <v-icon
-              v-if="syncStatus === 'syncing'"
-              color="primary"
-              size="18"
-              class="sync-spinning"
-            >mdi-sync</v-icon>
-            <v-icon
-              v-else-if="syncStatus === 'success' || syncStatus === 'error'"
-              :color="syncStatus === 'success' ? 'success' : 'error'"
-              size="18"
-            >
-              {{ syncStatus === 'success' ? 'mdi-check-circle-outline' : 'mdi-alert-circle-outline' }}
-            </v-icon>
-            <v-icon v-else size="18" color="medium-emphasis">mdi-sync</v-icon>
-          </v-btn>
-          <v-btn
-            icon
-            :title="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
-            :aria-label="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
-            @click="toggleTheme"
-          >
-            <v-icon>{{ isDark ? 'mdi-weather-sunny' : 'mdi-weather-night' }}</v-icon>
-          </v-btn>
-          <div
-            class="d-inline-flex align-center justify-center px-1"
-            :title="googleProfileEmail ? `Signed in as ${googleProfileEmail}` : 'Signed in'"
-            aria-label="Account status"
-          >
-            <v-avatar v-if="googleProfilePicture && !googleAvatarLoadFailed" size="24">
-              <img
-                :src="googleProfilePicture"
-                :alt="googleProfileName || 'Google profile picture'"
-                class="account-avatar-img"
-                referrerpolicy="no-referrer"
-                @error="googleAvatarLoadFailed = true"
-                @load="googleAvatarLoadFailed = false"
-              />
-            </v-avatar>
-            <v-icon v-else size="20">mdi-account-circle-outline</v-icon>
-          </div>
         </template>
       </v-app-bar>
 
@@ -628,10 +682,24 @@
         </v-card>
       </v-dialog>
 
-      <v-dialog v-model="showWorkspaceMembersModal" max-width="640">
-        <v-card>
-          <v-card-title class="d-flex align-center justify-space-between">
-            <span>{{ currentWorkspaceName }} Members</span>
+      <v-dialog
+        v-model="showWorkspaceMembersModal"
+        max-width="760"
+        content-class="workspace-members-dialog"
+      >
+        <v-card class="workspace-members-card">
+          <v-card-title class="workspace-members-card__title">
+            <div class="workspace-members-card__title-copy">
+              <div class="workspace-members-card__eyebrow">Shared Workspace</div>
+              <div class="workspace-members-card__headline">{{ currentWorkspaceName }}</div>
+              <div class="workspace-members-card__subtitle">
+                {{
+                  workspaceMembers.length === 1
+                    ? '1 member in this workspace'
+                    : `${workspaceMembers.length} members in this workspace`
+                }}
+              </div>
+            </div>
             <div class="d-flex align-center ga-2">
               <v-btn
                 v-if="isCurrentWorkspaceOwner"
@@ -639,10 +707,11 @@
                 variant="tonal"
                 color="primary"
                 prepend-icon="mdi-link-variant"
+                class="workspace-members-card__invite-btn"
                 :loading="isCreatingWorkspaceJoinLink"
                 @click="createWorkspaceJoinLink"
               >
-                Invite member
+                Copy invite link
               </v-btn>
               <v-btn
                 icon="mdi-close"
@@ -652,45 +721,114 @@
               ></v-btn>
             </div>
           </v-card-title>
-          <v-card-text>
+          <v-card-text class="workspace-members-card__content">
             <v-progress-linear
               v-if="isWorkspaceMembersLoading"
               indeterminate
               color="primary"
               class="mb-4"
             ></v-progress-linear>
-            <v-list v-else lines="two" density="comfortable">
-              <v-list-item
+
+            <div v-else class="workspace-members-summary">
+              <div class="workspace-members-summary__icon">
+                <v-icon size="18">mdi-account-group-outline</v-icon>
+              </div>
+              <div class="workspace-members-summary__copy">
+                <div class="workspace-members-summary__title">
+                  {{
+                    isCurrentWorkspaceOwner
+                      ? 'Invite people and manage access from here.'
+                      : 'This shared workspace syncs data across every active member.'
+                  }}
+                </div>
+                <div class="workspace-members-summary__body">
+                  {{
+                    isCurrentWorkspaceOwner
+                      ? 'Sharing an invite link adds a new member to this workspace.'
+                      : 'Only the workspace owner can remove members or create invite links.'
+                  }}
+                </div>
+              </div>
+            </div>
+
+            <div v-if="!isWorkspaceMembersLoading && workspaceMembers.length" class="workspace-member-list">
+              <article
                 v-for="member in workspaceMembers"
                 :key="`${member.workspaceId}-${member.userId}`"
-                :subtitle="member.role === 'owner' ? 'Owner' : 'Member'"
+                class="workspace-member-card-row"
               >
-                <template #title>
-                  <div class="d-flex align-center ga-2 flex-wrap">
-                    <span>{{ member.displayName || member.userId }}</span>
-                    <v-chip size="x-small" variant="outlined">
-                      {{ member.userId.slice(0, 8) }}...{{ member.userId.slice(-4) }}
-                    </v-chip>
+                <div class="workspace-member-card-row__identity">
+                  <v-avatar
+                    size="52"
+                    color="primary"
+                    class="workspace-member-card-row__avatar"
+                  >
+                    <img
+                      v-if="member.photoUrl"
+                      :src="member.photoUrl"
+                      :alt="member.displayName || member.userId"
+                      class="account-avatar-img"
+                      referrerpolicy="no-referrer"
+                    />
+                    <span v-else class="workspace-member-card-row__initial">
+                      {{ (member.displayName || member.userId || '?').slice(0, 1).toUpperCase() }}
+                    </span>
+                  </v-avatar>
+
+                  <div class="workspace-member-card-row__copy">
+                    <div class="workspace-member-card-row__name-row">
+                      <div class="workspace-member-card-row__name">
+                        {{ member.displayName || 'Workspace member' }}
+                      </div>
+                      <v-chip
+                        size="x-small"
+                        variant="tonal"
+                        :color="member.role === 'owner' ? 'primary' : undefined"
+                      >
+                        {{ member.role === 'owner' ? 'Owner' : 'Member' }}
+                      </v-chip>
+                    </div>
+
+                    <div class="workspace-member-card-row__id">
+                      {{ member.userId }}
+                    </div>
+
+                    <div class="workspace-member-card-row__meta">
+                      <span v-if="!member.displayName">Profile name unavailable</span>
+                      <span>Updated {{ formatDate(member.updatedAt) }}</span>
+                    </div>
                   </div>
-                </template>
-                <template #append>
+                </div>
+
+                <div class="workspace-member-card-row__actions">
                   <v-btn
                     v-if="isCurrentWorkspaceOwner && member.role !== 'owner'"
                     size="small"
-                    variant="text"
+                    variant="tonal"
                     color="error"
+                    prepend-icon="mdi-account-remove-outline"
                     @click="removeWorkspaceMember(member.userId)"
                   >
                     Remove
                   </v-btn>
-                </template>
-              </v-list-item>
-              <v-list-item v-if="!workspaceMembers.length" title="No members found"></v-list-item>
-            </v-list>
+                </div>
+              </article>
+            </div>
+
+            <div
+              v-else-if="!isWorkspaceMembersLoading"
+              class="workspace-members-empty"
+            >
+              <v-icon size="34" color="medium-emphasis">mdi-account-off-outline</v-icon>
+              <div class="workspace-members-empty__title">No members found</div>
+              <div class="workspace-members-empty__body">
+                Try refreshing the workspace or creating a new invite link.
+              </div>
+            </div>
           </v-card-text>
-          <v-card-actions>
-            <v-spacer></v-spacer>
+          <v-card-actions class="workspace-members-card__actions">
             <v-btn variant="text" @click="showWorkspaceMembersModal = false">Close</v-btn>
+            <v-spacer></v-spacer>
             <v-btn color="error" variant="tonal" @click="openLeaveWorkspaceModal">Leave workspace</v-btn>
           </v-card-actions>
         </v-card>
@@ -713,7 +851,12 @@
               v-model="leaveWorkspaceTransferMemberUserId"
               :items="workspaceMembers
                 .filter(member => member.role === 'member' && member.status === 'active')
-                .map(member => ({ title: member.userId, value: member.userId }))"
+                .map(member => ({
+                  title: member.displayName
+                    ? `${member.displayName} (${member.userId.slice(0, 8)}...${member.userId.slice(-4)})`
+                    : member.userId,
+                  value: member.userId
+                }))"
               item-title="title"
               item-value="value"
               label="New owner"

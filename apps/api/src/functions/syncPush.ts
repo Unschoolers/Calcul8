@@ -1,7 +1,8 @@
 import { app, type HttpRequest, type HttpResponseInit, type InvocationContext } from "@azure/functions";
 import { HttpError, resolveUserId } from "../lib/auth";
+import { getEffectiveSyncSnapshot, upsertSyncSnapshotIncremental } from "../lib/cosmos/syncSnapshotRepository";
+import { hasWorkspaceMembership } from "../lib/cosmos/workspaceRepository";
 import { getConfig } from "../lib/config";
-import { getEffectiveSyncSnapshot, hasWorkspaceMembership, upsertSyncSnapshotIncremental } from "../lib/cosmos";
 import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../lib/http";
 import { parseOptionalWorkspaceId } from "../lib/syncScope";
 import { assertSyncScopeAccess, resolveSyncScope, shouldWarnWorkspaceScopeFallback } from "../lib/syncScopeResolution";

@@ -1,6 +1,6 @@
 import { app, type HttpRequest, type HttpResponseInit, type InvocationContext } from "@azure/functions";
+import { getEntitlement, upsertEntitlement } from "../lib/cosmos/entitlementRepository";
 import { getConfig } from "../lib/config";
-import { getEntitlement, upsertEntitlement } from "../lib/cosmos";
 import { maybeHandleHttpGuards } from "../lib/http";
 import { buildLegacyUserEntitlementDocumentId } from "../lib/scopeKeys";
 import { verifyStripeWebhookEvent, type StripeWebhookEvent } from "../lib/stripe";
