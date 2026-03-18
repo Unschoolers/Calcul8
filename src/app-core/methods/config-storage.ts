@@ -159,6 +159,7 @@ export const configStorageMethods: ConfigMethodSubset<
         const todayDate = getTodayDate();
         this.lots = parsed.map((lot) => ({
           ...lot,
+          isComplete: lot.isComplete === true,
           lotType: lot.lotType === "singles" ? "singles" : "bulk",
           singlesCatalogSource: lot.lotType === "singles"
             ? normalizeSinglesCatalogSource(lot.singlesCatalogSource)

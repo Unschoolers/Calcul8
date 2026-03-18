@@ -6,6 +6,9 @@ export type LotOptionItem = {
   value: number;
   subtitle: string;
   lotType: LotType;
+  isComplete: boolean;
+  symbolIcon: string;
+  completionIcon: string | null;
   groupLabel?: string | null;
 };
 
@@ -14,6 +17,7 @@ type LotLike = {
   name: string;
   purchaseDate?: string;
   createdAt?: string;
+  isComplete?: boolean;
   lotType?: LotType;
 };
 
@@ -23,6 +27,10 @@ function normalizeLotType(lotType: LotType | undefined): LotType {
 
 function getLotTypeGroupLabel(lotType: LotType): string {
   return lotType === "singles" ? "Singles lots" : "Bulk lots";
+}
+
+function getLotSymbolIcon(lotType: LotType): string {
+  return lotType === "singles" ? "mdi-cards-outline" : "mdi-cube-outline";
 }
 
 function sortLotOptionItemsByType(items: Array<Omit<LotOptionItem, "groupLabel"> | LotOptionItem>) {
@@ -45,7 +53,12 @@ export function attachLotOptionGroupLabels(items: Array<Omit<LotOptionItem, "gro
     title: item.title,
     value: item.value,
     subtitle: item.subtitle,
-    lotType: normalizeLotType(item.lotType)
+    lotType: normalizeLotType(item.lotType),
+    isComplete: item.isComplete === true,
+    symbolIcon: typeof item.symbolIcon === "string" && item.symbolIcon.trim()
+      ? item.symbolIcon
+      : getLotSymbolIcon(normalizeLotType(item.lotType)),
+    completionIcon: item.completionIcon === "mdi-check-circle" ? item.completionIcon : null
   }));
 
   return baseItems.map((item, index, allItems) => {
@@ -63,7 +76,10 @@ export function buildLotOptionItems(lots: LotLike[]): LotOptionItem[] {
       title: lot.name,
       value: lot.id,
       subtitle: formatLotOptionSubtitle(lot),
-      lotType: normalizeLotType(lot.lotType)
+      lotType: normalizeLotType(lot.lotType),
+      isComplete: lot.isComplete === true,
+      symbolIcon: getLotSymbolIcon(normalizeLotType(lot.lotType)),
+      completionIcon: lot.isComplete === true ? "mdi-check-circle" : null
     }))
   );
 }
@@ -81,4 +97,3 @@ export function filterLotOptionItems(items: LotOptionItem[], query: string | nul
     })
   );
 }
-

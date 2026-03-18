@@ -21,6 +21,7 @@ import {
   upsertWorkspaceMembership
 } from "../lib/cosmos";
 import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../lib/http";
+import { logApiTelemetry } from "../lib/telemetry";
 import type {
   UserProfileDocument,
   WorkspaceDocument,
@@ -215,6 +216,28 @@ function buildWorkspaceMemberPayload(
   };
 }
 
+function logWorkspaceTelemetry(
+  request: HttpRequest,
+  context: InvocationContext,
+  route: string,
+  error: unknown,
+  workspaceScope: "personal" | "workspace" | "unknown" = "workspace"
+): void {
+  const config = getConfig();
+  const status = typeof error === "object" && error && "status" in error ? Number((error as { status?: unknown }).status) : null;
+  if (status === 401 || status === 403 || status === 409 || status === 410) {
+    logApiTelemetry({
+      logger: context,
+      level: "warn",
+      request,
+      config,
+      route,
+      workspaceScope,
+      outcome: `http_${status}`
+    });
+  }
+}
+
 export async function workspacesCreate(
   request: HttpRequest,
   context: InvocationContext
@@ -224,7 +247,13 @@ export async function workspacesCreate(
   if (guardResponse) return guardResponse;
 
   try {
-    const ownerUserId = await resolveUserId(request, config);
+    const ownerUserId = await resolveUserId(request, config, {
+      telemetry: {
+        logger: context,
+        route: "workspaces_create",
+        workspaceScope: "personal"
+      }
+    });
     const payload = parseCreateWorkspaceBody(await request.json());
     const workspaceId = await createUniqueWorkspaceId(config);
 
@@ -240,6 +269,7 @@ export async function workspacesCreate(
       membership: created.ownerMembership
     });
   } catch (error) {
+    logWorkspaceTelemetry(request, context, "workspaces_create", error, "personal");
     context.error("POST /workspaces failed", error);
     return errorResponse(request, config, error, "Failed to create workspace.");
   }
@@ -254,7 +284,13 @@ export async function workspacesMe(
   if (guardResponse) return guardResponse;
 
   try {
-    const actorUserId = await resolveUserId(request, config);
+    const actorUserId = await resolveUserId(request, config, {
+      telemetry: {
+        logger: context,
+        route: "workspaces_me",
+        workspaceScope: "personal"
+      }
+    });
     const rows = await listWorkspacesForUser(config, actorUserId);
     const workspaces = rows
       .map(({ workspace, membership }) => ({
@@ -269,6 +305,7 @@ export async function workspacesMe(
       workspaces
     });
   } catch (error) {
+    logWorkspaceTelemetry(request, context, "workspaces_me", error, "personal");
     context.error("GET /workspaces/me failed", error);
     return errorResponse(request, config, error, "Failed to list workspaces.");
   }
@@ -283,7 +320,13 @@ export async function workspaceMembersList(
   if (guardResponse) return guardResponse;
 
   try {
-    const actorUserId = await resolveUserId(request, config);
+    const actorUserId = await resolveUserId(request, config, {
+      telemetry: {
+        logger: context,
+        route: "workspace_members",
+        workspaceScope: "workspace"
+      }
+    });
     const workspaceId = parseWorkspaceIdFromParams(request);
     const isMember = await hasWorkspaceMembership(config, actorUserId, workspaceId);
     if (!isMember) {
@@ -304,6 +347,7 @@ export async function workspaceMembersList(
       memberships: memberships.map((membership) => buildWorkspaceMemberPayload(membership, profilesByUserId))
     });
   } catch (error) {
+    logWorkspaceTelemetry(request, context, "workspace_members", error);
     context.error("GET /workspaces/{workspaceId}/members failed", error);
     return errorResponse(request, config, error, "Failed to list workspace members.");
   }
@@ -318,7 +362,13 @@ export async function workspaceMembersAdd(
   if (guardResponse) return guardResponse;
 
   try {
-    const actorUserId = await resolveUserId(request, config);
+    const actorUserId = await resolveUserId(request, config, {
+      telemetry: {
+        logger: context,
+        route: "workspace_members",
+        workspaceScope: "workspace"
+      }
+    });
     const workspaceId = parseWorkspaceIdFromParams(request);
     await assertCanManageWorkspaceMembership(config, actorUserId, workspaceId);
 
@@ -336,6 +386,7 @@ export async function workspaceMembersAdd(
       membership
     });
   } catch (error) {
+    logWorkspaceTelemetry(request, context, "workspace_members", error);
     context.error("POST /workspaces/{workspaceId}/members failed", error);
     return errorResponse(request, config, error, "Failed to add workspace member.");
   }
@@ -368,7 +419,13 @@ export async function workspaceMembersRemove(
   if (guardResponse) return guardResponse;
 
   try {
-    const actorUserId = await resolveUserId(request, config);
+    const actorUserId = await resolveUserId(request, config, {
+      telemetry: {
+        logger: context,
+        route: "workspace_members_remove",
+        workspaceScope: "workspace"
+      }
+    });
     const workspaceId = parseWorkspaceIdFromParams(request);
     const memberUserId = parseMemberUserIdFromParams(request);
     await assertCanManageWorkspaceMembership(config, actorUserId, workspaceId);
@@ -392,6 +449,7 @@ export async function workspaceMembersRemove(
       memberUserId
     });
   } catch (error) {
+    logWorkspaceTelemetry(request, context, "workspace_members_remove", error);
     context.error("DELETE /workspaces/{workspaceId}/members/{memberUserId} failed", error);
     return errorResponse(request, config, error, "Failed to remove workspace member.");
   }
@@ -406,7 +464,13 @@ export async function workspaceLeave(
   if (guardResponse) return guardResponse;
 
   try {
-    const actorUserId = await resolveUserId(request, config);
+    const actorUserId = await resolveUserId(request, config, {
+      telemetry: {
+        logger: context,
+        route: "workspace_leave",
+        workspaceScope: "workspace"
+      }
+    });
     const workspaceId = parseWorkspaceIdFromParams(request);
     const actorMembership = await getWorkspaceMembership(config, actorUserId, workspaceId);
     if (!isActiveMembership(actorMembership)) {
@@ -463,6 +527,7 @@ export async function workspaceLeave(
       newOwnerUserId: payload.newOwnerUserId
     });
   } catch (error) {
+    logWorkspaceTelemetry(request, context, "workspace_leave", error);
     context.error("POST /workspaces/{workspaceId}/leave failed", error);
     return errorResponse(request, config, error, "Failed to leave workspace.");
   }
@@ -477,7 +542,13 @@ export async function workspaceJoinLinksList(
   if (guardResponse) return guardResponse;
 
   try {
-    const actorUserId = await resolveUserId(request, config);
+    const actorUserId = await resolveUserId(request, config, {
+      telemetry: {
+        logger: context,
+        route: "workspace_join_links",
+        workspaceScope: "workspace"
+      }
+    });
     const workspaceId = parseWorkspaceIdFromParams(request);
     await assertCanManageWorkspaceMembership(config, actorUserId, workspaceId);
 
@@ -491,6 +562,7 @@ export async function workspaceJoinLinksList(
       }))
     });
   } catch (error) {
+    logWorkspaceTelemetry(request, context, "workspace_join_links", error);
     context.error("GET /workspaces/{workspaceId}/join-links failed", error);
     return errorResponse(request, config, error, "Failed to list workspace join links.");
   }
@@ -505,7 +577,13 @@ export async function workspaceJoinLinksCreate(
   if (guardResponse) return guardResponse;
 
   try {
-    const actorUserId = await resolveUserId(request, config);
+    const actorUserId = await resolveUserId(request, config, {
+      telemetry: {
+        logger: context,
+        route: "workspace_join_links",
+        workspaceScope: "workspace"
+      }
+    });
     const workspaceId = parseWorkspaceIdFromParams(request);
     await assertCanManageWorkspaceMembership(config, actorUserId, workspaceId);
 
@@ -532,6 +610,7 @@ export async function workspaceJoinLinksCreate(
       expiresAt
     });
   } catch (error) {
+    logWorkspaceTelemetry(request, context, "workspace_join_links", error);
     context.error("POST /workspaces/{workspaceId}/join-links failed", error);
     return errorResponse(request, config, error, "Failed to create workspace join link.");
   }
@@ -564,7 +643,13 @@ export async function workspaceJoinLinksRemove(
   if (guardResponse) return guardResponse;
 
   try {
-    const actorUserId = await resolveUserId(request, config);
+    const actorUserId = await resolveUserId(request, config, {
+      telemetry: {
+        logger: context,
+        route: "workspace_join_links_remove",
+        workspaceScope: "workspace"
+      }
+    });
     const workspaceId = parseWorkspaceIdFromParams(request);
     const inviteId = parseInviteIdFromParams(request);
     await assertCanManageWorkspaceMembership(config, actorUserId, workspaceId);
@@ -580,6 +665,7 @@ export async function workspaceJoinLinksRemove(
       workspaceId
     });
   } catch (error) {
+    logWorkspaceTelemetry(request, context, "workspace_join_links_remove", error);
     context.error("DELETE /workspaces/{workspaceId}/join-links/{inviteId} failed", error);
     return errorResponse(request, config, error, "Failed to revoke workspace join link.");
   }
@@ -594,7 +680,13 @@ export async function joinAccept(
   if (guardResponse) return guardResponse;
 
   try {
-    const actorUserId = await resolveUserId(request, config);
+    const actorUserId = await resolveUserId(request, config, {
+      telemetry: {
+        logger: context,
+        route: "join_accept",
+        workspaceScope: "unknown"
+      }
+    });
     const payload = parseJoinAcceptBody(await request.json());
     const joinLink = await getWorkspaceJoinLinkByTokenHash(config, hashJoinToken(payload.inviteToken));
 
@@ -644,6 +736,7 @@ export async function joinAccept(
       membership
     });
   } catch (error) {
+    logWorkspaceTelemetry(request, context, "join_accept", error, "unknown");
     context.error("POST /join/accept failed", error);
     return errorResponse(request, config, error, "Failed to accept workspace join link.");
   }

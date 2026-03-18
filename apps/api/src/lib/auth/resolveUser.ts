@@ -1,6 +1,7 @@
 import type { HttpRequest } from "@azure/functions";
 import type { ApiConfig } from "../../types";
 import { upsertUserProfile } from "../cosmos";
+import { logAuthTelemetry, type TelemetryLogger, type WorkspaceScope } from "../telemetry";
 import { hasBearerAuthHeader, isUnsafeMethod, parseSessionIdFromCookie, CSRF_HEADER_NAME } from "./cookies";
 import { createSessionCsrfToken } from "./csrf";
 import { HttpError } from "./errors";
@@ -10,6 +11,11 @@ import { resolveUserIdFromSession, tryIssueSessionCookie } from "./sessions";
 
 interface ResolveUserIdOptions {
   issueSessionCookie?: boolean;
+  telemetry?: {
+    logger?: TelemetryLogger | null;
+    route: string;
+    workspaceScope?: WorkspaceScope;
+  };
 }
 
 const DEFAULT_BEARER_AUTH_PROVIDERS: BearerAuthProvider[] = [
@@ -43,6 +49,8 @@ export async function resolveUserId(
   config: ApiConfig,
   options: ResolveUserIdOptions = {}
 ): Promise<string> {
+  const telemetry = options.telemetry;
+  const hasSessionCookie = !!parseSessionIdFromCookie(request, config);
   const sessionUserId = await resolveUserIdFromSession(request, config);
   if (sessionUserId) {
     if (isUnsafeMethod(request.method) && !hasBearerAuthHeader(request)) {
@@ -50,13 +58,56 @@ export async function resolveUserId(
       const expectedCsrfToken = sessionId ? createSessionCsrfToken(sessionId, config) : "";
       const providedCsrfToken = String(request.headers.get(CSRF_HEADER_NAME) || "").trim();
       if (!providedCsrfToken || !expectedCsrfToken || providedCsrfToken !== expectedCsrfToken) {
+        if (telemetry) {
+          logAuthTelemetry({
+            logger: telemetry.logger,
+            level: "warn",
+            request,
+            config,
+            route: telemetry.route,
+            workspaceScope: telemetry.workspaceScope,
+            authMethod: "session",
+            authResult: "403",
+            outcome: "invalid_csrf"
+          });
+        }
         throw new HttpError(403, "Invalid CSRF token.");
       }
+    }
+    if (telemetry) {
+      logAuthTelemetry({
+        logger: telemetry.logger,
+        request,
+        config,
+        route: telemetry.route,
+        workspaceScope: telemetry.workspaceScope,
+        authMethod: "session",
+        authResult: "success",
+        outcome: "session_authenticated"
+      });
     }
     return sessionUserId;
   }
 
-  const bearerIdentity = await resolveUserIdFromBearer(request, config, DEFAULT_BEARER_AUTH_PROVIDERS);
+  let bearerIdentity: BearerAuthIdentity | null = null;
+  try {
+    bearerIdentity = await resolveUserIdFromBearer(request, config, DEFAULT_BEARER_AUTH_PROVIDERS);
+  } catch (error) {
+    if (telemetry && error instanceof HttpError && error.status === 401) {
+      logAuthTelemetry({
+        logger: telemetry.logger,
+        level: "warn",
+        request,
+        config,
+        route: telemetry.route,
+        workspaceScope: telemetry.workspaceScope,
+        authMethod: "bearer",
+        authResult: "401",
+        outcome: hasSessionCookie ? "session_fallback_invalid_bearer" : "invalid_bearer_token"
+      });
+    }
+    throw error;
+  }
   if (bearerIdentity) {
     if (bearerIdentity.displayName) {
       try {
@@ -73,8 +124,33 @@ export async function resolveUserId(
     if (options.issueSessionCookie !== false) {
       await tryIssueSessionCookie(request, config, bearerIdentity.userId);
     }
+    if (telemetry) {
+      logAuthTelemetry({
+        logger: telemetry.logger,
+        request,
+        config,
+        route: telemetry.route,
+        workspaceScope: telemetry.workspaceScope,
+        authMethod: "bearer",
+        authResult: "success",
+        outcome: hasSessionCookie ? "session_fallback_to_bearer" : "bearer_authenticated"
+      });
+    }
     return bearerIdentity.userId;
   }
 
+  if (telemetry) {
+    logAuthTelemetry({
+      logger: telemetry.logger,
+      level: "warn",
+      request,
+      config,
+      route: telemetry.route,
+      workspaceScope: telemetry.workspaceScope,
+      authMethod: "none",
+      authResult: "401",
+      outcome: hasSessionCookie ? "session_missing_or_expired" : "authentication_required"
+    });
+  }
   throw new HttpError(401, "Authentication is required.");
 }

@@ -19,6 +19,29 @@ import {
 
 type PortfolioForecastScenario = ForecastScenario<"item" | "box" | "rtyh">;
 
+function lotIsCompleteByDefault(context: {
+  currentLotId: number | null;
+  sales: unknown[];
+  loadSalesForLotId(lotId: number): unknown[];
+}, lot: {
+  id: number;
+  isComplete?: boolean;
+}): boolean {
+  if (lot.isComplete === true) {
+    return true;
+  }
+
+  const sales = context.currentLotId === lot.id
+    ? context.sales
+    : (typeof context.loadSalesForLotId === "function" ? context.loadSalesForLotId(lot.id) : []);
+  const summary = calculateLotPerformanceSummary(
+    lot as never,
+    Array.isArray(sales) ? sales as never : [],
+    DEFAULT_VALUES.EXCHANGE_RATE
+  );
+
+  return summary.totalPacks > 0 && summary.soldPacks >= summary.totalPacks;
+}
 function lotMatchesPortfolioTypeFilter(
   lot: { lotType?: string } | undefined,
   filter: "both" | "bulk" | "singles"
@@ -44,7 +67,12 @@ export const portfolioComputed: Pick<
       ? this.portfolioLotTypeFilter
       : "both";
     return buildLotOptionItems(
-      this.lots.filter((lot) => lotMatchesPortfolioTypeFilter(lot, filter))
+      this.lots
+        .filter((lot) => lotMatchesPortfolioTypeFilter(lot, filter))
+        .map((lot) => ({
+          ...lot,
+          isComplete: lotIsCompleteByDefault(this, lot)
+        }))
     );
   },
 
@@ -254,6 +282,8 @@ export const portfolioComputed: Pick<
     return this.allLotPerformance.length > 0;
   }
 };
+
+
 
 
 

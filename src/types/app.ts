@@ -136,6 +136,7 @@ export interface LotSetup {
 export interface Lot extends LotSetup {
   id: number;
   name: string;
+  isComplete?: boolean;
   lotType?: LotType;
   singlesCatalogSource?: SinglesCatalogSource;
   singlesPurchases?: SinglesPurchaseEntry[];
@@ -291,6 +292,7 @@ export interface AppState extends LotSetup {
   currentLotId: number | null;
   newLotName: string;
   renameLotName: string;
+  renameLotIsComplete: boolean;
   newLotType: LotType;
   newLotCatalogSource: SinglesCatalogSource;
   lastFetchTime: number | null;

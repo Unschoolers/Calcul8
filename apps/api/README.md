@@ -87,6 +87,73 @@ npm run start:build
 - Missing/invalid auth returns `401`.
 - Frontend requests should use `credentials: include` so cookie auth works cross-origin.
 
+## Custom telemetry
+
+- High-signal auth/core API diagnostics are emitted as correlated trace logs through the Azure Functions logger.
+- This first slice covers:
+  - auth/session resolution
+  - `401` / `403` / `409` outcomes on auth, sync, workspace, and sales/live routes
+  - bearer-vs-session auth decisions
+- Telemetry dimensions are normalized and safe:
+  - `category`
+  - `route`
+  - `auth_result`
+  - `auth_method`
+  - `ua_family`
+  - `has_session_cookie`
+  - `has_bearer_header`
+  - `has_csrf_header`
+  - `workspace_scope`
+  - `outcome`
+- Telemetry intentionally does **not** include:
+  - raw tokens
+  - raw cookies
+  - request bodies
+  - full raw user-agent strings
+
+Example Kusto query: auth failures by browser family
+
+```kusto
+traces
+| where timestamp > ago(7d)
+| where message == "auth.telemetry"
+| where customDimensions.auth_result in ("401", "403")
+| summarize count() by
+    tostring(customDimensions.ua_family),
+    tostring(customDimensions.auth_method),
+    tostring(customDimensions.route),
+    tostring(customDimensions.auth_result)
+| order by count_ desc
+```
+
+Example Kusto query: bearer vs session auth mix
+
+```kusto
+traces
+| where timestamp > ago(7d)
+| where message == "auth.telemetry"
+| where customDimensions.auth_result == "success"
+| summarize count() by
+    tostring(customDimensions.auth_method),
+    tostring(customDimensions.route),
+    tostring(customDimensions.ua_family)
+| order by count_ desc
+```
+
+Example Kusto query: core API conflicts and access denials
+
+```kusto
+traces
+| where timestamp > ago(7d)
+| where message == "api.telemetry"
+| where customDimensions.outcome in ("http_403", "http_409")
+| summarize count() by
+    tostring(customDimensions.route),
+    tostring(customDimensions.workspace_scope),
+    tostring(customDimensions.outcome)
+| order by count_ desc
+```
+
 ## Sync scope behavior
 
 - `POST /api/sync/pull` and `POST /api/sync/push` support optional `workspaceId`.

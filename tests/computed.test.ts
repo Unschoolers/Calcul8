@@ -199,6 +199,9 @@ test("list and portfolio filter item computed values mirror lots", () => {
     value: 11,
     subtitle: "Bulk • 2026-02-01",
     lotType: "bulk",
+    isComplete: false,
+    symbolIcon: "mdi-cube-outline",
+    completionIcon: null,
     groupLabel: "Bulk lots"
   });
   assert.deepEqual(lotItems[1], {
@@ -206,14 +209,17 @@ test("list and portfolio filter item computed values mirror lots", () => {
     value: 22,
     subtitle: "Singles • 2026-03-01",
     lotType: "singles",
+    isComplete: false,
+    symbolIcon: "mdi-cards-outline",
+    completionIcon: null,
     groupLabel: "Singles lots"
   });
 
   const visibleLotItems = appComputed.visibleLotItems.call({
     lotItems: [
-      { title: "Alpha bulk", value: 11, subtitle: "Bulk • 2026-02-01", lotType: "bulk", groupLabel: "Bulk lots" },
-      { title: "Union arena singles", value: 22, subtitle: "Singles • 2026-03-01", lotType: "singles", groupLabel: "Singles lots" },
-      { title: "Kagurabachi", value: 33, subtitle: "Bulk • 2026-03-03", lotType: "bulk", groupLabel: null }
+      { title: "Alpha bulk", value: 11, subtitle: "Bulk • 2026-02-01", lotType: "bulk", isComplete: false, symbolIcon: "mdi-cube-outline", completionIcon: null, groupLabel: "Bulk lots" },
+      { title: "Union arena singles", value: 22, subtitle: "Singles • 2026-03-01", lotType: "singles", isComplete: false, symbolIcon: "mdi-cards-outline", completionIcon: null, groupLabel: "Singles lots" },
+      { title: "Kagurabachi", value: 33, subtitle: "Bulk • 2026-03-03", lotType: "bulk", isComplete: false, symbolIcon: "mdi-cube-outline", completionIcon: null, groupLabel: null }
     ],
     lotSearchQuery: "a"
   } as unknown as Parameters<typeof appComputed.visibleLotItems>[0]);
@@ -233,6 +239,9 @@ test("list and portfolio filter item computed values mirror lots", () => {
       value: 11,
       subtitle: "Bulk • 2026-02-01",
       lotType: "bulk",
+      isComplete: false,
+      symbolIcon: "mdi-cube-outline",
+      completionIcon: null,
       groupLabel: "Bulk lots"
     },
     {
@@ -240,6 +249,9 @@ test("list and portfolio filter item computed values mirror lots", () => {
       value: 22,
       subtitle: "Singles • 2026-03-01",
       lotType: "singles",
+      isComplete: false,
+      symbolIcon: "mdi-cards-outline",
+      completionIcon: null,
       groupLabel: "Singles lots"
     }
   ]);
@@ -254,9 +266,41 @@ test("list and portfolio filter item computed values mirror lots", () => {
       value: 22,
       subtitle: "Singles • 2026-03-01",
       lotType: "singles",
+      isComplete: false,
+      symbolIcon: "mdi-cards-outline",
+      completionIcon: null,
       groupLabel: "Singles lots"
     }
   ]);
+});
+
+test("lot items mark fully sold lots complete by default", () => {
+  const lots = [
+    {
+      id: 11,
+      name: "Sold out bulk",
+      lotType: "bulk",
+      purchaseDate: "2026-02-01",
+      boxesPurchased: 1,
+      packsPerBox: 16,
+      sellingTaxPercent: 15,
+      currency: "CAD",
+      sellingCurrency: "CAD",
+      exchangeRate: 1
+    }
+  ];
+
+  const lotItems = appComputed.lotItems.call({
+    lots,
+    currentLotId: null,
+    sales: [],
+    loadSalesForLotId() {
+      return [{ id: 1, type: "pack", quantity: 16, packsCount: 16, price: 10, buyerShipping: 0, date: "2026-03-01" }];
+    }
+  } as unknown as Parameters<typeof appComputed.lotItems>[0]);
+
+  assert.equal(lotItems[0]?.isComplete, true);
+  assert.equal(lotItems[0]?.completionIcon, "mdi-check-circle");
 });
 
 test("single totals and basic sales aggregates are exposed via computed wrappers", () => {

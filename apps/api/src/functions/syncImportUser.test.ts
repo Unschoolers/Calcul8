@@ -13,12 +13,20 @@ const {
   resolveUserIdMock,
   getEffectiveSyncSnapshotMock,
   getEffectiveSyncSnapshotFromExternalSourceMock,
+  getSyncMetaDocumentFromExternalSourceMock,
+  getSyncScopeEntityDocumentsFromExternalSourceMock,
+  replaceSyncScopeEntityDocumentsMock,
+  setSyncScopeEntityModesMock,
   upsertSyncSnapshotIncrementalMock
 } = vi.hoisted(() => ({
   getConfigMock: vi.fn(),
   resolveUserIdMock: vi.fn(),
   getEffectiveSyncSnapshotMock: vi.fn(),
   getEffectiveSyncSnapshotFromExternalSourceMock: vi.fn(),
+  getSyncMetaDocumentFromExternalSourceMock: vi.fn(),
+  getSyncScopeEntityDocumentsFromExternalSourceMock: vi.fn(),
+  replaceSyncScopeEntityDocumentsMock: vi.fn(),
+  setSyncScopeEntityModesMock: vi.fn(),
   upsertSyncSnapshotIncrementalMock: vi.fn()
 }));
 
@@ -42,6 +50,10 @@ vi.mock("../lib/auth", () => ({
 vi.mock("../lib/cosmos", () => ({
   getEffectiveSyncSnapshot: getEffectiveSyncSnapshotMock,
   getEffectiveSyncSnapshotFromExternalSource: getEffectiveSyncSnapshotFromExternalSourceMock,
+  getSyncMetaDocumentFromExternalSource: getSyncMetaDocumentFromExternalSourceMock,
+  getSyncScopeEntityDocumentsFromExternalSource: getSyncScopeEntityDocumentsFromExternalSourceMock,
+  replaceSyncScopeEntityDocuments: replaceSyncScopeEntityDocumentsMock,
+  setSyncScopeEntityModes: setSyncScopeEntityModesMock,
   upsertSyncSnapshotIncremental: upsertSyncSnapshotIncrementalMock
 }));
 
@@ -61,13 +73,20 @@ function createConfig(): ApiConfig {
     cosmosEndpoint: "https://example.documents.azure.com:443/",
     cosmosKey: "key",
     cosmosDatabaseId: "whatfees",
+    migrationCosmosDatabaseId: "whatfees",
     entitlementsContainerId: "entitlements",
     syncContainerId: "sync_data",
     syncImportSourceCosmosEndpoint: "https://prod.documents.azure.com:443/",
     syncImportSourceCosmosKey: "prod-key",
     syncImportSourceCosmosDatabaseId: "whatfees-prod",
     syncImportSourceSyncContainerId: "sync_data_prod",
-    migrationRunsContainerId: "migration_runs"
+    migrationRunsContainerId: "migration_runs",
+    cardCatalogContainerId: "card_catalog",
+    sessionsContainerId: "sessions",
+    sessionCookieName: "whatfees_session",
+    sessionIdleTtlSeconds: 60,
+    sessionAbsoluteTtlSeconds: 120,
+    sessionTouchIntervalSeconds: 30
   };
 }
 
@@ -107,11 +126,59 @@ beforeEach(() => {
     version: 2,
     updatedAt: "2026-03-09T00:00:00.000Z"
   });
+  getSyncMetaDocumentFromExternalSourceMock.mockResolvedValue({
+    id: "sync:meta:107850224060485991888",
+    docType: "sync_meta",
+    userId: "107850224060485991888",
+    version: 5,
+    updatedAt: "2026-03-09T00:00:00.000Z",
+    salesMode: "entity",
+    livePricingMode: "entity"
+  });
+  getSyncScopeEntityDocumentsFromExternalSourceMock.mockResolvedValue({
+    saleDocuments: [
+      {
+        id: "sale:source:1:11",
+        docType: "sale",
+        userId: "source",
+        scopeKey: "source",
+        lotId: "1",
+        saleId: "11",
+        sale: { id: 11 },
+        version: 1,
+        updatedAt: "2026-03-09T00:00:00.000Z",
+        updatedBy: "data-migrator",
+        mutationId: "m:1",
+        deletedAt: null
+      }
+    ],
+    livePricingDocuments: [
+      {
+        id: "lot_live_pricing:source:1",
+        docType: "lot_live_pricing",
+        userId: "source",
+        scopeKey: "source",
+        lotId: "1",
+        livePackPrice: 1,
+        liveBoxPriceSell: 2,
+        liveSpotPrice: 3,
+        version: 1,
+        updatedAt: "2026-03-09T00:00:00.000Z",
+        updatedBy: "data-migrator",
+        mutationId: "m:2"
+      }
+    ]
+  });
   upsertSyncSnapshotIncrementalMock.mockResolvedValue({
     changed: true,
     upsertedCount: 1,
     deletedCount: 0
   });
+  replaceSyncScopeEntityDocumentsMock.mockResolvedValue({
+    upsertedCount: 2,
+    deletedCount: 0
+  });
+  setSyncScopeEntityModesMock.mockResolvedValue(undefined);
 });
 
 test("syncImportUser rejects non-admin actor", async () => {
@@ -131,6 +198,7 @@ test("syncImportUser validates missing source user id", async () => {
   assert.equal((response.jsonBody as { error: string }).error, "Field 'sourceUserId' is required.");
   assert.equal(getEffectiveSyncSnapshotFromExternalSourceMock.mock.calls.length, 0);
   assert.equal(getEffectiveSyncSnapshotMock.mock.calls.length, 0);
+  assert.equal(replaceSyncScopeEntityDocumentsMock.mock.calls.length, 0);
 });
 
 test("syncImportUser returns 404 when source snapshot is not found", async () => {
@@ -140,6 +208,7 @@ test("syncImportUser returns 404 when source snapshot is not found", async () =>
   assert.equal(response.status, 404);
   assert.equal((response.jsonBody as { error: string }).error, "Source sync snapshot was not found.");
   assert.equal(upsertSyncSnapshotIncrementalMock.mock.calls.length, 0);
+  assert.equal(replaceSyncScopeEntityDocumentsMock.mock.calls.length, 0);
 });
 
 test("syncImportUser copies source snapshot into actor partition", async () => {
@@ -178,4 +247,11 @@ test("syncImportUser copies source snapshot into actor partition", async () => {
   assert.equal(upsertSyncSnapshotIncrementalMock.mock.calls[0]?.[1]?.userId, "107850224060485991888");
   assert.deepEqual(upsertSyncSnapshotIncrementalMock.mock.calls[0]?.[1]?.lots, [{ id: 2, name: "Imported lot" }]);
   assert.deepEqual(upsertSyncSnapshotIncrementalMock.mock.calls[0]?.[1]?.salesByLot, { "2": [{ id: 22 }] });
+  assert.equal(getSyncMetaDocumentFromExternalSourceMock.mock.calls.length, 1);
+  assert.equal(getSyncScopeEntityDocumentsFromExternalSourceMock.mock.calls.length, 1);
+  assert.equal(replaceSyncScopeEntityDocumentsMock.mock.calls.length, 1);
+  assert.equal(replaceSyncScopeEntityDocumentsMock.mock.calls[0]?.[1]?.scopeKey, "107850224060485991888");
+  assert.equal(setSyncScopeEntityModesMock.mock.calls.length, 1);
+  assert.deepEqual((response.jsonBody as { salesMode: string; livePricingMode: string }).salesMode, "entity");
+  assert.deepEqual((response.jsonBody as { salesMode: string; livePricingMode: string }).livePricingMode, "entity");
 });

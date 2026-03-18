@@ -293,9 +293,15 @@ test("workspaceMembersAdd requires owner membership", async () => {
     { workspaceId: "team-42" }
   );
 
-  const response = await workspaceMembersAdd(request as never, createContext() as never);
+  const context = createContext();
+  const response = await workspaceMembersAdd(request as never, context as never);
   assert.equal(response.status, 403);
   assert.equal(upsertWorkspaceMembershipMock.mock.calls.length, 0);
+  assert.equal(context.warn.mock.calls.length, 1);
+  assert.equal(context.warn.mock.calls[0]?.[0], "api.telemetry");
+  assert.equal(context.warn.mock.calls[0]?.[1]?.route, "workspace_members");
+  assert.equal(context.warn.mock.calls[0]?.[1]?.workspace_scope, "workspace");
+  assert.equal(context.warn.mock.calls[0]?.[1]?.outcome, "http_403");
 });
 
 test("workspaceMembersList returns members for authorized user", async () => {

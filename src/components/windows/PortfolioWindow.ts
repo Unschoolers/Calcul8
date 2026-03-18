@@ -45,6 +45,9 @@ export const PortfolioWindow = {
           value: number;
           subtitle: string;
           lotType: "bulk" | "singles";
+          isComplete: boolean;
+          symbolIcon: string;
+          completionIcon: string | null;
           groupLabel?: string | null;
         }>
         : [];
@@ -78,6 +81,25 @@ export const PortfolioWindow = {
       if (typeof closeFilter === "function") {
         closeFilter.call(this);
       }
+    },
+
+    portfolioLotFilterPrimaryItem(this: Record<string, unknown>) {
+      const getVisibleSelected = this.portfolioVisibleLotFilterIds as (() => number[]) | undefined;
+      const selected = typeof getVisibleSelected === "function"
+        ? getVisibleSelected.call(this)
+        : [];
+      const items = Array.isArray(this.portfolioLotFilterItems)
+        ? this.portfolioLotFilterItems as Array<{
+          title?: string;
+          value?: number;
+          isComplete?: boolean;
+          symbolIcon?: string;
+          completionIcon?: string | null;
+        }>
+        : [];
+
+      if (selected.length === 0) return null;
+      return items.find((item) => Number(item?.value) === Number(selected[0])) ?? null;
     },
 
     portfolioLotFilterDefaultLabel(this: Record<string, unknown>): string {

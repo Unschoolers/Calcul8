@@ -13,6 +13,7 @@ import {
 import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../lib/http";
 import { parseOptionalWorkspaceId } from "../lib/syncScope";
 import { assertSyncScopeAccess, resolveSyncScope } from "../lib/syncScopeResolution";
+import { logApiTelemetry } from "../lib/telemetry";
 
 function getQueryParam(request: HttpRequest, key: string): string | null {
   if (request.query && typeof request.query.get === "function") {
@@ -66,6 +67,10 @@ function parseWorkspaceIdFromRequest(request: HttpRequest, rawBody: unknown): st
     return parseOptionalWorkspaceId(candidate.workspaceId);
   }
   return parseOptionalWorkspaceId(getQueryParam(request, "workspaceId"));
+}
+
+function getWorkspaceScope(workspaceId?: string): "personal" | "workspace" {
+  return workspaceId ? "workspace" : "personal";
 }
 
 async function readJsonBody(request: HttpRequest): Promise<unknown | null> {
@@ -203,11 +208,34 @@ function handleEntityError(
   request: HttpRequest,
   context: InvocationContext,
   error: unknown,
-  fallbackMessage: string
+  fallbackMessage: string,
+  route: string,
+  workspaceId?: string
 ): HttpResponseInit {
   const config = getConfig();
   if (error instanceof EntityVersionConflictError) {
+    logApiTelemetry({
+      logger: context,
+      level: "warn",
+      request,
+      config,
+      route,
+      workspaceScope: getWorkspaceScope(workspaceId),
+      outcome: "http_409"
+    });
     return errorResponse(request, config, new HttpError(409, error.message), fallbackMessage);
+  }
+  const status = typeof error === "object" && error && "status" in error ? Number((error as { status?: unknown }).status) : null;
+  if (status === 401 || status === 403 || status === 409) {
+    logApiTelemetry({
+      logger: context,
+      level: "warn",
+      request,
+      config,
+      route,
+      workspaceScope: getWorkspaceScope(workspaceId),
+      outcome: `http_${status}`
+    });
   }
   context.error(fallbackMessage, error);
   return errorResponse(request, config, error, fallbackMessage);
@@ -218,12 +246,18 @@ export async function lotSalesList(
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   const config = getConfig();
+  const workspaceId = parseWorkspaceIdFromRequest(request, null);
   const guardResponse = maybeHandleHttpGuards(request, config);
   if (guardResponse) return guardResponse;
 
   try {
-    const actorUserId = await resolveUserId(request, config);
-    const workspaceId = parseWorkspaceIdFromRequest(request, null);
+    const actorUserId = await resolveUserId(request, config, {
+      telemetry: {
+        logger: context,
+        route: "lot_sales_list",
+        workspaceScope: getWorkspaceScope(workspaceId)
+      }
+    });
     const syncScope = resolveSyncScope(actorUserId, workspaceId);
     await assertSyncScopeAccess(
       syncScope,
@@ -237,7 +271,7 @@ export async function lotSalesList(
       sales: sales.map((document) => toSaleResponse(document))
     });
   } catch (error) {
-    return handleEntityError(request, context, error, "Failed to load lot sales.");
+    return handleEntityError(request, context, error, "Failed to load lot sales.", "lot_sales_list", workspaceId);
   }
 }
 
@@ -246,12 +280,20 @@ export async function lotSalesUpsert(
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   const config = getConfig();
+  let workspaceId: string | undefined;
   const guardResponse = maybeHandleHttpGuards(request, config);
   if (guardResponse) return guardResponse;
 
   try {
-    const actorUserId = await resolveUserId(request, config);
+    const actorUserId = await resolveUserId(request, config, {
+      telemetry: {
+        logger: context,
+        route: "lot_sales_upsert",
+        workspaceScope: "unknown"
+      }
+    });
     const body = parseSaleUpsertBody(await readJsonBody(request));
+    workspaceId = body.workspaceId;
     const syncScope = resolveSyncScope(actorUserId, body.workspaceId);
     await assertSyncScopeAccess(
       syncScope,
@@ -276,7 +318,7 @@ export async function lotSalesUpsert(
       sale: toSaleResponse(sale)
     });
   } catch (error) {
-    return handleEntityError(request, context, error, "Failed to save sale.");
+    return handleEntityError(request, context, error, "Failed to save sale.", "lot_sales_upsert", workspaceId);
   }
 }
 
@@ -285,12 +327,20 @@ export async function lotSalesDelete(
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   const config = getConfig();
+  let workspaceId: string | undefined;
   const guardResponse = maybeHandleHttpGuards(request, config);
   if (guardResponse) return guardResponse;
 
   try {
-    const actorUserId = await resolveUserId(request, config);
+    const actorUserId = await resolveUserId(request, config, {
+      telemetry: {
+        logger: context,
+        route: "lot_sales_delete",
+        workspaceScope: "unknown"
+      }
+    });
     const body = parseSaleDeleteBody(await readJsonBody(request));
+    workspaceId = body.workspaceId;
     const syncScope = resolveSyncScope(actorUserId, body.workspaceId);
     await assertSyncScopeAccess(
       syncScope,
@@ -318,7 +368,7 @@ export async function lotSalesDelete(
       saleId
     });
   } catch (error) {
-    return handleEntityError(request, context, error, "Failed to delete sale.");
+    return handleEntityError(request, context, error, "Failed to delete sale.", "lot_sales_delete", workspaceId);
   }
 }
 
@@ -342,12 +392,18 @@ export async function lotLivePricingGet(
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   const config = getConfig();
+  const workspaceId = parseWorkspaceIdFromRequest(request, null);
   const guardResponse = maybeHandleHttpGuards(request, config);
   if (guardResponse) return guardResponse;
 
   try {
-    const actorUserId = await resolveUserId(request, config);
-    const workspaceId = parseWorkspaceIdFromRequest(request, null);
+    const actorUserId = await resolveUserId(request, config, {
+      telemetry: {
+        logger: context,
+        route: "lot_live_pricing_get",
+        workspaceScope: getWorkspaceScope(workspaceId)
+      }
+    });
     const syncScope = resolveSyncScope(actorUserId, workspaceId);
     await assertSyncScopeAccess(
       syncScope,
@@ -371,7 +427,7 @@ export async function lotLivePricingGet(
         : null
     });
   } catch (error) {
-    return handleEntityError(request, context, error, "Failed to load live pricing.");
+    return handleEntityError(request, context, error, "Failed to load live pricing.", "lot_live_pricing_get", workspaceId);
   }
 }
 
@@ -380,12 +436,20 @@ export async function lotLivePricingSave(
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   const config = getConfig();
+  let workspaceId: string | undefined;
   const guardResponse = maybeHandleHttpGuards(request, config);
   if (guardResponse) return guardResponse;
 
   try {
-    const actorUserId = await resolveUserId(request, config);
+    const actorUserId = await resolveUserId(request, config, {
+      telemetry: {
+        logger: context,
+        route: "lot_live_pricing_save",
+        workspaceScope: "unknown"
+      }
+    });
     const body = parseLivePricingBody(await readJsonBody(request));
+    workspaceId = body.workspaceId;
     const syncScope = resolveSyncScope(actorUserId, body.workspaceId);
     await assertSyncScopeAccess(
       syncScope,
@@ -418,7 +482,7 @@ export async function lotLivePricingSave(
       }
     });
   } catch (error) {
-    return handleEntityError(request, context, error, "Failed to save live pricing.");
+    return handleEntityError(request, context, error, "Failed to save live pricing.", "lot_live_pricing_save", workspaceId);
   }
 }
 

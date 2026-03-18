@@ -1,10 +1,12 @@
 import {
+  calculateLotPerformanceSummary,
   calculateNetFromGross,
   calculateSinglesLineProfitPreview,
   calculateSinglesPurchaseTotals,
   calculateSinglesPurchaseTotalCostInSellingCurrency,
   calculateSinglesSaleProfitPreview
 } from "../../domain/calculations.ts";
+import { DEFAULT_VALUES } from "../../constants.ts";
 import type { AppComputedObject } from "../context.ts";
 import {
   calculateProfitableOrderPrice,
@@ -56,6 +58,30 @@ function getSaleEditorNormalizedLines(newSale: {
     quantity: toNonNegativeInt(line.quantity),
     price: Math.max(0, Number(line.price) || 0)
   }));
+}
+
+function lotIsCompleteByDefault(context: {
+  currentLotId: number | null;
+  sales: unknown[];
+  loadSalesForLotId(lotId: number): unknown[];
+}, lot: {
+  id: number;
+  isComplete?: boolean;
+}): boolean {
+  if (lot.isComplete === true) {
+    return true;
+  }
+
+  const sales = context.currentLotId === lot.id
+    ? context.sales
+    : (typeof context.loadSalesForLotId === "function" ? context.loadSalesForLotId(lot.id) : []);
+  const summary = calculateLotPerformanceSummary(
+    lot as never,
+    Array.isArray(sales) ? sales as never : [],
+    DEFAULT_VALUES.EXCHANGE_RATE
+  );
+
+  return summary.totalPacks > 0 && summary.soldPacks >= summary.totalPacks;
 }
 
 function getSaleEditorLineProfitPreviews(context: {
@@ -142,7 +168,12 @@ export const singlesComputed: Pick<
   lotItems() {
     const bulkLots = this.lots.filter((lot) => lot.lotType !== "singles");
     const singlesLots = this.lots.filter((lot) => lot.lotType === "singles");
-    return buildLotOptionItems([...bulkLots, ...singlesLots]);
+    return buildLotOptionItems(
+      [...bulkLots, ...singlesLots].map((lot) => ({
+        ...lot,
+        isComplete: lotIsCompleteByDefault(this, lot)
+      }))
+    );
   },
 
   visibleLotItems() {
@@ -314,6 +345,8 @@ export const singlesComputed: Pick<
     return calculateSinglesSaleProfitPreview(linePreviewSource || []);
   }
 };
+
+
 
 
 

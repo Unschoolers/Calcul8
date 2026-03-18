@@ -7,6 +7,7 @@ import { parseOptionalWorkspaceId } from "../lib/syncScope";
 import { assertSyncScopeAccess, resolveSyncScope, shouldWarnWorkspaceScopeFallback } from "../lib/syncScopeResolution";
 import { parseSyncLotsShape } from "../lib/syncShape";
 import { assertSafeSyncPush } from "../lib/syncSafety";
+import { logApiTelemetry } from "../lib/telemetry";
 import type { SyncPushPayload } from "../types";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -93,12 +94,20 @@ export async function syncPush(
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   const config = getConfig();
+  let workspaceId: string | undefined;
   const guardResponse = maybeHandleHttpGuards(request, config);
   if (guardResponse) return guardResponse;
 
   try {
-    const userId = await resolveUserId(request, config);
+    const userId = await resolveUserId(request, config, {
+      telemetry: {
+        logger: context,
+        route: "sync_push",
+        workspaceScope: "unknown"
+      }
+    });
     const payload = await parseSyncPushPayload(request);
+    workspaceId = payload.workspaceId;
     const syncScope = resolveSyncScope(userId, payload.workspaceId);
     await assertSyncScopeAccess(
       syncScope,
@@ -155,6 +164,18 @@ export async function syncPush(
       deletedCount: syncResult.deletedCount
     });
   } catch (error) {
+    const status = typeof error === "object" && error && "status" in error ? Number((error as { status?: unknown }).status) : null;
+    if (status === 401 || status === 403 || status === 409) {
+      logApiTelemetry({
+        logger: context,
+        level: "warn",
+        request,
+        config,
+        route: "sync_push",
+        workspaceScope: workspaceId ? "workspace" : "personal",
+        outcome: `http_${status}`
+      });
+    }
     context.error("POST /sync/push failed", error);
     return errorResponse(request, config, error, "Failed to save cloud sync data.");
   }

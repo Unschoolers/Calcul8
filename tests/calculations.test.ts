@@ -1692,6 +1692,7 @@ test("renameCurrentLot rejects duplicates and renames unique names", () => {
       { id: 2, name: "Beta" }
     ],
     renameLotName: " alpha ",
+    renameLotIsComplete: false,
     showRenameLotModal: true,
     saveLotsToStorage() {
       savedCount += 1;
@@ -1718,9 +1719,19 @@ test("renameCurrentLot rejects duplicates and renames unique names", () => {
   assert.equal(savedCount, 1);
   assert.equal(chartRefreshCount, 1);
   assert.equal(context.lots[1]?.name, "Gamma");
+  assert.equal(context.lots[1]?.isComplete, false);
   assert.equal(context.showRenameLotModal, false);
   assert.equal(context.renameLotName, "");
   assert.equal(notifiedMessage, "Lot renamed");
+
+  context.showRenameLotModal = true;
+  context.renameLotName = "Gamma";
+  context.renameLotIsComplete = true;
+  configMethods.renameCurrentLot.call(context);
+
+  assert.equal(savedCount, 2);
+  assert.equal(context.lots[1]?.isComplete, true);
+  assert.equal(notifiedMessage, "Lot marked complete");
 });
 
 test("loadLot forces target profit to 0 for non-pro users", async () => {

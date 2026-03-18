@@ -15,7 +15,8 @@ const {
   upsertSaleDocumentMock,
   deleteSaleDocumentMock,
   getLotLivePricingMock,
-  upsertLotLivePricingMock
+  upsertLotLivePricingMock,
+  EntityVersionConflictErrorMock
 } = vi.hoisted(() => ({
   getConfigMock: vi.fn(),
   hasWorkspaceMembershipMock: vi.fn(),
@@ -23,7 +24,8 @@ const {
   upsertSaleDocumentMock: vi.fn(),
   deleteSaleDocumentMock: vi.fn(),
   getLotLivePricingMock: vi.fn(),
-  upsertLotLivePricingMock: vi.fn()
+  upsertLotLivePricingMock: vi.fn(),
+  EntityVersionConflictErrorMock: class EntityVersionConflictError extends Error {}
 }));
 
 vi.mock("../lib/config", () => ({
@@ -31,7 +33,7 @@ vi.mock("../lib/config", () => ({
 }));
 
 vi.mock("../lib/cosmos", () => ({
-  EntityVersionConflictError: class EntityVersionConflictError extends Error {},
+  EntityVersionConflictError: EntityVersionConflictErrorMock,
   hasWorkspaceMembership: hasWorkspaceMembershipMock,
   listSalesForLot: listSalesForLotMock,
   upsertSaleDocument: upsertSaleDocumentMock,
@@ -239,4 +241,28 @@ test("lotLivePricingSave persists the live pricing entity", async () => {
   assert.equal(upsertLotLivePricingMock.mock.calls[0]?.[1]?.lotId, "10");
   assert.equal(upsertLotLivePricingMock.mock.calls[0]?.[1]?.baseVersion, 1);
   assert.equal((response.jsonBody as { livePricing: { version: number } }).livePricing.version, 2);
+});
+
+test("lotLivePricingSave emits route telemetry for stale live pricing conflicts", async () => {
+  upsertLotLivePricingMock.mockRejectedValue(new EntityVersionConflictErrorMock("Live pricing changed since it was last loaded."));
+  const context = createContext();
+
+  const response = await lotLivePricingSave(
+    createRequest("POST", {
+      workspaceId: "team-42",
+      livePackPrice: 9,
+      liveBoxPriceSell: 99,
+      liveSpotPrice: 12,
+      baseVersion: 1,
+      mutationId: "live:save"
+    }, { lotId: "10" }) as never,
+    context as never
+  );
+
+  assert.equal(response.status, 409);
+  assert.equal(context.warn.mock.calls.length, 1);
+  assert.equal(context.warn.mock.calls[0]?.[0], "api.telemetry");
+  assert.equal(context.warn.mock.calls[0]?.[1]?.route, "lot_live_pricing_save");
+  assert.equal(context.warn.mock.calls[0]?.[1]?.workspace_scope, "workspace");
+  assert.equal(context.warn.mock.calls[0]?.[1]?.outcome, "http_409");
 });

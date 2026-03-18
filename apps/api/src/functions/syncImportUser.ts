@@ -4,6 +4,10 @@ import { getConfig } from "../lib/config";
 import {
   getEffectiveSyncSnapshot,
   getEffectiveSyncSnapshotFromExternalSource,
+  getSyncMetaDocumentFromExternalSource,
+  getSyncScopeEntityDocumentsFromExternalSource,
+  replaceSyncScopeEntityDocuments,
+  setSyncScopeEntityModes,
   upsertSyncSnapshotIncremental
 } from "../lib/cosmos";
 import type { ApiConfig } from "../types";
@@ -56,13 +60,18 @@ export async function syncImportUser(
     }
 
     const sourceUserId = parseSourceUserId(await request.json());
+    const sourceConfig = resolveSourceSyncConfig(config);
     const sourceSnapshot = await getEffectiveSyncSnapshotFromExternalSource(
-      resolveSourceSyncConfig(config),
+      sourceConfig,
       sourceUserId
     );
     if (!sourceSnapshot) {
       throw new HttpError(404, "Source sync snapshot was not found.");
     }
+    const [sourceMeta, sourceEntityDocuments] = await Promise.all([
+      getSyncMetaDocumentFromExternalSource(sourceConfig, sourceUserId),
+      getSyncScopeEntityDocumentsFromExternalSource(sourceConfig, sourceUserId)
+    ]);
 
     const actorSnapshot = await getEffectiveSyncSnapshot(config, actorUserId);
     const sourceVersion = Number.isFinite(sourceSnapshot.version) ? Math.floor(sourceSnapshot.version) : 0;
@@ -77,6 +86,17 @@ export async function syncImportUser(
       version: nextVersion,
       updatedAt
     });
+    const entityWriteResult = await replaceSyncScopeEntityDocuments(config, {
+      scopeKey: actorUserId,
+      saleDocuments: sourceEntityDocuments.saleDocuments,
+      livePricingDocuments: sourceEntityDocuments.livePricingDocuments
+    });
+    await setSyncScopeEntityModes(config, {
+      scopeKey: actorUserId,
+      updatedAt,
+      salesMode: sourceMeta?.salesMode === "entity" ? "entity" : "snapshot",
+      livePricingMode: sourceMeta?.livePricingMode === "entity" ? "entity" : "lot_defaults"
+    });
 
     return jsonResponse(request, config, 200, {
       ok: true,
@@ -86,7 +106,11 @@ export async function syncImportUser(
       version: nextVersion,
       changed: writeResult.changed,
       upsertedCount: writeResult.upsertedCount,
-      deletedCount: writeResult.deletedCount
+      deletedCount: writeResult.deletedCount,
+      entityUpsertedCount: entityWriteResult.upsertedCount,
+      entityDeletedCount: entityWriteResult.deletedCount,
+      salesMode: sourceMeta?.salesMode === "entity" ? "entity" : "snapshot",
+      livePricingMode: sourceMeta?.livePricingMode === "entity" ? "entity" : "lot_defaults"
     });
   } catch (error) {
     context.error("POST /ops/sync/import-user failed", error);

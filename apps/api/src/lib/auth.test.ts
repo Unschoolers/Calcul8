@@ -89,6 +89,15 @@ function buildSession(overrides: Partial<SessionDocument> = {}): SessionDocument
   };
 }
 
+function createTelemetryLogger() {
+  return {
+    log: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn()
+  };
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   getSessionMock.mockResolvedValue(null);
@@ -100,9 +109,16 @@ beforeEach(() => {
 
 test("rejects unauthenticated request", async () => {
   const request = makeRequest();
+  const telemetry = createTelemetryLogger();
 
   await assert.rejects(
-    () => resolveUserId(request, makeConfig()),
+    () => resolveUserId(request, makeConfig(), {
+      telemetry: {
+        logger: telemetry,
+        route: "auth_me",
+        workspaceScope: "unknown"
+      }
+    }),
     (error: unknown) => {
       assert.ok(error instanceof HttpError);
       assert.equal(error.status, 401);
@@ -110,10 +126,24 @@ test("rejects unauthenticated request", async () => {
       return true;
     }
   );
+  assert.equal(telemetry.warn.mock.calls.length, 1);
+  assert.deepEqual(telemetry.warn.mock.calls[0]?.[1], {
+    category: "auth",
+    route: "auth_me",
+    ua_family: "unknown",
+    has_session_cookie: "false",
+    has_bearer_header: "false",
+    has_csrf_header: "false",
+    workspace_scope: "unknown",
+    auth_method: "none",
+    auth_result: "401",
+    outcome: "authentication_required"
+  });
 });
 
 test("valid bearer token resolves user and issues session cookie", async () => {
   const request = makeRequest({ authorization: "Bearer token-abc" });
+  const telemetry = createTelemetryLogger();
 
   const originalFetch = globalThis.fetch;
   globalThis.fetch = (async () =>
@@ -128,7 +158,13 @@ test("valid bearer token resolves user and issues session cookie", async () => {
     }) as Response) as typeof fetch;
 
   try {
-    const userId = await resolveUserId(request, makeConfig());
+    const userId = await resolveUserId(request, makeConfig(), {
+      telemetry: {
+        logger: telemetry,
+        route: "auth_me",
+        workspaceScope: "personal"
+      }
+    });
     assert.equal(userId, "google-user-42");
     assert.equal(createSessionMock.mock.calls.length, 1);
     assert.equal(upsertUserProfileMock.mock.calls.length, 1);
@@ -144,6 +180,19 @@ test("valid bearer token resolves user and issues session cookie", async () => {
     assert.match(setCookie, /^whatfees_session=/);
     assert.match(setCookie, /HttpOnly/);
     assert.match(setCookie, /SameSite=Lax/);
+    assert.equal(telemetry.info.mock.calls.length, 1);
+    assert.deepEqual(telemetry.info.mock.calls[0]?.[1], {
+      category: "auth",
+      route: "auth_me",
+      ua_family: "unknown",
+      has_session_cookie: "false",
+      has_bearer_header: "true",
+      has_csrf_header: "false",
+      workspace_scope: "personal",
+      auth_method: "bearer",
+      auth_result: "success",
+      outcome: "bearer_authenticated"
+    });
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -151,15 +200,25 @@ test("valid bearer token resolves user and issues session cookie", async () => {
 
 test("valid session cookie authenticates and touches stale sessions", async () => {
   const request = makeRequest({ cookie: "whatfees_session=session-1" });
+  const telemetry = createTelemetryLogger();
   getSessionMock.mockResolvedValue(buildSession());
 
-  const userId = await resolveUserId(request, makeConfig());
+  const userId = await resolveUserId(request, makeConfig(), {
+    telemetry: {
+      logger: telemetry,
+      route: "sync_pull",
+      workspaceScope: "workspace"
+    }
+  });
   assert.equal(userId, "session-user");
   assert.equal(touchSessionMock.mock.calls.length, 1);
   assert.equal(createSessionMock.mock.calls.length, 0);
 
   const authHeaders = consumeAuthResponseHeaders(request);
   assert.match(String(authHeaders["Set-Cookie"]), /^whatfees_session=session-1/);
+  assert.equal(telemetry.info.mock.calls.length, 1);
+  assert.equal(telemetry.info.mock.calls[0]?.[1]?.auth_method, "session");
+  assert.equal(telemetry.info.mock.calls[0]?.[1]?.auth_result, "success");
 });
 
 test("valid session cookie skips touch when touch interval is not reached", async () => {
@@ -267,10 +326,17 @@ test("invalid bearer token is rejected when no valid session exists", async () =
 
 test("unsafe request with session auth rejects when csrf token is missing", async () => {
   const request = makeRequest({ cookie: "whatfees_session=session-1" }, "POST");
+  const telemetry = createTelemetryLogger();
   getSessionMock.mockResolvedValue(buildSession());
 
   await assert.rejects(
-    () => resolveUserId(request, makeConfig()),
+    () => resolveUserId(request, makeConfig(), {
+      telemetry: {
+        logger: telemetry,
+        route: "sync_push",
+        workspaceScope: "personal"
+      }
+    }),
     (error: unknown) => {
       assert.ok(error instanceof HttpError);
       assert.equal(error.status, 403);
@@ -278,6 +344,9 @@ test("unsafe request with session auth rejects when csrf token is missing", asyn
       return true;
     }
   );
+  assert.equal(telemetry.warn.mock.calls.length, 1);
+  assert.equal(telemetry.warn.mock.calls[0]?.[1]?.auth_result, "403");
+  assert.equal(telemetry.warn.mock.calls[0]?.[1]?.outcome, "invalid_csrf");
 });
 
 test("unsafe request with session auth accepts matching csrf token", async () => {

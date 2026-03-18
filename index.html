@@ -254,7 +254,20 @@
                   >
                     <template #selection="{ item }">
                       <div v-if="item?.raw" class="lot-selector-selection">
-                        <div class="lot-selector-selection__title">{{ item.raw.title }}</div>
+                        <div class="lot-selector-selection__title-row">
+                          <span class="lot-selector-icon-stack">
+                            <v-icon size="16">{{ item.raw.symbolIcon }}</v-icon>
+                            <v-icon
+                              v-if="item.raw.completionIcon"
+                              size="12"
+                              color="success"
+                              class="lot-selector-icon-stack__badge"
+                            >
+                              {{ item.raw.completionIcon }}
+                            </v-icon>
+                          </span>
+                          <div class="lot-selector-selection__title">{{ item.raw.title }}</div>
+                        </div>
                         <div class="lot-selector-selection__subtitle">{{ item.raw.subtitle }}</div>
                       </div>
                     </template>
@@ -273,9 +286,19 @@
                           :subtitle="undefined"
                         >
                           <template #prepend>
-                            <v-icon size="18" class="mr-2">
-                              {{ item.raw.lotType === 'singles' ? 'mdi-cards-outline' : 'mdi-cube-outline' }}
-                            </v-icon>
+                            <span class="lot-selector-icon-stack mr-2">
+                              <v-icon size="18">
+                                {{ item.raw.symbolIcon }}
+                              </v-icon>
+                              <v-icon
+                                v-if="item.raw.completionIcon"
+                                size="12"
+                                color="success"
+                                class="lot-selector-icon-stack__badge"
+                              >
+                                {{ item.raw.completionIcon }}
+                              </v-icon>
+                            </span>
                           </template>
                           <v-list-item-title class="text-body-2 font-weight-medium">
                             {{ item.raw.title }}
@@ -799,6 +822,14 @@
               variant="outlined"
               @keyup.enter="renameCurrentLot"
             ></v-text-field>
+            <v-checkbox
+              v-model="renameLotIsComplete"
+              density="compact"
+              color="success"
+              hide-details
+              class="mt-2"
+              label="Mark this lot as complete"
+            ></v-checkbox>
             <div v-if="currentLotType === 'singles'" class="mt-3">
               <div class="text-caption text-medium-emphasis mb-2">Item catalog source</div>
               <v-btn-toggle

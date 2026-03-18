@@ -214,6 +214,10 @@ test("syncPush rejects stale clientVersion when cloud version is newer", async (
     "Cloud data changed since your last sync. Pull latest data and retry."
   );
   assert.equal(upsertSyncSnapshotIncrementalMock.mock.calls.length, 0);
+  assert.equal(context.warn.mock.calls.length, 1);
+  assert.equal(context.warn.mock.calls[0]?.[0], "api.telemetry");
+  assert.equal(context.warn.mock.calls[0]?.[1]?.route, "sync_push");
+  assert.equal(context.warn.mock.calls[0]?.[1]?.outcome, "http_409");
 });
 
 test("syncPush rejects duplicate lot ids with 400", async () => {
@@ -296,4 +300,8 @@ test("syncPush rejects workspace sync when user is not a member", async () => {
   assert.equal((response.jsonBody as { error: string }).error, "User is not a member of this workspace.");
   assert.equal(getEffectiveSyncSnapshotMock.mock.calls.length, 0);
   assert.equal(upsertSyncSnapshotIncrementalMock.mock.calls.length, 0);
+  assert.equal(context.warn.mock.calls.length, 1);
+  assert.equal(context.warn.mock.calls[0]?.[1]?.route, "sync_push");
+  assert.equal(context.warn.mock.calls[0]?.[1]?.workspace_scope, "workspace");
+  assert.equal(context.warn.mock.calls[0]?.[1]?.outcome, "http_403");
 });

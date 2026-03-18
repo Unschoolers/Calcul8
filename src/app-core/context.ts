@@ -40,6 +40,9 @@ export interface AppComputedState {
     value: number;
     subtitle: string;
     lotType: LotType;
+    isComplete: boolean;
+    symbolIcon: string;
+    completionIcon: string | null;
     groupLabel?: string | null;
   }>;
   visibleLotItems: Array<{
@@ -47,6 +50,9 @@ export interface AppComputedState {
     value: number;
     subtitle: string;
     lotType: LotType;
+    isComplete: boolean;
+    symbolIcon: string;
+    completionIcon: string | null;
     groupLabel?: string | null;
   }>;
   portfolioLotFilterItems: Array<{
@@ -54,6 +60,9 @@ export interface AppComputedState {
     value: number;
     subtitle: string;
     lotType: LotType;
+    isComplete: boolean;
+    symbolIcon: string;
+    completionIcon: string | null;
     groupLabel?: string | null;
   }>;
   portfolioSelectedLotIds: number[];
@@ -385,6 +394,9 @@ export interface AppComputedObject {
     value: number;
     subtitle: string;
     lotType: LotType;
+    isComplete: boolean;
+    symbolIcon: string;
+    completionIcon: string | null;
     groupLabel?: string | null;
   }>;
   visibleLotItems(this: AppContext): Array<{
@@ -392,6 +404,9 @@ export interface AppComputedObject {
     value: number;
     subtitle: string;
     lotType: LotType;
+    isComplete: boolean;
+    symbolIcon: string;
+    completionIcon: string | null;
     groupLabel?: string | null;
   }>;
   portfolioLotFilterItems(this: AppContext): Array<{
@@ -399,6 +414,9 @@ export interface AppComputedObject {
     value: number;
     subtitle: string;
     lotType: LotType;
+    isComplete: boolean;
+    symbolIcon: string;
+    completionIcon: string | null;
     groupLabel?: string | null;
   }>;
   portfolioSelectedLotIds(this: AppContext): number[];
