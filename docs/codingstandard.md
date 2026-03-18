@@ -9,6 +9,7 @@
 - Keep sync deterministic, scoped, session-first, and safe against accidental data loss; explicitly handle conflict/auth/error paths instead of allowing silent destructive overwrites.
 - Guard repeated writes and async UI flows with debounce, in-flight protection, cancellation, or equivalent controls when stale or duplicate work is possible.
 - Write focused tests for every feature and bug fix, mock boundaries instead of depending on real browser or Azure runtime state, and run the smallest relevant suites while iterating.
+- Before merging, mirror CI locally for the areas you touched: web changes should pass `npm run verify`, API changes should pass `npm --prefix apps/api run test` and `npm --prefix apps/api run typecheck`, and shared tooling/workflow changes should run both.
 - Use optimistic concurrency for shared/cloud-authoritative entities, and keep stable ids plus audit/version metadata when practical.
 - Preserve current PWA/mobile/Vuetify patterns unless there is a deliberate product or design change, and keep desktop/mobile behavior in one logic path where possible.
 - Keep auth session-first and provider-neutral in shared code, require CSRF for unsafe cookie-authenticated API requests, and keep billing/access data separate from profile/identity data.
