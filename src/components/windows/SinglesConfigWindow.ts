@@ -2,27 +2,19 @@ import template from "./SinglesConfigWindow.html?raw";
 import "./ConfigWindow.css";
 import "./SinglesConfigWindow.css";
 import { inject, type PropType } from "vue";
-import type { SinglesCatalogSource, SinglesPurchaseEntry } from "../../types/app.ts";
-import { STORAGE_KEYS } from "../../app-core/storageKeys.ts";
-import { normalizeSinglesCatalogSource } from "../../app-core/shared/singles-catalog-source.ts";
+import type { SinglesPurchaseEntry } from "../../types/app.ts";
 import { createWindowContextBridge } from "./contextBridge.ts";
 import { singlesImportComputed, singlesImportMethods } from "./singles/useSinglesImport.ts";
+import {
+  createSinglesCatalogSearchState,
+  singlesCatalogSearchComputed,
+  singlesCatalogSearchMethods
+} from "./singles/useSinglesCatalogSearch.ts";
 import { singlesRowEditorMethods } from "./singles/useSinglesRowEditor.ts";
 import { SinglesCsvImportDialog } from "./singles/SinglesCsvImportDialog.ts";
 import { SinglesPurchasingCard } from "./singles/SinglesPurchasingCard.ts";
 import { SinglesSellingCard } from "./singles/SinglesSellingCard.ts";
-import {
-  createSinglesCardImageCacheKey,
-  createSinglesCardSuggestionValue,
-  mapCardSearchItemToSuggestion,
-  matchesCardSuggestionQuery,
-  normalizeSinglesSearchTokens,
-  resolveCardSearchBackendQuery,
-  SINGLES_CARD_SEARCH_DEBOUNCE_MS,
-  SINGLES_CARD_SEARCH_LIMIT,
-  type CardSearchApiItem,
-  type SinglesCardSuggestion
-} from "./singles/singlesCatalogSearch.ts";
+import { normalizeSinglesSearchTokens } from "./singles/singlesCatalogSearch.ts";
 import { AdminSyncImportCard } from "./AdminSyncImportCard.ts";
 
 const SINGLES_INFO_NOTICE_DISMISSED_KEY = "whatfees_singles_info_notice_dismissed_v1";
@@ -120,14 +112,11 @@ export const SinglesConfigWindow: any = {
   },
   data() {
     return {
+      ...createSinglesCatalogSearchState(),
       showSinglesInfoNotice: true,
       showSinglesRowEditor: false,
-      showCatalogSourceSheet: false,
       showFullySoldSingles: false,
       singlesSearchQuery: "",
-      showSinglesImagePreview: false,
-      singlesImagePreviewSrc: "",
-      singlesImagePreviewTitle: "",
       isDesktopSelectMode: false,
       selectedDesktopRowIds: [] as number[],
       desktopSortBy: null as SinglesDesktopSortKeyWithMeta | null,
@@ -148,17 +137,6 @@ export const SinglesConfigWindow: any = {
         quantity: 1,
         marketValue: 0
       },
-      singlesItemSearchText: "",
-      singlesItemMenuOpen: false,
-      singlesEditorPreviewLoading: false,
-      singlesItemSearchLoading: false,
-      suppressNextSinglesItemSearchUpdate: false,
-      singlesCardImageCache: {} as Record<string, string>,
-      singlesItemSuggestions: [] as SinglesCardSuggestion[],
-      singlesItemSearchTimerId: null as ReturnType<typeof setTimeout> | null,
-      singlesItemSearchAbortController: null as AbortController | null,
-      singlesItemSearchRequestSeq: 0,
-      singlesEditorPreviewRequestSeq: 0,
       singlesConditionOptions: [
         "Near Mint",
         "Mint",
@@ -180,31 +158,7 @@ export const SinglesConfigWindow: any = {
   },
   computed: {
     ...singlesImportComputed,
-    currentSinglesCatalogSource: {
-      get(this: any): SinglesCatalogSource {
-        if (!this.currentLotId) return "none";
-        const lot = (this.lots as Array<Record<string, unknown>>).find((candidate) => candidate.id === this.currentLotId);
-        if (!lot || lot.lotType !== "singles") return "none";
-        return normalizeSinglesCatalogSource(
-          lot.singlesCatalogSource,
-          normalizeSinglesCatalogSource(this.currentLotCatalogSource)
-        );
-      },
-      set(this: any, nextValue: SinglesCatalogSource): void {
-        this.setCurrentSinglesCatalogSource(nextValue);
-      }
-    },
-
-    showCatalogSuggestions(this: any): boolean {
-      return this.currentSinglesCatalogSource !== "none";
-    },
-
-    currentSinglesCatalogSourceLabel(this: any): string {
-      const source = normalizeSinglesCatalogSource(this.currentSinglesCatalogSource);
-      if (source === "pokemon") return "Pokemon";
-      if (source === "none") return "Custom";
-      return "Union Arena";
-    },
+    ...singlesCatalogSearchComputed,
 
     visibleSinglesPurchases(this: any): SinglesPurchaseEntry[] {
       const rows = Array.isArray(this.singlesPurchases)
@@ -273,86 +227,6 @@ export const SinglesConfigWindow: any = {
       if (sortBy === "item") return "Name";
       if (sortBy === "marketValue") return "Market";
       return "Recent";
-    },
-
-    singlesEditorCatalogItems(this: any): SinglesCardSuggestion[] {
-      const suggestions = Array.isArray(this.singlesItemSuggestions)
-        ? [...this.singlesItemSuggestions as SinglesCardSuggestion[]]
-        : [];
-      const item = String(this.editingSinglesRow?.item || "").trim();
-      if (!item) return suggestions;
-
-      const cardNo = String(this.editingSinglesRow?.cardNumber || "").trim();
-      const image = String(this.editingSinglesRow?.image || "").trim();
-      const marketPrice = Number(this.editingSinglesRow?.marketValue);
-      const existing = suggestions.find((suggestion) => (
-        String(suggestion.name || "").trim() === item
-        && String(suggestion.cardNo || "").trim() === cardNo
-      ));
-      if (existing) return suggestions;
-
-      return [
-        {
-          title: this.formatSinglesEditorItemLabel(item, cardNo),
-          value: createSinglesCardSuggestionValue(item, cardNo, ""),
-          name: item,
-          cardNo,
-          image,
-          rarity: "",
-          marketPrice: Number.isFinite(marketPrice) ? marketPrice : null
-        },
-        ...suggestions
-      ];
-    },
-
-    currentSinglesEditorSelectionValue(this: any): string | null {
-      const activeSearch = String(this.singlesItemSearchText || "").trim();
-      if (activeSearch) return null;
-      const item = String(this.editingSinglesRow?.item || "").trim();
-      if (!item) return null;
-      const cardNo = String(this.editingSinglesRow?.cardNumber || "").trim();
-      const rarity = Array.isArray(this.singlesItemSuggestions)
-        ? String(
-          (this.singlesItemSuggestions as SinglesCardSuggestion[]).find((suggestion) => (
-            String(suggestion.name || "").trim() === item
-            && String(suggestion.cardNo || "").trim() === cardNo
-          ))?.rarity || ""
-        ).trim()
-        : "";
-      return createSinglesCardSuggestionValue(item, cardNo, rarity);
-    },
-
-    editingSinglesPreviewImage(this: any): string {
-      const item = String(this.editingSinglesRow?.item || "").trim();
-      if (!item) return "";
-      const directImage = String(this.editingSinglesRow?.image || "").trim();
-      if (directImage) return directImage;
-      const cardNo = String(this.editingSinglesRow?.cardNumber || "").trim();
-      const suggestions = Array.isArray(this.singlesItemSuggestions)
-        ? this.singlesItemSuggestions as SinglesCardSuggestion[]
-        : [];
-      const itemLower = item.toLocaleLowerCase();
-      const cardNoLower = cardNo.toLocaleLowerCase();
-      const matchingSuggestion = suggestions.find((suggestion) => {
-        if (!suggestion.image) return false;
-        if (String(suggestion.name || "").trim().toLocaleLowerCase() !== itemLower) return false;
-        if (!cardNoLower) return true;
-        return String(suggestion.cardNo || "").trim().toLocaleLowerCase() === cardNoLower;
-      });
-      if (matchingSuggestion?.image) return matchingSuggestion.image;
-
-      const cache = this.singlesCardImageCache as Record<string, string>;
-      const exactKey = createSinglesCardImageCacheKey(this.currentSinglesCatalogSource, item, cardNo);
-      if (exactKey && typeof cache?.[exactKey] === "string" && cache[exactKey]) {
-        return cache[exactKey];
-      }
-
-      const nameKey = createSinglesCardImageCacheKey(this.currentSinglesCatalogSource, item, "");
-      if (nameKey && typeof cache?.[nameKey] === "string" && cache[nameKey]) {
-        return cache[nameKey];
-      }
-
-      return "";
     },
 
     hasMoreMobileSinglesRows(this: any): boolean {
@@ -497,6 +371,7 @@ export const SinglesConfigWindow: any = {
   },
   methods: {
     ...singlesImportMethods,
+    ...singlesCatalogSearchMethods,
     fmtCurrency(this: any, value: number | null | undefined, decimals = 2): string {
       if (value == null || Number.isNaN(Number(value))) return "0.00";
       return Number(value).toFixed(decimals);
@@ -515,35 +390,6 @@ export const SinglesConfigWindow: any = {
       return Math.max(0, totalQuantity - soldQuantity);
     },
 
-    getSinglesEntryPreviewImage(this: any, entry: SinglesPurchaseEntry): string {
-      const directImage = String(entry.image || "").trim();
-      if (directImage) return directImage;
-      const exactKey = createSinglesCardImageCacheKey(this.currentSinglesCatalogSource, entry.item, entry.cardNumber);
-      const nameKey = createSinglesCardImageCacheKey(this.currentSinglesCatalogSource, entry.item, "");
-      const cache = this.singlesCardImageCache as Record<string, string>;
-      if (exactKey && typeof cache?.[exactKey] === "string" && cache[exactKey]) {
-        return cache[exactKey];
-      }
-      if (nameKey && typeof cache?.[nameKey] === "string" && cache[nameKey]) {
-        return cache[nameKey];
-      }
-      return "";
-    },
-
-    openSinglesImagePreview(this: any, image: unknown, title?: unknown): void {
-      const src = String(image || "").trim();
-      if (!src) return;
-      this.singlesImagePreviewSrc = src;
-      this.singlesImagePreviewTitle = String(title || "").trim();
-      this.showSinglesImagePreview = true;
-    },
-
-    closeSinglesImagePreview(this: any): void {
-      this.showSinglesImagePreview = false;
-      this.singlesImagePreviewSrc = "";
-      this.singlesImagePreviewTitle = "";
-    },
-
     getSinglesEntryTotalQuantity(this: any, entry: SinglesPurchaseEntry): number {
       const totalQuantity = Number(entry.quantity);
       if (!Number.isFinite(totalQuantity) || totalQuantity <= 0) return 0;
@@ -560,335 +406,6 @@ export const SinglesConfigWindow: any = {
       const remainingQuantity = this.getSinglesEntryRemainingQuantity(entry);
       const totalQuantity = this.getSinglesEntryTotalQuantity(entry);
       return totalQuantity > 0 && remainingQuantity === 0;
-    },
-
-    formatSinglesEditorItemLabel(this: any, item: unknown, cardNumber: unknown): string {
-      const safeItem = String(item || "").trim();
-      const safeCardNumber = String(cardNumber || "").trim();
-      if (!safeItem) return "";
-      if (!this.showCatalogSuggestions || !safeCardNumber) return safeItem;
-      return `${safeItem} #${safeCardNumber}`;
-    },
-
-    resolveCardsApiBaseUrl(this: any): string {
-      const configuredBase = String((import.meta.env.VITE_API_BASE_URL as string | undefined) || "").trim();
-      if (configuredBase) return configuredBase.replace(/\/+$/, "");
-      const storage = (globalThis as { localStorage?: { getItem?: (key: string) => string | null } }).localStorage;
-      const cachedBase = String(storage?.getItem?.(STORAGE_KEYS.API_BASE_URL) || "").trim();
-      if (cachedBase) return cachedBase.replace(/\/+$/, "");
-      return "";
-    },
-
-    cancelSinglesItemSearch(this: any): void {
-      if (this.singlesItemSearchTimerId) {
-        clearTimeout(this.singlesItemSearchTimerId);
-        this.singlesItemSearchTimerId = null;
-      }
-      if (this.singlesItemSearchAbortController) {
-        this.singlesItemSearchAbortController.abort();
-        this.singlesItemSearchAbortController = null;
-      }
-    },
-
-    cacheSinglesSuggestionImages(this: any, suggestions: SinglesCardSuggestion[]): void {
-      if (!Array.isArray(suggestions) || suggestions.length === 0) return;
-      const nextCache = {
-        ...(this.singlesCardImageCache as Record<string, string> | undefined)
-      };
-
-      for (const suggestion of suggestions) {
-        const image = String(suggestion.image || "").trim();
-        if (!image) continue;
-        const exactKey = createSinglesCardImageCacheKey(
-          this.currentSinglesCatalogSource,
-          suggestion.name,
-          suggestion.cardNo
-        );
-        if (exactKey) {
-          nextCache[exactKey] = image;
-        }
-
-        const nameKey = createSinglesCardImageCacheKey(this.currentSinglesCatalogSource, suggestion.name, "");
-        if (nameKey && !nextCache[nameKey]) {
-          nextCache[nameKey] = image;
-        }
-      }
-
-      this.singlesCardImageCache = nextCache;
-    },
-
-    async requestSinglesCardSuggestions(
-      this: any,
-      query: string,
-      signal?: AbortSignal
-    ): Promise<SinglesCardSuggestion[]> {
-      const catalogSource = normalizeSinglesCatalogSource(this.currentSinglesCatalogSource);
-      if (catalogSource === "none") return [];
-
-      const apiBase = this.resolveCardsApiBaseUrl();
-      if (!apiBase) return [];
-      const backendQuery = resolveCardSearchBackendQuery(query);
-      if (backendQuery.trim().length < 2) return [];
-
-      const url = new URL(`${apiBase}/cards/search`);
-      url.searchParams.set("game", catalogSource);
-      url.searchParams.set("q", backendQuery);
-      url.searchParams.set("limit", String(SINGLES_CARD_SEARCH_LIMIT));
-
-      const response = await fetch(url.toString(), {
-        method: "GET",
-        signal
-      });
-      if (!response.ok) throw new Error(`Cards search failed (${response.status})`);
-
-      const payload = await response.json() as { items?: CardSearchApiItem[] };
-      const items = Array.isArray(payload.items) ? payload.items : [];
-      const suggestions = items
-        .map((item, index) => mapCardSearchItemToSuggestion(item, index))
-        .filter((item): item is SinglesCardSuggestion => item != null)
-        .filter((item) => matchesCardSuggestionQuery(item, query));
-
-      this.cacheSinglesSuggestionImages(suggestions);
-      return suggestions;
-    },
-
-    onSinglesItemSearchUpdate(this: any, nextValue: string): void {
-      this.singlesItemSearchText = String(nextValue || "");
-      if (this.suppressNextSinglesItemSearchUpdate) {
-        this.suppressNextSinglesItemSearchUpdate = false;
-        return;
-      }
-      const query = this.singlesItemSearchText.trim();
-      const currentItem = String(this.editingSinglesRow?.item || "").trim();
-      if (query.toLocaleLowerCase() !== currentItem.toLocaleLowerCase()) {
-        if (this.showCatalogSuggestions) {
-          this.editingSinglesRow.item = "";
-        }
-        this.editingSinglesRow.image = "";
-        if (this.showCatalogSuggestions) {
-          this.editingSinglesRow.cardNumber = "";
-        }
-      }
-      this.cancelSinglesItemSearch();
-
-      if (!this.showCatalogSuggestions || query.length < 2) {
-        this.singlesItemSuggestions = [];
-        this.singlesItemMenuOpen = false;
-        this.singlesItemSearchLoading = false;
-        return;
-      }
-
-      this.singlesItemSearchTimerId = setTimeout(() => {
-        this.singlesItemSearchTimerId = null;
-        void this.fetchSinglesItemSuggestions(query);
-      }, SINGLES_CARD_SEARCH_DEBOUNCE_MS);
-    },
-
-    async fetchSinglesItemSuggestions(this: any, query: string): Promise<void> {
-      const catalogSource = normalizeSinglesCatalogSource(this.currentSinglesCatalogSource);
-      if (catalogSource === "none") {
-        this.singlesItemSuggestions = [];
-        this.singlesItemMenuOpen = false;
-        this.singlesItemSearchLoading = false;
-        return;
-      }
-      const apiBase = this.resolveCardsApiBaseUrl();
-      if (!apiBase) {
-        this.singlesItemSuggestions = [];
-        this.singlesItemMenuOpen = false;
-        return;
-      }
-
-      const requestSeq = this.singlesItemSearchRequestSeq + 1;
-      this.singlesItemSearchRequestSeq = requestSeq;
-      const controller = new AbortController();
-      this.singlesItemSearchAbortController = controller;
-      this.singlesItemSearchLoading = true;
-
-      try {
-        const suggestions = await this.requestSinglesCardSuggestions(query, controller.signal);
-
-        if (this.singlesItemSearchRequestSeq !== requestSeq) return;
-        this.singlesItemSuggestions = suggestions;
-        this.singlesItemMenuOpen = suggestions.length > 0;
-      } catch (error) {
-        if (controller.signal.aborted) return;
-        console.warn("Failed to fetch card suggestions", error);
-        if (this.singlesItemSearchRequestSeq === requestSeq) {
-          this.singlesItemSuggestions = [];
-          this.singlesItemMenuOpen = false;
-        }
-      } finally {
-        if (this.singlesItemSearchAbortController === controller) {
-          this.singlesItemSearchAbortController = null;
-        }
-        if (this.singlesItemSearchRequestSeq === requestSeq) {
-          this.singlesItemSearchLoading = false;
-        }
-      }
-    },
-
-    setCurrentSinglesCatalogSource(this: any, nextValue: SinglesCatalogSource): void {
-      if (!this.currentLotId) return;
-      const normalized = normalizeSinglesCatalogSource(nextValue);
-      const lot = (this.lots as Array<Record<string, unknown>>).find((candidate) => candidate.id === this.currentLotId);
-      if (!lot || lot.lotType !== "singles") return;
-      if (lot.singlesCatalogSource === normalized) return;
-      const hasExistingItems = Array.isArray(lot.singlesPurchases) && lot.singlesPurchases.length > 0;
-
-      lot.singlesCatalogSource = normalized;
-      this.saveLotsToStorage?.();
-      this.cancelSinglesItemSearch();
-      this.singlesItemSuggestions = [];
-      this.singlesItemMenuOpen = false;
-      this.singlesEditorPreviewLoading = false;
-      this.singlesItemSearchLoading = false;
-
-      if (hasExistingItems) {
-        this.notify(
-          "Catalog source updated. This only affects future autocomplete suggestions; existing items stay unchanged.",
-          "info"
-        );
-      }
-    },
-
-    chooseSinglesCatalogSource(this: any, nextValue: SinglesCatalogSource): void {
-      this.setCurrentSinglesCatalogSource(nextValue);
-      this.showCatalogSourceSheet = false;
-    },
-
-    onSinglesCatalogSelectionChange(this: any, selectedValue: string | null): void {
-      if (!selectedValue) return;
-      const items = Array.isArray(this.singlesEditorCatalogItems)
-        ? this.singlesEditorCatalogItems as SinglesCardSuggestion[]
-        : [];
-      const resolved = items.find((item) => item.value === selectedValue) || null;
-      if (!resolved) return;
-      this.onSinglesItemSelected(resolved);
-    },
-
-    onSinglesItemSelected(this: any, selected: string | SinglesCardSuggestion | null): void {
-      if (!selected) return;
-      const resolved = typeof selected === "string"
-        ? (this.singlesItemSuggestions as SinglesCardSuggestion[]).find((item) => item.value === selected) || null
-        : selected;
-      if (!resolved) return;
-      this.editingSinglesRow.item = resolved.name;
-      this.editingSinglesRow.image = String(resolved.image || "");
-      this.suppressNextSinglesItemSearchUpdate = true;
-      this.singlesItemSearchText = "";
-      this.singlesItemMenuOpen = false;
-      this.cacheSinglesSuggestionImages([resolved]);
-      if (this.showCatalogSuggestions) {
-        this.editingSinglesRow.cardNumber = String(resolved.cardNo || "");
-      } else if (!String(this.editingSinglesRow.cardNumber || "").trim() && resolved.cardNo) {
-        this.editingSinglesRow.cardNumber = resolved.cardNo;
-      }
-      const parsedMarket = Number(resolved.marketPrice);
-      if ((Number(this.editingSinglesRow.marketValue) || 0) <= 0 && Number.isFinite(parsedMarket) && parsedMarket > 0) {
-        this.editingSinglesRow.marketValue = parsedMarket;
-      }
-      void this.preloadSinglesEditorPreview();
-    },
-
-    clearSinglesCatalogSelection(this: any): void {
-      this.cancelSinglesItemSearch();
-      this.editingSinglesRow.item = "";
-      this.editingSinglesRow.cardNumber = "";
-      this.editingSinglesRow.image = "";
-      this.singlesItemSearchText = "";
-      this.singlesItemSuggestions = [];
-      this.singlesItemMenuOpen = false;
-      this.singlesItemSearchLoading = false;
-    },
-
-    onSinglesItemBackspace(this: any, event: KeyboardEvent): void {
-      if (!this.showCatalogSuggestions) return;
-      const activeSearch = String(this.singlesItemSearchText || "");
-      if (activeSearch.length > 0) return;
-
-      const selectedItem = String(this.editingSinglesRow?.item || "").trim();
-      if (!selectedItem) return;
-
-      event.preventDefault();
-      this.editingSinglesRow.item = "";
-      this.editingSinglesRow.cardNumber = "";
-      this.editingSinglesRow.image = "";
-      this.onSinglesItemSearchUpdate(selectedItem);
-    },
-
-    maybeOpenSinglesItemSuggestions(this: any): void {
-      if (!this.showCatalogSuggestions) return;
-      const searchQuery = String(this.singlesItemSearchText || "").trim();
-      if (searchQuery.length >= 2) {
-        if (Array.isArray(this.singlesItemSuggestions) && this.singlesItemSuggestions.length > 0) {
-          this.singlesItemMenuOpen = true;
-          return;
-        }
-        void this.fetchSinglesItemSuggestions(searchQuery);
-        return;
-      }
-
-      const selectedQuery = String(this.editingSinglesRow.item || "").trim();
-      if (selectedQuery.length < 2) return;
-      this.singlesItemMenuOpen = false;
-      if (this.singlesItemSearchLoading) return;
-      if (Array.isArray(this.singlesItemSuggestions) && this.singlesItemSuggestions.length > 0) {
-        const normalizedSelected = selectedQuery.toLocaleLowerCase();
-        const suggestionsMatchSelection = (this.singlesItemSuggestions as SinglesCardSuggestion[]).some((suggestion) =>
-          String(suggestion.name || "").trim().toLocaleLowerCase() === normalizedSelected
-        );
-        if (suggestionsMatchSelection) {
-          this.singlesItemMenuOpen = true;
-          return;
-        }
-      }
-      void this.fetchSinglesItemSuggestions(selectedQuery);
-    },
-
-    async preloadSinglesEditorPreview(this: any): Promise<void> {
-      if (!this.showCatalogSuggestions) {
-        this.singlesEditorPreviewLoading = false;
-        return;
-      }
-
-      const item = String(this.editingSinglesRow?.item || "").trim();
-      const cardNo = String(this.editingSinglesRow?.cardNumber || "").trim();
-      if (item.length < 2) {
-        this.singlesEditorPreviewLoading = false;
-        return;
-      }
-
-      const exactKey = createSinglesCardImageCacheKey(this.currentSinglesCatalogSource, item, cardNo);
-      const nameKey = createSinglesCardImageCacheKey(this.currentSinglesCatalogSource, item, "");
-      const cache = this.singlesCardImageCache as Record<string, string>;
-      if ((exactKey && cache?.[exactKey]) || (nameKey && cache?.[nameKey])) {
-        this.editingSinglesRow.image = String(cache?.[exactKey] || cache?.[nameKey] || "");
-        this.singlesEditorPreviewLoading = false;
-        return;
-      }
-
-      const requestSeq = Number(this.singlesEditorPreviewRequestSeq || 0) + 1;
-      this.singlesEditorPreviewRequestSeq = requestSeq;
-      this.singlesEditorPreviewLoading = true;
-
-      try {
-        await this.requestSinglesCardSuggestions(item);
-        const nextCache = this.singlesCardImageCache as Record<string, string>;
-        this.editingSinglesRow.image = String(nextCache?.[exactKey] || nextCache?.[nameKey] || "");
-      } catch (error) {
-        console.warn("Failed to preload singles preview", error);
-      } finally {
-        if (this.singlesEditorPreviewRequestSeq === requestSeq) {
-          this.singlesEditorPreviewLoading = false;
-        }
-      }
-    },
-
-    formatSuggestionRarity(this: any, value: unknown): string {
-      const rarity = String(value || "").trim();
-      if (!rarity) return "—";
-      return rarity;
     },
 
     loadSinglesInfoNoticeState(this: any): void {

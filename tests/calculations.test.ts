@@ -1303,6 +1303,35 @@ test("watch.purchaseUiMode persists mode and enforces total mode in simple", () 
   });
 });
 
+test("watch.boxesPurchased keeps total purchase anchored in total modes", () => {
+  const simpleContext = {
+    purchaseUiMode: "simple",
+    costInputMode: "total",
+    boxPriceCost: 25
+  } as unknown as Parameters<typeof appWatch.boxesPurchased>[0];
+
+  appWatch.boxesPurchased.call(simpleContext, 5, 2);
+  assert.equal(simpleContext.boxPriceCost, 10);
+
+  const expertTotalContext = {
+    purchaseUiMode: "expert",
+    costInputMode: "total",
+    boxPriceCost: 40
+  } as unknown as Parameters<typeof appWatch.boxesPurchased>[0];
+
+  appWatch.boxesPurchased.call(expertTotalContext, 8, 4);
+  assert.equal(expertTotalContext.boxPriceCost, 20);
+
+  const perBoxContext = {
+    purchaseUiMode: "expert",
+    costInputMode: "perBox",
+    boxPriceCost: 40
+  } as unknown as Parameters<typeof appWatch.boxesPurchased>[0];
+
+  appWatch.boxesPurchased.call(perBoxContext, 8, 4);
+  assert.equal(perBoxContext.boxPriceCost, 40);
+});
+
 test("calculateOptimalPrices is blocked when paywall is locked", () => {
   let notifiedMessage = "";
   let recalculated = false;

@@ -44,6 +44,19 @@ export const appWatch: AppWatchObject = {
     }
   },
 
+  boxesPurchased(newValue, oldValue) {
+    const isTotalPurchaseMode = this.purchaseUiMode === "simple" || this.costInputMode === "total";
+    if (!isTotalPurchaseMode) return;
+
+    const previousBoxes = Math.max(0, Number(oldValue) || 0);
+    const nextBoxes = Math.max(0, Number(newValue) || 0);
+    if (previousBoxes <= 0 || nextBoxes <= 0) return;
+
+    const currentPerBoxCost = Number(this.boxPriceCost) || 0;
+    const anchoredTotalPurchase = currentPerBoxCost * previousBoxes;
+    this.boxPriceCost = anchoredTotalPurchase / nextBoxes;
+  },
+
   googleAuthEpoch() {
     if (!this.isGoogleSignedIn) {
       stopLotEntityPolling(this);

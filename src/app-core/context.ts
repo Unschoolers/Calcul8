@@ -335,6 +335,7 @@ export type AppContext = AppState & AppComputedState & AppMethodState & AppVueCo
 export interface AppWatchObject {
   currentTab(this: AppContext, newTab: AppTab): void;
   purchaseUiMode(this: AppContext, newMode: "simple" | "expert"): void;
+  boxesPurchased(this: AppContext, newValue: number, oldValue: number): void;
   googleAuthEpoch(this: AppContext): void;
   currentLotId(this: AppContext, newVal: number | null): void;
   chartView(this: AppContext): void;
