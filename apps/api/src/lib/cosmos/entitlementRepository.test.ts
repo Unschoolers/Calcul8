@@ -22,7 +22,12 @@ vi.mock("./core", () => ({
 }));
 
 import {
+  deletePlayPurchasesForUser,
+  deleteUserProfile,
   createPurchaseVerificationResult,
+  getPurchaseVerificationResult,
+  getUserProfile,
+  listUserProfiles,
   upsertUserProfile
 } from "./entitlementRepository";
 
@@ -142,4 +147,137 @@ test("createPurchaseVerificationResult returns the existing row after a conflict
   assert.equal(result, existingResult);
   assert.equal(entitlements.items.create.mock.calls.length, 1);
   assert.equal(entitlements.item.mock.calls.length, 1);
+});
+
+test("getUserProfile returns null for missing or invalid profile documents", async () => {
+  const entitlements = createEntitlementsContainer();
+
+  entitlements.item
+    .mockReturnValueOnce({
+      read: vi.fn().mockRejectedValue({ statusCode: 404 })
+    })
+    .mockReturnValueOnce({
+      read: vi.fn().mockResolvedValue({
+        resource: {
+          id: "profile:user-1",
+          docType: "not_a_profile",
+          userId: "user-1"
+        }
+      })
+    });
+  getContainersMock.mockReturnValue({ entitlements });
+
+  const missing = await getUserProfile(createConfig(), "user-1");
+  const invalid = await getUserProfile(createConfig(), "user-1");
+
+  assert.equal(missing, null);
+  assert.equal(invalid, null);
+});
+
+test("listUserProfiles de-duplicates user ids and filters null results", async () => {
+  const entitlements = createEntitlementsContainer();
+  entitlements.item.mockImplementation((id: string) => ({
+    read: vi.fn().mockResolvedValue({
+      resource: id === "profile:user-1"
+        ? {
+          id: "profile:user-1",
+          docType: "user_profile",
+          userId: "user-1",
+          displayName: "User One",
+          displayNameSource: "provider",
+          updatedAt: "2026-03-18T00:00:00.000Z"
+        }
+        : null
+    })
+  }));
+  getContainersMock.mockReturnValue({ entitlements });
+
+  const result = await listUserProfiles(createConfig(), ["user-1", "user-1", " ", "user-2"]);
+
+  assert.equal(result.length, 1);
+  assert.equal(result[0]?.userId, "user-1");
+  assert.equal(entitlements.item.mock.calls.length, 2);
+});
+
+test("getPurchaseVerificationResult returns null for non-matching document types", async () => {
+  const entitlements = createEntitlementsContainer();
+  entitlements.item.mockReturnValue({
+    read: vi.fn().mockResolvedValue({
+      resource: {
+        id: "purchase_verify:user-1:play:idem-123",
+        docType: "something_else"
+      }
+    })
+  });
+  getContainersMock.mockReturnValue({ entitlements });
+
+  const result = await getPurchaseVerificationResult(createConfig(), {
+    userId: "user-1",
+    provider: "play",
+    idempotencyKey: "idem-123"
+  });
+
+  assert.equal(result, null);
+});
+
+test("deleteUserProfile ignores missing documents", async () => {
+  const entitlements = createEntitlementsContainer();
+  entitlements.item.mockReturnValue({
+    delete: vi.fn().mockRejectedValue({ statusCode: 404 })
+  });
+  getContainersMock.mockReturnValue({ entitlements });
+
+  await deleteUserProfile(createConfig(), "user-1");
+
+  assert.equal(entitlements.item.mock.calls.length, 1);
+});
+
+test("deletePlayPurchasesForUser deletes all rows and ignores missing ones", async () => {
+  const entitlements = createEntitlementsContainer();
+  entitlements.items.query.mockReturnValue({
+    fetchAll: vi.fn().mockResolvedValue({
+      resources: [
+        {
+          id: "play_purchase:hash-1",
+          docType: "play_purchase",
+          userId: "user-1",
+          purchaseTokenHash: "hash-1",
+          packageName: "io.whatfees",
+          productId: "pro_access",
+          orderId: null,
+          purchaseState: 1,
+          acknowledgementState: 1,
+          consumptionState: 0,
+          purchaseTimeMillis: "123",
+          updatedAt: "2026-03-18T00:00:00.000Z"
+        },
+        {
+          id: "play_purchase:hash-2",
+          docType: "play_purchase",
+          userId: "user-1",
+          purchaseTokenHash: "hash-2",
+          packageName: "io.whatfees",
+          productId: "pro_access",
+          orderId: null,
+          purchaseState: 1,
+          acknowledgementState: 1,
+          consumptionState: 0,
+          purchaseTimeMillis: "456",
+          updatedAt: "2026-03-18T00:00:00.000Z"
+        }
+      ]
+    })
+  });
+  entitlements.item
+    .mockReturnValueOnce({
+      delete: vi.fn().mockResolvedValue({})
+    })
+    .mockReturnValueOnce({
+      delete: vi.fn().mockRejectedValue({ statusCode: 404 })
+    });
+  getContainersMock.mockReturnValue({ entitlements });
+
+  await deletePlayPurchasesForUser(createConfig(), "user-1");
+
+  assert.equal(entitlements.item.mock.calls.length, 2);
 });

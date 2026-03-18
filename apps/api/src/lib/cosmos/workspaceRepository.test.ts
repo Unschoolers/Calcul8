@@ -26,9 +26,16 @@ vi.mock("./core", () => ({
 }));
 
 import {
+  createWorkspaceJoinLink,
   createWorkspaceWithOwner,
   deactivateWorkspaceMembership,
-  listWorkspacesForUser
+  hasWorkspaceMembership,
+  listWorkspaceJoinLinks,
+  listWorkspacesForUser,
+  markWorkspaceJoinLinkUsed,
+  revokeWorkspaceJoinLink,
+  softDeleteWorkspace,
+  transferWorkspaceOwnership
 } from "./workspaceRepository";
 
 function createConfig(): ApiConfig {
@@ -180,4 +187,159 @@ test("createWorkspaceWithOwner maps Cosmos conflicts to a friendly error", async
     }),
     /Workspace already exists\./
   );
+});
+
+test("hasWorkspaceMembership returns false for deleted workspaces and removed memberships", async () => {
+  const entitlements = createEntitlementsContainer();
+  const activeWorkspace: WorkspaceDocument = {
+    id: "workspace:ws-1",
+    docType: "workspace",
+    userId: "ws:ws-1",
+    workspaceId: "ws-1",
+    name: "Workspace One",
+    ownerUserId: "owner-1",
+    status: "active",
+    createdAt: "2026-03-18T00:00:00.000Z",
+    updatedAt: "2026-03-18T00:00:00.000Z"
+  };
+  const deletedWorkspace: WorkspaceDocument = {
+    ...activeWorkspace,
+    status: "deleted"
+  };
+  const removedMembership: WorkspaceMembershipDocument = {
+    id: "m:user-1:ws-1",
+    docType: "workspace_membership",
+    userId: "user-1",
+    workspaceId: "ws-1",
+    role: "member",
+    status: "removed",
+    updatedAt: "2026-03-18T00:00:00.000Z"
+  };
+
+  entitlements.items.query
+    .mockImplementationOnce(() => ({
+      fetchAll: vi.fn().mockResolvedValue({ resources: [deletedWorkspace] })
+    }))
+    .mockImplementationOnce(() => ({
+      fetchAll: vi.fn().mockResolvedValue({ resources: [activeWorkspace] })
+    }));
+  entitlements.item.mockReturnValue({
+    read: vi.fn().mockResolvedValue({ resource: removedMembership })
+  });
+  getContainersMock.mockReturnValue({ entitlements });
+
+  const deletedResult = await hasWorkspaceMembership(createConfig(), "user-1", "ws-1");
+  const removedResult = await hasWorkspaceMembership(createConfig(), "user-1", "ws-1");
+
+  assert.equal(deletedResult, false);
+  assert.equal(removedResult, false);
+});
+
+test("transferWorkspaceOwnership updates an active workspace owner", async () => {
+  const entitlements = createEntitlementsContainer();
+  const existingWorkspace: WorkspaceDocument = {
+    id: "workspace:ws-1",
+    docType: "workspace",
+    userId: "ws:ws-1",
+    workspaceId: "ws-1",
+    name: "Workspace One",
+    ownerUserId: "owner-1",
+    status: "active",
+    createdAt: "2026-03-18T00:00:00.000Z",
+    updatedAt: "2026-03-18T00:00:00.000Z"
+  };
+
+  entitlements.items.query.mockReturnValue({
+    fetchAll: vi.fn().mockResolvedValue({ resources: [existingWorkspace] })
+  });
+  entitlements.items.upsert.mockImplementation(async (document: WorkspaceDocument) => ({
+    resource: document
+  }));
+  getContainersMock.mockReturnValue({ entitlements });
+
+  const result = await transferWorkspaceOwnership(createConfig(), "ws-1", "owner-2");
+
+  assert.equal(result?.ownerUserId, "owner-2");
+  assert.equal(entitlements.items.upsert.mock.calls.length, 1);
+  assert.equal(entitlements.items.upsert.mock.calls[0]?.[0]?.status, "active");
+});
+
+test("softDeleteWorkspace returns the existing document without writing when already deleted", async () => {
+  const entitlements = createEntitlementsContainer();
+  const deletedWorkspace: WorkspaceDocument = {
+    id: "workspace:ws-1",
+    docType: "workspace",
+    userId: "ws:ws-1",
+    workspaceId: "ws-1",
+    name: "Workspace One",
+    ownerUserId: "owner-1",
+    status: "deleted",
+    createdAt: "2026-03-18T00:00:00.000Z",
+    updatedAt: "2026-03-18T00:00:00.000Z"
+  };
+
+  entitlements.items.query.mockReturnValue({
+    fetchAll: vi.fn().mockResolvedValue({ resources: [deletedWorkspace] })
+  });
+  getContainersMock.mockReturnValue({ entitlements });
+
+  const result = await softDeleteWorkspace(createConfig(), "ws-1");
+
+  assert.equal(result, deletedWorkspace);
+  assert.equal(entitlements.items.upsert.mock.calls.length, 0);
+});
+
+test("workspace join links can be created, listed, revoked, and marked used", async () => {
+  const entitlements = createEntitlementsContainer();
+  const activeJoinLink = {
+    id: "join_link:invite-1",
+    docType: "workspace_join_link" as const,
+    userId: "ws:ws-1",
+    inviteId: "invite-1",
+    workspaceId: "ws-1",
+    createdByUserId: "owner-1",
+    role: "member" as const,
+    status: "active" as const,
+    tokenHash: "hash-1",
+    expiresAt: "2026-03-20T00:00:00.000Z",
+    updatedAt: "2026-03-18T00:00:00.000Z"
+  };
+
+  entitlements.items.create.mockImplementation(async (document) => ({
+    resource: document
+  }));
+  entitlements.items.upsert.mockImplementation(async (document) => ({
+    resource: document
+  }));
+  entitlements.items.query
+    .mockImplementationOnce(() => ({
+      fetchAll: vi.fn().mockResolvedValue({ resources: [activeJoinLink] })
+    }))
+    .mockImplementationOnce(() => ({
+      fetchAll: vi.fn().mockResolvedValue({ resources: [activeJoinLink] })
+    }))
+    .mockImplementationOnce(() => ({
+      fetchAll: vi.fn().mockResolvedValue({ resources: [activeJoinLink] })
+    }))
+    .mockImplementationOnce(() => ({
+      fetchAll: vi.fn().mockResolvedValue({ resources: [activeJoinLink] })
+    }));
+  getContainersMock.mockReturnValue({ entitlements });
+
+  const created = await createWorkspaceJoinLink(createConfig(), {
+    inviteId: "invite-1",
+    workspaceId: "ws-1",
+    createdByUserId: "owner-1",
+    tokenHash: "hash-1",
+    expiresAt: "2026-03-20T00:00:00.000Z"
+  });
+  const listed = await listWorkspaceJoinLinks(createConfig(), "ws-1");
+  const revoked = await revokeWorkspaceJoinLink(createConfig(), "invite-1");
+  const used = await markWorkspaceJoinLinkUsed(createConfig(), "invite-1", "user-2");
+
+  assert.equal(created.inviteId, "invite-1");
+  assert.equal(listed.length, 1);
+  assert.equal(revoked?.status, "revoked");
+  assert.equal(used?.status, "used");
+  assert.equal(used?.usedByUserId, "user-2");
 });
