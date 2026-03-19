@@ -10,6 +10,7 @@ on:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  AZURE_CORE_OUTPUT: none
   NODE_VERSION: 22
   AZURE_RESOURCE_GROUP_PROD: DefaultResourceGroup-CCAN
   AZURE_CONTAINER_REGISTRY_NAME_PROD: calcul8teregistry
@@ -66,6 +67,7 @@ jobs:
           AZURE_CONTAINER_APP_NAME_REALTIME_PROD: ${{ vars.AZURE_CONTAINER_APP_NAME_REALTIME_PROD }}
           AZURE_CONTAINER_APP_ENVIRONMENT_PROD: ${{ vars.AZURE_CONTAINER_APP_ENVIRONMENT_PROD }}
           REALTIME_INTERNAL_API_KEY_PROD: ${{ secrets.REALTIME_INTERNAL_API_KEY_PROD }}
+          REALTIME_TOKEN_SECRET_PROD: ${{ secrets.REALTIME_TOKEN_SECRET_PROD }}
         run: |
           if [ -z "${AZURE_CLIENT_ID_PROD}" ]; then
             echo "Missing vars.AZURE_CLIENT_ID_PROD in prod-realtime environment."
@@ -89,6 +91,10 @@ jobs:
           fi
           if [ -z "${REALTIME_INTERNAL_API_KEY_PROD}" ]; then
             echo "Missing secrets.REALTIME_INTERNAL_API_KEY_PROD in prod-realtime environment."
+            exit 1
+          fi
+          if [ -z "${REALTIME_TOKEN_SECRET_PROD}" ]; then
+            echo "Missing secrets.REALTIME_TOKEN_SECRET_PROD in prod-realtime environment."
             exit 1
           fi
 
@@ -127,39 +133,21 @@ jobs:
 
           az config set extension.use_dynamic_install=yes_without_prompt
 
-          if [ -n "${REALTIME_TOKEN_SECRET_PROD}" ]; then
-            az containerapp secret set \
-              --name "${AZURE_CONTAINER_APP_NAME_REALTIME_PROD}" \
-              --resource-group "${AZURE_RESOURCE_GROUP_PROD}" \
-              --secrets \
-                realtime-internal-api-key=${REALTIME_INTERNAL_API_KEY_PROD} \
-                realtime-token-secret=${REALTIME_TOKEN_SECRET_PROD}
+          az containerapp secret set \
+            --name "${AZURE_CONTAINER_APP_NAME_REALTIME_PROD}" \
+            --resource-group "${AZURE_RESOURCE_GROUP_PROD}" \
+            --secrets \
+              realtime-internal-api-key=${REALTIME_INTERNAL_API_KEY_PROD} \
+              realtime-token-secret=${REALTIME_TOKEN_SECRET_PROD}
 
-            az containerapp update \
-              --name "${AZURE_CONTAINER_APP_NAME_REALTIME_PROD}" \
-              --resource-group "${AZURE_RESOURCE_GROUP_PROD}" \
-              --min-replicas "${REALTIME_MIN_REPLICAS_PROD}" \
-              --max-replicas "${REALTIME_MAX_REPLICAS_PROD}" \
-              --set-env-vars \
-                NODE_ENV=production \
-                REALTIME_ALLOWED_ORIGIN="${REALTIME_ALLOWED_ORIGIN_PROD}" \
-                REALTIME_DEV_ALLOW_UNAUTH_SUBSCRIBE=false \
-                REALTIME_INTERNAL_API_KEY=secretref:realtime-internal-api-key \
-                REALTIME_TOKEN_SECRET=secretref:realtime-token-secret
-          else
-            az containerapp secret set \
-              --name "${AZURE_CONTAINER_APP_NAME_REALTIME_PROD}" \
-              --resource-group "${AZURE_RESOURCE_GROUP_PROD}" \
-              --secrets realtime-internal-api-key=${REALTIME_INTERNAL_API_KEY_PROD}
-
-            az containerapp update \
-              --name "${AZURE_CONTAINER_APP_NAME_REALTIME_PROD}" \
-              --resource-group "${AZURE_RESOURCE_GROUP_PROD}" \
-              --min-replicas "${REALTIME_MIN_REPLICAS_PROD}" \
-              --max-replicas "${REALTIME_MAX_REPLICAS_PROD}" \
-              --set-env-vars \
-                NODE_ENV=production \
-                REALTIME_ALLOWED_ORIGIN="${REALTIME_ALLOWED_ORIGIN_PROD}" \
-                REALTIME_DEV_ALLOW_UNAUTH_SUBSCRIBE=true \
-                REALTIME_INTERNAL_API_KEY=secretref:realtime-internal-api-key
-          fi
+          az containerapp update \
+            --name "${AZURE_CONTAINER_APP_NAME_REALTIME_PROD}" \
+            --resource-group "${AZURE_RESOURCE_GROUP_PROD}" \
+            --min-replicas "${REALTIME_MIN_REPLICAS_PROD}" \
+            --max-replicas "${REALTIME_MAX_REPLICAS_PROD}" \
+            --set-env-vars \
+              NODE_ENV=production \
+              REALTIME_ALLOWED_ORIGIN="${REALTIME_ALLOWED_ORIGIN_PROD}" \
+              REALTIME_DEV_ALLOW_UNAUTH_SUBSCRIBE=false \
+              REALTIME_INTERNAL_API_KEY=secretref:realtime-internal-api-key \
+              REALTIME_TOKEN_SECRET=secretref:realtime-token-secret

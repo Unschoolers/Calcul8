@@ -1,9 +1,22 @@
 import type { AppWatchObject } from "./context.ts";
 import { getScopedLastLotStorageKey, STORAGE_KEYS } from "./storageKeys.ts";
 import { pollAuthoritativeLotEntities, refreshLotEntityPolling, stopLotEntityPolling } from "./methods/ui/lot-entity-polling.ts";
+import { refreshWorkspaceRealtime, stopWorkspaceRealtime } from "./methods/ui/workspace-realtime.ts";
 import { getActiveStorageScope } from "./workspace-scope.ts";
 
 export const appWatch: AppWatchObject = {
+  activeScopeType() {
+    refreshLotEntityPolling(this);
+    refreshWorkspaceRealtime(this);
+    void pollAuthoritativeLotEntities(this);
+  },
+
+  activeWorkspaceId() {
+    refreshLotEntityPolling(this);
+    refreshWorkspaceRealtime(this);
+    void pollAuthoritativeLotEntities(this);
+  },
+
   currentTab(newTab) {
     try {
       localStorage.setItem(STORAGE_KEYS.LAST_TAB, newTab);
@@ -23,6 +36,7 @@ export const appWatch: AppWatchObject = {
 
     if (newTab === "sales") {
       refreshLotEntityPolling(this);
+      refreshWorkspaceRealtime(this);
       void pollAuthoritativeLotEntities(this);
       this.$nextTick(() => this.initSalesChart());
       return;
@@ -30,12 +44,14 @@ export const appWatch: AppWatchObject = {
 
     if (newTab === "portfolio") {
       refreshLotEntityPolling(this);
+      refreshWorkspaceRealtime(this);
       void pollAuthoritativeLotEntities(this);
       this.$nextTick(() => this.initPortfolioChart());
       return;
     }
 
     refreshLotEntityPolling(this);
+    refreshWorkspaceRealtime(this);
     void pollAuthoritativeLotEntities(this);
   },
 
@@ -70,6 +86,7 @@ export const appWatch: AppWatchObject = {
   googleAuthEpoch() {
     if (!this.isGoogleSignedIn) {
       stopLotEntityPolling(this);
+      stopWorkspaceRealtime(this);
       this.availableWorkspaces = [];
       this.workspaceMembers = [];
       this.showWorkspaceMembersModal = false;
@@ -77,6 +94,7 @@ export const appWatch: AppWatchObject = {
     }
 
     refreshLotEntityPolling(this);
+    refreshWorkspaceRealtime(this);
     void pollAuthoritativeLotEntities(this);
     void this.refreshWorkspaces();
 
@@ -96,6 +114,7 @@ export const appWatch: AppWatchObject = {
 
     if (!newVal) {
       stopLotEntityPolling(this);
+      stopWorkspaceRealtime(this);
       this.currentTab = "config";
       this.sales = [];
       if (this.salesChart) {
@@ -109,6 +128,7 @@ export const appWatch: AppWatchObject = {
     }
 
     refreshLotEntityPolling(this);
+    refreshWorkspaceRealtime(this);
     void pollAuthoritativeLotEntities(this);
   },
 

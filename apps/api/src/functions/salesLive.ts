@@ -11,6 +11,7 @@ import {
 import { hasWorkspaceMembership } from "../lib/cosmos/workspaceRepository";
 import { getConfig } from "../lib/config";
 import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../lib/http";
+import { publishWorkspaceLotRealtimeEvent } from "../lib/realtime";
 import { parseOptionalWorkspaceId } from "../lib/syncScope";
 import { assertSyncScopeAccess, resolveSyncScope } from "../lib/syncScopeResolution";
 import { logApiTelemetry } from "../lib/telemetry";
@@ -312,6 +313,17 @@ export async function lotSalesUpsert(
       baseVersion: body.baseVersion
     });
 
+    await publishWorkspaceLotRealtimeEvent(config, {
+      workspaceId: body.workspaceId,
+      lotId,
+      eventType: "sale.upserted",
+      data: {
+        lotId,
+        sale: toSaleResponse(sale)
+      },
+      logger: context
+    });
+
     return jsonResponse(request, config, 200, {
       ok: true,
       lotId,
@@ -361,6 +373,17 @@ export async function lotSalesDelete(
     if (!deleted) {
       throw new HttpError(404, "Sale was not found.");
     }
+
+    await publishWorkspaceLotRealtimeEvent(config, {
+      workspaceId: body.workspaceId,
+      lotId,
+      eventType: "sale.deleted",
+      data: {
+        lotId,
+        saleId
+      },
+      logger: context
+    });
 
     return jsonResponse(request, config, 200, {
       ok: true,
@@ -466,6 +489,25 @@ export async function lotLivePricingSave(
       updatedBy: actorUserId,
       mutationId: body.mutationId,
       baseVersion: body.baseVersion
+    });
+
+    await publishWorkspaceLotRealtimeEvent(config, {
+      workspaceId: body.workspaceId,
+      lotId,
+      eventType: "livePricing.updated",
+      data: {
+        lotId,
+        livePricing: {
+          livePackPrice: livePricing.livePackPrice,
+          liveBoxPriceSell: livePricing.liveBoxPriceSell,
+          liveSpotPrice: livePricing.liveSpotPrice,
+          version: livePricing.version,
+          updatedAt: livePricing.updatedAt,
+          updatedBy: livePricing.updatedBy,
+          mutationId: livePricing.mutationId
+        }
+      },
+      logger: context
     });
 
     return jsonResponse(request, config, 200, {

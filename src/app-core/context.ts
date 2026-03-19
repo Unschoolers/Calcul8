@@ -341,6 +341,8 @@ export interface AppVueContext {
 export type AppContext = AppState & AppComputedState & AppMethodState & AppVueContext;
 
 export interface AppWatchObject {
+  activeScopeType(this: AppContext, newValue: WorkspaceScopeType): void;
+  activeWorkspaceId(this: AppContext, newValue: string | null): void;
   currentTab(this: AppContext, newTab: AppTab): void;
   purchaseUiMode(this: AppContext, newMode: "simple" | "expert"): void;
   boxesPurchased(this: AppContext, newValue: number, oldValue: number): void;

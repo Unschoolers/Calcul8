@@ -78,7 +78,7 @@ async function parseApiError(response: Response, fallbackMessage: string): Promi
   return fallbackMessage;
 }
 
-function normalizeSale(value: unknown): Sale | null {
+export function normalizeSale(value: unknown): Sale | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const candidate = value as Record<string, unknown>;
   const id = Number(candidate.id);
@@ -129,7 +129,7 @@ function normalizeSales(value: unknown): Sale[] {
     .filter((entry): entry is Sale => entry != null);
 }
 
-function normalizeLivePricing(value: unknown): LotLivePricingRecord | null {
+export function normalizeLivePricing(value: unknown): LotLivePricingRecord | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const candidate = value as Record<string, unknown>;
   return {

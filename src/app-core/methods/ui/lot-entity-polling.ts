@@ -92,6 +92,31 @@ function applyLivePricingSnapshot(app: LotEntityPollingApp, livePricing: LotLive
   app.currentLivePricingVersion = livePricing.version;
 }
 
+export function reconcileIncomingLivePricingSnapshot(
+  app: LotEntityPollingApp,
+  latestLivePricing: LotLivePricingRecord
+): boolean {
+  const currentLiveHash = createLivePricingPollingHash(app);
+  const baselineHash = livePricingBaselineHashes.get(app as object) ?? currentLiveHash;
+  const latestHash = createLivePricingPollingHash({
+    liveSpotPrice: latestLivePricing.liveSpotPrice,
+    liveBoxPriceSell: latestLivePricing.liveBoxPriceSell,
+    livePackPrice: latestLivePricing.livePackPrice,
+    currentLivePricingVersion: latestLivePricing.version
+  });
+
+  const shouldApply = currentLiveHash === baselineHash && currentLiveHash !== latestHash;
+  if (shouldApply) {
+    applyLivePricingSnapshot(app, latestLivePricing);
+  }
+
+  livePricingBaselineHashes.set(
+    app as object,
+    currentLiveHash === baselineHash ? latestHash : baselineHash
+  );
+  return shouldApply;
+}
+
 export async function pollAuthoritativeLotEntities(app: LotEntityPollingApp): Promise<void> {
   if (!shouldRunLotEntityPolling(app)) {
     return;
@@ -131,28 +156,13 @@ export async function pollAuthoritativeLotEntities(app: LotEntityPollingApp): Pr
       }
     }
 
-    const currentLiveHash = createLivePricingPollingHash(app);
-    const baselineHash = livePricingBaselineHashes.get(app as object) ?? currentLiveHash;
-
     if (latestLivePricing) {
-      const latestHash = createLivePricingPollingHash({
-        liveSpotPrice: latestLivePricing.liveSpotPrice,
-        liveBoxPriceSell: latestLivePricing.liveBoxPriceSell,
-        livePackPrice: latestLivePricing.livePackPrice,
-        currentLivePricingVersion: latestLivePricing.version
-      });
-
-      if (currentLiveHash === baselineHash && currentLiveHash !== latestHash) {
-        applyLivePricingSnapshot(app, latestLivePricing);
-      }
-
-      livePricingBaselineHashes.set(
-        app as object,
-        currentLiveHash === baselineHash ? latestHash : baselineHash
-      );
+      reconcileIncomingLivePricingSnapshot(app, latestLivePricing);
       return;
     }
 
+    const currentLiveHash = createLivePricingPollingHash(app);
+    const baselineHash = livePricingBaselineHashes.get(app as object) ?? currentLiveHash;
     livePricingBaselineHashes.set(app as object, baselineHash);
   } finally {
     lotEntityPollingInFlight.delete(app as object);

@@ -4,6 +4,8 @@ export interface ApiConfig {
   apiEnv: ApiEnvironment;
   authBypassDev: boolean;
   migrationsAdminKey: string;
+  realtimePublishUrl?: string;
+  realtimeInternalApiKey?: string;
   stripeSecretKey?: string;
   stripeWebhookSecret?: string;
   stripeOneTimePriceId?: string;
