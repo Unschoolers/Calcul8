@@ -1,5 +1,7 @@
 import { defineConfig } from "vitest/config";
 
+const maxWorkers = Number(process.env.VITEST_MAX_WORKERS || "");
+
 export default defineConfig({
   test: {
     environment: "node",
@@ -11,6 +13,7 @@ export default defineConfig({
       "**/dist/**",
       "**/node_modules/**"
     ],
-    fileParallelism: false
+    fileParallelism: true,
+    maxWorkers: Number.isFinite(maxWorkers) && maxWorkers > 0 ? maxWorkers : undefined
   }
 });

@@ -288,12 +288,7 @@
       position: relative;
       z-index: 1;
     }
-    .preset-card {
-      position: static;
-      top: auto;
-      z-index: auto;
-      backdrop-filter: none;
-    }
+
     .lot-selector-row {
       row-gap: 0.35rem;
     }
@@ -340,25 +335,6 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-    }
-    .lot-selector-group-label {
-      display: flex;
-      align-items: center;
-      gap: 0.26rem;
-      margin: 0.45rem 0.9rem 0.24rem;
-      font-size: 0.72rem;
-      font-weight: 800;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: rgb(var(--v-theme-secondary));
-      pointer-events: none;
-    }
-    .lot-selector-group-label::after {
-      content: "";
-      flex: 1 1 auto;
-      height: 1px;
-      margin-left: 0.4rem;
-      background: linear-gradient(90deg, rgba(var(--v-theme-secondary), 0.34), rgba(var(--v-theme-secondary), 0.04));
     }
     .lot-selector-icon-stack {
       position: relative;
@@ -482,8 +458,35 @@
       color: rgb(var(--v-theme-primary));
     }
     .account-menu-activator {
+      position: relative;
       width: 40px;
       height: 40px;
+    }
+    .account-menu-sync-badge {
+      position: absolute;
+      right: 1px;
+      bottom: 1px;
+      width: 16px;
+      height: 16px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      border: 2px solid rgb(var(--v-theme-surface));
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.24);
+      z-index: 1;
+    }
+    .account-menu-sync-badge--success {
+      background: rgb(var(--v-theme-success));
+      color: white;
+    }
+    .account-menu-sync-badge--error {
+      background: rgb(var(--v-theme-error));
+      color: white;
+    }
+    .account-menu-sync-badge--syncing {
+      background: rgb(var(--v-theme-secondary));
+      color: rgb(var(--v-theme-on-secondary));
     }
     .account-avatar-img {
       width: 100%;
@@ -493,17 +496,19 @@
       display: block;
     }
     .account-menu-list {
-      padding-top: 0.35rem;
-      padding-bottom: 0.35rem;
+      padding-top: 0.18rem;
+      padding-bottom: 0.18rem;
     }
     .account-menu-header {
       display: flex;
       align-items: center;
-      gap: 0.8rem;
-      padding: 0.55rem 1rem 0.7rem;
+      gap: 0.7rem;
+      padding: 0.45rem 0.85rem 0.55rem;
     }
     .account-menu-header__avatar {
       flex-shrink: 0;
+      width: 38px !important;
+      height: 38px !important;
       background: linear-gradient(145deg, rgba(var(--v-theme-primary), 0.92), rgba(var(--v-theme-secondary), 0.92));
       color: white;
     }
@@ -519,13 +524,15 @@
     }
     .account-menu-header__name {
       font-weight: 700;
+      line-height: 1.15;
       color: rgb(var(--v-theme-on-surface));
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
     .account-menu-header__email {
-      font-size: 0.82rem;
+      font-size: 0.79rem;
+      line-height: 1.15;
       color: rgba(var(--v-theme-on-surface), 0.62);
       overflow: hidden;
       text-overflow: ellipsis;
@@ -557,15 +564,15 @@
       color: rgba(var(--v-theme-primary), 0.98);
     }
     .account-menu-header__workspace {
-      margin-top: 0.32rem;
+      margin-top: 0.2rem;
       display: inline-flex;
       align-items: center;
       gap: 0.35rem;
-      padding: 0.16rem 0.48rem;
+      padding: 0.12rem 0.42rem;
       border-radius: 999px;
       background: rgba(var(--v-theme-primary), 0.14);
       color: rgb(var(--v-theme-primary));
-      font-size: 0.74rem;
+      font-size: 0.71rem;
       font-weight: 700;
       letter-spacing: 0.03em;
       max-width: 100%;
@@ -574,7 +581,59 @@
       white-space: nowrap;
       min-width: 0;
     }
+    .account-menu-list .v-list-subheader {
+      min-height: 28px;
+      padding-inline: 0.85rem;
+      font-size: 0.74rem;
+      letter-spacing: 0.01em;
+    }
+    .account-menu-list .v-list-item {
+      min-height: 44px;
+      padding-top: 0.2rem;
+      padding-bottom: 0.2rem;
+    }
+    .account-menu-list .v-list-item--density-default.v-list-item--one-line {
+      min-height: 44px;
+    }
+    .account-menu-list .v-list-item--density-default.v-list-item--three-line,
+    .account-menu-list .v-list-item--density-default.v-list-item--two-line {
+      min-height: 52px;
+    }
+    .account-menu-list .v-list-item-subtitle {
+      line-height: 1.15;
+      margin-top: 0.06rem;
+    }
+    .account-menu-list .v-list-item__prepend > .v-icon,
+    .account-menu-list .v-list-item__prepend .v-avatar {
+      margin-inline-end: 0.8rem;
+    }
+    .account-menu-list .v-divider {
+      margin: 0.2rem 0 !important;
+    }
     @media (max-width: 640px) {
+      .account-menu-list {
+        padding-top: 0.1rem;
+        padding-bottom: 0.1rem;
+      }
+      .account-menu-header {
+        gap: 0.62rem;
+        padding: 0.4rem 0.75rem 0.45rem;
+      }
+      .account-menu-header__avatar {
+        width: 36px !important;
+        height: 36px !important;
+      }
+      .account-menu-list .v-list-subheader {
+        min-height: 26px;
+        padding-inline: 0.75rem;
+      }
+      .account-menu-list .v-list-item {
+        min-height: 42px;
+      }
+      .account-menu-list .v-list-item--density-default.v-list-item--three-line,
+      .account-menu-list .v-list-item--density-default.v-list-item--two-line {
+        min-height: 48px;
+      }
       .app-bar-title-wrap {
         gap: 0.45rem;
       }
@@ -1180,4 +1239,23 @@
     .stripe-embedded-checkout {
       width: 100%;
       min-height: 420px;
+    }
+    .lot-selector-group-label {
+      display: flex;
+      align-items: center;
+      gap: 0.26rem;
+      margin: 0.45rem 0.9rem 0.24rem;
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: rgb(var(--v-theme-secondary));
+      pointer-events: none;
+    }
+    .lot-selector-group-label::after {
+      content: "";
+      flex: 1 1 auto;
+      height: 1px;
+      margin-left: 0.4rem;
+      background: linear-gradient(90deg, rgba(var(--v-theme-secondary), 0.34), rgba(var(--v-theme-secondary), 0.04));
     }

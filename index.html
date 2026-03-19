@@ -149,6 +149,29 @@
                   />
                 </v-avatar>
                 <v-icon v-else size="26">mdi-account-circle-outline</v-icon>
+                <span
+                  v-if="syncStatus !== 'idle'"
+                  class="account-menu-sync-badge"
+                  :class="[
+                    syncStatus === 'syncing'
+                      ? 'account-menu-sync-badge--syncing'
+                      : (syncStatus === 'success'
+                        ? 'account-menu-sync-badge--success'
+                        : 'account-menu-sync-badge--error')
+                  ]"
+                  aria-hidden="true"
+                >
+                  <v-icon
+                    :size="syncStatus === 'syncing' ? 10 : 11"
+                    :class="syncStatus === 'syncing' ? 'sync-spinning' : ''"
+                  >
+                    {{
+                      syncStatus === 'syncing'
+                        ? 'mdi-sync'
+                        : (syncStatus === 'success' ? 'mdi-check-bold' : 'mdi-alert')
+                    }}
+                  </v-icon>
+                </span>
               </v-btn>
             </template>
 
@@ -233,7 +256,7 @@
                     ? 'Synced successfully'
                     : (syncStatus === 'error'
                       ? 'Last sync needs attention'
-                      : 'Tap to re-check Pro access'))"
+                      : ''))"
                 :prepend-icon="syncStatus === 'syncing'
                   ? 'mdi-sync'
                   : (syncStatus === 'success'
@@ -259,7 +282,7 @@
               ></v-list-item>
               <v-list-item
                 title="Clear my data"
-                subtitle="Clears your personal cloud and local app data"
+                subtitle="Clears your personal cloud data"
                 prepend-icon="mdi-delete-alert-outline"
                 base-color="error"
                 @click="askConfirmation(
@@ -361,7 +384,7 @@
                 </v-col>
                 <v-col cols="3" sm="3" md="2" class="lot-selector-meta-col">
                   <div class="lot-selector-meta">
-<div class="lot-selector-actions">
+                    <div class="lot-selector-actions">
                       <v-btn
                         v-if="hasLotSelected"
                         icon="mdi-pencil"
