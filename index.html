@@ -969,14 +969,6 @@
               variant="outlined"
               @keyup.enter="renameCurrentLot"
             ></v-text-field>
-            <v-checkbox
-              v-model="renameLotIsComplete"
-              density="compact"
-              color="success"
-              hide-details
-              class="mt-2"
-              label="Mark this lot as complete"
-            ></v-checkbox>
             <div v-if="currentLotType === 'singles'" class="mt-3">
               <div class="text-caption text-medium-emphasis mb-2">Item catalog source</div>
               <v-btn-toggle

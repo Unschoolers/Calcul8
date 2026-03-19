@@ -66,11 +66,7 @@ function lotIsCompleteByDefault(context: {
   loadSalesForLotId(lotId: number): unknown[];
 }, lot: {
   id: number;
-  isComplete?: boolean;
 }): boolean {
-  if (lot.isComplete === true) {
-    return true;
-  }
 
   const sales = context.currentLotId === lot.id
     ? context.sales
@@ -345,6 +341,8 @@ export const singlesComputed: Pick<
     return calculateSinglesSaleProfitPreview(linePreviewSource || []);
   }
 };
+
+
 
 
 

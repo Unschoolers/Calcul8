@@ -190,7 +190,6 @@ export function createInitialState(): AppState {
     lotHydrationRevision: 0,
     newLotName: "",
     renameLotName: "",
-    renameLotIsComplete: false,
     newLotType: "bulk",
     newLotCatalogSource: resolveDefaultSinglesCatalogSourceFromEnv(),
 

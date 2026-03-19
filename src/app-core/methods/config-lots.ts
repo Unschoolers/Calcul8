@@ -564,7 +564,6 @@ export const configLotMethods: ConfigMethodSubset<
     const newLot: Lot = {
       id: Date.now(),
       name,
-      isComplete: false,
       createdAt: todayDate,
       lotType: nextLotType,
       singlesCatalogSource: nextLotType === "singles" ? nextSinglesCatalogSource : undefined,
@@ -634,7 +633,6 @@ export const configLotMethods: ConfigMethodSubset<
     const lot = this.lots.find((p) => p.id === this.currentLotId);
     if (!lot) return;
     this.renameLotName = lot.name;
-    this.renameLotIsComplete = lot.isComplete === true;
     this.showRenameLotModal = true;
   },
 
@@ -662,32 +660,23 @@ export const configLotMethods: ConfigMethodSubset<
       return;
     }
 
-    const nextIsComplete = this.renameLotIsComplete === true;
     const nameChanged = lot.name !== nextName;
-    const completionChanged = (lot.isComplete === true) !== nextIsComplete;
 
-    if (!nameChanged && !completionChanged) {
+    if (!nameChanged) {
       this.showRenameLotModal = false;
       return;
     }
 
     lot.name = nextName;
-    lot.isComplete = nextIsComplete;
     this.saveLotsToStorage();
     this.showRenameLotModal = false;
     this.renameLotName = "";
-    this.renameLotIsComplete = nextIsComplete;
 
     if (this.currentTab === "portfolio") {
       void this.$nextTick(() => this.initPortfolioChart());
     }
 
-    this.notify(
-      nameChanged
-        ? "Lot renamed"
-        : (nextIsComplete ? "Lot marked complete" : "Lot marked incomplete"),
-      "success"
-    );
+    this.notify("Lot renamed", "success");
   },
 
   loadLot(): void {

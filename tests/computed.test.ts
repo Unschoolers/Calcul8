@@ -303,6 +303,36 @@ test("lot items mark fully sold lots complete by default", () => {
   assert.equal(lotItems[0]?.completionIcon, "mdi-check-circle");
 });
 
+test("lot items ignore legacy manual complete flags when sales do not support completion", () => {
+  const lots = [
+    {
+      id: 11,
+      name: "Legacy complete flag",
+      lotType: "bulk",
+      purchaseDate: "2026-02-01",
+      boxesPurchased: 1,
+      packsPerBox: 16,
+      sellingTaxPercent: 15,
+      currency: "CAD",
+      sellingCurrency: "CAD",
+      exchangeRate: 1,
+      isComplete: true
+    }
+  ];
+
+  const lotItems = appComputed.lotItems.call({
+    lots,
+    currentLotId: null,
+    sales: [],
+    loadSalesForLotId() {
+      return [];
+    }
+  } as unknown as Parameters<typeof appComputed.lotItems>[0]);
+
+  assert.equal(lotItems[0]?.isComplete, false);
+  assert.equal(lotItems[0]?.completionIcon, null);
+});
+
 test("single totals and basic sales aggregates are exposed via computed wrappers", () => {
   const singlesQuantity = appComputed.singlesPurchaseTotalQuantity.call({
     singlesPurchases: [

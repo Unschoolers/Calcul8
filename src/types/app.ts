@@ -294,7 +294,6 @@ export interface AppState extends LotSetup {
   lotHydrationRevision: number;
   newLotName: string;
   renameLotName: string;
-  renameLotIsComplete: boolean;
   newLotType: LotType;
   newLotCatalogSource: SinglesCatalogSource;
   lastFetchTime: number | null;
