@@ -64,7 +64,7 @@ function createTotals() {
 }
 
 function formatMetric(metric) {
-  return `${percentage(metric).toFixed(1)}% (${metric.covered}/${metric.total})`;
+  return `${percentage(metric).toFixed(1)}%  ${metric.covered}/${metric.total}`;
 }
 
 function pad(value, width, align = "start") {
@@ -87,24 +87,27 @@ function truncateMiddle(value, maxWidth) {
 function printSection(title) {
   console.log("");
   console.log(title);
-  console.log("-".repeat(title.length));
 }
 
-function printTable(headers, rows, aligns = []) {
+function printGridTable(headers, rows, aligns = []) {
   const widths = headers.map((header, index) => {
     const rowWidths = rows.map((row) => String(row[index] ?? "").length);
     return Math.max(String(header).length, ...rowWidths);
   });
 
-  const formatRow = (row) => row
+  const formatRow = (row) => `| ${row
     .map((cell, index) => pad(cell, widths[index], aligns[index] ?? "start"))
-    .join("  ");
+    .join(" | ")} |`;
 
+  const divider = `+-${widths.map((width) => "-".repeat(width)).join("-+-")}-+`;
+
+  console.log(divider);
   console.log(formatRow(headers));
-  console.log(widths.map((width) => "-".repeat(width)).join("  "));
+  console.log(divider);
   for (const row of rows) {
     console.log(formatRow(row));
   }
+  console.log(divider);
 }
 
 const combinedRows = new Map();
@@ -173,20 +176,20 @@ console.log(
 );
 
 printSection("Top 15 Files By Uncovered Lines");
-printTable(
+printGridTable(
   ["#", "File", "Lines", "Branches", "Functions"],
   top.map((row, index) => ([
     String(index + 1),
-    truncateMiddle(row.file, 54),
-    `${row.linesPct.toFixed(1)}% / ${row.linesUncovered} uncov`,
-    `${row.branchesPct.toFixed(1)}% / ${row.branchesUncovered} uncov`,
-    `${row.functionsPct.toFixed(1)}% / ${row.functionsUncovered} uncov`
+    truncateMiddle(row.file, 56),
+    `${row.linesUncovered} uncov (${row.linesPct.toFixed(1)}%)`,
+    `${row.branchesUncovered} uncov (${row.branchesPct.toFixed(1)}%)`,
+    `${row.functionsUncovered} uncov (${row.functionsPct.toFixed(1)}%)`
   ])),
   ["end", "start", "end", "end", "end"]
 );
 
 printSection("Coverage Totals");
-printTable(
+printGridTable(
   ["Scope", "Statements", "Branches", "Functions", "Lines"],
   [
     [
