@@ -38,6 +38,27 @@ Defaults:
 - health endpoint: `http://localhost:8080/healthz`
 - internal publish endpoint: `POST http://localhost:8080/internal/publish`
 
+## One-command Azure bootstrap
+
+From the repo root:
+
+```bash
+npm run realtime:bootstrap
+```
+
+That script will:
+
+1. build the realtime TypeScript app
+2. build the Docker image
+3. push the image to `calcul8teregistry`
+4. create `whatfees-prod-env` if needed
+5. create or update `whatfees-realtime`
+
+It prompts for:
+
+- `REALTIME_INTERNAL_API_KEY`
+- optional `REALTIME_TOKEN_SECRET`
+
 ## Environment variables
 
 - `PORT`

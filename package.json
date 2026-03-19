@@ -29,7 +29,8 @@
     "api:start": "npm --prefix apps/api run start:build",
     "realtime:install": "npm --prefix apps/realtime install",
     "realtime:build": "npm --prefix apps/realtime run build",
-    "realtime:start": "npm --prefix apps/realtime run start:dev"
+    "realtime:start": "npm --prefix apps/realtime run start:dev",
+    "realtime:bootstrap": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/bootstrap-realtime.ps1"
   },
   "repository": {
     "type": "git",
