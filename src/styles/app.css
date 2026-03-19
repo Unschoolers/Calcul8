@@ -1205,16 +1205,27 @@
       .lot-selector-meta {
         justify-content: flex-end;
         align-items: center;
-        gap: 0.4rem;
+        gap: 0.25rem;
         min-height: 100%;
       }
       .lot-selector-actions {
         margin-left: 0;
-        gap: 0.35rem;
+        gap: 0.25rem;
       }
       .lot-selector-actions .v-btn {
-        width: 36px !important;
-        height: 36px !important;
+        width: 34px !important;
+        height: 34px !important;
+        min-width: 34px !important;
+        min-height: 34px !important;
+        max-width: 34px !important;
+        max-height: 34px !important;
+        padding: 0 !important;
+        flex: 0 0 34px;
+        aspect-ratio: 1 / 1;
+        border-radius: 999px !important;
+      }
+      .lot-selector-actions .v-btn .v-icon {
+        font-size: 1rem !important;
       }
       .lot-selector-selection__title {
         font-size: 0.92rem;

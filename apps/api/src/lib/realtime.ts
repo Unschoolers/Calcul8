@@ -1,3 +1,4 @@
+import { createHmac } from "node:crypto";
 import type { InvocationContext } from "@azure/functions";
 import type { ApiConfig } from "../types";
 
@@ -6,8 +7,28 @@ const REALTIME_PUBLISH_TIMEOUT_MS = 5_000;
 
 type RealtimeLogger = Pick<InvocationContext, "warn">;
 
+type SignedSubscribeTokenPayload = {
+  rooms: string[];
+  exp?: number;
+};
+
 export function buildWorkspaceLotRealtimeRoom(workspaceId: string, lotId: string): string {
   return `workspace:${workspaceId}:lot:${lotId}`;
+}
+
+export function signRealtimeSubscribeToken(
+  secret: string,
+  payload: SignedSubscribeTokenPayload
+): string {
+  const normalizedPayload: SignedSubscribeTokenPayload = {
+    rooms: Array.isArray(payload.rooms) ? payload.rooms.map((room) => String(room || "").trim()).filter(Boolean) : [],
+    exp: Number.isFinite(Number(payload.exp)) ? Math.floor(Number(payload.exp)) : undefined
+  };
+  const encodedPayload = Buffer.from(JSON.stringify(normalizedPayload), "utf8").toString("base64url");
+  const signature = createHmac("sha256", secret)
+    .update(encodedPayload)
+    .digest("base64url");
+  return `${encodedPayload}.${signature}`;
 }
 
 function resolveRealtimePublishUrl(config: ApiConfig): string {

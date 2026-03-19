@@ -32,6 +32,12 @@ type LivePricingResponse = {
   livePricing?: unknown;
 };
 
+type RealtimeTokenResponse = {
+  room?: unknown;
+  token?: unknown;
+  expiresAt?: unknown;
+};
+
 export type LotLivePricingRecord = {
   livePackPrice: number;
   liveBoxPriceSell: number;
@@ -40,6 +46,12 @@ export type LotLivePricingRecord = {
   updatedAt?: string;
   updatedBy?: string;
   mutationId?: string;
+};
+
+export type WorkspaceRealtimeSubscribeToken = {
+  room: string;
+  token: string | null;
+  expiresAt: number | null;
 };
 
 function isSignedInForEntityApis(): boolean {
@@ -286,6 +298,34 @@ export async function fetchAuthoritativeLivePricing(
   ) as LivePricingResponse | null;
 
   return normalizeLivePricing(body?.livePricing);
+}
+
+export async function fetchWorkspaceRealtimeSubscribeToken(
+  app: SalesLiveApiApp,
+  lotId: number
+): Promise<WorkspaceRealtimeSubscribeToken | null> {
+  if (!canUseAuthoritativeSalesLiveApi()) return null;
+  if (app.activeScopeType !== "workspace" || !app.activeWorkspaceId) return null;
+
+  const body = await requestJson(
+    app,
+    `/lots/${encodeURIComponent(String(lotId))}/realtime-token${getScopeQuery(app)}`,
+    {
+      method: "GET"
+    },
+    "Failed to create realtime subscribe token."
+  ) as RealtimeTokenResponse | null;
+
+  const room = String(body?.room ?? "").trim();
+  if (!room) return null;
+
+  const rawToken = String(body?.token ?? "").trim();
+  const expiresAt = Number(body?.expiresAt);
+  return {
+    room,
+    token: rawToken || null,
+    expiresAt: Number.isFinite(expiresAt) ? Math.floor(expiresAt) : null
+  };
 }
 
 export async function saveAuthoritativeLivePricing(

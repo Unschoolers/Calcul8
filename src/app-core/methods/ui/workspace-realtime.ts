@@ -3,6 +3,7 @@ import type { AppContext } from "../../context.ts";
 import {
   cacheAuthoritativeSales,
   canUseAuthoritativeSalesLiveApi,
+  fetchWorkspaceRealtimeSubscribeToken,
   normalizeLivePricing,
   normalizeSale
 } from "../sales-live-api.ts";
@@ -29,6 +30,7 @@ type RealtimeSocketState = {
   reconnectTimeoutId: number | null;
   url: string | null;
   isIntentionalClose: boolean;
+  subscribeAttemptId: number;
 };
 
 type RealtimeEnvelope =
@@ -50,7 +52,8 @@ function getRealtimeSocketState(app: object): RealtimeSocketState {
       room: null,
       reconnectTimeoutId: null,
       url: null,
-      isIntentionalClose: false
+      isIntentionalClose: false,
+      subscribeAttemptId: 0
     };
     realtimeSocketStateByApp.set(app, state);
   }
@@ -206,16 +209,39 @@ export function refreshWorkspaceRealtime(app: RealtimeApp): void {
   state.isIntentionalClose = false;
   state.room = desiredRoom;
   state.url = nextUrl;
+  state.subscribeAttemptId += 1;
+  const subscribeAttemptId = state.subscribeAttemptId;
 
   const socket = new WebSocket(nextUrl);
   state.socket = socket;
 
   socket.addEventListener("open", () => {
-    if (state.socket !== socket || !state.room) return;
-    socket.send(JSON.stringify({
-      type: "subscribe",
-      rooms: [state.room]
-    }));
+    void (async () => {
+      if (state.socket !== socket || !state.room || !app.currentLotId) return;
+
+      try {
+        const subscribeToken = await fetchWorkspaceRealtimeSubscribeToken(app as never, app.currentLotId);
+        if (
+          state.socket !== socket
+          || state.subscribeAttemptId !== subscribeAttemptId
+          || socket.readyState !== WebSocket.OPEN
+          || !state.room
+        ) {
+          return;
+        }
+
+        const nextRoom = subscribeToken?.room || state.room;
+        socket.send(JSON.stringify({
+          type: "subscribe",
+          rooms: [nextRoom],
+          ...(subscribeToken?.token ? { token: subscribeToken.token } : {})
+        }));
+      } catch {
+        if (state.socket === socket && socket.readyState === WebSocket.OPEN) {
+          socket.close(1011, "realtime-subscribe-failed");
+        }
+      }
+    })();
   });
 
   socket.addEventListener("message", (event) => {

@@ -34,6 +34,7 @@ import {
   deleteAuthoritativeSale,
   fetchAuthoritativeLivePricing,
   fetchAuthoritativeSales,
+  fetchWorkspaceRealtimeSubscribeToken,
   saveAuthoritativeLivePricing,
   saveAuthoritativeSale
 } from "../src/app-core/methods/sales-live-api.ts";
@@ -418,6 +419,34 @@ test("fetchAuthoritativeLivePricing normalizes payload and saveAuthoritativeLive
   assert.equal(parsedBody.workspaceId, "beta");
   assert.equal(parsedBody.baseVersion, 4);
   assert.match(parsedBody.mutationId, /^live-pricing:/);
+});
+
+test("fetchWorkspaceRealtimeSubscribeToken requests a workspace-scoped token", async () => {
+  fetchWithRetryMock.mockResolvedValueOnce(new Response(JSON.stringify({
+    room: "workspace:beta:lot:6",
+    token: "signed-token",
+    expiresAt: 1760000000
+  }), {
+    status: 200,
+    headers: {
+      "Content-Type": "application/json"
+    }
+  }));
+
+  const tokenPayload = await fetchWorkspaceRealtimeSubscribeToken(createApp({
+    activeScopeType: "workspace",
+    activeWorkspaceId: "beta"
+  }), 6);
+
+  assert.deepEqual(tokenPayload, {
+    room: "workspace:beta:lot:6",
+    token: "signed-token",
+    expiresAt: 1760000000
+  });
+  assert.equal(
+    fetchWithRetryMock.mock.calls[0]?.[0],
+    "https://api.example.test/lots/6/realtime-token?workspaceId=beta"
+  );
 });
 
 test("saveAuthoritativeLivePricing rejects invalid response payloads", async () => {

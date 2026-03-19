@@ -59,6 +59,7 @@ export function getConfig(): ApiConfig {
     migrationsAdminKey: readEnv("MIGRATIONS_ADMIN_KEY"),
     realtimePublishUrl: readEnv("REALTIME_PUBLISH_URL"),
     realtimeInternalApiKey: readEnv("REALTIME_INTERNAL_API_KEY"),
+    realtimeTokenSecret: readEnv("REALTIME_TOKEN_SECRET"),
     stripeSecretKey: readEnv("STRIPE_SECRET_KEY"),
     stripeWebhookSecret: readEnv("STRIPE_WEBHOOK_SECRET"),
     stripeOneTimePriceId: readEnv("STRIPE_ONE_TIME_PRICE_ID"),

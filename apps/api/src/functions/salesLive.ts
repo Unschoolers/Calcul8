@@ -11,7 +11,11 @@ import {
 import { hasWorkspaceMembership } from "../lib/cosmos/workspaceRepository";
 import { getConfig } from "../lib/config";
 import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../lib/http";
-import { publishWorkspaceLotRealtimeEvent } from "../lib/realtime";
+import {
+  buildWorkspaceLotRealtimeRoom,
+  publishWorkspaceLotRealtimeEvent,
+  signRealtimeSubscribeToken
+} from "../lib/realtime";
 import { parseOptionalWorkspaceId } from "../lib/syncScope";
 import { assertSyncScopeAccess, resolveSyncScope } from "../lib/syncScopeResolution";
 import { logApiTelemetry } from "../lib/telemetry";
@@ -72,6 +76,10 @@ function parseWorkspaceIdFromRequest(request: HttpRequest, rawBody: unknown): st
 
 function getWorkspaceScope(workspaceId?: string): "personal" | "workspace" {
   return workspaceId ? "workspace" : "personal";
+}
+
+function buildRealtimeTokenExpiryEpochSeconds(ttlSeconds = 60): number {
+  return Math.floor(Date.now() / 1000) + ttlSeconds;
 }
 
 async function readJsonBody(request: HttpRequest): Promise<unknown | null> {
@@ -528,6 +536,63 @@ export async function lotLivePricingSave(
   }
 }
 
+export async function lotRealtimeTokenGet(
+  request: HttpRequest,
+  context: InvocationContext
+): Promise<HttpResponseInit> {
+  const config = getConfig();
+  const workspaceId = parseWorkspaceIdFromRequest(request, null);
+  const guardResponse = maybeHandleHttpGuards(request, config);
+  if (guardResponse) return guardResponse;
+
+  try {
+    if (!workspaceId) {
+      throw new HttpError(400, "Query param 'workspaceId' is required.");
+    }
+
+    const actorUserId = await resolveUserId(request, config, {
+      telemetry: {
+        logger: context,
+        route: "lot_realtime_token_get",
+        workspaceScope: "workspace"
+      }
+    });
+    const syncScope = resolveSyncScope(actorUserId, workspaceId);
+    await assertSyncScopeAccess(
+      syncScope,
+      (userId, nextWorkspaceId) => hasWorkspaceMembership(config, userId, nextWorkspaceId)
+    );
+
+    const lotId = parseLotIdFromParams(request);
+    const room = buildWorkspaceLotRealtimeRoom(workspaceId, lotId);
+    const tokenSecret = String(config.realtimeTokenSecret ?? "").trim();
+    if (!tokenSecret && config.apiEnv === "prod") {
+      throw new HttpError(503, "Realtime subscribe signing is not configured.");
+    }
+    const expiresAt = buildRealtimeTokenExpiryEpochSeconds();
+
+    return jsonResponse(request, config, 200, {
+      lotId,
+      workspaceId,
+      room,
+      token: tokenSecret ? signRealtimeSubscribeToken(tokenSecret, {
+        rooms: [room],
+        exp: expiresAt
+      }) : null,
+      expiresAt
+    });
+  } catch (error) {
+    return handleEntityError(
+      request,
+      context,
+      error,
+      "Failed to mint realtime subscribe token.",
+      "lot_realtime_token_get",
+      workspaceId
+    );
+  }
+}
+
 async function lotLivePricingRoute(
   request: HttpRequest,
   context: InvocationContext
@@ -562,4 +627,11 @@ app.http("lotLivePricingRoute", {
   authLevel: "anonymous",
   route: "lots/{lotId}/live-pricing",
   handler: lotLivePricingRoute
+});
+
+app.http("lotRealtimeTokenRoute", {
+  methods: ["GET", "OPTIONS"],
+  authLevel: "anonymous",
+  route: "lots/{lotId}/realtime-token",
+  handler: lotRealtimeTokenGet
 });

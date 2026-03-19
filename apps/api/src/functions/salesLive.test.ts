@@ -48,6 +48,7 @@ vi.mock("../lib/cosmos/workspaceRepository", () => ({
 import {
   lotLivePricingGet,
   lotLivePricingSave,
+  lotRealtimeTokenGet,
   lotSalesDelete,
   lotSalesList,
   lotSalesUpsert
@@ -268,4 +269,34 @@ test("lotLivePricingSave emits route telemetry for stale live pricing conflicts"
   assert.equal(context.warn.mock.calls[0]?.[1]?.route, "lot_live_pricing_save");
   assert.equal(context.warn.mock.calls[0]?.[1]?.workspace_scope, "workspace");
   assert.equal(context.warn.mock.calls[0]?.[1]?.outcome, "http_409");
+});
+
+test("lotRealtimeTokenGet returns a signed room token for workspace lots", async () => {
+  getConfigMock.mockReturnValue({
+    ...createConfig(),
+    realtimeTokenSecret: "token-secret"
+  });
+
+  const response = await lotRealtimeTokenGet(
+    createRequest("GET", undefined, { lotId: "1773766061603" }, "workspaceId=ws_dcb4d6f021637411") as never,
+    createContext() as never
+  );
+
+  assert.equal(response.status, 200);
+  const body = response.jsonBody as {
+    room: string;
+    token: string;
+    expiresAt: number;
+  };
+  assert.equal(body.room, "workspace:ws_dcb4d6f021637411:lot:1773766061603");
+  assert.match(body.token, /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
+  assert.equal(typeof body.expiresAt, "number");
+
+  const [encodedPayload] = body.token.split(".");
+  const decodedPayload = JSON.parse(Buffer.from(encodedPayload, "base64url").toString("utf8")) as {
+    rooms: string[];
+    exp?: number;
+  };
+  assert.deepEqual(decodedPayload.rooms, [body.room]);
+  assert.equal(decodedPayload.exp, body.expiresAt);
 });

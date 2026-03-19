@@ -6,6 +6,7 @@ export interface ApiConfig {
   migrationsAdminKey: string;
   realtimePublishUrl?: string;
   realtimeInternalApiKey?: string;
+  realtimeTokenSecret?: string;
   stripeSecretKey?: string;
   stripeWebhookSecret?: string;
   stripeOneTimePriceId?: string;
