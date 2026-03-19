@@ -1,4 +1,4 @@
-import type { LotType } from "../../types/app.ts";
+﻿import type { LotType } from "../../types/app.ts";
 import { inferDateFromLotId, toDateOnly } from "../methods/config-shared.ts";
 
 export type LotOptionItem = {
@@ -19,6 +19,7 @@ type LotLike = {
   createdAt?: string;
   isComplete?: boolean;
   lotType?: LotType;
+  singlesCatalogSource?: string;
 };
 
 function normalizeLotType(lotType: LotType | undefined): LotType {
@@ -31,6 +32,12 @@ function getLotTypeGroupLabel(lotType: LotType): string {
 
 function getLotSymbolIcon(lotType: LotType): string {
   return lotType === "singles" ? "mdi-cards-outline" : "mdi-cube-outline";
+}
+function getSinglesCatalogLabel(source: string | undefined): string | null {
+  if (source === "pokemon") return "Pokemon";
+  if (source === "none") return "Custom";
+  if (source === "ua") return "UA";
+  return null;
 }
 
 function sortLotOptionItemsByType(items: Array<Omit<LotOptionItem, "groupLabel"> | LotOptionItem>) {
@@ -45,7 +52,15 @@ export function formatLotOptionSubtitle(lot: LotLike): string {
     toDateOnly(lot.createdAt) ??
     inferDateFromLotId(lot.id);
   const lotTypeLabel = normalizeLotType(lot.lotType) === "singles" ? "Singles" : "Bulk";
-  return purchaseDate ? `${lotTypeLabel} • ${purchaseDate}` : lotTypeLabel;
+  const singlesCatalogLabel = normalizeLotType(lot.lotType) === "singles"
+    ? getSinglesCatalogLabel(lot.singlesCatalogSource)
+    : null;
+  const subtitleParts = [
+    lotTypeLabel,
+    ...(singlesCatalogLabel ? [singlesCatalogLabel] : []),
+    ...(purchaseDate ? [purchaseDate] : [])
+  ];
+  return subtitleParts.join(" | ");
 }
 
 export function attachLotOptionGroupLabels(items: Array<Omit<LotOptionItem, "groupLabel"> | LotOptionItem>): LotOptionItem[] {
@@ -97,3 +112,7 @@ export function filterLotOptionItems(items: LotOptionItem[], query: string | nul
     })
   );
 }
+
+
+
+

@@ -1,4 +1,4 @@
-import assert from "node:assert/strict";
+﻿import assert from "node:assert/strict";
 import { test } from "vitest";
 import { appComputed } from "../src/app-core/computed.ts";
 import { GOOGLE_PROFILE_CACHE_KEY, GOOGLE_TOKEN_KEY } from "../src/app-core/methods/ui/shared.ts";
@@ -187,7 +187,7 @@ test("lot type/source and selection helpers normalize data for singles", () => {
 test("list and portfolio filter item computed values mirror lots", () => {
   const lots = [
     { id: 11, name: "A", lotType: "bulk", purchaseDate: "2026-02-01" },
-    { id: 22, name: "B", lotType: "singles", purchaseDate: "2026-03-01" }
+    { id: 22, name: "B", lotType: "singles", singlesCatalogSource: "pokemon", purchaseDate: "2026-03-01" }
   ];
 
   const lotItems = appComputed.lotItems.call({
@@ -197,7 +197,7 @@ test("list and portfolio filter item computed values mirror lots", () => {
   assert.deepEqual(lotItems[0], {
     title: "A",
     value: 11,
-    subtitle: "Bulk • 2026-02-01",
+    subtitle: "Bulk | 2026-02-01",
     lotType: "bulk",
     isComplete: false,
     symbolIcon: "mdi-cube-outline",
@@ -207,7 +207,7 @@ test("list and portfolio filter item computed values mirror lots", () => {
   assert.deepEqual(lotItems[1], {
     title: "B",
     value: 22,
-    subtitle: "Singles • 2026-03-01",
+    subtitle: "Singles | Pokemon | 2026-03-01",
     lotType: "singles",
     isComplete: false,
     symbolIcon: "mdi-cards-outline",
@@ -217,9 +217,9 @@ test("list and portfolio filter item computed values mirror lots", () => {
 
   const visibleLotItems = appComputed.visibleLotItems.call({
     lotItems: [
-      { title: "Alpha bulk", value: 11, subtitle: "Bulk • 2026-02-01", lotType: "bulk", isComplete: false, symbolIcon: "mdi-cube-outline", completionIcon: null, groupLabel: "Bulk lots" },
-      { title: "Union arena singles", value: 22, subtitle: "Singles • 2026-03-01", lotType: "singles", isComplete: false, symbolIcon: "mdi-cards-outline", completionIcon: null, groupLabel: "Singles lots" },
-      { title: "Kagurabachi", value: 33, subtitle: "Bulk • 2026-03-03", lotType: "bulk", isComplete: false, symbolIcon: "mdi-cube-outline", completionIcon: null, groupLabel: null }
+      { title: "Alpha bulk", value: 11, subtitle: "Bulk | 2026-02-01", lotType: "bulk", isComplete: false, symbolIcon: "mdi-cube-outline", completionIcon: null, groupLabel: "Bulk lots" },
+      { title: "Union arena singles", value: 22, subtitle: "Singles | Pokemon | 2026-03-01", lotType: "singles", isComplete: false, symbolIcon: "mdi-cards-outline", completionIcon: null, groupLabel: "Singles lots" },
+      { title: "Kagurabachi", value: 33, subtitle: "Bulk | 2026-03-03", lotType: "bulk", isComplete: false, symbolIcon: "mdi-cube-outline", completionIcon: null, groupLabel: null }
     ],
     lotSearchQuery: "a"
   } as unknown as Parameters<typeof appComputed.visibleLotItems>[0]);
@@ -237,7 +237,7 @@ test("list and portfolio filter item computed values mirror lots", () => {
     {
       title: "A",
       value: 11,
-      subtitle: "Bulk • 2026-02-01",
+      subtitle: "Bulk | 2026-02-01",
       lotType: "bulk",
       isComplete: false,
       symbolIcon: "mdi-cube-outline",
@@ -247,7 +247,7 @@ test("list and portfolio filter item computed values mirror lots", () => {
     {
       title: "B",
       value: 22,
-      subtitle: "Singles • 2026-03-01",
+      subtitle: "Singles | Pokemon | 2026-03-01",
       lotType: "singles",
       isComplete: false,
       symbolIcon: "mdi-cards-outline",
@@ -264,7 +264,7 @@ test("list and portfolio filter item computed values mirror lots", () => {
     {
       title: "B",
       value: 22,
-      subtitle: "Singles • 2026-03-01",
+      subtitle: "Singles | Pokemon | 2026-03-01",
       lotType: "singles",
       isComplete: false,
       symbolIcon: "mdi-cards-outline",
@@ -590,6 +590,15 @@ test("portfolio summary wrappers return expected totals and presence flags", () 
   } as unknown as Parameters<typeof appComputed.hasPortfolioData>[0]);
   assert.equal(noData, false);
 });
+
+
+
+
+
+
+
+
+
 
 
 
