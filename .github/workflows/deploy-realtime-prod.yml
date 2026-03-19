@@ -112,7 +112,7 @@ jobs:
         uses: azure/container-apps-deploy-action@v2
         with:
           appSourcePath: ${{ github.workspace }}/apps/realtime
-          dockerfilePath: ${{ github.workspace }}/apps/realtime/Dockerfile
+          dockerfilePath: Dockerfile
           acrName: ${{ env.AZURE_CONTAINER_REGISTRY_NAME_PROD }}
           containerAppName: ${{ vars.AZURE_CONTAINER_APP_NAME_REALTIME_PROD }}
           containerAppEnvironment: ${{ vars.AZURE_CONTAINER_APP_ENVIRONMENT_PROD }}
