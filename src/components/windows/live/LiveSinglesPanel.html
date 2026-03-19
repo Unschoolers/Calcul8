@@ -281,14 +281,33 @@
 
       <v-card elevation="0" rounded="lg" class="live-singles-summary-card mt-3">
         <v-card-text class="py-2 px-3">
-          <div v-if="liveSinglesPricingMode === 'individual'" class="text-caption text-medium-emphasis">
-            {{ liveSinglesSelectedCount }} items · Total ${{ fmtCurrency(liveSinglesIndividualTotalPrice, 2) }} ·
-            Profit {{ liveSinglesIndividualTotalProfit >= 0 ? '+' : '' }}${{ fmtCurrency(liveSinglesIndividualTotalProfit, 2) }}
-            ({{ fmtCurrency(liveSinglesIndividualTotalProfitPercent, 1) }}%)
+          <div v-if="liveSinglesPricingMode === 'individual'" class="live-singles-summary-copy text-caption text-medium-emphasis">
+            <div class="live-singles-summary-line">
+              <span class="live-singles-summary-pill">{{ liveSinglesSelectedCount }} items</span>
+              <span class="live-singles-summary-pill">Total ${{ fmtCurrency(liveSinglesIndividualTotalPrice, 2) }}</span>
+              <span class="live-singles-summary-pill">Profit {{ liveSinglesIndividualTotalProfit >= 0 ? '+' : '' }}${{ fmtCurrency(liveSinglesIndividualTotalProfit, 2) }}</span>
+            </div>
+            <div class="live-singles-summary-subline">
+              {{ fmtCurrency(liveSinglesIndividualTotalProfitPercent, 1) }}% estimated margin
+            </div>
           </div>
-          <div v-else class="text-caption text-medium-emphasis">
-            {{ liveSinglesSelectedCount }} items · Bundle ${{ fmtCurrency(liveSinglesEffectiveBundlePrice, 2) }} ·
-            Profit {{ liveSinglesBundleProfit >= 0 ? '+' : '' }}${{ fmtCurrency(liveSinglesBundleProfit, 2) }}
+          <div v-else class="live-singles-summary-copy text-caption text-medium-emphasis">
+            <div class="live-singles-summary-line">
+              <span class="live-singles-summary-pill">{{ liveSinglesSelectedCount }} items</span>
+              <span class="live-singles-summary-pill">Bundle ${{ fmtCurrency(liveSinglesEffectiveBundlePrice, 2) }}</span>
+              <span class="live-singles-summary-pill">Profit {{ liveSinglesBundleProfit >= 0 ? '+' : '' }}${{ fmtCurrency(liveSinglesBundleProfit, 2) }}</span>
+            </div>
+          </div>
+          <div class="live-singles-summary-actions">
+            <v-btn
+              color="secondary"
+              variant="tonal"
+              prepend-icon="mdi-cart-arrow-right"
+              class="live-singles-convert-btn"
+              @click="convertLiveSinglesToSale"
+            >
+              Convert to Sale
+            </v-btn>
           </div>
         </v-card-text>
       </v-card>

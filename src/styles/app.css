@@ -216,6 +216,44 @@
     .app-shell .tabs-window {
       min-height: 100%;
     }
+    .app-empty-state-alert {
+      display: flex;
+      align-items: center;
+      min-height: 0 !important;
+      padding: 0.8rem 0.95rem !important;
+      border: 1px solid rgba(var(--v-theme-warning), 0.18);
+      border-radius: 18px !important;
+      background:
+        linear-gradient(135deg, rgba(var(--v-theme-warning), 0.14), rgba(var(--v-theme-warning), 0.06)) !important;
+      color: rgba(var(--v-theme-on-surface), 0.9) !important;
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+    }
+    .app-empty-state-alert .v-alert__content {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.35rem 0.5rem;
+      line-height: 1.35;
+      font-size: 0.96rem;
+    }
+    .app-empty-state-alert .v-alert__prepend {
+      align-self: center;
+      padding-top: 0 !important;
+      margin-inline-end: 0.7rem !important;
+    }
+    .app-empty-state-alert__label {
+      font-weight: 800;
+      color: rgb(var(--v-theme-warning));
+    }
+    @media (max-width: 600px) {
+      .app-empty-state-alert {
+        padding: 0.72rem 0.82rem !important;
+        border-radius: 16px !important;
+      }
+      .app-empty-state-alert .v-alert__content {
+        font-size: 0.9rem;
+      }
+    }
     .auth-gate-shell {
       min-height: 100dvh;
       display: flex;
@@ -1101,8 +1139,23 @@
       line-height: 1.25;
     }
     .sale-editor-singles-total-main {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
       font-weight: 600;
       letter-spacing: 0.01em;
+    }
+    .sale-editor-singles-total-pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 1.65rem;
+      padding: 0.14rem 0.5rem;
+      border-radius: 999px;
+      border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+      background: rgba(var(--v-theme-on-surface), 0.045);
+    }
+    .sale-editor-singles-total-pill--muted {
+      opacity: 0.9;
     }
     .sale-editor-singles-total-sub {
       margin-top: 0.12rem;

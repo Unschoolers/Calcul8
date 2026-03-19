@@ -63,6 +63,8 @@ export const pwaMethods: ThisType<AppContext> & Pick<
   | "registerServiceWorker"
 > = {
   setupPwaUiHandlers(): void {
+    if (this.hasPwaUiHandlersBound) return;
+
     this.onlineListener = () => {
       this.isOffline = false;
       this.notify("Back online", "success");
@@ -89,6 +91,7 @@ export const pwaMethods: ThisType<AppContext> & Pick<
     window.addEventListener("offline", this.offlineListener);
     window.addEventListener("beforeinstallprompt", this.beforeInstallPromptListener);
     window.addEventListener("appinstalled", this.appInstalledListener);
+    this.hasPwaUiHandlersBound = true;
 
     if (this.isOffline) {
       this.startOfflineReconnectScheduler();
@@ -163,7 +166,9 @@ export const pwaMethods: ThisType<AppContext> & Pick<
 
   registerServiceWorker(): void {
     if (!("serviceWorker" in navigator)) return;
-    window.addEventListener("load", async () => {
+    if (this.hasRegisteredServiceWorkerLifecycle) return;
+
+    const runRegistration = async () => {
       let refreshing = false;
 
       try {
@@ -204,22 +209,41 @@ export const pwaMethods: ThisType<AppContext> & Pick<
           });
         });
 
-        navigator.serviceWorker.addEventListener("controllerchange", () => {
+        if (this.serviceWorkerControllerChangeListener) {
+          navigator.serviceWorker.removeEventListener("controllerchange", this.serviceWorkerControllerChangeListener);
+        }
+        this.serviceWorkerControllerChangeListener = () => {
           if (refreshing || !this.isApplyingAppUpdate) return;
           refreshing = true;
           this.isApplyingAppUpdate = false;
           this.appUpdateWorker = null;
           clearDismissedAppUpdate();
           window.location.reload();
-        });
+        };
+        navigator.serviceWorker.addEventListener("controllerchange", this.serviceWorkerControllerChangeListener);
 
         await registration.update();
-        window.setInterval(() => {
+        if (this.serviceWorkerUpdateIntervalId != null) {
+          window.clearInterval(this.serviceWorkerUpdateIntervalId);
+        }
+        this.serviceWorkerUpdateIntervalId = window.setInterval(() => {
           registration.update().catch(() => {});
         }, 60 * 1000);
       } catch (error) {
         console.warn("Service worker registration failed:", error);
       }
-    });
+    };
+
+    this.hasRegisteredServiceWorkerLifecycle = true;
+    if (document.readyState === "complete") {
+      void runRegistration();
+      return;
+    }
+
+    this.serviceWorkerLoadListener = () => {
+      this.serviceWorkerLoadListener = null;
+      void runRegistration();
+    };
+    window.addEventListener("load", this.serviceWorkerLoadListener, { once: true });
   }
 };

@@ -338,7 +338,15 @@ export const singlesComputed: Pick<
     const linePreviewSource = Array.isArray(this.saleEditorLineProfitPreviews)
       ? this.saleEditorLineProfitPreviews
       : getSaleEditorLineProfitPreviews(this);
-    return calculateSinglesSaleProfitPreview(linePreviewSource || []);
+    const preview = calculateSinglesSaleProfitPreview(linePreviewSource || []);
+    if (!preview) return null;
+
+    const normalizedLines = getSaleEditorNormalizedLines(this.newSale);
+    const totalPrice = normalizedLines.reduce((sum, line) => sum + Math.max(0, Number(line.price) || 0), 0);
+    return {
+      ...preview,
+      totalPrice
+    };
   }
 };
 

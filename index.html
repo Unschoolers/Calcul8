@@ -413,7 +413,15 @@
             </v-card-text>
           </v-card>
 
-          <v-alert v-if="!hasLotSelected" type="warning" variant="tonal" class="mb-4">
+          <v-alert
+            v-if="!hasLotSelected"
+            type="warning"
+            variant="tonal"
+            density="compact"
+            icon="mdi-information-outline"
+            class="app-empty-state-alert mb-4"
+          >
+            <span class="app-empty-state-alert__label">No lot selected.</span>
             Create or select a lot to use Live pricing and Sales tracking.
           </v-alert>
 
@@ -1257,8 +1265,9 @@
                     :class="saleEditorProfitPreview.colorClass"
                   >
                     <div class="sale-editor-singles-total-main">
-                      Total Profit {{ saleEditorProfitPreview.sign }}${{ formatCurrency(Math.abs(saleEditorProfitPreview.value)) }}
-                      ({{ saleEditorProfitPreview.sign }}{{ formatCurrency(Math.abs(saleEditorProfitPreview.percent), 1) }}% vs {{ saleEditorProfitPreview.basisLabel }} ${{ formatCurrency(saleEditorProfitPreview.basisValue) }})
+                      <span class="sale-editor-singles-total-pill">Total ${{ formatCurrency(saleEditorProfitPreview.totalPrice) }}</span>
+                      <span class="sale-editor-singles-total-pill">Profit {{ saleEditorProfitPreview.sign }}${{ formatCurrency(Math.abs(saleEditorProfitPreview.value)) }}</span>
+                      <span class="sale-editor-singles-total-pill sale-editor-singles-total-pill--muted">{{ saleEditorProfitPreview.sign }}{{ formatCurrency(Math.abs(saleEditorProfitPreview.percent), 1) }}% vs {{ saleEditorProfitPreview.basisLabel }} ${{ formatCurrency(saleEditorProfitPreview.basisValue) }}</span>
                     </div>
                     <div
                       v-if="(saleEditorProfitPreview.quantity || 0) > 1 && saleEditorProfitPreview.unitValue != null"

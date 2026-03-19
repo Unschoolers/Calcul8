@@ -143,9 +143,23 @@ export const appLifecycle: AppLifecycleObject = {
       window.clearTimeout(this.syncStatusResetTimeoutId);
       this.syncStatusResetTimeoutId = null;
     }
+    if (this.serviceWorkerUpdateIntervalId != null) {
+      window.clearInterval(this.serviceWorkerUpdateIntervalId);
+      this.serviceWorkerUpdateIntervalId = null;
+    }
     if (this.onlineListener) window.removeEventListener("online", this.onlineListener);
     if (this.offlineListener) window.removeEventListener("offline", this.offlineListener);
     if (this.beforeInstallPromptListener) window.removeEventListener("beforeinstallprompt", this.beforeInstallPromptListener);
     if (this.appInstalledListener) window.removeEventListener("appinstalled", this.appInstalledListener);
+    if (this.serviceWorkerLoadListener) {
+      window.removeEventListener("load", this.serviceWorkerLoadListener);
+      this.serviceWorkerLoadListener = null;
+    }
+    if ("serviceWorker" in navigator && this.serviceWorkerControllerChangeListener) {
+      navigator.serviceWorker.removeEventListener("controllerchange", this.serviceWorkerControllerChangeListener);
+      this.serviceWorkerControllerChangeListener = null;
+    }
+    this.hasPwaUiHandlersBound = false;
+    this.hasRegisteredServiceWorkerLifecycle = false;
   }
 };

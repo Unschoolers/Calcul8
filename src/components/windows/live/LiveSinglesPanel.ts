@@ -1,7 +1,7 @@
 import template from "./LiveSinglesPanel.html?raw";
 import "./LiveSinglesPanel.css";
 import { inject, type PropType } from "vue";
-import type { SinglesPurchaseEntry } from "../../../types/app.ts";
+import type { SinglesPurchaseEntry, SinglesSaleLine } from "../../../types/app.ts";
 import { DEFAULT_VALUES } from "../../../constants.ts";
 import { STORAGE_KEYS } from "../../../app-core/storageKeys.ts";
 import { calculateBoxPriceCostCad } from "../../../domain/calculations.ts";
@@ -475,6 +475,38 @@ export const LiveSinglesPanel = {
       this.liveSinglesIndividualPrices = {};
       this.liveSinglesBundlePrice = null;
       this.liveSinglesBundleSelectionKey = "";
+    },
+
+    convertLiveSinglesToSale(this: any): void {
+      if (this.currentLotType !== "singles") return;
+      const openModal = this.openConvertLiveSinglesSaleModal;
+      if (typeof openModal !== "function") return;
+
+      const entries = Array.isArray(this.effectiveLiveSinglesEntries)
+        ? this.effectiveLiveSinglesEntries as SinglesPurchaseEntry[]
+        : [];
+      if (entries.length === 0) return;
+
+      const lines: SinglesSaleLine[] = entries
+        .map((entry) => {
+          const entryId = toPositiveInt(entry.id);
+          if (!entryId) return null;
+          const quantity = this.getLiveSinglesEntryQuantity(entry);
+          const totalPrice = this.liveSinglesPricingMode === "bundle"
+            ? (this.getBundleAllocationForEntry(entryId)?.share || 0)
+            : (this.getIndividualPrice(entry) * quantity);
+          return {
+            singlesPurchaseEntryId: entryId,
+            quantity,
+            price: roundCurrency(totalPrice)
+          } satisfies SinglesSaleLine;
+        })
+        .filter((line: SinglesSaleLine | null): line is SinglesSaleLine => line != null);
+      if (lines.length === 0) return;
+
+      openModal.call(this, lines, {
+        buyerShipping: this.sellingShippingPerOrder
+      });
     },
 
     panelApplySuggestedLiveSinglesPricing(this: any): void {

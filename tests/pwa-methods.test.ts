@@ -20,6 +20,11 @@ function createContext(overrides: PwaContext = {}): PwaContext {
     offlineListener: null,
     beforeInstallPromptListener: null,
     appInstalledListener: null,
+    hasPwaUiHandlersBound: false,
+    serviceWorkerLoadListener: null,
+    serviceWorkerControllerChangeListener: null,
+    serviceWorkerUpdateIntervalId: null,
+    hasRegisteredServiceWorkerLifecycle: false,
     notify: vi.fn(),
     debugLogEntitlement: vi.fn(async () => undefined),
     pushCloudSync: vi.fn(async () => undefined),
@@ -57,6 +62,7 @@ function createStorageMock(): Storage {
 function stubWindow(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   const baseWindow = {
     addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
     setInterval: vi.fn(() => 1),
     clearInterval: vi.fn(),
     sessionStorage: createStorageMock(),
@@ -77,6 +83,15 @@ afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
+
+function stubDocument(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  const documentMock = {
+    readyState: "loading",
+    ...overrides
+  };
+  vi.stubGlobal("document", documentMock);
+  return documentMock;
+}
 
 test("setupPwaUiHandlers wires listeners and handles online/offline/install events", () => {
   const windowMock = stubWindow();
@@ -118,6 +133,18 @@ test("setupPwaUiHandlers wires listeners and handles online/offline/install even
   (context.appInstalledListener as () => void)();
   assert.equal(context.showInstallPrompt, false);
   assert.equal(context.deferredInstallPrompt, null);
+});
+
+test("setupPwaUiHandlers is idempotent and does not duplicate global listeners", () => {
+  const windowMock = stubWindow();
+  vi.stubGlobal("navigator", { onLine: true });
+  const context = createContext();
+
+  pwaMethods.setupPwaUiHandlers.call(context as never);
+  pwaMethods.setupPwaUiHandlers.call(context as never);
+
+  assert.equal(context.hasPwaUiHandlersBound, true);
+  assert.equal((windowMock.addEventListener as ReturnType<typeof vi.fn>).mock.calls.length, 4);
 });
 
 test("startOfflineReconnectScheduler no-ops when already running and reconnects when online", () => {
@@ -285,6 +312,7 @@ test("unregisterServiceWorkersForDev warns on cleanup failure and no-ops without
 
 test("registerServiceWorker queues updates and refreshes only after applyAppUpdate", async () => {
   const windowListeners = new Map<string, (...args: unknown[]) => unknown>();
+  stubDocument({ readyState: "loading" });
   const setInterval = vi.fn(() => 88);
   const windowMock = stubWindow({
     addEventListener: vi.fn((eventName: string, callback: (...args: unknown[]) => unknown) => {
@@ -323,6 +351,7 @@ test("registerServiceWorker queues updates and refreshes only after applyAppUpda
     serviceWorker: {
       controller: {},
       register,
+      removeEventListener: vi.fn(),
       addEventListener: vi.fn((eventName: string, callback: () => void) => {
         swListeners.set(eventName, callback);
       })
@@ -332,10 +361,13 @@ test("registerServiceWorker queues updates and refreshes only after applyAppUpda
   const context = createContext();
   pwaMethods.registerServiceWorker.call(context as never);
   assert.equal((windowMock.addEventListener as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0], "load");
+  assert.equal(typeof context.serviceWorkerLoadListener, "function");
 
   const loadListener = windowListeners.get("load") as (() => Promise<void>) | undefined;
   assert.equal(typeof loadListener, "function");
   await loadListener?.();
+  await Promise.resolve();
+  await Promise.resolve();
 
   assert.equal(register.mock.calls.length, 1);
   assert.equal(register.mock.calls[0]?.[0], `./sw.js?v=${encodeURIComponent(APP_VERSION)}`);
@@ -353,7 +385,8 @@ test("registerServiceWorker queues updates and refreshes only after applyAppUpda
   assert.equal(waitingWorker.postMessage.mock.calls.length, 0);
 
   assert.equal(registration.update.mock.calls.length, 1);
-  assert.equal(setInterval.mock.calls[0]?.[1], 60 * 1000);
+  assert.equal(context.serviceWorkerUpdateIntervalId, 88);
+  assert.equal(typeof context.serviceWorkerControllerChangeListener, "function");
 
   pwaMethods.applyAppUpdate.call(context as never);
   assert.equal(context.isApplyingAppUpdate, true);
@@ -401,6 +434,7 @@ test("registerServiceWorker keeps a dismissed waiting worker hidden until a diff
   };
   const sessionStorage = createStorageMock();
   const swListeners = new Map<string, () => void>();
+  stubDocument({ readyState: "loading" });
   let registration = {
     waiting: waitingWorker,
     installing: null,
@@ -412,6 +446,7 @@ test("registerServiceWorker keeps a dismissed waiting worker hidden until a diff
     serviceWorker: {
       controller: {},
       register,
+      removeEventListener: vi.fn(),
       addEventListener: vi.fn((eventName: string, callback: () => void) => {
         swListeners.set(eventName, callback);
       })
@@ -481,6 +516,7 @@ test("registerServiceWorker keeps a dismissed waiting worker hidden until a diff
 test("registerServiceWorker no-ops without service worker support and warns on register failure", async () => {
   const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
   const windowListeners = new Map<string, (...args: unknown[]) => unknown>();
+  stubDocument({ readyState: "loading" });
   const windowMock = stubWindow({
     addEventListener: vi.fn((eventName: string, callback: (...args: unknown[]) => unknown) => {
       windowListeners.set(eventName, callback);
@@ -496,6 +532,7 @@ test("registerServiceWorker no-ops without service worker support and warns on r
       register: vi.fn(async () => {
         throw new Error("register failed");
       }),
+      removeEventListener: vi.fn(),
       addEventListener: vi.fn()
     }
   });
@@ -503,4 +540,35 @@ test("registerServiceWorker no-ops without service worker support and warns on r
   const loadListener = windowListeners.get("load") as (() => Promise<void>) | undefined;
   await loadListener?.();
   assert.equal(warnSpy.mock.calls[0]?.[0], "Service worker registration failed:");
+});
+
+test("registerServiceWorker is idempotent and can register immediately after load", async () => {
+  stubDocument({ readyState: "complete" });
+  const setInterval = vi.fn(() => 99);
+  stubWindow({ setInterval });
+  const register = vi.fn(async () => ({
+    waiting: null,
+    installing: null,
+    addEventListener: vi.fn(),
+    update: vi.fn(async () => undefined)
+  }));
+  vi.stubGlobal("navigator", {
+    serviceWorker: {
+      controller: {},
+      register,
+      removeEventListener: vi.fn(),
+      addEventListener: vi.fn()
+    }
+  });
+
+  const context = createContext();
+  pwaMethods.registerServiceWorker.call(context as never);
+  pwaMethods.registerServiceWorker.call(context as never);
+
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assert.equal(context.hasRegisteredServiceWorkerLifecycle, true);
+  assert.equal(register.mock.calls.length, 1);
+  assert.equal(context.serviceWorkerUpdateIntervalId, 99);
 });

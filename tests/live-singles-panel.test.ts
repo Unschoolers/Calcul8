@@ -9,6 +9,7 @@ type PanelCtx = Record<string, unknown> & {
   addLiveSinglesSelection: ReturnType<typeof vi.fn>;
   removeLiveSinglesSelection: ReturnType<typeof vi.fn>;
   clearLiveSinglesSelection: ReturnType<typeof vi.fn>;
+  openConvertLiveSinglesSaleModal: ReturnType<typeof vi.fn>;
   netFromGross: (gross: number, shipping: number, units: number) => number;
   calculatePriceForUnits: (units: number, netRevenue: number) => number;
   getSuggestedIndividualPrice: (entry: SinglesPurchaseEntry) => number;
@@ -53,6 +54,7 @@ function createContext(overrides: Partial<PanelCtx> = {}): PanelCtx {
     addLiveSinglesSelection: vi.fn(),
     removeLiveSinglesSelection: vi.fn(),
     clearLiveSinglesSelection: vi.fn(),
+    openConvertLiveSinglesSaleModal: vi.fn(),
     netFromGross: (gross) => gross,
     calculatePriceForUnits: (_units, netRevenue) => netRevenue,
     getSuggestedIndividualPrice: () => 0
@@ -398,4 +400,36 @@ test("quantity affects selected count, basis, suggested price, and profit totals
   assert.equal(getMethod<(this: PanelCtx, entry: SinglesPurchaseEntry) => number>("getSuggestedIndividualPrice").call(context, entry({ id: 1, marketValue: 10, quantity: 5 })), 12);
   assert.equal(getComputed<number>("liveSinglesIndividualTotalPrice").call(context), 36);
   assert.equal(getMethod<(this: PanelCtx, entry: SinglesPurchaseEntry) => number>("getIndividualProfit").call(context, entry({ id: 1, marketValue: 10, quantity: 5 })), 3);
+});
+
+test("convertLiveSinglesToSale opens the shared sales modal with prefilled lines", () => {
+  const context = createContext({
+    effectiveLiveSinglesEntries: [
+      entry({ id: 5, item: "Gemstone pendants", marketValue: 10, quantity: 20 }),
+      entry({ id: 8, item: "Rings", marketValue: 4, quantity: 10 })
+    ],
+    liveSinglesQuantities: { 5: 2, 8: 3 },
+    liveSinglesIndividualPrices: { 5: 12, 8: 6 },
+    liveSinglesPricingMode: "individual",
+    sellingShippingPerOrder: 8
+  });
+
+  getMethod<(this: PanelCtx) => void>("convertLiveSinglesToSale").call(context);
+  assert.equal(context.openConvertLiveSinglesSaleModal.mock.calls.length, 1);
+  assert.deepEqual(context.openConvertLiveSinglesSaleModal.mock.calls[0]?.[0], [
+    { singlesPurchaseEntryId: 5, quantity: 2, price: 24 },
+    { singlesPurchaseEntryId: 8, quantity: 3, price: 18 }
+  ]);
+  assert.deepEqual(context.openConvertLiveSinglesSaleModal.mock.calls[0]?.[1], {
+    buyerShipping: 8
+  });
+
+  context.openConvertLiveSinglesSaleModal.mockClear();
+  context.liveSinglesPricingMode = "bundle";
+  context.liveSinglesBundlePrice = 30;
+  getMethod<(this: PanelCtx) => void>("convertLiveSinglesToSale").call(context);
+  assert.deepEqual(context.openConvertLiveSinglesSaleModal.mock.calls[0]?.[0], [
+    { singlesPurchaseEntryId: 5, quantity: 2, price: 18.75 },
+    { singlesPurchaseEntryId: 8, quantity: 3, price: 11.25 }
+  ]);
 });

@@ -26,7 +26,10 @@
     "release:play": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/release-google-play.ps1",
     "api:install": "npm --prefix apps/api install",
     "api:build": "npm --prefix apps/api run build",
-    "api:start": "npm --prefix apps/api run start:build"
+    "api:start": "npm --prefix apps/api run start:build",
+    "realtime:install": "npm --prefix apps/realtime install",
+    "realtime:build": "npm --prefix apps/realtime run build",
+    "realtime:start": "npm --prefix apps/realtime run start:dev"
   },
   "repository": {
     "type": "git",

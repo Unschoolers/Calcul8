@@ -249,6 +249,11 @@ export interface AppState extends LotSetup {
   offlineListener: (() => void) | null;
   beforeInstallPromptListener: ((event: Event) => void) | null;
   appInstalledListener: (() => void) | null;
+  hasPwaUiHandlersBound: boolean;
+  serviceWorkerLoadListener: (() => void) | null;
+  serviceWorkerControllerChangeListener: (() => void) | null;
+  serviceWorkerUpdateIntervalId: number | null;
+  hasRegisteredServiceWorkerLifecycle: boolean;
   showAppUpdatePrompt: boolean;
   isApplyingAppUpdate: boolean;
   appUpdateWorker: ServiceWorker | null;

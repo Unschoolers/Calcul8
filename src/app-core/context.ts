@@ -16,6 +16,7 @@ import type {
   SinglesCatalogSource,
   SinglesPurchaseEntry,
   SinglesSaleCardOption,
+  SinglesSaleLine,
   SalesStatus,
   UiColor,
   WorkspaceMember,
@@ -90,6 +91,7 @@ export interface AppComputedState {
     costBasisValue: number;
   } | null>;
   saleEditorProfitPreview: {
+    totalPrice: number;
     value: number;
     unitValue: number | null;
     quantity: number;
@@ -254,6 +256,10 @@ export interface AppMethodState {
   loadSalesFromStorage(): void;
   saveSalesToStorage(): void;
   openAddSaleModal(saleType?: SaleType): void;
+  openConvertLiveSinglesSaleModal(
+    lines: SinglesSaleLine[],
+    options?: { buyerShipping?: number; memo?: string; date?: string }
+  ): void;
   onNewSaleTypeChange(type: SaleType): void;
   onSinglesSaleCardSelectionChange(value: number | null): void;
   addSinglesSaleLine(): void;

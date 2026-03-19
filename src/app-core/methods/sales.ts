@@ -5,7 +5,8 @@ import type {
   Sale,
   SaleType,
   SinglesPurchaseEntry,
-  SinglesSaleDraftLine
+  SinglesSaleDraftLine,
+  SinglesSaleLine
 } from "../../types/app.ts";
 import type { AppContext, AppMethodState } from "../context.ts";
 import { getTodayDate, toDateOnly } from "./config-shared.ts";
@@ -344,6 +345,7 @@ export const salesMethods: ThisType<AppContext> & Pick<
   | "loadSalesFromStorage"
   | "saveSalesToStorage"
   | "openAddSaleModal"
+  | "openConvertLiveSinglesSaleModal"
   | "onNewSaleTypeChange"
   | "onSinglesSaleCardSelectionChange"
   | "addSinglesSaleLine"
@@ -401,6 +403,45 @@ export const salesMethods: ThisType<AppContext> & Pick<
     if (this.currentLotType === "singles") {
       syncSinglesSaleDraftSummary(this);
     }
+    this.showAddSaleModal = true;
+    focusSaleQuantityInput(this);
+  },
+
+  openConvertLiveSinglesSaleModal(
+    lines: SinglesSaleLine[],
+    options?: { buyerShipping?: number; memo?: string; date?: string }
+  ): void {
+    if (this.currentLotType !== "singles") return;
+
+    const normalizedLines = Array.isArray(lines)
+      ? lines
+        .map((line, index) => ({
+          lineId: Date.now() + index,
+          singlesPurchaseEntryId: normalizeSinglesPurchaseEntryId(line?.singlesPurchaseEntryId),
+          quantity: normalizeWholeQuantity(line?.quantity) ?? 1,
+          price: normalizeNonNegativePrice(line?.price) ?? 0
+        } satisfies SinglesSaleDraftLine))
+        .filter((line) => line.singlesPurchaseEntryId != null || line.price > 0)
+      : [];
+    if (normalizedLines.length === 0) return;
+
+    const todayDate = getTodayDate();
+    const buyerShipping = Number(options?.buyerShipping);
+    this.editingSale = null;
+    this.newSale = {
+      type: "pack",
+      quantity: null,
+      packsCount: null,
+      singlesPurchaseEntryId: null,
+      singlesItems: normalizedLines,
+      price: null,
+      memo: typeof options?.memo === "string" ? options.memo.trim() : "",
+      buyerShipping: Number.isFinite(buyerShipping) && buyerShipping >= 0
+        ? buyerShipping
+        : (Number(this.sellingShippingPerOrder) || 0),
+      date: toDateOnly(options?.date) ?? todayDate
+    };
+    syncSinglesSaleDraftSummary(this);
     this.showAddSaleModal = true;
     focusSaleQuantityInput(this);
   },

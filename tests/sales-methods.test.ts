@@ -1116,6 +1116,49 @@ test("editSale initializes singles draft lines from legacy linked sale and norma
   assert.equal(focusInput.focus.mock.calls.length, 1);
 });
 
+test("openConvertLiveSinglesSaleModal seeds the singles sale editor from live pricing lines", () => {
+  const focusInput = new MockHtmlInputElement();
+  const ctx = createContext({
+    currentLotType: "singles",
+    sellingShippingPerOrder: 8,
+    $refs: {
+      saleQuantityInput: focusInput
+    }
+  });
+
+  salesMethods.openConvertLiveSinglesSaleModal.call(ctx as never, [
+    { singlesPurchaseEntryId: 55, quantity: 2, price: 40 },
+    { singlesPurchaseEntryId: 77, quantity: 1, price: 12.5 }
+  ], {
+    buyerShipping: 5,
+    memo: "bundle draft",
+    date: "2026-03-19T12:00:00.000Z"
+  });
+
+  assert.equal(ctx.showAddSaleModal, true);
+  assert.equal(ctx.editingSale, null);
+  const newSale = ctx.newSale as {
+    date: string;
+    quantity: number;
+    price: number;
+    buyerShipping: number;
+    memo?: string;
+    singlesItems?: Array<{ singlesPurchaseEntryId?: number | null; quantity?: number; price?: number | null }>;
+  };
+  assert.equal(newSale.date, "2026-03-19");
+  assert.equal(newSale.quantity, 3);
+  assert.equal(newSale.price, 52.5);
+  assert.equal(newSale.buyerShipping, 5);
+  assert.equal(newSale.memo, "bundle draft");
+  assert.equal((newSale.singlesItems || [])[0]?.singlesPurchaseEntryId, 55);
+  assert.equal((newSale.singlesItems || [])[0]?.quantity, 2);
+  assert.equal((newSale.singlesItems || [])[0]?.price, 40);
+  assert.equal((newSale.singlesItems || [])[1]?.singlesPurchaseEntryId, 77);
+  assert.equal((newSale.singlesItems || [])[1]?.quantity, 1);
+  assert.equal((newSale.singlesItems || [])[1]?.price, 12.5);
+  assert.equal(focusInput.focus.mock.calls.length, 1);
+});
+
 test("deleteSale removes sale without mutating linked singles purchase quantity", () => {
   const ctx = createContext({
     currentLotType: "singles",
