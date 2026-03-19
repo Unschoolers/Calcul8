@@ -121,22 +121,22 @@ test("listWorkspacesForUser filters deleted and missing workspaces", async () =>
     status: "deleted"
   };
 
-  entitlements.items.query.mockImplementation((querySpec: { parameters?: Array<{ name: string; value: string }> }) => {
-    const id = querySpec.parameters?.find((parameter) => parameter.name === "@id")?.value;
+  entitlements.items.query.mockReturnValue({
+    fetchAll: vi.fn().mockResolvedValue({
+      resources: [activeMembership, deletedMembership, missingMembership]
+    })
+  });
+  entitlements.item.mockImplementation((id: string) => {
     if (id === "workspace:ws-active") {
-      return { fetchAll: vi.fn().mockResolvedValue({ resources: [activeWorkspace] }) };
+      return { read: vi.fn().mockResolvedValue({ resource: activeWorkspace }) };
     }
     if (id === "workspace:ws-deleted") {
-      return { fetchAll: vi.fn().mockResolvedValue({ resources: [deletedWorkspace] }) };
+      return { read: vi.fn().mockResolvedValue({ resource: deletedWorkspace }) };
     }
     if (id === "workspace:ws-missing") {
-      return { fetchAll: vi.fn().mockResolvedValue({ resources: [] }) };
+      return { read: vi.fn().mockRejectedValue({ statusCode: 404 }) };
     }
-    return {
-      fetchAll: vi.fn().mockResolvedValue({
-        resources: [activeMembership, deletedMembership, missingMembership]
-      })
-    };
+    return { read: vi.fn().mockResolvedValue({ resource: null }) };
   });
   getContainersMock.mockReturnValue({ entitlements });
 
@@ -145,6 +145,12 @@ test("listWorkspacesForUser filters deleted and missing workspaces", async () =>
   assert.equal(result.length, 1);
   assert.equal(result[0]?.workspace.workspaceId, "ws-active");
   assert.equal(result[0]?.membership.workspaceId, "ws-active");
+  assert.equal(
+    entitlements.item.mock.calls.some((call: unknown[]) =>
+      call[0] === "workspace:ws-active" && call[1] === "ws:ws-active"
+    ),
+    true
+  );
 });
 
 test("deactivateWorkspaceMembership marks active memberships as removed", async () => {
@@ -240,16 +246,19 @@ test("hasWorkspaceMembership returns false for deleted workspaces and removed me
     updatedAt: "2026-03-18T00:00:00.000Z"
   };
 
-  entitlements.items.query
+  entitlements.item
     .mockImplementationOnce(() => ({
-      fetchAll: vi.fn().mockResolvedValue({ resources: [deletedWorkspace] })
+      read: vi.fn().mockResolvedValue({ resource: deletedWorkspace })
     }))
     .mockImplementationOnce(() => ({
-      fetchAll: vi.fn().mockResolvedValue({ resources: [activeWorkspace] })
+      read: vi.fn().mockResolvedValue({ resource: removedMembership })
+    }))
+    .mockImplementationOnce(() => ({
+      read: vi.fn().mockResolvedValue({ resource: activeWorkspace })
+    }))
+    .mockImplementationOnce(() => ({
+      read: vi.fn().mockResolvedValue({ resource: removedMembership })
     }));
-  entitlements.item.mockReturnValue({
-    read: vi.fn().mockResolvedValue({ resource: removedMembership })
-  });
   getContainersMock.mockReturnValue({ entitlements });
 
   const deletedResult = await hasWorkspaceMembership(createConfig(), "user-1", "ws-1");
@@ -257,6 +266,30 @@ test("hasWorkspaceMembership returns false for deleted workspaces and removed me
 
   assert.equal(deletedResult, false);
   assert.equal(removedResult, false);
+});
+
+test("hasWorkspaceMembership short-circuits before reading workspace when membership is missing", async () => {
+  const entitlements = createEntitlementsContainer();
+  entitlements.item.mockImplementation((id: string) => {
+    if (id === "m:user-1:ws-1") {
+      return {
+        read: vi.fn().mockRejectedValue({ statusCode: 404 })
+      };
+    }
+
+    return {
+      read: vi.fn(() => {
+        throw new Error("workspace should not be read when membership is missing");
+      })
+    };
+  });
+  getContainersMock.mockReturnValue({ entitlements });
+
+  const result = await hasWorkspaceMembership(createConfig(), "user-1", "ws-1");
+
+  assert.equal(result, false);
+  assert.equal(entitlements.item.mock.calls.length, 1);
+  assert.deepEqual(entitlements.item.mock.calls[0], ["m:user-1:ws-1", "user-1"]);
 });
 
 test("transferWorkspaceOwnership updates an active workspace owner", async () => {
@@ -273,8 +306,8 @@ test("transferWorkspaceOwnership updates an active workspace owner", async () =>
     updatedAt: "2026-03-18T00:00:00.000Z"
   };
 
-  entitlements.items.query.mockReturnValue({
-    fetchAll: vi.fn().mockResolvedValue({ resources: [existingWorkspace] })
+  entitlements.item.mockReturnValue({
+    read: vi.fn().mockResolvedValue({ resource: existingWorkspace })
   });
   entitlements.items.upsert.mockImplementation(async (document: WorkspaceDocument) => ({
     resource: document
@@ -302,8 +335,8 @@ test("softDeleteWorkspace returns the existing document without writing when alr
     updatedAt: "2026-03-18T00:00:00.000Z"
   };
 
-  entitlements.items.query.mockReturnValue({
-    fetchAll: vi.fn().mockResolvedValue({ resources: [deletedWorkspace] })
+  entitlements.item.mockReturnValue({
+    read: vi.fn().mockResolvedValue({ resource: deletedWorkspace })
   });
   getContainersMock.mockReturnValue({ entitlements });
 

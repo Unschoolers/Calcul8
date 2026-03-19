@@ -27,12 +27,12 @@
 }
 
 .v-theme--unionArenaLight .config-card {
-  border-color: rgba(var(--v-theme-on-surface), 0.16);
+  border-color: rgba(var(--v-theme-on-surface), 0.22);
   background:
-    linear-gradient(180deg, rgba(var(--v-theme-surface-bright), 0.99), rgba(var(--v-theme-surface), 0.96));
+    linear-gradient(180deg, rgba(var(--v-theme-surface-bright), 0.985), rgba(var(--v-theme-surface), 0.965));
   box-shadow:
-    0 16px 34px rgba(44, 36, 28, 0.08),
-    0 3px 10px rgba(44, 36, 28, 0.05);
+    0 18px 38px rgba(44, 36, 28, 0.12),
+    0 4px 12px rgba(44, 36, 28, 0.08);
 }
 
 .config-card .v-card-title {
@@ -116,10 +116,10 @@
 }
 
 .v-theme--unionArenaLight .config-summary-hero {
-  border-color: rgba(var(--v-theme-secondary), 0.34);
+  border-color: rgba(var(--v-theme-secondary), 0.42);
   background:
-    radial-gradient(120% 140% at 100% 0%, rgba(var(--v-theme-secondary), 0.18), transparent 50%),
-    linear-gradient(160deg, rgba(var(--v-theme-surface-bright), 0.99), rgba(var(--v-theme-surface), 0.95));
+    radial-gradient(120% 140% at 100% 0%, rgba(var(--v-theme-secondary), 0.22), transparent 50%),
+    linear-gradient(160deg, rgba(var(--v-theme-surface-bright), 0.99), rgba(var(--v-theme-surface), 0.955));
 }
 
 .config-summary-hero::before {
@@ -190,8 +190,10 @@
 }
 
 .v-theme--unionArenaLight .config-summary-pill {
-  border-color: rgba(var(--v-theme-on-surface), 0.12);
-  background: rgba(var(--v-theme-on-surface), 0.05);
+  border-color: rgba(var(--v-theme-on-surface), 0.16);
+  background:
+    linear-gradient(180deg, rgba(var(--v-theme-surface-bright), 0.82), rgba(var(--v-theme-surface), 0.92));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.32);
 }
 
 .config-summary-pill strong {
@@ -223,11 +225,22 @@
 }
 
 .v-theme--unionArenaLight .config-card .v-field {
-  background: rgba(var(--v-theme-surface-bright), 0.96);
+  background:
+    linear-gradient(180deg, rgba(var(--v-theme-surface-bright), 0.95), rgba(var(--v-theme-surface), 0.92));
+}
+
+.v-theme--unionArenaLight .config-card .v-field-label,
+.v-theme--unionArenaLight .config-card .v-label {
+  color: rgba(var(--v-theme-on-surface), 0.68) !important;
+}
+
+.v-theme--unionArenaLight .config-card .v-field--focused .v-field-label,
+.v-theme--unionArenaLight .config-card .v-field--focused .v-label {
+  color: rgba(var(--v-theme-secondary), 0.92) !important;
 }
 
 .v-theme--unionArenaLight .config-card .v-field--variant-outlined .v-field__outline {
-  color: rgba(var(--v-theme-on-surface), 0.18);
+  color: rgba(var(--v-theme-on-surface), 0.24);
 }
 
 .v-theme--unionArenaLight .config-card .v-field--focused .v-field__outline {
@@ -270,34 +283,51 @@
   }
 
   .config-summary-hero__body {
-    padding: 0.95rem 0.95rem 0.9rem !important;
+    padding: 0.85rem 0.9rem 0.8rem !important;
   }
 
   .config-summary-hero__main {
     flex-direction: column;
     align-items: stretch;
-    gap: 0.8rem;
+    gap: 0.55rem;
   }
 
   .config-summary-hero__value {
-    font-size: 2rem;
+    font-size: 1.85rem;
   }
 
   .config-summary-hero__sub {
-    font-size: 0.88rem;
+    margin-top: 0.28rem;
+    font-size: 0.8rem;
   }
 
   .config-summary-hero__stats {
-    justify-content: stretch;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.45rem;
   }
 
   .config-summary-pill {
     min-width: 0;
-    flex: 1 1 0;
+    padding: 0.55rem 0.62rem;
+    border-radius: 12px;
+  }
+
+  .config-summary-pill strong {
+    font-size: 0.96rem;
+  }
+
+  .config-summary-pill__label {
+    font-size: 0.67rem;
+  }
+
+  .config-summary-pill__meta {
+    font-size: 0.68rem;
   }
 
   .config-summary-hero__meta {
-    font-size: 0.76rem;
-    gap: 0.35rem 0.7rem;
+    margin-top: 0.65rem;
+    font-size: 0.72rem;
+    gap: 0.2rem 0.6rem;
   }
 }

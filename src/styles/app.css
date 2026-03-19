@@ -543,12 +543,12 @@
       box-shadow: 0 -10px 24px rgba(44, 36, 28, 0.06);
     }
     .v-theme--unionArenaLight .preset-card {
-      border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+      border: 1px solid rgba(var(--v-theme-on-surface), 0.18);
       background:
-        linear-gradient(180deg, rgba(var(--v-theme-surface-bright), 0.98), rgba(var(--v-theme-surface), 0.96));
+        linear-gradient(180deg, rgba(var(--v-theme-surface-bright), 0.985), rgba(var(--v-theme-surface), 0.955));
       box-shadow:
-        0 14px 32px rgba(44, 36, 28, 0.08),
-        0 2px 8px rgba(44, 36, 28, 0.05);
+        0 16px 34px rgba(44, 36, 28, 0.11),
+        0 3px 10px rgba(44, 36, 28, 0.07);
     }
     .v-theme--unionArenaLight .lot-selector-selection__subtitle {
       color: rgba(var(--v-theme-on-surface), 0.72);
@@ -1071,14 +1071,55 @@
         padding-right: 0.75rem !important;
         padding-top: 0.6rem !important;
       }
+      .preset-card {
+        margin-bottom: 1rem !important;
+        border-radius: 18px !important;
+      }
+      .preset-card .v-card-text {
+        padding: 0.7rem 0.8rem 0.8rem !important;
+      }
+      .lot-selector-row {
+        gap: 0;
+      }
+      .lot-selector-select-col {
+        padding-bottom: 0 !important;
+        padding-right: 0.35rem !important;
+      }
       .lot-selector-meta-col {
+        padding-top: 0 !important;
+        padding-left: 0 !important;
         justify-content: flex-end;
       }
       .lot-selector-meta {
         justify-content: flex-end;
+        align-items: center;
+        gap: 0.4rem;
+        min-height: 100%;
       }
       .lot-selector-actions {
         margin-left: 0;
+        gap: 0.35rem;
+      }
+      .lot-selector-actions .v-btn {
+        width: 36px !important;
+        height: 36px !important;
+      }
+      .lot-selector-selection__title {
+        font-size: 0.92rem;
+      }
+      .lot-selector-selection__subtitle {
+        font-size: 0.68rem;
+      }
+      .lot-catalog-chip--desktop {
+        display: none !important;
+      }
+      .lot-catalog-chip {
+        max-width: calc(100vw - 8rem);
+      }
+      .lot-catalog-chip .v-chip__content {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
       .sale-editor-dialog .v-overlay__content {
         width: 100vw !important;

@@ -286,7 +286,7 @@
           <v-card v-if="currentTab !== 'portfolio'" class="mb-4 preset-card" elevation="4">
             <v-card-text class="py-2">
               <v-row dense align="center" class="lot-selector-row">
-                <v-col cols="12" sm="9" md="10" class="lot-selector-select-col">
+                <v-col cols="9" sm="9" md="10" class="lot-selector-select-col">
                   <v-select
                     :model-value="currentLotId"
                     :items="lotItems"
@@ -359,13 +359,13 @@
                     </template>
                   </v-select>
                 </v-col>
-                <v-col cols="12" sm="3" md="2" class="lot-selector-meta-col">
+                <v-col cols="3" sm="3" md="2" class="lot-selector-meta-col">
                   <div class="lot-selector-meta">
                     <v-chip
                       v-if="hasLotSelected && currentLotType === 'singles'"
                       size="small"
                       variant="tonal"
-                      class="lot-catalog-chip"
+                      class="lot-catalog-chip lot-catalog-chip--desktop"
                       prepend-icon="mdi-database-search-outline"
                     >
                       {{

@@ -26,10 +26,10 @@ export const vuetify = createVuetify({
           secondary: "#B77900",
           error: "#FF3B30",
           success: "#34C759",
-          background: "#ECE8E3",
-          surface: "#F7F3EE",
-          "surface-bright": "#FFFDFC",
-          "surface-variant": "#E4DDD4",
+          background: "#E7E0D7",
+          surface: "#F1E7D9",
+          "surface-bright": "#FBF5EC",
+          "surface-variant": "#DDD0BE",
           "on-surface": "#221F1A",
           "on-background": "#221F1A"
         }

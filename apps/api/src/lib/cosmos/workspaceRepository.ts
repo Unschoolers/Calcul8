@@ -57,19 +57,19 @@ export async function getWorkspaceById(
 ): Promise<WorkspaceDocument | null> {
   const { entitlements } = getContainers(config);
   const id = workspaceDocumentId(workspaceId);
-  const querySpec = {
-    query: "SELECT TOP 1 * FROM c WHERE c.id = @id AND c.docType = @docType",
-    parameters: [
-      { name: "@id", value: id },
-      { name: "@docType", value: "workspace" }
-    ]
-  };
+  const partitionKey = workspaceDocumentPartitionKey(workspaceId);
 
-  const iterator = entitlements.items.query<WorkspaceDocument>(querySpec, {
-    maxItemCount: 1
-  });
-  const { resources } = await withCosmosRetry(() => iterator.fetchAll());
-  return resources?.[0] ?? null;
+  try {
+    const { resource } = await withCosmosRetry(() =>
+      entitlements.item(id, partitionKey).read<WorkspaceDocument>()
+    );
+    if (!resource || resource.docType !== "workspace") return null;
+    if (resource.workspaceId !== workspaceId || resource.userId !== partitionKey) return null;
+    return resource;
+  } catch (error) {
+    if (isNotFoundError(error)) return null;
+    throw error;
+  }
 }
 
 export async function upsertWorkspaceDocument(
@@ -273,11 +273,11 @@ export async function hasWorkspaceMembership(
   userId: string,
   workspaceId: string
 ): Promise<boolean> {
-  const workspace = await getWorkspaceById(config, workspaceId);
-  if (!workspace || isWorkspaceDeleted(workspace)) return false;
   const membership = await getWorkspaceMembership(config, userId, workspaceId);
   if (!membership) return false;
   if (!isActiveWorkspaceMembershipStatus(membership.status)) return false;
+  const workspace = await getWorkspaceById(config, workspaceId);
+  if (!workspace || isWorkspaceDeleted(workspace)) return false;
   return true;
 }
 

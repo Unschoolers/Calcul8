@@ -90,6 +90,15 @@ export const appLifecycle: AppLifecycleObject = {
       // Ignore storage read errors.
     }
 
+    try {
+      const savedTheme = localStorage.getItem(STORAGE_KEYS.THEME);
+      if (savedTheme === "unionArenaDark" || savedTheme === "unionArenaLight") {
+        this.$vuetify.theme.change(savedTheme);
+      }
+    } catch {
+      // Ignore storage read errors.
+    }
+
     this.getExchangeRate();
     this.loadSalesFromStorage();
     this.syncLivePricesFromDefaults();

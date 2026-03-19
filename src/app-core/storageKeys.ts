@@ -1,5 +1,6 @@
 export const STORAGE_KEYS = {
   LAST_TAB: "whatfees_last_tab",
+  THEME: "whatfees_theme",
   LIVE_SINGLES_MODE: "whatfees_live_singles_mode",
   PORTFOLIO_FILTER_IDS: "whatfees_portfolio_filter_ids",
   PORTFOLIO_FILTER_TYPE: "whatfees_portfolio_filter_type",

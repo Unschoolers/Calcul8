@@ -33,7 +33,7 @@ import { appWatch } from "../src/app-core/watch.ts";
 import { configMethods } from "../src/app-core/methods/config.ts";
 import { salesMethods } from "../src/app-core/methods/sales.ts";
 import { uiBaseMethods } from "../src/app-core/methods/ui/base.ts";
-import { getLegacySalesStorageKey } from "../src/app-core/storageKeys.ts";
+import { getLegacySalesStorageKey, STORAGE_KEYS } from "../src/app-core/storageKeys.ts";
 import type { Lot, Sale } from "../src/types/app.ts";
 
 type MockStorage = {
@@ -2865,6 +2865,86 @@ test("mounted restores persisted portfolio lot type filter", () => {
     appLifecycle.mounted.call(context);
 
     assert.equal(context.portfolioLotTypeFilter, "bulk");
+  });
+});
+
+test("toggleTheme persists the selected theme", () => {
+  withMockedLocalStorage((_storage, data) => {
+    let changedTheme = "";
+    const context = {
+      isDark: true,
+      $vuetify: {
+        theme: {
+          change(name: "unionArenaDark" | "unionArenaLight") {
+            changedTheme = name;
+          }
+        }
+      }
+    } as unknown as Parameters<typeof uiBaseMethods.toggleTheme>[0];
+
+    uiBaseMethods.toggleTheme.call(context);
+
+    assert.equal(changedTheme, "unionArenaLight");
+    assert.equal(data.get(STORAGE_KEYS.THEME), "unionArenaLight");
+  });
+});
+
+test("mounted restores persisted theme", () => {
+  withMockedLocalStorage((_storage, data) => {
+    data.set(STORAGE_KEYS.THEME, "unionArenaLight");
+    let changedTheme = "";
+
+    const context = {
+      lots: [] as Lot[],
+      currentLotId: null,
+      portfolioLotFilterIds: [] as number[],
+      portfolioLotTypeFilter: "both" as const,
+      currentTab: "config",
+      $vuetify: {
+        theme: {
+          change(name: "unionArenaDark" | "unionArenaLight") {
+            changedTheme = name;
+          }
+        }
+      },
+      loadLotsFromStorage() {
+        this.lots = [];
+      },
+      loadLot() {
+        // noop
+      },
+      getExchangeRate() {
+        // noop
+      },
+      loadSalesFromStorage() {
+        // noop
+      },
+      syncLivePricesFromDefaults() {
+        // noop
+      },
+      initGoogleAutoLogin() {
+        // noop
+      },
+      debugLogEntitlement() {
+        return Promise.resolve();
+      },
+      startCloudSyncScheduler() {
+        // noop
+      },
+      unregisterServiceWorkersForDev() {
+        return Promise.resolve();
+      },
+      setupPwaUiHandlers() {
+        // noop
+      },
+      registerServiceWorker() {
+        // noop
+      }
+    } as unknown as Parameters<typeof appLifecycle.mounted>[0];
+
+    appLifecycle.mounted.call(context);
+
+    assert.equal(changedTheme, "unionArenaLight");
   });
 });
 

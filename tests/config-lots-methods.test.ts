@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test, vi } from "vitest";
+import { appWatch } from "../src/app-core/watch.ts";
 import type { Lot } from "../src/types/app.ts";
 
 const {
@@ -759,6 +760,88 @@ test("selectLot saves the current lot before switching to the next one", () => {
   assert.equal(ctx.currentLotId, 2);
   assert.equal(loadedLotId, 2);
   assert.equal((ctx.autoSaveSetup as ReturnType<typeof vi.fn>).mock.calls.length, 1);
+});
+
+test("loadLot keeps hydration active through the next tick so delayed box watchers cannot re-anchor totals", () => {
+  const queuedTicks: Array<() => void> = [];
+  const lot = makeLot({
+    id: 1,
+    lotType: "bulk",
+    boxPriceCost: 34.6875,
+    boxesPurchased: 16,
+    costInputMode: "total"
+  });
+  const ctx = createContext({
+    lots: [lot],
+    currentLotId: 1,
+    currentLotType: "bulk",
+    purchaseUiMode: "simple",
+    boxesPurchased: 6,
+    boxPriceCost: 168.2666666667,
+    lotHydrationRevision: 0,
+    $nextTick(callback: () => void) {
+      queuedTicks.push(callback);
+      return undefined;
+    }
+  });
+
+  configLotMethods.loadLot.call(ctx as never);
+
+  assert.equal(ctx.isHydratingLotConfig, true);
+  assert.equal(ctx.boxPriceCost, 34.6875);
+  assert.equal(ctx.boxesPurchased, 16);
+
+  appWatch.boxesPurchased.call(ctx as never, 16, 6);
+
+  assert.equal(ctx.boxPriceCost, 34.6875);
+  assert.equal(queuedTicks.length >= 1, true);
+
+  queuedTicks[0]?.();
+  assert.equal(ctx.isHydratingLotConfig, false);
+});
+
+test("loadLot ignores stale hydration clear callbacks when lots switch rapidly", () => {
+  const queuedTicks: Array<() => void> = [];
+  const lotA = makeLot({
+    id: 1,
+    name: "Lot A",
+    lotType: "bulk",
+    boxPriceCost: 34.6875,
+    boxesPurchased: 16,
+    costInputMode: "total"
+  });
+  const lotB = makeLot({
+    id: 2,
+    name: "Lot B",
+    lotType: "bulk",
+    boxPriceCost: 168.2666666667,
+    boxesPurchased: 6,
+    costInputMode: "total"
+  });
+  const ctx = createContext({
+    lots: [lotA, lotB],
+    currentLotId: 1,
+    currentLotType: "bulk",
+    lotHydrationRevision: 0,
+    $nextTick(callback: () => void) {
+      queuedTicks.push(callback);
+      return undefined;
+    }
+  });
+
+  configLotMethods.loadLot.call(ctx as never);
+  ctx.currentLotId = 2;
+  configLotMethods.loadLot.call(ctx as never);
+
+  assert.equal(ctx.isHydratingLotConfig, true);
+  assert.equal(ctx.lotHydrationRevision, 2);
+  assert.equal(queuedTicks.length >= 3, true);
+
+  queuedTicks[0]?.();
+  assert.equal(ctx.isHydratingLotConfig, true);
+
+  queuedTicks[2]?.();
+  assert.equal(ctx.isHydratingLotConfig, false);
 });
 
 test("renameCurrentLot closes modal when name is unchanged", () => {

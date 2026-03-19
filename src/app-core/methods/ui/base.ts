@@ -1,6 +1,7 @@
 import type { Sale, SaleType, UiColor } from "../../../types/app.ts";
 import type { AppContext, AppMethodState } from "../../context.ts";
 import { calculateSaleProfit as calculateSaleProfitValue } from "../../../domain/calculations.ts";
+import { STORAGE_KEYS } from "../../storageKeys.ts";
 
 const DATE_ONLY_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 const SLASH_DATE_REGEX = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
@@ -29,7 +30,13 @@ export const uiBaseMethods: ThisType<AppContext> & Pick<
   | "formatDate"
 > = {
   toggleTheme(): void {
-    this.$vuetify.theme.change(this.isDark ? "unionArenaLight" : "unionArenaDark");
+    const nextTheme = this.isDark ? "unionArenaLight" : "unionArenaDark";
+    this.$vuetify.theme.change(nextTheme);
+    try {
+      localStorage.setItem(STORAGE_KEYS.THEME, nextTheme);
+    } catch {
+      // Ignore storage errors (private mode/quota restrictions).
+    }
   },
 
   notify(message: string, color: UiColor = "info"): void {
