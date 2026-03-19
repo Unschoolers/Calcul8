@@ -21,6 +21,7 @@ jobs:
     outputs:
       web: ${{ steps.filter.outputs.web }}
       api: ${{ steps.filter.outputs.api }}
+      realtime: ${{ steps.filter.outputs.realtime }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -35,6 +36,7 @@ jobs:
 
           web=false
           api=false
+          realtime=false
 
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             base_sha="${{ github.event.pull_request.base.sha }}"
@@ -64,12 +66,19 @@ jobs:
                 api=true
                 ;;
             esac
+
+            case "${file}" in
+              apps/realtime/*|.github/workflows/ci.yml)
+                realtime=true
+                ;;
+            esac
           done <<EOF
           ${changed_files}
           EOF
 
           echo "web=${web}" >> "${GITHUB_OUTPUT}"
           echo "api=${api}" >> "${GITHUB_OUTPUT}"
+          echo "realtime=${realtime}" >> "${GITHUB_OUTPUT}"
 
   validate-web:
     name: Validate web
@@ -128,3 +137,31 @@ jobs:
       - name: API typecheck
         working-directory: apps/api
         run: npm run typecheck
+
+  validate-realtime:
+    name: Validate realtime
+    needs: changes
+    if: ${{ needs.changes.outputs.realtime == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: apps/realtime/package-lock.json
+
+      - name: Install realtime dependencies
+        working-directory: apps/realtime
+        run: npm ci
+
+      - name: Realtime typecheck
+        working-directory: apps/realtime
+        run: npm run typecheck
+
+      - name: Build realtime gateway
+        working-directory: apps/realtime
+        run: npm run build

@@ -487,21 +487,20 @@ export const LiveSinglesPanel = {
         : [];
       if (entries.length === 0) return;
 
-      const lines: SinglesSaleLine[] = entries
-        .map((entry) => {
+      const lines = entries.reduce<SinglesSaleLine[]>((result, entry) => {
           const entryId = toPositiveInt(entry.id);
-          if (!entryId) return null;
-          const quantity = this.getLiveSinglesEntryQuantity(entry);
+          if (!entryId) return result;
+          const quantity = Number(this.getLiveSinglesEntryQuantity(entry));
           const totalPrice = this.liveSinglesPricingMode === "bundle"
             ? (this.getBundleAllocationForEntry(entryId)?.share || 0)
             : (this.getIndividualPrice(entry) * quantity);
-          return {
+          result.push({
             singlesPurchaseEntryId: entryId,
             quantity,
             price: roundCurrency(totalPrice)
-          } satisfies SinglesSaleLine;
-        })
-        .filter((line: SinglesSaleLine | null): line is SinglesSaleLine => line != null);
+          });
+          return result;
+        }, []);
       if (lines.length === 0) return;
 
       openModal.call(this, lines, {

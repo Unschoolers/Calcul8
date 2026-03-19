@@ -1,0 +1,165 @@
+name: Deploy Realtime (Prod)
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "apps/realtime/**"
+      - ".github/workflows/deploy-realtime-prod.yml"
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  NODE_VERSION: 22
+  AZURE_RESOURCE_GROUP_PROD: DefaultResourceGroup-CCAN
+  AZURE_CONTAINER_REGISTRY_NAME_PROD: calcul8teregistry
+  REALTIME_ALLOWED_ORIGIN_PROD: https://whatfees.ca
+  REALTIME_MIN_REPLICAS_PROD: 1
+  REALTIME_MAX_REPLICAS_PROD: 2
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: apps/realtime/package-lock.json
+
+      - name: Install realtime dependencies
+        working-directory: apps/realtime
+        run: npm ci
+
+      - name: Realtime typecheck
+        working-directory: apps/realtime
+        run: npm run typecheck
+
+      - name: Build realtime gateway
+        working-directory: apps/realtime
+        run: npm run build
+
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: verify
+    environment: prod-realtime
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Validate deployment env wiring
+        shell: bash
+        env:
+          AZURE_CLIENT_ID_PROD: ${{ vars.AZURE_CLIENT_ID_PROD }}
+          AZURE_TENANT_ID_PROD: ${{ vars.AZURE_TENANT_ID_PROD }}
+          AZURE_SUBSCRIPTION_ID_PROD: ${{ vars.AZURE_SUBSCRIPTION_ID_PROD }}
+          AZURE_CONTAINER_APP_NAME_REALTIME_PROD: ${{ vars.AZURE_CONTAINER_APP_NAME_REALTIME_PROD }}
+          AZURE_CONTAINER_APP_ENVIRONMENT_PROD: ${{ vars.AZURE_CONTAINER_APP_ENVIRONMENT_PROD }}
+          REALTIME_INTERNAL_API_KEY_PROD: ${{ secrets.REALTIME_INTERNAL_API_KEY_PROD }}
+        run: |
+          if [ -z "${AZURE_CLIENT_ID_PROD}" ]; then
+            echo "Missing vars.AZURE_CLIENT_ID_PROD in prod-realtime environment."
+            exit 1
+          fi
+          if [ -z "${AZURE_TENANT_ID_PROD}" ]; then
+            echo "Missing vars.AZURE_TENANT_ID_PROD in prod-realtime environment."
+            exit 1
+          fi
+          if [ -z "${AZURE_SUBSCRIPTION_ID_PROD}" ]; then
+            echo "Missing vars.AZURE_SUBSCRIPTION_ID_PROD in prod-realtime environment."
+            exit 1
+          fi
+          if [ -z "${AZURE_CONTAINER_APP_NAME_REALTIME_PROD}" ]; then
+            echo "Missing vars.AZURE_CONTAINER_APP_NAME_REALTIME_PROD in prod-realtime environment."
+            exit 1
+          fi
+          if [ -z "${AZURE_CONTAINER_APP_ENVIRONMENT_PROD}" ]; then
+            echo "Missing vars.AZURE_CONTAINER_APP_ENVIRONMENT_PROD in prod-realtime environment."
+            exit 1
+          fi
+          if [ -z "${REALTIME_INTERNAL_API_KEY_PROD}" ]; then
+            echo "Missing secrets.REALTIME_INTERNAL_API_KEY_PROD in prod-realtime environment."
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Log in to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID_PROD }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID_PROD }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID_PROD }}
+
+      - name: Build, push, and deploy Container App
+        uses: azure/container-apps-deploy-action@v2
+        with:
+          appSourcePath: ${{ github.workspace }}/apps/realtime
+          dockerfilePath: ${{ github.workspace }}/apps/realtime/Dockerfile
+          acrName: ${{ env.AZURE_CONTAINER_REGISTRY_NAME_PROD }}
+          containerAppName: ${{ vars.AZURE_CONTAINER_APP_NAME_REALTIME_PROD }}
+          containerAppEnvironment: ${{ vars.AZURE_CONTAINER_APP_ENVIRONMENT_PROD }}
+          resourceGroup: ${{ env.AZURE_RESOURCE_GROUP_PROD }}
+          targetPort: 8080
+          ingress: external
+          disableTelemetry: true
+          imageToBuild: ${{ env.AZURE_CONTAINER_REGISTRY_NAME_PROD }}.azurecr.io/whatfees-realtime:${{ github.sha }}
+
+      - name: Configure Container App secrets and runtime settings
+        shell: bash
+        env:
+          AZURE_CONTAINER_APP_NAME_REALTIME_PROD: ${{ vars.AZURE_CONTAINER_APP_NAME_REALTIME_PROD }}
+          REALTIME_INTERNAL_API_KEY_PROD: ${{ secrets.REALTIME_INTERNAL_API_KEY_PROD }}
+          REALTIME_TOKEN_SECRET_PROD: ${{ secrets.REALTIME_TOKEN_SECRET_PROD }}
+        run: |
+          set -euo pipefail
+
+          az config set extension.use_dynamic_install=yes_without_prompt
+
+          if [ -n "${REALTIME_TOKEN_SECRET_PROD}" ]; then
+            az containerapp secret set \
+              --name "${AZURE_CONTAINER_APP_NAME_REALTIME_PROD}" \
+              --resource-group "${AZURE_RESOURCE_GROUP_PROD}" \
+              --secrets \
+                realtime-internal-api-key=${REALTIME_INTERNAL_API_KEY_PROD} \
+                realtime-token-secret=${REALTIME_TOKEN_SECRET_PROD}
+
+            az containerapp update \
+              --name "${AZURE_CONTAINER_APP_NAME_REALTIME_PROD}" \
+              --resource-group "${AZURE_RESOURCE_GROUP_PROD}" \
+              --min-replicas "${REALTIME_MIN_REPLICAS_PROD}" \
+              --max-replicas "${REALTIME_MAX_REPLICAS_PROD}" \
+              --set-env-vars \
+                NODE_ENV=production \
+                REALTIME_ALLOWED_ORIGIN="${REALTIME_ALLOWED_ORIGIN_PROD}" \
+                REALTIME_DEV_ALLOW_UNAUTH_SUBSCRIBE=false \
+                REALTIME_INTERNAL_API_KEY=secretref:realtime-internal-api-key \
+                REALTIME_TOKEN_SECRET=secretref:realtime-token-secret
+          else
+            az containerapp secret set \
+              --name "${AZURE_CONTAINER_APP_NAME_REALTIME_PROD}" \
+              --resource-group "${AZURE_RESOURCE_GROUP_PROD}" \
+              --secrets realtime-internal-api-key=${REALTIME_INTERNAL_API_KEY_PROD}
+
+            az containerapp update \
+              --name "${AZURE_CONTAINER_APP_NAME_REALTIME_PROD}" \
+              --resource-group "${AZURE_RESOURCE_GROUP_PROD}" \
+              --min-replicas "${REALTIME_MIN_REPLICAS_PROD}" \
+              --max-replicas "${REALTIME_MAX_REPLICAS_PROD}" \
+              --set-env-vars \
+                NODE_ENV=production \
+                REALTIME_ALLOWED_ORIGIN="${REALTIME_ALLOWED_ORIGIN_PROD}" \
+                REALTIME_DEV_ALLOW_UNAUTH_SUBSCRIBE=true \
+                REALTIME_INTERNAL_API_KEY=secretref:realtime-internal-api-key
+          fi

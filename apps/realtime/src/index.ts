@@ -57,8 +57,9 @@ const server = createServer(async (request, response) => {
       }
 
       const body = await readJsonBody(request);
+      const bodyRecord = isRecord(body) ? body : {};
       const rooms = normalizeRooms(body);
-      const eventType = typeof body?.eventType === "string" ? body.eventType.trim() : "";
+      const eventType = typeof bodyRecord.eventType === "string" ? bodyRecord.eventType.trim() : "";
       if (!eventType) {
         writeJson(response, 400, { error: "Field 'eventType' is required." });
         return;
@@ -69,7 +70,7 @@ const server = createServer(async (request, response) => {
         delivered += broadcastToRoom({
           room,
           eventType,
-          data: body?.data
+          data: bodyRecord.data
         });
       }
 
@@ -329,9 +330,9 @@ function sanitizeRooms(rooms: string[]): string[] {
 }
 
 function normalizeRooms(body: unknown): string[] {
-  if (body && typeof body === "object" && body !== null) {
-    const room = "room" in body && typeof body.room === "string" ? body.room : null;
-    const rooms = "rooms" in body && Array.isArray(body.rooms) ? body.rooms : null;
+  if (isRecord(body)) {
+    const room = typeof body.room === "string" ? body.room : null;
+    const rooms = Array.isArray(body.rooms) ? body.rooms : null;
     if (room) return sanitizeRooms([room]);
     if (rooms) return sanitizeRooms(rooms);
   }
@@ -379,4 +380,8 @@ function normalizeOptionalBoolean(value: string | undefined, fallback: boolean):
   if (normalized === "true" || normalized === "1" || normalized === "yes") return true;
   if (normalized === "false" || normalized === "0" || normalized === "no") return false;
   return fallback;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }

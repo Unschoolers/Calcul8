@@ -127,3 +127,40 @@ You can also send `rooms: string[]` to fan out to multiple rooms in one call.
 - Use `wss://ws.whatfees.ca` from the browser.
 - Keep REST as the source of truth.
 - Keep polling as a reconnect / fallback path until websocket flow is proven stable.
+
+## GitHub Actions deployment
+
+The repo includes:
+
+- CI validation through `.github/workflows/ci.yml`
+- production deployment through `.github/workflows/deploy-realtime-prod.yml`
+
+Expected GitHub environment: `prod-realtime`
+
+Required variables:
+
+- `AZURE_CLIENT_ID_PROD`
+- `AZURE_TENANT_ID_PROD`
+- `AZURE_SUBSCRIPTION_ID_PROD`
+- `AZURE_CONTAINER_APP_NAME_REALTIME_PROD`
+- `AZURE_CONTAINER_APP_ENVIRONMENT_PROD`
+
+Required secrets:
+
+- `REALTIME_INTERNAL_API_KEY_PROD`
+
+Optional secret:
+
+- `REALTIME_TOKEN_SECRET_PROD`
+
+If `REALTIME_TOKEN_SECRET_PROD` is not set, the workflow leaves unauthenticated subscribe enabled in production, which is acceptable only for initial smoke testing.
+
+The deploy workflow uses GitHub OIDC via `azure/login@v2`, so you do not need a stored Azure credentials JSON secret.
+
+The workflow currently hardcodes these production values to keep setup minimal:
+
+- resource group: `DefaultResourceGroup-CCAN`
+- registry: `calcul8teregistry`
+- allowed origin: `https://whatfees.ca`
+- min replicas: `1`
+- max replicas: `2`
