@@ -88,8 +88,20 @@
             <div class="singles-editor-section-title">Core</div>
           </div>
           <v-row dense class="singles-editor-core-row">
-            <v-col cols="12" :md="showCatalogSuggestions ? 8 : 8">
+            <v-col cols="12" md="8">
+              <v-text-field
+                v-if="!showCatalogSuggestions"
+                v-model="editingSinglesRow.item"
+                label="Item"
+                variant="outlined"
+                density="comfortable"
+                hide-details
+                placeholder="Item name"
+                :clearable="Boolean(editingSinglesRow.item)"
+                @click:clear="editingSinglesRow.item = ''"
+              ></v-text-field>
               <v-autocomplete
+                v-else
                 :model-value="currentSinglesEditorSelectionValue"
                 v-model:search="singlesItemSearchText"
                 v-model:menu="singlesItemMenuOpen"
@@ -104,8 +116,8 @@
                 :clearable="Boolean(editingSinglesRow.item || singlesItemSearchText)"
                 no-filter
                 hide-details
-                :no-data-text="showCatalogSuggestions ? 'Type 2+ characters to search' : 'Autocomplete disabled for this lot'"
-                :placeholder="showCatalogSuggestions ? 'Search by name, number, or rarity' : 'Item name'"
+                no-data-text="Type 2+ characters to search"
+                placeholder="Search by name, number, or rarity"
                 @click:clear="clearSinglesCatalogSelection"
                 @focus="maybeOpenSinglesItemSuggestions"
                 @click:control="maybeOpenSinglesItemSuggestions"

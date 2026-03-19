@@ -412,9 +412,18 @@
             <v-list-item-subtitle class="text-caption singles-mobile-subtitle">
               <div class="singles-mobile-meta-primary">
                 <span class="singles-mobile-chip singles-mobile-chip--stock">{{ getSinglesEntryStockLabel(entry) }}</span>
-                <span class="singles-mobile-value">M ${{ fmtCurrency((Number(entry.marketValue) || 0) * (Number(entry.quantity) || 0)) }}</span>
-                <span class="singles-mobile-value-muted">
-                  C ${{ fmtCurrency((Number(entry.cost) || 0) * (Number(entry.quantity) || 0)) }} {{ entry.currency || currency }}
+                <span class="singles-mobile-value-pair">
+                  <span class="singles-mobile-value-label">M</span>
+                  <span class="singles-mobile-value">${{ fmtCurrency(Number(entry.marketValue) || 0) }}</span>
+                  <span class="singles-mobile-value-label">TM</span>
+                  <span class="singles-mobile-value">${{ fmtCurrency((Number(entry.marketValue) || 0) * (Number(entry.quantity) || 0)) }}</span>
+                </span>
+                <span class="singles-mobile-value-pair singles-mobile-value-pair--muted">
+                  <span class="singles-mobile-value-label">C</span>
+                  <span class="singles-mobile-value">${{ fmtCurrency(Number(entry.cost) || 0) }}</span>
+                  <span class="singles-mobile-value-label">TC</span>
+                  <span class="singles-mobile-value">${{ fmtCurrency((Number(entry.cost) || 0) * (Number(entry.quantity) || 0)) }}</span>
+                  <span class="singles-mobile-value-currency">{{ entry.currency || currency }}</span>
                 </span>
               </div>
               <div

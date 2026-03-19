@@ -207,8 +207,28 @@
   gap: 10px;
 }
 
+.live-singles-control-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.live-singles-control-label {
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(var(--v-theme-on-surface), 0.52);
+}
+
+.live-singles-control-group--quantity {
+  min-width: 64px;
+}
+
 .live-singles-price-block {
   min-width: 0;
+  text-align: center;
 }
 
 .live-singles-controls {
@@ -218,6 +238,37 @@
   justify-content: center;
   gap: 8px;
   min-width: 42px;
+}
+
+.live-singles-qty-stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.live-singles-qty-value {
+  min-width: 1.9rem;
+  padding: 0.18rem 0.4rem;
+  border-radius: 999px;
+  text-align: center;
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: rgba(var(--v-theme-on-surface), 0.92);
+  background: rgba(var(--v-theme-on-surface), 0.06);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+}
+
+.live-singles-mini-step-btn {
+  width: 32px;
+  height: 32px;
+  min-width: 32px !important;
+  min-height: 32px !important;
+  padding: 0 !important;
+  border-radius: 999px !important;
+}
+
+.live-singles-mini-step-btn .v-icon {
+  font-size: 14px !important;
 }
 
 .live-singles-bundle-card,
@@ -259,9 +310,14 @@
 
   .live-singles-item-body {
     display: grid;
-    grid-template-columns: 42px minmax(0, 1fr) 42px;
+    grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: center;
-    gap: 10px;
+    gap: 14px;
+  }
+
+  .live-singles-control-group--quantity {
+    grid-column: 1;
+    justify-self: start;
   }
 
   .live-singles-price-block {
@@ -270,7 +326,7 @@
     text-align: center;
   }
 
-  .live-singles-controls {
+  .live-singles-control-group--price {
     grid-column: 3;
     justify-self: end;
   }
@@ -299,10 +355,19 @@
 
   .live-singles-item-body {
     align-items: flex-start;
+    flex-wrap: wrap;
   }
 
   .live-singles-controls {
     min-width: 38px;
+  }
+
+  .live-singles-control-group--quantity {
+    align-items: flex-start;
+  }
+
+  .live-singles-control-group--price {
+    margin-inline-start: auto;
   }
 
   .live-singles-step-btn {

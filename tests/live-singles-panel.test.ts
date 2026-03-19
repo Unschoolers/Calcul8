@@ -199,12 +199,14 @@ test("syncLiveSinglesPricingState prunes stale prices and seeds suggested values
   const context = createContext({
     effectiveLiveSinglesIds: [1, 2],
     effectiveLiveSinglesEntries: [entry({ id: 1 }), entry({ id: 2 })],
+    liveSinglesQuantities: { 1: 3, 2: 0, 3: 9 },
     liveSinglesIndividualPrices: { 1: 5, 2: -1, 3: 7 },
     getSuggestedIndividualPrice: (selectedEntry) => selectedEntry.id * 10,
     liveSinglesSuggestedBundlePrice: 33
   });
 
   getMethod<(this: PanelCtx) => void>("syncLiveSinglesPricingState").call(context);
+  assert.deepEqual(context.liveSinglesQuantities, { 1: 1, 2: 1 });
   assert.deepEqual(context.liveSinglesIndividualPrices, { 1: 5, 2: 20 });
   assert.equal(context.liveSinglesBundleSelectionKey, "1,2");
   assert.equal(context.liveSinglesBundlePrice, 33);
@@ -216,6 +218,7 @@ test("syncLiveSinglesPricingState prunes stale prices and seeds suggested values
   context.effectiveLiveSinglesIds = [];
   context.effectiveLiveSinglesEntries = [];
   getMethod<(this: PanelCtx) => void>("syncLiveSinglesPricingState").call(context);
+  assert.deepEqual(context.liveSinglesQuantities, {});
   assert.deepEqual(context.liveSinglesIndividualPrices, {});
   assert.equal(context.liveSinglesBundlePrice, null);
   assert.equal(context.liveSinglesBundleSelectionKey, "");
@@ -223,7 +226,7 @@ test("syncLiveSinglesPricingState prunes stale prices and seeds suggested values
 
 test("individual and bundle price mutators update values and selection state", () => {
   const context = createContext({
-    effectiveLiveSinglesEntries: [entry({ id: 5, marketValue: 7 })],
+    effectiveLiveSinglesEntries: [entry({ id: 5, marketValue: 7, quantity: 4 })],
     liveSinglesBundlePrice: undefined,
     liveSinglesSuggestedBundlePrice: 12.4,
     getSuggestedIndividualPrice: () => 7
@@ -241,6 +244,12 @@ test("individual and bundle price mutators update values and selection state", (
   getMethod<(this: PanelCtx, direction: -1 | 1) => void>("adjustBundlePrice").call(context, 1);
   assert.equal(context.liveSinglesBundlePrice, 13.4);
 
+  getMethod<(this: PanelCtx, entryId: number, direction: -1 | 1) => void>("adjustLiveSinglesEntryQuantity").call(context, 5, 1);
+  assert.equal((context.liveSinglesQuantities as Record<number, number>)[5], 2);
+
+  getMethod<(this: PanelCtx, entryId: number, value: unknown) => void>("setLiveSinglesEntryQuantity").call(context, 5, 99);
+  assert.equal((context.liveSinglesQuantities as Record<number, number>)[5], 4);
+
   getMethod<(this: PanelCtx, value: unknown) => void>("onLiveSinglesPickerSelection").call(context, 6);
   assert.deepEqual(context.addLiveSinglesSelection.mock.calls[0], [6, "manual"]);
   assert.equal(context.liveSinglesSelectedId, null);
@@ -256,6 +265,7 @@ test("individual and bundle price mutators update values and selection state", (
 
   getMethod<(this: PanelCtx) => void>("clearLiveSinglesEntries").call(context);
   assert.equal(context.clearLiveSinglesSelection.mock.calls.length, 1);
+  assert.deepEqual(context.liveSinglesQuantities, {});
   assert.deepEqual(context.liveSinglesIndividualPrices, {});
   assert.equal(context.liveSinglesBundlePrice, null);
 });
@@ -275,6 +285,7 @@ test("apply/reset pricing and storage hooks behave as expected", () => {
   });
 
   getMethod<(this: PanelCtx) => void>("panelApplySuggestedLiveSinglesPricing").call(context);
+  assert.deepEqual(context.liveSinglesQuantities, { 1: 1, 2: 1 });
   assert.deepEqual(context.liveSinglesIndividualPrices, { 1: 1.5, 2: 2.5 });
   assert.equal(context.liveSinglesBundleSelectionKey, "1,2");
   assert.equal(context.liveSinglesBundlePrice, 55);
@@ -326,10 +337,12 @@ test("guard paths and setup paths behave safely for live singles panel", () => {
   assert.equal(context.addLiveSinglesSelection.mock.calls.length, 0);
 
   context.effectiveLiveSinglesEntries = [];
+  context.liveSinglesQuantities = { 9: 2 };
   context.liveSinglesIndividualPrices = { 9: 99 };
   context.liveSinglesBundlePrice = 99;
   context.liveSinglesBundleSelectionKey = "9";
   getMethod<(this: PanelCtx) => void>("panelApplySuggestedLiveSinglesPricing").call(context);
+  assert.deepEqual(context.liveSinglesQuantities, {});
   assert.deepEqual(context.liveSinglesIndividualPrices, {});
   assert.equal(context.liveSinglesBundlePrice, null);
   assert.equal(context.liveSinglesBundleSelectionKey, "");
@@ -367,4 +380,22 @@ test("guard paths and setup paths behave safely for live singles panel", () => {
   });
   warnSpy.mockRestore();
   assert.equal(bridge.sampleValue, 42);
+});
+
+test("quantity affects selected count, basis, suggested price, and profit totals", () => {
+  const context = createContext({
+    effectiveLiveSinglesIds: [1],
+    effectiveLiveSinglesEntries: [entry({ id: 1, marketValue: 10, quantity: 5 })],
+    liveSinglesQuantities: { 1: 3 },
+    liveSinglesIndividualPrices: { 1: 12 },
+    targetProfitPercent: 20,
+    calculatePriceForUnits: (units, netRevenue) => Math.round(netRevenue / units),
+    netFromGross: (gross) => gross - 3
+  });
+
+  assert.equal(getComputed<number>("liveSinglesSelectedCount").call(context), 3);
+  assert.equal(getComputed<number>("liveSinglesBasisTotal").call(context), 30);
+  assert.equal(getMethod<(this: PanelCtx, entry: SinglesPurchaseEntry) => number>("getSuggestedIndividualPrice").call(context, entry({ id: 1, marketValue: 10, quantity: 5 })), 12);
+  assert.equal(getComputed<number>("liveSinglesIndividualTotalPrice").call(context), 36);
+  assert.equal(getMethod<(this: PanelCtx, entry: SinglesPurchaseEntry) => number>("getIndividualProfit").call(context, entry({ id: 1, marketValue: 10, quantity: 5 })), 3);
 });

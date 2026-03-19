@@ -55,7 +55,8 @@ export const LiveSinglesPanel = {
     return {
       liveSinglesSelectedId: null as number | null,
       liveSinglesSearchText: "",
-      liveSinglesPricingMode: "individual" as LiveSinglesPricingMode,
+      liveSinglesPricingMode: "bundle" as LiveSinglesPricingMode,
+      liveSinglesQuantities: {} as Record<number, number>,
       liveSinglesIndividualPrices: {} as Record<number, number>,
       liveSinglesBundlePrice: null as number | null,
       liveSinglesBundleSelectionKey: ""
@@ -123,13 +124,16 @@ export const LiveSinglesPanel = {
     },
 
     liveSinglesSelectedCount(this: any): number {
-      return Array.isArray(this.effectiveLiveSinglesEntries) ? this.effectiveLiveSinglesEntries.length : 0;
+      if (!Array.isArray(this.effectiveLiveSinglesEntries)) return 0;
+      return this.effectiveLiveSinglesEntries.reduce((sum: number, entry: SinglesPurchaseEntry) => {
+        return sum + this.getLiveSinglesEntryQuantity(entry);
+      }, 0);
     },
 
     liveSinglesBasisTotal(this: any): number {
       if (!Array.isArray(this.effectiveLiveSinglesEntries)) return 0;
       return this.effectiveLiveSinglesEntries.reduce((sum: number, entry: SinglesPurchaseEntry) => {
-        return sum + this.resolveEntryBasis(entry);
+        return sum + (this.resolveEntryBasis(entry) * this.getLiveSinglesEntryQuantity(entry));
       }, 0);
     },
 
@@ -170,7 +174,7 @@ export const LiveSinglesPanel = {
     liveSinglesIndividualTotalPrice(this: any): number {
       if (!Array.isArray(this.effectiveLiveSinglesEntries)) return 0;
       return this.effectiveLiveSinglesEntries.reduce((sum: number, entry: SinglesPurchaseEntry) => {
-        return sum + this.getIndividualPrice(entry);
+        return sum + (this.getIndividualPrice(entry) * this.getLiveSinglesEntryQuantity(entry));
       }, 0);
     },
 
@@ -198,7 +202,7 @@ export const LiveSinglesPanel = {
       const bundlePrice = this.liveSinglesEffectiveBundlePrice;
       const basisByEntry: Array<{ id: number; basis: number }> = this.effectiveLiveSinglesEntries.map((entry: SinglesPurchaseEntry) => ({
         id: entry.id,
-        basis: this.resolveEntryBasis(entry)
+        basis: this.resolveEntryBasis(entry) * this.getLiveSinglesEntryQuantity(entry)
       }));
       const totalBasis = basisByEntry.reduce((sum: number, entry: { id: number; basis: number }) => sum + entry.basis, 0);
       const equalShare = basisByEntry.length > 0 ? (bundlePrice / basisByEntry.length) : 0;
@@ -232,6 +236,58 @@ export const LiveSinglesPanel = {
       return `${remainingQuantity}/${totalQuantity}`;
     },
 
+    getLiveSinglesEntryMaxQuantity(this: any, entry: SinglesPurchaseEntry): number {
+      const totalQuantity = toWholeNonNegative(entry.quantity);
+      const soldById = (this.singlesSoldCountByPurchaseId || {}) as Record<number, number>;
+      const soldQuantity = toWholeNonNegative(soldById[entry.id]);
+      const remainingQuantity = Math.max(0, totalQuantity - soldQuantity);
+      return Math.max(1, remainingQuantity);
+    },
+
+    getLiveSinglesEntryQuantity(this: any, entry: SinglesPurchaseEntry): number {
+      const entryId = toPositiveInt(entry.id);
+      if (!entryId) return 1;
+      const maxQuantity = this.getLiveSinglesEntryMaxQuantity(entry);
+      const draftedQuantity = toWholeNonNegative(this.liveSinglesQuantities?.[entryId]);
+      if (draftedQuantity <= 0) return 1;
+      return Math.min(maxQuantity, Math.max(1, draftedQuantity));
+    },
+
+    setLiveSinglesEntryQuantity(this: any, entryId: number, nextQuantity: unknown): void {
+      const parsedId = toPositiveInt(entryId);
+      if (!parsedId) return;
+      const entry = (this.effectiveLiveSinglesEntries || [])
+        .find((candidate: SinglesPurchaseEntry) => toPositiveInt(candidate.id) === parsedId);
+      if (!entry) return;
+
+      const previousQuantity = this.getLiveSinglesEntryQuantity(entry);
+      const nextWholeQuantity = Math.min(
+        this.getLiveSinglesEntryMaxQuantity(entry),
+        Math.max(1, toWholeNonNegative(nextQuantity) || 1)
+      );
+      if (previousQuantity === nextWholeQuantity) return;
+
+      this.liveSinglesQuantities = {
+        ...(this.liveSinglesQuantities || {}),
+        [parsedId]: nextWholeQuantity
+      };
+      this.liveSinglesIndividualPrices = {
+        ...(this.liveSinglesIndividualPrices || {}),
+        [parsedId]: this.getSuggestedIndividualPrice(entry)
+      };
+      this.liveSinglesBundlePrice = this.liveSinglesSuggestedBundlePrice;
+    },
+
+    adjustLiveSinglesEntryQuantity(this: any, entryId: number, direction: -1 | 1): void {
+      const parsedId = toPositiveInt(entryId);
+      if (!parsedId) return;
+      const entry = (this.effectiveLiveSinglesEntries || [])
+        .find((candidate: SinglesPurchaseEntry) => toPositiveInt(candidate.id) === parsedId);
+      if (!entry) return;
+      const currentQuantity = this.getLiveSinglesEntryQuantity(entry);
+      this.setLiveSinglesEntryQuantity(parsedId, currentQuantity + direction);
+    },
+
     getEntryCostInSellingCurrency(this: any, entry: SinglesPurchaseEntry): number {
       const unitCost = toNonNegativeNumber(entry.cost);
       const entryCurrency = entry.currency === "USD" || entry.currency === "CAD"
@@ -254,11 +310,12 @@ export const LiveSinglesPanel = {
 
     getSuggestedIndividualPrice(this: any, entry: SinglesPurchaseEntry): number {
       const basis = this.resolveEntryBasis(entry);
+      const quantity = this.getLiveSinglesEntryQuantity(entry);
       const targetProfitPercent = Math.max(0, Number(this.targetProfitPercent) || 0);
-      const targetNetRevenue = basis * (1 + (targetProfitPercent / 100));
+      const targetNetRevenue = (basis * quantity) * (1 + (targetProfitPercent / 100));
       const calculatePrice = this.calculatePriceForUnits;
-      if (typeof calculatePrice !== "function") return roundCurrency(targetNetRevenue);
-      return Math.max(0, calculatePrice(1, targetNetRevenue));
+      if (typeof calculatePrice !== "function") return roundCurrency(quantity > 0 ? (targetNetRevenue / quantity) : targetNetRevenue);
+      return Math.max(0, calculatePrice(quantity, targetNetRevenue));
     },
 
     syncLiveSinglesPricingState(this: any): void {
@@ -271,6 +328,19 @@ export const LiveSinglesPanel = {
           .map((value: unknown) => toPositiveInt(value))
           .filter((value: number | null): value is number => value != null)
       );
+      const existingQuantities = this.liveSinglesQuantities as Record<number, number>;
+      const nextQuantities: Record<number, number> = {};
+      for (const entry of (this.effectiveLiveSinglesEntries || []) as SinglesPurchaseEntry[]) {
+        const entryId = toPositiveInt(entry.id);
+        if (!entryId || !selectedSet.has(entryId)) continue;
+        const maxQuantity = this.getLiveSinglesEntryMaxQuantity(entry);
+        const parsedQuantity = toWholeNonNegative(existingQuantities?.[entryId]);
+        nextQuantities[entryId] = parsedQuantity > 0
+          ? Math.min(maxQuantity, Math.max(1, parsedQuantity))
+          : 1;
+      }
+      this.liveSinglesQuantities = nextQuantities;
+
       const existingPrices = this.liveSinglesIndividualPrices as Record<number, number>;
       const nextPrices: Record<number, number> = {};
       for (const [rawId, rawPrice] of Object.entries(existingPrices)) {
@@ -288,6 +358,7 @@ export const LiveSinglesPanel = {
       this.liveSinglesIndividualPrices = nextPrices;
 
       if (selectedSet.size === 0) {
+        this.liveSinglesQuantities = {};
         this.liveSinglesBundlePrice = null;
         this.liveSinglesBundleSelectionKey = "";
         return;
@@ -322,11 +393,12 @@ export const LiveSinglesPanel = {
 
     getIndividualProfit(this: any, entry: SinglesPurchaseEntry): number {
       const price = this.getIndividualPrice(entry);
+      const quantity = this.getLiveSinglesEntryQuantity(entry);
       const netFromGross = this.netFromGross;
       const netRevenue = typeof netFromGross === "function"
-        ? netFromGross(price, this.sellingShippingPerOrder, 1)
-        : price;
-      return netRevenue - this.resolveEntryBasis(entry);
+        ? netFromGross(price * quantity, this.sellingShippingPerOrder, quantity)
+        : (price * quantity);
+      return netRevenue - (this.resolveEntryBasis(entry) * quantity);
     },
 
     getIndividualProfitPercent(this: any, entry: SinglesPurchaseEntry): number {
@@ -399,6 +471,7 @@ export const LiveSinglesPanel = {
 
     clearLiveSinglesEntries(this: any): void {
       this.clearLiveSinglesSelection();
+      this.liveSinglesQuantities = {};
       this.liveSinglesIndividualPrices = {};
       this.liveSinglesBundlePrice = null;
       this.liveSinglesBundleSelectionKey = "";
@@ -410,6 +483,7 @@ export const LiveSinglesPanel = {
         : [];
 
       if (entries.length === 0) {
+        this.liveSinglesQuantities = {};
         this.liveSinglesIndividualPrices = {};
         this.liveSinglesBundlePrice = null;
         this.liveSinglesBundleSelectionKey = "";
@@ -417,12 +491,15 @@ export const LiveSinglesPanel = {
       }
 
       const nextPrices: Record<number, number> = {};
+      const nextQuantities: Record<number, number> = {};
       for (const entry of entries) {
         const entryId = toPositiveInt(entry.id);
         if (!entryId) continue;
+        nextQuantities[entryId] = this.getLiveSinglesEntryQuantity(entry);
         nextPrices[entryId] = this.getSuggestedIndividualPrice(entry);
       }
 
+      this.liveSinglesQuantities = nextQuantities;
       this.liveSinglesIndividualPrices = nextPrices;
       this.liveSinglesBundleSelectionKey = entries
         .map((entry) => toPositiveInt(entry.id))

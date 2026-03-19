@@ -22,8 +22,8 @@
           variant="tonal"
           class="live-singles-mode-toggle"
         >
-          <v-btn value="individual" size="small">Individual</v-btn>
           <v-btn value="bundle" size="small">Bundle</v-btn>
+          <v-btn value="individual" size="small">Individual</v-btn>
         </v-btn-toggle>
       </div>
 
@@ -195,9 +195,37 @@
           </div>
 
           <div class="live-singles-item-body">
+            <div class="live-singles-control-group live-singles-control-group--quantity">
+              <div class="live-singles-control-label">Qty</div>
+              <div class="live-singles-qty-stepper" role="group" aria-label="Quantity">
+                <v-btn
+                  icon="mdi-minus"
+                  size="x-small"
+                  variant="tonal"
+                  color="default"
+                  class="live-singles-mini-step-btn"
+                  :disabled="getLiveSinglesEntryQuantity(entry) <= 1"
+                  @click="adjustLiveSinglesEntryQuantity(entry.id, -1)"
+                ></v-btn>
+                <div class="live-singles-qty-value">{{ getLiveSinglesEntryQuantity(entry) }}</div>
+                <v-btn
+                  icon="mdi-plus"
+                  size="x-small"
+                  variant="tonal"
+                  color="default"
+                  class="live-singles-mini-step-btn"
+                  :disabled="getLiveSinglesEntryQuantity(entry) >= getLiveSinglesEntryMaxQuantity(entry)"
+                  @click="adjustLiveSinglesEntryQuantity(entry.id, 1)"
+                ></v-btn>
+              </div>
+            </div>
             <template v-if="liveSinglesPricingMode === 'individual'">
               <div class="live-singles-price-block">
+                <div class="text-caption text-medium-emphasis">Each</div>
                 <div class="text-h6 font-weight-bold">${{ fmtCurrency(getIndividualPrice(entry), 2) }}</div>
+                <div class="text-caption text-medium-emphasis">
+                  Line total ${{ fmtCurrency(getIndividualPrice(entry) * getLiveSinglesEntryQuantity(entry), 2) }}
+                </div>
                 <v-chip
                   size="x-small"
                   :color="getIndividualProfit(entry) >= 0 ? 'success' : 'error'"
@@ -206,7 +234,9 @@
                   ({{ fmtCurrency(getIndividualProfitPercent(entry), 1) }}%)
                 </v-chip>
               </div>
-              <div class="live-singles-controls">
+              <div class="live-singles-control-group live-singles-control-group--price">
+                <div class="live-singles-control-label">Price</div>
+                <div class="live-singles-controls">
                 <v-btn
                   icon="mdi-minus"
                   size="x-small"
@@ -223,19 +253,25 @@
                   class="live-singles-step-btn"
                   @click="adjustIndividualPrice(entry.id, 1)"
                 ></v-btn>
+                </div>
               </div>
             </template>
             <template v-else>
               <div class="live-singles-price-block">
+                <div class="text-caption text-medium-emphasis">Bundle share</div>
                 <div class="text-subtitle-1 font-weight-bold">
                   ${{ fmtCurrency(getBundleAllocationForEntry(entry.id)?.share || 0, 2) }}
                 </div>
                 <div class="text-caption text-medium-emphasis">
-                  {{ fmtCurrency(getBundleAllocationForEntry(entry.id)?.percent || 0, 1) }}% share
+                  {{ fmtCurrency(getBundleAllocationForEntry(entry.id)?.percent || 0, 1) }}% share ·
+                  Qty {{ getLiveSinglesEntryQuantity(entry) }}
                 </div>
               </div>
-              <div class="live-singles-controls">
+              <div class="live-singles-control-group live-singles-control-group--price">
+                <div class="live-singles-control-label">Pricing</div>
+                <div class="live-singles-controls">
                 <v-icon size="16" color="medium-emphasis">mdi-link-variant</v-icon>
+                </div>
               </div>
             </template>
           </div>

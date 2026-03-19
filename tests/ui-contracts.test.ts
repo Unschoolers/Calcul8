@@ -36,3 +36,10 @@ test("lot selector uses the explicit switch handler", () => {
   assert.match(appTemplate, /@update:model-value="selectLot"/);
 });
 
+test("singles custom mode uses a plain item text field instead of autocomplete", () => {
+  const singlesTemplate = read("src/components/windows/SinglesConfigWindow.html");
+
+  assert.match(singlesTemplate, /<v-text-field\s+[\s\S]*v-if="!showCatalogSuggestions"[\s\S]*v-model="editingSinglesRow\.item"/);
+  assert.match(singlesTemplate, /<v-autocomplete\s+[\s\S]*v-else[\s\S]*v-model:search="singlesItemSearchText"/);
+});
+

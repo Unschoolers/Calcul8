@@ -681,6 +681,29 @@
   color: rgba(var(--v-theme-on-surface), 0.9);
 }
 
+.singles-mobile-value-pair {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.22rem;
+  flex-wrap: wrap;
+}
+
+.singles-mobile-value-pair--muted .singles-mobile-value {
+  color: rgba(var(--v-theme-on-surface), 0.78);
+}
+
+.singles-mobile-value-label {
+  font-size: 0.61rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: rgba(var(--v-theme-on-surface), 0.56);
+}
+
+.singles-mobile-value-currency {
+  font-size: 0.64rem;
+  color: rgba(var(--v-theme-on-surface), 0.58);
+}
+
 .singles-mobile-value-muted {
   font-size: 0.68rem;
   color: rgba(var(--v-theme-on-surface), 0.64);
