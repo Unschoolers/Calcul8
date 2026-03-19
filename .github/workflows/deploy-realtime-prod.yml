@@ -14,7 +14,7 @@ env:
   NODE_VERSION: 22
   AZURE_RESOURCE_GROUP_PROD: DefaultResourceGroup-CCAN
   AZURE_CONTAINER_REGISTRY_NAME_PROD: calcul8teregistry
-  REALTIME_ALLOWED_ORIGIN_PROD: https://whatfees.ca
+  REALTIME_ALLOWED_ORIGIN_PROD: https://app.whatfees.ca,https://whatfees.ca
   REALTIME_MIN_REPLICAS_PROD: 1
   REALTIME_MAX_REPLICAS_PROD: 2
 

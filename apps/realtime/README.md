@@ -72,6 +72,7 @@ It prompts for:
     - or `Authorization: Bearer <value>`
 - `REALTIME_ALLOWED_ORIGIN`
   - optional
+  - comma-separated allowlist of accepted browser origins
   - when set, websocket upgrade requests from other origins are rejected
 - `REALTIME_DEV_ALLOW_UNAUTH_SUBSCRIBE`
   - optional
@@ -183,5 +184,7 @@ The workflow currently hardcodes these production values to keep setup minimal:
 - resource group: `DefaultResourceGroup-CCAN`
 - registry: `calcul8teregistry`
 - allowed origin: `https://whatfees.ca`
+  - update this to include every real frontend host, for example:
+    - `https://app.whatfees.ca,https://whatfees.ca`
 - min replicas: `1`
 - max replicas: `2`

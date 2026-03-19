@@ -26,7 +26,7 @@ type ClientState = {
 };
 
 const port = Number.parseInt(process.env.PORT ?? "8080", 10);
-const allowedOrigin = normalizeOptionalString(process.env.REALTIME_ALLOWED_ORIGIN);
+const allowedOrigins = parseAllowedOrigins(process.env.REALTIME_ALLOWED_ORIGIN);
 const internalApiKey = normalizeOptionalString(process.env.REALTIME_INTERNAL_API_KEY);
 const tokenSecret = normalizeOptionalString(process.env.REALTIME_TOKEN_SECRET);
 const allowUnauthenticatedSubscribe =
@@ -101,9 +101,9 @@ server.on("upgrade", (request, socket, head) => {
       return;
     }
 
-    if (allowedOrigin) {
+    if (allowedOrigins.length > 0) {
       const requestOrigin = normalizeOptionalString(request.headers.origin);
-      if (requestOrigin !== allowedOrigin) {
+      if (!requestOrigin || !allowedOrigins.includes(requestOrigin)) {
         socket.write("HTTP/1.1 403 Forbidden\r\n\r\n");
         socket.destroy();
         return;
@@ -380,6 +380,14 @@ function normalizeOptionalBoolean(value: string | undefined, fallback: boolean):
   if (normalized === "true" || normalized === "1" || normalized === "yes") return true;
   if (normalized === "false" || normalized === "0" || normalized === "no") return false;
   return fallback;
+}
+
+function parseAllowedOrigins(value: string | undefined): string[] {
+  if (!value) return [];
+  return value
+    .split(",")
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
