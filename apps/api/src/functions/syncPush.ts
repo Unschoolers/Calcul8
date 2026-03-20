@@ -4,6 +4,7 @@ import { getEffectiveSyncSnapshot, upsertSyncSnapshotIncremental } from "../lib/
 import { hasWorkspaceMembership } from "../lib/cosmos/workspaceRepository";
 import { getConfig } from "../lib/config";
 import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../lib/http";
+import { publishWorkspaceLotRealtimeEvent } from "../lib/realtime";
 import { parseOptionalWorkspaceId } from "../lib/syncScope";
 import { assertSyncScopeAccess, resolveSyncScope, shouldWarnWorkspaceScopeFallback } from "../lib/syncScopeResolution";
 import { parseSyncLotsShape } from "../lib/syncShape";
@@ -41,6 +42,15 @@ function parseLotIds(lots: unknown[]): string[] {
   return ids;
 }
 
+function parseOptionalActiveLotId(value: unknown): number | undefined {
+  if (value == null || value === "") return undefined;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return undefined;
+  }
+  return Math.floor(parsed);
+}
+
 async function parseSyncPushPayload(request: HttpRequest): Promise<SyncPushPayload> {
   let payload: unknown;
 
@@ -71,6 +81,7 @@ async function parseSyncPushPayload(request: HttpRequest): Promise<SyncPushPaylo
   return {
     lots: syncShape.lots,
     salesByLot: syncShape.salesByLot,
+    activeLotId: parseOptionalActiveLotId(payload.activeLotId),
     clientVersion: typeof clientVersion === "number" ? clientVersion : undefined,
     allowEmptyOverwrite: payload.allowEmptyOverwrite === true,
     workspaceId
@@ -152,6 +163,20 @@ export async function syncPush(
         version: previousVersion,
         updatedAt: existingSnapshot?.updatedAt ?? null,
         changed: false
+      });
+    }
+
+    if (workspaceId && payload.activeLotId != null) {
+      await publishWorkspaceLotRealtimeEvent(config, {
+        workspaceId,
+        lotId: String(payload.activeLotId),
+        eventType: "lot.config.updated",
+        data: {
+          lotId: String(payload.activeLotId),
+          version,
+          updatedAt
+        },
+        logger: context
       });
     }
 

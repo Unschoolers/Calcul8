@@ -27,6 +27,7 @@ import {
   saveAuthoritativeLivePricing
 } from "./sales-live-api.ts";
 import { markLivePricingPollingBaseline } from "./ui/lot-entity-polling.ts";
+import { queueWorkspaceConfigSyncPush } from "./ui/workspace-config-sync.ts";
 
 type QueuedLivePricingSaveContext = {
   currentLotId: number | null;
@@ -302,6 +303,7 @@ export const configLotMethods: ConfigMethodSubset<
 
     Object.assign(lot, this.getCurrentSetup());
     this.saveLotsToStorage();
+    queueWorkspaceConfigSyncPush(this);
   },
 
   syncLivePricesFromDefaults(): void {
@@ -575,6 +577,7 @@ export const configLotMethods: ConfigMethodSubset<
 
     this.currentLotId = newLot.id;
     this.loadLot();
+    queueWorkspaceConfigSyncPush(this);
     this.newLotName = "";
     this.newLotType = nextLotType;
     this.newLotCatalogSource = nextSinglesCatalogSource;
@@ -615,7 +618,7 @@ export const configLotMethods: ConfigMethodSubset<
     const hadExistingItems = Array.isArray(lot.singlesPurchases) && lot.singlesPurchases.length > 0;
     lot.singlesCatalogSource = normalizedSource;
     this.saveLotsToStorage();
-    void this.pushCloudSync();
+    queueWorkspaceConfigSyncPush(this);
 
     if (hadExistingItems) {
       this.notify(
@@ -669,6 +672,7 @@ export const configLotMethods: ConfigMethodSubset<
 
     lot.name = nextName;
     this.saveLotsToStorage();
+    queueWorkspaceConfigSyncPush(this);
     this.showRenameLotModal = false;
     this.renameLotName = "";
 

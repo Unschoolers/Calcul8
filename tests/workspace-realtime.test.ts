@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test, vi } from "vitest";
+import { createSyncPayload, getSyncPayloadSignature } from "../src/app-core/methods/ui/sync-payload.ts";
 
 const {
   canUseAuthoritativeSalesLiveApiMock,
@@ -99,12 +100,16 @@ function createApp(overrides: Record<string, unknown> = {}) {
     currentLotId: 1773766061603,
     currentTab: "live",
     isOffline: false,
+    lots: [{ id: 1773766061603, name: "Lot A" }],
     sales: [],
     liveSpotPrice: 0,
     liveBoxPriceSell: 0,
     livePackPrice: 0,
     currentLivePricingVersion: null,
+    lastSyncedPayloadHash: null,
+    pullCloudSync: vi.fn(async () => undefined),
     getSalesStorageKey: (lotId: number) => `sales:${lotId}`,
+    loadSalesForLotId: vi.fn(() => []),
     ...overrides
   };
 }
@@ -248,4 +253,62 @@ test("workspace realtime reconnects after an unexpected close and stops cleanly"
     code: 1000,
     reason: "realtime-refresh"
   });
+});
+
+test("workspace realtime connects on config tab and pulls cloud sync for clean config invalidations", async () => {
+  const app = createApp({
+    currentTab: "config"
+  });
+  app.lastSyncedPayloadHash = getSyncPayloadSignature(createSyncPayload({
+    lots: app.lots,
+    currentLotId: app.currentLotId,
+    sales: app.sales,
+    loadSalesForLotId: app.loadSalesForLotId,
+    workspaceId: app.activeWorkspaceId
+  }));
+
+  refreshWorkspaceRealtime(app as never);
+  const socket = FakeWebSocket.instances[0]!;
+  socket.triggerOpen();
+  await flushMicrotasks();
+
+  socket.triggerMessage({
+    type: "event",
+    room: "workspace:ws_dcb4d6f021637411:lot:1773766061603",
+    eventType: "lot.config.updated",
+    data: {
+      lotId: "1773766061603",
+      version: 2,
+      updatedAt: "2026-03-19T12:00:00.000Z"
+    }
+  });
+  await flushMicrotasks();
+
+  assert.equal((app.pullCloudSync as ReturnType<typeof vi.fn>).mock.calls.length, 1);
+});
+
+test("workspace realtime ignores config invalidations when local config is dirty", async () => {
+  const app = createApp({
+    currentTab: "config",
+    lastSyncedPayloadHash: "stale-signature"
+  });
+
+  refreshWorkspaceRealtime(app as never);
+  const socket = FakeWebSocket.instances[0]!;
+  socket.triggerOpen();
+  await flushMicrotasks();
+
+  socket.triggerMessage({
+    type: "event",
+    room: "workspace:ws_dcb4d6f021637411:lot:1773766061603",
+    eventType: "lot.config.updated",
+    data: {
+      lotId: "1773766061603",
+      version: 2,
+      updatedAt: "2026-03-19T12:00:00.000Z"
+    }
+  });
+  await flushMicrotasks();
+
+  assert.equal((app.pullCloudSync as ReturnType<typeof vi.fn>).mock.calls.length, 0);
 });

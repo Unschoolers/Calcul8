@@ -10,6 +10,7 @@ import {
 } from "./storageKeys.ts";
 import { closeStripeEmbeddedCheckout, handleStripeCheckoutReturn } from "./methods/ui/entitlements-stripe.ts";
 import { refreshLotEntityPolling, stopLotEntityPolling } from "./methods/ui/lot-entity-polling.ts";
+import { stopWorkspaceConfigSyncPush } from "./methods/ui/workspace-config-sync.ts";
 import { refreshWorkspaceRealtime, stopWorkspaceRealtime } from "./methods/ui/workspace-realtime.ts";
 import { getActiveStorageScope } from "./workspace-scope.ts";
 
@@ -125,6 +126,7 @@ export const appLifecycle: AppLifecycleObject = {
   beforeUnmount() {
     void closeStripeEmbeddedCheckout(this);
     this.stopCloudSyncScheduler();
+    stopWorkspaceConfigSyncPush(this);
     stopLotEntityPolling(this);
     stopWorkspaceRealtime(this);
     this.stopOfflineReconnectScheduler();

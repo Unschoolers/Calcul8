@@ -891,7 +891,7 @@ test("setCurrentLotCatalogSource updates current singles lot and persists change
 
   assert.equal(lot.singlesCatalogSource, "pokemon");
   assert.equal((ctx.saveLotsToStorage as ReturnType<typeof vi.fn>).mock.calls.length, 1);
-  assert.equal((ctx.pushCloudSync as ReturnType<typeof vi.fn>).mock.calls.length, 1);
+  assert.equal((ctx.pushCloudSync as ReturnType<typeof vi.fn>).mock.calls.length, 0);
   assert.equal(
     (ctx.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0],
     "Catalog source updated. This only affects future autocomplete suggestions; existing items stay unchanged."

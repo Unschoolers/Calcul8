@@ -7,6 +7,7 @@ import {
   normalizeLivePricing,
   normalizeSale
 } from "../sales-live-api.ts";
+import { createSyncPayload, getSyncPayloadSignature } from "./sync-payload.ts";
 import { reconcileIncomingLivePricingSnapshot } from "./lot-entity-polling.ts";
 
 type RealtimeApp = Pick<
@@ -16,11 +17,15 @@ type RealtimeApp = Pick<
   | "currentLotId"
   | "currentTab"
   | "isOffline"
+  | "lots"
+  | "lastSyncedPayloadHash"
   | "sales"
   | "liveSpotPrice"
   | "liveBoxPriceSell"
   | "livePackPrice"
   | "currentLivePricingVersion"
+  | "loadSalesForLotId"
+  | "pullCloudSync"
   | "getSalesStorageKey"
 >;
 
@@ -69,7 +74,7 @@ function shouldUseWorkspaceRealtime(app: RealtimeApp): boolean {
     return false;
   }
 
-  return app.currentTab === "live" || app.currentTab === "sales" || app.currentTab === "portfolio";
+  return app.currentTab === "config" || app.currentTab === "live" || app.currentTab === "sales" || app.currentTab === "portfolio";
 }
 
 function buildWorkspaceLotRoom(workspaceId: string, lotId: number): string {
@@ -125,6 +130,20 @@ function deleteRealtimeSale(app: RealtimeApp, lotId: number, saleId: number): vo
   cacheAuthoritativeSales(app as never, lotId, nextSales);
 }
 
+function isWorkspaceSnapshotSyncClean(app: RealtimeApp): boolean {
+  const expectedSignature = String(app.lastSyncedPayloadHash ?? "").trim();
+  if (!expectedSignature) return false;
+
+  const currentSignature = getSyncPayloadSignature(createSyncPayload({
+    lots: app.lots,
+    currentLotId: app.currentLotId,
+    sales: app.sales,
+    loadSalesForLotId: app.loadSalesForLotId,
+    workspaceId: app.activeWorkspaceId
+  }));
+  return currentSignature === expectedSignature;
+}
+
 function applyRealtimeMessage(app: RealtimeApp, room: string, eventType: string, data: unknown): void {
   const desiredRoom = getDesiredRealtimeRoom(app);
   if (!desiredRoom || room !== desiredRoom) return;
@@ -156,6 +175,13 @@ function applyRealtimeMessage(app: RealtimeApp, room: string, eventType: string,
     if (livePricing && app.currentLotId === Math.floor(lotId)) {
       reconcileIncomingLivePricingSnapshot(app, livePricing);
     }
+    return;
+  }
+
+  if (eventType === "lot.config.updated") {
+    if (app.currentLotId !== Math.floor(lotId)) return;
+    if (!isWorkspaceSnapshotSyncClean(app)) return;
+    void app.pullCloudSync();
   }
 }
 

@@ -167,6 +167,37 @@ test("applyLivePricesToDefaults coalesces repeated clicks into one authoritative
   assert.equal(saveAuthoritativeLivePricingMock.mock.calls.length, 1);
 });
 
+test("applyLivePricesToDefaults does not overwrite already-updated live values when the save resolves", async () => {
+  vi.useFakeTimers();
+  let resolveSave: ((value: unknown) => void) | null = null;
+  const savePromise = new Promise((resolve) => {
+    resolveSave = resolve;
+  });
+  saveAuthoritativeLivePricingMock.mockReturnValue(savePromise);
+
+  configLotMethods.applyLivePricesToDefaults.call(ctx as never);
+  await vi.advanceTimersByTimeAsync(500);
+
+  ctx.liveSpotPrice = 77;
+  ctx.liveBoxPriceSell = 88;
+  ctx.livePackPrice = 99;
+  ctx.currentLivePricingVersion = 5;
+
+  resolveSave?.({
+    liveSpotPrice: 11,
+    liveBoxPriceSell: 22,
+    livePackPrice: 33,
+    version: 5
+  });
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assert.equal(ctx.liveSpotPrice, 77);
+  assert.equal(ctx.liveBoxPriceSell, 88);
+  assert.equal(ctx.livePackPrice, 99);
+  assert.equal(ctx.currentLivePricingVersion, 5);
+});
+
 test("loadLot hydrates authoritative sales and live pricing after local defaults", async () => {
   fetchAuthoritativeSalesMock.mockResolvedValue([
     {

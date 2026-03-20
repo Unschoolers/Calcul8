@@ -202,6 +202,7 @@ export interface LotLivePricingDocument {
 export interface SyncPushPayload {
   lots: unknown[];
   salesByLot: Record<string, unknown[]>;
+  activeLotId?: number;
   clientVersion?: number;
   allowEmptyOverwrite?: boolean;
   workspaceId?: string;

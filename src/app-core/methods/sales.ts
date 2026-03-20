@@ -547,8 +547,13 @@ export const salesMethods: ThisType<AppContext> & Pick<
       mutationState.isSavingSale = true;
       try {
         const savedSale = await saveAuthoritativeSale(this, currentLotId, pendingSale, baseVersion);
-        if (editingSaleId != null) {
-          this.sales = this.sales.map((sale) => sale.id === editingSaleId ? savedSale : sale);
+        const existingIndex = this.sales.findIndex((sale) =>
+          sale.id === savedSale.id || (editingSaleId != null && sale.id === editingSaleId)
+        );
+        if (existingIndex >= 0) {
+          const nextSales = [...this.sales];
+          nextSales.splice(existingIndex, 1, savedSale);
+          this.sales = nextSales;
         } else {
           this.sales = [...this.sales, savedSale];
         }

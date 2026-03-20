@@ -4,6 +4,7 @@ import type { AppContext } from "../../context.ts";
 export type SyncPayload = {
   lots: unknown[];
   salesByLot: Record<string, Sale[]>;
+  activeLotId?: number;
   clientVersion?: number;
   allowEmptyOverwrite?: boolean;
   workspaceId?: string;
@@ -19,6 +20,11 @@ export function createSyncPayload(context: SyncPayloadContext, clientVersion?: n
     salesByLot: {},
     clientVersion
   };
+
+  const activeLotId = Number(context.currentLotId);
+  if (Number.isFinite(activeLotId) && activeLotId > 0) {
+    payload.activeLotId = Math.floor(activeLotId);
+  }
 
   const rawWorkspaceId = context.workspaceId;
   if (typeof rawWorkspaceId === "string") {

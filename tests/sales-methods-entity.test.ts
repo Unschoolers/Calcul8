@@ -140,6 +140,45 @@ test("saveSale ignores duplicate submit clicks while the authoritative save is i
   await Promise.resolve();
 });
 
+test("saveSale does not duplicate a sale already inserted by realtime before the save resolves", async () => {
+  let resolveSave: ((value: unknown) => void) | null = null;
+  const savePromise = new Promise((resolve) => {
+    resolveSave = resolve;
+  });
+  const ctx = createContext();
+  saveAuthoritativeSaleMock.mockReturnValue(savePromise);
+
+  salesMethods.saveSale.call(ctx as never);
+  await Promise.resolve();
+
+  ctx.sales = [{
+    id: 1,
+    type: "box",
+    quantity: 2,
+    packsCount: 2,
+    price: 82,
+    buyerShipping: 0,
+    date: "2026-03-19",
+    version: 3
+  }];
+
+  resolveSave?.({
+    id: 1,
+    type: "box",
+    quantity: 2,
+    packsCount: 2,
+    price: 82,
+    buyerShipping: 0,
+    date: "2026-03-19",
+    version: 3
+  });
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assert.equal((ctx.sales as Array<{ id: number }>).length, 1);
+  assert.equal((ctx.sales as Array<{ id: number }>)[0]?.id, 1);
+});
+
 test("deleteSale reloads latest sales on authoritative conflict", async () => {
   const latestSales = [
     {
@@ -179,5 +218,42 @@ test("deleteSale reloads latest sales on authoritative conflict", async () => {
   assert.deepEqual((ctx.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1), [
     "Sales changed in the cloud. Pulled latest sales instead of deleting.",
     "warning"
+  ]);
+});
+
+test("deleteSale stays stable if realtime already removed the sale before delete resolves", async () => {
+  let resolveDelete: (() => void) | null = null;
+  const deletePromise = new Promise<void>((resolve) => {
+    resolveDelete = resolve;
+  });
+  const ctx = createContext({
+    sales: [{
+      id: 1,
+      type: "box",
+      quantity: 2,
+      packsCount: 2,
+      price: 82,
+      buyerShipping: 0,
+      date: "2026-03-19",
+      version: 3
+    }],
+    askConfirmation: vi.fn((_opts, onConfirm: () => void) => onConfirm())
+  });
+  deleteAuthoritativeSaleMock.mockReturnValue(deletePromise);
+
+  salesMethods.deleteSale.call(ctx as never, 1);
+  await Promise.resolve();
+
+  ctx.sales = [];
+
+  resolveDelete?.();
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assert.deepEqual(ctx.sales, []);
+  assert.equal(cacheAuthoritativeSalesMock.mock.calls.length, 1);
+  assert.deepEqual((ctx.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1), [
+    "Sale deleted",
+    "info"
   ]);
 });

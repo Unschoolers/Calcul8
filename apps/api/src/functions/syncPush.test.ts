@@ -14,14 +14,16 @@ const {
   upsertSyncSnapshotIncrementalMock,
   hasWorkspaceMembershipMock,
   parseSyncLotsShapeMock,
-  assertSafeSyncPushMock
+  assertSafeSyncPushMock,
+  publishWorkspaceLotRealtimeEventMock
 } = vi.hoisted(() => ({
   getConfigMock: vi.fn(),
   getEffectiveSyncSnapshotMock: vi.fn(),
   upsertSyncSnapshotIncrementalMock: vi.fn(),
   hasWorkspaceMembershipMock: vi.fn(),
   parseSyncLotsShapeMock: vi.fn(),
-  assertSafeSyncPushMock: vi.fn()
+  assertSafeSyncPushMock: vi.fn(),
+  publishWorkspaceLotRealtimeEventMock: vi.fn()
 }));
 
 vi.mock("../lib/config", () => ({
@@ -43,6 +45,10 @@ vi.mock("../lib/syncShape", () => ({
 
 vi.mock("../lib/syncSafety", () => ({
   assertSafeSyncPush: assertSafeSyncPushMock
+}));
+
+vi.mock("../lib/realtime", () => ({
+  publishWorkspaceLotRealtimeEvent: publishWorkspaceLotRealtimeEventMock
 }));
 
 import { syncPush } from "./syncPush";
@@ -99,6 +105,7 @@ const originalFetch = globalThis.fetch;
 beforeEach(() => {
   vi.clearAllMocks();
   hasWorkspaceMembershipMock.mockResolvedValue(true);
+  publishWorkspaceLotRealtimeEventMock.mockResolvedValue(true);
   globalThis.fetch = (async (input: unknown) => {
     const raw = String(input);
     const tokenMatch = /[?&]id_token=([^&]+)/.exec(raw);
@@ -278,6 +285,168 @@ test("syncPush uses workspace partition when workspaceId is provided", async () 
   assert.equal(hasWorkspaceMembershipMock.mock.calls[0]?.[1], "user-ws");
   assert.equal(hasWorkspaceMembershipMock.mock.calls[0]?.[2], "team-42");
   assert.equal(context.warn.mock.calls.length, 0);
+});
+
+test("syncPush publishes lot.config.updated for changed workspace config pushes with active lot id", async () => {
+  parseSyncLotsShapeMock.mockReturnValue({
+    lots: [{ id: 20 }],
+    salesByLot: { "20": [] }
+  });
+  getEffectiveSyncSnapshotMock.mockResolvedValue({
+    version: 1,
+    updatedAt: "2026-02-21T10:00:00.000Z"
+  });
+  upsertSyncSnapshotIncrementalMock.mockResolvedValue({
+    changed: true,
+    upsertedCount: 1,
+    deletedCount: 0
+  });
+
+  const request = createRequest(
+    {
+      lots: [{ id: 20 }],
+      salesByLot: { "20": [] },
+      clientVersion: 1,
+      workspaceId: "team-42",
+      activeLotId: 20
+    },
+    "POST",
+    { authorization: "Bearer user-ws" }
+  );
+  const context = createContext();
+
+  const response = await syncPush(request as never, context as never);
+  assert.equal(response.status, 200);
+  assert.equal(publishWorkspaceLotRealtimeEventMock.mock.calls.length, 1);
+  const publishArgs = publishWorkspaceLotRealtimeEventMock.mock.calls[0]?.[1];
+  assert.equal(publishArgs?.workspaceId, "team-42");
+  assert.equal(publishArgs?.lotId, "20");
+  assert.equal(publishArgs?.eventType, "lot.config.updated");
+  assert.equal(publishArgs?.data?.lotId, "20");
+  assert.equal(publishArgs?.data?.version, 2);
+  assert.equal(typeof publishArgs?.data?.updatedAt, "string");
+  assert.equal(publishArgs?.logger, context);
+});
+
+test("syncPush does not publish config invalidation for unchanged or personal pushes", async () => {
+  parseSyncLotsShapeMock.mockReturnValue({
+    lots: [{ id: 1 }],
+    salesByLot: { "1": [] }
+  });
+  getEffectiveSyncSnapshotMock.mockResolvedValue({
+    version: 5,
+    updatedAt: "2026-02-21T10:00:00.000Z"
+  });
+  upsertSyncSnapshotIncrementalMock.mockResolvedValue({
+    changed: false,
+    upsertedCount: 0,
+    deletedCount: 0
+  });
+
+  const unchangedResponse = await syncPush(
+    createRequest(
+      {
+        lots: [{ id: 1 }],
+        salesByLot: { "1": [] },
+        clientVersion: 5,
+        workspaceId: "team-42",
+        activeLotId: 1
+      },
+      "POST",
+      { authorization: "Bearer user-a" }
+    ) as never,
+    createContext() as never
+  );
+  assert.equal(unchangedResponse.status, 200);
+
+  upsertSyncSnapshotIncrementalMock.mockResolvedValueOnce({
+    changed: true,
+    upsertedCount: 1,
+    deletedCount: 0
+  });
+
+  const personalResponse = await syncPush(
+    createRequest(
+      {
+        lots: [{ id: 1 }],
+        salesByLot: { "1": [] },
+        clientVersion: 5,
+        activeLotId: 1
+      },
+      "POST",
+      { authorization: "Bearer user-a" }
+    ) as never,
+    createContext() as never
+  );
+  assert.equal(personalResponse.status, 200);
+  assert.equal(publishWorkspaceLotRealtimeEventMock.mock.calls.length, 0);
+});
+
+test("syncPush ignores invalid activeLotId metadata instead of publishing config invalidation", async () => {
+  parseSyncLotsShapeMock.mockReturnValue({
+    lots: [{ id: 20 }],
+    salesByLot: { "20": [] }
+  });
+  getEffectiveSyncSnapshotMock.mockResolvedValue({
+    version: 1,
+    updatedAt: "2026-02-21T10:00:00.000Z"
+  });
+  upsertSyncSnapshotIncrementalMock.mockResolvedValue({
+    changed: true,
+    upsertedCount: 1,
+    deletedCount: 0
+  });
+
+  const response = await syncPush(
+    createRequest(
+      {
+        lots: [{ id: 20 }],
+        salesByLot: { "20": [] },
+        clientVersion: 1,
+        workspaceId: "team-42",
+        activeLotId: "banana"
+      },
+      "POST",
+      { authorization: "Bearer user-ws" }
+    ) as never,
+    createContext() as never
+  );
+
+  assert.equal(response.status, 200);
+  assert.equal(publishWorkspaceLotRealtimeEventMock.mock.calls.length, 0);
+});
+
+test("syncPush does not publish config invalidation when activeLotId metadata is missing", async () => {
+  parseSyncLotsShapeMock.mockReturnValue({
+    lots: [{ id: 20 }],
+    salesByLot: { "20": [] }
+  });
+  getEffectiveSyncSnapshotMock.mockResolvedValue({
+    version: 1,
+    updatedAt: "2026-02-21T10:00:00.000Z"
+  });
+  upsertSyncSnapshotIncrementalMock.mockResolvedValue({
+    changed: true,
+    upsertedCount: 1,
+    deletedCount: 0
+  });
+
+  const response = await syncPush(
+    createRequest(
+      {
+        lots: [{ id: 20 }],
+        salesByLot: { "20": [] },
+        clientVersion: 1,
+        workspaceId: "team-42"
+      },
+      "POST",
+      { authorization: "Bearer user-ws" }
+    ) as never,
+    createContext() as never
+  );
+
+  assert.equal(response.status, 200);
+  assert.equal(publishWorkspaceLotRealtimeEventMock.mock.calls.length, 0);
 });
 
 test("syncPush rejects workspace sync when user is not a member", async () => {

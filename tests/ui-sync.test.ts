@@ -243,6 +243,30 @@ test("pushCloudSync omits sales from snapshot payloads now that sales are entity
   assert.deepEqual(parsedBody.salesByLot, {});
 });
 
+test("pushCloudSync includes activeLotId metadata for the selected lot", async () => {
+  const ctx = createContext();
+  ctx.activeScopeType = "workspace";
+  ctx.activeWorkspaceId = "team-42";
+  ctx.currentLotId = 77;
+  fetchWithRetryMock.mockResolvedValue({
+    ok: true,
+    status: 200,
+    statusText: "OK",
+    json: async () => ({ version: 3 })
+  });
+
+  await uiSyncMethods.pushCloudSync.call(ctx, true);
+
+  assert.equal(fetchWithRetryMock.mock.calls.length, 1);
+  const requestInit = fetchWithRetryMock.mock.calls[0]?.[1] as { body?: string };
+  const parsedBody = JSON.parse(String(requestInit?.body ?? "{}")) as {
+    activeLotId?: number;
+    workspaceId?: string;
+  };
+  assert.equal(parsedBody.activeLotId, 77);
+  assert.equal(parsedBody.workspaceId, "team-42");
+});
+
 test("pushCloudSync skips upload and pulls cloud when local storage was cleared mid-session", async () => {
   vi.stubGlobal("localStorage", createMockStorage({
     whatfees_google_token: "token-abc"
