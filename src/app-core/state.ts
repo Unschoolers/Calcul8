@@ -204,6 +204,7 @@ export function createInitialState(): AppState {
     lastSyncedPayloadHash: null,
     syncStatus: "idle",
     syncStatusResetTimeoutId: null,
+    workspaceRealtimeStatus: "idle",
     offlineReconnectIntervalId: null
   };
 }

@@ -150,25 +150,41 @@
                 </v-avatar>
                 <v-icon v-else size="26">mdi-account-circle-outline</v-icon>
                 <span
-                  v-if="syncStatus !== 'idle'"
+                  v-if="(isWorkspaceScopeActive && workspaceRealtimeStatus !== 'idle') || (!isWorkspaceScopeActive && syncStatus !== 'idle')"
                   class="account-menu-sync-badge"
                   :class="[
-                    syncStatus === 'syncing'
+                    isWorkspaceScopeActive
+                      ? (workspaceRealtimeStatus === 'connected'
+                        ? 'account-menu-sync-badge--success'
+                        : (workspaceRealtimeStatus === 'disconnected'
+                          ? 'account-menu-sync-badge--error'
+                          : 'account-menu-sync-badge--syncing'))
+                      : (syncStatus === 'syncing'
                       ? 'account-menu-sync-badge--syncing'
                       : (syncStatus === 'success'
                         ? 'account-menu-sync-badge--success'
-                        : 'account-menu-sync-badge--error')
+                        : 'account-menu-sync-badge--error'))
                   ]"
                   aria-hidden="true"
                 >
                   <v-icon
-                    :size="syncStatus === 'syncing' ? 10 : 11"
-                    :class="syncStatus === 'syncing' ? 'sync-spinning' : ''"
+                    :size="(isWorkspaceScopeActive && (workspaceRealtimeStatus === 'connecting' || workspaceRealtimeStatus === 'reconnecting'))
+                      || (!isWorkspaceScopeActive && syncStatus === 'syncing')
+                      ? 10
+                      : 11"
+                    :class="(isWorkspaceScopeActive && (workspaceRealtimeStatus === 'connecting' || workspaceRealtimeStatus === 'reconnecting'))
+                      || (!isWorkspaceScopeActive && syncStatus === 'syncing')
+                      ? 'sync-spinning'
+                      : ''"
                   >
                     {{
-                      syncStatus === 'syncing'
-                        ? 'mdi-sync'
-                        : (syncStatus === 'success' ? 'mdi-check-bold' : 'mdi-alert')
+                      isWorkspaceScopeActive
+                        ? ((workspaceRealtimeStatus === 'connecting' || workspaceRealtimeStatus === 'reconnecting')
+                          ? 'mdi-sync'
+                          : (workspaceRealtimeStatus === 'connected' ? 'mdi-check-bold' : 'mdi-alert'))
+                        : (syncStatus === 'syncing'
+                          ? 'mdi-sync'
+                          : (syncStatus === 'success' ? 'mdi-check-bold' : 'mdi-alert'))
                     }}
                   </v-icon>
                 </span>
@@ -243,6 +259,32 @@
                 @click="promptInstall"
               ></v-list-item>
               <v-list-item
+                v-if="isWorkspaceScopeActive"
+                :title="workspaceRealtimeStatus === 'connected'
+                  ? 'Workspace realtime connected'
+                  : (workspaceRealtimeStatus === 'connecting'
+                    ? 'Workspace realtime connecting'
+                    : (workspaceRealtimeStatus === 'reconnecting'
+                      ? 'Workspace realtime reconnecting'
+                      : (workspaceRealtimeStatus === 'disconnected'
+                        ? 'Workspace realtime disconnected'
+                        : 'Workspace realtime idle')))"
+                :subtitle="workspaceRealtimeStatus === 'connected'
+                  ? 'Live workspace updates are active'
+                  : (workspaceRealtimeStatus === 'connecting'
+                    ? 'Opening realtime connection'
+                    : (workspaceRealtimeStatus === 'reconnecting'
+                      ? 'Retrying with backoff'
+                      : (workspaceRealtimeStatus === 'disconnected'
+                        ? 'Last realtime attempt failed'
+                        : 'Realtime not active for this view')))"
+                :prepend-icon="workspaceRealtimeStatus === 'connected'
+                  ? 'mdi-lan-connect'
+                  : ((workspaceRealtimeStatus === 'connecting' || workspaceRealtimeStatus === 'reconnecting')
+                    ? 'mdi-sync'
+                    : 'mdi-lan-disconnect')"
+              ></v-list-item>
+              <v-list-item
                 :title="syncStatus === 'syncing'
                   ? 'Syncing'
                   : (syncStatus === 'success'
@@ -276,15 +318,9 @@
 
               <v-list-subheader>Account</v-list-subheader>
               <v-list-item
-                title="Sign out"
-                prepend-icon="mdi-logout"
-                @click="logoutCurrentSession"
-              ></v-list-item>
-              <v-list-item
                 title="Clear my data"
                 subtitle="Clears your personal cloud data"
                 prepend-icon="mdi-delete-alert-outline"
-                base-color="error"
                 @click="askConfirmation(
                   {
                     title: 'Clear your personal data?',
@@ -293,6 +329,11 @@
                   },
                   () => clearPersonalAccountData()
                 )"
+              ></v-list-item>
+              <v-list-item
+                title="Sign out"
+                prepend-icon="mdi-logout"
+                @click="logoutCurrentSession"
               ></v-list-item>
             </v-list>
           </v-menu>

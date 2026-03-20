@@ -115,6 +115,7 @@ test("createInitialState runs storage migration and initializes expert/pro state
     assert.equal(state.purchaseDate, state.newSale.date);
     assert.match(state.purchaseDate, /^\d{4}-\d{2}-\d{2}$/);
     assert.equal(state.syncStatus, "idle");
+    assert.equal(state.workspaceRealtimeStatus, "idle");
   });
 });
 
@@ -143,6 +144,7 @@ test("createInitialState initializes simple/non-pro defaults and empty collectio
     assert.deepEqual(state.availableWorkspaces, []);
     assert.equal(state.cloudSyncIntervalId, null);
     assert.equal(state.offlineReconnectIntervalId, null);
+    assert.equal(state.workspaceRealtimeStatus, "idle");
   });
 });
 

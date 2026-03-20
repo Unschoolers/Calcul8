@@ -1,28 +1,11 @@
 import assert from "node:assert/strict";
-import { afterEach, beforeEach, test, vi } from "vitest";
-
-const {
-  canUseAuthoritativeSalesLiveApiMock,
-  fetchAuthoritativeSalesMock,
-  fetchAuthoritativeLivePricingMock,
-  cacheAuthoritativeSalesMock
-} = vi.hoisted(() => ({
-  canUseAuthoritativeSalesLiveApiMock: vi.fn(),
-  fetchAuthoritativeSalesMock: vi.fn(),
-  fetchAuthoritativeLivePricingMock: vi.fn(),
-  cacheAuthoritativeSalesMock: vi.fn()
-}));
-
-vi.mock("../src/app-core/methods/sales-live-api.ts", () => ({
-  canUseAuthoritativeSalesLiveApi: canUseAuthoritativeSalesLiveApiMock,
-  fetchAuthoritativeSales: fetchAuthoritativeSalesMock,
-  fetchAuthoritativeLivePricing: fetchAuthoritativeLivePricingMock,
-  cacheAuthoritativeSales: cacheAuthoritativeSalesMock
-}));
+import { test } from "vitest";
 
 import {
+  createLivePricingPollingHash,
   markLivePricingPollingBaseline,
   pollAuthoritativeLotEntities,
+  reconcileIncomingLivePricingSnapshot,
   refreshLotEntityPolling,
   startLotEntityPolling,
   stopLotEntityPolling
@@ -30,148 +13,93 @@ import {
 
 function createContext(overrides: Record<string, unknown> = {}) {
   return {
-    currentLotId: 7,
-    currentTab: "live",
-    sales: [],
     liveSpotPrice: 1,
     liveBoxPriceSell: 2,
     livePackPrice: 3,
     currentLivePricingVersion: 1,
-    isOffline: false,
     ...overrides
   };
 }
 
-beforeEach(() => {
-  vi.clearAllMocks();
-  canUseAuthoritativeSalesLiveApiMock.mockReturnValue(true);
-  fetchAuthoritativeSalesMock.mockResolvedValue([]);
-  fetchAuthoritativeLivePricingMock.mockResolvedValue(null);
-});
+test("reconcileIncomingLivePricingSnapshot applies remote pricing when local state still matches baseline", () => {
+  const context = createContext();
 
-afterEach(() => {
-  vi.useRealTimers();
-});
-
-test("pollAuthoritativeLotEntities updates sales and live pricing when local state is clean", async () => {
-  const context = createContext({
-    sales: [{
-      id: 1,
-      type: "pack",
-      quantity: 1,
-      packsCount: 1,
-      price: 10,
-      buyerShipping: 0,
-      date: "2026-03-17",
-      version: 1
-    }]
-  });
   markLivePricingPollingBaseline(context, {
     liveSpotPrice: 1,
     liveBoxPriceSell: 2,
     livePackPrice: 3,
     currentLivePricingVersion: 1
   });
-  fetchAuthoritativeSalesMock.mockResolvedValue([{
-    id: 2,
-    type: "pack",
-    quantity: 1,
-    packsCount: 1,
-    price: 25,
-    buyerShipping: 0,
-    date: "2026-03-17",
-    version: 2
-  }]);
-  fetchAuthoritativeLivePricingMock.mockResolvedValue({
+
+  const applied = reconcileIncomingLivePricingSnapshot(context as never, {
     liveSpotPrice: 11,
     liveBoxPriceSell: 22,
     livePackPrice: 33,
     version: 4
   });
 
-  await pollAuthoritativeLotEntities(context as never);
-
-  assert.equal((context.sales as Array<{ id: number }>)[0]?.id, 2);
+  assert.equal(applied, true);
   assert.equal(context.liveSpotPrice, 11);
   assert.equal(context.liveBoxPriceSell, 22);
   assert.equal(context.livePackPrice, 33);
   assert.equal(context.currentLivePricingVersion, 4);
-  assert.equal(cacheAuthoritativeSalesMock.mock.calls.length, 1);
 });
 
-test("pollAuthoritativeLotEntities does not overwrite unsaved local live pricing edits", async () => {
+test("reconcileIncomingLivePricingSnapshot preserves unsaved local edits when baseline no longer matches", () => {
   const context = createContext({
     liveSpotPrice: 9,
     liveBoxPriceSell: 19,
     livePackPrice: 29,
     currentLivePricingVersion: 1
   });
+
   markLivePricingPollingBaseline(context, {
     liveSpotPrice: 1,
     liveBoxPriceSell: 2,
     livePackPrice: 3,
     currentLivePricingVersion: 1
   });
-  fetchAuthoritativeLivePricingMock.mockResolvedValue({
+
+  const applied = reconcileIncomingLivePricingSnapshot(context as never, {
     liveSpotPrice: 11,
     liveBoxPriceSell: 22,
     livePackPrice: 33,
     version: 2
   });
 
-  await pollAuthoritativeLotEntities(context as never);
-
+  assert.equal(applied, false);
   assert.equal(context.liveSpotPrice, 9);
   assert.equal(context.liveBoxPriceSell, 19);
   assert.equal(context.livePackPrice, 29);
   assert.equal(context.currentLivePricingVersion, 1);
 });
 
-test("pollAuthoritativeLotEntities skips all authoritative requests on config tab", async () => {
-  const context = createContext({
-    currentTab: "config"
+test("createLivePricingPollingHash normalizes numeric values consistently", () => {
+  const hash = createLivePricingPollingHash({
+    liveSpotPrice: 1,
+    liveBoxPriceSell: 2,
+    livePackPrice: 3,
+    currentLivePricingVersion: 4
   });
 
-  await pollAuthoritativeLotEntities(context as never);
-
-  assert.equal(fetchAuthoritativeSalesMock.mock.calls.length, 0);
-  assert.equal(fetchAuthoritativeLivePricingMock.mock.calls.length, 0);
+  assert.equal(hash, JSON.stringify({
+    liveSpotPrice: 1,
+    liveBoxPriceSell: 2,
+    livePackPrice: 3,
+    version: 4
+  }));
 });
 
-test("pollAuthoritativeLotEntities only fetches sales on sales tab", async () => {
-  const context = createContext({
-    currentTab: "sales"
-  });
-
-  await pollAuthoritativeLotEntities(context as never);
-
-  assert.equal(fetchAuthoritativeSalesMock.mock.calls.length, 1);
-  assert.equal(fetchAuthoritativeLivePricingMock.mock.calls.length, 0);
-});
-
-test("startLotEntityPolling polls every 30 seconds until stopped", async () => {
-  vi.useFakeTimers();
+test("polling entrypoints are intentional no-ops now that websocket-only workspace freshness is enabled", async () => {
   const context = createContext();
 
   startLotEntityPolling(context as never);
-  await vi.advanceTimersByTimeAsync(30_000);
-  await vi.advanceTimersByTimeAsync(30_000);
-  stopLotEntityPolling(context as never);
-  await vi.advanceTimersByTimeAsync(30_000);
-
-  assert.equal(fetchAuthoritativeSalesMock.mock.calls.length, 2);
-  assert.equal(fetchAuthoritativeLivePricingMock.mock.calls.length, 2);
-});
-
-test("refreshLotEntityPolling stops polling when current tab does not need authoritative data", async () => {
-  vi.useFakeTimers();
-  const context = createContext();
-
-  startLotEntityPolling(context as never);
-  context.currentTab = "config";
   refreshLotEntityPolling(context as never);
-  await vi.advanceTimersByTimeAsync(30_000);
+  await pollAuthoritativeLotEntities(context as never);
+  stopLotEntityPolling(context as never);
 
-  assert.equal(fetchAuthoritativeSalesMock.mock.calls.length, 0);
-  assert.equal(fetchAuthoritativeLivePricingMock.mock.calls.length, 0);
+  assert.equal(context.liveSpotPrice, 1);
+  assert.equal(context.liveBoxPriceSell, 2);
+  assert.equal(context.livePackPrice, 3);
+  assert.equal(context.currentLivePricingVersion, 1);
 });

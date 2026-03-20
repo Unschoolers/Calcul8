@@ -1,4 +1,4 @@
-import type { Sale } from "../../../types/app.ts";
+import type { Sale, WorkspaceRealtimeStatus } from "../../../types/app.ts";
 import type { AppContext } from "../../context.ts";
 import {
   cacheAuthoritativeSales,
@@ -27,6 +27,7 @@ type RealtimeApp = Pick<
   | "loadSalesForLotId"
   | "pullCloudSync"
   | "getSalesStorageKey"
+  | "workspaceRealtimeStatus"
 >;
 
 type RealtimeSocketState = {
@@ -36,6 +37,7 @@ type RealtimeSocketState = {
   url: string | null;
   isIntentionalClose: boolean;
   subscribeAttemptId: number;
+  reconnectAttempt: number;
 };
 
 type RealtimeEnvelope =
@@ -49,7 +51,8 @@ type RealtimeEventPayload = {
   raw: Record<string, unknown>;
 };
 
-const REALTIME_RECONNECT_DELAY_MS = 3_000;
+const REALTIME_RECONNECT_BACKOFF_MS = [1_000, 5_000, 30_000, 120_000, 900_000] as const;
+const REALTIME_RECONNECT_JITTER_RATIO = 0.2;
 const FALLBACK_REALTIME_SOCKET_URL = "wss://whatfees-realtime.redsand-4d20b4cc.canadaeast.azurecontainerapps.io/socket";
 const PROD_REALTIME_SOCKET_URL = "wss://ws.whatfees.ca/socket";
 const WORKSPACE_REALTIME_TABS = new Set(["config", "live", "sales", "portfolio"]);
@@ -64,11 +67,16 @@ function getRealtimeSocketState(app: object): RealtimeSocketState {
       reconnectTimeoutId: null,
       url: null,
       isIntentionalClose: false,
-      subscribeAttemptId: 0
+      subscribeAttemptId: 0,
+      reconnectAttempt: 0
     };
     realtimeSocketStateByApp.set(app, state);
   }
   return state;
+}
+
+function setWorkspaceRealtimeStatus(app: RealtimeApp, status: WorkspaceRealtimeStatus): void {
+  app.workspaceRealtimeStatus = status;
 }
 
 function shouldUseWorkspaceRealtime(app: RealtimeApp): boolean {
@@ -109,6 +117,17 @@ function clearReconnectTimeout(state: RealtimeSocketState): void {
     globalThis.clearTimeout(state.reconnectTimeoutId);
     state.reconnectTimeoutId = null;
   }
+}
+
+function resetRealtimeReconnectAttempts(state: RealtimeSocketState): void {
+  state.reconnectAttempt = 0;
+}
+
+function getRealtimeReconnectDelayMs(state: RealtimeSocketState): number {
+  const attemptIndex = Math.min(state.reconnectAttempt, REALTIME_RECONNECT_BACKOFF_MS.length - 1);
+  const baseDelayMs = REALTIME_RECONNECT_BACKOFF_MS[attemptIndex];
+  const jitterFactor = 1 + ((Math.random() * 2) - 1) * REALTIME_RECONNECT_JITTER_RATIO;
+  return Math.max(250, Math.round(baseDelayMs * jitterFactor));
 }
 
 function upsertRealtimeSale(app: RealtimeApp, lotId: number, nextSale: Sale): void {
@@ -220,10 +239,13 @@ function scheduleRealtimeReconnect(app: RealtimeApp): void {
   const state = getRealtimeSocketState(app as object);
   if (state.reconnectTimeoutId != null) return;
 
+  const delayMs = getRealtimeReconnectDelayMs(state);
+  state.reconnectAttempt += 1;
+  setWorkspaceRealtimeStatus(app, "reconnecting");
   state.reconnectTimeoutId = globalThis.setTimeout(() => {
     state.reconnectTimeoutId = null;
     refreshWorkspaceRealtime(app);
-  }, REALTIME_RECONNECT_DELAY_MS);
+  }, delayMs);
 }
 
 function closeRealtimeSocket(app: RealtimeApp): void {
@@ -300,6 +322,7 @@ async function subscribeRealtimeSocket(
       ...(subscribeToken?.token ? { token: subscribeToken.token } : {})
     }));
   } catch {
+    setWorkspaceRealtimeStatus(app, "disconnected");
     if (state.socket === socket && socket.readyState === WebSocket.OPEN) {
       socket.close(1011, "realtime-subscribe-failed");
     }
@@ -322,6 +345,20 @@ function attachRealtimeSocketListeners(
     try {
       payload = JSON.parse(String(event.data || "")) as RealtimeEnvelope;
     } catch {
+      return;
+    }
+
+    if (payload.type === "subscribed") {
+      resetRealtimeReconnectAttempts(state);
+      setWorkspaceRealtimeStatus(app, "connected");
+      return;
+    }
+
+    if (payload.type === "error") {
+      setWorkspaceRealtimeStatus(app, "disconnected");
+      if (state.socket === socket && socket.readyState === WebSocket.OPEN) {
+        socket.close(1011, "realtime-server-error");
+      }
       return;
     }
 
@@ -351,6 +388,8 @@ export function refreshWorkspaceRealtime(app: RealtimeApp): void {
   const desiredRoom = getDesiredRealtimeRoom(app);
   if (!desiredRoom) {
     closeRealtimeSocket(app);
+    resetRealtimeReconnectAttempts(getRealtimeSocketState(app as object));
+    setWorkspaceRealtimeStatus(app, "idle");
     return;
   }
 
@@ -368,6 +407,7 @@ export function refreshWorkspaceRealtime(app: RealtimeApp): void {
   state.url = nextUrl;
   state.subscribeAttemptId += 1;
   const subscribeAttemptId = state.subscribeAttemptId;
+  setWorkspaceRealtimeStatus(app, state.reconnectAttempt > 0 ? "reconnecting" : "connecting");
 
   const socket = new WebSocket(nextUrl);
   state.socket = socket;
@@ -376,4 +416,6 @@ export function refreshWorkspaceRealtime(app: RealtimeApp): void {
 
 export function stopWorkspaceRealtime(app: RealtimeApp): void {
   closeRealtimeSocket(app);
+  resetRealtimeReconnectAttempts(getRealtimeSocketState(app as object));
+  setWorkspaceRealtimeStatus(app, "idle");
 }

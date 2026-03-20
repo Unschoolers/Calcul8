@@ -107,6 +107,7 @@ function createApp(overrides: Record<string, unknown> = {}) {
     livePackPrice: 0,
     currentLivePricingVersion: null,
     lastSyncedPayloadHash: null,
+    workspaceRealtimeStatus: "idle",
     pullCloudSync: vi.fn(async () => undefined),
     getSalesStorageKey: (lotId: number) => `sales:${lotId}`,
     loadSalesForLotId: vi.fn(() => []),
@@ -131,6 +132,7 @@ beforeEach(() => {
   });
   normalizeSaleMock.mockImplementation((value: unknown) => value);
   normalizeLivePricingMock.mockImplementation((value: unknown) => value);
+  vi.spyOn(Math, "random").mockReturnValue(0.5);
   vi.stubGlobal("WebSocket", FakeWebSocket);
   vi.stubGlobal("window", {
     location: {
@@ -144,12 +146,14 @@ beforeEach(() => {
 afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 test("refreshWorkspaceRealtime connects to prod socket host and subscribes with a signed token", async () => {
   const app = createApp();
 
   refreshWorkspaceRealtime(app as never);
+  assert.equal(app.workspaceRealtimeStatus, "connecting");
 
   assert.equal(FakeWebSocket.instances.length, 1);
   const socket = FakeWebSocket.instances[0]!;
@@ -165,6 +169,13 @@ test("refreshWorkspaceRealtime connects to prod socket host and subscribes with 
     rooms: ["workspace:ws_dcb4d6f021637411:lot:1773766061603"],
     token: "signed-token"
   });
+
+  socket.triggerMessage({
+    type: "subscribed",
+    rooms: ["workspace:ws_dcb4d6f021637411:lot:1773766061603"]
+  });
+
+  assert.equal(app.workspaceRealtimeStatus, "connected");
 });
 
 test("workspace realtime applies incoming sale and live pricing events for the active room", async () => {
@@ -237,16 +248,32 @@ test("workspace realtime reconnects after an unexpected close and stops cleanly"
   const firstSocket = FakeWebSocket.instances[0]!;
   firstSocket.triggerOpen();
   await flushMicrotasks();
+  firstSocket.triggerMessage({
+    type: "subscribed",
+    rooms: ["workspace:ws_dcb4d6f021637411:lot:1773766061603"]
+  });
+  assert.equal(app.workspaceRealtimeStatus, "connected");
   firstSocket.triggerClose();
+  assert.equal(app.workspaceRealtimeStatus, "reconnecting");
 
-  await vi.advanceTimersByTimeAsync(3_000);
+  await vi.advanceTimersByTimeAsync(999);
+  assert.equal(FakeWebSocket.instances.length, 1);
+
+  await vi.advanceTimersByTimeAsync(1);
 
   assert.equal(FakeWebSocket.instances.length, 2);
   const secondSocket = FakeWebSocket.instances[1]!;
+  assert.equal(app.workspaceRealtimeStatus, "reconnecting");
   secondSocket.triggerOpen();
   await flushMicrotasks();
+  secondSocket.triggerMessage({
+    type: "subscribed",
+    rooms: ["workspace:ws_dcb4d6f021637411:lot:1773766061603"]
+  });
+  assert.equal(app.workspaceRealtimeStatus, "connected");
 
   stopWorkspaceRealtime(app as never);
+  assert.equal(app.workspaceRealtimeStatus, "idle");
 
   assert.equal(secondSocket.closeCalls.length, 1);
   assert.deepEqual(secondSocket.closeCalls[0], {

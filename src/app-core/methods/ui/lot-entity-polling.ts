@@ -1,71 +1,14 @@
-import type { Sale } from "../../../types/app.ts";
 import type { AppContext } from "../../context.ts";
-import {
-  cacheAuthoritativeSales,
-  canUseAuthoritativeSalesLiveApi,
-  fetchAuthoritativeLivePricing,
-  fetchAuthoritativeSales,
-  type LotLivePricingRecord
-} from "../sales-live-api.ts";
-
-const LOT_ENTITY_POLL_INTERVAL_MS = 30_000;
+import { type LotLivePricingRecord } from "../sales-live-api.ts";
 
 type LotEntityPollingApp = Pick<
   AppContext,
-  | "currentLotId"
-  | "currentTab"
-  | "sales"
   | "liveSpotPrice"
   | "liveBoxPriceSell"
   | "livePackPrice"
   | "currentLivePricingVersion"
-  | "isOffline"
 >;
-
-const lotEntityPollingIntervals = new WeakMap<object, number>();
-const lotEntityPollingInFlight = new WeakSet<object>();
 const livePricingBaselineHashes = new WeakMap<object, string | null>();
-
-function shouldPollSales(app: Pick<LotEntityPollingApp, "currentTab">): boolean {
-  return app.currentTab === "live" || app.currentTab === "sales" || app.currentTab === "portfolio";
-}
-
-function shouldPollLivePricing(app: Pick<LotEntityPollingApp, "currentTab">): boolean {
-  return app.currentTab === "live" || app.currentTab === "portfolio";
-}
-
-function shouldRunLotEntityPolling(app: LotEntityPollingApp): boolean {
-  if (app.isOffline || !app.currentLotId || !canUseAuthoritativeSalesLiveApi()) {
-    return false;
-  }
-
-  return shouldPollSales(app) || shouldPollLivePricing(app);
-}
-
-function createSalesHash(sales: Sale[]): string {
-  return JSON.stringify(
-    sales.map((sale) => ({
-      id: sale.id,
-      type: sale.type,
-      quantity: sale.quantity,
-      packsCount: sale.packsCount,
-      singlesPurchaseEntryId: sale.singlesPurchaseEntryId ?? null,
-      singlesItems: Array.isArray(sale.singlesItems)
-        ? sale.singlesItems.map((line) => ({
-          singlesPurchaseEntryId: line.singlesPurchaseEntryId ?? null,
-          quantity: line.quantity,
-          price: line.price
-        }))
-        : null,
-      price: sale.price,
-      priceIsTotal: sale.priceIsTotal === true,
-      memo: sale.memo ?? "",
-      buyerShipping: sale.buyerShipping,
-      date: sale.date,
-      version: sale.version ?? null
-    }))
-  );
-}
 
 export function createLivePricingPollingHash(
   pricing: Pick<LotEntityPollingApp, "liveSpotPrice" | "liveBoxPriceSell" | "livePackPrice" | "currentLivePricingVersion">
@@ -117,87 +60,19 @@ export function reconcileIncomingLivePricingSnapshot(
   return shouldApply;
 }
 
-export async function pollAuthoritativeLotEntities(app: LotEntityPollingApp): Promise<void> {
-  if (!shouldRunLotEntityPolling(app)) {
-    return;
-  }
-
-  if (lotEntityPollingInFlight.has(app as object)) {
-    return;
-  }
-
-  lotEntityPollingInFlight.add(app as object);
-  const activeLotId = app.currentLotId;
-  if (activeLotId == null) {
-    lotEntityPollingInFlight.delete(app as object);
-    return;
-  }
-
-  try {
-    const [latestSales, latestLivePricing] = await Promise.all([
-      shouldPollSales(app)
-        ? fetchAuthoritativeSales(app as never, activeLotId)
-        : Promise.resolve(null),
-      shouldPollLivePricing(app)
-        ? fetchAuthoritativeLivePricing(app as never, activeLotId)
-        : Promise.resolve(null)
-    ]);
-
-    if (app.currentLotId !== activeLotId) {
-      return;
-    }
-
-    if (latestSales) {
-      const currentSalesHash = createSalesHash(Array.isArray(app.sales) ? app.sales : []);
-      const nextSalesHash = createSalesHash(latestSales);
-      if (currentSalesHash !== nextSalesHash) {
-        app.sales = latestSales;
-        cacheAuthoritativeSales(app as never, activeLotId, latestSales);
-      }
-    }
-
-    if (latestLivePricing) {
-      reconcileIncomingLivePricingSnapshot(app, latestLivePricing);
-      return;
-    }
-
-    const currentLiveHash = createLivePricingPollingHash(app);
-    const baselineHash = livePricingBaselineHashes.get(app as object) ?? currentLiveHash;
-    livePricingBaselineHashes.set(app as object, baselineHash);
-  } finally {
-    lotEntityPollingInFlight.delete(app as object);
-  }
+export async function pollAuthoritativeLotEntities(_app: unknown): Promise<void> {
+  // Polling is intentionally disabled. Workspace freshness uses websockets,
+  // and personal mode stays local-authoritative.
 }
 
-export function startLotEntityPolling(app: LotEntityPollingApp): void {
-  if (!shouldRunLotEntityPolling(app)) {
-    stopLotEntityPolling(app);
-    return;
-  }
-
-  if (lotEntityPollingIntervals.has(app as object)) {
-    return;
-  }
-
-  const intervalId = globalThis.setInterval(() => {
-    void pollAuthoritativeLotEntities(app);
-  }, LOT_ENTITY_POLL_INTERVAL_MS);
-  lotEntityPollingIntervals.set(app as object, intervalId);
+export function startLotEntityPolling(_app: unknown): void {
+  // Polling is intentionally disabled.
 }
 
-export function refreshLotEntityPolling(app: LotEntityPollingApp): void {
-  if (shouldRunLotEntityPolling(app)) {
-    startLotEntityPolling(app);
-    return;
-  }
-
-  stopLotEntityPolling(app);
+export function refreshLotEntityPolling(_app: unknown): void {
+  // Polling is intentionally disabled.
 }
 
-export function stopLotEntityPolling(app: object): void {
-  const intervalId = lotEntityPollingIntervals.get(app);
-  if (intervalId != null) {
-    globalThis.clearInterval(intervalId);
-    lotEntityPollingIntervals.delete(app);
-  }
+export function stopLotEntityPolling(_app: unknown): void {
+  // Polling is intentionally disabled.
 }

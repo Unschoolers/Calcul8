@@ -12,6 +12,7 @@ export type ChartViewMode = "pie" | "sparkline";
 export type PortfolioChartViewMode = "breakdown" | "trend" | "sellthrough" | "margin";
 export type PortfolioLotTypeFilter = "both" | "bulk" | "singles";
 export type SyncStatus = "idle" | "syncing" | "success" | "error";
+export type WorkspaceRealtimeStatus = "idle" | "connecting" | "connected" | "reconnecting" | "disconnected";
 export type LiveSinglesSelectionSource = "manual" | "external";
 export type LiveSinglesSelectionMode = "replace" | "merge";
 export type WorkspaceScopeType = "personal" | "workspace";
@@ -306,6 +307,7 @@ export interface AppState extends LotSetup {
   lastSyncedPayloadHash: string | null;
   syncStatus: SyncStatus;
   syncStatusResetTimeoutId: number | null;
+  workspaceRealtimeStatus: WorkspaceRealtimeStatus;
   offlineReconnectIntervalId: number | null;
 }
 
