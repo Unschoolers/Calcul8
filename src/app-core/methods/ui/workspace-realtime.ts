@@ -44,9 +44,15 @@ type RealtimeEnvelope =
   | { type: "error"; message?: string }
   | { type: "event"; room?: string; eventType?: string; data?: unknown };
 
+type RealtimeEventPayload = {
+  lotId: number;
+  raw: Record<string, unknown>;
+};
+
 const REALTIME_RECONNECT_DELAY_MS = 3_000;
 const FALLBACK_REALTIME_SOCKET_URL = "wss://whatfees-realtime.redsand-4d20b4cc.canadaeast.azurecontainerapps.io/socket";
 const PROD_REALTIME_SOCKET_URL = "wss://ws.whatfees.ca/socket";
+const WORKSPACE_REALTIME_TABS = new Set(["config", "live", "sales", "portfolio"]);
 const realtimeSocketStateByApp = new WeakMap<object, RealtimeSocketState>();
 
 function getRealtimeSocketState(app: object): RealtimeSocketState {
@@ -74,7 +80,7 @@ function shouldUseWorkspaceRealtime(app: RealtimeApp): boolean {
     return false;
   }
 
-  return app.currentTab === "config" || app.currentTab === "live" || app.currentTab === "sales" || app.currentTab === "portfolio";
+  return WORKSPACE_REALTIME_TABS.has(app.currentTab);
 }
 
 function buildWorkspaceLotRoom(workspaceId: string, lotId: number): string {
@@ -100,7 +106,7 @@ function resolveRealtimeSocketUrl(): string {
 
 function clearReconnectTimeout(state: RealtimeSocketState): void {
   if (state.reconnectTimeoutId != null) {
-    window.clearTimeout(state.reconnectTimeoutId);
+    globalThis.clearTimeout(state.reconnectTimeoutId);
     state.reconnectTimeoutId = null;
   }
 }
@@ -144,44 +150,69 @@ function isWorkspaceSnapshotSyncClean(app: RealtimeApp): boolean {
   return currentSignature === expectedSignature;
 }
 
+function parseRealtimeEventPayload(app: RealtimeApp, data: unknown): RealtimeEventPayload | null {
+  const raw = typeof data === "object" && data !== null && !Array.isArray(data)
+    ? data as Record<string, unknown>
+    : {};
+  const lotId = Number(raw.lotId ?? app.currentLotId);
+  if (!Number.isFinite(lotId) || lotId <= 0) return null;
+  return {
+    lotId: Math.floor(lotId),
+    raw
+  };
+}
+
+function handleSaleUpsertEvent(app: RealtimeApp, payload: RealtimeEventPayload): void {
+  const sale = normalizeSale(payload.raw.sale);
+  if (sale) {
+    upsertRealtimeSale(app, payload.lotId, sale);
+  }
+}
+
+function handleSaleDeletedEvent(app: RealtimeApp, payload: RealtimeEventPayload): void {
+  const saleId = Number(payload.raw.saleId);
+  if (Number.isFinite(saleId) && saleId > 0) {
+    deleteRealtimeSale(app, payload.lotId, Math.floor(saleId));
+  }
+}
+
+function handleLivePricingUpdatedEvent(app: RealtimeApp, payload: RealtimeEventPayload): void {
+  const livePricing = normalizeLivePricing(payload.raw.livePricing);
+  if (livePricing && app.currentLotId === payload.lotId) {
+    reconcileIncomingLivePricingSnapshot(app, livePricing);
+  }
+}
+
+function handleLotConfigUpdatedEvent(app: RealtimeApp, payload: RealtimeEventPayload): void {
+  if (app.currentLotId !== payload.lotId) return;
+  if (!isWorkspaceSnapshotSyncClean(app)) return;
+  void app.pullCloudSync();
+}
+
 function applyRealtimeMessage(app: RealtimeApp, room: string, eventType: string, data: unknown): void {
   const desiredRoom = getDesiredRealtimeRoom(app);
   if (!desiredRoom || room !== desiredRoom) return;
 
-  const payload = typeof data === "object" && data !== null && !Array.isArray(data)
-    ? data as Record<string, unknown>
-    : {};
-  const lotId = Number(payload.lotId ?? app.currentLotId);
-  if (!Number.isFinite(lotId) || lotId <= 0) return;
+  const payload = parseRealtimeEventPayload(app, data);
+  if (!payload) return;
 
   if (eventType === "sale.upserted") {
-    const sale = normalizeSale(payload.sale);
-    if (sale) {
-      upsertRealtimeSale(app, Math.floor(lotId), sale);
-    }
+    handleSaleUpsertEvent(app, payload);
     return;
   }
 
   if (eventType === "sale.deleted") {
-    const saleId = Number(payload.saleId);
-    if (Number.isFinite(saleId) && saleId > 0) {
-      deleteRealtimeSale(app, Math.floor(lotId), Math.floor(saleId));
-    }
+    handleSaleDeletedEvent(app, payload);
     return;
   }
 
   if (eventType === "livePricing.updated") {
-    const livePricing = normalizeLivePricing(payload.livePricing);
-    if (livePricing && app.currentLotId === Math.floor(lotId)) {
-      reconcileIncomingLivePricingSnapshot(app, livePricing);
-    }
+    handleLivePricingUpdatedEvent(app, payload);
     return;
   }
 
   if (eventType === "lot.config.updated") {
-    if (app.currentLotId !== Math.floor(lotId)) return;
-    if (!isWorkspaceSnapshotSyncClean(app)) return;
-    void app.pullCloudSync();
+    handleLotConfigUpdatedEvent(app, payload);
   }
 }
 
@@ -189,7 +220,7 @@ function scheduleRealtimeReconnect(app: RealtimeApp): void {
   const state = getRealtimeSocketState(app as object);
   if (state.reconnectTimeoutId != null) return;
 
-  state.reconnectTimeoutId = window.setTimeout(() => {
+  state.reconnectTimeoutId = globalThis.setTimeout(() => {
     state.reconnectTimeoutId = null;
     refreshWorkspaceRealtime(app);
   }, REALTIME_RECONNECT_DELAY_MS);
@@ -211,63 +242,79 @@ function closeRealtimeSocket(app: RealtimeApp): void {
   }
 }
 
-export function refreshWorkspaceRealtime(app: RealtimeApp): void {
-  const desiredRoom = getDesiredRealtimeRoom(app);
-  if (!desiredRoom) {
-    closeRealtimeSocket(app);
-    return;
+function shouldKeepRealtimeSocket(
+  state: RealtimeSocketState,
+  desiredRoom: string,
+  nextUrl: string
+): boolean {
+  return Boolean(
+    state.socket
+    && state.socket.readyState === WebSocket.OPEN
+    && state.room === desiredRoom
+    && state.url === nextUrl
+  );
+}
+
+function shouldReconnectSocket(
+  app: RealtimeApp,
+  state: RealtimeSocketState,
+  desiredRoom: string
+): boolean {
+  return !state.isIntentionalClose
+    && getDesiredRealtimeRoom(app) === desiredRoom;
+}
+
+function tryScheduleRealtimeReconnect(
+  app: RealtimeApp,
+  state: RealtimeSocketState,
+  desiredRoom: string
+): void {
+  if (shouldReconnectSocket(app, state, desiredRoom)) {
+    scheduleRealtimeReconnect(app);
   }
+}
 
-  const nextUrl = resolveRealtimeSocketUrl();
-  const state = getRealtimeSocketState(app as object);
-  clearReconnectTimeout(state);
+async function subscribeRealtimeSocket(
+  app: RealtimeApp,
+  state: RealtimeSocketState,
+  socket: WebSocket,
+  subscribeAttemptId: number
+): Promise<void> {
+  if (state.socket !== socket || !state.room || !app.currentLotId) return;
 
-  if (
-    state.socket &&
-    state.socket.readyState === WebSocket.OPEN &&
-    state.room === desiredRoom &&
-    state.url === nextUrl
-  ) {
-    return;
+  try {
+    const subscribeToken = await fetchWorkspaceRealtimeSubscribeToken(app as never, app.currentLotId);
+    if (
+      state.socket !== socket
+      || state.subscribeAttemptId !== subscribeAttemptId
+      || socket.readyState !== WebSocket.OPEN
+      || !state.room
+    ) {
+      return;
+    }
+
+    const nextRoom = subscribeToken?.room || state.room;
+    socket.send(JSON.stringify({
+      type: "subscribe",
+      rooms: [nextRoom],
+      ...(subscribeToken?.token ? { token: subscribeToken.token } : {})
+    }));
+  } catch {
+    if (state.socket === socket && socket.readyState === WebSocket.OPEN) {
+      socket.close(1011, "realtime-subscribe-failed");
+    }
   }
+}
 
-  closeRealtimeSocket(app);
-  state.isIntentionalClose = false;
-  state.room = desiredRoom;
-  state.url = nextUrl;
-  state.subscribeAttemptId += 1;
-  const subscribeAttemptId = state.subscribeAttemptId;
-
-  const socket = new WebSocket(nextUrl);
-  state.socket = socket;
-
+function attachRealtimeSocketListeners(
+  app: RealtimeApp,
+  state: RealtimeSocketState,
+  socket: WebSocket,
+  desiredRoom: string,
+  subscribeAttemptId: number
+): void {
   socket.addEventListener("open", () => {
-    void (async () => {
-      if (state.socket !== socket || !state.room || !app.currentLotId) return;
-
-      try {
-        const subscribeToken = await fetchWorkspaceRealtimeSubscribeToken(app as never, app.currentLotId);
-        if (
-          state.socket !== socket
-          || state.subscribeAttemptId !== subscribeAttemptId
-          || socket.readyState !== WebSocket.OPEN
-          || !state.room
-        ) {
-          return;
-        }
-
-        const nextRoom = subscribeToken?.room || state.room;
-        socket.send(JSON.stringify({
-          type: "subscribe",
-          rooms: [nextRoom],
-          ...(subscribeToken?.token ? { token: subscribeToken.token } : {})
-        }));
-      } catch {
-        if (state.socket === socket && socket.readyState === WebSocket.OPEN) {
-          socket.close(1011, "realtime-subscribe-failed");
-        }
-      }
-    })();
+    void subscribeRealtimeSocket(app, state, socket, subscribeAttemptId);
   });
 
   socket.addEventListener("message", (event) => {
@@ -292,17 +339,39 @@ export function refreshWorkspaceRealtime(app: RealtimeApp): void {
     if (state.socket === socket) {
       state.socket = null;
     }
-
-    if (!state.isIntentionalClose && getDesiredRealtimeRoom(app) === desiredRoom) {
-      scheduleRealtimeReconnect(app);
-    }
+    tryScheduleRealtimeReconnect(app, state, desiredRoom);
   });
 
   socket.addEventListener("error", () => {
-    if (!state.isIntentionalClose && getDesiredRealtimeRoom(app) === desiredRoom) {
-      scheduleRealtimeReconnect(app);
-    }
+    tryScheduleRealtimeReconnect(app, state, desiredRoom);
   });
+}
+
+export function refreshWorkspaceRealtime(app: RealtimeApp): void {
+  const desiredRoom = getDesiredRealtimeRoom(app);
+  if (!desiredRoom) {
+    closeRealtimeSocket(app);
+    return;
+  }
+
+  const nextUrl = resolveRealtimeSocketUrl();
+  const state = getRealtimeSocketState(app as object);
+  clearReconnectTimeout(state);
+
+  if (shouldKeepRealtimeSocket(state, desiredRoom, nextUrl)) {
+    return;
+  }
+
+  closeRealtimeSocket(app);
+  state.isIntentionalClose = false;
+  state.room = desiredRoom;
+  state.url = nextUrl;
+  state.subscribeAttemptId += 1;
+  const subscribeAttemptId = state.subscribeAttemptId;
+
+  const socket = new WebSocket(nextUrl);
+  state.socket = socket;
+  attachRealtimeSocketListeners(app, state, socket, desiredRoom, subscribeAttemptId);
 }
 
 export function stopWorkspaceRealtime(app: RealtimeApp): void {
