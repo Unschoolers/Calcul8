@@ -1,0 +1,304 @@
+import assert from "node:assert/strict";
+import { beforeEach, test, vi } from "vitest";
+import type {
+  ApiConfig,
+  LotLivePricingDocument,
+  SaleDocument,
+  SyncMetaDocument,
+  SyncPresetDocument
+} from "../../types";
+
+const {
+  getContainersMock,
+  getExternalSyncContainerMock,
+  isNotFoundErrorMock,
+  withCosmosRetryMock
+} = vi.hoisted(() => ({
+  getContainersMock: vi.fn(),
+  getExternalSyncContainerMock: vi.fn(),
+  isNotFoundErrorMock: vi.fn(),
+  withCosmosRetryMock: vi.fn(async <T>(operation: () => Promise<T>) => operation())
+}));
+
+vi.mock("./core", () => ({
+  EPOCH_DATE_ISO: "1970-01-01T00:00:00.000Z",
+  getContainers: getContainersMock,
+  getExternalSyncContainer: getExternalSyncContainerMock,
+  isNotFoundError: isNotFoundErrorMock,
+  withCosmosRetry: withCosmosRetryMock
+}));
+
+import {
+  getEffectiveSyncSnapshot,
+  replaceSyncScopeEntityDocuments,
+  upsertSyncSnapshotIncremental
+} from "./syncSnapshotRepository";
+
+function createConfig(): ApiConfig {
+  return {
+    apiEnv: "dev",
+    authBypassDev: true,
+    migrationsAdminKey: "",
+    googleClientId: "",
+    googlePlayPackageName: "io.whatfees",
+    googlePlayProProductIds: ["pro_access"],
+    googlePlayServiceAccountEmail: "",
+    googlePlayServiceAccountPrivateKey: "",
+    allowedOrigins: [],
+    cosmosEndpoint: "https://example.documents.azure.com:443/",
+    cosmosKey: "key",
+    cosmosDatabaseId: "whatfees",
+    entitlementsContainerId: "entitlements",
+    syncContainerId: "sync_data",
+    migrationRunsContainerId: "migration_runs"
+  };
+}
+
+function createSyncSnapshotsContainer() {
+  return {
+    items: {
+      query: vi.fn(),
+      upsert: vi.fn()
+    },
+    item: vi.fn()
+  };
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  isNotFoundErrorMock.mockImplementation((error: unknown) => {
+    const statusCode = (error as { statusCode?: unknown })?.statusCode;
+    const code = (error as { code?: unknown })?.code;
+    return statusCode === 404 || code === 404 || code === "NotFound";
+  });
+});
+
+test("getEffectiveSyncSnapshot reconstructs lots and omits preset sales when entity mode is enabled", async () => {
+  const syncSnapshots = createSyncSnapshotsContainer();
+  const presetDocuments: SyncPresetDocument[] = [
+    {
+      id: "sync:preset:user-1:lot-1",
+      docType: "sync_preset",
+      userId: "user-1",
+      presetId: "lot-1",
+      preset: { id: "lot-1", name: "Lot 1" },
+      sales: [{ id: 1 }],
+      version: 3,
+      updatedAt: "2026-03-18T10:00:00.000Z"
+    },
+    {
+      id: "sync:preset:user-1:lot-2",
+      docType: "sync_preset",
+      userId: "user-1",
+      presetId: "lot-2",
+      preset: { id: "lot-2", name: "Lot 2" },
+      sales: [{ id: 2 }],
+      version: 5,
+      updatedAt: "2026-03-18T12:00:00.000Z"
+    }
+  ];
+  const metaDocument: SyncMetaDocument = {
+    id: "sync:meta:user-1",
+    docType: "sync_meta",
+    userId: "user-1",
+    version: 7,
+    updatedAt: "2026-03-18T13:00:00.000Z",
+    salesMode: "entity",
+    livePricingMode: "entity"
+  };
+
+  syncSnapshots.items.query.mockReturnValue({
+    fetchAll: vi.fn().mockResolvedValue({
+      resources: presetDocuments
+    })
+  });
+  syncSnapshots.item.mockImplementation((id: string) => ({
+    read: vi.fn().mockResolvedValue({
+      resource: id === "sync:meta:user-1" ? metaDocument : null
+    })
+  }));
+  getContainersMock.mockReturnValue({ syncSnapshots });
+
+  const snapshot = await getEffectiveSyncSnapshot(createConfig(), "user-1");
+
+  assert.deepEqual(snapshot, {
+    id: "sync:user-1",
+    userId: "user-1",
+    lots: [
+      { id: "lot-1", name: "Lot 1" },
+      { id: "lot-2", name: "Lot 2" }
+    ],
+    salesByLot: {},
+    version: 7,
+    updatedAt: "2026-03-18T13:00:00.000Z"
+  });
+});
+
+test("replaceSyncScopeEntityDocuments deletes stale docs and rewrites incoming docs with scoped ids", async () => {
+  const syncSnapshots = createSyncSnapshotsContainer();
+  const existingSale: SaleDocument = {
+    id: "sale:ws:team-1:lot-1:sale-keep",
+    docType: "sale",
+    userId: "ws:team-1",
+    scopeKey: "ws:team-1",
+    lotId: "lot-1",
+    saleId: "sale-keep",
+    sale: { id: 1 },
+    version: 1,
+    updatedAt: "2026-03-18T00:00:00.000Z",
+    updatedBy: "user-a",
+    mutationId: "sale:1"
+  };
+  const staleSale: SaleDocument = {
+    ...existingSale,
+    id: "sale:ws:team-1:lot-1:sale-drop",
+    saleId: "sale-drop"
+  };
+  const staleLivePricing: LotLivePricingDocument = {
+    id: "lot_live_pricing:ws:team-1:lot-old",
+    docType: "lot_live_pricing",
+    userId: "ws:team-1",
+    scopeKey: "ws:team-1",
+    lotId: "lot-old",
+    livePackPrice: 1,
+    liveBoxPriceSell: 2,
+    liveSpotPrice: 3,
+    version: 1,
+    updatedAt: "2026-03-18T00:00:00.000Z",
+    updatedBy: "user-a",
+    mutationId: "live:1"
+  };
+
+  syncSnapshots.items.query.mockReturnValue({
+    fetchAll: vi.fn().mockResolvedValue({
+      resources: [existingSale, staleSale, staleLivePricing]
+    })
+  });
+  syncSnapshots.items.upsert.mockResolvedValue({ resource: null });
+  syncSnapshots.item.mockImplementation((id: string, partitionKey: string) => ({
+    delete: vi.fn().mockResolvedValue({
+      id,
+      partitionKey
+    })
+  }));
+  getContainersMock.mockReturnValue({ syncSnapshots });
+
+  const result = await replaceSyncScopeEntityDocuments(createConfig(), {
+    scopeKey: "ws:team-1",
+    saleDocuments: [
+      {
+        ...existingSale,
+        id: "ignored",
+        userId: "other",
+        scopeKey: "other"
+      },
+      {
+        ...existingSale,
+        id: "ignored-2",
+        saleId: "sale-new",
+        userId: "other",
+        scopeKey: "other"
+      }
+    ],
+    livePricingDocuments: [{
+      ...staleLivePricing,
+      id: "ignored-live",
+      lotId: "lot-1",
+      userId: "other",
+      scopeKey: "other"
+    }]
+  });
+
+  assert.deepEqual(result, {
+    upsertedCount: 3,
+    deletedCount: 2
+  });
+  assert.equal(syncSnapshots.item.mock.calls.some((call: unknown[]) =>
+    call[0] === "sale:ws:team-1:lot-1:sale-drop" && call[1] === "ws:team-1"
+  ), true);
+  assert.equal(syncSnapshots.item.mock.calls.some((call: unknown[]) =>
+    call[0] === "lot_live_pricing:ws:team-1:lot-old" && call[1] === "ws:team-1"
+  ), true);
+  assert.equal(syncSnapshots.items.upsert.mock.calls[0]?.[0]?.id, "sale:ws:team-1:lot-1:sale-keep");
+  assert.equal(syncSnapshots.items.upsert.mock.calls[1]?.[0]?.id, "sale:ws:team-1:lot-1:sale-new");
+  assert.equal(syncSnapshots.items.upsert.mock.calls[2]?.[0]?.id, "lot_live_pricing:ws:team-1:lot-1");
+  assert.equal(syncSnapshots.items.upsert.mock.calls[2]?.[0]?.scopeKey, "ws:team-1");
+  assert.equal(syncSnapshots.items.upsert.mock.calls[2]?.[0]?.userId, "ws:team-1");
+});
+
+test("upsertSyncSnapshotIncremental upserts changed presets, deletes removed presets, and preserves sync modes", async () => {
+  const syncSnapshots = createSyncSnapshotsContainer();
+  const existingPresetDocuments: SyncPresetDocument[] = [
+    {
+      id: "sync:preset:user-1:keep",
+      docType: "sync_preset",
+      userId: "user-1",
+      presetId: "keep",
+      preset: { id: "keep", name: "Keep" },
+      sales: [{ id: 1 }],
+      version: 1,
+      updatedAt: "2026-03-18T09:00:00.000Z"
+    },
+    {
+      id: "sync:preset:user-1:drop",
+      docType: "sync_preset",
+      userId: "user-1",
+      presetId: "drop",
+      preset: { id: "drop", name: "Drop" },
+      sales: [],
+      version: 1,
+      updatedAt: "2026-03-18T09:00:00.000Z"
+    }
+  ];
+  const metaDocument: SyncMetaDocument = {
+    id: "sync:meta:user-1",
+    docType: "sync_meta",
+    userId: "user-1",
+    version: 3,
+    updatedAt: "2026-03-18T09:00:00.000Z",
+    salesMode: "entity",
+    livePricingMode: "entity"
+  };
+
+  syncSnapshots.items.query.mockReturnValue({
+    fetchAll: vi.fn().mockResolvedValue({
+      resources: existingPresetDocuments
+    })
+  });
+  syncSnapshots.items.upsert.mockResolvedValue({ resource: null });
+  syncSnapshots.item.mockImplementation((id: string, userId: string) => ({
+    read: vi.fn().mockResolvedValue({
+      resource: id === "sync:meta:user-1" ? metaDocument : null
+    }),
+    delete: vi.fn().mockResolvedValue({ id, userId })
+  }));
+  getContainersMock.mockReturnValue({ syncSnapshots });
+
+  const result = await upsertSyncSnapshotIncremental(createConfig(), {
+    userId: "user-1",
+    lots: [
+      { id: "keep", name: "Keep v2" },
+      { id: "new", name: "New preset" }
+    ],
+    salesByLot: {
+      keep: [{ id: 11 }],
+      new: [{ id: 22 }]
+    },
+    version: 9,
+    updatedAt: "2026-03-18T15:00:00.000Z"
+  });
+
+  assert.deepEqual(result, {
+    changed: true,
+    upsertedCount: 2,
+    deletedCount: 1
+  });
+  assert.equal(syncSnapshots.item.mock.calls.some((call: unknown[]) =>
+    call[0] === "sync:preset:user-1:drop" && call[1] === "user-1"
+  ), true);
+  assert.equal(syncSnapshots.items.upsert.mock.calls[0]?.[0]?.id, "sync:preset:user-1:keep");
+  assert.equal(syncSnapshots.items.upsert.mock.calls[1]?.[0]?.id, "sync:preset:user-1:new");
+  assert.equal(syncSnapshots.items.upsert.mock.calls[2]?.[0]?.id, "sync:meta:user-1");
+  assert.equal(syncSnapshots.items.upsert.mock.calls[2]?.[0]?.salesMode, "entity");
+  assert.equal(syncSnapshots.items.upsert.mock.calls[2]?.[0]?.livePricingMode, "entity");
+});
