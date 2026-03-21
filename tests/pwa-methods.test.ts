@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test, vi } from "vitest";
-import { APP_VERSION } from "../src/constants.ts";
 import { pwaMethods } from "../src/app-core/methods/pwa.ts";
 import type { BeforeInstallPromptEvent } from "../src/types/app.ts";
 
@@ -370,7 +369,7 @@ test("registerServiceWorker queues updates and refreshes only after applyAppUpda
   await Promise.resolve();
 
   assert.equal(register.mock.calls.length, 1);
-  assert.equal(register.mock.calls[0]?.[0], `./sw.js?v=${encodeURIComponent(APP_VERSION)}`);
+  assert.equal(register.mock.calls[0]?.[0], "./sw.js");
   assert.deepEqual(register.mock.calls[0]?.[1], { updateViaCache: "none" });
   assert.equal(context.showAppUpdatePrompt, true);
   assert.equal(context.appUpdateWorker, waitingWorker);
@@ -419,11 +418,11 @@ test("dismissAppUpdate hides the prompt without applying the worker", () => {
   assert.equal(waitingWorker.postMessage.mock.calls.length, 0);
   assert.equal(
     sessionStorage.getItem(DISMISSED_APP_UPDATE_SESSION_KEY),
-    "https://app.whatfees.ca/sw.js?v=2"
+    "1"
   );
 });
 
-test("registerServiceWorker keeps a dismissed waiting worker hidden until a different update appears", async () => {
+test("registerServiceWorker keeps a dismissed waiting worker hidden until updatefound clears the dismissal", async () => {
   const waitingWorker = {
     scriptURL: "https://app.whatfees.ca/sw.js?v=2",
     postMessage: vi.fn()
@@ -433,12 +432,25 @@ test("registerServiceWorker keeps a dismissed waiting worker hidden until a diff
     postMessage: vi.fn()
   };
   const sessionStorage = createStorageMock();
-  const swListeners = new Map<string, () => void>();
   stubDocument({ readyState: "loading" });
+  let stateChangeListener: (() => void) | null = null;
+  const installingWorker = {
+    state: "installing",
+    addEventListener: vi.fn((eventName: string, callback: () => void) => {
+      if (eventName === "statechange") {
+        stateChangeListener = callback;
+      }
+    })
+  };
+  let updateFoundListener: (() => void) | null = null;
   let registration = {
     waiting: waitingWorker,
-    installing: null,
-    addEventListener: vi.fn(),
+    installing: null as typeof installingWorker | null,
+    addEventListener: vi.fn((eventName: string, callback: () => void) => {
+      if (eventName === "updatefound") {
+        updateFoundListener = callback;
+      }
+    }),
     update: vi.fn(async () => undefined)
   };
   const register = vi.fn(async () => registration);
@@ -447,9 +459,7 @@ test("registerServiceWorker keeps a dismissed waiting worker hidden until a diff
       controller: {},
       register,
       removeEventListener: vi.fn(),
-      addEventListener: vi.fn((eventName: string, callback: () => void) => {
-        swListeners.set(eventName, callback);
-      })
+      addEventListener: vi.fn()
     }
   });
 
@@ -471,7 +481,7 @@ test("registerServiceWorker keeps a dismissed waiting worker hidden until a diff
   assert.equal(firstContext.showAppUpdatePrompt, false);
   assert.equal(
     sessionStorage.getItem(DISMISSED_APP_UPDATE_SESSION_KEY),
-    "https://app.whatfees.ca/sw.js?v=2"
+    "1"
   );
 
   const secondWindowListeners = new Map<string, (...args: unknown[]) => unknown>();
@@ -491,8 +501,12 @@ test("registerServiceWorker keeps a dismissed waiting worker hidden until a diff
 
   registration = {
     waiting: newerWaitingWorker,
-    installing: null,
-    addEventListener: vi.fn(),
+    installing: installingWorker,
+    addEventListener: vi.fn((eventName: string, callback: () => void) => {
+      if (eventName === "updatefound") {
+        updateFoundListener = callback;
+      }
+    }),
     update: vi.fn(async () => undefined)
   };
 
@@ -508,6 +522,13 @@ test("registerServiceWorker keeps a dismissed waiting worker hidden until a diff
   pwaMethods.registerServiceWorker.call(thirdContext as never);
   const thirdLoadListener = thirdWindowListeners.get("load") as (() => Promise<void>) | undefined;
   await thirdLoadListener?.();
+  assert.equal(thirdContext.showAppUpdatePrompt, false);
+  assert.equal(thirdContext.appUpdateWorker, newerWaitingWorker);
+
+  updateFoundListener?.();
+  installingWorker.state = "installed";
+  stateChangeListener?.();
+
   assert.equal(thirdContext.showAppUpdatePrompt, true);
   assert.equal(thirdContext.appUpdateWorker, newerWaitingWorker);
   assert.equal(sessionStorage.getItem(DISMISSED_APP_UPDATE_SESSION_KEY), null);

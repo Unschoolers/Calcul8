@@ -1,4 +1,3 @@
-import { APP_VERSION } from "../../constants.ts";
 import type { BeforeInstallPromptEvent } from "../../types/app.ts";
 import type { AppContext, AppMethodState } from "../context.ts";
 
@@ -17,14 +16,14 @@ function getWorkerScriptUrl(worker: ServiceWorker | null | undefined): string | 
   return scriptUrl || null;
 }
 
-function getDismissedAppUpdateScriptUrl(): string | null {
+function hasDismissedAppUpdate(): boolean {
   const storage = getSessionStorage();
-  if (!storage) return null;
+  if (!storage) return false;
 
   try {
-    return storage.getItem(DISMISSED_APP_UPDATE_SESSION_KEY);
+    return storage.getItem(DISMISSED_APP_UPDATE_SESSION_KEY) === "1";
   } catch {
-    return null;
+    return false;
   }
 }
 
@@ -41,11 +40,10 @@ function clearDismissedAppUpdate(): void {
 
 function dismissAppUpdateForWorker(worker: ServiceWorker | null | undefined): void {
   const storage = getSessionStorage();
-  const scriptUrl = getWorkerScriptUrl(worker);
-  if (!storage || !scriptUrl) return;
+  if (!storage || !worker) return;
 
   try {
-    storage.setItem(DISMISSED_APP_UPDATE_SESSION_KEY, scriptUrl);
+    storage.setItem(DISMISSED_APP_UPDATE_SESSION_KEY, "1");
   } catch {
     // Ignore storage failures.
   }
@@ -172,7 +170,7 @@ export const pwaMethods: ThisType<AppContext> & Pick<
       let refreshing = false;
 
       try {
-        const swUrl = `./sw.js?v=${encodeURIComponent(APP_VERSION)}`;
+        const swUrl = "./sw.js";
         const registration = await navigator.serviceWorker.register(swUrl, {
           updateViaCache: "none"
         });
@@ -184,8 +182,7 @@ export const pwaMethods: ThisType<AppContext> & Pick<
           this.appUpdateWorker = waitingWorker;
           this.isApplyingAppUpdate = false;
 
-          const waitingScriptUrl = getWorkerScriptUrl(waitingWorker);
-          if (waitingScriptUrl && waitingScriptUrl === getDismissedAppUpdateScriptUrl()) {
+          if (hasDismissedAppUpdate()) {
             this.showAppUpdatePrompt = false;
             return;
           }
@@ -199,6 +196,7 @@ export const pwaMethods: ThisType<AppContext> & Pick<
         }
 
         registration.addEventListener("updatefound", () => {
+          clearDismissedAppUpdate();
           const newWorker = registration.installing;
           if (!newWorker) return;
 
