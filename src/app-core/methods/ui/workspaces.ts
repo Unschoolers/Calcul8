@@ -212,10 +212,27 @@ async function fetchWorkspaceJson(
     return { ok: false, handled: true };
   }
 
-  const response = await fetchWithRetry(`${baseUrl}${path}`, {
-    ...init,
-    headers: buildAuthenticatedHeaders("session-preferred", init.headers as Record<string, string> | undefined)
-  });
+  let response: Response;
+  try {
+    response = await fetchWithRetry(`${baseUrl}${path}`, {
+      ...init,
+      headers: buildAuthenticatedHeaders("session-preferred", init.headers as Record<string, string> | undefined)
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    const isOfflineFailure =
+      message.includes("Failed to fetch")
+      || message.includes("NetworkError")
+      || message.includes("Load failed")
+      || message.includes("fetch");
+    app.notify(
+      isOfflineFailure
+        ? "You're offline. Workspace data will refresh when the connection returns."
+        : fallbackMessage,
+      "warning"
+    );
+    return { ok: false, handled: true };
+  }
 
   if (response.status === 401) {
     handleExpiredAuth(app);

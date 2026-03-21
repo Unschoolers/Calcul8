@@ -32,6 +32,16 @@ npm run build
 npm start
 ```
 
+`npm start` and `npm run start:dev` automatically read `apps/realtime/.env.local`.
+
+Default local file:
+
+```dotenv
+PORT=8080
+REALTIME_ALLOWED_ORIGIN=http://localhost:5173
+REALTIME_DEV_ALLOW_UNAUTH_SUBSCRIBE=true
+```
+
 Defaults:
 
 - websocket endpoint: `ws://localhost:8080/socket`

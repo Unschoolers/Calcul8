@@ -27,6 +27,7 @@
     "api:install": "npm --prefix apps/api install",
     "api:build": "npm --prefix apps/api run build",
     "api:start": "npm --prefix apps/api run start:build",
+    "backend:start": "node scripts/run-parallel.mjs --task api::npm --prefix apps/api run start:build --task realtime::npm --prefix apps/realtime run start:dev",
     "realtime:install": "npm --prefix apps/realtime install",
     "realtime:build": "npm --prefix apps/realtime run build",
     "realtime:start": "npm --prefix apps/realtime run start:dev",

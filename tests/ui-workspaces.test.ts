@@ -193,6 +193,19 @@ test("refreshWorkspaces normalizes and sorts workspaces and falls back to person
   assert.equal(ctx.pullCloudSync.mock.calls.length, 0);
 });
 
+test("refreshWorkspaces handles offline fetch failures without throwing", async () => {
+  const ctx = createContext();
+  fetchWithRetryMock.mockRejectedValue(new TypeError("Failed to fetch"));
+
+  await uiWorkspaceMethods.refreshWorkspaces.call(ctx);
+
+  assert.equal(ctx.isWorkspaceLoading, false);
+  assert.deepEqual(
+    ctx.notify.mock.calls.at(-1),
+    ["You're offline. Workspace data will refresh when the connection returns.", "warning"]
+  );
+});
+
 test("switchToWorkspace refreshes once and warns if workspace remains unavailable", async () => {
   const ctx = createContext();
   ctx.availableWorkspaces = [];

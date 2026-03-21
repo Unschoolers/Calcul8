@@ -9,8 +9,8 @@
   },
   "scripts": {
     "build": "tsc -p .",
-    "start": "node dist/index.js",
-    "start:dev": "npm run build && node dist/index.js",
+    "start": "node --env-file=.env.local dist/index.js",
+    "start:dev": "npm run build && node --env-file=.env.local dist/index.js",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
