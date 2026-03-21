@@ -33,6 +33,12 @@ type MockStorage = {
 function createMockStorage(seed: Record<string, string> = {}): MockStorage {
   const map = new Map<string, string>(Object.entries(seed));
   return {
+    get length(): number {
+      return map.size;
+    },
+    key(index: number): string | null {
+      return Array.from(map.keys())[index] ?? null;
+    },
     getItem(key: string): string | null {
       return map.has(key) ? map.get(key)! : null;
     },
@@ -155,6 +161,68 @@ test("pullCloudSync applies newer cloud snapshot and stores version", async () =
   assert.equal(ctx.notify.mock.calls.length, 1);
   assert.equal(storage.getItem("whatfees_sync_client_version"), "3");
   assert.equal(ctx.syncStatus, "success");
+});
+
+test("pullCloudSync normalizes legacy lot tax fields before applying cloud snapshot", async () => {
+  const storage = createMockStorage({
+    whatfees_google_token: "token-abc",
+    whatfees_sync_client_version: "1"
+  });
+  vi.stubGlobal("localStorage", storage);
+
+  const ctx = createContext();
+  fetchWithRetryMock.mockResolvedValue({
+    ok: true,
+    status: 200,
+    statusText: "OK",
+    json: async () => ({
+      snapshot: {
+        lots: [{ id: 2, name: "Cloud lot", taxRatePercent: 11 }],
+        salesByLot: {},
+        version: 3
+      }
+    })
+  });
+
+  await uiSyncMethods.pullCloudSync.call(ctx);
+
+  const lot = (ctx.lots as Array<{
+    purchaseTaxPercent?: number;
+    sellingTaxPercent?: number;
+  }>)[0];
+  assert.equal(lot?.purchaseTaxPercent, 11);
+  assert.equal(lot?.sellingTaxPercent, 11);
+});
+
+test("pullCloudSync clears scoped sales caches before applying a newer cloud snapshot", async () => {
+  const storage = createMockStorage({
+    whatfees_google_token: "token-abc",
+    whatfees_sync_client_version: "1",
+    whatfees_sales_1: JSON.stringify([{ id: 1 }]),
+    whatfees_sales_2: JSON.stringify([{ id: 2 }]),
+    "whatfees_sales_ws__team-42__7": JSON.stringify([{ id: 7 }])
+  });
+  vi.stubGlobal("localStorage", storage);
+
+  const ctx = createContext();
+  fetchWithRetryMock.mockResolvedValue({
+    ok: true,
+    status: 200,
+    statusText: "OK",
+    json: async () => ({
+      snapshot: {
+        lots: [{ id: 2, name: "Cloud lot" }],
+        salesByLot: {},
+        version: 3
+      }
+    })
+  });
+
+  await uiSyncMethods.pullCloudSync.call(ctx);
+
+  assert.equal(storage.getItem("whatfees_sales_1"), null);
+  assert.equal(storage.getItem("whatfees_sales_2"), null);
+  assert.notEqual(storage.getItem("whatfees_sales_ws__team-42__7"), null);
 });
 
 test("startCloudSyncScheduler and stopCloudSyncScheduler manage interval", () => {

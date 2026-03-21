@@ -1,6 +1,7 @@
 import type { AppContext } from "../../context.ts";
-import { getScopedSyncClientVersionKey } from "../../storageKeys.ts";
+import { clearScopedSalesStorage, getScopedSyncClientVersionKey } from "../../storageKeys.ts";
 import { getActiveStorageScope } from "../../workspace-scope.ts";
+import { normalizeStoredLot } from "../../shared/normalize-lot.ts";
 
 export interface ParsedCloudSnapshot {
   lots: unknown[];
@@ -60,7 +61,9 @@ export type SyncApplyApp = Pick<
 >;
 
 export function applyCloudSnapshotToLocal(context: SyncApplyApp, snapshot: ParsedCloudSnapshot): void {
-  context.lots = snapshot.lots as typeof context.lots;
+  const todayDate = new Date().toISOString().slice(0, 10);
+  clearScopedSalesStorage(getActiveStorageScope(context));
+  context.lots = (snapshot.lots as typeof context.lots).map((lot) => normalizeStoredLot(lot, todayDate));
   context.saveLotsToStorage();
 
   if (context.currentLotId && context.lots.some((lot) => lot.id === context.currentLotId)) {

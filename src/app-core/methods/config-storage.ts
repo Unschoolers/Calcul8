@@ -10,9 +10,9 @@ import {
   readStorageWithLegacy,
   STORAGE_KEYS
 } from "../storageKeys.ts";
-import { normalizeSinglesCatalogSource } from "../shared/singles-catalog-source.ts";
-import { type ConfigMethodSubset, getTodayDate, inferDateFromLotId, toDateOnly } from "./config-shared.ts";
+import { type ConfigMethodSubset, getTodayDate } from "./config-shared.ts";
 import { getActiveStorageScope } from "../workspace-scope.ts";
+import { normalizeStoredLot } from "../shared/normalize-lot.ts";
 
 type ExchangeRateCacheRecord = {
   cadRate: number;
@@ -157,24 +157,7 @@ export const configStorageMethods: ConfigMethodSubset<
       if (stored) {
         const parsed = JSON.parse(stored) as Lot[];
         const todayDate = getTodayDate();
-        this.lots = parsed.map((lot) => ({
-          ...lot,
-          isComplete: lot.isComplete === true,
-          lotType: lot.lotType === "singles" ? "singles" : "bulk",
-          singlesCatalogSource: lot.lotType === "singles"
-            ? normalizeSinglesCatalogSource(lot.singlesCatalogSource)
-            : undefined,
-          purchaseDate:
-            toDateOnly(lot.purchaseDate) ??
-            toDateOnly(lot.createdAt) ??
-            inferDateFromLotId(lot.id) ??
-            todayDate,
-          createdAt:
-            toDateOnly(lot.createdAt) ??
-            toDateOnly(lot.purchaseDate) ??
-            inferDateFromLotId(lot.id) ??
-            todayDate
-        }));
+        this.lots = parsed.map((lot) => normalizeStoredLot(lot, todayDate));
       }
     } catch (error) {
       console.error("Failed to load lots:", error);

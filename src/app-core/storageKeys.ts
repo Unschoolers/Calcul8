@@ -129,6 +129,33 @@ export function getSalesStorageKey(lotId: number, scope: AppStorageScope = { sco
   return `${SALES_PREFIX}${normalizeWorkspaceScopeId(scope.workspaceId)}__${lotId}`;
 }
 
+export function clearScopedSalesStorage(scope: AppStorageScope = { scopeType: "personal" }): void {
+  const workspacePrefix = `${SALES_PREFIX}${normalizeWorkspaceScopeId(scope.workspaceId)}__`;
+  try {
+    const keys: string[] = [];
+    for (let index = 0; index < localStorage.length; index += 1) {
+      const key = localStorage.key(index);
+      if (typeof key === "string") {
+        keys.push(key);
+      }
+    }
+    for (const key of keys) {
+      if (isWorkspaceScope(scope)) {
+        if (key.startsWith(workspacePrefix)) {
+          localStorage.removeItem(key);
+        }
+        continue;
+      }
+
+      if (key.startsWith(SALES_PREFIX) && !key.slice(SALES_PREFIX.length).includes("__")) {
+        localStorage.removeItem(key);
+      }
+    }
+  } catch {
+    // Ignore storage enumeration failures.
+  }
+}
+
 export function getLegacySalesStorageKey(lotId: number): string {
   return `${LEGACY_SALES_PREFIX}${lotId}`;
 }

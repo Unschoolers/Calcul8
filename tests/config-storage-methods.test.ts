@@ -316,6 +316,73 @@ test("loadLotsFromStorage normalizes lot type and date fields", () => {
   assert.match(lots[1]?.createdAt || "", /^\d{4}-\d{2}-\d{2}$/);
 });
 
+test("loadLotsFromStorage maps legacy taxRatePercent into purchase and selling tax fields", () => {
+  readStorageWithLegacyMock.mockReturnValue(JSON.stringify([
+    {
+      id: 1704067200000,
+      name: "Legacy Tax Lot",
+      taxRatePercent: 11
+    }
+  ]));
+  const context = createContext({
+    lots: []
+  });
+
+  configStorageMethods.loadLotsFromStorage.call(context as never);
+
+  const lot = (context.lots as Array<{
+    purchaseTaxPercent?: number;
+    sellingTaxPercent?: number;
+  }>)[0];
+  assert.equal(lot?.purchaseTaxPercent, 11);
+  assert.equal(lot?.sellingTaxPercent, 11);
+});
+
+test("loadLotsFromStorage fills default lot setup values for partial legacy lots", () => {
+  readStorageWithLegacyMock.mockReturnValue(JSON.stringify([
+    {
+      id: 1704067200000,
+      name: "Legacy Partial Lot"
+    }
+  ]));
+  const context = createContext({
+    lots: []
+  });
+
+  configStorageMethods.loadLotsFromStorage.call(context as never);
+
+  const lot = (context.lots as Array<{
+    boxPriceCost?: number;
+    boxesPurchased?: number;
+    packsPerBox?: number;
+    spotsPerBox?: number;
+    costInputMode?: string;
+    currency?: string;
+    sellingCurrency?: string;
+    exchangeRate?: number;
+    purchaseShippingCost?: number;
+    sellingShippingPerOrder?: number;
+    includeTax?: boolean;
+    spotPrice?: number;
+    boxPriceSell?: number;
+    packPrice?: number;
+  }>)[0];
+  assert.equal(lot?.boxPriceCost, DEFAULT_VALUES.BOX_PRICE);
+  assert.equal(lot?.boxesPurchased, DEFAULT_VALUES.BOXES_PURCHASED);
+  assert.equal(lot?.packsPerBox, DEFAULT_VALUES.PACKS_PER_BOX);
+  assert.equal(lot?.spotsPerBox, DEFAULT_VALUES.SPOTS_PER_BOX);
+  assert.equal(lot?.costInputMode, "perBox");
+  assert.equal(lot?.currency, "CAD");
+  assert.equal(lot?.sellingCurrency, "CAD");
+  assert.equal(lot?.exchangeRate, DEFAULT_VALUES.EXCHANGE_RATE);
+  assert.equal(lot?.purchaseShippingCost, DEFAULT_VALUES.PURCHASE_SHIPPING_COST);
+  assert.equal(lot?.sellingShippingPerOrder, DEFAULT_VALUES.SELLING_SHIPPING_PER_ORDER);
+  assert.equal(lot?.includeTax, true);
+  assert.equal(lot?.spotPrice, DEFAULT_VALUES.SPOT_PRICE);
+  assert.equal(lot?.boxPriceSell, DEFAULT_VALUES.BOX_PRICE_SELL);
+  assert.equal(lot?.packPrice, DEFAULT_VALUES.PACK_PRICE);
+});
+
 test("loadLotsFromStorage reads workspace-scoped presets without touching personal storage", async () => {
   await withMockedLocalStorage(async (data) => {
     data.set(

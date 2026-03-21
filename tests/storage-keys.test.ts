@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import {
+  clearScopedSalesStorage,
   getLegacySalesStorageKey,
   getSalesStorageKey,
   migrateLegacySalesKey,
@@ -103,6 +104,34 @@ test("readStorageWithLegacy promotes richer legacy payload over empty canonical 
 
     assert.equal(result, legacySales);
     assert.equal(data.get(newKey), legacySales);
+  });
+});
+
+test("clearScopedSalesStorage removes only personal sales cache keys in personal scope", () => {
+  withMockedLocalStorage((_, data) => {
+    data.set(getSalesStorageKey(1), JSON.stringify([{ id: 1 }]));
+    data.set(getSalesStorageKey(2), JSON.stringify([{ id: 2 }]));
+    data.set(getSalesStorageKey(7, { scopeType: "workspace", workspaceId: "team-42" }), JSON.stringify([{ id: 7 }]));
+
+    clearScopedSalesStorage({ scopeType: "personal" });
+
+    assert.equal(data.has(getSalesStorageKey(1)), false);
+    assert.equal(data.has(getSalesStorageKey(2)), false);
+    assert.equal(data.has(getSalesStorageKey(7, { scopeType: "workspace", workspaceId: "team-42" })), true);
+  });
+});
+
+test("clearScopedSalesStorage removes only matching workspace sales cache keys in workspace scope", () => {
+  withMockedLocalStorage((_, data) => {
+    data.set(getSalesStorageKey(1), JSON.stringify([{ id: 1 }]));
+    data.set(getSalesStorageKey(7, { scopeType: "workspace", workspaceId: "team-42" }), JSON.stringify([{ id: 7 }]));
+    data.set(getSalesStorageKey(8, { scopeType: "workspace", workspaceId: "team-99" }), JSON.stringify([{ id: 8 }]));
+
+    clearScopedSalesStorage({ scopeType: "workspace", workspaceId: "team-42" });
+
+    assert.equal(data.has(getSalesStorageKey(1)), true);
+    assert.equal(data.has(getSalesStorageKey(7, { scopeType: "workspace", workspaceId: "team-42" })), false);
+    assert.equal(data.has(getSalesStorageKey(8, { scopeType: "workspace", workspaceId: "team-99" })), true);
   });
 });
 
