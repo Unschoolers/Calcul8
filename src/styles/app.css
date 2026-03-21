@@ -286,6 +286,30 @@
     .auth-gate-title {
       line-height: 1.2;
     }
+    .auth-gate-btn {
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      font-weight: 800;
+    }
+    .auth-gate-btn .v-btn__content {
+      width: 100%;
+    }
+    .auth-gate-btn__content {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.7rem;
+      width: 100%;
+      line-height: 1;
+    }
+    .auth-gate-btn__icon {
+      flex: 0 0 auto;
+      line-height: 1;
+    }
+    .auth-gate-btn__label {
+      display: inline-block;
+      line-height: 1.05;
+    }
     .v-theme--unionArenaLight #app-main {
       position: relative;
       background: transparent;
