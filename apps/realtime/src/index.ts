@@ -1,29 +1,23 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
 import { createServer, IncomingMessage, ServerResponse } from "node:http";
 import { WebSocketServer, WebSocket } from "ws";
-
-type BroadcastPayload = {
-  room: string;
-  eventType: string;
-  data?: unknown;
-};
-
-type SignedSubscribeTokenPayload = {
-  rooms: string[];
-  exp?: number;
-};
-
-type ClientMessage =
-  | { type: "subscribe"; rooms: string[]; token?: string }
-  | { type: "unsubscribe"; rooms?: string[] }
-  | { type: "ping" };
-
-type ClientState = {
-  id: string;
-  socket: WebSocket;
-  rooms: Set<string>;
-  isAlive: boolean;
-};
+import { getAuthorizedSubscribePayload, isAuthorizedInternalPublisher } from "./realtime-auth.js";
+import {
+  type BroadcastPayload,
+  type ClientMessage,
+  type ClientState,
+  type WorkspacePresenceMember,
+  getQueryToken,
+  isRecord,
+  normalizeOptionalBoolean,
+  normalizeOptionalString,
+  normalizeRooms,
+  parseAllowedOrigins,
+  parseWorkspacePresenceRoom,
+  readJsonBody,
+  sanitizeRooms,
+  sendJson,
+  writeJson
+} from "./realtime-helpers.js";
 
 const port = Number.parseInt(process.env.PORT ?? "8080", 10);
 const allowedOrigins = parseAllowedOrigins(process.env.REALTIME_ALLOWED_ORIGIN);
@@ -37,6 +31,7 @@ const allowUnauthenticatedSubscribe =
 
 const clients = new Map<string, ClientState>();
 const roomMembers = new Map<string, Set<string>>();
+const workspacePresence = new Map<string, Map<string, WorkspacePresenceMember>>();
 let nextClientId = 1;
 
 const server = createServer(async (request, response) => {
@@ -51,7 +46,7 @@ const server = createServer(async (request, response) => {
     }
 
     if (request.method === "POST" && request.url === "/internal/publish") {
-      if (!isAuthorizedInternalPublisher(request)) {
+      if (!isAuthorizedInternalPublisher(request, internalApiKey)) {
         writeJson(response, 401, { error: "Unauthorized publish request." });
         return;
       }
@@ -132,6 +127,7 @@ websocketServer.on("connection", (socket, request) => {
 
   socket.on("pong", () => {
     state.isAlive = true;
+    syncClientPresenceState(state);
   });
 
   socket.on("message", (raw) => {
@@ -190,6 +186,7 @@ function handleClientMessage(state: ClientState, rawMessage: string, queryToken:
     const rooms = Array.isArray(message.rooms) ? sanitizeRooms(message.rooms) : Array.from(state.rooms);
     for (const room of rooms) removeClientFromRoom(state, room);
     sendJson(state.socket, { type: "unsubscribed", rooms });
+    syncClientPresenceState(state);
     return;
   }
 
@@ -205,67 +202,30 @@ function handleClientMessage(state: ClientState, rawMessage: string, queryToken:
   }
 
   const token = normalizeOptionalString(message.token) ?? queryToken;
-  if (!isSubscribeAuthorized(requestedRooms, token)) {
+  const authorizedPayload = getAuthorizedSubscribePayload({
+    requestedRooms,
+    token,
+    tokenSecret,
+    allowUnauthenticatedSubscribe
+  });
+  if (!authorizedPayload) {
     sendJson(state.socket, { type: "error", message: "Subscribe request is not authorized." });
     return;
   }
 
+  if (authorizedPayload.userId) {
+    state.userId = authorizedPayload.userId;
+  }
+
   for (const room of requestedRooms) addClientToRoom(state, room);
   sendJson(state.socket, { type: "subscribed", rooms: requestedRooms });
-}
-
-function isSubscribeAuthorized(requestedRooms: string[], token: string | undefined): boolean {
-  if (!tokenSecret) return allowUnauthenticatedSubscribe;
-  if (!token) return false;
-
-  const payload = verifySignedToken(token, tokenSecret);
-  if (!payload) return false;
-  if (payload.exp && Date.now() >= payload.exp * 1000) return false;
-
-  const allowedRooms = new Set(sanitizeRooms(payload.rooms));
-  return requestedRooms.every((room) => allowedRooms.has(room));
-}
-
-function verifySignedToken(token: string, secret: string): SignedSubscribeTokenPayload | null {
-  const firstDot = token.indexOf(".");
-  if (firstDot <= 0 || firstDot === token.length - 1) return null;
-
-  const encodedPayload = token.slice(0, firstDot);
-  const signature = token.slice(firstDot + 1);
-  const expectedSignature = createHmac("sha256", secret)
-    .update(encodedPayload)
-    .digest("base64url");
-
-  if (!safeEqual(signature, expectedSignature)) return null;
-
-  try {
-    const json = Buffer.from(encodedPayload, "base64url").toString("utf8");
-    const parsed = JSON.parse(json) as SignedSubscribeTokenPayload;
-    if (!Array.isArray(parsed.rooms)) return null;
-    return parsed;
-  } catch {
-    return null;
+  syncClientPresenceState(state);
+  for (const room of requestedRooms) {
+    const workspaceId = parseWorkspacePresenceRoom(room);
+    if (workspaceId) {
+      sendWorkspacePresenceSnapshot(state.socket, workspaceId);
+    }
   }
-}
-
-function safeEqual(left: string, right: string): boolean {
-  const leftBuffer = Buffer.from(left);
-  const rightBuffer = Buffer.from(right);
-  if (leftBuffer.length !== rightBuffer.length) return false;
-  return timingSafeEqual(leftBuffer, rightBuffer);
-}
-
-function isAuthorizedInternalPublisher(request: IncomingMessage): boolean {
-  if (!internalApiKey) return process.env.NODE_ENV !== "production";
-
-  const authHeader = normalizeOptionalString(request.headers.authorization);
-  const explicitHeader = normalizeOptionalString(request.headers["x-realtime-key"]);
-
-  if (explicitHeader && safeEqual(explicitHeader, internalApiKey)) return true;
-  if (!authHeader?.startsWith("Bearer ")) return false;
-
-  const token = authHeader.slice("Bearer ".length).trim();
-  return safeEqual(token, internalApiKey);
 }
 
 function broadcastToRoom(payload: BroadcastPayload): number {
@@ -316,80 +276,84 @@ function disconnectClient(state: ClientState): void {
   clients.delete(state.id);
 
   for (const room of Array.from(state.rooms)) removeClientFromRoom(state, room);
+  syncClientPresenceState(state);
 }
 
-function sanitizeRooms(rooms: string[]): string[] {
-  return Array.from(
-    new Set(
-      rooms
-        .filter((room): room is string => typeof room === "string")
-        .map((room) => room.trim())
-        .filter((room) => room.length > 0 && room.length <= 200)
-    )
-  );
+
+function getWorkspacePresenceMembers(workspaceId: string): Map<string, WorkspacePresenceMember> {
+  let members = workspacePresence.get(workspaceId);
+  if (!members) {
+    members = new Map<string, WorkspacePresenceMember>();
+    workspacePresence.set(workspaceId, members);
+  }
+  return members;
 }
 
-function normalizeRooms(body: unknown): string[] {
-  if (isRecord(body)) {
-    const room = typeof body.room === "string" ? body.room : null;
-    const rooms = Array.isArray(body.rooms) ? body.rooms : null;
-    if (room) return sanitizeRooms([room]);
-    if (rooms) return sanitizeRooms(rooms);
+function hasActivePresenceSubscription(workspaceId: string, userId: string): boolean {
+  const presenceRoom = `workspace:${workspaceId}:presence`;
+  for (const client of clients.values()) {
+    if (client.userId === userId && client.rooms.has(presenceRoom) && client.socket.readyState === WebSocket.OPEN) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function syncClientPresenceState(state: ClientState): void {
+  const userId = normalizeOptionalString(state.userId);
+  if (!userId) return;
+
+  const workspaceIds = new Set<string>();
+  for (const room of state.rooms) {
+    const workspaceId = parseWorkspacePresenceRoom(room);
+    if (workspaceId) {
+      workspaceIds.add(workspaceId);
+    }
   }
 
-  throw new Error("Field 'room' or 'rooms' is required.");
-}
-
-async function readJsonBody(request: IncomingMessage): Promise<unknown> {
-  const chunks: Buffer[] = [];
-  for await (const chunk of request) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  if (workspaceIds.size === 0) {
+    for (const [workspaceId, members] of workspacePresence.entries()) {
+      if (members.has(userId)) {
+        workspaceIds.add(workspaceId);
+      }
+    }
   }
 
-  const raw = Buffer.concat(chunks).toString("utf8");
-  if (!raw) return {};
-  return JSON.parse(raw);
+  const lastSeenAt = new Date().toISOString();
+  for (const workspaceId of workspaceIds) {
+    const members = getWorkspacePresenceMembers(workspaceId);
+    members.set(userId, {
+      userId,
+      isOnline: hasActivePresenceSubscription(workspaceId, userId),
+      lastSeenAt
+    });
+    broadcastWorkspacePresenceSnapshot(workspaceId);
+  }
 }
 
-function getQueryToken(request: IncomingMessage): string | undefined {
-  const baseUrl = `http://${request.headers.host ?? "localhost"}`;
-  const url = new URL(request.url ?? "/", baseUrl);
-  return normalizeOptionalString(url.searchParams.get("token"));
+function getWorkspacePresenceSnapshot(workspaceId: string): WorkspacePresenceMember[] {
+  return Array.from(getWorkspacePresenceMembers(workspaceId).values());
 }
 
-function writeJson(response: ServerResponse, statusCode: number, body: unknown): void {
-  response.statusCode = statusCode;
-  response.setHeader("content-type", "application/json; charset=utf-8");
-  response.end(JSON.stringify(body));
+function broadcastWorkspacePresenceSnapshot(workspaceId: string): void {
+  broadcastToRoom({
+    room: `workspace:${workspaceId}:presence`,
+    eventType: "workspace.presence",
+    data: {
+      workspaceId,
+      members: getWorkspacePresenceSnapshot(workspaceId)
+    }
+  });
 }
 
-function sendJson(socket: WebSocket, body: unknown): void {
-  if (socket.readyState !== WebSocket.OPEN) return;
-  socket.send(JSON.stringify(body));
-}
-
-function normalizeOptionalString(value: unknown): string | undefined {
-  if (typeof value !== "string") return undefined;
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
-}
-
-function normalizeOptionalBoolean(value: string | undefined, fallback: boolean): boolean {
-  if (!value) return fallback;
-  const normalized = value.trim().toLowerCase();
-  if (normalized === "true" || normalized === "1" || normalized === "yes") return true;
-  if (normalized === "false" || normalized === "0" || normalized === "no") return false;
-  return fallback;
-}
-
-function parseAllowedOrigins(value: string | undefined): string[] {
-  if (!value) return [];
-  return value
-    .split(",")
-    .map((part) => part.trim())
-    .filter((part) => part.length > 0);
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
+function sendWorkspacePresenceSnapshot(socket: WebSocket, workspaceId: string): void {
+  sendJson(socket, {
+    type: "event",
+    room: `workspace:${workspaceId}:presence`,
+    eventType: "workspace.presence",
+    data: {
+      workspaceId,
+      members: getWorkspacePresenceSnapshot(workspaceId)
+    }
+  });
 }

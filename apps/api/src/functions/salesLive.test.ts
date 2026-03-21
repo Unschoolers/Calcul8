@@ -285,18 +285,25 @@ test("lotRealtimeTokenGet returns a signed room token for workspace lots", async
   assert.equal(response.status, 200);
   const body = response.jsonBody as {
     room: string;
+    rooms: string[];
     token: string;
     expiresAt: number;
   };
   assert.equal(body.room, "workspace:ws_dcb4d6f021637411:lot:1773766061603");
+  assert.deepEqual(body.rooms, [
+    "workspace:ws_dcb4d6f021637411:lot:1773766061603",
+    "workspace:ws_dcb4d6f021637411:presence"
+  ]);
   assert.match(body.token, /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
   assert.equal(typeof body.expiresAt, "number");
 
   const [encodedPayload] = body.token.split(".");
   const decodedPayload = JSON.parse(Buffer.from(encodedPayload, "base64url").toString("utf8")) as {
     rooms: string[];
+    userId?: string;
     exp?: number;
   };
-  assert.deepEqual(decodedPayload.rooms, [body.room]);
+  assert.deepEqual(decodedPayload.rooms, body.rooms);
+  assert.equal(decodedPayload.userId, "user-a");
   assert.equal(decodedPayload.exp, body.expiresAt);
 });

@@ -9,11 +9,16 @@ type RealtimeLogger = Pick<InvocationContext, "warn">;
 
 type SignedSubscribeTokenPayload = {
   rooms: string[];
+  userId?: string;
   exp?: number;
 };
 
 export function buildWorkspaceLotRealtimeRoom(workspaceId: string, lotId: string): string {
   return `workspace:${workspaceId}:lot:${lotId}`;
+}
+
+export function buildWorkspacePresenceRealtimeRoom(workspaceId: string): string {
+  return `workspace:${workspaceId}:presence`;
 }
 
 export function signRealtimeSubscribeToken(
@@ -22,6 +27,7 @@ export function signRealtimeSubscribeToken(
 ): string {
   const normalizedPayload: SignedSubscribeTokenPayload = {
     rooms: Array.isArray(payload.rooms) ? payload.rooms.map((room) => String(room || "").trim()).filter(Boolean) : [],
+    userId: String(payload.userId ?? "").trim() || undefined,
     exp: Number.isFinite(Number(payload.exp)) ? Math.floor(Number(payload.exp)) : undefined
   };
   const encodedPayload = Buffer.from(JSON.stringify(normalizedPayload), "utf8").toString("base64url");

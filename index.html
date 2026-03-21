@@ -213,7 +213,42 @@
                     {{ googleProfileEmail || 'Signed in' }}
                   </div>
                   <div class="account-menu-header__workspace">
-                    {{ currentWorkspaceName }}
+                    <span class="account-menu-header__workspace-name">{{ currentWorkspaceName }}</span>
+                    <span
+                      v-if="activeWorkspaceVisibleMembers.length"
+                      class="workspace-avatar-stack workspace-avatar-stack--compact"
+                      aria-hidden="true"
+                    >
+                      <span
+                        v-for="member in activeWorkspaceVisibleMembers"
+                        :key="member.userId"
+                        class="workspace-avatar-stack__item"
+                      >
+                        <v-avatar size="22" class="workspace-avatar-stack__avatar">
+                          <img
+                            v-if="member.photoUrl"
+                            :src="member.photoUrl"
+                            :alt="member.displayName || 'Workspace member avatar'"
+                            class="account-avatar-img"
+                            referrerpolicy="no-referrer"
+                          />
+                          <span v-else class="workspace-avatar-stack__initial">
+                            {{ (member.displayName || '?').slice(0, 1).toUpperCase() }}
+                          </span>
+                        </v-avatar>
+                        <span
+                          class="workspace-avatar-stack__presence"
+                          :class="`workspace-avatar-stack__presence--${getWorkspaceMemberPresenceState(member)}`"
+                          :title="getWorkspaceMemberPresenceLabel(member)"
+                        ></span>
+                      </span>
+                      <span
+                        v-if="activeWorkspaceOverflowMemberCount > 0"
+                        class="workspace-avatar-stack__overflow"
+                      >
+                        +{{ activeWorkspaceOverflowMemberCount }}
+                      </span>
+                    </span>
                   </div>
                 </div>
               </div>
@@ -230,12 +265,52 @@
               <v-list-item
                 v-for="workspace in availableWorkspaces"
                 :key="workspace.workspaceId"
-                :title="workspace.name"
                 :subtitle="workspace.role === 'owner' ? 'Owner' : 'Member'"
                 prepend-icon="mdi-account-multiple-outline"
                 :active="activeWorkspaceId === workspace.workspaceId"
                 @click="switchToWorkspace(workspace.workspaceId)"
-              ></v-list-item>
+              >
+                <template #title>
+                  <span class="workspace-menu-item-title">
+                    <span class="workspace-menu-item-title__name">{{ workspace.name }}</span>
+                    <span
+                      v-if="activeWorkspaceId === workspace.workspaceId && activeWorkspaceVisibleMembers.length"
+                      class="workspace-avatar-stack"
+                      aria-hidden="true"
+                    >
+                      <span
+                        v-for="member in activeWorkspaceVisibleMembers"
+                        :key="`${workspace.workspaceId}:${member.userId}`"
+                        class="workspace-avatar-stack__item"
+                      >
+                        <v-avatar size="24" class="workspace-avatar-stack__avatar">
+                          <img
+                            v-if="member.photoUrl"
+                            :src="member.photoUrl"
+                            :alt="member.displayName || 'Workspace member avatar'"
+                            class="account-avatar-img"
+                            referrerpolicy="no-referrer"
+                          />
+                          <span v-else class="workspace-avatar-stack__initial">
+                            {{ (member.displayName || '?').slice(0, 1).toUpperCase() }}
+                          </span>
+                        </v-avatar>
+                        <span
+                          class="workspace-avatar-stack__presence"
+                          :class="`workspace-avatar-stack__presence--${getWorkspaceMemberPresenceState(member)}`"
+                          :title="getWorkspaceMemberPresenceLabel(member)"
+                        ></span>
+                      </span>
+                      <span
+                        v-if="activeWorkspaceOverflowMemberCount > 0"
+                        class="workspace-avatar-stack__overflow"
+                      >
+                        +{{ activeWorkspaceOverflowMemberCount }}
+                      </span>
+                    </span>
+                  </span>
+                </template>
+              </v-list-item>
               <v-list-item
                 v-if="activeScopeType === 'personal'"
                 title="Create shared workspace"
@@ -841,6 +916,11 @@
                       {{ (member.displayName || member.userId || '?').slice(0, 1).toUpperCase() }}
                     </span>
                   </v-avatar>
+                  <span
+                    class="workspace-member-card-row__presence"
+                    :class="`workspace-member-card-row__presence--${getWorkspaceMemberPresenceState(member)}`"
+                    :title="getWorkspaceMemberPresenceLabel(member)"
+                  ></span>
 
                   <div class="workspace-member-card-row__copy">
                     <div class="workspace-member-card-row__name-row">
@@ -861,6 +941,12 @@
                     </div>
 
                     <div class="workspace-member-card-row__meta">
+                      <span
+                        class="workspace-member-card-row__presence-label"
+                        :class="`workspace-member-card-row__presence-label--${getWorkspaceMemberPresenceState(member)}`"
+                      >
+                        {{ getWorkspaceMemberPresenceLabel(member) }}
+                      </span>
                       <span v-if="!member.displayName">Profile name unavailable</span>
                       <span>Updated {{ formatDate(member.updatedAt) }}</span>
                     </div>

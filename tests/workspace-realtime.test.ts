@@ -108,6 +108,7 @@ function createApp(overrides: Record<string, unknown> = {}) {
     currentLivePricingVersion: null,
     lastSyncedPayloadHash: null,
     workspaceRealtimeStatus: "idle",
+    workspacePresenceByUserId: {},
     pullCloudSync: vi.fn(async () => undefined),
     getSalesStorageKey: (lotId: number) => `sales:${lotId}`,
     loadSalesForLotId: vi.fn(() => []),
@@ -127,6 +128,10 @@ beforeEach(() => {
   canUseAuthoritativeSalesLiveApiMock.mockReturnValue(true);
   fetchWorkspaceRealtimeSubscribeTokenMock.mockResolvedValue({
     room: "workspace:ws_dcb4d6f021637411:lot:1773766061603",
+    rooms: [
+      "workspace:ws_dcb4d6f021637411:lot:1773766061603",
+      "workspace:ws_dcb4d6f021637411:presence"
+    ],
     token: "signed-token",
     expiresAt: 1760000000
   });
@@ -166,13 +171,19 @@ test("refreshWorkspaceRealtime connects to prod socket host and subscribes with 
   assert.equal(fetchWorkspaceRealtimeSubscribeTokenMock.mock.calls[0]?.[1], 1773766061603);
   assert.deepEqual(JSON.parse(socket.sent[0] || "{}"), {
     type: "subscribe",
-    rooms: ["workspace:ws_dcb4d6f021637411:lot:1773766061603"],
+    rooms: [
+      "workspace:ws_dcb4d6f021637411:lot:1773766061603",
+      "workspace:ws_dcb4d6f021637411:presence"
+    ],
     token: "signed-token"
   });
 
   socket.triggerMessage({
     type: "subscribed",
-    rooms: ["workspace:ws_dcb4d6f021637411:lot:1773766061603"]
+    rooms: [
+      "workspace:ws_dcb4d6f021637411:lot:1773766061603",
+      "workspace:ws_dcb4d6f021637411:presence"
+    ]
   });
 
   assert.equal(app.workspaceRealtimeStatus, "connected");
@@ -238,6 +249,24 @@ test("workspace realtime applies incoming sale and live pricing events for the a
     liveBoxPriceSell: 22,
     livePackPrice: 33,
     version: 4
+  });
+
+  socket.triggerMessage({
+    type: "event",
+    room: "workspace:ws_dcb4d6f021637411:presence",
+    eventType: "workspace.presence",
+    data: {
+      workspaceId: "ws_dcb4d6f021637411",
+      members: [
+        { userId: "owner-1", isOnline: true, lastSeenAt: "2026-03-20T18:00:00.000Z" },
+        { userId: "member-2", isOnline: false, lastSeenAt: "2026-03-20T17:58:00.000Z" }
+      ]
+    }
+  });
+
+  assert.deepEqual(app.workspacePresenceByUserId, {
+    "owner-1": { userId: "owner-1", isOnline: true, lastSeenAt: "2026-03-20T18:00:00.000Z" },
+    "member-2": { userId: "member-2", isOnline: false, lastSeenAt: "2026-03-20T17:58:00.000Z" }
   });
 });
 

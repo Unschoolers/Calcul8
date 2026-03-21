@@ -77,6 +77,7 @@ export const appWatch: AppWatchObject = {
       stopWorkspaceRealtime(this);
       this.availableWorkspaces = [];
       this.workspaceMembers = [];
+      this.workspacePresenceByUserId = {};
       this.showWorkspaceMembersModal = false;
       return;
     }

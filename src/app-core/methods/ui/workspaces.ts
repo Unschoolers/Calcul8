@@ -11,6 +11,12 @@ import {
 } from "../../storageKeys.ts";
 import { getActiveStorageScope, sortWorkspacesByName } from "../../workspace-scope.ts";
 import type { WorkspaceMember, WorkspaceSummary } from "../../../types/app.ts";
+import {
+  formatRelativeLastSeen,
+  getTransferCandidates,
+  getWorkspaceMemberPresenceStateFromApp,
+  loadWorkspaceMembers
+} from "./workspace-members.ts";
 
 const LEGACY_KEYS = getLegacyStorageKeys();
 
@@ -21,10 +27,6 @@ type WorkspaceApiError = {
 
 type WorkspaceListResponse = {
   workspaces?: unknown;
-};
-
-type WorkspaceMembersResponse = {
-  memberships?: unknown;
 };
 
 type WorkspaceCreateResponse = {
@@ -89,41 +91,6 @@ function normalizeWorkspaceSummary(value: unknown): WorkspaceSummary | null {
   };
 }
 
-function normalizeWorkspaceMember(value: unknown): WorkspaceMember | null {
-  if (!value || typeof value !== "object") return null;
-  const candidate = value as {
-    userId?: unknown;
-    workspaceId?: unknown;
-    role?: unknown;
-    status?: unknown;
-    updatedAt?: unknown;
-    displayName?: unknown;
-    photoUrl?: unknown;
-  };
-  const userId = String(candidate.userId ?? "").trim();
-  const workspaceId = String(candidate.workspaceId ?? "").trim();
-  const role = candidate.role === "owner" ? "owner" : candidate.role === "member" ? "member" : null;
-  const status = candidate.status === "disabled" || candidate.status === "removed" ? candidate.status : "active";
-  const updatedAt = String(candidate.updatedAt ?? "").trim();
-  if (!userId || !workspaceId || !role || !updatedAt) {
-    return null;
-  }
-
-  return {
-    userId,
-    workspaceId,
-    role,
-    status,
-    updatedAt,
-    displayName: typeof candidate.displayName === "string" && candidate.displayName.trim()
-      ? candidate.displayName.trim()
-      : undefined,
-    photoUrl: typeof candidate.photoUrl === "string" && candidate.photoUrl.trim()
-      ? candidate.photoUrl.trim()
-      : undefined
-  };
-}
-
 function normalizeWorkspaceSummaries(value: unknown): WorkspaceSummary[] {
   if (!Array.isArray(value)) return [];
   return sortWorkspacesByName(
@@ -131,13 +98,6 @@ function normalizeWorkspaceSummaries(value: unknown): WorkspaceSummary[] {
       .map((entry) => normalizeWorkspaceSummary(entry))
       .filter((entry): entry is WorkspaceSummary => entry != null)
   );
-}
-
-function normalizeWorkspaceMembers(value: unknown): WorkspaceMember[] {
-  if (!Array.isArray(value)) return [];
-  return value
-    .map((entry) => normalizeWorkspaceMember(entry))
-    .filter((entry): entry is WorkspaceMember => entry != null);
 }
 
 function clearInviteQueryParam(): void {
@@ -221,6 +181,10 @@ async function applyWorkspaceScope(
 ): Promise<void> {
   app.activeScopeType = scopeType;
   app.activeWorkspaceId = scopeType === "workspace" ? workspaceId : null;
+  if (scopeType !== "workspace") {
+    app.workspaceMembers = [];
+    app.workspacePresenceByUserId = {};
+  }
   persistActiveScopeSelection(app);
   loadScopedAppState(app);
 
@@ -229,11 +193,6 @@ async function applyWorkspaceScope(
   }
 }
 
-function getTransferCandidates(app: AppContext): WorkspaceMember[] {
-  return app.workspaceMembers.filter(
-    (member) => member.status === "active" && member.role === "member"
-  );
-}
 
 async function fetchWorkspaceJson(
   app: AppContext,
@@ -298,6 +257,8 @@ export const uiWorkspaceMethods: ThisType<AppContext> & Pick<
   | "leaveCurrentWorkspace"
   | "removeWorkspaceMember"
   | "handleWorkspaceAccessLost"
+  | "getWorkspaceMemberPresenceState"
+  | "getWorkspaceMemberPresenceLabel"
 > = {
   async refreshWorkspaces(): Promise<void> {
     const googleIdToken = getGoogleIdToken();
@@ -321,6 +282,10 @@ export const uiWorkspaceMethods: ThisType<AppContext> & Pick<
       ) {
         await applyWorkspaceScope(this, "personal", null, {
           pullFromCloud: false
+        });
+      } else if (this.activeScopeType === "workspace" && this.activeWorkspaceId) {
+        void loadWorkspaceMembers(this, {
+          setLoadingState: false
         });
       }
     } finally {
@@ -352,6 +317,9 @@ export const uiWorkspaceMethods: ThisType<AppContext> & Pick<
     this.isWorkspaceLoading = true;
     try {
       await applyWorkspaceScope(this, "workspace", normalizedWorkspaceId);
+      await loadWorkspaceMembers(this, {
+        setLoadingState: false
+      });
     } finally {
       this.isWorkspaceLoading = false;
     }
@@ -437,26 +405,11 @@ export const uiWorkspaceMethods: ThisType<AppContext> & Pick<
       return;
     }
 
-    this.workspaceMembers = [];
     this.showWorkspaceMembersModal = true;
-    this.isWorkspaceMembersLoading = true;
-    try {
-      const result = await fetchWorkspaceJson(
-        this,
-        `/workspaces/${encodeURIComponent(this.activeWorkspaceId)}/members`,
-        {
-          method: "GET"
-        },
-        "Failed to load workspace members."
-      );
-      if (!result.ok) return;
-
-      const body = result.body as WorkspaceMembersResponse;
-      this.workspaceMembers = normalizeWorkspaceMembers(body.memberships);
-      this.leaveWorkspaceTransferMemberUserId = getTransferCandidates(this)[0]?.userId ?? "";
-    } finally {
-      this.isWorkspaceMembersLoading = false;
-    }
+    await loadWorkspaceMembers(this, {
+      resetBeforeLoad: true,
+      setLoadingState: true
+    });
   },
 
   async createWorkspaceJoinLink(): Promise<void> {
@@ -693,5 +646,21 @@ export const uiWorkspaceMethods: ThisType<AppContext> & Pick<
     }
 
     this.notify("You no longer have access to that workspace. Switched back to Personal.", "warning");
+  },
+
+  getWorkspaceMemberPresenceState(member: Pick<WorkspaceMember, "userId">): "online" | "recent" | "offline" {
+    return getWorkspaceMemberPresenceStateFromApp(this, member);
+  },
+
+  getWorkspaceMemberPresenceLabel(member: Pick<WorkspaceMember, "userId">): string {
+    const state = getWorkspaceMemberPresenceStateFromApp(this, member);
+    if (state === "online") return "Online now";
+
+    const presence = this.workspacePresenceByUserId[String(member.userId || "").trim()];
+    if (state === "recent") {
+      return formatRelativeLastSeen(presence?.lastSeenAt);
+    }
+
+    return "Offline";
   }
 };

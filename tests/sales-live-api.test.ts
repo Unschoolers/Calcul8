@@ -440,6 +440,7 @@ test("fetchWorkspaceRealtimeSubscribeToken requests a workspace-scoped token", a
 
   assert.deepEqual(tokenPayload, {
     room: "workspace:beta:lot:6",
+    rooms: ["workspace:beta:lot:6"],
     token: "signed-token",
     expiresAt: 1760000000
   });

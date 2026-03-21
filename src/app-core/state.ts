@@ -68,6 +68,7 @@ export function createInitialState(): AppState {
     newWorkspaceName: "",
     showWorkspaceMembersModal: false,
     workspaceMembers: [],
+    workspacePresenceByUserId: {},
     isWorkspaceMembersLoading: false,
     isCreatingWorkspaceJoinLink: false,
     showLeaveWorkspaceModal: false,

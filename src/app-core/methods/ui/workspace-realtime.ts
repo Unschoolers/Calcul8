@@ -28,11 +28,12 @@ type RealtimeApp = Pick<
   | "pullCloudSync"
   | "getSalesStorageKey"
   | "workspaceRealtimeStatus"
+  | "workspacePresenceByUserId"
 >;
 
 type RealtimeSocketState = {
   socket: WebSocket | null;
-  room: string | null;
+  rooms: string[];
   reconnectTimeoutId: number | null;
   url: string | null;
   isIntentionalClose: boolean;
@@ -45,6 +46,12 @@ type RealtimeEnvelope =
   | { type: "subscribed"; rooms?: string[] }
   | { type: "error"; message?: string }
   | { type: "event"; room?: string; eventType?: string; data?: unknown };
+
+type WorkspaceRealtimeDesiredSubscription = {
+  lotRoom: string;
+  presenceRoom: string;
+  rooms: string[];
+};
 
 type RealtimeEventPayload = {
   lotId: number;
@@ -63,7 +70,7 @@ function getRealtimeSocketState(app: object): RealtimeSocketState {
   if (!state) {
     state = {
       socket: null,
-      room: null,
+      rooms: [],
       reconnectTimeoutId: null,
       url: null,
       isIntentionalClose: false,
@@ -95,9 +102,19 @@ function buildWorkspaceLotRoom(workspaceId: string, lotId: number): string {
   return `workspace:${workspaceId}:lot:${lotId}`;
 }
 
-function getDesiredRealtimeRoom(app: RealtimeApp): string | null {
+function buildWorkspacePresenceRoom(workspaceId: string): string {
+  return `workspace:${workspaceId}:presence`;
+}
+
+function getDesiredRealtimeSubscription(app: RealtimeApp): WorkspaceRealtimeDesiredSubscription | null {
   if (!shouldUseWorkspaceRealtime(app)) return null;
-  return buildWorkspaceLotRoom(app.activeWorkspaceId as string, app.currentLotId as number);
+  const lotRoom = buildWorkspaceLotRoom(app.activeWorkspaceId as string, app.currentLotId as number);
+  const presenceRoom = buildWorkspacePresenceRoom(app.activeWorkspaceId as string);
+  return {
+    lotRoom,
+    presenceRoom,
+    rooms: [lotRoom, presenceRoom]
+  };
 }
 
 function resolveRealtimeSocketUrl(): string {
@@ -155,6 +172,35 @@ function deleteRealtimeSale(app: RealtimeApp, lotId: number, saleId: number): vo
   cacheAuthoritativeSales(app as never, lotId, nextSales);
 }
 
+function applyWorkspacePresenceSnapshot(
+  app: RealtimeApp,
+  data: unknown
+): void {
+  const raw = typeof data === "object" && data !== null && !Array.isArray(data)
+    ? data as Record<string, unknown>
+    : {};
+  const workspaceId = String(raw.workspaceId ?? "").trim();
+  if (!workspaceId || workspaceId !== String(app.activeWorkspaceId ?? "").trim()) {
+    return;
+  }
+
+  const members = Array.isArray(raw.members) ? raw.members : [];
+  const nextPresenceByUserId: Record<string, { userId: string; isOnline: boolean; lastSeenAt?: string }> = {};
+  for (const member of members) {
+    if (typeof member !== "object" || member === null || Array.isArray(member)) continue;
+    const candidate = member as Record<string, unknown>;
+    const userId = String(candidate.userId ?? "").trim();
+    if (!userId) continue;
+    nextPresenceByUserId[userId] = {
+      userId,
+      isOnline: candidate.isOnline === true,
+      lastSeenAt: String(candidate.lastSeenAt ?? "").trim() || undefined
+    };
+  }
+
+  app.workspacePresenceByUserId = nextPresenceByUserId;
+}
+
 function isWorkspaceSnapshotSyncClean(app: RealtimeApp): boolean {
   const expectedSignature = String(app.lastSyncedPayloadHash ?? "").trim();
   if (!expectedSignature) return false;
@@ -209,8 +255,13 @@ function handleLotConfigUpdatedEvent(app: RealtimeApp, payload: RealtimeEventPay
 }
 
 function applyRealtimeMessage(app: RealtimeApp, room: string, eventType: string, data: unknown): void {
-  const desiredRoom = getDesiredRealtimeRoom(app);
-  if (!desiredRoom || room !== desiredRoom) return;
+  const desiredSubscription = getDesiredRealtimeSubscription(app);
+  if (!desiredSubscription || !desiredSubscription.rooms.includes(room)) return;
+
+  if (eventType === "workspace.presence") {
+    applyWorkspacePresenceSnapshot(app, data);
+    return;
+  }
 
   const payload = parseRealtimeEventPayload(app, data);
   if (!payload) return;
@@ -254,7 +305,7 @@ function closeRealtimeSocket(app: RealtimeApp): void {
   state.isIntentionalClose = true;
   const activeSocket = state.socket;
   state.socket = null;
-  state.room = null;
+  state.rooms = [];
   state.url = null;
 
   if (activeSocket && activeSocket.readyState === WebSocket.OPEN) {
@@ -266,13 +317,14 @@ function closeRealtimeSocket(app: RealtimeApp): void {
 
 function shouldKeepRealtimeSocket(
   state: RealtimeSocketState,
-  desiredRoom: string,
+  desiredRooms: string[],
   nextUrl: string
 ): boolean {
   return Boolean(
     state.socket
     && state.socket.readyState === WebSocket.OPEN
-    && state.room === desiredRoom
+    && state.rooms.length === desiredRooms.length
+    && state.rooms.every((room, index) => room === desiredRooms[index])
     && state.url === nextUrl
   );
 }
@@ -280,18 +332,21 @@ function shouldKeepRealtimeSocket(
 function shouldReconnectSocket(
   app: RealtimeApp,
   state: RealtimeSocketState,
-  desiredRoom: string
+  desiredRooms: string[]
 ): boolean {
+  const desiredSubscription = getDesiredRealtimeSubscription(app);
   return !state.isIntentionalClose
-    && getDesiredRealtimeRoom(app) === desiredRoom;
+    && !!desiredSubscription
+    && desiredSubscription.rooms.length === desiredRooms.length
+    && desiredSubscription.rooms.every((room, index) => room === desiredRooms[index]);
 }
 
 function tryScheduleRealtimeReconnect(
   app: RealtimeApp,
   state: RealtimeSocketState,
-  desiredRoom: string
+  desiredRooms: string[]
 ): void {
-  if (shouldReconnectSocket(app, state, desiredRoom)) {
+  if (shouldReconnectSocket(app, state, desiredRooms)) {
     scheduleRealtimeReconnect(app);
   }
 }
@@ -302,7 +357,7 @@ async function subscribeRealtimeSocket(
   socket: WebSocket,
   subscribeAttemptId: number
 ): Promise<void> {
-  if (state.socket !== socket || !state.room || !app.currentLotId) return;
+  if (state.socket !== socket || state.rooms.length === 0 || !app.currentLotId) return;
 
   try {
     const subscribeToken = await fetchWorkspaceRealtimeSubscribeToken(app as never, app.currentLotId);
@@ -310,15 +365,17 @@ async function subscribeRealtimeSocket(
       state.socket !== socket
       || state.subscribeAttemptId !== subscribeAttemptId
       || socket.readyState !== WebSocket.OPEN
-      || !state.room
+      || state.rooms.length === 0
     ) {
       return;
     }
 
-    const nextRoom = subscribeToken?.room || state.room;
+    const nextRooms = Array.isArray(subscribeToken?.rooms) && subscribeToken?.rooms.length > 0
+      ? subscribeToken.rooms
+      : state.rooms;
     socket.send(JSON.stringify({
       type: "subscribe",
-      rooms: [nextRoom],
+      rooms: nextRooms,
       ...(subscribeToken?.token ? { token: subscribeToken.token } : {})
     }));
   } catch {
@@ -333,7 +390,7 @@ function attachRealtimeSocketListeners(
   app: RealtimeApp,
   state: RealtimeSocketState,
   socket: WebSocket,
-  desiredRoom: string,
+  desiredRooms: string[],
   subscribeAttemptId: number
 ): void {
   socket.addEventListener("open", () => {
@@ -376,19 +433,20 @@ function attachRealtimeSocketListeners(
     if (state.socket === socket) {
       state.socket = null;
     }
-    tryScheduleRealtimeReconnect(app, state, desiredRoom);
+    tryScheduleRealtimeReconnect(app, state, desiredRooms);
   });
 
   socket.addEventListener("error", () => {
-    tryScheduleRealtimeReconnect(app, state, desiredRoom);
+    tryScheduleRealtimeReconnect(app, state, desiredRooms);
   });
 }
 
 export function refreshWorkspaceRealtime(app: RealtimeApp): void {
-  const desiredRoom = getDesiredRealtimeRoom(app);
-  if (!desiredRoom) {
+  const desiredSubscription = getDesiredRealtimeSubscription(app);
+  if (!desiredSubscription) {
     closeRealtimeSocket(app);
     resetRealtimeReconnectAttempts(getRealtimeSocketState(app as object));
+    app.workspacePresenceByUserId = {};
     setWorkspaceRealtimeStatus(app, "idle");
     return;
   }
@@ -397,13 +455,13 @@ export function refreshWorkspaceRealtime(app: RealtimeApp): void {
   const state = getRealtimeSocketState(app as object);
   clearReconnectTimeout(state);
 
-  if (shouldKeepRealtimeSocket(state, desiredRoom, nextUrl)) {
+  if (shouldKeepRealtimeSocket(state, desiredSubscription.rooms, nextUrl)) {
     return;
   }
 
   closeRealtimeSocket(app);
   state.isIntentionalClose = false;
-  state.room = desiredRoom;
+  state.rooms = [...desiredSubscription.rooms];
   state.url = nextUrl;
   state.subscribeAttemptId += 1;
   const subscribeAttemptId = state.subscribeAttemptId;
@@ -411,11 +469,12 @@ export function refreshWorkspaceRealtime(app: RealtimeApp): void {
 
   const socket = new WebSocket(nextUrl);
   state.socket = socket;
-  attachRealtimeSocketListeners(app, state, socket, desiredRoom, subscribeAttemptId);
+  attachRealtimeSocketListeners(app, state, socket, desiredSubscription.rooms, subscribeAttemptId);
 }
 
 export function stopWorkspaceRealtime(app: RealtimeApp): void {
   closeRealtimeSocket(app);
   resetRealtimeReconnectAttempts(getRealtimeSocketState(app as object));
+  app.workspacePresenceByUserId = {};
   setWorkspaceRealtimeStatus(app, "idle");
 }

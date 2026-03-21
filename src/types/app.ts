@@ -13,6 +13,7 @@ export type PortfolioChartViewMode = "breakdown" | "trend" | "sellthrough" | "ma
 export type PortfolioLotTypeFilter = "both" | "bulk" | "singles";
 export type SyncStatus = "idle" | "syncing" | "success" | "error";
 export type WorkspaceRealtimeStatus = "idle" | "connecting" | "connected" | "reconnecting" | "disconnected";
+export type WorkspacePresenceState = "online" | "recent" | "offline";
 export type LiveSinglesSelectionSource = "manual" | "external";
 export type LiveSinglesSelectionMode = "replace" | "merge";
 export type WorkspaceScopeType = "personal" | "workspace";
@@ -195,6 +196,12 @@ export interface WorkspaceMember {
   photoUrl?: string;
 }
 
+export interface WorkspacePresenceEntry {
+  userId: string;
+  isOnline: boolean;
+  lastSeenAt?: string;
+}
+
 export interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
@@ -224,6 +231,7 @@ export interface AppState extends LotSetup {
   newWorkspaceName: string;
   showWorkspaceMembersModal: boolean;
   workspaceMembers: WorkspaceMember[];
+  workspacePresenceByUserId: Record<string, WorkspacePresenceEntry>;
   isWorkspaceMembersLoading: boolean;
   isCreatingWorkspaceJoinLink: boolean;
   showLeaveWorkspaceModal: boolean;

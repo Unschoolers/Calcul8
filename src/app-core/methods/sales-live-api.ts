@@ -34,6 +34,7 @@ type LivePricingResponse = {
 
 type RealtimeTokenResponse = {
   room?: unknown;
+  rooms?: unknown;
   token?: unknown;
   expiresAt?: unknown;
 };
@@ -50,6 +51,7 @@ export type LotLivePricingRecord = {
 
 export type WorkspaceRealtimeSubscribeToken = {
   room: string;
+  rooms: string[];
   token: string | null;
   expiresAt: number | null;
 };
@@ -318,11 +320,15 @@ export async function fetchWorkspaceRealtimeSubscribeToken(
 
   const room = String(body?.room ?? "").trim();
   if (!room) return null;
+  const rooms = Array.isArray(body?.rooms)
+    ? body?.rooms.map((entry) => String(entry ?? "").trim()).filter(Boolean)
+    : [room];
 
   const rawToken = String(body?.token ?? "").trim();
   const expiresAt = Number(body?.expiresAt);
   return {
     room,
+    rooms,
     token: rawToken || null,
     expiresAt: Number.isFinite(expiresAt) ? Math.floor(expiresAt) : null
   };

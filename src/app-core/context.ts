@@ -20,6 +20,7 @@ import type {
   SalesStatus,
   UiColor,
   WorkspaceMember,
+  WorkspacePresenceState,
   WorkspaceScopeType,
   WorkspaceSummary
 } from "../types/app.ts";
@@ -193,6 +194,8 @@ export interface AppComputedState {
   currentWorkspaceSummary: WorkspaceSummary | null;
   currentWorkspaceName: string;
   isCurrentWorkspaceOwner: boolean;
+  activeWorkspaceVisibleMembers: WorkspaceMember[];
+  activeWorkspaceOverflowMemberCount: number;
 }
 
 export interface AppMethodState {
@@ -317,6 +320,8 @@ export interface AppMethodState {
   leaveCurrentWorkspace(): Promise<void>;
   removeWorkspaceMember(memberUserId: string): Promise<void>;
   handleWorkspaceAccessLost(workspaceId?: string): Promise<void>;
+  getWorkspaceMemberPresenceState(member: Pick<WorkspaceMember, "userId">): WorkspacePresenceState;
+  getWorkspaceMemberPresenceLabel(member: Pick<WorkspaceMember, "userId">): string;
   unregisterServiceWorkersForDev(): Promise<void>;
   registerServiceWorker(): void;
 }
@@ -396,6 +401,10 @@ export interface AppComputedObject {
   currentWorkspaceSummary(this: AppContext): WorkspaceSummary | null;
   currentWorkspaceName(this: AppContext): string;
   isCurrentWorkspaceOwner(this: AppContext): boolean;
+  activeWorkspaceVisibleMembers(this: AppContext): WorkspaceMember[];
+  activeWorkspaceOverflowMemberCount(this: AppContext): number;
+  getWorkspaceMemberPresenceState(this: AppContext, member: Pick<WorkspaceMember, "userId">): WorkspacePresenceState;
+  getWorkspaceMemberPresenceLabel(this: AppContext, member: Pick<WorkspaceMember, "userId">): string;
   lotNameDraft: StringProxyComputed;
   currentLotType(this: AppContext): LotType;
   currentLotCatalogSource(this: AppContext): SinglesCatalogSource;

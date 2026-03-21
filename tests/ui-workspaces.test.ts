@@ -67,6 +67,11 @@ function createResponse(body: unknown, init: ResponseInit = {}): Response {
   });
 }
 
+async function flushMicrotasks(): Promise<void> {
+  await Promise.resolve();
+  await Promise.resolve();
+}
+
 function createContext() {
   const ctx = {
     lots: [{ id: 1, name: "Lot 1" }],
@@ -79,6 +84,7 @@ function createContext() {
     activeWorkspaceId: null as string | null,
     availableWorkspaces: [] as Array<{ workspaceId: string; name: string; role: "owner" | "member"; status: "active" }>,
     workspaceMembers: [] as Array<{ userId: string; workspaceId: string; role: "owner" | "member"; status: "active" | "removed" | "disabled"; updatedAt: string; displayName?: string; photoUrl?: string }>,
+    workspacePresenceByUserId: {},
     pendingWorkspaceInviteToken: "",
     pendingWorkspaceInviteWorkspaceId: null as string | null,
     pendingWorkspaceInviteWorkspaceName: "",
@@ -200,6 +206,35 @@ test("switchToWorkspace refreshes once and warns if workspace remains unavailabl
   assert.deepEqual(ctx.notify.mock.calls.at(-1), ["That workspace is no longer available.", "warning"]);
 });
 
+test("switchToWorkspace loads workspace members for active workspace UI", async () => {
+  const ctx = createContext();
+  ctx.availableWorkspaces = [{
+    workspaceId: "ws_team",
+    name: "Team",
+    role: "owner",
+    status: "active"
+  }];
+  fetchWithRetryMock.mockResolvedValue(createResponse({
+    memberships: [
+      {
+        userId: "owner-1",
+        workspaceId: "ws_team",
+        role: "owner",
+        status: "active",
+        updatedAt: "2026-03-20T00:00:00Z",
+        displayName: "Owner Name"
+      }
+    ]
+  }));
+
+  await uiWorkspaceMethods.switchToWorkspace.call(ctx, "ws_team");
+  await flushMicrotasks();
+
+  assert.equal(ctx.activeWorkspaceId, "ws_team");
+  assert.equal(ctx.workspaceMembers.length, 1);
+  assert.equal(ctx.workspaceMembers[0]?.userId, "owner-1");
+});
+
 test("switchToPersonalWorkspace restores personal scope and clears saved workspace selection", async () => {
   const ctx = createContext();
   ctx.activeScopeType = "workspace";
@@ -270,6 +305,29 @@ test("openWorkspaceMembersModal loads normalized members and opens the modal", a
   assert.equal(ctx.workspaceMembers[0]?.photoUrl, "https://example.test/avatar.png");
   assert.equal(ctx.leaveWorkspaceTransferMemberUserId, "member-1");
   assert.equal(ctx.showWorkspaceMembersModal, true);
+});
+
+test("workspace member presence helpers return compact menu and modal states", async () => {
+  const ctx = createContext();
+  ctx.workspacePresenceByUserId = {
+    "owner-1": {
+      userId: "owner-1",
+      isOnline: true,
+      lastSeenAt: "2026-03-20T00:00:00Z"
+    },
+    "member-1": {
+      userId: "member-1",
+      isOnline: false,
+      lastSeenAt: new Date(Date.now() - (3 * 60 * 1000)).toISOString()
+    }
+  };
+
+  assert.equal(uiWorkspaceMethods.getWorkspaceMemberPresenceState.call(ctx, { userId: "owner-1" }), "online");
+  assert.equal(uiWorkspaceMethods.getWorkspaceMemberPresenceLabel.call(ctx, { userId: "owner-1" }), "Online now");
+  assert.equal(uiWorkspaceMethods.getWorkspaceMemberPresenceState.call(ctx, { userId: "member-1" }), "recent");
+  assert.match(uiWorkspaceMethods.getWorkspaceMemberPresenceLabel.call(ctx, { userId: "member-1" }), /^Active \d+m ago$/);
+  assert.equal(uiWorkspaceMethods.getWorkspaceMemberPresenceState.call(ctx, { userId: "missing" }), "offline");
+  assert.equal(uiWorkspaceMethods.getWorkspaceMemberPresenceLabel.call(ctx, { userId: "missing" }), "Offline");
 });
 
 test("createWorkspaceJoinLink copies the absolute invite URL", async () => {

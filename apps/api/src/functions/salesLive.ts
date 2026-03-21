@@ -12,6 +12,7 @@ import { hasWorkspaceMembership } from "../lib/cosmos/workspaceRepository";
 import { getConfig } from "../lib/config";
 import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../lib/http";
 import {
+  buildWorkspacePresenceRealtimeRoom,
   buildWorkspaceLotRealtimeRoom,
   publishWorkspaceLotRealtimeEvent,
   signRealtimeSubscribeToken
@@ -565,6 +566,8 @@ export async function lotRealtimeTokenGet(
 
     const lotId = parseLotIdFromParams(request);
     const room = buildWorkspaceLotRealtimeRoom(workspaceId, lotId);
+    const presenceRoom = buildWorkspacePresenceRealtimeRoom(workspaceId);
+    const rooms = [room, presenceRoom];
     const tokenSecret = String(config.realtimeTokenSecret ?? "").trim();
     if (!tokenSecret && config.apiEnv === "prod") {
       throw new HttpError(503, "Realtime subscribe signing is not configured.");
@@ -575,8 +578,10 @@ export async function lotRealtimeTokenGet(
       lotId,
       workspaceId,
       room,
+      rooms,
       token: tokenSecret ? signRealtimeSubscribeToken(tokenSecret, {
-        rooms: [room],
+        rooms,
+        userId: actorUserId,
         exp: expiresAt
       }) : null,
       expiresAt
