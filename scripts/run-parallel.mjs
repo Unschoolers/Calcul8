@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 
 function parseTasks(argv) {
   const tasks = [];
@@ -68,6 +68,38 @@ async function run() {
   const tasks = parseTasks(process.argv.slice(2));
   const children = [];
   let settled = false;
+  let shuttingDown = false;
+
+  function terminateChild(child) {
+    if (!child || child.exitCode != null || child.killed) return;
+
+    if (process.platform === "win32") {
+      spawnSync("taskkill", ["/pid", String(child.pid), "/t", "/f"], {
+        stdio: "ignore",
+        windowsHide: true
+      });
+      return;
+    }
+
+    child.kill("SIGTERM");
+  }
+
+  function shutdownChildren() {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    for (const child of children) {
+      terminateChild(child);
+    }
+  }
+
+  const signalHandler = (signal) => {
+    shutdownChildren();
+    process.exit(signal === "SIGINT" ? 130 : 143);
+  };
+
+  process.on("SIGINT", signalHandler);
+  process.on("SIGTERM", signalHandler);
+  process.on("exit", shutdownChildren);
 
   const taskPromises = tasks.map((task) => new Promise((resolve, reject) => {
     const shellTask = createShellCommand(task.command);
@@ -103,14 +135,14 @@ async function run() {
   const results = await Promise.all(taskPromises).catch((error) => {
     if (!settled) {
       settled = true;
-      for (const child of children) {
-        if (!child.killed) {
-          child.kill();
-        }
-      }
+      shutdownChildren();
     }
     throw error;
   });
+
+  process.off("SIGINT", signalHandler);
+  process.off("SIGTERM", signalHandler);
+  process.off("exit", shutdownChildren);
 
   console.log("");
   console.log(`Parallel tasks complete: ${results.map((result) => result.label).join(", ")}`);

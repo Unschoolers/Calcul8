@@ -58,11 +58,11 @@ test("buildAuthenticatedHeaders bootstraps session-preferred requests with beare
   assert.equal(headers.Authorization, "Bearer google-token");
 });
 
-test("buildAuthenticatedHeaders omits bearer token for session-preferred requests when csrf token exists", () => {
+test("buildAuthenticatedHeaders keeps bearer token for session-preferred requests even when csrf token exists", () => {
   localStorage.setItem(GOOGLE_AUTH_TOKEN_KEY, "google-token");
   localStorage.setItem(AUTH_CSRF_TOKEN_KEY, "csrf-token");
 
   const headers = buildAuthenticatedHeaders("session-preferred");
 
-  assert.equal("Authorization" in headers, false);
+  assert.equal(headers.Authorization, "Bearer google-token");
 });

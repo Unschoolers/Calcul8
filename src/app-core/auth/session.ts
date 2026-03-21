@@ -18,14 +18,7 @@ export function buildAuthenticatedHeaders(
   const headers: Record<string, string> = { ...extraHeaders };
   const googleIdToken = getStoredGoogleIdToken();
 
-  if (mode === "bearer-required") {
-    if (googleIdToken) {
-      headers.Authorization = `Bearer ${googleIdToken}`;
-    }
-    return headers;
-  }
-
-  if (!getStoredCsrfToken() && googleIdToken) {
+  if (googleIdToken) {
     headers.Authorization = `Bearer ${googleIdToken}`;
   }
 
