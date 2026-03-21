@@ -51,6 +51,8 @@ export const uiMethods: ThisType<AppContext> & Pick<
   | "leaveCurrentWorkspace"
   | "removeWorkspaceMember"
   | "handleWorkspaceAccessLost"
+  | "getWorkspaceMemberPresenceState"
+  | "getWorkspaceMemberPresenceLabel"
 > = {
   ...uiBaseMethods,
   ...uiAccountMethods,

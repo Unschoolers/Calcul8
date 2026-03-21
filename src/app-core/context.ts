@@ -403,8 +403,6 @@ export interface AppComputedObject {
   isCurrentWorkspaceOwner(this: AppContext): boolean;
   activeWorkspaceVisibleMembers(this: AppContext): WorkspaceMember[];
   activeWorkspaceOverflowMemberCount(this: AppContext): number;
-  getWorkspaceMemberPresenceState(this: AppContext, member: Pick<WorkspaceMember, "userId">): WorkspacePresenceState;
-  getWorkspaceMemberPresenceLabel(this: AppContext, member: Pick<WorkspaceMember, "userId">): string;
   lotNameDraft: StringProxyComputed;
   currentLotType(this: AppContext): LotType;
   currentLotCatalogSource(this: AppContext): SinglesCatalogSource;
