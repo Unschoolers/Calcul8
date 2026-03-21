@@ -16,7 +16,9 @@ const {
 }));
 
 vi.mock("chart.js/auto", () => ({
-  default: class MockChart {}
+  default: class MockChart {
+    static getChart = vi.fn(() => null);
+  }
 }));
 
 vi.mock("../src/app-core/methods/config-shared.ts", async () => {
@@ -52,16 +54,26 @@ vi.mock("../src/app-core/methods/sales-live-api.ts", () => {
 import { salesMethods } from "../src/app-core/methods/sales.ts";
 import { SalesLiveApiError } from "../src/app-core/methods/sales-live-api.ts";
 
+class MockHtmlCanvasElement {
+  getContext = vi.fn(() => ({ id: "ctx" }));
+}
+
 function createContext(overrides: Record<string, unknown> = {}) {
   return {
     currentLotId: 1,
     currentLotType: "bulk",
     currentTab: "sales",
+    isOffline: false,
     canUsePaidActions: true,
     packsPerBox: 16,
     singlesPurchases: [],
     singlesSoldCountByPurchaseId: {},
     sales: [],
+    lots: [],
+    portfolioSelectedLotIds: [],
+    portfolioChartView: "trend",
+    allLotPerformance: [],
+    salesCacheEpoch: 0,
     editingSale: null,
     newSale: {
       type: "pack",
@@ -75,6 +87,11 @@ function createContext(overrides: Record<string, unknown> = {}) {
     cancelSale: vi.fn(),
     initSalesChart: vi.fn(),
     initPortfolioChart: vi.fn(),
+    loadSalesForLotId: vi.fn(() => []),
+    getSalesStorageKey: (lotId: number) => `sales_${lotId}`,
+    formatCurrency: (value: number) => `$${value.toFixed(2)}`,
+    formatDate: (value: string) => value,
+    netFromGross: vi.fn((gross: number) => gross),
     $nextTick: (callback: () => void) => callback(),
     ...overrides
   };
@@ -83,6 +100,12 @@ function createContext(overrides: Record<string, unknown> = {}) {
 beforeEach(() => {
   vi.clearAllMocks();
   canUseAuthoritativeSalesLiveApiMock.mockReturnValue(true);
+  vi.stubGlobal("HTMLCanvasElement", MockHtmlCanvasElement as unknown as typeof HTMLCanvasElement);
+  vi.stubGlobal("localStorage", {
+    getItem: vi.fn(() => null),
+    setItem: vi.fn(),
+    removeItem: vi.fn()
+  });
 });
 
 test("saveSale uses authoritative API and appends the saved sale metadata", async () => {
@@ -257,3 +280,92 @@ test("deleteSale stays stable if realtime already removed the sale before delete
     "info"
   ]);
 });
+test("initPortfolioChart hydrates missing authoritative sales for selected non-current lots", async () => {
+  const portfolioCanvas = new MockHtmlCanvasElement();
+  const localStorageMock = globalThis.localStorage as {
+    getItem: ReturnType<typeof vi.fn>;
+    setItem: ReturnType<typeof vi.fn>;
+  };
+  localStorageMock.getItem.mockImplementation((key: string) => {
+    if (key === "sales_2") return null;
+    return "[]";
+  });
+  fetchAuthoritativeSalesMock.mockResolvedValue([
+    {
+      id: 21,
+      type: "pack",
+      quantity: 1,
+      packsCount: 1,
+      price: 12,
+      buyerShipping: 0,
+      date: "2026-03-17",
+      version: 1
+    }
+  ]);
+
+  const ctx = createContext({
+    currentTab: "portfolio",
+    currentLotId: 1,
+    lots: [
+      {
+        id: 1,
+        name: "Lot 1",
+        purchaseDate: "2026-03-01",
+        createdAt: "2026-03-01",
+        sellingTaxPercent: 15
+      },
+      {
+        id: 2,
+        name: "Lot 2",
+        purchaseDate: "2026-03-02",
+        createdAt: "2026-03-02",
+        sellingTaxPercent: 15
+      }
+    ],
+    portfolioSelectedLotIds: [1, 2],
+    sales: [],
+    allLotPerformance: [
+      {
+        lotId: 1,
+        lotName: "Lot 1",
+        totalRevenue: 0,
+        totalCost: 100
+      },
+      {
+        lotId: 2,
+        lotName: "Lot 2",
+        totalRevenue: 12,
+        totalCost: 90
+      }
+    ],
+    $refs: {
+      portfolioWindow: {
+        $refs: {
+          portfolioChartCanvas: portfolioCanvas
+        }
+      }
+    }
+  });
+
+  salesMethods.initPortfolioChart.call(ctx as never);
+  await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assert.deepEqual(fetchAuthoritativeSalesMock.mock.calls, [[ctx, 2]]);
+  assert.deepEqual(cacheAuthoritativeSalesMock.mock.calls, [[ctx, 2, [{
+    id: 21,
+    type: "pack",
+    quantity: 1,
+    packsCount: 1,
+    price: 12,
+    buyerShipping: 0,
+    date: "2026-03-17",
+    version: 1
+  }]]]);
+  assert.equal(ctx.salesCacheEpoch, 1);
+  assert.equal((ctx.initPortfolioChart as ReturnType<typeof vi.fn>).mock.calls.length, 1);
+});
+
+

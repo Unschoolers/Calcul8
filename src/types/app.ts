@@ -317,6 +317,7 @@ export interface AppState extends LotSetup {
   syncStatusResetTimeoutId: number | null;
   workspaceRealtimeStatus: WorkspaceRealtimeStatus;
   offlineReconnectIntervalId: number | null;
+  salesCacheEpoch: number;
 }
 
 

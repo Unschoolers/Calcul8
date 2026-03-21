@@ -40,7 +40,12 @@ type SaleMutationState = {
   deletingSaleIds: Set<number>;
 };
 
+type PortfolioSalesHydrationState = {
+  hydratingLotIds: Set<number>;
+};
+
 const saleMutationStateByContext = new WeakMap<object, SaleMutationState>();
+const portfolioSalesHydrationStateByContext = new WeakMap<object, PortfolioSalesHydrationState>();
 
 function getSaleMutationState(context: object): SaleMutationState {
   let state = saleMutationStateByContext.get(context);
@@ -52,6 +57,82 @@ function getSaleMutationState(context: object): SaleMutationState {
     saleMutationStateByContext.set(context, state);
   }
   return state;
+}
+
+function getPortfolioSalesHydrationState(context: object): PortfolioSalesHydrationState {
+  let state = portfolioSalesHydrationStateByContext.get(context);
+  if (!state) {
+    state = {
+      hydratingLotIds: new Set<number>()
+    };
+    portfolioSalesHydrationStateByContext.set(context, state);
+  }
+  return state;
+}
+
+function hasPersistedSalesCache(context: Pick<AppContext, "getSalesStorageKey">, lotId: number): boolean {
+  try {
+    return localStorage.getItem(context.getSalesStorageKey(lotId)) != null;
+  } catch {
+    return false;
+  }
+}
+
+function hydrateMissingPortfolioSales(context: AppContext): void {
+  if (context.currentTab !== "portfolio" || context.isOffline || !canUseAuthoritativeSalesLiveApi()) {
+    return;
+  }
+
+  const currentLotId = context.currentLotId;
+  const selectedLotIdSet = new Set(
+    Array.isArray(context.portfolioSelectedLotIds) && context.portfolioSelectedLotIds.length > 0
+      ? context.portfolioSelectedLotIds
+      : context.lots.map((lot) => lot.id)
+  );
+  const hydrationState = getPortfolioSalesHydrationState(context as object);
+  const missingLotIds = context.lots
+    .filter((lot) => selectedLotIdSet.has(lot.id))
+    .map((lot) => lot.id)
+    .filter((lotId) =>
+      lotId !== currentLotId &&
+      !hydrationState.hydratingLotIds.has(lotId) &&
+      !hasPersistedSalesCache(context, lotId)
+    );
+
+  if (missingLotIds.length === 0) return;
+
+  for (const lotId of missingLotIds) {
+    hydrationState.hydratingLotIds.add(lotId);
+  }
+
+  void (async () => {
+    let shouldRefresh = false;
+    try {
+      await Promise.all(
+        missingLotIds.map(async (lotId) => {
+          try {
+            const sales = await fetchAuthoritativeSales(context, lotId);
+            if (Array.isArray(sales)) {
+              cacheAuthoritativeSales(context, lotId, sales);
+              shouldRefresh = true;
+            }
+          } catch {
+            // Ignore background hydration failures and keep the current portfolio render.
+          } finally {
+            hydrationState.hydratingLotIds.delete(lotId);
+          }
+        })
+      );
+    } finally {
+      for (const lotId of missingLotIds) {
+        hydrationState.hydratingLotIds.delete(lotId);
+      }
+      if (shouldRefresh) {
+        context.salesCacheEpoch += 1;
+        refreshChartsForCurrentTab(context);
+      }
+    }
+  })();
 }
 
 function firstFiniteNonNegative(...values: Array<number | null | undefined>): number | null {
@@ -721,6 +802,7 @@ export const salesMethods: ThisType<AppContext> & Pick<
     this.portfolioChart = null;
 
     if (this.currentTab !== "portfolio") return;
+    hydrateMissingPortfolioSales(this);
 
     const chartCanvas = resolveCanvasRef(this, "portfolioWindow", "portfolioChartCanvas");
     if (!chartCanvas) return;
@@ -781,3 +863,5 @@ export const salesMethods: ThisType<AppContext> & Pick<
     this.portfolioChart = new Chart(ctx, historyConfig);
   }
 };
+
+

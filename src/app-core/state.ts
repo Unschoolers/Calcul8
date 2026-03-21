@@ -206,7 +206,8 @@ export function createInitialState(): AppState {
     syncStatus: "idle",
     syncStatusResetTimeoutId: null,
     workspaceRealtimeStatus: "idle",
-    offlineReconnectIntervalId: null
+    offlineReconnectIntervalId: null,
+    salesCacheEpoch: 0
   };
 }
 

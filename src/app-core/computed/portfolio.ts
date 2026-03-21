@@ -1,11 +1,11 @@
 import { DEFAULT_VALUES } from "../../constants.ts";
 import {
-  calculateSaleProfit,
+  calculateLotPerformanceSummary,
   calculatePortfolioTotals,
-  calculateLotPerformanceSummary as calculateLotPerformanceSummary
+  calculateSaleProfit
 } from "../../domain/calculations.ts";
-import { buildLotOptionItems } from "../shared/lot-option-items.ts";
 import type { AppComputedObject } from "../context.ts";
+import { buildLotOptionItems } from "../shared/lot-option-items.ts";
 import {
   pickBestForecastScenario,
   type ForecastScenario
@@ -59,6 +59,7 @@ export const portfolioComputed: Pick<
   "hasPortfolioData"
 > = {
   portfolioLotFilterItems() {
+    void this.salesCacheEpoch;
     const filter = this.portfolioLotTypeFilter === "bulk" || this.portfolioLotTypeFilter === "singles"
       ? this.portfolioLotTypeFilter
       : "both";
@@ -202,6 +203,7 @@ export const portfolioComputed: Pick<
   },
 
   allLotPerformance() {
+    void this.salesCacheEpoch;
     const selectedLotIds = Array.isArray(this.portfolioSelectedLotIds)
       ? this.portfolioSelectedLotIds
       : this.lots.map((lot) => lot.id);
@@ -278,6 +280,8 @@ export const portfolioComputed: Pick<
     return this.allLotPerformance.length > 0;
   }
 };
+
+
 
 
 
