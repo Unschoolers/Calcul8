@@ -342,6 +342,31 @@ test("PortfolioWindow chart copy helpers return expected titles, icons, subtitle
   );
 });
 
+test("PortfolioWindow sales per user helpers return expected labels for each metric", () => {
+  const revenueVm = {
+    portfolioSalesByUserMetric: "revenue"
+  };
+  const profitVm = {
+    portfolioSalesByUserMetric: "profit"
+  };
+  const countVm = {
+    portfolioSalesByUserMetric: "count"
+  };
+
+  assert.equal(PortfolioWindow.methods.portfolioSalesByUserMetricLabel.call(revenueVm as never), "Revenue");
+  assert.equal(PortfolioWindow.methods.portfolioSalesByUserMetricLabel.call(profitVm as never), "Profit");
+  assert.equal(PortfolioWindow.methods.portfolioSalesByUserMetricLabel.call(countVm as never), "Sales count");
+
+  assert.equal(
+    PortfolioWindow.methods.portfolioSalesByUserSubtitle.call(revenueVm as never),
+    "Last 8 weeks by recorded seller"
+  );
+  assert.equal(
+    PortfolioWindow.methods.portfolioSalesByUserAriaLabel.call(profitVm as never),
+    "Portfolio sales per user chart for the last 8 weeks by profit."
+  );
+});
+
 test("PortfolioWindow filter helpers use safe fallbacks when refs or items are missing", () => {
   const blurVm = { $refs: {} };
   PortfolioWindow.methods.blurPortfolioLotFilter.call(blurVm as never);

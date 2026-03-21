@@ -24,6 +24,7 @@ function createContext(overrides: PwaContext = {}): PwaContext {
     serviceWorkerControllerChangeListener: null,
     serviceWorkerUpdateIntervalId: null,
     hasRegisteredServiceWorkerLifecycle: false,
+    isGoogleSignedIn: true,
     notify: vi.fn(),
     debugLogEntitlement: vi.fn(async () => undefined),
     pushCloudSync: vi.fn(async () => undefined),
@@ -144,6 +145,21 @@ test("setupPwaUiHandlers is idempotent and does not duplicate global listeners",
 
   assert.equal(context.hasPwaUiHandlersBound, true);
   assert.equal((windowMock.addEventListener as ReturnType<typeof vi.fn>).mock.calls.length, 4);
+});
+
+test("setupPwaUiHandlers does not push cloud sync while signed out", () => {
+  stubWindow();
+  vi.stubGlobal("navigator", { onLine: true });
+
+  const context = createContext({
+    isGoogleSignedIn: false
+  });
+
+  pwaMethods.setupPwaUiHandlers.call(context as never);
+  (context.onlineListener as () => void)();
+
+  assert.equal((context.debugLogEntitlement as ReturnType<typeof vi.fn>).mock.calls.length, 1);
+  assert.equal((context.pushCloudSync as ReturnType<typeof vi.fn>).mock.calls.length, 0);
 });
 
 test("startOfflineReconnectScheduler no-ops when already running and reconnects when online", () => {

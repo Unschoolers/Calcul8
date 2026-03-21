@@ -10,6 +10,7 @@ import {
   pickBestForecastScenario,
   type ForecastScenario
 } from "./forecast-scenarios.ts";
+import { buildPortfolioSalesByUserChartData } from "./portfolio-sales-by-user.ts";
 import {
   buildScenarioFromProjection,
   computeLotModeProjections,
@@ -54,6 +55,8 @@ export const portfolioComputed: Pick<
   "portfolioForecastScenarios" |
   "averagePortfolioForecastScenario" |
   "bestPortfolioForecastScenario" |
+  "portfolioSalesByUserChartData" |
+  "hasPortfolioSalesByUserData" |
   "allLotPerformance" |
   "portfolioTotals" |
   "hasPortfolioData"
@@ -200,6 +203,33 @@ export const portfolioComputed: Pick<
 
   bestPortfolioForecastScenario(): PortfolioForecastScenario | null {
     return pickBestForecastScenario(this.portfolioForecastScenarios);
+  },
+
+  portfolioSalesByUserChartData() {
+    void this.salesCacheEpoch;
+    const selectedLotIds = Array.isArray(this.portfolioSelectedLotIds)
+      ? this.portfolioSelectedLotIds
+      : this.lots.map((lot) => lot.id);
+    const salesByLotId = new Map(
+      this.lots.map((lot) => [
+        lot.id,
+        this.currentLotId === lot.id ? this.sales : this.loadSalesForLotId(lot.id)
+      ] as const)
+    );
+
+    return buildPortfolioSalesByUserChartData({
+      lots: this.lots,
+      salesByLotId,
+      selectedLotIds,
+      scopeType: this.activeScopeType,
+      workspaceMembers: this.workspaceMembers,
+      metric: this.portfolioSalesByUserMetric,
+      todayDate: new Date().toISOString().slice(0, 10)
+    });
+  },
+
+  hasPortfolioSalesByUserData() {
+    return (this.portfolioSalesByUserChartData?.series?.length ?? 0) > 0;
   },
 
   allLotPerformance() {

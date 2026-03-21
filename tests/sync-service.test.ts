@@ -63,6 +63,7 @@ function createApp() {
     loadLot: vi.fn(),
     notify: vi.fn(),
     pullCloudSync: vi.fn(async () => undefined),
+    stopCloudSyncScheduler: vi.fn(),
     handleWorkspaceAccessLost: vi.fn(async () => undefined),
     googleAuthEpoch: 0,
     hasProAccess: false
@@ -116,6 +117,7 @@ test("runCloudSyncPush handles auth expiry and marks sync as error", async () =>
 
   assert.equal(requestCloudSyncPush.mock.calls.length, 1);
   assert.equal(handleExpiredAuthMock.mock.calls.length, 1);
+  assert.equal(app.stopCloudSyncScheduler.mock.calls.length, 1);
   assert.equal(app.syncStatus, "error");
 });
 

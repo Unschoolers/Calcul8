@@ -11,6 +11,7 @@ export type SaleType = "pack" | "box" | "rtyh";
 export type ChartViewMode = "pie" | "sparkline";
 export type PortfolioChartViewMode = "breakdown" | "trend" | "sellthrough" | "margin";
 export type PortfolioLotTypeFilter = "both" | "bulk" | "singles";
+export type PortfolioSalesByUserMetric = "revenue" | "profit" | "count";
 export type SyncStatus = "idle" | "syncing" | "success" | "error";
 export type WorkspaceRealtimeStatus = "idle" | "connecting" | "connected" | "reconnecting" | "disconnected";
 export type WorkspacePresenceState = "online" | "recent" | "offline";
@@ -179,6 +180,24 @@ export interface PortfolioTotals {
   totalProfit: number;
 }
 
+export interface PortfolioSalesByUserWeekBucket {
+  key: string;
+  label: string;
+}
+
+export interface PortfolioSalesByUserSeries {
+  key: string;
+  label: string;
+  values: number[];
+  total: number;
+  color: string;
+}
+
+export interface PortfolioSalesByUserChartData {
+  weeks: PortfolioSalesByUserWeekBucket[];
+  series: PortfolioSalesByUserSeries[];
+}
+
 export interface WorkspaceSummary {
   workspaceId: string;
   name: string;
@@ -285,9 +304,11 @@ export interface AppState extends LotSetup {
   salesChart: ChartJS | null;
   chartView: ChartViewMode;
   portfolioChart: ChartJS | null;
+  portfolioSalesByUserChart: ChartJS | null;
   portfolioChartView: PortfolioChartViewMode;
   portfolioLotTypeFilter: PortfolioLotTypeFilter;
   portfolioLotFilterIds: number[];
+  portfolioSalesByUserMetric: PortfolioSalesByUserMetric;
   lotSearchQuery: string;
   lots: Lot[];
   singlesPurchases: SinglesPurchaseEntry[];

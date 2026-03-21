@@ -48,6 +48,7 @@ export type SyncApp = Pick<
   | "notify"
   | "startOfflineReconnectScheduler"
   | "pullCloudSync"
+  | "stopCloudSyncScheduler"
   | "handleWorkspaceAccessLost"
 >;
 
@@ -282,6 +283,7 @@ export async function runCloudSyncPush(
 
     if (response.status === 401) {
       resolvedDeps.handleExpiredAuth(app);
+      app.stopCloudSyncScheduler();
       resolvedDeps.setSyncStatusError(app);
       console.warn("[whatfees] Cloud sync skipped: auth expired");
       return;

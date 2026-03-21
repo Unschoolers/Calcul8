@@ -22,6 +22,7 @@ import {
 import {
   buildPortfolioBreakdownChartConfig,
   buildPortfolioMarginChartConfig,
+  buildPortfolioSalesByUserChartConfig,
   buildPortfolioHistoryChartConfig,
   buildSalesPieChartConfig,
   buildSalesTrendChartConfig
@@ -800,6 +801,8 @@ export const salesMethods: ThisType<AppContext> & Pick<
   initPortfolioChart(): void {
     safeDestroyChart(this.portfolioChart);
     this.portfolioChart = null;
+    safeDestroyChart(this.portfolioSalesByUserChart);
+    this.portfolioSalesByUserChart = null;
 
     if (this.currentTab !== "portfolio") return;
     hydrateMissingPortfolioSales(this);
@@ -814,53 +817,70 @@ export const salesMethods: ThisType<AppContext> & Pick<
     const ctx = chartCanvas.getContext("2d");
     if (!ctx) return;
 
+    let primaryChartConfig:
+      | ReturnType<typeof buildPortfolioBreakdownChartConfig>
+      | ReturnType<typeof buildPortfolioMarginChartConfig>
+      | ReturnType<typeof buildPortfolioHistoryChartConfig>
+      | null = null;
+
     if (this.portfolioChartView === "breakdown") {
       const breakdownConfig = buildPortfolioBreakdownChartConfig({
         rows: this.allLotPerformance,
         compactLegend: isSmallDisplay(this),
         formatCurrency: (value, decimals) => this.formatCurrency(value, decimals)
       });
-      if (!breakdownConfig) return;
-      this.portfolioChart = new Chart(ctx, breakdownConfig);
-      return;
-    }
-
-    if (this.portfolioChartView === "margin") {
+      primaryChartConfig = breakdownConfig;
+    } else if (this.portfolioChartView === "margin") {
       const marginConfig = buildPortfolioMarginChartConfig({
         rows: this.allLotPerformance,
         compactMode: isSmallDisplay(this),
         formatCurrency: (value, decimals) => this.formatCurrency(value, decimals)
       });
-      if (!marginConfig) return;
-      this.portfolioChart = new Chart(ctx, marginConfig);
-      return;
+      primaryChartConfig = marginConfig;
+    } else {
+      const selectedLotIdSet = new Set(this.portfolioSelectedLotIds);
+      const filteredLots = this.lots.filter((lot) => selectedLotIdSet.has(lot.id));
+      const salesByLotId = new Map(
+        filteredLots.map((lot) => [
+          lot.id,
+          this.currentLotId === lot.id ? this.sales : this.loadSalesForLotId(lot.id)
+        ])
+      );
+      primaryChartConfig = buildPortfolioHistoryChartConfig({
+        portfolioChartView: this.portfolioChartView,
+        filteredLots,
+        allLotPerformance: this.allLotPerformance,
+        salesByLotId,
+        formatCurrency: (value, decimals) => this.formatCurrency(value, decimals),
+        formatDate: (value) => this.formatDate(value),
+        formatCompactDate: (value) => formatCompactChartDate(value),
+        compactMode: isSmallDisplay(this),
+        todayDate: getTodayDate()
+      });
     }
 
-    const selectedLotIdSet = new Set(this.portfolioSelectedLotIds);
-    const filteredLots = this.lots.filter((lot) => selectedLotIdSet.has(lot.id));
-    const salesByLotId = new Map(
-      filteredLots.map((lot) => [
-        lot.id,
-        this.currentLotId === lot.id ? this.sales : this.loadSalesForLotId(lot.id)
-      ])
-    );
-    const historyConfig = buildPortfolioHistoryChartConfig({
-      portfolioChartView: this.portfolioChartView,
-      filteredLots,
-      allLotPerformance: this.allLotPerformance,
-      salesByLotId,
-      formatCurrency: (value, decimals) => this.formatCurrency(value, decimals),
-      formatDate: (value) => this.formatDate(value),
-      formatCompactDate: (value) => formatCompactChartDate(value),
-      compactMode: isSmallDisplay(this),
-      todayDate: getTodayDate()
-    });
-    if (!historyConfig) return;
-    if (historyConfig.type === "bar") {
-      this.portfolioChart = new Chart(ctx, historyConfig);
-      return;
+    if (primaryChartConfig) {
+      this.portfolioChart = new Chart(ctx, primaryChartConfig);
     }
-    this.portfolioChart = new Chart(ctx, historyConfig);
+
+    const salesByUserCanvas = resolveCanvasRef(this, "portfolioWindow", "portfolioSalesByUserChartCanvas");
+    if (!salesByUserCanvas) return;
+    const existingSalesByUserChart = Chart.getChart(salesByUserCanvas);
+    if (existingSalesByUserChart) {
+      safeDestroyChart(existingSalesByUserChart);
+    }
+
+    const salesByUserCtx = salesByUserCanvas.getContext("2d");
+    if (!salesByUserCtx) return;
+
+    const salesByUserConfig = buildPortfolioSalesByUserChartConfig({
+      chartData: this.portfolioSalesByUserChartData,
+      metric: this.portfolioSalesByUserMetric,
+      compactMode: isSmallDisplay(this),
+      formatCurrency: (value, decimals) => this.formatCurrency(value, decimals)
+    });
+    if (!salesByUserConfig) return;
+    this.portfolioSalesByUserChart = new Chart(salesByUserCtx, salesByUserConfig);
   }
 };
 

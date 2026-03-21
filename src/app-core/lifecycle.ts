@@ -110,7 +110,9 @@ export const appLifecycle: AppLifecycleObject = {
         await this.debugLogEntitlement(false);
       }
     })();
-    this.startCloudSyncScheduler();
+    if (this.isGoogleSignedIn) {
+      this.startCloudSyncScheduler();
+    }
     refreshWorkspaceRealtime(this);
 
     if (import.meta.env.DEV) {

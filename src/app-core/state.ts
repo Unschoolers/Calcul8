@@ -171,10 +171,12 @@ export function createInitialState(): AppState {
     salesChart: null,
     chartView: "pie",
     portfolioChart: null,
+    portfolioSalesByUserChart: null,
     lotSearchQuery: "",
     portfolioChartView: "trend",
     portfolioLotTypeFilter: "both",
     portfolioLotFilterIds: [],
+    portfolioSalesByUserMetric: "revenue",
 
     // Presets
     lots: [],

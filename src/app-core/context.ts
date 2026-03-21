@@ -8,6 +8,8 @@ import type {
   Lot,
   LotType,
   LotPerformanceSummary,
+  PortfolioSalesByUserChartData,
+  PortfolioSalesByUserMetric,
   LotSetup,
   PortfolioLotTypeFilter,
   PortfolioTotals,
@@ -188,6 +190,8 @@ export interface AppComputedState {
       forecastScenarioCount: number;
     }
   >;
+  portfolioSalesByUserChartData: PortfolioSalesByUserChartData;
+  hasPortfolioSalesByUserData: boolean;
   portfolioTotals: PortfolioTotals;
   hasPortfolioData: boolean;
   isWorkspaceScopeActive: boolean;
@@ -355,6 +359,7 @@ export interface AppWatchObject {
   currentLotId(this: AppContext, newVal: number | null): void;
   chartView(this: AppContext): void;
   portfolioChartView(this: AppContext): void;
+  portfolioSalesByUserMetric(this: AppContext, newValue: PortfolioSalesByUserMetric): void;
   portfolioLotTypeFilter(this: AppContext, newValue: PortfolioLotTypeFilter): void;
   portfolioLotFilterIds: {
     handler(this: AppContext): void;
@@ -440,6 +445,8 @@ export interface AppComputedObject {
     groupLabel?: string | null;
   }>;
   portfolioSelectedLotIds(this: AppContext): number[];
+  portfolioSalesByUserChartData(this: AppContext): PortfolioSalesByUserChartData;
+  hasPortfolioSalesByUserData(this: AppContext): boolean;
   singlesPurchaseTotalQuantity(this: AppContext): number;
   singlesPurchaseTotalCost(this: AppContext): number;
   singlesPurchaseTotalMarketValue(this: AppContext): number;

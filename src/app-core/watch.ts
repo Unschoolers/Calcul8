@@ -21,12 +21,21 @@ export const appWatch: AppWatchObject = {
 
     this.speedDialOpenSales = false;
 
-    if (newTab !== "portfolio" && this.portfolioChart) {
-      const maybeDestroy = (this.portfolioChart as { destroy?: () => void }).destroy;
-      if (typeof maybeDestroy === "function") {
-        maybeDestroy.call(this.portfolioChart);
+    if (newTab !== "portfolio") {
+      if (this.portfolioChart) {
+        const maybeDestroy = (this.portfolioChart as { destroy?: () => void }).destroy;
+        if (typeof maybeDestroy === "function") {
+          maybeDestroy.call(this.portfolioChart);
+        }
+        this.portfolioChart = null;
       }
-      this.portfolioChart = null;
+      if (this.portfolioSalesByUserChart) {
+        const maybeDestroy = (this.portfolioSalesByUserChart as { destroy?: () => void }).destroy;
+        if (typeof maybeDestroy === "function") {
+          maybeDestroy.call(this.portfolioSalesByUserChart);
+        }
+        this.portfolioSalesByUserChart = null;
+      }
     }
 
     if (newTab === "sales") {
@@ -74,6 +83,7 @@ export const appWatch: AppWatchObject = {
 
   googleAuthEpoch() {
     if (!this.isGoogleSignedIn) {
+      this.stopCloudSyncScheduler();
       stopWorkspaceRealtime(this);
       this.availableWorkspaces = [];
       this.workspaceMembers = [];
@@ -82,6 +92,7 @@ export const appWatch: AppWatchObject = {
       return;
     }
 
+    this.startCloudSyncScheduler();
     refreshWorkspaceRealtime(this);
     void this.refreshWorkspaces();
 
@@ -123,6 +134,12 @@ export const appWatch: AppWatchObject = {
   },
 
   portfolioChartView() {
+    if (this.currentTab === "portfolio") {
+      this.$nextTick(() => this.initPortfolioChart());
+    }
+  },
+
+  portfolioSalesByUserMetric() {
     if (this.currentTab === "portfolio") {
       this.$nextTick(() => this.initPortfolioChart());
     }

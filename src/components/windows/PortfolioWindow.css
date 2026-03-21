@@ -652,6 +652,38 @@
   color: rgba(var(--v-theme-on-surface), 0.92) !important;
 }
 
+.portfolio-sales-by-user-toolbar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.portfolio-sales-by-user-toggle {
+  flex: 0 0 auto;
+}
+
+.portfolio-sales-by-user-toggle .v-btn {
+  min-width: 72px;
+  text-transform: none;
+  font-weight: 700;
+}
+
+.portfolio-sales-by-user-toggle .v-btn .v-btn__content {
+  font-size: 0.76rem;
+  letter-spacing: 0.01em;
+}
+
+.portfolio-sales-by-user-leader-chip {
+  font-weight: 700;
+  border: 1px solid rgba(var(--v-theme-secondary), 0.22);
+}
+
+.portfolio-sales-by-user-canvas {
+  max-height: 236px;
+}
+
 .portfolio-lot-row {
   padding-top: 0.3rem;
   padding-bottom: 0.35rem;
@@ -779,6 +811,25 @@
 
   .portfolio-lot-profit-chip {
     min-width: 86px;
+  }
+
+  .portfolio-sales-by-user-toolbar {
+    justify-content: flex-start;
+    width: 100%;
+    margin-top: 0.15rem;
+  }
+
+  .portfolio-sales-by-user-toggle {
+    width: 100%;
+  }
+
+  .portfolio-sales-by-user-toggle .v-btn {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .portfolio-sales-by-user-canvas {
+    max-height: 280px;
   }
 }
 

@@ -334,6 +334,27 @@ export const PortfolioWindow = {
       return "Portfolio cumulative profit trend chart.";
     },
 
+    portfolioSalesByUserMetricLabel(this: Record<string, unknown>): string {
+      const metric = String(this.portfolioSalesByUserMetric || "revenue");
+      if (metric === "profit") return "Profit";
+      if (metric === "count") return "Sales count";
+      return "Revenue";
+    },
+
+    portfolioSalesByUserSubtitle(): string {
+      return "Last 8 weeks by recorded seller";
+    },
+
+    portfolioSalesByUserAriaLabel(this: Record<string, unknown>): string {
+      const metric = String(this.portfolioSalesByUserMetric || "revenue");
+      const metricLabel = metric === "profit"
+        ? "profit"
+        : metric === "count"
+          ? "sales count"
+          : "revenue";
+      return `Portfolio sales per user chart for the last 8 weeks by ${metricLabel}.`;
+    },
+
     fmtCurrency(value: number | null | undefined, decimals = 2): string {
       const fn = (this as Record<string, unknown>).formatCurrency;
       if (typeof fn === "function") {

@@ -4,6 +4,7 @@ import type { Lot, LotPerformanceSummary, Sale } from "../src/types/app.ts";
 import {
   buildPortfolioBreakdownChartConfig,
   buildPortfolioMarginChartConfig,
+  buildPortfolioSalesByUserChartConfig,
   buildPortfolioHistoryChartConfig,
   buildSalesPieChartConfig,
   buildSalesTrendChartConfig
@@ -298,4 +299,34 @@ test("buildPortfolioHistoryChartConfig uses historical inventory for past sell-t
     (config?.data.datasets[0]?.data || []).map((value) => Number(Number(value).toFixed(2))),
     [20, 10]
   );
+});
+
+test("buildPortfolioSalesByUserChartConfig creates a stacked area line chart with teammate series", () => {
+  const config = buildPortfolioSalesByUserChartConfig({
+    chartData: {
+      weeks: [
+        { key: "2026-03-02", label: "Mar 2" },
+        { key: "2026-03-09", label: "Mar 9" },
+        { key: "2026-03-16", label: "Mar 16" }
+      ],
+      series: [
+        { key: "owner-1", label: "Jules", values: [0, 20, 120], total: 140, color: "#F7B500" },
+        { key: "member-2", label: "Wyatt", values: [10, 0, 40], total: 50, color: "#34C759" }
+      ]
+    },
+    metric: "revenue",
+    compactMode: true,
+    formatCurrency
+  });
+
+  assert.equal(config?.type, "line");
+  assert.deepEqual(config?.data.labels, ["Mar 2", "Mar 9", "Mar 16"]);
+  assert.equal(config?.data.datasets.length, 2);
+  assert.equal(config?.data.datasets[0]?.stack, "portfolio-sales-by-user");
+  assert.equal(config?.data.datasets[0]?.fill, "origin");
+  assert.equal(config?.data.datasets[1]?.fill, "-1");
+  assert.equal(config?.options?.plugins?.legend?.position, "bottom");
+  assert.equal(config?.options?.scales?.y?.stacked, true);
+  assert.equal(config?.options?.interaction?.mode, "index");
+  assert.equal(config?.options?.interaction?.intersect, false);
 });

@@ -8,7 +8,14 @@ import {
   calculateSparklineData,
   getGrossRevenueForSale
 } from "../../domain/calculations.ts";
-import type { Lot, LotPerformanceSummary, LotType, Sale } from "../../types/app.ts";
+import type {
+  Lot,
+  LotPerformanceSummary,
+  LotType,
+  PortfolioSalesByUserChartData,
+  PortfolioSalesByUserMetric,
+  Sale
+} from "../../types/app.ts";
 import { getTodayDate, inferDateFromLotId, toDateOnly } from "./config-shared.ts";
 
 const PORTFOLIO_CHART_COLORS = [
@@ -410,6 +417,108 @@ export function buildPortfolioMarginChartConfig(params: {
           },
           grid: {
             display: false
+          }
+        }
+      }
+    }
+  };
+}
+
+export function buildPortfolioSalesByUserChartConfig(params: {
+  chartData: PortfolioSalesByUserChartData;
+  metric: PortfolioSalesByUserMetric;
+  compactMode: boolean;
+  formatCurrency: FormatCurrency;
+}): ChartConfiguration<"line", number[], string> | null {
+  if (!Array.isArray(params.chartData?.series) || params.chartData.series.length === 0) return null;
+
+  const metricLabel = params.metric === "profit"
+    ? "Realized profit"
+    : params.metric === "count"
+      ? "Sales count"
+      : "Revenue";
+
+  return {
+    type: "line",
+    data: {
+      labels: params.chartData.weeks.map((week) => week.label),
+      datasets: params.chartData.series.map((series, index) => ({
+        label: series.label,
+        data: series.values,
+        stack: "portfolio-sales-by-user",
+        backgroundColor: `${series.color}2E`,
+        borderColor: series.color,
+        borderWidth: params.compactMode ? 2 : 2.4,
+        pointRadius: params.compactMode ? 2 : 2.5,
+        pointHoverRadius: params.compactMode ? 4 : 5,
+        pointHitRadius: params.compactMode ? 10 : 12,
+        pointBackgroundColor: series.color,
+        pointBorderColor: "#171717",
+        pointBorderWidth: 1.25,
+        tension: 0,
+        fill: index === 0 ? "origin" : "-1"
+      }))
+    },
+    options: {
+      animation: false,
+      responsive: true,
+      maintainAspectRatio: true,
+      interaction: {
+        mode: "index",
+        intersect: false
+      },
+      plugins: {
+        legend: {
+          display: true,
+          position: "bottom",
+          labels: {
+            padding: params.compactMode ? 8 : 12,
+            font: params.compactMode ? { size: 10 } : undefined,
+            boxWidth: params.compactMode ? 10 : 14
+          }
+        },
+        tooltip: {
+          callbacks: {
+            label: (context) => {
+              const value = Number(context.parsed?.y || 0);
+              if (params.metric === "count") {
+                return `${context.dataset.label}: ${params.formatCurrency(value, 0)} sale${value === 1 ? "" : "s"}`;
+              }
+              return `${context.dataset.label}: $${params.formatCurrency(value)}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: params.compactMode
+            ? {
+              autoSkip: true,
+              maxTicksLimit: 4,
+              maxRotation: 0,
+              minRotation: 0,
+              font: { size: 10 }
+            }
+            : {
+              autoSkip: true,
+              maxRotation: 0
+            }
+        },
+        y: {
+          stacked: true,
+          ticks: {
+            callback: (value) => {
+              const numericValue = Number(value);
+              if (params.metric === "count") {
+                return params.formatCurrency(numericValue, 0);
+              }
+              return `$${params.formatCurrency(numericValue, 0)}`;
+            }
+          },
+          title: {
+            display: !params.compactMode,
+            text: metricLabel
           }
         }
       }

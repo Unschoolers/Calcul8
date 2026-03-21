@@ -425,6 +425,56 @@
                   </v-col>
                 </v-row>
 
-
+                <v-row class="mt-4">
+                  <v-col cols="12">
+                    <v-card elevation="4" class="portfolio-section-card portfolio-sales-by-user-card">
+                      <v-card-text>
+                        <div class="portfolio-chart-head">
+                          <div class="portfolio-section-head-main">
+                            <v-icon size="16">mdi-account-group-outline</v-icon>
+                            <div class="portfolio-section-head-copy">
+                              <div class="portfolio-section-eyebrow">Sales Per User</div>
+                              <div class="portfolio-section-subtitle">
+                                {{ portfolioSalesByUserSubtitle() }}
+                              </div>
+                            </div>
+                          </div>
+                          <div class="portfolio-sales-by-user-toolbar">
+                            <v-chip
+                              v-if="hasPortfolioSalesByUserData && portfolioSalesByUserChartData.series[0]"
+                              size="small"
+                              variant="tonal"
+                              color="secondary"
+                              class="portfolio-sales-by-user-leader-chip"
+                            >
+                              Top {{ portfolioSalesByUserChartData.series[0].label }}
+                            </v-chip>
+                            <v-btn-toggle
+                              v-model="portfolioSalesByUserMetric"
+                              mandatory
+                              density="compact"
+                              variant="tonal"
+                              class="portfolio-sales-by-user-toggle"
+                            >
+                              <v-btn value="revenue">Revenue</v-btn>
+                              <v-btn value="profit">Profit</v-btn>
+                              <v-btn value="count">Count</v-btn>
+                            </v-btn-toggle>
+                          </div>
+                        </div>
+                        <div v-if="!hasPortfolioSalesByUserData" class="text-caption text-medium-emphasis py-6 text-center">
+                          No recorded sales yet for the last 8 weeks.
+                        </div>
+                        <canvas
+                          v-else
+                          ref="portfolioSalesByUserChartCanvas"
+                          role="img"
+                          :aria-label="portfolioSalesByUserAriaLabel()"
+                          class="portfolio-sales-by-user-canvas"
+                        ></canvas>
+                      </v-card-text>
+                    </v-card>
+                  </v-col>
+                </v-row>
 
 

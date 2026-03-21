@@ -1,6 +1,7 @@
 ﻿import assert from "node:assert/strict";
 import { test } from "vitest";
 import { appComputed } from "../src/app-core/computed.ts";
+import { buildPortfolioSalesByUserChartData } from "../src/app-core/computed/portfolio-sales-by-user.ts";
 import { GOOGLE_PROFILE_CACHE_KEY, GOOGLE_TOKEN_KEY } from "../src/app-core/methods/ui/shared.ts";
 import { calculateTotalRevenue } from "../src/domain/calculations.ts";
 
@@ -589,6 +590,215 @@ test("portfolio summary wrappers return expected totals and presence flags", () 
     allLotPerformance: []
   } as unknown as Parameters<typeof appComputed.hasPortfolioData>[0]);
   assert.equal(noData, false);
+});
+
+test("portfolio sales by user chart data groups the last 8 weeks by teammate in workspace mode", () => {
+  const data = buildPortfolioSalesByUserChartData({
+    lots: [
+      {
+        id: 11,
+        name: "Bleach volume 2",
+        lotType: "bulk",
+        boxPriceCost: 80,
+        boxesPurchased: 1,
+        packsPerBox: 16,
+        spotsPerBox: 16,
+        costInputMode: "perBox",
+        currency: "CAD",
+        sellingCurrency: "CAD",
+        exchangeRate: 1,
+        purchaseDate: "2026-02-01",
+        purchaseShippingCost: 0,
+        purchaseTaxPercent: 0,
+        sellingTaxPercent: 0,
+        sellingShippingPerOrder: 0,
+        includeTax: true,
+        spotPrice: 0,
+        boxPriceSell: 0,
+        packPrice: 0,
+        targetProfitPercent: 15
+      }
+    ],
+    salesByLotId: new Map([
+      [11, [
+        { id: 1, type: "box", quantity: 1, packsCount: 16, price: 120, buyerShipping: 0, date: "2026-03-18", updatedBy: "owner-1" },
+        { id: 2, type: "pack", quantity: 1, packsCount: 2, price: 25, buyerShipping: 0, date: "2026-03-11", updatedBy: "member-2" },
+        { id: 3, type: "pack", quantity: 1, packsCount: 2, price: 23, buyerShipping: 0, date: "2026-02-04", updatedBy: "github-actions:Unschoolers" }
+      ]]
+    ]),
+    selectedLotIds: [11],
+    scopeType: "workspace",
+    workspaceMembers: [
+      { userId: "owner-1", workspaceId: "ws_team", role: "owner", status: "active", updatedAt: "2026-03-18T00:00:00Z", displayName: "Jules" },
+      { userId: "member-2", workspaceId: "ws_team", role: "member", status: "active", updatedAt: "2026-03-18T00:00:00Z", displayName: "Wyatt" }
+    ],
+    metric: "count",
+    todayDate: "2026-03-21"
+  });
+
+  assert.equal(data.weeks.length, 8);
+  assert.deepEqual(data.weeks.map((week) => week.key), [
+    "2026-01-26",
+    "2026-02-02",
+    "2026-02-09",
+    "2026-02-16",
+    "2026-02-23",
+    "2026-03-02",
+    "2026-03-09",
+    "2026-03-16"
+  ]);
+  assert.deepEqual(data.series.map((series) => [series.key, series.label, series.total]), [
+    ["imported", "Imported", 1],
+    ["owner-1", "Jules", 1],
+    ["member-2", "Wyatt", 1]
+  ]);
+  assert.deepEqual(data.series.find((series) => series.key === "owner-1")?.values, [0, 0, 0, 0, 0, 0, 0, 1]);
+  assert.deepEqual(data.series.find((series) => series.key === "member-2")?.values, [0, 0, 0, 0, 0, 0, 1, 0]);
+});
+
+test("portfolio sales by user chart data collapses personal mode into a single You series", () => {
+  const data = buildPortfolioSalesByUserChartData({
+    lots: [
+      {
+        id: 22,
+        name: "Union arena singles",
+        lotType: "singles",
+        boxPriceCost: 0,
+        boxesPurchased: 0,
+        packsPerBox: 16,
+        spotsPerBox: 16,
+        costInputMode: "perBox",
+        currency: "CAD",
+        sellingCurrency: "CAD",
+        exchangeRate: 1,
+        purchaseDate: "2026-02-01",
+        purchaseShippingCost: 0,
+        purchaseTaxPercent: 0,
+        sellingTaxPercent: 0,
+        sellingShippingPerOrder: 0,
+        includeTax: true,
+        spotPrice: 0,
+        boxPriceSell: 0,
+        packPrice: 0,
+        targetProfitPercent: 15,
+        singlesPurchases: [
+          { id: 1, item: "Card A", cost: 4, quantity: 2, marketValue: 6 }
+        ]
+      }
+    ],
+    salesByLotId: new Map([
+      [22, [
+        { id: 1, type: "pack", quantity: 1, packsCount: 1, price: 12, buyerShipping: 0, date: "2026-03-18", updatedBy: "whoever" },
+        { id: 2, type: "pack", quantity: 1, packsCount: 1, price: 10, buyerShipping: 0, date: "2026-03-12", updatedBy: "another-user" }
+      ]]
+    ]),
+    selectedLotIds: [22],
+    scopeType: "personal",
+    workspaceMembers: [],
+    metric: "count",
+    todayDate: "2026-03-21"
+  });
+
+  assert.deepEqual(data.series.map((series) => [series.key, series.label, series.total]), [
+    ["self", "You", 2]
+  ]);
+});
+
+test("portfolio sales by user profit uses realized per-sale profit only", () => {
+  const data = buildPortfolioSalesByUserChartData({
+    lots: [
+      {
+        id: 33,
+        name: "Kaiju #8",
+        lotType: "bulk",
+        boxPriceCost: 80,
+        boxesPurchased: 1,
+        packsPerBox: 16,
+        spotsPerBox: 16,
+        costInputMode: "perBox",
+        currency: "CAD",
+        sellingCurrency: "CAD",
+        exchangeRate: 1,
+        purchaseDate: "2026-03-01",
+        purchaseShippingCost: 0,
+        purchaseTaxPercent: 0,
+        sellingTaxPercent: 0,
+        sellingShippingPerOrder: 0,
+        includeTax: true,
+        spotPrice: 0,
+        boxPriceSell: 0,
+        packPrice: 0,
+        targetProfitPercent: 15
+      }
+    ],
+    salesByLotId: new Map([
+      [33, [
+        { id: 1, type: "pack", quantity: 1, packsCount: 8, price: 60, buyerShipping: 0, date: "2026-03-18", updatedBy: "owner-1" },
+        { id: 2, type: "pack", quantity: 1, packsCount: 4, price: 40, buyerShipping: 0, date: "2026-03-18", updatedBy: "member-2" }
+      ]]
+    ]),
+    selectedLotIds: [33],
+    scopeType: "workspace",
+    workspaceMembers: [
+      { userId: "owner-1", workspaceId: "ws_team", role: "owner", status: "active", updatedAt: "2026-03-18T00:00:00Z", displayName: "Jules" },
+      { userId: "member-2", workspaceId: "ws_team", role: "member", status: "active", updatedAt: "2026-03-18T00:00:00Z", displayName: "Wyatt" }
+    ],
+    metric: "profit",
+    todayDate: "2026-03-21"
+  });
+
+  const jules = data.series.find((series) => series.key === "owner-1");
+  const wyatt = data.series.find((series) => series.key === "member-2");
+
+  assert.ok(jules);
+  assert.ok(wyatt);
+  assert.equal(Math.round(jules?.total || 0), 13);
+  assert.equal(Math.round(wyatt?.total || 0), 15);
+});
+
+test("portfolio sales by user keeps real negative sale profit series instead of hiding the chart", () => {
+  const data = buildPortfolioSalesByUserChartData({
+    lots: [
+      {
+        id: 44,
+        name: "Tokyo ghoul",
+        lotType: "bulk",
+        boxPriceCost: 200,
+        boxesPurchased: 1,
+        packsPerBox: 16,
+        spotsPerBox: 16,
+        costInputMode: "perBox",
+        currency: "CAD",
+        sellingCurrency: "CAD",
+        exchangeRate: 1,
+        purchaseDate: "2026-03-01",
+        purchaseShippingCost: 0,
+        purchaseTaxPercent: 0,
+        sellingTaxPercent: 0,
+        sellingShippingPerOrder: 0,
+        includeTax: true,
+        spotPrice: 0,
+        boxPriceSell: 0,
+        packPrice: 0,
+        targetProfitPercent: 15
+      }
+    ],
+    salesByLotId: new Map([
+      [44, [
+        { id: 1, type: "pack", quantity: 1, packsCount: 4, price: 10, buyerShipping: 0, date: "2026-03-18", updatedBy: "owner-1" }
+      ]]
+    ]),
+    selectedLotIds: [44],
+    scopeType: "workspace",
+    workspaceMembers: [
+      { userId: "owner-1", workspaceId: "ws_team", role: "owner", status: "active", updatedAt: "2026-03-18T00:00:00Z", displayName: "Jules" }
+    ],
+    metric: "profit",
+    todayDate: "2026-03-21"
+  });
+
+  assert.equal(data.series.length, 1);
+  assert.ok((data.series[0]?.total || 0) < 0);
 });
 
 
