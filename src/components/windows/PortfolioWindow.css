@@ -660,6 +660,13 @@
   gap: 0.6rem;
 }
 
+.portfolio-sales-by-user-summary {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
 .portfolio-sales-by-user-toggle {
   flex: 0 0 auto;
 }
@@ -680,8 +687,147 @@
   border: 1px solid rgba(var(--v-theme-secondary), 0.22);
 }
 
+.portfolio-sales-by-user-stat-chip {
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+  font-weight: 600;
+}
+
+.portfolio-sales-by-user-stat-chip__value {
+  margin-left: 0.35rem;
+  font-weight: 800;
+  color: rgba(var(--v-theme-on-surface), 0.94);
+}
+
+.portfolio-sales-by-user-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-bottom: 0.7rem;
+}
+
+.portfolio-sales-by-user-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+  padding: 0.38rem 0.55rem 0.38rem 0.42rem;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  background: rgba(var(--v-theme-on-surface), 0.03);
+}
+
+.portfolio-sales-by-user-avatar {
+  --sales-user-color: #f7b500;
+  position: relative;
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--sales-user-color) 18%, rgba(var(--v-theme-surface), 1));
+  border: 1px solid color-mix(in srgb, var(--sales-user-color) 45%, rgba(var(--v-theme-on-surface), 0.18));
+}
+
+.portfolio-sales-by-user-avatar__image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.portfolio-sales-by-user-avatar__fallback {
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  color: rgba(var(--v-theme-on-surface), 0.9);
+}
+
+.portfolio-sales-by-user-avatar__presence {
+  position: absolute;
+  right: 1px;
+  bottom: 1px;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  border: 1.5px solid rgba(var(--v-theme-surface), 1);
+  background: rgba(var(--v-theme-on-surface), 0.35);
+}
+
+.portfolio-sales-by-user-avatar__presence.is-online {
+  background: rgb(var(--v-theme-success));
+}
+
+.portfolio-sales-by-user-avatar__presence.is-recent {
+  background: rgb(var(--v-theme-secondary));
+}
+
+.portfolio-sales-by-user-avatar__presence.is-offline {
+  background: rgba(var(--v-theme-on-surface), 0.35);
+}
+
+.portfolio-sales-by-user-legend-copy {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+}
+
+.portfolio-sales-by-user-legend-swatch {
+  --sales-user-color: #f7b500;
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: var(--sales-user-color);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--sales-user-color) 18%, transparent);
+}
+
+.portfolio-sales-by-user-legend-label {
+  font-size: 0.83rem;
+  font-weight: 600;
+  color: rgba(var(--v-theme-on-surface), 0.88);
+}
+
+.portfolio-sales-by-user-legend-total {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: rgba(var(--v-theme-on-surface), 0.66);
+}
+
 .portfolio-sales-by-user-canvas {
   max-height: 236px;
+}
+
+.portfolio-sales-by-user-week-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.portfolio-sales-by-user-week-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+  padding: 0.34rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--v-theme-secondary), 0.14);
+  background:
+    linear-gradient(180deg, rgba(var(--v-theme-secondary), 0.08), rgba(var(--v-theme-secondary), 0.04)),
+    rgba(var(--v-theme-on-surface), 0.02);
+}
+
+.portfolio-sales-by-user-week-pill__label {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: rgba(var(--v-theme-on-surface), 0.64);
+}
+
+.portfolio-sales-by-user-week-pill__value {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: rgba(var(--v-theme-on-surface), 0.9);
 }
 
 .portfolio-lot-row {
@@ -830,6 +976,28 @@
 
   .portfolio-sales-by-user-canvas {
     max-height: 280px;
+  }
+
+  .portfolio-sales-by-user-legend {
+    gap: 0.45rem;
+    margin-bottom: 0.55rem;
+  }
+
+  .portfolio-sales-by-user-legend-item {
+    padding: 0.32rem 0.46rem 0.32rem 0.36rem;
+  }
+
+  .portfolio-sales-by-user-avatar {
+    width: 24px;
+    height: 24px;
+  }
+
+  .portfolio-sales-by-user-legend-label {
+    font-size: 0.78rem;
+  }
+
+  .portfolio-sales-by-user-legend-total {
+    font-size: 0.74rem;
   }
 }
 

@@ -469,7 +469,7 @@ export function buildPortfolioSalesByUserChartConfig(params: {
       },
       plugins: {
         legend: {
-          display: true,
+          display: false,
           position: "bottom",
           labels: {
             padding: params.compactMode ? 8 : 12,

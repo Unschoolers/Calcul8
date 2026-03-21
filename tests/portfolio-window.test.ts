@@ -367,6 +367,127 @@ test("PortfolioWindow sales per user helpers return expected labels for each met
   );
 });
 
+test("PortfolioWindow sales per user summary helpers derive leader, totals, and legend items", () => {
+  const vm = {
+    portfolioSalesByUserChartData: {
+      weeks: [
+        { key: "2026-03-02", label: "Mar 2" },
+        { key: "2026-03-09", label: "Mar 9" },
+        { key: "2026-03-16", label: "Mar 16" }
+      ],
+      series: [
+        { key: "owner-1", label: "Jules", values: [10, 0, 40], total: 50, color: "#F7B500" },
+        { key: "member-2", label: "Wyatt", values: [0, 20, 10], total: 30, color: "#34C759" }
+      ]
+    },
+    workspaceMembers: [
+      { userId: "owner-1", displayName: "Jules Arena", photoUrl: "https://example.test/jules.png" },
+      { userId: "member-2", displayName: "Wyatt World" }
+    ],
+    getWorkspaceMemberPresenceState(member: { userId: string }) {
+      return member.userId === "owner-1" ? "online" : "offline";
+    }
+  };
+
+  assert.equal(PortfolioWindow.methods.portfolioSalesByUserTotalValue.call(vm as never), 80);
+  assert.deepEqual(PortfolioWindow.methods.portfolioSalesByUserLeader.call(vm as never), {
+    key: "owner-1",
+    label: "Jules",
+    values: [10, 0, 40],
+    total: 50,
+    color: "#F7B500"
+  });
+  assert.deepEqual(PortfolioWindow.methods.portfolioSalesByUserBestWeek.call(vm as never), {
+    label: "Mar 16",
+    total: 50
+  });
+  assert.deepEqual(PortfolioWindow.methods.portfolioSalesByUserWeekTotals.call(vm as never), [
+    { label: "Mar 2", total: 10 },
+    { label: "Mar 9", total: 20 },
+    { label: "Mar 16", total: 50 }
+  ]);
+
+  const legendItems = PortfolioWindow.methods.portfolioSalesByUserLegendItems.call(vm as never);
+  assert.equal(legendItems.length, 2);
+  assert.equal(legendItems[0]?.photoUrl, "https://example.test/jules.png");
+  assert.equal(legendItems[0]?.presenceState, "online");
+  assert.equal(legendItems[1]?.initials, "WW");
+});
+
+test("PortfolioWindow sales per user legend uses signed-in profile photo for personal You series", () => {
+  const vm = {
+    portfolioSalesByUserChartData: {
+      weeks: [{ key: "2026-03-16", label: "Mar 16" }],
+      series: [
+        { key: "self", label: "You", values: [120], total: 120, color: "#F7B500" }
+      ]
+    },
+    workspaceMembers: [],
+    googleProfilePicture: "https://example.test/me.png",
+    googleAvatarLoadFailed: false
+  };
+
+  const legendItems = PortfolioWindow.methods.portfolioSalesByUserLegendItems.call(vm as never);
+  assert.equal(legendItems.length, 1);
+  assert.equal(legendItems[0]?.photoUrl, "https://example.test/me.png");
+  assert.equal(legendItems[0]?.initials, "Y");
+});
+
+test("PortfolioWindow sales per user legend falls back to initials when signed-in photo is unavailable", () => {
+  const missingPhotoVm = {
+    portfolioSalesByUserChartData: {
+      weeks: [{ key: "2026-03-16", label: "Mar 16" }],
+      series: [
+        { key: "self", label: "You", values: [1], total: 1, color: "#F7B500" }
+      ]
+    },
+    workspaceMembers: [],
+    googleProfilePicture: "",
+    googleAvatarLoadFailed: false
+  };
+
+  const failedPhotoVm = {
+    portfolioSalesByUserChartData: {
+      weeks: [{ key: "2026-03-16", label: "Mar 16" }],
+      series: [
+        { key: "self", label: "You", values: [1], total: 1, color: "#F7B500" }
+      ]
+    },
+    workspaceMembers: [],
+    googleProfilePicture: "https://example.test/me.png",
+    googleAvatarLoadFailed: true
+  };
+
+  const missingLegendItems = PortfolioWindow.methods.portfolioSalesByUserLegendItems.call(missingPhotoVm as never);
+  const failedLegendItems = PortfolioWindow.methods.portfolioSalesByUserLegendItems.call(failedPhotoVm as never);
+
+  assert.equal(missingLegendItems[0]?.photoUrl, "");
+  assert.equal(missingLegendItems[0]?.initials, "Y");
+  assert.equal(failedLegendItems[0]?.photoUrl, "");
+  assert.equal(failedLegendItems[0]?.initials, "Y");
+});
+
+test("PortfolioWindow sales per user legend keeps imported and unknown rows on initials only", () => {
+  const vm = {
+    portfolioSalesByUserChartData: {
+      weeks: [{ key: "2026-03-16", label: "Mar 16" }],
+      series: [
+        { key: "imported", label: "Imported", values: [50], total: 50, color: "#999999" },
+        { key: "unknown", label: "Unknown", values: [10], total: 10, color: "#777777" }
+      ]
+    },
+    workspaceMembers: [],
+    googleProfilePicture: "https://example.test/me.png",
+    googleAvatarLoadFailed: false
+  };
+
+  const legendItems = PortfolioWindow.methods.portfolioSalesByUserLegendItems.call(vm as never);
+  assert.equal(legendItems[0]?.photoUrl, "");
+  assert.equal(legendItems[0]?.initials, "I");
+  assert.equal(legendItems[1]?.photoUrl, "");
+  assert.equal(legendItems[1]?.initials, "U");
+});
+
 test("PortfolioWindow filter helpers use safe fallbacks when refs or items are missing", () => {
   const blurVm = { $refs: {} };
   PortfolioWindow.methods.blurPortfolioLotFilter.call(blurVm as never);

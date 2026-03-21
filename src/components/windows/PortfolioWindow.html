@@ -440,15 +440,43 @@
                             </div>
                           </div>
                           <div class="portfolio-sales-by-user-toolbar">
-                            <v-chip
-                              v-if="hasPortfolioSalesByUserData && portfolioSalesByUserChartData.series[0]"
-                              size="small"
-                              variant="tonal"
-                              color="secondary"
-                              class="portfolio-sales-by-user-leader-chip"
+                            <div
+                              v-if="hasPortfolioSalesByUserData && !$vuetify?.display?.smAndDown"
+                              class="portfolio-sales-by-user-summary"
                             >
-                              Top {{ portfolioSalesByUserChartData.series[0].label }}
-                            </v-chip>
+                              <v-chip
+                                v-if="portfolioSalesByUserLeader()"
+                                size="small"
+                                variant="tonal"
+                                color="secondary"
+                                class="portfolio-sales-by-user-leader-chip"
+                              >
+                                Top {{ portfolioSalesByUserLeader()?.label }}
+                              </v-chip>
+                              <v-chip
+                                v-if="portfolioSalesByUserBestWeek()"
+                                size="small"
+                                variant="tonal"
+                                class="portfolio-sales-by-user-stat-chip"
+                              >
+                                Best week {{ portfolioSalesByUserBestWeek()?.label }}
+                              </v-chip>
+                              <v-chip
+                                size="small"
+                                variant="tonal"
+                                class="portfolio-sales-by-user-stat-chip"
+                              >
+                                8-week total
+                                <span class="portfolio-sales-by-user-stat-chip__value">
+                                  <template v-if="portfolioSalesByUserMetric === 'count'">
+                                    {{ fmtCurrency(portfolioSalesByUserTotalValue(), 0) }}
+                                  </template>
+                                  <template v-else>
+                                    ${{ fmtCurrency(portfolioSalesByUserTotalValue()) }}
+                                  </template>
+                                </span>
+                              </v-chip>
+                            </div>
                             <v-btn-toggle
                               v-model="portfolioSalesByUserMetric"
                               mandatory
@@ -465,16 +493,79 @@
                         <div v-if="!hasPortfolioSalesByUserData" class="text-caption text-medium-emphasis py-6 text-center">
                           No recorded sales yet for the last 8 weeks.
                         </div>
-                        <canvas
-                          v-else
-                          ref="portfolioSalesByUserChartCanvas"
-                          role="img"
-                          :aria-label="portfolioSalesByUserAriaLabel()"
-                          class="portfolio-sales-by-user-canvas"
-                        ></canvas>
+                        <template v-else>
+                          <div
+                            v-if="portfolioSalesByUserLegendItems().length > 0"
+                            class="portfolio-sales-by-user-legend"
+                          >
+                            <div
+                              v-for="item in portfolioSalesByUserLegendItems()"
+                              :key="`sales-user-legend-${item.key}`"
+                              class="portfolio-sales-by-user-legend-item"
+                            >
+                              <div
+                                class="portfolio-sales-by-user-avatar"
+                                :style="{ '--sales-user-color': item.color }"
+                              >
+                                <img
+                                  v-if="item.photoUrl"
+                                  :src="item.photoUrl"
+                                  :alt="item.label"
+                                  class="portfolio-sales-by-user-avatar__image"
+                                >
+                                <span v-else class="portfolio-sales-by-user-avatar__fallback">
+                                  {{ item.initials }}
+                                </span>
+                                <span
+                                  class="portfolio-sales-by-user-avatar__presence"
+                                  :class="`is-${item.presenceState}`"
+                                ></span>
+                              </div>
+                              <div class="portfolio-sales-by-user-legend-copy">
+                                <span
+                                  class="portfolio-sales-by-user-legend-swatch"
+                                  :style="{ '--sales-user-color': item.color }"
+                                ></span>
+                                <span class="portfolio-sales-by-user-legend-label">{{ item.label }}</span>
+                                <span class="portfolio-sales-by-user-legend-total">
+                                  <template v-if="portfolioSalesByUserMetric === 'count'">
+                                    {{ fmtCurrency(item.total, 0) }}
+                                  </template>
+                                  <template v-else>
+                                    ${{ fmtCurrency(item.total) }}
+                                  </template>
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          <canvas
+                            ref="portfolioSalesByUserChartCanvas"
+                            role="img"
+                            :aria-label="portfolioSalesByUserAriaLabel()"
+                            class="portfolio-sales-by-user-canvas"
+                          ></canvas>
+                        </template>
+                        <div
+                          v-if="hasPortfolioSalesByUserData && !$vuetify?.display?.smAndDown && portfolioSalesByUserWeekTotals().length > 0"
+                          class="portfolio-sales-by-user-week-strip"
+                        >
+                          <div
+                            v-for="week in portfolioSalesByUserWeekTotals()"
+                            :key="`sales-user-week-${week.label}`"
+                            class="portfolio-sales-by-user-week-pill"
+                          >
+                            <span class="portfolio-sales-by-user-week-pill__label">{{ week.label }}</span>
+                            <span class="portfolio-sales-by-user-week-pill__value">
+                              <template v-if="portfolioSalesByUserMetric === 'count'">
+                                {{ fmtCurrency(week.total, 0) }}
+                              </template>
+                              <template v-else>
+                                ${{ fmtCurrency(week.total) }}
+                              </template>
+                            </span>
+                          </div>
+                        </div>
                       </v-card-text>
                     </v-card>
                   </v-col>
                 </v-row>
-
-

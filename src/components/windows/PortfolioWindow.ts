@@ -341,6 +341,109 @@ export const PortfolioWindow = {
       return "Revenue";
     },
 
+    portfolioSalesByUserTotalValue(this: Record<string, unknown>): number {
+      const series = Array.isArray((this as { portfolioSalesByUserChartData?: { series?: Array<{ total?: number }> } }).portfolioSalesByUserChartData?.series)
+        ? (this as { portfolioSalesByUserChartData: { series: Array<{ total?: number }> } }).portfolioSalesByUserChartData.series
+        : [];
+      return series.reduce((sum, row) => sum + (Number(row?.total) || 0), 0);
+    },
+
+    portfolioSalesByUserLeader(this: Record<string, unknown>) {
+      const series = Array.isArray((this as { portfolioSalesByUserChartData?: { series?: Array<{ key: string; label: string; color: string; total: number }> } }).portfolioSalesByUserChartData?.series)
+        ? (this as { portfolioSalesByUserChartData: { series: Array<{ key: string; label: string; color: string; total: number }> } }).portfolioSalesByUserChartData.series
+        : [];
+      return series[0] ?? null;
+    },
+
+    portfolioSalesByUserBestWeek(this: Record<string, unknown>) {
+      const chartData = (this as {
+        portfolioSalesByUserChartData?: {
+          weeks?: Array<{ label: string }>;
+          series?: Array<{ values: number[] }>;
+        };
+      }).portfolioSalesByUserChartData;
+      const weeks = Array.isArray(chartData?.weeks) ? chartData!.weeks : [];
+      const series = Array.isArray(chartData?.series) ? chartData!.series : [];
+      let bestIndex = -1;
+      let bestTotal = 0;
+
+      for (let weekIndex = 0; weekIndex < weeks.length; weekIndex += 1) {
+        const total = series.reduce((sum, row) => sum + (Number(row?.values?.[weekIndex]) || 0), 0);
+        if (Math.abs(total) > Math.abs(bestTotal)) {
+          bestTotal = total;
+          bestIndex = weekIndex;
+        }
+      }
+
+      if (bestIndex < 0 || !weeks[bestIndex]) {
+        return null;
+      }
+
+      return {
+        label: weeks[bestIndex].label,
+        total: bestTotal
+      };
+    },
+
+    portfolioSalesByUserLegendItems(this: Record<string, unknown>) {
+      const state = this as {
+        portfolioSalesByUserChartData?: {
+          series?: Array<{ key: string; label: string; color: string; total: number }>;
+        };
+        workspaceMembers?: Array<{ userId: string; displayName?: string; photoUrl?: string }>;
+        getWorkspaceMemberPresenceState?: (member: { userId: string }) => string;
+        googleProfilePicture?: string;
+        googleAvatarLoadFailed?: boolean;
+      };
+      const chartData = state.portfolioSalesByUserChartData;
+      const series = Array.isArray(chartData?.series) ? chartData.series : [];
+      const workspaceMembers = Array.isArray(state.workspaceMembers)
+        ? state.workspaceMembers
+        : [];
+      const getPresence = typeof state.getWorkspaceMemberPresenceState === "function"
+        ? state.getWorkspaceMemberPresenceState
+        : null;
+      const currentUserPhotoUrl = !state.googleAvatarLoadFailed && typeof state.googleProfilePicture === "string"
+        ? state.googleProfilePicture.trim()
+        : "";
+
+      return series.map((row) => {
+        const member = workspaceMembers.find((candidate) => candidate.userId === row.key);
+        const photoUrl = row.key === "self"
+          ? currentUserPhotoUrl
+          : (member?.photoUrl || "");
+        return {
+          ...row,
+          photoUrl,
+          initials: String(member?.displayName || row.label || "?")
+            .split(/\s+/)
+            .filter(Boolean)
+            .slice(0, 2)
+            .map((part) => part[0]?.toUpperCase() || "")
+            .join("") || "?",
+          presenceState: getPresence && member ? getPresence.call(this, member) : "offline"
+        };
+      });
+    },
+
+    portfolioSalesByUserWeekTotals(this: Record<string, unknown>) {
+      const chartData = (this as {
+        portfolioSalesByUserChartData?: {
+          weeks?: Array<{ label: string }>;
+          series?: Array<{ values: number[] }>;
+        };
+      }).portfolioSalesByUserChartData;
+      const weeks = Array.isArray(chartData?.weeks) ? chartData!.weeks : [];
+      const series = Array.isArray(chartData?.series) ? chartData!.series : [];
+
+      return weeks
+        .map((week, index) => ({
+          label: week.label,
+          total: series.reduce((sum, row) => sum + (Number(row?.values?.[index]) || 0), 0)
+        }))
+        .filter((row) => Math.abs(row.total) > 0.000001);
+    },
+
     portfolioSalesByUserSubtitle(): string {
       return "Last 8 weeks by recorded seller";
     },
