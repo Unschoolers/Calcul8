@@ -124,6 +124,7 @@ async function flushMicrotasks(): Promise<void> {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.useFakeTimers();
+  vi.stubEnv("VITE_REALTIME_SOCKET_URL", "");
   FakeWebSocket.instances = [];
   canUseAuthoritativeSalesLiveApiMock.mockReturnValue(true);
   fetchWorkspaceRealtimeSubscribeTokenMock.mockResolvedValue({
@@ -151,6 +152,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
   vi.restoreAllMocks();
 });
 
