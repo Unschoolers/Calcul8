@@ -9,7 +9,7 @@ param(
   [string]$EnvironmentName = "whatfees-prod-env",
   [string]$ImageName = "whatfees-realtime",
   [string]$ImageTag = "",
-  [string]$AllowedOrigin = "https://whatfees.ca",
+  [string]$AllowedOrigin = "https://app.whatfees.ca,https://whatfees.ca",
   [int]$MinReplicas = 1,
   [int]$MaxReplicas = 2,
   [string]$InternalApiKey = "",

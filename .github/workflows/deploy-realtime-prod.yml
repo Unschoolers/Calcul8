@@ -151,3 +151,37 @@ jobs:
               REALTIME_DEV_ALLOW_UNAUTH_SUBSCRIBE=false \
               REALTIME_INTERNAL_API_KEY=secretref:realtime-internal-api-key \
               REALTIME_TOKEN_SECRET=secretref:realtime-token-secret
+
+      - name: Smoke check realtime health endpoint
+        shell: bash
+        env:
+          AZURE_CONTAINER_APP_NAME_REALTIME_PROD: ${{ vars.AZURE_CONTAINER_APP_NAME_REALTIME_PROD }}
+        run: |
+          set -euo pipefail
+
+          fqdn="$(az containerapp show \
+            --name "${AZURE_CONTAINER_APP_NAME_REALTIME_PROD}" \
+            --resource-group "${AZURE_RESOURCE_GROUP_PROD}" \
+            --query "properties.configuration.ingress.fqdn" \
+            --output tsv)"
+
+          if [ -z "${fqdn}" ]; then
+            echo "Failed to resolve realtime container app FQDN."
+            exit 1
+          fi
+
+          health_url="https://${fqdn}/healthz"
+          echo "Checking ${health_url}"
+
+          for attempt in 1 2 3 4 5; do
+            if curl --fail --silent --show-error "${health_url}" > /tmp/realtime-health.json; then
+              cat /tmp/realtime-health.json
+              exit 0
+            fi
+
+            echo "Health check attempt ${attempt} failed; retrying in 5s..."
+            sleep 5
+          done
+
+          echo "Realtime health check failed after deployment."
+          exit 1
