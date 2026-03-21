@@ -14,6 +14,8 @@ env:
   NODE_VERSION: 22
   AZURE_RESOURCE_GROUP_PROD: DefaultResourceGroup-CCAN
   AZURE_CONTAINER_REGISTRY_NAME_PROD: calcul8teregistry
+  AZURE_CONTAINER_REPOSITORY_NAME_REALTIME_PROD: whatfees-realtime
+  AZURE_CONTAINER_REPOSITORY_KEEP_TAGS_PROD: 3
   REALTIME_ALLOWED_ORIGIN_PROD: https://app.whatfees.ca,https://whatfees.ca
   REALTIME_MIN_REPLICAS_PROD: 1
   REALTIME_MAX_REPLICAS_PROD: 2
@@ -185,3 +187,38 @@ jobs:
 
           echo "Realtime health check failed after deployment."
           exit 1
+
+      - name: Prune old realtime images from ACR
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mapfile -t tags < <(
+            az acr repository show-tags \
+              --name "${AZURE_CONTAINER_REGISTRY_NAME_PROD}" \
+              --repository "${AZURE_CONTAINER_REPOSITORY_NAME_REALTIME_PROD}" \
+              --orderby time_desc \
+              --output tsv
+          )
+
+          keep_count="${AZURE_CONTAINER_REPOSITORY_KEEP_TAGS_PROD}"
+          total_count="${#tags[@]}"
+
+          echo "Found ${total_count} tags in ${AZURE_CONTAINER_REPOSITORY_NAME_REALTIME_PROD}; keeping newest ${keep_count}."
+
+          if [ "${total_count}" -le "${keep_count}" ]; then
+            echo "Nothing to prune."
+            exit 0
+          fi
+
+          for tag in "${tags[@]:${keep_count}}"; do
+            if [ -z "${tag}" ]; then
+              continue
+            fi
+
+            echo "Deleting ${AZURE_CONTAINER_REPOSITORY_NAME_REALTIME_PROD}:${tag}"
+            az acr repository delete \
+              --name "${AZURE_CONTAINER_REGISTRY_NAME_PROD}" \
+              --image "${AZURE_CONTAINER_REPOSITORY_NAME_REALTIME_PROD}:${tag}" \
+              --yes
+          done
