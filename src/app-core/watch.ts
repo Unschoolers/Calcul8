@@ -6,10 +6,16 @@ import { getActiveStorageScope } from "./workspace-scope.ts";
 export const appWatch: AppWatchObject = {
   activeScopeType() {
     refreshWorkspaceRealtime(this);
+    if (this.isGoogleSignedIn) {
+      void this.refreshWhatnotStatus();
+    }
   },
 
   activeWorkspaceId() {
     refreshWorkspaceRealtime(this);
+    if (this.isGoogleSignedIn) {
+      void this.refreshWhatnotStatus();
+    }
   },
 
   currentTab(newTab) {
@@ -89,12 +95,39 @@ export const appWatch: AppWatchObject = {
       this.workspaceMembers = [];
       this.workspacePresenceByUserId = {};
       this.showWorkspaceMembersModal = false;
+      this.whatnotConnectionStatus = "unconfigured";
+      this.whatnotSyncStatus = "idle";
+      this.whatnotConnectionSummary = null;
+      this.showWhatnotReviewDialog = false;
+      this.whatnotReviewBatchId = null;
+      this.whatnotReviewRows = [];
+      this.whatnotCallbackStatus = null;
+      this.whatnotCallbackMessage = "";
       return;
     }
 
     this.startCloudSyncScheduler();
     refreshWorkspaceRealtime(this);
     void this.refreshWorkspaces();
+    void this.refreshWhatnotStatus().then(() => {
+      if (!this.whatnotCallbackStatus) return;
+      const message = this.whatnotCallbackMessage
+        || (this.whatnotCallbackStatus === "connected"
+          ? "Whatnot connected."
+          : "Whatnot connection failed.");
+      this.notify(message, this.whatnotCallbackStatus === "connected" ? "success" : "error");
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.delete("whatnot");
+        url.searchParams.delete("whatnotScope");
+        url.searchParams.delete("whatnotMessage");
+        window.history.replaceState({}, document.title, url.toString());
+      } catch {
+        // Ignore URL cleanup failures.
+      }
+      this.whatnotCallbackStatus = null;
+      this.whatnotCallbackMessage = "";
+    });
 
     if (this.pendingWorkspaceInviteToken) {
       void this.previewPendingWorkspaceInvite();

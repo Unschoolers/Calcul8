@@ -29,8 +29,17 @@ export const appLifecycle: AppLifecycleObject = {
     try {
       const inviteToken = new URLSearchParams(window.location.search).get("invite");
       this.pendingWorkspaceInviteToken = String(inviteToken || "").trim();
+      const whatnotStatus = new URLSearchParams(window.location.search).get("whatnot");
+      this.whatnotCallbackStatus = whatnotStatus === "connected" || whatnotStatus === "error"
+        ? whatnotStatus
+        : null;
+      this.whatnotCallbackMessage = String(
+        new URLSearchParams(window.location.search).get("whatnotMessage") || ""
+      ).trim();
     } catch {
       this.pendingWorkspaceInviteToken = "";
+      this.whatnotCallbackStatus = null;
+      this.whatnotCallbackMessage = "";
     }
 
     this.loadLotsFromStorage();
@@ -112,6 +121,7 @@ export const appLifecycle: AppLifecycleObject = {
     })();
     if (this.isGoogleSignedIn) {
       this.startCloudSyncScheduler();
+      void this.refreshWhatnotStatus();
     }
     refreshWorkspaceRealtime(this);
 

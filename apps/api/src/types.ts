@@ -4,6 +4,14 @@ export interface ApiConfig {
   apiEnv: ApiEnvironment;
   authBypassDev: boolean;
   migrationsAdminKey: string;
+  whatnotClientId?: string;
+  whatnotClientSecret?: string;
+  whatnotRedirectUri?: string;
+  whatnotAppReturnUrl?: string;
+  whatnotOauthAuthorizeUrl?: string;
+  whatnotOauthTokenUrl?: string;
+  whatnotApiBaseUrl?: string;
+  whatnotTokenEncryptionSecret?: string;
   realtimePublishUrl?: string;
   realtimeInternalApiKey?: string;
   realtimeTokenSecret?: string;
@@ -167,6 +175,127 @@ export interface SyncMetaDocument {
   updatedAt: string;
   salesMode?: "snapshot" | "entity";
   livePricingMode?: "lot_defaults" | "entity";
+}
+
+export type WhatnotConnectionStatus = "active" | "disconnected" | "error";
+export type WhatnotImportBatchStatus = "pending_review" | "completed" | "failed";
+export type WhatnotSaleImportAction = "create" | "update" | "skip";
+export type WhatnotTargetMatchSource = "remembered" | "title" | "none";
+export type WhatnotMappedSaleType = "pack" | "box" | "rtyh";
+
+export interface WhatnotConnectionDocument {
+  id: string;
+  docType: "whatnot_connection";
+  userId: string;
+  scopeKey: string;
+  scopeType: "user" | "workspace";
+  scopeId: string;
+  provider: "whatnot";
+  externalAccountId: string;
+  externalDisplayName?: string;
+  scopes: string[];
+  accessTokenCiphertext: string;
+  refreshTokenCiphertext: string;
+  tokenExpiresAt: string;
+  connectedByUserId: string;
+  lastSyncedAt?: string;
+  syncCursor?: string | null;
+  syncWindowStartedAt?: string | null;
+  updatedAt: string;
+  status: WhatnotConnectionStatus;
+}
+
+export interface WhatnotOAuthStateDocument {
+  id: string;
+  docType: "whatnot_oauth_state";
+  userId: string;
+  provider: "whatnot";
+  state: string;
+  scopeKey: string;
+  scopeType: "user" | "workspace";
+  scopeId: string;
+  appReturnUrl?: string;
+  createdByUserId: string;
+  expiresAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WhatnotImportRowDocument {
+  rowId: string;
+  externalSaleId: string;
+  externalOrderId: string;
+  externalOrderItemId: string;
+  externalAccountId: string;
+  title: string;
+  sku?: string;
+  quantity: number;
+  price: number;
+  buyerShipping: number;
+  date: string;
+  orderStatus: string;
+  listingId?: string;
+  productId?: string;
+  variantId?: string;
+  payloadFingerprint: string;
+  action: WhatnotSaleImportAction;
+  suggestedLotId?: number;
+  suggestedSaleType?: WhatnotMappedSaleType;
+  suggestedPacksCount?: number;
+  matchSource: WhatnotTargetMatchSource;
+  existingSaleId?: string;
+  requiresManualReview: boolean;
+}
+
+export interface WhatnotImportBatchDocument {
+  id: string;
+  docType: "whatnot_import_batch";
+  userId: string;
+  scopeKey: string;
+  provider: "whatnot";
+  batchId: string;
+  externalAccountId: string;
+  startedByUserId: string;
+  status: WhatnotImportBatchStatus;
+  startedAt: string;
+  completedAt?: string | null;
+  updatedAt: string;
+  importWindowStartedAt: string;
+  importedCount: number;
+  updatedCount: number;
+  skippedCount: number;
+  rows: WhatnotImportRowDocument[];
+  errorMessage?: string;
+}
+
+export interface WhatnotTargetMappingDocument {
+  id: string;
+  docType: "whatnot_target_mapping";
+  userId: string;
+  scopeKey: string;
+  provider: "whatnot";
+  externalAccountId: string;
+  matchKey: string;
+  lotId: string;
+  saleType: WhatnotMappedSaleType;
+  updatedAt: string;
+  confirmedByUserId: string;
+}
+
+export interface WhatnotSaleImportMappingDocument {
+  id: string;
+  docType: "sale_import_mapping";
+  userId: string;
+  scopeKey: string;
+  provider: "whatnot";
+  externalAccountId: string;
+  externalSaleId: string;
+  externalOrderId: string;
+  externalOrderItemId: string;
+  lotId: string;
+  saleId: string;
+  payloadFingerprint: string;
+  updatedAt: string;
 }
 
 export interface SaleDocument {

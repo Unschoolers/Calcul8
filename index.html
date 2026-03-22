@@ -354,7 +354,58 @@
                 @click="toggleTheme"
               ></v-list-item>
 
-              <v-divider class="my-1"></v-divider>
+              <template v-if="whatnotConnectionSummary?.configured || whatnotConnectionStatus === 'connecting'">
+                <v-divider class="my-1"></v-divider>
+
+                <v-list-subheader>Integrations</v-list-subheader>
+                <v-list-item
+                  :title="whatnotConnectionStatus === 'connected'
+                    ? 'Whatnot connected'
+                    : (whatnotConnectionStatus === 'connecting'
+                      ? 'Connecting Whatnot'
+                      : (whatnotConnectionStatus === 'disconnected'
+                        ? 'Whatnot disconnected'
+                        : 'Whatnot needs attention'))"
+                  :subtitle="whatnotConnectionSummary?.connected
+                    ? `${whatnotConnectionSummary.displayName || 'Connected seller'}${whatnotConnectionSummary.pendingReviewCount > 0 ? ` • ${whatnotConnectionSummary.pendingReviewCount} pending review` : ''}`
+                    : 'Connect your Whatnot account to import orders'"
+                  :prepend-icon="whatnotConnectionStatus === 'connected'
+                    ? 'mdi-shopping'
+                    : ((whatnotConnectionStatus === 'connecting' || whatnotSyncStatus === 'syncing')
+                      ? 'mdi-sync'
+                      : 'mdi-shopping-outline')"
+                ></v-list-item>
+                <v-list-item
+                  v-if="(activeScopeType === 'personal' || isCurrentWorkspaceOwner) && !whatnotConnectionSummary?.connected"
+                  :title="whatnotConnectionStatus === 'connecting' ? 'Connecting Whatnot...' : 'Connect Whatnot'"
+                  prepend-icon="mdi-connection"
+                  :disabled="whatnotConnectionStatus === 'connecting'"
+                  @click="connectWhatnot"
+                ></v-list-item>
+                <v-list-item
+                  v-if="whatnotConnectionSummary?.connected"
+                  :title="whatnotConnectionSummary.pendingReviewCount > 0
+                    ? `Review Whatnot imports (${whatnotConnectionSummary.pendingReviewCount})`
+                    : 'Review Whatnot imports'"
+                  prepend-icon="mdi-table-eye"
+                  @click="openWhatnotReviewDialog"
+                ></v-list-item>
+                <v-list-item
+                  v-if="whatnotConnectionSummary?.connected && (activeScopeType === 'personal' || isCurrentWorkspaceOwner)"
+                  :title="whatnotSyncStatus === 'syncing' ? 'Syncing Whatnot sales...' : 'Sync Whatnot sales'"
+                  prepend-icon="mdi-refresh"
+                  :disabled="whatnotSyncStatus === 'syncing'"
+                  @click="syncWhatnotSales"
+                ></v-list-item>
+                <v-list-item
+                  v-if="whatnotConnectionSummary?.connected && (activeScopeType === 'personal' || isCurrentWorkspaceOwner)"
+                  title="Disconnect Whatnot"
+                  prepend-icon="mdi-link-off"
+                  @click="disconnectWhatnot"
+                ></v-list-item>
+
+                <v-divider class="my-1"></v-divider>
+              </template>
 
               <v-list-subheader>Account</v-list-subheader>
               <v-list-item
@@ -1719,6 +1770,187 @@
             <v-spacer></v-spacer>
             <v-btn variant="text" @click="cancelConfirmAction">Cancel</v-btn>
             <v-btn :color="confirmColor" @click="runConfirmAction">Confirm</v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
+
+      <v-dialog
+        v-model="showWhatnotReviewDialog"
+        max-width="980"
+        scrollable
+        content-class="whatnot-review-dialog"
+      >
+        <v-card class="whatnot-review-card">
+          <v-card-title class="d-flex align-center justify-space-between">
+            <div>
+              <v-icon class="mr-2">mdi-shopping</v-icon>
+              Whatnot Import Review
+            </div>
+            <v-btn
+              icon="mdi-close"
+              variant="text"
+              title="Close Whatnot import review"
+              aria-label="Close Whatnot import review"
+              @click="closeWhatnotReviewDialog"
+            ></v-btn>
+          </v-card-title>
+          <v-divider></v-divider>
+          <v-card-text class="whatnot-review-content">
+            <div class="text-medium-emphasis mb-4">
+              Review each Whatnot order before it becomes a sale in
+              {{ activeScopeType === 'workspace' ? currentWorkspaceName : 'Personal' }}.
+            </div>
+
+            <v-alert
+              v-if="activeScopeType === 'workspace' && !isCurrentWorkspaceOwner"
+              type="info"
+              variant="tonal"
+              density="compact"
+              class="mb-4"
+            >
+              Only the workspace owner can confirm Whatnot imports.
+            </v-alert>
+
+            <v-alert
+              v-if="whatnotReviewRows.length === 0"
+              type="info"
+              variant="tonal"
+              density="compact"
+            >
+              No pending Whatnot rows to review right now.
+            </v-alert>
+
+            <div v-else class="whatnot-review-rows">
+              <v-card
+                v-for="row in whatnotReviewRows"
+                :key="row.rowId"
+                class="mb-3"
+                variant="outlined"
+              >
+                <v-card-text>
+                  <div class="d-flex flex-wrap align-center justify-space-between ga-2 mb-3">
+                    <div>
+                      <div class="text-subtitle-1 font-weight-bold">{{ row.title || row.externalOrderId }}</div>
+                      <div class="text-caption text-medium-emphasis">
+                        Order {{ row.externalOrderId }}
+                        <template v-if="row.sku"> • SKU {{ row.sku }}</template>
+                        • {{ formatDate(row.date) }}
+                      </div>
+                    </div>
+                    <div class="d-flex flex-wrap ga-2">
+                      <v-chip size="small" variant="tonal" color="primary">
+                        {{ row.quantity }} x ${{ formatCurrency(row.price) }}
+                      </v-chip>
+                      <v-chip
+                        size="small"
+                        variant="tonal"
+                        :color="row.action === 'update' ? 'warning' : (row.action === 'skip' ? 'default' : 'success')"
+                      >
+                        {{ row.action === 'update' ? 'Update existing sale' : (row.action === 'skip' ? 'Skip duplicate' : 'Create sale') }}
+                      </v-chip>
+                      <v-chip
+                        size="small"
+                        variant="outlined"
+                        :color="row.matchSource === 'remembered' ? 'success' : (row.matchSource === 'title' ? 'info' : 'default')"
+                      >
+                        {{ row.matchSource === 'remembered' ? 'Remembered match' : (row.matchSource === 'title' ? 'Title suggestion' : 'Needs mapping') }}
+                      </v-chip>
+                    </div>
+                  </div>
+
+                  <v-row dense>
+                    <v-col cols="12" md="5">
+                      <v-select
+                        v-model="row.selectedLotId"
+                        :items="lotItems"
+                        item-title="title"
+                        item-value="value"
+                        label="Lot"
+                        variant="outlined"
+                        density="comfortable"
+                        hide-details="auto"
+                        :disabled="row.skipImport"
+                        @update:model-value="(value) => {
+                          const selectedLot = lotItems.find((lot) => lot.value === value);
+                          if (selectedLot?.lotType === 'singles') {
+                            row.selectedSaleType = 'pack';
+                          } else if (!row.selectedSaleType) {
+                            row.selectedSaleType = row.suggestedSaleType || 'pack';
+                          }
+                        }"
+                      ></v-select>
+                    </v-col>
+                    <v-col cols="12" md="3">
+                      <v-select
+                        v-model="row.selectedSaleType"
+                        :items="[
+                          { title: 'Pack / Item', value: 'pack' },
+                          { title: 'Box', value: 'box' },
+                          { title: 'RTYH', value: 'rtyh' }
+                        ]"
+                        item-title="title"
+                        item-value="value"
+                        label="Sale type"
+                        variant="outlined"
+                        density="comfortable"
+                        hide-details="auto"
+                        :disabled="row.skipImport || lotItems.find((lot) => lot.value === row.selectedLotId)?.lotType === 'singles'"
+                      ></v-select>
+                    </v-col>
+                    <v-col cols="12" md="2">
+                      <v-text-field
+                        v-if="row.selectedSaleType === 'rtyh'"
+                        v-model.number="row.selectedPacksCount"
+                        label="Items sold"
+                        type="number"
+                        min="1"
+                        variant="outlined"
+                        density="comfortable"
+                        hide-details="auto"
+                        :disabled="row.skipImport"
+                      ></v-text-field>
+                    </v-col>
+                    <v-col cols="12" md="2" class="d-flex align-center">
+                      <v-checkbox
+                        v-model="row.skipImport"
+                        label="Skip"
+                        density="compact"
+                        hide-details
+                      ></v-checkbox>
+                    </v-col>
+                  </v-row>
+
+                  <div class="text-caption text-medium-emphasis mt-2">
+                    Status: {{ row.orderStatus || 'Unknown' }}
+                    <template v-if="row.buyerShipping > 0"> • Buyer shipping ${{ formatCurrency(row.buyerShipping) }}</template>
+                    <template v-if="lotItems.find((lot) => lot.value === row.selectedLotId)?.lotType === 'singles'">
+                      • Singles imports become unlinked sales in V1
+                    </template>
+                  </div>
+                </v-card-text>
+              </v-card>
+            </div>
+          </v-card-text>
+          <v-card-actions class="justify-space-between">
+            <v-btn variant="text" @click="closeWhatnotReviewDialog">Close</v-btn>
+            <div class="d-flex align-center ga-2">
+              <v-chip
+                v-if="whatnotReviewRows.length > 0"
+                size="small"
+                variant="tonal"
+                color="info"
+              >
+                {{ whatnotReviewRows.filter((row) => !row.skipImport).length }} ready
+              </v-chip>
+              <v-btn
+                color="primary"
+                prepend-icon="mdi-check-bold"
+                :disabled="whatnotReviewRows.length === 0 || (activeScopeType === 'workspace' && !isCurrentWorkspaceOwner)"
+                @click="confirmWhatnotImportBatch"
+              >
+                Import reviewed sales
+              </v-btn>
+            </div>
           </v-card-actions>
         </v-card>
       </v-dialog>

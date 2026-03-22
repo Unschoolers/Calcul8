@@ -3,6 +3,7 @@ import { uiAccountMethods } from "./ui/account.ts";
 import { uiBaseMethods } from "./ui/base.ts";
 import { uiEntitlementMethods } from "./ui/entitlements.ts";
 import { uiSyncMethods } from "./ui/sync.ts";
+import { uiWhatnotMethods } from "./ui/whatnot.ts";
 import { uiWorkspaceMethods } from "./ui/workspaces.ts";
 
 export const uiMethods: ThisType<AppContext> & Pick<
@@ -38,6 +39,13 @@ export const uiMethods: ThisType<AppContext> & Pick<
   | "debugLogEntitlement"
   | "logoutCurrentSession"
   | "clearPersonalAccountData"
+  | "refreshWhatnotStatus"
+  | "connectWhatnot"
+  | "disconnectWhatnot"
+  | "syncWhatnotSales"
+  | "openWhatnotReviewDialog"
+  | "closeWhatnotReviewDialog"
+  | "confirmWhatnotImportBatch"
   | "refreshWorkspaces"
   | "switchToPersonalWorkspace"
   | "switchToWorkspace"
@@ -57,6 +65,7 @@ export const uiMethods: ThisType<AppContext> & Pick<
   ...uiBaseMethods,
   ...uiAccountMethods,
   ...uiEntitlementMethods,
+  ...uiWhatnotMethods,
   ...uiSyncMethods,
   ...uiWorkspaceMethods
 };

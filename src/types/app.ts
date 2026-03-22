@@ -19,6 +19,10 @@ export type LiveSinglesSelectionSource = "manual" | "external";
 export type LiveSinglesSelectionMode = "replace" | "merge";
 export type WorkspaceScopeType = "personal" | "workspace";
 export type WorkspaceRole = "owner" | "member";
+export type WhatnotConnectionStatus = "unconfigured" | "disconnected" | "connecting" | "connected" | "error";
+export type WhatnotSyncStatus = "idle" | "syncing" | "success" | "error";
+export type WhatnotSaleImportAction = "create" | "update" | "skip";
+export type WhatnotMappedSaleType = "pack" | "box" | "rtyh";
 export type UiColor =
   | "info"
   | "success"
@@ -221,6 +225,43 @@ export interface WorkspacePresenceEntry {
   lastSeenAt?: string;
 }
 
+export interface WhatnotConnectionSummary {
+  configured: boolean;
+  connected: boolean;
+  displayName: string;
+  externalAccountId: string;
+  scopes: string[];
+  lastSyncedAt: string | null;
+  pendingReviewCount: number;
+  pendingBatchId: string | null;
+}
+
+export interface WhatnotImportReviewRow {
+  rowId: string;
+  externalSaleId: string;
+  externalOrderId: string;
+  externalOrderItemId: string;
+  externalAccountId: string;
+  title: string;
+  sku?: string;
+  quantity: number;
+  price: number;
+  buyerShipping: number;
+  date: string;
+  orderStatus: string;
+  action: WhatnotSaleImportAction;
+  suggestedLotId?: number;
+  suggestedSaleType?: WhatnotMappedSaleType;
+  suggestedPacksCount?: number;
+  matchSource: "remembered" | "title" | "none";
+  existingSaleId?: string;
+  requiresManualReview: boolean;
+  selectedLotId: number | null;
+  selectedSaleType: WhatnotMappedSaleType | null;
+  selectedPacksCount: number | null;
+  skipImport: boolean;
+}
+
 export interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
@@ -339,6 +380,14 @@ export interface AppState extends LotSetup {
   workspaceRealtimeStatus: WorkspaceRealtimeStatus;
   offlineReconnectIntervalId: number | null;
   salesCacheEpoch: number;
+  whatnotConnectionStatus: WhatnotConnectionStatus;
+  whatnotSyncStatus: WhatnotSyncStatus;
+  whatnotConnectionSummary: WhatnotConnectionSummary | null;
+  showWhatnotReviewDialog: boolean;
+  whatnotReviewBatchId: string | null;
+  whatnotReviewRows: WhatnotImportReviewRow[];
+  whatnotCallbackStatus: "connected" | "error" | null;
+  whatnotCallbackMessage: string;
 }
 
 

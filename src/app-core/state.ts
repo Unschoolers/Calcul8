@@ -209,7 +209,15 @@ export function createInitialState(): AppState {
     syncStatusResetTimeoutId: null,
     workspaceRealtimeStatus: "idle",
     offlineReconnectIntervalId: null,
-    salesCacheEpoch: 0
+    salesCacheEpoch: 0,
+    whatnotConnectionStatus: "unconfigured",
+    whatnotSyncStatus: "idle",
+    whatnotConnectionSummary: null,
+    showWhatnotReviewDialog: false,
+    whatnotReviewBatchId: null,
+    whatnotReviewRows: [],
+    whatnotCallbackStatus: null,
+    whatnotCallbackMessage: ""
   };
 }
 

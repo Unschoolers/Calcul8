@@ -16,6 +16,26 @@ export function userProfileId(userId: string): string {
   return `profile:${userId}`;
 }
 
+export function whatnotConnectionId(scopeKey: string): string {
+  return `whatnot_connection:${scopeKey}`;
+}
+
+export function whatnotOAuthStateId(state: string): string {
+  return `whatnot_oauth_state:${state}`;
+}
+
+export function whatnotImportBatchId(scopeKey: string, batchId: string): string {
+  return `whatnot_import_batch:${scopeKey}:${batchId}`;
+}
+
+export function whatnotTargetMappingId(scopeKey: string, matchKeyHash: string): string {
+  return `whatnot_target_mapping:${scopeKey}:${matchKeyHash}`;
+}
+
+export function whatnotSaleImportMappingId(scopeKey: string, externalSaleKeyHash: string): string {
+  return `whatnot_sale_import_mapping:${scopeKey}:${externalSaleKeyHash}`;
+}
+
 export function syncSnapshotId(userId: string): string {
   return `sync:${userId}`;
 }

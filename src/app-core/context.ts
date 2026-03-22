@@ -311,6 +311,13 @@ export interface AppMethodState {
   debugLogEntitlement(forceRefresh?: boolean): Promise<void>;
   logoutCurrentSession(): Promise<void>;
   clearPersonalAccountData(): Promise<void>;
+  refreshWhatnotStatus(): Promise<void>;
+  connectWhatnot(): Promise<void>;
+  disconnectWhatnot(): Promise<void>;
+  syncWhatnotSales(): Promise<void>;
+  openWhatnotReviewDialog(): Promise<void>;
+  closeWhatnotReviewDialog(): void;
+  confirmWhatnotImportBatch(): Promise<void>;
   refreshWorkspaces(): Promise<void>;
   switchToPersonalWorkspace(): Promise<void>;
   switchToWorkspace(workspaceId: string): Promise<void>;
