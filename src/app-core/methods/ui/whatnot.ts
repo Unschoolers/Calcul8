@@ -24,6 +24,7 @@ type WhatnotApp = Pick<
   | "whatnotCsvMapSellerAccountId"
   | "whatnotCsvMapTitle"
   | "whatnotCsvMapSku"
+  | "whatnotCsvMapProductCategory"
   | "whatnotCsvMapQuantity"
   | "whatnotCsvMapPrice"
   | "whatnotCsvMapBuyerShipping"
@@ -49,6 +50,7 @@ function resetWhatnotCsvImportState(app: WhatnotApp): void {
   app.whatnotCsvMapSellerAccountId = null;
   app.whatnotCsvMapTitle = null;
   app.whatnotCsvMapSku = null;
+  app.whatnotCsvMapProductCategory = null;
   app.whatnotCsvMapQuantity = null;
   app.whatnotCsvMapPrice = null;
   app.whatnotCsvMapBuyerShipping = null;

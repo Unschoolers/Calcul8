@@ -109,13 +109,16 @@
 
             <div class="text-caption text-medium-emphasis mb-3 whatnot-review-row__submeta">
               <span v-if="row.externalSaleId">Sale {{ row.externalSaleId }}</span>
-              <span v-if="row.orderStatus">Status {{ row.orderStatus }}</span>
+              <span v-if="row.orderStatus">{{ whatnotOrderStatusLabel(row.orderStatus) }}</span>
               <span v-if="row.buyerShipping > 0">Buyer shipping ${{ formatCurrency(row.buyerShipping) }}</span>
               <span v-if="row.existingSaleId">Existing sale {{ row.existingSaleId }}</span>
               <span
                 v-if="row.matchSource === 'remembered' && row.suggestedLotId && lotItems.find((lot) => lot.value === row.suggestedLotId)?.title"
               >
                 Remembered lot {{ lotItems.find((lot) => lot.value === row.suggestedLotId)?.title }}
+              </span>
+              <span v-if="whatnotSimilarRowCount(row) > 1">
+                {{ whatnotSimilarRowCount(row) }} matching rows will follow this mapping
               </span>
             </div>
 
@@ -131,14 +134,7 @@
                   density="comfortable"
                   hide-details="auto"
                   :disabled="row.skipImport"
-                  @update:model-value="(value) => {
-                    const selectedLot = lotItems.find((lot) => lot.value === value);
-                    if (selectedLot?.lotType === 'singles') {
-                      row.selectedSaleType = 'pack';
-                    } else if (!row.selectedSaleType) {
-                      row.selectedSaleType = row.suggestedSaleType || 'pack';
-                    }
-                  }"
+                  @update:model-value="handleWhatnotLotSelection(row, $event)"
                 ></v-select>
                 <div
                   v-if="row.selectedLotId && lotItems.find((lot) => lot.value === row.selectedLotId)?.subtitle"
@@ -162,6 +158,7 @@
                   density="comfortable"
                   hide-details="auto"
                   :disabled="row.skipImport || lotItems.find((lot) => lot.value === row.selectedLotId)?.lotType === 'singles'"
+                  @update:model-value="handleWhatnotSaleTypeSelection(row, $event)"
                 ></v-select>
               </v-col>
               <v-col cols="12" md="2">
@@ -175,6 +172,7 @@
                   density="comfortable"
                   hide-details="auto"
                   :disabled="row.skipImport"
+                  @update:model-value="handleWhatnotPacksCountChange(row, $event)"
                 ></v-text-field>
               </v-col>
               <v-col cols="12" md="2" class="d-flex align-center">

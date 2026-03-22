@@ -208,6 +208,16 @@
                 placeholder="Optional"
               ></v-text-field>
             </v-col>
+            <v-col cols="12" md="4">
+              <v-text-field
+                v-model="editingSinglesRow.externalSku"
+                label="Marketplace SKU"
+                variant="outlined"
+                density="comfortable"
+                hide-details
+                placeholder="Optional"
+              ></v-text-field>
+            </v-col>
             <v-col v-if="!showCatalogSuggestions" cols="12" sm="6">
               <v-text-field
                 v-model.number="editingSinglesRow.quantity"

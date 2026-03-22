@@ -101,6 +101,7 @@ export interface SinglesPurchaseEntry {
   id: number;
   item: string;
   cardNumber?: string;
+  externalSku?: string;
   image?: string;
   condition?: string;
   language?: string;
@@ -135,6 +136,7 @@ export interface LotSetup {
   sellingTaxPercent: number;
   sellingShippingPerOrder: number;
   includeTax: boolean;
+  externalSku?: string;
   spotPrice: number;
   boxPriceSell: number;
   packPrice: number;
@@ -245,11 +247,15 @@ export interface WhatnotImportReviewRow {
   externalAccountId: string;
   title: string;
   sku?: string;
+  productCategory?: string;
   quantity: number;
   price: number;
   buyerShipping: number;
   date: string;
   orderStatus: string;
+  listingId?: string;
+  productId?: string;
+  variantId?: string;
   action: WhatnotSaleImportAction;
   suggestedLotId?: number;
   suggestedSaleType?: WhatnotMappedSaleType;
@@ -290,6 +296,7 @@ export interface WhatnotCsvPreparedRowInput {
   externalAccountId?: string;
   title: string;
   sku?: string;
+  productCategory?: string;
   quantity: number;
   price: number;
   buyerShipping: number;
@@ -430,6 +437,7 @@ export interface AppState extends LotSetup {
   whatnotCsvMapSellerAccountId: number | null;
   whatnotCsvMapTitle: number | null;
   whatnotCsvMapSku: number | null;
+  whatnotCsvMapProductCategory: number | null;
   whatnotCsvMapQuantity: number | null;
   whatnotCsvMapPrice: number | null;
   whatnotCsvMapBuyerShipping: number | null;

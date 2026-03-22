@@ -42,6 +42,7 @@ export function appendBlankSinglesPurchaseRow(
       id: createNextSinglesEntryId(rows),
       item: "",
       cardNumber: "",
+      externalSku: "",
       condition: "",
       language: "",
       cost: 0,

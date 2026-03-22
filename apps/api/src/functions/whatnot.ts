@@ -173,6 +173,7 @@ function parseImportRowsBody(rawBody: unknown): {
         externalAccountId: String(row.externalAccountId ?? "").trim() || undefined,
         title,
         sku: String(row.sku ?? "").trim() || undefined,
+        productCategory: String(row.productCategory ?? "").trim() || undefined,
         quantity: row.quantity == null ? undefined : Number(row.quantity),
         price: Number(row.price),
         buyerShipping: row.buyerShipping == null ? undefined : Number(row.buyerShipping),

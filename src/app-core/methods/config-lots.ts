@@ -84,6 +84,7 @@ export const configLotMethods: ConfigMethodSubset<
       sellingTaxPercent: this.sellingTaxPercent,
       sellingShippingPerOrder: this.sellingShippingPerOrder,
       includeTax: this.includeTax,
+      externalSku: typeof this.externalSku === "string" ? this.externalSku.trim() : "",
       spotPrice: this.spotPrice,
       boxPriceSell: this.boxPriceSell,
       packPrice: this.packPrice,

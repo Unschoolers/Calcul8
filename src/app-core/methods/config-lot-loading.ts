@@ -21,6 +21,7 @@ export type HydratedLotState = {
   sellingTaxPercent: number;
   sellingShippingPerOrder: number;
   includeTax: boolean;
+  externalSku: string;
   spotPrice: number;
   boxPriceSell: number;
   packPrice: number;
@@ -45,6 +46,7 @@ export type LotHydrationTarget = SinglesCsvImportStateTarget & {
   sellingTaxPercent?: number;
   sellingShippingPerOrder?: number;
   includeTax?: boolean;
+  externalSku?: string;
   spotPrice?: number;
   boxPriceSell?: number;
   packPrice?: number;
@@ -96,6 +98,7 @@ export function buildHydratedLotState(
       DEFAULT_VALUES.SELLING_TAX_RATE_PERCENT,
     sellingShippingPerOrder: lot.sellingShippingPerOrder ?? DEFAULT_VALUES.SELLING_SHIPPING_PER_ORDER,
     includeTax: lot.includeTax ?? true,
+    externalSku: typeof lot.externalSku === "string" ? lot.externalSku.trim() : "",
     spotPrice: lot.spotPrice ?? DEFAULT_VALUES.SPOT_PRICE,
     boxPriceSell: lot.boxPriceSell ?? DEFAULT_VALUES.BOX_PRICE_SELL,
     packPrice: lot.packPrice ?? DEFAULT_VALUES.PACK_PRICE,
@@ -126,6 +129,7 @@ export function applyHydratedLotState(target: LotHydrationTarget, state: Hydrate
   target.sellingTaxPercent = state.sellingTaxPercent;
   target.sellingShippingPerOrder = state.sellingShippingPerOrder;
   target.includeTax = state.includeTax;
+  target.externalSku = state.externalSku;
   target.spotPrice = state.spotPrice;
   target.boxPriceSell = state.boxPriceSell;
   target.packPrice = state.packPrice;

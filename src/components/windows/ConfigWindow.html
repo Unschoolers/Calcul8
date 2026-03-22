@@ -296,6 +296,17 @@
                         ></v-text-field>
 
                         <v-text-field
+                          v-model="externalSku"
+                          label="Marketplace SKU (optional)"
+                          variant="outlined"
+                          density="compact"
+                          class="mb-2"
+                          hide-details
+                          placeholder="Optional listing / marketplace SKU"
+                          @input="onPurchaseConfigChange"
+                        ></v-text-field>
+
+                        <v-text-field
                           v-model.number="spotsPerBox"
                           label="RTYH Spots per Box"
                           type="number"

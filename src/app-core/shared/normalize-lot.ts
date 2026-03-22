@@ -21,6 +21,7 @@ export function normalizeStoredLot(lot: Lot, todayDate: string): Lot {
     purchaseShippingCost: lot.purchaseShippingCost ?? DEFAULT_VALUES.PURCHASE_SHIPPING_COST,
     sellingShippingPerOrder: lot.sellingShippingPerOrder ?? DEFAULT_VALUES.SELLING_SHIPPING_PER_ORDER,
     includeTax: lot.includeTax ?? true,
+    externalSku: typeof lot.externalSku === "string" ? lot.externalSku.trim() : "",
     spotPrice: lot.spotPrice ?? DEFAULT_VALUES.SPOT_PRICE,
     boxPriceSell: lot.boxPriceSell ?? DEFAULT_VALUES.BOX_PRICE_SELL,
     packPrice: lot.packPrice ?? DEFAULT_VALUES.PACK_PRICE,

@@ -17,6 +17,7 @@ function emptyMapping(): WhatnotCsvColumnMapping {
     externalAccountId: null,
     title: null,
     sku: null,
+    productCategory: null,
     quantity: null,
     price: null,
     buyerShipping: null,
@@ -34,6 +35,7 @@ function syncMappingState(target: WhatnotCsvColumnMapping, source: WhatnotCsvCol
   target.externalAccountId = source.externalAccountId;
   target.title = source.title;
   target.sku = source.sku;
+  target.productCategory = source.productCategory;
   target.quantity = source.quantity;
   target.price = source.price;
   target.buyerShipping = source.buyerShipping;
@@ -177,6 +179,7 @@ export const WhatnotCsvImportDialog = {
         externalAccountId: this.whatnotCsvMapSellerAccountId,
         title: this.whatnotCsvMapTitle,
         sku: this.whatnotCsvMapSku,
+        productCategory: this.whatnotCsvMapProductCategory,
         quantity: this.whatnotCsvMapQuantity,
         price: this.whatnotCsvMapPrice,
         buyerShipping: this.whatnotCsvMapBuyerShipping,
@@ -242,6 +245,7 @@ export const WhatnotCsvImportDialog = {
       this.whatnotCsvMapSellerAccountId = mapping.externalAccountId;
       this.whatnotCsvMapTitle = mapping.title;
       this.whatnotCsvMapSku = mapping.sku;
+      this.whatnotCsvMapProductCategory = mapping.productCategory;
       this.whatnotCsvMapQuantity = mapping.quantity;
       this.whatnotCsvMapPrice = mapping.price;
       this.whatnotCsvMapBuyerShipping = mapping.buyerShipping;
@@ -270,6 +274,7 @@ export const WhatnotCsvImportDialog = {
         externalAccountId: this.whatnotCsvMapSellerAccountId,
         title: this.whatnotCsvMapTitle,
         sku: this.whatnotCsvMapSku,
+        productCategory: this.whatnotCsvMapProductCategory,
         quantity: this.whatnotCsvMapQuantity,
         price: this.whatnotCsvMapPrice,
         buyerShipping: this.whatnotCsvMapBuyerShipping,
@@ -299,6 +304,7 @@ export const WhatnotCsvImportDialog = {
           externalAccountId: entry.externalAccountId || undefined,
           title: entry.title,
           sku: entry.sku,
+          productCategory: entry.productCategory,
           quantity: entry.quantity,
           price: entry.price,
           buyerShipping: entry.buyerShipping,

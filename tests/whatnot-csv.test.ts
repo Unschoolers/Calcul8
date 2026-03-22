@@ -38,6 +38,7 @@ test("buildWhatnotCsvImportDraft auto-maps real weekly Whatnot export headers wi
   assert.equal(draft?.mapping.date, 3);
   assert.equal(draft?.mapping.externalAccountId, 4);
   assert.equal(draft?.mapping.externalSaleId, 33);
+  assert.equal(draft?.mapping.productCategory, 10);
   assert.equal(draft?.mapping.price, 27);
   assert.equal(draft?.mapping.buyerShipping, 28);
   assert.equal(draft?.mapping.orderStatus, 5);

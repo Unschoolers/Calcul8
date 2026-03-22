@@ -230,6 +230,7 @@ export interface WhatnotImportRowDocument {
   externalAccountId: string;
   title: string;
   sku?: string;
+  productCategory?: string;
   quantity: number;
   price: number;
   buyerShipping: number;
@@ -255,6 +256,7 @@ export interface WhatnotNormalizedImportRowInput {
   externalAccountId?: string;
   title: string;
   sku?: string;
+  productCategory?: string;
   quantity?: number;
   price: number;
   buyerShipping?: number;

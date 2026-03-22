@@ -131,6 +131,7 @@ export function createInitialState(): AppState {
     sellingTaxPercent: DEFAULT_VALUES.SELLING_TAX_RATE_PERCENT,
     sellingShippingPerOrder: DEFAULT_VALUES.SELLING_SHIPPING_PER_ORDER,
     includeTax: true,
+    externalSku: "",
 
     // Default Selling Prices
     spotPrice: DEFAULT_VALUES.SPOT_PRICE,
@@ -225,6 +226,7 @@ export function createInitialState(): AppState {
     whatnotCsvMapSellerAccountId: null,
     whatnotCsvMapTitle: null,
     whatnotCsvMapSku: null,
+    whatnotCsvMapProductCategory: null,
     whatnotCsvMapQuantity: null,
     whatnotCsvMapPrice: null,
     whatnotCsvMapBuyerShipping: null,

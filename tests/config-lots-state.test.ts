@@ -42,6 +42,7 @@ test("normalizeSinglesPurchaseEntries trims values, normalizes numbers, and dedu
       id: 5,
       item: "  Card A ",
       cardNumber: " 001 ",
+      externalSku: "  UA-BLEACH-001 ",
       image: " https://img.test/a.jpg ",
       condition: " Near Mint ",
       language: " English ",
@@ -65,6 +66,7 @@ test("normalizeSinglesPurchaseEntries trims values, normalizes numbers, and dedu
   assert.equal(rows[1]?.id > 5, true);
   assert.equal(rows[0]?.item, "Card A");
   assert.equal(rows[0]?.cardNumber, "001");
+  assert.equal(rows[0]?.externalSku, "UA-BLEACH-001");
   assert.equal(rows[0]?.image, "https://img.test/a.jpg");
   assert.equal(rows[0]?.condition, "Near Mint");
   assert.equal(rows[0]?.language, "English");

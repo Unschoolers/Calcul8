@@ -7,6 +7,7 @@ type SinglesRowEditorContext = {
   editingSinglesRow: {
     item: string;
     cardNumber: string;
+    externalSku?: string;
     image?: string;
     condition: string;
     language: string;
@@ -87,11 +88,12 @@ export const singlesRowEditorMethods = {
     const nextCurrency = options?.currency === "USD" || options?.currency === "CAD"
       ? options.currency
       : (this.currency === "USD" ? "USD" : "CAD");
-    this.editingSinglesRow = {
-      item: "",
-      cardNumber: "",
-      image: "",
-      condition: String(options?.condition || ""),
+      this.editingSinglesRow = {
+        item: "",
+        cardNumber: "",
+        externalSku: "",
+        image: "",
+        condition: String(options?.condition || ""),
       language: String(options?.language || ""),
       cost: 0,
       currency: nextCurrency,
@@ -116,6 +118,7 @@ export const singlesRowEditorMethods = {
       this.editingSinglesRow = {
         item: String(entry.item || ""),
         cardNumber: String(entry.cardNumber || ""),
+        externalSku: String(entry.externalSku || ""),
         image: String(entry.image || ""),
         condition: String(entry.condition || ""),
         language: String(entry.language || ""),
@@ -147,6 +150,7 @@ export const singlesRowEditorMethods = {
   saveSinglesRowEditor(this: SinglesRowEditorContext, mode: "close" | "new" = "close"): void {
     const nextItem = String(this.editingSinglesRow.item || "").trim();
     const nextCardNumber = String(this.editingSinglesRow.cardNumber || "").trim();
+    const nextExternalSku = String(this.editingSinglesRow.externalSku || "").trim();
     const nextImage = String(this.editingSinglesRow.image || "").trim();
     const nextCondition = String(this.editingSinglesRow.condition || "").trim();
     const nextLanguage = String(this.editingSinglesRow.language || "").trim();
@@ -181,6 +185,7 @@ export const singlesRowEditorMethods = {
           id: nextId,
           item: nextItem,
           cardNumber: nextCardNumber,
+          externalSku: nextExternalSku,
           image: nextImage,
           condition: nextCondition,
           language: nextLanguage,
@@ -197,6 +202,7 @@ export const singlesRowEditorMethods = {
             ...entry,
             item: nextItem,
             cardNumber: nextCardNumber,
+            externalSku: nextExternalSku,
             image: nextImage,
             condition: nextCondition,
             language: nextLanguage,

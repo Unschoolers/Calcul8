@@ -49,6 +49,7 @@ export function createNewLotRecord({
   const previousSellingTax = Number(previousSellingTaxRaw);
   const nextSetup: LotSetup = {
     ...setup,
+    externalSku: "",
     sellingTaxPercent:
       Number.isFinite(previousSellingTax) && previousSellingTax >= 0
         ? previousSellingTax

@@ -129,6 +129,7 @@ export const SinglesConfigWindow: any = {
       editingSinglesRow: {
         item: "",
         cardNumber: "",
+        externalSku: "",
         image: "",
         condition: "",
         language: "",

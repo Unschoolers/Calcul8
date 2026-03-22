@@ -15,6 +15,7 @@ const CSV_TITLE_ALIASES = [
 ];
 
 const CSV_SKU_ALIASES = ["sku", "productsku", "itemsku", "listingsku", "variantsku"];
+const CSV_PRODUCT_CATEGORY_ALIASES = ["productcategory", "category", "producttype"];
 const CSV_QUANTITY_ALIASES = ["quantitysold", "quantity", "qty", "count", "units", "itemcount"];
 const CSV_PRICE_ALIASES = [
   "postcouponprice",
@@ -69,6 +70,7 @@ export interface WhatnotCsvImportDraft {
 export interface WhatnotCsvColumnMapping {
   title: number | null;
   sku: number | null;
+  productCategory: number | null;
   quantity: number | null;
   price: number | null;
   buyerShipping: number | null;
@@ -256,6 +258,7 @@ function buildMapping(headers: string[]): WhatnotCsvColumnMapping {
   return {
     title: resolveCsvColumnIndex(headers, CSV_TITLE_ALIASES),
     sku: resolveCsvColumnIndex(headers, CSV_SKU_ALIASES),
+    productCategory: resolveCsvColumnIndex(headers, CSV_PRODUCT_CATEGORY_ALIASES),
     quantity: resolveCsvColumnIndex(headers, CSV_QUANTITY_ALIASES),
     price: resolveCsvColumnIndex(headers, CSV_PRICE_ALIASES),
     buyerShipping: resolveCsvColumnIndex(headers, CSV_SHIPPING_ALIASES),
@@ -278,6 +281,7 @@ export function buildWhatnotCsvImportDraft(raw: string): WhatnotCsvImportDraft |
   const headerMatches = [
     resolveCsvColumnIndex(firstRow, CSV_TITLE_ALIASES),
     resolveCsvColumnIndex(firstRow, CSV_SKU_ALIASES),
+    resolveCsvColumnIndex(firstRow, CSV_PRODUCT_CATEGORY_ALIASES),
     resolveCsvColumnIndex(firstRow, CSV_QUANTITY_ALIASES),
     resolveCsvColumnIndex(firstRow, CSV_PRICE_ALIASES),
     resolveCsvColumnIndex(firstRow, CSV_SHIPPING_ALIASES),
@@ -333,6 +337,7 @@ export function parseWhatnotCsvRowsWithMapping(
     }
 
     const rawSku = isValidCsvColumnIndex(mapping.sku, headersLength) ? row[mapping.sku] ?? "" : "";
+    const rawProductCategory = isValidCsvColumnIndex(mapping.productCategory, headersLength) ? row[mapping.productCategory] ?? "" : "";
     const rawQuantity = isValidCsvColumnIndex(mapping.quantity, headersLength) ? row[mapping.quantity] ?? "" : "";
     const rawPrice = isValidCsvColumnIndex(mapping.price, headersLength) ? row[mapping.price] ?? "" : "";
     const rawShipping = isValidCsvColumnIndex(mapping.buyerShipping, headersLength) ? row[mapping.buyerShipping] ?? "" : "";
@@ -370,6 +375,7 @@ export function parseWhatnotCsvRowsWithMapping(
       externalAccountId: externalAccountId,
       title,
       sku: rawSku.trim() || undefined,
+      productCategory: rawProductCategory.trim() || undefined,
       quantity,
       price,
       buyerShipping,
@@ -436,11 +442,15 @@ export function normalizeWhatnotReviewRows(rows: unknown[]): WhatnotImportReview
       externalAccountId,
       title,
       sku: String(row.sku ?? "").trim() || undefined,
+      productCategory: String(row.productCategory ?? "").trim() || undefined,
       quantity: Math.max(1, Math.floor(Number(row.quantity) || 1)),
       price: Number(row.price) || 0,
       buyerShipping: Number(row.buyerShipping) || 0,
       date: String(row.date ?? "").trim(),
       orderStatus: String(row.orderStatus ?? "").trim(),
+      listingId: String(row.listingId ?? "").trim() || undefined,
+      productId: String(row.productId ?? "").trim() || undefined,
+      variantId: String(row.variantId ?? "").trim() || undefined,
       action,
       suggestedLotId: suggestedLotId ?? undefined,
       suggestedSaleType,

@@ -415,7 +415,7 @@ export function hashWhatnotMatchKey(key: string): string {
 
 export function buildWhatnotRememberedMatchKeys(row: Pick<
   WhatnotImportRowDocument,
-  "title" | "sku" | "listingId" | "productId" | "variantId"
+  "title" | "sku" | "productCategory" | "listingId" | "productId" | "variantId"
 >): string[] {
   const keys: string[] = [];
   const addKey = (prefix: string, value: unknown): void => {
@@ -429,6 +429,10 @@ export function buildWhatnotRememberedMatchKeys(row: Pick<
   addKey("variant", row.variantId);
   addKey("sku", row.sku);
   const normalizedTitle = normalizeMatchLabel(String(row.title ?? ""));
+  const normalizedCategory = normalizeMatchLabel(String(row.productCategory ?? ""));
+  if (!row.sku && normalizedTitle && normalizedCategory) {
+    keys.push(`title-category:${normalizedTitle}::${normalizedCategory}`);
+  }
   if (normalizedTitle) {
     keys.push(`title:${normalizedTitle}`);
   }
@@ -486,6 +490,7 @@ export function buildWhatnotImportRowFromNormalizedInput(
     externalAccountId,
     title,
     sku: normalizeOptionalString(row.sku),
+    productCategory: normalizeOptionalString(row.productCategory),
     quantity,
     price,
     buyerShipping,

@@ -52,6 +52,7 @@ test("createNewLotRecord uses fallback selling tax when previous tax is invalid"
   });
 
   assert.equal(result.lot.sellingTaxPercent, DEFAULT_VALUES.SELLING_TAX_RATE_PERCENT);
+  assert.equal(result.lot.externalSku, "");
   assert.equal(result.nextLotCatalogSource, "none");
 });
 

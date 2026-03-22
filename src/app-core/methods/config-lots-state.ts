@@ -53,6 +53,7 @@ export function normalizeSinglesPurchaseEntries(
       id,
       item: typeof entry.item === "string" ? entry.item.trim() : "",
       cardNumber: typeof entry.cardNumber === "string" ? entry.cardNumber.trim() : "",
+      externalSku: typeof entry.externalSku === "string" ? entry.externalSku.trim() : "",
       image: typeof entry.image === "string" ? entry.image.trim() : "",
       condition: typeof entry.condition === "string" ? entry.condition.trim() : "",
       language: typeof entry.language === "string" ? entry.language.trim() : "",
