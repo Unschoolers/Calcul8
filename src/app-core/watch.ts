@@ -6,6 +6,25 @@ import { getActiveStorageScope } from "./workspace-scope.ts";
 export const appWatch: AppWatchObject = {
   activeScopeType() {
     refreshWorkspaceRealtime(this);
+    this.showWhatnotCsvImportDialog = false;
+    this.whatnotCsvRawInput = "";
+    this.whatnotCsvSellerAccountId = "";
+    this.whatnotCsvHeaders = [];
+    this.whatnotCsvRows = [];
+    this.whatnotCsvMapExternalSaleId = null;
+    this.whatnotCsvMapOrderId = null;
+    this.whatnotCsvMapOrderItemId = null;
+    this.whatnotCsvMapSellerAccountId = null;
+    this.whatnotCsvMapTitle = null;
+    this.whatnotCsvMapSku = null;
+    this.whatnotCsvMapQuantity = null;
+    this.whatnotCsvMapPrice = null;
+    this.whatnotCsvMapBuyerShipping = null;
+    this.whatnotCsvMapDate = null;
+    this.whatnotCsvMapOrderStatus = null;
+    this.showWhatnotReviewDialog = false;
+    this.whatnotReviewBatchId = null;
+    this.whatnotReviewRows = [];
     if (this.isGoogleSignedIn) {
       void this.refreshWhatnotStatus();
     }
@@ -13,6 +32,25 @@ export const appWatch: AppWatchObject = {
 
   activeWorkspaceId() {
     refreshWorkspaceRealtime(this);
+    this.showWhatnotCsvImportDialog = false;
+    this.whatnotCsvRawInput = "";
+    this.whatnotCsvSellerAccountId = "";
+    this.whatnotCsvHeaders = [];
+    this.whatnotCsvRows = [];
+    this.whatnotCsvMapExternalSaleId = null;
+    this.whatnotCsvMapOrderId = null;
+    this.whatnotCsvMapOrderItemId = null;
+    this.whatnotCsvMapSellerAccountId = null;
+    this.whatnotCsvMapTitle = null;
+    this.whatnotCsvMapSku = null;
+    this.whatnotCsvMapQuantity = null;
+    this.whatnotCsvMapPrice = null;
+    this.whatnotCsvMapBuyerShipping = null;
+    this.whatnotCsvMapDate = null;
+    this.whatnotCsvMapOrderStatus = null;
+    this.showWhatnotReviewDialog = false;
+    this.whatnotReviewBatchId = null;
+    this.whatnotReviewRows = [];
     if (this.isGoogleSignedIn) {
       void this.refreshWhatnotStatus();
     }
@@ -98,6 +136,22 @@ export const appWatch: AppWatchObject = {
       this.whatnotConnectionStatus = "unconfigured";
       this.whatnotSyncStatus = "idle";
       this.whatnotConnectionSummary = null;
+      this.showWhatnotCsvImportDialog = false;
+      this.whatnotCsvRawInput = "";
+      this.whatnotCsvSellerAccountId = "";
+      this.whatnotCsvHeaders = [];
+      this.whatnotCsvRows = [];
+      this.whatnotCsvMapExternalSaleId = null;
+      this.whatnotCsvMapOrderId = null;
+      this.whatnotCsvMapOrderItemId = null;
+      this.whatnotCsvMapSellerAccountId = null;
+      this.whatnotCsvMapTitle = null;
+      this.whatnotCsvMapSku = null;
+      this.whatnotCsvMapQuantity = null;
+      this.whatnotCsvMapPrice = null;
+      this.whatnotCsvMapBuyerShipping = null;
+      this.whatnotCsvMapDate = null;
+      this.whatnotCsvMapOrderStatus = null;
       this.showWhatnotReviewDialog = false;
       this.whatnotReviewBatchId = null;
       this.whatnotReviewRows = [];

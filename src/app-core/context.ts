@@ -315,6 +315,9 @@ export interface AppMethodState {
   connectWhatnot(): Promise<void>;
   disconnectWhatnot(): Promise<void>;
   syncWhatnotSales(): Promise<void>;
+  openWhatnotCsvImportDialog(): void;
+  closeWhatnotCsvImportDialog(): void;
+  prepareWhatnotCsvImport(rows: import("../types/app.ts").WhatnotCsvPreparedRowInput[], sellerAccountId?: string): Promise<boolean>;
   openWhatnotReviewDialog(): Promise<void>;
   closeWhatnotReviewDialog(): void;
   confirmWhatnotImportBatch(): Promise<void>;

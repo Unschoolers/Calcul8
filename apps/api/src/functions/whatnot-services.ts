@@ -16,9 +16,10 @@ import {
   upsertWhatnotTargetMapping
 } from "../lib/cosmos/whatnotRepository";
 import { getWorkspaceMembership } from "../lib/cosmos/workspaceRepository";
-import { upsertSaleDocument } from "../lib/cosmos/salesRepository";
+import { listSalesForLot, upsertSaleDocument } from "../lib/cosmos/salesRepository";
 import { getEffectiveSyncSnapshot } from "../lib/cosmos/syncSnapshotRepository";
 import {
+  buildWhatnotImportRowFromNormalizedInput,
   buildWhatnotAuthorizeUrl,
   buildWhatnotRememberedMatchKeys,
   exchangeWhatnotAuthorizationCode,
@@ -37,7 +38,8 @@ import type {
   WhatnotConnectionDocument,
   WhatnotImportBatchDocument,
   WhatnotImportRowDocument,
-  WhatnotMappedSaleType
+  WhatnotMappedSaleType,
+  WhatnotNormalizedImportRowInput
 } from "../types";
 
 const WHATNOT_OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
@@ -62,6 +64,12 @@ interface LotSnapshot {
   name: string;
   lotType: "bulk" | "singles";
   packsPerBox: number;
+}
+
+interface CreateWhatnotImportBatchFromRowsInput {
+  workspaceId?: string;
+  externalAccountId?: string;
+  rows: WhatnotNormalizedImportRowInput[];
 }
 
 function normalizeId(raw: unknown): string {
@@ -433,9 +441,14 @@ export async function disconnectWhatnotForActor(
 export async function getWhatnotReviewBatchForActor(
   config: ApiConfig,
   actorUserId: string,
-  workspaceId?: string
+  workspaceId?: string,
+  batchId?: string
 ): Promise<WhatnotImportBatchDocument | null> {
   const scope = await resolveWhatnotScope(config, actorUserId, workspaceId, false);
+  const normalizedBatchId = normalizeId(batchId);
+  if (normalizedBatchId) {
+    return getWhatnotImportBatch(config, scope.partitionKey, normalizedBatchId);
+  }
   return getLatestPendingWhatnotImportBatch(config, scope.partitionKey);
 }
 
@@ -491,6 +504,7 @@ export async function syncWhatnotOrdersForActor(
     docType: "whatnot_import_batch",
     userId: scope.partitionKey,
     scopeKey: scope.partitionKey,
+    origin: "oauth_sync",
     provider: "whatnot",
     externalAccountId: connection.externalAccountId,
     startedByUserId: actorUserId,
@@ -559,8 +573,125 @@ function buildImportedSalePayload(
   return salePayload;
 }
 
-function buildTargetMatchKeyForDecision(row: WhatnotImportRowDocument): string | null {
-  return buildWhatnotRememberedMatchKeys(row)[0] ?? null;
+function normalizeExternalAccountId(raw: unknown): string | undefined {
+  const value = String(raw ?? "").trim();
+  return value || undefined;
+}
+
+function resolveBatchExternalAccountId(
+  fallbackExternalAccountId: string | undefined,
+  rows: WhatnotNormalizedImportRowInput[],
+  scopePartitionKey: string
+): string {
+  const resolved = new Set<string>();
+  const fallback = normalizeExternalAccountId(fallbackExternalAccountId);
+  if (fallback) {
+    resolved.add(fallback);
+  }
+  for (const row of rows) {
+    const externalAccountId = normalizeExternalAccountId(row.externalAccountId);
+    if (externalAccountId) {
+      resolved.add(externalAccountId);
+    }
+  }
+
+  if (resolved.size === 0) {
+    return `scope:${scopePartitionKey}`;
+  }
+
+  if (resolved.size !== 1) {
+    throw new HttpError(400, "Whatnot CSV import rows must resolve to a single seller account.");
+  }
+
+  return [...resolved][0]!;
+}
+
+function buildMutationId(batchId: string, row: WhatnotImportRowDocument): string {
+  return `whatnot_import:${batchId}:${row.externalOrderId}:${row.externalOrderItemId}`;
+}
+
+async function allocateImportedSaleId(
+  config: ApiConfig,
+  scopeKey: string,
+  lotId: string,
+  nextSaleIdByLotId: Map<string, number>
+): Promise<number> {
+  const cached = nextSaleIdByLotId.get(lotId);
+  if (cached != null) {
+    nextSaleIdByLotId.set(lotId, cached + 1);
+    return cached;
+  }
+
+  const sales = await listSalesForLot(config, scopeKey, lotId);
+  const maxExistingSaleId = sales.reduce((maxId, sale) => {
+    const parsed = Math.floor(Number(sale.saleId));
+    return Number.isFinite(parsed) && parsed > maxId ? parsed : maxId;
+  }, 0);
+  const nextSaleId = maxExistingSaleId + 1;
+  nextSaleIdByLotId.set(lotId, nextSaleId + 1);
+  return nextSaleId;
+}
+
+export async function createWhatnotImportBatchFromRowsForActor(
+  config: ApiConfig,
+  actorUserId: string,
+  input: CreateWhatnotImportBatchFromRowsInput
+): Promise<WhatnotImportBatchDocument> {
+  const scope = await resolveWhatnotScope(config, actorUserId, input.workspaceId, false);
+  const rowsInput = Array.isArray(input.rows) ? input.rows : [];
+  if (rowsInput.length === 0) {
+    throw new HttpError(400, "Whatnot import requires at least one row.");
+  }
+
+  const externalAccountId = resolveBatchExternalAccountId(input.externalAccountId, rowsInput, scope.partitionKey);
+  const snapshot = await getEffectiveSyncSnapshot(config, scope.partitionKey);
+  const lots = buildLotSnapshots(snapshot?.lots ?? []);
+  const seenExternalHashes = new Set<string>();
+  const rows: WhatnotImportRowDocument[] = [];
+
+  for (const rawRow of rowsInput.slice(0, MAX_SYNC_ROWS)) {
+    const normalizedRow = buildWhatnotImportRowFromNormalizedInput({
+      ...rawRow,
+      externalAccountId
+    });
+    const externalSaleKeyHash = hashWhatnotExternalSaleKey(
+      normalizedRow.externalAccountId,
+      normalizedRow.externalOrderId,
+      normalizedRow.externalOrderItemId
+    );
+    if (seenExternalHashes.has(externalSaleKeyHash)) {
+      throw new HttpError(400, `Duplicate Whatnot import row for ${normalizedRow.externalSaleId}.`);
+    }
+    seenExternalHashes.add(externalSaleKeyHash);
+
+    const existingMapping = await getWhatnotSaleImportMappingByExternalSaleKeyHash(
+      config,
+      scope.partitionKey,
+      externalSaleKeyHash
+    );
+    let row = decorateDuplicateState(normalizedRow, existingMapping);
+    row = await resolveSuggestedTarget(config, scope.partitionKey, lots, row);
+    rows.push(row);
+  }
+
+  const now = new Date().toISOString();
+  return createPendingWhatnotImportBatch(config, {
+    docType: "whatnot_import_batch",
+    userId: scope.partitionKey,
+    scopeKey: scope.partitionKey,
+    origin: "csv_manual",
+    provider: "whatnot",
+    externalAccountId,
+    startedByUserId: actorUserId,
+    startedAt: now,
+    completedAt: null,
+    updatedAt: now,
+    importWindowStartedAt: now,
+    importedCount: 0,
+    updatedCount: 0,
+    skippedCount: 0,
+    rows
+  });
 }
 
 export async function confirmWhatnotImportBatchForActor(
@@ -572,11 +703,8 @@ export async function confirmWhatnotImportBatchForActor(
     decisions: ReviewDecisionInput[];
   }
 ): Promise<{ importedCount: number; updatedCount: number; skippedCount: number }> {
-  const scope = await resolveWhatnotScope(config, actorUserId, input.workspaceId, Boolean(input.workspaceId));
+  const scope = await resolveWhatnotScope(config, actorUserId, input.workspaceId, false);
   const connection = await getWhatnotConnection(config, scope.connectionScopeKey);
-  if (!connection || connection.status !== "active") {
-    throw new HttpError(404, "Connect Whatnot first.");
-  }
 
   const batch = await getWhatnotImportBatch(config, scope.partitionKey, input.batchId);
   if (!batch || batch.status !== "pending_review") {
@@ -592,7 +720,7 @@ export async function confirmWhatnotImportBatchForActor(
   let importedCount = 0;
   let updatedCount = 0;
   let skippedCount = 0;
-  let saleIdSeed = Date.now();
+  const nextSaleIdByLotId = new Map<string, number>();
 
   for (const row of batch.rows) {
     const decision = decisionsByRowId.get(row.rowId);
@@ -634,7 +762,7 @@ export async function confirmWhatnotImportBatchForActor(
 
     const saleIdNumber = existingMapping
       ? Math.max(1, Math.floor(Number(existingMapping.saleId) || 0))
-      : saleIdSeed++;
+      : await allocateImportedSaleId(config, scope.partitionKey, lot.id, nextSaleIdByLotId);
     const salePayload = buildImportedSalePayload(row, decision, lot, saleIdNumber);
     await upsertSaleDocument(config, {
       scopeKey: scope.partitionKey,
@@ -642,7 +770,7 @@ export async function confirmWhatnotImportBatchForActor(
       saleId: String(saleIdNumber),
       sale: salePayload,
       updatedBy: actorUserId,
-      mutationId: `whatnot_import:${row.externalOrderId}:${row.externalOrderItemId}:${Date.now()}`
+      mutationId: buildMutationId(batch.batchId, row)
     });
 
     await upsertWhatnotSaleImportMapping(config, {
@@ -660,8 +788,8 @@ export async function confirmWhatnotImportBatchForActor(
       updatedAt: new Date().toISOString()
     });
 
-    const matchKey = buildTargetMatchKeyForDecision(row);
-    if (matchKey) {
+    const matchKeys = [...new Set(buildWhatnotRememberedMatchKeys(row))];
+    for (const matchKey of matchKeys) {
       await upsertWhatnotTargetMapping(config, {
         scopeKey: scope.partitionKey,
         matchKeyHash: hashWhatnotMatchKey(matchKey),
@@ -693,11 +821,13 @@ export async function confirmWhatnotImportBatchForActor(
     updatedAt: new Date().toISOString()
   });
 
-  await upsertWhatnotConnection(config, {
-    ...connection,
-    updatedAt: new Date().toISOString(),
-    lastSyncedAt: new Date().toISOString()
-  });
+  if (batch.origin === "oauth_sync" && connection && connection.status === "active") {
+    await upsertWhatnotConnection(config, {
+      ...connection,
+      updatedAt: new Date().toISOString(),
+      lastSyncedAt: new Date().toISOString()
+    });
+  }
 
   return {
     importedCount,

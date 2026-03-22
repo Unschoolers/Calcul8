@@ -436,8 +436,42 @@
     }
     .v-card { border-radius: 20px !important; }
     .profit-glow { box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-    .match-height .v-col { display: flex; }
-    .match-height .v-card { width: 100%; }
+.match-height .v-col { display: flex; }
+.match-height .v-card { width: 100%; }
+
+.whatnot-review-summary {
+  display: grid;
+  gap: 10px;
+}
+
+.whatnot-review-summary__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.whatnot-review-row {
+  border-radius: 16px;
+}
+
+.whatnot-review-row--skipped {
+  opacity: 0.76;
+}
+
+.whatnot-review-row__copy {
+  min-width: 0;
+}
+
+.whatnot-review-row__headline-meta,
+.whatnot-review-row__submeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.whatnot-review-row__chips {
+  justify-content: flex-end;
+}
     canvas { transition: opacity 0.15s ease-out; }
     .v-speed-dial .v-btn { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.16) !important; transition: box-shadow 0.15s ease; }
     .v-speed-dial .v-btn:hover { transform: none; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2) !important; }

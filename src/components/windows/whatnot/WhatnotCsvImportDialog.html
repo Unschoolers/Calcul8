@@ -1,0 +1,285 @@
+<v-dialog
+  :model-value="showWhatnotCsvImportDialog"
+  max-width="980"
+  scrollable
+  content-class="whatnot-csv-dialog"
+  @update:model-value="(value) => { if (!value) closeWhatnotCsvDialog(); }"
+>
+  <v-card class="whatnot-csv-card">
+    <v-card-title class="d-flex align-center justify-space-between">
+      <div>
+        <v-icon class="mr-2">mdi-file-delimited-outline</v-icon>
+        Import Whatnot CSV
+      </div>
+      <v-btn
+        icon="mdi-close"
+        variant="text"
+        title="Close Whatnot CSV import"
+        aria-label="Close Whatnot CSV import"
+        @click="closeWhatnotCsvDialog"
+      ></v-btn>
+    </v-card-title>
+    <v-divider></v-divider>
+    <v-card-text class="whatnot-csv-content">
+      <div class="text-medium-emphasis mb-4">
+        Upload a Whatnot weekly export CSV. If it is a normal Whatnot file, we auto-detect the important fields and send you straight to review.
+      </div>
+
+      <v-file-input
+        accept=".csv,text/csv"
+        label="Upload Whatnot CSV"
+        hint="Uploading reads the file right away."
+        prepend-icon="mdi-upload"
+        variant="outlined"
+        density="comfortable"
+        show-size
+        hide-details="auto"
+        class="mb-3"
+        @update:model-value="loadWhatnotCsvFile"
+      ></v-file-input>
+
+      <v-alert
+        v-if="whatnotCsvHeaders.length > 0 && whatnotCsvPresetReady"
+        type="success"
+        variant="tonal"
+        density="comfortable"
+        class="mb-4"
+      >
+        <div class="font-weight-medium mb-1">Whatnot weekly export ready</div>
+        <div class="text-body-2">
+          Auto-detected <strong>{{ whatnotCsvRequiredMappedCount }}/5</strong> core fields and <strong>{{ whatnotCsvOptionalMappedCount }}</strong> supporting fields.
+          We use <strong>{{ whatnotCsvDetectedDateHeader }}</strong> for the sale date and <strong>{{ whatnotCsvDetectedPriceHeader }}</strong> for sale total.
+        </div>
+        <div v-if="whatnotCsvParsedPreview" class="d-flex flex-wrap ga-2 mt-2">
+          <v-chip size="small" color="success" variant="tonal">
+            {{ whatnotCsvParsedPreview.readyCount }} rows ready
+          </v-chip>
+          <v-chip size="small" variant="tonal">
+            {{ whatnotCsvParsedPreview.skippedCount }} rows skipped
+          </v-chip>
+        </div>
+      </v-alert>
+
+      <v-alert
+        v-else-if="whatnotCsvHeaders.length > 0"
+        type="warning"
+        variant="tonal"
+        density="comfortable"
+        class="mb-4"
+      >
+        This file does not look like a complete Whatnot weekly export yet. If you know it is the right file, open
+        <strong>Advanced mapping</strong> and check the required fields.
+      </v-alert>
+
+      <v-expansion-panels v-if="whatnotCsvHeaders.length > 0" variant="accordion" class="mt-4">
+        <v-expansion-panel>
+          <v-expansion-panel-title>
+            Advanced mapping
+          </v-expansion-panel-title>
+          <v-expansion-panel-text>
+            <div class="text-caption text-medium-emphasis mb-3">
+              Most customers should not need this. Use it only if the Whatnot export was not detected correctly.
+            </div>
+            <v-row dense>
+              <v-col cols="12" md="4">
+                <v-text-field
+                  v-model="whatnotCsvSellerAccountId"
+                  label="Seller account / handle (optional fallback)"
+                  variant="outlined"
+                  density="compact"
+                  hide-details="auto"
+                ></v-text-field>
+              </v-col>
+              <v-col cols="12" md="4">
+                <v-select
+                  v-model="whatnotCsvMapOrderId"
+                  :items="whatnotCsvColumnOptions"
+                  item-title="title"
+                  item-value="value"
+                  label="Order ID"
+                  variant="outlined"
+                  density="compact"
+                  clearable
+                  hide-details
+                ></v-select>
+              </v-col>
+              <v-col cols="12" md="4">
+                <v-select
+                  v-model="whatnotCsvMapTitle"
+                  :items="whatnotCsvColumnOptions"
+                  item-title="title"
+                  item-value="value"
+                  label="Title"
+                  variant="outlined"
+                  density="compact"
+                  clearable
+                  hide-details
+                ></v-select>
+              </v-col>
+              <v-col cols="12" md="4">
+                <v-select
+                  v-model="whatnotCsvMapQuantity"
+                  :items="whatnotCsvColumnOptions"
+                  item-title="title"
+                  item-value="value"
+                  label="Quantity"
+                  variant="outlined"
+                  density="compact"
+                  clearable
+                  hide-details
+                ></v-select>
+              </v-col>
+              <v-col cols="12" md="4">
+                <v-select
+                  v-model="whatnotCsvMapPrice"
+                  :items="whatnotCsvColumnOptions"
+                  item-title="title"
+                  item-value="value"
+                  label="Sale total"
+                  variant="outlined"
+                  density="compact"
+                  clearable
+                  hide-details
+                ></v-select>
+              </v-col>
+              <v-col cols="12" md="4">
+                <v-select
+                  v-model="whatnotCsvMapDate"
+                  :items="whatnotCsvColumnOptions"
+                  item-title="title"
+                  item-value="value"
+                  label="Completed at"
+                  variant="outlined"
+                  density="compact"
+                  clearable
+                  hide-details
+                ></v-select>
+              </v-col>
+              <v-col cols="12" md="4">
+                <v-select
+                  v-model="whatnotCsvMapExternalSaleId"
+                  :items="whatnotCsvColumnOptions"
+                  item-title="title"
+                  item-value="value"
+                  label="Ledger / transaction ID"
+                  variant="outlined"
+                  density="compact"
+                  clearable
+                  hide-details
+                ></v-select>
+              </v-col>
+              <v-col cols="12" md="4">
+                <v-select
+                  v-model="whatnotCsvMapOrderItemId"
+                  :items="whatnotCsvColumnOptions"
+                  item-title="title"
+                  item-value="value"
+                  label="Order item ID"
+                  variant="outlined"
+                  density="compact"
+                  clearable
+                  hide-details
+                ></v-select>
+              </v-col>
+              <v-col cols="12" md="4">
+                <v-select
+                  v-model="whatnotCsvMapSellerAccountId"
+                  :items="whatnotCsvColumnOptions"
+                  item-title="title"
+                  item-value="value"
+                  label="Seller account"
+                  variant="outlined"
+                  density="compact"
+                  clearable
+                  hide-details
+                ></v-select>
+              </v-col>
+              <v-col cols="12" md="4">
+                <v-select
+                  v-model="whatnotCsvMapSku"
+                  :items="whatnotCsvColumnOptions"
+                  item-title="title"
+                  item-value="value"
+                  label="SKU"
+                  variant="outlined"
+                  density="compact"
+                  clearable
+                  hide-details
+                ></v-select>
+              </v-col>
+              <v-col cols="12" md="4">
+                <v-select
+                  v-model="whatnotCsvMapBuyerShipping"
+                  :items="whatnotCsvColumnOptions"
+                  item-title="title"
+                  item-value="value"
+                  label="Buyer shipping"
+                  variant="outlined"
+                  density="compact"
+                  clearable
+                  hide-details
+                ></v-select>
+              </v-col>
+              <v-col cols="12" md="4">
+                <v-select
+                  v-model="whatnotCsvMapOrderStatus"
+                  :items="whatnotCsvColumnOptions"
+                  item-title="title"
+                  item-value="value"
+                  label="Order status"
+                  variant="outlined"
+                  density="compact"
+                  clearable
+                  hide-details
+                ></v-select>
+              </v-col>
+            </v-row>
+          </v-expansion-panel-text>
+        </v-expansion-panel>
+      </v-expansion-panels>
+
+      <div v-if="whatnotCsvHeaders.length > 0" class="mt-4">
+        <div class="text-caption text-medium-emphasis mb-2">
+          Key column preview (first 5 rows). We only show the mapped Whatnot fields so the review stays readable.
+        </div>
+        <div class="singles-import-preview-wrap">
+          <v-table density="compact" class="singles-import-preview-table">
+            <thead>
+              <tr>
+                <th
+                  v-for="column in whatnotCsvPreviewColumns"
+                  :key="`whatnot-preview-header-${column.index}`"
+                >
+                  <div class="d-flex flex-column ga-1">
+                    <span>{{ column.header }}</span>
+                    <v-chip size="x-small" color="primary" variant="tonal">{{ column.label }}</v-chip>
+                  </div>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="(row, rowIndex) in whatnotCsvRows.slice(0, 5)"
+                :key="`whatnot-preview-row-${rowIndex}`"
+              >
+                <td
+                  v-for="column in whatnotCsvPreviewColumns"
+                  :key="`whatnot-preview-cell-${rowIndex}-${column.index}`"
+                >
+                  {{ row[column.index] || "—" }}
+                </td>
+              </tr>
+            </tbody>
+          </v-table>
+        </div>
+      </div>
+    </v-card-text>
+    <v-card-actions>
+      <v-spacer></v-spacer>
+      <v-btn variant="text" @click="closeWhatnotCsvDialog">Cancel</v-btn>
+      <v-btn color="primary" variant="flat" :disabled="!whatnotCsvRequiredMappingsComplete" @click="confirmWhatnotCsvImport">
+        Prepare review
+      </v-btn>
+    </v-card-actions>
+  </v-card>
+</v-dialog>

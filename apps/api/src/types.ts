@@ -182,6 +182,7 @@ export type WhatnotImportBatchStatus = "pending_review" | "completed" | "failed"
 export type WhatnotSaleImportAction = "create" | "update" | "skip";
 export type WhatnotTargetMatchSource = "remembered" | "title" | "none";
 export type WhatnotMappedSaleType = "pack" | "box" | "rtyh";
+export type WhatnotImportBatchOrigin = "oauth_sync" | "csv_manual";
 
 export interface WhatnotConnectionDocument {
   id: string;
@@ -247,6 +248,23 @@ export interface WhatnotImportRowDocument {
   requiresManualReview: boolean;
 }
 
+export interface WhatnotNormalizedImportRowInput {
+  externalSaleId?: string;
+  externalOrderId: string;
+  externalOrderItemId: string;
+  externalAccountId?: string;
+  title: string;
+  sku?: string;
+  quantity?: number;
+  price: number;
+  buyerShipping?: number;
+  date: string;
+  orderStatus?: string;
+  listingId?: string;
+  productId?: string;
+  variantId?: string;
+}
+
 export interface WhatnotImportBatchDocument {
   id: string;
   docType: "whatnot_import_batch";
@@ -254,6 +272,7 @@ export interface WhatnotImportBatchDocument {
   scopeKey: string;
   provider: "whatnot";
   batchId: string;
+  origin: WhatnotImportBatchOrigin;
   externalAccountId: string;
   startedByUserId: string;
   status: WhatnotImportBatchStatus;

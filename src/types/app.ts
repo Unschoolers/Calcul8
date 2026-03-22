@@ -23,6 +23,7 @@ export type WhatnotConnectionStatus = "unconfigured" | "disconnected" | "connect
 export type WhatnotSyncStatus = "idle" | "syncing" | "success" | "error";
 export type WhatnotSaleImportAction = "create" | "update" | "skip";
 export type WhatnotMappedSaleType = "pack" | "box" | "rtyh";
+export type WhatnotCsvImportSource = "csv";
 export type UiColor =
   | "info"
   | "success"
@@ -262,6 +263,40 @@ export interface WhatnotImportReviewRow {
   skipImport: boolean;
 }
 
+export interface WhatnotCsvColumnMapping {
+  orderId: number | null;
+  orderItemId: number | null;
+  sellerAccountId: number | null;
+  title: number | null;
+  sku: number | null;
+  quantity: number | null;
+  price: number | null;
+  buyerShipping: number | null;
+  date: number | null;
+  orderStatus: number | null;
+}
+
+export interface WhatnotCsvImportDraft {
+  headers: string[];
+  rows: string[][];
+  mapping: WhatnotCsvColumnMapping;
+}
+
+export interface WhatnotCsvPreparedRowInput {
+  source: WhatnotCsvImportSource;
+  externalOrderId: string;
+  externalOrderItemId?: string;
+  externalSaleId?: string;
+  externalAccountId?: string;
+  title: string;
+  sku?: string;
+  quantity: number;
+  price: number;
+  buyerShipping: number;
+  date: string;
+  orderStatus?: string;
+}
+
 export interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
@@ -384,6 +419,22 @@ export interface AppState extends LotSetup {
   whatnotSyncStatus: WhatnotSyncStatus;
   whatnotConnectionSummary: WhatnotConnectionSummary | null;
   showWhatnotReviewDialog: boolean;
+  showWhatnotCsvImportDialog: boolean;
+  whatnotCsvRawInput: string;
+  whatnotCsvSellerAccountId: string;
+  whatnotCsvHeaders: string[];
+  whatnotCsvRows: string[][];
+  whatnotCsvMapExternalSaleId: number | null;
+  whatnotCsvMapOrderId: number | null;
+  whatnotCsvMapOrderItemId: number | null;
+  whatnotCsvMapSellerAccountId: number | null;
+  whatnotCsvMapTitle: number | null;
+  whatnotCsvMapSku: number | null;
+  whatnotCsvMapQuantity: number | null;
+  whatnotCsvMapPrice: number | null;
+  whatnotCsvMapBuyerShipping: number | null;
+  whatnotCsvMapDate: number | null;
+  whatnotCsvMapOrderStatus: number | null;
   whatnotReviewBatchId: string | null;
   whatnotReviewRows: WhatnotImportReviewRow[];
   whatnotCallbackStatus: "connected" | "error" | null;

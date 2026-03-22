@@ -1,6 +1,10 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 import { HttpError } from "./auth";
-import type { ApiConfig, WhatnotImportRowDocument } from "../types";
+import type {
+  ApiConfig,
+  WhatnotImportRowDocument,
+  WhatnotNormalizedImportRowInput
+} from "../types";
 
 const DEFAULT_IMPORT_SCOPES = ["read:orders"];
 const DEFAULT_WHATNOT_AUTHORIZE_URL = "https://api.whatnot.com/oauth/authorize";
@@ -388,6 +392,11 @@ function buildWhatnotImportFingerprint(input: {
     .digest("hex");
 }
 
+function normalizeOptionalString(raw: unknown): string | undefined {
+  const value = String(raw ?? "").trim();
+  return value || undefined;
+}
+
 export function hashWhatnotExternalSaleKey(
   externalAccountId: string,
   externalOrderId: string,
@@ -431,6 +440,73 @@ export function isWhatnotRowLikelyRtyh(row: Pick<WhatnotImportRowDocument, "titl
   const normalizedTitle = normalizeMatchLabel(String(row.title ?? ""));
   if (!normalizedTitle) return false;
   return ["rtyh", "spot", "roulette", "wheel", "pick"].some((token) => normalizedTitle.includes(token));
+}
+
+export function buildWhatnotImportRowFromNormalizedInput(
+  row: WhatnotNormalizedImportRowInput & { externalAccountId: string }
+): WhatnotImportRowDocument {
+  const externalOrderId = String(row.externalOrderId ?? "").trim();
+  const externalOrderItemId = String(row.externalOrderItemId ?? "").trim();
+  const externalAccountId = String(row.externalAccountId ?? "").trim();
+  const title = String(row.title ?? "").trim();
+  const date = toDateOnly(row.date);
+
+  if (!externalOrderId) {
+    throw new HttpError(400, "Whatnot import row is missing 'externalOrderId'.");
+  }
+  if (!externalOrderItemId) {
+    throw new HttpError(400, "Whatnot import row is missing 'externalOrderItemId'.");
+  }
+  if (!externalAccountId) {
+    throw new HttpError(400, "Whatnot import row is missing 'externalAccountId'.");
+  }
+  if (!title) {
+    throw new HttpError(400, "Whatnot import row is missing 'title'.");
+  }
+
+  const quantity = Math.max(1, Math.floor(Number(row.quantity) || 1));
+  const price = Number(row.price);
+  if (!Number.isFinite(price) || price < 0) {
+    throw new HttpError(400, "Whatnot import row has invalid 'price'.");
+  }
+
+  const buyerShipping = Number(row.buyerShipping) || 0;
+  if (!Number.isFinite(buyerShipping) || buyerShipping < 0) {
+    throw new HttpError(400, "Whatnot import row has invalid 'buyerShipping'.");
+  }
+
+  const orderStatus = String(row.orderStatus ?? "COMPLETED").trim() || "COMPLETED";
+  const externalSaleId = String(row.externalSaleId ?? `${externalOrderId}:${externalOrderItemId}`).trim();
+
+  return {
+    rowId: externalOrderItemId,
+    externalSaleId,
+    externalOrderId,
+    externalOrderItemId,
+    externalAccountId,
+    title,
+    sku: normalizeOptionalString(row.sku),
+    quantity,
+    price,
+    buyerShipping,
+    date,
+    orderStatus,
+    listingId: normalizeOptionalString(row.listingId),
+    productId: normalizeOptionalString(row.productId),
+    variantId: normalizeOptionalString(row.variantId),
+    payloadFingerprint: buildWhatnotImportFingerprint({
+      externalOrderId,
+      externalOrderItemId,
+      quantity,
+      price,
+      buyerShipping,
+      date,
+      orderStatus
+    }),
+    action: "create",
+    matchSource: "none",
+    requiresManualReview: true
+  };
 }
 
 export async function fetchWhatnotOrdersPage(

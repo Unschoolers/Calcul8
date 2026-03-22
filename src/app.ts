@@ -5,6 +5,8 @@ import { SinglesConfigWindow } from "./components/windows/SinglesConfigWindow.ts
 import { LiveWindow } from "./components/windows/LiveWindow.ts";
 import { SalesWindow } from "./components/windows/SalesWindow.ts";
 import { PortfolioWindow } from "./components/windows/PortfolioWindow.ts";
+import { WhatnotCsvImportDialog } from "./components/windows/whatnot/WhatnotCsvImportDialog.ts";
+import { WhatnotReviewDialog } from "./components/windows/whatnot/WhatnotReviewDialog.ts";
 import { appComputed } from "./app-core/computed.ts";
 import { appLifecycle } from "./app-core/lifecycle.ts";
 import { appMethods } from "./app-core/methods/index.ts";
@@ -19,7 +21,9 @@ export const appOptions = {
     SinglesConfigWindow,
     LiveWindow,
     SalesWindow,
-    PortfolioWindow
+    PortfolioWindow,
+    WhatnotCsvImportDialog,
+    WhatnotReviewDialog
   },
   data: createInitialState,
   provide() {

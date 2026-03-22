@@ -1,12 +1,8 @@
 import type { AppContext, AppMethodState } from "../../context.ts";
-import type {
-  WhatnotConnectionSummary,
-  WhatnotImportReviewRow,
-  WhatnotMappedSaleType
-} from "../../../types/app.ts";
+import type { WhatnotConnectionSummary, WhatnotCsvPreparedRowInput } from "../../../types/app.ts";
+import { normalizeWhatnotReviewRows } from "../../shared/whatnot-csv.ts";
 import { buildAuthenticatedHeaders } from "../../auth/index.ts";
 import { fetchWithRetry, handleExpiredAuth, resolveApiBaseUrl } from "./shared.ts";
-
 type WhatnotApp = Pick<
   AppContext,
   | "activeScopeType"
@@ -18,13 +14,47 @@ type WhatnotApp = Pick<
   | "whatnotConnectionStatus"
   | "whatnotSyncStatus"
   | "whatnotConnectionSummary"
+  | "whatnotCsvRawInput"
+  | "whatnotCsvSellerAccountId"
+  | "whatnotCsvHeaders"
+  | "whatnotCsvRows"
+  | "whatnotCsvMapExternalSaleId"
+  | "whatnotCsvMapOrderId"
+  | "whatnotCsvMapOrderItemId"
+  | "whatnotCsvMapSellerAccountId"
+  | "whatnotCsvMapTitle"
+  | "whatnotCsvMapSku"
+  | "whatnotCsvMapQuantity"
+  | "whatnotCsvMapPrice"
+  | "whatnotCsvMapBuyerShipping"
+  | "whatnotCsvMapDate"
+  | "whatnotCsvMapOrderStatus"
   | "whatnotReviewBatchId"
   | "whatnotReviewRows"
+  | "showWhatnotCsvImportDialog"
   | "showWhatnotReviewDialog"
   | "whatnotCallbackStatus"
   | "whatnotCallbackMessage"
   | "pullCloudSync"
 >;
+
+function resetWhatnotCsvImportState(app: WhatnotApp): void {
+  app.whatnotCsvRawInput = "";
+  app.whatnotCsvSellerAccountId = "";
+  app.whatnotCsvHeaders = [];
+  app.whatnotCsvRows = [];
+  app.whatnotCsvMapExternalSaleId = null;
+  app.whatnotCsvMapOrderId = null;
+  app.whatnotCsvMapOrderItemId = null;
+  app.whatnotCsvMapSellerAccountId = null;
+  app.whatnotCsvMapTitle = null;
+  app.whatnotCsvMapSku = null;
+  app.whatnotCsvMapQuantity = null;
+  app.whatnotCsvMapPrice = null;
+  app.whatnotCsvMapBuyerShipping = null;
+  app.whatnotCsvMapDate = null;
+  app.whatnotCsvMapOrderStatus = null;
+}
 
 function canManageWhatnot(app: Pick<AppContext, "activeScopeType" | "isCurrentWorkspaceOwner">): boolean {
   return app.activeScopeType === "personal" || app.isCurrentWorkspaceOwner;
@@ -37,47 +67,6 @@ function buildWhatnotScopeBody(app: Pick<AppContext, "activeScopeType" | "active
       : {}),
     appReturnUrl: window.location.origin
   };
-}
-
-function mapReviewRows(rows: unknown[]): WhatnotImportReviewRow[] {
-  return rows.flatMap((rawRow): WhatnotImportReviewRow[] => {
-    if (!rawRow || typeof rawRow !== "object" || Array.isArray(rawRow)) {
-      return [];
-    }
-    const row = rawRow as Record<string, unknown>;
-    const selectedSaleType = (() => {
-      const candidate = String(row.suggestedSaleType ?? "").trim();
-      return candidate === "pack" || candidate === "box" || candidate === "rtyh"
-        ? candidate as WhatnotMappedSaleType
-        : null;
-    })();
-
-    return [{
-      rowId: String(row.rowId ?? "").trim(),
-      externalSaleId: String(row.externalSaleId ?? "").trim(),
-      externalOrderId: String(row.externalOrderId ?? "").trim(),
-      externalOrderItemId: String(row.externalOrderItemId ?? "").trim(),
-      externalAccountId: String(row.externalAccountId ?? "").trim(),
-      title: String(row.title ?? "").trim(),
-      sku: String(row.sku ?? "").trim() || undefined,
-      quantity: Math.max(1, Math.floor(Number(row.quantity) || 1)),
-      price: Number(row.price) || 0,
-      buyerShipping: Number(row.buyerShipping) || 0,
-      date: String(row.date ?? "").trim(),
-      orderStatus: String(row.orderStatus ?? "").trim(),
-      action: row.action === "update" || row.action === "skip" ? row.action : "create",
-      suggestedLotId: Number.isFinite(Number(row.suggestedLotId)) ? Math.floor(Number(row.suggestedLotId)) : undefined,
-      suggestedSaleType: selectedSaleType ?? undefined,
-      suggestedPacksCount: Number.isFinite(Number(row.suggestedPacksCount)) ? Math.floor(Number(row.suggestedPacksCount)) : undefined,
-      matchSource: row.matchSource === "remembered" || row.matchSource === "title" ? row.matchSource : "none",
-      existingSaleId: String(row.existingSaleId ?? "").trim() || undefined,
-      requiresManualReview: row.requiresManualReview !== false,
-      selectedLotId: Number.isFinite(Number(row.suggestedLotId)) ? Math.floor(Number(row.suggestedLotId)) : null,
-      selectedSaleType,
-      selectedPacksCount: Number.isFinite(Number(row.suggestedPacksCount)) ? Math.floor(Number(row.suggestedPacksCount)) : null,
-      skipImport: row.action === "skip"
-    }];
-  });
 }
 
 async function fetchWhatnotJson(
@@ -151,6 +140,9 @@ export const uiWhatnotMethods: ThisType<AppContext> & Pick<
   | "connectWhatnot"
   | "disconnectWhatnot"
   | "syncWhatnotSales"
+  | "openWhatnotCsvImportDialog"
+  | "closeWhatnotCsvImportDialog"
+  | "prepareWhatnotCsvImport"
   | "openWhatnotReviewDialog"
   | "closeWhatnotReviewDialog"
   | "confirmWhatnotImportBatch"
@@ -264,10 +256,58 @@ export const uiWhatnotMethods: ThisType<AppContext> & Pick<
       ? result.body as Record<string, unknown>
       : {};
     this.whatnotReviewBatchId = String(body.batchId ?? "").trim() || null;
-    this.whatnotReviewRows = mapReviewRows(Array.isArray(body.rows) ? body.rows : []);
+    this.whatnotReviewRows = normalizeWhatnotReviewRows(Array.isArray(body.rows) ? body.rows : []);
     this.showWhatnotReviewDialog = true;
     this.whatnotSyncStatus = "success";
     await this.refreshWhatnotStatus();
+  },
+
+  openWhatnotCsvImportDialog(): void {
+    this.showWhatnotCsvImportDialog = true;
+  },
+
+  closeWhatnotCsvImportDialog(): void {
+    resetWhatnotCsvImportState(this);
+    this.showWhatnotCsvImportDialog = false;
+  },
+
+  async prepareWhatnotCsvImport(rows: WhatnotCsvPreparedRowInput[], sellerAccountId?: string): Promise<boolean> {
+    if (!Array.isArray(rows) || rows.length === 0) {
+      this.notify("No valid Whatnot CSV rows were found.", "warning");
+      return false;
+    }
+
+    const result = await fetchWhatnotJson(
+      this,
+      "/integrations/whatnot/import",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          ...(this.activeScopeType === "workspace" && this.activeWorkspaceId
+            ? { workspaceId: this.activeWorkspaceId }
+            : {}),
+          externalAccountId: String(sellerAccountId ?? "").trim() || undefined,
+          rows
+        })
+      },
+      "Failed to prepare Whatnot CSV import."
+    );
+    if (!result.ok) {
+      return false;
+    }
+
+    const body = (result.body && typeof result.body === "object" && !Array.isArray(result.body))
+      ? result.body as Record<string, unknown>
+      : {};
+    this.whatnotReviewBatchId = String(body.batchId ?? "").trim() || null;
+    this.whatnotReviewRows = normalizeWhatnotReviewRows(Array.isArray(body.rows) ? body.rows : []);
+    resetWhatnotCsvImportState(this);
+    this.showWhatnotCsvImportDialog = false;
+    this.showWhatnotReviewDialog = true;
+    return true;
   },
 
   async openWhatnotReviewDialog(): Promise<void> {
@@ -289,7 +329,7 @@ export const uiWhatnotMethods: ThisType<AppContext> & Pick<
       ? result.body as Record<string, unknown>
       : {};
     this.whatnotReviewBatchId = String(body.batchId ?? "").trim() || null;
-    this.whatnotReviewRows = mapReviewRows(Array.isArray(body.rows) ? body.rows : []);
+    this.whatnotReviewRows = normalizeWhatnotReviewRows(Array.isArray(body.rows) ? body.rows : []);
     this.showWhatnotReviewDialog = true;
   },
 
@@ -354,6 +394,7 @@ export const uiWhatnotMethods: ThisType<AppContext> & Pick<
     this.showWhatnotReviewDialog = false;
     this.whatnotReviewBatchId = null;
     this.whatnotReviewRows = [];
+    resetWhatnotCsvImportState(this);
     await this.refreshWhatnotStatus();
     await this.pullCloudSync();
     this.notify(
@@ -362,3 +403,11 @@ export const uiWhatnotMethods: ThisType<AppContext> & Pick<
     );
   }
 };
+
+
+
+
+
+
+
+

@@ -3,10 +3,15 @@ import { HttpError, resolveUserId } from "../lib/auth";
 import { getConfig } from "../lib/config";
 import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../lib/http";
 import { parseOptionalWorkspaceId } from "../lib/syncScope";
-import { readRequestJsonOrNull, requireRequestBodyRecord } from "./request-function-helpers";
+import {
+  readRequestJsonOrNull,
+  readRequestJsonOrThrow,
+  requireRequestBodyRecord
+} from "./request-function-helpers";
 import type { WhatnotMappedSaleType } from "../types";
 import {
   confirmWhatnotImportBatchForActor,
+  createWhatnotImportBatchFromRowsForActor,
   createWhatnotConnectUrlForActor,
   disconnectWhatnotForActor,
   getWhatnotReviewBatchForActor,
@@ -34,6 +39,24 @@ async function parseWorkspaceIdFromBody(request: HttpRequest): Promise<string | 
     return parseOptionalWorkspaceId((rawBody as { workspaceId?: unknown }).workspaceId);
   }
   return parseOptionalWorkspaceId(getQueryParam(request, "workspaceId"));
+}
+
+async function parseReviewLookupFromRequest(request: HttpRequest): Promise<{
+  workspaceId?: string;
+  batchId?: string;
+}> {
+  const rawBody = await readRequestJsonOrNull(request);
+  if (rawBody && typeof rawBody === "object" && !Array.isArray(rawBody)) {
+    const body = rawBody as { workspaceId?: unknown; batchId?: unknown };
+    return {
+      workspaceId: parseOptionalWorkspaceId(body.workspaceId),
+      batchId: String(body.batchId ?? "").trim() || undefined
+    };
+  }
+  return {
+    workspaceId: parseOptionalWorkspaceId(getQueryParam(request, "workspaceId")),
+    batchId: String(getQueryParam(request, "batchId") ?? "").trim() || undefined
+  };
 }
 
 async function parseWhatnotConnectStartBody(request: HttpRequest): Promise<{
@@ -100,6 +123,76 @@ function parseConfirmBody(rawBody: unknown): {
     batchId,
     workspaceId: parseOptionalWorkspaceId(body.workspaceId),
     decisions
+  };
+}
+
+function parseImportRowsBody(rawBody: unknown): {
+  workspaceId?: string;
+  externalAccountId?: string;
+  rows: Array<{
+    externalSaleId?: string;
+    externalOrderId: string;
+    externalOrderItemId: string;
+    externalAccountId?: string;
+    title: string;
+    sku?: string;
+    quantity?: number;
+    price: number;
+    buyerShipping?: number;
+    date: string;
+    orderStatus?: string;
+    listingId?: string;
+    productId?: string;
+    variantId?: string;
+  }>;
+} {
+  const body = requireRequestBodyRecord(rawBody);
+  const rows = Array.isArray(body.rows)
+    ? body.rows.map((rawRow) => {
+      const row = requireRequestBodyRecord(rawRow, "Field 'rows' must contain objects.");
+      const externalOrderId = String(row.externalOrderId ?? "").trim();
+      const externalOrderItemId = String(row.externalOrderItemId ?? "").trim();
+      const title = String(row.title ?? "").trim();
+      const date = String(row.date ?? "").trim();
+      if (!externalOrderId) {
+        throw new HttpError(400, "Each import row requires 'externalOrderId'.");
+      }
+      if (!externalOrderItemId) {
+        throw new HttpError(400, "Each import row requires 'externalOrderItemId'.");
+      }
+      if (!title) {
+        throw new HttpError(400, "Each import row requires 'title'.");
+      }
+      if (!date) {
+        throw new HttpError(400, "Each import row requires 'date'.");
+      }
+      return {
+        externalSaleId: String(row.externalSaleId ?? "").trim() || undefined,
+        externalOrderId,
+        externalOrderItemId,
+        externalAccountId: String(row.externalAccountId ?? "").trim() || undefined,
+        title,
+        sku: String(row.sku ?? "").trim() || undefined,
+        quantity: row.quantity == null ? undefined : Number(row.quantity),
+        price: Number(row.price),
+        buyerShipping: row.buyerShipping == null ? undefined : Number(row.buyerShipping),
+        date,
+        orderStatus: String(row.orderStatus ?? "").trim() || undefined,
+        listingId: String(row.listingId ?? "").trim() || undefined,
+        productId: String(row.productId ?? "").trim() || undefined,
+        variantId: String(row.variantId ?? "").trim() || undefined
+      };
+    })
+    : [];
+
+  if (rows.length === 0) {
+    throw new HttpError(400, "Field 'rows' must contain at least one import row.");
+  }
+
+  return {
+    workspaceId: parseOptionalWorkspaceId(body.workspaceId),
+    externalAccountId: String(body.externalAccountId ?? "").trim() || undefined,
+    rows
   };
 }
 
@@ -210,6 +303,29 @@ export async function whatnotSync(
   }
 }
 
+export async function whatnotImport(
+  request: HttpRequest,
+  context: InvocationContext
+): Promise<HttpResponseInit> {
+  const config = getConfig();
+  const guardResponse = maybeHandleHttpGuards(request, config);
+  if (guardResponse) return guardResponse;
+
+  try {
+    const actorUserId = await resolveUserId(request, config);
+    const body = parseImportRowsBody(await readRequestJsonOrThrow(request));
+    const batch = await createWhatnotImportBatchFromRowsForActor(config, actorUserId, body);
+    return jsonResponse(request, config, 200, {
+      batchId: batch.batchId,
+      pendingReviewCount: batch.rows.length,
+      rows: batch.rows
+    });
+  } catch (error) {
+    context.error("POST /integrations/whatnot/import failed", error);
+    return errorResponse(request, config, error, "Failed to stage Whatnot import rows.");
+  }
+}
+
 export async function whatnotReviewGet(
   request: HttpRequest,
   context: InvocationContext
@@ -220,8 +336,8 @@ export async function whatnotReviewGet(
 
   try {
     const actorUserId = await resolveUserId(request, config);
-    const workspaceId = await parseWorkspaceIdFromBody(request);
-    const batch = await getWhatnotReviewBatchForActor(config, actorUserId, workspaceId);
+    const { workspaceId, batchId } = await parseReviewLookupFromRequest(request);
+    const batch = await getWhatnotReviewBatchForActor(config, actorUserId, workspaceId, batchId);
     return jsonResponse(request, config, 200, {
       batchId: batch?.batchId ?? null,
       rows: batch?.rows ?? []
@@ -294,6 +410,13 @@ app.http("whatnotReviewGet", {
   authLevel: "anonymous",
   route: "integrations/whatnot/review",
   handler: whatnotReviewGet
+});
+
+app.http("whatnotImport", {
+  methods: ["POST", "OPTIONS"],
+  authLevel: "anonymous",
+  route: "integrations/whatnot/import",
+  handler: whatnotImport
 });
 
 app.http("whatnotReviewConfirm", {
