@@ -2251,7 +2251,7 @@ test("saveSale updates existing sale in edit mode", () => {
   };
   const sales: Sale[] = [originalSale];
 
-  salesMethods.saveSale.call({
+  const context = {
     canUsePaidActions: true,
     packsPerBox: 16,
     editingSale: originalSale,
@@ -2270,12 +2270,14 @@ test("saveSale updates existing sale in edit mode", () => {
     cancelSale() {
       // noop
     }
-  } as unknown as Parameters<typeof salesMethods.saveSale>[0]);
+  } as unknown as Parameters<typeof salesMethods.saveSale>[0];
 
-  assert.equal(sales.length, 1);
-  assert.equal(sales[0]?.id, 1001);
-  assert.equal(sales[0]?.quantity, 4);
-  assert.equal(sales[0]?.buyerShipping, 3);
+  salesMethods.saveSale.call(context);
+
+  assert.equal(context.sales.length, 1);
+  assert.equal(context.sales[0]?.id, 1001);
+  assert.equal(context.sales[0]?.quantity, 4);
+  assert.equal(context.sales[0]?.buyerShipping, 3);
 });
 
 test("openAddSaleModal defaults sale price from live values with config fallback", () => {

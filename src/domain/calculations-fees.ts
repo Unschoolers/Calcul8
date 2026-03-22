@@ -1,0 +1,444 @@
+import { DEFAULT_VALUES, TAX_RATES, WHATNOT_FEES } from "../constants.ts";
+import type {
+  CurrencyCode,
+  LotType,
+  Sale,
+  SinglesPurchaseEntry
+} from "../types/app.ts";
+
+export function toRate(percent: number): number {
+  return Math.max(0, Number(percent) || 0) / 100;
+}
+
+export function calculateBoxPriceCostCad(
+  boxPriceCost: number,
+  buyCurrency: CurrencyCode,
+  sellingCurrency: CurrencyCode,
+  exchangeRate: number,
+  defaultExchangeRate: number
+): number {
+  const price = Number(boxPriceCost) || 0;
+  const rate = Number(exchangeRate) || defaultExchangeRate;
+  if (buyCurrency === sellingCurrency) {
+    return price;
+  }
+  // Convert both ways using USD->CAD exchange rate.
+  if (buyCurrency === "USD" && sellingCurrency === "CAD") {
+    return price * rate;
+  }
+  if (buyCurrency === "CAD" && sellingCurrency === "USD") {
+    return rate > 0 ? price / rate : price;
+  }
+  return price;
+}
+
+export function calculateTotalCaseCost(params: {
+  boxesPurchased: number;
+  pricePerBoxCad: number;
+  purchaseShippingCad: number;
+  purchaseTaxPercent: number;
+  includeTax: boolean;
+  currency: CurrencyCode;
+}): number {
+  const boxes = Number(params.boxesPurchased) || 0;
+  const basePrice = (Number(params.pricePerBoxCad) || 0) * boxes;
+  const shippingCost = Number(params.purchaseShippingCad) || 0;
+  const purchaseTaxRate = toRate(params.purchaseTaxPercent);
+  const withTax = params.includeTax ? basePrice * (1 + purchaseTaxRate) : basePrice;
+  const customs = params.currency === "USD" ? withTax * TAX_RATES.CUSTOMS : 0;
+  return withTax + customs + shippingCost;
+}
+
+export function calculateSinglesPurchaseTotals(
+  entries: SinglesPurchaseEntry[] | undefined
+): { totalQuantity: number; totalCost: number; totalMarketValue: number } {
+  if (!Array.isArray(entries) || entries.length === 0) {
+    return {
+      totalQuantity: 0,
+      totalCost: 0,
+      totalMarketValue: 0
+    };
+  }
+
+  return entries.reduce(
+    (acc, entry) => {
+      const quantity = Math.max(0, Math.floor(Number(entry.quantity) || 0));
+      const cost = Math.max(0, Number(entry.cost) || 0);
+      const marketValue = Math.max(0, Number(entry.marketValue) || 0);
+
+      return {
+        totalQuantity: acc.totalQuantity + quantity,
+        totalCost: acc.totalCost + (cost * quantity),
+        totalMarketValue: acc.totalMarketValue + (marketValue * quantity)
+      };
+    },
+    {
+      totalQuantity: 0,
+      totalCost: 0,
+      totalMarketValue: 0
+    }
+  );
+}
+
+export function getSinglesEntryUnitCostInSellingCurrency(
+  entry: Pick<SinglesPurchaseEntry, "cost"> & { currency?: string },
+  purchaseCurrency: CurrencyCode,
+  sellingCurrency: CurrencyCode,
+  exchangeRate: number,
+  defaultExchangeRate = DEFAULT_VALUES.EXCHANGE_RATE
+): number {
+  const unitCost = Math.max(0, Number(entry.cost) || 0);
+  const entryCurrency = entry.currency === "USD" || entry.currency === "CAD"
+    ? entry.currency
+    : purchaseCurrency;
+  return calculateBoxPriceCostCad(
+    unitCost,
+    entryCurrency,
+    sellingCurrency,
+    exchangeRate,
+    defaultExchangeRate
+  );
+}
+
+export function calculateSinglesPurchaseTotalCostInSellingCurrency(params: {
+  entries: SinglesPurchaseEntry[] | undefined;
+  purchaseCurrency: CurrencyCode;
+  sellingCurrency: CurrencyCode;
+  exchangeRate: number;
+  defaultExchangeRate?: number;
+}): number {
+  if (!Array.isArray(params.entries) || params.entries.length === 0) return 0;
+
+  return params.entries.reduce((sum, entry) => {
+    const quantity = Math.max(0, Math.floor(Number(entry.quantity) || 0));
+    const convertedUnitCost = getSinglesEntryUnitCostInSellingCurrency(
+      entry,
+      params.purchaseCurrency,
+      params.sellingCurrency,
+      params.exchangeRate,
+      params.defaultExchangeRate
+    );
+    return sum + (convertedUnitCost * quantity);
+  }, 0);
+}
+
+type SaleLineLike = {
+  singlesPurchaseEntryId?: number;
+  quantity: number;
+  price: number;
+};
+
+export type SinglesLineProfitPreview = {
+  value: number;
+  unitValue: number | null;
+  quantity: number;
+  percent: number;
+  sign: "+" | "-";
+  colorClass: string;
+  basisLabel: "Market" | "Cost";
+  basisValue: number;
+  marketBasisValue: number;
+  costBasisValue: number;
+};
+
+export type SinglesSaleProfitPreview = {
+  value: number;
+  unitValue: number | null;
+  quantity: number;
+  percent: number;
+  sign: "+" | "-";
+  colorClass: string;
+  basisLabel: "Market" | "Cost" | "Mixed";
+  basisValue: number;
+  marketBasisValue: number;
+  costBasisValue: number;
+};
+
+function buildSinglesProfitPresentation<TBasisLabel extends "Market" | "Cost" | "Mixed">(params: {
+  value: number;
+  quantity: number;
+  basisLabel: TBasisLabel;
+  marketBasisValue: number;
+  costBasisValue: number;
+}): {
+  value: number;
+  unitValue: number | null;
+  quantity: number;
+  percent: number;
+  sign: "+" | "-";
+  colorClass: string;
+  basisLabel: TBasisLabel;
+  basisValue: number;
+  marketBasisValue: number;
+  costBasisValue: number;
+} {
+  const basisValue = params.marketBasisValue + params.costBasisValue;
+  const percent = basisValue > 0
+    ? (params.value / basisValue) * 100
+    : (params.value >= 0 ? 100 : 0);
+  const unitValue = params.quantity > 0 ? params.value / params.quantity : null;
+
+  return {
+    value: params.value,
+    unitValue,
+    quantity: params.quantity,
+    percent,
+    sign: params.value >= 0 ? "+" : "-",
+    colorClass: params.value >= 0 ? "text-success" : "text-error",
+    basisLabel: params.basisLabel,
+    basisValue,
+    marketBasisValue: params.marketBasisValue,
+    costBasisValue: params.costBasisValue
+  };
+}
+
+export function getSaleSinglesLines(
+  sale: Pick<Sale, "singlesItems" | "singlesPurchaseEntryId" | "quantity" | "price">
+): SaleLineLike[] {
+  if (Array.isArray(sale.singlesItems) && sale.singlesItems.length > 0) {
+    return sale.singlesItems
+      .map((line) => {
+        const entryId = Number(line.singlesPurchaseEntryId);
+        return {
+          singlesPurchaseEntryId: Number.isFinite(entryId) && entryId > 0 ? Math.floor(entryId) : undefined,
+          quantity: Math.max(0, Math.floor(Number(line.quantity) || 0)),
+          price: Math.max(0, Number(line.price) || 0)
+        };
+      })
+      .filter((line) => line.quantity > 0);
+  }
+
+  const quantity = Math.max(0, Math.floor(Number(sale.quantity) || 0));
+  if (quantity <= 0) return [];
+
+  const entryId = Number(sale.singlesPurchaseEntryId);
+  return [{
+    singlesPurchaseEntryId: Number.isFinite(entryId) && entryId > 0 ? Math.floor(entryId) : undefined,
+    quantity,
+    price: Math.max(0, Number(sale.price) || 0)
+  }];
+}
+
+export function calculateSinglesSaleCostBasis(params: {
+  sale: Pick<Sale, "singlesItems" | "singlesPurchaseEntryId" | "quantity" | "price">;
+  singlesPurchases: SinglesPurchaseEntry[] | undefined;
+  purchaseCurrency: CurrencyCode;
+  sellingCurrency: CurrencyCode;
+  exchangeRate: number;
+  defaultExchangeRate?: number;
+}): number {
+  const entriesById = new Map(
+    (params.singlesPurchases || []).map((entry) => [entry.id, entry] as const)
+  );
+
+  return getSaleSinglesLines(params.sale).reduce((sum, line) => {
+    if (!line.singlesPurchaseEntryId) return sum;
+    const entry = entriesById.get(line.singlesPurchaseEntryId);
+    if (!entry) return sum;
+    const convertedUnitCost = getSinglesEntryUnitCostInSellingCurrency(
+      entry,
+      params.purchaseCurrency,
+      params.sellingCurrency,
+      params.exchangeRate,
+      params.defaultExchangeRate
+    );
+    return sum + (convertedUnitCost * line.quantity);
+  }, 0);
+}
+
+export function calculateSinglesLineProfitPreview(params: {
+  line: { singlesPurchaseEntryId?: number | null; quantity?: number | null; price?: number | null };
+  grossRevenue: number;
+  netRevenue: number;
+  singlesPurchases: Array<Pick<SinglesPurchaseEntry, "id" | "marketValue" | "cost"> & { currency?: string }> | undefined;
+  purchaseCurrency: CurrencyCode;
+  sellingCurrency: CurrencyCode;
+  exchangeRate: number;
+  defaultExchangeRate?: number;
+}): SinglesLineProfitPreview | null {
+  const entryId = Number(params.line.singlesPurchaseEntryId);
+  const normalizedEntryId = Number.isFinite(entryId) && entryId > 0 ? Math.floor(entryId) : null;
+  const quantity = Math.max(0, Math.floor(Number(params.line.quantity) || 0));
+  const price = Math.max(0, Number(params.line.price) || 0);
+  const hasMeaningfulInput = quantity > 0 || price > 0 || normalizedEntryId != null;
+  if (!hasMeaningfulInput) return null;
+
+  const grossRevenue = Math.max(0, Number(params.grossRevenue) || 0);
+  const netRevenue = Number(params.netRevenue) || 0;
+  const lineNetRevenue = grossRevenue > 0
+    ? (netRevenue * (price / grossRevenue))
+    : 0;
+
+  const selectedEntry = normalizedEntryId != null
+    ? (params.singlesPurchases || []).find((entry) => entry.id === normalizedEntryId)
+    : null;
+  const unitCost = selectedEntry
+    ? getSinglesEntryUnitCostInSellingCurrency(
+      selectedEntry,
+      params.purchaseCurrency,
+      params.sellingCurrency,
+      params.exchangeRate,
+      params.defaultExchangeRate
+    )
+    : 0;
+  const unitMarket = Math.max(0, Number(selectedEntry?.marketValue) || 0);
+  const marketBasisValue = unitMarket > 0 ? (unitMarket * quantity) : 0;
+  const costBasisValue = unitMarket > 0 ? 0 : (unitCost * quantity);
+  const basisProfit = lineNetRevenue - marketBasisValue - costBasisValue;
+
+  const preview = buildSinglesProfitPresentation({
+    value: basisProfit,
+    quantity,
+    basisLabel: marketBasisValue > 0 ? "Market" : "Cost",
+    marketBasisValue,
+    costBasisValue
+  });
+
+  return preview;
+}
+
+export function calculateSinglesSaleProfitPreview(
+  linePreviews: Array<SinglesLineProfitPreview | null | undefined>
+): SinglesSaleProfitPreview | null {
+  const normalizedLines = linePreviews.filter(
+    (line): line is SinglesLineProfitPreview => line != null
+  );
+  if (normalizedLines.length === 0) return null;
+
+  const value = normalizedLines.reduce((sum, line) => sum + line.value, 0);
+  const quantity = normalizedLines.reduce((sum, line) => sum + line.quantity, 0);
+  const marketBasisValue = normalizedLines.reduce((sum, line) => sum + line.marketBasisValue, 0);
+  const costBasisValue = normalizedLines.reduce((sum, line) => sum + line.costBasisValue, 0);
+  const basisLabel = marketBasisValue > 0 && costBasisValue > 0
+    ? "Mixed"
+    : (marketBasisValue > 0 ? "Market" : "Cost");
+
+  return buildSinglesProfitPresentation({
+    value,
+    quantity,
+    basisLabel,
+    marketBasisValue,
+    costBasisValue
+  });
+}
+
+export function calculateNetFromGross(
+  grossRevenue: number,
+  sellingTaxPercent: number,
+  buyerShippingPerOrder = 0,
+  orderCount = 1
+): number {
+  const gross = Number(grossRevenue) || 0;
+  const buyerTaxRate = toRate(sellingTaxPercent);
+  const orders = Math.max(1, Number(orderCount) || 1);
+  const shippingTotal = (Number(buyerShippingPerOrder) || 0) * orders;
+  const orderTotal = (gross * (1 + buyerTaxRate)) + shippingTotal;
+  const commission = gross * WHATNOT_FEES.COMMISSION;
+  const processingPct = orderTotal * WHATNOT_FEES.PROCESSING;
+  const processingFixed = WHATNOT_FEES.FIXED * orders;
+
+  return gross - commission - processingPct - processingFixed;
+}
+
+export function getGrossRevenueForSale(sale: Pick<Sale, "quantity" | "price" | "priceIsTotal">): number {
+  const quantity = Number(sale.quantity) || 0;
+  const price = Number(sale.price) || 0;
+  if (sale.priceIsTotal) {
+    return Math.max(0, price);
+  }
+  return quantity * price;
+}
+
+export function calculateTotalRevenue(sales: Sale[], sellingTaxPercent: number): number {
+  return sales.reduce((sum, sale) => {
+    const grossRevenue = getGrossRevenueForSale(sale);
+    const buyerShipping = Number(sale.buyerShipping) || 0;
+    return sum + calculateNetFromGross(grossRevenue, sellingTaxPercent, buyerShipping, 1);
+  }, 0);
+}
+
+export function calculateProfitForListing(
+  units: number,
+  pricePerUnit: number,
+  totalCaseCost: number,
+  sellingTaxPercent: number,
+  buyerShippingPerOrder = 0
+): number {
+  const safeUnits = Number(units) || 0;
+  const safePrice = Number(pricePerUnit) || 0;
+  const grossRevenue = safeUnits * safePrice;
+  const netRevenue = calculateNetFromGross(grossRevenue, sellingTaxPercent, buyerShippingPerOrder, safeUnits);
+  return netRevenue - totalCaseCost;
+}
+
+export function calculateSaleProfit(params: {
+  sale: Sale;
+  lotType: LotType;
+  sellingTaxPercent: number;
+  totalCaseCost: number;
+  totalPacks: number;
+  purchaseCurrency: CurrencyCode;
+  sellingCurrency: CurrencyCode;
+  exchangeRate: number;
+  singlesPurchases?: SinglesPurchaseEntry[];
+  defaultExchangeRate?: number;
+}): number {
+  const grossRevenue = getGrossRevenueForSale(params.sale);
+  const netRevenue = calculateNetFromGross(
+    grossRevenue,
+    params.sellingTaxPercent,
+    params.sale.buyerShipping || 0,
+    1
+  );
+
+  if (params.lotType === "singles") {
+    const allocatedCost = calculateSinglesSaleCostBasis({
+      sale: params.sale,
+      singlesPurchases: params.singlesPurchases,
+      purchaseCurrency: params.purchaseCurrency,
+      sellingCurrency: params.sellingCurrency,
+      exchangeRate: params.exchangeRate,
+      defaultExchangeRate: params.defaultExchangeRate
+    });
+    return netRevenue - allocatedCost;
+  }
+
+  const costPerPack = params.totalPacks > 0 ? (params.totalCaseCost / params.totalPacks) : 0;
+  const allocatedCost = (params.sale.packsCount || 0) * costPerPack;
+  return netRevenue - allocatedCost;
+}
+
+export function calculatePriceForUnits(
+  units: number,
+  targetNetRevenue: number,
+  sellingTaxPercent: number,
+  buyerShippingPerOrder = 0
+): number {
+  const u = Number(units) || 1;
+  const buyerTaxRate = toRate(sellingTaxPercent);
+  const effectiveFeeRate = 1 - WHATNOT_FEES.COMMISSION - (WHATNOT_FEES.PROCESSING * (1 + buyerTaxRate));
+  const perOrderFixed = WHATNOT_FEES.FIXED + (WHATNOT_FEES.PROCESSING * (Number(buyerShippingPerOrder) || 0));
+  const fixedFees = perOrderFixed * u;
+  if (effectiveFeeRate <= 0) return 0;
+
+  const price = (targetNetRevenue + fixedFees) / (u * effectiveFeeRate);
+  return Math.round(price);
+}
+
+export function calculateDefaultSellingPrices(params: {
+  totalCaseCost: number;
+  targetProfitPercent: number;
+  boxesPurchased: number;
+  totalSpots: number;
+  totalPacks: number;
+  sellingTaxPercent: number;
+  sellingShippingPerOrder: number;
+}): { spotPrice: number; boxPriceSell: number; packPrice: number } {
+  const targetProfit = (params.totalCaseCost * (Number(params.targetProfitPercent) || 0)) / 100;
+  const requiredNetRevenue = params.totalCaseCost + targetProfit;
+  return {
+    spotPrice: calculatePriceForUnits(params.totalSpots, requiredNetRevenue, params.sellingTaxPercent, params.sellingShippingPerOrder),
+    boxPriceSell: calculatePriceForUnits(params.boxesPurchased, requiredNetRevenue, params.sellingTaxPercent, params.sellingShippingPerOrder),
+    packPrice: calculatePriceForUnits(params.totalPacks, requiredNetRevenue, params.sellingTaxPercent, params.sellingShippingPerOrder)
+  };
+}

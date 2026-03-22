@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { afterEach, beforeEach, test, vi } from "vitest";
 import { appWatch } from "../src/app-core/watch.ts";
 import type { Lot } from "../src/types/app.ts";
+import { makeLot } from "./helpers/fixtures.ts";
 
 const {
   readStorageWithLegacyMock,
@@ -46,34 +47,6 @@ type CsvPicker = {
   onchange: (() => void) | null;
   click: () => void;
 };
-
-function makeLot(overrides: Partial<Lot> = {}): Lot {
-  return {
-    id: 101,
-    name: "Lot A",
-    lotType: "singles",
-    boxPriceCost: 70,
-    boxesPurchased: 16,
-    packsPerBox: 16,
-    spotsPerBox: 5,
-    costInputMode: "perBox",
-    currency: "CAD",
-    sellingCurrency: "CAD",
-    exchangeRate: 1.4,
-    purchaseDate: "2026-02-22",
-    purchaseShippingCost: 2,
-    purchaseTaxPercent: 12,
-    sellingTaxPercent: 15,
-    sellingShippingPerOrder: 0,
-    includeTax: true,
-    spotPrice: 1,
-    boxPriceSell: 2,
-    packPrice: 3,
-    targetProfitPercent: 10,
-    singlesPurchases: [],
-    ...overrides
-  };
-}
 
 function createContext(overrides: Ctx = {}): Ctx {
   const lot = makeLot();

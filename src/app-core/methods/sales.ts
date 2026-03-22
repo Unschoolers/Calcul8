@@ -1,426 +1,41 @@
-import Chart from "chart.js/auto";
-import { calculateBoxPriceCostCad } from "../../domain/calculations.ts";
-import { DEFAULT_VALUES } from "../../constants.ts";
 import type {
   Sale,
   SaleType,
-  SinglesPurchaseEntry,
-  SinglesSaleDraftLine,
   SinglesSaleLine
 } from "../../types/app.ts";
 import type { AppContext, AppMethodState } from "../context.ts";
-import { getTodayDate, toDateOnly } from "./config-shared.ts";
-import { toPositiveIntOrNull as normalizeSinglesPurchaseEntryId } from "../shared/singles-normalizers.ts";
+import { getTodayDate } from "./config-shared.ts";
+import { buildSaleSaveResult } from "./sales-core.ts";
 import {
-  buildSaleSaveResult,
-  createEmptySinglesSaleDraftLine,
-  getDraftSinglesSaleLinesFromSale,
-  getLinkedQuantityMapForSale,
-  getSinglesSoldQuantityForEntry,
-  normalizeDraftSinglesSaleLines
-} from "./sales-core.ts";
-import {
-  buildPortfolioBreakdownChartConfig,
-  buildPortfolioMarginChartConfig,
-  buildPortfolioSalesByUserChartConfig,
-  buildPortfolioHistoryChartConfig,
-  buildSalesPieChartConfig,
-  buildSalesTrendChartConfig
-} from "./sales-chart-config.ts";
-import {
-  cacheAuthoritativeSales,
   canUseAuthoritativeSalesLiveApi,
-  deleteAuthoritativeSale,
+  cacheAuthoritativeSales,
   fetchAuthoritativeSales,
-  SalesLiveApiError,
-  saveAuthoritativeSale
+  SalesLiveApiError
 } from "./sales-live-api.ts";
-
-type SaleMutationState = {
-  isSavingSale: boolean;
-  deletingSaleIds: Set<number>;
-};
-
-type PortfolioSalesHydrationState = {
-  hydratingLotIds: Set<number>;
-};
-
-const saleMutationStateByContext = new WeakMap<object, SaleMutationState>();
-const portfolioSalesHydrationStateByContext = new WeakMap<object, PortfolioSalesHydrationState>();
-
-function getSaleMutationState(context: object): SaleMutationState {
-  let state = saleMutationStateByContext.get(context);
-  if (!state) {
-    state = {
-      isSavingSale: false,
-      deletingSaleIds: new Set<number>()
-    };
-    saleMutationStateByContext.set(context, state);
-  }
-  return state;
-}
-
-function getPortfolioSalesHydrationState(context: object): PortfolioSalesHydrationState {
-  let state = portfolioSalesHydrationStateByContext.get(context);
-  if (!state) {
-    state = {
-      hydratingLotIds: new Set<number>()
-    };
-    portfolioSalesHydrationStateByContext.set(context, state);
-  }
-  return state;
-}
-
-function hasPersistedSalesCache(context: Pick<AppContext, "getSalesStorageKey">, lotId: number): boolean {
-  try {
-    return localStorage.getItem(context.getSalesStorageKey(lotId)) != null;
-  } catch {
-    return false;
-  }
-}
-
-function hydrateMissingPortfolioSales(context: AppContext): void {
-  if (context.currentTab !== "portfolio" || context.isOffline || !canUseAuthoritativeSalesLiveApi()) {
-    return;
-  }
-
-  const currentLotId = context.currentLotId;
-  const selectedLotIdSet = new Set(
-    Array.isArray(context.portfolioSelectedLotIds) && context.portfolioSelectedLotIds.length > 0
-      ? context.portfolioSelectedLotIds
-      : context.lots.map((lot) => lot.id)
-  );
-  const hydrationState = getPortfolioSalesHydrationState(context as object);
-  const missingLotIds = context.lots
-    .filter((lot) => selectedLotIdSet.has(lot.id))
-    .map((lot) => lot.id)
-    .filter((lotId) =>
-      lotId !== currentLotId &&
-      !hydrationState.hydratingLotIds.has(lotId) &&
-      !hasPersistedSalesCache(context, lotId)
-    );
-
-  if (missingLotIds.length === 0) return;
-
-  for (const lotId of missingLotIds) {
-    hydrationState.hydratingLotIds.add(lotId);
-  }
-
-  void (async () => {
-    let shouldRefresh = false;
-    try {
-      await Promise.all(
-        missingLotIds.map(async (lotId) => {
-          try {
-            const sales = await fetchAuthoritativeSales(context, lotId);
-            if (Array.isArray(sales)) {
-              cacheAuthoritativeSales(context, lotId, sales);
-              shouldRefresh = true;
-            }
-          } catch {
-            // Ignore background hydration failures and keep the current portfolio render.
-          } finally {
-            hydrationState.hydratingLotIds.delete(lotId);
-          }
-        })
-      );
-    } finally {
-      for (const lotId of missingLotIds) {
-        hydrationState.hydratingLotIds.delete(lotId);
-      }
-      if (shouldRefresh) {
-        context.salesCacheEpoch += 1;
-        refreshChartsForCurrentTab(context);
-      }
-    }
-  })();
-}
-
-function firstFiniteNonNegative(...values: Array<number | null | undefined>): number | null {
-  for (const value of values) {
-    const next = Number(value);
-    if (Number.isFinite(next) && next >= 0) {
-      return next;
-    }
-  }
-  return null;
-}
-
-function resolveDefaultSaleUnitPrice(context: AppContext, type: SaleType): number {
-  if (type === "box") {
-    return firstFiniteNonNegative(context.liveBoxPriceSell, context.boxPriceSell) ?? 0;
-  }
-  if (type === "rtyh") {
-    return firstFiniteNonNegative(context.liveSpotPrice, context.spotPrice) ?? 0;
-  }
-  return firstFiniteNonNegative(context.livePackPrice, context.packPrice) ?? 0;
-}
-
-function safeDestroyChart(chart: { stop: () => void; destroy: () => void } | null): void {
-  if (!chart) return;
-  try {
-    chart.stop();
-    chart.destroy();
-  } catch {
-    // Ignore teardown errors from stale canvas/context during rapid UI toggles.
-  }
-}
-
-function isSmallDisplay(context: AppContext): boolean {
-  const vuetify = (context as unknown as { $vuetify?: { display?: { smAndDown?: boolean } } }).$vuetify;
-  return Boolean(vuetify?.display?.smAndDown);
-}
-
-function formatCompactChartDate(value: string): string {
-  const dateOnlyMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  const date = dateOnlyMatch
-    ? new Date(Number(dateOnlyMatch[1]), Number(dateOnlyMatch[2]) - 1, Number(dateOnlyMatch[3]))
-    : new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric"
-  }).format(date);
-}
-
-function refreshChartsForCurrentTab(context: AppContext): void {
-  const runRefresh = () => {
-    if (context.currentTab === "sales") {
-      context.initSalesChart();
-      return;
-    }
-    if (context.currentTab === "portfolio") {
-      context.initPortfolioChart();
-    }
-  };
-
-  const scheduleNextTick = (context as Partial<AppContext>).$nextTick;
-  if (typeof scheduleNextTick === "function") {
-    void scheduleNextTick.call(context, runRefresh);
-    return;
-  }
-  runRefresh();
-}
-
-function focusSaleQuantityInput(context: AppContext): void {
-  const scheduleNextTick = (context as Partial<AppContext>).$nextTick;
-  const runFocus = () => {
-    if (!context.$refs) return;
-    const refs = context.$refs as {
-      saleQuantityInput?:
-        | HTMLInputElement
-        | { focus?: () => void; $el?: Element | null }
-        | null;
-    };
-    const quantityRef = refs.saleQuantityInput;
-    if (!quantityRef) return;
-
-    if (typeof quantityRef.focus === "function") {
-      quantityRef.focus();
-      return;
-    }
-
-    if (typeof quantityRef === "object" && quantityRef !== null && "$el" in quantityRef) {
-      const input = quantityRef.$el?.querySelector("input");
-      if (input instanceof HTMLInputElement) {
-        input.focus();
-      }
-    }
-  };
-
-  if (typeof scheduleNextTick === "function") {
-    void scheduleNextTick.call(context, runFocus);
-    return;
-  }
-
-  runFocus();
-}
-
-function resolveCanvasRef(
-  context: AppContext,
-  windowRefName: "salesWindow" | "portfolioWindow",
-  canvasRefName: string
-): HTMLCanvasElement | null {
-  if (!context.$refs) return null;
-  const rootRefs = context.$refs as Record<string, unknown>;
-
-  const direct = rootRefs[canvasRefName];
-  if (direct instanceof HTMLCanvasElement) {
-    return direct;
-  }
-
-  const windowComponent = rootRefs[windowRefName] as { $refs?: Record<string, unknown> } | undefined;
-  const nested = windowComponent?.$refs?.[canvasRefName];
-  if (nested instanceof HTMLCanvasElement) {
-    return nested;
-  }
-
-  return null;
-}
-
-function normalizeWholeQuantity(value: unknown): number | null {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed) || parsed <= 0) return null;
-  const whole = Math.floor(parsed);
-  return whole > 0 ? whole : null;
-}
-
-function normalizeNonNegativePrice(value: unknown): number | null {
-  if (value == null || value === "") return null;
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed) || parsed < 0) return null;
-  return parsed;
-}
-
-function ensureDraftSinglesSaleLines(context: AppContext): SinglesSaleDraftLine[] {
-  if (!Array.isArray(context.newSale.singlesItems) || context.newSale.singlesItems.length === 0) {
-    const seededLine: SinglesSaleDraftLine = {
-      lineId: Date.now() + Math.floor(Math.random() * 1000),
-      singlesPurchaseEntryId: normalizeSinglesPurchaseEntryId(context.newSale.singlesPurchaseEntryId),
-      quantity: normalizeWholeQuantity(context.newSale.quantity) ?? 1,
-      price: normalizeNonNegativePrice(context.newSale.price)
-    };
-    context.newSale.singlesItems = [seededLine];
-    return context.newSale.singlesItems;
-  }
-  return context.newSale.singlesItems;
-}
-
-function calculateSinglesTargetLinePrice(
-  context: AppContext,
-  selectedEntry: SinglesPurchaseEntry,
-  quantity: number
-): number {
-  const saleQuantity = Math.max(1, Math.floor(Number(quantity) || 1));
-  const unitCost = Math.max(0, Number(selectedEntry.cost) || 0);
-  const purchaseCurrency = selectedEntry.currency === "USD" || selectedEntry.currency === "CAD"
-    ? selectedEntry.currency
-    : (context.currency === "USD" ? "USD" : "CAD");
-  const convertedUnitCost = calculateBoxPriceCostCad(
-    unitCost,
-    purchaseCurrency,
-    context.sellingCurrency,
-    context.exchangeRate,
-    DEFAULT_VALUES.EXCHANGE_RATE
-  );
-  const totalCost = convertedUnitCost * saleQuantity;
-
-  const unitMarket = Math.max(0, Number(selectedEntry.marketValue) || 0);
-  const totalMarket = unitMarket * saleQuantity;
-  const targetBase = totalMarket > 0 ? totalMarket : totalCost;
-  const targetProfitPercent = context.hasProAccess
-    ? Math.max(0, Number(context.targetProfitPercent) || 0)
-    : 0;
-  const targetNetRevenue = targetBase * (1 + (targetProfitPercent / 100));
-  const unitPrice = context.calculatePriceForUnits(saleQuantity, targetNetRevenue);
-  return unitPrice * saleQuantity;
-}
-
-function syncSinglesSaleDraftSummary(context: AppContext): void {
-  const lines = ensureDraftSinglesSaleLines(context);
-  const normalizedLines = normalizeDraftSinglesSaleLines(context.newSale);
-  const totalQuantity = normalizedLines.reduce((sum, line) => sum + line.quantity, 0);
-  const totalPrice = normalizedLines.reduce((sum, line) => sum + line.price, 0);
-  const linkedIds = new Set(
-    normalizedLines
-      .map((line) => normalizeSinglesPurchaseEntryId(line.singlesPurchaseEntryId))
-      .filter((id): id is number => id != null)
-  );
-
-  context.newSale.quantity = totalQuantity > 0 ? totalQuantity : null;
-  context.newSale.price = normalizedLines.length > 0 ? totalPrice : null;
-  context.newSale.singlesPurchaseEntryId = linkedIds.size === 1 && lines.length === 1
-    ? (linkedIds.values().next().value as number)
-    : null;
-}
-
-function computeSinglesSaleLineMaxQuantity(context: AppContext, lineIndex: number): number | null {
-  const lines = ensureDraftSinglesSaleLines(context);
-  const line = lines[lineIndex];
-  if (!line) return null;
-
-  const selectedEntryId = normalizeSinglesPurchaseEntryId(line.singlesPurchaseEntryId);
-  if (!selectedEntryId) return null;
-  const selectedEntry = getSinglesPurchaseEntryById(context, selectedEntryId);
-  if (!selectedEntry) return null;
-
-  const totalQuantity = normalizeWholeQuantity(selectedEntry.quantity) ?? 0;
-  const soldQuantity = getSinglesSoldQuantityForEntry({
-    entryId: selectedEntryId,
-    sales: context.sales,
-    singlesSoldCountByPurchaseId: context.singlesSoldCountByPurchaseId
-  });
-  const editingQuantities = getLinkedQuantityMapForSale(context.editingSale);
-  const releasedQuantity = editingQuantities.get(selectedEntryId) || 0;
-  const availableForDraft = Math.max(0, totalQuantity - soldQuantity + releasedQuantity);
-
-  const requestedInOtherLines = lines.reduce((sum, draftLine, index) => {
-    if (index === lineIndex) return sum;
-    const draftEntryId = normalizeSinglesPurchaseEntryId(draftLine.singlesPurchaseEntryId);
-    if (draftEntryId !== selectedEntryId) return sum;
-    return sum + (normalizeWholeQuantity(draftLine.quantity) ?? 0);
-  }, 0);
-
-  return Math.max(0, availableForDraft - requestedInOtherLines);
-}
-
-function applySinglesSaleLineCardSelection(context: AppContext, lineIndex: number, value: number | null): void {
-  const lines = ensureDraftSinglesSaleLines(context);
-  const line = lines[lineIndex];
-  if (!line) return;
-
-  const selectedEntryId = normalizeSinglesPurchaseEntryId(value);
-  line.singlesPurchaseEntryId = selectedEntryId;
-  if (!selectedEntryId) {
-    line.price = null;
-    syncSinglesSaleDraftSummary(context);
-    return;
-  }
-
-  const selectedEntry = getSinglesPurchaseEntryById(context, selectedEntryId);
-  if (!selectedEntry) {
-    syncSinglesSaleDraftSummary(context);
-    return;
-  }
-
-  const currentQuantity = normalizeWholeQuantity(line.quantity) ?? 1;
-  const maxAllowed = computeSinglesSaleLineMaxQuantity(context, lineIndex);
-  const cappedQuantity = maxAllowed == null
-    ? currentQuantity
-    : Math.max(1, Math.min(currentQuantity, maxAllowed));
-  line.quantity = cappedQuantity;
-  line.price = calculateSinglesTargetLinePrice(context, selectedEntry, cappedQuantity);
-  syncSinglesSaleDraftSummary(context);
-}
-
-function applySinglesSaleLineQuantityChange(context: AppContext, lineIndex: number, value?: unknown): void {
-  const lines = ensureDraftSinglesSaleLines(context);
-  const line = lines[lineIndex];
-  if (!line) return;
-  if (value !== undefined) {
-    line.quantity = value as number;
-  }
-
-  const normalizedQuantity = normalizeWholeQuantity(line.quantity) ?? 1;
-  const maxAllowed = computeSinglesSaleLineMaxQuantity(context, lineIndex);
-  const cappedQuantity = maxAllowed == null
-    ? normalizedQuantity
-    : Math.max(1, Math.min(normalizedQuantity, maxAllowed));
-  line.quantity = cappedQuantity;
-  const selectedEntryId = normalizeSinglesPurchaseEntryId(line.singlesPurchaseEntryId);
-  if (selectedEntryId != null) {
-    const selectedEntry = getSinglesPurchaseEntryById(context, selectedEntryId);
-    if (selectedEntry) {
-      line.price = calculateSinglesTargetLinePrice(context, selectedEntry, cappedQuantity);
-    }
-  }
-
-  syncSinglesSaleDraftSummary(context);
-}
-
-function getSinglesPurchaseEntryById(context: AppContext, entryId: number): SinglesPurchaseEntry | null {
-  return context.singlesPurchases.find((entry) => entry.id === entryId) ?? null;
-}
+import {
+  firstFiniteNonNegative,
+  refreshChartsForCurrentTab,
+} from "./sales-ui-helpers.ts";
+import {
+  deleteSaleWithPersistence,
+  persistSaleLocally,
+  saveSaleAuthoritatively,
+  saveSaleWithPersistence
+} from "./sales-persistence.ts";
+import {
+  addSinglesSaleDraftLine,
+  applySinglesSaleLineCardSelection,
+  applySinglesSaleLineQuantityChange,
+  changeNewSaleType,
+  computeSinglesSaleLineMaxQuantity,
+  editSaleDraft,
+  openAddSaleDraft,
+  openConvertedLiveSinglesSaleDraft,
+  removeSinglesSaleDraftLine,
+  resetSaleDraft,
+  syncSinglesSaleDraftSummary
+} from "./sales-draft.ts";
+import { initPortfolioCharts, initSalesChartDisplay } from "./sales-charts.ts";
 
 export const salesMethods: ThisType<AppContext> & Pick<
   AppMethodState,
@@ -466,79 +81,18 @@ export const salesMethods: ThisType<AppContext> & Pick<
   },
 
   openAddSaleModal(saleType: SaleType = "pack"): void {
-    const normalizedType: SaleType = this.currentLotType === "singles" ? "pack" : saleType;
-    const nextPrice = this.currentLotType === "singles"
-      ? null
-      : resolveDefaultSaleUnitPrice(this, normalizedType);
-    this.editingSale = null;
-    this.newSale = {
-      type: normalizedType,
-      quantity: null,
-      packsCount: null,
-      singlesPurchaseEntryId: null,
-      singlesItems: this.currentLotType === "singles" ? [createEmptySinglesSaleDraftLine()] : undefined,
-      price: nextPrice,
-      memo: "",
-      buyerShipping: Number(this.sellingShippingPerOrder) || 0,
-      date: getTodayDate()
-    };
-    if (this.currentLotType === "singles") {
-      syncSinglesSaleDraftSummary(this);
-    }
-    this.showAddSaleModal = true;
-    focusSaleQuantityInput(this);
+    openAddSaleDraft(this, saleType);
   },
 
   openConvertLiveSinglesSaleModal(
     lines: SinglesSaleLine[],
     options?: { buyerShipping?: number; memo?: string; date?: string }
   ): void {
-    if (this.currentLotType !== "singles") return;
-
-    const normalizedLines = Array.isArray(lines)
-      ? lines
-        .map((line, index) => ({
-          lineId: Date.now() + index,
-          singlesPurchaseEntryId: normalizeSinglesPurchaseEntryId(line?.singlesPurchaseEntryId),
-          quantity: normalizeWholeQuantity(line?.quantity) ?? 1,
-          price: normalizeNonNegativePrice(line?.price) ?? 0
-        } satisfies SinglesSaleDraftLine))
-        .filter((line) => line.singlesPurchaseEntryId != null || line.price > 0)
-      : [];
-    if (normalizedLines.length === 0) return;
-
-    const todayDate = getTodayDate();
-    const buyerShipping = Number(options?.buyerShipping);
-    this.editingSale = null;
-    this.newSale = {
-      type: "pack",
-      quantity: null,
-      packsCount: null,
-      singlesPurchaseEntryId: null,
-      singlesItems: normalizedLines,
-      price: null,
-      memo: typeof options?.memo === "string" ? options.memo.trim() : "",
-      buyerShipping: Number.isFinite(buyerShipping) && buyerShipping >= 0
-        ? buyerShipping
-        : (Number(this.sellingShippingPerOrder) || 0),
-      date: toDateOnly(options?.date) ?? todayDate
-    };
-    syncSinglesSaleDraftSummary(this);
-    this.showAddSaleModal = true;
-    focusSaleQuantityInput(this);
+    openConvertedLiveSinglesSaleDraft(this, lines, options);
   },
 
   onNewSaleTypeChange(type: SaleType): void {
-    if (this.currentLotType === "singles") {
-      this.newSale.type = "pack";
-      return;
-    }
-    const nextType: SaleType = type === "box" || type === "rtyh" ? type : "pack";
-    this.newSale.type = nextType;
-    this.newSale.singlesPurchaseEntryId = null;
-    this.newSale.singlesItems = undefined;
-    if (this.editingSale) return;
-    this.newSale.price = resolveDefaultSaleUnitPrice(this, nextType);
+    changeNewSaleType(this, type);
   },
 
   onSinglesSaleCardSelectionChange(value: number | null): void {
@@ -548,22 +102,12 @@ export const salesMethods: ThisType<AppContext> & Pick<
 
   addSinglesSaleLine(): void {
     if (this.currentLotType !== "singles") return;
-    const lines = ensureDraftSinglesSaleLines(this);
-    lines.push(createEmptySinglesSaleDraftLine());
-    syncSinglesSaleDraftSummary(this);
+    addSinglesSaleDraftLine(this);
   },
 
   removeSinglesSaleLine(lineIndex: number): void {
     if (this.currentLotType !== "singles") return;
-    const lines = ensureDraftSinglesSaleLines(this);
-    if (lineIndex < 0 || lineIndex >= lines.length) return;
-    if (lines.length <= 1) {
-      lines[0] = createEmptySinglesSaleDraftLine();
-      syncSinglesSaleDraftSummary(this);
-      return;
-    }
-    lines.splice(lineIndex, 1);
-    syncSinglesSaleDraftSummary(this);
+    removeSinglesSaleDraftLine(this, lineIndex);
   },
 
   getSinglesSaleLineMaxQuantity(lineIndex: number): number | null {
@@ -606,281 +150,38 @@ export const salesMethods: ThisType<AppContext> & Pick<
     const currentLotId = this.currentLotId;
     const editingSaleId = this.editingSale?.id ?? null;
     const baseVersion = this.editingSale?.version ?? 0;
-
-    if (!currentLotId || !canUseAuthoritativeSalesLiveApi()) {
-      if (this.editingSale) {
-        this.sales.splice(saveResult.editingIndex, 1, saveResult.sale);
-        this.sales = [...this.sales];
-      } else {
-        this.sales = [...this.sales, saveResult.sale];
-      }
-
-      this.cancelSale();
-      refreshChartsForCurrentTab(this);
-      return;
-    }
-
-    const pendingSale = saveResult.sale;
-    void (async () => {
-      const mutationState = getSaleMutationState(this as object);
-      if (mutationState.isSavingSale) {
-        return;
-      }
-      mutationState.isSavingSale = true;
-      try {
-        const savedSale = await saveAuthoritativeSale(this, currentLotId, pendingSale, baseVersion);
-        const existingIndex = this.sales.findIndex((sale) =>
-          sale.id === savedSale.id || (editingSaleId != null && sale.id === editingSaleId)
-        );
-        if (existingIndex >= 0) {
-          const nextSales = [...this.sales];
-          nextSales.splice(existingIndex, 1, savedSale);
-          this.sales = nextSales;
-        } else {
-          this.sales = [...this.sales, savedSale];
-        }
-        cacheAuthoritativeSales(this, currentLotId, this.sales);
-        this.cancelSale();
-        refreshChartsForCurrentTab(this);
-      } catch (error) {
-        if (error instanceof SalesLiveApiError && error.status === 409) {
-          const latestSales = await fetchAuthoritativeSales(this, currentLotId).catch(() => null);
-          if (latestSales) {
-            this.sales = latestSales;
-            cacheAuthoritativeSales(this, currentLotId, latestSales);
-          }
-          this.notify("Sales changed in the cloud. Pulled latest sales and canceled your save.", "warning");
-          return;
-        }
-        const message = error instanceof Error && error.message.trim()
-          ? error.message
-          : "Failed to save sale.";
-        this.notify(message, "error");
-      } finally {
-        mutationState.isSavingSale = false;
-      }
-    })();
+    saveSaleWithPersistence(this, {
+      lotId: currentLotId,
+      pendingSale: saveResult.sale,
+      editingSaleId,
+      editingIndex: saveResult.editingIndex,
+      baseVersion
+    }, {
+      canUseAuthoritativeApi: canUseAuthoritativeSalesLiveApi,
+      persistLocally: persistSaleLocally,
+      refreshCharts: refreshChartsForCurrentTab,
+      saveAuthoritatively: saveSaleAuthoritatively
+    });
   },
 
   editSale(sale: Sale): void {
-    this.editingSale = sale;
-    const singlesItems = this.currentLotType === "singles"
-      ? getDraftSinglesSaleLinesFromSale(sale)
-      : undefined;
-    this.newSale = {
-      type: sale.type,
-      quantity: sale.quantity,
-      packsCount: sale.type === "rtyh" ? sale.packsCount : null,
-      singlesPurchaseEntryId: normalizeSinglesPurchaseEntryId(sale.singlesPurchaseEntryId),
-      singlesItems,
-      price: sale.price,
-      memo: sale.memo ?? "",
-      buyerShipping: sale.buyerShipping ?? 0,
-      date: toDateOnly(sale.date) ?? getTodayDate()
-    };
-    if (this.currentLotType === "singles") {
-      syncSinglesSaleDraftSummary(this);
-    }
-    this.showAddSaleModal = true;
-    focusSaleQuantityInput(this);
+    editSaleDraft(this, sale);
   },
 
   deleteSale(id: number): void {
-    this.askConfirmation(
-      {
-        title: "Delete Sale?",
-        text: "This action cannot be undone.",
-        color: "error"
-      },
-      () => {
-        const currentLotId = this.currentLotId;
-        const sale = this.sales.find((entry) => entry.id === id) ?? null;
-        if (!currentLotId || !sale || !canUseAuthoritativeSalesLiveApi()) {
-          this.sales = this.sales.filter((s) => s.id !== id);
-          this.notify("Sale deleted", "info");
-          refreshChartsForCurrentTab(this);
-          return;
-        }
-
-        void (async () => {
-          const mutationState = getSaleMutationState(this as object);
-          if (mutationState.deletingSaleIds.has(id)) {
-            return;
-          }
-          mutationState.deletingSaleIds.add(id);
-          try {
-            await deleteAuthoritativeSale(this, currentLotId, id, sale.version ?? 0);
-            this.sales = this.sales.filter((entry) => entry.id !== id);
-            cacheAuthoritativeSales(this, currentLotId, this.sales);
-            this.notify("Sale deleted", "info");
-            refreshChartsForCurrentTab(this);
-          } catch (error) {
-            if (error instanceof SalesLiveApiError && error.status === 409) {
-              const latestSales = await fetchAuthoritativeSales(this, currentLotId).catch(() => null);
-              if (latestSales) {
-                this.sales = latestSales;
-                cacheAuthoritativeSales(this, currentLotId, latestSales);
-              }
-              this.notify("Sales changed in the cloud. Pulled latest sales instead of deleting.", "warning");
-              return;
-            }
-            const message = error instanceof Error && error.message.trim()
-              ? error.message
-              : "Failed to delete sale.";
-            this.notify(message, "error");
-          } finally {
-            mutationState.deletingSaleIds.delete(id);
-          }
-        })();
-      }
-    );
+    deleteSaleWithPersistence(this, id);
   },
 
   cancelSale(): void {
-    this.showAddSaleModal = false;
-    this.editingSale = null;
-    this.newSale = {
-      type: "pack",
-      quantity: null,
-      packsCount: null,
-      singlesPurchaseEntryId: null,
-      singlesItems: [createEmptySinglesSaleDraftLine()],
-      price: 0,
-      memo: "",
-      buyerShipping: this.sellingShippingPerOrder,
-      date: getTodayDate()
-    };
+    resetSaleDraft(this);
   },
 
   initSalesChart(): void {
-    safeDestroyChart(this.salesChart);
-    this.salesChart = null;
-
-    const chartCanvas = this.chartView === "pie"
-      ? resolveCanvasRef(this, "salesWindow", "salesChartCanvas")
-      : resolveCanvasRef(this, "salesWindow", "salesTrendChart");
-    if (!chartCanvas) return;
-    const existingSalesChart = Chart.getChart(chartCanvas);
-    if (existingSalesChart) {
-      safeDestroyChart(existingSalesChart);
-    }
-
-    const ctx = chartCanvas.getContext("2d");
-    if (!ctx) return;
-    if (this.chartView !== "pie") {
-      const trendConfig = buildSalesTrendChartConfig({
-        sales: this.sales,
-        totalCaseCost: this.totalCaseCost,
-        sellingTaxPercent: this.sellingTaxPercent,
-        formatCurrency: (value, decimals) => this.formatCurrency(value, decimals),
-        formatDate: (value) => this.formatDate(value),
-        formatCompactDate: (value) => formatCompactChartDate(value)
-      });
-      if (!trendConfig) return;
-      this.salesChart = new Chart(ctx, trendConfig);
-      return;
-    }
-
-    const soldPacks = this.soldPacksCount;
-    const totalPacks = this.totalPacks;
-    const unsoldPacks = Math.max(0, totalPacks - soldPacks);
-    const soldNet = this.totalRevenue;
-    const grossUnsold = unsoldPacks * (this.packPrice || 0);
-    const unsoldNet = this.netFromGross(grossUnsold, this.sellingShippingPerOrder, unsoldPacks);
-    this.salesChart = new Chart(ctx, buildSalesPieChartConfig({
-      soldPacks,
-      totalPacks,
-      currentLotType: this.currentLotType,
-      soldNet,
-      unsoldNet,
-      formatCurrency: (value, decimals) => this.formatCurrency(value, decimals),
-      compactMode: isSmallDisplay(this)
-    }));
+    initSalesChartDisplay(this);
   },
 
   initPortfolioChart(): void {
-    safeDestroyChart(this.portfolioChart);
-    this.portfolioChart = null;
-    safeDestroyChart(this.portfolioSalesByUserChart);
-    this.portfolioSalesByUserChart = null;
-
-    if (this.currentTab !== "portfolio") return;
-    hydrateMissingPortfolioSales(this);
-
-    const chartCanvas = resolveCanvasRef(this, "portfolioWindow", "portfolioChartCanvas");
-    if (!chartCanvas) return;
-    const existingPortfolioChart = Chart.getChart(chartCanvas);
-    if (existingPortfolioChart) {
-      safeDestroyChart(existingPortfolioChart);
-    }
-
-    const ctx = chartCanvas.getContext("2d");
-    if (!ctx) return;
-
-    let primaryChartConfig:
-      | ReturnType<typeof buildPortfolioBreakdownChartConfig>
-      | ReturnType<typeof buildPortfolioMarginChartConfig>
-      | ReturnType<typeof buildPortfolioHistoryChartConfig>
-      | null = null;
-
-    if (this.portfolioChartView === "breakdown") {
-      const breakdownConfig = buildPortfolioBreakdownChartConfig({
-        rows: this.allLotPerformance,
-        compactLegend: isSmallDisplay(this),
-        formatCurrency: (value, decimals) => this.formatCurrency(value, decimals)
-      });
-      primaryChartConfig = breakdownConfig;
-    } else if (this.portfolioChartView === "margin") {
-      const marginConfig = buildPortfolioMarginChartConfig({
-        rows: this.allLotPerformance,
-        compactMode: isSmallDisplay(this),
-        formatCurrency: (value, decimals) => this.formatCurrency(value, decimals)
-      });
-      primaryChartConfig = marginConfig;
-    } else {
-      const selectedLotIdSet = new Set(this.portfolioSelectedLotIds);
-      const filteredLots = this.lots.filter((lot) => selectedLotIdSet.has(lot.id));
-      const salesByLotId = new Map(
-        filteredLots.map((lot) => [
-          lot.id,
-          this.currentLotId === lot.id ? this.sales : this.loadSalesForLotId(lot.id)
-        ])
-      );
-      primaryChartConfig = buildPortfolioHistoryChartConfig({
-        portfolioChartView: this.portfolioChartView,
-        filteredLots,
-        allLotPerformance: this.allLotPerformance,
-        salesByLotId,
-        formatCurrency: (value, decimals) => this.formatCurrency(value, decimals),
-        formatDate: (value) => this.formatDate(value),
-        formatCompactDate: (value) => formatCompactChartDate(value),
-        compactMode: isSmallDisplay(this),
-        todayDate: getTodayDate()
-      });
-    }
-
-    if (primaryChartConfig) {
-      this.portfolioChart = new Chart(ctx, primaryChartConfig);
-    }
-
-    const salesByUserCanvas = resolveCanvasRef(this, "portfolioWindow", "portfolioSalesByUserChartCanvas");
-    if (!salesByUserCanvas) return;
-    const existingSalesByUserChart = Chart.getChart(salesByUserCanvas);
-    if (existingSalesByUserChart) {
-      safeDestroyChart(existingSalesByUserChart);
-    }
-
-    const salesByUserCtx = salesByUserCanvas.getContext("2d");
-    if (!salesByUserCtx) return;
-
-    const salesByUserConfig = buildPortfolioSalesByUserChartConfig({
-      chartData: this.portfolioSalesByUserChartData,
-      metric: this.portfolioSalesByUserMetric,
-      compactMode: isSmallDisplay(this),
-      formatCurrency: (value, decimals) => this.formatCurrency(value, decimals)
-    });
-    if (!salesByUserConfig) return;
-    this.portfolioSalesByUserChart = new Chart(salesByUserCtx, salesByUserConfig);
+    initPortfolioCharts(this);
   }
 };
 

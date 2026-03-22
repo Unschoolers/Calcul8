@@ -8,6 +8,7 @@ import {
   calculateSparklineData,
   getGrossRevenueForSale
 } from "../../domain/calculations.ts";
+import { resolveLotBusinessDate } from "../../shared/lot-dates.ts";
 import type {
   Lot,
   LotPerformanceSummary,
@@ -16,7 +17,7 @@ import type {
   PortfolioSalesByUserMetric,
   Sale
 } from "../../types/app.ts";
-import { getTodayDate, inferDateFromLotId, toDateOnly } from "./config-shared.ts";
+import { getTodayDate, toDateOnly } from "./config-shared.ts";
 
 const PORTFOLIO_CHART_COLORS = [
   "#34C759",
@@ -556,9 +557,11 @@ export function buildPortfolioHistoryChartConfig(params: {
     if (!performance) continue;
 
     const lotCreatedDate =
-      toDateOnly(lot.purchaseDate) ??
-      toDateOnly(lot.createdAt) ??
-      inferDateFromLotId(lot.id) ??
+      resolveLotBusinessDate({
+        purchaseDate: lot.purchaseDate,
+        createdAt: lot.createdAt,
+        lotId: lot.id
+      }) ??
       getEarliestSaleDate(sales) ??
       todayDate;
     costByDate.set(lotCreatedDate, (costByDate.get(lotCreatedDate) ?? 0) - performance.totalCost);

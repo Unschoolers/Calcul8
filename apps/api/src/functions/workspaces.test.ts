@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test, vi } from "vitest";
-import type { ApiConfig } from "../types";
+import {
+  createApiConfig,
+  createGoogleUserInfoFetch,
+  createHttpRequest,
+  createInvocationContext
+} from "../test-support/function-test-helpers";
 
 vi.mock("@azure/functions", () => ({
   app: {
@@ -88,73 +93,24 @@ import {
   workspacesMe
 } from "./workspaces";
 
-function createConfig(): ApiConfig {
-  return {
-    apiEnv: "dev",
-    authBypassDev: true,
-    migrationsAdminKey: "",
-    googleClientId: "",
-    googlePlayPackageName: "io.whatfees",
-    googlePlayProProductIds: ["pro_access"],
-    googlePlayServiceAccountEmail: "",
-    googlePlayServiceAccountPrivateKey: "",
-    allowedOrigins: [],
-    cosmosEndpoint: "https://example.documents.azure.com:443/",
-    cosmosKey: "key",
-    cosmosDatabaseId: "whatfees",
-    migrationCosmosDatabaseId: "whatfees",
-    entitlementsContainerId: "entitlements",
-    syncContainerId: "sync_data",
-    migrationRunsContainerId: "migration_runs"
-  };
-}
-
 function createRequest(
   method: string,
   headers: Record<string, string> = {},
   body?: unknown,
   params: Record<string, string> = {}
 ) {
-  const normalized = new Map<string, string>();
-  for (const [key, value] of Object.entries(headers)) {
-    normalized.set(key.toLowerCase(), value);
-  }
-
-  const request: {
-    method: string;
-    params: Record<string, string>;
-    headers: { get(name: string): string | null };
-    json?: () => Promise<unknown>;
-  } = {
-    method,
-    params,
-    headers: {
-      get(name: string) {
-        return normalized.get(name.toLowerCase()) ?? null;
-      }
-    }
-  };
-
-  if (body !== undefined) {
-    request.json = async () => body;
-  }
-
-  return request;
+  return createHttpRequest({ method, headers, body, params });
 }
 
 function createContext() {
-  return {
-    error: vi.fn(),
-    warn: vi.fn(),
-    info: vi.fn()
-  };
+  return createInvocationContext();
 }
 
 const originalFetch = globalThis.fetch;
 
 beforeEach(() => {
   vi.resetAllMocks();
-  getConfigMock.mockReturnValue(createConfig());
+  getConfigMock.mockReturnValue(createApiConfig());
   createWorkspaceWithOwnerMock.mockResolvedValue({
     workspace: {
       workspaceId: "team-42",
@@ -228,17 +184,7 @@ beforeEach(() => {
     status: "used"
   });
 
-  globalThis.fetch = (async (input: unknown) => {
-    const raw = String(input);
-    const tokenMatch = /[?&]id_token=([^&]+)/.exec(raw);
-    const decodedToken = tokenMatch ? decodeURIComponent(tokenMatch[1]) : "unknown-user";
-    return {
-      ok: true,
-      json: async () => ({
-        sub: decodedToken
-      })
-    } as Response;
-  }) as typeof fetch;
+  globalThis.fetch = createGoogleUserInfoFetch();
 });
 
 afterEach(() => {

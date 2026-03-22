@@ -1,5 +1,6 @@
 import type { Sale, WorkspaceRealtimeStatus } from "../../../types/app.ts";
 import type { AppContext } from "../../context.ts";
+import { removeById, upsertById } from "../../shared/collection-updaters.ts";
 import {
   cacheAuthoritativeSales,
   canUseAuthoritativeSalesLiveApi,
@@ -150,22 +151,14 @@ function getRealtimeReconnectDelayMs(state: RealtimeSocketState): number {
 function upsertRealtimeSale(app: RealtimeApp, lotId: number, nextSale: Sale): void {
   if (app.currentLotId !== lotId) return;
 
-  const existingIndex = app.sales.findIndex((sale) => sale.id === nextSale.id);
-  if (existingIndex >= 0) {
-    const nextSales = [...app.sales];
-    nextSales.splice(existingIndex, 1, nextSale);
-    app.sales = nextSales;
-  } else {
-    app.sales = [...app.sales, nextSale];
-  }
-
+  app.sales = upsertById(app.sales, nextSale);
   cacheAuthoritativeSales(app as never, lotId, app.sales);
 }
 
 function deleteRealtimeSale(app: RealtimeApp, lotId: number, saleId: number): void {
   if (app.currentLotId !== lotId) return;
 
-  const nextSales = app.sales.filter((sale) => sale.id !== saleId);
+  const nextSales = removeById(app.sales, saleId);
   if (nextSales.length === app.sales.length) return;
 
   app.sales = nextSales;

@@ -5,11 +5,8 @@ import { createSyncPayload } from "./sync-payload.ts";
 import { buildAuthenticatedHeaders, getStoredGoogleIdToken } from "../../auth/index.ts";
 import {
   getLegacyStorageKeys,
-  getScopedLastLotStorageKey,
-  getScopedLastSyncedPayloadHashKey,
   STORAGE_KEYS
 } from "../../storageKeys.ts";
-import { getActiveStorageScope, sortWorkspacesByName } from "../../workspace-scope.ts";
 import type { WorkspaceMember, WorkspaceSummary } from "../../../types/app.ts";
 import {
   formatRelativeLastSeen,
@@ -17,182 +14,24 @@ import {
   getWorkspaceMemberPresenceStateFromApp,
   loadWorkspaceMembers
 } from "./workspace-members.ts";
+import {
+  applyWorkspaceScope,
+  clearInviteQueryParam,
+  JoinPreviewResponse,
+  LeaveWorkspaceResponse,
+  normalizeWorkspaceSummaries,
+  parseWorkspaceApiError,
+  resetPendingWorkspaceInviteState,
+  type WorkspaceCreateResponse,
+  type WorkspaceJoinLinkResponse,
+  type WorkspaceListResponse
+} from "./workspace-ui-helpers.ts";
 
 const LEGACY_KEYS = getLegacyStorageKeys();
-
-type WorkspaceApiError = {
-  error?: unknown;
-  message?: unknown;
-};
-
-type WorkspaceListResponse = {
-  workspaces?: unknown;
-};
-
-type WorkspaceCreateResponse = {
-  workspace?: {
-    workspaceId?: unknown;
-  };
-};
-
-type WorkspaceJoinLinkResponse = {
-  inviteUrl?: unknown;
-};
-
-type JoinPreviewResponse = {
-  workspaceId?: unknown;
-  workspaceName?: unknown;
-};
-
-type LeaveWorkspaceResponse = {
-  deletedWorkspace?: unknown;
-  newOwnerUserId?: unknown;
-};
 
 function getGoogleIdToken(): string {
   return getStoredGoogleIdToken();
 }
-
-async function parseApiError(response: Response, fallbackMessage: string): Promise<string> {
-  try {
-    const body = (await response.json()) as WorkspaceApiError;
-    const errorMessage = typeof body.error === "string" ? body.error.trim() : "";
-    if (errorMessage) return errorMessage;
-    const message = typeof body.message === "string" ? body.message.trim() : "";
-    if (message) return message;
-  } catch {
-    // Ignore JSON parsing errors and use fallback message.
-  }
-
-  return fallbackMessage;
-}
-
-function normalizeWorkspaceSummary(value: unknown): WorkspaceSummary | null {
-  if (!value || typeof value !== "object") return null;
-  const candidate = value as {
-    workspaceId?: unknown;
-    name?: unknown;
-    role?: unknown;
-    status?: unknown;
-  };
-  const workspaceId = String(candidate.workspaceId ?? "").trim();
-  const name = String(candidate.name ?? "").trim();
-  const role = candidate.role === "owner" ? "owner" : candidate.role === "member" ? "member" : null;
-  const status = candidate.status === "active" ? "active" : null;
-  if (!workspaceId || !name || !role || !status) {
-    return null;
-  }
-
-  return {
-    workspaceId,
-    name,
-    role,
-    status
-  };
-}
-
-function normalizeWorkspaceSummaries(value: unknown): WorkspaceSummary[] {
-  if (!Array.isArray(value)) return [];
-  return sortWorkspacesByName(
-    value
-      .map((entry) => normalizeWorkspaceSummary(entry))
-      .filter((entry): entry is WorkspaceSummary => entry != null)
-  );
-}
-
-function clearInviteQueryParam(): void {
-  try {
-    const url = new URL(window.location.href);
-    if (!url.searchParams.has("invite")) return;
-    url.searchParams.delete("invite");
-    const nextUrl = `${url.pathname}${url.search}${url.hash}`;
-    window.history.replaceState(window.history.state, "", nextUrl || "/");
-  } catch {
-    // Ignore URL API failures.
-  }
-}
-
-function resetPendingWorkspaceInviteState(app: Pick<
-  AppContext,
-  | "pendingWorkspaceInviteToken"
-  | "pendingWorkspaceInviteWorkspaceId"
-  | "pendingWorkspaceInviteWorkspaceName"
-  | "showWorkspaceJoinDialog"
->): void {
-  app.pendingWorkspaceInviteToken = "";
-  app.pendingWorkspaceInviteWorkspaceId = null;
-  app.pendingWorkspaceInviteWorkspaceName = "";
-  app.showWorkspaceJoinDialog = false;
-}
-
-function persistActiveScopeSelection(app: Pick<AppContext, "activeScopeType" | "activeWorkspaceId">): void {
-  try {
-    localStorage.setItem(STORAGE_KEYS.ACTIVE_SCOPE_TYPE, app.activeScopeType);
-    if (app.activeScopeType === "workspace" && app.activeWorkspaceId) {
-      localStorage.setItem(STORAGE_KEYS.ACTIVE_WORKSPACE_ID, app.activeWorkspaceId);
-      return;
-    }
-    localStorage.removeItem(STORAGE_KEYS.ACTIVE_WORKSPACE_ID);
-  } catch {
-    // Ignore storage write errors.
-  }
-}
-
-function loadScopedAppState(app: AppContext): void {
-  const scope = getActiveStorageScope(app);
-  const lastLotStorageKey = getScopedLastLotStorageKey(scope);
-  const storedLastLotId = scope.scopeType === "workspace"
-    ? localStorage.getItem(lastLotStorageKey)
-    : localStorage.getItem(lastLotStorageKey) ?? localStorage.getItem(LEGACY_KEYS.LAST_LOT_ID);
-
-  app.loadLotsFromStorage();
-
-  const nextLotId = Number(storedLastLotId);
-  if (Number.isFinite(nextLotId) && nextLotId > 0 && app.lots.some((lot) => lot.id === nextLotId)) {
-    app.currentLotId = nextLotId;
-    app.loadLot();
-  } else if (app.lots.length > 0) {
-    app.currentLotId = app.lots[0].id;
-    app.loadLot();
-  } else {
-    app.currentLotId = null;
-    app.sales = [];
-    app.singlesPurchases = [];
-    app.clearLiveSinglesSelection();
-    app.currentTab = "config";
-  }
-
-  try {
-    app.lastSyncedPayloadHash = localStorage.getItem(
-      getScopedLastSyncedPayloadHashKey(scope)
-    );
-  } catch {
-    app.lastSyncedPayloadHash = null;
-  }
-}
-
-async function applyWorkspaceScope(
-  app: AppContext,
-  scopeType: "personal" | "workspace",
-  workspaceId: string | null,
-  options: {
-    pullFromCloud?: boolean;
-  } = {}
-): Promise<void> {
-  app.activeScopeType = scopeType;
-  app.activeWorkspaceId = scopeType === "workspace" ? workspaceId : null;
-  if (scopeType !== "workspace") {
-    app.workspaceMembers = [];
-    app.workspacePresenceByUserId = {};
-  }
-  persistActiveScopeSelection(app);
-  loadScopedAppState(app);
-
-  if (options.pullFromCloud !== false && getGoogleIdToken()) {
-    await app.pullCloudSync();
-  }
-}
-
 
 async function fetchWorkspaceJson(
   app: AppContext,
@@ -241,7 +80,7 @@ async function fetchWorkspaceJson(
   }
 
   if (!response.ok) {
-    app.notify(await parseApiError(response, fallbackMessage), "error");
+    app.notify(await parseWorkspaceApiError(response, fallbackMessage), "error");
     return { ok: false, handled: true };
   }
 
@@ -298,7 +137,8 @@ export const uiWorkspaceMethods: ThisType<AppContext> & Pick<
           !this.availableWorkspaces.some((workspace) => workspace.workspaceId === this.activeWorkspaceId))
       ) {
         await applyWorkspaceScope(this, "personal", null, {
-          pullFromCloud: false
+          pullFromCloud: false,
+          getGoogleIdToken
         });
       } else if (this.activeScopeType === "workspace" && this.activeWorkspaceId) {
         void loadWorkspaceMembers(this, {
@@ -313,7 +153,7 @@ export const uiWorkspaceMethods: ThisType<AppContext> & Pick<
   async switchToPersonalWorkspace(): Promise<void> {
     this.isWorkspaceLoading = true;
     try {
-      await applyWorkspaceScope(this, "personal", null);
+      await applyWorkspaceScope(this, "personal", null, { getGoogleIdToken });
     } finally {
       this.isWorkspaceLoading = false;
     }
@@ -333,7 +173,7 @@ export const uiWorkspaceMethods: ThisType<AppContext> & Pick<
 
     this.isWorkspaceLoading = true;
     try {
-      await applyWorkspaceScope(this, "workspace", normalizedWorkspaceId);
+      await applyWorkspaceScope(this, "workspace", normalizedWorkspaceId, { getGoogleIdToken });
       await loadWorkspaceMembers(this, {
         setLoadingState: false
       });
@@ -400,7 +240,7 @@ export const uiWorkspaceMethods: ThisType<AppContext> & Pick<
       const seedResponse = await requestCloudSyncPush(baseUrl, seedPayload, "session-preferred");
       if (!seedResponse.ok && seedResponse.status !== 409) {
         this.notify(
-          await parseApiError(seedResponse, "Workspace created, but initial data copy failed."),
+          await parseWorkspaceApiError(seedResponse, "Workspace created, but initial data copy failed."),
           "warning"
         );
       }
@@ -608,7 +448,7 @@ export const uiWorkspaceMethods: ThisType<AppContext> & Pick<
       if (!result.ok) return;
 
       const leaveBody = result.body as LeaveWorkspaceResponse;
-      await applyWorkspaceScope(this, "personal", null);
+      await applyWorkspaceScope(this, "personal", null, { getGoogleIdToken });
       await this.refreshWorkspaces();
 
       this.showLeaveWorkspaceModal = false;
@@ -659,7 +499,7 @@ export const uiWorkspaceMethods: ThisType<AppContext> & Pick<
     }
 
     if (this.activeScopeType === "workspace" && this.activeWorkspaceId === lostWorkspaceId) {
-      await applyWorkspaceScope(this, "personal", null);
+      await applyWorkspaceScope(this, "personal", null, { getGoogleIdToken });
     }
 
     this.notify("You no longer have access to that workspace. Switched back to Personal.", "warning");

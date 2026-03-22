@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { beforeEach, test, vi } from "vitest";
 import type { Sale } from "../src/types/app.ts";
+import { makeSale } from "./helpers/fixtures.ts";
 
 const {
   chartCtorMock,
@@ -67,18 +68,6 @@ class MockHtmlCanvasElement {
 }
 
 type Ctx = Record<string, unknown>;
-
-function makeSale(overrides: Partial<Sale> = {}): Sale {
-  return {
-    id: 1,
-    type: "pack",
-    quantity: 1,
-    packsCount: 1,
-    price: 10,
-    date: "2026-02-21",
-    ...overrides
-  };
-}
 
 function createContext(overrides: Ctx = {}): Ctx {
   return {

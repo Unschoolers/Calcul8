@@ -1,5 +1,5 @@
-﻿import type { LotType } from "../../types/app.ts";
-import { inferDateFromLotId, toDateOnly } from "../methods/config-shared.ts";
+import type { LotType } from "../../types/app.ts";
+import { resolveLotBusinessDate } from "../../shared/lot-dates.ts";
 
 export type LotOptionItem = {
   title: string;
@@ -47,10 +47,11 @@ function sortLotOptionItemsByType(items: Array<Omit<LotOptionItem, "groupLabel">
 }
 
 export function formatLotOptionSubtitle(lot: LotLike): string {
-  const purchaseDate =
-    toDateOnly(lot.purchaseDate) ??
-    toDateOnly(lot.createdAt) ??
-    inferDateFromLotId(lot.id);
+  const purchaseDate = resolveLotBusinessDate({
+    purchaseDate: lot.purchaseDate,
+    createdAt: lot.createdAt,
+    lotId: lot.id
+  });
   const lotTypeLabel = normalizeLotType(lot.lotType) === "singles" ? "Singles" : "Bulk";
   const singlesCatalogLabel = normalizeLotType(lot.lotType) === "singles"
     ? getSinglesCatalogLabel(lot.singlesCatalogSource)
@@ -112,6 +113,8 @@ export function filterLotOptionItems(items: LotOptionItem[], query: string | nul
     })
   );
 }
+
+
 
 
 

@@ -1,20 +1,14 @@
 import { app, type HttpRequest, type HttpResponseInit, type InvocationContext } from "@azure/functions";
-import { HttpError, resolveUserId } from "../lib/auth";
+import { HttpError } from "../lib/auth";
 import { getEffectiveSyncSnapshot, upsertSyncSnapshotIncremental } from "../lib/cosmos/syncSnapshotRepository";
-import { hasWorkspaceMembership } from "../lib/cosmos/workspaceRepository";
 import { getConfig } from "../lib/config";
-import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../lib/http";
+import { jsonResponse, maybeHandleHttpGuards } from "../lib/http";
 import { publishWorkspaceLotRealtimeEvent } from "../lib/realtime";
 import { parseOptionalWorkspaceId } from "../lib/syncScope";
-import { assertSyncScopeAccess, resolveSyncScope, shouldWarnWorkspaceScopeFallback } from "../lib/syncScopeResolution";
 import { parseSyncLotsShape } from "../lib/syncShape";
 import { assertSafeSyncPush } from "../lib/syncSafety";
-import { logApiTelemetry } from "../lib/telemetry";
+import { handleSyncFunctionError, isRecord, resolveAuthorizedSyncScope } from "./sync-function-helpers";
 import type { SyncPushPayload } from "../types";
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
 
 function hasLotId(value: unknown): boolean {
   if (!isRecord(value)) return false;
@@ -111,28 +105,15 @@ export async function syncPush(
   if (guardResponse) return guardResponse;
 
   try {
-    const userId = await resolveUserId(request, config, {
-      telemetry: {
-        logger: context,
-        route: "sync_push",
-        workspaceScope: "unknown"
-      }
-    });
     const payload = await parseSyncPushPayload(request);
     workspaceId = payload.workspaceId;
-    const syncScope = resolveSyncScope(userId, payload.workspaceId);
-    await assertSyncScopeAccess(
-      syncScope,
-      (actorUserId, workspaceId) => hasWorkspaceMembership(config, actorUserId, workspaceId)
-    );
-
-    if (shouldWarnWorkspaceScopeFallback(syncScope)) {
-      context.warn("workspaceId provided but workspace sync scope is not enabled yet; using personal scope.", {
-        userId,
-        workspaceId: payload.workspaceId,
-        partitionKey: syncScope.partitionKey
-      });
-    }
+    const { userId, syncScope } = await resolveAuthorizedSyncScope({
+      request,
+      context,
+      config,
+      route: "sync_push",
+      workspaceId: payload.workspaceId
+    });
 
     const existingSnapshot = await getEffectiveSyncSnapshot(config, syncScope.partitionKey);
     const previousVersion = existingSnapshot?.version ?? 0;
@@ -190,20 +171,16 @@ export async function syncPush(
       deletedCount: syncResult.deletedCount
     });
   } catch (error) {
-    const status = typeof error === "object" && error && "status" in error ? Number((error as { status?: unknown }).status) : null;
-    if (status === 401 || status === 403 || status === 409) {
-      logApiTelemetry({
-        logger: context,
-        level: "warn",
-        request,
-        config,
-        route: "sync_push",
-        workspaceScope: workspaceId ? "workspace" : "personal",
-        outcome: `http_${status}`
-      });
-    }
-    context.error("POST /sync/push failed", error);
-    return errorResponse(request, config, error, "Failed to save cloud sync data.");
+    return handleSyncFunctionError({
+      request,
+      context,
+      config,
+      route: "sync_push",
+      workspaceId,
+      error,
+      failureMessage: "Failed to save cloud sync data.",
+      logMessage: "POST /sync/push failed"
+    });
   }
 }
 

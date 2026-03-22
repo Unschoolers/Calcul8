@@ -1,26 +1,7 @@
 import { DEFAULT_VALUES } from "../../constants.ts";
 import type { Lot } from "../../types/app.ts";
+import { resolveLotBusinessDate, resolveLotCreatedDate } from "../../shared/lot-dates.ts";
 import { normalizeSinglesCatalogSource } from "./singles-catalog-source.ts";
-
-function toDateOnly(value: unknown): string | null {
-  if (typeof value !== "string") return null;
-  const trimmed = value.trim();
-  if (!trimmed) return null;
-  const match = trimmed.match(/^(\d{4}-\d{2}-\d{2})/);
-  return match?.[1] ?? null;
-}
-
-function inferDateFromLotId(value: unknown): string | null {
-  const raw = Number(value);
-  if (!Number.isFinite(raw) || raw <= 0) return null;
-  const date = new Date(raw);
-  if (Number.isNaN(date.getTime())) return null;
-  const year = date.getUTCFullYear();
-  if (year < 2000 || year > 2100) return null;
-  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
-  const day = String(date.getUTCDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
 
 export function normalizeStoredLot(lot: Lot, todayDate: string): Lot {
   const legacyTax = lot.taxRatePercent;
@@ -49,16 +30,18 @@ export function normalizeStoredLot(lot: Lot, todayDate: string): Lot {
     singlesCatalogSource: lotType === "singles"
       ? normalizeSinglesCatalogSource(lot.singlesCatalogSource)
       : undefined,
-    purchaseDate:
-      toDateOnly(lot.purchaseDate) ??
-      toDateOnly(lot.createdAt) ??
-      inferDateFromLotId(lot.id) ??
-      todayDate,
-    createdAt:
-      toDateOnly(lot.createdAt) ??
-      toDateOnly(lot.purchaseDate) ??
-      inferDateFromLotId(lot.id) ??
-      todayDate,
+    purchaseDate: resolveLotBusinessDate({
+      purchaseDate: lot.purchaseDate,
+      createdAt: lot.createdAt,
+      lotId: lot.id,
+      fallbackDate: todayDate
+    }) ?? todayDate,
+    createdAt: resolveLotCreatedDate({
+      createdAt: lot.createdAt,
+      purchaseDate: lot.purchaseDate,
+      lotId: lot.id,
+      fallbackDate: todayDate
+    }) ?? todayDate,
     purchaseTaxPercent:
       lot.purchaseTaxPercent ??
       legacyTax ??
@@ -69,3 +52,4 @@ export function normalizeStoredLot(lot: Lot, todayDate: string): Lot {
       DEFAULT_VALUES.SELLING_TAX_RATE_PERCENT
   };
 }
+

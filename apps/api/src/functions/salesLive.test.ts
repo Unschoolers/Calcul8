@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test, vi } from "vitest";
-import type { ApiConfig } from "../types";
+import {
+  createApiConfig,
+  createGoogleUserInfoFetch,
+  createHttpRequest,
+  createInvocationContext
+} from "../test-support/function-test-helpers";
 
 vi.mock("@azure/functions", () => ({
   app: {
@@ -54,24 +59,8 @@ import {
   lotSalesUpsert
 } from "./salesLive";
 
-function createConfig(): ApiConfig {
-  return {
-    apiEnv: "dev",
-    authBypassDev: true,
-    migrationsAdminKey: "",
-    googleClientId: "",
-    googlePlayPackageName: "io.whatfees",
-    googlePlayProProductIds: ["pro_access"],
-    googlePlayServiceAccountEmail: "",
-    googlePlayServiceAccountPrivateKey: "",
-    allowedOrigins: [],
-    cosmosEndpoint: "https://example.documents.azure.com:443/",
-    cosmosKey: "key",
-    cosmosDatabaseId: "whatfees",
-    entitlementsContainerId: "entitlements",
-    syncContainerId: "sync_data",
-    migrationRunsContainerId: "migration_runs"
-  };
+function createConfig() {
+  return createApiConfig();
 }
 
 function createRequest(
@@ -80,45 +69,33 @@ function createRequest(
   params: Record<string, string> = {},
   query = ""
 ) {
-  return {
+  return createHttpRequest({
     method,
+    body,
     params,
-    url: `https://api.example/${query ? `?${query}` : ""}`,
+    query,
     headers: {
-      get(name: string) {
-        if (name.toLowerCase() === "authorization") return "Bearer user-a";
-        return null;
-      }
-    },
-    json: body === undefined ? undefined : async () => body
-  };
+      authorization: "Bearer user-a"
+    }
+  });
 }
 
 function createContext() {
-  return {
-    error: vi.fn(),
-    warn: vi.fn(),
-    info: vi.fn()
-  };
+  return createInvocationContext();
 }
 
 const originalFetch = globalThis.fetch;
 
 beforeEach(() => {
   vi.resetAllMocks();
-  getConfigMock.mockReturnValue(createConfig());
+  getConfigMock.mockReturnValue(createApiConfig());
   hasWorkspaceMembershipMock.mockResolvedValue(true);
   listSalesForLotMock.mockResolvedValue([]);
   deleteSaleDocumentMock.mockResolvedValue({
     saleId: "1"
   });
   getLotLivePricingMock.mockResolvedValue(null);
-  globalThis.fetch = (async () => ({
-    ok: true,
-    json: async () => ({
-      sub: "user-a"
-    })
-  })) as typeof fetch;
+  globalThis.fetch = createGoogleUserInfoFetch();
 });
 
 afterEach(() => {

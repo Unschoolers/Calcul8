@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test, vi } from "vitest";
-import type { ApiConfig } from "../types";
+import {
+  createApiConfig,
+  createGoogleUserInfoFetch,
+  createHttpRequest,
+  createInvocationContext
+} from "../test-support/function-test-helpers";
 
 vi.mock("@azure/functions", () => ({
   app: {
@@ -53,51 +58,12 @@ vi.mock("../lib/realtime", () => ({
 
 import { syncPush } from "./syncPush";
 
-function createConfig(): ApiConfig {
-  return {
-    apiEnv: "dev",
-    authBypassDev: true,
-    migrationsAdminKey: "",
-    googleClientId: "",
-    googlePlayPackageName: "io.whatfees",
-    googlePlayProProductIds: ["pro_access"],
-    googlePlayServiceAccountEmail: "",
-    googlePlayServiceAccountPrivateKey: "",
-    allowedOrigins: [],
-    cosmosEndpoint: "https://example.documents.azure.com:443/",
-    cosmosKey: "key",
-    cosmosDatabaseId: "whatfees",
-    entitlementsContainerId: "entitlements",
-    syncContainerId: "sync_data",
-    migrationRunsContainerId: "migration_runs"
-  };
-}
-
 function createRequest(body: unknown, method = "POST", headers: Record<string, string> = {}) {
-  const normalized = new Map<string, string>();
-  for (const [key, value] of Object.entries(headers)) {
-    normalized.set(key.toLowerCase(), value);
-  }
-
-  return {
-    method,
-    headers: {
-      get(name: string) {
-        return normalized.get(name.toLowerCase()) ?? null;
-      }
-    },
-    async json() {
-      return body;
-    }
-  };
+  return createHttpRequest({ body, method, headers });
 }
 
 function createContext() {
-  return {
-    error: vi.fn(),
-    warn: vi.fn(),
-    info: vi.fn()
-  };
+  return createInvocationContext();
 }
 
 const originalFetch = globalThis.fetch;
@@ -106,18 +72,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   hasWorkspaceMembershipMock.mockResolvedValue(true);
   publishWorkspaceLotRealtimeEventMock.mockResolvedValue(true);
-  globalThis.fetch = (async (input: unknown) => {
-    const raw = String(input);
-    const tokenMatch = /[?&]id_token=([^&]+)/.exec(raw);
-    const decodedToken = tokenMatch ? decodeURIComponent(tokenMatch[1]) : "unknown-user";
-    return {
-      ok: true,
-      json: async () => ({
-        sub: decodedToken
-      })
-    } as Response;
-  }) as typeof fetch;
-  getConfigMock.mockReturnValue(createConfig());
+  globalThis.fetch = createGoogleUserInfoFetch();
+  getConfigMock.mockReturnValue(createApiConfig());
 });
 
 afterEach(() => {
@@ -139,16 +95,16 @@ test("syncPush returns unchanged state when upsert reports no changes", async ()
     deletedCount: 0
   });
 
-  const request = createRequest(
-    {
+  const request = createHttpRequest({
+    body: {
       lots: [{ id: 1 }],
       salesByLot: { "1": [] },
       clientVersion: 5
     },
-    "POST",
-    { authorization: "Bearer user-a" }
-  );
-  const context = createContext();
+    method: "POST",
+    headers: { authorization: "Bearer user-a" }
+  });
+  const context = createInvocationContext();
 
   const response = await syncPush(request as never, context as never);
   assert.equal(response.status, 200);
@@ -177,16 +133,16 @@ test("syncPush computes next version and returns changed payload", async () => {
     deletedCount: 1
   });
 
-  const request = createRequest(
-    {
+  const request = createHttpRequest({
+    body: {
       lots: [{ id: 10 }, { id: 11 }],
       salesByLot: { "10": [], "11": [] },
       clientVersion: 9
     },
-    "POST",
-    { authorization: "Bearer user-b" }
-  );
-  const context = createContext();
+    method: "POST",
+    headers: { authorization: "Bearer user-b" }
+  });
+  const context = createInvocationContext();
 
   const response = await syncPush(request as never, context as never);
   assert.equal(response.status, 200);
@@ -206,16 +162,16 @@ test("syncPush rejects stale clientVersion when cloud version is newer", async (
     updatedAt: "2026-02-21T10:00:00.000Z"
   });
 
-  const request = createRequest(
-    {
+  const request = createHttpRequest({
+    body: {
       lots: [{ id: 10 }],
       salesByLot: { "10": [] },
       clientVersion: 6
     },
-    "POST",
-    { authorization: "Bearer user-stale" }
-  );
-  const context = createContext();
+    method: "POST",
+    headers: { authorization: "Bearer user-stale" }
+  });
+  const context = createInvocationContext();
 
   const response = await syncPush(request as never, context as never);
   assert.equal(response.status, 409);
@@ -236,12 +192,12 @@ test("syncPush rejects duplicate lot ids with 400", async () => {
     salesByLot: { "1": [] }
   });
 
-  const request = createRequest(
-    { lots: [{ id: 1 }, { id: 1 }], salesByLot: { "1": [] } },
-    "POST",
-    { authorization: "Bearer user-c" }
-  );
-  const context = createContext();
+  const request = createHttpRequest({
+    body: { lots: [{ id: 1 }, { id: 1 }], salesByLot: { "1": [] } },
+    method: "POST",
+    headers: { authorization: "Bearer user-c" }
+  });
+  const context = createInvocationContext();
 
   const response = await syncPush(request as never, context as never);
   assert.equal(response.status, 400);
@@ -266,17 +222,17 @@ test("syncPush uses workspace partition when workspaceId is provided", async () 
     deletedCount: 0
   });
 
-  const request = createRequest(
-    {
+  const request = createHttpRequest({
+    body: {
       lots: [{ id: 20 }],
       salesByLot: { "20": [] },
       clientVersion: 1,
       workspaceId: "team-42"
     },
-    "POST",
-    { authorization: "Bearer user-ws" }
-  );
-  const context = createContext();
+    method: "POST",
+    headers: { authorization: "Bearer user-ws" }
+  });
+  const context = createInvocationContext();
 
   const response = await syncPush(request as never, context as never);
   assert.equal(response.status, 200);
@@ -302,18 +258,18 @@ test("syncPush publishes lot.config.updated for changed workspace config pushes 
     deletedCount: 0
   });
 
-  const request = createRequest(
-    {
+  const request = createHttpRequest({
+    body: {
       lots: [{ id: 20 }],
       salesByLot: { "20": [] },
       clientVersion: 1,
       workspaceId: "team-42",
       activeLotId: 20
     },
-    "POST",
-    { authorization: "Bearer user-ws" }
-  );
-  const context = createContext();
+    method: "POST",
+    headers: { authorization: "Bearer user-ws" }
+  });
+  const context = createInvocationContext();
 
   const response = await syncPush(request as never, context as never);
   assert.equal(response.status, 200);
@@ -355,7 +311,7 @@ test("syncPush does not publish config invalidation for unchanged or personal pu
       "POST",
       { authorization: "Bearer user-a" }
     ) as never,
-    createContext() as never
+    createInvocationContext() as never
   );
   assert.equal(unchangedResponse.status, 200);
 
@@ -376,7 +332,7 @@ test("syncPush does not publish config invalidation for unchanged or personal pu
       "POST",
       { authorization: "Bearer user-a" }
     ) as never,
-    createContext() as never
+    createInvocationContext() as never
   );
   assert.equal(personalResponse.status, 200);
   assert.equal(publishWorkspaceLotRealtimeEventMock.mock.calls.length, 0);

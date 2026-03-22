@@ -4,6 +4,21 @@ import { inject, type PropType } from "vue";
 import { createWindowContextBridge } from "./contextBridge.ts";
 import { filterLotOptionItems } from "../../app-core/shared/lot-option-items.ts";
 import { PortfolioKpiCard } from "./PortfolioKpiCard.ts";
+import {
+  buildPortfolioSalesByUserLegendItems,
+  getNextPortfolioChartView,
+  getPortfolioChartAriaLabel,
+  getPortfolioChartSubtitle,
+  getPortfolioChartToggleIcon,
+  getPortfolioChartToggleTitle,
+  getPortfolioSalesByUserAriaLabel,
+  getPortfolioSalesByUserBestWeek,
+  getPortfolioSalesByUserLeader,
+  getPortfolioSalesByUserMetricLabel,
+  getPortfolioSalesByUserSubtitle,
+  getPortfolioSalesByUserTotalValue,
+  getPortfolioSalesByUserWeekTotals
+} from "./portfolio-window-helpers.ts";
 
 export const PortfolioWindow = {
   name: "PortfolioWindow",
@@ -287,72 +302,45 @@ export const PortfolioWindow = {
     },
 
     nextPortfolioChartView(this: Record<string, unknown>): "breakdown" | "trend" | "sellthrough" | "margin" {
-      const current = String(this.portfolioChartView || "trend");
-      if (current === "breakdown") return "trend";
-      if (current === "trend") return "sellthrough";
-      if (current === "sellthrough") return "margin";
-      return "breakdown";
+      return getNextPortfolioChartView(this.portfolioChartView);
     },
 
     portfolioChartToggleTitle(this: Record<string, unknown>): string {
       const nextView = this.nextPortfolioChartView as (() => "breakdown" | "trend" | "sellthrough" | "margin") | undefined;
       const next = typeof nextView === "function" ? nextView.call(this) : "trend";
-      if (next === "breakdown") return "Switch to breakdown view";
-      if (next === "trend") return "Switch to trend view";
-      if (next === "margin") return "Switch to sold profit margin view";
-      return "Switch to sell-through view";
+      return getPortfolioChartToggleTitle(next);
     },
 
     portfolioChartToggleIcon(this: Record<string, unknown>): string {
       const nextView = this.nextPortfolioChartView as (() => "breakdown" | "trend" | "sellthrough" | "margin") | undefined;
       const next = typeof nextView === "function" ? nextView.call(this) : "trend";
-      if (next === "breakdown") return "mdi-chart-donut";
-      if (next === "trend") return "mdi-chart-line";
-      if (next === "margin") return "mdi-percent-outline";
-      return "mdi-chart-bar";
+      return getPortfolioChartToggleIcon(next);
     },
 
     portfolioChartSubtitle(this: Record<string, unknown>): string {
-      const current = String(this.portfolioChartView || "trend");
-      if (current === "breakdown") return "Revenue by lot";
-      if (current === "sellthrough") return "Sell-through over time (%)";
-      if (current === "margin") return "Sold profit margin by lot (%)";
-      return "Cumulative portfolio profit trend";
+      return getPortfolioChartSubtitle(this.portfolioChartView);
     },
 
     portfolioChartAriaLabel(this: Record<string, unknown>): string {
-      const current = String(this.portfolioChartView || "trend");
-      if (current === "breakdown") {
-        return "Portfolio revenue breakdown chart by lot.";
-      }
-      if (current === "sellthrough") {
-        return "Portfolio sell-through percentage over time chart.";
-      }
-      if (current === "margin") {
-        return "Portfolio sold profit margin percentage chart by lot.";
-      }
-      return "Portfolio cumulative profit trend chart.";
+      return getPortfolioChartAriaLabel(this.portfolioChartView);
     },
 
     portfolioSalesByUserMetricLabel(this: Record<string, unknown>): string {
-      const metric = String(this.portfolioSalesByUserMetric || "revenue");
-      if (metric === "profit") return "Profit";
-      if (metric === "count") return "Sales count";
-      return "Revenue";
+      return getPortfolioSalesByUserMetricLabel(this.portfolioSalesByUserMetric);
     },
 
     portfolioSalesByUserTotalValue(this: Record<string, unknown>): number {
       const series = Array.isArray((this as { portfolioSalesByUserChartData?: { series?: Array<{ total?: number }> } }).portfolioSalesByUserChartData?.series)
         ? (this as { portfolioSalesByUserChartData: { series: Array<{ total?: number }> } }).portfolioSalesByUserChartData.series
         : [];
-      return series.reduce((sum, row) => sum + (Number(row?.total) || 0), 0);
+      return getPortfolioSalesByUserTotalValue(series);
     },
 
     portfolioSalesByUserLeader(this: Record<string, unknown>) {
       const series = Array.isArray((this as { portfolioSalesByUserChartData?: { series?: Array<{ key: string; label: string; color: string; total: number }> } }).portfolioSalesByUserChartData?.series)
         ? (this as { portfolioSalesByUserChartData: { series: Array<{ key: string; label: string; color: string; total: number }> } }).portfolioSalesByUserChartData.series
         : [];
-      return series[0] ?? null;
+      return getPortfolioSalesByUserLeader(series);
     },
 
     portfolioSalesByUserBestWeek(this: Record<string, unknown>) {
@@ -364,25 +352,7 @@ export const PortfolioWindow = {
       }).portfolioSalesByUserChartData;
       const weeks = Array.isArray(chartData?.weeks) ? chartData!.weeks : [];
       const series = Array.isArray(chartData?.series) ? chartData!.series : [];
-      let bestIndex = -1;
-      let bestTotal = 0;
-
-      for (let weekIndex = 0; weekIndex < weeks.length; weekIndex += 1) {
-        const total = series.reduce((sum, row) => sum + (Number(row?.values?.[weekIndex]) || 0), 0);
-        if (Math.abs(total) > Math.abs(bestTotal)) {
-          bestTotal = total;
-          bestIndex = weekIndex;
-        }
-      }
-
-      if (bestIndex < 0 || !weeks[bestIndex]) {
-        return null;
-      }
-
-      return {
-        label: weeks[bestIndex].label,
-        total: bestTotal
-      };
+      return getPortfolioSalesByUserBestWeek(weeks, series);
     },
 
     portfolioSalesByUserLegendItems(this: Record<string, unknown>) {
@@ -406,23 +376,11 @@ export const PortfolioWindow = {
       const currentUserPhotoUrl = !state.googleAvatarLoadFailed && typeof state.googleProfilePicture === "string"
         ? state.googleProfilePicture.trim()
         : "";
-
-      return series.map((row) => {
-        const member = workspaceMembers.find((candidate) => candidate.userId === row.key);
-        const photoUrl = row.key === "self"
-          ? currentUserPhotoUrl
-          : (member?.photoUrl || "");
-        return {
-          ...row,
-          photoUrl,
-          initials: String(member?.displayName || row.label || "?")
-            .split(/\s+/)
-            .filter(Boolean)
-            .slice(0, 2)
-            .map((part) => part[0]?.toUpperCase() || "")
-            .join("") || "?",
-          presenceState: getPresence && member ? getPresence.call(this, member) : "offline"
-        };
+      return buildPortfolioSalesByUserLegendItems({
+        series,
+        workspaceMembers,
+        getPresence,
+        currentUserPhotoUrl
       });
     },
 
@@ -435,27 +393,15 @@ export const PortfolioWindow = {
       }).portfolioSalesByUserChartData;
       const weeks = Array.isArray(chartData?.weeks) ? chartData!.weeks : [];
       const series = Array.isArray(chartData?.series) ? chartData!.series : [];
-
-      return weeks
-        .map((week, index) => ({
-          label: week.label,
-          total: series.reduce((sum, row) => sum + (Number(row?.values?.[index]) || 0), 0)
-        }))
-        .filter((row) => Math.abs(row.total) > 0.000001);
+      return getPortfolioSalesByUserWeekTotals(weeks, series);
     },
 
     portfolioSalesByUserSubtitle(): string {
-      return "Last 8 weeks by recorded seller";
+      return getPortfolioSalesByUserSubtitle();
     },
 
     portfolioSalesByUserAriaLabel(this: Record<string, unknown>): string {
-      const metric = String(this.portfolioSalesByUserMetric || "revenue");
-      const metricLabel = metric === "profit"
-        ? "profit"
-        : metric === "count"
-          ? "sales count"
-          : "revenue";
-      return `Portfolio sales per user chart for the last 8 weeks by ${metricLabel}.`;
+      return getPortfolioSalesByUserAriaLabel(this.portfolioSalesByUserMetric);
     },
 
     fmtCurrency(value: number | null | undefined, decimals = 2): string {

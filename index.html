@@ -214,41 +214,6 @@
                   </div>
                   <div class="account-menu-header__workspace">
                     <span class="account-menu-header__workspace-name">{{ currentWorkspaceName }}</span>
-                    <span
-                      v-if="activeWorkspaceVisibleMembers.length"
-                      class="workspace-avatar-stack workspace-avatar-stack--compact"
-                      aria-hidden="true"
-                    >
-                      <span
-                        v-for="member in activeWorkspaceVisibleMembers"
-                        :key="member.userId"
-                        class="workspace-avatar-stack__item"
-                      >
-                        <v-avatar size="22" class="workspace-avatar-stack__avatar">
-                          <img
-                            v-if="member.photoUrl"
-                            :src="member.photoUrl"
-                            :alt="member.displayName || 'Workspace member avatar'"
-                            class="account-avatar-img"
-                            referrerpolicy="no-referrer"
-                          />
-                          <span v-else class="workspace-avatar-stack__initial">
-                            {{ (member.displayName || '?').slice(0, 1).toUpperCase() }}
-                          </span>
-                        </v-avatar>
-                        <span
-                          class="workspace-avatar-stack__presence"
-                          :class="`workspace-avatar-stack__presence--${getWorkspaceMemberPresenceState(member)}`"
-                          :title="getWorkspaceMemberPresenceLabel(member)"
-                        ></span>
-                      </span>
-                      <span
-                        v-if="activeWorkspaceOverflowMemberCount > 0"
-                        class="workspace-avatar-stack__overflow"
-                      >
-                        +{{ activeWorkspaceOverflowMemberCount }}
-                      </span>
-                    </span>
                   </div>
                 </div>
               </div>

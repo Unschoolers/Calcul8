@@ -1,25 +1,27 @@
 import { app, type HttpRequest, type HttpResponseInit, type InvocationContext } from "@azure/functions";
 import { HttpError, resolveUserId } from "../lib/auth";
 import {
-  deleteSaleDocument,
   EntityVersionConflictError,
-  getLotLivePricing,
-  listSalesForLot,
-  upsertLotLivePricing,
-  upsertSaleDocument
 } from "../lib/cosmos/salesRepository";
 import { hasWorkspaceMembership } from "../lib/cosmos/workspaceRepository";
 import { getConfig } from "../lib/config";
 import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../lib/http";
 import {
-  buildWorkspacePresenceRealtimeRoom,
-  buildWorkspaceLotRealtimeRoom,
   publishWorkspaceLotRealtimeEvent,
-  signRealtimeSubscribeToken
 } from "../lib/realtime";
 import { parseOptionalWorkspaceId } from "../lib/syncScope";
 import { assertSyncScopeAccess, resolveSyncScope } from "../lib/syncScopeResolution";
 import { logApiTelemetry } from "../lib/telemetry";
+import { readRequestJsonOrThrow, requireRequestBodyRecord, requireRouteParam } from "./request-function-helpers";
+import {
+  deleteLotSaleForActor,
+  getLotLivePricingForActor,
+  listLotSalesForActor,
+  mintLotRealtimeTokenForActor,
+  saveLotLivePricingForActor,
+  toSaleResponse,
+  upsertLotSaleForActor
+} from "./sales-live-services";
 
 function getQueryParam(request: HttpRequest, key: string): string | null {
   if (request.query && typeof request.query.get === "function") {
@@ -32,22 +34,6 @@ function getQueryParam(request: HttpRequest, key: string): string | null {
   } catch {
     return null;
   }
-}
-
-function parseLotIdFromParams(request: HttpRequest): string {
-  const lotId = String(request.params?.lotId ?? "").trim();
-  if (!lotId) {
-    throw new HttpError(400, "Route param 'lotId' is required.");
-  }
-  return lotId;
-}
-
-function parseSaleIdFromParams(request: HttpRequest): string {
-  const saleId = String(request.params?.saleId ?? "").trim();
-  if (!saleId) {
-    throw new HttpError(400, "Route param 'saleId' is required.");
-  }
-  return saleId;
 }
 
 function parseOptionalBaseVersion(value: unknown): number | undefined {
@@ -79,25 +65,8 @@ function getWorkspaceScope(workspaceId?: string): "personal" | "workspace" {
   return workspaceId ? "workspace" : "personal";
 }
 
-function buildRealtimeTokenExpiryEpochSeconds(ttlSeconds = 60): number {
-  return Math.floor(Date.now() / 1000) + ttlSeconds;
-}
-
-async function readJsonBody(request: HttpRequest): Promise<unknown | null> {
-  if (typeof request.json !== "function") return null;
-  try {
-    return await request.json();
-  } catch {
-    throw new HttpError(400, "Invalid JSON body.");
-  }
-}
-
 function sanitizeSalePayload(rawSale: unknown): Record<string, unknown> {
-  if (typeof rawSale !== "object" || rawSale === null || Array.isArray(rawSale)) {
-    throw new HttpError(400, "Field 'sale' is required and must be an object.");
-  }
-
-  const sale = { ...(rawSale as Record<string, unknown>) };
+  const sale = { ...requireRequestBodyRecord(rawSale, "Field 'sale' is required and must be an object.") };
   const saleId = sale.id;
   if (!(typeof saleId === "number" || typeof saleId === "string")) {
     throw new HttpError(400, "Field 'sale.id' is required.");
@@ -117,11 +86,7 @@ function parseSaleUpsertBody(rawBody: unknown): {
   baseVersion?: number;
   mutationId: string;
 } {
-  if (typeof rawBody !== "object" || rawBody === null || Array.isArray(rawBody)) {
-    throw new HttpError(400, "Request body must be an object.");
-  }
-
-  const body = rawBody as {
+  const body = requireRequestBodyRecord(rawBody) as {
     sale?: unknown;
     workspaceId?: unknown;
     baseVersion?: unknown;
@@ -141,11 +106,7 @@ function parseSaleDeleteBody(rawBody: unknown): {
   baseVersion?: number;
   mutationId: string;
 } {
-  if (typeof rawBody !== "object" || rawBody === null || Array.isArray(rawBody)) {
-    throw new HttpError(400, "Request body must be an object.");
-  }
-
-  const body = rawBody as {
+  const body = requireRequestBodyRecord(rawBody) as {
     workspaceId?: unknown;
     baseVersion?: unknown;
     mutationId?: unknown;
@@ -166,11 +127,7 @@ function parseLivePricingBody(rawBody: unknown): {
   liveBoxPriceSell: number;
   liveSpotPrice: number;
 } {
-  if (typeof rawBody !== "object" || rawBody === null || Array.isArray(rawBody)) {
-    throw new HttpError(400, "Request body must be an object.");
-  }
-
-  const body = rawBody as {
+  const body = requireRequestBodyRecord(rawBody) as {
     workspaceId?: unknown;
     baseVersion?: unknown;
     mutationId?: unknown;
@@ -186,31 +143,6 @@ function parseLivePricingBody(rawBody: unknown): {
     livePackPrice: Number(body.livePackPrice) || 0,
     liveBoxPriceSell: Number(body.liveBoxPriceSell) || 0,
     liveSpotPrice: Number(body.liveSpotPrice) || 0
-  };
-}
-
-function toSaleResponse(document: {
-  sale: unknown;
-  version: number;
-  updatedAt: string;
-  updatedBy: string;
-  mutationId: string;
-}): Record<string, unknown> {
-  if (typeof document.sale !== "object" || document.sale === null || Array.isArray(document.sale)) {
-    return {
-      version: document.version,
-      updatedAt: document.updatedAt,
-      updatedBy: document.updatedBy,
-      mutationId: document.mutationId
-    };
-  }
-
-  return {
-    ...(document.sale as Record<string, unknown>),
-    version: document.version,
-    updatedAt: document.updatedAt,
-    updatedBy: document.updatedBy,
-    mutationId: document.mutationId
   };
 }
 
@@ -273,13 +205,9 @@ export async function lotSalesList(
       syncScope,
       (userId, nextWorkspaceId) => hasWorkspaceMembership(config, userId, nextWorkspaceId)
     );
-    const lotId = parseLotIdFromParams(request);
-    const sales = await listSalesForLot(config, syncScope.partitionKey, lotId);
-
-    return jsonResponse(request, config, 200, {
-      lotId,
-      sales: sales.map((document) => toSaleResponse(document))
-    });
+    const lotId = requireRouteParam(request, "lotId");
+    const responseBody = await listLotSalesForActor(config, actorUserId, workspaceId, lotId);
+    return jsonResponse(request, config, 200, responseBody);
   } catch (error) {
     return handleEntityError(request, context, error, "Failed to load lot sales.", "lot_sales_list", workspaceId);
   }
@@ -302,24 +230,15 @@ export async function lotSalesUpsert(
         workspaceScope: "unknown"
       }
     });
-    const body = parseSaleUpsertBody(await readJsonBody(request));
+    const body = parseSaleUpsertBody(await readRequestJsonOrThrow(request));
     workspaceId = body.workspaceId;
-    const syncScope = resolveSyncScope(actorUserId, body.workspaceId);
-    await assertSyncScopeAccess(
-      syncScope,
-      (userId, nextWorkspaceId) => hasWorkspaceMembership(config, userId, nextWorkspaceId)
-    );
-
-    const lotId = parseLotIdFromParams(request);
-    const saleId = String(body.sale.id ?? "").trim();
-    const sale = await upsertSaleDocument(config, {
-      scopeKey: syncScope.partitionKey,
+    const lotId = requireRouteParam(request, "lotId");
+    const result = await upsertLotSaleForActor(config, actorUserId, {
+      workspaceId: body.workspaceId,
       lotId,
-      saleId,
       sale: body.sale,
-      updatedBy: actorUserId,
-      mutationId: body.mutationId,
-      baseVersion: body.baseVersion
+      baseVersion: body.baseVersion,
+      mutationId: body.mutationId
     });
 
     await publishWorkspaceLotRealtimeEvent(config, {
@@ -328,15 +247,15 @@ export async function lotSalesUpsert(
       eventType: "sale.upserted",
       data: {
         lotId,
-        sale: toSaleResponse(sale)
+        sale: result.sale
       },
       logger: context
     });
 
     return jsonResponse(request, config, 200, {
       ok: true,
-      lotId,
-      sale: toSaleResponse(sale)
+      lotId: result.lotId,
+      sale: result.sale
     });
   } catch (error) {
     return handleEntityError(request, context, error, "Failed to save sale.", "lot_sales_upsert", workspaceId);
@@ -360,28 +279,17 @@ export async function lotSalesDelete(
         workspaceScope: "unknown"
       }
     });
-    const body = parseSaleDeleteBody(await readJsonBody(request));
+    const body = parseSaleDeleteBody(await readRequestJsonOrThrow(request));
     workspaceId = body.workspaceId;
-    const syncScope = resolveSyncScope(actorUserId, body.workspaceId);
-    await assertSyncScopeAccess(
-      syncScope,
-      (userId, nextWorkspaceId) => hasWorkspaceMembership(config, userId, nextWorkspaceId)
-    );
-
-    const lotId = parseLotIdFromParams(request);
-    const saleId = parseSaleIdFromParams(request);
-    const deleted = await deleteSaleDocument(config, {
-      scopeKey: syncScope.partitionKey,
+    const lotId = requireRouteParam(request, "lotId");
+    const saleId = requireRouteParam(request, "saleId");
+    const result = await deleteLotSaleForActor(config, actorUserId, {
+      workspaceId: body.workspaceId,
       lotId,
       saleId,
-      updatedBy: actorUserId,
-      mutationId: body.mutationId,
-      baseVersion: body.baseVersion
+      baseVersion: body.baseVersion,
+      mutationId: body.mutationId
     });
-
-    if (!deleted) {
-      throw new HttpError(404, "Sale was not found.");
-    }
 
     await publishWorkspaceLotRealtimeEvent(config, {
       workspaceId: body.workspaceId,
@@ -389,15 +297,15 @@ export async function lotSalesDelete(
       eventType: "sale.deleted",
       data: {
         lotId,
-        saleId
+        saleId: result.saleId
       },
       logger: context
     });
 
     return jsonResponse(request, config, 200, {
       ok: true,
-      lotId,
-      saleId
+      lotId: result.lotId,
+      saleId: result.saleId
     });
   } catch (error) {
     return handleEntityError(request, context, error, "Failed to delete sale.", "lot_sales_delete", workspaceId);
@@ -442,22 +350,9 @@ export async function lotLivePricingGet(
       (userId, nextWorkspaceId) => hasWorkspaceMembership(config, userId, nextWorkspaceId)
     );
 
-    const lotId = parseLotIdFromParams(request);
-    const livePricing = await getLotLivePricing(config, syncScope.partitionKey, lotId);
-    return jsonResponse(request, config, 200, {
-      lotId,
-      livePricing: livePricing
-        ? {
-          livePackPrice: livePricing.livePackPrice,
-          liveBoxPriceSell: livePricing.liveBoxPriceSell,
-          liveSpotPrice: livePricing.liveSpotPrice,
-          version: livePricing.version,
-          updatedAt: livePricing.updatedAt,
-          updatedBy: livePricing.updatedBy,
-          mutationId: livePricing.mutationId
-        }
-        : null
-    });
+    const lotId = requireRouteParam(request, "lotId");
+    const responseBody = await getLotLivePricingForActor(config, actorUserId, workspaceId, lotId);
+    return jsonResponse(request, config, 200, responseBody);
   } catch (error) {
     return handleEntityError(request, context, error, "Failed to load live pricing.", "lot_live_pricing_get", workspaceId);
   }
@@ -480,24 +375,17 @@ export async function lotLivePricingSave(
         workspaceScope: "unknown"
       }
     });
-    const body = parseLivePricingBody(await readJsonBody(request));
+    const body = parseLivePricingBody(await readRequestJsonOrThrow(request));
     workspaceId = body.workspaceId;
-    const syncScope = resolveSyncScope(actorUserId, body.workspaceId);
-    await assertSyncScopeAccess(
-      syncScope,
-      (userId, nextWorkspaceId) => hasWorkspaceMembership(config, userId, nextWorkspaceId)
-    );
-
-    const lotId = parseLotIdFromParams(request);
-    const livePricing = await upsertLotLivePricing(config, {
-      scopeKey: syncScope.partitionKey,
+    const lotId = requireRouteParam(request, "lotId");
+    const result = await saveLotLivePricingForActor(config, actorUserId, {
+      workspaceId: body.workspaceId,
       lotId,
+      baseVersion: body.baseVersion,
+      mutationId: body.mutationId,
       livePackPrice: body.livePackPrice,
       liveBoxPriceSell: body.liveBoxPriceSell,
-      liveSpotPrice: body.liveSpotPrice,
-      updatedBy: actorUserId,
-      mutationId: body.mutationId,
-      baseVersion: body.baseVersion
+      liveSpotPrice: body.liveSpotPrice
     });
 
     await publishWorkspaceLotRealtimeEvent(config, {
@@ -506,31 +394,15 @@ export async function lotLivePricingSave(
       eventType: "livePricing.updated",
       data: {
         lotId,
-        livePricing: {
-          livePackPrice: livePricing.livePackPrice,
-          liveBoxPriceSell: livePricing.liveBoxPriceSell,
-          liveSpotPrice: livePricing.liveSpotPrice,
-          version: livePricing.version,
-          updatedAt: livePricing.updatedAt,
-          updatedBy: livePricing.updatedBy,
-          mutationId: livePricing.mutationId
-        }
+        livePricing: result.livePricing
       },
       logger: context
     });
 
     return jsonResponse(request, config, 200, {
       ok: true,
-      lotId,
-      livePricing: {
-        livePackPrice: livePricing.livePackPrice,
-        liveBoxPriceSell: livePricing.liveBoxPriceSell,
-        liveSpotPrice: livePricing.liveSpotPrice,
-        version: livePricing.version,
-        updatedAt: livePricing.updatedAt,
-        updatedBy: livePricing.updatedBy,
-        mutationId: livePricing.mutationId
-      }
+      lotId: result.lotId,
+      livePricing: result.livePricing
     });
   } catch (error) {
     return handleEntityError(request, context, error, "Failed to save live pricing.", "lot_live_pricing_save", workspaceId);
@@ -547,10 +419,6 @@ export async function lotRealtimeTokenGet(
   if (guardResponse) return guardResponse;
 
   try {
-    if (!workspaceId) {
-      throw new HttpError(400, "Query param 'workspaceId' is required.");
-    }
-
     const actorUserId = await resolveUserId(request, config, {
       telemetry: {
         logger: context,
@@ -558,34 +426,9 @@ export async function lotRealtimeTokenGet(
         workspaceScope: "workspace"
       }
     });
-    const syncScope = resolveSyncScope(actorUserId, workspaceId);
-    await assertSyncScopeAccess(
-      syncScope,
-      (userId, nextWorkspaceId) => hasWorkspaceMembership(config, userId, nextWorkspaceId)
-    );
-
-    const lotId = parseLotIdFromParams(request);
-    const room = buildWorkspaceLotRealtimeRoom(workspaceId, lotId);
-    const presenceRoom = buildWorkspacePresenceRealtimeRoom(workspaceId);
-    const rooms = [room, presenceRoom];
-    const tokenSecret = String(config.realtimeTokenSecret ?? "").trim();
-    if (!tokenSecret && config.apiEnv === "prod") {
-      throw new HttpError(503, "Realtime subscribe signing is not configured.");
-    }
-    const expiresAt = buildRealtimeTokenExpiryEpochSeconds();
-
-    return jsonResponse(request, config, 200, {
-      lotId,
-      workspaceId,
-      room,
-      rooms,
-      token: tokenSecret ? signRealtimeSubscribeToken(tokenSecret, {
-        rooms,
-        userId: actorUserId,
-        exp: expiresAt
-      }) : null,
-      expiresAt
-    });
+    const lotId = requireRouteParam(request, "lotId");
+    const responseBody = await mintLotRealtimeTokenForActor(config, actorUserId, workspaceId, lotId);
+    return jsonResponse(request, config, 200, responseBody);
   } catch (error) {
     return handleEntityError(
       request,

@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test, vi } from "vitest";
-import type { ApiConfig } from "../types";
+import {
+  createApiConfig,
+  createGoogleUserInfoFetch,
+  createHttpRequest,
+  createInvocationContext
+} from "../test-support/function-test-helpers";
 
 vi.mock("@azure/functions", () => ({
   app: {
@@ -28,83 +33,13 @@ vi.mock("../lib/cosmos/workspaceRepository", () => ({
 
 import { syncPull } from "./syncPull";
 
-function createConfig(): ApiConfig {
-  return {
-    apiEnv: "dev",
-    authBypassDev: true,
-    migrationsAdminKey: "",
-    googleClientId: "",
-    googlePlayPackageName: "io.whatfees",
-    googlePlayProProductIds: ["pro_access"],
-    googlePlayServiceAccountEmail: "",
-    googlePlayServiceAccountPrivateKey: "",
-    allowedOrigins: [],
-    cosmosEndpoint: "https://example.documents.azure.com:443/",
-    cosmosKey: "key",
-    cosmosDatabaseId: "whatfees",
-    entitlementsContainerId: "entitlements",
-    syncContainerId: "sync_data",
-    migrationRunsContainerId: "migration_runs"
-  };
-}
-
-function createRequest(
-  method = "POST",
-  headers: Record<string, string> = {},
-  body?: unknown
-) {
-  const normalized = new Map<string, string>();
-  for (const [key, value] of Object.entries(headers)) {
-    normalized.set(key.toLowerCase(), value);
-  }
-
-  const request: {
-    method: string;
-    headers: {
-      get(name: string): string | null;
-    };
-    json?: () => Promise<unknown>;
-  } = {
-    method,
-    headers: {
-      get(name: string) {
-        return normalized.get(name.toLowerCase()) ?? null;
-      }
-    }
-  };
-
-  if (body !== undefined) {
-    request.json = async () => body;
-  }
-
-  return request;
-}
-
-function createContext() {
-  return {
-    error: vi.fn(),
-    warn: vi.fn(),
-    info: vi.fn()
-  };
-}
-
 const originalFetch = globalThis.fetch;
 
 beforeEach(() => {
   vi.clearAllMocks();
   hasWorkspaceMembershipMock.mockResolvedValue(true);
-  globalThis.fetch = (async (input: unknown) => {
-    const raw = String(input);
-    const tokenMatch = /[?&]id_token=([^&]+)/.exec(raw);
-    const decodedToken = tokenMatch ? decodeURIComponent(tokenMatch[1]) : "unknown-user";
-    return {
-      ok: true,
-      json: async () => ({
-        sub: decodedToken
-      })
-    } as Response;
-  }) as typeof fetch;
-  getConfigMock.mockReturnValue(createConfig());
+  globalThis.fetch = createGoogleUserInfoFetch();
+  getConfigMock.mockReturnValue(createApiConfig());
 });
 
 afterEach(() => {
@@ -113,8 +48,8 @@ afterEach(() => {
 
 test("syncPull returns empty snapshot when no cloud state exists", async () => {
   getEffectiveSyncSnapshotMock.mockResolvedValue(null);
-  const request = createRequest("POST", { authorization: "Bearer user-1" });
-  const context = createContext();
+  const request = createHttpRequest({ method: "POST", headers: { authorization: "Bearer user-1" } });
+  const context = createInvocationContext();
 
   const response = await syncPull(request as never, context as never);
   assert.equal(response.status, 200);
@@ -137,8 +72,8 @@ test("syncPull returns existing snapshot payload", async () => {
     version: 8,
     updatedAt: "2026-02-21T00:00:00.000Z"
   });
-  const request = createRequest("POST", { authorization: "Bearer user-2" });
-  const context = createContext();
+  const request = createHttpRequest({ method: "POST", headers: { authorization: "Bearer user-2" } });
+  const context = createInvocationContext();
 
   const response = await syncPull(request as never, context as never);
   assert.equal(response.status, 200);
@@ -147,8 +82,8 @@ test("syncPull returns existing snapshot payload", async () => {
 
 test("syncPull returns server error when snapshot read fails", async () => {
   getEffectiveSyncSnapshotMock.mockRejectedValue(new Error("boom"));
-  const request = createRequest("POST", { authorization: "Bearer user-3" });
-  const context = createContext();
+  const request = createHttpRequest({ method: "POST", headers: { authorization: "Bearer user-3" } });
+  const context = createInvocationContext();
 
   const response = await syncPull(request as never, context as never);
   assert.equal(response.status, 500);
@@ -163,8 +98,12 @@ test("syncPull uses workspace partition when workspaceId is provided", async () 
     version: 8,
     updatedAt: "2026-02-21T00:00:00.000Z"
   });
-  const request = createRequest("POST", { authorization: "Bearer user-ws" }, { workspaceId: "team-42" });
-  const context = createContext();
+  const request = createHttpRequest({
+    method: "POST",
+    headers: { authorization: "Bearer user-ws" },
+    body: { workspaceId: "team-42" }
+  });
+  const context = createInvocationContext();
 
   const response = await syncPull(request as never, context as never);
   assert.equal(response.status, 200);
@@ -176,8 +115,12 @@ test("syncPull uses workspace partition when workspaceId is provided", async () 
 
 test("syncPull rejects workspace sync when user is not a member", async () => {
   hasWorkspaceMembershipMock.mockResolvedValue(false);
-  const request = createRequest("POST", { authorization: "Bearer user-ws" }, { workspaceId: "team-42" });
-  const context = createContext();
+  const request = createHttpRequest({
+    method: "POST",
+    headers: { authorization: "Bearer user-ws" },
+    body: { workspaceId: "team-42" }
+  });
+  const context = createInvocationContext();
 
   const response = await syncPull(request as never, context as never);
   assert.equal(response.status, 403);
