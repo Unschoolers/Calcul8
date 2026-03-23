@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { beforeEach, test, vi } from "vitest";
-import type { ApiConfig } from "../types";
+import { createApiConfig, createHttpRequest, createInvocationContext } from "../test-support/function-test-helpers";
 
 vi.mock("@azure/functions", () => ({
   app: {
@@ -73,47 +73,9 @@ vi.mock("../lib/migrations/runner", () => ({
 
 import { migrationRun } from "./migrationRun";
 
-function createConfig(): ApiConfig {
-  return {
-    apiEnv: "dev",
-    authBypassDev: true,
-    migrationsAdminKey: "secret-key",
-    googleClientId: "",
-    googlePlayPackageName: "io.whatfees",
-    googlePlayProProductIds: ["pro_access"],
-    googlePlayServiceAccountEmail: "",
-    googlePlayServiceAccountPrivateKey: "",
-    allowedOrigins: [],
-    cosmosEndpoint: "https://example.documents.azure.com:443/",
-    cosmosKey: "key",
-    cosmosDatabaseId: "whatfees",
-    entitlementsContainerId: "entitlements",
-    syncContainerId: "sync_data",
-    migrationRunsContainerId: "migration_runs"
-  };
-}
-
-function createRequest(body: unknown) {
-  return {
-    method: "POST",
-    headers: {
-      get() {
-        return null;
-      }
-    },
-    json: vi.fn().mockResolvedValue(body)
-  };
-}
-
-function createContext() {
-  return {
-    error: vi.fn()
-  };
-}
-
 beforeEach(() => {
   vi.clearAllMocks();
-  getConfigMock.mockReturnValue(createConfig());
+  getConfigMock.mockReturnValue(createApiConfig({ migrationsAdminKey: "secret-key" }));
   maybeHandleHttpGuardsMock.mockReturnValue(null);
   resolveMigrationActorMock.mockReturnValue("admin-user");
   getMigrationByIdMock.mockReturnValue({
@@ -128,11 +90,9 @@ beforeEach(() => {
 });
 
 test("migrationRun parses defaults and runs the requested migration", async () => {
-  const request = createRequest({
-    migrationId: " first_migration "
-  });
+  const request = createHttpRequest({ method: "POST", body: { migrationId: " first_migration " } });
 
-  const response = await migrationRun(request as never, createContext() as never);
+  const response = await migrationRun(request as never, createInvocationContext() as never);
 
   assert.equal(response.status, 200);
   assert.equal(assertMigrationAdminAccessMock.mock.calls.length, 1);
@@ -141,7 +101,7 @@ test("migrationRun parses defaults and runs the requested migration", async () =
       id: "first_migration",
       description: "First migration"
     },
-    config: createConfig(),
+    config: createApiConfig({ migrationsAdminKey: "secret-key" }),
     dryRun: true,
     force: false,
     triggeredByUserId: "admin-user",
@@ -162,11 +122,14 @@ test("migrationRun parses defaults and runs the requested migration", async () =
 });
 
 test("migrationRun returns a 400-style error for invalid body fields", async () => {
-  const request = createRequest({
-    migrationId: "first_migration",
-    dryRun: "yes please"
+  const request = createHttpRequest({
+    method: "POST",
+    body: {
+      migrationId: "first_migration",
+      dryRun: "yes please"
+    }
   });
-  const context = createContext();
+  const context = createInvocationContext();
 
   const response = await migrationRun(request as never, context as never);
 

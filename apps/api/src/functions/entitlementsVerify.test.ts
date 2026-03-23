@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { beforeEach, test, vi } from "vitest";
-import type { ApiConfig } from "../types";
+import { createApiConfig, createHttpRequest, createInvocationContext } from "../test-support/function-test-helpers";
 
 vi.mock("@azure/functions", () => ({
   app: {
@@ -47,47 +47,9 @@ vi.mock("./purchaseVerifiers", () => ({
 
 import { entitlementsVerify } from "./entitlementsVerify";
 
-function createConfig(): ApiConfig {
-  return {
-    apiEnv: "dev",
-    authBypassDev: true,
-    migrationsAdminKey: "",
-    googleClientId: "",
-    googlePlayPackageName: "io.whatfees",
-    googlePlayProProductIds: ["pro_access"],
-    googlePlayServiceAccountEmail: "",
-    googlePlayServiceAccountPrivateKey: "",
-    allowedOrigins: [],
-    cosmosEndpoint: "https://example.documents.azure.com:443/",
-    cosmosKey: "key",
-    cosmosDatabaseId: "whatfees",
-    entitlementsContainerId: "entitlements",
-    syncContainerId: "sync_data",
-    migrationRunsContainerId: "migration_runs"
-  };
-}
-
-function createRequest(provider: string) {
-  return {
-    method: "POST",
-    params: { provider },
-    headers: {
-      get() {
-        return null;
-      }
-    }
-  };
-}
-
-function createContext() {
-  return {
-    error: vi.fn()
-  };
-}
-
 beforeEach(() => {
   vi.clearAllMocks();
-  getConfigMock.mockReturnValue(createConfig());
+  getConfigMock.mockReturnValue(createApiConfig());
   maybeHandleHttpGuardsMock.mockReturnValue(null);
   getSupportedPurchaseProvidersMock.mockReturnValue(["play", "stripe"]);
 });
@@ -99,8 +61,8 @@ test("entitlementsVerify delegates to the resolved provider verifier", async () 
   });
   resolvePurchaseVerifierMock.mockReturnValue(verifierMock);
 
-  const request = createRequest("PLAY");
-  const context = createContext();
+  const request = createHttpRequest({ method: "POST", params: { provider: "PLAY" } });
+  const context = createInvocationContext();
   const response = await entitlementsVerify(request as never, context as never);
 
   assert.equal(response.status, 202);
@@ -111,7 +73,10 @@ test("entitlementsVerify delegates to the resolved provider verifier", async () 
 test("entitlementsVerify returns a 501 response for unsupported providers", async () => {
   resolvePurchaseVerifierMock.mockReturnValue(null);
 
-  const response = await entitlementsVerify(createRequest("unknown") as never, createContext() as never);
+  const response = await entitlementsVerify(
+    createHttpRequest({ method: "POST", params: { provider: "unknown" } }) as never,
+    createInvocationContext() as never
+  );
 
   assert.equal(response.status, 501);
   assert.deepEqual(response.jsonBody, {

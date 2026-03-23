@@ -4,6 +4,7 @@ import {
   AUTH_CSRF_TOKEN_KEY,
   GOOGLE_AUTH_PROFILE_CACHE_KEY,
   GOOGLE_AUTH_TOKEN_KEY,
+  buildAuthenticatedHeaders,
   getStoredCsrfToken,
   setStoredCsrfToken,
   handleExpiredAuthState
@@ -274,6 +275,31 @@ export async function fetchWithRetry(
       window.clearTimeout(timeoutId);
     }
   }
+}
+
+export async function fetchAuthenticatedApiResponse(
+  app: Pick<AppContext, "googleAuthEpoch" | "hasProAccess">,
+  path: string,
+  init: RequestInit,
+  options: {
+    expireAuthOn401?: boolean;
+  } = {}
+): Promise<Response> {
+  const baseUrl = resolveApiBaseUrl();
+  if (!baseUrl) {
+    throw new Error("API base URL is not configured.");
+  }
+
+  const response = await fetchWithRetry(`${baseUrl}${path}`, {
+    ...init,
+    headers: buildAuthenticatedHeaders("session-preferred", init.headers as Record<string, string> | undefined)
+  });
+
+  if (response.status === 401 && options.expireAuthOn401 !== false) {
+    handleExpiredAuth(app);
+  }
+
+  return response;
 }
 
 export function handleExpiredAuth(app: AuthSessionApp): void {

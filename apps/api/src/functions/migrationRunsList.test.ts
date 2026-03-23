@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { beforeEach, test, vi } from "vitest";
-import type { ApiConfig } from "../types";
+import { createApiConfig, createHttpRequest, createInvocationContext } from "../test-support/function-test-helpers";
 
 vi.mock("@azure/functions", () => ({
   app: {
@@ -64,48 +64,9 @@ vi.mock("../lib/cosmos/migrationRepository", () => ({
 
 import { migrationRunsList } from "./migrationRunsList";
 
-function createConfig(): ApiConfig {
-  return {
-    apiEnv: "dev",
-    authBypassDev: true,
-    migrationsAdminKey: "secret-key",
-    googleClientId: "",
-    googlePlayPackageName: "io.whatfees",
-    googlePlayProProductIds: ["pro_access"],
-    googlePlayServiceAccountEmail: "",
-    googlePlayServiceAccountPrivateKey: "",
-    allowedOrigins: [],
-    cosmosEndpoint: "https://example.documents.azure.com:443/",
-    cosmosKey: "key",
-    cosmosDatabaseId: "whatfees",
-    entitlementsContainerId: "entitlements",
-    syncContainerId: "sync_data",
-    migrationRunsContainerId: "migration_runs"
-  };
-}
-
-function createRequest(url: string) {
-  return {
-    method: "GET",
-    url,
-    query: new URL(url).searchParams,
-    headers: {
-      get() {
-        return null;
-      }
-    }
-  };
-}
-
-function createContext() {
-  return {
-    error: vi.fn()
-  };
-}
-
 beforeEach(() => {
   vi.clearAllMocks();
-  getConfigMock.mockReturnValue(createConfig());
+  getConfigMock.mockReturnValue(createApiConfig({ migrationsAdminKey: "secret-key" }));
   maybeHandleHttpGuardsMock.mockReturnValue(null);
   resolveMigrationActorMock.mockReturnValue("admin-user");
   listMigrationRunsMock.mockResolvedValue([
@@ -115,9 +76,9 @@ beforeEach(() => {
 });
 
 test("migrationRunsList returns filtered runs with parsed limit", async () => {
-  const request = createRequest("https://example.test/api/migrations/runs?migrationId=first_migration&limit=5");
+  const request = createHttpRequest({ method: "GET", query: "migrationId=first_migration&limit=5" });
 
-  const response = await migrationRunsList(request as never, createContext() as never);
+  const response = await migrationRunsList(request as never, createInvocationContext() as never);
 
   assert.equal(response.status, 200);
   assert.deepEqual(listMigrationRunsMock.mock.calls[0]?.[1], {
@@ -138,8 +99,8 @@ test("migrationRunsList returns filtered runs with parsed limit", async () => {
 });
 
 test("migrationRunsList rejects invalid query limits", async () => {
-  const request = createRequest("https://example.test/api/migrations/runs?limit=banana");
-  const context = createContext();
+  const request = createHttpRequest({ method: "GET", query: "limit=banana" });
+  const context = createInvocationContext();
 
   const response = await migrationRunsList(request as never, context as never);
 

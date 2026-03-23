@@ -21,6 +21,7 @@ const {
   deleteSaleDocumentMock,
   getLotLivePricingMock,
   upsertLotLivePricingMock,
+  publishWorkspaceLotRealtimeEventMock,
   EntityVersionConflictErrorMock
 } = vi.hoisted(() => ({
   getConfigMock: vi.fn(),
@@ -30,6 +31,7 @@ const {
   deleteSaleDocumentMock: vi.fn(),
   getLotLivePricingMock: vi.fn(),
   upsertLotLivePricingMock: vi.fn(),
+  publishWorkspaceLotRealtimeEventMock: vi.fn(),
   EntityVersionConflictErrorMock: class EntityVersionConflictError extends Error {}
 }));
 
@@ -49,6 +51,17 @@ vi.mock("../lib/cosmos/salesRepository", () => ({
 vi.mock("../lib/cosmos/workspaceRepository", () => ({
   hasWorkspaceMembership: hasWorkspaceMembershipMock
 }));
+
+vi.mock("../lib/realtime", async () => {
+  const actual = await vi.importActual<typeof import("../lib/realtime")>("../lib/realtime");
+  return {
+    ...actual,
+    publishWorkspaceLotRealtimeEvent: publishWorkspaceLotRealtimeEventMock,
+    publishWorkspaceLotRealtimeEventBestEffort: vi.fn((config: unknown, args: unknown) => {
+      void publishWorkspaceLotRealtimeEventMock(config, args).catch(() => false);
+    })
+  };
+});
 
 import {
   lotLivePricingGet,
@@ -131,6 +144,7 @@ test("lotSalesList returns normalized sales for the resolved scope", async () =>
 });
 
 test("lotSalesUpsert writes sale docs with baseVersion and mutationId", async () => {
+  publishWorkspaceLotRealtimeEventMock.mockResolvedValue(true);
   upsertSaleDocumentMock.mockResolvedValue({
     sale: {
       id: 11,
@@ -171,7 +185,50 @@ test("lotSalesUpsert writes sale docs with baseVersion and mutationId", async ()
   assert.equal((response.jsonBody as { sale: { version: number } }).sale.version, 3);
 });
 
+test("lotSalesUpsert returns before realtime publish settles", async () => {
+  let resolvePublish: ((value: boolean) => void) | null = null;
+  publishWorkspaceLotRealtimeEventMock.mockReturnValue(new Promise<boolean>((resolve) => {
+    resolvePublish = resolve;
+  }));
+  upsertSaleDocumentMock.mockResolvedValue({
+    sale: {
+      id: 11,
+      type: "pack",
+      quantity: 1,
+      packsCount: 1,
+      price: 10,
+      date: "2026-03-17"
+    },
+    version: 3,
+    updatedAt: "2026-03-17T00:00:00.000Z",
+    updatedBy: "user-a",
+    mutationId: "sale:save"
+  });
+
+  const response = await lotSalesUpsert(
+    createRequest("POST", {
+      sale: {
+        id: 11,
+        type: "pack",
+        quantity: 1,
+        packsCount: 1,
+        price: 10,
+        date: "2026-03-17"
+      },
+      workspaceId: "team-42",
+      baseVersion: 2,
+      mutationId: "sale:save"
+    }, { lotId: "10" }) as never,
+    createContext() as never
+  );
+
+  assert.equal(response.status, 200);
+  assert.equal(publishWorkspaceLotRealtimeEventMock.mock.calls.length, 1);
+  resolvePublish?.(true);
+});
+
 test("lotSalesDelete removes a sale for the resolved scope", async () => {
+  publishWorkspaceLotRealtimeEventMock.mockResolvedValue(true);
   const response = await lotSalesDelete(
     createRequest("DELETE", {
       workspaceId: "team-42",
@@ -197,6 +254,7 @@ test("lotLivePricingGet returns null when no live pricing doc exists", async () 
 });
 
 test("lotLivePricingSave persists the live pricing entity", async () => {
+  publishWorkspaceLotRealtimeEventMock.mockResolvedValue(true);
   upsertLotLivePricingMock.mockResolvedValue({
     livePackPrice: 9,
     liveBoxPriceSell: 99,

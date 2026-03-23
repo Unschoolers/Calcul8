@@ -1,31 +1,13 @@
 import type { AppWatchObject } from "./context.ts";
 import { getScopedLastLotStorageKey, STORAGE_KEYS } from "./storageKeys.ts";
 import { refreshWorkspaceRealtime, stopWorkspaceRealtime } from "./methods/ui/workspace-realtime.ts";
+import { resetWhatnotSignedOutState, resetWhatnotTransientUiState } from "./methods/ui/whatnot.ts";
 import { getActiveStorageScope } from "./workspace-scope.ts";
 
 export const appWatch: AppWatchObject = {
   activeScopeType() {
     refreshWorkspaceRealtime(this);
-    this.showWhatnotCsvImportDialog = false;
-    this.whatnotCsvRawInput = "";
-    this.whatnotCsvSellerAccountId = "";
-    this.whatnotCsvHeaders = [];
-    this.whatnotCsvRows = [];
-    this.whatnotCsvMapExternalSaleId = null;
-    this.whatnotCsvMapOrderId = null;
-    this.whatnotCsvMapOrderItemId = null;
-    this.whatnotCsvMapSellerAccountId = null;
-    this.whatnotCsvMapTitle = null;
-    this.whatnotCsvMapSku = null;
-    this.whatnotCsvMapProductCategory = null;
-    this.whatnotCsvMapQuantity = null;
-    this.whatnotCsvMapPrice = null;
-    this.whatnotCsvMapBuyerShipping = null;
-    this.whatnotCsvMapDate = null;
-    this.whatnotCsvMapOrderStatus = null;
-    this.showWhatnotReviewDialog = false;
-    this.whatnotReviewBatchId = null;
-    this.whatnotReviewRows = [];
+    resetWhatnotTransientUiState(this);
     if (this.isGoogleSignedIn) {
       void this.refreshWhatnotStatus();
     }
@@ -33,26 +15,7 @@ export const appWatch: AppWatchObject = {
 
   activeWorkspaceId() {
     refreshWorkspaceRealtime(this);
-    this.showWhatnotCsvImportDialog = false;
-    this.whatnotCsvRawInput = "";
-    this.whatnotCsvSellerAccountId = "";
-    this.whatnotCsvHeaders = [];
-    this.whatnotCsvRows = [];
-    this.whatnotCsvMapExternalSaleId = null;
-    this.whatnotCsvMapOrderId = null;
-    this.whatnotCsvMapOrderItemId = null;
-    this.whatnotCsvMapSellerAccountId = null;
-    this.whatnotCsvMapTitle = null;
-    this.whatnotCsvMapSku = null;
-    this.whatnotCsvMapProductCategory = null;
-    this.whatnotCsvMapQuantity = null;
-    this.whatnotCsvMapPrice = null;
-    this.whatnotCsvMapBuyerShipping = null;
-    this.whatnotCsvMapDate = null;
-    this.whatnotCsvMapOrderStatus = null;
-    this.showWhatnotReviewDialog = false;
-    this.whatnotReviewBatchId = null;
-    this.whatnotReviewRows = [];
+    resetWhatnotTransientUiState(this);
     if (this.isGoogleSignedIn) {
       void this.refreshWhatnotStatus();
     }
@@ -135,31 +98,7 @@ export const appWatch: AppWatchObject = {
       this.workspaceMembers = [];
       this.workspacePresenceByUserId = {};
       this.showWorkspaceMembersModal = false;
-      this.whatnotConnectionStatus = "unconfigured";
-      this.whatnotSyncStatus = "idle";
-      this.whatnotConnectionSummary = null;
-      this.showWhatnotCsvImportDialog = false;
-      this.whatnotCsvRawInput = "";
-      this.whatnotCsvSellerAccountId = "";
-      this.whatnotCsvHeaders = [];
-      this.whatnotCsvRows = [];
-      this.whatnotCsvMapExternalSaleId = null;
-      this.whatnotCsvMapOrderId = null;
-      this.whatnotCsvMapOrderItemId = null;
-      this.whatnotCsvMapSellerAccountId = null;
-      this.whatnotCsvMapTitle = null;
-      this.whatnotCsvMapSku = null;
-      this.whatnotCsvMapProductCategory = null;
-      this.whatnotCsvMapQuantity = null;
-      this.whatnotCsvMapPrice = null;
-      this.whatnotCsvMapBuyerShipping = null;
-      this.whatnotCsvMapDate = null;
-      this.whatnotCsvMapOrderStatus = null;
-      this.showWhatnotReviewDialog = false;
-      this.whatnotReviewBatchId = null;
-      this.whatnotReviewRows = [];
-      this.whatnotCallbackStatus = null;
-      this.whatnotCallbackMessage = "";
+      resetWhatnotSignedOutState(this);
       return;
     }
 

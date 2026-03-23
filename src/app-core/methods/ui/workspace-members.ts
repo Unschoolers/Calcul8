@@ -1,7 +1,7 @@
 import type { AppContext } from "../../context.ts";
 import type { WorkspaceMember } from "../../../types/app.ts";
-import { buildAuthenticatedHeaders, getStoredGoogleIdToken } from "../../auth/index.ts";
-import { fetchWithRetry, handleExpiredAuth, resolveApiBaseUrl } from "./shared.ts";
+import { getStoredGoogleIdToken } from "../../auth/index.ts";
+import { fetchAuthenticatedApiResponse, resolveApiBaseUrl } from "./shared.ts";
 
 type WorkspaceApiError = {
   error?: unknown;
@@ -96,6 +96,7 @@ export async function loadWorkspaceMembers(
   options: {
     resetBeforeLoad?: boolean;
     setLoadingState?: boolean;
+    expireAuthOn401?: boolean;
   } = {}
 ): Promise<boolean> {
   const activeWorkspaceId = String(app.activeWorkspaceId ?? "").trim();
@@ -124,13 +125,13 @@ export async function loadWorkspaceMembers(
       return false;
     }
 
-    const response = await fetchWithRetry(`${baseUrl}/workspaces/${encodeURIComponent(activeWorkspaceId)}/members`, {
-      method: "GET",
-      headers: buildAuthenticatedHeaders("session-preferred")
+    const response = await fetchAuthenticatedApiResponse(app as AppContext, `/workspaces/${encodeURIComponent(activeWorkspaceId)}/members`, {
+      method: "GET"
+    }, {
+      expireAuthOn401: options.expireAuthOn401
     });
 
     if (response.status === 401) {
-      handleExpiredAuth(app as AppContext);
       app.notify("Your sign-in expired. Please sign in again.", "warning");
       return false;
     }

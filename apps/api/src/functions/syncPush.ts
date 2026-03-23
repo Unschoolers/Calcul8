@@ -3,7 +3,7 @@ import { HttpError } from "../lib/auth";
 import { getEffectiveSyncSnapshot, upsertSyncSnapshotIncremental } from "../lib/cosmos/syncSnapshotRepository";
 import { getConfig } from "../lib/config";
 import { jsonResponse, maybeHandleHttpGuards } from "../lib/http";
-import { publishWorkspaceLotRealtimeEvent } from "../lib/realtime";
+import { publishWorkspaceLotRealtimeEventBestEffort } from "../lib/realtime";
 import { parseOptionalWorkspaceId } from "../lib/syncScope";
 import { parseSyncLotsShape } from "../lib/syncShape";
 import { assertSafeSyncPush } from "../lib/syncSafety";
@@ -148,7 +148,7 @@ export async function syncPush(
     }
 
     if (workspaceId && payload.activeLotId != null) {
-      await publishWorkspaceLotRealtimeEvent(config, {
+      publishWorkspaceLotRealtimeEventBestEffort(config, {
         workspaceId,
         lotId: String(payload.activeLotId),
         eventType: "lot.config.updated",

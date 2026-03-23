@@ -1,8 +1,8 @@
 import type { AppContext, AppMethodState } from "../../context.ts";
 import type { WhatnotConnectionSummary, WhatnotCsvPreparedRowInput } from "../../../types/app.ts";
 import { normalizeWhatnotReviewRows } from "../../shared/whatnot-csv.ts";
-import { buildAuthenticatedHeaders } from "../../auth/index.ts";
-import { fetchWithRetry, handleExpiredAuth, resolveApiBaseUrl } from "./shared.ts";
+import { fetchAuthenticatedApiResponse, handleExpiredAuth, resolveApiBaseUrl } from "./shared.ts";
+
 type WhatnotApp = Pick<
   AppContext,
   | "activeScopeType"
@@ -39,23 +39,52 @@ type WhatnotApp = Pick<
   | "pullCloudSync"
 >;
 
+const EMPTY_WHATNOT_CSV_IMPORT_STATE = {
+  whatnotCsvRawInput: "",
+  whatnotCsvSellerAccountId: "",
+  whatnotCsvHeaders: [],
+  whatnotCsvRows: [],
+  whatnotCsvMapExternalSaleId: null,
+  whatnotCsvMapOrderId: null,
+  whatnotCsvMapOrderItemId: null,
+  whatnotCsvMapSellerAccountId: null,
+  whatnotCsvMapTitle: null,
+  whatnotCsvMapSku: null,
+  whatnotCsvMapProductCategory: null,
+  whatnotCsvMapQuantity: null,
+  whatnotCsvMapPrice: null,
+  whatnotCsvMapBuyerShipping: null,
+  whatnotCsvMapDate: null,
+  whatnotCsvMapOrderStatus: null
+};
+
+const EMPTY_WHATNOT_REVIEW_STATE = {
+  whatnotReviewBatchId: null,
+  whatnotReviewRows: []
+};
+
 function resetWhatnotCsvImportState(app: WhatnotApp): void {
-  app.whatnotCsvRawInput = "";
-  app.whatnotCsvSellerAccountId = "";
-  app.whatnotCsvHeaders = [];
-  app.whatnotCsvRows = [];
-  app.whatnotCsvMapExternalSaleId = null;
-  app.whatnotCsvMapOrderId = null;
-  app.whatnotCsvMapOrderItemId = null;
-  app.whatnotCsvMapSellerAccountId = null;
-  app.whatnotCsvMapTitle = null;
-  app.whatnotCsvMapSku = null;
-  app.whatnotCsvMapProductCategory = null;
-  app.whatnotCsvMapQuantity = null;
-  app.whatnotCsvMapPrice = null;
-  app.whatnotCsvMapBuyerShipping = null;
-  app.whatnotCsvMapDate = null;
-  app.whatnotCsvMapOrderStatus = null;
+  Object.assign(app, EMPTY_WHATNOT_CSV_IMPORT_STATE);
+}
+
+function resetWhatnotReviewState(app: WhatnotApp): void {
+  Object.assign(app, EMPTY_WHATNOT_REVIEW_STATE);
+}
+
+export function resetWhatnotTransientUiState(app: WhatnotApp): void {
+  app.showWhatnotCsvImportDialog = false;
+  app.showWhatnotReviewDialog = false;
+  resetWhatnotCsvImportState(app);
+  resetWhatnotReviewState(app);
+}
+
+export function resetWhatnotSignedOutState(app: WhatnotApp): void {
+  app.whatnotConnectionStatus = "unconfigured";
+  app.whatnotSyncStatus = "idle";
+  app.whatnotConnectionSummary = null;
+  app.whatnotCallbackStatus = null;
+  app.whatnotCallbackMessage = "";
+  resetWhatnotTransientUiState(app);
 }
 
 function canManageWhatnot(app: Pick<AppContext, "activeScopeType" | "isCurrentWorkspaceOwner">): boolean {
@@ -75,7 +104,10 @@ async function fetchWhatnotJson(
   app: WhatnotApp,
   path: string,
   init: RequestInit,
-  fallbackMessage: string
+  fallbackMessage: string,
+  options: {
+    expireAuthOn401?: boolean;
+  } = {}
 ): Promise<{ ok: true; body: unknown } | { ok: false }> {
   const baseUrl = resolveApiBaseUrl();
   if (!baseUrl) {
@@ -83,13 +115,12 @@ async function fetchWhatnotJson(
     return { ok: false };
   }
 
-  const response = await fetchWithRetry(`${baseUrl}${path}`, {
-    ...init,
-    headers: buildAuthenticatedHeaders("session-preferred", init.headers as Record<string, string> | undefined)
-  });
+  const response = await fetchAuthenticatedApiResponse(app, path, init, options);
 
   if (response.status === 401) {
-    handleExpiredAuth(app);
+    if (options.expireAuthOn401 !== false) {
+      handleExpiredAuth(app);
+    }
     app.notify("Your sign-in expired. Please sign in again.", "warning");
     return { ok: false };
   }
@@ -160,7 +191,10 @@ export const uiWhatnotMethods: ThisType<AppContext> & Pick<
         },
         body: JSON.stringify(buildWhatnotScopeBody(this))
       },
-      "Failed to load Whatnot status."
+      "Failed to load Whatnot status.",
+      {
+        expireAuthOn401: false
+      }
     );
     if (!result.ok) {
       this.whatnotConnectionSummary = null;
@@ -394,8 +428,7 @@ export const uiWhatnotMethods: ThisType<AppContext> & Pick<
     const skippedCount = Math.max(0, Math.floor(Number(body.skippedCount) || 0));
 
     this.showWhatnotReviewDialog = false;
-    this.whatnotReviewBatchId = null;
-    this.whatnotReviewRows = [];
+    resetWhatnotReviewState(this);
     resetWhatnotCsvImportState(this);
     await this.refreshWhatnotStatus();
     await this.pullCloudSync();

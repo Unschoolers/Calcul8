@@ -10,21 +10,9 @@ import type {
   WorkspaceMembershipDocument,
   WorkspaceRole
 } from "../types";
-import { readRequestJsonOrNull, requireRequestBodyRecord, requireRouteParam } from "./request-function-helpers";
+import { requireRequestBodyRecord } from "./request-function-helpers";
 
 const JOIN_LINK_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-
-export function parseWorkspaceIdFromParams(request: HttpRequest): string {
-  return requireRouteParam(request, "workspaceId");
-}
-
-export function parseMemberUserIdFromParams(request: HttpRequest): string {
-  return requireRouteParam(request, "memberUserId");
-}
-
-export function parseInviteIdFromParams(request: HttpRequest): string {
-  return requireRouteParam(request, "inviteId");
-}
 
 export function isWorkspaceDeleted(workspace: WorkspaceDocument | null | undefined): boolean {
   return workspace?.status === "deleted";
@@ -61,10 +49,6 @@ function normalizeWorkspaceRole(rawRole: unknown): WorkspaceRole {
     return role;
   }
   throw new HttpError(400, "Field 'role' must be one of: owner, member.");
-}
-
-export async function readRequestJson(request: HttpRequest): Promise<unknown | null> {
-  return readRequestJsonOrNull(request);
 }
 
 export function parseCreateWorkspaceBody(raw: unknown): { name: string } {

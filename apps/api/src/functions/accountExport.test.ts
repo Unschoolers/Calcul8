@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { beforeEach, test, vi } from "vitest";
-import type { ApiConfig } from "../types";
+import { createApiConfig, createHttpRequest, createInvocationContext } from "../test-support/function-test-helpers";
 
 vi.mock("@azure/functions", () => ({
   app: {
@@ -59,46 +59,9 @@ vi.mock("../lib/http", () => ({
 
 import { accountExport } from "./accountExport";
 
-function createConfig(): ApiConfig {
-  return {
-    apiEnv: "dev",
-    authBypassDev: true,
-    migrationsAdminKey: "",
-    googleClientId: "",
-    googlePlayPackageName: "io.whatfees",
-    googlePlayProProductIds: ["pro_access"],
-    googlePlayServiceAccountEmail: "",
-    googlePlayServiceAccountPrivateKey: "",
-    allowedOrigins: [],
-    cosmosEndpoint: "https://example.documents.azure.com:443/",
-    cosmosKey: "key",
-    cosmosDatabaseId: "whatfees",
-    entitlementsContainerId: "entitlements",
-    syncContainerId: "sync_data",
-    migrationRunsContainerId: "migration_runs"
-  };
-}
-
-function createRequest() {
-  return {
-    method: "POST",
-    headers: {
-      get() {
-        return null;
-      }
-    }
-  };
-}
-
-function createContext() {
-  return {
-    error: vi.fn()
-  };
-}
-
 beforeEach(() => {
   vi.clearAllMocks();
-  getConfigMock.mockReturnValue(createConfig());
+  getConfigMock.mockReturnValue(createApiConfig());
   maybeHandleHttpGuardsMock.mockReturnValue(null);
   resolveUserIdMock.mockResolvedValue("user-1");
   getEntitlementMock.mockResolvedValue({ userId: "user-1", hasProAccess: true });
@@ -107,7 +70,10 @@ beforeEach(() => {
 });
 
 test("accountExport returns entitlement, purchases, and sync snapshot", async () => {
-  const response = await accountExport(createRequest() as never, createContext() as never);
+  const response = await accountExport(
+    createHttpRequest({ method: "POST" }) as never,
+    createInvocationContext() as never
+  );
 
   assert.equal(response.status, 200);
   assert.equal(getEntitlementMock.mock.calls[0]?.[1], "user-1");
@@ -118,10 +84,10 @@ test("accountExport returns entitlement, purchases, and sync snapshot", async ()
 });
 
 test("accountExport returns an error response when export loading fails", async () => {
-  const context = createContext();
+  const context = createInvocationContext();
   getEntitlementMock.mockRejectedValue(new Error("boom"));
 
-  const response = await accountExport(createRequest() as never, context as never);
+  const response = await accountExport(createHttpRequest({ method: "POST" }) as never, context as never);
 
   assert.equal(response.status, 500);
   assert.equal(context.error.mock.calls.length, 1);

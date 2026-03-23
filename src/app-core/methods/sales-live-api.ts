@@ -1,7 +1,7 @@
 import type { Sale } from "../../types/app.ts";
 import type { AppContext } from "../context.ts";
-import { buildAuthenticatedHeaders, getStoredGoogleIdToken } from "../auth/index.ts";
-import { fetchWithRetry, handleExpiredAuth, resolveApiBaseUrl } from "./ui/shared.ts";
+import { getStoredGoogleIdToken } from "../auth/index.ts";
+import { fetchAuthenticatedApiResponse, resolveApiBaseUrl } from "./ui/shared.ts";
 
 export class SalesLiveApiError extends Error {
   status: number;
@@ -169,20 +169,19 @@ async function requestJson(
   app: Pick<AppContext, "googleAuthEpoch" | "hasProAccess" | "notify">,
   path: string,
   init: RequestInit,
-  fallbackMessage: string
+  fallbackMessage: string,
+  options: {
+    expireAuthOn401?: boolean;
+  } = {}
 ): Promise<unknown> {
   const baseUrl = resolveApiBaseUrl();
   if (!baseUrl) {
     throw new SalesLiveApiError(0, "API base URL is not configured.");
   }
 
-  const response = await fetchWithRetry(`${baseUrl}${path}`, {
-    ...init,
-    headers: buildAuthenticatedHeaders("session-preferred", init.headers as Record<string, string> | undefined)
-  });
+  const response = await fetchAuthenticatedApiResponse(app, path, init, options);
 
   if (response.status === 401) {
-    handleExpiredAuth(app);
     throw new SalesLiveApiError(401, "Your sign-in expired. Please sign in again.");
   }
 
@@ -315,7 +314,10 @@ export async function fetchWorkspaceRealtimeSubscribeToken(
     {
       method: "GET"
     },
-    "Failed to create realtime subscribe token."
+    "Failed to create realtime subscribe token.",
+    {
+      expireAuthOn401: false
+    }
   ) as RealtimeTokenResponse | null;
 
   const room = String(body?.room ?? "").trim();

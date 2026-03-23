@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { beforeEach, test, vi } from "vitest";
-import type { ApiConfig } from "../types";
+import { createApiConfig, createInvocationContext } from "../test-support/function-test-helpers";
 
 vi.mock("@azure/functions", () => ({
   app: {
@@ -35,31 +35,6 @@ vi.mock("../lib/stripe", () => ({
 
 import { billingWebhook } from "./billingWebhook";
 
-function createConfig(): ApiConfig {
-  return {
-    apiEnv: "prod",
-    authBypassDev: false,
-    migrationsAdminKey: "",
-    stripeSecretKey: "sk_live_xxx",
-    stripeWebhookSecret: "whsec_live_xxx",
-    stripeOneTimePriceId: "price_one_time",
-    stripeSuccessUrl: "https://app.whatfees.ca/billing/success?session_id={CHECKOUT_SESSION_ID}",
-    stripeCancelUrl: "https://app.whatfees.ca/settings",
-    googleClientId: "",
-    googlePlayPackageName: "io.whatfees",
-    googlePlayProProductIds: ["pro_access"],
-    googlePlayServiceAccountEmail: "",
-    googlePlayServiceAccountPrivateKey: "",
-    allowedOrigins: ["https://app.whatfees.ca"],
-    cosmosEndpoint: "https://example.documents.azure.com:443/",
-    cosmosKey: "key",
-    cosmosDatabaseId: "whatfees",
-    entitlementsContainerId: "entitlements",
-    syncContainerId: "sync_data",
-    migrationRunsContainerId: "migration_runs"
-  };
-}
-
 function createRequest(rawBody: string, headers: Record<string, string> = {}) {
   const normalized = new Map<string, string>();
   for (const [key, value] of Object.entries(headers)) {
@@ -79,17 +54,18 @@ function createRequest(rawBody: string, headers: Record<string, string> = {}) {
   };
 }
 
-function createContext() {
-  return {
-    error: vi.fn(),
-    warn: vi.fn(),
-    info: vi.fn()
-  };
-}
-
 beforeEach(() => {
   vi.clearAllMocks();
-  getConfigMock.mockReturnValue(createConfig());
+  getConfigMock.mockReturnValue(createApiConfig({
+    apiEnv: "prod",
+    authBypassDev: false,
+    stripeSecretKey: "sk_live_xxx",
+    stripeWebhookSecret: "whsec_live_xxx",
+    stripeOneTimePriceId: "price_one_time",
+    stripeSuccessUrl: "https://app.whatfees.ca/billing/success?session_id={CHECKOUT_SESSION_ID}",
+    stripeCancelUrl: "https://app.whatfees.ca/settings",
+    allowedOrigins: ["https://app.whatfees.ca"]
+  }));
   getEntitlementMock.mockResolvedValue(null);
   upsertEntitlementMock.mockResolvedValue({
     id: "entitlement:user-1",
@@ -104,7 +80,7 @@ test("billingWebhook rejects invalid Stripe signature", async () => {
   const request = createRequest("{}", {
     "stripe-signature": "t=1700000000,v1=bad"
   });
-  const context = createContext();
+  const context = createInvocationContext();
   verifyStripeWebhookEventMock.mockImplementation(() => {
     throw new Error("invalid signature");
   });
@@ -120,7 +96,7 @@ test("billingWebhook grants entitlement on completed payment checkout", async ()
   const request = createRequest("{\"id\":\"evt_1\"}", {
     "stripe-signature": "t=1700000000,v1=good"
   });
-  const context = createContext();
+  const context = createInvocationContext();
   verifyStripeWebhookEventMock.mockReturnValue({
     id: "evt_1",
     type: "checkout.session.completed",
@@ -147,7 +123,7 @@ test("billingWebhook ignores unrelated events", async () => {
   const request = createRequest("{\"id\":\"evt_2\"}", {
     "stripe-signature": "t=1700000000,v1=good"
   });
-  const context = createContext();
+  const context = createInvocationContext();
   verifyStripeWebhookEventMock.mockReturnValue({
     id: "evt_2",
     type: "payment_intent.created",

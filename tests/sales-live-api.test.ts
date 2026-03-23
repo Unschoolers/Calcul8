@@ -4,13 +4,13 @@ import { afterEach, beforeEach, test, vi } from "vitest";
 const {
   buildAuthenticatedHeadersMock,
   getStoredGoogleIdTokenMock,
-  fetchWithRetryMock,
+  fetchAuthenticatedApiResponseMock,
   handleExpiredAuthMock,
   resolveApiBaseUrlMock
 } = vi.hoisted(() => ({
   buildAuthenticatedHeadersMock: vi.fn(),
   getStoredGoogleIdTokenMock: vi.fn(),
-  fetchWithRetryMock: vi.fn(),
+  fetchAuthenticatedApiResponseMock: vi.fn(),
   handleExpiredAuthMock: vi.fn(),
   resolveApiBaseUrlMock: vi.fn()
 }));
@@ -21,7 +21,7 @@ vi.mock("../src/app-core/auth/index.ts", () => ({
 }));
 
 vi.mock("../src/app-core/methods/ui/shared.ts", () => ({
-  fetchWithRetry: fetchWithRetryMock,
+  fetchAuthenticatedApiResponse: fetchAuthenticatedApiResponseMock,
   handleExpiredAuth: handleExpiredAuthMock,
   resolveApiBaseUrl: resolveApiBaseUrlMock
 }));
@@ -113,11 +113,11 @@ test("fetchAuthoritativeSales returns null without signed-in entity API access",
   const sales = await fetchAuthoritativeSales(createApp(), 7);
 
   assert.equal(sales, null);
-  assert.equal(fetchWithRetryMock.mock.calls.length, 0);
+  assert.equal(fetchAuthenticatedApiResponseMock.mock.calls.length, 0);
 });
 
 test("fetchAuthoritativeSales normalizes API payload, scopes workspace requests, and caches sales", async () => {
-  fetchWithRetryMock.mockResolvedValue(new Response(JSON.stringify({
+  fetchAuthenticatedApiResponseMock.mockResolvedValue(new Response(JSON.stringify({
     sales: [
       {
         id: 11,
@@ -179,16 +179,16 @@ test("fetchAuthoritativeSales normalizes API payload, scopes workspace requests,
       mutationId: "mut-1"
     }
   ]);
-  assert.equal(fetchWithRetryMock.mock.calls.length, 1);
+  assert.equal(fetchAuthenticatedApiResponseMock.mock.calls.length, 1);
   assert.equal(
-    fetchWithRetryMock.mock.calls[0]?.[0],
-    "https://api.example.test/lots/42/sales?workspaceId=team-1"
+    fetchAuthenticatedApiResponseMock.mock.calls[0]?.[1],
+    "/lots/42/sales?workspaceId=team-1"
   );
   assert.equal(localStorage.getItem("sales:42"), JSON.stringify(sales));
 });
 
-test("requestJson surfaces API message bodies and expires auth on 401", async () => {
-  fetchWithRetryMock.mockResolvedValueOnce(new Response(JSON.stringify({
+test("requestJson surfaces API message bodies and requests default 401 auth expiry", async () => {
+  fetchAuthenticatedApiResponseMock.mockResolvedValueOnce(new Response(JSON.stringify({
     message: "sign in again"
   }), {
     status: 401,
@@ -207,10 +207,9 @@ test("requestJson surfaces API message bodies and expires auth on 401", async ()
       return true;
     }
   );
-  assert.equal(handleExpiredAuthMock.mock.calls.length, 1);
-  assert.equal(handleExpiredAuthMock.mock.calls[0]?.[0], app);
+  assert.deepEqual(fetchAuthenticatedApiResponseMock.mock.calls[0]?.[3], {});
 
-  fetchWithRetryMock.mockResolvedValueOnce(new Response(JSON.stringify({
+  fetchAuthenticatedApiResponseMock.mockResolvedValueOnce(new Response(JSON.stringify({
     error: "Lot sync conflict"
   }), {
     status: 409,
@@ -252,10 +251,10 @@ test("entity API helpers fail cleanly when api base URL is missing or response J
   );
 
   resolveApiBaseUrlMock.mockReturnValue("https://api.example.test");
-  fetchWithRetryMock.mockResolvedValueOnce(new Response("", {
+  fetchAuthenticatedApiResponseMock.mockResolvedValueOnce(new Response("", {
     status: 200
   }));
-  fetchWithRetryMock.mockResolvedValueOnce(new Response("", {
+  fetchAuthenticatedApiResponseMock.mockResolvedValueOnce(new Response("", {
     status: 200
   }));
 
@@ -267,7 +266,7 @@ test("entity API helpers fail cleanly when api base URL is missing or response J
 });
 
 test("saveAuthoritativeSale sends session-preferred headers and rejects invalid responses", async () => {
-  fetchWithRetryMock.mockResolvedValueOnce(new Response(JSON.stringify({
+  fetchAuthenticatedApiResponseMock.mockResolvedValueOnce(new Response(JSON.stringify({
     sale: {
       id: 5,
       type: "pack",
@@ -300,16 +299,14 @@ test("saveAuthoritativeSale sends session-preferred headers and rejects invalid 
   }, 1);
 
   assert.equal(sale.version, 2);
-  assert.equal(buildAuthenticatedHeadersMock.mock.calls.length, 1);
-  assert.equal(buildAuthenticatedHeadersMock.mock.calls[0]?.[0], "session-preferred");
-  const requestInit = fetchWithRetryMock.mock.calls[0]?.[1] as RequestInit;
+  const requestInit = fetchAuthenticatedApiResponseMock.mock.calls[0]?.[2] as RequestInit;
   assert.equal(requestInit.method, "POST");
   const parsedBody = JSON.parse(String(requestInit.body));
   assert.equal(parsedBody.workspaceId, "shared-2");
   assert.equal(parsedBody.baseVersion, 1);
   assert.match(parsedBody.mutationId, /^sale:/);
 
-  fetchWithRetryMock.mockResolvedValueOnce(new Response(JSON.stringify({
+  fetchAuthenticatedApiResponseMock.mockResolvedValueOnce(new Response(JSON.stringify({
     sale: {
       id: "bad"
     }
@@ -340,7 +337,7 @@ test("saveAuthoritativeSale sends session-preferred headers and rejects invalid 
 });
 
 test("deleteAuthoritativeSale includes mutation and workspace body", async () => {
-  fetchWithRetryMock.mockResolvedValue(new Response("{}", {
+  fetchAuthenticatedApiResponseMock.mockResolvedValue(new Response("{}", {
     status: 200,
     headers: {
       "Content-Type": "application/json"
@@ -352,9 +349,9 @@ test("deleteAuthoritativeSale includes mutation and workspace body", async () =>
     activeWorkspaceId: "alpha"
   }), 13, 99, 7);
 
-  assert.equal(fetchWithRetryMock.mock.calls.length, 1);
-  assert.equal(fetchWithRetryMock.mock.calls[0]?.[0], "https://api.example.test/lots/13/sales/99");
-  const requestInit = fetchWithRetryMock.mock.calls[0]?.[1] as RequestInit;
+  assert.equal(fetchAuthenticatedApiResponseMock.mock.calls.length, 1);
+  assert.equal(fetchAuthenticatedApiResponseMock.mock.calls[0]?.[1], "/lots/13/sales/99");
+  const requestInit = fetchAuthenticatedApiResponseMock.mock.calls[0]?.[2] as RequestInit;
   const parsedBody = JSON.parse(String(requestInit.body));
   assert.equal(parsedBody.workspaceId, "alpha");
   assert.equal(parsedBody.baseVersion, 7);
@@ -362,7 +359,7 @@ test("deleteAuthoritativeSale includes mutation and workspace body", async () =>
 });
 
 test("fetchAuthoritativeLivePricing normalizes payload and saveAuthoritativeLivePricing sends current version", async () => {
-  fetchWithRetryMock.mockResolvedValueOnce(new Response(JSON.stringify({
+  fetchAuthenticatedApiResponseMock.mockResolvedValueOnce(new Response(JSON.stringify({
     livePricing: {
       livePackPrice: "3.5",
       liveBoxPriceSell: "120",
@@ -390,7 +387,7 @@ test("fetchAuthoritativeLivePricing normalizes payload and saveAuthoritativeLive
     mutationId: "live-1"
   });
 
-  fetchWithRetryMock.mockResolvedValueOnce(new Response(JSON.stringify({
+  fetchAuthenticatedApiResponseMock.mockResolvedValueOnce(new Response(JSON.stringify({
     livePricing: {
       livePackPrice: 5,
       liveBoxPriceSell: 150,
@@ -414,7 +411,7 @@ test("fetchAuthoritativeLivePricing normalizes payload and saveAuthoritativeLive
     currentLivePricingVersion: 4
   });
   assert.equal(saved.version, 5);
-  const requestInit = fetchWithRetryMock.mock.calls[1]?.[1] as RequestInit;
+  const requestInit = fetchAuthenticatedApiResponseMock.mock.calls[1]?.[2] as RequestInit;
   const parsedBody = JSON.parse(String(requestInit.body));
   assert.equal(parsedBody.workspaceId, "beta");
   assert.equal(parsedBody.baseVersion, 4);
@@ -422,7 +419,7 @@ test("fetchAuthoritativeLivePricing normalizes payload and saveAuthoritativeLive
 });
 
 test("fetchWorkspaceRealtimeSubscribeToken requests a workspace-scoped token", async () => {
-  fetchWithRetryMock.mockResolvedValueOnce(new Response(JSON.stringify({
+  fetchAuthenticatedApiResponseMock.mockResolvedValueOnce(new Response(JSON.stringify({
     room: "workspace:beta:lot:6",
     token: "signed-token",
     expiresAt: 1760000000
@@ -445,13 +442,41 @@ test("fetchWorkspaceRealtimeSubscribeToken requests a workspace-scoped token", a
     expiresAt: 1760000000
   });
   assert.equal(
-    fetchWithRetryMock.mock.calls[0]?.[0],
-    "https://api.example.test/lots/6/realtime-token?workspaceId=beta"
+    fetchAuthenticatedApiResponseMock.mock.calls[0]?.[1],
+    "/lots/6/realtime-token?workspaceId=beta"
   );
 });
 
+test("fetchWorkspaceRealtimeSubscribeToken does not expire auth on 401", async () => {
+  fetchAuthenticatedApiResponseMock.mockResolvedValueOnce(new Response(JSON.stringify({
+    message: "token failed"
+  }), {
+    status: 401,
+    headers: {
+      "Content-Type": "application/json"
+    }
+  }));
+
+  const app = createApp({
+    activeScopeType: "workspace",
+    activeWorkspaceId: "beta"
+  });
+
+  await assert.rejects(
+    () => fetchWorkspaceRealtimeSubscribeToken(app, 6),
+    (error: unknown) => {
+      assert.ok(error instanceof SalesLiveApiError);
+      assert.equal(error.status, 401);
+      assert.equal(error.message, "Your sign-in expired. Please sign in again.");
+      return true;
+    }
+  );
+
+  assert.equal(handleExpiredAuthMock.mock.calls.length, 0);
+});
+
 test("saveAuthoritativeLivePricing rejects invalid response payloads", async () => {
-  fetchWithRetryMock.mockResolvedValue(new Response(JSON.stringify({
+  fetchAuthenticatedApiResponseMock.mockResolvedValue(new Response(JSON.stringify({
     livePricing: []
   }), {
     status: 200,

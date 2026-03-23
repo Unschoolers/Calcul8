@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { beforeEach, test, vi } from "vitest";
-import type { ApiConfig } from "../types";
+import { createApiConfig, createHttpRequest, createInvocationContext } from "../test-support/function-test-helpers";
 
 vi.mock("@azure/functions", () => ({
   app: {
@@ -23,51 +23,9 @@ vi.mock("../lib/cosmos/cardCatalogRepository", () => ({
 
 import { cardsSearch } from "./cardsSearch";
 
-function createConfig(): ApiConfig {
-  return {
-    apiEnv: "dev",
-    authBypassDev: true,
-    migrationsAdminKey: "",
-    googleClientId: "",
-    googlePlayPackageName: "io.whatfees",
-    googlePlayProProductIds: ["pro_access"],
-    googlePlayServiceAccountEmail: "",
-    googlePlayServiceAccountPrivateKey: "",
-    allowedOrigins: [],
-    cosmosEndpoint: "https://example.documents.azure.com:443/",
-    cosmosKey: "key",
-    cosmosDatabaseId: "whatfees",
-    entitlementsContainerId: "entitlements",
-    syncContainerId: "sync_data",
-    migrationRunsContainerId: "migration_runs",
-    cardCatalogContainerId: "card_catalog"
-  };
-}
-
-function createRequest(url: string, method = "GET") {
-  return {
-    method,
-    url,
-    headers: {
-      get() {
-        return null;
-      }
-    },
-    query: new URL(url).searchParams
-  };
-}
-
-function createContext() {
-  return {
-    error: vi.fn(),
-    warn: vi.fn(),
-    info: vi.fn()
-  };
-}
-
 beforeEach(() => {
   vi.clearAllMocks();
-  getConfigMock.mockReturnValue(createConfig());
+  getConfigMock.mockReturnValue(createApiConfig({ cardCatalogContainerId: "card_catalog" }));
   searchCardCatalogMock.mockResolvedValue([
     {
       id: "ua:UE01BT_BLC-1-001",
@@ -80,8 +38,8 @@ beforeEach(() => {
 });
 
 test("cardsSearch returns results for valid query", async () => {
-  const request = createRequest("https://example.test/api/cards/search?game=ua&q=asgu&limit=10");
-  const context = createContext();
+  const request = createHttpRequest({ method: "GET", query: "game=ua&q=asgu&limit=10" });
+  const context = createInvocationContext();
 
   const response = await cardsSearch(request as never, context as never);
 
@@ -96,8 +54,8 @@ test("cardsSearch returns results for valid query", async () => {
 });
 
 test("cardsSearch defaults limit to 25 when omitted", async () => {
-  const request = createRequest("https://example.test/api/cards/search?game=ua&q=asgu");
-  const context = createContext();
+  const request = createHttpRequest({ method: "GET", query: "game=ua&q=asgu" });
+  const context = createInvocationContext();
 
   const response = await cardsSearch(request as never, context as never);
 
@@ -110,8 +68,8 @@ test("cardsSearch defaults limit to 25 when omitted", async () => {
 });
 
 test("cardsSearch validates missing game", async () => {
-  const request = createRequest("https://example.test/api/cards/search?q=asgu&limit=10");
-  const context = createContext();
+  const request = createHttpRequest({ method: "GET", query: "q=asgu&limit=10" });
+  const context = createInvocationContext();
 
   const response = await cardsSearch(request as never, context as never);
   assert.equal(response.status, 400);
@@ -119,8 +77,8 @@ test("cardsSearch validates missing game", async () => {
 });
 
 test("cardsSearch validates short query", async () => {
-  const request = createRequest("https://example.test/api/cards/search?game=ua&q=a&limit=10");
-  const context = createContext();
+  const request = createHttpRequest({ method: "GET", query: "game=ua&q=a&limit=10" });
+  const context = createInvocationContext();
 
   const response = await cardsSearch(request as never, context as never);
   assert.equal(response.status, 400);
@@ -128,8 +86,8 @@ test("cardsSearch validates short query", async () => {
 });
 
 test("cardsSearch validates limit range", async () => {
-  const request = createRequest("https://example.test/api/cards/search?game=ua&q=asgu&limit=500");
-  const context = createContext();
+  const request = createHttpRequest({ method: "GET", query: "game=ua&q=asgu&limit=500" });
+  const context = createInvocationContext();
 
   const response = await cardsSearch(request as never, context as never);
   assert.equal(response.status, 400);

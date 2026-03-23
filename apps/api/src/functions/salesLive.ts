@@ -6,9 +6,7 @@ import {
 import { hasWorkspaceMembership } from "../lib/cosmos/workspaceRepository";
 import { getConfig } from "../lib/config";
 import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../lib/http";
-import {
-  publishWorkspaceLotRealtimeEvent,
-} from "../lib/realtime";
+import { publishWorkspaceLotRealtimeEventBestEffort } from "../lib/realtime";
 import { parseOptionalWorkspaceId } from "../lib/syncScope";
 import { assertSyncScopeAccess, resolveSyncScope } from "../lib/syncScopeResolution";
 import { logApiTelemetry } from "../lib/telemetry";
@@ -241,7 +239,7 @@ export async function lotSalesUpsert(
       mutationId: body.mutationId
     });
 
-    await publishWorkspaceLotRealtimeEvent(config, {
+    publishWorkspaceLotRealtimeEventBestEffort(config, {
       workspaceId: body.workspaceId,
       lotId,
       eventType: "sale.upserted",
@@ -291,7 +289,7 @@ export async function lotSalesDelete(
       mutationId: body.mutationId
     });
 
-    await publishWorkspaceLotRealtimeEvent(config, {
+    publishWorkspaceLotRealtimeEventBestEffort(config, {
       workspaceId: body.workspaceId,
       lotId,
       eventType: "sale.deleted",
@@ -388,7 +386,7 @@ export async function lotLivePricingSave(
       liveSpotPrice: body.liveSpotPrice
     });
 
-    await publishWorkspaceLotRealtimeEvent(config, {
+    publishWorkspaceLotRealtimeEventBestEffort(config, {
       workspaceId: body.workspaceId,
       lotId,
       eventType: "livePricing.updated",

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { beforeEach, test, vi } from "vitest";
-import type { ApiConfig, EntitlementDocument, PlayPurchaseDocument } from "../types";
+import type { EntitlementDocument, PlayPurchaseDocument } from "../types";
+import { createApiConfig, createHttpRequest, createInvocationContext } from "../test-support/function-test-helpers";
 
 vi.mock("@azure/functions", () => ({
   app: {
@@ -62,46 +63,9 @@ vi.mock("../lib/playEntitlements", () => ({
 
 import { entitlementsMe } from "./entitlementsMe";
 
-function createConfig(): ApiConfig {
-  return {
-    apiEnv: "dev",
-    authBypassDev: true,
-    migrationsAdminKey: "",
-    googleClientId: "",
-    googlePlayPackageName: "io.whatfees",
-    googlePlayProProductIds: ["pro_access"],
-    googlePlayServiceAccountEmail: "",
-    googlePlayServiceAccountPrivateKey: "",
-    allowedOrigins: [],
-    cosmosEndpoint: "https://example.documents.azure.com:443/",
-    cosmosKey: "key",
-    cosmosDatabaseId: "whatfees",
-    entitlementsContainerId: "entitlements",
-    syncContainerId: "sync_data",
-    migrationRunsContainerId: "migration_runs"
-  };
-}
-
-function createRequest(method = "GET") {
-  return {
-    method,
-    headers: {
-      get() {
-        return null;
-      }
-    }
-  };
-}
-
-function createContext() {
-  return {
-    error: vi.fn()
-  };
-}
-
 beforeEach(() => {
   vi.clearAllMocks();
-  getConfigMock.mockReturnValue(createConfig());
+  getConfigMock.mockReturnValue(createApiConfig());
   maybeHandleHttpGuardsMock.mockReturnValue(null);
   resolveUserIdMock.mockResolvedValue("user-1");
   getEntitlementMock.mockResolvedValue(null);
@@ -118,7 +82,10 @@ test("entitlementsMe creates a baseline entitlement when none exists", async () 
   };
   upsertEntitlementMock.mockResolvedValue(createdEntitlement);
 
-  const response = await entitlementsMe(createRequest() as never, createContext() as never);
+  const response = await entitlementsMe(
+    createHttpRequest({ method: "GET" }) as never,
+    createInvocationContext() as never
+  );
 
   assert.equal(response.status, 200);
   assert.equal(upsertEntitlementMock.mock.calls.length, 1);
@@ -165,7 +132,10 @@ test("entitlementsMe self-heals pro access when a valid Play purchase exists", a
   hasValidProPurchaseMock.mockReturnValue(true);
   upsertEntitlementMock.mockResolvedValue(healedEntitlement);
 
-  const response = await entitlementsMe(createRequest() as never, createContext() as never);
+  const response = await entitlementsMe(
+    createHttpRequest({ method: "GET" }) as never,
+    createInvocationContext() as never
+  );
 
   assert.equal(response.status, 200);
   assert.equal(listPlayPurchasesForUserMock.mock.calls.length, 1);

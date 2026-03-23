@@ -142,7 +142,8 @@ export const uiWorkspaceMethods: ThisType<AppContext> & Pick<
         });
       } else if (this.activeScopeType === "workspace" && this.activeWorkspaceId) {
         void loadWorkspaceMembers(this, {
-          setLoadingState: false
+          setLoadingState: false,
+          expireAuthOn401: false
         });
       }
     } finally {
@@ -175,7 +176,8 @@ export const uiWorkspaceMethods: ThisType<AppContext> & Pick<
     try {
       await applyWorkspaceScope(this, "workspace", normalizedWorkspaceId, { getGoogleIdToken });
       await loadWorkspaceMembers(this, {
-        setLoadingState: false
+        setLoadingState: false,
+        expireAuthOn401: false
       });
     } finally {
       this.isWorkspaceLoading = false;
@@ -265,7 +267,8 @@ export const uiWorkspaceMethods: ThisType<AppContext> & Pick<
     this.showWorkspaceMembersModal = true;
     await loadWorkspaceMembers(this, {
       resetBeforeLoad: true,
-      setLoadingState: true
+      setLoadingState: true,
+      expireAuthOn401: false
     });
   },
 

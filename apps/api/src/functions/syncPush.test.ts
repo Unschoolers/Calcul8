@@ -53,7 +53,10 @@ vi.mock("../lib/syncSafety", () => ({
 }));
 
 vi.mock("../lib/realtime", () => ({
-  publishWorkspaceLotRealtimeEvent: publishWorkspaceLotRealtimeEventMock
+  publishWorkspaceLotRealtimeEvent: publishWorkspaceLotRealtimeEventMock,
+  publishWorkspaceLotRealtimeEventBestEffort: vi.fn((config: unknown, args: unknown) => {
+    void publishWorkspaceLotRealtimeEventMock(config, args).catch(() => false);
+  })
 }));
 
 import { syncPush } from "./syncPush";
@@ -282,6 +285,45 @@ test("syncPush publishes lot.config.updated for changed workspace config pushes 
   assert.equal(publishArgs?.data?.version, 2);
   assert.equal(typeof publishArgs?.data?.updatedAt, "string");
   assert.equal(publishArgs?.logger, context);
+});
+
+test("syncPush returns before realtime publish settles", async () => {
+  let resolvePublish: ((value: boolean) => void) | null = null;
+  publishWorkspaceLotRealtimeEventMock.mockReturnValue(new Promise<boolean>((resolve) => {
+    resolvePublish = resolve;
+  }));
+  parseSyncLotsShapeMock.mockReturnValue({
+    lots: [{ id: 20 }],
+    salesByLot: { "20": [] }
+  });
+  getEffectiveSyncSnapshotMock.mockResolvedValue({
+    version: 1,
+    updatedAt: "2026-02-21T10:00:00.000Z"
+  });
+  upsertSyncSnapshotIncrementalMock.mockResolvedValue({
+    changed: true,
+    upsertedCount: 1,
+    deletedCount: 0
+  });
+
+  const response = await syncPush(
+    createRequest(
+      {
+        lots: [{ id: 20 }],
+        salesByLot: { "20": [] },
+        clientVersion: 1,
+        workspaceId: "team-42",
+        activeLotId: 20
+      },
+      "POST",
+      { authorization: "Bearer user-ws" }
+    ) as never,
+    createContext() as never
+  );
+
+  assert.equal(response.status, 200);
+  assert.equal(publishWorkspaceLotRealtimeEventMock.mock.calls.length, 1);
+  resolvePublish?.(true);
 });
 
 test("syncPush does not publish config invalidation for unchanged or personal pushes", async () => {

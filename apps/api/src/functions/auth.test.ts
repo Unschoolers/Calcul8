@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { beforeEach, test, vi } from "vitest";
-import type { ApiConfig } from "../types";
+import { createApiConfig, createHttpRequest, createInvocationContext } from "../test-support/function-test-helpers";
 
 vi.mock("@azure/functions", () => ({
   app: {
@@ -47,53 +47,9 @@ vi.mock("../lib/cosmos/sessionRepository", () => ({
 
 import { authLogout, authLogoutAll, authMe } from "./auth";
 
-function createConfig(): ApiConfig {
-  return {
-    apiEnv: "dev",
-    authBypassDev: true,
-    migrationsAdminKey: "",
-    googleClientId: "",
-    googlePlayPackageName: "io.whatfees",
-    googlePlayProProductIds: ["pro_access"],
-    googlePlayServiceAccountEmail: "",
-    googlePlayServiceAccountPrivateKey: "",
-    allowedOrigins: [],
-    cosmosEndpoint: "https://example.documents.azure.com:443/",
-    cosmosKey: "key",
-    cosmosDatabaseId: "whatfees",
-    entitlementsContainerId: "entitlements",
-    syncContainerId: "sync_data",
-    migrationRunsContainerId: "migration_runs"
-  };
-}
-
-function createRequest(method = "GET", headers: Record<string, string> = {}) {
-  const normalized = new Map<string, string>();
-  for (const [key, value] of Object.entries(headers)) {
-    normalized.set(key.toLowerCase(), value);
-  }
-
-  return {
-    method,
-    headers: {
-      get(name: string) {
-        return normalized.get(name.toLowerCase()) ?? null;
-      }
-    }
-  };
-}
-
-function createContext() {
-  return {
-    error: vi.fn(),
-    warn: vi.fn(),
-    info: vi.fn()
-  };
-}
-
 beforeEach(() => {
   vi.clearAllMocks();
-  getConfigMock.mockReturnValue(createConfig());
+  getConfigMock.mockReturnValue(createApiConfig());
   resolveUserIdMock.mockResolvedValue("user-1");
   revokeSessionFromRequestMock.mockResolvedValue(true);
   clearSessionCookieMock.mockResolvedValue(undefined);
@@ -101,8 +57,8 @@ beforeEach(() => {
 });
 
 test("authMe resolves user and returns payload", async () => {
-  const request = createRequest("GET");
-  const context = createContext();
+  const request = createHttpRequest({ method: "GET" });
+  const context = createInvocationContext();
 
   const response = await authMe(request as never, context as never);
   assert.equal(response.status, 200);
@@ -113,8 +69,8 @@ test("authMe resolves user and returns payload", async () => {
 });
 
 test("authLogout clears current session and returns revoked flag", async () => {
-  const request = createRequest("POST");
-  const context = createContext();
+  const request = createHttpRequest({ method: "POST" });
+  const context = createInvocationContext();
   revokeSessionFromRequestMock.mockResolvedValue(false);
 
   const response = await authLogout(request as never, context as never);
@@ -126,8 +82,8 @@ test("authLogout clears current session and returns revoked flag", async () => {
 });
 
 test("authLogoutAll revokes all sessions and clears cookie", async () => {
-  const request = createRequest("POST");
-  const context = createContext();
+  const request = createHttpRequest({ method: "POST" });
+  const context = createInvocationContext();
 
   const response = await authLogoutAll(request as never, context as never);
   assert.equal(response.status, 200);

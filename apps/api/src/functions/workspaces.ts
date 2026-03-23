@@ -21,15 +21,12 @@ import {
   isActiveMembership,
   isWorkspaceDeleted,
   parseCreateWorkspaceBody,
-  parseInviteIdFromParams,
   parseJoinAcceptBody,
   parseLeaveWorkspaceBody,
-  parseMemberUserIdFromParams,
   parseUpsertWorkspaceMemberBody,
-  parseWorkspaceIdFromParams,
-  readRequestJson,
   hashJoinToken
 } from "./workspace-function-helpers";
+import { readRequestJsonOrNull, requireRouteParam } from "./request-function-helpers";
 import {
   addWorkspaceMemberForActor,
   listWorkspaceMembersForActor,
@@ -154,7 +151,7 @@ export async function workspaceMembersList(
         workspaceScope: "workspace"
       }
     });
-    const workspaceId = parseWorkspaceIdFromParams(request);
+    const workspaceId = requireRouteParam(request, "workspaceId");
     const responseBody = await listWorkspaceMembersForActor(config, actorUserId, workspaceId);
     return jsonResponse(request, config, 200, responseBody);
   } catch (error) {
@@ -180,7 +177,7 @@ export async function workspaceMembersAdd(
         workspaceScope: "workspace"
       }
     });
-    const workspaceId = parseWorkspaceIdFromParams(request);
+    const workspaceId = requireRouteParam(request, "workspaceId");
     const payload = parseUpsertWorkspaceMemberBody(await request.json());
     const result = await addWorkspaceMemberForActor(config, actorUserId, workspaceId, payload);
 
@@ -230,8 +227,8 @@ export async function workspaceMembersRemove(
         workspaceScope: "workspace"
       }
     });
-    const workspaceId = parseWorkspaceIdFromParams(request);
-    const memberUserId = parseMemberUserIdFromParams(request);
+    const workspaceId = requireRouteParam(request, "workspaceId");
+    const memberUserId = requireRouteParam(request, "memberUserId");
     const result = await removeWorkspaceMemberForActor(config, actorUserId, workspaceId, memberUserId);
     return jsonResponse(request, config, 200, {
       ok: true,
@@ -261,8 +258,8 @@ export async function workspaceLeave(
         workspaceScope: "workspace"
       }
     });
-    const workspaceId = parseWorkspaceIdFromParams(request);
-    const payload = parseLeaveWorkspaceBody(await readRequestJson(request));
+    const workspaceId = requireRouteParam(request, "workspaceId");
+    const payload = parseLeaveWorkspaceBody(await readRequestJsonOrNull(request));
     const result = await leaveWorkspaceForActor(config, actorUserId, workspaceId, payload);
 
     return jsonResponse(request, config, 200, {
@@ -292,7 +289,7 @@ export async function workspaceJoinLinksList(
         workspaceScope: "workspace"
       }
     });
-    const workspaceId = parseWorkspaceIdFromParams(request);
+    const workspaceId = requireRouteParam(request, "workspaceId");
     const responseBody = await listWorkspaceJoinLinksForActor(config, actorUserId, workspaceId);
     return jsonResponse(request, config, 200, responseBody);
   } catch (error) {
@@ -318,7 +315,7 @@ export async function workspaceJoinLinksCreate(
         workspaceScope: "workspace"
       }
     });
-    const workspaceId = parseWorkspaceIdFromParams(request);
+    const workspaceId = requireRouteParam(request, "workspaceId");
     const result = await createWorkspaceJoinLinkForActor(config, actorUserId, workspaceId);
 
     return jsonResponse(request, config, 201, {
@@ -368,8 +365,8 @@ export async function workspaceJoinLinksRemove(
         workspaceScope: "workspace"
       }
     });
-    const workspaceId = parseWorkspaceIdFromParams(request);
-    const inviteId = parseInviteIdFromParams(request);
+    const workspaceId = requireRouteParam(request, "workspaceId");
+    const inviteId = requireRouteParam(request, "inviteId");
     const result = await revokeWorkspaceJoinLinkForActor(config, actorUserId, workspaceId, inviteId);
 
     return jsonResponse(request, config, 200, {

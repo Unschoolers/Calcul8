@@ -48,6 +48,48 @@ type PortfolioPerformanceRow = LotPerformanceSummary & {
   lotName: string;
 };
 
+function buildCategoryTicks(compactMode: boolean | undefined) {
+  return compactMode
+    ? {
+      autoSkip: true,
+      maxTicksLimit: 4,
+      maxRotation: 0,
+      minRotation: 0,
+      font: { size: 10 }
+    }
+    : {
+      autoSkip: true,
+      maxRotation: 0
+    };
+}
+
+function buildBottomLegendOptions(compactMode: boolean | undefined) {
+  return {
+    position: "bottom" as const,
+    labels: {
+      padding: compactMode ? 8 : 14,
+      font: { size: compactMode ? 10 : 12 },
+      boxWidth: compactMode ? 9 : 14
+    }
+  };
+}
+
+function buildCurrencyTickCallback(
+  formatCurrency: FormatCurrency,
+  options: {
+    prefix?: string;
+    suffix?: string;
+    decimals?: number;
+  } = {}
+) {
+  return (value: string | number) => {
+    const prefix = options.prefix ?? "";
+    const suffix = options.suffix ?? "";
+    const decimals = options.decimals ?? 0;
+    return `${prefix}${formatCurrency(Number(value), decimals)}${suffix}`;
+  };
+}
+
 function buildLinearTrend(values: number[]): number[] {
   if (values.length <= 1) return [...values];
   const n = values.length;
@@ -90,18 +132,7 @@ function buildPortfolioDateAxis(
     type: "category" as const,
     offset: Boolean(opts.offset),
     grid: { display: false },
-    ticks: compactMode
-      ? {
-        autoSkip: true,
-        maxTicksLimit: 4,
-        maxRotation: 0,
-        minRotation: 0,
-        font: { size: 10 }
-      }
-      : {
-        autoSkip: true,
-        maxRotation: 0
-      }
+    ticks: buildCategoryTicks(compactMode)
   };
 }
 
@@ -112,18 +143,7 @@ function buildSellThroughDateAxis(
     type: "category" as const,
     offset: true,
     grid: { display: false },
-    ticks: compactMode
-      ? {
-        autoSkip: true,
-        maxTicksLimit: 4,
-        maxRotation: 0,
-        minRotation: 0,
-        font: { size: 10 }
-      }
-      : {
-        autoSkip: true,
-        maxRotation: 0
-      }
+    ticks: buildCategoryTicks(compactMode)
   };
 }
 
@@ -275,12 +295,7 @@ export function buildSalesPieChartConfig(params: {
       aspectRatio: 2,
       plugins: {
         legend: {
-          position: "bottom",
-          labels: {
-            padding: params.compactMode ? 8 : 14,
-            font: { size: params.compactMode ? 10 : 12 },
-            boxWidth: params.compactMode ? 9 : 14
-          }
+          ...buildBottomLegendOptions(params.compactMode)
         },
         tooltip: {
           callbacks: {
@@ -328,12 +343,7 @@ export function buildPortfolioBreakdownChartConfig(params: {
       plugins: {
         legend: {
           display: true,
-          position: params.compactLegend ? "bottom" : "bottom",
-          labels: {
-            padding: params.compactLegend ? 8 : 14,
-            font: { size: params.compactLegend ? 10 : 12 },
-            boxWidth: params.compactLegend ? 9 : 14
-          }
+          ...buildBottomLegendOptions(params.compactLegend)
         },
         tooltip: {
           callbacks: {
@@ -405,7 +415,7 @@ export function buildPortfolioMarginChartConfig(params: {
       scales: {
         x: {
           ticks: {
-            callback: (value) => `${params.formatCurrency(Number(value), 0)}%`,
+            callback: buildCurrencyTickCallback(params.formatCurrency, { suffix: "%", decimals: 0 }),
             font: params.compactMode ? { size: 10 } : undefined
           },
           grid: {
@@ -493,18 +503,7 @@ export function buildPortfolioSalesByUserChartConfig(params: {
       scales: {
         x: {
           grid: { display: false },
-          ticks: params.compactMode
-            ? {
-              autoSkip: true,
-              maxTicksLimit: 4,
-              maxRotation: 0,
-              minRotation: 0,
-              font: { size: 10 }
-            }
-            : {
-              autoSkip: true,
-              maxRotation: 0
-            }
+          ticks: buildCategoryTicks(params.compactMode)
         },
         y: {
           stacked: true,
@@ -670,13 +669,13 @@ export function buildPortfolioHistoryChartConfig(params: {
           x: {
             ...buildSellThroughDateAxis(params.compactMode)
           },
-          y: {
-            min: 0,
-            max: yMax,
-            ticks: {
-              callback: (value: string | number) => `${params.formatCurrency(Number(value), 0)}%`
-            }
+        y: {
+          min: 0,
+          max: yMax,
+          ticks: {
+            callback: buildCurrencyTickCallback(params.formatCurrency, { suffix: "%", decimals: 0 })
           }
+        }
         }
       }
     } as unknown as ChartConfiguration<"bar", number[], string>;
@@ -778,7 +777,7 @@ export function buildPortfolioHistoryChartConfig(params: {
         },
         y: {
           ticks: {
-            callback: (value) => `$${params.formatCurrency(Number(value), 0)}`
+            callback: buildCurrencyTickCallback(params.formatCurrency, { prefix: "$", decimals: 0 })
           }
         }
       }

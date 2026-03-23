@@ -18,6 +18,9 @@ const {
 vi.mock("../src/app-core/methods/ui/shared.ts", () => ({
   GOOGLE_TOKEN_KEY: "whatfees_google_token",
   fetchWithRetry: fetchWithRetryMock,
+  fetchAuthenticatedApiResponse: vi.fn((app: unknown, path: string, init: RequestInit) =>
+    fetchWithRetryMock(`https://api.example.test${path}`, init)
+  ),
   handleExpiredAuth: handleExpiredAuthMock,
   resolveApiBaseUrl: resolveApiBaseUrlMock
 }));
@@ -318,6 +321,22 @@ test("openWorkspaceMembersModal loads normalized members and opens the modal", a
   assert.equal(ctx.workspaceMembers[0]?.photoUrl, "https://example.test/avatar.png");
   assert.equal(ctx.leaveWorkspaceTransferMemberUserId, "member-1");
   assert.equal(ctx.showWorkspaceMembersModal, true);
+});
+
+test("openWorkspaceMembersModal does not expire auth on 401 member refresh", async () => {
+  const ctx = createContext();
+  ctx.activeWorkspaceId = "ws_team";
+  fetchWithRetryMock.mockResolvedValue(createResponse({
+    error: "expired"
+  }, { status: 401 }));
+
+  await uiWorkspaceMethods.openWorkspaceMembersModal.call(ctx);
+
+  assert.equal(handleExpiredAuthMock.mock.calls.length, 0);
+  assert.deepEqual(
+    ctx.notify.mock.calls.at(-1),
+    ["Your sign-in expired. Please sign in again.", "warning"]
+  );
 });
 
 test("workspace member presence helpers return compact menu and modal states", async () => {

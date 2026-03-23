@@ -98,3 +98,10 @@ export async function publishWorkspaceLotRealtimeEvent(
     clearTimeout(timeoutId);
   }
 }
+
+export function publishWorkspaceLotRealtimeEventBestEffort(
+  config: ApiConfig,
+  args: Parameters<typeof publishWorkspaceLotRealtimeEvent>[1]
+): void {
+  void publishWorkspaceLotRealtimeEvent(config, args).catch(() => false);
+}

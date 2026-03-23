@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { beforeEach, test, vi } from "vitest";
-import type { ApiConfig } from "../types";
+import { createApiConfig, createHttpRequest, createInvocationContext } from "../test-support/function-test-helpers";
 
 vi.mock("@azure/functions", () => ({
   app: {
@@ -41,61 +41,16 @@ vi.mock("../lib/stripe", () => ({
 
 import { billingCheckoutSession } from "./billingCheckoutSession";
 
-function createConfig(): ApiConfig {
-  return {
-    apiEnv: "dev",
-    authBypassDev: true,
-    migrationsAdminKey: "",
+beforeEach(() => {
+  vi.clearAllMocks();
+  getConfigMock.mockReturnValue(createApiConfig({
     stripeSecretKey: "sk_test_xxx",
     stripeWebhookSecret: "whsec_xxx",
     stripeOneTimePriceId: "price_one_time",
     stripeSuccessUrl: "https://app.whatfees.ca/billing/success?session_id={CHECKOUT_SESSION_ID}",
     stripeCancelUrl: "https://app.whatfees.ca/settings",
-    googleClientId: "",
-    googlePlayPackageName: "io.whatfees",
-    googlePlayProProductIds: ["pro_access"],
-    googlePlayServiceAccountEmail: "",
-    googlePlayServiceAccountPrivateKey: "",
-    allowedOrigins: ["https://app.whatfees.ca"],
-    cosmosEndpoint: "https://example.documents.azure.com:443/",
-    cosmosKey: "key",
-    cosmosDatabaseId: "whatfees",
-    entitlementsContainerId: "entitlements",
-    syncContainerId: "sync_data",
-    migrationRunsContainerId: "migration_runs"
-  };
-}
-
-function createRequest(method = "POST", headers: Record<string, string> = {}) {
-  const normalized = new Map<string, string>();
-  for (const [key, value] of Object.entries(headers)) {
-    normalized.set(key.toLowerCase(), value);
-  }
-
-  return {
-    method,
-    headers: {
-      get(name: string) {
-        return normalized.get(name.toLowerCase()) ?? null;
-      }
-    },
-    async json() {
-      return {};
-    }
-  };
-}
-
-function createContext() {
-  return {
-    error: vi.fn(),
-    warn: vi.fn(),
-    info: vi.fn()
-  };
-}
-
-beforeEach(() => {
-  vi.clearAllMocks();
-  getConfigMock.mockReturnValue(createConfig());
+    allowedOrigins: ["https://app.whatfees.ca"]
+  }));
   resolveUserIdMock.mockResolvedValue("user-1");
   createStripeCheckoutSessionMock.mockResolvedValue({
     id: "cs_test_123",
@@ -104,8 +59,12 @@ beforeEach(() => {
 });
 
 test("billingCheckoutSession creates checkout session for authenticated user", async () => {
-  const request = createRequest("POST", { origin: "https://app.whatfees.ca" });
-  const context = createContext();
+  const request = createHttpRequest({
+    method: "POST",
+    headers: { origin: "https://app.whatfees.ca" },
+    body: {}
+  });
+  const context = createInvocationContext();
 
   const response = await billingCheckoutSession(request as never, context as never);
 
@@ -118,14 +77,18 @@ test("billingCheckoutSession creates checkout session for authenticated user", a
 
 test("billingCheckoutSession supports embedded checkout mode and returns client secret", async () => {
   const request = {
-    ...createRequest("POST", { origin: "https://app.whatfees.ca" }),
+    ...createHttpRequest({
+      method: "POST",
+      headers: { origin: "https://app.whatfees.ca" },
+      body: {}
+    }),
     async json() {
       return {
         uiMode: "embedded"
       };
     }
   };
-  const context = createContext();
+  const context = createInvocationContext();
 
   createStripeCheckoutSessionMock.mockResolvedValue({
     id: "cs_test_embedded_123",
@@ -142,8 +105,12 @@ test("billingCheckoutSession supports embedded checkout mode and returns client 
 });
 
 test("billingCheckoutSession returns 500 when Stripe session creation fails", async () => {
-  const request = createRequest("POST", { origin: "https://app.whatfees.ca" });
-  const context = createContext();
+  const request = createHttpRequest({
+    method: "POST",
+    headers: { origin: "https://app.whatfees.ca" },
+    body: {}
+  });
+  const context = createInvocationContext();
   createStripeCheckoutSessionMock.mockRejectedValue(new Error("stripe unavailable"));
 
   const response = await billingCheckoutSession(request as never, context as never);
