@@ -1,20 +1,32 @@
 # Calcul8 Refactor Plan
 
-## Top-Tier Remaining Refactors
+## Current Priorities
 
-- [ ] Refactor [sales-chart-config.ts](/f:/Sources/Calcul8/src/app-core/methods/sales-chart-config.ts):
-  - extract shared chart axis/tick/tooltip builders
-  - split the file by chart family
-- [ ] Refactor [context.ts](/f:/Sources/Calcul8/src/app-core/context.ts):
-  - reduce coupling by introducing narrower feature-local subset surfaces where they materially improve boundaries
-- [ ] Refactor [SinglesConfigWindow.ts](/f:/Sources/Calcul8/src/components/windows/SinglesConfigWindow.ts) and [useSinglesCatalogSearch.ts](/f:/Sources/Calcul8/src/components/windows/singles/useSinglesCatalogSearch.ts):
-  - break the window into smaller presentation/state helpers
-  - split catalog search into smaller search/state/request modules
-- [ ] Refactor [syncSnapshotRepository.ts](/f:/Sources/Calcul8/apps/api/src/lib/cosmos/syncSnapshotRepository.ts):
-  - split snapshot/meta/preset access from entity import/export and sync diff/apply support
+- [ ] Split [whatnot-services.ts](/f:/Sources/Calcul8/apps/api/src/functions/whatnot-services.ts)
+  - Separate OAuth/connect, status/disconnect, sync, import staging, and review-confirm flows
+  - Keep provider mechanics in [whatnot.ts](/f:/Sources/Calcul8/apps/api/src/lib/whatnot.ts)
+  - Add deeper tests for [whatnotRepository.ts](/f:/Sources/Calcul8/apps/api/src/lib/cosmos/whatnotRepository.ts)
 
-## Open Risks / Follow-ups
+- [ ] Decide workspace creation behavior and align code/docs
+  - Current implementation seeds new workspaces from personal data in [workspaces.ts](/f:/Sources/Calcul8/src/app-core/methods/ui/workspaces.ts)
+  - [teams-upgrade.md](/f:/Sources/Calcul8/docs/teams-upgrade.md) still describes empty workspace creation
+  - Pick one behavior and update implementation, tests, and copy to match
 
-- The broad cleanup phase is complete enough to stop. Remaining work should stay focused on the top-tier hotspots above.
-- Chart and portfolio behavior are sensitive to where data shaping occurs; extractions in that area need focused regression coverage.
-- `AppContext` should be reduced through practical boundary cleanup before any deeper type-surface redesign.
+- [ ] Split [syncSnapshotRepository.ts](/f:/Sources/Calcul8/apps/api/src/lib/cosmos/syncSnapshotRepository.ts)
+  - Separate snapshot reads/rebuilds
+  - Separate preset/meta persistence
+  - Separate entity import/replace logic
+  - Separate incremental sync apply and wheel config persistence
+
+- [ ] Reduce frontend workspace orchestration coupling
+  - Trim cross-feature responsibilities in [context.ts](/f:/Sources/Calcul8/src/app-core/context.ts)
+  - Narrow the surfaces in [workspaces.ts](/f:/Sources/Calcul8/src/app-core/methods/ui/workspaces.ts) and [workspace-realtime.ts](/f:/Sources/Calcul8/src/app-core/methods/ui/workspace-realtime.ts)
+
+- [ ] Finish entitlement scope decisions for workspaces
+  - Workspace sync/collaboration is live, but entitlement resolution is still mostly user-scoped
+  - Clarify whether team billing/access should be enforced at workspace scope
+
+## Notes
+
+- Older docs in [teams-upgrade.md](/f:/Sources/Calcul8/docs/teams-upgrade.md) and [entitlement-scope-refactor-prep.md](/f:/Sources/Calcul8/docs/entitlement-scope-refactor-prep.md) are partly stale and should be treated as historical unless updated.
+- The previous chart/singles cleanup items are lower priority than the backend/workspace hotspots above.
