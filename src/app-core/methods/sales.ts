@@ -6,7 +6,11 @@ import type {
     WheelConfig
 } from "../../types/app.ts";
 import type { AppContext, AppMethodState } from "../context.ts";
-import { STORAGE_KEYS } from "../storageKeys.ts";
+import {
+    getScopedWheelConfigsStorageKey,
+    getScopedWheelSessionStorageKey
+} from "../storageKeys.ts";
+import { getActiveStorageScope } from "../workspace-scope.ts";
 import { getTodayDate } from "./config-shared.ts";
 import { initPortfolioCharts, initSalesChartDisplay } from "./sales-charts.ts";
 import { buildSaleSaveResult } from "./sales-core.ts";
@@ -221,7 +225,7 @@ export const salesMethods: ThisType<AppContext> & Pick<
 
   loadWheelFromStorage(): void {
     try {
-      const raw = localStorage.getItem(STORAGE_KEYS.WHEEL_CONFIGS);
+      const raw = localStorage.getItem(getScopedWheelConfigsStorageKey(getActiveStorageScope(this)));
       if (raw) {
         const parsed = JSON.parse(raw) as WheelConfig[];
         if (Array.isArray(parsed) && parsed.length > 0) {
@@ -234,7 +238,7 @@ export const salesMethods: ThisType<AppContext> & Pick<
     }
 
     try {
-      const rawSession = localStorage.getItem(STORAGE_KEYS.WHEEL_SESSION);
+      const rawSession = localStorage.getItem(getScopedWheelSessionStorageKey(getActiveStorageScope(this)));
       if (rawSession) {
         const session = JSON.parse(rawSession) as Record<string, unknown>;
         if (session.activeWheelConfigId != null) {
@@ -248,6 +252,9 @@ export const salesMethods: ThisType<AppContext> & Pick<
         }
         if (typeof session.wheelLastResult === "string") {
           this.wheelLastResult = session.wheelLastResult;
+        }
+        if (typeof session.wheelSessionUpdatedAt === "number") {
+          this.wheelSessionUpdatedAt = session.wheelSessionUpdatedAt;
         }
         if (session.wheelSessionLotSelections && typeof session.wheelSessionLotSelections === "object") {
           this.wheelSessionLotSelections = session.wheelSessionLotSelections as Record<string, number | null>;
@@ -263,7 +270,10 @@ export const salesMethods: ThisType<AppContext> & Pick<
 
   saveWheelConfigsToStorage(): void {
     try {
-      localStorage.setItem(STORAGE_KEYS.WHEEL_CONFIGS, JSON.stringify(this.wheelConfigs));
+      localStorage.setItem(
+        getScopedWheelConfigsStorageKey(getActiveStorageScope(this)),
+        JSON.stringify(this.wheelConfigs)
+      );
     } catch {
       // Storage full or unavailable
     }
@@ -276,14 +286,16 @@ export const salesMethods: ThisType<AppContext> & Pick<
         wheelTotalSpins: this.wheelTotalSpins,
         wheelSpinCounts: this.wheelSpinCounts,
         wheelLastResult: this.wheelLastResult,
+        wheelSessionUpdatedAt: this.wheelSessionUpdatedAt,
         wheelSessionLotSelections: this.wheelSessionLotSelections,
         wheelSkippedDeductions: this.wheelSkippedDeductions
       };
-      localStorage.setItem(STORAGE_KEYS.WHEEL_SESSION, JSON.stringify(session));
+      localStorage.setItem(
+        getScopedWheelSessionStorageKey(getActiveStorageScope(this)),
+        JSON.stringify(session)
+      );
     } catch {
       // Storage full or unavailable
     }
   }
 };
-
-

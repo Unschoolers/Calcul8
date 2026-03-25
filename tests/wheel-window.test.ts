@@ -653,8 +653,11 @@ test("saveWheelSession stores session to localStorage", () => {
 
   const vm: Record<string, unknown> = {
     activeWheelConfigId: 42,
+    activeScopeType: "personal",
+    activeWorkspaceId: null,
     wheelSpinCounts: [1, 2],
     wheelTotalSpins: 3,
+    wheelSessionUpdatedAt: 0,
     wheelSessionCostAdjustment: 10,
     wheelChaseTallyHistory: [],
     wheelSkippedDeductions: [],
@@ -667,8 +670,8 @@ test("saveWheelSession stores session to localStorage", () => {
   WheelWindow.methods!.saveWheelSession.call(vm as never);
 
   assert.equal(mockStorage.setItem.mock.calls.length, 1);
-  assert.equal(mockStorage.setItem.mock.calls[0]![0], "wheelSession_42");
-  const parsed = JSON.parse(store["wheelSession_42"]!);
+  assert.equal(mockStorage.setItem.mock.calls[0]![0], "whatfees_wheel_session__cfg__42");
+  const parsed = JSON.parse(store["whatfees_wheel_session__cfg__42"]!);
   assert.deepEqual(parsed.wheelSpinCounts, [1, 2]);
   assert.equal(parsed.wheelTotalSpins, 3);
 
@@ -693,6 +696,8 @@ test("loadWheelFromSession restores session from localStorage", () => {
 
   const vm: Record<string, unknown> = {
     activeWheelConfigId: 42,
+    activeScopeType: "personal",
+    activeWorkspaceId: null,
     activeWheelSlots: [{}, {}], // 2 slots matches session spinCounts length
     wheelSpinCounts: [0, 0],
     wheelTotalSpins: 0,
@@ -732,6 +737,8 @@ test("loadWheelFromSession returns false when slot count mismatches", () => {
 
   const vm: Record<string, unknown> = {
     activeWheelConfigId: 42,
+    activeScopeType: "personal",
+    activeWorkspaceId: null,
     activeWheelSlots: [{}, {}], // 2 slots, session has 3
     wheelSpinCounts: [0, 0],
     wheelTotalSpins: 0

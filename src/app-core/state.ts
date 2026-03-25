@@ -245,9 +245,9 @@ export function createInitialState(): AppState {
     wheelTotalSpins: 0,
     wheelSpinCounts: [],
     wheelLastResult: "",
+    wheelSessionUpdatedAt: 0,
     wheelSessionLotSelections: {},
     wheelSkippedDeductions: []
   };
 }
-
 

@@ -152,6 +152,8 @@ export interface SyncSnapshotDocument {
   userId: string;
   lots: unknown[];
   salesByLot: Record<string, unknown[]>;
+  wheelConfigs: unknown[];
+  activeWheelConfigId: number | null;
   version: number;
   updatedAt: string;
 }
@@ -173,6 +175,8 @@ export interface SyncMetaDocument {
   userId: string;
   version: number;
   updatedAt: string;
+  wheelConfigs?: unknown[];
+  activeWheelConfigId?: number | null;
   salesMode?: "snapshot" | "entity";
   livePricingMode?: "lot_defaults" | "entity";
 }
@@ -352,6 +356,8 @@ export interface LotLivePricingDocument {
 export interface SyncPushPayload {
   lots: unknown[];
   salesByLot: Record<string, unknown[]>;
+  wheelConfigs: unknown[];
+  activeWheelConfigId: number | null;
   activeLotId?: number;
   clientVersion?: number;
   allowEmptyOverwrite?: boolean;

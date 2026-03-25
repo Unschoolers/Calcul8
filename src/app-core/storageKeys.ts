@@ -166,6 +166,24 @@ export function getScopedPresetsStorageKey(scope: AppStorageScope): string {
   return buildScopedStorageKey(STORAGE_KEYS.PRESETS, scope);
 }
 
+export function getScopedWheelConfigsStorageKey(scope: AppStorageScope): string {
+  return buildScopedStorageKey(STORAGE_KEYS.WHEEL_CONFIGS, scope);
+}
+
+export function getScopedWheelSessionStorageKey(scope: AppStorageScope): string {
+  return buildScopedStorageKey(STORAGE_KEYS.WHEEL_SESSION, scope);
+}
+
+export function getScopedWheelConfigSessionStorageKey(
+  scope: AppStorageScope,
+  wheelConfigId: number | null | undefined
+): string {
+  const normalizedConfigId = Number.isFinite(Number(wheelConfigId)) && Number(wheelConfigId) > 0
+    ? String(Math.floor(Number(wheelConfigId)))
+    : "none";
+  return `${getScopedWheelSessionStorageKey(scope)}__cfg__${normalizedConfigId}`;
+}
+
 export function getScopedLastLotStorageKey(scope: AppStorageScope): string {
   return buildScopedStorageKey(STORAGE_KEYS.LAST_LOT_ID, scope);
 }

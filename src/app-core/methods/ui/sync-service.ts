@@ -31,6 +31,8 @@ export type SyncApp = Pick<
   AppContext,
   | "lots"
   | "sales"
+  | "wheelConfigs"
+  | "activeWheelConfigId"
   | "currentLotId"
   | "cloudSyncIntervalId"
   | "syncStatusResetTimeoutId"
@@ -44,6 +46,7 @@ export type SyncApp = Pick<
   | "loadSalesForLotId"
   | "getSalesStorageKey"
   | "saveLotsToStorage"
+  | "saveWheelConfigsToStorage"
   | "loadLot"
   | "notify"
   | "startOfflineReconnectScheduler"
@@ -89,6 +92,8 @@ const defaultDeps: SyncServiceDeps = {
     currentLotId: app.currentLotId,
     sales: app.sales,
     loadSalesForLotId: app.loadSalesForLotId,
+    wheelConfigs: app.wheelConfigs,
+    activeWheelConfigId: app.activeWheelConfigId,
     workspaceId: getActiveWorkspaceId(app)
   }, clientVersion),
   getSyncPayloadSignature,
@@ -196,7 +201,8 @@ export async function runCloudSyncPull(app: SyncApp, deps: Partial<SyncServiceDe
 
     const parsedSnapshot = resolvedDeps.parseCloudSnapshot(body.snapshot);
     const localHasSales = app.lots.some((lot) => app.loadSalesForLotId(lot.id).length > 0);
-    const localHasData = app.lots.length > 0 || localHasSales;
+    const localHasWheelConfigs = Array.isArray(app.wheelConfigs) && app.wheelConfigs.length > 0;
+    const localHasData = app.lots.length > 0 || localHasSales || localHasWheelConfigs;
     const localVersion = resolvedDeps.getStoredClientVersion(app);
     const shouldApplyCloud = resolvedDeps.shouldApplyCloudSnapshot({
       cloudVersion: parsedSnapshot.version,

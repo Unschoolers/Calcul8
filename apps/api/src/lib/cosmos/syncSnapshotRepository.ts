@@ -106,7 +106,10 @@ async function getSyncSnapshotFromContainer(
     getSyncMetaDocumentFromContainer(container, userId)
   ]);
 
-  if (presetDocuments.length === 0) {
+  const wheelConfigs = Array.isArray(metaDocument?.wheelConfigs) ? metaDocument.wheelConfigs : [];
+  const activeWheelConfigId = normalizeActiveWheelConfigId(metaDocument?.activeWheelConfigId);
+
+  if (presetDocuments.length === 0 && wheelConfigs.length === 0) {
     return null;
   }
 
@@ -138,6 +141,8 @@ async function getSyncSnapshotFromContainer(
     userId,
     lots,
     salesByLot,
+    wheelConfigs,
+    activeWheelConfigId,
     version: maxVersion,
     updatedAt: latestUpdatedAt
   };
@@ -308,8 +313,18 @@ interface IncrementalSyncUpsertInput {
   userId: string;
   lots: unknown[];
   salesByLot: Record<string, unknown[]>;
+  wheelConfigs: unknown[];
+  activeWheelConfigId: number | null;
   version: number;
   updatedAt: string;
+}
+
+function normalizeActiveWheelConfigId(value: unknown): number | null {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return null;
+  }
+  return Math.floor(parsed);
 }
 
 function buildIncomingPresetStates(
@@ -346,6 +361,7 @@ export async function upsertSyncSnapshotIncremental(
 ): Promise<IncrementalSyncUpsertResult> {
   const { syncSnapshots } = getContainers(config);
   const existingDocuments = await getSyncPresetDocuments(config, input.userId);
+  const existingMetaDocument = await getSyncMetaDocument(config, input.userId);
   const existingStates = existingDocuments.map(toPresetState);
   const incomingStates = buildIncomingPresetStates(input.lots, input.salesByLot);
   const diff = calculateSyncPresetDiff(existingStates, incomingStates);
@@ -386,16 +402,24 @@ export async function upsertSyncSnapshotIncremental(
     }
   }
 
-  const changed = upsertedCount > 0 || deletedCount > 0;
+  const nextWheelConfigs = Array.isArray(input.wheelConfigs) ? input.wheelConfigs : [];
+  const nextActiveWheelConfigId = normalizeActiveWheelConfigId(input.activeWheelConfigId);
+  const existingWheelConfigs = Array.isArray(existingMetaDocument?.wheelConfigs) ? existingMetaDocument.wheelConfigs : [];
+  const existingActiveWheelConfigId = normalizeActiveWheelConfigId(existingMetaDocument?.activeWheelConfigId);
+  const wheelConfigChanged =
+    JSON.stringify(existingWheelConfigs) !== JSON.stringify(nextWheelConfigs)
+    || existingActiveWheelConfigId !== nextActiveWheelConfigId;
+  const changed = upsertedCount > 0 || deletedCount > 0 || wheelConfigChanged;
 
   if (changed) {
-    const existingMetaDocument = await getSyncMetaDocument(config, input.userId);
     const metaDocument: SyncMetaDocument = {
       id: syncMetaId(input.userId),
       docType: "sync_meta",
       userId: input.userId,
       version: input.version,
       updatedAt: input.updatedAt,
+      wheelConfigs: nextWheelConfigs,
+      activeWheelConfigId: nextActiveWheelConfigId,
       salesMode: existingMetaDocument?.salesMode,
       livePricingMode: existingMetaDocument?.livePricingMode
     };

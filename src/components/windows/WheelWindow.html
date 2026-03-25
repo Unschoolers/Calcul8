@@ -250,7 +250,7 @@
       size="large"
       color="primary"
       variant="elevated"
-      :disabled="wheelSpinning || !activeWheelSlots.length || wheelEndingSession || wheelChaseDialog"
+      :disabled="wheelSpinning || !activeWheelSlots.length || wheelEndingSession || wheelChaseDialog || (isWorkspaceScopeActive && !isCurrentWorkspaceOwner)"
       @click="spinWheel"
       class="wheel-spin-btn"
     >

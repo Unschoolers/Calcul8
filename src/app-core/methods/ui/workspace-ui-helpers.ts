@@ -127,6 +127,7 @@ export function loadScopedAppState(app: AppContext): void {
     : localStorage.getItem(lastLotStorageKey) ?? localStorage.getItem(LEGACY_KEYS.LAST_LOT_ID);
 
   app.loadLotsFromStorage();
+  app.loadWheelFromStorage();
 
   const nextLotId = Number(storedLastLotId);
   if (Number.isFinite(nextLotId) && nextLotId > 0 && app.lots.some((lot) => lot.id === nextLotId)) {

@@ -57,6 +57,8 @@ function createMockStorage(seed: Record<string, string> = {}): MockStorage {
 function createContext() {
   return {
     lots: [{ id: 1 }],
+    wheelConfigs: [],
+    activeWheelConfigId: null as number | null,
     sales: [],
     currentLotId: 1,
     cloudSyncIntervalId: null as number | null,
@@ -69,6 +71,7 @@ function createContext() {
     loadSalesForLotId: vi.fn().mockReturnValue([]),
     startOfflineReconnectScheduler: vi.fn(),
     saveLotsToStorage: vi.fn(),
+    saveWheelConfigsToStorage: vi.fn(),
     getSalesStorageKey: (lotId: number) => `whatfees_sales_${lotId}`,
     loadLot: vi.fn(),
     notify: vi.fn(),
@@ -105,7 +108,9 @@ test("pushCloudSync skips network when payload hash is unchanged", async () => {
   const ctx = createContext();
   ctx.lastSyncedPayloadHash = JSON.stringify({
     lots: ctx.lots,
-    salesByLot: {}
+    salesByLot: {},
+    wheelConfigs: ctx.wheelConfigs,
+    activeWheelConfigId: ctx.activeWheelConfigId
   });
 
   await uiSyncMethods.pushCloudSync.call(ctx, false);
@@ -146,6 +151,8 @@ test("pullCloudSync applies newer cloud snapshot and stores version", async () =
         salesByLot: {
           "2": [{ id: 2001, type: "pack", quantity: 1, packsCount: 1, price: 10, date: "2026-02-21" }]
         },
+        wheelConfigs: [{ id: 91, name: "Cloud wheel", spinPrice: 10, targetMargin: 40, createdAt: "", tiers: [] }],
+        activeWheelConfigId: 91,
         version: 3
       }
     })
@@ -155,8 +162,11 @@ test("pullCloudSync applies newer cloud snapshot and stores version", async () =
 
   assert.equal(Array.isArray(ctx.lots), true);
   assert.equal((ctx.lots as Array<{ id: number }>)[0]?.id, 2);
+  assert.equal((ctx.wheelConfigs as Array<{ id: number }>)[0]?.id, 91);
+  assert.equal(ctx.activeWheelConfigId, 91);
   assert.equal(ctx.currentLotId, 2);
   assert.equal(ctx.saveLotsToStorage.mock.calls.length, 1);
+  assert.equal(ctx.saveWheelConfigsToStorage.mock.calls.length, 1);
   assert.equal(ctx.loadLot.mock.calls.length, 1);
   assert.equal(ctx.notify.mock.calls.length, 1);
   assert.equal(storage.getItem("whatfees_sync_client_version"), "3");
@@ -179,6 +189,8 @@ test("pullCloudSync normalizes legacy lot tax fields before applying cloud snaps
       snapshot: {
         lots: [{ id: 2, name: "Cloud lot", taxRatePercent: 11 }],
         salesByLot: {},
+        wheelConfigs: [],
+        activeWheelConfigId: null,
         version: 3
       }
     })
@@ -213,6 +225,8 @@ test("pullCloudSync clears scoped sales caches before applying a newer cloud sna
       snapshot: {
         lots: [{ id: 2, name: "Cloud lot" }],
         salesByLot: {},
+        wheelConfigs: [],
+        activeWheelConfigId: null,
         version: 3
       }
     })
@@ -249,6 +263,8 @@ test("pullCloudSync still attempts server sync when local Google token is missin
       snapshot: {
         lots: [],
         salesByLot: {},
+        wheelConfigs: [],
+        activeWheelConfigId: null,
         version: 1
       }
     })
@@ -270,6 +286,8 @@ test("pullCloudSync sends workspaceId when the active scope is shared", async ()
       snapshot: {
         lots: [],
         salesByLot: {},
+        wheelConfigs: [],
+        activeWheelConfigId: null,
         version: 1
       }
     })
@@ -307,8 +325,12 @@ test("pushCloudSync omits sales from snapshot payloads now that sales are entity
   const requestInit = fetchWithRetryMock.mock.calls[0]?.[1] as { body?: string };
   const parsedBody = JSON.parse(String(requestInit?.body ?? "{}")) as {
     salesByLot?: Record<string, Array<{ id: number }>>;
+    wheelConfigs?: unknown[];
+    activeWheelConfigId?: number | null;
   };
   assert.deepEqual(parsedBody.salesByLot, {});
+  assert.deepEqual(parsedBody.wheelConfigs, []);
+  assert.equal(parsedBody.activeWheelConfigId, null);
 });
 
 test("pushCloudSync includes activeLotId metadata for the selected lot", async () => {

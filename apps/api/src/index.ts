@@ -9,6 +9,7 @@ import "./functions/migrationRun";
 import "./functions/migrationRunsList";
 import "./functions/workspaces";
 import "./functions/salesLive";
+import "./functions/wheelBroadcast";
 import "./functions/whatnot";
 import "./functions/cardsSearch";
 import "./functions/auth";

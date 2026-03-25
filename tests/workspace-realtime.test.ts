@@ -109,6 +109,13 @@ function createApp(overrides: Record<string, unknown> = {}) {
     lastSyncedPayloadHash: null,
     workspaceRealtimeStatus: "idle",
     workspacePresenceByUserId: {},
+    wheelConfigs: [],
+    activeWheelConfigId: null as number | null,
+    wheelTotalSpins: 0,
+    wheelSpinCounts: [] as number[],
+    wheelLastResult: "",
+    wheelSessionUpdatedAt: 0,
+    wheelSkippedDeductions: [],
     pullCloudSync: vi.fn(async () => undefined),
     getSalesStorageKey: (lotId: number) => `sales:${lotId}`,
     loadSalesForLotId: vi.fn(() => []),
@@ -131,7 +138,8 @@ beforeEach(() => {
     room: "workspace:ws_dcb4d6f021637411:lot:1773766061603",
     rooms: [
       "workspace:ws_dcb4d6f021637411:lot:1773766061603",
-      "workspace:ws_dcb4d6f021637411:presence"
+      "workspace:ws_dcb4d6f021637411:presence",
+      "workspace:ws_dcb4d6f021637411:wheel"
     ],
     token: "signed-token",
     expiresAt: 1760000000
@@ -175,7 +183,8 @@ test("refreshWorkspaceRealtime connects to prod socket host and subscribes with 
     type: "subscribe",
     rooms: [
       "workspace:ws_dcb4d6f021637411:lot:1773766061603",
-      "workspace:ws_dcb4d6f021637411:presence"
+      "workspace:ws_dcb4d6f021637411:presence",
+      "workspace:ws_dcb4d6f021637411:wheel"
     ],
     token: "signed-token"
   });
@@ -184,7 +193,8 @@ test("refreshWorkspaceRealtime connects to prod socket host and subscribes with 
     type: "subscribed",
     rooms: [
       "workspace:ws_dcb4d6f021637411:lot:1773766061603",
-      "workspace:ws_dcb4d6f021637411:presence"
+      "workspace:ws_dcb4d6f021637411:presence",
+      "workspace:ws_dcb4d6f021637411:wheel"
     ]
   });
 
@@ -272,6 +282,58 @@ test("workspace realtime applies incoming sale and live pricing events for the a
   });
 });
 
+test("workspace realtime applies wheel updates including resets when revision is newer", async () => {
+  const app = createApp({
+    wheelConfigs: [{
+      id: 91,
+      name: "Old Wheel",
+      spinPrice: 10,
+      targetMargin: 40,
+      createdAt: "",
+      tiers: []
+    }],
+    activeWheelConfigId: 91,
+    wheelTotalSpins: 10,
+    wheelSpinCounts: [10],
+    wheelLastResult: "Old",
+    wheelSessionUpdatedAt: 100
+  });
+
+  refreshWorkspaceRealtime(app as never);
+  const socket = FakeWebSocket.instances[0]!;
+  socket.triggerOpen();
+  await flushMicrotasks();
+
+  socket.triggerMessage({
+    type: "event",
+    room: "workspace:ws_dcb4d6f021637411:wheel",
+    eventType: "wheel.session.updated",
+    data: {
+      wheelConfigs: [{
+        id: 91,
+        name: "New Wheel",
+        spinPrice: 15,
+        targetMargin: 35,
+        createdAt: "",
+        tiers: []
+      }],
+      activeWheelConfigId: 91,
+      wheelTotalSpins: 0,
+      wheelSpinCounts: [0],
+      wheelLastResult: "",
+      wheelSessionUpdatedAt: 200,
+      wheelSkippedDeductions: []
+    }
+  });
+
+  assert.equal(app.wheelTotalSpins, 0);
+  assert.deepEqual(app.wheelSpinCounts, [0]);
+  assert.equal(app.wheelLastResult, "");
+  assert.equal((app.wheelConfigs as Array<{ name: string }>)[0]?.name, "New Wheel");
+  assert.equal(app.activeWheelConfigId, 91);
+  assert.equal(app.wheelSessionUpdatedAt, 200);
+});
+
 test("workspace realtime reconnects after an unexpected close and stops cleanly", async () => {
   const app = createApp();
 
@@ -322,6 +384,8 @@ test("workspace realtime connects on config tab and pulls cloud sync for clean c
     currentLotId: app.currentLotId,
     sales: app.sales,
     loadSalesForLotId: app.loadSalesForLotId,
+    wheelConfigs: app.wheelConfigs,
+    activeWheelConfigId: app.activeWheelConfigId,
     workspaceId: app.activeWorkspaceId
   }));
 

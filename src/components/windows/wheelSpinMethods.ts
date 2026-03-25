@@ -1,3 +1,4 @@
+import { broadcastWheelSession } from "../../app-core/methods/ui/wheel-broadcast.ts";
 import type { Lot, Sale, SkippedWheelDeduction, WheelConfig } from "../../types/app.ts";
 import {
     createWheelSale,
@@ -188,5 +189,6 @@ export const wheelSpinMethods = {
       (this as Record<string, unknown>).wheelChaseDialog = true;
     }
     (this as Record<string, unknown> & { saveWheelSession: () => void }).saveWheelSession();
+    void broadcastWheelSession(this as Parameters<typeof broadcastWheelSession>[0]);
   }
 };

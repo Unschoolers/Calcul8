@@ -58,6 +58,8 @@ test("syncPull returns empty snapshot when no cloud state exists", async () => {
     snapshot: {
       lots: [],
       salesByLot: {},
+      wheelConfigs: [],
+      activeWheelConfigId: null,
       version: 0,
       updatedAt: null
     }
@@ -69,6 +71,15 @@ test("syncPull returns existing snapshot payload", async () => {
   getEffectiveSyncSnapshotMock.mockResolvedValue({
     lots: [{ id: 10 }],
     salesByLot: { "10": [{ id: 1 }] },
+    wheelConfigs: [{
+      id: 91,
+      name: "Wheel A",
+      spinPrice: 10,
+      targetMargin: 40,
+      createdAt: "",
+      tiers: []
+    }],
+    activeWheelConfigId: 91,
     version: 8,
     updatedAt: "2026-02-21T00:00:00.000Z"
   });
@@ -77,7 +88,27 @@ test("syncPull returns existing snapshot payload", async () => {
 
   const response = await syncPull(request as never, context as never);
   assert.equal(response.status, 200);
-  assert.equal((response.jsonBody as { snapshot: { version: number } }).snapshot.version, 8);
+  assert.deepEqual((response.jsonBody as {
+    snapshot: {
+      wheelConfigs: Array<{ id: number }>;
+      activeWheelConfigId: number | null;
+      version: number;
+    };
+  }).snapshot, {
+    lots: [{ id: 10 }],
+    salesByLot: { "10": [{ id: 1 }] },
+    wheelConfigs: [{
+      id: 91,
+      name: "Wheel A",
+      spinPrice: 10,
+      targetMargin: 40,
+      createdAt: "",
+      tiers: []
+    }],
+    activeWheelConfigId: 91,
+    version: 8,
+    updatedAt: "2026-02-21T00:00:00.000Z"
+  });
 });
 
 test("syncPull returns server error when snapshot read fails", async () => {

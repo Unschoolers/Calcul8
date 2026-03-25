@@ -2,14 +2,14 @@ import type { Sale, WorkspaceRealtimeStatus } from "../../../types/app.ts";
 import type { AppContext } from "../../context.ts";
 import { removeById, upsertById } from "../../shared/collection-updaters.ts";
 import {
-  cacheAuthoritativeSales,
-  canUseAuthoritativeSalesLiveApi,
-  fetchWorkspaceRealtimeSubscribeToken,
-  normalizeLivePricing,
-  normalizeSale
+    cacheAuthoritativeSales,
+    canUseAuthoritativeSalesLiveApi,
+    fetchWorkspaceRealtimeSubscribeToken,
+    normalizeLivePricing,
+    normalizeSale
 } from "../sales-live-api.ts";
-import { createSyncPayload, getSyncPayloadSignature } from "./sync-payload.ts";
 import { reconcileIncomingLivePricingSnapshot } from "./lot-entity-polling.ts";
+import { createSyncPayload, getSyncPayloadSignature } from "./sync-payload.ts";
 
 type RealtimeApp = Pick<
   AppContext,
@@ -30,6 +30,13 @@ type RealtimeApp = Pick<
   | "getSalesStorageKey"
   | "workspaceRealtimeStatus"
   | "workspacePresenceByUserId"
+  | "wheelConfigs"
+  | "activeWheelConfigId"
+  | "wheelTotalSpins"
+  | "wheelSpinCounts"
+  | "wheelLastResult"
+  | "wheelSessionUpdatedAt"
+  | "wheelSkippedDeductions"
 >;
 
 type RealtimeSocketState = {
@@ -51,6 +58,7 @@ type RealtimeEnvelope =
 type WorkspaceRealtimeDesiredSubscription = {
   lotRoom: string;
   presenceRoom: string;
+  wheelRoom: string;
   rooms: string[];
 };
 
@@ -63,7 +71,7 @@ const REALTIME_RECONNECT_BACKOFF_MS = [1_000, 5_000, 30_000, 120_000, 900_000] a
 const REALTIME_RECONNECT_JITTER_RATIO = 0.2;
 const FALLBACK_REALTIME_SOCKET_URL = "wss://whatfees-realtime.redsand-4d20b4cc.canadaeast.azurecontainerapps.io/socket";
 const PROD_REALTIME_SOCKET_URL = "wss://ws.whatfees.ca/socket";
-const WORKSPACE_REALTIME_TABS = new Set(["config", "live", "sales", "portfolio"]);
+const WORKSPACE_REALTIME_TABS = new Set(["config", "live", "sales", "portfolio", "wheel"]);
 const realtimeSocketStateByApp = new WeakMap<object, RealtimeSocketState>();
 
 function getRealtimeSocketState(app: object): RealtimeSocketState {
@@ -107,14 +115,20 @@ function buildWorkspacePresenceRoom(workspaceId: string): string {
   return `workspace:${workspaceId}:presence`;
 }
 
+function buildWorkspaceWheelRoom(workspaceId: string): string {
+  return `workspace:${workspaceId}:wheel`;
+}
+
 function getDesiredRealtimeSubscription(app: RealtimeApp): WorkspaceRealtimeDesiredSubscription | null {
   if (!shouldUseWorkspaceRealtime(app)) return null;
   const lotRoom = buildWorkspaceLotRoom(app.activeWorkspaceId as string, app.currentLotId as number);
   const presenceRoom = buildWorkspacePresenceRoom(app.activeWorkspaceId as string);
+  const wheelRoom = buildWorkspaceWheelRoom(app.activeWorkspaceId as string);
   return {
     lotRoom,
     presenceRoom,
-    rooms: [lotRoom, presenceRoom]
+    wheelRoom,
+    rooms: [lotRoom, presenceRoom, wheelRoom]
   };
 }
 
@@ -203,6 +217,8 @@ function isWorkspaceSnapshotSyncClean(app: RealtimeApp): boolean {
     currentLotId: app.currentLotId,
     sales: app.sales,
     loadSalesForLotId: app.loadSalesForLotId,
+    wheelConfigs: app.wheelConfigs,
+    activeWheelConfigId: app.activeWheelConfigId,
     workspaceId: app.activeWorkspaceId
   }));
   return currentSignature === expectedSignature;
@@ -247,12 +263,56 @@ function handleLotConfigUpdatedEvent(app: RealtimeApp, payload: RealtimeEventPay
   void app.pullCloudSync();
 }
 
+function handleWheelSessionUpdatedEvent(app: RealtimeApp, data: unknown): void {
+  if (app.activeScopeType !== "workspace") return;
+
+  const raw = typeof data === "object" && data !== null && !Array.isArray(data)
+    ? data as Record<string, unknown>
+    : {};
+
+  const incomingUpdatedAt = Math.max(0, Math.floor(Number(raw.wheelSessionUpdatedAt) || 0));
+  if (incomingUpdatedAt > 0 && incomingUpdatedAt < app.wheelSessionUpdatedAt) return;
+
+  if (Array.isArray(raw.wheelConfigs)) {
+    app.wheelConfigs = raw.wheelConfigs as typeof app.wheelConfigs;
+  }
+
+  const incomingTotalSpins = Math.max(0, Math.floor(Number(raw.wheelTotalSpins) || 0));
+  const incomingConfigId = raw.activeWheelConfigId == null
+    ? null
+    : (Number(raw.activeWheelConfigId) || null);
+  if (incomingConfigId == null) {
+    app.activeWheelConfigId = null;
+  } else if (app.wheelConfigs.some((config) => config.id === incomingConfigId)) {
+    app.activeWheelConfigId = incomingConfigId;
+  } else if (incomingConfigId !== app.activeWheelConfigId) {
+    return;
+  }
+
+  app.wheelSessionUpdatedAt = incomingUpdatedAt > 0 ? incomingUpdatedAt : Date.now();
+  app.wheelTotalSpins = incomingTotalSpins;
+  if (Array.isArray(raw.wheelSpinCounts)) {
+    app.wheelSpinCounts = raw.wheelSpinCounts.map((n) => Math.max(0, Math.floor(Number(n) || 0)));
+  }
+  if (typeof raw.wheelLastResult === "string") {
+    app.wheelLastResult = raw.wheelLastResult;
+  }
+  if (Array.isArray(raw.wheelSkippedDeductions)) {
+    app.wheelSkippedDeductions = raw.wheelSkippedDeductions as typeof app.wheelSkippedDeductions;
+  }
+}
+
 function applyRealtimeMessage(app: RealtimeApp, room: string, eventType: string, data: unknown): void {
   const desiredSubscription = getDesiredRealtimeSubscription(app);
   if (!desiredSubscription || !desiredSubscription.rooms.includes(room)) return;
 
   if (eventType === "workspace.presence") {
     applyWorkspacePresenceSnapshot(app, data);
+    return;
+  }
+
+  if (eventType === "wheel.session.updated") {
+    handleWheelSessionUpdatedEvent(app, data);
     return;
   }
 

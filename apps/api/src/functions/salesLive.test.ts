@@ -327,7 +327,8 @@ test("lotRealtimeTokenGet returns a signed room token for workspace lots", async
   assert.equal(body.room, "workspace:ws_dcb4d6f021637411:lot:1773766061603");
   assert.deepEqual(body.rooms, [
     "workspace:ws_dcb4d6f021637411:lot:1773766061603",
-    "workspace:ws_dcb4d6f021637411:presence"
+    "workspace:ws_dcb4d6f021637411:presence",
+    "workspace:ws_dcb4d6f021637411:wheel"
   ]);
   assert.match(body.token, /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
   assert.equal(typeof body.expiresAt, "number");

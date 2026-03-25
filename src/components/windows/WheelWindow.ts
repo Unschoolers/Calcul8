@@ -53,6 +53,13 @@ export const WheelWindow = {
     ...wheelComputeds
   },
   watch: {
+    wheelConfigs: {
+      handler(this: Record<string, unknown>) {
+        const vm = this as Record<string, unknown> & { loadWheelConfig: () => void };
+        vm.loadWheelConfig();
+      },
+      deep: true
+    },
     activeWheelConfigId(this: Record<string, unknown>) {
       const vm = this as Record<string, unknown> & { loadWheelConfig: () => void };
       vm.loadWheelConfig();

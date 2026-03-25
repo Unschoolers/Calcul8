@@ -10,6 +10,7 @@ import { hasWorkspaceMembership } from "../lib/cosmos/workspaceRepository";
 import {
   buildWorkspaceLotRealtimeRoom,
   buildWorkspacePresenceRealtimeRoom,
+  buildWorkspaceWheelRealtimeRoom,
   signRealtimeSubscribeToken
 } from "../lib/realtime";
 import { assertSyncScopeAccess, resolveSyncScope } from "../lib/syncScopeResolution";
@@ -262,7 +263,8 @@ export async function mintLotRealtimeTokenForActor(
 
   const room = buildWorkspaceLotRealtimeRoom(workspaceId, lotId);
   const presenceRoom = buildWorkspacePresenceRealtimeRoom(workspaceId);
-  const rooms = [room, presenceRoom];
+  const wheelRoom = buildWorkspaceWheelRealtimeRoom(workspaceId);
+  const rooms = [room, presenceRoom, wheelRoom];
   const tokenSecret = String(config.realtimeTokenSecret ?? "").trim();
   if (!tokenSecret && config.apiEnv === "prod") {
     throw new HttpError(503, "Realtime subscribe signing is not configured.");

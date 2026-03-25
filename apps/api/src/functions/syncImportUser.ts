@@ -83,6 +83,10 @@ export async function syncImportUser(
       userId: actorUserId,
       lots: sourceSnapshot.lots,
       salesByLot: sourceSnapshot.salesByLot,
+      wheelConfigs: Array.isArray(sourceSnapshot.wheelConfigs) ? sourceSnapshot.wheelConfigs : [],
+      activeWheelConfigId: typeof sourceSnapshot.activeWheelConfigId === "number"
+        ? sourceSnapshot.activeWheelConfigId
+        : null,
       version: nextVersion,
       updatedAt
     });

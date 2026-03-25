@@ -1,5 +1,8 @@
 import { nextTick } from "vue";
+import { broadcastWheelSession } from "../../app-core/methods/ui/wheel-broadcast.ts";
 import type { Lot, Sale, SkippedWheelDeduction, WheelConfig } from "../../types/app.ts";
+import { getScopedWheelConfigSessionStorageKey } from "../../app-core/storageKeys.ts";
+import { getActiveStorageScope } from "../../app-core/workspace-scope.ts";
 import { buildSlotsFromConfig, createWheelSale, type WheelSlot } from "./wheelHelpers.ts";
 
 export const wheelSessionMethods = {
@@ -135,7 +138,9 @@ export const wheelSessionMethods = {
     (this as Record<string, unknown>).wheelChaseDialog = false;
     this.wheelLastResult = "⭐ Chase replaced — " + newLabel;
     (this as Record<string, unknown>).wheelLastResultColor = "#f0a500";
+    (this as Record<string, unknown>).wheelSessionUpdatedAt = Date.now();
     (this as Record<string, unknown> & { saveWheelSession: () => void }).saveWheelSession();
+    void broadcastWheelSession(this as Parameters<typeof broadcastWheelSession>[0]);
     nextTick(() => (this as Record<string, unknown> & { drawWheel: (offset?: number) => void }).drawWheel(
       (this as Record<string, unknown>).wheelCurrentAngle as number || 0
     ));
@@ -201,7 +206,9 @@ export const wheelSessionMethods = {
     (this as Record<string, unknown>).wheelChasePendingTierId = "";
     (this as Record<string, unknown>).wheelSessionCostAdjustment = 0;
     (this as Record<string, unknown>).wheelChaseTallyHistory = [];
+    (this as Record<string, unknown>).wheelSessionUpdatedAt = Date.now();
     (this as Record<string, unknown> & { saveWheelSession: () => void }).saveWheelSession();
+    void broadcastWheelSession(this as Parameters<typeof broadcastWheelSession>[0]);
   },
 
   confirmWheelAction(this: Record<string, unknown>): void {
@@ -264,6 +271,8 @@ export const wheelSessionMethods = {
     if (!skipped.length) {
       (this as Record<string, unknown>).wheelEndingSession = false;
     }
+    (this as Record<string, unknown>).wheelSessionUpdatedAt = Date.now();
+    void broadcastWheelSession(this as Parameters<typeof broadcastWheelSession>[0]);
   },
 
   confirmAllBatchSales(this: Record<string, unknown>): void {
@@ -283,6 +292,8 @@ export const wheelSessionMethods = {
     if (!skipped.length) {
       (this as Record<string, unknown>).wheelEndingSession = false;
     }
+    (this as Record<string, unknown>).wheelSessionUpdatedAt = Date.now();
+    void broadcastWheelSession(this as Parameters<typeof broadcastWheelSession>[0]);
   },
 
   cancelEndWheelSession(this: Record<string, unknown>): void {
@@ -295,6 +306,7 @@ export const wheelSessionMethods = {
     const session = {
       wheelSpinCounts: this.wheelSpinCounts,
       wheelTotalSpins: this.wheelTotalSpins,
+      wheelSessionUpdatedAt: this.wheelSessionUpdatedAt,
       wheelSessionCostAdjustment: (this as Record<string, unknown>).wheelSessionCostAdjustment,
       wheelChaseTallyHistory: (this as Record<string, unknown>).wheelChaseTallyHistory,
       wheelSkippedDeductions: this.wheelSkippedDeductions,
@@ -303,14 +315,25 @@ export const wheelSessionMethods = {
       wheelLastResultColor: (this as Record<string, unknown>).wheelLastResultColor
     };
     try {
-      localStorage.setItem(`wheelSession_${activeId}`, JSON.stringify(session));
+      localStorage.setItem(
+        getScopedWheelConfigSessionStorageKey(getActiveStorageScope(this as {
+          activeScopeType: "personal" | "workspace";
+          activeWorkspaceId: string | null;
+        }), activeId),
+        JSON.stringify(session)
+      );
     } catch { /* quota exceeded — non-critical */ }
   },
 
   loadWheelFromSession(this: Record<string, unknown>): boolean {
     const activeId = this.activeWheelConfigId as number | null;
     if (activeId == null) return false;
-    const raw = localStorage.getItem(`wheelSession_${activeId}`);
+    const raw = localStorage.getItem(
+      getScopedWheelConfigSessionStorageKey(getActiveStorageScope(this as {
+        activeScopeType: "personal" | "workspace";
+        activeWorkspaceId: string | null;
+      }), activeId)
+    );
     if (!raw) return false;
     try {
       const session = JSON.parse(raw);
@@ -318,6 +341,7 @@ export const wheelSessionMethods = {
       if (!Array.isArray(session.wheelSpinCounts) || session.wheelSpinCounts.length !== slots.length) return false;
       this.wheelSpinCounts = session.wheelSpinCounts;
       this.wheelTotalSpins = session.wheelTotalSpins || 0;
+      this.wheelSessionUpdatedAt = session.wheelSessionUpdatedAt || 0;
       (this as Record<string, unknown>).wheelSessionCostAdjustment = session.wheelSessionCostAdjustment || 0;
       (this as Record<string, unknown>).wheelChaseTallyHistory = session.wheelChaseTallyHistory || [];
       this.wheelSkippedDeductions = session.wheelSkippedDeductions || [];

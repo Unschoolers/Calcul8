@@ -6,6 +6,8 @@ import { normalizeStoredLot } from "../../shared/normalize-lot.ts";
 export interface ParsedCloudSnapshot {
   lots: unknown[];
   salesByLot: Record<string, unknown[]>;
+  wheelConfigs: unknown[];
+  activeWheelConfigId: number | null;
   version: number;
   hasData: boolean;
 }
@@ -19,6 +21,8 @@ export function parseCloudSnapshot(snapshot: unknown): ParsedCloudSnapshot {
     ? snapshot as {
       lots?: unknown[];
       salesByLot?: Record<string, unknown[]>;
+      wheelConfigs?: unknown[];
+      activeWheelConfigId?: number | null;
       version?: number;
     }
     : {};
@@ -26,12 +30,18 @@ export function parseCloudSnapshot(snapshot: unknown): ParsedCloudSnapshot {
   const salesByLot = rawSnapshot.salesByLot && typeof rawSnapshot.salesByLot === "object"
     ? rawSnapshot.salesByLot
     : {};
-  const hasData = lots.length > 0 || hasSalesDataByLot(salesByLot);
+  const wheelConfigs = Array.isArray(rawSnapshot.wheelConfigs) ? rawSnapshot.wheelConfigs : [];
+  const activeWheelConfigId = rawSnapshot.activeWheelConfigId == null
+    ? null
+    : (Math.floor(Number(rawSnapshot.activeWheelConfigId) || 0) || null);
+  const hasData = lots.length > 0 || hasSalesDataByLot(salesByLot) || wheelConfigs.length > 0;
   const version = Number(rawSnapshot.version ?? 0);
 
   return {
     lots,
     salesByLot,
+    wheelConfigs,
+    activeWheelConfigId,
     version: Number.isFinite(version) ? version : 0,
     hasData
   };
@@ -51,7 +61,10 @@ export function shouldApplyCloudSnapshot(params: {
 export type SyncApplyApp = Pick<
   AppContext,
   | "lots"
+  | "wheelConfigs"
+  | "activeWheelConfigId"
   | "saveLotsToStorage"
+  | "saveWheelConfigsToStorage"
   | "getSalesStorageKey"
   | "currentLotId"
   | "loadLot"
@@ -65,6 +78,13 @@ export function applyCloudSnapshotToLocal(context: SyncApplyApp, snapshot: Parse
   clearScopedSalesStorage(getActiveStorageScope(context));
   context.lots = (snapshot.lots as typeof context.lots).map((lot) => normalizeStoredLot(lot, todayDate));
   context.saveLotsToStorage();
+  context.wheelConfigs = Array.isArray(snapshot.wheelConfigs)
+    ? snapshot.wheelConfigs as typeof context.wheelConfigs
+    : [];
+  context.activeWheelConfigId = context.wheelConfigs.some((config) => config.id === snapshot.activeWheelConfigId)
+    ? snapshot.activeWheelConfigId
+    : (context.wheelConfigs[0]?.id ?? null);
+  context.saveWheelConfigsToStorage();
 
   if (context.currentLotId && context.lots.some((lot) => lot.id === context.currentLotId)) {
     context.loadLot();

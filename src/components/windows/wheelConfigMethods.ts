@@ -1,4 +1,6 @@
 import { nextTick } from "vue";
+import { queueWorkspaceConfigSyncPush } from "../../app-core/methods/ui/workspace-config-sync.ts";
+import { broadcastWheelSession } from "../../app-core/methods/ui/wheel-broadcast.ts";
 import { calculateTotalCaseCost } from "../../domain/calculations-fees.ts";
 import type { Lot, WheelConfig, WheelTier } from "../../types/app.ts";
 import { buildSlotsFromConfig, createDefaultTier, createDefaultWheelConfig, generateTierId, type WheelSlot } from "./wheelHelpers.ts";
@@ -64,6 +66,8 @@ export const wheelConfigMethods = {
     configs.splice(idx, 1);
     this.wheelConfigs = [...configs];
     this.activeWheelConfigId = configs.length > 0 ? configs[0]!.id : null;
+    queueWorkspaceConfigSyncPush(this as Parameters<typeof queueWorkspaceConfigSyncPush>[0]);
+    void broadcastWheelSession(this as Parameters<typeof broadcastWheelSession>[0]);
   },
 
   applyWheelConfig(this: Record<string, unknown>): void {
@@ -92,6 +96,9 @@ export const wheelConfigMethods = {
     (this as Record<string, unknown>).wheelChaseReplacementSinglesId = null;
     (this as Record<string, unknown>).wheelChasePendingTierId = "";
     (this as Record<string, unknown>).wheelChaseTallyHistory = [];
+    (this as Record<string, unknown>).wheelSessionUpdatedAt = Date.now();
+    queueWorkspaceConfigSyncPush(this as Parameters<typeof queueWorkspaceConfigSyncPush>[0]);
+    void broadcastWheelSession(this as Parameters<typeof broadcastWheelSession>[0]);
     nextTick(() => (this as Record<string, unknown> & { drawWheel: (offset?: number) => void }).drawWheel(0));
   },
 

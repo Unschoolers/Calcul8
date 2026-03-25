@@ -129,7 +129,63 @@ test("getEffectiveSyncSnapshot reconstructs lots and omits preset sales when ent
       { id: "lot-2", name: "Lot 2" }
     ],
     salesByLot: {},
+    wheelConfigs: [],
+    activeWheelConfigId: null,
     version: 7,
+    updatedAt: "2026-03-18T13:00:00.000Z"
+  });
+});
+
+test("getEffectiveSyncSnapshot returns wheel-only snapshot when meta contains wheel configs", async () => {
+  const syncSnapshots = createSyncSnapshotsContainer();
+  const metaDocument: SyncMetaDocument = {
+    id: "sync:meta:user-1",
+    docType: "sync_meta",
+    userId: "user-1",
+    version: 4,
+    updatedAt: "2026-03-18T13:00:00.000Z",
+    wheelConfigs: [{
+      id: 91,
+      name: "Wheel A",
+      spinPrice: 10,
+      targetMargin: 40,
+      createdAt: "",
+      tiers: []
+    }],
+    activeWheelConfigId: 91,
+    salesMode: "entity",
+    livePricingMode: "entity"
+  };
+
+  syncSnapshots.items.query.mockReturnValue({
+    fetchAll: vi.fn().mockResolvedValue({
+      resources: []
+    })
+  });
+  syncSnapshots.item.mockImplementation((id: string) => ({
+    read: vi.fn().mockResolvedValue({
+      resource: id === "sync:meta:user-1" ? metaDocument : null
+    })
+  }));
+  getContainersMock.mockReturnValue({ syncSnapshots });
+
+  const snapshot = await getEffectiveSyncSnapshot(createConfig(), "user-1");
+
+  assert.deepEqual(snapshot, {
+    id: "sync:user-1",
+    userId: "user-1",
+    lots: [],
+    salesByLot: {},
+    wheelConfigs: [{
+      id: 91,
+      name: "Wheel A",
+      spinPrice: 10,
+      targetMargin: 40,
+      createdAt: "",
+      tiers: []
+    }],
+    activeWheelConfigId: 91,
+    version: 4,
     updatedAt: "2026-03-18T13:00:00.000Z"
   });
 });
@@ -256,6 +312,8 @@ test("upsertSyncSnapshotIncremental upserts changed presets, deletes removed pre
     userId: "user-1",
     version: 3,
     updatedAt: "2026-03-18T09:00:00.000Z",
+    wheelConfigs: [],
+    activeWheelConfigId: null,
     salesMode: "entity",
     livePricingMode: "entity"
   };
@@ -284,6 +342,15 @@ test("upsertSyncSnapshotIncremental upserts changed presets, deletes removed pre
       keep: [{ id: 11 }],
       new: [{ id: 22 }]
     },
+    wheelConfigs: [{
+      id: 91,
+      name: "Wheel A",
+      spinPrice: 10,
+      targetMargin: 40,
+      createdAt: "",
+      tiers: []
+    }],
+    activeWheelConfigId: 91,
     version: 9,
     updatedAt: "2026-03-18T15:00:00.000Z"
   });
@@ -301,4 +368,90 @@ test("upsertSyncSnapshotIncremental upserts changed presets, deletes removed pre
   assert.equal(syncSnapshots.items.upsert.mock.calls[2]?.[0]?.id, "sync:meta:user-1");
   assert.equal(syncSnapshots.items.upsert.mock.calls[2]?.[0]?.salesMode, "entity");
   assert.equal(syncSnapshots.items.upsert.mock.calls[2]?.[0]?.livePricingMode, "entity");
+  assert.deepEqual(syncSnapshots.items.upsert.mock.calls[2]?.[0]?.wheelConfigs, [{
+    id: 91,
+    name: "Wheel A",
+    spinPrice: 10,
+    targetMargin: 40,
+    createdAt: "",
+    tiers: []
+  }]);
+  assert.equal(syncSnapshots.items.upsert.mock.calls[2]?.[0]?.activeWheelConfigId, 91);
+});
+
+test("upsertSyncSnapshotIncremental updates meta when only wheel config data changes", async () => {
+  const syncSnapshots = createSyncSnapshotsContainer();
+  const existingPresetDocuments: SyncPresetDocument[] = [
+    {
+      id: "sync:preset:user-1:keep",
+      docType: "sync_preset",
+      userId: "user-1",
+      presetId: "keep",
+      preset: { id: "keep", name: "Keep" },
+      sales: [{ id: 1 }],
+      version: 1,
+      updatedAt: "2026-03-18T09:00:00.000Z"
+    }
+  ];
+  const metaDocument: SyncMetaDocument = {
+    id: "sync:meta:user-1",
+    docType: "sync_meta",
+    userId: "user-1",
+    version: 3,
+    updatedAt: "2026-03-18T09:00:00.000Z",
+    wheelConfigs: [],
+    activeWheelConfigId: null,
+    salesMode: "entity",
+    livePricingMode: "entity"
+  };
+
+  syncSnapshots.items.query.mockReturnValue({
+    fetchAll: vi.fn().mockResolvedValue({
+      resources: existingPresetDocuments
+    })
+  });
+  syncSnapshots.items.upsert.mockResolvedValue({ resource: null });
+  syncSnapshots.item.mockImplementation((id: string, userId: string) => ({
+    read: vi.fn().mockResolvedValue({
+      resource: id === "sync:meta:user-1" ? metaDocument : null
+    }),
+    delete: vi.fn().mockResolvedValue({ id, userId })
+  }));
+  getContainersMock.mockReturnValue({ syncSnapshots });
+
+  const result = await upsertSyncSnapshotIncremental(createConfig(), {
+    userId: "user-1",
+    lots: [{ id: "keep", name: "Keep" }],
+    salesByLot: {
+      keep: [{ id: 1 }]
+    },
+    wheelConfigs: [{
+      id: 42,
+      name: "Synced wheel",
+      spinPrice: 25,
+      targetMargin: 30,
+      createdAt: "",
+      tiers: []
+    }],
+    activeWheelConfigId: 42,
+    version: 10,
+    updatedAt: "2026-03-18T16:00:00.000Z"
+  });
+
+  assert.deepEqual(result, {
+    changed: true,
+    upsertedCount: 0,
+    deletedCount: 0
+  });
+  assert.equal(syncSnapshots.items.upsert.mock.calls.length, 1);
+  assert.equal(syncSnapshots.items.upsert.mock.calls[0]?.[0]?.id, "sync:meta:user-1");
+  assert.deepEqual(syncSnapshots.items.upsert.mock.calls[0]?.[0]?.wheelConfigs, [{
+    id: 42,
+    name: "Synced wheel",
+    spinPrice: 25,
+    targetMargin: 30,
+    createdAt: "",
+    tiers: []
+  }]);
+  assert.equal(syncSnapshots.items.upsert.mock.calls[0]?.[0]?.activeWheelConfigId, 42);
 });

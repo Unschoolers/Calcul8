@@ -78,6 +78,8 @@ async function flushMicrotasks(): Promise<void> {
 function createContext() {
   const ctx = {
     lots: [{ id: 1, name: "Lot 1" }],
+    wheelConfigs: [],
+    activeWheelConfigId: null as number | null,
     sales: [],
     singlesPurchases: [],
     currentLotId: 1,
@@ -109,6 +111,7 @@ function createContext() {
     notify: vi.fn(),
     pullCloudSync: vi.fn(async () => undefined),
     loadLotsFromStorage: vi.fn(),
+    loadWheelFromStorage: vi.fn(),
     loadLot: vi.fn(),
     clearLiveSinglesSelection: vi.fn(),
     loadSalesForLotId: vi.fn(() => []),

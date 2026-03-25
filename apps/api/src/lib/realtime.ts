@@ -1,5 +1,5 @@
-import { createHmac } from "node:crypto";
 import type { InvocationContext } from "@azure/functions";
+import { createHmac } from "node:crypto";
 import type { ApiConfig } from "../types";
 
 const DEFAULT_REALTIME_PUBLISH_URL = "https://ws.whatfees.ca/internal/publish";
@@ -19,6 +19,10 @@ export function buildWorkspaceLotRealtimeRoom(workspaceId: string, lotId: string
 
 export function buildWorkspacePresenceRealtimeRoom(workspaceId: string): string {
   return `workspace:${workspaceId}:presence`;
+}
+
+export function buildWorkspaceWheelRealtimeRoom(workspaceId: string): string {
+  return `workspace:${workspaceId}:wheel`;
 }
 
 export function signRealtimeSubscribeToken(
@@ -104,4 +108,64 @@ export function publishWorkspaceLotRealtimeEventBestEffort(
   args: Parameters<typeof publishWorkspaceLotRealtimeEvent>[1]
 ): void {
   void publishWorkspaceLotRealtimeEvent(config, args).catch(() => false);
+}
+
+export async function publishWorkspaceWheelRealtimeEvent(
+  config: ApiConfig,
+  args: {
+    workspaceId?: string;
+    eventType: string;
+    data?: unknown;
+    logger?: RealtimeLogger;
+  }
+): Promise<boolean> {
+  const workspaceId = String(args.workspaceId ?? "").trim();
+  if (!workspaceId) return false;
+
+  const publishUrl = resolveRealtimePublishUrl(config);
+  const internalApiKey = String(config.realtimeInternalApiKey ?? "").trim();
+  if (!publishUrl || !internalApiKey) return false;
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REALTIME_PUBLISH_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(publishUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${internalApiKey}`
+      },
+      body: JSON.stringify({
+        room: buildWorkspaceWheelRealtimeRoom(workspaceId),
+        eventType: args.eventType,
+        data: args.data
+      }),
+      signal: controller.signal
+    });
+
+    if (!response.ok) {
+      args.logger?.warn?.(
+        `[realtime] Failed to publish ${args.eventType} for workspace ${workspaceId} wheel (${response.status}).`
+      );
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown realtime publish error.";
+    args.logger?.warn?.(
+      `[realtime] Failed to publish ${args.eventType} for workspace ${workspaceId} wheel: ${message}`
+    );
+    return false;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+export function publishWorkspaceWheelRealtimeEventBestEffort(
+  config: ApiConfig,
+  args: Parameters<typeof publishWorkspaceWheelRealtimeEvent>[1]
+): void {
+  void publishWorkspaceWheelRealtimeEvent(config, args).catch(() => false);
 }

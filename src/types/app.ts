@@ -497,8 +497,8 @@ export interface AppState extends LotSetup {
   wheelTotalSpins: number;
   wheelSpinCounts: number[];
   wheelLastResult: string;
+  wheelSessionUpdatedAt: number;
   wheelSessionLotSelections: Record<string, number | null>;
   wheelSkippedDeductions: SkippedWheelDeduction[];
 }
-
 

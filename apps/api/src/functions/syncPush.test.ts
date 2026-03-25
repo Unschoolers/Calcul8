@@ -102,6 +102,15 @@ test("syncPush returns unchanged state when upsert reports no changes", async ()
     body: {
       lots: [{ id: 1 }],
       salesByLot: { "1": [] },
+      wheelConfigs: [{
+        id: 91,
+        name: "Wheel A",
+        spinPrice: 10,
+        targetMargin: 40,
+        createdAt: "",
+        tiers: []
+      }],
+      activeWheelConfigId: 91,
       clientVersion: 5
     },
     method: "POST",
@@ -118,6 +127,30 @@ test("syncPush returns unchanged state when upsert reports no changes", async ()
     updatedAt: "2026-02-21T10:00:00.000Z",
     changed: false
   });
+  assert.deepEqual(assertSafeSyncPushMock.mock.calls[0]?.[0], {
+    version: 5,
+    updatedAt: "2026-02-21T10:00:00.000Z"
+  });
+  assert.deepEqual(assertSafeSyncPushMock.mock.calls[0]?.[1], [{ id: 1 }]);
+  assert.deepEqual(assertSafeSyncPushMock.mock.calls[0]?.[2], { "1": [] });
+  assert.deepEqual(assertSafeSyncPushMock.mock.calls[0]?.[3], [{
+    id: 91,
+    name: "Wheel A",
+    spinPrice: 10,
+    targetMargin: 40,
+    createdAt: "",
+    tiers: []
+  }]);
+  assert.equal(assertSafeSyncPushMock.mock.calls[0]?.[4], false);
+  assert.deepEqual(upsertSyncSnapshotIncrementalMock.mock.calls[0]?.[1]?.wheelConfigs, [{
+    id: 91,
+    name: "Wheel A",
+    spinPrice: 10,
+    targetMargin: 40,
+    createdAt: "",
+    tiers: []
+  }]);
+  assert.equal(upsertSyncSnapshotIncrementalMock.mock.calls[0]?.[1]?.activeWheelConfigId, 91);
   assert.equal(hasWorkspaceMembershipMock.mock.calls.length, 0);
 });
 
@@ -140,6 +173,15 @@ test("syncPush computes next version and returns changed payload", async () => {
     body: {
       lots: [{ id: 10 }, { id: 11 }],
       salesByLot: { "10": [], "11": [] },
+      wheelConfigs: [{
+        id: 55,
+        name: "Wheel B",
+        spinPrice: 15,
+        targetMargin: 35,
+        createdAt: "",
+        tiers: []
+      }],
+      activeWheelConfigId: 55,
       clientVersion: 9
     },
     method: "POST",
@@ -152,6 +194,15 @@ test("syncPush computes next version and returns changed payload", async () => {
 
   const upsertArgs = upsertSyncSnapshotIncrementalMock.mock.calls[0]?.[1];
   assert.equal(upsertArgs.version, 10);
+  assert.deepEqual(upsertArgs.wheelConfigs, [{
+    id: 55,
+    name: "Wheel B",
+    spinPrice: 15,
+    targetMargin: 35,
+    createdAt: "",
+    tiers: []
+  }]);
+  assert.equal(upsertArgs.activeWheelConfigId, 55);
   assert.equal((response.jsonBody as { changed: boolean }).changed, true);
 });
 

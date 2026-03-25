@@ -236,6 +236,8 @@ export const uiWorkspaceMethods: ThisType<AppContext> & Pick<
         currentLotId: this.currentLotId,
         sales: this.sales,
         loadSalesForLotId: this.loadSalesForLotId,
+        wheelConfigs: this.wheelConfigs,
+        activeWheelConfigId: this.activeWheelConfigId,
         workspaceId: createdWorkspaceId
       });
 

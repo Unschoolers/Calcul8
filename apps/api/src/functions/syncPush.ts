@@ -45,6 +45,23 @@ function parseOptionalActiveLotId(value: unknown): number | undefined {
   return Math.floor(parsed);
 }
 
+function parseWheelConfigs(value: unknown): unknown[] {
+  if (value == null) return [];
+  if (!Array.isArray(value)) {
+    throw new HttpError(400, "Field 'wheelConfigs' must be an array when provided.");
+  }
+  return value;
+}
+
+function parseOptionalActiveWheelConfigId(value: unknown): number | null {
+  if (value == null || value === "") return null;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return null;
+  }
+  return Math.floor(parsed);
+}
+
 async function parseSyncPushPayload(request: HttpRequest): Promise<SyncPushPayload> {
   let payload: unknown;
 
@@ -75,6 +92,8 @@ async function parseSyncPushPayload(request: HttpRequest): Promise<SyncPushPaylo
   return {
     lots: syncShape.lots,
     salesByLot: syncShape.salesByLot,
+    wheelConfigs: parseWheelConfigs(payload.wheelConfigs),
+    activeWheelConfigId: parseOptionalActiveWheelConfigId(payload.activeWheelConfigId),
     activeLotId: parseOptionalActiveLotId(payload.activeLotId),
     clientVersion: typeof clientVersion === "number" ? clientVersion : undefined,
     allowEmptyOverwrite: payload.allowEmptyOverwrite === true,
@@ -122,6 +141,7 @@ export async function syncPush(
       existingSnapshot,
       payload.lots,
       payload.salesByLot,
+      payload.wheelConfigs,
       payload.allowEmptyOverwrite === true
     );
 
@@ -133,6 +153,8 @@ export async function syncPush(
       userId: syncScope.partitionKey,
       lots: payload.lots,
       salesByLot: payload.salesByLot,
+      wheelConfigs: payload.wheelConfigs,
+      activeWheelConfigId: payload.activeWheelConfigId,
       version,
       updatedAt
     });

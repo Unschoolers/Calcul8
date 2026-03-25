@@ -47,6 +47,8 @@ function createMockStorage(seed: Record<string, string> = {}): MockStorage {
 function createApp() {
   return {
     lots: [{ id: 1 }],
+    wheelConfigs: [],
+    activeWheelConfigId: null as number | null,
     sales: [],
     currentLotId: 1,
     cloudSyncIntervalId: null as number | null,
@@ -59,6 +61,7 @@ function createApp() {
     loadSalesForLotId: vi.fn().mockReturnValue([]),
     startOfflineReconnectScheduler: vi.fn(),
     saveLotsToStorage: vi.fn(),
+    saveWheelConfigsToStorage: vi.fn(),
     getSalesStorageKey: (lotId: number) => `whatfees_sales_${lotId}`,
     loadLot: vi.fn(),
     notify: vi.fn(),
@@ -102,7 +105,7 @@ test("runCloudSyncPush handles auth expiry and marks sync as error", async () =>
 
   await runCloudSyncPush(app, false, {
     requestCloudSyncPush,
-    createSyncPayload: () => ({ lots: [], salesByLot: {} }),
+    createSyncPayload: () => ({ lots: [], salesByLot: {}, wheelConfigs: [], activeWheelConfigId: null }),
     getSyncPayloadSignature: () => "sig",
     startSyncStatus: (target) => {
       target.syncStatus = "syncing";
@@ -134,7 +137,7 @@ test("runCloudSyncPush pulls latest data on stale-version conflict", async () =>
 
   await runCloudSyncPush(app, false, {
     requestCloudSyncPush,
-    createSyncPayload: () => ({ lots: [{ id: 1 }], salesByLot: { "1": [] } }),
+    createSyncPayload: () => ({ lots: [{ id: 1 }], salesByLot: { "1": [] }, wheelConfigs: [], activeWheelConfigId: null }),
     getSyncPayloadSignature: () => "sig",
     startSyncStatus: (target) => {
       target.syncStatus = "syncing";
@@ -172,7 +175,7 @@ test("runCloudSyncPush forwards intentional empty-overwrite flag for confirmed d
 
   await runCloudSyncPush(app, true, {
     requestCloudSyncPush,
-    createSyncPayload: () => ({ lots: [], salesByLot: {} }),
+    createSyncPayload: () => ({ lots: [], salesByLot: {}, wheelConfigs: [], activeWheelConfigId: null }),
     getSyncPayloadSignature: () => "sig-empty",
     startSyncStatus: vi.fn(),
     setSyncStatusSuccess: vi.fn(),
@@ -185,6 +188,8 @@ test("runCloudSyncPush forwards intentional empty-overwrite flag for confirmed d
   assert.deepEqual(requestCloudSyncPush.mock.calls[0]?.[1], {
     lots: [],
     salesByLot: {},
+    wheelConfigs: [],
+    activeWheelConfigId: null,
     allowEmptyOverwrite: true
   });
   assert.equal(requestCloudSyncPush.mock.calls[0]?.[2], "session-preferred");
@@ -209,6 +214,8 @@ test("runCloudSyncPull applies newer cloud snapshot and stores version", async (
         salesByLot: {
           "2": [{ id: 2001, type: "pack", quantity: 1, packsCount: 1, price: 10, date: "2026-02-21" }]
         },
+        wheelConfigs: [{ id: 91, name: "Cloud wheel", spinPrice: 10, targetMargin: 40, createdAt: "", tiers: [] }],
+        activeWheelConfigId: 91,
         version: 3
       }
     })
@@ -216,19 +223,29 @@ test("runCloudSyncPull applies newer cloud snapshot and stores version", async (
 
   await runCloudSyncPull(app, {
     requestCloudSyncPull,
-    createSyncPayload: () => ({ lots: app.lots, salesByLot: { "1": [] } }),
+    createSyncPayload: () => ({
+      lots: app.lots,
+      salesByLot: { "1": [] },
+      wheelConfigs: app.wheelConfigs,
+      activeWheelConfigId: app.activeWheelConfigId
+    }),
     getSyncPayloadSignature: () => "sig",
     parseCloudSnapshot: (snapshot) => ({
       lots: (snapshot as { lots: unknown[] }).lots,
       salesByLot: (snapshot as { salesByLot: Record<string, unknown[]> }).salesByLot,
+      wheelConfigs: (snapshot as { wheelConfigs: unknown[] }).wheelConfigs,
+      activeWheelConfigId: (snapshot as { activeWheelConfigId: number | null }).activeWheelConfigId,
       version: 3,
       hasData: true
     }),
     shouldApplyCloudSnapshot: () => true,
     applyCloudSnapshotToLocal: (target, parsed) => {
       target.lots = parsed.lots as typeof target.lots;
+      target.wheelConfigs = parsed.wheelConfigs as typeof target.wheelConfigs;
+      target.activeWheelConfigId = parsed.activeWheelConfigId;
       target.currentLotId = 2;
       target.saveLotsToStorage();
+      target.saveWheelConfigsToStorage();
       target.loadLot();
       localStorage.setItem("whatfees_sync_client_version", String(parsed.version));
     },
@@ -245,8 +262,11 @@ test("runCloudSyncPull applies newer cloud snapshot and stores version", async (
 
   assert.equal(Array.isArray(app.lots), true);
   assert.equal((app.lots as Array<{ id: number }>)[0]?.id, 2);
+  assert.equal((app.wheelConfigs as Array<{ id: number }>)[0]?.id, 91);
+  assert.equal(app.activeWheelConfigId, 91);
   assert.equal(app.currentLotId, 2);
   assert.equal(app.saveLotsToStorage.mock.calls.length, 1);
+  assert.equal(app.saveWheelConfigsToStorage.mock.calls.length, 1);
   assert.equal(app.loadLot.mock.calls.length, 1);
   assert.equal(app.notify.mock.calls.length, 1);
   assert.equal(storage.getItem("whatfees_sync_client_version"), "3");
@@ -275,7 +295,12 @@ test("runCloudSyncPush skips upload and pulls cloud when local storage was clear
 
   await runCloudSyncPush(app, false, {
     requestCloudSyncPush: vi.fn(),
-    createSyncPayload: () => ({ lots: app.lots, salesByLot: { "1": app.sales } }),
+    createSyncPayload: () => ({
+      lots: app.lots,
+      salesByLot: { "1": app.sales },
+      wheelConfigs: app.wheelConfigs,
+      activeWheelConfigId: app.activeWheelConfigId
+    }),
     getSyncPayloadSignature: () => "sig",
     startSyncStatus: vi.fn(),
     setSyncStatusSuccess: vi.fn(),
@@ -305,11 +330,19 @@ test("runCloudSyncPull passes workspaceId for shared scopes", async () => {
 
   await runCloudSyncPull(app, {
     requestCloudSyncPull,
-    createSyncPayload: () => ({ lots: [], salesByLot: {}, workspaceId: "team-42" }),
+    createSyncPayload: () => ({
+      lots: [],
+      salesByLot: {},
+      wheelConfigs: [],
+      activeWheelConfigId: null,
+      workspaceId: "team-42"
+    }),
     getSyncPayloadSignature: () => "sig",
     parseCloudSnapshot: () => ({
       lots: [],
       salesByLot: {},
+      wheelConfigs: [],
+      activeWheelConfigId: null,
       version: 1,
       hasData: false
     }),

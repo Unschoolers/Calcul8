@@ -9,6 +9,8 @@ import type { SyncPullPayload } from "../types";
 const EMPTY_SYNC_SNAPSHOT = {
   lots: [],
   salesByLot: {},
+  wheelConfigs: [],
+  activeWheelConfigId: null,
   version: 0,
   updatedAt: null
 };
