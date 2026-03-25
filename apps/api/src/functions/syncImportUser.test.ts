@@ -120,12 +120,23 @@ beforeEach(() => {
   getEffectiveSyncSnapshotFromExternalSourceMock.mockResolvedValue({
     lots: [{ id: 1, name: "Lot A" }],
     salesByLot: { "1": [{ id: 11 }] },
+    wheelConfigs: [{
+      id: 91,
+      name: "Imported wheel",
+      spinPrice: 10,
+      targetMargin: 40,
+      createdAt: "",
+      tiers: []
+    }],
+    activeWheelConfigId: 91,
     version: 5,
     updatedAt: "2026-03-09T00:00:00.000Z"
   });
   getEffectiveSyncSnapshotMock.mockResolvedValue({
     lots: [{ id: 1, name: "Lot A" }],
     salesByLot: { "1": [{ id: 11 }] },
+    wheelConfigs: [],
+    activeWheelConfigId: null,
     version: 2,
     updatedAt: "2026-03-09T00:00:00.000Z"
   });
@@ -218,6 +229,15 @@ test("syncImportUser copies source snapshot into actor partition", async () => {
   getEffectiveSyncSnapshotFromExternalSourceMock.mockResolvedValue({
     lots: [{ id: 2, name: "Imported lot" }],
     salesByLot: { "2": [{ id: 22 }] },
+    wheelConfigs: [{
+      id: 42,
+      name: "Workspace wheel",
+      spinPrice: 25,
+      targetMargin: 30,
+      createdAt: "",
+      tiers: []
+    }],
+    activeWheelConfigId: 42,
     version: 7,
     updatedAt: "2026-03-09T10:00:00.000Z"
   });
@@ -226,6 +246,8 @@ test("syncImportUser copies source snapshot into actor partition", async () => {
     return {
       lots: [{ id: 1, name: "My lot" }],
       salesByLot: {},
+      wheelConfigs: [],
+      activeWheelConfigId: null,
       version: 3,
       updatedAt: "2026-03-09T09:00:00.000Z"
     };
@@ -250,6 +272,15 @@ test("syncImportUser copies source snapshot into actor partition", async () => {
   assert.equal(upsertSyncSnapshotIncrementalMock.mock.calls[0]?.[1]?.userId, "107850224060485991888");
   assert.deepEqual(upsertSyncSnapshotIncrementalMock.mock.calls[0]?.[1]?.lots, [{ id: 2, name: "Imported lot" }]);
   assert.deepEqual(upsertSyncSnapshotIncrementalMock.mock.calls[0]?.[1]?.salesByLot, { "2": [{ id: 22 }] });
+  assert.deepEqual(upsertSyncSnapshotIncrementalMock.mock.calls[0]?.[1]?.wheelConfigs, [{
+    id: 42,
+    name: "Workspace wheel",
+    spinPrice: 25,
+    targetMargin: 30,
+    createdAt: "",
+    tiers: []
+  }]);
+  assert.equal(upsertSyncSnapshotIncrementalMock.mock.calls[0]?.[1]?.activeWheelConfigId, 42);
   assert.equal(getSyncMetaDocumentFromExternalSourceMock.mock.calls.length, 1);
   assert.equal(getSyncScopeEntityDocumentsFromExternalSourceMock.mock.calls.length, 1);
   assert.equal(replaceSyncScopeEntityDocumentsMock.mock.calls.length, 1);
