@@ -181,7 +181,7 @@ export type WhatnotConnectionStatus = "active" | "disconnected" | "error";
 export type WhatnotImportBatchStatus = "pending_review" | "completed" | "failed";
 export type WhatnotSaleImportAction = "create" | "update" | "skip";
 export type WhatnotTargetMatchSource = "remembered" | "title" | "none";
-export type WhatnotMappedSaleType = "pack" | "box" | "rtyh";
+export type WhatnotMappedSaleType = "pack" | "box" | "rtyh" | "wheel";
 export type WhatnotImportBatchOrigin = "oauth_sync" | "csv_manual";
 
 export interface WhatnotConnectionDocument {

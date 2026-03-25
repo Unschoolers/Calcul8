@@ -1,7 +1,7 @@
 import type { AppWatchObject } from "./context.ts";
-import { getScopedLastLotStorageKey, STORAGE_KEYS } from "./storageKeys.ts";
-import { refreshWorkspaceRealtime, stopWorkspaceRealtime } from "./methods/ui/workspace-realtime.ts";
 import { resetWhatnotSignedOutState, resetWhatnotTransientUiState } from "./methods/ui/whatnot.ts";
+import { refreshWorkspaceRealtime, stopWorkspaceRealtime } from "./methods/ui/workspace-realtime.ts";
+import { getScopedLastLotStorageKey, STORAGE_KEYS } from "./storageKeys.ts";
 import { getActiveStorageScope } from "./workspace-scope.ts";
 
 export const appWatch: AppWatchObject = {
@@ -212,6 +212,35 @@ export const appWatch: AppWatchObject = {
       } else if (this.currentTab === "portfolio") {
         this.$nextTick(() => this.initPortfolioChart());
       }
+    },
+    deep: true
+  },
+
+  wheelConfigs: {
+    handler() {
+      this.saveWheelConfigsToStorage();
+    },
+    deep: true
+  },
+
+  wheelTotalSpins() {
+    this.saveWheelSessionToStorage();
+  },
+
+  wheelSpinCounts: {
+    handler() {
+      this.saveWheelSessionToStorage();
+    },
+    deep: true
+  },
+
+  activeWheelConfigId() {
+    this.saveWheelSessionToStorage();
+  },
+
+  wheelSkippedDeductions: {
+    handler() {
+      this.saveWheelSessionToStorage();
     },
     deep: true
   }

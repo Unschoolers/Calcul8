@@ -1,41 +1,40 @@
 import type {
-  Sale,
-  SaleType,
-  SinglesSaleLine
+    Sale,
+    SaleType,
+    SinglesSaleLine,
+    SkippedWheelDeduction,
+    WheelConfig
 } from "../../types/app.ts";
 import type { AppContext, AppMethodState } from "../context.ts";
+import { STORAGE_KEYS } from "../storageKeys.ts";
 import { getTodayDate } from "./config-shared.ts";
+import { initPortfolioCharts, initSalesChartDisplay } from "./sales-charts.ts";
 import { buildSaleSaveResult } from "./sales-core.ts";
 import {
-  canUseAuthoritativeSalesLiveApi,
-  cacheAuthoritativeSales,
-  fetchAuthoritativeSales,
-  SalesLiveApiError
+    addSinglesSaleDraftLine,
+    applySinglesSaleLineCardSelection,
+    applySinglesSaleLineQuantityChange,
+    changeNewSaleType,
+    computeSinglesSaleLineMaxQuantity,
+    editSaleDraft,
+    openAddSaleDraft,
+    openConvertedLiveSinglesSaleDraft,
+    removeSinglesSaleDraftLine,
+    resetSaleDraft,
+    syncSinglesSaleDraftSummary
+} from "./sales-draft.ts";
+import {
+    canUseAuthoritativeSalesLiveApi
 } from "./sales-live-api.ts";
 import {
-  firstFiniteNonNegative,
-  refreshChartsForCurrentTab,
-} from "./sales-ui-helpers.ts";
-import {
-  deleteSaleWithPersistence,
-  persistSaleLocally,
-  saveSaleAuthoritatively,
-  saveSaleWithPersistence
+    deleteSaleWithPersistence,
+    persistSaleLocally,
+    saveSaleAuthoritatively,
+    saveSaleWithPersistence
 } from "./sales-persistence.ts";
 import {
-  addSinglesSaleDraftLine,
-  applySinglesSaleLineCardSelection,
-  applySinglesSaleLineQuantityChange,
-  changeNewSaleType,
-  computeSinglesSaleLineMaxQuantity,
-  editSaleDraft,
-  openAddSaleDraft,
-  openConvertedLiveSinglesSaleDraft,
-  removeSinglesSaleDraftLine,
-  resetSaleDraft,
-  syncSinglesSaleDraftSummary
-} from "./sales-draft.ts";
-import { initPortfolioCharts, initSalesChartDisplay } from "./sales-charts.ts";
+    refreshChartsForCurrentTab
+} from "./sales-ui-helpers.ts";
 
 export const salesMethods: ThisType<AppContext> & Pick<
   AppMethodState,
@@ -57,6 +56,10 @@ export const salesMethods: ThisType<AppContext> & Pick<
   | "cancelSale"
   | "initSalesChart"
   | "initPortfolioChart"
+  | "addWheelSaleToLot"
+  | "loadWheelFromStorage"
+  | "saveWheelConfigsToStorage"
+  | "saveWheelSessionToStorage"
 > = {
   loadSalesFromStorage(): void {
     if (!this.currentLotId) return;
@@ -182,6 +185,104 @@ export const salesMethods: ThisType<AppContext> & Pick<
 
   initPortfolioChart(): void {
     initPortfolioCharts(this);
+  },
+
+  addWheelSaleToLot(lotId: number, sale: Sale): void {
+    try {
+      if (this.currentLotId === lotId) {
+        // Use the same persistence pipeline as regular sales (handles API + local)
+        saveSaleWithPersistence(this, {
+          lotId,
+          pendingSale: sale,
+          editingSaleId: null,
+          editingIndex: -1,
+          baseVersion: 0
+        }, {
+          canUseAuthoritativeApi: canUseAuthoritativeSalesLiveApi,
+          persistLocally: (ctx, s) => { ctx.sales = [...ctx.sales, s]; },
+          refreshCharts: refreshChartsForCurrentTab,
+          saveAuthoritatively: saveSaleAuthoritatively
+        });
+      } else {
+        // Different lot — persist to localStorage directly
+        const storageKey = this.getSalesStorageKey(lotId);
+        const raw = localStorage.getItem(storageKey);
+        const existingSales: Sale[] = raw ? JSON.parse(raw) : [];
+        existingSales.push(sale);
+        localStorage.setItem(storageKey, JSON.stringify(existingSales));
+      }
+
+      this.notify(`Wheel sale recorded`, "success");
+    } catch (error) {
+      console.error("Failed to save wheel sale:", error);
+      this.notify("Failed to save wheel sale", "error");
+    }
+  },
+
+  loadWheelFromStorage(): void {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.WHEEL_CONFIGS);
+      if (raw) {
+        const parsed = JSON.parse(raw) as WheelConfig[];
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          this.wheelConfigs = parsed;
+          this.activeWheelConfigId = parsed[0]!.id;
+        }
+      }
+    } catch {
+      // Ignore parse errors
+    }
+
+    try {
+      const rawSession = localStorage.getItem(STORAGE_KEYS.WHEEL_SESSION);
+      if (rawSession) {
+        const session = JSON.parse(rawSession) as Record<string, unknown>;
+        if (session.activeWheelConfigId != null) {
+          this.activeWheelConfigId = session.activeWheelConfigId as number;
+        }
+        if (typeof session.wheelTotalSpins === "number") {
+          this.wheelTotalSpins = session.wheelTotalSpins;
+        }
+        if (Array.isArray(session.wheelSpinCounts)) {
+          this.wheelSpinCounts = session.wheelSpinCounts as number[];
+        }
+        if (typeof session.wheelLastResult === "string") {
+          this.wheelLastResult = session.wheelLastResult;
+        }
+        if (session.wheelSessionLotSelections && typeof session.wheelSessionLotSelections === "object") {
+          this.wheelSessionLotSelections = session.wheelSessionLotSelections as Record<string, number | null>;
+        }
+        if (Array.isArray(session.wheelSkippedDeductions)) {
+          this.wheelSkippedDeductions = session.wheelSkippedDeductions as SkippedWheelDeduction[];
+        }
+      }
+    } catch {
+      // Ignore parse errors
+    }
+  },
+
+  saveWheelConfigsToStorage(): void {
+    try {
+      localStorage.setItem(STORAGE_KEYS.WHEEL_CONFIGS, JSON.stringify(this.wheelConfigs));
+    } catch {
+      // Storage full or unavailable
+    }
+  },
+
+  saveWheelSessionToStorage(): void {
+    try {
+      const session = {
+        activeWheelConfigId: this.activeWheelConfigId,
+        wheelTotalSpins: this.wheelTotalSpins,
+        wheelSpinCounts: this.wheelSpinCounts,
+        wheelLastResult: this.wheelLastResult,
+        wheelSessionLotSelections: this.wheelSessionLotSelections,
+        wheelSkippedDeductions: this.wheelSkippedDeductions
+      };
+      localStorage.setItem(STORAGE_KEYS.WHEEL_SESSION, JSON.stringify(session));
+    } catch {
+      // Storage full or unavailable
+    }
   }
 };
 

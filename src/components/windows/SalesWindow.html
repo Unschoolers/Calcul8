@@ -93,27 +93,44 @@
                                 </template>
                               </v-tooltip>
                             </div>
-                            <div class="sales-history-row-side">
-                              <span
-                                :class="[
-                                  'sales-history-profit-pill',
-                                  calculateSaleProfit(sale) >= 0 ? 'is-positive' : 'is-negative'
-                                ]"
-                              >
-                                Profit {{ calculateSaleProfit(sale) >= 0 ? '+' : '' }}${{ fmtCurrency(calculateSaleProfit(sale)) }}
-                              </span>
-                              <v-btn
-                                class="sales-history-action-btn"
-                                size="small"
-                                variant="text"
-                                title="Delete sale"
-                                aria-label="Delete sale"
-                                @click.stop="deleteSale(sale.id)"
-                              >
-                                <v-icon size="16">mdi-trash-can-outline</v-icon>
-                              </v-btn>
-                            </div>
+                            <v-btn
+                              class="sales-history-action-btn"
+                              size="small"
+                              variant="text"
+                              title="Delete sale"
+                              aria-label="Delete sale"
+                              @click.stop="deleteSale(sale.id)"
+                            >
+                              <v-icon size="16">mdi-trash-can-outline</v-icon>
+                            </v-btn>
                           </v-list-item-title>
+                          <v-list-item-subtitle class="sales-history-profit-row">
+                            <span
+                              :class="[
+                                'sales-history-profit-pill',
+                                getSaleProfitPreview(sale)
+                                  ? (getSaleProfitPreview(sale).value >= 0 ? 'is-positive' : 'is-negative')
+                                  : (calculateSaleProfit(sale) >= 0 ? 'is-positive' : 'is-negative')
+                              ]"
+                            >
+                              <template v-if="getSaleProfitPreview(sale)">
+                                {{ getSaleProfitPreview(sale).sign }}${{ fmtCurrency(Math.abs(getSaleProfitPreview(sale).value)) }} vs {{ getSaleProfitPreview(sale).basisLabel }}
+                              </template>
+                              <template v-else>
+                                Profit {{ calculateSaleProfit(sale) >= 0 ? '+' : '-' }}${{ fmtCurrency(Math.abs(calculateSaleProfit(sale))) }}
+                              </template>
+                            </span>
+                            <span
+                              v-if="getSaleProfitPreview(sale)?.marketBasisValue > 0"
+                              :class="[
+                                'sales-history-profit-pill',
+                                'sales-history-profit-pill--secondary',
+                                getSaleProfitPreview(sale).allCostValue >= 0 ? 'is-positive' : 'is-negative'
+                              ]"
+                            >
+                              {{ getSaleProfitPreview(sale).allCostValue >= 0 ? '+' : '-' }}${{ fmtCurrency(Math.abs(getSaleProfitPreview(sale).allCostValue)) }} vs Cost
+                            </span>
+                          </v-list-item-subtitle>
                           <v-list-item-subtitle class="sales-history-item-subtitle">
                             <span class="sales-history-date">{{ formatDate(sale.date) }}</span>
                             <div v-if="sale.memo" class="sales-history-memo">

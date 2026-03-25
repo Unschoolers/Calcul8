@@ -1,87 +1,82 @@
 import { DEFAULT_VALUES } from "../constants.ts";
 import type {
-  Lot,
-  LotPerformanceSummary,
-  PortfolioTotals,
-  Sale,
-  SalesStatus
+    Lot,
+    LotPerformanceSummary,
+    PortfolioTotals,
+    Sale,
+    SalesStatus
 } from "../types/app.ts";
 import {
-  calculateBoxPriceCostCad,
-  calculateDefaultSellingPrices,
-  calculateNetFromGross,
-  calculatePriceForUnits,
-  calculateProfitForListing,
-  calculateSaleProfit,
-  calculateSinglesLineProfitPreview,
-  calculateSinglesPurchaseTotalCostInSellingCurrency,
-  calculateSinglesPurchaseTotals,
-  calculateSinglesSaleCostBasis,
-  calculateSinglesSaleProfitPreview,
-  calculateTotalCaseCost,
-  calculateTotalRevenue,
-  getGrossRevenueForSale,
-  getSaleSinglesLines,
-  getSinglesEntryUnitCostInSellingCurrency,
-  toRate,
-  type SinglesLineProfitPreview,
-  type SinglesSaleProfitPreview
+    calculateBoxPriceCostCad,
+    calculateDefaultSellingPrices,
+    calculateNetFromGross,
+    calculatePriceForUnits,
+    calculateProfitForListing,
+    calculateSaleProfit,
+    calculateSinglesLineProfitPreview,
+    calculateSinglesPurchaseTotalCostInSellingCurrency,
+    calculateSinglesPurchaseTotals,
+    calculateSinglesSaleCostBasis,
+    calculateSinglesSaleProfitPreview,
+    calculateTotalCaseCost,
+    calculateTotalRevenue,
+    getGrossRevenueForSale,
+    getSaleProfitPreview,
+    getSaleSinglesLines,
+    getSinglesEntryUnitCostInSellingCurrency,
+    toRate,
+    type SaleProfitPreview,
+    type SinglesLineProfitPreview,
+    type SinglesSaleProfitPreview
 } from "./calculations-fees.ts";
 import {
-  createForecastProjectionFromUnitPrice,
-  createForecastScenario,
-  createForecastScenarioFromProjection,
-  createForecastScenarioFromUnitPrice,
-  estimateNetRemainingFromUnitPrice,
-  pickBestForecastScenario,
-  type ForecastProjection,
-  type ForecastScenario,
-  type ForecastScenarioUnitLabel
+    createForecastProjectionFromUnitPrice,
+    createForecastScenario,
+    createForecastScenarioFromProjection,
+    createForecastScenarioFromUnitPrice,
+    estimateNetRemainingFromUnitPrice,
+    pickBestForecastScenario,
+    type ForecastProjection,
+    type ForecastScenario,
+    type ForecastScenarioUnitLabel
 } from "./calculations-forecast.ts";
 import {
-  calculatePortfolioSellThroughTimeline,
-  calculateSparklineData,
-  calculateSparklineGradient,
-  type PortfolioSellThroughPoint
+    calculatePortfolioSellThroughTimeline,
+    calculateSparklineData,
+    calculateSparklineGradient,
+    type PortfolioSellThroughPoint
 } from "./calculations-portfolio.ts";
 
 export {
-  calculateBoxPriceCostCad,
-  calculateDefaultSellingPrices,
-  calculateNetFromGross,
-  calculatePriceForUnits,
-  calculateProfitForListing,
-  calculateSaleProfit,
-  calculateSinglesLineProfitPreview,
-  calculateSinglesPurchaseTotalCostInSellingCurrency,
-  calculateSinglesPurchaseTotals,
-  calculateSinglesSaleCostBasis,
-  calculateSinglesSaleProfitPreview,
-  calculateTotalCaseCost,
-  calculateTotalRevenue,
-  createForecastProjectionFromUnitPrice,
-  createForecastScenario,
-  createForecastScenarioFromProjection,
-  createForecastScenarioFromUnitPrice,
-  estimateNetRemainingFromUnitPrice,
-  getGrossRevenueForSale,
-  getSaleSinglesLines,
-  getSinglesEntryUnitCostInSellingCurrency,
-  pickBestForecastScenario,
-  toRate,
-  calculateSparklineData,
-  calculateSparklineGradient,
-  calculatePortfolioSellThroughTimeline
+    calculateBoxPriceCostCad,
+    calculateDefaultSellingPrices,
+    calculateNetFromGross, calculatePortfolioSellThroughTimeline, calculatePriceForUnits,
+    calculateProfitForListing,
+    calculateSaleProfit,
+    calculateSinglesLineProfitPreview,
+    calculateSinglesPurchaseTotalCostInSellingCurrency,
+    calculateSinglesPurchaseTotals,
+    calculateSinglesSaleCostBasis,
+    calculateSinglesSaleProfitPreview, calculateSparklineData,
+    calculateSparklineGradient, calculateTotalCaseCost,
+    calculateTotalRevenue,
+    createForecastProjectionFromUnitPrice, createForecastScenario,
+    createForecastScenarioFromProjection,
+    createForecastScenarioFromUnitPrice,
+    estimateNetRemainingFromUnitPrice,
+    getGrossRevenueForSale, getSaleProfitPreview, getSaleSinglesLines,
+    getSinglesEntryUnitCostInSellingCurrency,
+    pickBestForecastScenario,
+    toRate
 };
 
-export type {
-  ForecastProjection,
-  ForecastScenario,
-  ForecastScenarioUnitLabel,
-  PortfolioSellThroughPoint,
-  SinglesLineProfitPreview,
-  SinglesSaleProfitPreview
-};
+    export type {
+        ForecastProjection,
+        ForecastScenario,
+        ForecastScenarioUnitLabel,
+        PortfolioSellThroughPoint, SaleProfitPreview, SinglesLineProfitPreview,
+        SinglesSaleProfitPreview
+    };
 
 export function calculateTotalPacks(
   boxesPurchased: number,

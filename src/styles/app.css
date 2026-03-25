@@ -1287,6 +1287,41 @@
     .sale-editor-singles-grid {
       margin-bottom: 0.06rem;
     }
+    .sale-editor-line-layout {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+      margin-bottom: 0.06rem;
+    }
+    .sale-editor-line-thumb-col {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: flex-start;
+      padding-top: 0.18rem;
+    }
+    .sale-editor-line-thumb {
+      width: 46px;
+      height: 64px;
+      object-fit: contain;
+      border-radius: 5px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+      display: block;
+    }
+    .sale-editor-line-fields {
+      flex: 1;
+      min-width: 0;
+    }
+    .sale-editor-dropdown-item {
+      min-height: 52px;
+    }
+    .sale-editor-dropdown-thumb {
+      width: 30px;
+      height: 42px;
+      object-fit: contain;
+      border-radius: 3px;
+      flex-shrink: 0;
+      margin-right: 0.5rem;
+    }
     .sale-editor-singles-meta {
       display: flex;
       align-items: center;
@@ -1467,13 +1502,20 @@
       .sale-editor-singles-line {
         padding: 0.35rem 0.4rem 0.3rem;
       }
-      .sale-editor-singles-grid {
-        margin-bottom: 0.02rem;
+      .sale-editor-line-thumb {
+        width: 40px;
+        height: 56px;
+      }
+      .sale-editor-line-thumb-col {
+        padding-top: 0.14rem;
+      }
+      .sale-editor-line-layout {
+        gap: 0.4rem;
       }
       .sale-editor-singles-line-delete {
-        min-width: 34px !important;
-        width: 34px;
-        height: 34px;
+        min-width: 40px !important;
+        width: 40px;
+        height: 40px;
       }
       .sale-editor-singles-profit-pill {
         white-space: normal;

@@ -1,14 +1,14 @@
-import { calculateBoxPriceCostCad } from "../../domain/calculations.ts";
 import { DEFAULT_VALUES } from "../../constants.ts";
+import { calculateBoxPriceCostCad } from "../../domain/calculations.ts";
 import type { Sale, SaleType, SinglesPurchaseEntry, SinglesSaleDraftLine, SinglesSaleLine } from "../../types/app.ts";
 import { toPositiveIntOrNull as normalizeSinglesPurchaseEntryId } from "../shared/singles-normalizers.ts";
 import { getTodayDate, toDateOnly } from "./config-shared.ts";
 import {
-  createEmptySinglesSaleDraftLine,
-  getDraftSinglesSaleLinesFromSale,
-  getLinkedQuantityMapForSale,
-  getSinglesSoldQuantityForEntry,
-  normalizeDraftSinglesSaleLines
+    createEmptySinglesSaleDraftLine,
+    getDraftSinglesSaleLinesFromSale,
+    getLinkedQuantityMapForSale,
+    getSinglesSoldQuantityForEntry,
+    normalizeDraftSinglesSaleLines
 } from "./sales-core.ts";
 import { focusSaleQuantityInput, resolveDefaultSaleUnitPrice } from "./sales-ui-helpers.ts";
 
@@ -257,7 +257,7 @@ export function changeNewSaleType(context: SalesDraftTarget, type: SaleType): vo
     context.newSale.type = "pack";
     return;
   }
-  const nextType: SaleType = type === "box" || type === "rtyh" ? type : "pack";
+  const nextType: SaleType = type === "box" || type === "rtyh" || type === "wheel" ? type : "pack";
   context.newSale.type = nextType;
   context.newSale.singlesPurchaseEntryId = null;
   context.newSale.singlesItems = undefined;

@@ -1,9 +1,9 @@
 import { DEFAULT_VALUES, TAX_RATES, WHATNOT_FEES } from "../constants.ts";
 import type {
-  CurrencyCode,
-  LotType,
-  Sale,
-  SinglesPurchaseEntry
+    CurrencyCode,
+    LotType,
+    Sale,
+    SinglesPurchaseEntry
 } from "../types/app.ts";
 
 export function toRate(percent: number): number {
@@ -152,6 +152,12 @@ export type SinglesSaleProfitPreview = {
   basisValue: number;
   marketBasisValue: number;
   costBasisValue: number;
+};
+
+export type SaleProfitPreview = SinglesSaleProfitPreview & {
+  /** Profit vs pure cost basis (all lines using cost, ignoring market values). */
+  allCostBasisValue: number;
+  allCostValue: number;
 };
 
 function buildSinglesProfitPresentation<TBasisLabel extends "Market" | "Cost" | "Mixed">(params: {
@@ -406,6 +412,79 @@ export function calculateSaleProfit(params: {
   const costPerPack = params.totalPacks > 0 ? (params.totalCaseCost / params.totalPacks) : 0;
   const allocatedCost = (params.sale.packsCount || 0) * costPerPack;
   return netRevenue - allocatedCost;
+}
+
+export function getSaleProfitPreview(params: {
+  sale: Sale;
+  lotType: LotType;
+  sellingTaxPercent: number;
+  totalCaseCost: number;
+  totalPacks: number;
+  purchaseCurrency: CurrencyCode;
+  sellingCurrency: CurrencyCode;
+  exchangeRate: number;
+  singlesPurchases?: SinglesPurchaseEntry[];
+  defaultExchangeRate?: number;
+}): SaleProfitPreview | null {
+  const grossRevenue = getGrossRevenueForSale(params.sale);
+  const netRevenue = calculateNetFromGross(
+    grossRevenue,
+    params.sellingTaxPercent,
+    params.sale.buyerShipping || 0,
+    1
+  );
+
+  if (params.lotType === "singles") {
+    const entriesById = new Map(
+      (params.singlesPurchases || []).map((entry) => [entry.id, entry] as const)
+    );
+    const lines = getSaleSinglesLines(params.sale);
+    let costBasisValue = 0;
+    let marketBasisValue = 0;
+    let allCostBasisValue = 0;
+    let quantity = 0;
+
+    for (const line of lines) {
+      quantity += line.quantity;
+      if (!line.singlesPurchaseEntryId) continue;
+      const entry = entriesById.get(line.singlesPurchaseEntryId);
+      if (!entry) continue;
+
+      const unitCost = getSinglesEntryUnitCostInSellingCurrency(
+        entry,
+        params.purchaseCurrency,
+        params.sellingCurrency,
+        params.exchangeRate,
+        params.defaultExchangeRate
+      );
+      const unitMarket = Math.max(0, Number(entry.marketValue) || 0);
+      allCostBasisValue += unitCost * line.quantity;
+      if (unitMarket > 0) {
+        marketBasisValue += unitMarket * line.quantity;
+      } else {
+        costBasisValue += unitCost * line.quantity;
+      }
+    }
+
+    const value = netRevenue - marketBasisValue - costBasisValue;
+    const allCostValue = netRevenue - allCostBasisValue;
+    const basisLabel: "Market" | "Cost" | "Mixed" =
+      marketBasisValue > 0 && costBasisValue > 0 ? "Mixed"
+      : marketBasisValue > 0 ? "Market"
+      : "Cost";
+
+    return { ...buildSinglesProfitPresentation({ value, quantity, basisLabel, marketBasisValue, costBasisValue }), allCostBasisValue, allCostValue };
+  }
+
+  const costPerPack = params.totalPacks > 0 ? (params.totalCaseCost / params.totalPacks) : 0;
+  const allocatedCost = (params.sale.packsCount || 0) * costPerPack;
+  const value = netRevenue - allocatedCost;
+  const quantity = Number(params.sale.quantity) || 0;
+  return {
+    ...buildSinglesProfitPresentation({ value, quantity, basisLabel: "Cost", marketBasisValue: 0, costBasisValue: allocatedCost }),
+    allCostBasisValue: allocatedCost,
+    allCostValue: value
+  };
 }
 
 export function calculatePriceForUnits(

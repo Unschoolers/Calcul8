@@ -262,6 +262,16 @@
   align-self: center;
 }
 
+.sales-history-profit-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.18rem;
+  margin-top: 0.18rem;
+  min-height: 0;
+  opacity: 1;
+}
+
 .sales-history-item-main {
   min-width: 0;
   overflow: hidden;
@@ -314,6 +324,11 @@
   color: rgb(var(--v-theme-error));
   background: rgba(var(--v-theme-error), 0.1);
   border-color: rgba(var(--v-theme-error), 0.14);
+}
+
+.sales-history-profit-pill--secondary {
+  opacity: 0.72;
+  font-weight: 520;
 }
 
 .sales-history-memo {

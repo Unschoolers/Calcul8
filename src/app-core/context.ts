@@ -1,30 +1,29 @@
 import type {
-  AppState,
-  AppTab,
-  BeforeInstallPromptEvent,
-  CostInputMode,
-  LiveSinglesSelectionMode,
-  LiveSinglesSelectionSource,
-  Lot,
-  LotType,
-  LotPerformanceSummary,
-  PortfolioSalesByUserChartData,
-  PortfolioSalesByUserMetric,
-  LotSetup,
-  PortfolioLotTypeFilter,
-  PortfolioTotals,
-  Sale,
-  SaleType,
-  SinglesCatalogSource,
-  SinglesPurchaseEntry,
-  SinglesSaleCardOption,
-  SinglesSaleLine,
-  SalesStatus,
-  UiColor,
-  WorkspaceMember,
-  WorkspacePresenceState,
-  WorkspaceScopeType,
-  WorkspaceSummary
+    AppState,
+    AppTab,
+    BeforeInstallPromptEvent,
+    CostInputMode,
+    LiveSinglesSelectionMode,
+    LiveSinglesSelectionSource,
+    LotPerformanceSummary,
+    LotSetup,
+    LotType,
+    PortfolioLotTypeFilter,
+    PortfolioSalesByUserChartData,
+    PortfolioSalesByUserMetric,
+    PortfolioTotals,
+    Sale,
+    SalesStatus,
+    SaleType,
+    SinglesCatalogSource,
+    SinglesPurchaseEntry,
+    SinglesSaleCardOption,
+    SinglesSaleLine,
+    UiColor,
+    WorkspaceMember,
+    WorkspacePresenceState,
+    WorkspaceScopeType,
+    WorkspaceSummary
 } from "../types/app.ts";
 
 export interface AppComputedState {
@@ -281,12 +280,17 @@ export interface AppMethodState {
   cancelSale(): void;
   initSalesChart(): void;
   initPortfolioChart(): void;
+  addWheelSaleToLot(lotId: number, sale: Sale): void;
+  loadWheelFromStorage(): void;
+  saveWheelConfigsToStorage(): void;
+  saveWheelSessionToStorage(): void;
   toggleChartView(): void;
   togglePortfolioChartView(): void;
   togglePortfolioReportLot(lotId: number): void;
   accessProFeature(target: "autoCalculate" | "portfolioReport" | "salesTracking" | "expertMode"): Promise<void>;
   requestPurchaseUiMode(mode: "simple" | "expert"): Promise<void>;
   calculateSaleProfit(sale: Sale): number;
+  getSaleProfitPreview(sale: Sale): import("../domain/calculations-fees.ts").SaleProfitPreview | null;
   getSaleColor(type: SaleType): string;
   getSaleIcon(type: SaleType): string;
   formatDate(dateStr: string): string;

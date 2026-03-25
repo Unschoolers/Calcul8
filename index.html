@@ -607,6 +607,11 @@
               <v-window-item key="portfolio" value="portfolio" eager>
                 <portfolio-window ref="portfolioWindow" :ctx="$root"></portfolio-window>
               </v-window-item>
+
+              <!-- WHEEL -->
+              <v-window-item key="wheel" value="wheel" eager>
+                <wheel-window ref="wheelWindow" :ctx="$root"></wheel-window>
+              </v-window-item>
             </v-window>
           </div>
 
@@ -639,6 +644,11 @@
 <v-btn value="portfolio" :disabled="!hasLotSelected" :ripple="false">
   <v-icon>mdi-briefcase-outline</v-icon>
   <span>Portfolio</span>
+</v-btn>
+
+<v-btn value="wheel" :ripple="false">
+  <v-icon>mdi-tire</v-icon>
+  <span>Wheel</span>
 </v-btn>
 
         </v-bottom-navigation>
@@ -1310,86 +1320,111 @@
                     :key="line.lineId || lineIndex"
                     class="sale-editor-singles-line"
                   >
-                    <v-row dense class="sale-editor-singles-grid">
-                      <v-col :cols="$vuetify?.display?.smAndDown ? 12 : 6">
-                        <v-autocomplete
-                          v-model="line.singlesPurchaseEntryId"
-                          :items="singlesSaleCardOptions"
-                          item-title="title"
-                          item-value="value"
-                          label="Item (optional)"
-                          variant="outlined"
-                          density="compact"
-                          :disabled="!hasLotSelected"
-                          clearable
-                          hide-details="auto"
-                          @update:model-value="onSinglesSaleLineCardSelectionChange(lineIndex, $event)"
-                        >
-                          <template #item="{ props, item }">
-                            <v-list-item v-bind="props">
-                              <v-list-item-title class="text-body-2 font-weight-medium">
-                                {{ item.raw.item }}
-                                <span v-if="item.raw.cardNumber" class="text-medium-emphasis">#{{ item.raw.cardNumber }}</span>
-                              </v-list-item-title>
-                              <v-list-item-subtitle class="text-caption">
-                                Qty {{ item.raw.quantity }} · Total Cost ${{ formatCurrency(item.raw.costBasis) }}
-                              </v-list-item-subtitle>
-                            </v-list-item>
-                          </template>
-                          <template #selection="{ item }">
-                            <div class="text-body-2 text-truncate">
-                              {{ item.raw.item }}
-                              <span v-if="item.raw.cardNumber" class="text-medium-emphasis">#{{ item.raw.cardNumber }}</span>
-                            </div>
-                          </template>
-                        </v-autocomplete>
-                      </v-col>
-                      <v-col :cols="$vuetify?.display?.smAndDown ? 4 : 2">
-                        <v-text-field
-                          v-model.number="line.quantity"
-                          label="Qty"
-                          type="number"
-                          variant="outlined"
-                          density="compact"
-                          :disabled="!hasLotSelected"
-                          :min="1"
-                          :max="line.singlesPurchaseEntryId ? (getSinglesSaleLineMaxQuantity(lineIndex) ?? undefined) : undefined"
-                          hide-details="auto"
-                          @update:model-value="onSinglesSaleLineQuantityChange(lineIndex, $event)"
-                        ></v-text-field>
-                      </v-col>
-                      <v-col :cols="$vuetify?.display?.smAndDown ? 6 : 3">
-                        <v-text-field
-                          v-model.number="line.price"
-                          label="Total"
-                          type="number"
-                          variant="outlined"
-                          density="compact"
-                          :disabled="!hasLotSelected"
-                          prefix="$"
-                          hide-details="auto"
-                          @update:model-value="onSinglesSaleLinePriceChange"
-                        ></v-text-field>
-                      </v-col>
-                      <v-col
-                        :cols="$vuetify?.display?.smAndDown ? 2 : 1"
-                        class="d-flex align-center justify-end"
+                    <div class="sale-editor-line-layout">
+                      <div
+                        v-if="singlesSaleCardOptions.find(o => o.value === line.singlesPurchaseEntryId)?.image"
+                        class="sale-editor-line-thumb-col"
                       >
-                        <v-btn
-                          v-if="(newSale.singlesItems?.length || 0) > 1"
-                          icon
-                          size="small"
-                          variant="text"
-                          color="error"
-                          class="sale-editor-singles-line-delete"
-                          title="Remove line"
-                          aria-label="Remove line"
-                          @click="removeSinglesSaleLine(lineIndex)"
-                        >
-                          <v-icon size="18">mdi-trash-can-outline</v-icon>
-                        </v-btn>
-                      </v-col>
-                    </v-row>
+                        <img
+                          :src="singlesSaleCardOptions.find(o => o.value === line.singlesPurchaseEntryId)?.image"
+                          :alt="singlesSaleCardOptions.find(o => o.value === line.singlesPurchaseEntryId)?.item"
+                          class="sale-editor-line-thumb"
+                          loading="lazy"
+                          @error="$event.target.closest('.sale-editor-line-thumb-col').style.display='none'"
+                        />
+                      </div>
+                      <div class="sale-editor-line-fields">
+                        <v-row dense class="sale-editor-singles-grid">
+                          <v-col :cols="$vuetify?.display?.smAndDown ? 12 : 6">
+                            <v-autocomplete
+                              v-model="line.singlesPurchaseEntryId"
+                              :items="singlesSaleCardOptions"
+                              item-title="title"
+                              item-value="value"
+                              label="Item (optional)"
+                              variant="outlined"
+                              density="compact"
+                              :disabled="!hasLotSelected"
+                              clearable
+                              hide-details="auto"
+                              @update:model-value="onSinglesSaleLineCardSelectionChange(lineIndex, $event)"
+                            >
+                              <template #item="{ props, item }">
+                                <v-list-item v-bind="props" class="sale-editor-dropdown-item">
+                                  <template v-if="item.raw.image" #prepend>
+                                    <img
+                                      :src="item.raw.image"
+                                      :alt="item.raw.item"
+                                      class="sale-editor-dropdown-thumb"
+                                      loading="lazy"
+                                      @error="$event.target.style.display='none'"
+                                    />
+                                  </template>
+                                  <v-list-item-title class="text-body-2 font-weight-medium">
+                                    {{ item.raw.item }}
+                                    <span v-if="item.raw.cardNumber" class="text-medium-emphasis">#{{ item.raw.cardNumber }}</span>
+                                  </v-list-item-title>
+                                  <v-list-item-subtitle class="text-caption">
+                                    Qty {{ item.raw.quantity }} · Total Cost ${{ formatCurrency(item.raw.costBasis) }}
+                                  </v-list-item-subtitle>
+                                </v-list-item>
+                              </template>
+                              <template #selection="{ item }">
+                                <div class="text-body-2 text-truncate">
+                                  {{ item.raw.item }}
+                                  <span v-if="item.raw.cardNumber" class="text-medium-emphasis">#{{ item.raw.cardNumber }}</span>
+                                </div>
+                              </template>
+                            </v-autocomplete>
+                          </v-col>
+                          <v-col :cols="$vuetify?.display?.smAndDown ? 5 : 2">
+                            <v-text-field
+                              v-model.number="line.quantity"
+                              label="Qty"
+                              type="number"
+                              variant="outlined"
+                              density="compact"
+                              :disabled="!hasLotSelected"
+                              :min="1"
+                              :max="line.singlesPurchaseEntryId ? (getSinglesSaleLineMaxQuantity(lineIndex) ?? undefined) : undefined"
+                              hide-details="auto"
+                              @update:model-value="onSinglesSaleLineQuantityChange(lineIndex, $event)"
+                            ></v-text-field>
+                          </v-col>
+                          <v-col :cols="$vuetify?.display?.smAndDown ? 5 : 3">
+                            <v-text-field
+                              v-model.number="line.price"
+                              label="Total"
+                              type="number"
+                              variant="outlined"
+                              density="compact"
+                              :disabled="!hasLotSelected"
+                              prefix="$"
+                              hide-details="auto"
+                              @update:model-value="onSinglesSaleLinePriceChange"
+                            ></v-text-field>
+                          </v-col>
+                          <v-col
+                            v-if="(newSale.singlesItems?.length || 0) > 1"
+                            :cols="$vuetify?.display?.smAndDown ? 2 : 1"
+                            class="d-flex align-center justify-end"
+                          >
+                            <v-btn
+                              icon
+                              size="small"
+                              variant="text"
+                              color="error"
+                              class="sale-editor-singles-line-delete"
+                              title="Remove line"
+                              aria-label="Remove line"
+                              @click="removeSinglesSaleLine(lineIndex)"
+                            >
+                              <v-icon size="18">mdi-trash-can-outline</v-icon>
+                            </v-btn>
+                          </v-col>
+                        </v-row>
+                      </div>
+                    </div>
 
                     <div class="sale-editor-singles-meta">
                       <div
@@ -1428,6 +1463,12 @@
                       <span class="sale-editor-singles-total-pill">Total ${{ formatCurrency(saleEditorProfitPreview.totalPrice) }}</span>
                       <span class="sale-editor-singles-total-pill">Profit {{ saleEditorProfitPreview.sign }}${{ formatCurrency(Math.abs(saleEditorProfitPreview.value)) }}</span>
                       <span class="sale-editor-singles-total-pill sale-editor-singles-total-pill--muted">{{ saleEditorProfitPreview.sign }}{{ formatCurrency(Math.abs(saleEditorProfitPreview.percent), 1) }}% vs {{ saleEditorProfitPreview.basisLabel }} ${{ formatCurrency(saleEditorProfitPreview.basisValue) }}</span>
+                      <span
+                        v-if="saleEditorProfitPreview.marketBasisValue > 0 && saleEditorProfitPreview.costBasisValue > 0"
+                        class="sale-editor-singles-total-pill sale-editor-singles-total-pill--muted"
+                      >
+                        Market ${{ formatCurrency(saleEditorProfitPreview.marketBasisValue) }} · Cost ${{ formatCurrency(saleEditorProfitPreview.costBasisValue) }}
+                      </span>
                     </div>
                     <div
                       v-if="(saleEditorProfitPreview.quantity || 0) > 1 && saleEditorProfitPreview.unitValue != null"

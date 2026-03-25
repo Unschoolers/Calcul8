@@ -1,13 +1,13 @@
 import type { Chart as ChartJS } from "chart.js";
 
-export type AppTab = "config" | "live" | "sales" | "portfolio";
+export type AppTab = "config" | "live" | "sales" | "portfolio" | "wheel";
 export type LotType = "bulk" | "singles";
 export type SinglesCatalogSource = "ua" | "pokemon" | "none";
 export type CostInputMode = "perBox" | "total";
 export type PurchaseUiMode = "simple" | "expert";
 export type CurrencyCode = "CAD" | "USD";
 export type SinglesCsvImportMode = "merge" | "sync" | "append";
-export type SaleType = "pack" | "box" | "rtyh";
+export type SaleType = "pack" | "box" | "rtyh" | "wheel";
 export type ChartViewMode = "pie" | "sparkline";
 export type PortfolioChartViewMode = "breakdown" | "trend" | "sellthrough" | "margin";
 export type PortfolioLotTypeFilter = "both" | "bulk" | "singles";
@@ -22,7 +22,7 @@ export type WorkspaceRole = "owner" | "member";
 export type WhatnotConnectionStatus = "unconfigured" | "disconnected" | "connecting" | "connected" | "error";
 export type WhatnotSyncStatus = "idle" | "syncing" | "success" | "error";
 export type WhatnotSaleImportAction = "create" | "update" | "skip";
-export type WhatnotMappedSaleType = "pack" | "box" | "rtyh";
+export type WhatnotMappedSaleType = "pack" | "box" | "rtyh" | "wheel";
 export type WhatnotCsvImportSource = "csv";
 export type UiColor =
   | "info"
@@ -39,6 +39,43 @@ export interface SnackbarState {
   show: boolean;
   text: string;
   color: UiColor;
+}
+
+export interface WheelTier {
+  id: string;
+  label: string;
+  color: string;
+  slots: number;
+  costPerTier: number;
+  packsCount: number;
+  deductionType: "packs" | "singles" | "none";
+  sets: string[];
+  boundLotId?: number | null;
+  boundSinglesId?: number | null;
+  isChase?: boolean;
+}
+
+export interface WheelConfig {
+  id: number;
+  name: string;
+  spinPrice: number;
+  targetMargin: number;
+  tiers: WheelTier[];
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface SkippedWheelDeduction {
+  slotName: string;
+  slotColor: string;
+  slotCost: number;
+  slotTier: string;
+  slotPacksCount: number;
+  slotDeductionType: "packs" | "singles" | "none";
+  slotIndex: number;
+  selectedLotId: number | null;
+  spinNumber: number;
+  slotSinglesId?: number | null;
 }
 
 export interface NewSaleDraft {
@@ -82,6 +119,9 @@ export interface Sale {
   updatedAt?: string;
   updatedBy?: string;
   mutationId?: string;
+  linkedWheelId?: number;
+  winningTierId?: string;
+  costOfWinningTier?: number;
 }
 
 export interface SinglesSaleCardOption {
@@ -89,6 +129,7 @@ export interface SinglesSaleCardOption {
   value: number;
   item: string;
   cardNumber: string;
+  image?: string;
   cost: number;
   marketValue: number;
   quantity: number;
@@ -447,6 +488,17 @@ export interface AppState extends LotSetup {
   whatnotReviewRows: WhatnotImportReviewRow[];
   whatnotCallbackStatus: "connected" | "error" | null;
   whatnotCallbackMessage: string;
+
+  // Wheel
+  wheelConfigs: WheelConfig[];
+  activeWheelConfigId: number | null;
+  wheelSpinning: boolean;
+  wheelCurrentAngle: number;
+  wheelTotalSpins: number;
+  wheelSpinCounts: number[];
+  wheelLastResult: string;
+  wheelSessionLotSelections: Record<string, number | null>;
+  wheelSkippedDeductions: SkippedWheelDeduction[];
 }
 
 

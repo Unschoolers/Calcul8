@@ -1,12 +1,12 @@
 import { DEFAULT_VALUES } from "../constants.ts";
-import {
-  getLegacyStorageKeys,
-  migrateLegacyStorageKeys,
-  readStorageWithLegacy,
-  STORAGE_KEYS
-} from "./storageKeys.ts";
-import { resolveDefaultSinglesCatalogSourceFromEnv } from "./shared/singles-catalog-source.ts";
 import type { AppState } from "../types/app.ts";
+import { resolveDefaultSinglesCatalogSourceFromEnv } from "./shared/singles-catalog-source.ts";
+import {
+    getLegacyStorageKeys,
+    migrateLegacyStorageKeys,
+    readStorageWithLegacy,
+    STORAGE_KEYS
+} from "./storageKeys.ts";
 
 function getLocalTodayDate(): string {
   const date = new Date();
@@ -235,7 +235,18 @@ export function createInitialState(): AppState {
     whatnotReviewBatchId: null,
     whatnotReviewRows: [],
     whatnotCallbackStatus: null,
-    whatnotCallbackMessage: ""
+    whatnotCallbackMessage: "",
+
+    // Wheel
+    wheelConfigs: [],
+    activeWheelConfigId: null,
+    wheelSpinning: false,
+    wheelCurrentAngle: 0,
+    wheelTotalSpins: 0,
+    wheelSpinCounts: [],
+    wheelLastResult: "",
+    wheelSessionLotSelections: {},
+    wheelSkippedDeductions: []
   };
 }
 

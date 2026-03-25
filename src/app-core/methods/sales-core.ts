@@ -1,14 +1,14 @@
 import type {
-  LotType,
-  NewSaleDraft,
-  Sale,
-  SinglesPurchaseEntry,
-  SinglesSaleDraftLine,
-  SinglesSaleLine,
-  UiColor
+    LotType,
+    NewSaleDraft,
+    Sale,
+    SinglesPurchaseEntry,
+    SinglesSaleDraftLine,
+    SinglesSaleLine,
+    UiColor
 } from "../../types/app.ts";
-import { toDateOnly, getTodayDate } from "./config-shared.ts";
 import { toPositiveIntOrNull as normalizeSinglesPurchaseEntryId } from "../shared/singles-normalizers.ts";
+import { getTodayDate, toDateOnly } from "./config-shared.ts";
 
 export interface SaleSaveParams {
   canUsePaidActions: boolean;
@@ -265,6 +265,8 @@ export function buildSaleSaveResult(params: SaleSaveParams): SaleSaveResult {
     packsCount = quantity;
   } else if (normalizedSaleType === "box") {
     packsCount = quantity * params.packsPerBox;
+  } else if (normalizedSaleType === "wheel") {
+    packsCount = params.newSale.packsCount ?? 0;
   } else {
     packsCount = rtyhPacks;
   }

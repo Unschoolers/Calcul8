@@ -21,6 +21,7 @@ export const uiMethods: ThisType<AppContext> & Pick<
   | "accessProFeature"
   | "requestPurchaseUiMode"
   | "calculateSaleProfit"
+  | "getSaleProfitPreview"
   | "getSaleColor"
   | "getSaleIcon"
   | "formatDate"

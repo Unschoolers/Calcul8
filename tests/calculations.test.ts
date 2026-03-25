@@ -1,39 +1,39 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import {
-  calculateBoxPriceCostCad,
-  calculateDefaultSellingPrices,
-  calculateSinglesPurchaseTotals,
-  calculateSinglesPurchaseTotalCostInSellingCurrency,
-  calculateSinglesLineProfitPreview,
-  calculateSinglesSaleProfitPreview,
-  createForecastProjectionFromUnitPrice,
-  createForecastScenarioFromProjection,
-  createForecastScenarioFromUnitPrice,
-  calculateNetFromGross,
-  calculatePortfolioSellThroughTimeline,
-  calculatePriceForUnits,
-  calculateProfitForListing,
-  calculateSaleProfit,
-  calculatePortfolioTotals,
-  calculateLotPerformanceSummary,
-  calculateSalesProgress,
-  calculateSalesStatus,
-  calculateSoldPacksCount,
-  calculateTotalSpots,
-  calculateSparklineData,
-  calculateSparklineGradient,
-  calculateTotalCaseCost,
-  calculateTotalPacks,
-  calculateTotalRevenue
-} from "../src/domain/calculations.ts";
 import { appComputed } from "../src/app-core/computed.ts";
 import { appLifecycle } from "../src/app-core/lifecycle.ts";
-import { appWatch } from "../src/app-core/watch.ts";
 import { configMethods } from "../src/app-core/methods/config.ts";
 import { salesMethods } from "../src/app-core/methods/sales.ts";
 import { uiBaseMethods } from "../src/app-core/methods/ui/base.ts";
 import { getLegacySalesStorageKey, STORAGE_KEYS } from "../src/app-core/storageKeys.ts";
+import { appWatch } from "../src/app-core/watch.ts";
+import {
+    calculateBoxPriceCostCad,
+    calculateDefaultSellingPrices,
+    calculateLotPerformanceSummary,
+    calculateNetFromGross,
+    calculatePortfolioSellThroughTimeline,
+    calculatePortfolioTotals,
+    calculatePriceForUnits,
+    calculateProfitForListing,
+    calculateSaleProfit,
+    calculateSalesProgress,
+    calculateSalesStatus,
+    calculateSinglesLineProfitPreview,
+    calculateSinglesPurchaseTotalCostInSellingCurrency,
+    calculateSinglesPurchaseTotals,
+    calculateSinglesSaleProfitPreview,
+    calculateSoldPacksCount,
+    calculateSparklineData,
+    calculateSparklineGradient,
+    calculateTotalCaseCost,
+    calculateTotalPacks,
+    calculateTotalRevenue,
+    calculateTotalSpots,
+    createForecastProjectionFromUnitPrice,
+    createForecastScenarioFromProjection,
+    createForecastScenarioFromUnitPrice
+} from "../src/domain/calculations.ts";
 import type { Lot, Sale } from "../src/types/app.ts";
 
 type MockStorage = {
@@ -2830,6 +2830,9 @@ test("mounted restores persisted portfolio lot type filter", () => {
       loadSalesFromStorage() {
         // noop
       },
+      loadWheelFromStorage() {
+        // noop
+      },
       syncLivePricesFromDefaults() {
         // noop
       },
@@ -2908,6 +2911,9 @@ test("mounted restores persisted theme", () => {
         // noop
       },
       loadSalesFromStorage() {
+        // noop
+      },
+      loadWheelFromStorage() {
         // noop
       },
       syncLivePricesFromDefaults() {

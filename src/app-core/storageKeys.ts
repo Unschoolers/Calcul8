@@ -19,7 +19,9 @@ export const STORAGE_KEYS = {
   DEBUG_USER_ID: "whatfees_debug_user_id",
   SYNC_CLIENT_VERSION: "whatfees_sync_client_version",
   LAST_SYNCED_PAYLOAD_HASH: "whatfees_last_synced_payload_hash",
-  API_BASE_URL: "whatfees_api_base_url"
+  API_BASE_URL: "whatfees_api_base_url",
+  WHEEL_CONFIGS: "whatfees_wheel_configs",
+  WHEEL_SESSION: "whatfees_wheel_session"
 } as const;
 
 const LEGACY_STORAGE_KEYS = {

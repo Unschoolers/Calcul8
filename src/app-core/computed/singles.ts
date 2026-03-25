@@ -1,24 +1,24 @@
-import {
-  calculateLotPerformanceSummary,
-  calculateNetFromGross,
-  calculateSinglesLineProfitPreview,
-  calculateSinglesPurchaseTotals,
-  calculateSinglesPurchaseTotalCostInSellingCurrency,
-  calculateSinglesSaleProfitPreview
-} from "../../domain/calculations.ts";
 import { DEFAULT_VALUES } from "../../constants.ts";
-import type { AppComputedObject } from "../context.ts";
 import {
-  calculateProfitableOrderPrice,
-  getSaleSinglesLines,
-  getSinglesEntryUnitCostInSellingCurrency,
-  getSinglesRemainingQuantity,
-  normalizeLiveSelectionIds,
-  normalizeSinglesCatalogSource,
-  toNonNegativeInt,
-  toPositiveIntOrNull
-} from "./singles-helpers.ts";
+    calculateLotPerformanceSummary,
+    calculateNetFromGross,
+    calculateSinglesLineProfitPreview,
+    calculateSinglesPurchaseTotalCostInSellingCurrency,
+    calculateSinglesPurchaseTotals,
+    calculateSinglesSaleProfitPreview
+} from "../../domain/calculations.ts";
+import type { AppComputedObject } from "../context.ts";
 import { buildLotOptionItems, filterLotOptionItems } from "../shared/lot-option-items.ts";
+import {
+    calculateProfitableOrderPrice,
+    getSaleSinglesLines,
+    getSinglesEntryUnitCostInSellingCurrency,
+    getSinglesRemainingQuantity,
+    normalizeLiveSelectionIds,
+    normalizeSinglesCatalogSource,
+    toNonNegativeInt,
+    toPositiveIntOrNull
+} from "./singles-helpers.ts";
 
 type SaleEditorNormalizedLine = {
   singlesPurchaseEntryId: number | null;
@@ -290,6 +290,7 @@ export const singlesComputed: Pick<
           value: entry.id,
           item: entry.item || "Unnamed item",
           cardNumber,
+          image: entry.image || "",
           cost: unitCost,
           marketValue,
           quantity,

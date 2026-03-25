@@ -1,22 +1,22 @@
-import type { AppLifecycleObject } from "./context.ts";
 import type { AppTab, PortfolioLotTypeFilter } from "../types/app.ts";
-import {
-  getLegacyStorageKeys,
-  getScopedLastLotStorageKey,
-  getScopedLastSyncedPayloadHashKey,
-  migrateLegacyStorageKeys,
-  readStorageWithLegacy,
-  STORAGE_KEYS
-} from "./storageKeys.ts";
+import type { AppLifecycleObject } from "./context.ts";
 import { closeStripeEmbeddedCheckout, handleStripeCheckoutReturn } from "./methods/ui/entitlements-stripe.ts";
 import { stopWorkspaceConfigSyncPush } from "./methods/ui/workspace-config-sync.ts";
 import { refreshWorkspaceRealtime, stopWorkspaceRealtime } from "./methods/ui/workspace-realtime.ts";
+import {
+    getLegacyStorageKeys,
+    getScopedLastLotStorageKey,
+    getScopedLastSyncedPayloadHashKey,
+    migrateLegacyStorageKeys,
+    readStorageWithLegacy,
+    STORAGE_KEYS
+} from "./storageKeys.ts";
 import { getActiveStorageScope } from "./workspace-scope.ts";
 
 const LEGACY_KEYS = getLegacyStorageKeys();
 
 function isAppTab(value: unknown): value is AppTab {
-  return value === "config" || value === "live" || value === "sales" || value === "portfolio";
+  return value === "config" || value === "live" || value === "sales" || value === "portfolio" || value === "wheel";
 }
 
 function isPortfolioLotTypeFilter(value: unknown): value is PortfolioLotTypeFilter {
@@ -111,6 +111,7 @@ export const appLifecycle: AppLifecycleObject = {
 
     this.getExchangeRate();
     this.loadSalesFromStorage();
+    this.loadWheelFromStorage();
     this.syncLivePricesFromDefaults();
     this.initGoogleAutoLogin();
     void (async () => {

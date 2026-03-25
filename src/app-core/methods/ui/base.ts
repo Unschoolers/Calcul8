@@ -1,6 +1,6 @@
+import { calculateSaleProfit as calculateSaleProfitValue, getSaleProfitPreview as getSaleProfitPreviewValue } from "../../../domain/calculations.ts";
 import type { Sale, SaleType, UiColor } from "../../../types/app.ts";
 import type { AppContext, AppMethodState } from "../../context.ts";
-import { calculateSaleProfit as calculateSaleProfitValue } from "../../../domain/calculations.ts";
 import { STORAGE_KEYS } from "../../storageKeys.ts";
 
 const DATE_ONLY_REGEX = /^\d{4}-\d{2}-\d{2}$/;
@@ -25,6 +25,7 @@ export const uiBaseMethods: ThisType<AppContext> & Pick<
   | "accessProFeature"
   | "requestPurchaseUiMode"
   | "calculateSaleProfit"
+  | "getSaleProfitPreview"
   | "getSaleColor"
   | "getSaleIcon"
   | "formatDate"
@@ -144,15 +145,31 @@ export const uiBaseMethods: ThisType<AppContext> & Pick<
     });
   },
 
+  getSaleProfitPreview(sale: Sale) {
+    return getSaleProfitPreviewValue({
+      sale,
+      lotType: this.currentLotType,
+      sellingTaxPercent: this.sellingTaxPercent,
+      totalCaseCost: this.totalCaseCost,
+      totalPacks: this.totalPacks,
+      purchaseCurrency: this.currency,
+      sellingCurrency: this.sellingCurrency,
+      exchangeRate: this.exchangeRate,
+      singlesPurchases: this.singlesPurchases
+    });
+  },
+
   getSaleColor(type: SaleType): string {
     if (type === "pack") return "primary";
     if (type === "box") return "secondary";
+    if (type === "wheel") return "warning";
     return "success";
   },
 
   getSaleIcon(type: SaleType): string {
     if (type === "pack") return "mdi-tag-outline";
     if (type === "box") return "mdi-cube-outline";
+    if (type === "wheel") return "mdi-tire";
     return "mdi-cards-playing-outline";
   },
 
