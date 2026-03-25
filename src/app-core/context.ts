@@ -383,6 +383,20 @@ export interface AppWatchObject {
     handler(this: AppContext): void;
     deep: true;
   };
+  wheelConfigs: {
+    handler(this: AppContext): void;
+    deep: true;
+  };
+  wheelTotalSpins(this: AppContext): void;
+  wheelSpinCounts: {
+    handler(this: AppContext): void;
+    deep: true;
+  };
+  activeWheelConfigId(this: AppContext): void;
+  wheelSkippedDeductions: {
+    handler(this: AppContext): void;
+    deep: true;
+  };
 }
 
 export type PurchaseCostInputComputed = {
