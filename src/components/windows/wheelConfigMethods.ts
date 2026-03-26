@@ -49,6 +49,29 @@ function clearQueuedWheelDraftSave(context: Record<string, unknown>): void {
   }
 }
 
+function resetLoadedWheelSessionState(context: Record<string, unknown>): void {
+  context.wheelSpinCounts = [];
+  context.wheelTotalSpins = 0;
+  context.wheelLastResult = "";
+  context.wheelInventoryWarning = "";
+  context.wheelSessionCostAdjustment = 0;
+  context.wheelSkippedDeductions = [];
+  context.wheelEndingSession = false;
+  context.wheelChaseDialog = false;
+  context.wheelChaseReplacementSinglesId = null;
+  context.wheelChasePendingTierId = "";
+  context.wheelChaseTallyHistory = [];
+  context.wheelPreviewSpinCounts = [];
+  context.wheelPreviewTotalSpins = 0;
+  context.wheelPreviewChaseTallyHistory = [];
+}
+
+function resetLoadedWheelState(context: Record<string, unknown>): void {
+  context.activeWheelSlots = [];
+  context.wheelPreviewSlots = [];
+  resetLoadedWheelSessionState(context);
+}
+
 function getWheelDraftStorageKey(context: Record<string, unknown>, wheelConfigId: number | null | undefined): string {
   return getScopedWheelConfigDraftStorageKey(getActiveStorageScope(context as {
     activeScopeType: "personal" | "workspace";
@@ -109,6 +132,10 @@ export const wheelConfigMethods = {
       : (sanitizedConfig ? JSON.parse(JSON.stringify(sanitizedConfig)) as WheelConfig : null);
     if (!sanitizedConfig) {
       (this as Record<string, unknown>).appliedWheelConfigSnapshot = null;
+      resetLoadedWheelState(this as Record<string, unknown>);
+      nextTick(() => (this as Record<string, unknown> & { drawWheel: (offset?: number) => void }).drawWheel(
+        (this.wheelCurrentAngle as number) || 0
+      ));
       return;
     }
     if (options.preserveLiveWheelState === true) {
@@ -121,17 +148,8 @@ export const wheelConfigMethods = {
       [...((this as Record<string, unknown>).activeWheelSlots as WheelSlot[])];
     const restored = (this as Record<string, unknown> & { loadWheelFromSession: () => boolean }).loadWheelFromSession();
     if (!restored) {
+      resetLoadedWheelSessionState(this as Record<string, unknown>);
       this.wheelSpinCounts = new Array(((this as Record<string, unknown>).activeWheelSlots as WheelSlot[]).length).fill(0);
-      this.wheelTotalSpins = 0;
-      this.wheelLastResult = "";
-      (this as Record<string, unknown>).wheelInventoryWarning = "";
-      (this as Record<string, unknown>).wheelSessionCostAdjustment = 0;
-      this.wheelSkippedDeductions = [];
-      (this as Record<string, unknown>).wheelEndingSession = false;
-      (this as Record<string, unknown>).wheelChaseDialog = false;
-      (this as Record<string, unknown>).wheelChaseReplacementSinglesId = null;
-      (this as Record<string, unknown>).wheelChasePendingTierId = "";
-      (this as Record<string, unknown>).wheelChaseTallyHistory = [];
     }
     (this as Record<string, unknown>).wheelPreviewSpinCounts =
       new Array(((this as Record<string, unknown>).activeWheelSlots as WheelSlot[]).length).fill(0);

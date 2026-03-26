@@ -719,6 +719,69 @@ test("loadWheelConfig normalizes legacy singles tiers away from pack deduction",
   Object.defineProperty(globalThis, "localStorage", { value: origLocalStorage, writable: true, configurable: true });
 });
 
+test("loadWheelConfig clears rendered wheel state when no active config exists", () => {
+  const vm: Record<string, unknown> = {
+    wheelConfigs: [],
+    activeWheelConfigId: null,
+    activeWheelSlots: [{ name: "Old Prize", color: "#f00", cost: 5, tier: "t1", packsCount: 1, deductionType: "packs", isChase: false }],
+    wheelPreviewSlots: [{ name: "Old Prize", color: "#f00", cost: 5, tier: "t1", packsCount: 1, deductionType: "packs", isChase: false }],
+    wheelSpinCounts: [4],
+    wheelTotalSpins: 4,
+    wheelLastResult: "Old Prize",
+    wheelInventoryWarning: "warning",
+    wheelSessionCostAdjustment: 12,
+    wheelSkippedDeductions: [{
+      slotName: "Old Prize",
+      slotColor: "#f00",
+      slotCost: 5,
+      slotTier: "t1",
+      slotPacksCount: 1,
+      slotDeductionType: "packs",
+      slotIndex: 0,
+      selectedLotId: 1,
+      spinNumber: 1
+    }],
+    wheelEndingSession: true,
+    wheelChaseDialog: true,
+    wheelChaseReplacementSinglesId: 77,
+    wheelChasePendingTierId: "t1",
+    wheelChaseTallyHistory: [{ tierId: "t1", label: "Old Prize", color: "#f00", count: 4 }],
+    wheelPreviewSpinCounts: [4],
+    wheelPreviewTotalSpins: 4,
+    wheelPreviewChaseTallyHistory: [{ tierId: "t1", label: "Old Prize", color: "#f00", count: 4 }],
+    appliedWheelConfigSnapshot: {
+      id: 5,
+      name: "Old Wheel",
+      spinPrice: 10,
+      targetMargin: 40,
+      createdAt: "",
+      tiers: []
+    },
+    drawWheel: vi.fn()
+  };
+
+  WheelWindow.methods!.loadWheelConfig.call(vm as never);
+
+  assert.equal(vm.editingWheelConfig, null);
+  assert.equal(vm.appliedWheelConfigSnapshot, null);
+  assert.deepEqual(vm.activeWheelSlots, []);
+  assert.deepEqual(vm.wheelPreviewSlots, []);
+  assert.deepEqual(vm.wheelSpinCounts, []);
+  assert.equal(vm.wheelTotalSpins, 0);
+  assert.equal(vm.wheelLastResult, "");
+  assert.equal(vm.wheelInventoryWarning, "");
+  assert.equal(vm.wheelSessionCostAdjustment, 0);
+  assert.deepEqual(vm.wheelSkippedDeductions, []);
+  assert.equal(vm.wheelEndingSession, false);
+  assert.equal(vm.wheelChaseDialog, false);
+  assert.equal(vm.wheelChaseReplacementSinglesId, null);
+  assert.equal(vm.wheelChasePendingTierId, "");
+  assert.deepEqual(vm.wheelChaseTallyHistory, []);
+  assert.deepEqual(vm.wheelPreviewSpinCounts, []);
+  assert.equal(vm.wheelPreviewTotalSpins, 0);
+  assert.deepEqual(vm.wheelPreviewChaseTallyHistory, []);
+});
+
 test("saveWheelDraft persists the config without changing the applied wheel or pushing immediately", () => {
   const config: WheelConfig = {
     id: 5,

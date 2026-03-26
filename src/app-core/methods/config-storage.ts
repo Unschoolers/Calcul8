@@ -149,6 +149,8 @@ export const configStorageMethods: ConfigMethodSubset<
   },
 
   loadLotsFromStorage(): void {
+    this.lots = [];
+
     try {
       const storageKey = getScopedPresetsStorageKey(getActiveStorageScope(this));
       const stored = this.activeScopeType === "workspace" && this.activeWorkspaceId

@@ -239,6 +239,9 @@ export const salesMethods: ThisType<AppContext> & Pick<
   },
 
   loadWheelFromStorage(): void {
+    this.wheelConfigs = [];
+    this.activeWheelConfigId = null;
+
     try {
       const raw = localStorage.getItem(getScopedWheelConfigsStorageKey(getActiveStorageScope(this)));
       if (raw) {
@@ -251,6 +254,13 @@ export const salesMethods: ThisType<AppContext> & Pick<
     } catch {
       // Ignore parse errors
     }
+
+    this.wheelTotalSpins = 0;
+    this.wheelSpinCounts = [];
+    this.wheelLastResult = "";
+    this.wheelSessionUpdatedAt = 0;
+    this.wheelSessionLotSelections = {};
+    this.wheelSkippedDeductions = [];
 
     try {
       const rawSession = localStorage.getItem(getScopedWheelSessionStorageKey(getActiveStorageScope(this)));

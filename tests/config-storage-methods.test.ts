@@ -407,6 +407,21 @@ test("loadLotsFromStorage reads workspace-scoped presets without touching person
   });
 });
 
+test("loadLotsFromStorage clears in-memory lots when the active scope has no saved presets", async () => {
+  await withMockedLocalStorage(async () => {
+    const context = createContext({
+      activeScopeType: "workspace",
+      activeWorkspaceId: "team-42",
+      lots: [{ id: 1, name: "Personal Lot" }]
+    });
+
+    configStorageMethods.loadLotsFromStorage.call(context as never);
+
+    assert.deepEqual(context.lots, []);
+    assert.equal(readStorageWithLegacyMock.mock.calls.length, 0);
+  });
+});
+
 test("loadLotsFromStorage handles parse failures by clearing lots", () => {
   readStorageWithLegacyMock.mockReturnValue("not-json");
   const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
