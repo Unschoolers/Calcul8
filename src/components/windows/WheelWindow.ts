@@ -20,7 +20,7 @@ export {
 } from "./wheelHelpers.ts";
 
 function getWheelCanvasTargetSize(panel: HTMLElement | null, presentationMode: boolean): number {
-  const maxSize = presentationMode ? 600 : 360;
+  const maxSize = presentationMode ? 720 : 520;
   if (!panel) return maxSize;
 
   // Leave room for the pointer, shadows, and small-screen padding so the wheel
@@ -74,13 +74,19 @@ export const WheelWindow = {
       wheelChasePendingTierId: "" as string,
       wheelSessionCostAdjustment: 0,
       wheelPreviewChaseTallyHistory: [] as Array<{ tierId: string; label: string; color: string; count: number }>,
-      wheelChaseTallyHistory: [] as Array<{ tierId: string; label: string; color: string; count: number }>
+      wheelChaseTallyHistory: [] as Array<{ tierId: string; label: string; color: string; count: number }>,
+      wheelHighlightedSlotIndex: -1
     };
   },
   computed: {
     ...wheelComputeds
   },
   watch: {
+    currentTab(this: Record<string, unknown>, nextTab: string) {
+      if (nextTab !== "wheel") return;
+      const vm = this as Record<string, unknown> & { refreshWheelCanvas: () => void };
+      vm.refreshWheelCanvas();
+    },
     wheelConfigs: {
       handler(this: Record<string, unknown>) {
         if ((this as Record<string, unknown>)._wheelSkipConfigReload === true) {
@@ -95,6 +101,13 @@ export const WheelWindow = {
     activeWheelConfigId(this: Record<string, unknown>) {
       const vm = this as Record<string, unknown> & { loadWheelConfig: () => void };
       vm.loadWheelConfig();
+    },
+    wheelDisplaySlots: {
+      handler(this: Record<string, unknown>) {
+        const vm = this as Record<string, unknown> & { refreshWheelCanvas: () => void };
+        vm.refreshWheelCanvas();
+      },
+      deep: true
     },
     editingWheelConfig: {
       handler(this: Record<string, unknown>) {
@@ -145,6 +158,35 @@ export const WheelWindow = {
       (this as Record<string, unknown>).wheelRequestedMode = null;
       (this as Record<string, unknown>).wheelLiveConfirmDialog = false;
     },
+    refreshWheelCanvas(this: Record<string, unknown>): void {
+      nextTick(() => {
+        const run = () => {
+          const panel = (this.$refs as Record<string, unknown>).wheelSpinnerPanel as HTMLElement | null;
+          const canvas = (this.$refs as Record<string, unknown>).wheelCanvas as HTMLCanvasElement | null;
+          if (!panel || !canvas) return;
+          const panelWidth = panel.clientWidth;
+          if (panelWidth <= 0 || canvas.offsetParent == null) {
+            window.setTimeout(() => {
+              const vm = this as Record<string, unknown> & { refreshWheelCanvas: () => void };
+              vm.refreshWheelCanvas();
+            }, 90);
+            return;
+          }
+          const targetWidth = getWheelCanvasTargetSize(
+            panel,
+            Boolean((this as Record<string, unknown>).wheelPresentationMode)
+          );
+          if (targetWidth > 0) {
+            (this as Record<string, unknown>).wheelCanvasSize = targetWidth;
+          }
+          nextTick(() => {
+            const vm = this as Record<string, unknown> & { drawWheel: (offset?: number) => void };
+            vm.drawWheel(((this as Record<string, unknown>).wheelCurrentAngle as number) || 0);
+          });
+        };
+        window.requestAnimationFrame(run);
+      });
+    },
     runWheelPrimarySpin(this: Record<string, unknown>): void {
       if ((this as Record<string, unknown>).wheelMode === "config") {
         ((this as Record<string, unknown>) as Record<string, unknown> & { testSpinWheel: () => void }).testSpinWheel();
@@ -191,6 +233,10 @@ export const WheelWindow = {
       const vm = this as Record<string, unknown> & { drawWheel: (offset?: number) => void };
       vm.drawWheel((this as Record<string, unknown>).wheelCurrentAngle as number || 0);
       (this as Record<string, unknown>).wheelConfigReady = true;
+      if ((this as Record<string, unknown>).currentTab === "wheel") {
+        const refreshVm = this as Record<string, unknown> & { refreshWheelCanvas: () => void };
+        refreshVm.refreshWheelCanvas();
+      }
 
       // Watch the spinner panel for size changes (window resize, layout shifts)
       if (panel) {
@@ -226,6 +272,11 @@ export const WheelWindow = {
     if (celebrationTimeoutId != null) {
       clearTimeout(celebrationTimeoutId);
       (this as Record<string, unknown>)._wheelCelebrationTimeoutId = undefined;
+    }
+    const highlightTimeoutId = (this as Record<string, unknown>)._wheelHighlightTimeoutId as number | undefined;
+    if (highlightTimeoutId != null) {
+      clearTimeout(highlightTimeoutId);
+      (this as Record<string, unknown>)._wheelHighlightTimeoutId = undefined;
     }
     const draftTimeoutId = (this as Record<string, unknown>)._wheelDraftSaveTimeoutId as number | undefined;
     if (draftTimeoutId != null) {

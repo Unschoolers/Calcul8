@@ -92,6 +92,7 @@ export const wheelSpinMethods = {
     const sliceAngle = (2 * Math.PI) / slots.length;
     const strokeColor = "#0a0c10";
     const strokeWidth = 2.25;
+    const highlightedSlotIndex = Number((this as Record<string, unknown>).wheelHighlightedSlotIndex ?? -1);
 
     slots.forEach((slot, i) => {
       const startAngle = offset + i * sliceAngle;
@@ -103,6 +104,22 @@ export const wheelSpinMethods = {
       ctx.closePath();
       ctx.fillStyle = slot.color;
       ctx.fill();
+
+      if (i === highlightedSlotIndex) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.arc(cx, cy, r, startAngle, endAngle);
+        ctx.closePath();
+        ctx.fillStyle = "rgba(255, 245, 200, 0.18)";
+        ctx.fill();
+        ctx.strokeStyle = "rgba(255, 228, 133, 0.92)";
+        ctx.lineWidth = 4;
+        ctx.shadowColor = "rgba(255, 210, 88, 0.7)";
+        ctx.shadowBlur = 22;
+        ctx.stroke();
+        ctx.restore();
+      }
 
       ctx.save();
       ctx.translate(cx, cy);
@@ -182,6 +199,7 @@ export const wheelSpinMethods = {
     (vm as Record<string, unknown>).wheelInventoryWarning = "";
 
     vm.wheelSpinning = true;
+    (vm as Record<string, unknown>).wheelHighlightedSlotIndex = -1;
     vm.wheelLastResult = "Spinning…";
     (vm as Record<string, unknown>).wheelLastResultColor = "rgb(var(--v-theme-primary))";
 
@@ -318,6 +336,18 @@ export const wheelSpinMethods = {
     const slot = slots[slotIndex];
     if (!slot) return;
     const recordSession = options.recordSession ?? true;
+    const existingHighlightTimeoutId = (this as Record<string, unknown>)._wheelHighlightTimeoutId as number | undefined;
+    if (existingHighlightTimeoutId != null) {
+      clearTimeout(existingHighlightTimeoutId);
+    }
+    (this as Record<string, unknown>).wheelHighlightedSlotIndex = slotIndex;
+    const redraw = (this as Record<string, unknown>).drawWheel as ((offset?: number) => void) | undefined;
+    (this as Record<string, unknown>)._wheelHighlightTimeoutId = globalThis.setTimeout(() => {
+      (this as Record<string, unknown>).wheelHighlightedSlotIndex = -1;
+      (this as Record<string, unknown>)._wheelHighlightTimeoutId = undefined;
+      redraw?.(((this as Record<string, unknown>).wheelCurrentAngle as number) || 0);
+    }, 2200);
+    redraw?.(((this as Record<string, unknown>).wheelCurrentAngle as number) || 0);
 
     this.wheelLastResult = "🎉 " + slot.name;
     (this as Record<string, unknown>).wheelLastResultColor = slot.color;

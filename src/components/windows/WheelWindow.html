@@ -1,4 +1,8 @@
-<div class="wheel-layout pa-2" :class="{ 'wheel-presentation': wheelPresentationMode }">
+<div class="wheel-layout pa-2" :class="{
+    'wheel-presentation': wheelPresentationMode,
+    'wheel-layout--config': wheelMode === 'config',
+    'wheel-layout--live': wheelMode === 'live'
+}">
 
     <!-- CONFIG PANEL -->
     <v-card v-show="!wheelPresentationMode && wheelMode === 'config'" class="wheel-config-panel" variant="outlined">
@@ -18,6 +22,9 @@
                 <template #append>
                     <v-btn icon="mdi-plus" size="x-small" variant="text" title="New wheel"
                         @click="createNewWheelConfig"></v-btn>
+                    <v-btn v-if="wheelConfigs.length > 1" icon="mdi-delete-outline" size="x-small" variant="text"
+                        color="error" title="Delete this wheel"
+                        @click="wheelConfirmAction = 'delete'; wheelConfirmDialog = true"></v-btn>
                 </template>
             </v-select>
 
@@ -146,11 +153,6 @@
                     @click="addTier">
                     Add Tier
                 </v-btn>
-
-                <v-btn v-if="wheelConfigs.length > 1" block variant="text" color="error" size="small" class="mt-2"
-                    @click="wheelConfirmAction = 'delete'; wheelConfirmDialog = true">
-                    Delete This Wheel
-                </v-btn>
             </template>
 
             <v-alert v-else type="info" variant="tonal" density="compact" class="mt-2">
@@ -166,7 +168,6 @@
                 <div class="wheel-stage-meta">
                     <div class="wheel-stage-title">{{ wheelStageTitle }}</div>
                     <div class="wheel-stage-pills">
-                        <span class="wheel-stage-pill">{{ wheelStageModeLabel }}</span>
                         <span class="wheel-stage-pill">{{ wheelStageSlotsLabel }}</span>
                         <span v-if="wheelDisplayConfig" class="wheel-stage-pill">{{ wheelStageSpinPriceLabel }}</span>
                     </div>
@@ -193,32 +194,41 @@
                 </div>
             </div>
 
-            <div class="wheel-outer" ref="wheelOuter">
-                <transition name="wheel-celebration-pop">
-                    <div v-if="wheelCelebrationVisible" :key="wheelCelebrationNonce" class="wheel-celebration"
-                        :class="{ 'wheel-celebration--preview': wheelCelebrationPreview }">
-                        <div class="wheel-celebration-burst"></div>
-                        <div class="wheel-celebration-ring"></div>
-                        <div class="wheel-celebration-stars">
-                            <span class="wheel-celebration-star wheel-celebration-star--1">★</span>
-                            <span class="wheel-celebration-star wheel-celebration-star--2">★</span>
-                            <span class="wheel-celebration-star wheel-celebration-star--3">★</span>
-                            <span class="wheel-celebration-star wheel-celebration-star--4">★</span>
-                        </div>
-                        <div class="wheel-celebration-copy"
-                            :style="{ '--wheel-celebration-color': wheelCelebrationColor }">
-                            <div v-if="wheelCelebrationImage" class="wheel-celebration-image">
-                                <img :src="wheelCelebrationImage" alt="" loading="eager">
-                            </div>
-                            <div class="wheel-celebration-kicker">{{ wheelCelebrationKicker }}</div>
-                            <div class="wheel-celebration-title">{{ wheelCelebrationLabel }}</div>
-                        </div>
+            <div class="wheel-outer" :class="{ 'wheel-outer--spinning': wheelSpinning }" ref="wheelOuter">
+                <div class="wheel-disc">
+                    <div v-if="wheelSpinning" class="wheel-spin-glow"></div>
+                    <div v-if="wheelSpinning" class="wheel-spin-sparks" aria-hidden="true">
+                        <span class="wheel-spin-spark wheel-spin-spark--1">✦</span>
+                        <span class="wheel-spin-spark wheel-spin-spark--2">✦</span>
+                        <span class="wheel-spin-spark wheel-spin-spark--3">✦</span>
+                        <span class="wheel-spin-spark wheel-spin-spark--4">✦</span>
                     </div>
-                </transition>
-                <canvas ref="wheelCanvas" class="wheel-canvas" :width="wheelCanvasSize"
-                    :height="wheelCanvasSize"></canvas>
+                    <transition name="wheel-celebration-pop">
+                        <div v-if="wheelCelebrationVisible" :key="wheelCelebrationNonce" class="wheel-celebration"
+                            :class="{ 'wheel-celebration--preview': wheelCelebrationPreview }">
+                            <div class="wheel-celebration-burst"></div>
+                            <div class="wheel-celebration-ring"></div>
+                            <div class="wheel-celebration-stars">
+                                <span class="wheel-celebration-star wheel-celebration-star--1">★</span>
+                                <span class="wheel-celebration-star wheel-celebration-star--2">★</span>
+                                <span class="wheel-celebration-star wheel-celebration-star--3">★</span>
+                                <span class="wheel-celebration-star wheel-celebration-star--4">★</span>
+                            </div>
+                            <div class="wheel-celebration-copy"
+                                :style="{ '--wheel-celebration-color': wheelCelebrationColor }">
+                                <div v-if="wheelCelebrationImage" class="wheel-celebration-image">
+                                    <img :src="wheelCelebrationImage" alt="" loading="eager">
+                                </div>
+                                <div class="wheel-celebration-kicker">{{ wheelCelebrationKicker }}</div>
+                                <div class="wheel-celebration-title">{{ wheelCelebrationLabel }}</div>
+                            </div>
+                        </div>
+                    </transition>
+                    <canvas ref="wheelCanvas" class="wheel-canvas" :width="wheelCanvasSize"
+                        :height="wheelCanvasSize"></canvas>
+                    <div class="wheel-center-cap" aria-hidden="true"></div>
+                </div>
                 <div class="wheel-pointer"></div>
-                <div class="wheel-center-cap">SPIN</div>
             </div>
 
             <v-btn size="large" color="primary" variant="elevated" :disabled="wheelPrimarySpinDisabled"

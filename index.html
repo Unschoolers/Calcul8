@@ -375,7 +375,7 @@
             <div :class="{ 'interaction-disabled': !hasLotSelected }"
               :style="!hasLotSelected ? 'pointer-events: none;' : null">
               <v-window v-model="currentTab"
-                :class="['tabs-window', { 'tabs-window--allow-sticky': currentLotType === 'singles' && (currentTab === 'live' || currentTab === 'config') }]"
+                :class="['tabs-window', { 'tabs-window--allow-sticky': currentTab === 'wheel' || (currentLotType === 'singles' && (currentTab === 'live' || currentTab === 'config')) }]"
                 transition="tab-slide-fast" reverse-transition="tab-slide-fast-reverse">
                 <!-- CONFIG -->
                 <v-window-item key="config" value="config" eager>
