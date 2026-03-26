@@ -7,6 +7,8 @@ import {
   resolveApiBaseUrl
 } from "./ui/shared.ts";
 import { buildAuthenticatedHeaders } from "../auth/index.ts";
+import { getScopedSyncClientVersionKey } from "../storageKeys.ts";
+import { getActiveStorageScope } from "../workspace-scope.ts";
 
 const ADMIN_SYNC_USER_ID = "107850224060485991888";
 
@@ -135,7 +137,7 @@ export const configIoMethods: ConfigMethodSubset<
         return;
       }
 
-      let responsePayload: { error?: string } | null = null;
+      let responsePayload: { error?: string; version?: number } | null = null;
       try {
         responsePayload = (await response.json()) as { error?: string };
       } catch {
@@ -151,8 +153,20 @@ export const configIoMethods: ConfigMethodSubset<
         return;
       }
 
+      const importedVersion = Number(responsePayload?.version);
+      if (Number.isFinite(importedVersion) && importedVersion > 0) {
+        try {
+          localStorage.setItem(
+            getScopedSyncClientVersionKey(getActiveStorageScope(this)),
+            String(Math.floor(importedVersion))
+          );
+        } catch {
+          // Ignore storage failures and continue with the forced pull.
+        }
+      }
+
       this.notify(`Imported cloud sync data from user ${sourceUserId}.`, "success");
-      await this.pullCloudSync();
+      await this.pullCloudSync(true);
     } catch (error) {
       console.warn("Failed to import sync data from source user:", error);
       this.notify("Could not import sync data. Please try again.", "error");

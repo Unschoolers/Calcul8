@@ -322,6 +322,41 @@ test("setSyncScopeEntityModes preserves the existing sync meta version", async (
   assert.equal(result.livePricingMode, "entity");
 });
 
+test("setSyncScopeEntityModes preserves wheel config metadata on sync_meta", async () => {
+  const syncSnapshots = createSyncSnapshotsContainer();
+  syncSnapshots.item.mockReturnValue({
+    read: vi.fn().mockResolvedValue({
+      resource: {
+        id: "sync:meta:user-1",
+        docType: "sync_meta",
+        userId: "user-1",
+        version: 7,
+        updatedAt: "2026-03-17T00:00:00.000Z",
+        wheelConfigs: [{ id: 42, name: "Wheel A" }],
+        activeWheelConfigId: 42,
+        salesMode: "snapshot",
+        livePricingMode: "lot_defaults"
+      }
+    })
+  });
+  syncSnapshots.items.upsert.mockImplementation(async (document) => ({
+    resource: document
+  }));
+  getContainersMock.mockReturnValue({ syncSnapshots });
+
+  const result = await setSyncScopeEntityModes(createConfig(), {
+    scopeKey: "user-1",
+    updatedAt: "2026-03-18T00:00:00.000Z",
+    salesMode: "entity",
+    livePricingMode: "entity"
+  });
+
+  assert.deepEqual(syncSnapshots.items.upsert.mock.calls[0]?.[0]?.wheelConfigs, [{ id: 42, name: "Wheel A" }]);
+  assert.equal(syncSnapshots.items.upsert.mock.calls[0]?.[0]?.activeWheelConfigId, 42);
+  assert.deepEqual(result.wheelConfigs, [{ id: 42, name: "Wheel A" }]);
+  assert.equal(result.activeWheelConfigId, 42);
+});
+
 test("listSyncScopeKeys de-duplicates and sorts scope keys", async () => {
   const syncSnapshots = createSyncSnapshotsContainer();
   syncSnapshots.items = {

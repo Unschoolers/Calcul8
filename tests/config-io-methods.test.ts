@@ -289,6 +289,25 @@ test("importLotsFromUserId imports and then pulls cloud sync on success", async 
   assert.equal(requestInit.headers?.["Content-Type"], "application/json");
   assert.equal(JSON.parse(String(requestInit.body)).sourceUserId, "1234567890");
   assert.equal(ctx.pullCloudSync.mock.calls.length, 1);
+  assert.deepEqual(ctx.pullCloudSync.mock.calls[0], [true]);
   assert.equal(ctx.notify.mock.calls.at(-1)?.[0], "Imported cloud sync data from user 1234567890.");
   assert.equal(ctx.isAdminImportInProgress, false);
+  assert.equal(localStorage.getItem("whatfees_sync_client_version"), null);
+});
+
+test("importLotsFromUserId stores imported sync version before forcing a pull", async () => {
+  fetchWithRetryMock.mockResolvedValue({
+    ok: true,
+    status: 200,
+    json: async () => ({ ok: true, version: 475 })
+  });
+
+  const ctx = createImportContext({
+    adminImportSourceUserId: "1234567890"
+  });
+
+  await configIoMethods.importLotsFromUserId.call(ctx as never);
+
+  assert.equal(localStorage.getItem("whatfees_sync_client_version"), "475");
+  assert.deepEqual(ctx.pullCloudSync.mock.calls[0], [true]);
 });

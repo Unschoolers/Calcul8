@@ -81,6 +81,10 @@ type SyncPushOptions = {
   allowEmptyOverwrite?: boolean;
 };
 
+type SyncPullOptions = {
+  forceApply?: boolean;
+};
+
 const defaultDeps: SyncServiceDeps = {
   resolveApiBaseUrl,
   getGoogleIdToken: () => getStoredGoogleIdToken(),
@@ -155,7 +159,11 @@ function shouldAttemptStorageResetRecovery(app: SyncApp, deps: SyncServiceDeps):
   return true;
 }
 
-export async function runCloudSyncPull(app: SyncApp, deps: Partial<SyncServiceDeps> = {}): Promise<void> {
+export async function runCloudSyncPull(
+  app: SyncApp,
+  deps: Partial<SyncServiceDeps> = {},
+  options: SyncPullOptions = {}
+): Promise<void> {
   const resolvedDeps = { ...defaultDeps, ...deps } satisfies SyncServiceDeps;
   const base = resolvedDeps.resolveApiBaseUrl();
   if (!base) return;
@@ -204,12 +212,14 @@ export async function runCloudSyncPull(app: SyncApp, deps: Partial<SyncServiceDe
     const localHasWheelConfigs = Array.isArray(app.wheelConfigs) && app.wheelConfigs.length > 0;
     const localHasData = app.lots.length > 0 || localHasSales || localHasWheelConfigs;
     const localVersion = resolvedDeps.getStoredClientVersion(app);
-    const shouldApplyCloud = resolvedDeps.shouldApplyCloudSnapshot({
-      cloudVersion: parsedSnapshot.version,
-      localVersion,
-      localHasData,
-      cloudHasData: parsedSnapshot.hasData
-    });
+    const shouldApplyCloud = options.forceApply === true
+      ? true
+      : resolvedDeps.shouldApplyCloudSnapshot({
+        cloudVersion: parsedSnapshot.version,
+        localVersion,
+        localHasData,
+        cloudHasData: parsedSnapshot.hasData
+      });
     if (!shouldApplyCloud) {
       const signature = resolvedDeps.getSyncPayloadSignature(resolvedDeps.createSyncPayload(app));
       app.lastSyncedPayloadHash = signature;

@@ -286,6 +286,8 @@ test("syncImportUser copies source snapshot into actor partition", async () => {
   assert.equal(replaceSyncScopeEntityDocumentsMock.mock.calls.length, 1);
   assert.equal(replaceSyncScopeEntityDocumentsMock.mock.calls[0]?.[1]?.scopeKey, "107850224060485991888");
   assert.equal(setSyncScopeEntityModesMock.mock.calls.length, 1);
+  assert.equal((response.jsonBody as { sourceWheelConfigsCount: number }).sourceWheelConfigsCount, 1);
+  assert.equal((response.jsonBody as { sourceActiveWheelConfigId: number | null }).sourceActiveWheelConfigId, 42);
   assert.deepEqual((response.jsonBody as { salesMode: string; livePricingMode: string }).salesMode, "entity");
   assert.deepEqual((response.jsonBody as { salesMode: string; livePricingMode: string }).livePricingMode, "entity");
 });

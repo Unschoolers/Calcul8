@@ -28,7 +28,9 @@ import {
     syncSinglesSaleDraftSummary
 } from "./sales-draft.ts";
 import {
-    canUseAuthoritativeSalesLiveApi
+    cacheAuthoritativeSales,
+    canUseAuthoritativeSalesLiveApi,
+    saveAuthoritativeSale
 } from "./sales-live-api.ts";
 import {
     deleteSaleWithPersistence,
@@ -207,6 +209,19 @@ export const salesMethods: ThisType<AppContext> & Pick<
           refreshCharts: refreshChartsForCurrentTab,
           saveAuthoritatively: saveSaleAuthoritatively
         });
+      } else if (canUseAuthoritativeSalesLiveApi()) {
+        void (async () => {
+          try {
+            const savedSale = await saveAuthoritativeSale(this, lotId, sale, 0);
+            const nextSales = [...this.loadSalesForLotId(lotId), savedSale];
+            cacheAuthoritativeSales(this, lotId, nextSales);
+            this.notify("Wheel sale recorded", "success");
+          } catch (error) {
+            console.error("Failed to save wheel sale:", error);
+            this.notify("Failed to save wheel sale", "error");
+          }
+        })();
+        return;
       } else {
         // Different lot — persist to localStorage directly
         const storageKey = this.getSalesStorageKey(lotId);

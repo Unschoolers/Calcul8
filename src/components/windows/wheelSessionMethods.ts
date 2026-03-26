@@ -10,6 +10,14 @@ import {
 } from "./wheelSaleSupport.ts";
 
 type WheelTallyHistoryEntry = { tierId: string; label: string; color: string; count: number };
+type WheelFairnessHistoryEntry = {
+  spinNumber: number;
+  label: string;
+  color: string;
+  hash: string;
+  seed: string;
+  timestamp: number;
+};
 
 function snapshotCurrentTierLabelToHistory(
   tierId: string,
@@ -54,11 +62,23 @@ function applyReplacementToTier(
 }
 
 export const wheelSessionMethods = {
+  appendWheelFairnessHistory(
+    this: Record<string, unknown>,
+    entry: WheelFairnessHistoryEntry,
+    options: { preview?: boolean } = {}
+  ): void {
+    const historyKey = options.preview === true ? "wheelPreviewFairnessHistory" : "wheelFairnessHistory";
+    const currentHistory = (((this as Record<string, unknown>)[historyKey] || []) as WheelFairnessHistoryEntry[]);
+    const nextHistory = [...currentHistory, entry].slice(-20);
+    (this as Record<string, unknown>)[historyKey] = nextHistory;
+  },
+
   resetPreviewSession(this: Record<string, unknown>): void {
     const previewSlots = (((this as Record<string, unknown>).wheelPreviewSlots
       || (this as Record<string, unknown>).activeWheelSlots) as WheelSlot[]);
     (this as Record<string, unknown>).wheelPreviewSpinCounts = new Array(previewSlots.length).fill(0);
     (this as Record<string, unknown>).wheelPreviewTotalSpins = 0;
+    (this as Record<string, unknown>).wheelPreviewFairnessHistory = [];
     this.wheelLastResult = "";
     (this as Record<string, unknown>).wheelInventoryWarning = "";
     (this as Record<string, unknown>).wheelLastResultColor = "rgb(var(--v-theme-primary))";
@@ -70,6 +90,7 @@ export const wheelSessionMethods = {
     (this as Record<string, unknown>).wheelChaseReplacementSinglesId = null;
     (this as Record<string, unknown>).wheelChasePendingTierId = "";
     (this as Record<string, unknown>).wheelPreviewChaseTallyHistory = [];
+    (this as Record<string, unknown>).wheelFairnessHistoryOpen = false;
   },
 
   getChaseReplacementItems(this: Record<string, unknown>): Array<{ title: string; value: number; image?: string; cardNumber?: string; stockLabel?: string }> {
@@ -311,7 +332,9 @@ export const wheelSessionMethods = {
     (this as Record<string, unknown>).wheelChaseReplacementSinglesId = null;
     (this as Record<string, unknown>).wheelChasePendingTierId = "";
     (this as Record<string, unknown>).wheelSessionCostAdjustment = 0;
+    (this as Record<string, unknown>).wheelFairnessHistory = [];
     (this as Record<string, unknown>).wheelChaseTallyHistory = [];
+    (this as Record<string, unknown>).wheelFairnessHistoryOpen = false;
     (this as Record<string, unknown>).wheelSessionUpdatedAt = Date.now();
     (this as Record<string, unknown> & { saveWheelSession: () => void }).saveWheelSession();
     void broadcastWheelSession(this as Parameters<typeof broadcastWheelSession>[0]);
@@ -420,6 +443,7 @@ export const wheelSessionMethods = {
       wheelTotalSpins: this.wheelTotalSpins,
       wheelSessionUpdatedAt: this.wheelSessionUpdatedAt,
       wheelSessionCostAdjustment: (this as Record<string, unknown>).wheelSessionCostAdjustment,
+      wheelFairnessHistory: (this as Record<string, unknown>).wheelFairnessHistory,
       wheelChaseTallyHistory: (this as Record<string, unknown>).wheelChaseTallyHistory,
       wheelSkippedDeductions: this.wheelSkippedDeductions,
       wheelCurrentAngle: this.wheelCurrentAngle,
@@ -461,6 +485,9 @@ export const wheelSessionMethods = {
       this.wheelTotalSpins = (this.wheelSpinCounts as number[]).reduce((sum, count) => sum + count, 0);
       this.wheelSessionUpdatedAt = session.wheelSessionUpdatedAt || 0;
       (this as Record<string, unknown>).wheelSessionCostAdjustment = session.wheelSessionCostAdjustment || 0;
+      (this as Record<string, unknown>).wheelFairnessHistory = Array.isArray(session.wheelFairnessHistory)
+        ? session.wheelFairnessHistory.slice(-20)
+        : [];
       (this as Record<string, unknown>).wheelChaseTallyHistory = session.wheelChaseTallyHistory || [];
       this.wheelSkippedDeductions = session.wheelSkippedDeductions || [];
       this.wheelCurrentAngle = session.wheelCurrentAngle || 0;

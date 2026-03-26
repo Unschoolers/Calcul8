@@ -77,6 +77,33 @@ export const wheelComputeds = {
     return (this as Record<string, unknown>).wheelShowSeed ? "mdi-chevron-up" : "mdi-chevron-down";
   },
 
+  wheelDisplayFairnessHistory(this: Record<string, unknown>): Array<{
+    spinNumber: number;
+    label: string;
+    color: string;
+    hash: string;
+    seed: string;
+    timestamp: number;
+  }> {
+    const history = (((this as Record<string, unknown>).wheelMode === "config"
+      ? (this as Record<string, unknown>).wheelPreviewFairnessHistory
+      : (this as Record<string, unknown>).wheelFairnessHistory) || []) as Array<{
+        spinNumber: number;
+        label: string;
+        color: string;
+        hash: string;
+        seed: string;
+        timestamp: number;
+      }>;
+    return [...history].reverse();
+  },
+
+  wheelFairnessHistorySummary(this: Record<string, unknown>): string {
+    const count = (((this as Record<string, unknown>).wheelDisplayFairnessHistory || []) as unknown[]).length;
+    if (!count) return "No spins yet";
+    return `${count} recent spin${count === 1 ? "" : "s"}`;
+  },
+
   wheelConfirmTitle(this: Record<string, unknown>): string {
     const action = (this as Record<string, unknown>).wheelConfirmAction as "reset" | "delete" | "apply" | "";
     if (action === "reset") return "Reset Session?";
@@ -424,6 +451,12 @@ export const wheelComputeds = {
       if (!lot) continue;
 
       if (tier.deductionType === "singles") {
+        const purchase = tier.boundSinglesId != null
+          ? lot.singlesPurchases?.find((entry) => entry.id === tier.boundSinglesId)
+          : null;
+        const tierDisplayLabel = purchase?.cardNumber
+          ? `${tier.label} #${purchase.cardNumber}`
+          : tier.label;
         const remaining = tier.boundSinglesId != null
           ? getAvailableSinglesQuantityForWheelTier(this, tier.boundLotId, tier.boundSinglesId)
           : ((lot.singlesPurchases || []).reduce((sum, entry) => (
@@ -432,10 +465,13 @@ export const wheelComputeds = {
         rows.push({
           key: `${tier.id}:singles`,
           label: lot.name,
-          detail: tier.boundSinglesId != null ? tier.label : `${tier.label} pool`,
+          detail: tier.boundSinglesId != null ? tierDisplayLabel : `${tier.label} pool`,
           remainingText: `${remaining} card${remaining === 1 ? "" : "s"} left`,
           warning: remaining <= Math.max(1, tier.packsCount || 1),
-          tiers: [tally[tier.id] || { tierId: tier.id, label: tier.label, color: tier.color, count: 0 }]
+          tiers: [{
+            ...(tally[tier.id] || { tierId: tier.id, label: tierDisplayLabel, color: tier.color, count: 0 }),
+            label: tierDisplayLabel
+          }]
         });
         continue;
       }

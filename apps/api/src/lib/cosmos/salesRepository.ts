@@ -332,6 +332,8 @@ export async function setSyncScopeEntityModes(
     userId: scopeKey,
     version: existing?.version ?? 0,
     updatedAt: input.updatedAt,
+    wheelConfigs: Array.isArray(existing?.wheelConfigs) ? existing.wheelConfigs : [],
+    activeWheelConfigId: existing?.activeWheelConfigId ?? null,
     salesMode: input.salesMode,
     livePricingMode: input.livePricingMode
   };

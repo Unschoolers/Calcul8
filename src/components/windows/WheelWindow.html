@@ -281,29 +281,78 @@
                 {{ wheelInventoryWarning }}
             </v-alert>
 
-            <!-- Result Banner -->
-            <v-card v-if="wheelLastResult" variant="outlined" class="pa-3 text-center wheel-result-banner"
-                :style="{ borderLeftColor: wheelLastResultColor, borderLeftWidth: '4px' }">
-                <span class="text-body-1 font-weight-medium">{{ wheelLastResult }}</span>
-            </v-card>
-
             <!-- Provably Fair Verification -->
-            <div v-if="wheelSpinHash" class="wheel-fairness">
-                <div class="wheel-fairness-header" @click="!wheelSpinning && (wheelShowSeed = !wheelShowSeed)">
-                    <v-icon size="x-small" :color="wheelFairnessIconColor" class="mr-1">
-                        {{ wheelFairnessIcon }}
-                    </v-icon>
-                    <span class="text-caption font-weight-medium">
-                        {{ wheelFairnessTitle }}
-                    </span>
-                    <v-icon v-if="!wheelSpinning" size="x-small" class="ml-auto">{{ wheelFairnessChevron }}</v-icon>
+            <v-card v-if="wheelSpinHash || wheelDisplayFairnessHistory.length" variant="outlined"
+                class="wheel-fairness-history wheel-fairness-history--current">
+                <div class="wheel-fairness-history__toggle wheel-fairness-history__toggle--static">
+                    <div class="wheel-fairness-history__heading">
+                        <v-icon size="small" :color="wheelFairnessIconColor">{{ wheelFairnessIcon }}</v-icon>
+                        <div>
+                            <div class="wheel-fairness-history__title">{{ wheelFairnessTitle }}</div>
+                            <div class="wheel-fairness-history__summary">
+                                {{ wheelSpinning ? 'Hash committed before the result lands' : 'Latest spin verification' }}
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <code class="wheel-fairness-code text-caption mt-1">{{ wheelSpinHash }}</code>
-                <template v-if="wheelShowSeed && !wheelSpinning">
-                    <code class="wheel-fairness-code text-caption mt-1">{{ wheelSpinSeed }}</code>
-                    <div class="text-caption text-medium-emphasis mt-1">SHA-256 of the code above = the hash.</div>
-                </template>
-            </div>
+                <div v-if="wheelSpinHash" class="wheel-fairness-history__list">
+                    <div class="wheel-fairness-history__item">
+                        <div v-if="wheelLastResult" class="wheel-fairness-history__item-top">
+                            <div class="wheel-fairness-history__spin">Latest spin</div>
+                            <div class="wheel-fairness-history__result">
+                                <span class="wheel-fairness-history__dot" :style="{ background: wheelLastResultColor }"></span>
+                                {{ wheelLastResult.replace(/^🎉\s*/, '') }}
+                            </div>
+                        </div>
+                        <div class="wheel-fairness-history__codes">
+                            <div class="wheel-fairness-history__code-block">
+                                <span class="wheel-fairness-history__code-label">Hash</span>
+                                <code class="wheel-fairness-history__code">{{ wheelSpinHash }}</code>
+                            </div>
+                            <div v-if="wheelSpinSeed && !wheelSpinning" class="wheel-fairness-history__code-block">
+                                <span class="wheel-fairness-history__code-label">Seed</span>
+                                <code class="wheel-fairness-history__code">{{ wheelSpinSeed }}</code>
+                            </div>
+                        </div>
+                        <div v-if="wheelSpinSeed && !wheelSpinning" class="wheel-fairness-history__note">
+                            SHA-256 of the seed above matches the committed hash.
+                        </div>
+                    </div>
+                </div>
+                <button v-if="wheelDisplayFairnessHistory.length" type="button" class="wheel-fairness-history__toggle"
+                    @click="wheelFairnessHistoryOpen = !wheelFairnessHistoryOpen">
+                    <div class="wheel-fairness-history__heading">
+                        <v-icon size="small" color="success">mdi-history</v-icon>
+                        <div>
+                            <div class="wheel-fairness-history__title">Recent History</div>
+                            <div class="wheel-fairness-history__summary">{{ wheelFairnessHistorySummary }}</div>
+                        </div>
+                    </div>
+                    <v-icon size="small">{{ wheelFairnessHistoryOpen ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
+                </button>
+                <div v-if="wheelFairnessHistoryOpen && wheelDisplayFairnessHistory.length" class="wheel-fairness-history__list">
+                    <div v-for="entry in wheelDisplayFairnessHistory" :key="`${entry.spinNumber}-${entry.timestamp}`"
+                        class="wheel-fairness-history__item">
+                        <div class="wheel-fairness-history__item-top">
+                            <div class="wheel-fairness-history__spin">Spin #{{ entry.spinNumber }}</div>
+                            <div class="wheel-fairness-history__result">
+                                <span class="wheel-fairness-history__dot" :style="{ background: entry.color }"></span>
+                                {{ entry.label }}
+                            </div>
+                        </div>
+                        <div class="wheel-fairness-history__codes">
+                            <div class="wheel-fairness-history__code-block">
+                                <span class="wheel-fairness-history__code-label">Hash</span>
+                                <code class="wheel-fairness-history__code">{{ entry.hash }}</code>
+                            </div>
+                            <div class="wheel-fairness-history__code-block">
+                                <span class="wheel-fairness-history__code-label">Seed</span>
+                                <code class="wheel-fairness-history__code">{{ entry.seed }}</code>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </v-card>
         </div>
 
         <!-- Chase Replacement (shown after a chase tier is won and sale confirmed) -->

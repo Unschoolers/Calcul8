@@ -173,6 +173,39 @@ test("pullCloudSync applies newer cloud snapshot and stores version", async () =
   assert.equal(ctx.syncStatus, "success");
 });
 
+test("pullCloudSync force-applies cloud snapshot even when version gating would normally skip it", async () => {
+  const storage = createMockStorage({
+    whatfees_google_token: "token-abc",
+    whatfees_sync_client_version: "9",
+    whatfees_presets: JSON.stringify([{ id: 1 }])
+  });
+  vi.stubGlobal("localStorage", storage);
+
+  const ctx = createContext();
+  ctx.lots = [{ id: 1, name: "Local lot" }];
+  ctx.wheelConfigs = [];
+  fetchWithRetryMock.mockResolvedValue({
+    ok: true,
+    status: 200,
+    statusText: "OK",
+    json: async () => ({
+      snapshot: {
+        lots: [{ id: 1, name: "Local lot" }],
+        salesByLot: {},
+        wheelConfigs: [{ id: 91, name: "Imported wheel", spinPrice: 10, targetMargin: 40, createdAt: "", tiers: [] }],
+        activeWheelConfigId: 91,
+        version: 3
+      }
+    })
+  });
+
+  await uiSyncMethods.pullCloudSync.call(ctx, true);
+
+  assert.equal((ctx.wheelConfigs as Array<{ id: number }>)[0]?.id, 91);
+  assert.equal(ctx.activeWheelConfigId, 91);
+  assert.equal(ctx.saveWheelConfigsToStorage.mock.calls.length, 1);
+});
+
 test("pullCloudSync normalizes legacy lot tax fields before applying cloud snapshot", async () => {
   const storage = createMockStorage({
     whatfees_google_token: "token-abc",

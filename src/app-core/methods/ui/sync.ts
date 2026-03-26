@@ -13,8 +13,8 @@ export const uiSyncMethods: ThisType<AppContext> & Pick<
   | "stopCloudSyncScheduler"
   | "pushCloudSync"
 > = {
-  async pullCloudSync(): Promise<void> {
-    await runCloudSyncPull(this);
+  async pullCloudSync(forceApply = false): Promise<void> {
+    await runCloudSyncPull(this, {}, { forceApply });
   },
 
   startCloudSyncScheduler(): void {

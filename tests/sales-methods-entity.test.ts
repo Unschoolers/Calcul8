@@ -135,6 +135,52 @@ test("saveSale uses authoritative API and appends the saved sale metadata", asyn
   assert.equal(cacheAuthoritativeSalesMock.mock.calls.length, 1);
 });
 
+test("addWheelSaleToLot uses authoritative persistence for non-current lots too", async () => {
+  const notify = vi.fn();
+  const loadSalesForLotId = vi.fn(() => []);
+  const ctx = createContext({
+    currentLotId: 1,
+    notify,
+    loadSalesForLotId
+  });
+  saveAuthoritativeSaleMock.mockResolvedValue({
+    id: 77,
+    type: "wheel",
+    quantity: 1,
+    packsCount: 1,
+    price: 10,
+    buyerShipping: 0,
+    date: "2026-03-17",
+    version: 1
+  });
+
+  salesMethods.addWheelSaleToLot.call(ctx as never, 2, {
+    id: 77,
+    type: "wheel",
+    quantity: 1,
+    packsCount: 1,
+    price: 10,
+    buyerShipping: 0,
+    date: "2026-03-17"
+  });
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assert.equal(saveAuthoritativeSaleMock.mock.calls.length, 1);
+  assert.deepEqual(saveAuthoritativeSaleMock.mock.calls[0]?.slice(1), [2, {
+    id: 77,
+    type: "wheel",
+    quantity: 1,
+    packsCount: 1,
+    price: 10,
+    buyerShipping: 0,
+    date: "2026-03-17"
+  }, 0]);
+  assert.equal(cacheAuthoritativeSalesMock.mock.calls.length, 1);
+  assert.equal(loadSalesForLotId.mock.calls.length, 1);
+  assert.deepEqual(notify.mock.calls.at(-1), ["Wheel sale recorded", "success"]);
+});
+
 test("saveSale ignores duplicate submit clicks while the authoritative save is in flight", async () => {
   let resolveSave: ((value: unknown) => void) | null = null;
   const savePromise = new Promise((resolve) => {

@@ -324,7 +324,7 @@ export interface AppMethodState {
   closeStripeCheckoutModal(): Promise<void>;
   startPlayPurchase(): Promise<void>;
   verifyPlayPurchase(): Promise<void>;
-  pullCloudSync(): Promise<void>;
+  pullCloudSync(forceApply?: boolean): Promise<void>;
   pushCloudSync(force?: boolean, options?: { allowEmptyOverwrite?: boolean }): Promise<void>;
   startCloudSyncScheduler(): void;
   stopCloudSyncScheduler(): void;

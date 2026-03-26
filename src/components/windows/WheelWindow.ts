@@ -72,7 +72,24 @@ export const WheelWindow = {
       wheelChasePreviewMode: false,
       wheelChaseReplacementSinglesId: null as number | null,
       wheelChasePendingTierId: "" as string,
+      wheelFairnessHistoryOpen: false,
       wheelSessionCostAdjustment: 0,
+      wheelPreviewFairnessHistory: [] as Array<{
+        spinNumber: number;
+        label: string;
+        color: string;
+        hash: string;
+        seed: string;
+        timestamp: number;
+      }>,
+      wheelFairnessHistory: [] as Array<{
+        spinNumber: number;
+        label: string;
+        color: string;
+        hash: string;
+        seed: string;
+        timestamp: number;
+      }>,
       wheelPreviewChaseTallyHistory: [] as Array<{ tierId: string; label: string; color: string; count: number }>,
       wheelChaseTallyHistory: [] as Array<{ tierId: string; label: string; color: string; count: number }>,
       wheelHighlightedSlotIndex: -1
@@ -210,7 +227,7 @@ export const WheelWindow = {
         (this as Record<string, unknown>)._wheelCelebrationTimeoutId = window.setTimeout(() => {
           (this as Record<string, unknown>).wheelCelebrationVisible = false;
           (this as Record<string, unknown>)._wheelCelebrationTimeoutId = undefined;
-        }, 2200);
+        }, 3200);
       });
     }
   },

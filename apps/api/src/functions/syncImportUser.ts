@@ -107,6 +107,12 @@ export async function syncImportUser(
       actorUserId,
       sourceUserId,
       sourceVersion,
+      sourceWheelConfigsCount: Array.isArray(sourceSnapshot.wheelConfigs)
+        ? sourceSnapshot.wheelConfigs.length
+        : 0,
+      sourceActiveWheelConfigId: typeof sourceSnapshot.activeWheelConfigId === "number"
+        ? sourceSnapshot.activeWheelConfigId
+        : null,
       version: nextVersion,
       changed: writeResult.changed,
       upsertedCount: writeResult.upsertedCount,

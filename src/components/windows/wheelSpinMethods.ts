@@ -14,6 +14,15 @@ import {
   hasAnyAvailableSinglesForWheelTier
 } from "./wheelSaleSupport.ts";
 
+type WheelFairnessHistoryEntry = {
+  spinNumber: number;
+  label: string;
+  color: string;
+  hash: string;
+  seed: string;
+  timestamp: number;
+};
+
 function queueSkippedDeduction(
   context: Record<string, unknown>,
   params: {
@@ -182,6 +191,7 @@ export const wheelSpinMethods = {
       landOnSlot: (index: number, options?: { recordSession?: boolean }) => void;
       recordSpinResult: (index: number) => void;
       recordPreviewSpinResult: (index: number) => void;
+      appendWheelFairnessHistory: (entry: WheelFairnessHistoryEntry, options?: { preview?: boolean }) => void;
     };
     const slots = (((vm as Record<string, unknown>).wheelDisplaySlots || vm.activeWheelSlots)) as WheelSlot[];
     if (vm.wheelSpinning || !slots.length) return;
@@ -233,6 +243,16 @@ export const wheelSpinMethods = {
       vm.wheelSpinning = false;
       (vm as Record<string, unknown>).wheelSpinSeed = seed;
       (vm as Record<string, unknown>).wheelShowSeed = true;
+      vm.appendWheelFairnessHistory({
+        spinNumber: Number(recordSession
+          ? ((vm as Record<string, unknown>).wheelTotalSpins || 0)
+          : ((vm as Record<string, unknown>).wheelPreviewTotalSpins || 0)),
+        label: slots[targetIndex]?.name || "Unknown result",
+        color: slots[targetIndex]?.color || "rgb(var(--v-theme-primary))",
+        hash,
+        seed,
+        timestamp: Date.now()
+      }, { preview: !recordSession });
       vm.landOnSlot(targetIndex, { recordSession });
     };
 

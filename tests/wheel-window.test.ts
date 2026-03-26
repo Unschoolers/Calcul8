@@ -286,6 +286,32 @@ test("wheelTrackerInventory summarizes remaining stock for live wheel sources", 
   assert.equal(rows[1]!.tiers[0]!.label, "Hellish Blizzard");
 });
 
+test("wheelTrackerInventory includes singles card number in tier detail when available", () => {
+  const vm = {
+    activeWheelConfig: {
+      id: 1,
+      spinPrice: 10,
+      targetMargin: 40,
+      createdAt: "",
+      tiers: [
+        { id: "single", label: "Hellish Blizzard", color: "#09f", slots: 1, costPerTier: 25, packsCount: 1, deductionType: "singles", boundLotId: 77, boundSinglesId: 701, sets: [] }
+      ]
+    },
+    lots: [
+      { id: 77, name: "Singles Lot", lotType: "singles", singlesPurchases: [{ id: 701, item: "Hellish Blizzard", cardNumber: "UE06BT/OPM-1-020-ALT1", quantity: 2, cost: 25, marketValue: 30 }] }
+    ],
+    wheelTallyByTier: [
+      { tierId: "single", label: "Hellish Blizzard", color: "#09f", count: 1 }
+    ],
+    loadSalesForLotId: vi.fn(() => []),
+    sales: []
+  };
+
+  const rows = WheelWindow.computed!.wheelTrackerInventory.call(vm as never);
+  assert.equal(rows[0]!.detail, "Hellish Blizzard #UE06BT/OPM-1-020-ALT1");
+  assert.equal(rows[0]!.tiers[0]!.label, "Hellish Blizzard #UE06BT/OPM-1-020-ALT1");
+});
+
 test("wheelTrackerInventory groups multiple pack tiers under the same source lot", () => {
   const vm = {
     activeWheelConfig: {
@@ -425,6 +451,54 @@ test("recordPreviewSpinResult updates preview tracker only", () => {
   assert.equal(vm.wheelPreviewTotalSpins, 1);
   assert.deepEqual(vm.wheelSpinCounts, [0]);
   assert.equal(vm.wheelTotalSpins, 0);
+});
+
+test("appendWheelFairnessHistory caps the log to the last 20 entries", () => {
+  const vm: Record<string, unknown> = {
+    wheelFairnessHistory: []
+  };
+
+  for (let i = 1; i <= 22; i++) {
+    WheelWindow.methods!.appendWheelFairnessHistory.call(vm as never, {
+      spinNumber: i,
+      label: `Prize ${i}`,
+      color: "#f00",
+      hash: `hash-${i}`,
+      seed: `seed-${i}`,
+      timestamp: i
+    });
+  }
+
+  assert.equal((vm.wheelFairnessHistory as unknown[]).length, 20);
+  assert.equal((vm.wheelFairnessHistory as Array<{ spinNumber: number }>)[0]!.spinNumber, 3);
+  assert.equal((vm.wheelFairnessHistory as Array<{ spinNumber: number }>)[19]!.spinNumber, 22);
+});
+
+test("appendWheelFairnessHistory keeps preview history separate", () => {
+  const vm: Record<string, unknown> = {
+    wheelFairnessHistory: [],
+    wheelPreviewFairnessHistory: []
+  };
+
+  WheelWindow.methods!.appendWheelFairnessHistory.call(vm as never, {
+    spinNumber: 1,
+    label: "Live Prize",
+    color: "#f00",
+    hash: "live-hash",
+    seed: "live-seed",
+    timestamp: 1
+  });
+  WheelWindow.methods!.appendWheelFairnessHistory.call(vm as never, {
+    spinNumber: 1,
+    label: "Preview Prize",
+    color: "#0f0",
+    hash: "preview-hash",
+    seed: "preview-seed",
+    timestamp: 2
+  }, { preview: true });
+
+  assert.equal((vm.wheelFairnessHistory as Array<{ label: string }>)[0]!.label, "Live Prize");
+  assert.equal((vm.wheelPreviewFairnessHistory as Array<{ label: string }>)[0]!.label, "Preview Prize");
 });
 
 test("canTierBeChase requires a concrete singles item", () => {
@@ -1166,6 +1240,9 @@ test("resetWheelSession clears cost adjustment", () => {
     wheelChaseDialog: true,
     wheelChaseReplacementSinglesId: 123,
     wheelChasePendingTierId: "tc",
+    wheelFairnessHistoryOpen: true,
+    wheelPreviewFairnessHistory: [{ spinNumber: 1, label: "Preview", color: "#0f0", hash: "ph", seed: "ps", timestamp: 1 }],
+    wheelFairnessHistory: [{ spinNumber: 1, label: "Live", color: "#f00", hash: "h", seed: "s", timestamp: 1 }],
     wheelSessionCostAdjustment: 80,
     wheelChaseTallyHistory: [{ tierId: "tc", label: "Old", color: "#f00", count: 3 }],
     saveWheelSession: vi.fn()
@@ -1177,6 +1254,8 @@ test("resetWheelSession clears cost adjustment", () => {
   assert.equal(vm.wheelSessionCostAdjustment, 0);
   assert.equal(vm.wheelChaseDialog, false);
   assert.equal(vm.wheelChasePendingTierId, "");
+  assert.deepEqual(vm.wheelFairnessHistory, []);
+  assert.equal(vm.wheelFairnessHistoryOpen, false);
   assert.deepEqual(vm.wheelChaseTallyHistory, []);
 });
 
@@ -1445,6 +1524,7 @@ test("saveWheelSession stores session to localStorage", () => {
     wheelTotalSpins: 3,
     wheelSessionUpdatedAt: 0,
     wheelSessionCostAdjustment: 10,
+    wheelFairnessHistory: [{ spinNumber: 3, label: "Prize", color: "#f00", hash: "hash-3", seed: "seed-3", timestamp: 3 }],
     wheelChaseTallyHistory: [],
     wheelSkippedDeductions: [],
     wheelSessionLotSelections: {},
@@ -1460,6 +1540,7 @@ test("saveWheelSession stores session to localStorage", () => {
   const parsed = JSON.parse(store["whatfees_wheel_session__cfg__42"]!);
   assert.deepEqual(parsed.wheelSpinCounts, [1, 2]);
   assert.equal(parsed.wheelTotalSpins, 3);
+  assert.equal(parsed.wheelFairnessHistory.length, 1);
 
   Object.defineProperty(globalThis, "localStorage", { value: origLocalStorage, writable: true, configurable: true });
 });
@@ -1469,6 +1550,7 @@ test("loadWheelFromSession restores session from localStorage", () => {
     wheelSpinCounts: [3, 4],
     wheelTotalSpins: 7,
     wheelSessionCostAdjustment: 5,
+    wheelFairnessHistory: [{ spinNumber: 7, label: "Prize", color: "#0f0", hash: "hash-7", seed: "seed-7", timestamp: 7 }],
     wheelChaseTallyHistory: [],
     wheelSkippedDeductions: [],
     wheelSessionLotSelections: {},
@@ -1488,6 +1570,7 @@ test("loadWheelFromSession restores session from localStorage", () => {
     wheelSpinCounts: [0, 0],
     wheelTotalSpins: 0,
     wheelSessionCostAdjustment: 0,
+    wheelFairnessHistory: [],
     wheelChaseTallyHistory: [],
     wheelSkippedDeductions: [],
     wheelSessionLotSelections: {},
@@ -1501,6 +1584,7 @@ test("loadWheelFromSession restores session from localStorage", () => {
   assert.equal(result, true);
   assert.deepEqual(vm.wheelSpinCounts, [3, 4]);
   assert.equal(vm.wheelTotalSpins, 7);
+  assert.equal((vm.wheelFairnessHistory as Array<{ spinNumber: number }>)[0]!.spinNumber, 7);
 
   Object.defineProperty(globalThis, "localStorage", { value: origLocalStorage, writable: true, configurable: true });
 });
