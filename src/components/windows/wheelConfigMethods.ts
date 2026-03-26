@@ -1,5 +1,8 @@
 import { nextTick } from "vue";
-import { queueCloudConfigSyncPush } from "../../app-core/methods/ui/workspace-config-sync.ts";
+import {
+  queueCloudConfigSyncPush,
+  stopWorkspaceConfigSyncPush
+} from "../../app-core/methods/ui/workspace-config-sync.ts";
 import { getScopedWheelConfigDraftStorageKey } from "../../app-core/storageKeys.ts";
 import { getActiveStorageScope } from "../../app-core/workspace-scope.ts";
 import { broadcastWheelSession } from "../../app-core/methods/ui/wheel-broadcast.ts";
@@ -19,13 +22,31 @@ import {
   getWheelTierInventoryMeta
 } from "./wheelSaleSupport.ts";
 
-function sanitizeWheelConfigChaseTiers(config: WheelConfig): WheelConfig {
+function sanitizeWheelConfig(context: Record<string, unknown>, config: WheelConfig): WheelConfig {
+  const lots = (context.lots || []) as Lot[];
   for (const tier of config.tiers) {
+    const boundLot = tier.boundLotId == null
+      ? null
+      : (lots.find((lot) => lot.id === tier.boundLotId) ?? null);
+    if (boundLot?.lotType === "singles") {
+      tier.deductionType = "singles";
+      tier.packsCount = 1;
+    } else if (tier.deductionType !== "singles") {
+      tier.boundSinglesId = null;
+    }
     if (tier.boundSinglesId == null || tier.deductionType !== "singles") {
       tier.isChase = false;
     }
   }
   return config;
+}
+
+function clearQueuedWheelDraftSave(context: Record<string, unknown>): void {
+  const timeoutId = context._wheelDraftSaveTimeoutId as number | undefined;
+  if (timeoutId != null) {
+    globalThis.clearTimeout(timeoutId);
+    context._wheelDraftSaveTimeoutId = undefined;
+  }
 }
 
 function getWheelDraftStorageKey(context: Record<string, unknown>, wheelConfigId: number | null | undefined): string {
@@ -67,7 +88,7 @@ export const wheelConfigMethods = {
     const configs = (this.wheelConfigs || []) as WheelConfig[];
     const activeId = this.activeWheelConfigId as number | null;
     const config = activeId != null ? configs.find((c) => c.id === activeId) : null;
-    const sanitizedConfig = config ? sanitizeWheelConfigChaseTiers(JSON.parse(JSON.stringify(config)) as WheelConfig) : null;
+    const sanitizedConfig = config ? sanitizeWheelConfig(this, JSON.parse(JSON.stringify(config)) as WheelConfig) : null;
     if (config && sanitizedConfig && JSON.stringify(config) !== JSON.stringify(sanitizedConfig)) {
       const nextConfigs = configs.map((entry) => entry.id === sanitizedConfig.id ? sanitizedConfig : entry);
       this.wheelConfigs = [...nextConfigs];
@@ -77,7 +98,7 @@ export const wheelConfigMethods = {
       try {
         const rawDraft = localStorage.getItem(getWheelDraftStorageKey(this, sanitizedConfig.id));
         if (rawDraft) {
-          draftConfig = sanitizeWheelConfigChaseTiers(JSON.parse(rawDraft) as WheelConfig);
+          draftConfig = sanitizeWheelConfig(this, JSON.parse(rawDraft) as WheelConfig);
         }
       } catch {
         draftConfig = null;
@@ -139,11 +160,13 @@ export const wheelConfigMethods = {
   applyWheelConfig(this: Record<string, unknown>): void {
     const editing = (this as Record<string, unknown>).editingWheelConfig as WheelConfig | null;
     if (!editing) return;
+    clearQueuedWheelDraftSave(this);
+    stopWorkspaceConfigSyncPush(this as object);
     const configs = (this.wheelConfigs || []) as WheelConfig[];
     const idx = configs.findIndex((c) => c.id === editing.id);
     const previousConfig = idx >= 0 ? configs[idx] : null;
     const updated = { ...(JSON.parse(JSON.stringify(editing)) as WheelConfig), updatedAt: new Date().toISOString() };
-    sanitizeWheelConfigChaseTiers(updated);
+    sanitizeWheelConfig(this, updated);
     if (idx >= 0) {
       configs[idx] = updated;
     } else {
@@ -168,6 +191,7 @@ export const wheelConfigMethods = {
       localStorage.removeItem(getWheelDraftStorageKey(this, updated.id));
     } catch { /* ignore */ }
     this.activeWheelConfigId = updated.id;
+    (this as Record<string, unknown>).editingWheelConfig = JSON.parse(JSON.stringify(updated)) as WheelConfig;
     (this as Record<string, unknown>).appliedWheelConfigSnapshot = JSON.parse(JSON.stringify(updated)) as WheelConfig;
     (this as Record<string, unknown>).activeWheelSlots = newSlots;
     (this as Record<string, unknown>).wheelPreviewSlots = [...newSlots];
@@ -213,11 +237,7 @@ export const wheelConfigMethods = {
   queueWheelDraftAutosave(this: Record<string, unknown>): void {
     const editing = (this as Record<string, unknown>).editingWheelConfig as WheelConfig | null;
     const hasPendingChanges = ((this as Record<string, unknown>).hasPendingWheelChanges as boolean) === true;
-    const timeoutId = (this as Record<string, unknown>)._wheelDraftSaveTimeoutId as number | undefined;
-    if (timeoutId != null) {
-      globalThis.clearTimeout(timeoutId);
-      (this as Record<string, unknown>)._wheelDraftSaveTimeoutId = undefined;
-    }
+    clearQueuedWheelDraftSave(this);
     if (!editing) return;
     if (!hasPendingChanges) {
       (this as Record<string, unknown> & { clearWheelDraft: (wheelConfigId?: number | null) => void }).clearWheelDraft(editing.id);
@@ -234,7 +254,7 @@ export const wheelConfigMethods = {
     if (!editing?.id) return;
     const configs = (this.wheelConfigs || []) as WheelConfig[];
     const idx = configs.findIndex((entry) => entry.id === editing.id);
-    const persisted = sanitizeWheelConfigChaseTiers({
+    const persisted = sanitizeWheelConfig(this, {
       ...(JSON.parse(JSON.stringify(editing)) as WheelConfig),
       updatedAt: new Date().toISOString()
     });
@@ -245,7 +265,6 @@ export const wheelConfigMethods = {
     }
     (this as Record<string, unknown>)._wheelSkipConfigReload = true;
     this.wheelConfigs = [...configs];
-    queueCloudConfigSyncPush(this as Parameters<typeof queueCloudConfigSyncPush>[0]);
     try {
       localStorage.removeItem(getWheelDraftStorageKey(this, editing.id));
     } catch { /* ignore */ }

@@ -90,12 +90,9 @@ export function getWheelTierInventoryMeta(
       };
     }
 
-    const availableCount = (lot.singlesPurchases || []).reduce((sum, entry) => {
-      return sum + (getAvailableSinglesQuantityForWheelTier(context, tier.boundLotId as number, entry.id) > 0 ? 1 : 0);
-    }, 0);
     return {
-      text: `${availableCount} singles option${availableCount === 1 ? "" : "s"} left • untracked sale`,
-      warning: availableCount <= 0
+      text: `${(lot.singlesPurchases || []).length} singles option${(lot.singlesPurchases || []).length === 1 ? "" : "s"} left • untracked sale`,
+      warning: false
     };
   }
 

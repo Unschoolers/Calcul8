@@ -10,8 +10,7 @@ import {
 } from "./wheelHelpers.ts";
 import {
   getAvailableSinglesQuantityForWheelTier,
-  getRemainingPacksForWheelLot,
-  hasAnyAvailableSinglesForWheelTier
+  getRemainingPacksForWheelLot
 } from "./wheelSaleSupport.ts";
 
 type WheelFairnessHistoryEntry = {
@@ -312,15 +311,6 @@ export const wheelSpinMethods = {
               });
               return;
             }
-          } else if (!hasAnyAvailableSinglesForWheelTier(this, tier)) {
-            queueSkippedDeduction(this, {
-              slot,
-              slotIndex,
-              boundLotId: tier.boundLotId,
-              boundSinglesId: null,
-              warningText: `No singles are left in ${boundLot?.name || "the selected lot"} for ${slot.name}.`
-            });
-            return;
           }
         } else if (slot.deductionType === "packs") {
           const remainingPacks = getRemainingPacksForWheelLot(this, tier.boundLotId);

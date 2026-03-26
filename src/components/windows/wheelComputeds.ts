@@ -244,10 +244,6 @@ export const wheelComputeds = {
           if (remaining <= 0) {
             invalid.push({ tierId: tier.id, label: tier.label, reason: "Selected singles item is out of stock." });
           }
-        } else if (!lot.singlesPurchases?.length || !lot.singlesPurchases.some((entry) => (
-          getAvailableSinglesQuantityForWheelTier(this, tier.boundLotId as number, entry.id) > 0
-        ))) {
-          invalid.push({ tierId: tier.id, label: tier.label, reason: "No singles remain in the selected lot." });
         }
       } else if (tier.deductionType === "packs") {
         const remainingPacks = getRemainingPacksForWheelLot(this, tier.boundLotId);

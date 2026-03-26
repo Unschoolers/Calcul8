@@ -241,6 +241,41 @@ test("wheelSpinBlockedReason warns when a live tier no longer has enough packs",
   assert.match(reason, /repair the wheel before going live/i);
 });
 
+test("wheelInvalidLiveTiers ignores untracked singles tiers", () => {
+  const vm = {
+    wheelMode: "live",
+    activeWheelConfig: {
+      id: 1,
+      spinPrice: 10,
+      targetMargin: 40,
+      createdAt: "",
+      tiers: [
+        {
+          id: "t1",
+          label: "Rei Ayanami",
+          color: "#f0f",
+          slots: 1,
+          costPerTier: 0,
+          packsCount: 1,
+          deductionType: "singles",
+          boundLotId: 42,
+          boundSinglesId: null,
+          sets: []
+        }
+      ]
+    },
+    lots: [{
+      id: 42,
+      name: "Singles Lot",
+      lotType: "singles",
+      singlesPurchases: [{ id: 7, item: "Rei Ayanami", quantity: 1, cost: 0, marketValue: 46 }]
+    }]
+  };
+
+  const invalid = WheelWindow.computed!.wheelInvalidLiveTiers.call(vm as never);
+  assert.deepEqual(invalid, []);
+});
+
 test("wheelTrackerInventory summarizes remaining stock for live wheel sources", () => {
   const vm = {
     activeWheelConfig: {
@@ -628,9 +663,63 @@ test("loadWheelConfig restores autosaved draft without mutating the live config"
   Object.defineProperty(globalThis, "localStorage", { value: origLocalStorage, writable: true, configurable: true });
 });
 
-test("saveWheelDraft persists the config and queues cloud sync without changing the applied wheel", async () => {
-  vi.useFakeTimers();
+test("loadWheelConfig normalizes legacy singles tiers away from pack deduction", () => {
+  const config: WheelConfig = {
+    id: 5,
+    name: "Wheel",
+    spinPrice: 10,
+    targetMargin: 40,
+    createdAt: "",
+    tiers: [
+      {
+        id: "single",
+        label: "Rei Ayanami",
+        color: "#f0f",
+        slots: 1,
+        costPerTier: 5,
+        packsCount: 1,
+        deductionType: "packs",
+        boundLotId: 42,
+        boundSinglesId: null,
+        sets: []
+      }
+    ]
+  };
+  const origLocalStorage = globalThis.localStorage;
+  Object.defineProperty(globalThis, "localStorage", {
+    value: {
+      getItem: vi.fn(() => null)
+    },
+    writable: true,
+    configurable: true
+  });
 
+  const vm: Record<string, unknown> = {
+    wheelConfigs: [config],
+    activeWheelConfigId: 5,
+    activeScopeType: "personal",
+    activeWorkspaceId: null,
+    lots: [{
+      id: 42,
+      name: "Singles Lot",
+      lotType: "singles",
+      singlesPurchases: [{ id: 7, item: "Rei Ayanami", quantity: 1, cost: 0, marketValue: 46 }]
+    }],
+    loadWheelFromSession: vi.fn(() => false),
+    drawWheel: vi.fn()
+  };
+
+  WheelWindow.methods!.loadWheelConfig.call(vm as never);
+
+  assert.equal((vm.wheelConfigs as WheelConfig[])[0]!.tiers[0]!.deductionType, "singles");
+  assert.equal((vm.editingWheelConfig as WheelConfig).tiers[0]!.deductionType, "singles");
+  assert.equal((vm.appliedWheelConfigSnapshot as WheelConfig).tiers[0]!.deductionType, "singles");
+  assert.equal((vm.activeWheelSlots as Array<{ deductionType: string }>)[0]!.deductionType, "singles");
+
+  Object.defineProperty(globalThis, "localStorage", { value: origLocalStorage, writable: true, configurable: true });
+});
+
+test("saveWheelDraft persists the config without changing the applied wheel or pushing immediately", () => {
   const config: WheelConfig = {
     id: 5,
     name: "Wheel",
@@ -665,11 +754,84 @@ test("saveWheelDraft persists the config and queues cloud sync without changing 
   };
 
   WheelWindow.methods!.saveWheelDraft.call(vm as never);
-  await vi.advanceTimersByTimeAsync(450);
 
   assert.equal((vm.wheelConfigs as WheelConfig[])[0]!.spinPrice, 15);
   assert.equal((vm.appliedWheelConfigSnapshot as WheelConfig).spinPrice, 10);
+  assert.equal(pushCloudSync.mock.calls.length, 0);
+  assert.equal(removeItem.mock.calls.length, 1);
+
+  Object.defineProperty(globalThis, "localStorage", { value: origLocalStorage, writable: true, configurable: true });
+});
+
+test("applyWheelConfig clears pending changes and cancels queued draft sync", async () => {
+  vi.useFakeTimers();
+
+  const config: WheelConfig = {
+    id: 5,
+    name: "Wheel",
+    spinPrice: 10,
+    targetMargin: 40,
+    createdAt: "",
+    tiers: [
+      { id: "bulk", label: "Bulk Prize", color: "#f00", slots: 1, costPerTier: 5, packsCount: 1, deductionType: "packs", boundLotId: 1, sets: [] }
+    ]
+  };
+  const editing = JSON.parse(JSON.stringify(config)) as WheelConfig;
+  editing.spinPrice = 15;
+  const removeItem = vi.fn();
+  const origLocalStorage = globalThis.localStorage;
+  Object.defineProperty(globalThis, "localStorage", {
+    value: { removeItem },
+    writable: true,
+    configurable: true
+  });
+
+  const pushCloudSync = vi.fn().mockResolvedValue(undefined);
+  const vm: Record<string, unknown> = {
+    wheelConfigs: [config],
+    editingWheelConfig: editing,
+    appliedWheelConfigSnapshot: JSON.parse(JSON.stringify(config)),
+    activeWheelConfigId: 5,
+    activeWheelSlots: buildSlotsFromConfig(config),
+    wheelPreviewSlots: [],
+    wheelSpinCounts: [0],
+    wheelTotalSpins: 0,
+    wheelLastResult: "",
+    wheelSkippedDeductions: [],
+    wheelCurrentAngle: 0,
+    wheelSessionCostAdjustment: 0,
+    wheelChaseTallyHistory: [],
+    wheelPreviewSpinCounts: [],
+    wheelPreviewTotalSpins: 0,
+    wheelPreviewChaseTallyHistory: [],
+    wheelEndingSession: false,
+    wheelChaseDialog: false,
+    wheelChaseReplacementSinglesId: null,
+    wheelChasePendingTierId: "",
+    activeScopeType: "personal",
+    activeWorkspaceId: null,
+    isGoogleSignedIn: true,
+    isOffline: false,
+    currentLotId: null,
+    pushCloudSync,
+    saveWheelSession: vi.fn(),
+    drawWheel: vi.fn(),
+    saveWheelDraft: vi.fn(function (this: Record<string, unknown>) {
+      WheelWindow.methods!.saveWheelDraft.call(this as never);
+    })
+  };
+
+  vm._wheelDraftSaveTimeoutId = globalThis.setTimeout(() => {
+    (vm.saveWheelDraft as () => void)();
+  }, 1200);
+
+  WheelWindow.methods!.applyWheelConfig.call(vm as never);
+  await vi.advanceTimersByTimeAsync(2000);
+
   assert.equal(pushCloudSync.mock.calls.length, 1);
+  assert.equal(WheelWindow.computed!.hasPendingWheelChanges.call(vm as never), false);
+  assert.equal((vm.editingWheelConfig as WheelConfig).spinPrice, 15);
+  assert.equal((vm.appliedWheelConfigSnapshot as WheelConfig).spinPrice, 15);
   assert.equal(removeItem.mock.calls.length, 1);
 
   Object.defineProperty(globalThis, "localStorage", { value: origLocalStorage, writable: true, configurable: true });
