@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { test } from "vitest";
 import { compile } from "@vue/compiler-dom";
 
-const ROOT = "f:/Sources/Calcul8";
+const TESTS_DIR = path.dirname(fileURLToPath(import.meta.url));
+const ROOT = path.resolve(TESTS_DIR, "..");
 const SRC_ROOT = path.join(ROOT, "src");
 
 function collectHtmlFiles(dir: string): string[] {
