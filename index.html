@@ -1,9 +1,11 @@
 <!-- index.html -->
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="theme-color" content="#E63946" />
@@ -14,11 +16,15 @@
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
   <link href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" rel="stylesheet" />
   <style>
-    [v-cloak] { display: none !important; }
+    [v-cloak] {
+      display: none !important;
+    }
+
     body {
       margin: 0;
       background: #ffcb05;
     }
+
     #startup-splash {
       position: fixed;
       inset: 0;
@@ -28,6 +34,7 @@
       justify-content: center;
       background: #ffcb05;
     }
+
     .splash-card {
       position: relative;
       width: min(80vw, 320px);
@@ -41,7 +48,11 @@
       text-align: center;
       display: none;
     }
-    body.splash-rich .splash-card { display: block; }
+
+    body.splash-rich .splash-card {
+      display: block;
+    }
+
     .splash-logo {
       width: 72px;
       height: 72px;
@@ -49,6 +60,7 @@
       display: block;
       margin: 0 auto 0.55rem;
     }
+
     .splash-title {
       margin: 0;
       font-weight: 800;
@@ -57,17 +69,20 @@
       font-size: 1.25rem;
       line-height: 1.25;
     }
+
     .splash-subtitle {
       margin: 0.18rem 0 0.65rem;
       font-size: 0.8rem;
       color: rgba(255, 255, 255, 0.78);
       line-height: 1.2;
     }
+
     .splash-trend {
       width: 100%;
       height: 26px;
       display: block;
     }
+
     .splash-trend path {
       fill: none;
       stroke: #111;
@@ -94,1595 +109,993 @@
   <div id="app" v-cloak>
     <v-app>
       <template v-if="isGoogleSignedIn">
-      <v-app-bar density="compact" flat border>
-        <v-app-bar-title>
-          <div class="app-bar-title-wrap">
-            <span class="app-bar-brand-lockup" aria-hidden="true">
-              <span class="app-bar-brand-badge">
-                <img
-                  src="icons/icon-192.png"
-                  alt=""
-                  class="app-bar-brand-badge__img"
-                />
-              </span>
-              <span class="app-bar-brand-copy">
-                <span class="app-bar-brand-copy__name">whatfees</span>
-                <span class="app-bar-brand-copy__tagline">Track sales like a pro</span>
-              </span>
-            </span>
-            <span
-              class="app-bar-scope-chip"
-              :class="activeScopeType === 'workspace' ? 'app-bar-scope-chip--workspace' : 'app-bar-scope-chip--personal'"
-            >
-              <v-icon size="13" class="mr-1">
-                {{ activeScopeType === 'workspace' ? 'mdi-account-group-outline' : 'mdi-home-account' }}
-              </v-icon>
-              {{
-                activeScopeType === 'workspace'
-                  ? currentWorkspaceName
-                  : 'Personal'
-              }}
-            </span>
-          </div>
-        </v-app-bar-title>
-
-        <template v-slot:append>
-          <v-menu location="bottom end" offset="10" :transition="false">
-            <template #activator="{ props: accountMenuProps }">
-              <v-btn
-                v-bind="accountMenuProps"
-                icon
-                variant="text"
-                size="default"
-                class="account-menu-activator"
-                :title="googleProfileEmail ? `Signed in as ${googleProfileEmail}` : 'Signed in'"
-                aria-label="Account menu"
-              >
-                <v-avatar v-if="googleProfilePicture && !googleAvatarLoadFailed" size="28">
-                  <img
-                    :src="googleProfilePicture"
-                    :alt="googleProfileName || 'Google profile picture'"
-                    class="account-avatar-img"
-                    referrerpolicy="no-referrer"
-                    @error="googleAvatarLoadFailed = true"
-                    @load="googleAvatarLoadFailed = false"
-                  />
-                </v-avatar>
-                <v-icon v-else size="26">mdi-account-circle-outline</v-icon>
-                <span
-                  v-if="(isWorkspaceScopeActive && workspaceRealtimeStatus !== 'idle') || (!isWorkspaceScopeActive && syncStatus !== 'idle')"
-                  class="account-menu-sync-badge"
-                  :class="[
-                    isWorkspaceScopeActive
-                      ? (workspaceRealtimeStatus === 'connected'
-                        ? 'account-menu-sync-badge--success'
-                        : (workspaceRealtimeStatus === 'disconnected'
-                          ? 'account-menu-sync-badge--error'
-                          : 'account-menu-sync-badge--syncing'))
-                      : (syncStatus === 'syncing'
-                      ? 'account-menu-sync-badge--syncing'
-                      : (syncStatus === 'success'
-                        ? 'account-menu-sync-badge--success'
-                        : 'account-menu-sync-badge--error'))
-                  ]"
-                  aria-hidden="true"
-                >
-                  <v-icon
-                    :size="(isWorkspaceScopeActive && (workspaceRealtimeStatus === 'connecting' || workspaceRealtimeStatus === 'reconnecting'))
-                      || (!isWorkspaceScopeActive && syncStatus === 'syncing')
-                      ? 10
-                      : 11"
-                    :class="(isWorkspaceScopeActive && (workspaceRealtimeStatus === 'connecting' || workspaceRealtimeStatus === 'reconnecting'))
-                      || (!isWorkspaceScopeActive && syncStatus === 'syncing')
-                      ? 'sync-spinning'
-                      : ''"
-                  >
-                    {{
-                      isWorkspaceScopeActive
-                        ? ((workspaceRealtimeStatus === 'connecting' || workspaceRealtimeStatus === 'reconnecting')
-                          ? 'mdi-sync'
-                          : (workspaceRealtimeStatus === 'connected' ? 'mdi-check-bold' : 'mdi-alert'))
-                        : (syncStatus === 'syncing'
-                          ? 'mdi-sync'
-                          : (syncStatus === 'success' ? 'mdi-check-bold' : 'mdi-alert'))
-                    }}
-                  </v-icon>
+        <v-app-bar density="compact" flat border>
+          <v-app-bar-title>
+            <div class="app-bar-title-wrap">
+              <span class="app-bar-brand-lockup" aria-hidden="true">
+                <span class="app-bar-brand-badge">
+                  <img src="icons/icon-192.png" alt="" class="app-bar-brand-badge__img" />
                 </span>
-              </v-btn>
-            </template>
+                <span class="app-bar-brand-copy">
+                  <span class="app-bar-brand-copy__name">whatfees</span>
+                  <span class="app-bar-brand-copy__tagline">Track sales like a pro</span>
+                </span>
+              </span>
+              <span class="app-bar-scope-chip"
+                :class="scopeChipClass">
+                <v-icon size="13" class="mr-1">
+                  {{ scopeChipIcon }}
+                </v-icon>
+                {{ scopeChipLabel }}
+              </span>
+            </div>
+          </v-app-bar-title>
 
-            <v-list min-width="320" class="account-menu-list">
-              <div class="account-menu-header">
-                <v-avatar size="42" class="account-menu-header__avatar">
-                  <img
-                    v-if="googleProfilePicture && !googleAvatarLoadFailed"
-                    :src="googleProfilePicture"
-                    :alt="googleProfileName || 'Google profile picture'"
-                    class="account-avatar-img"
-                    referrerpolicy="no-referrer"
-                  />
-                  <span v-else class="account-menu-header__initial">
-                    {{ (googleProfileName || googleProfileEmail || '?').slice(0, 1).toUpperCase() }}
+          <template v-slot:append>
+            <v-menu location="bottom end" offset="10" :transition="false">
+              <template #activator="{ props: accountMenuProps }">
+                <v-btn v-bind="accountMenuProps" icon variant="text" size="default" class="account-menu-activator"
+                  :title="googleProfileEmail ? `Signed in as ${googleProfileEmail}` : 'Signed in'"
+                  aria-label="Account menu">
+                  <v-avatar v-if="googleProfilePicture && !googleAvatarLoadFailed" size="28">
+                    <img :src="googleProfilePicture" :alt="googleProfileName || 'Google profile picture'"
+                      class="account-avatar-img" referrerpolicy="no-referrer" @error="googleAvatarLoadFailed = true"
+                      @load="googleAvatarLoadFailed = false" />
+                  </v-avatar>
+                  <v-icon v-else size="26">mdi-account-circle-outline</v-icon>
+                  <span
+                    v-if="accountSyncBadgeVisible"
+                    class="account-menu-sync-badge" :class="accountSyncBadgeClass" aria-hidden="true">
+                    <v-icon :size="accountSyncIconSize" :class="accountSyncIconClass">
+                      {{ accountSyncIcon }}
+                    </v-icon>
                   </span>
-                </v-avatar>
-                <div class="account-menu-header__copy">
-                  <div class="account-menu-header__name">
-                    {{ googleProfileName || 'Google account' }}
-                  </div>
-                  <div class="account-menu-header__email">
-                    {{ googleProfileEmail || 'Signed in' }}
-                  </div>
-                  <div class="account-menu-header__workspace">
-                    <span class="account-menu-header__workspace-name">{{ currentWorkspaceName }}</span>
-                  </div>
-                </div>
-              </div>
-
-              <v-divider class="my-1"></v-divider>
-
-              <v-list-subheader>Workspace</v-list-subheader>
-              <v-list-item
-                title="Personal"
-                prepend-icon="mdi-home-account"
-                :active="activeScopeType === 'personal'"
-                @click="switchToPersonalWorkspace"
-              ></v-list-item>
-              <v-list-item
-                v-for="workspace in availableWorkspaces"
-                :key="workspace.workspaceId"
-                :subtitle="workspace.role === 'owner' ? 'Owner' : 'Member'"
-                prepend-icon="mdi-account-multiple-outline"
-                :active="activeWorkspaceId === workspace.workspaceId"
-                @click="switchToWorkspace(workspace.workspaceId)"
-              >
-                <template #title>
-                  <span class="workspace-menu-item-title">
-                    <span class="workspace-menu-item-title__name">{{ workspace.name }}</span>
-                    <span
-                      v-if="activeWorkspaceId === workspace.workspaceId && activeWorkspaceVisibleMembers.length"
-                      class="workspace-avatar-stack"
-                      aria-hidden="true"
-                    >
-                      <span
-                        v-for="member in activeWorkspaceVisibleMembers"
-                        :key="`${workspace.workspaceId}:${member.userId}`"
-                        class="workspace-avatar-stack__item"
-                      >
-                        <v-avatar size="24" class="workspace-avatar-stack__avatar">
-                          <img
-                            v-if="member.photoUrl"
-                            :src="member.photoUrl"
-                            :alt="member.displayName || 'Workspace member avatar'"
-                            class="account-avatar-img"
-                            referrerpolicy="no-referrer"
-                          />
-                          <span v-else class="workspace-avatar-stack__initial">
-                            {{ (member.displayName || '?').slice(0, 1).toUpperCase() }}
-                          </span>
-                        </v-avatar>
-                        <span
-                          class="workspace-avatar-stack__presence"
-                          :class="`workspace-avatar-stack__presence--${getWorkspaceMemberPresenceState(member)}`"
-                          :title="getWorkspaceMemberPresenceLabel(member)"
-                        ></span>
-                      </span>
-                      <span
-                        v-if="activeWorkspaceOverflowMemberCount > 0"
-                        class="workspace-avatar-stack__overflow"
-                      >
-                        +{{ activeWorkspaceOverflowMemberCount }}
-                      </span>
-                    </span>
-                  </span>
-                </template>
-              </v-list-item>
-              <v-list-item
-                v-if="activeScopeType === 'personal'"
-                title="Create shared workspace"
-                prepend-icon="mdi-plus-circle-outline"
-                @click="showCreateWorkspaceModal = true"
-              ></v-list-item>
-              <v-list-item
-                v-if="isWorkspaceScopeActive"
-                title="Workspace"
-                prepend-icon="mdi-account-cog-outline"
-                @click="openWorkspaceMembersModal"
-              ></v-list-item>
-
-              <v-divider class="my-1"></v-divider>
-
-              <v-list-subheader>App</v-list-subheader>
-              <v-list-item
-                v-if="showInstallPrompt"
-                title="Install app"
-                prepend-icon="mdi-download"
-                @click="promptInstall"
-              ></v-list-item>
-              <v-list-item
-                title="Import Whatnot CSV"
-                subtitle="Map and review Whatnot sales before importing"
-                prepend-icon="mdi-file-delimited-outline"
-                @click="openWhatnotCsvImportDialog"
-              ></v-list-item>
-              <v-list-item
-                v-if="(whatnotConnectionSummary?.pendingReviewCount ?? 0) > 0 || whatnotReviewBatchId"
-                :title="whatnotConnectionSummary?.pendingReviewCount
-                  ? `Review Whatnot imports (${whatnotConnectionSummary.pendingReviewCount})`
-                  : 'Review Whatnot imports'"
-                subtitle="Finish reviewing staged Whatnot rows"
-                prepend-icon="mdi-table-eye"
-                @click="openWhatnotReviewDialog"
-              ></v-list-item>
-              <v-list-item
-                v-if="isWorkspaceScopeActive"
-                :title="workspaceRealtimeStatus === 'connected'
-                  ? 'Workspace realtime connected'
-                  : (workspaceRealtimeStatus === 'connecting'
-                    ? 'Workspace realtime connecting'
-                    : (workspaceRealtimeStatus === 'reconnecting'
-                      ? 'Workspace realtime reconnecting'
-                      : (workspaceRealtimeStatus === 'disconnected'
-                        ? 'Workspace realtime disconnected'
-                        : 'Workspace realtime idle')))"
-                :subtitle="workspaceRealtimeStatus === 'connected'
-                  ? 'Live workspace updates are active'
-                  : (workspaceRealtimeStatus === 'connecting'
-                    ? 'Opening realtime connection'
-                    : (workspaceRealtimeStatus === 'reconnecting'
-                      ? 'Retrying with backoff'
-                      : (workspaceRealtimeStatus === 'disconnected'
-                        ? 'Last realtime attempt failed'
-                        : 'Realtime not active for this view')))"
-                :prepend-icon="workspaceRealtimeStatus === 'connected'
-                  ? 'mdi-lan-connect'
-                  : ((workspaceRealtimeStatus === 'connecting' || workspaceRealtimeStatus === 'reconnecting')
-                    ? 'mdi-sync'
-                    : 'mdi-lan-disconnect')"
-              ></v-list-item>
-              <v-list-item
-                :title="syncStatus === 'syncing'
-                  ? 'Syncing'
-                  : (syncStatus === 'success'
-                    ? 'Re-check Pro access'
-                    : (syncStatus === 'error'
-                      ? 'Review sync status'
-                      : 'Check sync status'))"
-                :subtitle="syncStatus === 'syncing'
-                  ? 'Cloud sync in progress'
-                  : (syncStatus === 'success'
-                    ? 'Synced successfully'
-                    : (syncStatus === 'error'
-                      ? 'Last sync needs attention'
-                      : ''))"
-                :prepend-icon="syncStatus === 'syncing'
-                  ? 'mdi-sync'
-                  : (syncStatus === 'success'
-                    ? 'mdi-check-circle-outline'
-                    : (syncStatus === 'error'
-                      ? 'mdi-alert-circle-outline'
-                      : 'mdi-sync'))"
-                @click="debugLogEntitlement(true)"
-              ></v-list-item>
-              <v-list-item
-                :title="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
-                :prepend-icon="isDark ? 'mdi-weather-sunny' : 'mdi-weather-night'"
-                @click="toggleTheme"
-              ></v-list-item>
-
-              <template v-if="whatnotConnectionStatus !== 'unconfigured'">
-                <v-divider class="my-1"></v-divider>
-
-                <v-list-subheader>Integrations</v-list-subheader>
-                <v-list-item
-                  :title="whatnotConnectionStatus === 'connected'
-                    ? 'Whatnot connected'
-                    : (whatnotConnectionStatus === 'connecting'
-                      ? 'Connecting Whatnot'
-                      : (whatnotConnectionStatus === 'disconnected'
-                        ? 'Whatnot disconnected'
-                        : 'Whatnot needs attention'))"
-                  :subtitle="whatnotConnectionSummary?.connected
-                    ? `${whatnotConnectionSummary.displayName || 'Connected seller'}${whatnotConnectionSummary.pendingReviewCount > 0 ? ` • ${whatnotConnectionSummary.pendingReviewCount} pending review` : ''}`
-                    : (activeScopeType === 'workspace'
-                      ? 'Connect your Whatnot account for this shared workspace'
-                      : 'Connect your Whatnot account to import orders into Personal')"
-                  :prepend-icon="whatnotConnectionStatus === 'connected'
-                    ? 'mdi-shopping'
-                    : ((whatnotConnectionStatus === 'connecting' || whatnotSyncStatus === 'syncing')
-                      ? 'mdi-sync'
-                      : 'mdi-shopping-outline')"
-                ></v-list-item>
-                <v-list-item
-                  v-if="(activeScopeType === 'personal' || isCurrentWorkspaceOwner) && !whatnotConnectionSummary?.connected"
-                  :title="whatnotConnectionStatus === 'connecting' ? 'Connecting Whatnot...' : 'Connect Whatnot'"
-                  prepend-icon="mdi-connection"
-                  :disabled="whatnotConnectionStatus === 'connecting'"
-                  @click="connectWhatnot"
-                ></v-list-item>
-                <v-list-item
-                  v-if="whatnotConnectionSummary?.connected"
-                  :title="whatnotConnectionSummary.pendingReviewCount > 0
-                    ? `Review Whatnot imports (${whatnotConnectionSummary.pendingReviewCount})`
-                    : 'Review Whatnot imports'"
-                  prepend-icon="mdi-table-eye"
-                  @click="openWhatnotReviewDialog"
-                ></v-list-item>
-                <v-list-item
-                  v-if="whatnotConnectionSummary?.connected && (activeScopeType === 'personal' || isCurrentWorkspaceOwner)"
-                  :title="whatnotSyncStatus === 'syncing' ? 'Syncing Whatnot sales...' : 'Sync Whatnot sales'"
-                  prepend-icon="mdi-refresh"
-                  :disabled="whatnotSyncStatus === 'syncing'"
-                  @click="syncWhatnotSales"
-                ></v-list-item>
-                <v-list-item
-                  v-if="whatnotConnectionSummary?.connected && (activeScopeType === 'personal' || isCurrentWorkspaceOwner)"
-                  title="Disconnect Whatnot"
-                  prepend-icon="mdi-link-off"
-                  @click="disconnectWhatnot"
-                ></v-list-item>
-
-                <v-divider class="my-1"></v-divider>
+                </v-btn>
               </template>
 
-              <v-list-subheader>Account</v-list-subheader>
-              <v-list-item
-                title="Clear my data"
-                subtitle="Clears your personal cloud data"
-                prepend-icon="mdi-delete-alert-outline"
-                @click="askConfirmation(
+              <v-list min-width="320" class="account-menu-list">
+                <div class="account-menu-header">
+                  <v-avatar size="42" class="account-menu-header__avatar">
+                    <img v-if="googleProfilePicture && !googleAvatarLoadFailed" :src="googleProfilePicture"
+                      :alt="googleProfileName || 'Google profile picture'" class="account-avatar-img"
+                      referrerpolicy="no-referrer" />
+                    <span v-else class="account-menu-header__initial">
+                      {{ (googleProfileName || googleProfileEmail || '?').slice(0, 1).toUpperCase() }}
+                    </span>
+                  </v-avatar>
+                  <div class="account-menu-header__copy">
+                    <div class="account-menu-header__name">
+                      {{ googleProfileName || 'Google account' }}
+                    </div>
+                    <div class="account-menu-header__email">
+                      {{ googleProfileEmail || 'Signed in' }}
+                    </div>
+                    <div class="account-menu-header__workspace">
+                      <span class="account-menu-header__workspace-name">{{ currentWorkspaceName }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <v-divider class="my-1"></v-divider>
+
+                <v-list-subheader>Workspace</v-list-subheader>
+                <v-list-item title="Personal" prepend-icon="mdi-home-account" :active="activeScopeType === 'personal'"
+                  @click="switchToPersonalWorkspace"></v-list-item>
+                <v-list-item v-for="workspace in availableWorkspaces" :key="workspace.workspaceId"
+                  :subtitle="workspace.role === 'owner' ? 'Owner' : 'Member'"
+                  prepend-icon="mdi-account-multiple-outline" :active="activeWorkspaceId === workspace.workspaceId"
+                  @click="switchToWorkspace(workspace.workspaceId)">
+                  <template #title>
+                    <span class="workspace-menu-item-title">
+                      <span class="workspace-menu-item-title__name">{{ workspace.name }}</span>
+                      <span v-if="activeWorkspaceId === workspace.workspaceId && activeWorkspaceVisibleMembers.length"
+                        class="workspace-avatar-stack" aria-hidden="true">
+                        <span v-for="member in activeWorkspaceVisibleMembers"
+                          :key="`${workspace.workspaceId}:${member.userId}`" class="workspace-avatar-stack__item">
+                          <v-avatar size="24" class="workspace-avatar-stack__avatar">
+                            <img v-if="member.photoUrl" :src="member.photoUrl"
+                              :alt="member.displayName || 'Workspace member avatar'" class="account-avatar-img"
+                              referrerpolicy="no-referrer" />
+                            <span v-else class="workspace-avatar-stack__initial">
+                              {{ (member.displayName || '?').slice(0, 1).toUpperCase() }}
+                            </span>
+                          </v-avatar>
+                          <span class="workspace-avatar-stack__presence"
+                            :class="`workspace-avatar-stack__presence--${getWorkspaceMemberPresenceState(member)}`"
+                            :title="getWorkspaceMemberPresenceLabel(member)"></span>
+                        </span>
+                        <span v-if="activeWorkspaceOverflowMemberCount > 0" class="workspace-avatar-stack__overflow">
+                          +{{ activeWorkspaceOverflowMemberCount }}
+                        </span>
+                      </span>
+                    </span>
+                  </template>
+                </v-list-item>
+                <v-list-item v-if="activeScopeType === 'personal'" title="Create shared workspace"
+                  prepend-icon="mdi-plus-circle-outline" @click="showCreateWorkspaceModal = true"></v-list-item>
+                <v-list-item v-if="isWorkspaceScopeActive" title="Workspace" prepend-icon="mdi-account-cog-outline"
+                  @click="openWorkspaceMembersModal"></v-list-item>
+
+                <v-divider class="my-1"></v-divider>
+
+                <v-list-subheader>App</v-list-subheader>
+                <v-list-item v-if="showInstallPrompt" title="Install app" prepend-icon="mdi-download"
+                  @click="promptInstall"></v-list-item>
+                <v-list-item title="Import Whatnot CSV" subtitle="Map and review Whatnot sales before importing"
+                  prepend-icon="mdi-file-delimited-outline" @click="openWhatnotCsvImportDialog"></v-list-item>
+                <v-list-item v-if="(whatnotConnectionSummary?.pendingReviewCount ?? 0) > 0 || whatnotReviewBatchId"
+                  :title="whatnotConnectionSummary?.pendingReviewCount
+                  ? `Review Whatnot imports (${whatnotConnectionSummary.pendingReviewCount})`
+                  : 'Review Whatnot imports'" subtitle="Finish reviewing staged Whatnot rows"
+                  prepend-icon="mdi-table-eye" @click="openWhatnotReviewDialog"></v-list-item>
+                <v-list-item v-if="isWorkspaceScopeActive" :title="workspaceRealtimeTitle"
+                  :subtitle="workspaceRealtimeSubtitle" :prepend-icon="workspaceRealtimeIcon"></v-list-item>
+                <v-list-item :title="syncStatusTitle"
+                  :subtitle="syncStatusSubtitle" :prepend-icon="syncStatusIcon" @click="debugLogEntitlement(true)"></v-list-item>
+                <v-list-item :title="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
+                  :prepend-icon="isDark ? 'mdi-weather-sunny' : 'mdi-weather-night'" @click="toggleTheme"></v-list-item>
+
+                <template v-if="whatnotConnectionStatus !== 'unconfigured'">
+                  <v-divider class="my-1"></v-divider>
+
+                  <v-list-subheader>Integrations</v-list-subheader>
+                  <v-list-item :title="whatnotConnectionTitle"
+                    :subtitle="whatnotConnectionSubtitle" :prepend-icon="whatnotConnectionIcon"></v-list-item>
+                  <v-list-item
+                    v-if="(activeScopeType === 'personal' || isCurrentWorkspaceOwner) && !whatnotConnectionSummary?.connected"
+                    :title="whatnotConnectActionTitle"
+                    prepend-icon="mdi-connection" :disabled="whatnotConnectionStatus === 'connecting'"
+                    @click="connectWhatnot"></v-list-item>
+                  <v-list-item v-if="whatnotConnectionSummary?.connected" :title="whatnotConnectionSummary.pendingReviewCount > 0
+                    ? `Review Whatnot imports (${whatnotConnectionSummary.pendingReviewCount})`
+                    : 'Review Whatnot imports'" prepend-icon="mdi-table-eye"
+                    @click="openWhatnotReviewDialog"></v-list-item>
+                  <v-list-item
+                    v-if="whatnotConnectionSummary?.connected && (activeScopeType === 'personal' || isCurrentWorkspaceOwner)"
+                    :title="whatnotSyncActionTitle"
+                    prepend-icon="mdi-refresh" :disabled="whatnotSyncStatus === 'syncing'"
+                    @click="syncWhatnotSales"></v-list-item>
+                  <v-list-item
+                    v-if="whatnotConnectionSummary?.connected && (activeScopeType === 'personal' || isCurrentWorkspaceOwner)"
+                    title="Disconnect Whatnot" prepend-icon="mdi-link-off" @click="disconnectWhatnot"></v-list-item>
+
+                  <v-divider class="my-1"></v-divider>
+                </template>
+
+                <v-list-subheader>Account</v-list-subheader>
+                <v-list-item title="Clear my data" subtitle="Clears your personal cloud data"
+                  prepend-icon="mdi-delete-alert-outline" @click="askConfirmation(
                   {
                     title: 'Clear your personal data?',
                     text: 'This removes your personal cloud data, local app data, and signs you out. Shared workspaces are not deleted.',
                     color: 'error'
                   },
                   () => clearPersonalAccountData()
-                )"
-              ></v-list-item>
-              <v-list-item
-                title="Sign out"
-                prepend-icon="mdi-logout"
-                @click="logoutCurrentSession"
-              ></v-list-item>
-            </v-list>
-          </v-menu>
-        </template>
-      </v-app-bar>
+                )"></v-list-item>
+                <v-list-item title="Sign out" prepend-icon="mdi-logout" @click="logoutCurrentSession"></v-list-item>
+              </v-list>
+            </v-menu>
+          </template>
+        </v-app-bar>
 
-      <v-main id="app-main" tabindex="-1">
-        <v-container fluid class="pa-4 app-shell fill-height">
-          <v-alert v-if="isOffline" type="warning" variant="tonal" density="compact" class="mb-3">
-            You are offline. Changes are saved locally.
-          </v-alert>
+        <v-main id="app-main" tabindex="-1">
+          <v-container fluid class="pa-4 app-shell fill-height">
+            <v-alert v-if="isOffline" type="warning" variant="tonal" density="compact" class="mb-3">
+              You are offline. Changes are saved locally.
+            </v-alert>
 
-          <!-- Lot Selector -->
-          <v-card v-if="currentTab !== 'portfolio'" class="mb-4 preset-card" elevation="4">
-            <v-card-text class="py-2">
-              <v-row dense align="center" class="lot-selector-row">
-                <v-col cols="9" sm="9" md="10" class="lot-selector-select-col">
-                  <v-select
-                    :model-value="currentLotId"
-                    :items="lotItems"
-                    item-title="title"
-                    item-value="value"
-                    label="Lot"
-                    prepend-inner-icon="mdi-bookmark"
-                    variant="outlined"
-                    density="compact"
-                    hide-details
-                    menu-icon="mdi-chevron-down"
-                    @update:model-value="selectLot"
-                  >
-                    <template #selection="{ item }">
-                      <div v-if="item?.raw" class="lot-selector-selection">
-                        <div class="lot-selector-selection__title-row">
-                          <span class="lot-selector-icon-stack">
-                            <v-icon size="16">{{ item.raw.symbolIcon }}</v-icon>
-                            <v-icon
-                              v-if="item.raw.completionIcon"
-                              size="12"
-                              color="success"
-                              class="lot-selector-icon-stack__badge"
-                            >
-                              {{ item.raw.completionIcon }}
-                            </v-icon>
-                          </span>
-                          <div class="lot-selector-selection__title">{{ item.raw.title }}</div>
-                        </div>
-                        <div class="lot-selector-selection__subtitle">{{ item.raw.subtitle }}</div>
-                      </div>
-                    </template>
-
-                    <template #item="{ props, item }">
-                      <div>
-                        <div v-if="item.raw.groupLabel" class="lot-selector-group-label">
-                          <v-icon size="14" class="mr-1">
-                            {{ item.raw.lotType === 'singles' ? 'mdi-cards-outline' : 'mdi-cube-outline' }}
-                          </v-icon>
-                          {{ item.raw.groupLabel }}
-                        </div>
-                        <v-list-item
-                          v-bind="props"
-                          :title="undefined"
-                          :subtitle="undefined"
-                        >
-                          <template #prepend>
-                            <span class="lot-selector-icon-stack mr-2">
-                              <v-icon size="18">
-                                {{ item.raw.symbolIcon }}
-                              </v-icon>
-                              <v-icon
-                                v-if="item.raw.completionIcon"
-                                size="12"
-                                color="success"
-                                class="lot-selector-icon-stack__badge"
-                              >
+            <!-- Lot Selector -->
+            <v-card v-if="currentTab !== 'portfolio'" class="mb-4 preset-card" elevation="4">
+              <v-card-text class="py-2">
+                <v-row dense align="center" class="lot-selector-row">
+                  <v-col cols="9" sm="9" md="10" class="lot-selector-select-col">
+                    <v-select :model-value="currentLotId" :items="lotItems" item-title="title" item-value="value"
+                      label="Lot" prepend-inner-icon="mdi-bookmark" variant="outlined" density="compact" hide-details
+                      menu-icon="mdi-chevron-down" @update:model-value="selectLot">
+                      <template #selection="{ item }">
+                        <div v-if="item?.raw" class="lot-selector-selection">
+                          <div class="lot-selector-selection__title-row">
+                            <span class="lot-selector-icon-stack">
+                              <v-icon size="16">{{ item.raw.symbolIcon }}</v-icon>
+                              <v-icon v-if="item.raw.completionIcon" size="12" color="success"
+                                class="lot-selector-icon-stack__badge">
                                 {{ item.raw.completionIcon }}
                               </v-icon>
                             </span>
-                          </template>
-                          <v-list-item-title class="text-body-2 font-weight-medium">
-                            {{ item.raw.title }}
-                          </v-list-item-title>
-                          <v-list-item-subtitle class="text-caption">
-                            {{ item.raw.subtitle }}
-                          </v-list-item-subtitle>
-                        </v-list-item>
+                            <div class="lot-selector-selection__title">{{ item.raw.title }}</div>
+                          </div>
+                          <div class="lot-selector-selection__subtitle">{{ item.raw.subtitle }}</div>
+                        </div>
+                      </template>
+
+                      <template #item="{ props, item }">
+                        <div>
+                          <div v-if="item.raw.groupLabel" class="lot-selector-group-label">
+                            <v-icon size="14" class="mr-1">
+                              {{ item.raw.lotType === 'singles' ? 'mdi-cards-outline' : 'mdi-cube-outline' }}
+                            </v-icon>
+                            {{ item.raw.groupLabel }}
+                          </div>
+                          <v-list-item v-bind="props" :title="undefined" :subtitle="undefined">
+                            <template #prepend>
+                              <span class="lot-selector-icon-stack mr-2">
+                                <v-icon size="18">
+                                  {{ item.raw.symbolIcon }}
+                                </v-icon>
+                                <v-icon v-if="item.raw.completionIcon" size="12" color="success"
+                                  class="lot-selector-icon-stack__badge">
+                                  {{ item.raw.completionIcon }}
+                                </v-icon>
+                              </span>
+                            </template>
+                            <v-list-item-title class="text-body-2 font-weight-medium">
+                              {{ item.raw.title }}
+                            </v-list-item-title>
+                            <v-list-item-subtitle class="text-caption">
+                              {{ item.raw.subtitle }}
+                            </v-list-item-subtitle>
+                          </v-list-item>
+                        </div>
+                      </template>
+                    </v-select>
+                  </v-col>
+                  <v-col cols="3" sm="3" md="2" class="lot-selector-meta-col">
+                    <div class="lot-selector-meta">
+                      <div class="lot-selector-actions">
+                        <v-btn v-if="hasLotSelected" icon="mdi-pencil" size="small" variant="tonal" color="secondary"
+                          class="lot-rename-btn" title="Edit lot" aria-label="Edit lot"
+                          @click="openRenameLotModal"></v-btn>
+                        <v-btn icon="mdi-bookmark-plus" size="small" variant="tonal" color="primary" class="lot-add-btn"
+                          title="Add lot" aria-label="Add lot" @click="showNewLotModal = true"></v-btn>
                       </div>
-                    </template>
-                  </v-select>
-                </v-col>
-                <v-col cols="3" sm="3" md="2" class="lot-selector-meta-col">
-                  <div class="lot-selector-meta">
-                    <div class="lot-selector-actions">
-                      <v-btn
-                        v-if="hasLotSelected"
-                        icon="mdi-pencil"
-                        size="small"
-                        variant="tonal"
-                        color="secondary"
-                        class="lot-rename-btn"
-                        title="Edit lot"
-                        aria-label="Edit lot"
-                        @click="openRenameLotModal"
-                      ></v-btn>
-                      <v-btn
-                        icon="mdi-bookmark-plus"
-                        size="small"
-                        variant="tonal"
-                        color="primary"
-                        class="lot-add-btn"
-                        title="Add lot"
-                        aria-label="Add lot"
-                        @click="showNewLotModal = true"
-                      ></v-btn>
                     </div>
-                  </div>
-                </v-col>
-              </v-row>
-            </v-card-text>
-          </v-card>
+                  </v-col>
+                </v-row>
+              </v-card-text>
+            </v-card>
 
-          <v-alert
-            v-if="!hasLotSelected"
-            type="warning"
-            variant="tonal"
-            density="compact"
-            icon="mdi-information-outline"
-            class="app-empty-state-alert mb-4"
-          >
-            <span class="app-empty-state-alert__label">No lot selected.</span>
-            Create or select a lot to use Live pricing and Sales tracking.
-          </v-alert>
+            <v-alert v-if="!hasLotSelected" type="warning" variant="tonal" density="compact"
+              icon="mdi-information-outline" class="app-empty-state-alert mb-4">
+              <span class="app-empty-state-alert__label">No lot selected.</span>
+              Create or select a lot to use Live pricing and Sales tracking.
+            </v-alert>
 
 
-          <!-- Tab Content -->
-          <div :class="{ 'interaction-disabled': !hasLotSelected }" :style="!hasLotSelected ? 'pointer-events: none;' : null">
-            <v-window
-              v-model="currentTab"
-              :class="['tabs-window', { 'tabs-window--allow-sticky': currentLotType === 'singles' && (currentTab === 'live' || currentTab === 'config') }]"
-              transition="tab-slide-fast"
-              reverse-transition="tab-slide-fast-reverse"
-            >
-              <!-- CONFIG -->
-              <v-window-item key="config" value="config" eager>
-                <singles-config-window
-                  v-if="hasLotSelected && currentLotType === 'singles'"
-                  ref="singlesConfigWindow"
-                  :ctx="$root"
-                ></singles-config-window>
-                <config-window v-else :ctx="$root"></config-window>
-              </v-window-item>
+            <!-- Tab Content -->
+            <div :class="{ 'interaction-disabled': !hasLotSelected }"
+              :style="!hasLotSelected ? 'pointer-events: none;' : null">
+              <v-window v-model="currentTab"
+                :class="['tabs-window', { 'tabs-window--allow-sticky': currentLotType === 'singles' && (currentTab === 'live' || currentTab === 'config') }]"
+                transition="tab-slide-fast" reverse-transition="tab-slide-fast-reverse">
+                <!-- CONFIG -->
+                <v-window-item key="config" value="config" eager>
+                  <singles-config-window v-if="hasLotSelected && currentLotType === 'singles'" ref="singlesConfigWindow"
+                    :ctx="$root"></singles-config-window>
+                  <config-window v-else :ctx="$root"></config-window>
+                </v-window-item>
 
-              <!-- LIVE -->
-              <v-window-item key="live" value="live" eager>
-                <live-window ref="liveWindow" :ctx="$root"></live-window>
-              </v-window-item>
+                <!-- LIVE -->
+                <v-window-item key="live" value="live" eager>
+                  <live-window ref="liveWindow" :ctx="$root"></live-window>
+                </v-window-item>
 
-              <!-- SALES -->
-              <v-window-item key="sales" value="sales" eager>
-                <sales-window ref="salesWindow" :ctx="$root"></sales-window>
-              </v-window-item>
+                <!-- SALES -->
+                <v-window-item key="sales" value="sales" eager>
+                  <sales-window ref="salesWindow" :ctx="$root"></sales-window>
+                </v-window-item>
 
-              <!-- PORTFOLIO -->
-              <v-window-item key="portfolio" value="portfolio" eager>
-                <portfolio-window ref="portfolioWindow" :ctx="$root"></portfolio-window>
-              </v-window-item>
+                <!-- WHEEL -->
+                <v-window-item key="wheel" value="wheel" eager>
+                  <wheel-window ref="wheelWindow" :ctx="$root"></wheel-window>
+                </v-window-item>
 
-              <!-- WHEEL -->
-              <v-window-item key="wheel" value="wheel" eager>
-                <wheel-window ref="wheelWindow" :ctx="$root"></wheel-window>
-              </v-window-item>
-            </v-window>
-          </div>
+                <!-- PORTFOLIO -->
+                <v-window-item key="portfolio" value="portfolio" eager>
+                  <portfolio-window ref="portfolioWindow" :ctx="$root"></portfolio-window>
+                </v-window-item>
 
-          <div style="height: calc(5rem + env(safe-area-inset-bottom));"></div>
-        </v-container>
+              </v-window>
+            </div>
 
-        <!-- Bottom Nav -->
-        <v-bottom-navigation
-          v-model="currentTab"
-          color="primary"
-          grow
-          elevation="8"
-          mandatory
-          aria-label="Primary navigation"
-        >
-          <v-btn value="config" :ripple="false">
-            <v-icon>mdi-cog</v-icon>
-            <span>Config</span>
-          </v-btn>
-<v-btn value="live" :disabled="isLiveTabDisabled" :ripple="false">
-  <v-icon>mdi-target</v-icon>
-  <span>Live</span>
-</v-btn>
+            <div style="height: calc(5rem + env(safe-area-inset-bottom));"></div>
+          </v-container>
 
-<v-btn value="sales" :disabled="!hasLotSelected" :ripple="false">
-  <v-icon>mdi-chart-line</v-icon>
-  <span>Sales</span>
-</v-btn>
+          <!-- Bottom Nav -->
+          <v-bottom-navigation v-model="currentTab" color="primary" grow elevation="8" mandatory
+            aria-label="Primary navigation">
+            <v-btn value="config" :ripple="false">
+              <v-icon>mdi-cog</v-icon>
+              <span>Config</span>
+            </v-btn>
+            <v-btn value="live" :disabled="isLiveTabDisabled" :ripple="false">
+              <v-icon>mdi-target</v-icon>
+              <span>Live</span>
+            </v-btn>
 
-<v-btn value="portfolio" :disabled="!hasLotSelected" :ripple="false">
-  <v-icon>mdi-briefcase-outline</v-icon>
-  <span>Portfolio</span>
-</v-btn>
+            <v-btn value="sales" :disabled="!hasLotSelected" :ripple="false">
+              <v-icon>mdi-chart-line</v-icon>
+              <span>Sales</span>
+            </v-btn>
 
-<v-btn value="wheel" :ripple="false">
-  <v-icon>mdi-tire</v-icon>
-  <span>Wheel</span>
-</v-btn>
+            <v-btn value="wheel" :disabled="!hasLotSelected" :ripple="false">
+              <v-icon>mdi-tire</v-icon>
+              <span>Wheel</span>
+            </v-btn>
 
-        </v-bottom-navigation>
-      </v-main>
+            <v-btn value="portfolio" :disabled="!hasLotSelected" :ripple="false">
+              <v-icon>mdi-briefcase-outline</v-icon>
+              <span>Portfolio</span>
+            </v-btn>
 
-      <v-fab
-        v-if="currentTab === 'config' && currentLotType === 'singles'"
-        icon="mdi-plus"
-        color="primary"
-        size="large"
-        title="Add singles purchase"
-        aria-label="Add singles purchase"
-        :disabled="!hasLotSelected"
-        @click="$refs.singlesConfigWindow?.handleAddSinglesPurchase?.()"
-        class="fab-primary fab-add-preset"
-      ></v-fab>
 
-      <v-fab
-        v-if="currentTab === 'live'"
-        icon="mdi-calculator"
-        color="secondary"
-        size="large"
-        :title="hasProAccess ? 'Price calculator' : 'Upgrade to unlock price calculator'"
-        :aria-label="hasProAccess ? 'Open price calculator' : 'Upgrade to unlock price calculator'"
-        :disabled="!hasLotSelected"
-        @click="accessProFeature('autoCalculate')"
-        class="fab-primary fab-live-calc"
-      ></v-fab>
 
-      <v-fab
-        v-if="currentTab === 'live' && currentLotType === 'singles'"
-        icon="mdi-broom"
-        color="error"
-        size="large"
-        title="Clear selected live singles"
-        aria-label="Clear selected live singles"
-        :disabled="!hasLotSelected || effectiveLiveSinglesIds.length === 0"
-        @click="askConfirmation(
+          </v-bottom-navigation>
+        </v-main>
+
+        <v-fab v-if="currentTab === 'config' && currentLotType === 'singles'" icon="mdi-plus" color="primary"
+          size="large" title="Add singles purchase" aria-label="Add singles purchase" :disabled="!hasLotSelected"
+          @click="$refs.singlesConfigWindow?.handleAddSinglesPurchase?.()" class="fab-primary fab-add-preset"></v-fab>
+
+        <v-fab v-if="currentTab === 'live'" icon="mdi-calculator" color="secondary" size="large"
+          :title="hasProAccess ? 'Price calculator' : 'Upgrade to unlock price calculator'"
+          :aria-label="hasProAccess ? 'Open price calculator' : 'Upgrade to unlock price calculator'"
+          :disabled="!hasLotSelected" @click="accessProFeature('autoCalculate')"
+          class="fab-primary fab-live-calc"></v-fab>
+
+        <v-fab v-if="currentTab === 'live' && currentLotType === 'singles'" icon="mdi-broom" color="error" size="large"
+          title="Clear selected live singles" aria-label="Clear selected live singles"
+          :disabled="!hasLotSelected || effectiveLiveSinglesIds.length === 0" @click="askConfirmation(
           {
             title: 'Clear live singles list?',
             text: 'This will remove all selected cards from Live Singles.',
             color: 'error'
           },
           () => clearLiveSinglesSelection()
-        )"
-        class="fab-primary fab-live-clear"
-      ></v-fab>
+        )" class="fab-primary fab-live-clear"></v-fab>
 
-      <v-fab
-        v-if="currentTab === 'live'"
-        icon="mdi-restore"
-        color="surface"
-        size="large"
-        :title="currentLotType === 'singles' ? 'Reset live singles prices' : 'Reset live prices'"
-        :aria-label="currentLotType === 'singles' ? 'Reset live singles prices' : 'Reset live prices'"
-        @click="resetLivePrices"
-        class="fab-primary fab-live-reset"
-      ></v-fab>
+        <v-fab v-if="currentTab === 'live'" icon="mdi-restore" color="surface" size="large"
+          :title="currentLotType === 'singles' ? 'Reset live singles prices' : 'Reset live prices'"
+          :aria-label="currentLotType === 'singles' ? 'Reset live singles prices' : 'Reset live prices'"
+          @click="resetLivePrices" class="fab-primary fab-live-reset"></v-fab>
 
-      <v-fab
-        v-if="currentTab === 'live' && currentLotType !== 'singles'"
-        icon="mdi-content-save-outline"
-        color="primary"
-        size="large"
-        title="Apply live prices to config"
-        aria-label="Apply live prices to config"
-        :disabled="!hasLotSelected"
-        @click="applyLivePricesToDefaults"
-        class="fab-primary fab-calculate"
-      ></v-fab>
+        <v-fab v-if="currentTab === 'live' && currentLotType !== 'singles'" icon="mdi-content-save-outline"
+          color="primary" size="large" title="Apply live prices to config" aria-label="Apply live prices to config"
+          :disabled="!hasLotSelected" @click="applyLivePricesToDefaults" class="fab-primary fab-calculate"></v-fab>
 
-      <!-- Primary FAB - Sales -->
-      <div v-if="currentTab === 'sales' && hasProAccess" class="fab-overflow-wrap fab-overflow-sales">
-        <v-speed-dial
-          v-model="speedDialOpenSales"
-          location="top center"
-          transition="scale-transition"
-          :open-on-hover="false"
-          :close-on-content-click="false"
-        >
-          <template v-slot:activator="{ props: activatorProps }">
-            <v-fab
-              v-bind="activatorProps"
-              icon="mdi-cart-plus"
-              color="primary"
-              size="large"
-              title="Add sale"
-              aria-label="Add sale"
-                :disabled="!hasLotSelected"
-            ></v-fab>
-          </template>
+        <!-- Primary FAB - Sales -->
+        <div v-if="currentTab === 'sales' && hasProAccess" class="fab-overflow-wrap fab-overflow-sales">
+          <v-speed-dial v-model="speedDialOpenSales" location="top center" transition="scale-transition"
+            :open-on-hover="false" :close-on-content-click="false">
+            <template v-slot:activator="{ props: activatorProps }">
+              <v-fab v-bind="activatorProps" icon="mdi-cart-plus" color="primary" size="large" title="Add sale"
+                aria-label="Add sale" :disabled="!hasLotSelected"></v-fab>
+            </template>
 
-          <v-btn
-            v-if="currentLotType === 'singles'"
-            :key="'card'"
-            icon="mdi-cards-outline"
-            color="primary"
-            variant="elevated"
-            size="small"
-            class="sales-speed-action"
-            title="Add item sale"
-            aria-label="Add item sale"
-            :disabled="!hasLotSelected"
-            @click="openAddSaleModal('pack'); speedDialOpenSales = false"
-          ></v-btn>
-          <template v-else>
-            <v-btn
-              :key="'item'"
-              icon="mdi-tag-outline"
-              color="primary"
-              variant="elevated"
-              size="small"
-              class="sales-speed-action"
-              :title="'Add item sale'"
-              :aria-label="'Add item sale'"
-                  :disabled="!hasLotSelected"
-              @click="openAddSaleModal('pack'); speedDialOpenSales = false"
-            ></v-btn>
-            <v-btn
-              :key="'box'"
-              icon="mdi-cube-outline"
-              color="secondary"
-              variant="elevated"
-              size="small"
-              class="sales-speed-action"
-              :title="'Add box sale'"
-              :aria-label="'Add box sale'"
-                  :disabled="!hasLotSelected"
-              @click="openAddSaleModal('box'); speedDialOpenSales = false"
-            ></v-btn>
-            <v-btn
-              :key="'rtyh'"
-              icon="mdi-cards-playing-outline"
-              color="success"
-              variant="elevated"
-              size="small"
-              class="sales-speed-action"
-              :title="'Add RTYH sale'"
-              :aria-label="'Add RTYH sale'"
-                  :disabled="!hasLotSelected"
-              @click="openAddSaleModal('rtyh'); speedDialOpenSales = false"
-            ></v-btn>
-          </template>
-        </v-speed-dial>
-      </div>
+            <v-btn v-if="currentLotType === 'singles'" :key="'card'" icon="mdi-cards-outline" color="primary"
+              variant="elevated" size="small" class="sales-speed-action" title="Add item sale"
+              aria-label="Add item sale" :disabled="!hasLotSelected"
+              @click="openAddSaleModal('pack'); speedDialOpenSales = false"></v-btn>
+            <template v-else>
+              <v-btn :key="'item'" icon="mdi-tag-outline" color="primary" variant="elevated" size="small"
+                class="sales-speed-action" :title="'Add item sale'" :aria-label="'Add item sale'"
+                :disabled="!hasLotSelected" @click="openAddSaleModal('pack'); speedDialOpenSales = false"></v-btn>
+              <v-btn :key="'box'" icon="mdi-cube-outline" color="secondary" variant="elevated" size="small"
+                class="sales-speed-action" :title="'Add box sale'" :aria-label="'Add box sale'"
+                :disabled="!hasLotSelected" @click="openAddSaleModal('box'); speedDialOpenSales = false"></v-btn>
+              <v-btn :key="'rtyh'" icon="mdi-cards-playing-outline" color="success" variant="elevated" size="small"
+                class="sales-speed-action" :title="'Add RTYH sale'" :aria-label="'Add RTYH sale'"
+                :disabled="!hasLotSelected" @click="openAddSaleModal('rtyh'); speedDialOpenSales = false"></v-btn>
+            </template>
+          </v-speed-dial>
+        </div>
 
-      <v-fab
-        v-else-if="currentTab === 'sales'"
-        icon="mdi-cart-plus"
-        color="primary"
-        size="large"
-        title="Upgrade to unlock sales tracking"
-        aria-label="Upgrade to unlock sales tracking"
-        :disabled="!hasLotSelected"
-        @click="accessProFeature('salesTracking')"
-        class="fab-primary"
-      ></v-fab>
+        <v-fab v-else-if="currentTab === 'sales'" icon="mdi-cart-plus" color="primary" size="large"
+          title="Upgrade to unlock sales tracking" aria-label="Upgrade to unlock sales tracking"
+          :disabled="!hasLotSelected" @click="accessProFeature('salesTracking')" class="fab-primary"></v-fab>
 
-      <v-fab
-        v-if="currentTab === 'portfolio'"
-        icon="mdi-table"
-        color="primary"
-        size="large"
-        :title="!hasPortfolioData
+        <v-fab v-if="currentTab === 'portfolio'" icon="mdi-table" color="primary" size="large" :title="!hasPortfolioData
+          ? 'Open portfolio report'
+          : (hasProAccess ? 'Open portfolio report' : 'Upgrade to unlock portfolio reports')" :aria-label="!hasPortfolioData
           ? 'Open portfolio report'
           : (hasProAccess ? 'Open portfolio report' : 'Upgrade to unlock portfolio reports')"
-        :aria-label="!hasPortfolioData
-          ? 'Open portfolio report'
-          : (hasProAccess ? 'Open portfolio report' : 'Upgrade to unlock portfolio reports')"
-        :disabled="!hasPortfolioData"
-        @click="accessProFeature('portfolioReport')"
-        class="fab-primary fab-portfolio-report"
-      ></v-fab>
+          :disabled="!hasPortfolioData" @click="accessProFeature('portfolioReport')"
+          class="fab-primary fab-portfolio-report"></v-fab>
 
-      <v-dialog v-model="showCreateWorkspaceModal" max-width="460">
-        <v-card>
-          <v-card-title>Create Shared Workspace</v-card-title>
-          <v-card-text>
-            <p class="text-body-2 text-medium-emphasis mb-4">
-              This starts a new shared workspace and copies your current Personal data into it.
-            </p>
-            <v-text-field
-              v-model="newWorkspaceName"
-              label="Workspace name"
-              variant="outlined"
-              density="comfortable"
-              @keyup.enter="createWorkspace"
-            ></v-text-field>
-          </v-card-text>
-          <v-card-actions>
-            <v-spacer></v-spacer>
-            <v-btn variant="text" @click="showCreateWorkspaceModal = false">Cancel</v-btn>
-            <v-btn
-              color="primary"
-              :loading="isCreatingWorkspace"
-              :disabled="activeScopeType !== 'personal'"
-              @click="createWorkspace"
-            >
-              Create workspace
-            </v-btn>
-          </v-card-actions>
-        </v-card>
-      </v-dialog>
+        <v-dialog v-model="showCreateWorkspaceModal" max-width="460">
+          <v-card>
+            <v-card-title>Create Shared Workspace</v-card-title>
+            <v-card-text>
+              <p class="text-body-2 text-medium-emphasis mb-4">
+                This starts a new shared workspace and copies your current Personal data into it.
+              </p>
+              <v-text-field v-model="newWorkspaceName" label="Workspace name" variant="outlined" density="comfortable"
+                @keyup.enter="createWorkspace"></v-text-field>
+            </v-card-text>
+            <v-card-actions>
+              <v-spacer></v-spacer>
+              <v-btn variant="text" @click="showCreateWorkspaceModal = false">Cancel</v-btn>
+              <v-btn color="primary" :loading="isCreatingWorkspace" :disabled="activeScopeType !== 'personal'"
+                @click="createWorkspace">
+                Create workspace
+              </v-btn>
+            </v-card-actions>
+          </v-card>
+        </v-dialog>
 
-      <v-dialog
-        v-model="showWorkspaceMembersModal"
-        max-width="760"
-        content-class="workspace-members-dialog"
-      >
-        <v-card class="workspace-members-card">
-          <v-card-title class="workspace-members-card__title">
-            <div class="workspace-members-card__title-copy">
-              <div class="workspace-members-card__eyebrow">Shared Workspace</div>
-              <div class="workspace-members-card__headline-row">
-                <div class="workspace-members-card__headline">{{ currentWorkspaceName }}</div>
-                <div class="workspace-members-card__header-actions">
-                  <v-btn
-                    v-if="isCurrentWorkspaceOwner"
-                    size="small"
-                    variant="tonal"
-                    color="secondary"
-                    prepend-icon="mdi-link-variant"
-                    class="workspace-members-card__invite-btn"
-                    title="Invite link"
-                    aria-label="Invite link"
-                    :loading="isCreatingWorkspaceJoinLink"
-                    @click="createWorkspaceJoinLink"
-                  >
-                    Invite
-                  </v-btn>
-                  <v-btn
-                    icon="mdi-exit-to-app"
-                    size="small"
-                    variant="tonal"
-                    color="error"
-                    class="workspace-members-card__leave-btn"
-                    title="Leave workspace"
-                    aria-label="Leave workspace"
-                    @click="openLeaveWorkspaceModal"
-                  ></v-btn>
+        <v-dialog v-model="showWorkspaceMembersModal" max-width="760" content-class="workspace-members-dialog">
+          <v-card class="workspace-members-card">
+            <v-card-title class="workspace-members-card__title">
+              <div class="workspace-members-card__title-copy">
+                <div class="workspace-members-card__eyebrow">Shared Workspace</div>
+                <div class="workspace-members-card__headline-row">
+                  <div class="workspace-members-card__headline">{{ currentWorkspaceName }}</div>
+                  <div class="workspace-members-card__header-actions">
+                    <v-btn v-if="isCurrentWorkspaceOwner" size="small" variant="tonal" color="secondary"
+                      prepend-icon="mdi-link-variant" class="workspace-members-card__invite-btn" title="Invite link"
+                      aria-label="Invite link" :loading="isCreatingWorkspaceJoinLink" @click="createWorkspaceJoinLink">
+                      Invite
+                    </v-btn>
+                    <v-btn icon="mdi-exit-to-app" size="small" variant="tonal" color="error"
+                      class="workspace-members-card__leave-btn" title="Leave workspace" aria-label="Leave workspace"
+                      @click="openLeaveWorkspaceModal"></v-btn>
+                  </div>
                 </div>
               </div>
-            </div>
-          </v-card-title>
-          <v-card-text class="workspace-members-card__content">
-            <div class="workspace-members-section">
-              <div class="workspace-members-section__header">
-                {{
+            </v-card-title>
+            <v-card-text class="workspace-members-card__content">
+              <div class="workspace-members-section">
+                <div class="workspace-members-section__header">
+                  {{
                   isWorkspaceMembersLoading
-                    ? 'Members'
-                    : `Members (${workspaceMembers.length})`
-                }}
-              </div>
-            </div>
-
-            <div
-              v-if="isWorkspaceMembersLoading"
-              class="workspace-member-list workspace-member-list--loading"
-            >
-              <article
-                v-for="skeletonIndex in 2"
-                :key="`workspace-member-skeleton-${skeletonIndex}`"
-                class="workspace-member-card-row workspace-member-card-row--skeleton"
-              >
-                <div class="workspace-member-card-row__identity">
-                  <v-skeleton-loader
-                    type="avatar"
-                    class="workspace-member-card-row__skeleton-avatar"
-                  ></v-skeleton-loader>
-                  <div class="workspace-member-card-row__copy workspace-member-card-row__copy--skeleton">
-                    <v-skeleton-loader
-                      type="text"
-                      class="workspace-member-card-row__skeleton-name"
-                    ></v-skeleton-loader>
-                    <v-skeleton-loader
-                      type="text"
-                      class="workspace-member-card-row__skeleton-id"
-                    ></v-skeleton-loader>
-                    <v-skeleton-loader
-                      type="text"
-                      class="workspace-member-card-row__skeleton-meta"
-                    ></v-skeleton-loader>
-                  </div>
+                  ? 'Members'
+                  : `Members (${workspaceMembers.length})`
+                  }}
                 </div>
-              </article>
-            </div>
+              </div>
 
-            <div v-else-if="workspaceMembers.length" class="workspace-member-list">
-              <article
-                v-for="member in workspaceMembers"
-                :key="`${member.workspaceId}-${member.userId}`"
-                class="workspace-member-card-row"
-              >
-                <div class="workspace-member-card-row__identity">
-                  <v-avatar
-                    size="52"
-                    color="primary"
-                    class="workspace-member-card-row__avatar"
-                  >
-                    <img
-                      v-if="member.photoUrl"
-                      :src="member.photoUrl"
-                      :alt="member.displayName || member.userId"
-                      class="account-avatar-img"
-                      referrerpolicy="no-referrer"
-                    />
-                    <span v-else class="workspace-member-card-row__initial">
-                      {{ (member.displayName || member.userId || '?').slice(0, 1).toUpperCase() }}
-                    </span>
-                  </v-avatar>
-                  <span
-                    class="workspace-member-card-row__presence"
-                    :class="`workspace-member-card-row__presence--${getWorkspaceMemberPresenceState(member)}`"
-                    :title="getWorkspaceMemberPresenceLabel(member)"
-                  ></span>
-
-                  <div class="workspace-member-card-row__copy">
-                    <div class="workspace-member-card-row__name-row">
-                      <div class="workspace-member-card-row__name">
-                        {{ member.displayName || 'Workspace member' }}
-                      </div>
-                      <v-chip
-                        size="x-small"
-                        variant="tonal"
-                        :color="member.role === 'owner' ? 'primary' : undefined"
-                      >
-                        {{ member.role === 'owner' ? 'Owner' : 'Member' }}
-                      </v-chip>
+              <div v-if="isWorkspaceMembersLoading" class="workspace-member-list workspace-member-list--loading">
+                <article v-for="skeletonIndex in 2" :key="`workspace-member-skeleton-${skeletonIndex}`"
+                  class="workspace-member-card-row workspace-member-card-row--skeleton">
+                  <div class="workspace-member-card-row__identity">
+                    <v-skeleton-loader type="avatar"
+                      class="workspace-member-card-row__skeleton-avatar"></v-skeleton-loader>
+                    <div class="workspace-member-card-row__copy workspace-member-card-row__copy--skeleton">
+                      <v-skeleton-loader type="text"
+                        class="workspace-member-card-row__skeleton-name"></v-skeleton-loader>
+                      <v-skeleton-loader type="text" class="workspace-member-card-row__skeleton-id"></v-skeleton-loader>
+                      <v-skeleton-loader type="text"
+                        class="workspace-member-card-row__skeleton-meta"></v-skeleton-loader>
                     </div>
+                  </div>
+                </article>
+              </div>
 
-                    <div class="workspace-member-card-row__id">
-                      {{ member.userId }}
-                    </div>
-
-                    <div class="workspace-member-card-row__meta">
-                      <span
-                        class="workspace-member-card-row__presence-label"
-                        :class="`workspace-member-card-row__presence-label--${getWorkspaceMemberPresenceState(member)}`"
-                      >
-                        {{ getWorkspaceMemberPresenceLabel(member) }}
+              <div v-else-if="workspaceMembers.length" class="workspace-member-list">
+                <article v-for="member in workspaceMembers" :key="`${member.workspaceId}-${member.userId}`"
+                  class="workspace-member-card-row">
+                  <div class="workspace-member-card-row__identity">
+                    <v-avatar size="52" color="primary" class="workspace-member-card-row__avatar">
+                      <img v-if="member.photoUrl" :src="member.photoUrl" :alt="member.displayName || member.userId"
+                        class="account-avatar-img" referrerpolicy="no-referrer" />
+                      <span v-else class="workspace-member-card-row__initial">
+                        {{ (member.displayName || member.userId || '?').slice(0, 1).toUpperCase() }}
                       </span>
-                      <span v-if="!member.displayName">Profile name unavailable</span>
-                      <span>Updated {{ formatDate(member.updatedAt) }}</span>
+                    </v-avatar>
+                    <span class="workspace-member-card-row__presence"
+                      :class="`workspace-member-card-row__presence--${getWorkspaceMemberPresenceState(member)}`"
+                      :title="getWorkspaceMemberPresenceLabel(member)"></span>
+
+                    <div class="workspace-member-card-row__copy">
+                      <div class="workspace-member-card-row__name-row">
+                        <div class="workspace-member-card-row__name">
+                          {{ member.displayName || 'Workspace member' }}
+                        </div>
+                        <v-chip size="x-small" variant="tonal" :color="member.role === 'owner' ? 'primary' : undefined">
+                          {{ member.role === 'owner' ? 'Owner' : 'Member' }}
+                        </v-chip>
+                      </div>
+
+                      <div class="workspace-member-card-row__id">
+                        {{ member.userId }}
+                      </div>
+
+                      <div class="workspace-member-card-row__meta">
+                        <span class="workspace-member-card-row__presence-label"
+                          :class="`workspace-member-card-row__presence-label--${getWorkspaceMemberPresenceState(member)}`">
+                          {{ getWorkspaceMemberPresenceLabel(member) }}
+                        </span>
+                        <span v-if="!member.displayName">Profile name unavailable</span>
+                        <span>Updated {{ formatDate(member.updatedAt) }}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div class="workspace-member-card-row__actions">
-                  <v-btn
-                    v-if="isCurrentWorkspaceOwner && member.role !== 'owner'"
-                    size="small"
-                    variant="tonal"
-                    color="error"
-                    prepend-icon="mdi-account-remove-outline"
-                    @click="removeWorkspaceMember(member.userId)"
-                  >
-                    Remove
-                  </v-btn>
-                </div>
-              </article>
-            </div>
-
-            <div v-else class="workspace-members-empty">
-              <v-icon size="34" color="medium-emphasis">mdi-account-off-outline</v-icon>
-              <div class="workspace-members-empty__title">No members found</div>
-              <div class="workspace-members-empty__body">
-                Try refreshing the workspace or creating a new invite link.
+                  <div class="workspace-member-card-row__actions">
+                    <v-btn v-if="isCurrentWorkspaceOwner && member.role !== 'owner'" size="small" variant="tonal"
+                      color="error" prepend-icon="mdi-account-remove-outline"
+                      @click="removeWorkspaceMember(member.userId)">
+                      Remove
+                    </v-btn>
+                  </div>
+                </article>
               </div>
-            </div>
-          </v-card-text>
-          <v-card-actions class="workspace-members-card__actions">
-            <v-spacer></v-spacer>
-            <v-btn variant="text" @click="showWorkspaceMembersModal = false">Close</v-btn>
-          </v-card-actions>
-        </v-card>
-      </v-dialog>
 
-      <v-dialog v-model="showLeaveWorkspaceModal" max-width="480">
-        <v-card>
-          <v-card-title>Leave Workspace</v-card-title>
-          <v-card-text>
-            <p class="text-body-2 text-medium-emphasis mb-4">
-              {{
+              <div v-else class="workspace-members-empty">
+                <v-icon size="34" color="medium-emphasis">mdi-account-off-outline</v-icon>
+                <div class="workspace-members-empty__title">No members found</div>
+                <div class="workspace-members-empty__body">
+                  Try refreshing the workspace or creating a new invite link.
+                </div>
+              </div>
+            </v-card-text>
+            <v-card-actions class="workspace-members-card__actions">
+              <v-spacer></v-spacer>
+              <v-btn variant="text" @click="showWorkspaceMembersModal = false">Close</v-btn>
+            </v-card-actions>
+          </v-card>
+        </v-dialog>
+
+        <v-dialog v-model="showLeaveWorkspaceModal" max-width="480">
+          <v-card>
+            <v-card-title>Leave Workspace</v-card-title>
+            <v-card-text>
+              <p class="text-body-2 text-medium-emphasis mb-4">
+                {{
                 isCurrentWorkspaceOwner
-                  ? 'Owners need to transfer ownership before leaving, or confirm deletion if they are the last member.'
-                  : 'You will lose access to this shared workspace and return to Personal mode.'
-              }}
-            </p>
+                ? 'Owners need to transfer ownership before leaving, or confirm deletion if they are the last member.'
+                : 'You will lose access to this shared workspace and return to Personal mode.'
+                }}
+              </p>
 
-            <v-select
-              v-if="isCurrentWorkspaceOwner && workspaceMembers.some(member => member.role === 'member' && member.status === 'active')"
-              v-model="leaveWorkspaceTransferMemberUserId"
-              :items="workspaceMembers
+              <v-select
+                v-if="isCurrentWorkspaceOwner && workspaceMembers.some(member => member.role === 'member' && member.status === 'active')"
+                v-model="leaveWorkspaceTransferMemberUserId" :items="workspaceMembers
                 .filter(member => member.role === 'member' && member.status === 'active')
                 .map(member => ({
                   title: member.displayName
                     ? `${member.displayName} (${member.userId.slice(0, 8)}...${member.userId.slice(-4)})`
                     : member.userId,
                   value: member.userId
-                }))"
-              item-title="title"
-              item-value="value"
-              label="New owner"
-              variant="outlined"
-              density="comfortable"
-              hint="Choose the member who should become owner when you leave."
-              persistent-hint
-            ></v-select>
+                }))" item-title="title" item-value="value" label="New owner" variant="outlined" density="comfortable"
+                hint="Choose the member who should become owner when you leave." persistent-hint></v-select>
 
-            <v-checkbox
-              v-else-if="isCurrentWorkspaceOwner"
-              v-model="leaveWorkspaceDeleteConfirmation"
-              color="error"
-              label="I understand this will delete the workspace for everyone."
-              hide-details
-            ></v-checkbox>
-          </v-card-text>
-          <v-card-actions>
-            <v-spacer></v-spacer>
-            <v-btn variant="text" @click="showLeaveWorkspaceModal = false">Cancel</v-btn>
-            <v-btn
-              color="error"
-              :loading="isLeavingWorkspace"
-              @click="leaveCurrentWorkspace"
-            >
-              Leave workspace
-            </v-btn>
-          </v-card-actions>
-        </v-card>
-      </v-dialog>
+              <v-checkbox v-else-if="isCurrentWorkspaceOwner" v-model="leaveWorkspaceDeleteConfirmation" color="error"
+                label="I understand this will delete the workspace for everyone." hide-details></v-checkbox>
+            </v-card-text>
+            <v-card-actions>
+              <v-spacer></v-spacer>
+              <v-btn variant="text" @click="showLeaveWorkspaceModal = false">Cancel</v-btn>
+              <v-btn color="error" :loading="isLeavingWorkspace" @click="leaveCurrentWorkspace">
+                Leave workspace
+              </v-btn>
+            </v-card-actions>
+          </v-card>
+        </v-dialog>
 
-      <v-dialog v-model="showWorkspaceJoinDialog" max-width="460">
-        <v-card>
-          <v-card-title>Join Workspace</v-card-title>
-          <v-card-text>
-            <p class="text-body-1 mb-2">
-              Join <strong>{{ pendingWorkspaceInviteWorkspaceName || pendingWorkspaceInviteWorkspaceId || 'this workspace' }}</strong>?
-            </p>
-            <p class="text-body-2 text-medium-emphasis">
-              This will add a new shared workspace alongside your Personal workspace.
-            </p>
-          </v-card-text>
-          <v-card-actions>
-            <v-spacer></v-spacer>
-            <v-btn variant="text" @click="dismissPendingWorkspaceInvite">Cancel</v-btn>
-            <v-btn
-              color="primary"
-              :loading="isAcceptingWorkspaceInvite"
-              @click="acceptPendingWorkspaceInvite"
-            >
-              Join workspace
-            </v-btn>
-          </v-card-actions>
-        </v-card>
-      </v-dialog>
+        <v-dialog v-model="showWorkspaceJoinDialog" max-width="460">
+          <v-card>
+            <v-card-title>Join Workspace</v-card-title>
+            <v-card-text>
+              <p class="text-body-1 mb-2">
+                Join <strong>{{ pendingWorkspaceInviteTargetName }}</strong>?
+              </p>
+              <p class="text-body-2 text-medium-emphasis">
+                This will add a new shared workspace alongside your Personal workspace.
+              </p>
+            </v-card-text>
+            <v-card-actions>
+              <v-spacer></v-spacer>
+              <v-btn variant="text" @click="dismissPendingWorkspaceInvite">Cancel</v-btn>
+              <v-btn color="primary" :loading="isAcceptingWorkspaceInvite" @click="acceptPendingWorkspaceInvite">
+                Join workspace
+              </v-btn>
+            </v-card-actions>
+          </v-card>
+        </v-dialog>
 
-      <!-- New Lot Modal -->
-      <v-dialog v-model="showNewLotModal" max-width="400">
-        <v-card>
-          <v-card-title>New Lot</v-card-title>
-          <v-card-text>
-            <v-text-field v-model="lotNameDraft" label="Lot name" variant="outlined" @keyup.enter="createNewLot"></v-text-field>
-            <v-btn-toggle
-              v-model="newLotType"
-              mandatory
-              divided
-              density="compact"
-              variant="outlined"
-              class="mt-2 segment-toggle"
-            >
-              <v-btn value="bulk" size="small">Bulk</v-btn>
-              <v-btn value="singles" size="small">Singles</v-btn>
-            </v-btn-toggle>
-            <div v-if="newLotType === 'singles'" class="mt-3">
-              <div class="text-caption text-medium-emphasis mb-2">Item catalog source</div>
-              <v-btn-toggle
-                v-model="newLotCatalogSource"
-                mandatory
-                divided
-                density="compact"
-                variant="outlined"
-                class="segment-toggle"
-              >
-                <v-btn value="ua" size="small">Union Arena</v-btn>
-                <v-btn value="pokemon" size="small">Pokemon</v-btn>
-                <v-btn value="none" size="small">Custom</v-btn>
+        <!-- New Lot Modal -->
+        <v-dialog v-model="showNewLotModal" max-width="400">
+          <v-card>
+            <v-card-title>New Lot</v-card-title>
+            <v-card-text>
+              <v-text-field v-model="lotNameDraft" label="Lot name" variant="outlined"
+                @keyup.enter="createNewLot"></v-text-field>
+              <v-btn-toggle v-model="newLotType" mandatory divided density="compact" variant="outlined"
+                class="mt-2 segment-toggle">
+                <v-btn value="bulk" size="small">Bulk</v-btn>
+                <v-btn value="singles" size="small">Singles</v-btn>
               </v-btn-toggle>
-            </div>
-          </v-card-text>
-          <v-card-actions>
-            <v-spacer></v-spacer>
-            <v-btn text @click="showNewLotModal = false">Cancel</v-btn>
-            <v-btn color="primary" @click="createNewLot">Create</v-btn>
-          </v-card-actions>
-        </v-card>
-      </v-dialog>
-
-      <!-- Edit Lot Modal -->
-      <v-dialog v-model="showRenameLotModal" max-width="400">
-        <v-card>
-          <v-card-title>Edit Lot</v-card-title>
-          <v-card-text>
-            <v-text-field
-              v-model="renameLotName"
-              label="Lot name"
-              variant="outlined"
-              @keyup.enter="renameCurrentLot"
-            ></v-text-field>
-            <div v-if="currentLotType === 'singles'" class="mt-3">
-              <div class="text-caption text-medium-emphasis mb-2">Item catalog source</div>
-              <v-btn-toggle
-                :model-value="currentLotCatalogSource"
-                mandatory
-                divided
-                density="compact"
-                variant="outlined"
-                class="segment-toggle"
-                @update:model-value="setCurrentLotCatalogSource"
-              >
-                <v-btn value="ua" size="small">Union Arena</v-btn>
-                <v-btn value="pokemon" size="small">Pokemon</v-btn>
-                <v-btn value="none" size="small">Custom</v-btn>
-              </v-btn-toggle>
-              <div class="text-caption text-medium-emphasis mt-2">
-                {{
-                  currentLotCatalogSource === 'none'
-                    ? 'Custom mode: autocomplete is disabled for this lot.'
-                    : 'Autocomplete suggestions use the selected catalog source.'
-                }}
+              <div v-if="newLotType === 'singles'" class="mt-3">
+                <div class="text-caption text-medium-emphasis mb-2">Item catalog source</div>
+                <v-btn-toggle v-model="newLotCatalogSource" mandatory divided density="compact" variant="outlined"
+                  class="segment-toggle">
+                  <v-btn value="ua" size="small">Union Arena</v-btn>
+                  <v-btn value="pokemon" size="small">Pokemon</v-btn>
+                  <v-btn value="none" size="small">Custom</v-btn>
+                </v-btn-toggle>
               </div>
-            </div>
-          </v-card-text>
-          <v-card-actions>
-            <v-btn
-              variant="text"
-              color="error"
-              :disabled="!currentLotId"
-              @click="showRenameLotModal = false; deleteCurrentLot()"
-            >
-              Delete
-            </v-btn>
-            <v-spacer></v-spacer>
-            <v-btn text @click="showRenameLotModal = false">Cancel</v-btn>
-            <v-btn color="primary" @click="renameCurrentLot">Save</v-btn>
-          </v-card-actions>
-        </v-card>
-      </v-dialog>
+            </v-card-text>
+            <v-card-actions>
+              <v-spacer></v-spacer>
+              <v-btn text @click="showNewLotModal = false">Cancel</v-btn>
+              <v-btn color="primary" @click="createNewLot">Create</v-btn>
+            </v-card-actions>
+          </v-card>
+        </v-dialog>
 
-      <!-- Verify Play Purchase Modal -->
-      <v-dialog v-if="showManualPurchaseVerify" v-model="showVerifyPurchaseModal" max-width="520">
-        <v-card>
-          <v-card-title>
-            <v-icon class="mr-2">mdi-check-decagram</v-icon>
-            Verify Play Purchase
-          </v-card-title>
-          <v-card-text>
-            <v-text-field
-              v-model="purchaseTokenInput"
-              label="Purchase Token"
-              variant="outlined"
-              autocomplete="off"
-              class="mb-2"
-              hint="Paste the real Google Play purchase token"
-              persistent-hint
-            ></v-text-field>
-            <v-text-field
-              v-model="purchaseProductIdInput"
-              label="Product ID (optional)"
-              variant="outlined"
-              autocomplete="off"
-              class="mb-2"
-            ></v-text-field>
-            <v-text-field
-              v-model="purchasePackageNameInput"
-              label="Package Name (optional)"
-              variant="outlined"
-              autocomplete="off"
-            ></v-text-field>
-          </v-card-text>
-          <v-card-actions>
-            <v-spacer></v-spacer>
-            <v-btn text @click="showVerifyPurchaseModal = false">Cancel</v-btn>
-            <v-btn color="primary" :loading="isVerifyingPurchase" @click="verifyProPurchase">Verify</v-btn>
-          </v-card-actions>
-        </v-card>
-      </v-dialog>
-
-      <!-- Embedded Stripe Checkout Modal -->
-      <v-dialog
-        v-model="showStripeCheckoutModal"
-        max-width="560"
-        :fullscreen="$vuetify?.display?.smAndDown"
-        persistent
-      >
-        <v-card>
-          <v-card-title>
-            <v-icon class="mr-2">mdi-credit-card-lock-outline</v-icon>
-            Secure Checkout
-          </v-card-title>
-          <v-card-text>
-            <div id="stripe-embedded-checkout" class="stripe-embedded-checkout"></div>
-          </v-card-text>
-          <v-card-actions>
-            <v-spacer></v-spacer>
-            <v-btn text @click="closeStripeCheckoutModal">Cancel Checkout</v-btn>
-          </v-card-actions>
-        </v-card>
-      </v-dialog>
-
-      <!-- Profit Calculator Modal -->
-      <auto-calculate-modal :ctx="$root"></auto-calculate-modal>
-
-      <!-- Add/Edit Sale Modal -->
-      <v-dialog
-        v-model="showAddSaleModal"
-        max-width="560"
-        class="sale-editor-dialog"
-        scrollable
-        :fullscreen="$vuetify?.display?.smAndDown"
-        transition="dialog-bottom-transition"
-      >
-        <v-card class="sale-editor-card">
-          <v-card-title class="sale-editor-title">
-            <div class="d-flex align-center">
-              <v-icon class="mr-2">mdi-cart-plus</v-icon>
-              <div>
-                <div>{{ editingSale ? 'Edit Sale' : 'Add Sale' }}</div>
-                <div class="text-caption text-medium-emphasis">
-                  {{ currentLotType === 'singles' ? 'Track item-level sale details' : 'Record this sale event' }}
+        <!-- Edit Lot Modal -->
+        <v-dialog v-model="showRenameLotModal" max-width="400">
+          <v-card>
+            <v-card-title>Edit Lot</v-card-title>
+            <v-card-text>
+              <v-text-field v-model="renameLotName" label="Lot name" variant="outlined"
+                @keyup.enter="renameCurrentLot"></v-text-field>
+              <div v-if="currentLotType === 'singles'" class="mt-3">
+                <div class="text-caption text-medium-emphasis mb-2">Item catalog source</div>
+                <v-btn-toggle :model-value="currentLotCatalogSource" mandatory divided density="compact"
+                  variant="outlined" class="segment-toggle" @update:model-value="setCurrentLotCatalogSource">
+                  <v-btn value="ua" size="small">Union Arena</v-btn>
+                  <v-btn value="pokemon" size="small">Pokemon</v-btn>
+                  <v-btn value="none" size="small">Custom</v-btn>
+                </v-btn-toggle>
+                <div class="text-caption text-medium-emphasis mt-2">
+                  {{
+                  currentLotCatalogSource === 'none'
+                  ? 'Custom mode: autocomplete is disabled for this lot.'
+                  : 'Autocomplete suggestions use the selected catalog source.'
+                  }}
                 </div>
               </div>
-            </div>
-          </v-card-title>
-          <v-card-text class="sale-editor-content">
-            <v-alert
-              v-if="hasLotSelected && !hasProAccess"
-              type="info"
-              variant="tonal"
-              density="compact"
-              icon="mdi-lock"
-              class="mb-3"
-            >
-              Pro feature. Upgrade to add or edit sales.
-              <div class="mt-2">
-                <v-btn
-                  size="small"
-                  color="primary"
-                  variant="flat"
-                  prepend-icon="mdi-google-play"
-                  :loading="isVerifyingPurchase"
-                  @click="startProPurchase"
-                >
-                  Unlock Pro
-                </v-btn>
-              </div>
-              <div v-if="showManualPurchaseVerify" class="mt-2">
-                <v-btn size="small" variant="text" prepend-icon="mdi-check-decagram" @click="openVerifyPurchaseModal">
-                  Verify Purchase
-                </v-btn>
-              </div>
-            </v-alert>
+            </v-card-text>
+            <v-card-actions>
+              <v-btn variant="text" color="error" :disabled="!currentLotId"
+                @click="showRenameLotModal = false; deleteCurrentLot()">
+                Delete
+              </v-btn>
+              <v-spacer></v-spacer>
+              <v-btn text @click="showRenameLotModal = false">Cancel</v-btn>
+              <v-btn color="primary" @click="renameCurrentLot">Save</v-btn>
+            </v-card-actions>
+          </v-card>
+        </v-dialog>
 
-            <div class="sale-editor-form">
-              <div v-if="currentLotType === 'singles'" class="sale-editor-section sale-editor-section--singles">
-                <div class="sale-editor-section-label">Items Sold</div>
-                <div class="sale-editor-singles-lines">
-                  <div
-                    v-for="(line, lineIndex) in (newSale.singlesItems || [])"
-                    :key="line.lineId || lineIndex"
-                    class="sale-editor-singles-line"
-                  >
-                    <div class="sale-editor-line-layout">
-                      <div
-                        v-if="singlesSaleCardOptions.find(o => o.value === line.singlesPurchaseEntryId)?.image"
-                        class="sale-editor-line-thumb-col"
-                      >
-                        <img
-                          :src="singlesSaleCardOptions.find(o => o.value === line.singlesPurchaseEntryId)?.image"
-                          :alt="singlesSaleCardOptions.find(o => o.value === line.singlesPurchaseEntryId)?.item"
-                          class="sale-editor-line-thumb"
-                          loading="lazy"
-                          @error="$event.target.closest('.sale-editor-line-thumb-col').style.display='none'"
-                        />
-                      </div>
-                      <div class="sale-editor-line-fields">
-                        <v-row dense class="sale-editor-singles-grid">
-                          <v-col :cols="$vuetify?.display?.smAndDown ? 12 : 6">
-                            <v-autocomplete
-                              v-model="line.singlesPurchaseEntryId"
-                              :items="singlesSaleCardOptions"
-                              item-title="title"
-                              item-value="value"
-                              label="Item (optional)"
-                              variant="outlined"
-                              density="compact"
-                              :disabled="!hasLotSelected"
-                              clearable
-                              hide-details="auto"
-                              @update:model-value="onSinglesSaleLineCardSelectionChange(lineIndex, $event)"
-                            >
-                              <template #item="{ props, item }">
-                                <v-list-item v-bind="props" class="sale-editor-dropdown-item">
-                                  <template v-if="item.raw.image" #prepend>
-                                    <img
-                                      :src="item.raw.image"
-                                      :alt="item.raw.item"
-                                      class="sale-editor-dropdown-thumb"
-                                      loading="lazy"
-                                      @error="$event.target.style.display='none'"
-                                    />
-                                  </template>
-                                  <v-list-item-title class="text-body-2 font-weight-medium">
+        <!-- Verify Play Purchase Modal -->
+        <v-dialog v-if="showManualPurchaseVerify" v-model="showVerifyPurchaseModal" max-width="520">
+          <v-card>
+            <v-card-title>
+              <v-icon class="mr-2">mdi-check-decagram</v-icon>
+              Verify Play Purchase
+            </v-card-title>
+            <v-card-text>
+              <v-text-field v-model="purchaseTokenInput" label="Purchase Token" variant="outlined" autocomplete="off"
+                class="mb-2" hint="Paste the real Google Play purchase token" persistent-hint></v-text-field>
+              <v-text-field v-model="purchaseProductIdInput" label="Product ID (optional)" variant="outlined"
+                autocomplete="off" class="mb-2"></v-text-field>
+              <v-text-field v-model="purchasePackageNameInput" label="Package Name (optional)" variant="outlined"
+                autocomplete="off"></v-text-field>
+            </v-card-text>
+            <v-card-actions>
+              <v-spacer></v-spacer>
+              <v-btn text @click="showVerifyPurchaseModal = false">Cancel</v-btn>
+              <v-btn color="primary" :loading="isVerifyingPurchase" @click="verifyProPurchase">Verify</v-btn>
+            </v-card-actions>
+          </v-card>
+        </v-dialog>
+
+        <!-- Embedded Stripe Checkout Modal -->
+        <v-dialog v-model="showStripeCheckoutModal" max-width="560" :fullscreen="$vuetify?.display?.smAndDown"
+          persistent>
+          <v-card>
+            <v-card-title>
+              <v-icon class="mr-2">mdi-credit-card-lock-outline</v-icon>
+              Secure Checkout
+            </v-card-title>
+            <v-card-text>
+              <div id="stripe-embedded-checkout" class="stripe-embedded-checkout"></div>
+            </v-card-text>
+            <v-card-actions>
+              <v-spacer></v-spacer>
+              <v-btn text @click="closeStripeCheckoutModal">Cancel Checkout</v-btn>
+            </v-card-actions>
+          </v-card>
+        </v-dialog>
+
+        <!-- Profit Calculator Modal -->
+        <auto-calculate-modal :ctx="$root"></auto-calculate-modal>
+
+        <!-- Add/Edit Sale Modal -->
+        <v-dialog v-model="showAddSaleModal" max-width="560" class="sale-editor-dialog" scrollable
+          :fullscreen="$vuetify?.display?.smAndDown" transition="dialog-bottom-transition">
+          <v-card class="sale-editor-card">
+            <v-card-title class="sale-editor-title">
+              <div class="d-flex align-center">
+                <v-icon class="mr-2">mdi-cart-plus</v-icon>
+                <div>
+                  <div>{{ editingSale ? 'Edit Sale' : 'Add Sale' }}</div>
+                  <div class="text-caption text-medium-emphasis">
+                    {{ currentLotType === 'singles' ? 'Track item-level sale details' : 'Record this sale event' }}
+                  </div>
+                </div>
+              </div>
+            </v-card-title>
+            <v-card-text class="sale-editor-content">
+              <v-alert v-if="hasLotSelected && !hasProAccess" type="info" variant="tonal" density="compact"
+                icon="mdi-lock" class="mb-3">
+                Pro feature. Upgrade to add or edit sales.
+                <div class="mt-2">
+                  <v-btn size="small" color="primary" variant="flat" prepend-icon="mdi-google-play"
+                    :loading="isVerifyingPurchase" @click="startProPurchase">
+                    Unlock Pro
+                  </v-btn>
+                </div>
+                <div v-if="showManualPurchaseVerify" class="mt-2">
+                  <v-btn size="small" variant="text" prepend-icon="mdi-check-decagram" @click="openVerifyPurchaseModal">
+                    Verify Purchase
+                  </v-btn>
+                </div>
+              </v-alert>
+
+              <div class="sale-editor-form">
+                <div v-if="currentLotType === 'singles'" class="sale-editor-section sale-editor-section--singles">
+                  <div class="sale-editor-section-label">Items Sold</div>
+                  <div class="sale-editor-singles-lines">
+                    <div v-for="(line, lineIndex) in (newSale.singlesItems || [])" :key="line.lineId || lineIndex"
+                      class="sale-editor-singles-line">
+                      <div class="sale-editor-line-layout">
+                        <div v-if="singlesSaleCardOptions.find(o => o.value === line.singlesPurchaseEntryId)?.image"
+                          class="sale-editor-line-thumb-col">
+                          <img :src="singlesSaleCardOptions.find(o => o.value === line.singlesPurchaseEntryId)?.image"
+                            :alt="singlesSaleCardOptions.find(o => o.value === line.singlesPurchaseEntryId)?.item"
+                            class="sale-editor-line-thumb" loading="lazy"
+                            @error="$event.target.closest('.sale-editor-line-thumb-col').style.display='none'" />
+                        </div>
+                        <div class="sale-editor-line-fields">
+                          <v-row dense class="sale-editor-singles-grid">
+                            <v-col :cols="$vuetify?.display?.smAndDown ? 12 : 6">
+                              <v-autocomplete v-model="line.singlesPurchaseEntryId" :items="singlesSaleCardOptions"
+                                item-title="title" item-value="value" label="Item (optional)" variant="outlined"
+                                density="compact" :disabled="!hasLotSelected" clearable hide-details="auto"
+                                @update:model-value="onSinglesSaleLineCardSelectionChange(lineIndex, $event)">
+                                <template #item="{ props, item }">
+                                  <v-list-item v-bind="props" class="sale-editor-dropdown-item">
+                                    <template v-if="item.raw.image" #prepend>
+                                      <img :src="item.raw.image" :alt="item.raw.item" class="sale-editor-dropdown-thumb"
+                                        loading="lazy" @error="$event.target.style.display='none'" />
+                                    </template>
+                                    <v-list-item-title class="text-body-2 font-weight-medium">
+                                      {{ item.raw.item }}
+                                      <span v-if="item.raw.cardNumber" class="text-medium-emphasis">#{{
+                                        item.raw.cardNumber }}</span>
+                                    </v-list-item-title>
+                                    <v-list-item-subtitle class="text-caption">
+                                      Qty {{ item.raw.quantity }} · Total Cost ${{ formatCurrency(item.raw.costBasis) }}
+                                    </v-list-item-subtitle>
+                                  </v-list-item>
+                                </template>
+                                <template #selection="{ item }">
+                                  <div class="text-body-2 text-truncate">
                                     {{ item.raw.item }}
-                                    <span v-if="item.raw.cardNumber" class="text-medium-emphasis">#{{ item.raw.cardNumber }}</span>
-                                  </v-list-item-title>
-                                  <v-list-item-subtitle class="text-caption">
-                                    Qty {{ item.raw.quantity }} · Total Cost ${{ formatCurrency(item.raw.costBasis) }}
-                                  </v-list-item-subtitle>
-                                </v-list-item>
-                              </template>
-                              <template #selection="{ item }">
-                                <div class="text-body-2 text-truncate">
-                                  {{ item.raw.item }}
-                                  <span v-if="item.raw.cardNumber" class="text-medium-emphasis">#{{ item.raw.cardNumber }}</span>
-                                </div>
-                              </template>
-                            </v-autocomplete>
-                          </v-col>
-                          <v-col :cols="$vuetify?.display?.smAndDown ? 5 : 2">
-                            <v-text-field
-                              v-model.number="line.quantity"
-                              label="Qty"
-                              type="number"
-                              variant="outlined"
-                              density="compact"
-                              :disabled="!hasLotSelected"
-                              :min="1"
-                              :max="line.singlesPurchaseEntryId ? (getSinglesSaleLineMaxQuantity(lineIndex) ?? undefined) : undefined"
-                              hide-details="auto"
-                              @update:model-value="onSinglesSaleLineQuantityChange(lineIndex, $event)"
-                            ></v-text-field>
-                          </v-col>
-                          <v-col :cols="$vuetify?.display?.smAndDown ? 5 : 3">
-                            <v-text-field
-                              v-model.number="line.price"
-                              label="Total"
-                              type="number"
-                              variant="outlined"
-                              density="compact"
-                              :disabled="!hasLotSelected"
-                              prefix="$"
-                              hide-details="auto"
-                              @update:model-value="onSinglesSaleLinePriceChange"
-                            ></v-text-field>
-                          </v-col>
-                          <v-col
-                            v-if="(newSale.singlesItems?.length || 0) > 1"
-                            :cols="$vuetify?.display?.smAndDown ? 2 : 1"
-                            class="d-flex align-center justify-end"
-                          >
-                            <v-btn
-                              icon
-                              size="small"
-                              variant="text"
-                              color="error"
-                              class="sale-editor-singles-line-delete"
-                              title="Remove line"
-                              aria-label="Remove line"
-                              @click="removeSinglesSaleLine(lineIndex)"
-                            >
-                              <v-icon size="18">mdi-trash-can-outline</v-icon>
-                            </v-btn>
-                          </v-col>
-                        </v-row>
+                                    <span v-if="item.raw.cardNumber" class="text-medium-emphasis">#{{
+                                      item.raw.cardNumber }}</span>
+                                  </div>
+                                </template>
+                              </v-autocomplete>
+                            </v-col>
+                            <v-col :cols="$vuetify?.display?.smAndDown ? 5 : 2">
+                              <v-text-field v-model.number="line.quantity" label="Qty" type="number" variant="outlined"
+                                density="compact" :disabled="!hasLotSelected" :min="1"
+                                :max="line.singlesPurchaseEntryId ? (getSinglesSaleLineMaxQuantity(lineIndex) ?? undefined) : undefined"
+                                hide-details="auto"
+                                @update:model-value="onSinglesSaleLineQuantityChange(lineIndex, $event)"></v-text-field>
+                            </v-col>
+                            <v-col :cols="$vuetify?.display?.smAndDown ? 5 : 3">
+                              <v-text-field v-model.number="line.price" label="Total" type="number" variant="outlined"
+                                density="compact" :disabled="!hasLotSelected" prefix="$" hide-details="auto"
+                                @update:model-value="onSinglesSaleLinePriceChange"></v-text-field>
+                            </v-col>
+                            <v-col v-if="(newSale.singlesItems?.length || 0) > 1"
+                              :cols="$vuetify?.display?.smAndDown ? 2 : 1" class="d-flex align-center justify-end">
+                              <v-btn icon size="small" variant="text" color="error"
+                                class="sale-editor-singles-line-delete" title="Remove line" aria-label="Remove line"
+                                @click="removeSinglesSaleLine(lineIndex)">
+                                <v-icon size="18">mdi-trash-can-outline</v-icon>
+                              </v-btn>
+                            </v-col>
+                          </v-row>
+                        </div>
                       </div>
-                    </div>
 
-                    <div class="sale-editor-singles-meta">
-                      <div
-                        v-if="line.singlesPurchaseEntryId || Number(line.price || 0) <= 0"
-                        class="sale-editor-singles-stock text-caption text-medium-emphasis"
-                      >
-                        {{ line.singlesPurchaseEntryId
+                      <div class="sale-editor-singles-meta">
+                        <div v-if="line.singlesPurchaseEntryId || Number(line.price || 0) <= 0"
+                          class="sale-editor-singles-stock text-caption text-medium-emphasis">
+                          {{ line.singlesPurchaseEntryId
                           ? `Up to ${getSinglesSaleLineMaxQuantity(lineIndex) ?? 0} available`
                           : 'Unlinked line requires a total price.' }}
-                      </div>
-                      <div
-                        v-if="
+                        </div>
+                        <div v-if="
                           (line.singlesPurchaseEntryId || Number(line.price || 0) > 0)
                           && saleEditorLineProfitPreviews
                           && saleEditorLineProfitPreviews[lineIndex]
-                        "
-                        class="sale-editor-singles-profit-pill text-caption"
-                        :class="saleEditorLineProfitPreviews[lineIndex].colorClass"
-                      >
-                        {{ saleEditorLineProfitPreviews[lineIndex].sign }}${{ formatCurrency(Math.abs(saleEditorLineProfitPreviews[lineIndex].value)) }}
-                        · {{ saleEditorLineProfitPreviews[lineIndex].sign }}{{ formatCurrency(Math.abs(saleEditorLineProfitPreviews[lineIndex].percent), 1) }}%
-                        <span v-if="(saleEditorLineProfitPreviews[lineIndex].quantity || 0) > 1 && saleEditorLineProfitPreviews[lineIndex].unitValue != null">
-                          · /unit {{ saleEditorLineProfitPreviews[lineIndex].sign }}${{ formatCurrency(Math.abs(saleEditorLineProfitPreviews[lineIndex].unitValue)) }}
-                        </span>
+                        " class="sale-editor-singles-profit-pill text-caption"
+                          :class="saleEditorLineProfitPreviews[lineIndex].colorClass">
+                          {{ saleEditorLineProfitPreviews[lineIndex].sign }}${{
+                          formatCurrency(Math.abs(saleEditorLineProfitPreviews[lineIndex].value)) }}
+                          · {{ saleEditorLineProfitPreviews[lineIndex].sign }}{{
+                          formatCurrency(Math.abs(saleEditorLineProfitPreviews[lineIndex].percent), 1) }}%
+                          <span
+                            v-if="(saleEditorLineProfitPreviews[lineIndex].quantity || 0) > 1 && saleEditorLineProfitPreviews[lineIndex].unitValue != null">
+                            · /unit {{ saleEditorLineProfitPreviews[lineIndex].sign }}${{
+                            formatCurrency(Math.abs(saleEditorLineProfitPreviews[lineIndex].unitValue)) }}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-                <div class="sale-editor-singles-footer">
-                  <div
-                    v-if="saleEditorProfitPreview"
-                    class="sale-editor-singles-total text-caption"
-                    :class="saleEditorProfitPreview.colorClass"
-                  >
-                    <div class="sale-editor-singles-total-main">
-                      <span class="sale-editor-singles-total-pill">Total ${{ formatCurrency(saleEditorProfitPreview.totalPrice) }}</span>
-                      <span class="sale-editor-singles-total-pill">Profit {{ saleEditorProfitPreview.sign }}${{ formatCurrency(Math.abs(saleEditorProfitPreview.value)) }}</span>
-                      <span class="sale-editor-singles-total-pill sale-editor-singles-total-pill--muted">{{ saleEditorProfitPreview.sign }}{{ formatCurrency(Math.abs(saleEditorProfitPreview.percent), 1) }}% vs {{ saleEditorProfitPreview.basisLabel }} ${{ formatCurrency(saleEditorProfitPreview.basisValue) }}</span>
-                      <span
-                        v-if="saleEditorProfitPreview.marketBasisValue > 0 && saleEditorProfitPreview.costBasisValue > 0"
-                        class="sale-editor-singles-total-pill sale-editor-singles-total-pill--muted"
-                      >
-                        Market ${{ formatCurrency(saleEditorProfitPreview.marketBasisValue) }} · Cost ${{ formatCurrency(saleEditorProfitPreview.costBasisValue) }}
-                      </span>
+                  <div class="sale-editor-singles-footer">
+                    <div v-if="saleEditorProfitPreview" class="sale-editor-singles-total text-caption"
+                      :class="saleEditorProfitPreview.colorClass">
+                      <div class="sale-editor-singles-total-main">
+                        <span class="sale-editor-singles-total-pill">Total ${{
+                          formatCurrency(saleEditorProfitPreview.totalPrice) }}</span>
+                        <span class="sale-editor-singles-total-pill">Profit {{ saleEditorProfitPreview.sign }}${{
+                          formatCurrency(Math.abs(saleEditorProfitPreview.value)) }}</span>
+                        <span class="sale-editor-singles-total-pill sale-editor-singles-total-pill--muted">{{
+                          saleEditorProfitPreview.sign }}{{ formatCurrency(Math.abs(saleEditorProfitPreview.percent), 1)
+                          }}% vs {{ saleEditorProfitPreview.basisLabel }} ${{
+                          formatCurrency(saleEditorProfitPreview.basisValue) }}</span>
+                        <span
+                          v-if="saleEditorProfitPreview.marketBasisValue > 0 && saleEditorProfitPreview.costBasisValue > 0"
+                          class="sale-editor-singles-total-pill sale-editor-singles-total-pill--muted">
+                          Market ${{ formatCurrency(saleEditorProfitPreview.marketBasisValue) }} · Cost ${{
+                          formatCurrency(saleEditorProfitPreview.costBasisValue) }}
+                        </span>
+                      </div>
+                      <div
+                        v-if="(saleEditorProfitPreview.quantity || 0) > 1 && saleEditorProfitPreview.unitValue != null"
+                        class="sale-editor-singles-total-sub">
+                        Per unit {{ saleEditorProfitPreview.sign }}${{
+                        formatCurrency(Math.abs(saleEditorProfitPreview.unitValue)) }}
+                      </div>
                     </div>
-                    <div
-                      v-if="(saleEditorProfitPreview.quantity || 0) > 1 && saleEditorProfitPreview.unitValue != null"
-                      class="sale-editor-singles-total-sub"
-                    >
-                      Per unit {{ saleEditorProfitPreview.sign }}${{ formatCurrency(Math.abs(saleEditorProfitPreview.unitValue)) }}
+                    <div class="sale-editor-singles-add-wrap">
+                      <v-btn size="small" variant="tonal" color="secondary" prepend-icon="mdi-plus-circle-outline"
+                        class="sale-editor-singles-add-btn" @click="addSinglesSaleLine">
+                        Add item
+                      </v-btn>
                     </div>
                   </div>
-                  <div class="sale-editor-singles-add-wrap">
-                    <v-btn
-                      size="small"
-                      variant="tonal"
-                      color="secondary"
-                      prepend-icon="mdi-plus-circle-outline"
-                      class="sale-editor-singles-add-btn"
-                      @click="addSinglesSaleLine"
-                    >
-                      Add item
-                    </v-btn>
-                  </div>
                 </div>
-              </div>
 
-              <div
-                v-if="currentLotType !== 'singles'"
-                class="sale-editor-section"
-              >
-                <div class="sale-editor-section-label">Sale Details</div>
-                <v-row dense>
-                  <v-col cols="12" sm="6">
-                    <v-select
-                      v-model="newSale.type"
-                      :items="[
+                <div v-if="currentLotType !== 'singles'" class="sale-editor-section">
+                  <div class="sale-editor-section-label">Sale Details</div>
+                  <v-row dense>
+                    <v-col cols="12" sm="6">
+                      <v-select v-model="newSale.type" :items="[
                         { title: 'Item', value: 'pack' },
                         { title: 'Box', value: 'box' },
                         { title: 'RTYH Spot', value: 'rtyh' }
-                      ]"
-                      label="Sale Type"
-                      variant="outlined"
-                      :disabled="!hasLotSelected"
-                      hide-details="auto"
-                      @update:model-value="onNewSaleTypeChange"
-                    ></v-select>
-                  </v-col>
+                      ]" label="Sale Type" variant="outlined" :disabled="!hasLotSelected" hide-details="auto"
+                        @update:model-value="onNewSaleTypeChange"></v-select>
+                    </v-col>
 
-                  <v-col cols="12" sm="6">
-                    <v-text-field
-                      ref="saleQuantityInput"
-                      v-model.number="newSale.quantity"
-                      label="Quantity"
-                      type="number"
-                      variant="outlined"
-                      :disabled="!hasLotSelected"
-                      :min="1"
-                      hide-details="auto"
-                    ></v-text-field>
-                  </v-col>
+                    <v-col cols="12" sm="6">
+                      <v-text-field ref="saleQuantityInput" v-model.number="newSale.quantity" label="Quantity"
+                        type="number" variant="outlined" :disabled="!hasLotSelected" :min="1"
+                        hide-details="auto"></v-text-field>
+                    </v-col>
 
-                  <v-col cols="12" sm="6">
-                    <v-text-field
-                      v-model.number="newSale.price"
-                      label="Price per Unit"
-                      type="number"
-                      variant="outlined"
-                      :disabled="!hasLotSelected"
-                      prefix="$"
-                      hide-details="auto"
-                    ></v-text-field>
-                  </v-col>
+                    <v-col cols="12" sm="6">
+                      <v-text-field v-model.number="newSale.price" label="Price per Unit" type="number"
+                        variant="outlined" :disabled="!hasLotSelected" prefix="$" hide-details="auto"></v-text-field>
+                    </v-col>
 
-                  <v-col v-if="newSale.type === 'rtyh'" cols="12" sm="6">
-                    <v-text-field
-                      v-model.number="newSale.packsCount"
-                      label="Items Sold (RTYH)"
-                      type="number"
-                      variant="outlined"
-                      :disabled="!hasLotSelected"
-                      :min="1"
-                      :rules="[v => !!v || 'Required for RTYH']"
-                      hide-details="auto"
-                    ></v-text-field>
-                  </v-col>
-                </v-row>
+                    <v-col v-if="newSale.type === 'rtyh'" cols="12" sm="6">
+                      <v-text-field v-model.number="newSale.packsCount" label="Items Sold (RTYH)" type="number"
+                        variant="outlined" :disabled="!hasLotSelected" :min="1"
+                        :rules="[v => !!v || 'Required for RTYH']" hide-details="auto"></v-text-field>
+                    </v-col>
+                  </v-row>
+                </div>
+
+                <div class="sale-editor-section">
+                  <div class="sale-editor-section-label">Notes & Delivery</div>
+                  <v-row dense>
+                    <v-col cols="12" sm="6">
+                      <v-text-field v-model.number="newSale.buyerShipping" label="Buyer Shipping (per order)"
+                        type="number" variant="outlined" :disabled="!hasLotSelected" prefix="$" :min="0"
+                        hide-details="auto"></v-text-field>
+                    </v-col>
+                    <v-col cols="12" sm="6">
+                      <v-text-field v-model="newSale.date" label="Date" type="date" variant="outlined"
+                        :disabled="!hasLotSelected" hide-details="auto"></v-text-field>
+                    </v-col>
+                    <v-col cols="12">
+                      <v-text-field v-model="newSale.memo" label="Notes" variant="outlined" :disabled="!hasLotSelected"
+                        hide-details></v-text-field>
+                    </v-col>
+                  </v-row>
+                </div>
               </div>
+            </v-card-text>
 
-              <div class="sale-editor-section">
-                <div class="sale-editor-section-label">Notes & Delivery</div>
-                <v-row dense>
-                  <v-col cols="12" sm="6">
-                    <v-text-field
-                      v-model.number="newSale.buyerShipping"
-                      label="Buyer Shipping (per order)"
-                      type="number"
-                      variant="outlined"
-                      :disabled="!hasLotSelected"
-                      prefix="$"
-                      :min="0"
-                      hide-details="auto"
-                    ></v-text-field>
-                  </v-col>
-                  <v-col cols="12" sm="6">
-                    <v-text-field
-                      v-model="newSale.date"
-                      label="Date"
-                      type="date"
-                      variant="outlined"
-                      :disabled="!hasLotSelected"
-                      hide-details="auto"
-                    ></v-text-field>
-                  </v-col>
-                  <v-col cols="12">
-                    <v-text-field
-                      v-model="newSale.memo"
-                      label="Notes"
-                      variant="outlined"
-                      :disabled="!hasLotSelected"
-                      hide-details
-                    ></v-text-field>
-                  </v-col>
-                </v-row>
-              </div>
-            </div>
-          </v-card-text>
+            <v-card-actions class="sale-editor-actions">
+              <v-spacer></v-spacer>
+              <v-btn text @click="cancelSale">Cancel</v-btn>
+              <v-btn color="primary" @click="saveSale" :disabled="!canUsePaidActions">{{ editingSale ? 'Update' : 'Add'
+                }}</v-btn>
+            </v-card-actions>
+          </v-card>
+        </v-dialog>
 
-          <v-card-actions class="sale-editor-actions">
-            <v-spacer></v-spacer>
-            <v-btn text @click="cancelSale">Cancel</v-btn>
-            <v-btn color="primary" @click="saveSale" :disabled="!canUsePaidActions">{{ editingSale ? 'Update' : 'Add' }}</v-btn>
-          </v-card-actions>
-        </v-card>
-      </v-dialog>
-
-      <!-- Portfolio Report Modal -->
-        <v-dialog
-          v-model="showPortfolioReportModal"
-          max-width="980"
-          scrollable
-          content-class="portfolio-report-dialog"
-        >
+        <!-- Portfolio Report Modal -->
+        <v-dialog v-model="showPortfolioReportModal" max-width="980" scrollable content-class="portfolio-report-dialog">
           <v-card class="portfolio-report-modal-card">
-          <v-card-title class="d-flex align-center justify-space-between">
-            <div>
-              <v-icon class="mr-2">mdi-table</v-icon>
-              Portfolio Report
-            </div>
-            <v-btn
-              icon="mdi-close"
-              variant="text"
-              title="Close report"
-              aria-label="Close report"
-              @click="showPortfolioReportModal = false"
-            ></v-btn>
-          </v-card-title>
+            <v-card-title class="d-flex align-center justify-space-between">
+              <div>
+                <v-icon class="mr-2">mdi-table</v-icon>
+                Portfolio Report
+              </div>
+              <v-btn icon="mdi-close" variant="text" title="Close report" aria-label="Close report"
+                @click="showPortfolioReportModal = false"></v-btn>
+            </v-card-title>
             <v-divider></v-divider>
-  
+
             <v-card-text class="portfolio-report-content">
               <div class="text-medium-emphasis mb-4">
                 Data analysis on {{ formatDate(new Date().toISOString()) }}
               </div>
-  
+
               <div v-if="$vuetify?.display?.lgAndUp" style="overflow-x: auto;">
                 <table class="portfolio-report-table">
                   <thead>
                     <tr>
-                    <th>Lot</th>
-                    <th>Type</th>
-                    <th>Realized Status</th>
-                    <th>Sales</th>
-                    <th>Sold Items</th>
-                    <th>Total Items</th>
-                    <th>Sold Revenue</th>
-                    <th>Sold Cost</th>
-                    <th>Realized P/L</th>
-                    <th>Current Lot P/L</th>
-                    <th>Sold Margin %</th>
-                    <th>Forecast Avg</th>
-                    <th>Last Sale</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="row in allLotPerformance" :key="`report-${row.lotId}`">
-                    <td>{{ row.lotName }}</td>
-                    <td>{{ row.lotType }}</td>
-                    <td>{{ row.salesCount > 0 ? 'Realized sales' : 'No sales yet' }}</td>
-                    <td>{{ row.salesCount }}</td>
-                    <td>{{ row.soldPacks }}</td>
-                    <td>{{ row.totalPacks }}</td>
-                    <td>${{ formatCurrency(row.totalRevenue) }}</td>
-                    <td>{{ row.salesCount > 0 ? `$${formatCurrency(row.realizedCost ?? 0)}` : '-' }}</td>
-                    <td>{{ row.salesCount > 0 ? `${(row.realizedProfit ?? 0) >= 0 ? '+' : ''}$${formatCurrency(row.realizedProfit ?? 0)}` : 'No realized P/L yet' }}</td>
-                    <td>{{ row.totalProfit >= 0 ? '+' : '' }}${{ formatCurrency(row.totalProfit) }}</td>
-                    <td>{{ row.salesCount > 0 && row.realizedMarginPercent != null ? `${formatCurrency(row.realizedMarginPercent, 2)}%` : '-' }}</td>
-                    <td>{{ row.forecastProfitAverage == null ? '-' : `${row.forecastProfitAverage >= 0 ? '+' : ''}$${formatCurrency(row.forecastProfitAverage)}` }}</td>
-                    <td>{{ row.lastSaleDate ? formatDate(row.lastSaleDate) : '-' }}</td>
-                  </tr>
+                      <th>Lot</th>
+                      <th>Type</th>
+                      <th>Realized Status</th>
+                      <th>Sales</th>
+                      <th>Sold Items</th>
+                      <th>Total Items</th>
+                      <th>Sold Revenue</th>
+                      <th>Sold Cost</th>
+                      <th>Realized P/L</th>
+                      <th>Current Lot P/L</th>
+                      <th>Sold Margin %</th>
+                      <th>Forecast Avg</th>
+                      <th>Last Sale</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="row in allLotPerformance" :key="`report-${row.lotId}`">
+                      <td>{{ row.lotName }}</td>
+                      <td>{{ row.lotType }}</td>
+                      <td>{{ row.salesCount > 0 ? 'Realized sales' : 'No sales yet' }}</td>
+                      <td>{{ row.salesCount }}</td>
+                      <td>{{ row.soldPacks }}</td>
+                      <td>{{ row.totalPacks }}</td>
+                      <td>${{ formatCurrency(row.totalRevenue) }}</td>
+                      <td>{{ row.salesCount > 0 ? `$${formatCurrency(row.realizedCost ?? 0)}` : '-' }}</td>
+                      <td>{{ row.salesCount > 0 ? `${(row.realizedProfit ?? 0) >= 0 ? '+' :
+                        ''}$${formatCurrency(row.realizedProfit ?? 0)}` : 'No realized P/L yet' }}</td>
+                      <td>{{ row.totalProfit >= 0 ? '+' : '' }}${{ formatCurrency(row.totalProfit) }}</td>
+                      <td>{{ row.salesCount > 0 && row.realizedMarginPercent != null ?
+                        `${formatCurrency(row.realizedMarginPercent, 2)}%` : '-' }}</td>
+                      <td>{{ row.forecastProfitAverage == null ? '-' : `${row.forecastProfitAverage >= 0 ? '+' :
+                        ''}$${formatCurrency(row.forecastProfitAverage)}` }}</td>
+                      <td>{{ row.lastSaleDate ? formatDate(row.lastSaleDate) : '-' }}</td>
+                    </tr>
                   </tbody>
                 </table>
               </div>
 
               <div v-else class="portfolio-report-card-grid">
-                <article
-                  v-for="row in allLotPerformance"
-                  :key="`report-card-${row.lotId}`"
+                <article v-for="row in allLotPerformance" :key="`report-card-${row.lotId}`"
                   class="portfolio-report-card"
-                  :class="{ 'is-expanded': portfolioReportExpandedLotIds.includes(row.lotId) }"
-                  role="button"
-                  tabindex="0"
-                  :aria-expanded="portfolioReportExpandedLotIds.includes(row.lotId)"
-                  :aria-controls="`portfolio-report-details-${row.lotId}`"
-                  :aria-label="`${row.lotName} report details`"
+                  :class="{ 'is-expanded': portfolioReportExpandedLotIds.includes(row.lotId) }" role="button"
+                  tabindex="0" :aria-expanded="portfolioReportExpandedLotIds.includes(row.lotId)"
+                  :aria-controls="`portfolio-report-details-${row.lotId}`" :aria-label="`${row.lotName} report details`"
                   @click="togglePortfolioReportLot(row.lotId)"
                   @keydown.enter.prevent="togglePortfolioReportLot(row.lotId)"
-                  @keydown.space.prevent="togglePortfolioReportLot(row.lotId)"
-                >
+                  @keydown.space.prevent="togglePortfolioReportLot(row.lotId)">
                   <div class="portfolio-report-card-head">
                     <div class="portfolio-report-card-title-wrap">
                       <div class="portfolio-report-card-title">
@@ -1692,17 +1105,12 @@
                         <span>{{ row.lotName }}</span>
                       </div>
                     </div>
-                    <v-btn
-                      icon
-                      variant="text"
-                      size="small"
-                      class="portfolio-report-card-toggle"
+                    <v-btn icon variant="text" size="small" class="portfolio-report-card-toggle"
                       :title="portfolioReportExpandedLotIds.includes(row.lotId) ? 'Hide report details' : 'Show report details'"
                       :aria-label="portfolioReportExpandedLotIds.includes(row.lotId) ? 'Hide report details' : 'Show report details'"
                       :aria-expanded="portfolioReportExpandedLotIds.includes(row.lotId)"
                       :aria-controls="`portfolio-report-details-${row.lotId}`"
-                      @click.stop="togglePortfolioReportLot(row.lotId)"
-                    >
+                      @click.stop="togglePortfolioReportLot(row.lotId)">
                       <v-icon>
                         {{ portfolioReportExpandedLotIds.includes(row.lotId) ? 'mdi-chevron-up' : 'mdi-chevron-down' }}
                       </v-icon>
@@ -1712,34 +1120,26 @@
                   <div class="portfolio-report-card-summary">
                     <div class="portfolio-report-card-metric">
                       <span class="portfolio-report-card-label">Realized P/L</span>
-                      <span
-                        class="portfolio-report-card-value"
-                        :class="row.salesCount > 0
+                      <span class="portfolio-report-card-value" :class="row.salesCount > 0
                           ? ((row.realizedProfit ?? 0) >= 0 ? 'is-positive' : 'is-negative')
-                          : 'is-neutral'"
-                      >
+                          : 'is-neutral'">
                         {{ row.salesCount > 0
-                          ? `${(row.realizedProfit ?? 0) >= 0 ? '+' : ''}$${formatCurrency(row.realizedProfit ?? 0)}`
-                          : 'No realized P/L' }}
+                        ? `${(row.realizedProfit ?? 0) >= 0 ? '+' : ''}$${formatCurrency(row.realizedProfit ?? 0)}`
+                        : 'No realized P/L' }}
                       </span>
                     </div>
 
                     <div class="portfolio-report-card-metric">
                       <span class="portfolio-report-card-label">Current Lot P/L</span>
-                      <span
-                        class="portfolio-report-card-value"
-                        :class="row.totalProfit >= 0 ? 'is-positive' : 'is-negative'"
-                      >
+                      <span class="portfolio-report-card-value"
+                        :class="row.totalProfit >= 0 ? 'is-positive' : 'is-negative'">
                         {{ row.totalProfit >= 0 ? '+' : '' }}${{ formatCurrency(row.totalProfit) }}
                       </span>
                     </div>
                   </div>
 
-                  <div
-                    v-if="portfolioReportExpandedLotIds.includes(row.lotId)"
-                    :id="`portfolio-report-details-${row.lotId}`"
-                    class="portfolio-report-card-details"
-                  >
+                  <div v-if="portfolioReportExpandedLotIds.includes(row.lotId)"
+                    :id="`portfolio-report-details-${row.lotId}`" class="portfolio-report-card-details">
                     <div class="portfolio-report-card-metrics">
                       <div class="portfolio-report-card-metric">
                         <span class="portfolio-report-card-label">Status</span>
@@ -1774,18 +1174,17 @@
                         <span class="portfolio-report-card-label">Sold Margin</span>
                         <span class="portfolio-report-card-value">
                           {{ row.salesCount > 0 && row.realizedMarginPercent != null
-                            ? `${formatCurrency(row.realizedMarginPercent, 2)}%`
-                            : '-' }}
+                          ? `${formatCurrency(row.realizedMarginPercent, 2)}%`
+                          : '-' }}
                         </span>
                       </div>
 
                       <div v-if="row.forecastProfitAverage != null" class="portfolio-report-card-metric">
                         <span class="portfolio-report-card-label">Forecast Avg</span>
-                        <span
-                          class="portfolio-report-card-value"
-                          :class="row.forecastProfitAverage >= 0 ? 'is-positive' : 'is-negative'"
-                        >
-                          {{ `${row.forecastProfitAverage >= 0 ? '+' : ''}$${formatCurrency(row.forecastProfitAverage)}` }}
+                        <span class="portfolio-report-card-value"
+                          :class="row.forecastProfitAverage >= 0 ? 'is-positive' : 'is-negative'">
+                          {{ `${row.forecastProfitAverage >= 0 ? '+' : ''}$${formatCurrency(row.forecastProfitAverage)}`
+                          }}
                         </span>
                       </div>
 
@@ -1804,65 +1203,47 @@
             <v-card-actions class="justify-space-between portfolio-report-actions">
               <v-btn variant="text" @click="showPortfolioReportModal = false">Close</v-btn>
               <div class="d-flex align-center ga-2">
-                <v-btn variant="text" prepend-icon="mdi-content-copy" :disabled="!hasPortfolioData" @click="copyPortfolioReportTable">
+                <v-btn variant="text" prepend-icon="mdi-content-copy" :disabled="!hasPortfolioData"
+                  @click="copyPortfolioReportTable">
                   Copy
                 </v-btn>
-                <v-btn
-                  color="error"
-                  prepend-icon="mdi-content-save-outline"
-                  :disabled="!hasPortfolioData"
-                  @click="savePortfolioReportTable"
-                >
+                <v-btn color="error" prepend-icon="mdi-content-save-outline" :disabled="!hasPortfolioData"
+                  @click="savePortfolioReportTable">
                   Save
                 </v-btn>
               </div>
             </v-card-actions>
-        </v-card>
-      </v-dialog>
+          </v-card>
+        </v-dialog>
 
-      <v-dialog v-model="confirmDialog" max-width="420">
-        <v-card>
-          <v-card-title>{{ confirmTitle }}</v-card-title>
-          <v-card-text>{{ confirmText }}</v-card-text>
-          <v-card-actions>
-            <v-spacer></v-spacer>
-            <v-btn variant="text" @click="cancelConfirmAction">Cancel</v-btn>
-            <v-btn :color="confirmColor" @click="runConfirmAction">Confirm</v-btn>
-          </v-card-actions>
-        </v-card>
-      </v-dialog>
+        <v-dialog v-model="confirmDialog" max-width="420">
+          <v-card>
+            <v-card-title>{{ confirmTitle }}</v-card-title>
+            <v-card-text>{{ confirmText }}</v-card-text>
+            <v-card-actions>
+              <v-spacer></v-spacer>
+              <v-btn variant="text" @click="cancelConfirmAction">Cancel</v-btn>
+              <v-btn :color="confirmColor" @click="runConfirmAction">Confirm</v-btn>
+            </v-card-actions>
+          </v-card>
+        </v-dialog>
 
-      <whatnot-csv-import-dialog :ctx="this"></whatnot-csv-import-dialog>
-      <whatnot-review-dialog :ctx="this"></whatnot-review-dialog>
+        <whatnot-csv-import-dialog :ctx="this"></whatnot-csv-import-dialog>
+        <whatnot-review-dialog :ctx="this"></whatnot-review-dialog>
 
-      <v-snackbar
-        v-model="showAppUpdatePrompt"
-        color="secondary"
-        location="top"
-        :timeout="-1"
-        role="status"
-        aria-live="polite"
-        aria-atomic="true"
-        :close-on-content-click="false"
-      >
-        A new version of WhatFees is available.
-        <template #actions>
-          <v-btn variant="text" @click="dismissAppUpdate">Later</v-btn>
-          <v-btn variant="flat" color="secondary" @click="applyAppUpdate">Refresh</v-btn>
-        </template>
-      </v-snackbar>
+        <v-snackbar v-model="showAppUpdatePrompt" color="secondary" location="top" :timeout="-1" role="status"
+          aria-live="polite" aria-atomic="true" :close-on-content-click="false">
+          A new version of WhatFees is available.
+          <template #actions>
+            <v-btn variant="text" @click="dismissAppUpdate">Later</v-btn>
+            <v-btn variant="flat" color="secondary" @click="applyAppUpdate">Refresh</v-btn>
+          </template>
+        </v-snackbar>
 
-      <v-snackbar
-        v-model="snackbar.show"
-        :color="snackbar.color"
-        location="bottom"
-        timeout="2400"
-        role="status"
-        aria-live="polite"
-        aria-atomic="true"
-      >
-        {{ snackbar.text }}
-      </v-snackbar>
+        <v-snackbar v-model="snackbar.show" :color="snackbar.color" location="bottom" timeout="2400" role="status"
+          aria-live="polite" aria-atomic="true">
+          {{ snackbar.text }}
+        </v-snackbar>
 
       </template>
 
@@ -1871,30 +1252,16 @@
           <v-container fluid class="auth-gate-shell">
             <v-card class="auth-gate-card" elevation="8" max-width="430">
               <v-card-text class="pa-6 pa-sm-8 text-center">
-                <img
-                  src="icons/icon-192.png"
-                  alt="WhatFees"
-                  class="auth-gate-logo"
-                />
+                <img src="icons/icon-192.png" alt="WhatFees" class="auth-gate-logo" />
                 <p class="text-overline auth-gate-overline mb-2">WhatFees</p>
                 <h1 class="text-h5 font-weight-bold mb-2 auth-gate-title">
-                  {{ pendingWorkspaceInviteToken ? 'Sign in to join workspace' : 'Sign in to continue' }}
+                  {{ authGateTitle }}
                 </h1>
                 <p class="text-body-2 text-medium-emphasis mb-6">
-                  {{
-                    pendingWorkspaceInviteToken
-                      ? 'Use your Google account to accept this workspace invite and keep your Personal workspace too.'
-                      : 'Your lots, cloud sync, and Pro access are tied to your Google account.'
-                  }}
+                  {{ authGateSubtitle }}
                 </p>
 
-                <v-btn
-                  block
-                  size="large"
-                  color="primary"
-                  class="auth-gate-btn"
-                  @click="promptGoogleSignIn"
-                >
+                <v-btn block size="large" color="primary" class="auth-gate-btn" @click="promptGoogleSignIn">
                   <span class="auth-gate-btn__content">
                     <v-icon size="22" class="auth-gate-btn__icon">mdi-google</v-icon>
                     <span class="auth-gate-btn__label">Continue with Google</span>
@@ -1912,11 +1279,5 @@
   <script type="module" src="/src/main.ts"></script>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 </body>
+
 </html>
-
-
-
-
-
-
-

@@ -9,6 +9,10 @@ import {
     seedToIndex,
     WheelWindow
 } from "../src/components/windows/WheelWindow.ts";
+import {
+  getScopedWheelConfigDraftStorageKey,
+  getScopedWheelConfigSessionStorageKey
+} from "../src/app-core/storageKeys.ts";
 import type { WheelConfig } from "../src/types/app.ts";
 
 // ── Pure functions ──────────────────────────────────────────────
@@ -109,19 +113,35 @@ test("createDefaultWheelConfig returns valid config", () => {
 
 test("wheelSessionRevenue is spins × spinPrice", () => {
   const vm = {
+    wheelMode: "live",
     activeWheelConfig: { spinPrice: 5 },
+    wheelDisplayTotalSpins: 10,
     wheelTotalSpins: 10
   };
   const result = WheelWindow.computed!.wheelSessionRevenue.call(vm as never);
   assert.equal(result, 50);
 });
 
+test("wheelSessionRevenue uses preview spins in config mode", () => {
+  const vm = {
+    wheelMode: "config",
+    activeWheelConfig: { spinPrice: 5 },
+    wheelDisplayTotalSpins: 4,
+    wheelPreviewTotalSpins: 4,
+    wheelTotalSpins: 10
+  };
+  const result = WheelWindow.computed!.wheelSessionRevenue.call(vm as never);
+  assert.equal(result, 20);
+});
+
 test("wheelSessionCost sums slot costs by spin counts", () => {
   const vm = {
+    wheelMode: "live",
     activeWheelSlots: [
       { cost: 3 },
       { cost: 7 }
     ],
+    wheelDisplaySpinCounts: [2, 1],
     wheelSpinCounts: [2, 1],
     wheelSessionCostAdjustment: 0
   };
@@ -131,10 +151,12 @@ test("wheelSessionCost sums slot costs by spin counts", () => {
 
 test("wheelSessionCost includes cost adjustment from chase replacements", () => {
   const vm = {
+    wheelMode: "live",
     activeWheelSlots: [
       { cost: 10 }, // was 50, replaced → new slot cost is 10
       { cost: 5 }
     ],
+    wheelDisplaySpinCounts: [1, 2],
     wheelSpinCounts: [1, 2],
     wheelSessionCostAdjustment: 40 // 1 spin × (50 old - 10 new)
   };
@@ -145,7 +167,9 @@ test("wheelSessionCost includes cost adjustment from chase replacements", () => 
 
 test("wheelSessionProfit deducts Whatnot fees and cost", () => {
   const vm = {
+    wheelMode: "live",
     wheelSessionRevenue: 100,
+    wheelDisplayTotalSpins: 10,
     wheelTotalSpins: 10,
     wheelSessionCost: 30
   };
@@ -163,6 +187,133 @@ test("wheelSessionMarginDisplay shows dash when no revenue", () => {
 test("wheelSessionMarginDisplay shows percentage", () => {
   const vm = { wheelSessionRevenue: 100, wheelSessionProfit: 25 };
   assert.equal(WheelWindow.computed!.wheelSessionMarginDisplay.call(vm as never), "25.0%");
+});
+
+test("hasPendingWheelChanges detects draft edits against the live wheel", () => {
+  const baseConfig: WheelConfig = {
+    id: 1,
+    name: "Wheel",
+    spinPrice: 10,
+    targetMargin: 40,
+    createdAt: "",
+    tiers: [{ id: "t1", label: "Prize", color: "#f00", slots: 1, costPerTier: 5, packsCount: 1, deductionType: "packs", sets: [], boundLotId: 10 }]
+  };
+
+  assert.equal(WheelWindow.computed!.hasPendingWheelChanges.call({
+    activeWheelConfig: baseConfig,
+    editingWheelConfig: JSON.parse(JSON.stringify(baseConfig))
+  } as never), false);
+
+  const edited = JSON.parse(JSON.stringify(baseConfig)) as WheelConfig;
+  edited.spinPrice = 12;
+  assert.equal(WheelWindow.computed!.hasPendingWheelChanges.call({
+    activeWheelConfig: baseConfig,
+    editingWheelConfig: edited
+  } as never), true);
+});
+
+test("wheelSpinBlockedReason warns when a live tier no longer has enough packs", () => {
+  const vm = {
+    wheelMode: "live",
+    activeWheelConfig: {
+      id: 1,
+      spinPrice: 10,
+      targetMargin: 40,
+      createdAt: "",
+      tiers: [
+        { id: "t1", label: "Sealed Prize", color: "#f00", slots: 2, costPerTier: 5, packsCount: 2, deductionType: "packs", boundLotId: 42, sets: [] }
+      ]
+    },
+    lots: [{
+      id: 42,
+      name: "Almost Empty Lot",
+      lotType: "bulk",
+      boxesPurchased: 1,
+      packsPerBox: 1
+    }],
+    loadSalesForLotId: vi.fn(() => [{ quantity: 1, packsCount: 1 }])
+  };
+
+  const invalid = WheelWindow.computed!.wheelInvalidLiveTiers.call(vm as never);
+  assert.equal(invalid.length, 1);
+  assert.match(invalid[0]!.reason, /only 0 remain/i);
+  const reason = WheelWindow.computed!.wheelSpinBlockedReason.call({ ...vm, wheelInvalidLiveTiers: invalid } as never);
+  assert.match(reason, /repair the wheel before going live/i);
+});
+
+test("wheelTrackerInventory summarizes remaining stock for live wheel sources", () => {
+  const vm = {
+    activeWheelConfig: {
+      id: 1,
+      spinPrice: 10,
+      targetMargin: 40,
+      createdAt: "",
+      tiers: [
+        { id: "bulk", label: "1 pack", color: "#f00", slots: 2, costPerTier: 5, packsCount: 1, deductionType: "packs", boundLotId: 42, sets: [] },
+        { id: "single", label: "Hellish Blizzard", color: "#09f", slots: 1, costPerTier: 25, packsCount: 1, deductionType: "singles", boundLotId: 77, boundSinglesId: 701, sets: [] }
+      ]
+    },
+    lots: [
+      { id: 42, name: "Bulk Lot", lotType: "bulk", boxesPurchased: 1, packsPerBox: 3 },
+      { id: 77, name: "Singles Lot", lotType: "singles", singlesPurchases: [{ id: 701, item: "Hellish Blizzard", quantity: 2, cost: 25, marketValue: 30 }] }
+    ],
+    wheelTallyByTier: [
+      { tierId: "bulk", label: "1 pack", color: "#f00", count: 3 },
+      { tierId: "single", label: "Hellish Blizzard", color: "#09f", count: 1 }
+    ],
+    loadSalesForLotId: vi.fn((lotId: number) => lotId === 42
+      ? [{
+        id: 1,
+        type: "wheel",
+        quantity: 1,
+        packsCount: 1,
+        price: 10,
+        buyerShipping: 0,
+        date: "2026-03-25"
+      }]
+      : []),
+    sales: []
+  };
+
+  const rows = WheelWindow.computed!.wheelTrackerInventory.call(vm as never);
+  assert.equal(rows.length, 2);
+  assert.equal(rows[0]!.label, "Bulk Lot");
+  assert.match(rows[0]!.remainingText, /2 packs left/i);
+  assert.equal(rows[0]!.tiers.length, 1);
+  assert.equal(rows[0]!.tiers[0]!.count, 3);
+  assert.equal(rows[1]!.label, "Singles Lot");
+  assert.match(rows[1]!.remainingText, /2 cards left/i);
+  assert.equal(rows[1]!.tiers[0]!.label, "Hellish Blizzard");
+});
+
+test("wheelTrackerInventory groups multiple pack tiers under the same source lot", () => {
+  const vm = {
+    activeWheelConfig: {
+      id: 1,
+      spinPrice: 10,
+      targetMargin: 40,
+      createdAt: "",
+      tiers: [
+        { id: "t1", label: "1 pack", color: "#f00", slots: 2, costPerTier: 5, packsCount: 1, deductionType: "packs", boundLotId: 42, sets: [] },
+        { id: "t2", label: "3 packs", color: "#0f0", slots: 1, costPerTier: 8, packsCount: 3, deductionType: "packs", boundLotId: 42, sets: [] }
+      ]
+    },
+    lots: [
+      { id: 42, name: "Bulk Lot", lotType: "bulk", boxesPurchased: 1, packsPerBox: 8 }
+    ],
+    wheelTallyByTier: [
+      { tierId: "t1", label: "1 pack", color: "#f00", count: 2 },
+      { tierId: "t2", label: "3 packs", color: "#0f0", count: 1 }
+    ],
+    loadSalesForLotId: vi.fn(() => []),
+    sales: []
+  };
+
+  const rows = WheelWindow.computed!.wheelTrackerInventory.call(vm as never);
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0]!.label, "Bulk Lot");
+  assert.equal(rows[0]!.tiers.length, 2);
+  assert.deepEqual(rows[0]!.tiers.map((entry: { tierId: string }) => entry.tierId), ["t1", "t2"]);
 });
 
 // ── Component method tests ───────────────────────────────────────
@@ -204,7 +355,7 @@ test("landOnSlot sets result text and color", () => {
   assert.equal(vm.wheelLastResultColor, "#f00");
 });
 
-test("landOnSlot preview mode does not persist or open chase flow", () => {
+test("landOnSlot preview mode opens preview chase flow without persisting", () => {
   const saveWheelSession = vi.fn();
   const triggerWheelCelebration = vi.fn();
   const vm: Record<string, unknown> = {
@@ -225,6 +376,7 @@ test("landOnSlot preview mode does not persist or open chase flow", () => {
     wheelLastResult: "",
     wheelLastResultColor: "",
     wheelChaseDialog: true,
+    wheelChasePreviewMode: false,
     wheelChasePendingTierId: "stale",
     wheelChaseReplacementSinglesId: 123,
     triggerWheelCelebration,
@@ -234,9 +386,10 @@ test("landOnSlot preview mode does not persist or open chase flow", () => {
   WheelWindow.methods!.landOnSlot.call(vm as never, 0, { recordSession: false });
   assert.equal(vm.wheelLastResult, "🎉 Chase Card");
   assert.equal(vm.wheelLastResultColor, "#ff0");
-  assert.equal(vm.wheelChaseDialog, false);
-  assert.equal(vm.wheelChasePendingTierId, "");
+  assert.equal(vm.wheelChaseDialog, true);
+  assert.equal(vm.wheelChasePendingTierId, "tc");
   assert.equal(vm.wheelChaseReplacementSinglesId, null);
+  assert.equal(vm.wheelChasePreviewMode, true);
   assert.equal(saveWheelSession.mock.calls.length, 0);
   assert.deepEqual(triggerWheelCelebration.mock.calls, [[{
     label: "Chase Card",
@@ -254,6 +407,259 @@ test("testSpinWheel delegates to non-recording spin path", async () => {
 
   await WheelWindow.methods!.testSpinWheel.call(vm as never);
   assert.deepEqual(spinWheelInternal.mock.calls, [[false]]);
+});
+
+test("recordPreviewSpinResult updates preview tracker only", () => {
+  const vm: Record<string, unknown> = {
+    activeWheelSlots: [
+      { name: "Preview Prize", color: "#f00", cost: 5, tier: "t1", packsCount: 1, deductionType: "packs", isChase: false }
+    ],
+    wheelPreviewSpinCounts: [0],
+    wheelPreviewTotalSpins: 0,
+    wheelSpinCounts: [0],
+    wheelTotalSpins: 0
+  };
+
+  WheelWindow.methods!.recordPreviewSpinResult.call(vm as never, 0);
+  assert.deepEqual(vm.wheelPreviewSpinCounts, [1]);
+  assert.equal(vm.wheelPreviewTotalSpins, 1);
+  assert.deepEqual(vm.wheelSpinCounts, [0]);
+  assert.equal(vm.wheelTotalSpins, 0);
+});
+
+test("canTierBeChase requires a concrete singles item", () => {
+  const singlesTier = {
+    deductionType: "singles",
+    boundLotId: 42,
+    boundSinglesId: 7
+  };
+  const manualSinglesTier = {
+    deductionType: "singles",
+    boundLotId: 42,
+    boundSinglesId: null
+  };
+  const bulkTier = {
+    deductionType: "packs",
+    boundLotId: 42,
+    boundSinglesId: null
+  };
+
+  assert.equal(WheelWindow.methods!.canTierBeChase.call({} as never, singlesTier as never), true);
+  assert.equal(WheelWindow.methods!.canTierBeChase.call({} as never, manualSinglesTier as never), false);
+  assert.equal(WheelWindow.methods!.canTierBeChase.call({} as never, bulkTier as never), false);
+});
+
+test("loadWheelFromSession remaps saved spin counts by tier after rebuild", () => {
+  const sessionKey = getScopedWheelConfigSessionStorageKey({ type: "personal", workspaceId: null }, 99);
+  const store: Record<string, string> = {};
+  const mockStorage = {
+    getItem: vi.fn((key: string) => store[key] ?? null),
+    setItem: vi.fn((key: string, value: string) => { store[key] = value; })
+  };
+  const origLocalStorage = globalThis.localStorage;
+  Object.defineProperty(globalThis, "localStorage", { value: mockStorage, writable: true, configurable: true });
+  mockStorage.setItem(sessionKey, JSON.stringify({
+    wheelSpinCounts: [3],
+    wheelSlotTiers: ["t1"],
+    wheelTotalSpins: 3,
+    wheelSessionUpdatedAt: 123,
+    wheelSessionCostAdjustment: 0,
+    wheelChaseTallyHistory: [],
+    wheelSkippedDeductions: [],
+    wheelCurrentAngle: 1.5,
+    wheelLastResult: "Saved",
+    wheelLastResultColor: "#fff"
+  }));
+
+  const vm: Record<string, unknown> = {
+    activeWheelConfigId: 99,
+    activeWheelSlots: [
+      { name: "A", color: "#f00", cost: 5, tier: "t1", packsCount: 1, deductionType: "packs", isChase: false },
+      { name: "B", color: "#0f0", cost: 5, tier: "t1", packsCount: 1, deductionType: "packs", isChase: false }
+    ],
+    activeScopeType: "personal",
+    activeWorkspaceId: null,
+    wheelSpinCounts: [],
+    wheelTotalSpins: 0
+  };
+
+  const restored = WheelWindow.methods!.loadWheelFromSession.call(vm as never);
+  assert.equal(restored, true);
+  assert.deepEqual(vm.wheelSpinCounts, [2, 1]);
+  assert.equal(vm.wheelTotalSpins, 3);
+  assert.equal(vm.wheelLastResult, "Saved");
+
+  Object.defineProperty(globalThis, "localStorage", { value: origLocalStorage, writable: true, configurable: true });
+});
+
+test("loadWheelConfig clears invalid chase flags for non-singles tiers", () => {
+  const config: WheelConfig = {
+    id: 5,
+    name: "Wheel",
+    spinPrice: 10,
+    targetMargin: 40,
+    createdAt: "",
+    tiers: [
+      { id: "bulk", label: "Bulk Chase", color: "#f00", slots: 1, costPerTier: 5, packsCount: 1, deductionType: "packs", boundLotId: 1, isChase: true, sets: [] }
+    ]
+  };
+
+  const vm: Record<string, unknown> = {
+    wheelConfigs: [config],
+    activeWheelConfigId: 5,
+    loadWheelFromSession: vi.fn(() => false),
+    drawWheel: vi.fn()
+  };
+
+  WheelWindow.methods!.loadWheelConfig.call(vm as never);
+  assert.equal((vm.wheelConfigs as WheelConfig[])[0]!.tiers[0]!.isChase, false);
+  assert.equal((vm.editingWheelConfig as WheelConfig).tiers[0]!.isChase, false);
+});
+
+test("loadWheelConfig restores autosaved draft without mutating the live config", () => {
+  const config: WheelConfig = {
+    id: 5,
+    name: "Wheel",
+    spinPrice: 10,
+    targetMargin: 40,
+    createdAt: "",
+    tiers: [
+      { id: "bulk", label: "Bulk Prize", color: "#f00", slots: 1, costPerTier: 5, packsCount: 1, deductionType: "packs", boundLotId: 1, sets: [] }
+    ]
+  };
+  const draft = JSON.parse(JSON.stringify(config)) as WheelConfig;
+  draft.spinPrice = 15;
+  const key = getScopedWheelConfigDraftStorageKey({ scopeType: "personal", workspaceId: null }, 5);
+  const store: Record<string, string> = { [key]: JSON.stringify(draft) };
+  const mockStorage = {
+    getItem: vi.fn((storageKey: string) => store[storageKey] ?? null),
+    setItem: vi.fn((storageKey: string, value: string) => { store[storageKey] = value; })
+  };
+  const origLocalStorage = globalThis.localStorage;
+  Object.defineProperty(globalThis, "localStorage", { value: mockStorage, writable: true, configurable: true });
+
+  const vm: Record<string, unknown> = {
+    wheelConfigs: [config],
+    activeWheelConfigId: 5,
+    activeScopeType: "personal",
+    activeWorkspaceId: null,
+    loadWheelFromSession: vi.fn(() => false),
+    drawWheel: vi.fn()
+  };
+
+  WheelWindow.methods!.loadWheelConfig.call(vm as never);
+  assert.equal((vm.editingWheelConfig as WheelConfig).spinPrice, 15);
+  assert.equal(((vm.wheelConfigs as WheelConfig[])[0]!.spinPrice), 10);
+
+  Object.defineProperty(globalThis, "localStorage", { value: origLocalStorage, writable: true, configurable: true });
+});
+
+test("saveWheelDraft persists the config and queues cloud sync without changing the applied wheel", async () => {
+  vi.useFakeTimers();
+
+  const config: WheelConfig = {
+    id: 5,
+    name: "Wheel",
+    spinPrice: 10,
+    targetMargin: 40,
+    createdAt: "",
+    tiers: [
+      { id: "bulk", label: "Bulk Prize", color: "#f00", slots: 1, costPerTier: 5, packsCount: 1, deductionType: "packs", boundLotId: 1, sets: [] }
+    ]
+  };
+  const editing = JSON.parse(JSON.stringify(config)) as WheelConfig;
+  editing.spinPrice = 15;
+  const removeItem = vi.fn();
+  const origLocalStorage = globalThis.localStorage;
+  Object.defineProperty(globalThis, "localStorage", {
+    value: { removeItem },
+    writable: true,
+    configurable: true
+  });
+
+  const pushCloudSync = vi.fn().mockResolvedValue(undefined);
+  const vm: Record<string, unknown> = {
+    wheelConfigs: [config],
+    editingWheelConfig: editing,
+    appliedWheelConfigSnapshot: JSON.parse(JSON.stringify(config)),
+    activeScopeType: "personal",
+    activeWorkspaceId: null,
+    isGoogleSignedIn: true,
+    isOffline: false,
+    currentLotId: null,
+    pushCloudSync
+  };
+
+  WheelWindow.methods!.saveWheelDraft.call(vm as never);
+  await vi.advanceTimersByTimeAsync(450);
+
+  assert.equal((vm.wheelConfigs as WheelConfig[])[0]!.spinPrice, 15);
+  assert.equal((vm.appliedWheelConfigSnapshot as WheelConfig).spinPrice, 10);
+  assert.equal(pushCloudSync.mock.calls.length, 1);
+  assert.equal(removeItem.mock.calls.length, 1);
+
+  Object.defineProperty(globalThis, "localStorage", { value: origLocalStorage, writable: true, configurable: true });
+  vi.useRealTimers();
+});
+
+test("preview chase replacement keeps prior chase tally as a separate tracker line", () => {
+  const vm: Record<string, unknown> = {
+    wheelConfigs: [{
+      id: 1,
+      name: "Wheel",
+      spinPrice: 10,
+      targetMargin: 40,
+      createdAt: "",
+      tiers: [
+        { id: "tc", label: "Old Chase", color: "#09f", slots: 1, costPerTier: 25, packsCount: 1, deductionType: "singles", boundLotId: 42, boundSinglesId: 1, isChase: true, sets: [] }
+      ]
+    }],
+    activeWheelConfigId: 1,
+    editingWheelConfig: {
+      id: 1,
+      name: "Wheel",
+      spinPrice: 10,
+      targetMargin: 40,
+      createdAt: "",
+      tiers: [
+        { id: "tc", label: "Old Chase", color: "#09f", slots: 1, costPerTier: 25, packsCount: 1, deductionType: "singles", boundLotId: 42, boundSinglesId: 1, isChase: true, sets: [] }
+      ]
+    },
+    wheelPreviewSlots: [
+      { name: "Old Chase", color: "#09f", cost: 25, tier: "tc", packsCount: 1, deductionType: "singles", isChase: true }
+    ],
+    wheelPreviewSpinCounts: [2],
+    wheelPreviewChaseTallyHistory: [],
+    wheelChasePreviewMode: true,
+    wheelChaseReplacementSinglesId: 2,
+    wheelChasePendingTierId: "tc",
+    lots: [{
+      id: 42,
+      name: "Singles",
+      lotType: "singles",
+      singlesPurchases: [
+        { id: 1, item: "Old Chase", cost: 25, quantity: 1, marketValue: 30 },
+        { id: 2, item: "New Chase", cost: 40, quantity: 1, marketValue: 45 }
+      ]
+    }],
+    drawWheel: vi.fn()
+  };
+
+  WheelWindow.methods!.confirmChaseReplacement.call(vm as never);
+  const history = vm.wheelPreviewChaseTallyHistory as Array<{ tierId: string; label: string; color: string; count: number }>;
+  assert.deepEqual(history, [{ tierId: "tc", label: "Old Chase", color: "#09f", count: 2 }]);
+
+  const tally = WheelWindow.computed!.wheelTallyByTier.call({
+    wheelMode: "config",
+    wheelDisplayConfig: vm.editingWheelConfig,
+    wheelDisplaySlots: vm.wheelPreviewSlots,
+    wheelDisplaySpinCounts: vm.wheelPreviewSpinCounts,
+    wheelPreviewChaseTallyHistory: vm.wheelPreviewChaseTallyHistory
+  } as never);
+  assert.equal(tally.length, 1);
+  assert.deepEqual(tally.map((entry: { label: string; count: number }) => ({ label: entry.label, count: entry.count })), [
+    { label: "Old Chase", count: 2 }
+  ]);
 });
 
 test("landOnSlot opens chase dialog for chase tiers", () => {
@@ -300,9 +706,15 @@ test("recordSpinResult auto-records sale for non-chase tiers with bound lot", ()
     wheelTotalSpins: 0,
     activeWheelConfig: { id: 1, spinPrice: 10, tiers: [{ id: "t1", boundLotId: 42 }] },
     addWheelSaleToLot: addSaleFn,
-    lots: [],
+    lots: [{
+      id: 42,
+      name: "Bulk Lot",
+      boxesPurchased: 1,
+      packsPerBox: 8
+    }],
     wheelSkippedDeductions: [],
     activeWheelConfigId: 1,
+    loadSalesForLotId: vi.fn(() => []),
     saveWheelSession: vi.fn()
   };
 
@@ -402,6 +814,210 @@ test("recordSpinResult skips sold-out singles when linked entry has no remaining
   WheelWindow.methods!.recordSpinResult.call(vm as never, 0);
   assert.equal(addSaleFn.mock.calls.length, 0);
   assert.equal((vm.wheelSkippedDeductions as unknown[]).length, 1);
+});
+
+test("recordSpinResult skips pack sale when bound lot lacks remaining packs", () => {
+  const addSaleFn = vi.fn();
+  const vm: Record<string, unknown> = {
+    activeWheelSlots: [
+      { name: "Pack Prize", color: "#f55", cost: 8, tier: "t1", packsCount: 3, deductionType: "packs", isChase: false }
+    ],
+    wheelSpinCounts: [0],
+    wheelTotalSpins: 0,
+    activeWheelConfig: { id: 1, spinPrice: 10, tiers: [{ id: "t1", boundLotId: 42 }] },
+    addWheelSaleToLot: addSaleFn,
+    lots: [{
+      id: 42,
+      name: "Bulk Lot",
+      boxesPurchased: 1,
+      packsPerBox: 2
+    }],
+    wheelSkippedDeductions: [],
+    activeWheelConfigId: 1,
+    loadSalesForLotId: vi.fn(() => []),
+    saveWheelSession: vi.fn()
+  };
+
+  WheelWindow.methods!.recordSpinResult.call(vm as never, 0);
+  assert.equal(addSaleFn.mock.calls.length, 0);
+  assert.equal((vm.wheelSkippedDeductions as unknown[]).length, 1);
+  assert.match(String(vm.wheelInventoryWarning), /only 2 remain/i);
+});
+
+test("getSinglesItemsForTier filters sold-out singles entries", () => {
+  const tier = { boundLotId: 42 } as never;
+  const vm: Record<string, unknown> = {
+    lots: [{
+      id: 42,
+      name: "Singles",
+      lotType: "singles",
+      singlesPurchases: [
+        { id: 1, item: "Available Card", quantity: 2, cost: 5, marketValue: 6 },
+        { id: 2, item: "Sold Out Card", quantity: 1, cost: 5, marketValue: 6 }
+      ]
+    }],
+    loadSalesForLotId: vi.fn(() => [{
+      id: 200,
+      type: "wheel",
+      quantity: 1,
+      packsCount: 1,
+      price: 10,
+      buyerShipping: 0,
+      date: "2026-03-25",
+      singlesPurchaseEntryId: 2
+    }])
+  };
+
+  const items = WheelWindow.methods!.getSinglesItemsForTier.call(vm as never, tier);
+  assert.equal(items.some((item: { value: number | null }) => item.value === 2), false);
+  assert.equal(items.some((item: { value: number | null }) => item.value === 1), true);
+});
+
+test("tierSourceItems excludes bulk lots with no remaining packs even if not marked complete", () => {
+  const vm: Record<string, unknown> = {
+    lots: [
+      { id: 10, name: "Empty Bulk", lotType: "bulk", boxesPurchased: 1, packsPerBox: 2, isComplete: false },
+      { id: 11, name: "Live Bulk", lotType: "bulk", boxesPurchased: 1, packsPerBox: 4, isComplete: false }
+    ],
+    loadSalesForLotId: vi.fn((lotId: number) => lotId === 10
+      ? [{
+        id: 1,
+        type: "wheel",
+        quantity: 2,
+        packsCount: 2,
+        price: 10,
+        buyerShipping: 0,
+        date: "2026-03-25"
+      }]
+      : []),
+    sales: [],
+    currentLotId: null
+  };
+
+  const items = WheelWindow.computed!.tierSourceItems.call(vm as never);
+  assert.equal(items.some((item: { value: number | null }) => item.value === 10), false);
+  assert.equal(items.some((item: { value: number | null }) => item.value === 11), true);
+});
+
+test("tierSourceItems excludes sold-out singles lots even if not marked complete", () => {
+  const vm: Record<string, unknown> = {
+    lots: [
+      {
+        id: 20,
+        name: "Sold Out Singles",
+        lotType: "singles",
+        isComplete: false,
+        singlesPurchases: [{ id: 201, item: "A", quantity: 1, cost: 5, marketValue: 6 }]
+      },
+      {
+        id: 21,
+        name: "Live Singles",
+        lotType: "singles",
+        isComplete: false,
+        singlesPurchases: [{ id: 211, item: "B", quantity: 2, cost: 5, marketValue: 6 }]
+      }
+    ],
+    loadSalesForLotId: vi.fn((lotId: number) => lotId === 20
+      ? [{
+        id: 2,
+        type: "wheel",
+        quantity: 1,
+        packsCount: 1,
+        price: 10,
+        buyerShipping: 0,
+        date: "2026-03-25",
+        singlesPurchaseEntryId: 201
+      }]
+      : []),
+    sales: [],
+    currentLotId: null
+  };
+
+  const items = WheelWindow.computed!.tierSourceItems.call(vm as never);
+  assert.equal(items.some((item: { value: number | null }) => item.value === 20), false);
+  assert.equal(items.some((item: { value: number | null }) => item.value === 21), true);
+});
+
+test("tierSourceItems does not include a manual null option", () => {
+  const vm: Record<string, unknown> = {
+    lots: [
+      { id: 10, name: "Bulk Lot", lotType: "bulk", boxesPurchased: 1, packsPerBox: 4 }
+    ],
+    loadSalesForLotId: vi.fn(() => []),
+    sales: [],
+    currentLotId: null
+  };
+
+  const items = WheelWindow.computed!.tierSourceItems.call(vm as never);
+  assert.equal(items.some((item: { value: number | null }) => item.value == null), false);
+  assert.equal(items[0]!.value, 10);
+});
+
+test("addTier leaves source blank when current lot has no remaining inventory", () => {
+  const vm: Record<string, unknown> = {
+    editingWheelConfig: {
+      id: 1,
+      name: "Wheel",
+      spinPrice: 10,
+      targetMargin: 40,
+      createdAt: "",
+      tiers: []
+    },
+    currentLotId: 42,
+    currentLotCostPerPack: 7,
+    lots: [
+      { id: 42, name: "Dead Bulk", lotType: "bulk", boxesPurchased: 1, packsPerBox: 2 }
+    ],
+    loadSalesForLotId: vi.fn(() => [{
+      id: 1,
+      type: "wheel",
+      quantity: 2,
+      packsCount: 2,
+      price: 10,
+      buyerShipping: 0,
+      date: "2026-03-26"
+    }])
+  };
+
+  WheelWindow.methods!.addTier.call(vm as never);
+  const tier = (vm.editingWheelConfig as WheelConfig).tiers[0]!;
+  assert.equal(tier.boundLotId, null);
+});
+
+test("singles tiers lock count to one and untracked sale resets cost to zero", () => {
+  const vm: Record<string, unknown> = {
+    lots: [{
+      id: 42,
+      name: "Singles",
+      lotType: "singles",
+      singlesPurchases: [{ id: 7, item: "Hellish Blizzard", cost: 25, quantity: 1, marketValue: 30 }]
+    }]
+  };
+  const tier: WheelConfig["tiers"][number] = {
+    id: "t1",
+    label: "Tier",
+    color: "#09f",
+    slots: 1,
+    costPerTier: 99,
+    packsCount: 3,
+    deductionType: "packs",
+    boundLotId: null,
+    boundSinglesId: null,
+    sets: []
+  };
+
+  WheelWindow.methods!.onTierLotChange.call(vm as never, tier as never, 42);
+  assert.equal(tier.deductionType, "singles");
+  assert.equal(tier.packsCount, 1);
+  assert.equal(tier.costPerTier, 0);
+
+  WheelWindow.methods!.onTierSinglesChange.call(vm as never, tier as never, 7);
+  assert.equal(tier.packsCount, 1);
+  assert.equal(tier.costPerTier, 25);
+
+  WheelWindow.methods!.onTierSinglesChange.call(vm as never, tier as never, null);
+  assert.equal(tier.packsCount, 1);
+  assert.equal(tier.costPerTier, 0);
 });
 
 test("confirmChaseReplacement preserves session cost via adjustment", () => {
@@ -783,6 +1399,34 @@ test("canApplyWheelConfig returns false with no tiers", () => {
     }
   };
   assert.equal(WheelWindow.computed!.canApplyWheelConfig.call(vm as never), false);
+});
+
+test("handleWheelModeChange asks for confirmation before switching to live", () => {
+  const vm: Record<string, unknown> = {
+    wheelMode: "config",
+    wheelLiveConfirmDialog: false,
+    wheelRequestedMode: null
+  };
+
+  WheelWindow.methods!.handleWheelModeChange.call(vm as never, "live");
+
+  assert.equal(vm.wheelMode, "config");
+  assert.equal(vm.wheelLiveConfirmDialog, true);
+  assert.equal(vm.wheelRequestedMode, "live");
+});
+
+test("confirmWheelModeChange applies the requested live mode", () => {
+  const vm: Record<string, unknown> = {
+    wheelMode: "config",
+    wheelLiveConfirmDialog: true,
+    wheelRequestedMode: "live"
+  };
+
+  WheelWindow.methods!.confirmWheelModeChange.call(vm as never);
+
+  assert.equal(vm.wheelMode, "live");
+  assert.equal(vm.wheelLiveConfirmDialog, false);
+  assert.equal(vm.wheelRequestedMode, null);
 });
 
 // ── Session persistence ─────────────────────────────────────────

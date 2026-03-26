@@ -1,598 +1,559 @@
 <div class="wheel-layout pa-2" :class="{ 'wheel-presentation': wheelPresentationMode }">
 
-  <!-- CONFIG PANEL -->
-  <v-card v-show="!wheelPresentationMode && wheelMode === 'config'" class="wheel-config-panel" variant="outlined">
-    <v-card-title class="wheel-panel-title">
-      <div class="wheel-panel-heading">
-        <v-icon start size="small">mdi-cog</v-icon>
-        Wheel Config
-      </div>
-      <div class="wheel-panel-subtitle">Build the prize mix, source lots, and margin target.</div>
-    </v-card-title>
-    <v-card-text>
-
-      <!-- Wheel Selector -->
-      <v-select
-        v-model="activeWheelConfigId"
-        :items="wheelConfigItems"
-        item-title="title"
-        item-value="value"
-        label="Active Wheel"
-        variant="outlined"
-        density="compact"
-        hide-details="auto"
-        class="mb-3"
-        @update:model-value="loadWheelConfig"
-      >
-        <template #append>
-          <v-btn icon="mdi-plus" size="x-small" variant="text" title="New wheel" @click="createNewWheelConfig"></v-btn>
-        </template>
-      </v-select>
-
-      <template v-if="editingWheelConfig">
-        <v-text-field
-          v-model="editingWheelConfig.name"
-          label="Wheel Name"
-          variant="outlined"
-          density="compact"
-          hide-details="auto"
-          class="mb-3"
-        ></v-text-field>
-
-        <!-- Global Settings -->
-        <div class="wheel-section-title">Global Settings</div>
-        <v-row dense class="mb-2">
-          <v-col cols="6">
-            <v-text-field
-              v-model.number="editingWheelConfig.spinPrice"
-              label="Spin Price ($)"
-              type="number"
-              min="0.5"
-              step="0.5"
-              variant="outlined"
-              density="compact"
-              hide-details="auto"
-            ></v-text-field>
-          </v-col>
-          <v-col cols="6">
-            <v-text-field
-              v-model.number="editingWheelConfig.targetMargin"
-              label="Target Margin (%)"
-              type="number"
-              min="0"
-              max="100"
-              step="5"
-              variant="outlined"
-              density="compact"
-              hide-details="auto"
-            ></v-text-field>
-          </v-col>
-        </v-row>
-
-        <v-divider class="my-2"></v-divider>
-
-        <!-- Prize Tiers -->
-        <div class="wheel-section-title">Prize Tiers — Slots &amp; Cost</div>
-
-        <!-- Column Headers -->
-        <div class="wheel-tier-headers">
-          <span class="wheel-tier-hdr-name"></span>
-          <span class="wheel-tier-hdr-slots">Slots</span>
-          <span class="wheel-tier-hdr-packs">Items</span>
-          <span class="wheel-tier-hdr-cost">Cost $</span>
-          <span class="wheel-tier-hdr-action"></span>
-        </div>
-
-        <div v-for="(tier, tIndex) in editingWheelConfig.tiers" :key="tier.id" class="wheel-tier-block">
-          <div class="wheel-tier-row">
-            <div class="wheel-tier-name-cell">
-              <div class="wheel-tier-dot" :style="{ background: tier.color }"></div>
-              <input
-                v-model="tier.label"
-                class="wheel-tier-label-input"
-                spellcheck="false"
-              />
+    <!-- CONFIG PANEL -->
+    <v-card v-show="!wheelPresentationMode && wheelMode === 'config'" class="wheel-config-panel" variant="outlined">
+        <v-card-title class="wheel-panel-title">
+            <div class="wheel-panel-heading">
+                <v-icon start size="small">mdi-cog</v-icon>
+                Wheel Config
             </div>
-            <input
-              v-model.number="tier.slots"
-              type="number"
-              class="wheel-tier-num-input"
-              min="0"
-              max="20"
-              title="Slots on wheel"
-            />
-            <input
-              v-model.number="tier.packsCount"
-              type="number"
-              class="wheel-tier-num-input"
-              min="0"
-              title="Items deducted on win"
-              @change="onTierPacksChange(tier)"
-            />
-            <input
-              v-model.number="tier.costPerTier"
-              type="number"
-              class="wheel-tier-cost-input"
-              min="0"
-              step="0.25"
-              title="Cost per tier prize"
-            />
-            <v-btn icon="mdi-close" size="x-small" variant="text" color="error" density="compact" @click="removeTier(tIndex)"></v-btn>
-          </div>
-          <div class="wheel-tier-source-row">
-            <v-select
-              :model-value="tier.boundLotId"
-              :items="tierSourceItems"
-              item-title="title"
-              item-value="value"
-              placeholder="Source lot…"
-              variant="plain"
-              density="compact"
-              hide-details="auto"
-              class="wheel-tier-source-select"
-              @update:model-value="onTierLotChange(tier, $event)"
-            >
-              <template #item="{ props, item }">
-                <div>
-                  <div v-if="item.raw.groupLabel" class="lot-selector-group-label">
-                    <v-icon size="14" class="mr-1">
-                      {{ item.raw.lotType === 'singles' ? 'mdi-cards-outline' : 'mdi-cube-outline' }}
-                    </v-icon>
-                    {{ item.raw.groupLabel }}
-                  </div>
-                  <v-list-item v-bind="props" :title="undefined" :subtitle="undefined">
-                    <v-list-item-title class="text-body-2">{{ item.raw.title }}</v-list-item-title>
-                  </v-list-item>
-                </div>
-              </template>
+            <div class="wheel-panel-subtitle">Build the prize mix, source lots, and margin target.</div>
+        </v-card-title>
+        <v-card-text>
+
+            <!-- Wheel Selector -->
+            <v-select v-model="activeWheelConfigId" :items="wheelConfigItems" item-title="title" item-value="value"
+                label="Active Wheel" variant="outlined" density="compact" hide-details="auto" class="mb-3"
+                @update:model-value="loadWheelConfig">
+                <template #append>
+                    <v-btn icon="mdi-plus" size="x-small" variant="text" title="New wheel"
+                        @click="createNewWheelConfig"></v-btn>
+                </template>
             </v-select>
-            <v-select
-              v-if="isBoundLotSingles(tier)"
-              :model-value="tier.boundSinglesId"
-              :items="getSinglesItemsForTier(tier)"
-              item-title="title"
-              item-value="value"
-              placeholder="Pick item…"
-              variant="plain"
-              density="compact"
-              hide-details="auto"
-              class="wheel-tier-source-select"
-              @update:model-value="onTierSinglesChange(tier, $event)"
-            >
-              <template #item="{ props, item }">
-                <v-list-item v-bind="props" :title="undefined" :subtitle="undefined">
-                  <template #prepend>
-                    <div class="wheel-card-thumb" v-if="item.raw.image">
-                      <img :src="item.raw.image" alt="" loading="lazy">
+
+            <template v-if="editingWheelConfig">
+                <v-text-field v-model="editingWheelConfig.name" label="Wheel Name" variant="outlined" density="compact"
+                    hide-details="auto" class="mb-3"></v-text-field>
+
+                <!-- Global Settings -->
+                <div class="wheel-section-title">Global Settings</div>
+                <v-row dense class="mb-2">
+                    <v-col cols="6">
+                        <v-text-field v-model.number="editingWheelConfig.spinPrice" label="Spin Price ($)" type="number"
+                            min="0.5" step="0.5" variant="outlined" density="compact"
+                            hide-details="auto"></v-text-field>
+                    </v-col>
+                    <v-col cols="6">
+                        <v-text-field v-model.number="editingWheelConfig.targetMargin" label="Target Margin (%)"
+                            type="number" min="0" max="100" step="5" variant="outlined" density="compact"
+                            hide-details="auto"></v-text-field>
+                    </v-col>
+                </v-row>
+
+                <div class="wheel-global-kpi">
+                    <div class="wheel-global-kpi__label">Expected Margin</div>
+                    <div class="wheel-global-kpi__value" :style="{ color: expectedMarginColor }">
+                        {{ expectedMarginDisplay }}
                     </div>
-                    <v-icon v-else-if="item.raw.value != null" size="20" class="mr-2">mdi-cards-outline</v-icon>
-                  </template>
-                  <v-list-item-title class="text-body-2">{{ item.raw.title }}</v-list-item-title>
-                  <v-list-item-subtitle v-if="item.raw.cardNumber" class="text-caption">#{{ item.raw.cardNumber }}</v-list-item-subtitle>
-                </v-list-item>
-              </template>
+                    <div class="wheel-global-kpi__hint">{{ expectedMarginHint }}</div>
+                </div>
+
+                <v-divider class="my-2"></v-divider>
+
+                <!-- Prize Tiers -->
+                <div class="wheel-section-title">Wheel Tiers</div>
+
+                <!-- Column Headers -->
+                <div class="wheel-tier-headers">
+                    <span class="wheel-tier-hdr-name"></span>
+                    <span class="wheel-tier-hdr-slots">Slots</span>
+                    <span class="wheel-tier-hdr-packs">Count</span>
+                    <span class="wheel-tier-hdr-cost">Cost $</span>
+                    <span class="wheel-tier-hdr-action"></span>
+                </div>
+
+                <div v-for="(tier, tIndex) in editingWheelConfig.tiers" :key="tier.id" class="wheel-tier-block">
+                    <div class="wheel-tier-row">
+                        <div class="wheel-tier-name-cell">
+                            <div class="wheel-tier-dot" :style="{ background: tier.color }"></div>
+                            <input v-model="tier.label" class="wheel-tier-label-input" spellcheck="false" />
+                        </div>
+                        <input v-model.number="tier.slots" type="number" class="wheel-tier-num-input" min="0" max="20"
+                            title="Slots on wheel" />
+                        <input v-model.number="tier.packsCount" type="number" class="wheel-tier-num-input"
+                            :min="isBoundLotSingles(tier) ? 1 : 0" :max="isBoundLotSingles(tier) ? 1 : undefined"
+                            :disabled="isBoundLotSingles(tier)"
+                            :title="isBoundLotSingles(tier) ? 'Singles tiers always deduct 1 card per hit' : 'Units deducted on hit'"
+                            @change="onTierPacksChange(tier)" />
+                        <input v-model.number="tier.costPerTier" type="number" class="wheel-tier-cost-input" min="0"
+                            step="0.25" title="Cost per tier prize" />
+                        <v-btn icon="mdi-close" size="x-small" variant="text" color="error" density="compact"
+                            @click="removeTier(tIndex)"></v-btn>
+                    </div>
+                    <div class="wheel-tier-source-row">
+                        <div class="wheel-tier-source-field">
+                            <div class="wheel-tier-source-label">Source Lot</div>
+                            <v-select :model-value="tier.boundLotId" :items="tierSourceItems" item-title="title"
+                                item-value="value" placeholder="Source lot…" variant="plain" density="compact"
+                                hide-details="auto" class="wheel-tier-source-select"
+                                @update:model-value="onTierLotChange(tier, $event)">
+                                <template #item="{ props, item }">
+                                    <div>
+                                        <div v-if="item.raw.groupLabel" class="lot-selector-group-label">
+                                            <v-icon size="14" class="mr-1">
+                                                {{ item.raw.lotType === 'singles' ? 'mdi-cards-outline' :
+                                                'mdi-cube-outline' }}
+                                            </v-icon>
+                                            {{ item.raw.groupLabel }}
+                                        </div>
+                                        <v-list-item v-bind="props" :title="undefined" :subtitle="undefined">
+                                            <v-list-item-title class="text-body-2">{{ item.raw.title
+                                                }}</v-list-item-title>
+                                        </v-list-item>
+                                    </div>
+                                </template>
+                            </v-select>
+                        </div>
+                        <div v-if="isBoundLotSingles(tier)" class="wheel-tier-source-field">
+                            <div class="wheel-tier-source-label">Prize Item</div>
+                            <v-select :model-value="tier.boundSinglesId" :items="getSinglesItemsForTier(tier)"
+                                item-title="title" item-value="value" placeholder="Pick item…" variant="plain"
+                                density="compact" hide-details="auto" class="wheel-tier-source-select"
+                                @update:model-value="onTierSinglesChange(tier, $event)">
+                                <template #item="{ props, item }">
+                                    <v-list-item v-bind="props" :title="undefined" :subtitle="undefined">
+                                        <template #prepend>
+                                            <div class="wheel-card-thumb" v-if="item.raw.image">
+                                                <img :src="item.raw.image" alt="" loading="lazy">
+                                            </div>
+                                            <v-icon v-else-if="item.raw.value != null" size="20"
+                                                class="mr-2">mdi-cards-outline</v-icon>
+                                        </template>
+                                        <v-list-item-title class="text-body-2">{{ item.raw.title }}</v-list-item-title>
+                                        <v-list-item-subtitle class="text-caption">
+                                            <template v-if="item.raw.cardNumber">#{{ item.raw.cardNumber }}</template>
+                                            <template v-if="item.raw.stockLabel">
+                                                <span v-if="item.raw.cardNumber"> • </span>{{ item.raw.stockLabel }}
+                                            </template>
+                                        </v-list-item-subtitle>
+                                    </v-list-item>
+                                </template>
+                            </v-select>
+                        </div>
+                        <v-btn :icon="tier.isChase ? 'mdi-star' : 'mdi-star-outline'" size="x-small" variant="text"
+                            :color="tier.isChase ? 'amber' : (canTierBeChase(tier) ? 'grey' : 'grey-darken-1')"
+                            density="compact" :disabled="!canTierBeChase(tier) && !tier.isChase"
+                            :title="canTierBeChase(tier) ? 'Chase item — replaced after being won' : 'Pick a specific singles item to make this a chase tier'"
+                            @click="toggleTierChase(tier)"></v-btn>
+                    </div>
+                    <div v-if="getTierInventoryMeta(tier)" class="wheel-tier-inventory"
+                        :class="{ 'wheel-tier-inventory--warning': getTierInventoryMeta(tier)?.warning }">
+                        {{ getTierInventoryMeta(tier)?.text }}
+                    </div>
+                </div>
+
+                <v-btn size="small" variant="text" color="primary" prepend-icon="mdi-plus" class="mt-1 mb-3"
+                    @click="addTier">
+                    Add Tier
+                </v-btn>
+
+                <v-btn v-if="wheelConfigs.length > 1" block variant="text" color="error" size="small" class="mt-2"
+                    @click="wheelConfirmAction = 'delete'; wheelConfirmDialog = true">
+                    Delete This Wheel
+                </v-btn>
+            </template>
+
+            <v-alert v-else type="info" variant="tonal" density="compact" class="mt-2">
+                Create a wheel configuration to get started.
+            </v-alert>
+        </v-card-text>
+    </v-card>
+
+    <!-- SPINNER PANEL -->
+    <div class="wheel-spinner-panel" ref="wheelSpinnerPanel">
+        <div class="wheel-stage-shell" :class="{ 'wheel-stage-shell--fullscreen': wheelPresentationMode }">
+            <div class="wheel-stage-topbar">
+                <div class="wheel-stage-meta">
+                    <div class="wheel-stage-title">{{ wheelStageTitle }}</div>
+                    <div class="wheel-stage-pills">
+                        <span class="wheel-stage-pill">{{ wheelStageModeLabel }}</span>
+                        <span class="wheel-stage-pill">{{ wheelStageSlotsLabel }}</span>
+                        <span v-if="wheelDisplayConfig" class="wheel-stage-pill">{{ wheelStageSpinPriceLabel }}</span>
+                    </div>
+                </div>
+                <div class="wheel-stage-actions">
+                    <v-btn-toggle :model-value="wheelMode" mandatory density="comfortable" divided
+                        class="wheel-mode-toggle" @update:model-value="handleWheelModeChange">
+                        <v-btn value="config" size="small"
+                            :class="{ 'wheel-mode-toggle__btn--active-config': wheelMode === 'config' }">
+                            <v-icon start size="small">mdi-tune</v-icon>
+                            Config
+                        </v-btn>
+                        <v-btn value="live" size="small"
+                            :class="{ 'wheel-mode-toggle__btn--active-live': wheelMode === 'live' }">
+                            <v-icon start size="small">mdi-broadcast</v-icon>
+                            Live
+                        </v-btn>
+                    </v-btn-toggle>
+                    <v-btn size="x-small"
+                        :icon="wheelPresentationMode ? 'mdi-arrow-collapse-all' : 'mdi-arrow-expand-all'" variant="text"
+                        :title="wheelPresentationToggleTitle"
+                        class="wheel-presentation-toggle"
+                        @click="wheelPresentationMode = !wheelPresentationMode"></v-btn>
+                </div>
+            </div>
+
+            <div class="wheel-outer" ref="wheelOuter">
+                <transition name="wheel-celebration-pop">
+                    <div v-if="wheelCelebrationVisible" :key="wheelCelebrationNonce" class="wheel-celebration"
+                        :class="{ 'wheel-celebration--preview': wheelCelebrationPreview }">
+                        <div class="wheel-celebration-burst"></div>
+                        <div class="wheel-celebration-ring"></div>
+                        <div class="wheel-celebration-stars">
+                            <span class="wheel-celebration-star wheel-celebration-star--1">★</span>
+                            <span class="wheel-celebration-star wheel-celebration-star--2">★</span>
+                            <span class="wheel-celebration-star wheel-celebration-star--3">★</span>
+                            <span class="wheel-celebration-star wheel-celebration-star--4">★</span>
+                        </div>
+                        <div class="wheel-celebration-copy"
+                            :style="{ '--wheel-celebration-color': wheelCelebrationColor }">
+                            <div v-if="wheelCelebrationImage" class="wheel-celebration-image">
+                                <img :src="wheelCelebrationImage" alt="" loading="eager">
+                            </div>
+                            <div class="wheel-celebration-kicker">{{ wheelCelebrationKicker }}</div>
+                            <div class="wheel-celebration-title">{{ wheelCelebrationLabel }}</div>
+                        </div>
+                    </div>
+                </transition>
+                <canvas ref="wheelCanvas" class="wheel-canvas" :width="wheelCanvasSize"
+                    :height="wheelCanvasSize"></canvas>
+                <div class="wheel-pointer"></div>
+                <div class="wheel-center-cap">SPIN</div>
+            </div>
+
+            <v-btn size="large" color="primary" variant="elevated" :disabled="wheelPrimarySpinDisabled"
+                @click="runWheelPrimarySpin()" class="wheel-spin-btn">
+                <v-icon start>{{ wheelSpinButtonIcon }}</v-icon>
+                {{ wheelSpinButtonLabel }}
+            </v-btn>
+            <div v-if="hasPendingWheelChanges" class="wheel-pending-actions">
+                <v-menu v-model="wheelPendingMenuOpen" location="bottom center" :close-on-content-click="false"
+                    offset="10" content-class="wheel-pending-menu">
+                    <template #activator="{ props }">
+                        <v-chip v-bind="props" color="warning" variant="tonal" size="small" class="wheel-pending-chip">
+                            <v-icon start size="x-small">mdi-circle-medium</v-icon>
+                            Pending changes
+                        </v-chip>
+                    </template>
+                    <v-card class="wheel-pending-card" variant="outlined">
+                        <v-card-text class="wheel-pending-card__body">
+                            <div class="wheel-pending-card__title">Pending changes</div>
+                            <div class="wheel-pending-card__text">
+                                Config edits save automatically. Rebuild applies them to the wheel.
+                            </div>
+                            <v-alert
+                                v-if="editingWheelConfig && editingWheelConfig.tiers.some(t => t.boundLotId == null)"
+                                type="warning" variant="tonal" density="compact" class="mt-2">
+                                Every tier needs a source lot before you can rebuild.
+                            </v-alert>
+                        </v-card-text>
+                        <v-card-actions class="wheel-pending-card__actions">
+                            <v-btn color="primary" variant="elevated" block :disabled="!canApplyWheelConfig"
+                                @click="wheelPendingMenuOpen = false; wheelConfirmAction = 'apply'; wheelConfirmDialog = true">
+                                <v-icon start>mdi-refresh</v-icon>
+                                Rebuild Wheel
+                            </v-btn>
+                        </v-card-actions>
+                    </v-card>
+                </v-menu>
+            </div>
+            <div class="wheel-stage-caption">
+                {{ wheelStageCaption }}
+            </div>
+
+            <v-alert v-if="wheelSpinBlockedReason" type="warning" variant="tonal" density="compact"
+                class="wheel-inventory-warning">
+                {{ wheelSpinBlockedReason }}
+            </v-alert>
+
+            <v-alert v-if="wheelInventoryWarning" type="warning" variant="tonal" density="compact"
+                class="wheel-inventory-warning">
+                {{ wheelInventoryWarning }}
+            </v-alert>
+
+            <!-- Result Banner -->
+            <v-card v-if="wheelLastResult" variant="outlined" class="pa-3 text-center wheel-result-banner"
+                :style="{ borderLeftColor: wheelLastResultColor, borderLeftWidth: '4px' }">
+                <span class="text-body-1 font-weight-medium">{{ wheelLastResult }}</span>
+            </v-card>
+
+            <!-- Provably Fair Verification -->
+            <div v-if="wheelSpinHash" class="wheel-fairness">
+                <div class="wheel-fairness-header" @click="!wheelSpinning && (wheelShowSeed = !wheelShowSeed)">
+                    <v-icon size="x-small" :color="wheelFairnessIconColor" class="mr-1">
+                        {{ wheelFairnessIcon }}
+                    </v-icon>
+                    <span class="text-caption font-weight-medium">
+                        {{ wheelFairnessTitle }}
+                    </span>
+                    <v-icon v-if="!wheelSpinning" size="x-small" class="ml-auto">{{ wheelFairnessChevron }}</v-icon>
+                </div>
+                <code class="wheel-fairness-code text-caption mt-1">{{ wheelSpinHash }}</code>
+                <template v-if="wheelShowSeed && !wheelSpinning">
+                    <code class="wheel-fairness-code text-caption mt-1">{{ wheelSpinSeed }}</code>
+                    <div class="text-caption text-medium-emphasis mt-1">SHA-256 of the code above = the hash.</div>
+                </template>
+            </div>
+        </div>
+
+        <!-- Chase Replacement (shown after a chase tier is won and sale confirmed) -->
+        <v-card v-if="wheelChaseDialog" variant="outlined" class="pa-3 wheel-lot-select-card">
+            <div class="text-subtitle-2 mb-2">
+                <v-icon start size="small" color="amber">mdi-star</v-icon>
+                Chase won! Replace with:
+            </div>
+            <v-select v-model="wheelChaseReplacementSinglesId" :items="getChaseReplacementItems()" item-title="title"
+                item-value="value" label="Pick replacement item" variant="outlined" density="compact"
+                hide-details="auto" class="mb-2">
+                <template #item="{ props, item }">
+                    <v-list-item v-bind="props" :title="undefined" :subtitle="undefined">
+                        <template #prepend>
+                            <div class="wheel-card-thumb" v-if="item.raw.image">
+                                <img :src="item.raw.image" alt="" loading="lazy">
+                            </div>
+                            <v-icon v-else size="20" class="mr-2">mdi-cards-outline</v-icon>
+                        </template>
+                        <v-list-item-title class="text-body-2">{{ item.raw.title }}</v-list-item-title>
+                        <v-list-item-subtitle class="text-caption">
+                            <template v-if="item.raw.cardNumber">#{{ item.raw.cardNumber }}</template>
+                            <template v-if="item.raw.stockLabel">
+                                <span v-if="item.raw.cardNumber"> • </span>{{ item.raw.stockLabel }}
+                            </template>
+                        </v-list-item-subtitle>
+                    </v-list-item>
+                </template>
+                <template #selection="{ item }">
+                    <div class="wheel-chase-selection">
+                        <div class="wheel-card-thumb" v-if="item.raw.image">
+                            <img :src="item.raw.image" alt="" loading="lazy">
+                        </div>
+                        <div class="wheel-chase-selection-text">
+                            <div class="text-body-2">{{ item.raw.title }}</div>
+                            <div class="text-caption" style="opacity: 0.6">
+                                <template v-if="item.raw.cardNumber">#{{ item.raw.cardNumber }}</template>
+                                <template v-if="item.raw.stockLabel">
+                                    <span v-if="item.raw.cardNumber"> • </span>{{ item.raw.stockLabel }}
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                </template>
             </v-select>
-            <v-btn
-              :icon="tier.isChase ? 'mdi-star' : 'mdi-star-outline'"
-              size="x-small"
-              variant="text"
-              :color="tier.isChase ? 'amber' : 'grey'"
-              density="compact"
-              title="Chase item — replaced after being won"
-              @click="tier.isChase = !tier.isChase"
-            ></v-btn>
-          </div>
-        </div>
+            <v-row dense>
+                <v-col cols="6">
+                    <v-btn block color="amber" variant="elevated" :disabled="wheelChaseReplacementSinglesId == null"
+                        @click="confirmChaseReplacement">
+                        <v-icon start>mdi-star</v-icon>
+                        Replace
+                    </v-btn>
+                </v-col>
+                <v-col cols="6">
+                    <v-btn block variant="text" :disabled="!canKeepChase()" @click="keepChase">
+                        Keep
+                    </v-btn>
+                </v-col>
+            </v-row>
+        </v-card>
 
-        <v-btn size="small" variant="text" color="primary" prepend-icon="mdi-plus" class="mt-1 mb-3" @click="addTier">
-          Add Tier
-        </v-btn>
-
-        <v-divider class="my-2"></v-divider>
-
-        <!-- Margin Preview -->
-        <div class="wheel-margin-preview">
-          <div class="wheel-margin-preview-value" :style="{ color: expectedMarginColor }">
-            {{ expectedMarginDisplay }}
-          </div>
-          <div class="wheel-margin-preview-label">Expected Margin</div>
-          <div class="wheel-margin-preview-hint">{{ expectedMarginHint }}</div>
-        </div>
-
-        <!-- Apply Button -->
-        <v-alert v-if="editingWheelConfig && editingWheelConfig.tiers.some(t => t.boundLotId == null)" type="warning" variant="tonal" density="compact" class="mb-2">
-          Every tier needs a source lot before you can apply.
-        </v-alert>
-        <v-btn
-          block
-          color="primary"
-          variant="elevated"
-          :disabled="!canApplyWheelConfig"
-          @click="wheelConfirmAction = 'apply'; wheelConfirmDialog = true"
-        >
-          <v-icon start>mdi-check</v-icon>
-          Apply &amp; Rebuild
-        </v-btn>
-
-        <v-btn
-          v-if="wheelConfigs.length > 1"
-          block
-          variant="text"
-          color="error"
-          size="small"
-          class="mt-2"
-          @click="wheelConfirmAction = 'delete'; wheelConfirmDialog = true"
-        >
-          Delete This Wheel
-        </v-btn>
-      </template>
-
-      <v-alert v-else type="info" variant="tonal" density="compact" class="mt-2">
-        Create a wheel configuration to get started.
-      </v-alert>
-    </v-card-text>
-  </v-card>
-
-  <!-- SPINNER PANEL -->
-  <div class="wheel-spinner-panel" ref="wheelSpinnerPanel">
-    <div class="wheel-stage-shell" :class="{ 'wheel-stage-shell--fullscreen': wheelPresentationMode }">
-      <div class="wheel-stage-topbar">
-        <div class="wheel-stage-meta">
-          <div class="wheel-stage-title">{{ activeWheelConfig?.name || 'Wheel Stage' }}</div>
-          <div class="wheel-stage-pills">
-            <span class="wheel-stage-pill">{{ wheelMode === 'config' ? 'config mode' : 'live mode' }}</span>
-            <span class="wheel-stage-pill">{{ activeWheelSlots.length || 0 }} slots</span>
-            <span v-if="activeWheelConfig" class="wheel-stage-pill">${{ Number(activeWheelConfig.spinPrice || 0).toFixed(2) }}/spin</span>
-          </div>
-        </div>
-        <div class="wheel-stage-actions">
-          <v-btn-toggle
-            v-model="wheelMode"
-            mandatory
-            density="comfortable"
-            divided
-            class="wheel-mode-toggle"
-          >
-            <v-btn value="config" size="small">
-              <v-icon start size="small">mdi-tune</v-icon>
-              Config
-            </v-btn>
-            <v-btn value="live" size="small">
-              <v-icon start size="small">mdi-broadcast</v-icon>
-              Live
-            </v-btn>
-          </v-btn-toggle>
-          <v-btn
-            size="x-small"
-            :icon="wheelPresentationMode ? 'mdi-arrow-collapse-all' : 'mdi-arrow-expand-all'"
-            variant="text"
-            :title="wheelPresentationMode ? 'Show config & tracker' : 'Presentation mode'"
-            class="wheel-presentation-toggle"
-            @click="wheelPresentationMode = !wheelPresentationMode"
-          ></v-btn>
-        </div>
-      </div>
-
-      <div class="wheel-outer" ref="wheelOuter">
-        <transition name="wheel-celebration-pop">
-          <div
-            v-if="wheelCelebrationVisible"
-            :key="wheelCelebrationNonce"
-            class="wheel-celebration"
-            :class="{ 'wheel-celebration--preview': wheelCelebrationPreview }"
-          >
-            <div class="wheel-celebration-burst"></div>
-            <div class="wheel-celebration-ring"></div>
-            <div class="wheel-celebration-stars">
-              <span class="wheel-celebration-star wheel-celebration-star--1">★</span>
-              <span class="wheel-celebration-star wheel-celebration-star--2">★</span>
-              <span class="wheel-celebration-star wheel-celebration-star--3">★</span>
-              <span class="wheel-celebration-star wheel-celebration-star--4">★</span>
+        <!-- Batch Deduction Panel (shown when ending session) -->
+        <v-card v-if="wheelEndingSession && wheelSkippedDeductions.length" variant="outlined"
+            class="pa-3 wheel-lot-select-card">
+            <div class="text-subtitle-2 mb-2">
+                <v-icon start size="small" color="warning">mdi-clipboard-list</v-icon>
+                {{ wheelSkippedDeductionsTitle }}
             </div>
-            <div class="wheel-celebration-copy" :style="{ '--wheel-celebration-color': wheelCelebrationColor }">
-              <div v-if="wheelCelebrationImage" class="wheel-celebration-image">
-                <img :src="wheelCelebrationImage" alt="" loading="eager">
-              </div>
-              <div class="wheel-celebration-kicker">{{ wheelCelebrationPreview ? 'Preview Chase Hit' : 'Chase Hit' }}</div>
-              <div class="wheel-celebration-title">{{ wheelCelebrationLabel }}</div>
+
+            <div class="wheel-batch-list">
+                <div v-for="(entry, bIdx) in wheelSkippedDeductions" :key="bIdx" class="wheel-batch-row">
+                    <div class="wheel-batch-slot">
+                        <div class="wheel-tier-dot" :style="{ background: entry.slotColor }"></div>
+                        <span class="text-caption font-weight-medium">#{{ entry.spinNumber }} {{ entry.slotName
+                            }}</span>
+                    </div>
+                    <v-select v-model="entry.selectedLotId" :items="lotItems" item-title="title" item-value="value"
+                        label="Lot" variant="outlined" density="compact" hide-details="auto"
+                        class="wheel-batch-lot-select"></v-select>
+                    <v-btn icon="mdi-check" size="x-small" variant="text" color="success"
+                        :disabled="!entry.selectedLotId" @click="confirmBatchSale(bIdx)"
+                        title="Record this sale"></v-btn>
+                    <v-btn icon="mdi-close" size="x-small" variant="text" color="error" @click="dismissBatchSale(bIdx)"
+                        title="Dismiss"></v-btn>
+                </div>
             </div>
-          </div>
-        </transition>
-        <canvas ref="wheelCanvas" class="wheel-canvas" :width="wheelCanvasSize" :height="wheelCanvasSize"></canvas>
-        <div class="wheel-pointer"></div>
-        <div class="wheel-center-cap">SPIN</div>
-      </div>
 
-      <v-btn
-        size="large"
-        color="primary"
-        variant="elevated"
-        :disabled="wheelSpinning || !activeWheelSlots.length || wheelEndingSession || wheelChaseDialog || (isWorkspaceScopeActive && !isCurrentWorkspaceOwner)"
-        @click="wheelMode === 'config' ? testSpinWheel() : spinWheel()"
-        class="wheel-spin-btn"
-      >
-        <v-icon start>{{ wheelMode === 'config' ? 'mdi-flask-outline' : 'mdi-lightning-bolt' }}</v-icon>
-        {{ wheelMode === 'config' ? 'Test Spin' : 'Spin' }}
-      </v-btn>
-      <div class="wheel-stage-caption">
-        {{ wheelMode === 'config'
-          ? 'Preview the wheel without recording sales, session counts, or realtime updates.'
-          : 'Run the live wheel and record session totals, sales, and workspace updates.' }}
-      </div>
-
-      <!-- Result Banner -->
-      <v-card
-        variant="outlined"
-        class="pa-3 text-center wheel-result-banner"
-        :style="{ borderLeftColor: wheelLastResultColor, borderLeftWidth: '4px' }"
-      >
-        <span class="text-body-1 font-weight-medium">{{ wheelLastResult || 'Configure & Apply to start!' }}</span>
-      </v-card>
-
-      <!-- Provably Fair Verification -->
-      <div v-if="wheelSpinHash" class="wheel-fairness">
-        <div class="wheel-fairness-header" @click="!wheelSpinning && (wheelShowSeed = !wheelShowSeed)">
-          <v-icon size="x-small" :color="wheelSpinning ? 'warning' : 'success'" class="mr-1">
-            {{ wheelSpinning ? 'mdi-lock' : 'mdi-shield-check' }}
-          </v-icon>
-          <span class="text-caption font-weight-medium">
-            {{ wheelSpinning ? 'Result Locked' : 'Verified Fair' }}
-          </span>
-          <v-icon v-if="!wheelSpinning" size="x-small" class="ml-auto">{{ wheelShowSeed ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
-        </div>
-        <code class="wheel-fairness-code text-caption mt-1">{{ wheelSpinHash }}</code>
-        <template v-if="wheelShowSeed && !wheelSpinning">
-          <code class="wheel-fairness-code text-caption mt-1">{{ wheelSpinSeed }}</code>
-          <div class="text-caption text-medium-emphasis mt-1">SHA-256 of the code above = the hash.</div>
-        </template>
-      </div>
+            <v-row dense class="mt-2">
+                <v-col cols="6">
+                    <v-btn block color="success" variant="elevated" size="small" @click="confirmAllBatchSales">
+                        <v-icon start size="small">mdi-check-all</v-icon>
+                        Record All
+                    </v-btn>
+                </v-col>
+                <v-col cols="6">
+                    <v-btn block variant="text" size="small" @click="cancelEndWheelSession">
+                        Cancel
+                    </v-btn>
+                </v-col>
+            </v-row>
+        </v-card>
     </div>
 
-    <!-- Chase Replacement (shown after a chase tier is won and sale confirmed) -->
-    <v-card
-      v-if="wheelChaseDialog"
-      variant="outlined"
-      class="pa-3 wheel-lot-select-card"
-    >
-      <div class="text-subtitle-2 mb-2">
-        <v-icon start size="small" color="amber">mdi-star</v-icon>
-        Chase won! Replace with:
-      </div>
-      <v-select
-        v-model="wheelChaseReplacementSinglesId"
-        :items="getChaseReplacementItems()"
-        item-title="title"
-        item-value="value"
-        label="Pick replacement item"
-        variant="outlined"
-        density="compact"
-        hide-details="auto"
-        class="mb-2"
-      >
-        <template #item="{ props, item }">
-          <v-list-item v-bind="props" :title="undefined" :subtitle="undefined">
-            <template #prepend>
-              <div class="wheel-card-thumb" v-if="item.raw.image">
-                <img :src="item.raw.image" alt="" loading="lazy">
-              </div>
-              <v-icon v-else size="20" class="mr-2">mdi-cards-outline</v-icon>
+    <!-- TRACKER PANEL -->
+    <v-card v-show="!wheelPresentationMode" class="wheel-tracker-panel" variant="outlined">
+        <v-card-title class="wheel-panel-title">
+            <div class="wheel-panel-heading">
+                <v-icon start size="small">mdi-chart-bar</v-icon>
+                Session Tracker
+            </div>
+            <div class="wheel-panel-subtitle">Monitor spins, revenue, prize cost, and margin live.</div>
+        </v-card-title>
+        <v-card-text>
+            <!-- Stats Grid -->
+            <v-row dense class="mb-3">
+                <v-col cols="6">
+                    <v-card variant="tonal" class="text-center pa-2">
+                        <div class="text-h6">{{ wheelTotalSpins }}</div>
+                        <div class="text-caption text-medium-emphasis">Spins</div>
+                    </v-card>
+                </v-col>
+                <v-col cols="6">
+                    <v-card variant="tonal" class="text-center pa-2">
+                        <div class="text-h6">${{ wheelSessionRevenue.toFixed(2) }}</div>
+                        <div class="text-caption text-medium-emphasis">Revenue</div>
+                    </v-card>
+                </v-col>
+                <v-col cols="6">
+                    <v-card variant="tonal" class="text-center pa-2">
+                        <div class="text-h6 text-error">${{ wheelSessionCost.toFixed(2) }}</div>
+                        <div class="text-caption text-medium-emphasis">Prize Cost</div>
+                    </v-card>
+                </v-col>
+                <v-col cols="6">
+                    <v-card variant="tonal" class="text-center pa-2">
+                        <div class="text-h6" :class="wheelSessionProfitClass">{{ wheelSessionProfitDisplay }}</div>
+                        <div class="text-caption text-medium-emphasis">Gross Profit</div>
+                    </v-card>
+                </v-col>
+            </v-row>
+
+            <!-- Margin Bar -->
+            <v-card variant="tonal" class="pa-3 mb-3">
+                <div class="d-flex justify-space-between align-center mb-1">
+                    <span class="text-caption text-medium-emphasis text-uppercase">Margin</span>
+                    <span class="text-h6 font-weight-bold" :style="{ color: wheelSessionMarginColor }">
+                        {{ wheelSessionMarginDisplay }}
+                    </span>
+                </div>
+                <div class="wheel-margin-bar-track">
+                    <div class="wheel-margin-bar-fill"
+                        :style="{ width: wheelSessionMarginBarWidth, background: wheelSessionMarginColor }"></div>
+                    <div class="wheel-margin-bar-target" :style="{ left: wheelTargetMarginBarLeft }"></div>
+                </div>
+                <div class="text-caption text-medium-emphasis mt-1">{{ wheelSessionMarginHint }}</div>
+            </v-card>
+
+            <!-- Prize Tally (config preview) -->
+            <div v-if="wheelMode === 'config'" class="mb-3" style="max-height: 240px; overflow-y: auto;">
+                <div v-for="(entry, tIdx) in wheelTallyByTier" :key="entry.tierId + '-' + tIdx" class="wheel-tally-row">
+                    <div class="wheel-tally-dot" :style="{ background: entry.color }"></div>
+                    <div class="wheel-tally-name">{{ entry.label }}</div>
+                    <div class="wheel-tally-count">&times;{{ entry.count }}</div>
+                </div>
+                <div v-if="!wheelTallyByTier.length" class="text-caption text-medium-emphasis text-center pa-2">
+                    No wheel configured
+                </div>
+            </div>
+
+            <div v-if="wheelMode !== 'config' && wheelTrackerInventory.length" class="mb-3">
+                <div class="text-caption text-medium-emphasis text-uppercase mb-2">Source Inventory</div>
+                <div class="wheel-tracker-inventory-list">
+                    <div v-for="entry in wheelTrackerInventory" :key="entry.key" class="wheel-tracker-inventory-row"
+                        :class="{ 'wheel-tracker-inventory-row--warning': entry.warning }">
+                        <div class="wheel-tracker-inventory-copy">
+                            <div class="wheel-tracker-inventory-label">{{ entry.label }}</div>
+                            <div class="wheel-tracker-inventory-detail">{{ entry.detail }}</div>
+                        </div>
+                        <div class="wheel-tracker-inventory-remaining">{{ entry.remainingText }}</div>
+                        <div class="wheel-tracker-inventory-tiers">
+                            <div v-for="tier in entry.tiers" :key="tier.tierId" class="wheel-tracker-tier-row">
+                                <div class="wheel-tracker-tier-main">
+                                    <div class="wheel-tracker-tier-dot" :style="{ background: tier.color }"></div>
+                                    <div class="wheel-tracker-tier-name">{{ tier.label }}</div>
+                                </div>
+                                <div class="wheel-tracker-tier-count">&times;{{ tier.count }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <v-alert v-if="wheelMode === 'config'" variant="tonal" density="compact" type="info"
+                class="wheel-tracker-note">
+                Test mode keeps the live session untouched while preview stats update locally.
+            </v-alert>
+
+            <!-- Reset -->
+            <v-btn block variant="outlined" size="small"
+                @click="wheelConfirmAction = 'reset'; wheelConfirmDialog = true" class="mb-2">
+                <v-icon start size="small">mdi-refresh</v-icon>
+                Reset Session
+            </v-btn>
+
+            <template v-if="wheelMode !== 'config'">
+                <!-- End Wheel -->
+                <v-btn block color="warning" variant="elevated" size="small" :disabled="wheelEndingSession"
+                    @click="startEndWheelSession">
+                    <v-icon start size="small">mdi-flag-checkered</v-icon>
+                    End Wheel
+                    <v-badge v-if="wheelSkippedDeductions.length" :content="wheelSkippedDeductions.length" color="error"
+                        inline class="ml-2"></v-badge>
+                </v-btn>
             </template>
-            <v-list-item-title class="text-body-2">{{ item.raw.title }}</v-list-item-title>
-            <v-list-item-subtitle v-if="item.raw.cardNumber" class="text-caption">#{{ item.raw.cardNumber }}</v-list-item-subtitle>
-          </v-list-item>
-        </template>
-        <template #selection="{ item }">
-          <div class="wheel-chase-selection">
-            <div class="wheel-card-thumb" v-if="item.raw.image">
-              <img :src="item.raw.image" alt="" loading="lazy">
-            </div>
-            <div class="wheel-chase-selection-text">
-              <div class="text-body-2">{{ item.raw.title }}</div>
-              <div v-if="item.raw.cardNumber" class="text-caption" style="opacity: 0.6">#{{ item.raw.cardNumber }}</div>
-            </div>
-          </div>
-        </template>
-      </v-select>
-      <v-row dense>
-        <v-col cols="6">
-          <v-btn block color="amber" variant="elevated" :disabled="wheelChaseReplacementSinglesId == null" @click="confirmChaseReplacement">
-            <v-icon start>mdi-star</v-icon>
-            Replace
-          </v-btn>
-        </v-col>
-        <v-col cols="6">
-          <v-btn block variant="text" :disabled="!canKeepChase()" @click="keepChase">
-            Keep
-          </v-btn>
-        </v-col>
-      </v-row>
+        </v-card-text>
     </v-card>
 
-    <!-- Batch Deduction Panel (shown when ending session) -->
-    <v-card
-      v-if="wheelEndingSession && wheelSkippedDeductions.length"
-      variant="outlined"
-      class="pa-3 wheel-lot-select-card"
-    >
-      <div class="text-subtitle-2 mb-2">
-        <v-icon start size="small" color="warning">mdi-clipboard-list</v-icon>
-        Record {{ wheelSkippedDeductions.length }} skipped spin{{ wheelSkippedDeductions.length > 1 ? 's' : '' }}
-      </div>
+    <!-- Confirm Dialog -->
+    <v-dialog v-model="wheelConfirmDialog" max-width="380" persistent>
+        <v-card>
+            <v-card-title class="text-subtitle-1">
+                {{ wheelConfirmTitle }}
+            </v-card-title>
+            <v-card-text class="text-body-2">
+                {{ wheelConfirmBody }}
+            </v-card-text>
+            <v-card-actions>
+                <v-spacer></v-spacer>
+                <v-btn variant="text" @click="wheelConfirmDialog = false">Cancel</v-btn>
+                <v-btn :color="wheelConfirmButtonColor" variant="elevated" @click="confirmWheelAction">
+                    {{ wheelConfirmButtonLabel }}
+                </v-btn>
+            </v-card-actions>
+        </v-card>
+    </v-dialog>
 
-      <div class="wheel-batch-list">
-        <div v-for="(entry, bIdx) in wheelSkippedDeductions" :key="bIdx" class="wheel-batch-row">
-          <div class="wheel-batch-slot">
-            <div class="wheel-tier-dot" :style="{ background: entry.slotColor }"></div>
-            <span class="text-caption font-weight-medium">#{{ entry.spinNumber }} {{ entry.slotName }}</span>
-          </div>
-          <v-select
-            v-model="entry.selectedLotId"
-            :items="lotItems"
-            item-title="title"
-            item-value="value"
-            label="Lot"
-            variant="outlined"
-            density="compact"
-            hide-details="auto"
-            class="wheel-batch-lot-select"
-          ></v-select>
-          <v-btn icon="mdi-check" size="x-small" variant="text" color="success" :disabled="!entry.selectedLotId" @click="confirmBatchSale(bIdx)" title="Record this sale"></v-btn>
-          <v-btn icon="mdi-close" size="x-small" variant="text" color="error" @click="dismissBatchSale(bIdx)" title="Dismiss"></v-btn>
-        </div>
-      </div>
-
-      <v-row dense class="mt-2">
-        <v-col cols="6">
-          <v-btn block color="success" variant="elevated" size="small" @click="confirmAllBatchSales">
-            <v-icon start size="small">mdi-check-all</v-icon>
-            Record All
-          </v-btn>
-        </v-col>
-        <v-col cols="6">
-          <v-btn block variant="text" size="small" @click="cancelEndWheelSession">
-            Cancel
-          </v-btn>
-        </v-col>
-      </v-row>
-    </v-card>
-  </div>
-
-  <!-- TRACKER PANEL -->
-  <v-card v-show="!wheelPresentationMode" class="wheel-tracker-panel" variant="outlined">
-    <v-card-title class="wheel-panel-title">
-      <div class="wheel-panel-heading">
-        <v-icon start size="small">mdi-chart-bar</v-icon>
-        Session Tracker
-      </div>
-      <div class="wheel-panel-subtitle">Monitor spins, revenue, prize cost, and margin live.</div>
-    </v-card-title>
-    <v-card-text>
-      <!-- Stats Grid -->
-      <v-row dense class="mb-3">
-        <v-col cols="6">
-          <v-card variant="tonal" class="text-center pa-2">
-            <div class="text-h6">{{ wheelTotalSpins }}</div>
-            <div class="text-caption text-medium-emphasis">Spins</div>
-          </v-card>
-        </v-col>
-        <v-col cols="6">
-          <v-card variant="tonal" class="text-center pa-2">
-            <div class="text-h6">${{ wheelSessionRevenue.toFixed(2) }}</div>
-            <div class="text-caption text-medium-emphasis">Revenue</div>
-          </v-card>
-        </v-col>
-        <v-col cols="6">
-          <v-card variant="tonal" class="text-center pa-2">
-            <div class="text-h6 text-error">${{ wheelSessionCost.toFixed(2) }}</div>
-            <div class="text-caption text-medium-emphasis">Prize Cost</div>
-          </v-card>
-        </v-col>
-        <v-col cols="6">
-          <v-card variant="tonal" class="text-center pa-2">
-            <div class="text-h6" :class="wheelSessionProfit >= 0 ? 'text-success' : 'text-error'">
-              {{ wheelSessionProfit >= 0 ? '$' : '-$' }}{{ Math.abs(wheelSessionProfit).toFixed(2) }}
-            </div>
-            <div class="text-caption text-medium-emphasis">Gross Profit</div>
-          </v-card>
-        </v-col>
-      </v-row>
-
-      <!-- Margin Bar -->
-      <v-card variant="tonal" class="pa-3 mb-3">
-        <div class="d-flex justify-space-between align-center mb-1">
-          <span class="text-caption text-medium-emphasis text-uppercase">Margin</span>
-          <span class="text-h6 font-weight-bold" :style="{ color: wheelSessionMarginColor }">
-            {{ wheelSessionMarginDisplay }}
-          </span>
-        </div>
-        <div class="wheel-margin-bar-track">
-          <div class="wheel-margin-bar-fill" :style="{ width: wheelSessionMarginBarWidth, background: wheelSessionMarginColor }"></div>
-          <div class="wheel-margin-bar-target" :style="{ left: wheelTargetMarginBarLeft }"></div>
-        </div>
-        <div class="text-caption text-medium-emphasis mt-1">{{ wheelSessionMarginHint }}</div>
-      </v-card>
-
-      <!-- Prize Tally (grouped by tier) -->
-      <div class="mb-3" style="max-height: 240px; overflow-y: auto;">
-        <div v-for="(entry, tIdx) in wheelTallyByTier" :key="entry.tierId + '-' + tIdx" class="wheel-tally-row">
-          <div class="wheel-tally-dot" :style="{ background: entry.color }"></div>
-          <div class="wheel-tally-name">{{ entry.label }}</div>
-          <div class="wheel-tally-count">&times;{{ entry.count }}</div>
-        </div>
-        <div v-if="!wheelTallyByTier.length" class="text-caption text-medium-emphasis text-center pa-2">
-          No wheel configured
-        </div>
-      </div>
-
-      <v-alert
-        v-if="wheelMode === 'config'"
-        variant="tonal"
-        density="compact"
-        type="info"
-        class="wheel-tracker-note"
-      >
-        Test mode keeps this session untouched so you can tune the wheel safely.
-      </v-alert>
-
-      <template v-else>
-        <!-- Reset -->
-        <v-btn block variant="outlined" size="small" @click="wheelConfirmAction = 'reset'; wheelConfirmDialog = true" class="mb-2">
-          <v-icon start size="small">mdi-refresh</v-icon>
-          Reset Session
-        </v-btn>
-
-        <!-- End Wheel -->
-        <v-btn
-          block
-          color="warning"
-          variant="elevated"
-          size="small"
-          :disabled="wheelEndingSession"
-          @click="startEndWheelSession"
-        >
-          <v-icon start size="small">mdi-flag-checkered</v-icon>
-          End Wheel
-          <v-badge
-            v-if="wheelSkippedDeductions.length"
-            :content="wheelSkippedDeductions.length"
-            color="error"
-            inline
-            class="ml-2"
-          ></v-badge>
-        </v-btn>
-      </template>
-    </v-card-text>
-  </v-card>
-
-  <!-- Confirm Dialog -->
-  <v-dialog v-model="wheelConfirmDialog" max-width="380" persistent>
-    <v-card>
-      <v-card-title class="text-subtitle-1">
-        {{ wheelConfirmAction === 'reset' ? 'Reset Session?' : wheelConfirmAction === 'delete' ? 'Delete Wheel?' : 'Rebuild Wheel?' }}
-      </v-card-title>
-      <v-card-text class="text-body-2">
-        <template v-if="wheelConfirmAction === 'reset'">
-          This will clear all spin counts, revenue tracking, and skipped deductions for this session. This cannot be undone.
-        </template>
-        <template v-else-if="wheelConfirmAction === 'delete'">
-          This will permanently delete this wheel configuration. This cannot be undone.
-        </template>
-        <template v-else>
-          This will rebuild the wheel with your config changes. Current spin counts and session data will be reset.
-        </template>
-      </v-card-text>
-      <v-card-actions>
-        <v-spacer></v-spacer>
-        <v-btn variant="text" @click="wheelConfirmDialog = false">Cancel</v-btn>
-        <v-btn
-          :color="wheelConfirmAction === 'reset' || wheelConfirmAction === 'delete' ? 'error' : 'primary'"
-          variant="elevated"
-          @click="confirmWheelAction"
-        >
-          {{ wheelConfirmAction === 'reset' ? 'Reset' : wheelConfirmAction === 'delete' ? 'Delete' : 'Rebuild' }}
-        </v-btn>
-      </v-card-actions>
-    </v-card>
-  </v-dialog>
+    <v-dialog v-model="wheelLiveConfirmDialog" max-width="420" persistent>
+        <v-card>
+            <v-card-title class="text-subtitle-1">
+                Go Live?
+            </v-card-title>
+            <v-card-text class="text-body-2">
+                This switches the wheel into live mode so spins can record session progress and sales.
+                <div class="wheel-live-confirm-summary">
+                    <div><strong>Wheel:</strong> {{ wheelLiveConfirmSummaryName }}</div>
+                    <div><strong>Slots:</strong> {{ wheelLiveConfirmSummarySlots }}</div>
+                    <div><strong>Spin price:</strong> ${{ wheelLiveConfirmSummarySpinPrice }}</div>
+                </div>
+                <v-alert v-if="hasPendingWheelChanges" type="warning" variant="tonal" density="compact" class="mt-3">
+                    You still have pending edits. Live mode will use the current rebuilt wheel until you rebuild again.
+                </v-alert>
+            </v-card-text>
+            <v-card-actions>
+                <v-spacer></v-spacer>
+                <v-btn variant="text" @click="cancelWheelModeChange">Cancel</v-btn>
+                <v-btn color="success" variant="elevated" @click="confirmWheelModeChange">
+                    Go Live
+                </v-btn>
+            </v-card-actions>
+        </v-card>
+    </v-dialog>
 
 </div>

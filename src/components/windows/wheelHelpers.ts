@@ -13,7 +13,7 @@ export interface WheelSlot {
 
 const TIER_COLORS = [
   "#e74c3c", "#f0a500", "#2e86c1", "#8e44ad", "#27ae60",
-  "#e67e22", "#1abc9c", "#c0392b", "#3498db", "#d4ac0d",
+  "#e67e22", "#1abc9c", "#c0392b", "#3498db", "#c4ff66",
   "#16a085", "#e84393", "#6c5ce7", "#fd79a8", "#00b894", "#636e72"
 ];
 
@@ -90,6 +90,33 @@ export function buildSlotsFromConfig(config: WheelConfig): WheelSlot[] {
   }
 
   return result.filter((s): s is WheelSlot => s !== null);
+}
+
+export function remapSpinCountsByTier(oldTierIds: string[], oldCounts: number[], newSlots: WheelSlot[]): number[] {
+  const totalByTier: Record<string, number> = {};
+  const limit = Math.min(oldTierIds.length, oldCounts.length);
+  for (let i = 0; i < limit; i++) {
+    const tierId = oldTierIds[i];
+    if (!tierId) continue;
+    totalByTier[tierId] = (totalByTier[tierId] || 0) + (oldCounts[i] || 0);
+  }
+
+  const slotCountByTier: Record<string, number> = {};
+  for (const slot of newSlots) {
+    slotCountByTier[slot.tier] = (slotCountByTier[slot.tier] || 0) + 1;
+  }
+
+  const seenByTier: Record<string, number> = {};
+  return newSlots.map((slot) => {
+    const total = totalByTier[slot.tier] || 0;
+    const totalSlots = slotCountByTier[slot.tier] || 1;
+    const seen = seenByTier[slot.tier] || 0;
+    seenByTier[slot.tier] = seen + 1;
+    if (!total) return 0;
+    const base = Math.floor(total / totalSlots);
+    const remainder = total % totalSlots;
+    return base + (seen < remainder ? 1 : 0);
+  });
 }
 
 export function easeOutQuart(t: number): number {

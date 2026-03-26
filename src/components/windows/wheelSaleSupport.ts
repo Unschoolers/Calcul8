@@ -53,3 +53,55 @@ export function hasAnyAvailableSinglesForWheelTier(
     getAvailableSinglesQuantityForWheelTier(context, tier.boundLotId as number, entry.id) > 0
   ));
 }
+
+export function getRemainingPacksForWheelLot(
+  context: WheelSalesContext,
+  lotId: number
+): number {
+  const lots = (context.lots || []) as Lot[];
+  const lot = lots.find((entry) => entry.id === lotId);
+  if (!lot) return 0;
+  const totalPacks = Math.max(0, (Number(lot.boxesPurchased) || 0) * (Number(lot.packsPerBox) || 0));
+  const soldPacks = getLotSales(context, lotId).reduce((sum, sale) => {
+    return sum + Math.max(0, Math.floor(Number(sale.packsCount) || 0));
+  }, 0);
+  return Math.max(0, totalPacks - soldPacks);
+}
+
+export function getWheelTierInventoryMeta(
+  context: WheelSalesContext,
+  tier: WheelTier
+): { text: string; warning: boolean } | null {
+  if (tier.boundLotId == null) return null;
+  const lots = (context.lots || []) as Lot[];
+  const lot = lots.find((entry) => entry.id === tier.boundLotId);
+  if (!lot) return null;
+
+  if (lot.lotType === "singles") {
+    if (tier.boundSinglesId != null) {
+      const purchase = lot.singlesPurchases?.find((entry) => entry.id === tier.boundSinglesId);
+      const remaining = getAvailableSinglesQuantityForWheelTier(context, tier.boundLotId, tier.boundSinglesId);
+      if (!purchase) {
+        return { text: "Selected card is no longer in this lot", warning: true };
+      }
+      return {
+        text: `${remaining} card${remaining === 1 ? "" : "s"} left • ${Math.max(1, Number(tier.packsCount) || 1)} per hit`,
+        warning: remaining <= 0
+      };
+    }
+
+    const availableCount = (lot.singlesPurchases || []).reduce((sum, entry) => {
+      return sum + (getAvailableSinglesQuantityForWheelTier(context, tier.boundLotId as number, entry.id) > 0 ? 1 : 0);
+    }, 0);
+    return {
+      text: `${availableCount} singles option${availableCount === 1 ? "" : "s"} left • untracked sale`,
+      warning: availableCount <= 0
+    };
+  }
+
+  const remainingPacks = getRemainingPacksForWheelLot(context, tier.boundLotId);
+  return {
+    text: `${remainingPacks} pack${remainingPacks === 1 ? "" : "s"} left • ${Math.max(1, Number(tier.packsCount) || 0)} per hit`,
+    warning: remainingPacks < Math.max(0, Number(tier.packsCount) || 0)
+  };
+}

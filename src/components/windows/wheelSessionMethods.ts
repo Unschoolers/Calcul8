@@ -3,32 +3,108 @@ import { broadcastWheelSession } from "../../app-core/methods/ui/wheel-broadcast
 import type { Lot, Sale, SkippedWheelDeduction, WheelConfig } from "../../types/app.ts";
 import { getScopedWheelConfigSessionStorageKey } from "../../app-core/storageKeys.ts";
 import { getActiveStorageScope } from "../../app-core/workspace-scope.ts";
-import { buildSlotsFromConfig, createWheelSale, type WheelSlot } from "./wheelHelpers.ts";
+import { buildSlotsFromConfig, createWheelSale, remapSpinCountsByTier, type WheelSlot } from "./wheelHelpers.ts";
 import {
   getAvailableSinglesQuantityForWheelTier,
   hasAnyAvailableSinglesForWheelTier
 } from "./wheelSaleSupport.ts";
 
+type WheelTallyHistoryEntry = { tierId: string; label: string; color: string; count: number };
+
+function snapshotCurrentTierLabelToHistory(
+  tierId: string,
+  tierLabel: string,
+  tierColor: string,
+  slots: WheelSlot[],
+  counts: number[],
+  history: WheelTallyHistoryEntry[]
+): WheelTallyHistoryEntry[] {
+  let tierSpins = 0;
+  for (let i = 0; i < slots.length; i++) {
+    if (slots[i]?.tier === tierId) tierSpins += (counts[i] || 0);
+  }
+  let previousHistorical = 0;
+  for (const entry of history) {
+    if (entry.tierId === tierId) previousHistorical += entry.count;
+  }
+  const currentLabelCount = tierSpins - previousHistorical;
+  if (currentLabelCount <= 0) return history;
+  return [...history, { tierId, label: tierLabel, color: tierColor, count: currentLabelCount }];
+}
+
+function rebuildSlotsAndRemapCounts(config: WheelConfig, oldSlots: WheelSlot[], oldCounts: number[]): {
+  slots: WheelSlot[];
+  counts: number[];
+} {
+  const newSlots = buildSlotsFromConfig(config);
+  const newCounts = remapSpinCountsByTier(oldSlots.map((slot) => slot.tier), oldCounts, newSlots);
+  return { slots: newSlots, counts: newCounts };
+}
+
+function applyReplacementToTier(
+  tier: WheelConfig["tiers"][number] | undefined,
+  selectedId: number,
+  newLabel: string,
+  newCost: number
+): void {
+  if (!tier) return;
+  tier.label = newLabel;
+  tier.boundSinglesId = selectedId;
+  tier.costPerTier = newCost;
+}
+
 export const wheelSessionMethods = {
-  getChaseReplacementItems(this: Record<string, unknown>): Array<{ title: string; value: number; image?: string; cardNumber?: string }> {
+  resetPreviewSession(this: Record<string, unknown>): void {
+    const previewSlots = (((this as Record<string, unknown>).wheelPreviewSlots
+      || (this as Record<string, unknown>).activeWheelSlots) as WheelSlot[]);
+    (this as Record<string, unknown>).wheelPreviewSpinCounts = new Array(previewSlots.length).fill(0);
+    (this as Record<string, unknown>).wheelPreviewTotalSpins = 0;
+    this.wheelLastResult = "";
+    (this as Record<string, unknown>).wheelInventoryWarning = "";
+    (this as Record<string, unknown>).wheelLastResultColor = "rgb(var(--v-theme-primary))";
+    (this as Record<string, unknown>).wheelSpinHash = "";
+    (this as Record<string, unknown>).wheelSpinSeed = "";
+    (this as Record<string, unknown>).wheelShowSeed = false;
+    (this as Record<string, unknown>).wheelChaseDialog = false;
+    (this as Record<string, unknown>).wheelChasePreviewMode = false;
+    (this as Record<string, unknown>).wheelChaseReplacementSinglesId = null;
+    (this as Record<string, unknown>).wheelChasePendingTierId = "";
+    (this as Record<string, unknown>).wheelPreviewChaseTallyHistory = [];
+  },
+
+  getChaseReplacementItems(this: Record<string, unknown>): Array<{ title: string; value: number; image?: string; cardNumber?: string; stockLabel?: string }> {
     const tierId = (this as Record<string, unknown>).wheelChasePendingTierId as string;
     if (!tierId) return [];
+    const isPreview = ((this as Record<string, unknown>).wheelChasePreviewMode as boolean) === true;
     const configs = (this.wheelConfigs || []) as WheelConfig[];
     const activeId = this.activeWheelConfigId as number | null;
-    const config = activeId != null ? configs.find((c) => c.id === activeId) : null;
+    const config = isPreview
+      ? (((this as Record<string, unknown>).editingWheelConfig as WheelConfig | null)
+        || (activeId != null ? configs.find((c) => c.id === activeId) : null))
+      : (activeId != null ? configs.find((c) => c.id === activeId) : null);
     const tier = config?.tiers.find((t) => t.id === tierId);
     if (!tier?.boundLotId) return [];
     const lots = (this.lots || []) as Lot[];
     const lot = lots.find((l) => l.id === tier.boundLotId);
     if (!lot?.singlesPurchases?.length) return [];
-    return lot.singlesPurchases.map((e) => ({ title: e.item, value: e.id, image: e.image, cardNumber: e.cardNumber }));
+    return lot.singlesPurchases
+      .filter((entry) => getAvailableSinglesQuantityForWheelTier(this, tier.boundLotId as number, entry.id) > 0)
+      .map((e) => ({
+        title: e.item,
+        value: e.id,
+        image: e.image,
+        cardNumber: e.cardNumber,
+        stockLabel: `${getAvailableSinglesQuantityForWheelTier(this, tier.boundLotId as number, e.id)} left`
+      }));
   },
 
   confirmChaseReplacement(this: Record<string, unknown>): void {
     const selectedId = (this as Record<string, unknown>).wheelChaseReplacementSinglesId as number | null;
     const tierId = (this as Record<string, unknown>).wheelChasePendingTierId as string;
+    const isPreview = ((this as Record<string, unknown>).wheelChasePreviewMode as boolean) === true;
     if (selectedId == null || !tierId) {
       (this as Record<string, unknown>).wheelChaseDialog = false;
+      (this as Record<string, unknown>).wheelChasePreviewMode = false;
       return;
     }
 
@@ -43,6 +119,41 @@ export const wheelSessionMethods = {
     const newLabel = entry?.item || "";
     if (!newLabel) {
       (this as Record<string, unknown>).wheelChaseDialog = false;
+      (this as Record<string, unknown>).wheelChasePreviewMode = false;
+      return;
+    }
+
+    if (isPreview) {
+      const editing = (this as Record<string, unknown>).editingWheelConfig as WheelConfig | null;
+      if (!editing) {
+        (this as Record<string, unknown>).wheelChaseDialog = false;
+        (this as Record<string, unknown>).wheelChasePreviewMode = false;
+        return;
+      }
+
+      const tier = editing.tiers.find((t) => t.id === tierId);
+      const oldSlots = (this as Record<string, unknown>).wheelPreviewSlots as WheelSlot[];
+      const oldCounts = ((this as Record<string, unknown>).wheelPreviewSpinCounts || []) as number[];
+      const historyArr = (this as Record<string, unknown>).wheelPreviewChaseTallyHistory as WheelTallyHistoryEntry[];
+      (this as Record<string, unknown>).wheelPreviewChaseTallyHistory = snapshotCurrentTierLabelToHistory(
+        tierId,
+        tier?.label || "",
+        tier?.color || "",
+        oldSlots,
+        oldCounts,
+        historyArr
+      );
+      applyReplacementToTier(tier, selectedId, newLabel, entry ? (entry.cost || entry.marketValue || 0) : 0);
+      const rebuilt = rebuildSlotsAndRemapCounts(editing, oldSlots, oldCounts);
+      (this as Record<string, unknown>).wheelPreviewSlots = rebuilt.slots;
+      (this as Record<string, unknown>).wheelPreviewSpinCounts = rebuilt.counts;
+      (this as Record<string, unknown>).wheelChaseDialog = false;
+      (this as Record<string, unknown>).wheelChasePreviewMode = false;
+      this.wheelLastResult = "⭐ Preview chase replaced — " + newLabel;
+      (this as Record<string, unknown>).wheelLastResultColor = "#f0a500";
+      nextTick(() => (this as Record<string, unknown> & { drawWheel: (offset?: number) => void }).drawWheel(
+        (this as Record<string, unknown>).wheelCurrentAngle as number || 0
+      ));
       return;
     }
 
@@ -51,6 +162,7 @@ export const wheelSessionMethods = {
     const config = activeId != null ? configs.find((c) => c.id === activeId) : null;
     if (!config) {
       (this as Record<string, unknown>).wheelChaseDialog = false;
+      (this as Record<string, unknown>).wheelChasePreviewMode = false;
       return;
     }
 
@@ -58,24 +170,6 @@ export const wheelSessionMethods = {
     if (tier) {
       // Auto-record sale for the won chase item BEFORE changing tier label/cost
       (this as Record<string, unknown> & { recordChaseSale: (tierId: string) => void }).recordChaseSale(tierId);
-
-      // Snapshot current chase label + count into tally history before replacing
-      const oldSlotsPre = (this as Record<string, unknown>).activeWheelSlots as WheelSlot[];
-      const oldCountsPre = (this.wheelSpinCounts || []) as number[];
-      let tierSpinsPre = 0;
-      for (let i = 0; i < oldSlotsPre.length; i++) {
-        if (oldSlotsPre[i]?.tier === tierId) tierSpinsPre += (oldCountsPre[i] || 0);
-      }
-      const historyArr = (this as Record<string, unknown>).wheelChaseTallyHistory as Array<{ tierId: string; label: string; color: string; count: number }>;
-      let prevHistorical = 0;
-      for (const h of historyArr) {
-        if (h.tierId === tierId) prevHistorical += h.count;
-      }
-      const currentLabelCount = tierSpinsPre - prevHistorical;
-      if (currentLabelCount > 0) {
-        historyArr.push({ tierId, label: tier.label, color: tier.color, count: currentLabelCount });
-        (this as Record<string, unknown>).wheelChaseTallyHistory = [...historyArr];
-      }
 
       // Preserve session cost for already-counted spins at the old cost
       const oldCost = tier.costPerTier;
@@ -91,11 +185,18 @@ export const wheelSessionMethods = {
           ((this as Record<string, unknown>).wheelSessionCostAdjustment as number || 0) + tierSpins * (oldCost - newCost);
       }
 
-      tier.label = newLabel;
-      tier.boundSinglesId = selectedId;
-      if (entry) {
-        tier.costPerTier = newCost;
-      }
+      const oldSlotsPre = (this as Record<string, unknown>).activeWheelSlots as WheelSlot[];
+      const oldCountsPre = (this.wheelSpinCounts || []) as number[];
+      const historyArr = (this as Record<string, unknown>).wheelChaseTallyHistory as WheelTallyHistoryEntry[];
+      (this as Record<string, unknown>).wheelChaseTallyHistory = snapshotCurrentTierLabelToHistory(
+        tierId,
+        tier.label,
+        tier.color,
+        oldSlotsPre,
+        oldCountsPre,
+        historyArr
+      );
+      applyReplacementToTier(tier, selectedId, newLabel, newCost);
     }
     this.wheelConfigs = [...configs];
 
@@ -104,42 +205,19 @@ export const wheelSessionMethods = {
     if (editing) {
       const editTier = editing.tiers.find((t) => t.id === tierId);
       if (editTier) {
-        editTier.label = newLabel;
-        editTier.boundSinglesId = selectedId;
-        if (entry) {
-          editTier.costPerTier = entry.cost || entry.marketValue || 0;
-        }
+        applyReplacementToTier(editTier, selectedId, newLabel, entry ? (entry.cost || entry.marketValue || 0) : editTier.costPerTier);
       }
     }
 
     // Rebuild slots preserving spin counts by tier
     const oldSlots = (this as Record<string, unknown>).activeWheelSlots as WheelSlot[];
     const oldCounts = (this.wheelSpinCounts || []) as number[];
-
-    const countsByTier: Record<string, number[]> = {};
-    for (let i = 0; i < oldSlots.length; i++) {
-      const slot = oldSlots[i]!;
-      if (!countsByTier[slot.tier]) countsByTier[slot.tier] = [];
-      countsByTier[slot.tier]!.push(oldCounts[i] || 0);
-    }
-
-    const newSlots = buildSlotsFromConfig(config);
-    (this as Record<string, unknown>).activeWheelSlots = newSlots;
-
-    const tierCountIndex: Record<string, number> = {};
-    const newCounts = new Array(newSlots.length).fill(0);
-    for (let i = 0; i < newSlots.length; i++) {
-      const slot = newSlots[i]!;
-      const saved = countsByTier[slot.tier];
-      if (saved) {
-        const idx = tierCountIndex[slot.tier] ?? 0;
-        newCounts[i] = saved[idx] ?? 0;
-        tierCountIndex[slot.tier] = idx + 1;
-      }
-    }
-    this.wheelSpinCounts = newCounts;
+    const rebuilt = rebuildSlotsAndRemapCounts(config, oldSlots, oldCounts);
+    (this as Record<string, unknown>).activeWheelSlots = rebuilt.slots;
+    this.wheelSpinCounts = rebuilt.counts;
 
     (this as Record<string, unknown>).wheelChaseDialog = false;
+    (this as Record<string, unknown>).wheelChasePreviewMode = false;
     this.wheelLastResult = "⭐ Chase replaced — " + newLabel;
     (this as Record<string, unknown>).wheelLastResultColor = "#f0a500";
     (this as Record<string, unknown>).wheelSessionUpdatedAt = Date.now();
@@ -152,10 +230,18 @@ export const wheelSessionMethods = {
 
   keepChase(this: Record<string, unknown>): void {
     const tierId = (this as Record<string, unknown>).wheelChasePendingTierId as string;
+    if (((this as Record<string, unknown>).wheelChasePreviewMode as boolean) === true) {
+      (this as Record<string, unknown>).wheelChaseDialog = false;
+      (this as Record<string, unknown>).wheelChasePreviewMode = false;
+      this.wheelLastResult = "⭐ Preview keeps chase item";
+      (this as Record<string, unknown>).wheelLastResultColor = "#f0a500";
+      return;
+    }
     if (tierId) {
       (this as Record<string, unknown> & { recordChaseSale: (tierId: string) => void }).recordChaseSale(tierId);
     }
     (this as Record<string, unknown>).wheelChaseDialog = false;
+    (this as Record<string, unknown>).wheelChasePreviewMode = false;
   },
 
   recordChaseSale(this: Record<string, unknown>, tierId: string): void {
@@ -195,7 +281,10 @@ export const wheelSessionMethods = {
     if (!tierId) return false;
     const configs = (this.wheelConfigs || []) as WheelConfig[];
     const activeId = this.activeWheelConfigId as number | null;
-    const config = activeId != null ? configs.find((c) => c.id === activeId) : null;
+    const config = ((this as Record<string, unknown>).wheelChasePreviewMode as boolean) === true
+      ? (((this as Record<string, unknown>).editingWheelConfig as WheelConfig | null)
+        || (activeId != null ? configs.find((c) => c.id === activeId) : null))
+      : (activeId != null ? configs.find((c) => c.id === activeId) : null);
     const tier = config?.tiers.find((t) => t.id === tierId);
     if (!tier?.boundLotId || !tier.boundSinglesId || (tier.packsCount || 0) <= 0) return false;
     return getAvailableSinglesQuantityForWheelTier(this, tier.boundLotId, tier.boundSinglesId) > 1;
@@ -205,7 +294,12 @@ export const wheelSessionMethods = {
     const slots = (this as Record<string, unknown>).activeWheelSlots as WheelSlot[];
     this.wheelTotalSpins = 0;
     this.wheelSpinCounts = new Array(slots.length).fill(0);
+    (this as Record<string, unknown>).wheelPreviewSlots = [...slots];
+    (this as Record<string, unknown>).wheelPreviewSpinCounts = new Array(slots.length).fill(0);
+    (this as Record<string, unknown>).wheelPreviewTotalSpins = 0;
+    (this as Record<string, unknown>).wheelPreviewChaseTallyHistory = [];
     this.wheelLastResult = "";
+    (this as Record<string, unknown>).wheelInventoryWarning = "";
     (this as Record<string, unknown>).wheelLastResultColor = "rgb(var(--v-theme-primary))";
     this.wheelSkippedDeductions = [];
     (this as Record<string, unknown>).wheelEndingSession = false;
@@ -213,6 +307,7 @@ export const wheelSessionMethods = {
     (this as Record<string, unknown>).wheelSpinSeed = "";
     (this as Record<string, unknown>).wheelShowSeed = false;
     (this as Record<string, unknown>).wheelChaseDialog = false;
+    (this as Record<string, unknown>).wheelChasePreviewMode = false;
     (this as Record<string, unknown>).wheelChaseReplacementSinglesId = null;
     (this as Record<string, unknown>).wheelChasePendingTierId = "";
     (this as Record<string, unknown>).wheelSessionCostAdjustment = 0;
@@ -227,7 +322,11 @@ export const wheelSessionMethods = {
     (this as Record<string, unknown>).wheelConfirmDialog = false;
     (this as Record<string, unknown>).wheelConfirmAction = "";
     if (action === "reset") {
-      (this as Record<string, unknown> & { resetWheelSession: () => void }).resetWheelSession();
+      if (((this as Record<string, unknown>).wheelMode as string) === "config") {
+        (this as Record<string, unknown> & { resetPreviewSession: () => void }).resetPreviewSession();
+      } else {
+        (this as Record<string, unknown> & { resetWheelSession: () => void }).resetWheelSession();
+      }
     } else if (action === "apply") {
       (this as Record<string, unknown> & { applyWheelConfig: () => void }).applyWheelConfig();
     } else if (action === "delete") {
@@ -314,8 +413,10 @@ export const wheelSessionMethods = {
   saveWheelSession(this: Record<string, unknown>): void {
     const activeId = this.activeWheelConfigId as number | null;
     if (activeId == null) return;
+    const slots = (((this as Record<string, unknown>).activeWheelSlots || []) as WheelSlot[]);
     const session = {
       wheelSpinCounts: this.wheelSpinCounts,
+      wheelSlotTiers: slots.map((slot) => slot.tier),
       wheelTotalSpins: this.wheelTotalSpins,
       wheelSessionUpdatedAt: this.wheelSessionUpdatedAt,
       wheelSessionCostAdjustment: (this as Record<string, unknown>).wheelSessionCostAdjustment,
@@ -349,9 +450,15 @@ export const wheelSessionMethods = {
     try {
       const session = JSON.parse(raw);
       const slots = (this as Record<string, unknown>).activeWheelSlots as WheelSlot[];
-      if (!Array.isArray(session.wheelSpinCounts) || session.wheelSpinCounts.length !== slots.length) return false;
-      this.wheelSpinCounts = session.wheelSpinCounts;
-      this.wheelTotalSpins = session.wheelTotalSpins || 0;
+      if (!Array.isArray(session.wheelSpinCounts)) return false;
+      if (session.wheelSpinCounts.length === slots.length) {
+        this.wheelSpinCounts = session.wheelSpinCounts;
+      } else if (Array.isArray(session.wheelSlotTiers)) {
+        this.wheelSpinCounts = remapSpinCountsByTier(session.wheelSlotTiers, session.wheelSpinCounts, slots);
+      } else {
+        return false;
+      }
+      this.wheelTotalSpins = (this.wheelSpinCounts as number[]).reduce((sum, count) => sum + count, 0);
       this.wheelSessionUpdatedAt = session.wheelSessionUpdatedAt || 0;
       (this as Record<string, unknown>).wheelSessionCostAdjustment = session.wheelSessionCostAdjustment || 0;
       (this as Record<string, unknown>).wheelChaseTallyHistory = session.wheelChaseTallyHistory || [];

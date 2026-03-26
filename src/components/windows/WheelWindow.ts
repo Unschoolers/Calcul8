@@ -42,7 +42,9 @@ export const WheelWindow = {
   data() {
     return {
       editingWheelConfig: null as WheelConfig | null,
+      appliedWheelConfigSnapshot: null as WheelConfig | null,
       activeWheelSlots: [] as WheelSlot[],
+      wheelPreviewSlots: [] as WheelSlot[],
       wheelMode: "config" as "config" | "live",
       wheelCelebrationVisible: false,
       wheelCelebrationLabel: "" as string,
@@ -50,20 +52,28 @@ export const WheelWindow = {
       wheelCelebrationImage: "" as string,
       wheelCelebrationPreview: false,
       wheelCelebrationNonce: 0,
+      wheelInventoryWarning: "" as string,
       wheelLastResultColor: "rgb(var(--v-theme-primary))",
       wheelCanvasSize: 360,
       wheelEndingSession: false,
       wheelPresentationMode: false,
+      wheelPreviewSpinCounts: [] as number[],
+      wheelPreviewTotalSpins: 0,
       wheelSpinSeed: "" as string,
       wheelSpinHash: "" as string,
       wheelShowSeed: false,
       wheelConfirmDialog: false,
       wheelConfirmAction: "" as "reset" | "apply" | "",
+      wheelLiveConfirmDialog: false,
+      wheelRequestedMode: null as "config" | "live" | null,
+      wheelPendingMenuOpen: false,
       wheelConfigReady: false,
       wheelChaseDialog: false,
+      wheelChasePreviewMode: false,
       wheelChaseReplacementSinglesId: null as number | null,
       wheelChasePendingTierId: "" as string,
       wheelSessionCostAdjustment: 0,
+      wheelPreviewChaseTallyHistory: [] as Array<{ tierId: string; label: string; color: string; count: number }>,
       wheelChaseTallyHistory: [] as Array<{ tierId: string; label: string; color: string; count: number }>
     };
   },
@@ -73,6 +83,10 @@ export const WheelWindow = {
   watch: {
     wheelConfigs: {
       handler(this: Record<string, unknown>) {
+        if ((this as Record<string, unknown>)._wheelSkipConfigReload === true) {
+          (this as Record<string, unknown>)._wheelSkipConfigReload = false;
+          return;
+        }
         const vm = this as Record<string, unknown> & { loadWheelConfig: () => void };
         vm.loadWheelConfig();
       },
@@ -81,6 +95,13 @@ export const WheelWindow = {
     activeWheelConfigId(this: Record<string, unknown>) {
       const vm = this as Record<string, unknown> & { loadWheelConfig: () => void };
       vm.loadWheelConfig();
+    },
+    editingWheelConfig: {
+      handler(this: Record<string, unknown>) {
+        const vm = this as Record<string, unknown> & { queueWheelDraftAutosave: () => void };
+        vm.queueWheelDraftAutosave();
+      },
+      deep: true
     },
     wheelPresentationMode(this: Record<string, unknown>, presMode: boolean) {
       // Recalculate canvas size for the new mode, then redraw once CSS settles
@@ -103,6 +124,34 @@ export const WheelWindow = {
     ...wheelConfigMethods,
     ...wheelSpinMethods,
     ...wheelSessionMethods,
+    handleWheelModeChange(this: Record<string, unknown>, nextMode: "config" | "live"): void {
+      if (nextMode === (this as Record<string, unknown>).wheelMode) return;
+      if (nextMode === "live") {
+        (this as Record<string, unknown>).wheelRequestedMode = nextMode;
+        (this as Record<string, unknown>).wheelLiveConfirmDialog = true;
+        return;
+      }
+      (this as Record<string, unknown>).wheelMode = nextMode;
+    },
+    confirmWheelModeChange(this: Record<string, unknown>): void {
+      const requestedMode = (this as Record<string, unknown>).wheelRequestedMode as "config" | "live" | null;
+      if (requestedMode) {
+        (this as Record<string, unknown>).wheelMode = requestedMode;
+      }
+      (this as Record<string, unknown>).wheelRequestedMode = null;
+      (this as Record<string, unknown>).wheelLiveConfirmDialog = false;
+    },
+    cancelWheelModeChange(this: Record<string, unknown>): void {
+      (this as Record<string, unknown>).wheelRequestedMode = null;
+      (this as Record<string, unknown>).wheelLiveConfirmDialog = false;
+    },
+    runWheelPrimarySpin(this: Record<string, unknown>): void {
+      if ((this as Record<string, unknown>).wheelMode === "config") {
+        ((this as Record<string, unknown>) as Record<string, unknown> & { testSpinWheel: () => void }).testSpinWheel();
+        return;
+      }
+      ((this as Record<string, unknown>) as Record<string, unknown> & { spinWheel: () => void }).spinWheel();
+    },
     triggerWheelCelebration(this: Record<string, unknown>, payload: { label: string; color: string; image?: string; preview?: boolean }): void {
       const timeoutId = (this as Record<string, unknown>)._wheelCelebrationTimeoutId as number | undefined;
       if (timeoutId != null) {
@@ -124,21 +173,9 @@ export const WheelWindow = {
     }
   },
   mounted(this: Record<string, unknown>) {
-    // If wheel configs were loaded from storage, initialize the editing state
     const configs = (this.wheelConfigs || []) as WheelConfig[];
-    const activeId = this.activeWheelConfigId as number | null;
-    if (configs.length > 0 && activeId != null) {
-      const config = configs.find((c) => c.id === activeId);
-      if (config) {
-        (this as Record<string, unknown>).editingWheelConfig = JSON.parse(JSON.stringify(config)) as WheelConfig;
-        (this as Record<string, unknown>).activeWheelSlots = buildSlotsFromConfig(config);
-        // Try to restore session state from localStorage, otherwise init fresh
-        const restored = (this as Record<string, unknown> & { loadWheelFromSession: () => boolean }).loadWheelFromSession();
-        if (!restored) {
-          const slots = (this as Record<string, unknown>).activeWheelSlots as WheelSlot[];
-          this.wheelSpinCounts = new Array(slots.length).fill(0);
-        }
-      }
+    if (configs.length > 0 && (this.activeWheelConfigId as number | null) != null) {
+      (this as Record<string, unknown> & { loadWheelConfig: () => void }).loadWheelConfig();
     }
 
     // Resize canvas for container
@@ -189,6 +226,11 @@ export const WheelWindow = {
     if (celebrationTimeoutId != null) {
       clearTimeout(celebrationTimeoutId);
       (this as Record<string, unknown>)._wheelCelebrationTimeoutId = undefined;
+    }
+    const draftTimeoutId = (this as Record<string, unknown>)._wheelDraftSaveTimeoutId as number | undefined;
+    if (draftTimeoutId != null) {
+      clearTimeout(draftTimeoutId);
+      (this as Record<string, unknown>)._wheelDraftSaveTimeoutId = undefined;
     }
   },
   setup(props: { ctx: Record<string, unknown> }) {

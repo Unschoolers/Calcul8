@@ -10,6 +10,7 @@ import {
 } from "./wheelHelpers.ts";
 import {
   getAvailableSinglesQuantityForWheelTier,
+  getRemainingPacksForWheelLot,
   hasAnyAvailableSinglesForWheelTier
 } from "./wheelSaleSupport.ts";
 
@@ -20,6 +21,7 @@ function queueSkippedDeduction(
     slotIndex: number;
     boundLotId: number;
     boundSinglesId?: number | null;
+    warningText?: string;
   }
 ): void {
   const skipped = (context.wheelSkippedDeductions || []) as SkippedWheelDeduction[];
@@ -36,6 +38,7 @@ function queueSkippedDeduction(
     slotSinglesId: params.boundSinglesId ?? null
   });
   context.wheelSkippedDeductions = [...skipped];
+  context.wheelInventoryWarning = params.warningText || "";
   (context as Record<string, unknown> & { saveWheelSession: () => void }).saveWheelSession();
 }
 
@@ -46,7 +49,8 @@ export const wheelSpinMethods = {
     const ctx = canvasEl.getContext("2d");
     if (!ctx) return;
 
-    const slots = (this as Record<string, unknown>).activeWheelSlots as WheelSlot[];
+    const slots = (((this as Record<string, unknown>).wheelDisplaySlots
+      || (this as Record<string, unknown>).activeWheelSlots)) as WheelSlot[];
     const size = Math.max(20, (this as Record<string, unknown>).wheelCanvasSize as number);
     const dpr = Math.max(
       1,
@@ -65,9 +69,10 @@ export const wheelSpinMethods = {
     }
 
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const cx = size / 2;
-    const cy = size / 2;
-    const r = size / 2 - 10;
+    ctx.imageSmoothingEnabled = true;
+    const cx = Math.round(size / 2);
+    const cy = Math.round(size / 2);
+    const r = Math.round(size / 2 - 10);
 
     ctx.clearRect(0, 0, size, size);
 
@@ -85,6 +90,8 @@ export const wheelSpinMethods = {
     }
 
     const sliceAngle = (2 * Math.PI) / slots.length;
+    const strokeColor = "#0a0c10";
+    const strokeWidth = 2.25;
 
     slots.forEach((slot, i) => {
       const startAngle = offset + i * sliceAngle;
@@ -96,9 +103,6 @@ export const wheelSpinMethods = {
       ctx.closePath();
       ctx.fillStyle = slot.color;
       ctx.fill();
-      ctx.strokeStyle = "#0a0c10";
-      ctx.lineWidth = 2;
-      ctx.stroke();
 
       ctx.save();
       ctx.translate(cx, cy);
@@ -117,6 +121,28 @@ export const wheelSpinMethods = {
       ctx.fillText(txt, r - 12, 3);
       ctx.restore();
     });
+
+    ctx.save();
+    ctx.strokeStyle = strokeColor;
+    ctx.lineWidth = strokeWidth;
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, 2 * Math.PI);
+    ctx.stroke();
+
+    for (let i = 0; i < slots.length; i++) {
+      const angle = offset + i * sliceAngle;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(
+        cx + Math.cos(angle) * r,
+        cy + Math.sin(angle) * r
+      );
+      ctx.stroke();
+    }
+    ctx.restore();
   },
 
   async spinWheel(this: Record<string, unknown>): Promise<void> {
@@ -138,9 +164,14 @@ export const wheelSpinMethods = {
       drawWheel: (offset: number) => void;
       landOnSlot: (index: number, options?: { recordSession?: boolean }) => void;
       recordSpinResult: (index: number) => void;
+      recordPreviewSpinResult: (index: number) => void;
     };
-    const slots = vm.activeWheelSlots as WheelSlot[];
+    const slots = (((vm as Record<string, unknown>).wheelDisplaySlots || vm.activeWheelSlots)) as WheelSlot[];
     if (vm.wheelSpinning || !slots.length) return;
+    if (recordSession && ((vm as Record<string, unknown>).wheelSpinBlockedReason as string)) {
+      (vm as Record<string, unknown>).wheelInventoryWarning = (vm as Record<string, unknown>).wheelSpinBlockedReason as string;
+      return;
+    }
 
     // Provably-fair: generate seed, hash it, show hash before spinning
     const seed = generateCryptoSeed();
@@ -148,6 +179,7 @@ export const wheelSpinMethods = {
     (vm as Record<string, unknown>).wheelSpinSeed = "";
     (vm as Record<string, unknown>).wheelSpinHash = hash;
     (vm as Record<string, unknown>).wheelShowSeed = false;
+    (vm as Record<string, unknown>).wheelInventoryWarning = "";
 
     vm.wheelSpinning = true;
     vm.wheelLastResult = "Spinning…";
@@ -157,6 +189,8 @@ export const wheelSpinMethods = {
     const targetIndex = seedToIndex(seed, slots.length);
     if (recordSession) {
       vm.recordSpinResult(targetIndex);
+    } else {
+      vm.recordPreviewSpinResult(targetIndex);
     }
     const currentAngle = (vm.wheelCurrentAngle || 0) as number;
     const extraRotations = Math.floor(5 + Math.random() * 4) * 2 * Math.PI;
@@ -187,8 +221,21 @@ export const wheelSpinMethods = {
     requestAnimationFrame(tick);
   },
 
+  recordPreviewSpinResult(this: Record<string, unknown>, slotIndex: number): void {
+    const slots = (((this as Record<string, unknown>).wheelDisplaySlots
+      || (this as Record<string, unknown>).activeWheelSlots)) as WheelSlot[];
+    if (!slots[slotIndex]) return;
+    const counts = ((this as Record<string, unknown>).wheelPreviewSpinCounts || []) as number[];
+    const nextCounts = counts.length === slots.length ? [...counts] : new Array(slots.length).fill(0);
+    nextCounts[slotIndex] = (nextCounts[slotIndex] || 0) + 1;
+    (this as Record<string, unknown>).wheelPreviewSpinCounts = nextCounts;
+    (this as Record<string, unknown>).wheelPreviewTotalSpins =
+      (((this as Record<string, unknown>).wheelPreviewTotalSpins as number) || 0) + 1;
+  },
+
   recordSpinResult(this: Record<string, unknown>, slotIndex: number): void {
-    const slots = (this as Record<string, unknown>).activeWheelSlots as WheelSlot[];
+    const slots = (((this as Record<string, unknown>).wheelDisplaySlots
+      || (this as Record<string, unknown>).activeWheelSlots)) as WheelSlot[];
     const slot = slots[slotIndex];
     if (!slot) return;
 
@@ -198,15 +245,18 @@ export const wheelSpinMethods = {
     this.wheelTotalSpins = ((this.wheelTotalSpins as number) || 0) + 1;
 
     if (!slot.isChase) {
-      const config = (this as Record<string, unknown>).activeWheelConfig as WheelConfig | null;
+      const config = (((this as Record<string, unknown>).wheelDisplayConfig
+        || (this as Record<string, unknown>).activeWheelConfig)) as WheelConfig | null;
       const tier = config?.tiers.find((t) => t.id === slot.tier);
       if (tier?.boundLotId) {
         if (slot.deductionType === "none" || (slot.packsCount || 0) <= 0) {
+          (this as Record<string, unknown>).wheelInventoryWarning = "";
           (this as Record<string, unknown> & { saveWheelSession: () => void }).saveWheelSession();
           return;
         }
 
         const lots = (this.lots || []) as Lot[];
+        const boundLot = lots.find((entry) => entry.id === tier.boundLotId);
         if (slot.deductionType === "singles") {
           if (tier.boundSinglesId) {
             const availableQuantity = getAvailableSinglesQuantityForWheelTier(
@@ -219,7 +269,8 @@ export const wheelSpinMethods = {
                 slot,
                 slotIndex,
                 boundLotId: tier.boundLotId,
-                boundSinglesId: tier.boundSinglesId
+                boundSinglesId: tier.boundSinglesId,
+                warningText: `${slot.name} is no longer available in ${boundLot?.name || "the selected lot"}.`
               });
               return;
             }
@@ -228,7 +279,19 @@ export const wheelSpinMethods = {
               slot,
               slotIndex,
               boundLotId: tier.boundLotId,
-              boundSinglesId: null
+              boundSinglesId: null,
+              warningText: `No singles are left in ${boundLot?.name || "the selected lot"} for ${slot.name}.`
+            });
+            return;
+          }
+        } else if (slot.deductionType === "packs") {
+          const remainingPacks = getRemainingPacksForWheelLot(this, tier.boundLotId);
+          if (remainingPacks < slot.packsCount) {
+            queueSkippedDeduction(this, {
+              slot,
+              slotIndex,
+              boundLotId: tier.boundLotId,
+              warningText: `${slot.name} needs ${slot.packsCount} pack${slot.packsCount === 1 ? "" : "s"}, but only ${remainingPacks} remain in ${boundLot?.name || "the selected lot"}.`
             });
             return;
           }
@@ -250,7 +313,8 @@ export const wheelSpinMethods = {
   },
 
   landOnSlot(this: Record<string, unknown>, slotIndex: number, options: { recordSession?: boolean } = {}): void {
-    const slots = (this as Record<string, unknown>).activeWheelSlots as WheelSlot[];
+    const slots = (((this as Record<string, unknown>).wheelDisplaySlots
+      || (this as Record<string, unknown>).activeWheelSlots)) as WheelSlot[];
     const slot = slots[slotIndex];
     if (!slot) return;
     const recordSession = options.recordSession ?? true;
@@ -258,7 +322,8 @@ export const wheelSpinMethods = {
     this.wheelLastResult = "🎉 " + slot.name;
     (this as Record<string, unknown>).wheelLastResultColor = slot.color;
     if (slot.isChase) {
-      const config = (this as Record<string, unknown>).activeWheelConfig as WheelConfig | null;
+      const config = (((this as Record<string, unknown>).wheelDisplayConfig
+        || (this as Record<string, unknown>).activeWheelConfig)) as WheelConfig | null;
       const tier = config?.tiers.find((entry) => entry.id === slot.tier);
       const lot = tier?.boundLotId != null
         ? ((this.lots || []) as Lot[]).find((entry) => entry.id === tier.boundLotId)
@@ -277,6 +342,13 @@ export const wheelSpinMethods = {
     }
 
     if (!recordSession) {
+      if (slot.isChase) {
+        (this as Record<string, unknown>).wheelChasePendingTierId = slot.tier;
+        (this as Record<string, unknown>).wheelChaseReplacementSinglesId = null;
+        (this as Record<string, unknown>).wheelChasePreviewMode = true;
+        (this as Record<string, unknown>).wheelChaseDialog = true;
+        return;
+      }
       (this as Record<string, unknown>).wheelChaseDialog = false;
       (this as Record<string, unknown>).wheelChaseReplacementSinglesId = null;
       (this as Record<string, unknown>).wheelChasePendingTierId = "";
@@ -284,6 +356,7 @@ export const wheelSpinMethods = {
     }
 
     if (slot.isChase) {
+      (this as Record<string, unknown>).wheelChasePreviewMode = false;
       (this as Record<string, unknown>).wheelChasePendingTierId = slot.tier;
       (this as Record<string, unknown>).wheelChaseReplacementSinglesId = null;
       (this as Record<string, unknown>).wheelChaseDialog = true;

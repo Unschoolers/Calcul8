@@ -2,6 +2,7 @@ type WorkspaceConfigSyncApp = {
   activeScopeType: "personal" | "workspace";
   activeWorkspaceId: string | null;
   currentLotId: number | null;
+  isGoogleSignedIn?: boolean;
   isOffline: boolean;
   pushCloudSync(force?: boolean, options?: { allowEmptyOverwrite?: boolean }): Promise<void>;
 };
@@ -31,8 +32,27 @@ function canQueueWorkspaceConfigSync(app: WorkspaceConfigSyncApp): boolean {
   return Number.isFinite(Number(app.currentLotId)) && Number(app.currentLotId) > 0;
 }
 
+function canQueueCloudConfigSync(app: WorkspaceConfigSyncApp): boolean {
+  if (app.isOffline) return false;
+  return app.isGoogleSignedIn === true;
+}
+
 export function queueWorkspaceConfigSyncPush(app: WorkspaceConfigSyncApp): void {
   if (!canQueueWorkspaceConfigSync(app)) return;
+
+  const state = getWorkspaceConfigSyncState(app as object);
+  if (state.timeoutId != null) {
+    globalThis.clearTimeout(state.timeoutId);
+  }
+
+  state.timeoutId = globalThis.setTimeout(() => {
+    state.timeoutId = null;
+    void app.pushCloudSync();
+  }, WORKSPACE_CONFIG_SYNC_DEBOUNCE_MS);
+}
+
+export function queueCloudConfigSyncPush(app: WorkspaceConfigSyncApp): void {
+  if (!canQueueCloudConfigSync(app)) return;
 
   const state = getWorkspaceConfigSyncState(app as object);
   if (state.timeoutId != null) {
