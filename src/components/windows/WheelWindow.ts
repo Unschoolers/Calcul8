@@ -19,6 +19,17 @@ export {
     seedToIndex
 } from "./wheelHelpers.ts";
 
+function getWheelCanvasTargetSize(panel: HTMLElement | null, presentationMode: boolean): number {
+  const maxSize = presentationMode ? 600 : 360;
+  if (!panel) return maxSize;
+
+  // Leave room for the pointer, shadows, and small-screen padding so the wheel
+  // does not get clipped against the viewport edge on mobile.
+  const horizontalInset = presentationMode ? 40 : 28;
+  const availableWidth = Math.max(220, panel.clientWidth - horizontalInset);
+  return Math.min(availableWidth, maxSize);
+}
+
 
 export const WheelWindow = {
   name: "WheelWindow",
@@ -32,6 +43,13 @@ export const WheelWindow = {
     return {
       editingWheelConfig: null as WheelConfig | null,
       activeWheelSlots: [] as WheelSlot[],
+      wheelMode: "config" as "config" | "live",
+      wheelCelebrationVisible: false,
+      wheelCelebrationLabel: "" as string,
+      wheelCelebrationColor: "#f0a500",
+      wheelCelebrationImage: "" as string,
+      wheelCelebrationPreview: false,
+      wheelCelebrationNonce: 0,
       wheelLastResultColor: "rgb(var(--v-theme-primary))",
       wheelCanvasSize: 360,
       wheelEndingSession: false,
@@ -69,8 +87,7 @@ export const WheelWindow = {
       nextTick(() => {
         setTimeout(() => {
           const panel = (this.$refs as Record<string, unknown>).wheelSpinnerPanel as HTMLElement | null;
-          const max = presMode ? 600 : 360;
-          const w = panel ? Math.min(panel.clientWidth, max) : max;
+          const w = getWheelCanvasTargetSize(panel, presMode);
           if (w > 0) {
             (this as Record<string, unknown>).wheelCanvasSize = w;
           }
@@ -85,7 +102,26 @@ export const WheelWindow = {
   methods: {
     ...wheelConfigMethods,
     ...wheelSpinMethods,
-    ...wheelSessionMethods
+    ...wheelSessionMethods,
+    triggerWheelCelebration(this: Record<string, unknown>, payload: { label: string; color: string; image?: string; preview?: boolean }): void {
+      const timeoutId = (this as Record<string, unknown>)._wheelCelebrationTimeoutId as number | undefined;
+      if (timeoutId != null) {
+        clearTimeout(timeoutId);
+      }
+      (this as Record<string, unknown>).wheelCelebrationLabel = payload.label;
+      (this as Record<string, unknown>).wheelCelebrationColor = payload.color;
+      (this as Record<string, unknown>).wheelCelebrationImage = payload.image || "";
+      (this as Record<string, unknown>).wheelCelebrationPreview = payload.preview === true;
+      (this as Record<string, unknown>).wheelCelebrationNonce = (((this as Record<string, unknown>).wheelCelebrationNonce as number) || 0) + 1;
+      (this as Record<string, unknown>).wheelCelebrationVisible = false;
+      nextTick(() => {
+        (this as Record<string, unknown>).wheelCelebrationVisible = true;
+        (this as Record<string, unknown>)._wheelCelebrationTimeoutId = window.setTimeout(() => {
+          (this as Record<string, unknown>).wheelCelebrationVisible = false;
+          (this as Record<string, unknown>)._wheelCelebrationTimeoutId = undefined;
+        }, 2200);
+      });
+    }
   },
   mounted(this: Record<string, unknown>) {
     // If wheel configs were loaded from storage, initialize the editing state
@@ -108,8 +144,10 @@ export const WheelWindow = {
     // Resize canvas for container
     nextTick(() => {
       const panel = (this.$refs as Record<string, unknown>).wheelSpinnerPanel as HTMLElement | null;
-      const maxDefault = (this as Record<string, unknown>).wheelPresentationMode ? 600 : 360;
-      const availableWidth = panel ? Math.min(panel.clientWidth, maxDefault) : maxDefault;
+      const availableWidth = getWheelCanvasTargetSize(
+        panel,
+        Boolean((this as Record<string, unknown>).wheelPresentationMode)
+      );
       if (availableWidth > 0) {
         (this as Record<string, unknown>).wheelCanvasSize = availableWidth;
       }
@@ -123,8 +161,14 @@ export const WheelWindow = {
           const entry = entries[0];
           if (!entry) return;
           const presMode = (this as Record<string, unknown>).wheelPresentationMode as boolean;
-          const max = presMode ? 600 : 360;
-          const w = Math.min(entry.contentRect.width, max);
+          const panelWidth = panel?.clientWidth ?? entry.contentRect.width;
+          const w = Math.min(
+            getWheelCanvasTargetSize(
+              { clientWidth: panelWidth } as HTMLElement,
+              presMode
+            ),
+            entry.contentRect.width
+          );
           if (w > 0 && w !== (this as Record<string, unknown>).wheelCanvasSize) {
             (this as Record<string, unknown>).wheelCanvasSize = w;
             nextTick(() => vm.drawWheel(((this as Record<string, unknown>).wheelCurrentAngle as number) || 0));
@@ -140,6 +184,11 @@ export const WheelWindow = {
     if (ro) {
       ro.disconnect();
       (this as Record<string, unknown>)._wheelResizeObserver = undefined;
+    }
+    const celebrationTimeoutId = (this as Record<string, unknown>)._wheelCelebrationTimeoutId as number | undefined;
+    if (celebrationTimeoutId != null) {
+      clearTimeout(celebrationTimeoutId);
+      (this as Record<string, unknown>)._wheelCelebrationTimeoutId = undefined;
     }
   },
   setup(props: { ctx: Record<string, unknown> }) {

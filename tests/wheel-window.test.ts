@@ -204,7 +204,60 @@ test("landOnSlot sets result text and color", () => {
   assert.equal(vm.wheelLastResultColor, "#f00");
 });
 
+test("landOnSlot preview mode does not persist or open chase flow", () => {
+  const saveWheelSession = vi.fn();
+  const triggerWheelCelebration = vi.fn();
+  const vm: Record<string, unknown> = {
+    activeWheelSlots: [
+      { name: "Chase Card", color: "#ff0", cost: 50, tier: "tc", packsCount: 1, deductionType: "singles", isChase: true }
+    ],
+    activeWheelConfig: {
+      id: 1,
+      spinPrice: 10,
+      tiers: [{ id: "tc", boundLotId: 42, boundSinglesId: 777 }]
+    },
+    lots: [{
+      id: 42,
+      name: "Singles",
+      lotType: "singles",
+      singlesPurchases: [{ id: 777, item: "Chase Card", cost: 50, quantity: 1, marketValue: 60, image: "https://img.test/chase.png" }]
+    }],
+    wheelLastResult: "",
+    wheelLastResultColor: "",
+    wheelChaseDialog: true,
+    wheelChasePendingTierId: "stale",
+    wheelChaseReplacementSinglesId: 123,
+    triggerWheelCelebration,
+    saveWheelSession
+  };
+
+  WheelWindow.methods!.landOnSlot.call(vm as never, 0, { recordSession: false });
+  assert.equal(vm.wheelLastResult, "🎉 Chase Card");
+  assert.equal(vm.wheelLastResultColor, "#ff0");
+  assert.equal(vm.wheelChaseDialog, false);
+  assert.equal(vm.wheelChasePendingTierId, "");
+  assert.equal(vm.wheelChaseReplacementSinglesId, null);
+  assert.equal(saveWheelSession.mock.calls.length, 0);
+  assert.deepEqual(triggerWheelCelebration.mock.calls, [[{
+    label: "Chase Card",
+    color: "#ff0",
+    image: "https://img.test/chase.png",
+    preview: true
+  }]]);
+});
+
+test("testSpinWheel delegates to non-recording spin path", async () => {
+  const spinWheelInternal = vi.fn().mockResolvedValue(undefined);
+  const vm: Record<string, unknown> = {
+    spinWheelInternal
+  };
+
+  await WheelWindow.methods!.testSpinWheel.call(vm as never);
+  assert.deepEqual(spinWheelInternal.mock.calls, [[false]]);
+});
+
 test("landOnSlot opens chase dialog for chase tiers", () => {
+  const triggerWheelCelebration = vi.fn();
   const vm: Record<string, unknown> = {
     activeWheelSlots: [
       { name: "Chase Card", color: "#ff0", cost: 50, tier: "tc", packsCount: 1, deductionType: "singles", isChase: true }
@@ -213,16 +266,28 @@ test("landOnSlot opens chase dialog for chase tiers", () => {
     wheelTotalSpins: 0,
     wheelLastResult: "",
     wheelLastResultColor: "",
-    activeWheelConfig: null,
+    activeWheelConfig: {
+      id: 1,
+      spinPrice: 10,
+      tiers: [{ id: "tc", boundLotId: 42, boundSinglesId: 777 }]
+    },
+    lots: [{
+      id: 42,
+      name: "Singles",
+      lotType: "singles",
+      singlesPurchases: [{ id: 777, item: "Chase Card", cost: 50, quantity: 1, marketValue: 60, image: "https://img.test/chase.png" }]
+    }],
     wheelChaseDialog: false,
     wheelChasePendingTierId: "",
     wheelChaseReplacementSinglesId: null,
+    triggerWheelCelebration,
     saveWheelSession: vi.fn()
   };
 
   WheelWindow.methods!.landOnSlot.call(vm as never, 0);
   assert.equal(vm.wheelChaseDialog, true);
   assert.equal(vm.wheelChasePendingTierId, "tc");
+  assert.equal(triggerWheelCelebration.mock.calls.length, 1);
 });
 
 test("recordSpinResult auto-records sale for non-chase tiers with bound lot", () => {
@@ -250,6 +315,33 @@ test("recordSpinResult auto-records sale for non-chase tiers with bound lot", ()
   assert.equal(sale.packsCount, 2);
 });
 
+test("recordSpinResult does not record sale when tier items count is zero", () => {
+  const addSaleFn = vi.fn();
+  const vm: Record<string, unknown> = {
+    activeWheelSlots: [
+      { name: "Hellish Blizzard", color: "#09f", cost: 25, tier: "t1", packsCount: 0, deductionType: "singles", isChase: false }
+    ],
+    wheelSpinCounts: [0],
+    wheelTotalSpins: 0,
+    activeWheelConfig: { id: 1, spinPrice: 10, tiers: [{ id: "t1", boundLotId: 42, boundSinglesId: 777, packsCount: 0 }] },
+    addWheelSaleToLot: addSaleFn,
+    lots: [{
+      id: 42,
+      name: "Singles",
+      lotType: "singles",
+      singlesPurchases: [{ id: 777, item: "Hellish Blizzard", cost: 25, quantity: 1, marketValue: 30 }]
+    }],
+    wheelSkippedDeductions: [],
+    activeWheelConfigId: 1,
+    loadSalesForLotId: vi.fn(() => []),
+    saveWheelSession: vi.fn()
+  };
+
+  WheelWindow.methods!.recordSpinResult.call(vm as never, 0);
+  assert.equal(addSaleFn.mock.calls.length, 0);
+  assert.equal((vm.wheelSkippedDeductions as unknown[]).length, 0);
+});
+
 test("recordSpinResult auto-skips singles with quantity 0", () => {
   const addSaleFn = vi.fn();
   const vm: Record<string, unknown> = {
@@ -273,6 +365,42 @@ test("recordSpinResult auto-skips singles with quantity 0", () => {
   // Should NOT record sale
   assert.equal(addSaleFn.mock.calls.length, 0);
   // Should add to skipped deductions
+  assert.equal((vm.wheelSkippedDeductions as unknown[]).length, 1);
+});
+
+test("recordSpinResult skips sold-out singles when linked entry has no remaining stock", () => {
+  const addSaleFn = vi.fn();
+  const vm: Record<string, unknown> = {
+    activeWheelSlots: [
+      { name: "Hellish Blizzard", color: "#09f", cost: 25, tier: "t1", packsCount: 1, deductionType: "singles", isChase: false }
+    ],
+    wheelSpinCounts: [0],
+    wheelTotalSpins: 0,
+    activeWheelConfig: { id: 1, spinPrice: 10, tiers: [{ id: "t1", boundLotId: 42, boundSinglesId: 777 }] },
+    addWheelSaleToLot: addSaleFn,
+    lots: [{
+      id: 42,
+      name: "Singles",
+      lotType: "singles",
+      singlesPurchases: [{ id: 777, item: "Hellish Blizzard", cost: 25, quantity: 1, marketValue: 30 }]
+    }],
+    wheelSkippedDeductions: [],
+    activeWheelConfigId: 1,
+    loadSalesForLotId: vi.fn(() => [{
+      id: 999,
+      type: "wheel",
+      quantity: 1,
+      packsCount: 1,
+      price: 10,
+      buyerShipping: 0,
+      date: "2026-03-25",
+      singlesPurchaseEntryId: 777
+    }]),
+    saveWheelSession: vi.fn()
+  };
+
+  WheelWindow.methods!.recordSpinResult.call(vm as never, 0);
+  assert.equal(addSaleFn.mock.calls.length, 0);
   assert.equal((vm.wheelSkippedDeductions as unknown[]).length, 1);
 });
 
@@ -498,9 +626,16 @@ test("recordChaseSale calls addWheelSaleToLot for the tier's bound lot", () => {
   const vm: Record<string, unknown> = {
     wheelConfigs: [{
       id: 1, name: "W", spinPrice: 10, targetMargin: 40, createdAt: "",
-      tiers: [{ id: "tc", label: "Chase Card", color: "#ff0", slots: 1, costPerTier: 25, packsCount: 1, deductionType: "singles", sets: [], isChase: true, boundLotId: 100 }]
+      tiers: [{ id: "tc", label: "Chase Card", color: "#ff0", slots: 1, costPerTier: 25, packsCount: 1, deductionType: "singles", sets: [], isChase: true, boundLotId: 100, boundSinglesId: 777 }]
     }],
     activeWheelConfigId: 1,
+    lots: [{
+      id: 100,
+      name: "Singles Lot",
+      lotType: "singles",
+      singlesPurchases: [{ id: 777, item: "Chase Card", cost: 25, quantity: 2, marketValue: 30 }]
+    }],
+    loadSalesForLotId: vi.fn(() => []),
     addWheelSaleToLot: addSaleFn
   };
 
@@ -540,9 +675,16 @@ test("keepChase records sale and closes dialog", () => {
     wheelChaseDialog: true,
     wheelConfigs: [{
       id: 1, name: "W", spinPrice: 10, targetMargin: 40, createdAt: "",
-      tiers: [{ id: "tc", label: "Chase Card", color: "#ff0", slots: 1, costPerTier: 25, packsCount: 1, deductionType: "singles", sets: [], isChase: true, boundLotId: 100 }]
+      tiers: [{ id: "tc", label: "Chase Card", color: "#ff0", slots: 1, costPerTier: 25, packsCount: 1, deductionType: "singles", sets: [], isChase: true, boundLotId: 100, boundSinglesId: 777 }]
     }],
     activeWheelConfigId: 1,
+    lots: [{
+      id: 100,
+      name: "Singles Lot",
+      lotType: "singles",
+      singlesPurchases: [{ id: 777, item: "Chase Card", cost: 25, quantity: 2, marketValue: 30 }]
+    }],
+    loadSalesForLotId: vi.fn(() => []),
     addWheelSaleToLot: addSaleFn,
     recordChaseSale: WheelWindow.methods!.recordChaseSale
   };

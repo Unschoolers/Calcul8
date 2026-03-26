@@ -1,10 +1,13 @@
 <div class="wheel-layout pa-2" :class="{ 'wheel-presentation': wheelPresentationMode }">
 
   <!-- CONFIG PANEL -->
-  <v-card v-show="!wheelPresentationMode" class="wheel-config-panel" variant="outlined">
-    <v-card-title class="text-subtitle-2 pb-1">
-      <v-icon start size="small">mdi-cog</v-icon>
-      Wheel Config
+  <v-card v-show="!wheelPresentationMode && wheelMode === 'config'" class="wheel-config-panel" variant="outlined">
+    <v-card-title class="wheel-panel-title">
+      <div class="wheel-panel-heading">
+        <v-icon start size="small">mdi-cog</v-icon>
+        Wheel Config
+      </div>
+      <div class="wheel-panel-subtitle">Build the prize mix, source lots, and margin target.</div>
     </v-card-title>
     <v-card-text>
 
@@ -232,57 +235,117 @@
 
   <!-- SPINNER PANEL -->
   <div class="wheel-spinner-panel" ref="wheelSpinnerPanel">
-    <v-btn
-      size="x-small"
-      :icon="wheelPresentationMode ? 'mdi-arrow-collapse-all' : 'mdi-arrow-expand-all'"
-      variant="text"
-      :title="wheelPresentationMode ? 'Show config & tracker' : 'Presentation mode'"
-      class="wheel-presentation-toggle"
-      @click="wheelPresentationMode = !wheelPresentationMode"
-    ></v-btn>
-    <div class="wheel-outer" ref="wheelOuter">
-      <canvas ref="wheelCanvas" class="wheel-canvas" :width="wheelCanvasSize" :height="wheelCanvasSize"></canvas>
-      <div class="wheel-pointer"></div>
-      <div class="wheel-center-cap">SPIN</div>
-    </div>
-
-    <v-btn
-      size="large"
-      color="primary"
-      variant="elevated"
-      :disabled="wheelSpinning || !activeWheelSlots.length || wheelEndingSession || wheelChaseDialog || (isWorkspaceScopeActive && !isCurrentWorkspaceOwner)"
-      @click="spinWheel"
-      class="wheel-spin-btn"
-    >
-      <v-icon start>mdi-lightning-bolt</v-icon>
-      SPIN
-    </v-btn>
-
-    <!-- Result Banner -->
-    <v-card
-      variant="outlined"
-      class="pa-3 text-center wheel-result-banner"
-      :style="{ borderLeftColor: wheelLastResultColor, borderLeftWidth: '4px' }"
-    >
-      <span class="text-body-1 font-weight-medium">{{ wheelLastResult || 'Configure & Apply to start!' }}</span>
-    </v-card>
-
-    <!-- Provably Fair Verification -->
-    <div v-if="wheelSpinHash" class="wheel-fairness">
-      <div class="wheel-fairness-header" @click="!wheelSpinning && (wheelShowSeed = !wheelShowSeed)">
-        <v-icon size="x-small" :color="wheelSpinning ? 'warning' : 'success'" class="mr-1">
-          {{ wheelSpinning ? 'mdi-lock' : 'mdi-shield-check' }}
-        </v-icon>
-        <span class="text-caption font-weight-medium">
-          {{ wheelSpinning ? 'Result Locked' : 'Verified Fair' }}
-        </span>
-        <v-icon v-if="!wheelSpinning" size="x-small" class="ml-auto">{{ wheelShowSeed ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
+    <div class="wheel-stage-shell" :class="{ 'wheel-stage-shell--fullscreen': wheelPresentationMode }">
+      <div class="wheel-stage-topbar">
+        <div class="wheel-stage-meta">
+          <div class="wheel-stage-title">{{ activeWheelConfig?.name || 'Wheel Stage' }}</div>
+          <div class="wheel-stage-pills">
+            <span class="wheel-stage-pill">{{ wheelMode === 'config' ? 'config mode' : 'live mode' }}</span>
+            <span class="wheel-stage-pill">{{ activeWheelSlots.length || 0 }} slots</span>
+            <span v-if="activeWheelConfig" class="wheel-stage-pill">${{ Number(activeWheelConfig.spinPrice || 0).toFixed(2) }}/spin</span>
+          </div>
+        </div>
+        <div class="wheel-stage-actions">
+          <v-btn-toggle
+            v-model="wheelMode"
+            mandatory
+            density="comfortable"
+            divided
+            class="wheel-mode-toggle"
+          >
+            <v-btn value="config" size="small">
+              <v-icon start size="small">mdi-tune</v-icon>
+              Config
+            </v-btn>
+            <v-btn value="live" size="small">
+              <v-icon start size="small">mdi-broadcast</v-icon>
+              Live
+            </v-btn>
+          </v-btn-toggle>
+          <v-btn
+            size="x-small"
+            :icon="wheelPresentationMode ? 'mdi-arrow-collapse-all' : 'mdi-arrow-expand-all'"
+            variant="text"
+            :title="wheelPresentationMode ? 'Show config & tracker' : 'Presentation mode'"
+            class="wheel-presentation-toggle"
+            @click="wheelPresentationMode = !wheelPresentationMode"
+          ></v-btn>
+        </div>
       </div>
-      <code class="wheel-fairness-code text-caption mt-1">{{ wheelSpinHash }}</code>
-      <template v-if="wheelShowSeed && !wheelSpinning">
-        <code class="wheel-fairness-code text-caption mt-1">{{ wheelSpinSeed }}</code>
-        <div class="text-caption text-medium-emphasis mt-1">SHA-256 of the code above = the hash.</div>
-      </template>
+
+      <div class="wheel-outer" ref="wheelOuter">
+        <transition name="wheel-celebration-pop">
+          <div
+            v-if="wheelCelebrationVisible"
+            :key="wheelCelebrationNonce"
+            class="wheel-celebration"
+            :class="{ 'wheel-celebration--preview': wheelCelebrationPreview }"
+          >
+            <div class="wheel-celebration-burst"></div>
+            <div class="wheel-celebration-ring"></div>
+            <div class="wheel-celebration-stars">
+              <span class="wheel-celebration-star wheel-celebration-star--1">★</span>
+              <span class="wheel-celebration-star wheel-celebration-star--2">★</span>
+              <span class="wheel-celebration-star wheel-celebration-star--3">★</span>
+              <span class="wheel-celebration-star wheel-celebration-star--4">★</span>
+            </div>
+            <div class="wheel-celebration-copy" :style="{ '--wheel-celebration-color': wheelCelebrationColor }">
+              <div v-if="wheelCelebrationImage" class="wheel-celebration-image">
+                <img :src="wheelCelebrationImage" alt="" loading="eager">
+              </div>
+              <div class="wheel-celebration-kicker">{{ wheelCelebrationPreview ? 'Preview Chase Hit' : 'Chase Hit' }}</div>
+              <div class="wheel-celebration-title">{{ wheelCelebrationLabel }}</div>
+            </div>
+          </div>
+        </transition>
+        <canvas ref="wheelCanvas" class="wheel-canvas" :width="wheelCanvasSize" :height="wheelCanvasSize"></canvas>
+        <div class="wheel-pointer"></div>
+        <div class="wheel-center-cap">SPIN</div>
+      </div>
+
+      <v-btn
+        size="large"
+        color="primary"
+        variant="elevated"
+        :disabled="wheelSpinning || !activeWheelSlots.length || wheelEndingSession || wheelChaseDialog || (isWorkspaceScopeActive && !isCurrentWorkspaceOwner)"
+        @click="wheelMode === 'config' ? testSpinWheel() : spinWheel()"
+        class="wheel-spin-btn"
+      >
+        <v-icon start>{{ wheelMode === 'config' ? 'mdi-flask-outline' : 'mdi-lightning-bolt' }}</v-icon>
+        {{ wheelMode === 'config' ? 'Test Spin' : 'Spin' }}
+      </v-btn>
+      <div class="wheel-stage-caption">
+        {{ wheelMode === 'config'
+          ? 'Preview the wheel without recording sales, session counts, or realtime updates.'
+          : 'Run the live wheel and record session totals, sales, and workspace updates.' }}
+      </div>
+
+      <!-- Result Banner -->
+      <v-card
+        variant="outlined"
+        class="pa-3 text-center wheel-result-banner"
+        :style="{ borderLeftColor: wheelLastResultColor, borderLeftWidth: '4px' }"
+      >
+        <span class="text-body-1 font-weight-medium">{{ wheelLastResult || 'Configure & Apply to start!' }}</span>
+      </v-card>
+
+      <!-- Provably Fair Verification -->
+      <div v-if="wheelSpinHash" class="wheel-fairness">
+        <div class="wheel-fairness-header" @click="!wheelSpinning && (wheelShowSeed = !wheelShowSeed)">
+          <v-icon size="x-small" :color="wheelSpinning ? 'warning' : 'success'" class="mr-1">
+            {{ wheelSpinning ? 'mdi-lock' : 'mdi-shield-check' }}
+          </v-icon>
+          <span class="text-caption font-weight-medium">
+            {{ wheelSpinning ? 'Result Locked' : 'Verified Fair' }}
+          </span>
+          <v-icon v-if="!wheelSpinning" size="x-small" class="ml-auto">{{ wheelShowSeed ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
+        </div>
+        <code class="wheel-fairness-code text-caption mt-1">{{ wheelSpinHash }}</code>
+        <template v-if="wheelShowSeed && !wheelSpinning">
+          <code class="wheel-fairness-code text-caption mt-1">{{ wheelSpinSeed }}</code>
+          <div class="text-caption text-medium-emphasis mt-1">SHA-256 of the code above = the hash.</div>
+        </template>
+      </div>
     </div>
 
     <!-- Chase Replacement (shown after a chase tier is won and sale confirmed) -->
@@ -396,9 +459,12 @@
 
   <!-- TRACKER PANEL -->
   <v-card v-show="!wheelPresentationMode" class="wheel-tracker-panel" variant="outlined">
-    <v-card-title class="text-subtitle-2 pb-1">
-      <v-icon start size="small">mdi-chart-bar</v-icon>
-      Session Tracker
+    <v-card-title class="wheel-panel-title">
+      <div class="wheel-panel-heading">
+        <v-icon start size="small">mdi-chart-bar</v-icon>
+        Session Tracker
+      </div>
+      <div class="wheel-panel-subtitle">Monitor spins, revenue, prize cost, and margin live.</div>
     </v-card-title>
     <v-card-text>
       <!-- Stats Grid -->
@@ -458,31 +524,43 @@
         </div>
       </div>
 
-      <!-- Reset -->
-      <v-btn block variant="outlined" size="small" @click="wheelConfirmAction = 'reset'; wheelConfirmDialog = true" class="mb-2">
-        <v-icon start size="small">mdi-refresh</v-icon>
-        Reset Session
-      </v-btn>
-
-      <!-- End Wheel -->
-      <v-btn
-        block
-        color="warning"
-        variant="elevated"
-        size="small"
-        :disabled="wheelEndingSession"
-        @click="startEndWheelSession"
+      <v-alert
+        v-if="wheelMode === 'config'"
+        variant="tonal"
+        density="compact"
+        type="info"
+        class="wheel-tracker-note"
       >
-        <v-icon start size="small">mdi-flag-checkered</v-icon>
-        End Wheel
-        <v-badge
-          v-if="wheelSkippedDeductions.length"
-          :content="wheelSkippedDeductions.length"
-          color="error"
-          inline
-          class="ml-2"
-        ></v-badge>
-      </v-btn>
+        Test mode keeps this session untouched so you can tune the wheel safely.
+      </v-alert>
+
+      <template v-else>
+        <!-- Reset -->
+        <v-btn block variant="outlined" size="small" @click="wheelConfirmAction = 'reset'; wheelConfirmDialog = true" class="mb-2">
+          <v-icon start size="small">mdi-refresh</v-icon>
+          Reset Session
+        </v-btn>
+
+        <!-- End Wheel -->
+        <v-btn
+          block
+          color="warning"
+          variant="elevated"
+          size="small"
+          :disabled="wheelEndingSession"
+          @click="startEndWheelSession"
+        >
+          <v-icon start size="small">mdi-flag-checkered</v-icon>
+          End Wheel
+          <v-badge
+            v-if="wheelSkippedDeductions.length"
+            :content="wheelSkippedDeductions.length"
+            color="error"
+            inline
+            class="ml-2"
+          ></v-badge>
+        </v-btn>
+      </template>
     </v-card-text>
   </v-card>
 

@@ -4,6 +4,10 @@ import type { Lot, Sale, SkippedWheelDeduction, WheelConfig } from "../../types/
 import { getScopedWheelConfigSessionStorageKey } from "../../app-core/storageKeys.ts";
 import { getActiveStorageScope } from "../../app-core/workspace-scope.ts";
 import { buildSlotsFromConfig, createWheelSale, type WheelSlot } from "./wheelHelpers.ts";
+import {
+  getAvailableSinglesQuantityForWheelTier,
+  hasAnyAvailableSinglesForWheelTier
+} from "./wheelSaleSupport.ts";
 
 export const wheelSessionMethods = {
   getChaseReplacementItems(this: Record<string, unknown>): Array<{ title: string; value: number; image?: string; cardNumber?: string }> {
@@ -161,6 +165,16 @@ export const wheelSessionMethods = {
     if (!config) return;
     const tier = config.tiers.find((t) => t.id === tierId);
     if (!tier?.boundLotId) return;
+    if (tier.deductionType === "none" || (tier.packsCount || 0) <= 0) return;
+    if (tier.deductionType === "singles") {
+      if (tier.boundSinglesId) {
+        if (getAvailableSinglesQuantityForWheelTier(this, tier.boundLotId, tier.boundSinglesId) <= 0) {
+          return;
+        }
+      } else if (!hasAnyAvailableSinglesForWheelTier(this, tier)) {
+        return;
+      }
+    }
 
     const lots = (this.lots || []) as Lot[];
     const sale = createWheelSale({
@@ -183,11 +197,8 @@ export const wheelSessionMethods = {
     const activeId = this.activeWheelConfigId as number | null;
     const config = activeId != null ? configs.find((c) => c.id === activeId) : null;
     const tier = config?.tiers.find((t) => t.id === tierId);
-    if (!tier?.boundLotId || !tier.boundSinglesId) return false;
-    const lots = (this.lots || []) as Lot[];
-    const lot = lots.find((l) => l.id === tier.boundLotId);
-    const entry = lot?.singlesPurchases?.find((e) => e.id === tier.boundSinglesId);
-    return (entry?.quantity ?? 0) > 1;
+    if (!tier?.boundLotId || !tier.boundSinglesId || (tier.packsCount || 0) <= 0) return false;
+    return getAvailableSinglesQuantityForWheelTier(this, tier.boundLotId, tier.boundSinglesId) > 1;
   },
 
   resetWheelSession(this: Record<string, unknown>): void {
