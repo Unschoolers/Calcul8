@@ -36,19 +36,41 @@ self.addEventListener("message", (event) => {
   }
 });
 
-async function networkFirstNavigation(request) {
+function createOfflineResponse() {
+  return new Response("Offline", { status: 503, statusText: "Offline" });
+}
+
+function cloneRequestForReload(request) {
+  try {
+    return new Request(request, { cache: "reload" });
+  } catch {
+    return request;
+  }
+}
+
+async function networkFirst(request, { fallbackResponse = null, forceFresh = false } = {}) {
   const cache = await caches.open(CACHE_NAME);
   try {
-    const response = await fetch(request);
+    const response = await fetch(forceFresh ? cloneRequestForReload(request) : request);
     if (response && response.ok) {
       cache.put(request, response.clone());
     }
     return response;
   } catch {
-    const cachedPage = await cache.match("./index.html");
-    if (cachedPage) return cachedPage;
-    return new Response("Offline", { status: 503, statusText: "Offline" });
+    const cachedResponse = await cache.match(request);
+    if (cachedResponse) return cachedResponse;
+    if (fallbackResponse) return fallbackResponse;
+    return createOfflineResponse();
   }
+}
+
+async function networkFirstNavigation(request) {
+  const cache = await caches.open(CACHE_NAME);
+  const cachedPage = await cache.match("./index.html");
+  return networkFirst(request, {
+    fallbackResponse: cachedPage ?? createOfflineResponse(),
+    forceFresh: true
+  });
 }
 
 async function staleWhileRevalidate(request) {
@@ -73,7 +95,21 @@ async function staleWhileRevalidate(request) {
     return networkResponse;
   }
 
-  return new Response("Offline", { status: 503, statusText: "Offline" });
+  return createOfflineResponse();
+}
+
+function shouldUseNetworkFirst(request, url) {
+  if (url.origin !== self.location.origin) {
+    return false;
+  }
+
+  if (["script", "style", "worker", "manifest"].includes(request.destination)) {
+    return true;
+  }
+
+  const pathname = url.pathname.toLowerCase();
+  return pathname.includes("/assets/")
+    && (pathname.endsWith(".js") || pathname.endsWith(".css") || pathname.endsWith(".webmanifest"));
 }
 
 self.addEventListener("fetch", (event) => {
@@ -90,6 +126,11 @@ self.addEventListener("fetch", (event) => {
   // Do not cache cross-origin responses in this SW.
   if (url.origin !== self.location.origin) {
     event.respondWith(fetch(request));
+    return;
+  }
+
+  if (shouldUseNetworkFirst(request, url)) {
+    event.respondWith(networkFirst(request, { forceFresh: true }));
     return;
   }
 
