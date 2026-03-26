@@ -1,9 +1,8 @@
-import template from "./PortfolioWindow.html?raw";
 import "./PortfolioWindow.css";
 import { inject, type PropType } from "vue";
 import { createWindowContextBridge } from "./contextBridge.ts";
 import { filterLotOptionItems } from "../../app-core/shared/lot-option-items.ts";
-import { PortfolioKpiCard } from "./PortfolioKpiCard.ts";
+import PortfolioKpiCard from "./PortfolioKpiCard.vue";
 import {
   buildPortfolioSalesByUserLegendItems,
   getNextPortfolioChartView,
@@ -417,7 +416,6 @@ export const PortfolioWindow = {
     const injectedCtx = inject<Record<string, unknown> | null>("appCtx", null);
     const source = (injectedCtx ?? props.ctx) as Record<string, unknown>;
     return createWindowContextBridge(source);
-  },
-  template
+  }
 };
 

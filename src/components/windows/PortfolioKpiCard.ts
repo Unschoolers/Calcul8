@@ -39,21 +39,5 @@ export const PortfolioKpiCard = defineComponent({
       const value = this.valueClasses;
       return Array.isArray(value) ? value : [value];
     }
-  },
-  template: `
-    <v-card elevation="4" :class="resolvedCardClasses">
-      <v-card-text class="portfolio-kpi-content">
-        <div class="portfolio-kpi-head">
-          <div class="portfolio-kpi-label">{{ label }}</div>
-          <div class="portfolio-kpi-icon-wrap">
-            <v-icon size="16">{{ icon }}</v-icon>
-          </div>
-        </div>
-        <div class="text-h4 font-weight-bold portfolio-kpi-value" :class="resolvedValueClasses">
-          {{ value }}
-        </div>
-        <div class="portfolio-kpi-meta">{{ meta }}</div>
-      </v-card-text>
-    </v-card>
-  `
+  }
 });

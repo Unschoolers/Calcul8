@@ -1,8 +1,7 @@
-import template from "./ConfigWindow.html?raw";
 import "./ConfigWindow.css";
 import { inject, type PropType } from "vue";
 import { createWindowContextBridge } from "./contextBridge.ts";
-import { AdminSyncImportCard } from "./AdminSyncImportCard.ts";
+import AdminSyncImportCard from "./AdminSyncImportCard.vue";
 
 export const ConfigWindow = {
   name: "ConfigWindow",
@@ -25,6 +24,5 @@ export const ConfigWindow = {
     const injectedCtx = inject<Record<string, unknown> | null>("appCtx", null);
     const source = (injectedCtx ?? props.ctx) as Record<string, unknown>;
     return createWindowContextBridge(source);
-  },
-  template
+  }
 };

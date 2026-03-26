@@ -3,16 +3,16 @@ import { appLifecycle } from "./app-core/lifecycle.ts";
 import { appMethods } from "./app-core/methods/index.ts";
 import { createInitialState } from "./app-core/state.ts";
 import { appWatch } from "./app-core/watch.ts";
-import { LivePriceCard } from "./components/LivePriceCard.ts";
-import { AutoCalculateModal } from "./components/modals/AutoCalculateModal.ts";
-import { ConfigWindow } from "./components/windows/ConfigWindow.ts";
-import { LiveWindow } from "./components/windows/LiveWindow.ts";
-import { PortfolioWindow } from "./components/windows/PortfolioWindow.ts";
-import { SalesWindow } from "./components/windows/SalesWindow.ts";
-import { SinglesConfigWindow } from "./components/windows/SinglesConfigWindow.ts";
-import { WheelWindow } from "./components/windows/WheelWindow.ts";
-import { WhatnotCsvImportDialog } from "./components/windows/whatnot/WhatnotCsvImportDialog.ts";
-import { WhatnotReviewDialog } from "./components/windows/whatnot/WhatnotReviewDialog.ts";
+import LivePriceCard from "./components/LivePriceCard.vue";
+import AutoCalculateModal from "./components/modals/AutoCalculateModal.vue";
+import ConfigWindow from "./components/windows/ConfigWindow.vue";
+import LiveWindow from "./components/windows/LiveWindow.vue";
+import PortfolioWindow from "./components/windows/PortfolioWindow.vue";
+import SalesWindow from "./components/windows/SalesWindow.vue";
+import SinglesConfigWindow from "./components/windows/SinglesConfigWindow.vue";
+import WheelWindow from "./components/windows/WheelWindow.vue";
+import WhatnotCsvImportDialog from "./components/windows/whatnot/WhatnotCsvImportDialog.vue";
+import WhatnotReviewDialog from "./components/windows/whatnot/WhatnotReviewDialog.vue";
 
 export const appOptions = {
   components: {

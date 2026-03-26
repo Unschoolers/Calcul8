@@ -1,4 +1,3 @@
-import template from "./SinglesConfigWindow.html?raw";
 import "./ConfigWindow.css";
 import "./SinglesConfigWindow.css";
 import { inject, type PropType } from "vue";
@@ -11,11 +10,11 @@ import {
   singlesCatalogSearchMethods
 } from "./singles/useSinglesCatalogSearch.ts";
 import { singlesRowEditorMethods } from "./singles/useSinglesRowEditor.ts";
-import { SinglesCsvImportDialog } from "./singles/SinglesCsvImportDialog.ts";
-import { SinglesPurchasingCard } from "./singles/SinglesPurchasingCard.ts";
-import { SinglesSellingCard } from "./singles/SinglesSellingCard.ts";
+import SinglesCsvImportDialog from "./singles/SinglesCsvImportDialog.vue";
+import SinglesPurchasingCard from "./singles/SinglesPurchasingCard.vue";
+import SinglesSellingCard from "./singles/SinglesSellingCard.vue";
 import { normalizeSinglesSearchTokens } from "./singles/singlesCatalogSearch.ts";
-import { AdminSyncImportCard } from "./AdminSyncImportCard.ts";
+import AdminSyncImportCard from "./AdminSyncImportCard.vue";
 
 const SINGLES_INFO_NOTICE_DISMISSED_KEY = "whatfees_singles_info_notice_dismissed_v1";
 type SinglesDesktopSortKey = "item" | "cardNumber" | "cost" | "quantity" | "marketValue";
@@ -598,6 +597,5 @@ export const SinglesConfigWindow: any = {
     const injectedCtx = inject<Record<string, unknown> | null>("appCtx", null);
     const source = (injectedCtx ?? props.ctx) as Record<string, unknown>;
     return createWindowContextBridge(source);
-  },
-  template
+  }
 };

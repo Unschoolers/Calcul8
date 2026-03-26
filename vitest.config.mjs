@@ -1,8 +1,10 @@
+import vue from "@vitejs/plugin-vue";
 import { defineConfig } from "vitest/config";
 
 const maxWorkers = Number(process.env.VITEST_MAX_WORKERS || "");
 
 export default defineConfig({
+  plugins: [vue()],
   test: {
     environment: "node",
     include: ["tests/**/*.test.ts"],

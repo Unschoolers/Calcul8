@@ -1,4 +1,3 @@
-import template from "./AdminSyncImportCard.html?raw";
 import { inject, type PropType } from "vue";
 import { createWindowContextBridge } from "./contextBridge.ts";
 
@@ -14,6 +13,5 @@ export const AdminSyncImportCard = {
     const injectedCtx = inject<Record<string, unknown> | null>("appCtx", null);
     const source = (injectedCtx ?? props.ctx) as Record<string, unknown>;
     return createWindowContextBridge(source);
-  },
-  template
+  }
 };

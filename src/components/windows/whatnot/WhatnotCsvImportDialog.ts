@@ -1,4 +1,3 @@
-import template from "./WhatnotCsvImportDialog.html?raw";
 import { inject, type PropType } from "vue";
 import { createWindowContextBridge } from "../contextBridge.ts";
 import type { WhatnotImportReviewRow } from "../../../types/app.ts";
@@ -317,6 +316,5 @@ export const WhatnotCsvImportDialog = {
         return;
       }
     }
-  },
-  template
+  }
 };

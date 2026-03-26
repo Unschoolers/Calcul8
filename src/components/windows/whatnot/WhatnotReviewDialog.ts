@@ -1,4 +1,3 @@
-import template from "./WhatnotReviewDialog.html?raw";
 import { inject, type PropType } from "vue";
 import { createWindowContextBridge } from "../contextBridge.ts";
 import type { WhatnotImportReviewRow, WhatnotMappedSaleType } from "../../../types/app.ts";
@@ -130,6 +129,5 @@ export const WhatnotReviewDialog = {
         selectedPacksCount: row.selectedPacksCount
       });
     }
-  },
-  template
+  }
 };

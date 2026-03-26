@@ -1,7 +1,7 @@
-import { createApp, type Component } from "vue";
+import { createApp } from "vue";
 import "vuetify/styles";
 import "./styles/app.css";
-import { appOptions } from "./app.ts";
+import App from "./App.vue";
 import { vuetify } from "./vuetify.ts";
 
 type RuntimeDebugEntry = {
@@ -117,7 +117,7 @@ function installRuntimeDebugHooks(app: ReturnType<typeof createApp>): void {
 }
 
 const splashShownAt = performance.now();
-const app = createApp(appOptions as unknown as Component);
+const app = createApp(App);
 installRuntimeDebugHooks(app);
 try {
   app.use(vuetify).mount("#app");

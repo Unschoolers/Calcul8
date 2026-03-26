@@ -25,29 +25,53 @@ function collectHtmlFiles(dir: string): string[] {
   return files;
 }
 
+function collectFilesByExtension(dir: string, extension: string): string[] {
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  const files: string[] = [];
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...collectFilesByExtension(fullPath, extension));
+      continue;
+    }
+    if (entry.isFile() && entry.name.endsWith(extension)) {
+      files.push(fullPath);
+    }
+  }
+  return files;
+}
+
 function assertTemplateCompiles(label: string, template: string): void {
   const result = compile(template, { mode: "function" });
-  assert.doesNotThrow(() => new Function(result.code), `${label} should compile into a runtime render function`);
+  assert.doesNotThrow(() => new Function(result.code), `${label} should compile into a render function`);
 }
 
-function extractIndexAppTemplate(): string {
+test("index.html keeps an empty app mount point", () => {
   const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
-  const start = html.indexOf('<div id="app"');
-  const end = html.indexOf('<script src="https://js.stripe.com/v3/"></script>');
-  assert.notEqual(start, -1, "index.html should contain the app root");
-  assert.notEqual(end, -1, "index.html should contain the Stripe script marker");
-  return html.slice(start, end).trim();
-}
-
-test("root app template in index.html compiles for the runtime compiler", () => {
-  assertTemplateCompiles("index.html#app", extractIndexAppTemplate());
+  assert.match(html, /<div id="app" v-cloak><\/div>/, "index.html should provide an empty mount point");
 });
 
-test("all raw html component templates compile for the runtime compiler", () => {
+test("all external html templates compile", () => {
   const htmlFiles = collectHtmlFiles(SRC_ROOT);
   assert.ok(htmlFiles.length > 0, "should find component html templates");
   for (const filePath of htmlFiles) {
     const template = fs.readFileSync(filePath, "utf8");
     assertTemplateCompiles(path.relative(ROOT, filePath), template);
   }
+});
+
+test("no raw runtime template imports remain in src", () => {
+  const tsFiles = collectFilesByExtension(SRC_ROOT, ".ts");
+  const filesWithRawTemplates = tsFiles.filter((filePath) => (
+    fs.readFileSync(filePath, "utf8").includes(".html?raw")
+  ));
+  assert.deepEqual(filesWithRawTemplates, [], "expected all html templates to move off runtime ?raw imports");
+});
+
+test("vite config no longer aliases Vue to the compiler build", () => {
+  const viteConfig = fs.readFileSync(path.join(ROOT, "vite.config.ts"), "utf8");
+  assert.ok(
+    !viteConfig.includes("vue/dist/vue.esm-bundler.js"),
+    "vite config should not force the runtime compiler build"
+  );
 });

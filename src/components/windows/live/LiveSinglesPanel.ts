@@ -1,4 +1,3 @@
-import template from "./LiveSinglesPanel.html?raw";
 import "./LiveSinglesPanel.css";
 import { inject, type PropType } from "vue";
 import type { SinglesPurchaseEntry, SinglesSaleLine } from "../../../types/app.ts";
@@ -579,6 +578,5 @@ export const LiveSinglesPanel = {
     const injectedCtx = inject<Record<string, unknown> | null>("appCtx", null);
     const source = (injectedCtx ?? props.ctx ?? {}) as Record<string, unknown>;
     return createWindowContextBridge(source);
-  },
-  template
+  }
 };

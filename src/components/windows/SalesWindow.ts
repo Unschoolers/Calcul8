@@ -2,7 +2,6 @@ import { inject, type PropType } from "vue";
 import type { Sale, SinglesPurchaseEntry } from "../../types/app.ts";
 import { createWindowContextBridge } from "./contextBridge.ts";
 import "./SalesWindow.css";
-import template from "./SalesWindow.html?raw";
 
 const SALES_HISTORY_INITIAL_RENDER_COUNT = 80;
 const SALES_HISTORY_RENDER_BATCH_SIZE = 80;
@@ -335,6 +334,5 @@ export const SalesWindow = {
     const injectedCtx = inject<Record<string, unknown> | null>("appCtx", null);
     const source = (injectedCtx ?? props.ctx) as Record<string, unknown>;
     return createWindowContextBridge(source);
-  },
-  template
+  }
 };

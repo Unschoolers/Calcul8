@@ -1,4 +1,3 @@
-import template from "./SinglesCsvImportDialog.html?raw";
 import { inject, type PropType } from "vue";
 import { createWindowContextBridge } from "../contextBridge.ts";
 import { singlesImportComputed, singlesImportMethods } from "./useSinglesImport.ts";
@@ -22,6 +21,5 @@ export const SinglesCsvImportDialog = {
     const injectedCtx = inject<Record<string, unknown> | null>("appCtx", null);
     const source = (injectedCtx ?? props.ctx ?? {}) as Record<string, unknown>;
     return createWindowContextBridge(source);
-  },
-  template
+  }
 };

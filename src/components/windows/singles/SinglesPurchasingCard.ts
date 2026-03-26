@@ -1,4 +1,3 @@
-import template from "./SinglesPurchasingCard.html?raw";
 import { inject, type PropType } from "vue";
 import { createWindowContextBridge } from "../contextBridge.ts";
 
@@ -14,6 +13,5 @@ export const SinglesPurchasingCard = {
     const injectedCtx = inject<Record<string, unknown> | null>("appCtx", null);
     const source = (props.ctx ?? injectedCtx ?? {}) as Record<string, unknown>;
     return createWindowContextBridge(source);
-  },
-  template
+  }
 };

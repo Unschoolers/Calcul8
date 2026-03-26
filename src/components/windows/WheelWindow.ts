@@ -7,7 +7,6 @@ import { buildSlotsFromConfig, type WheelSlot } from "./wheelHelpers.ts";
 import { wheelSessionMethods } from "./wheelSessionMethods.ts";
 import { wheelSpinMethods } from "./wheelSpinMethods.ts";
 import "./WheelWindow.css";
-import template from "./WheelWindow.html?raw";
 
 // Re-export pure functions so existing imports keep working
 export {
@@ -305,7 +304,6 @@ export const WheelWindow = {
     const injectedCtx = inject<Record<string, unknown> | null>("appCtx", null);
     const source = (injectedCtx ?? props.ctx) as Record<string, unknown>;
     return createWindowContextBridge(source);
-  },
-  template
+  }
 };
 

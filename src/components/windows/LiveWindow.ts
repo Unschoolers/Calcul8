@@ -1,7 +1,6 @@
-import template from "./LiveWindow.html?raw";
 import "./LiveWindow.css";
 import { LivePriceCard } from "../LivePriceCard.ts";
-import { LiveSinglesPanel } from "./live/LiveSinglesPanel.ts";
+import LiveSinglesPanel from "./live/LiveSinglesPanel.vue";
 import { inject, type PropType } from "vue";
 import { createWindowContextBridge } from "./contextBridge.ts";
 
@@ -140,6 +139,5 @@ export const LiveWindow = {
     const injectedCtx = inject<Record<string, unknown> | null>("appCtx", null);
     const source = (injectedCtx ?? props.ctx) as Record<string, unknown>;
     return createWindowContextBridge(source);
-  },
-  template
+  }
 };
