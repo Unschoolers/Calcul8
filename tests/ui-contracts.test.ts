@@ -12,7 +12,7 @@ test("auto-calculate modal is controlled by showProfitCalculator", () => {
 });
 
 test("both Live FAB and Config quick button use the same centralized auto-calc access method", () => {
-  const appTemplate = read("index.html");
+  const appTemplate = read("src/App.html");
   const configWindowTemplate = read("src/components/windows/ConfigWindow.html");
   const singlesSellingCardTemplate = read("src/components/windows/singles/SinglesSellingCard.html");
 
@@ -30,7 +30,7 @@ test("config purchase total field saves through the model update event", () => {
 });
 
 test("lot selector uses the explicit switch handler", () => {
-  const appTemplate = read("index.html");
+  const appTemplate = read("src/App.html");
 
   assert.match(appTemplate, /:model-value="currentLotId"/);
   assert.match(appTemplate, /@update:model-value="selectLot"/);
