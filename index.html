@@ -150,6 +150,9 @@
                       {{ accountSyncIcon }}
                     </v-icon>
                   </span>
+                  <span v-if="hasProAccess" class="account-menu-pro-badge" aria-hidden="true">
+                    <v-icon size="10">mdi-crown</v-icon>
+                  </span>
                 </v-btn>
               </template>
 
@@ -170,8 +173,15 @@
                     <div class="account-menu-header__email">
                       {{ googleProfileEmail || 'Signed in' }}
                     </div>
-                    <div class="account-menu-header__workspace">
-                      <span class="account-menu-header__workspace-name">{{ currentWorkspaceName }}</span>
+                    <div class="account-menu-header__meta">
+                      <div class="account-menu-header__workspace">
+                        <span class="account-menu-header__workspace-name">{{ currentWorkspaceName }}</span>
+                      </div>
+                      <v-chip v-if="hasProAccess" size="x-small" color="warning" variant="flat"
+                        class="account-menu-header__pro-chip">
+                        <v-icon start size="12">mdi-crown</v-icon>
+                        Pro
+                      </v-chip>
                     </div>
                   </div>
                 </div>

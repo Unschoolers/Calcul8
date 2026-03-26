@@ -592,6 +592,26 @@
       background: rgb(var(--v-theme-secondary));
       color: rgb(var(--v-theme-on-secondary));
     }
+    .account-menu-pro-badge {
+      position: absolute;
+      left: -1px;
+      top: -1px;
+      min-width: 16px;
+      height: 16px;
+      padding: 0 0.18rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      border: 2px solid rgb(var(--v-theme-surface));
+      background: linear-gradient(180deg, #ffd75a, #f3a302);
+      color: #5a3a00;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.24);
+      z-index: 1;
+    }
+    .v-theme--unionArenaLight .account-menu-pro-badge {
+      box-shadow: 0 3px 8px rgba(176, 124, 0, 0.2);
+    }
     .account-avatar-img {
       width: 100%;
       height: 100%;
@@ -641,6 +661,29 @@
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+    }
+    .account-menu-header__meta {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      flex-wrap: wrap;
+      margin-top: 0.2rem;
+    }
+    .account-menu-header__workspace {
+      min-width: 0;
+    }
+    .account-menu-header__pro-chip {
+      flex: 0 0 auto;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      box-shadow: 0 6px 14px rgba(0, 0, 0, 0.14);
+    }
+    .account-menu-header__pro-chip .v-chip__content {
+      gap: 0.18rem;
+    }
+    .v-theme--unionArenaLight .account-menu-header__pro-chip {
+      box-shadow: 0 6px 16px rgba(176, 124, 0, 0.18);
     }
     .v-theme--unionArenaLight .v-app-bar {
       background:
