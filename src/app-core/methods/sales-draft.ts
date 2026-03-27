@@ -31,6 +31,7 @@ export type SalesDraftTarget = {
     singlesPurchaseEntryId?: number | null;
     singlesItems?: SinglesSaleDraftLine[];
     price?: number | null;
+    customer?: string;
     memo?: string;
     buyerShipping: number;
     date: string;
@@ -203,6 +204,7 @@ export function openAddSaleDraft(context: SalesDraftTarget, saleType: SaleType =
     singlesPurchaseEntryId: null,
     singlesItems: context.currentLotType === "singles" ? [createEmptySinglesSaleDraftLine()] : undefined,
     price: nextPrice,
+    customer: "",
     memo: "",
     buyerShipping: Number(context.sellingShippingPerOrder) || 0,
     date: getTodayDate()
@@ -241,6 +243,7 @@ export function openConvertedLiveSinglesSaleDraft(
     singlesPurchaseEntryId: null,
     singlesItems: normalizedLines,
     price: null,
+    customer: "",
     memo: typeof options?.memo === "string" ? options.memo.trim() : "",
     buyerShipping: Number.isFinite(buyerShipping) && buyerShipping >= 0
       ? buyerShipping
@@ -293,6 +296,7 @@ export function editSaleDraft(context: SalesDraftTarget, sale: Sale): void {
     singlesPurchaseEntryId: normalizeSinglesPurchaseEntryId(sale.singlesPurchaseEntryId),
     singlesItems,
     price: sale.price,
+    customer: sale.customer ?? "",
     memo: sale.memo ?? "",
     buyerShipping: sale.buyerShipping ?? 0,
     date: toDateOnly(sale.date) ?? getTodayDate()
@@ -314,6 +318,7 @@ export function resetSaleDraft(context: SalesDraftTarget): void {
     singlesPurchaseEntryId: null,
     singlesItems: [createEmptySinglesSaleDraftLine()],
     price: 0,
+    customer: "",
     memo: "",
     buyerShipping: context.sellingShippingPerOrder,
     date: getTodayDate()

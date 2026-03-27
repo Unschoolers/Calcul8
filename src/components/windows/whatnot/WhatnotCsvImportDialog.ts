@@ -15,6 +15,10 @@ function emptyMapping(): WhatnotCsvColumnMapping {
     externalOrderItemId: null,
     externalAccountId: null,
     title: null,
+    listingTitle: null,
+    buyerName: null,
+    orderPlacedAt: null,
+    originalItemPrice: null,
     sku: null,
     productCategory: null,
     quantity: null,
@@ -33,6 +37,10 @@ function syncMappingState(target: WhatnotCsvColumnMapping, source: WhatnotCsvCol
   target.externalOrderItemId = source.externalOrderItemId;
   target.externalAccountId = source.externalAccountId;
   target.title = source.title;
+  target.listingTitle = source.listingTitle;
+  target.buyerName = source.buyerName;
+  target.orderPlacedAt = source.orderPlacedAt;
+  target.originalItemPrice = source.originalItemPrice;
   target.sku = source.sku;
   target.productCategory = source.productCategory;
   target.quantity = source.quantity;
@@ -49,7 +57,7 @@ const REQUIRED_MAPPING_FIELDS = [
   { key: "whatnotCsvMapTitle", label: "Title" },
   { key: "whatnotCsvMapQuantity", label: "Quantity" },
   { key: "whatnotCsvMapPrice", label: "Sale total" },
-  { key: "whatnotCsvMapDate", label: "Completed at" }
+  { key: "whatnotCsvMapDate", label: "Fallback date" }
 ] as const;
 
 const OPTIONAL_MAPPING_FIELDS = [
@@ -57,6 +65,10 @@ const OPTIONAL_MAPPING_FIELDS = [
   { key: "whatnotCsvMapOrderItemId", label: "Order item ID" },
   { key: "whatnotCsvMapSellerAccountId", label: "Seller ID" },
   { key: "whatnotCsvMapSku", label: "SKU" },
+  { key: "whatnotCsvMapBuyerName", label: "Buyer name" },
+  { key: "whatnotCsvMapListingTitle", label: "Listing title" },
+  { key: "whatnotCsvMapOrderPlacedAt", label: "Order placed at" },
+  { key: "whatnotCsvMapOriginalItemPrice", label: "Original item price" },
   { key: "whatnotCsvMapBuyerShipping", label: "Buyer shipping" },
   { key: "whatnotCsvMapOrderStatus", label: "Status / transaction type" }
 ] as const;
@@ -127,9 +139,19 @@ export const WhatnotCsvImportDialog = {
 
     whatnotCsvDetectedDateHeader(this: any): string {
       const headers = Array.isArray(this.whatnotCsvHeaders) ? this.whatnotCsvHeaders : [];
+      if (isValidWhatnotCsvColumnIndex(this.whatnotCsvMapOrderPlacedAt, headers.length)) {
+        return String(headers[this.whatnotCsvMapOrderPlacedAt] || "Order placed at");
+      }
       return isValidWhatnotCsvColumnIndex(this.whatnotCsvMapDate, headers.length)
-        ? String(headers[this.whatnotCsvMapDate] || "Completed at")
-        : "Completed at";
+        ? String(headers[this.whatnotCsvMapDate] || "Fallback date")
+        : "Fallback date";
+    },
+
+    whatnotCsvDetectedOrderPlacedAtHeader(this: any): string {
+      const headers = Array.isArray(this.whatnotCsvHeaders) ? this.whatnotCsvHeaders : [];
+      return isValidWhatnotCsvColumnIndex(this.whatnotCsvMapOrderPlacedAt, headers.length)
+        ? String(headers[this.whatnotCsvMapOrderPlacedAt] || "Order placed at")
+        : "Order placed at";
     },
 
     whatnotCsvDetectedPriceHeader(this: any): string {
@@ -137,6 +159,13 @@ export const WhatnotCsvImportDialog = {
       return isValidWhatnotCsvColumnIndex(this.whatnotCsvMapPrice, headers.length)
         ? String(headers[this.whatnotCsvMapPrice] || "Sale total")
         : "Sale total";
+    },
+
+    whatnotCsvDetectedOriginalItemPriceHeader(this: any): string {
+      const headers = Array.isArray(this.whatnotCsvHeaders) ? this.whatnotCsvHeaders : [];
+      return isValidWhatnotCsvColumnIndex(this.whatnotCsvMapOriginalItemPrice, headers.length)
+        ? String(headers[this.whatnotCsvMapOriginalItemPrice] || "Original item price")
+        : "Original item price";
     },
 
     whatnotCsvPreviewColumns(this: any): Array<{ index: number; header: string; label: string }> {
@@ -177,6 +206,10 @@ export const WhatnotCsvImportDialog = {
         externalOrderItemId: this.whatnotCsvMapOrderItemId,
         externalAccountId: this.whatnotCsvMapSellerAccountId,
         title: this.whatnotCsvMapTitle,
+        listingTitle: this.whatnotCsvMapListingTitle,
+        buyerName: this.whatnotCsvMapBuyerName,
+        orderPlacedAt: this.whatnotCsvMapOrderPlacedAt,
+        originalItemPrice: this.whatnotCsvMapOriginalItemPrice,
         sku: this.whatnotCsvMapSku,
         productCategory: this.whatnotCsvMapProductCategory,
         quantity: this.whatnotCsvMapQuantity,
@@ -243,6 +276,10 @@ export const WhatnotCsvImportDialog = {
       this.whatnotCsvMapOrderItemId = mapping.externalOrderItemId;
       this.whatnotCsvMapSellerAccountId = mapping.externalAccountId;
       this.whatnotCsvMapTitle = mapping.title;
+      this.whatnotCsvMapListingTitle = mapping.listingTitle;
+      this.whatnotCsvMapBuyerName = mapping.buyerName;
+      this.whatnotCsvMapOrderPlacedAt = mapping.orderPlacedAt;
+      this.whatnotCsvMapOriginalItemPrice = mapping.originalItemPrice;
       this.whatnotCsvMapSku = mapping.sku;
       this.whatnotCsvMapProductCategory = mapping.productCategory;
       this.whatnotCsvMapQuantity = mapping.quantity;
@@ -272,6 +309,10 @@ export const WhatnotCsvImportDialog = {
         externalOrderItemId: this.whatnotCsvMapOrderItemId,
         externalAccountId: this.whatnotCsvMapSellerAccountId,
         title: this.whatnotCsvMapTitle,
+        listingTitle: this.whatnotCsvMapListingTitle,
+        buyerName: this.whatnotCsvMapBuyerName,
+        orderPlacedAt: this.whatnotCsvMapOrderPlacedAt,
+        originalItemPrice: this.whatnotCsvMapOriginalItemPrice,
         sku: this.whatnotCsvMapSku,
         productCategory: this.whatnotCsvMapProductCategory,
         quantity: this.whatnotCsvMapQuantity,
@@ -302,12 +343,17 @@ export const WhatnotCsvImportDialog = {
           externalSaleId: entry.externalSaleId,
           externalAccountId: entry.externalAccountId || undefined,
           title: entry.title,
+          listingTitle: entry.listingTitle,
           sku: entry.sku,
           productCategory: entry.productCategory,
+          buyerName: entry.buyerName,
           quantity: entry.quantity,
           price: entry.price,
+          originalItemPrice: entry.originalItemPrice,
           buyerShipping: entry.buyerShipping,
           date: entry.date,
+          orderPlacedAt: entry.orderPlacedAt,
+          orderPlacedAtRaw: entry.orderPlacedAtRaw,
           orderStatus: entry.orderStatus
         })),
         this.whatnotCsvSellerAccountId

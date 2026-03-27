@@ -189,6 +189,33 @@ export async function getLatestPendingWhatnotImportBatch(
   return resource ?? null;
 }
 
+export async function listPendingWhatnotImportBatches(
+  config: ApiConfig,
+  scopeKey: string
+): Promise<WhatnotImportBatchDocument[]> {
+  const { syncSnapshots } = getContainers(config);
+  const normalizedScopeKey = normalizeId(scopeKey);
+  const querySpec = {
+    query: `
+      SELECT * FROM c
+      WHERE c.userId = @scopeKey
+        AND c.docType = @docType
+        AND c.status = @status
+      ORDER BY c.updatedAt DESC
+    `,
+    parameters: [
+      { name: "@scopeKey", value: normalizedScopeKey },
+      { name: "@docType", value: "whatnot_import_batch" },
+      { name: "@status", value: "pending_review" }
+    ]
+  };
+  const iterator = syncSnapshots.items.query<WhatnotImportBatchDocument>(querySpec, {
+    partitionKey: normalizedScopeKey
+  });
+  const { resources } = await withCosmosRetry(() => iterator.fetchAll());
+  return (resources ?? []).filter(isWhatnotImportBatchDocument);
+}
+
 export async function getWhatnotImportBatch(
   config: ApiConfig,
   scopeKey: string,

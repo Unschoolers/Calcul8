@@ -1,4 +1,11 @@
-import type { WhatnotImportReviewRow, WhatnotMappedSaleType } from "../../types/app.ts";
+import type {
+  WhatnotImportDecisionKind,
+  WhatnotImportReviewRow,
+  WhatnotManualDuplicateCandidate,
+  WhatnotMappedSaleType,
+  WhatnotReviewImportAction,
+  WhatnotSaleImportAction
+} from "../../types/app.ts";
 
 const CSV_TITLE_ALIASES = [
   "listingtitle",
@@ -14,12 +21,13 @@ const CSV_TITLE_ALIASES = [
   "product title"
 ];
 
+const CSV_LISTING_TITLE_ALIASES = ["listingtitle", "listing name", "listing"];
+const CSV_BUYER_NAME_ALIASES = ["buyername", "buyer", "customer", "customername", "username", "buyerusername"];
 const CSV_SKU_ALIASES = ["sku", "productsku", "itemsku", "listingsku", "variantsku"];
 const CSV_PRODUCT_CATEGORY_ALIASES = ["productcategory", "category", "producttype"];
 const CSV_QUANTITY_ALIASES = ["quantitysold", "quantity", "qty", "count", "units", "itemcount"];
 const CSV_PRICE_ALIASES = [
   "postcouponprice",
-  "originalitemprice",
   "itemsubtotal",
   "lineitemtotal",
   "saleprice",
@@ -32,6 +40,7 @@ const CSV_PRICE_ALIASES = [
   "buyerpaid",
   "transactionamount"
 ];
+const CSV_ORIGINAL_ITEM_PRICE_ALIASES = ["originalitemprice", "itemprice", "original price", "item price"];
 const CSV_SHIPPING_ALIASES = [
   "buyershipping",
   "buyer shipping",
@@ -45,11 +54,11 @@ const CSV_DATE_ALIASES = [
   "transactioncompletedatutc",
   "transactioncompletedat",
   "soldat",
-  "orderplacedatutc",
   "createdat",
   "orderdate",
   "date"
 ];
+const CSV_ORDER_PLACED_AT_ALIASES = ["orderplacedatutc", "orderplacedat", "placedat"];
 const CSV_STATUS_ALIASES = ["orderstatus", "status", "orderstate", "transactiontype"];
 const CSV_EXTERNAL_SALE_ID_ALIASES = ["ledgertransactionid", "salesid", "saleid", "externalsaleid", "transactionid"];
 const CSV_EXTERNAL_ORDER_ID_ALIASES = ["orderid", "externalorderid"];
@@ -69,6 +78,10 @@ export interface WhatnotCsvImportDraft {
 
 export interface WhatnotCsvColumnMapping {
   title: number | null;
+  listingTitle: number | null;
+  buyerName: number | null;
+  orderPlacedAt: number | null;
+  originalItemPrice: number | null;
   sku: number | null;
   productCategory: number | null;
   quantity: number | null;
@@ -192,6 +205,59 @@ function parsePositiveIntegerOrNull(value: string): number | null {
   return rounded;
 }
 
+function formatLocalDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function buildUtcDateFromParts(
+  year: number,
+  month: number,
+  day: number,
+  hour = 0,
+  minute = 0,
+  second = 0
+): Date | null {
+  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+    return null;
+  }
+  return new Date(Date.UTC(year, month - 1, day, hour, minute, second));
+}
+
+function parseUtcTimestamp(value: string): Date | null {
+  const isoLikeMatch = value.match(
+    /^(\d{4})-(\d{2})-(\d{2})(?:[T\s](\d{1,2})(?::(\d{2}))?(?::(\d{2}))?)?(?:\.\d+)?(?:\s*(Z|UTC))?$/i
+  );
+  if (isoLikeMatch) {
+    return buildUtcDateFromParts(
+      Number(isoLikeMatch[1]),
+      Number(isoLikeMatch[2]),
+      Number(isoLikeMatch[3]),
+      Number(isoLikeMatch[4] ?? 0),
+      Number(isoLikeMatch[5] ?? 0),
+      Number(isoLikeMatch[6] ?? 0)
+    );
+  }
+
+  const slashMatch = value.match(
+    /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2})(?::(\d{2}))?(?::(\d{2}))?)?(?:\s*(Z|UTC))?$/i
+  );
+  if (slashMatch) {
+    return buildUtcDateFromParts(
+      Number(slashMatch[3]),
+      Number(slashMatch[1]),
+      Number(slashMatch[2]),
+      Number(slashMatch[4] ?? 0),
+      Number(slashMatch[5] ?? 0),
+      Number(slashMatch[6] ?? 0)
+    );
+  }
+
+  return null;
+}
+
 function normalizeDateOnly(value: string): string | null {
   const trimmed = String(value ?? "").trim();
   if (!trimmed) return null;
@@ -200,11 +266,16 @@ function normalizeDateOnly(value: string): string | null {
     return trimmed;
   }
 
+  const parsedUtc = parseUtcTimestamp(trimmed);
+  if (parsedUtc && !Number.isNaN(parsedUtc.getTime())) {
+    return formatLocalDate(parsedUtc);
+  }
+
   const parsed = new Date(trimmed);
   if (Number.isNaN(parsed.getTime())) {
     return null;
   }
-  return parsed.toISOString().slice(0, 10);
+  return formatLocalDate(parsed);
 }
 
 function inferWhatnotSaleType(rawType: unknown, title: string): WhatnotMappedSaleType | null {
@@ -257,6 +328,10 @@ function buildValueOrFallback(row: Record<string, unknown>, keys: string[], fall
 function buildMapping(headers: string[]): WhatnotCsvColumnMapping {
   return {
     title: resolveCsvColumnIndex(headers, CSV_TITLE_ALIASES),
+    listingTitle: resolveCsvColumnIndex(headers, CSV_LISTING_TITLE_ALIASES),
+    buyerName: resolveCsvColumnIndex(headers, CSV_BUYER_NAME_ALIASES),
+    orderPlacedAt: resolveCsvColumnIndex(headers, CSV_ORDER_PLACED_AT_ALIASES),
+    originalItemPrice: resolveCsvColumnIndex(headers, CSV_ORIGINAL_ITEM_PRICE_ALIASES),
     sku: resolveCsvColumnIndex(headers, CSV_SKU_ALIASES),
     productCategory: resolveCsvColumnIndex(headers, CSV_PRODUCT_CATEGORY_ALIASES),
     quantity: resolveCsvColumnIndex(headers, CSV_QUANTITY_ALIASES),
@@ -280,6 +355,10 @@ export function buildWhatnotCsvImportDraft(raw: string): WhatnotCsvImportDraft |
   const firstRow = rows[0];
   const headerMatches = [
     resolveCsvColumnIndex(firstRow, CSV_TITLE_ALIASES),
+    resolveCsvColumnIndex(firstRow, CSV_LISTING_TITLE_ALIASES),
+    resolveCsvColumnIndex(firstRow, CSV_BUYER_NAME_ALIASES),
+    resolveCsvColumnIndex(firstRow, CSV_ORDER_PLACED_AT_ALIASES),
+    resolveCsvColumnIndex(firstRow, CSV_ORIGINAL_ITEM_PRICE_ALIASES),
     resolveCsvColumnIndex(firstRow, CSV_SKU_ALIASES),
     resolveCsvColumnIndex(firstRow, CSV_PRODUCT_CATEGORY_ALIASES),
     resolveCsvColumnIndex(firstRow, CSV_QUANTITY_ALIASES),
@@ -330,6 +409,10 @@ export function parseWhatnotCsvRowsWithMapping(
     if (!row.some((cell) => String(cell || "").trim().length > 0)) continue;
 
     const rawTitle = isValidCsvColumnIndex(mapping.title, headersLength) ? row[mapping.title] ?? "" : "";
+    const rawListingTitle = isValidCsvColumnIndex(mapping.listingTitle, headersLength) ? row[mapping.listingTitle] ?? "" : "";
+    const rawBuyerName = isValidCsvColumnIndex(mapping.buyerName, headersLength) ? row[mapping.buyerName] ?? "" : "";
+    const rawOrderPlacedAt = isValidCsvColumnIndex(mapping.orderPlacedAt, headersLength) ? row[mapping.orderPlacedAt] ?? "" : "";
+    const rawOriginalItemPrice = isValidCsvColumnIndex(mapping.originalItemPrice, headersLength) ? row[mapping.originalItemPrice] ?? "" : "";
     const title = rawTitle.trim();
     if (!title) {
       skippedCount += 1;
@@ -343,6 +426,11 @@ export function parseWhatnotCsvRowsWithMapping(
     const rawShipping = isValidCsvColumnIndex(mapping.buyerShipping, headersLength) ? row[mapping.buyerShipping] ?? "" : "";
     const rawDate = isValidCsvColumnIndex(mapping.date, headersLength) ? row[mapping.date] ?? "" : "";
     const rawOrderStatus = isValidCsvColumnIndex(mapping.orderStatus, headersLength) ? row[mapping.orderStatus] ?? "" : "";
+    const normalizedOrderStatus = rawOrderStatus.trim().toUpperCase();
+    if (normalizedOrderStatus === "TIP") {
+      skippedCount += 1;
+      continue;
+    }
     const rawExternalSaleId = isValidCsvColumnIndex(mapping.externalSaleId, headersLength) ? row[mapping.externalSaleId] ?? "" : "";
     const rawExternalOrderId = isValidCsvColumnIndex(mapping.externalOrderId, headersLength) ? row[mapping.externalOrderId] ?? "" : "";
     const rawExternalOrderItemId = isValidCsvColumnIndex(mapping.externalOrderItemId, headersLength) ? row[mapping.externalOrderItemId] ?? "" : "";
@@ -356,7 +444,7 @@ export function parseWhatnotCsvRowsWithMapping(
     const quantity = parsePositiveIntegerOrNull(rawQuantity) ?? 1;
     const price = parseCurrencyLikeNumber(rawPrice);
     const buyerShipping = parseCurrencyLikeNumber(rawShipping);
-    const date = normalizeDateOnly(rawDate);
+    const date = normalizeDateOnly(rawOrderPlacedAt) ?? normalizeDateOnly(rawDate);
     const suggestedSaleType = inferWhatnotSaleType(rawSaleType, title);
     const suggestedPacksCount = parsePositiveIntegerOrNull(rawPacksCount) ?? undefined;
     const rowId = buildRowId({
@@ -374,12 +462,17 @@ export function parseWhatnotCsvRowsWithMapping(
       externalOrderItemId: buildValueOrFallback({ externalOrderItemId: rawExternalOrderItemId }, ["externalOrderItemId"], rowId),
       externalAccountId: externalAccountId,
       title,
+      listingTitle: rawListingTitle.trim() || title,
       sku: rawSku.trim() || undefined,
       productCategory: rawProductCategory.trim() || undefined,
+      buyerName: rawBuyerName.trim() || undefined,
       quantity,
       price,
+      originalItemPrice: parseCurrencyLikeNumber(rawOriginalItemPrice) || undefined,
       buyerShipping,
       date: date ?? rawDate.trim(),
+      orderPlacedAt: (normalizeDateOnly(rawOrderPlacedAt) ?? rawOrderPlacedAt.trim()) || undefined,
+      orderPlacedAtRaw: rawOrderPlacedAt.trim() || undefined,
       orderStatus: rawOrderStatus.trim(),
       action: "create",
       suggestedSaleType: suggestedSaleType ?? undefined,
@@ -431,6 +524,22 @@ export function normalizeWhatnotReviewRows(rows: unknown[]): WhatnotImportReview
     const externalAccountId = buildValueOrFallback(row, ["externalAccountId", "accountId", "sellerId"], "");
     const rowId = buildValueOrFallback(row, ["rowId"], externalSaleId || externalOrderItemId || `whatnot-row:${index + 1}`);
     const action = row.action === "update" || row.action === "skip" ? row.action : "create";
+    const manualDuplicateCandidate = normalizeWhatnotManualDuplicateCandidate(row.manualDuplicateCandidate);
+    const selectedImportAction = normalizeWhatnotReviewImportAction(row.selectedImportAction, action);
+    const targetKind = normalizeWhatnotImportDecisionKind(row.targetKind)
+      ?? (selectedImportAction === "update_existing"
+        ? (manualDuplicateCandidate
+          ? "manual_candidate"
+          : String(row.existingSaleId ?? "").trim()
+            ? "whatnot_mapping"
+            : null)
+        : selectedImportAction === "create"
+          ? "new"
+          : null);
+    const targetSaleId = String(row.targetSaleId ?? "").trim()
+      || (selectedImportAction === "update_existing"
+        ? manualDuplicateCandidate?.saleId || String(row.existingSaleId ?? "").trim()
+        : "");
     const matchSource = row.matchSource === "remembered" || row.matchSource === "title" ? row.matchSource : "none";
     const requiresManualReview = row.requiresManualReview === false ? false : true;
 
@@ -441,12 +550,17 @@ export function normalizeWhatnotReviewRows(rows: unknown[]): WhatnotImportReview
       externalOrderItemId,
       externalAccountId,
       title,
+      listingTitle: String(row.listingTitle ?? row.title ?? row.name ?? "").trim() || undefined,
       sku: String(row.sku ?? "").trim() || undefined,
       productCategory: String(row.productCategory ?? "").trim() || undefined,
+      buyerName: String(row.buyerName ?? row.customer ?? "").trim() || undefined,
       quantity: Math.max(1, Math.floor(Number(row.quantity) || 1)),
       price: Number(row.price) || 0,
+      originalItemPrice: Number(row.originalItemPrice) || undefined,
       buyerShipping: Number(row.buyerShipping) || 0,
       date: String(row.date ?? "").trim(),
+      orderPlacedAt: String(row.orderPlacedAt ?? "").trim() || undefined,
+      orderPlacedAtRaw: String(row.orderPlacedAtRaw ?? "").trim() || undefined,
       orderStatus: String(row.orderStatus ?? "").trim(),
       listingId: String(row.listingId ?? "").trim() || undefined,
       productId: String(row.productId ?? "").trim() || undefined,
@@ -461,9 +575,65 @@ export function normalizeWhatnotReviewRows(rows: unknown[]): WhatnotImportReview
       selectedLotId: selectedLotId ?? null,
       selectedSaleType,
       selectedPacksCount: selectedPacksCount ?? null,
-      skipImport: row.skipImport === true || action === "skip"
+      selectedImportAction,
+      targetKind,
+      targetSaleId: targetSaleId || undefined,
+      manualDuplicateCandidate,
+      skipImport: row.skipImport === true || action === "skip" || selectedImportAction === "skip"
     }];
   });
+}
+
+function normalizeWhatnotReviewImportAction(
+  value: unknown,
+  fallbackAction: WhatnotSaleImportAction
+): WhatnotReviewImportAction {
+  const explicit = String(value ?? "").trim().toLowerCase();
+  if (explicit === "create" || explicit === "update_existing" || explicit === "skip") {
+    return explicit;
+  }
+  if (fallbackAction === "update") return "update_existing";
+  if (fallbackAction === "skip") return "skip";
+  return "create";
+}
+
+function normalizeWhatnotImportDecisionKind(value: unknown): WhatnotImportDecisionKind | null {
+  const explicit = String(value ?? "").trim();
+  if (explicit === "new" || explicit === "whatnot_mapping" || explicit === "manual_candidate") {
+    return explicit;
+  }
+  return null;
+}
+
+function normalizeWhatnotManualDuplicateCandidate(value: unknown): WhatnotManualDuplicateCandidate | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+
+  const candidate = value as Record<string, unknown>;
+  const saleSummarySource = candidate.saleSummary && typeof candidate.saleSummary === "object" && !Array.isArray(candidate.saleSummary)
+    ? candidate.saleSummary as Record<string, unknown>
+    : {};
+  const saleId = String(candidate.saleId ?? candidate.id ?? "").trim();
+  const reasonSummary = String(candidate.reasonSummary ?? candidate.reason ?? "").trim();
+  if (!saleId || !reasonSummary) {
+    return null;
+  }
+
+  const confidence = String(candidate.confidence ?? "").trim().toLowerCase() === "high" ? "high" : "medium";
+  return {
+    saleId,
+    confidence,
+    reasonSummary,
+    saleSummary: {
+      date: String(saleSummarySource.date ?? "").trim(),
+      price: Number(saleSummarySource.price) || 0,
+      quantity: Math.max(1, Math.floor(Number(saleSummarySource.quantity) || 1)),
+      packsCount: Math.max(1, Math.floor(Number(saleSummarySource.packsCount) || 1)),
+      customer: String(saleSummarySource.customer ?? "").trim() || undefined,
+      memo: String(saleSummarySource.memo ?? "").trim() || undefined
+    }
+  };
 }
 
 

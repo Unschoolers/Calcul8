@@ -1,12 +1,14 @@
 import type { AppContext, AppMethodState } from "../../context.ts";
 import type { WhatnotConnectionSummary, WhatnotCsvPreparedRowInput } from "../../../types/app.ts";
 import { normalizeWhatnotReviewRows } from "../../shared/whatnot-csv.ts";
+import { cacheAuthoritativeSales, canUseAuthoritativeSalesLiveApi, fetchAuthoritativeSales } from "../sales-live-api.ts";
 import { fetchAuthenticatedApiResponse, handleExpiredAuth, resolveApiBaseUrl } from "./shared.ts";
 
 type WhatnotApp = Pick<
   AppContext,
   | "activeScopeType"
   | "activeWorkspaceId"
+  | "askConfirmation"
   | "googleAuthEpoch"
   | "hasProAccess"
   | "isCurrentWorkspaceOwner"
@@ -23,6 +25,10 @@ type WhatnotApp = Pick<
   | "whatnotCsvMapOrderItemId"
   | "whatnotCsvMapSellerAccountId"
   | "whatnotCsvMapTitle"
+  | "whatnotCsvMapListingTitle"
+  | "whatnotCsvMapBuyerName"
+  | "whatnotCsvMapOrderPlacedAt"
+  | "whatnotCsvMapOriginalItemPrice"
   | "whatnotCsvMapSku"
   | "whatnotCsvMapProductCategory"
   | "whatnotCsvMapQuantity"
@@ -37,6 +43,9 @@ type WhatnotApp = Pick<
   | "whatnotCallbackStatus"
   | "whatnotCallbackMessage"
   | "pullCloudSync"
+  | "currentLotId"
+  | "sales"
+  | "getSalesStorageKey"
 >;
 
 const EMPTY_WHATNOT_CSV_IMPORT_STATE = {
@@ -49,6 +58,10 @@ const EMPTY_WHATNOT_CSV_IMPORT_STATE = {
   whatnotCsvMapOrderItemId: null,
   whatnotCsvMapSellerAccountId: null,
   whatnotCsvMapTitle: null,
+  whatnotCsvMapListingTitle: null,
+  whatnotCsvMapBuyerName: null,
+  whatnotCsvMapOrderPlacedAt: null,
+  whatnotCsvMapOriginalItemPrice: null,
   whatnotCsvMapSku: null,
   whatnotCsvMapProductCategory: null,
   whatnotCsvMapQuantity: null,
@@ -69,6 +82,45 @@ function resetWhatnotCsvImportState(app: WhatnotApp): void {
 
 function resetWhatnotReviewState(app: WhatnotApp): void {
   Object.assign(app, EMPTY_WHATNOT_REVIEW_STATE);
+}
+
+function getAffectedWhatnotLotIds(rows: WhatnotApp["whatnotReviewRows"]): number[] {
+  const lotIds = new Set<number>();
+  for (const row of rows) {
+    const selectedImportAction = row.selectedImportAction ?? (row.action === "update" ? "update_existing" : row.action === "skip" ? "skip" : "create");
+    if (row.skipImport || selectedImportAction === "skip") {
+      continue;
+    }
+    const lotId = Math.max(0, Math.floor(Number(row.selectedLotId) || 0));
+    if (lotId > 0) {
+      lotIds.add(lotId);
+    }
+  }
+  return [...lotIds];
+}
+
+async function refreshAffectedWhatnotSales(app: WhatnotApp, lotIds: number[]): Promise<void> {
+  if (!canUseAuthoritativeSalesLiveApi() || lotIds.length === 0) {
+    return;
+  }
+
+  await Promise.all(lotIds.map(async (lotId) => {
+    try {
+      const latestSales = await fetchAuthoritativeSales(app, lotId);
+      if (!latestSales) {
+        return;
+      }
+      cacheAuthoritativeSales(app, lotId, latestSales);
+      if (app.currentLotId === lotId) {
+        app.sales = latestSales;
+      }
+    } catch (error) {
+      console.warn("Failed to refresh authoritative sales after Whatnot import", {
+        lotId,
+        error
+      });
+    }
+  }));
 }
 
 export function resetWhatnotTransientUiState(app: WhatnotApp): void {
@@ -178,6 +230,7 @@ export const uiWhatnotMethods: ThisType<AppContext> & Pick<
   | "prepareWhatnotCsvImport"
   | "openWhatnotReviewDialog"
   | "closeWhatnotReviewDialog"
+  | "discardWhatnotReviewBatch"
   | "confirmWhatnotImportBatch"
 > = {
   async refreshWhatnotStatus(): Promise<void> {
@@ -373,14 +426,60 @@ export const uiWhatnotMethods: ThisType<AppContext> & Pick<
     this.showWhatnotReviewDialog = false;
   },
 
+  discardWhatnotReviewBatch(): void {
+    if (!this.whatnotReviewBatchId) {
+      this.notify("No Whatnot review batch is loaded.", "warning");
+      return;
+    }
+
+    this.askConfirmation(
+      {
+        title: "Discard Whatnot Review?",
+        text: "This will remove the staged Whatnot review batch from the queue.",
+        color: "warning"
+      },
+      () => {
+        void (async () => {
+          const result = await fetchWhatnotJson(
+            this,
+            "/integrations/whatnot/review/discard",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify({
+                ...buildWhatnotScopeBody(this),
+                batchId: this.whatnotReviewBatchId
+              })
+            },
+            "Failed to discard Whatnot review batch."
+          );
+          if (!result.ok) return;
+
+          this.showWhatnotReviewDialog = false;
+          resetWhatnotReviewState(this);
+          resetWhatnotCsvImportState(this);
+          await this.refreshWhatnotStatus();
+          this.notify("Whatnot review batch discarded.", "info");
+        })();
+      }
+    );
+  },
+
   async confirmWhatnotImportBatch(): Promise<void> {
     if (!this.whatnotReviewBatchId) {
       this.notify("No Whatnot review batch is loaded.", "warning");
       return;
     }
 
+    const affectedLotIds = getAffectedWhatnotLotIds(this.whatnotReviewRows);
+
     for (const row of this.whatnotReviewRows) {
-      if (row.skipImport) continue;
+      const selectedImportAction = row.selectedImportAction ?? (row.action === "update" ? "update_existing" : row.action === "skip" ? "skip" : "create");
+      const shouldSkip = row.skipImport || selectedImportAction === "skip";
+      if (shouldSkip) continue;
+
       if (!row.selectedLotId) {
         this.notify(`Choose a lot for ${row.title || row.externalOrderId}.`, "warning");
         return;
@@ -393,6 +492,13 @@ export const uiWhatnotMethods: ThisType<AppContext> & Pick<
       if (selectedSaleType === "rtyh" && (!row.selectedPacksCount || row.selectedPacksCount <= 0)) {
         this.notify(`Enter sold items for RTYH row ${row.title || row.externalOrderId}.`, "warning");
         return;
+      }
+      if (selectedImportAction === "update_existing") {
+        const targetSaleId = String(row.targetSaleId ?? row.manualDuplicateCandidate?.saleId ?? row.existingSaleId ?? "").trim();
+        if (!targetSaleId) {
+          this.notify(`Choose a matching sale to update for ${row.title || row.externalOrderId}.`, "warning");
+          return;
+        }
       }
     }
 
@@ -407,13 +513,31 @@ export const uiWhatnotMethods: ThisType<AppContext> & Pick<
         body: JSON.stringify({
           ...buildWhatnotScopeBody(this),
           batchId: this.whatnotReviewBatchId,
-          decisions: this.whatnotReviewRows.map((row) => ({
-            rowId: row.rowId,
-            lotId: row.selectedLotId,
-            saleType: row.selectedSaleType,
-            packsCount: row.selectedPacksCount,
-            skip: row.skipImport
-          }))
+          decisions: this.whatnotReviewRows.map((row) => {
+            const selectedImportAction = row.selectedImportAction ?? (row.action === "update" ? "update_existing" : row.action === "skip" ? "skip" : "create");
+            const targetSaleId = String(row.targetSaleId ?? row.manualDuplicateCandidate?.saleId ?? row.existingSaleId ?? "").trim();
+            const targetKind = selectedImportAction === "update_existing"
+              ? (row.targetKind
+                ?? (row.manualDuplicateCandidate
+                  ? "manual_candidate"
+                  : targetSaleId
+                    ? "whatnot_mapping"
+                    : null))
+              : selectedImportAction === "create"
+                ? "new"
+                : null;
+
+            return {
+              rowId: row.rowId,
+              lotId: row.selectedLotId,
+              saleType: row.selectedSaleType,
+              packsCount: row.selectedPacksCount,
+              skip: row.skipImport || selectedImportAction === "skip",
+              selectedImportAction,
+              targetKind,
+              targetSaleId: targetSaleId || undefined
+            };
+          })
         })
       },
       "Failed to import Whatnot sales."
@@ -432,6 +556,7 @@ export const uiWhatnotMethods: ThisType<AppContext> & Pick<
     resetWhatnotCsvImportState(this);
     await this.refreshWhatnotStatus();
     await this.pullCloudSync();
+    await refreshAffectedWhatnotSales(this, affectedLotIds);
     this.notify(
       `Whatnot import complete: ${importedCount} new, ${updatedCount} updated, ${skippedCount} skipped.`,
       "success"

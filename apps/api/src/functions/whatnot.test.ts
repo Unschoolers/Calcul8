@@ -17,6 +17,7 @@ const {
   getConfigMock,
   createWhatnotConnectUrlForActorMock,
   disconnectWhatnotForActorMock,
+  discardWhatnotImportBatchForActorMock,
   getWhatnotReviewBatchForActorMock,
   getWhatnotStatusForActorMock,
   handleWhatnotOAuthCallbackMock,
@@ -27,6 +28,7 @@ const {
   getConfigMock: vi.fn(),
   createWhatnotConnectUrlForActorMock: vi.fn(),
   disconnectWhatnotForActorMock: vi.fn(),
+  discardWhatnotImportBatchForActorMock: vi.fn(),
   getWhatnotReviewBatchForActorMock: vi.fn(),
   getWhatnotStatusForActorMock: vi.fn(),
   handleWhatnotOAuthCallbackMock: vi.fn(),
@@ -42,6 +44,7 @@ vi.mock("../lib/config", () => ({
 vi.mock("./whatnot-services", () => ({
   createWhatnotConnectUrlForActor: createWhatnotConnectUrlForActorMock,
   disconnectWhatnotForActor: disconnectWhatnotForActorMock,
+  discardWhatnotImportBatchForActor: discardWhatnotImportBatchForActorMock,
   getWhatnotReviewBatchForActor: getWhatnotReviewBatchForActorMock,
   getWhatnotStatusForActor: getWhatnotStatusForActorMock,
   handleWhatnotOAuthCallback: handleWhatnotOAuthCallbackMock,
@@ -54,6 +57,7 @@ import {
   whatnotConnectCallback,
   whatnotConnectStart,
   whatnotImport,
+  whatnotReviewDiscard,
   whatnotReviewConfirm,
   whatnotReviewGet,
   whatnotStatus,
@@ -81,6 +85,10 @@ beforeEach(() => {
     redirectUrl: "https://app.example/callback?whatnot=connected"
   });
   disconnectWhatnotForActorMock.mockResolvedValue(undefined);
+  discardWhatnotImportBatchForActorMock.mockResolvedValue({
+    discarded: true,
+    batchId: "batch-review"
+  });
   syncWhatnotOrdersForActorMock.mockResolvedValue({
     batchId: "batch-1",
     rows: [{ rowId: "r1" }]
@@ -186,6 +194,10 @@ test("whatnotImport validates required rows and forwards normalized payload", as
           externalOrderId: "order-1",
           externalOrderItemId: "item-1",
           title: "My item",
+          buyerName: "Jordan",
+          listingTitle: "My listing",
+          originalItemPrice: 19.5,
+          orderPlacedAt: "2026-03-25T13:00:00.000Z",
           price: 19.5,
           date: "2026-03-25"
         }]
@@ -199,11 +211,25 @@ test("whatnotImport validates required rows and forwards normalized payload", as
   const importArgs = createWhatnotImportBatchFromRowsForActorMock.mock.calls[0]?.[2] as {
     workspaceId?: string;
     externalAccountId?: string;
-    rows: Array<{ externalOrderId: string; externalOrderItemId: string; title: string; price: number; date: string }>;
+    rows: Array<{
+      externalOrderId: string;
+      externalOrderItemId: string;
+      title: string;
+      price: number;
+      date: string;
+      buyerName?: string;
+      listingTitle?: string;
+      originalItemPrice?: number;
+      orderPlacedAt?: string;
+    }>;
   };
   assert.equal(importArgs.workspaceId, "team-42");
   assert.equal(importArgs.externalAccountId, "seller-1");
   assert.equal(importArgs.rows[0]?.externalOrderId, "order-1");
+  assert.equal(importArgs.rows[0]?.buyerName, "Jordan");
+  assert.equal(importArgs.rows[0]?.listingTitle, "My listing");
+  assert.equal(importArgs.rows[0]?.originalItemPrice, 19.5);
+  assert.equal(importArgs.rows[0]?.orderPlacedAt, "2026-03-25T13:00:00.000Z");
   assert.equal((response.jsonBody as { batchId: string }).batchId, "batch-import");
 });
 
@@ -254,7 +280,9 @@ test("whatnotReviewConfirm validates decisions and forwards parsed data", async 
             rowId: "row-1",
             lotId: 123,
             saleType: "pack",
-            packsCount: 4
+            packsCount: 4,
+            targetKind: "manual_candidate",
+            targetSaleId: "sale-22"
           },
           {
             rowId: "row-2",
@@ -271,7 +299,15 @@ test("whatnotReviewConfirm validates decisions and forwards parsed data", async 
   const confirmArgs = confirmWhatnotImportBatchForActorMock.mock.calls[0]?.[2] as {
     batchId: string;
     workspaceId?: string;
-    decisions: Array<{ rowId: string; lotId?: string; saleType?: string; packsCount?: number; skip?: boolean }>;
+    decisions: Array<{
+      rowId: string;
+      lotId?: string;
+      saleType?: string;
+      packsCount?: number;
+      skip?: boolean;
+      targetKind?: string;
+      targetSaleId?: string;
+    }>;
   };
   assert.equal(confirmArgs.batchId, "batch-1");
   assert.equal(confirmArgs.workspaceId, "team-42");
@@ -281,17 +317,46 @@ test("whatnotReviewConfirm validates decisions and forwards parsed data", async 
       lotId: "123",
       saleType: "pack",
       packsCount: 4,
-      skip: false
+      skip: false,
+      targetKind: "manual_candidate",
+      targetSaleId: "sale-22"
     },
     {
       rowId: "row-2",
       lotId: undefined,
       saleType: undefined,
       packsCount: undefined,
-      skip: true
+      skip: true,
+      targetKind: undefined,
+      targetSaleId: undefined
     }
   ]);
   assert.equal((response.jsonBody as { ok: boolean }).ok, true);
+});
+
+test("whatnotReviewDiscard forwards batch lookup and returns discard result", async () => {
+  const response = await whatnotReviewDiscard(
+    createHttpRequest({
+      method: "POST",
+      body: {
+        batchId: "batch-review",
+        workspaceId: "team-42"
+      },
+      headers: { authorization: "Bearer user-a" }
+    }) as never,
+    createInvocationContext() as never
+  );
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(discardWhatnotImportBatchForActorMock.mock.calls[0]?.slice(1), [
+    "user-a",
+    {
+      workspaceId: "team-42",
+      batchId: "batch-review"
+    }
+  ]);
+  assert.equal((response.jsonBody as { ok: boolean }).ok, true);
+  assert.equal((response.jsonBody as { discarded: boolean }).discarded, true);
 });
 
 test("whatnotReviewConfirm rejects missing batchId", async () => {

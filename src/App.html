@@ -902,6 +902,10 @@
                   <div class="sale-editor-section-label">Notes & Delivery</div>
                   <v-row dense>
                     <v-col cols="12" sm="6">
+                      <v-text-field v-model="newSale.customer" label="Customer" variant="outlined"
+                        :disabled="!hasLotSelected" hide-details="auto"></v-text-field>
+                    </v-col>
+                    <v-col cols="12" sm="6">
                       <v-text-field v-model.number="newSale.buyerShipping" label="Buyer Shipping (per order)"
                         type="number" variant="outlined" :disabled="!hasLotSelected" prefix="$" :min="0"
                         hide-details="auto"></v-text-field>

@@ -123,6 +123,7 @@ function createContext(overrides: Ctx = {}): Ctx {
       packsCount: null,
       singlesPurchaseEntryId: null,
       price: 0,
+      customer: "",
       buyerShipping: 0,
       date: "2026-02-21"
     },
@@ -167,6 +168,7 @@ test("openAddSaleModal uses type default price and focuses quantity input", () =
 
   salesMethods.openAddSaleModal.call(ctx as never, "box");
   assert.equal((ctx.newSale as Sale).price, 99);
+  assert.equal((ctx.newSale as { customer?: string }).customer, "");
   assert.equal(ctx.showAddSaleModal, true);
   assert.equal(quantityInput.focus.mock.calls.length, 1);
 });
@@ -308,6 +310,26 @@ test("saveSale shows error when editing sale is missing from list", () => {
   assert.equal((ctx.notify as ReturnType<typeof vi.fn>).mock.calls[0]?.[0], "Could not find the sale to update. Please try again.");
 });
 
+test("saveSale persists customer data with the sale", () => {
+  const ctx = createContext({
+    newSale: {
+      type: "pack",
+      quantity: 2,
+      packsCount: null,
+      singlesPurchaseEntryId: null,
+      price: 10,
+      customer: "  Jamie  ",
+      buyerShipping: 0,
+      date: "2026-02-21"
+    }
+  });
+
+  salesMethods.saveSale.call(ctx as never);
+
+  assert.equal((ctx.sales as Sale[]).length, 1);
+  assert.equal((ctx.sales as Sale[])[0]?.customer, "Jamie");
+});
+
 test("deleteSale confirms and refreshes charts for current tab", () => {
   const ctx = createContext({
     sales: [
@@ -355,6 +377,7 @@ test("cancelSale resets modal and draft values", () => {
   assert.equal(ctx.editingSale, null);
   assert.equal((ctx.newSale as Sale).type, "pack");
   assert.equal((ctx.newSale as Sale).date, "2026-02-21");
+  assert.equal((ctx.newSale as { customer?: string }).customer, "");
 });
 
 test("saveSale links selected singles card without mutating purchase quantity", () => {

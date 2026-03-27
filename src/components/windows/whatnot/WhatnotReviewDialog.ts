@@ -1,12 +1,43 @@
 import { inject, type PropType } from "vue";
 import { createWindowContextBridge } from "../contextBridge.ts";
-import type { WhatnotImportReviewRow, WhatnotMappedSaleType } from "../../../types/app.ts";
+import type {
+  Sale,
+  WhatnotImportReviewRow,
+  WhatnotImportDecisionKind,
+  WhatnotManualDuplicateCandidate,
+  WhatnotMappedSaleType,
+  WhatnotReviewImportAction
+} from "../../../types/app.ts";
 
 function normalizeWhatnotGroupValue(value: unknown): string {
   return String(value ?? "").trim().toLowerCase().replace(/\s+/g, " ");
 }
 
-function getWhatnotRowGroupKey(row: WhatnotImportReviewRow): string | null {
+function formatWhatnotLocalDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function normalizeWhatnotGroupDate(value: unknown): string {
+  const trimmed = String(value ?? "").trim();
+  if (!trimmed) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    return trimmed;
+  }
+  const parsed = new Date(trimmed);
+  if (Number.isNaN(parsed.getTime())) {
+    return trimmed.slice(0, 10);
+  }
+  return formatWhatnotLocalDate(parsed);
+}
+
+function moneyClose(left: number, right: number): boolean {
+  return Math.abs(left - right) < 0.01;
+}
+
+function getWhatnotFallbackGroupKey(row: WhatnotImportReviewRow): string | null {
   const variantId = normalizeWhatnotGroupValue(row.variantId);
   if (variantId) return `variant:${variantId}`;
   const productId = normalizeWhatnotGroupValue(row.productId);
@@ -20,6 +51,16 @@ function getWhatnotRowGroupKey(row: WhatnotImportReviewRow): string | null {
   if (title && category) return `title-category:${title}::${category}`;
   if (title) return `title:${title}`;
   return null;
+}
+
+function getWhatnotRowGroupKey(row: WhatnotImportReviewRow): string | null {
+  const buyerName = normalizeWhatnotGroupValue(row.buyerName);
+  const listingTitle = normalizeWhatnotGroupValue(row.listingTitle ?? row.title);
+  const orderDate = normalizeWhatnotGroupDate(row.orderPlacedAt ?? row.date);
+  if (buyerName && listingTitle && orderDate) {
+    return `buyer:${buyerName}::date:${orderDate}::listing:${listingTitle}`;
+  }
+  return getWhatnotFallbackGroupKey(row);
 }
 
 function titleCaseWords(value: string): string {
@@ -51,6 +92,81 @@ function formatWhatnotOrderStatus(value: string): string {
   return titleCaseWords(normalized.toLowerCase().replace(/_/g, " "));
 }
 
+function formatWhatnotReviewAction(value: WhatnotReviewImportAction | null | undefined): string {
+  if (value === "update_existing") return "Update existing";
+  if (value === "skip") return "Skip";
+  return "Create new";
+}
+
+function formatWhatnotReviewActionHint(value: WhatnotReviewImportAction | null | undefined): string {
+  if (value === "update_existing") return "Updates the matched sale instead of creating a duplicate.";
+  if (value === "skip") return "Ignores this Whatnot row for now.";
+  return "Creates a new sale and leaves any existing one untouched.";
+}
+
+function formatWhatnotAutomaticAction(value: WhatnotImportReviewRow["action"]): string {
+  if (value === "update") return "Auto update";
+  if (value === "skip") return "Auto skip";
+  return "Auto create";
+}
+
+function formatWhatnotCandidateSummary(candidate: WhatnotManualDuplicateCandidate): string {
+  const parts = [
+    candidate.saleSummary.date,
+    `$${candidate.saleSummary.price.toFixed(2)}`,
+    `${candidate.saleSummary.quantity} qty`,
+    `${candidate.saleSummary.packsCount} packs`
+  ].filter((part) => part.trim().length > 0);
+  return parts.join(" • ");
+}
+
+function formatWhatnotCandidateTarget(candidate: WhatnotManualDuplicateCandidate): string {
+  const customer = candidate.saleSummary.customer?.trim();
+  const memo = candidate.saleSummary.memo?.trim();
+  if (customer && memo) return `${customer} • ${memo}`;
+  if (customer) return customer;
+  if (memo) return memo;
+  return candidate.saleId;
+}
+
+function getSaleEffectiveTotal(sale: Sale): number {
+  return sale.priceIsTotal ? sale.price : sale.price * sale.quantity;
+}
+
+function getSaleCustomerValue(sale: Sale): string {
+  return String(sale.customer ?? sale.memo ?? "").trim();
+}
+
+function resolveWhatnotBuyerLabel(row: WhatnotImportReviewRow): string {
+  const buyerName = String(row.buyerName ?? "").trim();
+  if (buyerName) return buyerName;
+
+  const candidateCustomer = String(row.manualDuplicateCandidate?.saleSummary.customer ?? "").trim();
+  if (candidateCustomer) return candidateCustomer;
+
+  return "Unknown buyer";
+}
+
+function buildWhatnotCandidateFromSale(
+  sale: Sale,
+  score: number,
+  reasons: string[]
+): WhatnotManualDuplicateCandidate {
+  return {
+    saleId: String(sale.id ?? "").trim(),
+    confidence: score >= 80 ? "high" : "medium",
+    reasonSummary: reasons.join("; "),
+    saleSummary: {
+      date: sale.date,
+      price: Number(sale.price) || 0,
+      quantity: Math.max(0, Math.floor(Number(sale.quantity) || 0)),
+      packsCount: Math.max(0, Math.floor(Number(sale.packsCount) || 0)),
+      customer: String(sale.customer ?? "").trim() || undefined,
+      memo: String(sale.memo ?? "").trim() || undefined
+    }
+  };
+}
+
 export const WhatnotReviewDialog = {
   name: "WhatnotReviewDialog",
   props: {
@@ -65,9 +181,251 @@ export const WhatnotReviewDialog = {
     const source = (injectedCtx ?? props.ctx ?? {}) as Record<string, unknown>;
     return createWindowContextBridge(source);
   },
+  computed: {
+    whatnotReviewGroups(this: any): Array<{
+      key: string;
+      buyerLabel: string;
+      listingLabel: string;
+      orderDateLabel: string;
+      rows: WhatnotImportReviewRow[];
+      }> {
+      const rows = Array.isArray(this.whatnotReviewRows) ? [...this.whatnotReviewRows] as WhatnotImportReviewRow[] : [];
+      rows.sort((left, right) => {
+        const leftBuyer = resolveWhatnotBuyerLabel(left).toLowerCase();
+        const rightBuyer = resolveWhatnotBuyerLabel(right).toLowerCase();
+        if (leftBuyer !== rightBuyer) return leftBuyer.localeCompare(rightBuyer);
+
+        const leftDate = String(left.orderPlacedAt ?? left.date ?? "").trim();
+        const rightDate = String(right.orderPlacedAt ?? right.date ?? "").trim();
+        if (leftDate !== rightDate) return leftDate.localeCompare(rightDate);
+
+        const leftListing = String(left.listingTitle ?? left.title ?? "").trim().toLowerCase();
+        const rightListing = String(right.listingTitle ?? right.title ?? "").trim().toLowerCase();
+        if (leftListing !== rightListing) return leftListing.localeCompare(rightListing);
+
+        return String(left.externalOrderId ?? left.rowId ?? "").localeCompare(String(right.externalOrderId ?? right.rowId ?? ""));
+      });
+
+      const groups: Array<{
+        key: string;
+        buyerLabel: string;
+        listingLabel: string;
+        orderDateLabel: string;
+        rows: WhatnotImportReviewRow[];
+      }> = [];
+
+      for (const row of rows) {
+        const key = getWhatnotRowGroupKey(row) ?? `row:${row.rowId}`;
+        const lastGroup = groups[groups.length - 1];
+        if (!lastGroup || lastGroup.key !== key) {
+          groups.push({
+            key,
+            buyerLabel: resolveWhatnotBuyerLabel(row),
+            listingLabel: String(row.listingTitle ?? row.title ?? "").trim() || "Untitled listing",
+            orderDateLabel: String(row.orderPlacedAt ?? row.date ?? "").trim() || "",
+            rows: [row]
+          });
+          continue;
+        }
+        lastGroup.rows.push(row);
+        if (lastGroup.buyerLabel === "Unknown buyer") {
+          lastGroup.buyerLabel = resolveWhatnotBuyerLabel(row);
+        }
+      }
+
+      return groups;
+    }
+  },
   methods: {
     whatnotOrderStatusLabel(rawStatus: string): string {
       return formatWhatnotOrderStatus(rawStatus);
+    },
+
+    whatnotImportActionLabel(action: WhatnotReviewImportAction | null | undefined): string {
+      return formatWhatnotReviewAction(action);
+    },
+
+    whatnotImportActionHint(action: WhatnotReviewImportAction | null | undefined): string {
+      return formatWhatnotReviewActionHint(action);
+    },
+
+    whatnotReviewActionColor(action: WhatnotReviewImportAction | null | undefined): string {
+      if (action === "update_existing") return "warning";
+      if (action === "skip") return "default";
+      return "success";
+    },
+
+    whatnotSelectedImportAction(this: any, row: WhatnotImportReviewRow): WhatnotReviewImportAction {
+      return row.selectedImportAction ?? (row.action === "update"
+        ? "update_existing"
+        : row.action === "skip"
+          ? "skip"
+          : "create");
+    },
+
+    whatnotSelectedImportActionLabel(this: any, row: WhatnotImportReviewRow): string {
+      return formatWhatnotReviewAction(this.whatnotSelectedImportAction(row));
+    },
+
+    whatnotSelectedImportActionHint(this: any, row: WhatnotImportReviewRow): string {
+      return formatWhatnotReviewActionHint(this.whatnotSelectedImportAction(row));
+    },
+
+    buildWhatnotClientManualDuplicateCandidates(this: any, row: WhatnotImportReviewRow): WhatnotManualDuplicateCandidate[] {
+      const selectedLotId = Number(row.selectedLotId ?? row.suggestedLotId ?? 0);
+      if (!Number.isFinite(selectedLotId) || selectedLotId <= 0) {
+        return row.manualDuplicateCandidate ? [row.manualDuplicateCandidate] : [];
+      }
+
+      const sales = typeof this.loadSalesForLotId === "function"
+        ? this.loadSalesForLotId(selectedLotId) as Sale[]
+        : [];
+      if (!Array.isArray(sales) || sales.length === 0) {
+        return row.manualDuplicateCandidate ? [row.manualDuplicateCandidate] : [];
+      }
+
+      const groupKey = getWhatnotRowGroupKey(row);
+      const groupedRows = Array.isArray(this.whatnotReviewRows)
+        ? (this.whatnotReviewRows as WhatnotImportReviewRow[]).filter((candidate) => (
+          Number(candidate.selectedLotId ?? candidate.suggestedLotId ?? 0) === selectedLotId
+          && getWhatnotRowGroupKey(candidate) === groupKey
+        ))
+        : [row];
+      const effectiveRows = groupedRows.length > 0 ? groupedRows : [row];
+      const groupedQuantity = effectiveRows.reduce((sum, candidate) => sum + Math.max(1, Math.floor(Number(candidate.quantity) || 1)), 0);
+      const groupedTotal = effectiveRows.reduce((sum, candidate) => sum + (Number(candidate.price) || 0), 0);
+      const groupedDate = normalizeWhatnotGroupDate(row.orderPlacedAt ?? row.date);
+      const groupedBuyer = normalizeWhatnotGroupValue(row.buyerName);
+      const matches: Array<{ candidate: WhatnotManualDuplicateCandidate; score: number }> = [];
+
+      for (const sale of sales) {
+        if (!sale) continue;
+        if (normalizeWhatnotGroupDate(sale.date) !== groupedDate) continue;
+        if (Math.max(0, Math.floor(Number(sale.quantity) || 0)) !== groupedQuantity) continue;
+        if (!moneyClose(getSaleEffectiveTotal(sale), groupedTotal)) continue;
+
+        let score = 60;
+        const reasons = ["Exact date, amount, and quantity match"];
+        const saleCustomer = normalizeWhatnotGroupValue(getSaleCustomerValue(sale));
+        if (groupedBuyer && saleCustomer && groupedBuyer === saleCustomer) {
+          score += 25;
+          reasons.push("customer matches buyer name");
+        } else if (groupedBuyer) {
+          reasons.push("buyer name available");
+        }
+        matches.push({
+          candidate: buildWhatnotCandidateFromSale(sale, score, reasons),
+          score
+        });
+      }
+
+      matches.sort((left, right) => {
+        if (right.score !== left.score) return right.score - left.score;
+        return left.candidate.saleId.localeCompare(right.candidate.saleId);
+      });
+      return matches.map((entry) => entry.candidate);
+    },
+
+    buildWhatnotClientManualDuplicateCandidate(this: any, row: WhatnotImportReviewRow): WhatnotManualDuplicateCandidate | null {
+      return this.buildWhatnotClientManualDuplicateCandidates(row)[0] ?? null;
+    },
+
+    whatnotManualDuplicateCandidateOptions(this: any, row: WhatnotImportReviewRow): Array<{ title: string; value: string }> {
+      return this.buildWhatnotClientManualDuplicateCandidates(row).map((candidate: WhatnotManualDuplicateCandidate) => ({
+        title: `${candidate.saleId} • ${formatWhatnotCandidateTarget(candidate)} • ${formatWhatnotCandidateSummary(candidate)}`,
+        value: candidate.saleId
+      }));
+    },
+
+    syncWhatnotManualDuplicateCandidate(this: any, row: WhatnotImportReviewRow): void {
+      if (row.existingSaleId) return;
+
+      const candidate = this.buildWhatnotClientManualDuplicateCandidate(row);
+      row.manualDuplicateCandidate = candidate;
+
+      if (candidate) {
+        if (row.targetKind == null || row.targetKind === "new" || row.targetKind === "manual_candidate") {
+          row.targetKind = this.whatnotSelectedImportAction(row) === "update_existing" ? "manual_candidate" : row.targetKind ?? "new";
+          const candidateOptions = this.buildWhatnotClientManualDuplicateCandidates(row);
+          const requestedSaleId = String(row.targetSaleId ?? "").trim();
+          const hasRequestedSaleId = candidateOptions.some((entry: WhatnotManualDuplicateCandidate) => entry.saleId === requestedSaleId);
+          row.targetSaleId = this.whatnotSelectedImportAction(row) === "update_existing"
+            ? (hasRequestedSaleId ? requestedSaleId : candidate.saleId)
+            : row.targetSaleId ?? null;
+        }
+        return;
+      }
+
+      if (row.targetKind === "manual_candidate") {
+        row.targetKind = this.whatnotSelectedImportAction(row) === "create" ? "new" : null;
+        row.targetSaleId = null;
+      }
+    },
+
+    syncWhatnotManualDuplicateCandidatesForGroup(this: any, row: WhatnotImportReviewRow): void {
+      const groupKey = getWhatnotRowGroupKey(row);
+      const selectedLotId = Number(row.selectedLotId ?? row.suggestedLotId ?? 0);
+      for (const candidate of this.whatnotReviewRows as WhatnotImportReviewRow[]) {
+        const candidateLotId = Number(candidate.selectedLotId ?? candidate.suggestedLotId ?? 0);
+        if (groupKey && getWhatnotRowGroupKey(candidate) === groupKey && candidateLotId === selectedLotId) {
+          this.syncWhatnotManualDuplicateCandidate(candidate);
+        }
+      }
+    },
+
+    whatnotCanUpdateRow(this: any, row: WhatnotImportReviewRow): boolean {
+      const candidates = this.buildWhatnotClientManualDuplicateCandidates(row);
+      return Boolean(candidates.length > 0 || row.existingSaleId || row.targetSaleId);
+    },
+
+    whatnotRowTargetLabel(this: any, row: WhatnotImportReviewRow): string {
+      const selectedImportAction = this.whatnotSelectedImportAction(row);
+      if (selectedImportAction === "skip") return "Skipping this row";
+      if (selectedImportAction === "create") return "Creating a new sale";
+      const candidates = this.buildWhatnotClientManualDuplicateCandidates(row);
+      const selectedCandidate = candidates.find((candidate: WhatnotManualDuplicateCandidate) => candidate.saleId === String(row.targetSaleId ?? "").trim()) ?? candidates[0];
+      if (selectedCandidate) {
+        return `Target: possible duplicate ${selectedCandidate.saleId}`;
+      }
+      if (row.targetSaleId) {
+        return `Target: sale ${row.targetSaleId}`;
+      }
+      if (row.existingSaleId) {
+        return `Target: sale ${row.existingSaleId}`;
+      }
+      return "Update requested";
+    },
+
+    whatnotAutomaticActionLabel(row: WhatnotImportReviewRow): string {
+      return formatWhatnotAutomaticAction(row.action);
+    },
+
+    whatnotManualDuplicateCandidateLabel(candidate: WhatnotManualDuplicateCandidate): string {
+      return `${candidate.saleId} • ${formatWhatnotCandidateTarget(candidate)}`;
+    },
+
+    whatnotManualDuplicateCandidateSummary(candidate: WhatnotManualDuplicateCandidate): string {
+      return formatWhatnotCandidateSummary(candidate);
+    },
+
+    handleWhatnotTargetSaleSelection(this: any, row: WhatnotImportReviewRow, value: string | null): void {
+      const selectedSaleId = String(value ?? "").trim();
+      row.targetSaleId = selectedSaleId || null;
+      if (!selectedSaleId) {
+        row.targetKind = row.existingSaleId ? "whatnot_mapping" : null;
+        return;
+      }
+
+      const candidate = this.buildWhatnotClientManualDuplicateCandidates(row).find((entry: WhatnotManualDuplicateCandidate) => entry.saleId === selectedSaleId);
+      if (candidate) {
+        row.targetKind = "manual_candidate";
+        row.manualDuplicateCandidate = candidate;
+        return;
+      }
+
+      if (row.existingSaleId && selectedSaleId === row.existingSaleId) {
+        row.targetKind = "whatnot_mapping";
+      }
     },
 
     whatnotSimilarRowCount(this: any, row: WhatnotImportReviewRow): number {
@@ -79,11 +437,15 @@ export const WhatnotReviewDialog = {
     applyWhatnotSelectionToSimilarRows(
       this: any,
       row: WhatnotImportReviewRow,
-      changes: {
-        selectedLotId?: number | null;
-        selectedSaleType?: WhatnotMappedSaleType | null;
-        selectedPacksCount?: number | null;
-      }
+        changes: {
+          selectedLotId?: number | null;
+          selectedSaleType?: WhatnotMappedSaleType | null;
+          selectedPacksCount?: number | null;
+          selectedImportAction?: WhatnotReviewImportAction;
+          targetKind?: WhatnotImportDecisionKind | null;
+          targetSaleId?: string | null;
+          skipImport?: boolean;
+        }
     ): void {
       const groupKey = getWhatnotRowGroupKey(row);
       if (!groupKey) return;
@@ -98,6 +460,18 @@ export const WhatnotReviewDialog = {
         }
         if ("selectedPacksCount" in changes) {
           candidate.selectedPacksCount = changes.selectedPacksCount ?? null;
+        }
+        if ("selectedImportAction" in changes) {
+          candidate.selectedImportAction = changes.selectedImportAction;
+        }
+        if ("targetKind" in changes) {
+          candidate.targetKind = changes.targetKind ?? null;
+        }
+        if ("targetSaleId" in changes) {
+          candidate.targetSaleId = changes.targetSaleId ?? null;
+        }
+        if ("skipImport" in changes) {
+          candidate.skipImport = changes.skipImport ?? false;
         }
       }
     },
@@ -114,6 +488,7 @@ export const WhatnotReviewDialog = {
         selectedLotId: row.selectedLotId,
         selectedSaleType: row.selectedSaleType
       });
+      this.syncWhatnotManualDuplicateCandidatesForGroup(row);
     },
 
     handleWhatnotSaleTypeSelection(this: any, row: WhatnotImportReviewRow, value: WhatnotMappedSaleType | null): void {
@@ -121,6 +496,7 @@ export const WhatnotReviewDialog = {
       this.applyWhatnotSelectionToSimilarRows(row, {
         selectedSaleType: row.selectedSaleType
       });
+      this.syncWhatnotManualDuplicateCandidatesForGroup(row);
     },
 
     handleWhatnotPacksCountChange(this: any, row: WhatnotImportReviewRow, value: number | null): void {
@@ -128,6 +504,46 @@ export const WhatnotReviewDialog = {
       this.applyWhatnotSelectionToSimilarRows(row, {
         selectedPacksCount: row.selectedPacksCount
       });
+    },
+
+    handleWhatnotImportActionSelection(this: any, row: WhatnotImportReviewRow, value: WhatnotReviewImportAction | null): void {
+      const selectedImportAction = value ?? "create";
+      row.selectedImportAction = selectedImportAction;
+      row.skipImport = selectedImportAction === "skip";
+
+      if (selectedImportAction === "skip") {
+        row.targetKind = null;
+        row.targetSaleId = null;
+      } else if (selectedImportAction === "create") {
+        row.targetKind = "new";
+        row.targetSaleId = null;
+      } else if (this.buildWhatnotClientManualDuplicateCandidates(row).length > 0) {
+        const candidates = this.buildWhatnotClientManualDuplicateCandidates(row);
+        const selectedCandidate = candidates.find((candidate: WhatnotManualDuplicateCandidate) => candidate.saleId === String(row.targetSaleId ?? "").trim()) ?? candidates[0]!;
+        row.targetKind = "manual_candidate";
+        row.targetSaleId = selectedCandidate.saleId;
+        row.manualDuplicateCandidate = selectedCandidate;
+      } else if (row.existingSaleId) {
+        row.targetKind = "whatnot_mapping";
+        row.targetSaleId = row.existingSaleId;
+      } else if (row.targetSaleId) {
+        row.targetKind = "whatnot_mapping";
+      }
+
+      this.applyWhatnotSelectionToSimilarRows(row, {
+        selectedImportAction: row.selectedImportAction,
+        targetKind: row.targetKind,
+        targetSaleId: row.targetSaleId,
+        skipImport: row.skipImport
+      });
+      this.syncWhatnotManualDuplicateCandidatesForGroup(row);
+
+      const candidate = this.buildWhatnotClientManualDuplicateCandidate(row);
+      if (selectedImportAction === "update_existing" && candidate && !row.existingSaleId) {
+        row.targetKind = "manual_candidate";
+        row.targetSaleId = candidate.saleId;
+        row.manualDuplicateCandidate = candidate;
+      }
     }
   }
 };

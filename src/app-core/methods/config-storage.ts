@@ -96,6 +96,7 @@ export const configStorageMethods: ConfigMethodSubset<
             })
             .filter((line): line is NonNullable<typeof line> => line != null)
           : undefined,
+        customer: typeof sale.customer === "string" ? sale.customer : undefined,
         memo: typeof sale.memo === "string" ? sale.memo : undefined,
         buyerShipping: Number(sale.buyerShipping) || 0
       }));

@@ -273,6 +273,7 @@ export function buildSaleSaveResult(params: SaleSaveParams): SaleSaveResult {
 
   const normalizedSaleDate = toDateOnly(params.newSale.date) ?? params.todayDate ?? getTodayDate();
   const memo = typeof params.newSale.memo === "string" ? params.newSale.memo.trim() : "";
+  const customer = typeof params.newSale.customer === "string" ? params.newSale.customer.trim() : "";
   const sale: Sale = {
     id: params.editingSale ? params.editingSale.id : Date.now(),
     type: normalizedSaleType,
@@ -282,6 +283,7 @@ export function buildSaleSaveResult(params: SaleSaveParams): SaleSaveResult {
     singlesItems: isSinglesLot ? singlesItems : undefined,
     price,
     priceIsTotal: isSinglesLot ? true : undefined,
+    customer: customer || undefined,
     memo: memo || undefined,
     buyerShipping,
     date: normalizedSaleDate

@@ -346,6 +346,7 @@ export interface AppMethodState {
   prepareWhatnotCsvImport(rows: import("../types/app.ts").WhatnotCsvPreparedRowInput[], sellerAccountId?: string): Promise<boolean>;
   openWhatnotReviewDialog(): Promise<void>;
   closeWhatnotReviewDialog(): void;
+  discardWhatnotReviewBatch(): void;
   confirmWhatnotImportBatch(): Promise<void>;
   refreshWorkspaces(): Promise<void>;
   switchToPersonalWorkspace(): Promise<void>;

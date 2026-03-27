@@ -126,6 +126,7 @@ export function normalizeSale(value: unknown): Sale | null {
       : undefined,
     price: Math.max(0, Number(candidate.price) || 0),
     priceIsTotal: candidate.priceIsTotal === true ? true : undefined,
+    customer: typeof candidate.customer === "string" ? candidate.customer : undefined,
     memo: typeof candidate.memo === "string" ? candidate.memo : undefined,
     buyerShipping: Number(candidate.buyerShipping) || 0,
     date: typeof candidate.date === "string" ? candidate.date : "",

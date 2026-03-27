@@ -187,6 +187,23 @@ export type WhatnotSaleImportAction = "create" | "update" | "skip";
 export type WhatnotTargetMatchSource = "remembered" | "title" | "none";
 export type WhatnotMappedSaleType = "pack" | "box" | "rtyh" | "wheel";
 export type WhatnotImportBatchOrigin = "oauth_sync" | "csv_manual";
+export type WhatnotImportDecisionKind = "new" | "whatnot_mapping" | "manual_candidate";
+
+export interface WhatnotManualDuplicateSaleSummary {
+  date: string;
+  price: number;
+  quantity: number;
+  packsCount: number;
+  customer?: string;
+  memo?: string;
+}
+
+export interface WhatnotManualDuplicateCandidate {
+  saleId: string;
+  confidence: "high" | "medium";
+  reasonSummary: string;
+  saleSummary: WhatnotManualDuplicateSaleSummary;
+}
 
 export interface WhatnotConnectionDocument {
   id: string;
@@ -233,12 +250,17 @@ export interface WhatnotImportRowDocument {
   externalOrderItemId: string;
   externalAccountId: string;
   title: string;
+  listingTitle?: string;
   sku?: string;
   productCategory?: string;
+  buyerName?: string;
   quantity: number;
   price: number;
+  originalItemPrice?: number;
   buyerShipping: number;
   date: string;
+  orderPlacedAt?: string;
+  orderPlacedAtRaw?: string;
   orderStatus: string;
   listingId?: string;
   productId?: string;
@@ -250,6 +272,9 @@ export interface WhatnotImportRowDocument {
   suggestedPacksCount?: number;
   matchSource: WhatnotTargetMatchSource;
   existingSaleId?: string;
+  targetKind?: WhatnotImportDecisionKind;
+  targetSaleId?: string;
+  manualDuplicateCandidate?: WhatnotManualDuplicateCandidate;
   requiresManualReview: boolean;
 }
 
@@ -259,12 +284,17 @@ export interface WhatnotNormalizedImportRowInput {
   externalOrderItemId: string;
   externalAccountId?: string;
   title: string;
+  listingTitle?: string;
   sku?: string;
   productCategory?: string;
+  buyerName?: string;
   quantity?: number;
   price: number;
+  originalItemPrice?: number;
   buyerShipping?: number;
   date: string;
+  orderPlacedAt?: string;
+  orderPlacedAtRaw?: string;
   orderStatus?: string;
   listingId?: string;
   productId?: string;

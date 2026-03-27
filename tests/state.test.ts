@@ -114,6 +114,7 @@ test("createInitialState runs storage migration and initializes expert/pro state
     assert.equal(state.newSale.date, state.purchaseDate);
     assert.equal(state.purchaseDate, state.newSale.date);
     assert.match(state.purchaseDate, /^\d{4}-\d{2}-\d{2}$/);
+    assert.equal(state.newSale.customer, "");
     assert.equal(state.syncStatus, "idle");
     assert.equal(state.workspaceRealtimeStatus, "idle");
   });

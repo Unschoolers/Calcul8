@@ -8,11 +8,12 @@ import {
   readRequestJsonOrThrow,
   requireRequestBodyRecord
 } from "./request-function-helpers";
-import type { WhatnotMappedSaleType } from "../types";
+import type { WhatnotImportDecisionKind, WhatnotMappedSaleType } from "../types";
 import {
   confirmWhatnotImportBatchForActor,
   createWhatnotImportBatchFromRowsForActor,
   createWhatnotConnectUrlForActor,
+  discardWhatnotImportBatchForActor,
   disconnectWhatnotForActor,
   getWhatnotReviewBatchForActor,
   getWhatnotStatusForActor,
@@ -86,6 +87,8 @@ function parseConfirmBody(rawBody: unknown): {
     saleType?: "pack" | "box" | "rtyh";
     packsCount?: number;
     skip?: boolean;
+    targetKind?: WhatnotImportDecisionKind;
+    targetSaleId?: string;
   }>;
 } {
   const body = requireRequestBodyRecord(rawBody);
@@ -104,18 +107,25 @@ function parseConfirmBody(rawBody: unknown): {
       if (!rowId) {
         throw new HttpError(400, "Each decision requires a 'rowId'.");
       }
-    const saleTypeRaw = String(decision.saleType ?? "").trim();
-    const saleType: WhatnotMappedSaleType | undefined =
-      saleTypeRaw === "pack" || saleTypeRaw === "box" || saleTypeRaw === "rtyh"
-      ? saleTypeRaw
-      : undefined;
-    return {
-      rowId,
-      lotId: decision.lotId == null ? undefined : String(decision.lotId).trim(),
-      saleType,
-      packsCount: decision.packsCount == null ? undefined : Number(decision.packsCount),
-      skip: decision.skip === true
-    };
+      const saleTypeRaw = String(decision.saleType ?? "").trim();
+      const saleType: WhatnotMappedSaleType | undefined =
+        saleTypeRaw === "pack" || saleTypeRaw === "box" || saleTypeRaw === "rtyh"
+          ? saleTypeRaw
+          : undefined;
+      const targetKindRaw = String(decision.targetKind ?? "").trim();
+      const targetKind: WhatnotImportDecisionKind | undefined =
+        targetKindRaw === "new" || targetKindRaw === "whatnot_mapping" || targetKindRaw === "manual_candidate"
+          ? targetKindRaw
+          : undefined;
+      return {
+        rowId,
+        lotId: decision.lotId == null ? undefined : String(decision.lotId).trim(),
+        saleType,
+        packsCount: decision.packsCount == null ? undefined : Number(decision.packsCount),
+        skip: decision.skip === true,
+        targetKind,
+        targetSaleId: decision.targetSaleId == null ? undefined : String(decision.targetSaleId).trim() || undefined
+      };
     })
     : [];
 
@@ -136,12 +146,18 @@ function parseImportRowsBody(rawBody: unknown): {
     externalAccountId?: string;
     title: string;
     sku?: string;
+    productCategory?: string;
+    buyerName?: string;
     quantity?: number;
     price: number;
+    originalItemPrice?: number;
     buyerShipping?: number;
     date: string;
+    orderPlacedAt?: string;
+    orderPlacedAtRaw?: string;
     orderStatus?: string;
     listingId?: string;
+    listingTitle?: string;
     productId?: string;
     variantId?: string;
   }>;
@@ -170,16 +186,21 @@ function parseImportRowsBody(rawBody: unknown): {
         externalSaleId: String(row.externalSaleId ?? "").trim() || undefined,
         externalOrderId,
         externalOrderItemId,
-        externalAccountId: String(row.externalAccountId ?? "").trim() || undefined,
+        externalAccountId: String(row.externalAccountId ?? row.sellerId ?? "").trim() || undefined,
         title,
         sku: String(row.sku ?? "").trim() || undefined,
         productCategory: String(row.productCategory ?? "").trim() || undefined,
+        buyerName: String(row.buyerName ?? "").trim() || undefined,
         quantity: row.quantity == null ? undefined : Number(row.quantity),
         price: Number(row.price),
+        originalItemPrice: row.originalItemPrice == null ? undefined : Number(row.originalItemPrice),
         buyerShipping: row.buyerShipping == null ? undefined : Number(row.buyerShipping),
         date,
+        orderPlacedAt: String(row.orderPlacedAt ?? "").trim() || undefined,
+        orderPlacedAtRaw: String(row.orderPlacedAtRaw ?? "").trim() || undefined,
         orderStatus: String(row.orderStatus ?? "").trim() || undefined,
         listingId: String(row.listingId ?? "").trim() || undefined,
+        listingTitle: String(row.listingTitle ?? "").trim() || undefined,
         productId: String(row.productId ?? "").trim() || undefined,
         variantId: String(row.variantId ?? "").trim() || undefined
       };
@@ -371,6 +392,31 @@ export async function whatnotReviewConfirm(
   }
 }
 
+export async function whatnotReviewDiscard(
+  request: HttpRequest,
+  context: InvocationContext
+): Promise<HttpResponseInit> {
+  const config = getConfig();
+  const guardResponse = maybeHandleHttpGuards(request, config);
+  if (guardResponse) return guardResponse;
+
+  try {
+    const actorUserId = await resolveUserId(request, config);
+    const { workspaceId, batchId } = await parseReviewLookupFromRequest(request);
+    const result = await discardWhatnotImportBatchForActor(config, actorUserId, {
+      workspaceId,
+      batchId
+    });
+    return jsonResponse(request, config, 200, {
+      ok: true,
+      ...result
+    });
+  } catch (error) {
+    context.error("POST /integrations/whatnot/review/discard failed", error);
+    return errorResponse(request, config, error, "Failed to discard Whatnot review batch.");
+  }
+}
+
 app.http("whatnotStatus", {
   methods: ["GET", "POST", "OPTIONS"],
   authLevel: "anonymous",
@@ -425,4 +471,11 @@ app.http("whatnotReviewConfirm", {
   authLevel: "anonymous",
   route: "integrations/whatnot/review/confirm",
   handler: whatnotReviewConfirm
+});
+
+app.http("whatnotReviewDiscard", {
+  methods: ["POST", "OPTIONS"],
+  authLevel: "anonymous",
+  route: "integrations/whatnot/review/discard",
+  handler: whatnotReviewDiscard
 });

@@ -49,6 +49,7 @@ export const uiMethods: ThisType<AppContext> & Pick<
   | "prepareWhatnotCsvImport"
   | "openWhatnotReviewDialog"
   | "closeWhatnotReviewDialog"
+  | "discardWhatnotReviewBatch"
   | "confirmWhatnotImportBatch"
   | "refreshWorkspaces"
   | "switchToPersonalWorkspace"

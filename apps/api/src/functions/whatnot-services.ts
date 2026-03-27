@@ -9,5 +9,6 @@ export {
 export {
   confirmWhatnotImportBatchForActor,
   createWhatnotImportBatchFromRowsForActor,
+  discardWhatnotImportBatchForActor,
   syncWhatnotOrdersForActor
 } from "./whatnot-import-service";

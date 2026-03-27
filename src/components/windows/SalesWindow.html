@@ -133,6 +133,9 @@
                           </v-list-item-subtitle>
                           <v-list-item-subtitle class="sales-history-item-subtitle">
                             <span class="sales-history-date">{{ formatDate(sale.date) }}</span>
+                            <div v-if="sale.customer" class="sales-history-customer">
+                              Customer: {{ sale.customer }}
+                            </div>
                             <div v-if="sale.memo" class="sales-history-memo">
                               {{ sale.memo }}
                             </div>

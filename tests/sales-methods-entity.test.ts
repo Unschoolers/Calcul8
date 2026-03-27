@@ -248,6 +248,62 @@ test("saveSale does not duplicate a sale already inserted by realtime before the
   assert.equal((ctx.sales as Array<{ id: number }>)[0]?.id, 1);
 });
 
+test("saveSale cancels the stale editor and reloads latest sales on authoritative conflict", async () => {
+  const cancelSale = vi.fn();
+  const initSalesChart = vi.fn();
+  const latestSales = [
+    {
+      id: 11,
+      type: "box",
+      quantity: 4,
+      packsCount: 4,
+      price: 85,
+      buyerShipping: 0,
+      date: "2026-03-08",
+      version: 12
+    }
+  ];
+  const ctx = createContext({
+    editingSale: {
+      id: 11,
+      type: "box",
+      quantity: 4,
+      packsCount: 4,
+      price: 82,
+      buyerShipping: 0,
+      date: "2026-03-08",
+      version: 3
+    },
+    sales: [{
+      id: 11,
+      type: "box",
+      quantity: 4,
+      packsCount: 4,
+      price: 82,
+      buyerShipping: 0,
+      date: "2026-03-08",
+      version: 3
+    }],
+    cancelSale,
+    initSalesChart
+  });
+  saveAuthoritativeSaleMock.mockRejectedValue(new SalesLiveApiError(409, "stale"));
+  fetchAuthoritativeSalesMock.mockResolvedValue(latestSales);
+
+  salesMethods.saveSale.call(ctx as never);
+  await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assert.deepEqual(ctx.sales, latestSales);
+  assert.equal(cancelSale.mock.calls.length, 1);
+  assert.equal(initSalesChart.mock.calls.length, 1);
+  assert.deepEqual((ctx.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1), [
+    "Sales changed in the cloud. Pulled latest sales and canceled your save.",
+    "warning"
+  ]);
+});
+
 test("deleteSale reloads latest sales on authoritative conflict", async () => {
   const latestSales = [
     {

@@ -134,7 +134,7 @@ test("getSalesStorageKey includes workspace scope for shared workspaces", () => 
 
 test("loadSalesForLotId migrates legacy key and normalizes loaded sales", () => {
   readStorageWithLegacyMock.mockReturnValue(JSON.stringify([
-    { id: 1, type: "pack", quantity: 1, packsCount: 1, price: 9, memo: 123, buyerShipping: "2.5", date: "2026-02-25" },
+    { id: 1, type: "pack", quantity: 1, packsCount: 1, price: 9, customer: " Sam ", memo: 123, buyerShipping: "2.5", date: "2026-02-25" },
     { id: 2, type: "box", quantity: 1, packsCount: 16, price: 100, buyerShipping: "oops", date: "2026-02-25" }
   ]));
 
@@ -145,6 +145,7 @@ test("loadSalesForLotId migrates legacy key and normalizes loaded sales", () => 
   assert.equal(migrateLegacySalesKeyMock.mock.calls[0]?.[0], 99);
   assert.deepEqual(readStorageWithLegacyMock.mock.calls[0], ["whatfees_sales_99", "legacy_sales_99"]);
   assert.equal(sales.length, 2);
+  assert.equal(sales[0]?.customer, " Sam ");
   assert.equal(sales[0]?.memo, undefined);
   assert.equal(sales[0]?.buyerShipping, 2.5);
   assert.equal(sales[1]?.buyerShipping, 0);

@@ -49,6 +49,12 @@
         <div class="text-body-2">
           Auto-detected <strong>{{ whatnotCsvRequiredMappedCount }}/5</strong> core fields and <strong>{{ whatnotCsvOptionalMappedCount }}</strong> supporting fields.
           We use <strong>{{ whatnotCsvDetectedDateHeader }}</strong> for the sale date and <strong>{{ whatnotCsvDetectedPriceHeader }}</strong> for sale total.
+          <template v-if="whatnotCsvDetectedOrderPlacedAtHeader || whatnotCsvDetectedOriginalItemPriceHeader">
+            Supporting import metadata includes <strong>{{ whatnotCsvDetectedOriginalItemPriceHeader }}</strong>
+            <template v-if="whatnotCsvDetectedDateHeader !== whatnotCsvDetectedOrderPlacedAtHeader">
+              and <strong>{{ whatnotCsvDetectedOrderPlacedAtHeader }}</strong>
+            </template>.
+          </template>
         </div>
         <div v-if="whatnotCsvParsedPreview" class="d-flex flex-wrap ga-2 mt-2">
           <v-chip size="small" color="success" variant="tonal">
@@ -148,7 +154,7 @@
                   :items="whatnotCsvColumnOptions"
                   item-title="title"
                   item-value="value"
-                  label="Completed at"
+                  label="Fallback date"
                   variant="outlined"
                   density="compact"
                   clearable
@@ -201,6 +207,58 @@
                   item-title="title"
                   item-value="value"
                   label="SKU"
+                  variant="outlined"
+                  density="compact"
+                  clearable
+                  hide-details
+                ></v-select>
+              </v-col>
+              <v-col cols="12" md="4">
+                <v-select
+                  v-model="whatnotCsvMapBuyerName"
+                  :items="whatnotCsvColumnOptions"
+                  item-title="title"
+                  item-value="value"
+                  label="Buyer name"
+                  variant="outlined"
+                  density="compact"
+                  clearable
+                  hide-details
+                ></v-select>
+              </v-col>
+              <v-col cols="12" md="4">
+                <v-select
+                  v-model="whatnotCsvMapListingTitle"
+                  :items="whatnotCsvColumnOptions"
+                  item-title="title"
+                  item-value="value"
+                  label="Listing title"
+                  variant="outlined"
+                  density="compact"
+                  clearable
+                  hide-details
+                ></v-select>
+              </v-col>
+              <v-col cols="12" md="4">
+                <v-select
+                  v-model="whatnotCsvMapOrderPlacedAt"
+                  :items="whatnotCsvColumnOptions"
+                  item-title="title"
+                  item-value="value"
+                  label="Order placed at"
+                  variant="outlined"
+                  density="compact"
+                  clearable
+                  hide-details
+                ></v-select>
+              </v-col>
+              <v-col cols="12" md="4">
+                <v-select
+                  v-model="whatnotCsvMapOriginalItemPrice"
+                  :items="whatnotCsvColumnOptions"
+                  item-title="title"
+                  item-value="value"
+                  label="Original item price"
                   variant="outlined"
                   density="compact"
                   clearable

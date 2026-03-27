@@ -11,6 +11,7 @@ function makeDraft(overrides: Partial<NewSaleDraft> = {}): NewSaleDraft {
     singlesPurchaseEntryId: null,
     singlesItems: undefined,
     price: 10,
+    customer: "",
     memo: "",
     buyerShipping: 0,
     date: "2026-02-21",
@@ -87,6 +88,29 @@ test("buildSaleSaveResult builds a bulk RTYH sale and normalizes invalid date", 
   assert.equal(result.sale.quantity, 3);
   assert.equal(result.sale.packsCount, 7);
   assert.equal(result.sale.date, "2026-02-22");
+});
+
+test("buildSaleSaveResult trims and persists customer notes separately from memo", () => {
+  const result = buildSaleSaveResult({
+    canUsePaidActions: true,
+    currentLotType: "bulk",
+    sales: [],
+    editingSale: null,
+    newSale: makeDraft({
+      customer: "  Alex  ",
+      memo: "  thank you  "
+    }),
+    packsPerBox: 16,
+    singlesPurchases: [],
+    todayDate: "2026-02-22"
+  });
+
+  assert.equal(result.ok, true);
+  if (!result.ok) {
+    throw new Error("expected save result");
+  }
+  assert.equal(result.sale.customer, "Alex");
+  assert.equal(result.sale.memo, "thank you");
 });
 
 test("buildSaleSaveResult aggregates singles lines into a total-price sale", () => {

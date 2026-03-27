@@ -368,10 +368,24 @@ function toCurrencyAmountDollars(value: unknown): number {
   return amountCents / 100;
 }
 
+function formatLocalDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 function toDateOnly(raw: unknown): string {
   const value = String(raw ?? "").trim();
-  if (!value) return new Date().toISOString().slice(0, 10);
-  return value.slice(0, 10);
+  if (!value) return formatLocalDate(new Date());
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return value;
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value.slice(0, 10);
+  }
+  return formatLocalDate(parsed);
 }
 
 function normalizeMatchLabel(raw: string): string {
@@ -489,12 +503,17 @@ export function buildWhatnotImportRowFromNormalizedInput(
     externalOrderItemId,
     externalAccountId,
     title,
+    listingTitle: normalizeOptionalString(row.listingTitle),
     sku: normalizeOptionalString(row.sku),
     productCategory: normalizeOptionalString(row.productCategory),
+    buyerName: normalizeOptionalString(row.buyerName),
     quantity,
     price,
+    originalItemPrice: row.originalItemPrice == null ? undefined : Number(row.originalItemPrice),
     buyerShipping,
     date,
+    orderPlacedAt: normalizeOptionalString(row.orderPlacedAt),
+    orderPlacedAtRaw: normalizeOptionalString(row.orderPlacedAtRaw),
     orderStatus,
     listingId: normalizeOptionalString(row.listingId),
     productId: normalizeOptionalString(row.productId),
@@ -567,10 +586,13 @@ export async function fetchWhatnotOrdersPage(
       externalOrderItemId: orderItemId,
       externalAccountId,
       title,
+      listingTitle: title,
       quantity,
       price,
+      originalItemPrice: toCurrencyAmountDollars(orderItem?.price?.amount ?? orderItem?.subtotal?.amount ?? 0),
       buyerShipping,
       date,
+      orderPlacedAt: String(order?.createdAt ?? "").trim() || undefined,
       orderStatus,
       payloadFingerprint,
       action: "create",

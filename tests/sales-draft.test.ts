@@ -48,6 +48,7 @@ function createContext(overrides: Ctx = {}): Ctx {
       packsCount: null,
       singlesPurchaseEntryId: null,
       price: 0,
+      customer: "",
       buyerShipping: 0,
       date: "2026-02-21"
     },
@@ -80,6 +81,7 @@ test("changeNewSaleType preserves singles pack-only behavior and bulk resets lin
       packsCount: null,
       singlesPurchaseEntryId: null,
       price: 10,
+      customer: "",
       buyerShipping: 0,
       date: "2026-02-21"
     }
@@ -97,6 +99,7 @@ test("changeNewSaleType preserves singles pack-only behavior and bulk resets lin
       singlesPurchaseEntryId: 10,
       singlesItems: [{ lineId: 1, singlesPurchaseEntryId: 10, quantity: 1, price: 5 }],
       price: 123,
+      customer: "",
       buyerShipping: 0,
       date: "2026-02-21"
     },
@@ -136,6 +139,7 @@ test("computeSinglesSaleLineMaxQuantity releases editing quantity and excludes o
         { lineId: 2, singlesPurchaseEntryId: 51, quantity: 1, price: 10 }
       ],
       price: null,
+      customer: "",
       buyerShipping: 0,
       date: "2026-02-21"
     }
@@ -159,6 +163,7 @@ test("editSaleDraft and openConvertedLiveSinglesSaleDraft shape singles editor d
     singlesPurchaseEntryId: 55,
     price: 40,
     buyerShipping: 1,
+    customer: "Alex",
     date: "not-a-date"
   });
 
@@ -201,6 +206,7 @@ test("resetSaleDraft closes modal and restores the baseline draft", () => {
       singlesPurchaseEntryId: 99,
       singlesItems: [{ lineId: 1, singlesPurchaseEntryId: 99, quantity: 2, price: 50 }],
       price: 50,
+      customer: "Bob",
       memo: "x",
       buyerShipping: 4,
       date: "2026-03-01"
@@ -212,5 +218,6 @@ test("resetSaleDraft closes modal and restores the baseline draft", () => {
   assert.equal(ctx.showAddSaleModal, false);
   assert.equal(ctx.editingSale, null);
   assert.equal((ctx.newSale as { type?: string }).type, "pack");
+  assert.equal((ctx.newSale as { customer?: string }).customer, "");
   assert.equal((ctx.newSale as { buyerShipping?: number }).buyerShipping, 8);
 });

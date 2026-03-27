@@ -238,10 +238,10 @@ test("calculateDefaultSellingPrices uses provided totalSpots for RTYH price", ()
   assert.ok(fewerSpots.spotPrice > moreSpots.spotPrice);
 });
 
-test("calculateProfitForListing returns net minus case cost", () => {
-  const totalCaseCost = 1000;
-  const profit = calculateProfitForListing(100, 15, totalCaseCost, 15, 0);
-  const expected = calculateNetFromGross(1500, 15, 0, 100) - totalCaseCost;
+test("calculateProfitForListing returns net minus lot cost", () => {
+  const totalLotCost = 1000;
+  const profit = calculateProfitForListing(100, 15, totalLotCost, 15, 0);
+  const expected = calculateNetFromGross(1500, 15, 0, 100) - totalLotCost;
   assert.equal(profit, expected);
 });
 

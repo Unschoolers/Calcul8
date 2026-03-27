@@ -164,6 +164,7 @@ export function createInitialState(): AppState {
         }
       ],
       price: 0,
+      customer: "",
       memo: "",
       buyerShipping: DEFAULT_VALUES.SELLING_SHIPPING_PER_ORDER,
       date: todayDate
@@ -225,6 +226,10 @@ export function createInitialState(): AppState {
     whatnotCsvMapOrderItemId: null,
     whatnotCsvMapSellerAccountId: null,
     whatnotCsvMapTitle: null,
+    whatnotCsvMapListingTitle: null,
+    whatnotCsvMapBuyerName: null,
+    whatnotCsvMapOrderPlacedAt: null,
+    whatnotCsvMapOriginalItemPrice: null,
     whatnotCsvMapSku: null,
     whatnotCsvMapProductCategory: null,
     whatnotCsvMapQuantity: null,
@@ -250,4 +255,3 @@ export function createInitialState(): AppState {
     wheelSkippedDeductions: []
   };
 }
-

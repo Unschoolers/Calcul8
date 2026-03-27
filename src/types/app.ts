@@ -24,6 +24,8 @@ export type WhatnotSyncStatus = "idle" | "syncing" | "success" | "error";
 export type WhatnotSaleImportAction = "create" | "update" | "skip";
 export type WhatnotMappedSaleType = "pack" | "box" | "rtyh" | "wheel";
 export type WhatnotCsvImportSource = "csv";
+export type WhatnotImportDecisionKind = "new" | "whatnot_mapping" | "manual_candidate";
+export type WhatnotReviewImportAction = "create" | "update_existing" | "skip";
 export type UiColor =
   | "info"
   | "success"
@@ -85,6 +87,7 @@ export interface NewSaleDraft {
   singlesPurchaseEntryId?: number | null;
   singlesItems?: SinglesSaleDraftLine[];
   price: number | null;
+  customer?: string;
   memo?: string;
   buyerShipping: number;
   date: string;
@@ -112,6 +115,7 @@ export interface Sale {
   singlesItems?: SinglesSaleLine[];
   price: number;
   priceIsTotal?: boolean;
+  customer?: string;
   memo?: string;
   buyerShipping: number;
   date: string;
@@ -280,6 +284,22 @@ export interface WhatnotConnectionSummary {
   pendingBatchId: string | null;
 }
 
+export interface WhatnotManualDuplicateSaleSummary {
+  date: string;
+  price: number;
+  quantity: number;
+  packsCount: number;
+  customer?: string;
+  memo?: string;
+}
+
+export interface WhatnotManualDuplicateCandidate {
+  saleId: string;
+  confidence: "high" | "medium";
+  reasonSummary: string;
+  saleSummary: WhatnotManualDuplicateSaleSummary;
+}
+
 export interface WhatnotImportReviewRow {
   rowId: string;
   externalSaleId: string;
@@ -287,12 +307,17 @@ export interface WhatnotImportReviewRow {
   externalOrderItemId: string;
   externalAccountId: string;
   title: string;
+  listingTitle?: string;
   sku?: string;
   productCategory?: string;
+  buyerName?: string;
   quantity: number;
   price: number;
+  originalItemPrice?: number;
   buyerShipping: number;
   date: string;
+  orderPlacedAt?: string;
+  orderPlacedAtRaw?: string;
   orderStatus: string;
   listingId?: string;
   productId?: string;
@@ -307,6 +332,10 @@ export interface WhatnotImportReviewRow {
   selectedLotId: number | null;
   selectedSaleType: WhatnotMappedSaleType | null;
   selectedPacksCount: number | null;
+  selectedImportAction?: WhatnotReviewImportAction;
+  targetKind?: WhatnotImportDecisionKind | null;
+  targetSaleId?: string | null;
+  manualDuplicateCandidate?: WhatnotManualDuplicateCandidate | null;
   skipImport: boolean;
 }
 
@@ -336,12 +365,17 @@ export interface WhatnotCsvPreparedRowInput {
   externalSaleId?: string;
   externalAccountId?: string;
   title: string;
+  listingTitle?: string;
   sku?: string;
   productCategory?: string;
+  buyerName?: string;
   quantity: number;
   price: number;
+  originalItemPrice?: number;
   buyerShipping: number;
   date: string;
+  orderPlacedAt?: string;
+  orderPlacedAtRaw?: string;
   orderStatus?: string;
 }
 
@@ -477,6 +511,10 @@ export interface AppState extends LotSetup {
   whatnotCsvMapOrderItemId: number | null;
   whatnotCsvMapSellerAccountId: number | null;
   whatnotCsvMapTitle: number | null;
+  whatnotCsvMapListingTitle: number | null;
+  whatnotCsvMapBuyerName: number | null;
+  whatnotCsvMapOrderPlacedAt: number | null;
+  whatnotCsvMapOriginalItemPrice: number | null;
   whatnotCsvMapSku: number | null;
   whatnotCsvMapProductCategory: number | null;
   whatnotCsvMapQuantity: number | null;
@@ -501,4 +539,3 @@ export interface AppState extends LotSetup {
   wheelSessionLotSelections: Record<string, number | null>;
   wheelSkippedDeductions: SkippedWheelDeduction[];
 }
-

@@ -99,6 +99,8 @@ export function saveSaleAuthoritatively(
           context.sales = latestSales;
           deps.cacheSales(context, lotId, latestSales);
         }
+        context.cancelSale();
+        deps.refreshCharts(context);
         context.notify("Sales changed in the cloud. Pulled latest sales and canceled your save.", "warning");
         return;
       }
