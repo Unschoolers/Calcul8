@@ -7,3 +7,7 @@ export function hasServerSession(): boolean {
 export function hasGoogleBootstrapToken(): boolean {
   return getStoredGoogleIdToken().length > 0;
 }
+
+export function hasAuthSignal(): boolean {
+  return hasGoogleBootstrapToken() || hasServerSession();
+}

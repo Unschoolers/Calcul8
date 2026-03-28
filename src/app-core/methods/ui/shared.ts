@@ -289,10 +289,15 @@ export async function fetchAuthenticatedApiResponse(
   if (!baseUrl) {
     throw new Error("API base URL is not configured.");
   }
+  const requestUrl = `${baseUrl}${path}`;
 
-  const response = await fetchWithRetry(`${baseUrl}${path}`, {
+  const response = await fetchWithRetry(requestUrl, {
     ...init,
-    headers: buildAuthenticatedHeaders("session-preferred", init.headers as Record<string, string> | undefined)
+    headers: buildAuthenticatedHeaders(
+      "session-preferred",
+      init.headers as Record<string, string> | undefined,
+      requestUrl
+    )
   });
 
   if (response.status === 401 && options.expireAuthOn401 !== false) {

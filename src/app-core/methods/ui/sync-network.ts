@@ -20,11 +20,12 @@ export async function requestCloudSyncPull(
   workspaceId?: string,
   authMode: FrontendAuthMode = "session-preferred"
 ): Promise<Response> {
-  return fetchWithRetry(`${baseUrl}/sync/pull`, {
+  const requestUrl = `${baseUrl}/sync/pull`;
+  return fetchWithRetry(requestUrl, {
     method: "POST",
     headers: buildAuthenticatedHeaders(authMode, {
       "Content-Type": "application/json"
-    }),
+    }, requestUrl),
     body: JSON.stringify(workspaceId ? { workspaceId } : {})
   });
 }
@@ -34,11 +35,12 @@ export async function requestCloudSyncPush(
   payload: SyncPayload,
   authMode: FrontendAuthMode = "session-preferred"
 ): Promise<Response> {
-  return fetchWithRetry(`${baseUrl}/sync/push`, {
+  const requestUrl = `${baseUrl}/sync/push`;
+  return fetchWithRetry(requestUrl, {
     method: "POST",
     headers: buildAuthenticatedHeaders(authMode, {
       "Content-Type": "application/json"
-    }),
+    }, requestUrl),
     body: JSON.stringify(payload)
   });
 }

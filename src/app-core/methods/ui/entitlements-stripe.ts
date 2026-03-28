@@ -216,11 +216,12 @@ async function startStripeCheckout(
   baseUrl: string,
   uiMode: "embedded" | "hosted" = "embedded"
 ): Promise<StripeCheckoutPayload | null> {
-  const response = await fetchWithRetry(`${baseUrl}/billing/checkout-session`, {
+  const requestUrl = `${baseUrl}/billing/checkout-session`;
+  const response = await fetchWithRetry(requestUrl, {
     method: "POST",
     headers: buildAuthenticatedHeaders("session-preferred", {
       "Content-Type": "application/json"
-    }),
+    }, requestUrl),
     body: JSON.stringify({
       uiMode
     })

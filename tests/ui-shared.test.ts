@@ -7,6 +7,7 @@ import {
   GOOGLE_TOKEN_KEY,
   PRO_ACCESS_KEY,
   clearEntitlementCache,
+  fetchAuthenticatedApiResponse,
   fetchWithRetry,
   getEntitlementTtlMs,
   handleExpiredAuth,
@@ -185,6 +186,103 @@ test("handleExpiredAuth clears auth tokens and restores cached entitlement state
     assert.equal(data.has("rtyh_google_profile_cache_v1"), false);
     assert.equal(data.has(CSRF_TOKEN_KEY), false);
     assert.equal(data.get(PRO_ACCESS_KEY), "1");
+  });
+});
+
+test("fetchAuthenticatedApiResponse prefers the server session over bearer auth", async () => {
+  await withMockedLocalStorage(async () => {
+    vi.stubEnv("VITE_API_BASE_URL", "https://api.example.test");
+    localStorage.setItem(GOOGLE_TOKEN_KEY, "google-token");
+    localStorage.setItem(CSRF_TOKEN_KEY, "csrf-token");
+
+    const fetchMock = vi.fn(async () => new Response("{}", {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json"
+      }
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await fetchAuthenticatedApiResponse({
+      googleAuthEpoch: 0,
+      hasProAccess: false
+    } as never, "/sync/pull", {
+      method: "POST"
+    });
+
+    assert.equal(response.status, 200);
+    assert.equal(fetchMock.mock.calls.length, 1);
+    assert.equal(fetchMock.mock.calls[0]?.[0], "https://api.example.test/sync/pull");
+
+    const requestInit = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    const headers = new Headers(requestInit.headers);
+    assert.equal(headers.has("Authorization"), false);
+    assert.equal(headers.get("x-csrf-token"), "csrf-token");
+    assert.equal(requestInit.credentials, "include");
+  });
+});
+
+test("fetchAuthenticatedApiResponse keeps bearer auth when no server session exists", async () => {
+  await withMockedLocalStorage(async () => {
+    vi.stubEnv("VITE_API_BASE_URL", "https://api.example.test");
+    localStorage.setItem(GOOGLE_TOKEN_KEY, "google-token");
+
+    const fetchMock = vi.fn(async () => new Response("{}", {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json"
+      }
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await fetchAuthenticatedApiResponse({
+      googleAuthEpoch: 0,
+      hasProAccess: false
+    } as never, "/auth/me", {
+      method: "GET"
+    });
+
+    assert.equal(response.status, 200);
+    assert.equal(fetchMock.mock.calls.length, 1);
+
+    const requestInit = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    const headers = new Headers(requestInit.headers);
+    assert.equal(headers.get("Authorization"), "Bearer google-token");
+  });
+});
+
+test("fetchAuthenticatedApiResponse keeps bearer auth for cross-origin session-preferred requests", async () => {
+  await withMockedLocalStorage(async () => {
+    vi.stubEnv("VITE_API_BASE_URL", "https://api.example.test");
+    vi.stubGlobal("window", {
+      location: {
+        origin: "https://app.example.test"
+      },
+      setTimeout: globalThis.setTimeout,
+      clearTimeout: globalThis.clearTimeout
+    });
+    localStorage.setItem(GOOGLE_TOKEN_KEY, "google-token");
+    localStorage.setItem(CSRF_TOKEN_KEY, "csrf-token");
+
+    const fetchMock = vi.fn(async () => new Response("{}", {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json"
+      }
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await fetchAuthenticatedApiResponse({
+      googleAuthEpoch: 0,
+      hasProAccess: false
+    } as never, "/entitlements/me", {
+      method: "GET"
+    });
+
+    assert.equal(response.status, 200);
+    const requestInit = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    const headers = new Headers(requestInit.headers);
+    assert.equal(headers.get("Authorization"), "Bearer google-token");
   });
 });
 

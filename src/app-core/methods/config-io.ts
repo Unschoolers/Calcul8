@@ -121,11 +121,12 @@ export const configIoMethods: ConfigMethodSubset<
 
     this.isAdminImportInProgress = true;
     try {
-      const response = await fetchWithRetry(`${baseUrl}/ops/sync/import-user`, {
+      const requestUrl = `${baseUrl}/ops/sync/import-user`;
+      const response = await fetchWithRetry(requestUrl, {
         method: "POST",
         headers: buildAuthenticatedHeaders("session-preferred", {
           "Content-Type": "application/json"
-        }),
+        }, requestUrl),
         body: JSON.stringify({
           sourceUserId
         })

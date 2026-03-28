@@ -102,9 +102,10 @@ async function postAccountAction(
     return null;
   }
 
-  const response = await fetchWithRetry(`${baseUrl}${path}`, {
+  const requestUrl = `${baseUrl}${path}`;
+  const response = await fetchWithRetry(requestUrl, {
     method: "POST",
-    headers: buildAuthenticatedHeaders("session-preferred")
+    headers: buildAuthenticatedHeaders("session-preferred", {}, requestUrl)
   });
 
   if (response.status === 401) {

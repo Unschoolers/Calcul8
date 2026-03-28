@@ -5,13 +5,13 @@ const {
   fetchWithRetryMock,
   handleExpiredAuthMock,
   resolveApiBaseUrlMock,
-  requestCloudSyncPushMock,
+  runCloudSyncPushMock,
   createSyncPayloadMock
 } = vi.hoisted(() => ({
   fetchWithRetryMock: vi.fn(),
   handleExpiredAuthMock: vi.fn(),
   resolveApiBaseUrlMock: vi.fn(),
-  requestCloudSyncPushMock: vi.fn(),
+  runCloudSyncPushMock: vi.fn(),
   createSyncPayloadMock: vi.fn()
 }));
 
@@ -25,8 +25,8 @@ vi.mock("../src/app-core/methods/ui/shared.ts", () => ({
   resolveApiBaseUrl: resolveApiBaseUrlMock
 }));
 
-vi.mock("../src/app-core/methods/ui/sync-network.ts", () => ({
-  requestCloudSyncPush: requestCloudSyncPushMock
+vi.mock("../src/app-core/methods/ui/sync-service.ts", () => ({
+  runCloudSyncPush: runCloudSyncPushMock
 }));
 
 vi.mock("../src/app-core/methods/ui/sync-payload.ts", () => ({
@@ -132,7 +132,7 @@ function createContext() {
 beforeEach(() => {
   vi.clearAllMocks();
   resolveApiBaseUrlMock.mockReturnValue("https://api.example.test");
-  requestCloudSyncPushMock.mockResolvedValue(createResponse({ version: 1 }));
+  runCloudSyncPushMock.mockResolvedValue(undefined);
   createSyncPayloadMock.mockReturnValue({ lots: [], salesByLot: {}, workspaceId: "ws_1" });
 
   const historyReplaceState = vi.fn();
@@ -287,7 +287,15 @@ test("createWorkspace creates, seeds, refreshes, and switches to the new workspa
   const createInit = fetchWithRetryMock.mock.calls[0]?.[1] as { body?: string };
   assert.deepEqual(JSON.parse(String(createInit.body)), { name: "Team Alpha" });
   assert.equal(createSyncPayloadMock.mock.calls.length, 1);
-  assert.equal(requestCloudSyncPushMock.mock.calls.length, 1);
+  assert.equal(runCloudSyncPushMock.mock.calls.length, 1);
+  assert.equal(runCloudSyncPushMock.mock.calls[0]?.[1], true);
+  assert.deepEqual(runCloudSyncPushMock.mock.calls[0]?.[3], {
+    scopeOverride: {
+      scopeType: "workspace",
+      workspaceId: "ws_created"
+    },
+    treatConflictAsSuccess: true
+  });
   assert.equal(ctx.refreshWorkspaces.mock.calls.length, 1);
   assert.equal(ctx.switchToWorkspace.mock.calls.length, 1);
   assert.equal(ctx.switchToWorkspace.mock.calls[0]?.[0], "ws_created");

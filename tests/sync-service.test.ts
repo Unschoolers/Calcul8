@@ -44,6 +44,22 @@ function createMockStorage(seed: Record<string, string> = {}): MockStorage {
   };
 }
 
+function createDeferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
+async function flushMicrotasks(times = 3): Promise<void> {
+  for (let index = 0; index < times; index += 1) {
+    await Promise.resolve();
+  }
+}
+
 function createApp() {
   return {
     lots: [{ id: 1 }],
@@ -124,6 +140,60 @@ test("runCloudSyncPush handles auth expiry and marks sync as error", async () =>
   assert.equal(app.syncStatus, "error");
 });
 
+test("runCloudSyncPull shares one in-flight request across overlapping callers", async () => {
+  const app = createApp();
+  const pullDeferred = createDeferred<{
+    ok: boolean;
+    status: number;
+    statusText: string;
+    json: () => Promise<{ snapshot?: undefined }>;
+  }>();
+  const requestCloudSyncPull = vi.fn().mockReturnValue(pullDeferred.promise);
+
+  const first = runCloudSyncPull(app, {
+    requestCloudSyncPull,
+    createSyncPayload: () => ({ lots: app.lots, salesByLot: {}, wheelConfigs: [], activeWheelConfigId: null }),
+    getSyncPayloadSignature: () => "sig",
+    startSyncStatus: (target) => {
+      target.syncStatus = "syncing";
+    },
+    setSyncStatusSuccess: (target) => {
+      target.syncStatus = "success";
+    },
+    setSyncStatusError: (target) => {
+      target.syncStatus = "error";
+    }
+  });
+  const second = runCloudSyncPull(app, {
+    requestCloudSyncPull,
+    createSyncPayload: () => ({ lots: app.lots, salesByLot: {}, wheelConfigs: [], activeWheelConfigId: null }),
+    getSyncPayloadSignature: () => "sig",
+    startSyncStatus: (target) => {
+      target.syncStatus = "syncing";
+    },
+    setSyncStatusSuccess: (target) => {
+      target.syncStatus = "success";
+    },
+    setSyncStatusError: (target) => {
+      target.syncStatus = "error";
+    }
+  });
+
+  assert.equal(requestCloudSyncPull.mock.calls.length, 1);
+
+  pullDeferred.resolve({
+    ok: true,
+    status: 200,
+    statusText: "OK",
+    json: async () => ({})
+  });
+
+  await Promise.all([first, second]);
+
+  assert.equal(requestCloudSyncPull.mock.calls.length, 1);
+  assert.equal(app.syncStatus, "success");
+});
+
 test("runCloudSyncPush pulls latest data on stale-version conflict", async () => {
   const app = createApp();
   const requestCloudSyncPush = vi.fn().mockResolvedValue({
@@ -157,6 +227,241 @@ test("runCloudSyncPush pulls latest data on stale-version conflict", async () =>
     app.notify.mock.calls.at(-1),
     ["Cloud data changed. Pulled latest data. Please retry your change.", "warning"]
   );
+});
+
+test("runCloudSyncPush can treat scoped seed conflicts as success", async () => {
+  const app = createApp();
+  const requestCloudSyncPush = vi.fn().mockResolvedValue({
+    ok: false,
+    status: 409,
+    statusText: "Conflict",
+    json: async () => ({
+      error: "conflict"
+    })
+  });
+
+  await runCloudSyncPush(app, true, {
+    requestCloudSyncPush,
+    createSyncPayload: () => ({ lots: [], salesByLot: {}, wheelConfigs: [], activeWheelConfigId: null }),
+    getSyncPayloadSignature: () => "sig-seed",
+    startSyncStatus: (target) => {
+      target.syncStatus = "syncing";
+    },
+    setSyncStatusSuccess: (target) => {
+      target.syncStatus = "success";
+    },
+    setSyncStatusError: (target) => {
+      target.syncStatus = "error";
+    },
+    hasStorageItem: () => true
+  }, {
+    scopeOverride: {
+      scopeType: "workspace",
+      workspaceId: "ws_created"
+    },
+    treatConflictAsSuccess: true
+  });
+
+  assert.equal(requestCloudSyncPush.mock.calls.length, 1);
+  assert.equal(app.pullCloudSync.mock.calls.length, 0);
+  assert.equal(app.notify.mock.calls.length, 0);
+  assert.equal(app.syncStatus, "success");
+});
+
+test("runCloudSyncPush waits for an in-flight pull before pushing", async () => {
+  const app = createApp();
+  const pullDeferred = createDeferred<{
+    ok: boolean;
+    status: number;
+    statusText: string;
+    json: () => Promise<{ snapshot?: undefined }>;
+  }>();
+  const requestCloudSyncPull = vi.fn().mockReturnValue(pullDeferred.promise);
+  const requestCloudSyncPush = vi.fn().mockResolvedValue({
+    ok: true,
+    status: 200,
+    statusText: "OK",
+    json: async () => ({ version: 3 })
+  });
+  const deps = {
+    requestCloudSyncPull,
+    requestCloudSyncPush,
+    createSyncPayload: () => ({
+      lots: app.lots,
+      salesByLot: {},
+      wheelConfigs: [],
+      activeWheelConfigId: null
+    }),
+    getSyncPayloadSignature: (payload: unknown) => JSON.stringify(payload),
+    startSyncStatus: (target: ReturnType<typeof createApp>) => {
+      target.syncStatus = "syncing";
+    },
+    setSyncStatusSuccess: (target: ReturnType<typeof createApp>) => {
+      target.syncStatus = "success";
+    },
+    setSyncStatusError: (target: ReturnType<typeof createApp>) => {
+      target.syncStatus = "error";
+    },
+    hasStorageItem: () => true
+  };
+
+  const pullPromise = runCloudSyncPull(app, deps);
+  const pushPromise = runCloudSyncPush(app, true, deps);
+
+  assert.equal(requestCloudSyncPull.mock.calls.length, 1);
+  assert.equal(requestCloudSyncPush.mock.calls.length, 0);
+
+  pullDeferred.resolve({
+    ok: true,
+    status: 200,
+    statusText: "OK",
+    json: async () => ({})
+  });
+  await flushMicrotasks();
+
+  await Promise.all([pullPromise, pushPromise]);
+
+  assert.equal(requestCloudSyncPull.mock.calls.length, 1);
+  assert.equal(requestCloudSyncPush.mock.calls.length, 1);
+});
+
+test("runCloudSyncPull does not block a later push in a different scope", async () => {
+  const app = createApp();
+  const personalPullDeferred = createDeferred<{
+    ok: boolean;
+    status: number;
+    statusText: string;
+    json: () => Promise<{ snapshot?: undefined }>;
+  }>();
+  const workspacePushDeferred = createDeferred<{
+    ok: boolean;
+    status: number;
+    statusText: string;
+    json: () => Promise<{ version: number }>;
+  }>();
+  const requestCloudSyncPull = vi.fn().mockReturnValue(personalPullDeferred.promise);
+  const requestCloudSyncPush = vi.fn().mockReturnValue(workspacePushDeferred.promise);
+  const deps = {
+    requestCloudSyncPull,
+    requestCloudSyncPush,
+    createSyncPayload: () => ({
+      lots: app.lots,
+      salesByLot: {},
+      wheelConfigs: [],
+      activeWheelConfigId: null
+    }),
+    getSyncPayloadSignature: (payload: unknown) => JSON.stringify(payload),
+    startSyncStatus: (target: ReturnType<typeof createApp>) => {
+      target.syncStatus = "syncing";
+    },
+    setSyncStatusSuccess: (target: ReturnType<typeof createApp>) => {
+      target.syncStatus = "success";
+    },
+    setSyncStatusError: (target: ReturnType<typeof createApp>) => {
+      target.syncStatus = "error";
+    },
+    hasStorageItem: () => true
+  };
+
+  app.activeScopeType = "personal";
+  app.activeWorkspaceId = null;
+  const pullPromise = runCloudSyncPull(app, deps);
+
+  app.activeScopeType = "workspace";
+  app.activeWorkspaceId = "team-42";
+  const pushPromise = runCloudSyncPush(app, true, deps);
+
+  assert.equal(requestCloudSyncPull.mock.calls.length, 1);
+  assert.equal(requestCloudSyncPush.mock.calls.length, 1);
+
+  personalPullDeferred.resolve({
+    ok: true,
+    status: 200,
+    statusText: "OK",
+    json: async () => ({})
+  });
+
+  workspacePushDeferred.resolve({
+    ok: true,
+    status: 200,
+    statusText: "OK",
+    json: async () => ({ version: 4 })
+  });
+
+  await Promise.all([pullPromise, pushPromise]);
+
+  assert.equal(requestCloudSyncPull.mock.calls.length, 1);
+  assert.equal(requestCloudSyncPush.mock.calls.length, 1);
+});
+
+test("runCloudSyncPush collapses overlapping push requests and reruns once with the latest state", async () => {
+  const app = createApp();
+  const firstPushDeferred = createDeferred<{
+    ok: boolean;
+    status: number;
+    statusText: string;
+    json: () => Promise<{ version: number }>;
+  }>();
+  const secondPushDeferred = createDeferred<{
+    ok: boolean;
+    status: number;
+    statusText: string;
+    json: () => Promise<{ version: number }>;
+  }>();
+  const requestCloudSyncPush = vi
+    .fn()
+    .mockReturnValueOnce(firstPushDeferred.promise)
+    .mockReturnValueOnce(secondPushDeferred.promise);
+  const deps = {
+    requestCloudSyncPush,
+    createSyncPayload: () => ({
+      lots: app.lots,
+      salesByLot: {},
+      wheelConfigs: [],
+      activeWheelConfigId: app.currentLotId
+    }),
+    getSyncPayloadSignature: (payload: unknown) => JSON.stringify(payload),
+    startSyncStatus: (target: ReturnType<typeof createApp>) => {
+      target.syncStatus = "syncing";
+    },
+    setSyncStatusSuccess: (target: ReturnType<typeof createApp>) => {
+      target.syncStatus = "success";
+    },
+    setSyncStatusError: (target: ReturnType<typeof createApp>) => {
+      target.syncStatus = "error";
+    }
+  };
+
+  const first = runCloudSyncPush(app, true, deps);
+  app.currentLotId = 2;
+  const second = runCloudSyncPush(app, true, deps);
+  const third = runCloudSyncPush(app, true, deps);
+
+  assert.equal(requestCloudSyncPush.mock.calls.length, 1);
+  assert.equal(requestCloudSyncPush.mock.calls[0]?.[1]?.activeWheelConfigId, 1);
+
+  firstPushDeferred.resolve({
+    ok: true,
+    status: 200,
+    statusText: "OK",
+    json: async () => ({ version: 3 })
+  });
+  await flushMicrotasks();
+
+  assert.equal(requestCloudSyncPush.mock.calls.length, 2);
+  assert.equal(requestCloudSyncPush.mock.calls[1]?.[1]?.activeWheelConfigId, 2);
+
+  secondPushDeferred.resolve({
+    ok: true,
+    status: 200,
+    statusText: "OK",
+    json: async () => ({ version: 4 })
+  });
+
+  await Promise.all([first, second, third]);
+
+  assert.equal(requestCloudSyncPush.mock.calls.length, 2);
+  assert.equal(app.syncStatus, "success");
 });
 
 test("runCloudSyncPush forwards intentional empty-overwrite flag for confirmed destructive syncs", async () => {

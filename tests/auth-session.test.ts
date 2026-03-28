@@ -50,7 +50,7 @@ test("buildAuthenticatedHeaders sends bearer token for bearer-required requests"
   assert.equal(headers["Content-Type"], "application/json");
 });
 
-test("buildAuthenticatedHeaders bootstraps session-preferred requests with bearer token when no csrf token exists", () => {
+test("buildAuthenticatedHeaders bootstraps session-preferred requests with bearer token when no server session exists", () => {
   localStorage.setItem(GOOGLE_AUTH_TOKEN_KEY, "google-token");
 
   const headers = buildAuthenticatedHeaders("session-preferred");
@@ -58,11 +58,38 @@ test("buildAuthenticatedHeaders bootstraps session-preferred requests with beare
   assert.equal(headers.Authorization, "Bearer google-token");
 });
 
-test("buildAuthenticatedHeaders keeps bearer token for session-preferred requests even when csrf token exists", () => {
+test("buildAuthenticatedHeaders omits bearer token for session-preferred requests when a server session exists", () => {
   localStorage.setItem(GOOGLE_AUTH_TOKEN_KEY, "google-token");
   localStorage.setItem(AUTH_CSRF_TOKEN_KEY, "csrf-token");
 
   const headers = buildAuthenticatedHeaders("session-preferred");
+
+  assert.equal("Authorization" in headers, false);
+});
+
+test("buildAuthenticatedHeaders keeps bearer token for bearer-required requests even when a server session exists", () => {
+  localStorage.setItem(GOOGLE_AUTH_TOKEN_KEY, "google-token");
+  localStorage.setItem(AUTH_CSRF_TOKEN_KEY, "csrf-token");
+
+  const headers = buildAuthenticatedHeaders("bearer-required");
+
+  assert.equal(headers.Authorization, "Bearer google-token");
+});
+
+test("buildAuthenticatedHeaders keeps bearer token for cross-origin session-preferred requests", () => {
+  vi.stubGlobal("window", {
+    location: {
+      origin: "https://app.example.test"
+    }
+  });
+  localStorage.setItem(GOOGLE_AUTH_TOKEN_KEY, "google-token");
+  localStorage.setItem(AUTH_CSRF_TOKEN_KEY, "csrf-token");
+
+  const headers = buildAuthenticatedHeaders(
+    "session-preferred",
+    {},
+    "https://api.example.test/entitlements/me"
+  );
 
   assert.equal(headers.Authorization, "Bearer google-token");
 });

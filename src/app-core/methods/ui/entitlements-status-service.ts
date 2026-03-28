@@ -9,7 +9,11 @@ import {
   readEntitlementCache,
   resolveApiBaseUrl
 } from "./shared.ts";
-import { buildAuthenticatedHeaders, getStoredGoogleIdToken } from "../../auth/index.ts";
+import {
+  buildAuthenticatedHeaders,
+  getStoredGoogleIdToken,
+  hasAuthSignal
+} from "../../auth/index.ts";
 import { applyTargetProfitAccessDefaults, type TargetProfitAccessApp } from "./entitlements-shared.ts";
 
 interface ParsedEntitlementPayload {
@@ -27,6 +31,7 @@ export type EntitlementStatusApp = Pick<
 type EntitlementStatusDeps = {
   resolveApiBaseUrl: () => string;
   getGoogleIdToken: () => string;
+  hasAuthSignal: () => boolean;
   readEntitlementCache: typeof readEntitlementCache;
   getEntitlementTtlMs: typeof getEntitlementTtlMs;
   fetchWithRetry: typeof fetchWithRetry;
@@ -77,6 +82,7 @@ export function applyFetchedEntitlement(app: EntitlementMutationApp, payload: Pa
 const defaultDeps: EntitlementStatusDeps = {
   resolveApiBaseUrl,
   getGoogleIdToken: () => getStoredGoogleIdToken(),
+  hasAuthSignal: () => hasAuthSignal(),
   readEntitlementCache,
   getEntitlementTtlMs,
   fetchWithRetry,
@@ -100,6 +106,7 @@ export async function syncEntitlementStatus(
     return;
   }
   const googleIdToken = resolvedDeps.getGoogleIdToken();
+  const hasActiveAuthSignal = resolvedDeps.hasAuthSignal();
 
   const cached = resolvedDeps.readEntitlementCache();
   const ttlMs = resolvedDeps.getEntitlementTtlMs();
@@ -115,6 +122,10 @@ export async function syncEntitlementStatus(
       hasProAccess: cached.hasProAccess,
       updatedAt: cached.updatedAt
     });
+    if (!hasActiveAuthSignal) {
+      console.info("[whatfees] Entitlement sync skipped: no active auth session.");
+      return;
+    }
     console.info("[whatfees] Entitlement cache hit", {
       userId: cached.userId,
       hasProAccess: cached.hasProAccess,
@@ -124,9 +135,15 @@ export async function syncEntitlementStatus(
     return;
   }
 
+  if (!hasActiveAuthSignal) {
+    console.info("[whatfees] Entitlement sync skipped: no active auth session.");
+    return;
+  }
+
   try {
-    const response = await resolvedDeps.fetchWithRetry(`${base}/entitlements/me`, {
-      headers: buildAuthenticatedHeaders("session-preferred")
+    const requestUrl = `${base}/entitlements/me`;
+    const response = await resolvedDeps.fetchWithRetry(requestUrl, {
+      headers: buildAuthenticatedHeaders("session-preferred", {}, requestUrl)
     });
 
     if (response.status === 401) {

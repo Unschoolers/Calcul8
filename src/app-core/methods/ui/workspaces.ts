@@ -1,7 +1,7 @@
 import type { AppContext, AppMethodState } from "../../context.ts";
 import { fetchWithRetry, GOOGLE_TOKEN_KEY, handleExpiredAuth, resolveApiBaseUrl } from "./shared.ts";
-import { requestCloudSyncPush } from "./sync-network.ts";
 import { createSyncPayload } from "./sync-payload.ts";
+import { runCloudSyncPush } from "./sync-service.ts";
 import { buildAuthenticatedHeaders, getStoredGoogleIdToken } from "../../auth/index.ts";
 import {
   getLegacyStorageKeys,
@@ -53,9 +53,14 @@ async function fetchWorkspaceJson(
 
   let response: Response;
   try {
-    response = await fetchWithRetry(`${baseUrl}${path}`, {
+    const requestUrl = `${baseUrl}${path}`;
+    response = await fetchWithRetry(requestUrl, {
       ...init,
-      headers: buildAuthenticatedHeaders("session-preferred", init.headers as Record<string, string> | undefined)
+      headers: buildAuthenticatedHeaders(
+        "session-preferred",
+        init.headers as Record<string, string> | undefined,
+        requestUrl
+      )
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
@@ -241,13 +246,22 @@ export const uiWorkspaceMethods: ThisType<AppContext> & Pick<
         workspaceId: createdWorkspaceId
       });
 
-      const seedResponse = await requestCloudSyncPush(baseUrl, seedPayload, "session-preferred");
-      if (!seedResponse.ok && seedResponse.status !== 409) {
-        this.notify(
-          await parseWorkspaceApiError(seedResponse, "Workspace created, but initial data copy failed."),
-          "warning"
-        );
-      }
+      await runCloudSyncPush(
+        this,
+        true,
+        {
+          resolveApiBaseUrl: () => baseUrl,
+          createSyncPayload: () => seedPayload,
+          hasStorageItem: () => true
+        },
+        {
+          scopeOverride: {
+            scopeType: "workspace",
+            workspaceId: createdWorkspaceId
+          },
+          treatConflictAsSuccess: true
+        }
+      );
 
       this.newWorkspaceName = "";
       this.showCreateWorkspaceModal = false;

@@ -16,4 +16,4 @@ export {
 } from "./storage.ts";
 export { GOOGLE_PROFILE_CACHE_KEY, GOOGLE_TOKEN_KEY } from "./providers/google.ts";
 export { buildAuthenticatedHeaders, handleExpiredAuthState, type FrontendAuthMode } from "./session.ts";
-export { hasGoogleBootstrapToken, hasServerSession } from "./state.ts";
+export { hasAuthSignal, hasGoogleBootstrapToken, hasServerSession } from "./state.ts";

@@ -129,6 +129,48 @@ test("syncEntitlementStatus uses cached entitlement and pulls cloud sync when al
   });
 });
 
+test("syncEntitlementStatus skips remote fetch when there is no auth signal", async () => {
+  await withMockedLocalStorage(async () => {
+    const app = createApp();
+
+    await syncEntitlementStatus(app as never, false, {
+      shouldUseCachedEntitlement,
+      applyCachedEntitlement,
+      applyFetchedEntitlement,
+      parseEntitlementPayload,
+      hasAuthSignal: () => false
+    });
+
+    assert.equal(fetchWithRetryMock.mock.calls.length, 0);
+    assert.equal((app.pullCloudSync as ReturnType<typeof vi.fn>).mock.calls.length, 0);
+    assert.equal(handleExpiredAuthMock.mock.calls.length, 0);
+  });
+});
+
+test("syncEntitlementStatus applies cached entitlement without pulling when there is no auth signal", async () => {
+  await withMockedLocalStorage(async () => {
+    readEntitlementCacheMock.mockReturnValue({
+      userId: "u_cached",
+      hasProAccess: true,
+      updatedAt: "2026-02-20T00:00:00Z",
+      cachedAt: Date.now()
+    });
+    const app = createApp();
+
+    await syncEntitlementStatus(app as never, false, {
+      shouldUseCachedEntitlement,
+      applyCachedEntitlement,
+      applyFetchedEntitlement,
+      parseEntitlementPayload,
+      hasAuthSignal: () => false
+    });
+
+    assert.equal(app.hasProAccess, true);
+    assert.equal(fetchWithRetryMock.mock.calls.length, 0);
+    assert.equal((app.pullCloudSync as ReturnType<typeof vi.fn>).mock.calls.length, 0);
+  });
+});
+
 test("syncEntitlementStatus handles 401 by expiring auth and notifying", async () => {
   await withMockedLocalStorage(async (data) => {
     data.set("whatfees_google_id_token", "google-token");
