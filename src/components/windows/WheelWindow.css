@@ -620,6 +620,21 @@
     0 8px 18px rgba(0, 0, 0, 0.2);
 }
 
+.wheel-center-cap__icon {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgb(var(--v-theme-primary));
+  transform-origin: center;
+  transition: transform 80ms linear;
+}
+
+.wheel-center-cap__icon :deep(.v-icon) {
+  filter: drop-shadow(0 0 8px rgba(var(--v-theme-primary), 0.18));
+}
+
 .wheel-outer--spinning .wheel-center-cap {
   box-shadow:
     0 0 0 10px rgba(var(--v-theme-primary), 0.12),
