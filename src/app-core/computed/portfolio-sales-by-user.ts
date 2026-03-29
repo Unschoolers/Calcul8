@@ -112,7 +112,8 @@ function getSaleNetRevenue(lot: Lot, sale: Sale): number {
     getGrossRevenueForSale(sale),
     lot.sellingTaxPercent,
     sale.buyerShipping || 0,
-    1
+    1,
+    lot
   );
 }
 
@@ -167,7 +168,8 @@ export function buildPortfolioSalesByUserChartData(params: {
             sellingCurrency: lot.sellingCurrency,
             exchangeRate: lot.exchangeRate,
             singlesPurchases: lot.singlesPurchases,
-            defaultExchangeRate: DEFAULT_VALUES.EXCHANGE_RATE
+            defaultExchangeRate: DEFAULT_VALUES.EXCHANGE_RATE,
+            feeProfileInput: lot
           });
       }
       seriesMap.set(identity.key, current);

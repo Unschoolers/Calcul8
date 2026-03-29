@@ -106,7 +106,7 @@ export const configStorageMethods: ConfigMethodSubset<
   },
 
   netFromGross(grossRevenue: number, buyerShippingPerOrder = 0, orderCount = 1): number {
-    return calculateNetFromGross(grossRevenue, this.sellingTaxPercent, buyerShippingPerOrder, orderCount);
+    return calculateNetFromGross(grossRevenue, this.sellingTaxPercent, buyerShippingPerOrder, orderCount, this);
   },
 
   async getExchangeRate(): Promise<void> {

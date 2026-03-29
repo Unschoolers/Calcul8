@@ -22,6 +22,160 @@ type WheelFairnessHistoryEntry = {
   timestamp: number;
 };
 
+type WheelRenderCache = {
+  canvas: HTMLCanvasElement;
+  slotsRef: WheelSlot[];
+  size: number;
+  dpr: number;
+};
+
+function getWheelCanvasDpr(): number {
+  return Math.max(
+    1,
+    Math.min(
+      3,
+      Math.floor((((globalThis as { devicePixelRatio?: number }).devicePixelRatio || 1) * 100)) / 100
+    )
+  );
+}
+
+function ensureWheelCanvasSize(canvasEl: HTMLCanvasElement, size: number, dpr: number): void {
+  const backingSize = Math.max(20, Math.round(size * dpr));
+  if (canvasEl.width !== backingSize || canvasEl.height !== backingSize) {
+    canvasEl.width = backingSize;
+    canvasEl.height = backingSize;
+    canvasEl.style.width = `${size}px`;
+    canvasEl.style.height = `${size}px`;
+  }
+}
+
+function renderWheelSurface(
+  ctx: CanvasRenderingContext2D,
+  slots: WheelSlot[],
+  size: number,
+  offset = 0,
+  highlightedSlotIndex = -1
+): void {
+  const cx = Math.round(size / 2);
+  const cy = Math.round(size / 2);
+  const r = Math.round(size / 2 - 10);
+  const sliceAngle = (2 * Math.PI) / slots.length;
+  const strokeColor = "#0a0c10";
+  const strokeWidth = 2.25;
+
+  slots.forEach((slot, i) => {
+    const startAngle = offset + i * sliceAngle;
+    const endAngle = startAngle + sliceAngle;
+
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, r, startAngle, endAngle);
+    ctx.closePath();
+    ctx.fillStyle = slot.color;
+    ctx.fill();
+
+    if (i === highlightedSlotIndex) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, r, startAngle, endAngle);
+      ctx.closePath();
+      ctx.fillStyle = "rgba(255, 245, 200, 0.18)";
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255, 228, 133, 0.92)";
+      ctx.lineWidth = 4;
+      ctx.shadowColor = "rgba(255, 210, 88, 0.7)";
+      ctx.shadowBlur = 22;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(startAngle + sliceAngle / 2);
+    ctx.textAlign = "right";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "#fff";
+    const baseFontSize = slots.length > 16 ? 0.022 : slots.length > 10 ? 0.025 : 0.028;
+    const fontSize = Math.max(8, Math.round(size * baseFontSize));
+    ctx.font = `bold ${fontSize}px sans-serif`;
+    ctx.shadowColor = "#000";
+    ctx.shadowBlur = 4;
+    const maxChars = Math.max(10, Math.floor(size / 18));
+    const label = slot.isChase ? "⭐ " + slot.name : slot.name;
+    const txt = label.length > maxChars ? label.substring(0, maxChars - 2) + "…" : label;
+    ctx.fillText(txt, r - 12, 3);
+    ctx.restore();
+  });
+
+  ctx.save();
+  ctx.strokeStyle = strokeColor;
+  ctx.lineWidth = strokeWidth;
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, 2 * Math.PI);
+  ctx.stroke();
+
+  for (let i = 0; i < slots.length; i++) {
+    const angle = offset + i * sliceAngle;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(
+      cx + Math.cos(angle) * r,
+      cy + Math.sin(angle) * r
+    );
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function createWheelCacheCanvas(sourceCanvas: HTMLCanvasElement): HTMLCanvasElement | null {
+  const documentLike = sourceCanvas.ownerDocument ?? (globalThis as { document?: Document }).document;
+  if (!documentLike?.createElement) return null;
+  return documentLike.createElement("canvas");
+}
+
+function getStaticWheelRender(
+  context: Record<string, unknown>,
+  sourceCanvas: HTMLCanvasElement,
+  slots: WheelSlot[],
+  size: number,
+  dpr: number
+): HTMLCanvasElement | null {
+  const existingCache = context._wheelStaticRenderCache as WheelRenderCache | undefined;
+  if (
+    existingCache
+    && existingCache.slotsRef === slots
+    && existingCache.size === size
+    && existingCache.dpr === dpr
+  ) {
+    return existingCache.canvas;
+  }
+
+  const cacheCanvas = createWheelCacheCanvas(sourceCanvas);
+  if (!cacheCanvas) return null;
+
+  ensureWheelCanvasSize(cacheCanvas, size, dpr);
+  const cacheCtx = cacheCanvas.getContext("2d");
+  if (!cacheCtx) return null;
+
+  cacheCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  cacheCtx.clearRect(0, 0, size, size);
+  cacheCtx.imageSmoothingEnabled = true;
+  renderWheelSurface(cacheCtx, slots, size);
+
+  context._wheelStaticRenderCache = {
+    canvas: cacheCanvas,
+    slotsRef: slots,
+    size,
+    dpr
+  } satisfies WheelRenderCache;
+
+  return cacheCanvas;
+}
+
 function queueSkippedDeduction(
   context: Record<string, unknown>,
   params: {
@@ -60,31 +214,20 @@ export const wheelSpinMethods = {
     const slots = (((this as Record<string, unknown>).wheelDisplaySlots
       || (this as Record<string, unknown>).activeWheelSlots)) as WheelSlot[];
     const size = Math.max(20, (this as Record<string, unknown>).wheelCanvasSize as number);
-    const dpr = Math.max(
-      1,
-      Math.min(
-        3,
-        Math.floor((((globalThis as { devicePixelRatio?: number }).devicePixelRatio || 1) * 100)) / 100
-      )
-    );
-    const backingSize = Math.max(20, Math.round(size * dpr));
+    const dpr = getWheelCanvasDpr();
 
-    if (canvasEl.width !== backingSize || canvasEl.height !== backingSize) {
-      canvasEl.width = backingSize;
-      canvasEl.height = backingSize;
-      canvasEl.style.width = `${size}px`;
-      canvasEl.style.height = `${size}px`;
-    }
+    ensureWheelCanvasSize(canvasEl, size, dpr);
 
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.imageSmoothingEnabled = true;
-    const cx = Math.round(size / 2);
-    const cy = Math.round(size / 2);
-    const r = Math.round(size / 2 - 10);
 
     ctx.clearRect(0, 0, size, size);
 
     if (!slots.length) {
+      (this as Record<string, unknown>)._wheelStaticRenderCache = undefined;
+      const cx = Math.round(size / 2);
+      const cy = Math.round(size / 2);
+      const r = Math.round(size / 2 - 10);
       ctx.beginPath();
       ctx.arc(cx, cy, r, 0, 2 * Math.PI);
       ctx.fillStyle = "#1e2540";
@@ -97,77 +240,22 @@ export const wheelSpinMethods = {
       return;
     }
 
-    const sliceAngle = (2 * Math.PI) / slots.length;
-    const strokeColor = "#0a0c10";
-    const strokeWidth = 2.25;
     const highlightedSlotIndex = Number((this as Record<string, unknown>).wheelHighlightedSlotIndex ?? -1);
-
-    slots.forEach((slot, i) => {
-      const startAngle = offset + i * sliceAngle;
-      const endAngle = startAngle + sliceAngle;
-
-      ctx.beginPath();
-      ctx.moveTo(cx, cy);
-      ctx.arc(cx, cy, r, startAngle, endAngle);
-      ctx.closePath();
-      ctx.fillStyle = slot.color;
-      ctx.fill();
-
-      if (i === highlightedSlotIndex) {
+    if (highlightedSlotIndex < 0) {
+      const staticWheel = getStaticWheelRender(this as Record<string, unknown>, canvasEl, slots, size, dpr);
+      if (staticWheel) {
+        const cx = Math.round(size / 2);
+        const cy = Math.round(size / 2);
         ctx.save();
-        ctx.beginPath();
-        ctx.moveTo(cx, cy);
-        ctx.arc(cx, cy, r, startAngle, endAngle);
-        ctx.closePath();
-        ctx.fillStyle = "rgba(255, 245, 200, 0.18)";
-        ctx.fill();
-        ctx.strokeStyle = "rgba(255, 228, 133, 0.92)";
-        ctx.lineWidth = 4;
-        ctx.shadowColor = "rgba(255, 210, 88, 0.7)";
-        ctx.shadowBlur = 22;
-        ctx.stroke();
+        ctx.translate(cx, cy);
+        ctx.rotate(offset);
+        ctx.drawImage(staticWheel, -Math.round(size / 2), -Math.round(size / 2), size, size);
         ctx.restore();
+        return;
       }
-
-      ctx.save();
-      ctx.translate(cx, cy);
-      ctx.rotate(startAngle + sliceAngle / 2);
-      ctx.textAlign = "right";
-      ctx.textBaseline = "middle";
-      ctx.fillStyle = "#fff";
-      const baseFontSize = slots.length > 16 ? 0.022 : slots.length > 10 ? 0.025 : 0.028;
-      const fontSize = Math.max(8, Math.round(size * baseFontSize));
-      ctx.font = `bold ${fontSize}px sans-serif`;
-      ctx.shadowColor = "#000";
-      ctx.shadowBlur = 4;
-      const maxChars = Math.max(10, Math.floor(size / 18));
-      const label = slot.isChase ? "⭐ " + slot.name : slot.name;
-      const txt = label.length > maxChars ? label.substring(0, maxChars - 2) + "…" : label;
-      ctx.fillText(txt, r - 12, 3);
-      ctx.restore();
-    });
-
-    ctx.save();
-    ctx.strokeStyle = strokeColor;
-    ctx.lineWidth = strokeWidth;
-    ctx.lineJoin = "round";
-    ctx.lineCap = "round";
-
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, 2 * Math.PI);
-    ctx.stroke();
-
-    for (let i = 0; i < slots.length; i++) {
-      const angle = offset + i * sliceAngle;
-      ctx.beginPath();
-      ctx.moveTo(cx, cy);
-      ctx.lineTo(
-        cx + Math.cos(angle) * r,
-        cy + Math.sin(angle) * r
-      );
-      ctx.stroke();
     }
-    ctx.restore();
+
+    renderWheelSurface(ctx, slots, size, offset, highlightedSlotIndex);
   },
 
   async spinWheel(this: Record<string, unknown>): Promise<void> {

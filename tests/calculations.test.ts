@@ -34,6 +34,10 @@ import {
     createForecastScenarioFromProjection,
     createForecastScenarioFromUnitPrice
 } from "../src/domain/calculations.ts";
+import {
+  calculateWheelNetFromGross,
+  computeExpectedMargin,
+} from "../src/components/windows/wheelHelpers.ts";
 import type { Lot, Sale } from "../src/types/app.ts";
 
 type MockStorage = {
@@ -143,12 +147,15 @@ test("calculateSinglesPurchaseTotalCostInSellingCurrency converts mixed-currency
 
 test("calculateNetFromGross matches expected fee formula", () => {
   // Example:
-  // gross = 84.15, buyer shipping = 8.63, buyer tax = 12.06
-  // buyer tax rate in this order = 12.06 / 84.15
+  // gross = 84.15, buyer shipping = 8.63
+  // Whatnot preset in v1:
+  // - 8% platform fee on sale price
+  // - 2.9% additional fee on sale + shipping
+  // - $0.30 fixed per order
   const gross = 84.15;
   const buyerShipping = 8.63;
   const buyerTaxPercent = (12.06 / 84.15) * 100;
-  const expectedNet = 74.08;
+  const expectedNet = gross - (gross * 0.08) - ((gross + buyerShipping) * 0.029) - 0.3;
   const net = calculateNetFromGross(gross, buyerTaxPercent, buyerShipping, 1);
   assert.ok(Math.abs(net - expectedNet) < 0.02);
 });
@@ -156,10 +163,9 @@ test("calculateNetFromGross matches expected fee formula", () => {
 test("calculateNetFromGross applies 8% commission on full sale price", () => {
   const gross = 2000;
   const sellingTaxPercent = 15;
-  const orderTotal = gross * 1.15;
 
   const expectedCommission = gross * 0.08;
-  const expectedProcessing = orderTotal * 0.029;
+  const expectedProcessing = gross * 0.029;
   const expectedFixed = 0.3;
   const expectedNet = gross - expectedCommission - expectedProcessing - expectedFixed;
 
@@ -171,7 +177,7 @@ test("calculateNetFromGross uses $0.30 per order (order count aware)", () => {
   const gross = 120;
   const taxPercent = 15;
   const expectedCommission = gross * 0.08;
-  const expectedProcessing = (gross * 1.15) * 0.029;
+  const expectedProcessing = gross * 0.029;
   const expectedNet = gross - expectedCommission - expectedProcessing - 0.3;
 
   const netSingleOrder = calculateNetFromGross(gross, taxPercent, 0, 1);
@@ -179,6 +185,130 @@ test("calculateNetFromGross uses $0.30 per order (order count aware)", () => {
 
   assert.ok(Math.abs(netSingleOrder - expectedNet) < 0.000001);
   assert.ok(netMultiOrder < netSingleOrder);
+});
+
+test("calculateNetFromGross is driven by explicit fee fields, not selling tax percent", () => {
+  const feeProfile = {
+    platformFeePercent: 8,
+    additionalFeePercent: 2.9,
+    additionalFeeAppliesTo: "sale_plus_shipping" as const,
+    fixedFeePerOrder: 0.3
+  };
+
+  const lowTaxNet = calculateNetFromGross(100, 0, 5, 1, feeProfile);
+  const highTaxNet = calculateNetFromGross(100, 25, 5, 1, feeProfile);
+
+  assert.equal(lowTaxNet, highTaxNet);
+});
+
+test("wheel fee math defaults to Whatnot and can disable fees", () => {
+  const whatnotNet = calculateWheelNetFromGross(100);
+  assert.equal(whatnotNet, 88.8);
+
+  const noFees = {
+    platformFeePercent: 0,
+    additionalFeePercent: 0,
+    additionalFeeAppliesTo: "sale_only" as const,
+    fixedFeePerOrder: 0
+  };
+
+  assert.equal(calculateWheelNetFromGross(100, noFees), 100);
+  assert.equal(calculateNetFromGross(100, 15, 0, 1, noFees), 100);
+
+  const whatnotMargin = computeExpectedMargin({
+    id: 1,
+    name: "Wheel",
+    spinPrice: 10,
+    targetMargin: 40,
+    tiers: [
+      {
+        id: "tier-1",
+        label: "Tier 1",
+        color: "#ffffff",
+        slots: 2,
+        costPerTier: 4.5,
+        packsCount: 1,
+        deductionType: "packs",
+        sets: []
+      }
+    ],
+    createdAt: "2026-03-01"
+  }).margin;
+  const zeroFeeMargin = computeExpectedMargin({
+    id: 1,
+    name: "Wheel",
+    spinPrice: 10,
+    targetMargin: 40,
+    tiers: [
+      {
+        id: "tier-1",
+        label: "Tier 1",
+        color: "#ffffff",
+        slots: 2,
+        costPerTier: 4.5,
+        packsCount: 1,
+        deductionType: "packs",
+        sets: []
+      }
+    ],
+    createdAt: "2026-03-01"
+  }, noFees).margin;
+
+  assert.equal(Math.round((whatnotMargin ?? 0) * 10) / 10, 41.1);
+  assert.equal(Math.round((zeroFeeMargin ?? 0) * 10) / 10, 55);
+});
+
+test("computeExpectedMargin includes buyer shipping from bound lots in fee math", () => {
+  const config = {
+    id: 1,
+    name: "Wheel",
+    spinPrice: 10,
+    targetMargin: 40,
+    tiers: [
+      {
+        id: "tier-1",
+        label: "Tier 1",
+        color: "#ffffff",
+        slots: 2,
+        costPerTier: 4.5,
+        packsCount: 1,
+        deductionType: "packs" as const,
+        boundLotId: 77,
+        sets: []
+      }
+    ],
+    createdAt: "2026-03-01"
+  };
+  const lots: Lot[] = [{
+    id: 77,
+    name: "Shipping Lot",
+    lotType: "bulk",
+    boxPriceCost: 100,
+    boxesPurchased: 1,
+    packsPerBox: 16,
+    costInputMode: "perBox",
+    currency: "CAD",
+    sellingCurrency: "CAD",
+    exchangeRate: 1.4,
+    purchaseDate: "2026-03-01",
+    purchaseShippingCost: 0,
+    purchaseTaxPercent: 0,
+    sellingTaxPercent: 15,
+    sellingShippingPerOrder: 5,
+    feeProfilePreset: "whatnot",
+    platformFeePercent: 8,
+    additionalFeePercent: 2.9,
+    additionalFeeAppliesTo: "sale_plus_shipping",
+    fixedFeePerOrder: 0.3,
+    includeTax: false,
+    spotPrice: 0,
+    boxPriceSell: 0,
+    packPrice: 0,
+    targetProfitPercent: 0
+  }];
+
+  const margin = computeExpectedMargin(config, lots[0], lots).margin;
+  assert.ok(Math.abs((margin ?? 0) - 39.65) < 0.001);
 });
 
 test("calculatePriceForUnits and calculateDefaultSellingPrices are consistent", () => {
@@ -1062,7 +1192,7 @@ test("computed singlesSaleCardOptions computes remaining quantity from total and
   assert.equal(soldOut?.profitablePrice, 0);
   assert.equal(inStock?.quantity, 2);
   assert.equal(inStock?.costBasis, 12);
-  assert.equal(Math.abs((inStock?.profitablePrice ?? 0) - 9.36) < 0.01, true);
+  assert.equal(Math.abs((inStock?.profitablePrice ?? 0) - 9.32) < 0.01, true);
 });
 
 test("computed selectedSinglesSaleMaxQuantity restores editing quantity for same linked card", () => {
@@ -1175,9 +1305,9 @@ test("computed saleEditorProfitPreview aggregates basis across singles line item
   } as unknown as Parameters<typeof appComputed.saleEditorProfitPreview>[0]);
 
   const expectedValue = calculateNetFromGross(140, 15, 0, 1) - 110;
-  assert.equal(preview?.value, expectedValue);
+  assert.ok(Math.abs((preview?.value ?? 0) - expectedValue) < 1e-9);
   assert.equal(preview?.quantity, 3);
-  assert.equal(preview?.unitValue, expectedValue / 3);
+  assert.ok(Math.abs((preview?.unitValue ?? 0) - (expectedValue / 3)) < 1e-9);
   assert.equal(preview?.basisLabel, "Mixed");
   assert.equal(preview?.marketBasisValue, 100);
   assert.equal(preview?.costBasisValue, 10);
@@ -2983,6 +3113,3 @@ test("allLotPerformance applies portfolio preset filter", () => {
   assert.equal(rows.length, 1);
   assert.equal(rows[0]?.lotId, presetA.id);
 });
-
-
-

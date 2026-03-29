@@ -257,7 +257,8 @@ export const portfolioComputed: Pick<
             sellingCurrency: lot.sellingCurrency,
             exchangeRate: lot.exchangeRate,
             singlesPurchases: lot.singlesPurchases,
-            defaultExchangeRate: DEFAULT_VALUES.EXCHANGE_RATE
+            defaultExchangeRate: DEFAULT_VALUES.EXCHANGE_RATE,
+            feeProfileInput: lot
           });
         }, 0);
         const realizedRevenue = summary.totalRevenue;

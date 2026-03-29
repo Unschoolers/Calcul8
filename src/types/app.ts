@@ -6,6 +6,8 @@ export type SinglesCatalogSource = "ua" | "pokemon" | "none";
 export type CostInputMode = "perBox" | "total";
 export type PurchaseUiMode = "simple" | "expert";
 export type CurrencyCode = "CAD" | "USD";
+export type FeeProfilePreset = "whatnot" | "none";
+export type AdditionalFeeAppliesTo = "sale_only" | "sale_plus_shipping";
 export type SinglesCsvImportMode = "merge" | "sync" | "append";
 export type SaleType = "pack" | "box" | "rtyh" | "wheel";
 export type ChartViewMode = "pie" | "sparkline";
@@ -166,7 +168,15 @@ export interface SinglesCsvColumnMapping {
   marketValue: number | null;
 }
 
-export interface LotSetup {
+export interface FeeProfileFields {
+  feeProfilePreset: FeeProfilePreset;
+  platformFeePercent: number;
+  additionalFeePercent: number;
+  additionalFeeAppliesTo: AdditionalFeeAppliesTo;
+  fixedFeePerOrder: number;
+}
+
+export interface LotSetup extends FeeProfileFields {
   boxPriceCost: number;
   boxesPurchased: number;
   packsPerBox: number;

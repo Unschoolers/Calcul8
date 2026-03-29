@@ -575,7 +575,8 @@ export function buildPortfolioHistoryChartConfig(params: {
         grossRevenue,
         lotFromMap.sellingTaxPercent,
         sale.buyerShipping || 0,
-        1
+        1,
+        lotFromMap
       );
       netByDate.set(saleDate, (netByDate.get(saleDate) ?? 0) + netRevenue);
       const soldUnits = Math.max(0, Number(sale.packsCount) || 0);

@@ -9,7 +9,9 @@ import type {
 import {
   calculateBoxPriceCostCad,
   calculateDefaultSellingPrices,
+  calculateExactPriceForUnits,
   calculateNetFromGross,
+  calculateTotalRevenueWithFees,
   calculatePriceForUnits,
   calculateProfitForListing,
   calculateSaleProfit,
@@ -24,7 +26,11 @@ import {
   getSaleProfitPreview,
   getSaleSinglesLines,
   getSinglesEntryUnitCostInSellingCurrency,
+  normalizeAdditionalFeeAppliesTo,
+  resolveFeePolicy,
+  type FeeProfileInput,
   toRate,
+  type FeePolicy,
   type SaleProfitPreview,
   type SinglesLineProfitPreview,
   type SinglesSaleProfitPreview
@@ -50,33 +56,47 @@ import {
 export {
   calculateBoxPriceCostCad,
   calculateDefaultSellingPrices,
-  calculateNetFromGross, calculatePortfolioSellThroughTimeline, calculatePriceForUnits,
+  calculateExactPriceForUnits,
+  calculateNetFromGross,
+  calculatePortfolioSellThroughTimeline,
+  calculatePriceForUnits,
   calculateProfitForListing,
   calculateSaleProfit,
   calculateSinglesLineProfitPreview,
   calculateSinglesPurchaseTotalCostInSellingCurrency,
   calculateSinglesPurchaseTotals,
   calculateSinglesSaleCostBasis,
-  calculateSinglesSaleProfitPreview, calculateSparklineData,
-  calculateSparklineGradient, calculateTotalCaseCost,
+  calculateSinglesSaleProfitPreview,
+  calculateSparklineData,
+  calculateSparklineGradient,
+  calculateTotalCaseCost,
   calculateTotalRevenue,
+  calculateTotalRevenueWithFees,
   createForecastProjectionFromUnitPrice, createForecastScenario,
   createForecastScenarioFromProjection,
   createForecastScenarioFromUnitPrice,
   estimateNetRemainingFromUnitPrice,
-  getGrossRevenueForSale, getSaleProfitPreview, getSaleSinglesLines,
+  getGrossRevenueForSale,
+  getSaleProfitPreview,
+  getSaleSinglesLines,
   getSinglesEntryUnitCostInSellingCurrency,
+  normalizeAdditionalFeeAppliesTo,
   pickBestForecastScenario,
+  resolveFeePolicy,
   toRate
 };
 
-    export type {
-    ForecastProjection,
-    ForecastScenario,
-    ForecastScenarioUnitLabel,
-    PortfolioSellThroughPoint, SaleProfitPreview, SinglesLineProfitPreview,
-    SinglesSaleProfitPreview
-  };
+export type {
+  FeeProfileInput,
+  FeePolicy,
+  ForecastProjection,
+  ForecastScenario,
+  ForecastScenarioUnitLabel,
+  PortfolioSellThroughPoint,
+  SaleProfitPreview,
+  SinglesLineProfitPreview,
+  SinglesSaleProfitPreview
+};
 
 export function calculateTotalPacks(
   boxesPurchased: number,
@@ -129,7 +149,8 @@ export function calculateSalesStatus(
 export function calculateLotPerformanceSummary(
   lot: Lot,
   sales: Sale[],
-  defaultExchangeRate: number
+  defaultExchangeRate: number,
+  feeProfileInput: FeeProfileInput = lot
 ): LotPerformanceSummary {
   const isSinglesLot = lot.lotType === "singles";
   const singlesTotals = calculateSinglesPurchaseTotals(lot.singlesPurchases);
@@ -166,7 +187,7 @@ export function calculateLotPerformanceSummary(
       includeTax: lot.includeTax,
       currency: lot.currency
     });
-  const totalRevenue = calculateTotalRevenue(sales, lot.sellingTaxPercent);
+  const totalRevenue = calculateTotalRevenueWithFees(sales, lot.sellingTaxPercent, feeProfileInput);
   const totalProfit = totalRevenue - totalCost;
   const marginPercent = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : null;
 

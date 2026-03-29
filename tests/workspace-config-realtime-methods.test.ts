@@ -106,6 +106,26 @@ test("bulk config recalculation queues shared workspace config sync push", () =>
   assert.equal(queueWorkspaceConfigSyncPushMock.mock.calls[0]?.[0], context);
 });
 
+test("setFeeProfilePreset queues the same shared workspace config sync push", () => {
+  const lot = makeBulkLot();
+  const context = createContext({
+    lots: [lot],
+    currentLotId: lot.id,
+    currentLotType: "bulk",
+    feeProfilePreset: "none",
+    platformFeePercent: 0,
+    additionalFeePercent: 0,
+    additionalFeeAppliesTo: "sale_only",
+    fixedFeePerOrder: 0
+  });
+
+  configPricingMethods.setFeeProfilePreset.call(context as never, "whatnot");
+
+  assert.equal((context.saveLotsToStorage as ReturnType<typeof vi.fn>).mock.calls.length, 1);
+  assert.equal(queueWorkspaceConfigSyncPushMock.mock.calls.length, 1);
+  assert.equal(queueWorkspaceConfigSyncPushMock.mock.calls[0]?.[0], context);
+});
+
 test("singles purchase grid changes queue the same shared workspace config sync push", () => {
   const lot = makeSinglesLot();
   const context = createContext({

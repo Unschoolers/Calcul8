@@ -367,6 +367,11 @@ test("loadLotsFromStorage fills default lot setup values for partial legacy lots
     spotPrice?: number;
     boxPriceSell?: number;
     packPrice?: number;
+    feeProfilePreset?: string;
+    platformFeePercent?: number;
+    additionalFeePercent?: number;
+    additionalFeeAppliesTo?: string;
+    fixedFeePerOrder?: number;
   }>)[0];
   assert.equal(lot?.boxPriceCost, DEFAULT_VALUES.BOX_PRICE);
   assert.equal(lot?.boxesPurchased, DEFAULT_VALUES.BOXES_PURCHASED);
@@ -382,6 +387,11 @@ test("loadLotsFromStorage fills default lot setup values for partial legacy lots
   assert.equal(lot?.spotPrice, DEFAULT_VALUES.SPOT_PRICE);
   assert.equal(lot?.boxPriceSell, DEFAULT_VALUES.BOX_PRICE_SELL);
   assert.equal(lot?.packPrice, DEFAULT_VALUES.PACK_PRICE);
+  assert.equal(lot?.feeProfilePreset, "whatnot");
+  assert.equal(lot?.platformFeePercent, 8);
+  assert.equal(lot?.additionalFeePercent, 2.9);
+  assert.equal(lot?.additionalFeeAppliesTo, "sale_plus_shipping");
+  assert.equal(lot?.fixedFeePerOrder, 0.3);
 });
 
 test("loadLotsFromStorage reads workspace-scoped presets without touching personal storage", async () => {

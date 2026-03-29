@@ -1,7 +1,11 @@
-import { WHATNOT_FEES } from "../../constants.ts";
 import { calculateTotalCaseCost } from "../../domain/calculations-fees.ts";
 import type { Lot, WheelConfig } from "../../types/app.ts";
-import { computeExpectedMargin, type WheelSlot } from "./wheelHelpers.ts";
+import {
+  calculateWheelBuyerShippingTotal,
+  calculateWheelNetFromGross,
+  computeExpectedMargin,
+  type WheelSlot
+} from "./wheelHelpers.ts";
 import {
   getAvailableSinglesQuantityForWheelTier,
   getRemainingPacksForWheelLot
@@ -274,14 +278,14 @@ export const wheelComputeds = {
   expectedMarginDisplay(this: Record<string, unknown>): string {
     const config = (this as Record<string, unknown>).editingWheelConfig as WheelConfig | null;
     if (!config) return "—";
-    const { margin } = computeExpectedMargin(config);
+    const { margin } = computeExpectedMargin(config, this as Record<string, unknown>, ((this as Record<string, unknown>).lots || []) as Lot[]);
     return margin !== null ? margin.toFixed(1) + "%" : "—";
   },
 
   expectedMarginColor(this: Record<string, unknown>): string {
     const config = (this as Record<string, unknown>).editingWheelConfig as WheelConfig | null;
     if (!config) return "";
-    const { margin } = computeExpectedMargin(config);
+    const { margin } = computeExpectedMargin(config, this as Record<string, unknown>, ((this as Record<string, unknown>).lots || []) as Lot[]);
     if (margin === null) return "";
     return margin >= config.targetMargin ? "rgb(var(--v-theme-success))" : "rgb(var(--v-theme-error))";
   },
@@ -289,7 +293,7 @@ export const wheelComputeds = {
   expectedMarginHint(this: Record<string, unknown>): string {
     const config = (this as Record<string, unknown>).editingWheelConfig as WheelConfig | null;
     if (!config) return "Add some tiers";
-    const { margin } = computeExpectedMargin(config);
+    const { margin } = computeExpectedMargin(config, this as Record<string, unknown>, ((this as Record<string, unknown>).lots || []) as Lot[]);
     if (margin === null) return "Add some slots";
     const diff = margin - config.targetMargin;
     return diff >= 0
@@ -321,12 +325,25 @@ export const wheelComputeds = {
   },
 
   wheelSessionProfit(this: Record<string, unknown>): number {
+    const config = (((this as Record<string, unknown>).wheelDisplayConfig
+      || (this as Record<string, unknown>).activeWheelConfig)) as WheelConfig | null;
+    const slots = (((this as Record<string, unknown>).wheelDisplaySlots
+      || (this as Record<string, unknown>).activeWheelSlots
+      || []) as WheelSlot[]);
+    const spinCounts = ((((this as Record<string, unknown>).wheelDisplaySpinCounts
+      || (this as Record<string, unknown>).wheelSpinCounts
+      || [])) as number[]);
+    const lots = (((this as Record<string, unknown>).lots || []) as Lot[]);
     const grossRevenue = this.wheelSessionRevenue as number;
     const totalSpins = (this.wheelDisplayTotalSpins || 0) as number;
-    const commission = grossRevenue * WHATNOT_FEES.COMMISSION;
-    const processing = grossRevenue * WHATNOT_FEES.PROCESSING;
-    const fixed = WHATNOT_FEES.FIXED * totalSpins;
-    const netRevenue = grossRevenue - commission - processing - fixed;
+    const shippingTotal = calculateWheelBuyerShippingTotal(config, slots, spinCounts, lots);
+    const buyerShippingPerOrder = totalSpins > 0 ? (shippingTotal / totalSpins) : 0;
+    const netRevenue = calculateWheelNetFromGross(
+      grossRevenue,
+      this as Record<string, unknown>,
+      totalSpins,
+      buyerShippingPerOrder
+    );
     return netRevenue - (this.wheelSessionCost as number);
   },
 

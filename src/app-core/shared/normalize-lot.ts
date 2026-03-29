@@ -1,11 +1,13 @@
 import { DEFAULT_VALUES } from "../../constants.ts";
 import type { Lot } from "../../types/app.ts";
 import { resolveLotBusinessDate, resolveLotCreatedDate } from "../../shared/lot-dates.ts";
+import { resolveStoredFeeProfile } from "./fee-profile-presets.ts";
 import { normalizeSinglesCatalogSource } from "./singles-catalog-source.ts";
 
 export function normalizeStoredLot(lot: Lot, todayDate: string): Lot {
   const legacyTax = lot.taxRatePercent;
   const lotType = lot.lotType === "singles" ? "singles" : "bulk";
+  const feeProfile = resolveStoredFeeProfile(lot);
   return {
     ...lot,
     isComplete: lot.isComplete === true,
@@ -20,6 +22,11 @@ export function normalizeStoredLot(lot: Lot, todayDate: string): Lot {
     exchangeRate: lot.exchangeRate ?? DEFAULT_VALUES.EXCHANGE_RATE,
     purchaseShippingCost: lot.purchaseShippingCost ?? DEFAULT_VALUES.PURCHASE_SHIPPING_COST,
     sellingShippingPerOrder: lot.sellingShippingPerOrder ?? DEFAULT_VALUES.SELLING_SHIPPING_PER_ORDER,
+    feeProfilePreset: feeProfile.feeProfilePreset,
+    platformFeePercent: feeProfile.platformFeePercent,
+    additionalFeePercent: feeProfile.additionalFeePercent,
+    additionalFeeAppliesTo: feeProfile.additionalFeeAppliesTo,
+    fixedFeePerOrder: feeProfile.fixedFeePerOrder,
     includeTax: lot.includeTax ?? true,
     externalSku: typeof lot.externalSku === "string" ? lot.externalSku.trim() : "",
     spotPrice: lot.spotPrice ?? DEFAULT_VALUES.SPOT_PRICE,

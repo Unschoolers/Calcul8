@@ -4,12 +4,15 @@ import {
   calculatePriceForUnits as calculateUnitPrice,
   calculateProfitForListing
 } from "../../domain/calculations.ts";
+import type { FeeProfilePreset } from "../../types/app.ts";
+import { getFeeProfilePreset } from "../shared/fee-profile-presets.ts";
 import { type ConfigMethodSubset, getTodayDate, toDateOnly } from "./config-shared.ts";
 
 export const configPricingMethods: ConfigMethodSubset<
   | "calculateProfit"
   | "recalculateDefaultPrices"
   | "calculateOptimalPrices"
+  | "setFeeProfilePreset"
   | "updatePurchaseCostInput"
   | "onPurchaseConfigChange"
   | "calculatePriceForUnits"
@@ -20,7 +23,8 @@ export const configPricingMethods: ConfigMethodSubset<
       pricePerUnit,
       this.totalCaseCost,
       this.sellingTaxPercent,
-      this.sellingShippingPerOrder
+      this.sellingShippingPerOrder,
+      this
     );
   },
 
@@ -32,7 +36,8 @@ export const configPricingMethods: ConfigMethodSubset<
       totalSpots: this.totalSpots,
       totalPacks: this.totalPacks,
       sellingTaxPercent: this.sellingTaxPercent,
-      sellingShippingPerOrder: this.sellingShippingPerOrder
+      sellingShippingPerOrder: this.sellingShippingPerOrder,
+      feeProfileInput: this
     });
     this.spotPrice = nextPrices.spotPrice;
     this.boxPriceSell = nextPrices.boxPriceSell;
@@ -55,6 +60,16 @@ export const configPricingMethods: ConfigMethodSubset<
       return;
     }
     this.recalculateDefaultPrices({ closeModal: true });
+  },
+
+  setFeeProfilePreset(preset: FeeProfilePreset): void {
+    const feeProfile = getFeeProfilePreset(preset);
+    this.feeProfilePreset = feeProfile.feeProfilePreset;
+    this.platformFeePercent = feeProfile.platformFeePercent;
+    this.additionalFeePercent = feeProfile.additionalFeePercent;
+    this.additionalFeeAppliesTo = feeProfile.additionalFeeAppliesTo;
+    this.fixedFeePerOrder = feeProfile.fixedFeePerOrder;
+    this.recalculateDefaultPrices();
   },
 
   updatePurchaseCostInput(value: unknown): void {
@@ -96,6 +111,6 @@ export const configPricingMethods: ConfigMethodSubset<
   },
 
   calculatePriceForUnits(units: number, targetNetRevenue: number): number {
-    return calculateUnitPrice(units, targetNetRevenue, this.sellingTaxPercent, this.sellingShippingPerOrder);
+    return calculateUnitPrice(units, targetNetRevenue, this.sellingTaxPercent, this.sellingShippingPerOrder, this);
   }
 };

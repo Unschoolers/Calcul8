@@ -2,11 +2,26 @@ declare const __APP_VERSION__: string;
 
 export const APP_VERSION = typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "0.0.0";
 
-export const WHATNOT_FEES = {
-  COMMISSION: 0.08, // 8% commission
-  PROCESSING: 0.029, // 2.9% processing
-  FIXED: 0.3 // $0.30 per order
-};
+export const DEFAULT_FEE_PROFILE_FIELDS = {
+  platformFeePercent: 8,
+  additionalFeePercent: 2.9,
+  additionalFeeAppliesTo: "sale_plus_shipping",
+  fixedFeePerOrder: 0.3
+} as const;
+
+export const FEE_PROFILE_PRESETS = {
+  whatnot: {
+    feeProfilePreset: "whatnot",
+    ...DEFAULT_FEE_PROFILE_FIELDS
+  },
+  none: {
+    feeProfilePreset: "none",
+    platformFeePercent: 0,
+    additionalFeePercent: 0,
+    additionalFeeAppliesTo: "sale_only",
+    fixedFeePerOrder: 0
+  }
+} as const;
 
 export const TAX_RATES = {
   SALES_TAX: 0.15, // 15% sales tax

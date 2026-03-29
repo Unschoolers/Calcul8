@@ -85,6 +85,84 @@
   border-color: rgba(var(--v-theme-secondary), 0.18);
 }
 
+.fee-profile-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.fee-profile-select {
+  width: 100%;
+}
+
+.fee-profile-info-btn {
+  margin-top: 0.15rem;
+  flex: 0 0 auto;
+}
+
+.fee-profile-help {
+  margin-top: 0.2rem;
+  line-height: 1.35;
+}
+
+.fee-profile-popover {
+  min-width: 250px;
+  max-width: 320px;
+  overflow: hidden;
+  border-radius: 14px !important;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.14);
+  background: rgba(var(--v-theme-surface), 0.98);
+}
+
+.v-theme--unionArenaDark .fee-profile-popover {
+  border-color: rgba(var(--v-theme-on-surface), 0.24);
+  background: rgba(var(--v-theme-surface), 0.95);
+}
+
+.v-theme--unionArenaLight .fee-profile-popover {
+  border-color: rgba(var(--v-theme-on-surface), 0.18);
+  background: rgba(var(--v-theme-surface-bright), 0.99);
+}
+
+.fee-profile-popover__title {
+  min-height: 0;
+  padding: 0.85rem 0.95rem 0.15rem;
+  background: transparent !important;
+  border-bottom: 0 !important;
+  font-size: 0.78rem !important;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(var(--v-theme-secondary), 0.96);
+}
+
+.fee-profile-popover__body {
+  padding: 0.45rem 0.95rem 0.95rem !important;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.fee-profile-popover__row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.fee-profile-popover__label {
+  font-size: 0.75rem;
+  line-height: 1.25;
+  color: rgba(var(--v-theme-on-surface), 0.7);
+}
+
+.fee-profile-popover__value {
+  text-align: right;
+  font-size: 0.82rem;
+  line-height: 1.2;
+  font-weight: 800;
+  color: rgba(var(--v-theme-on-surface), 0.95);
+}
+
 .singles-editor-actions {
   padding: 0.9rem 1.15rem calc(1rem + env(safe-area-inset-bottom, 0px));
   display: flex;
@@ -409,9 +487,9 @@
   background: rgba(var(--v-theme-on-surface), 0.02);
 }
 
-.singles-grid-table tbody tr.singles-desktop-row:nth-of-type(even) {
-  background: rgba(var(--v-theme-on-surface), 0.055);
-}
+  .singles-grid-table tbody tr.singles-desktop-row:nth-of-type(even) {
+    background: rgba(var(--v-theme-on-surface), 0.055);
+  }
 
 .singles-desktop-row:hover {
   background: rgba(var(--v-theme-primary), 0.1);

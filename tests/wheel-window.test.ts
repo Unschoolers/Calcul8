@@ -109,6 +109,11 @@ test("createDefaultWheelConfig returns valid config", () => {
   assert.equal(config.tiers[0]!.label, "1 Item");
 });
 
+test("WheelWindow data defaults the inspector tab to config", () => {
+  const data = WheelWindow.data.call({});
+  assert.equal(data.wheelInspectorTab, "config");
+});
+
 // ── Component computed tests ─────────────────────────────────────
 
 test("wheelSessionRevenue is spins × spinPrice", () => {
@@ -177,6 +182,45 @@ test("wheelSessionProfit deducts Whatnot fees and cost", () => {
   // commission: 100 × 0.08 = 8, processing: 100 × 0.029 = 2.9, fixed: 0.30 × 10 = 3
   // net: 100 - 8 - 2.9 - 3 = 86.1, profit: 86.1 - 30 = 56.1
   assert.ok(Math.abs(result - 56.1) < 0.001);
+});
+
+test("wheelSessionProfit includes buyer shipping from bound lots in fee math", () => {
+  const vm = {
+    wheelMode: "live",
+    activeWheelConfig: {
+      id: 1,
+      name: "Shipping Wheel",
+      spinPrice: 10,
+      targetMargin: 40,
+      createdAt: "",
+      tiers: [
+        { id: "t1", label: "Tier 1", color: "#f00", slots: 1, costPerTier: 3, packsCount: 1, deductionType: "packs", boundLotId: 42, sets: [] }
+      ]
+    },
+    activeWheelSlots: [
+      { name: "Prize A", color: "#f00", cost: 3, tier: "t1", packsCount: 1, deductionType: "packs", isChase: false }
+    ],
+    wheelSpinCounts: [10],
+    wheelSessionRevenue: 100,
+    wheelDisplayTotalSpins: 10,
+    wheelTotalSpins: 10,
+    wheelSessionCost: 30,
+    lots: [{
+      id: 42,
+      name: "Shipping Lot",
+      lotType: "bulk",
+      sellingShippingPerOrder: 5
+    }],
+    platformFeePercent: 8,
+    additionalFeePercent: 2.9,
+    additionalFeeAppliesTo: "sale_plus_shipping",
+    fixedFeePerOrder: 0.3
+  };
+
+  const result = WheelWindow.computed!.wheelSessionProfit.call(vm as never);
+  // commission: 8, processing on gross+shipping: (100 + 50) * 0.029 = 4.35, fixed: 3
+  // net: 84.65, profit: 54.65
+  assert.ok(Math.abs(result - 54.65) < 0.001);
 });
 
 test("wheelSessionMarginDisplay shows dash when no revenue", () => {
@@ -468,6 +512,65 @@ test("testSpinWheel delegates to non-recording spin path", async () => {
 
   await WheelWindow.methods!.testSpinWheel.call(vm as never);
   assert.deepEqual(spinWheelInternal.mock.calls, [[false]]);
+});
+
+test("drawWheel reuses a cached static wheel render when slots and size do not change", () => {
+  const makeContext2d = () => ({
+    setTransform: vi.fn(),
+    clearRect: vi.fn(),
+    beginPath: vi.fn(),
+    arc: vi.fn(),
+    fill: vi.fn(),
+    stroke: vi.fn(),
+    moveTo: vi.fn(),
+    closePath: vi.fn(),
+    save: vi.fn(),
+    restore: vi.fn(),
+    translate: vi.fn(),
+    rotate: vi.fn(),
+    fillText: vi.fn(),
+    lineTo: vi.fn(),
+    drawImage: vi.fn(),
+    imageSmoothingEnabled: true
+  });
+
+  const mainCtx = makeContext2d();
+  const cacheCtx = makeContext2d();
+  const cacheCanvas = {
+    width: 0,
+    height: 0,
+    style: {},
+    getContext: vi.fn(() => cacheCtx)
+  };
+  const createElement = vi.fn(() => cacheCanvas);
+  const wheelCanvas = {
+    width: 0,
+    height: 0,
+    style: {},
+    ownerDocument: { createElement },
+    getContext: vi.fn(() => mainCtx)
+  };
+  const slots = [
+    { name: "Prize A", color: "#f00", cost: 5, tier: "t1", packsCount: 1, deductionType: "packs", isChase: false },
+    { name: "Prize B", color: "#0f0", cost: 6, tier: "t2", packsCount: 1, deductionType: "packs", isChase: false }
+  ];
+  const vm: Record<string, unknown> = {
+    $refs: {
+      wheelCanvas
+    },
+    wheelDisplaySlots: slots,
+    activeWheelSlots: slots,
+    wheelCanvasSize: 320,
+    wheelHighlightedSlotIndex: -1,
+    _wheelStaticRenderCache: undefined
+  };
+
+  WheelWindow.methods!.drawWheel.call(vm as never, 0);
+  WheelWindow.methods!.drawWheel.call(vm as never, Math.PI / 4);
+
+  assert.equal(createElement.mock.calls.length, 1);
+  assert.equal(mainCtx.drawImage.mock.calls.length, 2);
+  assert.ok(vm._wheelStaticRenderCache);
 });
 
 test("recordPreviewSpinResult updates preview tracker only", () => {
@@ -1705,9 +1808,10 @@ test("canApplyWheelConfig returns false with no tiers", () => {
   assert.equal(WheelWindow.computed!.canApplyWheelConfig.call(vm as never), false);
 });
 
-test("handleWheelModeChange asks for confirmation before switching to live", () => {
+test("handleWheelModeChange asks for confirmation before switching to live and keeps inspector on config", () => {
   const vm: Record<string, unknown> = {
     wheelMode: "config",
+    wheelInspectorTab: "config",
     wheelLiveConfirmDialog: false,
     wheelRequestedMode: null
   };
@@ -1715,13 +1819,15 @@ test("handleWheelModeChange asks for confirmation before switching to live", () 
   WheelWindow.methods!.handleWheelModeChange.call(vm as never, "live");
 
   assert.equal(vm.wheelMode, "config");
+  assert.equal(vm.wheelInspectorTab, "config");
   assert.equal(vm.wheelLiveConfirmDialog, true);
   assert.equal(vm.wheelRequestedMode, "live");
 });
 
-test("confirmWheelModeChange applies the requested live mode", () => {
+test("confirmWheelModeChange applies the requested live mode and moves the inspector to session", () => {
   const vm: Record<string, unknown> = {
     wheelMode: "config",
+    wheelInspectorTab: "config",
     wheelLiveConfirmDialog: true,
     wheelRequestedMode: "live"
   };
@@ -1729,8 +1835,58 @@ test("confirmWheelModeChange applies the requested live mode", () => {
   WheelWindow.methods!.confirmWheelModeChange.call(vm as never);
 
   assert.equal(vm.wheelMode, "live");
+  assert.equal(vm.wheelInspectorTab, "session");
   assert.equal(vm.wheelLiveConfirmDialog, false);
   assert.equal(vm.wheelRequestedMode, null);
+});
+
+test("handleWheelModeChange returns the inspector to config when switching back", () => {
+  const vm: Record<string, unknown> = {
+    wheelMode: "live",
+    wheelInspectorTab: "session",
+    wheelLiveConfirmDialog: false,
+    wheelRequestedMode: null
+  };
+
+  WheelWindow.methods!.handleWheelModeChange.call(vm as never, "config");
+
+  assert.equal(vm.wheelMode, "config");
+  assert.equal(vm.wheelInspectorTab, "config");
+  assert.equal(vm.wheelLiveConfirmDialog, false);
+  assert.equal(vm.wheelRequestedMode, null);
+});
+
+test("focusWheelInspector updates the tab and scrolls the inspector into view when available", async () => {
+  const scrollIntoView = vi.fn();
+  const vm: Record<string, unknown> = {
+    wheelInspectorTab: "config",
+    $refs: {
+      wheelInspectorPanel: {
+        scrollIntoView
+      }
+    }
+  };
+
+  WheelWindow.methods!.focusWheelInspector.call(vm as never, "history");
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assert.equal(vm.wheelInspectorTab, "history");
+  assert.equal(scrollIntoView.mock.calls.length, 1);
+  assert.deepEqual(scrollIntoView.mock.calls[0]?.[0], { behavior: "smooth", block: "start" });
+});
+
+test("focusWheelInspector is safe when the inspector ref is missing", async () => {
+  const vm: Record<string, unknown> = {
+    wheelInspectorTab: "config",
+    $refs: {}
+  };
+
+  WheelWindow.methods!.focusWheelInspector.call(vm as never, "session");
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assert.equal(vm.wheelInspectorTab, "session");
 });
 
 // ── Session persistence ─────────────────────────────────────────

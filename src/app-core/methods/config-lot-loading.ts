@@ -1,6 +1,7 @@
 import { DEFAULT_VALUES } from "../../constants.ts";
 import type { Lot, LotType, SinglesCatalogSource, SinglesPurchaseEntry } from "../../types/app.ts";
 import { resolveLotBusinessDate } from "../../shared/lot-dates.ts";
+import { resolveStoredFeeProfile } from "../shared/fee-profile-presets.ts";
 import { normalizeSinglesCatalogSource } from "../shared/singles-catalog-source.ts";
 import { normalizeSinglesPurchaseEntries, resetSinglesCsvImportState, type SinglesCsvImportStateTarget } from "./config-lots-state.ts";
 
@@ -20,6 +21,11 @@ export type HydratedLotState = {
   purchaseTaxPercent: number;
   sellingTaxPercent: number;
   sellingShippingPerOrder: number;
+  feeProfilePreset: "whatnot" | "none";
+  platformFeePercent: number;
+  additionalFeePercent: number;
+  additionalFeeAppliesTo: "sale_only" | "sale_plus_shipping";
+  fixedFeePerOrder: number;
   includeTax: boolean;
   externalSku: string;
   spotPrice: number;
@@ -45,6 +51,11 @@ export type LotHydrationTarget = SinglesCsvImportStateTarget & {
   purchaseTaxPercent?: number;
   sellingTaxPercent?: number;
   sellingShippingPerOrder?: number;
+  feeProfilePreset?: "whatnot" | "none";
+  platformFeePercent?: number;
+  additionalFeePercent?: number;
+  additionalFeeAppliesTo?: "sale_only" | "sale_plus_shipping";
+  fixedFeePerOrder?: number;
   includeTax?: boolean;
   externalSku?: string;
   spotPrice?: number;
@@ -69,6 +80,7 @@ export function buildHydratedLotState(
   const legacyTax = lot.taxRatePercent;
   const parsedTargetProfit = Number(lot.targetProfitPercent);
   const currency = lot.currency === "USD" ? "USD" : "CAD";
+  const feeProfile = resolveStoredFeeProfile(lot);
 
   return {
     newLotType: normalizedLotType,
@@ -97,6 +109,11 @@ export function buildHydratedLotState(
       legacyTax ??
       DEFAULT_VALUES.SELLING_TAX_RATE_PERCENT,
     sellingShippingPerOrder: lot.sellingShippingPerOrder ?? DEFAULT_VALUES.SELLING_SHIPPING_PER_ORDER,
+    feeProfilePreset: feeProfile.feeProfilePreset,
+    platformFeePercent: feeProfile.platformFeePercent,
+    additionalFeePercent: feeProfile.additionalFeePercent,
+    additionalFeeAppliesTo: feeProfile.additionalFeeAppliesTo,
+    fixedFeePerOrder: feeProfile.fixedFeePerOrder,
     includeTax: lot.includeTax ?? true,
     externalSku: typeof lot.externalSku === "string" ? lot.externalSku.trim() : "",
     spotPrice: lot.spotPrice ?? DEFAULT_VALUES.SPOT_PRICE,
@@ -128,6 +145,11 @@ export function applyHydratedLotState(target: LotHydrationTarget, state: Hydrate
   target.purchaseTaxPercent = state.purchaseTaxPercent;
   target.sellingTaxPercent = state.sellingTaxPercent;
   target.sellingShippingPerOrder = state.sellingShippingPerOrder;
+  target.feeProfilePreset = state.feeProfilePreset;
+  target.platformFeePercent = state.platformFeePercent;
+  target.additionalFeePercent = state.additionalFeePercent;
+  target.additionalFeeAppliesTo = state.additionalFeeAppliesTo;
+  target.fixedFeePerOrder = state.fixedFeePerOrder;
   target.includeTax = state.includeTax;
   target.externalSku = state.externalSku;
   target.spotPrice = state.spotPrice;

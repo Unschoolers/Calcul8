@@ -1,5 +1,6 @@
 import { DEFAULT_VALUES } from "../constants.ts";
 import type { AppState } from "../types/app.ts";
+import { getFeeProfilePreset } from "./shared/fee-profile-presets.ts";
 import { resolveDefaultSinglesCatalogSourceFromEnv } from "./shared/singles-catalog-source.ts";
 import {
     getLegacyStorageKeys,
@@ -43,6 +44,7 @@ export function createInitialState(): AppState {
   const showManualPurchaseVerify =
     import.meta.env.DEV ||
     String(import.meta.env.VITE_SHOW_MANUAL_PURCHASE_VERIFY || "").toLowerCase() === "true";
+  const defaultFeeProfile = getFeeProfilePreset("whatnot");
 
   return {
     hasProAccess,
@@ -130,6 +132,11 @@ export function createInitialState(): AppState {
     purchaseTaxPercent: DEFAULT_VALUES.PURCHASE_TAX_RATE_PERCENT,
     sellingTaxPercent: DEFAULT_VALUES.SELLING_TAX_RATE_PERCENT,
     sellingShippingPerOrder: DEFAULT_VALUES.SELLING_SHIPPING_PER_ORDER,
+    feeProfilePreset: defaultFeeProfile.feeProfilePreset,
+    platformFeePercent: defaultFeeProfile.platformFeePercent,
+    additionalFeePercent: defaultFeeProfile.additionalFeePercent,
+    additionalFeeAppliesTo: defaultFeeProfile.additionalFeeAppliesTo,
+    fixedFeePerOrder: defaultFeeProfile.fixedFeePerOrder,
     includeTax: true,
     externalSku: "",
 

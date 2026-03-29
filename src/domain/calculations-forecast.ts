@@ -1,4 +1,7 @@
-import { calculateNetFromGross } from "./calculations-fees.ts";
+import {
+  calculateNetFromGross,
+  type FeeProfileInput
+} from "./calculations-fees.ts";
 
 export type ForecastScenarioUnitLabel = "item" | "box" | "spot";
 
@@ -25,6 +28,7 @@ export function createForecastProjectionFromUnitPrice(params: {
   unitPrice: number;
   sellingTaxPercent: number;
   shippingPerOrder?: number;
+  feeProfileInput?: FeeProfileInput;
 }): ForecastProjection {
   const units = Math.max(0, Number(params.units) || 0);
   const unitPrice = Math.max(0, Number(params.unitPrice) || 0);
@@ -33,7 +37,7 @@ export function createForecastProjectionFromUnitPrice(params: {
     units,
     gross,
     estimatedNetRemaining: units > 0
-      ? calculateNetFromGross(gross, params.sellingTaxPercent, params.shippingPerOrder, units)
+      ? calculateNetFromGross(gross, params.sellingTaxPercent, params.shippingPerOrder, units, params.feeProfileInput)
       : 0
   };
 }
@@ -43,6 +47,7 @@ export function estimateNetRemainingFromUnitPrice(payload: {
   unitPrice: number;
   sellingTaxPercent: number;
   shippingPerOrder?: number;
+  feeProfileInput?: FeeProfileInput;
 }): number {
   return createForecastProjectionFromUnitPrice(payload).estimatedNetRemaining;
 }
@@ -92,12 +97,14 @@ export function createForecastScenarioFromUnitPrice<Id extends string>(params: {
   baseCost: number;
   sellingTaxPercent: number;
   shippingPerOrder?: number;
+  feeProfileInput?: FeeProfileInput;
 }): ForecastScenario<Id> {
   const projection = createForecastProjectionFromUnitPrice({
     units: params.units,
     unitPrice: params.unitPrice,
     sellingTaxPercent: params.sellingTaxPercent,
-    shippingPerOrder: params.shippingPerOrder
+    shippingPerOrder: params.shippingPerOrder,
+    feeProfileInput: params.feeProfileInput
   });
   return createForecastScenario(
     {

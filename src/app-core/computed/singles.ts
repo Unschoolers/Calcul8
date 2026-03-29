@@ -91,6 +91,11 @@ function getSaleEditorLineProfitPreviews(context: {
     buyerShipping?: number | null;
   };
   sellingTaxPercent: number;
+  feeProfilePreset: "whatnot" | "none";
+  platformFeePercent: number;
+  additionalFeePercent: number;
+  additionalFeeAppliesTo: "sale_only" | "sale_plus_shipping";
+  fixedFeePerOrder: number;
   singlesPurchases: Array<{ id: number; marketValue: number; cost: number; currency?: string }>;
   currency: "CAD" | "USD";
   sellingCurrency: "CAD" | "USD";
@@ -101,7 +106,7 @@ function getSaleEditorLineProfitPreviews(context: {
   const normalizedLines = getSaleEditorNormalizedLines(context.newSale);
   const grossRevenue = normalizedLines.reduce((sum, line) => sum + line.price, 0);
   const buyerShipping = Math.max(0, Number(context.newSale?.buyerShipping) || 0);
-  const netRevenue = calculateNetFromGross(grossRevenue, context.sellingTaxPercent, buyerShipping, 1);
+  const netRevenue = calculateNetFromGross(grossRevenue, context.sellingTaxPercent, buyerShipping, 1, context);
 
   return normalizedLines.map((line): SaleEditorLineProfitPreview => {
     return calculateSinglesLineProfitPreview({

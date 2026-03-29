@@ -1,5 +1,6 @@
-import { WHATNOT_FEES } from "../../constants.ts";
 import {
+  calculateExactPriceForUnits,
+  calculatePriceForUnits,
   getSaleSinglesLines as getNormalizedSaleSinglesLines,
   getSinglesEntryUnitCostInSellingCurrency as getConvertedSinglesEntryUnitCost
 } from "../../domain/calculations.ts";
@@ -54,12 +55,7 @@ export function calculateProfitableOrderPrice(
 ): number {
   const targetNet = Math.max(0, Number(targetNetRevenue) || 0);
   if (targetNet <= 0) return 0;
-  const buyerTaxRate = Math.max(0, Number(sellingTaxPercent) || 0) / 100;
-  const shipping = Math.max(0, Number(buyerShippingPerOrder) || 0);
-  const effectiveRate = 1 - WHATNOT_FEES.COMMISSION - (WHATNOT_FEES.PROCESSING * (1 + buyerTaxRate));
-  if (effectiveRate <= 0) return 0;
-  const fixedFees = WHATNOT_FEES.FIXED + (WHATNOT_FEES.PROCESSING * shipping);
-  return (targetNet + fixedFees) / effectiveRate;
+  return calculateExactPriceForUnits(1, targetNet, sellingTaxPercent, buyerShippingPerOrder);
 }
 
 export function getSinglesEntryUnitCostInSellingCurrency(

@@ -1,13 +1,130 @@
-import { DEFAULT_VALUES, TAX_RATES, WHATNOT_FEES } from "../constants.ts";
+import { DEFAULT_FEE_PROFILE_FIELDS, DEFAULT_VALUES, TAX_RATES } from "../constants.ts";
 import type {
+    AdditionalFeeAppliesTo,
     CurrencyCode,
+    FeeProfileFields,
     LotType,
     Sale,
     SinglesPurchaseEntry
 } from "../types/app.ts";
 
+export type { AdditionalFeeAppliesTo } from "../types/app.ts";
+
+type ExplicitFeeFields = Pick<
+  FeeProfileFields,
+  "platformFeePercent" |
+  "additionalFeePercent" |
+  "additionalFeeAppliesTo" |
+  "fixedFeePerOrder"
+>;
+
+export interface FeePolicy {
+  platformFeePercent: number;
+  additionalFeePercent: number;
+  additionalFeeAppliesTo: AdditionalFeeAppliesTo;
+  fixedFeePerOrder: number;
+  platformFeeRate: number;
+  additionalFeeRate: number;
+}
+
+export type FeeProfileInput =
+  | Partial<ExplicitFeeFields>
+  | null
+  | undefined;
+
 export function toRate(percent: number): number {
   return Math.max(0, Number(percent) || 0) / 100;
+}
+
+export function normalizeAdditionalFeeAppliesTo(value: unknown): AdditionalFeeAppliesTo {
+  return value === "sale_plus_shipping" ? "sale_plus_shipping" : "sale_only";
+}
+
+export function resolveFeePolicy(input: FeeProfileInput = DEFAULT_FEE_PROFILE_FIELDS): FeePolicy {
+  const objectInput = typeof input === "object" && input ? input : null;
+  const platformFeeCandidate = objectInput ? Number(objectInput.platformFeePercent) : NaN;
+  const additionalFeeCandidate = objectInput ? Number(objectInput.additionalFeePercent) : NaN;
+  const fixedFeeCandidate = objectInput ? Number(objectInput.fixedFeePerOrder) : NaN;
+
+  const platformFeePercent = Math.max(
+    0,
+    Number.isFinite(platformFeeCandidate) ? platformFeeCandidate : DEFAULT_FEE_PROFILE_FIELDS.platformFeePercent
+  );
+  const additionalFeePercent = Math.max(
+    0,
+    Number.isFinite(additionalFeeCandidate) ? additionalFeeCandidate : DEFAULT_FEE_PROFILE_FIELDS.additionalFeePercent
+  );
+  const fixedFeePerOrder = Math.max(
+    0,
+    Number.isFinite(fixedFeeCandidate) ? fixedFeeCandidate : DEFAULT_FEE_PROFILE_FIELDS.fixedFeePerOrder
+  );
+  const additionalFeeAppliesTo = normalizeAdditionalFeeAppliesTo(
+    objectInput?.additionalFeeAppliesTo ?? DEFAULT_FEE_PROFILE_FIELDS.additionalFeeAppliesTo
+  );
+
+  return {
+    platformFeePercent,
+    additionalFeePercent,
+    additionalFeeAppliesTo,
+    fixedFeePerOrder,
+    platformFeeRate: toRate(platformFeePercent),
+    additionalFeeRate: toRate(additionalFeePercent)
+  };
+}
+
+function calculateNetFromGrossWithPolicy(
+  policy: FeePolicy,
+  grossRevenue: number,
+  _sellingTaxPercent: number,
+  buyerShippingPerOrder: number,
+  orderCount: number
+): number {
+  const gross = Number(grossRevenue) || 0;
+  const orders = Math.max(1, Number(orderCount) || 1);
+  const shippingTotal = (Number(buyerShippingPerOrder) || 0) * orders;
+  const additionalFeeBase = policy.additionalFeeAppliesTo === "sale_plus_shipping"
+    ? gross + shippingTotal
+    : gross;
+  const platformFee = gross * policy.platformFeeRate;
+  const additionalFee = additionalFeeBase * policy.additionalFeeRate;
+  const fixedFee = policy.fixedFeePerOrder * orders;
+
+  return gross - platformFee - additionalFee - fixedFee;
+}
+
+function calculateRawPriceForUnitsWithPolicy(
+  policy: FeePolicy,
+  units: number,
+  targetNetRevenue: number,
+  _sellingTaxPercent: number,
+  buyerShippingPerOrder: number
+): number {
+  const u = Number(units) || 1;
+  const effectiveFeeRate = 1 - policy.platformFeeRate - policy.additionalFeeRate;
+  const additionalShippingFee = policy.additionalFeeAppliesTo === "sale_plus_shipping"
+    ? policy.additionalFeeRate * (Number(buyerShippingPerOrder) || 0)
+    : 0;
+  const perOrderFixed = policy.fixedFeePerOrder + additionalShippingFee;
+  const fixedFees = perOrderFixed * u;
+  if (effectiveFeeRate <= 0) return 0;
+
+  return (targetNetRevenue + fixedFees) / (u * effectiveFeeRate);
+}
+
+function calculatePriceForUnitsWithPolicy(
+  policy: FeePolicy,
+  units: number,
+  targetNetRevenue: number,
+  sellingTaxPercent: number,
+  buyerShippingPerOrder: number
+): number {
+  return Math.round(calculateRawPriceForUnitsWithPolicy(
+    policy,
+    units,
+    targetNetRevenue,
+    sellingTaxPercent,
+    buyerShippingPerOrder
+  ));
 }
 
 export function calculateBoxPriceCostCad(
@@ -332,18 +449,16 @@ export function calculateNetFromGross(
   grossRevenue: number,
   sellingTaxPercent: number,
   buyerShippingPerOrder = 0,
-  orderCount = 1
+  orderCount = 1,
+  feeProfileInput: FeeProfileInput = DEFAULT_FEE_PROFILE_FIELDS
 ): number {
-  const gross = Number(grossRevenue) || 0;
-  const buyerTaxRate = toRate(sellingTaxPercent);
-  const orders = Math.max(1, Number(orderCount) || 1);
-  const shippingTotal = (Number(buyerShippingPerOrder) || 0) * orders;
-  const orderTotal = (gross * (1 + buyerTaxRate)) + shippingTotal;
-  const commission = gross * WHATNOT_FEES.COMMISSION;
-  const processingPct = orderTotal * WHATNOT_FEES.PROCESSING;
-  const processingFixed = WHATNOT_FEES.FIXED * orders;
-
-  return gross - commission - processingPct - processingFixed;
+  return calculateNetFromGrossWithPolicy(
+    resolveFeePolicy(feeProfileInput),
+    grossRevenue,
+    sellingTaxPercent,
+    buyerShippingPerOrder,
+    orderCount
+  );
 }
 
 export function getGrossRevenueForSale(sale: Pick<Sale, "quantity" | "price" | "priceIsTotal">): number {
@@ -355,11 +470,23 @@ export function getGrossRevenueForSale(sale: Pick<Sale, "quantity" | "price" | "
   return quantity * price;
 }
 
-export function calculateTotalRevenue(sales: Sale[], sellingTaxPercent: number): number {
+export function calculateTotalRevenue(
+  sales: Sale[],
+  sellingTaxPercent: number,
+  feeProfileInput: FeeProfileInput = DEFAULT_FEE_PROFILE_FIELDS
+): number {
+  return calculateTotalRevenueWithFees(sales, sellingTaxPercent, feeProfileInput);
+}
+
+export function calculateTotalRevenueWithFees(
+  sales: Sale[],
+  sellingTaxPercent: number,
+  feeProfileInput: FeeProfileInput = DEFAULT_FEE_PROFILE_FIELDS
+): number {
   return sales.reduce((sum, sale) => {
     const grossRevenue = getGrossRevenueForSale(sale);
     const buyerShipping = Number(sale.buyerShipping) || 0;
-    return sum + calculateNetFromGross(grossRevenue, sellingTaxPercent, buyerShipping, 1);
+    return sum + calculateNetFromGross(grossRevenue, sellingTaxPercent, buyerShipping, 1, feeProfileInput);
   }, 0);
 }
 
@@ -368,12 +495,13 @@ export function calculateProfitForListing(
   pricePerUnit: number,
   totalCaseCost: number,
   sellingTaxPercent: number,
-  buyerShippingPerOrder = 0
+  buyerShippingPerOrder = 0,
+  feeProfileInput: FeeProfileInput = DEFAULT_FEE_PROFILE_FIELDS
 ): number {
   const safeUnits = Number(units) || 0;
   const safePrice = Number(pricePerUnit) || 0;
   const grossRevenue = safeUnits * safePrice;
-  const netRevenue = calculateNetFromGross(grossRevenue, sellingTaxPercent, buyerShippingPerOrder, safeUnits);
+  const netRevenue = calculateNetFromGross(grossRevenue, sellingTaxPercent, buyerShippingPerOrder, safeUnits, feeProfileInput);
   return netRevenue - totalCaseCost;
 }
 
@@ -388,13 +516,15 @@ export function calculateSaleProfit(params: {
   exchangeRate: number;
   singlesPurchases?: SinglesPurchaseEntry[];
   defaultExchangeRate?: number;
+  feeProfileInput?: FeeProfileInput;
 }): number {
   const grossRevenue = getGrossRevenueForSale(params.sale);
   const netRevenue = calculateNetFromGross(
     grossRevenue,
     params.sellingTaxPercent,
     params.sale.buyerShipping || 0,
-    1
+    1,
+    params.feeProfileInput
   );
 
   if (params.lotType === "singles") {
@@ -425,13 +555,15 @@ export function getSaleProfitPreview(params: {
   exchangeRate: number;
   singlesPurchases?: SinglesPurchaseEntry[];
   defaultExchangeRate?: number;
+  feeProfileInput?: FeeProfileInput;
 }): SaleProfitPreview | null {
   const grossRevenue = getGrossRevenueForSale(params.sale);
   const netRevenue = calculateNetFromGross(
     grossRevenue,
     params.sellingTaxPercent,
     params.sale.buyerShipping || 0,
-    1
+    1,
+    params.feeProfileInput
   );
 
   if (params.lotType === "singles") {
@@ -491,17 +623,32 @@ export function calculatePriceForUnits(
   units: number,
   targetNetRevenue: number,
   sellingTaxPercent: number,
-  buyerShippingPerOrder = 0
+  buyerShippingPerOrder = 0,
+  feeProfileInput: FeeProfileInput = DEFAULT_FEE_PROFILE_FIELDS
 ): number {
-  const u = Number(units) || 1;
-  const buyerTaxRate = toRate(sellingTaxPercent);
-  const effectiveFeeRate = 1 - WHATNOT_FEES.COMMISSION - (WHATNOT_FEES.PROCESSING * (1 + buyerTaxRate));
-  const perOrderFixed = WHATNOT_FEES.FIXED + (WHATNOT_FEES.PROCESSING * (Number(buyerShippingPerOrder) || 0));
-  const fixedFees = perOrderFixed * u;
-  if (effectiveFeeRate <= 0) return 0;
+  return calculatePriceForUnitsWithPolicy(
+    resolveFeePolicy(feeProfileInput),
+    units,
+    targetNetRevenue,
+    sellingTaxPercent,
+    buyerShippingPerOrder
+  );
+}
 
-  const price = (targetNetRevenue + fixedFees) / (u * effectiveFeeRate);
-  return Math.round(price);
+export function calculateExactPriceForUnits(
+  units: number,
+  targetNetRevenue: number,
+  sellingTaxPercent: number,
+  buyerShippingPerOrder = 0,
+  feeProfileInput: FeeProfileInput = DEFAULT_FEE_PROFILE_FIELDS
+): number {
+  return calculateRawPriceForUnitsWithPolicy(
+    resolveFeePolicy(feeProfileInput),
+    units,
+    targetNetRevenue,
+    sellingTaxPercent,
+    buyerShippingPerOrder
+  );
 }
 
 export function calculateDefaultSellingPrices(params: {
@@ -512,12 +659,31 @@ export function calculateDefaultSellingPrices(params: {
   totalPacks: number;
   sellingTaxPercent: number;
   sellingShippingPerOrder: number;
+  feeProfileInput?: FeeProfileInput;
 }): { spotPrice: number; boxPriceSell: number; packPrice: number } {
   const targetProfit = (params.totalCaseCost * (Number(params.targetProfitPercent) || 0)) / 100;
   const requiredNetRevenue = params.totalCaseCost + targetProfit;
   return {
-    spotPrice: calculatePriceForUnits(params.totalSpots, requiredNetRevenue, params.sellingTaxPercent, params.sellingShippingPerOrder),
-    boxPriceSell: calculatePriceForUnits(params.boxesPurchased, requiredNetRevenue, params.sellingTaxPercent, params.sellingShippingPerOrder),
-    packPrice: calculatePriceForUnits(params.totalPacks, requiredNetRevenue, params.sellingTaxPercent, params.sellingShippingPerOrder)
+    spotPrice: calculatePriceForUnits(
+      params.totalSpots,
+      requiredNetRevenue,
+      params.sellingTaxPercent,
+      params.sellingShippingPerOrder,
+      params.feeProfileInput
+    ),
+    boxPriceSell: calculatePriceForUnits(
+      params.boxesPurchased,
+      requiredNetRevenue,
+      params.sellingTaxPercent,
+      params.sellingShippingPerOrder,
+      params.feeProfileInput
+    ),
+    packPrice: calculatePriceForUnits(
+      params.totalPacks,
+      requiredNetRevenue,
+      params.sellingTaxPercent,
+      params.sellingShippingPerOrder,
+      params.feeProfileInput
+    )
   };
 }

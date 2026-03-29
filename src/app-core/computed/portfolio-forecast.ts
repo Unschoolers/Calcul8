@@ -38,7 +38,12 @@ type PortfolioForecastLotInput = Pick<
   "packPrice" |
   "boxPriceSell" |
   "spotPrice" |
-  "targetProfitPercent"
+  "targetProfitPercent" |
+  "feeProfilePreset" |
+  "platformFeePercent" |
+  "additionalFeePercent" |
+  "additionalFeeAppliesTo" |
+  "fixedFeePerOrder"
 >;
 
 export function computeLotModeProjections(payload: {
@@ -74,7 +79,7 @@ export function computeLotModeProjections(payload: {
       ? Math.max(0, Number(payload.lot.targetProfitPercent) || 0)
       : 0;
     const targetNetPerItem = avgBasis * (1 + (lotTargetProfitPercent / 100));
-    itemUnitPrice = Math.max(0, calculateUnitPrice(1, targetNetPerItem, lotTaxPercent, lotShipping));
+    itemUnitPrice = Math.max(0, calculateUnitPrice(1, targetNetPerItem, lotTaxPercent, lotShipping, payload.lot));
   } else {
     itemUnitPrice = Math.max(
       0,
@@ -86,7 +91,8 @@ export function computeLotModeProjections(payload: {
     units: remainingItems,
     unitPrice: itemUnitPrice,
     sellingTaxPercent: lotTaxPercent,
-    shippingPerOrder: lotShipping
+    shippingPerOrder: lotShipping,
+    feeProfileInput: payload.lot
   });
 
   if (lotType === "singles") {
@@ -105,7 +111,8 @@ export function computeLotModeProjections(payload: {
       units: boxUnits,
       unitPrice: boxUnitPrice,
       sellingTaxPercent: lotTaxPercent,
-      shippingPerOrder: lotShipping
+      shippingPerOrder: lotShipping,
+      feeProfileInput: payload.lot
     });
   }
 
@@ -125,7 +132,8 @@ export function computeLotModeProjections(payload: {
         units: spotUnits,
         unitPrice: spotUnitPrice,
         sellingTaxPercent: lotTaxPercent,
-        shippingPerOrder: lotShipping
+        shippingPerOrder: lotShipping,
+        feeProfileInput: payload.lot
       });
     }
   }

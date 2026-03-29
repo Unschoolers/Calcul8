@@ -1,4 +1,5 @@
 import type {
+    FeeProfilePreset,
     AppState,
     AppTab,
     BeforeInstallPromptEvent,
@@ -278,6 +279,7 @@ export interface AppMethodState {
   safeFixed(value: number, decimals?: number): string;
   recalculateDefaultPrices(opts?: { closeModal?: boolean }): void;
   calculateOptimalPrices(): void;
+  setFeeProfilePreset(preset: FeeProfilePreset): void;
   updatePurchaseCostInput(value: unknown): void;
   onPurchaseConfigChange(): void;
   calculatePriceForUnits(units: number, targetNetRevenue: number): number;

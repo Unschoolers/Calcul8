@@ -45,6 +45,7 @@ export const WheelWindow = {
       activeWheelSlots: [] as WheelSlot[],
       wheelPreviewSlots: [] as WheelSlot[],
       wheelMode: "config" as "config" | "live",
+      wheelInspectorTab: "config" as "config" | "session" | "history",
       wheelCelebrationVisible: false,
       wheelCelebrationLabel: "" as string,
       wheelCelebrationColor: "#f0a500",
@@ -161,11 +162,13 @@ export const WheelWindow = {
         return;
       }
       (this as Record<string, unknown>).wheelMode = nextMode;
+      (this as Record<string, unknown>).wheelInspectorTab = "config";
     },
     confirmWheelModeChange(this: Record<string, unknown>): void {
       const requestedMode = (this as Record<string, unknown>).wheelRequestedMode as "config" | "live" | null;
       if (requestedMode) {
         (this as Record<string, unknown>).wheelMode = requestedMode;
+        (this as Record<string, unknown>).wheelInspectorTab = requestedMode === "live" ? "session" : "config";
       }
       (this as Record<string, unknown>).wheelRequestedMode = null;
       (this as Record<string, unknown>).wheelLiveConfirmDialog = false;
@@ -173,6 +176,13 @@ export const WheelWindow = {
     cancelWheelModeChange(this: Record<string, unknown>): void {
       (this as Record<string, unknown>).wheelRequestedMode = null;
       (this as Record<string, unknown>).wheelLiveConfirmDialog = false;
+    },
+    focusWheelInspector(this: Record<string, unknown>, tab: "config" | "session" | "history"): void {
+      (this as Record<string, unknown>).wheelInspectorTab = tab;
+      nextTick(() => {
+        const panel = (this.$refs as Record<string, unknown>).wheelInspectorPanel as HTMLElement | null;
+        panel?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
     },
     refreshWheelCanvas(this: Record<string, unknown>): void {
       nextTick(() => {

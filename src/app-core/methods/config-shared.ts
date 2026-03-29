@@ -47,6 +47,7 @@ export type ConfigMethods = ConfigMethodSubset<
   | "calculateProfit"
   | "recalculateDefaultPrices"
   | "calculateOptimalPrices"
+  | "setFeeProfilePreset"
   | "updatePurchaseCostInput"
   | "onPurchaseConfigChange"
   | "calculatePriceForUnits"

@@ -1,4 +1,4 @@
-import { WHATNOT_FEES } from "../../constants.ts";
+import { calculateNetFromGross, type FeeProfileInput } from "../../domain/calculations.ts";
 import type { Lot, Sale, WheelConfig, WheelTier } from "../../types/app.ts";
 
 export interface WheelSlot {
@@ -9,6 +9,59 @@ export interface WheelSlot {
   packsCount: number;
   deductionType: "packs" | "singles" | "none";
   isChase: boolean;
+}
+
+function getLotShippingPerOrder(lotId: number | null | undefined, lots: Lot[]): number {
+  if (lotId == null) return 0;
+  const lot = lots.find((entry) => entry.id === lotId);
+  return Number(lot?.sellingShippingPerOrder) || 0;
+}
+
+function getTierShippingPerOrder(tier: WheelTier, lots: Lot[]): number {
+  return getLotShippingPerOrder(tier.boundLotId, lots);
+}
+
+export function calculateWheelNetFromGross(
+  grossRevenue: number,
+  feeProfileInput?: FeeProfileInput,
+  orderCount = 1,
+  buyerShippingPerOrder = 0
+): number {
+  return calculateNetFromGross(grossRevenue, 0, buyerShippingPerOrder, orderCount, feeProfileInput);
+}
+
+export function calculateAverageWheelBuyerShippingPerSpin(
+  config: WheelConfig,
+  lots: Lot[] = []
+): number {
+  let shippingTotal = 0;
+  let totalSlots = 0;
+
+  for (const tier of config.tiers) {
+    const slots = Math.max(0, Number(tier.slots) || 0);
+    if (slots <= 0) continue;
+    shippingTotal += slots * getTierShippingPerOrder(tier, lots);
+    totalSlots += slots;
+  }
+
+  return totalSlots > 0 ? shippingTotal / totalSlots : 0;
+}
+
+export function calculateWheelBuyerShippingTotal(
+  config: WheelConfig | null,
+  slots: WheelSlot[],
+  spinCounts: number[],
+  lots: Lot[] = []
+): number {
+  if (!config) return 0;
+
+  const shippingByTier = new Map(
+    config.tiers.map((tier) => [tier.id, getTierShippingPerOrder(tier, lots)] as const)
+  );
+
+  return slots.reduce((sum, slot, index) => (
+    sum + ((Number(spinCounts[index]) || 0) * (shippingByTier.get(slot.tier) ?? 0))
+  ), 0);
 }
 
 const TIER_COLORS = [
@@ -172,7 +225,11 @@ export function createWheelSale(opts: {
   };
 }
 
-export function computeExpectedMargin(config: WheelConfig): { margin: number | null } {
+export function computeExpectedMargin(
+  config: WheelConfig,
+  feeProfileInput?: FeeProfileInput,
+  lots: Lot[] = []
+): { margin: number | null } {
   let totalCost = 0;
   let totalSlots = 0;
   for (const tier of config.tiers) {
@@ -182,9 +239,8 @@ export function computeExpectedMargin(config: WheelConfig): { margin: number | n
   if (!totalSlots || !config.spinPrice) return { margin: null };
   const avgCost = totalCost / totalSlots;
   const grossPerSpin = config.spinPrice;
-  const commission = grossPerSpin * WHATNOT_FEES.COMMISSION;
-  const processing = grossPerSpin * WHATNOT_FEES.PROCESSING;
-  const netPerSpin = grossPerSpin - commission - processing - WHATNOT_FEES.FIXED;
+  const buyerShippingPerSpin = calculateAverageWheelBuyerShippingPerSpin(config, lots);
+  const netPerSpin = calculateWheelNetFromGross(grossPerSpin, feeProfileInput, 1, buyerShippingPerSpin);
   const margin = ((netPerSpin - avgCost) / grossPerSpin) * 100;
   return { margin };
 }

@@ -295,6 +295,75 @@
                           @input="onPurchaseConfigChange"
                         ></v-text-field>
 
+                        <div class="fee-profile-section mb-2">
+                          <v-row dense class="align-center">
+                            <v-col cols="10" class="py-0">
+                              <v-select
+                                v-model="feeProfilePreset"
+                                :items="[
+                                  { title: 'Whatnot', value: 'whatnot' },
+                                  { title: 'No fees', value: 'none' }
+                                ]"
+                                item-title="title"
+                                item-value="value"
+                                label="Fee Profile"
+                                variant="outlined"
+                                density="compact"
+                                hide-details
+                                class="fee-profile-select"
+                                @update:model-value="setFeeProfilePreset($event)"
+                              ></v-select>
+                            </v-col>
+                            <v-col cols="2" class="d-flex justify-end py-0">
+                              <v-menu
+                                location="bottom end"
+                                offset="8"
+                                :close-on-content-click="false"
+                                transition="scale-transition"
+                              >
+                                <template #activator="{ props }">
+                                  <v-btn
+                                    v-bind="props"
+                                    icon="mdi-information-outline"
+                                    size="small"
+                                    variant="text"
+                                    color="secondary"
+                                    class="fee-profile-info-btn"
+                                    aria-label="View fee breakdown"
+                                    title="View fee breakdown"
+                                  ></v-btn>
+                                </template>
+                                <v-card elevation="6" class="fee-profile-popover">
+                                  <v-card-title class="fee-profile-popover__title">Fee breakdown</v-card-title>
+                                  <v-card-text class="fee-profile-popover__body">
+                                    <div class="fee-profile-popover__row">
+                                      <span class="fee-profile-popover__label">Platform fee %</span>
+                                      <strong class="fee-profile-popover__value">{{ Number(platformFeePercent ?? 0).toFixed(2) }}%</strong>
+                                    </div>
+                                    <div class="fee-profile-popover__row">
+                                      <span class="fee-profile-popover__label">Additional fee %</span>
+                                      <strong class="fee-profile-popover__value">{{ Number(additionalFeePercent ?? 0).toFixed(2) }}%</strong>
+                                    </div>
+                                    <div class="fee-profile-popover__row">
+                                      <span class="fee-profile-popover__label">Additional fee applies to</span>
+                                      <strong class="fee-profile-popover__value">
+                                        {{ additionalFeeAppliesTo === 'sale_plus_shipping' ? 'sale + shipping' : 'sale only' }}
+                                      </strong>
+                                    </div>
+                                    <div class="fee-profile-popover__row">
+                                      <span class="fee-profile-popover__label">Fixed fee per order</span>
+                                      <strong class="fee-profile-popover__value">${{ Number(fixedFeePerOrder ?? 0).toFixed(2) }}</strong>
+                                    </div>
+                                  </v-card-text>
+                                </v-card>
+                              </v-menu>
+                            </v-col>
+                          </v-row>
+                          <div class="text-caption text-medium-emphasis fee-profile-help">
+                            Marketplace fee math only. Taxes and shipping are separate inputs.
+                          </div>
+                        </div>
+
                         <v-text-field
                           v-model="externalSku"
                           label="Marketplace SKU (optional)"

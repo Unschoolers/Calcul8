@@ -32,6 +32,11 @@ function buildLiveForecastScenario(
     totalCaseCost: number;
     sellingTaxPercent: number;
     sellingShippingPerOrder: number;
+    feeProfilePreset: "whatnot" | "none";
+    platformFeePercent: number;
+    additionalFeePercent: number;
+    additionalFeeAppliesTo: "sale_only" | "sale_plus_shipping";
+    fixedFeePerOrder: number;
   },
   payload: {
     id: LiveForecastScenario["id"];
@@ -50,7 +55,8 @@ function buildLiveForecastScenario(
     baseRevenue: Math.max(0, Number(context.totalRevenue) || 0),
     baseCost: Math.max(0, Number(context.totalCaseCost) || 0),
     sellingTaxPercent: context.sellingTaxPercent,
-    shippingPerOrder: context.sellingShippingPerOrder
+    shippingPerOrder: context.sellingShippingPerOrder,
+    feeProfileInput: context
   });
 }
 
@@ -202,7 +208,7 @@ export const forecastComputed: Pick<
   },
 
   totalRevenue(): number {
-    return calculateTotalRevenue(this.sales, this.sellingTaxPercent);
+    return calculateTotalRevenue(this.sales, this.sellingTaxPercent, this);
   },
 
   salesProgress(): number {
@@ -240,7 +246,8 @@ export const forecastComputed: Pick<
       this.remainingPacksCount,
       this.remainingNetRevenueForTarget,
       this.sellingTaxPercent,
-      this.sellingShippingPerOrder
+      this.sellingShippingPerOrder,
+      this
     );
   },
 
@@ -251,7 +258,8 @@ export const forecastComputed: Pick<
       this.remainingBoxesEquivalent,
       this.remainingNetRevenueForTarget,
       this.sellingTaxPercent,
-      this.sellingShippingPerOrder
+      this.sellingShippingPerOrder,
+      this
     );
   },
 
@@ -262,7 +270,8 @@ export const forecastComputed: Pick<
       this.remainingSpotsEquivalent,
       this.remainingNetRevenueForTarget,
       this.sellingTaxPercent,
-      this.sellingShippingPerOrder
+      this.sellingShippingPerOrder,
+      this
     );
   },
 
@@ -354,10 +363,10 @@ export const forecastComputed: Pick<
   },
 
   sparklineData(): number[] {
-    return calculateSparklineData(this.sales, this.totalCaseCost, this.sellingTaxPercent);
+    return calculateSparklineData(this.sales, this.totalCaseCost, this.sellingTaxPercent, this);
   },
 
   sparklineGradient(): string[] {
-    return calculateSparklineGradient(this.sales, this.totalCaseCost, this.sellingTaxPercent);
+    return calculateSparklineGradient(this.sales, this.totalCaseCost, this.sellingTaxPercent, this);
   }
 };

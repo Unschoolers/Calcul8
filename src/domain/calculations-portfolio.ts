@@ -1,6 +1,11 @@
+import { DEFAULT_FEE_PROFILE_FIELDS } from "../constants.ts";
 import { getTodayDate, resolveLotBusinessDate, toDateOnly } from "../shared/lot-dates.ts";
 import type { Lot, Sale } from "../types/app.ts";
-import { calculateNetFromGross, getGrossRevenueForSale } from "./calculations-fees.ts";
+import {
+  calculateNetFromGross,
+  getGrossRevenueForSale,
+  type FeeProfileInput
+} from "./calculations-fees.ts";
 
 export type PortfolioSellThroughPoint = {
   date: string;
@@ -42,14 +47,19 @@ function sortSalesByDateAsc(sales: Sale[]): Sale[] {
   return [...sales].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 }
 
-export function calculateSparklineData(sales: Sale[], totalCaseCost: number, sellingTaxPercent: number): number[] {
+export function calculateSparklineData(
+  sales: Sale[],
+  totalCaseCost: number,
+  sellingTaxPercent: number,
+  feeProfileInput: FeeProfileInput = DEFAULT_FEE_PROFILE_FIELDS
+): number[] {
   const sortedSales = sortSalesByDateAsc(sales);
   let cumulativeProfit = -totalCaseCost;
   const data = [cumulativeProfit];
 
   sortedSales.forEach((sale) => {
     const grossRevenue = getGrossRevenueForSale(sale);
-    const netRevenue = calculateNetFromGross(grossRevenue, sellingTaxPercent, sale.buyerShipping || 0, 1);
+    const netRevenue = calculateNetFromGross(grossRevenue, sellingTaxPercent, sale.buyerShipping || 0, 1, feeProfileInput);
     cumulativeProfit += netRevenue;
     data.push(cumulativeProfit);
   });
@@ -58,13 +68,18 @@ export function calculateSparklineData(sales: Sale[], totalCaseCost: number, sel
   return data.map((val) => val - minValue);
 }
 
-export function calculateSparklineGradient(sales: Sale[], totalCaseCost: number, sellingTaxPercent: number): string[] {
+export function calculateSparklineGradient(
+  sales: Sale[],
+  totalCaseCost: number,
+  sellingTaxPercent: number,
+  feeProfileInput: FeeProfileInput = DEFAULT_FEE_PROFILE_FIELDS
+): string[] {
   const sortedSales = sortSalesByDateAsc(sales);
   let cumulativeProfit = -totalCaseCost;
 
   sortedSales.forEach((sale) => {
     const grossRevenue = getGrossRevenueForSale(sale);
-    const netRevenue = calculateNetFromGross(grossRevenue, sellingTaxPercent, sale.buyerShipping || 0, 1);
+    const netRevenue = calculateNetFromGross(grossRevenue, sellingTaxPercent, sale.buyerShipping || 0, 1, feeProfileInput);
     cumulativeProfit += netRevenue;
   });
 

@@ -141,7 +141,8 @@ export const uiBaseMethods: ThisType<AppContext> & Pick<
       purchaseCurrency: this.currency,
       sellingCurrency: this.sellingCurrency,
       exchangeRate: this.exchangeRate,
-      singlesPurchases: this.singlesPurchases
+      singlesPurchases: this.singlesPurchases,
+      feeProfileInput: this
     });
   },
 
@@ -155,7 +156,8 @@ export const uiBaseMethods: ThisType<AppContext> & Pick<
       purchaseCurrency: this.currency,
       sellingCurrency: this.sellingCurrency,
       exchangeRate: this.exchangeRate,
-      singlesPurchases: this.singlesPurchases
+      singlesPurchases: this.singlesPurchases,
+      feeProfileInput: this
     });
   },
 
