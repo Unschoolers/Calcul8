@@ -4,11 +4,17 @@ import { createWindowContextBridge } from "./contextBridge.ts";
 import { wheelComputeds } from "./wheelComputeds.ts";
 import { wheelConfigMethods } from "./wheelConfigMethods.ts";
 import { buildSlotsFromConfig, type WheelSlot } from "./wheelHelpers.ts";
+import WheelInspector from "./WheelInspector.vue";
+import {
+  WHEEL_COMPACT_LAYOUT_BREAKPOINT,
+  isWheelCompactViewport,
+  resolveWheelCanvasTargetSize,
+  resolveWheelLayoutMode
+} from "./wheelLayoutPolicy.ts";
 import { wheelSessionMethods } from "./wheelSessionMethods.ts";
 import { wheelSpinMethods } from "./wheelSpinMethods.ts";
+import WheelActionRail from "./WheelActionRail.vue";
 import "./WheelWindow.css";
-
-const WHEEL_COMPACT_LAYOUT_BREAKPOINT = 1100;
 
 // Re-export pure functions so existing imports keep working
 export {
@@ -21,27 +27,12 @@ export {
 } from "./wheelHelpers.ts";
 
 function getWheelCanvasTargetSize(panel: HTMLElement | null, presentationMode: boolean): number {
-  const isMobileViewport = typeof window !== "undefined" && window.innerWidth <= WHEEL_COMPACT_LAYOUT_BREAKPOINT;
-  const maxSize = presentationMode
-    ? (isMobileViewport ? 460 : 720)
-    : (isMobileViewport ? 420 : 520);
-  if (!panel) return maxSize;
-
-  // Leave room for the pointer, shadows, and small-screen padding so the wheel
-  // does not get clipped against the viewport edge on mobile.
-  const horizontalInset = presentationMode
-    ? (isMobileViewport ? 56 : 40)
-    : (isMobileViewport ? 54 : 28);
-  const availableWidth = Math.max(220, panel.clientWidth - horizontalInset);
-  let targetSize = Math.min(availableWidth, maxSize);
-
-  if (isMobileViewport && typeof window !== "undefined") {
-    const verticalInset = presentationMode ? 320 : 420;
-    const availableHeight = Math.max(220, window.innerHeight - verticalInset);
-    targetSize = Math.min(targetSize, availableHeight);
-  }
-
-  return targetSize;
+  return resolveWheelCanvasTargetSize({
+    panelWidth: panel?.clientWidth,
+    viewportWidth: typeof window !== "undefined" ? window.innerWidth : null,
+    viewportHeight: typeof window !== "undefined" ? window.innerHeight : null,
+    presentationMode
+  });
 }
 
 function getWheelInspectorScrollTarget(source: unknown): { scrollIntoView: (options?: ScrollIntoViewOptions) => void } | null {
@@ -60,9 +51,17 @@ function getWheelInspectorScrollTarget(source: unknown): { scrollIntoView: (opti
   return null;
 }
 
+function getCurrentViewportWidth(): number {
+  return typeof window !== "undefined" ? window.innerWidth : WHEEL_COMPACT_LAYOUT_BREAKPOINT + 1;
+}
+
 
 export const WheelWindow = {
   name: "WheelWindow",
+  components: {
+    WheelInspector,
+    WheelActionRail
+  },
   props: {
     ctx: {
       type: Object as PropType<Record<string, unknown>>,
@@ -100,6 +99,7 @@ export const WheelWindow = {
       wheelRequestedMode: null as "config" | "live" | null,
       wheelPendingMenuOpen: false,
       wheelConfigReady: false,
+      wheelViewportWidth: getCurrentViewportWidth(),
       wheelChaseDialog: false,
       wheelChasePreviewMode: false,
       wheelChaseReplacementSinglesId: null as number | null,
@@ -128,7 +128,35 @@ export const WheelWindow = {
     };
   },
   computed: {
-    ...wheelComputeds
+    ...wheelComputeds,
+    wheelIsCompactLayout(this: Record<string, unknown>): boolean {
+      return resolveWheelLayoutMode((this as Record<string, unknown>).wheelViewportWidth as number) === "compact";
+    },
+    wheelCompactStageSummaryLabel(this: Record<string, unknown>): string {
+      return (this as Record<string, unknown>).wheelMode === "live" ? "Session Margin" : "Expected Margin";
+    },
+    wheelCompactStageSummaryValue(this: Record<string, unknown>): string {
+      return (this as Record<string, unknown>).wheelMode === "live"
+        ? ((this as Record<string, unknown>).wheelSessionMarginDisplay as string)
+        : ((this as Record<string, unknown>).expectedMarginDisplay as string);
+    },
+    wheelCompactStageSummaryColor(this: Record<string, unknown>): string {
+      return (this as Record<string, unknown>).wheelMode === "live"
+        ? ((this as Record<string, unknown>).wheelSessionMarginColor as string)
+        : ((this as Record<string, unknown>).expectedMarginColor as string);
+    },
+    wheelCompactStageSummaryMeta(this: Record<string, unknown>): string {
+      if ((this as Record<string, unknown>).wheelMode === "live") {
+        return `${String((this as Record<string, unknown>).wheelTotalSpins ?? 0)} spins • ${String((this as Record<string, unknown>).wheelSessionProfitDisplay ?? "—")} gross profit`;
+      }
+      const displayConfig = (this as Record<string, unknown>).wheelDisplayConfig as WheelConfig | null;
+      const targetMargin = Number(displayConfig?.targetMargin ?? 0);
+      const slotCount = Array.isArray((this as Record<string, unknown>).wheelDisplaySlots)
+        ? ((this as Record<string, unknown>).wheelDisplaySlots as unknown[]).length
+        : 0;
+      const builderState = (this as Record<string, unknown>).hasPendingWheelChanges ? "Pending rebuild" : "Ready";
+      return `Target ${targetMargin}% • ${slotCount} slots • ${builderState}`;
+    }
   },
   watch: {
     currentTab(this: Record<string, unknown>, nextTab: string) {
@@ -210,7 +238,7 @@ export const WheelWindow = {
       (this as Record<string, unknown>).wheelLiveConfirmDialog = false;
     },
     isWheelMobileViewport(): boolean {
-      return typeof window !== "undefined" && window.innerWidth <= WHEEL_COMPACT_LAYOUT_BREAKPOINT;
+      return isWheelCompactViewport(((this as Record<string, unknown>).wheelViewportWidth as number) || getCurrentViewportWidth());
     },
     openWheelInspector(this: Record<string, unknown>, tab: "config" | "session" | "history"): void {
       (this as Record<string, unknown>).wheelInspectorTab = tab;
@@ -228,7 +256,7 @@ export const WheelWindow = {
     },
     focusWheelInspector(this: Record<string, unknown>, tab: "config" | "session" | "history"): void {
       (this as Record<string, unknown>).wheelInspectorTab = tab;
-      if (typeof window !== "undefined" && window.innerWidth <= WHEEL_COMPACT_LAYOUT_BREAKPOINT) {
+      if (isWheelCompactViewport(((this as Record<string, unknown>).wheelViewportWidth as number) || getCurrentViewportWidth())) {
         (this as Record<string, unknown>).wheelMobileInspectorOpen = true;
         return;
       }
@@ -238,6 +266,7 @@ export const WheelWindow = {
       });
     },
     refreshWheelCanvas(this: Record<string, unknown>): void {
+      (this as Record<string, unknown>).wheelViewportWidth = getCurrentViewportWidth();
       nextTick(() => {
         const run = () => {
           const panel = (this.$refs as Record<string, unknown>).wheelSpinnerPanel as HTMLElement | null;
@@ -301,6 +330,7 @@ export const WheelWindow = {
 
     // Resize canvas for container
     nextTick(() => {
+      (this as Record<string, unknown>).wheelViewportWidth = getCurrentViewportWidth();
       const panel = (this.$refs as Record<string, unknown>).wheelSpinnerPanel as HTMLElement | null;
       const availableWidth = getWheelCanvasTargetSize(
         panel,
@@ -339,6 +369,12 @@ export const WheelWindow = {
         ro.observe(panel);
         (this as Record<string, unknown>)._wheelResizeObserver = ro;
       }
+
+      const handleViewportResize = () => {
+        (this as Record<string, unknown>).wheelViewportWidth = getCurrentViewportWidth();
+      };
+      window.addEventListener("resize", handleViewportResize);
+      (this as Record<string, unknown>)._wheelViewportResizeHandler = handleViewportResize;
     });
   },
   beforeUnmount(this: Record<string, unknown>) {
@@ -346,6 +382,11 @@ export const WheelWindow = {
     if (ro) {
       ro.disconnect();
       (this as Record<string, unknown>)._wheelResizeObserver = undefined;
+    }
+    const resizeHandler = (this as Record<string, unknown>)._wheelViewportResizeHandler as (() => void) | undefined;
+    if (resizeHandler) {
+      window.removeEventListener("resize", resizeHandler);
+      (this as Record<string, unknown>)._wheelViewportResizeHandler = undefined;
     }
     const celebrationTimeoutId = (this as Record<string, unknown>)._wheelCelebrationTimeoutId as number | undefined;
     if (celebrationTimeoutId != null) {

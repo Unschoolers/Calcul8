@@ -1772,6 +1772,10 @@
   gap: 10px;
 }
 
+.wheel-stage-summary--compact {
+  grid-template-columns: 1fr;
+}
+
 .wheel-stage-summary-card {
   padding: 12px 14px;
   border-radius: 18px;
@@ -1802,6 +1806,12 @@
   font-size: 0.74rem;
   line-height: 1.4;
   color: rgba(var(--v-theme-on-surface), 0.68);
+}
+
+.wheel-stage-summary-card--hero {
+  text-align: left;
+  align-items: flex-start;
+  gap: 6px;
 }
 
 .wheel-tier-card {

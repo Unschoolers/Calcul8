@@ -39,7 +39,7 @@ test("wheel mobile summary cards stay static and non-clickable", () => {
 });
 
 test("wheel inspector keeps the Builder Session History segmented control", () => {
-  const wheelTemplate = read("src/components/windows/WheelWindow.html");
+  const wheelTemplate = read("src/components/windows/WheelInspector.html");
 
   assert.match(wheelTemplate, /class="wheel-inspector-toggle"/);
   assert.match(wheelTemplate, /<v-btn[^>]*value="config"[\s\S]*Builder/);
