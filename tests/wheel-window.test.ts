@@ -514,6 +514,36 @@ test("testSpinWheel delegates to non-recording spin path", async () => {
   assert.deepEqual(spinWheelInternal.mock.calls, [[false]]);
 });
 
+test("runWheelPrimarySpin uses test spin in config mode", () => {
+  const testSpinWheel = vi.fn();
+  const spinWheel = vi.fn();
+  const vm: Record<string, unknown> = {
+    wheelMode: "config",
+    testSpinWheel,
+    spinWheel
+  };
+
+  WheelWindow.methods!.runWheelPrimarySpin.call(vm as never);
+
+  assert.equal(testSpinWheel.mock.calls.length, 1);
+  assert.equal(spinWheel.mock.calls.length, 0);
+});
+
+test("runWheelPrimarySpin uses live spin in live mode", () => {
+  const testSpinWheel = vi.fn();
+  const spinWheel = vi.fn();
+  const vm: Record<string, unknown> = {
+    wheelMode: "live",
+    testSpinWheel,
+    spinWheel
+  };
+
+  WheelWindow.methods!.runWheelPrimarySpin.call(vm as never);
+
+  assert.equal(testSpinWheel.mock.calls.length, 0);
+  assert.equal(spinWheel.mock.calls.length, 1);
+});
+
 test("drawWheel reuses a cached static wheel render when slots and size do not change", () => {
   const makeContext2d = () => ({
     setTransform: vi.fn(),
@@ -1887,6 +1917,28 @@ test("focusWheelInspector is safe when the inspector ref is missing", async () =
   await Promise.resolve();
 
   assert.equal(vm.wheelInspectorTab, "session");
+});
+
+test("focusWheelInspector supports component refs that expose scrollIntoView via $el", async () => {
+  const scrollIntoView = vi.fn();
+  const vm: Record<string, unknown> = {
+    wheelInspectorTab: "config",
+    $refs: {
+      wheelInspectorPanel: {
+        $el: {
+          scrollIntoView
+        }
+      }
+    }
+  };
+
+  WheelWindow.methods!.focusWheelInspector.call(vm as never, "history");
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assert.equal(vm.wheelInspectorTab, "history");
+  assert.equal(scrollIntoView.mock.calls.length, 1);
+  assert.deepEqual(scrollIntoView.mock.calls[0]?.[0], { behavior: "smooth", block: "start" });
 });
 
 // ── Session persistence ─────────────────────────────────────────

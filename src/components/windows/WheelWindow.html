@@ -38,69 +38,57 @@
             </div>
 
             <div v-if="!wheelPresentationMode" class="wheel-stage-summary" :class="{ 'wheel-stage-summary--live': wheelMode === 'live' }">
-                <button
+                <div
                     v-if="wheelMode === 'config'"
-                    type="button"
                     class="wheel-stage-summary-card"
-                    @click="focusWheelInspector('config')"
                 >
                     <span class="wheel-stage-summary-card__label">Expected Margin</span>
                     <strong class="wheel-stage-summary-card__value" :style="{ color: expectedMarginColor }">{{ expectedMarginDisplay }}</strong>
                     <span class="wheel-stage-summary-card__meta">{{ expectedMarginHint }}</span>
-                </button>
-                <button
+                </div>
+                <div
                     v-if="wheelMode === 'config'"
-                    type="button"
                     class="wheel-stage-summary-card"
-                    @click="focusWheelInspector('config')"
                 >
                     <span class="wheel-stage-summary-card__label">Target Margin</span>
                     <strong class="wheel-stage-summary-card__value">{{ wheelDisplayConfig?.targetMargin ?? 0 }}%</strong>
                     <span class="wheel-stage-summary-card__meta">{{ wheelDisplaySlots.length }} configured slots</span>
-                </button>
-                <button
+                </div>
+                <div
                     v-if="wheelMode === 'config'"
-                    type="button"
                     class="wheel-stage-summary-card"
-                    @click="focusWheelInspector('config')"
                 >
                     <span class="wheel-stage-summary-card__label">Builder</span>
                     <strong class="wheel-stage-summary-card__value">{{ hasPendingWheelChanges ? 'Pending' : 'Ready' }}</strong>
                     <span class="wheel-stage-summary-card__meta">
                         {{ hasPendingWheelChanges ? 'Rebuild to apply edits' : 'Tier sources and costs in sync' }}
                     </span>
-                </button>
+                </div>
 
-                <button
+                <div
                     v-if="wheelMode === 'live'"
-                    type="button"
                     class="wheel-stage-summary-card"
-                    @click="focusWheelInspector('session')"
                 >
                     <span class="wheel-stage-summary-card__label">Spins</span>
                     <strong class="wheel-stage-summary-card__value">{{ wheelTotalSpins }}</strong>
                     <span class="wheel-stage-summary-card__meta">{{ wheelSessionRevenue.toFixed(2) }} revenue</span>
-                </button>
-                <button
+                </div>
+                <div
                     v-if="wheelMode === 'live'"
-                    type="button"
                     class="wheel-stage-summary-card"
-                    @click="focusWheelInspector('session')"
                 >
                     <span class="wheel-stage-summary-card__label">Gross Profit</span>
                     <strong class="wheel-stage-summary-card__value" :class="wheelSessionProfitClass">{{ wheelSessionProfitDisplay }}</strong>
                     <span class="wheel-stage-summary-card__meta">{{ wheelSessionCost.toFixed(2) }} prize cost</span>
-                </button>
-                <button
+                </div>
+                <div
                     v-if="wheelMode === 'live'"
-                    type="button"
                     class="wheel-stage-summary-card"
-                    @click="focusWheelInspector('session')"
                 >
                     <span class="wheel-stage-summary-card__label">Session Margin</span>
                     <strong class="wheel-stage-summary-card__value" :style="{ color: wheelSessionMarginColor }">{{ wheelSessionMarginDisplay }}</strong>
                     <span class="wheel-stage-summary-card__meta">{{ wheelSessionMarginHint }}</span>
-                </button>
+                </div>
             </div>
 
             <div class="wheel-outer" :class="{ 'wheel-outer--spinning': wheelSpinning }" ref="wheelOuter">
@@ -299,23 +287,49 @@
         </v-card>
     </div>
 
+    <button
+        v-if="!wheelPresentationMode && wheelMobileInspectorOpen"
+        type="button"
+        class="wheel-mobile-sheet-backdrop"
+        aria-label="Close wheel details"
+        @click="closeWheelInspector"
+    ></button>
+
     <!-- INSPECTOR PANEL -->
-    <v-card v-show="!wheelPresentationMode" ref="wheelInspectorPanel" class="wheel-inspector-panel" variant="outlined">
+    <v-card
+        v-show="!wheelPresentationMode"
+        ref="wheelInspectorPanel"
+        class="wheel-inspector-panel"
+        :class="{ 'wheel-inspector-panel--mobile-open': wheelMobileInspectorOpen }"
+        variant="outlined"
+    >
         <v-card-title class="wheel-panel-title">
-            <div class="wheel-panel-heading">
-                <v-icon start size="small">
-                    {{ wheelInspectorTab === 'config' ? 'mdi-cog-outline' : (wheelInspectorTab === 'session' ? 'mdi-chart-box-outline' : 'mdi-history') }}
-                </v-icon>
-                {{ wheelInspectorTab === 'config' ? 'Wheel Builder' : (wheelInspectorTab === 'session' ? 'Session' : 'History & Fairness') }}
-            </div>
-            <div class="wheel-panel-subtitle">
-                {{
-                    wheelInspectorTab === 'config'
-                        ? 'Build the prize mix, source lots, and margin target.'
-                        : (wheelInspectorTab === 'session'
-                            ? 'Monitor spins, revenue, cost, and inventory without crowding the stage.'
-                            : 'Review committed hashes, seeds, and recent spin history.')
-                }}
+            <div class="wheel-inspector-mobile-handle" aria-hidden="true"></div>
+            <div class="wheel-panel-title__row">
+                <div>
+                    <div class="wheel-panel-heading">
+                        <v-icon start size="small">
+                            {{ wheelInspectorTab === 'config' ? 'mdi-cog-outline' : (wheelInspectorTab === 'session' ? 'mdi-chart-box-outline' : 'mdi-history') }}
+                        </v-icon>
+                        {{ wheelInspectorTab === 'config' ? 'Wheel Builder' : (wheelInspectorTab === 'session' ? 'Session' : 'History & Fairness') }}
+                    </div>
+                    <div class="wheel-panel-subtitle">
+                        {{
+                            wheelInspectorTab === 'config'
+                                ? 'Build the prize mix, source lots, and margin target.'
+                                : (wheelInspectorTab === 'session'
+                                    ? 'Monitor spins, revenue, cost, and inventory without crowding the stage.'
+                                    : 'Review committed hashes, seeds, and recent spin history.')
+                        }}
+                    </div>
+                </div>
+                <v-btn
+                    icon="mdi-close"
+                    size="small"
+                    variant="text"
+                    class="wheel-inspector-mobile-close"
+                    @click="closeWheelInspector"
+                ></v-btn>
             </div>
         </v-card-title>
         <v-card-text class="wheel-inspector-panel__body">
@@ -680,6 +694,47 @@
             </section>
         </v-card-text>
     </v-card>
+
+    <div v-if="!wheelPresentationMode" class="wheel-mobile-action-rail">
+        <v-btn
+            variant="tonal"
+            class="wheel-mobile-action-rail__secondary"
+            @click="openWheelInspector(wheelMode === 'live' ? 'session' : 'config')"
+        >
+            <v-icon start size="small">{{ wheelMode === 'live' ? 'mdi-chart-box-outline' : 'mdi-tune' }}</v-icon>
+            {{ wheelMode === 'live' ? 'Session' : 'Builder' }}
+        </v-btn>
+        <v-btn
+            color="primary"
+            variant="elevated"
+            class="wheel-mobile-action-rail__primary"
+            :disabled="wheelPrimarySpinDisabled"
+            @click="runWheelPrimarySpin()"
+        >
+            <v-icon start>{{ wheelSpinButtonIcon }}</v-icon>
+            {{ wheelSpinButtonLabel }}
+        </v-btn>
+        <v-btn
+            v-if="wheelMode === 'live'"
+            color="warning"
+            variant="tonal"
+            class="wheel-mobile-action-rail__secondary"
+            :disabled="wheelEndingSession"
+            @click="startEndWheelSession"
+        >
+            <v-icon start size="small">mdi-flag-checkered</v-icon>
+            End
+        </v-btn>
+        <v-btn
+            v-else
+            variant="tonal"
+            class="wheel-mobile-action-rail__secondary"
+            @click="openWheelInspector('history')"
+        >
+            <v-icon start size="small">mdi-history</v-icon>
+            History
+        </v-btn>
+    </div>
 
     <!-- Confirm Dialog -->
     <v-dialog v-model="wheelConfirmDialog" max-width="380" persistent>

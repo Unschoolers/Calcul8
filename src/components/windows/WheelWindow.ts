@@ -8,6 +8,8 @@ import { wheelSessionMethods } from "./wheelSessionMethods.ts";
 import { wheelSpinMethods } from "./wheelSpinMethods.ts";
 import "./WheelWindow.css";
 
+const WHEEL_COMPACT_LAYOUT_BREAKPOINT = 1100;
+
 // Re-export pure functions so existing imports keep working
 export {
     buildSlotsFromConfig,
@@ -19,14 +21,43 @@ export {
 } from "./wheelHelpers.ts";
 
 function getWheelCanvasTargetSize(panel: HTMLElement | null, presentationMode: boolean): number {
-  const maxSize = presentationMode ? 720 : 520;
+  const isMobileViewport = typeof window !== "undefined" && window.innerWidth <= WHEEL_COMPACT_LAYOUT_BREAKPOINT;
+  const maxSize = presentationMode
+    ? (isMobileViewport ? 460 : 720)
+    : (isMobileViewport ? 420 : 520);
   if (!panel) return maxSize;
 
   // Leave room for the pointer, shadows, and small-screen padding so the wheel
   // does not get clipped against the viewport edge on mobile.
-  const horizontalInset = presentationMode ? 40 : 28;
+  const horizontalInset = presentationMode
+    ? (isMobileViewport ? 56 : 40)
+    : (isMobileViewport ? 54 : 28);
   const availableWidth = Math.max(220, panel.clientWidth - horizontalInset);
-  return Math.min(availableWidth, maxSize);
+  let targetSize = Math.min(availableWidth, maxSize);
+
+  if (isMobileViewport && typeof window !== "undefined") {
+    const verticalInset = presentationMode ? 320 : 420;
+    const availableHeight = Math.max(220, window.innerHeight - verticalInset);
+    targetSize = Math.min(targetSize, availableHeight);
+  }
+
+  return targetSize;
+}
+
+function getWheelInspectorScrollTarget(source: unknown): { scrollIntoView: (options?: ScrollIntoViewOptions) => void } | null {
+  if (source && typeof source === "object") {
+    const directTarget = source as {
+      scrollIntoView?: ((options?: ScrollIntoViewOptions) => void) | unknown;
+      $el?: unknown;
+    };
+    if (typeof directTarget.scrollIntoView === "function") {
+      return directTarget as { scrollIntoView: (options?: ScrollIntoViewOptions) => void };
+    }
+    if (directTarget.$el && typeof (directTarget.$el as { scrollIntoView?: unknown }).scrollIntoView === "function") {
+      return directTarget.$el as { scrollIntoView: (options?: ScrollIntoViewOptions) => void };
+    }
+  }
+  return null;
 }
 
 
@@ -46,6 +77,7 @@ export const WheelWindow = {
       wheelPreviewSlots: [] as WheelSlot[],
       wheelMode: "config" as "config" | "live",
       wheelInspectorTab: "config" as "config" | "session" | "history",
+      wheelMobileInspectorOpen: false,
       wheelCelebrationVisible: false,
       wheelCelebrationLabel: "" as string,
       wheelCelebrationColor: "#f0a500",
@@ -177,10 +209,31 @@ export const WheelWindow = {
       (this as Record<string, unknown>).wheelRequestedMode = null;
       (this as Record<string, unknown>).wheelLiveConfirmDialog = false;
     },
+    isWheelMobileViewport(): boolean {
+      return typeof window !== "undefined" && window.innerWidth <= WHEEL_COMPACT_LAYOUT_BREAKPOINT;
+    },
+    openWheelInspector(this: Record<string, unknown>, tab: "config" | "session" | "history"): void {
+      (this as Record<string, unknown>).wheelInspectorTab = tab;
+      if (((this as Record<string, unknown>) as Record<string, unknown> & { isWheelMobileViewport: () => boolean }).isWheelMobileViewport()) {
+        (this as Record<string, unknown>).wheelMobileInspectorOpen = true;
+        return;
+      }
+      nextTick(() => {
+        const panel = getWheelInspectorScrollTarget((this.$refs as Record<string, unknown>).wheelInspectorPanel);
+        panel?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    },
+    closeWheelInspector(this: Record<string, unknown>): void {
+      (this as Record<string, unknown>).wheelMobileInspectorOpen = false;
+    },
     focusWheelInspector(this: Record<string, unknown>, tab: "config" | "session" | "history"): void {
       (this as Record<string, unknown>).wheelInspectorTab = tab;
+      if (typeof window !== "undefined" && window.innerWidth <= WHEEL_COMPACT_LAYOUT_BREAKPOINT) {
+        (this as Record<string, unknown>).wheelMobileInspectorOpen = true;
+        return;
+      }
       nextTick(() => {
-        const panel = (this.$refs as Record<string, unknown>).wheelInspectorPanel as HTMLElement | null;
+        const panel = getWheelInspectorScrollTarget((this.$refs as Record<string, unknown>).wheelInspectorPanel);
         panel?.scrollIntoView({ behavior: "smooth", block: "start" });
       });
     },
