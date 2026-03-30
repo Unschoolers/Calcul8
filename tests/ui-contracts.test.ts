@@ -47,6 +47,12 @@ test("wheel inspector keeps the Builder Session History segmented control", () =
   assert.match(wheelTemplate, /<v-btn[^>]*value="history"[\s\S]*History/);
 });
 
+test("wheel window passes its local component context into the extracted inspector", () => {
+  const wheelTemplate = read("src/components/windows/WheelWindow.html");
+
+  assert.match(wheelTemplate, /<wheel-inspector[\s\S]*:ctx="getWindowComponentContext\(\)"/);
+});
+
 test("lot selector uses the explicit switch handler", () => {
   const appTemplate = read("src/App.html");
 

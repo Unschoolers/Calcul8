@@ -13,6 +13,12 @@
                     <div class="wheel-stage-pills">
                         <span class="wheel-stage-pill">{{ wheelStageSlotsLabel }}</span>
                         <span v-if="wheelDisplayConfig" class="wheel-stage-pill">{{ wheelStageSpinPriceLabel }}</span>
+                        <span v-if="wheelIsCompactLayout" class="wheel-stage-pill wheel-stage-pill--kpi">
+                            <span class="wheel-stage-pill__label">{{ wheelCompactStageSummaryLabel }}</span>
+                            <strong class="wheel-stage-pill__value" :style="{ color: wheelCompactStageSummaryColor }">
+                                {{ wheelCompactStageSummaryValue }}
+                            </strong>
+                        </span>
                     </div>
                 </div>
                 <div class="wheel-stage-actions">
@@ -38,21 +44,7 @@
             </div>
 
             <div
-                v-if="!wheelPresentationMode && wheelIsCompactLayout"
-                class="wheel-stage-summary wheel-stage-summary--compact"
-                :class="{ 'wheel-stage-summary--live': wheelMode === 'live' }"
-            >
-                <div class="wheel-stage-summary-card wheel-stage-summary-card--hero">
-                    <span class="wheel-stage-summary-card__label">{{ wheelCompactStageSummaryLabel }}</span>
-                    <strong class="wheel-stage-summary-card__value" :style="{ color: wheelCompactStageSummaryColor }">
-                        {{ wheelCompactStageSummaryValue }}
-                    </strong>
-                    <span class="wheel-stage-summary-card__meta">{{ wheelCompactStageSummaryMeta }}</span>
-                </div>
-            </div>
-
-            <div
-                v-else-if="!wheelPresentationMode"
+                v-if="!wheelPresentationMode && !wheelIsCompactLayout"
                 class="wheel-stage-summary"
                 :class="{ 'wheel-stage-summary--live': wheelMode === 'live' }"
             >
@@ -317,7 +309,7 @@
     <wheel-inspector
         v-show="!wheelPresentationMode"
         ref="wheelInspectorPanel"
-        :ctx="ctx"
+        :ctx="getWindowComponentContext()"
         class="wheel-inspector-panel"
         :class="{ 'wheel-inspector-panel--mobile-open': wheelMobileInspectorOpen }"
     ></wheel-inspector>

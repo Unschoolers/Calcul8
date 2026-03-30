@@ -270,6 +270,19 @@
   text-transform: uppercase;
 }
 
+.wheel-stage-pill--kpi {
+  gap: 6px;
+}
+
+.wheel-stage-pill__label {
+  color: rgba(var(--v-theme-on-surface), 0.62);
+}
+
+.wheel-stage-pill__value {
+  font-size: 0.76rem;
+  letter-spacing: 0.01em;
+}
+
 .wheel-spinner-panel > .wheel-result-banner,
 .wheel-spinner-panel > .wheel-lot-select-card,
 .wheel-spinner-panel > .wheel-fairness,

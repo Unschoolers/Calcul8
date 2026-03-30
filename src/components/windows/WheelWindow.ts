@@ -1,9 +1,10 @@
 import { inject, nextTick, type PropType } from "vue";
 import type { WheelConfig } from "../../types/app.ts";
 import { createWindowContextBridge } from "./contextBridge.ts";
+import WheelActionRail from "./WheelActionRail.vue";
 import { wheelComputeds } from "./wheelComputeds.ts";
 import { wheelConfigMethods } from "./wheelConfigMethods.ts";
-import { buildSlotsFromConfig, type WheelSlot } from "./wheelHelpers.ts";
+import { type WheelSlot } from "./wheelHelpers.ts";
 import WheelInspector from "./WheelInspector.vue";
 import {
   WHEEL_COMPACT_LAYOUT_BREAKPOINT,
@@ -13,17 +14,16 @@ import {
 } from "./wheelLayoutPolicy.ts";
 import { wheelSessionMethods } from "./wheelSessionMethods.ts";
 import { wheelSpinMethods } from "./wheelSpinMethods.ts";
-import WheelActionRail from "./WheelActionRail.vue";
 import "./WheelWindow.css";
 
 // Re-export pure functions so existing imports keep working
 export {
-    buildSlotsFromConfig,
-    createDefaultTier,
-    createDefaultWheelConfig,
-    createWheelSale,
-    easeOutQuart,
-    seedToIndex
+  buildSlotsFromConfig,
+  createDefaultTier,
+  createDefaultWheelConfig,
+  createWheelSale,
+  easeOutQuart,
+  seedToIndex
 } from "./wheelHelpers.ts";
 
 function getWheelCanvasTargetSize(panel: HTMLElement | null, presentationMode: boolean): number {
@@ -133,7 +133,7 @@ export const WheelWindow = {
       return resolveWheelLayoutMode((this as Record<string, unknown>).wheelViewportWidth as number) === "compact";
     },
     wheelCompactStageSummaryLabel(this: Record<string, unknown>): string {
-      return (this as Record<string, unknown>).wheelMode === "live" ? "Session Margin" : "Expected Margin";
+      return (this as Record<string, unknown>).wheelMode === "live" ? "Margin" : "Margin";
     },
     wheelCompactStageSummaryValue(this: Record<string, unknown>): string {
       return (this as Record<string, unknown>).wheelMode === "live"
@@ -144,18 +144,6 @@ export const WheelWindow = {
       return (this as Record<string, unknown>).wheelMode === "live"
         ? ((this as Record<string, unknown>).wheelSessionMarginColor as string)
         : ((this as Record<string, unknown>).expectedMarginColor as string);
-    },
-    wheelCompactStageSummaryMeta(this: Record<string, unknown>): string {
-      if ((this as Record<string, unknown>).wheelMode === "live") {
-        return `${String((this as Record<string, unknown>).wheelTotalSpins ?? 0)} spins • ${String((this as Record<string, unknown>).wheelSessionProfitDisplay ?? "—")} gross profit`;
-      }
-      const displayConfig = (this as Record<string, unknown>).wheelDisplayConfig as WheelConfig | null;
-      const targetMargin = Number(displayConfig?.targetMargin ?? 0);
-      const slotCount = Array.isArray((this as Record<string, unknown>).wheelDisplaySlots)
-        ? ((this as Record<string, unknown>).wheelDisplaySlots as unknown[]).length
-        : 0;
-      const builderState = (this as Record<string, unknown>).hasPendingWheelChanges ? "Pending rebuild" : "Ready";
-      return `Target ${targetMargin}% • ${slotCount} slots • ${builderState}`;
     }
   },
   watch: {
@@ -253,6 +241,9 @@ export const WheelWindow = {
     },
     closeWheelInspector(this: Record<string, unknown>): void {
       (this as Record<string, unknown>).wheelMobileInspectorOpen = false;
+    },
+    getWindowComponentContext(this: Record<string, unknown>): Record<string, unknown> {
+      return this as Record<string, unknown>;
     },
     focusWheelInspector(this: Record<string, unknown>, tab: "config" | "session" | "history"): void {
       (this as Record<string, unknown>).wheelInspectorTab = tab;

@@ -11,7 +11,7 @@ export const WheelInspector = {
   },
   setup(props: { ctx: Record<string, unknown> }) {
     const injectedCtx = inject<Record<string, unknown> | null>("appCtx", null);
-    const source = (injectedCtx ?? props.ctx) as Record<string, unknown>;
+    const source = (props.ctx ?? injectedCtx) as Record<string, unknown>;
     return createWindowContextBridge(source);
   }
 };
