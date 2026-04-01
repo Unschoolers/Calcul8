@@ -1,0 +1,81 @@
+<section class="wheel-panel-section">
+  <div class="wheel-stats-grid">
+    <v-card variant="tonal" class="text-center pa-2">
+      <div class="text-h6">{{ wheelTotalSpins }}</div>
+      <div class="text-caption text-medium-emphasis">Spins</div>
+    </v-card>
+    <v-card variant="tonal" class="text-center pa-2">
+      <div class="text-h6">${{ wheelSessionRevenue.toFixed(2) }}</div>
+      <div class="text-caption text-medium-emphasis">Revenue</div>
+    </v-card>
+    <v-card variant="tonal" class="text-center pa-2">
+      <div class="text-h6 text-error">${{ wheelSessionCost.toFixed(2) }}</div>
+      <div class="text-caption text-medium-emphasis">Prize Cost</div>
+    </v-card>
+    <v-card variant="tonal" class="text-center pa-2">
+      <div class="text-h6" :class="wheelSessionProfitClass">{{ wheelSessionProfitDisplay }}</div>
+      <div class="text-caption text-medium-emphasis">Gross Profit</div>
+    </v-card>
+  </div>
+
+  <v-card variant="tonal" class="pa-3">
+    <div class="d-flex justify-space-between align-center mb-1">
+      <span class="text-caption text-medium-emphasis text-uppercase">Margin</span>
+      <span class="text-h6 font-weight-bold" :style="{ color: wheelSessionMarginColor }">
+        {{ wheelSessionMarginDisplay }}
+      </span>
+    </div>
+    <div class="wheel-margin-bar-track">
+      <div class="wheel-margin-bar-fill"
+        :style="{ width: wheelSessionMarginBarWidth, background: wheelSessionMarginColor }"></div>
+      <div class="wheel-margin-bar-target" :style="{ left: wheelTargetMarginBarLeft }"></div>
+    </div>
+    <div class="text-caption text-medium-emphasis mt-1">{{ wheelSessionMarginHint }}</div>
+  </v-card>
+
+  <div class="mb-3">
+    <div class="wheel-panel-subsection-title">Source Inventory</div>
+    <div v-if="wheelSessionSourceGroups.length" class="wheel-tracker-inventory-list">
+      <div v-for="entry in wheelSessionSourceGroups" :key="entry.key" class="wheel-tracker-inventory-row">
+        <div class="wheel-tracker-inventory-copy">
+          <div class="wheel-tracker-inventory-label">{{ entry.label }}</div>
+          <div class="wheel-tracker-inventory-detail">{{ entry.detail }}</div>
+        </div>
+        <div class="wheel-tracker-inventory-remaining">{{ entry.remainingText }}</div>
+        <div class="wheel-tracker-inventory-tiers">
+          <div
+            v-for="tier in entry.tiers"
+            :key="tier.tierId"
+            class="wheel-tracker-tier-row"
+            :class="{ 'wheel-tracker-tier-row--warning': tier.warning }"
+          >
+            <div class="wheel-tracker-tier-main">
+              <div class="wheel-tracker-tier-dot" :style="{ background: tier.color }"></div>
+              <div class="wheel-tracker-tier-name">{{ tier.label }}</div>
+            </div>
+            <div class="wheel-tracker-tier-count">&times;{{ tier.count }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div v-else class="text-caption text-medium-emphasis text-center pa-2">
+      No wheel configured
+    </div>
+  </div>
+
+  <v-btn block variant="outlined" size="small"
+    @click="wheelConfirmAction = 'reset'; wheelConfirmDialog = true" class="mb-2">
+    <v-icon start size="small">mdi-refresh</v-icon>
+    Reset Session
+  </v-btn>
+
+  <template v-if="wheelMode !== 'config'">
+    <v-btn block color="warning" variant="elevated" size="small" :disabled="wheelEndingSession"
+      @click="startEndWheelSession">
+      <v-icon start size="small">mdi-flag-checkered</v-icon>
+      End Wheel
+      <v-badge v-if="wheelSkippedDeductions.length" :content="wheelSkippedDeductions.length" color="error"
+        inline class="ml-2"></v-badge>
+    </v-btn>
+  </template>
+</section>

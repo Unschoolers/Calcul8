@@ -94,7 +94,7 @@ export const WheelWindow = {
       wheelSpinHash: "" as string,
       wheelShowSeed: false,
       wheelConfirmDialog: false,
-      wheelConfirmAction: "" as "reset" | "apply" | "",
+      wheelConfirmAction: "" as "reset" | "delete" | "apply" | "",
       wheelLiveConfirmDialog: false,
       wheelRequestedMode: null as "config" | "live" | null,
       wheelPendingMenuOpen: false,
@@ -125,7 +125,9 @@ export const WheelWindow = {
       }>,
       wheelPreviewChaseTallyHistory: [] as Array<{ tierId: string; label: string; color: string; count: number }>,
       wheelChaseTallyHistory: [] as Array<{ tierId: string; label: string; color: string; count: number }>,
-      wheelHighlightedSlotIndex: -1
+      wheelHighlightedSlotIndex: -1,
+      wheelManageDialog: false,
+      wheelManageName: ""
     };
   },
   computed: {
@@ -260,6 +262,24 @@ export const WheelWindow = {
     },
     closeWheelInspector(this: Record<string, unknown>): void {
       (this as Record<string, unknown>).wheelMobileInspectorOpen = false;
+    },
+    openWheelManageDialog(this: Record<string, unknown>): void {
+      const editing = (this as Record<string, unknown>).editingWheelConfig as WheelConfig | null;
+      (this as Record<string, unknown>).wheelManageName = editing?.name || "";
+      (this as Record<string, unknown>).wheelManageDialog = true;
+    },
+    closeWheelManageDialog(this: Record<string, unknown>): void {
+      (this as Record<string, unknown>).wheelManageDialog = false;
+    },
+    applyWheelManageDialog(this: Record<string, unknown>): void {
+      const editing = (this as Record<string, unknown>).editingWheelConfig as WheelConfig | null;
+      if (editing) {
+        const nextName = String((this as Record<string, unknown>).wheelManageName || "").trim();
+        if (nextName) {
+          editing.name = nextName;
+        }
+      }
+      (this as Record<string, unknown>).wheelManageDialog = false;
     },
     getWindowComponentContext(this: Record<string, unknown>): Record<string, unknown> {
       return this as Record<string, unknown>;

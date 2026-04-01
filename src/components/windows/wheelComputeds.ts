@@ -437,15 +437,15 @@ export const wheelComputeds = {
     return result;
   },
 
-  wheelTrackerInventory(this: Record<string, unknown>): Array<{
+  wheelSessionSourceGroups(this: Record<string, unknown>): Array<{
     key: string;
     label: string;
     detail: string;
     remainingText: string;
     warning: boolean;
-    tiers: Array<{ tierId: string; label: string; color: string; count: number }>;
+    tiers: Array<{ tierId: string; label: string; color: string; count: number; warning: boolean }>;
   }> {
-    const config = (this as Record<string, unknown>).activeWheelConfig as WheelConfig | null;
+    const config = (this as Record<string, unknown>).wheelDisplayConfig as WheelConfig | null;
     const lots = (this.lots || []) as Lot[];
     if (!config) return [];
 
@@ -465,13 +465,15 @@ export const wheelComputeds = {
       detail: string;
       remainingText: string;
       warning: boolean;
-      tiers: Array<{ tierId: string; label: string; color: string; count: number }>;
+      tiers: Array<{ tierId: string; label: string; color: string; count: number; warning: boolean }>;
     }> = [];
 
     for (const tier of config.tiers) {
       if ((tier.slots || 0) <= 0 || tier.boundLotId == null) continue;
       const lot = lots.find((entry) => entry.id === tier.boundLotId);
       if (!lot) continue;
+
+      const rowKey = `${tier.boundLotId}:${lot.lotType === "singles" ? "singles" : "packs"}`;
 
       if (tier.deductionType === "singles") {
         const purchase = tier.boundSinglesId != null
@@ -480,45 +482,61 @@ export const wheelComputeds = {
         const tierDisplayLabel = purchase?.cardNumber
           ? `${tier.label} #${purchase.cardNumber}`
           : tier.label;
-        const remaining = tier.boundSinglesId != null
+        const remainingForTier = tier.boundSinglesId != null
           ? getAvailableSinglesQuantityForWheelTier(this, tier.boundLotId, tier.boundSinglesId)
           : ((lot.singlesPurchases || []).reduce((sum, entry) => (
             sum + Math.max(0, getAvailableSinglesQuantityForWheelTier(this, tier.boundLotId as number, entry.id))
           ), 0));
-        rows.push({
-          key: `${tier.id}:singles`,
-          label: lot.name,
-          detail: tier.boundSinglesId != null ? tierDisplayLabel : `${tier.label} pool`,
-          remainingText: `${remaining} card${remaining === 1 ? "" : "s"} left`,
-          warning: remaining <= Math.max(1, tier.packsCount || 1),
-          tiers: [{
-            ...(tally[tier.id] || { tierId: tier.id, label: tierDisplayLabel, color: tier.color, count: 0 }),
-            label: tierDisplayLabel
-          }]
-        });
+        const remainingForLot = (lot.singlesPurchases || []).reduce((sum, entry) => (
+          sum + Math.max(0, getAvailableSinglesQuantityForWheelTier(this, tier.boundLotId as number, entry.id))
+        ), 0);
+        const existing = rows.find((entry) => entry.key === rowKey);
+        const tierEntry = {
+          ...(tally[tier.id] || { tierId: tier.id, label: tierDisplayLabel, color: tier.color, count: 0 }),
+          label: tierDisplayLabel,
+          warning: remainingForTier <= Math.max(1, tier.packsCount || 1)
+        };
+        if (existing) {
+          existing.tiers.push(tierEntry);
+        } else {
+          rows.push({
+            key: rowKey,
+            label: lot.name,
+            detail: "Singles source",
+            remainingText: `${remainingForLot} card${remainingForLot === 1 ? "" : "s"} left`,
+            warning: false,
+            tiers: [tierEntry]
+          });
+        }
         continue;
       }
 
       const remainingPacks = getRemainingPacksForWheelLot(this, tier.boundLotId);
-      const existing = rows.find((entry) => entry.key === `${tier.boundLotId}:packs`);
-      const tierEntry = tally[tier.id] || { tierId: tier.id, label: tier.label, color: tier.color, count: 0 };
+      const existing = rows.find((entry) => entry.key === rowKey);
+      const tierEntry = {
+        ...(tally[tier.id] || { tierId: tier.id, label: tier.label, color: tier.color, count: 0 }),
+        warning: remainingPacks <= Math.max(1, tier.packsCount || 1)
+      };
       if (existing) {
         existing.detail = `${existing.detail} • ${tier.packsCount || 0}/spin`;
-        existing.warning = existing.warning || remainingPacks <= Math.max(1, tier.packsCount || 1);
         existing.tiers.push(tierEntry);
       } else {
         rows.push({
-          key: `${tier.boundLotId}:packs`,
+          key: rowKey,
           label: lot.name,
           detail: `Pack source • needs ${tier.packsCount || 0}/spin`,
           remainingText: `${remainingPacks} pack${remainingPacks === 1 ? "" : "s"} left`,
-          warning: remainingPacks <= Math.max(1, tier.packsCount || 1),
+          warning: false,
           tiers: [tierEntry]
         });
       }
     }
 
     return rows;
+  },
+
+  wheelTrackerInventory(this: Record<string, unknown>) {
+    return (this as Record<string, unknown>).wheelSessionSourceGroups;
   },
 
   currentLotCostPerPack(this: Record<string, unknown>): number {

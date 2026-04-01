@@ -1,0 +1,191 @@
+<div class="wheel-tier-card wheel-tier-card--summary">
+  <div class="wheel-tier-card__header">
+    <div class="wheel-tier-name-cell">
+      <div class="wheel-tier-dot" :style="{ background: tier.color }"></div>
+      <div class="wheel-tier-card__title-wrap">
+        <div class="wheel-tier-card__title">{{ tier.label }}</div>
+        <div class="wheel-tier-card__summary">
+          <template v-for="(item, index) in tierSummaryItems" :key="item">
+            <span class="wheel-tier-card__summary-item">{{ item }}</span>
+            <span v-if="index < tierSummaryItems.length - 1" class="wheel-tier-card__summary-sep" aria-hidden="true">•</span>
+          </template>
+        </div>
+      </div>
+    </div>
+    <v-btn
+      size="x-small"
+      variant="tonal"
+      color="primary"
+      class="wheel-tier-card__edit-btn"
+      @click="editorOpen = true"
+    >
+      <v-icon start size="small">mdi-pencil-outline</v-icon>
+      Edit
+    </v-btn>
+  </div>
+
+  <div class="wheel-tier-card__chips">
+    <span
+      v-for="chip in tierStatusChips"
+      :key="chip.label"
+      class="wheel-tier-card__chip"
+      :class="`wheel-tier-card__chip--${chip.tone}`"
+    >
+      {{ chip.label }}
+    </span>
+  </div>
+
+  <div v-if="tierInventoryWarning" class="wheel-tier-card__meta">
+    <div class="wheel-tier-card__meta-row wheel-tier-card__meta-row--warning">
+      <span class="wheel-tier-card__meta-label">
+        <v-icon size="14">mdi-alert-outline</v-icon>
+        Stock
+      </span>
+      <span class="wheel-tier-card__meta-value">{{ tierInventoryWarning }}</span>
+    </div>
+  </div>
+  <v-dialog
+    v-model="editorOpen"
+    max-width="560"
+    :fullscreen="$vuetify?.display?.smAndDown"
+    scrollable
+    content-class="wheel-tier-editor-dialog"
+    transition="dialog-bottom-transition"
+  >
+    <v-card class="wheel-tier-editor">
+      <v-card-title class="wheel-tier-editor__title">
+        <div class="wheel-tier-editor__handle" aria-hidden="true"></div>
+        <div class="wheel-tier-name-cell">
+          <div class="wheel-tier-dot" :style="{ background: tier.color }"></div>
+          <div class="wheel-tier-editor__title-copy">
+            <div class="wheel-tier-editor__heading">{{ tier.label }}</div>
+            <div class="wheel-tier-editor__subtitle">Adjust quantity, source, and prize behavior without bloating the tier list.</div>
+          </div>
+        </div>
+        <v-btn icon="mdi-close" variant="text" size="small" @click="editorOpen = false"></v-btn>
+      </v-card-title>
+      <v-card-text class="wheel-tier-editor__body">
+        <div class="wheel-tier-editor__hero">
+          <div class="wheel-tier-editor__hero-label">Tier Summary</div>
+          <div class="wheel-tier-editor__hero-value">{{ tierMetricsSummary }}</div>
+          <div class="wheel-tier-editor__hero-meta">{{ tierSourceSummary }}</div>
+        </div>
+
+        <div class="wheel-tier-editor__grid">
+          <div class="wheel-tier-metric">
+            <span class="wheel-tier-metric__label">Label</span>
+            <input v-model="tier.label" class="wheel-tier-label-input wheel-tier-label-input--editor" spellcheck="false" />
+          </div>
+          <div class="wheel-tier-metric">
+            <span class="wheel-tier-metric__label">Slots</span>
+            <input v-model.number="tier.slots" type="number" class="wheel-tier-num-input" min="0" max="20" title="Slots on wheel" />
+          </div>
+          <div class="wheel-tier-metric">
+            <span class="wheel-tier-metric__label">Count</span>
+            <input
+              v-model.number="tier.packsCount"
+              type="number"
+              class="wheel-tier-num-input"
+              :min="isBoundLotSingles(tier) ? 1 : 0"
+              :max="isBoundLotSingles(tier) ? 1 : undefined"
+              :disabled="isBoundLotSingles(tier)"
+              :title="isBoundLotSingles(tier) ? 'Singles tiers always deduct 1 card per hit' : 'Units deducted on hit'"
+              @change="onTierPacksChange(tier)"
+            />
+          </div>
+          <div class="wheel-tier-metric">
+            <span class="wheel-tier-metric__label">Cost</span>
+            <input v-model.number="tier.costPerTier" type="number" class="wheel-tier-cost-input" min="0" step="0.25" title="Cost per tier prize" />
+          </div>
+        </div>
+
+        <div class="wheel-tier-editor__source-grid">
+          <div class="wheel-tier-source-field">
+            <div class="wheel-tier-source-label">Source Lot</div>
+            <v-select
+              :model-value="tier.boundLotId"
+              :items="tierSourceItems"
+              item-title="title"
+              item-value="value"
+              placeholder="Source lot…"
+              variant="outlined"
+              density="compact"
+              hide-details="auto"
+              @update:model-value="onTierLotChange(tier, $event)"
+            >
+              <template #item="{ props, item }">
+                <div>
+                  <div v-if="item.raw.groupLabel" class="lot-selector-group-label">
+                    <v-icon size="14" class="mr-1">
+                      {{ item.raw.lotType === 'singles' ? 'mdi-cards-outline' : 'mdi-cube-outline' }}
+                    </v-icon>
+                    {{ item.raw.groupLabel }}
+                  </div>
+                  <v-list-item v-bind="props" :title="undefined" :subtitle="undefined">
+                    <v-list-item-title class="text-body-2">{{ item.raw.title }}</v-list-item-title>
+                  </v-list-item>
+                </div>
+              </template>
+            </v-select>
+          </div>
+
+          <div v-if="isBoundLotSingles(tier)" class="wheel-tier-source-field">
+            <div class="wheel-tier-source-label">Prize Item</div>
+            <v-select
+              :model-value="tier.boundSinglesId"
+              :items="getSinglesItemsForTier(tier)"
+              item-title="title"
+              item-value="value"
+              placeholder="Pick item…"
+              variant="outlined"
+              density="compact"
+              hide-details="auto"
+              @update:model-value="onTierSinglesChange(tier, $event)"
+            >
+              <template #item="{ props, item }">
+                <v-list-item v-bind="props" :title="undefined" :subtitle="undefined">
+                  <template #prepend>
+                    <div class="wheel-card-thumb" v-if="item.raw.image">
+                      <img :src="item.raw.image" alt="" loading="lazy">
+                    </div>
+                    <v-icon v-else-if="item.raw.value != null" size="20" class="mr-2">mdi-cards-outline</v-icon>
+                  </template>
+                  <v-list-item-title class="text-body-2">{{ item.raw.title }}</v-list-item-title>
+                  <v-list-item-subtitle class="text-caption">
+                    <template v-if="item.raw.cardNumber">#{{ item.raw.cardNumber }}</template>
+                    <template v-if="item.raw.stockLabel">
+                      <span v-if="item.raw.cardNumber"> • </span>{{ item.raw.stockLabel }}
+                    </template>
+                  </v-list-item-subtitle>
+                </v-list-item>
+              </template>
+            </v-select>
+          </div>
+        </div>
+
+        <v-switch
+          :model-value="tier.isChase === true"
+          color="amber"
+          inset
+          hide-details
+          :disabled="!canTierBeChase(tier) && !tier.isChase"
+          label="Chase tier"
+          @update:model-value="toggleTierChase(tier)"
+        ></v-switch>
+
+        <div
+          v-if="tierInventoryMeta"
+          class="wheel-tier-inventory wheel-tier-inventory--editor"
+          :class="{ 'wheel-tier-inventory--warning': tierInventoryMeta.warning }"
+        >
+          {{ tierInventoryMeta.text }}
+        </div>
+      </v-card-text>
+      <v-card-actions class="wheel-tier-editor__actions">
+        <v-spacer></v-spacer>
+        <v-btn variant="tonal" color="error" @click="removeTier(tierIndex); editorOpen = false">Delete tier</v-btn>
+        <v-btn variant="text" @click="editorOpen = false">Done</v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
+</div>

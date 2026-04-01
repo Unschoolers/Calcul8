@@ -86,7 +86,7 @@ export function getWheelTierInventoryMeta(
       }
       return {
         text: `${remaining} card${remaining === 1 ? "" : "s"} left • ${Math.max(1, Number(tier.packsCount) || 1)} per hit`,
-        warning: remaining <= 0
+        warning: remaining <= Math.max(1, Number(tier.packsCount) || 1)
       };
     }
 
@@ -99,6 +99,6 @@ export function getWheelTierInventoryMeta(
   const remainingPacks = getRemainingPacksForWheelLot(context, tier.boundLotId);
   return {
     text: `${remainingPacks} pack${remainingPacks === 1 ? "" : "s"} left • ${Math.max(1, Number(tier.packsCount) || 0)} per hit`,
-    warning: remainingPacks < Math.max(0, Number(tier.packsCount) || 0)
+    warning: remainingPacks <= Math.max(1, Number(tier.packsCount) || 1)
   };
 }

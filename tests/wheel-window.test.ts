@@ -13,6 +13,7 @@ import {
   getScopedWheelConfigDraftStorageKey,
   getScopedWheelConfigSessionStorageKey
 } from "../src/app-core/storageKeys.ts";
+import { getWheelTierInventoryMeta } from "../src/components/windows/wheelSaleSupport.ts";
 import type { WheelConfig } from "../src/types/app.ts";
 
 // ── Pure functions ──────────────────────────────────────────────
@@ -331,9 +332,9 @@ test("wheelInvalidLiveTiers ignores untracked singles tiers", () => {
   assert.deepEqual(invalid, []);
 });
 
-test("wheelTrackerInventory summarizes remaining stock for live wheel sources", () => {
+test("wheelSessionSourceGroups summarizes remaining stock for wheel sources", () => {
   const vm = {
-    activeWheelConfig: {
+    wheelDisplayConfig: {
       id: 1,
       spinPrice: 10,
       targetMargin: 40,
@@ -365,7 +366,7 @@ test("wheelTrackerInventory summarizes remaining stock for live wheel sources", 
     sales: []
   };
 
-  const rows = WheelWindow.computed!.wheelTrackerInventory.call(vm as never);
+  const rows = WheelWindow.computed!.wheelSessionSourceGroups.call(vm as never);
   assert.equal(rows.length, 2);
   assert.equal(rows[0]!.label, "Bulk Lot");
   assert.match(rows[0]!.remainingText, /2 packs left/i);
@@ -376,9 +377,9 @@ test("wheelTrackerInventory summarizes remaining stock for live wheel sources", 
   assert.equal(rows[1]!.tiers[0]!.label, "Hellish Blizzard");
 });
 
-test("wheelTrackerInventory includes singles card number in tier detail when available", () => {
+test("wheelSessionSourceGroups keeps singles card number on the tier label while grouping by source", () => {
   const vm = {
-    activeWheelConfig: {
+    wheelDisplayConfig: {
       id: 1,
       spinPrice: 10,
       targetMargin: 40,
@@ -397,14 +398,14 @@ test("wheelTrackerInventory includes singles card number in tier detail when ava
     sales: []
   };
 
-  const rows = WheelWindow.computed!.wheelTrackerInventory.call(vm as never);
-  assert.equal(rows[0]!.detail, "Hellish Blizzard #UE06BT/OPM-1-020-ALT1");
+  const rows = WheelWindow.computed!.wheelSessionSourceGroups.call(vm as never);
+  assert.equal(rows[0]!.detail, "Singles source");
   assert.equal(rows[0]!.tiers[0]!.label, "Hellish Blizzard #UE06BT/OPM-1-020-ALT1");
 });
 
-test("wheelTrackerInventory groups multiple pack tiers under the same source lot", () => {
+test("wheelSessionSourceGroups groups multiple pack tiers under the same source lot", () => {
   const vm = {
-    activeWheelConfig: {
+    wheelDisplayConfig: {
       id: 1,
       spinPrice: 10,
       targetMargin: 40,
@@ -425,11 +426,105 @@ test("wheelTrackerInventory groups multiple pack tiers under the same source lot
     sales: []
   };
 
-  const rows = WheelWindow.computed!.wheelTrackerInventory.call(vm as never);
+  const rows = WheelWindow.computed!.wheelSessionSourceGroups.call(vm as never);
   assert.equal(rows.length, 1);
   assert.equal(rows[0]!.label, "Bulk Lot");
   assert.equal(rows[0]!.tiers.length, 2);
   assert.deepEqual(rows[0]!.tiers.map((entry: { tierId: string }) => entry.tierId), ["t1", "t2"]);
+});
+
+test("wheelSessionSourceGroups groups tracked and pool singles tiers under the same lot", () => {
+  const vm = {
+    wheelDisplayConfig: {
+      id: 1,
+      spinPrice: 10,
+      targetMargin: 40,
+      createdAt: "",
+      tiers: [
+        { id: "t1", label: "Hellish Blizzard", color: "#90f", slots: 1, costPerTier: 17, packsCount: 1, deductionType: "singles", boundLotId: 77, boundSinglesId: 701, sets: [] },
+        { id: "t2", label: "AP card", color: "#fc0", slots: 1, costPerTier: 0, packsCount: 1, deductionType: "singles", boundLotId: 77, boundSinglesId: null, sets: [] }
+      ]
+    },
+    lots: [
+      {
+        id: 77,
+        name: "Union arena singles",
+        lotType: "singles",
+        singlesPurchases: [
+          { id: 701, item: "Hellish Blizzard", cardNumber: "UE06BT/OPM-1-022-ALT1", quantity: 1, cost: 17, marketValue: 30 },
+          { id: 702, item: "AP card", quantity: 23, cost: 0, marketValue: 3 }
+        ]
+      }
+    ],
+    wheelTallyByTier: [
+      { tierId: "t1", label: "Hellish Blizzard", color: "#90f", count: 0 },
+      { tierId: "t2", label: "AP card", color: "#fc0", count: 0 }
+    ],
+    loadSalesForLotId: vi.fn(() => []),
+    sales: []
+  };
+
+  const rows = WheelWindow.computed!.wheelSessionSourceGroups.call(vm as never);
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0]!.label, "Union arena singles");
+  assert.match(rows[0]!.remainingText, /24 cards left/i);
+  assert.equal(rows[0]!.tiers.length, 2);
+  assert.equal(rows[0]!.tiers[0]!.label, "Hellish Blizzard #UE06BT/OPM-1-022-ALT1");
+  assert.equal(rows[0]!.tiers[1]!.label, "AP card");
+  assert.equal(rows[0]!.warning, false);
+  assert.equal(rows[0]!.tiers[0]!.warning, true);
+  assert.equal(rows[0]!.tiers[1]!.warning, false);
+});
+
+test("getWheelTierInventoryMeta marks exact last-hit stock as low stock", () => {
+  const singlesMeta = getWheelTierInventoryMeta({
+    lots: [{
+      id: 77,
+      name: "Union arena singles",
+      lotType: "singles",
+      singlesPurchases: [
+        { id: 701, item: "Hellish Blizzard", quantity: 1, cost: 17, marketValue: 30 }
+      ]
+    }],
+    loadSalesForLotId: () => []
+  }, {
+    id: "t1",
+    label: "Hellish Blizzard",
+    color: "#90f",
+    slots: 1,
+    costPerTier: 17,
+    packsCount: 1,
+    deductionType: "singles",
+    boundLotId: 77,
+    boundSinglesId: 701,
+    sets: []
+  });
+
+  const packsMeta = getWheelTierInventoryMeta({
+    lots: [{
+      id: 42,
+      name: "One punch man",
+      lotType: "bulk",
+      boxesPurchased: 1,
+      packsPerBox: 1
+    }],
+    loadSalesForLotId: () => []
+  }, {
+    id: "t2",
+    label: "1 Pack",
+    color: "#f00",
+    slots: 1,
+    costPerTier: 4.67,
+    packsCount: 1,
+    deductionType: "packs",
+    boundLotId: 42,
+    sets: []
+  });
+
+  assert.equal(singlesMeta?.warning, true);
+  assert.match(singlesMeta?.text || "", /1 card left/i);
+  assert.equal(packsMeta?.warning, true);
+  assert.match(packsMeta?.text || "", /1 pack left/i);
 });
 
 // ── Component method tests ───────────────────────────────────────
