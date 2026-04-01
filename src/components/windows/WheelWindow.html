@@ -10,7 +10,7 @@
             <div class="wheel-stage-topbar">
                 <div class="wheel-stage-meta">
                     <div class="wheel-stage-title">{{ wheelStageTitle }}</div>
-                    <div class="wheel-stage-pills">
+                    <div v-if="!wheelPresentationMode" class="wheel-stage-pills">
                         <span class="wheel-stage-pill">{{ wheelStageSlotsLabel }}</span>
                         <span v-if="wheelDisplayConfig" class="wheel-stage-pill">{{ wheelStageSpinPriceLabel }}</span>
                         <span v-if="wheelIsCompactLayout" class="wheel-stage-pill wheel-stage-pill--kpi">
