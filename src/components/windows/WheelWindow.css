@@ -1,10 +1,10 @@
 .wheel-layout {
   --wheel-panel-border: rgba(var(--v-theme-on-surface), 0.1);
   --wheel-panel-shadow: 0 24px 60px rgba(0, 0, 0, 0.18);
-  --wheel-mobile-app-bar-offset: calc(64px + env(safe-area-inset-top) + 10px);
-  --wheel-mobile-nav-height: calc(64px + env(safe-area-inset-bottom));
-  --wheel-mobile-rail-offset: calc(var(--wheel-mobile-nav-height) + 8px);
-  --wheel-mobile-sheet-bottom: calc(var(--wheel-mobile-nav-height) + 80px);
+  --wheel-mobile-app-bar-offset: calc(72px + env(safe-area-inset-top));
+  --wheel-mobile-nav-height: calc(72px + env(safe-area-inset-bottom));
+  --wheel-mobile-rail-offset: calc(var(--wheel-mobile-nav-height) + 12px);
+  --wheel-mobile-sheet-bottom: calc(var(--wheel-mobile-nav-height) + 88px);
   --wheel-panel-bg:
     radial-gradient(120% 120% at 0% 0%, rgba(var(--v-theme-primary), 0.16), transparent 52%),
     linear-gradient(180deg, rgba(var(--v-theme-on-surface), 0.03), rgba(var(--v-theme-on-surface), 0)),
@@ -311,6 +311,7 @@
 .wheel-panel-title {
   display: block !important;
   padding-bottom: 8px !important;
+  position: relative;
 }
 
 .wheel-panel-title__row {
@@ -318,6 +319,11 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+}
+
+.wheel-panel-title__copy {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .wheel-panel-heading {
@@ -1968,8 +1974,8 @@
     position: fixed;
     left: 10px;
     right: 10px;
-    top: var(--wheel-mobile-app-bar-offset);
-    bottom: var(--wheel-mobile-sheet-bottom);
+    top: calc(var(--wheel-mobile-app-bar-offset) + 8px);
+    bottom: calc(var(--wheel-mobile-sheet-bottom) + 8px);
     z-index: 90;
     max-width: none;
     max-height: none;
@@ -1998,8 +2004,23 @@
 
   .wheel-inspector-mobile-close {
     display: inline-flex;
-    margin-right: -4px;
-    margin-top: -2px;
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    flex-shrink: 0;
+    z-index: 4;
+  }
+
+  .wheel-panel-title {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    background: var(--wheel-panel-bg);
+    backdrop-filter: blur(18px);
+  }
+
+  .wheel-panel-title__copy {
+    padding-right: 44px;
   }
 
   .wheel-inspector-panel__body {

@@ -470,6 +470,12 @@ export function getGrossRevenueForSale(sale: Pick<Sale, "quantity" | "price" | "
   return quantity * price;
 }
 
+function getStoredSaleNetRevenue(sale: Pick<Sale, "netRevenue">): number | null {
+  const netRevenue = Number(sale.netRevenue);
+  if (!Number.isFinite(netRevenue)) return null;
+  return Math.max(0, netRevenue);
+}
+
 export function calculateTotalRevenue(
   sales: Sale[],
   sellingTaxPercent: number,
@@ -484,6 +490,10 @@ export function calculateTotalRevenueWithFees(
   feeProfileInput: FeeProfileInput = DEFAULT_FEE_PROFILE_FIELDS
 ): number {
   return sales.reduce((sum, sale) => {
+    const storedNetRevenue = getStoredSaleNetRevenue(sale);
+    if (storedNetRevenue != null) {
+      return sum + storedNetRevenue;
+    }
     const grossRevenue = getGrossRevenueForSale(sale);
     const buyerShipping = Number(sale.buyerShipping) || 0;
     return sum + calculateNetFromGross(grossRevenue, sellingTaxPercent, buyerShipping, 1, feeProfileInput);
@@ -519,7 +529,7 @@ export function calculateSaleProfit(params: {
   feeProfileInput?: FeeProfileInput;
 }): number {
   const grossRevenue = getGrossRevenueForSale(params.sale);
-  const netRevenue = calculateNetFromGross(
+  const netRevenue = getStoredSaleNetRevenue(params.sale) ?? calculateNetFromGross(
     grossRevenue,
     params.sellingTaxPercent,
     params.sale.buyerShipping || 0,
@@ -558,7 +568,7 @@ export function getSaleProfitPreview(params: {
   feeProfileInput?: FeeProfileInput;
 }): SaleProfitPreview | null {
   const grossRevenue = getGrossRevenueForSale(params.sale);
-  const netRevenue = calculateNetFromGross(
+  const netRevenue = getStoredSaleNetRevenue(params.sale) ?? calculateNetFromGross(
     grossRevenue,
     params.sellingTaxPercent,
     params.sale.buyerShipping || 0,

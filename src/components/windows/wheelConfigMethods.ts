@@ -7,6 +7,7 @@ import { getScopedWheelConfigDraftStorageKey } from "../../app-core/storageKeys.
 import { getActiveStorageScope } from "../../app-core/workspace-scope.ts";
 import { broadcastWheelSession } from "../../app-core/methods/ui/wheel-broadcast.ts";
 import { calculateTotalCaseCost } from "../../domain/calculations-fees.ts";
+import { normalizeWheelConfig } from "../../app-core/shared/normalize-wheel-config.ts";
 import type { Lot, WheelConfig, WheelTier } from "../../types/app.ts";
 import {
   buildSlotsFromConfig,
@@ -21,25 +22,6 @@ import {
   getRemainingPacksForWheelLot,
   getWheelTierInventoryMeta
 } from "./wheelSaleSupport.ts";
-
-function sanitizeWheelConfig(context: Record<string, unknown>, config: WheelConfig): WheelConfig {
-  const lots = (context.lots || []) as Lot[];
-  for (const tier of config.tiers) {
-    const boundLot = tier.boundLotId == null
-      ? null
-      : (lots.find((lot) => lot.id === tier.boundLotId) ?? null);
-    if (boundLot?.lotType === "singles") {
-      tier.deductionType = "singles";
-      tier.packsCount = 1;
-    } else if (tier.deductionType !== "singles") {
-      tier.boundSinglesId = null;
-    }
-    if (tier.boundSinglesId == null || tier.deductionType !== "singles") {
-      tier.isChase = false;
-    }
-  }
-  return config;
-}
 
 function clearQueuedWheelDraftSave(context: Record<string, unknown>): void {
   const timeoutId = context._wheelDraftSaveTimeoutId as number | undefined;
@@ -111,7 +93,7 @@ export const wheelConfigMethods = {
     const configs = (this.wheelConfigs || []) as WheelConfig[];
     const activeId = this.activeWheelConfigId as number | null;
     const config = activeId != null ? configs.find((c) => c.id === activeId) : null;
-    const sanitizedConfig = config ? sanitizeWheelConfig(this, JSON.parse(JSON.stringify(config)) as WheelConfig) : null;
+    const sanitizedConfig = config ? normalizeWheelConfig(config, (this.lots || []) as Lot[]) : null;
     if (config && sanitizedConfig && JSON.stringify(config) !== JSON.stringify(sanitizedConfig)) {
       const nextConfigs = configs.map((entry) => entry.id === sanitizedConfig.id ? sanitizedConfig : entry);
       this.wheelConfigs = [...nextConfigs];
@@ -121,7 +103,7 @@ export const wheelConfigMethods = {
       try {
         const rawDraft = localStorage.getItem(getWheelDraftStorageKey(this, sanitizedConfig.id));
         if (rawDraft) {
-          draftConfig = sanitizeWheelConfig(this, JSON.parse(rawDraft) as WheelConfig);
+          draftConfig = normalizeWheelConfig(JSON.parse(rawDraft) as WheelConfig, (this.lots || []) as Lot[]);
         }
       } catch {
         draftConfig = null;
@@ -184,11 +166,11 @@ export const wheelConfigMethods = {
     const idx = configs.findIndex((c) => c.id === editing.id);
     const previousConfig = idx >= 0 ? configs[idx] : null;
     const updated = { ...(JSON.parse(JSON.stringify(editing)) as WheelConfig), updatedAt: new Date().toISOString() };
-    sanitizeWheelConfig(this, updated);
+    const sanitizedUpdated = normalizeWheelConfig(updated, (this.lots || []) as Lot[]) ?? updated;
     if (idx >= 0) {
-      configs[idx] = updated;
+      configs[idx] = sanitizedUpdated;
     } else {
-      configs.push(updated);
+      configs.push(sanitizedUpdated);
     }
     const oldSlots = (((this as Record<string, unknown>).activeWheelSlots || []) as WheelSlot[]);
     const oldCounts = ((this.wheelSpinCounts || []) as number[]);
@@ -272,10 +254,11 @@ export const wheelConfigMethods = {
     if (!editing?.id) return;
     const configs = (this.wheelConfigs || []) as WheelConfig[];
     const idx = configs.findIndex((entry) => entry.id === editing.id);
-    const persisted = sanitizeWheelConfig(this, {
+    const persisted = normalizeWheelConfig({
       ...(JSON.parse(JSON.stringify(editing)) as WheelConfig),
       updatedAt: new Date().toISOString()
-    });
+    }, (this.lots || []) as Lot[]);
+    if (!persisted) return;
     if (idx >= 0) {
       configs[idx] = persisted;
     } else {

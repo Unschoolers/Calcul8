@@ -1,7 +1,7 @@
 import { nextTick } from "vue";
 import { broadcastWheelSession } from "../../app-core/methods/ui/wheel-broadcast.ts";
 import type { Lot, Sale, SkippedWheelDeduction, WheelConfig } from "../../types/app.ts";
-import { getScopedWheelConfigSessionStorageKey } from "../../app-core/storageKeys.ts";
+import { getScopedWheelConfigSessionStorageKey, getScopedWheelSessionStorageKey } from "../../app-core/storageKeys.ts";
 import { getActiveStorageScope } from "../../app-core/workspace-scope.ts";
 import { buildSlotsFromConfig, createWheelSale, remapSpinCountsByTier, type WheelSlot } from "./wheelHelpers.ts";
 import {
@@ -59,6 +59,13 @@ function applyReplacementToTier(
   tier.label = newLabel;
   tier.boundSinglesId = selectedId;
   tier.costPerTier = newCost;
+}
+
+function appendWheelSessionNetRevenue(context: Record<string, unknown>, sale: Pick<Sale, "netRevenue">): void {
+  const netRevenue = Number(sale.netRevenue);
+  if (!Number.isFinite(netRevenue)) return;
+  const currentNetRevenue = Number((context.wheelSessionNetRevenue as number | null | undefined) ?? 0) || 0;
+  context.wheelSessionNetRevenue = currentNetRevenue + Math.max(0, netRevenue);
 }
 
 export const wheelSessionMethods = {
@@ -260,6 +267,9 @@ export const wheelSessionMethods = {
     }
     if (tierId) {
       (this as Record<string, unknown> & { recordChaseSale: (tierId: string) => void }).recordChaseSale(tierId);
+      (this as Record<string, unknown>).wheelSessionUpdatedAt = Date.now();
+      (this as Record<string, unknown> & { saveWheelSession: () => void }).saveWheelSession();
+      void broadcastWheelSession(this as Parameters<typeof broadcastWheelSession>[0]);
     }
     (this as Record<string, unknown>).wheelChaseDialog = false;
     (this as Record<string, unknown>).wheelChasePreviewMode = false;
@@ -295,6 +305,7 @@ export const wheelSessionMethods = {
     if (typeof addWheelSale === "function") {
       addWheelSale(tier.boundLotId, sale);
     }
+    appendWheelSessionNetRevenue(this, sale);
   },
 
   canKeepChase(this: Record<string, unknown>): boolean {
@@ -331,6 +342,7 @@ export const wheelSessionMethods = {
     (this as Record<string, unknown>).wheelChasePreviewMode = false;
     (this as Record<string, unknown>).wheelChaseReplacementSinglesId = null;
     (this as Record<string, unknown>).wheelChasePendingTierId = "";
+    (this as Record<string, unknown>).wheelSessionNetRevenue = 0;
     (this as Record<string, unknown>).wheelSessionCostAdjustment = 0;
     (this as Record<string, unknown>).wheelFairnessHistory = [];
     (this as Record<string, unknown>).wheelChaseTallyHistory = [];
@@ -397,6 +409,7 @@ export const wheelSessionMethods = {
     if (typeof addWheelSale === "function") {
       addWheelSale(entry.selectedLotId, sale);
     }
+    appendWheelSessionNetRevenue(this, sale);
 
     skipped.splice(index, 1);
     this.wheelSkippedDeductions = [...skipped];
@@ -405,6 +418,7 @@ export const wheelSessionMethods = {
       (this as Record<string, unknown>).wheelEndingSession = false;
     }
     (this as Record<string, unknown>).wheelSessionUpdatedAt = Date.now();
+    (this as Record<string, unknown> & { saveWheelSession: () => void }).saveWheelSession();
     void broadcastWheelSession(this as Parameters<typeof broadcastWheelSession>[0]);
   },
 
@@ -442,6 +456,7 @@ export const wheelSessionMethods = {
       wheelSlotTiers: slots.map((slot) => slot.tier),
       wheelTotalSpins: this.wheelTotalSpins,
       wheelSessionUpdatedAt: this.wheelSessionUpdatedAt,
+      wheelSessionNetRevenue: (this as Record<string, unknown>).wheelSessionNetRevenue,
       wheelSessionCostAdjustment: (this as Record<string, unknown>).wheelSessionCostAdjustment,
       wheelFairnessHistory: (this as Record<string, unknown>).wheelFairnessHistory,
       wheelChaseTallyHistory: (this as Record<string, unknown>).wheelChaseTallyHistory,
@@ -451,12 +466,20 @@ export const wheelSessionMethods = {
       wheelLastResultColor: (this as Record<string, unknown>).wheelLastResultColor
     };
     try {
+      const storageScope = getActiveStorageScope(this as {
+        activeScopeType: "personal" | "workspace";
+        activeWorkspaceId: string | null;
+      });
       localStorage.setItem(
-        getScopedWheelConfigSessionStorageKey(getActiveStorageScope(this as {
-          activeScopeType: "personal" | "workspace";
-          activeWorkspaceId: string | null;
-        }), activeId),
+        getScopedWheelConfigSessionStorageKey(storageScope, activeId),
         JSON.stringify(session)
+      );
+      localStorage.setItem(
+        getScopedWheelSessionStorageKey(storageScope),
+        JSON.stringify({
+          activeWheelConfigId: activeId,
+          ...session
+        })
       );
     } catch { /* quota exceeded — non-critical */ }
   },
@@ -464,15 +487,19 @@ export const wheelSessionMethods = {
   loadWheelFromSession(this: Record<string, unknown>): boolean {
     const activeId = this.activeWheelConfigId as number | null;
     if (activeId == null) return false;
+    const storageScope = getActiveStorageScope(this as {
+      activeScopeType: "personal" | "workspace";
+      activeWorkspaceId: string | null;
+    });
     const raw = localStorage.getItem(
-      getScopedWheelConfigSessionStorageKey(getActiveStorageScope(this as {
-        activeScopeType: "personal" | "workspace";
-        activeWorkspaceId: string | null;
-      }), activeId)
-    );
+      getScopedWheelConfigSessionStorageKey(storageScope, activeId)
+    ) || localStorage.getItem(getScopedWheelSessionStorageKey(storageScope));
     if (!raw) return false;
     try {
       const session = JSON.parse(raw);
+      if (session.activeWheelConfigId != null && Number(session.activeWheelConfigId) !== activeId) {
+        return false;
+      }
       const slots = (this as Record<string, unknown>).activeWheelSlots as WheelSlot[];
       if (!Array.isArray(session.wheelSpinCounts)) return false;
       if (session.wheelSpinCounts.length === slots.length) {
@@ -484,6 +511,10 @@ export const wheelSessionMethods = {
       }
       this.wheelTotalSpins = (this.wheelSpinCounts as number[]).reduce((sum, count) => sum + count, 0);
       this.wheelSessionUpdatedAt = session.wheelSessionUpdatedAt || 0;
+      (this as Record<string, unknown>).wheelSessionNetRevenue =
+        Number.isFinite(Number(session.wheelSessionNetRevenue))
+          ? (Number(session.wheelSessionNetRevenue) || 0)
+          : null;
       (this as Record<string, unknown>).wheelSessionCostAdjustment = session.wheelSessionCostAdjustment || 0;
       (this as Record<string, unknown>).wheelFairnessHistory = Array.isArray(session.wheelFairnessHistory)
         ? session.wheelFairnessHistory.slice(-20)

@@ -223,6 +223,17 @@ test("wheelSessionProfit includes buyer shipping from bound lots in fee math", (
   assert.ok(Math.abs(result - 54.65) < 0.001);
 });
 
+test("wheelSessionProfit prefers stored session net revenue in live mode", () => {
+  const vm = {
+    wheelMode: "live",
+    wheelSessionNetRevenue: 84.65,
+    wheelSessionCost: 30
+  };
+
+  const result = WheelWindow.computed!.wheelSessionProfit.call(vm as never);
+  assert.ok(Math.abs(result - 54.65) < 0.001);
+});
+
 test("wheelSessionMarginDisplay shows dash when no revenue", () => {
   const vm = { wheelSessionRevenue: 0, wheelSessionProfit: 0 };
   assert.equal(WheelWindow.computed!.wheelSessionMarginDisplay.call(vm as never), "—");
@@ -431,9 +442,22 @@ test("recordSpinResult increments spin counts", () => {
     ],
     wheelSpinCounts: [0, 0],
     wheelTotalSpins: 0,
+    wheelSessionNetRevenue: 0,
     activeWheelConfig: { id: 1, spinPrice: 10, tiers: [{ id: "t1", boundLotId: 42 }, { id: "t2", boundLotId: 43 }] },
     addWheelSaleToLot: vi.fn(),
-    lots: [],
+    lots: [{
+      id: 42,
+      name: "Lot A",
+      lotType: "bulk",
+      boxesPurchased: 1,
+      packsPerBox: 10,
+      sellingShippingPerOrder: 0,
+      platformFeePercent: 8,
+      additionalFeePercent: 2.9,
+      additionalFeeAppliesTo: "sale_plus_shipping",
+      fixedFeePerOrder: 0.3
+    }],
+    loadSalesForLotId: vi.fn(() => []),
     wheelSkippedDeductions: [],
     activeWheelConfigId: 1,
     saveWheelSession: vi.fn()
@@ -442,6 +466,7 @@ test("recordSpinResult increments spin counts", () => {
   WheelWindow.methods!.recordSpinResult.call(vm as never, 0);
   assert.equal(vm.wheelTotalSpins, 1);
   assert.deepEqual(vm.wheelSpinCounts, [1, 0]);
+  assert.ok(Math.abs((vm.wheelSessionNetRevenue as number) - 8.61) < 0.001);
 });
 
 test("landOnSlot sets result text and color", () => {
@@ -1601,6 +1626,7 @@ test("resetWheelSession clears cost adjustment", () => {
     wheelFairnessHistoryOpen: true,
     wheelPreviewFairnessHistory: [{ spinNumber: 1, label: "Preview", color: "#0f0", hash: "ph", seed: "ps", timestamp: 1 }],
     wheelFairnessHistory: [{ spinNumber: 1, label: "Live", color: "#f00", hash: "h", seed: "s", timestamp: 1 }],
+    wheelSessionNetRevenue: 44.2,
     wheelSessionCostAdjustment: 80,
     wheelChaseTallyHistory: [{ tierId: "tc", label: "Old", color: "#f00", count: 3 }],
     saveWheelSession: vi.fn()
@@ -1609,6 +1635,7 @@ test("resetWheelSession clears cost adjustment", () => {
   WheelWindow.methods!.resetWheelSession.call(vm as never);
 
   assert.equal(vm.wheelTotalSpins, 0);
+  assert.equal(vm.wheelSessionNetRevenue, 0);
   assert.equal(vm.wheelSessionCostAdjustment, 0);
   assert.equal(vm.wheelChaseDialog, false);
   assert.equal(vm.wheelChasePendingTierId, "");
@@ -1619,7 +1646,15 @@ test("resetWheelSession clears cost adjustment", () => {
 
 test("createWheelSale builds a sale with lot shipping", () => {
   const config = { id: 1, spinPrice: 10, tiers: [] } as never;
-  const lots = [{ id: 42, name: "My Lot", sellingShippingPerOrder: 3.5 }] as never;
+  const lots = [{
+    id: 42,
+    name: "My Lot",
+    sellingShippingPerOrder: 3.5,
+    platformFeePercent: 8,
+    additionalFeePercent: 2.9,
+    additionalFeeAppliesTo: "sale_plus_shipping",
+    fixedFeePerOrder: 0.3
+  }] as never;
   const sale = createWheelSale({
     config, tier: "t1", cost: 5, packsCount: 2, deductionType: "packs",
     label: "Prize", lotId: 42, lots
@@ -1632,6 +1667,7 @@ test("createWheelSale builds a sale with lot shipping", () => {
   assert.equal(sale.memo, "Wheel spin: Prize");
   assert.equal(sale.winningTierId, "t1");
   assert.equal(sale.costOfWinningTier, 5);
+  assert.ok(Math.abs((sale.netRevenue ?? 0) - 8.5085) < 0.001);
 });
 
 test("createWheelSale uses spinNumber in memo when provided", () => {
@@ -1739,7 +1775,10 @@ test("keepChase records sale and closes dialog", () => {
     }],
     loadSalesForLotId: vi.fn(() => []),
     addWheelSaleToLot: addSaleFn,
-    recordChaseSale: WheelWindow.methods!.recordChaseSale
+    recordChaseSale: WheelWindow.methods!.recordChaseSale,
+    saveWheelSession: vi.fn(),
+    activeScopeType: "personal",
+    activeWorkspaceId: null
   };
 
   WheelWindow.methods!.keepChase.call(vm as never);
@@ -1941,6 +1980,30 @@ test("focusWheelInspector supports component refs that expose scrollIntoView via
   assert.deepEqual(scrollIntoView.mock.calls[0]?.[0], { behavior: "smooth", block: "start" });
 });
 
+test("normalizeWheelCompactInspectorState closes the mobile sheet when layout is no longer compact", () => {
+  const vm: Record<string, unknown> = {
+    wheelViewportWidth: 1400,
+    wheelPresentationMode: false,
+    wheelMobileInspectorOpen: true
+  };
+
+  WheelWindow.methods!.normalizeWheelCompactInspectorState.call(vm as never);
+
+  assert.equal(vm.wheelMobileInspectorOpen, false);
+});
+
+test("normalizeWheelCompactInspectorState keeps the mobile sheet closed in presentation mode", () => {
+  const vm: Record<string, unknown> = {
+    wheelViewportWidth: 900,
+    wheelPresentationMode: true,
+    wheelMobileInspectorOpen: true
+  };
+
+  WheelWindow.methods!.normalizeWheelCompactInspectorState.call(vm as never);
+
+  assert.equal(vm.wheelMobileInspectorOpen, false);
+});
+
 // ── Session persistence ─────────────────────────────────────────
 
 test("saveWheelSession stores session to localStorage", () => {
@@ -1956,6 +2019,7 @@ test("saveWheelSession stores session to localStorage", () => {
     wheelSpinCounts: [1, 2],
     wheelTotalSpins: 3,
     wheelSessionUpdatedAt: 0,
+    wheelSessionNetRevenue: 22.75,
     wheelSessionCostAdjustment: 10,
     wheelFairnessHistory: [{ spinNumber: 3, label: "Prize", color: "#f00", hash: "hash-3", seed: "seed-3", timestamp: 3 }],
     wheelChaseTallyHistory: [],
@@ -1968,12 +2032,14 @@ test("saveWheelSession stores session to localStorage", () => {
 
   WheelWindow.methods!.saveWheelSession.call(vm as never);
 
-  assert.equal(mockStorage.setItem.mock.calls.length, 1);
+  assert.equal(mockStorage.setItem.mock.calls.length, 2);
   assert.equal(mockStorage.setItem.mock.calls[0]![0], "whatfees_wheel_session__cfg__42");
   const parsed = JSON.parse(store["whatfees_wheel_session__cfg__42"]!);
   assert.deepEqual(parsed.wheelSpinCounts, [1, 2]);
   assert.equal(parsed.wheelTotalSpins, 3);
+  assert.equal(parsed.wheelSessionNetRevenue, 22.75);
   assert.equal(parsed.wheelFairnessHistory.length, 1);
+  assert.equal(mockStorage.setItem.mock.calls[1]![0], "whatfees_wheel_session");
 
   Object.defineProperty(globalThis, "localStorage", { value: origLocalStorage, writable: true, configurable: true });
 });
@@ -1982,6 +2048,7 @@ test("loadWheelFromSession restores session from localStorage", () => {
   const session = {
     wheelSpinCounts: [3, 4],
     wheelTotalSpins: 7,
+    wheelSessionNetRevenue: 61.1,
     wheelSessionCostAdjustment: 5,
     wheelFairnessHistory: [{ spinNumber: 7, label: "Prize", color: "#0f0", hash: "hash-7", seed: "seed-7", timestamp: 7 }],
     wheelChaseTallyHistory: [],
@@ -2002,6 +2069,7 @@ test("loadWheelFromSession restores session from localStorage", () => {
     activeWheelSlots: [{}, {}], // 2 slots matches session spinCounts length
     wheelSpinCounts: [0, 0],
     wheelTotalSpins: 0,
+    wheelSessionNetRevenue: 0,
     wheelSessionCostAdjustment: 0,
     wheelFairnessHistory: [],
     wheelChaseTallyHistory: [],
@@ -2017,7 +2085,55 @@ test("loadWheelFromSession restores session from localStorage", () => {
   assert.equal(result, true);
   assert.deepEqual(vm.wheelSpinCounts, [3, 4]);
   assert.equal(vm.wheelTotalSpins, 7);
+  assert.equal(vm.wheelSessionNetRevenue, 61.1);
   assert.equal((vm.wheelFairnessHistory as Array<{ spinNumber: number }>)[0]!.spinNumber, 7);
+
+  Object.defineProperty(globalThis, "localStorage", { value: origLocalStorage, writable: true, configurable: true });
+});
+
+test("loadWheelFromSession falls back to the scoped root session snapshot when the per-config key is missing", () => {
+  const session = {
+    activeWheelConfigId: 42,
+    wheelSpinCounts: [2, 1],
+    wheelTotalSpins: 3,
+    wheelSessionNetRevenue: 25.83,
+    wheelSessionCostAdjustment: 4,
+    wheelFairnessHistory: [],
+    wheelChaseTallyHistory: [],
+    wheelSkippedDeductions: [],
+    wheelCurrentAngle: 1.25,
+    wheelLastResult: "🎉 Prize",
+    wheelLastResultColor: "#0f0"
+  };
+  const mockStorage = {
+    getItem: vi.fn((key: string) => key === "whatfees_wheel_session" ? JSON.stringify(session) : null)
+  };
+  const origLocalStorage = globalThis.localStorage;
+  Object.defineProperty(globalThis, "localStorage", { value: mockStorage, writable: true, configurable: true });
+
+  const vm: Record<string, unknown> = {
+    activeWheelConfigId: 42,
+    activeScopeType: "personal",
+    activeWorkspaceId: null,
+    activeWheelSlots: [{}, {}],
+    wheelSpinCounts: [0, 0],
+    wheelTotalSpins: 0,
+    wheelSessionNetRevenue: 0,
+    wheelSessionCostAdjustment: 0,
+    wheelFairnessHistory: [],
+    wheelChaseTallyHistory: [],
+    wheelSkippedDeductions: [],
+    wheelCurrentAngle: 0,
+    wheelLastResult: "",
+    wheelLastResultColor: ""
+  };
+
+  const result = WheelWindow.methods!.loadWheelFromSession.call(vm as never);
+
+  assert.equal(result, true);
+  assert.deepEqual(vm.wheelSpinCounts, [2, 1]);
+  assert.equal(vm.wheelSessionNetRevenue, 25.83);
+  assert.equal(vm.wheelCurrentAngle, 1.25);
 
   Object.defineProperty(globalThis, "localStorage", { value: origLocalStorage, writable: true, configurable: true });
 });

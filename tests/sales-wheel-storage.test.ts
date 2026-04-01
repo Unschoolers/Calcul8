@@ -64,6 +64,7 @@ function createContext(overrides: Record<string, unknown> = {}): Record<string, 
   return {
     activeScopeType: "personal",
     activeWorkspaceId: null,
+    lots: [],
     wheelConfigs: [],
     activeWheelConfigId: null,
     wheelTotalSpins: 0,
@@ -137,8 +138,14 @@ test("loadWheelFromStorage reads workspace-scoped wheel state without falling ba
         wheelSpinCounts: [3],
         wheelLastResult: "Workspace result",
         wheelSessionUpdatedAt: 456,
+        wheelSessionNetRevenue: 24.5,
+        wheelSessionCostAdjustment: 5,
+        wheelFairnessHistory: [{ spinNumber: 1, label: "Prize", color: "#f00", hash: "h", seed: "s", timestamp: 1 }],
+        wheelChaseTallyHistory: [{ tierId: "t2", label: "Prize", color: "#f00", count: 1 }],
         wheelSessionLotSelections: { t2: 77 },
-        wheelSkippedDeductions: [{ tierId: "t2" }]
+        wheelSkippedDeductions: [{ tierId: "t2" }],
+        wheelCurrentAngle: 1.25,
+        wheelLastResultColor: "#f00"
       })
     );
 
@@ -157,7 +164,53 @@ test("loadWheelFromStorage reads workspace-scoped wheel state without falling ba
     assert.deepEqual(context.wheelSpinCounts, [3]);
     assert.equal(context.wheelLastResult, "Workspace result");
     assert.equal(context.wheelSessionUpdatedAt, 456);
+    assert.equal(context.wheelSessionNetRevenue, 24.5);
+    assert.equal(context.wheelSessionCostAdjustment, 5);
+    assert.equal((context.wheelFairnessHistory as Array<{ spinNumber: number }>)[0]?.spinNumber, 1);
+    assert.equal((context.wheelChaseTallyHistory as Array<{ tierId: string }>)[0]?.tierId, "t2");
     assert.deepEqual(context.wheelSessionLotSelections, { t2: 77 });
     assert.deepEqual(context.wheelSkippedDeductions, [{ tierId: "t2" }]);
+    assert.equal(context.wheelCurrentAngle, 1.25);
+    assert.equal(context.wheelLastResultColor, "#f00");
+  });
+});
+
+test("saveWheelSessionToStorage preserves richer wheel session fields already mirrored by the wheel window", async () => {
+  await withMockedLocalStorage(async (data) => {
+    data.set(
+      getScopedWheelSessionStorageKey({
+        scopeType: "personal"
+      }),
+      JSON.stringify({
+        activeWheelConfigId: 42,
+        wheelSessionNetRevenue: 24.5,
+        wheelSessionCostAdjustment: 5,
+        wheelFairnessHistory: [{ spinNumber: 1, label: "Prize", color: "#f00", hash: "h", seed: "s", timestamp: 1 }],
+        wheelChaseTallyHistory: [{ tierId: "t2", label: "Prize", color: "#f00", count: 1 }],
+        wheelCurrentAngle: 1.25,
+        wheelLastResultColor: "#f00"
+      })
+    );
+
+    const context = createContext({
+      activeWheelConfigId: 42,
+      wheelTotalSpins: 3,
+      wheelSpinCounts: [3],
+      wheelLastResult: "Workspace result",
+      wheelSessionUpdatedAt: 456,
+      wheelSessionLotSelections: { t2: 77 },
+      wheelSkippedDeductions: [{ tierId: "t2" }]
+    });
+
+    salesMethods.saveWheelSessionToStorage.call(context as never);
+
+    const saved = JSON.parse(data.get(getScopedWheelSessionStorageKey({ scopeType: "personal" })) || "{}");
+    assert.equal(saved.activeWheelConfigId, 42);
+    assert.equal(saved.wheelSessionNetRevenue, 24.5);
+    assert.equal(saved.wheelSessionCostAdjustment, 5);
+    assert.equal(saved.wheelCurrentAngle, 1.25);
+    assert.equal(saved.wheelLastResultColor, "#f00");
+    assert.equal(saved.wheelLastResult, "Workspace result");
+    assert.deepEqual(saved.wheelSessionLotSelections, { t2: 77 });
   });
 });

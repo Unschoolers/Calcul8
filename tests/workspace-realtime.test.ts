@@ -116,6 +116,19 @@ function createApp(overrides: Record<string, unknown> = {}) {
     wheelLastResult: "",
     wheelSessionUpdatedAt: 0,
     wheelSkippedDeductions: [],
+    wheelSessionNetRevenue: 0,
+    wheelSessionCostAdjustment: 0,
+    wheelFairnessHistory: [] as Array<{
+      spinNumber: number;
+      label: string;
+      color: string;
+      hash: string;
+      seed: string;
+      timestamp: number;
+    }>,
+    wheelChaseTallyHistory: [] as Array<{ tierId: string; label: string; color: string; count: number }>,
+    wheelCurrentAngle: 0,
+    wheelLastResultColor: "",
     pullCloudSync: vi.fn(async () => undefined),
     getSalesStorageKey: (lotId: number) => `sales:${lotId}`,
     loadSalesForLotId: vi.fn(() => []),
@@ -284,6 +297,12 @@ test("workspace realtime applies incoming sale and live pricing events for the a
 
 test("workspace realtime applies wheel updates including resets when revision is newer", async () => {
   const app = createApp({
+    lots: [{
+      id: 1,
+      name: "Singles Lot",
+      lotType: "singles",
+      singlesPurchases: [{ id: 10, name: "Pack A" }]
+    }],
     wheelConfigs: [{
       id: 91,
       name: "Old Wheel",
@@ -296,7 +315,25 @@ test("workspace realtime applies wheel updates including resets when revision is
     wheelTotalSpins: 10,
     wheelSpinCounts: [10],
     wheelLastResult: "Old",
-    wheelSessionUpdatedAt: 100
+    wheelSessionUpdatedAt: 100,
+    wheelSessionNetRevenue: 80,
+    wheelSessionCostAdjustment: 4,
+    wheelFairnessHistory: [{
+      spinNumber: 1,
+      label: "Old Fair",
+      color: "#111111",
+      hash: "old-hash",
+      seed: "old-seed",
+      timestamp: 11
+    }],
+    wheelChaseTallyHistory: [{
+      tierId: "old-tier",
+      label: "Old Tier",
+      color: "#222222",
+      count: 2
+    }],
+    wheelCurrentAngle: 0.5,
+    wheelLastResultColor: "#abcdef"
   });
 
   refreshWorkspaceRealtime(app as never);
@@ -309,29 +346,92 @@ test("workspace realtime applies wheel updates including resets when revision is
     room: "workspace:ws_dcb4d6f021637411:wheel",
     eventType: "wheel.session.updated",
     data: {
+      wheelSessionNetRevenue: 61.1,
+      wheelSessionCostAdjustment: 12,
+      wheelFairnessHistory: [{
+        spinNumber: 1,
+        label: "Verified Fair",
+        color: "#f00",
+        hash: "hash-1",
+        seed: "seed-1",
+        timestamp: 1
+      }],
+      wheelChaseTallyHistory: [{
+        tierId: "tier-1",
+        label: "Old Prize",
+        color: "#0f0",
+        count: 3
+      }],
       wheelConfigs: [{
         id: 91,
         name: "New Wheel",
         spinPrice: 15,
         targetMargin: 35,
         createdAt: "",
-        tiers: []
+        tiers: [{
+          id: "tier-1",
+          name: "Tier One",
+          color: "#ff0000",
+          slots: 4,
+          count: 1,
+          cost: 0,
+          boundLotId: 1,
+          boundSinglesId: 10,
+          deductionType: "packs",
+          packsCount: 4,
+          isChase: true
+        }]
       }],
       activeWheelConfigId: 91,
       wheelTotalSpins: 0,
       wheelSpinCounts: [0],
       wheelLastResult: "",
       wheelSessionUpdatedAt: 200,
-      wheelSkippedDeductions: []
+      wheelSkippedDeductions: [{
+        slotName: "Old Prize",
+        slotColor: "#f00",
+        slotCost: 5,
+        slotTier: "tier-1",
+        slotPacksCount: 1,
+        slotDeductionType: "packs",
+        slotIndex: 0,
+        selectedLotId: 1,
+        spinNumber: 2
+      }],
+      wheelCurrentAngle: 1.75,
+      wheelLastResultColor: "#00ff00"
     }
   });
 
   assert.equal(app.wheelTotalSpins, 0);
   assert.deepEqual(app.wheelSpinCounts, [0]);
   assert.equal(app.wheelLastResult, "");
+  assert.equal(app.wheelSessionNetRevenue, 61.1);
+  assert.equal(app.wheelSessionCostAdjustment, 12);
+  assert.deepEqual(app.wheelFairnessHistory, [{
+    spinNumber: 1,
+    label: "Verified Fair",
+    color: "#f00",
+    hash: "hash-1",
+    seed: "seed-1",
+    timestamp: 1
+  }]);
+  assert.deepEqual(app.wheelChaseTallyHistory, [{
+    tierId: "tier-1",
+    label: "Old Prize",
+    color: "#0f0",
+    count: 3
+  }]);
+  assert.equal(app.wheelCurrentAngle, 1.75);
+  assert.equal(app.wheelLastResultColor, "#00ff00");
+  const sanitizedTier = (app.wheelConfigs as Array<{ tiers?: Array<{ deductionType?: string; packsCount?: number; isChase?: boolean; boundSinglesId?: number | null }> }>)[0]?.tiers?.[0];
   assert.equal((app.wheelConfigs as Array<{ name: string }>)[0]?.name, "New Wheel");
+  assert.equal(sanitizedTier?.deductionType, "singles");
+  assert.equal(sanitizedTier?.packsCount, 1);
+  assert.equal(sanitizedTier?.isChase, true);
   assert.equal(app.activeWheelConfigId, 91);
   assert.equal(app.wheelSessionUpdatedAt, 200);
+  assert.equal((app.wheelSkippedDeductions as Array<{ spinNumber?: number }>)[0]?.spinNumber, 2);
 });
 
 test("workspace realtime reconnects after an unexpected close and stops cleanly", async () => {

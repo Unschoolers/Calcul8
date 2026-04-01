@@ -97,10 +97,15 @@ export function normalizeSale(value: unknown): Sale | null {
   const candidate = value as Record<string, unknown>;
   const id = Number(candidate.id);
   if (!Number.isFinite(id)) return null;
+  const linkedWheelId = Number(candidate.linkedWheelId);
+  const costOfWinningTier = Number(candidate.costOfWinningTier);
+  const netRevenue = Number(candidate.netRevenue);
 
   return {
     id,
-    type: candidate.type === "box" || candidate.type === "rtyh" ? candidate.type : "pack",
+    type: candidate.type === "box" || candidate.type === "rtyh" || candidate.type === "wheel"
+      ? candidate.type
+      : "pack",
     quantity: Math.max(0, Math.floor(Number(candidate.quantity) || 0)),
     packsCount: Math.max(0, Math.floor(Number(candidate.packsCount) || 0)),
     singlesPurchaseEntryId: Number.isFinite(Number(candidate.singlesPurchaseEntryId))
@@ -133,7 +138,11 @@ export function normalizeSale(value: unknown): Sale | null {
     version: Number.isFinite(Number(candidate.version)) ? Math.floor(Number(candidate.version)) : undefined,
     updatedAt: typeof candidate.updatedAt === "string" ? candidate.updatedAt : undefined,
     updatedBy: typeof candidate.updatedBy === "string" ? candidate.updatedBy : undefined,
-    mutationId: typeof candidate.mutationId === "string" ? candidate.mutationId : undefined
+    mutationId: typeof candidate.mutationId === "string" ? candidate.mutationId : undefined,
+    linkedWheelId: Number.isFinite(linkedWheelId) && linkedWheelId > 0 ? Math.floor(linkedWheelId) : undefined,
+    winningTierId: typeof candidate.winningTierId === "string" ? candidate.winningTierId : undefined,
+    costOfWinningTier: Number.isFinite(costOfWinningTier) ? costOfWinningTier : undefined,
+    netRevenue: Number.isFinite(netRevenue) ? Math.max(0, netRevenue) : undefined
   };
 }
 

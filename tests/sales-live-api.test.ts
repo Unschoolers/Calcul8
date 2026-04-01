@@ -35,6 +35,7 @@ import {
   fetchAuthoritativeLivePricing,
   fetchAuthoritativeSales,
   fetchWorkspaceRealtimeSubscribeToken,
+  normalizeSale,
   saveAuthoritativeLivePricing,
   saveAuthoritativeSale
 } from "../src/app-core/methods/sales-live-api.ts";
@@ -107,6 +108,45 @@ test("canUseAuthoritativeSalesLiveApi requires both api base URL and bootstrap t
   assert.equal(canUseAuthoritativeSalesLiveApi(), true);
 });
 
+test("normalizeSale preserves wheel-specific fields and stored net revenue", () => {
+  const sale = normalizeSale({
+    id: 51,
+    type: "wheel",
+    quantity: 1,
+    packsCount: 2,
+    price: 10,
+    buyerShipping: 4,
+    date: "2026-03-30",
+    linkedWheelId: 99,
+    winningTierId: "tier-1",
+    costOfWinningTier: 6.5,
+    netRevenue: 8.61
+  });
+
+  assert.deepEqual(sale, {
+    id: 51,
+    type: "wheel",
+    quantity: 1,
+    packsCount: 2,
+    singlesPurchaseEntryId: undefined,
+    singlesItems: undefined,
+    price: 10,
+    priceIsTotal: undefined,
+    customer: undefined,
+    memo: undefined,
+    buyerShipping: 4,
+    date: "2026-03-30",
+    version: undefined,
+    updatedAt: undefined,
+    updatedBy: undefined,
+    mutationId: undefined,
+    linkedWheelId: 99,
+    winningTierId: "tier-1",
+    costOfWinningTier: 6.5,
+    netRevenue: 8.61
+  });
+});
+
 test("fetchAuthoritativeSales returns null without signed-in entity API access", async () => {
   getStoredGoogleIdTokenMock.mockReturnValue("");
 
@@ -177,7 +217,11 @@ test("fetchAuthoritativeSales normalizes API payload, scopes workspace requests,
       version: 8,
       updatedAt: "2026-03-17T12:00:00Z",
       updatedBy: "user-1",
-      mutationId: "mut-1"
+      mutationId: "mut-1",
+      linkedWheelId: undefined,
+      winningTierId: undefined,
+      costOfWinningTier: undefined,
+      netRevenue: undefined
     }
   ]);
   assert.equal(fetchAuthenticatedApiResponseMock.mock.calls.length, 1);

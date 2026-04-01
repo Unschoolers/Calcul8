@@ -1,6 +1,7 @@
 import type { Sale, WorkspaceRealtimeStatus } from "../../../types/app.ts";
 import type { AppContext } from "../../context.ts";
 import { removeById, upsertById } from "../../shared/collection-updaters.ts";
+import { normalizeWheelConfigs } from "../../shared/normalize-wheel-config.ts";
 import {
     cacheAuthoritativeSales,
     canUseAuthoritativeSalesLiveApi,
@@ -37,7 +38,21 @@ type RealtimeApp = Pick<
   | "wheelLastResult"
   | "wheelSessionUpdatedAt"
   | "wheelSkippedDeductions"
->;
+> & {
+  wheelSessionNetRevenue?: number | null;
+  wheelSessionCostAdjustment?: number;
+  wheelFairnessHistory?: Array<{
+    spinNumber: number;
+    label: string;
+    color: string;
+    hash: string;
+    seed: string;
+    timestamp: number;
+  }>;
+  wheelChaseTallyHistory?: Array<{ tierId: string; label: string; color: string; count: number }>;
+  wheelCurrentAngle?: number;
+  wheelLastResultColor?: string;
+};
 
 type RealtimeSocketState = {
   socket: WebSocket | null;
@@ -274,7 +289,7 @@ function handleWheelSessionUpdatedEvent(app: RealtimeApp, data: unknown): void {
   if (incomingUpdatedAt > 0 && incomingUpdatedAt < app.wheelSessionUpdatedAt) return;
 
   if (Array.isArray(raw.wheelConfigs)) {
-    app.wheelConfigs = raw.wheelConfigs as typeof app.wheelConfigs;
+    app.wheelConfigs = normalizeWheelConfigs(raw.wheelConfigs, app.lots) as typeof app.wheelConfigs;
   }
 
   const incomingTotalSpins = Math.max(0, Math.floor(Number(raw.wheelTotalSpins) || 0));
@@ -291,11 +306,46 @@ function handleWheelSessionUpdatedEvent(app: RealtimeApp, data: unknown): void {
 
   app.wheelSessionUpdatedAt = incomingUpdatedAt > 0 ? incomingUpdatedAt : Date.now();
   app.wheelTotalSpins = incomingTotalSpins;
+  if (Number.isFinite(Number(raw.wheelSessionNetRevenue))) {
+    app.wheelSessionNetRevenue = Number(raw.wheelSessionNetRevenue) || 0;
+  }
+  if (Number.isFinite(Number(raw.wheelSessionCostAdjustment))) {
+    app.wheelSessionCostAdjustment = Number(raw.wheelSessionCostAdjustment) || 0;
+  }
+  if (Array.isArray(raw.wheelFairnessHistory)) {
+    app.wheelFairnessHistory = raw.wheelFairnessHistory
+      .filter((entry) => entry && typeof entry === "object" && !Array.isArray(entry))
+      .map((entry) => ({
+        spinNumber: Math.max(0, Math.floor(Number((entry as Record<string, unknown>).spinNumber) || 0)),
+        label: String((entry as Record<string, unknown>).label ?? ""),
+        color: String((entry as Record<string, unknown>).color ?? ""),
+        hash: String((entry as Record<string, unknown>).hash ?? ""),
+        seed: String((entry as Record<string, unknown>).seed ?? ""),
+        timestamp: Math.max(0, Math.floor(Number((entry as Record<string, unknown>).timestamp) || 0))
+      }));
+  }
+  if (Array.isArray(raw.wheelChaseTallyHistory)) {
+    app.wheelChaseTallyHistory = raw.wheelChaseTallyHistory
+      .filter((entry) => entry && typeof entry === "object" && !Array.isArray(entry))
+      .map((entry) => ({
+        tierId: String((entry as Record<string, unknown>).tierId ?? ""),
+        label: String((entry as Record<string, unknown>).label ?? ""),
+        color: String((entry as Record<string, unknown>).color ?? ""),
+        count: Math.max(0, Math.floor(Number((entry as Record<string, unknown>).count) || 0))
+      }))
+      .filter((entry) => entry.tierId.length > 0);
+  }
   if (Array.isArray(raw.wheelSpinCounts)) {
     app.wheelSpinCounts = raw.wheelSpinCounts.map((n) => Math.max(0, Math.floor(Number(n) || 0)));
   }
   if (typeof raw.wheelLastResult === "string") {
     app.wheelLastResult = raw.wheelLastResult;
+  }
+  if (Number.isFinite(Number(raw.wheelCurrentAngle))) {
+    app.wheelCurrentAngle = Number(raw.wheelCurrentAngle) || 0;
+  }
+  if (typeof raw.wheelLastResultColor === "string" && raw.wheelLastResultColor.trim()) {
+    app.wheelLastResultColor = raw.wheelLastResultColor;
   }
   if (Array.isArray(raw.wheelSkippedDeductions)) {
     app.wheelSkippedDeductions = raw.wheelSkippedDeductions as typeof app.wheelSkippedDeductions;

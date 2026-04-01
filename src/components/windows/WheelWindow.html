@@ -181,6 +181,17 @@
                     </v-card>
                 </v-menu>
             </div>
+            <wheel-action-rail
+                v-if="!wheelPresentationMode && wheelIsCompactLayout"
+                :mode="wheelMode"
+                :primary-disabled="wheelPrimarySpinDisabled"
+                :primary-icon="wheelSpinButtonIcon"
+                :primary-label="wheelSpinButtonLabel"
+                :ending-session="wheelEndingSession"
+                @open-inspector="openWheelInspector"
+                @primary-spin="runWheelPrimarySpin"
+                @end-wheel="startEndWheelSession"
+            ></wheel-action-rail>
             <div class="wheel-stage-caption">
                 {{ wheelStageCaption }}
             </div>
@@ -313,18 +324,6 @@
         class="wheel-inspector-panel"
         :class="{ 'wheel-inspector-panel--mobile-open': wheelMobileInspectorOpen }"
     ></wheel-inspector>
-
-    <wheel-action-rail
-        v-if="!wheelPresentationMode && wheelIsCompactLayout"
-        :mode="wheelMode"
-        :primary-disabled="wheelPrimarySpinDisabled"
-        :primary-icon="wheelSpinButtonIcon"
-        :primary-label="wheelSpinButtonLabel"
-        :ending-session="wheelEndingSession"
-        @open-inspector="openWheelInspector"
-        @primary-spin="runWheelPrimarySpin"
-        @end-wheel="startEndWheelSession"
-    ></wheel-action-rail>
 
     <!-- Confirm Dialog -->
     <v-dialog v-model="wheelConfirmDialog" max-width="380" persistent>

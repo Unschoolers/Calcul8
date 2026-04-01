@@ -81,33 +81,37 @@
 
       <div class="fee-profile-section mb-2">
         <v-row dense class="align-center">
-          <v-col cols="10" class="py-0">
-            <v-select
-              v-model="feeProfilePreset"
-              :items="[
-                { title: 'Whatnot', value: 'whatnot' },
-                { title: 'No fees', value: 'none' }
+            <v-col :cols="$vuetify?.display?.smAndDown ? 12 : 10" class="py-0">
+              <v-select
+                v-model="feeProfilePreset"
+                :items="[
+                  { title: 'Whatnot', value: 'whatnot' },
+                  { title: 'No fees', value: 'none' }
               ]"
-              item-title="title"
-              item-value="value"
-              label="Fee Profile"
-              variant="outlined"
-              density="compact"
+                item-title="title"
+                item-value="value"
+                label="Fee Profile"
+                variant="outlined"
+                density="compact"
               hide-details
-              class="fee-profile-select"
-              @update:model-value="setFeeProfilePreset($event)"
-            ></v-select>
-          </v-col>
-          <v-col cols="2" class="d-flex justify-end py-0">
-            <v-menu
-              location="bottom end"
-              offset="8"
-              :close-on-content-click="false"
-              transition="scale-transition"
+                class="fee-profile-select"
+                @update:model-value="setFeeProfilePreset($event)"
+              ></v-select>
+            </v-col>
+            <v-col
+              :cols="$vuetify?.display?.smAndDown ? 12 : 2"
+              class="d-flex justify-end py-0 fee-profile-action-col"
             >
-              <template #activator="{ props }">
-                <v-btn
-                  v-bind="props"
+              <v-menu
+                :location="$vuetify?.display?.smAndDown ? 'bottom center' : 'bottom end'"
+                offset="8"
+                :close-on-content-click="false"
+                transition="scale-transition"
+                content-class="fee-profile-menu"
+              >
+                <template #activator="{ props }">
+                  <v-btn
+                    v-bind="props"
                   icon="mdi-information-outline"
                   size="small"
                   variant="text"

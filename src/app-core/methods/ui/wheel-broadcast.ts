@@ -14,7 +14,26 @@ type BroadcastApp = Pick<
   | "wheelSkippedDeductions"
   | "googleAuthEpoch"
   | "hasProAccess"
->;
+> & {
+  wheelSessionNetRevenue: number | null;
+  wheelSessionCostAdjustment: number;
+  wheelFairnessHistory: Array<{
+    spinNumber: number;
+    label: string;
+    color: string;
+    hash: string;
+    seed: string;
+    timestamp: number;
+  }>;
+  wheelChaseTallyHistory: Array<{
+    tierId: string;
+    label: string;
+    color: string;
+    count: number;
+  }>;
+  wheelCurrentAngle: number;
+  wheelLastResultColor: string;
+};
 
 export async function broadcastWheelSession(app: BroadcastApp): Promise<void> {
   if (app.activeScopeType !== "workspace" || !app.activeWorkspaceId) return;
@@ -31,14 +50,20 @@ export async function broadcastWheelSession(app: BroadcastApp): Promise<void> {
         body: JSON.stringify({
           workspaceId: app.activeWorkspaceId,
           session: {
-            wheelConfigs: app.wheelConfigs,
-            activeWheelConfigId: app.activeWheelConfigId,
-            wheelTotalSpins: app.wheelTotalSpins,
-            wheelSpinCounts: app.wheelSpinCounts,
-            wheelLastResult: app.wheelLastResult,
-            wheelSessionUpdatedAt: sentAt,
-            wheelSkippedDeductions: app.wheelSkippedDeductions
-          }
+          wheelConfigs: app.wheelConfigs,
+          activeWheelConfigId: app.activeWheelConfigId,
+          wheelTotalSpins: app.wheelTotalSpins,
+          wheelSpinCounts: app.wheelSpinCounts,
+          wheelSessionNetRevenue: app.wheelSessionNetRevenue,
+          wheelSessionCostAdjustment: app.wheelSessionCostAdjustment,
+          wheelFairnessHistory: app.wheelFairnessHistory,
+          wheelChaseTallyHistory: app.wheelChaseTallyHistory,
+          wheelCurrentAngle: app.wheelCurrentAngle,
+          wheelLastResult: app.wheelLastResult,
+          wheelLastResultColor: app.wheelLastResultColor,
+          wheelSessionUpdatedAt: sentAt,
+          wheelSkippedDeductions: app.wheelSkippedDeductions
+        }
         })
       },
       { expireAuthOn401: false }

@@ -128,6 +128,7 @@ export interface Sale {
   linkedWheelId?: number;
   winningTierId?: string;
   costOfWinningTier?: number;
+  netRevenue?: number;
 }
 
 export interface SinglesSaleCardOption {

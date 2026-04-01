@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test, vi } from "vitest";
+import { applyCloudSnapshotToLocal, parseCloudSnapshot, shouldApplyCloudSnapshot } from "../src/app-core/methods/ui/sync-apply.ts";
 
 const {
   handleExpiredAuthMock,
@@ -576,6 +577,172 @@ test("runCloudSyncPull applies newer cloud snapshot and stores version", async (
   assert.equal(app.notify.mock.calls.length, 1);
   assert.equal(storage.getItem("whatfees_sync_client_version"), "3");
   assert.equal(app.syncStatus, "success");
+});
+
+test("runCloudSyncPull ignores empty cloud snapshots even when the version is newer", async () => {
+  const app = createApp();
+  app.lots = [{ id: 1, name: "Local lot" }];
+  app.wheelConfigs = [{ id: 91, name: "Local wheel", spinPrice: 10, targetMargin: 40, createdAt: "", tiers: [] }];
+  app.currentLotId = 1;
+  const requestCloudSyncPull = vi.fn().mockResolvedValue({
+    ok: true,
+    status: 200,
+    statusText: "OK",
+    json: async () => ({
+      snapshot: {
+        lots: [],
+        salesByLot: {},
+        wheelConfigs: [],
+        activeWheelConfigId: null,
+        version: 99
+      }
+    })
+  });
+
+  await runCloudSyncPull(app, {
+    requestCloudSyncPull,
+    createSyncPayload: () => ({
+      lots: app.lots,
+      salesByLot: {},
+      wheelConfigs: app.wheelConfigs,
+      activeWheelConfigId: app.activeWheelConfigId
+    }),
+    getSyncPayloadSignature: () => "sig",
+    parseCloudSnapshot,
+    shouldApplyCloudSnapshot,
+    applyCloudSnapshotToLocal: vi.fn(),
+    startSyncStatus: vi.fn(),
+    setSyncStatusSuccess: vi.fn(),
+    setSyncStatusError: vi.fn()
+  });
+
+  assert.equal(app.lots.length, 1);
+  assert.equal(app.wheelConfigs.length, 1);
+});
+
+test("runCloudSyncPull ignores partial cloud snapshots even when the version is newer", async () => {
+  const app = createApp();
+  app.lots = [{ id: 1, name: "Local lot" }];
+  app.wheelConfigs = [{ id: 91, name: "Local wheel", spinPrice: 10, targetMargin: 40, createdAt: "", tiers: [] }];
+  app.currentLotId = 1;
+  const requestCloudSyncPull = vi.fn().mockResolvedValue({
+    ok: true,
+    status: 200,
+    statusText: "OK",
+    json: async () => ({
+      snapshot: {
+        lots: [{ id: 2, name: "Cloud lot" }],
+        version: 100
+      }
+    })
+  });
+
+  await runCloudSyncPull(app, {
+    requestCloudSyncPull,
+    createSyncPayload: () => ({
+      lots: app.lots,
+      salesByLot: {},
+      wheelConfigs: app.wheelConfigs,
+      activeWheelConfigId: app.activeWheelConfigId
+    }),
+    getSyncPayloadSignature: () => "sig",
+    parseCloudSnapshot,
+    shouldApplyCloudSnapshot,
+    applyCloudSnapshotToLocal: vi.fn(),
+    startSyncStatus: vi.fn(),
+    setSyncStatusSuccess: vi.fn(),
+    setSyncStatusError: vi.fn()
+  });
+
+  assert.equal(app.lots.length, 1);
+  assert.equal(app.wheelConfigs.length, 1);
+});
+
+test("applyCloudSnapshotToLocal sanitizes incoming wheel configs before saving", () => {
+  const storage = createMockStorage();
+  vi.stubGlobal("localStorage", storage);
+  const saves: Array<string> = [];
+  const app = {
+    lots: [{
+      id: 1,
+      name: "Singles lot",
+      lotType: "singles",
+      singlesPurchases: [{ id: 7, item: "Card A", quantity: 1, cost: 5, marketValue: 0, currency: "CAD" }]
+    }],
+    wheelConfigs: [],
+    activeWheelConfigId: null as number | null,
+    currentLotId: 1,
+    sales: [],
+    activeScopeType: "personal" as const,
+    activeWorkspaceId: null as string | null,
+    saveLotsToStorage() {
+      saves.push("lots");
+    },
+    saveWheelConfigsToStorage() {
+      saves.push("wheel");
+    },
+    loadLot() {
+      saves.push("loadLot");
+    },
+    getSalesStorageKey: (lotId: number) => `whatfees_sales_${lotId}`
+  };
+
+  applyCloudSnapshotToLocal(app as never, {
+    lots: app.lots,
+    salesByLot: {
+      "1": [{
+        id: 301,
+        type: "wheel",
+        quantity: 1,
+        packsCount: 1,
+        price: 10,
+        buyerShipping: 0,
+        date: "2026-03-30",
+        netRevenue: 8.61
+      }]
+    },
+    wheelConfigs: [{
+      id: 91,
+      name: "Cloud wheel",
+      spinPrice: 10,
+      targetMargin: 40,
+      createdAt: "",
+      tiers: [{
+        id: "tier-1",
+        label: "Tier 1",
+        color: "#f00",
+        slots: 3,
+        costPerTier: 5,
+        packsCount: 4,
+        deductionType: "packs",
+        sets: [],
+        boundLotId: 1,
+        boundSinglesId: 7,
+        isChase: true
+      }]
+    }],
+    activeWheelConfigId: 91,
+    version: 4,
+    hasData: true
+  });
+
+  const wheelConfig = (app.wheelConfigs as Array<{
+    tiers: Array<{ deductionType: string; packsCount: number; isChase: boolean }>;
+  }>)[0];
+  assert.equal(wheelConfig?.tiers[0]?.deductionType, "singles");
+  assert.equal(wheelConfig?.tiers[0]?.packsCount, 1);
+  assert.equal(wheelConfig?.tiers[0]?.isChase, true);
+  assert.equal(storage.getItem("whatfees_sales_1"), JSON.stringify([{
+    id: 301,
+    type: "wheel",
+    quantity: 1,
+    packsCount: 1,
+    price: 10,
+    buyerShipping: 0,
+    date: "2026-03-30",
+    netRevenue: 8.61
+  }]));
+  assert.deepEqual(saves, ["lots", "wheel", "loadLot"]);
 });
 
 test("runCloudSyncPush skips upload and pulls cloud when local storage was cleared mid-session", async () => {

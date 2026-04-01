@@ -41,6 +41,7 @@ import {
 import {
     refreshChartsForCurrentTab
 } from "./sales-ui-helpers.ts";
+import { normalizeWheelConfigs } from "../shared/normalize-wheel-config.ts";
 
 export const salesMethods: ThisType<AppContext> & Pick<
   AppMethodState,
@@ -239,6 +240,7 @@ export const salesMethods: ThisType<AppContext> & Pick<
   },
 
   loadWheelFromStorage(): void {
+    const wheelSessionState = this as unknown as Record<string, unknown>;
     this.wheelConfigs = [];
     this.activeWheelConfigId = null;
 
@@ -247,8 +249,8 @@ export const salesMethods: ThisType<AppContext> & Pick<
       if (raw) {
         const parsed = JSON.parse(raw) as WheelConfig[];
         if (Array.isArray(parsed) && parsed.length > 0) {
-          this.wheelConfigs = parsed;
-          this.activeWheelConfigId = parsed[0]!.id;
+          this.wheelConfigs = normalizeWheelConfigs(parsed, this.lots);
+          this.activeWheelConfigId = this.wheelConfigs[0]?.id ?? null;
         }
       }
     } catch {
@@ -261,6 +263,12 @@ export const salesMethods: ThisType<AppContext> & Pick<
     this.wheelSessionUpdatedAt = 0;
     this.wheelSessionLotSelections = {};
     this.wheelSkippedDeductions = [];
+    wheelSessionState.wheelSessionNetRevenue = 0;
+    wheelSessionState.wheelSessionCostAdjustment = 0;
+    wheelSessionState.wheelFairnessHistory = [];
+    wheelSessionState.wheelChaseTallyHistory = [];
+    this.wheelCurrentAngle = 0;
+    wheelSessionState.wheelLastResultColor = "rgb(var(--v-theme-primary))";
 
     try {
       const rawSession = localStorage.getItem(getScopedWheelSessionStorageKey(getActiveStorageScope(this)));
@@ -281,11 +289,29 @@ export const salesMethods: ThisType<AppContext> & Pick<
         if (typeof session.wheelSessionUpdatedAt === "number") {
           this.wheelSessionUpdatedAt = session.wheelSessionUpdatedAt;
         }
+        if (Number.isFinite(Number(session.wheelSessionNetRevenue))) {
+          wheelSessionState.wheelSessionNetRevenue = Number(session.wheelSessionNetRevenue) || 0;
+        }
+        if (Number.isFinite(Number(session.wheelSessionCostAdjustment))) {
+          wheelSessionState.wheelSessionCostAdjustment = Number(session.wheelSessionCostAdjustment) || 0;
+        }
+        if (Array.isArray(session.wheelFairnessHistory)) {
+          wheelSessionState.wheelFairnessHistory = session.wheelFairnessHistory.slice(-20);
+        }
+        if (Array.isArray(session.wheelChaseTallyHistory)) {
+          wheelSessionState.wheelChaseTallyHistory = session.wheelChaseTallyHistory;
+        }
         if (session.wheelSessionLotSelections && typeof session.wheelSessionLotSelections === "object") {
           this.wheelSessionLotSelections = session.wheelSessionLotSelections as Record<string, number | null>;
         }
         if (Array.isArray(session.wheelSkippedDeductions)) {
           this.wheelSkippedDeductions = session.wheelSkippedDeductions as SkippedWheelDeduction[];
+        }
+        if (Number.isFinite(Number(session.wheelCurrentAngle))) {
+          this.wheelCurrentAngle = Number(session.wheelCurrentAngle) || 0;
+        }
+        if (typeof session.wheelLastResultColor === "string" && session.wheelLastResultColor.trim()) {
+          wheelSessionState.wheelLastResultColor = session.wheelLastResultColor;
         }
       }
     } catch {
@@ -306,17 +332,40 @@ export const salesMethods: ThisType<AppContext> & Pick<
 
   saveWheelSessionToStorage(): void {
     try {
+      const wheelSessionState = this as unknown as Record<string, unknown>;
+      const storageKey = getScopedWheelSessionStorageKey(getActiveStorageScope(this));
+      let preserved: Record<string, unknown> = {};
+      try {
+        const raw = localStorage.getItem(storageKey);
+        if (raw) {
+          const parsed = JSON.parse(raw) as Record<string, unknown>;
+          if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+            preserved = parsed;
+          }
+        }
+      } catch {
+        preserved = {};
+      }
       const session = {
+        ...preserved,
         activeWheelConfigId: this.activeWheelConfigId,
         wheelTotalSpins: this.wheelTotalSpins,
         wheelSpinCounts: this.wheelSpinCounts,
         wheelLastResult: this.wheelLastResult,
         wheelSessionUpdatedAt: this.wheelSessionUpdatedAt,
         wheelSessionLotSelections: this.wheelSessionLotSelections,
-        wheelSkippedDeductions: this.wheelSkippedDeductions
+        wheelSkippedDeductions: this.wheelSkippedDeductions,
+        wheelSessionNetRevenue: wheelSessionState.wheelSessionNetRevenue ?? preserved.wheelSessionNetRevenue ?? 0,
+        wheelSessionCostAdjustment: wheelSessionState.wheelSessionCostAdjustment ?? preserved.wheelSessionCostAdjustment ?? 0,
+        wheelFairnessHistory: wheelSessionState.wheelFairnessHistory ?? preserved.wheelFairnessHistory ?? [],
+        wheelChaseTallyHistory: wheelSessionState.wheelChaseTallyHistory ?? preserved.wheelChaseTallyHistory ?? [],
+        wheelCurrentAngle: this.wheelCurrentAngle ?? preserved.wheelCurrentAngle ?? 0,
+        wheelLastResultColor: wheelSessionState.wheelLastResultColor
+          ?? preserved.wheelLastResultColor
+          ?? "rgb(var(--v-theme-primary))"
       };
       localStorage.setItem(
-        getScopedWheelSessionStorageKey(getActiveStorageScope(this)),
+        storageKey,
         JSON.stringify(session)
       );
     } catch {

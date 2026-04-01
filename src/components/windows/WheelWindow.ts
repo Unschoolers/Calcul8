@@ -105,6 +105,7 @@ export const WheelWindow = {
       wheelChaseReplacementSinglesId: null as number | null,
       wheelChasePendingTierId: "" as string,
       wheelFairnessHistoryOpen: false,
+      wheelSessionNetRevenue: 0 as number | null,
       wheelSessionCostAdjustment: 0,
       wheelPreviewFairnessHistory: [] as Array<{
         spinNumber: number;
@@ -174,6 +175,10 @@ export const WheelWindow = {
       },
       deep: true
     },
+    wheelViewportWidth(this: Record<string, unknown>) {
+      const vm = this as Record<string, unknown> & { normalizeWheelCompactInspectorState: () => void };
+      vm.normalizeWheelCompactInspectorState();
+    },
     editingWheelConfig: {
       handler(this: Record<string, unknown>) {
         const vm = this as Record<string, unknown> & { queueWheelDraftAutosave: () => void };
@@ -182,6 +187,9 @@ export const WheelWindow = {
       deep: true
     },
     wheelPresentationMode(this: Record<string, unknown>, presMode: boolean) {
+      if (presMode) {
+        (this as Record<string, unknown>).wheelMobileInspectorOpen = false;
+      }
       // Recalculate canvas size for the new mode, then redraw once CSS settles
       nextTick(() => {
         setTimeout(() => {
@@ -196,12 +204,23 @@ export const WheelWindow = {
           });
         }, 60);
       });
+      if (!presMode) {
+        const vm = this as Record<string, unknown> & { normalizeWheelCompactInspectorState: () => void };
+        vm.normalizeWheelCompactInspectorState();
+      }
     }
   },
   methods: {
     ...wheelConfigMethods,
     ...wheelSpinMethods,
     ...wheelSessionMethods,
+    normalizeWheelCompactInspectorState(this: Record<string, unknown>): void {
+      const viewportWidth = ((this as Record<string, unknown>).wheelViewportWidth as number) || getCurrentViewportWidth();
+      const isCompact = isWheelCompactViewport(viewportWidth);
+      if (!isCompact || (this as Record<string, unknown>).wheelPresentationMode) {
+        (this as Record<string, unknown>).wheelMobileInspectorOpen = false;
+      }
+    },
     handleWheelModeChange(this: Record<string, unknown>, nextMode: "config" | "live"): void {
       if (nextMode === (this as Record<string, unknown>).wheelMode) return;
       if (nextMode === "live") {
@@ -258,6 +277,8 @@ export const WheelWindow = {
     },
     refreshWheelCanvas(this: Record<string, unknown>): void {
       (this as Record<string, unknown>).wheelViewportWidth = getCurrentViewportWidth();
+      const vm = this as Record<string, unknown> & { normalizeWheelCompactInspectorState: () => void };
+      vm.normalizeWheelCompactInspectorState();
       nextTick(() => {
         const run = () => {
           const panel = (this.$refs as Record<string, unknown>).wheelSpinnerPanel as HTMLElement | null;
@@ -322,6 +343,8 @@ export const WheelWindow = {
     // Resize canvas for container
     nextTick(() => {
       (this as Record<string, unknown>).wheelViewportWidth = getCurrentViewportWidth();
+      const normalizeVm = this as Record<string, unknown> & { normalizeWheelCompactInspectorState: () => void };
+      normalizeVm.normalizeWheelCompactInspectorState();
       const panel = (this.$refs as Record<string, unknown>).wheelSpinnerPanel as HTMLElement | null;
       const availableWidth = getWheelCanvasTargetSize(
         panel,
@@ -330,8 +353,8 @@ export const WheelWindow = {
       if (availableWidth > 0) {
         (this as Record<string, unknown>).wheelCanvasSize = availableWidth;
       }
-      const vm = this as Record<string, unknown> & { drawWheel: (offset?: number) => void };
-      vm.drawWheel((this as Record<string, unknown>).wheelCurrentAngle as number || 0);
+      const drawVm = this as Record<string, unknown> & { drawWheel: (offset?: number) => void };
+      drawVm.drawWheel((this as Record<string, unknown>).wheelCurrentAngle as number || 0);
       (this as Record<string, unknown>).wheelConfigReady = true;
       if ((this as Record<string, unknown>).currentTab === "wheel") {
         const refreshVm = this as Record<string, unknown> & { refreshWheelCanvas: () => void };
@@ -354,7 +377,7 @@ export const WheelWindow = {
           );
           if (w > 0 && w !== (this as Record<string, unknown>).wheelCanvasSize) {
             (this as Record<string, unknown>).wheelCanvasSize = w;
-            nextTick(() => vm.drawWheel(((this as Record<string, unknown>).wheelCurrentAngle as number) || 0));
+            nextTick(() => drawVm.drawWheel(((this as Record<string, unknown>).wheelCurrentAngle as number) || 0));
           }
         });
         ro.observe(panel);
@@ -363,6 +386,8 @@ export const WheelWindow = {
 
       const handleViewportResize = () => {
         (this as Record<string, unknown>).wheelViewportWidth = getCurrentViewportWidth();
+        const resizeVm = this as Record<string, unknown> & { normalizeWheelCompactInspectorState: () => void };
+        resizeVm.normalizeWheelCompactInspectorState();
       };
       window.addEventListener("resize", handleViewportResize);
       (this as Record<string, unknown>)._wheelViewportResizeHandler = handleViewportResize;
@@ -401,4 +426,3 @@ export const WheelWindow = {
     return createWindowContextBridge(source);
   }
 };
-

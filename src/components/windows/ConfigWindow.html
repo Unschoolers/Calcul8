@@ -297,7 +297,7 @@
 
                         <div class="fee-profile-section mb-2">
                           <v-row dense class="align-center">
-                            <v-col cols="10" class="py-0">
+                            <v-col :cols="$vuetify?.display?.smAndDown ? 12 : 10" class="py-0">
                               <v-select
                                 v-model="feeProfilePreset"
                                 :items="[
@@ -314,12 +314,16 @@
                                 @update:model-value="setFeeProfilePreset($event)"
                               ></v-select>
                             </v-col>
-                            <v-col cols="2" class="d-flex justify-end py-0">
+                            <v-col
+                              :cols="$vuetify?.display?.smAndDown ? 12 : 2"
+                              class="d-flex justify-end py-0 fee-profile-action-col"
+                            >
                               <v-menu
-                                location="bottom end"
+                                :location="$vuetify?.display?.smAndDown ? 'bottom center' : 'bottom end'"
                                 offset="8"
                                 :close-on-content-click="false"
                                 transition="scale-transition"
+                                content-class="fee-profile-menu"
                               >
                                 <template #activator="{ props }">
                                   <v-btn

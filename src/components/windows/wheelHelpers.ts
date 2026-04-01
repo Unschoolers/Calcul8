@@ -17,17 +17,44 @@ function getLotShippingPerOrder(lotId: number | null | undefined, lots: Lot[]): 
   return Number(lot?.sellingShippingPerOrder) || 0;
 }
 
+function getLotSellingTaxPercent(lotId: number | null | undefined, lots: Lot[]): number {
+  if (lotId == null) return 0;
+  const lot = lots.find((entry) => entry.id === lotId);
+  return Number(lot?.sellingTaxPercent) || 0;
+}
+
 function getTierShippingPerOrder(tier: WheelTier, lots: Lot[]): number {
   return getLotShippingPerOrder(tier.boundLotId, lots);
+}
+
+function getLotFeeProfileInput(lot: Lot | undefined): FeeProfileInput | undefined {
+  if (!lot) return undefined;
+  return {
+    platformFeePercent: Number(lot.platformFeePercent) || 0,
+    additionalFeePercent: Number(lot.additionalFeePercent) || 0,
+    additionalFeeAppliesTo: lot.additionalFeeAppliesTo,
+    fixedFeePerOrder: Number(lot.fixedFeePerOrder) || 0
+  };
+}
+
+function calculateWheelSaleNetRevenue(config: WheelConfig, lot: Lot | undefined): number {
+  return calculateNetFromGross(
+    Number(config.spinPrice) || 0,
+    Number(lot?.sellingTaxPercent) || 0,
+    Number(lot?.sellingShippingPerOrder) || 0,
+    1,
+    getLotFeeProfileInput(lot)
+  );
 }
 
 export function calculateWheelNetFromGross(
   grossRevenue: number,
   feeProfileInput?: FeeProfileInput,
   orderCount = 1,
-  buyerShippingPerOrder = 0
+  buyerShippingPerOrder = 0,
+  sellingTaxPercent = 0
 ): number {
-  return calculateNetFromGross(grossRevenue, 0, buyerShippingPerOrder, orderCount, feeProfileInput);
+  return calculateNetFromGross(grossRevenue, sellingTaxPercent, buyerShippingPerOrder, orderCount, feeProfileInput);
 }
 
 export function calculateAverageWheelBuyerShippingPerSpin(
@@ -45,6 +72,23 @@ export function calculateAverageWheelBuyerShippingPerSpin(
   }
 
   return totalSlots > 0 ? shippingTotal / totalSlots : 0;
+}
+
+export function calculateAverageWheelSellingTaxPercent(
+  config: WheelConfig,
+  lots: Lot[] = []
+): number {
+  let taxTotal = 0;
+  let totalSlots = 0;
+
+  for (const tier of config.tiers) {
+    const slots = Math.max(0, Number(tier.slots) || 0);
+    if (slots <= 0) continue;
+    taxTotal += slots * getLotSellingTaxPercent(tier.boundLotId, lots);
+    totalSlots += slots;
+  }
+
+  return totalSlots > 0 ? taxTotal / totalSlots : 0;
 }
 
 export function calculateWheelBuyerShippingTotal(
@@ -209,6 +253,7 @@ export function createWheelSale(opts: {
   const today = new Date();
   const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
   const lot = opts.lots.find((l) => l.id === opts.lotId);
+  const netRevenue = calculateWheelSaleNetRevenue(opts.config, lot);
   return {
     id: Date.now() + (opts.spinNumber ?? 0),
     type: "wheel",
@@ -221,6 +266,7 @@ export function createWheelSale(opts: {
     linkedWheelId: opts.config.id,
     winningTierId: opts.tier,
     costOfWinningTier: opts.cost,
+    netRevenue,
     ...(opts.singlesEntryId != null ? { singlesPurchaseEntryId: opts.singlesEntryId } : {})
   };
 }
@@ -240,7 +286,8 @@ export function computeExpectedMargin(
   const avgCost = totalCost / totalSlots;
   const grossPerSpin = config.spinPrice;
   const buyerShippingPerSpin = calculateAverageWheelBuyerShippingPerSpin(config, lots);
-  const netPerSpin = calculateWheelNetFromGross(grossPerSpin, feeProfileInput, 1, buyerShippingPerSpin);
+  const sellingTaxPerSpin = calculateAverageWheelSellingTaxPercent(config, lots);
+  const netPerSpin = calculateWheelNetFromGross(grossPerSpin, feeProfileInput, 1, buyerShippingPerSpin, sellingTaxPerSpin);
   const margin = ((netPerSpin - avgCost) / grossPerSpin) * 100;
   return { margin };
 }

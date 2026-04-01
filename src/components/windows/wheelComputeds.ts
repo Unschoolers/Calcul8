@@ -1,6 +1,7 @@
 import { calculateTotalCaseCost } from "../../domain/calculations-fees.ts";
 import type { Lot, WheelConfig } from "../../types/app.ts";
 import {
+  calculateAverageWheelSellingTaxPercent,
   calculateWheelBuyerShippingTotal,
   calculateWheelNetFromGross,
   computeExpectedMargin,
@@ -325,6 +326,13 @@ export const wheelComputeds = {
   },
 
   wheelSessionProfit(this: Record<string, unknown>): number {
+    if ((this as Record<string, unknown>).wheelMode !== "config") {
+      const storedNetRevenue = (this as Record<string, unknown>).wheelSessionNetRevenue as number | null | undefined;
+      if (storedNetRevenue != null && Number.isFinite(Number(storedNetRevenue))) {
+        return Number(storedNetRevenue) - (this.wheelSessionCost as number);
+      }
+    }
+
     const config = (((this as Record<string, unknown>).wheelDisplayConfig
       || (this as Record<string, unknown>).activeWheelConfig)) as WheelConfig | null;
     const slots = (((this as Record<string, unknown>).wheelDisplaySlots
@@ -338,11 +346,13 @@ export const wheelComputeds = {
     const totalSpins = (this.wheelDisplayTotalSpins || 0) as number;
     const shippingTotal = calculateWheelBuyerShippingTotal(config, slots, spinCounts, lots);
     const buyerShippingPerOrder = totalSpins > 0 ? (shippingTotal / totalSpins) : 0;
+    const sellingTaxPercent = config ? calculateAverageWheelSellingTaxPercent(config, lots) : 0;
     const netRevenue = calculateWheelNetFromGross(
       grossRevenue,
       this as Record<string, unknown>,
       totalSpins,
-      buyerShippingPerOrder
+      buyerShippingPerOrder,
+      sellingTaxPercent
     );
     return netRevenue - (this.wheelSessionCost as number);
   },

@@ -268,7 +268,7 @@ test("pullCloudSync clears scoped sales caches before applying a newer cloud sna
   await uiSyncMethods.pullCloudSync.call(ctx);
 
   assert.equal(storage.getItem("whatfees_sales_1"), null);
-  assert.equal(storage.getItem("whatfees_sales_2"), null);
+  assert.equal(storage.getItem("whatfees_sales_2"), "[]");
   assert.notEqual(storage.getItem("whatfees_sales_ws__team-42__7"), null);
 });
 

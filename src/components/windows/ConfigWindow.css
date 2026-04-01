@@ -78,14 +78,24 @@
   flex: 0 0 auto;
 }
 
+.fee-profile-action-col {
+  min-width: 0;
+}
+
 .fee-profile-help {
   margin-top: 0.2rem;
   line-height: 1.35;
 }
 
+.fee-profile-menu {
+  width: min(100vw - 1rem, 360px);
+  max-width: min(100vw - 1rem, 360px);
+}
+
 .fee-profile-popover {
-  min-width: 250px;
-  max-width: 320px;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   overflow: hidden;
   border-radius: 14px !important;
   border: 1px solid rgba(var(--v-theme-on-surface), 0.14);
@@ -129,17 +139,29 @@
 }
 
 .fee-profile-popover__label {
+  flex: 1 1 55%;
+  min-width: 0;
   font-size: 0.75rem;
   line-height: 1.25;
   color: rgba(var(--v-theme-on-surface), 0.7);
 }
 
 .fee-profile-popover__value {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 12rem;
   text-align: right;
+  overflow-wrap: anywhere;
   font-size: 0.82rem;
   line-height: 1.2;
   font-weight: 800;
   color: rgba(var(--v-theme-on-surface), 0.95);
+}
+
+@media (max-width: 960px) {
+  .fee-profile-action-col {
+    justify-content: flex-start !important;
+  }
 }
 
 .segment-toggle {
@@ -360,8 +382,27 @@
     margin-top: 0.25rem !important;
   }
 
+  .fee-profile-action-col {
+    justify-content: flex-start !important;
+    margin-top: 0.2rem;
+  }
+
+  .fee-profile-menu {
+    width: min(100vw - 1rem, 320px);
+    max-width: min(100vw - 1rem, 320px);
+  }
+
   .fee-profile-popover {
-    min-width: 220px;
+    width: 100%;
+  }
+
+  .fee-profile-popover__row {
+    flex-direction: column;
+    gap: 0.18rem;
+  }
+
+  .fee-profile-popover__value {
+    text-align: left;
   }
 
   .config-summary-hero__body {

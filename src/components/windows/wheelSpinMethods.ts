@@ -204,6 +204,13 @@ function queueSkippedDeduction(
   (context as Record<string, unknown> & { saveWheelSession: () => void }).saveWheelSession();
 }
 
+function appendWheelSessionNetRevenue(context: Record<string, unknown>, sale: Pick<Sale, "netRevenue">): void {
+  const netRevenue = Number(sale.netRevenue);
+  if (!Number.isFinite(netRevenue)) return;
+  const currentNetRevenue = Number((context.wheelSessionNetRevenue as number | null | undefined) ?? 0) || 0;
+  context.wheelSessionNetRevenue = currentNetRevenue + Math.max(0, netRevenue);
+}
+
 export const wheelSpinMethods = {
   drawWheel(this: Record<string, unknown>, offset = 0): void {
     const canvasEl = (this.$refs as Record<string, unknown>).wheelCanvas as HTMLCanvasElement | null;
@@ -423,6 +430,7 @@ export const wheelSpinMethods = {
         if (typeof addWheelSale === "function") {
           addWheelSale(tier.boundLotId, sale);
         }
+        appendWheelSessionNetRevenue(this, sale);
       }
     }
     (this as Record<string, unknown> & { saveWheelSession: () => void }).saveWheelSession();

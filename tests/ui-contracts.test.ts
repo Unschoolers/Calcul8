@@ -29,6 +29,24 @@ test("config purchase total field saves through the model update event", () => {
   assert.match(configWindowTemplate, /@update:model-value="updatePurchaseCostInput"/);
 });
 
+test("fee profile popovers adapt to narrow screens in config and singles flows", () => {
+  const configWindowTemplate = read("src/components/windows/ConfigWindow.html");
+  const singlesSellingCardTemplate = read("src/components/windows/singles/SinglesSellingCard.html");
+  const configStyles = read("src/components/windows/ConfigWindow.css");
+  const singlesStyles = read("src/components/windows/SinglesConfigWindow.css");
+
+  assert.match(configWindowTemplate, /content-class="fee-profile-menu"/);
+  assert.match(singlesSellingCardTemplate, /content-class="fee-profile-menu"/);
+  assert.match(configWindowTemplate, /:location="\$vuetify\?\.display\?\.smAndDown \? 'bottom center' : 'bottom end'"/);
+  assert.match(singlesSellingCardTemplate, /:location="\$vuetify\?\.display\?\.smAndDown \? 'bottom center' : 'bottom end'"/);
+  assert.match(configStyles, /\.fee-profile-menu\s*\{\s*width: min\(100vw - 1rem, 360px\);/);
+  assert.match(singlesStyles, /\.fee-profile-menu\s*\{\s*width: min\(100vw - 1rem, 360px\);/);
+  assert.match(configStyles, /\.fee-profile-popover__row\s*\{\s*display: flex;[\s\S]*?justify-content: space-between;/);
+  assert.match(singlesStyles, /\.fee-profile-popover__row\s*\{\s*display: flex;[\s\S]*?justify-content: space-between;/);
+  assert.match(configStyles, /@media\s*\(max-width:\s*960px\)\s*\{[\s\S]*?\.fee-profile-popover__row\s*\{[\s\S]*?flex-direction:\s*column;/);
+  assert.match(singlesStyles, /@media\s*\(max-width:\s*960px\)\s*\{[\s\S]*?\.fee-profile-popover__row\s*\{[\s\S]*?flex-direction:\s*column;/);
+});
+
 test("wheel mobile summary cards stay static and non-clickable", () => {
   const wheelTemplate = read("src/components/windows/WheelWindow.html");
 
@@ -38,20 +56,39 @@ test("wheel mobile summary cards stay static and non-clickable", () => {
   assert.doesNotMatch(wheelTemplate, /<button[^>]*class="wheel-stage-summary-card"/);
 });
 
-test("wheel inspector keeps the Builder Session History segmented control", () => {
-  const wheelTemplate = read("src/components/windows/WheelInspector.html");
+test.todo("wheel tier rows are rendered by a reusable WheelTierCard component");
 
-  assert.match(wheelTemplate, /class="wheel-inspector-toggle"/);
-  assert.match(wheelTemplate, /<v-btn[^>]*value="config"[\s\S]*Builder/);
-  assert.match(wheelTemplate, /<v-btn[^>]*value="session"[\s\S]*Session/);
-  assert.match(wheelTemplate, /<v-btn[^>]*value="history"[\s\S]*History/);
+test.todo("wheel setup view uses compact tier summary cards with an edit action instead of always-open inline forms");
+
+test("wheel mobile action rail keeps session accessible in test and live modes", () => {
+  const railTemplate = read("src/components/windows/WheelActionRail.html");
+
+  assert.match(railTemplate, /mode === 'live' \? 'Session' : 'Builder'/);
+  assert.match(railTemplate, /v-if="mode === 'live'"/);
+  assert.match(railTemplate, /@click="\$emit\('open-inspector', 'session'\)"/);
+  assert.match(railTemplate, /mdi-chart-box-outline/);
+  assert.match(railTemplate, />\s*Session\s*</);
 });
 
-test("wheel window passes its local component context into the extracted inspector", () => {
-  const wheelTemplate = read("src/components/windows/WheelWindow.html");
+test("wheel mobile inspector keeps a dedicated close button visible in the sticky header", () => {
+  const inspectorTemplate = read("src/components/windows/WheelInspector.html");
+  const wheelStyles = read("src/components/windows/WheelWindow.css");
 
-  assert.match(wheelTemplate, /<wheel-inspector[\s\S]*:ctx="getWindowComponentContext\(\)"/);
+  assert.match(inspectorTemplate, /class="wheel-panel-title__copy"/);
+  assert.match(inspectorTemplate, /class="wheel-inspector-mobile-close"/);
+  assert.match(wheelStyles, /\.wheel-panel-title__copy\s*\{\s*flex:\s*1 1 auto;[\s\S]*?min-width:\s*0;/);
+  assert.match(wheelStyles, /\.wheel-inspector-mobile-close\s*\{[\s\S]*?position:\s*absolute;[\s\S]*?right:\s*10px;[\s\S]*?z-index:\s*4;/);
 });
+
+test.todo("wheel shell exposes top-level Setup / Live / History navigation");
+
+test.todo("wheel setup view owns builder-only controls and tier editing");
+
+test.todo("wheel live view owns the wheel stage, live KPIs, and session actions");
+
+test.todo("wheel history view owns fairness and spin-history inspection");
+
+test.todo("WheelCanvasStage owns the wheel canvas, center cap, pointer, and wheel-only overlays");
 
 test("lot selector uses the explicit switch handler", () => {
   const appTemplate = read("src/App.html");
