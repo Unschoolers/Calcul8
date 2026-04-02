@@ -2,14 +2,14 @@
   <v-card-title class="text-subtitle-1 live-singles-title-bar">
     <div class="live-singles-title-group">
       <v-icon size="16">mdi-cards-outline</v-icon>
-      <span>Singles Live List</span>
+      <span>{{ t('liveSinglesPanelTitle', 'Singles live list') }}</span>
     </div>
   </v-card-title>
   <v-divider></v-divider>
   <v-card-text class="pa-4">
     <div class="live-singles-head">
       <div class="text-caption text-medium-emphasis">
-        Add cards, then price them as individual items or as one bundle.
+        {{ t('liveSinglesPanelIntro', 'Add cards, then choose whether to price them one by one or as a bundle.') }}
       </div>
     </div>
 
@@ -22,8 +22,8 @@
           variant="tonal"
           class="live-singles-mode-toggle"
         >
-          <v-btn value="bundle" size="small">Bundle</v-btn>
-          <v-btn value="individual" size="small">Individual</v-btn>
+          <v-btn value="bundle" size="small">{{ t('liveSinglesBundleModeLabel', 'Bundle') }}</v-btn>
+          <v-btn value="individual" size="small">{{ t('liveSinglesIndividualModeLabel', 'Individual') }}</v-btn>
         </v-btn-toggle>
       </div>
 
@@ -35,8 +35,8 @@
             :items="liveSinglesAutocompleteItems"
             item-title="title"
             item-value="value"
-            label="Search card"
-            placeholder="Type name or number, then tap to add"
+            :label="t('liveSinglesSearchLabel', 'Search card')"
+            :placeholder="t('liveSinglesSearchPlaceholder', 'Type a name or card number, then tap to add it.')"
             name="live-singles-card-search"
             autocomplete="new-password"
             autocapitalize="off"
@@ -106,7 +106,7 @@
       variant="tonal"
       class="mt-3"
     >
-      No cards selected yet.
+      {{ t('liveSinglesEmptyStateBody', 'No cards selected yet. Search above to add the cards you want to price.') }}
     </v-alert>
 
     <template v-else>
@@ -119,11 +119,11 @@
         <v-card-text class="pa-3">
           <v-row dense align="center">
             <v-col cols="8" class="text-center">
-              <div class="text-caption text-medium-emphasis">Bundle Total Price</div>
+              <div class="text-caption text-medium-emphasis">{{ t('liveSinglesBundleTotalLabel', 'Bundle total price') }}</div>
               <div class="text-h4 font-weight-bold mb-1">${{ fmtCurrency(liveSinglesEffectiveBundlePrice, 2) }}</div>
               <v-chip size="small" :color="liveSinglesBundleProfit >= 0 ? 'success' : 'error'" class="font-weight-medium">
                 {{ liveSinglesBundleProfit >= 0 ? '+' : '' }}${{ fmtCurrency(liveSinglesBundleProfit, 2) }}
-                ({{ fmtCurrency(liveSinglesBundleProfitPercent, 1) }}%) est. profit
+                ({{ fmtCurrency(liveSinglesBundleProfitPercent, 1) }}%) {{ t('liveSinglesEstimatedProfitLabel', 'estimated profit') }}
               </v-chip>
             </v-col>
               <v-col cols="4" class="text-center">
@@ -148,7 +148,7 @@
               </v-col>
           </v-row>
           <div class="text-caption text-medium-emphasis mt-2">
-            Suggested from fees + target profit: ${{ fmtCurrency(liveSinglesSuggestedBundlePrice, 2) }}
+            {{ t('liveSinglesBundleSuggestionLabel', 'Suggested from fees and target profit') }}: ${{ fmtCurrency(liveSinglesSuggestedBundlePrice, 2) }}
           </div>
         </v-card-text>
       </v-card>
@@ -166,7 +166,7 @@
             <div class="live-singles-item-title-wrap">
               <v-icon size="16" class="live-singles-item-icon">mdi-cards-outline</v-icon>
               <div class="live-singles-item-title text-body-2 font-weight-medium">
-                {{ entry.item || "Unnamed item" }}
+                {{ entry.item || t('liveSinglesUnnamedItemLabel', 'Unnamed item') }}
                 <span v-if="entry.cardNumber" class="text-medium-emphasis">#{{ entry.cardNumber }}</span>
               </div>
             </div>
@@ -175,29 +175,29 @@
               size="x-small"
               variant="text"
               class="live-singles-remove-btn"
-              aria-label="Remove card from live list"
+              :aria-label="t('liveSinglesRemoveEntryLabel', 'Remove card from live list')"
               @click="removeLiveSinglesEntry(entry.id)"
             ></v-btn>
           </div>
 
           <div class="live-singles-item-meta text-caption text-medium-emphasis">
             <span>
-              Stock {{ getStockLabel(entry) }}
+              {{ t('liveSinglesStockLabel', 'Stock') }} {{ getStockLabel(entry) }}
             </span>
             <span class="live-singles-item-meta-sep">|</span>
             <span>
-              Basis ${{ fmtCurrency(resolveEntryBasis(entry), 2) }}
+              {{ t('liveSinglesBasisLabel', 'Basis') }} ${{ fmtCurrency(resolveEntryBasis(entry), 2) }}
             </span>
             <span class="live-singles-item-meta-sep">|</span>
             <span>
-              Market ${{ fmtCurrency(entry.marketValue, 2) }}
+              {{ t('liveSinglesMarketLabel', 'Market') }} ${{ fmtCurrency(entry.marketValue, 2) }}
             </span>
           </div>
 
           <div class="live-singles-item-body">
             <div class="live-singles-control-group live-singles-control-group--quantity">
-              <div class="live-singles-control-label">Qty</div>
-              <div class="live-singles-qty-stepper" role="group" aria-label="Quantity">
+              <div class="live-singles-control-label">{{ t('liveSinglesQuantityLabel', 'Qty') }}</div>
+              <div class="live-singles-qty-stepper" role="group" :aria-label="t('liveSinglesQuantityAriaLabel', 'Quantity')">
                 <v-btn
                   icon="mdi-minus"
                   size="x-small"
@@ -221,10 +221,10 @@
             </div>
             <template v-if="liveSinglesPricingMode === 'individual'">
               <div class="live-singles-price-block">
-                <div class="text-caption text-medium-emphasis">Each</div>
+                <div class="text-caption text-medium-emphasis">{{ t('liveSinglesEachPriceLabel', 'Each') }}</div>
                 <div class="text-h6 font-weight-bold">${{ fmtCurrency(getIndividualPrice(entry), 2) }}</div>
                 <div class="text-caption text-medium-emphasis">
-                  Line total ${{ fmtCurrency(getIndividualPrice(entry) * getLiveSinglesEntryQuantity(entry), 2) }}
+                  {{ t('liveSinglesLineTotalLabel', 'Line total') }} ${{ fmtCurrency(getIndividualPrice(entry) * getLiveSinglesEntryQuantity(entry), 2) }}
                 </div>
                 <v-chip
                   size="x-small"
@@ -235,7 +235,7 @@
                 </v-chip>
               </div>
               <div class="live-singles-control-group live-singles-control-group--price">
-                <div class="live-singles-control-label">Price</div>
+                <div class="live-singles-control-label">{{ t('liveSinglesPriceLabel', 'Price') }}</div>
                 <div class="live-singles-controls">
                 <v-btn
                   icon="mdi-minus"
@@ -258,17 +258,17 @@
             </template>
             <template v-else>
               <div class="live-singles-price-block">
-                <div class="text-caption text-medium-emphasis">Bundle share</div>
+                <div class="text-caption text-medium-emphasis">{{ t('liveSinglesBundleShareLabel', 'Bundle share') }}</div>
                 <div class="text-subtitle-1 font-weight-bold">
                   ${{ fmtCurrency(getBundleAllocationForEntry(entry.id)?.share || 0, 2) }}
                 </div>
                 <div class="text-caption text-medium-emphasis">
-                  {{ fmtCurrency(getBundleAllocationForEntry(entry.id)?.percent || 0, 1) }}% share ·
-                  Qty {{ getLiveSinglesEntryQuantity(entry) }}
+                  {{ fmtCurrency(getBundleAllocationForEntry(entry.id)?.percent || 0, 1) }}% {{ t('liveSinglesShareOfBundleLabel', 'share') }} ·
+                  {{ t('liveSinglesQuantityLabel', 'Qty') }} {{ getLiveSinglesEntryQuantity(entry) }}
                 </div>
               </div>
               <div class="live-singles-control-group live-singles-control-group--price">
-                <div class="live-singles-control-label">Pricing</div>
+                <div class="live-singles-control-label">{{ t('liveSinglesPricingLabel', 'Pricing') }}</div>
                 <div class="live-singles-controls">
                 <v-icon size="16" color="medium-emphasis">mdi-link-variant</v-icon>
                 </div>
@@ -283,19 +283,19 @@
         <v-card-text class="py-2 px-3">
           <div v-if="liveSinglesPricingMode === 'individual'" class="live-singles-summary-copy text-caption text-medium-emphasis">
             <div class="live-singles-summary-line">
-              <span class="live-singles-summary-pill">{{ liveSinglesSelectedCount }} items</span>
-              <span class="live-singles-summary-pill">Total ${{ fmtCurrency(liveSinglesIndividualTotalPrice, 2) }}</span>
-              <span class="live-singles-summary-pill">Profit {{ liveSinglesIndividualTotalProfit >= 0 ? '+' : '' }}${{ fmtCurrency(liveSinglesIndividualTotalProfit, 2) }}</span>
+              <span class="live-singles-summary-pill">{{ liveSinglesSelectedCount }} {{ t('liveSinglesItemsLabel', 'items') }}</span>
+              <span class="live-singles-summary-pill">{{ t('liveSinglesSummaryTotalLabel', 'Total') }} ${{ fmtCurrency(liveSinglesIndividualTotalPrice, 2) }}</span>
+              <span class="live-singles-summary-pill">{{ t('liveSinglesSummaryProfitLabel', 'Profit') }} {{ liveSinglesIndividualTotalProfit >= 0 ? '+' : '' }}${{ fmtCurrency(liveSinglesIndividualTotalProfit, 2) }}</span>
             </div>
             <div class="live-singles-summary-subline">
-              {{ fmtCurrency(liveSinglesIndividualTotalProfitPercent, 1) }}% estimated margin
+              {{ fmtCurrency(liveSinglesIndividualTotalProfitPercent, 1) }}% {{ t('liveSinglesSummaryMarginLabel', 'estimated margin') }}
             </div>
           </div>
           <div v-else class="live-singles-summary-copy text-caption text-medium-emphasis">
             <div class="live-singles-summary-line">
-              <span class="live-singles-summary-pill">{{ liveSinglesSelectedCount }} items</span>
-              <span class="live-singles-summary-pill">Bundle ${{ fmtCurrency(liveSinglesEffectiveBundlePrice, 2) }}</span>
-              <span class="live-singles-summary-pill">Profit {{ liveSinglesBundleProfit >= 0 ? '+' : '' }}${{ fmtCurrency(liveSinglesBundleProfit, 2) }}</span>
+              <span class="live-singles-summary-pill">{{ liveSinglesSelectedCount }} {{ t('liveSinglesItemsLabel', 'items') }}</span>
+              <span class="live-singles-summary-pill">{{ t('liveSinglesBundleSummaryLabel', 'Bundle') }} ${{ fmtCurrency(liveSinglesEffectiveBundlePrice, 2) }}</span>
+              <span class="live-singles-summary-pill">{{ t('liveSinglesSummaryProfitLabel', 'Profit') }} {{ liveSinglesBundleProfit >= 0 ? '+' : '' }}${{ fmtCurrency(liveSinglesBundleProfit, 2) }}</span>
             </div>
           </div>
           <div class="live-singles-summary-actions">
@@ -306,7 +306,7 @@
               class="live-singles-convert-btn"
               @click="convertLiveSinglesToSale"
             >
-              Convert to Sale
+              {{ t('liveSinglesConvertToSaleLabel', 'Convert to sale') }}
             </v-btn>
           </div>
         </v-card-text>

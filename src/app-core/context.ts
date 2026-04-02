@@ -26,6 +26,7 @@ import type {
     WorkspaceScopeType,
     WorkspaceSummary
 } from "../types/app.ts";
+import type { AppTranslationKey } from "./i18n/index.ts";
 
 export interface AppComputedState {
   isDark: boolean;
@@ -225,6 +226,13 @@ export interface AppComputedState {
 }
 
 export interface AppMethodState {
+  t(key: AppTranslationKey, params?: Record<string, string | number | null | undefined>): string;
+  setPreferredLanguage(language: string): void;
+  syncGuidedOnboarding(): void;
+  startGuidedOnboarding(lotType: LotType): void;
+  dismissGuidedOnboarding(): void;
+  stopGuidedOnboarding(): void;
+  handleGuidedOnboardingLotCreated(lotType: LotType, lotId: number): void;
   toggleTheme(): void;
   notify(message: string, color?: UiColor): void;
   askConfirmation(
@@ -391,6 +399,7 @@ export type AppContext = AppState & AppComputedState & AppMethodState & AppVueCo
 export interface AppWatchObject {
   activeScopeType(this: AppContext, newValue: WorkspaceScopeType): void;
   activeWorkspaceId(this: AppContext, newValue: string | null): void;
+  preferredLanguage(this: AppContext, newValue: string): void;
   currentTab(this: AppContext, newTab: AppTab): void;
   purchaseUiMode(this: AppContext, newMode: "simple" | "expert"): void;
   boxesPurchased(this: AppContext, newValue: number, oldValue: number): void;

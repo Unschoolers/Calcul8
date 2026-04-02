@@ -15,6 +15,7 @@ import SinglesPurchasingCard from "./singles/SinglesPurchasingCard.vue";
 import SinglesSellingCard from "./singles/SinglesSellingCard.vue";
 import { normalizeSinglesSearchTokens } from "./singles/singlesCatalogSearch.ts";
 import AdminSyncImportCard from "./AdminSyncImportCard.vue";
+import { compareLocalizedText } from "../../app-core/i18n/index.ts";
 
 const SINGLES_INFO_NOTICE_DISMISSED_KEY = "whatfees_singles_info_notice_dismissed_v1";
 type SinglesDesktopSortKey = "item" | "cardNumber" | "cost" | "quantity" | "marketValue";
@@ -172,8 +173,9 @@ export const SinglesConfigWindow: any = {
       if (tokens.length === 0) return soldFilteredRows;
 
       return soldFilteredRows.filter((entry) => {
-        const itemText = String(entry.item || "").toLocaleLowerCase();
-        const cardNumberText = String(entry.cardNumber || "").toLocaleLowerCase();
+        const locale = this?.preferredLanguage || undefined;
+        const itemText = String(entry.item || "").toLocaleLowerCase(locale);
+        const cardNumberText = String(entry.cardNumber || "").toLocaleLowerCase(locale);
         const haystack = `${cardNumberText} ${itemText}`;
         return tokens.every((token) => haystack.includes(token));
       });
@@ -203,10 +205,7 @@ export const SinglesConfigWindow: any = {
       if (sortBy === "recent") return rows;
 
       if (sortBy === "item") {
-        return rows.sort((a, b) => String(a.item || "").localeCompare(String(b.item || ""), undefined, {
-          numeric: true,
-          sensitivity: "base"
-        }));
+        return rows.sort((a, b) => compareLocalizedText(String(a.item || ""), String(b.item || ""), this?.preferredLanguage || ""));
       }
 
       return rows.sort((a, b) => {
@@ -215,18 +214,16 @@ export const SinglesConfigWindow: any = {
         const valueA = Math.max(0, (Number(a.marketValue) || 0) * totalQuantityA);
         const valueB = Math.max(0, (Number(b.marketValue) || 0) * totalQuantityB);
         if (valueA !== valueB) return valueB - valueA;
-        return String(a.item || "").localeCompare(String(b.item || ""), undefined, {
-          numeric: true,
-          sensitivity: "base"
-        });
+        return compareLocalizedText(String(a.item || ""), String(b.item || ""), this?.preferredLanguage || "");
       });
     },
 
     mobileSortLabel(this: any): string {
       const sortBy = String(this.mobileSortBy || "recent");
-      if (sortBy === "item") return "Name";
-      if (sortBy === "marketValue") return "Market";
-      return "Recent";
+      const t = this?.t as ((key: string) => string) | undefined;
+      if (sortBy === "item") return typeof t === "function" ? t("singlesMobileSortNameLabel") : "Name";
+      if (sortBy === "marketValue") return typeof t === "function" ? t("singlesMobileSortMarketLabel") : "Market";
+      return typeof t === "function" ? t("singlesMobileSortRecentLabel") : "Recent";
     },
 
     hasMoreMobileSinglesRows(this: any): boolean {
@@ -305,7 +302,7 @@ export const SinglesConfigWindow: any = {
                   ? entryB.condition || ""
                   : entryB.language || ""
           ).trim();
-          const compare = valueA.localeCompare(valueB, undefined, { numeric: true, sensitivity: "base" });
+          const compare = compareLocalizedText(valueA, valueB, this?.preferredLanguage || "");
           if (compare !== 0) return compare * direction;
           return a.index - b.index;
         }
@@ -373,8 +370,20 @@ export const SinglesConfigWindow: any = {
     ...singlesImportMethods,
     ...singlesCatalogSearchMethods,
     fmtCurrency(this: any, value: number | null | undefined, decimals = 2): string {
-      if (value == null || Number.isNaN(Number(value))) return "0.00";
-      return Number(value).toFixed(decimals);
+      const formatter = this?.formatCurrency as
+        | ((nextValue: number | null | undefined, nextDecimals?: number) => string)
+        | undefined;
+      if (typeof formatter === "function") {
+        return formatter.call(this, value, decimals);
+      }
+      if (value == null || Number.isNaN(Number(value))) return new Intl.NumberFormat(undefined, {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals
+      }).format(0);
+      return new Intl.NumberFormat(undefined, {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals
+      }).format(Number(value));
     },
 
     getSinglesSoldQuantity(this: any, entryId: number): number {
@@ -525,11 +534,24 @@ export const SinglesConfigWindow: any = {
       const selectedSet = new Set((this.selectedDesktopRowIds || []).map((value: unknown) => Number(value)));
       const selectedCount = selectedSet.size;
       if (selectedCount <= 0) return;
+      const t = this?.t as ((key: string) => string) | undefined;
+      const pluralSuffix = selectedCount === 1 ? "" : "s";
+      const deleteTitle = typeof t === "function" ? t("singlesDeleteSelectedRowsTitle") : "Delete Selected Rows?";
+      const deleteBody = typeof t === "function"
+        ? t("singlesDeleteSelectedRowsBody")
+          .replace(/\{\{count\}\}|\{count\}/g, String(selectedCount))
+          .replace(/\{\{suffix\}\}|\{suffix\}/g, pluralSuffix)
+        : `Remove ${selectedCount} selected row${selectedCount === 1 ? "" : "s"}?`;
+      const deletedBody = typeof t === "function"
+        ? t("singlesDeletedRowsToast")
+          .replace(/\{\{count\}\}|\{count\}/g, String(selectedCount))
+          .replace(/\{\{suffix\}\}|\{suffix\}/g, pluralSuffix)
+        : `Deleted ${selectedCount} row${selectedCount === 1 ? "" : "s"}.`;
 
       this.askConfirmation(
         {
-          title: "Delete Selected Rows?",
-          text: `Remove ${selectedCount} selected row${selectedCount === 1 ? "" : "s"}?`,
+          title: deleteTitle,
+          text: deleteBody,
           color: "error"
         },
         () => {
@@ -538,7 +560,7 @@ export const SinglesConfigWindow: any = {
           this.onSinglesPurchaseRowsChange();
           this.clearDesktopSelection();
           this.isDesktopSelectMode = false;
-          this.notify(`Deleted ${selectedCount} row${selectedCount === 1 ? "" : "s"}.`, "info");
+          this.notify(deletedBody, "info");
         }
       );
     },

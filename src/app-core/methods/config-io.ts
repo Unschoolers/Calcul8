@@ -1,4 +1,5 @@
 import type { AppContext } from "../context.ts";
+import { canUseAuthoritativeSalesLiveApi, fetchAuthoritativeSales } from "./sales-live-api.ts";
 import { type ConfigMethodSubset } from "./config-shared.ts";
 import {
   fetchWithRetry,
@@ -79,6 +80,30 @@ function buildPortfolioReportTsv(context: AppContext): string {
   }
 
   return lines.join("\n");
+}
+
+async function hydrateImportedAuthoritativeSales(context: AppContext): Promise<void> {
+  if (!canUseAuthoritativeSalesLiveApi()) return;
+
+  const lotIds = Array.from(
+    new Set(
+      (Array.isArray(context.lots) ? context.lots : [])
+        .map((lot) => Number(lot?.id))
+        .filter((lotId) => Number.isFinite(lotId) && lotId > 0)
+    )
+  );
+  if (lotIds.length === 0) return;
+
+  for (const lotId of lotIds) {
+    try {
+      const sales = await fetchAuthoritativeSales(context, lotId);
+      if (lotId === context.currentLotId && Array.isArray(sales)) {
+        context.sales = sales;
+      }
+    } catch (error) {
+      console.warn("Failed to hydrate imported lot sales", error);
+    }
+  }
 }
 
 export const configIoMethods: ConfigMethodSubset<
@@ -168,6 +193,7 @@ export const configIoMethods: ConfigMethodSubset<
 
       this.notify(`Imported cloud sync data from user ${sourceUserId}.`, "success");
       await this.pullCloudSync(true);
+      await hydrateImportedAuthoritativeSales(this);
     } catch (error) {
       console.warn("Failed to import sync data from source user:", error);
       this.notify("Could not import sync data. Please try again.", "error");

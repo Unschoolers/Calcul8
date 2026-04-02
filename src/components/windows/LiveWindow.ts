@@ -72,6 +72,33 @@ export const LiveWindow = {
       const value = Number(scenario.forecastMarginPercent);
       return Number.isFinite(value) ? value : null;
     },
+    liveScenarioProfitAtPrice(this: Record<string, unknown>, id: "item" | "box" | "rtyh", unitPrice: number): number | null {
+      const remainingUnits = LiveWindow.methods.getRemainingUnitsForMode.call(this as never, id);
+      if (remainingUnits <= 0) return null;
+
+      const netFromGross = this.netFromGross as
+        | ((grossRevenue: number, buyerShippingPerOrder?: number, orderCount?: number) => number)
+        | undefined;
+      if (typeof netFromGross !== "function") return null;
+
+      const normalizedUnitPrice = Number(unitPrice);
+      if (!Number.isFinite(normalizedUnitPrice)) return null;
+
+      const totalRevenue = Math.max(0, Number(this.totalRevenue) || 0);
+      const totalCost = Math.max(0, Number(this.totalCaseCost) || 0);
+      const shippingPerOrder = Math.max(0, Number(this.sellingShippingPerOrder) || 0);
+      const grossRemaining = remainingUnits * normalizedUnitPrice;
+      const netRemaining = netFromGross(grossRemaining, shippingPerOrder, remainingUnits);
+      const forecastRevenue = totalRevenue + netRemaining;
+      return forecastRevenue - totalCost;
+    },
+    liveScenarioPercentAtPrice(this: Record<string, unknown>, id: "item" | "box" | "rtyh", unitPrice: number): number | null {
+      const profit = LiveWindow.methods.liveScenarioProfitAtPrice.call(this as never, id, unitPrice);
+      if (profit == null) return null;
+      const totalCost = Math.max(0, Number(this.totalCaseCost) || 0);
+      if (totalCost <= 0) return null;
+      return (profit / totalCost) * 100;
+    },
     getNeededPriceForMode(this: Record<string, unknown>, id: "item" | "box" | "rtyh"): number | null {
       const value = id === "item"
         ? this.requiredPackPriceFromNow
@@ -97,42 +124,30 @@ export const LiveWindow = {
       if (typeof getNeededPrice !== "function") return null;
       const neededPrice = getNeededPrice.call(this, id);
       if (neededPrice == null) return null;
-      const getRemainingUnits = this.getRemainingUnitsForMode as
-        | ((scenarioId: "item" | "box" | "rtyh") => number)
-        | undefined;
-      if (typeof getRemainingUnits !== "function") return null;
-      const remainingUnits = getRemainingUnits.call(this, id);
-      if (remainingUnits <= 0) return null;
-      const netFromGross = this.netFromGross as
-        | ((grossRevenue: number, buyerShippingPerOrder?: number, orderCount?: number) => number)
-        | undefined;
-      if (typeof netFromGross !== "function") return null;
-      const totalRevenue = Math.max(0, Number(this.totalRevenue) || 0);
-      const totalCost = Math.max(0, Number(this.totalCaseCost) || 0);
-      const shippingPerOrder = Math.max(0, Number(this.sellingShippingPerOrder) || 0);
-      const grossRemaining = remainingUnits * neededPrice;
-      const netRemaining = netFromGross(grossRemaining, shippingPerOrder, remainingUnits);
-      const forecastRevenue = totalRevenue + netRemaining;
-      return forecastRevenue - totalCost;
+      return LiveWindow.methods.liveScenarioProfitAtPrice.call(this as never, id, neededPrice);
     },
     liveScenarioPercentAtNeeded(this: Record<string, unknown>, id: "item" | "box" | "rtyh"): number | null {
-      const computeProfit = this.liveScenarioProfitAtNeeded as
+      const getNeededPrice = this.getNeededPriceForMode as
         | ((scenarioId: "item" | "box" | "rtyh") => number | null)
         | undefined;
-      if (typeof computeProfit !== "function") return null;
-      const profit = computeProfit.call(this, id);
-      if (profit == null) return null;
-      const totalCost = Math.max(0, Number(this.totalCaseCost) || 0);
-      if (totalCost <= 0) return null;
-      return (profit / totalCost) * 100;
+      if (typeof getNeededPrice !== "function") return null;
+      const neededPrice = getNeededPrice.call(this, id);
+      if (neededPrice == null) return null;
+      return LiveWindow.methods.liveScenarioPercentAtPrice.call(this as never, id, neededPrice);
     },
     safeFixedForLive(value: number, decimals = 2): string {
+      const formatCurrency = (this as Record<string, unknown>).formatCurrency;
+      if (typeof formatCurrency === "function") {
+        return (formatCurrency as (v: number | null | undefined, d?: number) => string)(value, decimals);
+      }
       const fn = (this as Record<string, unknown>).safeFixed;
       if (typeof fn === "function") {
         return (fn as (v: number, d?: number) => string)(value, decimals);
       }
-      if (value == null || Number.isNaN(Number(value))) return "0.00";
-      return Number(value).toFixed(decimals);
+      return new Intl.NumberFormat(undefined, {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals
+      }).format(value == null || Number.isNaN(Number(value)) ? 0 : Number(value));
     }
   },
   setup(props: { ctx: Record<string, unknown> }) {

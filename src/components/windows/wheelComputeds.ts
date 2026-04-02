@@ -11,6 +11,7 @@ import {
   getAvailableSinglesQuantityForWheelTier,
   getRemainingPacksForWheelLot
 } from "./wheelSaleSupport.ts";
+import { translateAppMessage } from "../../app-core/i18n/index.ts";
 
 export const wheelComputeds = {
   wheelStageTitle(this: Record<string, unknown>): string {
@@ -256,7 +257,7 @@ export const wheelComputeds = {
           invalid.push({
             tierId: tier.id,
             label: tier.label,
-            reason: `Needs ${tier.packsCount || 0} pack${(tier.packsCount || 0) === 1 ? "" : "s"}, but only ${remainingPacks} remain.`
+            reason: `Needs ${tier.packsCount || 0} item${(tier.packsCount || 0) === 1 ? "" : "s"}, but only ${remainingPacks} remain.`
           });
         }
       }
@@ -524,8 +525,8 @@ export const wheelComputeds = {
         rows.push({
           key: rowKey,
           label: lot.name,
-          detail: `Pack source • needs ${tier.packsCount || 0}/spin`,
-          remainingText: `${remainingPacks} pack${remainingPacks === 1 ? "" : "s"} left`,
+          detail: `Item source • needs ${tier.packsCount || 0}/spin`,
+          remainingText: `${remainingPacks} item${remainingPacks === 1 ? "" : "s"} left`,
           warning: false,
           tiers: [tierEntry]
         });
@@ -576,7 +577,12 @@ export const wheelComputeds = {
         title: lot.name,
         value: lot.id,
         lotType: type,
-        groupLabel: prevType !== type ? (type === "singles" ? "Singles lots" : "Bulk lots") : null
+        groupLabel: prevType !== type
+          ? translateAppMessage(
+            String((this as Record<string, unknown>).preferredLanguage || ""),
+            type === "singles" ? "lotOptionSinglesLotsLabel" : "lotOptionBulkLotsLabel"
+          )
+          : null
       });
       prevType = type;
     }

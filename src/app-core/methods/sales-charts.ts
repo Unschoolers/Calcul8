@@ -34,7 +34,7 @@ export function initSalesChartDisplay(context: AppContext): void {
       sellingTaxPercent: context.sellingTaxPercent,
       formatCurrency: (value, decimals) => context.formatCurrency(value, decimals),
       formatDate: (value) => context.formatDate(value),
-      formatCompactDate: (value) => formatCompactChartDate(value)
+      formatCompactDate: (value) => formatCompactChartDate(value, context.preferredLanguage)
     });
     if (!trendConfig) return;
     context.salesChart = new Chart(ctx, trendConfig);
@@ -111,7 +111,7 @@ export function initPortfolioCharts(context: AppContext): void {
       salesByLotId,
       formatCurrency: (value, decimals) => context.formatCurrency(value, decimals),
       formatDate: (value) => context.formatDate(value),
-      formatCompactDate: (value) => formatCompactChartDate(value),
+      formatCompactDate: (value) => formatCompactChartDate(value, context.preferredLanguage),
       compactMode: isSmallDisplay(context),
       todayDate: getTodayDate()
     });

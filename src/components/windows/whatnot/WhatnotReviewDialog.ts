@@ -115,7 +115,7 @@ function formatWhatnotCandidateSummary(candidate: WhatnotManualDuplicateCandidat
     candidate.saleSummary.date,
     `$${candidate.saleSummary.price.toFixed(2)}`,
     `${candidate.saleSummary.quantity} qty`,
-    `${candidate.saleSummary.packsCount} packs`
+    `${candidate.saleSummary.packsCount} items`
   ].filter((part) => part.trim().length > 0);
   return parts.join(" • ");
 }

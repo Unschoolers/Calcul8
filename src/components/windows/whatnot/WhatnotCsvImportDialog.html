@@ -9,26 +9,26 @@
     <v-card-title class="d-flex align-center justify-space-between">
       <div>
         <v-icon class="mr-2">mdi-file-delimited-outline</v-icon>
-        Import Whatnot CSV
+        {{ t('whatnotCsvTitle') }}
       </div>
       <v-btn
         icon="mdi-close"
         variant="text"
-        title="Close Whatnot CSV import"
-        aria-label="Close Whatnot CSV import"
+        :title="t('whatnotCsvCloseAction')"
+        :aria-label="t('whatnotCsvCloseAction')"
         @click="closeWhatnotCsvDialog"
       ></v-btn>
     </v-card-title>
     <v-divider></v-divider>
     <v-card-text class="whatnot-csv-content">
       <div class="text-medium-emphasis mb-4">
-        Upload a Whatnot weekly export CSV. If it is a normal Whatnot file, we auto-detect the important fields and send you straight to review.
+        {{ t('whatnotCsvIntro') }}
       </div>
 
       <v-file-input
         accept=".csv,text/csv"
-        label="Upload Whatnot CSV"
-        hint="Uploading reads the file right away."
+        :label="t('whatnotCsvUploadLabel')"
+        :hint="t('whatnotCsvUploadHint')"
         prepend-icon="mdi-upload"
         variant="outlined"
         density="comfortable"
@@ -45,7 +45,7 @@
         density="comfortable"
         class="mb-4"
       >
-        <div class="font-weight-medium mb-1">Whatnot weekly export ready</div>
+        <div class="font-weight-medium mb-1">{{ t('whatnotCsvReadyTitle') }}</div>
         <div class="text-body-2">
           Auto-detected <strong>{{ whatnotCsvRequiredMappedCount }}/5</strong> core fields and <strong>{{ whatnotCsvOptionalMappedCount }}</strong> supporting fields.
           We use <strong>{{ whatnotCsvDetectedDateHeader }}</strong> for the sale date and <strong>{{ whatnotCsvDetectedPriceHeader }}</strong> for sale total.
@@ -80,11 +80,11 @@
       <v-expansion-panels v-if="whatnotCsvHeaders.length > 0" variant="accordion" class="mt-4">
         <v-expansion-panel>
           <v-expansion-panel-title>
-            Advanced mapping
+            {{ t('whatnotCsvAdvancedMappingTitle') }}
           </v-expansion-panel-title>
           <v-expansion-panel-text>
             <div class="text-caption text-medium-emphasis mb-3">
-              Most customers should not need this. Use it only if the Whatnot export was not detected correctly.
+              {{ t('whatnotCsvAdvancedMappingHelp') }}
             </div>
             <v-row dense>
               <v-col cols="12" md="4">
@@ -298,7 +298,7 @@
 
       <div v-if="whatnotCsvHeaders.length > 0" class="mt-4">
         <div class="text-caption text-medium-emphasis mb-2">
-          Key column preview (first 5 rows). We only show the mapped Whatnot fields so the review stays readable.
+          {{ t('whatnotCsvPreviewLabel') }}
         </div>
         <div class="singles-import-preview-wrap">
           <v-table density="compact" class="singles-import-preview-table">
@@ -334,9 +334,9 @@
     </v-card-text>
     <v-card-actions>
       <v-spacer></v-spacer>
-      <v-btn variant="text" @click="closeWhatnotCsvDialog">Cancel</v-btn>
+      <v-btn variant="text" @click="closeWhatnotCsvDialog">{{ t('commonCancel') }}</v-btn>
       <v-btn color="primary" variant="flat" :disabled="!whatnotCsvRequiredMappingsComplete" @click="confirmWhatnotCsvImport">
-        Prepare review
+        {{ t('whatnotPrepareReviewAction') }}
       </v-btn>
     </v-card-actions>
   </v-card>

@@ -20,7 +20,7 @@
       @click="editorOpen = true"
     >
       <v-icon start size="small">mdi-pencil-outline</v-icon>
-      Edit
+      {{ t('wheelTierEditAction') }}
     </v-btn>
   </div>
 
@@ -39,7 +39,7 @@
     <div class="wheel-tier-card__meta-row wheel-tier-card__meta-row--warning">
       <span class="wheel-tier-card__meta-label">
         <v-icon size="14">mdi-alert-outline</v-icon>
-        Stock
+        {{ t('wheelTierStockLabel') }}
       </span>
       <span class="wheel-tier-card__meta-value">{{ tierInventoryWarning }}</span>
     </div>
@@ -59,29 +59,29 @@
           <div class="wheel-tier-dot" :style="{ background: tier.color }"></div>
           <div class="wheel-tier-editor__title-copy">
             <div class="wheel-tier-editor__heading">{{ tier.label }}</div>
-            <div class="wheel-tier-editor__subtitle">Adjust quantity, source, and prize behavior without bloating the tier list.</div>
+            <div class="wheel-tier-editor__subtitle">{{ t('wheelTierEditorSubtitle') }}</div>
           </div>
         </div>
         <v-btn icon="mdi-close" variant="text" size="small" @click="editorOpen = false"></v-btn>
       </v-card-title>
       <v-card-text class="wheel-tier-editor__body">
         <div class="wheel-tier-editor__hero">
-          <div class="wheel-tier-editor__hero-label">Tier Summary</div>
+          <div class="wheel-tier-editor__hero-label">{{ t('wheelTierSummaryLabel') }}</div>
           <div class="wheel-tier-editor__hero-value">{{ tierMetricsSummary }}</div>
           <div class="wheel-tier-editor__hero-meta">{{ tierSourceSummary }}</div>
         </div>
 
         <div class="wheel-tier-editor__grid">
           <div class="wheel-tier-metric">
-            <span class="wheel-tier-metric__label">Label</span>
+            <span class="wheel-tier-metric__label">{{ t('wheelTierLabelField') }}</span>
             <input v-model="tier.label" class="wheel-tier-label-input wheel-tier-label-input--editor" spellcheck="false" />
           </div>
           <div class="wheel-tier-metric">
-            <span class="wheel-tier-metric__label">Slots</span>
-            <input v-model.number="tier.slots" type="number" class="wheel-tier-num-input" min="0" max="20" title="Slots on wheel" />
+            <span class="wheel-tier-metric__label">{{ t('wheelTierSlotsField') }}</span>
+            <input v-model.number="tier.slots" type="number" class="wheel-tier-num-input" min="0" max="20" :title="t('wheelTierSlotsHint')" />
           </div>
           <div class="wheel-tier-metric">
-            <span class="wheel-tier-metric__label">Count</span>
+            <span class="wheel-tier-metric__label">{{ t('wheelTierCountField') }}</span>
             <input
               v-model.number="tier.packsCount"
               type="number"
@@ -89,25 +89,25 @@
               :min="isBoundLotSingles(tier) ? 1 : 0"
               :max="isBoundLotSingles(tier) ? 1 : undefined"
               :disabled="isBoundLotSingles(tier)"
-              :title="isBoundLotSingles(tier) ? 'Singles tiers always deduct 1 card per hit' : 'Units deducted on hit'"
+              :title="isBoundLotSingles(tier) ? t('wheelTierCountSinglesHint') : t('wheelTierCountHint')"
               @change="onTierPacksChange(tier)"
             />
           </div>
           <div class="wheel-tier-metric">
-            <span class="wheel-tier-metric__label">Cost</span>
-            <input v-model.number="tier.costPerTier" type="number" class="wheel-tier-cost-input" min="0" step="0.25" title="Cost per tier prize" />
+            <span class="wheel-tier-metric__label">{{ t('wheelTierCostField') }}</span>
+            <input v-model.number="tier.costPerTier" type="number" class="wheel-tier-cost-input" min="0" step="0.25" :title="t('wheelTierCostHint')" />
           </div>
         </div>
 
         <div class="wheel-tier-editor__source-grid">
           <div class="wheel-tier-source-field">
-            <div class="wheel-tier-source-label">Source Lot</div>
+            <div class="wheel-tier-source-label">{{ t('wheelTierSourceLotLabel') }}</div>
             <v-select
               :model-value="tier.boundLotId"
               :items="tierSourceItems"
               item-title="title"
               item-value="value"
-              placeholder="Source lot…"
+              :placeholder="t('wheelTierSourceLotPlaceholder')"
               variant="outlined"
               density="compact"
               hide-details="auto"
@@ -130,13 +130,13 @@
           </div>
 
           <div v-if="isBoundLotSingles(tier)" class="wheel-tier-source-field">
-            <div class="wheel-tier-source-label">Prize Item</div>
+            <div class="wheel-tier-source-label">{{ t('wheelTierPrizeItemLabel') }}</div>
             <v-select
               :model-value="tier.boundSinglesId"
               :items="getSinglesItemsForTier(tier)"
               item-title="title"
               item-value="value"
-              placeholder="Pick item…"
+              :placeholder="t('wheelTierPickItemPlaceholder')"
               variant="outlined"
               density="compact"
               hide-details="auto"
@@ -169,7 +169,7 @@
           inset
           hide-details
           :disabled="!canTierBeChase(tier) && !tier.isChase"
-          label="Chase tier"
+          :label="t('wheelTierChaseLabel')"
           @update:model-value="toggleTierChase(tier)"
         ></v-switch>
 
@@ -183,7 +183,7 @@
       </v-card-text>
       <v-card-actions class="wheel-tier-editor__actions">
         <v-spacer></v-spacer>
-        <v-btn variant="tonal" color="error" @click="removeTier(tierIndex); editorOpen = false">Delete tier</v-btn>
+        <v-btn variant="tonal" color="error" @click="removeTier(tierIndex); editorOpen = false">{{ t('commonDelete') }}</v-btn>
         <v-btn variant="text" @click="editorOpen = false">Done</v-btn>
       </v-card-actions>
     </v-card>

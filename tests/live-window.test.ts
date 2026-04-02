@@ -99,11 +99,15 @@ test("LiveWindow needed-price forecast helpers compute from remaining units", ()
     totalCaseCost: 500,
     sellingShippingPerOrder: 1,
     netFromGross,
+    liveScenarioProfitAtPrice: LiveWindow.methods.liveScenarioProfitAtPrice,
+    liveScenarioPercentAtPrice: LiveWindow.methods.liveScenarioPercentAtPrice,
     getNeededPriceForMode: LiveWindow.methods.getNeededPriceForMode,
     getRemainingUnitsForMode: LiveWindow.methods.getRemainingUnitsForMode,
     liveScenarioProfitAtNeeded: LiveWindow.methods.liveScenarioProfitAtNeeded
   };
 
+  assert.equal(LiveWindow.methods.liveScenarioProfitAtPrice.call(vm as never, "item", 82), 410);
+  assert.equal(LiveWindow.methods.liveScenarioPercentAtPrice.call(vm as never, "item", 82), 82);
   assert.equal(LiveWindow.methods.getNeededPriceForMode.call(vm as never, "item"), 81);
   assert.equal(LiveWindow.methods.getRemainingUnitsForMode.call(vm as never, "box"), 2);
   assert.equal(LiveWindow.methods.liveScenarioProfitAtNeeded.call(vm as never, "item"), 400);

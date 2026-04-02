@@ -414,7 +414,7 @@ export const wheelSpinMethods = {
               slot,
               slotIndex,
               boundLotId: tier.boundLotId,
-              warningText: `${slot.name} needs ${slot.packsCount} pack${slot.packsCount === 1 ? "" : "s"}, but only ${remainingPacks} remain in ${boundLot?.name || "the selected lot"}.`
+              warningText: `${slot.name} needs ${slot.packsCount} item${slot.packsCount === 1 ? "" : "s"}, but only ${remainingPacks} remain in ${boundLot?.name || "the selected lot"}.`
             });
             return;
           }

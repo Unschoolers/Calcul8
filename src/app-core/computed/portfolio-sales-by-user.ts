@@ -5,6 +5,7 @@ import {
   getGrossRevenueForSale
 } from "../../domain/calculations.ts";
 import { DEFAULT_VALUES } from "../../constants.ts";
+import { compareLocalizedText, formatLocalizedCompactDate, translateAppMessage } from "../i18n/index.ts";
 import type {
   Lot,
   Sale,
@@ -64,20 +65,16 @@ function startOfWeek(date: Date): Date {
   return normalized;
 }
 
-function buildWeekBuckets(todayDate: string): PortfolioSalesByUserWeekBucket[] {
+function buildWeekBucketsWithLocale(todayDate: string, preferredLanguage: string): PortfolioSalesByUserWeekBucket[] {
   const today = parseDateOnly(todayDate) ?? new Date();
   const currentWeekStart = startOfWeek(today);
-  const formatter = new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric"
-  });
 
   return Array.from({ length: 8 }, (_, index) => {
     const weekStart = new Date(currentWeekStart);
     weekStart.setDate(currentWeekStart.getDate() - ((7 - index) * 7));
     return {
       key: toDateKey(weekStart),
-      label: formatter.format(weekStart)
+      label: formatLocalizedCompactDate(toDateKey(weekStart), preferredLanguage)
     };
   });
 }
@@ -85,18 +82,25 @@ function buildWeekBuckets(todayDate: string): PortfolioSalesByUserWeekBucket[] {
 function getSeriesIdentity(
   scopeType: WorkspaceScopeType,
   updatedBy: string | undefined,
-  workspaceMembers: WorkspaceMember[]
+  workspaceMembers: WorkspaceMember[],
+  preferredLanguage?: string
 ): { key: string; label: string } {
   if (scopeType !== "workspace") {
-    return { key: "self", label: "You" };
+    return { key: "self", label: translateAppMessage(preferredLanguage || "", "portfolioSalesByUserYouLabel") };
   }
 
   const normalizedUpdatedBy = String(updatedBy || "").trim();
   if (!normalizedUpdatedBy) {
-    return { key: "unknown", label: "Unknown" };
+    return {
+      key: "unknown",
+      label: translateAppMessage(preferredLanguage || "", "portfolioSalesByUserUnknownLabel")
+    };
   }
   if (normalizedUpdatedBy.startsWith("github-actions:")) {
-    return { key: "imported", label: "Imported" };
+    return {
+      key: "imported",
+      label: translateAppMessage(preferredLanguage || "", "portfolioSalesByUserImportedLabel")
+    };
   }
 
   const member = workspaceMembers.find((candidate) => candidate.userId === normalizedUpdatedBy);
@@ -129,9 +133,10 @@ export function buildPortfolioSalesByUserChartData(params: {
   workspaceMembers: WorkspaceMember[];
   metric: PortfolioSalesByUserMetric;
   todayDate: string;
+  preferredLanguage?: string;
 }): PortfolioSalesByUserChartData {
   const selectedLotIdSet = new Set(params.selectedLotIds);
-  const weeks = buildWeekBuckets(params.todayDate);
+  const weeks = buildWeekBucketsWithLocale(params.todayDate, params.preferredLanguage || "");
   const weekIndexByKey = new Map(weeks.map((week, index) => [week.key, index] as const));
   const seriesMap = new Map<string, { label: string; values: number[] }>();
 
@@ -147,7 +152,12 @@ export function buildPortfolioSalesByUserChartData(params: {
       const weekIndex = weekIndexByKey.get(weekKey);
       if (weekIndex == null) continue;
 
-      const identity = getSeriesIdentity(params.scopeType, sale.updatedBy, params.workspaceMembers);
+      const identity = getSeriesIdentity(
+        params.scopeType,
+        sale.updatedBy,
+        params.workspaceMembers,
+        params.preferredLanguage
+      );
       const current = seriesMap.get(identity.key) ?? {
         label: identity.label,
         values: weeks.map(() => 0)
@@ -187,6 +197,9 @@ export function buildPortfolioSalesByUserChartData(params: {
         color: PORTFOLIO_SALES_BY_USER_SERIES_COLORS[index % PORTFOLIO_SALES_BY_USER_SERIES_COLORS.length]
       }))
       .filter((series) => hasAnyNonZeroValue(series.values))
-      .sort((left, right) => right.total - left.total || left.label.localeCompare(right.label))
+      .sort((left, right) => (
+        right.total - left.total
+        || compareLocalizedText(left.label, right.label, params.preferredLanguage || "")
+      ))
   };
 }

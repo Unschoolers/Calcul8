@@ -167,7 +167,7 @@ test("SalesWindow saleListTitle formats explicit bulk and singles labels", () =>
   const rtyhSale = makeSale({ quantity: 3, type: "rtyh", price: 12 });
   assert.equal(
     SalesWindow.methods.saleListTitle.call({ ...vm, currentLotType: "bulk" } as never, rtyhSale),
-    "3 RTYH @ $12.00"
+    "3 random hit @ $12.00"
   );
 
   const unlinkedSingles = makeSale({ quantity: 3, price: 12, singlesPurchaseEntryId: null });

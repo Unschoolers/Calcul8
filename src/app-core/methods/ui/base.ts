@@ -2,16 +2,17 @@ import { calculateSaleProfit as calculateSaleProfitValue, getSaleProfitPreview a
 import type { Sale, SaleType, UiColor } from "../../../types/app.ts";
 import type { AppContext, AppMethodState } from "../../context.ts";
 import { STORAGE_KEYS } from "../../storageKeys.ts";
-
-const DATE_ONLY_REGEX = /^\d{4}-\d{2}-\d{2}$/;
-const SLASH_DATE_REGEX = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
-
-function formatLocalDate(date: Date): string {
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-}
+import {
+  formatLocalizedDate,
+  formatLocalizedNumber,
+  normalizeLanguagePreference,
+  translateAppMessage
+} from "../../i18n/index.ts";
 
 export const uiBaseMethods: ThisType<AppContext> & Pick<
   AppMethodState,
+  | "t"
+  | "setPreferredLanguage"
   | "toggleTheme"
   | "notify"
   | "askConfirmation"
@@ -30,6 +31,14 @@ export const uiBaseMethods: ThisType<AppContext> & Pick<
   | "getSaleIcon"
   | "formatDate"
 > = {
+  t(key, params) {
+    return translateAppMessage(this.preferredLanguage, key, params);
+  },
+
+  setPreferredLanguage(language: string): void {
+    this.preferredLanguage = normalizeLanguagePreference(language);
+  },
+
   toggleTheme(): void {
     const nextTheme = this.isDark ? "unionArenaLight" : "unionArenaDark";
     this.$vuetify.theme.change(nextTheme);
@@ -71,8 +80,7 @@ export const uiBaseMethods: ThisType<AppContext> & Pick<
   },
 
   formatCurrency(value: number | null | undefined, decimals = 2): string {
-    if (value == null || isNaN(value)) return "0.00";
-    return Number(value).toFixed(decimals);
+    return formatLocalizedNumber(value, this.preferredLanguage, decimals);
   },
 
   safeFixed(value: number, decimals = 2): string {
@@ -176,32 +184,6 @@ export const uiBaseMethods: ThisType<AppContext> & Pick<
   },
 
   formatDate(dateStr: string): string {
-    if (!dateStr) return "";
-
-    // Keep date-only values in local time to avoid UTC day shift (e.g. 2026-02-21 showing as Feb 20).
-    if (DATE_ONLY_REGEX.test(dateStr)) {
-      const [year, month, day] = dateStr.split("-").map((part) => Number(part));
-      const localDate = new Date(year, month - 1, day);
-      if (!Number.isNaN(localDate.getTime())) {
-        return formatLocalDate(localDate);
-      }
-    }
-
-    const slashMatch = dateStr.match(SLASH_DATE_REGEX);
-    if (slashMatch) {
-      const month = Number(slashMatch[1]);
-      const day = Number(slashMatch[2]);
-      const year = Number(slashMatch[3]);
-      const localDate = new Date(year, month - 1, day);
-      if (!Number.isNaN(localDate.getTime())) {
-        return formatLocalDate(localDate);
-      }
-    }
-
-    const date = new Date(dateStr);
-    if (Number.isNaN(date.getTime())) {
-      return dateStr;
-    }
-    return formatLocalDate(date);
+    return formatLocalizedDate(dateStr, this.preferredLanguage);
   }
 };

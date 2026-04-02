@@ -11,6 +11,7 @@ import type {
   WorkspacePresenceState,
   WorkspaceRealtimeStatus
 } from "../types/app.ts";
+import { compareLocalizedText, translateAppMessage } from "./i18n/index.ts";
 
 const WORKSPACE_AVATAR_STACK_LIMIT = 3;
 const WORKSPACE_MEMBER_RECENT_WINDOW_MS = 10 * 60 * 1000;
@@ -33,7 +34,8 @@ function getWorkspacePresenceStateForUser(
 
 function sortWorkspaceMembersForAvatarStack(
   members: WorkspaceMember[],
-  presenceByUserId: Record<string, { isOnline: boolean; lastSeenAt?: string }>
+  presenceByUserId: Record<string, { isOnline: boolean; lastSeenAt?: string }>,
+  preferredLanguage?: string
 ): WorkspaceMember[] {
   return [...members].sort((left, right) => {
     const leftPresence = getWorkspacePresenceStateForUser(presenceByUserId, left.userId);
@@ -47,73 +49,78 @@ function sortWorkspaceMembersForAvatarStack(
       return left.role === "owner" ? -1 : 1;
     }
 
-    const leftName = (left.displayName || left.userId).toLocaleLowerCase();
-    const rightName = (right.displayName || right.userId).toLocaleLowerCase();
-    return leftName.localeCompare(rightName);
+    return compareLocalizedText(
+      String(left.displayName || left.userId),
+      String(right.displayName || right.userId),
+      preferredLanguage
+    );
   });
 }
 
-function getWorkspaceRealtimeDisplay(status: WorkspaceRealtimeStatus): { title: string; subtitle: string; icon: string } {
+function getWorkspaceRealtimeDisplay(
+  status: WorkspaceRealtimeStatus,
+  preferredLanguage: string
+): { title: string; subtitle: string; icon: string } {
   if (status === "connected") {
     return {
-      title: "Workspace realtime connected",
-      subtitle: "Live workspace updates are active",
+      title: translateAppMessage(preferredLanguage, "workspaceRealtimeConnectedTitle"),
+      subtitle: translateAppMessage(preferredLanguage, "workspaceRealtimeConnectedSubtitle"),
       icon: "mdi-lan-connect"
     };
   }
   if (status === "connecting") {
     return {
-      title: "Workspace realtime connecting",
-      subtitle: "Opening realtime connection",
+      title: translateAppMessage(preferredLanguage, "workspaceRealtimeConnectingTitle"),
+      subtitle: translateAppMessage(preferredLanguage, "workspaceRealtimeConnectingSubtitle"),
       icon: "mdi-sync"
     };
   }
   if (status === "reconnecting") {
     return {
-      title: "Workspace realtime reconnecting",
-      subtitle: "Retrying with backoff",
+      title: translateAppMessage(preferredLanguage, "workspaceRealtimeReconnectingTitle"),
+      subtitle: translateAppMessage(preferredLanguage, "workspaceRealtimeReconnectingSubtitle"),
       icon: "mdi-sync"
     };
   }
   if (status === "disconnected") {
     return {
-      title: "Workspace realtime disconnected",
-      subtitle: "Last realtime attempt failed",
+      title: translateAppMessage(preferredLanguage, "workspaceRealtimeDisconnectedTitle"),
+      subtitle: translateAppMessage(preferredLanguage, "workspaceRealtimeDisconnectedSubtitle"),
       icon: "mdi-lan-disconnect"
     };
   }
   return {
-    title: "Workspace realtime idle",
-    subtitle: "Realtime not active for this view",
+    title: translateAppMessage(preferredLanguage, "workspaceRealtimeIdleTitle"),
+    subtitle: translateAppMessage(preferredLanguage, "workspaceRealtimeIdleSubtitle"),
     icon: "mdi-lan-disconnect"
   };
 }
 
-function getSyncStatusDisplay(status: SyncStatus): { title: string; subtitle: string; icon: string } {
+function getSyncStatusDisplay(status: SyncStatus, preferredLanguage: string): { title: string; subtitle: string; icon: string } {
   if (status === "syncing") {
     return {
-      title: "Syncing",
-      subtitle: "Cloud sync in progress",
+      title: translateAppMessage(preferredLanguage, "syncingTitle"),
+      subtitle: translateAppMessage(preferredLanguage, "syncingSubtitle"),
       icon: "mdi-sync"
     };
   }
   if (status === "success") {
     return {
-      title: "Re-check Pro access",
-      subtitle: "Synced successfully",
+      title: translateAppMessage(preferredLanguage, "syncedSuccessfullyTitle"),
+      subtitle: translateAppMessage(preferredLanguage, "syncedSuccessfullySubtitle"),
       icon: "mdi-check-circle-outline"
     };
   }
   if (status === "error") {
     return {
-      title: "Review sync status",
-      subtitle: "Last sync needs attention",
+      title: translateAppMessage(preferredLanguage, "reviewSyncStatusTitle"),
+      subtitle: translateAppMessage(preferredLanguage, "reviewSyncStatusSubtitle"),
       icon: "mdi-alert-circle-outline"
     };
   }
   return {
-    title: "Check sync status",
-    subtitle: "",
+    title: translateAppMessage(preferredLanguage, "checkSyncStatusTitle"),
+    subtitle: translateAppMessage(preferredLanguage, "checkSyncStatusSubtitle"),
     icon: "mdi-sync"
   };
 }
@@ -124,18 +131,22 @@ function getWhatnotConnectionDisplay(
   connected: boolean,
   displayName: string,
   pendingReviewCount: number,
-  activeScopeType: "personal" | "workspace"
+  activeScopeType: "personal" | "workspace",
+  preferredLanguage: string
 ): { title: string; subtitle: string; icon: string } {
-  let title = "Whatnot needs attention";
-  if (connectionStatus === "connected") title = "Whatnot connected";
-  else if (connectionStatus === "connecting") title = "Connecting Whatnot";
-  else if (connectionStatus === "disconnected") title = "Whatnot disconnected";
+  let title = translateAppMessage(preferredLanguage, "whatnotNeedsAttentionTitle");
+  if (connectionStatus === "connected") title = translateAppMessage(preferredLanguage, "whatnotConnectedTitle");
+  else if (connectionStatus === "connecting") title = translateAppMessage(preferredLanguage, "whatnotConnectingTitle");
+  else if (connectionStatus === "disconnected") title = translateAppMessage(preferredLanguage, "whatnotDisconnectedTitle");
 
   let subtitle = activeScopeType === "workspace"
-    ? "Connect your Whatnot account for this shared workspace"
-    : "Connect your Whatnot account to import orders into Personal";
+    ? translateAppMessage(preferredLanguage, "whatnotSharedWorkspaceSubtitle")
+    : translateAppMessage(preferredLanguage, "whatnotPersonalSubtitle");
   if (connected) {
-    subtitle = `${displayName || "Connected seller"}${pendingReviewCount > 0 ? ` • ${pendingReviewCount} pending review` : ""}`;
+    subtitle = translateAppMessage(preferredLanguage, "whatnotConnectedSummary", {
+      name: displayName || "Connected seller",
+      pendingCountSuffix: pendingReviewCount > 0 ? ` • ${pendingReviewCount} pending review${pendingReviewCount === 1 ? "" : "s"}` : ""
+    });
   }
 
   const icon = connectionStatus === "connected"
@@ -164,7 +175,7 @@ export const appComputed: AppComputedObject = {
       return this.currentWorkspaceSummary.name;
     }
 
-    return "Personal";
+    return translateAppMessage(this.preferredLanguage, "personalWorkspaceName");
   },
   scopeChipClass() {
     return this.activeScopeType === "workspace"
@@ -179,7 +190,7 @@ export const appComputed: AppComputedObject = {
   scopeChipLabel() {
     return this.activeScopeType === "workspace"
       ? this.currentWorkspaceName
-      : "Personal";
+      : translateAppMessage(this.preferredLanguage, "personalLabel");
   },
   isCurrentWorkspaceOwner() {
     return this.currentWorkspaceSummary?.role === "owner";
@@ -191,7 +202,8 @@ export const appComputed: AppComputedObject = {
 
     return sortWorkspaceMembersForAvatarStack(
       this.workspaceMembers.filter((member) => member.status === "active"),
-      this.workspacePresenceByUserId
+      this.workspacePresenceByUserId,
+      this.preferredLanguage
     ).slice(0, WORKSPACE_AVATAR_STACK_LIMIT);
   },
   activeWorkspaceOverflowMemberCount() {
@@ -241,22 +253,22 @@ export const appComputed: AppComputedObject = {
     return isSpinning ? "sync-spinning" : "";
   },
   workspaceRealtimeTitle() {
-    return getWorkspaceRealtimeDisplay(this.workspaceRealtimeStatus).title;
+    return getWorkspaceRealtimeDisplay(this.workspaceRealtimeStatus, this.preferredLanguage).title;
   },
   workspaceRealtimeSubtitle() {
-    return getWorkspaceRealtimeDisplay(this.workspaceRealtimeStatus).subtitle;
+    return getWorkspaceRealtimeDisplay(this.workspaceRealtimeStatus, this.preferredLanguage).subtitle;
   },
   workspaceRealtimeIcon() {
-    return getWorkspaceRealtimeDisplay(this.workspaceRealtimeStatus).icon;
+    return getWorkspaceRealtimeDisplay(this.workspaceRealtimeStatus, this.preferredLanguage).icon;
   },
   syncStatusTitle() {
-    return getSyncStatusDisplay(this.syncStatus).title;
+    return getSyncStatusDisplay(this.syncStatus, this.preferredLanguage).title;
   },
   syncStatusSubtitle() {
-    return getSyncStatusDisplay(this.syncStatus).subtitle;
+    return getSyncStatusDisplay(this.syncStatus, this.preferredLanguage).subtitle;
   },
   syncStatusIcon() {
-    return getSyncStatusDisplay(this.syncStatus).icon;
+    return getSyncStatusDisplay(this.syncStatus, this.preferredLanguage).icon;
   },
   whatnotConnectionTitle() {
     return getWhatnotConnectionDisplay(
@@ -265,7 +277,8 @@ export const appComputed: AppComputedObject = {
       this.whatnotConnectionSummary?.connected === true,
       this.whatnotConnectionSummary?.displayName || "",
       this.whatnotConnectionSummary?.pendingReviewCount || 0,
-      this.activeScopeType
+      this.activeScopeType,
+      this.preferredLanguage
     ).title;
   },
   whatnotConnectionSubtitle() {
@@ -275,7 +288,8 @@ export const appComputed: AppComputedObject = {
       this.whatnotConnectionSummary?.connected === true,
       this.whatnotConnectionSummary?.displayName || "",
       this.whatnotConnectionSummary?.pendingReviewCount || 0,
-      this.activeScopeType
+      this.activeScopeType,
+      this.preferredLanguage
     ).subtitle;
   },
   whatnotConnectionIcon() {
@@ -285,29 +299,34 @@ export const appComputed: AppComputedObject = {
       this.whatnotConnectionSummary?.connected === true,
       this.whatnotConnectionSummary?.displayName || "",
       this.whatnotConnectionSummary?.pendingReviewCount || 0,
-      this.activeScopeType
+      this.activeScopeType,
+      this.preferredLanguage
     ).icon;
   },
   whatnotConnectActionTitle() {
     return this.whatnotConnectionStatus === "connecting"
-      ? "Connecting Whatnot..."
-      : "Connect Whatnot";
+      ? translateAppMessage(this.preferredLanguage, "connectingWhatnotActionTitle")
+      : translateAppMessage(this.preferredLanguage, "connectWhatnotActionTitle");
   },
   whatnotSyncActionTitle() {
     return this.whatnotSyncStatus === "syncing"
-      ? "Syncing Whatnot sales..."
-      : "Sync Whatnot sales";
+      ? translateAppMessage(this.preferredLanguage, "syncingWhatnotSalesActionTitle")
+      : translateAppMessage(this.preferredLanguage, "syncWhatnotSalesActionTitle");
   },
   pendingWorkspaceInviteTargetName() {
-    return this.pendingWorkspaceInviteWorkspaceName || this.pendingWorkspaceInviteWorkspaceId || "this workspace";
+    return this.pendingWorkspaceInviteWorkspaceName
+      || this.pendingWorkspaceInviteWorkspaceId
+      || translateAppMessage(this.preferredLanguage, "pendingWorkspaceInviteTargetName");
   },
   authGateTitle() {
-    return this.pendingWorkspaceInviteToken ? "Sign in to join workspace" : "Sign in to continue";
+    return this.pendingWorkspaceInviteToken
+      ? translateAppMessage(this.preferredLanguage, "signInToJoinWorkspace")
+      : translateAppMessage(this.preferredLanguage, "signInToContinue");
   },
   authGateSubtitle() {
     return this.pendingWorkspaceInviteToken
-      ? "Use your Google account to accept this workspace invite and keep your Personal workspace too."
-      : "Your lots, cloud sync, and Pro access are tied to your Google account.";
+      ? translateAppMessage(this.preferredLanguage, "signInToJoinWorkspaceSubtitle")
+      : translateAppMessage(this.preferredLanguage, "authGateSubtitle");
   },
   ...singlesComputed,
   ...forecastComputed,

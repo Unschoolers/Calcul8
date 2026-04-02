@@ -2,25 +2,25 @@
   <div class="wheel-stats-grid">
     <v-card variant="tonal" class="text-center pa-2">
       <div class="text-h6">{{ wheelTotalSpins }}</div>
-      <div class="text-caption text-medium-emphasis">Spins</div>
+      <div class="text-caption text-medium-emphasis">{{ t('wheelSpinsLabel') }}</div>
     </v-card>
     <v-card variant="tonal" class="text-center pa-2">
       <div class="text-h6">${{ wheelSessionRevenue.toFixed(2) }}</div>
-      <div class="text-caption text-medium-emphasis">Revenue</div>
+      <div class="text-caption text-medium-emphasis">{{ t('wheelRevenueLabel') }}</div>
     </v-card>
     <v-card variant="tonal" class="text-center pa-2">
       <div class="text-h6 text-error">${{ wheelSessionCost.toFixed(2) }}</div>
-      <div class="text-caption text-medium-emphasis">Prize Cost</div>
+      <div class="text-caption text-medium-emphasis">{{ t('wheelPrizeCostLabel') }}</div>
     </v-card>
     <v-card variant="tonal" class="text-center pa-2">
       <div class="text-h6" :class="wheelSessionProfitClass">{{ wheelSessionProfitDisplay }}</div>
-      <div class="text-caption text-medium-emphasis">Gross Profit</div>
+      <div class="text-caption text-medium-emphasis">{{ t('wheelGrossProfitLabel') }}</div>
     </v-card>
   </div>
 
   <v-card variant="tonal" class="pa-3">
     <div class="d-flex justify-space-between align-center mb-1">
-      <span class="text-caption text-medium-emphasis text-uppercase">Margin</span>
+      <span class="text-caption text-medium-emphasis text-uppercase">{{ t('wheelSessionMarginLabel') }}</span>
       <span class="text-h6 font-weight-bold" :style="{ color: wheelSessionMarginColor }">
         {{ wheelSessionMarginDisplay }}
       </span>
@@ -34,7 +34,7 @@
   </v-card>
 
   <div class="mb-3">
-    <div class="wheel-panel-subsection-title">Source Inventory</div>
+    <div class="wheel-panel-subsection-title">{{ t('wheelSourceInventoryTitle') }}</div>
     <div v-if="wheelSessionSourceGroups.length" class="wheel-tracker-inventory-list">
       <div v-for="entry in wheelSessionSourceGroups" :key="entry.key" class="wheel-tracker-inventory-row">
         <div class="wheel-tracker-inventory-copy">
@@ -59,14 +59,14 @@
       </div>
     </div>
     <div v-else class="text-caption text-medium-emphasis text-center pa-2">
-      No wheel configured
+      {{ t('wheelNoConfigLabel') }}
     </div>
   </div>
 
   <v-btn block variant="outlined" size="small"
     @click="wheelConfirmAction = 'reset'; wheelConfirmDialog = true" class="mb-2">
     <v-icon start size="small">mdi-refresh</v-icon>
-    Reset Session
+    {{ t('commonReset') }}
   </v-btn>
 
   <template v-if="wheelMode !== 'config'">

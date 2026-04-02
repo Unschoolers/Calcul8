@@ -72,7 +72,8 @@ export const portfolioComputed: Pick<
         .map((lot) => ({
           ...lot,
           isComplete: lotIsCompleteByDefault(this, lot)
-        }))
+        })),
+      this.preferredLanguage
     );
   },
 
@@ -224,7 +225,8 @@ export const portfolioComputed: Pick<
       scopeType: this.activeScopeType,
       workspaceMembers: this.workspaceMembers,
       metric: this.portfolioSalesByUserMetric,
-      todayDate: new Date().toISOString().slice(0, 10)
+      todayDate: new Date().toISOString().slice(0, 10),
+      preferredLanguage: this.preferredLanguage
     });
   },
 

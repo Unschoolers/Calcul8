@@ -369,7 +369,7 @@ test("wheelSessionSourceGroups summarizes remaining stock for wheel sources", ()
   const rows = WheelWindow.computed!.wheelSessionSourceGroups.call(vm as never);
   assert.equal(rows.length, 2);
   assert.equal(rows[0]!.label, "Bulk Lot");
-  assert.match(rows[0]!.remainingText, /2 packs left/i);
+  assert.match(rows[0]!.remainingText, /2 items left/i);
   assert.equal(rows[0]!.tiers.length, 1);
   assert.equal(rows[0]!.tiers[0]!.count, 3);
   assert.equal(rows[1]!.label, "Singles Lot");
@@ -524,7 +524,7 @@ test("getWheelTierInventoryMeta marks exact last-hit stock as low stock", () => 
   assert.equal(singlesMeta?.warning, true);
   assert.match(singlesMeta?.text || "", /1 card left/i);
   assert.equal(packsMeta?.warning, true);
-  assert.match(packsMeta?.text || "", /1 pack left/i);
+  assert.match(packsMeta?.text || "", /1 item left/i);
 });
 
 // ── Component method tests ───────────────────────────────────────

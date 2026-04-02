@@ -245,6 +245,48 @@
       font-weight: 800;
       color: rgb(var(--v-theme-warning));
     }
+    .onboarding-intro-card {
+      border: 1px solid rgba(var(--v-theme-secondary), 0.18);
+      background:
+        radial-gradient(80% 60% at 15% 0%, rgba(var(--v-theme-secondary), 0.16), transparent 60%),
+        linear-gradient(180deg, rgba(var(--v-theme-surface), 0.98), rgba(var(--v-theme-surface), 0.94));
+      overflow: hidden;
+    }
+    .onboarding-intro-card__content {
+      display: grid;
+      gap: 0.6rem;
+      padding: 1rem 1.05rem 1.05rem;
+    }
+    .onboarding-intro-card__eyebrow {
+      font-size: 0.76rem;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgb(var(--v-theme-secondary));
+    }
+    .onboarding-intro-card__title {
+      font-size: 1.12rem;
+      line-height: 1.2;
+      font-weight: 800;
+      color: rgb(var(--v-theme-on-surface));
+    }
+    .onboarding-intro-card__body {
+      line-height: 1.45;
+      color: rgba(var(--v-theme-on-surface), 0.82);
+    }
+    .onboarding-intro-card__actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .onboarding-intro-card__summary {
+      padding: 0.8rem 0.9rem;
+      border-radius: 14px;
+      border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+      background: rgba(var(--v-theme-on-surface), 0.035);
+      color: rgba(var(--v-theme-on-surface), 0.78);
+      line-height: 1.4;
+    }
     @media (max-width: 600px) {
       .app-empty-state-alert {
         padding: 0.72rem 0.82rem !important;
@@ -252,6 +294,13 @@
       }
       .app-empty-state-alert .v-alert__content {
         font-size: 0.9rem;
+      }
+      .onboarding-intro-card__content {
+        padding: 0.88rem 0.9rem 0.95rem;
+      }
+      .onboarding-intro-card__actions {
+        flex-direction: column;
+        align-items: stretch;
       }
     }
     .auth-gate-shell {
@@ -619,7 +668,14 @@
       border-radius: 999px;
       display: block;
     }
+    .account-menu-content {
+      width: max-content !important;
+      max-width: min(96vw, 380px) !important;
+    }
     .account-menu-list {
+      width: fit-content;
+      min-width: min(92vw, 296px);
+      max-width: min(96vw, 380px);
       padding-top: 0.18rem;
       padding-bottom: 0.18rem;
     }
@@ -627,7 +683,7 @@
       display: flex;
       align-items: center;
       gap: 0.7rem;
-      padding: 0.45rem 0.85rem 0.55rem;
+      padding: 0.4rem 0.75rem 0.46rem;
     }
     .account-menu-header__avatar {
       flex-shrink: 0;
@@ -814,22 +870,29 @@
       box-shadow: 0 4px 10px rgba(0, 0, 0, 0.16);
     }
     .account-menu-list .v-list-subheader {
-      min-height: 28px;
-      padding-inline: 0.85rem;
-      font-size: 0.74rem;
+      min-height: 24px;
+      padding-inline: 0.75rem;
+      font-size: 0.72rem;
       letter-spacing: 0.01em;
     }
     .account-menu-list .v-list-item {
-      min-height: 44px;
-      padding-top: 0.2rem;
-      padding-bottom: 0.2rem;
+      min-height: 40px;
+      padding-top: 0.08rem;
+      padding-bottom: 0.08rem;
     }
-    .account-menu-list .v-list-item--density-default.v-list-item--one-line {
-      min-height: 44px;
+    .account-menu-list .v-list-item-title,
+    .account-menu-list .v-list-item-subtitle {
+      white-space: normal;
+      overflow: visible;
+      text-overflow: clip;
+      overflow-wrap: anywhere;
+    }
+    .account-menu-list .v-list-item-title {
+      line-height: 1.18;
     }
     .account-menu-list .v-list-item--density-default.v-list-item--three-line,
     .account-menu-list .v-list-item--density-default.v-list-item--two-line {
-      min-height: 52px;
+      min-height: 46px;
     }
     .account-menu-list .v-list-item-subtitle {
       line-height: 1.15;
@@ -842,14 +905,38 @@
     .account-menu-list .v-divider {
       margin: 0.2rem 0 !important;
     }
+    .account-menu-list__language-item .v-list-item__append {
+      margin-inline-start: 0.65rem;
+    }
+    .account-menu-list__language-item .v-list-item__content {
+      min-width: 0;
+      padding-inline-end: 0.35rem;
+    }
+    .account-menu-list__language-item .v-list-item-title {
+      white-space: normal;
+    }
+    .account-menu-list__language-item .v-btn-toggle {
+      flex-shrink: 0;
+    }
+    .account-menu-list__language-item .v-btn {
+      min-width: 36px;
+      min-height: 36px;
+      padding-inline: 0.7rem;
+    }
     @media (max-width: 640px) {
+      .account-menu-content {
+        max-width: min(96vw, 340px) !important;
+      }
       .account-menu-list {
+        width: fit-content;
+        min-width: min(94vw, 288px);
+        max-width: min(96vw, 340px);
         padding-top: 0.1rem;
         padding-bottom: 0.1rem;
       }
       .account-menu-header {
         gap: 0.62rem;
-        padding: 0.4rem 0.75rem 0.45rem;
+        padding: 0.34rem 0.68rem 0.4rem;
       }
       .account-menu-header__avatar {
         width: 36px !important;
@@ -862,15 +949,15 @@
         box-shadow: 0 3px 8px rgba(0, 0, 0, 0.14);
       }
       .account-menu-list .v-list-subheader {
-        min-height: 26px;
-        padding-inline: 0.75rem;
+        min-height: 22px;
+        padding-inline: 0.68rem;
       }
       .account-menu-list .v-list-item {
-        min-height: 42px;
+        min-height: 38px;
       }
       .account-menu-list .v-list-item--density-default.v-list-item--three-line,
       .account-menu-list .v-list-item--density-default.v-list-item--two-line {
-        min-height: 48px;
+        min-height: 44px;
       }
       .app-bar-title-wrap {
         gap: 0.45rem;

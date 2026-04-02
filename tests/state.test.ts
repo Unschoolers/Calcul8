@@ -149,6 +149,23 @@ test("createInitialState initializes simple/non-pro defaults and empty collectio
   });
 });
 
+test("createInitialState prefers a stored language and falls back to browser locale", async () => {
+  await withMockedLocalStorage(async (data) => {
+    data.set(STORAGE_KEYS.LANGUAGE, "fr");
+    vi.stubGlobal("navigator", { onLine: true });
+
+    const withStoredLanguage = createInitialState();
+    assert.equal(withStoredLanguage.preferredLanguage, "fr-CA");
+  });
+
+  await withMockedLocalStorage(async () => {
+    vi.stubGlobal("navigator", { onLine: true, language: "fr-CA", languages: ["fr-CA", "en-US"] });
+
+    const withBrowserLocale = createInitialState();
+    assert.equal(withBrowserLocale.preferredLanguage, "fr-CA");
+  });
+});
+
 test("createInitialState enables manual verify when VITE flag is true", async () => {
   await withMockedLocalStorage(async () => {
     vi.stubGlobal("navigator", { onLine: true });

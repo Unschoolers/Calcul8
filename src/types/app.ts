@@ -2,6 +2,7 @@ import type { Chart as ChartJS } from "chart.js";
 
 export type AppTab = "config" | "live" | "sales" | "portfolio" | "wheel";
 export type LotType = "bulk" | "singles";
+export type GuidedOnboardingStatus = "idle" | "available" | "running" | "completed" | "dismissed";
 export type SinglesCatalogSource = "ua" | "pokemon" | "none";
 export type CostInputMode = "perBox" | "total";
 export type PurchaseUiMode = "simple" | "expert";
@@ -397,6 +398,10 @@ export interface BeforeInstallPromptEvent extends Event {
 
 export interface AppState extends LotSetup {
   hasProAccess: boolean;
+  preferredLanguage: string;
+  guidedOnboardingStatus: GuidedOnboardingStatus;
+  guidedOnboardingLotType: LotType | null;
+  guidedOnboardingTargetLotId: number | null;
   showManualPurchaseVerify: boolean;
   showVerifyPurchaseModal: boolean;
   showStripeCheckoutModal: boolean;

@@ -1,4 +1,4 @@
-# whatfees Google Play Release Guide (TWA)
+# WhatFees Google Play Release Guide (TWA)
 
 Google Play requires an Android package (`.aab`).  
 For this project, the standard path is **TWA (Trusted Web Activity)** using Bubblewrap.
@@ -14,6 +14,11 @@ npm run test:api
 npm run build:prod
 ```
 
+Notes:
+
+- `npm run verify` covers the frontend security scan, frontend tests, typecheck, and a web build.
+- `npm run test:api` is still separate and should be run before release when backend code changed.
+
 Or run the automated PowerShell flow (recommended on Windows):
 
 ```powershell
@@ -27,6 +32,8 @@ npm run release:play
 - syncs `twa-manifest.json` version fields from root `package.json`
 - generates `public/.well-known/assetlinks.json`
 - builds the TWA `.aab` with Bubblewrap
+
+It does **not** run `npm run test:api`, so keep that in your manual pre-flight whenever API or shared contracts changed.
 
 Useful flags:
 
@@ -131,6 +138,7 @@ Output will include an `.aab` suitable for Play upload.
 Set frontend build env:
 
 - `VITE_API_BASE_URL=https://<your-function-app>.azurewebsites.net/api`
+- `VITE_REALTIME_SOCKET_URL=wss://ws.whatfees.ca/socket` (optional override; recommended for workspace realtime in production)
 - `VITE_GOOGLE_CLIENT_ID=<google web client id>`
 - `VITE_PLAY_PRO_PRODUCT_ID=<play in-app product id>`
 - `VITE_PURCHASE_PROVIDER` (optional debug override: `auto` default, `play` supported today)
@@ -142,6 +150,14 @@ Set backend Function App settings:
 - `GOOGLE_PLAY_PRO_PRODUCT_IDS=pro_access`
 - `GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL=<service-account-email>`
 - `GOOGLE_PLAY_SERVICE_ACCOUNT_PRIVATE_KEY=<full private key with \n>`
+
+Optional workspace realtime backend settings:
+
+- `REALTIME_PUBLISH_URL=https://ws.whatfees.ca/internal/publish`
+- `REALTIME_INTERNAL_API_KEY=<shared internal publish key>`
+- `REALTIME_TOKEN_SECRET=<shared subscribe token secret>`
+
+If you deploy the websocket gateway separately, keep `VITE_REALTIME_SOCKET_URL`, `REALTIME_PUBLISH_URL`, `REALTIME_INTERNAL_API_KEY`, and `REALTIME_TOKEN_SECRET` aligned so workspace subscribe tokens and server-side publish calls target the same realtime environment.
 
 ## 7) Update flow note
 

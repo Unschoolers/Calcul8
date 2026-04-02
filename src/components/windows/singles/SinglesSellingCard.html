@@ -3,13 +3,13 @@
     <v-card-title class="text-subtitle-1 singles-section-title-bar">
       <div class="singles-section-title-group">
         <v-icon size="16">mdi-cash-multiple</v-icon>
-        <span>Selling</span>
+        <span>{{ t('singlesSellingTitle') }}</span>
       </div>
     </v-card-title>
     <v-divider></v-divider>
     <v-card-text>
       <div class="d-flex align-center justify-space-between flex-wrap ga-2 mb-3">
-        <div class="text-caption text-medium-emphasis">Selling currency</div>
+        <div class="text-caption text-medium-emphasis">{{ t('singlesSellingCurrencyLabel') }}</div>
         <v-btn-toggle
           v-model="sellingCurrency"
           mandatory
@@ -26,9 +26,9 @@
         <v-col cols="9">
           <v-text-field
             :model-value="!hasProAccess
-              ? 'Upgrade to set target profit'
-              : (targetProfitPercent ? targetProfitPercent + '%' : 'Not set')"
-            label="Target Profit %"
+              ? t('configUpgradeToSetTargetProfit')
+              : (targetProfitPercent ? targetProfitPercent + '%' : t('configNotSet'))"
+            :label="t('configTargetProfitLabel') + ' %'"
             variant="outlined"
             density="compact"
             hide-details
@@ -44,8 +44,8 @@
             color="secondary"
             variant="tonal"
             class="selling-auto-btn"
-            :title="hasProAccess ? 'Open price calculator' : 'Upgrade to unlock price calculator'"
-            :aria-label="hasProAccess ? 'Open price calculator' : 'Upgrade to unlock price calculator'"
+            :title="hasProAccess ? t('configOpenPriceCalculatorAction') : t('configUpgradePriceCalculatorAction')"
+            :aria-label="hasProAccess ? t('configOpenPriceCalculatorAction') : t('configUpgradePriceCalculatorAction')"
             :disabled="!hasLotSelected"
             @click="accessProFeature('autoCalculate')"
           ></v-btn>
@@ -54,7 +54,7 @@
 
       <v-text-field
         v-model.number="sellingTaxPercent"
-        label="Selling Taxes %"
+        :label="t('configSellingTaxesLabel') + ' %'"
         type="number"
         variant="outlined"
         density="compact"
@@ -67,7 +67,7 @@
 
       <v-text-field
         v-model.number="sellingShippingPerOrder"
-        :label="`Average Buyer Shipping`"
+        :label="t('configAverageBuyerShippingLabel')"
         type="number"
         variant="outlined"
         density="compact"
@@ -85,12 +85,12 @@
               <v-select
                 v-model="feeProfilePreset"
                 :items="[
-                  { title: 'Whatnot', value: 'whatnot' },
-                  { title: 'No fees', value: 'none' }
+                  { title: t('configFeeProfileWhatnot'), value: 'whatnot' },
+                  { title: t('configFeeProfileNoFees'), value: 'none' }
               ]"
                 item-title="title"
                 item-value="value"
-                label="Fee Profile"
+                :label="t('configFeeProfileLabel')"
                 variant="outlined"
                 density="compact"
               hide-details
@@ -117,29 +117,29 @@
                   variant="text"
                   color="secondary"
                   class="fee-profile-info-btn"
-                  aria-label="View fee breakdown"
-                  title="View fee breakdown"
+                  :aria-label="t('configViewFeeBreakdownAction')"
+                  :title="t('configViewFeeBreakdownAction')"
                 ></v-btn>
               </template>
               <v-card elevation="6" class="fee-profile-popover">
-                <v-card-title class="fee-profile-popover__title">Fee breakdown</v-card-title>
+                <v-card-title class="fee-profile-popover__title">{{ t('configFeeBreakdownTitle') }}</v-card-title>
                 <v-card-text class="fee-profile-popover__body">
                   <div class="fee-profile-popover__row">
-                    <span class="fee-profile-popover__label">Platform fee %</span>
+                    <span class="fee-profile-popover__label">{{ t('configPlatformFeePercentLabel') }} %</span>
                     <strong class="fee-profile-popover__value">{{ Number(platformFeePercent ?? 0).toFixed(2) }}%</strong>
                   </div>
                   <div class="fee-profile-popover__row">
-                    <span class="fee-profile-popover__label">Additional fee %</span>
+                    <span class="fee-profile-popover__label">{{ t('configAdditionalFeePercentLabel') }} %</span>
                     <strong class="fee-profile-popover__value">{{ Number(additionalFeePercent ?? 0).toFixed(2) }}%</strong>
                   </div>
                   <div class="fee-profile-popover__row">
-                    <span class="fee-profile-popover__label">Additional fee applies to</span>
+                    <span class="fee-profile-popover__label">{{ t('configAdditionalFeeAppliesToLabel') }}</span>
                     <strong class="fee-profile-popover__value">
-                      {{ additionalFeeAppliesTo === 'sale_plus_shipping' ? 'sale + shipping' : 'sale only' }}
+                      {{ additionalFeeAppliesTo === 'sale_plus_shipping' ? t('configSalePlusShippingValue') : t('configSaleOnlyValue') }}
                     </strong>
                   </div>
                   <div class="fee-profile-popover__row">
-                    <span class="fee-profile-popover__label">Fixed fee per order</span>
+                    <span class="fee-profile-popover__label">{{ t('configFixedFeePerOrderLabel') }}</span>
                     <strong class="fee-profile-popover__value">${{ Number(fixedFeePerOrder ?? 0).toFixed(2) }}</strong>
                   </div>
                 </v-card-text>
@@ -148,7 +148,7 @@
           </v-col>
         </v-row>
         <div class="text-caption text-medium-emphasis fee-profile-help">
-          Marketplace fee math only. Taxes and shipping are separate inputs.
+          {{ t('singlesMarketplaceFeeMathHelp') }}
         </div>
       </div>
     </v-card-text>

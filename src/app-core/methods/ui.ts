@@ -2,12 +2,20 @@ import type { AppContext, AppMethodState } from "../context.ts";
 import { uiAccountMethods } from "./ui/account.ts";
 import { uiBaseMethods } from "./ui/base.ts";
 import { uiEntitlementMethods } from "./ui/entitlements.ts";
+import { uiOnboardingMethods } from "./ui/onboarding.ts";
 import { uiSyncMethods } from "./ui/sync.ts";
 import { uiWhatnotMethods } from "./ui/whatnot.ts";
 import { uiWorkspaceMethods } from "./ui/workspaces.ts";
 
 export const uiMethods: ThisType<AppContext> & Pick<
   AppMethodState,
+  | "t"
+  | "setPreferredLanguage"
+  | "syncGuidedOnboarding"
+  | "startGuidedOnboarding"
+  | "dismissGuidedOnboarding"
+  | "stopGuidedOnboarding"
+  | "handleGuidedOnboardingLotCreated"
   | "toggleTheme"
   | "notify"
   | "askConfirmation"
@@ -68,6 +76,7 @@ export const uiMethods: ThisType<AppContext> & Pick<
   | "getWorkspaceMemberPresenceLabel"
 > = {
   ...uiBaseMethods,
+  ...uiOnboardingMethods,
   ...uiAccountMethods,
   ...uiEntitlementMethods,
   ...uiWhatnotMethods,

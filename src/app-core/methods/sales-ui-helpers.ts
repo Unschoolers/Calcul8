@@ -1,5 +1,6 @@
 import type { SaleType } from "../../types/app.ts";
 import type { AppContext } from "../context.ts";
+import { formatLocalizedCompactDate } from "../i18n/index.ts";
 
 export function firstFiniteNonNegative(...values: Array<number | null | undefined>): number | null {
   for (const value of values) {
@@ -39,16 +40,16 @@ export function isSmallDisplay(context: Pick<AppContext, "$vuetify">): boolean {
   return Boolean(vuetify?.display?.smAndDown);
 }
 
-export function formatCompactChartDate(value: string): string {
+export function formatCompactChartDate(value: string, preferredLanguage?: string): string {
   const dateOnlyMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   const date = dateOnlyMatch
     ? new Date(Number(dateOnlyMatch[1]), Number(dateOnlyMatch[2]) - 1, Number(dateOnlyMatch[3]))
     : new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric"
-  }).format(date);
+  return formatLocalizedCompactDate(
+    `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`,
+    preferredLanguage
+  );
 }
 
 export function refreshChartsForCurrentTab(

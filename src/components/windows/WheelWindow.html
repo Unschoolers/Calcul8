@@ -27,12 +27,12 @@
                         <v-btn value="config" size="small"
                             :class="{ 'wheel-mode-toggle__btn--active-config': wheelMode === 'config' }">
                             <v-icon start size="small">mdi-tune</v-icon>
-                            Config
+                            {{ t('wheelConfigModeLabel') }}
                         </v-btn>
                         <v-btn value="live" size="small"
                             :class="{ 'wheel-mode-toggle__btn--active-live': wheelMode === 'live' }">
                             <v-icon start size="small">mdi-broadcast</v-icon>
-                            Live
+                            {{ t('wheelLiveModeLabel') }}
                         </v-btn>
                     </v-btn-toggle>
                     <v-btn size="x-small"
@@ -52,7 +52,7 @@
                     v-if="wheelMode === 'config'"
                     class="wheel-stage-summary-card"
                 >
-                    <span class="wheel-stage-summary-card__label">Expected Margin</span>
+                    <span class="wheel-stage-summary-card__label">{{ t('wheelStageExpectedMarginLabel') }}</span>
                     <strong class="wheel-stage-summary-card__value" :style="{ color: expectedMarginColor }">{{ expectedMarginDisplay }}</strong>
                     <span class="wheel-stage-summary-card__meta">{{ expectedMarginHint }}</span>
                 </div>
@@ -60,7 +60,7 @@
                     v-if="wheelMode === 'config'"
                     class="wheel-stage-summary-card"
                 >
-                    <span class="wheel-stage-summary-card__label">Target Margin</span>
+                    <span class="wheel-stage-summary-card__label">{{ t('wheelStageTargetMarginLabel') }}</span>
                     <strong class="wheel-stage-summary-card__value">{{ wheelDisplayConfig?.targetMargin ?? 0 }}%</strong>
                     <span class="wheel-stage-summary-card__meta">{{ wheelDisplaySlots.length }} configured slots</span>
                 </div>
@@ -68,10 +68,10 @@
                     v-if="wheelMode === 'config'"
                     class="wheel-stage-summary-card"
                 >
-                    <span class="wheel-stage-summary-card__label">Builder</span>
-                    <strong class="wheel-stage-summary-card__value">{{ hasPendingWheelChanges ? 'Pending' : 'Ready' }}</strong>
+                    <span class="wheel-stage-summary-card__label">{{ t('wheelBuilderLabel') }}</span>
+                    <strong class="wheel-stage-summary-card__value">{{ hasPendingWheelChanges ? t('wheelBuilderPendingLabel') : t('wheelBuilderReadyLabel') }}</strong>
                     <span class="wheel-stage-summary-card__meta">
-                        {{ hasPendingWheelChanges ? 'Rebuild to apply edits' : 'Tier sources and costs in sync' }}
+                        {{ hasPendingWheelChanges ? t('wheelBuilderPendingHelp') : t('wheelBuilderReadyHelp') }}
                     </span>
                 </div>
 
@@ -79,7 +79,7 @@
                     v-if="wheelMode === 'live'"
                     class="wheel-stage-summary-card"
                 >
-                    <span class="wheel-stage-summary-card__label">Spins</span>
+                    <span class="wheel-stage-summary-card__label">{{ t('wheelSpinsLabel') }}</span>
                     <strong class="wheel-stage-summary-card__value">{{ wheelTotalSpins }}</strong>
                     <span class="wheel-stage-summary-card__meta">{{ wheelSessionRevenue.toFixed(2) }} revenue</span>
                 </div>
@@ -87,7 +87,7 @@
                     v-if="wheelMode === 'live'"
                     class="wheel-stage-summary-card"
                 >
-                    <span class="wheel-stage-summary-card__label">Gross Profit</span>
+                    <span class="wheel-stage-summary-card__label">{{ t('wheelGrossProfitLabel') }}</span>
                     <strong class="wheel-stage-summary-card__value" :class="wheelSessionProfitClass">{{ wheelSessionProfitDisplay }}</strong>
                     <span class="wheel-stage-summary-card__meta">{{ wheelSessionCost.toFixed(2) }} prize cost</span>
                 </div>
@@ -95,7 +95,7 @@
                     v-if="wheelMode === 'live'"
                     class="wheel-stage-summary-card"
                 >
-                    <span class="wheel-stage-summary-card__label">Session Margin</span>
+                    <span class="wheel-stage-summary-card__label">{{ t('wheelSessionMarginLabel') }}</span>
                     <strong class="wheel-stage-summary-card__value" :style="{ color: wheelSessionMarginColor }">{{ wheelSessionMarginDisplay }}</strong>
                     <span class="wheel-stage-summary-card__meta">{{ wheelSessionMarginHint }}</span>
                 </div>
@@ -156,26 +156,26 @@
                     <template #activator="{ props }">
                         <v-chip v-bind="props" color="warning" variant="tonal" size="small" class="wheel-pending-chip">
                             <v-icon start size="x-small">mdi-circle-medium</v-icon>
-                            Pending changes
+                            {{ t('wheelPendingChangesLabel') }}
                         </v-chip>
                     </template>
                     <v-card class="wheel-pending-card" variant="outlined">
                         <v-card-text class="wheel-pending-card__body">
-                            <div class="wheel-pending-card__title">Pending changes</div>
+                            <div class="wheel-pending-card__title">{{ t('wheelPendingChangesTitle') }}</div>
                             <div class="wheel-pending-card__text">
-                                Config edits save automatically. Rebuild applies them to the wheel.
+                                {{ t('wheelPendingChangesBody') }}
                             </div>
                             <v-alert
                                 v-if="editingWheelConfig && editingWheelConfig.tiers.some(t => t.boundLotId == null)"
                                 type="warning" variant="tonal" density="compact" class="mt-2">
-                                Every tier needs a source lot before you can rebuild.
+                                {{ t('wheelPendingChangesWarning') }}
                             </v-alert>
                         </v-card-text>
                         <v-card-actions class="wheel-pending-card__actions">
                             <v-btn color="primary" variant="elevated" block :disabled="!canApplyWheelConfig"
                                 @click="wheelPendingMenuOpen = false; wheelConfirmAction = 'apply'; wheelConfirmDialog = true">
                                 <v-icon start>mdi-refresh</v-icon>
-                                Rebuild Wheel
+                                {{ t('wheelRebuildAction') }}
                             </v-btn>
                         </v-card-actions>
                     </v-card>
@@ -211,10 +211,10 @@
         <v-card v-if="wheelChaseDialog" variant="outlined" class="pa-3 wheel-lot-select-card">
             <div class="text-subtitle-2 mb-2">
                 <v-icon start size="small" color="amber">mdi-star</v-icon>
-                Chase won! Replace with:
+                {{ t('wheelChaseReplacePrompt') }}
             </div>
             <v-select v-model="wheelChaseReplacementSinglesId" :items="getChaseReplacementItems()" item-title="title"
-                item-value="value" label="Pick replacement item" variant="outlined" density="compact"
+                item-value="value" :label="t('wheelPickReplacementItemLabel')" variant="outlined" density="compact"
                 hide-details="auto" class="mb-2">
                 <template #item="{ props, item }">
                     <v-list-item v-bind="props" :title="undefined" :subtitle="undefined">
@@ -255,12 +255,12 @@
                     <v-btn block color="amber" variant="elevated" :disabled="wheelChaseReplacementSinglesId == null"
                         @click="confirmChaseReplacement">
                         <v-icon start>mdi-star</v-icon>
-                        Replace
+                        {{ t('commonReplace') }}
                     </v-btn>
                 </v-col>
                 <v-col cols="6">
                     <v-btn block variant="text" :disabled="!canKeepChase()" @click="keepChase">
-                        Keep
+                        {{ t('commonKeep') }}
                     </v-btn>
                 </v-col>
             </v-row>
@@ -282,13 +282,13 @@
                             }}</span>
                     </div>
                     <v-select v-model="entry.selectedLotId" :items="lotItems" item-title="title" item-value="value"
-                        label="Lot" variant="outlined" density="compact" hide-details="auto"
+                        :label="t('shellLotLabel')" variant="outlined" density="compact" hide-details="auto"
                         class="wheel-batch-lot-select"></v-select>
                     <v-btn icon="mdi-check" size="x-small" variant="text" color="success"
                         :disabled="!entry.selectedLotId" @click="confirmBatchSale(bIdx)"
-                        title="Record this sale"></v-btn>
+                        :title="t('wheelRecordSaleAction')"></v-btn>
                     <v-btn icon="mdi-close" size="x-small" variant="text" color="error" @click="dismissBatchSale(bIdx)"
-                        title="Dismiss"></v-btn>
+                        :title="t('wheelDismissAction')"></v-btn>
                 </div>
             </div>
 
@@ -312,7 +312,7 @@
         v-if="!wheelPresentationMode && wheelMobileInspectorOpen"
         type="button"
         class="wheel-mobile-sheet-backdrop"
-        aria-label="Close wheel details"
+        :aria-label="t('wheelCloseDetailsAction')"
         @click="closeWheelInspector"
     ></button>
 
@@ -336,7 +336,7 @@
             </v-card-text>
             <v-card-actions>
                 <v-spacer></v-spacer>
-                <v-btn variant="text" @click="wheelConfirmDialog = false">Cancel</v-btn>
+                <v-btn variant="text" @click="wheelConfirmDialog = false">{{ t('commonCancel') }}</v-btn>
                 <v-btn :color="wheelConfirmButtonColor" variant="elevated" @click="confirmWheelAction">
                     {{ wheelConfirmButtonLabel }}
                 </v-btn>
@@ -347,24 +347,24 @@
     <v-dialog v-model="wheelLiveConfirmDialog" max-width="420" persistent>
         <v-card>
             <v-card-title class="text-subtitle-1">
-                Go Live?
+                {{ t('wheelGoLiveTitle') }}
             </v-card-title>
             <v-card-text class="text-body-2">
-                This switches the wheel into live mode so spins can record session progress and sales.
+                {{ t('wheelGoLiveBody') }}
                 <div class="wheel-live-confirm-summary">
                     <div><strong>Wheel:</strong> {{ wheelLiveConfirmSummaryName }}</div>
-                    <div><strong>Slots:</strong> {{ wheelLiveConfirmSummarySlots }}</div>
-                    <div><strong>Spin price:</strong> ${{ wheelLiveConfirmSummarySpinPrice }}</div>
+                    <div><strong>{{ t('wheelSlotsSummaryLabel') }}:</strong> {{ wheelLiveConfirmSummarySlots }}</div>
+                    <div><strong>{{ t('wheelSpinPriceSummaryLabel') }}:</strong> ${{ wheelLiveConfirmSummarySpinPrice }}</div>
                 </div>
                 <v-alert v-if="hasPendingWheelChanges" type="warning" variant="tonal" density="compact" class="mt-3">
-                    You still have pending edits. Live mode will use the current rebuilt wheel until you rebuild again.
+                    {{ t('wheelGoLivePendingWarning') }}
                 </v-alert>
             </v-card-text>
             <v-card-actions>
                 <v-spacer></v-spacer>
-                <v-btn variant="text" @click="cancelWheelModeChange">Cancel</v-btn>
+                <v-btn variant="text" @click="cancelWheelModeChange">{{ t('commonCancel') }}</v-btn>
                 <v-btn color="success" variant="elevated" @click="confirmWheelModeChange">
-                    Go Live
+                    {{ t('wheelGoLiveAction') }}
                 </v-btn>
             </v-card-actions>
         </v-card>
@@ -373,12 +373,12 @@
     <v-dialog v-model="wheelManageDialog" max-width="420">
         <v-card>
             <v-card-title class="text-subtitle-1">
-                Edit Wheel
+                {{ t('wheelEditWheelTitle') }}
             </v-card-title>
             <v-card-text class="text-body-2">
                 <v-text-field
                     v-model="wheelManageName"
-                    label="Wheel Name"
+                    :label="t('wheelNameLabel')"
                     variant="outlined"
                     density="compact"
                     hide-details="auto"
@@ -393,12 +393,12 @@
                     prepend-icon="mdi-delete-outline"
                     @click="closeWheelManageDialog(); wheelConfirmAction = 'delete'; wheelConfirmDialog = true"
                 >
-                    Delete Wheel
+                    {{ t('wheelDeleteWheelAction') }}
                 </v-btn>
             </v-card-text>
             <v-card-actions>
                 <v-spacer></v-spacer>
-                <v-btn variant="text" @click="closeWheelManageDialog">Cancel</v-btn>
+                <v-btn variant="text" @click="closeWheelManageDialog">{{ t('commonCancel') }}</v-btn>
                 <v-btn color="primary" variant="elevated" @click="applyWheelManageDialog">
                     Save
                 </v-btn>

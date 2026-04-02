@@ -1,16 +1,28 @@
 <v-container fluid class="pa-2 live-window-shell">
+  <v-alert
+    v-if="currentLotType !== 'singles'"
+    type="info"
+    variant="tonal"
+    density="compact"
+    class="mb-3"
+  >
+    {{ t('liveWindowIntroBody', 'Test prices here before you publish them. Compare the current price, the profit you expect, and the price you would need to hit your target.') }}
+  </v-alert>
   <div v-if="currentLotType === 'singles'" class="live-singles-shell">
     <live-singles-panel ref="liveSinglesPanel"></live-singles-panel>
   </div>
   <v-row v-else dense>
     <v-col cols="12">
       <live-price-card
+        :ctx="ctx"
         v-model="livePackPrice"
-        label="Item"
+        :label="t('livePriceCardItemLabel', 'Item')"
         icon="mdi-tag-outline"
         avatar-color="primary"
         :units="totalPacks"
         :calculate-profit="profitForLive"
+        :estimate-profit-at-price="(price) => liveScenarioProfitAtPrice('item', price)"
+        :estimate-percent-at-price="(price) => liveScenarioPercentAtPrice('item', price)"
         :safe-fixed="safeFixedForLive"
         :avg-price-needed="requiredPackPriceFromNow"
         :forecast-profit="liveScenarioProfit('item')"
@@ -23,12 +35,15 @@
 
     <v-col cols="12">
       <live-price-card
+        :ctx="ctx"
         v-model="liveBoxPriceSell"
-        label="Box"
+        :label="t('livePriceCardBoxLabel', 'Box')"
         icon="mdi-cube-outline"
         avatar-color="secondary"
         :units="boxesPurchased"
         :calculate-profit="profitForLive"
+        :estimate-profit-at-price="(price) => liveScenarioProfitAtPrice('box', price)"
+        :estimate-percent-at-price="(price) => liveScenarioPercentAtPrice('box', price)"
         :safe-fixed="safeFixedForLive"
         :avg-price-needed="requiredBoxPriceFromNow"
         :forecast-profit="liveScenarioProfit('box')"
@@ -41,12 +56,15 @@
 
     <v-col cols="12">
       <live-price-card
+        :ctx="ctx"
         v-model="liveSpotPrice"
-        label="RTYH"
+        :label="t('livePriceCardRandomHitLabel', 'Random hit')"
         icon="mdi-cards-playing-outline"
         avatar-color="success"
         :units="totalSpots"
         :calculate-profit="profitForLive"
+        :estimate-profit-at-price="(price) => liveScenarioProfitAtPrice('rtyh', price)"
+        :estimate-percent-at-price="(price) => liveScenarioPercentAtPrice('rtyh', price)"
         :safe-fixed="safeFixedForLive"
         :avg-price-needed="requiredSpotPriceFromNow"
         :forecast-profit="liveScenarioProfit('rtyh')"

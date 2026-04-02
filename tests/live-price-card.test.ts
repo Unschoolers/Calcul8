@@ -8,6 +8,8 @@ type CardCtx = {
   profitBasis: number | null;
   forecastProfit?: number | null;
   forecastPercent?: number | null;
+  estimateProfitAtPrice?: ((price: number) => number | null) | null;
+  estimatePercentAtPrice?: ((price: number) => number | null) | null;
   calculateProfit: ((units: number, pricePerUnit: number) => number) | null;
   safeFixed: ((value: number, decimals?: number) => string) | null;
   $emit: ReturnType<typeof vi.fn>;
@@ -94,6 +96,20 @@ test("displayProfit and displayProfitPercent prefer explicit forecast values", (
   assert.equal(displayProfitPercent.call(context), 12.8);
 });
 
+test("displayProfitAtPrice and displayProfitPercentAtPrice prefer forecast estimators when provided", () => {
+  const context = createContext({
+    estimateProfitAtPrice: (price) => price * 2,
+    estimatePercentAtPrice: (price) => price / 2,
+    calculateProfit: (_units, pricePerUnit) => pricePerUnit - 10
+  });
+
+  const displayProfitAtPrice = getMethod<(this: CardCtx, price: number) => number>("displayProfitAtPrice");
+  const displayProfitPercentAtPrice = getMethod<(this: CardCtx, price: number) => number>("displayProfitPercentAtPrice");
+
+  assert.equal(displayProfitAtPrice.call(context, 11), 22);
+  assert.equal(displayProfitPercentAtPrice.call(context, 20), 10);
+});
+
 test("needed display helpers and delta use needed values", () => {
   const context = createContext({
     modelValue: 85,
@@ -111,4 +127,15 @@ test("needed display helpers and delta use needed values", () => {
   assert.equal(neededDisplayProfit.call(context), 120);
   assert.equal(neededDisplayPercent.call(context), 15);
   assert.ok(Math.abs((deltaVsNeeded.call(context) || 0) - 54.88) < 0.000001);
+});
+
+test("currentPriceGap compares the visible price against the needed average price", () => {
+  const context = createContext({
+    modelValue: 97,
+    avgPriceNeeded: 92
+  } as Partial<CardCtx> & { avgPriceNeeded: number });
+
+  const currentPriceGap = getMethod<(this: CardCtx & { avgPriceNeeded?: number | null }) => number | null>("currentPriceGap");
+
+  assert.equal(currentPriceGap.call(context as CardCtx & { avgPriceNeeded?: number | null }), 5);
 });

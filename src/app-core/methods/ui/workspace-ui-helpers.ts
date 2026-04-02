@@ -151,6 +151,10 @@ export function loadScopedAppState(app: AppContext): void {
   } catch {
     app.lastSyncedPayloadHash = null;
   }
+
+  if (typeof app.syncGuidedOnboarding === "function") {
+    app.syncGuidedOnboarding();
+  }
 }
 
 export async function applyWorkspaceScope(

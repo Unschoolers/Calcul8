@@ -2,8 +2,10 @@
 
 ## Current Priorities
 
-- [ ] Split [whatnot-services.ts](/f:/Sources/Calcul8/apps/api/src/functions/whatnot-services.ts)
-  - Separate OAuth/connect, status/disconnect, sync, import staging, and review-confirm flows
+- [ ] Reduce remaining Whatnot service coupling
+  - Keep [whatnot-services.ts](/f:/Sources/Calcul8/apps/api/src/functions/whatnot-services.ts) as the thin export facade it is now
+  - Continue trimming cross-cutting helpers out of [whatnot-service-core.ts](/f:/Sources/Calcul8/apps/api/src/functions/whatnot-service-core.ts)
+  - Split grouping/manual-duplicate/import-confirm logic inside [whatnot-import-service.ts](/f:/Sources/Calcul8/apps/api/src/functions/whatnot-import-service.ts)
   - Keep provider mechanics in [whatnot.ts](/f:/Sources/Calcul8/apps/api/src/lib/whatnot.ts)
   - Add deeper tests for [whatnotRepository.ts](/f:/Sources/Calcul8/apps/api/src/lib/cosmos/whatnotRepository.ts)
 
@@ -35,6 +37,11 @@
     - Keep personal Pro checks only for personal scope or explicitly personal-only tools
     - Expose billing source in UI copy, for example personal Pro vs workspace-paid access
   - Prefer a grace-first rollout with enforcement behind a flag until billing, seat handling, and fallback messaging are solid
+
+- [ ] Centralize workspace realtime room + token conventions
+  - Keep frontend subscribe behavior in [workspace-realtime.ts](/f:/Sources/Calcul8/src/app-core/methods/ui/workspace-realtime.ts) aligned with backend room/token helpers in [realtime.ts](/f:/Sources/Calcul8/apps/api/src/lib/realtime.ts)
+  - Avoid duplicating room name shapes or prod fallback URLs across multiple call sites
+  - Keep realtime publish best-effort so authoritative HTTP writes do not block on websocket fan-out
 
 ## Notes
 

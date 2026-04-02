@@ -9,13 +9,13 @@
     <v-card-title class="d-flex align-center justify-space-between">
       <div>
         <v-icon class="mr-2">mdi-shopping</v-icon>
-        Whatnot Import Review
+        {{ t('whatnotReviewTitle') }}
       </div>
       <v-btn
         icon="mdi-close"
         variant="text"
-        title="Close Whatnot import review"
-        aria-label="Close Whatnot import review"
+        :title="t('whatnotReviewCloseAction')"
+        :aria-label="t('whatnotReviewCloseAction')"
         @click="closeWhatnotReviewDialog"
       ></v-btn>
     </v-card-title>
@@ -185,7 +185,7 @@
             </div>
 
             <div class="mb-4">
-              <div class="text-caption text-medium-emphasis mb-2">Import action</div>
+              <div class="text-caption text-medium-emphasis mb-2">{{ t('whatnotReviewImportActionLabel') }}</div>
               <v-btn-toggle
                 :model-value="whatnotSelectedImportAction(row)"
                 mandatory
@@ -253,9 +253,9 @@
                 <v-select
                   v-model="row.selectedSaleType"
                   :items="[
-                    { title: 'Pack / Item', value: 'pack' },
+                    { title: 'Item', value: 'pack' },
                     { title: 'Box', value: 'box' },
-                    { title: 'RTYH', value: 'rtyh' }
+                    { title: 'Random hit', value: 'rtyh' }
                   ]"
                   item-title="title"
                   item-value="value"
@@ -310,7 +310,7 @@
         >
           Discard batch
         </v-btn>
-        <v-btn variant="text" @click="closeWhatnotReviewDialog">Close</v-btn>
+        <v-btn variant="text" @click="closeWhatnotReviewDialog">{{ t('commonClose') }}</v-btn>
       </div>
       <div class="d-flex align-center ga-2">
         <v-chip

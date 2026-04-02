@@ -1,4 +1,21 @@
 type PortfolioChartView = "breakdown" | "trend" | "sellthrough" | "margin";
+type PortfolioCopyFn = (key: string, fallback: string) => string;
+
+function resolvePortfolioCopy(
+  translate: PortfolioCopyFn | undefined,
+  key: string,
+  fallback: string
+): string {
+  if (typeof translate !== "function") {
+    return fallback;
+  }
+  try {
+    const value = translate(key, fallback);
+    return typeof value === "string" && value.trim().length > 0 ? value : fallback;
+  } catch {
+    return fallback;
+  }
+}
 
 export function getNextPortfolioChartView(current: unknown): PortfolioChartView {
   const normalized = String(current || "trend");
@@ -8,11 +25,17 @@ export function getNextPortfolioChartView(current: unknown): PortfolioChartView 
   return "breakdown";
 }
 
-export function getPortfolioChartToggleTitle(next: PortfolioChartView): string {
-  if (next === "breakdown") return "Switch to breakdown view";
-  if (next === "trend") return "Switch to trend view";
-  if (next === "margin") return "Switch to sold profit margin view";
-  return "Switch to sell-through view";
+export function getPortfolioChartToggleTitle(next: PortfolioChartView, translate?: PortfolioCopyFn): string {
+  if (next === "breakdown") {
+    return resolvePortfolioCopy(translate, "portfolioChartToggleBreakdownTitle", "Show breakdown view");
+  }
+  if (next === "trend") {
+    return resolvePortfolioCopy(translate, "portfolioChartToggleTrendTitle", "Show trend view");
+  }
+  if (next === "margin") {
+    return resolvePortfolioCopy(translate, "portfolioChartToggleMarginTitle", "Show sold margin view");
+  }
+  return resolvePortfolioCopy(translate, "portfolioChartToggleSellThroughTitle", "Show sell-through view");
 }
 
 export function getPortfolioChartToggleIcon(next: PortfolioChartView): string {
@@ -22,33 +45,43 @@ export function getPortfolioChartToggleIcon(next: PortfolioChartView): string {
   return "mdi-chart-bar";
 }
 
-export function getPortfolioChartSubtitle(current: unknown): string {
-  const normalized = String(current || "trend");
-  if (normalized === "breakdown") return "Revenue by lot";
-  if (normalized === "sellthrough") return "Sell-through over time (%)";
-  if (normalized === "margin") return "Sold profit margin by lot (%)";
-  return "Cumulative portfolio profit trend";
-}
-
-export function getPortfolioChartAriaLabel(current: unknown): string {
+export function getPortfolioChartSubtitle(current: unknown, translate?: PortfolioCopyFn): string {
   const normalized = String(current || "trend");
   if (normalized === "breakdown") {
-    return "Portfolio revenue breakdown chart by lot.";
+    return resolvePortfolioCopy(translate, "portfolioChartBreakdownSubtitle", "Revenue by lot");
   }
   if (normalized === "sellthrough") {
-    return "Portfolio sell-through percentage over time chart.";
+    return resolvePortfolioCopy(translate, "portfolioChartSellThroughSubtitle", "Sell-through over time");
   }
   if (normalized === "margin") {
-    return "Portfolio sold profit margin percentage chart by lot.";
+    return resolvePortfolioCopy(translate, "portfolioChartMarginSubtitle", "Sold margin by lot");
   }
-  return "Portfolio cumulative profit trend chart.";
+  return resolvePortfolioCopy(translate, "portfolioChartTrendSubtitle", "Profit trend over time");
 }
 
-export function getPortfolioSalesByUserMetricLabel(metric: unknown): string {
+export function getPortfolioChartAriaLabel(current: unknown, translate?: PortfolioCopyFn): string {
+  const normalized = String(current || "trend");
+  if (normalized === "breakdown") {
+    return resolvePortfolioCopy(translate, "portfolioChartBreakdownAriaLabel", "Portfolio revenue breakdown chart by lot.");
+  }
+  if (normalized === "sellthrough") {
+    return resolvePortfolioCopy(translate, "portfolioChartSellThroughAriaLabel", "Portfolio sell-through over time chart.");
+  }
+  if (normalized === "margin") {
+    return resolvePortfolioCopy(translate, "portfolioChartMarginAriaLabel", "Portfolio sold margin chart by lot.");
+  }
+  return resolvePortfolioCopy(translate, "portfolioChartTrendAriaLabel", "Portfolio profit trend chart.");
+}
+
+export function getPortfolioSalesByUserMetricLabel(metric: unknown, translate?: PortfolioCopyFn): string {
   const normalized = String(metric || "revenue");
-  if (normalized === "profit") return "Profit";
-  if (normalized === "count") return "Sales count";
-  return "Revenue";
+  if (normalized === "profit") {
+    return resolvePortfolioCopy(translate, "portfolioSalesByUserMetricProfitLabel", "Profit");
+  }
+  if (normalized === "count") {
+    return resolvePortfolioCopy(translate, "portfolioSalesByUserMetricCountLabel", "Count");
+  }
+  return resolvePortfolioCopy(translate, "portfolioSalesByUserMetricRevenueLabel", "Revenue");
 }
 
 export function getPortfolioSalesByUserTotalValue(
@@ -106,18 +139,22 @@ export function getPortfolioSalesByUserWeekTotals(
     .filter((row) => Math.abs(row.total) > 0.000001);
 }
 
-export function getPortfolioSalesByUserSubtitle(): string {
-  return "Last 8 weeks by recorded seller";
+export function getPortfolioSalesByUserSubtitle(translate?: PortfolioCopyFn): string {
+  return resolvePortfolioCopy(translate, "portfolioSalesByUserSubtitle", "Last 8 weeks by seller");
 }
 
-export function getPortfolioSalesByUserAriaLabel(metric: unknown): string {
+export function getPortfolioSalesByUserAriaLabel(metric: unknown, translate?: PortfolioCopyFn): string {
   const normalized = String(metric || "revenue");
   const metricLabel = normalized === "profit"
-    ? "profit"
+    ? resolvePortfolioCopy(translate, "portfolioSalesByUserMetricProfitLabel", "profit")
     : normalized === "count"
-      ? "sales count"
-      : "revenue";
-  return `Portfolio sales per user chart for the last 8 weeks by ${metricLabel}.`;
+      ? resolvePortfolioCopy(translate, "portfolioSalesByUserMetricCountLabel", "count")
+      : resolvePortfolioCopy(translate, "portfolioSalesByUserMetricRevenueLabel", "revenue");
+  return resolvePortfolioCopy(
+    translate,
+    "portfolioSalesByUserAriaLabel",
+    `Portfolio sales by person chart for the last 8 weeks by ${metricLabel}.`
+  ).replace(/\{\{metricLabel\}\}/g, metricLabel);
 }
 
 export function buildPortfolioSalesByUserLegendItems(

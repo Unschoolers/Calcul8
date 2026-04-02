@@ -2182,11 +2182,11 @@ test("formatDate keeps date-only values in local time", () => {
   });
 
   const fromIsoDateOnly = uiBaseMethods.formatDate.call(
-    {} as unknown as Parameters<typeof uiBaseMethods.formatDate>[0],
+    { preferredLanguage: "en" } as unknown as Parameters<typeof uiBaseMethods.formatDate>[0],
     "2026-02-21"
   );
   const fromSlashDate = uiBaseMethods.formatDate.call(
-    {} as unknown as Parameters<typeof uiBaseMethods.formatDate>[0],
+    { preferredLanguage: "en" } as unknown as Parameters<typeof uiBaseMethods.formatDate>[0],
     "2/21/2026"
   );
   const invalidRaw = uiBaseMethods.formatDate.call(

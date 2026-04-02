@@ -98,7 +98,7 @@ export function getWheelTierInventoryMeta(
 
   const remainingPacks = getRemainingPacksForWheelLot(context, tier.boundLotId);
   return {
-    text: `${remainingPacks} pack${remainingPacks === 1 ? "" : "s"} left • ${Math.max(1, Number(tier.packsCount) || 0)} per hit`,
+    text: `${remainingPacks} item${remainingPacks === 1 ? "" : "s"} left • ${Math.max(1, Number(tier.packsCount) || 0)} per hit`,
     warning: remainingPacks <= Math.max(1, Number(tier.packsCount) || 1)
   };
 }

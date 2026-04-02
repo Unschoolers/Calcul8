@@ -8,9 +8,9 @@
                         variant="tonal"
                         class="portfolio-filter-type-toggle"
                       >
-                        <v-btn value="both" prepend-icon="mdi-view-grid-outline">Both</v-btn>
-                        <v-btn value="bulk" prepend-icon="mdi-cube-outline">Bulk</v-btn>
-                        <v-btn value="singles" prepend-icon="mdi-cards-outline">Singles</v-btn>
+                        <v-btn value="both" prepend-icon="mdi-view-grid-outline">{{ portfolioCopy('portfolioLotTypeFilterAllLabel', 'All') }}</v-btn>
+                        <v-btn value="bulk" prepend-icon="mdi-cube-outline">{{ portfolioCopy('commonBulk', 'Bulk') }}</v-btn>
+                        <v-btn value="singles" prepend-icon="mdi-cards-outline">{{ portfolioCopy('commonSingles', 'Singles') }}</v-btn>
                       </v-btn-toggle>
 
                       <v-autocomplete
@@ -21,8 +21,8 @@
                         :items="portfolioVisibleLotFilterItems()"
                         item-title="title"
                         item-value="value"
-                        label="Portfolio Filter"
-                        placeholder="Search lots"
+                        :label="portfolioCopy('portfolioLotFilterTitle', 'Filter lots')"
+                        :placeholder="portfolioCopy('portfolioLotFilterSearchPlaceholder', 'Search by lot name')"
                         autocomplete="off"
                         autocorrect="off"
                         autocapitalize="off"
@@ -155,15 +155,17 @@
                   >
                     <v-window-item v-if="averagePortfolioForecastScenario" :value="0">
                       <portfolio-kpi-card
-                        label="Forecasted Profit"
+                        :label="portfolioCopy('portfolioKpiProjectedProfitLabel', 'Projected profit')"
                         icon="mdi-crystal-ball"
                         :value="((averagePortfolioForecastScenario?.forecastProfit ?? 0) >= 0 ? '+' : '') + '$' + fmtCurrency(averagePortfolioForecastScenario?.forecastProfit ?? 0)"
-                        :meta="(averagePortfolioForecastScenario?.label || 'Average forecast')
+                        :meta="(averagePortfolioForecastScenario?.label || portfolioCopy('portfolioKpiProjectedProfitMetaLabel', 'Average forecast'))
                           + ' • '
                           + (averagePortfolioForecastScenario?.modeCount ?? 0)
                           + ' mode'
                           + ((averagePortfolioForecastScenario?.modeCount ?? 0) === 1 ? '' : 's')
-                          + ' • Avg revenue $'
+                          + ' • '
+                          + portfolioCopy('portfolioKpiAverageRevenueLabel', 'Average revenue')
+                          + ' $'
                           + fmtCurrency(averagePortfolioForecastScenario?.forecastRevenue ?? 0)"
                         :card-classes="[
                           'config-card',
@@ -179,15 +181,17 @@
 
                     <v-window-item :value="averagePortfolioForecastScenario ? 1 : 0">
                       <portfolio-kpi-card
-                        label="Global Profit / Loss"
+                        :label="portfolioCopy('portfolioKpiTotalProfitLabel', 'Total profit')"
                         :icon="(portfolioTotals?.totalProfit ?? 0) >= 0 ? 'mdi-trending-up' : 'mdi-trending-down'"
                         :value="((portfolioTotals?.totalProfit ?? 0) >= 0 ? '+' : '') + '$' + fmtCurrency(portfolioTotals?.totalProfit ?? 0)"
                         :meta="(portfolioTotals?.profitableLotCount ?? 0)
                           + ' / '
                           + (portfolioTotals?.lotCount ?? 0)
-                          + ' lot'
+                          + ' '
+                          + portfolioCopy('portfolioLotCountLabel', 'lot')
                           + ((portfolioTotals?.lotCount ?? 0) === 1 ? '' : 's')
-                          + ' profitable'"
+                          + ' '
+                          + portfolioCopy('portfolioKpiProfitableLabel', 'profitable')"
                         :card-classes="[
                           'config-card',
                           'portfolio-kpi-card',
@@ -202,11 +206,12 @@
 
                     <v-window-item :value="averagePortfolioForecastScenario ? 2 : 1">
                       <portfolio-kpi-card
-                        label="Total Net Revenue"
+                        :label="portfolioCopy('portfolioKpiTotalRevenueLabel', 'Total revenue')"
                         icon="mdi-cash-multiple"
                         :value="'$' + fmtCurrency(portfolioTotals?.totalRevenue ?? 0)"
                         :meta="(portfolioTotals?.totalSalesCount ?? 0)
-                          + ' sale'
+                          + ' '
+                          + portfolioCopy('portfolioSalesCountLabel', 'sale')
                           + ((portfolioTotals?.totalSalesCount ?? 0) === 1 ? '' : 's')"
                         :card-classes="['config-card', 'portfolio-kpi-card', 'portfolio-kpi-card--revenue', 'portfolio-kpi-slide']"
                       ></portfolio-kpi-card>
@@ -214,10 +219,10 @@
 
                     <v-window-item :value="averagePortfolioForecastScenario ? 3 : 2">
                       <portfolio-kpi-card
-                        label="Total Cost"
+                        :label="portfolioCopy('portfolioKpiTotalCostLabel', 'Total cost')"
                         icon="mdi-receipt-text-outline"
                         :value="'$' + fmtCurrency(portfolioTotals?.totalCost ?? 0)"
-                        meta="Across all lots"
+                        :meta="portfolioCopy('portfolioKpiTotalCostMeta', 'Across all lots')"
                         :card-classes="['config-card', 'portfolio-kpi-card', 'portfolio-kpi-card--cost', 'portfolio-kpi-slide']"
                       ></portfolio-kpi-card>
                     </v-window-item>
@@ -227,15 +232,17 @@
                 <v-row v-else>
                   <v-col cols="12" sm="6" :md="averagePortfolioForecastScenario ? 3 : 4">
                     <portfolio-kpi-card
-                      label="Global Profit / Loss"
+                      :label="portfolioCopy('portfolioKpiTotalProfitLabel', 'Total profit')"
                       :icon="(portfolioTotals?.totalProfit ?? 0) >= 0 ? 'mdi-trending-up' : 'mdi-trending-down'"
                       :value="((portfolioTotals?.totalProfit ?? 0) >= 0 ? '+' : '') + '$' + fmtCurrency(portfolioTotals?.totalProfit ?? 0)"
                       :meta="(portfolioTotals?.profitableLotCount ?? 0)
                         + ' / '
                         + (portfolioTotals?.lotCount ?? 0)
-                        + ' lot'
+                        + ' '
+                        + portfolioCopy('portfolioLotCountLabel', 'lot')
                         + ((portfolioTotals?.lotCount ?? 0) === 1 ? '' : 's')
-                        + ' profitable'"
+                        + ' '
+                        + portfolioCopy('portfolioKpiProfitableLabel', 'profitable')"
                       :card-classes="[
                         'config-card',
                         'portfolio-kpi-card',
@@ -249,11 +256,12 @@
 
                   <v-col cols="12" sm="6" :md="averagePortfolioForecastScenario ? 3 : 4">
                     <portfolio-kpi-card
-                      label="Total Net Revenue"
+                      :label="portfolioCopy('portfolioKpiTotalRevenueLabel', 'Total revenue')"
                       icon="mdi-cash-multiple"
                       :value="'$' + fmtCurrency(portfolioTotals?.totalRevenue ?? 0)"
                       :meta="(portfolioTotals?.totalSalesCount ?? 0)
-                        + ' sale'
+                        + ' '
+                        + portfolioCopy('portfolioSalesCountLabel', 'sale')
                         + ((portfolioTotals?.totalSalesCount ?? 0) === 1 ? '' : 's')"
                       :card-classes="['config-card', 'portfolio-kpi-card', 'portfolio-kpi-card--revenue']"
                     ></portfolio-kpi-card>
@@ -261,25 +269,27 @@
 
                   <v-col cols="12" sm="6" :md="averagePortfolioForecastScenario ? 3 : 4">
                     <portfolio-kpi-card
-                      label="Total Cost"
+                      :label="portfolioCopy('portfolioKpiTotalCostLabel', 'Total cost')"
                       icon="mdi-receipt-text-outline"
                       :value="'$' + fmtCurrency(portfolioTotals?.totalCost ?? 0)"
-                      meta="Across all lots"
+                      :meta="portfolioCopy('portfolioKpiTotalCostMeta', 'Across all lots')"
                       :card-classes="['config-card', 'portfolio-kpi-card', 'portfolio-kpi-card--cost']"
                     ></portfolio-kpi-card>
                   </v-col>
 
                   <v-col v-if="averagePortfolioForecastScenario" cols="12" sm="6" md="3">
                     <portfolio-kpi-card
-                      label="Forecasted Profit"
+                      :label="portfolioCopy('portfolioKpiProjectedProfitLabel', 'Projected profit')"
                       icon="mdi-crystal-ball"
                       :value="((averagePortfolioForecastScenario?.forecastProfit ?? 0) >= 0 ? '+' : '') + '$' + fmtCurrency(averagePortfolioForecastScenario?.forecastProfit ?? 0)"
-                      :meta="(averagePortfolioForecastScenario?.label || 'Average forecast')
+                      :meta="(averagePortfolioForecastScenario?.label || portfolioCopy('portfolioKpiProjectedProfitMetaLabel', 'Average forecast'))
                         + ' • '
                         + (averagePortfolioForecastScenario?.modeCount ?? 0)
                         + ' mode'
                         + ((averagePortfolioForecastScenario?.modeCount ?? 0) === 1 ? '' : 's')
-                        + ' • Avg revenue $'
+                        + ' • '
+                        + portfolioCopy('portfolioKpiAverageRevenueLabel', 'Average revenue')
+                        + ' $'
                         + fmtCurrency(averagePortfolioForecastScenario?.forecastRevenue ?? 0)"
                       :card-classes="[
                         'config-card',
@@ -301,7 +311,7 @@
                           <div class="portfolio-section-head-main">
                             <v-icon size="16">mdi-chart-line</v-icon>
                             <div class="portfolio-section-head-copy">
-                              <div class="portfolio-section-eyebrow">Portfolio Chart</div>
+                              <div class="portfolio-section-eyebrow">{{ portfolioCopy('portfolioChartTitle', 'Portfolio chart') }}</div>
                               <div class="portfolio-section-subtitle">
                                 {{ portfolioChartSubtitle() }}
                               </div>
@@ -320,7 +330,12 @@
                           </v-btn>
                         </div>
                         <div v-if="!hasPortfolioData" class="text-caption text-medium-emphasis py-6 text-center">
-                          No chart data yet.
+                          <p class="text-body-2 mb-1 font-weight-medium">
+                            {{ portfolioCopy('portfolioChartEmptyTitle', 'No portfolio data yet') }}
+                          </p>
+                          <p class="mb-0">
+                            {{ portfolioCopy('portfolioChartEmptyBody', 'Create a lot and record sales to see your trends here.') }}
+                          </p>
                         </div>
                         <canvas
                           v-else
@@ -338,16 +353,16 @@
                       <v-card-title class="d-flex align-center justify-space-between portfolio-section-title-bar">
                         <div class="portfolio-section-title-group">
                           <v-icon size="16">mdi-view-grid-outline</v-icon>
-                          <span>Performance</span>
+                          <span>{{ portfolioCopy('portfolioPerformanceTitle', 'Lot performance') }}</span>
                         </div>
                         <div v-if="hasPortfolioData" class="portfolio-performance-summary">
                           <div class="portfolio-performance-summary-stat is-error">
-                            <span class="portfolio-performance-summary-label">Under</span>
+                            <span class="portfolio-performance-summary-label">{{ portfolioCopy('portfolioPerformanceLossLabel', 'Loss') }}</span>
                             <span class="portfolio-performance-summary-value">${{ portfolioLotPerformanceUnderAmount() }}</span>
                           </div>
                           <div class="portfolio-performance-summary-divider" aria-hidden="true"></div>
                           <div class="portfolio-performance-summary-stat is-success">
-                            <span class="portfolio-performance-summary-label">Over</span>
+                            <span class="portfolio-performance-summary-label">{{ portfolioCopy('portfolioPerformanceGainLabel', 'Gain') }}</span>
                             <span class="portfolio-performance-summary-value">${{ portfolioLotPerformanceOverAmount() }}</span>
                           </div>
                         </div>
@@ -356,8 +371,12 @@
 
                       <v-card-text v-if="!hasPortfolioData" class="text-center py-8">
                         <v-icon size="64" color="grey">mdi-chart-box-outline</v-icon>
-                        <p class="text-h6 mt-4 text-grey">No lot data yet</p>
-                        <p class="text-caption">Create lots and add sales to see your global performance.</p>
+                        <p class="text-h6 mt-4 text-grey">
+                          {{ portfolioCopy('portfolioPerformanceEmptyTitle', 'No lot performance yet') }}
+                        </p>
+                        <p class="text-caption">
+                          {{ portfolioCopy('portfolioPerformanceEmptyBody', 'Create lots and add sales to see which lots are ahead or behind.') }}
+                        </p>
                       </v-card-text>
 
                       <v-list v-else>
@@ -384,7 +403,7 @@
                             <v-list-item-title class="portfolio-lot-title">{{ row.lotName }}</v-list-item-title>
                             <v-list-item-subtitle class="portfolio-lot-subtitle d-flex flex-column ga-1">
                               <div v-if="row.salesCount === 0" class="portfolio-lot-meta-line portfolio-lot-empty-state">
-                                No sales yet
+                                {{ portfolioCopy('portfolioLotNoSalesLabel', 'No sales yet') }}
                               </div>
                               <div v-if="row.realizedMarginPercent != null" class="portfolio-lot-meta-line portfolio-lot-forecast-line">
                                 <v-chip
@@ -393,7 +412,7 @@
                                 :color="row.realizedProfit >= 0 ? 'success' : 'error'"
                                 class="portfolio-lot-forecast-chip"
                               >
-                                Sold margin {{ row.realizedMarginPercent >= 0 ? '+' : '' }}{{ fmtCurrency(row.realizedMarginPercent, 1) }}%
+                                {{ portfolioCopy('portfolioLotSoldMarginLabel', 'Sold margin') }} {{ row.realizedMarginPercent >= 0 ? '+' : '' }}{{ fmtCurrency(row.realizedMarginPercent, 1) }}%
                               </v-chip>
                               </div>
                               <div class="portfolio-lot-meta-line portfolio-lot-forecast-line portfolio-lot-signal-row">
@@ -404,7 +423,7 @@
                                   class="portfolio-lot-forecast-chip portfolio-lot-risk-chip"
                                   :class="{ 'portfolio-lot-risk-chip--neutral': row.totalProfit >= 0 }"
                                 >
-                                  Risk ${{ fmtCurrency(Math.max(0, -(row.totalProfit ?? 0))) }}
+                                  {{ portfolioCopy('portfolioLotRiskLabel', 'At risk') }} ${{ fmtCurrency(Math.max(0, -(row.totalProfit ?? 0))) }}
                                 </v-chip>
                               </div>
                             </v-list-item-subtitle>
@@ -433,7 +452,7 @@
                           <div class="portfolio-section-head-main">
                             <v-icon size="16">mdi-account-group-outline</v-icon>
                             <div class="portfolio-section-head-copy">
-                              <div class="portfolio-section-eyebrow">Sales Per User</div>
+                              <div class="portfolio-section-eyebrow">{{ portfolioCopy('portfolioSalesByUserTitle', 'Sales by person') }}</div>
                               <div class="portfolio-section-subtitle">
                                 {{ portfolioSalesByUserSubtitle() }}
                               </div>
@@ -451,7 +470,7 @@
                                 color="secondary"
                                 class="portfolio-sales-by-user-leader-chip"
                               >
-                                Top {{ portfolioSalesByUserLeader()?.label }}
+                                {{ portfolioCopy('portfolioSalesByUserTopLabel', 'Top') }} {{ portfolioSalesByUserLeader()?.label }}
                               </v-chip>
                               <v-chip
                                 v-if="portfolioSalesByUserBestWeek()"
@@ -459,14 +478,14 @@
                                 variant="tonal"
                                 class="portfolio-sales-by-user-stat-chip"
                               >
-                                Best week {{ portfolioSalesByUserBestWeek()?.label }}
+                                {{ portfolioCopy('portfolioSalesByUserBestWeekLabel', 'Best week') }} {{ portfolioSalesByUserBestWeek()?.label }}
                               </v-chip>
                               <v-chip
                                 size="small"
                                 variant="tonal"
                                 class="portfolio-sales-by-user-stat-chip"
                               >
-                                8-week total
+                                {{ portfolioCopy('portfolioSalesByUserTotalLabel', '8-week total') }}
                                 <span class="portfolio-sales-by-user-stat-chip__value">
                                   <template v-if="portfolioSalesByUserMetric === 'count'">
                                     {{ fmtCurrency(portfolioSalesByUserTotalValue(), 0) }}
@@ -484,14 +503,14 @@
                               variant="tonal"
                               class="portfolio-sales-by-user-toggle"
                             >
-                              <v-btn value="revenue">Revenue</v-btn>
-                              <v-btn value="profit">Profit</v-btn>
-                              <v-btn value="count">Count</v-btn>
+                              <v-btn value="revenue">{{ portfolioCopy('portfolioSalesByUserMetricRevenueLabel', 'Revenue') }}</v-btn>
+                              <v-btn value="profit">{{ portfolioCopy('portfolioSalesByUserMetricProfitLabel', 'Profit') }}</v-btn>
+                              <v-btn value="count">{{ portfolioCopy('portfolioSalesByUserMetricCountLabel', 'Count') }}</v-btn>
                             </v-btn-toggle>
                           </div>
                         </div>
                         <div v-if="!hasPortfolioSalesByUserData" class="text-caption text-medium-emphasis py-6 text-center">
-                          No recorded sales yet for the last 8 weeks.
+                          {{ portfolioCopy('portfolioSalesByUserEmptyBody', 'No recorded sales in the last 8 weeks yet.') }}
                         </div>
                         <template v-else>
                           <div

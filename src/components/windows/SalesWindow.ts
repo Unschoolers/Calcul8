@@ -6,6 +6,21 @@ import "./SalesWindow.css";
 const SALES_HISTORY_INITIAL_RENDER_COUNT = 80;
 const SALES_HISTORY_RENDER_BATCH_SIZE = 80;
 
+function resolveSalesTranslation(
+  vm: Record<string, unknown>,
+  key: string,
+  fallback = ""
+): string {
+  const translate = vm.t as ((translationKey: string) => string) | undefined;
+  if (typeof translate === "function") {
+    const translated = translate.call(vm, key);
+    if (typeof translated === "string" && translated.trim()) {
+      return translated;
+    }
+  }
+  return fallback;
+}
+
 export const SalesWindow = {
   name: "SalesWindow",
   props: {
@@ -91,13 +106,16 @@ export const SalesWindow = {
       const format = typeof fmtUnits === "function"
         ? (value: number) => fmtUnits.call(this, value)
         : (value: number) => String(value);
-      return `${format(soldPacks / packsPerBox)} / ${format(totalPacks / packsPerBox)} boxes`;
+      const boxLabel = resolveSalesTranslation(this, "salesBoxesLabel", "boxes");
+      return `${format(soldPacks / packsPerBox)} / ${format(totalPacks / packsPerBox)} ${boxLabel}`;
     },
 
     salesHistorySummaryLabel(this: Record<string, unknown>): string {
       const vm = this as Record<string, unknown>;
       const percent = Number(vm.salesHistorySoldPercent) || 0;
-      return `${percent.toFixed(1)}%`;
+      const formatter = vm.formatCurrency as ((value: number | null | undefined, decimals?: number) => string) | undefined;
+      const formatted = typeof formatter === "function" ? formatter(percent, 1) : percent.toFixed(1);
+      return `${formatted}%`;
     },
 
     salesHistorySoldPercent(this: Record<string, unknown>): number {
@@ -119,7 +137,9 @@ export const SalesWindow = {
       const format = typeof vm.fmtCurrency === "function"
         ? vm.fmtCurrency.bind(this)
         : (value: number | null | undefined) => Number(value || 0).toFixed(2);
-      return `Rev $${format(vm.salesStatus?.revenue ?? 0)} • Cost $${format(vm.totalCaseCost)}`;
+      const revenueLabel = resolveSalesTranslation(vm, "salesStatusRevenueLabel", "Revenue");
+      const costLabel = resolveSalesTranslation(vm, "salesStatusCostLabel", "Cost");
+      return `${revenueLabel} $${format(vm.salesStatus?.revenue ?? 0)} • ${costLabel} $${format(vm.totalCaseCost)}`;
     },
 
     salesStatusProgressLine(this: Record<string, unknown>): string {
@@ -127,10 +147,10 @@ export const SalesWindow = {
       if (lotType === "singles") {
         const trackedSold = Math.max(0, Number(this.singlesTrackedSoldCount) || 0);
         const trackedTotal = Math.max(0, Number(this.singlesTrackedTotalCount) || 0);
-        const parts = [`${trackedSold} / ${trackedTotal} items`];
+        const parts = [`${trackedSold} / ${trackedTotal} ${resolveSalesTranslation(this, "salesItemsLabel", "items")}`];
         const unlinkedSold = Math.max(0, Number(this.singlesUnlinkedSoldCount) || 0);
         if (unlinkedSold > 0) {
-          parts.push(`${unlinkedSold} unlinked`);
+          parts.push(`${unlinkedSold} ${resolveSalesTranslation(this, "salesUnlinkedLabel", "unlinked")}`);
         }
         return parts.join(" • ");
       }
@@ -142,7 +162,7 @@ export const SalesWindow = {
       if (bulkBoxProgressText) {
         parts.push(bulkBoxProgressText);
       }
-      parts.push(`${soldPacks} / ${totalPacks} items`);
+      parts.push(`${soldPacks} / ${totalPacks} ${resolveSalesTranslation(this, "salesItemsLabel", "items")}`);
       return parts.join(" • ");
     }
   },
@@ -157,6 +177,10 @@ export const SalesWindow = {
     }
   },
   methods: {
+    translate(key: string, fallback = ""): string {
+      return resolveSalesTranslation(this as Record<string, unknown>, key, fallback);
+    },
+
     salesStatusToneClass(): string {
       const salesStatus = (this as Record<string, unknown>).salesStatus as { color?: string } | undefined;
       const rawColor = String(salesStatus?.color || "").toLowerCase();
@@ -194,12 +218,14 @@ export const SalesWindow = {
     },
 
     fmtCurrency(value: number | null | undefined, decimals = 2): string {
-      const fn = (this as Record<string, unknown>).formatCurrency;
-      if (typeof fn === "function") {
-        return (fn as (v: number | null | undefined, d?: number) => string)(value, decimals);
+      const formatCurrency = (this as Record<string, unknown>).formatCurrency;
+      if (typeof formatCurrency === "function") {
+        return (formatCurrency as (v: number | null | undefined, d?: number) => string)(value, decimals);
       }
-      if (value == null || Number.isNaN(Number(value))) return "0.00";
-      return Number(value).toFixed(decimals);
+      return new Intl.NumberFormat(undefined, {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals
+      }).format(value == null || Number.isNaN(Number(value)) ? 0 : Number(value));
     },
 
     fmtUnits(value: number | null | undefined): string {
@@ -244,7 +270,7 @@ export const SalesWindow = {
           .map((value) => Math.floor(value));
         const uniqueIds = [...new Set(linkedEntryIds)];
         if (uniqueIds.length !== 1) {
-          return uniqueIds.length > 1 ? `${uniqueIds.length} items` : "";
+          return uniqueIds.length > 1 ? `${uniqueIds.length} ${resolveSalesTranslation(this as Record<string, unknown>, "salesItemsLabel", "items")}` : "";
         }
         const entry = entries.find((candidate) => Number(candidate.id) === uniqueIds[0]);
         if (!entry) return "";
@@ -277,12 +303,12 @@ export const SalesWindow = {
       const priceLabel = `$${this.fmtCurrency(sale.price)}`;
       const quantity = Math.max(0, Number(sale.quantity) || 0);
       const typeLabel = sale.type === "box"
-        ? (quantity === 1 ? "box" : "boxes")
+        ? (quantity === 1 ? resolveSalesTranslation(this as Record<string, unknown>, "salesSaleTypeBoxLabel", "box") : resolveSalesTranslation(this as Record<string, unknown>, "salesSaleTypeBoxesLabel", "boxes"))
         : sale.type === "rtyh"
-          ? "RTYH"
+          ? resolveSalesTranslation(this as Record<string, unknown>, "salesSaleTypeRandomHitLabel", "random hit")
           : sale.type === "wheel"
-            ? "spin"
-            : (quantity === 1 ? "item" : "items");
+            ? resolveSalesTranslation(this as Record<string, unknown>, "salesSaleTypeWheelLabel", "spin")
+            : (quantity === 1 ? resolveSalesTranslation(this as Record<string, unknown>, "salesSaleTypeItemLabel", "item") : resolveSalesTranslation(this as Record<string, unknown>, "salesSaleTypeItemsLabel", "items"));
       if (lotType !== "singles") {
         return `${quantity} ${typeLabel} @ ${priceLabel}`;
       }

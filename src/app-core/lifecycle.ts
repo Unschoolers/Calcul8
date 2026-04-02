@@ -114,6 +114,9 @@ export const appLifecycle: AppLifecycleObject = {
     this.loadWheelFromStorage();
     this.syncLivePricesFromDefaults();
     this.initGoogleAutoLogin();
+    if (typeof this.syncGuidedOnboarding === "function") {
+      this.syncGuidedOnboarding();
+    }
     void (async () => {
       const stripeReturn = await handleStripeCheckoutReturn(this);
       if (stripeReturn !== "success") {
@@ -135,6 +138,9 @@ export const appLifecycle: AppLifecycleObject = {
   },
 
   beforeUnmount() {
+    if (typeof this.stopGuidedOnboarding === "function") {
+      this.stopGuidedOnboarding();
+    }
     void closeStripeEmbeddedCheckout(this);
     this.stopCloudSyncScheduler();
     stopWorkspaceConfigSyncPush(this);

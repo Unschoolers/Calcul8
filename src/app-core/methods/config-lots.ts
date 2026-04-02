@@ -250,6 +250,9 @@ export const configLotMethods: ConfigMethodSubset<
     this.newLotType = nextLotType;
     this.newLotCatalogSource = nextLotCatalogSource;
     this.showNewLotModal = false;
+    if (typeof this.handleGuidedOnboardingLotCreated === "function") {
+      this.handleGuidedOnboardingLotCreated(newLot.lotType === "singles" ? "singles" : "bulk", newLot.id);
+    }
     this.notify("Lot created", "success");
   },
 
@@ -418,6 +421,9 @@ export const configLotMethods: ConfigMethodSubset<
         LAST_LOT_ID: LEGACY_KEYS.LAST_LOT_ID
       }
     });
+    if (typeof this.syncGuidedOnboarding === "function") {
+      this.syncGuidedOnboarding();
+    }
   }
 };
 

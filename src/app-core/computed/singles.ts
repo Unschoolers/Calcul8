@@ -173,12 +173,13 @@ export const singlesComputed: Pick<
       [...bulkLots, ...singlesLots].map((lot) => ({
         ...lot,
         isComplete: lotIsCompleteByDefault(this, lot)
-      }))
+      })),
+      this.preferredLanguage
     );
   },
 
   visibleLotItems() {
-    return filterLotOptionItems(this.lotItems, this.lotSearchQuery);
+    return filterLotOptionItems(this.lotItems, this.lotSearchQuery, this.preferredLanguage);
   },
 
   singlesPurchaseTotalQuantity(): number {

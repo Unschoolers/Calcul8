@@ -213,7 +213,7 @@ test("PortfolioWindow lot status, incomplete state, and profit labels prefer for
       totalPacks: 5,
       forecastProfitAverage: 12.34
     }),
-    "≈ $12.34"
+    "Projected +$12.34"
   );
   assert.equal(
     PortfolioWindow.methods.portfolioLotPrimaryProfitLabel.call(vm as never, {
@@ -221,7 +221,7 @@ test("PortfolioWindow lot status, incomplete state, and profit labels prefer for
       totalPacks: 5,
       forecastProfitAverage: -12.34
     }),
-    "≈ -$12.34"
+    "Projected -$12.34"
   );
   assert.equal(
     PortfolioWindow.methods.portfolioLotPrimaryProfitLabel.call(vm as never, {
@@ -230,7 +230,7 @@ test("PortfolioWindow lot status, incomplete state, and profit labels prefer for
       soldPacks: 5,
       totalPacks: 5
     }),
-    "-$8.50"
+    "Loss -$8.50"
   );
   assert.equal(
     PortfolioWindow.methods.portfolioLotPrimaryProfitLabel.call(vm as never, {
@@ -239,7 +239,7 @@ test("PortfolioWindow lot status, incomplete state, and profit labels prefer for
       soldPacks: 5,
       totalPacks: 5
     }),
-    "$7.25"
+    "Net +$7.25"
   );
 });
 
@@ -314,15 +314,15 @@ test("PortfolioWindow chart copy helpers return expected titles, icons, subtitle
     nextPortfolioChartView: PortfolioWindow.methods.nextPortfolioChartView
   };
 
-  assert.equal(PortfolioWindow.methods.portfolioChartToggleTitle.call(breakdownVm as never), "Switch to trend view");
-  assert.equal(PortfolioWindow.methods.portfolioChartToggleTitle.call(trendVm as never), "Switch to sell-through view");
-  assert.equal(PortfolioWindow.methods.portfolioChartToggleTitle.call(sellthroughVm as never), "Switch to sold profit margin view");
-  assert.equal(PortfolioWindow.methods.portfolioChartToggleTitle.call(marginVm as never), "Switch to breakdown view");
+  assert.equal(PortfolioWindow.methods.portfolioChartToggleTitle.call(breakdownVm as never), "Show trend view");
+  assert.equal(PortfolioWindow.methods.portfolioChartToggleTitle.call(trendVm as never), "Show sell-through view");
+  assert.equal(PortfolioWindow.methods.portfolioChartToggleTitle.call(sellthroughVm as never), "Show sold margin view");
+  assert.equal(PortfolioWindow.methods.portfolioChartToggleTitle.call(marginVm as never), "Show breakdown view");
 
   assert.equal(PortfolioWindow.methods.portfolioChartSubtitle.call(breakdownVm as never), "Revenue by lot");
-  assert.equal(PortfolioWindow.methods.portfolioChartSubtitle.call(trendVm as never), "Cumulative portfolio profit trend");
-  assert.equal(PortfolioWindow.methods.portfolioChartSubtitle.call(sellthroughVm as never), "Sell-through over time (%)");
-  assert.equal(PortfolioWindow.methods.portfolioChartSubtitle.call(marginVm as never), "Sold profit margin by lot (%)");
+  assert.equal(PortfolioWindow.methods.portfolioChartSubtitle.call(trendVm as never), "Profit trend over time");
+  assert.equal(PortfolioWindow.methods.portfolioChartSubtitle.call(sellthroughVm as never), "Sell-through over time");
+  assert.equal(PortfolioWindow.methods.portfolioChartSubtitle.call(marginVm as never), "Sold margin by lot");
 
   assert.equal(
     PortfolioWindow.methods.portfolioChartAriaLabel.call(breakdownVm as never),
@@ -330,15 +330,15 @@ test("PortfolioWindow chart copy helpers return expected titles, icons, subtitle
   );
   assert.equal(
     PortfolioWindow.methods.portfolioChartAriaLabel.call(trendVm as never),
-    "Portfolio cumulative profit trend chart."
+    "Portfolio profit trend chart."
   );
   assert.equal(
     PortfolioWindow.methods.portfolioChartAriaLabel.call(sellthroughVm as never),
-    "Portfolio sell-through percentage over time chart."
+    "Portfolio sell-through over time chart."
   );
   assert.equal(
     PortfolioWindow.methods.portfolioChartAriaLabel.call(marginVm as never),
-    "Portfolio sold profit margin percentage chart by lot."
+    "Portfolio sold margin chart by lot."
   );
 });
 
@@ -355,15 +355,15 @@ test("PortfolioWindow sales per user helpers return expected labels for each met
 
   assert.equal(PortfolioWindow.methods.portfolioSalesByUserMetricLabel.call(revenueVm as never), "Revenue");
   assert.equal(PortfolioWindow.methods.portfolioSalesByUserMetricLabel.call(profitVm as never), "Profit");
-  assert.equal(PortfolioWindow.methods.portfolioSalesByUserMetricLabel.call(countVm as never), "Sales count");
+  assert.equal(PortfolioWindow.methods.portfolioSalesByUserMetricLabel.call(countVm as never), "Count");
 
   assert.equal(
     PortfolioWindow.methods.portfolioSalesByUserSubtitle.call(revenueVm as never),
-    "Last 8 weeks by recorded seller"
+    "Last 8 weeks by seller"
   );
   assert.equal(
     PortfolioWindow.methods.portfolioSalesByUserAriaLabel.call(profitVm as never),
-    "Portfolio sales per user chart for the last 8 weeks by profit."
+    "Portfolio sales by person chart for the last 8 weeks by profit."
   );
 });
 

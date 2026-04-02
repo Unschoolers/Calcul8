@@ -19,6 +19,7 @@ import {
   getSinglesRemainingQuantity,
   getTrackedSinglesSoldCount
 } from "./singles-helpers.ts";
+import { translateAppMessage } from "../i18n/index.ts";
 import {
   pickBestForecastScenario,
   type ForecastScenario
@@ -147,9 +148,10 @@ export const forecastComputed: Pick<
   },
 
   purchaseCostInputLabel(): string {
+    const preferredLanguage = String(this.preferredLanguage || "");
     return (this.purchaseUiMode === "simple" || this.costInputMode === "total")
-      ? "Total Purchase"
-      : "Price per Box (No Tax)";
+      ? translateAppMessage(preferredLanguage, "purchaseCostInputTotalLabel")
+      : translateAppMessage(preferredLanguage, "purchaseCostInputPerBoxLabel");
   },
 
   purchaseCostInputValue: {
@@ -346,14 +348,33 @@ export const forecastComputed: Pick<
 
   salesStatus() {
     if (this.currentLotType === "singles") {
+      const preferredLanguage = String(this.preferredLanguage || "");
       const profit = this.totalRevenue - this.totalCaseCost;
       if ((this.sales?.length ?? 0) === 0) {
-        return { color: "grey", icon: "mdi-information", title: "No Sales Yet", profit: 0, revenue: 0 };
+        return {
+          color: "grey",
+          icon: "mdi-information",
+          title: translateAppMessage(preferredLanguage, "salesStatusNoSalesYet"),
+          profit: 0,
+          revenue: 0
+        };
       }
       if (profit < 0) {
-        return { color: "error", icon: "mdi-alert-circle", title: "Net Negative", profit, revenue: this.totalRevenue };
+        return {
+          color: "error",
+          icon: "mdi-alert-circle",
+          title: translateAppMessage(preferredLanguage, "salesStatusNetNegative"),
+          profit,
+          revenue: this.totalRevenue
+        };
       }
-      return { color: "success", icon: "mdi-check-circle", title: "Net Positive", profit, revenue: this.totalRevenue };
+      return {
+        color: "success",
+        icon: "mdi-check-circle",
+        title: translateAppMessage(preferredLanguage, "salesStatusNetPositive"),
+        profit,
+        revenue: this.totalRevenue
+      };
     }
     return calculateSalesStatus(this.totalRevenue, this.totalCaseCost, this.salesProgress);
   },

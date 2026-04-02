@@ -21,6 +21,25 @@ export const appWatch: AppWatchObject = {
     }
   },
 
+  preferredLanguage(newValue) {
+    try {
+      const normalized = String(newValue || "").trim();
+      if (normalized) {
+        localStorage.setItem(STORAGE_KEYS.LANGUAGE, normalized);
+      } else {
+        localStorage.removeItem(STORAGE_KEYS.LANGUAGE);
+      }
+    } catch {
+      // Ignore storage errors (private mode/quota restrictions).
+    }
+
+    if (this.currentTab === "sales") {
+      this.$nextTick(() => this.initSalesChart());
+    } else if (this.currentTab === "portfolio") {
+      this.$nextTick(() => this.initPortfolioChart());
+    }
+  },
+
   currentTab(newTab) {
     try {
       localStorage.setItem(STORAGE_KEYS.LAST_TAB, newTab);
@@ -92,6 +111,12 @@ export const appWatch: AppWatchObject = {
 
   googleAuthEpoch() {
     if (!this.isGoogleSignedIn) {
+      if (typeof this.stopGuidedOnboarding === "function") {
+        this.stopGuidedOnboarding();
+      }
+      if (typeof this.syncGuidedOnboarding === "function") {
+        this.syncGuidedOnboarding();
+      }
       this.stopCloudSyncScheduler();
       stopWorkspaceRealtime(this);
       this.availableWorkspaces = [];
@@ -127,6 +152,10 @@ export const appWatch: AppWatchObject = {
 
     if (this.pendingWorkspaceInviteToken) {
       void this.previewPendingWorkspaceInvite();
+    }
+
+    if (typeof this.syncGuidedOnboarding === "function") {
+      this.syncGuidedOnboarding();
     }
   },
 

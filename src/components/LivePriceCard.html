@@ -6,17 +6,20 @@
           <v-icon color="white" size="28">{{ icon }}</v-icon>
         </v-avatar>
         <div class="text-caption mt-1 font-weight-medium">{{ label }}</div>
+        <div v-if="helperText" class="text-caption text-medium-emphasis mt-1">
+          {{ helperText }}
+        </div>
       </v-col>
 
       <v-col cols="6" class="text-center">
-        <div class="text-h4 font-weight-bold mb-1">${{ modelValue }}</div>
+        <div class="text-h4 font-weight-bold mb-1">${{ formatCurrency(modelValue) }}</div>
         <v-chip
           :color="displayProfit() >= 0 ? 'success' : 'error'"
           size="small"
           class="font-weight-bold"
         >
-          {{ displayProfit() >= 0 ? '+' : '' }}${{ formatAt(displayProfit()) }}
-          ({{ formatAt(displayProfitPercent(), 1) }}%)
+          {{ displayProfit() >= 0 ? '+' : '' }}${{ formatCurrency(displayProfit()) }}
+          ({{ formatCurrency(displayProfitPercent(), 1) }}%)
         </v-chip>
       </v-col>
 
@@ -27,8 +30,8 @@
             size="small"
             color="error"
             variant="tonal"
-            :title="'Decrease ' + label + ' price'"
-            :aria-label="'Decrease ' + label + ' price'"
+            :title="priceAdjustLabel(-1)"
+            :aria-label="priceAdjustLabel(-1)"
             @click="changePrice(-1)"
           ></v-btn>
           <v-btn
@@ -36,8 +39,8 @@
             size="small"
             color="success"
             variant="tonal"
-            :title="'Increase ' + label + ' price'"
-            :aria-label="'Increase ' + label + ' price'"
+            :title="priceAdjustLabel(1)"
+            :aria-label="priceAdjustLabel(1)"
             @click="changePrice(1)"
           ></v-btn>
         </div>
@@ -46,42 +49,51 @@
 
     <v-divider class="my-3"></v-divider>
     <div class="text-caption text-medium-emphasis text-center mb-2 live-price-target-summary">
-      <template v-if="avgPriceNeeded == null || neededDisplayProfit() == null || deltaVsNeeded() == null">
-        Need N/A
+      <template v-if="avgPriceNeeded == null || neededDisplayProfit() == null || currentPriceGap() == null">
+        {{ noTargetLabel() }}
       </template>
       <template v-else>
         <div class="live-price-target-line">
-          Min to target ${{ formatAt(avgPriceNeeded, 0) }} ->
+          {{ neededPriceSummaryPrefix() }}
+          <span
+            class="font-weight-bold text-high-emphasis"
+          >
+            ${{ formatCurrency(avgPriceNeeded) }}
+          </span>
+          {{ neededPriceSummarySuffix() }}
+        </div>
+        <div class="live-price-target-line">
+          {{ neededProfitSummaryLabel() }}
           <span
             class="font-weight-bold"
             :class="(neededDisplayProfit() || 0) >= 0 ? 'text-success' : 'text-error'"
           >
             {{ (neededDisplayProfit() || 0) >= 0 ? '+' : '' }}${{ formatAt(neededDisplayProfit() || 0) }}
-            ({{ formatAt(neededDisplayPercent() || 0, 1) }}%)
+            ({{ formatCurrency(neededDisplayPercent() || 0, 1) }}%)
           </span>
         </div>
         <div class="live-price-target-line live-price-target-line--delta">
-          Δ
+          {{ currentPriceGapLabel() }}
           <span
             class="font-weight-bold"
-            :class="(deltaVsNeeded() || 0) >= 0 ? 'text-success' : 'text-error'"
+            :class="(currentPriceGap() || 0) >= 0 ? 'text-success' : 'text-error'"
           >
-            {{ (deltaVsNeeded() || 0) >= 0 ? '+' : '' }}${{ formatAt(deltaVsNeeded() || 0) }}
+            {{ (currentPriceGap() || 0) >= 0 ? '+' : '' }}${{ formatAt(currentPriceGap() || 0) }}
           </span>
         </div>
       </template>
     </div>
     <v-row dense class="text-center">
       <v-col cols="6">
-        <div class="text-caption text-medium-emphasis">At ${{ modelValue - 1 }}</div>
-        <div class="text-body-2 font-weight-bold" :class="profitAt(modelValue - 1) >= 0 ? 'text-success' : 'text-error'">
-          {{ profitAt(modelValue - 1) >= 0 ? '+' : '' }}${{ formatAt(profitAt(modelValue - 1)) }}
+        <div class="text-caption text-medium-emphasis">{{ lowerPriceLabel() }}: ${{ formatCurrency(modelValue - 1) }}</div>
+        <div class="text-body-2 font-weight-bold" :class="displayProfitAtPrice(modelValue - 1) >= 0 ? 'text-success' : 'text-error'">
+          {{ displayProfitAtPrice(modelValue - 1) >= 0 ? '+' : '' }}${{ formatCurrency(displayProfitAtPrice(modelValue - 1)) }}
         </div>
       </v-col>
       <v-col cols="6">
-        <div class="text-caption text-medium-emphasis">At ${{ modelValue + 1 }}</div>
-        <div class="text-body-2 font-weight-bold" :class="profitAt(modelValue + 1) >= 0 ? 'text-success' : 'text-error'">
-          {{ profitAt(modelValue + 1) >= 0 ? '+' : '' }}${{ formatAt(profitAt(modelValue + 1)) }}
+        <div class="text-caption text-medium-emphasis">{{ higherPriceLabel() }}: ${{ formatCurrency(modelValue + 1) }}</div>
+        <div class="text-body-2 font-weight-bold" :class="displayProfitAtPrice(modelValue + 1) >= 0 ? 'text-success' : 'text-error'">
+          {{ displayProfitAtPrice(modelValue + 1) >= 0 ? '+' : '' }}${{ formatCurrency(displayProfitAtPrice(modelValue + 1)) }}
         </div>
       </v-col>
     </v-row>

@@ -2,11 +2,15 @@ import assert from "node:assert/strict";
 import { afterEach, beforeEach, test, vi } from "vitest";
 
 const {
+  canUseAuthoritativeSalesLiveApiMock,
+  fetchAuthoritativeSalesMock,
   fetchWithRetryMock,
   handleExpiredAuthMock,
   readEntitlementCacheMock,
   resolveApiBaseUrlMock
 } = vi.hoisted(() => ({
+  canUseAuthoritativeSalesLiveApiMock: vi.fn(),
+  fetchAuthoritativeSalesMock: vi.fn(),
   fetchWithRetryMock: vi.fn(),
   handleExpiredAuthMock: vi.fn(),
   readEntitlementCacheMock: vi.fn(),
@@ -19,6 +23,11 @@ vi.mock("../src/app-core/methods/ui/shared.ts", () => ({
   handleExpiredAuth: handleExpiredAuthMock,
   readEntitlementCache: readEntitlementCacheMock,
   resolveApiBaseUrl: resolveApiBaseUrlMock
+}));
+
+vi.mock("../src/app-core/methods/sales-live-api.ts", () => ({
+  canUseAuthoritativeSalesLiveApi: canUseAuthoritativeSalesLiveApiMock,
+  fetchAuthoritativeSales: fetchAuthoritativeSalesMock
 }));
 
 import { configIoMethods } from "../src/app-core/methods/config-io.ts";
@@ -52,6 +61,10 @@ function createImportContext(overrides: Record<string, unknown> = {}) {
   return {
     adminImportSourceUserId: "",
     isAdminImportInProgress: false,
+    currentLotId: 2,
+    lots: [{ id: 1 }, { id: 2 }],
+    sales: [],
+    getSalesStorageKey: (lotId: number) => `whatfees_sales_${lotId}`,
     pullCloudSync: vi.fn(async () => undefined),
     notify: vi.fn(),
     canUseAdminLotSyncTools: configIoMethods.canUseAdminLotSyncTools,
@@ -106,6 +119,8 @@ beforeEach(() => {
     updatedAt: null,
     cachedAt: Date.now()
   });
+  canUseAuthoritativeSalesLiveApiMock.mockReturnValue(true);
+  fetchAuthoritativeSalesMock.mockResolvedValue([]);
   resolveApiBaseUrlMock.mockReturnValue("https://api.example");
   vi.stubGlobal("localStorage", createMockStorage({ whatfees_google_token: "id-token" }));
 });
@@ -266,7 +281,7 @@ test("importLotsFromUserId handles expired auth from API", async () => {
   assert.equal(ctx.isAdminImportInProgress, false);
 });
 
-test("importLotsFromUserId imports and then pulls cloud sync on success", async () => {
+test("importLotsFromUserId imports, force-pulls sync, and rehydrates per-lot sales", async () => {
   fetchWithRetryMock.mockResolvedValue({
     ok: true,
     status: 200,
@@ -290,6 +305,10 @@ test("importLotsFromUserId imports and then pulls cloud sync on success", async 
   assert.equal(JSON.parse(String(requestInit.body)).sourceUserId, "1234567890");
   assert.equal(ctx.pullCloudSync.mock.calls.length, 1);
   assert.deepEqual(ctx.pullCloudSync.mock.calls[0], [true]);
+  assert.deepEqual(fetchAuthoritativeSalesMock.mock.calls, [
+    [ctx, 1],
+    [ctx, 2]
+  ]);
   assert.equal(ctx.notify.mock.calls.at(-1)?.[0], "Imported cloud sync data from user 1234567890.");
   assert.equal(ctx.isAdminImportInProgress, false);
   assert.equal(localStorage.getItem("whatfees_sync_client_version"), null);
@@ -310,4 +329,19 @@ test("importLotsFromUserId stores imported sync version before forcing a pull", 
 
   assert.equal(localStorage.getItem("whatfees_sync_client_version"), "475");
   assert.deepEqual(ctx.pullCloudSync.mock.calls[0], [true]);
+});
+
+test("importLotsFromUserId skips authoritative hydration when entity sales API is unavailable", async () => {
+  canUseAuthoritativeSalesLiveApiMock.mockReturnValue(false);
+  fetchWithRetryMock.mockResolvedValue({
+    ok: true,
+    status: 200,
+    json: async () => ({ ok: true })
+  });
+
+  const ctx = createImportContext();
+
+  await configIoMethods.importLotsFromUserId.call(ctx as never);
+
+  assert.equal(fetchAuthoritativeSalesMock.mock.calls.length, 0);
 });

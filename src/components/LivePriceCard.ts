@@ -2,10 +2,19 @@ import { defineComponent, type PropType } from "vue";
 
 type ProfitCalculator = (units: number, pricePerUnit: number) => number;
 type CurrencyFormatter = (value: number, decimals?: number) => string;
+type PriceProfitEstimator = (price: number) => number | null;
 
 export const LivePriceCard = defineComponent({
   name: "LivePriceCard",
   props: {
+    ctx: {
+      type: Object as PropType<Record<string, unknown>>,
+      default: (): undefined => undefined
+    },
+    helperText: {
+      type: String,
+      default: ""
+    },
     modelValue: {
       type: Number,
       required: true
@@ -29,6 +38,14 @@ export const LivePriceCard = defineComponent({
     calculateProfit: {
       type: Function as PropType<ProfitCalculator>,
       required: true
+    },
+    estimateProfitAtPrice: {
+      type: Function as PropType<PriceProfitEstimator>,
+      default: null
+    },
+    estimatePercentAtPrice: {
+      type: Function as PropType<PriceProfitEstimator>,
+      default: null
     },
     safeFixed: {
       type: Function as PropType<CurrencyFormatter>,
@@ -61,6 +78,33 @@ export const LivePriceCard = defineComponent({
   },
   emits: ["update:modelValue"],
   methods: {
+    t(key: string, fallback = ""): string {
+      return this.translate(key, fallback);
+    },
+    translate(key: string, fallback: string): string {
+      const ctx = (this.ctx || this.$root) as Record<string, unknown> | undefined;
+      const t = ctx?.t as ((messageKey: string) => string) | undefined;
+      if (typeof t === "function") {
+        const translated = t(key);
+        if (typeof translated === "string" && translated.trim()) {
+          return translated;
+        }
+      }
+      return fallback;
+    },
+    formatCurrency(value: number, decimals = 2): string {
+      const ctx = (this.ctx || this.$root) as Record<string, unknown> | undefined;
+      const formatter = ctx?.formatCurrency as ((nextValue: number | null | undefined, nextDecimals?: number) => string) | undefined;
+      if (typeof formatter === "function") {
+        return formatter(value, decimals);
+      }
+      const fn = this.safeFixed;
+      if (typeof fn !== "function") {
+        if (value == null || Number.isNaN(Number(value))) return "0.00";
+        return Number(value).toFixed(decimals);
+      }
+      return fn(value, decimals);
+    },
     changePrice(delta: number) {
       const current = Number(this.modelValue || 0);
       this.$emit("update:modelValue", current + delta);
@@ -70,13 +114,16 @@ export const LivePriceCard = defineComponent({
       if (typeof fn !== "function") return 0;
       return fn(this.units, price);
     },
-    formatAt(value: number, decimals = 2): string {
-      const fn = this.safeFixed;
-      if (typeof fn !== "function") {
-        if (value == null || Number.isNaN(Number(value))) return "0.00";
-        return Number(value).toFixed(decimals);
+    displayProfitAtPrice(price: number): number {
+      const estimator = this.estimateProfitAtPrice;
+      if (typeof estimator === "function") {
+        const estimated = Number(estimator(price));
+        if (Number.isFinite(estimated)) return estimated;
       }
-      return fn(value, decimals);
+      return this.profitAt(price);
+    },
+    formatAt(value: number, decimals = 2): string {
+      return this.formatCurrency(value, decimals);
     },
     profitPercentAt(price: number): number {
       const basis = Number(this.profitBasis);
@@ -84,32 +131,95 @@ export const LivePriceCard = defineComponent({
       if (!Number.isFinite(basis) || basis <= 0) return profit >= 0 ? 100 : 0;
       return (profit / basis) * 100;
     },
+    displayProfitPercentAtPrice(price: number): number {
+      const estimator = this.estimatePercentAtPrice;
+      if (typeof estimator === "function") {
+        const estimated = Number(estimator(price));
+        if (Number.isFinite(estimated)) return estimated;
+      }
+      return this.profitPercentAt(price);
+    },
     displayProfit(): number {
       const explicit = Number(this.forecastProfit);
       if (Number.isFinite(explicit)) return explicit;
-      return this.profitAt(this.modelValue);
+      return this.displayProfitAtPrice(this.modelValue);
     },
     displayProfitPercent(): number {
       const explicit = Number(this.forecastPercent);
       if (Number.isFinite(explicit)) return explicit;
-      return this.profitPercentAt(this.modelValue);
+      return this.displayProfitPercentAtPrice(this.modelValue);
     },
     neededDisplayProfit(): number | null {
       const explicit = Number(this.neededProfit);
       if (Number.isFinite(explicit)) return explicit;
       if (this.avgPriceNeeded == null) return null;
-      return this.profitAt(this.avgPriceNeeded);
+      return this.displayProfitAtPrice(this.avgPriceNeeded);
     },
     neededDisplayPercent(): number | null {
       const explicit = Number(this.neededPercent);
       if (Number.isFinite(explicit)) return explicit;
       if (this.avgPriceNeeded == null) return null;
-      return this.profitPercentAt(this.avgPriceNeeded);
+      return this.displayProfitPercentAtPrice(this.avgPriceNeeded);
     },
     deltaVsNeeded(): number | null {
       const needed = this.neededDisplayProfit();
       if (needed == null) return null;
       return this.displayProfit() - needed;
+    },
+    currentPriceGap(): number | null {
+      if (this.avgPriceNeeded == null) return null;
+      const current = Number(this.modelValue);
+      const needed = Number(this.avgPriceNeeded);
+      if (!Number.isFinite(current) || !Number.isFinite(needed)) return null;
+      return current - needed;
+    },
+    priceAdjustLabel(direction: -1 | 1): string {
+      const action = direction < 0
+        ? this.translate("livePriceCardDecreasePriceLabel", "Decrease price")
+        : this.translate("livePriceCardIncreasePriceLabel", "Increase price");
+      return `${action} ${this.label}`;
+    },
+    noTargetLabel(): string {
+      return this.translate(
+        "livePriceCardNoTargetLabel",
+        "Set a profit target to see the average price you still need from here."
+      );
+    },
+    lowerPriceLabel(): string {
+      return this.translate(
+        "livePriceCardLowerPriceLabel",
+        "If the price drops by $1"
+      );
+    },
+    higherPriceLabel(): string {
+      return this.translate(
+        "livePriceCardHigherPriceLabel",
+        "If the price rises by $1"
+      );
+    },
+    neededPriceSummaryPrefix(): string {
+      return this.translate(
+        "livePriceCardNeededPriceSummaryPrefix",
+        "To hit your profit target, the remaining units need to average about"
+      );
+    },
+    neededPriceSummarySuffix(): string {
+      return this.translate(
+        "livePriceCardNeededPriceSummarySuffix",
+        "each."
+      );
+    },
+    neededProfitSummaryLabel(): string {
+      return this.translate(
+        "livePriceCardNeededProfitSummaryLabel",
+        "At that price, your total lot profit would be"
+      );
+    },
+    currentPriceGapLabel(): string {
+      return this.translate(
+        "livePriceCardCurrentPriceGapLabel",
+        "Compared with your current price"
+      );
     }
   }
 });

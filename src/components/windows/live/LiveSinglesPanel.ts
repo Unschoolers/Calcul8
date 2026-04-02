@@ -9,6 +9,7 @@ import {
   toNonNegativeNumber,
   toPositiveIntOrNull as toPositiveInt
 } from "../../../app-core/shared/singles-normalizers.ts";
+import { compareLocalizedText } from "../../../app-core/i18n/index.ts";
 import { createWindowContextBridge } from "../contextBridge.ts";
 
 type LiveSinglesAutocompleteItem = {
@@ -88,7 +89,13 @@ export const LiveSinglesPanel = {
           const cardNumber = String(entry.cardNumber || "").trim();
           const title = cardNumber ? `${itemName} #${cardNumber}` : itemName;
           const marketValue = toNonNegativeNumber(entry.marketValue);
-          const subtitle = `${remainingQuantity}/${totalQuantity} in stock${marketValue > 0 ? ` • M $${this.fmtCurrency(marketValue, 2)}` : ""}`;
+          const subtitleParts = [
+            `${remainingQuantity}/${totalQuantity} ${this.t("liveSinglesAutocompleteStockLabel", "in stock")}`
+          ];
+          if (marketValue > 0) {
+            subtitleParts.push(`${this.t("liveSinglesAutocompleteMarketLabel", "Market")} $${this.fmtCurrency(marketValue, 2)}`);
+          }
+          const subtitle = subtitleParts.join(" • ");
           const image = String(entry.image || "").trim();
           const searchText = normalizeLiveSinglesSearchValue([
             itemName,
@@ -114,7 +121,7 @@ export const LiveSinglesPanel = {
             : queryTokens.every((token) => item.searchText.includes(token))
         ))
         .sort((a: LiveSinglesAutocompleteItem, b: LiveSinglesAutocompleteItem) => (
-          a.title.localeCompare(b.title, undefined, { sensitivity: "base" })
+          compareLocalizedText(a.title, b.title, this?.preferredLanguage || "")
         ));
     },
 
@@ -218,7 +225,23 @@ export const LiveSinglesPanel = {
     }
   },
   methods: {
+    t(this: any, key: string, fallback = ""): string {
+      const context = (this.ctx || this.$root) as Record<string, unknown> | undefined;
+      const translator = context?.t as ((messageKey: string) => string) | undefined;
+      if (typeof translator === "function") {
+        const translated = translator(key);
+        if (typeof translated === "string" && translated.trim()) {
+          return translated;
+        }
+      }
+      return fallback;
+    },
     fmtCurrency(this: any, value: number | null | undefined, decimals = 2): string {
+      const context = (this.ctx || this.$root) as Record<string, unknown> | undefined;
+      const formatCurrency = context?.formatCurrency as ((nextValue: number | null | undefined, nextDecimals?: number) => string) | undefined;
+      if (typeof formatCurrency === "function") {
+        return formatCurrency(value, decimals);
+      }
       const formatter = this.safeFixed;
       if (typeof formatter === "function") {
         return formatter(value, decimals);

@@ -63,7 +63,7 @@ export const WheelInspector = {
               warning = remainingSingles <= 0;
             } else {
               const remainingPacks = getRemainingPacksForWheelLot(this, lot.id);
-              detail = `${remainingPacks} pack${remainingPacks === 1 ? "" : "s"} available`;
+              detail = `${remainingPacks} item${remainingPacks === 1 ? "" : "s"} available`;
               warning = remainingPacks <= 0;
             }
           }

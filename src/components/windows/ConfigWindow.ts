@@ -16,8 +16,18 @@ export const ConfigWindow = {
   },
   methods: {
     fmtCurrency(value: number | null | undefined, decimals = 2): string {
-      if (value == null || Number.isNaN(Number(value))) return "0.00";
-      return Number(value).toFixed(decimals);
+      const formatter = (this as unknown as { formatCurrency?: (nextValue: number | null | undefined, nextDecimals?: number) => string }).formatCurrency;
+      if (typeof formatter === "function") {
+        return formatter.call(this, value, decimals);
+      }
+      if (value == null || Number.isNaN(Number(value))) return new Intl.NumberFormat(undefined, {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals
+      }).format(0);
+      return new Intl.NumberFormat(undefined, {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals
+      }).format(Number(value));
     }
   },
   setup(props: { ctx: Record<string, unknown> }) {

@@ -118,9 +118,10 @@ export const PortfolioWindow = {
 
     portfolioLotFilterDefaultLabel(this: Record<string, unknown>): string {
       const filter = String(this.portfolioLotTypeFilter || "both");
-      if (filter === "bulk") return "All bulk lots";
-      if (filter === "singles") return "All singles lots";
-      return "All lots";
+      const translate = this.portfolioCopy as ((key: string, fallback: string) => string) | undefined;
+      if (filter === "bulk") return typeof translate === "function" ? translate.call(this, "portfolioLotFilterBulkLabel", "All bulk lots") : "All bulk lots";
+      if (filter === "singles") return typeof translate === "function" ? translate.call(this, "portfolioLotFilterSinglesLabel", "All singles lots") : "All singles lots";
+      return typeof translate === "function" ? translate.call(this, "portfolioLotFilterAllLabel", "All lots") : "All lots";
     },
 
     mobileKpiSlideCount(this: Record<string, unknown>): number {
@@ -222,22 +223,30 @@ export const PortfolioWindow = {
       const isIncomplete = this.portfolioLotIsIncomplete as ((r: typeof row) => boolean) | undefined;
       const incomplete = typeof isIncomplete === "function" ? isIncomplete.call(this, row) : false;
       const format = this.fmtCurrency as ((value: number | null | undefined, decimals?: number) => string) | undefined;
+      const copy = this.portfolioCopy as ((key: string, fallback: string) => string) | undefined;
+      const getCopy = (key: string, fallback: string): string => (
+        typeof copy === "function" ? copy.call(this, key, fallback) : fallback
+      );
 
       if (incomplete && typeof row?.forecastProfitAverage === "number") {
         const value = row.forecastProfitAverage;
         const formatted = typeof format === "function" ? format.call(this, Math.abs(value)) : String(Math.abs(value));
-        return value >= 0 ? `≈ $${formatted}` : `≈ -$${formatted}`;
+        return `${getCopy("portfolioLotProjectedLabel", "Projected")} ${value >= 0 ? "+" : "-"}$${formatted}`;
       }
 
       if ((row?.salesCount ?? 0) > 0) {
         const value = Number(row?.realizedProfit ?? 0);
         const formatted = typeof format === "function" ? format.call(this, Math.abs(value)) : String(Math.abs(value));
-        return `${value >= 0 ? "" : "-"}$${formatted}`;
+        const label = value >= 0
+          ? getCopy("portfolioLotProfitLabel", "Profit")
+          : getCopy("portfolioLotLossLabel", "Loss");
+        return `${label} ${value >= 0 ? "+" : "-"}$${formatted}`;
       }
 
       const value = Number(row?.totalProfit ?? 0);
       const formatted = typeof format === "function" ? format.call(this, Math.abs(value)) : String(Math.abs(value));
-      return `${value >= 0 ? "" : "-"}$${formatted}`;
+      const label = getCopy("portfolioLotNetLabel", "Net");
+      return `${label} ${value >= 0 ? "+" : "-"}$${formatted}`;
     },
 
     portfolioLotPrimaryProfitChipColor(this: Record<string, unknown>, row: {
@@ -307,7 +316,7 @@ export const PortfolioWindow = {
     portfolioChartToggleTitle(this: Record<string, unknown>): string {
       const nextView = this.nextPortfolioChartView as (() => "breakdown" | "trend" | "sellthrough" | "margin") | undefined;
       const next = typeof nextView === "function" ? nextView.call(this) : "trend";
-      return getPortfolioChartToggleTitle(next);
+      return getPortfolioChartToggleTitle(next, this.portfolioCopy as ((key: string, fallback: string) => string) | undefined);
     },
 
     portfolioChartToggleIcon(this: Record<string, unknown>): string {
@@ -317,15 +326,24 @@ export const PortfolioWindow = {
     },
 
     portfolioChartSubtitle(this: Record<string, unknown>): string {
-      return getPortfolioChartSubtitle(this.portfolioChartView);
+      return getPortfolioChartSubtitle(
+        this.portfolioChartView,
+        this.portfolioCopy as ((key: string, fallback: string) => string) | undefined
+      );
     },
 
     portfolioChartAriaLabel(this: Record<string, unknown>): string {
-      return getPortfolioChartAriaLabel(this.portfolioChartView);
+      return getPortfolioChartAriaLabel(
+        this.portfolioChartView,
+        this.portfolioCopy as ((key: string, fallback: string) => string) | undefined
+      );
     },
 
     portfolioSalesByUserMetricLabel(this: Record<string, unknown>): string {
-      return getPortfolioSalesByUserMetricLabel(this.portfolioSalesByUserMetric);
+      return getPortfolioSalesByUserMetricLabel(
+        this.portfolioSalesByUserMetric,
+        this.portfolioCopy as ((key: string, fallback: string) => string) | undefined
+      );
     },
 
     portfolioSalesByUserTotalValue(this: Record<string, unknown>): number {
@@ -396,11 +414,25 @@ export const PortfolioWindow = {
     },
 
     portfolioSalesByUserSubtitle(): string {
-      return getPortfolioSalesByUserSubtitle();
+      return getPortfolioSalesByUserSubtitle(this.portfolioCopy as ((key: string, fallback: string) => string) | undefined);
     },
 
     portfolioSalesByUserAriaLabel(this: Record<string, unknown>): string {
-      return getPortfolioSalesByUserAriaLabel(this.portfolioSalesByUserMetric);
+      return getPortfolioSalesByUserAriaLabel(
+        this.portfolioSalesByUserMetric,
+        this.portfolioCopy as ((key: string, fallback: string) => string) | undefined
+      );
+    },
+
+    portfolioCopy(this: Record<string, unknown>, key: string, fallback: string): string {
+      const translate = this.t as ((translationKey: string) => string) | undefined;
+      if (typeof translate === "function") {
+        const value = translate.call(this, key);
+        if (typeof value === "string" && value.trim().length > 0) {
+          return value;
+        }
+      }
+      return fallback;
     },
 
     fmtCurrency(value: number | null | undefined, decimals = 2): string {
@@ -408,8 +440,10 @@ export const PortfolioWindow = {
       if (typeof fn === "function") {
         return (fn as (v: number | null | undefined, d?: number) => string)(value, decimals);
       }
-      if (value == null || Number.isNaN(Number(value))) return "0.00";
-      return Number(value).toFixed(decimals);
+      return new Intl.NumberFormat(undefined, {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals
+      }).format(value == null || Number.isNaN(Number(value)) ? 0 : Number(value));
     }
   },
   setup(props: { ctx: Record<string, unknown> }) {

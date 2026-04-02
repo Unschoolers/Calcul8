@@ -2,12 +2,12 @@
   <v-card class="singles-import-card">
     <v-card-title class="text-subtitle-1 d-flex align-center">
       <v-icon class="mr-2">mdi-table-arrow-right</v-icon>
-      Map CSV Columns
+      {{ t('singlesCsvMapTitle') }}
     </v-card-title>
     <v-divider></v-divider>
     <v-card-text>
       <div class="text-body-2 text-medium-emphasis mb-3">
-        Choose which CSV columns map to each field before importing.
+        {{ t('singlesCsvMapIntro') }}
       </div>
 
       <div class="d-flex align-center justify-space-between flex-wrap ga-2 mb-3">
@@ -17,16 +17,16 @@
             :color="requiredCsvMappingsComplete ? 'success' : 'warning'"
             variant="tonal"
           >
-            {{ requiredCsvMappedCount }}/2 required mapped
+            {{ t('singlesCsvRequiredMappedLabel', { count: requiredCsvMappedCount }) }}
           </v-chip>
           <v-chip size="small" variant="tonal">
-            {{ optionalCsvMappedCount }}/5 optional mapped
+            {{ t('singlesCsvOptionalMappedLabel', { count: optionalCsvMappedCount }) }}
           </v-chip>
         </div>
       </div>
 
       <div class="d-flex align-center justify-space-between flex-wrap ga-2 mb-3">
-        <div class="text-caption text-medium-emphasis">Import mode</div>
+        <div class="text-caption text-medium-emphasis">{{ t('singlesCsvImportModeLabel') }}</div>
         <v-btn-toggle
           v-model="singlesCsvImportMode"
           mandatory
@@ -34,9 +34,9 @@
           variant="tonal"
           class="pill-toggle"
         >
-          <v-btn value="merge" title="Merge">Merge</v-btn>
-          <v-btn value="sync" title="Sync">Sync</v-btn>
-          <v-btn value="append" title="Append">Append</v-btn>
+          <v-btn value="merge" :title="t('singlesCsvImportModeMergeLabel')">{{ t('singlesCsvImportModeMergeLabel') }}</v-btn>
+          <v-btn value="sync" :title="t('singlesCsvImportModeSyncLabel')">{{ t('singlesCsvImportModeSyncLabel') }}</v-btn>
+          <v-btn value="append" :title="t('singlesCsvImportModeAppendLabel')">{{ t('singlesCsvImportModeAppendLabel') }}</v-btn>
         </v-btn-toggle>
       </div>
 
@@ -48,19 +48,18 @@
         class="mb-3"
       >
         <template v-if="singlesCsvImportMode === 'merge'">
-          <strong>Merge:</strong> Update matching cards and keep cards that are not in the file.
+          {{ t('singlesCsvImportModeMergeHelp') }}
         </template>
         <template v-else-if="singlesCsvImportMode === 'append'">
-          <strong>Append:</strong> Add imported rows only. Existing cards stay unchanged.
+          {{ t('singlesCsvImportModeAppendHelp') }}
         </template>
         <template v-else>
-          <strong>Sync (destructive):</strong> Replaces your current singles list with this CSV import.
-          Existing cards not present in the file will be removed.
+          {{ t('singlesCsvImportModeSyncHelp') }}
         </template>
       </v-alert>
 
       <div class="d-flex align-center justify-space-between flex-wrap ga-2 mb-3">
-        <div class="text-caption text-medium-emphasis">Import purchase currency</div>
+        <div class="text-caption text-medium-emphasis">{{ t('singlesCsvImportCurrencyLabel') }}</div>
         <v-btn-toggle
           v-model="singlesCsvImportCurrency"
           mandatory
@@ -77,7 +76,7 @@
         <v-col cols="12">
           <div class="d-flex align-center ga-1 text-caption text-medium-emphasis mb-1">
             <v-icon size="14" color="warning">mdi-asterisk</v-icon>
-            <span>Required fields</span>
+            <span>{{ t('singlesCsvRequiredFieldsLabel') }}</span>
           </div>
         </v-col>
         <v-col cols="12" md="6">
@@ -86,12 +85,12 @@
             :items="csvColumnOptions"
             item-title="title"
             item-value="value"
-            label="Item"
+            :label="t('singlesTableItemLabel')"
             variant="outlined"
             density="compact"
             clearable
-            placeholder="Select column"
-            no-data-text="No columns found"
+            :placeholder="t('singlesCsvSelectColumnLabel')"
+            :no-data-text="t('singlesCsvNoColumnsFound')"
             hide-details
           ></v-select>
         </v-col>
@@ -101,12 +100,12 @@
             :items="csvColumnOptions"
             item-title="title"
             item-value="value"
-            label="Quantity"
+            :label="t('singlesTableQuantityLabel')"
             variant="outlined"
             density="compact"
             clearable
-            placeholder="Select column"
-            no-data-text="No columns found"
+            :placeholder="t('singlesCsvSelectColumnLabel')"
+            :no-data-text="t('singlesCsvNoColumnsFound')"
             hide-details
           ></v-select>
         </v-col>
@@ -114,7 +113,7 @@
         <v-col cols="12" class="mt-1">
           <div class="d-flex align-center ga-1 text-caption text-medium-emphasis mb-1">
             <v-icon size="14">mdi-plus-circle-outline</v-icon>
-            <span>Optional fields</span>
+            <span>{{ t('singlesCsvOptionalFieldsLabel') }}</span>
           </div>
         </v-col>
         <v-col cols="12" md="4">
@@ -123,12 +122,12 @@
             :items="csvColumnOptions"
             item-title="title"
             item-value="value"
-            label="Cost"
+            :label="t('singlesEditorCostLabel')"
             variant="outlined"
             density="compact"
             clearable
-            placeholder="Select column"
-            no-data-text="No columns found"
+            :placeholder="t('singlesCsvSelectColumnLabel')"
+            :no-data-text="t('singlesCsvNoColumnsFound')"
             hide-details
           ></v-select>
         </v-col>
@@ -138,12 +137,12 @@
             :items="csvColumnOptions"
             item-title="title"
             item-value="value"
-            label="Condition"
+            :label="t('singlesTableConditionLabel')"
             variant="outlined"
             density="compact"
             clearable
-            placeholder="Select column"
-            no-data-text="No columns found"
+            :placeholder="t('singlesCsvSelectColumnLabel')"
+            :no-data-text="t('singlesCsvNoColumnsFound')"
             hide-details
           ></v-select>
         </v-col>
@@ -153,12 +152,12 @@
             :items="csvColumnOptions"
             item-title="title"
             item-value="value"
-            label="Language"
+            :label="t('singlesTableLanguageLabel')"
             variant="outlined"
             density="compact"
             clearable
-            placeholder="Select column"
-            no-data-text="No columns found"
+            :placeholder="t('singlesCsvSelectColumnLabel')"
+            :no-data-text="t('singlesCsvNoColumnsFound')"
             hide-details
           ></v-select>
         </v-col>
@@ -168,12 +167,12 @@
             :items="csvColumnOptions"
             item-title="title"
             item-value="value"
-            label="Number"
+            :label="t('singlesTableNumberLabel')"
             variant="outlined"
             density="compact"
             clearable
-            placeholder="Select column"
-            no-data-text="No columns found"
+            :placeholder="t('singlesCsvSelectColumnLabel')"
+            :no-data-text="t('singlesCsvNoColumnsFound')"
             hide-details
           ></v-select>
         </v-col>
@@ -183,19 +182,19 @@
             :items="csvColumnOptions"
             item-title="title"
             item-value="value"
-            label="Market Value"
+            :label="t('singlesCsvMarketValueLabel')"
             variant="outlined"
             density="compact"
             clearable
-            placeholder="Select column"
-            no-data-text="No columns found"
+            :placeholder="t('singlesCsvSelectColumnLabel')"
+            :no-data-text="t('singlesCsvNoColumnsFound')"
             hide-details
           ></v-select>
         </v-col>
       </v-row>
 
       <div class="text-caption text-medium-emphasis mt-4 mb-2">
-        CSV Preview (first 5 rows)
+        {{ t('singlesCsvPreviewTitle') }}
       </div>
       <div class="singles-import-preview-wrap">
         <v-table density="compact" class="singles-import-preview-table">
@@ -207,7 +206,7 @@
                 :class="{ 'is-mapped': isCsvColumnMapped(index) }"
               >
                 <div class="d-flex align-center ga-1">
-                  <span>{{ header || `Column ${index + 1}` }}</span>
+                  <span>{{ header || t('singlesCsvColumnLabel', { count: index + 1 }) }}</span>
                   <v-chip
                     v-if="csvMappedFieldLabel(index)"
                     size="x-small"
@@ -241,10 +240,10 @@
     <v-card-actions>
       <v-spacer></v-spacer>
       <v-btn variant="text" @click="cancelSinglesPurchasesCsvImport">
-        Cancel
+        {{ t('commonCancel') }}
       </v-btn>
       <v-btn color="primary" variant="flat" @click="confirmSinglesPurchasesCsvImport">
-        Import
+        {{ t('commonImport') }}
       </v-btn>
     </v-card-actions>
   </v-card>
