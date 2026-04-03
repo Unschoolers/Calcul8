@@ -145,16 +145,7 @@
     ></wheel-session-panel>
 
     <section v-show="wheelInspectorTab === 'history'" class="wheel-panel-section">
-      <div class="wheel-inspector-hero wheel-inspector-hero--history">
-        <div>
-          <div class="wheel-inspector-hero__eyebrow">Provably Fair</div>
-          <div class="wheel-inspector-hero__title">{{ wheelFairnessTitle }}</div>
-        </div>
-        <v-chip size="small" :color="wheelFairnessIconColor" variant="tonal">
-          <v-icon start size="small">{{ wheelFairnessIcon }}</v-icon>
-          {{ wheelSpinning ? 'Locked' : 'Verified' }}
-        </v-chip>
-      </div>
+
 
       <v-card v-if="wheelSpinHash || wheelDisplayFairnessHistory.length" variant="outlined"
         class="wheel-fairness-history wheel-fairness-history--current">
