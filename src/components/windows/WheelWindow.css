@@ -856,13 +856,6 @@
   margin: 0;
 }
 
-.wheel-tier-num-input {
-  -moz-appearance: textfield;
-}
-
-.wheel-tier-cost-input {
-  -moz-appearance: textfield;
-}
 
 .wheel-global-kpi {
   display: grid;
@@ -2274,7 +2267,6 @@
     max-width: none;
     max-height: none;
     border-radius: 28px !important;
-    transform: translateY(calc(100% + 28px));
     opacity: 0;
     pointer-events: none;
     transition: transform 220ms ease, opacity 220ms ease;
