@@ -1,4 +1,4 @@
-import type { AppContext } from "../../context.ts";
+import type { AppContext } from "../../context-app.ts";
 export type SyncStatusApp = Pick<AppContext, "syncStatus" | "syncStatusResetTimeoutId">;
 
 export function startSyncStatus(context: SyncStatusApp): void {
@@ -24,3 +24,4 @@ export function setSyncStatusError(context: SyncStatusApp): void {
     context.syncStatusResetTimeoutId = null;
   }
 }
+

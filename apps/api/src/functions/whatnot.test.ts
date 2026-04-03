@@ -1,8 +1,7 @@
 import assert from "node:assert/strict";
-import { afterEach, beforeEach, test, vi } from "vitest";
+import { beforeEach, test, vi } from "vitest";
 import {
   createApiConfig,
-  createGoogleUserInfoFetch,
   createHttpRequest,
   createInvocationContext
 } from "../test-support/function-test-helpers";
@@ -23,7 +22,8 @@ const {
   handleWhatnotOAuthCallbackMock,
   syncWhatnotOrdersForActorMock,
   createWhatnotImportBatchFromRowsForActorMock,
-  confirmWhatnotImportBatchForActorMock
+  confirmWhatnotImportBatchForActorMock,
+  resolveUserIdMock
 } = vi.hoisted(() => ({
   getConfigMock: vi.fn(),
   createWhatnotConnectUrlForActorMock: vi.fn(),
@@ -34,7 +34,11 @@ const {
   handleWhatnotOAuthCallbackMock: vi.fn(),
   syncWhatnotOrdersForActorMock: vi.fn(),
   createWhatnotImportBatchFromRowsForActorMock: vi.fn(),
-  confirmWhatnotImportBatchForActorMock: vi.fn()
+  confirmWhatnotImportBatchForActorMock: vi.fn(),
+  resolveUserIdMock: vi.fn(async (request: { headers: { get(name: string): string | null } }) => {
+    const authHeader = request.headers.get("authorization") || "";
+    return authHeader.replace(/^Bearer\s+/i, "").trim() || "test-user";
+  })
 }));
 
 vi.mock("../lib/config", () => ({
@@ -53,6 +57,15 @@ vi.mock("./whatnot-services", () => ({
   confirmWhatnotImportBatchForActor: confirmWhatnotImportBatchForActorMock
 }));
 
+vi.mock("../lib/auth", async () => {
+  const { HttpError } = await import("../lib/auth/errors");
+  return {
+    HttpError,
+    consumeAuthResponseHeaders: vi.fn(() => ({})),
+    resolveUserId: resolveUserIdMock
+  };
+});
+
 import {
   whatnotConnectCallback,
   whatnotConnectStart,
@@ -64,11 +77,8 @@ import {
   whatnotSync
 } from "./whatnot";
 
-const originalFetch = globalThis.fetch;
-
 beforeEach(() => {
   vi.clearAllMocks();
-  globalThis.fetch = createGoogleUserInfoFetch();
   getConfigMock.mockReturnValue(createApiConfig());
   getWhatnotStatusForActorMock.mockResolvedValue({
     configured: true,
@@ -106,10 +116,6 @@ beforeEach(() => {
     updatedCount: 2,
     skippedCount: 3
   });
-});
-
-afterEach(() => {
-  globalThis.fetch = originalFetch;
 });
 
 test("whatnotStatus reads workspaceId from query string and returns service payload", async () => {

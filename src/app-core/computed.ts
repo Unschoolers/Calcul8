@@ -1,4 +1,4 @@
-import type { AppComputedObject } from "./context.ts";
+import type { AppComputedObject } from "./context-contracts.ts";
 import { authProfileComputed } from "./computed/auth-profile.ts";
 import { singlesComputed } from "./computed/singles.ts";
 import { forecastComputed } from "./computed/forecast.ts";
@@ -332,3 +332,4 @@ export const appComputed: AppComputedObject = {
   ...forecastComputed,
   ...portfolioComputed
 };
+

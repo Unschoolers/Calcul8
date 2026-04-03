@@ -1,6 +1,6 @@
 import { driver, type DriveStep, type Driver } from "driver.js";
 import type { LotType } from "../../../types/app.ts";
-import type { AppContext, AppMethodState } from "../../context.ts";
+import type { AppContext, AppMethodState } from "../../context-app.ts";
 import {
   normalizePersistedOnboardingStatus,
   shouldOfferFirstRunOnboarding
@@ -296,3 +296,4 @@ export const uiOnboardingMethods: ThisType<AppContext> & Pick<
     });
   }
 };
+

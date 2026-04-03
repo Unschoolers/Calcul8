@@ -4,7 +4,7 @@ import {
   calculatePortfolioTotals,
   calculateSaleProfit
 } from "../../domain/calculations.ts";
-import type { AppComputedObject } from "../context.ts";
+import type { AppComputedObject } from "../context-contracts.ts";
 import { buildLotOptionItems } from "../shared/lot-option-items.ts";
 import {
   pickBestForecastScenario,
@@ -313,6 +313,7 @@ export const portfolioComputed: Pick<
     return this.allLotPerformance.length > 0;
   }
 };
+
 
 
 

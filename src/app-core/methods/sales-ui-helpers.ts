@@ -1,5 +1,5 @@
 import type { SaleType } from "../../types/app.ts";
-import type { AppContext } from "../context.ts";
+import type { AppContext } from "../context-app.ts";
 import { formatLocalizedCompactDate } from "../i18n/index.ts";
 
 export function firstFiniteNonNegative(...values: Array<number | null | undefined>): number | null {
@@ -128,3 +128,4 @@ export function resolveCanvasRef(
 
   return null;
 }
+

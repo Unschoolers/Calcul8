@@ -373,7 +373,7 @@ test("wheelSessionSourceGroups summarizes remaining stock for wheel sources", ()
   assert.equal(rows[0]!.tiers.length, 1);
   assert.equal(rows[0]!.tiers[0]!.count, 3);
   assert.equal(rows[1]!.label, "Singles Lot");
-  assert.match(rows[1]!.remainingText, /2 cards left/i);
+  assert.match(rows[1]!.remainingText, /2 items left/i);
   assert.equal(rows[1]!.tiers[0]!.label, "Hellish Blizzard");
 });
 
@@ -467,7 +467,7 @@ test("wheelSessionSourceGroups groups tracked and pool singles tiers under the s
   const rows = WheelWindow.computed!.wheelSessionSourceGroups.call(vm as never);
   assert.equal(rows.length, 1);
   assert.equal(rows[0]!.label, "Union arena singles");
-  assert.match(rows[0]!.remainingText, /24 cards left/i);
+  assert.match(rows[0]!.remainingText, /24 items left/i);
   assert.equal(rows[0]!.tiers.length, 2);
   assert.equal(rows[0]!.tiers[0]!.label, "Hellish Blizzard #UE06BT/OPM-1-022-ALT1");
   assert.equal(rows[0]!.tiers[1]!.label, "AP card");
@@ -522,7 +522,7 @@ test("getWheelTierInventoryMeta marks exact last-hit stock as low stock", () => 
   });
 
   assert.equal(singlesMeta?.warning, true);
-  assert.match(singlesMeta?.text || "", /1 card left/i);
+  assert.match(singlesMeta?.text || "", /1 item left/i);
   assert.equal(packsMeta?.warning, true);
   assert.match(packsMeta?.text || "", /1 item left/i);
 });

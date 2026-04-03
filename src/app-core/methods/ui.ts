@@ -1,4 +1,4 @@
-import type { AppContext, AppMethodState } from "../context.ts";
+import type { AppContext, AppMethodState } from "../context-app.ts";
 import { uiAccountMethods } from "./ui/account.ts";
 import { uiBaseMethods } from "./ui/base.ts";
 import { uiEntitlementMethods } from "./ui/entitlements.ts";
@@ -83,3 +83,4 @@ export const uiMethods: ThisType<AppContext> & Pick<
   ...uiSyncMethods,
   ...uiWorkspaceMethods
 };
+

@@ -1,5 +1,5 @@
 import type { Sale } from "../../types/app.ts";
-import type { AppContext } from "../context.ts";
+import type { AppContext } from "../context-app.ts";
 import { getStoredGoogleIdToken } from "../auth/index.ts";
 import { fetchAuthenticatedApiResponse, resolveApiBaseUrl } from "./ui/shared.ts";
 
@@ -385,3 +385,4 @@ export function cacheAuthoritativeSales(
 ): void {
   persistSalesCache(app, lotId, sales);
 }
+

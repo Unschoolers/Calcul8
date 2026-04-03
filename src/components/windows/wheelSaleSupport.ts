@@ -1,4 +1,5 @@
 import { getSinglesSoldQuantityForEntry } from "../../app-core/methods/sales-core.ts";
+import { translateAppMessage } from "../../app-core/i18n/index.ts";
 import type { Lot, Sale, SinglesPurchaseEntry, WheelTier } from "../../types/app.ts";
 
 type WheelSalesContext = Record<string, unknown> & {
@@ -7,6 +8,7 @@ type WheelSalesContext = Record<string, unknown> & {
   lots?: Lot[];
   singlesSoldCountByPurchaseId?: Record<number, number>;
   loadSalesForLotId?: (lotId: number) => Sale[];
+  preferredLanguage?: string;
 };
 
 function getLotSales(context: WheelSalesContext, lotId: number): Sale[] {
@@ -78,27 +80,38 @@ export function getWheelTierInventoryMeta(
   if (!lot) return null;
 
   if (lot.lotType === "singles") {
+    const preferredLanguage = String(context.preferredLanguage ?? "");
     if (tier.boundSinglesId != null) {
       const purchase = lot.singlesPurchases?.find((entry) => entry.id === tier.boundSinglesId);
       const remaining = getAvailableSinglesQuantityForWheelTier(context, tier.boundLotId, tier.boundSinglesId);
       if (!purchase) {
-        return { text: "Selected card is no longer in this lot", warning: true };
+        return { text: translateAppMessage(preferredLanguage, "wheelSourceSelectedItemMissing"), warning: true };
       }
       return {
-        text: `${remaining} card${remaining === 1 ? "" : "s"} left • ${Math.max(1, Number(tier.packsCount) || 1)} per hit`,
+        text: `${translateAppMessage(preferredLanguage, "wheelSourceItemsLeft", {
+          count: remaining,
+          suffix: remaining === 1 ? "" : "s"
+        })} • ${Math.max(1, Number(tier.packsCount) || 1)} per hit`,
         warning: remaining <= Math.max(1, Number(tier.packsCount) || 1)
       };
     }
 
     return {
-      text: `${(lot.singlesPurchases || []).length} singles option${(lot.singlesPurchases || []).length === 1 ? "" : "s"} left • untracked sale`,
+      text: translateAppMessage(preferredLanguage, "wheelSourceSinglesOptionsLeft", {
+        count: (lot.singlesPurchases || []).length,
+        suffix: (lot.singlesPurchases || []).length === 1 ? "" : "s"
+      }),
       warning: false
     };
   }
 
   const remainingPacks = getRemainingPacksForWheelLot(context, tier.boundLotId);
+  const preferredLanguage = String(context.preferredLanguage ?? "");
   return {
-    text: `${remainingPacks} item${remainingPacks === 1 ? "" : "s"} left • ${Math.max(1, Number(tier.packsCount) || 0)} per hit`,
+    text: `${translateAppMessage(preferredLanguage, "wheelSourceItemsLeft", {
+      count: remainingPacks,
+      suffix: remainingPacks === 1 ? "" : "s"
+    })} • ${Math.max(1, Number(tier.packsCount) || 0)} per hit`,
     warning: remainingPacks <= Math.max(1, Number(tier.packsCount) || 1)
   };
 }

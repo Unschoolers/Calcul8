@@ -1,4 +1,4 @@
-import type { AppContext } from "../../context.ts";
+import type { AppContext } from "../../context-app.ts";
 import { type LotLivePricingRecord } from "../sales-live-api.ts";
 
 type LotEntityPollingApp = Pick<
@@ -76,3 +76,4 @@ export function refreshLotEntityPolling(_app: unknown): void {
 export function stopLotEntityPolling(_app: unknown): void {
   // Polling is intentionally disabled.
 }
+

@@ -1,22 +1,26 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test, vi } from "vitest";
 import {
+  fetchAuthenticatedApiResponse,
+  fetchWithRetry,
+  resolveApiBaseUrl
+} from "../src/app-core/methods/ui/api-client.ts";
+import {
   CSRF_TOKEN_KEY,
   ENTITLEMENT_CACHE_KEY,
   GOOGLE_PROFILE_CACHE_KEY,
   GOOGLE_TOKEN_KEY,
   PRO_ACCESS_KEY,
   clearEntitlementCache,
-  fetchAuthenticatedApiResponse,
-  fetchWithRetry,
   getEntitlementTtlMs,
   handleExpiredAuth,
   readEntitlementCache,
-  resolveApiBaseUrl,
-  resolvePurchaseProvider,
-  submitPlayPurchaseVerification,
   writeEntitlementCache
-} from "../src/app-core/methods/ui/shared.ts";
+} from "../src/app-core/methods/ui/entitlement-cache.ts";
+import {
+  resolvePurchaseProvider,
+  submitPlayPurchaseVerification
+} from "../src/app-core/methods/ui/purchase-verification.ts";
 
 type MockStorage = {
   getItem(key: string): string | null;
@@ -433,28 +437,21 @@ test("submitPlayPurchaseVerification handles pending purchases", async () => {
 
 test("submitPlayPurchaseVerification handles API errors", async () => {
   await withMockedLocalStorage(async () => {
-    const originalFetch = globalThis.fetch;
-    const originalWindow = (globalThis as { window?: Window }).window;
+    vi.useFakeTimers();
     try {
       const notify = vi.fn();
-      Object.defineProperty(globalThis, "window", {
-        configurable: true,
-        value: {
-          setTimeout: globalThis.setTimeout,
-          clearTimeout: globalThis.clearTimeout
-        }
+      vi.stubGlobal("window", {
+        setTimeout: globalThis.setTimeout,
+        clearTimeout: globalThis.clearTimeout
       });
-      Object.defineProperty(globalThis, "fetch", {
-        configurable: true,
-        value: vi.fn(async () => new Response(JSON.stringify({
-          error: "Verification failed upstream"
-        }), {
-          status: 500,
-          headers: { "Content-Type": "application/json" }
-        }))
-      });
+      vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
+        error: "Verification failed upstream"
+      }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" }
+      })));
 
-      const verified = await submitPlayPurchaseVerification({
+      const verifiedPromise = submitPlayPurchaseVerification({
         googleAuthEpoch: 0,
         hasProAccess: false,
         notify,
@@ -463,18 +460,13 @@ test("submitPlayPurchaseVerification handles API errors", async () => {
         baseUrl: "https://api.example.test",
         purchaseToken: "purchase-token"
       });
+      await vi.runAllTimersAsync();
+      const verified = await verifiedPromise;
 
       assert.equal(verified, false);
       assert.equal(notify.mock.calls.at(-1)?.[0], "Verification failed upstream");
     } finally {
-      Object.defineProperty(globalThis, "fetch", {
-        configurable: true,
-        value: originalFetch
-      });
-      Object.defineProperty(globalThis, "window", {
-        configurable: true,
-        value: originalWindow
-      });
+      vi.useRealTimers();
     }
   });
 });

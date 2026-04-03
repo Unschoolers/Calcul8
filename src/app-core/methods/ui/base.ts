@@ -1,6 +1,6 @@
 import { calculateSaleProfit as calculateSaleProfitValue, getSaleProfitPreview as getSaleProfitPreviewValue } from "../../../domain/calculations.ts";
 import type { Sale, SaleType, UiColor } from "../../../types/app.ts";
-import type { AppContext, AppMethodState } from "../../context.ts";
+import type { AppContext, AppMethodState } from "../../context-app.ts";
 import { STORAGE_KEYS } from "../../storageKeys.ts";
 import {
   formatLocalizedDate,
@@ -187,3 +187,4 @@ export const uiBaseMethods: ThisType<AppContext> & Pick<
     return formatLocalizedDate(dateStr, this.preferredLanguage);
   }
 };
+

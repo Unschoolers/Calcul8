@@ -360,7 +360,7 @@
 
           <!-- Bottom Nav -->
           <v-bottom-navigation v-model="currentTab" color="primary" grow elevation="8" mandatory
-            aria-label="Primary navigation">
+            :aria-label="t('shellPrimaryNavigationAriaLabel')">
             <v-btn value="config" :ripple="false">
               <v-icon>mdi-cog</v-icon>
               <span>{{ t('shellNavConfigLabel') }}</span>
@@ -435,8 +435,8 @@
           <v-speed-dial v-model="speedDialOpenSales" location="top center" transition="scale-transition"
             :open-on-hover="false" :close-on-content-click="false">
             <template v-slot:activator="{ props: activatorProps }">
-              <v-fab v-bind="activatorProps" icon="mdi-cart-plus" color="primary" size="large" title="Add sale"
-                aria-label="Add sale" :disabled="!hasLotSelected"></v-fab>
+              <v-fab v-bind="activatorProps" icon="mdi-cart-plus" color="primary" size="large" :title="t('saleEditorAddTitle')"
+                :aria-label="t('saleEditorAddTitle')" :disabled="!hasLotSelected"></v-fab>
             </template>
 
             <v-btn v-if="currentLotType === 'singles'" :key="'card'" icon="mdi-cards-outline" color="primary"
@@ -561,7 +561,7 @@
                           {{ member.displayName || t('shellWorkspaceMemberFallback') }}
                         </div>
                         <v-chip size="x-small" variant="tonal" :color="member.role === 'owner' ? 'primary' : undefined">
-                          {{ member.role === 'owner' ? 'Owner' : 'Member' }}
+                          {{ member.role === 'owner' ? t('shellWorkspaceRoleOwner') : t('shellWorkspaceRoleMember') }}
                         </v-chip>
                       </div>
 
@@ -574,8 +574,8 @@
                           :class="`workspace-member-card-row__presence-label--${getWorkspaceMemberPresenceState(member)}`">
                           {{ getWorkspaceMemberPresenceLabel(member) }}
                         </span>
-                        <span v-if="!member.displayName">Profile name unavailable</span>
-                        <span>Updated {{ formatDate(member.updatedAt) }}</span>
+                        <span v-if="!member.displayName">{{ t('shellProfileNameUnavailableLabel') }}</span>
+                        <span>{{ t('shellMembersUpdatedLabel', { date: formatDate(member.updatedAt) }) }}</span>
                       </div>
                     </div>
                   </div>
@@ -584,7 +584,7 @@
                     <v-btn v-if="isCurrentWorkspaceOwner && member.role !== 'owner'" size="small" variant="tonal"
                       color="error" prepend-icon="mdi-account-remove-outline"
                       @click="removeWorkspaceMember(member.userId)">
-                      Remove
+                      {{ t('shellRemoveMemberAction') }}
                     </v-btn>
                   </div>
                 </article>
@@ -592,28 +592,28 @@
 
               <div v-else class="workspace-members-empty">
                 <v-icon size="34" color="medium-emphasis">mdi-account-off-outline</v-icon>
-                <div class="workspace-members-empty__title">No members found</div>
+                <div class="workspace-members-empty__title">{{ t('shellMembersEmptyTitle') }}</div>
                 <div class="workspace-members-empty__body">
-                  Try refreshing the workspace or creating a new invite link.
+                  {{ t('shellMembersEmptyBody') }}
                 </div>
               </div>
             </v-card-text>
             <v-card-actions class="workspace-members-card__actions">
               <v-spacer></v-spacer>
-              <v-btn variant="text" @click="showWorkspaceMembersModal = false">Close</v-btn>
+              <v-btn variant="text" @click="showWorkspaceMembersModal = false">{{ t('commonClose') }}</v-btn>
             </v-card-actions>
           </v-card>
         </v-dialog>
 
         <v-dialog v-model="showLeaveWorkspaceModal" max-width="480">
           <v-card>
-            <v-card-title>Leave Workspace</v-card-title>
+            <v-card-title>{{ t('shellLeaveWorkspaceTitle') }}</v-card-title>
             <v-card-text>
               <p class="text-body-2 text-medium-emphasis mb-4">
                 {{
                 isCurrentWorkspaceOwner
-                ? 'Owners need to transfer ownership before leaving, or confirm deletion if they are the last member.'
-                : 'You will lose access to this shared workspace and return to Personal mode.'
+                ? t('shellLeaveWorkspaceOwnerBody')
+                : t('shellLeaveWorkspaceMemberBody')
                 }}
               </p>
 
@@ -644,20 +644,20 @@
 
         <v-dialog v-model="showWorkspaceJoinDialog" max-width="460">
           <v-card>
-            <v-card-title>Join Workspace</v-card-title>
+            <v-card-title>{{ t('shellJoinWorkspaceTitle') }}</v-card-title>
             <v-card-text>
               <p class="text-body-1 mb-2">
-                Join <strong>{{ pendingWorkspaceInviteTargetName }}</strong>?
+                {{ t('shellJoinWorkspacePrompt', { name: pendingWorkspaceInviteTargetName }) }}
               </p>
               <p class="text-body-2 text-medium-emphasis">
-                This will add a new shared workspace alongside your Personal workspace.
+                {{ t('shellJoinWorkspaceBody') }}
               </p>
             </v-card-text>
             <v-card-actions>
               <v-spacer></v-spacer>
               <v-btn variant="text" @click="dismissPendingWorkspaceInvite">{{ t('commonCancel') }}</v-btn>
               <v-btn color="primary" :loading="isAcceptingWorkspaceInvite" @click="acceptPendingWorkspaceInvite">
-                Join workspace
+                {{ t('shellJoinWorkspaceAction') }}
               </v-btn>
             </v-card-actions>
           </v-card>
@@ -734,12 +734,12 @@
           <v-card>
             <v-card-title>
               <v-icon class="mr-2">mdi-check-decagram</v-icon>
-              Verify Play Purchase
+              {{ t('purchaseVerifyTitle') }}
             </v-card-title>
             <v-card-text>
-              <v-text-field v-model="purchaseTokenInput" label="Purchase Token" variant="outlined" autocomplete="off"
-                class="mb-2" hint="Paste the real Google Play purchase token" persistent-hint></v-text-field>
-              <v-text-field v-model="purchaseProductIdInput" label="Product ID (optional)" variant="outlined"
+              <v-text-field v-model="purchaseTokenInput" :label="t('purchaseTokenLabel')" variant="outlined" autocomplete="off"
+                class="mb-2" :hint="t('purchaseTokenHint')" persistent-hint></v-text-field>
+              <v-text-field v-model="purchaseProductIdInput" :label="t('purchaseProductIdOptionalLabel')" variant="outlined"
                 autocomplete="off" class="mb-2"></v-text-field>
               <v-text-field v-model="purchasePackageNameInput" :label="t('purchasePackageNameOptionalLabel')" variant="outlined"
                 autocomplete="off"></v-text-field>
@@ -747,7 +747,7 @@
             <v-card-actions>
               <v-spacer></v-spacer>
               <v-btn text @click="showVerifyPurchaseModal = false">{{ t('commonCancel') }}</v-btn>
-              <v-btn color="primary" :loading="isVerifyingPurchase" @click="verifyProPurchase">Verify</v-btn>
+              <v-btn color="primary" :loading="isVerifyingPurchase" @click="verifyProPurchase">{{ t('purchaseVerifySubmitAction') }}</v-btn>
             </v-card-actions>
           </v-card>
         </v-dialog>
@@ -758,7 +758,7 @@
           <v-card>
             <v-card-title>
               <v-icon class="mr-2">mdi-credit-card-lock-outline</v-icon>
-              Secure Checkout
+              {{ t('stripeCheckoutTitle') }}
             </v-card-title>
             <v-card-text>
               <div id="stripe-embedded-checkout" class="stripe-embedded-checkout"></div>
@@ -781,7 +781,7 @@
               <div class="d-flex align-center">
                 <v-icon class="mr-2">mdi-cart-plus</v-icon>
                 <div>
-                  <div>{{ editingSale ? 'Edit Sale' : 'Add Sale' }}</div>
+                  <div>{{ editingSale ? t('saleEditorEditTitle') : t('saleEditorAddTitle') }}</div>
                   <div class="text-caption text-medium-emphasis">
                     {{ currentLotType === 'singles' ? t('saleEditorSinglesSubtitle') : t('saleEditorBulkSubtitle') }}
                   </div>
@@ -791,23 +791,23 @@
             <v-card-text class="sale-editor-content">
               <v-alert v-if="hasLotSelected && !hasProAccess" type="info" variant="tonal" density="compact"
                 icon="mdi-lock" class="mb-3">
-                Pro feature. Upgrade to add or edit sales.
+                {{ t('saleEditorLockedNotice') }}
                 <div class="mt-2">
                   <v-btn size="small" color="primary" variant="flat" prepend-icon="mdi-google-play"
                     :loading="isVerifyingPurchase" @click="startProPurchase">
-                    Unlock Pro
+                    {{ t('saleEditorUnlockProAction') }}
                   </v-btn>
                 </div>
                 <div v-if="showManualPurchaseVerify" class="mt-2">
                   <v-btn size="small" variant="text" prepend-icon="mdi-check-decagram" @click="openVerifyPurchaseModal">
-                    Verify Purchase
+                    {{ t('saleEditorVerifyPurchaseAction') }}
                   </v-btn>
                 </div>
               </v-alert>
 
               <div class="sale-editor-form">
                 <div v-if="currentLotType === 'singles'" class="sale-editor-section sale-editor-section--singles">
-                  <div class="sale-editor-section-label">Items Sold</div>
+                  <div class="sale-editor-section-label">{{ t('saleEditorItemsSoldSectionLabel') }}</div>
                   <div class="sale-editor-singles-lines">
                     <div v-for="(line, lineIndex) in (newSale.singlesItems || [])" :key="line.lineId || lineIndex"
                       class="sale-editor-singles-line">
@@ -823,7 +823,7 @@
                           <v-row dense class="sale-editor-singles-grid">
                             <v-col :cols="$vuetify?.display?.smAndDown ? 12 : 6">
                               <v-autocomplete v-model="line.singlesPurchaseEntryId" :items="singlesSaleCardOptions"
-                                item-title="title" item-value="value" label="Item (optional)" variant="outlined"
+                                item-title="title" item-value="value" :label="t('saleEditorItemOptionalLabel')" variant="outlined"
                                 density="compact" :disabled="!hasLotSelected" clearable hide-details="auto"
                                 @update:model-value="onSinglesSaleLineCardSelectionChange(lineIndex, $event)">
                                 <template #item="{ props, item }">
@@ -838,7 +838,7 @@
                                         item.raw.cardNumber }}</span>
                                     </v-list-item-title>
                                     <v-list-item-subtitle class="text-caption">
-                                      Qty {{ item.raw.quantity }} · Total Cost ${{ formatCurrency(item.raw.costBasis) }}
+                                      {{ t('saleEditorLineOptionSummary', { quantity: item.raw.quantity, cost: formatCurrency(item.raw.costBasis) }) }}
                                     </v-list-item-subtitle>
                                   </v-list-item>
                                 </template>
@@ -852,21 +852,21 @@
                               </v-autocomplete>
                             </v-col>
                             <v-col :cols="$vuetify?.display?.smAndDown ? 5 : 2">
-                              <v-text-field v-model.number="line.quantity" label="Qty" type="number" variant="outlined"
+                              <v-text-field v-model.number="line.quantity" :label="t('saleEditorQtyShortLabel')" type="number" variant="outlined"
                                 density="compact" :disabled="!hasLotSelected" :min="1"
                                 :max="line.singlesPurchaseEntryId ? (getSinglesSaleLineMaxQuantity(lineIndex) ?? undefined) : undefined"
                                 hide-details="auto"
                                 @update:model-value="onSinglesSaleLineQuantityChange(lineIndex, $event)"></v-text-field>
                             </v-col>
                             <v-col :cols="$vuetify?.display?.smAndDown ? 5 : 3">
-                              <v-text-field v-model.number="line.price" label="Total" type="number" variant="outlined"
+                              <v-text-field v-model.number="line.price" :label="t('saleEditorLineTotalLabel')" type="number" variant="outlined"
                                 density="compact" :disabled="!hasLotSelected" prefix="$" hide-details="auto"
                                 @update:model-value="onSinglesSaleLinePriceChange"></v-text-field>
                             </v-col>
                             <v-col v-if="(newSale.singlesItems?.length || 0) > 1"
                               :cols="$vuetify?.display?.smAndDown ? 2 : 1" class="d-flex align-center justify-end">
                               <v-btn icon size="small" variant="text" color="error"
-                                class="sale-editor-singles-line-delete" title="Remove line" aria-label="Remove line"
+                                class="sale-editor-singles-line-delete" :title="t('saleEditorRemoveLineAction')" :aria-label="t('saleEditorRemoveLineAction')"
                                 @click="removeSinglesSaleLine(lineIndex)">
                                 <v-icon size="18">mdi-trash-can-outline</v-icon>
                               </v-btn>
@@ -879,8 +879,8 @@
                         <div v-if="line.singlesPurchaseEntryId || Number(line.price || 0) <= 0"
                           class="sale-editor-singles-stock text-caption text-medium-emphasis">
                           {{ line.singlesPurchaseEntryId
-                          ? `Up to ${getSinglesSaleLineMaxQuantity(lineIndex) ?? 0} available`
-                          : 'Unlinked line requires a total price.' }}
+                          ? t('saleEditorAvailableStockLabel', { count: getSinglesSaleLineMaxQuantity(lineIndex) ?? 0 })
+                          : t('saleEditorUnlinkedLineHint') }}
                         </div>
                         <div v-if="
                           (line.singlesPurchaseEntryId || Number(line.price || 0) > 0)

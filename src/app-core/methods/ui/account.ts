@@ -1,4 +1,4 @@
-import type { AppContext, AppMethodState } from "../../context.ts";
+import type { AppContext, AppMethodState } from "../../context-app.ts";
 import { clearEntitlementCache, fetchWithRetry, handleExpiredAuth, resolveApiBaseUrl } from "./shared.ts";
 import {
   disableGoogleAutoSignIn,
@@ -153,3 +153,4 @@ export const uiAccountMethods: ThisType<AppContext> & Pick<
     reloadAppSoon();
   }
 };
+

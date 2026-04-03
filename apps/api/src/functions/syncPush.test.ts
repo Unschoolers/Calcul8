@@ -1,8 +1,7 @@
 import assert from "node:assert/strict";
-import { afterEach, beforeEach, test, vi } from "vitest";
+import { beforeEach, test, vi } from "vitest";
 import {
   createApiConfig,
-  createGoogleUserInfoFetch,
   createHttpRequest,
   createInvocationContext
 } from "../test-support/function-test-helpers";
@@ -20,7 +19,8 @@ const {
   hasWorkspaceMembershipMock,
   parseSyncLotsShapeMock,
   assertSafeSyncPushMock,
-  publishWorkspaceLotRealtimeEventMock
+  publishWorkspaceLotRealtimeEventMock,
+  resolveUserIdMock
 } = vi.hoisted(() => ({
   getConfigMock: vi.fn(),
   getEffectiveSyncSnapshotMock: vi.fn(),
@@ -28,7 +28,11 @@ const {
   hasWorkspaceMembershipMock: vi.fn(),
   parseSyncLotsShapeMock: vi.fn(),
   assertSafeSyncPushMock: vi.fn(),
-  publishWorkspaceLotRealtimeEventMock: vi.fn()
+  publishWorkspaceLotRealtimeEventMock: vi.fn(),
+  resolveUserIdMock: vi.fn(async (request: { headers: { get(name: string): string | null } }) => {
+    const authHeader = request.headers.get("authorization") || "";
+    return authHeader.replace(/^Bearer\s+/i, "").trim() || "test-user";
+  })
 }));
 
 vi.mock("../lib/config", () => ({
@@ -59,6 +63,14 @@ vi.mock("../lib/realtime", () => ({
   })
 }));
 
+vi.mock("../lib/auth", async () => {
+  const actual = await vi.importActual<typeof import("../lib/auth")>("../lib/auth");
+  return {
+    ...actual,
+    resolveUserId: resolveUserIdMock
+  };
+});
+
 import { syncPush } from "./syncPush";
 
 function createRequest(body: unknown, method = "POST", headers: Record<string, string> = {}) {
@@ -69,18 +81,11 @@ function createContext() {
   return createInvocationContext();
 }
 
-const originalFetch = globalThis.fetch;
-
 beforeEach(() => {
   vi.clearAllMocks();
   hasWorkspaceMembershipMock.mockResolvedValue(true);
   publishWorkspaceLotRealtimeEventMock.mockResolvedValue(true);
-  globalThis.fetch = createGoogleUserInfoFetch();
   getConfigMock.mockReturnValue(createApiConfig());
-});
-
-afterEach(() => {
-  globalThis.fetch = originalFetch;
 });
 
 test("syncPush returns unchanged state when upsert reports no changes", async () => {

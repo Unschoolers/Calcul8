@@ -1,4 +1,4 @@
-import type { AppMethodState } from "../context.ts";
+import type { AppMethodState } from "../context-app.ts";
 import { configMethods } from "./config.ts";
 import { pwaMethods } from "./pwa.ts";
 import { salesMethods } from "./sales.ts";
@@ -10,3 +10,4 @@ export const appMethods: AppMethodState = {
   ...salesMethods,
   ...pwaMethods
 };
+

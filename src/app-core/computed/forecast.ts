@@ -13,7 +13,7 @@ import {
   calculateTotalSpots,
   calculateTotalRevenue
 } from "../../domain/calculations.ts";
-import type { AppComputedObject } from "../context.ts";
+import type { AppComputedObject } from "../context-contracts.ts";
 import {
   getSinglesEntryUnitCostInSellingCurrency,
   getSinglesRemainingQuantity,
@@ -391,3 +391,4 @@ export const forecastComputed: Pick<
     return calculateSparklineGradient(this.sales, this.totalCaseCost, this.sellingTaxPercent, this);
   }
 };
+

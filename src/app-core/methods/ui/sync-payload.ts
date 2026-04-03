@@ -1,5 +1,5 @@
 import type { Sale } from "../../../types/app.ts";
-import type { AppContext } from "../../context.ts";
+import type { AppContext } from "../../context-app.ts";
 
 export type SyncPayload = {
   lots: unknown[];
@@ -53,3 +53,4 @@ export function getSyncPayloadSignature(payload: SyncPayload): string {
     workspaceId: payload.workspaceId
   });
 }
+

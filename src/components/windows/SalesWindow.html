@@ -11,9 +11,9 @@
                             <v-icon size="18">{{ salesStatus?.icon || 'mdi-information' }}</v-icon>
                           </div>
                           <div class="sales-status-title-wrap">
-                            <div class="sales-status-eyebrow">{{ t('salesSnapshotTitle', 'Sales snapshot') }}</div>
+                            <div class="sales-status-eyebrow">{{ t('salesSnapshotTitle') }}</div>
                             <div class="sales-status-title">
-                              {{ salesStatus?.title || t('salesNoSalesTitle', 'No sales yet') }}
+                              {{ salesStatus?.title || t('salesNoSalesTitle') }}
                             </div>
                           </div>
                         </div>
@@ -44,10 +44,10 @@
                       <v-card-title class="d-flex align-center justify-space-between sales-section-title-bar sales-history-title-bar">
                         <div class="sales-section-title-group">
                           <v-icon size="16">mdi-history</v-icon>
-                          <span>{{ t('salesHistoryTitle', 'Sales history') }}</span>
+                          <span>{{ t('salesHistoryTitle') }}</span>
                         </div>
                         <div v-if="(sales?.length ?? 0) > 0" class="sales-history-summary">
-                          <span class="sales-history-summary-label">{{ t('salesHistorySoldLabel', 'Sold') }}</span>
+                          <span class="sales-history-summary-label">{{ t('salesHistorySoldLabel') }}</span>
                           <span class="sales-history-summary-value" :style="salesHistorySummaryValueStyle()">{{ salesHistorySummaryLabel }}</span>
                         </div>
                       </v-card-title>
@@ -55,8 +55,8 @@
 
                       <v-card-text v-if="(sales?.length ?? 0) === 0" class="text-center py-8">
                         <v-icon size="64" color="grey">mdi-package-variant-closed</v-icon>
-                        <p class="text-h6 mt-4 text-grey">{{ t('salesNoSalesTitle', 'No sales yet') }}</p>
-                        <p class="text-caption">{{ t('salesNoSalesBody', 'Add your first sale to see profit, sell-through, and price trends update here.') }}</p>
+                        <p class="text-h6 mt-4 text-grey">{{ t('salesNoSalesTitle') }}</p>
+                        <p class="text-caption">{{ t('salesNoSalesBody') }}</p>
                       </v-card-text>
 
                       <v-list v-else class="sales-history-list" density="compact">
@@ -79,7 +79,7 @@
                             </span>
                             <v-tooltip
                               v-if="isUnlinkedSinglesSale(sale)"
-                              :text="t('salesHistoryUnlinkedSaleTooltip', 'This sale is not linked to a card.')"
+                              :text="t('salesHistoryUnlinkedSaleTooltip')"
                               location="top"
                             >
                               <template #activator="{ props }">
@@ -87,8 +87,8 @@
                                   v-bind="props"
                                   size="14"
                                   color="warning"
-                                  :aria-label="t('salesHistoryUnlinkedSaleLabel', 'Unlinked sale')"
-                                  :title="t('salesHistoryUnlinkedSaleTooltip', 'This sale is not linked to a card.')"
+                                  :aria-label="t('salesHistoryUnlinkedSaleLabel')"
+                                  :title="t('salesHistoryUnlinkedSaleTooltip')"
                                 >mdi-link-variant-off</v-icon>
                               </template>
                             </v-tooltip>
@@ -97,8 +97,8 @@
                             class="sales-history-action-btn"
                             size="small"
                             variant="text"
-                            :title="t('salesHistoryDeleteSaleLabel', 'Delete sale')"
-                            :aria-label="t('salesHistoryDeleteSaleLabel', 'Delete sale')"
+                            :title="t('salesHistoryDeleteSaleLabel')"
+                            :aria-label="t('salesHistoryDeleteSaleLabel')"
                             @click.stop="deleteSale(sale.id)"
                           >
                             <v-icon size="16">mdi-trash-can-outline</v-icon>
@@ -114,10 +114,10 @@
                               ]"
                             >
                               <template v-if="getSaleProfitPreview(sale)">
-                                {{ getSaleProfitPreview(sale).sign }}${{ fmtCurrency(Math.abs(getSaleProfitPreview(sale).value)) }} {{ t('salesProfitVsLabel', 'vs') }} {{ getSaleProfitPreview(sale).basisLabel }}
+                                {{ getSaleProfitPreview(sale).sign }}${{ fmtCurrency(Math.abs(getSaleProfitPreview(sale).value)) }} {{ t('salesProfitVsLabel') }} {{ getSaleProfitPreview(sale).basisLabel }}
                               </template>
                               <template v-else>
-                                {{ t('salesProfitLabel', 'Profit') }} {{ calculateSaleProfit(sale) >= 0 ? '+' : '-' }}${{ fmtCurrency(Math.abs(calculateSaleProfit(sale))) }}
+                                {{ t('salesProfitLabel') }} {{ calculateSaleProfit(sale) >= 0 ? '+' : '-' }}${{ fmtCurrency(Math.abs(calculateSaleProfit(sale))) }}
                               </template>
                             </span>
                             <span
@@ -128,13 +128,13 @@
                                 getSaleProfitPreview(sale).allCostValue >= 0 ? 'is-positive' : 'is-negative'
                               ]"
                             >
-                              {{ getSaleProfitPreview(sale).allCostValue >= 0 ? '+' : '-' }}${{ fmtCurrency(Math.abs(getSaleProfitPreview(sale).allCostValue)) }} {{ t('salesProfitVsCostLabel', 'vs Cost') }}
+                              {{ getSaleProfitPreview(sale).allCostValue >= 0 ? '+' : '-' }}${{ fmtCurrency(Math.abs(getSaleProfitPreview(sale).allCostValue)) }} {{ t('salesProfitVsCostLabel') }}
                             </span>
                           </v-list-item-subtitle>
                           <v-list-item-subtitle class="sales-history-item-subtitle">
                             <span class="sales-history-date">{{ formatDate(sale.date) }}</span>
                             <div v-if="sale.customer" class="sales-history-customer">
-                              {{ t('salesCustomerLabel', 'Customer') }}: {{ sale.customer }}
+                              {{ t('salesCustomerLabel') }}: {{ sale.customer }}
                             </div>
                             <div v-if="sale.memo" class="sales-history-memo">
                               {{ sale.memo }}
@@ -149,8 +149,8 @@
                             prepend-icon="mdi-chevron-down"
                             @click="loadMoreSalesHistory"
                           >
-                            {{ t('salesHistoryLoadMoreLabel', 'Load') }} {{ nextSalesHistoryBatchCount }} {{ t('salesHistoryMoreLabel', 'more') }}
-                            <span class="text-medium-emphasis ml-1">({{ remainingSalesHistoryCount }} {{ t('salesHistoryRemainingLabel', 'left') }})</span>
+                            {{ t('salesHistoryLoadMoreLabel') }} {{ nextSalesHistoryBatchCount }} {{ t('salesHistoryMoreLabel') }}
+                            <span class="text-medium-emphasis ml-1">({{ remainingSalesHistoryCount }} {{ t('salesHistoryRemainingLabel') }})</span>
                           </v-btn>
                         </v-list-item>
                       </v-list>
@@ -165,13 +165,13 @@
                           <div class="sales-section-head-main">
                             <v-icon size="16">mdi-chart-areaspline</v-icon>
                             <div class="sales-section-head-copy">
-                              <div class="sales-section-eyebrow">{{ t('salesChartTitle', 'Sales chart') }}</div>
+                              <div class="sales-section-eyebrow">{{ t('salesChartTitle') }}</div>
                               <div class="sales-section-subtitle">
                                 {{ chartView === 'pie'
                                   ? (currentLotType === 'singles'
-                                    ? t('salesChartSinglesSubtitle', 'Sold versus remaining cards')
-                                    : t('salesChartBulkSubtitle', 'Sold versus unsold net value'))
-                                  : t('salesChartLineSubtitle', 'Profit over time as sales are recorded') }}
+                                    ? t('salesChartSinglesSubtitle')
+                                    : t('salesChartBulkSubtitle'))
+                                  : t('salesChartLineSubtitle') }}
                               </div>
                             </div>
                           </div>
@@ -180,8 +180,8 @@
                             size="small"
                             variant="text"
                             class="sales-section-toggle-btn"
-                            :title="chartView === 'pie' ? t('salesChartToggleLineLabel', 'Show line chart') : t('salesChartTogglePieLabel', 'Show pie chart')"
-                            :aria-label="chartView === 'pie' ? t('salesChartToggleLineLabel', 'Show line chart') : t('salesChartTogglePieLabel', 'Show pie chart')"
+                            :title="chartView === 'pie' ? t('salesChartToggleLineLabel') : t('salesChartTogglePieLabel')"
+                            :aria-label="chartView === 'pie' ? t('salesChartToggleLineLabel') : t('salesChartTogglePieLabel')"
                             @click="toggleChartView"
                           >
                             <v-icon>{{ chartView === 'pie' ? 'mdi-chart-line' : 'mdi-chart-pie' }}</v-icon>
@@ -193,14 +193,14 @@
                           role="img"
                           style="max-height: 250px;"
                           :aria-label="currentLotType === 'singles'
-                            ? t('salesChartSinglesAriaLabel', 'Sales chart showing sold versus remaining cards.')
-                            : t('salesChartBulkAriaLabel', 'Sales chart showing sold versus unsold net value.')"
+                            ? t('salesChartSinglesAriaLabel')
+                            : t('salesChartBulkAriaLabel')"
                         ></canvas>
 
                         <div v-else class="pa-0">
                           <div v-if="(sales?.length ?? 0) === 0" class="text-center py-8">
                             <v-icon size="48" color="grey">mdi-chart-line</v-icon>
-                            <p class="text-body-2 mt-4 text-grey">{{ t('salesChartEmptyBody', 'No sales yet. Add your first sale to see your profit trend.') }}</p>
+                            <p class="text-body-2 mt-4 text-grey">{{ t('salesChartEmptyBody') }}</p>
                           </div>
 
                           <div v-else>
@@ -208,7 +208,7 @@
                               ref="salesTrendChart"
                               role="img"
                               style="max-height: 250px;"
-                              :aria-label="t('salesChartTrendAriaLabel', 'Sales trend chart showing profit over time as sales are recorded.')"
+                              :aria-label="t('salesChartTrendAriaLabel')"
                             ></canvas>
                           </div>
                         </div>
@@ -219,7 +219,7 @@
                       <v-card-title class="sales-section-title-bar sales-forecast-title-bar">
                         <div class="sales-section-title-group">
                           <v-icon size="16">mdi-crystal-ball</v-icon>
-                          <span>{{ t('salesForecastTitle', 'Live forecast') }}</span>
+                          <span>{{ t('salesForecastTitle') }}</span>
                         </div>
                         <div class="sales-forecast-title-actions">
                           <div
@@ -231,7 +231,7 @@
                               size="x-small"
                               variant="text"
                               class="sales-forecast-carousel-btn"
-                              :aria-label="t('salesForecastPreviousLabel', 'Previous scenario')"
+                              :aria-label="t('salesForecastPreviousLabel')"
                               @click="cycleLiveForecastScenario(-1)"
                             >
                               <v-icon size="14">mdi-chevron-left</v-icon>
@@ -244,7 +244,7 @@
                               size="x-small"
                               variant="text"
                               class="sales-forecast-carousel-btn"
-                              :aria-label="t('salesForecastNextLabel', 'Next scenario')"
+                              :aria-label="t('salesForecastNextLabel')"
                               @click="cycleLiveForecastScenario(1)"
                             >
                               <v-icon size="14">mdi-chevron-right</v-icon>
@@ -271,10 +271,10 @@
                           <div class="sales-forecast-row-meta">
                             {{ fmtUnits(scenario.units) }} {{ scenario.unitLabel }}{{ Number(scenario.units) === 1 ? '' : 's' }}
                             @ ${{ fmtCurrency(scenario.unitPrice) }}
-                            • {{ t('salesForecastRemainingNetLabel', 'Remaining net') }} ${{ fmtCurrency(scenario.estimatedNetRemaining) }}
-                            • {{ t('salesForecastFinalMarginLabel', 'Final margin') }}
+                            • {{ t('salesForecastRemainingNetLabel') }} ${{ fmtCurrency(scenario.estimatedNetRemaining) }}
+                            • {{ t('salesForecastFinalMarginLabel') }}
                             {{ scenario.forecastMarginPercent == null
-                              ? t('salesForecastMarginNaLabel', 'n/a')
+                              ? t('salesForecastMarginNaLabel')
                               : `${scenario.forecastMarginPercent >= 0 ? '+' : ''}${fmtCurrency(scenario.forecastMarginPercent, 1)}%` }}
                           </div>
                         </div>

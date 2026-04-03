@@ -7,7 +7,7 @@ import {
     calculateSinglesPurchaseTotals,
     calculateSinglesSaleProfitPreview
 } from "../../domain/calculations.ts";
-import type { AppComputedObject } from "../context.ts";
+import type { AppComputedObject } from "../context-contracts.ts";
 import { buildLotOptionItems, filterLotOptionItems } from "../shared/lot-option-items.ts";
 import {
     calculateProfitableOrderPrice,
@@ -356,6 +356,7 @@ export const singlesComputed: Pick<
     };
   }
 };
+
 
 
 

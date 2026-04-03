@@ -1,26 +1,3 @@
-import vue from "@vitejs/plugin-vue";
-import { defineConfig } from "vitest/config";
+import { createVitestConfig } from "./vitest.shared.mjs";
 
-const maxWorkers = Number(process.env.VITEST_MAX_WORKERS || "");
-
-export default defineConfig({
-  plugins: [vue()],
-  test: {
-    environment: "node",
-    include: ["tests/**/*.test.ts"],
-    exclude: ["**/dist/**", "**/node_modules/**"],
-    fileParallelism: true,
-    maxWorkers: Number.isFinite(maxWorkers) && maxWorkers > 0 ? maxWorkers : undefined,
-    coverage: {
-      provider: "v8",
-      reporter: ["text", "text-summary", "json-summary", "html", "lcov"],
-      reportsDirectory: "coverage",
-      include: ["src/**/*.ts"],
-      exclude: [
-        "**/*.test.ts",
-        "**/dist/**",
-        "**/node_modules/**"
-      ]
-    }
-  }
-});
+export default createVitestConfig();

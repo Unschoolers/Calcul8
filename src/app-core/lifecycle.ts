@@ -1,5 +1,5 @@
 import type { AppTab, PortfolioLotTypeFilter } from "../types/app.ts";
-import type { AppLifecycleObject } from "./context.ts";
+import type { AppLifecycleObject } from "./context-contracts.ts";
 import { closeStripeEmbeddedCheckout, handleStripeCheckoutReturn } from "./methods/ui/entitlements-stripe.ts";
 import { stopWorkspaceConfigSyncPush } from "./methods/ui/workspace-config-sync.ts";
 import { refreshWorkspaceRealtime, stopWorkspaceRealtime } from "./methods/ui/workspace-realtime.ts";
@@ -184,3 +184,4 @@ export const appLifecycle: AppLifecycleObject = {
     this.hasRegisteredServiceWorkerLifecycle = false;
   }
 };
+

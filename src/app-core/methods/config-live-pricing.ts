@@ -1,4 +1,4 @@
-import type { AppContext } from "../context.ts";
+import type { AppContext } from "../context-app.ts";
 import { fetchAuthoritativeLivePricing, SalesLiveApiError, saveAuthoritativeLivePricing } from "./sales-live-api.ts";
 import { markLivePricingPollingBaseline } from "./ui/lot-entity-polling.ts";
 
@@ -170,3 +170,4 @@ export function resetAuthoritativeLivePricingState(context: AppContext): void {
     currentLivePricingVersion: context.currentLivePricingVersion
   });
 }
+

@@ -1,5 +1,5 @@
 import type { Sale, WorkspaceRealtimeStatus } from "../../../types/app.ts";
-import type { AppContext } from "../../context.ts";
+import type { AppContext } from "../../context-app.ts";
 import { removeById, upsertById } from "../../shared/collection-updaters.ts";
 import { normalizeWheelConfigs } from "../../shared/normalize-wheel-config.ts";
 import {
@@ -581,3 +581,4 @@ export function stopWorkspaceRealtime(app: RealtimeApp): void {
   app.workspacePresenceByUserId = {};
   setWorkspaceRealtimeStatus(app, "idle");
 }
+

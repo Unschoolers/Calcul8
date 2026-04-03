@@ -1,4 +1,4 @@
-import type { AppContext, AppMethodState } from "../context.ts";
+import type { AppContext, AppMethodState } from "../context-app.ts";
 import { getTodayDate, inferDateFromTimestampId, toDateOnly } from "../../shared/lot-dates.ts";
 
 export { getTodayDate, toDateOnly };
@@ -56,3 +56,4 @@ export type ConfigMethods = ConfigMethodSubset<
 export function inferDateFromLotId(lotId: number): string | null {
   return inferDateFromTimestampId(lotId);
 }
+

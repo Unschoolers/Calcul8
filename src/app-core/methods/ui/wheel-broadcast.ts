@@ -1,4 +1,4 @@
-import type { AppContext } from "../../context.ts";
+import type { AppContext } from "../../context-app.ts";
 import { fetchAuthenticatedApiResponse } from "./shared.ts";
 
 type BroadcastApp = Pick<
@@ -72,3 +72,4 @@ export async function broadcastWheelSession(app: BroadcastApp): Promise<void> {
     // best-effort — ignore broadcast errors
   }
 }
+

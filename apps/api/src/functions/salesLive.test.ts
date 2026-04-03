@@ -1,8 +1,7 @@
 import assert from "node:assert/strict";
-import { afterEach, beforeEach, test, vi } from "vitest";
+import { beforeEach, test, vi } from "vitest";
 import {
   createApiConfig,
-  createGoogleUserInfoFetch,
   createHttpRequest,
   createInvocationContext
 } from "../test-support/function-test-helpers";
@@ -22,7 +21,8 @@ const {
   getLotLivePricingMock,
   upsertLotLivePricingMock,
   publishWorkspaceLotRealtimeEventMock,
-  EntityVersionConflictErrorMock
+  EntityVersionConflictErrorMock,
+  resolveUserIdMock
 } = vi.hoisted(() => ({
   getConfigMock: vi.fn(),
   hasWorkspaceMembershipMock: vi.fn(),
@@ -32,7 +32,11 @@ const {
   getLotLivePricingMock: vi.fn(),
   upsertLotLivePricingMock: vi.fn(),
   publishWorkspaceLotRealtimeEventMock: vi.fn(),
-  EntityVersionConflictErrorMock: class EntityVersionConflictError extends Error {}
+  EntityVersionConflictErrorMock: class EntityVersionConflictError extends Error {},
+  resolveUserIdMock: vi.fn(async (request: { headers: { get(name: string): string | null } }) => {
+    const authHeader = request.headers.get("authorization") || "";
+    return authHeader.replace(/^Bearer\s+/i, "").trim() || "test-user";
+  })
 }));
 
 vi.mock("../lib/config", () => ({
@@ -52,14 +56,26 @@ vi.mock("../lib/cosmos/workspaceRepository", () => ({
   hasWorkspaceMembership: hasWorkspaceMembershipMock
 }));
 
-vi.mock("../lib/realtime", async () => {
-  const actual = await vi.importActual<typeof import("../lib/realtime")>("../lib/realtime");
+vi.mock("../lib/realtime", () => ({
+  buildWorkspaceLotRealtimeRoom: (workspaceId: string, lotId: string) => `workspace:${workspaceId}:lot:${lotId}`,
+  buildWorkspacePresenceRealtimeRoom: (workspaceId: string) => `workspace:${workspaceId}:presence`,
+  buildWorkspaceWheelRealtimeRoom: (workspaceId: string) => `workspace:${workspaceId}:wheel`,
+  signRealtimeSubscribeToken: (_secret: string, payload: unknown) => {
+    const encodedPayload = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
+    return `${encodedPayload}.signature`;
+  },
+  publishWorkspaceLotRealtimeEvent: publishWorkspaceLotRealtimeEventMock,
+  publishWorkspaceLotRealtimeEventBestEffort: vi.fn((config: unknown, args: unknown) => {
+    void publishWorkspaceLotRealtimeEventMock(config, args).catch(() => false);
+  })
+}));
+
+vi.mock("../lib/auth", async () => {
+  const { HttpError } = await import("../lib/auth/errors");
   return {
-    ...actual,
-    publishWorkspaceLotRealtimeEvent: publishWorkspaceLotRealtimeEventMock,
-    publishWorkspaceLotRealtimeEventBestEffort: vi.fn((config: unknown, args: unknown) => {
-      void publishWorkspaceLotRealtimeEventMock(config, args).catch(() => false);
-    })
+    HttpError,
+    consumeAuthResponseHeaders: vi.fn(() => ({})),
+    resolveUserId: resolveUserIdMock
   };
 });
 
@@ -97,8 +113,6 @@ function createContext() {
   return createInvocationContext();
 }
 
-const originalFetch = globalThis.fetch;
-
 beforeEach(() => {
   vi.resetAllMocks();
   getConfigMock.mockReturnValue(createApiConfig());
@@ -108,11 +122,6 @@ beforeEach(() => {
     saleId: "1"
   });
   getLotLivePricingMock.mockResolvedValue(null);
-  globalThis.fetch = createGoogleUserInfoFetch();
-});
-
-afterEach(() => {
-  globalThis.fetch = originalFetch;
 });
 
 test("lotSalesList returns normalized sales for the resolved scope", async () => {

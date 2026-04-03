@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { afterEach, beforeEach, test, vi } from "vitest";
+import { beforeEach, test, vi } from "vitest";
 import type { ApiConfig } from "../types";
 
 vi.mock("@azure/functions", () => ({
@@ -18,7 +18,8 @@ const {
   acknowledgePlayProductPurchaseMock,
   assertPurchaseNotLinkedToDifferentUserMock,
   hashPurchaseTokenMock,
-  shouldAcknowledgePurchaseMock
+  shouldAcknowledgePurchaseMock,
+  resolveUserIdMock
 } = vi.hoisted(() => ({
   getPurchaseVerificationResultMock: vi.fn(),
   getPlayPurchaseByTokenHashMock: vi.fn(),
@@ -29,7 +30,11 @@ const {
   acknowledgePlayProductPurchaseMock: vi.fn(),
   assertPurchaseNotLinkedToDifferentUserMock: vi.fn(),
   hashPurchaseTokenMock: vi.fn(),
-  shouldAcknowledgePurchaseMock: vi.fn()
+  shouldAcknowledgePurchaseMock: vi.fn(),
+  resolveUserIdMock: vi.fn(async (request: { headers: { get(name: string): string | null } }) => {
+    const authHeader = request.headers.get("authorization") || "";
+    return authHeader.replace(/^Bearer\s+/i, "").trim() || "test-user";
+  })
 }));
 
 vi.mock("../lib/cosmos/entitlementRepository", () => ({
@@ -50,6 +55,14 @@ vi.mock("../lib/playEntitlements", () => ({
   hashPurchaseToken: hashPurchaseTokenMock,
   shouldAcknowledgePurchase: shouldAcknowledgePurchaseMock
 }));
+
+vi.mock("../lib/auth", async () => {
+  const actual = await vi.importActual<typeof import("../lib/auth")>("../lib/auth");
+  return {
+    ...actual,
+    resolveUserId: resolveUserIdMock
+  };
+});
 
 import { verifyPlayEntitlementRequest } from "./entitlementsVerifyPlay";
 
@@ -101,29 +114,12 @@ function createContext() {
   };
 }
 
-const originalFetch = globalThis.fetch;
-
 beforeEach(() => {
   vi.clearAllMocks();
-  globalThis.fetch = (async (input: unknown) => {
-    const raw = String(input);
-    const tokenMatch = /[?&]id_token=([^&]+)/.exec(raw);
-    const decodedToken = tokenMatch ? decodeURIComponent(tokenMatch[1]) : "unknown-user";
-    return {
-      ok: true,
-      json: async () => ({
-        sub: decodedToken
-      })
-    } as Response;
-  }) as typeof fetch;
   getPurchaseVerificationResultMock.mockResolvedValue(null);
   getPlayPurchaseByTokenHashMock.mockResolvedValue(null);
   hashPurchaseTokenMock.mockReturnValue("token-hash");
   shouldAcknowledgePurchaseMock.mockReturnValue(false);
-});
-
-afterEach(() => {
-  globalThis.fetch = originalFetch;
 });
 
 test("verifyPlayEntitlementRequest replays stored idempotent response", async () => {

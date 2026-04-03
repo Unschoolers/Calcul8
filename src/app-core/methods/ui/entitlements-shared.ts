@@ -1,4 +1,4 @@
-import type { AppContext, AppMethodState } from "../../context.ts";
+import type { AppContext, AppMethodState } from "../../context-app.ts";
 import { initGoogleAutoLoginWithRetry, requestGoogleIdentityPrompt } from "../../utils/googleAutoLogin.ts";
 import { getPlayBillingService } from "../../utils/playBilling.ts";
 
@@ -185,3 +185,4 @@ export async function hasPlayPurchaseSupport(): Promise<boolean> {
 }
 
 export { initGoogleAutoLoginWithRetry, requestGoogleIdentityPrompt };
+

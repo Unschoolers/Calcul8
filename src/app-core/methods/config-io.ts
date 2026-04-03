@@ -1,4 +1,4 @@
-import type { AppContext } from "../context.ts";
+import type { AppContext } from "../context-app.ts";
 import { canUseAuthoritativeSalesLiveApi, fetchAuthoritativeSales } from "./sales-live-api.ts";
 import { type ConfigMethodSubset } from "./config-shared.ts";
 import {
@@ -274,3 +274,4 @@ export const configIoMethods: ConfigMethodSubset<
       }
     }
   };
+

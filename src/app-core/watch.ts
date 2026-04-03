@@ -1,4 +1,4 @@
-import type { AppWatchObject } from "./context.ts";
+import type { AppWatchObject } from "./context-contracts.ts";
 import { resetWhatnotSignedOutState, resetWhatnotTransientUiState } from "./methods/ui/whatnot.ts";
 import { refreshWorkspaceRealtime, stopWorkspaceRealtime } from "./methods/ui/workspace-realtime.ts";
 import { getScopedLastLotStorageKey, STORAGE_KEYS } from "./storageKeys.ts";
@@ -274,3 +274,4 @@ export const appWatch: AppWatchObject = {
     deep: true
   }
 };
+

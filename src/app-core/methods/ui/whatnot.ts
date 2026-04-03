@@ -1,5 +1,6 @@
-import type { AppContext, AppMethodState } from "../../context.ts";
+import type { AppContext, AppMethodState } from "../../context-app.ts";
 import type { WhatnotConnectionSummary, WhatnotCsvPreparedRowInput } from "../../../types/app.ts";
+import { translateAppMessage } from "../../i18n/index.ts";
 import { normalizeWhatnotReviewRows } from "../../shared/whatnot-csv.ts";
 import { cacheAuthoritativeSales, canUseAuthoritativeSalesLiveApi, fetchAuthoritativeSales } from "../sales-live-api.ts";
 import { fetchAuthenticatedApiResponse, handleExpiredAuth, resolveApiBaseUrl } from "./shared.ts";
@@ -13,6 +14,7 @@ type WhatnotApp = Pick<
   | "hasProAccess"
   | "isCurrentWorkspaceOwner"
   | "notify"
+  | "preferredLanguage"
   | "whatnotConnectionStatus"
   | "whatnotSyncStatus"
   | "whatnotConnectionSummary"
@@ -428,14 +430,14 @@ export const uiWhatnotMethods: ThisType<AppContext> & Pick<
 
   discardWhatnotReviewBatch(): void {
     if (!this.whatnotReviewBatchId) {
-      this.notify("No Whatnot review batch is loaded.", "warning");
+      this.notify(translateAppMessage(this.preferredLanguage, "whatnotReviewNoBatchLoadedNotice"), "warning");
       return;
     }
 
     this.askConfirmation(
       {
-        title: "Discard Whatnot Review?",
-        text: "This will remove the staged Whatnot review batch from the queue.",
+        title: translateAppMessage(this.preferredLanguage, "whatnotReviewDiscardConfirmTitle"),
+        text: translateAppMessage(this.preferredLanguage, "whatnotReviewDiscardConfirmBody"),
         color: "warning"
       },
       () => {
@@ -453,7 +455,7 @@ export const uiWhatnotMethods: ThisType<AppContext> & Pick<
                 batchId: this.whatnotReviewBatchId
               })
             },
-            "Failed to discard Whatnot review batch."
+            translateAppMessage(this.preferredLanguage, "whatnotReviewDiscardFailedNotice")
           );
           if (!result.ok) return;
 
@@ -461,7 +463,7 @@ export const uiWhatnotMethods: ThisType<AppContext> & Pick<
           resetWhatnotReviewState(this);
           resetWhatnotCsvImportState(this);
           await this.refreshWhatnotStatus();
-          this.notify("Whatnot review batch discarded.", "info");
+          this.notify(translateAppMessage(this.preferredLanguage, "whatnotReviewDiscardedNotice"), "info");
         })();
       }
     );
@@ -469,7 +471,7 @@ export const uiWhatnotMethods: ThisType<AppContext> & Pick<
 
   async confirmWhatnotImportBatch(): Promise<void> {
     if (!this.whatnotReviewBatchId) {
-      this.notify("No Whatnot review batch is loaded.", "warning");
+      this.notify(translateAppMessage(this.preferredLanguage, "whatnotReviewNoBatchLoadedNotice"), "warning");
       return;
     }
 
@@ -563,6 +565,7 @@ export const uiWhatnotMethods: ThisType<AppContext> & Pick<
     );
   }
 };
+
 
 
 

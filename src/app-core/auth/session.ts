@@ -1,4 +1,4 @@
-import type { AppContext } from "../context.ts";
+import type { AppContext } from "../context-app.ts";
 import {
   clearStoredCsrfToken,
   getStoredGoogleIdToken
@@ -46,3 +46,4 @@ export function handleExpiredAuthState(app: Pick<AppContext, "googleAuthEpoch" |
   clearStoredCsrfToken();
   app.googleAuthEpoch += 1;
 }
+

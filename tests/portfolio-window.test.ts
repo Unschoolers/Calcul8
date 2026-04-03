@@ -1,45 +1,45 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { PortfolioWindow } from "../src/components/windows/PortfolioWindow.ts";
+import { portfolioWindowDefinition } from "../src/components/windows/PortfolioWindow.definition.ts";
 
 test("PortfolioWindow formatting helpers use fallback and formatter", () => {
   const withFormatter = {
     formatCurrency: (value: number | null | undefined, decimals = 2) => `fmt:${value}:${decimals}`
   };
-  assert.equal(PortfolioWindow.methods.fmtCurrency.call(withFormatter as never, 12.345, 1), "fmt:12.345:1");
+  assert.equal(portfolioWindowDefinition.methods.fmtCurrency.call(withFormatter as never, 12.345, 1), "fmt:12.345:1");
 
   const fallback = {};
-  assert.equal(PortfolioWindow.methods.fmtCurrency.call(fallback as never, 12.345, 2), "12.35");
-  assert.equal(PortfolioWindow.methods.fmtCurrency.call(fallback as never, null, 2), "0.00");
+  assert.equal(portfolioWindowDefinition.methods.fmtCurrency.call(fallback as never, 12.345, 2), "12.35");
+  assert.equal(portfolioWindowDefinition.methods.fmtCurrency.call(fallback as never, null, 2), "0.00");
 });
 
 test("PortfolioWindow chart view helpers rotate through all four views", () => {
   const breakdownVm = {
     portfolioChartView: "breakdown",
-    nextPortfolioChartView: PortfolioWindow.methods.nextPortfolioChartView
+    nextPortfolioChartView: portfolioWindowDefinition.methods.nextPortfolioChartView
   };
   const trendVm = {
     portfolioChartView: "trend",
-    nextPortfolioChartView: PortfolioWindow.methods.nextPortfolioChartView
+    nextPortfolioChartView: portfolioWindowDefinition.methods.nextPortfolioChartView
   };
   const sellthroughVm = {
     portfolioChartView: "sellthrough",
-    nextPortfolioChartView: PortfolioWindow.methods.nextPortfolioChartView
+    nextPortfolioChartView: portfolioWindowDefinition.methods.nextPortfolioChartView
   };
   const marginVm = {
     portfolioChartView: "margin",
-    nextPortfolioChartView: PortfolioWindow.methods.nextPortfolioChartView
+    nextPortfolioChartView: portfolioWindowDefinition.methods.nextPortfolioChartView
   };
 
-  assert.equal(PortfolioWindow.methods.nextPortfolioChartView.call(breakdownVm as never), "trend");
-  assert.equal(PortfolioWindow.methods.nextPortfolioChartView.call(trendVm as never), "sellthrough");
-  assert.equal(PortfolioWindow.methods.nextPortfolioChartView.call(sellthroughVm as never), "margin");
-  assert.equal(PortfolioWindow.methods.nextPortfolioChartView.call(marginVm as never), "breakdown");
+  assert.equal(portfolioWindowDefinition.methods.nextPortfolioChartView.call(breakdownVm as never), "trend");
+  assert.equal(portfolioWindowDefinition.methods.nextPortfolioChartView.call(trendVm as never), "sellthrough");
+  assert.equal(portfolioWindowDefinition.methods.nextPortfolioChartView.call(sellthroughVm as never), "margin");
+  assert.equal(portfolioWindowDefinition.methods.nextPortfolioChartView.call(marginVm as never), "breakdown");
 
-  assert.equal(PortfolioWindow.methods.portfolioChartToggleIcon.call(breakdownVm as never), "mdi-chart-line");
-  assert.equal(PortfolioWindow.methods.portfolioChartToggleIcon.call(trendVm as never), "mdi-chart-bar");
-  assert.equal(PortfolioWindow.methods.portfolioChartToggleIcon.call(sellthroughVm as never), "mdi-percent-outline");
-  assert.equal(PortfolioWindow.methods.portfolioChartToggleIcon.call(marginVm as never), "mdi-chart-donut");
+  assert.equal(portfolioWindowDefinition.methods.portfolioChartToggleIcon.call(breakdownVm as never), "mdi-chart-line");
+  assert.equal(portfolioWindowDefinition.methods.portfolioChartToggleIcon.call(trendVm as never), "mdi-chart-bar");
+  assert.equal(portfolioWindowDefinition.methods.portfolioChartToggleIcon.call(sellthroughVm as never), "mdi-percent-outline");
+  assert.equal(portfolioWindowDefinition.methods.portfolioChartToggleIcon.call(marginVm as never), "mdi-chart-donut");
 });
 
 test("PortfolioWindow portfolio filter helpers keep hidden ids out of the visible summary", () => {
@@ -50,15 +50,15 @@ test("PortfolioWindow portfolio filter helpers keep hidden ids out of the visibl
       { title: "Singles A", value: 22 },
       { title: "Singles B", value: 33 }
     ],
-    portfolioVisibleLotFilterIds: PortfolioWindow.methods.portfolioVisibleLotFilterIds,
-    portfolioLotFilterDefaultLabel: PortfolioWindow.methods.portfolioLotFilterDefaultLabel
+    portfolioVisibleLotFilterIds: portfolioWindowDefinition.methods.portfolioVisibleLotFilterIds,
+    portfolioLotFilterDefaultLabel: portfolioWindowDefinition.methods.portfolioLotFilterDefaultLabel
   };
 
-  const visible = PortfolioWindow.methods.portfolioVisibleLotFilterIds.call(vm as never);
+  const visible = portfolioWindowDefinition.methods.portfolioVisibleLotFilterIds.call(vm as never);
   assert.deepEqual(visible, [22, 33]);
-  assert.equal(PortfolioWindow.methods.portfolioLotFilterPrimaryLabel.call(vm as never), "Singles A");
-  assert.equal(PortfolioWindow.methods.portfolioLotFilterRemainingCount.call(vm as never), 1);
-  assert.equal(PortfolioWindow.methods.portfolioLotFilterDefaultLabel.call(vm as never), "All singles lots");
+  assert.equal(portfolioWindowDefinition.methods.portfolioLotFilterPrimaryLabel.call(vm as never), "Singles A");
+  assert.equal(portfolioWindowDefinition.methods.portfolioLotFilterRemainingCount.call(vm as never), 1);
+  assert.equal(portfolioWindowDefinition.methods.portfolioLotFilterDefaultLabel.call(vm as never), "All singles lots");
 });
 
 test("PortfolioWindow filter search regrouping keeps bulk items together", () => {
@@ -72,7 +72,7 @@ test("PortfolioWindow filter search regrouping keeps bulk items together", () =>
     portfolioLotFilterSearchQuery: "a"
   };
 
-  const visibleItems = PortfolioWindow.methods.portfolioVisibleLotFilterItems.call(vm as never);
+  const visibleItems = portfolioWindowDefinition.methods.portfolioVisibleLotFilterItems.call(vm as never);
   assert.deepEqual(visibleItems.map((item: { title: string; groupLabel?: string | null }) => [item.title, item.groupLabel ?? null]), [
     ["Bleach volume 2", "Bulk lots"],
     ["One punch man", null],
@@ -98,11 +98,11 @@ test("PortfolioWindow enter closes and blurs the portfolio filter even when sear
         }
       }
     },
-    blurPortfolioLotFilter: PortfolioWindow.methods.blurPortfolioLotFilter,
-    closePortfolioLotFilter: PortfolioWindow.methods.closePortfolioLotFilter
+    blurPortfolioLotFilter: portfolioWindowDefinition.methods.blurPortfolioLotFilter,
+    closePortfolioLotFilter: portfolioWindowDefinition.methods.closePortfolioLotFilter
   };
 
-  PortfolioWindow.methods.closePortfolioLotFilterOnEnter.call(vm as never);
+  portfolioWindowDefinition.methods.closePortfolioLotFilterOnEnter.call(vm as never);
 
   assert.deepEqual(vm.portfolioLotFilterIds, [11]);
   assert.equal(vm.portfolioLotFilterSearchQuery, "kag");
@@ -123,11 +123,11 @@ test("PortfolioWindow enter closes the portfolio filter menu when search is empt
         }
       }
     },
-    blurPortfolioLotFilter: PortfolioWindow.methods.blurPortfolioLotFilter,
-    closePortfolioLotFilter: PortfolioWindow.methods.closePortfolioLotFilter
+    blurPortfolioLotFilter: portfolioWindowDefinition.methods.blurPortfolioLotFilter,
+    closePortfolioLotFilter: portfolioWindowDefinition.methods.closePortfolioLotFilter
   };
 
-  PortfolioWindow.methods.closePortfolioLotFilterOnEnter.call(vm as never);
+  portfolioWindowDefinition.methods.closePortfolioLotFilterOnEnter.call(vm as never);
 
   assert.deepEqual(vm.portfolioLotFilterIds, [22]);
   assert.equal(vm.portfolioLotFilterMenuOpen, false);
@@ -138,22 +138,22 @@ test("PortfolioWindow mobile KPI helpers clamp, wrap, and expand when average fo
   const vm = {
     averagePortfolioForecastScenario: { label: "Average" },
     mobileKpiIndex: 0,
-    mobileKpiSlideCount: PortfolioWindow.methods.mobileKpiSlideCount,
-    mobileKpiEffectiveIndex: PortfolioWindow.methods.mobileKpiEffectiveIndex
+    mobileKpiSlideCount: portfolioWindowDefinition.methods.mobileKpiSlideCount,
+    mobileKpiEffectiveIndex: portfolioWindowDefinition.methods.mobileKpiEffectiveIndex
   };
 
-  assert.equal(PortfolioWindow.methods.mobileKpiSlideCount.call(vm as never), 4);
-  assert.equal(PortfolioWindow.methods.mobileKpiEffectiveIndex.call({ ...vm, mobileKpiIndex: 7 } as never), 3);
-  assert.equal(PortfolioWindow.methods.mobileKpiEffectiveIndex.call({ ...vm, mobileKpiIndex: -2 } as never), 0);
+  assert.equal(portfolioWindowDefinition.methods.mobileKpiSlideCount.call(vm as never), 4);
+  assert.equal(portfolioWindowDefinition.methods.mobileKpiEffectiveIndex.call({ ...vm, mobileKpiIndex: 7 } as never), 3);
+  assert.equal(portfolioWindowDefinition.methods.mobileKpiEffectiveIndex.call({ ...vm, mobileKpiIndex: -2 } as never), 0);
 
-  PortfolioWindow.methods.setMobileKpiIndex.call(vm as never, 2);
+  portfolioWindowDefinition.methods.setMobileKpiIndex.call(vm as never, 2);
   assert.equal(vm.mobileKpiIndex, 2);
-  PortfolioWindow.methods.setMobileKpiIndex.call(vm as never, 99);
+  portfolioWindowDefinition.methods.setMobileKpiIndex.call(vm as never, 99);
   assert.equal(vm.mobileKpiIndex, 3);
 
-  PortfolioWindow.methods.cycleMobileKpi.call(vm as never, 1);
+  portfolioWindowDefinition.methods.cycleMobileKpi.call(vm as never, 1);
   assert.equal(vm.mobileKpiIndex, 0);
-  PortfolioWindow.methods.cycleMobileKpi.call(vm as never, -1);
+  portfolioWindowDefinition.methods.cycleMobileKpi.call(vm as never, -1);
   assert.equal(vm.mobileKpiIndex, 3);
 });
 
@@ -162,7 +162,7 @@ test("PortfolioWindow mobile KPI helpers fall back safely when count is zero or 
     mobileKpiIndex: 5,
     mobileKpiSlideCount: () => 0
   };
-  PortfolioWindow.methods.setMobileKpiIndex.call(zeroVm as never, 3);
+  portfolioWindowDefinition.methods.setMobileKpiIndex.call(zeroVm as never, 3);
   assert.equal(zeroVm.mobileKpiIndex, 0);
 
   const singleVm = {
@@ -170,45 +170,45 @@ test("PortfolioWindow mobile KPI helpers fall back safely when count is zero or 
     mobileKpiSlideCount: () => 1,
     mobileKpiEffectiveIndex: () => 0
   };
-  PortfolioWindow.methods.cycleMobileKpi.call(singleVm as never, 1);
+  portfolioWindowDefinition.methods.cycleMobileKpi.call(singleVm as never, 1);
   assert.equal(singleVm.mobileKpiIndex, 0);
 });
 
 test("PortfolioWindow lot status, incomplete state, and profit labels prefer forecast when incomplete", () => {
   const vm = {
-    fmtCurrency: PortfolioWindow.methods.fmtCurrency,
+    fmtCurrency: portfolioWindowDefinition.methods.fmtCurrency,
     formatCurrency: (value: number | null | undefined, decimals = 2) => Number(value || 0).toFixed(decimals),
-    portfolioLotIsIncomplete: PortfolioWindow.methods.portfolioLotIsIncomplete
+    portfolioLotIsIncomplete: portfolioWindowDefinition.methods.portfolioLotIsIncomplete
   };
 
   assert.equal(
-    PortfolioWindow.methods.portfolioLotStatusTone.call(vm as never, { totalProfit: -1, salesCount: 0 }),
+    portfolioWindowDefinition.methods.portfolioLotStatusTone.call(vm as never, { totalProfit: -1, salesCount: 0 }),
     "negative"
   );
   assert.equal(
-    PortfolioWindow.methods.portfolioLotStatusTone.call(vm as never, { totalProfit: 0, forecastProfitAverage: 5, salesCount: 0 }),
+    portfolioWindowDefinition.methods.portfolioLotStatusTone.call(vm as never, { totalProfit: 0, forecastProfitAverage: 5, salesCount: 0 }),
     "positive"
   );
   assert.equal(
-    PortfolioWindow.methods.portfolioLotStatusTone.call(vm as never, { totalProfit: 0, forecastProfitAverage: -5, salesCount: 0 }),
+    portfolioWindowDefinition.methods.portfolioLotStatusTone.call(vm as never, { totalProfit: 0, forecastProfitAverage: -5, salesCount: 0 }),
     "negative"
   );
   assert.equal(
-    PortfolioWindow.methods.portfolioLotStatusTone.call(vm as never, { totalProfit: 0, salesCount: 2 }),
+    portfolioWindowDefinition.methods.portfolioLotStatusTone.call(vm as never, { totalProfit: 0, salesCount: 2 }),
     "positive"
   );
   assert.equal(
-    PortfolioWindow.methods.portfolioLotStatusTone.call(vm as never, { totalProfit: 0, salesCount: 0 }),
+    portfolioWindowDefinition.methods.portfolioLotStatusTone.call(vm as never, { totalProfit: 0, salesCount: 0 }),
     "neutral"
   );
 
   assert.equal(
-    PortfolioWindow.methods.portfolioLotIsIncomplete.call(vm as never, { soldPacks: 2, totalPacks: 5 }),
+    portfolioWindowDefinition.methods.portfolioLotIsIncomplete.call(vm as never, { soldPacks: 2, totalPacks: 5 }),
     true
   );
 
   assert.equal(
-    PortfolioWindow.methods.portfolioLotPrimaryProfitLabel.call(vm as never, {
+    portfolioWindowDefinition.methods.portfolioLotPrimaryProfitLabel.call(vm as never, {
       soldPacks: 2,
       totalPacks: 5,
       forecastProfitAverage: 12.34
@@ -216,7 +216,7 @@ test("PortfolioWindow lot status, incomplete state, and profit labels prefer for
     "Projected +$12.34"
   );
   assert.equal(
-    PortfolioWindow.methods.portfolioLotPrimaryProfitLabel.call(vm as never, {
+    portfolioWindowDefinition.methods.portfolioLotPrimaryProfitLabel.call(vm as never, {
       soldPacks: 2,
       totalPacks: 5,
       forecastProfitAverage: -12.34
@@ -224,7 +224,7 @@ test("PortfolioWindow lot status, incomplete state, and profit labels prefer for
     "Projected -$12.34"
   );
   assert.equal(
-    PortfolioWindow.methods.portfolioLotPrimaryProfitLabel.call(vm as never, {
+    portfolioWindowDefinition.methods.portfolioLotPrimaryProfitLabel.call(vm as never, {
       salesCount: 2,
       realizedProfit: -8.5,
       soldPacks: 5,
@@ -233,7 +233,7 @@ test("PortfolioWindow lot status, incomplete state, and profit labels prefer for
     "Loss -$8.50"
   );
   assert.equal(
-    PortfolioWindow.methods.portfolioLotPrimaryProfitLabel.call(vm as never, {
+    portfolioWindowDefinition.methods.portfolioLotPrimaryProfitLabel.call(vm as never, {
       salesCount: 0,
       totalProfit: 7.25,
       soldPacks: 5,
@@ -251,14 +251,14 @@ test("PortfolioWindow profit chip and performance amount helpers summarize mixed
       { totalProfit: 0 },
       { totalProfit: -2.6 }
     ],
-    fmtCurrency: PortfolioWindow.methods.fmtCurrency,
+    fmtCurrency: portfolioWindowDefinition.methods.fmtCurrency,
     formatCurrency: (value: number | null | undefined, decimals = 2) => Number(value || 0).toFixed(decimals),
-    portfolioLotIsIncomplete: PortfolioWindow.methods.portfolioLotIsIncomplete,
-    portfolioAtRiskLotCount: PortfolioWindow.methods.portfolioAtRiskLotCount
+    portfolioLotIsIncomplete: portfolioWindowDefinition.methods.portfolioLotIsIncomplete,
+    portfolioAtRiskLotCount: portfolioWindowDefinition.methods.portfolioAtRiskLotCount
   };
 
   assert.equal(
-    PortfolioWindow.methods.portfolioLotPrimaryProfitChipColor.call(vm as never, {
+    portfolioWindowDefinition.methods.portfolioLotPrimaryProfitChipColor.call(vm as never, {
       soldPacks: 1,
       totalPacks: 4,
       forecastProfitAverage: -4
@@ -266,7 +266,7 @@ test("PortfolioWindow profit chip and performance amount helpers summarize mixed
     "error"
   );
   assert.equal(
-    PortfolioWindow.methods.portfolioLotPrimaryProfitChipColor.call(vm as never, {
+    portfolioWindowDefinition.methods.portfolioLotPrimaryProfitChipColor.call(vm as never, {
       salesCount: 2,
       realizedProfit: 4,
       soldPacks: 4,
@@ -275,7 +275,7 @@ test("PortfolioWindow profit chip and performance amount helpers summarize mixed
     "success"
   );
   assert.equal(
-    PortfolioWindow.methods.portfolioLotPrimaryProfitChipColor.call(vm as never, {
+    portfolioWindowDefinition.methods.portfolioLotPrimaryProfitChipColor.call(vm as never, {
       salesCount: 0,
       totalProfit: -4,
       soldPacks: 4,
@@ -284,12 +284,12 @@ test("PortfolioWindow profit chip and performance amount helpers summarize mixed
     "secondary"
   );
 
-  assert.equal(PortfolioWindow.methods.portfolioAtRiskLotCount.call(vm as never), 2);
-  assert.equal(PortfolioWindow.methods.portfolioLotPerformanceUnderAmount.call(vm as never), "13");
-  assert.equal(PortfolioWindow.methods.portfolioLotPerformanceOverAmount.call(vm as never), "25");
-  assert.equal(PortfolioWindow.methods.portfolioLotPerformanceKpiColor.call(vm as never), "error");
+  assert.equal(portfolioWindowDefinition.methods.portfolioAtRiskLotCount.call(vm as never), 2);
+  assert.equal(portfolioWindowDefinition.methods.portfolioLotPerformanceUnderAmount.call(vm as never), "13");
+  assert.equal(portfolioWindowDefinition.methods.portfolioLotPerformanceOverAmount.call(vm as never), "25");
+  assert.equal(portfolioWindowDefinition.methods.portfolioLotPerformanceKpiColor.call(vm as never), "error");
   assert.equal(
-    PortfolioWindow.methods.portfolioLotPerformanceKpiColor.call({
+    portfolioWindowDefinition.methods.portfolioLotPerformanceKpiColor.call({
       portfolioAtRiskLotCount: () => 0
     } as never),
     "success"
@@ -299,45 +299,45 @@ test("PortfolioWindow profit chip and performance amount helpers summarize mixed
 test("PortfolioWindow chart copy helpers return expected titles, icons, subtitles, and aria labels", () => {
   const breakdownVm = {
     portfolioChartView: "breakdown",
-    nextPortfolioChartView: PortfolioWindow.methods.nextPortfolioChartView
+    nextPortfolioChartView: portfolioWindowDefinition.methods.nextPortfolioChartView
   };
   const trendVm = {
     portfolioChartView: "trend",
-    nextPortfolioChartView: PortfolioWindow.methods.nextPortfolioChartView
+    nextPortfolioChartView: portfolioWindowDefinition.methods.nextPortfolioChartView
   };
   const sellthroughVm = {
     portfolioChartView: "sellthrough",
-    nextPortfolioChartView: PortfolioWindow.methods.nextPortfolioChartView
+    nextPortfolioChartView: portfolioWindowDefinition.methods.nextPortfolioChartView
   };
   const marginVm = {
     portfolioChartView: "margin",
-    nextPortfolioChartView: PortfolioWindow.methods.nextPortfolioChartView
+    nextPortfolioChartView: portfolioWindowDefinition.methods.nextPortfolioChartView
   };
 
-  assert.equal(PortfolioWindow.methods.portfolioChartToggleTitle.call(breakdownVm as never), "Show trend view");
-  assert.equal(PortfolioWindow.methods.portfolioChartToggleTitle.call(trendVm as never), "Show sell-through view");
-  assert.equal(PortfolioWindow.methods.portfolioChartToggleTitle.call(sellthroughVm as never), "Show sold margin view");
-  assert.equal(PortfolioWindow.methods.portfolioChartToggleTitle.call(marginVm as never), "Show breakdown view");
+  assert.equal(portfolioWindowDefinition.methods.portfolioChartToggleTitle.call(breakdownVm as never), "Show trend view");
+  assert.equal(portfolioWindowDefinition.methods.portfolioChartToggleTitle.call(trendVm as never), "Show sell-through view");
+  assert.equal(portfolioWindowDefinition.methods.portfolioChartToggleTitle.call(sellthroughVm as never), "Show sold margin view");
+  assert.equal(portfolioWindowDefinition.methods.portfolioChartToggleTitle.call(marginVm as never), "Show breakdown view");
 
-  assert.equal(PortfolioWindow.methods.portfolioChartSubtitle.call(breakdownVm as never), "Revenue by lot");
-  assert.equal(PortfolioWindow.methods.portfolioChartSubtitle.call(trendVm as never), "Profit trend over time");
-  assert.equal(PortfolioWindow.methods.portfolioChartSubtitle.call(sellthroughVm as never), "Sell-through over time");
-  assert.equal(PortfolioWindow.methods.portfolioChartSubtitle.call(marginVm as never), "Sold margin by lot");
+  assert.equal(portfolioWindowDefinition.methods.portfolioChartSubtitle.call(breakdownVm as never), "Revenue by lot");
+  assert.equal(portfolioWindowDefinition.methods.portfolioChartSubtitle.call(trendVm as never), "Profit trend over time");
+  assert.equal(portfolioWindowDefinition.methods.portfolioChartSubtitle.call(sellthroughVm as never), "Sell-through over time");
+  assert.equal(portfolioWindowDefinition.methods.portfolioChartSubtitle.call(marginVm as never), "Sold margin by lot");
 
   assert.equal(
-    PortfolioWindow.methods.portfolioChartAriaLabel.call(breakdownVm as never),
+    portfolioWindowDefinition.methods.portfolioChartAriaLabel.call(breakdownVm as never),
     "Portfolio revenue breakdown chart by lot."
   );
   assert.equal(
-    PortfolioWindow.methods.portfolioChartAriaLabel.call(trendVm as never),
+    portfolioWindowDefinition.methods.portfolioChartAriaLabel.call(trendVm as never),
     "Portfolio profit trend chart."
   );
   assert.equal(
-    PortfolioWindow.methods.portfolioChartAriaLabel.call(sellthroughVm as never),
+    portfolioWindowDefinition.methods.portfolioChartAriaLabel.call(sellthroughVm as never),
     "Portfolio sell-through over time chart."
   );
   assert.equal(
-    PortfolioWindow.methods.portfolioChartAriaLabel.call(marginVm as never),
+    portfolioWindowDefinition.methods.portfolioChartAriaLabel.call(marginVm as never),
     "Portfolio sold margin chart by lot."
   );
 });
@@ -353,16 +353,16 @@ test("PortfolioWindow sales per user helpers return expected labels for each met
     portfolioSalesByUserMetric: "count"
   };
 
-  assert.equal(PortfolioWindow.methods.portfolioSalesByUserMetricLabel.call(revenueVm as never), "Revenue");
-  assert.equal(PortfolioWindow.methods.portfolioSalesByUserMetricLabel.call(profitVm as never), "Profit");
-  assert.equal(PortfolioWindow.methods.portfolioSalesByUserMetricLabel.call(countVm as never), "Count");
+  assert.equal(portfolioWindowDefinition.methods.portfolioSalesByUserMetricLabel.call(revenueVm as never), "Revenue");
+  assert.equal(portfolioWindowDefinition.methods.portfolioSalesByUserMetricLabel.call(profitVm as never), "Profit");
+  assert.equal(portfolioWindowDefinition.methods.portfolioSalesByUserMetricLabel.call(countVm as never), "Count");
 
   assert.equal(
-    PortfolioWindow.methods.portfolioSalesByUserSubtitle.call(revenueVm as never),
+    portfolioWindowDefinition.methods.portfolioSalesByUserSubtitle.call(revenueVm as never),
     "Last 8 weeks by seller"
   );
   assert.equal(
-    PortfolioWindow.methods.portfolioSalesByUserAriaLabel.call(profitVm as never),
+    portfolioWindowDefinition.methods.portfolioSalesByUserAriaLabel.call(profitVm as never),
     "Portfolio sales by person chart for the last 8 weeks by profit."
   );
 });
@@ -389,25 +389,25 @@ test("PortfolioWindow sales per user summary helpers derive leader, totals, and 
     }
   };
 
-  assert.equal(PortfolioWindow.methods.portfolioSalesByUserTotalValue.call(vm as never), 80);
-  assert.deepEqual(PortfolioWindow.methods.portfolioSalesByUserLeader.call(vm as never), {
+  assert.equal(portfolioWindowDefinition.methods.portfolioSalesByUserTotalValue.call(vm as never), 80);
+  assert.deepEqual(portfolioWindowDefinition.methods.portfolioSalesByUserLeader.call(vm as never), {
     key: "owner-1",
     label: "Jules",
     values: [10, 0, 40],
     total: 50,
     color: "#F7B500"
   });
-  assert.deepEqual(PortfolioWindow.methods.portfolioSalesByUserBestWeek.call(vm as never), {
+  assert.deepEqual(portfolioWindowDefinition.methods.portfolioSalesByUserBestWeek.call(vm as never), {
     label: "Mar 16",
     total: 50
   });
-  assert.deepEqual(PortfolioWindow.methods.portfolioSalesByUserWeekTotals.call(vm as never), [
+  assert.deepEqual(portfolioWindowDefinition.methods.portfolioSalesByUserWeekTotals.call(vm as never), [
     { label: "Mar 2", total: 10 },
     { label: "Mar 9", total: 20 },
     { label: "Mar 16", total: 50 }
   ]);
 
-  const legendItems = PortfolioWindow.methods.portfolioSalesByUserLegendItems.call(vm as never);
+  const legendItems = portfolioWindowDefinition.methods.portfolioSalesByUserLegendItems.call(vm as never);
   assert.equal(legendItems.length, 2);
   assert.equal(legendItems[0]?.photoUrl, "https://example.test/jules.png");
   assert.equal(legendItems[0]?.presenceState, "online");
@@ -427,7 +427,7 @@ test("PortfolioWindow sales per user legend uses signed-in profile photo for per
     googleAvatarLoadFailed: false
   };
 
-  const legendItems = PortfolioWindow.methods.portfolioSalesByUserLegendItems.call(vm as never);
+  const legendItems = portfolioWindowDefinition.methods.portfolioSalesByUserLegendItems.call(vm as never);
   assert.equal(legendItems.length, 1);
   assert.equal(legendItems[0]?.photoUrl, "https://example.test/me.png");
   assert.equal(legendItems[0]?.initials, "Y");
@@ -458,8 +458,8 @@ test("PortfolioWindow sales per user legend falls back to initials when signed-i
     googleAvatarLoadFailed: true
   };
 
-  const missingLegendItems = PortfolioWindow.methods.portfolioSalesByUserLegendItems.call(missingPhotoVm as never);
-  const failedLegendItems = PortfolioWindow.methods.portfolioSalesByUserLegendItems.call(failedPhotoVm as never);
+  const missingLegendItems = portfolioWindowDefinition.methods.portfolioSalesByUserLegendItems.call(missingPhotoVm as never);
+  const failedLegendItems = portfolioWindowDefinition.methods.portfolioSalesByUserLegendItems.call(failedPhotoVm as never);
 
   assert.equal(missingLegendItems[0]?.photoUrl, "");
   assert.equal(missingLegendItems[0]?.initials, "Y");
@@ -481,7 +481,7 @@ test("PortfolioWindow sales per user legend keeps imported and unknown rows on i
     googleAvatarLoadFailed: false
   };
 
-  const legendItems = PortfolioWindow.methods.portfolioSalesByUserLegendItems.call(vm as never);
+  const legendItems = portfolioWindowDefinition.methods.portfolioSalesByUserLegendItems.call(vm as never);
   assert.equal(legendItems[0]?.photoUrl, "");
   assert.equal(legendItems[0]?.initials, "I");
   assert.equal(legendItems[1]?.photoUrl, "");
@@ -490,22 +490,24 @@ test("PortfolioWindow sales per user legend keeps imported and unknown rows on i
 
 test("PortfolioWindow filter helpers use safe fallbacks when refs or items are missing", () => {
   const blurVm = { $refs: {} };
-  PortfolioWindow.methods.blurPortfolioLotFilter.call(blurVm as never);
+  portfolioWindowDefinition.methods.blurPortfolioLotFilter.call(blurVm as never);
 
   const closeVm = {
     portfolioLotFilterMenuOpen: true
   };
-  PortfolioWindow.methods.closePortfolioLotFilter.call(closeVm as never);
+  portfolioWindowDefinition.methods.closePortfolioLotFilter.call(closeVm as never);
   assert.equal(closeVm.portfolioLotFilterMenuOpen, false);
 
   const labelVm = {
     portfolioLotTypeFilter: "bulk",
     portfolioLotFilterIds: [99],
     portfolioLotFilterItems: [{ value: 99 }],
-    portfolioVisibleLotFilterIds: PortfolioWindow.methods.portfolioVisibleLotFilterIds
+    portfolioVisibleLotFilterIds: portfolioWindowDefinition.methods.portfolioVisibleLotFilterIds
   };
-  assert.equal(PortfolioWindow.methods.portfolioLotFilterPrimaryLabel.call(labelVm as never), "Selected lots");
-  assert.equal(PortfolioWindow.methods.portfolioLotFilterRemainingCount.call({ portfolioVisibleLotFilterIds: () => [] } as never), 0);
-  assert.equal(PortfolioWindow.methods.portfolioLotFilterDefaultLabel.call({ portfolioLotTypeFilter: "bulk" } as never), "All bulk lots");
-  assert.equal(PortfolioWindow.methods.portfolioLotFilterDefaultLabel.call({ portfolioLotTypeFilter: "other" } as never), "All lots");
+  assert.equal(portfolioWindowDefinition.methods.portfolioLotFilterPrimaryLabel.call(labelVm as never), "Selected lots");
+  assert.equal(portfolioWindowDefinition.methods.portfolioLotFilterRemainingCount.call({ portfolioVisibleLotFilterIds: () => [] } as never), 0);
+  assert.equal(portfolioWindowDefinition.methods.portfolioLotFilterDefaultLabel.call({ portfolioLotTypeFilter: "bulk" } as never), "All bulk lots");
+  assert.equal(portfolioWindowDefinition.methods.portfolioLotFilterDefaultLabel.call({ portfolioLotTypeFilter: "other" } as never), "All lots");
 });
+
+

@@ -1,4 +1,4 @@
-import type { AppContext, AppMethodState } from "../../context.ts";
+import type { AppContext, AppMethodState } from "../../context-app.ts";
 import {
   runCloudSyncPull,
   runCloudSyncPush,
@@ -32,3 +32,4 @@ export const uiSyncMethods: ThisType<AppContext> & Pick<
     await runCloudSyncPush(this, force, {}, options);
   }
 };
+

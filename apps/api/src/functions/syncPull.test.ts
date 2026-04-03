@@ -1,8 +1,7 @@
 import assert from "node:assert/strict";
-import { afterEach, beforeEach, test, vi } from "vitest";
+import { beforeEach, test, vi } from "vitest";
 import {
   createApiConfig,
-  createGoogleUserInfoFetch,
   createHttpRequest,
   createInvocationContext
 } from "../test-support/function-test-helpers";
@@ -13,10 +12,14 @@ vi.mock("@azure/functions", () => ({
   }
 }));
 
-const { getConfigMock, getEffectiveSyncSnapshotMock, hasWorkspaceMembershipMock } = vi.hoisted(() => ({
+const { getConfigMock, getEffectiveSyncSnapshotMock, hasWorkspaceMembershipMock, resolveUserIdMock } = vi.hoisted(() => ({
   getConfigMock: vi.fn(),
   getEffectiveSyncSnapshotMock: vi.fn(),
-  hasWorkspaceMembershipMock: vi.fn()
+  hasWorkspaceMembershipMock: vi.fn(),
+  resolveUserIdMock: vi.fn(async (request: { headers: { get(name: string): string | null } }) => {
+    const authHeader = request.headers.get("authorization") || "";
+    return authHeader.replace(/^Bearer\s+/i, "").trim() || "test-user";
+  })
 }));
 
 vi.mock("../lib/config", () => ({
@@ -31,19 +34,20 @@ vi.mock("../lib/cosmos/workspaceRepository", () => ({
   hasWorkspaceMembership: hasWorkspaceMembershipMock
 }));
 
-import { syncPull } from "./syncPull";
+vi.mock("../lib/auth", async () => {
+  const actual = await vi.importActual<typeof import("../lib/auth")>("../lib/auth");
+  return {
+    ...actual,
+    resolveUserId: resolveUserIdMock
+  };
+});
 
-const originalFetch = globalThis.fetch;
+import { syncPull } from "./syncPull";
 
 beforeEach(() => {
   vi.clearAllMocks();
   hasWorkspaceMembershipMock.mockResolvedValue(true);
-  globalThis.fetch = createGoogleUserInfoFetch();
   getConfigMock.mockReturnValue(createApiConfig());
-});
-
-afterEach(() => {
-  globalThis.fetch = originalFetch;
 });
 
 test("syncPull returns empty snapshot when no cloud state exists", async () => {

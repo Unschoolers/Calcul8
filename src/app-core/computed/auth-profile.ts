@@ -1,5 +1,5 @@
 import { GOOGLE_PROFILE_CACHE_KEY, GOOGLE_TOKEN_KEY } from "../methods/ui/shared.ts";
-import type { AppComputedObject } from "../context.ts";
+import type { AppComputedObject } from "../context-contracts.ts";
 
 interface GoogleJwtPayload {
   name?: string;
@@ -99,3 +99,4 @@ export const authProfileComputed: Pick<
     }
   }
 };
+

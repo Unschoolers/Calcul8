@@ -62,7 +62,7 @@
                 >
                     <span class="wheel-stage-summary-card__label">{{ t('wheelStageTargetMarginLabel') }}</span>
                     <strong class="wheel-stage-summary-card__value">{{ wheelDisplayConfig?.targetMargin ?? 0 }}%</strong>
-                    <span class="wheel-stage-summary-card__meta">{{ wheelDisplaySlots.length }} configured slots</span>
+                    <span class="wheel-stage-summary-card__meta">{{ t('wheelConfiguredSlotsMeta', { count: wheelDisplaySlots.length }) }}</span>
                 </div>
                 <div
                     v-if="wheelMode === 'config'"
@@ -81,7 +81,7 @@
                 >
                     <span class="wheel-stage-summary-card__label">{{ t('wheelSpinsLabel') }}</span>
                     <strong class="wheel-stage-summary-card__value">{{ wheelTotalSpins }}</strong>
-                    <span class="wheel-stage-summary-card__meta">{{ wheelSessionRevenue.toFixed(2) }} revenue</span>
+                    <span class="wheel-stage-summary-card__meta">{{ t('wheelLiveRevenueMeta', { amount: wheelSessionRevenue.toFixed(2) }) }}</span>
                 </div>
                 <div
                     v-if="wheelMode === 'live'"
@@ -89,7 +89,7 @@
                 >
                     <span class="wheel-stage-summary-card__label">{{ t('wheelGrossProfitLabel') }}</span>
                     <strong class="wheel-stage-summary-card__value" :class="wheelSessionProfitClass">{{ wheelSessionProfitDisplay }}</strong>
-                    <span class="wheel-stage-summary-card__meta">{{ wheelSessionCost.toFixed(2) }} prize cost</span>
+                    <span class="wheel-stage-summary-card__meta">{{ t('wheelLivePrizeCostMeta', { amount: wheelSessionCost.toFixed(2) }) }}</span>
                 </div>
                 <div
                     v-if="wheelMode === 'live'"
@@ -296,12 +296,12 @@
                 <v-col cols="6">
                     <v-btn block color="success" variant="elevated" size="small" @click="confirmAllBatchSales">
                         <v-icon start size="small">mdi-check-all</v-icon>
-                        Record All
+                        {{ t('wheelRecordAllAction') }}
                     </v-btn>
                 </v-col>
                 <v-col cols="6">
                     <v-btn block variant="text" size="small" @click="cancelEndWheelSession">
-                        Cancel
+                        {{ t('commonCancel') }}
                     </v-btn>
                 </v-col>
             </v-row>
@@ -352,7 +352,7 @@
             <v-card-text class="text-body-2">
                 {{ t('wheelGoLiveBody') }}
                 <div class="wheel-live-confirm-summary">
-                    <div><strong>Wheel:</strong> {{ wheelLiveConfirmSummaryName }}</div>
+                    <div><strong>{{ t('wheelGoLiveNameLabel') }}:</strong> {{ wheelLiveConfirmSummaryName }}</div>
                     <div><strong>{{ t('wheelSlotsSummaryLabel') }}:</strong> {{ wheelLiveConfirmSummarySlots }}</div>
                     <div><strong>{{ t('wheelSpinPriceSummaryLabel') }}:</strong> ${{ wheelLiveConfirmSummarySpinPrice }}</div>
                 </div>
@@ -400,7 +400,7 @@
                 <v-spacer></v-spacer>
                 <v-btn variant="text" @click="closeWheelManageDialog">{{ t('commonCancel') }}</v-btn>
                 <v-btn color="primary" variant="elevated" @click="applyWheelManageDialog">
-                    Save
+                    {{ t('commonSave') }}
                 </v-btn>
             </v-card-actions>
         </v-card>

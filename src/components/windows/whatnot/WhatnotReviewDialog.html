@@ -23,30 +23,29 @@
     <v-card-text class="whatnot-review-content">
       <div class="whatnot-review-summary mb-4">
         <div class="text-medium-emphasis">
-          Review each Whatnot order before it becomes a sale in
-          {{ activeScopeType === 'workspace' ? currentWorkspaceName : 'Personal' }}.
+          {{ t('whatnotReviewSummaryIntro', { scope: activeScopeType === 'workspace' ? currentWorkspaceName : t('personalLabel') }) }}
         </div>
         <div class="whatnot-review-summary__chips">
           <v-chip size="small" color="warning" variant="tonal">
-            {{ whatnotReviewRows.filter((row) => row.requiresManualReview && !row.skipImport).length }} need review
+            {{ t('whatnotReviewNeedsReviewCount', { count: whatnotReviewRows.filter((row) => row.requiresManualReview && !row.skipImport).length }) }}
           </v-chip>
           <v-chip size="small" color="success" variant="tonal">
-            {{ whatnotReviewRows.filter((row) => row.action === 'create').length }} auto create
+            {{ t('whatnotReviewAutoCreateCount', { count: whatnotReviewRows.filter((row) => row.action === 'create').length }) }}
           </v-chip>
           <v-chip size="small" color="warning" variant="tonal">
-            {{ whatnotReviewRows.filter((row) => row.action === 'update').length }} auto update
+            {{ t('whatnotReviewAutoUpdateCount', { count: whatnotReviewRows.filter((row) => row.action === 'update').length }) }}
           </v-chip>
           <v-chip size="small" variant="tonal">
-            {{ whatnotReviewRows.filter((row) => row.action === 'skip').length }} auto skip
+            {{ t('whatnotReviewAutoSkipCount', { count: whatnotReviewRows.filter((row) => row.action === 'skip').length }) }}
           </v-chip>
           <v-chip size="small" color="success" variant="tonal">
-            {{ whatnotReviewRows.filter((row) => (row.selectedImportAction ?? (row.action === 'update' ? 'update_existing' : row.action === 'skip' ? 'skip' : 'create')) === 'create').length }} create selected
+            {{ t('whatnotReviewActionCreateSelectedCount', { count: whatnotReviewRows.filter((row) => (row.selectedImportAction ?? (row.action === 'update' ? 'update_existing' : row.action === 'skip' ? 'skip' : 'create')) === 'create').length }) }}
           </v-chip>
           <v-chip size="small" color="warning" variant="tonal">
-            {{ whatnotReviewRows.filter((row) => (row.selectedImportAction ?? (row.action === 'update' ? 'update_existing' : row.action === 'skip' ? 'skip' : 'create')) === 'update_existing').length }} update selected
+            {{ t('whatnotReviewActionUpdateSelectedCount', { count: whatnotReviewRows.filter((row) => (row.selectedImportAction ?? (row.action === 'update' ? 'update_existing' : row.action === 'skip' ? 'skip' : 'create')) === 'update_existing').length }) }}
           </v-chip>
           <v-chip size="small" variant="tonal">
-            {{ whatnotReviewRows.filter((row) => (row.selectedImportAction ?? (row.action === 'update' ? 'update_existing' : row.action === 'skip' ? 'skip' : 'create')) === 'skip').length }} skip selected
+            {{ t('whatnotReviewActionSkipSelectedCount', { count: whatnotReviewRows.filter((row) => (row.selectedImportAction ?? (row.action === 'update' ? 'update_existing' : row.action === 'skip' ? 'skip' : 'create')) === 'skip').length }) }}
           </v-chip>
         </div>
       </div>
@@ -58,7 +57,7 @@
         density="compact"
         class="mb-4"
       >
-        Only the workspace owner can connect or sync the live Whatnot integration for this workspace. CSV review and import are still allowed.
+        {{ t('whatnotReviewOwnerOnlyNotice') }}
       </v-alert>
 
       <v-alert
@@ -67,7 +66,7 @@
         variant="tonal"
         density="compact"
       >
-        No pending Whatnot rows to review right now.
+        {{ t('whatnotReviewEmptyState') }}
       </v-alert>
 
       <div v-else class="whatnot-review-rows">
@@ -90,7 +89,7 @@
             </div>
             <div class="d-flex flex-wrap ga-2">
               <v-chip size="small" variant="outlined">
-                {{ group.rows.length }} row{{ group.rows.length === 1 ? '' : 's' }}
+                {{ t('whatnotReviewRowCountLabel', { count: group.rows.length, suffix: group.rows.length === 1 ? '' : 's' }) }}
               </v-chip>
             </div>
           </div>
@@ -106,7 +105,7 @@
               <div class="whatnot-review-row__copy">
                 <div class="text-subtitle-1 font-weight-bold">{{ row.title || row.externalOrderId }}</div>
                 <div class="text-caption text-medium-emphasis whatnot-review-row__headline-meta">
-                  Order {{ row.externalOrderId }}
+                  {{ t('whatnotReviewOrderLabel', { id: row.externalOrderId }) }}
                   <template v-if="row.sku"> • SKU {{ row.sku }}</template>
                   • {{ formatDate(row.date) }}
                 </div>
@@ -134,7 +133,7 @@
                   variant="outlined"
                   :color="row.matchSource === 'remembered' ? 'success' : (row.matchSource === 'title' ? 'info' : 'default')"
                 >
-                  {{ row.matchSource === 'remembered' ? 'Remembered match' : (row.matchSource === 'title' ? 'Title suggestion' : 'Needs mapping') }}
+                  {{ row.matchSource === 'remembered' ? t('whatnotReviewRememberedMatchLabel') : (row.matchSource === 'title' ? t('whatnotReviewTitleSuggestionLabel') : t('whatnotReviewNeedsMappingLabel')) }}
                 </v-chip>
                 <v-chip
                   v-if="row.requiresManualReview && !row.skipImport"
@@ -142,7 +141,7 @@
                   color="warning"
                   variant="tonal"
                 >
-                  Manual review
+                  {{ t('whatnotReviewManualReviewLabel') }}
                 </v-chip>
               </div>
             </div>
@@ -152,7 +151,7 @@
               class="whatnot-review-row__candidate mb-3"
             >
               <div class="text-caption text-medium-emphasis">
-                Possible existing sale
+                {{ t('whatnotReviewPossibleExistingSaleLabel') }}
               </div>
               <div class="font-weight-medium">
                 {{ whatnotManualDuplicateCandidateLabel(row.manualDuplicateCandidate) }}
@@ -166,21 +165,21 @@
             </div>
 
             <div class="text-caption text-medium-emphasis mb-3 whatnot-review-row__submeta">
-              <span v-if="row.externalSaleId">Sale {{ row.externalSaleId }}</span>
+              <span v-if="row.externalSaleId">{{ t('whatnotReviewTargetSaleLabel', { id: row.externalSaleId }) }}</span>
               <span v-if="row.orderStatus">{{ whatnotOrderStatusLabel(row.orderStatus) }}</span>
-              <span v-if="row.buyerName">Buyer {{ row.buyerName }}</span>
-              <span v-if="row.orderPlacedAt">Ordered {{ formatDate(row.orderPlacedAt) }}</span>
+              <span v-if="row.buyerName">{{ t('whatnotReviewBuyerLabel', { name: row.buyerName }) }}</span>
+              <span v-if="row.orderPlacedAt">{{ t('whatnotReviewOrderedLabel', { date: formatDate(row.orderPlacedAt) }) }}</span>
               <span v-if="row.orderPlacedAtRaw">ORDER_PLACED_AT_UTC {{ row.orderPlacedAtRaw }}</span>
-              <span v-if="row.originalItemPrice != null && row.originalItemPrice > 0">Original ${{ formatCurrency(row.originalItemPrice) }}</span>
-              <span v-if="row.buyerShipping > 0">Buyer shipping ${{ formatCurrency(row.buyerShipping) }}</span>
-              <span v-if="row.existingSaleId">Existing sale {{ row.existingSaleId }}</span>
+              <span v-if="row.originalItemPrice != null && row.originalItemPrice > 0">{{ t('whatnotReviewOriginalPriceLabel', { amount: formatCurrency(row.originalItemPrice) }) }}</span>
+              <span v-if="row.buyerShipping > 0">{{ t('whatnotReviewBuyerShippingLabel', { amount: formatCurrency(row.buyerShipping) }) }}</span>
+              <span v-if="row.existingSaleId">{{ t('whatnotReviewExistingSaleLabel', { id: row.existingSaleId }) }}</span>
               <span
                 v-if="row.matchSource === 'remembered' && row.suggestedLotId && lotItems.find((lot) => lot.value === row.suggestedLotId)?.title"
               >
-                Remembered lot {{ lotItems.find((lot) => lot.value === row.suggestedLotId)?.title }}
+                {{ t('whatnotReviewRememberedLotLabel', { name: lotItems.find((lot) => lot.value === row.suggestedLotId)?.title }) }}
               </span>
               <span v-if="whatnotSimilarRowCount(row) > 1">
-                {{ whatnotSimilarRowCount(row) }} matching rows will follow this mapping
+                {{ t('whatnotReviewMatchingRowsFollowLabel', { count: whatnotSimilarRowCount(row) }) }}
               </span>
             </div>
 
@@ -194,17 +193,17 @@
                 @update:model-value="handleWhatnotImportActionSelection(row, $event)"
               >
                 <v-btn value="create" prepend-icon="mdi-plus-box-outline">
-                  Create new
+                  {{ t('whatnotReviewActionCreateLabel') }}
                 </v-btn>
                 <v-btn
                   value="update_existing"
                   prepend-icon="mdi-pencil"
                   :disabled="!whatnotCanUpdateRow(row)"
                 >
-                  Update existing
+                  {{ t('whatnotReviewActionUpdateExistingLabel') }}
                 </v-btn>
                 <v-btn value="skip" prepend-icon="mdi-cancel">
-                  Skip
+                  {{ t('whatnotReviewActionSkipLabel') }}
                 </v-btn>
               </v-btn-toggle>
               <div class="text-caption text-medium-emphasis mt-2">
@@ -219,7 +218,7 @@
                 :items="whatnotManualDuplicateCandidateOptions(row)"
                 item-title="title"
                 item-value="value"
-                label="Choose matching sale"
+                :label="t('whatnotReviewChooseMatchingSaleLabel')"
                 variant="outlined"
                 density="comfortable"
                 hide-details="auto"
@@ -235,7 +234,7 @@
                   :items="lotItems"
                   item-title="title"
                   item-value="value"
-                  label="Lot"
+                  :label="t('whatnotReviewLotLabel')"
                   variant="outlined"
                   density="comfortable"
                   hide-details="auto"
@@ -253,13 +252,13 @@
                 <v-select
                   v-model="row.selectedSaleType"
                   :items="[
-                    { title: 'Item', value: 'pack' },
-                    { title: 'Box', value: 'box' },
-                    { title: 'Random hit', value: 'rtyh' }
+                    { title: t('salesSaleTypeItemLabel'), value: 'pack' },
+                    { title: t('salesSaleTypeBoxLabel'), value: 'box' },
+                    { title: t('salesSaleTypeRandomHitLabel'), value: 'rtyh' }
                   ]"
                   item-title="title"
                   item-value="value"
-                  label="Sale type"
+                  :label="t('whatnotReviewSaleTypeLabel')"
                   variant="outlined"
                   density="comfortable"
                   hide-details="auto"
@@ -271,7 +270,7 @@
                 <v-text-field
                   v-if="row.selectedSaleType === 'rtyh'"
                   v-model.number="row.selectedPacksCount"
-                  label="Items sold"
+                  :label="t('whatnotReviewSinglesItemsSoldLabel')"
                   type="number"
                   min="1"
                   variant="outlined"
@@ -285,13 +284,13 @@
 
             <div class="text-caption text-medium-emphasis mt-2">
               <template v-if="lotItems.find((lot) => lot.value === row.selectedLotId)?.lotType === 'singles'">
-                • Singles imports become unlinked sales in V1
+                • {{ t('whatnotReviewImportTypeSinglesNotice') }}
               </template>
               <template v-if="row.skipImport">
-                • This row will be skipped during confirm
+                • {{ t('whatnotReviewSkipConfirmNotice') }}
               </template>
               <template v-if="whatnotSelectedImportAction(row) === 'update_existing' && !whatnotCanUpdateRow(row)">
-                • Choose a candidate or existing sale before updating
+                • {{ t('whatnotReviewReadyToUpdateNotice') }}
               </template>
             </div>
           </v-card-text>
@@ -308,7 +307,7 @@
           prepend-icon="mdi-trash-can-outline"
           @click="discardWhatnotReviewBatch"
         >
-          Discard batch
+          {{ t('whatnotReviewDiscardBatchAction') }}
         </v-btn>
         <v-btn variant="text" @click="closeWhatnotReviewDialog">{{ t('commonClose') }}</v-btn>
       </div>
@@ -319,7 +318,7 @@
           variant="tonal"
           color="info"
         >
-          {{ whatnotReviewRows.filter((row) => !row.skipImport).length }} ready
+          {{ t('whatnotReviewConfirmReadyCount', { count: whatnotReviewRows.filter((row) => !row.skipImport).length }) }}
         </v-chip>
         <v-btn
           color="primary"
@@ -327,7 +326,7 @@
           :disabled="whatnotReviewRows.length === 0"
           @click="confirmWhatnotImportBatch"
         >
-          Import reviewed sales
+          {{ t('whatnotReviewImportReviewedSalesAction') }}
         </v-btn>
       </div>
     </v-card-actions>

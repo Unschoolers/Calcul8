@@ -1,8 +1,7 @@
 import assert from "node:assert/strict";
-import { afterEach, beforeEach, test, vi } from "vitest";
+import { beforeEach, test, vi } from "vitest";
 import {
   createApiConfig,
-  createGoogleUserInfoFetch,
   createHttpRequest,
   createInvocationContext
 } from "../test-support/function-test-helpers";
@@ -31,7 +30,8 @@ const {
   listWorkspaceJoinLinksMock,
   revokeWorkspaceJoinLinkMock,
   getWorkspaceJoinLinkByTokenHashMock,
-  markWorkspaceJoinLinkUsedMock
+  markWorkspaceJoinLinkUsedMock,
+  resolveUserIdMock
 } = vi.hoisted(() => ({
   getConfigMock: vi.fn(),
   createWorkspaceWithOwnerMock: vi.fn(),
@@ -50,7 +50,11 @@ const {
   listWorkspaceJoinLinksMock: vi.fn(),
   revokeWorkspaceJoinLinkMock: vi.fn(),
   getWorkspaceJoinLinkByTokenHashMock: vi.fn(),
-  markWorkspaceJoinLinkUsedMock: vi.fn()
+  markWorkspaceJoinLinkUsedMock: vi.fn(),
+  resolveUserIdMock: vi.fn(async (request: { headers: { get(name: string): string | null } }) => {
+    const authHeader = request.headers.get("authorization") || "";
+    return authHeader.replace(/^Bearer\s+/i, "").trim() || "test-user";
+  })
 }));
 
 vi.mock("../lib/config", () => ({
@@ -80,6 +84,14 @@ vi.mock("../lib/cosmos/workspaceRepository", () => ({
   markWorkspaceJoinLinkUsed: markWorkspaceJoinLinkUsedMock
 }));
 
+vi.mock("../lib/auth", async () => {
+  const actual = await vi.importActual<typeof import("../lib/auth")>("../lib/auth");
+  return {
+    ...actual,
+    resolveUserId: resolveUserIdMock
+  };
+});
+
 import {
   joinAccept,
   workspaceJoinLinksCreate,
@@ -105,8 +117,6 @@ function createRequest(
 function createContext() {
   return createInvocationContext();
 }
-
-const originalFetch = globalThis.fetch;
 
 beforeEach(() => {
   vi.resetAllMocks();
@@ -183,12 +193,6 @@ beforeEach(() => {
     workspaceId: "team-42",
     status: "used"
   });
-
-  globalThis.fetch = createGoogleUserInfoFetch();
-});
-
-afterEach(() => {
-  globalThis.fetch = originalFetch;
 });
 
 test("workspacesCreate creates a new workspace with owner membership", async () => {

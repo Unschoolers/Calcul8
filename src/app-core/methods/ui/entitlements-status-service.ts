@@ -1,4 +1,4 @@
-import type { AppContext } from "../../context.ts";
+import type { AppContext } from "../../context-app.ts";
 import {
   PRO_ACCESS_KEY,
   writeEntitlementCache,
@@ -179,3 +179,4 @@ export async function syncEntitlementStatus(
     console.warn("[whatfees] Entitlement sync error", error);
   }
 }
+

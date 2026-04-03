@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test, vi } from "vitest";
-import { SinglesConfigWindow } from "../src/components/windows/SinglesConfigWindow.ts";
+import { singlesConfigWindowDefinition } from "../src/components/windows/SinglesConfigWindow.definition.ts";
 import type { SinglesPurchaseEntry } from "../src/types/app.ts";
 
 type AnyContext = Record<string, unknown> & {
@@ -11,16 +11,16 @@ type AnyContext = Record<string, unknown> & {
   $refs: Record<string, unknown>;
 };
 
-function getMethod<T extends (...args: never[]) => unknown>(name: string): T {
-  return (SinglesConfigWindow.methods as Record<string, unknown>)[name] as T;
-}
+const singlesConfigData = singlesConfigWindowDefinition.data as () => Record<string, unknown>;
+const singlesConfigMethods = Object.entries(singlesConfigWindowDefinition.methods as Record<string, unknown>)
+  .filter(([, method]) => typeof method === "function") as Array<[string, (...args: unknown[]) => unknown]>;
 
 function getComputed<T>(name: string): (this: AnyContext) => T {
-  return (SinglesConfigWindow.computed as Record<string, unknown>)[name] as (this: AnyContext) => T;
+  return (singlesConfigWindowDefinition.computed as Record<string, unknown>)[name] as (this: AnyContext) => T;
 }
 
 function createContext(overrides: Partial<AnyContext> = {}): AnyContext {
-  const dataState = (SinglesConfigWindow.data as () => Record<string, unknown>).call({});
+  const dataState = singlesConfigData.call({});
   const context: AnyContext = {
     ...dataState,
     currency: "CAD",
@@ -43,10 +43,8 @@ function createContext(overrides: Partial<AnyContext> = {}): AnyContext {
     $refs: {}
   };
 
-  for (const [name, method] of Object.entries(SinglesConfigWindow.methods as Record<string, unknown>)) {
-    if (typeof method === "function") {
-      context[name] = (method as (...args: unknown[]) => unknown).bind(context);
-    }
+  for (const [name, method] of singlesConfigMethods) {
+    context[name] = method.bind(context);
   }
 
   Object.assign(context, overrides);
@@ -830,7 +828,7 @@ test("catalog source computed getters/setters and labels normalize values", () =
     showCatalogSourceSheet: true
   });
 
-  const sourceComputed = (SinglesConfigWindow.computed as Record<string, { get?: (this: AnyContext) => unknown; set?: (this: AnyContext, v: unknown) => void }>).currentSinglesCatalogSource;
+  const sourceComputed = (singlesConfigWindowDefinition.computed as Record<string, { get?: (this: AnyContext) => unknown; set?: (this: AnyContext, v: unknown) => void }>).currentSinglesCatalogSource;
   assert.equal(sourceComputed.get?.call(context), "pokemon");
   sourceComputed.set?.call(context, "none");
   assert.deepEqual((context.setCurrentSinglesCatalogSource as ReturnType<typeof vi.fn>).mock.calls[0], ["none"]);
@@ -1320,19 +1318,19 @@ test("desktop selection, scroll, icons, watcher, and lifecycle branches execute"
   context.desktopSortDesc = true;
   assert.equal(context.sortIconFor("item"), "mdi-arrow-down");
 
-  const watchHandler = (SinglesConfigWindow.watch as Record<string, (this: AnyContext) => void>).visibleSinglesPurchases;
+  const watchHandler = (singlesConfigWindowDefinition.watch as Record<string, (this: AnyContext) => void>).visibleSinglesPurchases;
   watchHandler.call(context);
   assert.equal(context.mobileRenderCount, 1);
 
-  (SinglesConfigWindow.mounted as (this: AnyContext) => void).call(context);
+  (singlesConfigWindowDefinition.mounted as (this: AnyContext) => void).call(context);
   assert.equal((context.loadSinglesInfoNoticeState as ReturnType<typeof vi.fn>).mock.calls.length, 1);
   assert.equal((context.resetMobileRowsPagination as ReturnType<typeof vi.fn>).mock.calls.length, 1);
 
-  (SinglesConfigWindow.beforeUnmount as (this: AnyContext) => void).call(context);
+  (singlesConfigWindowDefinition.beforeUnmount as (this: AnyContext) => void).call(context);
   assert.equal((context.cancelSinglesItemSearch as ReturnType<typeof vi.fn>).mock.calls.length, 1);
 
   const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-  const bridge = (SinglesConfigWindow.setup as (props: { ctx: Record<string, unknown> }) => Record<string, unknown>)({
+  const bridge = (singlesConfigWindowDefinition.setup as (props: { ctx: Record<string, unknown> }) => Record<string, unknown>)({
     ctx: { testValue: 123 }
   });
   warnSpy.mockRestore();

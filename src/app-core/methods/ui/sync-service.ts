@@ -1,4 +1,4 @@
-import type { AppContext } from "../../context.ts";
+import type { AppContext } from "../../context-app.ts";
 import {
   CLOUD_SYNC_INTERVAL_MS,
   handleExpiredAuth,
@@ -516,3 +516,4 @@ export async function runCloudSyncPush(
     state.pendingPushTreatConflictAsSuccess || options.treatConflictAsSuccess === true;
   return scheduleSyncDrain(app, resolvedDeps, state, scope);
 }
+

@@ -1,4 +1,4 @@
-import type { AppContext } from "../../context.ts";
+import type { AppContext } from "../../context-app.ts";
 import {
   extractPurchaseTokenFromResult,
   getPlayBillingService,
@@ -361,3 +361,4 @@ export async function verifyPlayPurchaseFlow(
     app.isVerifyingPurchase = false;
   }
 }
+

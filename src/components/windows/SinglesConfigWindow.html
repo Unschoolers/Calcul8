@@ -92,11 +92,11 @@
               <v-text-field
                 v-if="!showCatalogSuggestions"
                 v-model="editingSinglesRow.item"
-                label="Item"
+                :label="t('singlesTableItemLabel')"
                 variant="outlined"
                 density="comfortable"
                 hide-details
-                placeholder="Item name"
+                :placeholder="t('singlesEditorItemNamePlaceholder')"
                 :clearable="Boolean(editingSinglesRow.item)"
                 @click:clear="editingSinglesRow.item = ''"
               ></v-text-field>
@@ -109,15 +109,15 @@
                 item-title="title"
                 item-value="value"
                 :menu-props="{ contentClass: 'singles-card-suggestions-menu' }"
-                label="Item"
+                :label="t('singlesTableItemLabel')"
                 variant="outlined"
                 density="comfortable"
                 :loading="singlesItemSearchLoading"
                 :clearable="Boolean(editingSinglesRow.item || singlesItemSearchText)"
                 no-filter
                 hide-details
-                no-data-text="Type 2+ characters to search"
-                placeholder="Search by name, number, or rarity"
+                :no-data-text="t('singlesEditorNoDataText')"
+                :placeholder="t('singlesEditorSearchPlaceholder')"
                 @click:clear="clearSinglesCatalogSelection"
                 @focus="maybeOpenSinglesItemSuggestions"
                 @click:control="maybeOpenSinglesItemSuggestions"
@@ -201,27 +201,27 @@
             <v-col v-if="!showCatalogSuggestions" cols="12" md="4">
               <v-text-field
                 v-model="editingSinglesRow.cardNumber"
-                label="Number"
+                :label="t('singlesTableNumberLabel')"
                 variant="outlined"
                 density="comfortable"
                 hide-details
-                placeholder="Optional"
+                :placeholder="t('commonOptional')"
               ></v-text-field>
             </v-col>
             <v-col cols="12" md="4">
               <v-text-field
                 v-model="editingSinglesRow.externalSku"
-                label="Marketplace SKU"
+                :label="t('configMarketplaceSkuLabel')"
                 variant="outlined"
                 density="comfortable"
                 hide-details
-                placeholder="Optional"
+                :placeholder="t('commonOptional')"
               ></v-text-field>
             </v-col>
             <v-col v-if="!showCatalogSuggestions" cols="12" sm="6">
               <v-text-field
                 v-model.number="editingSinglesRow.quantity"
-                label="Quantity"
+                :label="t('singlesEditorQuantityLabel')"
                 type="number"
                 min="0"
                 step="1"
@@ -256,7 +256,7 @@
             <v-col cols="12" sm="6">
               <v-text-field
                 v-model.number="editingSinglesRow.cost"
-                :label="`Cost (${editingSinglesRow.currency})`"
+                :label="`${t('singlesEditorCostLabel')} (${editingSinglesRow.currency})`"
                 type="number"
                 min="0"
                 step="0.01"
@@ -269,7 +269,7 @@
             <v-col cols="12" sm="6">
               <v-text-field
                 v-model.number="editingSinglesRow.marketValue"
-                label="Market Value"
+                :label="t('singlesEditorMarketValueLabel')"
                 type="number"
                 min="0"
                 step="0.01"
@@ -292,11 +292,11 @@
               <v-combobox
                 v-model="editingSinglesRow.condition"
                 :items="singlesConditionOptions"
-                label="Condition"
+                :label="t('singlesTableConditionLabel')"
                 variant="outlined"
                 density="comfortable"
                 hide-details
-                placeholder="Near Mint"
+                :placeholder="t('singlesConditionPlaceholder')"
                 :clearable="Boolean(editingSinglesRow.condition)"
               ></v-combobox>
             </v-col>
@@ -304,11 +304,11 @@
               <v-combobox
                 v-model="editingSinglesRow.language"
                 :items="singlesLanguageOptions"
-                label="Language"
+                :label="t('singlesTableLanguageLabel')"
                 variant="outlined"
                 density="comfortable"
                 hide-details
-                placeholder="English"
+                :placeholder="t('languageOptionEnglish')"
                 :clearable="Boolean(editingSinglesRow.language)"
               ></v-combobox>
             </v-col>

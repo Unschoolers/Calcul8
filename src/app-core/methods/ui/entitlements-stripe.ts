@@ -1,4 +1,4 @@
-import type { AppContext } from "../../context.ts";
+import type { AppContext } from "../../context-app.ts";
 import {
   fetchWithRetry,
   handleExpiredAuth,
@@ -361,3 +361,4 @@ export async function handleStripeCheckoutReturn(app: StripeVerificationApp): Pr
   app.notify("Payment received. Pro unlock is still syncing. Please try Sync in a few seconds.", "info");
   return "success";
 }
+

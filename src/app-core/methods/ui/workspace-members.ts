@@ -1,4 +1,4 @@
-import type { AppContext } from "../../context.ts";
+import type { AppContext } from "../../context-app.ts";
 import type { WorkspaceMember } from "../../../types/app.ts";
 import { getStoredGoogleIdToken } from "../../auth/index.ts";
 import { fetchAuthenticatedApiResponse, resolveApiBaseUrl } from "./shared.ts";
@@ -197,3 +197,4 @@ export function formatRelativeLastSeen(lastSeenAt: string | undefined): string {
   const elapsedDays = Math.round(elapsedHours / 24);
   return `Active ${elapsedDays}d ago`;
 }
+

@@ -5,7 +5,7 @@ import type {
     SkippedWheelDeduction,
     WheelConfig
 } from "../../types/app.ts";
-import type { AppContext, AppMethodState } from "../context.ts";
+import type { AppContext, AppMethodState } from "../context-app.ts";
 import {
     getScopedWheelConfigsStorageKey,
     getScopedWheelSessionStorageKey
@@ -373,3 +373,4 @@ export const salesMethods: ThisType<AppContext> & Pick<
     }
   }
 };
+

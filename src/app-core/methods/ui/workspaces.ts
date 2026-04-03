@@ -1,4 +1,4 @@
-import type { AppContext, AppMethodState } from "../../context.ts";
+import type { AppContext, AppMethodState } from "../../context-app.ts";
 import { fetchWithRetry, GOOGLE_TOKEN_KEY, handleExpiredAuth, resolveApiBaseUrl } from "./shared.ts";
 import { createSyncPayload } from "./sync-payload.ts";
 import { runCloudSyncPush } from "./sync-service.ts";
@@ -540,3 +540,4 @@ export const uiWorkspaceMethods: ThisType<AppContext> & Pick<
     return "Offline";
   }
 };
+

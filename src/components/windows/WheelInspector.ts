@@ -1,5 +1,6 @@
 import { inject, type PropType } from "vue";
 import { createWindowContextBridge } from "./contextBridge.ts";
+import { translateAppMessage } from "../../app-core/i18n/index.ts";
 import WheelTierCard from "./WheelTierCard.vue";
 import WheelSessionPanel from "./WheelSessionPanel.vue";
 import type { Lot, WheelConfig, WheelTier } from "../../types/app.ts";
@@ -28,6 +29,7 @@ export const WheelInspector = {
       const config = (this.editingWheelConfig || null) as WheelConfig | null;
       if (!config) return [];
       const lots = (this.lots || []) as Lot[];
+      const preferredLanguage = String((this as Record<string, unknown>).preferredLanguage ?? "");
       const groups = new Map<string, WheelBuilderTierGroup>();
 
       const ensureGroup = (tier: WheelTier): WheelBuilderTierGroup => {
@@ -37,8 +39,8 @@ export const WheelInspector = {
           if (!group) {
             group = {
               key,
-              title: "Unassigned",
-              detail: "Assign a source lot in the tier editor.",
+              title: translateAppMessage(preferredLanguage, "wheelInspectorNoSourceTitle"),
+              detail: translateAppMessage(preferredLanguage, "wheelInspectorAssignSourceDetail"),
               countLabel: "",
               warning: true,
               tiers: []
@@ -52,24 +54,30 @@ export const WheelInspector = {
         const key = `lot:${tier.boundLotId}`;
         let group = groups.get(key);
         if (!group) {
-          let detail = "Source lot unavailable";
+          let detail = translateAppMessage(preferredLanguage, "wheelInspectorSourceMissingDetail");
           let warning = lot == null;
           if (lot) {
             if (lot.lotType === "singles") {
               const remainingSingles = (lot.singlesPurchases || []).reduce((sum, entry) => (
                 sum + getAvailableSinglesQuantityForWheelTier(this, lot.id, entry.id)
               ), 0);
-              detail = `${remainingSingles} card${remainingSingles === 1 ? "" : "s"} available`;
+              detail = translateAppMessage(preferredLanguage, "wheelInspectorItemAvailabilityDetail", {
+                count: remainingSingles,
+                suffix: remainingSingles === 1 ? "" : "s"
+              });
               warning = remainingSingles <= 0;
             } else {
               const remainingPacks = getRemainingPacksForWheelLot(this, lot.id);
-              detail = `${remainingPacks} item${remainingPacks === 1 ? "" : "s"} available`;
+              detail = translateAppMessage(preferredLanguage, "wheelInspectorItemAvailabilityDetail", {
+                count: remainingPacks,
+                suffix: remainingPacks === 1 ? "" : "s"
+              });
               warning = remainingPacks <= 0;
             }
           }
           group = {
             key,
-            title: lot?.name || "Unknown source",
+            title: lot?.name || translateAppMessage(preferredLanguage, "wheelInspectorUnknownSourceTitle"),
             detail,
             countLabel: "",
             warning,
@@ -87,7 +95,10 @@ export const WheelInspector = {
 
       const orderedGroups = Array.from(groups.values());
       orderedGroups.forEach((group) => {
-        group.countLabel = `${group.tiers.length} tier${group.tiers.length === 1 ? "" : "s"}`;
+        group.countLabel = translateAppMessage(preferredLanguage, "wheelInspectorTierCountLabel", {
+          count: group.tiers.length,
+          suffix: group.tiers.length === 1 ? "" : "s"
+        });
       });
       orderedGroups.sort((left, right) => {
         if (left.key === "unassigned") return -1;

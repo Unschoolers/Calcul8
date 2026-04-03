@@ -1,4 +1,4 @@
-import type { AppContext } from "../../context.ts";
+import type { AppContext } from "../../context-app.ts";
 import type { WorkspaceSummary } from "../../../types/app.ts";
 import { getLegacyStorageKeys, getScopedLastLotStorageKey, getScopedLastSyncedPayloadHashKey, STORAGE_KEYS } from "../../storageKeys.ts";
 import { getActiveStorageScope, sortWorkspacesByName } from "../../workspace-scope.ts";
@@ -179,3 +179,4 @@ export async function applyWorkspaceScope(
     await app.pullCloudSync();
   }
 }
+

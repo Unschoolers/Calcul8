@@ -1,0 +1,11 @@
+{
+  "itemCatalogCustom": "Custom",
+  "itemCatalogPokemon": "Pokemon",
+  "itemCatalogSourceLabel": "Item catalog source",
+  "itemCatalogUnionArena": "Union Arena",
+  "editLotTitle": "Edit Lot",
+  "lotNameLabel": "Lot name",
+  "newLotTitle": "New Lot",
+  "itemCatalogAutocompleteDisabledHelp": "Custom mode: autocomplete is disabled for this lot.",
+  "itemCatalogAutocompleteEnabledHelp": "Autocomplete suggestions use the selected catalog source."
+}

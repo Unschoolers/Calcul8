@@ -1,4 +1,4 @@
-import type { AppContext } from "../../context.ts";
+import type { AppContext } from "../../context-app.ts";
 import {
   GOOGLE_INIT_RETRY_COUNT,
   GOOGLE_INIT_RETRY_DELAY_MS,
@@ -254,3 +254,4 @@ export function openVerifyPurchaseModalFlow(app: Pick<SignInApp, "showManualPurc
 
   app.showVerifyPurchaseModal = true;
 }
+

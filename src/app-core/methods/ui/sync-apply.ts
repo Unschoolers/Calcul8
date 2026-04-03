@@ -1,4 +1,4 @@
-import type { AppContext } from "../../context.ts";
+import type { AppContext } from "../../context-app.ts";
 import { clearScopedSalesStorage, getScopedSyncClientVersionKey } from "../../storageKeys.ts";
 import { getActiveStorageScope } from "../../workspace-scope.ts";
 import { normalizeStoredLot } from "../../shared/normalize-lot.ts";
@@ -117,3 +117,4 @@ export function applyCloudSnapshotToLocal(context: SyncApplyApp, snapshot: Parse
     );
   }
 }
+

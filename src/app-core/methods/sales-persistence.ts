@@ -1,5 +1,5 @@
 import type { Sale } from "../../types/app.ts";
-import type { AppContext } from "../context.ts";
+import type { AppContext } from "../context-app.ts";
 import { removeById, upsertById } from "../shared/collection-updaters.ts";
 import { cacheAuthoritativeSales, canUseAuthoritativeSalesLiveApi, deleteAuthoritativeSale, fetchAuthoritativeSales, SalesLiveApiError, saveAuthoritativeSale } from "./sales-live-api.ts";
 import { refreshChartsForCurrentTab } from "./sales-ui-helpers.ts";
@@ -215,3 +215,4 @@ export function deleteSaleWithPersistence(
     }
   );
 }
+

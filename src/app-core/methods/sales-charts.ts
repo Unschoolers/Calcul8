@@ -1,5 +1,5 @@
 import Chart from "chart.js/auto";
-import type { AppContext } from "../context.ts";
+import type { AppContext } from "../context-app.ts";
 import {
   buildPortfolioBreakdownChartConfig,
   buildPortfolioHistoryChartConfig,
@@ -140,3 +140,4 @@ export function initPortfolioCharts(context: AppContext): void {
   if (!salesByUserConfig) return;
   context.portfolioSalesByUserChart = new Chart(salesByUserCtx, salesByUserConfig);
 }
+

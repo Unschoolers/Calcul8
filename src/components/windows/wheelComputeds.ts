@@ -16,25 +16,31 @@ import { translateAppMessage } from "../../app-core/i18n/index.ts";
 export const wheelComputeds = {
   wheelStageTitle(this: Record<string, unknown>): string {
     const displayConfig = (this as Record<string, unknown>).wheelDisplayConfig as WheelConfig | null;
-    return displayConfig?.name || "Wheel Stage";
+    return displayConfig?.name || translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelStageTitleFallback");
   },
 
   wheelStageModeLabel(this: Record<string, unknown>): string {
-    return (this as Record<string, unknown>).wheelMode === "config" ? "config mode" : "live mode";
+    return (this as Record<string, unknown>).wheelMode === "config"
+      ? translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelStageModeConfigLabel")
+      : translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelStageModeLiveLabel");
   },
 
   wheelStageSlotsLabel(this: Record<string, unknown>): string {
     const slots = (((this as Record<string, unknown>).wheelDisplaySlots || []) as WheelSlot[]).length;
-    return `${slots} slots`;
+    return translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelStageSlotsValue", { count: slots });
   },
 
   wheelStageSpinPriceLabel(this: Record<string, unknown>): string {
     const displayConfig = (this as Record<string, unknown>).wheelDisplayConfig as WheelConfig | null;
-    return `$${Number(displayConfig?.spinPrice || 0).toFixed(2)}/spin`;
+    return translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelStageSpinPriceValue", {
+      amount: Number(displayConfig?.spinPrice || 0).toFixed(2)
+    });
   },
 
   wheelPresentationToggleTitle(this: Record<string, unknown>): string {
-    return (this as Record<string, unknown>).wheelPresentationMode ? "Show config & tracker" : "Presentation mode";
+    return (this as Record<string, unknown>).wheelPresentationMode
+      ? translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelPresentationToggleLabel")
+      : translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelPresentationModeLabel");
   },
 
   wheelSpinButtonIcon(this: Record<string, unknown>): string {
@@ -42,7 +48,9 @@ export const wheelComputeds = {
   },
 
   wheelSpinButtonLabel(this: Record<string, unknown>): string {
-    return (this as Record<string, unknown>).wheelMode === "config" ? "Test Spin" : "Spin";
+    return (this as Record<string, unknown>).wheelMode === "config"
+      ? translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelSpinTestButtonLabel")
+      : translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelSpinButtonLabel");
   },
 
   wheelPrimarySpinDisabled(this: Record<string, unknown>): boolean {
@@ -59,12 +67,14 @@ export const wheelComputeds = {
 
   wheelStageCaption(this: Record<string, unknown>): string {
     return (this as Record<string, unknown>).wheelMode === "config"
-      ? "Preview the wheel without recording sales, session counts, or realtime updates."
-      : "Run the live wheel and record session totals, sales, and workspace updates.";
+      ? translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelStageCaptionConfig")
+      : translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelStageCaptionLive");
   },
 
   wheelCelebrationKicker(this: Record<string, unknown>): string {
-    return (this as Record<string, unknown>).wheelCelebrationPreview ? "Preview Chase Hit" : "Chase Hit";
+    return (this as Record<string, unknown>).wheelCelebrationPreview
+      ? translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelCelebrationPreviewKicker")
+      : translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelCelebrationLiveKicker");
   },
 
   wheelFairnessIcon(this: Record<string, unknown>): string {
@@ -76,7 +86,9 @@ export const wheelComputeds = {
   },
 
   wheelFairnessTitle(this: Record<string, unknown>): string {
-    return (this as Record<string, unknown>).wheelSpinning ? "Result Locked" : "Verified Fair";
+    return (this as Record<string, unknown>).wheelSpinning
+      ? translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelFairnessResultLockedTitle")
+      : translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelFairnessVerifiedTitle");
   },
 
   wheelFairnessChevron(this: Record<string, unknown>): string {
@@ -106,15 +118,18 @@ export const wheelComputeds = {
 
   wheelFairnessHistorySummary(this: Record<string, unknown>): string {
     const count = (((this as Record<string, unknown>).wheelDisplayFairnessHistory || []) as unknown[]).length;
-    if (!count) return "No spins yet";
-    return `${count} recent spin${count === 1 ? "" : "s"}`;
+    if (!count) return translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelNoSpinsYetLabel");
+    return translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelFairnessRecentSpins", {
+      count,
+      suffix: count === 1 ? "" : "s"
+    });
   },
 
   wheelConfirmTitle(this: Record<string, unknown>): string {
     const action = (this as Record<string, unknown>).wheelConfirmAction as "reset" | "delete" | "apply" | "";
-    if (action === "reset") return "Reset Session?";
-    if (action === "delete") return "Delete Wheel?";
-    return "Rebuild Wheel?";
+    if (action === "reset") return translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelConfirmResetTitle");
+    if (action === "delete") return translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelConfirmDeleteTitle");
+    return translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelConfirmRebuildTitle");
   },
 
   wheelConfirmBody(this: Record<string, unknown>): string {
@@ -122,13 +137,13 @@ export const wheelComputeds = {
     const wheelMode = (this as Record<string, unknown>).wheelMode as "config" | "live";
     if (action === "reset") {
       return wheelMode === "config"
-        ? "This will clear the preview test session for this wheel."
-        : "This will clear all spin counts, revenue tracking, and skipped deductions for this live session. This cannot be undone.";
+        ? translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelConfirmResetConfigBody")
+        : translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelConfirmResetLiveBody");
     }
     if (action === "delete") {
-      return "This will permanently delete this wheel configuration. This cannot be undone.";
+      return translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelConfirmDeleteBody");
     }
-    return "This will rebuild the wheel with your config changes. Matching live session progress will be preserved where possible.";
+    return translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelConfirmRebuildBody");
   },
 
   wheelConfirmButtonColor(this: Record<string, unknown>): string {
@@ -138,14 +153,14 @@ export const wheelComputeds = {
 
   wheelConfirmButtonLabel(this: Record<string, unknown>): string {
     const action = (this as Record<string, unknown>).wheelConfirmAction as "reset" | "delete" | "apply" | "";
-    if (action === "reset") return "Reset";
-    if (action === "delete") return "Delete";
-    return "Rebuild";
+    if (action === "reset") return translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "commonReset");
+    if (action === "delete") return translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "commonDelete");
+    return translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelRebuildAction");
   },
 
   wheelLiveConfirmSummaryName(this: Record<string, unknown>): string {
     const activeConfig = (this as Record<string, unknown>).activeWheelConfig as WheelConfig | null;
-    return activeConfig?.name || "Current wheel";
+    return activeConfig?.name || translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelStageTitleFallback");
   },
 
   wheelLiveConfirmSummarySlots(this: Record<string, unknown>): number {
@@ -159,7 +174,10 @@ export const wheelComputeds = {
 
   wheelSkippedDeductionsTitle(this: Record<string, unknown>): string {
     const skippedCount = (((this as Record<string, unknown>).wheelSkippedDeductions || []) as unknown[]).length;
-    return `Record ${skippedCount} skipped spin${skippedCount === 1 ? "" : "s"}`;
+    return translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelSkippedDeductionsTitle", {
+      count: skippedCount,
+      suffix: skippedCount === 1 ? "" : "s"
+    });
   },
 
   hasPendingWheelChanges(this: Record<string, unknown>): boolean {
@@ -228,19 +246,20 @@ export const wheelComputeds = {
   wheelInvalidLiveTiers(this: Record<string, unknown>): Array<{ tierId: string; label: string; reason: string }> {
     const config = (this as Record<string, unknown>).activeWheelConfig as WheelConfig | null;
     const lots = (this.lots || []) as Lot[];
+    const preferredLanguage = String((this as Record<string, unknown>).preferredLanguage ?? "");
     if (!config) return [];
 
     const invalid: Array<{ tierId: string; label: string; reason: string }> = [];
     for (const tier of config.tiers) {
       if ((tier.slots || 0) <= 0) continue;
       if (tier.boundLotId == null) {
-        invalid.push({ tierId: tier.id, label: tier.label, reason: "No source lot selected." });
+        invalid.push({ tierId: tier.id, label: tier.label, reason: translateAppMessage(preferredLanguage, "wheelInvalidNoSourceLot") });
         continue;
       }
 
       const lot = lots.find((entry) => entry.id === tier.boundLotId);
       if (!lot) {
-        invalid.push({ tierId: tier.id, label: tier.label, reason: "Selected lot no longer exists." });
+        invalid.push({ tierId: tier.id, label: tier.label, reason: translateAppMessage(preferredLanguage, "wheelInvalidLotMissing") });
         continue;
       }
 
@@ -248,7 +267,7 @@ export const wheelComputeds = {
         if (tier.boundSinglesId != null) {
           const remaining = getAvailableSinglesQuantityForWheelTier(this, tier.boundLotId, tier.boundSinglesId);
           if (remaining <= 0) {
-            invalid.push({ tierId: tier.id, label: tier.label, reason: "Selected singles item is out of stock." });
+            invalid.push({ tierId: tier.id, label: tier.label, reason: translateAppMessage(preferredLanguage, "wheelInvalidSinglesOutOfStock") });
           }
         }
       } else if (tier.deductionType === "packs") {
@@ -257,13 +276,17 @@ export const wheelComputeds = {
           invalid.push({
             tierId: tier.id,
             label: tier.label,
-            reason: `Needs ${tier.packsCount || 0} item${(tier.packsCount || 0) === 1 ? "" : "s"}, but only ${remainingPacks} remain.`
+            reason: translateAppMessage(preferredLanguage, "wheelInvalidNeedsItems", {
+              needed: tier.packsCount || 0,
+              neededSuffix: (tier.packsCount || 0) === 1 ? "" : "s",
+              remaining: remainingPacks
+            })
           });
         }
       }
 
       if (tier.isChase === true && (tier.deductionType !== "singles" || tier.boundSinglesId == null)) {
-        invalid.push({ tierId: tier.id, label: tier.label, reason: "Chase tiers must be tied to a specific singles item." });
+        invalid.push({ tierId: tier.id, label: tier.label, reason: translateAppMessage(preferredLanguage, "wheelInvalidChaseNeedsSinglesItem") });
       }
     }
     return invalid;
@@ -274,7 +297,10 @@ export const wheelComputeds = {
     const invalid = ((this as Record<string, unknown>).wheelInvalidLiveTiers || []) as Array<{ label: string; reason: string }>;
     if (!invalid.length) return "";
     const first = invalid[0];
-    return `Repair the wheel before going live: ${first?.label || "Tier"}: ${first?.reason || "Invalid inventory."}`;
+    return translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelRepairBeforeLive", {
+      label: first?.label || translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelStageTierFallbackLabel"),
+      reason: first?.reason || translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelInvalidInventoryFallback")
+    });
   },
 
   expectedMarginDisplay(this: Record<string, unknown>): string {
@@ -293,14 +319,21 @@ export const wheelComputeds = {
   },
 
   expectedMarginHint(this: Record<string, unknown>): string {
+    const preferredLanguage = String((this as Record<string, unknown>).preferredLanguage ?? "");
     const config = (this as Record<string, unknown>).editingWheelConfig as WheelConfig | null;
-    if (!config) return "Add some tiers";
+    if (!config) return translateAppMessage(preferredLanguage, "wheelExpectedMarginNoTiers");
     const { margin } = computeExpectedMargin(config, this as Record<string, unknown>, ((this as Record<string, unknown>).lots || []) as Lot[]);
-    if (margin === null) return "Add some slots";
+    if (margin === null) return translateAppMessage(preferredLanguage, "wheelExpectedMarginNoSlots");
     const diff = margin - config.targetMargin;
     return diff >= 0
-      ? `+${diff.toFixed(1)}% above ${config.targetMargin}% target`
-      : `${diff.toFixed(1)}% below ${config.targetMargin}% target`;
+      ? translateAppMessage(preferredLanguage, "wheelExpectedMarginAboveTarget", {
+        diff: diff.toFixed(1),
+        target: config.targetMargin
+      })
+      : translateAppMessage(preferredLanguage, "wheelExpectedMarginBelowTarget", {
+        diff: diff.toFixed(1),
+        target: config.targetMargin
+      });
   },
 
   wheelSessionRevenue(this: Record<string, unknown>): number {
@@ -398,14 +431,21 @@ export const wheelComputeds = {
   },
 
   wheelSessionMarginHint(this: Record<string, unknown>): string {
+    const preferredLanguage = String((this as Record<string, unknown>).preferredLanguage ?? "");
     const revenue = this.wheelSessionRevenue as number;
-    if (!revenue) return "No spins yet";
+    if (!revenue) return translateAppMessage(preferredLanguage, "wheelSessionNoSpinsHint");
     const config = (this as Record<string, unknown>).wheelDisplayConfig as WheelConfig | null;
     const margin = ((this.wheelSessionProfit as number) / revenue) * 100;
     const diff = margin - (config?.targetMargin || 0);
     return diff >= 0
-      ? `+${diff.toFixed(1)}% above ${config?.targetMargin || 0}% target`
-      : `${diff.toFixed(1)}% below ${config?.targetMargin || 0}% target`;
+      ? translateAppMessage(preferredLanguage, "wheelSessionAboveTarget", {
+        diff: diff.toFixed(1),
+        target: config?.targetMargin || 0
+      })
+      : translateAppMessage(preferredLanguage, "wheelSessionBelowTarget", {
+        diff: diff.toFixed(1),
+        target: config?.targetMargin || 0
+      });
   },
 
   wheelTallyByTier(this: Record<string, unknown>): Array<{ tierId: string; label: string; color: string; count: number }> {
@@ -503,8 +543,11 @@ export const wheelComputeds = {
           rows.push({
             key: rowKey,
             label: lot.name,
-            detail: "Singles source",
-            remainingText: `${remainingForLot} card${remainingForLot === 1 ? "" : "s"} left`,
+            detail: translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelSourceDetailSingles"),
+            remainingText: translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelSourceItemsLeft", {
+              count: remainingForLot,
+              suffix: remainingForLot === 1 ? "" : "s"
+            }),
             warning: false,
             tiers: [tierEntry]
           });
@@ -519,14 +562,21 @@ export const wheelComputeds = {
         warning: remainingPacks <= Math.max(1, tier.packsCount || 1)
       };
       if (existing) {
-        existing.detail = `${existing.detail} • ${tier.packsCount || 0}/spin`;
+        existing.detail = `${existing.detail} • ${translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelPerSpinSuffix", {
+          count: tier.packsCount || 0
+        })}`;
         existing.tiers.push(tierEntry);
       } else {
         rows.push({
           key: rowKey,
           label: lot.name,
-          detail: `Item source • needs ${tier.packsCount || 0}/spin`,
-          remainingText: `${remainingPacks} item${remainingPacks === 1 ? "" : "s"} left`,
+          detail: translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelSourceDetailItem", {
+            count: tier.packsCount || 0
+          }),
+          remainingText: translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelSourceItemsLeft", {
+            count: remainingPacks,
+            suffix: remainingPacks === 1 ? "" : "s"
+          }),
           warning: false,
           tiers: [tierEntry]
         });

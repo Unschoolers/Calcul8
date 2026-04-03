@@ -1,5 +1,5 @@
 import type { BeforeInstallPromptEvent } from "../../types/app.ts";
-import type { AppContext, AppMethodState } from "../context.ts";
+import type { AppContext, AppMethodState } from "../context-app.ts";
 
 const DISMISSED_APP_UPDATE_SESSION_KEY = "whatfees_dismissed_app_update_worker";
 
@@ -249,3 +249,4 @@ export const pwaMethods: ThisType<AppContext> & Pick<
     window.addEventListener("load", this.serviceWorkerLoadListener, { once: true });
   }
 };
+
