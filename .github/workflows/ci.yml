@@ -56,7 +56,7 @@ jobs:
             [ -n "${file}" ] || continue
 
             case "${file}" in
-              index.html|manifest.webmanifest|package.json|package-lock.json|tsconfig*.json|vite*.config.*|vitest*.config.*|src/*|tests/*|scripts/*|icons/*|.github/workflows/ci.yml)
+              index.html|package.json|package-lock.json|tsconfig*.json|vite*.config.*|vitest*.config.*|src/*|public/*|tests/*|scripts/*|icons/*|.github/workflows/ci.yml)
                 web=true
                 ;;
             esac

@@ -1,6 +1,5 @@
 const swVersion = new URL(self.location.href).searchParams.get("v") || "dev";
 const CACHE_NAME = `whatfees-${swVersion}`;
-let shouldForceRefreshClientsOnActivate = false;
 
 const CORE_ASSETS = [
   "./",
@@ -31,13 +30,13 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
+    const staleKeys = keys.filter((key) => key !== CACHE_NAME);
     await Promise.all(
-      keys
-        .filter((key) => key !== CACHE_NAME)
+      staleKeys
         .map((key) => caches.delete(key))
     );
     await self.clients.claim();
-    if (shouldForceRefreshClientsOnActivate) {
+    if (staleKeys.length > 0) {
       const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
       await Promise.allSettled(
         clients.map(async (client) => {
@@ -46,14 +45,12 @@ self.addEventListener("activate", (event) => {
           await client.navigate(refreshUrl);
         })
       );
-      shouldForceRefreshClientsOnActivate = false;
     }
   })());
 });
 
 self.addEventListener("message", (event) => {
   if (event.data === "SKIP_WAITING") {
-    shouldForceRefreshClientsOnActivate = true;
     self.skipWaiting();
   }
 });

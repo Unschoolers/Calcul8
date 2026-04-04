@@ -2,7 +2,7 @@
   "id": "/",
   "name": "WhatFees",
   "short_name": "WhatFees",
-  "description": "Union Arena profitability calculator",
+  "description": "Profitability calculator",
   "start_url": "/",
   "scope": "/",
   "lang": "en-CA",
