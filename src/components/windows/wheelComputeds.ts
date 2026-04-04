@@ -217,11 +217,11 @@ export const wheelComputeds = {
     return Number(activeConfig?.spinPrice || 0).toFixed(2);
   },
 
-  wheelSkippedDeductionsTitle(this: Record<string, unknown>): string {
-    const skippedCount = (((this as Record<string, unknown>).wheelSkippedDeductions || []) as unknown[]).length;
-    return translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelSkippedDeductionsTitle", {
-      count: skippedCount,
-      suffix: skippedCount === 1 ? "" : "s"
+  wheelPendingInventoryIssuesTitle(this: Record<string, unknown>): string {
+    const issueCount = (((this as Record<string, unknown>).wheelPendingInventoryIssues || []) as unknown[]).length;
+    return translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelPendingInventoryIssuesTitle", {
+      count: issueCount,
+      suffix: issueCount === 1 ? "" : "s"
     });
   },
 
@@ -311,8 +311,19 @@ export const wheelComputeds = {
       if (tier.deductionType === "singles") {
         if (tier.boundSinglesId != null) {
           const remaining = getAvailableSinglesQuantityForWheelTier(this, tier.boundLotId, tier.boundSinglesId);
-          if (remaining <= 0) {
-            invalid.push({ tierId: tier.id, label: tier.label, reason: translateAppMessage(preferredLanguage, "wheelInvalidSinglesOutOfStock") });
+          const needed = Math.max(1, tier.packsCount || 1);
+          if (remaining < needed) {
+            invalid.push({
+              tierId: tier.id,
+              label: tier.label,
+              reason: remaining <= 0
+                ? translateAppMessage(preferredLanguage, "wheelInvalidSinglesOutOfStock")
+                : translateAppMessage(preferredLanguage, "wheelInvalidNeedsItems", {
+                  needed,
+                  neededSuffix: needed === 1 ? "" : "s",
+                  remaining
+                })
+            });
           }
         }
       } else if (tier.deductionType === "packs") {

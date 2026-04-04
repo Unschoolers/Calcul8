@@ -203,53 +203,13 @@
                 {{ wheelInventoryWarning }}
             </v-alert>
 
-            <v-card
+            <wheel-history-panel
                 v-if="wheelPresentationMode && wheelLatestFairnessEntry"
-                variant="outlined"
-                class="wheel-fairness-history wheel-fairness-history--presentation"
-            >
-                <div class="wheel-fairness-history__toggle wheel-fairness-history__toggle--static">
-                    <div class="wheel-fairness-history__heading">
-                        <v-icon size="small" :color="wheelLatestFairnessEntry.seed ? 'success' : 'warning'">
-                            {{ wheelLatestFairnessEntry.seed ? 'mdi-shield-check' : 'mdi-lock' }}
-                        </v-icon>
-                        <div>
-                            <div class="wheel-fairness-history__title">
-                                {{ wheelLatestFairnessEntry.seed ? t('wheelFairnessVerifiedTitle') : t('wheelFairnessResultLockedTitle') }}
-                            </div>
-                            <div class="wheel-fairness-history__summary">
-                                {{ wheelLatestFairnessEntry.seed ? t('wheelFairnessLatestVerificationSummary') : t('wheelFairnessCommittedSummary') }}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="wheel-fairness-history__list">
-                    <div class="wheel-fairness-history__item">
-                        <div class="wheel-fairness-history__item-top">
-                            <div class="wheel-fairness-history__spin">
-                                {{ t('wheelFairnessSpinNumberLabel', { count: wheelLatestFairnessEntry.spinNumber }) }}
-                            </div>
-                            <div class="wheel-fairness-history__result">
-                                <span class="wheel-fairness-history__dot" :style="{ background: wheelLatestFairnessEntry.color }"></span>
-                                {{ wheelLatestFairnessEntry.label }}
-                            </div>
-                        </div>
-                        <div class="wheel-fairness-history__codes">
-                            <div class="wheel-fairness-history__code-block">
-                                <span class="wheel-fairness-history__code-label">{{ t('wheelFairnessHashLabel') }}</span>
-                                <code class="wheel-fairness-history__code">{{ wheelLatestFairnessEntry.hash }}</code>
-                            </div>
-                            <div v-if="wheelLatestFairnessEntry.seed" class="wheel-fairness-history__code-block">
-                                <span class="wheel-fairness-history__code-label">{{ t('wheelFairnessSeedLabel') }}</span>
-                                <code class="wheel-fairness-history__code">{{ wheelLatestFairnessEntry.seed }}</code>
-                            </div>
-                        </div>
-                        <div v-if="wheelLatestFairnessEntry.seed" class="wheel-fairness-history__note">
-                            {{ t('wheelFairnessSeedVerifiedNote') }}
-                        </div>
-                    </div>
-                </div>
-            </v-card>
+                :ctx="getWindowComponentContext()"
+                :latest-only="true"
+                :presentation="true"
+                :show-empty-state="false"
+            ></wheel-history-panel>
         </div>
 
         <!-- Chase Replacement (shown after a chase tier is won and sale confirmed) -->
@@ -312,15 +272,15 @@
         </v-card>
 
         <!-- Batch Deduction Panel (shown when ending session) -->
-        <v-card v-if="wheelEndingSession && wheelSkippedDeductions.length" variant="outlined"
+        <v-card v-if="wheelEndingSession && wheelPendingInventoryIssues.length" variant="outlined"
             class="pa-3 wheel-lot-select-card">
             <div class="text-subtitle-2 mb-2">
                 <v-icon start size="small" color="warning">mdi-clipboard-list</v-icon>
-                {{ wheelSkippedDeductionsTitle }}
+                {{ wheelPendingInventoryIssuesTitle }}
             </div>
 
             <div class="wheel-batch-list">
-                <div v-for="(entry, bIdx) in wheelSkippedDeductions" :key="bIdx" class="wheel-batch-row">
+                <div v-for="(entry, bIdx) in wheelPendingInventoryIssues" :key="bIdx" class="wheel-batch-row">
                     <div class="wheel-batch-slot">
                         <div class="wheel-tier-dot" :style="{ background: entry.slotColor }"></div>
                         <span class="text-caption font-weight-medium">#{{ entry.spinNumber }} {{ entry.slotName

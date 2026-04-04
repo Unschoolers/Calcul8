@@ -67,7 +67,9 @@ function stubWindow(overrides: Record<string, unknown> = {}): Record<string, unk
     clearInterval: vi.fn(),
     sessionStorage: createStorageMock(),
     location: {
-      reload: vi.fn()
+      reload: vi.fn(),
+      href: "https://app.whatfees.ca/",
+      replace: vi.fn()
     }
   };
   const windowMock = { ...baseWindow, ...overrides };
@@ -325,7 +327,7 @@ test("unregisterServiceWorkersForDev warns on cleanup failure and no-ops without
   assert.equal(warnSpy.mock.calls[0]?.[0], "Failed to clean service workers in dev:");
 });
 
-test("registerServiceWorker queues updates and refreshes only after applyAppUpdate", async () => {
+test("registerServiceWorker queues updates and performs a cache-busted navigation only after applyAppUpdate", async () => {
   const windowListeners = new Map<string, (...args: unknown[]) => unknown>();
   stubDocument({ readyState: "loading" });
   const setInterval = vi.fn(() => 88);
@@ -410,7 +412,10 @@ test("registerServiceWorker queues updates and refreshes only after applyAppUpda
 
   swListeners.get("controllerchange")?.();
   swListeners.get("controllerchange")?.();
-  assert.equal(windowMock.location.reload.mock.calls.length, 1);
+  assert.equal(windowMock.location.replace.mock.calls.length, 1);
+  const refreshUrl = String(windowMock.location.replace.mock.calls[0]?.[0] ?? "");
+  assert.match(refreshUrl, /app-updated=/);
+  assert.match(refreshUrl, /app-update-source=sw/);
   assert.equal(context.appUpdateWorker, null);
 });
 

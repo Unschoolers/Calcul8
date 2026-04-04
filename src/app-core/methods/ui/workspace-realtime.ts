@@ -37,7 +37,7 @@ type RealtimeApp = Pick<
   | "wheelSpinCounts"
   | "wheelLastResult"
   | "wheelSessionUpdatedAt"
-  | "wheelSkippedDeductions"
+  | "wheelPendingInventoryIssues"
 > & {
   wheelSessionNetRevenue?: number | null;
   wheelSessionCostAdjustment?: number;
@@ -347,8 +347,10 @@ function handleWheelSessionUpdatedEvent(app: RealtimeApp, data: unknown): void {
   if (typeof raw.wheelLastResultColor === "string" && raw.wheelLastResultColor.trim()) {
     app.wheelLastResultColor = raw.wheelLastResultColor;
   }
-  if (Array.isArray(raw.wheelSkippedDeductions)) {
-    app.wheelSkippedDeductions = raw.wheelSkippedDeductions as typeof app.wheelSkippedDeductions;
+  if (Array.isArray(raw.wheelPendingInventoryIssues)) {
+    app.wheelPendingInventoryIssues = raw.wheelPendingInventoryIssues as typeof app.wheelPendingInventoryIssues;
+  } else if (Array.isArray(raw.wheelSkippedDeductions)) {
+    app.wheelPendingInventoryIssues = raw.wheelSkippedDeductions as typeof app.wheelPendingInventoryIssues;
   }
 }
 

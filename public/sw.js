@@ -51,16 +51,24 @@ function createOfflineResponse() {
 
 function cloneRequestForReload(request) {
   try {
-    return new Request(request, { cache: "reload" });
+    return new Request(request, { cache: "no-store" });
   } catch {
     return request;
   }
 }
 
+function isUpdateRefreshRequest(url) {
+  return url.searchParams.has("app-updated");
+}
+
+async function fetchFresh(request) {
+  return fetch(cloneRequestForReload(request));
+}
+
 async function networkFirst(request, { fallbackResponse = null, forceFresh = false } = {}) {
   const cache = await caches.open(CACHE_NAME);
   try {
-    const response = await fetch(forceFresh ? cloneRequestForReload(request) : request);
+    const response = await (forceFresh ? fetchFresh(request) : fetch(request));
     if (response && response.ok) {
       cache.put(request, response.clone());
     }
@@ -74,6 +82,20 @@ async function networkFirst(request, { fallbackResponse = null, forceFresh = fal
 }
 
 async function networkFirstNavigation(request) {
+  const url = new URL(request.url);
+  if (isUpdateRefreshRequest(url)) {
+    try {
+      const response = await fetchFresh(request);
+      if (response && response.ok) {
+        const cache = await caches.open(CACHE_NAME);
+        await cache.put("./index.html", response.clone());
+      }
+      return response;
+    } catch {
+      return createOfflineResponse();
+    }
+  }
+
   const cache = await caches.open(CACHE_NAME);
   const cachedPage = await cache.match("./index.html");
   return networkFirst(request, {

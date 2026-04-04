@@ -34,6 +34,7 @@
   </v-card-title>
   <v-card-text class="wheel-inspector-panel__body">
     <v-btn-toggle
+      v-if="!wheelIsCompactLayout"
       :model-value="wheelInspectorTab"
       mandatory
       divided
@@ -145,83 +146,7 @@
     ></wheel-session-panel>
 
     <section v-show="wheelInspectorTab === 'history'" class="wheel-panel-section">
-
-
-      <v-card v-if="wheelSpinHash || wheelDisplayFairnessHistory.length" variant="outlined"
-        class="wheel-fairness-history wheel-fairness-history--current">
-        <div class="wheel-fairness-history__toggle wheel-fairness-history__toggle--static">
-          <div class="wheel-fairness-history__heading">
-            <v-icon size="small" :color="wheelFairnessIconColor">{{ wheelFairnessIcon }}</v-icon>
-            <div>
-              <div class="wheel-fairness-history__title">{{ wheelFairnessTitle }}</div>
-              <div class="wheel-fairness-history__summary">
-                {{ wheelSpinning ? t('wheelFairnessCommittedSummary') : t('wheelFairnessLatestVerificationSummary') }}
-              </div>
-            </div>
-          </div>
-        </div>
-        <div v-if="wheelSpinHash" class="wheel-fairness-history__list">
-          <div class="wheel-fairness-history__item">
-            <div v-if="wheelLastResult" class="wheel-fairness-history__item-top">
-              <div class="wheel-fairness-history__spin">{{ t('wheelFairnessLatestSpinLabel') }}</div>
-              <div class="wheel-fairness-history__result">
-                <span class="wheel-fairness-history__dot" :style="{ background: wheelLastResultColor }"></span>
-                {{ wheelLastResult.replace(/^🎉\s*/, '') }}
-              </div>
-            </div>
-            <div class="wheel-fairness-history__codes">
-              <div class="wheel-fairness-history__code-block">
-                <span class="wheel-fairness-history__code-label">{{ t('wheelFairnessHashLabel') }}</span>
-                <code class="wheel-fairness-history__code">{{ wheelSpinHash }}</code>
-              </div>
-              <div v-if="wheelSpinSeed && !wheelSpinning" class="wheel-fairness-history__code-block">
-                <span class="wheel-fairness-history__code-label">{{ t('wheelFairnessSeedLabel') }}</span>
-                <code class="wheel-fairness-history__code">{{ wheelSpinSeed }}</code>
-              </div>
-            </div>
-            <div v-if="wheelSpinSeed && !wheelSpinning" class="wheel-fairness-history__note">
-              {{ t('wheelFairnessSeedVerifiedNote') }}
-            </div>
-          </div>
-        </div>
-        <button v-if="wheelDisplayFairnessHistory.length" type="button" class="wheel-fairness-history__toggle"
-          @click="wheelFairnessHistoryOpen = !wheelFairnessHistoryOpen">
-          <div class="wheel-fairness-history__heading">
-            <v-icon size="small" color="success">mdi-history</v-icon>
-            <div>
-              <div class="wheel-fairness-history__title">{{ t('wheelFairnessRecentHistoryTitle') }}</div>
-              <div class="wheel-fairness-history__summary">{{ wheelFairnessHistorySummary }}</div>
-            </div>
-          </div>
-          <v-icon size="small">{{ wheelFairnessHistoryOpen ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
-        </button>
-        <div v-if="wheelFairnessHistoryOpen && wheelDisplayFairnessHistory.length" class="wheel-fairness-history__list">
-          <div v-for="entry in wheelDisplayFairnessHistory" :key="`${entry.spinNumber}-${entry.timestamp}`"
-            class="wheel-fairness-history__item">
-            <div class="wheel-fairness-history__item-top">
-              <div class="wheel-fairness-history__spin">{{ t('wheelFairnessSpinNumberLabel', { count: entry.spinNumber }) }}</div>
-              <div class="wheel-fairness-history__result">
-                <span class="wheel-fairness-history__dot" :style="{ background: entry.color }"></span>
-                {{ entry.label }}
-              </div>
-            </div>
-            <div class="wheel-fairness-history__codes">
-              <div class="wheel-fairness-history__code-block">
-                <span class="wheel-fairness-history__code-label">{{ t('wheelFairnessHashLabel') }}</span>
-                <code class="wheel-fairness-history__code">{{ entry.hash }}</code>
-              </div>
-              <div class="wheel-fairness-history__code-block">
-                <span class="wheel-fairness-history__code-label">{{ t('wheelFairnessSeedLabel') }}</span>
-                <code class="wheel-fairness-history__code">{{ entry.seed }}</code>
-              </div>
-            </div>
-          </div>
-        </div>
-      </v-card>
-
-      <v-alert v-else type="info" density="compact" variant="tonal">
-        {{ t('wheelFairnessEmptyState') }}
-      </v-alert>
+      <wheel-history-panel :ctx="$props.ctx"></wheel-history-panel>
     </section>
   </v-card-text>
 </v-card>

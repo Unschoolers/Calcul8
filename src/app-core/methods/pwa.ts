@@ -53,6 +53,7 @@ function buildUpdateRefreshUrl(): string {
   try {
     const url = new URL(window.location.href);
     url.searchParams.set("app-updated", String(Date.now()));
+    url.searchParams.set("app-update-source", "sw");
     return url.toString();
   } catch {
     return window.location.href;

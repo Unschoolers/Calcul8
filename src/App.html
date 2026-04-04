@@ -434,6 +434,7 @@
           v-if="currentTab === 'wheel'
             && $refs.wheelWindow?.wheelIsCompactLayout
             && !$refs.wheelWindow?.wheelPresentationMode
+            && !$refs.wheelWindow?.wheelMobileInspectorOpen
             && $refs.wheelWindow?.wheelMode === 'config'"
           icon="mdi-tune"
           color="secondary"
@@ -449,7 +450,7 @@
           v-if="currentTab === 'wheel'
             && $refs.wheelWindow?.wheelIsCompactLayout
             && !$refs.wheelWindow?.wheelPresentationMode
-            && $refs.wheelWindow?.wheelMode === 'live'"
+            && !$refs.wheelWindow?.wheelMobileInspectorOpen"
           icon="mdi-chart-box-outline"
           color="secondary"
           size="large"
@@ -461,7 +462,10 @@
         ></v-fab>
 
         <v-fab
-          v-if="currentTab === 'wheel' && $refs.wheelWindow?.wheelIsCompactLayout && !$refs.wheelWindow?.wheelPresentationMode"
+          v-if="currentTab === 'wheel'
+            && $refs.wheelWindow?.wheelIsCompactLayout
+            && !$refs.wheelWindow?.wheelPresentationMode
+            && !$refs.wheelWindow?.wheelMobileInspectorOpen"
           icon="mdi-history"
           color="surface"
           size="large"
@@ -476,6 +480,7 @@
           v-if="currentTab === 'wheel'
             && $refs.wheelWindow?.wheelIsCompactLayout
             && !$refs.wheelWindow?.wheelPresentationMode
+            && !$refs.wheelWindow?.wheelMobileInspectorOpen
             && $refs.wheelWindow?.wheelMode === 'live'"
           icon="mdi-flag-checkered"
           color="warning"

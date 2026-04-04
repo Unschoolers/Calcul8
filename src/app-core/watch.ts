@@ -267,7 +267,7 @@ export const appWatch: AppWatchObject = {
     this.saveWheelSessionToStorage();
   },
 
-  wheelSkippedDeductions: {
+  wheelPendingInventoryIssues: {
     handler() {
       this.saveWheelSessionToStorage();
     },

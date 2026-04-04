@@ -49,7 +49,7 @@ export interface AppWatchObject {
     deep: true;
   };
   activeWheelConfigId(this: AppContext): void;
-  wheelSkippedDeductions: {
+  wheelPendingInventoryIssues: {
     handler(this: AppContext): void;
     deep: true;
   };

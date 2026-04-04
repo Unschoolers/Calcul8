@@ -11,7 +11,7 @@ type BroadcastApp = Pick<
   | "wheelSpinCounts"
   | "wheelLastResult"
   | "wheelSessionUpdatedAt"
-  | "wheelSkippedDeductions"
+  | "wheelPendingInventoryIssues"
   | "googleAuthEpoch"
   | "hasProAccess"
 > & {
@@ -62,7 +62,7 @@ export async function broadcastWheelSession(app: BroadcastApp): Promise<void> {
           wheelLastResult: app.wheelLastResult,
           wheelLastResultColor: app.wheelLastResultColor,
           wheelSessionUpdatedAt: sentAt,
-          wheelSkippedDeductions: app.wheelSkippedDeductions
+          wheelPendingInventoryIssues: app.wheelPendingInventoryIssues
         }
         })
       },

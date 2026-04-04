@@ -1,5 +1,5 @@
 import { broadcastWheelSession } from "../../app-core/methods/ui/wheel-broadcast.ts";
-import type { Lot, Sale, SkippedWheelDeduction, WheelConfig } from "../../types/app.ts";
+import type { Lot, PendingWheelInventoryIssue, Sale, WheelConfig } from "../../types/app.ts";
 import {
     createWheelSale,
     easeOutQuart,
@@ -176,7 +176,7 @@ function getStaticWheelRender(
   return cacheCanvas;
 }
 
-function queueSkippedDeduction(
+function queuePendingInventoryIssue(
   context: Record<string, unknown>,
   params: {
     slot: WheelSlot;
@@ -186,8 +186,8 @@ function queueSkippedDeduction(
     warningText?: string;
   }
 ): void {
-  const skipped = (context.wheelSkippedDeductions || []) as SkippedWheelDeduction[];
-  skipped.push({
+  const pendingIssues = (context.wheelPendingInventoryIssues || []) as PendingWheelInventoryIssue[];
+  pendingIssues.push({
     slotName: params.slot.name,
     slotColor: params.slot.color,
     slotCost: params.slot.cost,
@@ -199,7 +199,7 @@ function queueSkippedDeduction(
     spinNumber: (context.wheelTotalSpins as number) || 0,
     slotSinglesId: params.boundSinglesId ?? null
   });
-  context.wheelSkippedDeductions = [...skipped];
+  context.wheelPendingInventoryIssues = [...pendingIssues];
   context.wheelInventoryWarning = params.warningText || "";
   (context as Record<string, unknown> & { saveWheelSession: () => void }).saveWheelSession();
 }
@@ -397,7 +397,7 @@ export const wheelSpinMethods = {
               tier.boundSinglesId
             );
             if (availableQuantity <= 0) {
-              queueSkippedDeduction(this, {
+              queuePendingInventoryIssue(this, {
                 slot,
                 slotIndex,
                 boundLotId: tier.boundLotId,
@@ -410,7 +410,7 @@ export const wheelSpinMethods = {
         } else if (slot.deductionType === "packs") {
           const remainingPacks = getRemainingPacksForWheelLot(this, tier.boundLotId);
           if (remainingPacks < slot.packsCount) {
-            queueSkippedDeduction(this, {
+            queuePendingInventoryIssue(this, {
               slot,
               slotIndex,
               boundLotId: tier.boundLotId,

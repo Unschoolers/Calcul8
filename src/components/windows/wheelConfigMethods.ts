@@ -37,7 +37,7 @@ function resetLoadedWheelSessionState(context: Record<string, unknown>): void {
   context.wheelLastResult = "";
   context.wheelInventoryWarning = "";
   context.wheelSessionCostAdjustment = 0;
-  context.wheelSkippedDeductions = [];
+  context.wheelPendingInventoryIssues = [];
   context.wheelEndingSession = false;
   context.wheelChaseDialog = false;
   context.wheelChaseReplacementSinglesId = null;
@@ -218,9 +218,9 @@ export const wheelConfigMethods = {
       }
       (this as Record<string, unknown>).wheelSessionCostAdjustment = costAdjustment;
     }
-    this.wheelSkippedDeductions = ((this.wheelSkippedDeductions || []) as Array<{ slotTier: string }>).filter(
+    this.wheelPendingInventoryIssues = ((this.wheelPendingInventoryIssues || []) as Array<{ slotTier: string }>).filter(
       (entry) => newTierIds.has(entry.slotTier)
-    ) as typeof this.wheelSkippedDeductions;
+    ) as typeof this.wheelPendingInventoryIssues;
     (this as Record<string, unknown>).wheelEndingSession = false;
     (this as Record<string, unknown>).wheelChaseDialog = false;
     (this as Record<string, unknown>).wheelChaseReplacementSinglesId = null;

@@ -1,6 +1,6 @@
 import { nextTick } from "vue";
 import { broadcastWheelSession } from "../../app-core/methods/ui/wheel-broadcast.ts";
-import type { Lot, Sale, SkippedWheelDeduction, WheelConfig } from "../../types/app.ts";
+import type { Lot, PendingWheelInventoryIssue, Sale, WheelConfig } from "../../types/app.ts";
 import { getScopedWheelConfigSessionStorageKey, getScopedWheelSessionStorageKey } from "../../app-core/storageKeys.ts";
 import { getActiveStorageScope } from "../../app-core/workspace-scope.ts";
 import { buildSlotsFromConfig, createWheelSale, remapSpinCountsByTier, type WheelSlot } from "./wheelHelpers.ts";
@@ -333,7 +333,7 @@ export const wheelSessionMethods = {
     this.wheelLastResult = "";
     (this as Record<string, unknown>).wheelInventoryWarning = "";
     (this as Record<string, unknown>).wheelLastResultColor = "rgb(var(--v-theme-primary))";
-    this.wheelSkippedDeductions = [];
+    this.wheelPendingInventoryIssues = [];
     (this as Record<string, unknown>).wheelEndingSession = false;
     (this as Record<string, unknown>).wheelEndSessionReviewActive = false;
     (this as Record<string, unknown>).wheelSpinHash = "";
@@ -393,26 +393,26 @@ export const wheelSessionMethods = {
   startEndWheelSession(this: Record<string, unknown>): void {
     const vm = this as Record<string, unknown> & { resetWheelSession: () => void };
     (this as Record<string, unknown>).wheelEndSessionReviewActive = false;
-    const skipped = (this.wheelSkippedDeductions || []) as SkippedWheelDeduction[];
-    if (!skipped.length) {
+    const pendingIssues = (this.wheelPendingInventoryIssues || []) as PendingWheelInventoryIssue[];
+    if (!pendingIssues.length) {
       vm.resetWheelSession();
       return;
     }
     const config = (this as Record<string, unknown>).activeWheelConfig as WheelConfig | null;
     const currentLotId = (this.currentLotId as number | null) ?? null;
-    for (const entry of skipped) {
+    for (const entry of pendingIssues) {
       if (!entry.selectedLotId) {
         const tier = config?.tiers.find((t) => t.id === entry.slotTier);
         entry.selectedLotId = (tier?.boundLotId) ?? currentLotId;
       }
     }
-    this.wheelSkippedDeductions = [...skipped];
+    this.wheelPendingInventoryIssues = [...pendingIssues];
     (this as Record<string, unknown>).wheelEndingSession = true;
   },
 
   confirmBatchSale(this: Record<string, unknown>, index: number): void {
-    const skipped = (this.wheelSkippedDeductions || []) as SkippedWheelDeduction[];
-    const entry = skipped[index];
+    const pendingIssues = (this.wheelPendingInventoryIssues || []) as PendingWheelInventoryIssue[];
+    const entry = pendingIssues[index];
     if (!entry?.selectedLotId) return;
 
     const config = (this as Record<string, unknown>).activeWheelConfig as WheelConfig | null;
@@ -433,10 +433,10 @@ export const wheelSessionMethods = {
     }
     appendWheelSessionNetRevenue(this, sale);
 
-    skipped.splice(index, 1);
-    this.wheelSkippedDeductions = [...skipped];
+    pendingIssues.splice(index, 1);
+    this.wheelPendingInventoryIssues = [...pendingIssues];
 
-    if (!skipped.length) {
+    if (!pendingIssues.length) {
       (this as Record<string, unknown>).wheelEndingSession = false;
     }
     (this as Record<string, unknown>).wheelSessionUpdatedAt = Date.now();
@@ -446,19 +446,19 @@ export const wheelSessionMethods = {
 
   confirmAllBatchSales(this: Record<string, unknown>): void {
     const vm = this as Record<string, unknown> & { confirmBatchSale: (i: number) => void };
-    const skipped = (this.wheelSkippedDeductions || []) as SkippedWheelDeduction[];
-    for (let i = skipped.length - 1; i >= 0; i--) {
-      if (skipped[i]!.selectedLotId) {
+    const pendingIssues = (this.wheelPendingInventoryIssues || []) as PendingWheelInventoryIssue[];
+    for (let i = pendingIssues.length - 1; i >= 0; i--) {
+      if (pendingIssues[i]!.selectedLotId) {
         vm.confirmBatchSale(i);
       }
     }
   },
 
   dismissBatchSale(this: Record<string, unknown>, index: number): void {
-    const skipped = (this.wheelSkippedDeductions || []) as SkippedWheelDeduction[];
-    skipped.splice(index, 1);
-    this.wheelSkippedDeductions = [...skipped];
-    if (!skipped.length) {
+    const pendingIssues = (this.wheelPendingInventoryIssues || []) as PendingWheelInventoryIssue[];
+    pendingIssues.splice(index, 1);
+    this.wheelPendingInventoryIssues = [...pendingIssues];
+    if (!pendingIssues.length) {
       (this as Record<string, unknown>).wheelEndingSession = false;
     }
     (this as Record<string, unknown>).wheelSessionUpdatedAt = Date.now();
@@ -483,7 +483,7 @@ export const wheelSessionMethods = {
       wheelSessionCostAdjustment: (this as Record<string, unknown>).wheelSessionCostAdjustment,
       wheelFairnessHistory: (this as Record<string, unknown>).wheelFairnessHistory,
       wheelChaseTallyHistory: (this as Record<string, unknown>).wheelChaseTallyHistory,
-      wheelSkippedDeductions: this.wheelSkippedDeductions,
+      wheelPendingInventoryIssues: this.wheelPendingInventoryIssues,
       wheelCurrentAngle: this.wheelCurrentAngle,
       wheelLastResult: this.wheelLastResult,
       wheelLastResultColor: (this as Record<string, unknown>).wheelLastResultColor
@@ -543,7 +543,7 @@ export const wheelSessionMethods = {
         ? session.wheelFairnessHistory.slice(-20)
         : [];
       (this as Record<string, unknown>).wheelChaseTallyHistory = session.wheelChaseTallyHistory || [];
-      this.wheelSkippedDeductions = session.wheelSkippedDeductions || [];
+      this.wheelPendingInventoryIssues = session.wheelPendingInventoryIssues || session.wheelSkippedDeductions || [];
       this.wheelCurrentAngle = session.wheelCurrentAngle || 0;
       this.wheelLastResult = session.wheelLastResult || "";
       (this as Record<string, unknown>).wheelLastResultColor = session.wheelLastResultColor || "rgb(var(--v-theme-primary))";

@@ -22,3 +22,10 @@ test("service worker precache only includes stable root install assets", () => {
   assert.match(swSource, /const CORE_ASSETS = \[[\s\S]*"\.\/"[\s\S]*"\.\/index\.html"[\s\S]*"\.\/manifest\.webmanifest"[\s\S]*\];/);
   assert.doesNotMatch(swSource, /icons\/icon-192\.png|icons\/icon-512\.png|icons\/apple-touch-icon\.png/);
 });
+
+test("service worker treats explicit app-update refreshes as network-only navigations", () => {
+  const swSource = readRepoFile("public/sw.js");
+
+  assert.match(swSource, /function isUpdateRefreshRequest\(url\)\s*\{\s*return url\.searchParams\.has\("app-updated"\);?\s*\}/);
+  assert.match(swSource, /if \(isUpdateRefreshRequest\(url\)\) \{[\s\S]*fetchFresh\(request\)[\s\S]*return createOfflineResponse\(\);[\s\S]*\}/);
+});

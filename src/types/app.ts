@@ -70,7 +70,7 @@ export interface WheelConfig {
   updatedAt?: string;
 }
 
-export interface SkippedWheelDeduction {
+export interface PendingWheelInventoryIssue {
   slotName: string;
   slotColor: string;
   slotCost: number;
@@ -553,5 +553,5 @@ export interface AppState extends LotSetup {
   wheelLastResult: string;
   wheelSessionUpdatedAt: number;
   wheelSessionLotSelections: Record<string, number | null>;
-  wheelSkippedDeductions: SkippedWheelDeduction[];
+  wheelPendingInventoryIssues: PendingWheelInventoryIssue[];
 }

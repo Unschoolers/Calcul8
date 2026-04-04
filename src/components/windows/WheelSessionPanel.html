@@ -74,7 +74,7 @@
       @click="requestWheelSessionEnd">
       <v-icon start size="small">mdi-flag-checkered</v-icon>
       {{ t('wheelEndSessionAction') }}
-      <v-badge v-if="wheelSkippedDeductions.length" :content="wheelSkippedDeductions.length" color="error"
+      <v-badge v-if="wheelPendingInventoryIssues.length" :content="wheelPendingInventoryIssues.length" color="error"
         inline class="ml-2"></v-badge>
     </v-btn>
   </template>

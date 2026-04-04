@@ -2,7 +2,7 @@ import type {
     Sale,
     SaleType,
     SinglesSaleLine,
-    SkippedWheelDeduction,
+    PendingWheelInventoryIssue,
     WheelConfig
 } from "../../types/app.ts";
 import type { AppContext, AppMethodState } from "../context-app.ts";
@@ -262,7 +262,7 @@ export const salesMethods: ThisType<AppContext> & Pick<
     this.wheelLastResult = "";
     this.wheelSessionUpdatedAt = 0;
     this.wheelSessionLotSelections = {};
-    this.wheelSkippedDeductions = [];
+    this.wheelPendingInventoryIssues = [];
     wheelSessionState.wheelSessionNetRevenue = 0;
     wheelSessionState.wheelSessionCostAdjustment = 0;
     wheelSessionState.wheelFairnessHistory = [];
@@ -304,8 +304,10 @@ export const salesMethods: ThisType<AppContext> & Pick<
         if (session.wheelSessionLotSelections && typeof session.wheelSessionLotSelections === "object") {
           this.wheelSessionLotSelections = session.wheelSessionLotSelections as Record<string, number | null>;
         }
-        if (Array.isArray(session.wheelSkippedDeductions)) {
-          this.wheelSkippedDeductions = session.wheelSkippedDeductions as SkippedWheelDeduction[];
+        if (Array.isArray(session.wheelPendingInventoryIssues)) {
+          this.wheelPendingInventoryIssues = session.wheelPendingInventoryIssues as PendingWheelInventoryIssue[];
+        } else if (Array.isArray(session.wheelSkippedDeductions)) {
+          this.wheelPendingInventoryIssues = session.wheelSkippedDeductions as PendingWheelInventoryIssue[];
         }
         if (Number.isFinite(Number(session.wheelCurrentAngle))) {
           this.wheelCurrentAngle = Number(session.wheelCurrentAngle) || 0;
@@ -354,7 +356,7 @@ export const salesMethods: ThisType<AppContext> & Pick<
         wheelLastResult: this.wheelLastResult,
         wheelSessionUpdatedAt: this.wheelSessionUpdatedAt,
         wheelSessionLotSelections: this.wheelSessionLotSelections,
-        wheelSkippedDeductions: this.wheelSkippedDeductions,
+        wheelPendingInventoryIssues: this.wheelPendingInventoryIssues,
         wheelSessionNetRevenue: wheelSessionState.wheelSessionNetRevenue ?? preserved.wheelSessionNetRevenue ?? 0,
         wheelSessionCostAdjustment: wheelSessionState.wheelSessionCostAdjustment ?? preserved.wheelSessionCostAdjustment ?? 0,
         wheelFairnessHistory: wheelSessionState.wheelFairnessHistory ?? preserved.wheelFairnessHistory ?? [],
