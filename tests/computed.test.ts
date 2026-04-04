@@ -72,7 +72,7 @@ test("computed auth flags and decoded Google profile fields resolve token and ca
       ""
     );
 
-    const token = createJwt({ name: " Token Name ", email: " token@example.com ", picture: " token.png " });
+    const token = createJwt({ sub: "google-user-123", name: " Token Name ", email: " token@example.com ", picture: " token.png " });
     data.set(GOOGLE_TOKEN_KEY, token);
     data.set(GOOGLE_PROFILE_CACHE_KEY, JSON.stringify({
       name: "Cache Name",
@@ -84,6 +84,10 @@ test("computed auth flags and decoded Google profile fields resolve token and ca
     assert.equal(
       appComputed.isGoogleSignedIn.call(signedVm as unknown as Parameters<typeof appComputed.isGoogleSignedIn>[0]),
       true
+    );
+    assert.equal(
+      appComputed.googleProfileUserId.call(signedVm as unknown as Parameters<typeof appComputed.googleProfileUserId>[0]),
+      "google-user-123"
     );
     assert.equal(
       appComputed.googleProfileName.call(signedVm as unknown as Parameters<typeof appComputed.googleProfileName>[0]),

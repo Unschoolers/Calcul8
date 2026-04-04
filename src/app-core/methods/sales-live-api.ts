@@ -356,6 +356,40 @@ export async function fetchWorkspaceRealtimeSubscribeToken(
   };
 }
 
+export async function fetchWorkspacePresenceRealtimeSubscribeToken(
+  app: SalesLiveApiApp
+): Promise<WorkspaceRealtimeSubscribeToken | null> {
+  if (!canUseAuthoritativeSalesLiveApi()) return null;
+  if (app.activeScopeType !== "workspace" || !app.activeWorkspaceId) return null;
+
+  const body = await requestJson(
+    app,
+    `/workspaces/${encodeURIComponent(String(app.activeWorkspaceId))}/realtime-token`,
+    {
+      method: "GET"
+    },
+    "Failed to create workspace realtime subscribe token.",
+    {
+      expireAuthOn401: false
+    }
+  ) as RealtimeTokenResponse | null;
+
+  const room = String(body?.room ?? "").trim();
+  if (!room) return null;
+  const rooms = Array.isArray(body?.rooms)
+    ? body?.rooms.map((entry) => String(entry ?? "").trim()).filter(Boolean)
+    : [room];
+
+  const rawToken = String(body?.token ?? "").trim();
+  const expiresAt = Number(body?.expiresAt);
+  return {
+    room,
+    rooms,
+    token: rawToken || null,
+    expiresAt: Number.isFinite(expiresAt) ? Math.floor(expiresAt) : null
+  };
+}
+
 export async function saveAuthoritativeLivePricing(
   app: SalesLiveApiApp,
   lotId: number,

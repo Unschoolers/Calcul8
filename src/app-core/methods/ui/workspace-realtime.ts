@@ -6,6 +6,7 @@ import { assignWheelPendingInventoryIssues } from "../../shared/wheel-session-co
 import {
     cacheAuthoritativeSales,
     canUseAuthoritativeSalesLiveApi,
+    fetchWorkspacePresenceRealtimeSubscribeToken,
     fetchWorkspaceRealtimeSubscribeToken,
     normalizeLivePricing,
     normalizeSale
@@ -113,7 +114,7 @@ function setWorkspaceRealtimeStatus(app: RealtimeApp, status: WorkspaceRealtimeS
 }
 
 function shouldUseWorkspaceRealtime(app: RealtimeApp): boolean {
-  if (app.isOffline || !app.currentLotId || app.activeScopeType !== "workspace" || !app.activeWorkspaceId) {
+  if (app.isOffline || app.activeScopeType !== "workspace" || !app.activeWorkspaceId) {
     return false;
   }
 
@@ -138,8 +139,16 @@ function buildWorkspaceWheelRoom(workspaceId: string): string {
 
 function getDesiredRealtimeSubscription(app: RealtimeApp): WorkspaceRealtimeDesiredSubscription | null {
   if (!shouldUseWorkspaceRealtime(app)) return null;
-  const lotRoom = buildWorkspaceLotRoom(app.activeWorkspaceId as string, app.currentLotId as number);
   const presenceRoom = buildWorkspacePresenceRoom(app.activeWorkspaceId as string);
+  if (!app.currentLotId) {
+    return {
+      lotRoom: "",
+      presenceRoom,
+      wheelRoom: "",
+      rooms: [presenceRoom]
+    };
+  }
+  const lotRoom = buildWorkspaceLotRoom(app.activeWorkspaceId as string, app.currentLotId as number);
   const wheelRoom = buildWorkspaceWheelRoom(app.activeWorkspaceId as string);
   return {
     lotRoom,
@@ -465,10 +474,12 @@ async function subscribeRealtimeSocket(
   socket: WebSocket,
   subscribeAttemptId: number
 ): Promise<void> {
-  if (state.socket !== socket || state.rooms.length === 0 || !app.currentLotId) return;
+  if (state.socket !== socket || state.rooms.length === 0) return;
 
   try {
-    const subscribeToken = await fetchWorkspaceRealtimeSubscribeToken(app as never, app.currentLotId);
+    const subscribeToken = app.currentLotId
+      ? await fetchWorkspaceRealtimeSubscribeToken(app as never, app.currentLotId)
+      : await fetchWorkspacePresenceRealtimeSubscribeToken(app as never);
     if (
       state.socket !== socket
       || state.subscribeAttemptId !== subscribeAttemptId

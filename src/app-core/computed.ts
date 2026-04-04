@@ -18,10 +18,24 @@ const WORKSPACE_MEMBER_RECENT_WINDOW_MS = 10 * 60 * 1000;
 
 function getWorkspacePresenceStateForUser(
   presenceByUserId: Record<string, { isOnline: boolean; lastSeenAt?: string }>,
-  userId: string
+  userId: string,
+  options?: {
+    currentUserId?: string;
+    workspaceRealtimeStatus?: WorkspaceRealtimeStatus;
+  }
 ): WorkspacePresenceState {
   const presence = presenceByUserId[userId];
-  if (!presence) return "offline";
+  if (!presence) {
+    const currentUserId = String(options?.currentUserId || "").trim();
+    if (
+      currentUserId
+      && currentUserId === userId
+      && options?.workspaceRealtimeStatus === "connected"
+    ) {
+      return "online";
+    }
+    return "offline";
+  }
   if (presence.isOnline) return "online";
 
   const lastSeenAt = Date.parse(String(presence.lastSeenAt || ""));
@@ -35,11 +49,15 @@ function getWorkspacePresenceStateForUser(
 function sortWorkspaceMembersForAvatarStack(
   members: WorkspaceMember[],
   presenceByUserId: Record<string, { isOnline: boolean; lastSeenAt?: string }>,
+  options?: {
+    currentUserId?: string;
+    workspaceRealtimeStatus?: WorkspaceRealtimeStatus;
+  },
   preferredLanguage?: string
 ): WorkspaceMember[] {
   return [...members].sort((left, right) => {
-    const leftPresence = getWorkspacePresenceStateForUser(presenceByUserId, left.userId);
-    const rightPresence = getWorkspacePresenceStateForUser(presenceByUserId, right.userId);
+    const leftPresence = getWorkspacePresenceStateForUser(presenceByUserId, left.userId, options);
+    const rightPresence = getWorkspacePresenceStateForUser(presenceByUserId, right.userId, options);
     const presenceRank = { online: 0, recent: 1, offline: 2 } as const;
     if (leftPresence !== rightPresence) {
       return presenceRank[leftPresence] - presenceRank[rightPresence];
@@ -203,6 +221,10 @@ export const appComputed: AppComputedObject = {
     return sortWorkspaceMembersForAvatarStack(
       this.workspaceMembers.filter((member) => member.status === "active"),
       this.workspacePresenceByUserId,
+      {
+        currentUserId: this.googleProfileUserId,
+        workspaceRealtimeStatus: this.workspaceRealtimeStatus
+      },
       this.preferredLanguage
     ).slice(0, WORKSPACE_AVATAR_STACK_LIMIT);
   },

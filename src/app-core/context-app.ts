@@ -32,6 +32,7 @@ import type { AppTranslationKey } from "./i18n/index.ts";
 export interface AppComputedState {
   isDark: boolean;
   isGoogleSignedIn: boolean;
+  googleProfileUserId: string;
   googleProfileName: string;
   googleProfileEmail: string;
   googleProfilePicture: string;

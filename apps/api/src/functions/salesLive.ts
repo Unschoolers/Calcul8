@@ -16,6 +16,7 @@ import {
   getLotLivePricingForActor,
   listLotSalesForActor,
   mintLotRealtimeTokenForActor,
+  mintWorkspaceRealtimeTokenForActor,
   saveLotLivePricingForActor,
   toSaleResponse,
   upsertLotSaleForActor
@@ -439,6 +440,36 @@ export async function lotRealtimeTokenGet(
   }
 }
 
+export async function workspaceRealtimeTokenGet(
+  request: HttpRequest,
+  context: InvocationContext
+): Promise<HttpResponseInit> {
+  const config = getConfig();
+  const guardResponse = maybeHandleHttpGuards(request, config);
+  if (guardResponse) return guardResponse;
+
+  try {
+    const actorUserId = await resolveUserId(request, config, {
+      telemetry: {
+        logger: context,
+        route: "workspace_realtime_token_get",
+        workspaceScope: "workspace"
+      }
+    });
+    const workspaceId = requireRouteParam(request, "workspaceId");
+    const responseBody = await mintWorkspaceRealtimeTokenForActor(config, actorUserId, workspaceId);
+    return jsonResponse(request, config, 200, responseBody);
+  } catch (error) {
+    return handleEntityError(
+      request,
+      context,
+      error,
+      "Failed to mint workspace realtime subscribe token.",
+      "workspace_realtime_token_get"
+    );
+  }
+}
+
 async function lotLivePricingRoute(
   request: HttpRequest,
   context: InvocationContext
@@ -480,4 +511,11 @@ app.http("lotRealtimeTokenRoute", {
   authLevel: "anonymous",
   route: "lots/{lotId}/realtime-token",
   handler: lotRealtimeTokenGet
+});
+
+app.http("workspaceRealtimeTokenRoute", {
+  methods: ["GET", "OPTIONS"],
+  authLevel: "anonymous",
+  route: "workspaces/{workspaceId}/realtime-token",
+  handler: workspaceRealtimeTokenGet
 });

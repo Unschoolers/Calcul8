@@ -284,3 +284,41 @@ export async function mintLotRealtimeTokenForActor(
     expiresAt
   };
 }
+
+export async function mintWorkspaceRealtimeTokenForActor(
+  config: ApiConfig,
+  actorUserId: string,
+  workspaceId: string
+): Promise<{
+  workspaceId: string;
+  room: string;
+  rooms: string[];
+  token: string | null;
+  expiresAt: number;
+}> {
+  const syncScope = resolveSyncScope(actorUserId, workspaceId);
+  await assertSyncScopeAccess(
+    syncScope,
+    (userId, nextWorkspaceId) => hasWorkspaceMembership(config, userId, nextWorkspaceId)
+  );
+
+  const room = buildWorkspacePresenceRealtimeRoom(workspaceId);
+  const rooms = [room];
+  const tokenSecret = String(config.realtimeTokenSecret ?? "").trim();
+  if (!tokenSecret && config.apiEnv === "prod") {
+    throw new HttpError(503, "Realtime subscribe signing is not configured.");
+  }
+  const expiresAt = buildRealtimeTokenExpiryEpochSeconds();
+
+  return {
+    workspaceId,
+    room,
+    rooms,
+    token: tokenSecret ? signRealtimeSubscribeToken(tokenSecret, {
+      rooms,
+      userId: actorUserId,
+      exp: expiresAt
+    }) : null,
+    expiresAt
+  };
+}

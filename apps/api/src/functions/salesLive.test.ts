@@ -82,6 +82,7 @@ vi.mock("../lib/auth", async () => {
 import {
   lotLivePricingGet,
   lotLivePricingSave,
+  workspaceRealtimeTokenGet,
   lotRealtimeTokenGet,
   lotSalesDelete,
   lotSalesList,
@@ -338,6 +339,42 @@ test("lotRealtimeTokenGet returns a signed room token for workspace lots", async
     "workspace:ws_dcb4d6f021637411:lot:1773766061603",
     "workspace:ws_dcb4d6f021637411:presence",
     "workspace:ws_dcb4d6f021637411:wheel"
+  ]);
+  assert.match(body.token, /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
+  assert.equal(typeof body.expiresAt, "number");
+
+  const [encodedPayload] = body.token.split(".");
+  const decodedPayload = JSON.parse(Buffer.from(encodedPayload, "base64url").toString("utf8")) as {
+    rooms: string[];
+    userId?: string;
+    exp?: number;
+  };
+  assert.deepEqual(decodedPayload.rooms, body.rooms);
+  assert.equal(decodedPayload.userId, "user-a");
+  assert.equal(decodedPayload.exp, body.expiresAt);
+});
+
+test("workspaceRealtimeTokenGet returns a signed room token for workspace presence", async () => {
+  getConfigMock.mockReturnValue({
+    ...createConfig(),
+    realtimeTokenSecret: "token-secret"
+  });
+
+  const response = await workspaceRealtimeTokenGet(
+    createRequest("GET", undefined, { workspaceId: "ws_dcb4d6f021637411" }) as never,
+    createContext() as never
+  );
+
+  assert.equal(response.status, 200);
+  const body = response.jsonBody as {
+    room: string;
+    rooms: string[];
+    token: string;
+    expiresAt: number;
+  };
+  assert.equal(body.room, "workspace:ws_dcb4d6f021637411:presence");
+  assert.deepEqual(body.rooms, [
+    "workspace:ws_dcb4d6f021637411:presence"
   ]);
   assert.match(body.token, /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/);
   assert.equal(typeof body.expiresAt, "number");

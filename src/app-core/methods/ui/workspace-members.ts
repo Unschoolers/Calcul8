@@ -158,11 +158,18 @@ export async function loadWorkspaceMembers(
 }
 
 export function getWorkspaceMemberPresenceStateFromApp(
-  app: Pick<AppContext, "workspacePresenceByUserId">,
+  app: Pick<AppContext, "workspacePresenceByUserId" | "workspaceRealtimeStatus" | "googleProfileUserId">,
   member: Pick<WorkspaceMember, "userId">
 ): "online" | "recent" | "offline" {
-  const presence = app.workspacePresenceByUserId[String(member.userId || "").trim()];
-  if (!presence) return "offline";
+  const memberUserId = String(member.userId || "").trim();
+  const presence = app.workspacePresenceByUserId[memberUserId];
+  if (!presence) {
+    const currentUserId = String(app.googleProfileUserId || "").trim();
+    if (currentUserId && currentUserId === memberUserId && app.workspaceRealtimeStatus === "connected") {
+      return "online";
+    }
+    return "offline";
+  }
   if (presence.isOnline) return "online";
 
   const lastSeenAtMs = Date.parse(String(presence.lastSeenAt || ""));

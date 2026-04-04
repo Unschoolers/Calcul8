@@ -2,6 +2,7 @@ import { GOOGLE_PROFILE_CACHE_KEY, GOOGLE_TOKEN_KEY } from "../methods/ui/shared
 import type { AppComputedObject } from "../context-contracts.ts";
 
 interface GoogleJwtPayload {
+  sub?: string;
   name?: string;
   email?: string;
   picture?: string;
@@ -45,6 +46,7 @@ function resolveGoogleProfile(idToken: string): GoogleJwtPayload {
   const fromToken = decodeGoogleJwtPayload(idToken) ?? {};
   const fromCache = readCachedGoogleProfile() ?? {};
   return {
+    sub: (fromToken.sub || "").trim(),
     name: (fromToken.name || fromCache.name || "").trim(),
     email: (fromToken.email || fromCache.email || "").trim(),
     picture: (fromToken.picture || fromCache.picture || "").trim()
@@ -55,6 +57,7 @@ export const authProfileComputed: Pick<
   AppComputedObject,
   "isDark" |
   "isGoogleSignedIn" |
+  "googleProfileUserId" |
   "googleProfileName" |
   "googleProfileEmail" |
   "googleProfilePicture" |
@@ -67,6 +70,13 @@ export const authProfileComputed: Pick<
   isGoogleSignedIn(): boolean {
     void this.googleAuthEpoch;
     return Boolean((localStorage.getItem(GOOGLE_TOKEN_KEY) || "").trim());
+  },
+
+  googleProfileUserId(): string {
+    void this.googleAuthEpoch;
+    const token = (localStorage.getItem(GOOGLE_TOKEN_KEY) || "").trim();
+    if (!token) return "";
+    return resolveGoogleProfile(token).sub || "";
   },
 
   googleProfileName(): string {

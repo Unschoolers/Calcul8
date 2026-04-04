@@ -34,6 +34,7 @@ import {
   deleteAuthoritativeSale,
   fetchAuthoritativeLivePricing,
   fetchAuthoritativeSales,
+  fetchWorkspacePresenceRealtimeSubscribeToken,
   fetchWorkspaceRealtimeSubscribeToken,
   normalizeSale,
   saveAuthoritativeLivePricing,
@@ -489,6 +490,36 @@ test("fetchWorkspaceRealtimeSubscribeToken requests a workspace-scoped token", a
   assert.equal(
     fetchAuthenticatedApiResponseMock.mock.calls[0]?.[1],
     "/lots/6/realtime-token?workspaceId=beta"
+  );
+});
+
+test("fetchWorkspacePresenceRealtimeSubscribeToken requests a workspace-level token", async () => {
+  fetchAuthenticatedApiResponseMock.mockResolvedValueOnce(new Response(JSON.stringify({
+    room: "workspace:beta:presence",
+    rooms: ["workspace:beta:presence"],
+    token: "presence-token",
+    expiresAt: 1760000001
+  }), {
+    status: 200,
+    headers: {
+      "Content-Type": "application/json"
+    }
+  }));
+
+  const tokenPayload = await fetchWorkspacePresenceRealtimeSubscribeToken(createApp({
+    activeScopeType: "workspace",
+    activeWorkspaceId: "beta"
+  }));
+
+  assert.deepEqual(tokenPayload, {
+    room: "workspace:beta:presence",
+    rooms: ["workspace:beta:presence"],
+    token: "presence-token",
+    expiresAt: 1760000001
+  });
+  assert.equal(
+    fetchAuthenticatedApiResponseMock.mock.calls[0]?.[1],
+    "/workspaces/beta/realtime-token"
   );
 });
 

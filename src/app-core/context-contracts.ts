@@ -83,6 +83,7 @@ export type NumberArrayProxyComputed = {
 export interface AppComputedObject {
   isDark(this: AppContext): boolean;
   isGoogleSignedIn(this: AppContext): boolean;
+  googleProfileUserId(this: AppContext): string;
   googleProfileName(this: AppContext): string;
   googleProfileEmail(this: AppContext): string;
   googleProfilePicture(this: AppContext): string;

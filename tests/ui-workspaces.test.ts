@@ -90,6 +90,8 @@ function createContext() {
     availableWorkspaces: [] as Array<{ workspaceId: string; name: string; role: "owner" | "member"; status: "active" }>,
     workspaceMembers: [] as Array<{ userId: string; workspaceId: string; role: "owner" | "member"; status: "active" | "removed" | "disabled"; updatedAt: string; displayName?: string; photoUrl?: string }>,
     workspacePresenceByUserId: {},
+    workspaceRealtimeStatus: "idle" as const,
+    googleProfileUserId: "",
     pendingWorkspaceInviteToken: "",
     pendingWorkspaceInviteWorkspaceId: null as string | null,
     pendingWorkspaceInviteWorkspaceName: "",
@@ -371,6 +373,22 @@ test("workspace member presence helpers return compact menu and modal states", a
   assert.match(uiWorkspaceMethods.getWorkspaceMemberPresenceLabel.call(ctx, { userId: "member-1" }), /^Active \d+m ago$/);
   assert.equal(uiWorkspaceMethods.getWorkspaceMemberPresenceState.call(ctx, { userId: "missing" }), "offline");
   assert.equal(uiWorkspaceMethods.getWorkspaceMemberPresenceLabel.call(ctx, { userId: "missing" }), "Offline");
+});
+
+test("workspace member presence treats the signed-in user as online when realtime is connected but self presence is still missing", async () => {
+  const ctx = createContext();
+  ctx.googleProfileUserId = "owner-1";
+  ctx.workspaceRealtimeStatus = "connected";
+  ctx.workspacePresenceByUserId = {
+    "member-1": {
+      userId: "member-1",
+      isOnline: true,
+      lastSeenAt: "2026-03-20T00:00:00Z"
+    }
+  };
+
+  assert.equal(uiWorkspaceMethods.getWorkspaceMemberPresenceState.call(ctx, { userId: "owner-1" }), "online");
+  assert.equal(uiWorkspaceMethods.getWorkspaceMemberPresenceLabel.call(ctx, { userId: "owner-1" }), "Online now");
 });
 
 test("createWorkspaceJoinLink copies the absolute invite URL", async () => {

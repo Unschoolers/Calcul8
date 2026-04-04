@@ -5,6 +5,7 @@ import { createSyncPayload, getSyncPayloadSignature } from "../src/app-core/meth
 const {
   canUseAuthoritativeSalesLiveApiMock,
   fetchWorkspaceRealtimeSubscribeTokenMock,
+  fetchWorkspacePresenceRealtimeSubscribeTokenMock,
   cacheAuthoritativeSalesMock,
   normalizeSaleMock,
   normalizeLivePricingMock,
@@ -12,6 +13,7 @@ const {
 } = vi.hoisted(() => ({
   canUseAuthoritativeSalesLiveApiMock: vi.fn(),
   fetchWorkspaceRealtimeSubscribeTokenMock: vi.fn(),
+  fetchWorkspacePresenceRealtimeSubscribeTokenMock: vi.fn(),
   cacheAuthoritativeSalesMock: vi.fn(),
   normalizeSaleMock: vi.fn(),
   normalizeLivePricingMock: vi.fn(),
@@ -21,6 +23,7 @@ const {
 vi.mock("../src/app-core/methods/sales-live-api.ts", () => ({
   canUseAuthoritativeSalesLiveApi: canUseAuthoritativeSalesLiveApiMock,
   fetchWorkspaceRealtimeSubscribeToken: fetchWorkspaceRealtimeSubscribeTokenMock,
+  fetchWorkspacePresenceRealtimeSubscribeToken: fetchWorkspacePresenceRealtimeSubscribeTokenMock,
   cacheAuthoritativeSales: cacheAuthoritativeSalesMock,
   normalizeSale: normalizeSaleMock,
   normalizeLivePricing: normalizeLivePricingMock
@@ -157,6 +160,14 @@ beforeEach(() => {
     token: "signed-token",
     expiresAt: 1760000000
   });
+  fetchWorkspacePresenceRealtimeSubscribeTokenMock.mockResolvedValue({
+    room: "workspace:ws_dcb4d6f021637411:presence",
+    rooms: [
+      "workspace:ws_dcb4d6f021637411:presence"
+    ],
+    token: "presence-token",
+    expiresAt: 1760000000
+  });
   normalizeSaleMock.mockImplementation((value: unknown) => value);
   normalizeLivePricingMock.mockImplementation((value: unknown) => value);
   vi.spyOn(Math, "random").mockReturnValue(0.5);
@@ -208,6 +219,43 @@ test("refreshWorkspaceRealtime connects to prod socket host and subscribes with 
       "workspace:ws_dcb4d6f021637411:lot:1773766061603",
       "workspace:ws_dcb4d6f021637411:presence",
       "workspace:ws_dcb4d6f021637411:wheel"
+    ]
+  });
+
+  assert.equal(app.workspaceRealtimeStatus, "connected");
+});
+
+test("refreshWorkspaceRealtime keeps workspace presence alive without a selected lot", async () => {
+  const app = createApp({
+    currentLotId: null,
+    currentTab: "config"
+  });
+
+  refreshWorkspaceRealtime(app as never);
+  assert.equal(app.workspaceRealtimeStatus, "connecting");
+
+  assert.equal(FakeWebSocket.instances.length, 1);
+  const socket = FakeWebSocket.instances[0]!;
+  assert.equal(socket.url, "wss://ws.whatfees.ca/socket");
+
+  socket.triggerOpen();
+  await flushMicrotasks();
+
+  assert.equal(fetchWorkspaceRealtimeSubscribeTokenMock.mock.calls.length, 0);
+  assert.equal(fetchWorkspacePresenceRealtimeSubscribeTokenMock.mock.calls.length, 1);
+  assert.equal(fetchWorkspacePresenceRealtimeSubscribeTokenMock.mock.calls[0]?.[0], app);
+  assert.deepEqual(JSON.parse(socket.sent[0] || "{}"), {
+    type: "subscribe",
+    rooms: [
+      "workspace:ws_dcb4d6f021637411:presence"
+    ],
+    token: "presence-token"
+  });
+
+  socket.triggerMessage({
+    type: "subscribed",
+    rooms: [
+      "workspace:ws_dcb4d6f021637411:presence"
     ]
   });
 
