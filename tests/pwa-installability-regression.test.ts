@@ -19,6 +19,6 @@ test("index.html keeps a stable root manifest link for production installability
 test("service worker precache only includes stable root install assets", () => {
   const swSource = readRepoFile("public/sw.js");
 
-  assert.match(swSource, /const CORE_ASSETS = \[\s*"\\.\/",\s*"\\.\/index\.html",\s*"\\.\/manifest\.webmanifest"\s*\];/s);
+  assert.match(swSource, /const CORE_ASSETS = \[[\s\S]*"\.\/"[\s\S]*"\.\/index\.html"[\s\S]*"\.\/manifest\.webmanifest"[\s\S]*\];/);
   assert.doesNotMatch(swSource, /icons\/icon-192\.png|icons\/icon-512\.png|icons\/apple-touch-icon\.png/);
 });
