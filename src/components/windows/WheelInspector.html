@@ -11,15 +11,15 @@
           <v-icon start size="small">
             {{ wheelInspectorTab === 'config' ? 'mdi-cog-outline' : (wheelInspectorTab === 'session' ? 'mdi-chart-box-outline' : 'mdi-history') }}
           </v-icon>
-          {{ wheelInspectorTab === 'config' ? 'Wheel Builder' : (wheelInspectorTab === 'session' ? 'Session' : 'History & Fairness') }}
+          {{ wheelInspectorTab === 'config' ? t('wheelInspectorConfigTitle') : (wheelInspectorTab === 'session' ? t('wheelInspectorSessionTitle') : t('wheelInspectorHistoryTitle')) }}
         </div>
         <div class="wheel-panel-subtitle">
           {{
             wheelInspectorTab === 'config'
-              ? 'Build tiers, sources, and target margin.'
+              ? t('wheelInspectorConfigSubtitle')
               : (wheelInspectorTab === 'session'
-                  ? 'Track spins, revenue, cost, and stock.'
-                  : 'Review fairness and recent spins.')
+                  ? t('wheelInspectorSessionSubtitle')
+                  : t('wheelInspectorHistorySubtitle'))
           }}
         </div>
       </div>
@@ -44,15 +44,15 @@
     >
       <v-btn v-if="wheelMode === 'config'" value="config" size="small">
         <v-icon start size="small">mdi-tune</v-icon>
-        Builder
+        {{ t('wheelInspectorBuilderTabLabel') }}
       </v-btn>
       <v-btn value="session" size="small">
         <v-icon start size="small">mdi-chart-box-outline</v-icon>
-        Session
+        {{ t('wheelInspectorSessionTabLabel') }}
       </v-btn>
       <v-btn value="history" size="small">
         <v-icon start size="small">mdi-history</v-icon>
-        History
+        {{ t('wheelInspectorHistoryTabLabel') }}
       </v-btn>
     </v-btn-toggle>
 
@@ -62,40 +62,40 @@
           <div class="wheel-inspector-hero__title">{{ editingWheelConfig?.name || wheelStageTitle }}</div>
         </div>
         <v-chip size="small" :color="hasPendingWheelChanges ? 'warning' : 'success'" variant="tonal">
-          {{ hasPendingWheelChanges ? 'Pending rebuild' : 'Ready to spin' }}
+          {{ hasPendingWheelChanges ? t('wheelInspectorPendingRebuildLabel') : t('wheelInspectorReadyToSpinLabel') }}
         </v-chip>
       </div>
 
       <div class="wheel-active-config-toolbar">
       <v-select v-model="activeWheelConfigId" :items="wheelConfigItems" item-title="title" item-value="value"
-        label="Active Wheel" variant="outlined" density="compact" hide-details="auto" class="wheel-active-config-select"
+        :label="t('wheelInspectorActiveWheelLabel')" variant="outlined" density="compact" hide-details="auto" class="wheel-active-config-select"
         @update:model-value="loadWheelConfig">
         <template #append>
-          <v-btn icon="mdi-plus" size="x-small" variant="text" title="New wheel"
+          <v-btn icon="mdi-plus" size="x-small" variant="text" :title="t('wheelInspectorNewWheelAction')"
             @click="createNewWheelConfig"></v-btn>
-          <v-btn icon="mdi-pencil-outline" size="x-small" variant="text" title="Edit wheel"
+          <v-btn icon="mdi-pencil-outline" size="x-small" variant="text" :title="t('wheelInspectorEditWheelAction')"
             @click="openWheelManageDialog"></v-btn>
         </template>
       </v-select>
       </div>
 
       <template v-if="editingWheelConfig">
-        <div class="wheel-section-title">Global Settings</div>
+        <div class="wheel-section-title">{{ t('wheelInspectorGlobalSettingsTitle') }}</div>
         <v-row dense class="mb-2">
           <v-col cols="6">
-            <v-text-field v-model.number="editingWheelConfig.spinPrice" label="Spin Price ($)" type="number"
+            <v-text-field v-model.number="editingWheelConfig.spinPrice" :label="t('wheelInspectorSpinPriceLabel')" type="number"
               min="0.5" step="0.5" variant="outlined" density="compact"
               hide-details="auto"></v-text-field>
           </v-col>
           <v-col cols="6">
-            <v-text-field v-model.number="editingWheelConfig.targetMargin" label="Target Margin (%)"
+            <v-text-field v-model.number="editingWheelConfig.targetMargin" :label="t('wheelInspectorTargetMarginLabel')"
               type="number" min="0" max="100" step="5" variant="outlined" density="compact"
               hide-details="auto"></v-text-field>
           </v-col>
         </v-row>
 
         <v-divider class="my-3"></v-divider>
-        <div class="wheel-section-title">Wheel Tiers</div>
+        <div class="wheel-section-title">{{ t('wheelInspectorWheelTiersTitle') }}</div>
 
         <div v-if="wheelBuilderTierGroups.length" class="wheel-builder-groups">
           <div
@@ -130,12 +130,12 @@
 
         <v-btn size="small" variant="text" color="primary" prepend-icon="mdi-plus" class="mt-1"
           @click="addTier">
-          Add Tier
+          {{ t('wheelInspectorAddTierAction') }}
         </v-btn>
       </template>
 
       <v-alert v-else type="info" variant="tonal" density="compact" class="mt-2">
-        Create a wheel configuration to get started.
+        {{ t('wheelInspectorEmptyState') }}
       </v-alert>
     </section>
 
@@ -155,7 +155,7 @@
             <div>
               <div class="wheel-fairness-history__title">{{ wheelFairnessTitle }}</div>
               <div class="wheel-fairness-history__summary">
-                {{ wheelSpinning ? 'Hash committed before the result lands' : 'Latest spin verification' }}
+                {{ wheelSpinning ? t('wheelFairnessCommittedSummary') : t('wheelFairnessLatestVerificationSummary') }}
               </div>
             </div>
           </div>
@@ -163,7 +163,7 @@
         <div v-if="wheelSpinHash" class="wheel-fairness-history__list">
           <div class="wheel-fairness-history__item">
             <div v-if="wheelLastResult" class="wheel-fairness-history__item-top">
-              <div class="wheel-fairness-history__spin">Latest spin</div>
+              <div class="wheel-fairness-history__spin">{{ t('wheelFairnessLatestSpinLabel') }}</div>
               <div class="wheel-fairness-history__result">
                 <span class="wheel-fairness-history__dot" :style="{ background: wheelLastResultColor }"></span>
                 {{ wheelLastResult.replace(/^🎉\s*/, '') }}
@@ -171,16 +171,16 @@
             </div>
             <div class="wheel-fairness-history__codes">
               <div class="wheel-fairness-history__code-block">
-                <span class="wheel-fairness-history__code-label">Hash</span>
+                <span class="wheel-fairness-history__code-label">{{ t('wheelFairnessHashLabel') }}</span>
                 <code class="wheel-fairness-history__code">{{ wheelSpinHash }}</code>
               </div>
               <div v-if="wheelSpinSeed && !wheelSpinning" class="wheel-fairness-history__code-block">
-                <span class="wheel-fairness-history__code-label">Seed</span>
+                <span class="wheel-fairness-history__code-label">{{ t('wheelFairnessSeedLabel') }}</span>
                 <code class="wheel-fairness-history__code">{{ wheelSpinSeed }}</code>
               </div>
             </div>
             <div v-if="wheelSpinSeed && !wheelSpinning" class="wheel-fairness-history__note">
-              SHA-256 of the seed above matches the committed hash.
+              {{ t('wheelFairnessSeedVerifiedNote') }}
             </div>
           </div>
         </div>
@@ -189,7 +189,7 @@
           <div class="wheel-fairness-history__heading">
             <v-icon size="small" color="success">mdi-history</v-icon>
             <div>
-              <div class="wheel-fairness-history__title">Recent History</div>
+              <div class="wheel-fairness-history__title">{{ t('wheelFairnessRecentHistoryTitle') }}</div>
               <div class="wheel-fairness-history__summary">{{ wheelFairnessHistorySummary }}</div>
             </div>
           </div>
@@ -199,7 +199,7 @@
           <div v-for="entry in wheelDisplayFairnessHistory" :key="`${entry.spinNumber}-${entry.timestamp}`"
             class="wheel-fairness-history__item">
             <div class="wheel-fairness-history__item-top">
-              <div class="wheel-fairness-history__spin">Spin #{{ entry.spinNumber }}</div>
+              <div class="wheel-fairness-history__spin">{{ t('wheelFairnessSpinNumberLabel', { count: entry.spinNumber }) }}</div>
               <div class="wheel-fairness-history__result">
                 <span class="wheel-fairness-history__dot" :style="{ background: entry.color }"></span>
                 {{ entry.label }}
@@ -207,11 +207,11 @@
             </div>
             <div class="wheel-fairness-history__codes">
               <div class="wheel-fairness-history__code-block">
-                <span class="wheel-fairness-history__code-label">Hash</span>
+                <span class="wheel-fairness-history__code-label">{{ t('wheelFairnessHashLabel') }}</span>
                 <code class="wheel-fairness-history__code">{{ entry.hash }}</code>
               </div>
               <div class="wheel-fairness-history__code-block">
-                <span class="wheel-fairness-history__code-label">Seed</span>
+                <span class="wheel-fairness-history__code-label">{{ t('wheelFairnessSeedLabel') }}</span>
                 <code class="wheel-fairness-history__code">{{ entry.seed }}</code>
               </div>
             </div>
@@ -220,7 +220,7 @@
       </v-card>
 
       <v-alert v-else type="info" density="compact" variant="tonal">
-        Spin the wheel to start a fairness history for this session.
+        {{ t('wheelFairnessEmptyState') }}
       </v-alert>
     </section>
   </v-card-text>

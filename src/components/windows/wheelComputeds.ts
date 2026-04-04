@@ -125,6 +125,46 @@ export const wheelComputeds = {
     });
   },
 
+  wheelLatestFairnessEntry(this: Record<string, unknown>): {
+    spinNumber: number;
+    label: string;
+    color: string;
+    hash: string;
+    seed: string;
+    timestamp: number;
+  } | null {
+    const preferredLanguage = String((this as Record<string, unknown>).preferredLanguage ?? "");
+    const history = (((this as Record<string, unknown>).wheelDisplayFairnessHistory || []) as Array<{
+      spinNumber: number;
+      label: string;
+      color: string;
+      hash: string;
+      seed: string;
+      timestamp: number;
+    }>);
+    const latestHistory = history[0] || null;
+    const currentHash = String((this as Record<string, unknown>).wheelSpinHash || "");
+    const currentSeed = String((this as Record<string, unknown>).wheelSpinSeed || "");
+
+    if (!currentHash) {
+      return latestHistory;
+    }
+
+    const currentLabel = String((this as Record<string, unknown>).wheelLastResult || "")
+      .replace(/^🎉\s*/, "")
+      .trim();
+    const spinNumber = Number((this as Record<string, unknown>).wheelDisplayTotalSpins || latestHistory?.spinNumber || 0);
+
+    return {
+      spinNumber: spinNumber > 0 ? spinNumber : (latestHistory?.spinNumber || 1),
+      label: currentLabel || latestHistory?.label || translateAppMessage(preferredLanguage, "wheelFairnessLatestSpinLabel"),
+      color: String((this as Record<string, unknown>).wheelLastResultColor || latestHistory?.color || "rgb(var(--v-theme-primary))"),
+      hash: currentHash,
+      seed: currentSeed || (latestHistory?.hash === currentHash ? latestHistory.seed : ""),
+      timestamp: latestHistory?.timestamp || Date.now()
+    };
+  },
+
   wheelConfirmTitle(this: Record<string, unknown>): string {
     const action = (this as Record<string, unknown>).wheelConfirmAction as "reset" | "delete" | "apply" | "";
     if (action === "reset") return translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelConfirmResetTitle");

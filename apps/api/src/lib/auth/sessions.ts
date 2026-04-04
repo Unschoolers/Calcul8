@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { createHmac, randomBytes } from "node:crypto";
 import type { HttpRequest } from "@azure/functions";
 import type { ApiConfig, SessionDocument } from "../../types";
 import * as cosmos from "../cosmos";
@@ -143,13 +143,16 @@ export async function resolveUserIdFromSession(request: HttpRequest, config: Api
 export async function tryIssueSessionCookie(
   request: HttpRequest,
   config: ApiConfig,
-  userId: string
+  userId: string,
+  bootstrapToken: string | null = null
 ): Promise<string | null> {
   const createSessionFn = getCosmosFn<CreateSessionFn>("createSession");
   if (!createSessionFn) return null;
 
   const nowMs = Date.now();
-  const sessionId = randomBytes(24).toString("hex");
+  const sessionId = bootstrapToken
+    ? createDeterministicBootstrapSessionId(config, userId, bootstrapToken)
+    : randomBytes(24).toString("hex");
   const session: SessionDocument = {
     id: sessionId,
     docType: "session",
@@ -168,6 +171,18 @@ export async function tryIssueSessionCookie(
   } catch {
     return null;
   }
+}
+
+function createDeterministicBootstrapSessionId(
+  config: ApiConfig,
+  userId: string,
+  bootstrapToken: string
+): string {
+  const secret = String(config.cosmosKey || "").trim() || "whatfees-dev-session-secret";
+  return createHmac("sha256", secret)
+    .update(`session:${sanitizeUserId(userId)}:${bootstrapToken}`)
+    .digest("hex")
+    .slice(0, 48);
 }
 
 export async function clearSessionCookie(request: HttpRequest, config: ApiConfig): Promise<void> {

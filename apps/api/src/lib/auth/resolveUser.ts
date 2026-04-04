@@ -44,6 +44,16 @@ async function resolveUserIdFromBearer(
   throw new HttpError(401, "Invalid Google ID token.");
 }
 
+function getBearerTokenFromRequest(request: HttpRequest): string | null {
+  const authHeader = String(request.headers.get("authorization") || "");
+  if (!authHeader.toLowerCase().startsWith("bearer ")) {
+    return null;
+  }
+
+  const bearerToken = authHeader.slice(7).trim();
+  return bearerToken || null;
+}
+
 export async function resolveUserId(
   request: HttpRequest,
   config: ApiConfig,
@@ -90,6 +100,7 @@ export async function resolveUserId(
   }
 
   let bearerIdentity: BearerAuthIdentity | null = null;
+  const bearerToken = getBearerTokenFromRequest(request);
   try {
     bearerIdentity = await resolveUserIdFromBearer(request, config, DEFAULT_BEARER_AUTH_PROVIDERS);
   } catch (error) {
@@ -122,7 +133,7 @@ export async function resolveUserId(
       }
     }
     if (options.issueSessionCookie !== false) {
-      await tryIssueSessionCookie(request, config, bearerIdentity.userId);
+      await tryIssueSessionCookie(request, config, bearerIdentity.userId, bearerToken);
     }
     if (telemetry) {
       logAuthTelemetry({

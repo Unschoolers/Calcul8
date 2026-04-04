@@ -1261,6 +1261,19 @@
       bottom: calc(5rem + env(safe-area-inset-bottom)) !important;
       inset-block-end: calc(5rem + env(safe-area-inset-bottom)) !important;
     }
+    .fab-wheel-end {
+      bottom: calc(5rem + env(safe-area-inset-bottom)) !important;
+      inset-block-end: calc(5rem + env(safe-area-inset-bottom)) !important;
+    }
+    .fab-wheel-history {
+      bottom: calc(10rem + env(safe-area-inset-bottom)) !important;
+      inset-block-end: calc(10rem + env(safe-area-inset-bottom)) !important;
+    }
+    .fab-wheel-builder,
+    .fab-wheel-session {
+      bottom: calc(15rem + env(safe-area-inset-bottom)) !important;
+      inset-block-end: calc(15rem + env(safe-area-inset-bottom)) !important;
+    }
     .fab-portfolio-report {
       bottom: calc(5rem + env(safe-area-inset-bottom)) !important;
       inset-block-end: calc(5rem + env(safe-area-inset-bottom)) !important;

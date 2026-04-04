@@ -187,9 +187,7 @@
                 :primary-icon="wheelSpinButtonIcon"
                 :primary-label="wheelSpinButtonLabel"
                 :ending-session="wheelEndingSession"
-                @open-inspector="openWheelInspector"
                 @primary-spin="runWheelPrimarySpin"
-                @end-wheel="startEndWheelSession"
             ></wheel-action-rail>
             <div class="wheel-stage-caption">
                 {{ wheelStageCaption }}
@@ -204,6 +202,54 @@
                 class="wheel-inventory-warning">
                 {{ wheelInventoryWarning }}
             </v-alert>
+
+            <v-card
+                v-if="wheelPresentationMode && wheelLatestFairnessEntry"
+                variant="outlined"
+                class="wheel-fairness-history wheel-fairness-history--presentation"
+            >
+                <div class="wheel-fairness-history__toggle wheel-fairness-history__toggle--static">
+                    <div class="wheel-fairness-history__heading">
+                        <v-icon size="small" :color="wheelLatestFairnessEntry.seed ? 'success' : 'warning'">
+                            {{ wheelLatestFairnessEntry.seed ? 'mdi-shield-check' : 'mdi-lock' }}
+                        </v-icon>
+                        <div>
+                            <div class="wheel-fairness-history__title">
+                                {{ wheelLatestFairnessEntry.seed ? t('wheelFairnessVerifiedTitle') : t('wheelFairnessResultLockedTitle') }}
+                            </div>
+                            <div class="wheel-fairness-history__summary">
+                                {{ wheelLatestFairnessEntry.seed ? t('wheelFairnessLatestVerificationSummary') : t('wheelFairnessCommittedSummary') }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="wheel-fairness-history__list">
+                    <div class="wheel-fairness-history__item">
+                        <div class="wheel-fairness-history__item-top">
+                            <div class="wheel-fairness-history__spin">
+                                {{ t('wheelFairnessSpinNumberLabel', { count: wheelLatestFairnessEntry.spinNumber }) }}
+                            </div>
+                            <div class="wheel-fairness-history__result">
+                                <span class="wheel-fairness-history__dot" :style="{ background: wheelLatestFairnessEntry.color }"></span>
+                                {{ wheelLatestFairnessEntry.label }}
+                            </div>
+                        </div>
+                        <div class="wheel-fairness-history__codes">
+                            <div class="wheel-fairness-history__code-block">
+                                <span class="wheel-fairness-history__code-label">{{ t('wheelFairnessHashLabel') }}</span>
+                                <code class="wheel-fairness-history__code">{{ wheelLatestFairnessEntry.hash }}</code>
+                            </div>
+                            <div v-if="wheelLatestFairnessEntry.seed" class="wheel-fairness-history__code-block">
+                                <span class="wheel-fairness-history__code-label">{{ t('wheelFairnessSeedLabel') }}</span>
+                                <code class="wheel-fairness-history__code">{{ wheelLatestFairnessEntry.seed }}</code>
+                            </div>
+                        </div>
+                        <div v-if="wheelLatestFairnessEntry.seed" class="wheel-fairness-history__note">
+                            {{ t('wheelFairnessSeedVerifiedNote') }}
+                        </div>
+                    </div>
+                </div>
+            </v-card>
         </div>
 
         <!-- Chase Replacement (shown after a chase tier is won and sale confirmed) -->

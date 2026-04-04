@@ -201,6 +201,42 @@ test("valid bearer token resolves user and issues session cookie", async () => {
   }
 });
 
+test("repeated bearer bootstrap requests reuse the same session id for the same token", async () => {
+  const requestA = makeRequest({ authorization: "Bearer token-abc" });
+  const requestB = makeRequest({ authorization: "Bearer token-abc" });
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async () =>
+    ({
+      ok: true,
+      json: async () => ({
+        aud: "test-client.apps.googleusercontent.com",
+        sub: "google-user-42"
+      })
+    }) as Response) as typeof fetch;
+
+  try {
+    const userA = await resolveUserId(requestA, makeConfig());
+    const userB = await resolveUserId(requestB, makeConfig());
+
+    assert.equal(userA, "google-user-42");
+    assert.equal(userB, "google-user-42");
+    assert.equal(createSessionMock.mock.calls.length, 2);
+
+    const firstSession = createSessionMock.mock.calls[0]?.[1] as SessionDocument;
+    const secondSession = createSessionMock.mock.calls[1]?.[1] as SessionDocument;
+    assert.equal(firstSession.userId, "google-user-42");
+    assert.equal(secondSession.userId, "google-user-42");
+    assert.equal(firstSession.id, secondSession.id);
+
+    const headersA = consumeAuthResponseHeaders(requestA);
+    const headersB = consumeAuthResponseHeaders(requestB);
+    assert.equal(headersA["Set-Cookie"], headersB["Set-Cookie"]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("valid session cookie authenticates and touches stale sessions", async () => {
   const request = makeRequest({ cookie: "whatfees_session=session-1" });
   const telemetry = createTelemetryLogger();

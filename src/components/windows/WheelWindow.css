@@ -1436,10 +1436,11 @@
   .wheel-mobile-action-rail {
     position: static;
     width: 100%;
-    display: grid;
-    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.3fr) minmax(0, 0.95fr);
+    display: flex;
+    justify-content: center;
+    align-items: center;
     gap: 8px;
-    margin-top: -4px;
+    margin-top: 12px;
     padding: 10px;
     border-radius: 22px;
     border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
@@ -1455,12 +1456,11 @@
     box-shadow: 0 16px 28px rgba(70, 54, 32, 0.16);
   }
 
-  .wheel-mobile-action-rail__secondary,
   .wheel-mobile-action-rail__primary {
+    width: min(260px, 100%);
     min-width: 0;
   }
 
-  .wheel-mobile-action-rail__secondary .v-btn__content,
   .wheel-mobile-action-rail__primary .v-btn__content {
     white-space: nowrap;
   }
@@ -2169,6 +2169,14 @@
   max-width: none;
 }
 
+.wheel-fairness-history--presentation {
+  width: min(100%, 460px);
+}
+
+.wheel-layout.wheel-presentation .wheel-fairness-history--presentation {
+  margin-top: 2px;
+}
+
 @media (max-width: 1100px) {
   .wheel-layout:not(.wheel-presentation) {
     grid-template-columns: 1fr;
@@ -2253,6 +2261,10 @@
     right: 8px;
     gap: 6px;
     padding: 8px;
+  }
+
+  .wheel-mobile-action-rail__primary {
+    width: min(236px, 100%);
   }
 }
 
