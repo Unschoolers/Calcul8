@@ -129,12 +129,8 @@ export const appLifecycle: AppLifecycleObject = {
     }
     refreshWorkspaceRealtime(this);
 
-    if (import.meta.env.DEV) {
-      void this.unregisterServiceWorkersForDev();
-    } else {
-      this.setupPwaUiHandlers();
-      this.registerServiceWorker();
-    }
+    this.setupPwaUiHandlers();
+    this.registerServiceWorker();
   },
 
   beforeUnmount() {

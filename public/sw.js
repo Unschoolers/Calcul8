@@ -4,16 +4,21 @@ const CACHE_NAME = `whatfees-${swVersion}`;
 const CORE_ASSETS = [
   "./",
   "./index.html",
-  "./manifest.webmanifest",
-  "./icons/icon-192.png",
-  "./icons/icon-512.png",
-  "./icons/apple-touch-icon.png"
+  "./manifest.webmanifest"
 ];
 
 self.addEventListener("install", (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE_NAME);
-    await cache.addAll(CORE_ASSETS);
+    await Promise.allSettled(
+      CORE_ASSETS.map(async (asset) => {
+        try {
+          await cache.add(asset);
+        } catch (error) {
+          console.warn("[sw] Failed to precache asset:", asset, error);
+        }
+      })
+    );
   })());
   self.skipWaiting();
 });
