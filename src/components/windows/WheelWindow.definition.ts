@@ -69,6 +69,7 @@ export const wheelWindowDefinition: any = {
       wheelLastResultColor: "rgb(var(--v-theme-primary))",
       wheelCanvasSize: 360,
       wheelEndingSession: false,
+      wheelEndSessionReviewActive: false,
       wheelPresentationMode: false,
       wheelPreviewSpinCounts: [] as number[],
       wheelPreviewTotalSpins: 0,
@@ -76,7 +77,7 @@ export const wheelWindowDefinition: any = {
       wheelSpinHash: "" as string,
       wheelShowSeed: false,
       wheelConfirmDialog: false,
-      wheelConfirmAction: "" as "reset" | "delete" | "apply" | "",
+      wheelConfirmAction: "" as "reset" | "delete" | "apply" | "end" | "",
       wheelLiveConfirmDialog: false,
       wheelRequestedMode: null as "config" | "live" | null,
       wheelPendingMenuOpen: false,
@@ -244,6 +245,13 @@ export const wheelWindowDefinition: any = {
     },
     closeWheelInspector(this: Record<string, unknown>): void {
       (this as Record<string, unknown>).wheelMobileInspectorOpen = false;
+      if ((this as Record<string, unknown>).wheelEndSessionReviewActive) {
+        (this as Record<string, unknown>).wheelEndSessionReviewActive = false;
+        nextTick(() => {
+          (this as Record<string, unknown>).wheelConfirmAction = "end";
+          (this as Record<string, unknown>).wheelConfirmDialog = true;
+        });
+      }
     },
     openWheelManageDialog(this: Record<string, unknown>): void {
       const editing = (this as Record<string, unknown>).editingWheelConfig as WheelConfig | null;

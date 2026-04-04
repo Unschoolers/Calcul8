@@ -71,7 +71,7 @@
 
   <template v-if="wheelMode !== 'config'">
     <v-btn block color="warning" variant="elevated" size="small" :disabled="wheelEndingSession"
-      @click="startEndWheelSession">
+      @click="requestWheelSessionEnd">
       <v-icon start size="small">mdi-flag-checkered</v-icon>
       {{ t('wheelEndSessionAction') }}
       <v-badge v-if="wheelSkippedDeductions.length" :content="wheelSkippedDeductions.length" color="error"

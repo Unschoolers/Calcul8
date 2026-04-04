@@ -483,7 +483,7 @@
           :title="t('wheelEndSessionAction')"
           :aria-label="t('wheelEndSessionAction')"
           :disabled="!hasLotSelected || $refs.wheelWindow?.wheelEndingSession"
-          @click="$refs.wheelWindow?.startEndWheelSession?.()"
+          @click="$refs.wheelWindow?.requestWheelSessionEnd?.()"
           class="fab-primary fab-wheel-end"
         ></v-fab>
 

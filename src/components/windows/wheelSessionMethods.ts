@@ -335,6 +335,7 @@ export const wheelSessionMethods = {
     (this as Record<string, unknown>).wheelLastResultColor = "rgb(var(--v-theme-primary))";
     this.wheelSkippedDeductions = [];
     (this as Record<string, unknown>).wheelEndingSession = false;
+    (this as Record<string, unknown>).wheelEndSessionReviewActive = false;
     (this as Record<string, unknown>).wheelSpinHash = "";
     (this as Record<string, unknown>).wheelSpinSeed = "";
     (this as Record<string, unknown>).wheelShowSeed = false;
@@ -362,6 +363,9 @@ export const wheelSessionMethods = {
       } else {
         (this as Record<string, unknown> & { resetWheelSession: () => void }).resetWheelSession();
       }
+    } else if (action === "end") {
+      (this as Record<string, unknown>).wheelEndSessionReviewActive = false;
+      (this as Record<string, unknown> & { startEndWheelSession: () => void }).startEndWheelSession();
     } else if (action === "apply") {
       (this as Record<string, unknown> & { applyWheelConfig: () => void }).applyWheelConfig();
     } else if (action === "delete") {
@@ -369,8 +373,26 @@ export const wheelSessionMethods = {
     }
   },
 
+  requestWheelSessionEnd(this: Record<string, unknown>): void {
+    const isCompact = Boolean((this as Record<string, unknown> & { isWheelMobileViewport?: () => boolean }).isWheelMobileViewport?.());
+    const isPresentationMode = Boolean((this as Record<string, unknown>).wheelPresentationMode);
+
+    if (isCompact && !isPresentationMode) {
+      (this as Record<string, unknown>).wheelEndSessionReviewActive = true;
+      (this as Record<string, unknown> & {
+        openWheelInspector: (tab: "config" | "session" | "history") => void;
+      }).openWheelInspector("session");
+      return;
+    }
+
+    (this as Record<string, unknown>).wheelEndSessionReviewActive = false;
+    (this as Record<string, unknown>).wheelConfirmAction = "end";
+    (this as Record<string, unknown>).wheelConfirmDialog = true;
+  },
+
   startEndWheelSession(this: Record<string, unknown>): void {
     const vm = this as Record<string, unknown> & { resetWheelSession: () => void };
+    (this as Record<string, unknown>).wheelEndSessionReviewActive = false;
     const skipped = (this.wheelSkippedDeductions || []) as SkippedWheelDeduction[];
     if (!skipped.length) {
       vm.resetWheelSession();
@@ -445,6 +467,7 @@ export const wheelSessionMethods = {
 
   cancelEndWheelSession(this: Record<string, unknown>): void {
     (this as Record<string, unknown>).wheelEndingSession = false;
+    (this as Record<string, unknown>).wheelEndSessionReviewActive = false;
   },
 
   saveWheelSession(this: Record<string, unknown>): void {

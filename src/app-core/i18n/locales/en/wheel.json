@@ -11,6 +11,8 @@
   "wheelConfiguredSlotsMeta": "{{count}} configured slots",
   "wheelConfirmDeleteBody": "This will permanently delete this wheel configuration. This cannot be undone.",
   "wheelConfirmDeleteTitle": "Delete wheel?",
+  "wheelConfirmEndBody": "End this wheel session? If any deductions were skipped, you'll review them before the session is cleared.",
+  "wheelConfirmEndTitle": "End wheel session?",
   "wheelConfirmRebuildBody": "This will rebuild the wheel with your config changes. Matching live session progress will be preserved where possible.",
   "wheelConfirmRebuildTitle": "Rebuild wheel?",
   "wheelConfirmResetConfigBody": "This will clear the preview test session for this wheel.",

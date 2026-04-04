@@ -13,7 +13,11 @@ self.addEventListener("install", (event) => {
     await Promise.allSettled(
       CORE_ASSETS.map(async (asset) => {
         try {
-          await cache.add(asset);
+          const request = cloneRequestForReload(new Request(asset));
+          const response = await fetch(request);
+          if (response && response.ok) {
+            await cache.put(asset, response.clone());
+          }
         } catch (error) {
           console.warn("[sw] Failed to precache asset:", asset, error);
         }

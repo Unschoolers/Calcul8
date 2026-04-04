@@ -49,6 +49,16 @@ function dismissAppUpdateForWorker(worker: ServiceWorker | null | undefined): vo
   }
 }
 
+function buildUpdateRefreshUrl(): string {
+  try {
+    const url = new URL(window.location.href);
+    url.searchParams.set("app-updated", String(Date.now()));
+    return url.toString();
+  } catch {
+    return window.location.href;
+  }
+}
+
 export const pwaMethods: ThisType<AppContext> & Pick<
   AppMethodState,
   | "setupPwaUiHandlers"
@@ -220,7 +230,7 @@ export const pwaMethods: ThisType<AppContext> & Pick<
           this.isApplyingAppUpdate = false;
           this.appUpdateWorker = null;
           clearDismissedAppUpdate();
-          window.location.reload();
+          window.location.replace(buildUpdateRefreshUrl());
         };
         navigator.serviceWorker.addEventListener("controllerchange", this.serviceWorkerControllerChangeListener);
 

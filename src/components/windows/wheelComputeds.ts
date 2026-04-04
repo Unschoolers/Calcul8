@@ -166,19 +166,23 @@ export const wheelComputeds = {
   },
 
   wheelConfirmTitle(this: Record<string, unknown>): string {
-    const action = (this as Record<string, unknown>).wheelConfirmAction as "reset" | "delete" | "apply" | "";
+    const action = (this as Record<string, unknown>).wheelConfirmAction as "reset" | "delete" | "apply" | "end" | "";
     if (action === "reset") return translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelConfirmResetTitle");
+    if (action === "end") return translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelConfirmEndTitle");
     if (action === "delete") return translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelConfirmDeleteTitle");
     return translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelConfirmRebuildTitle");
   },
 
   wheelConfirmBody(this: Record<string, unknown>): string {
-    const action = (this as Record<string, unknown>).wheelConfirmAction as "reset" | "delete" | "apply" | "";
+    const action = (this as Record<string, unknown>).wheelConfirmAction as "reset" | "delete" | "apply" | "end" | "";
     const wheelMode = (this as Record<string, unknown>).wheelMode as "config" | "live";
     if (action === "reset") {
       return wheelMode === "config"
         ? translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelConfirmResetConfigBody")
         : translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelConfirmResetLiveBody");
+    }
+    if (action === "end") {
+      return translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelConfirmEndBody");
     }
     if (action === "delete") {
       return translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelConfirmDeleteBody");
@@ -187,13 +191,14 @@ export const wheelComputeds = {
   },
 
   wheelConfirmButtonColor(this: Record<string, unknown>): string {
-    const action = (this as Record<string, unknown>).wheelConfirmAction as "reset" | "delete" | "apply" | "";
-    return action === "reset" || action === "delete" ? "error" : "primary";
+    const action = (this as Record<string, unknown>).wheelConfirmAction as "reset" | "delete" | "apply" | "end" | "";
+    return action === "reset" || action === "delete" || action === "end" ? "error" : "primary";
   },
 
   wheelConfirmButtonLabel(this: Record<string, unknown>): string {
-    const action = (this as Record<string, unknown>).wheelConfirmAction as "reset" | "delete" | "apply" | "";
+    const action = (this as Record<string, unknown>).wheelConfirmAction as "reset" | "delete" | "apply" | "end" | "";
     if (action === "reset") return translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "commonReset");
+    if (action === "end") return translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelEndSessionAction");
     if (action === "delete") return translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "commonDelete");
     return translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelRebuildAction");
   },
