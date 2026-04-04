@@ -27,16 +27,15 @@ function getPortfolioSalesHydrationState(context: object): PortfolioSalesHydrati
   return state;
 }
 
-function hasPersistedSalesCache(context: Pick<AppContext, "getSalesStorageKey">, lotId: number): boolean {
-  try {
-    return localStorage.getItem(context.getSalesStorageKey(lotId)) != null;
-  } catch {
-    return false;
-  }
+function hasPersistedSalesCache(context: Pick<AppContext, "getSalesCacheEntry">, lotId: number): boolean {
+  return context.getSalesCacheEntry(lotId).status === "loaded";
 }
 
 export function hydrateMissingPortfolioSales(
   context: AppContext,
+  options: {
+    force?: boolean;
+  } = {},
   deps: HydrationDeps = {
     canUseAuthoritativeApi: canUseAuthoritativeSalesLiveApi,
     fetchSales: fetchAuthoritativeSales,
@@ -61,7 +60,7 @@ export function hydrateMissingPortfolioSales(
     .filter((lotId) =>
       lotId !== currentLotId &&
       !hydrationState.hydratingLotIds.has(lotId) &&
-      !hasPersistedSalesCache(context, lotId)
+      (options.force === true || !hasPersistedSalesCache(context, lotId))
     );
 
   if (missingLotIds.length === 0) return;

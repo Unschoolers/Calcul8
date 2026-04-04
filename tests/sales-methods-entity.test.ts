@@ -59,7 +59,7 @@ class MockHtmlCanvasElement {
 }
 
 function createContext(overrides: Record<string, unknown> = {}) {
-  return {
+  const context = {
     currentLotId: 1,
     currentLotType: "bulk",
     currentTab: "sales",
@@ -89,12 +89,33 @@ function createContext(overrides: Record<string, unknown> = {}) {
     initPortfolioChart: vi.fn(),
     loadSalesForLotId: vi.fn(() => []),
     getSalesStorageKey: (lotId: number) => `sales_${lotId}`,
+    getSalesCacheEntry(lotId: number) {
+      const raw = globalThis.localStorage?.getItem?.(`sales_${lotId}`) ?? null;
+      if (!raw) {
+        return { status: "missing" as const, sales: [] };
+      }
+      try {
+        const parsed = JSON.parse(raw);
+        const sales = Array.isArray(parsed) ? parsed : [];
+        const hasExplicitLoadedState = globalThis.localStorage?.getItem?.(`sales_status_${lotId}`) === "loaded";
+        return {
+          status: hasExplicitLoadedState || sales.length > 0 ? "loaded" as const : "missing" as const,
+          sales
+        };
+      } catch {
+        return { status: "missing" as const, sales: [] };
+      }
+    },
+    getAllSalesByLotId(lotIds?: number[] | null) {
+      return salesMethods.getAllSalesByLotId.call(this as never, lotIds ?? null);
+    },
     formatCurrency: (value: number) => `$${value.toFixed(2)}`,
     formatDate: (value: string) => value,
     netFromGross: vi.fn((gross: number) => gross),
     $nextTick: (callback: () => void) => callback(),
     ...overrides
   };
+  return context;
 }
 
 beforeEach(() => {
@@ -133,6 +154,47 @@ test("saveSale uses authoritative API and appends the saved sale metadata", asyn
   assert.equal((ctx.sales as Array<{ version?: number }>)[0]?.version, 2);
   assert.equal(cancelSale.mock.calls.length, 1);
   assert.equal(cacheAuthoritativeSalesMock.mock.calls.length, 1);
+});
+
+test("getAllSalesByLotId prefers in-memory current lot sales and loads the rest by lot id", () => {
+  const getSalesCacheEntry = vi.fn((lotId: number) => {
+    if (lotId === 2) {
+      return {
+        status: "loaded" as const,
+        sales: [{
+          id: 22,
+          type: "pack",
+          quantity: 1,
+          packsCount: 1,
+          price: 20,
+          buyerShipping: 0,
+          date: "2026-03-17"
+        }]
+      };
+    }
+    return { status: "missing" as const, sales: [] };
+  });
+  const ctx = createContext({
+    currentLotId: 1,
+    lots: [{ id: 1 }, { id: 2 }, { id: 3 }],
+    sales: [{
+      id: 11,
+      type: "pack",
+      quantity: 1,
+      packsCount: 1,
+      price: 10,
+      buyerShipping: 0,
+      date: "2026-03-17"
+    }],
+    getSalesCacheEntry
+  });
+
+  const allSalesByLotId = salesMethods.getAllSalesByLotId.call(ctx as never, [1, 2]);
+
+  assert.deepEqual([...allSalesByLotId.keys()], [1, 2]);
+  assert.equal(allSalesByLotId.get(1)?.[0]?.id, 11);
+  assert.equal(allSalesByLotId.get(2)?.[0]?.id, 22);
+  assert.deepEqual(getSalesCacheEntry.mock.calls, [[2]]);
 });
 
 test("addWheelSaleToLot uses authoritative persistence for non-current lots too", async () => {

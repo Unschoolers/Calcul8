@@ -13,6 +13,7 @@ import type {
     PortfolioSalesByUserChartData,
     PortfolioSalesByUserMetric,
     PortfolioTotals,
+    LotSalesCacheEntry,
     Sale,
     SalesStatus,
     SaleType,
@@ -242,6 +243,8 @@ export interface AppMethodState {
   runConfirmAction(): void;
   cancelConfirmAction(): void;
   getSalesStorageKey(lotId: number): string;
+  getSalesCacheEntry(lotId: number): LotSalesCacheEntry;
+  getAllSalesByLotId(lotIds?: number[] | null): Map<number, Sale[]>;
   loadSalesForLotId(lotId: number): Sale[];
   netFromGross(grossRevenue: number, buyerShippingPerOrder?: number, orderCount?: number): number;
   getExchangeRate(): Promise<void>;

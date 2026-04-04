@@ -12,6 +12,7 @@ import {
   getAvailableSinglesQuantityForWheelTier,
   getRemainingPacksForWheelLot
 } from "./wheelSaleSupport.ts";
+import { assignWheelPendingInventoryIssues } from "../../app-core/shared/wheel-session-compat.ts";
 
 type WheelFairnessHistoryEntry = {
   spinNumber: number;
@@ -199,7 +200,7 @@ function queuePendingInventoryIssue(
     spinNumber: (context.wheelTotalSpins as number) || 0,
     slotSinglesId: params.boundSinglesId ?? null
   });
-  context.wheelPendingInventoryIssues = [...pendingIssues];
+  assignWheelPendingInventoryIssues(context, pendingIssues);
   context.wheelInventoryWarning = params.warningText || "";
   (context as Record<string, unknown> & { saveWheelSession: () => void }).saveWheelSession();
 }

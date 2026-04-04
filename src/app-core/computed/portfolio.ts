@@ -4,6 +4,7 @@ import {
   calculatePortfolioTotals,
   calculateSaleProfit
 } from "../../domain/calculations.ts";
+import type { Sale } from "../../types/app.ts";
 import type { AppComputedObject } from "../context-contracts.ts";
 import { buildLotOptionItems } from "../shared/lot-option-items.ts";
 import {
@@ -20,10 +21,31 @@ import {
 
 type PortfolioForecastScenario = ForecastScenario<"item" | "box" | "rtyh">;
 
+function getAllSalesByLotIdForPortfolio(
+  context: {
+    lots: Array<{ id: number }>;
+    currentLotId: number | null;
+    sales: Sale[];
+    getAllSalesByLotId?: (lotIds?: number[] | null) => Map<number, Sale[]>;
+    loadSalesForLotId(lotId: number): Sale[];
+  },
+  lotIds: number[]
+): Map<number, Sale[]> {
+  if (typeof context.getAllSalesByLotId === "function") {
+    return context.getAllSalesByLotId(lotIds);
+  }
+  return new Map(
+    lotIds.map((lotId) => [
+      lotId,
+      context.currentLotId === lotId ? context.sales : context.loadSalesForLotId(lotId)
+    ] as const)
+  );
+}
+
 function lotIsCompleteByDefault(context: {
   currentLotId: number | null;
-  sales: unknown[];
-  loadSalesForLotId(lotId: number): unknown[];
+  sales: Sale[];
+  loadSalesForLotId(lotId: number): Sale[];
 }, lot: {
   id: number;
 }): boolean {
@@ -33,7 +55,7 @@ function lotIsCompleteByDefault(context: {
     : (typeof context.loadSalesForLotId === "function" ? context.loadSalesForLotId(lot.id) : []);
   const summary = calculateLotPerformanceSummary(
     lot as never,
-    Array.isArray(sales) ? sales as never : [],
+    sales,
     DEFAULT_VALUES.EXCHANGE_RATE
   );
 
@@ -211,12 +233,7 @@ export const portfolioComputed: Pick<
     const selectedLotIds = Array.isArray(this.portfolioSelectedLotIds)
       ? this.portfolioSelectedLotIds
       : this.lots.map((lot) => lot.id);
-    const salesByLotId = new Map(
-      this.lots.map((lot) => [
-        lot.id,
-        this.currentLotId === lot.id ? this.sales : this.loadSalesForLotId(lot.id)
-      ] as const)
-    );
+    const salesByLotId = getAllSalesByLotIdForPortfolio(this, this.lots.map((lot) => lot.id));
 
     return buildPortfolioSalesByUserChartData({
       lots: this.lots,
@@ -240,13 +257,12 @@ export const portfolioComputed: Pick<
       ? this.portfolioSelectedLotIds
       : this.lots.map((lot) => lot.id);
     const selectedLotIdSet = new Set(selectedLotIds);
+    const salesByLotId = getAllSalesByLotIdForPortfolio(this, selectedLotIds);
 
     const rows = this.lots
       .filter((lot) => selectedLotIdSet.has(lot.id))
       .map((lot) => {
-        const sales = this.currentLotId === lot.id
-          ? this.sales
-          : this.loadSalesForLotId(lot.id);
+        const sales = salesByLotId.get(lot.id) ?? [];
         const summary = calculateLotPerformanceSummary(lot, sales, DEFAULT_VALUES.EXCHANGE_RATE);
         const realizedProfit = sales.reduce((sum, sale) => {
           return sum + calculateSaleProfit({

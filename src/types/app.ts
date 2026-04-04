@@ -132,6 +132,11 @@ export interface Sale {
   netRevenue?: number;
 }
 
+export interface LotSalesCacheEntry {
+  status: "missing" | "loaded";
+  sales: Sale[];
+}
+
 export interface SinglesSaleCardOption {
   title: string;
   value: number;
@@ -554,4 +559,5 @@ export interface AppState extends LotSetup {
   wheelSessionUpdatedAt: number;
   wheelSessionLotSelections: Record<string, number | null>;
   wheelPendingInventoryIssues: PendingWheelInventoryIssue[];
+  wheelSkippedDeductions: PendingWheelInventoryIssue[];
 }

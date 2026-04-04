@@ -38,6 +38,7 @@ const LEGACY_STORAGE_KEYS = {
 } as const;
 
 const SALES_PREFIX = "whatfees_sales_";
+const SALES_STATUS_PREFIX = "whatfees_sales_status_";
 const LEGACY_SALES_PREFIX = "rtyh_sales_";
 const WORKSPACE_SCOPE_SEGMENT = "__ws__";
 
@@ -133,8 +134,16 @@ export function getSalesStorageKey(lotId: number, scope: AppStorageScope = { sco
   return `${SALES_PREFIX}${normalizeWorkspaceScopeId(scope.workspaceId)}__${lotId}`;
 }
 
+export function getSalesCacheStatusKey(lotId: number, scope: AppStorageScope = { scopeType: "personal" }): string {
+  if (!isWorkspaceScope(scope)) {
+    return `${SALES_STATUS_PREFIX}${lotId}`;
+  }
+  return `${SALES_STATUS_PREFIX}${normalizeWorkspaceScopeId(scope.workspaceId)}__${lotId}`;
+}
+
 export function clearScopedSalesStorage(scope: AppStorageScope = { scopeType: "personal" }): void {
   const workspacePrefix = `${SALES_PREFIX}${normalizeWorkspaceScopeId(scope.workspaceId)}__`;
+  const workspaceStatusPrefix = `${SALES_STATUS_PREFIX}${normalizeWorkspaceScopeId(scope.workspaceId)}__`;
   try {
     const keys: string[] = [];
     for (let index = 0; index < localStorage.length; index += 1) {
@@ -145,13 +154,16 @@ export function clearScopedSalesStorage(scope: AppStorageScope = { scopeType: "p
     }
     for (const key of keys) {
       if (isWorkspaceScope(scope)) {
-        if (key.startsWith(workspacePrefix)) {
+        if (key.startsWith(workspacePrefix) || key.startsWith(workspaceStatusPrefix)) {
           localStorage.removeItem(key);
         }
         continue;
       }
 
-      if (key.startsWith(SALES_PREFIX) && !key.slice(SALES_PREFIX.length).includes("__")) {
+      if (
+        (key.startsWith(SALES_PREFIX) && !key.slice(SALES_PREFIX.length).includes("__"))
+        || (key.startsWith(SALES_STATUS_PREFIX) && !key.slice(SALES_STATUS_PREFIX.length).includes("__"))
+      ) {
         localStorage.removeItem(key);
       }
     }

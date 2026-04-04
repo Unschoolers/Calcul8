@@ -2,6 +2,7 @@ import { nextTick } from "vue";
 import { broadcastWheelSession } from "../../app-core/methods/ui/wheel-broadcast.ts";
 import type { Lot, PendingWheelInventoryIssue, Sale, WheelConfig } from "../../types/app.ts";
 import { getScopedWheelConfigSessionStorageKey, getScopedWheelSessionStorageKey } from "../../app-core/storageKeys.ts";
+import { assignWheelPendingInventoryIssues } from "../../app-core/shared/wheel-session-compat.ts";
 import { getActiveStorageScope } from "../../app-core/workspace-scope.ts";
 import { buildSlotsFromConfig, createWheelSale, remapSpinCountsByTier, type WheelSlot } from "./wheelHelpers.ts";
 import {
@@ -333,7 +334,7 @@ export const wheelSessionMethods = {
     this.wheelLastResult = "";
     (this as Record<string, unknown>).wheelInventoryWarning = "";
     (this as Record<string, unknown>).wheelLastResultColor = "rgb(var(--v-theme-primary))";
-    this.wheelPendingInventoryIssues = [];
+    assignWheelPendingInventoryIssues(this, []);
     (this as Record<string, unknown>).wheelEndingSession = false;
     (this as Record<string, unknown>).wheelEndSessionReviewActive = false;
     (this as Record<string, unknown>).wheelSpinHash = "";
@@ -406,7 +407,7 @@ export const wheelSessionMethods = {
         entry.selectedLotId = (tier?.boundLotId) ?? currentLotId;
       }
     }
-    this.wheelPendingInventoryIssues = [...pendingIssues];
+    assignWheelPendingInventoryIssues(this, pendingIssues);
     (this as Record<string, unknown>).wheelEndingSession = true;
   },
 
@@ -434,7 +435,7 @@ export const wheelSessionMethods = {
     appendWheelSessionNetRevenue(this, sale);
 
     pendingIssues.splice(index, 1);
-    this.wheelPendingInventoryIssues = [...pendingIssues];
+    assignWheelPendingInventoryIssues(this, pendingIssues);
 
     if (!pendingIssues.length) {
       (this as Record<string, unknown>).wheelEndingSession = false;
@@ -457,7 +458,7 @@ export const wheelSessionMethods = {
   dismissBatchSale(this: Record<string, unknown>, index: number): void {
     const pendingIssues = (this.wheelPendingInventoryIssues || []) as PendingWheelInventoryIssue[];
     pendingIssues.splice(index, 1);
-    this.wheelPendingInventoryIssues = [...pendingIssues];
+    assignWheelPendingInventoryIssues(this, pendingIssues);
     if (!pendingIssues.length) {
       (this as Record<string, unknown>).wheelEndingSession = false;
     }
@@ -484,6 +485,7 @@ export const wheelSessionMethods = {
       wheelFairnessHistory: (this as Record<string, unknown>).wheelFairnessHistory,
       wheelChaseTallyHistory: (this as Record<string, unknown>).wheelChaseTallyHistory,
       wheelPendingInventoryIssues: this.wheelPendingInventoryIssues,
+      wheelSkippedDeductions: this.wheelPendingInventoryIssues,
       wheelCurrentAngle: this.wheelCurrentAngle,
       wheelLastResult: this.wheelLastResult,
       wheelLastResultColor: (this as Record<string, unknown>).wheelLastResultColor
@@ -543,7 +545,7 @@ export const wheelSessionMethods = {
         ? session.wheelFairnessHistory.slice(-20)
         : [];
       (this as Record<string, unknown>).wheelChaseTallyHistory = session.wheelChaseTallyHistory || [];
-      this.wheelPendingInventoryIssues = session.wheelPendingInventoryIssues || session.wheelSkippedDeductions || [];
+      assignWheelPendingInventoryIssues(this, session.wheelPendingInventoryIssues || session.wheelSkippedDeductions || []);
       this.wheelCurrentAngle = session.wheelCurrentAngle || 0;
       this.wheelLastResult = session.wheelLastResult || "";
       (this as Record<string, unknown>).wheelLastResultColor = session.wheelLastResultColor || "rgb(var(--v-theme-primary))";

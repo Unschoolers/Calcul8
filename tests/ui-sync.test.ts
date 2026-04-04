@@ -239,7 +239,7 @@ test("pullCloudSync normalizes legacy lot tax fields before applying cloud snaps
   assert.equal(lot?.sellingTaxPercent, 11);
 });
 
-test("pullCloudSync clears scoped sales caches before applying a newer cloud snapshot", async () => {
+test("pullCloudSync preserves existing scoped sales caches when a newer cloud snapshot omits sales payloads", async () => {
   const storage = createMockStorage({
     whatfees_google_token: "token-abc",
     whatfees_sync_client_version: "1",
@@ -267,8 +267,8 @@ test("pullCloudSync clears scoped sales caches before applying a newer cloud sna
 
   await uiSyncMethods.pullCloudSync.call(ctx);
 
-  assert.equal(storage.getItem("whatfees_sales_1"), null);
-  assert.equal(storage.getItem("whatfees_sales_2"), "[]");
+  assert.equal(storage.getItem("whatfees_sales_1"), JSON.stringify([{ id: 1 }]));
+  assert.equal(storage.getItem("whatfees_sales_2"), JSON.stringify([{ id: 2 }]));
   assert.notEqual(storage.getItem("whatfees_sales_ws__team-42__7"), null);
 });
 

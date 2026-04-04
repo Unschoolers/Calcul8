@@ -1,5 +1,5 @@
 import type { Lot } from "../../types/app.ts";
-import { getLegacySalesStorageKey, getScopedLastLotStorageKey, readStorageWithLegacy, removeStorageWithLegacy, STORAGE_KEYS } from "../storageKeys.ts";
+import { getLegacySalesStorageKey, getSalesCacheStatusKey, getScopedLastLotStorageKey, readStorageWithLegacy, removeStorageWithLegacy, STORAGE_KEYS } from "../storageKeys.ts";
 import { getActiveStorageScope } from "../workspace-scope.ts";
 import { getDeleteLotConfirmationText } from "./config-lot-crud.ts";
 
@@ -60,6 +60,11 @@ export function deleteCurrentLotWithPersistence(
         context.getSalesStorageKey(lotIdToDelete),
         deps.getLegacySalesKey(lotIdToDelete)
       );
+      try {
+        localStorage.removeItem(getSalesCacheStatusKey(lotIdToDelete, deps.getStorageScope(context as never)));
+      } catch {
+        // Ignore storage failures.
+      }
       const lastLotStorageKey = deps.getLastLotStorageKey(deps.getStorageScope(context as never));
       const storedLastLotId = context.activeScopeType === "workspace" && context.activeWorkspaceId
         ? localStorage.getItem(lastLotStorageKey)

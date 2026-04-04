@@ -315,7 +315,6 @@
 .portfolio-kpi-value {
   line-height: 1.1;
   letter-spacing: -0.01em;
-  color: rgba(var(--v-theme-on-surface), 0.92);
 }
 
 .portfolio-kpi-meta {

@@ -6,11 +6,13 @@ const {
   readStorageWithLegacyMock,
   migrateLegacySalesKeyMock,
   getLegacySalesStorageKeyMock,
-  getLegacyStorageKeysMock
+  getLegacyStorageKeysMock,
+  getSalesCacheStatusKeyMock
 } = vi.hoisted(() => ({
   readStorageWithLegacyMock: vi.fn(),
   migrateLegacySalesKeyMock: vi.fn(),
   getLegacySalesStorageKeyMock: vi.fn((lotId: number) => `legacy_sales_${lotId}`),
+  getSalesCacheStatusKeyMock: vi.fn((lotId: number) => `sales_status_${lotId}`),
   getLegacyStorageKeysMock: vi.fn(() => ({
     LAST_LOT_ID: "legacy_last_lot_id",
     PRESETS: "legacy_presets",
@@ -32,6 +34,7 @@ vi.mock("../src/app-core/storageKeys.ts", async () => {
     readStorageWithLegacy: readStorageWithLegacyMock,
     migrateLegacySalesKey: migrateLegacySalesKeyMock,
     getLegacySalesStorageKey: getLegacySalesStorageKeyMock,
+    getSalesCacheStatusKey: getSalesCacheStatusKeyMock,
     getLegacyStorageKeys: getLegacyStorageKeysMock
   };
 });
@@ -96,7 +99,7 @@ function withMockedLocalStorage(
 }
 
 function createContext(overrides: Record<string, unknown> = {}): Record<string, unknown> {
-  return {
+  const context: Record<string, unknown> = {
     activeScopeType: "personal",
     activeWorkspaceId: null,
     sellingTaxPercent: 15,
@@ -107,6 +110,12 @@ function createContext(overrides: Record<string, unknown> = {}): Record<string, 
     getSalesStorageKey: (lotId: number) => `whatfees_sales_${lotId}`,
     ...overrides
   };
+  if (typeof context.getSalesCacheEntry !== "function") {
+    context.getSalesCacheEntry = function getSalesCacheEntry(this: Record<string, unknown>, lotId: number) {
+      return configStorageMethods.getSalesCacheEntry.call(this as never, lotId);
+    };
+  }
+  return context;
 }
 
 beforeEach(() => {
@@ -132,33 +141,62 @@ test("getSalesStorageKey includes workspace scope for shared workspaces", () => 
   assert.equal(key, "whatfees_sales_team-42__42");
 });
 
+test("getSalesCacheEntry distinguishes missing sales from an explicitly loaded empty list", () => {
+  withMockedLocalStorage((data) => {
+    const context = createContext();
+
+    readStorageWithLegacyMock.mockReturnValueOnce(null);
+    assert.deepEqual(configStorageMethods.getSalesCacheEntry.call(context as never, 1), {
+      status: "missing",
+      sales: []
+    });
+
+    readStorageWithLegacyMock.mockReturnValueOnce("[]");
+    assert.deepEqual(configStorageMethods.getSalesCacheEntry.call(context as never, 1), {
+      status: "missing",
+      sales: []
+    });
+
+    data.set("sales_status_1", "loaded");
+    readStorageWithLegacyMock.mockReturnValueOnce("[]");
+    assert.deepEqual(configStorageMethods.getSalesCacheEntry.call(context as never, 1), {
+      status: "loaded",
+      sales: []
+    });
+  });
+});
+
 test("loadSalesForLotId migrates legacy key and normalizes loaded sales", () => {
-  readStorageWithLegacyMock.mockReturnValue(JSON.stringify([
-    { id: 1, type: "pack", quantity: 1, packsCount: 1, price: 9, customer: " Sam ", memo: 123, buyerShipping: "2.5", date: "2026-02-25" },
-    { id: 2, type: "box", quantity: 1, packsCount: 16, price: 100, buyerShipping: "oops", date: "2026-02-25" }
-  ]));
+  withMockedLocalStorage(() => {
+    readStorageWithLegacyMock.mockReturnValue(JSON.stringify([
+      { id: 1, type: "pack", quantity: 1, packsCount: 1, price: 9, customer: " Sam ", memo: 123, buyerShipping: "2.5", date: "2026-02-25" },
+      { id: 2, type: "box", quantity: 1, packsCount: 16, price: 100, buyerShipping: "oops", date: "2026-02-25" }
+    ]));
 
-  const context = createContext();
-  const sales = configStorageMethods.loadSalesForLotId.call(context as never, 99);
+    const context = createContext();
+    const sales = configStorageMethods.loadSalesForLotId.call(context as never, 99);
 
-  assert.equal(migrateLegacySalesKeyMock.mock.calls.length, 1);
-  assert.equal(migrateLegacySalesKeyMock.mock.calls[0]?.[0], 99);
-  assert.deepEqual(readStorageWithLegacyMock.mock.calls[0], ["whatfees_sales_99", "legacy_sales_99"]);
-  assert.equal(sales.length, 2);
-  assert.equal(sales[0]?.customer, " Sam ");
-  assert.equal(sales[0]?.memo, undefined);
-  assert.equal(sales[0]?.buyerShipping, 2.5);
-  assert.equal(sales[1]?.buyerShipping, 0);
+    assert.equal(migrateLegacySalesKeyMock.mock.calls.length, 1);
+    assert.equal(migrateLegacySalesKeyMock.mock.calls[0]?.[0], 99);
+    assert.deepEqual(readStorageWithLegacyMock.mock.calls[0], ["whatfees_sales_99", "legacy_sales_99"]);
+    assert.equal(sales.length, 2);
+    assert.equal(sales[0]?.customer, " Sam ");
+    assert.equal(sales[0]?.memo, undefined);
+    assert.equal(sales[0]?.buyerShipping, 2.5);
+    assert.equal(sales[1]?.buyerShipping, 0);
+  });
 });
 
 test("loadSalesForLotId returns empty list on invalid JSON or missing value", () => {
-  const context = createContext();
+  withMockedLocalStorage(() => {
+    const context = createContext();
 
-  readStorageWithLegacyMock.mockReturnValue(null);
-  assert.deepEqual(configStorageMethods.loadSalesForLotId.call(context as never, 1), []);
+    readStorageWithLegacyMock.mockReturnValue(null);
+    assert.deepEqual(configStorageMethods.loadSalesForLotId.call(context as never, 1), []);
 
-  readStorageWithLegacyMock.mockReturnValue("not-json");
-  assert.deepEqual(configStorageMethods.loadSalesForLotId.call(context as never, 1), []);
+    readStorageWithLegacyMock.mockReturnValue("not-json");
+    assert.deepEqual(configStorageMethods.loadSalesForLotId.call(context as never, 1), []);
+  });
 });
 
 test("netFromGross uses the current selling tax percent", () => {

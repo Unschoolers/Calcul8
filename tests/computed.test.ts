@@ -1,5 +1,5 @@
 ﻿import assert from "node:assert/strict";
-import { test } from "vitest";
+import { test, vi } from "vitest";
 import { appComputed } from "../src/app-core/computed.ts";
 import { buildPortfolioSalesByUserChartData } from "../src/app-core/computed/portfolio-sales-by-user.ts";
 import { GOOGLE_PROFILE_CACHE_KEY, GOOGLE_TOKEN_KEY } from "../src/app-core/methods/ui/shared.ts";
@@ -701,6 +701,62 @@ test("portfolio sales by user chart data collapses personal mode into a single Y
 
   assert.deepEqual(data.series.map((series) => [series.key, series.label, series.total]), [
     ["self", "You", 2]
+  ]);
+});
+
+test("portfolio sales by user chart data uses the shared all-sales accessor when available", () => {
+  const getAllSalesByLotId = vi.fn(() => new Map([
+    [22, [
+      { id: 1, type: "pack", quantity: 1, packsCount: 1, price: 12, buyerShipping: 0, date: "2026-03-18", updatedBy: "whoever" }
+    ]]
+  ]));
+
+  const data = appComputed.portfolioSalesByUserChartData.call({
+    salesCacheEpoch: 0,
+    portfolioSelectedLotIds: [22],
+    lots: [
+      {
+        id: 22,
+        name: "Union arena singles",
+        lotType: "singles",
+        boxPriceCost: 0,
+        boxesPurchased: 0,
+        packsPerBox: 16,
+        spotsPerBox: 16,
+        costInputMode: "perBox",
+        currency: "CAD",
+        sellingCurrency: "CAD",
+        exchangeRate: 1,
+        purchaseDate: "2026-02-01",
+        purchaseShippingCost: 0,
+        purchaseTaxPercent: 0,
+        sellingTaxPercent: 0,
+        sellingShippingPerOrder: 0,
+        includeTax: true,
+        spotPrice: 0,
+        boxPriceSell: 0,
+        packPrice: 0,
+        targetProfitPercent: 15,
+        singlesPurchases: [
+          { id: 1, item: "Card A", cost: 4, quantity: 2, marketValue: 6 }
+        ]
+      }
+    ],
+    getAllSalesByLotId,
+    loadSalesForLotId() {
+      throw new Error("portfolioSalesByUserChartData should use getAllSalesByLotId");
+    },
+    currentLotId: 22,
+    sales: [],
+    activeScopeType: "personal",
+    workspaceMembers: [],
+    portfolioSalesByUserMetric: "count",
+    preferredLanguage: "en"
+  } as unknown as Parameters<typeof appComputed.portfolioSalesByUserChartData>[0]);
+
+  assert.equal(getAllSalesByLotId.mock.calls.length, 1);
+  assert.deepEqual(data.series.map((series) => [series.key, series.label, series.total]), [
+    ["self", "You", 1]
   ]);
 });
 

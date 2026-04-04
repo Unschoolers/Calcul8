@@ -7,6 +7,7 @@ import type {
 } from "../../types/app.ts";
 import type { AppContext, AppMethodState } from "../context-app.ts";
 import {
+    getSalesCacheStatusKey,
     getScopedWheelConfigsStorageKey,
     getScopedWheelSessionStorageKey
 } from "../storageKeys.ts";
@@ -42,11 +43,13 @@ import {
     refreshChartsForCurrentTab
 } from "./sales-ui-helpers.ts";
 import { normalizeWheelConfigs } from "../shared/normalize-wheel-config.ts";
+import { assignWheelPendingInventoryIssues } from "../shared/wheel-session-compat.ts";
 
 export const salesMethods: ThisType<AppContext> & Pick<
   AppMethodState,
   | "loadSalesFromStorage"
   | "saveSalesToStorage"
+  | "getAllSalesByLotId"
   | "openAddSaleModal"
   | "openConvertLiveSinglesSaleModal"
   | "onNewSaleTypeChange"
@@ -79,12 +82,36 @@ export const salesMethods: ThisType<AppContext> & Pick<
     }
   },
 
+  getAllSalesByLotId(lotIds: number[] | null = null): Map<number, Sale[]> {
+    const targetLotIds = Array.isArray(lotIds) && lotIds.length > 0
+      ? lotIds
+      : this.lots.map((lot) => lot.id);
+    const uniqueLotIds = Array.from(new Set(
+      targetLotIds
+        .map((lotId) => Number(lotId))
+        .filter((lotId) => Number.isFinite(lotId) && lotId > 0)
+    ));
+
+    return new Map(
+      uniqueLotIds.map((lotId) => [
+        lotId,
+        this.currentLotId === lotId
+          ? [...this.sales]
+          : [...this.getSalesCacheEntry(lotId).sales]
+      ] as const)
+    );
+  },
+
   saveSalesToStorage(): void {
     if (!this.currentLotId) return;
 
     try {
       const key = this.getSalesStorageKey(this.currentLotId);
       localStorage.setItem(key, JSON.stringify(this.sales));
+      localStorage.setItem(
+        getSalesCacheStatusKey(this.currentLotId, getActiveStorageScope(this)),
+        "loaded"
+      );
     } catch (error) {
       console.error("Failed to save sales:", error);
     }
@@ -230,6 +257,10 @@ export const salesMethods: ThisType<AppContext> & Pick<
         const existingSales: Sale[] = raw ? JSON.parse(raw) : [];
         existingSales.push(sale);
         localStorage.setItem(storageKey, JSON.stringify(existingSales));
+        localStorage.setItem(
+          getSalesCacheStatusKey(lotId, getActiveStorageScope(this)),
+          "loaded"
+        );
       }
 
       this.notify(`Wheel sale recorded`, "success");
@@ -262,7 +293,7 @@ export const salesMethods: ThisType<AppContext> & Pick<
     this.wheelLastResult = "";
     this.wheelSessionUpdatedAt = 0;
     this.wheelSessionLotSelections = {};
-    this.wheelPendingInventoryIssues = [];
+    assignWheelPendingInventoryIssues(this as unknown as Record<string, unknown>, []);
     wheelSessionState.wheelSessionNetRevenue = 0;
     wheelSessionState.wheelSessionCostAdjustment = 0;
     wheelSessionState.wheelFairnessHistory = [];
@@ -304,11 +335,12 @@ export const salesMethods: ThisType<AppContext> & Pick<
         if (session.wheelSessionLotSelections && typeof session.wheelSessionLotSelections === "object") {
           this.wheelSessionLotSelections = session.wheelSessionLotSelections as Record<string, number | null>;
         }
-        if (Array.isArray(session.wheelPendingInventoryIssues)) {
-          this.wheelPendingInventoryIssues = session.wheelPendingInventoryIssues as PendingWheelInventoryIssue[];
-        } else if (Array.isArray(session.wheelSkippedDeductions)) {
-          this.wheelPendingInventoryIssues = session.wheelSkippedDeductions as PendingWheelInventoryIssue[];
-        }
+        assignWheelPendingInventoryIssues(
+          this as unknown as Record<string, unknown>,
+          Array.isArray(session.wheelPendingInventoryIssues)
+            ? session.wheelPendingInventoryIssues
+            : session.wheelSkippedDeductions
+        );
         if (Number.isFinite(Number(session.wheelCurrentAngle))) {
           this.wheelCurrentAngle = Number(session.wheelCurrentAngle) || 0;
         }
@@ -357,6 +389,7 @@ export const salesMethods: ThisType<AppContext> & Pick<
         wheelSessionUpdatedAt: this.wheelSessionUpdatedAt,
         wheelSessionLotSelections: this.wheelSessionLotSelections,
         wheelPendingInventoryIssues: this.wheelPendingInventoryIssues,
+        wheelSkippedDeductions: this.wheelPendingInventoryIssues,
         wheelSessionNetRevenue: wheelSessionState.wheelSessionNetRevenue ?? preserved.wheelSessionNetRevenue ?? 0,
         wheelSessionCostAdjustment: wheelSessionState.wheelSessionCostAdjustment ?? preserved.wheelSessionCostAdjustment ?? 0,
         wheelFairnessHistory: wheelSessionState.wheelFairnessHistory ?? preserved.wheelFairnessHistory ?? [],

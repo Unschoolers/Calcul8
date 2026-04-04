@@ -1,8 +1,9 @@
 import { DEFAULT_VALUES } from "../../constants.ts";
 import { calculateNetFromGross } from "../../domain/calculations.ts";
-import type { Lot, Sale } from "../../types/app.ts";
+import type { Lot, LotSalesCacheEntry, Sale } from "../../types/app.ts";
 import {
   getLegacySalesStorageKey,
+  getSalesCacheStatusKey,
   getLegacyStorageKeys,
   getScopedPresetsStorageKey,
   getSalesStorageKey as getWhatfeesSalesStorageKey,
@@ -54,6 +55,7 @@ function writeExchangeRateCache(cadRate: number, fetchedAt: number): void {
 
 export const configStorageMethods: ConfigMethodSubset<
   | "getSalesStorageKey"
+  | "getSalesCacheEntry"
   | "loadSalesForLotId"
   | "netFromGross"
   | "getExchangeRate"
@@ -64,19 +66,26 @@ export const configStorageMethods: ConfigMethodSubset<
     return getWhatfeesSalesStorageKey(lotId, getActiveStorageScope(this));
   },
 
-  loadSalesForLotId(lotId: number): Sale[] {
+  getSalesCacheEntry(lotId: number): LotSalesCacheEntry {
     try {
       const isPersonalScope = this.activeScopeType !== "workspace" || !this.activeWorkspaceId;
+      const storageScope = getActiveStorageScope(this);
       if (isPersonalScope) {
         migrateLegacySalesKey(lotId);
       }
       const storageKey = this.getSalesStorageKey(lotId);
+      const statusKey = getSalesCacheStatusKey(lotId, storageScope);
       const stored = isPersonalScope
         ? readStorageWithLegacy(storageKey, getLegacySalesStorageKey(lotId))
         : localStorage.getItem(storageKey);
-      if (!stored) return [];
+      if (!stored) {
+        return {
+          status: "missing",
+          sales: []
+        };
+      }
       const parsed = JSON.parse(stored) as Array<Sale & { buyerShipping?: number }>;
-      return parsed.map((sale) => ({
+      const normalizedSales = parsed.map((sale) => ({
         ...sale,
         singlesItems: Array.isArray(sale.singlesItems)
           ? sale.singlesItems
@@ -100,9 +109,25 @@ export const configStorageMethods: ConfigMethodSubset<
         memo: typeof sale.memo === "string" ? sale.memo : undefined,
         buyerShipping: Number(sale.buyerShipping) || 0
       }));
+      const hasExplicitLoadedState = localStorage.getItem(statusKey) === "loaded";
+      const isLoaded = hasExplicitLoadedState || normalizedSales.length > 0;
+      return {
+        status: isLoaded ? "loaded" : "missing",
+        sales: normalizedSales
+      };
     } catch {
-      return [];
+      return {
+        status: "missing",
+        sales: []
+      };
     }
+  },
+
+  loadSalesForLotId(lotId: number): Sale[] {
+    if (typeof this.getSalesCacheEntry === "function") {
+      return this.getSalesCacheEntry(lotId).sales;
+    }
+    return configStorageMethods.getSalesCacheEntry.call(this as never, lotId).sales;
   },
 
   netFromGross(grossRevenue: number, buyerShippingPerOrder = 0, orderCount = 1): number {

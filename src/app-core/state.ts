@@ -266,6 +266,7 @@ export function createInitialState(): AppState {
     wheelLastResult: "",
     wheelSessionUpdatedAt: 0,
     wheelSessionLotSelections: {},
-    wheelPendingInventoryIssues: []
+    wheelPendingInventoryIssues: [],
+    wheelSkippedDeductions: []
   };
 }

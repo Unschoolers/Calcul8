@@ -1,6 +1,7 @@
 import type { Sale } from "../../types/app.ts";
 import type { AppContext } from "../context-app.ts";
 import { getStoredGoogleIdToken } from "../auth/index.ts";
+import { getSalesCacheStatusKey, type AppStorageScope } from "../storageKeys.ts";
 import { fetchAuthenticatedApiResponse, resolveApiBaseUrl } from "./ui/shared.ts";
 
 export class SalesLiveApiError extends Error {
@@ -170,6 +171,15 @@ export function normalizeLivePricing(value: unknown): LotLivePricingRecord | nul
 function persistSalesCache(app: Pick<AppContext, "getSalesStorageKey">, lotId: number, sales: Sale[]): void {
   try {
     localStorage.setItem(app.getSalesStorageKey(lotId), JSON.stringify(sales));
+    const scope = "activeScopeType" in app && app.activeScopeType === "workspace" && "activeWorkspaceId" in app
+      ? {
+        scopeType: "workspace",
+        workspaceId: app.activeWorkspaceId
+      }
+      : {
+        scopeType: "personal"
+      };
+    localStorage.setItem(getSalesCacheStatusKey(lotId, scope as AppStorageScope), "loaded");
   } catch {
     // Ignore cache write failures.
   }

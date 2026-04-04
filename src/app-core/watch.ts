@@ -1,6 +1,7 @@
 import type { AppWatchObject } from "./context-contracts.ts";
 import { resetWhatnotSignedOutState, resetWhatnotTransientUiState } from "./methods/ui/whatnot.ts";
 import { refreshWorkspaceRealtime, stopWorkspaceRealtime } from "./methods/ui/workspace-realtime.ts";
+import { hydrateMissingPortfolioSales } from "./methods/sales-portfolio-hydration.ts";
 import { getScopedLastLotStorageKey, STORAGE_KEYS } from "./storageKeys.ts";
 import { getActiveStorageScope } from "./workspace-scope.ts";
 
@@ -74,6 +75,7 @@ export const appWatch: AppWatchObject = {
 
     if (newTab === "portfolio") {
       refreshWorkspaceRealtime(this);
+      hydrateMissingPortfolioSales(this, { force: true });
       this.$nextTick(() => this.initPortfolioChart());
       return;
     }

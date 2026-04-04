@@ -12,6 +12,21 @@ import { getTodayDate } from "./config-shared.ts";
 import { formatCompactChartDate, isSmallDisplay, resolveCanvasRef, safeDestroyChart } from "./sales-ui-helpers.ts";
 import { hydrateMissingPortfolioSales } from "./sales-portfolio-hydration.ts";
 
+function getPortfolioSalesByLotId(
+  context: Pick<AppContext, "currentLotId" | "sales" | "loadSalesForLotId"> & Partial<Pick<AppContext, "getAllSalesByLotId">>,
+  lotIds: number[]
+) {
+  if (typeof context.getAllSalesByLotId === "function") {
+    return context.getAllSalesByLotId(lotIds);
+  }
+  return new Map(
+    lotIds.map((lotId) => [
+      lotId,
+      context.currentLotId === lotId ? context.sales : context.loadSalesForLotId(lotId)
+    ] as const)
+  );
+}
+
 export function initSalesChartDisplay(context: AppContext): void {
   safeDestroyChart(context.salesChart);
   context.salesChart = null;
@@ -98,12 +113,7 @@ export function initPortfolioCharts(context: AppContext): void {
   } else {
     const selectedLotIdSet = new Set(context.portfolioSelectedLotIds);
     const filteredLots = context.lots.filter((lot) => selectedLotIdSet.has(lot.id));
-    const salesByLotId = new Map(
-      filteredLots.map((lot) => [
-        lot.id,
-        context.currentLotId === lot.id ? context.sales : context.loadSalesForLotId(lot.id)
-      ])
-    );
+    const salesByLotId = getPortfolioSalesByLotId(context, filteredLots.map((lot) => lot.id));
     primaryChartConfig = buildPortfolioHistoryChartConfig({
       portfolioChartView: context.portfolioChartView,
       filteredLots,

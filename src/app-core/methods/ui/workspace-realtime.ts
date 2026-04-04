@@ -2,6 +2,7 @@ import type { Sale, WorkspaceRealtimeStatus } from "../../../types/app.ts";
 import type { AppContext } from "../../context-app.ts";
 import { removeById, upsertById } from "../../shared/collection-updaters.ts";
 import { normalizeWheelConfigs } from "../../shared/normalize-wheel-config.ts";
+import { assignWheelPendingInventoryIssues } from "../../shared/wheel-session-compat.ts";
 import {
     cacheAuthoritativeSales,
     canUseAuthoritativeSalesLiveApi,
@@ -38,6 +39,7 @@ type RealtimeApp = Pick<
   | "wheelLastResult"
   | "wheelSessionUpdatedAt"
   | "wheelPendingInventoryIssues"
+  | "wheelSkippedDeductions"
 > & {
   wheelSessionNetRevenue?: number | null;
   wheelSessionCostAdjustment?: number;
@@ -347,11 +349,12 @@ function handleWheelSessionUpdatedEvent(app: RealtimeApp, data: unknown): void {
   if (typeof raw.wheelLastResultColor === "string" && raw.wheelLastResultColor.trim()) {
     app.wheelLastResultColor = raw.wheelLastResultColor;
   }
-  if (Array.isArray(raw.wheelPendingInventoryIssues)) {
-    app.wheelPendingInventoryIssues = raw.wheelPendingInventoryIssues as typeof app.wheelPendingInventoryIssues;
-  } else if (Array.isArray(raw.wheelSkippedDeductions)) {
-    app.wheelPendingInventoryIssues = raw.wheelSkippedDeductions as typeof app.wheelPendingInventoryIssues;
-  }
+  assignWheelPendingInventoryIssues(
+    app as unknown as Record<string, unknown>,
+    Array.isArray(raw.wheelPendingInventoryIssues)
+      ? raw.wheelPendingInventoryIssues
+      : raw.wheelSkippedDeductions
+  );
 }
 
 function applyRealtimeMessage(app: RealtimeApp, room: string, eventType: string, data: unknown): void {

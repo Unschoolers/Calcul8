@@ -8,6 +8,7 @@ import { getActiveStorageScope } from "../../app-core/workspace-scope.ts";
 import { broadcastWheelSession } from "../../app-core/methods/ui/wheel-broadcast.ts";
 import { calculateTotalCaseCost } from "../../domain/calculations-fees.ts";
 import { normalizeWheelConfig } from "../../app-core/shared/normalize-wheel-config.ts";
+import { assignWheelPendingInventoryIssues } from "../../app-core/shared/wheel-session-compat.ts";
 import type { Lot, WheelConfig, WheelTier } from "../../types/app.ts";
 import {
   buildSlotsFromConfig,
@@ -37,7 +38,7 @@ function resetLoadedWheelSessionState(context: Record<string, unknown>): void {
   context.wheelLastResult = "";
   context.wheelInventoryWarning = "";
   context.wheelSessionCostAdjustment = 0;
-  context.wheelPendingInventoryIssues = [];
+  assignWheelPendingInventoryIssues(context, []);
   context.wheelEndingSession = false;
   context.wheelChaseDialog = false;
   context.wheelChaseReplacementSinglesId = null;
@@ -218,9 +219,12 @@ export const wheelConfigMethods = {
       }
       (this as Record<string, unknown>).wheelSessionCostAdjustment = costAdjustment;
     }
-    this.wheelPendingInventoryIssues = ((this.wheelPendingInventoryIssues || []) as Array<{ slotTier: string }>).filter(
-      (entry) => newTierIds.has(entry.slotTier)
-    ) as typeof this.wheelPendingInventoryIssues;
+    assignWheelPendingInventoryIssues(
+      this,
+      ((this.wheelPendingInventoryIssues || []) as Array<{ slotTier: string }>).filter(
+        (entry) => newTierIds.has(entry.slotTier)
+      ) as typeof this.wheelPendingInventoryIssues
+    );
     (this as Record<string, unknown>).wheelEndingSession = false;
     (this as Record<string, unknown>).wheelChaseDialog = false;
     (this as Record<string, unknown>).wheelChaseReplacementSinglesId = null;

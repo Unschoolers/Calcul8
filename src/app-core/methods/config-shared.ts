@@ -7,6 +7,7 @@ export type ConfigMethodSubset<K extends keyof AppMethodState> = ThisType<AppCon
 
 export type ConfigMethods = ConfigMethodSubset<
   | "getSalesStorageKey"
+  | "getSalesCacheEntry"
   | "loadSalesForLotId"
   | "netFromGross"
   | "getExchangeRate"
