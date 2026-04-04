@@ -29,3 +29,11 @@ test("service worker treats explicit app-update refreshes as network-only naviga
   assert.match(swSource, /function isUpdateRefreshRequest\(url\)\s*\{\s*return url\.searchParams\.has\("app-updated"\);?\s*\}/);
   assert.match(swSource, /if \(isUpdateRefreshRequest\(url\)\) \{[\s\S]*fetchFresh\(request\)[\s\S]*return createOfflineResponse\(\);[\s\S]*\}/);
 });
+
+test("service worker forces window clients onto a fresh app-updated navigation when skip waiting is approved", () => {
+  const swSource = readRepoFile("public/sw.js");
+
+  assert.match(swSource, /let shouldForceRefreshClientsOnActivate = false;/);
+  assert.match(swSource, /if \(event\.data === "SKIP_WAITING"\) \{\s*shouldForceRefreshClientsOnActivate = true;\s*self\.skipWaiting\(\);\s*\}/);
+  assert.match(swSource, /if \(shouldForceRefreshClientsOnActivate\) \{[\s\S]*clients\.matchAll\(\{ type: "window", includeUncontrolled: true \}\)[\s\S]*client\.navigate\(refreshUrl\)[\s\S]*shouldForceRefreshClientsOnActivate = false;[\s\S]*\}/);
+});

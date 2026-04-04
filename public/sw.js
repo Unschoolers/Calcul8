@@ -1,5 +1,6 @@
 const swVersion = new URL(self.location.href).searchParams.get("v") || "dev";
 const CACHE_NAME = `whatfees-${swVersion}`;
+let shouldForceRefreshClientsOnActivate = false;
 
 const CORE_ASSETS = [
   "./",
@@ -36,11 +37,23 @@ self.addEventListener("activate", (event) => {
         .map((key) => caches.delete(key))
     );
     await self.clients.claim();
+    if (shouldForceRefreshClientsOnActivate) {
+      const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      await Promise.allSettled(
+        clients.map(async (client) => {
+          if (!("navigate" in client) || typeof client.navigate !== "function") return;
+          const refreshUrl = buildClientRefreshUrl(client.url);
+          await client.navigate(refreshUrl);
+        })
+      );
+      shouldForceRefreshClientsOnActivate = false;
+    }
   })());
 });
 
 self.addEventListener("message", (event) => {
   if (event.data === "SKIP_WAITING") {
+    shouldForceRefreshClientsOnActivate = true;
     self.skipWaiting();
   }
 });
@@ -59,6 +72,17 @@ function cloneRequestForReload(request) {
 
 function isUpdateRefreshRequest(url) {
   return url.searchParams.has("app-updated");
+}
+
+function buildClientRefreshUrl(urlString) {
+  try {
+    const url = new URL(urlString);
+    url.searchParams.set("app-updated", String(Date.now()));
+    url.searchParams.set("app-update-source", "sw");
+    return url.toString();
+  } catch {
+    return urlString;
+  }
 }
 
 async function fetchFresh(request) {
