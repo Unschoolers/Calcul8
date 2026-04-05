@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test, vi } from "vitest";
 import {
     buildSlotsFromConfig,
+    computeExpectedMargin,
     createDefaultTier,
     createDefaultWheelConfig,
     createWheelSale,
@@ -108,6 +109,29 @@ test("createDefaultWheelConfig returns valid config", () => {
   assert.equal(config.spinPrice, 10);
   assert.equal(config.tiers.length, 1);
   assert.equal(config.tiers[0]!.label, "1 Item");
+});
+
+test("computeExpectedMargin uses profit relative to cost so wheel margin matches lot math", () => {
+  const config: WheelConfig = {
+    id: 1,
+    name: "Single Tier",
+    spinPrice: 9,
+    targetMargin: 15,
+    createdAt: "",
+    tiers: [
+      { id: "t1", label: "1 Pack", color: "#f00", slots: 1, costPerTier: 7, packsCount: 1, deductionType: "packs", sets: [] }
+    ]
+  };
+
+  const result = computeExpectedMargin(config, {
+    platformFeePercent: 8,
+    additionalFeePercent: 2.9,
+    additionalFeeAppliesTo: "sale_plus_shipping",
+    fixedFeePerOrder: 0.3
+  });
+
+  assert.ok(result.margin !== null);
+  assert.ok(Math.abs(result.margin - 10.2714285714) < 0.001);
 });
 
 test("WheelWindow data defaults the inspector tab to config", () => {
@@ -235,13 +259,13 @@ test("wheelSessionProfit prefers stored session net revenue in live mode", () =>
   assert.ok(Math.abs(result - 54.65) < 0.001);
 });
 
-test("wheelSessionMarginDisplay shows dash when no revenue", () => {
-  const vm = { wheelSessionRevenue: 0, wheelSessionProfit: 0 };
+test("wheelSessionMarginDisplay shows dash when no cost", () => {
+  const vm = { wheelSessionCost: 0, wheelSessionProfit: 0 };
   assert.equal(WheelWindow.computed!.wheelSessionMarginDisplay.call(vm as never), "—");
 });
 
-test("wheelSessionMarginDisplay shows percentage", () => {
-  const vm = { wheelSessionRevenue: 100, wheelSessionProfit: 25 };
+test("wheelSessionMarginDisplay shows profit relative to cost", () => {
+  const vm = { wheelSessionCost: 80, wheelSessionProfit: 20 };
   assert.equal(WheelWindow.computed!.wheelSessionMarginDisplay.call(vm as never), "25.0%");
 });
 

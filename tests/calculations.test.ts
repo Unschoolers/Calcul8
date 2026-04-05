@@ -254,8 +254,8 @@ test("wheel fee math defaults to Whatnot and can disable fees", () => {
     createdAt: "2026-03-01"
   }, noFees).margin;
 
-  assert.equal(Math.round((whatnotMargin ?? 0) * 10) / 10, 41.1);
-  assert.equal(Math.round((zeroFeeMargin ?? 0) * 10) / 10, 55);
+  assert.equal(Math.round((whatnotMargin ?? 0) * 10) / 10, 91.3);
+  assert.equal(Math.round((zeroFeeMargin ?? 0) * 10) / 10, 122.2);
 });
 
 test("computeExpectedMargin includes buyer shipping from bound lots in fee math", () => {
@@ -308,7 +308,7 @@ test("computeExpectedMargin includes buyer shipping from bound lots in fee math"
   }];
 
   const margin = computeExpectedMargin(config, lots[0], lots).margin;
-  assert.ok(Math.abs((margin ?? 0) - 39.65) < 0.001);
+  assert.ok(Math.abs((margin ?? 0) - 88.1111111111) < 0.001);
 });
 
 test("calculatePriceForUnits and calculateDefaultSellingPrices are consistent", () => {
@@ -2969,6 +2969,12 @@ test("mounted restores persisted portfolio lot type filter", () => {
       initGoogleAutoLogin() {
         // noop
       },
+      renderGoogleSignInButton() {
+        // noop
+      },
+      $nextTick(callback: () => void) {
+        callback();
+      },
       debugLogEntitlement() {
         return Promise.resolve();
       },
@@ -3051,6 +3057,12 @@ test("mounted restores persisted theme", () => {
       },
       initGoogleAutoLogin() {
         // noop
+      },
+      renderGoogleSignInButton() {
+        // noop
+      },
+      $nextTick(callback: () => void) {
+        callback();
       },
       debugLogEntitlement() {
         return Promise.resolve();

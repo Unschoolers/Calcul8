@@ -284,10 +284,11 @@ export function computeExpectedMargin(
   }
   if (!totalSlots || !config.spinPrice) return { margin: null };
   const avgCost = totalCost / totalSlots;
+  if (avgCost <= 0) return { margin: null };
   const grossPerSpin = config.spinPrice;
   const buyerShippingPerSpin = calculateAverageWheelBuyerShippingPerSpin(config, lots);
   const sellingTaxPerSpin = calculateAverageWheelSellingTaxPercent(config, lots);
   const netPerSpin = calculateWheelNetFromGross(grossPerSpin, feeProfileInput, 1, buyerShippingPerSpin, sellingTaxPerSpin);
-  const margin = ((netPerSpin - avgCost) / grossPerSpin) * 100;
+  const margin = ((netPerSpin - avgCost) / avgCost) * 100;
   return { margin };
 }

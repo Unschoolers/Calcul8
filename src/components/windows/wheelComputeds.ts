@@ -13,6 +13,13 @@ import {
 } from "./wheelSaleSupport.ts";
 import { translateAppMessage } from "../../app-core/i18n/index.ts";
 
+function calculateWheelSessionMarginPercent(vm: Record<string, unknown>): number | null {
+  const cost = Number(vm.wheelSessionCost || 0);
+  if (!cost) return null;
+  const profit = Number(vm.wheelSessionProfit || 0);
+  return (profit / cost) * 100;
+}
+
 export const wheelComputeds = {
   wheelInspectorPanelMeta(this: Record<string, unknown>): { icon: string; title: string; subtitle: string } {
     const preferredLanguage = String((this as Record<string, unknown>).preferredLanguage ?? "");
@@ -569,26 +576,23 @@ export const wheelComputeds = {
   },
 
   wheelSessionMarginDisplay(this: Record<string, unknown>): string {
-    const revenue = this.wheelSessionRevenue as number;
-    if (!revenue) return "—";
-    const margin = ((this.wheelSessionProfit as number) / revenue) * 100;
+    const margin = calculateWheelSessionMarginPercent(this as Record<string, unknown>);
+    if (margin === null) return "—";
     return margin.toFixed(1) + "%";
   },
 
   wheelSessionMarginColor(this: Record<string, unknown>): string {
-    const revenue = this.wheelSessionRevenue as number;
-    if (!revenue) return "";
     const config = (this as Record<string, unknown>).wheelDisplayConfig as WheelConfig | null;
-    const margin = ((this.wheelSessionProfit as number) / revenue) * 100;
+    const margin = calculateWheelSessionMarginPercent(this as Record<string, unknown>);
+    if (margin === null) return "";
     if (margin >= (config?.targetMargin || 0)) return "rgb(var(--v-theme-success))";
     if (margin >= 0) return "rgb(var(--v-theme-warning))";
     return "rgb(var(--v-theme-error))";
   },
 
   wheelSessionMarginBarWidth(this: Record<string, unknown>): string {
-    const revenue = this.wheelSessionRevenue as number;
-    if (!revenue) return "0%";
-    const margin = ((this.wheelSessionProfit as number) / revenue) * 100;
+    const margin = calculateWheelSessionMarginPercent(this as Record<string, unknown>);
+    if (margin === null) return "0%";
     return Math.min(Math.max(margin, 0), 100) + "%";
   },
 
@@ -599,10 +603,9 @@ export const wheelComputeds = {
 
   wheelSessionMarginHint(this: Record<string, unknown>): string {
     const preferredLanguage = String((this as Record<string, unknown>).preferredLanguage ?? "");
-    const revenue = this.wheelSessionRevenue as number;
-    if (!revenue) return translateAppMessage(preferredLanguage, "wheelSessionNoSpinsHint");
+    const margin = calculateWheelSessionMarginPercent(this as Record<string, unknown>);
+    if (margin === null) return translateAppMessage(preferredLanguage, "wheelSessionNoSpinsHint");
     const config = (this as Record<string, unknown>).wheelDisplayConfig as WheelConfig | null;
-    const margin = ((this.wheelSessionProfit as number) / revenue) * 100;
     const diff = margin - (config?.targetMargin || 0);
     return diff >= 0
       ? translateAppMessage(preferredLanguage, "wheelSessionAboveTarget", {

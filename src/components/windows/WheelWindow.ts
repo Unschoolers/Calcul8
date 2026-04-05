@@ -9,6 +9,7 @@ import { wheelWindowDefinition } from "./WheelWindow.definition.ts";
 // Re-export pure functions so existing imports keep working
 export {
   buildSlotsFromConfig,
+  computeExpectedMargin,
   createDefaultTier,
   createDefaultWheelConfig,
   createWheelSale,
