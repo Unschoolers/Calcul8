@@ -24,6 +24,9 @@ export type SignInApp = Pick<
   AppContext,
   | "hasProAccess"
   | "hasLotSelected"
+  | "isDark"
+  | "preferredLanguage"
+  | "showGoogleSignInFallback"
   | "targetProfitPercent"
   | "autoSaveSetup"
   | "showManualPurchaseVerify"
@@ -42,6 +45,7 @@ type SignInDeps = {
   requestGoogleIdentityPrompt: typeof requestGoogleIdentityPrompt;
   getGoogleClientId: () => string;
   getWindow: () => Window | undefined;
+  getDocument: () => Document | undefined;
   getGoogleIdToken: () => string;
   isGoogleAutoSignInDisabled: () => boolean;
   enableGoogleAutoSignIn: () => void;
@@ -86,6 +90,7 @@ const defaultDeps: SignInDeps = {
   requestGoogleIdentityPrompt,
   getGoogleClientId: readGoogleClientId,
   getWindow: () => (globalThis as { window?: Window }).window,
+  getDocument: () => (globalThis as { document?: Document }).document,
   getGoogleIdToken: () => getStoredGoogleIdToken(),
   isGoogleAutoSignInDisabled: () => isGoogleAutoSignInDisabled(),
   enableGoogleAutoSignIn: () => enableGoogleAutoSignIn(),
@@ -98,9 +103,46 @@ const defaultDeps: SignInDeps = {
   }
 };
 
+const GOOGLE_SIGN_IN_BUTTON_CONTAINER_ID = "google-signin-button";
+
+function isAuthGateVisible(documentRef: Document | undefined): boolean {
+  return !!documentRef?.getElementById(GOOGLE_SIGN_IN_BUTTON_CONTAINER_ID);
+}
+
+function createGoogleCredentialCallback(app: SignInApp, deps: SignInDeps) {
+  return (response: { credential?: string }) => {
+    const idToken = response.credential?.trim();
+    if (!idToken) {
+      logAuthWarn("signin:manual:empty_credential_callback", {
+        responseKeys: Object.keys(response ?? {})
+      });
+      return;
+    }
+    logAuthDebug("signin:manual:credential_received", {
+      tokenLength: idToken.length
+    });
+    deps.enableGoogleAutoSignIn();
+    deps.setGoogleIdToken(idToken);
+    app.googleAuthEpoch += 1;
+    app.googleAvatarLoadFailed = false;
+    deps.cacheGoogleProfileFromToken(idToken, GOOGLE_PROFILE_CACHE_KEY);
+    app.notify("Signed in with Google.", "success");
+    void app.debugLogEntitlement(true);
+  };
+}
+
+function normalizeGoogleButtonLocale(language: string): string | undefined {
+  const normalized = String(language || "").trim().toLowerCase();
+  if (!normalized) return undefined;
+  if (normalized.startsWith("fr")) return "fr";
+  if (normalized.startsWith("en")) return "en";
+  return normalized;
+}
+
 export function initGoogleAutoLoginFlow(app: SignInApp, deps: Partial<SignInDeps> = {}): void {
   const resolvedDeps = { ...defaultDeps, ...deps } satisfies SignInDeps;
   const currentWindow = resolvedDeps.getWindow();
+  const currentDocument = resolvedDeps.getDocument();
   const origin = currentWindow?.location?.origin ?? "(unknown)";
   const clientId = resolvedDeps.getGoogleClientId();
   const existingToken = resolvedDeps.getGoogleIdToken();
@@ -138,6 +180,11 @@ export function initGoogleAutoLoginFlow(app: SignInApp, deps: Partial<SignInDeps
     return;
   }
 
+  if (isAuthGateVisible(currentDocument)) {
+    logAuthDebug("init:auto:skip_prompt_auth_gate_visible");
+    return;
+  }
+
   resolvedDeps.initGoogleAutoLoginWithRetry({
     clientId,
     getGoogleIdentity: () => currentWindow?.google?.accounts?.id,
@@ -155,6 +202,66 @@ export function initGoogleAutoLoginFlow(app: SignInApp, deps: Partial<SignInDeps
     retryDelayMs: GOOGLE_INIT_RETRY_DELAY_MS,
     schedule: resolvedDeps.schedule
   });
+}
+
+export function renderGoogleSignInButtonFlow(
+  app: SignInApp,
+  deps: Partial<SignInDeps> = {},
+  attemptsLeft = GOOGLE_INIT_RETRY_COUNT
+): void {
+  const resolvedDeps = { ...defaultDeps, ...deps } satisfies SignInDeps;
+  const currentDocument = resolvedDeps.getDocument();
+  const container = currentDocument?.getElementById(GOOGLE_SIGN_IN_BUTTON_CONTAINER_ID) as HTMLElement | null;
+  if (!container) {
+    return;
+  }
+
+  app.showGoogleSignInFallback = false;
+
+  if (resolvedDeps.getGoogleIdToken()) {
+    container.replaceChildren();
+    app.showGoogleSignInFallback = false;
+    return;
+  }
+
+  const clientId = resolvedDeps.getGoogleClientId();
+  const googleId: GoogleAccountsApi | undefined = resolvedDeps.getWindow()?.google?.accounts?.id;
+  if (!clientId || !googleId) {
+    if (attemptsLeft <= 0) {
+      app.showGoogleSignInFallback = true;
+      return;
+    }
+    resolvedDeps.schedule(() => {
+      renderGoogleSignInButtonFlow(app, resolvedDeps, attemptsLeft - 1);
+    }, GOOGLE_INIT_RETRY_DELAY_MS);
+    return;
+  }
+
+  try {
+    googleId.initialize({
+      client_id: clientId,
+      auto_select: false,
+      itp_support: true,
+      callback: createGoogleCredentialCallback(app, resolvedDeps)
+    });
+    container.replaceChildren();
+    googleId.renderButton(container, {
+      type: "standard",
+      theme: app.isDark ? "filled_black" : "outline",
+      size: "large",
+      text: "continue_with",
+      shape: "rectangular",
+      logo_alignment: "left",
+      width: 320,
+      locale: normalizeGoogleButtonLocale(app.preferredLanguage)
+    });
+    app.showGoogleSignInFallback = false;
+  } catch (error) {
+    logAuthWarn("signin:render_button:exception", {
+      error: error instanceof Error ? error.message : String(error)
+    });
+    app.showGoogleSignInFallback = true;
+  }
 }
 
 export function promptGoogleSignInFlow(app: SignInApp, deps: Partial<SignInDeps> = {}): void {
@@ -203,25 +310,7 @@ export function promptGoogleSignInFlow(app: SignInApp, deps: Partial<SignInDeps>
       client_id: clientId,
       auto_select: false,
       itp_support: true,
-      callback: (response) => {
-        const idToken = response.credential?.trim();
-        if (!idToken) {
-          logAuthWarn("signin:manual:empty_credential_callback", {
-            responseKeys: Object.keys(response ?? {})
-          });
-          return;
-        }
-        logAuthDebug("signin:manual:credential_received", {
-          tokenLength: idToken.length
-        });
-        resolvedDeps.enableGoogleAutoSignIn();
-        resolvedDeps.setGoogleIdToken(idToken);
-        app.googleAuthEpoch += 1;
-        app.googleAvatarLoadFailed = false;
-        resolvedDeps.cacheGoogleProfileFromToken(idToken, GOOGLE_PROFILE_CACHE_KEY);
-        app.notify("Signed in with Google.", "success");
-        void app.debugLogEntitlement(true);
-      }
+      callback: createGoogleCredentialCallback(app, resolvedDeps)
     });
 
     logAuthDebug("signin:manual:prompt");

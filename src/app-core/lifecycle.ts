@@ -114,6 +114,7 @@ export const appLifecycle: AppLifecycleObject = {
     this.loadWheelFromStorage();
     this.syncLivePricesFromDefaults();
     this.initGoogleAutoLogin();
+    this.$nextTick(() => this.renderGoogleSignInButton());
     if (typeof this.syncGuidedOnboarding === "function") {
       this.syncGuidedOnboarding();
     }

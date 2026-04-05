@@ -4,6 +4,7 @@ import { getPlayBillingService } from "../../utils/playBilling.ts";
 
 export type UiEntitlementMethodKeys =
   | "initGoogleAutoLogin"
+  | "renderGoogleSignInButton"
   | "promptGoogleSignIn"
   | "openVerifyPurchaseModal"
   | "startProPurchase"

@@ -5,6 +5,7 @@ import { uiEntitlementStatusMethods } from "./entitlements-status.ts";
 
 export const uiEntitlementMethods: UiEntitlementMethodSubset<
   | "initGoogleAutoLogin"
+  | "renderGoogleSignInButton"
   | "promptGoogleSignIn"
   | "openVerifyPurchaseModal"
   | "startProPurchase"

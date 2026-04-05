@@ -41,7 +41,8 @@ vi.mock("../src/app-core/methods/ui/entitlements-shared.ts", async (importOrigin
 import {
   initGoogleAutoLoginFlow,
   openVerifyPurchaseModalFlow,
-  promptGoogleSignInFlow
+  promptGoogleSignInFlow,
+  renderGoogleSignInButtonFlow
 } from "../src/app-core/methods/ui/entitlements-signin-service.ts";
 
 type MockStorage = {
@@ -94,7 +95,7 @@ function withMockedLocalStorage(run: (data: Map<string, string>) => Promise<void
   }
 }
 
-function stubWindow(googleIdApi?: { initialize: (...args: unknown[]) => void; prompt: () => void }): void {
+function stubWindow(googleIdApi?: { initialize: (...args: unknown[]) => void; prompt: () => void; renderButton?: (...args: unknown[]) => void }): void {
   vi.stubGlobal("window", {
     location: { origin: "https://localhost" },
     setTimeout: vi.fn((callback: () => void) => {
@@ -111,10 +112,23 @@ function stubWindow(googleIdApi?: { initialize: (...args: unknown[]) => void; pr
   });
 }
 
+function stubDocumentWithButtonContainer() {
+  const container = {
+    replaceChildren: vi.fn()
+  } as unknown as HTMLElement;
+  vi.stubGlobal("document", {
+    getElementById: vi.fn((id: string) => id === "google-signin-button" ? container : null)
+  });
+  return container;
+}
+
 function createContext(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
     hasProAccess: false,
     hasLotSelected: false,
+    isDark: true,
+    preferredLanguage: "en",
+    showGoogleSignInFallback: false,
     targetProfitPercent: 0,
     autoSaveSetup: vi.fn(),
     showManualPurchaseVerify: true,
@@ -168,6 +182,23 @@ test("initGoogleAutoLoginFlow stays signed out after an intentional logout", asy
       prompt: vi.fn()
     });
     data.set("whatfees_google_auto_signin_disabled_v1", "1");
+    const context = createContext();
+
+    initGoogleAutoLoginFlow(context as never);
+
+    assert.equal(initGoogleAutoLoginWithRetryMock.mock.calls.length, 0);
+    assert.equal(context.googleAuthEpoch, 0);
+  });
+});
+
+test("initGoogleAutoLoginFlow skips auto prompt while auth gate is visible", async () => {
+  await withMockedLocalStorage(async () => {
+    const container = stubDocumentWithButtonContainer();
+    void container;
+    stubWindow({
+      initialize: vi.fn(),
+      prompt: vi.fn()
+    });
     const context = createContext();
 
     initGoogleAutoLoginFlow(context as never);
@@ -237,6 +268,48 @@ test("promptGoogleSignInFlow initializes, prompts, and handles credential callba
     assert.equal((context.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0], "Signed in with Google.");
     assert.equal(cacheGoogleProfileFromTokenMock.mock.calls.at(-1)?.[0], "signed-token");
     assert.equal((context.debugLogEntitlement as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0], true);
+  });
+});
+
+test("renderGoogleSignInButtonFlow initializes GIS button and handles credential callback", async () => {
+  await withMockedLocalStorage(async (data) => {
+    let callback: ((response: { credential?: string }) => void) | null = null;
+    const initialize = vi.fn((config: { callback: (response: { credential?: string }) => void }) => {
+      callback = config.callback;
+    });
+    const renderButton = vi.fn();
+    stubWindow({ initialize, prompt: vi.fn(), renderButton });
+    const container = stubDocumentWithButtonContainer();
+    const context = createContext({
+      preferredLanguage: "fr-CA"
+    });
+
+    renderGoogleSignInButtonFlow(context as never);
+    callback?.({ credential: "  rendered-token  " });
+
+    assert.equal(initialize.mock.calls.length, 1);
+    assert.equal(renderButton.mock.calls.length, 1);
+    assert.equal(renderButton.mock.calls[0]?.[0], container);
+    assert.equal(renderButton.mock.calls[0]?.[1]?.locale, "fr");
+    assert.equal(renderButton.mock.calls[0]?.[1]?.theme, "filled_black");
+    assert.equal(data.get("whatfees_google_id_token"), "rendered-token");
+    assert.equal(context.googleAuthEpoch, 1);
+    assert.equal(context.showGoogleSignInFallback, false);
+    assert.equal((context.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0], "Signed in with Google.");
+  });
+});
+
+test("renderGoogleSignInButtonFlow exposes fallback after GIS button render exhausts retries", async () => {
+  await withMockedLocalStorage(async () => {
+    stubWindow();
+    stubDocumentWithButtonContainer();
+    const context = createContext({
+      showGoogleSignInFallback: false
+    });
+
+    renderGoogleSignInButtonFlow(context as never, {}, 0);
+
+    assert.equal(context.showGoogleSignInFallback, true);
   });
 });
 

@@ -82,7 +82,7 @@ function withMockedLocalStorage(run: (data: Map<string, string>) => Promise<void
   }
 }
 
-function stubWindow(googleIdApi?: { initialize: (...args: unknown[]) => void; prompt: () => void }): void {
+function stubWindow(googleIdApi?: { initialize: (...args: unknown[]) => void; prompt: () => void; renderButton?: (...args: unknown[]) => void }): void {
   vi.stubGlobal("window", {
     location: { origin: "https://localhost" },
     setTimeout: vi.fn((callback: () => void) => {
@@ -99,9 +99,22 @@ function stubWindow(googleIdApi?: { initialize: (...args: unknown[]) => void; pr
   });
 }
 
+function stubDocumentWithButtonContainer() {
+  const container = {
+    replaceChildren: vi.fn()
+  } as unknown as HTMLElement;
+  vi.stubGlobal("document", {
+    getElementById: vi.fn((id: string) => id === "google-signin-button" ? container : null)
+  });
+  return container;
+}
+
 function createContext(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
     hasProAccess: false,
+    isDark: true,
+    preferredLanguage: "en",
+    showGoogleSignInFallback: false,
     showManualPurchaseVerify: true,
     showVerifyPurchaseModal: false,
     googleAuthEpoch: 0,
@@ -195,6 +208,25 @@ test("promptGoogleSignIn reuses existing token without opening Google prompt", a
     assert.equal(context.googleAuthEpoch, 1);
     assert.equal((context.debugLogEntitlement as ReturnType<typeof vi.fn>).mock.calls.length, 1);
     assert.equal(requestGoogleIdentityPromptMock.mock.calls.length, 0);
+  });
+});
+
+test("renderGoogleSignInButton initializes and renders official Google button", async () => {
+  await withMockedLocalStorage(async () => {
+    const initialize = vi.fn();
+    const renderButton = vi.fn();
+    stubWindow({ initialize, prompt: vi.fn(), renderButton });
+    stubDocumentWithButtonContainer();
+    const context = createContext({
+      preferredLanguage: "fr"
+    });
+
+    uiEntitlementSignInMethods.renderGoogleSignInButton.call(context as never);
+
+    assert.equal(initialize.mock.calls.length, 1);
+    assert.equal(renderButton.mock.calls.length, 1);
+    assert.equal(renderButton.mock.calls[0]?.[1]?.locale, "fr");
+    assert.equal(renderButton.mock.calls[0]?.[1]?.theme, "filled_black");
   });
 });
 

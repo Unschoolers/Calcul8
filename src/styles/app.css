@@ -324,6 +324,26 @@
     .auth-gate-title {
       line-height: 1.2;
     }
+    .auth-gate-google-button {
+      display: block;
+      width: min(100%, 320px);
+      min-height: 44px;
+      margin: 0 auto 0.85rem;
+      line-height: 0;
+      text-align: center;
+    }
+    .auth-gate-google-button > div {
+      display: inline-block;
+      max-width: 100%;
+    }
+    .auth-gate-fallback-copy {
+      width: min(100%, 320px);
+      margin: 0.15rem auto 0.5rem;
+      font-size: 0.84rem;
+      line-height: 1.35;
+      color: rgba(var(--v-theme-on-surface), 0.7);
+      text-align: center;
+    }
     .auth-gate-btn {
       display: flex !important;
       width: min(100%, 320px) !important;
@@ -331,6 +351,13 @@
       text-transform: uppercase;
       letter-spacing: 0.03em;
       font-weight: 800;
+    }
+    .auth-gate-btn--fallback {
+      text-transform: none;
+      letter-spacing: 0;
+      font-weight: 700;
+      border-color: rgba(var(--v-theme-secondary), 0.42) !important;
+      background: rgba(var(--v-theme-secondary), 0.08) !important;
     }
     .auth-gate-btn .v-btn__content {
       width: 100%;

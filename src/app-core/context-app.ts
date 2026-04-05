@@ -331,6 +331,7 @@ export interface AppMethodState {
   getSaleIcon(type: SaleType): string;
   formatDate(dateStr: string): string;
   initGoogleAutoLogin(): void;
+  renderGoogleSignInButton(): void;
   promptGoogleSignIn(): void;
   openVerifyPurchaseModal(): void;
   startProPurchase(): Promise<void>;

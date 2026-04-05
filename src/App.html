@@ -1258,10 +1258,16 @@
                   {{ authGateSubtitle }}
                 </p>
 
-                <v-btn block size="large" color="primary" class="auth-gate-btn" @click="promptGoogleSignIn">
+                <div id="google-signin-button" class="auth-gate-google-button" aria-label="Sign in with Google"></div>
+
+                <p v-if="showGoogleSignInFallback" class="auth-gate-fallback-copy">
+                  {{ t('authGoogleFallbackHint') }}
+                </p>
+
+                <v-btn v-if="showGoogleSignInFallback" block size="large" variant="outlined" color="secondary" class="auth-gate-btn auth-gate-btn--fallback" @click="promptGoogleSignIn">
                   <span class="auth-gate-btn__content">
                     <v-icon size="22" class="auth-gate-btn__icon">mdi-google</v-icon>
-                    <span class="auth-gate-btn__label">{{ t('authContinueWithGoogleAction') }}</span>
+                    <span class="auth-gate-btn__label">{{ t('authGoogleFallbackAction') }}</span>
                     <span class="auth-gate-btn__spacer" aria-hidden="true"></span>
                   </span>
                 </v-btn>

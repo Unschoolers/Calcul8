@@ -39,6 +39,10 @@ export const appWatch: AppWatchObject = {
     } else if (this.currentTab === "portfolio") {
       this.$nextTick(() => this.initPortfolioChart());
     }
+
+    if (!this.isGoogleSignedIn) {
+      this.$nextTick(() => this.renderGoogleSignInButton());
+    }
   },
 
   currentTab(newTab) {
@@ -126,6 +130,7 @@ export const appWatch: AppWatchObject = {
       this.workspacePresenceByUserId = {};
       this.showWorkspaceMembersModal = false;
       resetWhatnotSignedOutState(this);
+      this.$nextTick(() => this.renderGoogleSignInButton());
       return;
     }
 

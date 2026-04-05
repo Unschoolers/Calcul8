@@ -103,6 +103,7 @@ export function createInitialState(): AppState {
     isOffline: !navigator.onLine,
     deferredInstallPrompt: null,
     showInstallPrompt: false,
+    showGoogleSignInFallback: false,
     googleAuthEpoch: 0,
     googleAvatarLoadFailed: false,
     onlineListener: null,
