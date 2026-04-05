@@ -8,19 +8,11 @@
     <div class="wheel-panel-title__row">
       <div class="wheel-panel-title__copy">
         <div class="wheel-panel-heading">
-          <v-icon start size="small">
-            {{ wheelInspectorTab === 'config' ? 'mdi-cog-outline' : (wheelInspectorTab === 'session' ? 'mdi-chart-box-outline' : 'mdi-history') }}
-          </v-icon>
-          {{ wheelInspectorTab === 'config' ? t('wheelInspectorConfigTitle') : (wheelInspectorTab === 'session' ? t('wheelInspectorSessionTitle') : t('wheelInspectorHistoryTitle')) }}
+          <v-icon start size="small">{{ wheelInspectorPanelMeta.icon }}</v-icon>
+          {{ wheelInspectorPanelMeta.title }}
         </div>
         <div class="wheel-panel-subtitle">
-          {{
-            wheelInspectorTab === 'config'
-              ? t('wheelInspectorConfigSubtitle')
-              : (wheelInspectorTab === 'session'
-                  ? t('wheelInspectorSessionSubtitle')
-                  : t('wheelInspectorHistorySubtitle'))
-          }}
+          {{ wheelInspectorPanelMeta.subtitle }}
         </div>
       </div>
       <v-btn
@@ -43,17 +35,9 @@
       class="wheel-inspector-toggle"
       @update:model-value="wheelInspectorTab = $event"
     >
-      <v-btn v-if="wheelMode === 'config'" value="config" size="small">
-        <v-icon start size="small">mdi-tune</v-icon>
-        {{ t('wheelInspectorBuilderTabLabel') }}
-      </v-btn>
-      <v-btn value="session" size="small">
-        <v-icon start size="small">mdi-chart-box-outline</v-icon>
-        {{ t('wheelInspectorSessionTabLabel') }}
-      </v-btn>
-      <v-btn value="history" size="small">
-        <v-icon start size="small">mdi-history</v-icon>
-        {{ t('wheelInspectorHistoryTabLabel') }}
+      <v-btn v-for="tab in wheelInspectorTabItems" :key="tab.id" :value="tab.id" size="small">
+        <v-icon start size="small">{{ tab.icon }}</v-icon>
+        {{ tab.label }}
       </v-btn>
     </v-btn-toggle>
 

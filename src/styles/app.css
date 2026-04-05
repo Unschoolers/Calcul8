@@ -1261,19 +1261,6 @@
       bottom: calc(5rem + env(safe-area-inset-bottom)) !important;
       inset-block-end: calc(5rem + env(safe-area-inset-bottom)) !important;
     }
-    .fab-wheel-end {
-      bottom: calc(5rem + env(safe-area-inset-bottom)) !important;
-      inset-block-end: calc(5rem + env(safe-area-inset-bottom)) !important;
-    }
-    .fab-wheel-history {
-      bottom: calc(10rem + env(safe-area-inset-bottom)) !important;
-      inset-block-end: calc(10rem + env(safe-area-inset-bottom)) !important;
-    }
-    .fab-wheel-builder,
-    .fab-wheel-session {
-      bottom: calc(15rem + env(safe-area-inset-bottom)) !important;
-      inset-block-end: calc(15rem + env(safe-area-inset-bottom)) !important;
-    }
     .fab-portfolio-report {
       bottom: calc(5rem + env(safe-area-inset-bottom)) !important;
       inset-block-end: calc(5rem + env(safe-area-inset-bottom)) !important;
@@ -1289,6 +1276,28 @@
     .fab-overflow-sales {
       bottom: calc(5rem + env(safe-area-inset-bottom));
       inset-block-end: calc(5rem + env(safe-area-inset-bottom));
+    }
+    .fab-wheel-stack {
+      bottom: calc(5rem + env(safe-area-inset-bottom));
+      inset-block-end: calc(5rem + env(safe-area-inset-bottom));
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 1rem;
+    }
+    .fab-wheel-stack .fab-primary {
+      position: static !important;
+      right: auto !important;
+      left: auto !important;
+      inset-inline-end: auto !important;
+      inset-inline-start: auto !important;
+    }
+    .fab-wheel-stack .fab-wheel-builder,
+    .fab-wheel-stack .fab-wheel-session,
+    .fab-wheel-stack .fab-wheel-history,
+    .fab-wheel-stack .fab-wheel-end {
+      bottom: auto !important;
+      inset-block-end: auto !important;
     }
     .v-speed-dial__content { z-index: 1301 !important; }
     .tabs-window {

@@ -1,0 +1,21 @@
+<div
+  v-if="!wheelPresentationMode && !wheelIsCompactLayout && wheelStageSummaryCards.length"
+  class="wheel-stage-summary"
+  :class="{ 'wheel-stage-summary--live': wheelMode === 'live' }"
+>
+  <div
+    v-for="card in wheelStageSummaryCards"
+    :key="card.id"
+    class="wheel-stage-summary-card"
+  >
+    <span class="wheel-stage-summary-card__label">{{ card.label }}</span>
+    <strong
+      class="wheel-stage-summary-card__value"
+      :class="card.valueClass"
+      :style="card.valueStyle ? { color: card.valueStyle } : undefined"
+    >
+      {{ card.value }}
+    </strong>
+    <span class="wheel-stage-summary-card__meta">{{ card.meta }}</span>
+  </div>
+</div>

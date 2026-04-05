@@ -2004,6 +2004,66 @@ test("confirmWheelModeChange applies the requested live mode and moves the inspe
   assert.equal(vm.wheelRequestedMode, null);
 });
 
+test("wheelInspectorTabItems reuse a shared tab model for config mode", () => {
+  const items = WheelWindow.computed!.wheelInspectorTabItems.call({
+    wheelMode: "config",
+    preferredLanguage: "en"
+  } as never);
+
+  assert.deepEqual(items.map((item: { id: string }) => item.id), ["config", "session", "history"]);
+});
+
+test("wheelInspectorTabItems hide builder outside config mode", () => {
+  const items = WheelWindow.computed!.wheelInspectorTabItems.call({
+    wheelMode: "live",
+    preferredLanguage: "en"
+  } as never);
+
+  assert.deepEqual(items.map((item: { id: string }) => item.id), ["session", "history"]);
+});
+
+test("wheelCompactFabActions expose config-mode history, session, builder ordering", () => {
+  const actions = WheelWindow.computed!.wheelCompactFabActions.call({
+    wheelMode: "config",
+    preferredLanguage: "en",
+    hasLotSelected: true,
+    wheelEndingSession: false
+  } as never);
+
+  assert.deepEqual(actions.map((action: { id: string }) => action.id), ["history", "session", "builder"]);
+});
+
+test("wheelCompactFabActions expose live-mode history, session, end ordering", () => {
+  const actions = WheelWindow.computed!.wheelCompactFabActions.call({
+    wheelMode: "live",
+    preferredLanguage: "en",
+    hasLotSelected: true,
+    wheelEndingSession: false
+  } as never);
+
+  assert.deepEqual(actions.map((action: { id: string }) => action.id), ["history", "session", "end"]);
+  assert.equal(actions[2]?.color, "error");
+});
+
+test("wheelStageSummaryCards provide config-mode summary cards from the shared model", () => {
+  const cards = WheelWindow.computed!.wheelStageSummaryCards.call({
+    wheelMode: "config",
+    preferredLanguage: "en",
+    expectedMarginDisplay: "12.5%",
+    expectedMarginHint: "Above target by 2.5%",
+    expectedMarginColor: "rgb(var(--v-theme-success))",
+    wheelDisplayConfig: { targetMargin: 10 },
+    wheelDisplaySlots: [{}, {}, {}],
+    hasPendingWheelChanges: false
+  } as never);
+
+  assert.deepEqual(cards.map((card: { id: string }) => card.id), [
+    "expected-margin",
+    "target-margin",
+    "builder-status"
+  ]);
+});
+
 test("handleWheelModeChange returns the inspector to config when switching back", () => {
   const vm: Record<string, unknown> = {
     wheelMode: "live",

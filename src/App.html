@@ -430,67 +430,28 @@
           color="primary" size="large" :title="t('shellApplyLivePricesAction')" :aria-label="t('shellApplyLivePricesAction')"
           :disabled="!hasLotSelected" @click="applyLivePricesToDefaults" class="fab-primary fab-calculate"></v-fab>
 
-        <v-fab
-          v-if="currentTab === 'wheel'
-            && $refs.wheelWindow?.wheelIsCompactLayout
-            && !$refs.wheelWindow?.wheelPresentationMode
-            && !$refs.wheelWindow?.wheelMobileInspectorOpen
-            && $refs.wheelWindow?.wheelMode === 'config'"
-          icon="mdi-tune"
-          color="secondary"
-          size="large"
-          :title="t('wheelInspectorBuilderTabLabel')"
-          :aria-label="t('wheelInspectorBuilderTabLabel')"
-          :disabled="!hasLotSelected"
-          @click="$refs.wheelWindow?.openWheelInspector?.('config')"
-          class="fab-primary fab-wheel-builder"
-        ></v-fab>
-
-        <v-fab
+        <div
           v-if="currentTab === 'wheel'
             && $refs.wheelWindow?.wheelIsCompactLayout
             && !$refs.wheelWindow?.wheelPresentationMode
             && !$refs.wheelWindow?.wheelMobileInspectorOpen"
-          icon="mdi-chart-box-outline"
-          color="secondary"
-          size="large"
-          :title="t('wheelInspectorSessionTabLabel')"
-          :aria-label="t('wheelInspectorSessionTabLabel')"
-          :disabled="!hasLotSelected"
-          @click="$refs.wheelWindow?.openWheelInspector?.('session')"
-          class="fab-primary fab-wheel-session"
-        ></v-fab>
-
-        <v-fab
-          v-if="currentTab === 'wheel'
-            && $refs.wheelWindow?.wheelIsCompactLayout
-            && !$refs.wheelWindow?.wheelPresentationMode
-            && !$refs.wheelWindow?.wheelMobileInspectorOpen"
-          icon="mdi-history"
-          color="surface"
-          size="large"
-          :title="t('wheelInspectorHistoryTabLabel')"
-          :aria-label="t('wheelInspectorHistoryTabLabel')"
-          :disabled="!hasLotSelected"
-          @click="$refs.wheelWindow?.openWheelInspector?.('history')"
-          class="fab-primary fab-wheel-history"
-        ></v-fab>
-
-        <v-fab
-          v-if="currentTab === 'wheel'
-            && $refs.wheelWindow?.wheelIsCompactLayout
-            && !$refs.wheelWindow?.wheelPresentationMode
-            && !$refs.wheelWindow?.wheelMobileInspectorOpen
-            && $refs.wheelWindow?.wheelMode === 'live'"
-          icon="mdi-flag-checkered"
-          color="warning"
-          size="large"
-          :title="t('wheelEndSessionAction')"
-          :aria-label="t('wheelEndSessionAction')"
-          :disabled="!hasLotSelected || $refs.wheelWindow?.wheelEndingSession"
-          @click="$refs.wheelWindow?.requestWheelSessionEnd?.()"
-          class="fab-primary fab-wheel-end"
-        ></v-fab>
+          class="fab-overflow-wrap fab-wheel-stack"
+        >
+          <v-fab
+            v-for="action in ($refs.wheelWindow?.wheelCompactFabActions || [])"
+            :key="action.id"
+            :icon="action.icon"
+            :color="action.color"
+            size="large"
+            :title="action.title"
+            :aria-label="action.title"
+            :disabled="action.disabled"
+            @click="action.actionType === 'end'
+              ? $refs.wheelWindow?.requestWheelSessionEnd?.()
+              : $refs.wheelWindow?.openWheelInspector?.(action.targetTab)"
+            class="fab-primary"
+          ></v-fab>
+        </div>
 
         <!-- Primary FAB - Sales -->
         <div v-if="currentTab === 'sales' && hasProAccess" class="fab-overflow-wrap fab-overflow-sales">

@@ -14,6 +14,117 @@ import {
 import { translateAppMessage } from "../../app-core/i18n/index.ts";
 
 export const wheelComputeds = {
+  wheelInspectorPanelMeta(this: Record<string, unknown>): { icon: string; title: string; subtitle: string } {
+    const preferredLanguage = String((this as Record<string, unknown>).preferredLanguage ?? "");
+    const tab = String((this as Record<string, unknown>).wheelInspectorTab || "config");
+    if (tab === "session") {
+      return {
+        icon: "mdi-chart-box-outline",
+        title: translateAppMessage(preferredLanguage, "wheelInspectorSessionTitle"),
+        subtitle: translateAppMessage(preferredLanguage, "wheelInspectorSessionSubtitle")
+      };
+    }
+    if (tab === "history") {
+      return {
+        icon: "mdi-history",
+        title: translateAppMessage(preferredLanguage, "wheelInspectorHistoryTitle"),
+        subtitle: translateAppMessage(preferredLanguage, "wheelInspectorHistorySubtitle")
+      };
+    }
+    return {
+      icon: "mdi-cog-outline",
+      title: translateAppMessage(preferredLanguage, "wheelInspectorConfigTitle"),
+      subtitle: translateAppMessage(preferredLanguage, "wheelInspectorConfigSubtitle")
+    };
+  },
+
+  wheelInspectorTabItems(this: Record<string, unknown>): Array<{ id: "config" | "session" | "history"; icon: string; label: string }> {
+    const preferredLanguage = String((this as Record<string, unknown>).preferredLanguage ?? "");
+    const mode = String((this as Record<string, unknown>).wheelMode || "config");
+    const items: Array<{ id: "config" | "session" | "history"; icon: string; label: string }> = [];
+    if (mode === "config") {
+      items.push({
+        id: "config",
+        icon: "mdi-tune",
+        label: translateAppMessage(preferredLanguage, "wheelInspectorBuilderTabLabel")
+      });
+    }
+    items.push({
+      id: "session",
+      icon: "mdi-chart-box-outline",
+      label: translateAppMessage(preferredLanguage, "wheelInspectorSessionTabLabel")
+    });
+    items.push({
+      id: "history",
+      icon: "mdi-history",
+      label: translateAppMessage(preferredLanguage, "wheelInspectorHistoryTabLabel")
+    });
+    return items;
+  },
+
+  wheelCompactFabActions(this: Record<string, unknown>): Array<{
+    id: "history" | "session" | "builder" | "end";
+    icon: string;
+    color: string;
+    title: string;
+    actionType: "inspector" | "end";
+    targetTab?: "config" | "session" | "history";
+    disabled: boolean;
+  }> {
+    const preferredLanguage = String((this as Record<string, unknown>).preferredLanguage ?? "");
+    const mode = String((this as Record<string, unknown>).wheelMode || "config");
+    const hasLotSelected = Boolean((this as Record<string, unknown>).hasLotSelected);
+    const actions: Array<{
+      id: "history" | "session" | "builder" | "end";
+      icon: string;
+      color: string;
+      title: string;
+      actionType: "inspector" | "end";
+      targetTab?: "config" | "session" | "history";
+      disabled: boolean;
+    }> = [
+      {
+        id: "history",
+        icon: "mdi-history",
+        color: "surface",
+        title: translateAppMessage(preferredLanguage, "wheelInspectorHistoryTabLabel"),
+        actionType: "inspector",
+        targetTab: "history",
+        disabled: !hasLotSelected
+      },
+      {
+        id: "session",
+        icon: "mdi-chart-box-outline",
+        color: "secondary",
+        title: translateAppMessage(preferredLanguage, "wheelInspectorSessionTabLabel"),
+        actionType: "inspector",
+        targetTab: "session",
+        disabled: !hasLotSelected
+      }
+    ];
+    if (mode === "config") {
+      actions.push({
+        id: "builder",
+        icon: "mdi-tune",
+        color: "secondary",
+        title: translateAppMessage(preferredLanguage, "wheelInspectorBuilderTabLabel"),
+        actionType: "inspector",
+        targetTab: "config",
+        disabled: !hasLotSelected
+      });
+    } else {
+      actions.push({
+        id: "end",
+        icon: "mdi-flag-checkered",
+        color: "error",
+        title: translateAppMessage(preferredLanguage, "wheelEndSessionAction"),
+        actionType: "end",
+        disabled: !hasLotSelected || Boolean((this as Record<string, unknown>).wheelEndingSession)
+      });
+    }
+    return actions;
+  },
+
   wheelStageTitle(this: Record<string, unknown>): string {
     const displayConfig = (this as Record<string, unknown>).wheelDisplayConfig as WheelConfig | null;
     return displayConfig?.name || translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelStageTitleFallback");
@@ -644,6 +755,74 @@ export const wheelComputeds = {
 
   wheelTrackerInventory(this: Record<string, unknown>) {
     return (this as Record<string, unknown>).wheelSessionSourceGroups;
+  },
+
+  wheelStageSummaryCards(this: Record<string, unknown>): Array<{
+    id: string;
+    label: string;
+    value: string | number;
+    meta: string;
+    valueClass?: string;
+    valueStyle?: string;
+  }> {
+    const preferredLanguage = String((this as Record<string, unknown>).preferredLanguage ?? "");
+    const mode = String((this as Record<string, unknown>).wheelMode || "config");
+    if (mode === "live") {
+      return [
+        {
+          id: "spins",
+          label: translateAppMessage(preferredLanguage, "wheelSpinsLabel"),
+          value: Number((this as Record<string, unknown>).wheelTotalSpins || 0),
+          meta: translateAppMessage(preferredLanguage, "wheelLiveRevenueMeta", {
+            amount: Number((this as Record<string, unknown>).wheelSessionRevenue || 0).toFixed(2)
+          })
+        },
+        {
+          id: "profit",
+          label: translateAppMessage(preferredLanguage, "wheelGrossProfitLabel"),
+          value: String((this as Record<string, unknown>).wheelSessionProfitDisplay || ""),
+          meta: translateAppMessage(preferredLanguage, "wheelLivePrizeCostMeta", {
+            amount: Number((this as Record<string, unknown>).wheelSessionCost || 0).toFixed(2)
+          }),
+          valueClass: String((this as Record<string, unknown>).wheelSessionProfitClass || "")
+        },
+        {
+          id: "margin",
+          label: translateAppMessage(preferredLanguage, "wheelSessionMarginLabel"),
+          value: String((this as Record<string, unknown>).wheelSessionMarginDisplay || "—"),
+          meta: String((this as Record<string, unknown>).wheelSessionMarginHint || ""),
+          valueStyle: String((this as Record<string, unknown>).wheelSessionMarginColor || "")
+        }
+      ];
+    }
+
+    return [
+      {
+        id: "expected-margin",
+        label: translateAppMessage(preferredLanguage, "wheelStageExpectedMarginLabel"),
+        value: String((this as Record<string, unknown>).expectedMarginDisplay || "—"),
+        meta: String((this as Record<string, unknown>).expectedMarginHint || ""),
+        valueStyle: String((this as Record<string, unknown>).expectedMarginColor || "")
+      },
+      {
+        id: "target-margin",
+        label: translateAppMessage(preferredLanguage, "wheelStageTargetMarginLabel"),
+        value: `${Number(((this as Record<string, unknown>).wheelDisplayConfig as WheelConfig | null)?.targetMargin || 0)}%`,
+        meta: translateAppMessage(preferredLanguage, "wheelConfiguredSlotsMeta", {
+          count: (((this as Record<string, unknown>).wheelDisplaySlots || []) as WheelSlot[]).length
+        })
+      },
+      {
+        id: "builder-status",
+        label: translateAppMessage(preferredLanguage, "wheelBuilderLabel"),
+        value: Boolean((this as Record<string, unknown>).hasPendingWheelChanges)
+          ? translateAppMessage(preferredLanguage, "wheelBuilderPendingLabel")
+          : translateAppMessage(preferredLanguage, "wheelBuilderReadyLabel"),
+        meta: Boolean((this as Record<string, unknown>).hasPendingWheelChanges)
+          ? translateAppMessage(preferredLanguage, "wheelBuilderPendingHelp")
+          : translateAppMessage(preferredLanguage, "wheelBuilderReadyHelp")
+      }
+    ];
   },
 
   currentLotCostPerPack(this: Record<string, unknown>): number {

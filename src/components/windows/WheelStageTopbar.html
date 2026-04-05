@@ -1,0 +1,42 @@
+<div class="wheel-stage-topbar">
+  <div class="wheel-stage-meta">
+    <div class="wheel-stage-title">{{ wheelStageTitle }}</div>
+    <div v-if="!wheelPresentationMode" class="wheel-stage-pills">
+      <span class="wheel-stage-pill">{{ wheelStageSlotsLabel }}</span>
+      <span v-if="wheelDisplayConfig" class="wheel-stage-pill">{{ wheelStageSpinPriceLabel }}</span>
+      <span v-if="wheelIsCompactLayout" class="wheel-stage-pill wheel-stage-pill--kpi">
+        <span class="wheel-stage-pill__label">{{ wheelCompactStageSummaryLabel }}</span>
+        <strong class="wheel-stage-pill__value" :style="{ color: wheelCompactStageSummaryColor }">
+          {{ wheelCompactStageSummaryValue }}
+        </strong>
+      </span>
+    </div>
+  </div>
+  <div class="wheel-stage-actions">
+    <v-btn-toggle
+      :model-value="wheelMode"
+      mandatory
+      density="comfortable"
+      divided
+      class="wheel-mode-toggle"
+      @update:model-value="handleWheelModeChange"
+    >
+      <v-btn value="config" size="small" :class="{ 'wheel-mode-toggle__btn--active-config': wheelMode === 'config' }">
+        <v-icon start size="small">mdi-tune</v-icon>
+        {{ t('wheelConfigModeLabel') }}
+      </v-btn>
+      <v-btn value="live" size="small" :class="{ 'wheel-mode-toggle__btn--active-live': wheelMode === 'live' }">
+        <v-icon start size="small">mdi-broadcast</v-icon>
+        {{ t('wheelLiveModeLabel') }}
+      </v-btn>
+    </v-btn-toggle>
+    <v-btn
+      size="x-small"
+      :icon="wheelPresentationMode ? 'mdi-arrow-collapse-all' : 'mdi-arrow-expand-all'"
+      variant="text"
+      :title="wheelPresentationToggleTitle"
+      class="wheel-presentation-toggle"
+      @click="wheelPresentationMode = !wheelPresentationMode"
+    ></v-btn>
+  </div>
+</div>
