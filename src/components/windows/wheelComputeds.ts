@@ -1,5 +1,7 @@
+import { translateAppMessage } from "../../app-core/i18n/index.ts";
 import { calculateTotalCaseCost } from "../../domain/calculations-fees.ts";
 import type { Lot, WheelConfig, WheelFairnessEntry } from "../../types/app.ts";
+import { getWheelController } from "./wheelControllerState.ts";
 import {
   calculateAverageWheelSellingTaxPercent,
   calculateWheelBuyerShippingTotal,
@@ -11,7 +13,6 @@ import {
   getAvailableSinglesQuantityForWheelTier,
   getRemainingPacksForWheelLot
 } from "./wheelSaleSupport.ts";
-import { translateAppMessage } from "../../app-core/i18n/index.ts";
 
 function calculateWheelSessionMarginPercent(vm: Record<string, unknown>): number | null {
   const cost = Number(vm.wheelSessionCost || 0);
@@ -208,13 +209,15 @@ export const wheelComputeds = {
     if ((this as Record<string, unknown>).wheelSpinning) {
       return translateAppMessage(preferredLanguage, "wheelFairnessResultLockedTitle");
     }
-    return String((this as Record<string, unknown>).wheelSpinVerificationUrl || "").trim()
+    const controller = getWheelController(this as Record<string, unknown>);
+    return String(controller.spinVerificationUrl || "").trim()
       ? translateAppMessage(preferredLanguage, "wheelFairnessServerVerifiedTitle")
       : translateAppMessage(preferredLanguage, "wheelFairnessLocalVerifiedTitle");
   },
 
   wheelFairnessChevron(this: Record<string, unknown>): string {
-    return (this as Record<string, unknown>).wheelShowSeed ? "mdi-chevron-up" : "mdi-chevron-down";
+    const controller = getWheelController(this as Record<string, unknown>);
+    return controller.showSeed ? "mdi-chevron-up" : "mdi-chevron-down";
   },
 
   wheelDisplayFairnessHistory(this: Record<string, unknown>): Array<{
@@ -228,9 +231,10 @@ export const wheelComputeds = {
     algorithm?: string;
     timestamp: number;
   }> {
+    const controller = getWheelController(this as Record<string, unknown>);
     const history = (((this as Record<string, unknown>).wheelMode === "config"
-      ? (this as Record<string, unknown>).wheelPreviewFairnessHistory
-      : (this as Record<string, unknown>).wheelFairnessHistory) || []) as WheelFairnessEntry[];
+      ? controller.previewFairnessHistory
+      : controller.fairnessHistory) || []) as WheelFairnessEntry[];
     return [...history].reverse();
   },
 
@@ -257,11 +261,12 @@ export const wheelComputeds = {
     const preferredLanguage = String((this as Record<string, unknown>).preferredLanguage ?? "");
     const history = (((this as Record<string, unknown>).wheelDisplayFairnessHistory || []) as WheelFairnessEntry[]);
     const latestHistory = history[0] || null;
-    const currentHash = String((this as Record<string, unknown>).wheelSpinHash || "");
-    const currentSeed = String((this as Record<string, unknown>).wheelSpinSeed || "");
-    const currentClientSeed = String((this as Record<string, unknown>).wheelSpinClientSeed || "");
-    const currentVerificationUrl = String((this as Record<string, unknown>).wheelSpinVerificationUrl || "");
-    const currentAlgorithm = String((this as Record<string, unknown>).wheelSpinAlgorithm || "");
+    const controller = getWheelController(this as Record<string, unknown>);
+    const currentHash = String(controller.spinHash || "");
+    const currentSeed = String(controller.spinSeed || "");
+    const currentClientSeed = String(controller.spinClientSeed || "");
+    const currentVerificationUrl = String(controller.spinVerificationUrl || "");
+    const currentAlgorithm = String(controller.spinAlgorithm || "");
 
     if (!currentHash) {
       return latestHistory;
@@ -275,7 +280,7 @@ export const wheelComputeds = {
     return {
       spinNumber: spinNumber > 0 ? spinNumber : (latestHistory?.spinNumber || 1),
       label: currentLabel || latestHistory?.label || translateAppMessage(preferredLanguage, "wheelFairnessLatestSpinLabel"),
-      color: String((this as Record<string, unknown>).wheelLastResultColor || latestHistory?.color || "rgb(var(--v-theme-primary))"),
+      color: String(controller.lastResultColor || latestHistory?.color || "rgb(var(--v-theme-primary))"),
       hash: currentHash,
       seed: currentSeed || (latestHistory?.hash === currentHash ? latestHistory.seed : ""),
       clientSeed: currentClientSeed || (latestHistory?.hash === currentHash ? latestHistory.clientSeed : undefined),
@@ -329,7 +334,8 @@ export const wheelComputeds = {
   },
 
   wheelLiveConfirmSummarySlots(this: Record<string, unknown>): number {
-    return (((this as Record<string, unknown>).activeWheelSlots || []) as WheelSlot[]).length;
+    const controller = getWheelController(this as Record<string, unknown>);
+    return ((controller.activeSlots || []) as WheelSlot[]).length;
   },
 
   wheelLiveConfirmSummarySpinPrice(this: Record<string, unknown>): string {
@@ -362,20 +368,27 @@ export const wheelComputeds = {
   },
 
   wheelDisplaySlots(this: Record<string, unknown>): WheelSlot[] {
+    const controller = getWheelController(this as Record<string, unknown>);
     return (((this as Record<string, unknown>).wheelMode === "config"
-      ? (this as Record<string, unknown>).wheelPreviewSlots
-      : (this as Record<string, unknown>).activeWheelSlots) || []) as WheelSlot[];
+      ? controller.previewSlots
+      : controller.activeSlots) || []) as WheelSlot[];
+  },
+
+  wheelDisplayInventoryWarning(this: Record<string, unknown>): string {
+    return String(getWheelController(this as Record<string, unknown>).inventoryWarning || "");
   },
 
   wheelDisplaySpinCounts(this: Record<string, unknown>): number[] {
+    const controller = getWheelController(this as Record<string, unknown>);
     return ((this as Record<string, unknown>).wheelMode === "config"
-      ? (this as Record<string, unknown>).wheelPreviewSpinCounts
+      ? controller.previewSpinCounts
       : this.wheelSpinCounts || []) as number[];
   },
 
   wheelDisplayTotalSpins(this: Record<string, unknown>): number {
+    const controller = getWheelController(this as Record<string, unknown>);
     return (((this as Record<string, unknown>).wheelMode === "config"
-      ? (this as Record<string, unknown>).wheelPreviewTotalSpins
+      ? controller.previewTotalSpins
       : this.wheelTotalSpins) || 0) as number;
   },
 
@@ -522,22 +535,24 @@ export const wheelComputeds = {
   },
 
   wheelSessionCost(this: Record<string, unknown>): number {
+    const controller = getWheelController(this as Record<string, unknown>);
     const slots = (((this as Record<string, unknown>).wheelDisplaySlots
-      || (this as Record<string, unknown>).activeWheelSlots
+      || controller.activeSlots
       || []) as WheelSlot[]);
     const counts = ((((this as Record<string, unknown>).wheelDisplaySpinCounts
-      || (this as Record<string, unknown>).wheelSpinCounts
+      || this.wheelSpinCounts
       || [])) as number[]);
     const base = counts.reduce((sum, count, i) => sum + count * (slots[i]?.cost || 0), 0);
     const adjustment = ((this as Record<string, unknown>).wheelMode === "config"
       ? 0
-      : ((this as Record<string, unknown>).wheelSessionCostAdjustment as number || 0));
+      : (controller.sessionCostAdjustment as number || 0));
     return base + adjustment;
   },
 
   wheelSessionProfit(this: Record<string, unknown>): number {
+    const controller = getWheelController(this as Record<string, unknown>);
     if ((this as Record<string, unknown>).wheelMode !== "config") {
-      const storedNetRevenue = (this as Record<string, unknown>).wheelSessionNetRevenue as number | null | undefined;
+      const storedNetRevenue = controller.sessionNetRevenue as number | null | undefined;
       if (storedNetRevenue != null && Number.isFinite(Number(storedNetRevenue))) {
         return Number(storedNetRevenue) - (this.wheelSessionCost as number);
       }
@@ -546,7 +561,7 @@ export const wheelComputeds = {
     const config = (((this as Record<string, unknown>).wheelDisplayConfig
       || (this as Record<string, unknown>).activeWheelConfig)) as WheelConfig | null;
     const slots = (((this as Record<string, unknown>).wheelDisplaySlots
-      || (this as Record<string, unknown>).activeWheelSlots
+      || controller.activeSlots
       || []) as WheelSlot[]);
     const spinCounts = ((((this as Record<string, unknown>).wheelDisplaySpinCounts
       || (this as Record<string, unknown>).wheelSpinCounts
@@ -629,9 +644,10 @@ export const wheelComputeds = {
     slots.forEach((slot, i) => {
       tierTotals[slot.tier] = (tierTotals[slot.tier] || 0) + (counts[i] || 0);
     });
+    const tallyController = getWheelController(this as Record<string, unknown>);
     const history = ((this as Record<string, unknown>).wheelMode === "config"
-      ? (this as Record<string, unknown>).wheelPreviewChaseTallyHistory
-      : (this as Record<string, unknown>).wheelChaseTallyHistory) as Array<{ tierId: string; label: string; color: string; count: number }>;
+      ? tallyController.previewChaseTallyHistory
+      : tallyController.chaseTallyHistory) as Array<{ tierId: string; label: string; color: string; count: number }>;
     const historicalByTier: Record<string, number> = {};
     for (const h of history) {
       historicalByTier[h.tierId] = (historicalByTier[h.tierId] || 0) + h.count;

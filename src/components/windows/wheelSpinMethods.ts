@@ -1,19 +1,20 @@
 import { broadcastWheelSession } from "../../app-core/methods/ui/wheel-broadcast.ts";
 import { createWheelFairnessCommit, revealWheelFairnessResult } from "../../app-core/methods/wheel-fairness-api.ts";
+import { assignWheelPendingInventoryIssues } from "../../app-core/shared/wheel-session-compat.ts";
 import type { Lot, PendingWheelInventoryIssue, Sale, WheelConfig, WheelFairnessEntry } from "../../types/app.ts";
+import { getWheelController } from "./wheelControllerState.ts";
 import {
-    createWheelSale,
-    easeOutQuart,
-    generateCryptoSeed,
-    hashSeed,
-    seedToIndex,
-    type WheelSlot
+  createWheelSale,
+  easeOutQuart,
+  generateCryptoSeed,
+  hashSeed,
+  seedToIndex,
+  type WheelSlot
 } from "./wheelHelpers.ts";
 import {
   getAvailableSinglesQuantityForWheelTier,
   getRemainingPacksForWheelLot
 } from "./wheelSaleSupport.ts";
-import { assignWheelPendingInventoryIssues } from "../../app-core/shared/wheel-session-compat.ts";
 
 type WheelRenderCache = {
   canvas: HTMLCanvasElement;
@@ -193,15 +194,17 @@ function queuePendingInventoryIssue(
     slotSinglesId: params.boundSinglesId ?? null
   });
   assignWheelPendingInventoryIssues(context, pendingIssues);
-  context.wheelInventoryWarning = params.warningText || "";
+  const issueController = getWheelController(context);
+  issueController.inventoryWarning = params.warningText || "";
   (context as Record<string, unknown> & { saveWheelSession: () => void }).saveWheelSession();
 }
 
 function appendWheelSessionNetRevenue(context: Record<string, unknown>, sale: Pick<Sale, "netRevenue">): void {
   const netRevenue = Number(sale.netRevenue);
   if (!Number.isFinite(netRevenue)) return;
-  const currentNetRevenue = Number((context.wheelSessionNetRevenue as number | null | undefined) ?? 0) || 0;
-  context.wheelSessionNetRevenue = currentNetRevenue + Math.max(0, netRevenue);
+  const revenueController = getWheelController(context);
+  const currentNetRevenue = Number((revenueController.sessionNetRevenue as number | null | undefined) ?? 0) || 0;
+  revenueController.sessionNetRevenue = currentNetRevenue + Math.max(0, netRevenue);
 }
 
 async function resolveWheelFairnessSpin(
@@ -263,8 +266,9 @@ export const wheelSpinMethods = {
     const ctx = canvasEl.getContext("2d");
     if (!ctx) return;
 
+    const drawController = getWheelController(this as Record<string, unknown>);
     const slots = (((this as Record<string, unknown>).wheelDisplaySlots
-      || (this as Record<string, unknown>).activeWheelSlots)) as WheelSlot[];
+      || drawController.activeSlots)) as WheelSlot[];
     const size = Math.max(20, (this as Record<string, unknown>).wheelCanvasSize as number);
     const dpr = getWheelCanvasDpr();
 
@@ -292,7 +296,7 @@ export const wheelSpinMethods = {
       return;
     }
 
-    const highlightedSlotIndex = Number((this as Record<string, unknown>).wheelHighlightedSlotIndex ?? -1);
+    const highlightedSlotIndex = Number(drawController.highlightedSlotIndex ?? -1);
     if (highlightedSlotIndex < 0) {
       const staticWheel = getStaticWheelRender(this as Record<string, unknown>, canvasEl, slots, size, dpr);
       if (staticWheel) {
@@ -333,27 +337,30 @@ export const wheelSpinMethods = {
       appendWheelFairnessHistory: (entry: WheelFairnessEntry, options?: { preview?: boolean }) => void;
       saveWheelSession: () => void;
     };
-    const slots = (((vm as Record<string, unknown>).wheelDisplaySlots || vm.activeWheelSlots)) as WheelSlot[];
+    const spinController = getWheelController(vm as Record<string, unknown>);
+    const slots = (((vm as Record<string, unknown>).wheelDisplaySlots || spinController.activeSlots)) as WheelSlot[];
     if (vm.wheelSpinning || !slots.length) return;
     if (recordSession && ((vm as Record<string, unknown>).wheelSpinBlockedReason as string)) {
-      (vm as Record<string, unknown>).wheelInventoryWarning = (vm as Record<string, unknown>).wheelSpinBlockedReason as string;
+      const blockedController = getWheelController(vm as Record<string, unknown>);
+      blockedController.inventoryWarning = (vm as Record<string, unknown>).wheelSpinBlockedReason as string;
       return;
     }
 
     const fairnessResult = await resolveWheelFairnessSpin(vm as Record<string, unknown>, slots.length);
 
-    (vm as Record<string, unknown>).wheelSpinSeed = "";
-    (vm as Record<string, unknown>).wheelSpinHash = fairnessResult.hash;
-    (vm as Record<string, unknown>).wheelSpinClientSeed = fairnessResult.clientSeed || "";
-    (vm as Record<string, unknown>).wheelSpinVerificationUrl = "";
-    (vm as Record<string, unknown>).wheelSpinAlgorithm = fairnessResult.algorithm || "";
-    (vm as Record<string, unknown>).wheelShowSeed = false;
-    (vm as Record<string, unknown>).wheelInventoryWarning = "";
+    const initController = getWheelController(vm as Record<string, unknown>);
+    initController.spinSeed = "";
+    initController.spinHash = fairnessResult.hash;
+    initController.spinClientSeed = fairnessResult.clientSeed || "";
+    initController.spinVerificationUrl = "";
+    initController.spinAlgorithm = fairnessResult.algorithm || "";
+    initController.showSeed = false;
+    initController.inventoryWarning = "";
 
     vm.wheelSpinning = true;
-    (vm as Record<string, unknown>).wheelHighlightedSlotIndex = -1;
-    vm.wheelLastResult = "Spinning…";
-    (vm as Record<string, unknown>).wheelLastResultColor = "rgb(var(--v-theme-primary))";
+    initController.highlightedSlotIndex = -1;
+    vm.wheelLastResult = "Spinning\u2026";
+    initController.lastResultColor = "rgb(var(--v-theme-primary))";
     vm.saveWheelSession();
 
     const sliceAngle = (2 * Math.PI) / slots.length;
@@ -385,15 +392,16 @@ export const wheelSpinMethods = {
       vm.wheelCurrentAngle = endAngle;
       vm.drawWheel(endAngle);
       vm.wheelSpinning = false;
-      (vm as Record<string, unknown>).wheelSpinSeed = fairnessResult.seed;
-      (vm as Record<string, unknown>).wheelSpinClientSeed = fairnessResult.clientSeed || "";
-      (vm as Record<string, unknown>).wheelSpinVerificationUrl = fairnessResult.verificationUrl || "";
-      (vm as Record<string, unknown>).wheelSpinAlgorithm = fairnessResult.algorithm || "";
-      (vm as Record<string, unknown>).wheelShowSeed = true;
+      const spinController = getWheelController(vm as Record<string, unknown>);
+      spinController.spinSeed = fairnessResult.seed;
+      spinController.spinClientSeed = fairnessResult.clientSeed || "";
+      spinController.spinVerificationUrl = fairnessResult.verificationUrl || "";
+      spinController.spinAlgorithm = fairnessResult.algorithm || "";
+      spinController.showSeed = true;
       vm.appendWheelFairnessHistory({
         spinNumber: Number(recordSession
           ? ((vm as Record<string, unknown>).wheelTotalSpins || 0)
-          : ((vm as Record<string, unknown>).wheelPreviewTotalSpins || 0)),
+          : (spinController.previewTotalSpins || 0)),
         label: slots[targetIndex]?.name || "Unknown result",
         color: slots[targetIndex]?.color || "rgb(var(--v-theme-primary))",
         hash: fairnessResult.hash,
@@ -411,20 +419,21 @@ export const wheelSpinMethods = {
   },
 
   recordPreviewSpinResult(this: Record<string, unknown>, slotIndex: number): void {
+    const controller = getWheelController(this as Record<string, unknown>);
     const slots = (((this as Record<string, unknown>).wheelDisplaySlots
-      || (this as Record<string, unknown>).activeWheelSlots)) as WheelSlot[];
+      || controller.activeSlots)) as WheelSlot[];
     if (!slots[slotIndex]) return;
-    const counts = ((this as Record<string, unknown>).wheelPreviewSpinCounts || []) as number[];
+    const counts = (controller.previewSpinCounts || []) as number[];
     const nextCounts = counts.length === slots.length ? [...counts] : new Array(slots.length).fill(0);
     nextCounts[slotIndex] = (nextCounts[slotIndex] || 0) + 1;
-    (this as Record<string, unknown>).wheelPreviewSpinCounts = nextCounts;
-    (this as Record<string, unknown>).wheelPreviewTotalSpins =
-      (((this as Record<string, unknown>).wheelPreviewTotalSpins as number) || 0) + 1;
+    controller.previewSpinCounts = nextCounts;
+    controller.previewTotalSpins = (controller.previewTotalSpins || 0) + 1;
   },
 
   recordSpinResult(this: Record<string, unknown>, slotIndex: number): void {
+    const recordController = getWheelController(this as Record<string, unknown>);
     const slots = (((this as Record<string, unknown>).wheelDisplaySlots
-      || (this as Record<string, unknown>).activeWheelSlots)) as WheelSlot[];
+      || recordController.activeSlots)) as WheelSlot[];
     const slot = slots[slotIndex];
     if (!slot) return;
 
@@ -439,7 +448,7 @@ export const wheelSpinMethods = {
       const tier = config?.tiers.find((t) => t.id === slot.tier);
       if (tier?.boundLotId) {
         if (slot.deductionType === "none" || (slot.packsCount || 0) <= 0) {
-          (this as Record<string, unknown>).wheelInventoryWarning = "";
+          recordController.inventoryWarning = "";
           (this as Record<string, unknown> & { saveWheelSession: () => void }).saveWheelSession();
           return;
         }
@@ -494,8 +503,9 @@ export const wheelSpinMethods = {
   },
 
   landOnSlot(this: Record<string, unknown>, slotIndex: number, options: { recordSession?: boolean } = {}): void {
+    const landController = getWheelController(this as Record<string, unknown>);
     const slots = (((this as Record<string, unknown>).wheelDisplaySlots
-      || (this as Record<string, unknown>).activeWheelSlots)) as WheelSlot[];
+      || landController.activeSlots)) as WheelSlot[];
     const slot = slots[slotIndex];
     if (!slot) return;
     const recordSession = options.recordSession ?? true;
@@ -503,17 +513,17 @@ export const wheelSpinMethods = {
     if (existingHighlightTimeoutId != null) {
       clearTimeout(existingHighlightTimeoutId);
     }
-    (this as Record<string, unknown>).wheelHighlightedSlotIndex = slotIndex;
+    landController.highlightedSlotIndex = slotIndex;
     const redraw = (this as Record<string, unknown>).drawWheel as ((offset?: number) => void) | undefined;
     (this as Record<string, unknown>)._wheelHighlightTimeoutId = globalThis.setTimeout(() => {
-      (this as Record<string, unknown>).wheelHighlightedSlotIndex = -1;
+      landController.highlightedSlotIndex = -1;
       (this as Record<string, unknown>)._wheelHighlightTimeoutId = undefined;
       redraw?.(((this as Record<string, unknown>).wheelCurrentAngle as number) || 0);
     }, 2200);
     redraw?.(((this as Record<string, unknown>).wheelCurrentAngle as number) || 0);
 
     this.wheelLastResult = "🎉 " + slot.name;
-    (this as Record<string, unknown>).wheelLastResultColor = slot.color;
+    landController.lastResultColor = slot.color;
     if (slot.isChase) {
       const config = (((this as Record<string, unknown>).wheelDisplayConfig
         || (this as Record<string, unknown>).activeWheelConfig)) as WheelConfig | null;

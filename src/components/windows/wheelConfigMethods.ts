@@ -1,15 +1,16 @@
 import { nextTick } from "vue";
+import { broadcastWheelSession } from "../../app-core/methods/ui/wheel-broadcast.ts";
 import {
   queueCloudConfigSyncPush,
   stopWorkspaceConfigSyncPush
 } from "../../app-core/methods/ui/workspace-config-sync.ts";
-import { getScopedWheelConfigDraftStorageKey } from "../../app-core/storageKeys.ts";
-import { getActiveStorageScope } from "../../app-core/workspace-scope.ts";
-import { broadcastWheelSession } from "../../app-core/methods/ui/wheel-broadcast.ts";
-import { calculateTotalCaseCost } from "../../domain/calculations-fees.ts";
 import { normalizeWheelConfig } from "../../app-core/shared/normalize-wheel-config.ts";
 import { assignWheelPendingInventoryIssues } from "../../app-core/shared/wheel-session-compat.ts";
+import { getScopedWheelConfigDraftStorageKey } from "../../app-core/storageKeys.ts";
+import { getActiveStorageScope } from "../../app-core/workspace-scope.ts";
+import { calculateTotalCaseCost } from "../../domain/calculations-fees.ts";
 import type { Lot, WheelConfig, WheelTier } from "../../types/app.ts";
+import { getWheelController } from "./wheelControllerState.ts";
 import {
   buildSlotsFromConfig,
   createDefaultTier,
@@ -33,25 +34,27 @@ function clearQueuedWheelDraftSave(context: Record<string, unknown>): void {
 }
 
 function resetLoadedWheelSessionState(context: Record<string, unknown>): void {
+  const controller = getWheelController(context);
   context.wheelSpinCounts = [];
   context.wheelTotalSpins = 0;
   context.wheelLastResult = "";
-  context.wheelInventoryWarning = "";
-  context.wheelSessionCostAdjustment = 0;
+  controller.inventoryWarning = "";
+  controller.sessionCostAdjustment = 0;
   assignWheelPendingInventoryIssues(context, []);
   context.wheelEndingSession = false;
   context.wheelChaseDialog = false;
   context.wheelChaseReplacementSinglesId = null;
   context.wheelChasePendingTierId = "";
-  context.wheelChaseTallyHistory = [];
-  context.wheelPreviewSpinCounts = [];
-  context.wheelPreviewTotalSpins = 0;
-  context.wheelPreviewChaseTallyHistory = [];
+  controller.chaseTallyHistory = [];
+  controller.previewSpinCounts = [];
+  controller.previewTotalSpins = 0;
+  controller.previewChaseTallyHistory = [];
 }
 
 function resetLoadedWheelState(context: Record<string, unknown>): void {
-  context.activeWheelSlots = [];
-  context.wheelPreviewSlots = [];
+  const controller = getWheelController(context);
+  controller.activeSlots = [];
+  controller.previewSlots = [];
   resetLoadedWheelSessionState(context);
 }
 
@@ -126,18 +129,18 @@ export const wheelConfigMethods = {
     }
     (this as Record<string, unknown>).appliedWheelConfigSnapshot =
       JSON.parse(JSON.stringify(sanitizedConfig)) as WheelConfig;
-    (this as Record<string, unknown>).activeWheelSlots = buildSlotsFromConfig(sanitizedConfig);
-    (this as Record<string, unknown>).wheelPreviewSlots =
-      [...((this as Record<string, unknown>).activeWheelSlots as WheelSlot[])];
+    const loadController = getWheelController(this as Record<string, unknown>);
+    const builtSlots = buildSlotsFromConfig(sanitizedConfig);
+    loadController.activeSlots = builtSlots;
+    loadController.previewSlots = [...builtSlots];
     const restored = (this as Record<string, unknown> & { loadWheelFromSession: () => boolean }).loadWheelFromSession();
     if (!restored) {
       resetLoadedWheelSessionState(this as Record<string, unknown>);
-      this.wheelSpinCounts = new Array(((this as Record<string, unknown>).activeWheelSlots as WheelSlot[]).length).fill(0);
-      (this as Record<string, unknown>).wheelPreviewSpinCounts =
-        new Array(((this as Record<string, unknown>).activeWheelSlots as WheelSlot[]).length).fill(0);
-      (this as Record<string, unknown>).wheelPreviewTotalSpins = 0;
-      (this as Record<string, unknown>).wheelPreviewChaseTallyHistory = [];
-      (this as Record<string, unknown>).wheelPreviewFairnessHistory = [];
+      this.wheelSpinCounts = new Array(builtSlots.length).fill(0);
+      loadController.previewSpinCounts = new Array(builtSlots.length).fill(0);
+      loadController.previewTotalSpins = 0;
+      loadController.previewChaseTallyHistory = [];
+      loadController.previewFairnessHistory = [];
     }
     nextTick(() => (this as Record<string, unknown> & { drawWheel: (offset?: number) => void }).drawWheel(
       (this as Record<string, unknown>).wheelCurrentAngle as number || 0
@@ -174,7 +177,8 @@ export const wheelConfigMethods = {
     } else {
       configs.push(sanitizedUpdated);
     }
-    const oldSlots = (((this as Record<string, unknown>).activeWheelSlots || []) as WheelSlot[]);
+    const applyController = getWheelController(this as Record<string, unknown>);
+    const oldSlots = ((applyController.activeSlots || []) as WheelSlot[]);
     const oldCounts = ((this.wheelSpinCounts || []) as number[]);
     const oldTierIds = oldSlots.map((slot) => slot.tier);
     const newSlots = buildSlotsFromConfig(updated);
@@ -195,21 +199,21 @@ export const wheelConfigMethods = {
     this.activeWheelConfigId = updated.id;
     (this as Record<string, unknown>).editingWheelConfig = JSON.parse(JSON.stringify(updated)) as WheelConfig;
     (this as Record<string, unknown>).appliedWheelConfigSnapshot = JSON.parse(JSON.stringify(updated)) as WheelConfig;
-    (this as Record<string, unknown>).activeWheelSlots = newSlots;
-    (this as Record<string, unknown>).wheelPreviewSlots = [...newSlots];
+    applyController.activeSlots = newSlots;
+    applyController.previewSlots = [...newSlots];
     this.wheelSpinCounts = remapSpinCountsByTier(oldTierIds, oldCounts, newSlots);
     this.wheelTotalSpins = (this.wheelSpinCounts as number[]).reduce((sum, count) => sum + count, 0);
     this.wheelLastResult = "";
-    (this as Record<string, unknown>).wheelInventoryWarning = "";
-    (this as Record<string, unknown>).wheelPreviewSpinCounts = new Array(newSlots.length).fill(0);
-    (this as Record<string, unknown>).wheelPreviewTotalSpins = 0;
-    (this as Record<string, unknown>).wheelPreviewChaseTallyHistory = [];
-    (this as Record<string, unknown>).wheelLastResultColor = "rgb(var(--v-theme-primary))";
+    applyController.inventoryWarning = "";
+    applyController.previewSpinCounts = new Array(newSlots.length).fill(0);
+    applyController.previewTotalSpins = 0;
+    applyController.previewChaseTallyHistory = [];
+    applyController.lastResultColor = "rgb(var(--v-theme-primary))";
     if (hadTierShapeChange) {
-      (this as Record<string, unknown>).wheelSessionCostAdjustment = 0;
-      (this as Record<string, unknown>).wheelChaseTallyHistory = [];
+      applyController.sessionCostAdjustment = 0;
+      applyController.chaseTallyHistory = [];
     } else {
-      let costAdjustment = ((this as Record<string, unknown>).wheelSessionCostAdjustment as number) || 0;
+      let costAdjustment = (applyController.sessionCostAdjustment as number) || 0;
       for (const tier of updated.tiers) {
         const previousCost = previousTierCosts.get(tier.id);
         if (previousCost == null || previousCost === tier.costPerTier) continue;
@@ -218,7 +222,7 @@ export const wheelConfigMethods = {
           costAdjustment += priorSpins * (previousCost - tier.costPerTier);
         }
       }
-      (this as Record<string, unknown>).wheelSessionCostAdjustment = costAdjustment;
+      applyController.sessionCostAdjustment = costAdjustment;
     }
     assignWheelPendingInventoryIssues(
       this,

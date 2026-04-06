@@ -1,7 +1,7 @@
 import { inject, type PropType } from "vue";
-import { createNestedWindowContextBridge } from "./contextBridge.ts";
 import { translateAppMessage } from "../../app-core/i18n/index.ts";
 import type { WheelFairnessEntry } from "../../types/app.ts";
+import { createNestedWindowContextBridge } from "./contextBridge.ts";
 import { getWheelController } from "./wheelControllerState.ts";
 
 export const WheelHistoryPanel = {
@@ -45,6 +45,49 @@ export const WheelHistoryPanel = {
       const controller = getWheelController(this as Record<string, unknown>);
       return String(controller.spinVerificationUrl || "");
     },
+    wheelHistoryPanelSpinHash(this: Record<string, unknown>): string {
+      const controller = getWheelController(this as Record<string, unknown>);
+      return String(controller.spinHash || "");
+    },
+    wheelHistoryPanelSpinSeed(this: Record<string, unknown>): string {
+      const controller = getWheelController(this as Record<string, unknown>);
+      return String(controller.spinSeed || "");
+    },
+    wheelHistoryPanelSpinClientSeed(this: Record<string, unknown>): string {
+      const controller = getWheelController(this as Record<string, unknown>);
+      return String(controller.spinClientSeed || "");
+    },
+    wheelHistoryPanelSpinning(this: Record<string, unknown>): boolean {
+      return !!(this as Record<string, unknown>).wheelSpinning;
+    },
+    wheelHistoryPanelLastResult(this: Record<string, unknown>): string {
+      return String((this as Record<string, unknown>).wheelLastResult || "");
+    },
+    wheelHistoryPanelLastResultClean(this: Record<string, unknown>): string {
+      return String((this as Record<string, unknown>).wheelHistoryPanelLastResult || "")
+        .replace(/^🎉\s*/, "")
+        .trim();
+    },
+    wheelHistoryPanelLastResultColor(this: Record<string, unknown>): string {
+      const controller = getWheelController(this as Record<string, unknown>);
+      return String(controller.lastResultColor || "rgb(var(--v-theme-primary))");
+    },
+    wheelHistoryPanelFairnessIcon(this: Record<string, unknown>): string {
+      return (this as Record<string, unknown>).wheelHistoryPanelSpinning ? "mdi-lock" : "mdi-shield-check";
+    },
+    wheelHistoryPanelFairnessIconColor(this: Record<string, unknown>): string {
+      return (this as Record<string, unknown>).wheelHistoryPanelSpinning ? "warning" : "success";
+    },
+    wheelHistoryPanelHistoryOpen: {
+      get(this: Record<string, unknown>): boolean {
+        const controller = getWheelController(this as Record<string, unknown>);
+        return !!controller.fairnessHistoryOpen;
+      },
+      set(this: Record<string, unknown>, value: boolean) {
+        const controller = getWheelController(this as Record<string, unknown>);
+        controller.fairnessHistoryOpen = value;
+      }
+    },
     wheelHistoryPanelLatestEntry(this: Record<string, unknown>): WheelFairnessEntry | null {
       const preferredLanguage = String((this as Record<string, unknown>).preferredLanguage ?? "");
       const controller = getWheelController(this as Record<string, unknown>);
@@ -74,12 +117,27 @@ export const WheelHistoryPanel = {
     },
     wheelHistoryPanelTitle(this: Record<string, unknown>): string {
       const preferredLanguage = String((this as Record<string, unknown>).preferredLanguage ?? "");
-      if ((this as Record<string, unknown>).wheelSpinning) {
+      if ((this as Record<string, unknown>).wheelHistoryPanelSpinning) {
         return translateAppMessage(preferredLanguage, "wheelFairnessResultLockedTitle");
       }
       return String((this as Record<string, unknown>).wheelHistoryPanelCurrentVerificationUrl || "").trim()
         ? translateAppMessage(preferredLanguage, "wheelFairnessServerVerifiedTitle")
         : translateAppMessage(preferredLanguage, "wheelFairnessLocalVerifiedTitle");
+    },
+    wheelHistoryPanelSummaryText(this: Record<string, unknown>): string {
+      if ((this as Record<string, unknown>).wheelHistoryPanelSpinning) {
+        const preferredLanguage = String((this as Record<string, unknown>).preferredLanguage ?? "");
+        return translateAppMessage(preferredLanguage, "wheelFairnessCommittedSummary");
+      }
+      const verificationUrl = String((this as Record<string, unknown>).wheelHistoryPanelCurrentVerificationUrl || "");
+      const preferredLanguage = String((this as Record<string, unknown>).preferredLanguage ?? "");
+      return verificationUrl
+        ? translateAppMessage(preferredLanguage, "wheelFairnessServerVerificationSummary")
+        : translateAppMessage(preferredLanguage, "wheelFairnessLocalVerificationSummary");
+    },
+    wheelHistoryPanelSpinVerificationUrl(this: Record<string, unknown>): string {
+      const controller = getWheelController(this as Record<string, unknown>);
+      return String(controller.spinVerificationUrl || "");
     }
   },
   setup(props: { ctx: Record<string, unknown> }) {

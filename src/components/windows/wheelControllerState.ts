@@ -1,3 +1,4 @@
+import { reactive } from "vue";
 import type { WheelConfig, WheelFairnessEntry } from "../../types/app.ts";
 import type { WheelSlot } from "./wheelHelpers.ts";
 
@@ -43,7 +44,7 @@ function createDefaultWheelControllerState(): WheelControllerState {
     configReady: false,
     viewportWidth: 0,
     fairnessHistoryOpen: false,
-    sessionNetRevenue: 0,
+    sessionNetRevenue: null,
     sessionCostAdjustment: 0,
     previewFairnessHistory: [],
     fairnessHistory: [],
@@ -59,7 +60,7 @@ export function getWheelController(context: Record<string, unknown>): WheelContr
     return existing as WheelControllerState;
   }
 
-  const controller = createDefaultWheelControllerState();
+  const controller = reactive(createDefaultWheelControllerState());
   for (const [legacyKey, controllerKey] of Object.entries(WHEEL_CONTROLLER_ALIAS_MAP)) {
     if (Object.prototype.hasOwnProperty.call(context, legacyKey)) {
       (controller as Record<string, unknown>)[controllerKey] = context[legacyKey];
@@ -181,17 +182,17 @@ export function createWheelWindowState() {
     wheelManageDialog: false,
     wheelManageName: ""
   } as Record<string, unknown>;
+
+  // Seed legacy alias keys as plain reactive data so that existing code
+  // (wheelComputeds, wheelConfigMethods, wheelSpinMethods) which reads/writes
+  // these keys on `this` continues to work through Vue's reactivity system.
+  // NOTE: these are NOT linked to wheelController — code that was migrated to
+  // the controller should use getWheelController() instead.
+  const defaults = createDefaultWheelControllerState();
   for (const [legacyKey, controllerKey] of Object.entries(WHEEL_CONTROLLER_ALIAS_MAP)) {
-    Object.defineProperty(state, legacyKey, {
-      enumerable: true,
-      configurable: true,
-      get() {
-        return (state.wheelController as WheelControllerState)[controllerKey];
-      },
-      set(value: unknown) {
-        (state.wheelController as WheelControllerState)[controllerKey] = value as never;
-      }
-    });
+    if (!(legacyKey in state)) {
+      state[legacyKey] = defaults[controllerKey];
+    }
   }
 
   return state;
