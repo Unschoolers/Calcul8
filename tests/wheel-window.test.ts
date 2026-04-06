@@ -14,6 +14,7 @@ import {
   getScopedWheelConfigDraftStorageKey,
   getScopedWheelConfigSessionStorageKey
 } from "../src/app-core/storageKeys.ts";
+import { getWheelWindowLocalKeys } from "../src/components/windows/wheelControllerState.ts";
 import { getWheelTierInventoryMeta } from "../src/components/windows/wheelSaleSupport.ts";
 import type { WheelConfig } from "../src/types/app.ts";
 
@@ -2177,6 +2178,16 @@ test("wheelCompactFabActions expose live-mode history, session, end ordering", (
 
   assert.deepEqual(actions.map((action: { id: string }) => action.id), ["history", "session", "end"]);
   assert.equal(actions[2]?.color, "error");
+});
+
+test("wheel window local keys include top-level mode and inspector state", () => {
+  const localKeys = getWheelWindowLocalKeys();
+
+  assert.ok(localKeys.includes("wheelController"));
+  assert.ok(localKeys.includes("wheelMode"));
+  assert.ok(localKeys.includes("wheelInspectorTab"));
+  assert.ok(localKeys.includes("wheelMobileInspectorOpen"));
+  assert.ok(localKeys.includes("wheelPresentationMode"));
 });
 
 test("wheelStageSummaryCards provide config-mode summary cards from the shared model", () => {

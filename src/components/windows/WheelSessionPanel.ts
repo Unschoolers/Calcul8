@@ -2,6 +2,7 @@ import { inject, type PropType } from "vue";
 import { createNestedWindowContextBridge } from "./contextBridge.ts";
 import { translateAppMessage } from "../../app-core/i18n/index.ts";
 import type { Lot, WheelConfig } from "../../types/app.ts";
+import { getWheelController } from "./wheelControllerState.ts";
 import type { WheelSlot } from "./wheelHelpers.ts";
 import {
   calculateAverageWheelSellingTaxPercent,
@@ -31,18 +32,21 @@ export const WheelSessionPanel = {
       return ((this as Record<string, unknown>).activeWheelConfig as WheelConfig | null) || null;
     },
     wheelSessionPanelDisplaySlots(this: Record<string, unknown>): WheelSlot[] {
+      const controller = getWheelController(this as Record<string, unknown>);
       return ((((this as Record<string, unknown>).wheelMode === "config"
-        ? (this as Record<string, unknown>).wheelPreviewSlots
-        : (this as Record<string, unknown>).activeWheelSlots) || []) as WheelSlot[]);
+        ? controller.previewSlots
+        : controller.activeSlots) || []) as WheelSlot[]);
     },
     wheelSessionPanelDisplaySpinCounts(this: Record<string, unknown>): number[] {
+      const controller = getWheelController(this as Record<string, unknown>);
       return ((((this as Record<string, unknown>).wheelMode === "config"
-        ? (this as Record<string, unknown>).wheelPreviewSpinCounts
+        ? controller.previewSpinCounts
         : (this as Record<string, unknown>).wheelSpinCounts) || []) as number[]);
     },
     wheelSessionPanelDisplayTotalSpins(this: Record<string, unknown>): number {
+      const controller = getWheelController(this as Record<string, unknown>);
       return Number(((this as Record<string, unknown>).wheelMode === "config"
-        ? (this as Record<string, unknown>).wheelPreviewTotalSpins
+        ? controller.previewTotalSpins
         : (this as Record<string, unknown>).wheelTotalSpins) || 0);
     },
     wheelSessionPanelRevenue(this: Record<string, unknown>): number {
@@ -50,17 +54,19 @@ export const WheelSessionPanel = {
       return Number((this as Record<string, unknown>).wheelSessionPanelDisplayTotalSpins || 0) * Number(config?.spinPrice || 0);
     },
     wheelSessionPanelCost(this: Record<string, unknown>): number {
+      const controller = getWheelController(this as Record<string, unknown>);
       const slots = ((this as Record<string, unknown>).wheelSessionPanelDisplaySlots || []) as WheelSlot[];
       const counts = ((this as Record<string, unknown>).wheelSessionPanelDisplaySpinCounts || []) as number[];
       const base = counts.reduce((sum, count, index) => sum + (Number(count) || 0) * (Number(slots[index]?.cost) || 0), 0);
       const adjustment = (this as Record<string, unknown>).wheelMode === "config"
         ? 0
-        : Number((this as Record<string, unknown>).wheelSessionCostAdjustment || 0);
+        : Number(controller.sessionCostAdjustment || 0);
       return base + adjustment;
     },
     wheelSessionPanelProfit(this: Record<string, unknown>): number {
+      const controller = getWheelController(this as Record<string, unknown>);
       if ((this as Record<string, unknown>).wheelMode !== "config") {
-        const storedNetRevenue = Number((this as Record<string, unknown>).wheelSessionNetRevenue);
+        const storedNetRevenue = Number(controller.sessionNetRevenue);
         if (Number.isFinite(storedNetRevenue)) {
           return storedNetRevenue - Number((this as Record<string, unknown>).wheelSessionPanelCost || 0);
         }
@@ -157,8 +163,8 @@ export const WheelSessionPanel = {
       }, {});
 
       const history = (((this as Record<string, unknown>).wheelMode === "config"
-        ? (this as Record<string, unknown>).wheelPreviewChaseTallyHistory
-        : (this as Record<string, unknown>).wheelChaseTallyHistory) || []) as Array<{
+        ? getWheelController(this as Record<string, unknown>).previewChaseTallyHistory
+        : getWheelController(this as Record<string, unknown>).chaseTallyHistory) || []) as Array<{
         tierId: string;
         label: string;
         color: string;

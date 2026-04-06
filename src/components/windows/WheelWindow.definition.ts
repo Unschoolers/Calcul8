@@ -6,7 +6,7 @@ import { wheelConfigMethods } from "./wheelConfigMethods.ts";
 import type { WheelSlot } from "./wheelHelpers.ts";
 import { wheelSessionMethods } from "./wheelSessionMethods.ts";
 import { wheelSpinMethods } from "./wheelSpinMethods.ts";
-import { createWheelWindowState } from "./wheelControllerState.ts";
+import { createWheelWindowState, getWheelWindowLocalKeys } from "./wheelControllerState.ts";
 import {
   WHEEL_COMPACT_LAYOUT_BREAKPOINT,
   isWheelCompactViewport,
@@ -383,7 +383,7 @@ export const wheelWindowDefinition: any = {
     const injectedCtx = inject<Record<string, unknown> | null>("appCtx", null);
     const source = (injectedCtx ?? props.ctx) as Record<string, unknown>;
     return createWindowContextBridge(source, {
-      blockedKeys: Object.keys(createWheelWindowState())
+      blockedKeys: getWheelWindowLocalKeys()
     });
   }
 };

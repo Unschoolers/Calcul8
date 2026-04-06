@@ -5,6 +5,7 @@ import { getScopedWheelConfigSessionStorageKey, getScopedWheelSessionStorageKey 
 import { assignWheelPendingInventoryIssues } from "../../app-core/shared/wheel-session-compat.ts";
 import { getActiveStorageScope } from "../../app-core/workspace-scope.ts";
 import { buildSlotsFromConfig, createWheelSale, remapSpinCountsByTier, type WheelSlot } from "./wheelHelpers.ts";
+import { getWheelController } from "./wheelControllerState.ts";
 import {
   getAvailableSinglesQuantityForWheelTier,
   hasAnyAvailableSinglesForWheelTier
@@ -56,8 +57,9 @@ function applyReplacementToTier(
 function appendWheelSessionNetRevenue(context: Record<string, unknown>, sale: Pick<Sale, "netRevenue">): void {
   const netRevenue = Number(sale.netRevenue);
   if (!Number.isFinite(netRevenue)) return;
-  const currentNetRevenue = Number((context.wheelSessionNetRevenue as number | null | undefined) ?? 0) || 0;
-  context.wheelSessionNetRevenue = currentNetRevenue + Math.max(0, netRevenue);
+  const controller = getWheelController(context);
+  const currentNetRevenue = Number((controller.sessionNetRevenue as number | null | undefined) ?? 0) || 0;
+  controller.sessionNetRevenue = currentNetRevenue + Math.max(0, netRevenue);
 }
 
 export const wheelSessionMethods = {
@@ -66,33 +68,39 @@ export const wheelSessionMethods = {
     entry: WheelFairnessEntry,
     options: { preview?: boolean } = {}
   ): void {
-    const historyKey = options.preview === true ? "wheelPreviewFairnessHistory" : "wheelFairnessHistory";
-    const currentHistory = (((this as Record<string, unknown>)[historyKey] || []) as WheelFairnessEntry[]);
+    const controller = getWheelController(this as Record<string, unknown>);
+    const currentHistory = ((options.preview === true
+      ? controller.previewFairnessHistory
+      : controller.fairnessHistory) || []) as WheelFairnessEntry[];
     const nextHistory = [...currentHistory, entry].slice(-20);
-    (this as Record<string, unknown>)[historyKey] = nextHistory;
+    if (options.preview === true) {
+      controller.previewFairnessHistory = nextHistory;
+    } else {
+      controller.fairnessHistory = nextHistory;
+    }
   },
 
   resetPreviewSession(this: Record<string, unknown>): void {
-    const previewSlots = (((this as Record<string, unknown>).wheelPreviewSlots
-      || (this as Record<string, unknown>).activeWheelSlots) as WheelSlot[]);
-    (this as Record<string, unknown>).wheelPreviewSpinCounts = new Array(previewSlots.length).fill(0);
-    (this as Record<string, unknown>).wheelPreviewTotalSpins = 0;
-    (this as Record<string, unknown>).wheelPreviewFairnessHistory = [];
+    const controller = getWheelController(this as Record<string, unknown>);
+    const previewSlots = ((controller.previewSlots || controller.activeSlots) as WheelSlot[]);
+    controller.previewSpinCounts = new Array(previewSlots.length).fill(0);
+    controller.previewTotalSpins = 0;
+    controller.previewFairnessHistory = [];
     this.wheelLastResult = "";
-    (this as Record<string, unknown>).wheelInventoryWarning = "";
-    (this as Record<string, unknown>).wheelLastResultColor = "rgb(var(--v-theme-primary))";
-    (this as Record<string, unknown>).wheelSpinHash = "";
-    (this as Record<string, unknown>).wheelSpinSeed = "";
-    (this as Record<string, unknown>).wheelSpinClientSeed = "";
-    (this as Record<string, unknown>).wheelSpinVerificationUrl = "";
-    (this as Record<string, unknown>).wheelSpinAlgorithm = "";
-    (this as Record<string, unknown>).wheelShowSeed = false;
+    controller.inventoryWarning = "";
+    controller.lastResultColor = "rgb(var(--v-theme-primary))";
+    controller.spinHash = "";
+    controller.spinSeed = "";
+    controller.spinClientSeed = "";
+    controller.spinVerificationUrl = "";
+    controller.spinAlgorithm = "";
+    controller.showSeed = false;
     (this as Record<string, unknown>).wheelChaseDialog = false;
     (this as Record<string, unknown>).wheelChasePreviewMode = false;
     (this as Record<string, unknown>).wheelChaseReplacementSinglesId = null;
     (this as Record<string, unknown>).wheelChasePendingTierId = "";
-    (this as Record<string, unknown>).wheelPreviewChaseTallyHistory = [];
-    (this as Record<string, unknown>).wheelFairnessHistoryOpen = false;
+    controller.previewChaseTallyHistory = [];
+    controller.fairnessHistoryOpen = false;
     (this as Record<string, unknown> & { saveWheelSession?: () => void }).saveWheelSession?.();
   },
 
@@ -474,31 +482,32 @@ export const wheelSessionMethods = {
   saveWheelSession(this: Record<string, unknown>): void {
     const activeId = this.activeWheelConfigId as number | null;
     if (activeId == null) return;
-    const slots = (((this as Record<string, unknown>).activeWheelSlots || []) as WheelSlot[]);
+    const controller = getWheelController(this as Record<string, unknown>);
+    const slots = ((controller.activeSlots || []) as WheelSlot[]);
     const session = {
       wheelSpinCounts: this.wheelSpinCounts,
       wheelSlotTiers: slots.map((slot) => slot.tier),
       wheelTotalSpins: this.wheelTotalSpins,
-      wheelPreviewSpinCounts: (this as Record<string, unknown>).wheelPreviewSpinCounts,
-      wheelPreviewSlotTiers: (((this as Record<string, unknown>).wheelPreviewSlots || []) as WheelSlot[]).map((slot) => slot.tier),
-      wheelPreviewTotalSpins: (this as Record<string, unknown>).wheelPreviewTotalSpins,
-      wheelPreviewFairnessHistory: (this as Record<string, unknown>).wheelPreviewFairnessHistory,
-      wheelPreviewChaseTallyHistory: (this as Record<string, unknown>).wheelPreviewChaseTallyHistory,
+      wheelPreviewSpinCounts: controller.previewSpinCounts,
+      wheelPreviewSlotTiers: ((controller.previewSlots || []) as WheelSlot[]).map((slot) => slot.tier),
+      wheelPreviewTotalSpins: controller.previewTotalSpins,
+      wheelPreviewFairnessHistory: controller.previewFairnessHistory,
+      wheelPreviewChaseTallyHistory: controller.previewChaseTallyHistory,
       wheelSessionUpdatedAt: this.wheelSessionUpdatedAt,
-      wheelSessionNetRevenue: (this as Record<string, unknown>).wheelSessionNetRevenue,
-      wheelSessionCostAdjustment: (this as Record<string, unknown>).wheelSessionCostAdjustment,
-      wheelFairnessHistory: (this as Record<string, unknown>).wheelFairnessHistory,
-      wheelChaseTallyHistory: (this as Record<string, unknown>).wheelChaseTallyHistory,
+      wheelSessionNetRevenue: controller.sessionNetRevenue,
+      wheelSessionCostAdjustment: controller.sessionCostAdjustment,
+      wheelFairnessHistory: controller.fairnessHistory,
+      wheelChaseTallyHistory: controller.chaseTallyHistory,
       wheelPendingInventoryIssues: this.wheelPendingInventoryIssues,
       wheelSkippedDeductions: this.wheelPendingInventoryIssues,
       wheelCurrentAngle: this.wheelCurrentAngle,
       wheelLastResult: this.wheelLastResult,
-      wheelLastResultColor: (this as Record<string, unknown>).wheelLastResultColor,
-      wheelSpinHash: (this as Record<string, unknown>).wheelSpinHash,
-      wheelSpinSeed: (this as Record<string, unknown>).wheelSpinSeed,
-      wheelSpinClientSeed: (this as Record<string, unknown>).wheelSpinClientSeed,
-      wheelSpinVerificationUrl: (this as Record<string, unknown>).wheelSpinVerificationUrl,
-      wheelSpinAlgorithm: (this as Record<string, unknown>).wheelSpinAlgorithm
+      wheelLastResultColor: controller.lastResultColor,
+      wheelSpinHash: controller.spinHash,
+      wheelSpinSeed: controller.spinSeed,
+      wheelSpinClientSeed: controller.spinClientSeed,
+      wheelSpinVerificationUrl: controller.spinVerificationUrl,
+      wheelSpinAlgorithm: controller.spinAlgorithm
     };
     try {
       const storageScope = getActiveStorageScope(this as {
@@ -577,8 +586,9 @@ export const wheelSessionMethods = {
       if (session.activeWheelConfigId != null && Number(session.activeWheelConfigId) !== activeId) {
         return false;
       }
-      const slots = (((this as Record<string, unknown>).activeWheelSlots || []) as WheelSlot[]);
-      const previewSlots = ((((this as Record<string, unknown>).wheelPreviewSlots || slots)) as WheelSlot[]);
+      const controller = getWheelController(this as Record<string, unknown>);
+      const slots = ((controller.activeSlots || []) as WheelSlot[]);
+      const previewSlots = (((controller.previewSlots || slots)) as WheelSlot[]);
       if (!Array.isArray(session.wheelSpinCounts)) return false;
       if (session.wheelSpinCounts.length === slots.length) {
         this.wheelSpinCounts = session.wheelSpinCounts;
@@ -589,47 +599,49 @@ export const wheelSessionMethods = {
       }
       this.wheelTotalSpins = (this.wheelSpinCounts as number[]).reduce((sum, count) => sum + count, 0);
       this.wheelSessionUpdatedAt = session.wheelSessionUpdatedAt || 0;
-      (this as Record<string, unknown>).wheelSessionNetRevenue =
+      controller.sessionNetRevenue =
         Number.isFinite(Number(session.wheelSessionNetRevenue))
           ? (Number(session.wheelSessionNetRevenue) || 0)
           : null;
-      (this as Record<string, unknown>).wheelSessionCostAdjustment = session.wheelSessionCostAdjustment || 0;
-      (this as Record<string, unknown>).wheelFairnessHistory = Array.isArray(session.wheelFairnessHistory)
-        ? session.wheelFairnessHistory.slice(-20)
+      controller.sessionCostAdjustment = Number(session.wheelSessionCostAdjustment || 0) || 0;
+      controller.fairnessHistory = Array.isArray(session.wheelFairnessHistory)
+        ? (session.wheelFairnessHistory.slice(-20) as WheelFairnessEntry[])
         : [];
-      (this as Record<string, unknown>).wheelChaseTallyHistory = session.wheelChaseTallyHistory || [];
+      controller.chaseTallyHistory = Array.isArray(session.wheelChaseTallyHistory)
+        ? (session.wheelChaseTallyHistory as WheelTallyHistoryEntry[])
+        : [];
       if (Array.isArray(session.wheelPreviewSpinCounts)) {
         if (session.wheelPreviewSpinCounts.length === previewSlots.length) {
-          (this as Record<string, unknown>).wheelPreviewSpinCounts = session.wheelPreviewSpinCounts;
+          controller.previewSpinCounts = session.wheelPreviewSpinCounts;
         } else if (Array.isArray(session.wheelPreviewSlotTiers)) {
-          (this as Record<string, unknown>).wheelPreviewSpinCounts = remapSpinCountsByTier(
+          controller.previewSpinCounts = remapSpinCountsByTier(
             session.wheelPreviewSlotTiers,
             session.wheelPreviewSpinCounts,
             previewSlots
           );
         } else {
-          (this as Record<string, unknown>).wheelPreviewSpinCounts = new Array(previewSlots.length).fill(0);
+          controller.previewSpinCounts = new Array(previewSlots.length).fill(0);
         }
       } else {
-        (this as Record<string, unknown>).wheelPreviewSpinCounts = new Array(previewSlots.length).fill(0);
+        controller.previewSpinCounts = new Array(previewSlots.length).fill(0);
       }
-      (this as Record<string, unknown>).wheelPreviewTotalSpins = (((this as Record<string, unknown>).wheelPreviewSpinCounts || []) as number[])
+      controller.previewTotalSpins = ((controller.previewSpinCounts || []) as number[])
         .reduce((sum, count) => sum + count, 0);
-      (this as Record<string, unknown>).wheelPreviewFairnessHistory = Array.isArray(session.wheelPreviewFairnessHistory)
-        ? session.wheelPreviewFairnessHistory.slice(-20)
+      controller.previewFairnessHistory = Array.isArray(session.wheelPreviewFairnessHistory)
+        ? (session.wheelPreviewFairnessHistory.slice(-20) as WheelFairnessEntry[])
         : [];
-      (this as Record<string, unknown>).wheelPreviewChaseTallyHistory = Array.isArray(session.wheelPreviewChaseTallyHistory)
-        ? session.wheelPreviewChaseTallyHistory
+      controller.previewChaseTallyHistory = Array.isArray(session.wheelPreviewChaseTallyHistory)
+        ? (session.wheelPreviewChaseTallyHistory as WheelTallyHistoryEntry[])
         : [];
       assignWheelPendingInventoryIssues(this, session.wheelPendingInventoryIssues || session.wheelSkippedDeductions || []);
       this.wheelCurrentAngle = session.wheelCurrentAngle || 0;
       this.wheelLastResult = session.wheelLastResult || "";
-      (this as Record<string, unknown>).wheelLastResultColor = session.wheelLastResultColor || "rgb(var(--v-theme-primary))";
-      (this as Record<string, unknown>).wheelSpinHash = String(session.wheelSpinHash ?? "");
-      (this as Record<string, unknown>).wheelSpinSeed = String(session.wheelSpinSeed ?? "");
-      (this as Record<string, unknown>).wheelSpinClientSeed = String(session.wheelSpinClientSeed ?? "");
-      (this as Record<string, unknown>).wheelSpinVerificationUrl = String(session.wheelSpinVerificationUrl ?? "");
-      (this as Record<string, unknown>).wheelSpinAlgorithm = String(session.wheelSpinAlgorithm ?? "");
+      controller.lastResultColor = String(session.wheelLastResultColor || "rgb(var(--v-theme-primary))");
+      controller.spinHash = String(session.wheelSpinHash ?? "");
+      controller.spinSeed = String(session.wheelSpinSeed ?? "");
+      controller.spinClientSeed = String(session.wheelSpinClientSeed ?? "");
+      controller.spinVerificationUrl = String(session.wheelSpinVerificationUrl ?? "");
+      controller.spinAlgorithm = String(session.wheelSpinAlgorithm ?? "");
       return true;
     } catch {
       return false;
