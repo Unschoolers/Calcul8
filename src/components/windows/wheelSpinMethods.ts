@@ -1,5 +1,6 @@
 import { broadcastWheelSession } from "../../app-core/methods/ui/wheel-broadcast.ts";
-import type { Lot, PendingWheelInventoryIssue, Sale, WheelConfig } from "../../types/app.ts";
+import { createWheelFairnessCommit, revealWheelFairnessResult } from "../../app-core/methods/wheel-fairness-api.ts";
+import type { Lot, PendingWheelInventoryIssue, Sale, WheelConfig, WheelFairnessEntry } from "../../types/app.ts";
 import {
     createWheelSale,
     easeOutQuart,
@@ -13,15 +14,6 @@ import {
   getRemainingPacksForWheelLot
 } from "./wheelSaleSupport.ts";
 import { assignWheelPendingInventoryIssues } from "../../app-core/shared/wheel-session-compat.ts";
-
-type WheelFairnessHistoryEntry = {
-  spinNumber: number;
-  label: string;
-  color: string;
-  hash: string;
-  seed: string;
-  timestamp: number;
-};
 
 type WheelRenderCache = {
   canvas: HTMLCanvasElement;
@@ -212,6 +204,58 @@ function appendWheelSessionNetRevenue(context: Record<string, unknown>, sale: Pi
   context.wheelSessionNetRevenue = currentNetRevenue + Math.max(0, netRevenue);
 }
 
+async function resolveWheelFairnessSpin(
+  context: Record<string, unknown>,
+  slotCount: number
+): Promise<{
+  resultIndex: number;
+  hash: string;
+  seed: string;
+  clientSeed?: string;
+  verificationUrl?: string;
+  algorithm?: string;
+}> {
+  const buildLocalFallback = async () => {
+    const localSeed = generateCryptoSeed();
+    return {
+      resultIndex: seedToIndex(localSeed, slotCount),
+      hash: await hashSeed(localSeed),
+      seed: localSeed
+    };
+  };
+
+  const clientSeed = generateCryptoSeed();
+  let commit = null;
+  try {
+    commit = await createWheelFairnessCommit(slotCount);
+  } catch {
+    return buildLocalFallback();
+  }
+
+  if (!commit) {
+    return buildLocalFallback();
+  }
+
+  let reveal;
+  try {
+    reveal = await revealWheelFairnessResult(commit.commitToken, clientSeed);
+  } catch {
+    return buildLocalFallback();
+  }
+  if (reveal.serverSeedHash !== commit.serverSeedHash) {
+    throw new Error("Wheel fairness hash mismatch.");
+  }
+
+  return {
+    resultIndex: reveal.resultIndex,
+    hash: reveal.serverSeedHash,
+    seed: reveal.serverSeed,
+    clientSeed: reveal.clientSeed,
+    verificationUrl: reveal.verificationUrl,
+    algorithm: reveal.algorithm
+  };
+}
+
 export const wheelSpinMethods = {
   drawWheel(this: Record<string, unknown>, offset = 0): void {
     const canvasEl = (this.$refs as Record<string, unknown>).wheelCanvas as HTMLCanvasElement | null;
@@ -286,7 +330,8 @@ export const wheelSpinMethods = {
       landOnSlot: (index: number, options?: { recordSession?: boolean }) => void;
       recordSpinResult: (index: number) => void;
       recordPreviewSpinResult: (index: number) => void;
-      appendWheelFairnessHistory: (entry: WheelFairnessHistoryEntry, options?: { preview?: boolean }) => void;
+      appendWheelFairnessHistory: (entry: WheelFairnessEntry, options?: { preview?: boolean }) => void;
+      saveWheelSession: () => void;
     };
     const slots = (((vm as Record<string, unknown>).wheelDisplaySlots || vm.activeWheelSlots)) as WheelSlot[];
     if (vm.wheelSpinning || !slots.length) return;
@@ -295,11 +340,13 @@ export const wheelSpinMethods = {
       return;
     }
 
-    // Provably-fair: generate seed, hash it, show hash before spinning
-    const seed = generateCryptoSeed();
-    const hash = await hashSeed(seed);
+    const fairnessResult = await resolveWheelFairnessSpin(vm as Record<string, unknown>, slots.length);
+
     (vm as Record<string, unknown>).wheelSpinSeed = "";
-    (vm as Record<string, unknown>).wheelSpinHash = hash;
+    (vm as Record<string, unknown>).wheelSpinHash = fairnessResult.hash;
+    (vm as Record<string, unknown>).wheelSpinClientSeed = fairnessResult.clientSeed || "";
+    (vm as Record<string, unknown>).wheelSpinVerificationUrl = "";
+    (vm as Record<string, unknown>).wheelSpinAlgorithm = fairnessResult.algorithm || "";
     (vm as Record<string, unknown>).wheelShowSeed = false;
     (vm as Record<string, unknown>).wheelInventoryWarning = "";
 
@@ -307,13 +354,15 @@ export const wheelSpinMethods = {
     (vm as Record<string, unknown>).wheelHighlightedSlotIndex = -1;
     vm.wheelLastResult = "Spinning…";
     (vm as Record<string, unknown>).wheelLastResultColor = "rgb(var(--v-theme-primary))";
+    vm.saveWheelSession();
 
     const sliceAngle = (2 * Math.PI) / slots.length;
-    const targetIndex = seedToIndex(seed, slots.length);
+    const targetIndex = fairnessResult.resultIndex;
     if (recordSession) {
       vm.recordSpinResult(targetIndex);
     } else {
       vm.recordPreviewSpinResult(targetIndex);
+      vm.saveWheelSession();
     }
     const currentAngle = (vm.wheelCurrentAngle || 0) as number;
     const extraRotations = Math.floor(5 + Math.random() * 4) * 2 * Math.PI;
@@ -336,7 +385,10 @@ export const wheelSpinMethods = {
       vm.wheelCurrentAngle = endAngle;
       vm.drawWheel(endAngle);
       vm.wheelSpinning = false;
-      (vm as Record<string, unknown>).wheelSpinSeed = seed;
+      (vm as Record<string, unknown>).wheelSpinSeed = fairnessResult.seed;
+      (vm as Record<string, unknown>).wheelSpinClientSeed = fairnessResult.clientSeed || "";
+      (vm as Record<string, unknown>).wheelSpinVerificationUrl = fairnessResult.verificationUrl || "";
+      (vm as Record<string, unknown>).wheelSpinAlgorithm = fairnessResult.algorithm || "";
       (vm as Record<string, unknown>).wheelShowSeed = true;
       vm.appendWheelFairnessHistory({
         spinNumber: Number(recordSession
@@ -344,10 +396,14 @@ export const wheelSpinMethods = {
           : ((vm as Record<string, unknown>).wheelPreviewTotalSpins || 0)),
         label: slots[targetIndex]?.name || "Unknown result",
         color: slots[targetIndex]?.color || "rgb(var(--v-theme-primary))",
-        hash,
-        seed,
+        hash: fairnessResult.hash,
+        seed: fairnessResult.seed,
+        clientSeed: fairnessResult.clientSeed,
+        verificationUrl: fairnessResult.verificationUrl,
+        algorithm: fairnessResult.algorithm,
         timestamp: Date.now()
       }, { preview: !recordSession });
+      vm.saveWheelSession();
       vm.landOnSlot(targetIndex, { recordSession });
     };
 
@@ -484,11 +540,13 @@ export const wheelSpinMethods = {
         (this as Record<string, unknown>).wheelChaseReplacementSinglesId = null;
         (this as Record<string, unknown>).wheelChasePreviewMode = true;
         (this as Record<string, unknown>).wheelChaseDialog = true;
+        (this as Record<string, unknown> & { saveWheelSession: () => void }).saveWheelSession();
         return;
       }
       (this as Record<string, unknown>).wheelChaseDialog = false;
       (this as Record<string, unknown>).wheelChaseReplacementSinglesId = null;
       (this as Record<string, unknown>).wheelChasePendingTierId = "";
+      (this as Record<string, unknown> & { saveWheelSession: () => void }).saveWheelSession();
       return;
     }
 

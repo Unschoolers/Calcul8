@@ -604,7 +604,7 @@ test("landOnSlot sets result text and color", () => {
   assert.equal(vm.wheelLastResultColor, "#f00");
 });
 
-test("landOnSlot preview mode opens preview chase flow without persisting", () => {
+test("landOnSlot preview mode opens preview chase flow and persists the preview state", () => {
   const saveWheelSession = vi.fn();
   const triggerWheelCelebration = vi.fn();
   const vm: Record<string, unknown> = {
@@ -639,13 +639,80 @@ test("landOnSlot preview mode opens preview chase flow without persisting", () =
   assert.equal(vm.wheelChasePendingTierId, "tc");
   assert.equal(vm.wheelChaseReplacementSinglesId, null);
   assert.equal(vm.wheelChasePreviewMode, true);
-  assert.equal(saveWheelSession.mock.calls.length, 0);
+  assert.equal(saveWheelSession.mock.calls.length, 1);
   assert.deepEqual(triggerWheelCelebration.mock.calls, [[{
     label: "Chase Card",
     color: "#ff0",
     image: "https://img.test/chase.png",
     preview: true
   }]]);
+});
+
+test("preview spin persists updated preview session state through completion", async () => {
+  const saveSnapshots: Array<{ previewTotal: number; previewHistory: number; lastResult: string; hash: string }> = [];
+  const slots = [
+    { name: "Preview Prize", color: "#f00", cost: 5, tier: "t1", packsCount: 1, deductionType: "packs", isChase: false }
+  ];
+  const vm: Record<string, unknown> = {
+    wheelSpinning: false,
+    wheelDisplaySlots: slots,
+    activeWheelSlots: slots,
+    wheelDisplayConfig: { id: 1, spinPrice: 10, tiers: [{ id: "t1", boundLotId: 42 }] },
+    activeWheelConfigId: 1,
+    activeScopeType: "personal",
+    activeWorkspaceId: null,
+    wheelPreviewSpinCounts: [0],
+    wheelPreviewTotalSpins: 0,
+    wheelPreviewFairnessHistory: [],
+    wheelSpinCounts: [0],
+    wheelTotalSpins: 0,
+    wheelCurrentAngle: 0,
+    wheelSpinHash: "",
+    wheelSpinSeed: "",
+    wheelSpinClientSeed: "",
+    wheelSpinVerificationUrl: "",
+    wheelSpinAlgorithm: "",
+    wheelShowSeed: false,
+    wheelInventoryWarning: "",
+    wheelLastResult: "",
+    wheelLastResultColor: "",
+    wheelHighlightedSlotIndex: -1,
+    drawWheel: vi.fn(),
+    recordSpinResult: WheelWindow.methods!.recordSpinResult,
+    recordPreviewSpinResult: WheelWindow.methods!.recordPreviewSpinResult,
+    appendWheelFairnessHistory: WheelWindow.methods!.appendWheelFairnessHistory,
+    landOnSlot: WheelWindow.methods!.landOnSlot,
+    saveWheelSession: vi.fn(function (this: Record<string, unknown>) {
+      saveSnapshots.push({
+        previewTotal: Number(this.wheelPreviewTotalSpins || 0),
+        previewHistory: Array.isArray(this.wheelPreviewFairnessHistory) ? this.wheelPreviewFairnessHistory.length : 0,
+        lastResult: String(this.wheelLastResult || ""),
+        hash: String(this.wheelSpinHash || "")
+      });
+    })
+  };
+
+  vi.stubGlobal("performance", { now: () => 0 });
+  vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
+      cb(9_999);
+      return 1;
+    });
+
+  try {
+    await WheelWindow.methods!.spinWheelInternal.call(vm as never, false);
+  } finally {
+    vi.unstubAllGlobals();
+  }
+
+  assert.equal(vm.wheelPreviewTotalSpins, 1);
+  assert.deepEqual(vm.wheelPreviewSpinCounts, [1]);
+  assert.equal((vm.wheelPreviewFairnessHistory as Array<unknown>).length, 1);
+  assert.match(String(vm.wheelLastResult || ""), /^🎉 /);
+  assert.ok(String(vm.wheelSpinHash || "").length > 0);
+  assert.ok(String(vm.wheelSpinSeed || "").length > 0);
+  assert.ok(saveSnapshots.some((entry) => entry.previewTotal === 1));
+  assert.ok(saveSnapshots.some((entry) => entry.previewHistory === 1));
+  assert.ok(saveSnapshots.some((entry) => /^🎉 /.test(entry.lastResult)));
 });
 
 test("testSpinWheel delegates to non-recording spin path", async () => {
@@ -811,6 +878,49 @@ test("appendWheelFairnessHistory keeps preview history separate", () => {
 
   assert.equal((vm.wheelFairnessHistory as Array<{ label: string }>)[0]!.label, "Live Prize");
   assert.equal((vm.wheelPreviewFairnessHistory as Array<{ label: string }>)[0]!.label, "Preview Prize");
+});
+
+test("wheelLatestFairnessEntry exposes proof details for the current verified spin", () => {
+  const entry = WheelWindow.computed!.wheelLatestFairnessEntry.call({
+    preferredLanguage: "en",
+    wheelDisplayFairnessHistory: [{
+      spinNumber: 4,
+      label: "1 Pack",
+      color: "#f00",
+      hash: "server-hash",
+      seed: "server-seed",
+      clientSeed: "client-seed",
+      verificationUrl: "https://api.example.test/wheel/fairness/verify?serverSeed=server-seed&clientSeed=client-seed&slotCount=1",
+      algorithm: "whatfees-wheel-v1",
+      timestamp: 4
+    }],
+    wheelSpinHash: "server-hash",
+    wheelSpinSeed: "server-seed",
+    wheelSpinClientSeed: "client-seed",
+    wheelSpinVerificationUrl: "https://api.example.test/wheel/fairness/verify?serverSeed=server-seed&clientSeed=client-seed&slotCount=1",
+    wheelSpinAlgorithm: "whatfees-wheel-v1",
+    wheelLastResult: "🎉 1 Pack",
+    wheelLastResultColor: "#f00",
+    wheelDisplayTotalSpins: 4
+  } as never);
+
+  assert.equal(entry?.clientSeed, "client-seed");
+  assert.equal(entry?.algorithm, "whatfees-wheel-v1");
+  assert.match(String(entry?.verificationUrl || ""), /wheel\/fairness\/verify/);
+});
+
+test("wheelFairnessTitle differentiates server and local verification modes", () => {
+  assert.equal(WheelWindow.computed!.wheelFairnessTitle.call({
+    preferredLanguage: "en",
+    wheelSpinning: false,
+    wheelSpinVerificationUrl: "https://api.example.test/wheel/fairness/verify?serverSeed=s&clientSeed=c&slotCount=1"
+  } as never), "Server verified");
+
+  assert.equal(WheelWindow.computed!.wheelFairnessTitle.call({
+    preferredLanguage: "en",
+    wheelSpinning: false,
+    wheelSpinVerificationUrl: ""
+  } as never), "Local verified");
 });
 
 test("canTierBeChase requires a concrete singles item", () => {
@@ -2196,6 +2306,11 @@ test("saveWheelSession stores session to localStorage", () => {
     activeScopeType: "personal",
     activeWorkspaceId: null,
     wheelSpinCounts: [1, 2],
+    wheelPreviewSlots: [{ tier: "t1" }, { tier: "t2" }],
+    wheelPreviewSpinCounts: [2, 3],
+    wheelPreviewTotalSpins: 5,
+    wheelPreviewFairnessHistory: [{ spinNumber: 5, label: "Preview Prize", color: "#0f0", hash: "preview-hash", seed: "preview-seed", timestamp: 5 }],
+    wheelPreviewChaseTallyHistory: [{ tierId: "t1", label: "Preview Prize", color: "#0f0", count: 2 }],
     wheelTotalSpins: 3,
     wheelSessionUpdatedAt: 0,
     wheelSessionNetRevenue: 22.75,
@@ -2206,7 +2321,12 @@ test("saveWheelSession stores session to localStorage", () => {
     wheelSessionLotSelections: {},
     wheelCurrentAngle: 1.5,
     wheelLastResult: "🎉 Prize",
-    wheelLastResultColor: "#f00"
+    wheelLastResultColor: "#f00",
+    wheelSpinHash: "hash-live",
+    wheelSpinSeed: "seed-live",
+    wheelSpinClientSeed: "client-live",
+    wheelSpinVerificationUrl: "https://api.example.test/wheel/fairness/verify?serverSeed=seed-live&clientSeed=client-live&slotCount=2",
+    wheelSpinAlgorithm: "whatfees-wheel-v1"
   };
 
   WheelWindow.methods!.saveWheelSession.call(vm as never);
@@ -2216,8 +2336,17 @@ test("saveWheelSession stores session to localStorage", () => {
   const parsed = JSON.parse(store["whatfees_wheel_session__cfg__42"]!);
   assert.deepEqual(parsed.wheelSpinCounts, [1, 2]);
   assert.equal(parsed.wheelTotalSpins, 3);
+  assert.deepEqual(parsed.wheelPreviewSpinCounts, [2, 3]);
+  assert.equal(parsed.wheelPreviewTotalSpins, 5);
+  assert.equal(parsed.wheelPreviewFairnessHistory.length, 1);
+  assert.equal(parsed.wheelPreviewChaseTallyHistory.length, 1);
   assert.equal(parsed.wheelSessionNetRevenue, 22.75);
   assert.equal(parsed.wheelFairnessHistory.length, 1);
+  assert.equal(parsed.wheelSpinHash, "hash-live");
+  assert.equal(parsed.wheelSpinSeed, "seed-live");
+  assert.equal(parsed.wheelSpinClientSeed, "client-live");
+  assert.match(String(parsed.wheelSpinVerificationUrl || ""), /wheel\/fairness\/verify/);
+  assert.equal(parsed.wheelSpinAlgorithm, "whatfees-wheel-v1");
   assert.equal(mockStorage.setItem.mock.calls[1]![0], "whatfees_wheel_session");
 
   Object.defineProperty(globalThis, "localStorage", { value: origLocalStorage, writable: true, configurable: true });
@@ -2226,6 +2355,11 @@ test("saveWheelSession stores session to localStorage", () => {
 test("loadWheelFromSession restores session from localStorage", () => {
   const session = {
     wheelSpinCounts: [3, 4],
+    wheelPreviewSpinCounts: [4, 1],
+    wheelPreviewSlotTiers: ["t1", "t2"],
+    wheelPreviewTotalSpins: 5,
+    wheelPreviewFairnessHistory: [{ spinNumber: 5, label: "Preview Prize", color: "#0f0", hash: "preview-hash", seed: "preview-seed", timestamp: 5 }],
+    wheelPreviewChaseTallyHistory: [{ tierId: "t1", label: "Preview Prize", color: "#0f0", count: 4 }],
     wheelTotalSpins: 7,
     wheelSessionNetRevenue: 61.1,
     wheelSessionCostAdjustment: 5,
@@ -2235,7 +2369,12 @@ test("loadWheelFromSession restores session from localStorage", () => {
     wheelSessionLotSelections: {},
     wheelCurrentAngle: 2.0,
     wheelLastResult: "🎉 A",
-    wheelLastResultColor: "#0f0"
+    wheelLastResultColor: "#0f0",
+    wheelSpinHash: "hash-7",
+    wheelSpinSeed: "seed-7",
+    wheelSpinClientSeed: "client-7",
+    wheelSpinVerificationUrl: "https://api.example.test/wheel/fairness/verify?serverSeed=seed-7&clientSeed=client-7&slotCount=2",
+    wheelSpinAlgorithm: "whatfees-wheel-v1"
   };
   const mockStorage = { getItem: vi.fn(() => JSON.stringify(session)) };
   const origLocalStorage = globalThis.localStorage;
@@ -2246,25 +2385,44 @@ test("loadWheelFromSession restores session from localStorage", () => {
     activeScopeType: "personal",
     activeWorkspaceId: null,
     activeWheelSlots: [{}, {}], // 2 slots matches session spinCounts length
+    wheelPreviewSlots: [{}, {}],
     wheelSpinCounts: [0, 0],
+    wheelPreviewSpinCounts: [0, 0],
+    wheelPreviewTotalSpins: 0,
     wheelTotalSpins: 0,
     wheelSessionNetRevenue: 0,
     wheelSessionCostAdjustment: 0,
     wheelFairnessHistory: [],
+    wheelPreviewFairnessHistory: [],
     wheelChaseTallyHistory: [],
+    wheelPreviewChaseTallyHistory: [],
     wheelSkippedDeductions: [],
     wheelSessionLotSelections: {},
     wheelCurrentAngle: 0,
     wheelLastResult: "",
-    wheelLastResultColor: ""
+    wheelLastResultColor: "",
+    wheelSpinHash: "",
+    wheelSpinSeed: "",
+    wheelSpinClientSeed: "",
+    wheelSpinVerificationUrl: "",
+    wheelSpinAlgorithm: ""
   };
 
   const result = WheelWindow.methods!.loadWheelFromSession.call(vm as never);
 
   assert.equal(result, true);
   assert.deepEqual(vm.wheelSpinCounts, [3, 4]);
+  assert.deepEqual(vm.wheelPreviewSpinCounts, [4, 1]);
+  assert.equal(vm.wheelPreviewTotalSpins, 5);
+  assert.equal((vm.wheelPreviewFairnessHistory as Array<{ spinNumber: number }>)[0]!.spinNumber, 5);
+  assert.equal((vm.wheelPreviewChaseTallyHistory as Array<{ tierId: string }>)[0]!.tierId, "t1");
   assert.equal(vm.wheelTotalSpins, 7);
   assert.equal(vm.wheelSessionNetRevenue, 61.1);
+  assert.equal(vm.wheelSpinHash, "hash-7");
+  assert.equal(vm.wheelSpinSeed, "seed-7");
+  assert.equal(vm.wheelSpinClientSeed, "client-7");
+  assert.match(String(vm.wheelSpinVerificationUrl || ""), /wheel\/fairness\/verify/);
+  assert.equal(vm.wheelSpinAlgorithm, "whatfees-wheel-v1");
   assert.equal((vm.wheelFairnessHistory as Array<{ spinNumber: number }>)[0]!.spinNumber, 7);
 
   Object.defineProperty(globalThis, "localStorage", { value: origLocalStorage, writable: true, configurable: true });

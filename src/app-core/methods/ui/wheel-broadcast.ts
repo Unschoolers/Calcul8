@@ -1,4 +1,5 @@
 import type { AppContext } from "../../context-app.ts";
+import type { WheelFairnessEntry } from "../../../types/app.ts";
 import { fetchAuthenticatedApiResponse } from "./shared.ts";
 
 type BroadcastApp = Pick<
@@ -18,14 +19,7 @@ type BroadcastApp = Pick<
 > & {
   wheelSessionNetRevenue: number | null;
   wheelSessionCostAdjustment: number;
-  wheelFairnessHistory: Array<{
-    spinNumber: number;
-    label: string;
-    color: string;
-    hash: string;
-    seed: string;
-    timestamp: number;
-  }>;
+  wheelFairnessHistory: WheelFairnessEntry[];
   wheelChaseTallyHistory: Array<{
     tierId: string;
     label: string;

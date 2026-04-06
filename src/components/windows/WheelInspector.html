@@ -105,7 +105,7 @@
               <wheel-tier-card
                 v-for="entry in group.tiers"
                 :key="entry.tier.id"
-                :ctx="$props.ctx"
+                :ctx="getWindowComponentContext()"
                 :tier="entry.tier"
                 :tier-index="entry.index"
               ></wheel-tier-card>
@@ -126,11 +126,11 @@
 
     <wheel-session-panel
       v-show="wheelInspectorTab === 'session'"
-      :ctx="$props.ctx"
+      :ctx="getWindowComponentContext()"
     ></wheel-session-panel>
 
     <section v-show="wheelInspectorTab === 'history'" class="wheel-panel-section">
-      <wheel-history-panel :ctx="$props.ctx"></wheel-history-panel>
+      <wheel-history-panel :ctx="getWindowComponentContext()"></wheel-history-panel>
     </section>
   </v-card-text>
 </v-card>

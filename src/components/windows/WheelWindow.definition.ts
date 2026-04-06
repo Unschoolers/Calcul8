@@ -76,6 +76,11 @@ export const wheelWindowDefinition: any = {
         : ((this as Record<string, unknown>).expectedMarginColor as string);
     }
   },
+  provide(this: Record<string, unknown>) {
+    return {
+      wheelCtx: this
+    };
+  },
   watch: {
     currentTab(this: Record<string, unknown>, nextTab: string) {
       if (nextTab !== "wheel") return;
@@ -377,6 +382,8 @@ export const wheelWindowDefinition: any = {
   setup(props: { ctx: Record<string, unknown> }) {
     const injectedCtx = inject<Record<string, unknown> | null>("appCtx", null);
     const source = (injectedCtx ?? props.ctx) as Record<string, unknown>;
-    return createWindowContextBridge(source);
+    return createWindowContextBridge(source, {
+      blockedKeys: Object.keys(createWheelWindowState())
+    });
   }
 };

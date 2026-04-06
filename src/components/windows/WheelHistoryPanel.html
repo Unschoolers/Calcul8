@@ -1,21 +1,33 @@
 <template v-if="latestOnly">
   <v-card
-    v-if="wheelLatestFairnessEntry"
+    v-if="wheelHistoryPanelLatestEntry"
     variant="outlined"
     class="wheel-fairness-history"
     :class="{ 'wheel-fairness-history--presentation': presentation }"
   >
     <div class="wheel-fairness-history__toggle wheel-fairness-history__toggle--static">
       <div class="wheel-fairness-history__heading">
-        <v-icon size="small" :color="wheelLatestFairnessEntry.seed ? 'success' : 'warning'">
-          {{ wheelLatestFairnessEntry.seed ? 'mdi-shield-check' : 'mdi-lock' }}
+        <v-icon size="small" :color="wheelHistoryPanelLatestEntry.seed ? 'success' : 'warning'">
+          {{ wheelHistoryPanelLatestEntry.seed ? 'mdi-shield-check' : 'mdi-lock' }}
         </v-icon>
         <div>
           <div class="wheel-fairness-history__title">
-            {{ wheelLatestFairnessEntry.seed ? t('wheelFairnessVerifiedTitle') : t('wheelFairnessResultLockedTitle') }}
+            {{
+              !wheelHistoryPanelLatestEntry.seed
+                ? t('wheelFairnessResultLockedTitle')
+                : wheelHistoryPanelLatestEntry.verificationUrl
+                  ? t('wheelFairnessServerVerifiedTitle')
+                  : t('wheelFairnessLocalVerifiedTitle')
+            }}
           </div>
           <div class="wheel-fairness-history__summary">
-            {{ wheelLatestFairnessEntry.seed ? t('wheelFairnessLatestVerificationSummary') : t('wheelFairnessCommittedSummary') }}
+            {{
+              !wheelHistoryPanelLatestEntry.seed
+                ? t('wheelFairnessCommittedSummary')
+                : wheelHistoryPanelLatestEntry.verificationUrl
+                  ? t('wheelFairnessServerVerificationSummary')
+                  : t('wheelFairnessLocalVerificationSummary')
+            }}
           </div>
         </div>
       </div>
@@ -24,24 +36,48 @@
       <div class="wheel-fairness-history__item">
         <div class="wheel-fairness-history__item-top">
           <div class="wheel-fairness-history__spin">
-            {{ t('wheelFairnessSpinNumberLabel', { count: wheelLatestFairnessEntry.spinNumber }) }}
+            {{ t('wheelFairnessSpinNumberLabel', { count: wheelHistoryPanelLatestEntry.spinNumber }) }}
           </div>
           <div class="wheel-fairness-history__result">
-            <span class="wheel-fairness-history__dot" :style="{ background: wheelLatestFairnessEntry.color }"></span>
-            {{ wheelLatestFairnessEntry.label }}
+            <span class="wheel-fairness-history__dot" :style="{ background: wheelHistoryPanelLatestEntry.color }"></span>
+            {{ wheelHistoryPanelLatestEntry.label }}
           </div>
+        </div>
+        <div
+          v-if="wheelHistoryPanelLatestEntry.seed"
+          class="wheel-fairness-history__mode"
+        >
+          {{
+            wheelHistoryPanelLatestEntry.verificationUrl
+              ? t('wheelFairnessServerModeLabel')
+              : t('wheelFairnessLocalModeLabel')
+          }}
         </div>
         <div class="wheel-fairness-history__codes">
           <div class="wheel-fairness-history__code-block">
             <span class="wheel-fairness-history__code-label">{{ t('wheelFairnessHashLabel') }}</span>
-            <code class="wheel-fairness-history__code">{{ wheelLatestFairnessEntry.hash }}</code>
+            <code class="wheel-fairness-history__code">{{ wheelHistoryPanelLatestEntry.hash }}</code>
           </div>
-          <div v-if="wheelLatestFairnessEntry.seed" class="wheel-fairness-history__code-block">
+          <div v-if="wheelHistoryPanelLatestEntry.clientSeed" class="wheel-fairness-history__code-block">
+            <span class="wheel-fairness-history__code-label">{{ t('wheelFairnessClientSeedLabel') }}</span>
+            <code class="wheel-fairness-history__code">{{ wheelHistoryPanelLatestEntry.clientSeed }}</code>
+          </div>
+          <div v-if="wheelHistoryPanelLatestEntry.seed" class="wheel-fairness-history__code-block">
             <span class="wheel-fairness-history__code-label">{{ t('wheelFairnessSeedLabel') }}</span>
-            <code class="wheel-fairness-history__code">{{ wheelLatestFairnessEntry.seed }}</code>
+            <code class="wheel-fairness-history__code">{{ wheelHistoryPanelLatestEntry.seed }}</code>
           </div>
         </div>
-        <div v-if="wheelLatestFairnessEntry.seed" class="wheel-fairness-history__note">
+        <div v-if="wheelHistoryPanelLatestEntry.verificationUrl" class="wheel-fairness-history__actions">
+          <a
+            :href="wheelHistoryPanelLatestEntry.verificationUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="wheel-fairness-history__verify-link"
+          >
+            {{ t('wheelFairnessVerifyAction') }}
+          </a>
+        </div>
+        <div v-if="wheelHistoryPanelLatestEntry.seed" class="wheel-fairness-history__note">
           {{ t('wheelFairnessSeedVerifiedNote') }}
         </div>
       </div>
@@ -49,15 +85,21 @@
   </v-card>
 </template>
 
-<template v-else-if="wheelSpinHash || wheelDisplayFairnessHistory.length">
+<template v-else-if="wheelSpinHash || wheelHistoryPanelEntries.length">
   <v-card variant="outlined" class="wheel-fairness-history wheel-fairness-history--current">
     <div class="wheel-fairness-history__toggle wheel-fairness-history__toggle--static">
       <div class="wheel-fairness-history__heading">
         <v-icon size="small" :color="wheelFairnessIconColor">{{ wheelFairnessIcon }}</v-icon>
         <div>
-          <div class="wheel-fairness-history__title">{{ wheelFairnessTitle }}</div>
+          <div class="wheel-fairness-history__title">{{ wheelHistoryPanelTitle }}</div>
           <div class="wheel-fairness-history__summary">
-            {{ wheelSpinning ? t('wheelFairnessCommittedSummary') : t('wheelFairnessLatestVerificationSummary') }}
+            {{
+              wheelSpinning
+                ? t('wheelFairnessCommittedSummary')
+                : wheelHistoryPanelCurrentVerificationUrl
+                  ? t('wheelFairnessServerVerificationSummary')
+                  : t('wheelFairnessLocalVerificationSummary')
+            }}
           </div>
         </div>
       </div>
@@ -71,15 +113,39 @@
             {{ wheelLastResult.replace(/^🎉\s*/, '') }}
           </div>
         </div>
+        <div
+          v-if="wheelSpinSeed && !wheelSpinning"
+          class="wheel-fairness-history__mode"
+        >
+          {{
+            wheelSpinVerificationUrl
+              ? t('wheelFairnessServerModeLabel')
+              : t('wheelFairnessLocalModeLabel')
+          }}
+        </div>
         <div class="wheel-fairness-history__codes">
           <div class="wheel-fairness-history__code-block">
             <span class="wheel-fairness-history__code-label">{{ t('wheelFairnessHashLabel') }}</span>
             <code class="wheel-fairness-history__code">{{ wheelSpinHash }}</code>
           </div>
+          <div v-if="wheelSpinClientSeed" class="wheel-fairness-history__code-block">
+            <span class="wheel-fairness-history__code-label">{{ t('wheelFairnessClientSeedLabel') }}</span>
+            <code class="wheel-fairness-history__code">{{ wheelSpinClientSeed }}</code>
+          </div>
           <div v-if="wheelSpinSeed && !wheelSpinning" class="wheel-fairness-history__code-block">
             <span class="wheel-fairness-history__code-label">{{ t('wheelFairnessSeedLabel') }}</span>
             <code class="wheel-fairness-history__code">{{ wheelSpinSeed }}</code>
           </div>
+        </div>
+        <div v-if="wheelHistoryPanelCurrentVerificationUrl && !wheelSpinning" class="wheel-fairness-history__actions">
+          <a
+            :href="wheelHistoryPanelCurrentVerificationUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="wheel-fairness-history__verify-link"
+          >
+            {{ t('wheelFairnessVerifyAction') }}
+          </a>
         </div>
         <div v-if="wheelSpinSeed && !wheelSpinning" class="wheel-fairness-history__note">
           {{ t('wheelFairnessSeedVerifiedNote') }}
@@ -87,7 +153,7 @@
       </div>
     </div>
     <button
-      v-if="wheelDisplayFairnessHistory.length"
+      v-if="wheelHistoryPanelEntries.length"
       type="button"
       class="wheel-fairness-history__toggle"
       @click="wheelFairnessHistoryOpen = !wheelFairnessHistoryOpen"
@@ -96,14 +162,14 @@
         <v-icon size="small" color="success">mdi-history</v-icon>
         <div>
           <div class="wheel-fairness-history__title">{{ t('wheelFairnessRecentHistoryTitle') }}</div>
-          <div class="wheel-fairness-history__summary">{{ wheelFairnessHistorySummary }}</div>
+          <div class="wheel-fairness-history__summary">{{ wheelHistoryPanelSummary }}</div>
         </div>
       </div>
       <v-icon size="small">{{ wheelFairnessHistoryOpen ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
     </button>
-    <div v-if="wheelFairnessHistoryOpen && wheelDisplayFairnessHistory.length" class="wheel-fairness-history__list">
+    <div v-if="wheelFairnessHistoryOpen && wheelHistoryPanelEntries.length" class="wheel-fairness-history__list">
       <div
-        v-for="entry in wheelDisplayFairnessHistory"
+        v-for="entry in wheelHistoryPanelEntries"
         :key="`${entry.spinNumber}-${entry.timestamp}`"
         class="wheel-fairness-history__item"
       >
@@ -114,15 +180,36 @@
             {{ entry.label }}
           </div>
         </div>
+        <div class="wheel-fairness-history__mode">
+          {{
+            entry.verificationUrl
+              ? t('wheelFairnessServerModeLabel')
+              : t('wheelFairnessLocalModeLabel')
+          }}
+        </div>
         <div class="wheel-fairness-history__codes">
           <div class="wheel-fairness-history__code-block">
             <span class="wheel-fairness-history__code-label">{{ t('wheelFairnessHashLabel') }}</span>
             <code class="wheel-fairness-history__code">{{ entry.hash }}</code>
           </div>
+          <div v-if="entry.clientSeed" class="wheel-fairness-history__code-block">
+            <span class="wheel-fairness-history__code-label">{{ t('wheelFairnessClientSeedLabel') }}</span>
+            <code class="wheel-fairness-history__code">{{ entry.clientSeed }}</code>
+          </div>
           <div class="wheel-fairness-history__code-block">
             <span class="wheel-fairness-history__code-label">{{ t('wheelFairnessSeedLabel') }}</span>
             <code class="wheel-fairness-history__code">{{ entry.seed }}</code>
           </div>
+        </div>
+        <div v-if="entry.verificationUrl" class="wheel-fairness-history__actions">
+          <a
+            :href="entry.verificationUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="wheel-fairness-history__verify-link"
+          >
+            {{ t('wheelFairnessVerifyAction') }}
+          </a>
         </div>
       </div>
     </div>

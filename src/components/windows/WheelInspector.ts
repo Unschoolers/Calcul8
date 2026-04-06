@@ -1,5 +1,5 @@
 import { inject, type PropType } from "vue";
-import { createWindowContextBridge } from "./contextBridge.ts";
+import { createNestedWindowContextBridge } from "./contextBridge.ts";
 import { translateAppMessage } from "../../app-core/i18n/index.ts";
 import WheelHistoryPanel from "./WheelHistoryPanel.vue";
 import WheelTierCard from "./WheelTierCard.vue";
@@ -25,6 +25,11 @@ export const WheelInspector = {
     WheelHistoryPanel,
     WheelTierCard,
     WheelSessionPanel
+  },
+  methods: {
+    getWindowComponentContext(this: Record<string, unknown>): Record<string, unknown> {
+      return this as Record<string, unknown>;
+    }
   },
   computed: {
     wheelBuilderTierGroups(this: Record<string, unknown>): WheelBuilderTierGroup[] {
@@ -117,8 +122,9 @@ export const WheelInspector = {
     }
   },
   setup(props: { ctx: Record<string, unknown> }) {
+    const injectedWheelCtx = inject<Record<string, unknown> | null>("wheelCtx", null);
     const injectedCtx = inject<Record<string, unknown> | null>("appCtx", null);
-    const source = (props.ctx ?? injectedCtx) as Record<string, unknown>;
-    return createWindowContextBridge(source);
+    const source = (injectedWheelCtx ?? props.ctx ?? injectedCtx) as Record<string, unknown>;
+    return createNestedWindowContextBridge(source);
   }
 };

@@ -1,4 +1,4 @@
-import type { Sale, WorkspaceRealtimeStatus } from "../../../types/app.ts";
+import type { Sale, WheelFairnessEntry, WorkspaceRealtimeStatus } from "../../../types/app.ts";
 import type { AppContext } from "../../context-app.ts";
 import { removeById, upsertById } from "../../shared/collection-updaters.ts";
 import { normalizeWheelConfigs } from "../../shared/normalize-wheel-config.ts";
@@ -44,14 +44,7 @@ type RealtimeApp = Pick<
 > & {
   wheelSessionNetRevenue?: number | null;
   wheelSessionCostAdjustment?: number;
-  wheelFairnessHistory?: Array<{
-    spinNumber: number;
-    label: string;
-    color: string;
-    hash: string;
-    seed: string;
-    timestamp: number;
-  }>;
+  wheelFairnessHistory?: WheelFairnessEntry[];
   wheelChaseTallyHistory?: Array<{ tierId: string; label: string; color: string; count: number }>;
   wheelCurrentAngle?: number;
   wheelLastResultColor?: string;
@@ -332,6 +325,9 @@ function handleWheelSessionUpdatedEvent(app: RealtimeApp, data: unknown): void {
         color: String((entry as Record<string, unknown>).color ?? ""),
         hash: String((entry as Record<string, unknown>).hash ?? ""),
         seed: String((entry as Record<string, unknown>).seed ?? ""),
+        clientSeed: String((entry as Record<string, unknown>).clientSeed ?? "").trim() || undefined,
+        verificationUrl: String((entry as Record<string, unknown>).verificationUrl ?? "").trim() || undefined,
+        algorithm: String((entry as Record<string, unknown>).algorithm ?? "").trim() || undefined,
         timestamp: Math.max(0, Math.floor(Number((entry as Record<string, unknown>).timestamp) || 0))
       }));
   }

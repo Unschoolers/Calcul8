@@ -1,6 +1,6 @@
 import { inject, type PropType } from "vue";
 import type { WheelTier } from "../../types/app.ts";
-import { createWindowContextBridge } from "./contextBridge.ts";
+import { createNestedWindowContextBridge } from "./contextBridge.ts";
 
 export const WheelTierCard = {
   name: "WheelTierCard",
@@ -84,8 +84,9 @@ export const WheelTierCard = {
     }
   },
   setup(props: { ctx: Record<string, unknown> }) {
+    const injectedWheelCtx = inject<Record<string, unknown> | null>("wheelCtx", null);
     const injectedCtx = inject<Record<string, unknown> | null>("appCtx", null);
-    const source = (props.ctx ?? injectedCtx) as Record<string, unknown>;
-    return createWindowContextBridge(source);
+    const source = (injectedWheelCtx ?? props.ctx ?? injectedCtx) as Record<string, unknown>;
+    return createNestedWindowContextBridge(source);
   }
 };

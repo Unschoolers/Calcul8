@@ -2,6 +2,9 @@ import { getCurrentInstance } from "vue";
 
 type WindowContext = Record<string, unknown>;
 type MaybeWindowContext = WindowContext | null | undefined;
+type BridgeOptions = {
+  blockedKeys?: Array<string | symbol>;
+};
 
 function isReservedVueKey(key: string | symbol): boolean {
   return typeof key === "string" && (key.startsWith("$") || key.startsWith("_"));
@@ -42,11 +45,26 @@ export function resolveWindowContext(ctx: WindowContext): WindowContext {
   return ctx;
 }
 
-export function createWindowContextBridge(ctx: WindowContext): Record<string, unknown> {
+export function createWindowContextBridge(ctx: WindowContext, options: BridgeOptions = {}): Record<string, unknown> {
   const sourceCtx = resolveWindowContext(ctx);
+  return createBridgeFromSource(sourceCtx, options);
+}
+
+export function createNestedWindowContextBridge(ctx: WindowContext, options: BridgeOptions = {}): Record<string, unknown> {
+  return createBridgeFromSource(ctx, options);
+}
+
+function createBridgeFromSource(sourceCtx: WindowContext, options: BridgeOptions = {}): Record<string, unknown> {
   const internalCtx = getInternalCtx(sourceCtx);
+  const owningInstance = getCurrentInstance() as { data?: Record<string, unknown>; ctx?: Record<string, unknown> } | null;
+  const blockedKeys = new Set(options.blockedKeys || []);
+
+  const isBlockedKey = (key: string | symbol): boolean => blockedKeys.has(key);
 
   const readValue = (key: string | symbol): unknown => {
+    if (isBlockedKey(key)) {
+      return undefined;
+    }
     const directValue = Reflect.get(sourceCtx, key, sourceCtx);
     if (directValue !== undefined) {
       return directValue;
@@ -58,6 +76,9 @@ export function createWindowContextBridge(ctx: WindowContext): Record<string, un
   };
 
   const hasKey = (key: string | symbol): boolean => {
+    if (isBlockedKey(key)) {
+      return false;
+    }
     if (Reflect.has(sourceCtx, key)) {
       return true;
     }
@@ -92,6 +113,14 @@ export function createWindowContextBridge(ctx: WindowContext): Record<string, un
         return value;
       },
       set(_target, key: string | symbol, value: unknown) {
+        if (isBlockedKey(key)) {
+          if (owningInstance?.data && Reflect.has(owningInstance.data, key)) {
+            Reflect.set(owningInstance.data, key, value, owningInstance.data);
+          } else if (owningInstance?.ctx && Reflect.has(owningInstance.ctx, key)) {
+            Reflect.set(owningInstance.ctx, key, value, owningInstance.ctx);
+          }
+          return true;
+        }
         if (internalCtx && Reflect.has(internalCtx, key) && !Reflect.has(sourceCtx, key)) {
           Reflect.set(internalCtx, key, value, internalCtx);
           return true;

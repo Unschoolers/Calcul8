@@ -83,6 +83,18 @@ export interface PendingWheelInventoryIssue {
   slotSinglesId?: number | null;
 }
 
+export interface WheelFairnessEntry {
+  spinNumber: number;
+  label: string;
+  color: string;
+  hash: string;
+  seed: string;
+  clientSeed?: string;
+  verificationUrl?: string;
+  algorithm?: string;
+  timestamp: number;
+}
+
 export interface NewSaleDraft {
   type: SaleType;
   quantity: number | null;
@@ -561,4 +573,7 @@ export interface AppState extends LotSetup {
   wheelSessionLotSelections: Record<string, number | null>;
   wheelPendingInventoryIssues: PendingWheelInventoryIssue[];
   wheelSkippedDeductions: PendingWheelInventoryIssue[];
+  wheelSpinClientSeed?: string;
+  wheelSpinVerificationUrl?: string;
+  wheelSpinAlgorithm?: string;
 }

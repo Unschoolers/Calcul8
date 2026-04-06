@@ -142,10 +142,19 @@ test("loadWheelFromStorage reads workspace-scoped wheel state without falling ba
         wheelSessionCostAdjustment: 5,
         wheelFairnessHistory: [{ spinNumber: 1, label: "Prize", color: "#f00", hash: "h", seed: "s", timestamp: 1 }],
         wheelChaseTallyHistory: [{ tierId: "t2", label: "Prize", color: "#f00", count: 1 }],
+        wheelPreviewSpinCounts: [2, 1],
+        wheelPreviewTotalSpins: 3,
+        wheelPreviewFairnessHistory: [{ spinNumber: 3, label: "Preview Prize", color: "#0f0", hash: "ph", seed: "ps", timestamp: 3 }],
+        wheelPreviewChaseTallyHistory: [{ tierId: "pt1", label: "Preview Prize", color: "#0f0", count: 2 }],
         wheelSessionLotSelections: { t2: 77 },
         wheelSkippedDeductions: [{ tierId: "t2" }],
         wheelCurrentAngle: 1.25,
-        wheelLastResultColor: "#f00"
+        wheelLastResultColor: "#f00",
+        wheelSpinHash: "hash-current",
+        wheelSpinSeed: "seed-current",
+        wheelSpinClientSeed: "client-current",
+        wheelSpinVerificationUrl: "https://api.example.test/wheel/fairness/verify?serverSeed=seed-current&clientSeed=client-current&slotCount=1",
+        wheelSpinAlgorithm: "whatfees-wheel-v1"
       })
     );
 
@@ -168,10 +177,19 @@ test("loadWheelFromStorage reads workspace-scoped wheel state without falling ba
     assert.equal(context.wheelSessionCostAdjustment, 5);
     assert.equal((context.wheelFairnessHistory as Array<{ spinNumber: number }>)[0]?.spinNumber, 1);
     assert.equal((context.wheelChaseTallyHistory as Array<{ tierId: string }>)[0]?.tierId, "t2");
+    assert.deepEqual(context.wheelPreviewSpinCounts, [2, 1]);
+    assert.equal(context.wheelPreviewTotalSpins, 3);
+    assert.equal((context.wheelPreviewFairnessHistory as Array<{ spinNumber: number }>)[0]?.spinNumber, 3);
+    assert.equal((context.wheelPreviewChaseTallyHistory as Array<{ tierId: string }>)[0]?.tierId, "pt1");
     assert.deepEqual(context.wheelSessionLotSelections, { t2: 77 });
     assert.deepEqual(context.wheelSkippedDeductions, [{ tierId: "t2" }]);
     assert.equal(context.wheelCurrentAngle, 1.25);
     assert.equal(context.wheelLastResultColor, "#f00");
+    assert.equal(context.wheelSpinHash, "hash-current");
+    assert.equal(context.wheelSpinSeed, "seed-current");
+    assert.equal(context.wheelSpinClientSeed, "client-current");
+    assert.match(String(context.wheelSpinVerificationUrl || ""), /wheel\/fairness\/verify/);
+    assert.equal(context.wheelSpinAlgorithm, "whatfees-wheel-v1");
   });
 });
 
@@ -187,8 +205,17 @@ test("saveWheelSessionToStorage preserves richer wheel session fields already mi
         wheelSessionCostAdjustment: 5,
         wheelFairnessHistory: [{ spinNumber: 1, label: "Prize", color: "#f00", hash: "h", seed: "s", timestamp: 1 }],
         wheelChaseTallyHistory: [{ tierId: "t2", label: "Prize", color: "#f00", count: 1 }],
+        wheelPreviewSpinCounts: [2, 1],
+        wheelPreviewTotalSpins: 3,
+        wheelPreviewFairnessHistory: [{ spinNumber: 3, label: "Preview Prize", color: "#0f0", hash: "ph", seed: "ps", timestamp: 3 }],
+        wheelPreviewChaseTallyHistory: [{ tierId: "pt1", label: "Preview Prize", color: "#0f0", count: 2 }],
         wheelCurrentAngle: 1.25,
-        wheelLastResultColor: "#f00"
+        wheelLastResultColor: "#f00",
+        wheelSpinHash: "hash-preserved",
+        wheelSpinSeed: "seed-preserved",
+        wheelSpinClientSeed: "client-preserved",
+        wheelSpinVerificationUrl: "https://api.example.test/wheel/fairness/verify?serverSeed=seed-preserved&clientSeed=client-preserved&slotCount=1",
+        wheelSpinAlgorithm: "whatfees-wheel-v1"
       })
     );
 
@@ -212,5 +239,14 @@ test("saveWheelSessionToStorage preserves richer wheel session fields already mi
     assert.equal(saved.wheelLastResultColor, "#f00");
     assert.equal(saved.wheelLastResult, "Workspace result");
     assert.deepEqual(saved.wheelSessionLotSelections, { t2: 77 });
+    assert.deepEqual(saved.wheelPreviewSpinCounts, [2, 1]);
+    assert.equal(saved.wheelPreviewTotalSpins, 3);
+    assert.equal(saved.wheelPreviewFairnessHistory[0]?.spinNumber, 3);
+    assert.equal(saved.wheelPreviewChaseTallyHistory[0]?.tierId, "pt1");
+    assert.equal(saved.wheelSpinHash, "hash-preserved");
+    assert.equal(saved.wheelSpinSeed, "seed-preserved");
+    assert.equal(saved.wheelSpinClientSeed, "client-preserved");
+    assert.match(String(saved.wheelSpinVerificationUrl || ""), /wheel\/fairness\/verify/);
+    assert.equal(saved.wheelSpinAlgorithm, "whatfees-wheel-v1");
   });
 });

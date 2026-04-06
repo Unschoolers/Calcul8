@@ -8,6 +8,7 @@ import type {
 import type { AppContext, AppMethodState } from "../context-app.ts";
 import {
     getSalesCacheStatusKey,
+    getScopedWheelConfigSessionStorageKey,
     getScopedWheelConfigsStorageKey,
     getScopedWheelSessionStorageKey
 } from "../storageKeys.ts";
@@ -298,8 +299,17 @@ export const salesMethods: ThisType<AppContext> & Pick<
     wheelSessionState.wheelSessionCostAdjustment = 0;
     wheelSessionState.wheelFairnessHistory = [];
     wheelSessionState.wheelChaseTallyHistory = [];
+    wheelSessionState.wheelPreviewSpinCounts = [];
+    wheelSessionState.wheelPreviewTotalSpins = 0;
+    wheelSessionState.wheelPreviewFairnessHistory = [];
+    wheelSessionState.wheelPreviewChaseTallyHistory = [];
     this.wheelCurrentAngle = 0;
     wheelSessionState.wheelLastResultColor = "rgb(var(--v-theme-primary))";
+    wheelSessionState.wheelSpinHash = "";
+    wheelSessionState.wheelSpinSeed = "";
+    wheelSessionState.wheelSpinClientSeed = "";
+    wheelSessionState.wheelSpinVerificationUrl = "";
+    wheelSessionState.wheelSpinAlgorithm = "";
 
     try {
       const rawSession = localStorage.getItem(getScopedWheelSessionStorageKey(getActiveStorageScope(this)));
@@ -332,6 +342,18 @@ export const salesMethods: ThisType<AppContext> & Pick<
         if (Array.isArray(session.wheelChaseTallyHistory)) {
           wheelSessionState.wheelChaseTallyHistory = session.wheelChaseTallyHistory;
         }
+        if (Array.isArray(session.wheelPreviewSpinCounts)) {
+          wheelSessionState.wheelPreviewSpinCounts = session.wheelPreviewSpinCounts;
+        }
+        if (typeof session.wheelPreviewTotalSpins === "number") {
+          wheelSessionState.wheelPreviewTotalSpins = session.wheelPreviewTotalSpins;
+        }
+        if (Array.isArray(session.wheelPreviewFairnessHistory)) {
+          wheelSessionState.wheelPreviewFairnessHistory = session.wheelPreviewFairnessHistory.slice(-20);
+        }
+        if (Array.isArray(session.wheelPreviewChaseTallyHistory)) {
+          wheelSessionState.wheelPreviewChaseTallyHistory = session.wheelPreviewChaseTallyHistory;
+        }
         if (session.wheelSessionLotSelections && typeof session.wheelSessionLotSelections === "object") {
           this.wheelSessionLotSelections = session.wheelSessionLotSelections as Record<string, number | null>;
         }
@@ -347,6 +369,11 @@ export const salesMethods: ThisType<AppContext> & Pick<
         if (typeof session.wheelLastResultColor === "string" && session.wheelLastResultColor.trim()) {
           wheelSessionState.wheelLastResultColor = session.wheelLastResultColor;
         }
+        wheelSessionState.wheelSpinHash = String(session.wheelSpinHash ?? "");
+        wheelSessionState.wheelSpinSeed = String(session.wheelSpinSeed ?? "");
+        wheelSessionState.wheelSpinClientSeed = String(session.wheelSpinClientSeed ?? "");
+        wheelSessionState.wheelSpinVerificationUrl = String(session.wheelSpinVerificationUrl ?? "");
+        wheelSessionState.wheelSpinAlgorithm = String(session.wheelSpinAlgorithm ?? "");
       }
     } catch {
       // Ignore parse errors
@@ -367,7 +394,8 @@ export const salesMethods: ThisType<AppContext> & Pick<
   saveWheelSessionToStorage(): void {
     try {
       const wheelSessionState = this as unknown as Record<string, unknown>;
-      const storageKey = getScopedWheelSessionStorageKey(getActiveStorageScope(this));
+      const storageScope = getActiveStorageScope(this);
+      const storageKey = getScopedWheelSessionStorageKey(storageScope);
       let preserved: Record<string, unknown> = {};
       try {
         const raw = localStorage.getItem(storageKey);
@@ -394,15 +422,30 @@ export const salesMethods: ThisType<AppContext> & Pick<
         wheelSessionCostAdjustment: wheelSessionState.wheelSessionCostAdjustment ?? preserved.wheelSessionCostAdjustment ?? 0,
         wheelFairnessHistory: wheelSessionState.wheelFairnessHistory ?? preserved.wheelFairnessHistory ?? [],
         wheelChaseTallyHistory: wheelSessionState.wheelChaseTallyHistory ?? preserved.wheelChaseTallyHistory ?? [],
+        wheelPreviewSpinCounts: wheelSessionState.wheelPreviewSpinCounts ?? preserved.wheelPreviewSpinCounts ?? [],
+        wheelPreviewTotalSpins: wheelSessionState.wheelPreviewTotalSpins ?? preserved.wheelPreviewTotalSpins ?? 0,
+        wheelPreviewFairnessHistory: wheelSessionState.wheelPreviewFairnessHistory ?? preserved.wheelPreviewFairnessHistory ?? [],
+        wheelPreviewChaseTallyHistory: wheelSessionState.wheelPreviewChaseTallyHistory ?? preserved.wheelPreviewChaseTallyHistory ?? [],
         wheelCurrentAngle: this.wheelCurrentAngle ?? preserved.wheelCurrentAngle ?? 0,
         wheelLastResultColor: wheelSessionState.wheelLastResultColor
           ?? preserved.wheelLastResultColor
-          ?? "rgb(var(--v-theme-primary))"
+          ?? "rgb(var(--v-theme-primary))",
+        wheelSpinHash: wheelSessionState.wheelSpinHash ?? preserved.wheelSpinHash ?? "",
+        wheelSpinSeed: wheelSessionState.wheelSpinSeed ?? preserved.wheelSpinSeed ?? "",
+        wheelSpinClientSeed: wheelSessionState.wheelSpinClientSeed ?? preserved.wheelSpinClientSeed ?? "",
+        wheelSpinVerificationUrl: wheelSessionState.wheelSpinVerificationUrl ?? preserved.wheelSpinVerificationUrl ?? "",
+        wheelSpinAlgorithm: wheelSessionState.wheelSpinAlgorithm ?? preserved.wheelSpinAlgorithm ?? ""
       };
       localStorage.setItem(
         storageKey,
         JSON.stringify(session)
       );
+      if (this.activeWheelConfigId != null) {
+        localStorage.setItem(
+          getScopedWheelConfigSessionStorageKey(storageScope, this.activeWheelConfigId),
+          JSON.stringify(session)
+        );
+      }
     } catch {
       // Storage full or unavailable
     }

@@ -88,8 +88,30 @@ test("wheelBroadcast publishes sanitized wheel session data for workspace member
         activeWheelConfigId: "77",
         wheelTotalSpins: "-12",
         wheelSpinCounts: [1, "2", -3, "banana"],
+        wheelSessionNetRevenue: "61.1",
+        wheelSessionCostAdjustment: "4",
+        wheelFairnessHistory: [{
+          spinNumber: 3,
+          label: "Prize",
+          color: "#f00",
+          hash: "hash-3",
+          seed: "seed-3",
+          clientSeed: "client-3",
+          verificationUrl: "https://api.example.test/wheel/fairness/verify?serverSeed=seed-3&clientSeed=client-3&slotCount=15",
+          algorithm: "whatfees-wheel-v1",
+          timestamp: 333
+        }],
+        wheelChaseTallyHistory: [{
+          tierId: "tier-1",
+          label: "Tier One",
+          color: "#0f0",
+          count: "2"
+        }],
+        wheelCurrentAngle: "1.25",
         wheelLastResult: "x".repeat(250),
+        wheelLastResultColor: "#ff0000",
         wheelSessionUpdatedAt: "12345",
+        wheelPendingInventoryIssues: Array.from({ length: 3 }, (_, index) => ({ slotIndex: index })),
         wheelSkippedDeductions: Array.from({ length: 501 }, (_, index) => index)
       }
     }) as never,
@@ -110,8 +132,15 @@ test("wheelBroadcast publishes sanitized wheel session data for workspace member
       activeWheelConfigId: number | null;
       wheelTotalSpins: number;
       wheelSpinCounts: number[];
+      wheelSessionNetRevenue: number | null;
+      wheelSessionCostAdjustment: number;
+      wheelFairnessHistory: Array<{ clientSeed?: string; verificationUrl?: string; algorithm?: string }>;
+      wheelChaseTallyHistory: Array<{ tierId: string; count: number }>;
+      wheelCurrentAngle: number;
       wheelLastResult: string;
+      wheelLastResultColor: string;
       wheelSessionUpdatedAt: number;
+      wheelPendingInventoryIssues: unknown[];
       wheelSkippedDeductions: number[];
     };
   };
@@ -122,8 +151,22 @@ test("wheelBroadcast publishes sanitized wheel session data for workspace member
   assert.equal(publishArgs.data.activeWheelConfigId, 77);
   assert.equal(publishArgs.data.wheelTotalSpins, 0);
   assert.deepEqual(publishArgs.data.wheelSpinCounts, [1, 2, 0, 0]);
+  assert.equal(publishArgs.data.wheelSessionNetRevenue, 61.1);
+  assert.equal(publishArgs.data.wheelSessionCostAdjustment, 4);
+  assert.equal(publishArgs.data.wheelFairnessHistory[0]?.clientSeed, "client-3");
+  assert.equal(publishArgs.data.wheelFairnessHistory[0]?.algorithm, "whatfees-wheel-v1");
+  assert.match(String(publishArgs.data.wheelFairnessHistory[0]?.verificationUrl || ""), /wheel\/fairness\/verify/);
+  assert.deepEqual(publishArgs.data.wheelChaseTallyHistory, [{
+    tierId: "tier-1",
+    label: "Tier One",
+    color: "#0f0",
+    count: 2
+  }]);
+  assert.equal(publishArgs.data.wheelCurrentAngle, 1.25);
   assert.equal(publishArgs.data.wheelLastResult.length, 200);
+  assert.equal(publishArgs.data.wheelLastResultColor, "#ff0000");
   assert.equal(publishArgs.data.wheelSessionUpdatedAt, 12345);
+  assert.equal(publishArgs.data.wheelPendingInventoryIssues.length, 3);
   assert.equal(publishArgs.data.wheelSkippedDeductions.length, 500);
 });
 

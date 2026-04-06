@@ -372,6 +372,9 @@ test("workspace realtime applies wheel updates including resets when revision is
       color: "#111111",
       hash: "old-hash",
       seed: "old-seed",
+      clientSeed: "old-client",
+      verificationUrl: "https://api.example.test/wheel/fairness/verify?serverSeed=old-seed&clientSeed=old-client&slotCount=1",
+      algorithm: "whatfees-wheel-v1",
       timestamp: 11
     }],
     wheelChaseTallyHistory: [{
@@ -402,6 +405,9 @@ test("workspace realtime applies wheel updates including resets when revision is
         color: "#f00",
         hash: "hash-1",
         seed: "seed-1",
+        clientSeed: "client-1",
+        verificationUrl: "https://api.example.test/wheel/fairness/verify?serverSeed=seed-1&clientSeed=client-1&slotCount=1",
+        algorithm: "whatfees-wheel-v1",
         timestamp: 1
       }],
       wheelChaseTallyHistory: [{
@@ -462,6 +468,9 @@ test("workspace realtime applies wheel updates including resets when revision is
     color: "#f00",
     hash: "hash-1",
     seed: "seed-1",
+    clientSeed: "client-1",
+    verificationUrl: "https://api.example.test/wheel/fairness/verify?serverSeed=seed-1&clientSeed=client-1&slotCount=1",
+    algorithm: "whatfees-wheel-v1",
     timestamp: 1
   }]);
   assert.deepEqual(app.wheelChaseTallyHistory, [{

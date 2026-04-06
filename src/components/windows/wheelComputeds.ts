@@ -1,5 +1,5 @@
 import { calculateTotalCaseCost } from "../../domain/calculations-fees.ts";
-import type { Lot, WheelConfig } from "../../types/app.ts";
+import type { Lot, WheelConfig, WheelFairnessEntry } from "../../types/app.ts";
 import {
   calculateAverageWheelSellingTaxPercent,
   calculateWheelBuyerShippingTotal,
@@ -204,9 +204,13 @@ export const wheelComputeds = {
   },
 
   wheelFairnessTitle(this: Record<string, unknown>): string {
-    return (this as Record<string, unknown>).wheelSpinning
-      ? translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelFairnessResultLockedTitle")
-      : translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelFairnessVerifiedTitle");
+    const preferredLanguage = String((this as Record<string, unknown>).preferredLanguage ?? "");
+    if ((this as Record<string, unknown>).wheelSpinning) {
+      return translateAppMessage(preferredLanguage, "wheelFairnessResultLockedTitle");
+    }
+    return String((this as Record<string, unknown>).wheelSpinVerificationUrl || "").trim()
+      ? translateAppMessage(preferredLanguage, "wheelFairnessServerVerifiedTitle")
+      : translateAppMessage(preferredLanguage, "wheelFairnessLocalVerifiedTitle");
   },
 
   wheelFairnessChevron(this: Record<string, unknown>): string {
@@ -219,18 +223,14 @@ export const wheelComputeds = {
     color: string;
     hash: string;
     seed: string;
+    clientSeed?: string;
+    verificationUrl?: string;
+    algorithm?: string;
     timestamp: number;
   }> {
     const history = (((this as Record<string, unknown>).wheelMode === "config"
       ? (this as Record<string, unknown>).wheelPreviewFairnessHistory
-      : (this as Record<string, unknown>).wheelFairnessHistory) || []) as Array<{
-        spinNumber: number;
-        label: string;
-        color: string;
-        hash: string;
-        seed: string;
-        timestamp: number;
-      }>;
+      : (this as Record<string, unknown>).wheelFairnessHistory) || []) as WheelFairnessEntry[];
     return [...history].reverse();
   },
 
@@ -249,20 +249,19 @@ export const wheelComputeds = {
     color: string;
     hash: string;
     seed: string;
+    clientSeed?: string;
+    verificationUrl?: string;
+    algorithm?: string;
     timestamp: number;
   } | null {
     const preferredLanguage = String((this as Record<string, unknown>).preferredLanguage ?? "");
-    const history = (((this as Record<string, unknown>).wheelDisplayFairnessHistory || []) as Array<{
-      spinNumber: number;
-      label: string;
-      color: string;
-      hash: string;
-      seed: string;
-      timestamp: number;
-    }>);
+    const history = (((this as Record<string, unknown>).wheelDisplayFairnessHistory || []) as WheelFairnessEntry[]);
     const latestHistory = history[0] || null;
     const currentHash = String((this as Record<string, unknown>).wheelSpinHash || "");
     const currentSeed = String((this as Record<string, unknown>).wheelSpinSeed || "");
+    const currentClientSeed = String((this as Record<string, unknown>).wheelSpinClientSeed || "");
+    const currentVerificationUrl = String((this as Record<string, unknown>).wheelSpinVerificationUrl || "");
+    const currentAlgorithm = String((this as Record<string, unknown>).wheelSpinAlgorithm || "");
 
     if (!currentHash) {
       return latestHistory;
@@ -279,6 +278,9 @@ export const wheelComputeds = {
       color: String((this as Record<string, unknown>).wheelLastResultColor || latestHistory?.color || "rgb(var(--v-theme-primary))"),
       hash: currentHash,
       seed: currentSeed || (latestHistory?.hash === currentHash ? latestHistory.seed : ""),
+      clientSeed: currentClientSeed || (latestHistory?.hash === currentHash ? latestHistory.clientSeed : undefined),
+      verificationUrl: currentVerificationUrl || (latestHistory?.hash === currentHash ? latestHistory.verificationUrl : undefined),
+      algorithm: currentAlgorithm || (latestHistory?.hash === currentHash ? latestHistory.algorithm : undefined),
       timestamp: latestHistory?.timestamp || Date.now()
     };
   },

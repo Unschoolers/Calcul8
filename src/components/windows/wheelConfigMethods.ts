@@ -133,11 +133,12 @@ export const wheelConfigMethods = {
     if (!restored) {
       resetLoadedWheelSessionState(this as Record<string, unknown>);
       this.wheelSpinCounts = new Array(((this as Record<string, unknown>).activeWheelSlots as WheelSlot[]).length).fill(0);
+      (this as Record<string, unknown>).wheelPreviewSpinCounts =
+        new Array(((this as Record<string, unknown>).activeWheelSlots as WheelSlot[]).length).fill(0);
+      (this as Record<string, unknown>).wheelPreviewTotalSpins = 0;
+      (this as Record<string, unknown>).wheelPreviewChaseTallyHistory = [];
+      (this as Record<string, unknown>).wheelPreviewFairnessHistory = [];
     }
-    (this as Record<string, unknown>).wheelPreviewSpinCounts =
-      new Array(((this as Record<string, unknown>).activeWheelSlots as WheelSlot[]).length).fill(0);
-    (this as Record<string, unknown>).wheelPreviewTotalSpins = 0;
-    (this as Record<string, unknown>).wheelPreviewChaseTallyHistory = [];
     nextTick(() => (this as Record<string, unknown> & { drawWheel: (offset?: number) => void }).drawWheel(
       (this as Record<string, unknown>).wheelCurrentAngle as number || 0
     ));
