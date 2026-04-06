@@ -45,10 +45,10 @@ export function queueWorkspaceConfigSyncPush(app: WorkspaceConfigSyncApp): void 
     globalThis.clearTimeout(state.timeoutId);
   }
 
-  state.timeoutId = globalThis.setTimeout(() => {
+  state.timeoutId = Number(globalThis.setTimeout(() => {
     state.timeoutId = null;
     void app.pushCloudSync();
-  }, WORKSPACE_CONFIG_SYNC_DEBOUNCE_MS);
+  }, WORKSPACE_CONFIG_SYNC_DEBOUNCE_MS));
 }
 
 export function queueCloudConfigSyncPush(app: WorkspaceConfigSyncApp): void {
@@ -59,10 +59,10 @@ export function queueCloudConfigSyncPush(app: WorkspaceConfigSyncApp): void {
     globalThis.clearTimeout(state.timeoutId);
   }
 
-  state.timeoutId = globalThis.setTimeout(() => {
+  state.timeoutId = Number(globalThis.setTimeout(() => {
     state.timeoutId = null;
     void app.pushCloudSync();
-  }, WORKSPACE_CONFIG_SYNC_DEBOUNCE_MS);
+  }, WORKSPACE_CONFIG_SYNC_DEBOUNCE_MS));
 }
 
 export function stopWorkspaceConfigSyncPush(app: object): void {

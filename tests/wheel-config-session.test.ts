@@ -1,20 +1,20 @@
 import assert from "node:assert/strict";
 import { test, vi } from "vitest";
 import {
-    getScopedWheelConfigDraftStorageKey,
-    getScopedWheelConfigSessionStorageKey
+  getScopedWheelConfigDraftStorageKey,
+  getScopedWheelConfigSessionStorageKey
 } from "../src/app-core/storageKeys.ts";
-import { getWheelController, getWheelWindowLocalKeys } from "../src/components/windows/wheelControllerState.ts";
+import { getWheelWindowLocalKeys } from "../src/components/windows/wheelControllerState.ts";
 import {
-    buildSlotsFromConfig,
-    createWheelSale,
-    WheelWindow
+  buildSlotsFromConfig,
+  createWheelSale,
+  WheelWindow
 } from "../src/components/windows/WheelWindow.ts";
 import type { WheelConfig } from "../src/types/app.ts";
 
 
 test("loadWheelFromSession remaps saved spin counts by tier after rebuild", () => {
-  const sessionKey = getScopedWheelConfigSessionStorageKey({ type: "personal", workspaceId: null }, 99);
+  const sessionKey = getScopedWheelConfigSessionStorageKey({ scopeType: "personal", workspaceId: null }, 99);
   const store: Record<string, string> = {};
   const mockStorage = {
     getItem: vi.fn((key: string) => store[key] ?? null),

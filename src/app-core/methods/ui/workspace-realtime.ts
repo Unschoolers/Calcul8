@@ -406,10 +406,10 @@ function scheduleRealtimeReconnect(app: RealtimeApp): void {
   const delayMs = getRealtimeReconnectDelayMs(state);
   state.reconnectAttempt += 1;
   setWorkspaceRealtimeStatus(app, "reconnecting");
-  state.reconnectTimeoutId = globalThis.setTimeout(() => {
+  state.reconnectTimeoutId = Number(globalThis.setTimeout(() => {
     state.reconnectTimeoutId = null;
     refreshWorkspaceRealtime(app);
-  }, delayMs);
+  }, delayMs));
 }
 
 function closeRealtimeSocket(app: RealtimeApp): void {

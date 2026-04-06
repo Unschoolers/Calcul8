@@ -123,10 +123,10 @@ export function queueAuthoritativeLivePricingSave(context: AppContext, lotId: nu
   if (state.timeoutId != null) {
     globalThis.clearTimeout(state.timeoutId);
   }
-  state.timeoutId = globalThis.setTimeout(() => {
+  state.timeoutId = Number(globalThis.setTimeout(() => {
     state.timeoutId = null;
     void flushQueuedLivePricingSave(context, true);
-  }, LIVE_PRICING_SAVE_DELAY_MS);
+  }, LIVE_PRICING_SAVE_DELAY_MS));
 }
 
 export function applyAuthoritativeLivePricingSnapshot(

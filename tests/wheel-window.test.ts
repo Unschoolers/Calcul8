@@ -2,13 +2,13 @@ import assert from "node:assert/strict";
 import { test, vi } from "vitest";
 import { getWheelTierInventoryMeta } from "../src/components/windows/wheelSaleSupport.ts";
 import {
-    buildSlotsFromConfig,
-    computeExpectedMargin,
-    createDefaultTier,
-    createDefaultWheelConfig,
-    easeOutQuart,
-    seedToIndex,
-    WheelWindow
+  buildSlotsFromConfig,
+  computeExpectedMargin,
+  createDefaultTier,
+  createDefaultWheelConfig,
+  easeOutQuart,
+  seedToIndex,
+  WheelWindow
 } from "../src/components/windows/WheelWindow.ts";
 import type { WheelConfig } from "../src/types/app.ts";
 
@@ -504,7 +504,7 @@ test("getWheelTierInventoryMeta marks exact last-hit stock as low stock", () => 
       singlesPurchases: [
         { id: 701, item: "Hellish Blizzard", quantity: 1, cost: 17, marketValue: 30 }
       ]
-    }],
+    }] as never,
     loadSalesForLotId: () => []
   }, {
     id: "t1",
@@ -526,7 +526,7 @@ test("getWheelTierInventoryMeta marks exact last-hit stock as low stock", () => 
       lotType: "bulk",
       boxesPurchased: 1,
       packsPerBox: 1
-    }],
+    }] as never,
     loadSalesForLotId: () => []
   }, {
     id: "t2",

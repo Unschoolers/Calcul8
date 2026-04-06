@@ -173,7 +173,8 @@ test("confirmWhatnotImportBatch refreshes authoritative sales for affected lots 
         price: 85,
         buyerShipping: 0,
         date: "2026-03-08",
-        version: 1
+        version: 1,
+        customer: "cougarraph"
       }
     ],
     getSalesStorageKey: (lotId: number) => `sales:${lotId}`,
