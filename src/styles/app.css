@@ -331,10 +331,16 @@
       margin: 0 auto 0.85rem;
       line-height: 0;
       text-align: center;
+      border-radius: 4px;
+      overflow: hidden;
     }
     .auth-gate-google-button > div {
       display: inline-block;
       max-width: 100%;
+    }
+    .auth-gate-google-button iframe {
+      border-radius: 4px;
+      color-scheme: auto;
     }
     .auth-gate-fallback-copy {
       width: min(100%, 320px);
