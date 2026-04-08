@@ -190,7 +190,7 @@
             </span>
             <span class="live-singles-item-meta-sep">|</span>
             <span>
-              {{ t('liveSinglesMarketLabel') }} ${{ fmtCurrency(entry.marketValue, 2) }}
+              {{ t('liveSinglesMarketLabel') }} ${{ fmtCurrency(getEntryMarketValueInSellingCurrency(entry), 2) }}
             </span>
           </div>
 

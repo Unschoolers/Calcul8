@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { execFile } from "node:child_process";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -453,6 +454,7 @@ function filterJsonRows(rows: JsonRecord[], options: FilterJsonRowsOptions): Jso
     const rowSeriesName = normalizeFilterText(row.seriesName);
     const rowAbbreviation = normalizeFilterText(row.abbreviation);
     const searchable = normalizeFilterText([
+      row.id,
       row.name,
       row.cardNo,
       row.originalId,
@@ -625,6 +627,52 @@ export async function importCardsToCosmosFromFile(
   await importCardsToCosmosFromRows(rows, options);
 }
 
+function runGit(cwd: string, args: string[]): Promise<string> {
+  return new Promise((resolve, reject) => {
+    execFile("git", args, { cwd }, (error, stdout, stderr) => {
+      if (error) {
+        reject(new Error(`git ${args.join(" ")} failed: ${stderr || error.message}`));
+      } else {
+        resolve(stdout.trim());
+      }
+    });
+  });
+}
+
+async function fetchPokemonData(options: { repoDir: string; outFile: string; setsOutFile: string }): Promise<void> {
+  const { repoDir, outFile, setsOutFile } = options;
+  const resolvedRepo = path.resolve(repoDir);
+  const cardsDir = path.join(resolvedRepo, "cards", "en");
+  const setsFile = path.join(resolvedRepo, "sets", "en.json");
+
+  // git pull
+  console.log(`Pulling latest from ${resolvedRepo}...`);
+  await runGit(resolvedRepo, ["fetch", "origin"]);
+  const pullOutput = await runGit(resolvedRepo, ["merge", "origin/master"]);
+  console.log(pullOutput || "(already up to date)");
+
+  // merge card files
+  const files = (await fs.readdir(cardsDir)).filter((f) => f.endsWith(".json")).sort();
+  console.log(`Merging ${files.length} set file(s) from cards/en/...`);
+  const allCards: unknown[] = [];
+  for (const file of files) {
+    const raw = await fs.readFile(path.join(cardsDir, file), "utf8");
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      allCards.push(...parsed);
+    }
+  }
+
+  const resolvedOut = path.resolve(outFile);
+  await fs.writeFile(resolvedOut, JSON.stringify(allCards, null, 2), "utf8");
+  console.log(`Wrote ${allCards.length} card(s) to ${resolvedOut}`);
+
+  // copy sets file
+  const resolvedSetsOut = path.resolve(setsOutFile);
+  await fs.copyFile(setsFile, resolvedSetsOut);
+  console.log(`Copied sets to ${resolvedSetsOut}`);
+}
+
 async function main(): Promise<void> {
   const [command, ...rest] = process.argv.slice(2);
   const args = parseArgs(rest);
@@ -656,6 +704,20 @@ async function main(): Promise<void> {
       await fs.writeFile(absoluteOutPath, JSON.stringify(cards, null, 2), "utf8");
       console.log(`Saved to ${absoluteOutPath}`);
     }
+    return;
+  }
+
+  if (command === "fetch-pokemon") {
+    const sourceDir = path.dirname(fileURLToPath(import.meta.url));
+    const projectRoot = path.resolve(sourceDir, "..");
+    const workspaceRoot = path.resolve(projectRoot, "..");
+    const repoDir = ((args["repo"] as string | undefined)?.trim())
+      || path.join(workspaceRoot, "pokemondata_real");
+    const outFile = ((args.out as string | undefined)?.trim())
+      || path.join(projectRoot, "pokemon-all.json");
+    const setsOutFile = ((args["sets-out"] as string | undefined)?.trim())
+      || path.join(projectRoot, "en.json");
+    await fetchPokemonData({ repoDir, outFile, setsOutFile });
     return;
   }
 
@@ -706,7 +768,7 @@ async function main(): Promise<void> {
   }
 
   throw new Error(
-    "Missing or invalid command. Use: fetch-ua | filter-file | import-file"
+    "Missing or invalid command. Use: fetch-ua | fetch-pokemon | filter-file | import-file"
   );
 }
 

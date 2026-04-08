@@ -70,13 +70,19 @@
               <div class="singles-editor-preview-pill">
                 <span class="singles-editor-preview-pill__label">{{ t('singlesEditorMarketLabel') }}</span>
                 <span class="singles-editor-preview-pill__value">
-                  ${{ fmtCurrency(editingSinglesRow.marketValue) }}
+                  ${{ fmtCurrency(editingSinglesRow.marketValue) }} {{ editingSinglesRow.marketValueCurrency }}
                 </span>
               </div>
               <div class="singles-editor-preview-pill">
                 <span class="singles-editor-preview-pill__label">{{ t('singlesEditorCostLabel') }}</span>
                 <span class="singles-editor-preview-pill__value">
-                  ${{ fmtCurrency(editingSinglesRow.cost) }}
+                  ${{ fmtCurrency(editingSinglesRow.cost) }} {{ editingSinglesRow.currency }}
+                </span>
+              </div>
+              <div class="singles-editor-preview-pill singles-editor-preview-pill--qty">
+                <span class="singles-editor-preview-pill__label">{{ t('singlesTableQuantityLabel') }}</span>
+                <span class="singles-editor-preview-pill__value">
+                  {{ getEditingSinglesQuantity() }}
                 </span>
               </div>
             </div>
@@ -175,7 +181,7 @@
               </v-autocomplete>
             </v-col>
             <v-col v-if="showCatalogSuggestions" cols="12" md="4">
-              <div class="singles-editor-qty-card">
+              <div class="singles-editor-qty-card singles-editor-qty-card--hero">
                 <div class="singles-editor-qty-label">{{ t('singlesEditorQuantityLabel') }}</div>
                 <div class="singles-editor-qty-stepper" role="group" :aria-label="t('singlesEditorQuantityLabel')">
                   <button
@@ -237,49 +243,69 @@
           <div class="singles-editor-section-head">
             <div class="singles-editor-section-title">{{ t('singlesEditorPricingSectionTitle') }}</div>
           </div>
-          <v-row dense>
-            <v-col cols="12">
-              <div class="singles-editor-currency-wrap">
-                <div class="singles-editor-currency-label">{{ t('singlesEditorCurrencyLabel') }}</div>
+          <div class="singles-editor-pricing-grid">
+            <div class="singles-editor-pricing-card">
+              <div class="singles-editor-pricing-card__label-row">
+                <div class="singles-editor-pricing-card__title">{{ t('singlesEditorCostLabel') }}</div>
+                <div class="singles-editor-pricing-card__meta">{{ t('singlesEditorCurrencyLabel') }}</div>
+              </div>
+              <div class="singles-editor-pricing-card__field-row">
+                <v-text-field
+                  v-model.number="editingSinglesRow.cost"
+                  :label="`${t('singlesEditorCostLabel')} (${editingSinglesRow.currency})`"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  prefix="$"
+                  variant="outlined"
+                  density="comfortable"
+                  hide-details
+                  class="singles-editor-pricing-card__field"
+                ></v-text-field>
                 <v-btn-toggle
                   v-model="editingSinglesRow.currency"
                   mandatory
                   density="comfortable"
                   variant="tonal"
-                  class="pill-toggle singles-editor-currency-toggle"
+                  class="pill-toggle singles-editor-currency-toggle singles-editor-currency-toggle--field"
                 >
-                  <v-btn value="CAD" title="CAD">🇨🇦</v-btn>
-                  <v-btn value="USD" title="USD">🇺🇸</v-btn>
+                  <v-btn value="CAD" title="CAD">CA</v-btn>
+                  <v-btn value="USD" title="USD">US</v-btn>
                 </v-btn-toggle>
               </div>
-            </v-col>
-            <v-col cols="12" sm="6">
-              <v-text-field
-                v-model.number="editingSinglesRow.cost"
-                :label="`${t('singlesEditorCostLabel')} (${editingSinglesRow.currency})`"
-                type="number"
-                min="0"
-                step="0.01"
-                prefix="$"
-                variant="outlined"
-                density="comfortable"
-                hide-details
-              ></v-text-field>
-            </v-col>
-            <v-col cols="12" sm="6">
-              <v-text-field
-                v-model.number="editingSinglesRow.marketValue"
-                :label="t('singlesEditorMarketValueLabel')"
-                type="number"
-                min="0"
-                step="0.01"
-                prefix="$"
-                variant="outlined"
-                density="comfortable"
-                hide-details
-              ></v-text-field>
-            </v-col>
-          </v-row>
+            </div>
+
+            <div class="singles-editor-pricing-card singles-editor-pricing-card--market">
+              <div class="singles-editor-pricing-card__label-row">
+                <div class="singles-editor-pricing-card__title">{{ t('singlesEditorMarketValueLabel') }}</div>
+                <div class="singles-editor-pricing-card__meta">{{ t('singlesEditorMarketCurrencyLabel') }}</div>
+              </div>
+              <div class="singles-editor-pricing-card__field-row">
+                <v-text-field
+                  v-model.number="editingSinglesRow.marketValue"
+                  :label="`${t('singlesEditorMarketValueLabel')} (${editingSinglesRow.marketValueCurrency})`"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  prefix="$"
+                  variant="outlined"
+                  density="comfortable"
+                  hide-details
+                  class="singles-editor-pricing-card__field"
+                ></v-text-field>
+                <v-btn-toggle
+                  v-model="editingSinglesRow.marketValueCurrency"
+                  mandatory
+                  density="comfortable"
+                  variant="tonal"
+                  class="pill-toggle singles-editor-currency-toggle singles-editor-currency-toggle--field"
+                >
+                  <v-btn value="CAD" title="CAD">CA</v-btn>
+                  <v-btn value="USD" title="USD">US</v-btn>
+                </v-btn-toggle>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="singles-editor-section">

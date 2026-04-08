@@ -333,10 +333,45 @@ test("saveSinglesRowEditor can save and keep adding with preserved context", () 
     assert.equal(context.editingSinglesRow.image, "");
     assert.equal(context.editingSinglesRow.cost, 0);
     assert.equal(context.editingSinglesRow.marketValue, 0);
+    assert.equal(context.editingSinglesRow.marketValueCurrency, "USD");
     assert.equal(context.editingSinglesRow.currency, "USD");
     assert.equal(context.editingSinglesRow.condition, "Near Mint");
     assert.equal(context.editingSinglesRow.language, "Japanese");
     assert.equal(context.editingSinglesRow.quantity, 1);
+  } finally {
+    dateNowSpy.mockRestore();
+  }
+});
+
+test("saveSinglesRowEditor persists market value currency and defaults UA editor drafts to USD market", () => {
+  const dateNowSpy = vi.spyOn(Date, "now").mockReturnValue(7000);
+  try {
+    const context = createContext({
+      currentSinglesCatalogSource: "ua",
+      currency: "CAD",
+      singlesPurchases: [],
+      editingSinglesRowId: null,
+      editingSinglesRow: {
+        item: "Rei Ayanami",
+        cardNumber: "UE15BT/EVA-1-004-ALT1",
+        image: "",
+        condition: "",
+        language: "",
+        cost: 10,
+        currency: "CAD",
+        quantity: 1,
+        marketValue: 46,
+        marketValueCurrency: "USD"
+      }
+    });
+
+    context.saveSinglesRowEditor();
+
+    const rows = context.singlesPurchases as SinglesPurchaseEntry[];
+    assert.equal(rows[0]?.marketValueCurrency, "USD");
+
+    context.resetSinglesRowDraft();
+    assert.equal(context.editingSinglesRow.marketValueCurrency, "USD");
   } finally {
     dateNowSpy.mockRestore();
   }

@@ -2,11 +2,17 @@ import { DEFAULT_VALUES } from "../../constants.ts";
 import type { Lot } from "../../types/app.ts";
 import { resolveLotBusinessDate, resolveLotCreatedDate } from "../../shared/lot-dates.ts";
 import { resolveStoredFeeProfile } from "./fee-profile-presets.ts";
+import { resolveDefaultSinglesMarketValueCurrency } from "./singles-market-value-currency.ts";
 import { normalizeSinglesCatalogSource } from "./singles-catalog-source.ts";
+import { normalizeSinglesPurchaseEntries } from "../methods/config-lots-state.ts";
 
 export function normalizeStoredLot(lot: Lot, todayDate: string): Lot {
   const legacyTax = lot.taxRatePercent;
   const lotType = lot.lotType === "singles" ? "singles" : "bulk";
+  const normalizedSinglesCatalogSource = lotType === "singles"
+    ? normalizeSinglesCatalogSource(lot.singlesCatalogSource)
+    : undefined;
+  const normalizedCurrency = lot.currency === "USD" ? "USD" : "CAD";
   const feeProfile = resolveStoredFeeProfile(lot);
   return {
     ...lot,
@@ -17,7 +23,7 @@ export function normalizeStoredLot(lot: Lot, todayDate: string): Lot {
     packsPerBox: lot.packsPerBox ?? DEFAULT_VALUES.PACKS_PER_BOX,
     spotsPerBox: lot.spotsPerBox ?? DEFAULT_VALUES.SPOTS_PER_BOX,
     costInputMode: lot.costInputMode ?? "perBox",
-    currency: lot.currency ?? "CAD",
+    currency: normalizedCurrency,
     sellingCurrency: lot.sellingCurrency ?? "CAD",
     exchangeRate: lot.exchangeRate ?? DEFAULT_VALUES.EXCHANGE_RATE,
     purchaseShippingCost: lot.purchaseShippingCost ?? DEFAULT_VALUES.PURCHASE_SHIPPING_COST,
@@ -35,9 +41,14 @@ export function normalizeStoredLot(lot: Lot, todayDate: string): Lot {
     targetProfitPercent: Number.isFinite(Number(lot.targetProfitPercent))
       ? Math.max(0, Number(lot.targetProfitPercent))
       : 0,
-    singlesCatalogSource: lotType === "singles"
-      ? normalizeSinglesCatalogSource(lot.singlesCatalogSource)
-      : undefined,
+    singlesCatalogSource: normalizedSinglesCatalogSource,
+    singlesPurchases: lotType === "singles"
+      ? normalizeSinglesPurchaseEntries(
+        lot.singlesPurchases,
+        normalizedCurrency,
+        resolveDefaultSinglesMarketValueCurrency(normalizedSinglesCatalogSource, normalizedCurrency)
+      )
+      : lot.singlesPurchases,
     purchaseDate: resolveLotBusinessDate({
       purchaseDate: lot.purchaseDate,
       createdAt: lot.createdAt,

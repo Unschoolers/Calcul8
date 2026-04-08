@@ -19,6 +19,7 @@ import {
     calculateSaleProfit,
     calculateSalesProgress,
     calculateSalesStatus,
+    calculateSinglesPurchaseTotalMarketValueInSellingCurrency,
     calculateSinglesLineProfitPreview,
     calculateSinglesPurchaseTotalCostInSellingCurrency,
     calculateSinglesPurchaseTotals,
@@ -143,6 +144,39 @@ test("calculateSinglesPurchaseTotalCostInSellingCurrency converts mixed-currency
   });
 
   assert.equal(totalCost, 42);
+});
+
+test("calculateSinglesPurchaseTotalMarketValueInSellingCurrency converts market values with their own currency", () => {
+  const totalMarketValue = calculateSinglesPurchaseTotalMarketValueInSellingCurrency({
+    entries: [
+      { id: 1, item: "UA Card", cost: 10, currency: "CAD", quantity: 2, marketValue: 12, marketValueCurrency: "USD" },
+      { id: 2, item: "Custom Card", cost: 4, currency: "CAD", quantity: 3, marketValue: 5, marketValueCurrency: "CAD" }
+    ],
+    fallbackMarketCurrency: "CAD",
+    sellingCurrency: "CAD",
+    exchangeRate: 1.5,
+    defaultExchangeRate: 1.4
+  });
+
+  assert.equal(totalMarketValue, 51);
+});
+
+test("calculateSinglesLineProfitPreview uses converted market value basis currency", () => {
+  const preview = calculateSinglesLineProfitPreview({
+    line: { singlesPurchaseEntryId: 10, quantity: 1, price: 25 },
+    grossRevenue: 25,
+    netRevenue: 25,
+    singlesPurchases: [
+      { id: 10, item: "UA Card", cost: 10, marketValue: 12, marketValueCurrency: "USD", quantity: 1, currency: "CAD" }
+    ],
+    purchaseCurrency: "CAD",
+    sellingCurrency: "CAD",
+    exchangeRate: 1.5
+  });
+
+  assert.equal(preview?.basisLabel, "Market");
+  assert.equal(preview?.marketBasisValue, 18);
+  assert.equal(preview?.value, 7);
 });
 
 test("calculateNetFromGross matches expected fee formula", () => {

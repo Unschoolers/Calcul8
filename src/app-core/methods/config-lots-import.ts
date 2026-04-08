@@ -258,7 +258,8 @@ export function parseSinglesCsvRowsWithMapping(
       cost: parseCurrencyLikeNumber(rawCost),
       currency: importCurrency,
       quantity,
-      marketValue: parseCurrencyLikeNumber(rawMarketValue)
+      marketValue: parseCurrencyLikeNumber(rawMarketValue),
+      marketValueCurrency: importCurrency
     });
   }
 

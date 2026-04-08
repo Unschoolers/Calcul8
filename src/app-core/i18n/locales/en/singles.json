@@ -13,6 +13,7 @@
   "singlesEditorCoreSectionTitle": "Core",
   "singlesEditorCostLabel": "Cost",
   "singlesEditorCurrencyLabel": "Currency",
+  "singlesEditorMarketCurrencyLabel": "Market currency",
   "singlesEditorDecreaseQuantityAction": "Decrease quantity",
   "singlesEditorDeletePurchaseAction": "Delete purchase",
   "singlesEditorEditPurchaseTitle": "Edit Purchase",

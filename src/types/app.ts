@@ -176,6 +176,7 @@ export interface SinglesPurchaseEntry {
   currency?: CurrencyCode;
   quantity: number;
   marketValue: number;
+  marketValueCurrency?: CurrencyCode;
 }
 
 export interface SinglesCsvColumnMapping {

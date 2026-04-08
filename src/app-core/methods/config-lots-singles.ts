@@ -1,4 +1,5 @@
 import type { Lot, SinglesPurchaseEntry } from "../../types/app.ts";
+import { resolveDefaultSinglesMarketValueCurrency } from "../shared/singles-market-value-currency.ts";
 import {
   applySinglesCsvImportRows,
   buildSinglesCsvImportDraft,
@@ -34,7 +35,8 @@ export type SinglesCsvWorkflowContext = SinglesCsvImportStateTarget & {
 
 export function appendBlankSinglesPurchaseRow(
   rows: SinglesPurchaseEntry[],
-  currency: "CAD" | "USD"
+  currency: "CAD" | "USD",
+  marketValueCurrency: "CAD" | "USD" = currency
 ): SinglesPurchaseEntry[] {
   return [
     ...rows,
@@ -48,7 +50,8 @@ export function appendBlankSinglesPurchaseRow(
       cost: 0,
       currency,
       quantity: 1,
-      marketValue: 0
+      marketValue: 0,
+      marketValueCurrency
     }
   ];
 }
@@ -59,14 +62,19 @@ export function removeSinglesPurchaseRowById(rows: SinglesPurchaseEntry[], rowId
 
 export function syncSinglesPurchaseRows(context: SinglesRowsContext): void {
   if (context.currentLotType !== "singles") return;
+  const lot = resolveCurrentLot(context.lots, context.currentLotId);
+  const defaultMarketValueCurrency = resolveDefaultSinglesMarketValueCurrency(
+    lot?.lotType === "singles" ? lot.singlesCatalogSource : undefined,
+    context.currency === "USD" ? "USD" : "CAD"
+  );
 
   const normalizedRows = normalizeSinglesPurchaseEntries(
     context.singlesPurchases,
-    context.currency === "USD" ? "USD" : "CAD"
+    context.currency === "USD" ? "USD" : "CAD",
+    defaultMarketValueCurrency
   );
   context.singlesPurchases = normalizedRows;
 
-  const lot = resolveCurrentLot(context.lots, context.currentLotId);
   if (!lot || lot.lotType !== "singles") return;
 
   lot.singlesPurchases = [...normalizedRows];

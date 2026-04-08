@@ -2,6 +2,7 @@ import { DEFAULT_VALUES } from "../../constants.ts";
 import type { Lot, LotType, SinglesCatalogSource, SinglesPurchaseEntry } from "../../types/app.ts";
 import { resolveLotBusinessDate } from "../../shared/lot-dates.ts";
 import { resolveStoredFeeProfile } from "../shared/fee-profile-presets.ts";
+import { resolveDefaultSinglesMarketValueCurrency } from "../shared/singles-market-value-currency.ts";
 import { normalizeSinglesCatalogSource } from "../shared/singles-catalog-source.ts";
 import { normalizeSinglesPurchaseEntries, resetSinglesCsvImportState, type SinglesCsvImportStateTarget } from "./config-lots-state.ts";
 
@@ -120,7 +121,11 @@ export function buildHydratedLotState(
     boxPriceSell: lot.boxPriceSell ?? DEFAULT_VALUES.BOX_PRICE_SELL,
     packPrice: lot.packPrice ?? DEFAULT_VALUES.PACK_PRICE,
     singlesPurchases: normalizedLotType === "singles"
-      ? normalizeSinglesPurchaseEntries(lot.singlesPurchases, currency)
+      ? normalizeSinglesPurchaseEntries(
+        lot.singlesPurchases,
+        currency,
+        resolveDefaultSinglesMarketValueCurrency(normalizedLotCatalogSource, currency)
+      )
       : [],
     targetProfitPercent: !options.hasProAccess
       ? 0

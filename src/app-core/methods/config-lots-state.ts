@@ -1,4 +1,5 @@
 import type { Lot, SinglesPurchaseEntry } from "../../types/app.ts";
+import { normalizeSinglesMarketValueCurrency } from "../shared/singles-market-value-currency.ts";
 import { toNonNegativeInt as toNonNegativeInteger, toNonNegativeNumber } from "../shared/singles-normalizers.ts";
 
 export type SinglesCsvImportStateTarget = {
@@ -27,7 +28,8 @@ export function createNextSinglesEntryId(entries: SinglesPurchaseEntry[]): numbe
 
 export function normalizeSinglesPurchaseEntries(
   entries: SinglesPurchaseEntry[] | undefined,
-  fallbackCurrency: "CAD" | "USD" = "CAD"
+  fallbackCurrency: "CAD" | "USD" = "CAD",
+  fallbackMarketValueCurrency: "CAD" | "USD" = fallbackCurrency
 ): SinglesPurchaseEntry[] {
   if (!Array.isArray(entries)) return [];
   const usedIds = new Set<number>();
@@ -60,7 +62,11 @@ export function normalizeSinglesPurchaseEntries(
       cost: toNonNegativeNumber(entry.cost),
       currency,
       quantity: toNonNegativeInteger(entry.quantity),
-      marketValue: toNonNegativeNumber(entry.marketValue)
+      marketValue: toNonNegativeNumber(entry.marketValue),
+      marketValueCurrency: normalizeSinglesMarketValueCurrency(
+        entry.marketValueCurrency,
+        fallbackMarketValueCurrency
+      )
     };
   });
 }

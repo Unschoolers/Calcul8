@@ -23,6 +23,7 @@ type EditableSinglesRow = {
   currency: "CAD" | "USD";
   quantity: number;
   marketValue: number;
+  marketValueCurrency: "CAD" | "USD";
 };
 
 type SinglesCatalogSearchContext = {
@@ -468,6 +469,9 @@ export const singlesCatalogSearchMethods = {
     const parsedMarket = Number(resolved.marketPrice);
     if ((Number(this.editingSinglesRow.marketValue) || 0) <= 0 && Number.isFinite(parsedMarket) && parsedMarket > 0) {
       this.editingSinglesRow.marketValue = parsedMarket;
+      if (this.currentSinglesCatalogSource === "ua") {
+        this.editingSinglesRow.marketValueCurrency = "USD";
+      }
     }
 
     void this.preloadSinglesEditorPreview();

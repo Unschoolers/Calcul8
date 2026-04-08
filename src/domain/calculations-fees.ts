@@ -217,6 +217,28 @@ export function getSinglesEntryUnitCostInSellingCurrency(
   );
 }
 
+export function getSinglesEntryUnitMarketValueInSellingCurrency(
+  entry: Pick<SinglesPurchaseEntry, "marketValue"> & { marketValueCurrency?: string; currency?: string },
+  fallbackMarketCurrency: CurrencyCode,
+  sellingCurrency: CurrencyCode,
+  exchangeRate: number,
+  defaultExchangeRate = DEFAULT_VALUES.EXCHANGE_RATE
+): number {
+  const unitMarketValue = Math.max(0, Number(entry.marketValue) || 0);
+  const marketCurrency = entry.marketValueCurrency === "USD" || entry.marketValueCurrency === "CAD"
+    ? entry.marketValueCurrency
+    : (entry.currency === "USD" || entry.currency === "CAD"
+      ? entry.currency
+      : fallbackMarketCurrency);
+  return calculateBoxPriceCostCad(
+    unitMarketValue,
+    marketCurrency,
+    sellingCurrency,
+    exchangeRate,
+    defaultExchangeRate
+  );
+}
+
 export function calculateSinglesPurchaseTotalCostInSellingCurrency(params: {
   entries: SinglesPurchaseEntry[] | undefined;
   purchaseCurrency: CurrencyCode;
@@ -236,6 +258,28 @@ export function calculateSinglesPurchaseTotalCostInSellingCurrency(params: {
       params.defaultExchangeRate
     );
     return sum + (convertedUnitCost * quantity);
+  }, 0);
+}
+
+export function calculateSinglesPurchaseTotalMarketValueInSellingCurrency(params: {
+  entries: SinglesPurchaseEntry[] | undefined;
+  fallbackMarketCurrency: CurrencyCode;
+  sellingCurrency: CurrencyCode;
+  exchangeRate: number;
+  defaultExchangeRate?: number;
+}): number {
+  if (!Array.isArray(params.entries) || params.entries.length === 0) return 0;
+
+  return params.entries.reduce((sum, entry) => {
+    const quantity = Math.max(0, Math.floor(Number(entry.quantity) || 0));
+    const convertedUnitMarketValue = getSinglesEntryUnitMarketValueInSellingCurrency(
+      entry,
+      params.fallbackMarketCurrency,
+      params.sellingCurrency,
+      params.exchangeRate,
+      params.defaultExchangeRate
+    );
+    return sum + (convertedUnitMarketValue * quantity);
   }, 0);
 }
 
@@ -373,7 +417,7 @@ export function calculateSinglesLineProfitPreview(params: {
   line: { singlesPurchaseEntryId?: number | null; quantity?: number | null; price?: number | null };
   grossRevenue: number;
   netRevenue: number;
-  singlesPurchases: Array<Pick<SinglesPurchaseEntry, "id" | "marketValue" | "cost"> & { currency?: string }> | undefined;
+  singlesPurchases: Array<Pick<SinglesPurchaseEntry, "id" | "marketValue" | "cost"> & { currency?: string; marketValueCurrency?: string }> | undefined;
   purchaseCurrency: CurrencyCode;
   sellingCurrency: CurrencyCode;
   exchangeRate: number;
@@ -404,7 +448,15 @@ export function calculateSinglesLineProfitPreview(params: {
       params.defaultExchangeRate
     )
     : 0;
-  const unitMarket = Math.max(0, Number(selectedEntry?.marketValue) || 0);
+  const unitMarket = selectedEntry
+    ? getSinglesEntryUnitMarketValueInSellingCurrency(
+      selectedEntry,
+      params.purchaseCurrency,
+      params.sellingCurrency,
+      params.exchangeRate,
+      params.defaultExchangeRate
+    )
+    : 0;
   const marketBasisValue = unitMarket > 0 ? (unitMarket * quantity) : 0;
   const costBasisValue = unitMarket > 0 ? 0 : (unitCost * quantity);
   const basisProfit = lineNetRevenue - marketBasisValue - costBasisValue;
@@ -599,7 +651,13 @@ export function getSaleProfitPreview(params: {
         params.exchangeRate,
         params.defaultExchangeRate
       );
-      const unitMarket = Math.max(0, Number(entry.marketValue) || 0);
+      const unitMarket = getSinglesEntryUnitMarketValueInSellingCurrency(
+        entry,
+        params.purchaseCurrency,
+        params.sellingCurrency,
+        params.exchangeRate,
+        params.defaultExchangeRate
+      );
       allCostBasisValue += unitCost * line.quantity;
       if (unitMarket > 0) {
         marketBasisValue += unitMarket * line.quantity;

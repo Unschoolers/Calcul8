@@ -3,7 +3,7 @@ import { inject, type PropType } from "vue";
 import type { SinglesPurchaseEntry, SinglesSaleLine } from "../../../types/app.ts";
 import { DEFAULT_VALUES } from "../../../constants.ts";
 import { STORAGE_KEYS } from "../../../app-core/storageKeys.ts";
-import { calculateBoxPriceCostCad } from "../../../domain/calculations.ts";
+import { calculateBoxPriceCostCad, getSinglesEntryUnitMarketValueInSellingCurrency } from "../../../domain/calculations.ts";
 import {
   toNonNegativeInt as toWholeNonNegative,
   toNonNegativeNumber,
@@ -88,7 +88,7 @@ export const LiveSinglesPanel = {
           const itemName = String(entry.item || "").trim() || "Unnamed item";
           const cardNumber = String(entry.cardNumber || "").trim();
           const title = cardNumber ? `${itemName} #${cardNumber}` : itemName;
-          const marketValue = toNonNegativeNumber(entry.marketValue);
+          const marketValue = this.getEntryMarketValueInSellingCurrency(entry);
           const subtitleParts = [
             `${remainingQuantity}/${totalQuantity} ${this.t("liveSinglesAutocompleteStockLabel", "in stock")}`
           ];
@@ -324,8 +324,18 @@ export const LiveSinglesPanel = {
       );
     },
 
+    getEntryMarketValueInSellingCurrency(this: any, entry: SinglesPurchaseEntry): number {
+      return getSinglesEntryUnitMarketValueInSellingCurrency(
+        entry,
+        this.currency === "USD" ? "USD" : "CAD",
+        this.sellingCurrency,
+        this.exchangeRate,
+        DEFAULT_VALUES.EXCHANGE_RATE
+      );
+    },
+
     resolveEntryBasis(this: any, entry: SinglesPurchaseEntry): number {
-      const marketValue = toNonNegativeNumber(entry.marketValue);
+      const marketValue = this.getEntryMarketValueInSellingCurrency(entry);
       if (marketValue > 0) return marketValue;
       return this.getEntryCostInSellingCurrency(entry);
     },

@@ -1,6 +1,8 @@
-import type { SinglesPurchaseEntry } from "../../../types/app.ts";
+import type { SinglesCatalogSource, SinglesPurchaseEntry } from "../../../types/app.ts";
+import { resolveDefaultSinglesMarketValueCurrency } from "../../../app-core/shared/singles-market-value-currency.ts";
 
 type SinglesRowEditorContext = {
+  currentSinglesCatalogSource?: SinglesCatalogSource;
   currency: "CAD" | "USD";
   singlesPurchases: SinglesPurchaseEntry[];
   editingSinglesRowId: number | null;
@@ -15,6 +17,7 @@ type SinglesRowEditorContext = {
     currency: "CAD" | "USD";
     quantity: number;
     marketValue: number;
+    marketValueCurrency: "CAD" | "USD";
   };
   showSinglesRowEditor: boolean;
   singlesItemSearchText: string;
@@ -34,6 +37,7 @@ type SinglesRowEditorContext = {
   preloadSinglesEditorPreview(): Promise<void>;
   resetSinglesRowDraft(options?: {
     currency?: "CAD" | "USD";
+    marketValueCurrency?: "CAD" | "USD";
     condition?: string;
     language?: string;
   }): void;
@@ -43,6 +47,17 @@ type SinglesRowEditorContext = {
   getEditingSinglesQuantity(): number;
   setEditingSinglesQuantity(nextQuantity: unknown): void;
 };
+
+function resolveEditorMarketValueCurrency(
+  catalogSource: SinglesCatalogSource | undefined,
+  costCurrency: "CAD" | "USD",
+  value?: unknown
+): "CAD" | "USD" {
+  if (value === "USD" || value === "CAD") {
+    return value;
+  }
+  return resolveDefaultSinglesMarketValueCurrency(catalogSource, costCurrency);
+}
 
 function createNextSinglesEntryId(entries: SinglesPurchaseEntry[]): number {
   const highestId = entries.reduce((maxId, entry) => {
@@ -81,6 +96,7 @@ export const singlesRowEditorMethods = {
     this: SinglesRowEditorContext,
     options?: {
       currency?: "CAD" | "USD";
+      marketValueCurrency?: "CAD" | "USD";
       condition?: string;
       language?: string;
     }
@@ -88,6 +104,11 @@ export const singlesRowEditorMethods = {
     const nextCurrency = options?.currency === "USD" || options?.currency === "CAD"
       ? options.currency
       : (this.currency === "USD" ? "USD" : "CAD");
+    const nextMarketValueCurrency = resolveEditorMarketValueCurrency(
+      this.currentSinglesCatalogSource,
+      nextCurrency,
+      options?.marketValueCurrency
+    );
       this.editingSinglesRow = {
         item: "",
         cardNumber: "",
@@ -98,7 +119,8 @@ export const singlesRowEditorMethods = {
       cost: 0,
       currency: nextCurrency,
       quantity: 1,
-      marketValue: 0
+      marketValue: 0,
+      marketValueCurrency: nextMarketValueCurrency
     };
     this.singlesItemSearchText = "";
     this.singlesItemMenuOpen = false;
@@ -127,7 +149,14 @@ export const singlesRowEditorMethods = {
           ? entry.currency
           : (this.currency === "USD" ? "USD" : "CAD"),
         quantity: Number(entry.quantity) || 1,
-        marketValue: Number(entry.marketValue) || 0
+        marketValue: Number(entry.marketValue) || 0,
+        marketValueCurrency: resolveEditorMarketValueCurrency(
+          this.currentSinglesCatalogSource,
+          entry.currency === "USD" || entry.currency === "CAD"
+            ? entry.currency
+            : (this.currency === "USD" ? "USD" : "CAD"),
+          entry.marketValueCurrency
+        )
       };
       this.suppressNextSinglesItemSearchUpdate = true;
       this.singlesItemSearchText = "";
@@ -158,6 +187,11 @@ export const singlesRowEditorMethods = {
     const nextCurrency = this.editingSinglesRow.currency === "USD" ? "USD" : "CAD";
     const parsedQuantity = Number(this.editingSinglesRow.quantity);
     const parsedMarketValue = Number(this.editingSinglesRow.marketValue);
+    const nextMarketValueCurrency = resolveEditorMarketValueCurrency(
+      this.currentSinglesCatalogSource,
+      nextCurrency,
+      this.editingSinglesRow.marketValueCurrency
+    );
 
     if (!nextItem) {
       this.notify("Item is required.", "warning");
@@ -192,7 +226,8 @@ export const singlesRowEditorMethods = {
           cost: nextCost,
           currency: nextCurrency,
           quantity: nextQuantity,
-          marketValue: nextMarketValue
+          marketValue: nextMarketValue,
+          marketValueCurrency: nextMarketValueCurrency
         }
       ];
     } else {
@@ -209,7 +244,8 @@ export const singlesRowEditorMethods = {
             cost: nextCost,
             currency: nextCurrency,
             quantity: nextQuantity,
-            marketValue: nextMarketValue
+            marketValue: nextMarketValue,
+            marketValueCurrency: nextMarketValueCurrency
           }
           : entry
       ));
@@ -220,6 +256,7 @@ export const singlesRowEditorMethods = {
       this.editingSinglesRowId = null;
       this.resetSinglesRowDraft({
         currency: nextCurrency,
+        marketValueCurrency: nextMarketValueCurrency,
         condition: nextCondition,
         language: nextLanguage
       });

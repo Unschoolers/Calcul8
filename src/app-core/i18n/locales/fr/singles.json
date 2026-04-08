@@ -13,6 +13,7 @@
   "singlesEditorCoreSectionTitle": "Base",
   "singlesEditorCostLabel": "Cout",
   "singlesEditorCurrencyLabel": "Devise",
+  "singlesEditorMarketCurrencyLabel": "Devise du marché",
   "singlesEditorDecreaseQuantityAction": "Reduire la quantite",
   "singlesEditorDeletePurchaseAction": "Supprimer l'achat",
   "singlesEditorEditPurchaseTitle": "Modifier l'achat",

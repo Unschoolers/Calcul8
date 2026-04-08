@@ -1,6 +1,8 @@
 import { inject, type PropType } from "vue";
 import type { SinglesPurchaseEntry } from "../../types/app.ts";
+import { resolveDefaultSinglesMarketValueCurrency } from "../../app-core/shared/singles-market-value-currency.ts";
 import { createWindowContextBridge } from "./contextBridge.ts";
+import { getSinglesEntryUnitMarketValueInSellingCurrency } from "../../domain/calculations.ts";
 import { singlesImportComputed, singlesImportMethods } from "./singles/useSinglesImport.ts";
 import {
   createSinglesCatalogSearchState,
@@ -124,7 +126,8 @@ export const singlesConfigWindowDefinition: any = {
         cost: 0,
         currency: "CAD" as "CAD" | "USD",
         quantity: 1,
-        marketValue: 0
+        marketValue: 0,
+        marketValueCurrency: "CAD" as "CAD" | "USD"
       },
       singlesConditionOptions: [
         "Near Mint",
@@ -199,8 +202,8 @@ export const singlesConfigWindowDefinition: any = {
       return rows.sort((a, b) => {
         const totalQuantityA = Math.max(0, Math.floor(Number(a.quantity) || 0));
         const totalQuantityB = Math.max(0, Math.floor(Number(b.quantity) || 0));
-        const valueA = Math.max(0, (Number(a.marketValue) || 0) * totalQuantityA);
-        const valueB = Math.max(0, (Number(b.marketValue) || 0) * totalQuantityB);
+        const valueA = this.getSinglesEntryMarketTotalInSellingCurrency(a, totalQuantityA);
+        const valueB = this.getSinglesEntryMarketTotalInSellingCurrency(b, totalQuantityB);
         if (valueA !== valueB) return valueB - valueA;
         return compareLocalizedText(String(a.item || ""), String(b.item || ""), this?.preferredLanguage || "");
       });
@@ -300,14 +303,14 @@ export const singlesConfigWindowDefinition: any = {
           : sortBy === "quantity"
             ? getTotalQuantity(entryA)
             : sortBy === "marketValue"
-              ? Math.max(0, (Number(entryA.marketValue) || 0) * getTotalQuantity(entryA))
+              ? this.getSinglesEntryMarketTotalInSellingCurrency(entryA, getTotalQuantity(entryA))
               : 0;
         const valueB = sortBy === "cost"
           ? Math.max(0, (Number(entryB.cost) || 0) * getTotalQuantity(entryB))
           : sortBy === "quantity"
             ? getTotalQuantity(entryB)
             : sortBy === "marketValue"
-              ? Math.max(0, (Number(entryB.marketValue) || 0) * getTotalQuantity(entryB))
+              ? this.getSinglesEntryMarketTotalInSellingCurrency(entryB, getTotalQuantity(entryB))
               : 0;
 
         if (valueA !== valueB) return (valueA - valueB) * direction;
@@ -372,6 +375,36 @@ export const singlesConfigWindowDefinition: any = {
         minimumFractionDigits: decimals,
         maximumFractionDigits: decimals
       }).format(Number(value));
+    },
+
+    getEditingSinglesDefaultMarketValueCurrency(this: any): "CAD" | "USD" {
+      return resolveDefaultSinglesMarketValueCurrency(
+        this.currentSinglesCatalogSource,
+        this.editingSinglesRow?.currency === "USD" ? "USD" : "CAD"
+      );
+    },
+
+    getSinglesEntryMarketValueCurrency(this: any, entry: SinglesPurchaseEntry): "CAD" | "USD" {
+      return entry.marketValueCurrency === "USD" || entry.marketValueCurrency === "CAD"
+        ? entry.marketValueCurrency
+        : resolveDefaultSinglesMarketValueCurrency(
+          this.currentSinglesCatalogSource,
+          entry.currency === "USD" ? "USD" : "CAD"
+        );
+    },
+
+    getSinglesEntryMarketValueInSellingCurrency(this: any, entry: SinglesPurchaseEntry): number {
+      return getSinglesEntryUnitMarketValueInSellingCurrency(
+        entry,
+        entry.currency === "USD" ? "USD" : "CAD",
+        this.sellingCurrency === "USD" ? "USD" : "CAD",
+        Number(this.exchangeRate) || 0
+      );
+    },
+
+    getSinglesEntryMarketTotalInSellingCurrency(this: any, entry: SinglesPurchaseEntry, quantity?: number): number {
+      const resolvedQuantity = quantity ?? this.getSinglesEntryTotalQuantity(entry);
+      return this.getSinglesEntryMarketValueInSellingCurrency(entry) * Math.max(0, Number(resolvedQuantity) || 0);
     },
 
     getSinglesSoldQuantity(this: any, entryId: number): number {

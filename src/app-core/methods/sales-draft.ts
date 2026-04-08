@@ -1,5 +1,5 @@
 import { DEFAULT_VALUES } from "../../constants.ts";
-import { calculateBoxPriceCostCad } from "../../domain/calculations.ts";
+import { calculateBoxPriceCostCad, getSinglesEntryUnitMarketValueInSellingCurrency } from "../../domain/calculations.ts";
 import type { Sale, SaleType, SinglesPurchaseEntry, SinglesSaleDraftLine, SinglesSaleLine } from "../../types/app.ts";
 import { toPositiveIntOrNull as normalizeSinglesPurchaseEntryId } from "../shared/singles-normalizers.ts";
 import { getTodayDate, toDateOnly } from "./config-shared.ts";
@@ -88,7 +88,13 @@ export function calculateSinglesTargetLinePrice(
     DEFAULT_VALUES.EXCHANGE_RATE
   );
   const totalCost = convertedUnitCost * saleQuantity;
-  const unitMarket = Math.max(0, Number(selectedEntry.marketValue) || 0);
+  const unitMarket = getSinglesEntryUnitMarketValueInSellingCurrency(
+    selectedEntry,
+    purchaseCurrency,
+    context.sellingCurrency,
+    context.exchangeRate,
+    DEFAULT_VALUES.EXCHANGE_RATE
+  );
   const totalMarket = unitMarket * saleQuantity;
   const targetBase = totalMarket > 0 ? totalMarket : totalCost;
   const targetProfitPercent = context.hasProAccess

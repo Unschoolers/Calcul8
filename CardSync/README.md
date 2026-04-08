@@ -17,7 +17,9 @@ Small local TypeScript utility to upsert card JSON arrays into Cosmos DB.
    - `npm --prefix CardSync run filter:file -- --file ".\\ua-export.json" --out ".\\ua-kagurabachi.json" --contains "kagurabachi"`
 4. Run import:
    - `npm --prefix CardSync run import:file -- --file ".\\ua-export.json" --game ua`
-   - for Pokemon JSON arrays: `npm --prefix CardSync run import:file -- --file ".\\pokemon-export.json" --game pokemon --pokemon-sets-file ".\\pokemondata_real\\sets\\en.json"`
+   - for Pokemon JSON arrays: `npm --prefix CardSync run import:file -- --file ".\\pokemon-all.json" --game pokemon --pokemon-sets-file ".\\en.json"`
+5. Update Pokemon data (git pull + rebuild pokemon-all.json):
+   - `npm --prefix CardSync run fetch:pokemon`
 
 ## Expected Input
 
@@ -54,6 +56,13 @@ Each input row is upserted as:
     - `--series-name <text>` optional `ilike` filter on `seriesName`
     - `--abbreviation <text>` optional `ilike` filter on `abbreviation`
     - `--include-unpublished` optional
+
+- `fetch-pokemon`:
+  - pulls the latest from the local `pokemondata_real` git repo, merges all `cards/en/*.json` into `CardSync/pokemon-all.json`, and copies `sets/en.json` to `CardSync/en.json`
+  - options:
+    - `--repo <path>` override repo location (default: `../pokemondata_real`)
+    - `--out <path>` override output file (default: `pokemon-all.json`)
+    - `--sets-out <path>` override sets output (default: `en.json`)
 
 - `import-file`:
   - imports a local JSON array into Cosmos
@@ -108,3 +117,11 @@ Each input row is upserted as:
   - `npm --prefix CardSync run fetch:ua -- --abbreviation "UE08BT" --out ".\\ua-ue08bt.json"`
 
 Because UA docs use stable ids based on `cardNo` in `src/index.ts`, existing catalog rows are detected reliably before writing.
+
+- useful flow for a new Pokemon set like Perfect Order (me3):
+  - update local data:
+    - `npm --prefix CardSync run fetch:pokemon`
+  - filter to just the new set:
+    - `npm --prefix CardSync run filter:file -- --file ".\pokemon-all.json" --out ".\pokemon-me3.json" --contains "me3"`
+  - import only missing catalog rows:
+    - `npm --prefix CardSync run import:file -- --file ".\pokemon-me3.json" --game pokemon --pokemon-sets-file ".\en.json" --missing-only`

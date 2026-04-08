@@ -49,6 +49,7 @@ test("buildHydratedLotState applies singles normalization, legacy tax fallback, 
   assert.equal(result.singlesPurchases[0]?.item, "Card X");
   assert.equal(result.singlesPurchases[0]?.externalSku, "CARD-X-13");
   assert.equal(result.singlesPurchases[0]?.quantity, 2);
+  assert.equal(result.singlesPurchases[0]?.marketValueCurrency, "USD");
 });
 
 test("buildHydratedLotState preserves non-singles catalog source target and defaults invalid pro target to 15", () => {
@@ -76,4 +77,31 @@ test("buildHydratedLotState preserves non-singles catalog source target and defa
   assert.equal(result.additionalFeePercent, 0);
   assert.equal(result.additionalFeeAppliesTo, "sale_only");
   assert.equal(result.fixedFeePerOrder, 0);
+});
+
+test("buildHydratedLotState defaults custom singles market value currency to the lot currency", () => {
+  const lot = makeLot({
+    lotType: "singles",
+    currency: "CAD",
+    singlesCatalogSource: "none",
+    singlesPurchases: [
+      {
+        id: 1,
+        item: "Custom Card",
+        cost: 2,
+        currency: "CAD",
+        quantity: 1,
+        marketValue: 5
+      }
+    ]
+  });
+
+  const result = buildHydratedLotState(lot, {
+    hasProAccess: true,
+    todayDate: "2026-03-22",
+    currentNewLotCatalogSource: "none"
+  });
+
+  assert.equal(result.newLotCatalogSource, "none");
+  assert.equal(result.singlesPurchases[0]?.marketValueCurrency, "CAD");
 });

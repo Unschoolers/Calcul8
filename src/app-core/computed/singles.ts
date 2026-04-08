@@ -4,8 +4,10 @@ import {
     calculateNetFromGross,
     calculateSinglesLineProfitPreview,
     calculateSinglesPurchaseTotalCostInSellingCurrency,
+    calculateSinglesPurchaseTotalMarketValueInSellingCurrency,
     calculateSinglesPurchaseTotals,
-    calculateSinglesSaleProfitPreview
+    calculateSinglesSaleProfitPreview,
+    getSinglesEntryUnitMarketValueInSellingCurrency
 } from "../../domain/calculations.ts";
 import type { AppComputedObject } from "../context-contracts.ts";
 import { buildLotOptionItems, filterLotOptionItems } from "../shared/lot-option-items.ts";
@@ -96,7 +98,7 @@ function getSaleEditorLineProfitPreviews(context: {
   additionalFeePercent: number;
   additionalFeeAppliesTo: "sale_only" | "sale_plus_shipping";
   fixedFeePerOrder: number;
-  singlesPurchases: Array<{ id: number; marketValue: number; cost: number; currency?: string }>;
+  singlesPurchases: Array<{ id: number; marketValue: number; cost: number; currency?: string; marketValueCurrency?: string }>;
   currency: "CAD" | "USD";
   sellingCurrency: "CAD" | "USD";
   exchangeRate: number;
@@ -196,7 +198,12 @@ export const singlesComputed: Pick<
   },
 
   singlesPurchaseTotalMarketValue(): number {
-    return calculateSinglesPurchaseTotals(this.singlesPurchases).totalMarketValue;
+    return calculateSinglesPurchaseTotalMarketValueInSellingCurrency({
+      entries: this.singlesPurchases,
+      fallbackMarketCurrency: this.currency,
+      sellingCurrency: this.sellingCurrency,
+      exchangeRate: this.exchangeRate
+    });
   },
 
   singlesSoldCountByPurchaseId(): Record<number, number> {
@@ -281,7 +288,12 @@ export const singlesComputed: Pick<
         const totalQuantity = toNonNegativeInt(entry.quantity);
         const quantity = getSinglesRemainingQuantity(entry, soldCounts);
         const unitCost = Math.max(0, Number(entry.cost) || 0);
-        const marketValue = Math.max(0, Number(entry.marketValue) || 0);
+        const marketValue = getSinglesEntryUnitMarketValueInSellingCurrency(
+          entry,
+          this.currency,
+          this.sellingCurrency,
+          this.exchangeRate
+        );
         const convertedUnitCost = getSinglesEntryUnitCostInSellingCurrency(
           entry,
           this.currency,

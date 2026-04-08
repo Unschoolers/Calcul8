@@ -1099,6 +1099,66 @@
   letter-spacing: 0.06em;
 }
 
+.singles-editor-pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.singles-editor-pricing-card {
+  display: grid;
+  gap: 0.52rem;
+  padding: 0.85rem;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(var(--v-theme-surface), 0.98), rgba(var(--v-theme-on-surface), 0.02));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 8px 20px rgba(0, 0, 0, 0.08);
+}
+
+.singles-editor-pricing-card--market {
+  border-color: rgba(var(--v-theme-primary), 0.16);
+  background:
+    linear-gradient(180deg, rgba(var(--v-theme-primary), 0.07), rgba(var(--v-theme-surface), 0.98));
+}
+
+.singles-editor-pricing-card__label-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.7rem;
+}
+
+.singles-editor-pricing-card__title {
+  font-size: 0.78rem;
+  line-height: 1.15;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(var(--v-theme-on-surface), 0.8);
+}
+
+.singles-editor-pricing-card__meta {
+  font-size: 0.7rem;
+  line-height: 1.1;
+  color: rgba(var(--v-theme-on-surface), 0.56);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.singles-editor-pricing-card__field-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 0.65rem;
+}
+
+.singles-editor-pricing-card__field {
+  min-width: 0;
+}
+
 .singles-editor-currency-wrap {
   display: flex;
   align-items: center;
@@ -1115,6 +1175,17 @@
 
 .singles-editor-currency-toggle {
   flex: 0 0 auto;
+}
+
+.singles-editor-currency-toggle--field {
+  align-self: stretch;
+}
+
+.singles-editor-currency-toggle--field .v-btn {
+  min-width: 52px;
+  min-height: 56px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
 }
 
 .singles-editor-qty-card {
@@ -1685,6 +1756,34 @@
   .singles-editor-section-head {
     display: block;
     margin-bottom: 0.48rem;
+  }
+
+  .singles-editor-pricing-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.7rem;
+  }
+
+  .singles-editor-pricing-card {
+    padding: 0.78rem;
+    border-radius: 15px;
+  }
+
+  .singles-editor-pricing-card__label-row {
+    gap: 0.45rem;
+  }
+
+  .singles-editor-pricing-card__field-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.5rem;
+  }
+
+  .singles-editor-currency-toggle--field {
+    width: 100%;
+  }
+
+  .singles-editor-currency-toggle--field .v-btn {
+    flex: 1 1 0;
+    min-height: 44px;
   }
 
   .singles-editor-section-note {

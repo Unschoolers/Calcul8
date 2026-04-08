@@ -74,6 +74,8 @@ test("normalizeSinglesPurchaseEntries trims values, normalizes numbers, and dedu
   assert.equal(rows[0]?.quantity, 3);
   assert.equal(rows[0]?.marketValue, 4.25);
   assert.equal(rows[1]?.currency, "USD");
+  assert.equal(rows[0]?.marketValueCurrency, "USD");
+  assert.equal(rows[1]?.marketValueCurrency, "USD");
 });
 
 test("resolveCurrentLot returns the selected lot when present", () => {

@@ -11,7 +11,8 @@ import {
   calculateTotalCaseCost,
   calculateTotalPacks,
   calculateTotalSpots,
-  calculateTotalRevenue
+  calculateTotalRevenue,
+  getSinglesEntryUnitMarketValueInSellingCurrency
 } from "../../domain/calculations.ts";
 import type { AppComputedObject } from "../context-contracts.ts";
 import {
@@ -289,7 +290,12 @@ export const forecastComputed: Pick<
       for (const entry of this.singlesPurchases || []) {
         const remainingQuantity = getSinglesRemainingQuantity(entry, soldById);
         if (remainingQuantity <= 0) continue;
-        const marketValue = Math.max(0, Number(entry.marketValue) || 0);
+        const marketValue = getSinglesEntryUnitMarketValueInSellingCurrency(
+          entry,
+          this.currency,
+          this.sellingCurrency,
+          this.exchangeRate
+        );
         const unitBasis = marketValue > 0
           ? marketValue
           : getSinglesEntryUnitCostInSellingCurrency(
