@@ -350,8 +350,8 @@
                 </div>
               </td>
               <td class="text-right text-body-2">
-                ${{ fmtCurrency((Number(entry.marketValue) || 0) * (Number(entry.quantity) || 0)) }}
-                <span class="text-caption text-medium-emphasis ml-1">{{ getSinglesEntryMarketValueCurrency(entry) }}</span>
+                ${{ fmtCurrency(getSinglesEntryMarketTotalInSellingCurrency(entry)) }}
+                <span class="text-caption text-medium-emphasis ml-1">{{ sellingCurrency }}</span>
               </td>
               <td class="text-right">
                 <div v-if="!isDesktopSelectMode" class="singles-row-actions">
@@ -420,11 +420,11 @@
                 <span class="singles-mobile-chip singles-mobile-chip--stock">{{ getSinglesEntryStockLabel(entry) }}</span>
                 <span class="singles-mobile-value-pair">
                   <span class="singles-mobile-value-label">{{ t('singlesMobileMarketAbbrev') }}</span>
-                  <span class="singles-mobile-value">${{ fmtCurrency(Number(entry.marketValue) || 0) }}</span>
-                  <span class="singles-mobile-value-currency">{{ getSinglesEntryMarketValueCurrency(entry) }}</span>
+                  <span class="singles-mobile-value">${{ fmtCurrency(getSinglesEntryMarketValueInSellingCurrency(entry)) }}</span>
+                  <span class="singles-mobile-value-currency">{{ sellingCurrency }}</span>
                   <span class="singles-mobile-value-label">{{ t('singlesMobileTotalMarketAbbrev') }}</span>
-                  <span class="singles-mobile-value">${{ fmtCurrency((Number(entry.marketValue) || 0) * (Number(entry.quantity) || 0)) }}</span>
-                  <span class="singles-mobile-value-currency">{{ getSinglesEntryMarketValueCurrency(entry) }}</span>
+                  <span class="singles-mobile-value">${{ fmtCurrency(getSinglesEntryMarketTotalInSellingCurrency(entry)) }}</span>
+                  <span class="singles-mobile-value-currency">{{ sellingCurrency }}</span>
                 </span>
                 <span class="singles-mobile-value-pair singles-mobile-value-pair--muted">
                   <span class="singles-mobile-value-label">{{ t('singlesMobileCostAbbrev') }}</span>

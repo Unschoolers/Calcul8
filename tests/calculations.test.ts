@@ -119,7 +119,7 @@ test("calculateTotalCaseCost applies purchase tax and USD customs", () => {
   assert.equal(usdCost, 1232.5);
 });
 
-test("calculateSinglesPurchaseTotals aggregates quantity, cost, and market value", () => {
+test("calculateSinglesPurchaseTotals aggregates quantity and total cost", () => {
   const totals = calculateSinglesPurchaseTotals([
     { id: 1, item: "Card A", cost: 12, quantity: 2, marketValue: 18 },
     { id: 2, item: "Card B", cost: 4.5, quantity: 3, marketValue: 6.25 }
@@ -127,7 +127,6 @@ test("calculateSinglesPurchaseTotals aggregates quantity, cost, and market value
 
   assert.equal(totals.totalQuantity, 5);
   assert.equal(totals.totalCost, 37.5);
-  assert.equal(totals.totalMarketValue, 54.75);
 });
 
 test("calculateSinglesPurchaseTotalCostInSellingCurrency converts mixed-currency singles rows", () => {

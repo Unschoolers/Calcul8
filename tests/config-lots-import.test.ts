@@ -88,7 +88,8 @@ test("parseSinglesCsvRowsWithMapping parses and trims all mapped fields", () => 
     cost: 3.5,
     currency: "USD",
     quantity: 2,
-    marketValue: 5.75
+    marketValue: 5.75,
+    marketValueCurrency: "USD"
   });
 });
 

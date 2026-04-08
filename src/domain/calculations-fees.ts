@@ -168,12 +168,11 @@ export function calculateTotalCaseCost(params: {
 
 export function calculateSinglesPurchaseTotals(
   entries: SinglesPurchaseEntry[] | undefined
-): { totalQuantity: number; totalCost: number; totalMarketValue: number } {
+): { totalQuantity: number; totalCost: number } {
   if (!Array.isArray(entries) || entries.length === 0) {
     return {
       totalQuantity: 0,
-      totalCost: 0,
-      totalMarketValue: 0
+      totalCost: 0
     };
   }
 
@@ -181,18 +180,15 @@ export function calculateSinglesPurchaseTotals(
     (acc, entry) => {
       const quantity = Math.max(0, Math.floor(Number(entry.quantity) || 0));
       const cost = Math.max(0, Number(entry.cost) || 0);
-      const marketValue = Math.max(0, Number(entry.marketValue) || 0);
 
       return {
         totalQuantity: acc.totalQuantity + quantity,
-        totalCost: acc.totalCost + (cost * quantity),
-        totalMarketValue: acc.totalMarketValue + (marketValue * quantity)
+        totalCost: acc.totalCost + (cost * quantity)
       };
     },
     {
       totalQuantity: 0,
-      totalCost: 0,
-      totalMarketValue: 0
+      totalCost: 0
     }
   );
 }
