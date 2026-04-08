@@ -95,6 +95,7 @@ test("landOnSlot preview mode opens preview chase flow and persists the preview 
   assert.deepEqual(triggerWheelCelebration.mock.calls, [[{
     label: "Chase Card",
     color: "#ff0",
+    emoji: undefined,
     image: "https://img.test/chase.png",
     preview: true
   }]]);
@@ -208,24 +209,37 @@ test("runWheelPrimarySpin uses live spin in live mode", () => {
 });
 
 test("drawWheel reuses a cached static wheel render when slots and size do not change", () => {
-  const makeContext2d = () => ({
-    setTransform: vi.fn(),
-    clearRect: vi.fn(),
-    beginPath: vi.fn(),
-    arc: vi.fn(),
-    fill: vi.fn(),
-    stroke: vi.fn(),
-    moveTo: vi.fn(),
-    closePath: vi.fn(),
-    save: vi.fn(),
-    restore: vi.fn(),
-    translate: vi.fn(),
-    rotate: vi.fn(),
-    fillText: vi.fn(),
-    lineTo: vi.fn(),
-    drawImage: vi.fn(),
-    imageSmoothingEnabled: true
-  });
+  const makeContext2d = () => {
+    const gradientStub = { addColorStop: vi.fn() };
+    return {
+      setTransform: vi.fn(),
+      clearRect: vi.fn(),
+      beginPath: vi.fn(),
+      arc: vi.fn(),
+      fill: vi.fn(),
+      stroke: vi.fn(),
+      moveTo: vi.fn(),
+      closePath: vi.fn(),
+      save: vi.fn(),
+      restore: vi.fn(),
+      translate: vi.fn(),
+      rotate: vi.fn(),
+      fillText: vi.fn(),
+      strokeText: vi.fn(),
+      lineTo: vi.fn(),
+      drawImage: vi.fn(),
+      createRadialGradient: vi.fn(() => gradientStub),
+      measureText: vi.fn(() => ({ width: 8 })),
+      imageSmoothingEnabled: true,
+      lineJoin: "miter" as string,
+      lineWidth: 1,
+      strokeStyle: "" as string,
+      fillStyle: "" as string,
+      font: "" as string,
+      textAlign: "" as string,
+      textBaseline: "" as string
+    };
+  };
 
   const mainCtx = makeContext2d();
   const cacheCtx = makeContext2d();

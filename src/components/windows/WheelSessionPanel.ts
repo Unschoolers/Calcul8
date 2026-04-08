@@ -66,9 +66,9 @@ export const WheelSessionPanel = {
     wheelSessionPanelProfit(this: Record<string, unknown>): number {
       const controller = getWheelController(this as Record<string, unknown>);
       if ((this as Record<string, unknown>).wheelMode !== "config") {
-        const storedNetRevenue = Number(controller.sessionNetRevenue);
-        if (Number.isFinite(storedNetRevenue)) {
-          return storedNetRevenue - Number((this as Record<string, unknown>).wheelSessionPanelCost || 0);
+        const storedNetRevenue = controller.sessionNetRevenue;
+        if (storedNetRevenue != null && Number.isFinite(Number(storedNetRevenue))) {
+          return Number(storedNetRevenue) - Number((this as Record<string, unknown>).wheelSessionPanelCost || 0);
         }
       }
 

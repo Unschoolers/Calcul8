@@ -273,7 +273,7 @@ export const wheelWindowDefinition: any = {
       }
       ((this as Record<string, unknown>) as Record<string, unknown> & { spinWheel: () => void }).spinWheel();
     },
-    triggerWheelCelebration(this: Record<string, unknown>, payload: { label: string; color: string; image?: string; preview?: boolean }): void {
+    triggerWheelCelebration(this: Record<string, unknown>, payload: { label: string; color: string; image?: string; emoji?: string; preview?: boolean }): void {
       const timeoutId = (this as Record<string, unknown>)._wheelCelebrationTimeoutId as number | undefined;
       if (timeoutId != null) {
         clearTimeout(timeoutId);
@@ -281,6 +281,7 @@ export const wheelWindowDefinition: any = {
       (this as Record<string, unknown>).wheelCelebrationLabel = payload.label;
       (this as Record<string, unknown>).wheelCelebrationColor = payload.color;
       (this as Record<string, unknown>).wheelCelebrationImage = payload.image || "";
+      (this as Record<string, unknown>).wheelCelebrationEmoji = payload.emoji || "";
       (this as Record<string, unknown>).wheelCelebrationPreview = payload.preview === true;
       (this as Record<string, unknown>).wheelCelebrationNonce = (((this as Record<string, unknown>).wheelCelebrationNonce as number) || 0) + 1;
       (this as Record<string, unknown>).wheelCelebrationVisible = false;

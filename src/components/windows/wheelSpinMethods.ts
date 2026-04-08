@@ -2,173 +2,26 @@ import { broadcastWheelSession } from "../../app-core/methods/ui/wheel-broadcast
 import { createWheelFairnessCommit, revealWheelFairnessResult } from "../../app-core/methods/wheel-fairness-api.ts";
 import { assignWheelPendingInventoryIssues } from "../../app-core/shared/wheel-session-compat.ts";
 import type { Lot, PendingWheelInventoryIssue, Sale, WheelConfig, WheelFairnessEntry } from "../../types/app.ts";
+import {
+  ensureWheelCanvasSize,
+  getStaticWheelRender,
+  getWheelCanvasDpr,
+  playWheelTick,
+  renderWheelSurface
+} from "./wheelCanvasRender.ts";
 import { getWheelController } from "./wheelControllerState.ts";
 import {
-  createWheelSale,
-  easeOutQuart,
-  generateCryptoSeed,
-  hashSeed,
-  seedToIndex,
-  type WheelSlot
+    createWheelSale,
+    easeOutQuart,
+    generateCryptoSeed,
+    hashSeed,
+    seedToIndex,
+    type WheelSlot
 } from "./wheelHelpers.ts";
 import {
-  getAvailableSinglesQuantityForWheelTier,
-  getRemainingPacksForWheelLot
+    getAvailableSinglesQuantityForWheelTier,
+    getRemainingPacksForWheelLot
 } from "./wheelSaleSupport.ts";
-
-type WheelRenderCache = {
-  canvas: HTMLCanvasElement;
-  slotsRef: WheelSlot[];
-  size: number;
-  dpr: number;
-};
-
-function getWheelCanvasDpr(): number {
-  return Math.max(
-    1,
-    Math.min(
-      3,
-      Math.floor((((globalThis as { devicePixelRatio?: number }).devicePixelRatio || 1) * 100)) / 100
-    )
-  );
-}
-
-function ensureWheelCanvasSize(canvasEl: HTMLCanvasElement, size: number, dpr: number): void {
-  const backingSize = Math.max(20, Math.round(size * dpr));
-  if (canvasEl.width !== backingSize || canvasEl.height !== backingSize) {
-    canvasEl.width = backingSize;
-    canvasEl.height = backingSize;
-    canvasEl.style.width = `${size}px`;
-    canvasEl.style.height = `${size}px`;
-  }
-}
-
-function renderWheelSurface(
-  ctx: CanvasRenderingContext2D,
-  slots: WheelSlot[],
-  size: number,
-  offset = 0,
-  highlightedSlotIndex = -1
-): void {
-  const cx = Math.round(size / 2);
-  const cy = Math.round(size / 2);
-  const r = Math.round(size / 2 - 10);
-  const sliceAngle = (2 * Math.PI) / slots.length;
-  const strokeColor = "#0a0c10";
-  const strokeWidth = 2.25;
-
-  slots.forEach((slot, i) => {
-    const startAngle = offset + i * sliceAngle;
-    const endAngle = startAngle + sliceAngle;
-
-    ctx.beginPath();
-    ctx.moveTo(cx, cy);
-    ctx.arc(cx, cy, r, startAngle, endAngle);
-    ctx.closePath();
-    ctx.fillStyle = slot.color;
-    ctx.fill();
-
-    if (i === highlightedSlotIndex) {
-      ctx.save();
-      ctx.beginPath();
-      ctx.moveTo(cx, cy);
-      ctx.arc(cx, cy, r, startAngle, endAngle);
-      ctx.closePath();
-      ctx.fillStyle = "rgba(255, 245, 200, 0.18)";
-      ctx.fill();
-      ctx.strokeStyle = "rgba(255, 228, 133, 0.92)";
-      ctx.lineWidth = 4;
-      ctx.shadowColor = "rgba(255, 210, 88, 0.7)";
-      ctx.shadowBlur = 22;
-      ctx.stroke();
-      ctx.restore();
-    }
-
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.rotate(startAngle + sliceAngle / 2);
-    ctx.textAlign = "right";
-    ctx.textBaseline = "middle";
-    ctx.fillStyle = "#fff";
-    const baseFontSize = slots.length > 16 ? 0.022 : slots.length > 10 ? 0.025 : 0.028;
-    const fontSize = Math.max(8, Math.round(size * baseFontSize));
-    ctx.font = `bold ${fontSize}px sans-serif`;
-    ctx.shadowColor = "#000";
-    ctx.shadowBlur = 4;
-    const maxChars = Math.max(10, Math.floor(size / 18));
-    const label = slot.isChase ? "⭐ " + slot.name : slot.name;
-    const txt = label.length > maxChars ? label.substring(0, maxChars - 2) + "…" : label;
-    ctx.fillText(txt, r - 12, 3);
-    ctx.restore();
-  });
-
-  ctx.save();
-  ctx.strokeStyle = strokeColor;
-  ctx.lineWidth = strokeWidth;
-  ctx.lineJoin = "round";
-  ctx.lineCap = "round";
-
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, 2 * Math.PI);
-  ctx.stroke();
-
-  for (let i = 0; i < slots.length; i++) {
-    const angle = offset + i * sliceAngle;
-    ctx.beginPath();
-    ctx.moveTo(cx, cy);
-    ctx.lineTo(
-      cx + Math.cos(angle) * r,
-      cy + Math.sin(angle) * r
-    );
-    ctx.stroke();
-  }
-  ctx.restore();
-}
-
-function createWheelCacheCanvas(sourceCanvas: HTMLCanvasElement): HTMLCanvasElement | null {
-  const documentLike = sourceCanvas.ownerDocument ?? (globalThis as { document?: Document }).document;
-  if (!documentLike?.createElement) return null;
-  return documentLike.createElement("canvas");
-}
-
-function getStaticWheelRender(
-  context: Record<string, unknown>,
-  sourceCanvas: HTMLCanvasElement,
-  slots: WheelSlot[],
-  size: number,
-  dpr: number
-): HTMLCanvasElement | null {
-  const existingCache = context._wheelStaticRenderCache as WheelRenderCache | undefined;
-  if (
-    existingCache
-    && existingCache.slotsRef === slots
-    && existingCache.size === size
-    && existingCache.dpr === dpr
-  ) {
-    return existingCache.canvas;
-  }
-
-  const cacheCanvas = createWheelCacheCanvas(sourceCanvas);
-  if (!cacheCanvas) return null;
-
-  ensureWheelCanvasSize(cacheCanvas, size, dpr);
-  const cacheCtx = cacheCanvas.getContext("2d");
-  if (!cacheCtx) return null;
-
-  cacheCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  cacheCtx.clearRect(0, 0, size, size);
-  cacheCtx.imageSmoothingEnabled = true;
-  renderWheelSurface(cacheCtx, slots, size);
-
-  context._wheelStaticRenderCache = {
-    canvas: cacheCanvas,
-    slotsRef: slots,
-    size,
-    dpr
-  } satisfies WheelRenderCache;
-
-  return cacheCanvas;
-}
 
 function queuePendingInventoryIssue(
   context: Record<string, unknown>,
@@ -311,7 +164,9 @@ export const wheelSpinMethods = {
       }
     }
 
-    renderWheelSurface(ctx, slots, size, offset, highlightedSlotIndex);
+    const highlightTime = Number((this as Record<string, unknown>)._wheelHighlightTime ?? 0);
+
+    renderWheelSurface(ctx, slots, size, offset, highlightedSlotIndex, highlightTime);
   },
 
   async spinWheel(this: Record<string, unknown>): Promise<void> {
@@ -339,8 +194,9 @@ export const wheelSpinMethods = {
     };
     const spinController = getWheelController(vm as Record<string, unknown>);
     const slots = (((vm as Record<string, unknown>).wheelDisplaySlots || spinController.activeSlots)) as WheelSlot[];
+    const shouldRecordLiveSession = recordSession && (vm.wheelMode as string) !== "config";
     if (vm.wheelSpinning || !slots.length) return;
-    if (recordSession && ((vm as Record<string, unknown>).wheelSpinBlockedReason as string)) {
+    if (shouldRecordLiveSession && ((vm as Record<string, unknown>).wheelSpinBlockedReason as string)) {
       const blockedController = getWheelController(vm as Record<string, unknown>);
       blockedController.inventoryWarning = (vm as Record<string, unknown>).wheelSpinBlockedReason as string;
       return;
@@ -365,7 +221,7 @@ export const wheelSpinMethods = {
 
     const sliceAngle = (2 * Math.PI) / slots.length;
     const targetIndex = fairnessResult.resultIndex;
-    if (recordSession) {
+    if (shouldRecordLiveSession) {
       vm.recordSpinResult(targetIndex);
     } else {
       vm.recordPreviewSpinResult(targetIndex);
@@ -378,11 +234,32 @@ export const wheelSpinMethods = {
     const startAngle = currentAngle;
     const startTime = performance.now();
 
+    // Pointer wobble: detect when slice dividers cross the pointer position
+    let prevBoundaryCount = 0;
+    const refs = (vm.$refs || {}) as Record<string, unknown>;
+    const pointerEl = (refs.wheelOuter as HTMLElement | null)
+      ?.querySelector(".wheel-pointer") as HTMLElement | null;
+
     const tick = (now: number) => {
       const t = Math.min((now - startTime) / duration, 1);
       const currentOffset = startAngle + (endAngle - startAngle) * easeOutQuart(t);
       vm.wheelCurrentAngle = currentOffset;
       vm.drawWheel(currentOffset);
+
+      // Wobble pointer when a divider crosses
+      if (pointerEl) {
+        const totalAngleSwept = Math.abs(currentOffset - startAngle);
+        const boundaryCount = Math.floor(totalAngleSwept / sliceAngle);
+        if (boundaryCount > prevBoundaryCount) {
+          prevBoundaryCount = boundaryCount;
+          pointerEl.classList.remove("wheel-pointer--tick");
+          void pointerEl.offsetWidth; // force reflow to restart animation
+          pointerEl.classList.add("wheel-pointer--tick");
+          // Tick volume fades as the wheel slows down
+          const tickVolume = 0.04 + 0.06 * (1 - t);
+          playWheelTick(tickVolume);
+        }
+      }
 
       if (t < 1) {
         requestAnimationFrame(tick);
@@ -392,6 +269,7 @@ export const wheelSpinMethods = {
       vm.wheelCurrentAngle = endAngle;
       vm.drawWheel(endAngle);
       vm.wheelSpinning = false;
+      pointerEl?.classList.remove("wheel-pointer--tick");
       const spinController = getWheelController(vm as Record<string, unknown>);
       spinController.spinSeed = fairnessResult.seed;
       spinController.spinClientSeed = fairnessResult.clientSeed || "";
@@ -399,7 +277,7 @@ export const wheelSpinMethods = {
       spinController.spinAlgorithm = fairnessResult.algorithm || "";
       spinController.showSeed = true;
       vm.appendWheelFairnessHistory({
-        spinNumber: Number(recordSession
+        spinNumber: Number(shouldRecordLiveSession
           ? ((vm as Record<string, unknown>).wheelTotalSpins || 0)
           : (spinController.previewTotalSpins || 0)),
         label: slots[targetIndex]?.name || "Unknown result",
@@ -410,9 +288,9 @@ export const wheelSpinMethods = {
         verificationUrl: fairnessResult.verificationUrl,
         algorithm: fairnessResult.algorithm,
         timestamp: Date.now()
-      }, { preview: !recordSession });
+      }, { preview: !shouldRecordLiveSession });
       vm.saveWheelSession();
-      vm.landOnSlot(targetIndex, { recordSession });
+      vm.landOnSlot(targetIndex, { recordSession: shouldRecordLiveSession });
     };
 
     requestAnimationFrame(tick);
@@ -509,39 +387,76 @@ export const wheelSpinMethods = {
     const slot = slots[slotIndex];
     if (!slot) return;
     const recordSession = options.recordSession ?? true;
+
+    // Cancel any existing celebration animation
     const existingHighlightTimeoutId = (this as Record<string, unknown>)._wheelHighlightTimeoutId as number | undefined;
     if (existingHighlightTimeoutId != null) {
       clearTimeout(existingHighlightTimeoutId);
     }
+    const hasRAF = typeof requestAnimationFrame === "function";
+    const existingAnimationId = (this as Record<string, unknown>)._wheelCelebrationAnimId as number | undefined;
+    if (existingAnimationId != null && hasRAF) {
+      cancelAnimationFrame(existingAnimationId);
+    }
+
     landController.highlightedSlotIndex = slotIndex;
     const redraw = (this as Record<string, unknown>).drawWheel as ((offset?: number) => void) | undefined;
-    (this as Record<string, unknown>)._wheelHighlightTimeoutId = globalThis.setTimeout(() => {
-      landController.highlightedSlotIndex = -1;
-      (this as Record<string, unknown>)._wheelHighlightTimeoutId = undefined;
-      redraw?.(((this as Record<string, unknown>).wheelCurrentAngle as number) || 0);
-    }, 2200);
-    redraw?.(((this as Record<string, unknown>).wheelCurrentAngle as number) || 0);
+    const getAngle = () => ((this as Record<string, unknown>).wheelCurrentAngle as number) || 0;
+
+    // Animated celebration loop — chaser lights + pulsing glow
+    const celebrationDuration = 5000;
+
+    if (hasRAF) {
+      const celebrationStart = performance.now();
+      const celebrateTick = (now: number) => {
+        const elapsed = now - celebrationStart;
+        if (elapsed >= celebrationDuration) {
+          landController.highlightedSlotIndex = -1;
+          (this as Record<string, unknown>)._wheelHighlightTime = 0;
+          (this as Record<string, unknown>)._wheelCelebrationAnimId = undefined;
+          redraw?.(getAngle());
+          return;
+        }
+        const t = elapsed / 1000;
+        (this as Record<string, unknown>)._wheelHighlightTime = t;
+        redraw?.(getAngle());
+        (this as Record<string, unknown>)._wheelCelebrationAnimId = requestAnimationFrame(celebrateTick);
+      };
+      (this as Record<string, unknown>)._wheelCelebrationAnimId = requestAnimationFrame(celebrateTick);
+    } else {
+      // Fallback for non-browser environments
+      redraw?.(getAngle());
+      (this as Record<string, unknown>)._wheelHighlightTimeoutId = globalThis.setTimeout(() => {
+        landController.highlightedSlotIndex = -1;
+        (this as Record<string, unknown>)._wheelHighlightTimeoutId = undefined;
+        redraw?.(getAngle());
+      }, celebrationDuration);
+    }
 
     this.wheelLastResult = "🎉 " + slot.name;
     landController.lastResultColor = slot.color;
-    if (slot.isChase) {
+    {
       const config = (((this as Record<string, unknown>).wheelDisplayConfig
         || (this as Record<string, unknown>).activeWheelConfig)) as WheelConfig | null;
       const tier = config?.tiers.find((entry) => entry.id === slot.tier);
-      const lot = tier?.boundLotId != null
-        ? ((this.lots || []) as Lot[]).find((entry) => entry.id === tier.boundLotId)
-        : null;
-      const image = tier?.boundSinglesId != null
-        ? lot?.singlesPurchases?.find((entry) => entry.id === tier.boundSinglesId)?.image
-        : undefined;
-      (this as Record<string, unknown> & {
-        triggerWheelCelebration?: (payload: { label: string; color: string; image?: string; preview?: boolean }) => void;
-      }).triggerWheelCelebration?.({
-        label: slot.name,
-        color: slot.color,
-        image,
-        preview: !recordSession
-      });
+      const emoji = tier?.celebrationEmoji || undefined;
+      if (slot.isChase || emoji) {
+        const lot = tier?.boundLotId != null
+          ? ((this.lots || []) as Lot[]).find((entry) => entry.id === tier.boundLotId)
+          : null;
+        const image = slot.isChase && tier?.boundSinglesId != null
+          ? lot?.singlesPurchases?.find((entry) => entry.id === tier.boundSinglesId)?.image
+          : undefined;
+        (this as Record<string, unknown> & {
+          triggerWheelCelebration?: (payload: { label: string; color: string; image?: string; emoji?: string; preview?: boolean }) => void;
+        }).triggerWheelCelebration?.({
+          label: slot.name,
+          color: slot.color,
+          image,
+          emoji,
+          preview: !recordSession
+        });
+      }
     }
 
     if (!recordSession) {

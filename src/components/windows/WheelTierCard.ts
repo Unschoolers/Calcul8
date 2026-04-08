@@ -2,6 +2,11 @@ import { inject, type PropType } from "vue";
 import type { WheelTier } from "../../types/app.ts";
 import { createNestedWindowContextBridge } from "./contextBridge.ts";
 
+const TIER_CELEBRATION_EMOJI_OPTIONS = [
+  "✨", "🎉", "🔥", "💎", "⭐", "🏆",
+  "🎁", "💥", "⚡", "👑", "🍀", "🎯"
+];
+
 export const WheelTierCard = {
   name: "WheelTierCard",
   props: {
@@ -81,6 +86,17 @@ export const WheelTierCard = {
     },
     tierInventoryWarning(this: Record<string, unknown> & { tierInventoryMeta: { text: string; warning: boolean } | null }): string | null {
       return this.tierInventoryMeta?.warning ? this.tierInventoryMeta.text : null;
+    },
+    tierCelebrationEmojiOptions(): string[] {
+      return TIER_CELEBRATION_EMOJI_OPTIONS;
+    }
+  },
+  methods: {
+    setTierCelebrationEmoji(this: { tier: WheelTier }, emoji: string): void {
+      this.tier.celebrationEmoji = this.tier.celebrationEmoji === emoji ? undefined : emoji;
+    },
+    clearTierCelebrationEmoji(this: { tier: WheelTier }): void {
+      this.tier.celebrationEmoji = undefined;
     }
   },
   setup(props: { ctx: Record<string, unknown> }) {

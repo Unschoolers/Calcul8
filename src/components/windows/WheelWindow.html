@@ -30,12 +30,15 @@
                                 <span class="wheel-celebration-star wheel-celebration-star--3">★</span>
                                 <span class="wheel-celebration-star wheel-celebration-star--4">★</span>
                             </div>
+                            <div v-if="wheelCelebrationEmoji" class="wheel-celebration-emoji-burst">
+                                <span v-for="n in 12" :key="n" class="wheel-celebration-emoji"
+                                    :style="{ '--emoji-i': n }">{{ wheelCelebrationEmoji }}</span>
+                            </div>
                             <div class="wheel-celebration-copy"
                                 :style="{ '--wheel-celebration-color': wheelCelebrationColor }">
                                 <div v-if="wheelCelebrationImage" class="wheel-celebration-image">
                                     <img :src="wheelCelebrationImage" alt="" loading="eager">
                                 </div>
-                                <div class="wheel-celebration-kicker">{{ wheelCelebrationKicker }}</div>
                                 <div class="wheel-celebration-title">{{ wheelCelebrationLabel }}</div>
                             </div>
                         </div>

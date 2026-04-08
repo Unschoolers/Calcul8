@@ -39,16 +39,29 @@ function resetLoadedWheelSessionState(context: Record<string, unknown>): void {
   context.wheelTotalSpins = 0;
   context.wheelLastResult = "";
   controller.inventoryWarning = "";
+  controller.lastResultColor = "rgb(var(--v-theme-primary))";
   controller.sessionCostAdjustment = 0;
+  controller.sessionNetRevenue = null;
   assignWheelPendingInventoryIssues(context, []);
   context.wheelEndingSession = false;
   context.wheelChaseDialog = false;
   context.wheelChaseReplacementSinglesId = null;
   context.wheelChasePendingTierId = "";
+  context.wheelChasePreviewMode = false;
   controller.chaseTallyHistory = [];
+  controller.fairnessHistory = [];
   controller.previewSpinCounts = [];
   controller.previewTotalSpins = 0;
+  controller.previewFairnessHistory = [];
   controller.previewChaseTallyHistory = [];
+  controller.spinHash = "";
+  controller.spinSeed = "";
+  controller.spinClientSeed = "";
+  controller.spinVerificationUrl = "";
+  controller.spinAlgorithm = "";
+  controller.showSeed = false;
+  controller.fairnessHistoryOpen = false;
+  controller.highlightedSlotIndex = -1;
 }
 
 function resetLoadedWheelState(context: Record<string, unknown>): void {
@@ -207,8 +220,17 @@ export const wheelConfigMethods = {
     applyController.inventoryWarning = "";
     applyController.previewSpinCounts = new Array(newSlots.length).fill(0);
     applyController.previewTotalSpins = 0;
+    applyController.previewFairnessHistory = [];
     applyController.previewChaseTallyHistory = [];
     applyController.lastResultColor = "rgb(var(--v-theme-primary))";
+    applyController.spinHash = "";
+    applyController.spinSeed = "";
+    applyController.spinClientSeed = "";
+    applyController.spinVerificationUrl = "";
+    applyController.spinAlgorithm = "";
+    applyController.showSeed = false;
+    applyController.fairnessHistoryOpen = false;
+    applyController.highlightedSlotIndex = -1;
     if (hadTierShapeChange) {
       applyController.sessionCostAdjustment = 0;
       applyController.chaseTallyHistory = [];

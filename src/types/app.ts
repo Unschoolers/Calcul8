@@ -58,6 +58,7 @@ export interface WheelTier {
   boundLotId?: number | null;
   boundSinglesId?: number | null;
   isChase?: boolean;
+  celebrationEmoji?: string;
 }
 
 export interface WheelConfig {

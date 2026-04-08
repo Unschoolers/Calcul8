@@ -15,8 +15,6 @@ export type WheelControllerState = {
   spinVerificationUrl: string;
   spinAlgorithm: string;
   showSeed: boolean;
-  configReady: boolean;
-  viewportWidth: number;
   fairnessHistoryOpen: boolean;
   sessionNetRevenue: number | null;
   sessionCostAdjustment: number;
@@ -41,8 +39,6 @@ function createDefaultWheelControllerState(): WheelControllerState {
     spinVerificationUrl: "",
     spinAlgorithm: "",
     showSeed: false,
-    configReady: false,
-    viewportWidth: 0,
     fairnessHistoryOpen: false,
     sessionNetRevenue: null,
     sessionCostAdjustment: 0,
@@ -99,8 +95,6 @@ const WHEEL_CONTROLLER_ALIAS_MAP = {
   wheelSpinVerificationUrl: "spinVerificationUrl",
   wheelSpinAlgorithm: "spinAlgorithm",
   wheelShowSeed: "showSeed",
-  wheelConfigReady: "configReady",
-  wheelViewportWidth: "viewportWidth",
   wheelFairnessHistoryOpen: "fairnessHistoryOpen",
   wheelSessionNetRevenue: "sessionNetRevenue",
   wheelSessionCostAdjustment: "sessionCostAdjustment",
@@ -121,6 +115,7 @@ const WHEEL_LOCAL_TOP_LEVEL_KEYS = [
   "wheelCelebrationLabel",
   "wheelCelebrationColor",
   "wheelCelebrationImage",
+  "wheelCelebrationEmoji",
   "wheelCelebrationPreview",
   "wheelCelebrationNonce",
   "wheelCanvasSize",
@@ -160,6 +155,7 @@ export function createWheelWindowState() {
     wheelCelebrationLabel: "",
     wheelCelebrationColor: "#f0a500",
     wheelCelebrationImage: "",
+    wheelCelebrationEmoji: "",
     wheelCelebrationPreview: false,
     wheelCelebrationNonce: 0,
     wheelCanvasSize: 360,
@@ -182,17 +178,17 @@ export function createWheelWindowState() {
     wheelManageDialog: false,
     wheelManageName: ""
   } as Record<string, unknown>;
-
-  // Seed legacy alias keys as plain reactive data so that existing code
-  // (wheelComputeds, wheelConfigMethods, wheelSpinMethods) which reads/writes
-  // these keys on `this` continues to work through Vue's reactivity system.
-  // NOTE: these are NOT linked to wheelController — code that was migrated to
-  // the controller should use getWheelController() instead.
-  const defaults = createDefaultWheelControllerState();
   for (const [legacyKey, controllerKey] of Object.entries(WHEEL_CONTROLLER_ALIAS_MAP)) {
-    if (!(legacyKey in state)) {
-      state[legacyKey] = defaults[controllerKey];
-    }
+    Object.defineProperty(state, legacyKey, {
+      enumerable: true,
+      configurable: true,
+      get() {
+        return (state.wheelController as WheelControllerState)[controllerKey];
+      },
+      set(value: unknown) {
+        (state.wheelController as Record<string, unknown>)[controllerKey] = value;
+      }
+    });
   }
 
   return state;

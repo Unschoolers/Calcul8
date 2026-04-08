@@ -4,7 +4,7 @@ import {
   getScopedWheelConfigDraftStorageKey,
   getScopedWheelConfigSessionStorageKey
 } from "../src/app-core/storageKeys.ts";
-import { getWheelWindowLocalKeys } from "../src/components/windows/wheelControllerState.ts";
+import { getWheelController, getWheelWindowLocalKeys } from "../src/components/windows/wheelControllerState.ts";
 import {
   buildSlotsFromConfig,
   createWheelSale,
@@ -216,6 +216,7 @@ test("loadWheelConfig clears rendered wheel state when no active config exists",
   };
 
   WheelWindow.methods!.loadWheelConfig.call(vm as never);
+  const controller = getWheelController(vm);
 
   assert.equal(vm.editingWheelConfig, null);
   assert.equal(vm.appliedWheelConfigSnapshot, null);
@@ -235,6 +236,18 @@ test("loadWheelConfig clears rendered wheel state when no active config exists",
   assert.deepEqual(vm.wheelPreviewSpinCounts, []);
   assert.equal(vm.wheelPreviewTotalSpins, 0);
   assert.deepEqual(vm.wheelPreviewChaseTallyHistory, []);
+  assert.deepEqual(controller.fairnessHistory, []);
+  assert.deepEqual(controller.previewFairnessHistory, []);
+  assert.equal(controller.spinHash, "");
+  assert.equal(controller.spinSeed, "");
+  assert.equal(controller.spinClientSeed, "");
+  assert.equal(controller.spinVerificationUrl, "");
+  assert.equal(controller.spinAlgorithm, "");
+  assert.equal(controller.showSeed, false);
+  assert.equal(controller.fairnessHistoryOpen, false);
+  assert.equal(controller.highlightedSlotIndex, -1);
+  assert.equal(controller.sessionNetRevenue, null);
+  assert.equal(controller.lastResultColor, "rgb(var(--v-theme-primary))");
 });
 
 test("saveWheelDraft persists the config without changing the applied wheel or pushing immediately", () => {
@@ -1586,4 +1599,3 @@ test("loadWheelFromSession returns false when slot count mismatches", () => {
 
   Object.defineProperty(globalThis, "localStorage", { value: origLocalStorage, writable: true, configurable: true });
 });
-
