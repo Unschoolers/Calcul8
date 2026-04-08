@@ -1,9 +1,9 @@
 import { CosmosClient, type Container } from "@azure/cosmos";
 import dotenv from "dotenv";
+import { execFile } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { execFile } from "node:child_process";
 
 type JsonRecord = Record<string, unknown>;
 
