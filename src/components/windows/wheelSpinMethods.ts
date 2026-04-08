@@ -3,11 +3,11 @@ import { createWheelFairnessCommit, revealWheelFairnessResult } from "../../app-
 import { assignWheelPendingInventoryIssues } from "../../app-core/shared/wheel-session-compat.ts";
 import type { Lot, PendingWheelInventoryIssue, Sale, WheelConfig, WheelFairnessEntry } from "../../types/app.ts";
 import {
-  ensureWheelCanvasSize,
-  getStaticWheelRender,
-  getWheelCanvasDpr,
-  playWheelTick,
-  renderWheelSurface
+    ensureWheelCanvasSize,
+    getStaticWheelRender,
+    getWheelCanvasDpr,
+    playWheelTick,
+    renderWheelSurface
 } from "./wheelCanvasRender.ts";
 import { getWheelController } from "./wheelControllerState.ts";
 import {
