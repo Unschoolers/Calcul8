@@ -5,12 +5,12 @@ import {
   getScopedWheelConfigSessionStorageKey
 } from "../src/app-core/storageKeys.ts";
 import { createNestedWindowContextBridge } from "../src/components/windows/contextBridge.ts";
-import { getWheelController, getWheelWindowLocalKeys } from "../src/components/windows/wheelControllerState.ts";
+import { getWheelController, getWheelWindowLocalKeys } from "../src/components/windows/wheel/wheelControllerState.ts";
 import {
   buildSlotsFromConfig,
   createWheelSale,
   WheelWindow
-} from "../src/components/windows/WheelWindow.ts";
+} from "../src/components/windows/wheel/WheelWindow.ts";
 import type { WheelConfig } from "../src/types/app.ts";
 
 

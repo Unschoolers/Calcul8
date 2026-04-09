@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test, vi } from "vitest";
-import { getWheelTierInventoryMeta } from "../src/components/windows/wheelSaleSupport.ts";
+import { getWheelTierInventoryMeta } from "../src/components/windows/wheel/wheelSaleSupport.ts";
 import {
   buildSlotsFromConfig,
   computeExpectedMargin,
@@ -9,7 +9,7 @@ import {
   easeOutQuart,
   seedToIndex,
   WheelWindow
-} from "../src/components/windows/WheelWindow.ts";
+} from "../src/components/windows/wheel/WheelWindow.ts";
 import type { WheelConfig } from "../src/types/app.ts";
 
 // ── Pure functions ──────────────────────────────────────────────
@@ -181,6 +181,12 @@ test("wheelDisplaySlots prefers WheelWindow local state over parent ctx prop", (
 
   const slots = WheelWindow.computed!.wheelDisplaySlots.call(vm as never);
   assert.equal(slots.length, 2);
+});
+
+test("WheelWindow data initializes spin state needed by the template", () => {
+  const data = WheelWindow.data.call({});
+  assert.equal(data.wheelSpinning, false);
+  assert.equal(data.wheelCurrentAngle, 0);
 });
 
 // ── Component computed tests ─────────────────────────────────────

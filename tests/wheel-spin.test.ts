@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { test, vi } from "vitest";
-import { getWheelController } from "../src/components/windows/wheelControllerState.ts";
+import { getWheelController } from "../src/components/windows/wheel/wheelControllerState.ts";
 import {
     WheelWindow
-} from "../src/components/windows/WheelWindow.ts";
+} from "../src/components/windows/wheel/WheelWindow.ts";
 
 test("recordSpinResult increments spin counts", () => {
   const vm: Record<string, unknown> = {

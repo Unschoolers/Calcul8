@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { WheelHistoryPanel } from "../src/components/windows/WheelHistoryPanel.ts";
+import { WheelHistoryPanel } from "../src/components/windows/wheel/WheelHistoryPanel.ts";
 
 function createController(overrides: Record<string, unknown> = {}) {
   return {

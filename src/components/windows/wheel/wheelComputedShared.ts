@@ -1,5 +1,5 @@
-import { translateAppMessage } from "../../app-core/i18n/index.ts";
-import type { Lot, WheelConfig, WheelFairnessEntry } from "../../types/app.ts";
+import { translateAppMessage } from "../../../app-core/i18n/index.ts";
+import type { Lot, WheelConfig, WheelFairnessEntry } from "../../../types/app.ts";
 import { getWheelController } from "./wheelControllerState.ts";
 import type { WheelSlot } from "./wheelHelpers.ts";
 import {

@@ -1,6 +1,6 @@
 import { type PropType } from "vue";
-import { translateAppMessage } from "../../app-core/i18n/index.ts";
-import type { Lot, WheelConfig } from "../../types/app.ts";
+import { translateAppMessage } from "../../../app-core/i18n/index.ts";
+import type { Lot, WheelConfig } from "../../../types/app.ts";
 import {
   getWheelDisplayConfig,
   getWheelDisplayChaseTallyHistory,

@@ -17,9 +17,9 @@ import {
   calculateSaleProfit,
   calculateSinglesPurchaseTotalMarketValueInSellingCurrency
 } from "../src/domain/calculations.ts";
-import { createWheelWindowState, getWheelController } from "../src/components/windows/wheelControllerState.ts";
-import { wheelSessionMethods } from "../src/components/windows/wheelSessionMethods.ts";
-import { wheelSpinMethods } from "../src/components/windows/wheelSpinMethods.ts";
+import { createWheelWindowState, getWheelController } from "../src/components/windows/wheel/wheelControllerState.ts";
+import { wheelSessionMethods } from "../src/components/windows/wheel/wheelSessionMethods.ts";
+import { wheelSpinMethods } from "../src/components/windows/wheel/wheelSpinMethods.ts";
 import type { Lot, Sale } from "../src/types/app.ts";
 
 vi.mock("../src/app-core/methods/wheel-fairness-api.ts", () => ({

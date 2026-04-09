@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { WheelSessionPanel } from "../src/components/windows/WheelSessionPanel.ts";
+import { WheelSessionPanel } from "../src/components/windows/wheel/WheelSessionPanel.ts";
 
 test("wheelSessionPanelProfit falls back to fee calculation when live session net revenue is missing", () => {
   const vm = {

@@ -1,7 +1,7 @@
 import { reactive } from "vue";
-import type { WheelConfig, WheelFairnessEntry } from "../../types/app.ts";
+import type { WheelConfig, WheelFairnessEntry } from "../../../types/app.ts";
 import type { WheelSlot } from "./wheelHelpers.ts";
-import { unwrapWindowBridgeContext } from "./contextBridge.ts";
+import { unwrapWindowBridgeContext } from "../contextBridge.ts";
 
 export type WheelControllerState = {
   activeSlots: WheelSlot[];
@@ -160,6 +160,8 @@ const WHEEL_LOCAL_TOP_LEVEL_KEYS = [
   "wheelCelebrationEmoji",
   "wheelCelebrationPreview",
   "wheelCelebrationNonce",
+  "wheelSpinning",
+  "wheelCurrentAngle",
   "wheelCanvasSize",
   "wheelConfigReady",
   "wheelViewportWidth",
@@ -200,6 +202,8 @@ export function createWheelWindowState() {
     wheelCelebrationEmoji: "",
     wheelCelebrationPreview: false,
     wheelCelebrationNonce: 0,
+    wheelSpinning: false,
+    wheelCurrentAngle: 0,
     wheelCanvasSize: 360,
     wheelConfigReady: false,
     wheelViewportWidth: 0,

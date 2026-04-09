@@ -1,4 +1,4 @@
-import { translateAppMessage } from "../../app-core/i18n/index.ts";
+import { translateAppMessage } from "../../../app-core/i18n/index.ts";
 import { getWheelController } from "./wheelControllerState.ts";
 import {
   getWheelCurrentProofState,

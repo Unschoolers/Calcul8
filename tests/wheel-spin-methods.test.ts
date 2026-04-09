@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { afterEach, test, vi } from "vitest";
-import { createWheelWindowState, getWheelController } from "../src/components/windows/wheelControllerState.ts";
-import { wheelSessionMethods } from "../src/components/windows/wheelSessionMethods.ts";
-import { wheelSpinMethods } from "../src/components/windows/wheelSpinMethods.ts";
+import { createWheelWindowState, getWheelController } from "../src/components/windows/wheel/wheelControllerState.ts";
+import { wheelSessionMethods } from "../src/components/windows/wheel/wheelSessionMethods.ts";
+import { wheelSpinMethods } from "../src/components/windows/wheel/wheelSpinMethods.ts";
 
 vi.mock("../src/app-core/methods/wheel-fairness-api.ts", () => ({
   createWheelFairnessCommit: vi.fn(async () => ({

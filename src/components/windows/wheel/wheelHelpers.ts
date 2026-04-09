@@ -1,5 +1,5 @@
-import { calculateNetFromGross, type FeeProfileInput } from "../../domain/calculations.ts";
-import type { Lot, Sale, WheelConfig, WheelTier } from "../../types/app.ts";
+import { calculateNetFromGross, type FeeProfileInput } from "../../../domain/calculations.ts";
+import type { Lot, Sale, WheelConfig, WheelTier } from "../../../types/app.ts";
 
 export interface WheelSlot {
   name: string;

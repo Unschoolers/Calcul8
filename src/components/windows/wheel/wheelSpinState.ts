@@ -1,4 +1,4 @@
-import type { WheelFairnessEntry } from "../../types/app.ts";
+import type { WheelFairnessEntry } from "../../../types/app.ts";
 import { getWheelController } from "./wheelControllerState.ts";
 import { getWheelDisplaySlots, isWheelPreviewMode } from "./wheelComputedShared.ts";
 import type { WheelSlot } from "./wheelHelpers.ts";

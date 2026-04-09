@@ -1,10 +1,10 @@
 import { inject, type PropType } from "vue";
-import { createNestedWindowContextBridge } from "./contextBridge.ts";
-import { translateAppMessage } from "../../app-core/i18n/index.ts";
+import { createNestedWindowContextBridge } from "../contextBridge.ts";
+import { translateAppMessage } from "../../../app-core/i18n/index.ts";
 import WheelHistoryPanel from "./WheelHistoryPanel.vue";
 import WheelTierCard from "./WheelTierCard.vue";
 import WheelSessionPanel from "./WheelSessionPanel.vue";
-import type { Lot, WheelConfig, WheelTier } from "../../types/app.ts";
+import type { Lot, WheelConfig, WheelTier } from "../../../types/app.ts";
 import {
   getAvailableSinglesQuantityForWheelTier,
   getRemainingPacksForWheelLot

@@ -1,8 +1,8 @@
 import { inject, type PropType } from "vue";
-import { createNestedWindowContextBridge } from "./contextBridge.ts";
+import { createNestedWindowContextBridge } from "../contextBridge.ts";
 
-export const WheelStageTopbar = {
-  name: "WheelStageTopbar",
+export const WheelStageSummary = {
+  name: "WheelStageSummary",
   props: {
     ctx: {
       type: Object as PropType<Record<string, unknown>>,

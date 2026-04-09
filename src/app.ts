@@ -10,7 +10,7 @@ import LiveWindow from "./components/windows/LiveWindow.vue";
 import PortfolioWindow from "./components/windows/PortfolioWindow.vue";
 import SalesWindow from "./components/windows/SalesWindow.vue";
 import SinglesConfigWindow from "./components/windows/SinglesConfigWindow.vue";
-import WheelWindow from "./components/windows/WheelWindow.vue";
+import WheelWindow from "./components/windows/wheel/WheelWindow.vue";
 import WhatnotCsvImportDialog from "./components/windows/whatnot/WhatnotCsvImportDialog.vue";
 import WhatnotReviewDialog from "./components/windows/whatnot/WhatnotReviewDialog.vue";
 

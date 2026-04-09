@@ -1,6 +1,6 @@
 import { inject, type PropType } from "vue";
-import type { WheelTier } from "../../types/app.ts";
-import { createNestedWindowContextBridge } from "./contextBridge.ts";
+import type { WheelTier } from "../../../types/app.ts";
+import { createNestedWindowContextBridge } from "../contextBridge.ts";
 
 const TIER_CELEBRATION_EMOJI_OPTIONS = [
   "✨", "🎉", "🔥", "💎", "⭐", "🏆",

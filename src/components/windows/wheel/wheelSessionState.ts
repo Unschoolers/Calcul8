@@ -1,4 +1,4 @@
-import type { Lot, WheelConfig, WheelFairnessEntry } from "../../types/app.ts";
+import type { Lot, WheelConfig, WheelFairnessEntry } from "../../../types/app.ts";
 import type { WheelControllerState } from "./wheelControllerState.ts";
 import type { WheelSlot } from "./wheelHelpers.ts";
 

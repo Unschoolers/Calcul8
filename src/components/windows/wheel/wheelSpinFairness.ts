@@ -1,4 +1,4 @@
-import { createWheelFairnessCommit, revealWheelFairnessResult } from "../../app-core/methods/wheel-fairness-api.ts";
+import { createWheelFairnessCommit, revealWheelFairnessResult } from "../../../app-core/methods/wheel-fairness-api.ts";
 import {
   generateCryptoSeed,
   hashSeed,
