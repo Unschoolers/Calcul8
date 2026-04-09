@@ -1,5 +1,4 @@
-import { inject, type PropType } from "vue";
-import { createNestedWindowContextBridge } from "./contextBridge.ts";
+import { type PropType } from "vue";
 import { translateAppMessage } from "../../app-core/i18n/index.ts";
 import type { Lot, WheelConfig } from "../../types/app.ts";
 import {
@@ -18,6 +17,14 @@ import {
 } from "./wheelSaleSupport.ts";
 import type { WheelSlot } from "./wheelHelpers.ts";
 
+function getWheelSessionPanelSource(vm: Record<string, unknown>): Record<string, unknown> {
+  const explicitCtx = vm.ctx;
+  if (explicitCtx && typeof explicitCtx === "object") {
+    return explicitCtx as Record<string, unknown>;
+  }
+  return vm;
+}
+
 export const WheelSessionPanel = {
   name: "WheelSessionPanel",
   props: {
@@ -26,37 +33,62 @@ export const WheelSessionPanel = {
       required: true
     }
   },
+  methods: {
+    t(this: Record<string, unknown>, key: string, params?: Record<string, string | number | null | undefined>): string {
+      const source = getWheelSessionPanelSource(this as Record<string, unknown>);
+      const translator = source.t;
+      if (typeof translator === "function") {
+        return (translator as (translationKey: string, translationParams?: Record<string, string | number | null | undefined>) => string)(key, params);
+      }
+      return translateAppMessage(String(source.preferredLanguage ?? ""), key, params);
+    },
+    openWheelResetDialog(this: Record<string, unknown>): void {
+      const source = getWheelSessionPanelSource(this as Record<string, unknown>);
+      source.wheelConfirmAction = "reset";
+      source.wheelConfirmDialog = true;
+    },
+    requestWheelSessionEnd(this: Record<string, unknown>): void {
+      const source = getWheelSessionPanelSource(this as Record<string, unknown>);
+      const handler = source.requestWheelSessionEnd;
+      if (typeof handler === "function") {
+        (handler as () => void).call(source);
+      }
+    }
+  },
   computed: {
     wheelSessionPanelDisplayConfig(this: Record<string, unknown>): WheelConfig | null {
-      return getWheelDisplayConfig(this as Record<string, unknown>);
+      return getWheelDisplayConfig(getWheelSessionPanelSource(this as Record<string, unknown>));
     },
     wheelSessionPanelDisplaySlots(this: Record<string, unknown>) {
-      return getWheelDisplaySlots(this as Record<string, unknown>);
+      return getWheelDisplaySlots(getWheelSessionPanelSource(this as Record<string, unknown>));
     },
     wheelSessionPanelDisplaySpinCounts(this: Record<string, unknown>) {
-      return getWheelDisplaySpinCounts(this as Record<string, unknown>);
+      return getWheelDisplaySpinCounts(getWheelSessionPanelSource(this as Record<string, unknown>));
     },
     wheelSessionPanelDisplayTotalSpins(this: Record<string, unknown>): number {
-      return getWheelDisplayTotalSpins(this as Record<string, unknown>);
+      return getWheelDisplayTotalSpins(getWheelSessionPanelSource(this as Record<string, unknown>));
     },
     wheelSessionPanelMode(this: Record<string, unknown>): string {
-      return String((this as Record<string, unknown>).wheelMode || "config");
+      const source = getWheelSessionPanelSource(this as Record<string, unknown>);
+      return String(source.wheelMode || "config");
     },
     wheelSessionPanelEndingSession(this: Record<string, unknown>): boolean {
-      return Boolean((this as Record<string, unknown>).wheelEndingSession);
+      const source = getWheelSessionPanelSource(this as Record<string, unknown>);
+      return Boolean(source.wheelEndingSession);
     },
     wheelSessionPanelPendingIssueCount(this: Record<string, unknown>): number {
-      const pendingIssues = (this as Record<string, unknown>).wheelPendingInventoryIssues;
+      const source = getWheelSessionPanelSource(this as Record<string, unknown>);
+      const pendingIssues = source.wheelPendingInventoryIssues;
       return Array.isArray(pendingIssues) ? pendingIssues.length : 0;
     },
     wheelSessionPanelRevenue(this: Record<string, unknown>): number {
-      return getWheelSessionRevenue(this as Record<string, unknown>);
+      return getWheelSessionRevenue(getWheelSessionPanelSource(this as Record<string, unknown>));
     },
     wheelSessionPanelCost(this: Record<string, unknown>): number {
-      return getWheelSessionCost(this as Record<string, unknown>);
+      return getWheelSessionCost(getWheelSessionPanelSource(this as Record<string, unknown>));
     },
     wheelSessionPanelProfit(this: Record<string, unknown>): number {
-      return getWheelSessionProfit(this as Record<string, unknown>);
+      return getWheelSessionProfit(getWheelSessionPanelSource(this as Record<string, unknown>));
     },
     wheelSessionPanelProfitDisplay(this: Record<string, unknown>): string {
       const profit = Number((this as Record<string, unknown>).wheelSessionPanelProfit || 0);
@@ -92,7 +124,8 @@ export const WheelSessionPanel = {
       return `${Math.min(Number(config?.targetMargin || 40), 99)}%`;
     },
     wheelSessionPanelMarginHint(this: Record<string, unknown>): string {
-      const preferredLanguage = String((this as Record<string, unknown>).preferredLanguage ?? "");
+      const source = getWheelSessionPanelSource(this as Record<string, unknown>);
+      const preferredLanguage = String(source.preferredLanguage ?? "");
       const margin = (this as Record<string, unknown>).wheelSessionPanelMarginPercent as number | null;
       if (margin == null) {
         return translateAppMessage(preferredLanguage, "wheelSessionNoSpinsHint");
@@ -118,9 +151,10 @@ export const WheelSessionPanel = {
       warning: boolean;
       tiers: Array<{ tierId: string; label: string; color: string; count: number; warning: boolean }>;
     }> {
-      const preferredLanguage = String((this as Record<string, unknown>).preferredLanguage ?? "");
+      const source = getWheelSessionPanelSource(this as Record<string, unknown>);
+      const preferredLanguage = String(source.preferredLanguage ?? "");
       const config = (this as Record<string, unknown>).wheelSessionPanelDisplayConfig as WheelConfig | null;
-      const lots = (((this as Record<string, unknown>).lots || []) as Lot[]);
+      const lots = ((source.lots || []) as Lot[]);
       if (!config) return [];
 
       const slots = ((this as Record<string, unknown>).wheelSessionPanelDisplaySlots || []) as WheelSlot[];
@@ -130,7 +164,7 @@ export const WheelSessionPanel = {
         return acc;
       }, {});
 
-      const history = (getWheelDisplayChaseTallyHistory(this as Record<string, unknown>) || []) as Array<{
+      const history = (getWheelDisplayChaseTallyHistory(source) || []) as Array<{
         tierId: string;
         label: string;
         color: string;
@@ -182,10 +216,10 @@ export const WheelSessionPanel = {
             : null;
           const tierDisplayLabel = purchase?.cardNumber ? `${tier.label} #${purchase.cardNumber}` : tier.label;
           const remainingForTier = tier.boundSinglesId != null
-            ? getAvailableSinglesQuantityForWheelTier(this, tier.boundLotId, tier.boundSinglesId)
-            : ((lot.singlesPurchases || []).reduce((sum, entry) => sum + Math.max(0, getAvailableSinglesQuantityForWheelTier(this, tier.boundLotId as number, entry.id)), 0));
+            ? getAvailableSinglesQuantityForWheelTier(source, tier.boundLotId, tier.boundSinglesId)
+            : ((lot.singlesPurchases || []).reduce((sum, entry) => sum + Math.max(0, getAvailableSinglesQuantityForWheelTier(source, tier.boundLotId as number, entry.id)), 0));
           const remainingForLot = (lot.singlesPurchases || []).reduce((sum, entry) => (
-            sum + Math.max(0, getAvailableSinglesQuantityForWheelTier(this, tier.boundLotId as number, entry.id))
+            sum + Math.max(0, getAvailableSinglesQuantityForWheelTier(source, tier.boundLotId as number, entry.id))
           ), 0);
           const tally = Array.from(tallyByTier.values()).find((entry) => entry.tierId === tier.id && (entry.label === tierDisplayLabel || entry.label === tier.label));
           const tierEntry = {
@@ -213,7 +247,7 @@ export const WheelSessionPanel = {
           continue;
         }
 
-        const remainingPacks = getRemainingPacksForWheelLot(this, tier.boundLotId);
+        const remainingPacks = getRemainingPacksForWheelLot(source, tier.boundLotId);
         const tally = Array.from(tallyByTier.values()).find((entry) => entry.tierId === tier.id);
         const tierEntry = {
           tierId: tier.id,
@@ -246,11 +280,5 @@ export const WheelSessionPanel = {
 
       return Array.from(rows.values());
     }
-  },
-  setup(props: { ctx: Record<string, unknown> }) {
-    const injectedWheelCtx = inject<Record<string, unknown> | null>("wheelCtx", null);
-    const injectedCtx = inject<Record<string, unknown> | null>("appCtx", null);
-    const source = (injectedWheelCtx ?? props.ctx ?? injectedCtx) as Record<string, unknown>;
-    return createNestedWindowContextBridge(source);
   }
 };

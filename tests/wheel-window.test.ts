@@ -134,6 +134,55 @@ test("WheelWindow data defaults the inspector tab to config", () => {
   assert.equal(data.wheelInspectorTab, "config");
 });
 
+test("wheelDisplaySlots prefers WheelWindow local state over parent ctx prop", () => {
+  const vm = {
+    ctx: {
+      wheelMode: "live",
+      wheelSpinCounts: [],
+      wheelTotalSpins: 0
+    },
+    wheelMode: "config",
+    editingWheelConfig: {
+      id: 1,
+      name: "Preview Wheel",
+      spinPrice: 10,
+      targetMargin: 15,
+      createdAt: "",
+      tiers: [
+        { id: "tier-1", label: "1 Pack", color: "#e74c3c", slots: 2, costPerTier: 3, packsCount: 1, deductionType: "packs", sets: [] }
+      ]
+    },
+    wheelController: {
+      activeSlots: [],
+      previewSlots: [
+        { tier: "tier-1", name: "1 Pack", color: "#e74c3c", cost: 3 },
+        { tier: "tier-1", name: "1 Pack", color: "#e74c3c", cost: 3 }
+      ],
+      inventoryWarning: "",
+      lastResultColor: "rgb(var(--v-theme-primary))",
+      previewSpinCounts: [0, 0],
+      previewTotalSpins: 0,
+      spinSeed: "",
+      spinHash: "",
+      spinClientSeed: "",
+      spinVerificationUrl: "",
+      spinAlgorithm: "",
+      showSeed: false,
+      fairnessHistoryOpen: false,
+      sessionNetRevenue: null,
+      sessionCostAdjustment: 0,
+      previewFairnessHistory: [],
+      fairnessHistory: [],
+      previewChaseTallyHistory: [],
+      chaseTallyHistory: [],
+      highlightedSlotIndex: -1
+    }
+  };
+
+  const slots = WheelWindow.computed!.wheelDisplaySlots.call(vm as never);
+  assert.equal(slots.length, 2);
+});
+
 // ── Component computed tests ─────────────────────────────────────
 
 test("wheelSessionRevenue is spins × spinPrice", () => {
