@@ -69,6 +69,7 @@ function createContext(overrides: Record<string, unknown> = {}) {
     singlesPurchases: [],
     singlesSoldCountByPurchaseId: {},
     sales: [],
+    salesByLotId: new Map(),
     lots: [],
     portfolioSelectedLotIds: [],
     portfolioChartView: "trend",
@@ -157,22 +158,19 @@ test("saveSale uses authoritative API and appends the saved sale metadata", asyn
 });
 
 test("getAllSalesByLotId prefers in-memory current lot sales and loads the rest by lot id", () => {
-  const getSalesCacheEntry = vi.fn((lotId: number) => {
+  const loadSalesForLotId = vi.fn((lotId: number) => {
     if (lotId === 2) {
-      return {
-        status: "loaded" as const,
-        sales: [{
-          id: 22,
-          type: "pack",
-          quantity: 1,
-          packsCount: 1,
-          price: 20,
-          buyerShipping: 0,
-          date: "2026-03-17"
-        }]
-      };
+      return [{
+        id: 22,
+        type: "pack",
+        quantity: 1,
+        packsCount: 1,
+        price: 20,
+        buyerShipping: 0,
+        date: "2026-03-17"
+      }];
     }
-    return { status: "missing" as const, sales: [] };
+    return [];
   });
   const ctx = createContext({
     currentLotId: 1,
@@ -186,7 +184,7 @@ test("getAllSalesByLotId prefers in-memory current lot sales and loads the rest 
       buyerShipping: 0,
       date: "2026-03-17"
     }],
-    getSalesCacheEntry
+    loadSalesForLotId
   });
 
   const allSalesByLotId = salesMethods.getAllSalesByLotId.call(ctx as never, [1, 2]);
@@ -194,7 +192,7 @@ test("getAllSalesByLotId prefers in-memory current lot sales and loads the rest 
   assert.deepEqual([...allSalesByLotId.keys()], [1, 2]);
   assert.equal(allSalesByLotId.get(1)?.[0]?.id, 11);
   assert.equal(allSalesByLotId.get(2)?.[0]?.id, 22);
-  assert.deepEqual(getSalesCacheEntry.mock.calls, [[2]]);
+  assert.deepEqual(loadSalesForLotId.mock.calls, [[2]]);
 });
 
 test("addWheelSaleToLot uses authoritative persistence for non-current lots too", async () => {

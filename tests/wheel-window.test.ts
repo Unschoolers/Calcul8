@@ -140,7 +140,6 @@ test("wheelSessionRevenue is spins × spinPrice", () => {
   const vm = {
     wheelMode: "live",
     activeWheelConfig: { spinPrice: 5 },
-    wheelDisplayTotalSpins: 10,
     wheelTotalSpins: 10
   };
   const result = WheelWindow.computed!.wheelSessionRevenue.call(vm as never);
@@ -150,8 +149,7 @@ test("wheelSessionRevenue is spins × spinPrice", () => {
 test("wheelSessionRevenue uses preview spins in config mode", () => {
   const vm = {
     wheelMode: "config",
-    activeWheelConfig: { spinPrice: 5 },
-    wheelDisplayTotalSpins: 4,
+    editingWheelConfig: { spinPrice: 5 },
     wheelPreviewTotalSpins: 4,
     wheelTotalSpins: 10
   };
@@ -162,11 +160,12 @@ test("wheelSessionRevenue uses preview spins in config mode", () => {
 test("wheelSessionCost sums slot costs by spin counts", () => {
   const vm = {
     wheelMode: "live",
-    activeWheelSlots: [
-      { cost: 3 },
-      { cost: 7 }
-    ],
-    wheelDisplaySpinCounts: [2, 1],
+    wheelController: {
+      activeSlots: [
+        { cost: 3 },
+        { cost: 7 }
+      ]
+    },
     wheelSpinCounts: [2, 1],
     wheelSessionCostAdjustment: 0
   };
@@ -177,13 +176,14 @@ test("wheelSessionCost sums slot costs by spin counts", () => {
 test("wheelSessionCost includes cost adjustment from chase replacements", () => {
   const vm = {
     wheelMode: "live",
-    activeWheelSlots: [
-      { cost: 10 }, // was 50, replaced → new slot cost is 10
-      { cost: 5 }
-    ],
-    wheelDisplaySpinCounts: [1, 2],
-    wheelSpinCounts: [1, 2],
-    wheelSessionCostAdjustment: 40 // 1 spin × (50 old - 10 new)
+    wheelController: {
+      activeSlots: [
+        { cost: 10 }, // was 50, replaced → new slot cost is 10
+        { cost: 5 }
+      ],
+      sessionCostAdjustment: 40
+    },
+    wheelSpinCounts: [1, 2]
   };
   const result = WheelWindow.computed!.wheelSessionCost.call(vm as never);
   // base: 1×10 + 2×5 = 20, plus adjustment 40 = 60
@@ -193,10 +193,28 @@ test("wheelSessionCost includes cost adjustment from chase replacements", () => 
 test("wheelSessionProfit deducts Whatnot fees and cost", () => {
   const vm = {
     wheelMode: "live",
-    wheelSessionRevenue: 100,
-    wheelDisplayTotalSpins: 10,
+    activeWheelConfig: {
+      id: 1,
+      name: "Wheel",
+      spinPrice: 10,
+      targetMargin: 15,
+      createdAt: "",
+      tiers: [
+        { id: "tier-1", label: "1 Pack", color: "#e74c3c", slots: 1, costPerTier: 3, packsCount: 1, deductionType: "packs", sets: [] }
+      ]
+    },
     wheelTotalSpins: 10,
-    wheelSessionCost: 30
+    wheelSpinCounts: [10],
+    wheelController: {
+      activeSlots: [{ tier: "tier-1", label: "1 Pack", color: "#e74c3c", cost: 3 }],
+      sessionNetRevenue: null,
+      sessionCostAdjustment: 0
+    },
+    lots: [],
+    platformFeePercent: 8,
+    additionalFeePercent: 2.9,
+    additionalFeeAppliesTo: "sale_only",
+    fixedFeePerOrder: 0.3
   };
   const result = WheelWindow.computed!.wheelSessionProfit.call(vm as never);
   // commission: 100 × 0.08 = 8, processing: 100 × 0.029 = 2.9, fixed: 0.30 × 10 = 3
@@ -217,14 +235,15 @@ test("wheelSessionProfit includes buyer shipping from bound lots in fee math", (
         { id: "t1", label: "Tier 1", color: "#f00", slots: 1, costPerTier: 3, packsCount: 1, deductionType: "packs", boundLotId: 42, sets: [] }
       ]
     },
-    activeWheelSlots: [
-      { name: "Prize A", color: "#f00", cost: 3, tier: "t1", packsCount: 1, deductionType: "packs", isChase: false }
-    ],
+    wheelController: {
+      activeSlots: [
+        { name: "Prize A", color: "#f00", cost: 3, tier: "t1", packsCount: 1, deductionType: "packs", isChase: false }
+      ],
+      sessionNetRevenue: null,
+      sessionCostAdjustment: 0
+    },
     wheelSpinCounts: [10],
-    wheelSessionRevenue: 100,
-    wheelDisplayTotalSpins: 10,
     wheelTotalSpins: 10,
-    wheelSessionCost: 30,
     lots: [{
       id: 42,
       name: "Shipping Lot",
@@ -246,8 +265,22 @@ test("wheelSessionProfit includes buyer shipping from bound lots in fee math", (
 test("wheelSessionProfit prefers stored session net revenue in live mode", () => {
   const vm = {
     wheelMode: "live",
-    wheelSessionNetRevenue: 84.65,
-    wheelSessionCost: 30
+    activeWheelConfig: {
+      id: 1,
+      name: "Wheel",
+      spinPrice: 10,
+      targetMargin: 15,
+      createdAt: "",
+      tiers: [
+        { id: "tier-1", label: "1 Pack", color: "#e74c3c", slots: 1, costPerTier: 3, packsCount: 1, deductionType: "packs", sets: [] }
+      ]
+    },
+    wheelSpinCounts: [10],
+    wheelController: {
+      activeSlots: [{ tier: "tier-1", label: "1 Pack", color: "#e74c3c", cost: 3 }],
+      sessionNetRevenue: 84.65,
+      sessionCostAdjustment: 0
+    }
   };
 
   const result = WheelWindow.computed!.wheelSessionProfit.call(vm as never);
@@ -255,12 +288,32 @@ test("wheelSessionProfit prefers stored session net revenue in live mode", () =>
 });
 
 test("wheelSessionMarginDisplay shows dash when no cost", () => {
-  const vm = { wheelSessionCost: 0, wheelSessionProfit: 0 };
+  const vm = {
+    wheelMode: "live",
+    wheelSpinCounts: [],
+    wheelController: {
+      activeSlots: [],
+      sessionNetRevenue: 0,
+      sessionCostAdjustment: 0
+    }
+  };
   assert.equal(WheelWindow.computed!.wheelSessionMarginDisplay.call(vm as never), "—");
 });
 
 test("wheelSessionMarginDisplay shows profit relative to cost", () => {
-  const vm = { wheelSessionCost: 80, wheelSessionProfit: 20 };
+  const vm = {
+    wheelMode: "live",
+    wheelSpinCounts: [1],
+    wheelTotalSpins: 1,
+    activeWheelConfig: { spinPrice: 100, targetMargin: 15 },
+    wheelController: {
+      activeSlots: [
+        { cost: 80 }
+      ],
+      sessionNetRevenue: 100,
+      sessionCostAdjustment: 0
+    }
+  };
   assert.equal(WheelWindow.computed!.wheelSessionMarginDisplay.call(vm as never), "25.0%");
 });
 

@@ -163,6 +163,7 @@ export function createInitialState(): AppState {
 
     // Sales tracking
     sales: [],
+    salesByLotId: new Map(),
     showAddSaleModal: false,
     editingSale: null,
     newSale: {
@@ -268,6 +269,20 @@ export function createInitialState(): AppState {
     wheelSessionUpdatedAt: 0,
     wheelSessionLotSelections: {},
     wheelPendingInventoryIssues: [],
-    wheelSkippedDeductions: []
+    wheelSkippedDeductions: [],
+    wheelSessionNetRevenue: null,
+    wheelSessionCostAdjustment: 0,
+    wheelFairnessHistory: [],
+    wheelChaseTallyHistory: [],
+    wheelPreviewSpinCounts: [],
+    wheelPreviewTotalSpins: 0,
+    wheelPreviewFairnessHistory: [],
+    wheelPreviewChaseTallyHistory: [],
+    wheelLastResultColor: "rgb(var(--v-theme-primary))",
+    wheelSpinHash: "",
+    wheelSpinSeed: "",
+    wheelSpinClientSeed: "",
+    wheelSpinVerificationUrl: "",
+    wheelSpinAlgorithm: ""
   };
 }

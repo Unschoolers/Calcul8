@@ -3,6 +3,7 @@ import { calculateTotalCaseCost } from "../../domain/calculations-fees.ts";
 import type { Lot, WheelConfig } from "../../types/app.ts";
 import { getWheelController } from "./wheelControllerState.ts";
 import {
+  getWheelDisplayConfig,
   getWheelDisplaySlots,
   getWheelDisplaySpinCounts,
   getWheelDisplayTotalSpins
@@ -22,12 +23,7 @@ export const wheelConfigComputeds = {
   },
 
   wheelDisplayConfig(this: Record<string, unknown>): WheelConfig | null {
-    if ((this as Record<string, unknown>).wheelMode === "config") {
-      return ((this as Record<string, unknown>).editingWheelConfig as WheelConfig | null)
-        || ((this as Record<string, unknown>).activeWheelConfig as WheelConfig | null)
-        || null;
-    }
-    return ((this as Record<string, unknown>).activeWheelConfig as WheelConfig | null) || null;
+    return getWheelDisplayConfig(this as Record<string, unknown>);
   },
 
   wheelDisplaySlots(this: Record<string, unknown>): WheelSlot[] {

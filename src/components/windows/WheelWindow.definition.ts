@@ -4,6 +4,7 @@ import { createWindowContextBridge } from "./contextBridge.ts";
 import { wheelComputeds } from "./wheelComputeds.ts";
 import { wheelConfigMethods } from "./wheelConfigMethods.ts";
 import { createWheelWindowState, getWheelWindowLocalKeys } from "./wheelControllerState.ts";
+import { getWheelController } from "./wheelControllerState.ts";
 import {
     WHEEL_COMPACT_LAYOUT_BREAKPOINT,
     isWheelCompactViewport,
@@ -12,6 +13,7 @@ import {
 } from "./wheelLayoutPolicy.ts";
 import { wheelSessionMethods } from "./wheelSessionMethods.ts";
 import { wheelSpinMethods } from "./wheelSpinMethods.ts";
+import { buildSlotsFromConfig } from "./wheelHelpers.ts";
 
 function getWheelCanvasTargetSize(panel: HTMLElement | null, presentationMode: boolean): number {
   return resolveWheelCanvasTargetSize({
@@ -98,8 +100,12 @@ export const wheelWindowDefinition: any = {
       deep: true
     },
     activeWheelConfigId(this: Record<string, unknown>) {
-      const vm = this as Record<string, unknown> & { loadWheelConfig: () => void };
+      const vm = this as Record<string, unknown> & {
+        loadWheelConfig: () => void;
+        ensureWheelEditorState: () => void;
+      };
       vm.loadWheelConfig();
+      vm.ensureWheelEditorState();
     },
     wheelDisplaySlots: {
       handler(this: Record<string, unknown>) {
@@ -219,6 +225,56 @@ export const wheelWindowDefinition: any = {
       }
       (this as Record<string, unknown>).wheelManageDialog = false;
     },
+    ensureWheelEditorState(this: Record<string, unknown>): void {
+      const activeConfig = (this as Record<string, unknown>).activeWheelConfig as WheelConfig | null;
+      if (!activeConfig) return;
+
+      const controller = getWheelController(this as Record<string, unknown>);
+      let repaired = false;
+
+      const editing = (this as Record<string, unknown>).editingWheelConfig as WheelConfig | null;
+      if (!editing || editing.id !== activeConfig.id) {
+        (this as Record<string, unknown>).editingWheelConfig =
+          JSON.parse(JSON.stringify(activeConfig)) as WheelConfig;
+        repaired = true;
+      }
+
+      if (!Array.isArray(controller.activeSlots) || controller.activeSlots.length === 0) {
+        controller.activeSlots = buildSlotsFromConfig(activeConfig);
+        repaired = true;
+      }
+
+      if (!Array.isArray(controller.previewSlots) || controller.previewSlots.length === 0) {
+        controller.previewSlots = [...controller.activeSlots];
+        repaired = true;
+      }
+
+      if (
+        (!Array.isArray((this as Record<string, unknown>).wheelSpinCounts)
+          || ((this as Record<string, unknown>).wheelSpinCounts as number[]).length === 0)
+        && controller.activeSlots.length > 0
+        && !Number((this as Record<string, unknown>).wheelTotalSpins || 0)
+      ) {
+        (this as Record<string, unknown>).wheelSpinCounts = new Array(controller.activeSlots.length).fill(0);
+        repaired = true;
+      }
+
+      if (
+        (!Array.isArray(controller.previewSpinCounts) || controller.previewSpinCounts.length === 0)
+        && controller.previewSlots.length > 0
+        && !Number(controller.previewTotalSpins || 0)
+      ) {
+        controller.previewSpinCounts = new Array(controller.previewSlots.length).fill(0);
+        repaired = true;
+      }
+
+      if (repaired) {
+        nextTick(() => {
+          const vm = this as Record<string, unknown> & { drawWheel: (offset?: number) => void };
+          vm.drawWheel(((this as Record<string, unknown>).wheelCurrentAngle as number) || 0);
+        });
+      }
+    },
     getWindowComponentContext(this: Record<string, unknown>): Record<string, unknown> {
       return this as Record<string, unknown>;
     },
@@ -297,6 +353,7 @@ export const wheelWindowDefinition: any = {
     const configs = (this.wheelConfigs || []) as WheelConfig[];
     if (configs.length > 0 && (this.activeWheelConfigId as number | null) != null) {
       (this as Record<string, unknown> & { loadWheelConfig: () => void }).loadWheelConfig();
+      (this as Record<string, unknown> & { ensureWheelEditorState: () => void }).ensureWheelEditorState();
     }
 
     // Resize canvas for container

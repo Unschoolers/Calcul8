@@ -40,6 +40,7 @@ import {
   saveAuthoritativeLivePricing,
   saveAuthoritativeSale
 } from "../src/app-core/methods/sales-live-api.ts";
+import { getSalesCacheStatusKey } from "../src/app-core/storageKeys.ts";
 
 type MockStorage = {
   getItem(key: string): string | null;
@@ -70,6 +71,9 @@ function createApp(overrides: Record<string, unknown> = {}) {
   return {
     activeScopeType: "personal",
     activeWorkspaceId: null,
+    currentLotId: null,
+    sales: [],
+    salesByLotId: new Map(),
     getSalesStorageKey: (lotId: number) => `sales:${lotId}`,
     googleAuthEpoch: 0,
     hasProAccess: false,
@@ -231,6 +235,11 @@ test("fetchAuthoritativeSales normalizes API payload, scopes workspace requests,
     "/lots/42/sales?workspaceId=team-1"
   );
   assert.equal(localStorage.getItem("sales:42"), JSON.stringify(sales));
+  assert.equal(
+    localStorage.getItem(getSalesCacheStatusKey(42, { scopeType: "workspace", workspaceId: "team-1" })),
+    "loaded"
+  );
+  assert.deepEqual(app.salesByLotId.get(42), sales);
 });
 
 test("requestJson surfaces API message bodies and requests default 401 auth expiry", async () => {

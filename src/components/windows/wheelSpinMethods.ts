@@ -1,5 +1,4 @@
 import { broadcastWheelSession } from "../../app-core/methods/ui/wheel-broadcast.ts";
-import { createWheelFairnessCommit, revealWheelFairnessResult } from "../../app-core/methods/wheel-fairness-api.ts";
 import { assignWheelPendingInventoryIssues } from "../../app-core/shared/wheel-session-compat.ts";
 import type { Lot, PendingWheelInventoryIssue, Sale, WheelConfig, WheelFairnessEntry } from "../../types/app.ts";
 import {
@@ -13,11 +12,18 @@ import { getWheelController } from "./wheelControllerState.ts";
 import {
     createWheelSale,
     easeOutQuart,
-    generateCryptoSeed,
-    hashSeed,
-    seedToIndex,
     type WheelSlot
 } from "./wheelHelpers.ts";
+import { resolveWheelFairnessSpin } from "./wheelSpinFairness.ts";
+import {
+  applyWheelSpinBlockedReason,
+  beginWheelSpin,
+  buildWheelSpinFairnessEntry,
+  finalizeWheelSpinProof,
+  getWheelSpinSlots,
+  shouldRecordWheelLiveSession,
+  type WheelFairnessResult
+} from "./wheelSpinState.ts";
 import {
     getAvailableSinglesQuantityForWheelTier,
     getRemainingPacksForWheelLot
@@ -60,58 +66,6 @@ function appendWheelSessionNetRevenue(context: Record<string, unknown>, sale: Pi
   revenueController.sessionNetRevenue = currentNetRevenue + Math.max(0, netRevenue);
 }
 
-async function resolveWheelFairnessSpin(
-  context: Record<string, unknown>,
-  slotCount: number
-): Promise<{
-  resultIndex: number;
-  hash: string;
-  seed: string;
-  clientSeed?: string;
-  verificationUrl?: string;
-  algorithm?: string;
-}> {
-  const buildLocalFallback = async () => {
-    const localSeed = generateCryptoSeed();
-    return {
-      resultIndex: seedToIndex(localSeed, slotCount),
-      hash: await hashSeed(localSeed),
-      seed: localSeed
-    };
-  };
-
-  const clientSeed = generateCryptoSeed();
-  let commit = null;
-  try {
-    commit = await createWheelFairnessCommit(slotCount);
-  } catch {
-    return buildLocalFallback();
-  }
-
-  if (!commit) {
-    return buildLocalFallback();
-  }
-
-  let reveal;
-  try {
-    reveal = await revealWheelFairnessResult(commit.commitToken, clientSeed);
-  } catch {
-    return buildLocalFallback();
-  }
-  if (reveal.serverSeedHash !== commit.serverSeedHash) {
-    throw new Error("Wheel fairness hash mismatch.");
-  }
-
-  return {
-    resultIndex: reveal.resultIndex,
-    hash: reveal.serverSeedHash,
-    seed: reveal.serverSeed,
-    clientSeed: reveal.clientSeed,
-    verificationUrl: reveal.verificationUrl,
-    algorithm: reveal.algorithm
-  };
-}
-
 export const wheelSpinMethods = {
   drawWheel(this: Record<string, unknown>, offset = 0): void {
     const canvasEl = (this.$refs as Record<string, unknown>).wheelCanvas as HTMLCanvasElement | null;
@@ -120,8 +74,7 @@ export const wheelSpinMethods = {
     if (!ctx) return;
 
     const drawController = getWheelController(this as Record<string, unknown>);
-    const slots = (((this as Record<string, unknown>).wheelDisplaySlots
-      || drawController.activeSlots)) as WheelSlot[];
+    const slots = getWheelSpinSlots(this as Record<string, unknown>);
     const size = Math.max(20, (this as Record<string, unknown>).wheelCanvasSize as number);
     const dpr = getWheelCanvasDpr();
 
@@ -193,30 +146,20 @@ export const wheelSpinMethods = {
       saveWheelSession: () => void;
     };
     const spinController = getWheelController(vm as Record<string, unknown>);
-    const slots = (((vm as Record<string, unknown>).wheelDisplaySlots || spinController.activeSlots)) as WheelSlot[];
-    const shouldRecordLiveSession = recordSession && (vm.wheelMode as string) !== "config";
+    const slots = getWheelSpinSlots(vm as Record<string, unknown>);
+    const shouldRecordLiveSession = shouldRecordWheelLiveSession(vm as Record<string, unknown>, recordSession);
     if (vm.wheelSpinning || !slots.length) return;
     if (shouldRecordLiveSession && ((vm as Record<string, unknown>).wheelSpinBlockedReason as string)) {
-      const blockedController = getWheelController(vm as Record<string, unknown>);
-      blockedController.inventoryWarning = (vm as Record<string, unknown>).wheelSpinBlockedReason as string;
+      applyWheelSpinBlockedReason(
+        vm as Record<string, unknown>,
+        (vm as Record<string, unknown>).wheelSpinBlockedReason as string
+      );
       return;
     }
 
-    const fairnessResult = await resolveWheelFairnessSpin(vm as Record<string, unknown>, slots.length);
+    const fairnessResult = await resolveWheelFairnessSpin(slots.length);
 
-    const initController = getWheelController(vm as Record<string, unknown>);
-    initController.spinSeed = "";
-    initController.spinHash = fairnessResult.hash;
-    initController.spinClientSeed = fairnessResult.clientSeed || "";
-    initController.spinVerificationUrl = "";
-    initController.spinAlgorithm = fairnessResult.algorithm || "";
-    initController.showSeed = false;
-    initController.inventoryWarning = "";
-
-    vm.wheelSpinning = true;
-    initController.highlightedSlotIndex = -1;
-    vm.wheelLastResult = "Spinning\u2026";
-    initController.lastResultColor = "rgb(var(--v-theme-primary))";
+    beginWheelSpin(vm as Record<string, unknown>, fairnessResult);
     vm.saveWheelSession();
 
     const sliceAngle = (2 * Math.PI) / slots.length;
@@ -270,25 +213,13 @@ export const wheelSpinMethods = {
       vm.drawWheel(endAngle);
       vm.wheelSpinning = false;
       pointerEl?.classList.remove("wheel-pointer--tick");
-      const spinController = getWheelController(vm as Record<string, unknown>);
-      spinController.spinSeed = fairnessResult.seed;
-      spinController.spinClientSeed = fairnessResult.clientSeed || "";
-      spinController.spinVerificationUrl = fairnessResult.verificationUrl || "";
-      spinController.spinAlgorithm = fairnessResult.algorithm || "";
-      spinController.showSeed = true;
-      vm.appendWheelFairnessHistory({
-        spinNumber: Number(shouldRecordLiveSession
-          ? ((vm as Record<string, unknown>).wheelTotalSpins || 0)
-          : (spinController.previewTotalSpins || 0)),
-        label: slots[targetIndex]?.name || "Unknown result",
-        color: slots[targetIndex]?.color || "rgb(var(--v-theme-primary))",
-        hash: fairnessResult.hash,
-        seed: fairnessResult.seed,
-        clientSeed: fairnessResult.clientSeed,
-        verificationUrl: fairnessResult.verificationUrl,
-        algorithm: fairnessResult.algorithm,
-        timestamp: Date.now()
-      }, { preview: !shouldRecordLiveSession });
+      finalizeWheelSpinProof(vm as Record<string, unknown>, fairnessResult);
+      vm.appendWheelFairnessHistory(buildWheelSpinFairnessEntry(vm as Record<string, unknown>, {
+        fairnessResult,
+        slots,
+        targetIndex,
+        shouldRecordLiveSession
+      }), { preview: !shouldRecordLiveSession });
       vm.saveWheelSession();
       vm.landOnSlot(targetIndex, { recordSession: shouldRecordLiveSession });
     };
@@ -298,8 +229,7 @@ export const wheelSpinMethods = {
 
   recordPreviewSpinResult(this: Record<string, unknown>, slotIndex: number): void {
     const controller = getWheelController(this as Record<string, unknown>);
-    const slots = (((this as Record<string, unknown>).wheelDisplaySlots
-      || controller.activeSlots)) as WheelSlot[];
+    const slots = getWheelSpinSlots(this as Record<string, unknown>);
     if (!slots[slotIndex]) return;
     const counts = (controller.previewSpinCounts || []) as number[];
     const nextCounts = counts.length === slots.length ? [...counts] : new Array(slots.length).fill(0);
@@ -310,8 +240,7 @@ export const wheelSpinMethods = {
 
   recordSpinResult(this: Record<string, unknown>, slotIndex: number): void {
     const recordController = getWheelController(this as Record<string, unknown>);
-    const slots = (((this as Record<string, unknown>).wheelDisplaySlots
-      || recordController.activeSlots)) as WheelSlot[];
+    const slots = getWheelSpinSlots(this as Record<string, unknown>);
     const slot = slots[slotIndex];
     if (!slot) return;
 
@@ -382,8 +311,7 @@ export const wheelSpinMethods = {
 
   landOnSlot(this: Record<string, unknown>, slotIndex: number, options: { recordSession?: boolean } = {}): void {
     const landController = getWheelController(this as Record<string, unknown>);
-    const slots = (((this as Record<string, unknown>).wheelDisplaySlots
-      || landController.activeSlots)) as WheelSlot[];
+    const slots = getWheelSpinSlots(this as Record<string, unknown>);
     const slot = slots[slotIndex];
     if (!slot) return;
     const recordSession = options.recordSession ?? true;

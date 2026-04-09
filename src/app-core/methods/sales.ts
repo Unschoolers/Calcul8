@@ -7,7 +7,6 @@ import type {
 } from "../../types/app.ts";
 import type { AppContext, AppMethodState } from "../context-app.ts";
 import {
-    getSalesCacheStatusKey,
     getScopedWheelConfigSessionStorageKey,
     getScopedWheelConfigsStorageKey,
     getScopedWheelSessionStorageKey
@@ -44,7 +43,14 @@ import {
     refreshChartsForCurrentTab
 } from "./sales-ui-helpers.ts";
 import { normalizeWheelConfigs } from "../shared/normalize-wheel-config.ts";
-import { assignWheelPendingInventoryIssues } from "../shared/wheel-session-compat.ts";
+import {
+    applyRootWheelSessionSnapshot,
+    buildRootWheelSessionSnapshot,
+    resetRootWheelSessionState,
+    type RootWheelSessionStateContext
+} from "../shared/wheel-root-session-state.ts";
+import { persistSalesCacheToStorage } from "../shared/sales-cache-storage.ts";
+import { replaceRootLotSales } from "../shared/sales-root-state.ts";
 
 export const salesMethods: ThisType<AppContext> & Pick<
   AppMethodState,
@@ -98,7 +104,7 @@ export const salesMethods: ThisType<AppContext> & Pick<
         lotId,
         this.currentLotId === lotId
           ? [...this.sales]
-          : [...this.getSalesCacheEntry(lotId).sales]
+          : this.loadSalesForLotId(lotId)
       ] as const)
     );
   },
@@ -107,12 +113,8 @@ export const salesMethods: ThisType<AppContext> & Pick<
     if (!this.currentLotId) return;
 
     try {
-      const key = this.getSalesStorageKey(this.currentLotId);
-      localStorage.setItem(key, JSON.stringify(this.sales));
-      localStorage.setItem(
-        getSalesCacheStatusKey(this.currentLotId, getActiveStorageScope(this)),
-        "loaded"
-      );
+      persistSalesCacheToStorage(this, this.currentLotId, this.sales);
+      replaceRootLotSales(this, this.currentLotId, this.sales);
     } catch (error) {
       console.error("Failed to save sales:", error);
     }
@@ -253,15 +255,11 @@ export const salesMethods: ThisType<AppContext> & Pick<
         return;
       } else {
         // Different lot — persist to localStorage directly
-        const storageKey = this.getSalesStorageKey(lotId);
-        const raw = localStorage.getItem(storageKey);
+        const raw = localStorage.getItem(this.getSalesStorageKey(lotId));
         const existingSales: Sale[] = raw ? JSON.parse(raw) : [];
         existingSales.push(sale);
-        localStorage.setItem(storageKey, JSON.stringify(existingSales));
-        localStorage.setItem(
-          getSalesCacheStatusKey(lotId, getActiveStorageScope(this)),
-          "loaded"
-        );
+        persistSalesCacheToStorage(this, lotId, existingSales);
+        replaceRootLotSales(this, lotId, existingSales);
       }
 
       this.notify(`Wheel sale recorded`, "success");
@@ -272,7 +270,6 @@ export const salesMethods: ThisType<AppContext> & Pick<
   },
 
   loadWheelFromStorage(): void {
-    const wheelSessionState = this as unknown as Record<string, unknown>;
     this.wheelConfigs = [];
     this.activeWheelConfigId = null;
 
@@ -289,27 +286,7 @@ export const salesMethods: ThisType<AppContext> & Pick<
       // Ignore parse errors
     }
 
-    this.wheelTotalSpins = 0;
-    this.wheelSpinCounts = [];
-    this.wheelLastResult = "";
-    this.wheelSessionUpdatedAt = 0;
-    this.wheelSessionLotSelections = {};
-    assignWheelPendingInventoryIssues(this as unknown as Record<string, unknown>, []);
-    wheelSessionState.wheelSessionNetRevenue = 0;
-    wheelSessionState.wheelSessionCostAdjustment = 0;
-    wheelSessionState.wheelFairnessHistory = [];
-    wheelSessionState.wheelChaseTallyHistory = [];
-    wheelSessionState.wheelPreviewSpinCounts = [];
-    wheelSessionState.wheelPreviewTotalSpins = 0;
-    wheelSessionState.wheelPreviewFairnessHistory = [];
-    wheelSessionState.wheelPreviewChaseTallyHistory = [];
-    this.wheelCurrentAngle = 0;
-    wheelSessionState.wheelLastResultColor = "rgb(var(--v-theme-primary))";
-    wheelSessionState.wheelSpinHash = "";
-    wheelSessionState.wheelSpinSeed = "";
-    wheelSessionState.wheelSpinClientSeed = "";
-    wheelSessionState.wheelSpinVerificationUrl = "";
-    wheelSessionState.wheelSpinAlgorithm = "";
+    resetRootWheelSessionState(this as unknown as RootWheelSessionStateContext);
 
     try {
       const rawSession = localStorage.getItem(getScopedWheelSessionStorageKey(getActiveStorageScope(this)));
@@ -318,62 +295,7 @@ export const salesMethods: ThisType<AppContext> & Pick<
         if (session.activeWheelConfigId != null) {
           this.activeWheelConfigId = session.activeWheelConfigId as number;
         }
-        if (typeof session.wheelTotalSpins === "number") {
-          this.wheelTotalSpins = session.wheelTotalSpins;
-        }
-        if (Array.isArray(session.wheelSpinCounts)) {
-          this.wheelSpinCounts = session.wheelSpinCounts as number[];
-        }
-        if (typeof session.wheelLastResult === "string") {
-          this.wheelLastResult = session.wheelLastResult;
-        }
-        if (typeof session.wheelSessionUpdatedAt === "number") {
-          this.wheelSessionUpdatedAt = session.wheelSessionUpdatedAt;
-        }
-        if (Number.isFinite(Number(session.wheelSessionNetRevenue))) {
-          wheelSessionState.wheelSessionNetRevenue = Number(session.wheelSessionNetRevenue) || 0;
-        }
-        if (Number.isFinite(Number(session.wheelSessionCostAdjustment))) {
-          wheelSessionState.wheelSessionCostAdjustment = Number(session.wheelSessionCostAdjustment) || 0;
-        }
-        if (Array.isArray(session.wheelFairnessHistory)) {
-          wheelSessionState.wheelFairnessHistory = session.wheelFairnessHistory.slice(-20);
-        }
-        if (Array.isArray(session.wheelChaseTallyHistory)) {
-          wheelSessionState.wheelChaseTallyHistory = session.wheelChaseTallyHistory;
-        }
-        if (Array.isArray(session.wheelPreviewSpinCounts)) {
-          wheelSessionState.wheelPreviewSpinCounts = session.wheelPreviewSpinCounts;
-        }
-        if (typeof session.wheelPreviewTotalSpins === "number") {
-          wheelSessionState.wheelPreviewTotalSpins = session.wheelPreviewTotalSpins;
-        }
-        if (Array.isArray(session.wheelPreviewFairnessHistory)) {
-          wheelSessionState.wheelPreviewFairnessHistory = session.wheelPreviewFairnessHistory.slice(-20);
-        }
-        if (Array.isArray(session.wheelPreviewChaseTallyHistory)) {
-          wheelSessionState.wheelPreviewChaseTallyHistory = session.wheelPreviewChaseTallyHistory;
-        }
-        if (session.wheelSessionLotSelections && typeof session.wheelSessionLotSelections === "object") {
-          this.wheelSessionLotSelections = session.wheelSessionLotSelections as Record<string, number | null>;
-        }
-        assignWheelPendingInventoryIssues(
-          this as unknown as Record<string, unknown>,
-          Array.isArray(session.wheelPendingInventoryIssues)
-            ? session.wheelPendingInventoryIssues
-            : session.wheelSkippedDeductions
-        );
-        if (Number.isFinite(Number(session.wheelCurrentAngle))) {
-          this.wheelCurrentAngle = Number(session.wheelCurrentAngle) || 0;
-        }
-        if (typeof session.wheelLastResultColor === "string" && session.wheelLastResultColor.trim()) {
-          wheelSessionState.wheelLastResultColor = session.wheelLastResultColor;
-        }
-        wheelSessionState.wheelSpinHash = String(session.wheelSpinHash ?? "");
-        wheelSessionState.wheelSpinSeed = String(session.wheelSpinSeed ?? "");
-        wheelSessionState.wheelSpinClientSeed = String(session.wheelSpinClientSeed ?? "");
-        wheelSessionState.wheelSpinVerificationUrl = String(session.wheelSpinVerificationUrl ?? "");
-        wheelSessionState.wheelSpinAlgorithm = String(session.wheelSpinAlgorithm ?? "");
+        applyRootWheelSessionSnapshot(this as unknown as RootWheelSessionStateContext, session);
       }
     } catch {
       // Ignore parse errors
@@ -393,7 +315,6 @@ export const salesMethods: ThisType<AppContext> & Pick<
 
   saveWheelSessionToStorage(): void {
     try {
-      const wheelSessionState = this as unknown as Record<string, unknown>;
       const storageScope = getActiveStorageScope(this);
       const storageKey = getScopedWheelSessionStorageKey(storageScope);
       let preserved: Record<string, unknown> = {};
@@ -409,32 +330,11 @@ export const salesMethods: ThisType<AppContext> & Pick<
         preserved = {};
       }
       const session = {
-        ...preserved,
         activeWheelConfigId: this.activeWheelConfigId,
-        wheelTotalSpins: this.wheelTotalSpins,
-        wheelSpinCounts: this.wheelSpinCounts,
-        wheelLastResult: this.wheelLastResult,
-        wheelSessionUpdatedAt: this.wheelSessionUpdatedAt,
-        wheelSessionLotSelections: this.wheelSessionLotSelections,
-        wheelPendingInventoryIssues: this.wheelPendingInventoryIssues,
-        wheelSkippedDeductions: this.wheelPendingInventoryIssues,
-        wheelSessionNetRevenue: wheelSessionState.wheelSessionNetRevenue ?? preserved.wheelSessionNetRevenue ?? 0,
-        wheelSessionCostAdjustment: wheelSessionState.wheelSessionCostAdjustment ?? preserved.wheelSessionCostAdjustment ?? 0,
-        wheelFairnessHistory: wheelSessionState.wheelFairnessHistory ?? preserved.wheelFairnessHistory ?? [],
-        wheelChaseTallyHistory: wheelSessionState.wheelChaseTallyHistory ?? preserved.wheelChaseTallyHistory ?? [],
-        wheelPreviewSpinCounts: wheelSessionState.wheelPreviewSpinCounts ?? preserved.wheelPreviewSpinCounts ?? [],
-        wheelPreviewTotalSpins: wheelSessionState.wheelPreviewTotalSpins ?? preserved.wheelPreviewTotalSpins ?? 0,
-        wheelPreviewFairnessHistory: wheelSessionState.wheelPreviewFairnessHistory ?? preserved.wheelPreviewFairnessHistory ?? [],
-        wheelPreviewChaseTallyHistory: wheelSessionState.wheelPreviewChaseTallyHistory ?? preserved.wheelPreviewChaseTallyHistory ?? [],
-        wheelCurrentAngle: this.wheelCurrentAngle ?? preserved.wheelCurrentAngle ?? 0,
-        wheelLastResultColor: wheelSessionState.wheelLastResultColor
-          ?? preserved.wheelLastResultColor
-          ?? "rgb(var(--v-theme-primary))",
-        wheelSpinHash: wheelSessionState.wheelSpinHash ?? preserved.wheelSpinHash ?? "",
-        wheelSpinSeed: wheelSessionState.wheelSpinSeed ?? preserved.wheelSpinSeed ?? "",
-        wheelSpinClientSeed: wheelSessionState.wheelSpinClientSeed ?? preserved.wheelSpinClientSeed ?? "",
-        wheelSpinVerificationUrl: wheelSessionState.wheelSpinVerificationUrl ?? preserved.wheelSpinVerificationUrl ?? "",
-        wheelSpinAlgorithm: wheelSessionState.wheelSpinAlgorithm ?? preserved.wheelSpinAlgorithm ?? ""
+        ...buildRootWheelSessionSnapshot(
+          this as unknown as RootWheelSessionStateContext,
+          preserved
+        )
       };
       localStorage.setItem(
         storageKey,

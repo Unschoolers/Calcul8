@@ -2,17 +2,21 @@ import { inject, type PropType } from "vue";
 import { createNestedWindowContextBridge } from "./contextBridge.ts";
 import { translateAppMessage } from "../../app-core/i18n/index.ts";
 import type { Lot, WheelConfig } from "../../types/app.ts";
-import { getWheelController } from "./wheelControllerState.ts";
-import type { WheelSlot } from "./wheelHelpers.ts";
 import {
-  calculateAverageWheelSellingTaxPercent,
-  calculateWheelBuyerShippingTotal,
-  calculateWheelNetFromGross
-} from "./wheelHelpers.ts";
+  getWheelDisplayConfig,
+  getWheelDisplayChaseTallyHistory,
+  getWheelDisplaySlots,
+  getWheelDisplaySpinCounts,
+  getWheelDisplayTotalSpins,
+  getWheelSessionCost,
+  getWheelSessionProfit,
+  getWheelSessionRevenue
+} from "./wheelComputedShared.ts";
 import {
   getAvailableSinglesQuantityForWheelTier,
   getRemainingPacksForWheelLot
 } from "./wheelSaleSupport.ts";
+import type { WheelSlot } from "./wheelHelpers.ts";
 
 export const WheelSessionPanel = {
   name: "WheelSessionPanel",
@@ -24,71 +28,25 @@ export const WheelSessionPanel = {
   },
   computed: {
     wheelSessionPanelDisplayConfig(this: Record<string, unknown>): WheelConfig | null {
-      if ((this as Record<string, unknown>).wheelMode === "config") {
-        return ((this as Record<string, unknown>).editingWheelConfig as WheelConfig | null)
-          || ((this as Record<string, unknown>).activeWheelConfig as WheelConfig | null)
-          || null;
-      }
-      return ((this as Record<string, unknown>).activeWheelConfig as WheelConfig | null) || null;
+      return getWheelDisplayConfig(this as Record<string, unknown>);
     },
-    wheelSessionPanelDisplaySlots(this: Record<string, unknown>): WheelSlot[] {
-      const controller = getWheelController(this as Record<string, unknown>);
-      return ((((this as Record<string, unknown>).wheelMode === "config"
-        ? controller.previewSlots
-        : controller.activeSlots) || []) as WheelSlot[]);
+    wheelSessionPanelDisplaySlots(this: Record<string, unknown>) {
+      return getWheelDisplaySlots(this as Record<string, unknown>);
     },
-    wheelSessionPanelDisplaySpinCounts(this: Record<string, unknown>): number[] {
-      const controller = getWheelController(this as Record<string, unknown>);
-      return ((((this as Record<string, unknown>).wheelMode === "config"
-        ? controller.previewSpinCounts
-        : (this as Record<string, unknown>).wheelSpinCounts) || []) as number[]);
+    wheelSessionPanelDisplaySpinCounts(this: Record<string, unknown>) {
+      return getWheelDisplaySpinCounts(this as Record<string, unknown>);
     },
     wheelSessionPanelDisplayTotalSpins(this: Record<string, unknown>): number {
-      const controller = getWheelController(this as Record<string, unknown>);
-      return Number(((this as Record<string, unknown>).wheelMode === "config"
-        ? controller.previewTotalSpins
-        : (this as Record<string, unknown>).wheelTotalSpins) || 0);
+      return getWheelDisplayTotalSpins(this as Record<string, unknown>);
     },
     wheelSessionPanelRevenue(this: Record<string, unknown>): number {
-      const config = (this as Record<string, unknown>).wheelSessionPanelDisplayConfig as WheelConfig | null;
-      return Number((this as Record<string, unknown>).wheelSessionPanelDisplayTotalSpins || 0) * Number(config?.spinPrice || 0);
+      return getWheelSessionRevenue(this as Record<string, unknown>);
     },
     wheelSessionPanelCost(this: Record<string, unknown>): number {
-      const controller = getWheelController(this as Record<string, unknown>);
-      const slots = ((this as Record<string, unknown>).wheelSessionPanelDisplaySlots || []) as WheelSlot[];
-      const counts = ((this as Record<string, unknown>).wheelSessionPanelDisplaySpinCounts || []) as number[];
-      const base = counts.reduce((sum, count, index) => sum + (Number(count) || 0) * (Number(slots[index]?.cost) || 0), 0);
-      const adjustment = (this as Record<string, unknown>).wheelMode === "config"
-        ? 0
-        : Number(controller.sessionCostAdjustment || 0);
-      return base + adjustment;
+      return getWheelSessionCost(this as Record<string, unknown>);
     },
     wheelSessionPanelProfit(this: Record<string, unknown>): number {
-      const controller = getWheelController(this as Record<string, unknown>);
-      if ((this as Record<string, unknown>).wheelMode !== "config") {
-        const storedNetRevenue = controller.sessionNetRevenue;
-        if (storedNetRevenue != null && Number.isFinite(Number(storedNetRevenue))) {
-          return Number(storedNetRevenue) - Number((this as Record<string, unknown>).wheelSessionPanelCost || 0);
-        }
-      }
-
-      const config = (this as Record<string, unknown>).wheelSessionPanelDisplayConfig as WheelConfig | null;
-      const slots = ((this as Record<string, unknown>).wheelSessionPanelDisplaySlots || []) as WheelSlot[];
-      const counts = ((this as Record<string, unknown>).wheelSessionPanelDisplaySpinCounts || []) as number[];
-      const lots = (((this as Record<string, unknown>).lots || []) as Lot[]);
-      const totalSpins = Number((this as Record<string, unknown>).wheelSessionPanelDisplayTotalSpins || 0);
-      const grossRevenue = Number((this as Record<string, unknown>).wheelSessionPanelRevenue || 0);
-      const shippingTotal = calculateWheelBuyerShippingTotal(config, slots, counts, lots);
-      const buyerShippingPerOrder = totalSpins > 0 ? (shippingTotal / totalSpins) : 0;
-      const sellingTaxPercent = config ? calculateAverageWheelSellingTaxPercent(config, lots) : 0;
-      const netRevenue = calculateWheelNetFromGross(
-        grossRevenue,
-        this as Record<string, unknown>,
-        totalSpins,
-        buyerShippingPerOrder,
-        sellingTaxPercent
-      );
-      return netRevenue - Number((this as Record<string, unknown>).wheelSessionPanelCost || 0);
+      return getWheelSessionProfit(this as Record<string, unknown>);
     },
     wheelSessionPanelProfitDisplay(this: Record<string, unknown>): string {
       const profit = Number((this as Record<string, unknown>).wheelSessionPanelProfit || 0);
@@ -162,9 +120,7 @@ export const WheelSessionPanel = {
         return acc;
       }, {});
 
-      const history = (((this as Record<string, unknown>).wheelMode === "config"
-        ? getWheelController(this as Record<string, unknown>).previewChaseTallyHistory
-        : getWheelController(this as Record<string, unknown>).chaseTallyHistory) || []) as Array<{
+      const history = (getWheelDisplayChaseTallyHistory(this as Record<string, unknown>) || []) as Array<{
         tierId: string;
         label: string;
         color: string;

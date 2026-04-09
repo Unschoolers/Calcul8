@@ -492,6 +492,7 @@ export interface AppState extends LotSetup {
   currentLivePricingVersion: number | null;
   showProfitCalculator: boolean;
   sales: Sale[];
+  salesByLotId: Map<number, Sale[]>;
   showAddSaleModal: boolean;
   editingSale: Sale | null;
   newSale: NewSaleDraft;
@@ -575,7 +576,18 @@ export interface AppState extends LotSetup {
   wheelSessionLotSelections: Record<string, number | null>;
   wheelPendingInventoryIssues: PendingWheelInventoryIssue[];
   wheelSkippedDeductions: PendingWheelInventoryIssue[];
-  wheelSpinClientSeed?: string;
-  wheelSpinVerificationUrl?: string;
-  wheelSpinAlgorithm?: string;
+  wheelSessionNetRevenue: number | null;
+  wheelSessionCostAdjustment: number;
+  wheelFairnessHistory: WheelFairnessEntry[];
+  wheelChaseTallyHistory: Array<{ tierId: string; label: string; color: string; count: number }>;
+  wheelPreviewSpinCounts: number[];
+  wheelPreviewTotalSpins: number;
+  wheelPreviewFairnessHistory: WheelFairnessEntry[];
+  wheelPreviewChaseTallyHistory: Array<{ tierId: string; label: string; color: string; count: number }>;
+  wheelLastResultColor: string;
+  wheelSpinHash: string;
+  wheelSpinSeed: string;
+  wheelSpinClientSeed: string;
+  wheelSpinVerificationUrl: string;
+  wheelSpinAlgorithm: string;
 }

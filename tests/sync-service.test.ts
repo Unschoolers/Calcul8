@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test, vi } from "vitest";
 import { applyCloudSnapshotToLocal, parseCloudSnapshot, shouldApplyCloudSnapshot } from "../src/app-core/methods/ui/sync-apply.ts";
+import { getSalesCacheStatusKey } from "../src/app-core/storageKeys.ts";
 
 const {
   handleExpiredAuthMock,
@@ -673,6 +674,7 @@ test("applyCloudSnapshotToLocal sanitizes incoming wheel configs before saving",
     activeWheelConfigId: null as number | null,
     currentLotId: 1,
     sales: [],
+    salesByLotId: new Map([[999, [{ id: 999 }]]]),
     activeScopeType: "personal" as const,
     activeWorkspaceId: null as string | null,
     saveLotsToStorage() {
@@ -742,6 +744,18 @@ test("applyCloudSnapshotToLocal sanitizes incoming wheel configs before saving",
     date: "2026-03-30",
     netRevenue: 8.61
   }]));
+  assert.equal(storage.getItem(getSalesCacheStatusKey(1)), "loaded");
+  assert.equal(app.salesByLotId.has(999), false);
+  assert.deepEqual(app.salesByLotId.get(1), [{
+    id: 301,
+    type: "wheel",
+    quantity: 1,
+    packsCount: 1,
+    price: 10,
+    buyerShipping: 0,
+    date: "2026-03-30",
+    netRevenue: 8.61
+  }]);
   assert.deepEqual(saves, ["lots", "wheel", "loadLot"]);
 });
 

@@ -44,6 +44,7 @@ import {
   resetAuthoritativeLivePricingState
 } from "./config-live-pricing.ts";
 import { deleteCurrentLotWithPersistence } from "./config-lot-delete.ts";
+import { replaceRootLotSales } from "../shared/sales-root-state.ts";
 
 const LEGACY_KEYS = getLegacyStorageKeys();
 
@@ -387,7 +388,7 @@ export const configLotMethods: ConfigMethodSubset<
           ]);
           if (this.currentLotId !== selectedLotId) return;
           if (latestSales) {
-            this.sales = latestSales;
+            replaceRootLotSales(this, selectedLotId, latestSales);
           }
           if (latestLivePricing) {
             applyAuthoritativeLivePricingSnapshot(this, selectedLotId, latestLivePricing);

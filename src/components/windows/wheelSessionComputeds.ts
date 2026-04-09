@@ -1,18 +1,15 @@
 import { translateAppMessage } from "../../app-core/i18n/index.ts";
 import type { Lot, WheelConfig } from "../../types/app.ts";
-import { getWheelController } from "./wheelControllerState.ts";
 import {
   calculateWheelSessionMarginPercent,
   getWheelDisplayChaseTallyHistory,
   getWheelDisplaySpinCounts,
-  getWheelDisplaySlots
+  getWheelDisplaySlots,
+  getWheelDisplayTotalSpins,
+  getWheelSessionCost,
+  getWheelSessionProfit,
+  getWheelSessionRevenue
 } from "./wheelComputedShared.ts";
-import type { WheelSlot } from "./wheelHelpers.ts";
-import {
-  calculateAverageWheelSellingTaxPercent,
-  calculateWheelBuyerShippingTotal,
-  calculateWheelNetFromGross
-} from "./wheelHelpers.ts";
 import {
   getAvailableSinglesQuantityForWheelTier,
   getRemainingPacksForWheelLot
@@ -20,52 +17,15 @@ import {
 
 export const wheelSessionComputeds = {
   wheelSessionRevenue(this: Record<string, unknown>): number {
-    const config = (((this as Record<string, unknown>).wheelDisplayConfig
-      || (this as Record<string, unknown>).activeWheelConfig)) as WheelConfig | null;
-    const totalSpins = (((this as Record<string, unknown>).wheelDisplayTotalSpins
-      ?? (this as Record<string, unknown>).wheelTotalSpins
-      ?? 0)) as number;
-    return totalSpins * (config?.spinPrice || 0);
+    return getWheelSessionRevenue(this as Record<string, unknown>);
   },
 
   wheelSessionCost(this: Record<string, unknown>): number {
-    const controller = getWheelController(this as Record<string, unknown>);
-    const slots = getWheelDisplaySlots(this as Record<string, unknown>);
-    const counts = getWheelDisplaySpinCounts(this as Record<string, unknown>);
-    const base = counts.reduce((sum, count, i) => sum + count * (slots[i]?.cost || 0), 0);
-    const adjustment = ((this as Record<string, unknown>).wheelMode === "config"
-      ? 0
-      : (controller.sessionCostAdjustment as number || 0));
-    return base + adjustment;
+    return getWheelSessionCost(this as Record<string, unknown>);
   },
 
   wheelSessionProfit(this: Record<string, unknown>): number {
-    const controller = getWheelController(this as Record<string, unknown>);
-    if ((this as Record<string, unknown>).wheelMode !== "config") {
-      const storedNetRevenue = controller.sessionNetRevenue as number | null | undefined;
-      if (storedNetRevenue != null && Number.isFinite(Number(storedNetRevenue))) {
-        return Number(storedNetRevenue) - (this.wheelSessionCost as number);
-      }
-    }
-
-    const config = (((this as Record<string, unknown>).wheelDisplayConfig
-      || (this as Record<string, unknown>).activeWheelConfig)) as WheelConfig | null;
-    const slots = getWheelDisplaySlots(this as Record<string, unknown>);
-    const spinCounts = getWheelDisplaySpinCounts(this as Record<string, unknown>);
-    const lots = (((this as Record<string, unknown>).lots || []) as Lot[]);
-    const grossRevenue = this.wheelSessionRevenue as number;
-    const totalSpins = (this.wheelDisplayTotalSpins || 0) as number;
-    const shippingTotal = calculateWheelBuyerShippingTotal(config, slots, spinCounts, lots);
-    const buyerShippingPerOrder = totalSpins > 0 ? (shippingTotal / totalSpins) : 0;
-    const sellingTaxPercent = config ? calculateAverageWheelSellingTaxPercent(config, lots) : 0;
-    const netRevenue = calculateWheelNetFromGross(
-      grossRevenue,
-      this as Record<string, unknown>,
-      totalSpins,
-      buyerShippingPerOrder,
-      sellingTaxPercent
-    );
-    return netRevenue - (this.wheelSessionCost as number);
+    return getWheelSessionProfit(this as Record<string, unknown>);
   },
 
   wheelSessionProfitClass(this: Record<string, unknown>): string {

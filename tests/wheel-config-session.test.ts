@@ -250,6 +250,38 @@ test("loadWheelConfig clears rendered wheel state when no active config exists",
   assert.equal(controller.lastResultColor, "rgb(var(--v-theme-primary))");
 });
 
+test("ensureWheelEditorState rebuilds local editing and slot state from the active config", () => {
+  const activeConfig: WheelConfig = {
+    id: 5,
+    name: "Crazy Wheel!",
+    spinPrice: 10,
+    targetMargin: 15,
+    createdAt: "",
+    tiers: [
+      { id: "t1", label: "1 Pack", color: "#f00", slots: 2, costPerTier: 5, packsCount: 1, deductionType: "packs", boundLotId: 1, sets: [] }
+    ]
+  };
+  const vm: Record<string, unknown> = {
+    activeWheelConfig: activeConfig,
+    activeWheelConfigId: 5,
+    editingWheelConfig: null,
+    activeWheelSlots: [],
+    wheelPreviewSlots: [],
+    wheelSpinCounts: [],
+    wheelTotalSpins: 0,
+    wheelCurrentAngle: 0,
+    drawWheel: vi.fn()
+  };
+
+  WheelWindow.methods!.ensureWheelEditorState.call(vm as never);
+
+  assert.equal((vm.editingWheelConfig as WheelConfig | null)?.id, 5);
+  assert.equal((vm.activeWheelSlots as Array<unknown>).length, 2);
+  assert.equal((vm.wheelPreviewSlots as Array<unknown>).length, 2);
+  assert.deepEqual(vm.wheelSpinCounts, [0, 0]);
+  assert.deepEqual(vm.wheelPreviewSpinCounts, [0, 0]);
+});
+
 test("saveWheelDraft persists the config without changing the applied wheel or pushing immediately", () => {
   const config: WheelConfig = {
     id: 5,

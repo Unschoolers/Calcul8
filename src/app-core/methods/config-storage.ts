@@ -14,6 +14,7 @@ import {
 import { type ConfigMethodSubset, getTodayDate } from "./config-shared.ts";
 import { getActiveStorageScope } from "../workspace-scope.ts";
 import { normalizeStoredLot } from "../shared/normalize-lot.ts";
+import { getRootLotSales, replaceRootLotSales, resetRootSalesState } from "../shared/sales-root-state.ts";
 
 type ExchangeRateCacheRecord = {
   cadRate: number;
@@ -124,10 +125,18 @@ export const configStorageMethods: ConfigMethodSubset<
   },
 
   loadSalesForLotId(lotId: number): Sale[] {
-    if (typeof this.getSalesCacheEntry === "function") {
-      return this.getSalesCacheEntry(lotId).sales;
+    const inMemorySales = getRootLotSales(this, lotId);
+    if (inMemorySales) {
+      return inMemorySales;
     }
-    return configStorageMethods.getSalesCacheEntry.call(this as never, lotId).sales;
+    if (typeof this.getSalesCacheEntry === "function") {
+      const sales = this.getSalesCacheEntry(lotId).sales;
+      replaceRootLotSales(this, lotId, sales);
+      return sales;
+    }
+    const sales = configStorageMethods.getSalesCacheEntry.call(this as never, lotId).sales;
+    replaceRootLotSales(this, lotId, sales);
+    return sales;
   },
 
   netFromGross(grossRevenue: number, buyerShippingPerOrder = 0, orderCount = 1): number {
@@ -176,6 +185,7 @@ export const configStorageMethods: ConfigMethodSubset<
 
   loadLotsFromStorage(): void {
     this.lots = [];
+    resetRootSalesState(this);
 
     try {
       const storageKey = getScopedPresetsStorageKey(getActiveStorageScope(this));

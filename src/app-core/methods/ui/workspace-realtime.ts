@@ -1,8 +1,11 @@
-import type { Sale, WheelFairnessEntry, WorkspaceRealtimeStatus } from "../../../types/app.ts";
+import type { Sale, WorkspaceRealtimeStatus } from "../../../types/app.ts";
 import type { AppContext } from "../../context-app.ts";
 import { removeById, upsertById } from "../../shared/collection-updaters.ts";
 import { normalizeWheelConfigs } from "../../shared/normalize-wheel-config.ts";
-import { assignWheelPendingInventoryIssues } from "../../shared/wheel-session-compat.ts";
+import {
+  applyRootWheelSessionSnapshot,
+  type RootWheelSessionStateContext
+} from "../../shared/wheel-root-session-state.ts";
 import {
     cacheAuthoritativeSales,
     canUseAuthoritativeSalesLiveApi,
@@ -41,14 +44,7 @@ type RealtimeApp = Pick<
   | "wheelSessionUpdatedAt"
   | "wheelPendingInventoryIssues"
   | "wheelSkippedDeductions"
-> & {
-  wheelSessionNetRevenue?: number | null;
-  wheelSessionCostAdjustment?: number;
-  wheelFairnessHistory?: WheelFairnessEntry[];
-  wheelChaseTallyHistory?: Array<{ tierId: string; label: string; color: string; count: number }>;
-  wheelCurrentAngle?: number;
-  wheelLastResultColor?: string;
-};
+> & RootWheelSessionStateContext;
 
 type RealtimeSocketState = {
   socket: WebSocket | null;
@@ -308,58 +304,40 @@ function handleWheelSessionUpdatedEvent(app: RealtimeApp, data: unknown): void {
     return;
   }
 
-  app.wheelSessionUpdatedAt = incomingUpdatedAt > 0 ? incomingUpdatedAt : Date.now();
-  app.wheelTotalSpins = incomingTotalSpins;
-  if (Number.isFinite(Number(raw.wheelSessionNetRevenue))) {
-    app.wheelSessionNetRevenue = Number(raw.wheelSessionNetRevenue) || 0;
-  }
-  if (Number.isFinite(Number(raw.wheelSessionCostAdjustment))) {
-    app.wheelSessionCostAdjustment = Number(raw.wheelSessionCostAdjustment) || 0;
-  }
-  if (Array.isArray(raw.wheelFairnessHistory)) {
-    app.wheelFairnessHistory = raw.wheelFairnessHistory
-      .filter((entry) => entry && typeof entry === "object" && !Array.isArray(entry))
-      .map((entry) => ({
-        spinNumber: Math.max(0, Math.floor(Number((entry as Record<string, unknown>).spinNumber) || 0)),
-        label: String((entry as Record<string, unknown>).label ?? ""),
-        color: String((entry as Record<string, unknown>).color ?? ""),
-        hash: String((entry as Record<string, unknown>).hash ?? ""),
-        seed: String((entry as Record<string, unknown>).seed ?? ""),
-        clientSeed: String((entry as Record<string, unknown>).clientSeed ?? "").trim() || undefined,
-        verificationUrl: String((entry as Record<string, unknown>).verificationUrl ?? "").trim() || undefined,
-        algorithm: String((entry as Record<string, unknown>).algorithm ?? "").trim() || undefined,
-        timestamp: Math.max(0, Math.floor(Number((entry as Record<string, unknown>).timestamp) || 0))
-      }));
-  }
-  if (Array.isArray(raw.wheelChaseTallyHistory)) {
-    app.wheelChaseTallyHistory = raw.wheelChaseTallyHistory
-      .filter((entry) => entry && typeof entry === "object" && !Array.isArray(entry))
-      .map((entry) => ({
-        tierId: String((entry as Record<string, unknown>).tierId ?? ""),
-        label: String((entry as Record<string, unknown>).label ?? ""),
-        color: String((entry as Record<string, unknown>).color ?? ""),
-        count: Math.max(0, Math.floor(Number((entry as Record<string, unknown>).count) || 0))
-      }))
-      .filter((entry) => entry.tierId.length > 0);
-  }
-  if (Array.isArray(raw.wheelSpinCounts)) {
-    app.wheelSpinCounts = raw.wheelSpinCounts.map((n) => Math.max(0, Math.floor(Number(n) || 0)));
-  }
-  if (typeof raw.wheelLastResult === "string") {
-    app.wheelLastResult = raw.wheelLastResult;
-  }
-  if (Number.isFinite(Number(raw.wheelCurrentAngle))) {
-    app.wheelCurrentAngle = Number(raw.wheelCurrentAngle) || 0;
-  }
-  if (typeof raw.wheelLastResultColor === "string" && raw.wheelLastResultColor.trim()) {
-    app.wheelLastResultColor = raw.wheelLastResultColor;
-  }
-  assignWheelPendingInventoryIssues(
-    app as unknown as Record<string, unknown>,
-    Array.isArray(raw.wheelPendingInventoryIssues)
-      ? raw.wheelPendingInventoryIssues
-      : raw.wheelSkippedDeductions
-  );
+  applyRootWheelSessionSnapshot(app as unknown as RootWheelSessionStateContext, {
+    ...raw,
+    wheelSessionUpdatedAt: incomingUpdatedAt > 0 ? incomingUpdatedAt : Date.now(),
+    wheelTotalSpins: incomingTotalSpins,
+    wheelSpinCounts: Array.isArray(raw.wheelSpinCounts)
+      ? raw.wheelSpinCounts.map((n) => Math.max(0, Math.floor(Number(n) || 0)))
+      : raw.wheelSpinCounts,
+    wheelFairnessHistory: Array.isArray(raw.wheelFairnessHistory)
+      ? raw.wheelFairnessHistory
+        .filter((entry) => entry && typeof entry === "object" && !Array.isArray(entry))
+        .map((entry) => ({
+          spinNumber: Math.max(0, Math.floor(Number((entry as Record<string, unknown>).spinNumber) || 0)),
+          label: String((entry as Record<string, unknown>).label ?? ""),
+          color: String((entry as Record<string, unknown>).color ?? ""),
+          hash: String((entry as Record<string, unknown>).hash ?? ""),
+          seed: String((entry as Record<string, unknown>).seed ?? ""),
+          clientSeed: String((entry as Record<string, unknown>).clientSeed ?? "").trim() || undefined,
+          verificationUrl: String((entry as Record<string, unknown>).verificationUrl ?? "").trim() || undefined,
+          algorithm: String((entry as Record<string, unknown>).algorithm ?? "").trim() || undefined,
+          timestamp: Math.max(0, Math.floor(Number((entry as Record<string, unknown>).timestamp) || 0))
+        }))
+      : raw.wheelFairnessHistory,
+    wheelChaseTallyHistory: Array.isArray(raw.wheelChaseTallyHistory)
+      ? raw.wheelChaseTallyHistory
+        .filter((entry) => entry && typeof entry === "object" && !Array.isArray(entry))
+        .map((entry) => ({
+          tierId: String((entry as Record<string, unknown>).tierId ?? ""),
+          label: String((entry as Record<string, unknown>).label ?? ""),
+          color: String((entry as Record<string, unknown>).color ?? ""),
+          count: Math.max(0, Math.floor(Number((entry as Record<string, unknown>).count) || 0))
+        }))
+        .filter((entry) => entry.tierId.length > 0)
+      : raw.wheelChaseTallyHistory
+  });
 }
 
 function applyRealtimeMessage(app: RealtimeApp, room: string, eventType: string, data: unknown): void {
@@ -593,4 +571,3 @@ export function stopWorkspaceRealtime(app: RealtimeApp): void {
   app.workspacePresenceByUserId = {};
   setWorkspaceRealtimeStatus(app, "idle");
 }
-

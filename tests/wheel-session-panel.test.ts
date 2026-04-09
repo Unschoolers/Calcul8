@@ -5,10 +5,31 @@ import { WheelSessionPanel } from "../src/components/windows/WheelSessionPanel.t
 test("wheelSessionPanelProfit falls back to fee calculation when live session net revenue is missing", () => {
   const vm = {
     wheelMode: "live",
+    activeWheelConfig: {
+      id: 1,
+      name: "Wheel",
+      spinPrice: 10,
+      targetMargin: 15,
+      createdAt: "",
+      tiers: [
+        {
+          id: "tier-1",
+          label: "1 Pack",
+          color: "#e74c3c",
+          slots: 1,
+          costPerTier: 3,
+          packsCount: 1,
+          deductionType: "packs",
+          sets: []
+        }
+      ]
+    },
+    wheelTotalSpins: 10,
+    wheelSpinCounts: [10],
     wheelController: {
       sessionNetRevenue: null,
       sessionCostAdjustment: 0,
-      activeSlots: [],
+      activeSlots: [{ tier: "tier-1", label: "1 Pack", color: "#e74c3c", cost: 3 }],
       previewSlots: [],
       previewSpinCounts: [],
       previewTotalSpins: 0,
@@ -27,19 +48,6 @@ test("wheelSessionPanelProfit falls back to fee calculation when live session ne
       fairnessHistoryOpen: false,
       highlightedSlotIndex: -1
     },
-    wheelSessionPanelDisplayConfig: {
-      id: 1,
-      name: "Wheel",
-      spinPrice: 10,
-      targetMargin: 15,
-      createdAt: "",
-      tiers: []
-    },
-    wheelSessionPanelDisplaySlots: [],
-    wheelSessionPanelDisplaySpinCounts: [],
-    wheelSessionPanelDisplayTotalSpins: 10,
-    wheelSessionPanelRevenue: 100,
-    wheelSessionPanelCost: 30,
     lots: [],
     platformFeePercent: 8,
     additionalFeePercent: 2.9,
@@ -54,10 +62,31 @@ test("wheelSessionPanelProfit falls back to fee calculation when live session ne
 test("wheelSessionPanelProfit uses stored live session net revenue when present", () => {
   const vm = {
     wheelMode: "live",
+    activeWheelConfig: {
+      id: 1,
+      name: "Wheel",
+      spinPrice: 10,
+      targetMargin: 15,
+      createdAt: "",
+      tiers: [
+        {
+          id: "tier-1",
+          label: "1 Pack",
+          color: "#e74c3c",
+          slots: 1,
+          costPerTier: 3,
+          packsCount: 1,
+          deductionType: "packs",
+          sets: []
+        }
+      ]
+    },
+    wheelTotalSpins: 10,
+    wheelSpinCounts: [10],
     wheelController: {
       sessionNetRevenue: 84.65,
       sessionCostAdjustment: 0,
-      activeSlots: [],
+      activeSlots: [{ tier: "tier-1", label: "1 Pack", color: "#e74c3c", cost: 3 }],
       previewSlots: [],
       previewSpinCounts: [],
       previewTotalSpins: 0,
@@ -75,8 +104,7 @@ test("wheelSessionPanelProfit uses stored live session net revenue when present"
       lastResultColor: "rgb(var(--v-theme-primary))",
       fairnessHistoryOpen: false,
       highlightedSlotIndex: -1
-    },
-    wheelSessionPanelCost: 30
+    }
   };
 
   const result = WheelSessionPanel.computed!.wheelSessionPanelProfit.call(vm as never);

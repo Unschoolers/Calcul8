@@ -1,6 +1,9 @@
 import type { AppContext } from "../../context-app.ts";
-import type { WheelFairnessEntry } from "../../../types/app.ts";
 import { fetchAuthenticatedApiResponse } from "./shared.ts";
+import {
+  buildRootWheelSessionSnapshot,
+  type RootWheelSessionStateContext
+} from "../../shared/wheel-root-session-state.ts";
 
 type BroadcastApp = Pick<
   AppContext,
@@ -12,23 +15,12 @@ type BroadcastApp = Pick<
   | "wheelSpinCounts"
   | "wheelLastResult"
   | "wheelSessionUpdatedAt"
+  | "wheelSessionLotSelections"
   | "wheelPendingInventoryIssues"
   | "wheelSkippedDeductions"
   | "googleAuthEpoch"
   | "hasProAccess"
-> & {
-  wheelSessionNetRevenue: number | null;
-  wheelSessionCostAdjustment: number;
-  wheelFairnessHistory: WheelFairnessEntry[];
-  wheelChaseTallyHistory: Array<{
-    tierId: string;
-    label: string;
-    color: string;
-    count: number;
-  }>;
-  wheelCurrentAngle: number;
-  wheelLastResultColor: string;
-};
+> & RootWheelSessionStateContext;
 
 export async function broadcastWheelSession(app: BroadcastApp): Promise<void> {
   if (app.activeScopeType !== "workspace" || !app.activeWorkspaceId) return;
@@ -36,6 +28,7 @@ export async function broadcastWheelSession(app: BroadcastApp): Promise<void> {
   app.wheelSessionUpdatedAt = sentAt;
 
   try {
+    const rootSession = buildRootWheelSessionSnapshot(app);
     await fetchAuthenticatedApiResponse(
       app,
       "/wheel/broadcast",
@@ -45,21 +38,11 @@ export async function broadcastWheelSession(app: BroadcastApp): Promise<void> {
         body: JSON.stringify({
           workspaceId: app.activeWorkspaceId,
           session: {
-          wheelConfigs: app.wheelConfigs,
-          activeWheelConfigId: app.activeWheelConfigId,
-          wheelTotalSpins: app.wheelTotalSpins,
-          wheelSpinCounts: app.wheelSpinCounts,
-          wheelSessionNetRevenue: app.wheelSessionNetRevenue,
-          wheelSessionCostAdjustment: app.wheelSessionCostAdjustment,
-          wheelFairnessHistory: app.wheelFairnessHistory,
-          wheelChaseTallyHistory: app.wheelChaseTallyHistory,
-          wheelCurrentAngle: app.wheelCurrentAngle,
-          wheelLastResult: app.wheelLastResult,
-          wheelLastResultColor: app.wheelLastResultColor,
-          wheelSessionUpdatedAt: sentAt,
-          wheelPendingInventoryIssues: app.wheelPendingInventoryIssues,
-          wheelSkippedDeductions: app.wheelPendingInventoryIssues
-        }
+            wheelConfigs: app.wheelConfigs,
+            activeWheelConfigId: app.activeWheelConfigId,
+            ...rootSession,
+            wheelSessionUpdatedAt: sentAt
+          }
         })
       },
       { expireAuthOn401: false }

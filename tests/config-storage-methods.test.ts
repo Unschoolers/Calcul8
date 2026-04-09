@@ -105,6 +105,7 @@ function createContext(overrides: Record<string, unknown> = {}): Record<string, 
     sellingTaxPercent: 15,
     exchangeRate: 1.4,
     lastFetchTime: null,
+    salesByLotId: new Map(),
     lots: [],
     notify: vi.fn(),
     getSalesStorageKey: (lotId: number) => `whatfees_sales_${lotId}`,
@@ -196,6 +197,22 @@ test("loadSalesForLotId returns empty list on invalid JSON or missing value", ()
 
     readStorageWithLegacyMock.mockReturnValue("not-json");
     assert.deepEqual(configStorageMethods.loadSalesForLotId.call(context as never, 1), []);
+  });
+});
+
+test("loadSalesForLotId prefers the in-memory sales store when available", () => {
+  withMockedLocalStorage(() => {
+    const context = createContext({
+      salesByLotId: new Map([
+        [5, [{ id: 51, type: "pack", quantity: 1, packsCount: 1, price: 9, buyerShipping: 0, date: "2026-02-25" }]]
+      ])
+    });
+
+    const sales = configStorageMethods.loadSalesForLotId.call(context as never, 5);
+
+    assert.equal(readStorageWithLegacyMock.mock.calls.length, 0);
+    assert.equal(sales.length, 1);
+    assert.equal(sales[0]?.id, 51);
   });
 });
 
