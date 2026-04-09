@@ -1,9 +1,9 @@
-<template v-if="latestOnly">
+<template v-if="wheelHistoryPanelLatestOnly">
   <v-card
     v-if="wheelHistoryPanelLatestEntry"
     variant="outlined"
     class="wheel-fairness-history"
-    :class="{ 'wheel-fairness-history--presentation': presentation }"
+    :class="{ 'wheel-fairness-history--presentation': wheelHistoryPanelPresentation }"
   >
     <div class="wheel-fairness-history__toggle wheel-fairness-history__toggle--static">
       <div class="wheel-fairness-history__heading">
@@ -85,7 +85,7 @@
   </v-card>
 </template>
 
-<template v-else-if="wheelHistoryPanelSpinHash || wheelHistoryPanelEntries.length">
+<template v-else-if="wheelHistoryPanelSpinHash || wheelHistoryPanelHasEntries">
   <v-card variant="outlined" class="wheel-fairness-history wheel-fairness-history--current">
     <div class="wheel-fairness-history__toggle wheel-fairness-history__toggle--static">
       <div class="wheel-fairness-history__heading">
@@ -147,7 +147,7 @@
       </div>
     </div>
     <button
-      v-if="wheelHistoryPanelEntries.length"
+      v-if="wheelHistoryPanelHasEntries"
       type="button"
       class="wheel-fairness-history__toggle"
       @click="wheelHistoryPanelHistoryOpen = !wheelHistoryPanelHistoryOpen"
@@ -161,7 +161,7 @@
       </div>
       <v-icon size="small">{{ wheelHistoryPanelHistoryOpen ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
     </button>
-    <div v-if="wheelHistoryPanelHistoryOpen && wheelHistoryPanelEntries.length" class="wheel-fairness-history__list">
+    <div v-if="wheelHistoryPanelHistoryOpen && wheelHistoryPanelHasEntries" class="wheel-fairness-history__list">
       <div
         v-for="entry in wheelHistoryPanelEntries"
         :key="`${entry.spinNumber}-${entry.timestamp}`"
@@ -210,6 +210,6 @@
   </v-card>
 </template>
 
-<v-alert v-else-if="showEmptyState" type="info" density="compact" variant="tonal">
+<v-alert v-else-if="wheelHistoryPanelShowEmptyState" type="info" density="compact" variant="tonal">
   {{ t('wheelFairnessEmptyState') }}
 </v-alert>

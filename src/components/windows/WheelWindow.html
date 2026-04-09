@@ -134,7 +134,7 @@
                 item-value="value" :label="t('wheelPickReplacementItemLabel')" variant="outlined" density="compact"
                 hide-details="auto" class="mb-2">
                 <template #item="{ props, item }">
-                    <v-list-item v-bind="props" :title="undefined" :subtitle="undefined">
+                    <v-list-item v-bind="props" :title="null" :subtitle="null">
                         <template #prepend>
                             <div class="wheel-card-thumb" v-if="item.raw.image">
                                 <img :src="item.raw.image" alt="" loading="lazy">

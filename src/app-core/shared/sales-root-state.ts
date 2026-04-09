@@ -31,3 +31,7 @@ export function replaceRootLotSales(context: RootSalesStateContext, lotId: numbe
     context.sales = [...nextSales];
   }
 }
+
+export function cacheRootLotSales(context: RootSalesStateContext, lotId: number, sales: Sale[]): void {
+  ensureRootSalesMap(context).set(lotId, [...sales]);
+}

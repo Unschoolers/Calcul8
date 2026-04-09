@@ -7,6 +7,7 @@ import {
 import type { Sale } from "../../types/app.ts";
 import type { AppComputedObject } from "../context-contracts.ts";
 import { buildLotOptionItems } from "../shared/lot-option-items.ts";
+import { getRootLotSales } from "../shared/sales-root-state.ts";
 import {
   pickBestForecastScenario,
   type ForecastScenario
@@ -27,7 +28,8 @@ function getAllSalesByLotIdForPortfolio(
     currentLotId: number | null;
     sales: Sale[];
     getAllSalesByLotId?: (lotIds?: number[] | null) => Map<number, Sale[]>;
-    loadSalesForLotId(lotId: number): Sale[];
+    getSalesCacheEntry?: (lotId: number) => { sales: Sale[] };
+    loadSalesForLotId?: (lotId: number) => Sale[];
   },
   lotIds: number[]
 ): Map<number, Sale[]> {
@@ -37,7 +39,14 @@ function getAllSalesByLotIdForPortfolio(
   return new Map(
     lotIds.map((lotId) => [
       lotId,
-      context.currentLotId === lotId ? context.sales : context.loadSalesForLotId(lotId)
+      context.currentLotId === lotId
+        ? context.sales
+        : (
+          getRootLotSales(context as Record<string, unknown>, lotId)
+          ?? context.getSalesCacheEntry?.(lotId)?.sales
+          ?? context.loadSalesForLotId?.(lotId)
+          ?? []
+        )
     ] as const)
   );
 }
@@ -45,14 +54,20 @@ function getAllSalesByLotIdForPortfolio(
 function lotIsCompleteByDefault(context: {
   currentLotId: number | null;
   sales: Sale[];
-  loadSalesForLotId(lotId: number): Sale[];
+  getSalesCacheEntry?: (lotId: number) => { sales: Sale[] };
+  loadSalesForLotId?: (lotId: number) => Sale[];
 }, lot: {
   id: number;
 }): boolean {
 
   const sales = context.currentLotId === lot.id
     ? context.sales
-    : (typeof context.loadSalesForLotId === "function" ? context.loadSalesForLotId(lot.id) : []);
+    : (
+      getRootLotSales(context as Record<string, unknown>, lot.id)
+      ?? context.getSalesCacheEntry?.(lot.id)?.sales
+      ?? context.loadSalesForLotId?.(lot.id)
+      ?? []
+    );
   const summary = calculateLotPerformanceSummary(
     lot as never,
     sales,

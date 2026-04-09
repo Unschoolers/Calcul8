@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { afterEach, beforeEach, test, vi } from "vitest";
 
 import { salesMethods } from "../src/app-core/methods/sales.ts";
+import { getRootLotSales } from "../src/app-core/shared/sales-root-state.ts";
 import {
   getScopedWheelConfigsStorageKey,
   getScopedWheelSessionStorageKey,
@@ -248,5 +249,35 @@ test("saveWheelSessionToStorage preserves richer wheel session fields already mi
     assert.equal(saved.wheelSpinClientSeed, "client-preserved");
     assert.match(String(saved.wheelSpinVerificationUrl || ""), /wheel\/fairness\/verify/);
     assert.equal(saved.wheelSpinAlgorithm, "whatfees-wheel-v1");
+  });
+});
+
+test("saveSalesToStorage updates the root sales cache without reassigning current sales", async () => {
+  await withMockedLocalStorage(async () => {
+    const sales = [
+      {
+        id: 1,
+        type: "pack",
+        quantity: 1,
+        packsCount: 1,
+        price: 12,
+        buyerShipping: 0,
+        date: "2026-04-08"
+      }
+    ];
+    const context = createContext({
+      currentLotId: 77,
+      sales,
+      salesByLotId: new Map<number, unknown[]>()
+    });
+
+    salesMethods.saveSalesToStorage.call({
+      ...context,
+      getSalesStorageKey: () => "sales:77"
+    } as never);
+
+    assert.equal(context.sales, sales);
+    assert.deepEqual(getRootLotSales(context as never, 77), sales);
+    assert.equal(localStorage.getItem("sales:77"), JSON.stringify(sales));
   });
 });

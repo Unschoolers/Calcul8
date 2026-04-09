@@ -4,6 +4,7 @@ import {
   getScopedWheelConfigDraftStorageKey,
   getScopedWheelConfigSessionStorageKey
 } from "../src/app-core/storageKeys.ts";
+import { createNestedWindowContextBridge } from "../src/components/windows/contextBridge.ts";
 import { getWheelController, getWheelWindowLocalKeys } from "../src/components/windows/wheelControllerState.ts";
 import {
   buildSlotsFromConfig,
@@ -78,6 +79,41 @@ test("loadWheelConfig clears invalid chase flags for non-singles tiers", () => {
   WheelWindow.methods!.loadWheelConfig.call(vm as never);
   assert.equal((vm.wheelConfigs as WheelConfig[])[0]!.tiers[0]!.isChase, false);
   assert.equal((vm.editingWheelConfig as WheelConfig).tiers[0]!.isChase, false);
+});
+
+test("getWheelController does not attach reactive aliases onto bridge-style proxy contexts", () => {
+  const source = {
+    wheelController: {
+      activeSlots: [],
+      previewSlots: [],
+      inventoryWarning: "",
+      lastResultColor: "rgb(var(--v-theme-primary))",
+      previewSpinCounts: [],
+      previewTotalSpins: 0,
+      spinSeed: "",
+      spinHash: "seed-hash",
+      spinClientSeed: "",
+      spinVerificationUrl: "",
+      spinAlgorithm: "",
+      showSeed: false,
+      fairnessHistoryOpen: false,
+      sessionNetRevenue: null,
+      sessionCostAdjustment: 0,
+      previewFairnessHistory: [],
+      fairnessHistory: [],
+      previewChaseTallyHistory: [],
+      chaseTallyHistory: [],
+      highlightedSlotIndex: -1
+    }
+  } as Record<string, unknown>;
+  const bridge = createNestedWindowContextBridge(source);
+
+  const controllerA = getWheelController(bridge);
+  const controllerB = getWheelController(bridge);
+
+  assert.equal(controllerA, controllerB);
+  assert.equal(controllerA.spinHash, "seed-hash");
+  assert.equal(Object.getOwnPropertyDescriptor(source, "wheelSpinHash"), undefined);
 });
 
 test("loadWheelConfig restores autosaved draft without mutating the live config", () => {

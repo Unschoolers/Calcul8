@@ -30,6 +30,15 @@ export const WheelHistoryPanel = {
     }
   },
   computed: {
+    wheelHistoryPanelLatestOnly(this: Record<string, unknown>): boolean {
+      return Boolean((this as Record<string, unknown>).latestOnly);
+    },
+    wheelHistoryPanelPresentation(this: Record<string, unknown>): boolean {
+      return Boolean((this as Record<string, unknown>).presentation);
+    },
+    wheelHistoryPanelShowEmptyState(this: Record<string, unknown>): boolean {
+      return (this as Record<string, unknown>).showEmptyState !== false;
+    },
     wheelHistoryPanelEntries(this: Record<string, unknown>) {
       return getWheelDisplayFairnessHistoryEntries(this as Record<string, unknown>);
     },
@@ -109,6 +118,9 @@ export const WheelHistoryPanel = {
     },
     wheelHistoryPanelSpinVerificationUrl(this: Record<string, unknown>): string {
       return getWheelCurrentProofState(this as Record<string, unknown>).spinVerificationUrl;
+    },
+    wheelHistoryPanelHasEntries(this: Record<string, unknown>): boolean {
+      return (((this as Record<string, unknown>).wheelHistoryPanelEntries || []) as unknown[]).length > 0;
     }
   },
   setup(props: { ctx: Record<string, unknown> }) {

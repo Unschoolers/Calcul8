@@ -1,5 +1,6 @@
 import { getSinglesSoldQuantityForEntry } from "../../app-core/methods/sales-core.ts";
 import { translateAppMessage } from "../../app-core/i18n/index.ts";
+import { getRootLotSales } from "../../app-core/shared/sales-root-state.ts";
 import type { Lot, Sale, SinglesPurchaseEntry, WheelTier } from "../../types/app.ts";
 
 type WheelSalesContext = Record<string, unknown> & {
@@ -7,6 +8,7 @@ type WheelSalesContext = Record<string, unknown> & {
   sales?: Sale[];
   lots?: Lot[];
   singlesSoldCountByPurchaseId?: Record<number, number>;
+  getSalesCacheEntry?: (lotId: number) => { sales: Sale[] };
   loadSalesForLotId?: (lotId: number) => Sale[];
   preferredLanguage?: string;
 };
@@ -14,6 +16,13 @@ type WheelSalesContext = Record<string, unknown> & {
 function getLotSales(context: WheelSalesContext, lotId: number): Sale[] {
   if (context.currentLotId === lotId && Array.isArray(context.sales)) {
     return context.sales as Sale[];
+  }
+  const inMemorySales = getRootLotSales(context as Record<string, unknown>, lotId);
+  if (inMemorySales) {
+    return inMemorySales;
+  }
+  if (typeof context.getSalesCacheEntry === "function") {
+    return context.getSalesCacheEntry(lotId)?.sales || [];
   }
   const loadSalesForLotId = context.loadSalesForLotId;
   if (typeof loadSalesForLotId === "function") {

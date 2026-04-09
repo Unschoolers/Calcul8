@@ -1,6 +1,7 @@
 import { reactive } from "vue";
 import type { WheelConfig, WheelFairnessEntry } from "../../types/app.ts";
 import type { WheelSlot } from "./wheelHelpers.ts";
+import { unwrapWindowBridgeContext } from "./contextBridge.ts";
 
 export type WheelControllerState = {
   activeSlots: WheelSlot[];
@@ -50,24 +51,65 @@ function createDefaultWheelControllerState(): WheelControllerState {
   };
 }
 
+function getInternalWheelContext(context: Record<string, unknown>): Record<string, unknown> | null {
+  const internal = (context as { $?: { ctx?: Record<string, unknown> } }).$?.ctx;
+  return internal && typeof internal === "object" ? internal : null;
+}
+
+function getExistingWheelController(context: Record<string, unknown>): WheelControllerState | null {
+  const direct = context.wheelController;
+  if (direct && typeof direct === "object") {
+    return direct as WheelControllerState;
+  }
+
+  const internal = getInternalWheelContext(context);
+  const internalController = internal?.wheelController;
+  if (internalController && typeof internalController === "object") {
+    return internalController as WheelControllerState;
+  }
+
+  return null;
+}
+
+function canAttachWheelControllerToContext(context: Record<string, unknown>): boolean {
+  if (!context || typeof context !== "object") return false;
+
+  const internal = getInternalWheelContext(context);
+  if (internal && internal !== context) {
+    return false;
+  }
+
+  if (Reflect.ownKeys(context).length === 0) {
+    return false;
+  }
+
+  return true;
+}
+
 export function getWheelController(context: Record<string, unknown>): WheelControllerState {
-  const existing = context.wheelController;
-  if (existing && typeof existing === "object") {
-    return existing as WheelControllerState;
+  const resolvedContext = unwrapWindowBridgeContext(context);
+  const existing = getExistingWheelController(resolvedContext);
+  if (existing) {
+    return existing;
   }
 
   const controller = reactive(createDefaultWheelControllerState());
   for (const [legacyKey, controllerKey] of Object.entries(WHEEL_CONTROLLER_ALIAS_MAP)) {
-    if (Object.prototype.hasOwnProperty.call(context, legacyKey)) {
-      (controller as Record<string, unknown>)[controllerKey] = context[legacyKey];
+    if (Object.prototype.hasOwnProperty.call(resolvedContext, legacyKey)) {
+      (controller as Record<string, unknown>)[controllerKey] = resolvedContext[legacyKey];
     }
   }
-  context.wheelController = controller;
+
+  if (!canAttachWheelControllerToContext(resolvedContext)) {
+    return controller;
+  }
+
+  resolvedContext.wheelController = controller;
 
   for (const [legacyKey, controllerKey] of Object.entries(WHEEL_CONTROLLER_ALIAS_MAP)) {
-    const descriptor = Object.getOwnPropertyDescriptor(context, legacyKey);
+    const descriptor = Object.getOwnPropertyDescriptor(resolvedContext, legacyKey);
     if (descriptor?.get || descriptor?.set) continue;
-    Object.defineProperty(context, legacyKey, {
+    Object.defineProperty(resolvedContext, legacyKey, {
       enumerable: true,
       configurable: true,
       get() {

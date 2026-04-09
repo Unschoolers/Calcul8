@@ -93,7 +93,7 @@
                 type="number"
                 class="wheel-tier-num-input"
                 :min="isBoundLotSingles(tier) ? 1 : 0"
-                :max="isBoundLotSingles(tier) ? 1 : undefined"
+                :max="isBoundLotSingles(tier) ? 1 : null"
                 :disabled="isBoundLotSingles(tier)"
                 :title="isBoundLotSingles(tier) ? t('wheelTierCountSinglesHint') : t('wheelTierCountHint')"
                 @change="onTierPacksChange(tier)"
@@ -134,7 +134,7 @@
                       </v-icon>
                       {{ item.raw.groupLabel }}
                     </div>
-                    <v-list-item v-bind="props" :title="undefined" :subtitle="undefined">
+                    <v-list-item v-bind="props" :title="null" :subtitle="null">
                       <v-list-item-title class="text-body-2">{{ item.raw.title }}</v-list-item-title>
                     </v-list-item>
                   </div>
@@ -156,7 +156,7 @@
                 @update:model-value="onTierSinglesChange(tier, $event)"
               >
                 <template #item="{ props, item }">
-                  <v-list-item v-bind="props" :title="undefined" :subtitle="undefined">
+                  <v-list-item v-bind="props" :title="null" :subtitle="null">
                     <template #prepend>
                       <div class="wheel-card-thumb" v-if="item.raw.image">
                         <img :src="item.raw.image" alt="" loading="lazy">
@@ -245,7 +245,7 @@
 
                 <v-text-field
                   :model-value="tier.celebrationEmoji || ''"
-                  @update:model-value="tier.celebrationEmoji = $event || undefined"
+                  @update:model-value="tier.celebrationEmoji = $event || ''"
                   :label="t('wheelTierCelebrationEmojiLabel')"
                   :hint="t('wheelTierCelebrationEmojiHint')"
                   persistent-hint

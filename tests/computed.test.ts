@@ -708,6 +708,46 @@ test("portfolio sales by user chart data collapses personal mode into a single Y
   ]);
 });
 
+test("lot item computeds do not hydrate sales caches during render", () => {
+  const loadSalesForLotId = vi.fn(() => {
+    throw new Error("loadSalesForLotId should not run during computed render");
+  });
+  const getSalesCacheEntry = vi.fn((lotId: number) => ({
+    sales: lotId === 11 ? [{ id: 1, type: "pack", quantity: 16, packsCount: 16, price: 80, date: "2026-04-08" }] : []
+  }));
+
+  const lotItems = appComputed.lotItems.call({
+    currentLotId: 22,
+    sales: [],
+    lots: [
+      { id: 11, name: "Bulk lot", lotType: "bulk", boxesPurchased: 1, packsPerBox: 16, purchaseDate: "2026-04-01" },
+      { id: 22, name: "Singles lot", lotType: "singles", purchaseDate: "2026-04-02" }
+    ],
+    loadSalesForLotId,
+    getSalesCacheEntry
+  } as unknown as Parameters<typeof appComputed.lotItems>[0]);
+
+  assert.equal(loadSalesForLotId.mock.calls.length, 0);
+  assert.equal(getSalesCacheEntry.mock.calls.length, 1);
+  assert.equal(lotItems[0]?.completionIcon, "mdi-check-circle");
+
+  const portfolioFilterItems = appComputed.portfolioLotFilterItems.call({
+    currentLotId: 22,
+    sales: [],
+    lots: [
+      { id: 11, name: "Bulk lot", lotType: "bulk", boxesPurchased: 1, packsPerBox: 16, purchaseDate: "2026-04-01" },
+      { id: 22, name: "Singles lot", lotType: "singles", purchaseDate: "2026-04-02" }
+    ],
+    portfolioLotTypeFilter: "both",
+    loadSalesForLotId,
+    getSalesCacheEntry
+  } as unknown as Parameters<typeof appComputed.portfolioLotFilterItems>[0]);
+
+  assert.equal(loadSalesForLotId.mock.calls.length, 0);
+  assert.equal(getSalesCacheEntry.mock.calls.length, 2);
+  assert.equal(portfolioFilterItems[0]?.completionIcon, "mdi-check-circle");
+});
+
 test("portfolio sales by user chart data uses the shared all-sales accessor when available", () => {
   const getAllSalesByLotId = vi.fn(() => new Map([
     [22, [

@@ -6,6 +6,8 @@ type BridgeOptions = {
   blockedKeys?: Array<string | symbol>;
 };
 
+const WINDOW_BRIDGE_SOURCE = Symbol("windowBridgeSource");
+
 function isReservedVueKey(key: string | symbol): boolean {
   return typeof key === "string" && (key.startsWith("$") || key.startsWith("_"));
 }
@@ -52,6 +54,14 @@ export function createWindowContextBridge(ctx: WindowContext, options: BridgeOpt
 
 export function createNestedWindowContextBridge(ctx: WindowContext, options: BridgeOptions = {}): Record<string, unknown> {
   return createBridgeFromSource(ctx, options);
+}
+
+export function unwrapWindowBridgeContext(ctx: WindowContext): WindowContext {
+  const bridgedSource = Reflect.get(ctx, WINDOW_BRIDGE_SOURCE) as WindowContext | undefined;
+  if (bridgedSource && typeof bridgedSource === "object") {
+    return bridgedSource;
+  }
+  return ctx;
 }
 
 function createBridgeFromSource(sourceCtx: WindowContext, options: BridgeOptions = {}): Record<string, unknown> {
@@ -106,6 +116,9 @@ function createBridgeFromSource(sourceCtx: WindowContext, options: BridgeOptions
         };
       },
       get(_target, key: string | symbol) {
+        if (key === WINDOW_BRIDGE_SOURCE) {
+          return sourceCtx;
+        }
         const value = readValue(key);
         if (typeof value === "function") {
           return value.bind(sourceCtx);

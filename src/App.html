@@ -235,7 +235,7 @@
                             </v-icon>
                             {{ item.raw.groupLabel }}
                           </div>
-                          <v-list-item v-bind="props" :title="undefined" :subtitle="undefined">
+                          <v-list-item v-bind="props" :title="null" :subtitle="null">
                             <template #prepend>
                               <span class="lot-selector-icon-stack mr-2">
                                 <v-icon size="18">
@@ -583,7 +583,7 @@
                         <div class="workspace-member-card-row__name">
                           {{ member.displayName || t('shellWorkspaceMemberFallback') }}
                         </div>
-                        <v-chip size="x-small" variant="tonal" :color="member.role === 'owner' ? 'primary' : undefined">
+                        <v-chip size="x-small" variant="tonal" :color="member.role === 'owner' ? 'primary' : null">
                           {{ member.role === 'owner' ? t('shellWorkspaceRoleOwner') : t('shellWorkspaceRoleMember') }}
                         </v-chip>
                       </div>
@@ -877,7 +877,7 @@
                             <v-col :cols="$vuetify?.display?.smAndDown ? 5 : 2">
                               <v-text-field v-model.number="line.quantity" :label="t('saleEditorQtyShortLabel')" type="number" variant="outlined"
                                 density="compact" :disabled="!hasLotSelected" :min="1"
-                                :max="line.singlesPurchaseEntryId ? (getSinglesSaleLineMaxQuantity(lineIndex) ?? undefined) : undefined"
+                                :max="line.singlesPurchaseEntryId ? (getSinglesSaleLineMaxQuantity(lineIndex) ?? null) : null"
                                 hide-details="auto"
                                 @update:model-value="onSinglesSaleLineQuantityChange(lineIndex, $event)"></v-text-field>
                             </v-col>

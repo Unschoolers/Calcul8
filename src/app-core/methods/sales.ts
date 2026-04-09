@@ -50,7 +50,7 @@ import {
     type RootWheelSessionStateContext
 } from "../shared/wheel-root-session-state.ts";
 import { persistSalesCacheToStorage } from "../shared/sales-cache-storage.ts";
-import { replaceRootLotSales } from "../shared/sales-root-state.ts";
+import { cacheRootLotSales, replaceRootLotSales } from "../shared/sales-root-state.ts";
 
 export const salesMethods: ThisType<AppContext> & Pick<
   AppMethodState,
@@ -114,7 +114,8 @@ export const salesMethods: ThisType<AppContext> & Pick<
 
     try {
       persistSalesCacheToStorage(this, this.currentLotId, this.sales);
-      replaceRootLotSales(this, this.currentLotId, this.sales);
+      // Keep the root cache in sync without reassigning `sales` from inside the `sales` watcher.
+      cacheRootLotSales(this, this.currentLotId, this.sales);
     } catch (error) {
       console.error("Failed to save sales:", error);
     }

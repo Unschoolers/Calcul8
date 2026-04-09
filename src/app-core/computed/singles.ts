@@ -11,6 +11,7 @@ import {
 } from "../../domain/calculations.ts";
 import type { AppComputedObject } from "../context-contracts.ts";
 import { buildLotOptionItems, filterLotOptionItems } from "../shared/lot-option-items.ts";
+import { getRootLotSales } from "../shared/sales-root-state.ts";
 import {
     calculateProfitableOrderPrice,
     getSaleSinglesLines,
@@ -65,14 +66,20 @@ function getSaleEditorNormalizedLines(newSale: {
 function lotIsCompleteByDefault(context: {
   currentLotId: number | null;
   sales: unknown[];
-  loadSalesForLotId(lotId: number): unknown[];
+  salesByLotId?: Map<number, unknown[]>;
+  getSalesCacheEntry?: (lotId: number) => { sales: unknown[] };
+  loadSalesForLotId?: (lotId: number) => unknown[];
 }, lot: {
   id: number;
 }): boolean {
-
   const sales = context.currentLotId === lot.id
     ? context.sales
-    : (typeof context.loadSalesForLotId === "function" ? context.loadSalesForLotId(lot.id) : []);
+    : (
+      getRootLotSales(context as Record<string, unknown>, lot.id)
+      ?? context.getSalesCacheEntry?.(lot.id)?.sales
+      ?? context.loadSalesForLotId?.(lot.id)
+      ?? []
+    );
   const summary = calculateLotPerformanceSummary(
     lot as never,
     Array.isArray(sales) ? sales as never : [],

@@ -39,6 +39,16 @@ export const WheelSessionPanel = {
     wheelSessionPanelDisplayTotalSpins(this: Record<string, unknown>): number {
       return getWheelDisplayTotalSpins(this as Record<string, unknown>);
     },
+    wheelSessionPanelMode(this: Record<string, unknown>): string {
+      return String((this as Record<string, unknown>).wheelMode || "config");
+    },
+    wheelSessionPanelEndingSession(this: Record<string, unknown>): boolean {
+      return Boolean((this as Record<string, unknown>).wheelEndingSession);
+    },
+    wheelSessionPanelPendingIssueCount(this: Record<string, unknown>): number {
+      const pendingIssues = (this as Record<string, unknown>).wheelPendingInventoryIssues;
+      return Array.isArray(pendingIssues) ? pendingIssues.length : 0;
+    },
     wheelSessionPanelRevenue(this: Record<string, unknown>): number {
       return getWheelSessionRevenue(this as Record<string, unknown>);
     },
