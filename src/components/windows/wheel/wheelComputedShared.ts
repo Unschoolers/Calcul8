@@ -3,9 +3,7 @@ import type { Lot, WheelConfig, WheelFairnessEntry } from "../../../types/app.ts
 import { getWheelController } from "./wheelControllerState.ts";
 import type { WheelSlot } from "./wheelHelpers.ts";
 import {
-  calculateAverageWheelSellingTaxPercent,
-  calculateWheelBuyerShippingTotal,
-  calculateWheelNetFromGross
+  calculateWheelSessionNetRevenue
 } from "./wheelHelpers.ts";
 
 function isWheelOwnerContext(vm: Record<string, unknown>): boolean {
@@ -175,17 +173,6 @@ export function getWheelSessionProfit(vm: Record<string, unknown>): number {
   const slots = getWheelDisplaySlots(vm);
   const spinCounts = getWheelDisplaySpinCounts(vm);
   const lots = ((source.lots || []) as Lot[]);
-  const grossRevenue = getWheelSessionRevenue(vm);
-  const totalSpins = getWheelDisplayTotalSpins(vm);
-  const shippingTotal = calculateWheelBuyerShippingTotal(config, slots, spinCounts, lots);
-  const buyerShippingPerOrder = totalSpins > 0 ? (shippingTotal / totalSpins) : 0;
-  const sellingTaxPercent = config ? calculateAverageWheelSellingTaxPercent(config, lots) : 0;
-  const netRevenue = calculateWheelNetFromGross(
-    grossRevenue,
-    source,
-    totalSpins,
-    buyerShippingPerOrder,
-    sellingTaxPercent
-  );
+  const netRevenue = calculateWheelSessionNetRevenue(config, slots, spinCounts, source, lots);
   return netRevenue - getWheelSessionCost(vm);
 }

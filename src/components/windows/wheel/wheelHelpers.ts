@@ -37,6 +37,30 @@ function getLotFeeProfileInput(lot: Lot | undefined): FeeProfileInput | undefine
   };
 }
 
+function getResolvedLotFeeProfileInput(
+  lot: Lot | undefined,
+  fallback?: FeeProfileInput
+): FeeProfileInput | undefined {
+  if (!lot) return fallback;
+
+  const hasPlatformFee = Number.isFinite(Number(lot.platformFeePercent));
+  const hasAdditionalFee = Number.isFinite(Number(lot.additionalFeePercent));
+  const hasFixedFee = Number.isFinite(Number(lot.fixedFeePerOrder));
+  const hasAdditionalFeeScope = lot.additionalFeeAppliesTo === "sale_only" || lot.additionalFeeAppliesTo === "sale_plus_shipping";
+
+  if (!hasPlatformFee && !hasAdditionalFee && !hasFixedFee && !hasAdditionalFeeScope) {
+    return fallback;
+  }
+
+  const fallbackObject = (typeof fallback === "object" && fallback) ? fallback : undefined;
+  return {
+    platformFeePercent: hasPlatformFee ? Number(lot.platformFeePercent) || 0 : fallbackObject?.platformFeePercent,
+    additionalFeePercent: hasAdditionalFee ? Number(lot.additionalFeePercent) || 0 : fallbackObject?.additionalFeePercent,
+    additionalFeeAppliesTo: hasAdditionalFeeScope ? lot.additionalFeeAppliesTo : fallbackObject?.additionalFeeAppliesTo,
+    fixedFeePerOrder: hasFixedFee ? Number(lot.fixedFeePerOrder) || 0 : fallbackObject?.fixedFeePerOrder
+  };
+}
+
 function calculateWheelSaleNetRevenue(config: WheelConfig, lot: Lot | undefined): number {
   return calculateNetFromGross(
     Number(config.spinPrice) || 0,
@@ -277,18 +301,57 @@ export function computeExpectedMargin(
   lots: Lot[] = []
 ): { margin: number | null } {
   let totalCost = 0;
+  let totalNetRevenue = 0;
   let totalSlots = 0;
   for (const tier of config.tiers) {
-    totalCost += tier.slots * tier.costPerTier;
-    totalSlots += tier.slots;
+    const slotCount = Math.max(0, Number(tier.slots) || 0);
+    if (slotCount <= 0) continue;
+    const lot = tier.boundLotId == null ? undefined : lots.find((entry) => entry.id === tier.boundLotId);
+    totalCost += slotCount * Number(tier.costPerTier || 0);
+    totalNetRevenue += slotCount * calculateWheelNetFromGross(
+      Number(config.spinPrice) || 0,
+      getResolvedLotFeeProfileInput(lot, feeProfileInput),
+      1,
+      Number(lot?.sellingShippingPerOrder) || 0,
+      Number(lot?.sellingTaxPercent) || 0
+    );
+    totalSlots += slotCount;
   }
   if (!totalSlots || !config.spinPrice) return { margin: null };
   const avgCost = totalCost / totalSlots;
   if (avgCost <= 0) return { margin: null };
-  const grossPerSpin = config.spinPrice;
-  const buyerShippingPerSpin = calculateAverageWheelBuyerShippingPerSpin(config, lots);
-  const sellingTaxPerSpin = calculateAverageWheelSellingTaxPercent(config, lots);
-  const netPerSpin = calculateWheelNetFromGross(grossPerSpin, feeProfileInput, 1, buyerShippingPerSpin, sellingTaxPerSpin);
+  const netPerSpin = totalNetRevenue / totalSlots;
   const margin = ((netPerSpin - avgCost) / avgCost) * 100;
   return { margin };
+}
+
+export function calculateWheelSessionNetRevenue(
+  config: WheelConfig | null,
+  slots: WheelSlot[],
+  spinCounts: number[],
+  feeProfileInput?: FeeProfileInput,
+  lots: Lot[] = []
+): number {
+  if (!config) return 0;
+
+  const tiersById = new Map(config.tiers.map((tier) => [tier.id, tier] as const));
+
+  return spinCounts.reduce((sum, rawCount, index) => {
+    const count = Math.max(0, Number(rawCount) || 0);
+    if (count <= 0) return sum;
+
+    const slot = slots[index];
+    if (!slot) return sum;
+
+    const tier = tiersById.get(slot.tier);
+    const lot = tier?.boundLotId == null ? undefined : lots.find((entry) => entry.id === tier.boundLotId);
+
+    return sum + calculateWheelNetFromGross(
+      (Number(config.spinPrice) || 0) * count,
+      getResolvedLotFeeProfileInput(lot, feeProfileInput),
+      count,
+      Number(lot?.sellingShippingPerOrder) || 0,
+      Number(lot?.sellingTaxPercent) || 0
+    );
+  }, 0);
 }

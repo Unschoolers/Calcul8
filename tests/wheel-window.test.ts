@@ -129,6 +129,54 @@ test("computeExpectedMargin uses profit relative to cost so wheel margin matches
   assert.ok(Math.abs(result.margin - 10.2714285714) < 0.001);
 });
 
+test("expectedMarginDisplay uses fee settings from tier-bound lots instead of root fallback fees", () => {
+  const config: WheelConfig = {
+    id: 1,
+    name: "Mixed Fee Wheel",
+    spinPrice: 10,
+    targetMargin: 15,
+    createdAt: "",
+    tiers: [
+      { id: "cash", label: "No fee", color: "#0f0", slots: 1, costPerTier: 4, packsCount: 1, deductionType: "packs", boundLotId: 1, sets: [] },
+      { id: "whatnot", label: "Whatnot fee", color: "#f00", slots: 1, costPerTier: 6, packsCount: 1, deductionType: "packs", boundLotId: 2, sets: [] }
+    ]
+  };
+
+  const vm = {
+    editingWheelConfig: config,
+    lots: [
+      {
+        id: 1,
+        name: "Zero Fee Lot",
+        lotType: "bulk",
+        sellingShippingPerOrder: 0,
+        sellingTaxPercent: 0,
+        platformFeePercent: 0,
+        additionalFeePercent: 0,
+        additionalFeeAppliesTo: "sale_only",
+        fixedFeePerOrder: 0
+      },
+      {
+        id: 2,
+        name: "Whatnot Lot",
+        lotType: "bulk",
+        sellingShippingPerOrder: 0,
+        sellingTaxPercent: 0,
+        platformFeePercent: 8,
+        additionalFeePercent: 2.9,
+        additionalFeeAppliesTo: "sale_only",
+        fixedFeePerOrder: 0.3
+      }
+    ],
+    platformFeePercent: 0,
+    additionalFeePercent: 0,
+    additionalFeeAppliesTo: "sale_only",
+    fixedFeePerOrder: 0
+  };
+
+  assert.equal(WheelWindow.computed!.expectedMarginDisplay.call(vm as never), "86.1%");
+});
+
 test("WheelWindow data defaults the inspector tab to config", () => {
   const data = WheelWindow.data.call({});
   assert.equal(data.wheelInspectorTab, "config");
@@ -370,6 +418,63 @@ test("wheelSessionMarginDisplay shows profit relative to cost", () => {
     }
   };
   assert.equal(WheelWindow.computed!.wheelSessionMarginDisplay.call(vm as never), "25.0%");
+});
+
+test("wheelSessionMarginDisplay fallback uses fee settings from tier-bound lots", () => {
+  const vm = {
+    wheelMode: "live",
+    activeWheelConfig: {
+      id: 1,
+      name: "Mixed Fee Wheel",
+      spinPrice: 10,
+      targetMargin: 15,
+      createdAt: "",
+      tiers: [
+        { id: "cash", label: "No fee", color: "#0f0", slots: 1, costPerTier: 4, packsCount: 1, deductionType: "packs", boundLotId: 1, sets: [] },
+        { id: "whatnot", label: "Whatnot fee", color: "#f00", slots: 1, costPerTier: 6, packsCount: 1, deductionType: "packs", boundLotId: 2, sets: [] }
+      ]
+    },
+    wheelTotalSpins: 2,
+    wheelSpinCounts: [1, 1],
+    wheelController: {
+      activeSlots: [
+        { tier: "cash", label: "No fee", color: "#0f0", cost: 4, packsCount: 1, deductionType: "packs" },
+        { tier: "whatnot", label: "Whatnot fee", color: "#f00", cost: 6, packsCount: 1, deductionType: "packs" }
+      ],
+      sessionNetRevenue: null,
+      sessionCostAdjustment: 0
+    },
+    lots: [
+      {
+        id: 1,
+        name: "Zero Fee Lot",
+        lotType: "bulk",
+        sellingShippingPerOrder: 0,
+        sellingTaxPercent: 0,
+        platformFeePercent: 0,
+        additionalFeePercent: 0,
+        additionalFeeAppliesTo: "sale_only",
+        fixedFeePerOrder: 0
+      },
+      {
+        id: 2,
+        name: "Whatnot Lot",
+        lotType: "bulk",
+        sellingShippingPerOrder: 0,
+        sellingTaxPercent: 0,
+        platformFeePercent: 8,
+        additionalFeePercent: 2.9,
+        additionalFeeAppliesTo: "sale_only",
+        fixedFeePerOrder: 0.3
+      }
+    ],
+    platformFeePercent: 0,
+    additionalFeePercent: 0,
+    additionalFeeAppliesTo: "sale_only",
+    fixedFeePerOrder: 0
+  };
+
+  assert.equal(WheelWindow.computed!.wheelSessionMarginDisplay.call(vm as never), "86.1%");
 });
 
 test("hasPendingWheelChanges detects draft edits against the live wheel", () => {
