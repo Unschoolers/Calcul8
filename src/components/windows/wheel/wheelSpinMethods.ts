@@ -19,6 +19,7 @@ import {
   applyWheelSpinBlockedReason,
   beginWheelSpin,
   buildWheelSpinFairnessEntry,
+  buildWheelReadableVerificationUrl,
   finalizeWheelSpinProof,
   getWheelSpinSlots,
   shouldRecordWheelLiveSession,
@@ -213,9 +214,22 @@ export const wheelSpinMethods = {
       vm.drawWheel(endAngle);
       vm.wheelSpinning = false;
       pointerEl?.classList.remove("wheel-pointer--tick");
-      finalizeWheelSpinProof(vm as Record<string, unknown>, fairnessResult);
+      const config = (((vm as Record<string, unknown>).wheelDisplayConfig
+        || (vm as Record<string, unknown>).activeWheelConfig)) as WheelConfig | null;
+      const spinNumber = Number(shouldRecordLiveSession
+        ? ((vm as Record<string, unknown>).wheelTotalSpins || 0)
+        : (spinController.previewTotalSpins || 0));
+      const readableFairnessResult = {
+        ...fairnessResult,
+        verificationUrl: buildWheelReadableVerificationUrl(fairnessResult.verificationUrl, {
+          slotLabel: slots[targetIndex]?.name,
+          wheelName: config?.name,
+          spinNumber
+        })
+      };
+      finalizeWheelSpinProof(vm as Record<string, unknown>, readableFairnessResult);
       vm.appendWheelFairnessHistory(buildWheelSpinFairnessEntry(vm as Record<string, unknown>, {
-        fairnessResult,
+        fairnessResult: readableFairnessResult,
         slots,
         targetIndex,
         shouldRecordLiveSession

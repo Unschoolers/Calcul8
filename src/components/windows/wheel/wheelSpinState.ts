@@ -60,6 +60,35 @@ export function finalizeWheelSpinProof(
   controller.showSeed = true;
 }
 
+export function buildWheelReadableVerificationUrl(
+  baseUrl: string | undefined,
+  params: {
+    slotLabel?: string;
+    wheelName?: string;
+    spinNumber?: number;
+  }
+): string {
+  const rawUrl = String(baseUrl ?? "").trim();
+  if (!rawUrl) return "";
+
+  try {
+    const url = new URL(rawUrl);
+    url.searchParams.set("format", "html");
+    if (params.slotLabel) {
+      url.searchParams.set("slotLabel", params.slotLabel);
+    }
+    if (params.wheelName) {
+      url.searchParams.set("wheelName", params.wheelName);
+    }
+    if (params.spinNumber != null && Number.isFinite(params.spinNumber) && params.spinNumber > 0) {
+      url.searchParams.set("spinNumber", String(Math.floor(params.spinNumber)));
+    }
+    return url.toString();
+  } catch {
+    return rawUrl;
+  }
+}
+
 export function buildWheelSpinFairnessEntry(
   context: Record<string, unknown>,
   params: {

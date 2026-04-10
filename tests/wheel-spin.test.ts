@@ -1,9 +1,27 @@
 import assert from "node:assert/strict";
 import { test, vi } from "vitest";
 import { getWheelController } from "../src/components/windows/wheel/wheelControllerState.ts";
+import { buildWheelReadableVerificationUrl } from "../src/components/windows/wheel/wheelSpinState.ts";
 import {
     WheelWindow
 } from "../src/components/windows/wheel/WheelWindow.ts";
+
+test("buildWheelReadableVerificationUrl targets the public proof view", () => {
+  const url = buildWheelReadableVerificationUrl(
+    "https://api.example.test/wheel/fairness/verify?serverSeed=server-seed&clientSeed=client-seed&slotCount=12",
+    {
+      slotLabel: "1 Pack",
+      wheelName: "Demo Wheel",
+      spinNumber: 7
+    }
+  );
+
+  assert.match(url, /wheel\/fairness\/verify/);
+  assert.match(url, /format=html/);
+  assert.match(url, /slotLabel=1\+Pack|slotLabel=1%20Pack/);
+  assert.match(url, /wheelName=Demo\+Wheel|wheelName=Demo%20Wheel/);
+  assert.match(url, /spinNumber=7/);
+});
 
 test("recordSpinResult increments spin counts", () => {
   const vm: Record<string, unknown> = {

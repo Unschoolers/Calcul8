@@ -32,6 +32,25 @@ function getQueryParam(request: HttpRequest, key: string): string | null {
   }
 }
 
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll("\"", "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function htmlResponse(status: number, html: string): HttpResponseInit {
+  return {
+    status,
+    headers: {
+      "Content-Type": "text/html; charset=utf-8"
+    },
+    body: html
+  };
+}
+
 function requireBodyRecord(rawBody: unknown): Record<string, unknown> {
   if (!rawBody || typeof rawBody !== "object" || Array.isArray(rawBody)) {
     throw new HttpError(400, "Request body must be a JSON object.");
@@ -67,6 +86,24 @@ function parseSeed(rawValue: unknown, fieldName: string): string {
     throw new HttpError(400, `Field '${fieldName}' must be 256 characters or fewer.`);
   }
   return seed;
+}
+
+function parseOptionalDisplayValue(rawValue: unknown, fieldName: string, maxLength: number): string | null {
+  const value = String(rawValue ?? "").trim();
+  if (!value) return null;
+  if (value.length > maxLength) {
+    throw new HttpError(400, `Field '${fieldName}' must be ${maxLength} characters or fewer.`);
+  }
+  return value;
+}
+
+function parseOptionalPositiveInteger(rawValue: unknown, fieldName: string): number | null {
+  if (rawValue == null || rawValue === "") return null;
+  const value = Math.floor(Number(rawValue));
+  if (!Number.isFinite(value) || value < 1) {
+    throw new HttpError(400, `Field '${fieldName}' must be a positive integer.`);
+  }
+  return value;
 }
 
 function hashSeed(seed: string): string {
@@ -176,6 +213,213 @@ function buildVerificationUrl(request: HttpRequest, serverSeed: string, clientSe
   return url.toString();
 }
 
+function buildVerificationJsonUrl(
+  request: HttpRequest,
+  serverSeed: string,
+  clientSeed: string,
+  slotCount: number
+): string {
+  const url = new URL(buildVerificationUrl(request, serverSeed, clientSeed, slotCount));
+  url.searchParams.set("format", "json");
+  return url.toString();
+}
+
+function buildWheelFairnessHtmlPage(params: {
+  summaryTitle: string;
+  summary: string;
+  wheelName: string | null;
+  slotLabel: string | null;
+  spinNumber: number | null;
+  resultSlotNumber: number;
+  slotCount: number;
+  serverSeedHash: string;
+  clientSeed: string;
+  serverSeed: string;
+  proofHash: string;
+  algorithm: string;
+  jsonUrl: string;
+}): string {
+  const title = escapeHtml(params.summaryTitle);
+  const summary = escapeHtml(params.summary);
+  const wheelName = params.wheelName ? escapeHtml(params.wheelName) : "Unknown wheel";
+  const slotLabel = params.slotLabel ? escapeHtml(params.slotLabel) : `Slot ${params.resultSlotNumber}`;
+  const spinLabel = params.spinNumber != null ? `Spin #${params.spinNumber}` : "Verified spin";
+  const resultText = `${slotLabel} • Slot ${params.resultSlotNumber} of ${params.slotCount}`;
+  const jsonUrl = escapeHtml(params.jsonUrl);
+
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>${title}</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #121212;
+        --panel: #1f1f1f;
+        --panel-2: #262626;
+        --text: #f4f4f4;
+        --muted: #b0b0b0;
+        --accent: #f5c84c;
+        --good: #46d17d;
+        --border: rgba(255,255,255,0.08);
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: Inter, system-ui, sans-serif;
+        background: radial-gradient(circle at top, rgba(245,200,76,0.10), transparent 40%), var(--bg);
+        color: var(--text);
+      }
+      main {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 32px 20px 56px;
+      }
+      .hero, .card {
+        background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.22);
+      }
+      .hero { padding: 24px; margin-bottom: 20px; }
+      .eyebrow {
+        display: inline-flex;
+        gap: 8px;
+        align-items: center;
+        color: var(--good);
+        font-size: 0.9rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+      h1 {
+        margin: 14px 0 10px;
+        font-size: clamp(1.8rem, 5vw, 2.6rem);
+        line-height: 1.1;
+      }
+      p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 14px;
+        margin: 20px 0 0;
+      }
+      .metric {
+        padding: 16px;
+        border-radius: 16px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+      }
+      .metric__label {
+        color: var(--muted);
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      .metric__value {
+        margin-top: 8px;
+        font-size: 1.15rem;
+        font-weight: 700;
+      }
+      .card {
+        padding: 20px;
+        margin-top: 18px;
+      }
+      .card h2 {
+        margin: 0 0 12px;
+        font-size: 1.1rem;
+      }
+      .proof-list {
+        display: grid;
+        gap: 12px;
+      }
+      .proof-item {
+        padding: 14px;
+        border-radius: 14px;
+        background: var(--panel-2);
+        border: 1px solid var(--border);
+      }
+      .proof-item__label {
+        color: var(--muted);
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 8px;
+      }
+      code {
+        display: block;
+        white-space: pre-wrap;
+        word-break: break-word;
+        font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+        font-size: 0.92rem;
+      }
+      .footer-link {
+        display: inline-flex;
+        margin-top: 16px;
+        color: var(--accent);
+        text-decoration: none;
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="hero">
+        <div class="eyebrow">Verified fair result</div>
+        <h1>${title}</h1>
+        <p>${summary}</p>
+        <div class="grid">
+          <div class="metric">
+            <div class="metric__label">Wheel</div>
+            <div class="metric__value">${wheelName}</div>
+          </div>
+          <div class="metric">
+            <div class="metric__label">Spin</div>
+            <div class="metric__value">${escapeHtml(spinLabel)}</div>
+          </div>
+          <div class="metric">
+            <div class="metric__label">Result</div>
+            <div class="metric__value">${escapeHtml(resultText)}</div>
+          </div>
+          <div class="metric">
+            <div class="metric__label">Algorithm</div>
+            <div class="metric__value">${escapeHtml(params.algorithm)}</div>
+          </div>
+        </div>
+      </section>
+      <section class="card">
+        <h2>Proof details</h2>
+        <div class="proof-list">
+          <div class="proof-item">
+            <div class="proof-item__label">Committed server hash</div>
+            <code>${escapeHtml(params.serverSeedHash)}</code>
+          </div>
+          <div class="proof-item">
+            <div class="proof-item__label">Client seed</div>
+            <code>${escapeHtml(params.clientSeed)}</code>
+          </div>
+          <div class="proof-item">
+            <div class="proof-item__label">Server seed</div>
+            <code>${escapeHtml(params.serverSeed)}</code>
+          </div>
+          <div class="proof-item">
+            <div class="proof-item__label">Derived proof hash</div>
+            <code>${escapeHtml(params.proofHash)}</code>
+          </div>
+        </div>
+        <a class="footer-link" href="${jsonUrl}" rel="noopener noreferrer">View raw JSON proof</a>
+      </section>
+    </main>
+  </body>
+</html>`;
+}
+
 async function readRequestJsonOrThrow(request: HttpRequest): Promise<unknown> {
   if (typeof request.json !== "function") {
     throw new HttpError(400, "Request body must be valid JSON.");
@@ -270,7 +514,40 @@ export async function wheelFairnessVerify(
     const serverSeed = parseSeed(getQueryParam(request, "serverSeed"), "serverSeed");
     const clientSeed = parseClientSeed(getQueryParam(request, "clientSeed"));
     const slotCount = parseSlotCount(getQueryParam(request, "slotCount"));
+    const slotLabel = parseOptionalDisplayValue(getQueryParam(request, "slotLabel"), "slotLabel", 120);
+    const wheelName = parseOptionalDisplayValue(getQueryParam(request, "wheelName"), "wheelName", 120);
+    const spinNumber = parseOptionalPositiveInteger(getQueryParam(request, "spinNumber"), "spinNumber");
     const { resultIndex, proofHash } = deriveFairResult(serverSeed, clientSeed, slotCount);
+    const resultSlotNumber = resultIndex + 1;
+
+    const resultText = slotLabel
+      ? `${slotLabel} (slot ${resultSlotNumber} of ${slotCount})`
+      : `slot ${resultSlotNumber} of ${slotCount}`;
+    const summaryTitle = wheelName
+      ? `Wheel fairness verified for ${wheelName}`
+      : "Wheel fairness verified";
+    const summary = spinNumber != null
+      ? `Spin #${spinNumber} verified fairly: ${resultText}.`
+      : `Verified fair result: ${resultText}.`;
+
+    const format = String(getQueryParam(request, "format") ?? "").trim().toLowerCase();
+    if (format === "html") {
+      return htmlResponse(200, buildWheelFairnessHtmlPage({
+        summaryTitle,
+        summary,
+        wheelName,
+        slotLabel,
+        spinNumber,
+        resultSlotNumber,
+        slotCount,
+        serverSeedHash: hashSeed(serverSeed),
+        clientSeed,
+        serverSeed,
+        proofHash,
+        algorithm: WHEEL_FAIRNESS_ALGORITHM,
+        jsonUrl: buildVerificationJsonUrl(request, serverSeed, clientSeed, slotCount)
+      }));
+    }
 
     return jsonResponse(request, config, 200, {
       serverSeedHash: hashSeed(serverSeed),
@@ -278,6 +555,12 @@ export async function wheelFairnessVerify(
       slotCount,
       algorithm: WHEEL_FAIRNESS_ALGORITHM,
       resultIndex,
+      resultSlotNumber,
+      slotLabel,
+      wheelName,
+      spinNumber,
+      summaryTitle,
+      summary,
       proofHash
     });
   } catch (error) {

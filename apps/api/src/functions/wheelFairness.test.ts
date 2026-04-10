@@ -82,13 +82,19 @@ test("wheelFairnessCommit creates an opaque commit and wheelFairnessReveal resol
 
   const verifyResponse = await wheelFairnessVerify(createHttpRequest({
     method: "GET",
-    query: `serverSeed=${encodeURIComponent(revealBody.serverSeed)}&clientSeed=${encodeURIComponent(revealBody.clientSeed)}&slotCount=15`
+    query: `serverSeed=${encodeURIComponent(revealBody.serverSeed)}&clientSeed=${encodeURIComponent(revealBody.clientSeed)}&slotCount=15&slotLabel=${encodeURIComponent("1 Pack")}&wheelName=${encodeURIComponent("Demo Wheel")}&spinNumber=7`
   }) as never);
 
   assert.equal(verifyResponse.status, 200);
   const verifyBody = verifyResponse.jsonBody as {
     serverSeedHash: string;
     resultIndex: number;
+    resultSlotNumber: number;
+    slotLabel: string | null;
+    wheelName: string | null;
+    spinNumber: number | null;
+    summaryTitle: string;
+    summary: string;
     slotCount: number;
     algorithm: string;
     proofHash: string;
@@ -96,9 +102,51 @@ test("wheelFairnessCommit creates an opaque commit and wheelFairnessReveal resol
 
   assert.equal(verifyBody.serverSeedHash, revealBody.serverSeedHash);
   assert.equal(verifyBody.resultIndex, revealBody.resultIndex);
+  assert.equal(verifyBody.resultSlotNumber, revealBody.resultIndex + 1);
+  assert.equal(verifyBody.slotLabel, "1 Pack");
+  assert.equal(verifyBody.wheelName, "Demo Wheel");
+  assert.equal(verifyBody.spinNumber, 7);
+  assert.match(verifyBody.summaryTitle, /Demo Wheel/);
+  assert.match(verifyBody.summary, /1 Pack/);
   assert.equal(verifyBody.slotCount, 15);
   assert.equal(verifyBody.algorithm, "whatfees-wheel-v1");
   assert.equal(verifyBody.proofHash.length, 64);
+});
+
+test("wheelFairnessVerify renders a human-readable public proof page when format=html", async () => {
+  const commitResponse = await wheelFairnessCommit(createHttpRequest({
+    method: "POST",
+    body: {
+      slotCount: 15
+    }
+  }) as never);
+  const commitBody = commitResponse.jsonBody as {
+    commitToken: string;
+  };
+
+  const revealResponse = await wheelFairnessReveal(createHttpRequest({
+    method: "POST",
+    body: {
+      commitToken: commitBody.commitToken,
+      clientSeed: "client-seed-123"
+    }
+  }) as never);
+  const revealBody = revealResponse.jsonBody as {
+    serverSeed: string;
+    clientSeed: string;
+  };
+
+  const verifyResponse = await wheelFairnessVerify(createHttpRequest({
+    method: "GET",
+    query: `serverSeed=${encodeURIComponent(revealBody.serverSeed)}&clientSeed=${encodeURIComponent(revealBody.clientSeed)}&slotCount=15&slotLabel=${encodeURIComponent("1 Pack")}&wheelName=${encodeURIComponent("Demo Wheel")}&spinNumber=7&format=html`
+  }) as never);
+
+  assert.equal(verifyResponse.status, 200);
+  assert.equal((verifyResponse.headers as Record<string, string>)["Content-Type"], "text/html; charset=utf-8");
+  assert.match(String(verifyResponse.body || ""), /Demo Wheel/);
+  assert.match(String(verifyResponse.body || ""), /1 Pack/);
+  assert.match(String(verifyResponse.body || ""), /Spin #7/);
+  assert.match(String(verifyResponse.body || ""), /server seed/i);
 });
 
 test("wheelFairnessHash exposes a public sha256 helper for revealed seeds", async () => {
