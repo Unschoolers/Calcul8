@@ -34,6 +34,3 @@ When workspace licensing ships:
 - Prefer grace-first rollout with enforcement behind a flag
 - Candidate model: workspace subscription with per-member pricing (~$5/user/month)
 
-### Consider splitting sales-chart-config.ts
-
-746 lines — largest file in app-core. May benefit from extracting chart-type-specific configuration into separate modules. Tests exist.

@@ -3,5 +3,8 @@
         ".github/workflows/deploy-api-prod.yml",
         ".github/workflows/deploy-pages.yml"
     ],
-    "chatgpt.openOnStartup": true
+    "chatgpt.openOnStartup": true,
+    "chat.tools.terminal.autoApprove": {
+        "npx vitest": true
+    }
 }
