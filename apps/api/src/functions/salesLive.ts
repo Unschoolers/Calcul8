@@ -5,7 +5,7 @@ import {
 } from "../lib/cosmos/salesRepository";
 import { hasWorkspaceMembership } from "../lib/cosmos/workspaceRepository";
 import { getConfig } from "../lib/config";
-import { jsonResponse, maybeHandleHttpGuards } from "../lib/http";
+import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../lib/http";
 import { publishWorkspaceLotRealtimeEventBestEffort } from "../lib/realtime";
 import { parseOptionalWorkspaceId } from "../lib/syncScope";
 import { assertSyncScopeAccess, resolveSyncScope } from "../lib/syncScopeResolution";
