@@ -6,14 +6,6 @@ Items grouped by priority. Completed work is removed, not tracked.
 
 ## Medium
 
-### Add tests for whatnotRepository.ts
-
-326 lines with zero direct tests. Service-level tests exist for callers but the repository itself is untested.
-
-### Add tests for workspace-members.ts
-
-179 lines extracted from `workspaces.ts` with no test coverage.
-
 ### Consolidate realtime endpoint URL constants
 
 Room naming is now centralized in the shared `workspace-realtime-rooms` module. Remaining cleanup is only the endpoint/domain configuration still split across files:
