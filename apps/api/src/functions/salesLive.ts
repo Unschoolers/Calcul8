@@ -5,12 +5,12 @@ import {
 } from "../lib/cosmos/salesRepository";
 import { hasWorkspaceMembership } from "../lib/cosmos/workspaceRepository";
 import { getConfig } from "../lib/config";
-import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../lib/http";
+import { jsonResponse, maybeHandleHttpGuards } from "../lib/http";
 import { publishWorkspaceLotRealtimeEventBestEffort } from "../lib/realtime";
 import { parseOptionalWorkspaceId } from "../lib/syncScope";
 import { assertSyncScopeAccess, resolveSyncScope } from "../lib/syncScopeResolution";
-import { logApiTelemetry } from "../lib/telemetry";
 import { readRequestJsonOrThrow, requireRequestBodyRecord, requireRouteParam } from "./request-function-helpers";
+import { handleApiFunctionError } from "./function-error-helpers";
 import {
   deleteLotSaleForActor,
   getLotLivePricingForActor,
@@ -154,32 +154,20 @@ function handleEntityError(
   workspaceId?: string
 ): HttpResponseInit {
   const config = getConfig();
-  if (error instanceof EntityVersionConflictError) {
-    logApiTelemetry({
-      logger: context,
-      level: "warn",
-      request,
-      config,
-      route,
-      workspaceScope: getWorkspaceScope(workspaceId),
-      outcome: "http_409"
-    });
-    return errorResponse(request, config, new HttpError(409, error.message), fallbackMessage);
-  }
-  const status = typeof error === "object" && error && "status" in error ? Number((error as { status?: unknown }).status) : null;
-  if (status === 401 || status === 403 || status === 409) {
-    logApiTelemetry({
-      logger: context,
-      level: "warn",
-      request,
-      config,
-      route,
-      workspaceScope: getWorkspaceScope(workspaceId),
-      outcome: `http_${status}`
-    });
-  }
-  context.error(fallbackMessage, error);
-  return errorResponse(request, config, error, fallbackMessage);
+  return handleApiFunctionError({
+    request,
+    context,
+    config,
+    route,
+    workspaceScope: getWorkspaceScope(workspaceId),
+    error,
+    failureMessage: fallbackMessage,
+    logMessage: fallbackMessage,
+    normalizeError: (rawError) => rawError instanceof EntityVersionConflictError
+      ? new HttpError(409, rawError.message)
+      : rawError,
+    shouldLogError: ({ originalError }) => !(originalError instanceof EntityVersionConflictError)
+  });
 }
 
 export async function lotSalesList(

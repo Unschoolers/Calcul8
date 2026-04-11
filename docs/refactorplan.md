@@ -6,25 +6,6 @@ Items grouped by priority. Completed work is removed, not tracked.
 
 ## Medium
 
-### Consolidate duplicated API error parsing helpers
-
-Multiple frontend method modules independently parse error JSON by checking `error` and `message` fields with the same fallback behavior.
-
-- `src/app-core/methods/sales-live-api.ts`
-- `src/app-core/methods/wheel-fairness-api.ts`
-- `src/app-core/methods/ui/workspace-members.ts`
-
-Move this into one shared helper so error contract changes do not drift across features.
-
-### Consolidate duplicated API function error handlers
-
-The HTTP/telemetry/error-response flow is duplicated between:
-
-- `apps/api/src/functions/sync-function-helpers.ts` (`handleSyncFunctionError`)
-- `apps/api/src/functions/salesLive.ts` (`handleEntityError`)
-
-Both perform near-identical status extraction, warn-level telemetry for `401/403/409`, context logging, and `errorResponse(...)` mapping. Extract the shared path and keep only endpoint-specific behavior where needed.
-
 ### Add tests for whatnotRepository.ts
 
 326 lines with zero direct tests. Service-level tests exist for callers but the repository itself is untested.

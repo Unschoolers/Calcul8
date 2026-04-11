@@ -1,10 +1,9 @@
 import type { HttpRequest, InvocationContext } from "@azure/functions";
-import { HttpError, resolveUserId } from "../lib/auth";
+import { resolveUserId } from "../lib/auth";
 import { hasWorkspaceMembership } from "../lib/cosmos/workspaceRepository";
-import { errorResponse } from "../lib/http";
 import { assertSyncScopeAccess, resolveSyncScope, shouldWarnWorkspaceScopeFallback, type ResolvedSyncScope } from "../lib/syncScopeResolution";
-import { logApiTelemetry } from "../lib/telemetry";
 import type { ApiConfig } from "../types";
+import { handleApiFunctionError, readHttpErrorStatus as readSharedHttpErrorStatus } from "./function-error-helpers";
 
 export interface AuthorizedSyncScopeResult {
   userId: string;
@@ -58,24 +57,16 @@ export async function resolveAuthorizedSyncScope(
 }
 
 export function handleSyncFunctionError(input: HandleSyncFunctionErrorInput) {
-  const status = typeof input.error === "object" && input.error && "status" in input.error
-    ? Number((input.error as { status?: unknown }).status)
-    : null;
-
-  if (status === 401 || status === 403 || status === 409) {
-    logApiTelemetry({
-      logger: input.context,
-      level: "warn",
-      request: input.request,
-      config: input.config,
-      route: input.route,
-      workspaceScope: input.workspaceId ? "workspace" : "personal",
-      outcome: `http_${status}`
-    });
-  }
-
-  input.context.error(input.logMessage, input.error);
-  return errorResponse(input.request, input.config, input.error, input.failureMessage);
+  return handleApiFunctionError({
+    request: input.request,
+    context: input.context,
+    config: input.config,
+    route: input.route,
+    workspaceScope: input.workspaceId ? "workspace" : "personal",
+    error: input.error,
+    failureMessage: input.failureMessage,
+    logMessage: input.logMessage
+  });
 }
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
@@ -83,11 +74,5 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 export function readHttpErrorStatus(error: unknown): number | null {
-  if (!(error instanceof HttpError)) {
-    return typeof error === "object" && error && "status" in error
-      ? Number((error as { status?: unknown }).status)
-      : null;
-  }
-
-  return error.status;
+  return readSharedHttpErrorStatus(error);
 }

@@ -1,4 +1,5 @@
 import { fetchWithRetry, resolveApiBaseUrl } from "./ui/shared.ts";
+import { getApiErrorMessage } from "../shared/api-error-message.ts";
 
 export class WheelFairnessApiError extends Error {
   status: number;
@@ -47,17 +48,6 @@ async function parseJsonOrNull(response: Response): Promise<unknown> {
   }
 }
 
-function getErrorMessage(body: unknown, fallbackMessage: string): string {
-  if (body && typeof body === "object" && !Array.isArray(body)) {
-    const record = body as Record<string, unknown>;
-    const error = String(record.error ?? "").trim();
-    if (error) return error;
-    const message = String(record.message ?? "").trim();
-    if (message) return message;
-  }
-  return fallbackMessage;
-}
-
 async function requestPublicJson(
   path: string,
   init: RequestInit,
@@ -75,7 +65,7 @@ async function requestPublicJson(
   const body = await parseJsonOrNull(response);
 
   if (!response.ok) {
-    throw new WheelFairnessApiError(response.status, getErrorMessage(body, fallbackMessage));
+    throw new WheelFairnessApiError(response.status, getApiErrorMessage(body, fallbackMessage));
   }
 
   return body;

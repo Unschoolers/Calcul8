@@ -4,6 +4,7 @@ import { getStoredGoogleIdToken } from "../auth/index.ts";
 import { fetchAuthenticatedApiResponse, resolveApiBaseUrl } from "./ui/shared.ts";
 import { persistSalesCacheToStorage } from "../shared/sales-cache-storage.ts";
 import { replaceRootLotSales } from "../shared/sales-root-state.ts";
+import { parseApiErrorMessage } from "../shared/api-error-message.ts";
 
 export class SalesLiveApiError extends Error {
   status: number;
@@ -78,20 +79,6 @@ function getScopeBody(app: Pick<AppContext, "activeScopeType" | "activeWorkspace
   return {
     workspaceId: app.activeWorkspaceId
   };
-}
-
-async function parseApiError(response: Response, fallbackMessage: string): Promise<string> {
-  try {
-    const body = await response.json() as { error?: unknown; message?: unknown };
-    const error = String(body.error ?? "").trim();
-    if (error) return error;
-    const message = String(body.message ?? "").trim();
-    if (message) return message;
-  } catch {
-    // Ignore non-JSON error payloads.
-  }
-
-  return fallbackMessage;
 }
 
 export function normalizeSale(value: unknown): Sale | null {
@@ -203,7 +190,7 @@ async function requestJson(
   }
 
   if (!response.ok) {
-    throw new SalesLiveApiError(response.status, await parseApiError(response, fallbackMessage));
+    throw new SalesLiveApiError(response.status, await parseApiErrorMessage(response, fallbackMessage));
   }
 
   try {

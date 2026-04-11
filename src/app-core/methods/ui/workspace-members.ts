@@ -2,29 +2,11 @@ import type { AppContext } from "../../context-app.ts";
 import type { WorkspaceMember } from "../../../types/app.ts";
 import { getStoredGoogleIdToken } from "../../auth/index.ts";
 import { fetchAuthenticatedApiResponse, resolveApiBaseUrl } from "./shared.ts";
-
-type WorkspaceApiError = {
-  error?: unknown;
-  message?: unknown;
-};
+import { parseApiErrorMessage } from "../../shared/api-error-message.ts";
 
 type WorkspaceMembersResponse = {
   memberships?: unknown;
 };
-
-async function parseApiError(response: Response, fallbackMessage: string): Promise<string> {
-  try {
-    const body = (await response.json()) as WorkspaceApiError;
-    const errorMessage = typeof body.error === "string" ? body.error.trim() : "";
-    if (errorMessage) return errorMessage;
-    const message = typeof body.message === "string" ? body.message.trim() : "";
-    if (message) return message;
-  } catch {
-    // Ignore JSON parsing errors and use fallback message.
-  }
-
-  return fallbackMessage;
-}
 
 export function normalizeWorkspaceMember(value: unknown): WorkspaceMember | null {
   if (!value || typeof value !== "object") return null;
@@ -137,7 +119,7 @@ export async function loadWorkspaceMembers(
     }
 
     if (!response.ok) {
-      app.notify(await parseApiError(response, "Failed to load workspace members."), "error");
+      app.notify(await parseApiErrorMessage(response, "Failed to load workspace members."), "error");
       return false;
     }
 
