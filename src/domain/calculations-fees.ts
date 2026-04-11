@@ -524,6 +524,20 @@ function getStoredSaleNetRevenue(sale: Pick<Sale, "netRevenue">): number | null 
   return Math.max(0, netRevenue);
 }
 
+export function calculateSaleNetRevenue(
+  sale: Pick<Sale, "quantity" | "price" | "priceIsTotal" | "buyerShipping" | "netRevenue">,
+  sellingTaxPercent: number,
+  feeProfileInput: FeeProfileInput = DEFAULT_FEE_PROFILE_FIELDS
+): number {
+  return getStoredSaleNetRevenue(sale) ?? calculateNetFromGross(
+    getGrossRevenueForSale(sale),
+    sellingTaxPercent,
+    Number(sale.buyerShipping) || 0,
+    1,
+    feeProfileInput
+  );
+}
+
 export function calculateTotalRevenue(
   sales: Sale[],
   sellingTaxPercent: number,
@@ -537,15 +551,10 @@ export function calculateTotalRevenueWithFees(
   sellingTaxPercent: number,
   feeProfileInput: FeeProfileInput = DEFAULT_FEE_PROFILE_FIELDS
 ): number {
-  return sales.reduce((sum, sale) => {
-    const storedNetRevenue = getStoredSaleNetRevenue(sale);
-    if (storedNetRevenue != null) {
-      return sum + storedNetRevenue;
-    }
-    const grossRevenue = getGrossRevenueForSale(sale);
-    const buyerShipping = Number(sale.buyerShipping) || 0;
-    return sum + calculateNetFromGross(grossRevenue, sellingTaxPercent, buyerShipping, 1, feeProfileInput);
-  }, 0);
+  return sales.reduce(
+    (sum, sale) => sum + calculateSaleNetRevenue(sale, sellingTaxPercent, feeProfileInput),
+    0
+  );
 }
 
 export function calculateProfitForListing(
@@ -576,12 +585,9 @@ export function calculateSaleProfit(params: {
   defaultExchangeRate?: number;
   feeProfileInput?: FeeProfileInput;
 }): number {
-  const grossRevenue = getGrossRevenueForSale(params.sale);
-  const netRevenue = getStoredSaleNetRevenue(params.sale) ?? calculateNetFromGross(
-    grossRevenue,
+  const netRevenue = calculateSaleNetRevenue(
+    params.sale,
     params.sellingTaxPercent,
-    params.sale.buyerShipping || 0,
-    1,
     params.feeProfileInput
   );
 
@@ -615,12 +621,9 @@ export function getSaleProfitPreview(params: {
   defaultExchangeRate?: number;
   feeProfileInput?: FeeProfileInput;
 }): SaleProfitPreview | null {
-  const grossRevenue = getGrossRevenueForSale(params.sale);
-  const netRevenue = getStoredSaleNetRevenue(params.sale) ?? calculateNetFromGross(
-    grossRevenue,
+  const netRevenue = calculateSaleNetRevenue(
+    params.sale,
     params.sellingTaxPercent,
-    params.sale.buyerShipping || 0,
-    1,
     params.feeProfileInput
   );
 

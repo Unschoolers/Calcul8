@@ -3,9 +3,8 @@ import type {
   TooltipItem
 } from "chart.js";
 import {
-  calculateNetFromGross,
+  calculateSaleNetRevenue,
   calculatePortfolioSellThroughTimeline,
-  getGrossRevenueForSale
 } from "../../domain/calculations.ts";
 import { resolveLotBusinessDate } from "../../shared/lot-dates.ts";
 import type {
@@ -130,14 +129,7 @@ export function buildPortfolioHistoryChartConfig(params: {
       if (!lotFromMap) continue;
       const saleDate = toDateOnly(sale.date);
       if (!saleDate) continue;
-      const grossRevenue = getGrossRevenueForSale(sale);
-      const netRevenue = calculateNetFromGross(
-        grossRevenue,
-        lotFromMap.sellingTaxPercent,
-        sale.buyerShipping || 0,
-        1,
-        lotFromMap
-      );
+      const netRevenue = calculateSaleNetRevenue(sale, lotFromMap.sellingTaxPercent, lotFromMap);
       netByDate.set(saleDate, (netByDate.get(saleDate) ?? 0) + netRevenue);
       const soldUnits = Math.max(0, Number(sale.packsCount) || 0);
       if (soldUnits > 0) {

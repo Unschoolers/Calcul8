@@ -705,6 +705,16 @@ test("sparkline helpers return normalized series and valid gradient", () => {
   assert.equal(gradient.length, 2);
 });
 
+test("sparkline helpers use stored net revenue when available", () => {
+  const sales: Sale[] = [
+    { id: 1, type: "pack", quantity: 1, packsCount: 1, price: 50, buyerShipping: 0, date: "2026-01-02", netRevenue: 30 }
+  ];
+
+  const data = calculateSparklineData(sales, 100, 15);
+
+  assert.deepEqual(data, [0, 30]);
+});
+
 test("preset and portfolio summaries aggregate correctly", () => {
   const presetA: Lot = {
     id: 1,

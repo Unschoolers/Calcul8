@@ -183,6 +183,21 @@ test("buildPortfolioHistoryChartConfig creates a trend config with target datase
   assert.ok(Array.isArray(config?.data.datasets[0]?.pointBackgroundColor));
 });
 
+test("buildPortfolioHistoryChartConfig uses stored net revenue so the final point matches portfolio totals", () => {
+  const config = buildPortfolioHistoryChartConfig({
+    portfolioChartView: "trend",
+    filteredLots: [makeLot()],
+    allLotPerformance: [makePerformance({ totalCost: 100, totalProfit: -70 })],
+    salesByLotId: new Map([[1700000000000, [makeSale({ date: "2026-02-20", price: 50, packsCount: 1, netRevenue: 30 })]]]),
+    formatCurrency,
+    formatDate,
+    todayDate: "2026-02-22"
+  });
+
+  assert.equal(config?.type, "line");
+  assert.deepEqual(config?.data.datasets[0]?.data, [-100, -70]);
+});
+
 test("buildPortfolioHistoryChartConfig uses compact mobile labels and legend settings", () => {
   const config = buildPortfolioHistoryChartConfig({
     portfolioChartView: "trend",

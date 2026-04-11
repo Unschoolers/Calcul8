@@ -856,6 +856,51 @@ test("portfolio sales by user profit uses realized per-sale profit only", () => 
   assert.equal(Math.round(wyatt?.total || 0), 15);
 });
 
+test("portfolio sales by user revenue uses stored net revenue when available", () => {
+  const data = buildPortfolioSalesByUserChartData({
+    lots: [
+      {
+        id: 55,
+        name: "Dan Da Dan",
+        lotType: "bulk",
+        boxPriceCost: 80,
+        boxesPurchased: 1,
+        packsPerBox: 16,
+        spotsPerBox: 16,
+        costInputMode: "perBox",
+        currency: "CAD",
+        sellingCurrency: "CAD",
+        exchangeRate: 1,
+        purchaseDate: "2026-03-01",
+        purchaseShippingCost: 0,
+        purchaseTaxPercent: 0,
+        sellingTaxPercent: 0,
+        sellingShippingPerOrder: 0,
+        includeTax: true,
+        spotPrice: 0,
+        boxPriceSell: 0,
+        packPrice: 0,
+        targetProfitPercent: 15
+      }
+    ],
+    salesByLotId: new Map([
+      [55, [
+        { id: 1, type: "pack", quantity: 1, packsCount: 2, price: 50, buyerShipping: 0, date: "2026-03-18", updatedBy: "owner-1", netRevenue: 31 }
+      ]]
+    ]),
+    selectedLotIds: [55],
+    scopeType: "workspace",
+    workspaceMembers: [
+      { userId: "owner-1", workspaceId: "ws_team", role: "owner", status: "active", updatedAt: "2026-03-18T00:00:00Z", displayName: "Jules" }
+    ],
+    metric: "revenue",
+    todayDate: "2026-03-21"
+  });
+
+  assert.equal(data.series.length, 1);
+  assert.equal(data.series[0]?.total, 31);
+});
+
 test("portfolio sales by user keeps real negative sale profit series instead of hiding the chart", () => {
   const data = buildPortfolioSalesByUserChartData({
     lots: [

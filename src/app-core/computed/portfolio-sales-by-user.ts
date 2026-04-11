@@ -1,8 +1,7 @@
 import {
   calculateLotPerformanceSummary,
-  calculateNetFromGross,
+  calculateSaleNetRevenue,
   calculateSaleProfit,
-  getGrossRevenueForSale
 } from "../../domain/calculations.ts";
 import { DEFAULT_VALUES } from "../../constants.ts";
 import { compareLocalizedText, formatLocalizedCompactDate, translateAppMessage } from "../i18n/index.ts";
@@ -111,16 +110,6 @@ function getSeriesIdentity(
   };
 }
 
-function getSaleNetRevenue(lot: Lot, sale: Sale): number {
-  return calculateNetFromGross(
-    getGrossRevenueForSale(sale),
-    lot.sellingTaxPercent,
-    sale.buyerShipping || 0,
-    1,
-    lot
-  );
-}
-
 function hasAnyNonZeroValue(values: number[]): boolean {
   return values.some((value) => Math.abs(Number(value) || 0) > 0.000001);
 }
@@ -165,7 +154,7 @@ export function buildPortfolioSalesByUserChartData(params: {
       if (params.metric === "count") {
         current.values[weekIndex] += 1;
       } else {
-        const saleNetRevenue = getSaleNetRevenue(lot, sale);
+        const saleNetRevenue = calculateSaleNetRevenue(sale, lot.sellingTaxPercent, lot);
         current.values[weekIndex] += params.metric === "revenue"
           ? saleNetRevenue
           : calculateSaleProfit({

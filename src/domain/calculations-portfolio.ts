@@ -2,8 +2,7 @@ import { DEFAULT_FEE_PROFILE_FIELDS } from "../constants.ts";
 import { getTodayDate, resolveLotBusinessDate, toDateOnly } from "../shared/lot-dates.ts";
 import type { Lot, Sale } from "../types/app.ts";
 import {
-  calculateNetFromGross,
-  getGrossRevenueForSale,
+  calculateSaleNetRevenue,
   type FeeProfileInput
 } from "./calculations-fees.ts";
 
@@ -58,8 +57,7 @@ export function calculateSparklineData(
   const data = [cumulativeProfit];
 
   sortedSales.forEach((sale) => {
-    const grossRevenue = getGrossRevenueForSale(sale);
-    const netRevenue = calculateNetFromGross(grossRevenue, sellingTaxPercent, sale.buyerShipping || 0, 1, feeProfileInput);
+    const netRevenue = calculateSaleNetRevenue(sale, sellingTaxPercent, feeProfileInput);
     cumulativeProfit += netRevenue;
     data.push(cumulativeProfit);
   });
@@ -78,8 +76,7 @@ export function calculateSparklineGradient(
   let cumulativeProfit = -totalCaseCost;
 
   sortedSales.forEach((sale) => {
-    const grossRevenue = getGrossRevenueForSale(sale);
-    const netRevenue = calculateNetFromGross(grossRevenue, sellingTaxPercent, sale.buyerShipping || 0, 1, feeProfileInput);
+    const netRevenue = calculateSaleNetRevenue(sale, sellingTaxPercent, feeProfileInput);
     cumulativeProfit += netRevenue;
   });
 
