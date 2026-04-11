@@ -22,8 +22,43 @@ function createContext(overrides: Record<string, unknown> = {}) {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.stubGlobal("localStorage", {
-    getItem: vi.fn()
+    getItem: vi.fn(),
+    removeItem: vi.fn()
   });
+});
+
+test("deleteCurrentLotWithPersistence returns early when there is no current lot or matching lot", () => {
+  const noCurrentLot = createContext({
+    currentLotId: null,
+    askConfirmation: vi.fn()
+  });
+
+  deleteCurrentLotWithPersistence(noCurrentLot as never, {
+    readStorage: vi.fn(),
+    removeStorage: vi.fn(),
+    getLegacySalesKey: (lotId) => `legacy_sales_${lotId}`,
+    getLastLotStorageKey: () => "whatfees_last_lot_id",
+    getStorageScope: () => ({ scopeType: "personal" }),
+    legacyKeys: { LAST_LOT_ID: "legacy_last_lot_id" }
+  });
+
+  assert.equal((noCurrentLot.askConfirmation as ReturnType<typeof vi.fn>).mock.calls.length, 0);
+
+  const missingLot = createContext({
+    currentLotId: 555,
+    askConfirmation: vi.fn()
+  });
+
+  deleteCurrentLotWithPersistence(missingLot as never, {
+    readStorage: vi.fn(),
+    removeStorage: vi.fn(),
+    getLegacySalesKey: (lotId) => `legacy_sales_${lotId}`,
+    getLastLotStorageKey: () => "whatfees_last_lot_id",
+    getStorageScope: () => ({ scopeType: "personal" }),
+    legacyKeys: { LAST_LOT_ID: "legacy_last_lot_id" }
+  });
+
+  assert.equal((missingLot.askConfirmation as ReturnType<typeof vi.fn>).mock.calls.length, 0);
 });
 
 test("deleteCurrentLotWithPersistence removes lot storage and allows empty overwrite only for final lot", () => {
@@ -57,4 +92,52 @@ test("deleteCurrentLotWithPersistence removes lot storage and allows empty overw
     legacyKeys: { LAST_LOT_ID: "legacy_last_lot_id" }
   });
   assert.deepEqual((lastCtx.pushCloudSync as ReturnType<typeof vi.fn>).mock.calls[0], [true, { allowEmptyOverwrite: true }]);
+});
+
+test("deleteCurrentLotWithPersistence uses workspace-scoped last lot storage without legacy fallback", () => {
+  const removeStorage = vi.fn();
+  const localStorageMock = globalThis.localStorage as {
+    getItem: ReturnType<typeof vi.fn>;
+  };
+  localStorageMock.getItem.mockReturnValue("999");
+  const ctx = createContext({
+    activeScopeType: "workspace",
+    activeWorkspaceId: "team-42"
+  });
+
+  deleteCurrentLotWithPersistence(ctx as never, {
+    readStorage: vi.fn(),
+    removeStorage,
+    getLegacySalesKey: (lotId) => `legacy_sales_${lotId}`,
+    getLastLotStorageKey: () => "whatfees_workspace_last_lot_id",
+    getStorageScope: () => ({ scopeType: "workspace", workspaceId: "team-42" }),
+    legacyKeys: { LAST_LOT_ID: "legacy_last_lot_id" }
+  });
+
+  assert.deepEqual(removeStorage.mock.calls[1], ["whatfees_workspace_last_lot_id", undefined]);
+});
+
+test("deleteCurrentLotWithPersistence ignores localStorage cache status cleanup failures", () => {
+  const localStorageMock = globalThis.localStorage as {
+    getItem: ReturnType<typeof vi.fn>;
+    removeItem: ReturnType<typeof vi.fn>;
+  };
+  localStorageMock.getItem.mockReturnValue("999");
+  localStorageMock.removeItem.mockImplementation(() => {
+    throw new Error("quota");
+  });
+
+  const ctx = createContext();
+
+  deleteCurrentLotWithPersistence(ctx as never, {
+    readStorage: vi.fn(() => "999"),
+    removeStorage: vi.fn(),
+    getLegacySalesKey: (lotId) => `legacy_sales_${lotId}`,
+    getLastLotStorageKey: () => "whatfees_last_lot_id",
+    getStorageScope: () => ({ scopeType: "personal" }),
+    legacyKeys: { LAST_LOT_ID: "legacy_last_lot_id" }
+  });
+
+  assert.equal(ctx.currentLotId, null);
+  assert.deepEqual((ctx.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1), ["Lot deleted", "info"]);
 });
