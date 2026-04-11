@@ -1,5 +1,10 @@
 import type { InvocationContext } from "@azure/functions";
 import { createHmac } from "node:crypto";
+import {
+    buildWorkspaceLotRealtimeRoom,
+    buildWorkspacePresenceRealtimeRoom,
+    buildWorkspaceWheelRealtimeRoom
+} from "../../../../shared/workspace-realtime-rooms.cjs";
 import type { ApiConfig } from "../types";
 
 const DEFAULT_REALTIME_PUBLISH_URL = "https://ws.whatfees.ca/internal/publish";
@@ -13,17 +18,11 @@ type SignedSubscribeTokenPayload = {
   exp?: number;
 };
 
-export function buildWorkspaceLotRealtimeRoom(workspaceId: string, lotId: string): string {
-  return `workspace:${workspaceId}:lot:${lotId}`;
-}
-
-export function buildWorkspacePresenceRealtimeRoom(workspaceId: string): string {
-  return `workspace:${workspaceId}:presence`;
-}
-
-export function buildWorkspaceWheelRealtimeRoom(workspaceId: string): string {
-  return `workspace:${workspaceId}:wheel`;
-}
+export {
+    buildWorkspaceLotRealtimeRoom,
+    buildWorkspacePresenceRealtimeRoom,
+    buildWorkspaceWheelRealtimeRoom
+};
 
 export function signRealtimeSubscribeToken(
   secret: string,

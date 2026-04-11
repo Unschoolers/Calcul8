@@ -1,0 +1,78 @@
+import type { AppContext } from "../../context-app.ts";
+import { fetchWithRetry, handleExpiredAuth, resolveApiBaseUrl } from "./shared.ts";
+import { buildAuthenticatedHeaders, getStoredGoogleIdToken } from "../../auth/index.ts";
+import { parseWorkspaceApiError } from "./workspace-ui-helpers.ts";
+
+export function getGoogleIdToken(): string {
+  return getStoredGoogleIdToken();
+}
+
+export async function fetchWorkspaceJson(
+  app: AppContext,
+  path: string,
+  init: RequestInit,
+  fallbackMessage: string
+): Promise<{ ok: true; response: Response; body: unknown } | { ok: false; handled: true }> {
+  const baseUrl = resolveApiBaseUrl();
+  if (!baseUrl) {
+    app.notify("Workspace features are unavailable until the API base URL is configured.", "warning");
+    return { ok: false, handled: true };
+  }
+
+  const googleIdToken = getGoogleIdToken();
+  if (!googleIdToken) {
+    app.notify("Sign in with Google first.", "warning");
+    return { ok: false, handled: true };
+  }
+
+  let response: Response;
+  try {
+    const requestUrl = `${baseUrl}${path}`;
+    response = await fetchWithRetry(requestUrl, {
+      ...init,
+      headers: buildAuthenticatedHeaders(
+        "session-preferred",
+        init.headers as Record<string, string> | undefined,
+        requestUrl
+      )
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    const isOfflineFailure =
+      message.includes("Failed to fetch")
+      || message.includes("NetworkError")
+      || message.includes("Load failed")
+      || message.includes("fetch");
+    app.notify(
+      isOfflineFailure
+        ? "You're offline. Workspace data will refresh when the connection returns."
+        : fallbackMessage,
+      "warning"
+    );
+    return { ok: false, handled: true };
+  }
+
+  if (response.status === 401) {
+    handleExpiredAuth(app);
+    app.notify("Your sign-in expired. Please sign in again.", "warning");
+    return { ok: false, handled: true };
+  }
+
+  if (!response.ok) {
+    app.notify(await parseWorkspaceApiError(response, fallbackMessage), "error");
+    return { ok: false, handled: true };
+  }
+
+  let body: unknown = null;
+  try {
+    body = await response.json();
+  } catch {
+    body = null;
+  }
+
+  return {
+    ok: true,
+    response,
+    body
+  };
+}

@@ -1,31 +1,15 @@
-export type ScopeType = "user" | "workspace";
+import {
+  buildEntitlementDocumentId,
+  buildEntitlementScopeKey,
+  buildLegacyUserEntitlementDocumentId,
+  buildSyncScopePartitionKey
+} from "../../../../shared/scope-keys.cjs";
 
-function normalizeScopeId(raw: string): string {
-  return String(raw || "").trim();
-}
+export type { ScopeType } from "../../../../shared/scope-keys.cjs";
 
-export function buildEntitlementScopeKey(scopeType: ScopeType, scopeId: string): string | null {
-  const normalizedScopeId = normalizeScopeId(scopeId);
-  if (!normalizedScopeId) return null;
-  return scopeType === "workspace"
-    ? `ws:${normalizedScopeId}`
-    : `user:${normalizedScopeId}`;
-}
-
-export function buildEntitlementDocumentId(scopeType: ScopeType, scopeId: string): string | null {
-  const scopeKey = buildEntitlementScopeKey(scopeType, scopeId);
-  if (!scopeKey) return null;
-  return `entitlement:${scopeKey}`;
-}
-
-export function buildSyncScopePartitionKey(scopeType: ScopeType, scopeId: string): string | null {
-  const normalizedScopeId = normalizeScopeId(scopeId);
-  if (!normalizedScopeId) return null;
-  return scopeType === "workspace"
-    ? `ws:${normalizedScopeId}`
-    : `u:${normalizedScopeId}`;
-}
-
-export function buildLegacyUserEntitlementDocumentId(userId: string): string {
-  return `entitlement:${normalizeScopeId(userId)}`;
-}
+export {
+  buildEntitlementDocumentId,
+  buildEntitlementScopeKey,
+  buildLegacyUserEntitlementDocumentId,
+  buildSyncScopePartitionKey
+};

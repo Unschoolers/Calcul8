@@ -1,27 +1,13 @@
-export type ScopeType = "user" | "workspace";
+import {
+  buildEntitlementDocumentId,
+  buildEntitlementScopeKey,
+  buildSyncScopePartitionKey
+} from "../../../shared/scope-keys.mjs";
 
-function normalizeScopeId(raw: string): string {
-  return String(raw || "").trim();
-}
+export type { ScopeType } from "../../../shared/scope-keys.mjs";
 
-export function buildEntitlementScopeKey(scopeType: ScopeType, scopeId: string): string | null {
-  const normalizedScopeId = normalizeScopeId(scopeId);
-  if (!normalizedScopeId) return null;
-  return scopeType === "workspace"
-    ? `ws:${normalizedScopeId}`
-    : `user:${normalizedScopeId}`;
-}
-
-export function buildEntitlementDocumentId(scopeType: ScopeType, scopeId: string): string | null {
-  const scopeKey = buildEntitlementScopeKey(scopeType, scopeId);
-  if (!scopeKey) return null;
-  return `entitlement:${scopeKey}`;
-}
-
-export function buildSyncScopePartitionKey(scopeType: ScopeType, scopeId: string): string | null {
-  const normalizedScopeId = normalizeScopeId(scopeId);
-  if (!normalizedScopeId) return null;
-  return scopeType === "workspace"
-    ? `ws:${normalizedScopeId}`
-    : `u:${normalizedScopeId}`;
-}
+export {
+  buildEntitlementDocumentId,
+  buildEntitlementScopeKey,
+  buildSyncScopePartitionKey
+};

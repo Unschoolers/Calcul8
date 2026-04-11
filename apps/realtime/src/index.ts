@@ -1,22 +1,25 @@
-import { createServer, IncomingMessage, ServerResponse } from "node:http";
-import { WebSocketServer, WebSocket } from "ws";
+import { createServer } from "node:http";
+import { WebSocket, WebSocketServer } from "ws";
+import {
+    buildWorkspacePresenceRealtimeRoom,
+    parseWorkspacePresenceRealtimeRoom
+} from "../../../shared/workspace-realtime-rooms.cjs";
 import { getAuthorizedSubscribePayload, isAuthorizedInternalPublisher } from "./realtime-auth.js";
 import {
-  type BroadcastPayload,
-  type ClientMessage,
-  type ClientState,
-  type WorkspacePresenceMember,
-  getQueryToken,
-  isRecord,
-  normalizeOptionalBoolean,
-  normalizeOptionalString,
-  normalizeRooms,
-  parseAllowedOrigins,
-  parseWorkspacePresenceRoom,
-  readJsonBody,
-  sanitizeRooms,
-  sendJson,
-  writeJson
+    type BroadcastPayload,
+    type ClientMessage,
+    type ClientState,
+    type WorkspacePresenceMember,
+    getQueryToken,
+    isRecord,
+    normalizeOptionalBoolean,
+    normalizeOptionalString,
+    normalizeRooms,
+    parseAllowedOrigins,
+    readJsonBody,
+    sanitizeRooms,
+    sendJson,
+    writeJson
 } from "./realtime-helpers.js";
 
 const port = Number.parseInt(process.env.PORT ?? "8080", 10);
@@ -221,7 +224,7 @@ function handleClientMessage(state: ClientState, rawMessage: string, queryToken:
   sendJson(state.socket, { type: "subscribed", rooms: requestedRooms });
   syncClientPresenceState(state);
   for (const room of requestedRooms) {
-    const workspaceId = parseWorkspacePresenceRoom(room);
+    const workspaceId = parseWorkspacePresenceRealtimeRoom(room);
     if (workspaceId) {
       sendWorkspacePresenceSnapshot(state.socket, workspaceId);
     }
@@ -290,7 +293,7 @@ function getWorkspacePresenceMembers(workspaceId: string): Map<string, Workspace
 }
 
 function hasActivePresenceSubscription(workspaceId: string, userId: string): boolean {
-  const presenceRoom = `workspace:${workspaceId}:presence`;
+  const presenceRoom = buildWorkspacePresenceRealtimeRoom(workspaceId);
   for (const client of clients.values()) {
     if (client.userId === userId && client.rooms.has(presenceRoom) && client.socket.readyState === WebSocket.OPEN) {
       return true;
@@ -305,7 +308,7 @@ function syncClientPresenceState(state: ClientState): void {
 
   const workspaceIds = new Set<string>();
   for (const room of state.rooms) {
-    const workspaceId = parseWorkspacePresenceRoom(room);
+    const workspaceId = parseWorkspacePresenceRealtimeRoom(room);
     if (workspaceId) {
       workspaceIds.add(workspaceId);
     }
@@ -337,7 +340,7 @@ function getWorkspacePresenceSnapshot(workspaceId: string): WorkspacePresenceMem
 
 function broadcastWorkspacePresenceSnapshot(workspaceId: string): void {
   broadcastToRoom({
-    room: `workspace:${workspaceId}:presence`,
+    room: buildWorkspacePresenceRealtimeRoom(workspaceId),
     eventType: "workspace.presence",
     data: {
       workspaceId,
@@ -349,7 +352,7 @@ function broadcastWorkspacePresenceSnapshot(workspaceId: string): void {
 function sendWorkspacePresenceSnapshot(socket: WebSocket, workspaceId: string): void {
   sendJson(socket, {
     type: "event",
-    room: `workspace:${workspaceId}:presence`,
+    room: buildWorkspacePresenceRealtimeRoom(workspaceId),
     eventType: "workspace.presence",
     data: {
       workspaceId,

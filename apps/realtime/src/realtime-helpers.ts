@@ -107,8 +107,3 @@ export function sendJson(socket: WebSocket, body: unknown): void {
   if (socket.readyState !== WebSocket.OPEN) return;
   socket.send(JSON.stringify(body));
 }
-
-export function parseWorkspacePresenceRoom(room: string): string | null {
-  const match = /^workspace:([^:]+):presence$/.exec(room);
-  return match?.[1] ? match[1] : null;
-}

@@ -12,11 +12,11 @@ vi.mock("../lib/cosmos/salesRepository", () => ({
   listSalesForLot: vi.fn()
 }));
 
+import { buildWhatnotManualDuplicateCandidate } from "./whatnot-duplicate-detection";
 import {
-  buildImportedSalePayload,
-  buildMergedManualSalePayload,
-  buildWhatnotManualDuplicateCandidate
-} from "./whatnot-service-core";
+    buildImportedSalePayload,
+    buildMergedManualSalePayload
+} from "./whatnot-sale-builders";
 
 function toExpectedLocalDate(value: string): string {
   const date = new Date(value);
