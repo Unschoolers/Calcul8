@@ -80,7 +80,9 @@ test("hydrateMissingPortfolioSales skips when not in portfolio, offline, or api 
 });
 
 test("hydrateMissingPortfolioSales fetches only missing non-current lots and refreshes once", async () => {
-  const fetchSales = vi.fn(async (_context, lotId: number) => [{ id: lotId }]);
+  const fetchSalesByLot = vi.fn(async (_context, lotIds: number[]) => new Map(
+    lotIds.map((lotId) => [lotId, [{ id: lotId }]])
+  ));
   const cacheSales = vi.fn();
   const refreshCharts = vi.fn();
   const context = createContext({
@@ -99,14 +101,15 @@ test("hydrateMissingPortfolioSales fetches only missing non-current lots and ref
     force: false
   }, {
     canUseAuthoritativeApi: () => true,
-    fetchSales,
+    fetchSales: vi.fn(),
+    fetchSalesByLot,
     cacheSales,
     refreshCharts
   });
 
   await new Promise((resolve) => setTimeout(resolve, 0));
 
-  assert.deepEqual(fetchSales.mock.calls.map((call) => call[1]), [2]);
+  assert.deepEqual(fetchSalesByLot.mock.calls[0]?.[1], [2]);
   assert.equal(cacheSales.mock.calls.length, 1);
   assert.equal(cacheSales.mock.calls[0]?.[1], 2);
   assert.equal(context.salesCacheEpoch, 1);
@@ -174,13 +177,14 @@ test("hydrateMissingPortfolioSales force-refreshes selected non-current lots eve
 
 test("hydrateMissingPortfolioSales does not double-fetch a lot already hydrating", async () => {
   let resolveFetch: (() => void) | null = null;
-  const fetchSales = vi.fn(() => new Promise((resolve) => {
-    resolveFetch = () => resolve([{ id: 2 }]);
+  const fetchSalesByLot = vi.fn(() => new Promise<Map<number, Array<{ id: number }>>>((resolve) => {
+    resolveFetch = () => resolve(new Map([[2, [{ id: 2 }]]]));
   }));
   const context = createContext();
   const deps = {
     canUseAuthoritativeApi: () => true,
-    fetchSales,
+    fetchSales: vi.fn(),
+    fetchSalesByLot,
     cacheSales: vi.fn(),
     refreshCharts: vi.fn()
   };
@@ -188,7 +192,7 @@ test("hydrateMissingPortfolioSales does not double-fetch a lot already hydrating
   hydrateMissingPortfolioSales(context as never, { force: false }, deps);
   hydrateMissingPortfolioSales(context as never, { force: false }, deps);
 
-  assert.equal(fetchSales.mock.calls.length, 1);
+  assert.equal(fetchSalesByLot.mock.calls.length, 1);
 
   resolveFetch?.();
   await Promise.resolve();

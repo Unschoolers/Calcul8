@@ -44,6 +44,7 @@ export function maybeHandleGlobalRateLimit(
   config: ApiConfig
 ): HttpResponseInit | null {
   if (process.env.NODE_ENV === "test") return null;
+  if (config.apiEnv !== "prod") return null;
 
   const decision = checkGlobalRateLimit(request);
   if (decision.allowed) return null;

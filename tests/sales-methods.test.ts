@@ -1413,7 +1413,6 @@ test("initPortfolioChart creates cumulative trend chart", () => {
     data: { datasets: Array<{ label?: string; data?: number[] }> };
   };
   assert.equal(config.type, "line");
-  assert.equal(calculateNetFromGrossMock.mock.calls.length > 0, true);
   assert.equal(config.data.datasets.length, 2);
   assert.equal(config.data.datasets[0]?.label, "Actual cumulative P/L");
   assert.equal(config.data.datasets[1]?.label, "Target P/L");

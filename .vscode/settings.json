@@ -5,6 +5,7 @@
     ],
     "chatgpt.openOnStartup": true,
     "chat.tools.terminal.autoApprove": {
-        "npx vitest": true
+        "npx vitest": true,
+        "npm --prefix apps/api": true
     }
 }

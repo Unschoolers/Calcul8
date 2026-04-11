@@ -3,6 +3,7 @@ import { afterEach, beforeEach, test, vi } from "vitest";
 
 const {
   canUseAuthoritativeSalesLiveApiMock,
+  fetchAuthoritativeAllSalesMock,
   fetchAuthoritativeSalesMock,
   fetchWithRetryMock,
   handleExpiredAuthMock,
@@ -10,6 +11,7 @@ const {
   resolveApiBaseUrlMock
 } = vi.hoisted(() => ({
   canUseAuthoritativeSalesLiveApiMock: vi.fn(),
+  fetchAuthoritativeAllSalesMock: vi.fn(),
   fetchAuthoritativeSalesMock: vi.fn(),
   fetchWithRetryMock: vi.fn(),
   handleExpiredAuthMock: vi.fn(),
@@ -27,6 +29,7 @@ vi.mock("../src/app-core/methods/ui/shared.ts", () => ({
 
 vi.mock("../src/app-core/methods/sales-live-api.ts", () => ({
   canUseAuthoritativeSalesLiveApi: canUseAuthoritativeSalesLiveApiMock,
+  fetchAuthoritativeAllSales: fetchAuthoritativeAllSalesMock,
   fetchAuthoritativeSales: fetchAuthoritativeSalesMock
 }));
 

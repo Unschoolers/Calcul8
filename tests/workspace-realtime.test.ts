@@ -22,6 +22,7 @@ const {
 
 vi.mock("../src/app-core/methods/sales-live-api.ts", () => ({
   canUseAuthoritativeSalesLiveApi: canUseAuthoritativeSalesLiveApiMock,
+  fetchAuthoritativeAllSales: vi.fn(),
   fetchWorkspaceRealtimeSubscribeToken: fetchWorkspaceRealtimeSubscribeTokenMock,
   fetchWorkspacePresenceRealtimeSubscribeToken: fetchWorkspacePresenceRealtimeSubscribeTokenMock,
   cacheAuthoritativeSales: cacheAuthoritativeSalesMock,

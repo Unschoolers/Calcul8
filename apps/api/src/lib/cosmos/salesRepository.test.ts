@@ -21,6 +21,7 @@ vi.mock("./core", () => ({
 import {
   deleteSaleDocument,
   EntityVersionConflictError,
+  listSalesForScope,
   listSalesForLot,
   listSyncScopeKeys,
   setSyncScopeEntityModes,
@@ -246,6 +247,71 @@ test("listSalesForLot filters invalid docs and sorts by date then sale id", asyn
   assert.deepEqual(
     result.map((entry) => entry.saleId),
     ["sale-old", "sale-a", "sale-b"]
+  );
+});
+
+test("listSalesForScope filters by requested lot ids and sorts by lot then date then sale id", async () => {
+  const syncSnapshots = createSyncSnapshotsContainer();
+  syncSnapshots.items = {
+    ...syncSnapshots.items,
+    query: vi.fn().mockReturnValue({
+      fetchAll: vi.fn().mockResolvedValue({
+        resources: [
+          {
+            id: "sale:user-1:lot-2:sale-b",
+            docType: "sale",
+            userId: "user-1",
+            scopeKey: "user-1",
+            lotId: "lot-2",
+            saleId: "sale-b",
+            sale: { date: "2026-03-18" },
+            version: 1,
+            updatedAt: "2026-03-18T00:00:00.000Z",
+            updatedBy: "user-1",
+            mutationId: "m-1",
+            deletedAt: null
+          },
+          {
+            id: "sale:user-1:lot-1:sale-a",
+            docType: "sale",
+            userId: "user-1",
+            scopeKey: "user-1",
+            lotId: "lot-1",
+            saleId: "sale-a",
+            sale: { date: "2026-03-17" },
+            version: 1,
+            updatedAt: "2026-03-18T00:00:00.000Z",
+            updatedBy: "user-1",
+            mutationId: "m-2",
+            deletedAt: null
+          },
+          {
+            id: "sale:user-1:lot-2:sale-a",
+            docType: "sale",
+            userId: "user-1",
+            scopeKey: "user-1",
+            lotId: "lot-2",
+            saleId: "sale-a",
+            sale: { date: "2026-03-18" },
+            version: 1,
+            updatedAt: "2026-03-18T00:00:00.000Z",
+            updatedBy: "user-1",
+            mutationId: "m-3",
+            deletedAt: null
+          }
+        ]
+      })
+    })
+  };
+  getContainersMock.mockReturnValue({ syncSnapshots });
+
+  const result = await listSalesForScope(createConfig(), "user-1", ["lot-2", "lot-1", "lot-2"]);
+
+  assert.equal(syncSnapshots.items.query.mock.calls[0]?.[0]?.parameters?.[2]?.name, "@lotIds");
+  assert.deepEqual(syncSnapshots.items.query.mock.calls[0]?.[0]?.parameters?.[2]?.value, ["lot-2", "lot-1"]);
+  assert.deepEqual(
+    result.map((entry) => `${entry.lotId}:${entry.saleId}`),
+    ["lot-1:sale-a", "lot-2:sale-a", "lot-2:sale-b"]
   );
 });
 

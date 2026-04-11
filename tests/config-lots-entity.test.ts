@@ -3,11 +3,13 @@ import { afterEach, beforeEach, test, vi } from "vitest";
 
 const {
   canUseAuthoritativeSalesLiveApiMock,
+  fetchAuthoritativeAllSalesMock,
   fetchAuthoritativeSalesMock,
   fetchAuthoritativeLivePricingMock,
   saveAuthoritativeLivePricingMock
 } = vi.hoisted(() => ({
   canUseAuthoritativeSalesLiveApiMock: vi.fn(),
+  fetchAuthoritativeAllSalesMock: vi.fn(),
   fetchAuthoritativeSalesMock: vi.fn(),
   fetchAuthoritativeLivePricingMock: vi.fn(),
   saveAuthoritativeLivePricingMock: vi.fn()
@@ -26,6 +28,7 @@ vi.mock("../src/app-core/methods/sales-live-api.ts", () => {
   return {
     SalesLiveApiError,
     canUseAuthoritativeSalesLiveApi: canUseAuthoritativeSalesLiveApiMock,
+    fetchAuthoritativeAllSales: fetchAuthoritativeAllSalesMock,
     fetchAuthoritativeSales: fetchAuthoritativeSalesMock,
     fetchAuthoritativeLivePricing: fetchAuthoritativeLivePricingMock,
     saveAuthoritativeLivePricing: saveAuthoritativeLivePricingMock

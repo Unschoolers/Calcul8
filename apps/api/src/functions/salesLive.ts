@@ -14,6 +14,7 @@ import { handleApiFunctionError } from "./function-error-helpers";
 import {
   deleteLotSaleForActor,
   getLotLivePricingForActor,
+  listAllSalesForActor,
   listLotSalesForActor,
   mintLotRealtimeTokenForActor,
   mintWorkspaceRealtimeTokenForActor,
@@ -62,6 +63,24 @@ function parseWorkspaceIdFromRequest(request: HttpRequest, rawBody: unknown): st
 
 function getWorkspaceScope(workspaceId?: string): "personal" | "workspace" {
   return workspaceId ? "workspace" : "personal";
+}
+
+function parseOptionalLotIds(request: HttpRequest): string[] | undefined {
+  const rawLotIds = getQueryParam(request, "lotIds");
+  if (rawLotIds == null) return undefined;
+
+  const lotIds = Array.from(new Set(
+    String(rawLotIds)
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean)
+  ));
+
+  if (lotIds.length === 0) {
+    throw new HttpError(400, "Query parameter 'lotIds' must include at least one lot id when provided.");
+  }
+
+  return lotIds;
 }
 
 function sanitizeSalePayload(rawSale: unknown): Record<string, unknown> {
@@ -200,6 +219,30 @@ export async function lotSalesList(
   }
 }
 
+export async function allSalesList(
+  request: HttpRequest,
+  context: InvocationContext
+): Promise<HttpResponseInit> {
+  const config = getConfig();
+  const workspaceId = parseWorkspaceIdFromRequest(request, null);
+  const guardResponse = maybeHandleHttpGuards(request, config);
+  if (guardResponse) return guardResponse;
+
+  try {
+    const actorUserId = await resolveUserId(request, config, {
+      telemetry: {
+        logger: context,
+        route: "all_sales_list",
+        workspaceScope: getWorkspaceScope(workspaceId)
+      }
+    });
+    const responseBody = await listAllSalesForActor(config, actorUserId, workspaceId, parseOptionalLotIds(request));
+    return jsonResponse(request, config, 200, responseBody);
+  } catch (error) {
+    return handleEntityError(request, context, error, "Failed to load sales.", "all_sales_list", workspaceId);
+  }
+}
+
 export async function lotSalesUpsert(
   request: HttpRequest,
   context: InvocationContext
@@ -309,6 +352,19 @@ async function lotSalesRoute(
       return lotSalesList(request, context);
     case "POST":
       return lotSalesUpsert(request, context);
+    default:
+      return errorResponse(request, getConfig(), new HttpError(405, "Method not allowed."), "Method not allowed.");
+  }
+}
+
+async function allSalesRoute(
+  request: HttpRequest,
+  context: InvocationContext
+): Promise<HttpResponseInit> {
+  switch (request.method) {
+    case "GET":
+    case "OPTIONS":
+      return allSalesList(request, context);
     default:
       return errorResponse(request, getConfig(), new HttpError(405, "Method not allowed."), "Method not allowed.");
   }
@@ -478,6 +534,13 @@ app.http("lotSalesRoute", {
   authLevel: "anonymous",
   route: "lots/{lotId}/sales",
   handler: lotSalesRoute
+});
+
+app.http("allSalesRoute", {
+  methods: ["GET", "OPTIONS"],
+  authLevel: "anonymous",
+  route: "sales",
+  handler: allSalesRoute
 });
 
 app.http("lotSalesDelete", {

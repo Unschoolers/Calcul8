@@ -79,6 +79,25 @@ function isSyncMetaDocument(resource: unknown): resource is SyncMetaDocument {
   return (resource as { docType?: unknown }).docType === "sync_meta";
 }
 
+function compareSaleDocuments(left: SaleDocument, right: SaleDocument): number {
+  if (left.lotId !== right.lotId) return left.lotId.localeCompare(right.lotId);
+
+  const leftDate = String((left.sale as { date?: unknown })?.date ?? "");
+  const rightDate = String((right.sale as { date?: unknown })?.date ?? "");
+  if (leftDate !== rightDate) return leftDate.localeCompare(rightDate);
+  return left.saleId.localeCompare(right.saleId);
+}
+
+function normalizeLotIds(lotIds: string[] | null | undefined): string[] {
+  return Array.from(new Set((lotIds ?? []).map((lotId) => normalizeId(lotId)).filter(Boolean)));
+}
+
+function filterAndSortSaleDocuments(resources: SaleDocument[]): SaleDocument[] {
+  return (resources ?? [])
+    .filter((resource) => isSaleDocument(resource))
+    .sort(compareSaleDocuments);
+}
+
 async function getSaleDocumentFromContainer(
   container: Container,
   scopeKey: string,
@@ -115,41 +134,55 @@ async function getSyncMetaDocumentFromContainer(
   }
 }
 
-export async function listSalesForLot(
+export async function listSalesForScope(
   config: ApiConfig,
   scopeKey: string,
-  lotId: string
+  lotIds: string[] | null = null
 ): Promise<SaleDocument[]> {
   const { syncSnapshots } = getContainers(config);
   const normalizedScopeKey = normalizeId(scopeKey);
-  const normalizedLotId = normalizeId(lotId);
-  const querySpec = {
-    query: `
-      SELECT * FROM c
-      WHERE c.userId = @scopeKey
-        AND c.docType = @docType
-        AND c.lotId = @lotId
-        AND (NOT IS_DEFINED(c.deletedAt) OR IS_NULL(c.deletedAt))
-    `,
-    parameters: [
-      { name: "@scopeKey", value: normalizedScopeKey },
-      { name: "@docType", value: "sale" },
-      { name: "@lotId", value: normalizedLotId }
-    ]
-  };
+  const normalizedLotIds = normalizeLotIds(lotIds);
+  const querySpec = normalizedLotIds.length > 0
+    ? {
+      query: `
+        SELECT * FROM c
+        WHERE c.userId = @scopeKey
+          AND c.docType = @docType
+          AND ARRAY_CONTAINS(@lotIds, c.lotId)
+          AND (NOT IS_DEFINED(c.deletedAt) OR IS_NULL(c.deletedAt))
+      `,
+      parameters: [
+        { name: "@scopeKey", value: normalizedScopeKey },
+        { name: "@docType", value: "sale" },
+        { name: "@lotIds", value: normalizedLotIds }
+      ]
+    }
+    : {
+      query: `
+        SELECT * FROM c
+        WHERE c.userId = @scopeKey
+          AND c.docType = @docType
+          AND (NOT IS_DEFINED(c.deletedAt) OR IS_NULL(c.deletedAt))
+      `,
+      parameters: [
+        { name: "@scopeKey", value: normalizedScopeKey },
+        { name: "@docType", value: "sale" }
+      ]
+    };
 
   const iterator = syncSnapshots.items.query<SaleDocument>(querySpec, {
     partitionKey: normalizedScopeKey
   });
   const { resources } = await withCosmosRetry(() => iterator.fetchAll());
-  return (resources ?? [])
-    .filter((resource) => isSaleDocument(resource))
-    .sort((left, right) => {
-      const leftDate = String((left.sale as { date?: unknown })?.date ?? "");
-      const rightDate = String((right.sale as { date?: unknown })?.date ?? "");
-      if (leftDate !== rightDate) return leftDate.localeCompare(rightDate);
-      return left.saleId.localeCompare(right.saleId);
-    });
+  return filterAndSortSaleDocuments(resources ?? []);
+}
+
+export async function listSalesForLot(
+  config: ApiConfig,
+  scopeKey: string,
+  lotId: string
+): Promise<SaleDocument[]> {
+  return listSalesForScope(config, scopeKey, [lotId]);
 }
 
 export async function getSaleDocument(

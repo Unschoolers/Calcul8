@@ -1,6 +1,11 @@
 import type { Sale } from "../../types/app.ts";
 import type { AppContext } from "../context-app.ts";
-import { cacheAuthoritativeSales, canUseAuthoritativeSalesLiveApi, fetchAuthoritativeSales } from "./sales-live-api.ts";
+import {
+  cacheAuthoritativeSales,
+  canUseAuthoritativeSalesLiveApi,
+  fetchAuthoritativeAllSales,
+  fetchAuthoritativeSales
+} from "./sales-live-api.ts";
 import { refreshChartsForCurrentTab } from "./sales-ui-helpers.ts";
 
 type PortfolioSalesHydrationState = {
@@ -10,6 +15,7 @@ type PortfolioSalesHydrationState = {
 type HydrationDeps = {
   canUseAuthoritativeApi(): boolean;
   fetchSales(context: AppContext, lotId: number): Promise<Sale[] | null>;
+  fetchSalesByLot?(context: AppContext, lotIds: number[]): Promise<Map<number, Sale[]> | null>;
   cacheSales(context: AppContext, lotId: number, sales: Sale[]): void;
   refreshCharts(context: AppContext): void;
 };
@@ -39,6 +45,7 @@ export function hydrateMissingPortfolioSales(
   deps: HydrationDeps = {
     canUseAuthoritativeApi: canUseAuthoritativeSalesLiveApi,
     fetchSales: fetchAuthoritativeSales,
+    fetchSalesByLot: fetchAuthoritativeAllSales,
     cacheSales: cacheAuthoritativeSales,
     refreshCharts: refreshChartsForCurrentTab
   }
@@ -72,21 +79,37 @@ export function hydrateMissingPortfolioSales(
   void (async () => {
     let shouldRefresh = false;
     try {
-      await Promise.all(
-        missingLotIds.map(async (lotId) => {
-          try {
-            const sales = await deps.fetchSales(context, lotId);
-            if (Array.isArray(sales)) {
+      if (typeof deps.fetchSalesByLot === "function") {
+        try {
+          const salesByLot = await deps.fetchSalesByLot(context, missingLotIds);
+          if (salesByLot) {
+            for (const lotId of missingLotIds) {
+              const sales = salesByLot.get(lotId);
+              if (!Array.isArray(sales)) continue;
               deps.cacheSales(context, lotId, sales);
               shouldRefresh = true;
             }
-          } catch {
-            // Ignore background hydration failures and keep the current portfolio render.
-          } finally {
-            hydrationState.hydratingLotIds.delete(lotId);
           }
-        })
-      );
+        } catch {
+          // Ignore background hydration failures and keep the current portfolio render.
+        }
+      } else {
+        await Promise.all(
+          missingLotIds.map(async (lotId) => {
+            try {
+              const sales = await deps.fetchSales(context, lotId);
+              if (Array.isArray(sales)) {
+                deps.cacheSales(context, lotId, sales);
+                shouldRefresh = true;
+              }
+            } catch {
+              // Ignore background hydration failures and keep the current portfolio render.
+            } finally {
+              hydrationState.hydratingLotIds.delete(lotId);
+            }
+          })
+        );
+      }
     } finally {
       for (const lotId of missingLotIds) {
         hydrationState.hydratingLotIds.delete(lotId);

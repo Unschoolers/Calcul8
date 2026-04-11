@@ -5,12 +5,14 @@ const {
   canUseAuthoritativeSalesLiveApiMock,
   saveAuthoritativeSaleMock,
   deleteAuthoritativeSaleMock,
+  fetchAuthoritativeAllSalesMock,
   fetchAuthoritativeSalesMock,
   cacheAuthoritativeSalesMock
 } = vi.hoisted(() => ({
   canUseAuthoritativeSalesLiveApiMock: vi.fn(),
   saveAuthoritativeSaleMock: vi.fn(),
   deleteAuthoritativeSaleMock: vi.fn(),
+  fetchAuthoritativeAllSalesMock: vi.fn(),
   fetchAuthoritativeSalesMock: vi.fn(),
   cacheAuthoritativeSalesMock: vi.fn()
 }));
@@ -46,6 +48,7 @@ vi.mock("../src/app-core/methods/sales-live-api.ts", () => {
     canUseAuthoritativeSalesLiveApi: canUseAuthoritativeSalesLiveApiMock,
     saveAuthoritativeSale: saveAuthoritativeSaleMock,
     deleteAuthoritativeSale: deleteAuthoritativeSaleMock,
+    fetchAuthoritativeAllSales: fetchAuthoritativeAllSalesMock,
     fetchAuthoritativeSales: fetchAuthoritativeSalesMock,
     cacheAuthoritativeSales: cacheAuthoritativeSalesMock
   };
@@ -452,18 +455,17 @@ test("initPortfolioChart hydrates missing authoritative sales for selected non-c
     if (key === "sales_2") return null;
     return "[]";
   });
-  fetchAuthoritativeSalesMock.mockResolvedValue([
-    {
-      id: 21,
-      type: "pack",
-      quantity: 1,
-      packsCount: 1,
-      price: 12,
-      buyerShipping: 0,
-      date: "2026-03-17",
-      version: 1
-    }
-  ]);
+  const hydratedSales = [{
+    id: 21,
+    type: "pack",
+    quantity: 1,
+    packsCount: 1,
+    price: 12,
+    buyerShipping: 0,
+    date: "2026-03-17",
+    version: 1
+  }];
+  fetchAuthoritativeAllSalesMock.mockResolvedValue(new Map([[2, hydratedSales]]));
 
   const ctx = createContext({
     currentTab: "portfolio",
@@ -515,17 +517,8 @@ test("initPortfolioChart hydrates missing authoritative sales for selected non-c
   await Promise.resolve();
   await Promise.resolve();
 
-  assert.deepEqual(fetchAuthoritativeSalesMock.mock.calls, [[ctx, 2]]);
-  assert.deepEqual(cacheAuthoritativeSalesMock.mock.calls, [[ctx, 2, [{
-    id: 21,
-    type: "pack",
-    quantity: 1,
-    packsCount: 1,
-    price: 12,
-    buyerShipping: 0,
-    date: "2026-03-17",
-    version: 1
-  }]]]);
+  assert.deepEqual(fetchAuthoritativeAllSalesMock.mock.calls, [[ctx, [2]]]);
+  assert.deepEqual(cacheAuthoritativeSalesMock.mock.calls, [[ctx, 2, hydratedSales]]);
   assert.equal(ctx.salesCacheEpoch, 1);
   assert.equal((ctx.initPortfolioChart as ReturnType<typeof vi.fn>).mock.calls.length, 1);
 });

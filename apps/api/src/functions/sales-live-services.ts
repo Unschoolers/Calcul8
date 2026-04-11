@@ -3,6 +3,7 @@ import {
   deleteSaleDocument,
   getLotLivePricing,
   listSalesForLot,
+  listSalesForScope,
   upsertLotLivePricing,
   upsertSaleDocument
 } from "../lib/cosmos/salesRepository";
@@ -65,6 +66,38 @@ export async function listLotSalesForActor(
     lotId,
     sales: sales.map((document) => toSaleResponse(document))
   };
+}
+
+export async function listAllSalesForActor(
+  config: ApiConfig,
+  actorUserId: string,
+  workspaceId: string | undefined,
+  lotIds: string[] | undefined
+): Promise<{
+  salesByLot: Record<string, Array<Record<string, unknown>>>;
+}> {
+  const syncScope = resolveSyncScope(actorUserId, workspaceId);
+  await assertSyncScopeAccess(
+    syncScope,
+    (userId, nextWorkspaceId) => hasWorkspaceMembership(config, userId, nextWorkspaceId)
+  );
+
+  const normalizedLotIds = Array.from(new Set((lotIds ?? []).map((lotId) => String(lotId ?? "").trim()).filter(Boolean)));
+  const sales = await listSalesForScope(config, syncScope.partitionKey, normalizedLotIds);
+  const salesByLot: Record<string, Array<Record<string, unknown>>> = {};
+
+  for (const lotId of normalizedLotIds) {
+    salesByLot[lotId] = [];
+  }
+
+  for (const document of sales) {
+    if (!salesByLot[document.lotId]) {
+      salesByLot[document.lotId] = [];
+    }
+    salesByLot[document.lotId].push(toSaleResponse(document));
+  }
+
+  return { salesByLot };
 }
 
 export async function upsertLotSaleForActor(

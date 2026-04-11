@@ -79,7 +79,6 @@ export const appWatch: AppWatchObject = {
 
     if (newTab === "portfolio") {
       refreshWorkspaceRealtime(this);
-      hydrateMissingPortfolioSales(this, { force: true });
       this.$nextTick(() => this.initPortfolioChart());
       return;
     }

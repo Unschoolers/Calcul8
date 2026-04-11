@@ -31,6 +31,10 @@ type SaleResponse = {
   sale?: unknown;
 };
 
+type AllSalesResponse = {
+  salesByLot?: unknown;
+};
+
 type LivePricingResponse = {
   livePricing?: unknown;
 };
@@ -142,6 +146,25 @@ function normalizeSales(value: unknown): Sale[] {
     .filter((entry): entry is Sale => entry != null);
 }
 
+function normalizeSalesByLot(value: unknown, requestedLotIds: number[] = []): Map<number, Sale[]> {
+  const salesByLot = new Map<number, Sale[]>();
+  for (const lotId of requestedLotIds) {
+    salesByLot.set(lotId, []);
+  }
+
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return salesByLot;
+  }
+
+  for (const [rawLotId, rawSales] of Object.entries(value as Record<string, unknown>)) {
+    const lotId = Number(rawLotId);
+    if (!Number.isFinite(lotId) || lotId <= 0) continue;
+    salesByLot.set(lotId, normalizeSales(rawSales));
+  }
+
+  return salesByLot;
+}
+
 export function normalizeLivePricing(value: unknown): LotLivePricingRecord | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const candidate = value as Record<string, unknown>;
@@ -230,6 +253,42 @@ export async function fetchAuthoritativeSales(
   const sales = normalizeSales(body?.sales);
   persistSalesCache(app, lotId, sales);
   return sales;
+}
+
+export async function fetchAuthoritativeAllSales(
+  app: SalesLiveApiApp,
+  lotIds: number[] | null = null
+): Promise<Map<number, Sale[]> | null> {
+  if (!canUseAuthoritativeSalesLiveApi()) return null;
+
+  const normalizedLotIds = Array.from(new Set(
+    (lotIds ?? [])
+      .map((lotId) => Number(lotId))
+      .filter((lotId) => Number.isFinite(lotId) && lotId > 0)
+  ));
+  const query = new URLSearchParams();
+  if (app.activeScopeType === "workspace" && app.activeWorkspaceId) {
+    query.set("workspaceId", app.activeWorkspaceId);
+  }
+  if (normalizedLotIds.length > 0) {
+    query.set("lotIds", normalizedLotIds.join(","));
+  }
+
+  const suffix = query.size > 0 ? `?${query.toString()}` : "";
+  const body = await requestJson(
+    app,
+    `/sales${suffix}`,
+    {
+      method: "GET"
+    },
+    "Failed to load sales."
+  ) as AllSalesResponse | null;
+
+  const salesByLot = normalizeSalesByLot(body?.salesByLot, normalizedLotIds);
+  for (const [lotId, sales] of salesByLot.entries()) {
+    persistSalesCache(app, lotId, sales);
+  }
+  return salesByLot;
 }
 
 export async function saveAuthoritativeSale(

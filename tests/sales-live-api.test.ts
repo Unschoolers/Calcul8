@@ -32,6 +32,7 @@ import {
   canUseAuthoritativeSalesLiveApi,
   createMutationId,
   deleteAuthoritativeSale,
+  fetchAuthoritativeAllSales,
   fetchAuthoritativeLivePricing,
   fetchAuthoritativeSales,
   fetchWorkspacePresenceRealtimeSubscribeToken,
@@ -240,6 +241,75 @@ test("fetchAuthoritativeSales normalizes API payload, scopes workspace requests,
     "loaded"
   );
   assert.deepEqual(app.salesByLotId.get(42), sales);
+});
+
+test("fetchAuthoritativeAllSales normalizes grouped payloads and caches empty lots as loaded", async () => {
+  fetchAuthenticatedApiResponseMock.mockResolvedValue(new Response(JSON.stringify({
+    salesByLot: {
+      "42": [
+        {
+          id: 11,
+          type: "box",
+          quantity: "3",
+          packsCount: "2",
+          price: "40.25",
+          buyerShipping: "4.5",
+          date: "2026-03-17",
+          version: "8",
+          updatedAt: "2026-03-17T12:00:00Z",
+          updatedBy: "user-1",
+          mutationId: "mut-1"
+        }
+      ],
+      "43": []
+    }
+  }), {
+    status: 200,
+    headers: {
+      "Content-Type": "application/json"
+    }
+  }));
+
+  const app = createApp({
+    activeScopeType: "workspace",
+    activeWorkspaceId: "team-1"
+  });
+  const salesByLot = await fetchAuthoritativeAllSales(app, [42, 43]);
+
+  assert.equal(fetchAuthenticatedApiResponseMock.mock.calls[0]?.[1], "/sales?workspaceId=team-1&lotIds=42%2C43");
+  assert.deepEqual(salesByLot?.get(42), [
+    {
+      id: 11,
+      type: "box",
+      quantity: 3,
+      packsCount: 2,
+      singlesPurchaseEntryId: undefined,
+      singlesItems: undefined,
+      price: 40.25,
+      priceIsTotal: undefined,
+      customer: undefined,
+      memo: undefined,
+      buyerShipping: 4.5,
+      date: "2026-03-17",
+      version: 8,
+      updatedAt: "2026-03-17T12:00:00Z",
+      updatedBy: "user-1",
+      mutationId: "mut-1",
+      linkedWheelId: undefined,
+      winningTierId: undefined,
+      costOfWinningTier: undefined,
+      netRevenue: undefined
+    }
+  ]);
+  assert.deepEqual(salesByLot?.get(43), []);
+  assert.equal(localStorage.getItem("sales:42"), JSON.stringify(salesByLot?.get(42)));
+  assert.equal(localStorage.getItem("sales:43"), JSON.stringify([]));
+  assert.equal(
+    localStorage.getItem(getSalesCacheStatusKey(43, { scopeType: "workspace", workspaceId: "team-1" })),
+    "loaded"
+  );
+  assert.deepEqual(app.salesByLotId.get(42), salesByLot?.get(42));
+  assert.deepEqual(app.salesByLotId.get(43), []);
 });
 
 test("requestJson surfaces API message bodies and requests default 401 auth expiry", async () => {

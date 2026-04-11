@@ -32,7 +32,7 @@ vi.mock("./rateLimit", () => ({
 
 import { maybeHandleHttpGuards } from "./http";
 
-function makeConfig(): ApiConfig {
+function makeConfig(overrides: Partial<ApiConfig> = {}): ApiConfig {
   return {
     apiEnv: "dev",
     authBypassDev: true,
@@ -48,7 +48,8 @@ function makeConfig(): ApiConfig {
     cosmosDatabaseId: "whatfees",
     entitlementsContainerId: "entitlements",
     syncContainerId: "sync_data",
-    migrationRunsContainerId: "migration_runs"
+    migrationRunsContainerId: "migration_runs",
+    ...overrides
   };
 }
 
@@ -99,6 +100,22 @@ test("returns null when request passes guards", () => {
 
   const response = maybeHandleHttpGuards(request, makeConfig());
   assert.equal(response, null);
+  assert.equal(checkGlobalRateLimitMock.mock.calls.length, 0);
+});
+
+test("checks global rate limits in prod requests", () => {
+  const request = makeRequest("GET", { origin: "https://example.app" });
+  checkGlobalRateLimitMock.mockReturnValue({
+    allowed: true,
+    limit: 30,
+    remaining: 29,
+    windowSeconds: 10,
+    retryAfterSeconds: null
+  });
+
+  const response = maybeHandleHttpGuards(request, makeConfig({ apiEnv: "prod" }));
+
+  assert.equal(response, null);
   assert.equal(checkGlobalRateLimitMock.mock.calls.length, 1);
 });
 
@@ -112,7 +129,7 @@ test("returns 429 payload and headers when global limit is exceeded", () => {
     retryAfterSeconds: 4
   });
 
-  const response = maybeHandleHttpGuards(request, makeConfig());
+  const response = maybeHandleHttpGuards(request, makeConfig({ apiEnv: "prod" }));
 
   assert.equal(response?.status, 429);
   assert.equal((response?.jsonBody as { error: string }).error, "Too many requests. Please retry shortly.");

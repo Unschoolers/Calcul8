@@ -16,6 +16,7 @@ const {
   getConfigMock,
   hasWorkspaceMembershipMock,
   listSalesForLotMock,
+  listSalesForScopeMock,
   upsertSaleDocumentMock,
   deleteSaleDocumentMock,
   getLotLivePricingMock,
@@ -27,6 +28,7 @@ const {
   getConfigMock: vi.fn(),
   hasWorkspaceMembershipMock: vi.fn(),
   listSalesForLotMock: vi.fn(),
+  listSalesForScopeMock: vi.fn(),
   upsertSaleDocumentMock: vi.fn(),
   deleteSaleDocumentMock: vi.fn(),
   getLotLivePricingMock: vi.fn(),
@@ -46,6 +48,7 @@ vi.mock("../lib/config", () => ({
 vi.mock("../lib/cosmos/salesRepository", () => ({
   EntityVersionConflictError: EntityVersionConflictErrorMock,
   listSalesForLot: listSalesForLotMock,
+  listSalesForScope: listSalesForScopeMock,
   upsertSaleDocument: upsertSaleDocumentMock,
   deleteSaleDocument: deleteSaleDocumentMock,
   getLotLivePricing: getLotLivePricingMock,
@@ -80,6 +83,7 @@ vi.mock("../lib/auth", async () => {
 });
 
 import {
+  allSalesList,
   lotLivePricingGet,
   lotLivePricingSave,
   workspaceRealtimeTokenGet,
@@ -119,6 +123,7 @@ beforeEach(() => {
   getConfigMock.mockReturnValue(createApiConfig());
   hasWorkspaceMembershipMock.mockResolvedValue(true);
   listSalesForLotMock.mockResolvedValue([]);
+  listSalesForScopeMock.mockResolvedValue([]);
   deleteSaleDocumentMock.mockResolvedValue({
     saleId: "1"
   });
@@ -151,6 +156,55 @@ test("lotSalesList returns normalized sales for the resolved scope", async () =>
   assert.equal(response.status, 200);
   assert.equal(listSalesForLotMock.mock.calls[0]?.[1], "ws:team-42");
   assert.equal((response.jsonBody as { sales: Array<{ version: number }> }).sales[0]?.version, 2);
+});
+
+test("allSalesList returns grouped sales for the resolved scope and preserves requested empty lots", async () => {
+  listSalesForScopeMock.mockResolvedValue([
+    {
+      lotId: "10",
+      saleId: "sale-1",
+      sale: {
+        id: 11,
+        type: "pack",
+        quantity: 1,
+        packsCount: 1,
+        price: 10,
+        date: "2026-03-17"
+      },
+      version: 2,
+      updatedAt: "2026-03-17T00:00:00.000Z",
+      updatedBy: "user-a",
+      mutationId: "sale:1"
+    }
+  ]);
+
+  const response = await allSalesList(
+    createRequest("GET", undefined, {}, "workspaceId=team-42&lotIds=10,11") as never,
+    createContext() as never
+  );
+
+  assert.equal(response.status, 200);
+  assert.equal(listSalesForScopeMock.mock.calls[0]?.[1], "ws:team-42");
+  assert.deepEqual(listSalesForScopeMock.mock.calls[0]?.[2], ["10", "11"]);
+  assert.deepEqual(response.jsonBody, {
+    salesByLot: {
+      "10": [
+        {
+          id: 11,
+          type: "pack",
+          quantity: 1,
+          packsCount: 1,
+          price: 10,
+          date: "2026-03-17",
+          version: 2,
+          updatedAt: "2026-03-17T00:00:00.000Z",
+          updatedBy: "user-a",
+          mutationId: "sale:1"
+        }
+      ],
+      "11": []
+    }
+  });
 });
 
 test("lotSalesUpsert writes sale docs with baseVersion and mutationId", async () => {
