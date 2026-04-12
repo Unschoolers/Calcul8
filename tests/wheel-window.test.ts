@@ -94,6 +94,8 @@ test("createDefaultTier assigns unique colors", () => {
   const t1 = createDefaultTier(0);
   const t2 = createDefaultTier(1, [t1.color]);
   assert.notEqual(t1.color, t2.color);
+  assert.equal(t1.color, "#f0a500");
+  assert.equal(t2.color, "#8e44ad");
   assert.equal(t1.label, "Tier 1");
   assert.equal(t2.label, "Tier 2");
 });
@@ -104,6 +106,7 @@ test("createDefaultWheelConfig returns valid config", () => {
   assert.equal(config.spinPrice, 10);
   assert.equal(config.tiers.length, 1);
   assert.equal(config.tiers[0]!.label, "1 Item");
+  assert.equal(config.tiers[0]!.color, "#f0a500");
 });
 
 test("computeExpectedMargin uses profit relative to cost so wheel margin matches lot math", () => {

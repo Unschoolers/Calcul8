@@ -321,8 +321,6 @@ export const wheelSessionMethods = {
     } else if (action === "end") {
       (this as Record<string, unknown>).wheelEndSessionReviewActive = false;
       (this as Record<string, unknown> & { startEndWheelSession: () => void }).startEndWheelSession();
-    } else if (action === "apply") {
-      (this as Record<string, unknown> & { applyWheelConfig: () => void }).applyWheelConfig();
     } else if (action === "delete") {
       (this as Record<string, unknown> & { deleteWheelConfig: () => void }).deleteWheelConfig();
     }

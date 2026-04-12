@@ -70,7 +70,7 @@
             {{ t('wheelTierEditorSubtitle') }}
           </div>
         </div>
-        <v-btn icon="mdi-close" variant="text" size="small" @click="editorOpen = false"></v-btn>
+        <v-btn icon="mdi-close" variant="text" size="small" @click="finishTierEditor()"></v-btn>
       </v-card-title>
       <v-card-text class="wheel-tier-editor__body">
         <section class="wheel-tier-editor__section">
@@ -262,9 +262,9 @@
         </section>
       </v-card-text>
       <v-card-actions class="wheel-tier-editor__actions">
-        <v-btn variant="tonal" color="error" @click="removeTier(tierIndex); editorOpen = false">{{ t('commonDelete') }}</v-btn>
+        <v-btn variant="tonal" color="error" @click="deleteTierAndClose()">{{ t('commonDelete') }}</v-btn>
         <v-spacer></v-spacer>
-        <v-btn variant="elevated" color="primary" @click="editorOpen = false">{{ t('commonDone') }}</v-btn>
+        <v-btn variant="elevated" color="primary" @click="finishTierEditor()">{{ t('commonDone') }}</v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>

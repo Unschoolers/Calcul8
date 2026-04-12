@@ -97,6 +97,21 @@ export const WheelTierCard = {
     },
     clearTierCelebrationEmoji(this: { tier: WheelTier }): void {
       this.tier.celebrationEmoji = undefined;
+    },
+    finishTierEditor(this: Record<string, unknown> & { editorOpen: boolean }): void {
+      this.editorOpen = false;
+      if ((this.canApplyWheelConfig as boolean) !== true) return;
+      const applyWheelConfig = this.applyWheelConfig as (() => void) | undefined;
+      if (typeof applyWheelConfig === "function") {
+        applyWheelConfig();
+      }
+    },
+    deleteTierAndClose(this: Record<string, unknown> & { editorOpen: boolean; tierIndex: number }): void {
+      const removeTier = this.removeTier as ((index: number) => void) | undefined;
+      if (typeof removeTier === "function") {
+        removeTier(this.tierIndex);
+      }
+      this.finishTierEditor();
     }
   },
   setup(props: { ctx: Record<string, unknown> }) {

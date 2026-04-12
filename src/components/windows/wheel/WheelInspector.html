@@ -46,9 +46,6 @@
         <div>
           <div class="wheel-inspector-hero__title">{{ editingWheelConfig?.name || wheelStageTitle }}</div>
         </div>
-        <v-chip size="small" :color="hasPendingWheelChanges ? 'warning' : 'success'" variant="tonal">
-          {{ hasPendingWheelChanges ? t('wheelInspectorPendingRebuildLabel') : t('wheelInspectorReadyToSpinLabel') }}
-        </v-chip>
       </div>
 
       <div class="wheel-active-config-toolbar">

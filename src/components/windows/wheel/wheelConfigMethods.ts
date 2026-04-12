@@ -25,7 +25,7 @@ import {
   getWheelTierInventoryMeta
 } from "./wheelSaleSupport.ts";
 
-function clearQueuedWheelDraftSave(context: Record<string, unknown>): void {
+function clearQueuedWheelConfigSync(context: Record<string, unknown>): void {
   const timeoutId = context._wheelDraftSaveTimeoutId as number | undefined;
   if (timeoutId != null) {
     globalThis.clearTimeout(timeoutId);
@@ -177,119 +177,150 @@ export const wheelConfigMethods = {
 
   applyWheelConfig(this: Record<string, unknown>): void {
     const editing = (this as Record<string, unknown>).editingWheelConfig as WheelConfig | null;
-    if (!editing) return;
-    clearQueuedWheelDraftSave(this);
+    if (!editing) {
+      (this as Record<string, unknown>).wheelConfigSyncPending = false;
+      return;
+    }
+    clearQueuedWheelConfigSync(this);
+    (this as Record<string, unknown>).wheelConfigSyncPending = true;
     stopWorkspaceConfigSyncPush(this as object);
-    const configs = (this.wheelConfigs || []) as WheelConfig[];
-    const idx = configs.findIndex((c) => c.id === editing.id);
-    const previousConfig = idx >= 0 ? configs[idx] : null;
-    const updated = { ...(JSON.parse(JSON.stringify(editing)) as WheelConfig), updatedAt: new Date().toISOString() };
-    const sanitizedUpdated = normalizeWheelConfig(updated, (this.lots || []) as Lot[]) ?? updated;
-    if (idx >= 0) {
-      configs[idx] = sanitizedUpdated;
-    } else {
-      configs.push(sanitizedUpdated);
-    }
-    const applyController = getWheelController(this as Record<string, unknown>);
-    const oldSlots = ((applyController.activeSlots || []) as WheelSlot[]);
-    const oldCounts = ((this.wheelSpinCounts || []) as number[]);
-    const oldTierIds = oldSlots.map((slot) => slot.tier);
-    const newSlots = buildSlotsFromConfig(updated);
-    const newTierIds = new Set(updated.tiers.map((tier) => tier.id));
-    const hadTierShapeChange = oldTierIds.some((tierId) => !newTierIds.has(tierId))
-      || updated.tiers.some((tier) => !oldTierIds.includes(tier.id));
-    const previousTierTotals = oldSlots.reduce<Record<string, number>>((acc, slot, index) => {
-      acc[slot.tier] = (acc[slot.tier] || 0) + (oldCounts[index] || 0);
-      return acc;
-    }, {});
-    const previousTierCosts = new Map((previousConfig?.tiers || []).map((tier) => [tier.id, tier.costPerTier]));
-
-    (this as Record<string, unknown>)._wheelSkipConfigReload = true;
-    this.wheelConfigs = [...configs];
     try {
-      localStorage.removeItem(getWheelDraftStorageKey(this, updated.id));
-    } catch { /* ignore */ }
-    this.activeWheelConfigId = updated.id;
-    (this as Record<string, unknown>).editingWheelConfig = JSON.parse(JSON.stringify(updated)) as WheelConfig;
-    (this as Record<string, unknown>).appliedWheelConfigSnapshot = JSON.parse(JSON.stringify(updated)) as WheelConfig;
-    applyController.activeSlots = newSlots;
-    applyController.previewSlots = [...newSlots];
-    this.wheelSpinCounts = remapSpinCountsByTier(oldTierIds, oldCounts, newSlots);
-    this.wheelTotalSpins = (this.wheelSpinCounts as number[]).reduce((sum, count) => sum + count, 0);
-    this.wheelLastResult = "";
-    applyController.inventoryWarning = "";
-    applyController.previewSpinCounts = new Array(newSlots.length).fill(0);
-    applyController.previewTotalSpins = 0;
-    applyController.previewFairnessHistory = [];
-    applyController.previewChaseTallyHistory = [];
-    applyController.lastResultColor = "rgb(var(--v-theme-primary))";
-    applyController.spinHash = "";
-    applyController.spinSeed = "";
-    applyController.spinClientSeed = "";
-    applyController.spinVerificationUrl = "";
-    applyController.spinAlgorithm = "";
-    applyController.showSeed = false;
-    applyController.fairnessHistoryOpen = false;
-    applyController.highlightedSlotIndex = -1;
-    if (hadTierShapeChange) {
-      applyController.sessionCostAdjustment = 0;
-      applyController.chaseTallyHistory = [];
-    } else {
-      let costAdjustment = (applyController.sessionCostAdjustment as number) || 0;
-      for (const tier of updated.tiers) {
-        const previousCost = previousTierCosts.get(tier.id);
-        if (previousCost == null || previousCost === tier.costPerTier) continue;
-        const priorSpins = previousTierTotals[tier.id] || 0;
-        if (priorSpins > 0) {
-          costAdjustment += priorSpins * (previousCost - tier.costPerTier);
-        }
+      const configs = (this.wheelConfigs || []) as WheelConfig[];
+      const idx = configs.findIndex((c) => c.id === editing.id);
+      const previousConfig = idx >= 0 ? configs[idx] : null;
+      const updated = { ...(JSON.parse(JSON.stringify(editing)) as WheelConfig), updatedAt: new Date().toISOString() };
+      const sanitizedUpdated = normalizeWheelConfig(updated, (this.lots || []) as Lot[]) ?? updated;
+      if (idx >= 0) {
+        configs[idx] = sanitizedUpdated;
+      } else {
+        configs.push(sanitizedUpdated);
       }
-      applyController.sessionCostAdjustment = costAdjustment;
+      const applyController = getWheelController(this as Record<string, unknown>);
+      const oldSlots = ((applyController.activeSlots || []) as WheelSlot[]);
+      const oldCounts = ((this.wheelSpinCounts || []) as number[]);
+      const oldTierIds = oldSlots.map((slot) => slot.tier);
+      const newSlots = buildSlotsFromConfig(updated);
+      const newTierIds = new Set(updated.tiers.map((tier) => tier.id));
+      const hadTierShapeChange = oldTierIds.some((tierId) => !newTierIds.has(tierId))
+        || updated.tiers.some((tier) => !oldTierIds.includes(tier.id));
+      const previousTierTotals = oldSlots.reduce<Record<string, number>>((acc, slot, index) => {
+        acc[slot.tier] = (acc[slot.tier] || 0) + (oldCounts[index] || 0);
+        return acc;
+      }, {});
+      const previousTierCosts = new Map((previousConfig?.tiers || []).map((tier) => [tier.id, tier.costPerTier]));
+
+      (this as Record<string, unknown>)._wheelSkipConfigReload = true;
+      this.wheelConfigs = [...configs];
+      try {
+        localStorage.removeItem(getWheelDraftStorageKey(this, updated.id));
+      } catch { /* ignore */ }
+      this.activeWheelConfigId = updated.id;
+      (this as Record<string, unknown>).editingWheelConfig = JSON.parse(JSON.stringify(updated)) as WheelConfig;
+      (this as Record<string, unknown>).appliedWheelConfigSnapshot = JSON.parse(JSON.stringify(updated)) as WheelConfig;
+      applyController.activeSlots = newSlots;
+      applyController.previewSlots = [...newSlots];
+      this.wheelSpinCounts = remapSpinCountsByTier(oldTierIds, oldCounts, newSlots);
+      this.wheelTotalSpins = (this.wheelSpinCounts as number[]).reduce((sum, count) => sum + count, 0);
+      this.wheelLastResult = "";
+      applyController.inventoryWarning = "";
+      applyController.previewSpinCounts = new Array(newSlots.length).fill(0);
+      applyController.previewTotalSpins = 0;
+      applyController.previewFairnessHistory = [];
+      applyController.previewChaseTallyHistory = [];
+      applyController.lastResultColor = "rgb(var(--v-theme-primary))";
+      applyController.spinHash = "";
+      applyController.spinSeed = "";
+      applyController.spinClientSeed = "";
+      applyController.spinVerificationUrl = "";
+      applyController.spinAlgorithm = "";
+      applyController.showSeed = false;
+      applyController.fairnessHistoryOpen = false;
+      applyController.highlightedSlotIndex = -1;
+      if (hadTierShapeChange) {
+        applyController.sessionCostAdjustment = 0;
+        applyController.chaseTallyHistory = [];
+      } else {
+        let costAdjustment = (applyController.sessionCostAdjustment as number) || 0;
+        for (const tier of updated.tiers) {
+          const previousCost = previousTierCosts.get(tier.id);
+          if (previousCost == null || previousCost === tier.costPerTier) continue;
+          const priorSpins = previousTierTotals[tier.id] || 0;
+          if (priorSpins > 0) {
+            costAdjustment += priorSpins * (previousCost - tier.costPerTier);
+          }
+        }
+        applyController.sessionCostAdjustment = costAdjustment;
+      }
+      assignWheelPendingInventoryIssues(
+        this,
+        ((this.wheelPendingInventoryIssues || []) as Array<{ slotTier: string }>).filter(
+          (entry) => newTierIds.has(entry.slotTier)
+        ) as typeof this.wheelPendingInventoryIssues
+      );
+      (this as Record<string, unknown>).wheelEndingSession = false;
+      (this as Record<string, unknown>).wheelChaseDialog = false;
+      (this as Record<string, unknown>).wheelChaseReplacementSinglesId = null;
+      (this as Record<string, unknown>).wheelChasePendingTierId = "";
+      (this as Record<string, unknown>).wheelSessionUpdatedAt = Date.now();
+      (this as Record<string, unknown> & { saveWheelSession: () => void }).saveWheelSession();
+      queueCloudConfigSyncPush(this as Parameters<typeof queueCloudConfigSyncPush>[0]);
+      void broadcastWheelSession(this as Parameters<typeof broadcastWheelSession>[0]);
+      nextTick(() => (this as Record<string, unknown> & { drawWheel: (offset?: number) => void }).drawWheel(
+        (this.wheelCurrentAngle as number) || 0
+      ));
+      // Show the saved snackbar
+      if (typeof (this as Record<string, unknown>).showWheelConfigSaved === 'function') {
+        (this as Record<string, unknown>).showWheelConfigSaved();
+      }
+    } finally {
+      (this as Record<string, unknown>).wheelConfigSyncPending = false;
     }
-    assignWheelPendingInventoryIssues(
-      this,
-      ((this.wheelPendingInventoryIssues || []) as Array<{ slotTier: string }>).filter(
-        (entry) => newTierIds.has(entry.slotTier)
-      ) as typeof this.wheelPendingInventoryIssues
-    );
-    (this as Record<string, unknown>).wheelEndingSession = false;
-    (this as Record<string, unknown>).wheelChaseDialog = false;
-    (this as Record<string, unknown>).wheelChaseReplacementSinglesId = null;
-    (this as Record<string, unknown>).wheelChasePendingTierId = "";
-    (this as Record<string, unknown>).wheelSessionUpdatedAt = Date.now();
-    (this as Record<string, unknown> & { saveWheelSession: () => void }).saveWheelSession();
-    queueCloudConfigSyncPush(this as Parameters<typeof queueCloudConfigSyncPush>[0]);
-    void broadcastWheelSession(this as Parameters<typeof broadcastWheelSession>[0]);
-    nextTick(() => (this as Record<string, unknown> & { drawWheel: (offset?: number) => void }).drawWheel(
-      (this.wheelCurrentAngle as number) || 0
-    ));
   },
 
-  queueWheelDraftAutosave(this: Record<string, unknown>): void {
+  queueWheelConfigSync(this: Record<string, unknown>): void {
     const editing = (this as Record<string, unknown>).editingWheelConfig as WheelConfig | null;
     const hasPendingChanges = ((this as Record<string, unknown>).hasPendingWheelChanges as boolean) === true;
-    clearQueuedWheelDraftSave(this);
-    if (!editing) return;
+    clearQueuedWheelConfigSync(this);
+    if (!editing) {
+      (this as Record<string, unknown>).wheelConfigSyncPending = false;
+      return;
+    }
     if (!hasPendingChanges) {
+      (this as Record<string, unknown>).wheelConfigSyncPending = false;
       (this as Record<string, unknown> & { clearWheelDraft: (wheelConfigId?: number | null) => void }).clearWheelDraft(editing.id);
       return;
     }
+    (this as Record<string, unknown>).wheelConfigSyncPending = true;
     (this as Record<string, unknown>)._wheelDraftSaveTimeoutId = globalThis.setTimeout(() => {
       (this as Record<string, unknown>)._wheelDraftSaveTimeoutId = undefined;
-      (this as Record<string, unknown> & { saveWheelDraft: () => void }).saveWheelDraft();
-    }, 1200);
+      try {
+        if (((this as Record<string, unknown>).canApplyWheelConfig as boolean) === true) {
+          (this as Record<string, unknown> & { applyWheelConfig: () => void }).applyWheelConfig();
+          return;
+        }
+        (this as Record<string, unknown> & { saveWheelDraft: () => void }).saveWheelDraft();
+      } finally {
+        (this as Record<string, unknown>).wheelConfigSyncPending = false;
+      }
+    }, 900);
   },
 
   saveWheelDraft(this: Record<string, unknown>): void {
     const editing = (this as Record<string, unknown>).editingWheelConfig as WheelConfig | null;
-    if (!editing?.id) return;
+    if (!editing?.id) {
+      (this as Record<string, unknown>).wheelConfigSyncPending = false;
+      return;
+    }
     const configs = (this.wheelConfigs || []) as WheelConfig[];
     const idx = configs.findIndex((entry) => entry.id === editing.id);
     const persisted = normalizeWheelConfig({
       ...(JSON.parse(JSON.stringify(editing)) as WheelConfig),
       updatedAt: new Date().toISOString()
     }, (this.lots || []) as Lot[]);
-    if (!persisted) return;
+    if (!persisted) {
+      (this as Record<string, unknown>).wheelConfigSyncPending = false;
+      return;
+    }
     if (idx >= 0) {
       configs[idx] = persisted;
     } else {
@@ -300,6 +331,7 @@ export const wheelConfigMethods = {
     try {
       localStorage.removeItem(getWheelDraftStorageKey(this, editing.id));
     } catch { /* ignore */ }
+    (this as Record<string, unknown>).wheelConfigSyncPending = false;
   },
 
   clearWheelDraft(this: Record<string, unknown>, wheelConfigId?: number | null): void {

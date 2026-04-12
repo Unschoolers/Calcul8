@@ -76,37 +76,6 @@
                     {{ wheelSpinButtonLabel }}
                 </v-btn>
             </div>
-            <div v-if="hasPendingWheelChanges" class="wheel-pending-actions">
-                <v-menu v-model="wheelPendingMenuOpen" location="bottom center" :close-on-content-click="false"
-                    offset="10" content-class="wheel-pending-menu">
-                    <template #activator="{ props }">
-                        <v-chip v-bind="props" color="warning" variant="tonal" size="small" class="wheel-pending-chip">
-                            <v-icon start size="x-small">mdi-circle-medium</v-icon>
-                            {{ t('wheelPendingChangesLabel') }}
-                        </v-chip>
-                    </template>
-                    <v-card class="wheel-pending-card" variant="outlined">
-                        <v-card-text class="wheel-pending-card__body">
-                            <div class="wheel-pending-card__title">{{ t('wheelPendingChangesTitle') }}</div>
-                            <div class="wheel-pending-card__text">
-                                {{ t('wheelPendingChangesBody') }}
-                            </div>
-                            <v-alert
-                                v-if="editingWheelConfig && editingWheelConfig.tiers.some(t => t.boundLotId == null)"
-                                type="warning" variant="tonal" density="compact" class="mt-2">
-                                {{ t('wheelPendingChangesWarning') }}
-                            </v-alert>
-                        </v-card-text>
-                        <v-card-actions class="wheel-pending-card__actions">
-                            <v-btn color="primary" variant="elevated" block :disabled="!canApplyWheelConfig"
-                                @click="wheelPendingMenuOpen = false; wheelConfirmAction = 'apply'; wheelConfirmDialog = true">
-                                <v-icon start>mdi-refresh</v-icon>
-                                {{ t('wheelRebuildAction') }}
-                            </v-btn>
-                        </v-card-actions>
-                    </v-card>
-                </v-menu>
-            </div>
             <wheel-action-rail
                 v-if="!wheelPresentationMode && wheelIsCompactLayout"
                 :mode="wheelMode"
@@ -295,9 +264,6 @@
                     <div><strong>{{ t('wheelSlotsSummaryLabel') }}:</strong> {{ wheelLiveConfirmSummarySlots }}</div>
                     <div><strong>{{ t('wheelSpinPriceSummaryLabel') }}:</strong> ${{ wheelLiveConfirmSummarySpinPrice }}</div>
                 </div>
-                <v-alert v-if="hasPendingWheelChanges" type="warning" variant="tonal" density="compact" class="mt-3">
-                    {{ t('wheelGoLivePendingWarning') }}
-                </v-alert>
             </v-card-text>
             <v-card-actions>
                 <v-spacer></v-spacer>
@@ -345,4 +311,21 @@
         </v-card>
     </v-dialog>
 
+    <!-- Wheel Config Saved Snackbar -->
+    <v-snackbar
+        v-model="wheelConfigSavedSnackbar"
+        location="bottom"
+        color="success"
+        timeout="1800"
+        elevation="4"
+        class="wheel-config-saved-snackbar"
+        :multi-line="false"
+        :vertical="false"
+        :close-on-content-click="true"
+        :close-on-back="true"
+        :persistent="false"
+        style="z-index: 3000"
+    >
+        {{ t('wheelConfigSavedSnackbar') }}
+    </v-snackbar>
 </div>

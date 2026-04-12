@@ -35,6 +35,10 @@ export const LivePriceCard = defineComponent({
       type: Number,
       required: true
     },
+    remainingUnits: {
+      type: Number as PropType<number | null>,
+      default: null
+    },
     calculateProfit: {
       type: Function as PropType<ProfitCalculator>,
       required: true
@@ -173,6 +177,18 @@ export const LivePriceCard = defineComponent({
       if (!Number.isFinite(current) || !Number.isFinite(needed)) return null;
       return current - needed;
     },
+    adjustmentNeeded(): number | null {
+      const gap = this.currentPriceGap();
+      if (gap == null || !Number.isFinite(gap)) return null;
+      return -gap;
+    },
+    shouldShowTargetDecision(): boolean {
+      const remainingUnits = Number(this.remainingUnits);
+      if (Number.isFinite(remainingUnits) && remainingUnits <= 0) return false;
+      const adjustment = this.adjustmentNeeded();
+      if (adjustment == null || !Number.isFinite(adjustment)) return false;
+      return Math.abs(adjustment) >= 0.005;
+    },
     priceAdjustLabel(direction: -1 | 1): string {
       const action = direction < 0
         ? this.translate("livePriceCardDecreasePriceLabel", "Decrease price")
@@ -213,6 +229,30 @@ export const LivePriceCard = defineComponent({
       return this.translate(
         "livePriceCardNeededAverageLabel",
         "Needed avg"
+      );
+    },
+    targetDecisionLabel(): string {
+      return this.translate(
+        "livePriceCardTargetDecisionLabel",
+        "Back to target"
+      );
+    },
+    targetDecisionPriceLabel(): string {
+      return this.translate(
+        "livePriceCardTargetDecisionPriceLabel",
+        "Set price to"
+      );
+    },
+    targetDecisionAdjustmentLabel(): string {
+      return this.translate(
+        "livePriceCardTargetDecisionAdjustmentLabel",
+        "Adjust from current"
+      );
+    },
+    targetDecisionProfitLabel(): string {
+      return this.translate(
+        "livePriceCardTargetDecisionProfitLabel",
+        "Lot outcome"
       );
     },
     neededProfitSummaryLabel(): string {

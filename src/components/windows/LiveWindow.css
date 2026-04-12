@@ -97,7 +97,7 @@
 }
 
 .live-pricing-card__price {
-  font-size: clamp(2.18rem, 3.1vw, 1.85rem);
+  font-size: clamp(1.72rem, 2.6vw, 2.08rem);
   font-weight: 900;
   line-height: 1;
   letter-spacing: -0.04em;
@@ -117,6 +117,71 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+.live-pricing-card__decision-tile {
+  gap: 8px;
+}
+
+.live-pricing-card__decision-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.live-pricing-card__decision-main {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.live-pricing-card__decision-gap {
+  font-size: 0.76rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.live-pricing-card__decision-price {
+  font-size: 1.3rem;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+}
+
+.live-pricing-card__decision-kicker {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(var(--v-theme-on-surface), 0.5);
+}
+
+.live-pricing-card__decision-outcome {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 6px;
+  margin-top: 2px;
+  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+}
+
+.live-pricing-card__decision-outcome-values {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.live-pricing-card__decision-outcome-profit {
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.live-pricing-card__decision-outcome-percent {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: rgba(var(--v-theme-on-surface), 0.58);
 }
 
 .live-pricing-card__empty-target {
@@ -259,6 +324,12 @@
   .live-pricing-card__metric-tile,
   .live-pricing-card__scenario-tile {
     padding: 7px 9px;
+  }
+
+  .live-pricing-card__decision-outcome {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
   }
 
   .live-pricing-card__metric-sub--inline {

@@ -5,6 +5,7 @@ import { LivePriceCard } from "../src/components/LivePriceCard.ts";
 type CardCtx = {
   modelValue: number;
   units: number;
+  remainingUnits?: number | null;
   profitBasis: number | null;
   forecastProfit?: number | null;
   forecastPercent?: number | null;
@@ -138,4 +139,26 @@ test("currentPriceGap compares the visible price against the needed average pric
   const currentPriceGap = getMethod<(this: CardCtx & { avgPriceNeeded?: number | null }) => number | null>("currentPriceGap");
 
   assert.equal(currentPriceGap.call(context as CardCtx & { avgPriceNeeded?: number | null }), 5);
+});
+
+test("shouldShowTargetDecision only returns true when there is meaningful drift from target", () => {
+  const context = createContext({
+    modelValue: 97,
+    avgPriceNeeded: 92,
+    remainingUnits: 3
+  } as Partial<CardCtx> & { avgPriceNeeded: number });
+
+  const shouldShowTargetDecision = getMethod<(this: CardCtx & { avgPriceNeeded?: number | null }) => boolean>("shouldShowTargetDecision");
+
+  assert.equal(shouldShowTargetDecision.call(context as CardCtx & { avgPriceNeeded?: number | null }), true);
+
+  context.modelValue = 92;
+  assert.equal(shouldShowTargetDecision.call(context as CardCtx & { avgPriceNeeded?: number | null }), false);
+
+  context.modelValue = 92.004;
+  assert.equal(shouldShowTargetDecision.call(context as CardCtx & { avgPriceNeeded?: number | null }), false);
+
+  context.modelValue = 97;
+  context.remainingUnits = 0;
+  assert.equal(shouldShowTargetDecision.call(context as CardCtx & { avgPriceNeeded?: number | null }), false);
 });

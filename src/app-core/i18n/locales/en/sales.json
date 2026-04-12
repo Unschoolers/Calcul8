@@ -72,6 +72,8 @@
   "salesSaleTypeRandomHitLabel": "random hit",
   "salesSaleTypeWheelLabel": "spin",
   "salesSnapshotTitle": "Sales snapshot",
+  "salesStatusNetBadgeLabel": "Lot net",
+  "salesStatusSoldProfitLabel": "Sold",
   "salesStatusCostLabel": "Cost",
   "salesStatusRevenueLabel": "Revenue",
   "salesUnlinkedLabel": "unlinked",

@@ -58,6 +58,7 @@ export const wheelWindowDefinition: any = {
     return {
       ...createWheelWindowState(),
       wheelViewportWidth: getCurrentViewportWidth()
+      , wheelConfigSavedSnackbar: false
     };
   },
   computed: {
@@ -122,8 +123,8 @@ export const wheelWindowDefinition: any = {
     },
     editingWheelConfig: {
       handler(this: Record<string, unknown>) {
-        const vm = this as Record<string, unknown> & { queueWheelDraftAutosave: () => void };
-        vm.queueWheelDraftAutosave();
+        const vm = this as Record<string, unknown> & { queueWheelConfigSync: () => void };
+        vm.queueWheelConfigSync();
       },
       deep: true
     },
@@ -155,6 +156,12 @@ export const wheelWindowDefinition: any = {
     ...wheelConfigMethods,
     ...wheelSpinMethods,
     ...wheelSessionMethods,
+    showWheelConfigSaved(this: Record<string, unknown>) {
+      (this as Record<string, unknown>).wheelConfigSavedSnackbar = true;
+      setTimeout(() => {
+        (this as Record<string, unknown>).wheelConfigSavedSnackbar = false;
+      }, 1800);
+    },
     normalizeWheelCompactInspectorState(this: Record<string, unknown>): void {
       const viewportWidth = ((this as Record<string, unknown>).wheelViewportWidth as number) || getCurrentViewportWidth();
       const isCompact = isWheelCompactViewport(viewportWidth);

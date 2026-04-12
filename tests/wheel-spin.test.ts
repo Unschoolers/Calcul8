@@ -226,6 +226,25 @@ test("runWheelPrimarySpin uses live spin in live mode", () => {
   assert.equal(spinWheel.mock.calls.length, 1);
 });
 
+test("wheelPrimarySpinDisabled blocks config spin while config sync is pending", () => {
+  const vm: Record<string, unknown> = {
+    wheelMode: "config",
+    wheelSpinning: false,
+    wheelConfigSyncPending: true,
+    wheelAutospinEnabled: false,
+    wheelDisplaySlots: [
+      { name: "Prize A", color: "#f00", cost: 5, tier: "t1", packsCount: 1, deductionType: "packs", isChase: false }
+    ],
+    wheelEndingSession: false,
+    wheelChaseDialog: false,
+    wheelSpinBlockedReason: "",
+    isWorkspaceScopeActive: false,
+    isCurrentWorkspaceOwner: true
+  };
+
+  assert.equal(WheelWindow.computed!.wheelPrimarySpinDisabled.call(vm as never), true);
+});
+
 test("toggleWheelAutospin enables config autospin and starts preview spins immediately", () => {
   vi.useFakeTimers();
 

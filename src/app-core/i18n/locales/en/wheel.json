@@ -164,5 +164,6 @@
   "wheelFairnessRecentHistoryTitle": "Recent History",
   "wheelFairnessSpinNumberLabel": "Spin #{{count}}",
   "wheelFairnessEmptyState": "Spin the wheel to start a fairness history for this session.",
-  "wheelEndSessionAction": "End Wheel"
+  "wheelEndSessionAction": "End Wheel",
+  "wheelConfigSavedSnackbar": "Wheel configuration saved"
 }

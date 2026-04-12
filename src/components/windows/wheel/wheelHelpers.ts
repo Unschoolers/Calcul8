@@ -133,9 +133,10 @@ export function calculateWheelBuyerShippingTotal(
 }
 
 const TIER_COLORS = [
-  "#e74c3c", "#f0a500", "#2e86c1", "#8e44ad", "#27ae60",
-  "#e67e22", "#1abc9c", "#c0392b", "#3498db", "#c4ff66",
-  "#16a085", "#e84393", "#6c5ce7", "#fd79a8", "#00b894", "#636e72"
+  "#f0a500", "#8e44ad", "#2e86c1", "#27ae60", "#e67e22",
+  "#1abc9c", "#3498db", "#c4ff66", "#16a085", "#e84393",
+  "#6c5ce7", "#fd79a8", "#00b894", "#636e72", "#e74c3c",
+  "#c0392b",
 ];
 
 export function generateTierId(): string {
@@ -164,7 +165,7 @@ export function createDefaultWheelConfig(): WheelConfig {
     spinPrice: 10,
     targetMargin: 40,
     tiers: [
-      { id: generateTierId(), label: "1 Item", color: "#e74c3c", slots: 3, costPerTier: 4.50, packsCount: 1, deductionType: "packs", sets: [] }
+      { id: generateTierId(), label: "1 Item", color: "#f0a500", slots: 3, costPerTier: 4.50, packsCount: 1, deductionType: "packs", sets: [] }
     ],
     createdAt: new Date().toISOString()
   };

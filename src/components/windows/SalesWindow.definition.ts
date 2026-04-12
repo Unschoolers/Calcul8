@@ -127,6 +127,30 @@ export const SalesWindowDefinition = {
       return Math.max(0, Number(this.salesProgress) || 0);
     },
 
+    salesStatusRealizedProfit(this: Record<string, unknown>): number {
+      const vm = this as Record<string, unknown> & {
+        sales?: Sale[] | null;
+        calculateSaleProfit?: (sale: Sale) => number;
+      };
+      const sales = Array.isArray(vm.sales) ? vm.sales : [];
+      const calculateSaleProfit = vm.calculateSaleProfit;
+      if (typeof calculateSaleProfit !== "function") return 0;
+      return sales.reduce((sum, sale) => sum + (Number(calculateSaleProfit.call(this, sale)) || 0), 0);
+    },
+
+    salesStatusRealizedMarginPercent(this: Record<string, unknown>): number | null {
+      const vm = this as Record<string, unknown> & {
+        salesStatusRealizedProfit?: number;
+        salesStatus?: { revenue?: number } | null;
+      };
+      const realizedProfit = Number(vm.salesStatusRealizedProfit);
+      const realizedRevenue = Number(vm.salesStatus?.revenue);
+      if (!Number.isFinite(realizedProfit) || !Number.isFinite(realizedRevenue) || realizedRevenue <= 0) {
+        return null;
+      }
+      return (realizedProfit / realizedRevenue) * 100;
+    },
+
     salesStatusSummaryLine(this: Record<string, unknown>): string {
       const vm = this as Record<string, unknown> & {
         fmtCurrency?: (value: number | null | undefined, decimals?: number) => string;

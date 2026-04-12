@@ -437,6 +437,44 @@ test("applyWheelConfig clears pending changes and cancels queued draft sync", as
   vi.useRealTimers();
 });
 
+test("queueWheelConfigSync keeps config sync pending until valid auto-apply finishes", async () => {
+  vi.useFakeTimers();
+
+  const applyWheelConfig = vi.fn(function (this: Record<string, unknown>) {
+    this.wheelConfigSyncPending = false;
+  });
+  const saveWheelDraft = vi.fn();
+  const clearWheelDraft = vi.fn();
+  const vm: Record<string, unknown> = {
+    editingWheelConfig: {
+      id: 5,
+      name: "Wheel",
+      spinPrice: 10,
+      targetMargin: 40,
+      createdAt: "",
+      tiers: []
+    },
+    hasPendingWheelChanges: true,
+    canApplyWheelConfig: true,
+    wheelConfigSyncPending: false,
+    applyWheelConfig,
+    saveWheelDraft,
+    clearWheelDraft
+  };
+
+  WheelWindow.methods!.queueWheelConfigSync.call(vm as never);
+
+  assert.equal(vm.wheelConfigSyncPending, true);
+  await vi.advanceTimersByTimeAsync(900);
+
+  assert.equal(applyWheelConfig.mock.calls.length, 1);
+  assert.equal(saveWheelDraft.mock.calls.length, 0);
+  assert.equal(clearWheelDraft.mock.calls.length, 0);
+  assert.equal(vm.wheelConfigSyncPending, false);
+
+  vi.useRealTimers();
+});
+
 test("preview chase replacement keeps prior chase tally as a separate tracker line", () => {
   const vm: Record<string, unknown> = {
     wheelConfigs: [{

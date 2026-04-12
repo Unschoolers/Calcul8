@@ -150,6 +150,7 @@ const WHEEL_CONTROLLER_ALIAS_MAP = {
 const WHEEL_LOCAL_TOP_LEVEL_KEYS = [
   "editingWheelConfig",
   "appliedWheelConfigSnapshot",
+  "wheelConfigSyncPending",
   "wheelAutospinEnabled",
   "wheelMode",
   "wheelInspectorTab",
@@ -194,6 +195,7 @@ export function createWheelWindowState() {
   const state = {
     editingWheelConfig: null as WheelConfig | null,
     appliedWheelConfigSnapshot: null as WheelConfig | null,
+    wheelConfigSyncPending: false,
     wheelController: createDefaultWheelControllerState(),
     wheelAutospinEnabled: false,
     wheelMobileInspectorOpen: false,

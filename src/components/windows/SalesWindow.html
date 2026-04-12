@@ -17,8 +17,33 @@
                             </div>
                           </div>
                         </div>
-                        <div class="sales-status-value">
-                          {{ (salesStatus?.profit ?? 0) >= 0 ? '+' : '' }}${{ fmtCurrency(salesStatus?.profit ?? 0) }}
+                        <div class="sales-status-value-row">
+                          <div
+                            :class="[
+                              'sales-status-value',
+                              (salesStatusRealizedProfit ?? 0) >= 0 ? 'is-positive' : 'is-negative'
+                            ]"
+                          >
+                            <span class="sales-status-value__amount">
+                              {{ (salesStatusRealizedProfit ?? 0) < 0 ? '-' : '' }}${{ fmtCurrency(Math.abs(salesStatusRealizedProfit ?? 0)) }}
+                            </span>
+                            <span v-if="salesStatusRealizedMarginPercent != null" class="sales-status-value__percent">
+                              ({{ salesStatusRealizedMarginPercent < 0 ? '-' : '' }}{{ fmtCurrency(Math.abs(salesStatusRealizedMarginPercent), 1) }}%)
+                            </span>
+                          </div>
+                          <div
+                            v-if="(sales?.length ?? 0) > 0"
+                            :class="[
+                              'sales-status-net-pill',
+                              (salesStatus?.profit ?? 0) >= 0 ? 'is-positive' : 'is-negative'
+                            ]"
+                            :title="t('salesStatusNetBadgeLabel')"
+                            :aria-label="t('salesStatusNetBadgeLabel')"
+                          >
+                            <span class="sales-status-net-pill__value">
+                              {{ (salesStatus?.profit ?? 0) < 0 ? '-' : '' }}${{ fmtCurrency(Math.abs(salesStatus?.profit ?? 0)) }}
+                            </span>
+                          </div>
                         </div>
                         <div class="sales-status-summary">
                           {{ salesStatusSummaryLine }}

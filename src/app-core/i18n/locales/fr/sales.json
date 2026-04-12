@@ -72,6 +72,8 @@
   "salesSaleTypeRandomHitLabel": "random hit",
   "salesSaleTypeWheelLabel": "spin",
   "salesSnapshotTitle": "Aperçu des ventes",
+  "salesStatusNetBadgeLabel": "Net du lot",
+  "salesStatusSoldProfitLabel": "Vendu",
   "salesStatusCostLabel": "Cout",
   "salesStatusRevenueLabel": "Revenu",
   "salesUnlinkedLabel": "non lie",

@@ -93,6 +93,33 @@ test("SalesWindow bulkBoxProgressText returns formatted box-equivalent progress"
   assert.equal(SalesWindowDefinition.computed.bulkBoxProgressText.call(noBoxVm as never), "");
 });
 
+test("SalesWindow computes realized sold profit from the per-sale profit helper", () => {
+  const vm = {
+    sales: [makeSale({ id: 1 }), makeSale({ id: 2 }), makeSale({ id: 3 })],
+    calculateSaleProfit(sale: Sale) {
+      return sale.id === 1 ? 12.5 : sale.id === 2 ? -2 : 8.25;
+    }
+  };
+
+  assert.equal(SalesWindowDefinition.computed.salesStatusRealizedProfit.call(vm as never), 18.75);
+});
+
+test("SalesWindow computes realized sold margin percent from realized profit and sold revenue", () => {
+  const vm = {
+    salesStatusRealizedProfit: 18.75,
+    salesStatus: { revenue: 150 }
+  };
+
+  assert.equal(SalesWindowDefinition.computed.salesStatusRealizedMarginPercent.call(vm as never), 12.5);
+  assert.equal(
+    SalesWindowDefinition.computed.salesStatusRealizedMarginPercent.call({
+      salesStatusRealizedProfit: 18.75,
+      salesStatus: { revenue: 0 }
+    } as never),
+    null
+  );
+});
+
 test("SalesWindow fmtCurrency uses context formatter and fallback formatting", () => {
   const vmWithFormatter = {
     formatCurrency: (value: number | null | undefined, decimals = 2) => `fmt:${value}:${decimals}`

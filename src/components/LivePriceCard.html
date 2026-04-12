@@ -56,31 +56,34 @@
           <span>{{ noTargetLabel() }}</span>
         </div>
       </template>
-      <template v-else>
-        <div class="live-pricing-card__target-metrics live-pricing-card__target-metrics--compact">
-          <div class="live-pricing-card__metric-tile live-pricing-card__metric-tile--needed">
-            <div class="live-pricing-card__metric-label">{{ neededAverageLabel() }}</div>
-            <div class="live-pricing-card__metric-value">${{ formatCurrency(avgPriceNeeded) }}</div>
-            <div class="live-pricing-card__metric-sub live-pricing-card__metric-sub--inline">
-              <span>{{ currentPriceGapShortLabel() }}</span>
-              <span
-                class="font-weight-bold"
-                :class="(currentPriceGap() || 0) >= 0 ? 'text-success' : 'text-error'"
-              >
-                {{ (currentPriceGap() || 0) >= 0 ? '+' : '' }}${{ formatAt(currentPriceGap() || 0) }}
-              </span>
+      <template v-else-if="shouldShowTargetDecision()">
+        <div class="live-pricing-card__decision-tile live-pricing-card__metric-tile live-pricing-card__metric-tile--needed">
+          <div class="live-pricing-card__decision-head">
+            <div class="live-pricing-card__metric-label">{{ targetDecisionLabel() }}</div>
+          </div>
+          <div class="live-pricing-card__decision-main">
+            <div class="live-pricing-card__decision-kicker">{{ targetDecisionPriceLabel() }}</div>
+            <div class="live-pricing-card__decision-price">${{ formatCurrency(avgPriceNeeded) }}</div>
+            <div
+              class="live-pricing-card__decision-gap"
+              :class="(adjustmentNeeded() || 0) >= 0 ? 'text-success' : 'text-error'"
+            >
+              {{ targetDecisionAdjustmentLabel() }}
+              {{ (adjustmentNeeded() || 0) >= 0 ? '+' : '' }}${{ formatAt(adjustmentNeeded() || 0) }}
             </div>
           </div>
-          <div class="live-pricing-card__metric-tile">
-            <div class="live-pricing-card__metric-label">{{ targetProfitShortLabel() }}</div>
-            <div
-              class="live-pricing-card__metric-value"
-              :class="(neededDisplayProfit() || 0) >= 0 ? 'text-success' : 'text-error'"
-            >
-              {{ (neededDisplayProfit() || 0) >= 0 ? '+' : '' }}${{ formatAt(neededDisplayProfit() || 0) }}
-            </div>
-            <div class="live-pricing-card__metric-sub">
-              {{ formatCurrency(neededDisplayPercent() || 0, 1) }}%
+          <div class="live-pricing-card__decision-outcome">
+            <div class="live-pricing-card__decision-kicker">{{ targetDecisionProfitLabel() }}</div>
+            <div class="live-pricing-card__decision-outcome-values">
+              <div
+                class="live-pricing-card__decision-outcome-profit"
+                :class="(neededDisplayProfit() || 0) >= 0 ? 'text-success' : 'text-error'"
+              >
+                {{ (neededDisplayProfit() || 0) >= 0 ? '+' : '' }}${{ formatAt(neededDisplayProfit() || 0) }}
+              </div>
+              <div class="live-pricing-card__decision-outcome-percent">
+                {{ formatCurrency(neededDisplayPercent() || 0, 1) }}%
+              </div>
             </div>
           </div>
         </div>

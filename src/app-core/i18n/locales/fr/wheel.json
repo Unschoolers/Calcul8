@@ -164,5 +164,6 @@
   "wheelFairnessRecentHistoryTitle": "Historique recent",
   "wheelFairnessSpinNumberLabel": "Spin #{{count}}",
   "wheelFairnessEmptyState": "Tournez la roue pour demarrer un historique d'equite pour cette session.",
-  "wheelEndSessionAction": "Terminer la roue"
+  "wheelEndSessionAction": "Terminer la roue",
+  "wheelConfigSavedSnackbar": "Configuration de la roue enregistrée"
 }
