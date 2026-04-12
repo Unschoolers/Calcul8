@@ -1,13 +1,5 @@
 <v-container fluid class="pa-2 live-window-shell">
-  <v-alert
-    v-if="currentLotType !== 'singles'"
-    type="info"
-    variant="tonal"
-    density="compact"
-    class="mb-3"
-  >
-    {{ t('liveWindowIntroBody', 'Test prices here before you publish them. Compare the current price, the profit you expect, and the price you would need to hit your target.') }}
-  </v-alert>
+
   <div v-if="currentLotType === 'singles'" class="live-singles-shell">
     <live-singles-panel ref="liveSinglesPanel"></live-singles-panel>
   </div>
