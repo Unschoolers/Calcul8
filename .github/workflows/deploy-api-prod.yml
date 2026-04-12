@@ -152,6 +152,12 @@ jobs:
 
               all_healthy=0
               echo "Smoke check pending for $url ($status) on attempt $attempt/$max_attempts."
+
+              if [ "$attempt" -eq "$max_attempts" ]; then
+                echo "Final smoke check response for $url:"
+                curl --silent --show-error --include "$url" || true
+                echo
+              fi
             done
 
             if [ "$all_healthy" -eq 1 ]; then
