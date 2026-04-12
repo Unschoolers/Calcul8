@@ -43,10 +43,36 @@ export const wheelStageComputeds = {
       : translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelSpinButtonLabel");
   },
 
+  wheelAutospinButtonIcon(this: Record<string, unknown>): string {
+    return (this as Record<string, unknown>).wheelAutospinEnabled ? "mdi-stop-circle-outline" : "mdi-autorenew";
+  },
+
+  wheelAutospinButtonLabel(this: Record<string, unknown>): string {
+    return (this as Record<string, unknown>).wheelAutospinEnabled
+      ? translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelAutospinStopAction")
+      : translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelAutospinStartAction");
+  },
+
+  wheelAutospinCompactLabel(this: Record<string, unknown>): string {
+    return (this as Record<string, unknown>).wheelAutospinEnabled
+      ? translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelAutospinCompactStopAction")
+      : translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelAutospinCompactAction");
+  },
+
+  wheelAutospinToggleDisabled(this: Record<string, unknown>): boolean {
+    if ((this as Record<string, unknown>).wheelMode !== "config") return true;
+    if ((this as Record<string, unknown>).wheelAutospinEnabled) return false;
+    return Boolean(
+      !(((this as Record<string, unknown>).wheelDisplaySlots || []) as WheelSlot[]).length
+      || (this as Record<string, unknown>).wheelEndingSession
+    );
+  },
+
   wheelPrimarySpinDisabled(this: Record<string, unknown>): boolean {
     const isConfigMode = (this as Record<string, unknown>).wheelMode === "config";
     return Boolean(
       (this as Record<string, unknown>).wheelSpinning
+      || (isConfigMode && (this as Record<string, unknown>).wheelAutospinEnabled)
       || !(((this as Record<string, unknown>).wheelDisplaySlots || []) as WheelSlot[]).length
       || (this as Record<string, unknown>).wheelEndingSession
       || (this as Record<string, unknown>).wheelChaseDialog

@@ -12,7 +12,6 @@
 
             <div class="wheel-outer" :class="{ 'wheel-outer--spinning': wheelSpinning }" ref="wheelOuter">
                 <div class="wheel-disc">
-                    <div v-if="wheelSpinning" class="wheel-spin-glow"></div>
                     <div v-if="wheelSpinning" class="wheel-spin-sparks" aria-hidden="true">
                         <span class="wheel-spin-spark wheel-spin-spark--1">✦</span>
                         <span class="wheel-spin-spark wheel-spin-spark--2">✦</span>
@@ -56,11 +55,27 @@
                 <div class="wheel-pointer"></div>
             </div>
 
-            <v-btn size="large" color="primary" variant="elevated" :disabled="wheelPrimarySpinDisabled"
-                @click="runWheelPrimarySpin()" class="wheel-spin-btn">
-                <v-icon start>{{ wheelSpinButtonIcon }}</v-icon>
-                {{ wheelSpinButtonLabel }}
-            </v-btn>
+            <div class="wheel-spin-actions">
+                <v-btn
+                    v-if="wheelMode === 'config'"
+                    size="large"
+                    :color="wheelAutospinEnabled ? 'secondary' : undefined"
+                    :variant="wheelAutospinEnabled ? 'elevated' : 'tonal'"
+                    :disabled="wheelAutospinToggleDisabled"
+                    class="wheel-autospin-btn"
+                    :title="wheelAutospinButtonLabel"
+                    :aria-label="wheelAutospinButtonLabel"
+                    @click="toggleWheelAutospin()"
+                >
+                    <v-icon start>{{ wheelAutospinButtonIcon }}</v-icon>
+                    {{ wheelAutospinCompactLabel }}
+                </v-btn>
+                <v-btn size="large" color="primary" variant="elevated" :disabled="wheelPrimarySpinDisabled"
+                    @click="runWheelPrimarySpin()" class="wheel-spin-btn">
+                    <v-icon start>{{ wheelSpinButtonIcon }}</v-icon>
+                    {{ wheelSpinButtonLabel }}
+                </v-btn>
+            </div>
             <div v-if="hasPendingWheelChanges" class="wheel-pending-actions">
                 <v-menu v-model="wheelPendingMenuOpen" location="bottom center" :close-on-content-click="false"
                     offset="10" content-class="wheel-pending-menu">
@@ -98,8 +113,15 @@
                 :primary-disabled="wheelPrimarySpinDisabled"
                 :primary-icon="wheelSpinButtonIcon"
                 :primary-label="wheelSpinButtonLabel"
+                :show-secondary="wheelMode === 'config'"
+                :secondary-active="wheelAutospinEnabled"
+                :secondary-disabled="wheelAutospinToggleDisabled"
+                :secondary-icon="wheelAutospinButtonIcon"
+                :secondary-label="wheelAutospinButtonLabel"
+                :secondary-compact-label="wheelAutospinCompactLabel"
                 :ending-session="wheelEndingSession"
                 @primary-spin="runWheelPrimarySpin"
+                @secondary-action="toggleWheelAutospin"
             ></wheel-action-rail>
             <div class="wheel-stage-caption">
                 {{ wheelStageCaption }}

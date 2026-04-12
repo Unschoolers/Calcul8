@@ -44,6 +44,8 @@ function getCurrentViewportWidth(): number {
   return typeof window !== "undefined" ? window.innerWidth : WHEEL_COMPACT_LAYOUT_BREAKPOINT + 1;
 }
 
+const WHEEL_AUTOSPIN_DELAY_MS = 650;
+
 export const wheelWindowDefinition: any = {
   name: "WheelWindow",
   props: {
@@ -162,6 +164,7 @@ export const wheelWindowDefinition: any = {
     },
     handleWheelModeChange(this: Record<string, unknown>, nextMode: "config" | "live"): void {
       if (nextMode === (this as Record<string, unknown>).wheelMode) return;
+      (this as Record<string, unknown> & { stopWheelAutospin?: () => void }).stopWheelAutospin?.();
       if (nextMode === "live") {
         (this as Record<string, unknown>).wheelRequestedMode = nextMode;
         (this as Record<string, unknown>).wheelLiveConfirmDialog = true;
@@ -173,6 +176,9 @@ export const wheelWindowDefinition: any = {
     confirmWheelModeChange(this: Record<string, unknown>): void {
       const requestedMode = (this as Record<string, unknown>).wheelRequestedMode as "config" | "live" | null;
       if (requestedMode) {
+        if (requestedMode !== "config") {
+          (this as Record<string, unknown> & { stopWheelAutospin?: () => void }).stopWheelAutospin?.();
+        }
         (this as Record<string, unknown>).wheelMode = requestedMode;
         (this as Record<string, unknown>).wheelInspectorTab = requestedMode === "live" ? "session" : "config";
       }
@@ -328,6 +334,62 @@ export const wheelWindowDefinition: any = {
       }
       ((this as Record<string, unknown>) as Record<string, unknown> & { spinWheel: () => void }).spinWheel();
     },
+    toggleWheelAutospin(this: Record<string, unknown>): void {
+      if ((this as Record<string, unknown>).wheelAutospinEnabled) {
+        (this as Record<string, unknown> & { stopWheelAutospin: () => void }).stopWheelAutospin();
+        return;
+      }
+      (this as Record<string, unknown> & { startWheelAutospin: () => void }).startWheelAutospin();
+    },
+    startWheelAutospin(this: Record<string, unknown>): void {
+      const slots = (((this as Record<string, unknown>).wheelDisplaySlots || []) as unknown[]);
+      if ((this as Record<string, unknown>).wheelMode !== "config" || slots.length === 0) return;
+      (this as Record<string, unknown>).wheelAutospinEnabled = true;
+      if (!(this as Record<string, unknown>).wheelSpinning && !(this as Record<string, unknown>).wheelChaseDialog) {
+        (this as Record<string, unknown> & { scheduleNextWheelAutospin: (delayMs?: number) => void }).scheduleNextWheelAutospin(0);
+      }
+    },
+    stopWheelAutospin(this: Record<string, unknown>): void {
+      (this as Record<string, unknown>).wheelAutospinEnabled = false;
+      const timeoutId = (this as Record<string, unknown>)._wheelAutospinTimeoutId as number | undefined;
+      if (timeoutId != null) {
+        clearTimeout(timeoutId);
+        (this as Record<string, unknown>)._wheelAutospinTimeoutId = undefined;
+      }
+    },
+    scheduleNextWheelAutospin(this: Record<string, unknown>, delayMs = WHEEL_AUTOSPIN_DELAY_MS): void {
+      const existingTimeoutId = (this as Record<string, unknown>)._wheelAutospinTimeoutId as number | undefined;
+      if (existingTimeoutId != null) {
+        clearTimeout(existingTimeoutId);
+        (this as Record<string, unknown>)._wheelAutospinTimeoutId = undefined;
+      }
+
+      const slots = (((this as Record<string, unknown>).wheelDisplaySlots || []) as unknown[]);
+      if (!(this as Record<string, unknown>).wheelAutospinEnabled) return;
+      if ((this as Record<string, unknown>).wheelMode !== "config"
+        || (this as Record<string, unknown>).wheelChaseDialog
+        || (this as Record<string, unknown>).wheelEndingSession
+        || slots.length === 0) {
+        (this as Record<string, unknown> & { stopWheelAutospin: () => void }).stopWheelAutospin();
+        return;
+      }
+
+      (this as Record<string, unknown>)._wheelAutospinTimeoutId = globalThis.setTimeout(() => {
+        (this as Record<string, unknown>)._wheelAutospinTimeoutId = undefined;
+        const currentSlots = (((this as Record<string, unknown>).wheelDisplaySlots || []) as unknown[]);
+        if (!(this as Record<string, unknown>).wheelAutospinEnabled) return;
+        if ((this as Record<string, unknown>).wheelMode !== "config"
+          || (this as Record<string, unknown>).wheelChaseDialog
+          || currentSlots.length === 0) {
+          (this as Record<string, unknown> & { stopWheelAutospin: () => void }).stopWheelAutospin();
+          return;
+        }
+        if ((this as Record<string, unknown>).wheelSpinning) {
+          return;
+        }
+        void ((this as Record<string, unknown>) as Record<string, unknown> & { testSpinWheel: () => Promise<void> }).testSpinWheel();
+      }, Math.max(0, delayMs));
+    },
     triggerWheelCelebration(this: Record<string, unknown>, payload: { label: string; color: string; image?: string; emoji?: string; preview?: boolean }): void {
       const timeoutId = (this as Record<string, unknown>)._wheelCelebrationTimeoutId as number | undefined;
       if (timeoutId != null) {
@@ -429,6 +491,11 @@ export const wheelWindowDefinition: any = {
     if (highlightTimeoutId != null) {
       clearTimeout(highlightTimeoutId);
       (this as Record<string, unknown>)._wheelHighlightTimeoutId = undefined;
+    }
+    const autospinTimeoutId = (this as Record<string, unknown>)._wheelAutospinTimeoutId as number | undefined;
+    if (autospinTimeoutId != null) {
+      clearTimeout(autospinTimeoutId);
+      (this as Record<string, unknown>)._wheelAutospinTimeoutId = undefined;
     }
     const draftTimeoutId = (this as Record<string, unknown>)._wheelDraftSaveTimeoutId as number | undefined;
     if (draftTimeoutId != null) {

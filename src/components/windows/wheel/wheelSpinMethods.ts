@@ -403,6 +403,7 @@ export const wheelSpinMethods = {
 
     if (!recordSession) {
       if (slot.isChase) {
+        (this as Record<string, unknown> & { stopWheelAutospin?: () => void }).stopWheelAutospin?.();
         (this as Record<string, unknown>).wheelChasePendingTierId = slot.tier;
         (this as Record<string, unknown>).wheelChaseReplacementSinglesId = null;
         (this as Record<string, unknown>).wheelChasePreviewMode = true;
@@ -414,6 +415,9 @@ export const wheelSpinMethods = {
       (this as Record<string, unknown>).wheelChaseReplacementSinglesId = null;
       (this as Record<string, unknown>).wheelChasePendingTierId = "";
       (this as Record<string, unknown> & { saveWheelSession: () => void }).saveWheelSession();
+      if ((this as Record<string, unknown>).wheelAutospinEnabled) {
+        (this as Record<string, unknown> & { scheduleNextWheelAutospin?: (delayMs?: number) => void }).scheduleNextWheelAutospin?.();
+      }
       return;
     }
 

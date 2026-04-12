@@ -19,10 +19,34 @@ export const WheelActionRail = defineComponent({
       type: String,
       required: true
     },
+    showSecondary: {
+      type: Boolean,
+      default: false
+    },
+    secondaryActive: {
+      type: Boolean,
+      default: false
+    },
+    secondaryDisabled: {
+      type: Boolean,
+      default: false
+    },
+    secondaryIcon: {
+      type: String,
+      default: "mdi-autorenew"
+    },
+    secondaryLabel: {
+      type: String,
+      default: ""
+    },
+    secondaryCompactLabel: {
+      type: String,
+      default: ""
+    },
     endingSession: {
       type: Boolean,
       default: false
     }
   },
-  emits: ["open-inspector", "primary-spin", "end-wheel"]
+  emits: ["open-inspector", "primary-spin", "secondary-action", "end-wheel"]
 });

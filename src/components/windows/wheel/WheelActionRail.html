@@ -1,5 +1,19 @@
 <div class="wheel-mobile-action-rail">
     <v-btn
+        v-if="showSecondary"
+        :color="secondaryActive ? 'secondary' : undefined"
+        :variant="secondaryActive ? 'elevated' : 'tonal'"
+        size="large"
+        class="wheel-mobile-action-rail__secondary"
+        :disabled="secondaryDisabled"
+        :title="secondaryLabel"
+        :aria-label="secondaryLabel"
+        @click="$emit('secondary-action')"
+    >
+        <v-icon start>{{ secondaryIcon }}</v-icon>
+        {{ secondaryCompactLabel || secondaryLabel }}
+    </v-btn>
+    <v-btn
         color="primary"
         variant="elevated"
         class="wheel-mobile-action-rail__primary"

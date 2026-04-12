@@ -1287,6 +1287,23 @@ test("confirmWheelModeChange applies the requested live mode and moves the inspe
   assert.equal(vm.wheelRequestedMode, null);
 });
 
+test("confirmWheelModeChange stops config autospin before switching to live", () => {
+  const stopWheelAutospin = vi.fn();
+  const vm: Record<string, unknown> = {
+    wheelMode: "config",
+    wheelAutospinEnabled: true,
+    wheelInspectorTab: "config",
+    wheelLiveConfirmDialog: true,
+    wheelRequestedMode: "live",
+    stopWheelAutospin
+  };
+
+  WheelWindow.methods!.confirmWheelModeChange.call(vm as never);
+
+  assert.equal(stopWheelAutospin.mock.calls.length, 1);
+  assert.equal(vm.wheelMode, "live");
+});
+
 test("wheelInspectorTabItems reuse a shared tab model for config mode", () => {
   const items = WheelWindow.computed!.wheelInspectorTabItems.call({
     wheelMode: "config",

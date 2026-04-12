@@ -226,6 +226,101 @@ test("runWheelPrimarySpin uses live spin in live mode", () => {
   assert.equal(spinWheel.mock.calls.length, 1);
 });
 
+test("toggleWheelAutospin enables config autospin and starts preview spins immediately", () => {
+  vi.useFakeTimers();
+
+  const testSpinWheel = vi.fn().mockResolvedValue(undefined);
+  const vm: Record<string, unknown> = {
+    wheelMode: "config",
+    wheelAutospinEnabled: false,
+    wheelSpinning: false,
+    wheelChaseDialog: false,
+    wheelEndingSession: false,
+    wheelDisplaySlots: [
+      { name: "Prize A", color: "#f00", cost: 5, tier: "t1", packsCount: 1, deductionType: "packs", isChase: false }
+    ],
+    testSpinWheel,
+    startWheelAutospin: WheelWindow.methods!.startWheelAutospin,
+    stopWheelAutospin: WheelWindow.methods!.stopWheelAutospin,
+    scheduleNextWheelAutospin: WheelWindow.methods!.scheduleNextWheelAutospin
+  };
+
+  WheelWindow.methods!.toggleWheelAutospin.call(vm as never);
+  vi.runAllTimers();
+
+  assert.equal(vm.wheelAutospinEnabled, true);
+  assert.equal(testSpinWheel.mock.calls.length, 1);
+  vi.useRealTimers();
+});
+
+test("landOnSlot preview mode schedules the next autospin when enabled", () => {
+  vi.stubGlobal("requestAnimationFrame", (() => 1) as typeof requestAnimationFrame);
+  vi.stubGlobal("cancelAnimationFrame", (() => undefined) as typeof cancelAnimationFrame);
+
+  const scheduleNextWheelAutospin = vi.fn();
+  const vm: Record<string, unknown> = {
+    activeWheelSlots: [
+      { name: "Prize A", color: "#f00", cost: 5, tier: "t1", packsCount: 1, deductionType: "packs", isChase: false }
+    ],
+    wheelAutospinEnabled: true,
+    wheelLastResult: "",
+    wheelLastResultColor: "",
+    wheelChaseDialog: false,
+    scheduleNextWheelAutospin,
+    saveWheelSession: vi.fn()
+  };
+
+  try {
+    WheelWindow.methods!.landOnSlot.call(vm as never, 0, { recordSession: false });
+  } finally {
+    vi.unstubAllGlobals();
+  }
+
+  assert.equal(scheduleNextWheelAutospin.mock.calls.length, 1);
+});
+
+test("landOnSlot preview chase hit stops autospin before opening the chase flow", () => {
+  vi.stubGlobal("requestAnimationFrame", (() => 1) as typeof requestAnimationFrame);
+  vi.stubGlobal("cancelAnimationFrame", (() => undefined) as typeof cancelAnimationFrame);
+
+  const stopWheelAutospin = vi.fn(function (this: Record<string, unknown>) {
+    this.wheelAutospinEnabled = false;
+  });
+  const vm: Record<string, unknown> = {
+    activeWheelSlots: [
+      { name: "Chase Card", color: "#ff0", cost: 50, tier: "tc", packsCount: 1, deductionType: "singles", isChase: true }
+    ],
+    activeWheelConfig: {
+      id: 1,
+      spinPrice: 10,
+      tiers: [{ id: "tc", boundLotId: 42, boundSinglesId: 777 }]
+    },
+    lots: [{
+      id: 42,
+      name: "Singles",
+      lotType: "singles",
+      singlesPurchases: [{ id: 777, item: "Chase Card", cost: 50, quantity: 1, marketValue: 60, image: "https://img.test/chase.png" }]
+    }],
+    wheelAutospinEnabled: true,
+    wheelLastResult: "",
+    wheelLastResultColor: "",
+    wheelChaseDialog: false,
+    wheelChasePreviewMode: false,
+    stopWheelAutospin,
+    saveWheelSession: vi.fn()
+  };
+
+  try {
+    WheelWindow.methods!.landOnSlot.call(vm as never, 0, { recordSession: false });
+  } finally {
+    vi.unstubAllGlobals();
+  }
+
+  assert.equal(stopWheelAutospin.mock.calls.length, 1);
+  assert.equal(vm.wheelAutospinEnabled, false);
+  assert.equal(vm.wheelChaseDialog, true);
+});
+
 test("drawWheel reuses a cached static wheel render when slots and size do not change", () => {
   const makeContext2d = () => {
     const gradientStub = { addColorStop: vi.fn() };

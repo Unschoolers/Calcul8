@@ -164,7 +164,16 @@
 
 .wheel-tier-card__edit-btn {
   flex-shrink: 0;
-  font-weight: 700;
+  width: 40px;
+  height: 40px;
+  min-width: 40px !important;
+  border-radius: 999px !important;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08) !important;
+  box-shadow: 0 8px 14px rgba(0, 0, 0, 0.12);
+}
+
+.wheel-tier-card__edit-btn.v-btn--variant-tonal {
+  background: rgba(var(--v-theme-on-surface), 0.05) !important;
 }
 
 .wheel-tier-card__chips {

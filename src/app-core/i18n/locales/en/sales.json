@@ -5,6 +5,7 @@
   "saleEditorAvailableStockLabel": "Up to {{count}} available",
   "saleEditorBulkSubtitle": "Record this sale event",
   "saleEditorBuyerShippingLabel": "Buyer shipping",
+  "saleEditorDateLabel": "Date",
   "saleEditorEditTitle": "Edit sale",
   "saleEditorItemOptionalLabel": "Item (optional)",
   "saleEditorItemsSoldSectionLabel": "Items sold",

@@ -92,6 +92,7 @@ export const wheelSessionMethods = {
   },
 
   resetPreviewSession(this: Record<string, unknown>): void {
+    (this as Record<string, unknown> & { stopWheelAutospin?: () => void }).stopWheelAutospin?.();
     const controller = getWheelController(this as Record<string, unknown>);
     const previewSlots = ((controller.previewSlots || controller.activeSlots) as WheelSlot[]);
     applyWheelPreviewReset(this as Record<string, unknown>, controller, previewSlots);

@@ -5,6 +5,7 @@
   "saleEditorAvailableStockLabel": "Jusqu'a {{count}} disponibles",
   "saleEditorBulkSubtitle": "Enregistrer cette vente",
   "saleEditorBuyerShippingLabel": "Livraison payee par l'acheteur",
+  "saleEditorDateLabel": "Date",
   "saleEditorEditTitle": "Modifier la vente",
   "saleEditorItemOptionalLabel": "Item (optionnel)",
   "saleEditorItemsSoldSectionLabel": "Items vendus",
