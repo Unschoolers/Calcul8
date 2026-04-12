@@ -115,6 +115,58 @@ jobs:
 
           node -e "const pkg = require('./package.json'); if (pkg.main !== 'dist/index.js') { console.error('Expected package.json main to be dist/index.js.'); process.exit(1); }"
 
+          node <<'EOF'
+          const fs = require('fs');
+          const path = require('path');
+
+          const projectRoot = process.cwd();
+          const distRoot = path.join(projectRoot, 'dist');
+          const offenders = [];
+          const requirePattern = /require\((['"])([^'"]+)\1\)/g;
+
+          function walk(dir) {
+            for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+              const fullPath = path.join(dir, entry.name);
+              if (entry.isDirectory()) {
+                walk(fullPath);
+                continue;
+              }
+              if (!entry.isFile() || !entry.name.endsWith('.js')) continue;
+
+              const source = fs.readFileSync(fullPath, 'utf8');
+              for (const match of source.matchAll(requirePattern)) {
+                const specifier = match[2];
+                if (!specifier.startsWith('.')) continue;
+                const resolved = path.resolve(path.dirname(fullPath), specifier);
+                if (!resolved.startsWith(projectRoot + path.sep)) {
+                  offenders.push(`${path.relative(projectRoot, fullPath)} -> ${specifier}`);
+                }
+              }
+            }
+          }
+
+          walk(distRoot);
+
+          if (offenders.length > 0) {
+            console.error('Compiled API references files outside apps/api deployment root:');
+            for (const offender of offenders) {
+              console.error(` - ${offender}`);
+            }
+            process.exit(1);
+          }
+          EOF
+
+          staged_root="$(mktemp -d)"
+          trap 'rm -rf "$staged_root"' EXIT
+
+          cp host.json package.json "$staged_root"/
+          cp -R dist "$staged_root"/
+          cp -R node_modules "$staged_root"/
+
+          pushd "$staged_root" > /dev/null
+          node -e "require('./dist/index.js'); console.log('Staged deploy package loaded successfully.');"
+          popd > /dev/null
+
       - name: Deploy to Azure Functions (Prod)
         uses: Azure/functions-action@v1
         with:
