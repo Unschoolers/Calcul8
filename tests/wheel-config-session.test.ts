@@ -1,15 +1,15 @@
 import assert from "node:assert/strict";
 import { test, vi } from "vitest";
 import {
-  getScopedWheelConfigDraftStorageKey,
-  getScopedWheelConfigSessionStorageKey
+    getScopedWheelConfigDraftStorageKey,
+    getScopedWheelConfigSessionStorageKey
 } from "../src/app-core/storageKeys.ts";
 import { createNestedWindowContextBridge } from "../src/components/windows/contextBridge.ts";
 import { getWheelController, getWheelWindowLocalKeys } from "../src/components/windows/wheel/wheelControllerState.ts";
 import {
-  buildSlotsFromConfig,
-  createWheelSale,
-  WheelWindow
+    buildSlotsFromConfig,
+    createWheelSale,
+    WheelWindow
 } from "../src/components/windows/wheel/WheelWindow.ts";
 import type { WheelConfig } from "../src/types/app.ts";
 

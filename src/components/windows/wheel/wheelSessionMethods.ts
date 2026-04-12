@@ -7,20 +7,19 @@ import type { Lot, PendingWheelInventoryIssue, Sale, WheelConfig, WheelFairnessE
 import { getWheelController } from "./wheelControllerState.ts";
 import { buildSlotsFromConfig, createWheelSale, remapSpinCountsByTier, type WheelSlot } from "./wheelHelpers.ts";
 import {
-  applyWheelLiveReset,
-  applyWheelPreviewReset,
-  clearWheelChaseDialogState,
-  createWheelSessionSnapshot,
-  getWheelTargetConfig,
-  getWheelTierLotContext,
-  mergeWheelSessionRootFallback,
-  setWheelResultState,
-  clearWheelProofState
-} from "./wheelSessionState.ts";
-import {
     getAvailableSinglesQuantityForWheelTier,
     hasAnyAvailableSinglesForWheelTier
 } from "./wheelSaleSupport.ts";
+import {
+    applyWheelLiveReset,
+    applyWheelPreviewReset,
+    clearWheelChaseDialogState,
+    createWheelSessionSnapshot,
+    getWheelTargetConfig,
+    getWheelTierLotContext,
+    mergeWheelSessionRootFallback,
+    setWheelResultState
+} from "./wheelSessionState.ts";
 
 type WheelTallyHistoryEntry = { tierId: string; label: string; color: string; count: number };
 function snapshotCurrentTierLabelToHistory(

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import type { Sale, SinglesPurchaseEntry } from "../src/types/app.ts";
 import { SalesWindowDefinition } from "../src/components/windows/SalesWindow.definition.ts";
+import type { Sale, SinglesPurchaseEntry } from "../src/types/app.ts";
 
 function makeSale(overrides: Partial<Sale> = {}): Sale {
   return {

@@ -1,7 +1,7 @@
 import { reactive } from "vue";
 import type { WheelConfig, WheelFairnessEntry } from "../../../types/app.ts";
-import type { WheelSlot } from "./wheelHelpers.ts";
 import { unwrapWindowBridgeContext } from "../contextBridge.ts";
+import type { WheelSlot } from "./wheelHelpers.ts";
 
 export type WheelControllerState = {
   activeSlots: WheelSlot[];

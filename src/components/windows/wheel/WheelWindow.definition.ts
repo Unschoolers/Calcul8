@@ -3,8 +3,8 @@ import type { WheelConfig } from "../../../types/app.ts";
 import { createWindowContextBridge } from "../contextBridge.ts";
 import { wheelComputeds } from "./wheelComputeds.ts";
 import { wheelConfigMethods } from "./wheelConfigMethods.ts";
-import { createWheelWindowState, getWheelWindowLocalKeys } from "./wheelControllerState.ts";
-import { getWheelController } from "./wheelControllerState.ts";
+import { createWheelWindowState, getWheelController, getWheelWindowLocalKeys } from "./wheelControllerState.ts";
+import { buildSlotsFromConfig } from "./wheelHelpers.ts";
 import {
     WHEEL_COMPACT_LAYOUT_BREAKPOINT,
     isWheelCompactViewport,
@@ -13,7 +13,6 @@ import {
 } from "./wheelLayoutPolicy.ts";
 import { wheelSessionMethods } from "./wheelSessionMethods.ts";
 import { wheelSpinMethods } from "./wheelSpinMethods.ts";
-import { buildSlotsFromConfig } from "./wheelHelpers.ts";
 
 function getWheelCanvasTargetSize(panel: HTMLElement | null, presentationMode: boolean): number {
   return resolveWheelCanvasTargetSize({

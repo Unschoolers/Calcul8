@@ -1,8 +1,8 @@
 import { nextTick } from "vue";
 import { broadcastWheelSession } from "../../../app-core/methods/ui/wheel-broadcast.ts";
 import {
-  queueCloudConfigSyncPush,
-  stopWorkspaceConfigSyncPush
+    queueCloudConfigSyncPush,
+    stopWorkspaceConfigSyncPush
 } from "../../../app-core/methods/ui/workspace-config-sync.ts";
 import { normalizeWheelConfig } from "../../../app-core/shared/normalize-wheel-config.ts";
 import { assignWheelPendingInventoryIssues } from "../../../app-core/shared/wheel-session-compat.ts";
@@ -12,17 +12,17 @@ import { calculateTotalCaseCost } from "../../../domain/calculations-fees.ts";
 import type { Lot, WheelConfig, WheelTier } from "../../../types/app.ts";
 import { getWheelController } from "./wheelControllerState.ts";
 import {
-  buildSlotsFromConfig,
-  createDefaultTier,
-  createDefaultWheelConfig,
-  generateTierId,
-  remapSpinCountsByTier,
-  type WheelSlot
+    buildSlotsFromConfig,
+    createDefaultTier,
+    createDefaultWheelConfig,
+    generateTierId,
+    remapSpinCountsByTier,
+    type WheelSlot
 } from "./wheelHelpers.ts";
 import {
-  getAvailableSinglesQuantityForWheelTier,
-  getRemainingPacksForWheelLot,
-  getWheelTierInventoryMeta
+    getAvailableSinglesQuantityForWheelTier,
+    getRemainingPacksForWheelLot,
+    getWheelTierInventoryMeta
 } from "./wheelSaleSupport.ts";
 
 function clearQueuedWheelConfigSync(context: Record<string, unknown>): void {
