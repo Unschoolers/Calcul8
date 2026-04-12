@@ -1,0 +1,112 @@
+.auth-gate-shell {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(1rem, env(safe-area-inset-top)) 1rem max(1rem, env(safe-area-inset-bottom));
+}
+
+.auth-gate-card {
+  width: min(100%, 430px);
+  border: 1px solid rgba(255, 184, 0, 0.25);
+  background:
+    radial-gradient(85% 60% at 12% 0%, rgba(230, 57, 70, 0.15), transparent 65%),
+    radial-gradient(70% 58% at 88% 100%, rgba(255, 184, 0, 0.14), transparent 72%),
+    rgba(var(--v-theme-surface), 0.95);
+  backdrop-filter: blur(6px);
+}
+
+.auth-gate-logo {
+  width: 72px;
+  height: 72px;
+  border-radius: 16px;
+  display: block;
+  margin: 0 auto 0.9rem;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+}
+
+.auth-gate-overline {
+  letter-spacing: 0.14em;
+  color: rgb(var(--v-theme-secondary));
+  font-weight: 700;
+}
+
+.auth-gate-title {
+  line-height: 1.2;
+}
+
+.auth-gate-google-button {
+  display: block;
+  width: min(100%, 320px);
+  min-height: 44px;
+  margin: 0 auto 0.85rem;
+  line-height: 0;
+  text-align: center;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.auth-gate-google-button > div {
+  display: inline-block;
+  max-width: 100%;
+}
+
+.auth-gate-google-button iframe {
+  border-radius: 4px;
+  color-scheme: auto;
+}
+
+.auth-gate-fallback-copy {
+  width: min(100%, 320px);
+  margin: 0.15rem auto 0.5rem;
+  font-size: 0.84rem;
+  line-height: 1.35;
+  color: rgba(var(--v-theme-on-surface), 0.7);
+  text-align: center;
+}
+
+.auth-gate-btn {
+  display: flex !important;
+  width: min(100%, 320px) !important;
+  margin-inline: auto !important;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  font-weight: 800;
+}
+
+.auth-gate-btn--fallback {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 700;
+  border-color: rgba(var(--v-theme-secondary), 0.42) !important;
+  background: rgba(var(--v-theme-secondary), 0.08) !important;
+}
+
+.auth-gate-btn .v-btn__content {
+  width: 100%;
+}
+
+.auth-gate-btn__content {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) 22px;
+  align-items: center;
+  gap: 0.7rem;
+  width: 100%;
+  line-height: 1;
+}
+
+.auth-gate-btn__icon {
+  justify-self: end;
+  line-height: 1;
+}
+
+.auth-gate-btn__label {
+  display: inline-block;
+  line-height: 1.05;
+  text-align: center;
+}
+
+.auth-gate-btn__spacer {
+  width: 22px;
+  height: 22px;
+}

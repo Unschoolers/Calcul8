@@ -1,5 +1,6 @@
 import { inject, type PropType } from "vue";
 import { createWindowContextBridge } from "../windows/contextBridge.ts";
+import "./LotSelectorOnboardingBlock.css";
 
 export const LotSelectorOnboardingBlock = {
   name: "LotSelectorOnboardingBlock",

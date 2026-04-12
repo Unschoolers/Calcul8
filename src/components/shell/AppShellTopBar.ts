@@ -1,5 +1,6 @@
 import { inject, type PropType } from "vue";
 import { createWindowContextBridge } from "../windows/contextBridge.ts";
+import "./AppShellTopBar.css";
 
 export const AppShellTopBar = {
   name: "AppShellTopBar",

@@ -1,5 +1,6 @@
 import { inject, type PropType } from "vue";
 import { createWindowContextBridge } from "../windows/contextBridge.ts";
+import "./SaleEditorModal.css";
 
 export const SaleEditorModal = {
   name: "SaleEditorModal",
