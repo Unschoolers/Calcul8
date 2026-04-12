@@ -6,6 +6,17 @@ Items grouped by priority. Completed work is removed, not tracked.
 
 ## Medium
 
+### Centralize API base URL resolution and failure handling
+
+Frontend API base URL handling is still duplicated and runtime checks are scattered:
+
+- `resolveApiBaseUrl()` in `src/app-core/methods/ui/api-client.ts`
+- `resolveCardsApiBaseUrl()` in `src/components/windows/singles/useSinglesCatalogSearch.ts`
+
+Current callers usually guard missing configuration correctly, so this is not a critical bug. The risk is drift: future API consumers can easily re-implement base URL lookup or handle missing config differently.
+
+Unify API base URL resolution behind one shared helper and standardize the missing-configuration behavior so new frontend API code fails consistently.
+
 ### Consolidate realtime endpoint URL constants
 
 Room naming is now centralized in the shared `workspace-realtime-rooms` module. Remaining cleanup is only the endpoint/domain configuration still split across files:
