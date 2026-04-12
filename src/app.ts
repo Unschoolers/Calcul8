@@ -9,6 +9,7 @@ import AuthGateCard from "./components/shell/AuthGateCard.vue";
 import AppShellTopBar from "./components/shell/AppShellTopBar.vue";
 import LotSelectorOnboardingBlock from "./components/shell/LotSelectorOnboardingBlock.vue";
 import PortfolioReportModal from "./components/shell/PortfolioReportModal.vue";
+import SaleEditorModal from "./components/shell/SaleEditorModal.vue";
 import WorkspaceModals from "./components/shell/WorkspaceModals.vue";
 import ConfigWindow from "./components/windows/ConfigWindow.vue";
 import LiveWindow from "./components/windows/LiveWindow.vue";
@@ -27,6 +28,7 @@ export const appOptions = {
     AppShellTopBar,
     LotSelectorOnboardingBlock,
     PortfolioReportModal,
+    SaleEditorModal,
     WorkspaceModals,
     ConfigWindow,
     SinglesConfigWindow,
