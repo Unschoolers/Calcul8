@@ -54,10 +54,21 @@ jobs:
         shell: bash
         env:
           AZURE_FUNCTIONAPP_NAME_PROD: ${{ vars.AZURE_FUNCTIONAPP_NAME_PROD }}
+          MIGRATIONS_API_BASE_URL: ${{ vars.MIGRATIONS_API_BASE_URL }}
           AZURE_FUNCTIONAPP_PUBLISH_PROFILE_PROD: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE_PROD }}
         run: |
           if [ -z "${AZURE_FUNCTIONAPP_NAME_PROD}" ]; then
             echo "Missing vars.AZURE_FUNCTIONAPP_NAME_PROD in prod-backend environment."
+            exit 1
+          fi
+          if [ -z "${MIGRATIONS_API_BASE_URL}" ]; then
+            echo "Missing vars.MIGRATIONS_API_BASE_URL in prod-backend environment."
+            echo "Expected format: https://<api-host>/api"
+            exit 1
+          fi
+          if [[ "${MIGRATIONS_API_BASE_URL}" != https://*"/api" ]]; then
+            echo "MIGRATIONS_API_BASE_URL must start with https:// and end with /api."
+            echo "Current value: ${MIGRATIONS_API_BASE_URL}"
             exit 1
           fi
           if [ -z "${AZURE_FUNCTIONAPP_PUBLISH_PROFILE_PROD}" ]; then
@@ -115,13 +126,13 @@ jobs:
       - name: Smoke test deployed routes
         shell: bash
         env:
-          SMOKE_BASE_URL: https://${{ vars.AZURE_FUNCTIONAPP_NAME_PROD }}.azurewebsites.net
+          SMOKE_API_BASE_URL: ${{ vars.MIGRATIONS_API_BASE_URL }}
         run: |
           set -euo pipefail
 
           paths=(
-            "/api/auth/me"
-            "/api/entitlements/me"
+            "/auth/me"
+            "/entitlements/me"
           )
 
           max_attempts=24
@@ -131,7 +142,7 @@ jobs:
             all_healthy=1
 
             for path in "${paths[@]}"; do
-              url="${SMOKE_BASE_URL}${path}"
+              url="${SMOKE_API_BASE_URL}${path}"
               status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' "$url" || true)"
 
               if [ "$status" = "401" ]; then
