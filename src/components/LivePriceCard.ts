@@ -209,16 +209,46 @@ export const LivePriceCard = defineComponent({
         "each."
       );
     },
+    neededAverageLabel(): string {
+      return this.translate(
+        "livePriceCardNeededAverageLabel",
+        "Needed avg"
+      );
+    },
     neededProfitSummaryLabel(): string {
       return this.translate(
         "livePriceCardNeededProfitSummaryLabel",
         "At that price, your total lot profit would be"
       );
     },
+    targetProfitShortLabel(): string {
+      return this.translate(
+        "livePriceCardTargetProfitShortLabel",
+        "Lot profit"
+      );
+    },
     currentPriceGapLabel(): string {
       return this.translate(
         "livePriceCardCurrentPriceGapLabel",
         "Compared with your current price"
+      );
+    },
+    currentPriceGapShortLabel(): string {
+      return this.translate(
+        "livePriceCardCurrentPriceGapShortLabel",
+        "Vs current"
+      );
+    },
+    scenarioDownLabel(): string {
+      return this.translate(
+        "livePriceCardScenarioDownLabel",
+        "-$1"
+      );
+    },
+    scenarioUpLabel(): string {
+      return this.translate(
+        "livePriceCardScenarioUpLabel",
+        "+$1"
       );
     }
   }

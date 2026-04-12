@@ -1,101 +1,117 @@
 <v-card elevation="0" rounded="xl" class="live-pricing-card">
-  <v-card-text class="pa-4">
-    <v-row align="center" dense>
-      <v-col cols="3" class="text-center">
-        <v-avatar :color="avatarColor" size="48">
-          <v-icon color="white" size="28">{{ icon }}</v-icon>
+  <v-card-text class="pa-3 live-pricing-card__body">
+    <div class="live-pricing-card__hero">
+      <div class="live-pricing-card__identity">
+        <v-avatar :color="avatarColor" size="42" class="live-pricing-card__avatar">
+          <v-icon color="white" size="24">{{ icon }}</v-icon>
         </v-avatar>
-        <div class="text-caption mt-1 font-weight-medium">{{ label }}</div>
-        <div v-if="helperText" class="text-caption text-medium-emphasis mt-1">
-          {{ helperText }}
+        <div class="live-pricing-card__identity-copy">
+          <div class="live-pricing-card__label-cluster">
+            <div class="live-pricing-card__label">{{ label }}</div>
+          </div>
+          <div v-if="helperText" class="live-pricing-card__helper">
+            {{ helperText }}
+          </div>
         </div>
-      </v-col>
+      </div>
 
-      <v-col cols="6" class="text-center">
-        <div class="text-h4 font-weight-bold mb-1">${{ formatCurrency(modelValue) }}</div>
+      <div class="live-pricing-card__hero-price">
+        <div class="live-pricing-card__price">${{ formatCurrency(modelValue) }}</div>
         <v-chip
           :color="displayProfit() >= 0 ? 'success' : 'error'"
           size="small"
-          class="font-weight-bold"
+          class="live-pricing-card__profit-chip live-pricing-card__profit-chip--center"
         >
           {{ displayProfit() >= 0 ? '+' : '' }}${{ formatCurrency(displayProfit()) }}
           ({{ formatCurrency(displayProfitPercent(), 1) }}%)
         </v-chip>
-      </v-col>
+      </div>
 
-      <v-col cols="3" class="text-center">
-        <div class="d-flex flex-column align-center justify-center ga-1">
-          <v-btn
-            icon="mdi-minus"
-            size="small"
-            color="error"
-            variant="tonal"
-            :title="priceAdjustLabel(-1)"
-            :aria-label="priceAdjustLabel(-1)"
-            @click="changePrice(-1)"
-          ></v-btn>
-          <v-btn
-            icon="mdi-plus"
-            size="small"
-            color="success"
-            variant="tonal"
-            :title="priceAdjustLabel(1)"
-            :aria-label="priceAdjustLabel(1)"
-            @click="changePrice(1)"
-          ></v-btn>
-        </div>
-      </v-col>
-    </v-row>
+      <div class="live-pricing-card__controls">
+        <v-btn
+          icon="mdi-minus"
+          size="small"
+          color="error"
+          variant="tonal"
+          :title="priceAdjustLabel(-1)"
+          :aria-label="priceAdjustLabel(-1)"
+          @click="changePrice(-1)"
+        ></v-btn>
+        <v-btn
+          icon="mdi-plus"
+          size="small"
+          color="success"
+          variant="tonal"
+          :title="priceAdjustLabel(1)"
+          :aria-label="priceAdjustLabel(1)"
+          @click="changePrice(1)"
+        ></v-btn>
+      </div>
+    </div>
 
-    <v-divider class="my-3"></v-divider>
-    <div class="text-caption text-medium-emphasis text-center mb-2 live-price-target-summary">
+    <div class="live-pricing-card__target-summary">
       <template v-if="avgPriceNeeded == null || neededDisplayProfit() == null || currentPriceGap() == null">
-        {{ noTargetLabel() }}
+        <div class="live-pricing-card__empty-target">
+          <v-icon size="16">mdi-target-variant</v-icon>
+          <span>{{ noTargetLabel() }}</span>
+        </div>
       </template>
       <template v-else>
-        <div class="live-price-target-line">
-          {{ neededPriceSummaryPrefix() }}
-          <span
-            class="font-weight-bold text-high-emphasis"
-          >
-            ${{ formatCurrency(avgPriceNeeded) }}
-          </span>
-          {{ neededPriceSummarySuffix() }}
-        </div>
-        <div class="live-price-target-line">
-          {{ neededProfitSummaryLabel() }}
-          <span
-            class="font-weight-bold"
-            :class="(neededDisplayProfit() || 0) >= 0 ? 'text-success' : 'text-error'"
-          >
-            {{ (neededDisplayProfit() || 0) >= 0 ? '+' : '' }}${{ formatAt(neededDisplayProfit() || 0) }}
-            ({{ formatCurrency(neededDisplayPercent() || 0, 1) }}%)
-          </span>
-        </div>
-        <div class="live-price-target-line live-price-target-line--delta">
-          {{ currentPriceGapLabel() }}
-          <span
-            class="font-weight-bold"
-            :class="(currentPriceGap() || 0) >= 0 ? 'text-success' : 'text-error'"
-          >
-            {{ (currentPriceGap() || 0) >= 0 ? '+' : '' }}${{ formatAt(currentPriceGap() || 0) }}
-          </span>
+        <div class="live-pricing-card__target-metrics live-pricing-card__target-metrics--compact">
+          <div class="live-pricing-card__metric-tile live-pricing-card__metric-tile--needed">
+            <div class="live-pricing-card__metric-label">{{ neededAverageLabel() }}</div>
+            <div class="live-pricing-card__metric-value">${{ formatCurrency(avgPriceNeeded) }}</div>
+            <div class="live-pricing-card__metric-sub live-pricing-card__metric-sub--inline">
+              <span>{{ currentPriceGapShortLabel() }}</span>
+              <span
+                class="font-weight-bold"
+                :class="(currentPriceGap() || 0) >= 0 ? 'text-success' : 'text-error'"
+              >
+                {{ (currentPriceGap() || 0) >= 0 ? '+' : '' }}${{ formatAt(currentPriceGap() || 0) }}
+              </span>
+            </div>
+          </div>
+          <div class="live-pricing-card__metric-tile">
+            <div class="live-pricing-card__metric-label">{{ targetProfitShortLabel() }}</div>
+            <div
+              class="live-pricing-card__metric-value"
+              :class="(neededDisplayProfit() || 0) >= 0 ? 'text-success' : 'text-error'"
+            >
+              {{ (neededDisplayProfit() || 0) >= 0 ? '+' : '' }}${{ formatAt(neededDisplayProfit() || 0) }}
+            </div>
+            <div class="live-pricing-card__metric-sub">
+              {{ formatCurrency(neededDisplayPercent() || 0, 1) }}%
+            </div>
+          </div>
         </div>
       </template>
     </div>
-    <v-row dense class="text-center">
-      <v-col cols="6">
-        <div class="text-caption text-medium-emphasis">{{ lowerPriceLabel() }}: ${{ formatCurrency(modelValue - 1) }}</div>
-        <div class="text-body-2 font-weight-bold" :class="displayProfitAtPrice(modelValue - 1) >= 0 ? 'text-success' : 'text-error'">
+
+    <div class="live-pricing-card__scenario-grid">
+      <div class="live-pricing-card__scenario-tile">
+        <div class="live-pricing-card__scenario-head">
+          <span class="live-pricing-card__scenario-chip">{{ scenarioDownLabel() }}</span>
+          <span class="live-pricing-card__scenario-price">${{ formatCurrency(modelValue - 1) }}</span>
+        </div>
+        <div class="live-pricing-card__scenario-profit" :class="displayProfitAtPrice(modelValue - 1) >= 0 ? 'text-success' : 'text-error'">
           {{ displayProfitAtPrice(modelValue - 1) >= 0 ? '+' : '' }}${{ formatCurrency(displayProfitAtPrice(modelValue - 1)) }}
         </div>
-      </v-col>
-      <v-col cols="6">
-        <div class="text-caption text-medium-emphasis">{{ higherPriceLabel() }}: ${{ formatCurrency(modelValue + 1) }}</div>
-        <div class="text-body-2 font-weight-bold" :class="displayProfitAtPrice(modelValue + 1) >= 0 ? 'text-success' : 'text-error'">
+        <div class="live-pricing-card__scenario-percent">
+          {{ formatCurrency(displayProfitPercentAtPrice(modelValue - 1), 1) }}%
+        </div>
+      </div>
+      <div class="live-pricing-card__scenario-tile">
+        <div class="live-pricing-card__scenario-head">
+          <span class="live-pricing-card__scenario-chip">{{ scenarioUpLabel() }}</span>
+          <span class="live-pricing-card__scenario-price">${{ formatCurrency(modelValue + 1) }}</span>
+        </div>
+        <div class="live-pricing-card__scenario-profit" :class="displayProfitAtPrice(modelValue + 1) >= 0 ? 'text-success' : 'text-error'">
           {{ displayProfitAtPrice(modelValue + 1) >= 0 ? '+' : '' }}${{ formatCurrency(displayProfitAtPrice(modelValue + 1)) }}
         </div>
-      </v-col>
-    </v-row>
+        <div class="live-pricing-card__scenario-percent">
+          {{ formatCurrency(displayProfitPercentAtPrice(modelValue + 1), 1) }}%
+        </div>
+      </div>
+    </div>
   </v-card-text>
 </v-card>
