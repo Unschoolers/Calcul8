@@ -5,6 +5,11 @@ import { createInitialState } from "./app-core/state.ts";
 import { appWatch } from "./app-core/watch.ts";
 import LivePriceCard from "./components/LivePriceCard.vue";
 import AutoCalculateModal from "./components/modals/AutoCalculateModal.vue";
+import AuthGateCard from "./components/shell/AuthGateCard.vue";
+import AppShellTopBar from "./components/shell/AppShellTopBar.vue";
+import LotSelectorOnboardingBlock from "./components/shell/LotSelectorOnboardingBlock.vue";
+import PortfolioReportModal from "./components/shell/PortfolioReportModal.vue";
+import WorkspaceModals from "./components/shell/WorkspaceModals.vue";
 import ConfigWindow from "./components/windows/ConfigWindow.vue";
 import LiveWindow from "./components/windows/LiveWindow.vue";
 import PortfolioWindow from "./components/windows/PortfolioWindow.vue";
@@ -18,6 +23,11 @@ export const appOptions = {
   components: {
     LivePriceCard,
     AutoCalculateModal,
+    AuthGateCard,
+    AppShellTopBar,
+    LotSelectorOnboardingBlock,
+    PortfolioReportModal,
+    WorkspaceModals,
     ConfigWindow,
     SinglesConfigWindow,
     LiveWindow,

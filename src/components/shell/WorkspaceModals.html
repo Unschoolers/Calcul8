@@ -1,0 +1,243 @@
+<div>
+  <v-dialog v-model="showCreateWorkspaceModal" max-width="460">
+    <v-card>
+      <v-card-title>{{ t('shellCreateWorkspaceTitle') }}</v-card-title>
+      <v-card-text>
+        <p class="text-body-2 text-medium-emphasis mb-4">
+          {{ t('shellCreateWorkspaceBody') }}
+        </p>
+        <v-text-field
+          v-model="newWorkspaceName"
+          :label="t('shellWorkspaceNameLabel')"
+          variant="outlined"
+          density="comfortable"
+          @keyup.enter="createWorkspace"
+        ></v-text-field>
+      </v-card-text>
+      <v-card-actions>
+        <v-spacer></v-spacer>
+        <v-btn variant="text" @click="showCreateWorkspaceModal = false">{{ t('commonCancel') }}</v-btn>
+        <v-btn color="primary" :loading="isCreatingWorkspace" :disabled="activeScopeType !== 'personal'" @click="createWorkspace">
+          {{ t('shellCreateWorkspaceConfirmAction') }}
+        </v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
+
+  <v-dialog v-model="showWorkspaceMembersModal" max-width="760" content-class="workspace-members-dialog">
+    <v-card class="workspace-members-card">
+      <v-card-title class="workspace-members-card__title">
+        <div class="workspace-members-card__title-copy">
+          <div class="workspace-members-card__eyebrow">{{ t('shellSharedWorkspaceTitle') }}</div>
+          <div class="workspace-members-card__headline-row">
+            <div class="workspace-members-card__headline">{{ currentWorkspaceName }}</div>
+            <div class="workspace-members-card__header-actions">
+              <v-btn
+                v-if="isCurrentWorkspaceOwner"
+                size="small"
+                variant="tonal"
+                color="secondary"
+                prepend-icon="mdi-link-variant"
+                class="workspace-members-card__invite-btn"
+                :title="t('shellInviteLinkAction')"
+                :aria-label="t('shellInviteLinkAction')"
+                :loading="isCreatingWorkspaceJoinLink"
+                @click="createWorkspaceJoinLink"
+              >
+                {{ t('shellInviteAction') }}
+              </v-btn>
+              <v-btn
+                icon="mdi-exit-to-app"
+                size="small"
+                variant="tonal"
+                color="error"
+                class="workspace-members-card__leave-btn"
+                :title="t('shellLeaveWorkspaceAction')"
+                :aria-label="t('shellLeaveWorkspaceAction')"
+                @click="openLeaveWorkspaceModal"
+              ></v-btn>
+            </div>
+          </div>
+        </div>
+      </v-card-title>
+      <v-card-text class="workspace-members-card__content">
+        <div class="workspace-members-section">
+          <div class="workspace-members-section__header">
+            {{
+              isWorkspaceMembersLoading
+                ? t('shellMembersLabel')
+                : t('shellMembersCountLabel', { count: workspaceMembers.length })
+            }}
+          </div>
+        </div>
+
+        <div v-if="isWorkspaceMembersLoading" class="workspace-member-list workspace-member-list--loading">
+          <article
+            v-for="skeletonIndex in 2"
+            :key="`workspace-member-skeleton-${skeletonIndex}`"
+            class="workspace-member-card-row workspace-member-card-row--skeleton"
+          >
+            <div class="workspace-member-card-row__identity">
+              <v-skeleton-loader type="avatar" class="workspace-member-card-row__skeleton-avatar"></v-skeleton-loader>
+              <div class="workspace-member-card-row__copy workspace-member-card-row__copy--skeleton">
+                <v-skeleton-loader type="text" class="workspace-member-card-row__skeleton-name"></v-skeleton-loader>
+                <v-skeleton-loader type="text" class="workspace-member-card-row__skeleton-id"></v-skeleton-loader>
+                <v-skeleton-loader type="text" class="workspace-member-card-row__skeleton-meta"></v-skeleton-loader>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <div v-else-if="workspaceMembers.length" class="workspace-member-list">
+          <article
+            v-for="member in workspaceMembers"
+            :key="`${member.workspaceId}-${member.userId}`"
+            class="workspace-member-card-row"
+          >
+            <div class="workspace-member-card-row__identity">
+              <v-avatar size="52" color="primary" class="workspace-member-card-row__avatar">
+                <img
+                  v-if="member.photoUrl"
+                  :src="member.photoUrl"
+                  :alt="member.displayName || member.userId"
+                  class="account-avatar-img"
+                  referrerpolicy="no-referrer"
+                />
+                <span v-else class="workspace-member-card-row__initial">
+                  {{ (member.displayName || member.userId || '?').slice(0, 1).toUpperCase() }}
+                </span>
+              </v-avatar>
+              <span
+                class="workspace-member-card-row__presence"
+                :class="`workspace-member-card-row__presence--${getWorkspaceMemberPresenceState(member)}`"
+                :title="getWorkspaceMemberPresenceLabel(member)"
+              ></span>
+
+              <div class="workspace-member-card-row__copy">
+                <div class="workspace-member-card-row__name-row">
+                  <div class="workspace-member-card-row__name">
+                    {{ member.displayName || t('shellWorkspaceMemberFallback') }}
+                  </div>
+                  <v-chip size="x-small" variant="tonal" :color="member.role === 'owner' ? 'primary' : null">
+                    {{ member.role === 'owner' ? t('shellWorkspaceRoleOwner') : t('shellWorkspaceRoleMember') }}
+                  </v-chip>
+                </div>
+
+                <div class="workspace-member-card-row__id">
+                  {{ member.userId }}
+                </div>
+
+                <div class="workspace-member-card-row__meta">
+                  <span
+                    class="workspace-member-card-row__presence-label"
+                    :class="`workspace-member-card-row__presence-label--${getWorkspaceMemberPresenceState(member)}`"
+                  >
+                    {{ getWorkspaceMemberPresenceLabel(member) }}
+                  </span>
+                  <span v-if="!member.displayName">{{ t('shellProfileNameUnavailableLabel') }}</span>
+                  <span>{{ t('shellMembersUpdatedLabel', { date: formatDate(member.updatedAt) }) }}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="workspace-member-card-row__actions">
+              <v-btn
+                v-if="isCurrentWorkspaceOwner && member.role !== 'owner'"
+                size="small"
+                variant="tonal"
+                color="error"
+                prepend-icon="mdi-account-remove-outline"
+                @click="removeWorkspaceMember(member.userId)"
+              >
+                {{ t('shellRemoveMemberAction') }}
+              </v-btn>
+            </div>
+          </article>
+        </div>
+
+        <div v-else class="workspace-members-empty">
+          <v-icon size="34" color="medium-emphasis">mdi-account-off-outline</v-icon>
+          <div class="workspace-members-empty__title">{{ t('shellMembersEmptyTitle') }}</div>
+          <div class="workspace-members-empty__body">
+            {{ t('shellMembersEmptyBody') }}
+          </div>
+        </div>
+      </v-card-text>
+      <v-card-actions class="workspace-members-card__actions">
+        <v-spacer></v-spacer>
+        <v-btn variant="text" @click="showWorkspaceMembersModal = false">{{ t('commonClose') }}</v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
+
+  <v-dialog v-model="showLeaveWorkspaceModal" max-width="480">
+    <v-card>
+      <v-card-title>{{ t('shellLeaveWorkspaceTitle') }}</v-card-title>
+      <v-card-text>
+        <p class="text-body-2 text-medium-emphasis mb-4">
+          {{
+            isCurrentWorkspaceOwner
+              ? t('shellLeaveWorkspaceOwnerBody')
+              : t('shellLeaveWorkspaceMemberBody')
+          }}
+        </p>
+
+        <v-select
+          v-if="isCurrentWorkspaceOwner && workspaceMembers.some(member => member.role === 'member' && member.status === 'active')"
+          v-model="leaveWorkspaceTransferMemberUserId"
+          :items="workspaceMembers
+            .filter(member => member.role === 'member' && member.status === 'active')
+            .map(member => ({
+              title: member.displayName
+                ? `${member.displayName} (${member.userId.slice(0, 8)}...${member.userId.slice(-4)})`
+                : member.userId,
+              value: member.userId
+            }))"
+          item-title="title"
+          item-value="value"
+          :label="t('shellTransferOwnerLabel')"
+          variant="outlined"
+          density="comfortable"
+          :hint="t('shellTransferOwnerHint')"
+          persistent-hint
+        ></v-select>
+
+        <v-checkbox
+          v-else-if="isCurrentWorkspaceOwner"
+          v-model="leaveWorkspaceDeleteConfirmation"
+          color="error"
+          :label="t('shellLeaveWorkspaceDeleteConfirm')"
+          hide-details
+        ></v-checkbox>
+      </v-card-text>
+      <v-card-actions>
+        <v-spacer></v-spacer>
+        <v-btn variant="text" @click="showLeaveWorkspaceModal = false">{{ t('commonCancel') }}</v-btn>
+        <v-btn color="error" :loading="isLeavingWorkspace" @click="leaveCurrentWorkspace">
+          {{ t('shellLeaveWorkspaceAction') }}
+        </v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
+
+  <v-dialog v-model="showWorkspaceJoinDialog" max-width="460">
+    <v-card>
+      <v-card-title>{{ t('shellJoinWorkspaceTitle') }}</v-card-title>
+      <v-card-text>
+        <p class="text-body-1 mb-2">
+          {{ t('shellJoinWorkspacePrompt', { name: pendingWorkspaceInviteTargetName }) }}
+        </p>
+        <p class="text-body-2 text-medium-emphasis">
+          {{ t('shellJoinWorkspaceBody') }}
+        </p>
+      </v-card-text>
+      <v-card-actions>
+        <v-spacer></v-spacer>
+        <v-btn variant="text" @click="dismissPendingWorkspaceInvite">{{ t('commonCancel') }}</v-btn>
+        <v-btn color="primary" :loading="isAcceptingWorkspaceInvite" @click="acceptPendingWorkspaceInvite">
+          {{ t('shellJoinWorkspaceAction') }}
+        </v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
+</div>

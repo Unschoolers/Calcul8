@@ -269,8 +269,11 @@ export const wheelConfigMethods = {
         (this.wheelCurrentAngle as number) || 0
       ));
       // Show the saved snackbar
-      if (typeof (this as Record<string, unknown>).showWheelConfigSaved === 'function') {
-        (this as Record<string, unknown>).showWheelConfigSaved();
+      const showWheelConfigSaved = (this as Record<string, unknown> & {
+        showWheelConfigSaved?: () => void;
+      }).showWheelConfigSaved;
+      if (typeof showWheelConfigSaved === "function") {
+        showWheelConfigSaved();
       }
     } finally {
       (this as Record<string, unknown>).wheelConfigSyncPending = false;

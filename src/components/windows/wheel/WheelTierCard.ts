@@ -106,7 +106,11 @@ export const WheelTierCard = {
         applyWheelConfig();
       }
     },
-    deleteTierAndClose(this: Record<string, unknown> & { editorOpen: boolean; tierIndex: number }): void {
+    deleteTierAndClose(this: Record<string, unknown> & {
+      editorOpen: boolean;
+      tierIndex: number;
+      finishTierEditor: () => void;
+    }): void {
       const removeTier = this.removeTier as ((index: number) => void) | undefined;
       if (typeof removeTier === "function") {
         removeTier(this.tierIndex);

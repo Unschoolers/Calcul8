@@ -1,0 +1,201 @@
+<v-dialog v-model="showPortfolioReportModal" max-width="980" scrollable content-class="portfolio-report-dialog">
+  <v-card class="portfolio-report-modal-card">
+    <v-card-title class="d-flex align-center justify-space-between">
+      <div>
+        <v-icon class="mr-2">mdi-table</v-icon>
+        {{ t('portfolioReportTitle') }}
+      </div>
+      <v-btn
+        icon="mdi-close"
+        variant="text"
+        :title="t('portfolioReportCloseAction')"
+        :aria-label="t('portfolioReportCloseAction')"
+        @click="showPortfolioReportModal = false"
+      ></v-btn>
+    </v-card-title>
+    <v-divider></v-divider>
+
+    <v-card-text class="portfolio-report-content">
+      <div class="text-medium-emphasis mb-4">
+        {{ t('portfolioReportGeneratedOnLabel') }} {{ formatDate(new Date().toISOString()) }}
+      </div>
+
+      <div v-if="$vuetify?.display?.lgAndUp" style="overflow-x: auto;">
+        <table class="portfolio-report-table">
+          <thead>
+            <tr>
+              <th>{{ t('portfolioReportColumnLot') }}</th>
+              <th>{{ t('portfolioReportColumnType') }}</th>
+              <th>{{ t('portfolioReportColumnStatus') }}</th>
+              <th>{{ t('portfolioReportColumnSales') }}</th>
+              <th>{{ t('portfolioReportColumnSoldItems') }}</th>
+              <th>{{ t('portfolioReportColumnTotalItems') }}</th>
+              <th>{{ t('portfolioReportColumnSoldRevenue') }}</th>
+              <th>{{ t('portfolioReportColumnSoldCost') }}</th>
+              <th>{{ t('portfolioReportColumnRealizedProfit') }}</th>
+              <th>{{ t('portfolioReportColumnCurrentLotProfit') }}</th>
+              <th>{{ t('portfolioReportColumnSoldMargin') }}</th>
+              <th>{{ t('portfolioReportColumnForecastAverage') }}</th>
+              <th>{{ t('portfolioReportColumnLastSale') }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in allLotPerformance" :key="`report-${row.lotId}`">
+              <td>{{ row.lotName }}</td>
+              <td>{{ row.lotType }}</td>
+              <td>{{ row.salesCount > 0 ? t('portfolioReportStatusRealizedSales') : t('portfolioLotNoSalesLabel') }}</td>
+              <td>{{ row.salesCount }}</td>
+              <td>{{ row.soldPacks }}</td>
+              <td>{{ row.totalPacks }}</td>
+              <td>${{ formatCurrency(row.totalRevenue) }}</td>
+              <td>{{ row.salesCount > 0 ? `$${formatCurrency(row.realizedCost ?? 0)}` : '-' }}</td>
+              <td>{{ row.salesCount > 0 ? `${(row.realizedProfit ?? 0) >= 0 ? '+' : ''}$${formatCurrency(row.realizedProfit ?? 0)}` : t('portfolioReportNoRealizedProfitYet') }}</td>
+              <td>{{ row.totalProfit >= 0 ? '+' : '' }}${{ formatCurrency(row.totalProfit) }}</td>
+              <td>{{ row.salesCount > 0 && row.realizedMarginPercent != null ? `${formatCurrency(row.realizedMarginPercent, 2)}%` : '-' }}</td>
+              <td>{{ row.forecastProfitAverage == null ? '-' : `${row.forecastProfitAverage >= 0 ? '+' : ''}$${formatCurrency(row.forecastProfitAverage)}` }}</td>
+              <td>{{ row.lastSaleDate ? formatDate(row.lastSaleDate) : '-' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div v-else class="portfolio-report-card-grid">
+        <article
+          v-for="row in allLotPerformance"
+          :key="`report-card-${row.lotId}`"
+          class="portfolio-report-card"
+          :class="{ 'is-expanded': portfolioReportExpandedLotIds.includes(row.lotId) }"
+          role="button"
+          tabindex="0"
+          :aria-expanded="portfolioReportExpandedLotIds.includes(row.lotId)"
+          :aria-controls="`portfolio-report-details-${row.lotId}`"
+          :aria-label="`${row.lotName} ${t('portfolioReportDetailsLabel')}`"
+          @click="togglePortfolioReportLot(row.lotId)"
+          @keydown.enter.prevent="togglePortfolioReportLot(row.lotId)"
+          @keydown.space.prevent="togglePortfolioReportLot(row.lotId)"
+        >
+          <div class="portfolio-report-card-head">
+            <div class="portfolio-report-card-title-wrap">
+              <div class="portfolio-report-card-title">
+                <v-icon size="18" class="portfolio-report-card-type-icon">
+                  {{ row.lotType === 'Singles' ? 'mdi-cards-outline' : 'mdi-cube-outline' }}
+                </v-icon>
+                <span>{{ row.lotName }}</span>
+              </div>
+            </div>
+            <v-btn
+              icon
+              variant="text"
+              size="small"
+              class="portfolio-report-card-toggle"
+              :title="portfolioReportExpandedLotIds.includes(row.lotId) ? t('portfolioReportHideDetailsAction') : t('portfolioReportShowDetailsAction')"
+              :aria-label="portfolioReportExpandedLotIds.includes(row.lotId) ? t('portfolioReportHideDetailsAction') : t('portfolioReportShowDetailsAction')"
+              :aria-expanded="portfolioReportExpandedLotIds.includes(row.lotId)"
+              :aria-controls="`portfolio-report-details-${row.lotId}`"
+              @click.stop="togglePortfolioReportLot(row.lotId)"
+            >
+              <v-icon>
+                {{ portfolioReportExpandedLotIds.includes(row.lotId) ? 'mdi-chevron-up' : 'mdi-chevron-down' }}
+              </v-icon>
+            </v-btn>
+          </div>
+
+          <div class="portfolio-report-card-summary">
+            <div class="portfolio-report-card-metric">
+              <span class="portfolio-report-card-label">{{ t('portfolioReportColumnRealizedProfit') }}</span>
+              <span
+                class="portfolio-report-card-value"
+                :class="row.salesCount > 0
+                  ? ((row.realizedProfit ?? 0) >= 0 ? 'is-positive' : 'is-negative')
+                  : 'is-neutral'"
+              >
+                {{ row.salesCount > 0
+                  ? `${(row.realizedProfit ?? 0) >= 0 ? '+' : ''}$${formatCurrency(row.realizedProfit ?? 0)}`
+                  : t('portfolioReportNoRealizedProfitShort') }}
+              </span>
+            </div>
+
+            <div class="portfolio-report-card-metric">
+              <span class="portfolio-report-card-label">{{ t('portfolioReportColumnCurrentLotProfit') }}</span>
+              <span class="portfolio-report-card-value" :class="row.totalProfit >= 0 ? 'is-positive' : 'is-negative'">
+                {{ row.totalProfit >= 0 ? '+' : '' }}${{ formatCurrency(row.totalProfit) }}
+              </span>
+            </div>
+          </div>
+
+          <div
+            v-if="portfolioReportExpandedLotIds.includes(row.lotId)"
+            :id="`portfolio-report-details-${row.lotId}`"
+            class="portfolio-report-card-details"
+          >
+            <div class="portfolio-report-card-metrics">
+              <div class="portfolio-report-card-metric">
+                <span class="portfolio-report-card-label">{{ t('portfolioReportColumnStatus') }}</span>
+                <span class="portfolio-report-card-value is-neutral">
+                  {{ row.salesCount > 0 ? t('portfolioReportStatusRealizedSales') : t('portfolioLotNoSalesLabel') }}
+                </span>
+              </div>
+
+              <div class="portfolio-report-card-metric">
+                <span class="portfolio-report-card-label">{{ t('portfolioReportColumnSales') }}</span>
+                <span class="portfolio-report-card-value">{{ row.salesCount }}</span>
+              </div>
+
+              <div class="portfolio-report-card-metric">
+                <span class="portfolio-report-card-label">{{ t('portfolioReportColumnSoldVsTotal') }}</span>
+                <span class="portfolio-report-card-value">{{ row.soldPacks }} / {{ row.totalPacks }}</span>
+              </div>
+
+              <div class="portfolio-report-card-metric">
+                <span class="portfolio-report-card-label">{{ t('portfolioReportColumnSoldRevenue') }}</span>
+                <span class="portfolio-report-card-value">${{ formatCurrency(row.totalRevenue) }}</span>
+              </div>
+
+              <div class="portfolio-report-card-metric">
+                <span class="portfolio-report-card-label">{{ t('portfolioReportColumnSoldCost') }}</span>
+                <span class="portfolio-report-card-value">
+                  {{ row.salesCount > 0 ? `$${formatCurrency(row.realizedCost ?? 0)}` : '-' }}
+                </span>
+              </div>
+
+              <div class="portfolio-report-card-metric">
+                <span class="portfolio-report-card-label">{{ t('portfolioReportColumnSoldMargin') }}</span>
+                <span class="portfolio-report-card-value">
+                  {{ row.salesCount > 0 && row.realizedMarginPercent != null
+                    ? `${formatCurrency(row.realizedMarginPercent, 2)}%`
+                    : '-' }}
+                </span>
+              </div>
+
+              <div v-if="row.forecastProfitAverage != null" class="portfolio-report-card-metric">
+                <span class="portfolio-report-card-label">{{ t('portfolioReportColumnForecastAverage') }}</span>
+                <span class="portfolio-report-card-value" :class="row.forecastProfitAverage >= 0 ? 'is-positive' : 'is-negative'">
+                  {{ `${row.forecastProfitAverage >= 0 ? '+' : ''}$${formatCurrency(row.forecastProfitAverage)}` }}
+                </span>
+              </div>
+
+              <div class="portfolio-report-card-metric portfolio-report-card-metric--full">
+                <span class="portfolio-report-card-label">{{ t('portfolioReportColumnLastSale') }}</span>
+                <span class="portfolio-report-card-value">
+                  {{ row.lastSaleDate ? formatDate(row.lastSaleDate) : '-' }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </article>
+      </div>
+    </v-card-text>
+
+    <v-card-actions class="justify-space-between portfolio-report-actions">
+      <v-btn variant="text" @click="showPortfolioReportModal = false">{{ t('portfolioReportCloseAction') }}</v-btn>
+      <div class="d-flex align-center ga-2">
+        <v-btn variant="text" prepend-icon="mdi-content-copy" :disabled="!hasPortfolioData" @click="copyPortfolioReportTable">
+          {{ t('portfolioReportCopyAction') }}
+        </v-btn>
+        <v-btn color="error" prepend-icon="mdi-content-save-outline" :disabled="!hasPortfolioData" @click="savePortfolioReportTable">
+          {{ t('portfolioReportSaveAction') }}
+        </v-btn>
+      </div>
+    </v-card-actions>
+  </v-card>
+</v-dialog>
