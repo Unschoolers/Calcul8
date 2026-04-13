@@ -17,12 +17,14 @@ function getWorkerScriptUrl(worker: ServiceWorker | null | undefined): string | 
   return scriptUrl || null;
 }
 
-function hasDismissedAppUpdate(): boolean {
+function hasDismissedAppUpdate(worker: ServiceWorker | null | undefined): boolean {
   const storage = getSessionStorage();
   if (!storage) return false;
 
   try {
-    return storage.getItem(DISMISSED_APP_UPDATE_SESSION_KEY) === "1";
+    const dismissedScriptUrl = String(storage.getItem(DISMISSED_APP_UPDATE_SESSION_KEY) || "").trim();
+    const workerScriptUrl = getWorkerScriptUrl(worker);
+    return !!dismissedScriptUrl && !!workerScriptUrl && dismissedScriptUrl === workerScriptUrl;
   } catch {
     return false;
   }
@@ -41,10 +43,11 @@ function clearDismissedAppUpdate(): void {
 
 function dismissAppUpdateForWorker(worker: ServiceWorker | null | undefined): void {
   const storage = getSessionStorage();
-  if (!storage || !worker) return;
+  const workerScriptUrl = getWorkerScriptUrl(worker);
+  if (!storage || !workerScriptUrl) return;
 
   try {
-    storage.setItem(DISMISSED_APP_UPDATE_SESSION_KEY, "1");
+    storage.setItem(DISMISSED_APP_UPDATE_SESSION_KEY, workerScriptUrl);
   } catch {
     // Ignore storage failures.
   }
@@ -202,7 +205,7 @@ export const pwaMethods: ThisType<AppContext> & Pick<
           this.appUpdateWorker = waitingWorker;
           this.isApplyingAppUpdate = false;
 
-          if (hasDismissedAppUpdate()) {
+          if (hasDismissedAppUpdate(waitingWorker)) {
             this.showAppUpdatePrompt = false;
             return;
           }
@@ -216,7 +219,6 @@ export const pwaMethods: ThisType<AppContext> & Pick<
         }
 
         registration.addEventListener("updatefound", () => {
-          clearDismissedAppUpdate();
           const newWorker = registration.installing;
           if (!newWorker) return;
 

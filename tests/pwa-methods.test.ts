@@ -470,11 +470,11 @@ test("dismissAppUpdate hides the prompt without applying the worker", () => {
   assert.equal(waitingWorker.postMessage.mock.calls.length, 0);
   assert.equal(
     sessionStorage.getItem(DISMISSED_APP_UPDATE_SESSION_KEY),
-    "1"
+    "https://app.whatfees.ca/sw.js?v=2"
   );
 });
 
-test("registerServiceWorker keeps a dismissed waiting worker hidden until updatefound clears the dismissal", async () => {
+test("registerServiceWorker keeps the same dismissed worker hidden but shows a newer worker", async () => {
   const waitingWorker = {
     scriptURL: "https://app.whatfees.ca/sw.js?v=2",
     postMessage: vi.fn()
@@ -533,7 +533,7 @@ test("registerServiceWorker keeps a dismissed waiting worker hidden until update
   assert.equal(firstContext.showAppUpdatePrompt, false);
   assert.equal(
     sessionStorage.getItem(DISMISSED_APP_UPDATE_SESSION_KEY),
-    "1"
+    "https://app.whatfees.ca/sw.js?v=2"
   );
 
   const secondWindowListeners = new Map<string, (...args: unknown[]) => unknown>();
@@ -574,7 +574,7 @@ test("registerServiceWorker keeps a dismissed waiting worker hidden until update
   pwaMethods.registerServiceWorker.call(thirdContext as never);
   const thirdLoadListener = thirdWindowListeners.get("load") as (() => Promise<void>) | undefined;
   await thirdLoadListener?.();
-  assert.equal(thirdContext.showAppUpdatePrompt, false);
+  assert.equal(thirdContext.showAppUpdatePrompt, true);
   assert.equal(thirdContext.appUpdateWorker, newerWaitingWorker);
 
   updateFoundListener?.();
