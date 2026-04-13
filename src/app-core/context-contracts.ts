@@ -87,6 +87,8 @@ export interface AppComputedObject {
   googleProfileName(this: AppContext): string;
   googleProfileEmail(this: AppContext): string;
   googleProfilePicture(this: AppContext): string;
+  liveProfitTargetBadgeVisible(this: AppContext): boolean;
+  liveProfitTargetBadgeLabel(this: AppContext): string;
   isWorkspaceScopeActive(this: AppContext): boolean;
   currentWorkspaceSummary(this: AppContext): WorkspaceSummary | null;
   currentWorkspaceName(this: AppContext): string;

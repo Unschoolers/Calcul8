@@ -13,7 +13,7 @@
   "livePriceCardTargetDecisionLabel": "Back to target",
   "livePriceCardTargetDecisionPriceLabel": "Set price to",
   "livePriceCardTargetDecisionAdjustmentLabel": "Adjust from current",
-  "livePriceCardTargetDecisionProfitLabel": "Lot outcome",
+  "livePriceCardTargetDecisionProfitLabel": "Original lot profit",
   "livePriceCardNeededPriceSummaryPrefix": "To hit your profit target, the remaining units need to average about",
   "livePriceCardNeededAverageLabel": "Needed avg",
   "livePriceCardNeededPriceSummarySuffix": "each.",

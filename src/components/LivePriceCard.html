@@ -59,17 +59,16 @@
       <template v-else-if="shouldShowTargetDecision()">
         <div class="live-pricing-card__decision-tile live-pricing-card__metric-tile live-pricing-card__metric-tile--needed">
           <div class="live-pricing-card__decision-head">
-            <div class="live-pricing-card__metric-label">{{ targetDecisionLabel() }}</div>
+            <div class="live-pricing-card__metric-label">{{ targetDecisionLabel() }} : {{ targetDecisionPriceLabel() }}</div>
           </div>
           <div class="live-pricing-card__decision-main">
-            <div class="live-pricing-card__decision-kicker">{{ targetDecisionPriceLabel() }}</div>
-            <div class="live-pricing-card__decision-price">${{ formatCurrency(avgPriceNeeded) }}</div>
+            <div class="live-pricing-card__decision-price">${{ formatCurrency(avgPriceNeeded)  }}</div>
             <div
               class="live-pricing-card__decision-gap"
               :class="(adjustmentNeeded() || 0) >= 0 ? 'text-success' : 'text-error'"
             >
               {{ targetDecisionAdjustmentLabel() }}
-              {{ (adjustmentNeeded() || 0) >= 0 ? '+' : '' }}${{ formatAt(adjustmentNeeded() || 0) }}
+              {{ (adjustmentNeeded() || 0) >= 0 ? '+' : '' }}${{ formatAt(adjustmentNeeded() || 0) }} 
             </div>
           </div>
           <div class="live-pricing-card__decision-outcome">

@@ -36,6 +36,8 @@ export interface AppComputedState {
   googleProfileName: string;
   googleProfileEmail: string;
   googleProfilePicture: string;
+  liveProfitTargetBadgeVisible: boolean;
+  liveProfitTargetBadgeLabel: string;
   lotNameDraft: string;
   currentLotType: LotType;
   currentLotCatalogSource: SinglesCatalogSource;

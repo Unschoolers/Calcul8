@@ -176,8 +176,27 @@ function getWhatnotConnectionDisplay(
   return { title, subtitle, icon };
 }
 
+function formatProfitTargetBadgeLabel(value: number): string {
+  if (!Number.isFinite(value) || value <= 0) {
+    return "";
+  }
+
+  const rounded = Math.round(value * 10) / 10;
+  const wholeNumber = Math.round(rounded);
+  const displayValue = Math.abs(rounded - wholeNumber) < 0.05
+    ? String(wholeNumber)
+    : rounded.toFixed(1);
+  return `${displayValue}%`;
+}
+
 export const appComputed: AppComputedObject = {
   ...authProfileComputed,
+  liveProfitTargetBadgeVisible() {
+    return this.hasLotSelected && (Number(this.targetProfitPercent) || 0) > 0;
+  },
+  liveProfitTargetBadgeLabel() {
+    return formatProfitTargetBadgeLabel(Math.max(0, Number(this.targetProfitPercent) || 0));
+  },
   isWorkspaceScopeActive() {
     return this.activeScopeType === "workspace" && !!this.activeWorkspaceId;
   },

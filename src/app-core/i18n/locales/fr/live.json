@@ -13,7 +13,7 @@
   "livePriceCardTargetDecisionLabel": "Retour a la cible",
   "livePriceCardTargetDecisionPriceLabel": "Mets le prix a",
   "livePriceCardTargetDecisionAdjustmentLabel": "Ajustement",
-  "livePriceCardTargetDecisionProfitLabel": "Resultat du lot",
+  "livePriceCardTargetDecisionProfitLabel": "Marge originale du lot",
   "livePriceCardNeededPriceSummaryPrefix": "Pour atteindre votre objectif de profit, les unites restantes doivent se vendre en moyenne autour de",
   "livePriceCardNeededAverageLabel": "Prix cible",
   "livePriceCardNeededPriceSummarySuffix": "chacune.",

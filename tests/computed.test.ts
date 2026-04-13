@@ -135,6 +135,44 @@ test("computed theme and lot proxies map expected values", () => {
   assert.equal(vm.newLotName, "Renamed");
 });
 
+test("live profit target badge computed values follow the selected lot target", () => {
+  assert.equal(
+    appComputed.liveProfitTargetBadgeVisible.call({
+      hasLotSelected: true,
+      targetProfitPercent: 15
+    } as unknown as Parameters<typeof appComputed.liveProfitTargetBadgeVisible>[0]),
+    true
+  );
+  assert.equal(
+    appComputed.liveProfitTargetBadgeLabel.call({
+      hasLotSelected: true,
+      targetProfitPercent: 15
+    } as unknown as Parameters<typeof appComputed.liveProfitTargetBadgeLabel>[0]),
+    "15%"
+  );
+  assert.equal(
+    appComputed.liveProfitTargetBadgeLabel.call({
+      hasLotSelected: true,
+      targetProfitPercent: 12.46
+    } as unknown as Parameters<typeof appComputed.liveProfitTargetBadgeLabel>[0]),
+    "12.5%"
+  );
+  assert.equal(
+    appComputed.liveProfitTargetBadgeVisible.call({
+      hasLotSelected: false,
+      targetProfitPercent: 15
+    } as unknown as Parameters<typeof appComputed.liveProfitTargetBadgeVisible>[0]),
+    false
+  );
+  assert.equal(
+    appComputed.liveProfitTargetBadgeVisible.call({
+      hasLotSelected: true,
+      targetProfitPercent: 0
+    } as unknown as Parameters<typeof appComputed.liveProfitTargetBadgeVisible>[0]),
+    false
+  );
+});
+
 test("lot type/source and selection helpers normalize data for singles", () => {
   const lotTypeSingles = appComputed.currentLotType.call({
     currentLotId: 2,

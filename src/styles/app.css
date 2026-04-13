@@ -346,6 +346,46 @@
       bottom: calc(10rem + env(safe-area-inset-bottom)) !important;
       inset-block-end: calc(10rem + env(safe-area-inset-bottom)) !important;
     }
+    .fab-badge-wrap {
+      position: fixed;
+      right: max(1rem, env(safe-area-inset-right));
+      left: auto;
+      inset-inline-end: max(1rem, env(safe-area-inset-right));
+      inset-inline-start: auto;
+      z-index: 1000;
+    }
+    .fab-live-calc-wrap {
+      bottom: calc(10rem + env(safe-area-inset-bottom));
+      inset-block-end: calc(10rem + env(safe-area-inset-bottom));
+    }
+    .fab-live-calc-wrap .fab-primary {
+      position: static !important;
+      right: auto !important;
+      left: auto !important;
+      inset-inline-end: auto !important;
+      inset-inline-start: auto !important;
+    }
+    .fab-profit-target-badge {
+      position: absolute;
+      top: -1rem;
+      right: -1rem;
+      min-width: 2rem;
+      height: 2.00rem;
+      padding: 0 0.2rem;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(180deg, #43c55d 0%, #1f9d47 100%);
+      color: #fff;
+      font-size: 0.7rem;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: 0.01em;
+      box-shadow: 0 10px 22px rgba(24, 120, 52, 0.28);
+      border: 3px solid rgb(var(--v-theme-surface));
+      pointer-events: none;
+    }
     .fab-live-clear {
       bottom: calc(5rem + env(safe-area-inset-bottom)) !important;
       inset-block-end: calc(5rem + env(safe-area-inset-bottom)) !important;

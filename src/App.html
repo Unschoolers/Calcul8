@@ -96,11 +96,18 @@
           class="fab-primary fab-add-preset"
         ></v-fab>
 
-        <v-fab v-if="currentTab === 'live'" icon="mdi-calculator" color="secondary" size="large"
-          :title="hasProAccess ? t('shellPriceCalculatorAction') : t('shellUpgradePriceCalculatorAction')"
-          :aria-label="hasProAccess ? t('shellPriceCalculatorAction') : t('shellUpgradePriceCalculatorAction')"
-          :disabled="!hasLotSelected" @click="accessProFeature('autoCalculate')"
-          class="fab-primary fab-live-calc"></v-fab>
+        <div v-if="currentTab === 'live'" class="fab-badge-wrap fab-live-calc-wrap">
+          <v-fab icon="mdi-calculator" color="secondary" size="large"
+            :title="hasProAccess ? t('shellPriceCalculatorAction') : t('shellUpgradePriceCalculatorAction')"
+            :aria-label="hasProAccess ? t('shellPriceCalculatorAction') : t('shellUpgradePriceCalculatorAction')"
+            :disabled="!hasLotSelected" @click="accessProFeature('autoCalculate')"
+            class="fab-primary fab-live-calc"></v-fab>
+          <div
+            v-if="liveProfitTargetBadgeVisible"
+            class="fab-profit-target-badge"
+            aria-hidden="true"
+          >{{ liveProfitTargetBadgeLabel }}</div>
+        </div>
 
         <v-fab v-if="currentTab === 'live' && currentLotType === 'singles'" icon="mdi-broom" color="error" size="large"
           :title="t('shellClearLiveSinglesAction')" :aria-label="t('shellClearLiveSinglesAction')"
