@@ -63,6 +63,7 @@ function stubWindow(overrides: Record<string, unknown> = {}): Record<string, unk
   const baseWindow = {
     addEventListener: vi.fn(),
     removeEventListener: vi.fn(),
+    setTimeout: vi.fn(() => 2),
     setInterval: vi.fn(() => 1),
     clearInterval: vi.fn(),
     sessionStorage: createStorageMock(),
@@ -409,6 +410,7 @@ test("registerServiceWorker queues updates and performs a cache-busted navigatio
   assert.equal(context.isApplyingAppUpdate, true);
   assert.equal(context.showAppUpdatePrompt, false);
   assert.equal(waitingWorker.postMessage.mock.calls.length, 1);
+  assert.equal((windowMock.setTimeout as ReturnType<typeof vi.fn>).mock.calls.length, 1);
 
   swListeners.get("controllerchange")?.();
   swListeners.get("controllerchange")?.();
@@ -417,6 +419,35 @@ test("registerServiceWorker queues updates and performs a cache-busted navigatio
   assert.match(refreshUrl, /app-updated=/);
   assert.match(refreshUrl, /app-update-source=sw/);
   assert.equal(context.appUpdateWorker, null);
+});
+
+test("applyAppUpdate falls back to a direct refresh when controllerchange does not arrive", () => {
+  let timeoutCallback: (() => void) | null = null;
+  const windowMock = stubWindow({
+    setTimeout: vi.fn((callback: () => void) => {
+      timeoutCallback = callback;
+      return 44;
+    })
+  });
+  const waitingWorker = {
+    postMessage: vi.fn()
+  };
+  const context = createContext({
+    appUpdateWorker: waitingWorker,
+    showAppUpdatePrompt: true
+  });
+
+  pwaMethods.applyAppUpdate.call(context as never);
+
+  assert.equal(waitingWorker.postMessage.mock.calls.length, 1);
+  assert.equal((windowMock.setTimeout as ReturnType<typeof vi.fn>).mock.calls.length, 1);
+
+  timeoutCallback?.();
+
+  assert.equal(windowMock.location.replace.mock.calls.length, 1);
+  const refreshUrl = String(windowMock.location.replace.mock.calls[0]?.[0] ?? "");
+  assert.match(refreshUrl, /app-updated=/);
+  assert.match(refreshUrl, /app-update-source=sw/);
 });
 
 test("dismissAppUpdate hides the prompt without applying the worker", () => {

@@ -2,6 +2,7 @@ import type { BeforeInstallPromptEvent } from "../../types/app.ts";
 import type { AppContext, AppMethodState } from "../context-app.ts";
 
 const DISMISSED_APP_UPDATE_SESSION_KEY = "whatfees_dismissed_app_update_worker";
+const APP_UPDATE_NAVIGATION_FALLBACK_MS = 4000;
 
 function getSessionStorage(): Storage | null {
   try {
@@ -156,6 +157,10 @@ export const pwaMethods: ThisType<AppContext> & Pick<
     clearDismissedAppUpdate();
     this.notify("Refreshing to update WhatFees…", "info");
     this.appUpdateWorker.postMessage("SKIP_WAITING");
+    window.setTimeout(() => {
+      if (!this.isApplyingAppUpdate) return;
+      window.location.replace(buildUpdateRefreshUrl());
+    }, APP_UPDATE_NAVIGATION_FALLBACK_MS);
   },
 
   dismissAppUpdate(): void {

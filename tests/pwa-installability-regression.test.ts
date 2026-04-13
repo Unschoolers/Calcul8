@@ -32,10 +32,11 @@ test("service worker treats explicit app-update refreshes as fresh navigations w
   assert.match(swSource, /if \(isUpdateRefreshRequest\(url\)\) \{[\s\S]*fetchFresh\(request\)[\s\S]*return cachedPage \?\? response \?\? createOfflineResponse\(\);[\s\S]*return cachedPage \?\? createOfflineResponse\(\);[\s\S]*\}/);
 });
 
-test("service worker forces window clients onto a fresh app-updated navigation when skip waiting is approved", () => {
+test("service worker activation claims clients without forcing window navigations", () => {
   const swSource = readRepoFile("public/sw.js");
 
   assert.match(swSource, /if \(event\.data === "SKIP_WAITING"\) \{\s*self\.skipWaiting\(\);\s*\}/);
   assert.match(swSource, /const staleKeys = keys\.filter\(\(key\) => key !== CACHE_NAME\);/);
-  assert.match(swSource, /if \(staleKeys\.length > 0\) \{[\s\S]*clients\.matchAll\(\{ type: "window", includeUncontrolled: true \}\)[\s\S]*client\.navigate\(refreshUrl\)[\s\S]*\}/);
+  assert.match(swSource, /await self\.clients\.claim\(\);/);
+  assert.doesNotMatch(swSource, /client\.navigate\(refreshUrl\)/);
 });

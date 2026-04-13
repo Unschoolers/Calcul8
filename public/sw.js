@@ -37,16 +37,6 @@ self.addEventListener("activate", (event) => {
         .map((key) => caches.delete(key))
     );
     await self.clients.claim();
-    if (staleKeys.length > 0) {
-      const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-      await Promise.allSettled(
-        clients.map(async (client) => {
-          if (!("navigate" in client) || typeof client.navigate !== "function") return;
-          const refreshUrl = buildClientRefreshUrl(client.url);
-          await client.navigate(refreshUrl);
-        })
-      );
-    }
   })());
 });
 
