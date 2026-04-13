@@ -191,10 +191,6 @@ export const WhatnotReviewDialog = {
     return createWindowContextBridge(source);
   },
   computed: {
-    getWhatnotPreferredLanguage(this: any): string {
-      return String(this.preferredLanguage || "");
-    },
-
     whatnotReviewGroups(this: any): Array<{
       key: string;
       buyerLabel: string;
@@ -202,7 +198,7 @@ export const WhatnotReviewDialog = {
       orderDateLabel: string;
       rows: WhatnotImportReviewRow[];
       }> {
-      const preferredLanguage = this.getWhatnotPreferredLanguage();
+      const preferredLanguage = getWhatnotPreferredLanguage(this);
       const rows = Array.isArray(this.whatnotReviewRows) ? [...this.whatnotReviewRows] as WhatnotImportReviewRow[] : [];
       rows.sort((left, right) => {
         const leftBuyer = resolveWhatnotBuyerLabel(left, preferredLanguage).toLowerCase();
@@ -278,11 +274,11 @@ export const WhatnotReviewDialog = {
     },
 
     whatnotSelectedImportActionLabel(this: any, row: WhatnotImportReviewRow): string {
-      return formatWhatnotReviewAction(this.whatnotSelectedImportAction(row), this.getWhatnotPreferredLanguage());
+      return formatWhatnotReviewAction(this.whatnotSelectedImportAction(row), getWhatnotPreferredLanguage(this));
     },
 
     whatnotSelectedImportActionHint(this: any, row: WhatnotImportReviewRow): string {
-      return formatWhatnotReviewActionHint(this.whatnotSelectedImportAction(row), this.getWhatnotPreferredLanguage());
+      return formatWhatnotReviewActionHint(this.whatnotSelectedImportAction(row), getWhatnotPreferredLanguage(this));
     },
 
     buildWhatnotClientManualDuplicateCandidates(this: any, row: WhatnotImportReviewRow): WhatnotManualDuplicateCandidate[] {
@@ -319,13 +315,13 @@ export const WhatnotReviewDialog = {
         if (!moneyClose(getSaleEffectiveTotal(sale), groupedTotal)) continue;
 
         let score = 60;
-        const reasons = [translateWhatnotMessage(this.getWhatnotPreferredLanguage(), "whatnotReviewExactMatchReason")];
+        const reasons = [translateWhatnotMessage(getWhatnotPreferredLanguage(this), "whatnotReviewExactMatchReason")];
         const saleCustomer = normalizeWhatnotGroupValue(getSaleCustomerValue(sale));
         if (groupedBuyer && saleCustomer && groupedBuyer === saleCustomer) {
           score += 25;
-          reasons.push(translateWhatnotMessage(this.getWhatnotPreferredLanguage(), "whatnotReviewBuyerMatchesCustomerReason"));
+          reasons.push(translateWhatnotMessage(getWhatnotPreferredLanguage(this), "whatnotReviewBuyerMatchesCustomerReason"));
         } else if (groupedBuyer) {
-          reasons.push(translateWhatnotMessage(this.getWhatnotPreferredLanguage(), "whatnotReviewBuyerAvailableReason"));
+          reasons.push(translateWhatnotMessage(getWhatnotPreferredLanguage(this), "whatnotReviewBuyerAvailableReason"));
         }
         matches.push({
           candidate: buildWhatnotCandidateFromSale(sale, score, reasons),
@@ -346,7 +342,7 @@ export const WhatnotReviewDialog = {
 
     whatnotManualDuplicateCandidateOptions(this: any, row: WhatnotImportReviewRow): Array<{ title: string; value: string }> {
       return this.buildWhatnotClientManualDuplicateCandidates(row).map((candidate: WhatnotManualDuplicateCandidate) => ({
-        title: `${candidate.saleId} • ${formatWhatnotCandidateTarget(candidate)} • ${formatWhatnotCandidateSummary(candidate, this.getWhatnotPreferredLanguage())}`,
+        title: `${candidate.saleId} • ${formatWhatnotCandidateTarget(candidate)} • ${formatWhatnotCandidateSummary(candidate, getWhatnotPreferredLanguage(this))}`,
         value: candidate.saleId
       }));
     },
@@ -394,20 +390,20 @@ export const WhatnotReviewDialog = {
 
     whatnotRowTargetLabel(this: any, row: WhatnotImportReviewRow): string {
       const selectedImportAction = this.whatnotSelectedImportAction(row);
-      if (selectedImportAction === "skip") return translateWhatnotMessage(this.getWhatnotPreferredLanguage(), "whatnotReviewSelectedActionSkipLabel");
-      if (selectedImportAction === "create") return translateWhatnotMessage(this.getWhatnotPreferredLanguage(), "whatnotReviewCreateNewSaleLabel");
+      if (selectedImportAction === "skip") return translateWhatnotMessage(getWhatnotPreferredLanguage(this), "whatnotReviewSelectedActionSkipLabel");
+      if (selectedImportAction === "create") return translateWhatnotMessage(getWhatnotPreferredLanguage(this), "whatnotReviewCreateNewSaleLabel");
       const candidates = this.buildWhatnotClientManualDuplicateCandidates(row);
       const selectedCandidate = candidates.find((candidate: WhatnotManualDuplicateCandidate) => candidate.saleId === String(row.targetSaleId ?? "").trim()) ?? candidates[0];
       if (selectedCandidate) {
-        return translateWhatnotMessage(this.getWhatnotPreferredLanguage(), "whatnotReviewTargetDuplicateLabel", { id: selectedCandidate.saleId });
+        return translateWhatnotMessage(getWhatnotPreferredLanguage(this), "whatnotReviewTargetDuplicateLabel", { id: selectedCandidate.saleId });
       }
       if (row.targetSaleId) {
-        return translateWhatnotMessage(this.getWhatnotPreferredLanguage(), "whatnotReviewTargetSaleLabel", { id: row.targetSaleId });
+        return translateWhatnotMessage(getWhatnotPreferredLanguage(this), "whatnotReviewTargetSaleLabel", { id: row.targetSaleId });
       }
       if (row.existingSaleId) {
-        return translateWhatnotMessage(this.getWhatnotPreferredLanguage(), "whatnotReviewTargetSaleLabel", { id: row.existingSaleId });
+        return translateWhatnotMessage(getWhatnotPreferredLanguage(this), "whatnotReviewTargetSaleLabel", { id: row.existingSaleId });
       }
-      return translateWhatnotMessage(this.getWhatnotPreferredLanguage(), "whatnotReviewUpdateRequestedLabel");
+      return translateWhatnotMessage(getWhatnotPreferredLanguage(this), "whatnotReviewUpdateRequestedLabel");
     },
 
     whatnotAutomaticActionLabel(this: any, row: WhatnotImportReviewRow): string {

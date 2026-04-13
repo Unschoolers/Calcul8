@@ -1,120 +1,115 @@
 # Calcul8 Refactor Plan
 
-Items grouped by priority. Completed work is removed, not tracked.
+Current plan only tracks remaining work. Items that are already done or mostly retired from the active architecture are removed.
 
 ---
 
 ## Critical
 
-### Stop storing auth and session secrets in `localStorage`
+### Move auth/session secrets out of `localStorage`
 
-Frontend auth state still persists sensitive tokens in browser storage:
+Frontend auth still persists sensitive values in browser storage:
 
-- `src/app-core/auth/storage.ts:15` / `:19` store the CSRF token in `localStorage`
-- `src/app-core/auth/storage.ts:27` / `:31` store the Google ID token in `localStorage`
+- `src/app-core/auth/storage.ts` stores the CSRF token in `localStorage`
+- `src/app-core/auth/storage.ts` stores the Google ID token in `localStorage`
 
-This is a higher-priority security issue than the current medium-priority cleanup items. Any XSS bug or compromised third-party script gets direct read access to those values, which expands a UI bug into account/session compromise.
-
-Refactor toward:
-
-- server-managed session cookies for auth where possible (`HttpOnly`, `Secure`, `SameSite`)
-- in-memory frontend auth state for any browser-only token that cannot move to cookies
-- a single auth storage abstraction so token lifecycle, logout, expiry handling, and migration are consistent
-- explicit migration/cleanup logic to remove legacy `localStorage` tokens on upgrade
-
-### Separate signing materials and generated release artifacts from the repo workflow
-
-The Android/TWA release path is still coupled to repo-local signing inputs and generated artifacts:
-
-- `twa-manifest.json:19-20` points Bubblewrap at `whatfees-upload.jks`
-- the repo root currently contains release/signing artifacts and generated files
-- tracked generated files still exist despite `.gitignore` rules (`app-release-signed.apk.idsig`, `tmp-index-render.js`, `tmp-test.png`)
-
-Even when secrets are not currently tracked, keeping signing material and release outputs in the normal working tree makes accidental disclosure and bad release hygiene much more likely.
+That means any XSS bug or compromised third-party script can directly read session material.
 
 Refactor toward:
 
-- moving keystores and signing config fully outside the repository tree
-- loading signing paths from untracked machine/local release config only
-- removing tracked generated artifacts that should be ignored and auditing git history for past leaks if needed
-- making release scripts fail fast when signing inputs are missing instead of assuming repo-root defaults
+- server-managed auth/session cookies where possible (`HttpOnly`, `Secure`, `SameSite`)
+- in-memory frontend state for browser-only tokens that cannot move to cookies
+- one auth storage boundary for token lifecycle, logout, expiry, and cleanup
+- explicit migration logic that removes legacy `localStorage` tokens on upgrade
+
+### Remove repo-coupled signing inputs and tracked generated artifacts
+
+The Android/TWA release flow is still too tied to repo-local files:
+
+- `twa-manifest.json` still points Bubblewrap at `whatfees-upload.jks`
+- generated artifacts are still tracked in git: `app-release-signed.apk.idsig`, `tmp-index-render.js`, `tmp-test.png`
+- release/signing outputs still live in the normal working tree
+
+Even when secrets are not committed, this keeps release hygiene fragile and makes accidental disclosure more likely.
+
+Refactor toward:
+
+- moving keystores and signing paths outside the repository
+- loading signing config from untracked local machine/release config only
+- removing tracked generated artifacts that should be ignored
+- making release scripts fail fast when signing inputs are missing
 
 ---
 
 ## High
 
-### Break up the root app shell before further feature work
+### Split the sync coordinator into smaller, explicit services
 
-The top-level UI shell is still concentrated in very large files:
+`src/app-core/methods/ui/sync-service.ts` is still a large multi-responsibility module at 477 lines. It currently mixes:
 
-- `src/App.html` is 1,279 lines
-- `src/styles/app.css` is 1,734 lines
+- queue/coordinator state
+- pull and push scheduling
+- conflict handling and retry branches
+- auth expiry handling
+- workspace scope behavior
+- persistence/reset recovery
 
-That size makes unrelated changes collide, increases regression risk, and keeps global state/layout concerns tangled together. This should move ahead of medium cleanup because the root shell is the choke point every feature keeps touching.
-
-Refactor toward:
-
-- extracting the account/workspace shell, onboarding, and top-level dialogs into focused subcomponents
-- moving window-specific layout and style rules out of global `app.css`
-- limiting the root app to composition, routing/view selection, and shared providers
-
-### Split the cloud sync coordinator into smaller services with explicit state transitions
-
-`src/app-core/methods/ui/sync-service.ts` is carrying queueing, conflict handling, auth expiry, local reset recovery, scheduler control, workspace scoping, and persistence in one place.
-
-Signals from the current implementation:
-
-- queue state is managed through a `WeakMap<object, Map<string, SyncCoordinatorState>>` (`:107`)
-- pull/push scheduling and merge flags (`pendingPull*`, `pendingPush*`) span multiple branches (`:233-252`, `:473-516`)
-- the same module directly handles workspace access loss, conflict recovery, and periodic scheduling (`:311`, `:418`, `:485`)
-
-This is important because sync bugs are data-loss bugs. The current tests help, but the implementation is hard to reason about under races.
+This remains one of the highest-risk refactors because sync bugs are data-loss bugs.
 
 Refactor toward:
 
-- a small sync coordinator/state machine with explicit events and transitions
-- separate modules for transport, persistence, conflict policy, and scheduler ownership
-- shared scope-resolution helpers so personal/workspace logic is not threaded through every branch
-- higher-level integration tests around concurrent pull/push, offline recovery, and workspace access loss
+- a smaller coordinator/state machine with explicit events and transitions
+- separate modules for transport, persistence, scheduler ownership, and conflict policy
+- shared personal/workspace scope helpers instead of threading scope logic through every branch
+- higher-level integration tests for concurrent sync, offline recovery, and workspace access loss
 
-### Replace the `any`-driven window-definition pattern in the biggest frontend hotspots
+### Replace the biggest `any` / `Record<string, unknown>` hotspots in window logic
 
-Two of the largest interactive modules still rely heavily on `this: any` / `Record<string, unknown>` and combine unrelated responsibilities:
+The biggest remaining frontend type holes are still concentrated in inventory and wheel flows:
 
-- `src/components/windows/SinglesConfigWindow.definition.ts` exports `singlesConfigWindowDefinition: any` (`:95`) and contains dozens of `this: any` computed/method entries (`:155-636`)
-- `src/components/windows/wheel/wheelSessionMethods.ts` mixes session persistence, inventory mutation, fairness history, and realtime broadcasting behind a large untyped method bag (`:75-479`)
+- `src/components/windows/SinglesConfigWindow.definition.ts` still exports `singlesConfigWindowDefinition: any` and uses many `this: any` methods/computed entries
+- `src/components/windows/wheel/wheelSessionMethods.ts` and related wheel state modules still rely heavily on `Record<string, unknown>`
 
-This is now a high-priority maintainability issue because these files sit on core inventory/sales flows. Type holes here make regressions easy to ship and difficult to catch during refactors.
+These files sit on core editing, inventory, and sales-adjacent flows, so weak typing keeps refactors risky.
 
 Refactor toward:
 
-- extracting typed composables or service modules for search, virtualization, row editing, wheel session persistence, and wheel broadcast flows
-- replacing `this`-driven mutation with explicit typed inputs/outputs where practical
-- shrinking each file until tests can target smaller pure functions instead of broad component behavior only
+- extracting typed composables/helpers for singles virtualization, search, and row editing
+- extracting typed wheel services for session persistence, chase replacement, and sales recording
+- reducing `this`-driven mutation in favor of explicit typed inputs/outputs
+- shifting more behavior under focused unit tests instead of broad component tests only
 
 ---
 
 ## Medium
 
-### Centralize API base URL resolution and failure handling
+### Centralize API base URL resolution for cards and app APIs
 
-Frontend API base URL handling is still duplicated and runtime checks are scattered:
+Frontend API base URL handling is still duplicated:
 
 - `resolveApiBaseUrl()` in `src/app-core/methods/ui/api-client.ts`
 - `resolveCardsApiBaseUrl()` in `src/components/windows/singles/useSinglesCatalogSearch.ts`
 
-Current callers usually guard missing configuration correctly, so this is not a critical bug. The risk is drift: future API consumers can easily re-implement base URL lookup or handle missing config differently.
+That duplication is no longer catastrophic, but it is still easy for callers to drift on env lookup, cached fallback behavior, and missing-config handling.
 
-Unify API base URL resolution behind one shared helper and standardize the missing-configuration behavior so new frontend API code fails consistently.
+Refactor toward:
 
-### Consolidate realtime endpoint URL constants
+- one shared frontend API base URL resolver
+- one consistent fallback/caching rule for all API consumers
+- shared missing-configuration behavior so new API clients fail the same way
 
-Room naming is now centralized in the shared `workspace-realtime-rooms` module. Remaining cleanup is only the endpoint/domain configuration still split across files:
+### Consolidate realtime endpoint configuration
+
+Room naming is already shared, and the old `workspace-realtime.ts` wrapper is now thin. The remaining duplication is endpoint configuration:
 
 - `DEFAULT_REALTIME_PUBLISH_URL` in `apps/api/src/lib/realtime.ts`
-- `FALLBACK_REALTIME_SOCKET_URL`, `PROD_REALTIME_SOCKET_URL`, and the `whatfees.ca` host check in `src/app-core/methods/ui/workspace-realtime.ts`
+- `FALLBACK_REALTIME_SOCKET_URL`, `PROD_REALTIME_SOCKET_URL`, and host-based selection in `src/app-core/methods/ui/workspace-realtime-state.ts`
 
-Unify those defaults so domain or host changes do not require edits in multiple apps.
+Refactor toward:
+
+- a single source of truth for default realtime domains/endpoints
+- shared host/environment resolution rules between frontend and backend
+- fewer hard-coded `whatfees` domain decisions spread across apps
 
 ---
 
@@ -122,15 +117,16 @@ Unify those defaults so domain or host changes do not require edits in multiple 
 
 ### Define workspace billing and access model
 
-Intentionally deferred. Current state: workspace creation, membership, sync, and collaboration are open to all signed-in users. `hasProAccess` is personal-only. The `buildEntitlementDocumentId("workspace", ...)` ID scheme is ready but unused.
+Intentionally deferred. Current state:
+
+- workspace creation, membership, sync, and collaboration are open to signed-in users
+- Pro access is still personal-only (`hasProAccess`)
+- the shared `buildEntitlementDocumentId("workspace", ...)` shape exists, but workspace billing is not wired through product flows yet
 
 When workspace licensing ships:
 
-- Introduce a separate workspace billing domain — do not stretch personal Pro into team licensing
-- Add workspace billing state and workspace-level entitlement APIs
-- Compute effective access by scope (`personalHasProAccess`, `workspacePlan`, `workspaceSeatStatus`, `effectiveFeatureAccess`)
-- Move workspace feature gates to workspace plan/seat status
-- Keep personal Pro checks for personal scope only
-- Expose billing source in UI copy (personal Pro vs workspace-paid)
-- Prefer grace-first rollout with enforcement behind a flag
-- Candidate model: workspace subscription with per-member pricing (~$5/user/month)
+- introduce a dedicated workspace billing domain instead of stretching personal Pro
+- add workspace billing state and workspace-level entitlement APIs
+- compute effective access by scope rather than reusing personal-only flags
+- move workspace feature gates to workspace plan/seat status
+- keep personal Pro checks for personal scope only
