@@ -23,11 +23,13 @@ test("service worker precache only includes stable root install assets", () => {
   assert.doesNotMatch(swSource, /icons\/icon-192\.png|icons\/icon-512\.png|icons\/apple-touch-icon\.png/);
 });
 
-test("service worker treats explicit app-update refreshes as network-only navigations", () => {
+test("service worker treats explicit app-update refreshes as fresh navigations with cached fallback", () => {
   const swSource = readRepoFile("public/sw.js");
 
   assert.match(swSource, /function isUpdateRefreshRequest\(url\)\s*\{\s*return url\.searchParams\.has\("app-updated"\);?\s*\}/);
-  assert.match(swSource, /if \(isUpdateRefreshRequest\(url\)\) \{[\s\S]*fetchFresh\(request\)[\s\S]*return createOfflineResponse\(\);[\s\S]*\}/);
+  assert.match(swSource, /const FRESH_FETCH_TIMEOUT_MS = 8000;/);
+  assert.match(swSource, /const cachedPage = await cache\.match\("\.\/index\.html"\);/);
+  assert.match(swSource, /if \(isUpdateRefreshRequest\(url\)\) \{[\s\S]*fetchFresh\(request\)[\s\S]*return cachedPage \?\? response \?\? createOfflineResponse\(\);[\s\S]*return cachedPage \?\? createOfflineResponse\(\);[\s\S]*\}/);
 });
 
 test("service worker forces window clients onto a fresh app-updated navigation when skip waiting is approved", () => {

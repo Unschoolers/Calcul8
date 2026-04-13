@@ -1,5 +1,6 @@
 const swVersion = new URL(self.location.href).searchParams.get("v") || "dev";
 const CACHE_NAME = `whatfees-${swVersion}`;
+const FRESH_FETCH_TIMEOUT_MS = 8000;
 
 const CORE_ASSETS = [
   "./",
@@ -59,9 +60,12 @@ function createOfflineResponse() {
   return new Response("Offline", { status: 503, statusText: "Offline" });
 }
 
-function cloneRequestForReload(request) {
+function cloneRequestForReload(request, overrides = undefined) {
   try {
-    return new Request(request, { cache: "no-store" });
+    return new Request(request, {
+      cache: "no-store",
+      ...(overrides || {})
+    });
   } catch {
     return request;
   }
@@ -83,7 +87,14 @@ function buildClientRefreshUrl(urlString) {
 }
 
 async function fetchFresh(request) {
-  return fetch(cloneRequestForReload(request));
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), FRESH_FETCH_TIMEOUT_MS);
+
+  try {
+    return await fetch(cloneRequestForReload(request, { signal: controller.signal }));
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 async function networkFirst(request, { fallbackResponse = null, forceFresh = false } = {}) {
@@ -92,8 +103,13 @@ async function networkFirst(request, { fallbackResponse = null, forceFresh = fal
     const response = await (forceFresh ? fetchFresh(request) : fetch(request));
     if (response && response.ok) {
       cache.put(request, response.clone());
+      return response;
     }
-    return response;
+
+    const cachedResponse = await cache.match(request);
+    if (cachedResponse) return cachedResponse;
+    if (fallbackResponse) return fallbackResponse;
+    return response ?? createOfflineResponse();
   } catch {
     const cachedResponse = await cache.match(request);
     if (cachedResponse) return cachedResponse;
@@ -104,21 +120,23 @@ async function networkFirst(request, { fallbackResponse = null, forceFresh = fal
 
 async function networkFirstNavigation(request) {
   const url = new URL(request.url);
+  const cache = await caches.open(CACHE_NAME);
+  const cachedPage = await cache.match("./index.html");
+
   if (isUpdateRefreshRequest(url)) {
     try {
       const response = await fetchFresh(request);
       if (response && response.ok) {
-        const cache = await caches.open(CACHE_NAME);
         await cache.put("./index.html", response.clone());
+        return response;
       }
-      return response;
+
+      return cachedPage ?? response ?? createOfflineResponse();
     } catch {
-      return createOfflineResponse();
+      return cachedPage ?? createOfflineResponse();
     }
   }
 
-  const cache = await caches.open(CACHE_NAME);
-  const cachedPage = await cache.match("./index.html");
   return networkFirst(request, {
     fallbackResponse: cachedPage ?? createOfflineResponse(),
     forceFresh: true
