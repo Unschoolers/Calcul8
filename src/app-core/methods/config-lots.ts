@@ -48,6 +48,23 @@ import { replaceRootLotSales } from "../shared/sales-root-state.ts";
 
 const LEGACY_KEYS = getLegacyStorageKeys();
 
+type AuthoritativeLotHydrationContext = Pick<ConfigMethodSubset<"getSalesCacheEntry">, "getSalesCacheEntry"> & {
+  activeScopeType?: string;
+  activeWorkspaceId?: string | null;
+};
+
+function shouldHydrateAuthoritativeLotData(
+  context: AuthoritativeLotHydrationContext,
+  lotId: number
+): boolean {
+  const isWorkspaceScope = context.activeScopeType === "workspace" && Boolean(context.activeWorkspaceId);
+  if (isWorkspaceScope) {
+    return true;
+  }
+
+  return context.getSalesCacheEntry(lotId).status !== "loaded";
+}
+
 export const configLotMethods: ConfigMethodSubset<
   | "getCurrentSetup"
   | "autoSaveSetup"
@@ -378,7 +395,7 @@ export const configLotMethods: ConfigMethodSubset<
       currentLivePricingVersion: this.currentLivePricingVersion
     });
     this.loadSalesFromStorage();
-    if (canUseAuthoritativeSalesLiveApi()) {
+    if (canUseAuthoritativeSalesLiveApi() && shouldHydrateAuthoritativeLotData(this, lot.id)) {
       const selectedLotId = lot.id;
       void (async () => {
         try {

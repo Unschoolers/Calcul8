@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test, vi } from "vitest";
 import { CSRF_TOKEN_KEY, fetchWithRetry } from "../src/app-core/methods/ui/shared.ts";
+import {
+  getStoredCsrfToken,
+  setStoredCsrfToken
+} from "../src/app-core/auth/index.ts";
 
 type MockStorage = {
   getItem(key: string): string | null;
@@ -86,7 +90,8 @@ test("fetchWithRetry stores csrf token from response and sends it on unsafe requ
     await fetchWithRetry("https://api.example.test/auth/me", {
       method: "GET"
     });
-    assert.equal(data.get(CSRF_TOKEN_KEY), "csrf-token-1");
+    assert.equal(getStoredCsrfToken(), "csrf-token-1");
+    assert.equal(data.get(CSRF_TOKEN_KEY), undefined);
 
     await fetchWithRetry("https://api.example.test/sync/push", {
       method: "POST",
@@ -103,8 +108,8 @@ test("fetchWithRetry stores csrf token from response and sends it on unsafe requ
 });
 
 test("fetchWithRetry does not overwrite existing csrf header", async () => {
-  await withMockedLocalStorage(async (data) => {
-    data.set(CSRF_TOKEN_KEY, "csrf-token-stored");
+  await withMockedLocalStorage(async () => {
+    setStoredCsrfToken("csrf-token-stored");
     const fetchMock = vi.fn(async () =>
       new Response("{}", {
         status: 200

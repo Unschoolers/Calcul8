@@ -1,4 +1,8 @@
-import { getStoredCsrfToken, getStoredGoogleIdToken } from "./storage.ts";
+import {
+  getStoredCsrfToken,
+  getStoredGoogleIdToken,
+  getStoredSessionUserId
+} from "./storage.ts";
 
 export function hasServerSession(): boolean {
   return getStoredCsrfToken().length > 0;
@@ -9,5 +13,5 @@ export function hasGoogleBootstrapToken(): boolean {
 }
 
 export function hasAuthSignal(): boolean {
-  return hasGoogleBootstrapToken() || hasServerSession();
+  return hasGoogleBootstrapToken() || hasServerSession() || getStoredSessionUserId().length > 0;
 }

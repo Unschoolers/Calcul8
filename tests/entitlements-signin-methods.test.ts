@@ -1,5 +1,9 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test, vi } from "vitest";
+import {
+  getStoredGoogleIdToken,
+  setStoredGoogleIdToken
+} from "../src/app-core/auth/index.ts";
 
 const {
   readEntitlementCacheMock,
@@ -189,7 +193,7 @@ test("initGoogleAutoLogin starts retry flow and credential callback persists tok
     assert.equal(setTimeoutSpy.mock.calls.length, 1);
 
     params.onCredential("auto-token");
-    assert.equal(data.get("whatfees_google_id_token"), "auto-token");
+    assert.equal(getStoredGoogleIdToken(), "auto-token");
     assert.equal(context.googleAuthEpoch, 1);
     assert.equal(context.googleAvatarLoadFailed, false);
     assert.equal(cacheGoogleProfileFromTokenMock.mock.calls.at(-1)?.[0], "auto-token");
@@ -200,7 +204,7 @@ test("initGoogleAutoLogin starts retry flow and credential callback persists tok
 test("promptGoogleSignIn reuses existing token without opening Google prompt", async () => {
   await withMockedLocalStorage(async (data) => {
     stubWindow();
-    data.set("whatfees_google_id_token", "already-signed-in");
+    setStoredGoogleIdToken("already-signed-in");
     const context = createContext();
 
     uiEntitlementSignInMethods.promptGoogleSignIn.call(context as never);
@@ -277,7 +281,7 @@ test("promptGoogleSignIn initializes, prompts, and handles credential callback",
     assert.equal(requestGoogleIdentityPromptMock.mock.calls.length, 1);
     callback?.({ credential: "  signed-token  " });
 
-    assert.equal(data.get("whatfees_google_id_token"), "signed-token");
+    assert.equal(getStoredGoogleIdToken(), "signed-token");
     assert.equal(context.googleAuthEpoch, 1);
     assert.equal(context.googleAvatarLoadFailed, false);
     assert.equal((context.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0], "Signed in with Google.");
@@ -297,7 +301,7 @@ test("promptGoogleSignIn ignores empty credential callback and handles initializ
 
     uiEntitlementSignInMethods.promptGoogleSignIn.call(context as never);
     callback?.({ credential: "   " });
-    assert.equal(data.has("whatfees_google_id_token"), false);
+    assert.equal(getStoredGoogleIdToken(), "");
     assert.equal((context.notify as ReturnType<typeof vi.fn>).mock.calls.length, 0);
 
     const throwingInitialize = vi.fn(() => {
@@ -326,7 +330,7 @@ test("openVerifyPurchaseModal respects manual mode and token requirements", asyn
     assert.equal((missingToken.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0], "Sign in with Google first to verify your purchase.");
     assert.equal(missingToken.showVerifyPurchaseModal, false);
 
-    data.set("whatfees_google_id_token", "signed-token");
+    setStoredGoogleIdToken("signed-token");
     const withToken = createContext({
       showManualPurchaseVerify: true,
       showVerifyPurchaseModal: false

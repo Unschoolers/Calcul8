@@ -1,10 +1,16 @@
 import type { AppContext } from "../../context-app.ts";
 import { fetchWithRetry, handleExpiredAuth, resolveApiBaseUrl } from "./shared.ts";
-import { buildAuthenticatedHeaders, getStoredGoogleIdToken } from "../../auth/index.ts";
+import {
+  buildAuthenticatedHeaders,
+  getStoredGoogleIdToken,
+  hasAuthSignal
+} from "../../auth/index.ts";
 import { parseWorkspaceApiError } from "./workspace-ui-helpers.ts";
 
 export function getGoogleIdToken(): string {
-  return getStoredGoogleIdToken();
+  const token = getStoredGoogleIdToken();
+  if (token) return token;
+  return hasAuthSignal() ? "session" : "";
 }
 
 export async function fetchWorkspaceJson(
@@ -19,8 +25,7 @@ export async function fetchWorkspaceJson(
     return { ok: false, handled: true };
   }
 
-  const googleIdToken = getGoogleIdToken();
-  if (!googleIdToken) {
+  if (!hasAuthSignal()) {
     app.notify("Sign in with Google first.", "warning");
     return { ok: false, handled: true };
   }

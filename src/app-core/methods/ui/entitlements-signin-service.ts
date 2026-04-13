@@ -8,6 +8,7 @@ import {
   GOOGLE_PROFILE_CACHE_KEY,
   enableGoogleAutoSignIn,
   getStoredGoogleIdToken,
+  hasAuthSignal,
   isGoogleAutoSignInDisabled,
   setStoredGoogleIdToken
 } from "../../auth/index.ts";
@@ -335,8 +336,7 @@ export function openVerifyPurchaseModalFlow(app: Pick<SignInApp, "showManualPurc
     return;
   }
 
-  const googleIdToken = resolvedDeps.getGoogleIdToken();
-  if (!googleIdToken) {
+  if (!hasAuthSignal()) {
     app.notify("Sign in with Google first to verify your purchase.", "warning");
     return;
   }

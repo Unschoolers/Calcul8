@@ -5,12 +5,12 @@ const {
   fetchAuthenticatedApiResponseMock,
   handleExpiredAuthMock,
   resolveApiBaseUrlMock,
-  getStoredGoogleIdTokenMock
+  hasAuthSignalMock
 } = vi.hoisted(() => ({
   fetchAuthenticatedApiResponseMock: vi.fn(),
   handleExpiredAuthMock: vi.fn(),
   resolveApiBaseUrlMock: vi.fn(),
-  getStoredGoogleIdTokenMock: vi.fn()
+  hasAuthSignalMock: vi.fn()
 }));
 
 vi.mock("../src/app-core/methods/ui/shared.ts", () => ({
@@ -20,7 +20,7 @@ vi.mock("../src/app-core/methods/ui/shared.ts", () => ({
 }));
 
 vi.mock("../src/app-core/auth/index.ts", () => ({
-  getStoredGoogleIdToken: getStoredGoogleIdTokenMock
+  hasAuthSignal: hasAuthSignalMock
 }));
 
 import { uiWhatnotMethods } from "../src/app-core/methods/ui/whatnot.ts";
@@ -59,7 +59,7 @@ beforeEach(() => {
     }
   });
   resolveApiBaseUrlMock.mockReturnValue("https://api.example.test");
-  getStoredGoogleIdTokenMock.mockReturnValue("google-token");
+  hasAuthSignalMock.mockReturnValue(true);
 });
 
 afterEach(() => {

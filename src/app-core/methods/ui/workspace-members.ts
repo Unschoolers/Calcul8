@@ -1,6 +1,6 @@
 import type { AppContext } from "../../context-app.ts";
 import type { WorkspaceMember } from "../../../types/app.ts";
-import { getStoredGoogleIdToken } from "../../auth/index.ts";
+import { hasAuthSignal } from "../../auth/index.ts";
 import { fetchAuthenticatedApiResponse, resolveApiBaseUrl } from "./shared.ts";
 import { parseApiErrorMessage } from "../../shared/api-error-message.ts";
 
@@ -101,8 +101,7 @@ export async function loadWorkspaceMembers(
       return false;
     }
 
-    const googleIdToken = getStoredGoogleIdToken();
-    if (!googleIdToken) {
+    if (!hasAuthSignal()) {
       app.notify("Sign in with Google first.", "warning");
       return false;
     }
@@ -186,4 +185,3 @@ export function formatRelativeLastSeen(lastSeenAt: string | undefined): string {
   const elapsedDays = Math.round(elapsedHours / 24);
   return `Active ${elapsedDays}d ago`;
 }
-

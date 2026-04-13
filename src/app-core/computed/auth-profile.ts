@@ -1,5 +1,10 @@
-import { GOOGLE_PROFILE_CACHE_KEY, GOOGLE_TOKEN_KEY } from "../methods/ui/shared.ts";
+import { GOOGLE_PROFILE_CACHE_KEY } from "../methods/ui/shared.ts";
 import type { AppComputedObject } from "../context-contracts.ts";
+import {
+  getStoredGoogleIdToken,
+  getStoredSessionUserId,
+  hasAuthSignal
+} from "../auth/index.ts";
 
 interface GoogleJwtPayload {
   sub?: string;
@@ -69,35 +74,34 @@ export const authProfileComputed: Pick<
 
   isGoogleSignedIn(): boolean {
     void this.googleAuthEpoch;
-    return Boolean((localStorage.getItem(GOOGLE_TOKEN_KEY) || "").trim());
+    return hasAuthSignal();
   },
 
   googleProfileUserId(): string {
     void this.googleAuthEpoch;
-    const token = (localStorage.getItem(GOOGLE_TOKEN_KEY) || "").trim();
-    if (!token) return "";
-    return resolveGoogleProfile(token).sub || "";
+    const token = getStoredGoogleIdToken();
+    if (token) {
+      return resolveGoogleProfile(token).sub || "";
+    }
+    return hasAuthSignal() ? getStoredSessionUserId() : "";
   },
 
   googleProfileName(): string {
     void this.googleAuthEpoch;
-    const token = (localStorage.getItem(GOOGLE_TOKEN_KEY) || "").trim();
-    if (!token) return "";
-    return resolveGoogleProfile(token).name || "";
+    if (!hasAuthSignal()) return "";
+    return resolveGoogleProfile(getStoredGoogleIdToken()).name || "";
   },
 
   googleProfileEmail(): string {
     void this.googleAuthEpoch;
-    const token = (localStorage.getItem(GOOGLE_TOKEN_KEY) || "").trim();
-    if (!token) return "";
-    return resolveGoogleProfile(token).email || "";
+    if (!hasAuthSignal()) return "";
+    return resolveGoogleProfile(getStoredGoogleIdToken()).email || "";
   },
 
   googleProfilePicture(): string {
     void this.googleAuthEpoch;
-    const token = (localStorage.getItem(GOOGLE_TOKEN_KEY) || "").trim();
-    if (!token) return "";
-    return resolveGoogleProfile(token).picture || "";
+    if (!hasAuthSignal()) return "";
+    return resolveGoogleProfile(getStoredGoogleIdToken()).picture || "";
   },
 
   lotNameDraft: {

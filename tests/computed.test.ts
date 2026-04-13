@@ -1,8 +1,9 @@
 ﻿import assert from "node:assert/strict";
 import { test, vi } from "vitest";
+import { setStoredGoogleIdToken } from "../src/app-core/auth/index.ts";
 import { appComputed } from "../src/app-core/computed.ts";
 import { buildPortfolioSalesByUserChartData } from "../src/app-core/computed/portfolio-sales-by-user.ts";
-import { GOOGLE_PROFILE_CACHE_KEY, GOOGLE_TOKEN_KEY } from "../src/app-core/methods/ui/shared.ts";
+import { GOOGLE_PROFILE_CACHE_KEY } from "../src/app-core/methods/ui/shared.ts";
 import { calculateTotalRevenue } from "../src/domain/calculations.ts";
 
 type MockStorage = {
@@ -73,7 +74,7 @@ test("computed auth flags and decoded Google profile fields resolve token and ca
     );
 
     const token = createJwt({ sub: "google-user-123", name: " Token Name ", email: " token@example.com ", picture: " token.png " });
-    data.set(GOOGLE_TOKEN_KEY, token);
+    setStoredGoogleIdToken(token);
     data.set(GOOGLE_PROFILE_CACHE_KEY, JSON.stringify({
       name: "Cache Name",
       email: "cache@example.com",
@@ -102,7 +103,7 @@ test("computed auth flags and decoded Google profile fields resolve token and ca
       "token.png"
     );
 
-    data.set(GOOGLE_TOKEN_KEY, "not.a.valid.jwt");
+    setStoredGoogleIdToken("not.a.valid.jwt");
     const cacheFallbackVm = { googleAuthEpoch: 2 };
     assert.equal(
       appComputed.googleProfileName.call(cacheFallbackVm as unknown as Parameters<typeof appComputed.googleProfileName>[0]),

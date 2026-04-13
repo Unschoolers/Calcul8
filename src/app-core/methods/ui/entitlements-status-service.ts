@@ -11,10 +11,12 @@ import {
 } from "./shared.ts";
 import {
   buildAuthenticatedHeaders,
+  setStoredSessionUserId,
   getStoredGoogleIdToken,
   hasAuthSignal
 } from "../../auth/index.ts";
 import { applyTargetProfitAccessDefaults, type TargetProfitAccessApp } from "./entitlements-shared.ts";
+import { bootstrapServerSession } from "./auth-session.ts";
 
 interface ParsedEntitlementPayload {
   userId: string | null;
@@ -35,6 +37,7 @@ type EntitlementStatusDeps = {
   readEntitlementCache: typeof readEntitlementCache;
   getEntitlementTtlMs: typeof getEntitlementTtlMs;
   fetchWithRetry: typeof fetchWithRetry;
+  bootstrapServerSession: (app: Pick<EntitlementStatusApp, "googleAuthEpoch">, baseUrl: string) => Promise<boolean>;
   shouldUseCachedEntitlement: typeof shouldUseCachedEntitlement;
   applyCachedEntitlement: typeof applyCachedEntitlement;
   parseEntitlementPayload: typeof parseEntitlementPayload;
@@ -71,6 +74,9 @@ export function parseEntitlementPayload(data: EntitlementApiResponse): ParsedEnt
 
 export function applyFetchedEntitlement(app: EntitlementMutationApp, payload: ParsedEntitlementPayload): void {
   applyCachedEntitlement(app, payload);
+  if (payload.userId) {
+    setStoredSessionUserId(payload.userId);
+  }
   writeEntitlementCache({
     userId: payload.userId,
     hasProAccess: payload.hasProAccess,
@@ -86,6 +92,7 @@ const defaultDeps: EntitlementStatusDeps = {
   readEntitlementCache,
   getEntitlementTtlMs,
   fetchWithRetry,
+  bootstrapServerSession,
   shouldUseCachedEntitlement,
   applyCachedEntitlement,
   parseEntitlementPayload,
@@ -105,8 +112,13 @@ export async function syncEntitlementStatus(
     console.info("[whatfees] Entitlement sync skipped: VITE_API_BASE_URL is not set.");
     return;
   }
+
+  let hasActiveAuthSignal = resolvedDeps.hasAuthSignal();
+  if (!hasActiveAuthSignal) {
+    hasActiveAuthSignal = await resolvedDeps.bootstrapServerSession(app, base);
+  }
+
   const googleIdToken = resolvedDeps.getGoogleIdToken();
-  const hasActiveAuthSignal = resolvedDeps.hasAuthSignal();
 
   const cached = resolvedDeps.readEntitlementCache();
   const ttlMs = resolvedDeps.getEntitlementTtlMs();

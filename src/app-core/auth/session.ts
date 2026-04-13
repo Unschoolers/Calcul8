@@ -1,6 +1,7 @@
 import type { AppContext } from "../context-app.ts";
 import {
   clearStoredCsrfToken,
+  clearStoredSessionUserId,
   getStoredGoogleIdToken
 } from "./storage.ts";
 import {
@@ -43,6 +44,7 @@ export function buildAuthenticatedHeaders(
 export function handleExpiredAuthState(app: Pick<AppContext, "googleAuthEpoch" | "hasProAccess">): void {
   clearStoredGoogleIdToken();
   clearStoredGoogleProfileCache();
+  clearStoredSessionUserId();
   clearStoredCsrfToken();
   app.googleAuthEpoch += 1;
 }

@@ -3,16 +3,16 @@ import { afterEach, beforeEach, test, vi } from "vitest";
 
 const {
   fetchAuthenticatedApiResponseMock,
-  getStoredGoogleIdTokenMock,
+  hasAuthSignalMock,
   resolveApiBaseUrlMock
 } = vi.hoisted(() => ({
   fetchAuthenticatedApiResponseMock: vi.fn(),
-  getStoredGoogleIdTokenMock: vi.fn(),
+  hasAuthSignalMock: vi.fn(),
   resolveApiBaseUrlMock: vi.fn()
 }));
 
 vi.mock("../src/app-core/auth/index.ts", () => ({
-  getStoredGoogleIdToken: getStoredGoogleIdTokenMock
+  hasAuthSignal: hasAuthSignalMock
 }));
 
 vi.mock("../src/app-core/methods/ui/shared.ts", () => ({
@@ -47,7 +47,7 @@ function createApp(overrides: Record<string, unknown> = {}) {
 beforeEach(() => {
   vi.clearAllMocks();
   resolveApiBaseUrlMock.mockReturnValue("https://api.example.test");
-  getStoredGoogleIdTokenMock.mockReturnValue("google-token");
+  hasAuthSignalMock.mockReturnValue(true);
   vi.useFakeTimers();
   vi.setSystemTime(new Date("2026-04-11T12:00:00.000Z"));
 });
@@ -142,12 +142,12 @@ test("loadWorkspaceMembers surfaces auth and API failures without throwing", asy
   assert.deepEqual(noApiApp.notify.mock.calls.at(-1), ["Workspace features are unavailable until the API base URL is configured.", "warning"]);
 
   resolveApiBaseUrlMock.mockReturnValue("https://api.example.test");
-  getStoredGoogleIdTokenMock.mockReturnValue("");
+  hasAuthSignalMock.mockReturnValue(false);
   const noTokenApp = createApp();
   assert.equal(await loadWorkspaceMembers(noTokenApp as never), false);
   assert.deepEqual(noTokenApp.notify.mock.calls.at(-1), ["Sign in with Google first.", "warning"]);
 
-  getStoredGoogleIdTokenMock.mockReturnValue("google-token");
+  hasAuthSignalMock.mockReturnValue(true);
   fetchAuthenticatedApiResponseMock.mockResolvedValueOnce(new Response(JSON.stringify({ message: "nope" }), { status: 401 }));
   const expiredApp = createApp();
   assert.equal(await loadWorkspaceMembers(expiredApp as never, { setLoadingState: true }), false);

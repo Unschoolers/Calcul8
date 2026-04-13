@@ -1,6 +1,6 @@
 import type { Sale } from "../../types/app.ts";
 import type { AppContext } from "../context-app.ts";
-import { getStoredGoogleIdToken } from "../auth/index.ts";
+import { hasAuthSignal } from "../auth/index.ts";
 import { fetchAuthenticatedApiResponse, resolveApiBaseUrl } from "./ui/shared.ts";
 import { persistSalesCacheToStorage } from "../shared/sales-cache-storage.ts";
 import { replaceRootLotSales } from "../shared/sales-root-state.ts";
@@ -65,7 +65,7 @@ export type WorkspaceRealtimeSubscribeToken = {
 
 function isSignedInForEntityApis(): boolean {
   try {
-    return Boolean(resolveApiBaseUrl() && getStoredGoogleIdToken());
+    return Boolean(resolveApiBaseUrl() && hasAuthSignal());
   } catch {
     return false;
   }
@@ -472,4 +472,3 @@ export function cacheAuthoritativeSales(
 ): void {
   persistSalesCache(app, lotId, sales);
 }
-

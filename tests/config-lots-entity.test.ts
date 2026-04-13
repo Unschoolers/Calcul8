@@ -67,6 +67,8 @@ function createContext(overrides: Record<string, unknown> = {}) {
     currentLotId: 101,
     currentLotType: "bulk",
     currentTab: "config",
+    activeScopeType: "personal",
+    activeWorkspaceId: null,
     hasProAccess: true,
     boxPriceCost: lot.boxPriceCost,
     boxesPurchased: lot.boxesPurchased,
@@ -109,6 +111,10 @@ function createContext(overrides: Record<string, unknown> = {}) {
     syncLivePricesFromDefaults: vi.fn(() => {
       configLotMethods.syncLivePricesFromDefaults.call(ctx as never);
     }),
+    getSalesCacheEntry: vi.fn(() => ({
+      status: "missing",
+      sales: []
+    })),
     loadSalesFromStorage: vi.fn(),
     autoSaveSetup: vi.fn(),
     pushCloudSync: vi.fn(async () => undefined),
@@ -232,4 +238,73 @@ test("loadLot hydrates authoritative sales and live pricing after local defaults
   assert.equal(ctx.liveBoxPriceSell, 55);
   assert.equal(ctx.livePackPrice, 66);
   assert.equal(ctx.currentLivePricingVersion, 7);
+});
+
+test("loadLot skips authoritative lot hydration in personal scope when the lot cache is already loaded", async () => {
+  ctx = createContext({
+    getSalesCacheEntry: vi.fn(() => ({
+      status: "loaded",
+      sales: [
+        {
+          id: 12,
+          type: "pack",
+          quantity: 1,
+          packsCount: 1,
+          price: 9,
+          buyerShipping: 0,
+          date: "2026-03-18",
+          version: 1
+        }
+      ]
+    }))
+  });
+
+  configLotMethods.loadLot.call(ctx as never);
+  await Promise.resolve();
+
+  assert.equal(fetchAuthoritativeSalesMock.mock.calls.length, 0);
+  assert.equal(fetchAuthoritativeLivePricingMock.mock.calls.length, 0);
+});
+
+test("loadLot still hydrates authoritative lot data in personal scope when the lot cache is missing", async () => {
+  ctx = createContext({
+    getSalesCacheEntry: vi.fn(() => ({
+      status: "missing",
+      sales: []
+    }))
+  });
+  fetchAuthoritativeSalesMock.mockResolvedValue([]);
+  fetchAuthoritativeLivePricingMock.mockResolvedValue({
+    liveSpotPrice: 4,
+    liveBoxPriceSell: 5,
+    livePackPrice: 6,
+    version: 2
+  });
+
+  configLotMethods.loadLot.call(ctx as never);
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assert.equal(fetchAuthoritativeSalesMock.mock.calls.length, 1);
+  assert.equal(fetchAuthoritativeLivePricingMock.mock.calls.length, 1);
+});
+
+test("loadLot always hydrates authoritative lot data in workspace scope", async () => {
+  ctx = createContext({
+    activeScopeType: "workspace",
+    activeWorkspaceId: "ws-123",
+    getSalesCacheEntry: vi.fn(() => ({
+      status: "loaded",
+      sales: []
+    }))
+  });
+  fetchAuthoritativeSalesMock.mockResolvedValue([]);
+  fetchAuthoritativeLivePricingMock.mockResolvedValue(null);
+
+  configLotMethods.loadLot.call(ctx as never);
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assert.equal(fetchAuthoritativeSalesMock.mock.calls.length, 1);
+  assert.equal(fetchAuthoritativeLivePricingMock.mock.calls.length, 1);
 });

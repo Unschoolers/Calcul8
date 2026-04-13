@@ -1,5 +1,9 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test, vi } from "vitest";
+import {
+  getStoredGoogleIdToken,
+  setStoredGoogleIdToken
+} from "../src/app-core/auth/index.ts";
 
 const {
   readEntitlementCacheMock,
@@ -236,7 +240,7 @@ test("initGoogleAutoLoginFlow starts retry flow and credential callback persists
     assert.equal(setTimeoutSpy.mock.calls.length, 1);
 
     params.onCredential("auto-token");
-    assert.equal(data.get("whatfees_google_id_token"), "auto-token");
+    assert.equal(getStoredGoogleIdToken(), "auto-token");
     assert.equal(context.googleAuthEpoch, 1);
     assert.equal(context.googleAvatarLoadFailed, false);
     assert.equal(cacheGoogleProfileFromTokenMock.mock.calls.at(-1)?.[0], "auto-token");
@@ -262,7 +266,7 @@ test("promptGoogleSignInFlow initializes, prompts, and handles credential callba
     assert.equal(initialize.mock.calls.length, 1);
     assert.equal(requestGoogleIdentityPromptMock.mock.calls.length, 1);
     assert.equal(data.get("whatfees_google_auto_signin_disabled_v1"), undefined);
-    assert.equal(data.get("whatfees_google_id_token"), "signed-token");
+    assert.equal(getStoredGoogleIdToken(), "signed-token");
     assert.equal(context.googleAuthEpoch, 1);
     assert.equal(context.googleAvatarLoadFailed, false);
     assert.equal((context.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0], "Signed in with Google.");
@@ -292,7 +296,7 @@ test("renderGoogleSignInButtonFlow initializes GIS button and handles credential
     assert.equal(renderButton.mock.calls[0]?.[0], container);
     assert.equal(renderButton.mock.calls[0]?.[1]?.locale, "fr");
     assert.equal(renderButton.mock.calls[0]?.[1]?.theme, "filled_black");
-    assert.equal(data.get("whatfees_google_id_token"), "rendered-token");
+    assert.equal(getStoredGoogleIdToken(), "rendered-token");
     assert.equal(context.googleAuthEpoch, 1);
     assert.equal(context.showGoogleSignInFallback, false);
     assert.equal((context.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0], "Signed in with Google.");
@@ -330,7 +334,7 @@ test("openVerifyPurchaseModalFlow respects manual mode and token requirements", 
     assert.equal((missingToken.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0], "Sign in with Google first to verify your purchase.");
     assert.equal(missingToken.showVerifyPurchaseModal, false);
 
-    data.set("whatfees_google_id_token", "signed-token");
+    setStoredGoogleIdToken("signed-token");
     const withToken = createContext({
       showManualPurchaseVerify: true,
       showVerifyPurchaseModal: false

@@ -2,22 +2,19 @@ import assert from "node:assert/strict";
 import { afterEach, beforeEach, test, vi } from "vitest";
 
 const {
-  buildAuthenticatedHeadersMock,
-  getStoredGoogleIdTokenMock,
+  hasAuthSignalMock,
   fetchAuthenticatedApiResponseMock,
   handleExpiredAuthMock,
   resolveApiBaseUrlMock
 } = vi.hoisted(() => ({
-  buildAuthenticatedHeadersMock: vi.fn(),
-  getStoredGoogleIdTokenMock: vi.fn(),
+  hasAuthSignalMock: vi.fn(),
   fetchAuthenticatedApiResponseMock: vi.fn(),
   handleExpiredAuthMock: vi.fn(),
   resolveApiBaseUrlMock: vi.fn()
 }));
 
 vi.mock("../src/app-core/auth/index.ts", () => ({
-  buildAuthenticatedHeaders: buildAuthenticatedHeadersMock,
-  getStoredGoogleIdToken: getStoredGoogleIdTokenMock
+  hasAuthSignal: hasAuthSignalMock
 }));
 
 vi.mock("../src/app-core/methods/ui/shared.ts", () => ({
@@ -91,11 +88,8 @@ beforeEach(() => {
       randomUUID: vi.fn(() => "uuid-123")
     }
   });
-  buildAuthenticatedHeadersMock.mockImplementation((_mode: string, headers?: Record<string, string>) => ({
-    ...(headers ?? {})
-  }));
   resolveApiBaseUrlMock.mockReturnValue("https://api.example.test");
-  getStoredGoogleIdTokenMock.mockReturnValue("google-token");
+  hasAuthSignalMock.mockReturnValue(true);
 });
 
 afterEach(() => {
@@ -107,10 +101,10 @@ test("canUseAuthoritativeSalesLiveApi requires both api base URL and bootstrap t
   assert.equal(canUseAuthoritativeSalesLiveApi(), false);
 
   resolveApiBaseUrlMock.mockReturnValue("https://api.example.test");
-  getStoredGoogleIdTokenMock.mockReturnValue("");
+  hasAuthSignalMock.mockReturnValue(false);
   assert.equal(canUseAuthoritativeSalesLiveApi(), false);
 
-  getStoredGoogleIdTokenMock.mockReturnValue("google-token");
+  hasAuthSignalMock.mockReturnValue(true);
   assert.equal(canUseAuthoritativeSalesLiveApi(), true);
 });
 
@@ -154,7 +148,7 @@ test("normalizeSale preserves wheel-specific fields and stored net revenue", () 
 });
 
 test("fetchAuthoritativeSales returns null without signed-in entity API access", async () => {
-  getStoredGoogleIdTokenMock.mockReturnValue("");
+  hasAuthSignalMock.mockReturnValue(false);
 
   const sales = await fetchAuthoritativeSales(createApp(), 7);
 
