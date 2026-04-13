@@ -6,8 +6,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && node scripts/stamp-sw-version.mjs",
-    "build:prod": "vite build && node scripts/stamp-sw-version.mjs && node scripts/obfuscate.mjs",
+    "build": "vite build && node scripts/patch-index-bootstrap.mjs && node scripts/stamp-sw-version.mjs",
+    "build:prod": "vite build && node scripts/patch-index-bootstrap.mjs && node scripts/stamp-sw-version.mjs && node scripts/obfuscate.mjs",
     "preview": "vite preview",
     "test": "vitest run --config vitest.config.mjs",
     "test:watch": "vitest --config vitest.config.mjs",

@@ -90,6 +90,41 @@
       stroke-linecap: round;
       stroke-linejoin: round;
     }
+
+    .splash-status {
+      margin: 0.85rem 0 0;
+      font-size: 0.8rem;
+      line-height: 1.35;
+      color: rgba(255, 255, 255, 0.82);
+      display: none;
+    }
+
+    .splash-status[data-visible="true"] {
+      display: block;
+    }
+
+    .splash-actions {
+      display: none;
+      margin-top: 0.9rem;
+      justify-content: center;
+    }
+
+    .splash-actions[data-visible="true"] {
+      display: flex;
+    }
+
+    .splash-reload {
+      appearance: none;
+      border: 0;
+      border-radius: 999px;
+      padding: 0.6rem 1rem;
+      font: inherit;
+      font-weight: 700;
+      color: #111;
+      background: #ffd34d;
+      cursor: pointer;
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
+    }
   </style>
 
 </head>
@@ -104,6 +139,10 @@
       <svg class="splash-trend" viewBox="0 0 200 30" preserveAspectRatio="none" role="presentation">
         <path pathLength="100" d="M4 22 L44 18 L78 21 L112 12 L148 14 L196 6"></path>
       </svg>
+      <p class="splash-status" id="startup-splash-status" aria-live="polite"></p>
+      <div class="splash-actions" id="startup-splash-actions">
+        <button type="button" class="splash-reload" id="startup-splash-reload">Reload now</button>
+      </div>
     </div>
   </div>
   <div id="app" v-cloak></div>
