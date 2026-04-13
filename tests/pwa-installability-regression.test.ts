@@ -40,3 +40,12 @@ test("service worker activation claims clients without forcing window navigation
   assert.match(swSource, /await self\.clients\.claim\(\);/);
   assert.doesNotMatch(swSource, /client\.navigate\(refreshUrl\)/);
 });
+
+test("bootstrap patch clears update and retry params after the refreshed app loads", () => {
+  const patchSource = readRepoFile("scripts/patch-index-bootstrap.mjs");
+
+  assert.match(patchSource, /cleanUrl\.searchParams\.delete\("app-updated"\);/);
+  assert.match(patchSource, /cleanUrl\.searchParams\.delete\("app-update-source"\);/);
+  assert.match(patchSource, /cleanUrl\.searchParams\.delete\(retryParamName\);/);
+  assert.match(patchSource, /cleanUrl\.searchParams\.delete\(retryReasonParamName\);/);
+});

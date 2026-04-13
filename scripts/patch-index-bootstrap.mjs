@@ -53,6 +53,8 @@ function createBootstrapRetryLoader(entryPath) {
       function clearRetryParams() {
         try {
           const cleanUrl = new URL(window.location.href);
+          cleanUrl.searchParams.delete("app-updated");
+          cleanUrl.searchParams.delete("app-update-source");
           cleanUrl.searchParams.delete(retryParamName);
           cleanUrl.searchParams.delete(retryReasonParamName);
           window.history.replaceState(window.history.state, "", cleanUrl.toString());
