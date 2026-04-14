@@ -90,7 +90,11 @@ export const LivePriceCard = defineComponent({
       const t = ctx?.t as ((messageKey: string) => string) | undefined;
       if (typeof t === "function") {
         const translated = t(key);
-        if (typeof translated === "string" && translated.trim()) {
+        if (
+          typeof translated === "string"
+          && translated.trim()
+          && translated.trim() !== key
+        ) {
           return translated;
         }
       }
@@ -253,6 +257,18 @@ export const LivePriceCard = defineComponent({
       return this.translate(
         "livePriceCardTargetDecisionProfitLabel",
         "Lot outcome"
+      );
+    },
+    onTargetLabel(): string {
+      return this.translate(
+        "livePriceCardOnTargetLabel",
+        "On target"
+      );
+    },
+    onTargetSummaryLabel(): string {
+      return this.translate(
+        "livePriceCardOnTargetSummaryLabel",
+        "You are on target. Nothing to adjust here."
       );
     },
     neededProfitSummaryLabel(): string {

@@ -3,8 +3,8 @@
   <div v-if="currentLotType === 'singles'" class="live-singles-shell">
     <live-singles-panel ref="liveSinglesPanel"></live-singles-panel>
   </div>
-  <v-row v-else dense>
-    <v-col cols="12">
+  <v-row v-else dense class="live-pricing-grid">
+    <v-col cols="12" md="6" lg="4" class="live-pricing-grid__col">
       <live-price-card
         :ctx="ctx"
         v-model="livePackPrice"
@@ -26,7 +26,7 @@
       ></live-price-card>
     </v-col>
 
-    <v-col cols="12">
+    <v-col cols="12" md="6" lg="4" class="live-pricing-grid__col">
       <live-price-card
         :ctx="ctx"
         v-model="liveBoxPriceSell"
@@ -48,7 +48,7 @@
       ></live-price-card>
     </v-col>
 
-    <v-col cols="12">
+    <v-col cols="12" md="6" lg="4" class="live-pricing-grid__col">
       <live-price-card
         :ctx="ctx"
         v-model="liveSpotPrice"

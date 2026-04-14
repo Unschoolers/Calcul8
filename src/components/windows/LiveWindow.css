@@ -7,6 +7,19 @@
   width: 100%;
 }
 
+.live-pricing-grid {
+  width: min(100%, 1480px);
+  margin: 0 auto;
+}
+
+.live-pricing-grid__col {
+  display: flex;
+}
+
+.live-pricing-grid__col > * {
+  width: 100%;
+}
+
 .live-singles-shell {
   width: min(100%, 1120px);
   margin: 0 auto;
@@ -32,21 +45,26 @@
 .live-pricing-card__body {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
+  height: 100%;
 }
 
 .live-pricing-card__hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  align-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
   gap: 8px;
 }
 
 .live-pricing-card__identity {
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: center;
+  gap: 0.5rem;
   min-width: 0;
+  text-align: center;
+  margin: 0 auto;
+  padding: 0.1rem 0;
 }
 
 .live-pricing-card__avatar {
@@ -60,29 +78,31 @@
 .live-pricing-card__label-cluster {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   min-width: 0;
 }
 
 .live-pricing-card__label {
-  font-size: 1rem;
+  font-size: 0.9rem;
   font-weight: 800;
   letter-spacing: -0.01em;
 }
 
 .live-pricing-card__helper {
-  margin-top: 0.08rem;
+  margin-top: 0.02rem;
   font-size: 0.72rem;
   line-height: 1.35;
   color: rgba(var(--v-theme-on-surface), 0.62);
 }
 
-.live-pricing-card__controls {
-  display: flex;
-  flex-direction: column;
+.live-pricing-card__price-row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 34px;
+  align-items: center;
   gap: 6px;
-  flex-shrink: 0;
-  justify-self: end;
+  width: min(100%, 208px);
+  margin: 0 auto;
 }
 
 .live-pricing-card__hero-price {
@@ -90,14 +110,17 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-width: 102px;
+  min-width: 0;
   gap: 4px;
   text-align: center;
+}
+
+.live-pricing-card__control-button {
   justify-self: center;
 }
 
 .live-pricing-card__price {
-  font-size: clamp(1.72rem, 2.6vw, 2.08rem);
+  font-size: clamp(1.68rem, 2.35vw, 2rem);
   font-weight: 900;
   line-height: 1;
   letter-spacing: -0.04em;
@@ -105,7 +128,7 @@
 
 .live-pricing-card__profit-chip {
   font-weight: 800;
-  font-size: 0.74rem;
+  font-size: 0.7rem;
   letter-spacing: 0.01em;
 }
 
@@ -117,16 +140,51 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+  min-height: 118px;
 }
 
 .live-pricing-card__decision-tile {
-  gap: 8px;
+  gap: 7px;
+}
+
+.live-pricing-card__decision-tile--success {
+  padding: 0.9rem 1rem;
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(52, 199, 89, 0.08), rgba(52, 199, 89, 0.03)),
+    rgba(var(--v-theme-surface), 0.52);
+  border: 1px solid rgba(52, 199, 89, 0.14);
+}
+
+.live-pricing-card__status-head {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.live-pricing-card__status-title {
+  font-size: 0.9rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.live-pricing-card__status-body {
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: rgba(var(--v-theme-on-surface), 0.72);
 }
 
 .live-pricing-card__decision-head {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+}
+
+.live-pricing-card__decision-title {
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: rgba(var(--v-theme-on-surface), 0.82);
 }
 
 .live-pricing-card__decision-main {
@@ -137,13 +195,13 @@
 }
 
 .live-pricing-card__decision-gap {
-  font-size: 0.76rem;
+  font-size: 0.74rem;
   font-weight: 800;
   line-height: 1.2;
 }
 
 .live-pricing-card__decision-price {
-  font-size: 1.3rem;
+  font-size: 1.22rem;
   font-weight: 900;
   letter-spacing: -0.02em;
 }
@@ -161,7 +219,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding-top: 6px;
+  padding-top: 5px;
   margin-top: 2px;
   border-top: 1px solid rgba(var(--v-theme-on-surface), 0.08);
 }
@@ -208,16 +266,18 @@
   display: flex;
   flex-direction: column;
   gap: 3px;
-  padding: 8px 10px;
+  padding: 7px 10px;
   border-radius: 14px;
-  background: rgba(var(--v-theme-surface), 0.48);
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+  background: rgba(var(--v-theme-surface), 0.42);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.05);
 }
 
 .live-pricing-card__metric-tile--needed {
   background:
-    linear-gradient(180deg, rgba(var(--v-theme-on-surface), 0.035), rgba(var(--v-theme-on-surface), 0.018)),
-    rgba(var(--v-theme-surface), 0.52);
+    linear-gradient(180deg, rgba(var(--v-theme-on-surface), 0.045), rgba(var(--v-theme-on-surface), 0.02)),
+    rgba(var(--v-theme-surface), 0.56);
+  border-color: rgba(var(--v-theme-on-surface), 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
 }
 
 .live-pricing-card__metric-label {
@@ -250,8 +310,8 @@
 
 .live-pricing-card__scenario-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 5px;
 }
 
 .live-pricing-card__scenario-head {
@@ -267,22 +327,22 @@
   min-height: 1.55rem;
   padding: 0.14rem 0.5rem;
   border-radius: 999px;
-  background: rgba(var(--v-theme-on-surface), 0.06);
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  font-size: 0.7rem;
+  background: rgba(var(--v-theme-on-surface), 0.045);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.05);
+  font-size: 0.68rem;
   font-weight: 800;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.03em;
   text-transform: uppercase;
 }
 
 .live-pricing-card__scenario-price {
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   font-weight: 700;
-  color: rgba(var(--v-theme-on-surface), 0.62);
+  color: rgba(var(--v-theme-on-surface), 0.58);
 }
 
 .live-pricing-card__scenario-percent {
-  font-size: 0.76rem;
+  font-size: 0.72rem;
   font-weight: 700;
   color: rgba(var(--v-theme-on-surface), 0.58);
 }
@@ -306,7 +366,7 @@
   }
 
   .live-pricing-card__hero {
-    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    gap: 8px;
   }
 
   .live-pricing-card__identity {
@@ -319,6 +379,16 @@
 
   .live-pricing-card__hero-price {
     min-width: 84px;
+  }
+
+  .live-pricing-card__price-row {
+    grid-template-columns: 36px minmax(0, 1fr) 36px;
+    gap: 8px;
+    width: min(100%, 220px);
+  }
+
+  .live-pricing-card__target-summary {
+    min-height: 0;
   }
 
   .live-pricing-card__metric-tile,
@@ -338,5 +408,11 @@
 
   .live-pricing-card__label-cluster {
     gap: 6px;
+  }
+}
+
+@media (max-width: 959px) {
+  .live-pricing-card__scenario-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

@@ -2,9 +2,7 @@
   <v-card-text class="pa-3 live-pricing-card__body">
     <div class="live-pricing-card__hero">
       <div class="live-pricing-card__identity">
-        <v-avatar :color="avatarColor" size="42" class="live-pricing-card__avatar">
-          <v-icon color="white" size="24">{{ icon }}</v-icon>
-        </v-avatar>
+        <v-icon color="white" size="18">{{ icon }}</v-icon>
         <div class="live-pricing-card__identity-copy">
           <div class="live-pricing-card__label-cluster">
             <div class="live-pricing-card__label">{{ label }}</div>
@@ -15,19 +13,7 @@
         </div>
       </div>
 
-      <div class="live-pricing-card__hero-price">
-        <div class="live-pricing-card__price">${{ formatCurrency(modelValue) }}</div>
-        <v-chip
-          :color="displayProfit() >= 0 ? 'success' : 'error'"
-          size="small"
-          class="live-pricing-card__profit-chip live-pricing-card__profit-chip--center"
-        >
-          {{ displayProfit() >= 0 ? '+' : '' }}${{ formatCurrency(displayProfit()) }}
-          ({{ formatCurrency(displayProfitPercent(), 1) }}%)
-        </v-chip>
-      </div>
-
-      <div class="live-pricing-card__controls">
+      <div class="live-pricing-card__price-row">
         <v-btn
           icon="mdi-minus"
           size="small"
@@ -36,7 +22,21 @@
           :title="priceAdjustLabel(-1)"
           :aria-label="priceAdjustLabel(-1)"
           @click="changePrice(-1)"
+          class="live-pricing-card__control-button"
         ></v-btn>
+
+        <div class="live-pricing-card__hero-price">
+          <div class="live-pricing-card__price">${{ formatCurrency(modelValue) }}</div>
+          <v-chip
+            :color="displayProfit() >= 0 ? 'success' : 'error'"
+            size="small"
+            class="live-pricing-card__profit-chip live-pricing-card__profit-chip--center"
+          >
+            {{ displayProfit() >= 0 ? '+' : '' }}${{ formatCurrency(displayProfit()) }}
+            ({{ formatCurrency(displayProfitPercent(), 1) }}%)
+          </v-chip>
+        </div>
+
         <v-btn
           icon="mdi-plus"
           size="small"
@@ -45,6 +45,7 @@
           :title="priceAdjustLabel(1)"
           :aria-label="priceAdjustLabel(1)"
           @click="changePrice(1)"
+          class="live-pricing-card__control-button"
         ></v-btn>
       </div>
     </div>
@@ -59,7 +60,7 @@
       <template v-else-if="shouldShowTargetDecision()">
         <div class="live-pricing-card__decision-tile live-pricing-card__metric-tile live-pricing-card__metric-tile--needed">
           <div class="live-pricing-card__decision-head">
-            <div class="live-pricing-card__metric-label">{{ targetDecisionLabel() }} : {{ targetDecisionPriceLabel() }}</div>
+            <div class="live-pricing-card__decision-title">{{ targetDecisionLabel() }}</div>
           </div>
           <div class="live-pricing-card__decision-main">
             <div class="live-pricing-card__decision-price">${{ formatCurrency(avgPriceNeeded)  }}</div>
@@ -84,6 +85,17 @@
                 {{ formatCurrency(neededDisplayPercent() || 0, 1) }}%
               </div>
             </div>
+          </div>
+        </div>
+      </template>
+      <template v-else>
+        <div class="live-pricing-card__decision-tile live-pricing-card__decision-tile--success">
+          <div class="live-pricing-card__status-head">
+            <v-icon size="16" color="success">mdi-check-circle</v-icon>
+            <div class="live-pricing-card__status-title">{{ onTargetLabel() }}</div>
+          </div>
+          <div class="live-pricing-card__status-body">
+            {{ onTargetSummaryLabel() }}
           </div>
         </div>
       </template>

@@ -162,3 +162,18 @@ test("shouldShowTargetDecision only returns true when there is meaningful drift 
   context.remainingUnits = 0;
   assert.equal(shouldShowTargetDecision.call(context as CardCtx & { avgPriceNeeded?: number | null }), false);
 });
+
+test("translate falls back when the i18n layer returns the raw key", () => {
+  const context = createContext({
+    ctx: {
+      t: (key: string) => key
+    }
+  } as Partial<CardCtx> & { ctx: { t: (key: string) => string } });
+
+  const translate = getMethod<(this: CardCtx & { ctx?: { t: (key: string) => string } }, key: string, fallback: string) => string>("translate");
+
+  assert.equal(
+    translate.call(context as CardCtx & { ctx?: { t: (key: string) => string } }, "missingKey", "Fallback copy"),
+    "Fallback copy"
+  );
+});
