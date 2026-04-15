@@ -60,6 +60,11 @@ type SyncModeInput = {
   livePricingMode: "lot_defaults" | "entity";
 };
 
+export interface LotSalesSyncMetaRecord {
+  activeCount: number;
+  latestUpdatedAt: string | null;
+}
+
 function normalizeId(raw: string | number): string {
   return String(raw ?? "").trim();
 }
@@ -183,6 +188,66 @@ export async function listSalesForLot(
   lotId: string
 ): Promise<SaleDocument[]> {
   return listSalesForScope(config, scopeKey, [lotId]);
+}
+
+export async function getLotSalesSyncMeta(
+  config: ApiConfig,
+  scopeKey: string,
+  lotId: string
+): Promise<LotSalesSyncMetaRecord> {
+  const { syncSnapshots } = getContainers(config);
+  const normalizedScopeKey = normalizeId(scopeKey);
+  const normalizedLotId = normalizeId(lotId);
+
+  const activeCountIterator = syncSnapshots.items.query<number>({
+    query: `
+      SELECT VALUE COUNT(1)
+      FROM c
+      WHERE c.userId = @scopeKey
+        AND c.docType = @docType
+        AND c.lotId = @lotId
+        AND (NOT IS_DEFINED(c.deletedAt) OR IS_NULL(c.deletedAt))
+    `,
+    parameters: [
+      { name: "@scopeKey", value: normalizedScopeKey },
+      { name: "@docType", value: "sale" },
+      { name: "@lotId", value: normalizedLotId }
+    ]
+  }, {
+    partitionKey: normalizedScopeKey
+  });
+  const latestUpdatedAtIterator = syncSnapshots.items.query<string>({
+    query: `
+      SELECT TOP 1 VALUE c.updatedAt
+      FROM c
+      WHERE c.userId = @scopeKey
+        AND c.docType = @docType
+        AND c.lotId = @lotId
+      ORDER BY c.updatedAt DESC
+    `,
+    parameters: [
+      { name: "@scopeKey", value: normalizedScopeKey },
+      { name: "@docType", value: "sale" },
+      { name: "@lotId", value: normalizedLotId }
+    ]
+  }, {
+    partitionKey: normalizedScopeKey
+  });
+
+  const [{ resources: activeCountResources }, { resources: latestUpdatedAtResources }] = await Promise.all([
+    withCosmosRetry(() => activeCountIterator.fetchAll()),
+    withCosmosRetry(() => latestUpdatedAtIterator.fetchAll())
+  ]);
+
+  const activeCount = Number(activeCountResources?.[0]);
+  const latestUpdatedAt = typeof latestUpdatedAtResources?.[0] === "string" && latestUpdatedAtResources[0].trim()
+    ? latestUpdatedAtResources[0]
+    : null;
+
+  return {
+    activeCount: Number.isFinite(activeCount) && activeCount >= 0 ? Math.floor(activeCount) : 0,
+    latestUpdatedAt
+  };
 }
 
 export async function getSaleDocument(

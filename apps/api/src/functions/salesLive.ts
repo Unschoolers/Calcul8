@@ -14,6 +14,7 @@ import { handleApiFunctionError } from "./function-error-helpers";
 import {
   deleteLotSaleForActor,
   getLotLivePricingForActor,
+  getLotSalesSyncMetaForActor,
   listAllSalesForActor,
   listLotSalesForActor,
   mintLotRealtimeTokenForActor,
@@ -240,6 +241,36 @@ export async function allSalesList(
     return jsonResponse(request, config, 200, responseBody);
   } catch (error) {
     return handleEntityError(request, context, error, "Failed to load sales.", "all_sales_list", workspaceId);
+  }
+}
+
+export async function lotSalesMetaGet(
+  request: HttpRequest,
+  context: InvocationContext
+): Promise<HttpResponseInit> {
+  const config = getConfig();
+  const workspaceId = parseWorkspaceIdFromRequest(request, null);
+  const guardResponse = maybeHandleHttpGuards(request, config);
+  if (guardResponse) return guardResponse;
+
+  try {
+    const actorUserId = await resolveUserId(request, config, {
+      telemetry: {
+        logger: context,
+        route: "lot_sales_meta_get",
+        workspaceScope: getWorkspaceScope(workspaceId)
+      }
+    });
+    const syncScope = resolveSyncScope(actorUserId, workspaceId);
+    await assertSyncScopeAccess(
+      syncScope,
+      (userId, nextWorkspaceId) => hasWorkspaceMembership(config, userId, nextWorkspaceId)
+    );
+    const lotId = requireRouteParam(request, "lotId");
+    const responseBody = await getLotSalesSyncMetaForActor(config, actorUserId, workspaceId, lotId);
+    return jsonResponse(request, config, 200, responseBody);
+  } catch (error) {
+    return handleEntityError(request, context, error, "Failed to load lot sales metadata.", "lot_sales_meta_get", workspaceId);
   }
 }
 
@@ -541,6 +572,13 @@ app.http("allSalesRoute", {
   authLevel: "anonymous",
   route: "sales",
   handler: allSalesRoute
+});
+
+app.http("lotSalesMetaRoute", {
+  methods: ["GET", "OPTIONS"],
+  authLevel: "anonymous",
+  route: "lots/{lotId}/sales-meta",
+  handler: lotSalesMetaGet
 });
 
 app.http("lotSalesDelete", {

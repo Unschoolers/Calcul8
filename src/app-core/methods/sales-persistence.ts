@@ -2,6 +2,7 @@ import type { Sale } from "../../types/app.ts";
 import type { AppContext } from "../context-app.ts";
 import { removeById, upsertById } from "../shared/collection-updaters.ts";
 import { cacheAuthoritativeSales, canUseAuthoritativeSalesLiveApi, deleteAuthoritativeSale, fetchAuthoritativeSales, SalesLiveApiError, saveAuthoritativeSale } from "./sales-live-api.ts";
+import { buildLotSalesSyncMetaFromSales, persistStoredLotSalesSyncMeta } from "./sales-freshness.ts";
 import { refreshChartsForCurrentTab } from "./sales-ui-helpers.ts";
 
 type SaleMutationState = {
@@ -90,6 +91,7 @@ export function saveSaleAuthoritatively(
         params.editingSaleId != null ? [params.editingSaleId] : []
       );
       deps.cacheSales(context, lotId, context.sales);
+      persistStoredLotSalesSyncMeta(context, lotId, buildLotSalesSyncMetaFromSales(context.sales));
       context.cancelSale();
       deps.refreshCharts(context);
     } catch (error) {
@@ -98,6 +100,7 @@ export function saveSaleAuthoritatively(
         if (latestSales) {
           context.sales = latestSales;
           deps.cacheSales(context, lotId, latestSales);
+          persistStoredLotSalesSyncMeta(context, lotId, buildLotSalesSyncMetaFromSales(latestSales));
         }
         context.cancelSale();
         deps.refreshCharts(context);
@@ -192,6 +195,7 @@ export function deleteSaleWithPersistence(
           await deps.deleteSale(context, lotId, saleId, sale.version ?? 0);
           context.sales = removeById(context.sales, saleId);
           deps.cacheSales(context, lotId, context.sales);
+          persistStoredLotSalesSyncMeta(context, lotId, buildLotSalesSyncMetaFromSales(context.sales));
           context.notify("Sale deleted", "info");
           deps.refreshCharts(context);
         } catch (error) {
@@ -200,6 +204,7 @@ export function deleteSaleWithPersistence(
             if (latestSales) {
               context.sales = latestSales;
               deps.cacheSales(context, lotId, latestSales);
+              persistStoredLotSalesSyncMeta(context, lotId, buildLotSalesSyncMetaFromSales(latestSales));
             }
             context.notify("Sales changed in the cloud. Pulled latest sales instead of deleting.", "warning");
             return;

@@ -39,6 +39,7 @@ const LEGACY_STORAGE_KEYS = {
 
 const SALES_PREFIX = "whatfees_sales_";
 const SALES_STATUS_PREFIX = "whatfees_sales_status_";
+const SALES_SYNC_META_PREFIX = "whatfees_sales_sync_meta_";
 const LEGACY_SALES_PREFIX = "rtyh_sales_";
 const WORKSPACE_SCOPE_SEGMENT = "__ws__";
 
@@ -141,9 +142,17 @@ export function getSalesCacheStatusKey(lotId: number, scope: AppStorageScope = {
   return `${SALES_STATUS_PREFIX}${normalizeWorkspaceScopeId(scope.workspaceId)}__${lotId}`;
 }
 
+export function getSalesSyncMetaKey(lotId: number, scope: AppStorageScope = { scopeType: "personal" }): string {
+  if (!isWorkspaceScope(scope)) {
+    return `${SALES_SYNC_META_PREFIX}${lotId}`;
+  }
+  return `${SALES_SYNC_META_PREFIX}${normalizeWorkspaceScopeId(scope.workspaceId)}__${lotId}`;
+}
+
 export function clearScopedSalesStorage(scope: AppStorageScope = { scopeType: "personal" }): void {
   const workspacePrefix = `${SALES_PREFIX}${normalizeWorkspaceScopeId(scope.workspaceId)}__`;
   const workspaceStatusPrefix = `${SALES_STATUS_PREFIX}${normalizeWorkspaceScopeId(scope.workspaceId)}__`;
+  const workspaceSyncMetaPrefix = `${SALES_SYNC_META_PREFIX}${normalizeWorkspaceScopeId(scope.workspaceId)}__`;
   try {
     const keys: string[] = [];
     for (let index = 0; index < localStorage.length; index += 1) {
@@ -154,7 +163,11 @@ export function clearScopedSalesStorage(scope: AppStorageScope = { scopeType: "p
     }
     for (const key of keys) {
       if (isWorkspaceScope(scope)) {
-        if (key.startsWith(workspacePrefix) || key.startsWith(workspaceStatusPrefix)) {
+        if (
+          key.startsWith(workspacePrefix)
+          || key.startsWith(workspaceStatusPrefix)
+          || key.startsWith(workspaceSyncMetaPrefix)
+        ) {
           localStorage.removeItem(key);
         }
         continue;
@@ -163,6 +176,7 @@ export function clearScopedSalesStorage(scope: AppStorageScope = { scopeType: "p
       if (
         (key.startsWith(SALES_PREFIX) && !key.slice(SALES_PREFIX.length).includes("__"))
         || (key.startsWith(SALES_STATUS_PREFIX) && !key.slice(SALES_STATUS_PREFIX.length).includes("__"))
+        || (key.startsWith(SALES_SYNC_META_PREFIX) && !key.slice(SALES_SYNC_META_PREFIX.length).includes("__"))
       ) {
         localStorage.removeItem(key);
       }

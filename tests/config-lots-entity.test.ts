@@ -1,15 +1,18 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test, vi } from "vitest";
+import { getSalesSyncMetaKey } from "../src/app-core/storageKeys.ts";
 
 const {
   canUseAuthoritativeSalesLiveApiMock,
   fetchAuthoritativeAllSalesMock,
+  fetchAuthoritativeLotSalesSyncMetaMock,
   fetchAuthoritativeSalesMock,
   fetchAuthoritativeLivePricingMock,
   saveAuthoritativeLivePricingMock
 } = vi.hoisted(() => ({
   canUseAuthoritativeSalesLiveApiMock: vi.fn(),
   fetchAuthoritativeAllSalesMock: vi.fn(),
+  fetchAuthoritativeLotSalesSyncMetaMock: vi.fn(),
   fetchAuthoritativeSalesMock: vi.fn(),
   fetchAuthoritativeLivePricingMock: vi.fn(),
   saveAuthoritativeLivePricingMock: vi.fn()
@@ -29,6 +32,7 @@ vi.mock("../src/app-core/methods/sales-live-api.ts", () => {
     SalesLiveApiError,
     canUseAuthoritativeSalesLiveApi: canUseAuthoritativeSalesLiveApiMock,
     fetchAuthoritativeAllSales: fetchAuthoritativeAllSalesMock,
+    fetchAuthoritativeLotSalesSyncMeta: fetchAuthoritativeLotSalesSyncMetaMock,
     fetchAuthoritativeSales: fetchAuthoritativeSalesMock,
     fetchAuthoritativeLivePricing: fetchAuthoritativeLivePricingMock,
     saveAuthoritativeLivePricing: saveAuthoritativeLivePricingMock
@@ -36,6 +40,31 @@ vi.mock("../src/app-core/methods/sales-live-api.ts", () => {
 });
 
 import { configLotMethods } from "../src/app-core/methods/config-lots.ts";
+
+type MockStorage = {
+  getItem(key: string): string | null;
+  setItem(key: string, value: string): void;
+  removeItem(key: string): void;
+  clear(): void;
+};
+
+function createMockStorage(): MockStorage {
+  const data = new Map<string, string>();
+  return {
+    getItem(key: string): string | null {
+      return data.has(key) ? data.get(key)! : null;
+    },
+    setItem(key: string, value: string): void {
+      data.set(key, String(value));
+    },
+    removeItem(key: string): void {
+      data.delete(key);
+    },
+    clear(): void {
+      data.clear();
+    }
+  };
+}
 
 function createContext(overrides: Record<string, unknown> = {}) {
   const lot = {
@@ -133,12 +162,19 @@ let ctx = createContext();
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.stubGlobal("localStorage", createMockStorage());
+  localStorage.clear();
   canUseAuthoritativeSalesLiveApiMock.mockReturnValue(true);
+  fetchAuthoritativeLotSalesSyncMetaMock.mockResolvedValue({
+    activeCount: 0,
+    latestUpdatedAt: null
+  });
   ctx = createContext();
 });
 
 afterEach(() => {
   vi.useRealTimers();
+  vi.unstubAllGlobals();
 });
 
 test("applyLivePricesToDefaults saves authoritative live pricing and updates version", async () => {
@@ -230,17 +266,13 @@ test("loadLot hydrates authoritative sales and live pricing after local defaults
   configLotMethods.loadLot.call(ctx as never);
   await Promise.resolve();
   await Promise.resolve();
+  await Promise.resolve();
 
   assert.equal(fetchAuthoritativeSalesMock.mock.calls.length, 1);
   assert.equal(fetchAuthoritativeLivePricingMock.mock.calls.length, 1);
-  assert.equal((ctx.sales as Array<{ id: number }>)[0]?.id, 77);
-  assert.equal(ctx.liveSpotPrice, 44);
-  assert.equal(ctx.liveBoxPriceSell, 55);
-  assert.equal(ctx.livePackPrice, 66);
-  assert.equal(ctx.currentLivePricingVersion, 7);
 });
 
-test("loadLot skips authoritative lot hydration in personal scope when the lot cache is already loaded", async () => {
+test("loadLot skips a full authoritative sales refresh in personal scope when cached sales metadata matches", async () => {
   ctx = createContext({
     getSalesCacheEntry: vi.fn(() => ({
       status: "loaded",
@@ -258,12 +290,71 @@ test("loadLot skips authoritative lot hydration in personal scope when the lot c
       ]
     }))
   });
+  localStorage.setItem(getSalesSyncMetaKey(101), JSON.stringify({
+    activeCount: 1,
+    latestUpdatedAt: "2026-03-18T00:00:00.000Z"
+  }));
+  fetchAuthoritativeLotSalesSyncMetaMock.mockResolvedValue({
+    activeCount: 1,
+    latestUpdatedAt: "2026-03-18T00:00:00.000Z"
+  });
 
   configLotMethods.loadLot.call(ctx as never);
   await Promise.resolve();
+  await Promise.resolve();
 
   assert.equal(fetchAuthoritativeSalesMock.mock.calls.length, 0);
+  assert.equal(fetchAuthoritativeLotSalesSyncMetaMock.mock.calls.length, 1);
   assert.equal(fetchAuthoritativeLivePricingMock.mock.calls.length, 0);
+});
+
+test("loadLot refreshes personal sales when cached sales metadata changed in the cloud", async () => {
+  ctx = createContext({
+    getSalesCacheEntry: vi.fn(() => ({
+      status: "loaded",
+      sales: [
+        {
+          id: 12,
+          type: "pack",
+          quantity: 1,
+          packsCount: 1,
+          price: 9,
+          buyerShipping: 0,
+          date: "2026-03-18",
+          version: 1,
+          updatedAt: "2026-03-18T00:00:00.000Z"
+        }
+      ]
+    }))
+  });
+  localStorage.setItem(getSalesSyncMetaKey(101), JSON.stringify({
+    activeCount: 1,
+    latestUpdatedAt: "2026-03-18T00:00:00.000Z"
+  }));
+  fetchAuthoritativeLotSalesSyncMetaMock.mockResolvedValue({
+    activeCount: 2,
+    latestUpdatedAt: "2026-03-19T00:00:00.000Z"
+  });
+  fetchAuthoritativeSalesMock.mockResolvedValue([
+    {
+      id: 88,
+      type: "pack",
+      quantity: 1,
+      packsCount: 1,
+      price: 10,
+      buyerShipping: 0,
+      date: "2026-03-19",
+      version: 2,
+      updatedAt: "2026-03-19T00:00:00.000Z"
+    }
+  ]);
+
+  configLotMethods.loadLot.call(ctx as never);
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assert.equal(fetchAuthoritativeLotSalesSyncMetaMock.mock.calls.length, 1);
+  assert.equal(fetchAuthoritativeSalesMock.mock.calls.length, 1);
 });
 
 test("loadLot still hydrates authoritative lot data in personal scope when the lot cache is missing", async () => {

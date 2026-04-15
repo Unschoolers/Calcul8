@@ -1,6 +1,7 @@
 import { HttpError } from "../lib/auth";
 import {
   deleteSaleDocument,
+  getLotSalesSyncMeta,
   getLotLivePricing,
   listSalesForLot,
   listSalesForScope,
@@ -98,6 +99,31 @@ export async function listAllSalesForActor(
   }
 
   return { salesByLot };
+}
+
+export async function getLotSalesSyncMetaForActor(
+  config: ApiConfig,
+  actorUserId: string,
+  workspaceId: string | undefined,
+  lotId: string
+): Promise<{
+  lotId: string;
+  salesMeta: {
+    activeCount: number;
+    latestUpdatedAt: string | null;
+  };
+}> {
+  const syncScope = resolveSyncScope(actorUserId, workspaceId);
+  await assertSyncScopeAccess(
+    syncScope,
+    (userId, nextWorkspaceId) => hasWorkspaceMembership(config, userId, nextWorkspaceId)
+  );
+
+  const salesMeta = await getLotSalesSyncMeta(config, syncScope.partitionKey, lotId);
+  return {
+    lotId,
+    salesMeta
+  };
 }
 
 export async function upsertLotSaleForActor(

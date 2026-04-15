@@ -2,6 +2,7 @@ import type { AppWatchObject } from "./context-contracts.ts";
 import { resetWhatnotSignedOutState, resetWhatnotTransientUiState } from "./methods/ui/whatnot.ts";
 import { refreshWorkspaceRealtime, stopWorkspaceRealtime } from "./methods/ui/workspace-realtime.ts";
 import { hydrateMissingPortfolioSales } from "./methods/sales-portfolio-hydration.ts";
+import { refreshPersonalLotSalesIfStale } from "./methods/sales-freshness.ts";
 import { getScopedLastLotStorageKey, STORAGE_KEYS } from "./storageKeys.ts";
 import { getActiveStorageScope } from "./workspace-scope.ts";
 
@@ -135,6 +136,11 @@ export const appWatch: AppWatchObject = {
 
     this.startCloudSyncScheduler();
     refreshWorkspaceRealtime(this);
+    if (this.currentLotId) {
+      void refreshPersonalLotSalesIfStale(this, this.currentLotId).catch((error) => {
+        console.warn("Failed to refresh personal lot sales after sign-in", error);
+      });
+    }
     void this.refreshWorkspaces();
     void this.refreshWhatnotStatus().then(() => {
       if (!this.whatnotCallbackStatus) return;
@@ -280,4 +286,3 @@ export const appWatch: AppWatchObject = {
     deep: true
   }
 };
-

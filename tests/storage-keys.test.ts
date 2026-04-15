@@ -4,6 +4,7 @@ import {
   clearScopedSalesStorage,
   getSalesCacheStatusKey,
   getLegacySalesStorageKey,
+  getSalesSyncMetaKey,
   getSalesStorageKey,
   migrateLegacySalesKey,
   readStorageWithLegacy
@@ -113,16 +114,23 @@ test("clearScopedSalesStorage removes only personal sales cache keys in personal
     data.set(getSalesStorageKey(1), JSON.stringify([{ id: 1 }]));
     data.set(getSalesStorageKey(2), JSON.stringify([{ id: 2 }]));
     data.set(getSalesCacheStatusKey(1), "loaded");
+    data.set(getSalesSyncMetaKey(1), JSON.stringify({ activeCount: 1, latestUpdatedAt: "2026-03-18T00:00:00.000Z" }));
     data.set(getSalesStorageKey(7, { scopeType: "workspace", workspaceId: "team-42" }), JSON.stringify([{ id: 7 }]));
     data.set(getSalesCacheStatusKey(7, { scopeType: "workspace", workspaceId: "team-42" }), "loaded");
+    data.set(
+      getSalesSyncMetaKey(7, { scopeType: "workspace", workspaceId: "team-42" }),
+      JSON.stringify({ activeCount: 1, latestUpdatedAt: "2026-03-18T00:00:00.000Z" })
+    );
 
     clearScopedSalesStorage({ scopeType: "personal" });
 
     assert.equal(data.has(getSalesStorageKey(1)), false);
     assert.equal(data.has(getSalesStorageKey(2)), false);
     assert.equal(data.has(getSalesCacheStatusKey(1)), false);
+    assert.equal(data.has(getSalesSyncMetaKey(1)), false);
     assert.equal(data.has(getSalesStorageKey(7, { scopeType: "workspace", workspaceId: "team-42" })), true);
     assert.equal(data.has(getSalesCacheStatusKey(7, { scopeType: "workspace", workspaceId: "team-42" })), true);
+    assert.equal(data.has(getSalesSyncMetaKey(7, { scopeType: "workspace", workspaceId: "team-42" })), true);
   });
 });
 
@@ -131,16 +139,26 @@ test("clearScopedSalesStorage removes only matching workspace sales cache keys i
     data.set(getSalesStorageKey(1), JSON.stringify([{ id: 1 }]));
     data.set(getSalesStorageKey(7, { scopeType: "workspace", workspaceId: "team-42" }), JSON.stringify([{ id: 7 }]));
     data.set(getSalesCacheStatusKey(7, { scopeType: "workspace", workspaceId: "team-42" }), "loaded");
+    data.set(
+      getSalesSyncMetaKey(7, { scopeType: "workspace", workspaceId: "team-42" }),
+      JSON.stringify({ activeCount: 1, latestUpdatedAt: "2026-03-18T00:00:00.000Z" })
+    );
     data.set(getSalesStorageKey(8, { scopeType: "workspace", workspaceId: "team-99" }), JSON.stringify([{ id: 8 }]));
     data.set(getSalesCacheStatusKey(8, { scopeType: "workspace", workspaceId: "team-99" }), "loaded");
+    data.set(
+      getSalesSyncMetaKey(8, { scopeType: "workspace", workspaceId: "team-99" }),
+      JSON.stringify({ activeCount: 1, latestUpdatedAt: "2026-03-18T00:00:00.000Z" })
+    );
 
     clearScopedSalesStorage({ scopeType: "workspace", workspaceId: "team-42" });
 
     assert.equal(data.has(getSalesStorageKey(1)), true);
     assert.equal(data.has(getSalesStorageKey(7, { scopeType: "workspace", workspaceId: "team-42" })), false);
     assert.equal(data.has(getSalesCacheStatusKey(7, { scopeType: "workspace", workspaceId: "team-42" })), false);
+    assert.equal(data.has(getSalesSyncMetaKey(7, { scopeType: "workspace", workspaceId: "team-42" })), false);
     assert.equal(data.has(getSalesStorageKey(8, { scopeType: "workspace", workspaceId: "team-99" })), true);
     assert.equal(data.has(getSalesCacheStatusKey(8, { scopeType: "workspace", workspaceId: "team-99" })), true);
+    assert.equal(data.has(getSalesSyncMetaKey(8, { scopeType: "workspace", workspaceId: "team-99" })), true);
   });
 });
 

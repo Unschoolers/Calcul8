@@ -17,6 +17,7 @@ const {
   hasWorkspaceMembershipMock,
   listSalesForLotMock,
   listSalesForScopeMock,
+  getLotSalesSyncMetaMock,
   upsertSaleDocumentMock,
   deleteSaleDocumentMock,
   getLotLivePricingMock,
@@ -29,6 +30,7 @@ const {
   hasWorkspaceMembershipMock: vi.fn(),
   listSalesForLotMock: vi.fn(),
   listSalesForScopeMock: vi.fn(),
+  getLotSalesSyncMetaMock: vi.fn(),
   upsertSaleDocumentMock: vi.fn(),
   deleteSaleDocumentMock: vi.fn(),
   getLotLivePricingMock: vi.fn(),
@@ -49,6 +51,7 @@ vi.mock("../lib/cosmos/salesRepository", () => ({
   EntityVersionConflictError: EntityVersionConflictErrorMock,
   listSalesForLot: listSalesForLotMock,
   listSalesForScope: listSalesForScopeMock,
+  getLotSalesSyncMeta: getLotSalesSyncMetaMock,
   upsertSaleDocument: upsertSaleDocumentMock,
   deleteSaleDocument: deleteSaleDocumentMock,
   getLotLivePricing: getLotLivePricingMock,
@@ -86,6 +89,7 @@ import {
   allSalesList,
   lotLivePricingGet,
   lotLivePricingSave,
+  lotSalesMetaGet,
   workspaceRealtimeTokenGet,
   lotRealtimeTokenGet,
   lotSalesDelete,
@@ -124,6 +128,10 @@ beforeEach(() => {
   hasWorkspaceMembershipMock.mockResolvedValue(true);
   listSalesForLotMock.mockResolvedValue([]);
   listSalesForScopeMock.mockResolvedValue([]);
+  getLotSalesSyncMetaMock.mockResolvedValue({
+    activeCount: 0,
+    latestUpdatedAt: null
+  });
   deleteSaleDocumentMock.mockResolvedValue({
     saleId: "1"
   });
@@ -203,6 +211,28 @@ test("allSalesList returns grouped sales for the resolved scope and preserves re
         }
       ],
       "11": []
+    }
+  });
+});
+
+test("lotSalesMetaGet returns the lot sales freshness metadata for the resolved scope", async () => {
+  getLotSalesSyncMetaMock.mockResolvedValue({
+    activeCount: 3,
+    latestUpdatedAt: "2026-03-17T00:00:00.000Z"
+  });
+
+  const response = await lotSalesMetaGet(
+    createRequest("GET", undefined, { lotId: "10" }, "workspaceId=team-42") as never,
+    createContext() as never
+  );
+
+  assert.equal(response.status, 200);
+  assert.equal(getLotSalesSyncMetaMock.mock.calls[0]?.[1], "ws:team-42");
+  assert.deepEqual(response.jsonBody, {
+    lotId: "10",
+    salesMeta: {
+      activeCount: 3,
+      latestUpdatedAt: "2026-03-17T00:00:00.000Z"
     }
   });
 });

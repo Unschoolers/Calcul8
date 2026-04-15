@@ -21,6 +21,7 @@ vi.mock("./core", () => ({
 import {
   deleteSaleDocument,
   EntityVersionConflictError,
+  getLotSalesSyncMeta,
   listSalesForScope,
   listSalesForLot,
   listSyncScopeKeys,
@@ -313,6 +314,35 @@ test("listSalesForScope filters by requested lot ids and sorts by lot then date 
     result.map((entry) => `${entry.lotId}:${entry.saleId}`),
     ["lot-1:sale-a", "lot-2:sale-a", "lot-2:sale-b"]
   );
+});
+
+test("getLotSalesSyncMeta returns active count plus latest mutation time for a lot", async () => {
+  const syncSnapshots = createSyncSnapshotsContainer();
+  syncSnapshots.items = {
+    ...syncSnapshots.items,
+    query: vi.fn()
+      .mockReturnValueOnce({
+        fetchAll: vi.fn().mockResolvedValue({
+          resources: [2]
+        })
+      })
+      .mockReturnValueOnce({
+        fetchAll: vi.fn().mockResolvedValue({
+          resources: ["2026-03-18T12:34:56.000Z"]
+        })
+      })
+  };
+  getContainersMock.mockReturnValue({ syncSnapshots });
+
+  const result = await getLotSalesSyncMeta(createConfig(), "user-1", "lot-9");
+
+  assert.equal(syncSnapshots.items.query.mock.calls.length, 2);
+  assert.equal(syncSnapshots.items.query.mock.calls[0]?.[0]?.parameters?.[2]?.value, "lot-9");
+  assert.equal(syncSnapshots.items.query.mock.calls[1]?.[0]?.parameters?.[2]?.value, "lot-9");
+  assert.deepEqual(result, {
+    activeCount: 2,
+    latestUpdatedAt: "2026-03-18T12:34:56.000Z"
+  });
 });
 
 test("upsertLotLivePricing rejects stale base versions", async () => {

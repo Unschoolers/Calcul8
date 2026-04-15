@@ -150,6 +150,11 @@ export interface LotSalesCacheEntry {
   sales: Sale[];
 }
 
+export interface LotSalesSyncMeta {
+  activeCount: number;
+  latestUpdatedAt: string | null;
+}
+
 export interface SinglesSaleCardOption {
   title: string;
   value: number;
@@ -469,6 +474,8 @@ export interface AppState extends LotSetup {
   googleAvatarLoadFailed: boolean;
   onlineListener: (() => void) | null;
   offlineListener: (() => void) | null;
+  windowFocusListener: (() => void) | null;
+  documentVisibilityListener: (() => void) | null;
   beforeInstallPromptListener: ((event: Event) => void) | null;
   appInstalledListener: (() => void) | null;
   hasPwaUiHandlersBound: boolean;

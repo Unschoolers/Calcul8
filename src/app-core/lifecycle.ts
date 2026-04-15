@@ -1,8 +1,10 @@
 import type { AppTab, PortfolioLotTypeFilter } from "../types/app.ts";
+import type { AppContext } from "./context-app.ts";
 import type { AppLifecycleObject } from "./context-contracts.ts";
 import { closeStripeEmbeddedCheckout, handleStripeCheckoutReturn } from "./methods/ui/entitlements-stripe.ts";
 import { stopWorkspaceConfigSyncPush } from "./methods/ui/workspace-config-sync.ts";
 import { refreshWorkspaceRealtime, stopWorkspaceRealtime } from "./methods/ui/workspace-realtime.ts";
+import { refreshPersonalLotSalesIfStale } from "./methods/sales-freshness.ts";
 import {
     getLegacyStorageKeys,
     getScopedLastLotStorageKey,
@@ -21,6 +23,29 @@ function isAppTab(value: unknown): value is AppTab {
 
 function isPortfolioLotTypeFilter(value: unknown): value is PortfolioLotTypeFilter {
   return value === "both" || value === "bulk" || value === "singles";
+}
+
+function refreshForegroundLotSales(context: Pick<
+  AppContext,
+  | "activeScopeType"
+  | "activeWorkspaceId"
+  | "currentLotId"
+  | "getSalesCacheEntry"
+  | "getSalesStorageKey"
+  | "googleAuthEpoch"
+  | "hasProAccess"
+  | "notify"
+> & Partial<Pick<AppContext, "sales" | "salesByLotId">>): void {
+  const currentLotId = Number(context.currentLotId);
+  if (!Number.isFinite(currentLotId) || currentLotId <= 0) return;
+
+  void refreshPersonalLotSalesIfStale(context, currentLotId).catch((error) => {
+    console.warn("Failed to refresh current lot sales on foreground", error);
+  });
+}
+
+function canBindForegroundSalesListeners(): boolean {
+  return typeof window !== "undefined" && typeof document !== "undefined";
 }
 
 export const appLifecycle: AppLifecycleObject = {
@@ -129,6 +154,17 @@ export const appLifecycle: AppLifecycleObject = {
       void this.refreshWhatnotStatus();
     }
     refreshWorkspaceRealtime(this);
+    if (canBindForegroundSalesListeners()) {
+      this.windowFocusListener = () => {
+        refreshForegroundLotSales(this);
+      };
+      window.addEventListener("focus", this.windowFocusListener);
+      this.documentVisibilityListener = () => {
+        if (document.visibilityState !== "visible") return;
+        refreshForegroundLotSales(this);
+      };
+      document.addEventListener("visibilitychange", this.documentVisibilityListener);
+    }
 
     if (import.meta.env.DEV) {
       void this.unregisterServiceWorkersForDev();
@@ -171,6 +207,14 @@ export const appLifecycle: AppLifecycleObject = {
     }
     if (this.onlineListener) window.removeEventListener("online", this.onlineListener);
     if (this.offlineListener) window.removeEventListener("offline", this.offlineListener);
+    if (typeof window !== "undefined" && this.windowFocusListener) {
+      window.removeEventListener("focus", this.windowFocusListener);
+      this.windowFocusListener = null;
+    }
+    if (typeof document !== "undefined" && this.documentVisibilityListener) {
+      document.removeEventListener("visibilitychange", this.documentVisibilityListener);
+      this.documentVisibilityListener = null;
+    }
     if (this.beforeInstallPromptListener) window.removeEventListener("beforeinstallprompt", this.beforeInstallPromptListener);
     if (this.appInstalledListener) window.removeEventListener("appinstalled", this.appInstalledListener);
     if (this.serviceWorkerLoadListener) {

@@ -15,8 +15,7 @@ import { getActiveStorageScope } from "../workspace-scope.ts";
 import {
   canUseAuthoritativeSalesLiveApi,
   fetchAuthoritativeLivePricing,
-  fetchAuthoritativeSales,
-  SalesLiveApiError
+  fetchAuthoritativeSales
 } from "./sales-live-api.ts";
 import { markLivePricingPollingBaseline } from "./ui/lot-entity-polling.ts";
 import { queueWorkspaceConfigSyncPush } from "./ui/workspace-config-sync.ts";
@@ -45,6 +44,10 @@ import {
 } from "./config-live-pricing.ts";
 import { deleteCurrentLotWithPersistence } from "./config-lot-delete.ts";
 import { replaceRootLotSales } from "../shared/sales-root-state.ts";
+import {
+  hydrateAuthoritativeLotSalesWithSyncMeta,
+  refreshPersonalLotSalesIfStale
+} from "./sales-freshness.ts";
 
 const LEGACY_KEYS = getLegacyStorageKeys();
 
@@ -395,27 +398,38 @@ export const configLotMethods: ConfigMethodSubset<
       currentLivePricingVersion: this.currentLivePricingVersion
     });
     this.loadSalesFromStorage();
-    if (canUseAuthoritativeSalesLiveApi() && shouldHydrateAuthoritativeLotData(this, lot.id)) {
+    if (canUseAuthoritativeSalesLiveApi()) {
       const selectedLotId = lot.id;
-      void (async () => {
-        try {
-          const [latestSales, latestLivePricing] = await Promise.all([
-            fetchAuthoritativeSales(this, selectedLotId),
-            fetchAuthoritativeLivePricing(this, selectedLotId)
-          ]);
-          if (this.currentLotId !== selectedLotId) return;
-          if (latestSales) {
-            replaceRootLotSales(this, selectedLotId, latestSales);
+      const shouldHydrateLotData = shouldHydrateAuthoritativeLotData(this, selectedLotId);
+      const isWorkspaceScope = this.activeScopeType === "workspace" && Boolean(this.activeWorkspaceId);
+
+      if (shouldHydrateLotData) {
+        void (async () => {
+          try {
+            const [latestSales, latestLivePricing] = await Promise.all([
+              isWorkspaceScope
+                ? fetchAuthoritativeSales(this, selectedLotId)
+                : hydrateAuthoritativeLotSalesWithSyncMeta(this, selectedLotId),
+              fetchAuthoritativeLivePricing(this, selectedLotId)
+            ]);
+            if (this.currentLotId !== selectedLotId) return;
+            if (latestSales) {
+              replaceRootLotSales(this, selectedLotId, latestSales);
+            }
+            if (latestLivePricing) {
+              applyAuthoritativeLivePricingSnapshot(this, selectedLotId, latestLivePricing);
+            } else {
+              resetAuthoritativeLivePricingState(this);
+            }
+          } catch (error) {
+            console.warn("Failed to hydrate authoritative lot data", error);
           }
-          if (latestLivePricing) {
-            applyAuthoritativeLivePricingSnapshot(this, selectedLotId, latestLivePricing);
-          } else {
-            resetAuthoritativeLivePricingState(this);
-          }
-        } catch (error) {
-          console.warn("Failed to hydrate authoritative lot data", error);
-        }
-      })();
+        })();
+      } else if (!isWorkspaceScope) {
+        void refreshPersonalLotSalesIfStale(this, selectedLotId).catch((error) => {
+          console.warn("Failed to refresh personal lot sales freshness", error);
+        });
+      }
     }
     void this.$nextTick(() => {
       if (this.currentTab === "sales") {

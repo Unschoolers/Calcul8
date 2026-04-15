@@ -1,4 +1,4 @@
-import type { Sale } from "../../types/app.ts";
+import type { LotSalesSyncMeta, Sale } from "../../types/app.ts";
 import type { AppContext } from "../context-app.ts";
 import { hasAuthSignal } from "../auth/index.ts";
 import { fetchAuthenticatedApiResponse, resolveApiBaseUrl } from "./ui/shared.ts";
@@ -37,6 +37,10 @@ type AllSalesResponse = {
 
 type LivePricingResponse = {
   livePricing?: unknown;
+};
+
+type SalesSyncMetaResponse = {
+  salesMeta?: unknown;
 };
 
 type RealtimeTokenResponse = {
@@ -179,6 +183,24 @@ export function normalizeLivePricing(value: unknown): LotLivePricingRecord | nul
   };
 }
 
+export function normalizeLotSalesSyncMeta(value: unknown): LotSalesSyncMeta | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const candidate = value as Record<string, unknown>;
+  const activeCount = Number(candidate.activeCount);
+  const latestUpdatedAt = candidate.latestUpdatedAt;
+
+  if (!Number.isFinite(activeCount) || activeCount < 0) {
+    return null;
+  }
+
+  return {
+    activeCount: Math.floor(activeCount),
+    latestUpdatedAt: typeof latestUpdatedAt === "string" && latestUpdatedAt.trim()
+      ? latestUpdatedAt
+      : null
+  };
+}
+
 function persistSalesCache(
   app: Pick<AppContext, "getSalesStorageKey" | "activeScopeType" | "activeWorkspaceId">,
   lotId: number,
@@ -253,6 +275,24 @@ export async function fetchAuthoritativeSales(
   const sales = normalizeSales(body?.sales);
   persistSalesCache(app, lotId, sales);
   return sales;
+}
+
+export async function fetchAuthoritativeLotSalesSyncMeta(
+  app: SalesLiveApiApp,
+  lotId: number
+): Promise<LotSalesSyncMeta | null> {
+  if (!canUseAuthoritativeSalesLiveApi()) return null;
+
+  const body = await requestJson(
+    app,
+    `/lots/${encodeURIComponent(String(lotId))}/sales-meta${getScopeQuery(app)}`,
+    {
+      method: "GET"
+    },
+    "Failed to load lot sales metadata."
+  ) as SalesSyncMetaResponse | null;
+
+  return normalizeLotSalesSyncMeta(body?.salesMeta);
 }
 
 export async function fetchAuthoritativeAllSales(

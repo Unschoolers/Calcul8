@@ -108,6 +108,8 @@ export function createInitialState(): AppState {
     googleAvatarLoadFailed: false,
     onlineListener: null,
     offlineListener: null,
+    windowFocusListener: null,
+    documentVisibilityListener: null,
     beforeInstallPromptListener: null,
     appInstalledListener: null,
     hasPwaUiHandlersBound: false,

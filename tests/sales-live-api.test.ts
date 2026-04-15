@@ -31,9 +31,11 @@ import {
   deleteAuthoritativeSale,
   fetchAuthoritativeAllSales,
   fetchAuthoritativeLivePricing,
+  fetchAuthoritativeLotSalesSyncMeta,
   fetchAuthoritativeSales,
   fetchWorkspacePresenceRealtimeSubscribeToken,
   fetchWorkspaceRealtimeSubscribeToken,
+  normalizeLotSalesSyncMeta,
   normalizeSale,
   saveAuthoritativeLivePricing,
   saveAuthoritativeSale
@@ -237,6 +239,35 @@ test("fetchAuthoritativeSales normalizes API payload, scopes workspace requests,
   assert.deepEqual(app.salesByLotId.get(42), sales);
 });
 
+test("fetchAuthoritativeLotSalesSyncMeta normalizes the cloud freshness payload", async () => {
+  fetchAuthenticatedApiResponseMock.mockResolvedValue(new Response(JSON.stringify({
+    salesMeta: {
+      activeCount: "4.8",
+      latestUpdatedAt: "2026-03-18T12:00:00Z"
+    }
+  }), {
+    status: 200,
+    headers: {
+      "Content-Type": "application/json"
+    }
+  }));
+
+  const app = createApp({
+    activeScopeType: "workspace",
+    activeWorkspaceId: "team-1"
+  });
+  const salesMeta = await fetchAuthoritativeLotSalesSyncMeta(app, 42);
+
+  assert.deepEqual(salesMeta, {
+    activeCount: 4,
+    latestUpdatedAt: "2026-03-18T12:00:00Z"
+  });
+  assert.equal(
+    fetchAuthenticatedApiResponseMock.mock.calls[0]?.[1],
+    "/lots/42/sales-meta?workspaceId=team-1"
+  );
+});
+
 test("fetchAuthoritativeAllSales normalizes grouped payloads and caches empty lots as loaded", async () => {
   fetchAuthenticatedApiResponseMock.mockResolvedValue(new Response(JSON.stringify({
     salesByLot: {
@@ -376,12 +407,17 @@ test("entity API helpers fail cleanly when api base URL is missing or response J
   fetchAuthenticatedApiResponseMock.mockResolvedValueOnce(new Response("", {
     status: 200
   }));
+  fetchAuthenticatedApiResponseMock.mockResolvedValueOnce(new Response("", {
+    status: 200
+  }));
 
   const sales = await fetchAuthoritativeSales(createApp(), 1);
   const livePricing = await fetchAuthoritativeLivePricing(createApp(), 1);
+  const salesMeta = await fetchAuthoritativeLotSalesSyncMeta(createApp(), 1);
 
   assert.deepEqual(sales, []);
   assert.equal(livePricing, null);
+  assert.equal(salesMeta, null);
 });
 
 test("saveAuthoritativeSale sends session-preferred headers and rejects invalid responses", async () => {
@@ -648,6 +684,19 @@ test("saveAuthoritativeLivePricing rejects invalid response payloads", async () 
       return true;
     }
   );
+});
+
+test("normalizeLotSalesSyncMeta rejects invalid payloads", () => {
+  assert.equal(normalizeLotSalesSyncMeta(null), null);
+  assert.equal(normalizeLotSalesSyncMeta([]), null);
+  assert.equal(normalizeLotSalesSyncMeta({ activeCount: -1 }), null);
+  assert.deepEqual(normalizeLotSalesSyncMeta({
+    activeCount: "0",
+    latestUpdatedAt: ""
+  }), {
+    activeCount: 0,
+    latestUpdatedAt: null
+  });
 });
 
 test("createMutationId uses crypto when available and falls back otherwise", () => {
