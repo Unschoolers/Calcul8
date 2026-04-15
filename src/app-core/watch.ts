@@ -5,6 +5,28 @@ import { hydrateMissingPortfolioSales } from "./methods/sales-portfolio-hydratio
 import { refreshPersonalLotSalesIfStale } from "./methods/sales-freshness.ts";
 import { getScopedLastLotStorageKey, STORAGE_KEYS } from "./storageKeys.ts";
 import { getActiveStorageScope } from "./workspace-scope.ts";
+import type { AppContext } from "./context-app.ts";
+
+function queueCurrentLotSalesFreshnessCheck(
+  context: Pick<
+    AppContext,
+    | "currentLotId"
+    | "activeScopeType"
+    | "activeWorkspaceId"
+    | "getSalesCacheEntry"
+    | "getSalesStorageKey"
+    | "googleAuthEpoch"
+    | "hasProAccess"
+    | "notify"
+  > & Partial<Pick<AppContext, "sales" | "salesByLotId">>,
+  lotIdOverride?: number | null
+): void {
+  const currentLotId = Number(lotIdOverride ?? context.currentLotId);
+  if (!Number.isFinite(currentLotId) || currentLotId <= 0) return;
+  void refreshPersonalLotSalesIfStale(context, currentLotId).catch((error) => {
+    console.warn("Failed to refresh personal lot sales from watcher", error);
+  });
+}
 
 export const appWatch: AppWatchObject = {
   activeScopeType() {
@@ -74,12 +96,14 @@ export const appWatch: AppWatchObject = {
 
     if (newTab === "sales") {
       refreshWorkspaceRealtime(this);
+      queueCurrentLotSalesFreshnessCheck(this);
       this.$nextTick(() => this.initSalesChart());
       return;
     }
 
     if (newTab === "portfolio") {
       refreshWorkspaceRealtime(this);
+      queueCurrentLotSalesFreshnessCheck(this);
       this.$nextTick(() => this.initPortfolioChart());
       return;
     }
@@ -136,11 +160,7 @@ export const appWatch: AppWatchObject = {
 
     this.startCloudSyncScheduler();
     refreshWorkspaceRealtime(this);
-    if (this.currentLotId) {
-      void refreshPersonalLotSalesIfStale(this, this.currentLotId).catch((error) => {
-        console.warn("Failed to refresh personal lot sales after sign-in", error);
-      });
-    }
+    queueCurrentLotSalesFreshnessCheck(this);
     void this.refreshWorkspaces();
     void this.refreshWhatnotStatus().then(() => {
       if (!this.whatnotCallbackStatus) return;
@@ -195,6 +215,7 @@ export const appWatch: AppWatchObject = {
     }
 
     refreshWorkspaceRealtime(this);
+    queueCurrentLotSalesFreshnessCheck(this, newVal);
   },
 
   chartView() {
