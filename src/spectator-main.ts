@@ -4,7 +4,6 @@ import {
     fetchWheelSpectatorSnapshot
 } from "./app-core/methods/ui/wheel-spectator.ts";
 import { resolveRealtimeSocketUrl } from "./app-core/methods/ui/workspace-realtime-state.ts";
-import "./components/windows/wheel/wheel-stage.css";
 import {
     ensureWheelCanvasSize,
     getWheelCanvasDpr,

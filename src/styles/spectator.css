@@ -164,6 +164,94 @@ a {
   padding: 6px 0 2px;
 }
 
+.spectator-wheel-frame .wheel-outer {
+  position: relative;
+  flex-shrink: 0;
+  align-self: center;
+  width: fit-content;
+  max-width: 100%;
+  display: inline-flex;
+  justify-content: center;
+  padding: 8px 22px 12px 8px;
+  box-sizing: border-box;
+  overflow: visible;
+}
+
+.spectator-wheel-frame .wheel-disc {
+  position: relative;
+  display: inline-block;
+  line-height: 0;
+}
+
+.spectator-wheel-frame .wheel-canvas {
+  border-radius: 50%;
+  display: block;
+  filter: none;
+}
+
+.spectator-wheel-frame .wheel-pointer {
+  position: absolute;
+  top: 50%;
+  right: -16px;
+  transform: translateY(-50%);
+  width: 34px;
+  height: 38px;
+  clip-path: polygon(0% 50%, 100% 0%, 90% 50%, 100% 100%);
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, rgb(var(--v-theme-primary)) 65%, white) 0%,
+    rgb(var(--v-theme-primary)) 45%,
+    color-mix(in srgb, rgb(var(--v-theme-primary)) 55%, black) 100%
+  );
+  filter: drop-shadow(-3px 0 4px rgba(0, 0, 0, 0.45));
+  z-index: 10;
+}
+
+.spectator-wheel-frame .wheel-pointer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  clip-path: polygon(0% 50%, 100% 0%, 90% 50%, 100% 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.3) 0%,
+    transparent 50%,
+    rgba(0, 0, 0, 0.15) 100%
+  );
+}
+
+.spectator-wheel-frame .wheel-center-cap {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: rgb(var(--v-theme-surface));
+  border: 3px solid rgb(var(--v-theme-primary));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+  box-shadow: none;
+}
+
+.spectator-wheel-frame .wheel-center-cap__icon {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgb(var(--v-theme-primary));
+  transform-origin: center;
+  transition: transform 80ms linear;
+}
+
+.spectator-wheel-frame .wheel-center-cap__icon svg {
+  display: block;
+}
+
 .spectator-result {
   display: grid;
   gap: 10px;
