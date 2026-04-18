@@ -10,6 +10,10 @@ export function buildWorkspaceWheelRealtimeRoom(workspaceId) {
   return `workspace:${workspaceId}:wheel`;
 }
 
+export function buildWheelPublicSessionRealtimeRoom(publicSessionId) {
+  return `wheel-public:${publicSessionId}`;
+}
+
 export function parseWorkspacePresenceRealtimeRoom(room) {
   const match = /^workspace:([^:]+):presence$/.exec(String(room ?? ""));
   return match?.[1] ? match[1] : null;

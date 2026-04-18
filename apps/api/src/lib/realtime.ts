@@ -25,6 +25,10 @@ export function buildWorkspaceWheelRealtimeRoom(workspaceId: string): string {
   return `workspace:${workspaceId}:wheel`;
 }
 
+export function buildWheelPublicSessionRealtimeRoom(publicSessionId: string): string {
+  return `wheel-public:${publicSessionId}`;
+}
+
 export function signRealtimeSubscribeToken(
   secret: string,
   payload: SignedSubscribeTokenPayload
@@ -49,19 +53,18 @@ function resolveRealtimePublishUrl(config: ApiConfig): string {
   return config.apiEnv === "prod" ? DEFAULT_REALTIME_PUBLISH_URL : "";
 }
 
-export async function publishWorkspaceLotRealtimeEvent(
+async function publishRealtimeRoomEvent(
   config: ApiConfig,
   args: {
-    workspaceId?: string;
-    lotId: string;
+    room: string;
     eventType: string;
     data?: unknown;
     logger?: RealtimeLogger;
+    warningLabel: string;
   }
 ): Promise<boolean> {
-  const workspaceId = String(args.workspaceId ?? "").trim();
-  if (!workspaceId) return false;
-
+  const room = String(args.room ?? "").trim();
+  if (!room) return false;
   const publishUrl = resolveRealtimePublishUrl(config);
   const internalApiKey = String(config.realtimeInternalApiKey ?? "").trim();
   if (!publishUrl || !internalApiKey) return false;
@@ -77,7 +80,7 @@ export async function publishWorkspaceLotRealtimeEvent(
         Authorization: `Bearer ${internalApiKey}`
       },
       body: JSON.stringify({
-        room: buildWorkspaceLotRealtimeRoom(workspaceId, args.lotId),
+        room,
         eventType: args.eventType,
         data: args.data
       }),
@@ -86,7 +89,7 @@ export async function publishWorkspaceLotRealtimeEvent(
 
     if (!response.ok) {
       args.logger?.warn?.(
-        `[realtime] Failed to publish ${args.eventType} for workspace ${workspaceId} lot ${args.lotId} (${response.status}).`
+        `[realtime] Failed to publish ${args.eventType} for ${args.warningLabel} (${response.status}).`
       );
       return false;
     }
@@ -95,12 +98,34 @@ export async function publishWorkspaceLotRealtimeEvent(
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown realtime publish error.";
     args.logger?.warn?.(
-      `[realtime] Failed to publish ${args.eventType} for workspace ${workspaceId} lot ${args.lotId}: ${message}`
+      `[realtime] Failed to publish ${args.eventType} for ${args.warningLabel}: ${message}`
     );
     return false;
   } finally {
     clearTimeout(timeoutId);
   }
+}
+
+export async function publishWorkspaceLotRealtimeEvent(
+  config: ApiConfig,
+  args: {
+    workspaceId?: string;
+    lotId: string;
+    eventType: string;
+    data?: unknown;
+    logger?: RealtimeLogger;
+  }
+): Promise<boolean> {
+  const workspaceId = String(args.workspaceId ?? "").trim();
+  if (!workspaceId) return false;
+
+  return publishRealtimeRoomEvent(config, {
+    room: buildWorkspaceLotRealtimeRoom(workspaceId, args.lotId),
+    eventType: args.eventType,
+    data: args.data,
+    logger: args.logger,
+    warningLabel: `workspace ${workspaceId} lot ${args.lotId}`
+  });
 }
 
 export function publishWorkspaceLotRealtimeEventBestEffort(
@@ -121,46 +146,13 @@ export async function publishWorkspaceWheelRealtimeEvent(
 ): Promise<boolean> {
   const workspaceId = String(args.workspaceId ?? "").trim();
   if (!workspaceId) return false;
-
-  const publishUrl = resolveRealtimePublishUrl(config);
-  const internalApiKey = String(config.realtimeInternalApiKey ?? "").trim();
-  if (!publishUrl || !internalApiKey) return false;
-
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), REALTIME_PUBLISH_TIMEOUT_MS);
-
-  try {
-    const response = await fetch(publishUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${internalApiKey}`
-      },
-      body: JSON.stringify({
-        room: buildWorkspaceWheelRealtimeRoom(workspaceId),
-        eventType: args.eventType,
-        data: args.data
-      }),
-      signal: controller.signal
-    });
-
-    if (!response.ok) {
-      args.logger?.warn?.(
-        `[realtime] Failed to publish ${args.eventType} for workspace ${workspaceId} wheel (${response.status}).`
-      );
-      return false;
-    }
-
-    return true;
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown realtime publish error.";
-    args.logger?.warn?.(
-      `[realtime] Failed to publish ${args.eventType} for workspace ${workspaceId} wheel: ${message}`
-    );
-    return false;
-  } finally {
-    clearTimeout(timeoutId);
-  }
+  return publishRealtimeRoomEvent(config, {
+    room: buildWorkspaceWheelRealtimeRoom(workspaceId),
+    eventType: args.eventType,
+    data: args.data,
+    logger: args.logger,
+    warningLabel: `workspace ${workspaceId} wheel`
+  });
 }
 
 export function publishWorkspaceWheelRealtimeEventBestEffort(
@@ -168,4 +160,32 @@ export function publishWorkspaceWheelRealtimeEventBestEffort(
   args: Parameters<typeof publishWorkspaceWheelRealtimeEvent>[1]
 ): void {
   void publishWorkspaceWheelRealtimeEvent(config, args).catch(() => false);
+}
+
+export async function publishWheelPublicSessionRealtimeEvent(
+  config: ApiConfig,
+  args: {
+    publicSessionId: string;
+    eventType: string;
+    data?: unknown;
+    logger?: RealtimeLogger;
+  }
+): Promise<boolean> {
+  const publicSessionId = String(args.publicSessionId ?? "").trim().toLowerCase();
+  if (!publicSessionId) return false;
+
+  return publishRealtimeRoomEvent(config, {
+    room: buildWheelPublicSessionRealtimeRoom(publicSessionId),
+    eventType: args.eventType,
+    data: args.data,
+    logger: args.logger,
+    warningLabel: `wheel public session ${publicSessionId}`
+  });
+}
+
+export function publishWheelPublicSessionRealtimeEventBestEffort(
+  config: ApiConfig,
+  args: Parameters<typeof publishWheelPublicSessionRealtimeEvent>[1]
+): void {
+  void publishWheelPublicSessionRealtimeEvent(config, args).catch(() => false);
 }

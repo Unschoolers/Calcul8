@@ -165,5 +165,16 @@
   "wheelFairnessSpinNumberLabel": "Spin #{{count}}",
   "wheelFairnessEmptyState": "Spin the wheel to start a fairness history for this session.",
   "wheelEndSessionAction": "End Wheel",
-  "wheelConfigSavedSnackbar": "Wheel configuration saved"
+  "wheelConfigSavedSnackbar": "Wheel configuration saved",
+  "wheelSpectatorAction": "Spectators",
+  "wheelSpectatorDialogTitle": "Spectator Mode",
+  "wheelSpectatorDialogBody": "Show this QR code on stream so viewers can follow the wheel from their own phone.",
+  "wheelSpectatorStatusStarting": "Starting",
+  "wheelSpectatorStatusLive": "Live",
+  "wheelSpectatorStatusEnded": "Recap",
+  "wheelSpectatorStartAction": "Start spectator mode",
+  "wheelSpectatorCopyAction": "Copy link",
+  "wheelSpectatorOpenAction": "Open page",
+  "wheelSpectatorEndAction": "End spectator mode",
+  "wheelSpectatorQrAlt": "QR code for the public wheel spectator page"
 }

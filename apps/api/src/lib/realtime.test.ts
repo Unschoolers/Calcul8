@@ -2,9 +2,11 @@ import assert from "node:assert/strict";
 import { afterEach, beforeEach, test, vi } from "vitest";
 import { createApiConfig } from "../test-support/function-test-helpers";
 import {
+  buildWheelPublicSessionRealtimeRoom,
   buildWorkspaceLotRealtimeRoom,
   buildWorkspacePresenceRealtimeRoom,
   buildWorkspaceWheelRealtimeRoom,
+  publishWheelPublicSessionRealtimeEvent,
   publishWorkspaceLotRealtimeEvent,
   publishWorkspaceLotRealtimeEventBestEffort,
   publishWorkspaceWheelRealtimeEvent,
@@ -25,6 +27,7 @@ test("realtime room helpers build workspace lot, presence, and wheel room names"
   assert.equal(buildWorkspaceLotRealtimeRoom("team-42", "10"), "workspace:team-42:lot:10");
   assert.equal(buildWorkspacePresenceRealtimeRoom("team-42"), "workspace:team-42:presence");
   assert.equal(buildWorkspaceWheelRealtimeRoom("team-42"), "workspace:team-42:wheel");
+  assert.equal(buildWheelPublicSessionRealtimeRoom("abc123xy"), "wheel-public:abc123xy");
 });
 
 test("signRealtimeSubscribeToken normalizes payload fields", () => {
@@ -153,6 +156,32 @@ test("publishWorkspaceWheelRealtimeEvent uses default prod url and logs thrown p
   });
   assert.equal(logger.warn.mock.calls.length, 1);
   assert.match(String(logger.warn.mock.calls[0]?.[0]), /workspace team-42 wheel: network down/);
+});
+
+test("publishWheelPublicSessionRealtimeEvent posts spectator updates to the configured publish url", async () => {
+  const fetchMock = vi.fn().mockResolvedValue({
+    ok: true
+  });
+  globalThis.fetch = fetchMock as typeof fetch;
+
+  const config = createApiConfig({
+    realtimePublishUrl: "https://ws.example/internal/publish",
+    realtimeInternalApiKey: "internal-key"
+  });
+
+  const result = await publishWheelPublicSessionRealtimeEvent(config, {
+    publicSessionId: "abc123xy",
+    eventType: "wheel.public-session.updated",
+    data: { publicSessionId: "abc123xy" }
+  });
+
+  assert.equal(result, true);
+  const requestInit = fetchMock.mock.calls[0]?.[1] as { body: string };
+  assert.deepEqual(JSON.parse(requestInit.body), {
+    room: "wheel-public:abc123xy",
+    eventType: "wheel.public-session.updated",
+    data: { publicSessionId: "abc123xy" }
+  });
 });
 
 test("publishWorkspaceLotRealtimeEventBestEffort schedules publish without throwing", async () => {

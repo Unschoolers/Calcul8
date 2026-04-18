@@ -298,6 +298,12 @@ export const wheelSessionMethods = {
   },
 
   resetWheelSession(this: Record<string, unknown>): void {
+    void ((this as Record<string, unknown> & {
+      endWheelSpectatorMode?: (options?: { notifyOnSuccess?: boolean; closeDialog?: boolean }) => Promise<void>;
+    }).endWheelSpectatorMode?.({
+      notifyOnSuccess: false,
+      closeDialog: false
+    }) ?? Promise.resolve());
     const resetController = getWheelController(this as Record<string, unknown>);
     const slots = resetController.activeSlots as WheelSlot[];
     applyWheelLiveReset(this as Record<string, unknown>, resetController, slots);
@@ -444,6 +450,14 @@ export const wheelSessionMethods = {
         })
       );
     } catch { /* quota exceeded — non-critical */ }
+    if (
+      String((this as Record<string, unknown>).wheelSpectatorSessionId || "").trim()
+      && (this as Record<string, unknown>).wheelSpectatorSessionStatus !== "ended"
+    ) {
+      void ((this as Record<string, unknown> & {
+        publishWheelSpectatorSessionSnapshot?: () => Promise<void>;
+      }).publishWheelSpectatorSessionSnapshot?.() ?? Promise.resolve());
+    }
   },
 
   loadWheelFromSession(this: Record<string, unknown>): boolean {
@@ -532,6 +546,17 @@ export const wheelSessionMethods = {
       controller.spinClientSeed = String(session.wheelSpinClientSeed ?? "");
       controller.spinVerificationUrl = String(session.wheelSpinVerificationUrl ?? "");
       controller.spinAlgorithm = String(session.wheelSpinAlgorithm ?? "");
+      this.wheelSpectatorSessionId = String(session.wheelSpectatorSessionId ?? "");
+      const savedSpectatorStatus = String(session.wheelSpectatorSessionStatus ?? "inactive");
+      this.wheelSpectatorSessionStatus = savedSpectatorStatus === "starting"
+        || savedSpectatorStatus === "live"
+        || savedSpectatorStatus === "ended"
+        ? savedSpectatorStatus
+        : "inactive";
+      this.wheelSpectatorSessionUrl = String(session.wheelSpectatorSessionUrl ?? "");
+      this.wheelSpectatorSessionQrUrl = String(session.wheelSpectatorSessionQrUrl ?? "");
+      this.wheelSpectatorPublishPending = false;
+      (this as Record<string, unknown> & { syncWheelSpectatorLinks?: () => void }).syncWheelSpectatorLinks?.();
       return true;
     } catch {
       return false;

@@ -96,6 +96,59 @@ export interface WheelFairnessEntry {
   timestamp: number;
 }
 
+export type WheelSpectatorSessionStatus = "inactive" | "starting" | "live" | "ended";
+export type WheelSpectatorHeatLevel = "low" | "medium" | "high";
+
+export interface WheelSpectatorFairnessEntry {
+  spinNumber: number;
+  label: string;
+  color: string;
+  verificationUrl?: string;
+  timestamp: number;
+}
+
+export interface WheelSpectatorChaseHistoryEntry {
+  tierId: string;
+  label: string;
+  color: string;
+  count: number;
+}
+
+export interface WheelSpectatorChaseBoardEntry {
+  tierId: string;
+  label: string;
+  color: string;
+  status: "live" | "claimed";
+  hitCount: number;
+  slots: number;
+  remainingHits: number | null;
+  isFeatured?: boolean;
+}
+
+export interface WheelSpectatorSlot {
+  name: string;
+  color: string;
+  tier: string;
+  isChase: boolean;
+}
+
+export interface WheelSpectatorSnapshot {
+  wheelName: string;
+  sessionStatus: Exclude<WheelSpectatorSessionStatus, "inactive">;
+  totalSpins: number;
+  lastResultLabel: string;
+  lastResultColor: string;
+  wheelCurrentAngle: number;
+  wheelSlots: WheelSpectatorSlot[];
+  recentFairnessHistory: WheelSpectatorFairnessEntry[];
+  chaseHistory: WheelSpectatorChaseHistoryEntry[];
+  chaseBoard: WheelSpectatorChaseBoardEntry[];
+  featuredChaseLabel: string | null;
+  featuredChaseHeat: WheelSpectatorHeatLevel | null;
+  fairnessVerificationUrl: string | null;
+  updatedAt: number;
+}
+
 export interface NewSaleDraft {
   type: SaleType;
   quantity: number | null;

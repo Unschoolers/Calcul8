@@ -71,6 +71,22 @@ function calculateWheelSaleNetRevenue(config: WheelConfig, lot: Lot | undefined)
   );
 }
 
+export function calculateWheelTierNetRevenuePerSpin(
+  config: WheelConfig,
+  tier: WheelTier,
+  lots: Lot[] = [],
+  fallback?: FeeProfileInput
+): number {
+  const lot = tier.boundLotId == null ? undefined : lots.find((entry) => entry.id === tier.boundLotId);
+  return calculateWheelNetFromGross(
+    Number(config.spinPrice) || 0,
+    getResolvedLotFeeProfileInput(lot, fallback),
+    1,
+    Number(lot?.sellingShippingPerOrder) || 0,
+    Number(lot?.sellingTaxPercent) || 0
+  );
+}
+
 export function calculateWheelNetFromGross(
   grossRevenue: number,
   feeProfileInput?: FeeProfileInput,

@@ -55,6 +55,73 @@ export interface SessionDocument {
   absoluteExpiresAt: string;
 }
 
+export type WheelPublicSessionStatus = "starting" | "live" | "ended";
+export type WheelSpectatorHeatLevel = "low" | "medium" | "high";
+
+export interface WheelPublicSessionFairnessEntry {
+  spinNumber: number;
+  label: string;
+  color: string;
+  verificationUrl?: string;
+  timestamp: number;
+}
+
+export interface WheelPublicSessionChaseEntry {
+  tierId: string;
+  label: string;
+  color: string;
+  status: "live" | "claimed";
+  hitCount: number;
+  slots: number;
+  remainingHits: number | null;
+  isFeatured?: boolean;
+}
+
+export interface WheelPublicSessionChaseHistoryEntry {
+  tierId: string;
+  label: string;
+  color: string;
+  count: number;
+}
+
+export interface WheelPublicSessionSlot {
+  name: string;
+  color: string;
+  tier: string;
+  isChase: boolean;
+}
+
+export interface WheelPublicSessionSnapshot {
+  wheelName: string;
+  sessionStatus: WheelPublicSessionStatus;
+  totalSpins: number;
+  lastResultLabel: string;
+  lastResultColor: string;
+  wheelCurrentAngle: number;
+  wheelSlots: WheelPublicSessionSlot[];
+  recentFairnessHistory: WheelPublicSessionFairnessEntry[];
+  chaseHistory: WheelPublicSessionChaseHistoryEntry[];
+  chaseBoard: WheelPublicSessionChaseEntry[];
+  featuredChaseLabel: string | null;
+  featuredChaseHeat: WheelSpectatorHeatLevel | null;
+  fairnessVerificationUrl: string | null;
+  updatedAt: number;
+}
+
+export interface WheelPublicSessionDocument {
+  id: string;
+  docType: "wheel_public_session";
+  publicSessionId: string;
+  ownerUserId: string;
+  scopeType: "user" | "workspace";
+  scopeId: string;
+  workspaceId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  endedAt?: string | null;
+  snapshot: WheelPublicSessionSnapshot;
+}
+
 export interface EntitlementDocument {
   id: string;
   userId: string;

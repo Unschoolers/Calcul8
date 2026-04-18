@@ -75,3 +75,7 @@ export function workspaceJoinLinkId(inviteId: string): string {
 export function workspaceDocumentPartitionKey(workspaceId: string): string {
   return buildSyncScopePartitionKey("workspace", workspaceId) ?? `ws:${workspaceId}`;
 }
+
+export function wheelPublicSessionDocumentId(publicSessionId: string): string {
+  return `wheel_public_session:${publicSessionId}`;
+}

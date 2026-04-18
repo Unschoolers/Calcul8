@@ -13,6 +13,16 @@
     </div>
   </div>
   <div class="wheel-stage-actions">
+    <v-btn
+      size="small"
+      variant="tonal"
+      prepend-icon="mdi-qrcode"
+      :color="wheelSpectatorSessionId ? (wheelSpectatorSessionStatus === 'ended' ? 'surface' : 'success') : undefined"
+      :title="t('wheelSpectatorAction')"
+      @click="openWheelSpectatorDialog"
+    >
+      {{ t('wheelSpectatorAction') }}
+    </v-btn>
     <v-btn-toggle
       :model-value="wheelMode"
       mandatory

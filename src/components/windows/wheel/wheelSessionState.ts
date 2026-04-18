@@ -87,7 +87,11 @@ export function createWheelSessionSnapshot(
     wheelSpinSeed: controller.spinSeed,
     wheelSpinClientSeed: controller.spinClientSeed,
     wheelSpinVerificationUrl: controller.spinVerificationUrl,
-    wheelSpinAlgorithm: controller.spinAlgorithm
+    wheelSpinAlgorithm: controller.spinAlgorithm,
+    wheelSpectatorSessionId: String(context.wheelSpectatorSessionId ?? ""),
+    wheelSpectatorSessionStatus: String(context.wheelSpectatorSessionStatus ?? "inactive"),
+    wheelSpectatorSessionUrl: String(context.wheelSpectatorSessionUrl ?? ""),
+    wheelSpectatorSessionQrUrl: String(context.wheelSpectatorSessionQrUrl ?? "")
   };
 }
 
@@ -123,6 +127,7 @@ export function applyWheelLiveReset(
   controller.chaseTallyHistory = [];
   context.wheelEndingSession = false;
   context.wheelEndSessionReviewActive = false;
+  context.wheelSpectatorPublishPending = false;
 }
 
 export function mergeWheelSessionRootFallback(

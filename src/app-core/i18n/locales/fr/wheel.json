@@ -165,5 +165,16 @@
   "wheelFairnessSpinNumberLabel": "Spin #{{count}}",
   "wheelFairnessEmptyState": "Tournez la roue pour demarrer un historique d'equite pour cette session.",
   "wheelEndSessionAction": "Terminer la roue",
-  "wheelConfigSavedSnackbar": "Configuration de la roue enregistrée"
+  "wheelConfigSavedSnackbar": "Configuration de la roue enregistree",
+  "wheelSpectatorAction": "Spectateurs",
+  "wheelSpectatorDialogTitle": "Mode spectateur",
+  "wheelSpectatorDialogBody": "Affichez ce code QR pendant le stream pour que les viewers suivent la roue sur leur telephone.",
+  "wheelSpectatorStatusStarting": "Demarrage",
+  "wheelSpectatorStatusLive": "Live",
+  "wheelSpectatorStatusEnded": "Recap",
+  "wheelSpectatorStartAction": "Demarrer le mode spectateur",
+  "wheelSpectatorCopyAction": "Copier le lien",
+  "wheelSpectatorOpenAction": "Ouvrir la page",
+  "wheelSpectatorEndAction": "Terminer le mode spectateur",
+  "wheelSpectatorQrAlt": "Code QR pour la page publique spectateur de la roue"
 }

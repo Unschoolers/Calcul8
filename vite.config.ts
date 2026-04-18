@@ -22,6 +22,10 @@ export default defineConfig({
     minify: "esbuild",
     chunkSizeWarningLimit: 650,
     rollupOptions: {
+      input: {
+        main: "index.html",
+        spectator: "spectator.html"
+      },
       output: {
         manualChunks(id) {
           if (id.includes("/src/components/windows/whatnot/")) return "whatnot-ui";

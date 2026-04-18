@@ -62,6 +62,12 @@ function resetLoadedWheelSessionState(context: Record<string, unknown>): void {
   controller.showSeed = false;
   controller.fairnessHistoryOpen = false;
   controller.highlightedSlotIndex = -1;
+  context.wheelSpectatorDialog = false;
+  context.wheelSpectatorSessionId = "";
+  context.wheelSpectatorSessionStatus = "inactive";
+  context.wheelSpectatorSessionUrl = "";
+  context.wheelSpectatorSessionQrUrl = "";
+  context.wheelSpectatorPublishPending = false;
 }
 
 function resetLoadedWheelState(context: Record<string, unknown>): void {

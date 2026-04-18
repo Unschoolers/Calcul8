@@ -11,6 +11,7 @@ import {
     resolveWheelCanvasTargetSize,
     resolveWheelLayoutMode
 } from "./wheelLayoutPolicy.ts";
+import { wheelSpectatorMethods } from "./wheelSpectatorMethods.ts";
 import { wheelSessionMethods } from "./wheelSessionMethods.ts";
 import { wheelSpinMethods } from "./wheelSpinMethods.ts";
 
@@ -155,6 +156,7 @@ export const wheelWindowDefinition: any = {
     ...wheelConfigMethods,
     ...wheelSpinMethods,
     ...wheelSessionMethods,
+    ...wheelSpectatorMethods,
     showWheelConfigSaved(this: Record<string, unknown>) {
       (this as Record<string, unknown>).wheelConfigSavedSnackbar = true;
       setTimeout(() => {
