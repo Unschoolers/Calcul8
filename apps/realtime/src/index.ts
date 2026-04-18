@@ -1,9 +1,5 @@
 import { createServer } from "node:http";
 import { WebSocket, WebSocketServer } from "ws";
-import {
-    buildWorkspacePresenceRealtimeRoom,
-    parseWorkspacePresenceRealtimeRoom
-} from "../../../shared/workspace-realtime-rooms.cjs";
 import { getAuthorizedSubscribePayload, isAuthorizedInternalPublisher } from "./realtime-auth.js";
 import {
     type BroadcastPayload,
@@ -21,6 +17,10 @@ import {
     sendJson,
     writeJson
 } from "./realtime-helpers.js";
+import {
+    buildWorkspacePresenceRealtimeRoom,
+    parseWorkspacePresenceRealtimeRoom
+} from "./workspace-realtime-rooms.js";
 
 const port = Number.parseInt(process.env.PORT ?? "8080", 10);
 const allowedOrigins = parseAllowedOrigins(process.env.REALTIME_ALLOWED_ORIGIN);

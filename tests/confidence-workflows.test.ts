@@ -2,31 +2,38 @@ import assert from "node:assert/strict";
 import { afterEach, test, vi } from "vitest";
 
 import {
-  applySinglesCsvImportRows,
-  buildSinglesCsvImportDraft,
-  parseSinglesCsvRowsWithMapping
+    applySinglesCsvImportRows,
+    buildSinglesCsvImportDraft,
+    parseSinglesCsvRowsWithMapping
 } from "../src/app-core/methods/config-lots-import.ts";
 import { normalizeStoredLot } from "../src/app-core/shared/normalize-lot.ts";
 import {
-  getScopedWheelConfigSessionStorageKey,
-  getScopedWheelSessionStorageKey
+    getScopedWheelConfigSessionStorageKey,
+    getScopedWheelSessionStorageKey
 } from "../src/app-core/storageKeys.ts";
-import {
-  calculateLotPerformanceSummary,
-  calculateNetFromGross,
-  calculateSaleProfit,
-  calculateSinglesPurchaseTotalMarketValueInSellingCurrency
-} from "../src/domain/calculations.ts";
 import { createWheelWindowState, getWheelController } from "../src/components/windows/wheel/wheelControllerState.ts";
 import { wheelSessionMethods } from "../src/components/windows/wheel/wheelSessionMethods.ts";
 import { wheelSpinMethods } from "../src/components/windows/wheel/wheelSpinMethods.ts";
+import {
+    calculateLotPerformanceSummary,
+    calculateNetFromGross,
+    calculateSaleProfit,
+    calculateSinglesPurchaseTotalMarketValueInSellingCurrency
+} from "../src/domain/calculations.ts";
 import type { Lot, Sale } from "../src/types/app.ts";
+
+const wheelLayoutHash = "c3ca5e1eef7edf9b0625f714c6eb25287a9e8bcc63a16d0de00ce711ddbe67ad";
 
 vi.mock("../src/app-core/methods/wheel-fairness-api.ts", () => ({
   createWheelFairnessCommit: vi
     .fn(async () => ({
       commitToken: "commit-token",
-      serverSeedHash: "server-seed-hash"
+      serverSeedHash: "server-seed-hash",
+      layoutHash: wheelLayoutHash,
+      slotCount: 1,
+      algorithm: "whatfees-wheel-v1",
+      committedAt: 123,
+      expiresAt: 456
     })),
   revealWheelFairnessResult: vi
     .fn(async (_commitToken: string, clientSeed: string) => ({
@@ -34,8 +41,15 @@ vi.mock("../src/app-core/methods/wheel-fairness-api.ts", () => ({
       serverSeedHash: "server-seed-hash",
       serverSeed: "server-seed-value",
       clientSeed,
+      layoutHash: wheelLayoutHash,
+      slotCount: 1,
       verificationUrl: `https://example.test/wheel/fairness/verify?serverSeed=server-seed-value&clientSeed=${clientSeed}&slotCount=1`,
       algorithm: "whatfees-wheel-v1"
+    })),
+  createWheelFairnessProofLink: vi
+    .fn(async () => ({
+      verificationUrl: "https://example.test/wheel/fairness/verify?proofId=proof-123",
+      jsonUrl: "https://example.test/wheel/fairness/verify?proofId=proof-123&format=json"
     }))
 }));
 

@@ -1,6 +1,6 @@
 import type { WheelFairnessEntry } from "../../../types/app.ts";
-import { getWheelController } from "./wheelControllerState.ts";
 import { getWheelDisplaySlots, isWheelPreviewMode } from "./wheelComputedShared.ts";
+import { getWheelController } from "./wheelControllerState.ts";
 import type { WheelSlot } from "./wheelHelpers.ts";
 
 export type WheelFairnessResult = {
@@ -8,6 +8,7 @@ export type WheelFairnessResult = {
   hash: string;
   seed: string;
   clientSeed?: string;
+  layoutHash?: string;
   verificationUrl?: string;
   algorithm?: string;
 };
@@ -66,6 +67,7 @@ export function buildWheelReadableVerificationUrl(
     slotLabel?: string;
     wheelName?: string;
     spinNumber?: number;
+    slots?: WheelSlot[];
   }
 ): string {
   const rawUrl = String(baseUrl ?? "").trim();
@@ -108,6 +110,7 @@ export function buildWheelSpinFairnessEntry(
     hash: params.fairnessResult.hash,
     seed: params.fairnessResult.seed,
     clientSeed: params.fairnessResult.clientSeed,
+    layoutHash: params.fairnessResult.layoutHash,
     verificationUrl: params.fairnessResult.verificationUrl,
     algorithm: params.fairnessResult.algorithm,
     timestamp: Date.now()

@@ -4,18 +4,31 @@ import { createWheelWindowState, getWheelController } from "../src/components/wi
 import { wheelSessionMethods } from "../src/components/windows/wheel/wheelSessionMethods.ts";
 import { wheelSpinMethods } from "../src/components/windows/wheel/wheelSpinMethods.ts";
 
+const wheelLayoutHash = "c3ca5e1eef7edf9b0625f714c6eb25287a9e8bcc63a16d0de00ce711ddbe67ad";
+
 vi.mock("../src/app-core/methods/wheel-fairness-api.ts", () => ({
   createWheelFairnessCommit: vi.fn(async () => ({
     commitToken: "commit-token",
-    serverSeedHash: "server-seed-hash"
+    serverSeedHash: "server-seed-hash",
+    layoutHash: wheelLayoutHash,
+    slotCount: 1,
+    algorithm: "whatfees-wheel-v1",
+    committedAt: 123,
+    expiresAt: 456
   })),
   revealWheelFairnessResult: vi.fn(async () => ({
     resultIndex: 0,
     serverSeedHash: "server-seed-hash",
     serverSeed: "server-seed-value",
     clientSeed: "client-seed-value",
+    layoutHash: wheelLayoutHash,
+    slotCount: 1,
     verificationUrl: "https://example.com/verify",
     algorithm: "whatfees-wheel-v1"
+  })),
+  createWheelFairnessProofLink: vi.fn(async () => ({
+    verificationUrl: "https://example.com/verify?proofId=proof-123",
+    jsonUrl: "https://example.com/verify?proofId=proof-123&format=json"
   }))
 }));
 

@@ -123,6 +123,28 @@ export interface WheelPublicSessionDocument {
   snapshot: WheelPublicSessionSnapshot;
 }
 
+export interface WheelFairnessProofLayoutSlot {
+  name: string;
+  color: string;
+  tier: string;
+  isChase: boolean;
+}
+
+export interface WheelFairnessProofDocument {
+  id: string;
+  docType: "wheel_fairness_proof";
+  proofId: string;
+  createdAt: string;
+  serverSeed: string;
+  clientSeed: string;
+  slotCount: number;
+  layoutHash: string | null;
+  layoutSlots: WheelFairnessProofLayoutSlot[] | null;
+  slotLabel: string | null;
+  wheelName: string | null;
+  spinNumber: number | null;
+}
+
 export interface EntitlementDocument {
   id: string;
   userId: string;

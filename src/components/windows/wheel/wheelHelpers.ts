@@ -273,6 +273,19 @@ export async function hashSeed(seed: string): Promise<string> {
   return Array.from(new Uint8Array(buffer), (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+export function serializeWheelLayoutForFairness(slots: WheelSlot[]): string {
+  return JSON.stringify(slots.map((slot) => ([
+    String(slot.name || "").trim(),
+    String(slot.color || "").trim().toLowerCase(),
+    String(slot.tier || "").trim(),
+    slot.isChase === true ? 1 : 0
+  ])));
+}
+
+export async function hashWheelLayoutForFairness(slots: WheelSlot[]): Promise<string> {
+  return hashSeed(serializeWheelLayoutForFairness(slots));
+}
+
 export function seedToIndex(seed: string, slotCount: number): number {
   // Use first 8 hex chars (32 bits) of the seed to pick a slot
   const value = parseInt(seed.substring(0, 8), 16);

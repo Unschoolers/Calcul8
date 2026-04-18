@@ -91,6 +91,7 @@ export interface WheelFairnessEntry {
   hash: string;
   seed: string;
   clientSeed?: string;
+  layoutHash?: string;
   verificationUrl?: string;
   algorithm?: string;
   timestamp: number;

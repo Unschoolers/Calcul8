@@ -79,3 +79,7 @@ export function workspaceDocumentPartitionKey(workspaceId: string): string {
 export function wheelPublicSessionDocumentId(publicSessionId: string): string {
   return `wheel_public_session:${publicSessionId}`;
 }
+
+export function wheelFairnessProofDocumentId(proofId: string): string {
+  return `wheel_fairness_proof:${proofId}`;
+}

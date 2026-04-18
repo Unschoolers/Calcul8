@@ -12,7 +12,11 @@ test("buildWheelReadableVerificationUrl targets the public proof view", () => {
     {
       slotLabel: "1 Pack",
       wheelName: "Demo Wheel",
-      spinNumber: 7
+      spinNumber: 7,
+      slots: [
+        { name: "1 Pack", color: "#f00", cost: 1, tier: "tier-1", packsCount: 1, deductionType: "packs", isChase: false },
+        { name: "Chase", color: "#0f0", cost: 1, tier: "tier-2", packsCount: 1, deductionType: "packs", isChase: true }
+      ]
     }
   );
 
@@ -21,6 +25,7 @@ test("buildWheelReadableVerificationUrl targets the public proof view", () => {
   assert.match(url, /slotLabel=1\+Pack|slotLabel=1%20Pack/);
   assert.match(url, /wheelName=Demo\+Wheel|wheelName=Demo%20Wheel/);
   assert.match(url, /spinNumber=7/);
+  assert.doesNotMatch(url, /layout=/);
 });
 
 test("recordSpinResult increments spin counts", () => {

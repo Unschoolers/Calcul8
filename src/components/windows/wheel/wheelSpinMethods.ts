@@ -1,4 +1,5 @@
 import { broadcastWheelSession } from "../../../app-core/methods/ui/wheel-broadcast.ts";
+import { createWheelFairnessProofLink } from "../../../app-core/methods/wheel-fairness-api.ts";
 import { assignWheelPendingInventoryIssues } from "../../../app-core/shared/wheel-session-compat.ts";
 import type { Lot, PendingWheelInventoryIssue, Sale, WheelConfig, WheelFairnessEntry } from "../../../types/app.ts";
 import {
@@ -12,23 +13,23 @@ import { getWheelController } from "./wheelControllerState.ts";
 import {
     createWheelSale,
     easeOutQuart,
+    serializeWheelLayoutForFairness,
     type WheelSlot
 } from "./wheelHelpers.ts";
-import { resolveWheelFairnessSpin } from "./wheelSpinFairness.ts";
-import {
-  applyWheelSpinBlockedReason,
-  beginWheelSpin,
-  buildWheelSpinFairnessEntry,
-  buildWheelReadableVerificationUrl,
-  finalizeWheelSpinProof,
-  getWheelSpinSlots,
-  shouldRecordWheelLiveSession,
-  type WheelFairnessResult
-} from "./wheelSpinState.ts";
 import {
     getAvailableSinglesQuantityForWheelTier,
     getRemainingPacksForWheelLot
 } from "./wheelSaleSupport.ts";
+import { resolveWheelFairnessSpin } from "./wheelSpinFairness.ts";
+import {
+    applyWheelSpinBlockedReason,
+    beginWheelSpin,
+    buildWheelReadableVerificationUrl,
+    buildWheelSpinFairnessEntry,
+    finalizeWheelSpinProof,
+    getWheelSpinSlots,
+    shouldRecordWheelLiveSession
+} from "./wheelSpinState.ts";
 
 function queuePendingInventoryIssue(
   context: Record<string, unknown>,
@@ -158,7 +159,7 @@ export const wheelSpinMethods = {
       return;
     }
 
-    const fairnessResult = await resolveWheelFairnessSpin(slots.length);
+    const fairnessResult = await resolveWheelFairnessSpin(slots.length, slots);
 
     beginWheelSpin(vm as Record<string, unknown>, fairnessResult);
     vm.saveWheelSession();
@@ -184,7 +185,7 @@ export const wheelSpinMethods = {
     const pointerEl = (refs.wheelOuter as HTMLElement | null)
       ?.querySelector(".wheel-pointer") as HTMLElement | null;
 
-    const tick = (now: number) => {
+    const tick = async (now: number) => {
       const t = Math.min((now - startTime) / duration, 1);
       const currentOffset = startAngle + (endAngle - startAngle) * easeOutQuart(t);
       vm.wheelCurrentAngle = currentOffset;
@@ -219,13 +220,32 @@ export const wheelSpinMethods = {
       const spinNumber = Number(shouldRecordLiveSession
         ? ((vm as Record<string, unknown>).wheelTotalSpins || 0)
         : (spinController.previewTotalSpins || 0));
+      let verificationUrl = buildWheelReadableVerificationUrl(fairnessResult.verificationUrl, {
+        slotLabel: slots[targetIndex]?.name,
+        wheelName: config?.name,
+        spinNumber,
+        slots
+      });
+      if (fairnessResult.seed && fairnessResult.clientSeed) {
+        try {
+          const proofLink = await createWheelFairnessProofLink({
+            serverSeed: fairnessResult.seed,
+            clientSeed: fairnessResult.clientSeed,
+            slotCount: slots.length,
+            layoutHash: fairnessResult.layoutHash,
+            layout: serializeWheelLayoutForFairness(slots),
+            slotLabel: slots[targetIndex]?.name,
+            wheelName: config?.name,
+            spinNumber
+          });
+          verificationUrl = proofLink.verificationUrl;
+        } catch {
+          // Fall back to the short GET proof URL without the full ordered layout payload.
+        }
+      }
       const readableFairnessResult = {
         ...fairnessResult,
-        verificationUrl: buildWheelReadableVerificationUrl(fairnessResult.verificationUrl, {
-          slotLabel: slots[targetIndex]?.name,
-          wheelName: config?.name,
-          spinNumber
-        })
+        verificationUrl
       };
       finalizeWheelSpinProof(vm as Record<string, unknown>, readableFairnessResult);
       vm.appendWheelFairnessHistory(buildWheelSpinFairnessEntry(vm as Record<string, unknown>, {
