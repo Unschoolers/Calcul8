@@ -1,6 +1,6 @@
 # Calcul8 Refactor Plan
 
-Current plan only tracks remaining work. Items that are already done or mostly retired from the active architecture are removed.
+Current plan tracks active refactor targets only. Recently completed work, including the stored `proofId` wheel fairness flow and retirement of the legacy `proofToken` path, is intentionally left out.
 
 ---
 
@@ -8,7 +8,7 @@ Current plan only tracks remaining work. Items that are already done or mostly r
 
 ### Move auth/session secrets out of `localStorage`
 
-Frontend auth still persists sensitive values in browser storage:
+Frontend auth still persists sensitive browser-readable values:
 
 - `src/app-core/auth/storage.ts` stores the CSRF token in `localStorage`
 - `src/app-core/auth/storage.ts` stores the Google ID token in `localStorage`
@@ -27,8 +27,8 @@ Refactor toward:
 The Android/TWA release flow is still too tied to repo-local files:
 
 - `twa-manifest.json` still points Bubblewrap at `whatfees-upload.jks`
-- generated artifacts are still tracked in git: `app-release-signed.apk.idsig`, `tmp-index-render.js`, `tmp-test.png`
-- release/signing outputs still live in the normal working tree
+- generated artifacts are still tracked in git: `app-release-signed.apk.idsig`, `tmp-index-render.js`, and other release/build leftovers in the working tree
+- release/signing outputs still live in the normal repository tree
 
 Even when secrets are not committed, this keeps release hygiene fragile and makes accidental disclosure more likely.
 
@@ -45,7 +45,7 @@ Refactor toward:
 
 ### Split the sync coordinator into smaller, explicit services
 
-`src/app-core/methods/ui/sync-service.ts` is still a large multi-responsibility module at 477 lines. It currently mixes:
+`src/app-core/methods/ui/sync-service.ts` remains one of the highest-risk modules because it mixes:
 
 - queue/coordinator state
 - pull and push scheduling
@@ -54,7 +54,7 @@ Refactor toward:
 - workspace scope behavior
 - persistence/reset recovery
 
-This remains one of the highest-risk refactors because sync bugs are data-loss bugs.
+Sync bugs are data-loss bugs, and the current shape makes concurrent and recovery behavior hard to reason about.
 
 Refactor toward:
 
@@ -63,21 +63,76 @@ Refactor toward:
 - shared personal/workspace scope helpers instead of threading scope logic through every branch
 - higher-level integration tests for concurrent sync, offline recovery, and workspace access loss
 
+### Untangle workspace scope from storage, sync, and realtime call sites
+
+Workspace behavior is now spread across core application services instead of living behind a clear boundary:
+
+- `src/app-core/workspace-scope.ts`
+- `src/app-core/methods/config-storage.ts`
+- `src/app-core/methods/ui/sync-service.ts`
+- `src/app-core/methods/ui/workspace-realtime-state.ts`
+- `src/app-core/methods/ui/workspace-realtime-socket.ts`
+
+The current pattern threads `activeWorkspaceId` / `activeScopeType` through many call sites, which increases branching, test setup cost, and edge-case risk when access changes mid-session.
+
+Refactor toward:
+
+- a dedicated scope boundary resolved before storage/sync/realtime work starts
+- explicit workspace-scoped storage and sync interfaces
+- clearer access-loss and scope-switch lifecycle handling
+- reusable workspace-aware test fixtures so scope behavior is easier to verify
+
+### Break down the entitlements purchase orchestration
+
+`src/app-core/methods/ui/entitlements-purchase-service.ts` has grown into a multi-provider orchestration layer for Google Play, Stripe, and recovery flows. It now mixes:
+
+- provider selection and routing
+- purchase lifecycle state
+- verification/reconciliation behavior
+- retry and recovery branches
+- product/UI-facing error shaping
+
+This is revenue-path code, so complexity here carries both support risk and regression risk.
+
+Refactor toward:
+
+- a provider interface with isolated Google Play and Stripe flows
+- an explicit purchase lifecycle state machine
+- standalone recovery/retry helpers that are easier to unit test
+- keeping UI-facing messaging separate from provider transport logic
+
 ### Replace the biggest `any` / `Record<string, unknown>` hotspots in window logic
 
-The biggest remaining frontend type holes are still concentrated in inventory and wheel flows:
+The largest remaining frontend type holes are still concentrated in high-change windows:
 
-- `src/components/windows/SinglesConfigWindow.definition.ts` still exports `singlesConfigWindowDefinition: any` and uses many `this: any` methods/computed entries
-- `src/components/windows/wheel/wheelSessionMethods.ts` and related wheel state modules still rely heavily on `Record<string, unknown>`
+- `src/components/windows/SinglesConfigWindow.definition.ts` still exports `singlesConfigWindowDefinition: any` and relies on many `this: any` entries
+- `src/components/windows/wheel/WheelWindow.definition.ts` still exports `wheelWindowDefinition: any`
+- `src/components/windows/live/LiveSinglesPanel.ts` still carries many `this: any` methods
+- `src/components/windows/wheel/wheelSessionMethods.ts` and related wheel modules still rely heavily on `Record<string, unknown>` casts
 
-These files sit on core editing, inventory, and sales-adjacent flows, so weak typing keeps refactors risky.
+These files sit on inventory, wheel, and live selling flows, so weak typing keeps refactors risky and test intent less clear.
 
 Refactor toward:
 
 - extracting typed composables/helpers for singles virtualization, search, and row editing
-- extracting typed wheel services for session persistence, chase replacement, and sales recording
+- extracting typed wheel services for session persistence, chase replacement, fairness, and sales recording
 - reducing `this`-driven mutation in favor of explicit typed inputs/outputs
 - shifting more behavior under focused unit tests instead of broad component tests only
+
+### Type the portfolio sales/cache access path
+
+Portfolio calculations still rely on weakly typed cache access in a high-value computation path:
+
+- `src/app-core/computed/portfolio.ts` uses `Record<string, unknown>` style access to lot sales/cache state
+
+This is not just style debt. It makes forecasting and sales rollups harder to refactor safely because relationships between lots, cached sales, and derived metrics are hidden behind generic casts.
+
+Refactor toward:
+
+- an explicit typed sales-cache interface
+- shared typed helpers for lot-to-sales lookup
+- reducing ad hoc `Record<string, unknown>` access in portfolio computations
+- clearer ownership of derived portfolio data vs cached storage data
 
 ---
 
@@ -90,7 +145,7 @@ Frontend API base URL handling is still duplicated:
 - `resolveApiBaseUrl()` in `src/app-core/methods/ui/api-client.ts`
 - `resolveCardsApiBaseUrl()` in `src/components/windows/singles/useSinglesCatalogSearch.ts`
 
-That duplication is no longer catastrophic, but it is still easy for callers to drift on env lookup, cached fallback behavior, and missing-config handling.
+That duplication is easy to overlook until a third client drifts on env lookup, cached fallback behavior, or missing-config handling.
 
 Refactor toward:
 
@@ -100,7 +155,7 @@ Refactor toward:
 
 ### Consolidate realtime endpoint configuration
 
-Room naming is already shared, and the old `workspace-realtime.ts` wrapper is now thin. The remaining duplication is endpoint configuration:
+Room naming is now shared correctly, but endpoint configuration is still split across frontend and backend:
 
 - `DEFAULT_REALTIME_PUBLISH_URL` in `apps/api/src/lib/realtime.ts`
 - `FALLBACK_REALTIME_SOCKET_URL`, `PROD_REALTIME_SOCKET_URL`, and host-based selection in `src/app-core/methods/ui/workspace-realtime-state.ts`
@@ -110,6 +165,28 @@ Refactor toward:
 - a single source of truth for default realtime domains/endpoints
 - shared host/environment resolution rules between frontend and backend
 - fewer hard-coded `whatfees` domain decisions spread across apps
+
+### Reduce wheel module fragmentation and implicit coupling
+
+The wheel feature has been split into many small files, but the boundaries are still implicit rather than cleanly modular:
+
+- `src/components/windows/wheel/WheelWindow.definition.ts`
+- `src/components/windows/wheel/wheelSpinMethods.ts`
+- `src/components/windows/wheel/wheelSessionMethods.ts`
+- `src/components/windows/wheel/wheelSpinState.ts`
+- `src/components/windows/wheel/wheelControllerState.ts`
+- `src/components/windows/wheel/wheelHelpers.ts`
+- `src/components/windows/wheel/wheelSpinFairness.ts`
+- related computed/config/session/spectator files in the same folder
+
+Recent fairness, spectator, and broadcast work added capabilities, but also reinforced an implicit dependency graph that is hard to trace when changing the feature.
+
+Refactor toward:
+
+- grouping wheel files by clearer sub-domains such as session, spin, config, display, and fairness
+- defining explicit public interfaces between those sub-domains
+- extracting more wheel behavior into service-layer modules instead of component-coupled mutation
+- consolidating validation at module boundaries instead of spreading it across state/method files
 
 ---
 
