@@ -1,13 +1,13 @@
 import { resolveApiBaseUrl } from "./app-core/methods/ui/shared.ts";
 import {
-    fetchWheelSpectatorRealtimeSubscribeToken,
-    fetchWheelSpectatorSnapshot
+  fetchWheelSpectatorRealtimeSubscribeToken,
+  fetchWheelSpectatorSnapshot
 } from "./app-core/methods/ui/wheel-spectator.ts";
 import { resolveRealtimeSocketUrl } from "./app-core/methods/ui/workspace-realtime-state.ts";
 import {
-    ensureWheelCanvasSize,
-    getWheelCanvasDpr,
-    renderWheelSurface
+  ensureWheelCanvasSize,
+  getWheelCanvasDpr,
+  renderWheelSurface
 } from "./components/windows/wheel/wheelCanvasRender.ts";
 import "./styles/spectator.css";
 import type { WheelSpectatorHeatLevel, WheelSpectatorSnapshot } from "./types/app.ts";
@@ -213,10 +213,6 @@ function renderState(state: SpectatorPageState): string {
               <div class="spectator-result__meta">
                 <span class="spectator-result__eyebrow">Latest result</span>
                 <strong>${snapshot.isSpinning ? "Live" : "Settled"}</strong>
-              </div>
-              <div class="spectator-result__label">
-                <span class="spectator-result__dot" style="background:${escapeHtml(latestResultColor)}"></span>
-                ${escapeHtml(latestResultLabel)}
               </div>
               <div class="spectator-result__subcopy">
                 ${escapeHtml(latestResultSubcopy)}
