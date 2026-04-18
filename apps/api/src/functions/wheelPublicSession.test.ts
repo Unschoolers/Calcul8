@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { beforeEach, test, vi } from "vitest";
 import {
-  createApiConfig,
-  createHttpRequest,
-  createInvocationContext
+    createApiConfig,
+    createHttpRequest,
+    createInvocationContext
 } from "../test-support/function-test-helpers";
 
 vi.mock("@azure/functions", () => ({
@@ -66,11 +66,11 @@ vi.mock("../lib/realtime", () => ({
 }));
 
 import {
-  wheelPublicSessionCreate,
-  wheelPublicSessionGet,
-  wheelPublicSessionPublish,
-  wheelPublicSessionSpectatorCountGet,
-  wheelPublicSessionRealtimeTokenGet
+    wheelPublicSessionCreate,
+    wheelPublicSessionGet,
+    wheelPublicSessionPublish,
+    wheelPublicSessionRealtimeTokenGet,
+    wheelPublicSessionSpectatorCountGet
 } from "./wheelPublicSession";
 
 beforeEach(() => {

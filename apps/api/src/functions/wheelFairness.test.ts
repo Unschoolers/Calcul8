@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { beforeEach, test, vi } from "vitest";
 import {
-  createApiConfig,
-  createHttpRequest
+    createApiConfig,
+    createHttpRequest
 } from "../test-support/function-test-helpers";
 
 vi.mock("@azure/functions", () => ({
@@ -20,10 +20,10 @@ vi.mock("../lib/config", () => ({
 }));
 
 import {
-  wheelFairnessCommit,
-  wheelFairnessHash,
-  wheelFairnessReveal,
-  wheelFairnessVerify
+    wheelFairnessCommit,
+    wheelFairnessHash,
+    wheelFairnessReveal,
+    wheelFairnessVerify
 } from "./wheelFairness";
 
 beforeEach(() => {
@@ -111,6 +111,31 @@ test("wheelFairnessCommit creates an opaque commit and wheelFairnessReveal resol
   assert.equal(verifyBody.slotCount, 15);
   assert.equal(verifyBody.algorithm, "whatfees-wheel-v1");
   assert.equal(verifyBody.proofHash.length, 64);
+});
+
+test("wheelFairnessReveal builds localhost verification URLs under /api", async () => {
+  const commitResponse = await wheelFairnessCommit(createHttpRequest({
+    method: "POST",
+    body: {
+      slotCount: 20
+    },
+    url: "http://localhost:7071/api/wheel/fairness/commit"
+  }) as never);
+
+  const commitBody = commitResponse.jsonBody as { commitToken: string };
+
+  const revealResponse = await wheelFairnessReveal(createHttpRequest({
+    method: "POST",
+    body: {
+      commitToken: commitBody.commitToken,
+      clientSeed: "client-seed-456"
+    },
+    url: "http://localhost:7071/wheel/fairness/reveal"
+  }) as never);
+
+  assert.equal(revealResponse.status, 200);
+  const revealBody = revealResponse.jsonBody as { verificationUrl: string };
+  assert.match(revealBody.verificationUrl, /^http:\/\/localhost:7071\/api\/wheel\/fairness\/verify\?/);
 });
 
 test("wheelFairnessVerify renders a human-readable public proof page when format=html", async () => {

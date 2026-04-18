@@ -94,6 +94,7 @@ export interface WheelPublicSessionSlot {
 export interface WheelPublicSessionSnapshot {
   wheelName: string;
   sessionStatus: WheelPublicSessionStatus;
+  isSpinning: boolean;
   totalSpins: number;
   lastResultLabel: string;
   lastResultColor: string;

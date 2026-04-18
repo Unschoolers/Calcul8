@@ -1,7 +1,7 @@
 import {
-  createWheelSpectatorSession,
-  fetchWheelSpectatorCount,
-  publishWheelSpectatorSession
+    createWheelSpectatorSession,
+    fetchWheelSpectatorCount,
+    publishWheelSpectatorSession
 } from "../../../app-core/methods/ui/wheel-spectator.ts";
 import { buildWheelSpectatorQrImageUrl, buildWheelSpectatorSessionUrl, buildWheelSpectatorSnapshot } from "./wheelSpectator.ts";
 

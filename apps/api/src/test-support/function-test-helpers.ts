@@ -1,5 +1,5 @@
-import type { ApiConfig } from "../types";
 import { vi } from "vitest";
+import type { ApiConfig } from "../types";
 
 export function createApiConfig(overrides: Partial<ApiConfig> = {}): ApiConfig {
   return {
@@ -29,6 +29,7 @@ export function createHttpRequest(options: {
   body?: unknown;
   params?: Record<string, string>;
   query?: string;
+  url?: string;
 } = {}) {
   const normalized = new Map<string, string>();
   for (const [key, value] of Object.entries(options.headers ?? {})) {
@@ -46,7 +47,7 @@ export function createHttpRequest(options: {
   } = {
     method: options.method ?? "POST",
     params: options.params ?? {},
-    url: `https://api.example/${options.query ? `?${options.query}` : ""}`,
+    url: options.url ?? `https://api.example/${options.query ? `?${options.query}` : ""}`,
     headers: {
       get(name: string) {
         return normalized.get(name.toLowerCase()) ?? null;

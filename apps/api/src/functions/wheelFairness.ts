@@ -1,9 +1,9 @@
-import { app, type HttpRequest, type HttpResponseInit, type InvocationContext } from "@azure/functions";
+import { app, type HttpRequest, type HttpResponseInit } from "@azure/functions";
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
-import type { ApiConfig } from "../types";
 import { HttpError } from "../lib/auth";
 import { getConfig } from "../lib/config";
 import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../lib/http";
+import type { ApiConfig } from "../types";
 
 const WHEEL_FAIRNESS_ALGORITHM = "whatfees-wheel-v1";
 const WHEEL_FAIRNESS_MAX_SLOT_COUNT = 512;
@@ -201,11 +201,13 @@ function deriveFairResult(serverSeed: string, clientSeed: string, slotCount: num
 function buildVerificationUrl(request: HttpRequest, serverSeed: string, clientSeed: string, slotCount: number): string {
   const fallbackUrl = "https://api.example/wheel/fairness/reveal";
   const url = new URL(request.url || fallbackUrl);
-  if (/\/wheel\/fairness\/reveal$/i.test(url.pathname)) {
-    url.pathname = url.pathname.replace(/\/wheel\/fairness\/reveal$/i, "/wheel/fairness/verify");
-  } else {
-    url.pathname = "/wheel/fairness/verify";
+  const pathMatch = /^(.*)\/wheel\/fairness\/reveal$/i.exec(url.pathname);
+  let routePrefix = pathMatch?.[1] ?? "";
+  const isLocalhost = url.hostname === "localhost" || url.hostname === "127.0.0.1";
+  if (!routePrefix && isLocalhost) {
+    routePrefix = "/api";
   }
+  url.pathname = `${routePrefix}/wheel/fairness/verify`.replace(/\/+/g, "/");
   url.search = "";
   url.searchParams.set("serverSeed", serverSeed);
   url.searchParams.set("clientSeed", clientSeed);
@@ -222,6 +224,11 @@ function buildVerificationJsonUrl(
   const url = new URL(buildVerificationUrl(request, serverSeed, clientSeed, slotCount));
   url.searchParams.set("format", "json");
   return url.toString();
+}
+
+function truncateProofValue(value: string, leading = 14, trailing = 10): string {
+  if (value.length <= leading + trailing + 3) return value;
+  return `${value.slice(0, leading)}...${value.slice(-trailing)}`;
 }
 
 function buildWheelFairnessHtmlPage(params: {
@@ -246,6 +253,14 @@ function buildWheelFairnessHtmlPage(params: {
   const spinLabel = params.spinNumber != null ? `Spin #${params.spinNumber}` : "Verified spin";
   const resultText = `${slotLabel} • Slot ${params.resultSlotNumber} of ${params.slotCount}`;
   const jsonUrl = escapeHtml(params.jsonUrl);
+  const serverSeedHash = escapeHtml(params.serverSeedHash);
+  const clientSeed = escapeHtml(params.clientSeed);
+  const serverSeed = escapeHtml(params.serverSeed);
+  const proofHash = escapeHtml(params.proofHash);
+  const algorithm = escapeHtml(params.algorithm);
+  const serverSeedHashPreview = escapeHtml(truncateProofValue(params.serverSeedHash));
+  const clientSeedPreview = escapeHtml(truncateProofValue(params.clientSeed));
+  const serverSeedPreview = escapeHtml(truncateProofValue(params.serverSeed));
 
   return `<!doctype html>
 <html lang="en">
@@ -256,53 +271,63 @@ function buildWheelFairnessHtmlPage(params: {
     <style>
       :root {
         color-scheme: dark;
-        --bg: #121212;
-        --panel: #1f1f1f;
-        --panel-2: #262626;
-        --text: #f4f4f4;
-        --muted: #b0b0b0;
+        --bg: #171510;
+        --panel: rgba(30, 27, 23, 0.92);
+        --panel-2: rgba(39, 35, 30, 0.96);
+        --panel-3: rgba(23, 27, 22, 0.88);
+        --text: #f8f5ee;
+        --muted: #c4bdae;
         --accent: #f5c84c;
-        --good: #46d17d;
+        --good: #59d48a;
+        --good-soft: rgba(89, 212, 138, 0.14);
         --border: rgba(255,255,255,0.08);
+        --border-strong: rgba(255,255,255,0.12);
       }
       * { box-sizing: border-box; }
       body {
         margin: 0;
-        font-family: Inter, system-ui, sans-serif;
-        background: radial-gradient(circle at top, rgba(245,200,76,0.10), transparent 40%), var(--bg);
+        font-family: "Avenir Next", "Segoe UI", sans-serif;
+        background:
+          radial-gradient(circle at top, rgba(245,200,76,0.12), transparent 34%),
+          linear-gradient(180deg, #1d1a14 0%, #14120f 100%);
         color: var(--text);
       }
       main {
-        max-width: 900px;
+        max-width: 980px;
         margin: 0 auto;
-        padding: 32px 20px 56px;
+        padding: 28px 20px 56px;
       }
       .hero, .card {
         background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
         border: 1px solid var(--border);
-        border-radius: 20px;
-        box-shadow: 0 20px 40px rgba(0,0,0,0.22);
+        border-radius: 24px;
+        box-shadow: 0 24px 54px rgba(0,0,0,0.24);
       }
-      .hero { padding: 24px; margin-bottom: 20px; }
+      .hero { padding: 28px; margin-bottom: 20px; }
       .eyebrow {
         display: inline-flex;
         gap: 8px;
         align-items: center;
         color: var(--good);
-        font-size: 0.9rem;
-        font-weight: 700;
-        letter-spacing: 0.04em;
+        font-size: 0.84rem;
+        font-weight: 800;
+        letter-spacing: 0.12em;
         text-transform: uppercase;
       }
       h1 {
-        margin: 14px 0 10px;
-        font-size: clamp(1.8rem, 5vw, 2.6rem);
-        line-height: 1.1;
+        margin: 14px 0 12px;
+        font-size: clamp(2rem, 5vw, 3rem);
+        line-height: 1.04;
+        letter-spacing: -0.03em;
       }
       p {
         margin: 0;
         color: var(--muted);
         line-height: 1.5;
+      }
+      .hero__lede {
+        max-width: 44rem;
+        font-size: 1.04rem;
       }
       .grid {
         display: grid;
@@ -312,7 +337,7 @@ function buildWheelFairnessHtmlPage(params: {
       }
       .metric {
         padding: 16px;
-        border-radius: 16px;
+        border-radius: 18px;
         background: var(--panel);
         border: 1px solid var(--border);
       }
@@ -324,16 +349,146 @@ function buildWheelFairnessHtmlPage(params: {
       }
       .metric__value {
         margin-top: 8px;
-        font-size: 1.15rem;
-        font-weight: 700;
+        font-size: 1.18rem;
+        font-weight: 800;
       }
       .card {
-        padding: 20px;
+        padding: 22px;
         margin-top: 18px;
       }
       .card h2 {
         margin: 0 0 12px;
-        font-size: 1.1rem;
+        font-size: 1.25rem;
+        letter-spacing: -0.02em;
+      }
+      .card h3 {
+        margin: 0;
+        font-size: 1rem;
+        letter-spacing: -0.01em;
+      }
+      .trust-note {
+        margin-top: -2px;
+        max-width: 44rem;
+      }
+      .verify-panel {
+        display: grid;
+        gap: 16px;
+        margin-top: 16px;
+      }
+      .verify-notes {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 12px;
+      }
+      .verify-note {
+        padding: 16px 18px;
+        border-radius: 18px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+      }
+      .verify-note--good {
+        border-color: rgba(89, 212, 138, 0.18);
+        background: linear-gradient(180deg, rgba(89, 212, 138, 0.07), rgba(255,255,255,0.01));
+      }
+      .verify-note--honest {
+        border-color: rgba(245, 200, 76, 0.16);
+      }
+      .verify-note__label {
+        color: var(--muted);
+        font-size: 0.76rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-weight: 800;
+      }
+      .verify-note__body {
+        margin-top: 8px;
+        color: var(--text);
+        font-size: 0.96rem;
+        line-height: 1.45;
+      }
+      .verify-summary {
+        padding: 16px 18px;
+        border-radius: 18px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+      }
+      .verify-summary p {
+        margin-top: 8px;
+      }
+      .steps {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+      .step {
+        padding: 16px 18px;
+        border-radius: 18px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        display: grid;
+        gap: 10px;
+      }
+      .step__top {
+        display: grid;
+        gap: 6px;
+      }
+      .step__kicker {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--good);
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        font-weight: 800;
+      }
+      .step__title {
+        font-size: 1rem;
+        font-weight: 800;
+        line-height: 1.25;
+      }
+      .step__body {
+        color: var(--muted);
+        font-size: 0.94rem;
+        max-width: 58ch;
+      }
+      .step__proof {
+        padding: 10px 12px;
+        border-radius: 14px;
+        background: var(--panel-3);
+        border: 1px solid rgba(89, 212, 138, 0.12);
+        max-width: 100%;
+      }
+      .step__proof-label {
+        color: rgba(255,255,255,0.64);
+        font-size: 0.74rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        margin-bottom: 6px;
+      }
+      .step__proof-value {
+        font-size: 0.88rem;
+        font-weight: 700;
+        color: #f4efe4;
+        word-break: break-word;
+      }
+      details {
+        margin-top: 18px;
+        border-radius: 18px;
+        border: 1px solid var(--border);
+        background: var(--panel);
+        overflow: hidden;
+      }
+      summary {
+        cursor: pointer;
+        list-style: none;
+        padding: 16px 18px;
+        font-weight: 800;
+      }
+      summary::-webkit-details-marker { display: none; }
+      .details-body {
+        border-top: 1px solid var(--border);
+        padding: 18px;
       }
       .proof-list {
         display: grid;
@@ -364,7 +519,26 @@ function buildWheelFairnessHtmlPage(params: {
         margin-top: 16px;
         color: var(--accent);
         text-decoration: none;
-        font-weight: 600;
+        font-weight: 700;
+      }
+      .helper {
+        margin-top: 12px;
+        font-size: 0.92rem;
+      }
+      @media (max-width: 640px) {
+        main {
+          padding: 18px 14px 40px;
+        }
+        .hero,
+        .card {
+          border-radius: 20px;
+        }
+        .hero,
+        .card,
+        .details-body {
+          padding-left: 16px;
+          padding-right: 16px;
+        }
       }
     </style>
   </head>
@@ -373,7 +547,7 @@ function buildWheelFairnessHtmlPage(params: {
       <section class="hero">
         <div class="eyebrow">Verified fair result</div>
         <h1>${title}</h1>
-        <p>${summary}</p>
+        <p class="hero__lede">${summary} This page proves the result was committed before it landed and can be reproduced from the revealed values. It also explains why the outcome came from secure random inputs, not a manual swap after the fact.</p>
         <div class="grid">
           <div class="metric">
             <div class="metric__label">Wheel</div>
@@ -388,32 +562,99 @@ function buildWheelFairnessHtmlPage(params: {
             <div class="metric__value">${escapeHtml(resultText)}</div>
           </div>
           <div class="metric">
-            <div class="metric__label">Algorithm</div>
-            <div class="metric__value">${escapeHtml(params.algorithm)}</div>
+            <div class="metric__label">Randomness source</div>
+            <div class="metric__value">Secure server seed + secure client seed.</div>
           </div>
         </div>
       </section>
       <section class="card">
-        <h2>Proof details</h2>
-        <div class="proof-list">
-          <div class="proof-item">
-            <div class="proof-item__label">Committed server hash</div>
-            <code>${escapeHtml(params.serverSeedHash)}</code>
+        <h2>Why this page</h2>
+        <p class="trust-note">This proof is strongest at answering two questions: was the result locked before the wheel landed, and did the revealed inputs really produce this slot?</p>
+
+        <div class="verify-panel">
+          <div class="verify-notes">
+            <section class="verify-note verify-note--good">
+              <div class="verify-note__label">What this does prove</div>
+              <div class="verify-note__body">The operator could not change the result after committing to the hidden server seed, and anyone can reproduce the same winning slot from the revealed values.</div>
+            </section>
+
+          <section class="verify-summary">
+            <h3>Why the randomness claim is reasonable</h3>
+            <p>The server seed is generated on the server with a cryptographically secure random generator. The client seed is generated independently in the viewer's browser environment with a secure random generator. The final slot is derived from both seeds together, then reproduced below.</p>
+          </section>
           </div>
-          <div class="proof-item">
-            <div class="proof-item__label">Client seed</div>
-            <code>${escapeHtml(params.clientSeed)}</code>
-          </div>
-          <div class="proof-item">
-            <div class="proof-item__label">Server seed</div>
-            <code>${escapeHtml(params.serverSeed)}</code>
-          </div>
-          <div class="proof-item">
-            <div class="proof-item__label">Derived proof hash</div>
-            <code>${escapeHtml(params.proofHash)}</code>
+
+
+
+          <div class="steps">
+          <article class="step">
+            <div class="step__top">
+              <div class="step__kicker">Step 1</div>
+              <div class="step__title">Check that the hidden result was locked in first</div>
+              <div class="step__body">Hash the revealed server seed with SHA-256. If it matches the committed hash below, the hidden value was already locked in before the wheel landed.</div>
+            </div>
+            <div class="step__proof">
+              <div class="step__proof-label">Committed hash</div>
+              <div class="step__proof-value">${serverSeedHashPreview}</div>
+            </div>
+          </article>
+
+          <article class="step">
+            <div class="step__top">
+              <div class="step__kicker">Step 2</div>
+              <div class="step__title">Confirm the random inputs used for the spin</div>
+              <div class="step__body">This spin used two independent random inputs: a secure server seed and a secure client seed. Neither one alone determines the result; the final slot is derived from both together.</div>
+            </div>
+            <div class="step__proof">
+              <div class="step__proof-label">Client seed used</div>
+              <div class="step__proof-value">${clientSeedPreview}</div>
+            </div>
+          </article>
+
+          <article class="step">
+            <div class="step__top">
+              <div class="step__kicker">Step 3</div>
+              <div class="step__title">Reproduce the winning slot</div>
+              <div class="step__body">Using the revealed server seed, the client seed, and the slot count, the calculation should reproduce the same result: ${escapeHtml(resultText)}.</div>
+            </div>
+            <div class="step__proof">
+              <div class="step__proof-label">Server seed revealed</div>
+              <div class="step__proof-value">${serverSeedPreview}</div>
+            </div>
+          </article>
           </div>
         </div>
-        <a class="footer-link" href="${jsonUrl}" rel="noopener noreferrer">View raw JSON proof</a>
+
+        <p class="helper">For advanced verification, the full technical proof is below.</p>
+
+        <details>
+          <summary>Advanced proof details</summary>
+          <div class="details-body">
+            <div class="proof-list">
+              <div class="proof-item">
+                <div class="proof-item__label">Committed server hash</div>
+                <code>${serverSeedHash}</code>
+              </div>
+              <div class="proof-item">
+                <div class="proof-item__label">Client seed</div>
+                <code>${clientSeed}</code>
+              </div>
+              <div class="proof-item">
+                <div class="proof-item__label">Server seed</div>
+                <code>${serverSeed}</code>
+              </div>
+              <div class="proof-item">
+                <div class="proof-item__label">Derived proof hash</div>
+                <code>${proofHash}</code>
+              </div>
+              <div class="proof-item">
+                <div class="proof-item__label">Algorithm</div>
+                <code>${algorithm}</code>
+              </div>
+            </div>
+            <a class="footer-link" href="${jsonUrl}" rel="noopener noreferrer">View raw JSON proof</a>
+          </div>
+        </details>
       </section>
     </main>
   </body>

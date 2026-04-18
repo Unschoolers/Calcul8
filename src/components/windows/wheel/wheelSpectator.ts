@@ -330,6 +330,7 @@ export function buildWheelSpectatorSnapshot(
   return {
     wheelName: String(config?.name || "Wheel Session").trim() || "Wheel Session",
     sessionStatus: status,
+    isSpinning: vm.wheelSpinning === true,
     totalSpins: getWheelDisplayTotalSpins(vm),
     lastResultLabel: cleanResultLabel(vm.wheelLastResult) || cleanResultLabel(latestFairnessEntry?.label) || "Waiting for the next spin",
     lastResultColor: String(vm.wheelLastResultColor || latestFairnessEntry?.color || "#d4af37"),

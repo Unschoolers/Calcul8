@@ -67,9 +67,12 @@ function formatHeatCopy(heat: WheelSpectatorHeatLevel | null, label: string | nu
 
 function formatStatusLabel(snapshot: WheelSpectatorSnapshot): string {
   if (snapshot.sessionStatus === "ended") return "Recap";
-  if (snapshot.sessionStatus === "live") return "Live";
-  if (snapshot.totalSpins > 0) return "Spinning";
-  return "Starting";
+  return snapshot.isSpinning ? "Spinning" : "Waiting";
+}
+
+function formatStatusTone(snapshot: WheelSpectatorSnapshot): "ended" | "spinning" | "waiting" {
+  if (snapshot.sessionStatus === "ended") return "ended";
+  return snapshot.isSpinning ? "spinning" : "waiting";
 }
 
 function getSpectatorWheelSlots(snapshot: WheelSpectatorSnapshot): WheelSpectatorSnapshot["wheelSlots"] {
@@ -101,6 +104,14 @@ function renderState(state: SpectatorPageState): string {
 
   const { snapshot } = state;
   const wheelSlots = getSpectatorWheelSlots(snapshot);
+  const heroSubcopy = snapshot.totalSpins > 0
+    ? `Watching live: ${formatHeatCopy(snapshot.featuredChaseHeat, snapshot.featuredChaseLabel)}`
+    : "The wheel is live. Stay here for the next verified hit.";
+  const latestResultLabel = String(snapshot.lastResultLabel || "").trim() || "Waiting for the next spin";
+  const latestResultColor = String(snapshot.lastResultColor || "#d4af37");
+  const latestResultSubcopy = snapshot.totalSpins > 0
+    ? formatHeatCopy(snapshot.featuredChaseHeat, snapshot.featuredChaseLabel)
+    : "The next verified result will land here as soon as the wheel spins.";
   const reelHtml = snapshot.recentFairnessHistory.length
     ? snapshot.recentFairnessHistory.map((entry) => `
         <article class="spectator-reel__item">
@@ -146,6 +157,7 @@ function renderState(state: SpectatorPageState): string {
       <section class="spectator-hero">
         <div class="spectator-kicker">Live Wheel Spectator</div>
         <h1 class="spectator-title">${escapeHtml(snapshot.wheelName)}</h1>
+        <p class="spectator-subtitle spectator-subtitle--hero">${escapeHtml(heroSubcopy)}</p>
       </section>
 
       <div class="spectator-grid">
@@ -156,59 +168,63 @@ function renderState(state: SpectatorPageState): string {
               <div class="spectator-card__eyebrow">Now</div>
               <div class="spectator-now__headline">Current moment</div>
             </div>
-            <div class="spectator-status spectator-status--${escapeHtml(snapshot.sessionStatus)}">
+            <div class="spectator-status spectator-status--${escapeHtml(formatStatusTone(snapshot))}">
               ${escapeHtml(formatStatusLabel(snapshot))}
             </div>
           </div>
 
-          ${wheelSlots.length
-            ? `
-              <div class="spectator-wheel-frame">
-                <div class="wheel-outer">
-                  <div class="wheel-disc">
-                    <canvas id="${SPECTATOR_WHEEL_CANVAS_ID}" class="wheel-canvas"></canvas>
-                    <div class="wheel-center-cap" aria-hidden="true">
-                      <div class="wheel-center-cap__icon" style="transform: rotate(${Number.isFinite(snapshot.wheelCurrentAngle) ? snapshot.wheelCurrentAngle : 0}rad)">
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
-                          <path d="M12 2L13.09 8.26L20 12L13.09 15.74L12 22L10.91 15.74L4 12L10.91 8.26L12 2Z"></path>
-                        </svg>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="wheel-pointer" aria-hidden="true"></div>
-                </div>
-              </div>
-            `
-            : ""}
-
-          <div class="spectator-now__stage">
-            <div class="spectator-result">
-              <div class="spectator-result__meta">
-                <span>Live board</span>
-                <strong>Spin #${snapshot.totalSpins}</strong>
-              </div>
+          <div class="spectator-now__summary">
+            <div class="spectator-now__metric">
+              <span class="spectator-now__metric-label">Spin</span>
+              <strong class="spectator-now__metric-value">#${snapshot.totalSpins}</strong>
             </div>
-
-            <div class="spectator-stat-stack">
-              <div class="spectator-stat-card">
-                <span class="spectator-stat-card__label">Total spins</span>
-                <strong class="spectator-stat-card__value">${snapshot.totalSpins}</strong>
-              </div>
-              <div class="spectator-stat-card spectator-stat-card--heat-${escapeHtml(String(snapshot.featuredChaseHeat || "low"))}">
-                <span class="spectator-stat-card__label">Heat</span>
-                <strong class="spectator-stat-card__value">${escapeHtml(String(snapshot.featuredChaseHeat || "low"))}</strong>
-              </div>
+            <div class="spectator-now__metric spectator-now__metric--heat-${escapeHtml(String(snapshot.featuredChaseHeat || "low"))}">
+              <span class="spectator-now__metric-label">Heat</span>
+              <strong class="spectator-now__metric-value">${escapeHtml(String(snapshot.featuredChaseHeat || "low"))}</strong>
+            </div>
+            <div class="spectator-now__metric spectator-now__metric--accent">
+              <span class="spectator-now__metric-label">Watching</span>
+              <strong class="spectator-now__metric-value">${escapeHtml(snapshot.featuredChaseLabel || "Board watch")}</strong>
             </div>
           </div>
 
-          <div class="spectator-pill-row">
-            <span class="spectator-pill spectator-pill--trust">Proof locked in</span>
-            <span class="spectator-pill spectator-pill--heat-${escapeHtml(String(snapshot.featuredChaseHeat || "low"))}">
-              ${escapeHtml(snapshot.featuredChaseHeat || "low")} heat
-            </span>
-            <span class="spectator-pill spectator-pill--accent">
-              ${escapeHtml(snapshot.featuredChaseLabel || "Board watch")}
-            </span>
+          <div class="spectator-now__stage">
+            ${wheelSlots.length
+              ? `
+                <div class="spectator-wheel-frame">
+                  <div class="wheel-outer">
+                    <div class="wheel-disc">
+                      <canvas id="${SPECTATOR_WHEEL_CANVAS_ID}" class="wheel-canvas"></canvas>
+                      <div class="wheel-center-cap" aria-hidden="true">
+                        <div class="wheel-center-cap__icon" style="transform: rotate(${Number.isFinite(snapshot.wheelCurrentAngle) ? snapshot.wheelCurrentAngle : 0}rad)">
+                          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
+                            <path d="M12 2L13.09 8.26L20 12L13.09 15.74L12 22L10.91 15.74L4 12L10.91 8.26L12 2Z"></path>
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="wheel-pointer" aria-hidden="true"></div>
+                  </div>
+                </div>
+              `
+              : ""}
+
+            <div class="spectator-result" style="--spectator-result-color:${escapeHtml(latestResultColor)}">
+              <div class="spectator-result__meta">
+                <span class="spectator-result__eyebrow">Latest result</span>
+                <strong>${snapshot.isSpinning ? "Live" : "Settled"}</strong>
+              </div>
+              <div class="spectator-result__label">
+                <span class="spectator-result__dot" style="background:${escapeHtml(latestResultColor)}"></span>
+                ${escapeHtml(latestResultLabel)}
+              </div>
+              <div class="spectator-result__subcopy">
+                ${escapeHtml(latestResultSubcopy)}
+              </div>
+              ${snapshot.fairnessVerificationUrl
+                ? `<a class="spectator-result__proof" href="${escapeHtml(snapshot.fairnessVerificationUrl)}" target="_blank" rel="noopener noreferrer">Verify this result</a>`
+                : ""}
+            </div>
           </div>
         </section>
 

@@ -19,7 +19,7 @@ a {
 }
 
 .spectator-shell {
-  width: min(100%, 540px);
+  width: min(100%, 620px);
   margin: 0 auto;
   padding: 24px 16px 40px;
   box-sizing: border-box;
@@ -27,7 +27,7 @@ a {
 
 .spectator-hero {
   display: grid;
-  gap: 12px;
+  gap: 10px;
   margin-bottom: 18px;
 }
 
@@ -54,6 +54,11 @@ a {
   font-size: 0.98rem;
   line-height: 1.5;
   color: rgba(248, 250, 252, 0.78);
+}
+
+.spectator-subtitle--hero {
+  max-width: 36ch;
+  color: rgba(248, 250, 252, 0.7);
 }
 
 .spectator-grid {
@@ -136,12 +141,14 @@ a {
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.spectator-status--starting {
+.spectator-status--starting,
+.spectator-status--waiting {
   background: rgba(245, 158, 11, 0.18);
   color: #fbbf24;
 }
 
-.spectator-status--live {
+.spectator-status--live,
+.spectator-status--spinning {
   background: rgba(34, 197, 94, 0.18);
   color: #86efac;
 }
@@ -153,15 +160,63 @@ a {
 
 .spectator-now__stage {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 108px;
-  gap: 12px;
+  gap: 14px;
   align-items: stretch;
+}
+
+.spectator-now__summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.spectator-now__metric {
+  display: grid;
+  gap: 6px;
+  padding: 14px 14px 13px;
+  border-radius: 18px;
+  background: rgba(248, 250, 252, 0.05);
+  border: 1px solid rgba(248, 250, 252, 0.06);
+}
+
+.spectator-now__metric-label {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(248, 250, 252, 0.54);
+}
+
+.spectator-now__metric-value {
+  font-size: 1.08rem;
+  line-height: 1.08;
+  font-weight: 900;
+}
+
+.spectator-now__metric--accent {
+  background: rgba(96, 165, 250, 0.1);
+  color: #dbeafe;
+}
+
+.spectator-now__metric--heat-low {
+  background: rgba(148, 163, 184, 0.12);
+  color: #e2e8f0;
+}
+
+.spectator-now__metric--heat-medium {
+  background: rgba(245, 158, 11, 0.14);
+  color: #fcd34d;
+}
+
+.spectator-now__metric--heat-high {
+  background: rgba(239, 68, 68, 0.14);
+  color: #fda4af;
 }
 
 .spectator-wheel-frame {
   display: grid;
   place-items: center;
-  padding: 6px 0 2px;
+  padding: 6px 0 0;
 }
 
 .spectator-wheel-frame .wheel-outer {
@@ -253,12 +308,20 @@ a {
 }
 
 .spectator-result {
+  --spectator-result-color: #d4af37;
   display: grid;
-  gap: 10px;
-  padding: 16px;
-  border-radius: 20px;
-  background: linear-gradient(180deg, rgba(9, 15, 28, 0.86), rgba(15, 23, 42, 0.72));
-  border: 1px solid rgba(255, 255, 255, 0.04);
+  align-content: start;
+  gap: 12px;
+  min-height: 0;
+  padding: 20px;
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at top left, color-mix(in srgb, var(--spectator-result-color) 16%, transparent), transparent 42%),
+    linear-gradient(180deg, rgba(9, 15, 28, 0.92), rgba(15, 23, 42, 0.76));
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 14px 32px rgba(0, 0, 0, 0.18);
 }
 
 .spectator-result__meta {
@@ -270,111 +333,59 @@ a {
   color: rgba(248, 250, 252, 0.72);
 }
 
+.spectator-result__eyebrow {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(248, 250, 252, 0.56);
+}
+
+.spectator-result__meta strong {
+  font-size: 0.78rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--spectator-result-color) 68%, white);
+}
+
 .spectator-result__label {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: clamp(1.35rem, 5vw, 2rem);
-  line-height: 0.96;
+  font-size: clamp(1.85rem, 7vw, 2.8rem);
+  line-height: 1;
+  letter-spacing: -0.03em;
   font-weight: 900;
 }
 
 .spectator-result__dot {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   border-radius: 999px;
   flex: 0 0 auto;
   box-shadow: 0 0 18px currentColor;
 }
 
 .spectator-result__subcopy {
-  font-size: 0.96rem;
-  line-height: 1.42;
+  font-size: 1rem;
+  line-height: 1.48;
   color: rgba(248, 250, 252, 0.8);
+  max-width: 34ch;
 }
 
-.spectator-stat-stack {
-  display: grid;
-  gap: 10px;
-}
-
-.spectator-stat-card {
-  display: grid;
-  gap: 5px;
-  align-content: center;
-  min-height: 72px;
-  padding: 13px 12px;
-  border-radius: 18px;
-  background: rgba(248, 250, 252, 0.05);
-  border: 1px solid rgba(248, 250, 252, 0.06);
-}
-
-.spectator-stat-card__label {
-  font-size: 0.68rem;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: rgba(248, 250, 252, 0.54);
-}
-
-.spectator-stat-card__value {
-  font-size: 1.35rem;
-  line-height: 1;
-  font-weight: 900;
-}
-
-.spectator-stat-card--heat-low {
-  background: rgba(148, 163, 184, 0.12);
-  color: #e2e8f0;
-}
-
-.spectator-stat-card--heat-medium {
-  background: rgba(245, 158, 11, 0.14);
-  color: #fcd34d;
-}
-
-.spectator-stat-card--heat-high {
-  background: rgba(239, 68, 68, 0.14);
-  color: #fda4af;
-}
-
-.spectator-pill-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.spectator-pill {
-  padding: 8px 12px;
+.spectator-result__proof {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  margin-top: 4px;
+  padding: 10px 14px;
   border-radius: 999px;
-  background: rgba(248, 250, 252, 0.07);
-  font-size: 0.78rem;
+  text-decoration: none;
+  font-size: 0.82rem;
   font-weight: 800;
-}
-
-.spectator-pill--trust {
-  background: rgba(34, 197, 94, 0.14);
-  color: #86efac;
-}
-
-.spectator-pill--accent {
-  background: rgba(96, 165, 250, 0.12);
   color: #bfdbfe;
-}
-
-.spectator-pill--heat-low {
-  background: rgba(148, 163, 184, 0.18);
-  color: #cbd5e1;
-}
-
-.spectator-pill--heat-medium {
-  background: rgba(245, 158, 11, 0.18);
-  color: #fbbf24;
-}
-
-.spectator-pill--heat-high {
-  background: rgba(239, 68, 68, 0.18);
-  color: #fda4af;
+  background: rgba(96, 165, 250, 0.12);
+  border: 1px solid rgba(147, 197, 253, 0.16);
 }
 
 .spectator-reel {
@@ -507,11 +518,15 @@ a {
 }
 
 @media (max-width: 540px) {
-  .spectator-now__stage {
+  .spectator-now__summary {
     grid-template-columns: 1fr;
   }
 
-  .spectator-stat-stack {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .spectator-result {
+    min-height: 0;
+  }
+
+  .spectator-result__subcopy {
+    max-width: none;
   }
 }

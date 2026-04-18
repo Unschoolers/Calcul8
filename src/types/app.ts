@@ -135,6 +135,7 @@ export interface WheelSpectatorSlot {
 export interface WheelSpectatorSnapshot {
   wheelName: string;
   sessionStatus: Exclude<WheelSpectatorSessionStatus, "inactive">;
+  isSpinning: boolean;
   totalSpins: number;
   lastResultLabel: string;
   lastResultColor: string;

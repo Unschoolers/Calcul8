@@ -10,7 +10,7 @@ import { hasWorkspaceMembership } from "../lib/cosmos/workspaceRepository";
 import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../lib/http";
 import {
     buildWheelPublicSessionRealtimeRoom,
-  getRealtimeRoomMemberCount,
+    getRealtimeRoomMemberCount,
     publishWheelPublicSessionRealtimeEventBestEffort,
     signRealtimeSubscribeToken
 } from "../lib/realtime";
@@ -125,6 +125,7 @@ function sanitizeWheelPublicSessionSnapshot(value: unknown): WheelPublicSessionS
   return {
     wheelName: String(candidate.wheelName ?? "").slice(0, 120).trim() || "Wheel Session",
     sessionStatus: sanitizeWheelPublicSessionStatus(candidate.sessionStatus),
+    isSpinning: candidate.isSpinning === true,
     totalSpins: Math.max(0, Math.floor(Number(candidate.totalSpins) || 0)),
     lastResultLabel: String(candidate.lastResultLabel ?? "").slice(0, 160).trim(),
     lastResultColor: String(candidate.lastResultColor ?? "").slice(0, 40).trim() || "#d4af37",

@@ -11,8 +11,8 @@ import {
     resolveWheelCanvasTargetSize,
     resolveWheelLayoutMode
 } from "./wheelLayoutPolicy.ts";
-import { wheelSpectatorMethods } from "./wheelSpectatorMethods.ts";
 import { wheelSessionMethods } from "./wheelSessionMethods.ts";
+import { wheelSpectatorMethods } from "./wheelSpectatorMethods.ts";
 import { wheelSpinMethods } from "./wheelSpinMethods.ts";
 
 function getWheelCanvasTargetSize(panel: HTMLElement | null, presentationMode: boolean): number {
