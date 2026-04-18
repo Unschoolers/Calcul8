@@ -150,6 +150,14 @@ export const wheelWindowDefinition: any = {
         const vm = this as Record<string, unknown> & { normalizeWheelCompactInspectorState: () => void };
         vm.normalizeWheelCompactInspectorState();
       }
+    },
+    wheelSpectatorSessionId(this: Record<string, unknown>) {
+      const vm = this as Record<string, unknown> & { syncWheelSpectatorCountPolling: () => void };
+      vm.syncWheelSpectatorCountPolling();
+    },
+    wheelSpectatorSessionStatus(this: Record<string, unknown>) {
+      const vm = this as Record<string, unknown> & { syncWheelSpectatorCountPolling: () => void };
+      vm.syncWheelSpectatorCountPolling();
     }
   },
   methods: {
@@ -446,6 +454,8 @@ export const wheelWindowDefinition: any = {
         const refreshVm = this as Record<string, unknown> & { refreshWheelCanvas: () => void };
         refreshVm.refreshWheelCanvas();
       }
+      const spectatorVm = this as Record<string, unknown> & { syncWheelSpectatorCountPolling: () => void };
+      spectatorVm.syncWheelSpectatorCountPolling();
 
       // Watch the spinner panel for size changes (window resize, layout shifts)
       if (panel) {
@@ -510,6 +520,8 @@ export const wheelWindowDefinition: any = {
       clearTimeout(draftTimeoutId);
       (this as Record<string, unknown>)._wheelDraftSaveTimeoutId = undefined;
     }
+    const spectatorVm = this as Record<string, unknown> & { stopWheelSpectatorCountPolling: () => void };
+    spectatorVm.stopWheelSpectatorCountPolling();
   },
   setup(props: { ctx: Record<string, unknown> }) {
     const injectedCtx = inject<Record<string, unknown> | null>("appCtx", null);

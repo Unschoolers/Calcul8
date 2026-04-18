@@ -19,6 +19,11 @@ type WheelSpectatorRealtimeTokenResponse = {
   expiresAt?: unknown;
 };
 
+type WheelSpectatorCountResponse = {
+  publicSessionId?: unknown;
+  spectatorCount?: unknown;
+};
+
 export async function createWheelSpectatorSession(
   app: Pick<AppContext, "activeScopeType" | "activeWorkspaceId" | "googleAuthEpoch" | "hasProAccess">,
   snapshot: WheelSpectatorSnapshot
@@ -121,4 +126,30 @@ export async function fetchWheelSpectatorRealtimeSubscribeToken(
     token: rawToken || null,
     expiresAt: Number.isFinite(expiresAt) ? Math.floor(expiresAt) : null
   };
+}
+
+export async function fetchWheelSpectatorCount(
+  app: Pick<AppContext, "googleAuthEpoch" | "hasProAccess">,
+  publicSessionId: string
+): Promise<number> {
+  const response = await fetchAuthenticatedApiResponse(
+    app as AppContext,
+    `/wheel/public-session/${encodeURIComponent(publicSessionId)}/spectator-count`,
+    {
+      method: "GET"
+    },
+    {
+      expireAuthOn401: false
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch spectator count.");
+  }
+
+  const body = await response.json() as WheelSpectatorCountResponse;
+  const spectatorCount = Number(body.spectatorCount);
+  return Number.isFinite(spectatorCount) && spectatorCount >= 0
+    ? Math.floor(spectatorCount)
+    : 0;
 }

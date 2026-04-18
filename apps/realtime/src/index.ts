@@ -80,6 +80,28 @@ const server = createServer(async (request, response) => {
       return;
     }
 
+    if (request.method === "POST" && request.url === "/internal/room-count") {
+      if (!isAuthorizedInternalPublisher(request, internalApiKey)) {
+        writeJson(response, 401, { error: "Unauthorized room count request." });
+        return;
+      }
+
+      const body = await readJsonBody(request);
+      const bodyRecord = isRecord(body) ? body : {};
+      const room = typeof bodyRecord.room === "string" ? bodyRecord.room.trim() : "";
+      if (!room) {
+        writeJson(response, 400, { error: "Field 'room' is required." });
+        return;
+      }
+
+      writeJson(response, 200, {
+        ok: true,
+        room,
+        count: getRoomMemberCount(room)
+      });
+      return;
+    }
+
     writeJson(response, 404, { error: "Not found." });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unexpected error.";
@@ -251,6 +273,10 @@ function broadcastToRoom(payload: BroadcastPayload): number {
   }
 
   return delivered;
+}
+
+function getRoomMemberCount(room: string): number {
+  return roomMembers.get(room)?.size ?? 0;
 }
 
 function addClientToRoom(state: ClientState, room: string): void {

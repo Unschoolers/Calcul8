@@ -186,7 +186,8 @@ const WHEEL_LOCAL_TOP_LEVEL_KEYS = [
   "wheelSpectatorSessionStatus",
   "wheelSpectatorSessionUrl",
   "wheelSpectatorSessionQrUrl",
-  "wheelSpectatorPublishPending"
+  "wheelSpectatorPublishPending",
+  "wheelSpectatorConnectedCount"
 ] as const;
 
 export function getWheelWindowLocalKeys(): string[] {
@@ -238,7 +239,8 @@ export function createWheelWindowState() {
     wheelSpectatorSessionStatus: "inactive" as "inactive" | "starting" | "live" | "ended",
     wheelSpectatorSessionUrl: "" as string,
     wheelSpectatorSessionQrUrl: "" as string,
-    wheelSpectatorPublishPending: false
+    wheelSpectatorPublishPending: false,
+    wheelSpectatorConnectedCount: 0
   } as Record<string, unknown>;
   for (const [legacyKey, controllerKey] of Object.entries(WHEEL_CONTROLLER_ALIAS_MAP)) {
     Object.defineProperty(state, legacyKey, {

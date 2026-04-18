@@ -10,6 +10,7 @@ import { hasWorkspaceMembership } from "../lib/cosmos/workspaceRepository";
 import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../lib/http";
 import {
     buildWheelPublicSessionRealtimeRoom,
+  getRealtimeRoomMemberCount,
     publishWheelPublicSessionRealtimeEventBestEffort,
     signRealtimeSubscribeToken
 } from "../lib/realtime";
@@ -336,6 +337,43 @@ export async function wheelPublicSessionRealtimeTokenGet(
   }
 }
 
+export async function wheelPublicSessionSpectatorCountGet(
+  request: HttpRequest,
+  context: InvocationContext
+): Promise<HttpResponseInit> {
+  const config = getConfig();
+  const guardResponse = maybeHandleHttpGuards(request, config);
+  if (guardResponse) return guardResponse;
+
+  try {
+    const actorUserId = await resolveUserId(request, config, {
+      telemetry: {
+        logger: context,
+        route: "wheel_public_session_spectator_count",
+        workspaceScope: "unknown"
+      }
+    });
+    const publicSessionId = requireRouteParam(request, "publicSessionId").toLowerCase();
+    const document = await getWheelPublicSession(config, publicSessionId);
+    if (!document || document.ownerUserId !== actorUserId) {
+      throw new HttpError(404, "Public wheel session was not found.");
+    }
+
+    const count = await getRealtimeRoomMemberCount(config, {
+      room: buildWheelPublicSessionRealtimeRoom(publicSessionId),
+      logger: context
+    });
+
+    return jsonResponse(request, config, 200, {
+      publicSessionId,
+      spectatorCount: Math.max(0, Number(count ?? 0) || 0)
+    });
+  } catch (error) {
+    context.error("Failed to load wheel public session spectator count.", error);
+    return errorResponse(request, config, error, "Failed to load wheel public session spectator count.");
+  }
+}
+
 app.http("wheelPublicSessionCreate", {
   methods: ["POST", "OPTIONS"],
   authLevel: "anonymous",
@@ -362,4 +400,11 @@ app.http("wheelPublicSessionRealtimeTokenGet", {
   authLevel: "anonymous",
   route: "wheel/public-session/{publicSessionId}/realtime-token",
   handler: wheelPublicSessionRealtimeTokenGet
+});
+
+app.http("wheelPublicSessionSpectatorCountGet", {
+  methods: ["GET", "OPTIONS"],
+  authLevel: "anonymous",
+  route: "wheel/public-session/{publicSessionId}/spectator-count",
+  handler: wheelPublicSessionSpectatorCountGet
 });

@@ -53,6 +53,12 @@ function resolveRealtimePublishUrl(config: ApiConfig): string {
   return config.apiEnv === "prod" ? DEFAULT_REALTIME_PUBLISH_URL : "";
 }
 
+function resolveRealtimeRoomCountUrl(config: ApiConfig): string {
+  const publishUrl = resolveRealtimePublishUrl(config);
+  if (!publishUrl) return "";
+  return publishUrl.replace(/\/publish$/, "/room-count");
+}
+
 async function publishRealtimeRoomEvent(
   config: ApiConfig,
   args: {
@@ -101,6 +107,54 @@ async function publishRealtimeRoomEvent(
       `[realtime] Failed to publish ${args.eventType} for ${args.warningLabel}: ${message}`
     );
     return false;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+export async function getRealtimeRoomMemberCount(
+  config: ApiConfig,
+  args: {
+    room: string;
+    logger?: RealtimeLogger;
+  }
+): Promise<number | null> {
+  const room = String(args.room ?? "").trim();
+  if (!room) return null;
+  const roomCountUrl = resolveRealtimeRoomCountUrl(config);
+  const internalApiKey = String(config.realtimeInternalApiKey ?? "").trim();
+  if (!roomCountUrl || !internalApiKey) return null;
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REALTIME_PUBLISH_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(roomCountUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${internalApiKey}`
+      },
+      body: JSON.stringify({ room }),
+      signal: controller.signal
+    });
+
+    if (!response.ok) {
+      args.logger?.warn?.(
+        `[realtime] Failed to fetch room count for ${room} (${response.status}).`
+      );
+      return null;
+    }
+
+    const body = await response.json() as { count?: unknown };
+    const count = Number(body.count);
+    return Number.isFinite(count) && count >= 0 ? Math.floor(count) : 0;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown realtime room count error.";
+    args.logger?.warn?.(
+      `[realtime] Failed to fetch room count for ${room}: ${message}`
+    );
+    return null;
   } finally {
     clearTimeout(timeoutId);
   }

@@ -33,6 +33,13 @@ export const wheelStageComputeds = {
       : translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelPresentationModeLabel");
   },
 
+  wheelSpectatorActionLabel(this: Record<string, unknown>): string {
+    const preferredLanguage = String((this as Record<string, unknown>).preferredLanguage ?? "");
+    const baseLabel = translateAppMessage(preferredLanguage, "wheelSpectatorAction");
+    const count = Math.max(0, Math.floor(Number((this as Record<string, unknown>).wheelSpectatorConnectedCount) || 0));
+    return count > 0 ? `${count} ${baseLabel}` : baseLabel;
+  },
+
   wheelSpinButtonIcon(this: Record<string, unknown>): string {
     return (this as Record<string, unknown>).wheelMode === "config" ? "mdi-flask-outline" : "mdi-lightning-bolt";
   },

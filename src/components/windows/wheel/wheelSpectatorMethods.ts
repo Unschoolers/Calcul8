@@ -1,8 +1,11 @@
 import {
   createWheelSpectatorSession,
+  fetchWheelSpectatorCount,
   publishWheelSpectatorSession
 } from "../../../app-core/methods/ui/wheel-spectator.ts";
 import { buildWheelSpectatorQrImageUrl, buildWheelSpectatorSessionUrl, buildWheelSpectatorSnapshot } from "./wheelSpectator.ts";
+
+const WHEEL_SPECTATOR_COUNT_POLL_MS = 10_000;
 
 type WheelSpectatorVm = Record<string, unknown> & {
   notify?: (message: string, color?: string) => void;
@@ -88,6 +91,7 @@ export const wheelSpectatorMethods = {
       (this as Record<string, unknown>).wheelSpectatorSessionStatus = status;
       (this as Record<string, unknown>).wheelSpectatorSessionUrl = publicUrl;
       (this as Record<string, unknown>).wheelSpectatorSessionQrUrl = buildWheelSpectatorQrImageUrl(publicUrl);
+      (this as Record<string, unknown>).wheelSpectatorConnectedCount = 0;
       notifyWheelSpectator(this, "Spectator mode is live.", "success");
     } catch (error) {
       console.warn("Failed to start spectator mode:", error);
@@ -131,6 +135,7 @@ export const wheelSpectatorMethods = {
     if (!publicSessionId) return;
     try {
       (this as Record<string, unknown>).wheelSpectatorSessionStatus = "ended";
+      (this as Record<string, unknown>).wheelSpectatorConnectedCount = 0;
       await (this as Record<string, unknown> & {
         publishWheelSpectatorSessionSnapshot: (statusOverride?: "starting" | "live" | "ended") => Promise<void>;
       }).publishWheelSpectatorSessionSnapshot("ended");
@@ -156,5 +161,57 @@ export const wheelSpectatorMethods = {
     const publicUrl = buildWheelSpectatorSessionUrl(publicSessionId);
     (this as Record<string, unknown>).wheelSpectatorSessionUrl = publicUrl;
     (this as Record<string, unknown>).wheelSpectatorSessionQrUrl = buildWheelSpectatorQrImageUrl(publicUrl);
+  },
+
+  async refreshWheelSpectatorCount(this: WheelSpectatorVm): Promise<void> {
+    const publicSessionId = String(this.wheelSpectatorSessionId || "").trim();
+    if (!publicSessionId || this.wheelSpectatorSessionStatus === "ended") {
+      (this as Record<string, unknown>).wheelSpectatorConnectedCount = 0;
+      return;
+    }
+    if ((this as Record<string, unknown>)._wheelSpectatorCountRequestPending === true) {
+      return;
+    }
+
+    (this as Record<string, unknown>)._wheelSpectatorCountRequestPending = true;
+    try {
+      (this as Record<string, unknown>).wheelSpectatorConnectedCount = await fetchWheelSpectatorCount(this as never, publicSessionId);
+    } catch {
+      // Keep the last known count on transient failures.
+    } finally {
+      (this as Record<string, unknown>)._wheelSpectatorCountRequestPending = false;
+    }
+  },
+
+  stopWheelSpectatorCountPolling(this: Record<string, unknown>): void {
+    const intervalId = (this as Record<string, unknown>)._wheelSpectatorCountPollIntervalId as number | undefined;
+    if (intervalId != null) {
+      clearInterval(intervalId);
+      (this as Record<string, unknown>)._wheelSpectatorCountPollIntervalId = undefined;
+    }
+    (this as Record<string, unknown>)._wheelSpectatorCountRequestPending = false;
+  },
+
+  syncWheelSpectatorCountPolling(this: Record<string, unknown>): void {
+    const publicSessionId = String((this as Record<string, unknown>).wheelSpectatorSessionId || "").trim();
+    const sessionStatus = String((this as Record<string, unknown>).wheelSpectatorSessionStatus || "inactive");
+    const shouldPoll = publicSessionId.length > 0 && sessionStatus !== "inactive" && sessionStatus !== "ended";
+
+    if (!shouldPoll) {
+      (this as Record<string, unknown> & { stopWheelSpectatorCountPolling: () => void }).stopWheelSpectatorCountPolling();
+      (this as Record<string, unknown>).wheelSpectatorConnectedCount = 0;
+      return;
+    }
+
+    void ((this as Record<string, unknown> & { refreshWheelSpectatorCount: () => Promise<void> }).refreshWheelSpectatorCount());
+
+    const existingIntervalId = (this as Record<string, unknown>)._wheelSpectatorCountPollIntervalId as number | undefined;
+    if (existingIntervalId != null) {
+      return;
+    }
+
+    (this as Record<string, unknown>)._wheelSpectatorCountPollIntervalId = window.setInterval(() => {
+      void ((this as Record<string, unknown> & { refreshWheelSpectatorCount: () => Promise<void> }).refreshWheelSpectatorCount());
+    }, WHEEL_SPECTATOR_COUNT_POLL_MS);
   }
 };

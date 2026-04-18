@@ -20,6 +20,7 @@ const {
   getWheelPublicSessionMock,
   updateWheelPublicSessionMock,
   buildWheelPublicSessionRealtimeRoomMock,
+  getRealtimeRoomMemberCountMock,
   signRealtimeSubscribeTokenMock,
   publishWheelPublicSessionRealtimeEventBestEffortMock
 } = vi.hoisted(() => ({
@@ -30,6 +31,7 @@ const {
   getWheelPublicSessionMock: vi.fn(),
   updateWheelPublicSessionMock: vi.fn(),
   buildWheelPublicSessionRealtimeRoomMock: vi.fn(),
+  getRealtimeRoomMemberCountMock: vi.fn(),
   signRealtimeSubscribeTokenMock: vi.fn(),
   publishWheelPublicSessionRealtimeEventBestEffortMock: vi.fn()
 }));
@@ -58,6 +60,7 @@ vi.mock("../lib/cosmos/wheelPublicSessionRepository", () => ({
 
 vi.mock("../lib/realtime", () => ({
   buildWheelPublicSessionRealtimeRoom: buildWheelPublicSessionRealtimeRoomMock,
+  getRealtimeRoomMemberCount: getRealtimeRoomMemberCountMock,
   signRealtimeSubscribeToken: signRealtimeSubscribeTokenMock,
   publishWheelPublicSessionRealtimeEventBestEffort: publishWheelPublicSessionRealtimeEventBestEffortMock
 }));
@@ -66,6 +69,7 @@ import {
   wheelPublicSessionCreate,
   wheelPublicSessionGet,
   wheelPublicSessionPublish,
+  wheelPublicSessionSpectatorCountGet,
   wheelPublicSessionRealtimeTokenGet
 } from "./wheelPublicSession";
 
@@ -78,7 +82,9 @@ beforeEach(() => {
   hasWorkspaceMembershipMock.mockResolvedValue(true);
   buildWheelPublicSessionRealtimeRoomMock.mockImplementation((publicSessionId: string) => `wheel-public:${publicSessionId}`);
   signRealtimeSubscribeTokenMock.mockReturnValue("signed-token");
+  getRealtimeRoomMemberCountMock.mockResolvedValue(4);
   createWheelPublicSessionMock.mockResolvedValue({
+    ownerUserId: "user-a",
     publicSessionId: "abc123xy",
     snapshot: {
       wheelName: "Demo Wheel",
@@ -86,6 +92,7 @@ beforeEach(() => {
       totalSpins: 0,
       lastResultLabel: "",
       lastResultColor: "#d4af37",
+      wheelCurrentAngle: 0,
       wheelSlots: [],
       recentFairnessHistory: [],
       chaseHistory: [],
@@ -97,6 +104,7 @@ beforeEach(() => {
     }
   });
   updateWheelPublicSessionMock.mockResolvedValue({
+    ownerUserId: "user-a",
     publicSessionId: "abc123xy",
     snapshot: {
       wheelName: "Demo Wheel",
@@ -104,6 +112,7 @@ beforeEach(() => {
       totalSpins: 1,
       lastResultLabel: "Prize",
       lastResultColor: "#f00",
+      wheelCurrentAngle: 1.25,
       wheelSlots: [],
       recentFairnessHistory: [],
       chaseHistory: [],
@@ -115,6 +124,7 @@ beforeEach(() => {
     }
   });
   getWheelPublicSessionMock.mockResolvedValue({
+    ownerUserId: "user-a",
     publicSessionId: "abc123xy",
     snapshot: {
       wheelName: "Demo Wheel",
@@ -122,6 +132,7 @@ beforeEach(() => {
       totalSpins: 2,
       lastResultLabel: "Prize",
       lastResultColor: "#f00",
+      wheelCurrentAngle: 1.5,
       wheelSlots: [],
       recentFairnessHistory: [],
       chaseHistory: [],
@@ -148,6 +159,7 @@ test("wheelPublicSessionCreate sanitizes the snapshot and verifies workspace acc
         totalSpins: "-7",
         lastResultLabel: "Prize",
         lastResultColor: "",
+        wheelCurrentAngle: "1.5",
         wheelSlots: [{
           name: "Tier 1",
           color: "#f00",
@@ -199,6 +211,7 @@ test("wheelPublicSessionCreate sanitizes the snapshot and verifies workspace acc
       sessionStatus: string;
       totalSpins: number;
       lastResultColor: string;
+        wheelCurrentAngle: number;
       wheelSlots: Array<{ name: string; tier: string; isChase: boolean }>;
       featuredChaseHeat: string | null;
       recentFairnessHistory: Array<{ spinNumber: number; timestamp: number }>;
@@ -213,6 +226,7 @@ test("wheelPublicSessionCreate sanitizes the snapshot and verifies workspace acc
   assert.equal(repoInput.snapshot.sessionStatus, "starting");
   assert.equal(repoInput.snapshot.totalSpins, 0);
   assert.equal(repoInput.snapshot.lastResultColor, "#d4af37");
+  assert.equal(repoInput.snapshot.wheelCurrentAngle, 1.5);
   assert.equal(repoInput.snapshot.wheelSlots[0]?.name, "Tier 1");
   assert.equal(repoInput.snapshot.wheelSlots[0]?.tier, "tier-1");
   assert.equal(repoInput.snapshot.wheelSlots[0]?.isChase, true);
@@ -241,6 +255,7 @@ test("wheelPublicSessionPublish returns 404 when the session is missing or not o
         totalSpins: 1,
         lastResultLabel: "Prize",
         lastResultColor: "#f00",
+        wheelCurrentAngle: 1.25,
         wheelSlots: [],
         recentFairnessHistory: [],
         chaseHistory: [],
@@ -271,6 +286,7 @@ test("wheelPublicSessionPublish fans out the sanitized snapshot over realtime af
         totalSpins: 1,
         lastResultLabel: "Prize",
         lastResultColor: "#f00",
+        wheelCurrentAngle: 1.25,
         wheelSlots: [],
         recentFairnessHistory: [],
         chaseHistory: [],
@@ -342,4 +358,23 @@ test("wheelPublicSessionRealtimeTokenGet returns a room-scoped public subscribe 
   assert.deepEqual(body.rooms, ["wheel-public:abc123xy"]);
   assert.equal(body.token, "signed-token");
   assert.equal(Number.isFinite(body.expiresAt), true);
+});
+
+test("wheelPublicSessionSpectatorCountGet returns the live spectator count for the owner", async () => {
+  const response = await wheelPublicSessionSpectatorCountGet(createHttpRequest({
+    method: "GET",
+    headers: {
+      authorization: "Bearer user-a"
+    },
+    params: {
+      publicSessionId: "AbC123xY"
+    }
+  }) as never, createInvocationContext() as never);
+
+  assert.equal(response.status, 200);
+  assert.equal(buildWheelPublicSessionRealtimeRoomMock.mock.calls.at(-1)?.[0], "abc123xy");
+  assert.equal(getRealtimeRoomMemberCountMock.mock.calls.length, 1);
+  const body = response.jsonBody as { publicSessionId: string; spectatorCount: number };
+  assert.equal(body.publicSessionId, "abc123xy");
+  assert.equal(body.spectatorCount, 4);
 });

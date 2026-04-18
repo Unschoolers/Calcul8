@@ -18,10 +18,10 @@
       variant="tonal"
       prepend-icon="mdi-qrcode"
       :color="wheelSpectatorSessionId ? (wheelSpectatorSessionStatus === 'ended' ? 'surface' : 'success') : undefined"
-      :title="t('wheelSpectatorAction')"
+      :title="wheelSpectatorActionLabel"
       @click="openWheelSpectatorDialog"
     >
-      {{ t('wheelSpectatorAction') }}
+      {{ wheelSpectatorActionLabel }}
     </v-btn>
     <v-btn-toggle
       :model-value="wheelMode"
