@@ -1,6 +1,6 @@
 # Calcul8 Refactor Plan
 
-Current plan tracks active refactor targets only. Recently completed work, including the stored `proofId` wheel fairness flow and retirement of the legacy `proofToken` path, is intentionally left out.
+Current plan tracks active refactor targets only. Recently completed work, including the stored `proofId` wheel fairness flow, retirement of the legacy `proofToken` path, and the sync coordinator module split, is intentionally left out.
 
 ---
 
@@ -43,18 +43,14 @@ Refactor toward:
 
 ## High
 
-### Split the sync coordinator into smaller, explicit services
+### Finish the sync module separation
 
-`src/app-core/methods/ui/sync-service.ts` remains one of the highest-risk modules because it mixes:
+The sync coordinator split extracted the coordinator state machine, pull operation, and push operation into dedicated modules (`sync-coordinator.ts`, `sync-pull.ts`, `sync-push.ts`). `sync-service.ts` is now a thin orchestrator. The remaining work is at the boundary and integration layer:
 
-- queue/coordinator state
-- pull and push scheduling
-- conflict handling and retry branches
-- auth expiry handling
-- workspace scope behavior
-- persistence/reset recovery
-
-Sync bugs are data-loss bugs, and the current shape makes concurrent and recovery behavior hard to reason about.
+- workspace scope logic is still threaded through the pull/push call sites via `SyncScopeContext` rather than resolved once ahead of transport
+- conflict policy (`treatConflictAsSuccess`, 409 handling, recovery pull) lives inline in `sync-push.ts` rather than behind an explicit conflict-policy interface
+- storage-reset recovery (`isLocalSyncCacheReset`, `shouldAttemptStorageResetRecovery`) in `sync-push.ts` is still tightly coupled to the push path
+- no higher-level integration tests for concurrent sync, offline recovery, or workspace access loss scenarios
 
 Refactor toward:
 
@@ -142,7 +138,7 @@ Refactor toward:
 
 Frontend API base URL handling is still duplicated:
 
-- `resolveApiBaseUrl()` in `src/app-core/methods/ui/api-client.ts`
+- `resolveApiBaseUrl()` defined in `src/app-core/methods/ui/api-client.ts`, re-exported via `shared.ts`
 - `resolveCardsApiBaseUrl()` in `src/components/windows/singles/useSinglesCatalogSearch.ts`
 
 That duplication is easy to overlook until a third client drifts on env lookup, cached fallback behavior, or missing-config handling.
