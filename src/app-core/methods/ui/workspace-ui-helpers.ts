@@ -1,7 +1,7 @@
 import type { AppContext } from "../../context-app.ts";
 import type { WorkspaceSummary } from "../../../types/app.ts";
 import { getLegacyStorageKeys, getScopedLastLotStorageKey, getScopedLastSyncedPayloadHashKey, STORAGE_KEYS } from "../../storageKeys.ts";
-import { getActiveStorageScope, sortWorkspacesByName } from "../../workspace-scope.ts";
+import { resolveWorkspaceScopeContext, sortWorkspacesByName } from "../../workspace-scope.ts";
 
 const LEGACY_KEYS = getLegacyStorageKeys();
 
@@ -108,9 +108,10 @@ export function resetPendingWorkspaceInviteState(app: Pick<
 
 export function persistActiveScopeSelection(app: Pick<AppContext, "activeScopeType" | "activeWorkspaceId">): void {
   try {
-    localStorage.setItem(STORAGE_KEYS.ACTIVE_SCOPE_TYPE, app.activeScopeType);
-    if (app.activeScopeType === "workspace" && app.activeWorkspaceId) {
-      localStorage.setItem(STORAGE_KEYS.ACTIVE_WORKSPACE_ID, app.activeWorkspaceId);
+    const scope = resolveWorkspaceScopeContext(app);
+    localStorage.setItem(STORAGE_KEYS.ACTIVE_SCOPE_TYPE, scope.scopeType);
+    if (scope.isWorkspace && scope.workspaceId) {
+      localStorage.setItem(STORAGE_KEYS.ACTIVE_WORKSPACE_ID, scope.workspaceId);
       return;
     }
     localStorage.removeItem(STORAGE_KEYS.ACTIVE_WORKSPACE_ID);
@@ -120,9 +121,9 @@ export function persistActiveScopeSelection(app: Pick<AppContext, "activeScopeTy
 }
 
 export function loadScopedAppState(app: AppContext): void {
-  const scope = getActiveStorageScope(app);
+  const scope = resolveWorkspaceScopeContext(app);
   const lastLotStorageKey = getScopedLastLotStorageKey(scope);
-  const storedLastLotId = scope.scopeType === "workspace"
+  const storedLastLotId = scope.isWorkspace
     ? localStorage.getItem(lastLotStorageKey)
     : localStorage.getItem(lastLotStorageKey) ?? localStorage.getItem(LEGACY_KEYS.LAST_LOT_ID);
 

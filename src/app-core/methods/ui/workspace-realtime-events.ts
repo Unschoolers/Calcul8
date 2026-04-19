@@ -1,4 +1,5 @@
 import type { Sale } from "../../../types/app.ts";
+import { getActiveWorkspaceId, resolveWorkspaceScopeContext } from "../../workspace-scope.ts";
 import { removeById, upsertById } from "../../shared/collection-updaters.ts";
 import { normalizeWheelConfigs } from "../../shared/normalize-wheel-config.ts";
 import {
@@ -43,7 +44,7 @@ function applyWorkspacePresenceSnapshot(
     ? data as Record<string, unknown>
     : {};
   const workspaceId = String(raw.workspaceId ?? "").trim();
-  if (!workspaceId || workspaceId !== String(app.activeWorkspaceId ?? "").trim()) {
+  if (!workspaceId || workspaceId !== String(getActiveWorkspaceId(app) ?? "").trim()) {
     return;
   }
 
@@ -75,7 +76,7 @@ function isWorkspaceSnapshotSyncClean(app: RealtimeApp): boolean {
     loadSalesForLotId: app.loadSalesForLotId,
     wheelConfigs: app.wheelConfigs,
     activeWheelConfigId: app.activeWheelConfigId,
-    workspaceId: app.activeWorkspaceId
+    workspaceId: getActiveWorkspaceId(app)
   }));
   return currentSignature === expectedSignature;
 }
@@ -120,7 +121,8 @@ function handleLotConfigUpdatedEvent(app: RealtimeApp, payload: RealtimeEventPay
 }
 
 function handleWheelSessionUpdatedEvent(app: RealtimeApp, data: unknown): void {
-  if (app.activeScopeType !== "workspace") return;
+  const scope = resolveWorkspaceScopeContext(app);
+  if (!scope.isWorkspace) return;
 
   const raw = typeof data === "object" && data !== null && !Array.isArray(data)
     ? data as Record<string, unknown>

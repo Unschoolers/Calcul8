@@ -6,11 +6,10 @@ import { applyRealtimeMessage } from "./workspace-realtime-events.ts";
 import {
   clearReconnectTimeout,
   closeRealtimeSocket,
-  getDesiredRealtimeSubscription,
+  createWorkspaceRealtimeSession,
   getRealtimeReconnectDelayMs,
   getRealtimeSocketState,
   resetRealtimeReconnectAttempts,
-  resolveRealtimeSocketUrl,
   setWorkspaceRealtimeStatus,
   shouldKeepRealtimeSocket,
   shouldReconnectSocket,
@@ -135,8 +134,8 @@ function attachRealtimeSocketListeners(
 }
 
 export function refreshWorkspaceRealtime(app: RealtimeApp): void {
-  const desiredSubscription = getDesiredRealtimeSubscription(app);
-  if (!desiredSubscription) {
+  const realtimeSession = createWorkspaceRealtimeSession(app);
+  if (!realtimeSession.desiredSubscription || !realtimeSession.socketUrl) {
     closeRealtimeSocket(app);
     resetRealtimeReconnectAttempts(getRealtimeSocketState(app as object));
     app.workspacePresenceByUserId = {};
@@ -144,7 +143,8 @@ export function refreshWorkspaceRealtime(app: RealtimeApp): void {
     return;
   }
 
-  const nextUrl = resolveRealtimeSocketUrl();
+  const desiredSubscription = realtimeSession.desiredSubscription;
+  const nextUrl = realtimeSession.socketUrl;
   const state = getRealtimeSocketState(app as object);
   clearReconnectTimeout(state);
 

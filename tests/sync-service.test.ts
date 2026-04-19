@@ -334,6 +334,8 @@ test("sync scope helpers normalize personal and workspace scope keys", () => {
     {
       scopeType: "workspace",
       workspaceId: "team-42",
+      isWorkspace: true,
+      isPersonal: false,
       scopeKey: "workspace:team-42"
     }
   );
@@ -342,6 +344,9 @@ test("sync scope helpers normalize personal and workspace scope keys", () => {
     toSyncScopeContext({ scopeType: "personal" }),
     {
       scopeType: "personal",
+      workspaceId: null,
+      isWorkspace: false,
+      isPersonal: true,
       scopeKey: "personal"
     }
   );

@@ -1,36 +1,23 @@
 import type { AppStorageScope } from "../../storageKeys.ts";
-import { getActiveStorageScope } from "../../workspace-scope.ts";
+import {
+  getWorkspaceScopeKey,
+  resolveWorkspaceScopeContext,
+  toWorkspaceScopeContext,
+  type ScopeState,
+  type WorkspaceScopeContext
+} from "../../workspace-scope.ts";
 
-export type SyncScopeState = {
-  activeScopeType: "personal" | "workspace";
-  activeWorkspaceId: string | null;
-};
-
-export type SyncScopeContext = AppStorageScope & {
-  scopeKey: string;
-};
+export type SyncScopeState = ScopeState;
+export type SyncScopeContext = WorkspaceScopeContext;
 
 export function getSyncScopeKey(scope: AppStorageScope): string {
-  return scope.scopeType === "workspace"
-    ? `workspace:${String(scope.workspaceId ?? "").trim()}`
-    : "personal";
+  return getWorkspaceScopeKey(scope);
 }
 
 export function toSyncScopeContext(scope: AppStorageScope): SyncScopeContext {
-  if (scope.scopeType === "workspace") {
-    return {
-      scopeType: "workspace",
-      workspaceId: String(scope.workspaceId ?? "").trim() || null,
-      scopeKey: getSyncScopeKey(scope)
-    };
-  }
-
-  return {
-    scopeType: "personal",
-    scopeKey: getSyncScopeKey(scope)
-  };
+  return toWorkspaceScopeContext(scope);
 }
 
 export function resolveSyncScopeContext(state: SyncScopeState): SyncScopeContext {
-  return toSyncScopeContext(getActiveStorageScope(state));
+  return resolveWorkspaceScopeContext(state);
 }

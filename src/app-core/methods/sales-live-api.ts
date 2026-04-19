@@ -2,6 +2,7 @@ import type { LotSalesSyncMeta, Sale } from "../../types/app.ts";
 import type { AppContext } from "../context-app.ts";
 import { hasAuthSignal } from "../auth/index.ts";
 import { fetchAuthenticatedApiResponse, resolveApiBaseUrl } from "./ui/shared.ts";
+import { getActiveWorkspaceId, resolveWorkspaceScopeContext } from "../workspace-scope.ts";
 import { persistSalesCacheToStorage } from "../shared/sales-cache-storage.ts";
 import { replaceRootLotSales } from "../shared/sales-root-state.ts";
 import { parseApiErrorMessage } from "../shared/api-error-message.ts";
@@ -76,16 +77,18 @@ function isSignedInForEntityApis(): boolean {
 }
 
 function getScopeQuery(app: Pick<AppContext, "activeScopeType" | "activeWorkspaceId">): string {
-  if (app.activeScopeType !== "workspace" || !app.activeWorkspaceId) return "";
-  return `?workspaceId=${encodeURIComponent(app.activeWorkspaceId)}`;
+  const workspaceId = getActiveWorkspaceId(app);
+  if (!workspaceId) return "";
+  return `?workspaceId=${encodeURIComponent(workspaceId)}`;
 }
 
 function getScopeBody(app: Pick<AppContext, "activeScopeType" | "activeWorkspaceId">): { workspaceId?: string } {
-  if (app.activeScopeType !== "workspace" || !app.activeWorkspaceId) {
+  const workspaceId = getActiveWorkspaceId(app);
+  if (!workspaceId) {
     return {};
   }
   return {
-    workspaceId: app.activeWorkspaceId
+    workspaceId
   };
 }
 
@@ -409,7 +412,8 @@ export async function fetchWorkspaceRealtimeSubscribeToken(
   lotId: number
 ): Promise<WorkspaceRealtimeSubscribeToken | null> {
   if (!canUseAuthoritativeSalesLiveApi()) return null;
-  if (app.activeScopeType !== "workspace" || !app.activeWorkspaceId) return null;
+  const scope = resolveWorkspaceScopeContext(app);
+  if (!scope.isWorkspace) return null;
 
   const body = await requestJson(
     app,
@@ -443,11 +447,12 @@ export async function fetchWorkspacePresenceRealtimeSubscribeToken(
   app: SalesLiveApiApp
 ): Promise<WorkspaceRealtimeSubscribeToken | null> {
   if (!canUseAuthoritativeSalesLiveApi()) return null;
-  if (app.activeScopeType !== "workspace" || !app.activeWorkspaceId) return null;
+  const scope = resolveWorkspaceScopeContext(app);
+  if (!scope.isWorkspace || !scope.workspaceId) return null;
 
   const body = await requestJson(
     app,
-    `/workspaces/${encodeURIComponent(String(app.activeWorkspaceId))}/realtime-token`,
+    `/workspaces/${encodeURIComponent(scope.workspaceId)}/realtime-token`,
     {
       method: "GET"
     },

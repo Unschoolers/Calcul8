@@ -12,7 +12,7 @@ import {
   STORAGE_KEYS
 } from "../storageKeys.ts";
 import { type ConfigMethodSubset, getTodayDate } from "./config-shared.ts";
-import { getActiveStorageScope } from "../workspace-scope.ts";
+import { resolveWorkspaceScopeContext } from "../workspace-scope.ts";
 import { normalizeStoredLot } from "../shared/normalize-lot.ts";
 import { getRootLotSales, replaceRootLotSales, resetRootSalesState } from "../shared/sales-root-state.ts";
 
@@ -64,19 +64,18 @@ export const configStorageMethods: ConfigMethodSubset<
   | "saveLotsToStorage"
 > = {
   getSalesStorageKey(lotId: number): string {
-    return getWhatfeesSalesStorageKey(lotId, getActiveStorageScope(this));
+    return getWhatfeesSalesStorageKey(lotId, resolveWorkspaceScopeContext(this));
   },
 
   getSalesCacheEntry(lotId: number): LotSalesCacheEntry {
     try {
-      const isPersonalScope = this.activeScopeType !== "workspace" || !this.activeWorkspaceId;
-      const storageScope = getActiveStorageScope(this);
-      if (isPersonalScope) {
+      const scope = resolveWorkspaceScopeContext(this);
+      if (scope.isPersonal) {
         migrateLegacySalesKey(lotId);
       }
       const storageKey = this.getSalesStorageKey(lotId);
-      const statusKey = getSalesCacheStatusKey(lotId, storageScope);
-      const stored = isPersonalScope
+      const statusKey = getSalesCacheStatusKey(lotId, scope);
+      const stored = scope.isPersonal
         ? readStorageWithLegacy(storageKey, getLegacySalesStorageKey(lotId))
         : localStorage.getItem(storageKey);
       if (!stored) {
@@ -188,8 +187,9 @@ export const configStorageMethods: ConfigMethodSubset<
     resetRootSalesState(this);
 
     try {
-      const storageKey = getScopedPresetsStorageKey(getActiveStorageScope(this));
-      const stored = this.activeScopeType === "workspace" && this.activeWorkspaceId
+      const scope = resolveWorkspaceScopeContext(this);
+      const storageKey = getScopedPresetsStorageKey(scope);
+      const stored = scope.isWorkspace
         ? localStorage.getItem(storageKey)
         : readStorageWithLegacy(storageKey, LEGACY_KEYS.PRESETS);
       if (stored) {
@@ -205,8 +205,9 @@ export const configStorageMethods: ConfigMethodSubset<
 
   saveLotsToStorage(): void {
     try {
+      const scope = resolveWorkspaceScopeContext(this);
       localStorage.setItem(
-        getScopedPresetsStorageKey(getActiveStorageScope(this)),
+        getScopedPresetsStorageKey(scope),
         JSON.stringify(this.lots)
       );
     } catch (error) {

@@ -6,6 +6,7 @@ import {
 import type { WorkspaceRealtimeStatus } from "../../../types/app.ts";
 import type { AppContext } from "../../context-app.ts";
 import type { RootWheelSessionStateContext } from "../../shared/wheel-root-session-state.ts";
+import { resolveWorkspaceScopeContext, type WorkspaceScopeContext } from "../../workspace-scope.ts";
 import { canUseAuthoritativeSalesLiveApi } from "../sales-live-api.ts";
 
 export type RealtimeApp = Pick<
@@ -60,6 +61,12 @@ export type WorkspaceRealtimeDesiredSubscription = {
   rooms: string[];
 };
 
+export type WorkspaceRealtimeSession = {
+  scope: WorkspaceScopeContext;
+  desiredSubscription: WorkspaceRealtimeDesiredSubscription | null;
+  socketUrl: string | null;
+};
+
 export type RealtimeEventPayload = {
   lotId: number;
   raw: Record<string, unknown>;
@@ -93,8 +100,8 @@ export function setWorkspaceRealtimeStatus(app: RealtimeApp, status: WorkspaceRe
   app.workspaceRealtimeStatus = status;
 }
 
-function shouldUseWorkspaceRealtime(app: RealtimeApp): boolean {
-  if (app.isOffline || app.activeScopeType !== "workspace" || !app.activeWorkspaceId) {
+function shouldUseWorkspaceRealtime(app: RealtimeApp, scope: WorkspaceScopeContext): boolean {
+  if (app.isOffline || !scope.isWorkspace || !scope.workspaceId) {
     return false;
   }
 
@@ -105,9 +112,12 @@ function shouldUseWorkspaceRealtime(app: RealtimeApp): boolean {
   return WORKSPACE_REALTIME_TABS.has(app.currentTab);
 }
 
-export function getDesiredRealtimeSubscription(app: RealtimeApp): WorkspaceRealtimeDesiredSubscription | null {
-  if (!shouldUseWorkspaceRealtime(app)) return null;
-  const presenceRoom = buildWorkspacePresenceRealtimeRoom(app.activeWorkspaceId as string);
+export function getDesiredRealtimeSubscription(
+  app: RealtimeApp,
+  scope: WorkspaceScopeContext = resolveWorkspaceScopeContext(app)
+): WorkspaceRealtimeDesiredSubscription | null {
+  if (!shouldUseWorkspaceRealtime(app, scope) || !scope.workspaceId) return null;
+  const presenceRoom = buildWorkspacePresenceRealtimeRoom(scope.workspaceId);
   if (!app.currentLotId) {
     return {
       lotRoom: "",
@@ -116,8 +126,8 @@ export function getDesiredRealtimeSubscription(app: RealtimeApp): WorkspaceRealt
       rooms: [presenceRoom]
     };
   }
-  const lotRoom = buildWorkspaceLotRealtimeRoom(app.activeWorkspaceId as string, app.currentLotId as number);
-  const wheelRoom = buildWorkspaceWheelRealtimeRoom(app.activeWorkspaceId as string);
+  const lotRoom = buildWorkspaceLotRealtimeRoom(scope.workspaceId, app.currentLotId as number);
+  const wheelRoom = buildWorkspaceWheelRealtimeRoom(scope.workspaceId);
   return {
     lotRoom,
     presenceRoom,
@@ -136,6 +146,16 @@ export function resolveRealtimeSocketUrl(): string {
   }
 
   return FALLBACK_REALTIME_SOCKET_URL;
+}
+
+export function createWorkspaceRealtimeSession(app: RealtimeApp): WorkspaceRealtimeSession {
+  const scope = resolveWorkspaceScopeContext(app);
+  const desiredSubscription = getDesiredRealtimeSubscription(app, scope);
+  return {
+    scope,
+    desiredSubscription,
+    socketUrl: desiredSubscription ? resolveRealtimeSocketUrl() : null
+  };
 }
 
 export function clearReconnectTimeout(state: RealtimeSocketState): void {
@@ -191,7 +211,7 @@ export function shouldReconnectSocket(
   state: RealtimeSocketState,
   desiredRooms: string[]
 ): boolean {
-  const desiredSubscription = getDesiredRealtimeSubscription(app);
+  const desiredSubscription = createWorkspaceRealtimeSession(app).desiredSubscription;
   return !state.isIntentionalClose
     && !!desiredSubscription
     && desiredSubscription.rooms.length === desiredRooms.length

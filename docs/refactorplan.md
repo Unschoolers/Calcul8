@@ -1,6 +1,6 @@
 # Calcul8 Refactor Plan
 
-Current plan tracks active refactor targets only. Recently completed work, including the stored `proofId` wheel fairness flow, retirement of the legacy `proofToken` path, and the sync module separation finish, is intentionally left out.
+Current plan tracks active refactor targets only. 
 
 ---
 
@@ -42,25 +42,6 @@ Refactor toward:
 ---
 
 ## High
-
-### Untangle workspace scope from storage, sync, and realtime call sites
-
-Workspace behavior is now spread across core application services instead of living behind a clear boundary:
-
-- `src/app-core/workspace-scope.ts`
-- `src/app-core/methods/config-storage.ts`
-- `src/app-core/methods/ui/sync-service.ts`
-- `src/app-core/methods/ui/workspace-realtime-state.ts`
-- `src/app-core/methods/ui/workspace-realtime-socket.ts`
-
-The current pattern threads `activeWorkspaceId` / `activeScopeType` through many call sites, which increases branching, test setup cost, and edge-case risk when access changes mid-session.
-
-Refactor toward:
-
-- a dedicated scope boundary resolved before storage/sync/realtime work starts
-- explicit workspace-scoped storage and sync interfaces
-- clearer access-loss and scope-switch lifecycle handling
-- reusable workspace-aware test fixtures so scope behavior is easier to verify
 
 ### Break down the entitlements purchase orchestration
 

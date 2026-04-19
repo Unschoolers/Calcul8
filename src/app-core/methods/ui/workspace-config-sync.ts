@@ -1,3 +1,5 @@
+import { resolveWorkspaceScopeContext } from "../../workspace-scope.ts";
+
 type WorkspaceConfigSyncApp = {
   activeScopeType: "personal" | "workspace";
   activeWorkspaceId: string | null;
@@ -26,8 +28,8 @@ function getWorkspaceConfigSyncState(app: object): WorkspaceConfigSyncState {
 }
 
 function canQueueWorkspaceConfigSync(app: WorkspaceConfigSyncApp): boolean {
-  if (app.activeScopeType !== "workspace") return false;
-  if (!String(app.activeWorkspaceId ?? "").trim()) return false;
+  const scope = resolveWorkspaceScopeContext(app);
+  if (!scope.isWorkspace) return false;
   if (app.isOffline) return false;
   return Number.isFinite(Number(app.currentLotId)) && Number(app.currentLotId) > 0;
 }
