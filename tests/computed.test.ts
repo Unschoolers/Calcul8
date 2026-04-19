@@ -843,6 +843,62 @@ test("portfolio sales by user chart data uses the shared all-sales accessor when
   ]);
 });
 
+test("allLotPerformance uses cached lot sales without hydrating storage during render", () => {
+  const loadSalesForLotId = vi.fn(() => {
+    throw new Error("allLotPerformance should not load storage during computed render");
+  });
+  const getSalesCacheEntry = vi.fn(() => ({
+    status: "loaded" as const,
+    sales: [
+      { id: 1, type: "box" as const, quantity: 1, packsCount: 16, price: 120, buyerShipping: 0, date: "2026-04-08" }
+    ]
+  }));
+
+  const rows = appComputed.allLotPerformance.call({
+    salesCacheEpoch: 0,
+    portfolioSelectedLotIds: [11],
+    lots: [
+      {
+        id: 11,
+        name: "Bulk lot",
+        lotType: "bulk",
+        boxPriceCost: 80,
+        boxesPurchased: 1,
+        packsPerBox: 16,
+        spotsPerBox: 16,
+        costInputMode: "perBox",
+        currency: "CAD",
+        sellingCurrency: "CAD",
+        exchangeRate: 1,
+        purchaseDate: "2026-04-01",
+        purchaseShippingCost: 0,
+        purchaseTaxPercent: 0,
+        sellingTaxPercent: 0,
+        sellingShippingPerOrder: 0,
+        includeTax: true,
+        spotPrice: 0,
+        boxPriceSell: 0,
+        packPrice: 0,
+        targetProfitPercent: 15
+      }
+    ],
+    currentLotId: 22,
+    sales: [],
+    getSalesCacheEntry,
+    loadSalesForLotId,
+    hasProAccess: false,
+    livePackPrice: 0,
+    liveBoxPriceSell: 0,
+    liveSpotPrice: 0
+  } as unknown as Parameters<typeof appComputed.allLotPerformance>[0]);
+
+  assert.equal(loadSalesForLotId.mock.calls.length, 0);
+  assert.equal(getSalesCacheEntry.mock.calls.length, 1);
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0]?.lotId, 11);
+  assert.equal(rows[0]?.salesCount, 1);
+});
+
 test("portfolio sales by user profit uses realized per-sale profit only", () => {
   const data = buildPortfolioSalesByUserChartData({
     lots: [

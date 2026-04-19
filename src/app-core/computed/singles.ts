@@ -9,9 +9,13 @@ import {
     calculateSinglesSaleProfitPreview,
     getSinglesEntryUnitMarketValueInSellingCurrency
 } from "../../domain/calculations.ts";
+import type { LotSalesCacheEntry, Sale } from "../../types/app.ts";
 import type { AppComputedObject } from "../context-contracts.ts";
 import { buildLotOptionItems, filterLotOptionItems } from "../shared/lot-option-items.ts";
-import { getRootLotSales } from "../shared/sales-root-state.ts";
+import {
+    getLotSalesFromAccessContext,
+    type LotSalesAccessContext
+} from "../shared/lot-sales-access.ts";
 import {
     calculateProfitableOrderPrice,
     getSaleSinglesLines,
@@ -65,24 +69,16 @@ function getSaleEditorNormalizedLines(newSale: {
 
 function lotIsCompleteByDefault(context: {
   currentLotId: number | null;
-  sales: unknown[];
-  salesByLotId?: Map<number, unknown[]>;
-  getSalesCacheEntry?: (lotId: number) => { sales: unknown[] };
-  loadSalesForLotId?: (lotId: number) => unknown[];
+  sales: Sale[];
+  getSalesCacheEntry?: (lotId: number) => LotSalesCacheEntry;
+  loadSalesForLotId?: (lotId: number) => Sale[];
 }, lot: {
   id: number;
 }): boolean {
-  const sales = context.currentLotId === lot.id
-    ? context.sales
-    : (
-      getRootLotSales(context as Record<string, unknown>, lot.id)
-      ?? context.getSalesCacheEntry?.(lot.id)?.sales
-      ?? context.loadSalesForLotId?.(lot.id)
-      ?? []
-    );
+  const sales = getLotSalesFromAccessContext(context as LotSalesAccessContext, lot.id);
   const summary = calculateLotPerformanceSummary(
     lot as never,
-    Array.isArray(sales) ? sales as never : [],
+    sales,
     DEFAULT_VALUES.EXCHANGE_RATE
   );
 

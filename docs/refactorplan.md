@@ -61,21 +61,6 @@ Refactor toward:
 - reducing `this`-driven mutation in favor of explicit typed inputs/outputs
 - shifting more behavior under focused unit tests instead of broad component tests only
 
-### Type the portfolio sales/cache access path
-
-Portfolio calculations still rely on weakly typed cache access in a high-value computation path:
-
-- `src/app-core/computed/portfolio.ts` uses `Record<string, unknown>` style access to lot sales/cache state
-
-This is not just style debt. It makes forecasting and sales rollups harder to refactor safely because relationships between lots, cached sales, and derived metrics are hidden behind generic casts.
-
-Refactor toward:
-
-- an explicit typed sales-cache interface
-- shared typed helpers for lot-to-sales lookup
-- reducing ad hoc `Record<string, unknown>` access in portfolio computations
-- clearer ownership of derived portfolio data vs cached storage data
-
 ---
 
 ## Medium

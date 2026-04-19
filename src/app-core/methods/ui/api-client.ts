@@ -55,13 +55,13 @@ function isUnsafeMethod(method: string | undefined): boolean {
 }
 
 export function resolveApiBaseUrl(): string {
+  const storage = (globalThis as { localStorage?: { getItem?: (key: string) => string | null; setItem?: (key: string, value: string) => void } }).localStorage;
   const configuredApiBase = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim() || "";
   if (configuredApiBase) {
     const normalized = configuredApiBase.replace(/\/+$/, "");
-    localStorage.setItem(STORAGE_KEYS.API_BASE_URL, normalized);
+    storage?.setItem?.(STORAGE_KEYS.API_BASE_URL, normalized);
     return normalized;
   }
-  const storage = (globalThis as { localStorage?: { getItem?: (key: string) => string | null } }).localStorage;
   const cachedBase = String(storage?.getItem?.(STORAGE_KEYS.API_BASE_URL) || "").trim();
   if (cachedBase) return cachedBase.replace(/\/+$/, "");
   return "";
