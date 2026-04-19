@@ -43,25 +43,6 @@ Refactor toward:
 
 ## High
 
-### Break down the entitlements purchase orchestration
-
-`src/app-core/methods/ui/entitlements-purchase-service.ts` has grown into a multi-provider orchestration layer for Google Play, Stripe, and recovery flows. It now mixes:
-
-- provider selection and routing
-- purchase lifecycle state
-- verification/reconciliation behavior
-- retry and recovery branches
-- product/UI-facing error shaping
-
-This is revenue-path code, so complexity here carries both support risk and regression risk.
-
-Refactor toward:
-
-- a provider interface with isolated Google Play and Stripe flows
-- an explicit purchase lifecycle state machine
-- standalone recovery/retry helpers that are easier to unit test
-- keeping UI-facing messaging separate from provider transport logic
-
 ### Replace the biggest `any` / `Record<string, unknown>` hotspots in window logic
 
 The largest remaining frontend type holes are still concentrated in high-change windows:

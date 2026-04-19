@@ -1,16 +1,16 @@
-import type { SinglesCatalogSource, SinglesPurchaseEntry } from "../../../types/app.ts";
-import { STORAGE_KEYS } from "../../../app-core/storageKeys.ts";
+import { resolveApiBaseUrl } from "../../../app-core/methods/ui/shared.ts";
 import { normalizeSinglesCatalogSource } from "../../../app-core/shared/singles-catalog-source.ts";
+import type { SinglesCatalogSource, SinglesPurchaseEntry } from "../../../types/app.ts";
 import {
-  createSinglesCardImageCacheKey,
-  createSinglesCardSuggestionValue,
-  mapCardSearchItemToSuggestion,
-  matchesCardSuggestionQuery,
-  resolveCardSearchBackendQuery,
-  SINGLES_CARD_SEARCH_DEBOUNCE_MS,
-  SINGLES_CARD_SEARCH_LIMIT,
-  type CardSearchApiItem,
-  type SinglesCardSuggestion
+    createSinglesCardImageCacheKey,
+    createSinglesCardSuggestionValue,
+    mapCardSearchItemToSuggestion,
+    matchesCardSuggestionQuery,
+    resolveCardSearchBackendQuery,
+    SINGLES_CARD_SEARCH_DEBOUNCE_MS,
+    SINGLES_CARD_SEARCH_LIMIT,
+    type CardSearchApiItem,
+    type SinglesCardSuggestion
 } from "./singlesCatalogSearch.ts";
 
 type EditableSinglesRow = {
@@ -52,7 +52,6 @@ type SinglesCatalogSearchContext = {
   saveLotsToStorage?(): void;
   notify(message: string, color?: string): void;
   formatSinglesEditorItemLabel(item: unknown, cardNumber: unknown): string;
-  resolveCardsApiBaseUrl(): string;
   cacheSinglesSuggestionImages(suggestions: SinglesCardSuggestion[]): void;
   setCurrentSinglesCatalogSource(nextValue: SinglesCatalogSource): void;
   onSinglesItemSelected(selected: string | SinglesCardSuggestion | null): void;
@@ -246,15 +245,6 @@ export const singlesCatalogSearchMethods = {
     return `${safeItem} #${safeCardNumber}`;
   },
 
-  resolveCardsApiBaseUrl(this: SinglesCatalogSearchContext): string {
-    const configuredBase = String((import.meta.env.VITE_API_BASE_URL as string | undefined) || "").trim();
-    if (configuredBase) return configuredBase.replace(/\/+$/, "");
-    const storage = (globalThis as { localStorage?: { getItem?: (key: string) => string | null } }).localStorage;
-    const cachedBase = String(storage?.getItem?.(STORAGE_KEYS.API_BASE_URL) || "").trim();
-    if (cachedBase) return cachedBase.replace(/\/+$/, "");
-    return "";
-  },
-
   cancelSinglesItemSearch(this: SinglesCatalogSearchContext): void {
     if (this.singlesItemSearchTimerId) {
       clearTimeout(this.singlesItemSearchTimerId);
@@ -302,7 +292,7 @@ export const singlesCatalogSearchMethods = {
     const catalogSource = normalizeSinglesCatalogSource(this.currentSinglesCatalogSource);
     if (catalogSource === "none") return [];
 
-    const apiBase = this.resolveCardsApiBaseUrl();
+    const apiBase = resolveApiBaseUrl();
     if (!apiBase) return [];
 
     const backendQuery = resolveCardSearchBackendQuery(query);
@@ -373,7 +363,7 @@ export const singlesCatalogSearchMethods = {
       return;
     }
 
-    const apiBase = this.resolveCardsApiBaseUrl();
+    const apiBase = resolveApiBaseUrl();
     if (!apiBase) {
       this.singlesItemSuggestions = [];
       this.singlesItemMenuOpen = false;

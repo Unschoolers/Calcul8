@@ -1,10 +1,10 @@
 import {
-  buildAuthenticatedHeaders,
-  getStoredCsrfToken,
-  setStoredCsrfToken
+    buildAuthenticatedHeaders,
+    getStoredCsrfToken,
+    setStoredCsrfToken
 } from "../../auth/index.ts";
-import { STORAGE_KEYS } from "../../storageKeys.ts";
 import type { AppContext } from "../../context-app.ts";
+import { STORAGE_KEYS } from "../../storageKeys.ts";
 import { handleExpiredAuth } from "./entitlement-cache.ts";
 
 export interface FetchRetryOptions {
@@ -61,6 +61,9 @@ export function resolveApiBaseUrl(): string {
     localStorage.setItem(STORAGE_KEYS.API_BASE_URL, normalized);
     return normalized;
   }
+  const storage = (globalThis as { localStorage?: { getItem?: (key: string) => string | null } }).localStorage;
+  const cachedBase = String(storage?.getItem?.(STORAGE_KEYS.API_BASE_URL) || "").trim();
+  if (cachedBase) return cachedBase.replace(/\/+$/, "");
   return "";
 }
 
