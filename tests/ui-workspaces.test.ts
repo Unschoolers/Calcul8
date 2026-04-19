@@ -16,7 +16,6 @@ const {
 }));
 
 vi.mock("../src/app-core/methods/ui/shared.ts", () => ({
-  GOOGLE_TOKEN_KEY: "whatfees_google_token",
   fetchWithRetry: fetchWithRetryMock,
   fetchAuthenticatedApiResponse: vi.fn((app: unknown, path: string, init: RequestInit) =>
     fetchWithRetryMock(`https://api.example.test${path}`, init)

@@ -6,22 +6,6 @@ Current plan tracks active refactor targets only.
 
 ## Critical
 
-### Move auth/session secrets out of `localStorage`
-
-Frontend auth still persists sensitive browser-readable values:
-
-- `src/app-core/auth/storage.ts` stores the CSRF token in `localStorage`
-- `src/app-core/auth/storage.ts` stores the Google ID token in `localStorage`
-
-That means any XSS bug or compromised third-party script can directly read session material.
-
-Refactor toward:
-
-- server-managed auth/session cookies where possible (`HttpOnly`, `Secure`, `SameSite`)
-- in-memory frontend state for browser-only tokens that cannot move to cookies
-- one auth storage boundary for token lifecycle, logout, expiry, and cleanup
-- explicit migration logic that removes legacy `localStorage` tokens on upgrade
-
 ### Remove repo-coupled signing inputs and tracked generated artifacts
 
 The Android/TWA release flow is still too tied to repo-local files:
@@ -47,19 +31,37 @@ Refactor toward:
 
 The largest remaining frontend type holes are still concentrated in high-change windows:
 
-- `src/components/windows/SinglesConfigWindow.definition.ts` still exports `singlesConfigWindowDefinition: any` and relies on many `this: any` entries
-- `src/components/windows/wheel/WheelWindow.definition.ts` still exports `wheelWindowDefinition: any`
-- `src/components/windows/live/LiveSinglesPanel.ts` still carries many `this: any` methods
-- `src/components/windows/wheel/wheelSessionMethods.ts` and related wheel modules still rely heavily on `Record<string, unknown>` casts
+- `src/components/windows/LiveWindow.definition.ts` still carries explicit `this: any` entry points and broad `Record<string, unknown>` view-model casts
+- `src/components/windows/live/LiveSinglesPanel.ts` still leans on generic `ctx`/`$root` access and runtime method lookups
+- `src/components/windows/SalesWindow.definition.ts` and `src/components/windows/PortfolioWindow.definition.ts` still model most component state through `Record<string, unknown>`
+- wheel display/session modules such as `src/components/windows/wheel/wheelComputedShared.ts`, `src/components/windows/wheel/wheelSpinMethods.ts`, and `src/components/windows/wheel/wheelSessionMethods.ts` still rely heavily on `Record<string, unknown>` mutation
 
-These files sit on inventory, wheel, and live selling flows, so weak typing keeps refactors risky and test intent less clear.
+These files sit on inventory, sales, wheel, and live selling flows, so weak typing keeps refactors risky and test intent less clear.
 
 Refactor toward:
 
-- extracting typed composables/helpers for singles virtualization, search, and row editing
+- extracting typed view-model interfaces for window definitions instead of passing broad app-root bags around
+- extracting typed composables/helpers for live singles editing, portfolio filters, and sales history presentation
 - extracting typed wheel services for session persistence, chase replacement, fairness, and sales recording
-- reducing `this`-driven mutation in favor of explicit typed inputs/outputs
+- reducing `this`-driven mutation and runtime method lookup in favor of explicit typed inputs/outputs
 - shifting more behavior under focused unit tests instead of broad component tests only
+
+### Smooth tab transitions by separating animation, chart work, and background refresh
+
+Sales and portfolio navigation still bunches expensive work into the same interaction window:
+
+- `src/app-core/watch.ts` triggers chart initialization and tab-driven freshness work directly from tab/watch flows
+- `src/app-core/methods/sales-charts.ts` still destroys and recreates Chart instances instead of updating long-lived charts
+- `src/app-core/methods/sales-freshness.ts` and `src/app-core/methods/sales-portfolio-hydration.ts` can start network/cache work close to tab-entry animations
+
+That makes UI transitions more sensitive to API timing, layout work, and reactive churn than they need to be.
+
+Refactor toward:
+
+- rendering the destination tab from cached state first, then starting freshness/hydration after the transition settles
+- reusing existing sales and portfolio chart instances where possible instead of full destroy/recreate cycles
+- batching or cancelling tab-scoped refresh work when the user switches again quickly
+- separating “tab became visible” orchestration from “data needs revalidation” orchestration
 
 ---
 

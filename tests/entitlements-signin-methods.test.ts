@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test, vi } from "vitest";
 import {
-  getStoredGoogleIdToken,
-  setStoredGoogleIdToken
+    getStoredGoogleIdToken,
+    setStoredGoogleIdToken
 } from "../src/app-core/auth/index.ts";
 
 const {
@@ -23,7 +23,6 @@ vi.mock("../src/app-core/methods/ui/shared.ts", () => ({
   GOOGLE_INIT_RETRY_COUNT: 20,
   GOOGLE_INIT_RETRY_DELAY_MS: 250,
   GOOGLE_PROFILE_CACHE_KEY: "whatfees_google_profile_cache",
-  GOOGLE_TOKEN_KEY: "whatfees_google_id_token",
   readEntitlementCache: readEntitlementCacheMock
 }));
 

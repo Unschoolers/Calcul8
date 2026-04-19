@@ -14,7 +14,6 @@ const {
 
 vi.mock("../src/app-core/methods/ui/shared.ts", () => ({
   CLOUD_SYNC_INTERVAL_MS: 2500,
-  GOOGLE_TOKEN_KEY: "whatfees_google_token",
   SYNC_CLIENT_VERSION_KEY: "whatfees_sync_client_version",
   handleExpiredAuth: handleExpiredAuthMock,
   resolveApiBaseUrl: resolveApiBaseUrlMock

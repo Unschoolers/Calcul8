@@ -34,7 +34,6 @@ const {
 vi.mock("../src/app-core/methods/ui/shared.ts", () => ({
   resolvePurchaseProvider: resolvePurchaseProviderMock,
   getSupportedPurchaseProviders: getSupportedPurchaseProvidersMock,
-  GOOGLE_TOKEN_KEY: "whatfees_google_id_token",
   resolveApiBaseUrl: resolveApiBaseUrlMock,
   fetchWithRetry: fetchWithRetryMock,
   handleExpiredAuth: handleExpiredAuthMock,

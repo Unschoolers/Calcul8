@@ -1,15 +1,13 @@
+import {
+    GOOGLE_AUTH_PROFILE_CACHE_KEY,
+    handleExpiredAuthState
+} from "../../auth/index.ts";
 import type { AppContext } from "../../context-app.ts";
 import {
-  AUTH_CSRF_TOKEN_KEY,
-  GOOGLE_AUTH_PROFILE_CACHE_KEY,
-  GOOGLE_AUTH_TOKEN_KEY,
-  handleExpiredAuthState
-} from "../../auth/index.ts";
-import {
-  getLegacyStorageKeys,
-  readStorageWithLegacy,
-  removeStorageWithLegacy,
-  STORAGE_KEYS
+    getLegacyStorageKeys,
+    readStorageWithLegacy,
+    removeStorageWithLegacy,
+    STORAGE_KEYS
 } from "../../storageKeys.ts";
 
 export interface EntitlementApiResponse {
@@ -29,9 +27,7 @@ const LEGACY_KEYS = getLegacyStorageKeys();
 
 export const ENTITLEMENT_CACHE_KEY = STORAGE_KEYS.ENTITLEMENT_CACHE;
 export const PRO_ACCESS_KEY = STORAGE_KEYS.PRO_ACCESS;
-export const GOOGLE_TOKEN_KEY = GOOGLE_AUTH_TOKEN_KEY;
 export const GOOGLE_PROFILE_CACHE_KEY = GOOGLE_AUTH_PROFILE_CACHE_KEY;
-export const CSRF_TOKEN_KEY = AUTH_CSRF_TOKEN_KEY;
 export const SYNC_CLIENT_VERSION_KEY = STORAGE_KEYS.SYNC_CLIENT_VERSION;
 export const CLOUD_SYNC_INTERVAL_MS = 2 * 1000;
 export const SYNC_STATUS_RESET_MS = 2500;

@@ -6,8 +6,8 @@ import {
 
 const LEGACY_KEYS = getLegacyStorageKeys();
 
-export const AUTH_CSRF_TOKEN_KEY = STORAGE_KEYS.CSRF_TOKEN;
-export const GOOGLE_AUTH_TOKEN_KEY = STORAGE_KEYS.GOOGLE_ID_TOKEN;
+const AUTH_CSRF_TOKEN_KEY = STORAGE_KEYS.CSRF_TOKEN;
+const GOOGLE_AUTH_TOKEN_KEY = STORAGE_KEYS.GOOGLE_ID_TOKEN;
 export const GOOGLE_AUTH_PROFILE_CACHE_KEY = STORAGE_KEYS.GOOGLE_PROFILE_CACHE;
 export const GOOGLE_AUTO_SIGNIN_DISABLED_KEY = STORAGE_KEYS.GOOGLE_AUTO_SIGNIN_DISABLED;
 
@@ -60,12 +60,8 @@ function hydrateSecretStorage(): void {
   storedCsrfToken = readTrimmedStorageValue(AUTH_CSRF_TOKEN_KEY);
   storedGoogleIdToken = readTrimmedStorageValue(GOOGLE_AUTH_TOKEN_KEY, LEGACY_KEYS.GOOGLE_ID_TOKEN);
 
-  if (storedCsrfToken) {
-    removeStorageWithLegacy(AUTH_CSRF_TOKEN_KEY);
-  }
-  if (storedGoogleIdToken) {
-    removeStorageWithLegacy(GOOGLE_AUTH_TOKEN_KEY, LEGACY_KEYS.GOOGLE_ID_TOKEN);
-  }
+  removeStorageWithLegacy(AUTH_CSRF_TOKEN_KEY);
+  removeStorageWithLegacy(GOOGLE_AUTH_TOKEN_KEY, LEGACY_KEYS.GOOGLE_ID_TOKEN);
 }
 
 export function primeStoredAuthSecretsFromStorage(): void {

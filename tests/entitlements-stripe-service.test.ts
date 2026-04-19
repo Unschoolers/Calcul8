@@ -14,14 +14,13 @@ const {
 vi.mock("../src/app-core/methods/ui/shared.ts", () => ({
   resolveApiBaseUrl: resolveApiBaseUrlMock,
   fetchWithRetry: fetchWithRetryMock,
-  handleExpiredAuth: handleExpiredAuthMock,
-  GOOGLE_TOKEN_KEY: "whatfees_google_id_token"
+  handleExpiredAuth: handleExpiredAuthMock
 }));
 
 import {
-  handleStripeCheckoutReturn,
-  runStripePurchaseFlow,
-  runStripeVerificationFlow
+    handleStripeCheckoutReturn,
+    runStripePurchaseFlow,
+    runStripeVerificationFlow
 } from "../src/app-core/methods/ui/entitlements-stripe.ts";
 
 type MockStorage = {

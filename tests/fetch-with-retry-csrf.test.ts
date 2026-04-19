@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test, vi } from "vitest";
-import { CSRF_TOKEN_KEY, fetchWithRetry } from "../src/app-core/methods/ui/shared.ts";
 import {
-  getStoredCsrfToken,
-  setStoredCsrfToken
+    getStoredCsrfToken,
+    setStoredCsrfToken
 } from "../src/app-core/auth/index.ts";
+import { fetchWithRetry } from "../src/app-core/methods/ui/shared.ts";
+import { STORAGE_KEYS } from "../src/app-core/storageKeys.ts";
 
 type MockStorage = {
   getItem(key: string): string | null;
@@ -91,7 +92,7 @@ test("fetchWithRetry stores csrf token from response and sends it on unsafe requ
       method: "GET"
     });
     assert.equal(getStoredCsrfToken(), "csrf-token-1");
-    assert.equal(data.get(CSRF_TOKEN_KEY), undefined);
+    assert.equal(data.get(STORAGE_KEYS.CSRF_TOKEN), undefined);
 
     await fetchWithRetry("https://api.example.test/sync/push", {
       method: "POST",

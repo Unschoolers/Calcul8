@@ -21,7 +21,6 @@ const {
 
 vi.mock("../src/app-core/methods/ui/shared.ts", () => ({
   fetchWithRetry: fetchWithRetryMock,
-  GOOGLE_TOKEN_KEY: "whatfees_google_token",
   handleExpiredAuth: handleExpiredAuthMock,
   readEntitlementCache: readEntitlementCacheMock,
   resolveApiBaseUrl: resolveApiBaseUrlMock

@@ -21,7 +21,6 @@ vi.mock("../src/app-core/methods/ui/shared.ts", async (importOriginal) => {
     ...actual,
     fetchWithRetry: fetchWithRetryMock,
     getEntitlementTtlMs: getEntitlementTtlMsMock,
-    GOOGLE_TOKEN_KEY: "whatfees_google_id_token",
     handleExpiredAuth: handleExpiredAuthMock,
     readEntitlementCache: readEntitlementCacheMock,
     resolveApiBaseUrl: resolveApiBaseUrlMock
@@ -29,11 +28,11 @@ vi.mock("../src/app-core/methods/ui/shared.ts", async (importOriginal) => {
 });
 
 import {
-  applyCachedEntitlement,
-  applyFetchedEntitlement,
-  parseEntitlementPayload,
-  shouldUseCachedEntitlement,
-  syncEntitlementStatus
+    applyCachedEntitlement,
+    applyFetchedEntitlement,
+    parseEntitlementPayload,
+    shouldUseCachedEntitlement,
+    syncEntitlementStatus
 } from "../src/app-core/methods/ui/entitlements-status-service.ts";
 
 type MockStorage = {

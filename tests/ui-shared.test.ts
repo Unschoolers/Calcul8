@@ -1,30 +1,29 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test, vi } from "vitest";
 import {
-  setStoredCsrfToken,
-  setStoredGoogleIdToken
+    setStoredCsrfToken,
+    setStoredGoogleIdToken
 } from "../src/app-core/auth/index.ts";
 import {
-  fetchAuthenticatedApiResponse,
-  fetchWithRetry,
-  resolveApiBaseUrl
+    fetchAuthenticatedApiResponse,
+    fetchWithRetry,
+    resolveApiBaseUrl
 } from "../src/app-core/methods/ui/api-client.ts";
 import {
-  CSRF_TOKEN_KEY,
-  ENTITLEMENT_CACHE_KEY,
-  GOOGLE_PROFILE_CACHE_KEY,
-  GOOGLE_TOKEN_KEY,
-  PRO_ACCESS_KEY,
-  clearEntitlementCache,
-  getEntitlementTtlMs,
-  handleExpiredAuth,
-  readEntitlementCache,
-  writeEntitlementCache
+    ENTITLEMENT_CACHE_KEY,
+    GOOGLE_PROFILE_CACHE_KEY,
+    PRO_ACCESS_KEY,
+    clearEntitlementCache,
+    getEntitlementTtlMs,
+    handleExpiredAuth,
+    readEntitlementCache,
+    writeEntitlementCache
 } from "../src/app-core/methods/ui/entitlement-cache.ts";
 import {
-  resolvePurchaseProvider,
-  submitPlayPurchaseVerification
+    resolvePurchaseProvider,
+    submitPlayPurchaseVerification
 } from "../src/app-core/methods/ui/purchase-verification.ts";
+import { STORAGE_KEYS } from "../src/app-core/storageKeys.ts";
 
 type MockStorage = {
   getItem(key: string): string | null;
@@ -188,11 +187,11 @@ test("handleExpiredAuth clears auth tokens and restores cached entitlement state
 
     assert.equal(app.googleAuthEpoch, 3);
     assert.equal(app.hasProAccess, true);
-    assert.equal(data.has(GOOGLE_TOKEN_KEY), false);
+    assert.equal(data.has(STORAGE_KEYS.GOOGLE_ID_TOKEN), false);
     assert.equal(data.has("rtyh_google_id_token"), false);
     assert.equal(data.has(GOOGLE_PROFILE_CACHE_KEY), false);
     assert.equal(data.has("rtyh_google_profile_cache_v1"), false);
-    assert.equal(data.has(CSRF_TOKEN_KEY), false);
+    assert.equal(data.has(STORAGE_KEYS.CSRF_TOKEN), false);
     assert.equal(data.get(PRO_ACCESS_KEY), "1");
   });
 });
