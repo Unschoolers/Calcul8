@@ -591,6 +591,7 @@ test("fetchSinglesItemSuggestions uses lot catalog source as cards search game",
   vi.stubGlobal("fetch", fetchMock);
 
   try {
+    vi.stubEnv("VITE_API_BASE_URL", "https://api.example.com");
     const context = createContext({
       currentLotId: 44,
       lots: [
@@ -599,8 +600,7 @@ test("fetchSinglesItemSuggestions uses lot catalog source as cards search game",
           lotType: "singles",
           singlesCatalogSource: "pokemon"
         }
-      ],
-      resolveCardsApiBaseUrl: () => "https://api.example.com"
+      ]
     });
     context.currentSinglesCatalogSource = "pokemon";
 
@@ -622,6 +622,7 @@ test("fetchSinglesItemSuggestions uses lot catalog source as cards search game",
     assert.equal(fetchMock.mock.calls.length, 1);
     assert.deepEqual(context.singlesItemSuggestions, []);
   } finally {
+    vi.unstubAllEnvs();
     vi.unstubAllGlobals();
   }
 });
@@ -651,9 +652,9 @@ test("fetchSinglesItemSuggestions filters multi-field queries across name, numbe
   vi.stubGlobal("fetch", fetchMock);
 
   try {
+    vi.stubEnv("VITE_API_BASE_URL", "https://api.example.com");
     const context = createContext({
-      currentSinglesCatalogSource: "ua",
-      resolveCardsApiBaseUrl: () => "https://api.example.com"
+      currentSinglesCatalogSource: "ua"
     });
 
     await context.fetchSinglesItemSuggestions("rei r*");
@@ -663,6 +664,7 @@ test("fetchSinglesItemSuggestions filters multi-field queries across name, numbe
     assert.equal((context.singlesItemSuggestions as Array<{ rarity: string }>).length, 1);
     assert.equal((context.singlesItemSuggestions as Array<{ rarity: string }>)[0]?.rarity, "R★");
   } finally {
+    vi.unstubAllEnvs();
     vi.unstubAllGlobals();
   }
 });
@@ -692,9 +694,9 @@ test("fetchSinglesItemSuggestions supports rarity-only wildcard queries like r*"
   vi.stubGlobal("fetch", fetchMock);
 
   try {
+    vi.stubEnv("VITE_API_BASE_URL", "https://api.example.com");
     const context = createContext({
-      currentSinglesCatalogSource: "ua",
-      resolveCardsApiBaseUrl: () => "https://api.example.com"
+      currentSinglesCatalogSource: "ua"
     });
 
     await context.fetchSinglesItemSuggestions("r*");
@@ -704,6 +706,7 @@ test("fetchSinglesItemSuggestions supports rarity-only wildcard queries like r*"
     assert.equal((context.singlesItemSuggestions as Array<{ rarity: string }>).length, 1);
     assert.equal((context.singlesItemSuggestions as Array<{ rarity: string }>)[0]?.rarity, "R★");
   } finally {
+    vi.unstubAllEnvs();
     vi.unstubAllGlobals();
   }
 });
@@ -740,9 +743,9 @@ test("fetchSinglesItemSuggestions supports multi-star rarity queries like sr** a
   vi.stubGlobal("fetch", fetchMock);
 
   try {
+    vi.stubEnv("VITE_API_BASE_URL", "https://api.example.com");
     const context = createContext({
-      currentSinglesCatalogSource: "ua",
-      resolveCardsApiBaseUrl: () => "https://api.example.com"
+      currentSinglesCatalogSource: "ua"
     });
 
     await context.fetchSinglesItemSuggestions("sr**");
@@ -756,6 +759,7 @@ test("fetchSinglesItemSuggestions supports multi-star rarity queries like sr** a
     assert.equal((context.singlesItemSuggestions as Array<{ rarity: string }>).length, 1);
     assert.equal((context.singlesItemSuggestions as Array<{ rarity: string }>)[0]?.rarity, "SR★★★");
   } finally {
+    vi.unstubAllEnvs();
     vi.unstubAllGlobals();
   }
 });
@@ -785,9 +789,9 @@ test("fetchSinglesItemSuggestions keeps full multi-token rarity queries like sr*
   vi.stubGlobal("fetch", fetchMock);
 
   try {
+    vi.stubEnv("VITE_API_BASE_URL", "https://api.example.com");
     const context = createContext({
-      currentSinglesCatalogSource: "ua",
-      resolveCardsApiBaseUrl: () => "https://api.example.com"
+      currentSinglesCatalogSource: "ua"
     });
 
     await context.fetchSinglesItemSuggestions("sr** eva");
@@ -800,6 +804,7 @@ test("fetchSinglesItemSuggestions keeps full multi-token rarity queries like sr*
       "Evangelion Proto Type-00"
     );
   } finally {
+    vi.unstubAllEnvs();
     vi.unstubAllGlobals();
   }
 });
@@ -822,10 +827,10 @@ test("preloadSinglesEditorPreview caches and resolves the editor image", async (
   vi.stubGlobal("fetch", fetchMock);
 
   try {
+    vi.stubEnv("VITE_API_BASE_URL", "https://api.example.com");
     const context = createContext({
       currentSinglesCatalogSource: "ua",
       showCatalogSuggestions: true,
-      resolveCardsApiBaseUrl: () => "https://api.example.com",
       editingSinglesRow: {
         item: "Rei Ayanami",
         cardNumber: "UE15BT/EVA-1-004-ALT1",
@@ -848,6 +853,7 @@ test("preloadSinglesEditorPreview caches and resolves the editor image", async (
       "https://img.example.com/rei-large.jpg"
     );
   } finally {
+    vi.unstubAllEnvs();
     vi.unstubAllGlobals();
   }
 });
@@ -932,13 +938,6 @@ test("search update, cancel, and cards api resolution cover debounce and fallbac
     vi.advanceTimersByTime(400);
     await vi.runAllTimersAsync();
     assert.deepEqual((context.fetchSinglesItemSuggestions as ReturnType<typeof vi.fn>).mock.calls[0], ["ab"]);
-
-    vi.stubEnv("VITE_API_BASE_URL", "");
-    const storage = { getItem: vi.fn(() => "https://api.example.com///") };
-    vi.stubGlobal("localStorage", storage);
-    assert.equal(context.resolveCardsApiBaseUrl(), "https://api.example.com");
-    storage.getItem.mockReturnValue("");
-    assert.equal(context.resolveCardsApiBaseUrl(), "");
   } finally {
     clearTimeoutSpy.mockRestore();
     vi.useRealTimers();
@@ -951,7 +950,6 @@ test("fetchSinglesItemSuggestions handles missing base, failed response, and abo
   const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
   const context = createContext({
     currentSinglesCatalogSource: "pokemon",
-    resolveCardsApiBaseUrl: () => "",
     singlesItemSuggestions: [{ title: "keep" }]
   });
 
@@ -960,7 +958,7 @@ test("fetchSinglesItemSuggestions handles missing base, failed response, and abo
 
   const failedFetch = vi.fn(async () => ({ ok: false, status: 500 }));
   vi.stubGlobal("fetch", failedFetch);
-  context.resolveCardsApiBaseUrl = () => "https://api.example.com";
+  vi.stubEnv("VITE_API_BASE_URL", "https://api.example.com");
   await context.fetchSinglesItemSuggestions("query");
   assert.equal(context.singlesItemSearchLoading, false);
   assert.equal(context.singlesItemSearchAbortController, null);
@@ -975,6 +973,7 @@ test("fetchSinglesItemSuggestions handles missing base, failed response, and abo
   await context.fetchSinglesItemSuggestions("query");
   assert.equal(context.singlesItemSearchLoading, false);
   warnSpy.mockRestore();
+  vi.unstubAllEnvs();
   vi.unstubAllGlobals();
 });
 

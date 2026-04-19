@@ -65,21 +65,6 @@ Refactor toward:
 
 ## Medium
 
-### Centralize API base URL resolution for cards and app APIs
-
-Frontend API base URL handling is still duplicated:
-
-- `resolveApiBaseUrl()` defined in `src/app-core/methods/ui/api-client.ts`, re-exported via `shared.ts`
-- `resolveCardsApiBaseUrl()` in `src/components/windows/singles/useSinglesCatalogSearch.ts`
-
-That duplication is easy to overlook until a third client drifts on env lookup, cached fallback behavior, or missing-config handling.
-
-Refactor toward:
-
-- one shared frontend API base URL resolver
-- one consistent fallback/caching rule for all API consumers
-- shared missing-configuration behavior so new API clients fail the same way
-
 ### Consolidate realtime endpoint configuration
 
 Room naming is now shared correctly, but endpoint configuration is still split across frontend and backend:

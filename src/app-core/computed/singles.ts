@@ -9,7 +9,6 @@ import {
     calculateSinglesSaleProfitPreview,
     getSinglesEntryUnitMarketValueInSellingCurrency
 } from "../../domain/calculations.ts";
-import type { LotSalesCacheEntry, Sale } from "../../types/app.ts";
 import type { AppComputedObject } from "../context-contracts.ts";
 import { buildLotOptionItems, filterLotOptionItems } from "../shared/lot-option-items.ts";
 import {
@@ -67,15 +66,10 @@ function getSaleEditorNormalizedLines(newSale: {
   }));
 }
 
-function lotIsCompleteByDefault(context: {
-  currentLotId: number | null;
-  sales: Sale[];
-  getSalesCacheEntry?: (lotId: number) => LotSalesCacheEntry;
-  loadSalesForLotId?: (lotId: number) => Sale[];
-}, lot: {
+function lotIsCompleteByDefault(context: LotSalesAccessContext, lot: {
   id: number;
 }): boolean {
-  const sales = getLotSalesFromAccessContext(context as LotSalesAccessContext, lot.id);
+  const sales = getLotSalesFromAccessContext(context, lot.id);
   const summary = calculateLotPerformanceSummary(
     lot as never,
     sales,
