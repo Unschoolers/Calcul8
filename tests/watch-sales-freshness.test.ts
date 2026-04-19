@@ -62,22 +62,48 @@ beforeEach(() => {
 
 test("watch.currentTab triggers a sales freshness check when entering the sales tab", () => {
   const context = createContext();
+  vi.useFakeTimers();
+  context.currentTab = "sales";
 
   appWatch.currentTab.call(context as never, "sales");
 
   assert.equal(refreshWorkspaceRealtimeMock.mock.calls.length, 1);
-  assert.deepEqual(refreshPersonalLotSalesIfStaleMock.mock.calls, [[context, 101]]);
+  assert.deepEqual(refreshPersonalLotSalesIfStaleMock.mock.calls, []);
   assert.equal((context.initSalesChart as ReturnType<typeof vi.fn>).mock.calls.length, 1);
+
+  vi.advanceTimersByTime(500);
+  assert.deepEqual(refreshPersonalLotSalesIfStaleMock.mock.calls, [[context, 101]]);
+  vi.useRealTimers();
 });
 
 test("watch.currentTab triggers a sales freshness check when entering the portfolio tab", () => {
   const context = createContext();
+  vi.useFakeTimers();
+  context.currentTab = "portfolio";
 
   appWatch.currentTab.call(context as never, "portfolio");
 
   assert.equal(refreshWorkspaceRealtimeMock.mock.calls.length, 1);
-  assert.deepEqual(refreshPersonalLotSalesIfStaleMock.mock.calls, [[context, 101]]);
+  assert.deepEqual(refreshPersonalLotSalesIfStaleMock.mock.calls, []);
   assert.equal((context.initPortfolioChart as ReturnType<typeof vi.fn>).mock.calls.length, 1);
+
+  vi.advanceTimersByTime(500);
+  assert.deepEqual(refreshPersonalLotSalesIfStaleMock.mock.calls, [[context, 101]]);
+  vi.useRealTimers();
+});
+
+test("watch.currentTab cancels a deferred sales freshness check when leaving the tab before it settles", () => {
+  const context = createContext();
+  vi.useFakeTimers();
+  context.currentTab = "sales";
+
+  appWatch.currentTab.call(context as never, "sales");
+  context.currentTab = "config";
+  appWatch.currentTab.call(context as never, "config");
+  vi.advanceTimersByTime(500);
+
+  assert.equal(refreshPersonalLotSalesIfStaleMock.mock.calls.length, 0);
+  vi.useRealTimers();
 });
 
 test("watch.currentLotId triggers a freshness check for the newly selected lot", () => {
