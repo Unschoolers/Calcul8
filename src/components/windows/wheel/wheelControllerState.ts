@@ -1,7 +1,170 @@
 import { reactive } from "vue";
-import type { WheelConfig, WheelFairnessEntry } from "../../../types/app.ts";
+import type { Lot, PendingWheelInventoryIssue, Sale, WheelConfig, WheelFairnessEntry, WorkspaceScopeType } from "../../../types/app.ts";
 import { unwrapWindowBridgeContext } from "../contextBridge.ts";
 import type { WheelSlot } from "./wheelHelpers.ts";
+
+/**
+ * Typed `this` context shared across WheelWindow computed properties, watchers,
+ * lifecycle hooks, and all wheel method objects (wheelSessionMethods,
+ * wheelSpinMethods, wheelConfigMethods, wheelSpectatorMethods).
+ *
+ * Replaces the previous `this: Record<string, unknown>` annotations and the
+ * verbose `(this as Record<string, unknown>).prop` access casts throughout
+ * those files.
+ */
+export type WheelWindowThis = {
+  // ===== Local window state (from createWheelWindowState) =====
+  editingWheelConfig: WheelConfig | null;
+  appliedWheelConfigSnapshot: WheelConfig | null;
+  wheelConfigSyncPending: boolean;
+  wheelController: WheelControllerState;
+  wheelAutospinEnabled: boolean;
+  wheelMobileInspectorOpen: boolean;
+  wheelCelebrationVisible: boolean;
+  wheelCelebrationLabel: string;
+  wheelCelebrationColor: string;
+  wheelCelebrationImage: string;
+  wheelCelebrationEmoji: string;
+  wheelCelebrationPreview: boolean;
+  wheelCelebrationNonce: number;
+  wheelSpinning: boolean;
+  wheelCurrentAngle: number;
+  wheelCanvasSize: number;
+  wheelConfigReady: boolean;
+  wheelViewportWidth: number;
+  wheelMode: "config" | "live";
+  wheelInspectorTab: "config" | "session" | "history";
+  wheelEndingSession: boolean;
+  wheelEndSessionReviewActive: boolean;
+  wheelPresentationMode: boolean;
+  wheelConfirmDialog: boolean;
+  wheelConfirmAction: "reset" | "delete" | "apply" | "end" | "";
+  wheelLiveConfirmDialog: boolean;
+  wheelRequestedMode: "config" | "live" | null;
+  wheelPendingMenuOpen: boolean;
+  wheelChaseDialog: boolean;
+  wheelChasePreviewMode: boolean;
+  wheelChaseReplacementSinglesId: number | null;
+  wheelChasePendingTierId: string;
+  wheelManageDialog: boolean;
+  wheelManageName: string;
+  wheelSpectatorDialog: boolean;
+  wheelSpectatorSessionId: string;
+  wheelSpectatorSessionStatus: "inactive" | "starting" | "live" | "ended";
+  wheelSpectatorSessionUrl: string;
+  wheelSpectatorSessionQrUrl: string;
+  wheelSpectatorPublishPending: boolean;
+  wheelSpectatorConnectedCount: number;
+
+  // ===== WheelControllerState alias properties =====
+  activeWheelSlots: WheelSlot[];
+  wheelPreviewSlots: WheelSlot[];
+  wheelInventoryWarning: string;
+  wheelLastResultColor: string;
+  wheelPreviewSpinCounts: number[];
+  wheelPreviewTotalSpins: number;
+  wheelSpinSeed: string;
+  wheelSpinHash: string;
+  wheelSpinClientSeed: string;
+  wheelSpinVerificationUrl: string;
+  wheelSpinAlgorithm: string;
+  wheelShowSeed: boolean;
+  wheelFairnessHistoryOpen: boolean;
+  wheelSessionNetRevenue: number | null;
+  wheelSessionCostAdjustment: number;
+  wheelPreviewFairnessHistory: WheelFairnessEntry[];
+  wheelFairnessHistory: WheelFairnessEntry[];
+  wheelPreviewChaseTallyHistory: Array<{ tierId: string; label: string; color: string; count: number }>;
+  wheelChaseTallyHistory: Array<{ tierId: string; label: string; color: string; count: number }>;
+  wheelHighlightedSlotIndex: number;
+
+  // ===== AppContext bridge properties =====
+  currentTab: string;
+  wheelConfigs: WheelConfig[];
+  activeWheelConfigId: number | null;
+  wheelSpinCounts: number[];
+  wheelTotalSpins: number;
+  lots: Lot[];
+  currentLotId: number | null;
+  activeScopeType: WorkspaceScopeType;
+  activeWorkspaceId: string | null;
+  googleAuthEpoch: number;
+  hasProAccess: boolean;
+  wheelLastResult: string;
+  wheelSessionUpdatedAt: number;
+  wheelPendingInventoryIssues: PendingWheelInventoryIssue[];
+  wheelSkippedDeductions: PendingWheelInventoryIssue[];
+  wheelSessionLotSelections: Record<string, number | null>;
+
+  // ===== Computed properties =====
+  activeWheelConfig: WheelConfig | null;
+  wheelDisplayConfig: WheelConfig | null;
+  wheelDisplaySlots: WheelSlot[];
+  wheelIsCompactLayout: boolean;
+  wheelCompactStageSummaryLabel: string;
+  wheelCompactStageSummaryValue: string;
+  wheelCompactStageSummaryColor: string;
+  expectedMarginDisplay: string;
+  wheelSessionMarginDisplay: string;
+  expectedMarginColor: string;
+  wheelSessionMarginColor: string;
+
+  // ===== Private internal state =====
+  _wheelSkipConfigReload?: boolean;
+  _wheelAutospinTimeoutId?: number;
+  _wheelCelebrationTimeoutId?: number;
+  _wheelHighlightTimeoutId?: number;
+  _wheelDraftSaveTimeoutId?: number;
+  _wheelResizeObserver?: ResizeObserver;
+  _wheelViewportResizeHandler?: () => void;
+  _wheelStaticRenderCache?: unknown;
+  _wheelHighlightTime?: number;
+
+  // ===== Vue instance =====
+  $refs: Record<string, unknown>;
+
+  // ===== Methods from spread method objects =====
+  drawWheel(offset?: number): void;
+  testSpinWheel(): Promise<void>;
+  spinWheel(): Promise<void>;
+  saveWheelSession(): void;
+  recordChaseSale(tierId: string): void;
+  resetPreviewSession(): void;
+  resetWheelSession(): void;
+  startEndWheelSession(): void;
+  loadWheelConfig(options?: { preserveLiveWheelState?: boolean }): void;
+  ensureWheelEditorState(): void;
+  queueWheelConfigSync(): void;
+  deleteWheelConfig(): void;
+  syncWheelSpectatorCountPolling(): void;
+  stopWheelSpectatorCountPolling(): void;
+  syncWheelSpectatorLinks(): void;
+  stopWheelAutospin(): void;
+  startWheelAutospin(): void;
+  scheduleNextWheelAutospin(delayMs?: number): void;
+  normalizeWheelCompactInspectorState(): void;
+  refreshWheelCanvas(): void;
+  openWheelInspector(tab: "config" | "session" | "history"): void;
+  isWheelMobileViewport(): boolean;
+  confirmChaseReplacement(): void;
+  keepChase(): void;
+  recordPreviewSpinResult(slotIndex: number): void;
+  recordSpinResult(slotIndex: number): void;
+  appendWheelFairnessHistory(entry: WheelFairnessEntry, options?: { preview?: boolean }): void;
+  confirmBatchSale(index: number): void;
+  dismissBatchSale(index: number): void;
+  confirmAllBatchSales(): void;
+  cancelEndWheelSession(): void;
+  requestWheelSessionEnd(): void;
+
+  // ===== Optional AppContext bridge methods =====
+  addWheelSaleToLot(lotId: number, sale: Sale): void;
+  endWheelSpectatorMode?(options?: { notifyOnSuccess?: boolean; closeDialog?: boolean }): Promise<void>;
+  publishWheelSpectatorSessionSnapshot?(): Promise<void>;
+
+  // ===== Data-only properties defined in data() but not in state helpers =====
+  wheelConfigSavedSnackbar: boolean;
+};
 
 export type WheelControllerState = {
   activeSlots: WheelSlot[];
@@ -51,13 +214,14 @@ function createDefaultWheelControllerState(): WheelControllerState {
   };
 }
 
-function getInternalWheelContext(context: Record<string, unknown>): Record<string, unknown> | null {
+function getInternalWheelContext(context: object): Record<string, unknown> | null {
   const internal = (context as { $?: { ctx?: Record<string, unknown> } }).$?.ctx;
   return internal && typeof internal === "object" ? internal : null;
 }
 
-function getExistingWheelController(context: Record<string, unknown>): WheelControllerState | null {
-  const direct = context.wheelController;
+function getExistingWheelController(context: object): WheelControllerState | null {
+  const ctx = context as Record<string, unknown>;
+  const direct = ctx.wheelController;
   if (direct && typeof direct === "object") {
     return direct as WheelControllerState;
   }
@@ -71,7 +235,7 @@ function getExistingWheelController(context: Record<string, unknown>): WheelCont
   return null;
 }
 
-function canAttachWheelControllerToContext(context: Record<string, unknown>): boolean {
+function canAttachWheelControllerToContext(context: object): boolean {
   if (!context || typeof context !== "object") return false;
 
   const internal = getInternalWheelContext(context);
@@ -86,8 +250,8 @@ function canAttachWheelControllerToContext(context: Record<string, unknown>): bo
   return true;
 }
 
-export function getWheelController(context: Record<string, unknown>): WheelControllerState {
-  const resolvedContext = unwrapWindowBridgeContext(context);
+export function getWheelController(context: object): WheelControllerState {
+  const resolvedContext = unwrapWindowBridgeContext(context as Record<string, unknown>);
   const existing = getExistingWheelController(resolvedContext);
   if (existing) {
     return existing;

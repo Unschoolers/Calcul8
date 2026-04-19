@@ -68,6 +68,10 @@ function hydrateSecretStorage(): void {
   }
 }
 
+export function primeStoredAuthSecretsFromStorage(): void {
+  hydrateSecretStorage();
+}
+
 export function getStoredCsrfToken(): string {
   hydrateSecretStorage();
   return storedCsrfToken;

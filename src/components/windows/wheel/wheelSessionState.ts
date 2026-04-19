@@ -1,6 +1,31 @@
-import type { Lot, WheelConfig, WheelFairnessEntry } from "../../../types/app.ts";
+import type { Lot, PendingWheelInventoryIssue, WheelConfig, WheelFairnessEntry } from "../../../types/app.ts";
 import type { WheelControllerState } from "./wheelControllerState.ts";
 import type { WheelSlot } from "./wheelHelpers.ts";
+
+/** Minimal context interface shared by wheel session helpers. */
+export interface WheelSessionContext {
+  wheelConfigs: WheelConfig[];
+  activeWheelConfigId: number | null;
+  editingWheelConfig: WheelConfig | null;
+  lots: Lot[];
+  wheelSpinCounts: number[];
+  wheelTotalSpins: number;
+  wheelLastResult: string;
+  wheelCurrentAngle: number;
+  wheelSessionUpdatedAt: number;
+  wheelPendingInventoryIssues: PendingWheelInventoryIssue[];
+  wheelEndingSession: boolean;
+  wheelEndSessionReviewActive: boolean;
+  wheelSpectatorPublishPending: boolean;
+  wheelSpectatorSessionId: string;
+  wheelSpectatorSessionStatus: string;
+  wheelSpectatorSessionUrl: string;
+  wheelSpectatorSessionQrUrl: string;
+  wheelChaseDialog: boolean;
+  wheelChasePreviewMode: boolean;
+  wheelChaseReplacementSinglesId: number | null;
+  wheelChasePendingTierId: string;
+}
 
 type WheelTallyHistoryEntry = { tierId: string; label: string; color: string; count: number };
 
@@ -13,7 +38,7 @@ export function clearWheelProofState(controller: WheelControllerState): void {
   controller.showSeed = false;
 }
 
-export function clearWheelChaseDialogState(context: Record<string, unknown>): void {
+export function clearWheelChaseDialogState(context: WheelSessionContext): void {
   context.wheelChaseDialog = false;
   context.wheelChasePreviewMode = false;
   context.wheelChaseReplacementSinglesId = null;
@@ -21,7 +46,7 @@ export function clearWheelChaseDialogState(context: Record<string, unknown>): vo
 }
 
 export function setWheelResultState(
-  context: Record<string, unknown>,
+  context: WheelSessionContext,
   controller: WheelControllerState,
   resultLabel: string,
   color: string
@@ -31,7 +56,7 @@ export function setWheelResultState(
 }
 
 export function getWheelTargetConfig(
-  context: Record<string, unknown>,
+  context: WheelSessionContext,
   options: { preview?: boolean } = {}
 ): WheelConfig | null {
   const configs = (context.wheelConfigs || []) as WheelConfig[];
@@ -44,7 +69,7 @@ export function getWheelTargetConfig(
 }
 
 export function getWheelTierLotContext(
-  context: Record<string, unknown>,
+  context: WheelSessionContext,
   tierId: string,
   options: { preview?: boolean } = {}
 ): {
@@ -60,7 +85,7 @@ export function getWheelTierLotContext(
 }
 
 export function createWheelSessionSnapshot(
-  context: Record<string, unknown>,
+  context: WheelSessionContext,
   controller: WheelControllerState
 ): Record<string, unknown> {
   const slots = ((controller.activeSlots || []) as WheelSlot[]);
@@ -96,7 +121,7 @@ export function createWheelSessionSnapshot(
 }
 
 export function applyWheelPreviewReset(
-  context: Record<string, unknown>,
+  context: WheelSessionContext,
   controller: WheelControllerState,
   previewSlots: WheelSlot[]
 ): void {
@@ -113,7 +138,7 @@ export function applyWheelPreviewReset(
 }
 
 export function applyWheelLiveReset(
-  context: Record<string, unknown>,
+  context: WheelSessionContext,
   controller: WheelControllerState,
   slots: WheelSlot[]
 ): void {

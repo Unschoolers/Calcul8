@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test, vi } from "vitest";
 import { applyCloudSnapshotToLocal, parseCloudSnapshot, shouldApplyCloudSnapshot } from "../src/app-core/methods/ui/sync-apply.ts";
+import { getSyncScopeKey, resolveSyncScopeContext, toSyncScopeContext } from "../src/app-core/methods/ui/sync-scope.ts";
 import { getSalesCacheStatusKey } from "../src/app-core/storageKeys.ts";
 
 const {
@@ -142,6 +143,21 @@ test("runCloudSyncPush handles auth expiry and marks sync as error", async () =>
   assert.equal(app.syncStatus, "error");
 });
 
+test("runCloudSyncPull marks the app offline and schedules reconnect when already offline", async () => {
+  const app = createApp();
+
+  await runCloudSyncPull(app, {
+    isOnline: () => false,
+    requestCloudSyncPull: vi.fn(),
+    startSyncStatus: vi.fn(),
+    setSyncStatusSuccess: vi.fn(),
+    setSyncStatusError: vi.fn()
+  });
+
+  assert.equal(app.isOffline, true);
+  assert.equal(app.startOfflineReconnectScheduler.mock.calls.length, 1);
+});
+
 test("runCloudSyncPull shares one in-flight request across overlapping callers", async () => {
   const app = createApp();
   const pullDeferred = createDeferred<{
@@ -268,6 +284,67 @@ test("runCloudSyncPush can treat scoped seed conflicts as success", async () => 
   assert.equal(app.pullCloudSync.mock.calls.length, 0);
   assert.equal(app.notify.mock.calls.length, 0);
   assert.equal(app.syncStatus, "success");
+});
+
+test("runCloudSyncPush handles workspace access loss using the resolved session scope", async () => {
+  const app = createApp();
+  app.activeScopeType = "workspace";
+  app.activeWorkspaceId = "ws_original";
+  const pushDeferred = createDeferred<{
+    ok: boolean;
+    status: number;
+    statusText: string;
+    json: () => Promise<Record<string, never>>;
+  }>();
+
+  const pushPromise = runCloudSyncPush(app, true, {
+    requestCloudSyncPush: vi.fn().mockReturnValue(pushDeferred.promise),
+    createSyncPayload: () => ({ lots: [], salesByLot: {}, wheelConfigs: [], activeWheelConfigId: null }),
+    getSyncPayloadSignature: () => "sig",
+    startSyncStatus: vi.fn(),
+    setSyncStatusSuccess: vi.fn(),
+    setSyncStatusError: vi.fn(),
+    hasStorageItem: () => true
+  });
+
+  app.activeWorkspaceId = "ws_changed";
+
+  pushDeferred.resolve({
+    ok: false,
+    status: 403,
+    statusText: "Forbidden",
+    json: async () => ({})
+  });
+
+  await pushPromise;
+
+  assert.equal(app.handleWorkspaceAccessLost.mock.calls.length, 1);
+  assert.equal(app.handleWorkspaceAccessLost.mock.calls[0]?.[0], "ws_original");
+});
+
+test("sync scope helpers normalize personal and workspace scope keys", () => {
+  assert.equal(getSyncScopeKey({ scopeType: "personal" }), "personal");
+  assert.equal(getSyncScopeKey({ scopeType: "workspace", workspaceId: "team-42" }), "workspace:team-42");
+
+  assert.deepEqual(
+    resolveSyncScopeContext({
+      activeScopeType: "workspace",
+      activeWorkspaceId: "team-42"
+    }),
+    {
+      scopeType: "workspace",
+      workspaceId: "team-42",
+      scopeKey: "workspace:team-42"
+    }
+  );
+
+  assert.deepEqual(
+    toSyncScopeContext({ scopeType: "personal" }),
+    {
+      scopeType: "personal",
+      scopeKey: "personal"
+    }
+  );
 });
 
 test("runCloudSyncPush waits for an in-flight pull before pushing", async () => {

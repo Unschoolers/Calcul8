@@ -1,6 +1,6 @@
 # Calcul8 Refactor Plan
 
-Current plan tracks active refactor targets only. Recently completed work, including the stored `proofId` wheel fairness flow, retirement of the legacy `proofToken` path, and the sync coordinator module split, is intentionally left out.
+Current plan tracks active refactor targets only. Recently completed work, including the stored `proofId` wheel fairness flow, retirement of the legacy `proofToken` path, and the sync module separation finish, is intentionally left out.
 
 ---
 
@@ -42,22 +42,6 @@ Refactor toward:
 ---
 
 ## High
-
-### Finish the sync module separation
-
-The sync coordinator split extracted the coordinator state machine, pull operation, and push operation into dedicated modules (`sync-coordinator.ts`, `sync-pull.ts`, `sync-push.ts`). `sync-service.ts` is now a thin orchestrator. The remaining work is at the boundary and integration layer:
-
-- workspace scope logic is still threaded through the pull/push call sites via `SyncScopeContext` rather than resolved once ahead of transport
-- conflict policy (`treatConflictAsSuccess`, 409 handling, recovery pull) lives inline in `sync-push.ts` rather than behind an explicit conflict-policy interface
-- storage-reset recovery (`isLocalSyncCacheReset`, `shouldAttemptStorageResetRecovery`) in `sync-push.ts` is still tightly coupled to the push path
-- no higher-level integration tests for concurrent sync, offline recovery, or workspace access loss scenarios
-
-Refactor toward:
-
-- a smaller coordinator/state machine with explicit events and transitions
-- separate modules for transport, persistence, scheduler ownership, and conflict policy
-- shared personal/workspace scope helpers instead of threading scope logic through every branch
-- higher-level integration tests for concurrent sync, offline recovery, and workspace access loss
 
 ### Untangle workspace scope from storage, sync, and realtime call sites
 

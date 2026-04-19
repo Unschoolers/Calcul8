@@ -448,3 +448,43 @@ test("pushCloudSync throttles repeated recovery pulls after local storage reset"
   assert.equal(pullCloudSyncMock.mock.calls.length, 1);
   dateNowSpy.mockRestore();
 });
+
+test("pullCloudSync handles workspace access loss using the scope resolved at request time", async () => {
+  const ctx = createContext();
+  ctx.activeScopeType = "workspace";
+  ctx.activeWorkspaceId = "team-42";
+
+  const pullDeferred = (() => {
+    let resolve!: (value: {
+      ok: boolean;
+      status: number;
+      statusText: string;
+      json: () => Promise<Record<string, never>>;
+    }) => void;
+    const promise = new Promise<{
+      ok: boolean;
+      status: number;
+      statusText: string;
+      json: () => Promise<Record<string, never>>;
+    }>((res) => {
+      resolve = res;
+    });
+    return { promise, resolve };
+  })();
+
+  fetchWithRetryMock.mockReturnValueOnce(pullDeferred.promise);
+  const pullPromise = uiSyncMethods.pullCloudSync.call(ctx);
+
+  ctx.activeWorkspaceId = "team-99";
+  pullDeferred.resolve({
+    ok: false,
+    status: 403,
+    statusText: "Forbidden",
+    json: async () => ({})
+  });
+
+  await pullPromise;
+
+  assert.equal(ctx.handleWorkspaceAccessLost.mock.calls.length, 1);
+  assert.equal(ctx.handleWorkspaceAccessLost.mock.calls[0]?.[0], "team-42");
+});

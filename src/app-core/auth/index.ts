@@ -13,6 +13,7 @@ export {
   getStoredGoogleIdToken,
   getStoredSessionUserId,
   isGoogleAutoSignInDisabled,
+  primeStoredAuthSecretsFromStorage,
   setStoredCsrfToken,
   setStoredGoogleIdToken,
   setStoredSessionUserId

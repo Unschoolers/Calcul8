@@ -7,6 +7,8 @@
     "chat.tools.terminal.autoApprove": {
         "npx vitest": true,
         "npm --prefix apps/api": true,
-        "ForEach-Object": true
+        "ForEach-Object": true,
+        "Set-Content": true,
+        "npx tsc": true
     }
 }

@@ -7,6 +7,7 @@ import {
   getSalesSyncMetaKey,
   getSalesStorageKey,
   migrateLegacySalesKey,
+  migrateLegacyStorageKeys,
   readStorageWithLegacy
 } from "../src/app-core/storageKeys.ts";
 
@@ -106,6 +107,22 @@ test("readStorageWithLegacy promotes richer legacy payload over empty canonical 
 
     assert.equal(result, legacySales);
     assert.equal(data.get(newKey), legacySales);
+  });
+});
+
+test("migrateLegacyStorageKeys purges persisted auth secrets instead of promoting them", () => {
+  withMockedLocalStorage((_, data) => {
+    data.set("whatfees_google_id_token", "google-token");
+    data.set("rtyh_google_id_token", "legacy-google-token");
+    data.set("whatfees_csrf_token_v1", "csrf-token");
+    data.set("whatfees_pro_access", "1");
+
+    migrateLegacyStorageKeys();
+
+    assert.equal(data.has("whatfees_google_id_token"), false);
+    assert.equal(data.has("rtyh_google_id_token"), false);
+    assert.equal(data.has("whatfees_csrf_token_v1"), false);
+    assert.equal(data.get("whatfees_pro_access"), "1");
   });
 });
 

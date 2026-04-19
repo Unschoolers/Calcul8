@@ -1,6 +1,6 @@
 import { performCloudSyncPull } from "./sync-pull.ts";
 import { performCloudSyncPush } from "./sync-push.ts";
-import type { SyncApp, SyncScopeContext, SyncServiceDeps } from "./sync-service.ts";
+import type { SyncSession } from "./sync-session.ts";
 
 export type SyncCoordinatorState = {
   drainPromise: Promise<void> | null;
@@ -40,18 +40,16 @@ export function getSyncCoordinatorState(app: object, scopeKey: string): SyncCoor
 }
 
 async function drainSyncQueue(
-  app: SyncApp,
-  deps: SyncServiceDeps,
-  state: SyncCoordinatorState,
-  scope: SyncScopeContext
+  session: SyncSession
 ): Promise<void> {
+  const { app, state } = session;
   while (state.pendingPull || state.pendingPush) {
     if (state.pendingPull) {
       const forceApply = state.pendingPullForceApply;
       state.pendingPull = false;
       state.pendingPullForceApply = false;
       state.activeOperation = "pull";
-      await performCloudSyncPull(app, deps, scope, { forceApply });
+      await performCloudSyncPull(session, { forceApply });
       state.activeOperation = null;
       continue;
     }
@@ -64,28 +62,24 @@ async function drainSyncQueue(
     state.pendingPushAllowEmptyOverwrite = false;
     state.pendingPushTreatConflictAsSuccess = false;
     state.activeOperation = "push";
-    await performCloudSyncPush(app, force, deps, scope, { allowEmptyOverwrite, treatConflictAsSuccess });
+    await performCloudSyncPush(session, force, { allowEmptyOverwrite, treatConflictAsSuccess });
     state.activeOperation = null;
   }
 }
 
-export function scheduleSyncDrain(
-  app: SyncApp,
-  deps: SyncServiceDeps,
-  state: SyncCoordinatorState,
-  scope: SyncScopeContext
-): Promise<void> {
+export function scheduleSyncDrain(session: SyncSession): Promise<void> {
+  const { state } = session;
   if (state.drainPromise) {
     return state.drainPromise;
   }
 
   state.drainPromise = (async () => {
     try {
-      await drainSyncQueue(app, deps, state, scope);
+      await drainSyncQueue(session);
     } finally {
       state.drainPromise = null;
       if (state.pendingPull || state.pendingPush) {
-        void scheduleSyncDrain(app, deps, state, scope);
+        void scheduleSyncDrain(session);
       }
     }
   })();

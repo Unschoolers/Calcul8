@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test, vi } from "vitest";
 import {
+  setStoredCsrfToken,
+  setStoredGoogleIdToken
+} from "../src/app-core/auth/index.ts";
+import {
   fetchAuthenticatedApiResponse,
   fetchWithRetry,
   resolveApiBaseUrl
@@ -163,11 +167,11 @@ test("entitlement cache helpers parse valid payloads and reject malformed ones",
 
 test("handleExpiredAuth clears auth tokens and restores cached entitlement state", async () => {
   await withMockedLocalStorage(async (data) => {
-    data.set(GOOGLE_TOKEN_KEY, "google-token");
+    setStoredGoogleIdToken("google-token");
     data.set("rtyh_google_id_token", "legacy-google-token");
     data.set(GOOGLE_PROFILE_CACHE_KEY, JSON.stringify({ name: "Alice" }));
     data.set("rtyh_google_profile_cache_v1", JSON.stringify({ name: "Legacy Alice" }));
-    data.set(CSRF_TOKEN_KEY, "csrf-token");
+    setStoredCsrfToken("csrf-token");
     writeEntitlementCache({
       userId: "user-9",
       hasProAccess: true,
@@ -196,8 +200,8 @@ test("handleExpiredAuth clears auth tokens and restores cached entitlement state
 test("fetchAuthenticatedApiResponse prefers the server session over bearer auth", async () => {
   await withMockedLocalStorage(async () => {
     vi.stubEnv("VITE_API_BASE_URL", "https://api.example.test");
-    localStorage.setItem(GOOGLE_TOKEN_KEY, "google-token");
-    localStorage.setItem(CSRF_TOKEN_KEY, "csrf-token");
+    setStoredGoogleIdToken("google-token");
+    setStoredCsrfToken("csrf-token");
 
     const fetchMock = vi.fn(async () => new Response("{}", {
       status: 200,
@@ -229,7 +233,7 @@ test("fetchAuthenticatedApiResponse prefers the server session over bearer auth"
 test("fetchAuthenticatedApiResponse keeps bearer auth when no server session exists", async () => {
   await withMockedLocalStorage(async () => {
     vi.stubEnv("VITE_API_BASE_URL", "https://api.example.test");
-    localStorage.setItem(GOOGLE_TOKEN_KEY, "google-token");
+    setStoredGoogleIdToken("google-token");
 
     const fetchMock = vi.fn(async () => new Response("{}", {
       status: 200,
@@ -265,8 +269,8 @@ test("fetchAuthenticatedApiResponse keeps bearer auth for cross-origin session-p
       setTimeout: globalThis.setTimeout,
       clearTimeout: globalThis.clearTimeout
     });
-    localStorage.setItem(GOOGLE_TOKEN_KEY, "google-token");
-    localStorage.setItem(CSRF_TOKEN_KEY, "csrf-token");
+    setStoredGoogleIdToken("google-token");
+    setStoredCsrfToken("csrf-token");
 
     const fetchMock = vi.fn(async () => new Response("{}", {
       status: 200,

@@ -1,5 +1,6 @@
 import { DEFAULT_VALUES } from "../constants.ts";
 import type { AppState } from "../types/app.ts";
+import { primeStoredAuthSecretsFromStorage } from "./auth/index.ts";
 import { getBrowserLocale, normalizeLanguagePreference } from "./i18n/index.ts";
 import { getFeeProfilePreset } from "./shared/fee-profile-presets.ts";
 import { resolveDefaultSinglesCatalogSourceFromEnv } from "./shared/singles-catalog-source.ts";
@@ -34,6 +35,7 @@ function resolveSavedScope(): Pick<AppState, "activeScopeType" | "activeWorkspac
 }
 
 export function createInitialState(): AppState {
+  primeStoredAuthSecretsFromStorage();
   migrateLegacyStorageKeys();
   const legacyKeys = getLegacyStorageKeys();
   const todayDate = getLocalTodayDate();

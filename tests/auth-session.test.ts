@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test, vi } from "vitest";
 import {
-  AUTH_CSRF_TOKEN_KEY,
-  GOOGLE_AUTH_TOKEN_KEY,
-  buildAuthenticatedHeaders
+  buildAuthenticatedHeaders,
+  setStoredCsrfToken,
+  setStoredGoogleIdToken
 } from "../src/app-core/auth/index.ts";
 
 type MockStorage = {
@@ -40,7 +40,7 @@ afterEach(() => {
 });
 
 test("buildAuthenticatedHeaders sends bearer token for bearer-required requests", () => {
-  localStorage.setItem(GOOGLE_AUTH_TOKEN_KEY, "google-token");
+  setStoredGoogleIdToken("google-token");
 
   const headers = buildAuthenticatedHeaders("bearer-required", {
     "Content-Type": "application/json"
@@ -51,7 +51,7 @@ test("buildAuthenticatedHeaders sends bearer token for bearer-required requests"
 });
 
 test("buildAuthenticatedHeaders bootstraps session-preferred requests with bearer token when no server session exists", () => {
-  localStorage.setItem(GOOGLE_AUTH_TOKEN_KEY, "google-token");
+  setStoredGoogleIdToken("google-token");
 
   const headers = buildAuthenticatedHeaders("session-preferred");
 
@@ -59,8 +59,8 @@ test("buildAuthenticatedHeaders bootstraps session-preferred requests with beare
 });
 
 test("buildAuthenticatedHeaders omits bearer token for session-preferred requests when a server session exists", () => {
-  localStorage.setItem(GOOGLE_AUTH_TOKEN_KEY, "google-token");
-  localStorage.setItem(AUTH_CSRF_TOKEN_KEY, "csrf-token");
+  setStoredGoogleIdToken("google-token");
+  setStoredCsrfToken("csrf-token");
 
   const headers = buildAuthenticatedHeaders("session-preferred");
 
@@ -68,8 +68,8 @@ test("buildAuthenticatedHeaders omits bearer token for session-preferred request
 });
 
 test("buildAuthenticatedHeaders keeps bearer token for bearer-required requests even when a server session exists", () => {
-  localStorage.setItem(GOOGLE_AUTH_TOKEN_KEY, "google-token");
-  localStorage.setItem(AUTH_CSRF_TOKEN_KEY, "csrf-token");
+  setStoredGoogleIdToken("google-token");
+  setStoredCsrfToken("csrf-token");
 
   const headers = buildAuthenticatedHeaders("bearer-required");
 
@@ -82,8 +82,8 @@ test("buildAuthenticatedHeaders keeps bearer token for cross-origin session-pref
       origin: "https://app.example.test"
     }
   });
-  localStorage.setItem(GOOGLE_AUTH_TOKEN_KEY, "google-token");
-  localStorage.setItem(AUTH_CSRF_TOKEN_KEY, "csrf-token");
+  setStoredGoogleIdToken("google-token");
+  setStoredCsrfToken("csrf-token");
 
   const headers = buildAuthenticatedHeaders(
     "session-preferred",

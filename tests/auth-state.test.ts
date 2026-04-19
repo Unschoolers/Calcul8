@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test, vi } from "vitest";
 import {
-  AUTH_CSRF_TOKEN_KEY,
-  GOOGLE_AUTH_TOKEN_KEY
+  setStoredCsrfToken,
+  setStoredGoogleIdToken
 } from "../src/app-core/auth/index.ts";
 import {
   hasAuthSignal,
@@ -50,14 +50,14 @@ test("hasAuthSignal is false when no auth storage is present", () => {
 });
 
 test("hasAuthSignal is true when a Google bootstrap token exists", () => {
-  localStorage.setItem(GOOGLE_AUTH_TOKEN_KEY, "google-token");
+  setStoredGoogleIdToken("google-token");
 
   assert.equal(hasGoogleBootstrapToken(), true);
   assert.equal(hasAuthSignal(), true);
 });
 
 test("hasAuthSignal is true when a server session exists", () => {
-  localStorage.setItem(AUTH_CSRF_TOKEN_KEY, "csrf-token");
+  setStoredCsrfToken("csrf-token");
 
   assert.equal(hasServerSession(), true);
   assert.equal(hasAuthSignal(), true);

@@ -116,12 +116,22 @@ function migrateValue(fromKey: string, toKey: string): void {
   }
 }
 
+function purgePersistedAuthSecrets(): void {
+  try {
+    localStorage.removeItem(STORAGE_KEYS.GOOGLE_ID_TOKEN);
+    localStorage.removeItem(LEGACY_STORAGE_KEYS.GOOGLE_ID_TOKEN);
+    localStorage.removeItem(STORAGE_KEYS.CSRF_TOKEN);
+  } catch {
+    // Ignore storage failures.
+  }
+}
+
 export function migrateLegacyStorageKeys(): void {
   migrateValue(LEGACY_STORAGE_KEYS.LAST_LOT_ID, STORAGE_KEYS.LAST_LOT_ID);
   migrateValue(LEGACY_STORAGE_KEYS.PRESETS, STORAGE_KEYS.PRESETS);
   migrateValue(LEGACY_STORAGE_KEYS.ENTITLEMENT_CACHE, STORAGE_KEYS.ENTITLEMENT_CACHE);
   migrateValue(LEGACY_STORAGE_KEYS.PRO_ACCESS, STORAGE_KEYS.PRO_ACCESS);
-  migrateValue(LEGACY_STORAGE_KEYS.GOOGLE_ID_TOKEN, STORAGE_KEYS.GOOGLE_ID_TOKEN);
+  purgePersistedAuthSecrets();
   migrateValue(LEGACY_STORAGE_KEYS.GOOGLE_PROFILE_CACHE, STORAGE_KEYS.GOOGLE_PROFILE_CACHE);
   migrateValue(LEGACY_STORAGE_KEYS.DEBUG_USER_ID, STORAGE_KEYS.DEBUG_USER_ID);
   migrateValue(LEGACY_STORAGE_KEYS.SYNC_CLIENT_VERSION, STORAGE_KEYS.SYNC_CLIENT_VERSION);
