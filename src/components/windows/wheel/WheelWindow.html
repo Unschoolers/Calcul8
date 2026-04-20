@@ -318,7 +318,7 @@
             </v-card-title>
             <v-card-text class="text-body-2">
                 <div class="wheel-spectator-dialog__intro">
-                    <div>{{ t('wheelSpectatorDialogBody') }}</div>
+                    <div>{{ wheelSpectatorDialogHint }}</div>
                     <div
                         v-if="wheelSpectatorSessionId"
                         class="wheel-spectator-dialog__status"
@@ -356,7 +356,7 @@
                     :loading="wheelSpectatorPublishPending"
                     @click="startWheelSpectatorMode"
                 >
-                    {{ t('wheelSpectatorStartAction') }}
+                    {{ wheelSpectatorStartButtonLabel }}
                 </v-btn>
                 <template v-if="wheelSpectatorSessionId">
                     <v-btn variant="text" @click="copyWheelSpectatorLink">
@@ -366,6 +366,7 @@
                         {{ t('wheelSpectatorOpenAction') }}
                     </v-btn>
                     <v-btn
+                        v-if="wheelSpectatorSessionStatus !== 'ended'"
                         color="error"
                         variant="tonal"
                         :loading="wheelSpectatorPublishPending"

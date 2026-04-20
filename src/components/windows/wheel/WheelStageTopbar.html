@@ -15,9 +15,15 @@
   <div class="wheel-stage-actions">
     <v-btn
       size="small"
-      variant="tonal"
+      :variant="wheelSpectatorSessionStatus === 'ended' ? 'elevated' : 'tonal'"
       prepend-icon="mdi-qrcode"
-      :color="wheelSpectatorSessionId ? (wheelSpectatorSessionStatus === 'ended' ? 'surface' : 'success') : undefined"
+      class="wheel-spectator-btn"
+      :class="{
+        'wheel-spectator-btn--inactive': !wheelSpectatorSessionId,
+        'wheel-spectator-btn--live': wheelSpectatorSessionId && wheelSpectatorSessionStatus !== 'ended',
+        'wheel-spectator-btn--ended': wheelSpectatorSessionStatus === 'ended'
+      }"
+      :color="wheelSpectatorSessionId ? (wheelSpectatorSessionStatus === 'ended' ? 'warning' : 'success') : undefined"
       :title="wheelSpectatorActionLabel"
       @click="openWheelSpectatorDialog"
     >

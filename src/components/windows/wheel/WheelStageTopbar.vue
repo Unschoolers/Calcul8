@@ -55,6 +55,41 @@ export default WheelStageTopbar;
   gap: 8px;
 }
 
+.wheel-spectator-btn {
+  min-width: 0;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.wheel-spectator-btn.v-btn--variant-tonal {
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+}
+
+.wheel-spectator-btn--inactive.v-btn--variant-tonal {
+  background: rgba(var(--v-theme-on-surface), 0.05) !important;
+  color: rgba(var(--v-theme-on-surface), 0.84) !important;
+}
+
+.wheel-spectator-btn--live.v-btn--variant-tonal {
+  background: rgba(var(--v-theme-success), 0.14) !important;
+  color: rgb(var(--v-theme-success)) !important;
+  border-color: rgba(var(--v-theme-success), 0.22) !important;
+}
+
+.wheel-spectator-btn--ended.v-btn--variant-elevated {
+  background:
+    linear-gradient(135deg, rgba(var(--v-theme-warning), 0.28), rgba(var(--v-theme-warning), 0.18)),
+    rgb(var(--v-theme-surface)) !important;
+  color: rgb(var(--v-theme-warning)) !important;
+  border: 1px solid rgba(var(--v-theme-warning), 0.3) !important;
+  box-shadow: 0 0 0 1px rgba(var(--v-theme-warning), 0.08) inset !important;
+}
+
+.wheel-spectator-btn--ended .v-icon {
+  color: rgb(var(--v-theme-warning)) !important;
+}
+
 .wheel-mode-toggle {
   display: flex;
   width: min(100%, 248px);

@@ -29,10 +29,11 @@ function mergeQueuedSpectatorStatusOverride(
 
 function resolveNextSpectatorStatus(
   vm: Record<string, unknown>,
-  override?: "starting" | "live" | "ended"
+  override?: "starting" | "live" | "ended",
+  options: { preserveEnded?: boolean } = {}
 ): "starting" | "live" | "ended" {
   if (override) return override;
-  if (vm.wheelSpectatorSessionStatus === "ended") return "ended";
+  if (options.preserveEnded !== false && vm.wheelSpectatorSessionStatus === "ended") return "ended";
   return Number(vm.wheelTotalSpins || 0) > 0 || vm.wheelMode === "live" ? "live" : "starting";
 }
 
@@ -93,7 +94,7 @@ export const wheelSpectatorMethods = {
     (this as Record<string, unknown>).wheelSpectatorPublishPending = true;
 
     try {
-      const status = resolveNextSpectatorStatus(this as Record<string, unknown>);
+      const status = resolveNextSpectatorStatus(this as Record<string, unknown>, undefined, { preserveEnded: false });
       const snapshot = buildWheelSpectatorSnapshot(this as Record<string, unknown>, status);
       const { publicSessionId } = await createWheelSpectatorSession(this as never, snapshot);
       const publicUrl = buildWheelSpectatorSessionUrl(publicSessionId);

@@ -1,7 +1,7 @@
 import { broadcastWheelSession } from "../../../app-core/methods/ui/wheel-broadcast.ts";
 import { createWheelFairnessProofLink } from "../../../app-core/methods/wheel-fairness-api.ts";
 import { assignWheelPendingInventoryIssues, normalizeWheelPendingInventoryIssues } from "../../../app-core/shared/wheel-session-compat.ts";
-import type { Lot, PendingWheelInventoryIssue, Sale, WheelConfig, WheelFairnessEntry } from "../../../types/app.ts";
+import type { Lot, Sale, WheelConfig, WheelFairnessEntry } from "../../../types/app.ts";
 import {
     ensureWheelCanvasSize,
     getStaticWheelRender,

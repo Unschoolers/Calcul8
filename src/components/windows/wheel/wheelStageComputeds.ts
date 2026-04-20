@@ -35,9 +35,26 @@ export const wheelStageComputeds = {
 
   wheelSpectatorActionLabel(this: Record<string, unknown>): string {
     const preferredLanguage = String((this as Record<string, unknown>).preferredLanguage ?? "");
+    if ((this as Record<string, unknown>).wheelSpectatorSessionStatus === "ended") {
+      return translateAppMessage(preferredLanguage, "wheelSpectatorActionEnded");
+    }
     const baseLabel = translateAppMessage(preferredLanguage, "wheelSpectatorAction");
     const count = Math.max(0, Math.floor(Number((this as Record<string, unknown>).wheelSpectatorConnectedCount) || 0));
     return count > 0 ? `${count} ${baseLabel}` : baseLabel;
+  },
+
+  wheelSpectatorDialogHint(this: Record<string, unknown>): string {
+    const preferredLanguage = String((this as Record<string, unknown>).preferredLanguage ?? "");
+    return (this as Record<string, unknown>).wheelSpectatorSessionStatus === "ended"
+      ? translateAppMessage(preferredLanguage, "wheelSpectatorDialogEndedBody")
+      : translateAppMessage(preferredLanguage, "wheelSpectatorDialogBody");
+  },
+
+  wheelSpectatorStartButtonLabel(this: Record<string, unknown>): string {
+    const preferredLanguage = String((this as Record<string, unknown>).preferredLanguage ?? "");
+    return (this as Record<string, unknown>).wheelSpectatorSessionStatus === "ended"
+      ? translateAppMessage(preferredLanguage, "wheelSpectatorRestartAction")
+      : translateAppMessage(preferredLanguage, "wheelSpectatorStartAction");
   },
 
   wheelSpinButtonIcon(this: Record<string, unknown>): string {
