@@ -1,12 +1,15 @@
 import type { AppContext } from "./context-app.ts";
 import type { AppWatchObject } from "./context-contracts.ts";
 import { refreshPersonalLotSalesIfStale } from "./methods/sales-freshness.ts";
+import { cancelQueuedPortfolioSalesHydration } from "./methods/sales-portfolio-hydration.ts";
+import { cancelQueuedTabChartRefresh, queueTabChartRefreshAfterSettle } from "./methods/sales-ui-helpers.ts";
 import { resetWhatnotSignedOutState, resetWhatnotTransientUiState } from "./methods/ui/whatnot.ts";
 import { refreshWorkspaceRealtime, stopWorkspaceRealtime } from "./methods/ui/workspace-realtime.ts";
 import { getScopedLastLotStorageKey, STORAGE_KEYS } from "./storageKeys.ts";
 import { getActiveStorageScope } from "./workspace-scope.ts";
 
 const TAB_SALES_FRESHNESS_DELAY_MS = 500;
+const TAB_CHART_SETTLE_DELAY_MS = 250;
 const pendingTabSalesFreshnessTimeouts = new WeakMap<object, number>();
 
 function queueCurrentLotSalesFreshnessCheck(
@@ -118,6 +121,8 @@ export const appWatch: AppWatchObject = {
 
     this.speedDialOpenSales = false;
     cancelQueuedTabSalesFreshnessCheck(this);
+    cancelQueuedTabChartRefresh(this);
+    cancelQueuedPortfolioSalesHydration(this);
 
     if (newTab !== "portfolio") {
       if (this.portfolioChart) {
@@ -139,14 +144,14 @@ export const appWatch: AppWatchObject = {
     if (newTab === "sales") {
       refreshWorkspaceRealtime(this);
       queueCurrentLotSalesFreshnessCheckAfterTabSettle(this, "sales");
-      this.$nextTick(() => this.initSalesChart());
+      queueTabChartRefreshAfterSettle(this, "sales", TAB_CHART_SETTLE_DELAY_MS);
       return;
     }
 
     if (newTab === "portfolio") {
       refreshWorkspaceRealtime(this);
       queueCurrentLotSalesFreshnessCheckAfterTabSettle(this, "portfolio");
-      this.$nextTick(() => this.initPortfolioChart());
+      queueTabChartRefreshAfterSettle(this, "portfolio", TAB_CHART_SETTLE_DELAY_MS);
       return;
     }
 

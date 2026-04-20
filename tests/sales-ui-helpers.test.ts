@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test, vi } from "vitest";
 import {
+  cancelQueuedTabChartRefresh,
   firstFiniteNonNegative,
   focusSaleQuantityInput,
   formatCompactChartDate,
+  queueTabChartRefreshAfterSettle,
   refreshChartsForCurrentTab,
   resolveDefaultSaleUnitPrice
 } from "../src/app-core/methods/sales-ui-helpers.ts";
@@ -67,6 +69,36 @@ test("refreshChartsForCurrentTab schedules the right chart refresh", () => {
     initPortfolioChart
   });
   assert.equal(initSalesChart.mock.calls.length, 1);
+});
+
+test("queueTabChartRefreshAfterSettle waits for the settle window and supports cancellation", () => {
+  vi.useFakeTimers();
+  const initSalesChart = vi.fn();
+  const initPortfolioChart = vi.fn();
+  const nextTick = vi.fn((callback: () => void) => callback());
+  const context = {
+    currentTab: "sales" as const,
+    initSalesChart,
+    initPortfolioChart,
+    $nextTick: nextTick
+  };
+
+  queueTabChartRefreshAfterSettle(context, "sales", 250);
+  assert.equal(initSalesChart.mock.calls.length, 0);
+
+  vi.advanceTimersByTime(249);
+  assert.equal(initSalesChart.mock.calls.length, 0);
+
+  vi.advanceTimersByTime(1);
+  assert.equal(nextTick.mock.calls.length, 1);
+  assert.equal(initSalesChart.mock.calls.length, 1);
+
+  queueTabChartRefreshAfterSettle(context, "sales", 250);
+  cancelQueuedTabChartRefresh(context);
+  vi.runAllTimers();
+
+  assert.equal(initSalesChart.mock.calls.length, 1);
+  vi.useRealTimers();
 });
 
 test("focusSaleQuantityInput supports direct and nested input refs", () => {

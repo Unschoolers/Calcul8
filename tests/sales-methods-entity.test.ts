@@ -446,6 +446,7 @@ test("deleteSale stays stable if realtime already removed the sale before delete
   ]);
 });
 test("initPortfolioChart hydrates missing authoritative sales for selected non-current lots", async () => {
+  vi.useFakeTimers();
   const portfolioCanvas = new MockHtmlCanvasElement();
   const localStorageMock = globalThis.localStorage as {
     getItem: ReturnType<typeof vi.fn>;
@@ -512,6 +513,9 @@ test("initPortfolioChart hydrates missing authoritative sales for selected non-c
   });
 
   salesMethods.initPortfolioChart.call(ctx as never);
+  assert.deepEqual(fetchAuthoritativeAllSalesMock.mock.calls, []);
+
+  vi.runAllTimers();
   await Promise.resolve();
   await Promise.resolve();
   await Promise.resolve();
@@ -521,6 +525,6 @@ test("initPortfolioChart hydrates missing authoritative sales for selected non-c
   assert.deepEqual(cacheAuthoritativeSalesMock.mock.calls, [[ctx, 2, hydratedSales]]);
   assert.equal(ctx.salesCacheEpoch, 1);
   assert.equal((ctx.initPortfolioChart as ReturnType<typeof vi.fn>).mock.calls.length, 1);
+  vi.useRealTimers();
 });
-
 

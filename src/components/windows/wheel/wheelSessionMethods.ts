@@ -449,6 +449,8 @@ export const wheelSessionMethods = {
       String(this.wheelSpectatorSessionId || "").trim()
       && this.wheelSpectatorSessionStatus !== "ended"
     ) {
+      // Intentional: spectator mode mirrors the current wheel display state,
+      // including config-mode preview/test spins, so hosts can rehearse publicly.
       void (this.publishWheelSpectatorSessionSnapshot?.() ?? Promise.resolve());
     }
   },

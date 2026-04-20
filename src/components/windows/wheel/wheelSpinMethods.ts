@@ -1,6 +1,6 @@
 import { broadcastWheelSession } from "../../../app-core/methods/ui/wheel-broadcast.ts";
 import { createWheelFairnessProofLink } from "../../../app-core/methods/wheel-fairness-api.ts";
-import { assignWheelPendingInventoryIssues } from "../../../app-core/shared/wheel-session-compat.ts";
+import { assignWheelPendingInventoryIssues, normalizeWheelPendingInventoryIssues } from "../../../app-core/shared/wheel-session-compat.ts";
 import type { Lot, PendingWheelInventoryIssue, Sale, WheelConfig, WheelFairnessEntry } from "../../../types/app.ts";
 import {
     ensureWheelCanvasSize,
@@ -9,7 +9,7 @@ import {
     playWheelTick,
     renderWheelSurface
 } from "./wheelCanvasRender.ts";
-import { getWheelController } from "./wheelControllerState.ts";
+import { getWheelController, type WheelWindowThis } from "./wheelControllerState.ts";
 import {
     createWheelSale,
     easeOutQuart,
@@ -32,7 +32,7 @@ import {
 } from "./wheelSpinState.ts";
 
 function queuePendingInventoryIssue(
-  context: Record<string, unknown>,
+  context: WheelWindowThis,
   params: {
     slot: WheelSlot;
     slotIndex: number;
@@ -41,7 +41,7 @@ function queuePendingInventoryIssue(
     warningText?: string;
   }
 ): void {
-  const pendingIssues = (context.wheelPendingInventoryIssues || []) as PendingWheelInventoryIssue[];
+  const pendingIssues = normalizeWheelPendingInventoryIssues(context.wheelPendingInventoryIssues);
   pendingIssues.push({
     slotName: params.slot.name,
     slotColor: params.slot.color,
@@ -51,33 +51,33 @@ function queuePendingInventoryIssue(
     slotDeductionType: params.slot.deductionType,
     slotIndex: params.slotIndex,
     selectedLotId: params.boundLotId,
-    spinNumber: (context.wheelTotalSpins as number) || 0,
+    spinNumber: context.wheelTotalSpins || 0,
     slotSinglesId: params.boundSinglesId ?? null
   });
-  assignWheelPendingInventoryIssues(context, pendingIssues);
+  assignWheelPendingInventoryIssues(context as unknown as Record<string, unknown>, pendingIssues);
   const issueController = getWheelController(context);
   issueController.inventoryWarning = params.warningText || "";
-  (context as Record<string, unknown> & { saveWheelSession: () => void }).saveWheelSession();
+  context.saveWheelSession();
 }
 
-function appendWheelSessionNetRevenue(context: Record<string, unknown>, sale: Pick<Sale, "netRevenue">): void {
+function appendWheelSessionNetRevenue(context: WheelWindowThis, sale: Pick<Sale, "netRevenue">): void {
   const netRevenue = Number(sale.netRevenue);
   if (!Number.isFinite(netRevenue)) return;
   const revenueController = getWheelController(context);
-  const currentNetRevenue = Number((revenueController.sessionNetRevenue as number | null | undefined) ?? 0) || 0;
+  const currentNetRevenue = Number(revenueController.sessionNetRevenue ?? 0) || 0;
   revenueController.sessionNetRevenue = currentNetRevenue + Math.max(0, netRevenue);
 }
 
 export const wheelSpinMethods = {
-  drawWheel(this: Record<string, unknown>, offset = 0): void {
-    const canvasEl = (this.$refs as Record<string, unknown>).wheelCanvas as HTMLCanvasElement | null;
+  drawWheel(this: WheelWindowThis, offset = 0): void {
+    const canvasEl = this.$refs.wheelCanvas as HTMLCanvasElement | null;
     if (!canvasEl) return;
     const ctx = canvasEl.getContext("2d");
     if (!ctx) return;
 
-    const drawController = getWheelController(this as Record<string, unknown>);
-    const slots = getWheelSpinSlots(this as Record<string, unknown>);
-    const size = Math.max(20, (this as Record<string, unknown>).wheelCanvasSize as number);
+    const drawController = getWheelController(this);
+    const slots = getWheelSpinSlots(this as unknown as Record<string, unknown>);
+    const size = Math.max(20, this.wheelCanvasSize);
     const dpr = getWheelCanvasDpr();
 
     ensureWheelCanvasSize(canvasEl, size, dpr);
@@ -261,9 +261,9 @@ export const wheelSpinMethods = {
     requestAnimationFrame(tick);
   },
 
-  recordPreviewSpinResult(this: Record<string, unknown>, slotIndex: number): void {
-    const controller = getWheelController(this as Record<string, unknown>);
-    const slots = getWheelSpinSlots(this as Record<string, unknown>);
+  recordPreviewSpinResult(this: WheelWindowThis, slotIndex: number): void {
+    const controller = getWheelController(this);
+    const slots = getWheelSpinSlots(this as unknown as Record<string, unknown>);
     if (!slots[slotIndex]) return;
     const counts = (controller.previewSpinCounts || []) as number[];
     const nextCounts = counts.length === slots.length ? [...counts] : new Array(slots.length).fill(0);
@@ -272,9 +272,9 @@ export const wheelSpinMethods = {
     controller.previewTotalSpins = (controller.previewTotalSpins || 0) + 1;
   },
 
-  recordSpinResult(this: Record<string, unknown>, slotIndex: number): void {
-    const recordController = getWheelController(this as Record<string, unknown>);
-    const slots = getWheelSpinSlots(this as Record<string, unknown>);
+  recordSpinResult(this: WheelWindowThis, slotIndex: number): void {
+    const recordController = getWheelController(this);
+    const slots = getWheelSpinSlots(this as unknown as Record<string, unknown>);
     const slot = slots[slotIndex];
     if (!slot) return;
 
@@ -343,9 +343,9 @@ export const wheelSpinMethods = {
     (this as Record<string, unknown> & { saveWheelSession: () => void }).saveWheelSession();
   },
 
-  landOnSlot(this: Record<string, unknown>, slotIndex: number, options: { recordSession?: boolean } = {}): void {
-    const landController = getWheelController(this as Record<string, unknown>);
-    const slots = getWheelSpinSlots(this as Record<string, unknown>);
+  landOnSlot(this: WheelWindowThis, slotIndex: number, options: { recordSession?: boolean } = {}): void {
+    const landController = getWheelController(this);
+    const slots = getWheelSpinSlots(this as unknown as Record<string, unknown>);
     const slot = slots[slotIndex];
     if (!slot) return;
     const recordSession = options.recordSession ?? true;

@@ -69,9 +69,12 @@ test("watch.currentTab triggers a sales freshness check when entering the sales 
 
   assert.equal(refreshWorkspaceRealtimeMock.mock.calls.length, 1);
   assert.deepEqual(refreshPersonalLotSalesIfStaleMock.mock.calls, []);
+  assert.equal((context.initSalesChart as ReturnType<typeof vi.fn>).mock.calls.length, 0);
+
+  vi.advanceTimersByTime(250);
   assert.equal((context.initSalesChart as ReturnType<typeof vi.fn>).mock.calls.length, 1);
 
-  vi.advanceTimersByTime(500);
+  vi.advanceTimersByTime(250);
   assert.deepEqual(refreshPersonalLotSalesIfStaleMock.mock.calls, [[context, 101]]);
   vi.useRealTimers();
 });
@@ -85,9 +88,12 @@ test("watch.currentTab triggers a sales freshness check when entering the portfo
 
   assert.equal(refreshWorkspaceRealtimeMock.mock.calls.length, 1);
   assert.deepEqual(refreshPersonalLotSalesIfStaleMock.mock.calls, []);
+  assert.equal((context.initPortfolioChart as ReturnType<typeof vi.fn>).mock.calls.length, 0);
+
+  vi.advanceTimersByTime(250);
   assert.equal((context.initPortfolioChart as ReturnType<typeof vi.fn>).mock.calls.length, 1);
 
-  vi.advanceTimersByTime(500);
+  vi.advanceTimersByTime(250);
   assert.deepEqual(refreshPersonalLotSalesIfStaleMock.mock.calls, [[context, 101]]);
   vi.useRealTimers();
 });
@@ -103,6 +109,7 @@ test("watch.currentTab cancels a deferred sales freshness check when leaving the
   vi.advanceTimersByTime(500);
 
   assert.equal(refreshPersonalLotSalesIfStaleMock.mock.calls.length, 0);
+  assert.equal((context.initSalesChart as ReturnType<typeof vi.fn>).mock.calls.length, 0);
   vi.useRealTimers();
 });
 

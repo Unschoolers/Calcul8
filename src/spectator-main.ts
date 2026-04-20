@@ -1,4 +1,5 @@
 import { resolveApiBaseUrl } from "./app-core/methods/ui/shared.ts";
+import { shouldApplySpectatorReadyState } from "./app-core/methods/ui/wheel-spectator-client-state.ts";
 import {
   fetchWheelSpectatorRealtimeSubscribeToken,
   fetchWheelSpectatorSnapshot
@@ -9,6 +10,7 @@ import {
   getWheelCanvasDpr,
   renderWheelSurface
 } from "./components/windows/wheel/wheelCanvasRender.ts";
+import { normalizeWheelPublicSessionId } from "./components/windows/wheel/wheelSpectator.ts";
 import "./styles/spectator.css";
 import type { WheelSpectatorHeatLevel, WheelSpectatorSnapshot } from "./types/app.ts";
 
@@ -35,7 +37,7 @@ const SPECTATOR_WHEEL_CANVAS_ID = "spectator-wheel-canvas";
 
 function getPublicSessionId(): string {
   const params = new URLSearchParams(window.location.search);
-  return String(params.get("session") || "").trim();
+  return normalizeWheelPublicSessionId(params.get("session") || "");
 }
 
 function escapeHtml(value: string): string {
@@ -252,13 +254,16 @@ function renderState(state: SpectatorPageState): string {
 }
 
 function setState(state: SpectatorPageState): void {
+  if (state.status === "ready" && !shouldApplySpectatorReadyState(lastReadyState, state)) {
+    return;
+  }
   if (!appElement) return;
   appElement.innerHTML = renderState(state);
   if (state.status === "ready") {
     document.title = `${state.snapshot.wheelName} • Spectator`;
     lastReadyState = state;
     drawSpectatorWheel(state.snapshot);
-  } else {
+  } else if (state.status !== "loading") {
     lastReadyState = null;
   }
 }
@@ -315,9 +320,10 @@ async function loadState(): Promise<SpectatorPageState> {
 
   try {
     const result = await fetchWheelSpectatorSnapshot(baseUrl, publicSessionId);
+    const canonicalPublicSessionId = normalizeWheelPublicSessionId(result.publicSessionId || publicSessionId);
     return {
       status: "ready",
-      publicSessionId: result.publicSessionId,
+      publicSessionId: canonicalPublicSessionId,
       snapshot: result.snapshot
     };
   } catch (error) {
@@ -355,9 +361,10 @@ async function refreshSnapshot(options: { preserveCurrentView?: boolean } = {}):
 }
 
 function applyRealtimeSnapshot(publicSessionId: string, snapshot: WheelSpectatorSnapshot): void {
+  currentPublicSessionId = normalizeWheelPublicSessionId(publicSessionId);
   setState({
     status: "ready",
-    publicSessionId,
+    publicSessionId: currentPublicSessionId,
     snapshot
   });
   if (snapshot.sessionStatus === "ended") {
@@ -422,7 +429,7 @@ async function connectRealtime(): Promise<void> {
       const raw = typeof payload.data === "object" && payload.data !== null && !Array.isArray(payload.data)
         ? payload.data as { publicSessionId?: unknown; snapshot?: unknown }
         : {};
-      if (String(raw.publicSessionId ?? "").trim() !== currentPublicSessionId) {
+      if (normalizeWheelPublicSessionId(raw.publicSessionId) !== currentPublicSessionId) {
         return;
       }
       applyRealtimeSnapshot(currentPublicSessionId, raw.snapshot as WheelSpectatorSnapshot);
@@ -455,6 +462,9 @@ async function connectRealtime(): Promise<void> {
 async function boot(): Promise<void> {
   currentPublicSessionId = getPublicSessionId();
   const state = await refreshSnapshot();
+  if (state.status === "ready") {
+    currentPublicSessionId = normalizeWheelPublicSessionId(state.publicSessionId || currentPublicSessionId);
+  }
   if (state.status === "ready" && state.snapshot.sessionStatus !== "ended") {
     void connectRealtime();
   }

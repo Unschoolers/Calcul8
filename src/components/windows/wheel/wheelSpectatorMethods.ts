@@ -4,10 +4,11 @@ import {
     publishWheelSpectatorSession
 } from "../../../app-core/methods/ui/wheel-spectator.ts";
 import { buildWheelSpectatorQrImageUrl, buildWheelSpectatorSessionUrl, buildWheelSpectatorSnapshot } from "./wheelSpectator.ts";
+import type { WheelWindowThis } from "./wheelControllerState.ts";
 
 const WHEEL_SPECTATOR_COUNT_POLL_MS = 10_000;
 
-type WheelSpectatorVm = Record<string, unknown> & {
+type WheelSpectatorVm = WheelWindowThis & {
   notify?: (message: string, color?: string) => void;
 };
 
@@ -15,6 +16,15 @@ function notifyWheelSpectator(vm: WheelSpectatorVm, message: string, color: stri
   if (typeof vm.notify === "function") {
     vm.notify(message, color);
   }
+}
+
+function mergeQueuedSpectatorStatusOverride(
+  current: "starting" | "live" | "ended" | undefined,
+  next: "starting" | "live" | "ended" | undefined
+): "starting" | "live" | "ended" | undefined {
+  if (current === "ended" || next === "ended") return "ended";
+  if (current === "live" || next === "live") return "live";
+  return next ?? current;
 }
 
 function resolveNextSpectatorStatus(
@@ -107,10 +117,19 @@ export const wheelSpectatorMethods = {
   ): Promise<void> {
     const publicSessionId = String(this.wheelSpectatorSessionId || "").trim();
     if (!publicSessionId) return;
-    if ((this.wheelSpectatorPublishPending as boolean) === true && statusOverride == null) return;
     if (this.wheelSpectatorSessionStatus === "inactive") return;
+    if ((this.wheelSpectatorPublishPending as boolean) === true) {
+      (this as Record<string, unknown>)._wheelSpectatorPublishQueued = true;
+      (this as Record<string, unknown>)._wheelSpectatorQueuedStatusOverride = mergeQueuedSpectatorStatusOverride(
+        (this as Record<string, unknown>)._wheelSpectatorQueuedStatusOverride as "starting" | "live" | "ended" | undefined,
+        statusOverride
+      );
+      return;
+    }
 
     (this as Record<string, unknown>).wheelSpectatorPublishPending = true;
+    (this as Record<string, unknown>)._wheelSpectatorPublishQueued = false;
+    (this as Record<string, unknown>)._wheelSpectatorQueuedStatusOverride = undefined;
 
     try {
       const status = resolveNextSpectatorStatus(this as Record<string, unknown>, statusOverride);
@@ -121,6 +140,15 @@ export const wheelSpectatorMethods = {
       console.warn("Failed to publish spectator snapshot:", error);
     } finally {
       (this as Record<string, unknown>).wheelSpectatorPublishPending = false;
+    }
+
+    const queuedPublish = (this as Record<string, unknown>)._wheelSpectatorPublishQueued === true;
+    const queuedStatusOverride = (this as Record<string, unknown>)._wheelSpectatorQueuedStatusOverride as "starting" | "live" | "ended" | undefined;
+    (this as Record<string, unknown>)._wheelSpectatorPublishQueued = false;
+    (this as Record<string, unknown>)._wheelSpectatorQueuedStatusOverride = undefined;
+    const replayPublish = this.publishWheelSpectatorSessionSnapshot;
+    if (queuedPublish && typeof replayPublish === "function") {
+      await replayPublish.call(this, queuedStatusOverride);
     }
   },
 

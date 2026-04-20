@@ -24,6 +24,10 @@ type WheelSpectatorVm = Record<string, unknown> & {
   lots?: Lot[];
 };
 
+export function normalizeWheelPublicSessionId(value: unknown): string {
+  return String(value ?? "").trim().toLowerCase();
+}
+
 function cleanResultLabel(value: unknown): string {
   return String(value ?? "").replace(/^🎉\s*/, "").trim();
 }
@@ -41,7 +45,7 @@ function resolveWheelPublicBaseUrl(): URL {
 
 export function buildWheelSpectatorSessionUrl(publicSessionId: string): string {
   const url = resolveWheelPublicBaseUrl();
-  url.searchParams.set("session", publicSessionId);
+  url.searchParams.set("session", normalizeWheelPublicSessionId(publicSessionId));
   return url.toString();
 }
 

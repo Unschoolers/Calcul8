@@ -108,12 +108,16 @@ export type WheelWindowThis = {
   wheelSessionMarginDisplay: string;
   expectedMarginColor: string;
   wheelSessionMarginColor: string;
+  wheelSpinBlockedReason: string;
 
   // ===== Private internal state =====
   _wheelSkipConfigReload?: boolean;
   _wheelAutospinTimeoutId?: number;
   _wheelCelebrationTimeoutId?: number;
   _wheelHighlightTimeoutId?: number;
+  _wheelCelebrationAnimId?: number;
+  _wheelSpectatorPublishQueued?: boolean;
+  _wheelSpectatorQueuedStatusOverride?: "starting" | "live" | "ended";
   _wheelDraftSaveTimeoutId?: number;
   _wheelResizeObserver?: ResizeObserver;
   _wheelViewportResizeHandler?: () => void;
@@ -150,6 +154,7 @@ export type WheelWindowThis = {
   keepChase(): void;
   recordPreviewSpinResult(slotIndex: number): void;
   recordSpinResult(slotIndex: number): void;
+  landOnSlot(slotIndex: number, options?: { recordSession?: boolean }): void;
   appendWheelFairnessHistory(entry: WheelFairnessEntry, options?: { preview?: boolean }): void;
   confirmBatchSale(index: number): void;
   dismissBatchSale(index: number): void;
@@ -159,8 +164,9 @@ export type WheelWindowThis = {
 
   // ===== Optional AppContext bridge methods =====
   addWheelSaleToLot(lotId: number, sale: Sale): void;
+  triggerWheelCelebration?(payload: { label: string; color: string; image?: string; emoji?: string; preview?: boolean }): void;
   endWheelSpectatorMode?(options?: { notifyOnSuccess?: boolean; closeDialog?: boolean }): Promise<void>;
-  publishWheelSpectatorSessionSnapshot?(): Promise<void>;
+  publishWheelSpectatorSessionSnapshot?(statusOverride?: "starting" | "live" | "ended"): Promise<void>;
 
   // ===== Data-only properties defined in data() but not in state helpers =====
   wheelConfigSavedSnackbar: boolean;

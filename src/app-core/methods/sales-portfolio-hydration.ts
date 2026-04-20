@@ -10,6 +10,7 @@ import { refreshChartsForCurrentTab } from "./sales-ui-helpers.ts";
 
 type PortfolioSalesHydrationState = {
   hydratingLotIds: Set<number>;
+  queuedHydrationTimeoutId: number | null;
 };
 
 type HydrationDeps = {
@@ -26,15 +27,45 @@ function getPortfolioSalesHydrationState(context: object): PortfolioSalesHydrati
   let state = portfolioSalesHydrationStateByContext.get(context);
   if (!state) {
     state = {
-      hydratingLotIds: new Set<number>()
+      hydratingLotIds: new Set<number>(),
+      queuedHydrationTimeoutId: null
     };
     portfolioSalesHydrationStateByContext.set(context, state);
   }
   return state;
 }
 
+export function cancelQueuedPortfolioSalesHydration(context: object): void {
+  const state = portfolioSalesHydrationStateByContext.get(context);
+  if (!state || state.queuedHydrationTimeoutId == null) return;
+  globalThis.clearTimeout(state.queuedHydrationTimeoutId);
+  state.queuedHydrationTimeoutId = null;
+}
+
 function hasPersistedSalesCache(context: Pick<AppContext, "getSalesCacheEntry">, lotId: number): boolean {
   return context.getSalesCacheEntry(lotId).status === "loaded";
+}
+
+export function queuePortfolioSalesHydration(
+  context: AppContext,
+  options: {
+    force?: boolean;
+  } = {},
+  deps: HydrationDeps = {
+    canUseAuthoritativeApi: canUseAuthoritativeSalesLiveApi,
+    fetchSales: fetchAuthoritativeSales,
+    fetchSalesByLot: fetchAuthoritativeAllSales,
+    cacheSales: cacheAuthoritativeSales,
+    refreshCharts: refreshChartsForCurrentTab
+  },
+  delayMs = 0
+): void {
+  const state = getPortfolioSalesHydrationState(context as object);
+  cancelQueuedPortfolioSalesHydration(context as object);
+  state.queuedHydrationTimeoutId = globalThis.setTimeout(() => {
+    state.queuedHydrationTimeoutId = null;
+    hydrateMissingPortfolioSales(context, options, deps);
+  }, Math.max(0, Math.floor(Number(delayMs) || 0))) as unknown as number;
 }
 
 export function hydrateMissingPortfolioSales(
@@ -121,4 +152,3 @@ export function hydrateMissingPortfolioSales(
     }
   })();
 }
-

@@ -109,3 +109,58 @@ test("live spins keep recording live session data", async () => {
   assert.deepEqual(vm.appendWheelFairnessHistory.mock.calls[0]?.[1], { preview: false });
   assert.deepEqual(vm.landOnSlot.mock.calls[0]?.[1], { recordSession: true });
 });
+
+test("recordSpinResult initializes pending inventory issues when older wheel state is missing the array", () => {
+  const state = createWheelWindowState() as Record<string, unknown>;
+  state.wheelMode = "live";
+  state.wheelSpinCounts = [0];
+  state.wheelTotalSpins = 0;
+  state.wheelDisplaySlots = [{
+    name: "1 Pack",
+    color: "#e74c3c",
+    cost: 6.125,
+    tier: "tier-1",
+    packsCount: 1,
+    deductionType: "packs",
+    isChase: false
+  }];
+  state.activeWheelConfig = {
+    id: 1,
+    name: "Wheel",
+    tiers: [{
+      id: "tier-1",
+      label: "1 Pack",
+      color: "#e74c3c",
+      costPerTier: 6.125,
+      packsCount: 1,
+      deductionType: "packs",
+      boundLotId: 1
+    }]
+  };
+  state.lots = [{
+    id: 1,
+    name: "Empty Lot",
+    boxesPurchased: 0,
+    packsPerBox: 0,
+    sales: []
+  }];
+  state.saveWheelSession = vi.fn();
+  delete state.wheelPendingInventoryIssues;
+  delete state.wheelSkippedDeductions;
+
+  wheelSpinMethods.recordSpinResult.call(state as never, 0);
+
+  assert.deepEqual(state.wheelPendingInventoryIssues, [{
+    slotName: "1 Pack",
+    slotColor: "#e74c3c",
+    slotCost: 6.125,
+    slotTier: "tier-1",
+    slotPacksCount: 1,
+    slotDeductionType: "packs",
+    slotIndex: 0,
+    selectedLotId: 1,
+    spinNumber: 1,
+    slotSinglesId: null
+  }]);
+  assert.deepEqual(state.wheelSkippedDeductions, state.wheelPendingInventoryIssues);
+});

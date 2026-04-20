@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { test } from "vitest";
+import { test, vi } from "vitest";
 import { appComputed } from "../src/app-core/computed.ts";
 import { appLifecycle } from "../src/app-core/lifecycle.ts";
 import { configMethods } from "../src/app-core/methods/config.ts";
@@ -1357,12 +1357,14 @@ test("computed saleEditorProfitPreview aggregates basis across singles line item
   assert.equal(preview?.sign, "+");
 });
 
-test("watch.currentTab persists selected tab and triggers portfolio chart init", () => {
+test("watch.currentTab persists selected tab and triggers portfolio chart init after the settle window", () => {
   withMockedLocalStorage((_storage, data) => {
+    vi.useFakeTimers();
     let portfolioInitCalled = false;
     let nextTickCalled = false;
 
     const context = {
+      currentTab: "portfolio",
       speedDialOpenSales: true,
       portfolioChart: null,
       $nextTick(callback: () => void) {
@@ -1381,8 +1383,13 @@ test("watch.currentTab persists selected tab and triggers portfolio chart init",
 
     assert.equal(data.get("whatfees_last_tab"), "portfolio");
     assert.equal(context.speedDialOpenSales, false);
+    assert.equal(nextTickCalled, false);
+    assert.equal(portfolioInitCalled, false);
+
+    vi.advanceTimersByTime(250);
     assert.equal(nextTickCalled, true);
     assert.equal(portfolioInitCalled, true);
+    vi.useRealTimers();
   });
 });
 

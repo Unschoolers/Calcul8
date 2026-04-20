@@ -10,7 +10,7 @@ import {
 } from "./sales-chart-config.ts";
 import { getTodayDate } from "./config-shared.ts";
 import { formatCompactChartDate, isSmallDisplay, resolveCanvasRef, safeDestroyChart } from "./sales-ui-helpers.ts";
-import { hydrateMissingPortfolioSales } from "./sales-portfolio-hydration.ts";
+import { queuePortfolioSalesHydration } from "./sales-portfolio-hydration.ts";
 
 function getPortfolioSalesByLotId(
   context: Pick<AppContext, "currentLotId" | "sales" | "loadSalesForLotId"> & Partial<Pick<AppContext, "getAllSalesByLotId">>,
@@ -80,7 +80,7 @@ export function initPortfolioCharts(context: AppContext): void {
   context.portfolioSalesByUserChart = null;
 
   if (context.currentTab !== "portfolio") return;
-  hydrateMissingPortfolioSales(context);
+  queuePortfolioSalesHydration(context);
 
   const chartCanvas = resolveCanvasRef(context, "portfolioWindow", "portfolioChartCanvas");
   if (!chartCanvas) return;

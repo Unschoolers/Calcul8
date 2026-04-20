@@ -1,10 +1,32 @@
 import assert from "node:assert/strict";
-import { test } from "vitest";
-import { buildWheelSpectatorSnapshot } from "../src/components/windows/wheel/wheelSpectator.ts";
+import { afterEach, test, vi } from "vitest";
+import {
+  buildWheelSpectatorSessionUrl,
+  buildWheelSpectatorSnapshot,
+  normalizeWheelPublicSessionId
+} from "../src/components/windows/wheel/wheelSpectator.ts";
 import { buildSlotsFromConfig } from "../src/components/windows/wheel/wheelHelpers.ts";
 import { createWheelWindowState } from "../src/components/windows/wheel/wheelControllerState.ts";
 import type { WheelConfig } from "../src/types/app.ts";
 import { makeLot } from "./helpers/fixtures.ts";
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+test("wheel spectator session ids are normalized for generated links", () => {
+  vi.stubGlobal("window", {
+    location: {
+      href: "https://app.whatfees.ca/spectator.html?session=AbC123"
+    }
+  });
+
+  assert.equal(normalizeWheelPublicSessionId(" AbC123 "), "abc123");
+  assert.equal(
+    buildWheelSpectatorSessionUrl(" AbC123 "),
+    "https://app.whatfees.ca/spectator.html?session=abc123"
+  );
+});
 
 test("buildWheelSpectatorSnapshot returns a viewer-safe summary with chase heat and proof", () => {
   const config: WheelConfig = {

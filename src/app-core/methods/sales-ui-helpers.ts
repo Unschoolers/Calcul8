@@ -2,6 +2,11 @@ import type { SaleType } from "../../types/app.ts";
 import type { AppContext } from "../context-app.ts";
 import { formatLocalizedCompactDate } from "../i18n/index.ts";
 
+type ChartRefreshTargetTab = "sales" | "portfolio";
+type TabChartRefreshContext = Pick<AppContext, "currentTab" | "initSalesChart" | "initPortfolioChart" | "$nextTick">;
+
+const pendingTabChartRefreshes = new WeakMap<object, number>();
+
 export function firstFiniteNonNegative(...values: Array<number | null | undefined>): number | null {
   for (const value of values) {
     const next = Number(value);
@@ -71,6 +76,46 @@ export function refreshChartsForCurrentTab(
     return;
   }
   runRefresh();
+}
+
+export function cancelQueuedTabChartRefresh(context: object): void {
+  const timeoutId = pendingTabChartRefreshes.get(context);
+  if (timeoutId == null) return;
+  globalThis.clearTimeout(timeoutId);
+  pendingTabChartRefreshes.delete(context);
+}
+
+export function queueTabChartRefreshAfterSettle(
+  context: TabChartRefreshContext,
+  targetTab: ChartRefreshTargetTab,
+  delayMs = 250
+): void {
+  cancelQueuedTabChartRefresh(context as object);
+
+  const runRefresh = () => {
+    if (context.currentTab !== targetTab) return;
+    const initChart = targetTab === "sales"
+      ? () => context.initSalesChart()
+      : () => context.initPortfolioChart();
+    const scheduleNextTick = context.$nextTick;
+    if (typeof scheduleNextTick === "function") {
+      void scheduleNextTick.call(context, initChart);
+      return;
+    }
+    initChart();
+  };
+
+  const normalizedDelayMs = Math.max(0, Math.floor(Number(delayMs) || 0));
+  if (normalizedDelayMs === 0) {
+    runRefresh();
+    return;
+  }
+
+  const timeoutId = globalThis.setTimeout(() => {
+    pendingTabChartRefreshes.delete(context as object);
+    runRefresh();
+  }, normalizedDelayMs) as unknown as number;
+  pendingTabChartRefreshes.set(context as object, timeoutId);
 }
 
 export function focusSaleQuantityInput(context: Pick<AppContext, "$refs" | "$nextTick">): void {

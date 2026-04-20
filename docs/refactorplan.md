@@ -46,23 +46,6 @@ Refactor toward:
 - reducing `this`-driven mutation and runtime method lookup in favor of explicit typed inputs/outputs
 - shifting more behavior under focused unit tests instead of broad component tests only
 
-### Smooth tab transitions by separating animation, chart work, and background refresh
-
-Sales and portfolio navigation still bunches expensive work into the same interaction window:
-
-- `src/app-core/watch.ts` triggers chart initialization and tab-driven freshness work directly from tab/watch flows
-- `src/app-core/methods/sales-charts.ts` still destroys and recreates Chart instances instead of updating long-lived charts
-- `src/app-core/methods/sales-freshness.ts` and `src/app-core/methods/sales-portfolio-hydration.ts` can start network/cache work close to tab-entry animations
-
-That makes UI transitions more sensitive to API timing, layout work, and reactive churn than they need to be.
-
-Refactor toward:
-
-- rendering the destination tab from cached state first, then starting freshness/hydration after the transition settles
-- reusing existing sales and portfolio chart instances where possible instead of full destroy/recreate cycles
-- batching or cancelling tab-scoped refresh work when the user switches again quickly
-- separating “tab became visible” orchestration from “data needs revalidation” orchestration
-
 ---
 
 ## Medium
