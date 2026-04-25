@@ -191,6 +191,77 @@ test("preview spin persists updated preview session state through completion", a
   assert.ok(saveSnapshots.some((entry) => /^🎉 /.test(entry.lastResult)));
 });
 
+test("spinWheelInternal avoids reactive angle updates between mobile animation frames", async () => {
+  const slots = [
+    { name: "Preview Prize", color: "#f00", cost: 5, tier: "t1", packsCount: 1, deductionType: "packs", isChase: false }
+  ];
+  const rafCallbacks: FrameRequestCallback[] = [];
+  const centerIcon = { style: { transform: "" } };
+  const vm: Record<string, unknown> = {
+    wheelSpinning: false,
+    wheelDisplaySlots: slots,
+    activeWheelSlots: slots,
+    wheelDisplayConfig: { id: 1, spinPrice: 10, tiers: [{ id: "t1", boundLotId: 42 }] },
+    activeWheelConfigId: 1,
+    activeScopeType: "personal",
+    activeWorkspaceId: null,
+    wheelPreviewSpinCounts: [0],
+    wheelPreviewTotalSpins: 0,
+    wheelPreviewFairnessHistory: [],
+    wheelSpinCounts: [0],
+    wheelTotalSpins: 0,
+    wheelCurrentAngle: 0,
+    wheelSpinHash: "",
+    wheelSpinSeed: "",
+    wheelSpinClientSeed: "",
+    wheelSpinVerificationUrl: "",
+    wheelSpinAlgorithm: "",
+    wheelShowSeed: false,
+    wheelInventoryWarning: "",
+    wheelLastResult: "",
+    wheelLastResultColor: "",
+    wheelHighlightedSlotIndex: -1,
+    wheelViewportWidth: 390,
+    $refs: {
+      wheelOuter: {
+        querySelector: vi.fn((selector: string) => selector === ".wheel-center-cap__icon" ? centerIcon : null)
+      }
+    },
+    drawWheel: vi.fn(),
+    recordSpinResult: WheelWindow.methods!.recordSpinResult,
+    recordPreviewSpinResult: WheelWindow.methods!.recordPreviewSpinResult,
+    appendWheelFairnessHistory: WheelWindow.methods!.appendWheelFairnessHistory,
+    landOnSlot: vi.fn(),
+    saveWheelSession: vi.fn()
+  };
+
+  vi.stubGlobal("performance", { now: () => 0 });
+  vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
+    rafCallbacks.push(cb);
+    return rafCallbacks.length;
+  });
+
+  try {
+    await WheelWindow.methods!.spinWheelInternal.call(vm as never, false);
+    assert.equal(rafCallbacks.length, 1);
+
+    rafCallbacks.shift()?.(16);
+    assert.equal(vm.wheelCurrentAngle, 0);
+    assert.equal((vm.drawWheel as ReturnType<typeof vi.fn>).mock.calls.length, 1);
+
+    rafCallbacks.shift()?.(24);
+    assert.equal(vm.wheelCurrentAngle, 0);
+    assert.equal((vm.drawWheel as ReturnType<typeof vi.fn>).mock.calls.length, 1);
+
+    rafCallbacks.shift()?.(50);
+    assert.equal(vm.wheelCurrentAngle, 0);
+    assert.equal((vm.drawWheel as ReturnType<typeof vi.fn>).mock.calls.length, 2);
+    assert.match(centerIcon.style.transform, /^rotate\(/);
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});
+
 test("testSpinWheel delegates to non-recording spin path", async () => {
   const spinWheelInternal = vi.fn().mockResolvedValue(undefined);
   const vm: Record<string, unknown> = {

@@ -3,7 +3,10 @@ import type {
   LotLivePricingDocument,
   SaleDocument,
   SyncMetaDocument,
-  SyncPresetDocument
+  SyncPresetDocument,
+  SyncLotDto,
+  SyncSalesByLotDto,
+  SyncWheelConfigDto
 } from "../../types";
 import { isNotFoundError, withCosmosRetry } from "./core";
 import { syncMetaId } from "./ids";
@@ -20,9 +23,9 @@ export interface ReplaceSyncScopeEntityDocumentsInput extends SyncScopeEntityDoc
 
 export interface IncrementalSyncUpsertInput {
   userId: string;
-  lots: unknown[];
-  salesByLot: Record<string, unknown[]>;
-  wheelConfigs: unknown[];
+  lots: SyncLotDto[];
+  salesByLot: SyncSalesByLotDto;
+  wheelConfigs: SyncWheelConfigDto[];
   activeWheelConfigId: number | null;
   version: number;
   updatedAt: string;
@@ -84,19 +87,11 @@ export function normalizeActiveWheelConfigId(value: unknown): number | null {
 }
 
 export function buildIncomingPresetStates(
-  lots: unknown[],
-  salesByLot: Record<string, unknown[]>
+  lots: SyncLotDto[],
+  salesByLot: SyncSalesByLotDto
 ): SyncPresetState[] {
   return lots.flatMap((lot): SyncPresetState[] => {
-    if (typeof lot !== "object" || lot === null || Array.isArray(lot)) {
-      return [];
-    }
-    const presetIdRaw = (lot as { id?: unknown }).id;
-    if (typeof presetIdRaw !== "string" && typeof presetIdRaw !== "number") {
-      return [];
-    }
-
-    const presetId = String(presetIdRaw);
+    const presetId = String(lot.id);
     return [{
       presetId,
       preset: lot,

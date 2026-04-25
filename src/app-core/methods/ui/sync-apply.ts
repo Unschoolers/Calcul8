@@ -6,11 +6,17 @@ import { normalizeStoredLot } from "../../shared/normalize-lot.ts";
 import { normalizeWheelConfigs } from "../../shared/normalize-wheel-config.ts";
 import { persistSalesCacheToStorage } from "../../shared/sales-cache-storage.ts";
 import { replaceRootLotSales, resetRootSalesState } from "../../shared/sales-root-state.ts";
+import {
+  parseSyncSnapshotDto,
+  type SyncLotDto,
+  type SyncSalesByLotDto,
+  type SyncWheelConfigDto
+} from "./sync-contracts.ts";
 
 export interface ParsedCloudSnapshot {
-  lots: unknown[];
-  salesByLot: Record<string, unknown[]>;
-  wheelConfigs: unknown[];
+  lots: SyncLotDto[];
+  salesByLot: SyncSalesByLotDto;
+  wheelConfigs: SyncWheelConfigDto[];
   activeWheelConfigId: number | null;
   version: number;
   hasData: boolean;
@@ -21,40 +27,18 @@ function hasSalesDataByLot(value: Record<string, unknown[]>): boolean {
 }
 
 export function parseCloudSnapshot(snapshot: unknown): ParsedCloudSnapshot {
-  const rawSnapshot = typeof snapshot === "object" && snapshot !== null
-    ? snapshot as {
-      lots?: unknown[];
-      salesByLot?: Record<string, unknown[]>;
-      wheelConfigs?: unknown[];
-      activeWheelConfigId?: number | null;
-      version?: number;
-    }
-    : {};
-  const lots = Array.isArray(rawSnapshot.lots) ? rawSnapshot.lots : [];
-  const hasLots = Array.isArray(rawSnapshot.lots) && lots.length > 0;
-  const salesByLot = rawSnapshot.salesByLot && typeof rawSnapshot.salesByLot === "object"
-    ? rawSnapshot.salesByLot
-    : {};
-  const hasSalesByLot = Object.prototype.hasOwnProperty.call(rawSnapshot, "salesByLot")
-    && rawSnapshot.salesByLot != null
-    && typeof rawSnapshot.salesByLot === "object"
-    && !Array.isArray(rawSnapshot.salesByLot);
-  const wheelConfigs = Array.isArray(rawSnapshot.wheelConfigs) ? rawSnapshot.wheelConfigs : [];
-  const hasWheelConfigs = Object.prototype.hasOwnProperty.call(rawSnapshot, "wheelConfigs")
-    && Array.isArray(rawSnapshot.wheelConfigs);
-  const activeWheelConfigId = rawSnapshot.activeWheelConfigId == null
-    ? null
-    : (Math.floor(Number(rawSnapshot.activeWheelConfigId) || 0) || null);
-  const hasRequiredCollections = hasSalesByLot && hasWheelConfigs;
-  const hasData = hasRequiredCollections && (hasLots || hasSalesDataByLot(salesByLot) || wheelConfigs.length > 0);
-  const version = Number(rawSnapshot.version ?? 0);
+  const parsed = parseSyncSnapshotDto(snapshot);
+  const { lots, salesByLot, wheelConfigs, activeWheelConfigId, version } = parsed.snapshot;
+  const hasLots = lots.length > 0;
+  const hasData = parsed.hasRequiredCollections
+    && (hasLots || hasSalesDataByLot(salesByLot) || wheelConfigs.length > 0);
 
   return {
     lots,
     salesByLot,
     wheelConfigs,
     activeWheelConfigId,
-    version: Number.isFinite(version) ? version : 0,
+    version,
     hasData
   };
 }
@@ -88,14 +72,15 @@ export type SyncApplyApp = Pick<
 
 export function applyCloudSnapshotToLocal(context: SyncApplyApp, snapshot: ParsedCloudSnapshot): void {
   const todayDate = new Date().toISOString().slice(0, 10);
-  const normalizedLots = (snapshot.lots as typeof context.lots).map((lot) => normalizeStoredLot(lot, todayDate));
+  const normalizedLots = (snapshot.lots as unknown as typeof context.lots)
+    .map((lot) => normalizeStoredLot(lot, todayDate));
   resetRootSalesState(context);
   for (const lot of normalizedLots) {
     if (!Object.prototype.hasOwnProperty.call(snapshot.salesByLot, String(lot.id))) {
       continue;
     }
     const rawSales = snapshot.salesByLot[String(lot.id)];
-    const sales = Array.isArray(rawSales) ? rawSales as Sale[] : [];
+    const sales = Array.isArray(rawSales) ? rawSales as unknown as Sale[] : [];
     persistSalesCacheToStorage(context, lot.id, sales);
     replaceRootLotSales(context, lot.id, sales);
   }

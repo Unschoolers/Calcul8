@@ -5,27 +5,17 @@ import { getConfig } from "../lib/config";
 import { jsonResponse, maybeHandleHttpGuards } from "../lib/http";
 import { publishWorkspaceLotRealtimeEventBestEffort } from "../lib/realtime";
 import { parseOptionalWorkspaceId } from "../lib/syncScope";
-import { parseSyncLotsShape } from "../lib/syncShape";
+import { parseSyncLotsShape, parseSyncWheelConfigs } from "../lib/syncShape";
 import { assertSafeSyncPush } from "../lib/syncSafety";
 import { handleSyncFunctionError, isRecord, resolveAuthorizedSyncScope } from "./sync-function-helpers";
 import type { SyncPushPayload } from "../types";
 
-function hasLotId(value: unknown): boolean {
-  if (!isRecord(value)) return false;
-  const id = value.id;
-  return typeof id === "string" || typeof id === "number";
-}
-
-function parseLotIds(lots: unknown[]): string[] {
+function parseLotIds(lots: SyncPushPayload["lots"]): string[] {
   const ids: string[] = [];
   const seen = new Set<string>();
 
   for (const lot of lots) {
-    if (!hasLotId(lot)) {
-      throw new HttpError(400, "Each lot must be an object containing an 'id' field.");
-    }
-
-    const lotId = String((lot as { id: string | number }).id);
+    const lotId = String(lot.id);
     if (seen.has(lotId)) {
       throw new HttpError(400, `Duplicate lot id '${lotId}' in payload.`);
     }
@@ -43,14 +33,6 @@ function parseOptionalActiveLotId(value: unknown): number | undefined {
     return undefined;
   }
   return Math.floor(parsed);
-}
-
-function parseWheelConfigs(value: unknown): unknown[] {
-  if (value == null) return [];
-  if (!Array.isArray(value)) {
-    throw new HttpError(400, "Field 'wheelConfigs' must be an array when provided.");
-  }
-  return value;
 }
 
 function parseOptionalActiveWheelConfigId(value: unknown): number | null {
@@ -92,7 +74,7 @@ async function parseSyncPushPayload(request: HttpRequest): Promise<SyncPushPaylo
   return {
     lots: syncShape.lots,
     salesByLot: syncShape.salesByLot,
-    wheelConfigs: parseWheelConfigs(payload.wheelConfigs),
+    wheelConfigs: parseSyncWheelConfigs(payload.wheelConfigs),
     activeWheelConfigId: parseOptionalActiveWheelConfigId(payload.activeWheelConfigId),
     activeLotId: parseOptionalActiveLotId(payload.activeLotId),
     clientVersion: typeof clientVersion === "number" ? clientVersion : undefined,

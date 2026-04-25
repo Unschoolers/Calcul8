@@ -68,6 +68,48 @@ function appendWheelSessionNetRevenue(context: WheelWindowThis, sale: Pick<Sale,
   revenueController.sessionNetRevenue = currentNetRevenue + Math.max(0, netRevenue);
 }
 
+const MOBILE_SPIN_FRAME_INTERVAL_MS = 33;
+const DESKTOP_CELEBRATION_FRAME_INTERVAL_MS = 33;
+const MOBILE_CELEBRATION_FRAME_INTERVAL_MS = 50;
+
+function isCompactWheelPerformanceMode(context: Record<string, unknown>): boolean {
+  const viewportWidth = Number(context.wheelViewportWidth || 0);
+  const isCompactLayout = context.wheelIsCompactLayout === true || (viewportWidth > 0 && viewportWidth <= 720);
+  const navigatorLike = (globalThis as { navigator?: { maxTouchPoints?: number } }).navigator;
+  return isCompactLayout || Number(navigatorLike?.maxTouchPoints || 0) > 0;
+}
+
+function getSpinFrameIntervalMs(context: Record<string, unknown>): number {
+  return isCompactWheelPerformanceMode(context) ? MOBILE_SPIN_FRAME_INTERVAL_MS : 0;
+}
+
+function getCelebrationFrameIntervalMs(context: Record<string, unknown>): number {
+  return isCompactWheelPerformanceMode(context)
+    ? MOBILE_CELEBRATION_FRAME_INTERVAL_MS
+    : DESKTOP_CELEBRATION_FRAME_INTERVAL_MS;
+}
+
+function getWheelCenterIcon(context: Record<string, unknown>): HTMLElement | null {
+  const refs = (context.$refs || {}) as Record<string, unknown>;
+  return (refs.wheelOuter as HTMLElement | null)
+    ?.querySelector(".wheel-center-cap__icon") as HTMLElement | null;
+}
+
+function setWheelAnimatedAngle(
+  context: Record<string, unknown>,
+  angle: number,
+  centerIcon: HTMLElement | null
+): void {
+  context._wheelAnimationAngle = angle;
+  if (centerIcon) {
+    centerIcon.style.transform = `rotate(${angle}rad)`;
+  }
+}
+
+function clearWheelAnimatedAngle(context: Record<string, unknown>): void {
+  context._wheelAnimationAngle = undefined;
+}
+
 export const wheelSpinMethods = {
   drawWheel(this: WheelWindowThis, offset = 0): void {
     const canvasEl = this.$refs.wheelCanvas as HTMLCanvasElement | null;
@@ -162,34 +204,63 @@ export const wheelSpinMethods = {
     const fairnessResult = await resolveWheelFairnessSpin(slots.length, slots);
 
     beginWheelSpin(vm as Record<string, unknown>, fairnessResult);
-    vm.saveWheelSession();
 
     const sliceAngle = (2 * Math.PI) / slots.length;
     const targetIndex = fairnessResult.resultIndex;
-    if (shouldRecordLiveSession) {
-      vm.recordSpinResult(targetIndex);
-    } else {
-      vm.recordPreviewSpinResult(targetIndex);
-      vm.saveWheelSession();
-    }
     const currentAngle = (vm.wheelCurrentAngle || 0) as number;
     const extraRotations = Math.floor(5 + Math.random() * 4) * 2 * Math.PI;
     const endAngle = currentAngle - (targetIndex * sliceAngle + sliceAngle / 2) - (currentAngle % (2 * Math.PI)) + extraRotations;
     const duration = 4000 + Math.random() * 1500;
     const startAngle = currentAngle;
     const startTime = performance.now();
+    const spectatorSpinAnimation = {
+      spinId: `${Date.now()}-${targetIndex}-${Math.round(endAngle * 1000)}`,
+      startedAt: Date.now(),
+      durationMs: Math.round(duration),
+      startAngle,
+      endAngle,
+      targetIndex
+    };
+    vm._wheelSpectatorSpinAnimation = spectatorSpinAnimation;
+    if (shouldRecordLiveSession) {
+      vm.recordSpinResult(targetIndex);
+    } else {
+      vm.recordPreviewSpinResult(targetIndex);
+    }
+    vm.saveWheelSession();
 
     // Pointer wobble: detect when slice dividers cross the pointer position
     let prevBoundaryCount = 0;
     const refs = (vm.$refs || {}) as Record<string, unknown>;
     const pointerEl = (refs.wheelOuter as HTMLElement | null)
       ?.querySelector(".wheel-pointer") as HTMLElement | null;
+    const centerIcon = getWheelCenterIcon(vm as Record<string, unknown>);
+    const spinFrameIntervalMs = getSpinFrameIntervalMs(vm as Record<string, unknown>);
+    let lastSpinFrameTime = startTime - spinFrameIntervalMs;
+    let spinFrameId: number | undefined;
+    let spinCompleted = false;
+    let visibilityChangeHandler: (() => void) | undefined;
+    const cleanupSpinLoop = () => {
+      spinCompleted = true;
+      if (visibilityChangeHandler && typeof document !== "undefined") {
+        document.removeEventListener("visibilitychange", visibilityChangeHandler);
+        visibilityChangeHandler = undefined;
+      }
+    };
+    const scheduleSpinFrame = () => {
+      spinFrameId = requestAnimationFrame(tick);
+    };
 
     const tick = async (now: number) => {
+      if (spinCompleted) return;
       const t = Math.min((now - startTime) / duration, 1);
       const currentOffset = startAngle + (endAngle - startAngle) * easeOutQuart(t);
-      vm.wheelCurrentAngle = currentOffset;
-      vm.drawWheel(currentOffset);
+      const shouldDrawFrame = t >= 1 || spinFrameIntervalMs <= 0 || now - lastSpinFrameTime >= spinFrameIntervalMs;
+      if (shouldDrawFrame) {
+        lastSpinFrameTime = now;
+        setWheelAnimatedAngle(vm as Record<string, unknown>, currentOffset, centerIcon);
+        vm.drawWheel(currentOffset);
+      }
 
       // Wobble pointer when a divider crosses
       if (pointerEl) {
@@ -207,11 +278,13 @@ export const wheelSpinMethods = {
       }
 
       if (t < 1) {
-        requestAnimationFrame(tick);
+        scheduleSpinFrame();
         return;
       }
 
+      cleanupSpinLoop();
       vm.wheelCurrentAngle = endAngle;
+      clearWheelAnimatedAngle(vm as Record<string, unknown>);
       vm.drawWheel(endAngle);
       vm.wheelSpinning = false;
       pointerEl?.classList.remove("wheel-pointer--tick");
@@ -247,6 +320,7 @@ export const wheelSpinMethods = {
         ...fairnessResult,
         verificationUrl
       };
+      vm._wheelSpectatorSpinAnimation = null;
       finalizeWheelSpinProof(vm as Record<string, unknown>, readableFairnessResult);
       vm.appendWheelFairnessHistory(buildWheelSpinFairnessEntry(vm as Record<string, unknown>, {
         fairnessResult: readableFairnessResult,
@@ -258,7 +332,19 @@ export const wheelSpinMethods = {
       vm.landOnSlot(targetIndex, { recordSession: shouldRecordLiveSession });
     };
 
-    requestAnimationFrame(tick);
+    if (typeof document !== "undefined") {
+      visibilityChangeHandler = () => {
+        if (document.visibilityState !== "visible" || spinCompleted) return;
+        if (spinFrameId != null && typeof cancelAnimationFrame === "function") {
+          cancelAnimationFrame(spinFrameId);
+          spinFrameId = undefined;
+        }
+        void tick(performance.now());
+      };
+      document.addEventListener("visibilitychange", visibilityChangeHandler);
+    }
+
+    scheduleSpinFrame();
   },
 
   recordPreviewSpinResult(this: WheelWindowThis, slotIndex: number): void {
@@ -370,6 +456,8 @@ export const wheelSpinMethods = {
 
     if (hasRAF) {
       const celebrationStart = performance.now();
+      const celebrationFrameIntervalMs = getCelebrationFrameIntervalMs(this as unknown as Record<string, unknown>);
+      let lastCelebrationFrameTime = celebrationStart - celebrationFrameIntervalMs;
       const celebrateTick = (now: number) => {
         const elapsed = now - celebrationStart;
         if (elapsed >= celebrationDuration) {
@@ -379,9 +467,12 @@ export const wheelSpinMethods = {
           redraw?.(getAngle());
           return;
         }
-        const t = elapsed / 1000;
-        (this as Record<string, unknown>)._wheelHighlightTime = t;
-        redraw?.(getAngle());
+        if (now - lastCelebrationFrameTime >= celebrationFrameIntervalMs) {
+          lastCelebrationFrameTime = now;
+          const t = elapsed / 1000;
+          (this as Record<string, unknown>)._wheelHighlightTime = t;
+          redraw?.(getAngle());
+        }
         (this as Record<string, unknown>)._wheelCelebrationAnimId = requestAnimationFrame(celebrateTick);
       };
       (this as Record<string, unknown>)._wheelCelebrationAnimId = requestAnimationFrame(celebrateTick);

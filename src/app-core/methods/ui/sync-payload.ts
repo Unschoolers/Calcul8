@@ -1,16 +1,12 @@
-import type { Sale } from "../../../types/app.ts";
 import type { AppContext } from "../../context-app.ts";
+import {
+  normalizeOptionalSyncId,
+  toSyncLotDtos,
+  toSyncWheelConfigDtos,
+  type SyncPayloadDto
+} from "./sync-contracts.ts";
 
-export type SyncPayload = {
-  lots: unknown[];
-  salesByLot: Record<string, Sale[]>;
-  wheelConfigs: unknown[];
-  activeWheelConfigId: number | null;
-  activeLotId?: number;
-  clientVersion?: number;
-  allowEmptyOverwrite?: boolean;
-  workspaceId?: string;
-};
+export type SyncPayload = SyncPayloadDto;
 
 export type SyncPayloadContext = Pick<
   AppContext,
@@ -19,18 +15,16 @@ export type SyncPayloadContext = Pick<
 
 export function createSyncPayload(context: SyncPayloadContext, clientVersion?: number): SyncPayload {
   const payload: SyncPayload = {
-    lots: context.lots,
+    lots: toSyncLotDtos(context.lots),
     salesByLot: {},
-    wheelConfigs: Array.isArray(context.wheelConfigs) ? context.wheelConfigs : [],
-    activeWheelConfigId: context.activeWheelConfigId == null
-      ? null
-      : Math.floor(Number(context.activeWheelConfigId) || 0) || null,
+    wheelConfigs: toSyncWheelConfigDtos(context.wheelConfigs),
+    activeWheelConfigId: normalizeOptionalSyncId(context.activeWheelConfigId),
     clientVersion
   };
 
-  const activeLotId = Number(context.currentLotId);
-  if (Number.isFinite(activeLotId) && activeLotId > 0) {
-    payload.activeLotId = Math.floor(activeLotId);
+  const activeLotId = normalizeOptionalSyncId(context.currentLotId);
+  if (activeLotId != null) {
+    payload.activeLotId = activeLotId;
   }
 
   const rawWorkspaceId = context.workspaceId;

@@ -340,6 +340,7 @@ export function buildWheelSpectatorSnapshot(
     lastResultColor: String(vm.wheelLastResultColor || latestFairnessEntry?.color || "#d4af37"),
     wheelCurrentAngle: Number.isFinite(Number(vm.wheelCurrentAngle)) ? Number(vm.wheelCurrentAngle) : 0,
     wheelSlots: buildSpectatorSlots(vm),
+    spinAnimation: (vm._wheelSpectatorSpinAnimation as WheelSpectatorSnapshot["spinAnimation"]) ?? null,
     recentFairnessHistory: fairnessHistory,
     chaseHistory: chaseData.chaseHistory,
     chaseBoard: chaseData.chaseBoard,

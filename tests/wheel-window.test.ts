@@ -240,6 +240,43 @@ test("WheelWindow data initializes spin state needed by the template", () => {
   assert.equal(data.wheelCurrentAngle, 0);
 });
 
+test("refreshWheelCanvas retries when the wheel tab activates before refs are ready", async () => {
+  const setTimeoutMock = vi.fn(() => 77);
+  const clearTimeoutMock = vi.fn();
+  const requestAnimationFrameMock = vi.fn((callback: FrameRequestCallback) => {
+    callback(0);
+    return 1;
+  });
+  vi.stubGlobal("window", {
+    innerWidth: 390,
+    innerHeight: 844,
+    setTimeout: setTimeoutMock,
+    clearTimeout: clearTimeoutMock,
+    requestAnimationFrame: requestAnimationFrameMock
+  });
+  const vm: Record<string, unknown> = {
+    $refs: {},
+    wheelViewportWidth: 0,
+    wheelPresentationMode: false,
+    _wheelCanvasRefreshRetryCount: 0,
+    normalizeWheelCompactInspectorState: vi.fn(),
+    refreshWheelCanvas: WheelWindow.methods!.refreshWheelCanvas,
+    drawWheel: vi.fn()
+  };
+
+  try {
+    WheelWindow.methods!.refreshWheelCanvas.call(vm as never);
+    await Promise.resolve();
+  } finally {
+    vi.unstubAllGlobals();
+  }
+
+  assert.equal(requestAnimationFrameMock.mock.calls.length, 1);
+  assert.equal(setTimeoutMock.mock.calls.length, 1);
+  assert.equal(vm._wheelCanvasRefreshRetryCount, 1);
+  assert.equal((vm.drawWheel as ReturnType<typeof vi.fn>).mock.calls.length, 0);
+});
+
 // ── Component computed tests ─────────────────────────────────────
 
 test("wheelSessionRevenue is spins × spinPrice", () => {

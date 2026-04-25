@@ -142,6 +142,54 @@ test("buildWheelSpectatorSnapshot returns a viewer-safe summary with chase heat 
   assert.equal("wheelPendingInventoryIssues" in snapshot, false);
 });
 
+test("buildWheelSpectatorSnapshot carries active spin animation metadata", () => {
+  const config: WheelConfig = {
+    id: 5,
+    name: "Animated Wheel",
+    spinPrice: 10,
+    targetMargin: 20,
+    createdAt: "2026-04-18T00:00:00.000Z",
+    tiers: [{
+      id: "tier-1",
+      label: "Prize",
+      color: "#2563eb",
+      slots: 1,
+      costPerTier: 4,
+      packsCount: 1,
+      deductionType: "none",
+      sets: []
+    }]
+  };
+
+  const vm = createWheelWindowState() as Record<string, unknown>;
+  vm.activeWheelConfig = config;
+  vm.wheelMode = "live";
+  vm.wheelSpinning = true;
+  vm.wheelController.activeSlots = buildSlotsFromConfig(config);
+  vm.wheelSpinCounts = [1];
+  vm.wheelTotalSpins = 1;
+  vm._wheelSpectatorSpinAnimation = {
+    spinId: "spin-1",
+    startedAt: 10_000,
+    durationMs: 4_500,
+    startAngle: 0.25,
+    endAngle: 18.5,
+    targetIndex: 0
+  };
+
+  const snapshot = buildWheelSpectatorSnapshot(vm, "live");
+
+  assert.equal(snapshot.isSpinning, true);
+  assert.deepEqual(snapshot.spinAnimation, {
+    spinId: "spin-1",
+    startedAt: 10_000,
+    durationMs: 4_500,
+    startAngle: 0.25,
+    endAngle: 18.5,
+    targetIndex: 0
+  });
+});
+
 test("buildWheelSpectatorSnapshot falls back to the lowest-profit live tier when no chase is active", () => {
   const config: WheelConfig = {
     id: 2,

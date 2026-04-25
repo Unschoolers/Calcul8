@@ -110,6 +110,34 @@ test("live spins keep recording live session data", async () => {
   assert.deepEqual(vm.landOnSlot.mock.calls[0]?.[1], { recordSession: true });
 });
 
+test("spinWheelInternal publishes spectator animation during the spin and clears it after landing", async () => {
+  stubFinishedAnimation();
+  const vm = createSpinVm("live");
+  const spectatorAnimationStates: unknown[] = [];
+  vm.saveWheelSession = vi.fn(function (this: Record<string, unknown>) {
+    spectatorAnimationStates.push(this._wheelSpectatorSpinAnimation ?? null);
+  });
+
+  await wheelSpinMethods.spinWheelInternal.call(vm, true);
+
+  const firstAnimation = spectatorAnimationStates[0] as {
+    spinId?: string;
+    startedAt?: number;
+    durationMs?: number;
+    startAngle?: number;
+    endAngle?: number;
+    targetIndex?: number;
+  } | null;
+  assert.ok(firstAnimation);
+  assert.equal(firstAnimation.targetIndex, 0);
+  assert.equal(firstAnimation.startAngle, 0);
+  assert.equal(typeof firstAnimation.endAngle, "number");
+  assert.equal(typeof firstAnimation.durationMs, "number");
+  assert.equal(typeof firstAnimation.startedAt, "number");
+  assert.equal(spectatorAnimationStates.at(-1), null);
+  assert.equal(vm._wheelSpectatorSpinAnimation, null);
+});
+
 test("recordSpinResult initializes pending inventory issues when older wheel state is missing the array", () => {
   const state = createWheelWindowState() as Record<string, unknown>;
   state.wheelMode = "live";

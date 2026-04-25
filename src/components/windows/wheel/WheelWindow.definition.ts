@@ -48,6 +48,8 @@ function getCurrentViewportWidth(): number {
 }
 
 const WHEEL_AUTOSPIN_DELAY_MS = 650;
+const WHEEL_CANVAS_REFRESH_RETRY_MS = 90;
+const WHEEL_CANVAS_REFRESH_MAX_RETRIES = 12;
 
 export const wheelWindowDefinition = {
   name: "WheelWindow",
@@ -91,6 +93,7 @@ export const wheelWindowDefinition = {
   watch: {
     currentTab(this: WheelWindowThis, nextTab: string) {
       if (nextTab !== "wheel") return;
+      this._wheelCanvasRefreshRetryCount = 0;
       this.refreshWheelCanvas();
     },
     wheelConfigs: {
@@ -304,16 +307,34 @@ export const wheelWindowDefinition = {
       this.wheelViewportWidth = getCurrentViewportWidth();
       this.normalizeWheelCompactInspectorState();
       nextTick(() => {
+        const retryRefresh = () => {
+          const retryCount = Number(this._wheelCanvasRefreshRetryCount || 0);
+          if (retryCount >= WHEEL_CANVAS_REFRESH_MAX_RETRIES) return;
+          this._wheelCanvasRefreshRetryCount = retryCount + 1;
+          if (this._wheelCanvasRefreshTimeoutId != null) {
+            window.clearTimeout(this._wheelCanvasRefreshTimeoutId);
+          }
+          this._wheelCanvasRefreshTimeoutId = window.setTimeout(() => {
+            this._wheelCanvasRefreshTimeoutId = undefined;
+            this.refreshWheelCanvas();
+          }, WHEEL_CANVAS_REFRESH_RETRY_MS);
+        };
         const run = () => {
           const panel = (this.$refs as Record<string, unknown>).wheelSpinnerPanel as HTMLElement | null;
           const canvas = (this.$refs as Record<string, unknown>).wheelCanvas as HTMLCanvasElement | null;
-          if (!panel || !canvas) return;
+          if (!panel || !canvas) {
+            retryRefresh();
+            return;
+          }
           const panelWidth = panel.clientWidth;
           if (panelWidth <= 0 || canvas.offsetParent == null) {
-            window.setTimeout(() => {
-              this.refreshWheelCanvas();
-            }, 90);
+            retryRefresh();
             return;
+          }
+          this._wheelCanvasRefreshRetryCount = 0;
+          if (this._wheelCanvasRefreshTimeoutId != null) {
+            window.clearTimeout(this._wheelCanvasRefreshTimeoutId);
+            this._wheelCanvasRefreshTimeoutId = undefined;
           }
           const targetWidth = getWheelCanvasTargetSize(
             panel,
@@ -500,6 +521,11 @@ export const wheelWindowDefinition = {
     if (draftTimeoutId != null) {
       clearTimeout(draftTimeoutId);
       this._wheelDraftSaveTimeoutId = undefined;
+    }
+    const canvasRefreshTimeoutId = this._wheelCanvasRefreshTimeoutId as number | undefined;
+    if (canvasRefreshTimeoutId != null) {
+      clearTimeout(canvasRefreshTimeoutId);
+      this._wheelCanvasRefreshTimeoutId = undefined;
     }
     this.stopWheelSpectatorCountPolling();
   },

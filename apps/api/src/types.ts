@@ -91,6 +91,15 @@ export interface WheelPublicSessionSlot {
   isChase: boolean;
 }
 
+export interface WheelPublicSessionSpinAnimation {
+  spinId: string;
+  startedAt: number;
+  durationMs: number;
+  startAngle: number;
+  endAngle: number;
+  targetIndex: number;
+}
+
 export interface WheelPublicSessionSnapshot {
   wheelName: string;
   sessionStatus: WheelPublicSessionStatus;
@@ -100,6 +109,7 @@ export interface WheelPublicSessionSnapshot {
   lastResultColor: string;
   wheelCurrentAngle: number;
   wheelSlots: WheelPublicSessionSlot[];
+  spinAnimation?: WheelPublicSessionSpinAnimation | null;
   recentFairnessHistory: WheelPublicSessionFairnessEntry[];
   chaseHistory: WheelPublicSessionChaseHistoryEntry[];
   chaseBoard: WheelPublicSessionChaseEntry[];
@@ -237,13 +247,24 @@ export interface WorkspaceJoinLinkDocument {
   updatedAt: string;
 }
 
-export interface SyncSnapshotDocument {
+export type SyncEntityRecord = Record<string, unknown>;
+export type SyncLotDto = SyncEntityRecord & {
+  id: string | number;
+};
+export type SyncSaleDto = SyncEntityRecord;
+export type SyncWheelConfigDto = SyncEntityRecord;
+export type SyncSalesByLotDto = Record<string, SyncSaleDto[]>;
+
+export interface SyncSnapshotPayload {
+  lots: SyncLotDto[];
+  salesByLot: SyncSalesByLotDto;
+  wheelConfigs: SyncWheelConfigDto[];
+  activeWheelConfigId: number | null;
+}
+
+export interface SyncSnapshotDocument extends SyncSnapshotPayload {
   id: string;
   userId: string;
-  lots: unknown[];
-  salesByLot: Record<string, unknown[]>;
-  wheelConfigs: unknown[];
-  activeWheelConfigId: number | null;
   version: number;
   updatedAt: string;
 }
@@ -265,7 +286,7 @@ export interface SyncMetaDocument {
   userId: string;
   version: number;
   updatedAt: string;
-  wheelConfigs?: unknown[];
+  wheelConfigs?: SyncWheelConfigDto[];
   activeWheelConfigId?: number | null;
   salesMode?: "snapshot" | "entity";
   livePricingMode?: "lot_defaults" | "entity";
@@ -474,9 +495,9 @@ export interface LotLivePricingDocument {
 }
 
 export interface SyncPushPayload {
-  lots: unknown[];
-  salesByLot: Record<string, unknown[]>;
-  wheelConfigs: unknown[];
+  lots: SyncLotDto[];
+  salesByLot: SyncSalesByLotDto;
+  wheelConfigs: SyncWheelConfigDto[];
   activeWheelConfigId: number | null;
   activeLotId?: number;
   clientVersion?: number;

@@ -10,6 +10,7 @@ import {
   getWheelCanvasDpr,
   renderWheelSurface
 } from "./components/windows/wheel/wheelCanvasRender.ts";
+import { easeOutQuart } from "./components/windows/wheel/wheelHelpers.ts";
 import { normalizeWheelPublicSessionId } from "./components/windows/wheel/wheelSpectator.ts";
 import "./styles/spectator.css";
 import type { WheelSpectatorHeatLevel, WheelSpectatorSnapshot } from "./types/app.ts";
@@ -32,6 +33,7 @@ let reconnectTimeoutId: number | null = null;
 let reconnectAttempt = 0;
 let currentPublicSessionId = "";
 let lastReadyState: Extract<SpectatorPageState, { status: "ready" }> | null = null;
+let spectatorWheelAnimationFrameId: number | null = null;
 const intentionallyClosedSockets = new WeakSet<WebSocket>();
 const SPECTATOR_WHEEL_CANVAS_ID = "spectator-wheel-canvas";
 
@@ -258,11 +260,12 @@ function setState(state: SpectatorPageState): void {
     return;
   }
   if (!appElement) return;
+  stopSpectatorWheelAnimation();
   appElement.innerHTML = renderState(state);
   if (state.status === "ready") {
     document.title = `${state.snapshot.wheelName} • Spectator`;
     lastReadyState = state;
-    drawSpectatorWheel(state.snapshot);
+    startSpectatorWheelAnimation(state.snapshot);
   } else if (state.status !== "loading") {
     lastReadyState = null;
   }
@@ -279,7 +282,17 @@ function resolveHighlightedSpectatorSlotIndex(snapshot: WheelSpectatorSnapshot):
   ));
 }
 
-function drawSpectatorWheel(snapshot: WheelSpectatorSnapshot): void {
+function stopSpectatorWheelAnimation(): void {
+  if (spectatorWheelAnimationFrameId != null) {
+    cancelAnimationFrame(spectatorWheelAnimationFrameId);
+    spectatorWheelAnimationFrameId = null;
+  }
+}
+
+function drawSpectatorWheel(
+  snapshot: WheelSpectatorSnapshot,
+  options: { angle?: number; highlightedSlotIndex?: number; highlightTime?: number } = {}
+): void {
   const canvas = document.getElementById(SPECTATOR_WHEEL_CANVAS_ID) as HTMLCanvasElement | null;
   const wheelSlots = getSpectatorWheelSlots(snapshot);
   if (!canvas || !wheelSlots.length) return;
@@ -288,6 +301,13 @@ function drawSpectatorWheel(snapshot: WheelSpectatorSnapshot): void {
 
   const frame = canvas.parentElement as HTMLElement | null;
   const measuredSize = Math.max(220, Math.min(320, Math.floor(frame?.clientWidth || 0)));
+  const angle = Number.isFinite(options.angle)
+    ? options.angle!
+    : (Number.isFinite(snapshot.wheelCurrentAngle) ? snapshot.wheelCurrentAngle : -Math.PI / 2);
+  const centerIcon = canvas.parentElement?.querySelector(".wheel-center-cap__icon") as HTMLElement | null;
+  if (centerIcon) {
+    centerIcon.style.transform = `rotate(${angle}rad)`;
+  }
   const dpr = getWheelCanvasDpr();
   ensureWheelCanvasSize(canvas, measuredSize, dpr);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -305,10 +325,50 @@ function drawSpectatorWheel(snapshot: WheelSpectatorSnapshot): void {
       isChase: slot.isChase
     })),
     measuredSize,
-    Number.isFinite(snapshot.wheelCurrentAngle) ? snapshot.wheelCurrentAngle : -Math.PI / 2,
-    resolveHighlightedSpectatorSlotIndex(snapshot),
-    snapshot.totalSpins > 0 ? 0.8 : 0
+    angle,
+    Number.isFinite(options.highlightedSlotIndex)
+      ? options.highlightedSlotIndex!
+      : resolveHighlightedSpectatorSlotIndex(snapshot),
+    Number.isFinite(options.highlightTime) ? options.highlightTime! : (snapshot.totalSpins > 0 ? 0.8 : 0)
   );
+}
+
+function startSpectatorWheelAnimation(snapshot: WheelSpectatorSnapshot): void {
+  const animation = snapshot.spinAnimation;
+  const slots = getSpectatorWheelSlots(snapshot);
+  if (
+    !animation
+    || !snapshot.isSpinning
+    || !slots.length
+    || !Number.isFinite(animation.startAngle)
+    || !Number.isFinite(animation.endAngle)
+    || !Number.isFinite(animation.startedAt)
+    || !Number.isFinite(animation.durationMs)
+    || animation.durationMs <= 0
+  ) {
+    drawSpectatorWheel(snapshot);
+    return;
+  }
+
+  const drawFrame = () => {
+    const elapsedMs = Math.max(0, Date.now() - animation.startedAt);
+    const progress = Math.min(elapsedMs / animation.durationMs, 1);
+    const angle = animation.startAngle + (animation.endAngle - animation.startAngle) * easeOutQuart(progress);
+    drawSpectatorWheel(snapshot, {
+      angle,
+      highlightedSlotIndex: progress >= 1 ? animation.targetIndex : -1,
+      highlightTime: progress >= 1 ? 0.8 : 0
+    });
+
+    if (progress < 1) {
+      spectatorWheelAnimationFrameId = requestAnimationFrame(drawFrame);
+      return;
+    }
+
+    spectatorWheelAnimationFrameId = null;
+  };
+
+  drawFrame();
 }
 
 async function loadState(): Promise<SpectatorPageState> {
@@ -471,6 +531,7 @@ async function boot(): Promise<void> {
 }
 
 window.addEventListener("beforeunload", () => {
+  stopSpectatorWheelAnimation();
   closeActiveSocket();
 });
 

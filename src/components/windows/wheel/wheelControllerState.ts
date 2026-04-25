@@ -118,11 +118,15 @@ export type WheelWindowThis = {
   _wheelCelebrationAnimId?: number;
   _wheelSpectatorPublishQueued?: boolean;
   _wheelSpectatorQueuedStatusOverride?: "starting" | "live" | "ended";
+  _wheelSpectatorSpinAnimation?: import("../../../types/app.ts").WheelSpectatorSpinAnimation | null;
   _wheelDraftSaveTimeoutId?: number;
   _wheelResizeObserver?: ResizeObserver;
   _wheelViewportResizeHandler?: () => void;
   _wheelStaticRenderCache?: unknown;
   _wheelHighlightTime?: number;
+  _wheelAnimationAngle?: number;
+  _wheelCanvasRefreshRetryCount?: number;
+  _wheelCanvasRefreshTimeoutId?: number;
 
   // ===== Vue instance =====
   $refs: Record<string, unknown>;

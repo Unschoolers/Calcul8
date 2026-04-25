@@ -1,14 +1,10 @@
 import { fetchWithRetry } from "./shared.ts";
 import { buildAuthenticatedHeaders, type FrontendAuthMode } from "../../auth/index.ts";
 import type { SyncPayload } from "./sync-payload.ts";
+import type { SyncSnapshotDto } from "./sync-contracts.ts";
 
 export interface SyncPullResponseBody {
-  snapshot?: {
-    lots?: unknown[];
-    salesByLot?: Record<string, unknown[]>;
-    version?: number;
-    updatedAt?: string | null;
-  };
+  snapshot?: Partial<SyncSnapshotDto>;
 }
 
 export interface SyncPushResponseBody {

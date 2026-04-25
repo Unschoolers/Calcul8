@@ -2,6 +2,7 @@ import type { AppTab, PortfolioLotTypeFilter } from "../types/app.ts";
 import type { AppContext } from "./context-app.ts";
 import type { AppLifecycleObject } from "./context-contracts.ts";
 import { primeStoredAuthSecretsFromStorage } from "./auth/index.ts";
+import { isDevNoLoginRoute } from "./dev-nologin.ts";
 import { closeStripeEmbeddedCheckout, handleStripeCheckoutReturn } from "./methods/ui/entitlements-stripe.ts";
 import { stopWorkspaceConfigSyncPush } from "./methods/ui/workspace-config-sync.ts";
 import { refreshWorkspaceRealtime, stopWorkspaceRealtime } from "./methods/ui/workspace-realtime.ts";
@@ -146,17 +147,20 @@ export const appLifecycle: AppLifecycleObject = {
       this.syncGuidedOnboarding();
     }
     void (async () => {
+      if (isDevNoLoginRoute()) return;
       const stripeReturn = await handleStripeCheckoutReturn(this);
       if (stripeReturn !== "success") {
         await this.debugLogEntitlement(false);
       }
     })();
-    if (this.isGoogleSignedIn) {
+    if (this.isGoogleSignedIn && !isDevNoLoginRoute()) {
       this.startCloudSyncScheduler();
       void this.refreshWhatnotStatus();
     }
-    refreshWorkspaceRealtime(this);
-    if (canBindForegroundSalesListeners()) {
+    if (!isDevNoLoginRoute()) {
+      refreshWorkspaceRealtime(this);
+    }
+    if (canBindForegroundSalesListeners() && !isDevNoLoginRoute()) {
       this.windowFocusListener = () => {
         refreshForegroundLotSales(this);
       };

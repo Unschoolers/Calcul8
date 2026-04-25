@@ -1,5 +1,11 @@
 import type { Container } from "@azure/cosmos";
-import type { ApiConfig, SyncSnapshotDocument } from "../../types";
+import type {
+  ApiConfig,
+  SyncLotDto,
+  SyncSaleDto,
+  SyncSnapshotDocument,
+  SyncWheelConfigDto
+} from "../../types";
 import {
   EPOCH_DATE_ISO,
   getContainers,
@@ -12,6 +18,24 @@ import {
   getSyncPresetDocumentsFromContainer,
   normalizeActiveWheelConfigId
 } from "./syncSnapshotRepository.shared";
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isSyncLotDto(value: unknown): value is SyncLotDto {
+  return isRecord(value) && (typeof value.id === "string" || typeof value.id === "number");
+}
+
+function toSyncSaleDtos(value: unknown): SyncSaleDto[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter(isRecord);
+}
+
+function toSyncWheelConfigDtos(value: unknown): SyncWheelConfigDto[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter(isRecord);
+}
 
 export async function getSyncSnapshotFromPresetDocuments(
   config: ApiConfig,
@@ -30,22 +54,24 @@ async function getSyncSnapshotFromContainer(
     getSyncMetaDocumentFromContainer(container, userId)
   ]);
 
-  const wheelConfigs = Array.isArray(metaDocument?.wheelConfigs) ? metaDocument.wheelConfigs : [];
+  const wheelConfigs = toSyncWheelConfigDtos(metaDocument?.wheelConfigs);
   const activeWheelConfigId = normalizeActiveWheelConfigId(metaDocument?.activeWheelConfigId);
 
   if (presetDocuments.length === 0 && wheelConfigs.length === 0) {
     return null;
   }
 
-  const lots = presetDocuments.map((document) => document.preset);
+  const lots = presetDocuments
+    .map((document) => document.preset)
+    .filter(isSyncLotDto);
   const salesByLot = metaDocument?.salesMode === "entity"
     ? {}
     : Object.fromEntries(
-      presetDocuments.map((document) => [
+      presetDocuments.filter((document) => isSyncLotDto(document.preset)).map((document) => [
         document.presetId,
-        Array.isArray(document.sales) ? document.sales : []
+        toSyncSaleDtos(document.sales)
       ])
-    ) as Record<string, unknown[]>;
+    );
 
   const maxVersion = Math.max(
     0,

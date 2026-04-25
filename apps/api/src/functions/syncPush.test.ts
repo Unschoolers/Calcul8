@@ -18,6 +18,7 @@ const {
   upsertSyncSnapshotIncrementalMock,
   hasWorkspaceMembershipMock,
   parseSyncLotsShapeMock,
+  parseSyncWheelConfigsMock,
   assertSafeSyncPushMock,
   publishWorkspaceLotRealtimeEventMock,
   resolveUserIdMock
@@ -27,6 +28,7 @@ const {
   upsertSyncSnapshotIncrementalMock: vi.fn(),
   hasWorkspaceMembershipMock: vi.fn(),
   parseSyncLotsShapeMock: vi.fn(),
+  parseSyncWheelConfigsMock: vi.fn((value: unknown) => value == null ? [] : value),
   assertSafeSyncPushMock: vi.fn(),
   publishWorkspaceLotRealtimeEventMock: vi.fn(),
   resolveUserIdMock: vi.fn(async (request: { headers: { get(name: string): string | null } }) => {
@@ -49,7 +51,8 @@ vi.mock("../lib/cosmos/workspaceRepository", () => ({
 }));
 
 vi.mock("../lib/syncShape", () => ({
-  parseSyncLotsShape: parseSyncLotsShapeMock
+  parseSyncLotsShape: parseSyncLotsShapeMock,
+  parseSyncWheelConfigs: parseSyncWheelConfigsMock
 }));
 
 vi.mock("../lib/syncSafety", () => ({

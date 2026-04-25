@@ -5,6 +5,7 @@ import {
   getStoredSessionUserId,
   hasAuthSignal
 } from "../auth/index.ts";
+import { isDevNoLoginRoute } from "../dev-nologin.ts";
 
 interface GoogleJwtPayload {
   sub?: string;
@@ -74,11 +75,13 @@ export const authProfileComputed: Pick<
 
   isGoogleSignedIn(): boolean {
     void this.googleAuthEpoch;
+    if (isDevNoLoginRoute()) return true;
     return hasAuthSignal();
   },
 
   googleProfileUserId(): string {
     void this.googleAuthEpoch;
+    if (isDevNoLoginRoute()) return "dev-nologin-user";
     const token = getStoredGoogleIdToken();
     if (token) {
       return resolveGoogleProfile(token).sub || "";
@@ -88,18 +91,21 @@ export const authProfileComputed: Pick<
 
   googleProfileName(): string {
     void this.googleAuthEpoch;
+    if (isDevNoLoginRoute()) return "Dev No Login";
     if (!hasAuthSignal()) return "";
     return resolveGoogleProfile(getStoredGoogleIdToken()).name || "";
   },
 
   googleProfileEmail(): string {
     void this.googleAuthEpoch;
+    if (isDevNoLoginRoute()) return "dev-nologin@local.test";
     if (!hasAuthSignal()) return "";
     return resolveGoogleProfile(getStoredGoogleIdToken()).email || "";
   },
 
   googleProfilePicture(): string {
     void this.googleAuthEpoch;
+    if (isDevNoLoginRoute()) return "";
     if (!hasAuthSignal()) return "";
     return resolveGoogleProfile(getStoredGoogleIdToken()).picture || "";
   },

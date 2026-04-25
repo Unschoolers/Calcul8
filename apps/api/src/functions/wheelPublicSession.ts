@@ -120,6 +120,35 @@ function sanitizeWheelSlot(value: unknown): WheelPublicSessionSlot | null {
   };
 }
 
+function sanitizeSpinAnimation(value: unknown): WheelPublicSessionSnapshot["spinAnimation"] {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const candidate = value as Record<string, unknown>;
+  const spinId = String(candidate.spinId ?? "").slice(0, 120).trim();
+  const startedAt = Math.max(0, Math.floor(Number(candidate.startedAt) || 0));
+  const durationMs = Math.max(0, Math.floor(Number(candidate.durationMs) || 0));
+  const startAngle = Number(candidate.startAngle);
+  const endAngle = Number(candidate.endAngle);
+  const targetIndex = Math.max(-1, Math.floor(Number(candidate.targetIndex) || 0));
+  if (
+    !spinId
+    || startedAt <= 0
+    || durationMs <= 0
+    || !Number.isFinite(startAngle)
+    || !Number.isFinite(endAngle)
+    || targetIndex < 0
+  ) {
+    return null;
+  }
+  return {
+    spinId,
+    startedAt,
+    durationMs: Math.min(durationMs, 30_000),
+    startAngle,
+    endAngle,
+    targetIndex
+  };
+}
+
 function sanitizeWheelPublicSessionSnapshot(value: unknown): WheelPublicSessionSnapshot {
   const candidate = requireRequestBodyRecord(value, "Field 'snapshot' must be an object.");
   return {
@@ -136,6 +165,7 @@ function sanitizeWheelPublicSessionSnapshot(value: unknown): WheelPublicSessionS
         .filter((entry): entry is WheelPublicSessionSlot => entry != null)
         .slice(0, 256)
       : [],
+    spinAnimation: sanitizeSpinAnimation(candidate.spinAnimation),
     recentFairnessHistory: Array.isArray(candidate.recentFairnessHistory)
       ? candidate.recentFairnessHistory
         .map((entry) => sanitizeFairnessEntry(entry))

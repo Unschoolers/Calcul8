@@ -133,6 +133,15 @@ export interface WheelSpectatorSlot {
   isChase: boolean;
 }
 
+export interface WheelSpectatorSpinAnimation {
+  spinId: string;
+  startedAt: number;
+  durationMs: number;
+  startAngle: number;
+  endAngle: number;
+  targetIndex: number;
+}
+
 export interface WheelSpectatorSnapshot {
   wheelName: string;
   sessionStatus: Exclude<WheelSpectatorSessionStatus, "inactive">;
@@ -142,6 +151,7 @@ export interface WheelSpectatorSnapshot {
   lastResultColor: string;
   wheelCurrentAngle: number;
   wheelSlots: WheelSpectatorSlot[];
+  spinAnimation?: WheelSpectatorSpinAnimation | null;
   recentFairnessHistory: WheelSpectatorFairnessEntry[];
   chaseHistory: WheelSpectatorChaseHistoryEntry[];
   chaseBoard: WheelSpectatorChaseBoardEntry[];

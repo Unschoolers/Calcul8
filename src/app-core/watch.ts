@@ -1,5 +1,6 @@
 import type { AppContext } from "./context-app.ts";
 import type { AppWatchObject } from "./context-contracts.ts";
+import { isDevNoLoginRoute } from "./dev-nologin.ts";
 import { refreshPersonalLotSalesIfStale } from "./methods/sales-freshness.ts";
 import { cancelQueuedPortfolioSalesHydration } from "./methods/sales-portfolio-hydration.ts";
 import { cancelQueuedTabChartRefresh, queueTabChartRefreshAfterSettle } from "./methods/sales-ui-helpers.ts";
@@ -74,6 +75,7 @@ function queueCurrentLotSalesFreshnessCheckAfterTabSettle(
 
 export const appWatch: AppWatchObject = {
   activeScopeType() {
+    if (isDevNoLoginRoute()) return;
     refreshWorkspaceRealtime(this);
     resetWhatnotTransientUiState(this);
     if (this.isGoogleSignedIn) {
@@ -82,6 +84,7 @@ export const appWatch: AppWatchObject = {
   },
 
   activeWorkspaceId() {
+    if (isDevNoLoginRoute()) return;
     refreshWorkspaceRealtime(this);
     resetWhatnotTransientUiState(this);
     if (this.isGoogleSignedIn) {
@@ -142,20 +145,26 @@ export const appWatch: AppWatchObject = {
     }
 
     if (newTab === "sales") {
-      refreshWorkspaceRealtime(this);
-      queueCurrentLotSalesFreshnessCheckAfterTabSettle(this, "sales");
+      if (!isDevNoLoginRoute()) {
+        refreshWorkspaceRealtime(this);
+        queueCurrentLotSalesFreshnessCheckAfterTabSettle(this, "sales");
+      }
       queueTabChartRefreshAfterSettle(this, "sales", TAB_CHART_SETTLE_DELAY_MS);
       return;
     }
 
     if (newTab === "portfolio") {
-      refreshWorkspaceRealtime(this);
-      queueCurrentLotSalesFreshnessCheckAfterTabSettle(this, "portfolio");
+      if (!isDevNoLoginRoute()) {
+        refreshWorkspaceRealtime(this);
+        queueCurrentLotSalesFreshnessCheckAfterTabSettle(this, "portfolio");
+      }
       queueTabChartRefreshAfterSettle(this, "portfolio", TAB_CHART_SETTLE_DELAY_MS);
       return;
     }
 
-    refreshWorkspaceRealtime(this);
+    if (!isDevNoLoginRoute()) {
+      refreshWorkspaceRealtime(this);
+    }
   },
 
   purchaseUiMode(newMode) {
@@ -205,6 +214,9 @@ export const appWatch: AppWatchObject = {
       return;
     }
 
+    if (isDevNoLoginRoute()) {
+      return;
+    }
     this.startCloudSyncScheduler();
     refreshWorkspaceRealtime(this);
     queueCurrentLotSalesFreshnessCheck(this);

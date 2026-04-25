@@ -1,18 +1,23 @@
 import { HttpError } from "./auth";
-import type { SyncSnapshotDocument } from "../types";
+import type {
+  SyncLotDto,
+  SyncSalesByLotDto,
+  SyncSnapshotDocument,
+  SyncWheelConfigDto
+} from "../types";
 
-function hasAnySalesData(salesByLot: Record<string, unknown[]>): boolean {
+function hasAnySalesData(salesByLot: SyncSalesByLotDto): boolean {
   return Object.values(salesByLot).some((sales) => Array.isArray(sales) && sales.length > 0);
 }
 
-function hasAnyWheelConfigData(wheelConfigs: unknown[]): boolean {
+function hasAnyWheelConfigData(wheelConfigs: SyncWheelConfigDto[]): boolean {
   return Array.isArray(wheelConfigs) && wheelConfigs.length > 0;
 }
 
 export function isEmptySyncPayload(
-  lots: unknown[],
-  salesByLot: Record<string, unknown[]>,
-  wheelConfigs: unknown[] = []
+  lots: SyncLotDto[],
+  salesByLot: SyncSalesByLotDto,
+  wheelConfigs: SyncWheelConfigDto[] = []
 ): boolean {
   return lots.length === 0 && !hasAnySalesData(salesByLot) && !hasAnyWheelConfigData(wheelConfigs);
 }
@@ -26,9 +31,9 @@ export function hasSnapshotData(snapshot: SyncSnapshotDocument | null): boolean 
 
 export function assertSafeSyncPush(
   existingSnapshot: SyncSnapshotDocument | null,
-  incomingLots: unknown[],
-  incomingSalesByLot: Record<string, unknown[]>,
-  incomingWheelConfigs: unknown[],
+  incomingLots: SyncLotDto[],
+  incomingSalesByLot: SyncSalesByLotDto,
+  incomingWheelConfigs: SyncWheelConfigDto[],
   allowEmptyOverwrite: boolean
 ): void {
   const existingHasData = hasSnapshotData(existingSnapshot);

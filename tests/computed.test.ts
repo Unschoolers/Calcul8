@@ -112,6 +112,39 @@ test("computed auth flags and decoded Google profile fields resolve token and ca
   });
 });
 
+test("computed auth flags allow the dev-only nologin route", () => {
+  const originalWindow = (globalThis as { window?: unknown }).window;
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: {
+      location: {
+        pathname: "/nologin"
+      }
+    }
+  });
+
+  try {
+    const vm = { googleAuthEpoch: 0 };
+    assert.equal(
+      appComputed.isGoogleSignedIn.call(vm as unknown as Parameters<typeof appComputed.isGoogleSignedIn>[0]),
+      true
+    );
+    assert.equal(
+      appComputed.googleProfileUserId.call(vm as unknown as Parameters<typeof appComputed.googleProfileUserId>[0]),
+      "dev-nologin-user"
+    );
+    assert.equal(
+      appComputed.googleProfileName.call(vm as unknown as Parameters<typeof appComputed.googleProfileName>[0]),
+      "Dev No Login"
+    );
+  } finally {
+    Object.defineProperty(globalThis, "window", {
+      configurable: true,
+      value: originalWindow
+    });
+  }
+});
+
 test("computed theme and lot proxies map expected values", () => {
   const darkValue = appComputed.isDark.call({
     $vuetify: { theme: { global: { name: "unionArenaDark" } } }

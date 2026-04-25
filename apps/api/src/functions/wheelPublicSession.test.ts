@@ -160,6 +160,14 @@ test("wheelPublicSessionCreate sanitizes the snapshot and verifies workspace acc
         lastResultLabel: "Prize",
         lastResultColor: "",
         wheelCurrentAngle: "1.5",
+        spinAnimation: {
+          spinId: "spin-abc",
+          startedAt: "2000",
+          durationMs: "4500",
+          startAngle: "0.25",
+          endAngle: "18.5",
+          targetIndex: "3"
+        },
         wheelSlots: [{
           name: "Tier 1",
           color: "#f00",
@@ -212,6 +220,14 @@ test("wheelPublicSessionCreate sanitizes the snapshot and verifies workspace acc
       totalSpins: number;
       lastResultColor: string;
         wheelCurrentAngle: number;
+      spinAnimation: {
+        spinId: string;
+        startedAt: number;
+        durationMs: number;
+        startAngle: number;
+        endAngle: number;
+        targetIndex: number;
+      } | null;
       wheelSlots: Array<{ name: string; tier: string; isChase: boolean }>;
       featuredChaseHeat: string | null;
       recentFairnessHistory: Array<{ spinNumber: number; timestamp: number }>;
@@ -227,6 +243,14 @@ test("wheelPublicSessionCreate sanitizes the snapshot and verifies workspace acc
   assert.equal(repoInput.snapshot.totalSpins, 0);
   assert.equal(repoInput.snapshot.lastResultColor, "#d4af37");
   assert.equal(repoInput.snapshot.wheelCurrentAngle, 1.5);
+  assert.deepEqual(repoInput.snapshot.spinAnimation, {
+    spinId: "spin-abc",
+    startedAt: 2000,
+    durationMs: 4500,
+    startAngle: 0.25,
+    endAngle: 18.5,
+    targetIndex: 3
+  });
   assert.equal(repoInput.snapshot.wheelSlots[0]?.name, "Tier 1");
   assert.equal(repoInput.snapshot.wheelSlots[0]?.tier, "tier-1");
   assert.equal(repoInput.snapshot.wheelSlots[0]?.isChase, true);
