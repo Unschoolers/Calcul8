@@ -114,11 +114,13 @@
   }
 
   .wheel-mobile-action-rail__reset {
-    flex: 0 0 48px;
-    width: 48px;
     min-width: 48px !important;
+    flex: 0 0 52px;
+    min-width: 52px !important;
+    min-height: 48px;
+    max-height:48px;
+    border-radius: 14px !important;
     border: 1px solid rgba(var(--v-theme-error), 0.28) !important;
-    box-shadow: 0 10px 18px rgba(var(--v-theme-error), 0.18) !important;
   }
 
   .wheel-mobile-action-rail__secondary.v-btn--variant-tonal {
