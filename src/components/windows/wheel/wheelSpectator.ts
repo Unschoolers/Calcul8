@@ -2,6 +2,7 @@ import type {
     Lot,
     WheelConfig,
     WheelFairnessEntry,
+    WheelSpectatorGridCell,
     WheelSpectatorChaseBoardEntry,
     WheelSpectatorChaseHistoryEntry,
     WheelSpectatorHeatLevel,
@@ -9,6 +10,7 @@ import type {
     WheelSpectatorSlot,
     WheelSpectatorSnapshot
 } from "../../../types/app.ts";
+import { getTierChancePercent } from "../../../app-core/shared/wheel-odds.ts";
 import {
     getWheelDisplayConfig,
     getWheelDisplayFairnessHistoryEntries,
@@ -18,6 +20,7 @@ import {
     getWheelLatestFairnessEntry
 } from "./wheelComputedShared.ts";
 import { calculateWheelTierNetRevenuePerSpin } from "./wheelHelpers.ts";
+import { buildMysteryGridCells, isMysteryGridConfig } from "./mysteryGridMethods.ts";
 import { getAvailableSinglesQuantityForWheelTier, getRemainingPacksForWheelLot, hasAnyAvailableSinglesForWheelTier } from "./wheelSaleSupport.ts";
 
 type WheelSpectatorVm = Record<string, unknown> & {
@@ -102,34 +105,97 @@ function getTierHitHistory(vm: WheelSpectatorVm): WheelSpectatorChaseHistoryEntr
     .filter((entry) => entry.label.length > 0 && entry.count > 0);
 }
 
-function resolveHeatLevel(chance: number): WheelSpectatorHeatLevel {
-  if (chance >= 0.18) return "high";
-  if (chance >= 0.08) return "medium";
-  return "low";
+function resolveProfitHeatLevel(profitPerSpin: number): WheelSpectatorHeatLevel {
+  return profitPerSpin < 0 ? "medium" : "very_low";
 }
 
-function resolveDangerHeatLevel(
-  marginPercent: number | null,
-  targetMargin: number
-): WheelSpectatorHeatLevel {
-  if (marginPercent === null || !Number.isFinite(marginPercent)) return "low";
-  if (marginPercent < 0) return "high";
-  if (marginPercent < targetMargin) return "medium";
-  return "low";
-}
-
-function increaseHeatLevel(
+function shiftHeatLevel(
   heat: WheelSpectatorHeatLevel,
   steps: number
 ): WheelSpectatorHeatLevel {
-  if (steps <= 0) return heat;
-  if (heat === "low") {
-    return steps >= 2 ? "high" : "medium";
-  }
-  if (heat === "medium") {
-    return "high";
-  }
-  return "high";
+  const levels: WheelSpectatorHeatLevel[] = ["very_low", "low", "medium", "high", "very_high"];
+  const currentIndex = Math.max(0, levels.indexOf(heat));
+  const nextIndex = Math.min(levels.length - 1, Math.max(0, currentIndex + steps));
+  return levels[nextIndex]!;
+}
+
+function getHeatLevelRank(heat: WheelSpectatorHeatLevel | null): number {
+  if (heat === "very_high") return 4;
+  if (heat === "high") return 3;
+  if (heat === "medium") return 2;
+  if (heat === "low") return 1;
+  return 0;
+}
+
+function isFairnessEntryForTier(
+  entry: WheelFairnessEntry,
+  tier: WheelConfig["tiers"][number],
+  slots: ReturnType<typeof getWheelDisplaySlots>
+): boolean {
+  const entryLabel = cleanResultLabel(entry.label);
+  if (!entryLabel) return false;
+  if (entryLabel === cleanResultLabel(tier.label)) return true;
+  return slots.some((slot) => (
+    slot.tier === tier.id
+    && cleanResultLabel(slot.name) === entryLabel
+  ));
+}
+
+function resolveTierHeatLevel(
+  vm: WheelSpectatorVm,
+  config: WheelConfig,
+  tier: WheelConfig["tiers"][number]
+): {
+  heat: WheelSpectatorHeatLevel;
+  chance: number;
+  hitCount: number;
+  marginPercent: number | null;
+  profitPerSpin: number;
+  recentlyHit: boolean;
+} {
+  const lots = Array.isArray(vm.lots) ? vm.lots : [];
+  const totalChance = Math.max(1, config.tiers.reduce((sum, entry) => sum + getTierChancePercent(entry), 0));
+  const chance = getTierChancePercent(tier);
+  const netRevenuePerSpin = calculateWheelTierNetRevenuePerSpin(config, tier, lots);
+  const costPerTier = Number(tier.costPerTier) || 0;
+  const profitPerSpin = netRevenuePerSpin - costPerTier;
+  const marginPercent = costPerTier > 0
+    ? (profitPerSpin / costPerTier) * 100
+    : null;
+  const hitCount = getTierHitCount(config, vm, tier.id);
+  const totalSpins = getWheelDisplayTotalSpins(vm);
+  const expectedHits = totalSpins * (chance / totalChance);
+  const underHitGap = expectedHits - hitCount;
+  const displaySlots = getWheelDisplaySlots(vm);
+  const latestTierHit = getWheelDisplayFairnessHistoryEntries(vm)
+    .find((entry) => isFairnessEntryForTier(entry, tier, displaySlots));
+  const spinsSinceHit = latestTierHit
+    ? Math.max(0, totalSpins - Math.max(0, Math.floor(Number(latestTierHit.spinNumber) || 0)))
+    : totalSpins;
+  const chanceRatio = Math.max(0, Math.min(1, chance / totalChance));
+  const dueProbability = chanceRatio > 0
+    ? 1 - ((1 - chanceRatio) ** spinsSinceHit)
+    : 0;
+  const dueSteps = dueProbability >= 0.94 ? 3 : dueProbability >= 0.8 ? 2 : dueProbability >= 0.55 ? 1 : 0;
+  const gapSteps = underHitGap >= 5 ? 2 : underHitGap >= 2 ? 1 : 0;
+  const recentlyHit = spinsSinceHit === 0;
+  const isClientPositiveTier = profitPerSpin < 0;
+  const pressureSteps = isClientPositiveTier && underHitGap > -1
+    ? Math.max(dueSteps, gapSteps)
+    : 0;
+  const cooldownSteps = recentlyHit ? 2 : 0;
+
+  return {
+    heat: shiftHeatLevel(
+      resolveProfitHeatLevel(profitPerSpin),
+      pressureSteps - cooldownSteps
+    ),
+    chance,
+    hitCount,
+    marginPercent,
+    profitPerSpin,
+    recentlyHit
+  };
 }
 
 function getFallbackHeatCandidate(
@@ -139,77 +205,60 @@ function getFallbackHeatCandidate(
   label: string | null;
   heat: WheelSpectatorHeatLevel | null;
 } {
-  const lots = Array.isArray(vm.lots) ? vm.lots : [];
-  let fallback: {
+  const candidates: Array<{
+    tier: WheelConfig["tiers"][number];
     label: string;
     profitPerSpin: number;
     marginPercent: number | null;
-    slots: number;
+    chance: number;
     hitCount: number;
     recentlyHit: boolean;
-  } | null = null;
-  const totalSlots = Math.max(1, config.tiers.reduce((sum, tier) => sum + Math.max(0, Number(tier.slots) || 0), 0));
-  const totalSpins = getWheelDisplayTotalSpins(vm);
-  const latestFairnessEntry = getWheelLatestFairnessEntry(vm);
-  const latestHitLabel = cleanResultLabel(latestFairnessEntry?.label);
-
+    heat: WheelSpectatorHeatLevel;
+  }> = [];
   for (const tier of config.tiers) {
-    const slots = Math.max(0, Number(tier.slots) || 0);
-    if (slots <= 0) continue;
+    const tierHeat = resolveTierHeatLevel(vm, config, tier);
+    if (tierHeat.chance <= 0) continue;
 
     const remainingHits = getTierRemainingHits(vm, tier);
     if (remainingHits === 0) continue;
 
-    const netRevenuePerSpin = calculateWheelTierNetRevenuePerSpin(config, tier, lots);
-    const costPerTier = Number(tier.costPerTier) || 0;
-    const profitPerSpin = netRevenuePerSpin - costPerTier;
-    const marginPercent = costPerTier > 0
-      ? (profitPerSpin / costPerTier) * 100
-      : null;
-    const hitCount = getTierHitCount(config, vm, tier.id);
-    const recentlyHit = latestHitLabel.length > 0 && latestHitLabel === cleanResultLabel(tier.label);
-
-    if (
-      !fallback
-      || profitPerSpin < fallback.profitPerSpin
-      || (profitPerSpin === fallback.profitPerSpin && (marginPercent ?? Number.POSITIVE_INFINITY) < (fallback.marginPercent ?? Number.POSITIVE_INFINITY))
-      || (profitPerSpin === fallback.profitPerSpin && marginPercent === fallback.marginPercent && slots > fallback.slots)
-      || (
-        profitPerSpin === fallback.profitPerSpin
-        && marginPercent === fallback.marginPercent
-        && slots === fallback.slots
-        && tier.label.localeCompare(fallback.label) < 0
-      )
-    ) {
-      fallback = {
-        label: tier.label,
-        profitPerSpin,
-        marginPercent,
-        slots,
-        hitCount,
-        recentlyHit
-      };
-    }
+    candidates.push({
+      tier,
+      label: tier.label,
+      profitPerSpin: tierHeat.profitPerSpin,
+      marginPercent: tierHeat.marginPercent,
+      chance: tierHeat.chance,
+      hitCount: tierHeat.hitCount,
+      recentlyHit: tierHeat.recentlyHit,
+      heat: tierHeat.heat
+    });
   }
 
-  if (!fallback) {
+  if (!candidates.length) {
     return {
       label: null,
       heat: null
     };
   }
 
-  const expectedHits = totalSpins * (fallback.slots / totalSlots);
-  const underHitGap = expectedHits - fallback.hitCount;
-  const pressureSteps = underHitGap >= 4 ? 2 : underHitGap >= 2 ? 1 : 0;
-  const cooldownSteps = fallback.recentlyHit ? 1 : 0;
+  const clientPositiveCandidates = candidates.filter((entry) => entry.profitPerSpin < 0);
+  const rankedCandidates = [...(clientPositiveCandidates.length ? clientPositiveCandidates : candidates)]
+    .sort((left, right) => (
+      getHeatLevelRank(right.heat) - getHeatLevelRank(left.heat)
+      || left.profitPerSpin - right.profitPerSpin
+      || right.chance - left.chance
+      || left.label.localeCompare(right.label)
+    ));
+  const hottest = rankedCandidates[0]!;
+  const activeClientPositiveCount = clientPositiveCandidates.filter((entry) => getHeatLevelRank(entry.heat) >= 2).length;
 
   return {
-    label: fallback.label,
-    heat: increaseHeatLevel(
-      resolveDangerHeatLevel(fallback.marginPercent, Number(config.targetMargin) || 0),
-      Math.max(0, pressureSteps - cooldownSteps)
-    )
+    label: clientPositiveCandidates.length > 1
+      ? `${clientPositiveCandidates.length} client-favorable tiers`
+      : hottest.label,
+    heat: clientPositiveCandidates.length > 1 && activeClientPositiveCount > 1
+      ? shiftHeatLevel(hottest.heat, 1)
+      : hottest.heat
   };
 }
 
@@ -229,7 +278,6 @@ function buildChaseBoard(vm: WheelSpectatorVm, config: WheelConfig | null): {
     };
   }
 
-  const totalSlots = Math.max(1, config.tiers.reduce((sum, tier) => sum + Math.max(0, Number(tier.slots) || 0), 0));
   const board: WheelSpectatorChaseBoardEntry[] = [];
   const historicalByLabel = new Map(chaseHistory.map((entry) => [entry.label, entry]));
 
@@ -243,7 +291,7 @@ function buildChaseBoard(vm: WheelSpectatorVm, config: WheelConfig | null): {
       color: tier.color,
       status: remainingHits === 0 ? "claimed" : "live",
       hitCount,
-      slots: Math.max(0, Number(tier.slots) || 0),
+      slots: getTierChancePercent(tier),
       remainingHits
     });
 
@@ -274,7 +322,8 @@ function buildChaseBoard(vm: WheelSpectatorVm, config: WheelConfig | null): {
   const liveChases = board
     .filter((entry) => entry.status === "live")
     .sort((left, right) => right.slots - left.slots || left.label.localeCompare(right.label));
-  const featured = liveChases[0] ?? null;
+  const fallbackHeat = getFallbackHeatCandidate(vm, config);
+  const featured = liveChases.find((entry) => entry.label === fallbackHeat.label) ?? null;
   if (featured) {
     featured.isFeatured = true;
   }
@@ -286,15 +335,11 @@ function buildChaseBoard(vm: WheelSpectatorVm, config: WheelConfig | null): {
     return left.label.localeCompare(right.label);
   });
 
-  const fallbackHeat = getFallbackHeatCandidate(vm, config);
-
   return {
     chaseHistory: chaseHistory.slice(0, 20),
     chaseBoard: board.slice(0, 24),
-    featuredChaseLabel: featured?.label ?? fallbackHeat.label,
-    featuredChaseHeat: featured
-      ? resolveHeatLevel(featured.slots / totalSlots)
-      : fallbackHeat.heat
+    featuredChaseLabel: fallbackHeat.label,
+    featuredChaseHeat: fallbackHeat.heat
   };
 }
 
@@ -320,11 +365,45 @@ function buildSpectatorSlots(vm: WheelSpectatorVm): WheelSpectatorSlot[] {
     .slice(0, 256);
 }
 
+function resolveWheelSpectatorConfig(vm: WheelSpectatorVm): WheelConfig | null {
+  const displayedConfig = vm.wheelDisplayConfig as WheelConfig | null | undefined;
+  if (displayedConfig?.gameType === "grid") return displayedConfig;
+
+  const computedConfig = getWheelDisplayConfig(vm);
+  if (computedConfig?.gameType === "grid") return computedConfig;
+
+  const editingConfig = vm.editingWheelConfig as WheelConfig | null | undefined;
+  if (
+    editingConfig?.gameType === "grid"
+    && (computedConfig == null || editingConfig.id === computedConfig.id)
+  ) {
+    return editingConfig;
+  }
+
+  return computedConfig || displayedConfig || editingConfig || null;
+}
+
+function buildSpectatorGridCells(vm: WheelSpectatorVm, config: WheelConfig | null): WheelSpectatorGridCell[] {
+  if (!isMysteryGridConfig(config)) return [];
+  return buildMysteryGridCells({
+    ...vm,
+    wheelDisplayConfig: config
+  }).map((cell) => ({
+    index: cell.index,
+    revealed: cell.revealed,
+    label: cell.revealed ? cell.label : "",
+    color: cell.revealed ? cell.color : "",
+    tier: cell.reveal?.tier || "",
+    slotIndex: cell.reveal?.slotIndex ?? -1
+  })).slice(0, 256);
+}
+
 export function buildWheelSpectatorSnapshot(
   vm: WheelSpectatorVm,
   status: Exclude<WheelSpectatorSessionStatus, "inactive">
 ): WheelSpectatorSnapshot {
-  const config = getWheelDisplayConfig(vm);
+  const config = resolveWheelSpectatorConfig(vm);
+  const gameType = config?.gameType === "grid" ? "grid" : "wheel";
   const fairnessHistory = getWheelDisplayFairnessHistoryEntries(vm)
     .slice(0, 10)
     .map((entry) => normalizeFairnessEntry(entry));
@@ -333,13 +412,17 @@ export function buildWheelSpectatorSnapshot(
 
   return {
     wheelName: String(config?.name || "Wheel Session").trim() || "Wheel Session",
+    gameType,
     sessionStatus: status,
-    isSpinning: vm.wheelSpinning === true,
+    isSpinning: vm.wheelSpinning === true || vm.wheelGridRevealAnimating === true,
     totalSpins: getWheelDisplayTotalSpins(vm),
     lastResultLabel: cleanResultLabel(vm.wheelLastResult) || cleanResultLabel(latestFairnessEntry?.label) || "Waiting for the next spin",
     lastResultColor: String(vm.wheelLastResultColor || latestFairnessEntry?.color || "#d4af37"),
     wheelCurrentAngle: Number.isFinite(Number(vm.wheelCurrentAngle)) ? Number(vm.wheelCurrentAngle) : 0,
     wheelSlots: buildSpectatorSlots(vm),
+    gridCells: buildSpectatorGridCells(vm, config),
+    gridHighlightCellIndex: Number.isFinite(Number(vm.wheelGridHighlightCellIndex)) ? Number(vm.wheelGridHighlightCellIndex) : -1,
+    gridResetAnimating: vm.wheelGridResetAnimating === true,
     spinAnimation: (vm._wheelSpectatorSpinAnimation as WheelSpectatorSnapshot["spinAnimation"]) ?? null,
     recentFairnessHistory: fairnessHistory,
     chaseHistory: chaseData.chaseHistory,

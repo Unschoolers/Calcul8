@@ -1,4 +1,5 @@
 import { translateAppMessage } from "../../../app-core/i18n/index.ts";
+import { getTierChancePercent } from "../../../app-core/shared/wheel-odds.ts";
 import type { Lot, WheelConfig } from "../../../types/app.ts";
 import {
   calculateWheelSessionMarginPercent,
@@ -97,7 +98,7 @@ export const wheelSessionComputeds = {
     }
     const result: Array<{ tierId: string; label: string; color: string; count: number }> = [];
     for (const t of config.tiers) {
-      if (t.slots <= 0) continue;
+      if (getTierChancePercent(t) <= 0) continue;
       for (const h of history) {
         if (h.tierId === t.id && h.count > 0) result.push(h);
       }
@@ -141,7 +142,7 @@ export const wheelSessionComputeds = {
     }> = [];
 
     for (const tier of config.tiers) {
-      if ((tier.slots || 0) <= 0 || tier.boundLotId == null) continue;
+      if (getTierChancePercent(tier) <= 0 || tier.boundLotId == null) continue;
       const lot = lots.find((entry) => entry.id === tier.boundLotId);
       if (!lot) continue;
 

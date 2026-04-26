@@ -36,32 +36,6 @@ export function ensureWheelCanvasSize(canvasEl: HTMLCanvasElement, size: number,
   }
 }
 
-// Lightweight tick sound via AudioContext — no external assets needed
-let wheelAudioCtx: AudioContext | null = null;
-export function playWheelTick(volume = 0.07): void {
-  try {
-    if (!wheelAudioCtx) {
-      const AudioCtor = (globalThis as unknown as { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext }).AudioContext
-        || (globalThis as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-      if (!AudioCtor) return;
-      wheelAudioCtx = new AudioCtor();
-    }
-    const ctx = wheelAudioCtx;
-    if (ctx.state === "suspended") { ctx.resume(); }
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(800, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.03);
-    gain.gain.setValueAtTime(volume, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.06);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.06);
-  } catch { /* audio not available — silent fallback */ }
-}
-
 export function renderWheelSurface(
   ctx: CanvasRenderingContext2D,
   slots: WheelSlot[],

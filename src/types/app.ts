@@ -50,6 +50,7 @@ export interface WheelTier {
   id: string;
   label: string;
   color: string;
+  chancePercent?: number;
   slots: number;
   costPerTier: number;
   packsCount: number;
@@ -61,14 +62,29 @@ export interface WheelTier {
   celebrationEmoji?: string;
 }
 
+export type LuckGameType = "wheel" | "grid";
+
 export interface WheelConfig {
   id: number;
   name: string;
   spinPrice: number;
   targetMargin: number;
+  gameType?: LuckGameType;
+  outcomeCount?: number;
+  gridCellCount?: number;
   tiers: WheelTier[];
   createdAt: string;
   updatedAt?: string;
+}
+
+export interface MysteryGridReveal {
+  cellIndex: number;
+  slotIndex: number;
+  label: string;
+  color: string;
+  tier: string;
+  spinNumber: number;
+  timestamp: number;
 }
 
 export interface PendingWheelInventoryIssue {
@@ -98,7 +114,7 @@ export interface WheelFairnessEntry {
 }
 
 export type WheelSpectatorSessionStatus = "inactive" | "starting" | "live" | "ended";
-export type WheelSpectatorHeatLevel = "low" | "medium" | "high";
+export type WheelSpectatorHeatLevel = "very_low" | "low" | "medium" | "high" | "very_high";
 
 export interface WheelSpectatorFairnessEntry {
   spinNumber: number;
@@ -133,6 +149,15 @@ export interface WheelSpectatorSlot {
   isChase: boolean;
 }
 
+export interface WheelSpectatorGridCell {
+  index: number;
+  revealed: boolean;
+  label: string;
+  color: string;
+  tier: string;
+  slotIndex: number;
+}
+
 export interface WheelSpectatorSpinAnimation {
   spinId: string;
   startedAt: number;
@@ -144,6 +169,7 @@ export interface WheelSpectatorSpinAnimation {
 
 export interface WheelSpectatorSnapshot {
   wheelName: string;
+  gameType?: LuckGameType;
   sessionStatus: Exclude<WheelSpectatorSessionStatus, "inactive">;
   isSpinning: boolean;
   totalSpins: number;
@@ -151,6 +177,9 @@ export interface WheelSpectatorSnapshot {
   lastResultColor: string;
   wheelCurrentAngle: number;
   wheelSlots: WheelSpectatorSlot[];
+  gridCells?: WheelSpectatorGridCell[];
+  gridHighlightCellIndex?: number;
+  gridResetAnimating?: boolean;
   spinAnimation?: WheelSpectatorSpinAnimation | null;
   recentFairnessHistory: WheelSpectatorFairnessEntry[];
   chaseHistory: WheelSpectatorChaseHistoryEntry[];
@@ -652,10 +681,12 @@ export interface AppState extends LotSetup {
   wheelSessionCostAdjustment: number;
   wheelFairnessHistory: WheelFairnessEntry[];
   wheelChaseTallyHistory: Array<{ tierId: string; label: string; color: string; count: number }>;
+  wheelGridReveals: MysteryGridReveal[];
   wheelPreviewSpinCounts: number[];
   wheelPreviewTotalSpins: number;
   wheelPreviewFairnessHistory: WheelFairnessEntry[];
   wheelPreviewChaseTallyHistory: Array<{ tierId: string; label: string; color: string; count: number }>;
+  wheelPreviewGridReveals: MysteryGridReveal[];
   wheelLastResultColor: string;
   wheelSpinHash: string;
   wheelSpinSeed: string;

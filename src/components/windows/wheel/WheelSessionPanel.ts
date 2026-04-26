@@ -1,5 +1,6 @@
 import { type PropType } from "vue";
 import { translateAppMessage } from "../../../app-core/i18n/index.ts";
+import { getTierChancePercent } from "../../../app-core/shared/wheel-odds.ts";
 import type { Lot, WheelConfig } from "../../../types/app.ts";
 import {
   getWheelDisplayConfig,
@@ -177,7 +178,7 @@ export const WheelSessionPanel = {
 
       const tallyByTier = new Map<string, { tierId: string; label: string; color: string; count: number }>();
       for (const tier of config.tiers) {
-        if ((tier.slots || 0) <= 0) continue;
+        if (getTierChancePercent(tier) <= 0) continue;
         for (const historicalEntry of history) {
           if (historicalEntry.tierId === tier.id && historicalEntry.count > 0) {
             tallyByTier.set(`${tier.id}:${historicalEntry.label}:${historicalEntry.count}`, historicalEntry);
@@ -204,7 +205,7 @@ export const WheelSessionPanel = {
       }>();
 
       for (const tier of config.tiers) {
-        if ((tier.slots || 0) <= 0 || tier.boundLotId == null) continue;
+        if (getTierChancePercent(tier) <= 0 || tier.boundLotId == null) continue;
         const lot = lots.find((entry) => entry.id === tier.boundLotId);
         if (!lot) continue;
         const rowKey = `${tier.boundLotId}:${lot.lotType === "singles" ? "singles" : "packs"}`;

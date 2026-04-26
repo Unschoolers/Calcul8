@@ -1,5 +1,5 @@
 import { reactive } from "vue";
-import type { Lot, PendingWheelInventoryIssue, Sale, WheelConfig, WheelFairnessEntry, WorkspaceScopeType } from "../../../types/app.ts";
+import type { Lot, MysteryGridReveal, PendingWheelInventoryIssue, Sale, WheelConfig, WheelFairnessEntry, WorkspaceScopeType } from "../../../types/app.ts";
 import { unwrapWindowBridgeContext } from "../contextBridge.ts";
 import type { WheelSlot } from "./wheelHelpers.ts";
 
@@ -28,6 +28,9 @@ export type WheelWindowThis = {
   wheelCelebrationPreview: boolean;
   wheelCelebrationNonce: number;
   wheelSpinning: boolean;
+  wheelGridRevealAnimating: boolean;
+  wheelGridResetAnimating: boolean;
+  wheelGridHighlightCellIndex: number;
   wheelCurrentAngle: number;
   wheelCanvasSize: number;
   wheelConfigReady: boolean;
@@ -46,6 +49,7 @@ export type WheelWindowThis = {
   wheelChasePreviewMode: boolean;
   wheelChaseReplacementSinglesId: number | null;
   wheelChasePendingTierId: string;
+  wheelCreateDialog: boolean;
   wheelManageDialog: boolean;
   wheelManageName: string;
   wheelSpectatorDialog: boolean;
@@ -76,6 +80,8 @@ export type WheelWindowThis = {
   wheelFairnessHistory: WheelFairnessEntry[];
   wheelPreviewChaseTallyHistory: Array<{ tierId: string; label: string; color: string; count: number }>;
   wheelChaseTallyHistory: Array<{ tierId: string; label: string; color: string; count: number }>;
+  wheelGridReveals: MysteryGridReveal[];
+  wheelPreviewGridReveals: MysteryGridReveal[];
   wheelHighlightedSlotIndex: number;
 
   // ===== AppContext bridge properties =====
@@ -109,6 +115,7 @@ export type WheelWindowThis = {
   expectedMarginColor: string;
   wheelSessionMarginColor: string;
   wheelSpinBlockedReason: string;
+  wheelIsMysteryGrid: boolean;
 
   // ===== Private internal state =====
   _wheelSkipConfigReload?: boolean;
@@ -135,12 +142,16 @@ export type WheelWindowThis = {
   drawWheel(offset?: number): void;
   testSpinWheel(): Promise<void>;
   spinWheel(): Promise<void>;
+  runWheelAutoPreviewAnimation(): Promise<void>;
   saveWheelSession(): void;
   recordChaseSale(tierId: string): void;
   resetPreviewSession(): void;
   resetWheelSession(): void;
   startEndWheelSession(): void;
   loadWheelConfig(options?: { preserveLiveWheelState?: boolean }): void;
+  openWheelCreateDialog(): void;
+  closeWheelCreateDialog(): void;
+  createNewGameConfig(gameType: import("../../../types/app.ts").LuckGameType): void;
   ensureWheelEditorState(): void;
   queueWheelConfigSync(): void;
   deleteWheelConfig(): void;
@@ -159,6 +170,9 @@ export type WheelWindowThis = {
   recordPreviewSpinResult(slotIndex: number): void;
   recordSpinResult(slotIndex: number): void;
   landOnSlot(slotIndex: number, options?: { recordSession?: boolean }): void;
+  revealMysteryGridRandomCell(recordSession?: boolean): Promise<void>;
+  runMysteryGridAutoPreviewAnimation(): Promise<void>;
+  revealMysteryGridCell(cellIndex: number, recordSession?: boolean): Promise<void>;
   appendWheelFairnessHistory(entry: WheelFairnessEntry, options?: { preview?: boolean }): void;
   confirmBatchSale(index: number): void;
   dismissBatchSale(index: number): void;
@@ -196,6 +210,8 @@ export type WheelControllerState = {
   fairnessHistory: WheelFairnessEntry[];
   previewChaseTallyHistory: Array<{ tierId: string; label: string; color: string; count: number }>;
   chaseTallyHistory: Array<{ tierId: string; label: string; color: string; count: number }>;
+  gridReveals: MysteryGridReveal[];
+  previewGridReveals: MysteryGridReveal[];
   highlightedSlotIndex: number;
 };
 
@@ -220,6 +236,8 @@ function createDefaultWheelControllerState(): WheelControllerState {
     fairnessHistory: [],
     previewChaseTallyHistory: [],
     chaseTallyHistory: [],
+    gridReveals: [],
+    previewGridReveals: [],
     highlightedSlotIndex: -1
   };
 }
@@ -318,6 +336,8 @@ const WHEEL_CONTROLLER_ALIAS_MAP = {
   wheelFairnessHistory: "fairnessHistory",
   wheelPreviewChaseTallyHistory: "previewChaseTallyHistory",
   wheelChaseTallyHistory: "chaseTallyHistory",
+  wheelGridReveals: "gridReveals",
+  wheelPreviewGridReveals: "previewGridReveals",
   wheelHighlightedSlotIndex: "highlightedSlotIndex"
 } as const satisfies Record<string, keyof WheelControllerState>;
 
@@ -337,6 +357,9 @@ const WHEEL_LOCAL_TOP_LEVEL_KEYS = [
   "wheelCelebrationPreview",
   "wheelCelebrationNonce",
   "wheelSpinning",
+  "wheelGridRevealAnimating",
+  "wheelGridResetAnimating",
+  "wheelGridHighlightCellIndex",
   "wheelCurrentAngle",
   "wheelCanvasSize",
   "wheelConfigReady",
@@ -353,6 +376,7 @@ const WHEEL_LOCAL_TOP_LEVEL_KEYS = [
   "wheelChasePreviewMode",
   "wheelChaseReplacementSinglesId",
   "wheelChasePendingTierId",
+  "wheelCreateDialog",
   "wheelManageDialog",
   "wheelManageName",
   "wheelSpectatorDialog",
@@ -388,6 +412,9 @@ export function createWheelWindowState() {
     wheelCelebrationPreview: false,
     wheelCelebrationNonce: 0,
     wheelSpinning: false,
+    wheelGridRevealAnimating: false,
+    wheelGridResetAnimating: false,
+    wheelGridHighlightCellIndex: -1,
     wheelCurrentAngle: 0,
     wheelCanvasSize: 360,
     wheelConfigReady: false,
@@ -406,6 +433,7 @@ export function createWheelWindowState() {
     wheelChasePreviewMode: false,
     wheelChaseReplacementSinglesId: null as number | null,
     wheelChasePendingTierId: "" as string,
+    wheelCreateDialog: false,
     wheelManageDialog: false,
     wheelManageName: "",
     wheelSpectatorDialog: false,

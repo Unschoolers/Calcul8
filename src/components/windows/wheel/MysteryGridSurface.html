@@ -1,0 +1,26 @@
+<div
+  class="mystery-grid-surface"
+  :class="{ 'mystery-grid-surface--revealing': wheelSpinning }"
+  :style="mysteryGridSurfaceStyle"
+>
+  <button
+    v-for="cell in mysteryGridCells"
+    :key="cell.index"
+    type="button"
+    class="mystery-grid-cell"
+    :class="{
+      'mystery-grid-cell--revealed': cell.revealed,
+      'mystery-grid-cell--highlighted': wheelGridHighlightCellIndex === cell.index && !cell.revealed,
+      'mystery-grid-cell--selector-active': wheelGridRevealAnimating && wheelGridHighlightCellIndex === cell.index && !cell.revealed
+    }"
+    :style="cell.revealed ? { '--mystery-grid-cell-color': cell.color } : undefined"
+    :disabled="wheelSpinning || wheelGridRevealAnimating || cell.revealed || wheelEndingSession || wheelChaseDialog"
+    @click="revealMysteryGridCell(cell.index, true)"
+  >
+    <span v-if="!cell.revealed" class="mystery-grid-cell__number">{{ cell.index + 1 }}</span>
+    <span v-else class="mystery-grid-cell__reveal">
+      <span class="mystery-grid-cell__dot"></span>
+      <span class="mystery-grid-cell__label">{{ cell.label }}</span>
+    </span>
+  </button>
+</div>

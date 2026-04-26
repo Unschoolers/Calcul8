@@ -509,6 +509,9 @@ export const wheelSessionMethods = {
       controller.chaseTallyHistory = Array.isArray(session.wheelChaseTallyHistory)
         ? (session.wheelChaseTallyHistory as WheelTallyHistoryEntry[])
         : [];
+      controller.gridReveals = Array.isArray(session.wheelGridReveals)
+        ? (session.wheelGridReveals as typeof controller.gridReveals)
+        : [];
       if (Array.isArray(session.wheelPreviewSpinCounts)) {
         if (session.wheelPreviewSpinCounts.length === previewSlots.length) {
           controller.previewSpinCounts = session.wheelPreviewSpinCounts;
@@ -531,6 +534,9 @@ export const wheelSessionMethods = {
         : [];
       controller.previewChaseTallyHistory = Array.isArray(session.wheelPreviewChaseTallyHistory)
         ? (session.wheelPreviewChaseTallyHistory as WheelTallyHistoryEntry[])
+        : [];
+      controller.previewGridReveals = Array.isArray(session.wheelPreviewGridReveals)
+        ? (session.wheelPreviewGridReveals as typeof controller.previewGridReveals)
         : [];
       assignWheelPendingInventoryIssues(this, session.wheelPendingInventoryIssues || session.wheelSkippedDeductions || []);
       this.wheelCurrentAngle = (session.wheelCurrentAngle as number) || 0;

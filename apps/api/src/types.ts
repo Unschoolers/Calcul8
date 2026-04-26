@@ -56,7 +56,7 @@ export interface SessionDocument {
 }
 
 export type WheelPublicSessionStatus = "starting" | "live" | "ended";
-export type WheelSpectatorHeatLevel = "low" | "medium" | "high";
+export type WheelSpectatorHeatLevel = "very_low" | "low" | "medium" | "high" | "very_high";
 
 export interface WheelPublicSessionFairnessEntry {
   spinNumber: number;
@@ -91,6 +91,15 @@ export interface WheelPublicSessionSlot {
   isChase: boolean;
 }
 
+export interface WheelPublicSessionGridCell {
+  index: number;
+  revealed: boolean;
+  label: string;
+  color: string;
+  tier: string;
+  slotIndex: number;
+}
+
 export interface WheelPublicSessionSpinAnimation {
   spinId: string;
   startedAt: number;
@@ -102,6 +111,7 @@ export interface WheelPublicSessionSpinAnimation {
 
 export interface WheelPublicSessionSnapshot {
   wheelName: string;
+  gameType: "wheel" | "grid";
   sessionStatus: WheelPublicSessionStatus;
   isSpinning: boolean;
   totalSpins: number;
@@ -109,6 +119,9 @@ export interface WheelPublicSessionSnapshot {
   lastResultColor: string;
   wheelCurrentAngle: number;
   wheelSlots: WheelPublicSessionSlot[];
+  gridCells: WheelPublicSessionGridCell[];
+  gridHighlightCellIndex: number;
+  gridResetAnimating: boolean;
   spinAnimation?: WheelPublicSessionSpinAnimation | null;
   recentFairnessHistory: WheelPublicSessionFairnessEntry[];
   chaseHistory: WheelPublicSessionChaseHistoryEntry[];

@@ -321,20 +321,22 @@ test("wheelPrimarySpinDisabled blocks config spin while config sync is pending",
   assert.equal(WheelWindow.computed!.wheelPrimarySpinDisabled.call(vm as never), true);
 });
 
-test("toggleWheelAutospin enables config autospin and starts preview spins immediately", () => {
+test("toggleWheelAutospin enables config autospin and starts visual preview animation immediately", () => {
   vi.useFakeTimers();
 
-  const testSpinWheel = vi.fn().mockResolvedValue(undefined);
+  const runWheelAutoPreviewAnimation = vi.fn().mockResolvedValue(undefined);
   const vm: Record<string, unknown> = {
     wheelMode: "config",
     wheelAutospinEnabled: false,
     wheelSpinning: false,
+    wheelGridRevealAnimating: false,
+    wheelIsMysteryGrid: false,
     wheelChaseDialog: false,
     wheelEndingSession: false,
     wheelDisplaySlots: [
       { name: "Prize A", color: "#f00", cost: 5, tier: "t1", packsCount: 1, deductionType: "packs", isChase: false }
     ],
-    testSpinWheel,
+    runWheelAutoPreviewAnimation,
     startWheelAutospin: WheelWindow.methods!.startWheelAutospin,
     stopWheelAutospin: WheelWindow.methods!.stopWheelAutospin,
     scheduleNextWheelAutospin: WheelWindow.methods!.scheduleNextWheelAutospin
@@ -344,7 +346,7 @@ test("toggleWheelAutospin enables config autospin and starts preview spins immed
   vi.runAllTimers();
 
   assert.equal(vm.wheelAutospinEnabled, true);
-  assert.equal(testSpinWheel.mock.calls.length, 1);
+  assert.equal(runWheelAutoPreviewAnimation.mock.calls.length, 1);
   vi.useRealTimers();
 });
 

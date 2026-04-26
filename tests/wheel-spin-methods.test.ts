@@ -138,6 +138,27 @@ test("spinWheelInternal publishes spectator animation during the spin and clears
   assert.equal(vm._wheelSpectatorSpinAnimation, null);
 });
 
+test("runWheelAutoPreviewAnimation spins visually without recording preview proof or result", async () => {
+  stubFinishedAnimation();
+  const vm = createSpinVm("config");
+  vm.scheduleNextWheelAutospin = vi.fn();
+  vm.wheelAutospinEnabled = true;
+
+  await wheelSpinMethods.runWheelAutoPreviewAnimation.call(vm);
+
+  const controller = getWheelController(vm);
+  assert.equal(vm.recordSpinResult.mock.calls.length, 0);
+  assert.equal(vm.recordPreviewSpinResult.mock.calls.length, 0);
+  assert.equal(vm.appendWheelFairnessHistory.mock.calls.length, 0);
+  assert.equal(vm.landOnSlot.mock.calls.length, 0);
+  assert.equal(controller.previewFairnessHistory.length, 0);
+  assert.equal(controller.fairnessHistory.length, 0);
+  assert.equal(Number(controller.previewTotalSpins), 0);
+  assert.equal(Number(vm.wheelTotalSpins), 0);
+  assert.equal(vm.wheelSpinning, false);
+  assert.equal((vm.scheduleNextWheelAutospin as ReturnType<typeof vi.fn>).mock.calls.length, 1);
+});
+
 test("recordSpinResult initializes pending inventory issues when older wheel state is missing the array", () => {
   const state = createWheelWindowState() as Record<string, unknown>;
   state.wheelMode = "live";

@@ -10,7 +10,39 @@
             <wheel-stage-topbar :ctx="getWindowComponentContext()"></wheel-stage-topbar>
             <wheel-stage-summary :ctx="getWindowComponentContext()"></wheel-stage-summary>
 
-            <div class="wheel-outer" :class="{ 'wheel-outer--spinning': wheelSpinning }" ref="wheelOuter">
+            <div
+                v-if="wheelIsMysteryGrid"
+                class="mystery-grid-stage"
+                :class="{ 'mystery-grid-stage--revealing': wheelSpinning }"
+            >
+                <transition name="wheel-celebration-pop">
+                    <div v-if="wheelCelebrationVisible" :key="wheelCelebrationNonce" class="wheel-celebration"
+                        :class="{ 'wheel-celebration--preview': wheelCelebrationPreview }">
+                        <div class="wheel-celebration-burst"></div>
+                        <div class="wheel-celebration-ring"></div>
+                        <div class="wheel-celebration-stars">
+                            <span class="wheel-celebration-star wheel-celebration-star--1">★</span>
+                            <span class="wheel-celebration-star wheel-celebration-star--2">★</span>
+                            <span class="wheel-celebration-star wheel-celebration-star--3">★</span>
+                            <span class="wheel-celebration-star wheel-celebration-star--4">★</span>
+                        </div>
+                        <div v-if="wheelCelebrationEmoji" class="wheel-celebration-emoji-burst">
+                            <span v-for="n in 12" :key="n" class="wheel-celebration-emoji"
+                                :style="{ '--emoji-i': n }">{{ wheelCelebrationEmoji }}</span>
+                        </div>
+                        <div class="wheel-celebration-copy"
+                            :style="{ '--wheel-celebration-color': wheelCelebrationColor }">
+                            <div v-if="wheelCelebrationImage" class="wheel-celebration-image">
+                                <img :src="wheelCelebrationImage" alt="" loading="eager">
+                            </div>
+                            <div class="wheel-celebration-title">{{ wheelCelebrationLabel }}</div>
+                        </div>
+                    </div>
+                </transition>
+                <mystery-grid-surface :ctx="getWindowComponentContext()"></mystery-grid-surface>
+            </div>
+
+            <div v-else class="wheel-outer" :class="{ 'wheel-outer--spinning': wheelSpinning }" ref="wheelOuter">
                 <div class="wheel-disc">
                     <div v-if="wheelSpinning" class="wheel-spin-sparks" aria-hidden="true">
                         <span class="wheel-spin-spark wheel-spin-spark--1">✦</span>
@@ -271,6 +303,32 @@
                 <v-btn color="success" variant="elevated" @click="confirmWheelModeChange">
                     {{ t('wheelGoLiveAction') }}
                 </v-btn>
+            </v-card-actions>
+        </v-card>
+    </v-dialog>
+
+    <v-dialog v-if="wheelCreateDialog" v-model="wheelCreateDialog" max-width="520">
+        <v-card>
+            <v-card-title class="text-subtitle-1">
+                {{ t('wheelCreateGameTitle') }}
+            </v-card-title>
+            <v-card-text class="text-body-2">
+                <div class="wheel-create-game-grid">
+                    <button type="button" class="wheel-create-game-card" @click="createNewGameConfig('wheel')">
+                        <v-icon size="28">mdi-chart-donut</v-icon>
+                        <span class="wheel-create-game-card__title">{{ t('wheelGameTypeWheelLabel') }}</span>
+                        <span class="wheel-create-game-card__copy">{{ t('wheelCreateWheelBody') }}</span>
+                    </button>
+                    <button type="button" class="wheel-create-game-card" @click="createNewGameConfig('grid')">
+                        <v-icon size="28">mdi-grid</v-icon>
+                        <span class="wheel-create-game-card__title">{{ t('wheelGameTypeGridLabel') }}</span>
+                        <span class="wheel-create-game-card__copy">{{ t('wheelCreateGridBody') }}</span>
+                    </button>
+                </div>
+            </v-card-text>
+            <v-card-actions>
+                <v-spacer></v-spacer>
+                <v-btn variant="text" @click="closeWheelCreateDialog">{{ t('commonCancel') }}</v-btn>
             </v-card-actions>
         </v-card>
     </v-dialog>

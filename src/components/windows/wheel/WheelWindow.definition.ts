@@ -17,6 +17,11 @@ import {
 import { wheelSessionMethods } from "./wheelSessionMethods.ts";
 import { wheelSpectatorMethods } from "./wheelSpectatorMethods.ts";
 import { wheelSpinMethods } from "./wheelSpinMethods.ts";
+import {
+  buildMysteryGridCells,
+  isMysteryGridConfig,
+  mysteryGridMethods
+} from "./mysteryGridMethods.ts";
 
 function getWheelCanvasTargetSize(panel: HTMLElement | null, presentationMode: boolean): number {
   return resolveWheelCanvasTargetSize({
@@ -83,6 +88,12 @@ export const wheelWindowDefinition = {
       return this.wheelMode === "live"
         ? (this.wheelSessionMarginColor as string)
         : (this.expectedMarginColor as string);
+    },
+    wheelIsMysteryGrid(this: WheelWindowThis): boolean {
+      return isMysteryGridConfig(this.wheelDisplayConfig as WheelConfig | null);
+    },
+    mysteryGridCells(this: WheelWindowThis) {
+      return buildMysteryGridCells(this as unknown as Record<string, unknown>);
     }
   },
   provide(this: WheelWindowThis) {
@@ -158,6 +169,7 @@ export const wheelWindowDefinition = {
     ...wheelSpinMethods,
     ...wheelSessionMethods,
     ...wheelSpectatorMethods,
+    ...mysteryGridMethods,
     showWheelConfigSaved(this: WheelWindowThis) {
       this.wheelConfigSavedSnackbar = true;
       setTimeout(() => {
@@ -322,6 +334,14 @@ export const wheelWindowDefinition = {
         const run = () => {
           const panel = (this.$refs as Record<string, unknown>).wheelSpinnerPanel as HTMLElement | null;
           const canvas = (this.$refs as Record<string, unknown>).wheelCanvas as HTMLCanvasElement | null;
+          if (this.wheelIsMysteryGrid) {
+            this._wheelCanvasRefreshRetryCount = 0;
+            if (this._wheelCanvasRefreshTimeoutId != null) {
+              window.clearTimeout(this._wheelCanvasRefreshTimeoutId);
+              this._wheelCanvasRefreshTimeoutId = undefined;
+            }
+            return;
+          }
           if (!panel || !canvas) {
             retryRefresh();
             return;
@@ -351,6 +371,10 @@ export const wheelWindowDefinition = {
       });
     },
     runWheelPrimarySpin(this: WheelWindowThis): void {
+      if (this.wheelIsMysteryGrid) {
+        this.revealMysteryGridRandomCell(this.wheelMode !== "config");
+        return;
+      }
       if (this.wheelMode === "config") {
         this.testSpinWheel();
         return;
@@ -407,10 +431,14 @@ export const wheelWindowDefinition = {
           this.stopWheelAutospin();
           return;
         }
-        if (this.wheelSpinning) {
+        if (this.wheelSpinning || this.wheelGridRevealAnimating) {
           return;
         }
-        void this.testSpinWheel();
+        if (this.wheelIsMysteryGrid) {
+          void this.runMysteryGridAutoPreviewAnimation();
+          return;
+        }
+        void this.runWheelAutoPreviewAnimation();
       }, Math.max(0, delayMs)) as unknown as number;
     },
     triggerWheelCelebration(this: WheelWindowThis, payload: { label: string; color: string; image?: string; emoji?: string; preview?: boolean }): void {

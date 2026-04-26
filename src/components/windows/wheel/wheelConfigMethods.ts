@@ -9,7 +9,7 @@ import { assignWheelPendingInventoryIssues } from "../../../app-core/shared/whee
 import { getScopedWheelConfigDraftStorageKey } from "../../../app-core/storageKeys.ts";
 import { getActiveStorageScope } from "../../../app-core/workspace-scope.ts";
 import { calculateTotalCaseCost } from "../../../domain/calculations-fees.ts";
-import type { Lot, WheelConfig, WheelTier } from "../../../types/app.ts";
+import type { Lot, LuckGameType, WheelConfig, WheelTier } from "../../../types/app.ts";
 import { getWheelController } from "./wheelControllerState.ts";
 import {
     buildSlotsFromConfig,
@@ -49,11 +49,13 @@ function resetLoadedWheelSessionState(context: Record<string, unknown>): void {
   context.wheelChasePendingTierId = "";
   context.wheelChasePreviewMode = false;
   controller.chaseTallyHistory = [];
+  controller.gridReveals = [];
   controller.fairnessHistory = [];
   controller.previewSpinCounts = [];
   controller.previewTotalSpins = 0;
   controller.previewFairnessHistory = [];
   controller.previewChaseTallyHistory = [];
+  controller.previewGridReveals = [];
   controller.spinHash = "";
   controller.spinSeed = "";
   controller.spinClientSeed = "";
@@ -84,32 +86,66 @@ function getWheelDraftStorageKey(context: Record<string, unknown>, wheelConfigId
   }), wheelConfigId);
 }
 
+function bindDefaultTierSources(context: Record<string, unknown>, config: WheelConfig): void {
+  const currentLotId = (context.currentLotId as number | null) ?? null;
+  for (const tier of config.tiers) {
+    tier.boundLotId = currentLotId;
+  }
+}
+
+function createGameConfigFromTemplate(
+  context: Record<string, unknown>,
+  gameType: LuckGameType,
+  template?: WheelConfig | null
+): WheelConfig {
+  const existing = template ?? null;
+  const newConfig = existing
+    ? JSON.parse(JSON.stringify(existing)) as WheelConfig
+    : createDefaultWheelConfig();
+  newConfig.id = Date.now();
+  newConfig.gameType = gameType;
+  newConfig.name = existing
+    ? `${existing.name} (copy)`
+    : (gameType === "grid" ? "New Mystery Grid" : "New Wheel");
+  newConfig.createdAt = new Date().toISOString();
+  if (gameType === "grid") {
+    newConfig.outcomeCount = newConfig.outcomeCount || 100;
+    newConfig.gridCellCount = newConfig.outcomeCount;
+  }
+  for (const tier of newConfig.tiers) {
+    tier.id = generateTierId();
+  }
+  if (!existing) {
+    bindDefaultTierSources(context, newConfig);
+  }
+  return newConfig;
+}
+
 export const wheelConfigMethods = {
-  createNewWheelConfig(this: Record<string, unknown>): void {
+  openWheelCreateDialog(this: Record<string, unknown>): void {
+    this.wheelCreateDialog = true;
+  },
+
+  closeWheelCreateDialog(this: Record<string, unknown>): void {
+    this.wheelCreateDialog = false;
+  },
+
+  createNewGameConfig(this: Record<string, unknown>, gameType: LuckGameType): void {
     const configs = (this.wheelConfigs || []) as WheelConfig[];
     const activeId = this.activeWheelConfigId as number | null;
     const existing = activeId != null ? configs.find((c) => c.id === activeId) : null;
-    let newConfig: WheelConfig;
-    if (existing) {
-      newConfig = JSON.parse(JSON.stringify(existing)) as WheelConfig;
-      newConfig.id = Date.now();
-      newConfig.name = existing.name + " (copy)";
-      newConfig.createdAt = new Date().toISOString();
-      for (const tier of newConfig.tiers) {
-        tier.id = generateTierId();
-      }
-    } else {
-      newConfig = createDefaultWheelConfig();
-      const currentLotId = (this.currentLotId as number | null) ?? null;
-      for (const tier of newConfig.tiers) {
-        tier.boundLotId = currentLotId;
-      }
-    }
+    const shouldCopyExisting = existing?.gameType === gameType;
+    const newConfig = createGameConfigFromTemplate(this, gameType, shouldCopyExisting ? existing : null);
     configs.push(newConfig);
     this.wheelConfigs = [...configs];
     this.activeWheelConfigId = newConfig.id;
-    (this as Record<string, unknown>).editingWheelConfig = JSON.parse(JSON.stringify(newConfig)) as WheelConfig;
+    this.editingWheelConfig = JSON.parse(JSON.stringify(newConfig)) as WheelConfig;
+    this.wheelCreateDialog = false;
     queueCloudConfigSyncPush(this as Parameters<typeof queueCloudConfigSyncPush>[0]);
+  },
+
+  createNewWheelConfig(this: Record<string, unknown>): void {
+    this.wheelCreateDialog = true;
   },
 
   loadWheelConfig(this: Record<string, unknown>, options: { preserveLiveWheelState?: boolean } = {}): void {
@@ -205,10 +241,10 @@ export const wheelConfigMethods = {
       const oldSlots = ((applyController.activeSlots || []) as WheelSlot[]);
       const oldCounts = ((this.wheelSpinCounts || []) as number[]);
       const oldTierIds = oldSlots.map((slot) => slot.tier);
-      const newSlots = buildSlotsFromConfig(updated);
-      const newTierIds = new Set(updated.tiers.map((tier) => tier.id));
+      const newSlots = buildSlotsFromConfig(sanitizedUpdated);
+      const newTierIds = new Set(sanitizedUpdated.tiers.map((tier) => tier.id));
       const hadTierShapeChange = oldTierIds.some((tierId) => !newTierIds.has(tierId))
-        || updated.tiers.some((tier) => !oldTierIds.includes(tier.id));
+        || sanitizedUpdated.tiers.some((tier) => !oldTierIds.includes(tier.id));
       const previousTierTotals = oldSlots.reduce<Record<string, number>>((acc, slot, index) => {
         acc[slot.tier] = (acc[slot.tier] || 0) + (oldCounts[index] || 0);
         return acc;
@@ -220,9 +256,9 @@ export const wheelConfigMethods = {
       try {
         localStorage.removeItem(getWheelDraftStorageKey(this, updated.id));
       } catch { /* ignore */ }
-      this.activeWheelConfigId = updated.id;
-      (this as Record<string, unknown>).editingWheelConfig = JSON.parse(JSON.stringify(updated)) as WheelConfig;
-      (this as Record<string, unknown>).appliedWheelConfigSnapshot = JSON.parse(JSON.stringify(updated)) as WheelConfig;
+      this.activeWheelConfigId = sanitizedUpdated.id;
+      (this as Record<string, unknown>).editingWheelConfig = JSON.parse(JSON.stringify(sanitizedUpdated)) as WheelConfig;
+      (this as Record<string, unknown>).appliedWheelConfigSnapshot = JSON.parse(JSON.stringify(sanitizedUpdated)) as WheelConfig;
       applyController.activeSlots = newSlots;
       applyController.previewSlots = [...newSlots];
       this.wheelSpinCounts = remapSpinCountsByTier(oldTierIds, oldCounts, newSlots);
@@ -233,6 +269,7 @@ export const wheelConfigMethods = {
       applyController.previewTotalSpins = 0;
       applyController.previewFairnessHistory = [];
       applyController.previewChaseTallyHistory = [];
+      applyController.previewGridReveals = [];
       applyController.lastResultColor = "rgb(var(--v-theme-primary))";
       applyController.spinHash = "";
       applyController.spinSeed = "";
@@ -245,9 +282,10 @@ export const wheelConfigMethods = {
       if (hadTierShapeChange) {
         applyController.sessionCostAdjustment = 0;
         applyController.chaseTallyHistory = [];
+        applyController.gridReveals = [];
       } else {
         let costAdjustment = (applyController.sessionCostAdjustment as number) || 0;
-        for (const tier of updated.tiers) {
+        for (const tier of sanitizedUpdated.tiers) {
           const previousCost = previousTierCosts.get(tier.id);
           if (previousCost == null || previousCost === tier.costPerTier) continue;
           const priorSpins = previousTierTotals[tier.id] || 0;
@@ -357,6 +395,10 @@ export const wheelConfigMethods = {
     const costPerPack = (this as Record<string, unknown>).currentLotCostPerPack as number;
     const usedColors = config.tiers.map((t) => t.color);
     const tier = createDefaultTier(config.tiers.length, usedColors);
+    if (config.tiers.length === 0) {
+      tier.chancePercent = 100;
+      tier.slots = 100;
+    }
     const currentLotId = (this.currentLotId as number | null) ?? null;
     const lots = (this.lots || []) as Lot[];
     const currentLot = currentLotId != null ? lots.find((lot) => lot.id === currentLotId) : null;

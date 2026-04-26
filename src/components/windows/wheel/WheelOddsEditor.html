@@ -1,0 +1,53 @@
+<div class="wheel-odds-editor">
+  <div class="wheel-odds-editor__head">
+    <div>
+      <div class="wheel-section-title">{{ t('wheelOddsTitle') }}</div>
+      <div class="wheel-odds-editor__subtitle">{{ t('wheelOddsSubtitle') }}</div>
+    </div>
+    <span
+      class="wheel-odds-editor__total"
+      :class="{ 'wheel-odds-editor__total--valid': wheelOddsTotalValid }"
+    >
+      {{ wheelOddsTotalDisplay }}
+    </span>
+  </div>
+
+  <div class="wheel-odds-editor__rows">
+    <div
+      v-for="tier in config.tiers"
+      :key="tier.id"
+      class="wheel-odds-editor__row"
+    >
+      <div class="wheel-odds-editor__tier">
+        <span class="wheel-tier-dot" :style="{ background: tier.color }"></span>
+        <span class="wheel-odds-editor__label">{{ tier.label }}</span>
+      </div>
+      <div class="wheel-odds-editor__control">
+        <input
+          :value="formatTierChance(tier)"
+          type="number"
+          class="wheel-tier-num-input wheel-odds-editor__input"
+          min="0"
+          max="100"
+          step="1"
+          :aria-label="t('wheelOddsTierChanceLabel', { label: tier.label })"
+          @change="setTierChanceFromEvent(tier, $event)"
+        />
+        <span class="wheel-odds-editor__suffix">%</span>
+      </div>
+      <div
+        class="wheel-odds-editor__bar"
+        role="slider"
+        tabindex="0"
+        :aria-label="t('wheelOddsTierChanceLabel', { label: tier.label })"
+        aria-valuemin="0"
+        aria-valuemax="100"
+        :aria-valuenow="Number(tier.chancePercent) || 0"
+        @pointerdown="setTierChanceFromPointerEvent(tier, $event)"
+        @pointermove="$event.buttons === 1 && setTierChanceFromPointerEvent(tier, $event)"
+      >
+        <span :style="{ width: `${Math.max(0, Math.min(100, Number(tier.chancePercent) || 0))}%`, background: tier.color }"></span>
+      </div>
+    </div>
+  </div>
+</div>

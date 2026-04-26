@@ -20,6 +20,7 @@ import type {
     WheelPublicSessionChaseEntry,
     WheelPublicSessionChaseHistoryEntry,
     WheelPublicSessionFairnessEntry,
+    WheelPublicSessionGridCell,
     WheelPublicSessionSlot,
     WheelPublicSessionSnapshot,
     WheelPublicSessionStatus,
@@ -41,7 +42,13 @@ function sanitizeWheelPublicSessionStatus(value: unknown): WheelPublicSessionSta
 }
 
 function sanitizeWheelSpectatorHeatLevel(value: unknown): WheelSpectatorHeatLevel | null {
-  if (value === "low" || value === "medium" || value === "high") return value;
+  if (
+    value === "very_low"
+    || value === "low"
+    || value === "medium"
+    || value === "high"
+    || value === "very_high"
+  ) return value;
   return null;
 }
 
@@ -120,6 +127,23 @@ function sanitizeWheelSlot(value: unknown): WheelPublicSessionSlot | null {
   };
 }
 
+function sanitizeGridCell(value: unknown): WheelPublicSessionGridCell | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const candidate = value as Record<string, unknown>;
+  const index = Math.floor(Number(candidate.index));
+  if (!Number.isFinite(index) || index < 0) return null;
+  const revealed = candidate.revealed === true;
+  const slotIndex = Math.floor(Number(candidate.slotIndex));
+  return {
+    index,
+    revealed,
+    label: revealed ? String(candidate.label ?? "").slice(0, 160).trim() : "",
+    color: revealed ? String(candidate.color ?? "").slice(0, 40).trim() || "#d4af37" : "",
+    tier: revealed ? String(candidate.tier ?? "").slice(0, 120).trim() : "",
+    slotIndex: Number.isFinite(slotIndex) ? Math.max(-1, slotIndex) : -1
+  };
+}
+
 function sanitizeSpinAnimation(value: unknown): WheelPublicSessionSnapshot["spinAnimation"] {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const candidate = value as Record<string, unknown>;
@@ -151,8 +175,16 @@ function sanitizeSpinAnimation(value: unknown): WheelPublicSessionSnapshot["spin
 
 function sanitizeWheelPublicSessionSnapshot(value: unknown): WheelPublicSessionSnapshot {
   const candidate = requireRequestBodyRecord(value, "Field 'snapshot' must be an object.");
+  const gridCells = Array.isArray(candidate.gridCells)
+    ? candidate.gridCells
+      .map((entry) => sanitizeGridCell(entry))
+      .filter((entry): entry is WheelPublicSessionGridCell => entry != null)
+      .slice(0, 256)
+    : [];
+  const gridHighlightCellIndex = Math.floor(Number(candidate.gridHighlightCellIndex));
   return {
     wheelName: String(candidate.wheelName ?? "").slice(0, 120).trim() || "Wheel Session",
+    gameType: candidate.gameType === "grid" || gridCells.length > 0 ? "grid" : "wheel",
     sessionStatus: sanitizeWheelPublicSessionStatus(candidate.sessionStatus),
     isSpinning: candidate.isSpinning === true,
     totalSpins: Math.max(0, Math.floor(Number(candidate.totalSpins) || 0)),
@@ -165,6 +197,11 @@ function sanitizeWheelPublicSessionSnapshot(value: unknown): WheelPublicSessionS
         .filter((entry): entry is WheelPublicSessionSlot => entry != null)
         .slice(0, 256)
       : [],
+    gridCells,
+    gridHighlightCellIndex: Number.isFinite(gridHighlightCellIndex) && gridHighlightCellIndex >= 0
+      ? gridHighlightCellIndex
+      : -1,
+    gridResetAnimating: candidate.gridResetAnimating === true,
     spinAnimation: sanitizeSpinAnimation(candidate.spinAnimation),
     recentFairnessHistory: Array.isArray(candidate.recentFairnessHistory)
       ? candidate.recentFairnessHistory

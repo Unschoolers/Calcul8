@@ -1,4 +1,4 @@
-import type { Lot, PendingWheelInventoryIssue, WheelConfig, WheelFairnessEntry } from "../../../types/app.ts";
+import type { Lot, MysteryGridReveal, PendingWheelInventoryIssue, WheelConfig, WheelFairnessEntry } from "../../../types/app.ts";
 import type { WheelControllerState } from "./wheelControllerState.ts";
 import type { WheelSlot } from "./wheelHelpers.ts";
 
@@ -98,11 +98,13 @@ export function createWheelSessionSnapshot(
     wheelPreviewTotalSpins: controller.previewTotalSpins,
     wheelPreviewFairnessHistory: controller.previewFairnessHistory,
     wheelPreviewChaseTallyHistory: controller.previewChaseTallyHistory,
+    wheelPreviewGridReveals: controller.previewGridReveals,
     wheelSessionUpdatedAt: context.wheelSessionUpdatedAt,
     wheelSessionNetRevenue: controller.sessionNetRevenue,
     wheelSessionCostAdjustment: controller.sessionCostAdjustment,
     wheelFairnessHistory: controller.fairnessHistory,
     wheelChaseTallyHistory: controller.chaseTallyHistory,
+    wheelGridReveals: controller.gridReveals,
     wheelPendingInventoryIssues: context.wheelPendingInventoryIssues,
     wheelSkippedDeductions: context.wheelPendingInventoryIssues,
     wheelCurrentAngle: context.wheelCurrentAngle,
@@ -129,6 +131,7 @@ export function applyWheelPreviewReset(
   controller.previewTotalSpins = 0;
   controller.previewFairnessHistory = [];
   controller.previewChaseTallyHistory = [];
+  controller.previewGridReveals = [];
   controller.inventoryWarning = "";
   controller.lastResultColor = "rgb(var(--v-theme-primary))";
   controller.fairnessHistoryOpen = false;
@@ -150,6 +153,7 @@ export function applyWheelLiveReset(
   controller.sessionCostAdjustment = 0;
   controller.fairnessHistory = [];
   controller.chaseTallyHistory = [];
+  controller.gridReveals = [];
   context.wheelEndingSession = false;
   context.wheelEndSessionReviewActive = false;
   context.wheelSpectatorPublishPending = false;
@@ -180,6 +184,8 @@ export function mergeWheelSessionRootFallback(
   session.wheelPreviewTotalSpins = useRootValue(session.wheelPreviewTotalSpins as number | undefined, rootForActiveConfig.wheelPreviewTotalSpins as number | undefined);
   session.wheelPreviewFairnessHistory = useRootValue(session.wheelPreviewFairnessHistory as WheelFairnessEntry[] | undefined, rootForActiveConfig.wheelPreviewFairnessHistory as WheelFairnessEntry[] | undefined);
   session.wheelPreviewChaseTallyHistory = useRootValue(session.wheelPreviewChaseTallyHistory as WheelTallyHistoryEntry[] | undefined, rootForActiveConfig.wheelPreviewChaseTallyHistory as WheelTallyHistoryEntry[] | undefined);
+  session.wheelPreviewGridReveals = useRootValue(session.wheelPreviewGridReveals as MysteryGridReveal[] | undefined, rootForActiveConfig.wheelPreviewGridReveals as MysteryGridReveal[] | undefined);
+  session.wheelGridReveals = useRootValue(session.wheelGridReveals as MysteryGridReveal[] | undefined, rootForActiveConfig.wheelGridReveals as MysteryGridReveal[] | undefined);
   session.wheelSpinHash = useRootValue(session.wheelSpinHash as string | undefined, rootForActiveConfig.wheelSpinHash as string | undefined);
   session.wheelSpinSeed = useRootValue(session.wheelSpinSeed as string | undefined, rootForActiveConfig.wheelSpinSeed as string | undefined);
   session.wheelSpinClientSeed = useRootValue(session.wheelSpinClientSeed as string | undefined, rootForActiveConfig.wheelSpinClientSeed as string | undefined);

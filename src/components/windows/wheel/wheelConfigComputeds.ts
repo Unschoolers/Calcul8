@@ -1,5 +1,6 @@
 import { translateAppMessage } from "../../../app-core/i18n/index.ts";
 import { calculateTotalCaseCost } from "../../../domain/calculations-fees.ts";
+import { getTierChancePercent } from "../../../app-core/shared/wheel-odds.ts";
 import type { Lot, WheelConfig } from "../../../types/app.ts";
 import { getWheelController } from "./wheelControllerState.ts";
 import {
@@ -68,7 +69,8 @@ export const wheelConfigComputeds = {
   canApplyWheelConfig(this: Record<string, unknown>): boolean {
     const config = (this as Record<string, unknown>).editingWheelConfig as WheelConfig | null;
     if (!config || !config.tiers.length) return false;
-    return config.tiers.every((t) => t.boundLotId != null);
+    const activeTiers = config.tiers.filter((tier) => getTierChancePercent(tier) > 0);
+    return activeTiers.length > 0 && activeTiers.every((tier) => tier.boundLotId != null);
   },
 
   wheelInvalidLiveTiers(this: Record<string, unknown>): Array<{ tierId: string; label: string; reason: string }> {
@@ -79,7 +81,7 @@ export const wheelConfigComputeds = {
 
     const invalid: Array<{ tierId: string; label: string; reason: string }> = [];
     for (const tier of config.tiers) {
-      if ((tier.slots || 0) <= 0) continue;
+      if (getTierChancePercent(tier) <= 0) continue;
       if (tier.boundLotId == null) {
         invalid.push({ tierId: tier.id, label: tier.label, reason: translateAppMessage(preferredLanguage, "wheelInvalidNoSourceLot") });
         continue;

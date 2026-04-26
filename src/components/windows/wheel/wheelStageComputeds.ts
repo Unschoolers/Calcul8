@@ -2,6 +2,7 @@ import { translateAppMessage } from "../../../app-core/i18n/index.ts";
 import type { WheelConfig } from "../../../types/app.ts";
 import { getWheelDisplaySlots } from "./wheelComputedShared.ts";
 import type { WheelSlot } from "./wheelHelpers.ts";
+import { getMysteryGridCellCount } from "./mysteryGridMethods.ts";
 
 export const wheelStageComputeds = {
   wheelStageTitle(this: Record<string, unknown>): string {
@@ -17,6 +18,12 @@ export const wheelStageComputeds = {
 
   wheelStageSlotsLabel(this: Record<string, unknown>): string {
     const slots = (((this as Record<string, unknown>).wheelDisplaySlots || []) as WheelSlot[]).length;
+    const config = (this as Record<string, unknown>).wheelDisplayConfig as WheelConfig | null;
+    if (config?.gameType === "grid") {
+      return translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelStageCellsValue", {
+        count: getMysteryGridCellCount(config)
+      });
+    }
     return translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelStageSlotsValue", { count: slots });
   },
 
@@ -58,10 +65,18 @@ export const wheelStageComputeds = {
   },
 
   wheelSpinButtonIcon(this: Record<string, unknown>): string {
+    const config = (this as Record<string, unknown>).wheelDisplayConfig as WheelConfig | null;
+    if (config?.gameType === "grid") return "mdi-grid";
     return (this as Record<string, unknown>).wheelMode === "config" ? "mdi-flask-outline" : "mdi-lightning-bolt";
   },
 
   wheelSpinButtonLabel(this: Record<string, unknown>): string {
+    const config = (this as Record<string, unknown>).wheelDisplayConfig as WheelConfig | null;
+    if (config?.gameType === "grid") {
+      return (this as Record<string, unknown>).wheelMode === "config"
+        ? translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelRevealTestButtonLabel")
+        : translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelRevealButtonLabel");
+    }
     return (this as Record<string, unknown>).wheelMode === "config"
       ? translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelSpinTestButtonLabel")
       : translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelSpinButtonLabel");
@@ -98,6 +113,7 @@ export const wheelStageComputeds = {
     const isConfigMode = (this as Record<string, unknown>).wheelMode === "config";
     return Boolean(
       (this as Record<string, unknown>).wheelSpinning
+      || (this as Record<string, unknown>).wheelGridRevealAnimating
       || (isConfigMode && (this as Record<string, unknown>).wheelConfigSyncPending)
       || (isConfigMode && (this as Record<string, unknown>).wheelAutospinEnabled)
       || !(((this as Record<string, unknown>).wheelDisplaySlots || []) as WheelSlot[]).length
@@ -109,6 +125,12 @@ export const wheelStageComputeds = {
   },
 
   wheelStageCaption(this: Record<string, unknown>): string {
+    const config = (this as Record<string, unknown>).wheelDisplayConfig as WheelConfig | null;
+    if (config?.gameType === "grid") {
+      return (this as Record<string, unknown>).wheelMode === "config"
+        ? translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelStageCaptionGridConfig")
+        : translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelStageCaptionGridLive");
+    }
     return (this as Record<string, unknown>).wheelMode === "config"
       ? translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelStageCaptionConfig")
       : translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelStageCaptionLive");
@@ -231,9 +253,15 @@ export const wheelStageComputeds = {
         id: "target-margin",
         label: translateAppMessage(preferredLanguage, "wheelStageTargetMarginLabel"),
         value: `${Number(((this as Record<string, unknown>).wheelDisplayConfig as WheelConfig | null)?.targetMargin || 0)}%`,
-        meta: translateAppMessage(preferredLanguage, "wheelConfiguredSlotsMeta", {
-          count: (((this as Record<string, unknown>).wheelDisplaySlots || []) as WheelSlot[]).length
-        })
+        meta: translateAppMessage(
+          preferredLanguage,
+          ((this as Record<string, unknown>).wheelDisplayConfig as WheelConfig | null)?.gameType === "grid"
+            ? "wheelConfiguredOutcomesMeta"
+            : "wheelConfiguredSlotsMeta",
+          {
+            count: (((this as Record<string, unknown>).wheelDisplaySlots || []) as WheelSlot[]).length
+          }
+        )
       },
       {
         id: "builder-status",

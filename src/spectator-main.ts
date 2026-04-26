@@ -64,9 +64,20 @@ function formatRelativeTime(timestamp: number): string {
 
 function formatHeatCopy(heat: WheelSpectatorHeatLevel | null, label: string | null): string {
   if (!heat || !label) return "The wheel is warming up.";
-  if (heat === "high") return `${label} is very live right now.`;
+  if (heat === "very_high") return `${label} is overdue.`;
+  if (heat === "high") return `${label} is heating up.`;
   if (heat === "medium") return `${label} is in range.`;
+  if (heat === "low") return `${label} is warming slowly.`;
   return `${label} is still hanging around.`;
+}
+
+function formatHeatLabel(heat: WheelSpectatorHeatLevel | null): string {
+  if (heat === "very_high") return "very high";
+  if (heat === "high") return "high";
+  if (heat === "medium") return "medium";
+  if (heat === "low") return "low";
+  if (heat === "very_low") return "very low";
+  return "—";
 }
 
 function formatStatusLabel(snapshot: WheelSpectatorSnapshot): string {
@@ -81,6 +92,10 @@ function formatStatusTone(snapshot: WheelSpectatorSnapshot): "ended" | "spinning
 
 function getSpectatorWheelSlots(snapshot: WheelSpectatorSnapshot): WheelSpectatorSnapshot["wheelSlots"] {
   return Array.isArray(snapshot.wheelSlots) ? snapshot.wheelSlots : [];
+}
+
+function getSpectatorGridCells(snapshot: WheelSpectatorSnapshot): NonNullable<WheelSpectatorSnapshot["gridCells"]> {
+  return Array.isArray(snapshot.gridCells) ? snapshot.gridCells : [];
 }
 
 function renderEmpty(title: string, body: string): string {
@@ -108,14 +123,21 @@ function renderState(state: SpectatorPageState): string {
 
   const { snapshot } = state;
   const wheelSlots = getSpectatorWheelSlots(snapshot);
+  const gridCells = getSpectatorGridCells(snapshot);
+  const isGridGame = snapshot.gameType === "grid" || gridCells.length > 0;
+  const gridColumns = Math.ceil(Math.sqrt(Math.max(1, gridCells.length)));
+  const revealedGridCount = gridCells.filter((cell) => cell.revealed).length;
+  const gridProgressLabel = gridCells.length > 0 ? `${revealedGridCount}/${gridCells.length}` : "0/0";
   const heroSubcopy = snapshot.totalSpins > 0
-    ? `Watching live: ${formatHeatCopy(snapshot.featuredChaseHeat, snapshot.featuredChaseLabel)}`
-    : "The wheel is live. Stay here for the next verified hit.";
+    ? (isGridGame
+      ? `${gridProgressLabel} cells opened. ${formatHeatCopy(snapshot.featuredChaseHeat, snapshot.featuredChaseLabel)}`
+      : `Watching live: ${formatHeatCopy(snapshot.featuredChaseHeat, snapshot.featuredChaseLabel)}`)
+    : `The ${isGridGame ? "grid" : "wheel"} is live. Stay here for the next verified hit.`;
   const latestResultLabel = String(snapshot.lastResultLabel || "").trim() || "Waiting for the next spin";
   const latestResultColor = String(snapshot.lastResultColor || "#d4af37");
   const latestResultSubcopy = snapshot.totalSpins > 0
-    ? formatHeatCopy(snapshot.featuredChaseHeat, snapshot.featuredChaseLabel)
-    : "The next verified result will land here as soon as the wheel spins.";
+    ? (isGridGame ? latestResultLabel : formatHeatCopy(snapshot.featuredChaseHeat, snapshot.featuredChaseLabel))
+    : `The next verified ${isGridGame ? "reveal" : "result"} will land here as soon as the ${isGridGame ? "cell opens" : "wheel spins"}.`;
   const reelHtml = snapshot.recentFairnessHistory.length
     ? snapshot.recentFairnessHistory.map((entry) => `
         <article class="spectator-reel__item">
@@ -148,7 +170,7 @@ function renderState(state: SpectatorPageState): string {
           </div>
           <div class="spectator-chase__meta">
             <span class="spectator-pill">Hits ${entry.hitCount}</span>
-            <span class="spectator-pill">Slots ${entry.slots}</span>
+            <span class="spectator-pill">Chance ${Math.round(Number(entry.slots || 0))}%</span>
             ${entry.remainingHits != null ? `<span class="spectator-pill">${entry.remainingHits} hit${entry.remainingHits === 1 ? "" : "s"} left</span>` : ""}
             ${entry.isFeatured ? `<span class="spectator-pill spectator-pill--heat-${escapeHtml(String(snapshot.featuredChaseHeat || "low"))}">Featured chase</span>` : ""}
           </div>
@@ -159,7 +181,7 @@ function renderState(state: SpectatorPageState): string {
   return `
     <div class="spectator-shell">
       <section class="spectator-hero">
-        <div class="spectator-kicker">Live Wheel Spectator</div>
+        <div class="spectator-kicker">${isGridGame ? "Live Grid Spectator" : "Live Wheel Spectator"}</div>
         <h1 class="spectator-title">${escapeHtml(snapshot.wheelName)}</h1>
         <p class="spectator-subtitle spectator-subtitle--hero">${escapeHtml(heroSubcopy)}</p>
       </section>
@@ -179,12 +201,12 @@ function renderState(state: SpectatorPageState): string {
 
           <div class="spectator-now__summary">
             <div class="spectator-now__metric">
-              <span class="spectator-now__metric-label">Spin</span>
+              <span class="spectator-now__metric-label">${isGridGame ? "Reveal" : "Spin"}</span>
               <strong class="spectator-now__metric-value">#${snapshot.totalSpins}</strong>
             </div>
             <div class="spectator-now__metric spectator-now__metric--heat-${escapeHtml(String(snapshot.featuredChaseHeat || "low"))}">
               <span class="spectator-now__metric-label">Heat</span>
-              <strong class="spectator-now__metric-value">${escapeHtml(String(snapshot.featuredChaseHeat || "low"))}</strong>
+              <strong class="spectator-now__metric-value">${escapeHtml(formatHeatLabel(snapshot.featuredChaseHeat))}</strong>
             </div>
             <div class="spectator-now__metric spectator-now__metric--accent">
               <span class="spectator-now__metric-label">Watching</span>
@@ -193,7 +215,23 @@ function renderState(state: SpectatorPageState): string {
           </div>
 
           <div class="spectator-now__stage">
-            ${wheelSlots.length
+            ${isGridGame && gridCells.length
+              ? `
+                <div class="spectator-grid-board ${snapshot.gridResetAnimating === true ? "spectator-grid-board--resetting" : ""}" style="--spectator-grid-columns:${gridColumns}">
+                  ${gridCells.map((cell) => `
+                    <div
+                      class="spectator-grid-cell ${cell.revealed ? "spectator-grid-cell--revealed" : ""} ${snapshot.gridHighlightCellIndex === cell.index ? "spectator-grid-cell--latest" : ""} ${snapshot.gridHighlightCellIndex === cell.index && !cell.revealed ? "spectator-grid-cell--highlighted" : ""}"
+                      style="${cell.revealed ? `--spectator-grid-cell-color:${escapeHtml(cell.color)}` : ""}"
+                    >
+                      ${cell.revealed
+                        ? `<span class="spectator-grid-cell__dot"></span><span class="spectator-grid-cell__label">${escapeHtml(cell.label)}</span>`
+                        : `<span class="spectator-grid-cell__number">${cell.index + 1}</span>`}
+                    </div>
+                  `).join("")}
+                </div>
+              `
+              : ""}
+            ${!isGridGame && wheelSlots.length
               ? `
                 <div class="spectator-wheel-frame">
                   <div class="wheel-outer">
@@ -238,12 +276,12 @@ function renderState(state: SpectatorPageState): string {
           <div class="spectator-chases">${chaseHtml}</div>
         </section>
 
-        <section class="spectator-card spectator-trust">
-          <div class="spectator-card__eyebrow">Trust</div>
-          <p class="spectator-subtitle">The result is committed before it lands, then revealed after the spin so anyone can verify it.</p>
+      <section class="spectator-card spectator-trust">
+        <div class="spectator-card__eyebrow">Trust</div>
+          <p class="spectator-subtitle">The result is committed before it lands, then revealed after the ${isGridGame ? "cell opens" : "spin"} so anyone can verify it.</p>
           <ol class="spectator-trust__steps">
-            <li>The proof is locked before the spin finishes.</li>
-            <li>The winning result is revealed after the spin.</li>
+            <li>The proof is locked before the result finishes.</li>
+            <li>The winning result is revealed after the ${isGridGame ? "cell opens" : "spin"}.</li>
             <li>Anyone can open the proof page and verify the outcome.</li>
           </ol>
           ${snapshot.fairnessVerificationUrl
@@ -334,6 +372,7 @@ function drawSpectatorWheel(
 }
 
 function startSpectatorWheelAnimation(snapshot: WheelSpectatorSnapshot): void {
+  if (snapshot.gameType === "grid" || getSpectatorGridCells(snapshot).length > 0) return;
   const animation = snapshot.spinAnimation;
   const slots = getSpectatorWheelSlots(snapshot);
   if (

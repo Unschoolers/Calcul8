@@ -55,8 +55,9 @@ export const WheelTierCard = {
       const tier = this.tier;
       const hitCount = Number(tier.packsCount || 0);
       const cost = Number(tier.costPerTier || 0);
+      const chance = Number(tier.chancePercent || 0);
       return [
-        `${tier.slots} slots`,
+        `${Math.round(chance)}%`,
         `${hitCount} hit${hitCount === 1 ? "" : "s"}`,
         `$${cost.toFixed(2)}`
       ];

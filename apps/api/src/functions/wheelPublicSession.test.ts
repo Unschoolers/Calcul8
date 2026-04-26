@@ -88,12 +88,16 @@ beforeEach(() => {
     publicSessionId: "abc123xy",
     snapshot: {
       wheelName: "Demo Wheel",
+      gameType: "wheel",
       sessionStatus: "starting",
       totalSpins: 0,
       lastResultLabel: "",
       lastResultColor: "#d4af37",
       wheelCurrentAngle: 0,
       wheelSlots: [],
+      gridCells: [],
+      gridHighlightCellIndex: -1,
+      gridResetAnimating: false,
       recentFairnessHistory: [],
       chaseHistory: [],
       chaseBoard: [],
@@ -108,12 +112,16 @@ beforeEach(() => {
     publicSessionId: "abc123xy",
     snapshot: {
       wheelName: "Demo Wheel",
+      gameType: "wheel",
       sessionStatus: "live",
       totalSpins: 1,
       lastResultLabel: "Prize",
       lastResultColor: "#f00",
       wheelCurrentAngle: 1.25,
       wheelSlots: [],
+      gridCells: [],
+      gridHighlightCellIndex: -1,
+      gridResetAnimating: false,
       recentFairnessHistory: [],
       chaseHistory: [],
       chaseBoard: [],
@@ -128,12 +136,16 @@ beforeEach(() => {
     publicSessionId: "abc123xy",
     snapshot: {
       wheelName: "Demo Wheel",
+      gameType: "wheel",
       sessionStatus: "ended",
       totalSpins: 2,
       lastResultLabel: "Prize",
       lastResultColor: "#f00",
       wheelCurrentAngle: 1.5,
       wheelSlots: [],
+      gridCells: [],
+      gridHighlightCellIndex: -1,
+      gridResetAnimating: false,
       recentFairnessHistory: [],
       chaseHistory: [],
       chaseBoard: [],
@@ -155,6 +167,7 @@ test("wheelPublicSessionCreate sanitizes the snapshot and verifies workspace acc
       workspaceId: "team-42",
       snapshot: {
         wheelName: ` Demo Wheel ${"x".repeat(180)}`,
+        gameType: "grid",
         sessionStatus: "banana",
         totalSpins: "-7",
         lastResultLabel: "Prize",
@@ -174,6 +187,23 @@ test("wheelPublicSessionCreate sanitizes the snapshot and verifies workspace acc
           tier: "tier-1",
           isChase: true
         }],
+        gridCells: [{
+          index: "4",
+          revealed: true,
+          label: "Chase",
+          color: "#0f0",
+          tier: "tier-2",
+          slotIndex: "12"
+        }, {
+          index: "5",
+          revealed: false,
+          label: "hidden",
+          color: "#f00",
+          tier: "hidden",
+          slotIndex: "13"
+        }],
+        gridHighlightCellIndex: "5",
+        gridResetAnimating: true,
         recentFairnessHistory: [{
           spinNumber: "2",
           label: "Prize",
@@ -216,6 +246,7 @@ test("wheelPublicSessionCreate sanitizes the snapshot and verifies workspace acc
     scopeId: string;
     snapshot: {
       wheelName: string;
+      gameType: string;
       sessionStatus: string;
       totalSpins: number;
       lastResultColor: string;
@@ -229,6 +260,9 @@ test("wheelPublicSessionCreate sanitizes the snapshot and verifies workspace acc
         targetIndex: number;
       } | null;
       wheelSlots: Array<{ name: string; tier: string; isChase: boolean }>;
+      gridCells: Array<{ index: number; revealed: boolean; label: string; color: string; tier: string; slotIndex: number }>;
+      gridHighlightCellIndex: number;
+      gridResetAnimating: boolean;
       featuredChaseHeat: string | null;
       recentFairnessHistory: Array<{ spinNumber: number; timestamp: number }>;
       chaseHistory: Array<{ count: number }>;
@@ -239,6 +273,7 @@ test("wheelPublicSessionCreate sanitizes the snapshot and verifies workspace acc
   assert.equal(repoInput.scopeType, "workspace");
   assert.equal(repoInput.scopeId, "team-42");
   assert.equal(repoInput.snapshot.wheelName.length, 119);
+  assert.equal(repoInput.snapshot.gameType, "grid");
   assert.equal(repoInput.snapshot.sessionStatus, "starting");
   assert.equal(repoInput.snapshot.totalSpins, 0);
   assert.equal(repoInput.snapshot.lastResultColor, "#d4af37");
@@ -254,6 +289,23 @@ test("wheelPublicSessionCreate sanitizes the snapshot and verifies workspace acc
   assert.equal(repoInput.snapshot.wheelSlots[0]?.name, "Tier 1");
   assert.equal(repoInput.snapshot.wheelSlots[0]?.tier, "tier-1");
   assert.equal(repoInput.snapshot.wheelSlots[0]?.isChase, true);
+  assert.deepEqual(repoInput.snapshot.gridCells, [{
+    index: 4,
+    revealed: true,
+    label: "Chase",
+    color: "#0f0",
+    tier: "tier-2",
+    slotIndex: 12
+  }, {
+    index: 5,
+    revealed: false,
+    label: "",
+    color: "",
+    tier: "",
+    slotIndex: 13
+  }]);
+  assert.equal(repoInput.snapshot.gridHighlightCellIndex, 5);
+  assert.equal(repoInput.snapshot.gridResetAnimating, true);
   assert.equal(repoInput.snapshot.featuredChaseHeat, "medium");
   assert.equal(repoInput.snapshot.recentFairnessHistory[0]?.spinNumber, 2);
   assert.equal(repoInput.snapshot.recentFairnessHistory[0]?.timestamp, 55);
@@ -275,12 +327,16 @@ test("wheelPublicSessionPublish returns 404 when the session is missing or not o
       publicSessionId: "abc123xy",
       snapshot: {
         wheelName: "Demo Wheel",
+        gameType: "wheel",
         sessionStatus: "live",
         totalSpins: 1,
         lastResultLabel: "Prize",
         lastResultColor: "#f00",
         wheelCurrentAngle: 1.25,
         wheelSlots: [],
+        gridCells: [],
+        gridHighlightCellIndex: -1,
+        gridResetAnimating: false,
         recentFairnessHistory: [],
         chaseHistory: [],
         chaseBoard: [],
@@ -306,12 +362,16 @@ test("wheelPublicSessionPublish fans out the sanitized snapshot over realtime af
       publicSessionId: "abc123xy",
       snapshot: {
         wheelName: "Demo Wheel",
+        gameType: "wheel",
         sessionStatus: "live",
         totalSpins: 1,
         lastResultLabel: "Prize",
         lastResultColor: "#f00",
         wheelCurrentAngle: 1.25,
         wheelSlots: [],
+        gridCells: [],
+        gridHighlightCellIndex: -1,
+        gridResetAnimating: false,
         recentFairnessHistory: [],
         chaseHistory: [],
         chaseBoard: [],

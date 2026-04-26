@@ -1,4 +1,5 @@
 import type { Lot, WheelConfig, WheelTier } from "../../types/app.ts";
+import { getWheelOutcomeCount, normalizeWheelTierChances } from "./wheel-odds.ts";
 
 function sanitizeWheelTier(tier: WheelTier, lots: Lot[]): WheelTier {
   const boundLot = tier.boundLotId == null
@@ -20,8 +21,11 @@ function sanitizeWheelTier(tier: WheelTier, lots: Lot[]): WheelTier {
 }
 
 export function sanitizeWheelConfig(config: WheelConfig, lots: Lot[]): WheelConfig {
+  config.gameType = config.gameType === "grid" ? "grid" : "wheel";
+  config.outcomeCount = getWheelOutcomeCount(config);
+  config.gridCellCount = config.outcomeCount;
   const tiers = Array.isArray(config.tiers) ? config.tiers : [];
-  config.tiers = tiers.map((tier) => sanitizeWheelTier(tier, lots));
+  config.tiers = normalizeWheelTierChances(tiers.map((tier) => sanitizeWheelTier(tier, lots)));
   return config;
 }
 

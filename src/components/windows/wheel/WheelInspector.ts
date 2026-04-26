@@ -2,6 +2,7 @@ import { inject, type PropType } from "vue";
 import { createNestedWindowContextBridge } from "../contextBridge.ts";
 import { translateAppMessage } from "../../../app-core/i18n/index.ts";
 import WheelHistoryPanel from "./WheelHistoryPanel.vue";
+import WheelOddsEditor from "./WheelOddsEditor.vue";
 import WheelTierCard from "./WheelTierCard.vue";
 import WheelSessionPanel from "./WheelSessionPanel.vue";
 import type { Lot, WheelConfig, WheelTier } from "../../../types/app.ts";
@@ -23,6 +24,7 @@ export const WheelInspector = {
   name: "WheelInspector",
   components: {
     WheelHistoryPanel,
+    WheelOddsEditor,
     WheelTierCard,
     WheelSessionPanel
   },

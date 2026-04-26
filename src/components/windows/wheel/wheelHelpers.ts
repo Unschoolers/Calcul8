@@ -1,3 +1,4 @@
+import { allocateTierCountsByChance, getTierChancePercent, getWheelOutcomeCount, normalizeWheelTierChances } from "../../../app-core/shared/wheel-odds.ts";
 import { calculateNetFromGross, type FeeProfileInput } from "../../../domain/calculations.ts";
 import type { Lot, Sale, WheelConfig, WheelTier } from "../../../types/app.ts";
 
@@ -102,16 +103,16 @@ export function calculateAverageWheelBuyerShippingPerSpin(
   lots: Lot[] = []
 ): number {
   let shippingTotal = 0;
-  let totalSlots = 0;
+  let totalChance = 0;
 
-  for (const tier of config.tiers) {
-    const slots = Math.max(0, Number(tier.slots) || 0);
-    if (slots <= 0) continue;
-    shippingTotal += slots * getTierShippingPerOrder(tier, lots);
-    totalSlots += slots;
+  for (const tier of getNormalizedChanceTiers(config)) {
+    const chance = getTierChancePercent(tier);
+    if (chance <= 0) continue;
+    shippingTotal += chance * getTierShippingPerOrder(tier, lots);
+    totalChance += chance;
   }
 
-  return totalSlots > 0 ? shippingTotal / totalSlots : 0;
+  return totalChance > 0 ? shippingTotal / totalChance : 0;
 }
 
 export function calculateAverageWheelSellingTaxPercent(
@@ -119,16 +120,16 @@ export function calculateAverageWheelSellingTaxPercent(
   lots: Lot[] = []
 ): number {
   let taxTotal = 0;
-  let totalSlots = 0;
+  let totalChance = 0;
 
-  for (const tier of config.tiers) {
-    const slots = Math.max(0, Number(tier.slots) || 0);
-    if (slots <= 0) continue;
-    taxTotal += slots * getLotSellingTaxPercent(tier.boundLotId, lots);
-    totalSlots += slots;
+  for (const tier of getNormalizedChanceTiers(config)) {
+    const chance = getTierChancePercent(tier);
+    if (chance <= 0) continue;
+    taxTotal += chance * getLotSellingTaxPercent(tier.boundLotId, lots);
+    totalChance += chance;
   }
 
-  return totalSlots > 0 ? taxTotal / totalSlots : 0;
+  return totalChance > 0 ? taxTotal / totalChance : 0;
 }
 
 export function calculateWheelBuyerShippingTotal(
@@ -155,6 +156,14 @@ const TIER_COLORS = [
   "#c0392b",
 ];
 
+function getNormalizedChanceTiers(config: WheelConfig): WheelTier[] {
+  return normalizeWheelTierChances(config.tiers.map((tier) => ({ ...tier })));
+}
+
+function hasExplicitTierChance(config: WheelConfig): boolean {
+  return config.tiers.some((tier) => Number.isFinite(Number(tier.chancePercent)));
+}
+
 export function generateTierId(): string {
   return "t" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
 }
@@ -166,6 +175,7 @@ export function createDefaultTier(index: number, usedColors: string[] = []): Whe
     id: generateTierId(),
     label: "Tier " + (index + 1),
     color,
+    chancePercent: 0,
     slots: 3,
     costPerTier: 5,
     packsCount: 1,
@@ -180,19 +190,82 @@ export function createDefaultWheelConfig(): WheelConfig {
     name: "New Wheel",
     spinPrice: 10,
     targetMargin: 40,
+    gameType: "wheel",
+    outcomeCount: 100,
+    gridCellCount: 100,
     tiers: [
-      { id: generateTierId(), label: "1 Item", color: "#f0a500", slots: 3, costPerTier: 4.50, packsCount: 1, deductionType: "packs", sets: [] }
+      { id: generateTierId(), label: "1 Item", color: "#f0a500", chancePercent: 100, slots: 100, costPerTier: 4.50, packsCount: 1, deductionType: "packs", sets: [] }
     ],
     createdAt: new Date().toISOString()
   };
 }
 
+function getTierSlotWeight(tier: WheelTier): number {
+  const weight = Math.floor(Number(tier.slots) || 0);
+  return Number.isFinite(weight) ? Math.max(0, weight) : 0;
+}
+
+function hashStringToUint32(value: string): number {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function createSeededRandom(seed: string): () => number {
+  let state = hashStringToUint32(seed) || 0x9e3779b9;
+  return () => {
+    state += 0x6d2b79f5;
+    let next = state;
+    next = Math.imul(next ^ (next >>> 15), next | 1);
+    next ^= next + Math.imul(next ^ (next >>> 7), next | 61);
+    return ((next ^ (next >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function buildGridShuffleSeed(config: WheelConfig): string {
+  const tierSeed = config.tiers
+    .map((tier) => [
+      tier.id,
+      tier.label,
+      tier.color,
+      Number.isFinite(Number(tier.chancePercent)) ? Number(tier.chancePercent) : "",
+      Number.isFinite(Number(tier.slots)) ? Number(tier.slots) : ""
+    ].join(":"))
+    .join("|");
+  return [
+    "mystery-grid-layout-v1",
+    String(config.id),
+    String(config.name || ""),
+    String(getWheelOutcomeCount(config)),
+    tierSeed
+  ].join("::");
+}
+
+function shuffleSlotsDeterministically(slots: WheelSlot[], seed: string): WheelSlot[] {
+  const random = createSeededRandom(seed);
+  const shuffled = [...slots];
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(random() * (index + 1));
+    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex]!, shuffled[index]!];
+  }
+  return shuffled;
+}
+
 export function buildSlotsFromConfig(config: WheelConfig): WheelSlot[] {
+  const shouldBuildFromOdds = config.gameType === "grid" || hasExplicitTierChance(config);
+  const tierCounts = shouldBuildFromOdds
+    ? allocateTierCountsByChance(getNormalizedChanceTiers(config), getWheelOutcomeCount(config))
+    : null;
+
   // Build per-tier slot arrays
   const groups: { tier: string; slots: WheelSlot[] }[] = [];
   for (const tier of config.tiers) {
     const arr: WheelSlot[] = [];
-    for (let i = 0; i < tier.slots; i++) {
+    const slotCount = tierCounts?.get(tier.id) ?? getTierSlotWeight(tier);
+    for (let i = 0; i < slotCount; i++) {
       const setLabel = tier.sets.length > 0 ? tier.sets[i % tier.sets.length]! : "";
       arr.push({
         name: setLabel ? `${tier.label} — ${setLabel}` : tier.label,
@@ -227,7 +300,10 @@ export function buildSlotsFromConfig(config: WheelConfig): WheelSlot[] {
     }
   }
 
-  return result.filter((s): s is WheelSlot => s !== null);
+  const slots = result.filter((s): s is WheelSlot => s !== null);
+  return config.gameType === "grid"
+    ? shuffleSlotsDeterministically(slots, buildGridShuffleSeed(config))
+    : slots;
 }
 
 export function remapSpinCountsByTier(oldTierIds: string[], oldCounts: number[], newSlots: WheelSlot[]): number[] {
@@ -332,25 +408,25 @@ export function computeExpectedMargin(
 ): { margin: number | null } {
   let totalCost = 0;
   let totalNetRevenue = 0;
-  let totalSlots = 0;
-  for (const tier of config.tiers) {
-    const slotCount = Math.max(0, Number(tier.slots) || 0);
-    if (slotCount <= 0) continue;
+  let totalChance = 0;
+  for (const tier of getNormalizedChanceTiers(config)) {
+    const chance = getTierChancePercent(tier);
+    if (chance <= 0) continue;
     const lot = tier.boundLotId == null ? undefined : lots.find((entry) => entry.id === tier.boundLotId);
-    totalCost += slotCount * Number(tier.costPerTier || 0);
-    totalNetRevenue += slotCount * calculateWheelNetFromGross(
+    totalCost += chance * Number(tier.costPerTier || 0);
+    totalNetRevenue += chance * calculateWheelNetFromGross(
       Number(config.spinPrice) || 0,
       getResolvedLotFeeProfileInput(lot, feeProfileInput),
       1,
       Number(lot?.sellingShippingPerOrder) || 0,
       Number(lot?.sellingTaxPercent) || 0
     );
-    totalSlots += slotCount;
+    totalChance += chance;
   }
-  if (!totalSlots || !config.spinPrice) return { margin: null };
-  const avgCost = totalCost / totalSlots;
+  if (!totalChance || !config.spinPrice) return { margin: null };
+  const avgCost = totalCost / totalChance;
   if (avgCost <= 0) return { margin: null };
-  const netPerSpin = totalNetRevenue / totalSlots;
+  const netPerSpin = totalNetRevenue / totalChance;
   const margin = ((netPerSpin - avgCost) / avgCost) * 100;
   return { margin };
 }

@@ -85,10 +85,6 @@
               <input v-model="tier.label" class="wheel-tier-label-input wheel-tier-label-input--editor" spellcheck="false" />
             </div>
             <div class="wheel-tier-metric">
-              <span class="wheel-tier-metric__label">{{ t('wheelTierSlotsField') }}</span>
-              <input v-model.number="tier.slots" type="number" class="wheel-tier-num-input" min="0" max="20" :title="t('wheelTierSlotsHint')" />
-            </div>
-            <div class="wheel-tier-metric">
               <span class="wheel-tier-metric__label">{{ t('wheelTierCountField') }}</span>
               <input
                 v-model.number="tier.packsCount"

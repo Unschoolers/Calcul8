@@ -6,9 +6,9 @@ import {
     ensureWheelCanvasSize,
     getStaticWheelRender,
     getWheelCanvasDpr,
-    playWheelTick,
     renderWheelSurface
 } from "./wheelCanvasRender.ts";
+import { playWheelTick } from "./wheelAudio.ts";
 import { getWheelController, type WheelWindowThis } from "./wheelControllerState.ts";
 import {
     createWheelSale,
@@ -178,6 +178,63 @@ export const wheelSpinMethods = {
       spinWheelInternal: (recordSession?: boolean) => Promise<void>;
     };
     await vm.spinWheelInternal(false);
+  },
+
+  async runWheelAutoPreviewAnimation(this: Record<string, unknown>): Promise<void> {
+    const vm = this as Record<string, unknown> & {
+      drawWheel: (offset: number) => void;
+      scheduleNextWheelAutospin?: (delayMs?: number) => void;
+    };
+    const slots = getWheelSpinSlots(vm as Record<string, unknown>);
+    if (vm.wheelSpinning || !slots.length) return;
+
+    const targetIndex = Math.min(slots.length - 1, Math.max(0, Math.floor(Math.random() * slots.length)));
+    const sliceAngle = (2 * Math.PI) / slots.length;
+    const currentAngle = (vm.wheelCurrentAngle || 0) as number;
+    const extraRotations = Math.floor(3 + Math.random() * 3) * 2 * Math.PI;
+    const endAngle = currentAngle - (targetIndex * sliceAngle + sliceAngle / 2) - (currentAngle % (2 * Math.PI)) + extraRotations;
+    const duration = 2200 + Math.random() * 900;
+    const startAngle = currentAngle;
+    const startTime = performance.now();
+    const centerIcon = getWheelCenterIcon(vm as Record<string, unknown>);
+    const spinFrameIntervalMs = getSpinFrameIntervalMs(vm as Record<string, unknown>);
+    let lastSpinFrameTime = startTime - spinFrameIntervalMs;
+
+    vm.wheelSpinning = true;
+
+    if (typeof requestAnimationFrame !== "function") {
+      vm.wheelCurrentAngle = endAngle;
+      vm.drawWheel(endAngle);
+      vm.wheelSpinning = false;
+      vm.scheduleNextWheelAutospin?.();
+      return;
+    }
+
+    const tick = (now: number) => {
+      const t = Math.min((now - startTime) / duration, 1);
+      const currentOffset = startAngle + (endAngle - startAngle) * easeOutQuart(t);
+      const shouldDrawFrame = t >= 1 || spinFrameIntervalMs <= 0 || now - lastSpinFrameTime >= spinFrameIntervalMs;
+      if (shouldDrawFrame) {
+        lastSpinFrameTime = now;
+        setWheelAnimatedAngle(vm as Record<string, unknown>, currentOffset, centerIcon);
+        vm.drawWheel(currentOffset);
+      }
+
+      if (t < 1) {
+        requestAnimationFrame(tick);
+        return;
+      }
+
+      vm.wheelCurrentAngle = endAngle;
+      clearWheelAnimatedAngle(vm as Record<string, unknown>);
+      vm.drawWheel(endAngle);
+      vm.wheelSpinning = false;
+      if (vm.wheelAutospinEnabled) {
+        vm.scheduleNextWheelAutospin?.();
+      }
+    };
+
+    requestAnimationFrame(tick);
   },
 
   async spinWheelInternal(this: Record<string, unknown>, recordSession = true): Promise<void> {

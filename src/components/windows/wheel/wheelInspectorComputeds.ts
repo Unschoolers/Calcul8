@@ -18,6 +18,14 @@ export const wheelInspectorComputeds = {
         subtitle: translateAppMessage(preferredLanguage, "wheelInspectorHistorySubtitle")
       };
     }
+    const config = (this as Record<string, unknown>).wheelDisplayConfig as { gameType?: string } | null;
+    if (config?.gameType === "grid") {
+      return {
+        icon: "mdi-grid",
+        title: translateAppMessage(preferredLanguage, "wheelInspectorGridConfigTitle"),
+        subtitle: translateAppMessage(preferredLanguage, "wheelInspectorGridConfigSubtitle")
+      };
+    }
     return {
       icon: "mdi-cog-outline",
       title: translateAppMessage(preferredLanguage, "wheelInspectorConfigTitle"),
