@@ -1,6 +1,6 @@
 import { reactive } from "vue";
 import type { Lot, MysteryGridReveal, PendingWheelInventoryIssue, Sale, WheelConfig, WheelFairnessEntry, WorkspaceScopeType } from "../../../../types/app.ts";
-import { unwrapWindowBridgeContext } from "../../contextBridge.ts";
+import { unwrapWindowBridgeContext } from "../../shared/contextBridge.ts";
 import type { WheelSlot } from "../services/wheelHelpers.ts";
 
 /**

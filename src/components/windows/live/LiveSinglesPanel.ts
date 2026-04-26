@@ -9,7 +9,7 @@ import { STORAGE_KEYS } from "../../../app-core/storageKeys.ts";
 import { DEFAULT_VALUES } from "../../../constants.ts";
 import { calculateBoxPriceCostCad, getSinglesEntryUnitMarketValueInSellingCurrency } from "../../../domain/calculations.ts";
 import type { CurrencyCode, SinglesPurchaseEntry, SinglesSaleLine } from "../../../types/app.ts";
-import { createWindowContextBridge } from "../contextBridge.ts";
+import { createWindowContextBridge } from "../shared/contextBridge.ts";
 import "./LiveSinglesPanel.css";
 
 type LiveSinglesAutocompleteItem = {

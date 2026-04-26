@@ -1,17 +1,17 @@
 import { inject, type PropType } from "vue";
-import { compareLocalizedText } from "../../app-core/i18n/index.ts";
-import { resolveDefaultSinglesMarketValueCurrency } from "../../app-core/shared/singles-market-value-currency.ts";
-import { getSinglesEntryUnitMarketValueInSellingCurrency } from "../../domain/calculations.ts";
-import type { CurrencyCode, SinglesCatalogSource, SinglesPurchaseEntry } from "../../types/app.ts";
-import { createWindowContextBridge } from "./contextBridge.ts";
-import { normalizeSinglesSearchTokens } from "./singles/singlesCatalogSearch.ts";
+import { compareLocalizedText } from "../../../app-core/i18n/index.ts";
+import { resolveDefaultSinglesMarketValueCurrency } from "../../../app-core/shared/singles-market-value-currency.ts";
+import { getSinglesEntryUnitMarketValueInSellingCurrency } from "../../../domain/calculations.ts";
+import type { CurrencyCode, SinglesCatalogSource, SinglesPurchaseEntry } from "../../../types/app.ts";
+import { createWindowContextBridge } from "../shared/contextBridge.ts";
+import { normalizeSinglesSearchTokens } from "./singlesCatalogSearch.ts";
 import {
     createSinglesCatalogSearchState,
     singlesCatalogSearchComputed,
     singlesCatalogSearchMethods
-} from "./singles/useSinglesCatalogSearch.ts";
-import { singlesImportComputed, singlesImportMethods } from "./singles/useSinglesImport.ts";
-import { singlesRowEditorMethods } from "./singles/useSinglesRowEditor.ts";
+} from "./useSinglesCatalogSearch.ts";
+import { singlesImportComputed, singlesImportMethods } from "./useSinglesImport.ts";
+import { singlesRowEditorMethods } from "./useSinglesRowEditor.ts";
 
 const SINGLES_INFO_NOTICE_DISMISSED_KEY = "whatfees_singles_info_notice_dismissed_v1";
 type SinglesDesktopSortKey = "item" | "cardNumber" | "cost" | "quantity" | "marketValue";

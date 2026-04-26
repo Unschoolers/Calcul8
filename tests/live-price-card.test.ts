@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test, vi } from "vitest";
-import { LivePriceCard } from "../src/components/LivePriceCard.ts";
+import { LivePriceCard } from "../src/components/live-price/LivePriceCard.ts";
 
 type CardCtx = {
   modelValue: number;

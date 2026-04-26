@@ -1,7 +1,7 @@
 import { inject, type PropType } from "vue";
 import { getWheelChanceTotal, setWheelTierChancePercent } from "../../../../app-core/shared/wheel-odds.ts";
 import type { WheelConfig, WheelTier } from "../../../../types/app.ts";
-import { createNestedWindowContextBridge } from "../../contextBridge.ts";
+import { createNestedWindowContextBridge } from "../../shared/contextBridge.ts";
 
 export const WheelOddsEditor = {
   name: "WheelOddsEditor",

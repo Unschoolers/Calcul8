@@ -1,6 +1,6 @@
 import { inject, type PropType } from "vue";
-import { createWindowContextBridge } from "./contextBridge.ts";
-import { filterLotOptionItems } from "../../app-core/shared/lot-option-items.ts";
+import { createWindowContextBridge } from "../shared/contextBridge.ts";
+import { filterLotOptionItems } from "../../../app-core/shared/lot-option-items.ts";
 import {
   buildPortfolioSalesByUserLegendItems,
   getNextPortfolioChartView,

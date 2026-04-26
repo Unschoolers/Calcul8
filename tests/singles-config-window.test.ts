@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test, vi } from "vitest";
-import { singlesConfigWindowDefinition } from "../src/components/windows/SinglesConfigWindow.definition.ts";
+import { singlesConfigWindowDefinition } from "../src/components/windows/singles/SinglesConfigWindow.definition.ts";
 import type { SinglesPurchaseEntry } from "../src/types/app.ts";
 
 type AnyContext = Record<string, unknown> & {

@@ -12,7 +12,7 @@ vi.mock("vue", () => ({
 import {
   createWindowContextBridge,
   resolveWindowContext
-} from "../src/components/windows/contextBridge.ts";
+} from "../src/components/windows/shared/contextBridge.ts";
 
 type AppCtxLike = Record<string, unknown>;
 

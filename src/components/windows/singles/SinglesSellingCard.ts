@@ -1,5 +1,5 @@
 import { inject, type PropType } from "vue";
-import { createWindowContextBridge } from "../contextBridge.ts";
+import { createWindowContextBridge } from "../shared/contextBridge.ts";
 
 export const SinglesSellingCard = {
   name: "SinglesSellingCard",

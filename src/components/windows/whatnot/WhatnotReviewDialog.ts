@@ -1,5 +1,5 @@
 import { inject, type PropType } from "vue";
-import { createWindowContextBridge } from "../contextBridge.ts";
+import { createWindowContextBridge } from "../shared/contextBridge.ts";
 import { translateAppMessage } from "../../../app-core/i18n/index.ts";
 import type {
   Sale,

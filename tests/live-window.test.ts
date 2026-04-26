@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test, vi } from "vitest";
-import { liveWindowDefinition } from "../src/components/windows/LiveWindow.definition.ts";
+import { liveWindowDefinition } from "../src/components/windows/live/LiveWindow.definition.ts";
 
 test("liveWindowDefinition getLiveSinglesPanelVm returns panel instance when ref exists", () => {
   const panel = { foo: "bar" };

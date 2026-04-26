@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { portfolioWindowDefinition } from "../src/components/windows/PortfolioWindow.definition.ts";
+import { portfolioWindowDefinition } from "../src/components/windows/portfolio/PortfolioWindow.definition.ts";
 
 test("PortfolioWindow formatting helpers use fallback and formatter", () => {
   const withFormatter = {

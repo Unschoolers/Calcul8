@@ -1,5 +1,5 @@
 import { defineComponent, inject, type PropType } from "vue";
-import { createWindowContextBridge } from "../windows/contextBridge.ts";
+import { createWindowContextBridge } from "../windows/shared/contextBridge.ts";
 
 export const AutoCalculateModal = defineComponent({
   name: "AutoCalculateModal",

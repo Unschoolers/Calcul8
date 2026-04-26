@@ -4,7 +4,7 @@ import {
     getScopedWheelConfigDraftStorageKey,
     getScopedWheelConfigSessionStorageKey
 } from "../src/app-core/storageKeys.ts";
-import { createNestedWindowContextBridge } from "../src/components/windows/contextBridge.ts";
+import { createNestedWindowContextBridge } from "../src/components/windows/shared/contextBridge.ts";
 import { getWheelController, getWheelWindowLocalKeys } from "../src/components/windows/wheel/wheelControllerState.ts";
 import {
     buildSlotsFromConfig,

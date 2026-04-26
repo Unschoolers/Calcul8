@@ -1,5 +1,5 @@
 import { inject, type PropType } from "vue";
-import { createNestedWindowContextBridge } from "../../contextBridge.ts";
+import { createNestedWindowContextBridge } from "../../shared/contextBridge.ts";
 import { translateAppMessage } from "../../../../app-core/i18n/index.ts";
 import WheelHistoryPanel from "./WheelHistoryPanel.vue";
 import WheelOddsEditor from "./WheelOddsEditor.vue";

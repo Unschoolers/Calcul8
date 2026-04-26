@@ -1,6 +1,6 @@
 import { inject, nextTick, type PropType } from "vue";
 import type { WheelConfig } from "../../../../types/app.ts";
-import { createWindowContextBridge } from "../../contextBridge.ts";
+import { createWindowContextBridge } from "../../shared/contextBridge.ts";
 import { wheelComputeds } from "./wheelComputeds.ts";
 import { wheelConfigMethods } from "../commands/wheelConfigMethods.ts";
 import {
