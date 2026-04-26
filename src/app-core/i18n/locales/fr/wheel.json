@@ -68,6 +68,7 @@
   "wheelRecordAllAction": "Tout enregistrer",
   "wheelRecordSaleAction": "Enregistrer cette vente",
   "wheelRebuildAction": "Reconstruire le jeu",
+  "wheelResetSessionAction": "Reinitialiser la session",
   "wheelRevenueLabel": "Revenu",
   "wheelSessionAboveTarget": "+{{diff}}% au-dessus de la cible de {{target}}%",
   "wheelSessionMarginLabel": "Marge de session",

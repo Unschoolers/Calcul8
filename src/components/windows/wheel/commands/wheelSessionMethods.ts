@@ -97,6 +97,7 @@ export const wheelSessionMethods = {
     const previewSlots = ((controller.previewSlots || controller.activeSlots) as WheelSlot[]);
     applyWheelPreviewReset(this, controller, previewSlots);
     this.saveWheelSession?.();
+    void (this.publishWheelSpectatorSessionSnapshot?.() ?? Promise.resolve());
   },
 
   getChaseReplacementItems(this: WheelWindowThis): Array<{ title: string; value: number; image?: string; cardNumber?: string; stockLabel?: string }> {
@@ -299,10 +300,6 @@ export const wheelSessionMethods = {
   },
 
   resetWheelSession(this: WheelWindowThis): void {
-    void (this.endWheelSpectatorMode?.({
-      notifyOnSuccess: false,
-      closeDialog: false
-    }) ?? Promise.resolve());
     const resetController = getWheelController(this);
     const slots = resetController.activeSlots as WheelSlot[];
     applyWheelLiveReset(this, resetController, slots);
@@ -310,6 +307,13 @@ export const wheelSessionMethods = {
     this.wheelSessionUpdatedAt = Date.now();
     this.saveWheelSession();
     void broadcastWheelSession(this);
+    void (this.publishWheelSpectatorSessionSnapshot?.() ?? Promise.resolve());
+  },
+
+  requestWheelReset(this: WheelWindowThis): void {
+    this.stopWheelAutospin?.();
+    this.wheelConfirmAction = "reset";
+    this.wheelConfirmDialog = true;
   },
 
   confirmWheelAction(this: WheelWindowThis): void {

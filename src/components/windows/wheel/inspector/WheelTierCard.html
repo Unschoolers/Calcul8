@@ -20,7 +20,7 @@
       class="wheel-tier-card__edit-btn"
       :title="t('wheelTierEditAction')"
       :aria-label="t('wheelTierEditAction')"
-      @click="editorOpen = true"
+      @click="openTierEditor()"
     >
       <v-icon size="18">mdi-pencil-outline</v-icon>
     </v-btn>
@@ -47,12 +47,13 @@
     </div>
   </div>
   <v-dialog
-    v-model="editorOpen"
+    :model-value="editorOpen"
     max-width="560"
     :fullscreen="$vuetify?.display?.smAndDown"
     scrollable
     content-class="wheel-tier-editor-dialog"
     transition="dialog-bottom-transition"
+    @update:model-value="onTierEditorModelValue"
   >
     <v-card class="wheel-tier-editor">
       <v-card-title class="wheel-tier-editor__title">
@@ -60,9 +61,9 @@
         <div class="wheel-tier-editor__title-main">
           <div class="wheel-tier-editor__title-bar">
             <div class="wheel-tier-name-cell">
-              <div class="wheel-tier-dot" :style="{ background: tier.color }"></div>
+              <div class="wheel-tier-dot" :style="{ background: editorTier.color }"></div>
               <div class="wheel-tier-editor__title-copy">
-                <div class="wheel-tier-editor__heading">{{ tier.label }}</div>
+                <div class="wheel-tier-editor__heading">{{ editorTier.label }}</div>
               </div>
             </div>
           </div>
@@ -70,7 +71,7 @@
             {{ t('wheelTierEditorSubtitle') }}
           </div>
         </div>
-        <v-btn icon="mdi-close" variant="text" size="small" @click="finishTierEditor()"></v-btn>
+        <v-btn icon="mdi-close" variant="text" size="small" @click="cancelTierEditor()"></v-btn>
       </v-card-title>
       <v-card-text class="wheel-tier-editor__body">
         <section class="wheel-tier-editor__section">
@@ -82,24 +83,24 @@
           <div class="wheel-tier-editor__grid">
             <div class="wheel-tier-metric">
               <span class="wheel-tier-metric__label">{{ t('wheelTierLabelField') }}</span>
-              <input v-model="tier.label" class="wheel-tier-label-input wheel-tier-label-input--editor" spellcheck="false" />
+              <input v-model="editorTier.label" class="wheel-tier-label-input wheel-tier-label-input--editor" spellcheck="false" />
             </div>
             <div class="wheel-tier-metric">
               <span class="wheel-tier-metric__label">{{ t('wheelTierCountField') }}</span>
               <input
-                v-model.number="tier.packsCount"
+                v-model.number="editorTier.packsCount"
                 type="number"
                 class="wheel-tier-num-input"
-                :min="isBoundLotSingles(tier) ? 1 : 0"
-                :max="isBoundLotSingles(tier) ? 1 : null"
-                :disabled="isBoundLotSingles(tier)"
-                :title="isBoundLotSingles(tier) ? t('wheelTierCountSinglesHint') : t('wheelTierCountHint')"
-                @change="onTierPacksChange(tier)"
+                :min="isBoundLotSingles(editorTier) ? 1 : 0"
+                :max="isBoundLotSingles(editorTier) ? 1 : null"
+                :disabled="isBoundLotSingles(editorTier)"
+                :title="isBoundLotSingles(editorTier) ? t('wheelTierCountSinglesHint') : t('wheelTierCountHint')"
+                @change="onTierPacksChange(editorTier)"
               />
             </div>
             <div class="wheel-tier-metric">
               <span class="wheel-tier-metric__label">{{ t('wheelTierCostField') }}</span>
-              <input v-model.number="tier.costPerTier" type="number" class="wheel-tier-cost-input" min="0" step="0.25" :title="t('wheelTierCostHint')" />
+              <input v-model.number="editorTier.costPerTier" type="number" class="wheel-tier-cost-input" min="0" step="0.25" :title="t('wheelTierCostHint')" />
             </div>
           </div>
         </section>
@@ -114,7 +115,7 @@
             <div class="wheel-tier-source-field">
               <div class="wheel-tier-source-label">{{ t('wheelTierSourceLotLabel') }}</div>
               <v-select
-                :model-value="tier.boundLotId"
+                :model-value="editorTier.boundLotId"
                 :items="tierSourceItems"
                 item-title="title"
                 item-value="value"
@@ -122,7 +123,7 @@
                 variant="outlined"
                 density="compact"
                 hide-details="auto"
-                @update:model-value="onTierLotChange(tier, $event)"
+                @update:model-value="onTierLotChange(editorTier, $event)"
               >
                 <template #item="{ props, item }">
                   <div>
@@ -140,18 +141,18 @@
               </v-select>
             </div>
 
-            <div v-if="isBoundLotSingles(tier)" class="wheel-tier-source-field">
+            <div v-if="isBoundLotSingles(editorTier)" class="wheel-tier-source-field">
               <div class="wheel-tier-source-label">{{ t('wheelTierPrizeItemLabel') }}</div>
               <v-select
-                :model-value="tier.boundSinglesId"
-                :items="getSinglesItemsForTier(tier)"
+                :model-value="editorTier.boundSinglesId"
+                :items="getSinglesItemsForTier(editorTier)"
                 item-title="title"
                 item-value="value"
                 :placeholder="t('wheelTierPickItemPlaceholder')"
                 variant="outlined"
                 density="compact"
                 hide-details="auto"
-                @update:model-value="onTierSinglesChange(tier, $event)"
+                @update:model-value="onTierSinglesChange(editorTier, $event)"
               >
                 <template #item="{ props, item }">
                   <v-list-item v-bind="props" :title="null" :subtitle="null">
@@ -175,14 +176,14 @@
           </div>
 
           <div
-            v-if="tierInventoryMeta"
+            v-if="editorTierInventoryMeta"
             class="wheel-tier-inventory wheel-tier-inventory--editor"
-            :class="{ 'wheel-tier-inventory--warning': tierInventoryMeta.warning }"
+            :class="{ 'wheel-tier-inventory--warning': editorTierInventoryMeta.warning }"
           >
             <v-icon size="16" class="wheel-tier-editor__inventory-icon">
-              {{ tierInventoryMeta.warning ? 'mdi-alert-outline' : 'mdi-package-variant-closed' }}
+              {{ editorTierInventoryMeta.warning ? 'mdi-alert-outline' : 'mdi-package-variant-closed' }}
             </v-icon>
-            <span>{{ tierInventoryMeta.text }}</span>
+            <span>{{ editorTierInventoryMeta.text }}</span>
           </div>
         </section>
 
@@ -199,18 +200,18 @@
                 <div class="wheel-tier-editor__switch-meta">{{ t('wheelTierChaseHelp') }}</div>
               </div>
               <v-switch
-                :model-value="tier.isChase === true"
+                :model-value="editorTier.isChase === true"
                 color="amber"
                 inset
                 hide-details
-                :disabled="!canTierBeChase(tier) && !tier.isChase"
-                @update:model-value="toggleTierChase(tier)"
+                :disabled="!canTierBeChase(editorTier) && !editorTier.isChase"
+                @update:model-value="toggleTierChase(editorTier)"
               ></v-switch>
             </div>
 
             <div class="wheel-tier-editor__emoji-row">
-              <div class="wheel-tier-editor__emoji-preview" :class="{ 'wheel-tier-editor__emoji-preview--empty': !tier.celebrationEmoji }" aria-hidden="true">
-                {{ tier.celebrationEmoji || '✨' }}
+              <div class="wheel-tier-editor__emoji-preview" :class="{ 'wheel-tier-editor__emoji-preview--empty': !editorTier.celebrationEmoji }" aria-hidden="true">
+                {{ editorTier.celebrationEmoji || '✨' }}
               </div>
               <div class="wheel-tier-editor__emoji-picker">
                 <div class="wheel-tier-editor__emoji-picker-head">
@@ -220,7 +221,7 @@
                     size="small"
                     color="secondary"
                     class="wheel-tier-editor__emoji-clear"
-                    :disabled="!tier.celebrationEmoji"
+                    :disabled="!editorTier.celebrationEmoji"
                     @click="clearTierCelebrationEmoji()"
                   >
                     {{ t('wheelTierCelebrationEmojiClearAction') }}
@@ -233,8 +234,8 @@
                     :key="emoji"
                     type="button"
                     class="wheel-tier-editor__emoji-option"
-                    :class="{ 'is-selected': tier.celebrationEmoji === emoji }"
-                    :aria-pressed="tier.celebrationEmoji === emoji ? 'true' : 'false'"
+                    :class="{ 'is-selected': editorTier.celebrationEmoji === emoji }"
+                    :aria-pressed="editorTier.celebrationEmoji === emoji ? 'true' : 'false'"
                     @click="setTierCelebrationEmoji(emoji)"
                   >
                     <span class="wheel-tier-editor__emoji-option-symbol">{{ emoji }}</span>
@@ -242,8 +243,8 @@
                 </div>
 
                 <v-text-field
-                  :model-value="tier.celebrationEmoji || ''"
-                  @update:model-value="tier.celebrationEmoji = $event || ''"
+                  :model-value="editorTier.celebrationEmoji || ''"
+                  @update:model-value="editorTier.celebrationEmoji = $event || ''"
                   :label="t('wheelTierCelebrationEmojiLabel')"
                   :hint="t('wheelTierCelebrationEmojiHint')"
                   persistent-hint

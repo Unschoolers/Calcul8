@@ -81,6 +81,24 @@ test("loadWheelConfig clears invalid chase flags for non-singles tiers", () => {
   assert.equal((vm.editingWheelConfig as WheelConfig).tiers[0]!.isChase, false);
 });
 
+test("requestWheelReset opens the shared reset confirmation and stops preview autospin", () => {
+  const vm = {
+    wheelAutospinEnabled: true,
+    wheelConfirmAction: "",
+    wheelConfirmDialog: false,
+    stopWheelAutospin: vi.fn(function (this: Record<string, unknown>) {
+      this.wheelAutospinEnabled = false;
+    })
+  };
+
+  WheelWindow.methods!.requestWheelReset.call(vm as never);
+
+  assert.equal(vm.stopWheelAutospin.mock.calls.length, 1);
+  assert.equal(vm.wheelAutospinEnabled, false);
+  assert.equal(vm.wheelConfirmAction, "reset");
+  assert.equal(vm.wheelConfirmDialog, true);
+});
+
 test("getWheelController does not attach reactive aliases onto bridge-style proxy contexts", () => {
   const source = {
     wheelController: {
@@ -1037,6 +1055,9 @@ test("resetWheelSession clears cost adjustment", () => {
     wheelSpinSeed: "def",
     wheelShowSeed: true,
     wheelChaseDialog: true,
+    wheelGridHighlightCellIndex: 7,
+    wheelGridRevealAnimating: true,
+    wheelGridResetAnimating: true,
     wheelChaseReplacementSinglesId: 123,
     wheelChasePendingTierId: "tc",
     wheelFairnessHistoryOpen: true,
@@ -1045,7 +1066,9 @@ test("resetWheelSession clears cost adjustment", () => {
     wheelSessionNetRevenue: 44.2,
     wheelSessionCostAdjustment: 80,
     wheelChaseTallyHistory: [{ tierId: "tc", label: "Old", color: "#f00", count: 3 }],
-    saveWheelSession: vi.fn()
+    saveWheelSession: vi.fn(),
+    endWheelSpectatorMode: vi.fn(),
+    publishWheelSpectatorSessionSnapshot: vi.fn()
   };
 
   WheelWindow.methods!.resetWheelSession.call(vm as never);
@@ -1054,10 +1077,15 @@ test("resetWheelSession clears cost adjustment", () => {
   assert.equal(vm.wheelSessionNetRevenue, 0);
   assert.equal(vm.wheelSessionCostAdjustment, 0);
   assert.equal(vm.wheelChaseDialog, false);
+  assert.equal(vm.wheelGridHighlightCellIndex, -1);
+  assert.equal(vm.wheelGridRevealAnimating, false);
+  assert.equal(vm.wheelGridResetAnimating, false);
   assert.equal(vm.wheelChasePendingTierId, "");
   assert.deepEqual(vm.wheelFairnessHistory, []);
   assert.equal(vm.wheelFairnessHistoryOpen, false);
   assert.deepEqual(vm.wheelChaseTallyHistory, []);
+  assert.equal((vm.endWheelSpectatorMode as ReturnType<typeof vi.fn>).mock.calls.length, 0);
+  assert.equal((vm.publishWheelSpectatorSessionSnapshot as ReturnType<typeof vi.fn>).mock.calls.length, 1);
 });
 
 test("createWheelSale builds a sale with lot shipping", () => {

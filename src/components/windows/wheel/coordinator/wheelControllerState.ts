@@ -183,6 +183,7 @@ export type WheelWindowThis = {
   confirmAllBatchSales(): void;
   cancelEndWheelSession(): void;
   requestWheelSessionEnd(): void;
+  requestWheelReset(): void;
 
   // ===== Optional AppContext bridge methods =====
   addWheelSaleToLot(lotId: number, sale: Sale): void;

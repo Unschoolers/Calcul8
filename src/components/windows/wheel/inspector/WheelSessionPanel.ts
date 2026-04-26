@@ -45,6 +45,11 @@ export const WheelSessionPanel = {
     },
     openWheelResetDialog(this: Record<string, unknown>): void {
       const source = getWheelSessionPanelSource(this as Record<string, unknown>);
+      const handler = source.requestWheelReset;
+      if (typeof handler === "function") {
+        (handler as () => void).call(source);
+        return;
+      }
       source.wheelConfirmAction = "reset";
       source.wheelConfirmDialog = true;
     },

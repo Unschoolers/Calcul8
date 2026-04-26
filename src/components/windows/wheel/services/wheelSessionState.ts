@@ -21,6 +21,9 @@ export interface WheelSessionContext {
   wheelSpectatorSessionStatus: string;
   wheelSpectatorSessionUrl: string;
   wheelSpectatorSessionQrUrl: string;
+  wheelGridHighlightCellIndex: number;
+  wheelGridRevealAnimating: boolean;
+  wheelGridResetAnimating: boolean;
   wheelChaseDialog: boolean;
   wheelChasePreviewMode: boolean;
   wheelChaseReplacementSinglesId: number | null;
@@ -137,6 +140,9 @@ export function applyWheelPreviewReset(
   controller.fairnessHistoryOpen = false;
   clearWheelProofState(controller);
   clearWheelChaseDialogState(context);
+  context.wheelGridHighlightCellIndex = -1;
+  context.wheelGridRevealAnimating = false;
+  context.wheelGridResetAnimating = false;
   context.wheelLastResult = "";
 }
 

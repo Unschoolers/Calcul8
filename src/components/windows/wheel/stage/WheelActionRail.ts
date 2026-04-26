@@ -19,6 +19,14 @@ export const WheelActionRail = defineComponent({
       type: String,
       required: true
     },
+    resetDisabled: {
+      type: Boolean,
+      default: false
+    },
+    resetLabel: {
+      type: String,
+      default: ""
+    },
     showSecondary: {
       type: Boolean,
       default: false
@@ -48,5 +56,5 @@ export const WheelActionRail = defineComponent({
       default: false
     }
   },
-  emits: ["open-inspector", "primary-spin", "secondary-action", "end-wheel"]
+  emits: ["open-inspector", "primary-spin", "secondary-action", "reset-session", "end-wheel"]
 });

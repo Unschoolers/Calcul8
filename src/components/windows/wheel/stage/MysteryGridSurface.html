@@ -10,7 +10,7 @@
     class="mystery-grid-cell"
     :class="{
       'mystery-grid-cell--revealed': cell.revealed,
-      'mystery-grid-cell--highlighted': wheelGridHighlightCellIndex === cell.index && !cell.revealed,
+      'mystery-grid-cell--highlighted': wheelGridRevealAnimating && wheelGridHighlightCellIndex === cell.index && !cell.revealed,
       'mystery-grid-cell--selector-active': wheelGridRevealAnimating && wheelGridHighlightCellIndex === cell.index && !cell.revealed
     }"
     :style="cell.revealed ? { '--mystery-grid-cell-color': cell.color } : undefined"

@@ -10,11 +10,23 @@
         :aria-label="secondaryLabel"
         @click="$emit('secondary-action')"
     >
-        <v-icon start>{{ secondaryIcon }}</v-icon>
-        {{ secondaryCompactLabel || secondaryLabel }}
+        <v-icon>{{ secondaryIcon }}</v-icon>
     </v-btn>
     <v-btn
-        color="primary"
+        icon
+        size="large"
+        color="error"
+        variant="tonal"
+        class="wheel-mobile-action-rail__reset"
+        :disabled="resetDisabled"
+        :title="resetLabel"
+        :aria-label="resetLabel"
+        @click="$emit('reset-session')"
+    >
+        <v-icon>mdi-restore</v-icon>
+    </v-btn>
+    <v-btn
+        color="warning"
         variant="elevated"
         class="wheel-mobile-action-rail__primary"
         :disabled="primaryDisabled"

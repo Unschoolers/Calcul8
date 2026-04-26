@@ -25,10 +25,14 @@ export const WheelTierCard = {
   },
   data() {
     return {
-      editorOpen: false
+      editorOpen: false,
+      editorDraft: null as WheelTier | null
     };
   },
   computed: {
+    editorTier(this: { editorDraft: WheelTier | null; tier: WheelTier }): WheelTier {
+      return this.editorDraft ?? this.tier;
+    },
     tierSourceSummary(this: Record<string, unknown> & { tier: WheelTier }): string {
       const tier = this.tier;
       if (tier.boundLotId == null) return "Source lot not selected";
@@ -85,6 +89,11 @@ export const WheelTierCard = {
         getTierInventoryMeta: (tier: WheelTier) => { text: string; warning: boolean } | null;
       }).getTierInventoryMeta(this.tier);
     },
+    editorTierInventoryMeta(this: Record<string, unknown> & { editorTier: WheelTier }): { text: string; warning: boolean } | null {
+      return ((this as Record<string, unknown>) as Record<string, unknown> & {
+        getTierInventoryMeta: (tier: WheelTier) => { text: string; warning: boolean } | null;
+      }).getTierInventoryMeta(this.editorTier);
+    },
     tierInventoryWarning(this: Record<string, unknown> & { tierInventoryMeta: { text: string; warning: boolean } | null }): string | null {
       return this.tierInventoryMeta?.warning ? this.tierInventoryMeta.text : null;
     },
@@ -93,14 +102,40 @@ export const WheelTierCard = {
     }
   },
   methods: {
-    setTierCelebrationEmoji(this: { tier: WheelTier }, emoji: string): void {
-      this.tier.celebrationEmoji = this.tier.celebrationEmoji === emoji ? undefined : emoji;
+    openTierEditor(this: { editorOpen: boolean; editorDraft: WheelTier | null; tier: WheelTier }): void {
+      this.editorDraft = { ...this.tier };
+      this.editorOpen = true;
     },
-    clearTierCelebrationEmoji(this: { tier: WheelTier }): void {
-      this.tier.celebrationEmoji = undefined;
-    },
-    finishTierEditor(this: Record<string, unknown> & { editorOpen: boolean }): void {
+    cancelTierEditor(this: { editorOpen: boolean; editorDraft: WheelTier | null }): void {
       this.editorOpen = false;
+      this.editorDraft = null;
+    },
+    onTierEditorModelValue(this: {
+      openTierEditor: () => void;
+      cancelTierEditor: () => void;
+    }, nextOpen: boolean): void {
+      if (nextOpen) {
+        this.openTierEditor();
+      } else {
+        this.cancelTierEditor();
+      }
+    },
+    setTierCelebrationEmoji(this: { editorTier: WheelTier }, emoji: string): void {
+      this.editorTier.celebrationEmoji = this.editorTier.celebrationEmoji === emoji ? undefined : emoji;
+    },
+    clearTierCelebrationEmoji(this: { editorTier: WheelTier }): void {
+      this.editorTier.celebrationEmoji = undefined;
+    },
+    finishTierEditor(this: Record<string, unknown> & {
+      editorOpen: boolean;
+      editorDraft: WheelTier | null;
+      tier: WheelTier;
+    }): void {
+      if (this.editorDraft) {
+        Object.assign(this.tier, this.editorDraft);
+      }
+      this.editorOpen = false;
+      this.editorDraft = null;
       if ((this.canApplyWheelConfig as boolean) !== true) return;
       const applyWheelConfig = this.applyWheelConfig as (() => void) | undefined;
       if (typeof applyWheelConfig === "function") {
@@ -109,14 +144,20 @@ export const WheelTierCard = {
     },
     deleteTierAndClose(this: Record<string, unknown> & {
       editorOpen: boolean;
+      editorDraft: WheelTier | null;
       tierIndex: number;
-      finishTierEditor: () => void;
     }): void {
       const removeTier = this.removeTier as ((index: number) => void) | undefined;
       if (typeof removeTier === "function") {
         removeTier(this.tierIndex);
       }
-      this.finishTierEditor();
+      this.editorOpen = false;
+      this.editorDraft = null;
+      if ((this.canApplyWheelConfig as boolean) !== true) return;
+      const applyWheelConfig = this.applyWheelConfig as (() => void) | undefined;
+      if (typeof applyWheelConfig === "function") {
+        applyWheelConfig();
+      }
     }
   },
   setup(props: { ctx: Record<string, unknown> }) {

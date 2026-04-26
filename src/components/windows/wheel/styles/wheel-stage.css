@@ -658,19 +658,6 @@
   gap: 8px;
   width: min(100%, 420px);
   margin-top: 12px;
-  padding: 10px;
-  border-radius: 22px;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  background:
-    linear-gradient(180deg, rgba(var(--v-theme-surface), 0.96), rgba(var(--v-theme-surface), 0.9)),
-    rgba(var(--v-theme-surface), 0.94);
-  backdrop-filter: blur(18px);
-  box-shadow: 0 18px 34px rgba(0, 0, 0, 0.2);
-}
-
-.v-theme--light .wheel-spin-actions {
-  border-color: rgba(var(--v-theme-on-surface), 0.1);
-  box-shadow: 0 16px 28px rgba(70, 54, 32, 0.16);
 }
 
 .wheel-spin-btn {
@@ -679,16 +666,22 @@
   margin-top: 0;
   min-height: 48px;
   border-radius: 14px !important;
-  box-shadow: 0 18px 34px rgba(var(--v-theme-primary), 0.28);
 }
 
 .wheel-autospin-btn {
-  flex: 1 1 0;
-  min-width: 0;
+  flex: 0 0 52px;
+  min-width: 52px !important;
   min-height: 48px;
   border-radius: 14px !important;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08) !important;
   box-shadow: 0 10px 18px rgba(0, 0, 0, 0.14) !important;
+}
+
+.wheel-reset-session-btn {
+  flex: 0 0 52px;
+  min-width: 52px !important;
+  min-height: 48px;
+  border-radius: 14px !important;
+  border: 1px solid rgba(var(--v-theme-error), 0.28) !important;
 }
 
 .wheel-autospin-btn.v-btn--variant-tonal {
@@ -702,6 +695,11 @@
 }
 
 .v-theme--light .wheel-autospin-btn {
+  border-color: rgba(var(--v-theme-on-surface), 0.1) !important;
+  box-shadow: 0 8px 16px rgba(70, 54, 32, 0.12) !important;
+}
+
+.v-theme--light .wheel-reset-session-btn {
   border-color: rgba(var(--v-theme-on-surface), 0.1) !important;
   box-shadow: 0 8px 16px rgba(70, 54, 32, 0.12) !important;
 }

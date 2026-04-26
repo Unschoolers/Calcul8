@@ -121,6 +121,23 @@ export const wheelStageComputeds = {
     );
   },
 
+  wheelResetButtonLabel(this: Record<string, unknown>): string {
+    return translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelResetSessionAction");
+  },
+
+  wheelResetShortcutDisabled(this: Record<string, unknown>): boolean {
+    const isConfigMode = (this as Record<string, unknown>).wheelMode === "config";
+    return Boolean(
+      !(this as Record<string, unknown>).wheelDisplayConfig
+      || (this as Record<string, unknown>).wheelSpinning
+      || (this as Record<string, unknown>).wheelGridRevealAnimating
+      || (this as Record<string, unknown>).wheelGridResetAnimating
+      || (this as Record<string, unknown>).wheelEndingSession
+      || (this as Record<string, unknown>).wheelChaseDialog
+      || (!isConfigMode && (this as Record<string, unknown>).isWorkspaceScopeActive && !(this as Record<string, unknown>).isCurrentWorkspaceOwner)
+    );
+  },
+
   wheelPrimarySpinDisabled(this: Record<string, unknown>): boolean {
     const isConfigMode = (this as Record<string, unknown>).wheelMode === "config";
     return Boolean(

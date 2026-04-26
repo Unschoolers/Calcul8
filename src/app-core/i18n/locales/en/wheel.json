@@ -68,6 +68,7 @@
   "wheelRecordAllAction": "Record all",
   "wheelRecordSaleAction": "Record this sale",
   "wheelRebuildAction": "Rebuild game",
+  "wheelResetSessionAction": "Reset session",
   "wheelRevenueLabel": "Revenue",
   "wheelSessionAboveTarget": "+{{diff}}% above {{target}}% target",
   "wheelSessionMarginLabel": "Session margin",

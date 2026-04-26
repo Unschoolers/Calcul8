@@ -90,6 +90,19 @@
 
             <div class="wheel-spin-actions">
                 <v-btn
+                    icon
+                    size="large"
+                    color="error"
+                    variant="tonal"
+                    class="wheel-reset-session-btn"
+                    :disabled="wheelResetShortcutDisabled"
+                    :title="wheelResetButtonLabel"
+                    :aria-label="wheelResetButtonLabel"
+                    @click="requestWheelReset()"
+                >
+                    <v-icon>mdi-restore</v-icon>
+                </v-btn>
+                <v-btn
                     v-if="wheelMode === 'config'"
                     size="large"
                     :color="wheelAutospinEnabled ? 'secondary' : undefined"
@@ -100,10 +113,9 @@
                     :aria-label="wheelAutospinButtonLabel"
                     @click="toggleWheelAutospin()"
                 >
-                    <v-icon start>{{ wheelAutospinButtonIcon }}</v-icon>
-                    {{ wheelAutospinCompactLabel }}
+                    <v-icon>{{ wheelAutospinButtonIcon }}</v-icon>
                 </v-btn>
-                <v-btn size="large" color="primary" variant="elevated" :disabled="wheelPrimarySpinDisabled"
+                <v-btn size="large" color="success" variant="elevated" :disabled="wheelPrimarySpinDisabled"
                     @click="runWheelPrimarySpin()" class="wheel-spin-btn">
                     <v-icon start>{{ wheelSpinButtonIcon }}</v-icon>
                     {{ wheelSpinButtonLabel }}
@@ -115,6 +127,8 @@
                 :primary-disabled="wheelPrimarySpinDisabled"
                 :primary-icon="wheelSpinButtonIcon"
                 :primary-label="wheelSpinButtonLabel"
+                :reset-disabled="wheelResetShortcutDisabled"
+                :reset-label="wheelResetButtonLabel"
                 :show-secondary="wheelMode === 'config'"
                 :secondary-active="wheelAutospinEnabled"
                 :secondary-disabled="wheelAutospinToggleDisabled"
@@ -124,6 +138,7 @@
                 :ending-session="wheelEndingSession"
                 @primary-spin="runWheelPrimarySpin"
                 @secondary-action="toggleWheelAutospin"
+                @reset-session="requestWheelReset"
             ></wheel-action-rail>
             <div class="wheel-stage-caption">
                 {{ wheelStageCaption }}
