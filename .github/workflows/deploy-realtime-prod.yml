@@ -15,7 +15,7 @@ env:
   AZURE_RESOURCE_GROUP_PROD: DefaultResourceGroup-CCAN
   AZURE_CONTAINER_REGISTRY_NAME_PROD: calcul8teregistry
   AZURE_CONTAINER_REPOSITORY_NAME_REALTIME_PROD: whatfees-realtime
-  AZURE_CONTAINER_REPOSITORY_KEEP_TAGS_PROD: 3
+  AZURE_CONTAINER_REPOSITORY_KEEP_TAGS_PROD: 1
   REALTIME_ALLOWED_ORIGIN_PROD: https://app.whatfees.ca,https://whatfees.ca
   REALTIME_MIN_REPLICAS_PROD: 1
   REALTIME_MAX_REPLICAS_PROD: 2
@@ -52,7 +52,7 @@ jobs:
 
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     needs: verify
     environment: prod-realtime
     permissions:
