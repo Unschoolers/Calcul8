@@ -122,7 +122,7 @@
                 </v-btn>
             </div>
             <wheel-action-rail
-                v-if="!wheelPresentationMode"
+                v-if="!wheelPresentationMode && wheelIsCompactLayout"
                 :mode="wheelMode"
                 :primary-disabled="wheelPrimarySpinDisabled"
                 :primary-icon="wheelSpinButtonIcon"
