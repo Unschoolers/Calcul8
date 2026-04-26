@@ -1,18 +1,5 @@
 <div class="wheel-mobile-action-rail">
     <v-btn
-        v-if="showSecondary"
-        :color="secondaryActive ? 'secondary' : undefined"
-        :variant="secondaryActive ? 'elevated' : 'tonal'"
-        size="large"
-        class="wheel-mobile-action-rail__secondary"
-        :disabled="secondaryDisabled"
-        :title="secondaryLabel"
-        :aria-label="secondaryLabel"
-        @click="$emit('secondary-action')"
-    >
-        <v-icon>{{ secondaryIcon }}</v-icon>
-    </v-btn>
-    <v-btn
         icon
         size="large"
         color="error"
@@ -24,6 +11,19 @@
         @click="$emit('reset-session')"
     >
         <v-icon>mdi-restore</v-icon>
+    </v-btn>
+    <v-btn
+        v-if="showSecondary"
+        :color="secondaryActive ? 'secondary' : undefined"
+        :variant="secondaryActive ? 'elevated' : 'tonal'"
+        size="large"
+        class="wheel-mobile-action-rail__secondary"
+        :disabled="secondaryDisabled"
+        :title="secondaryLabel"
+        :aria-label="secondaryLabel"
+        @click="$emit('secondary-action')"
+    >
+        <v-icon>{{ secondaryIcon }}</v-icon>
     </v-btn>
     <v-btn
         color="warning"
