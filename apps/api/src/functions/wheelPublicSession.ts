@@ -183,6 +183,7 @@ function sanitizeWheelPublicSessionSnapshot(value: unknown): WheelPublicSessionS
     : [];
   const gridHighlightCellIndex = Math.floor(Number(candidate.gridHighlightCellIndex));
   return {
+    snapshotVersion: 1,
     wheelName: String(candidate.wheelName ?? "").slice(0, 120).trim() || "Wheel Session",
     gameType: candidate.gameType === "grid" || gridCells.length > 0 ? "grid" : "wheel",
     sessionStatus: sanitizeWheelPublicSessionStatus(candidate.sessionStatus),

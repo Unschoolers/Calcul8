@@ -1,5 +1,5 @@
-import type { Lot, MysteryGridReveal, PendingWheelInventoryIssue, WheelConfig, WheelFairnessEntry } from "../../../types/app.ts";
-import type { WheelControllerState } from "./wheelControllerState.ts";
+import type { Lot, MysteryGridReveal, PendingWheelInventoryIssue, WheelConfig, WheelFairnessEntry } from "../../../../types/app.ts";
+import type { WheelControllerState } from "../coordinator/wheelControllerState.ts";
 import type { WheelSlot } from "./wheelHelpers.ts";
 
 /** Minimal context interface shared by wheel session helpers. */

@@ -13,6 +13,28 @@
     </div>
   </div>
   <div class="wheel-stage-actions">
+    <div class="wheel-effects-controls" role="group" :aria-label="t('wheelEffectsControlsLabel')">
+      <v-btn
+        size="x-small"
+        :icon="wheelSoundEnabled ? 'mdi-volume-high' : 'mdi-volume-off'"
+        :color="wheelSoundEnabled ? undefined : 'warning'"
+        variant="text"
+        :title="wheelSoundToggleTitle"
+        :aria-label="wheelSoundToggleTitle"
+        class="wheel-effects-toggle"
+        @click="toggleWheelSound"
+      ></v-btn>
+      <v-btn
+        size="x-small"
+        :icon="wheelReducedMotion ? 'mdi-motion-pause-outline' : 'mdi-motion-play-outline'"
+        :color="wheelReducedMotion ? 'warning' : undefined"
+        variant="text"
+        :title="wheelMotionToggleTitle"
+        :aria-label="wheelMotionToggleTitle"
+        class="wheel-effects-toggle"
+        @click="toggleWheelReducedMotion"
+      ></v-btn>
+    </div>
     <v-btn
       size="small"
       :variant="wheelSpectatorSessionStatus === 'ended' ? 'elevated' : 'tonal'"

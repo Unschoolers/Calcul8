@@ -1,4 +1,4 @@
-import { translateAppMessage } from "../../../app-core/i18n/index.ts";
+import { translateAppMessage } from "../../../../app-core/i18n/index.ts";
 
 export const wheelInspectorComputeds = {
   wheelInspectorPanelMeta(this: Record<string, unknown>): { icon: string; title: string; subtitle: string } {

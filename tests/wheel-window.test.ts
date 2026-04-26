@@ -566,7 +566,7 @@ test("wheelSpinBlockedReason warns when a live tier no longer has enough packs",
   assert.equal(invalid.length, 1);
   assert.match(invalid[0]!.reason, /only 0 remain/i);
   const reason = WheelWindow.computed!.wheelSpinBlockedReason.call({ ...vm, wheelInvalidLiveTiers: invalid } as never);
-  assert.match(reason, /repair the wheel before going live/i);
+  assert.match(reason, /repair the game before going live/i);
 });
 
 test("wheelInvalidLiveTiers ignores untracked singles tiers", () => {

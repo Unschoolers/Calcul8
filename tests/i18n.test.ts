@@ -43,6 +43,18 @@ test("translation catalogs stay aligned across locales", () => {
   );
 });
 
+test("shared game copy stays game-neutral while wheel-specific actions stay explicit", () => {
+  assert.equal(translateAppMessage("en", "wheelNameLabel"), "Game name");
+  assert.equal(translateAppMessage("en", "wheelInspectorSpinPriceLabel"), "Price per play ($)");
+  assert.equal(translateAppMessage("en", "wheelCreateWheelBody"), "Spin a visual wheel with weighted prize odds.");
+  assert.equal(translateAppMessage("en", "wheelSpinButtonLabel"), "Spin");
+
+  assert.equal(translateAppMessage("fr-CA", "wheelNameLabel"), "Nom du jeu");
+  assert.equal(translateAppMessage("fr-CA", "wheelInspectorSpinPriceLabel"), "Prix par partie ($)");
+  assert.equal(translateAppMessage("fr-CA", "wheelCreateWheelBody"), "Tournez une roue visuelle avec des probabilites de prix ponderees.");
+  assert.equal(translateAppMessage("fr-CA", "wheelSpinButtonLabel"), "Tourner");
+});
+
 test("formatLocalizedCompactDate uses the requested locale", () => {
   assert.equal(formatLocalizedCompactDate("2026-03-09", "en"), "Mar 9");
   assert.equal(formatLocalizedCompactDate("not-a-date", "en"), "not-a-date");

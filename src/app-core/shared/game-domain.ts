@@ -1,7 +1,6 @@
 import type { MysteryGridReveal, WheelConfig, WheelTier } from "../../types/app.ts";
 import {
   allocateTierCountsByChance,
-  getTierChancePercent,
   getWheelOutcomeCount,
   normalizeWheelTierChances
 } from "./wheel-odds.ts";

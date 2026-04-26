@@ -117,6 +117,7 @@ test("buildWheelSpectatorSnapshot returns a viewer-safe summary with chase heat 
 
   const snapshot = buildWheelSpectatorSnapshot(vm, "live");
 
+  assert.equal(snapshot.snapshotVersion, 1);
   assert.equal(snapshot.wheelName, "Saturday Wheel");
   assert.equal(snapshot.sessionStatus, "live");
   assert.equal(snapshot.totalSpins, 2);

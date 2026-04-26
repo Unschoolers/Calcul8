@@ -1,16 +1,17 @@
 import { resolveApiBaseUrl } from "./app-core/methods/ui/shared.ts";
 import { shouldApplySpectatorReadyState } from "./app-core/methods/ui/wheel-spectator-client-state.ts";
+import { normalizeWheelSpectatorSnapshot } from "./app-core/methods/ui/wheel-spectator-contract.ts";
 import {
   fetchWheelSpectatorRealtimeSubscribeToken,
   fetchWheelSpectatorSnapshot
 } from "./app-core/methods/ui/wheel-spectator.ts";
+import { easeOutQuart } from "./app-core/shared/game-spin.ts";
 import { resolveRealtimeSocketUrl } from "./app-core/methods/ui/workspace-realtime-state.ts";
 import {
   ensureWheelCanvasSize,
   getWheelCanvasDpr,
   renderWheelSurface
 } from "./components/windows/wheel/wheelCanvasRender.ts";
-import { easeOutQuart } from "./components/windows/wheel/wheelHelpers.ts";
 import { normalizeWheelPublicSessionId } from "./components/windows/wheel/wheelSpectator.ts";
 import "./styles/spectator.css";
 import type { WheelSpectatorHeatLevel, WheelSpectatorSnapshot } from "./types/app.ts";
@@ -63,7 +64,7 @@ function formatRelativeTime(timestamp: number): string {
 }
 
 function formatHeatCopy(heat: WheelSpectatorHeatLevel | null, label: string | null): string {
-  if (!heat || !label) return "The wheel is warming up.";
+  if (!heat || !label) return "The game is warming up.";
   if (heat === "very_high") return `${label} is overdue.`;
   if (heat === "high") return `${label} is heating up.`;
   if (heat === "medium") return `${label} is in range.`;
@@ -80,9 +81,10 @@ function formatHeatLabel(heat: WheelSpectatorHeatLevel | null): string {
   return "—";
 }
 
-function formatStatusLabel(snapshot: WheelSpectatorSnapshot): string {
+function formatStatusLabel(snapshot: WheelSpectatorSnapshot, isGridGame: boolean): string {
   if (snapshot.sessionStatus === "ended") return "Recap";
-  return snapshot.isSpinning ? "Spinning" : "Waiting";
+  if (!snapshot.isSpinning) return "Waiting";
+  return isGridGame ? "Revealing" : "Spinning";
 }
 
 function formatStatusTone(snapshot: WheelSpectatorSnapshot): "ended" | "spinning" | "waiting" {
@@ -102,7 +104,7 @@ function renderEmpty(title: string, body: string): string {
   return `
     <div class="spectator-shell">
       <section class="spectator-card spectator-empty">
-        <div class="spectator-kicker">Wheel Spectator</div>
+        <div class="spectator-kicker">Game Spectator</div>
         <h1 class="spectator-empty__title">${escapeHtml(title)}</h1>
         <p class="spectator-empty__body">${escapeHtml(body)}</p>
       </section>
@@ -112,13 +114,13 @@ function renderEmpty(title: string, body: string): string {
 
 function renderState(state: SpectatorPageState): string {
   if (state.status === "loading") {
-    return renderEmpty("Loading the wheel", "Pulling the latest spectator snapshot...");
+    return renderEmpty("Loading the game", "Pulling the latest spectator snapshot...");
   }
   if (state.status === "not_found") {
     return renderEmpty("Session not found", "This spectator link is missing or has already been cleared.");
   }
   if (state.status === "error") {
-    return renderEmpty("Could not load the wheel", "Refresh in a moment to try again.");
+    return renderEmpty("Could not load the game", "Refresh in a moment to try again.");
   }
 
   const { snapshot } = state;
@@ -132,8 +134,8 @@ function renderState(state: SpectatorPageState): string {
     ? (isGridGame
       ? `${gridProgressLabel} cells opened. ${formatHeatCopy(snapshot.featuredChaseHeat, snapshot.featuredChaseLabel)}`
       : `Watching live: ${formatHeatCopy(snapshot.featuredChaseHeat, snapshot.featuredChaseLabel)}`)
-    : `The ${isGridGame ? "grid" : "wheel"} is live. Stay here for the next verified hit.`;
-  const latestResultLabel = String(snapshot.lastResultLabel || "").trim() || "Waiting for the next spin";
+    : `The ${isGridGame ? "grid" : "wheel"} is live. Stay here for the next verified result.`;
+  const latestResultLabel = String(snapshot.lastResultLabel || "").trim() || "Waiting for the next result";
   const latestResultColor = String(snapshot.lastResultColor || "#d4af37");
   const latestResultSubcopy = snapshot.totalSpins > 0
     ? (isGridGame ? latestResultLabel : formatHeatCopy(snapshot.featuredChaseHeat, snapshot.featuredChaseLabel))
@@ -142,7 +144,7 @@ function renderState(state: SpectatorPageState): string {
     ? snapshot.recentFairnessHistory.map((entry) => `
         <article class="spectator-reel__item">
           <div class="spectator-reel__top">
-            <div class="spectator-reel__spin">Spin #${entry.spinNumber}</div>
+            <div class="spectator-reel__spin">Result #${entry.spinNumber}</div>
             <div>${escapeHtml(formatRelativeTime(entry.timestamp))}</div>
           </div>
           <div class="spectator-reel__label">
@@ -154,7 +156,7 @@ function renderState(state: SpectatorPageState): string {
             : ""}
         </article>
       `).join("")
-    : `<div class="spectator-empty"><p class="spectator-empty__body">Waiting for the first verified spin.</p></div>`;
+    : `<div class="spectator-empty"><p class="spectator-empty__body">Waiting for the first verified result.</p></div>`;
 
   const chaseHtml = snapshot.chaseBoard.length
     ? snapshot.chaseBoard.map((entry) => `
@@ -172,11 +174,11 @@ function renderState(state: SpectatorPageState): string {
             <span class="spectator-pill">Hits ${entry.hitCount}</span>
             <span class="spectator-pill">Chance ${Math.round(Number(entry.slots || 0))}%</span>
             ${entry.remainingHits != null ? `<span class="spectator-pill">${entry.remainingHits} hit${entry.remainingHits === 1 ? "" : "s"} left</span>` : ""}
-            ${entry.isFeatured ? `<span class="spectator-pill spectator-pill--heat-${escapeHtml(String(snapshot.featuredChaseHeat || "low"))}">Featured chase</span>` : ""}
+            ${entry.isFeatured ? `<span class="spectator-pill spectator-pill--heat-${escapeHtml(String(snapshot.featuredChaseHeat || "low"))}">Featured prize</span>` : ""}
           </div>
         </article>
       `).join("")
-    : `<div class="spectator-empty"><p class="spectator-empty__body">No chase board is active for this wheel.</p></div>`;
+    : `<div class="spectator-empty"><p class="spectator-empty__body">No prize board is active for this game.</p></div>`;
 
   return `
     <div class="spectator-shell">
@@ -195,7 +197,7 @@ function renderState(state: SpectatorPageState): string {
               <div class="spectator-now__headline">Current moment</div>
             </div>
             <div class="spectator-status spectator-status--${escapeHtml(formatStatusTone(snapshot))}">
-              ${escapeHtml(formatStatusLabel(snapshot))}
+              ${escapeHtml(formatStatusLabel(snapshot, isGridGame))}
             </div>
           </div>
 
@@ -210,7 +212,7 @@ function renderState(state: SpectatorPageState): string {
             </div>
             <div class="spectator-now__metric spectator-now__metric--accent">
               <span class="spectator-now__metric-label">Watching</span>
-              <strong class="spectator-now__metric-value">${escapeHtml(snapshot.featuredChaseLabel || "Board watch")}</strong>
+              <strong class="spectator-now__metric-value">${escapeHtml(snapshot.featuredChaseLabel || "Prize board")}</strong>
             </div>
           </div>
 
@@ -272,7 +274,7 @@ function renderState(state: SpectatorPageState): string {
         </section>
 
         <section class="spectator-card">
-          <div class="spectator-card__eyebrow">Chases</div>
+          <div class="spectator-card__eyebrow">Prizes</div>
           <div class="spectator-chases">${chaseHtml}</div>
         </section>
 
@@ -531,7 +533,12 @@ async function connectRealtime(): Promise<void> {
       if (normalizeWheelPublicSessionId(raw.publicSessionId) !== currentPublicSessionId) {
         return;
       }
-      applyRealtimeSnapshot(currentPublicSessionId, raw.snapshot as WheelSpectatorSnapshot);
+      const snapshot = normalizeWheelSpectatorSnapshot(raw.snapshot);
+      if (!snapshot) {
+        void refreshSnapshot({ preserveCurrentView: true });
+        return;
+      }
+      applyRealtimeSnapshot(currentPublicSessionId, snapshot);
     });
 
     socket.addEventListener("close", () => {

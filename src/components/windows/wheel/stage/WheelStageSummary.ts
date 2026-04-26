@@ -1,5 +1,5 @@
 import { inject, type PropType } from "vue";
-import { createNestedWindowContextBridge } from "../contextBridge.ts";
+import { createNestedWindowContextBridge } from "../../contextBridge.ts";
 
 export const WheelStageSummary = {
   name: "WheelStageSummary",

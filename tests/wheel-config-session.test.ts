@@ -1391,6 +1391,8 @@ test("wheel window local keys include top-level mode and inspector state", () =>
   assert.ok(localKeys.includes("wheelInspectorTab"));
   assert.ok(localKeys.includes("wheelMobileInspectorOpen"));
   assert.ok(localKeys.includes("wheelPresentationMode"));
+  assert.ok(localKeys.includes("wheelSoundEnabled"));
+  assert.ok(localKeys.includes("wheelReducedMotion"));
 });
 
 test("wheelStageSummaryCards provide config-mode summary cards from the shared model", () => {

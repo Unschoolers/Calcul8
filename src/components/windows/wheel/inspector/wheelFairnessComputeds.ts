@@ -1,10 +1,10 @@
-import { translateAppMessage } from "../../../app-core/i18n/index.ts";
-import { getWheelController } from "./wheelControllerState.ts";
+import { translateAppMessage } from "../../../../app-core/i18n/index.ts";
+import { getWheelController } from "../coordinator/wheelControllerState.ts";
 import {
   getWheelCurrentProofState,
   getWheelDisplayFairnessHistoryEntries,
   getWheelLatestFairnessEntry
-} from "./wheelComputedShared.ts";
+} from "../coordinator/wheelComputedShared.ts";
 
 export const wheelFairnessComputeds = {
   wheelFairnessIcon(this: Record<string, unknown>): string {

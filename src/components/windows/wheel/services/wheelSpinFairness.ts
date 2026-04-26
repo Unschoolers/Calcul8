@@ -1,11 +1,11 @@
-import { createWheelFairnessCommit, revealWheelFairnessResult } from "../../../app-core/methods/wheel-fairness-api.ts";
+import { createWheelFairnessCommit, revealWheelFairnessResult } from "../../../../app-core/methods/wheel-fairness-api.ts";
 import type { WheelSlot } from "./wheelHelpers.ts";
 import {
     generateCryptoSeed,
     hashSeed,
     hashWheelLayoutForFairness,
     seedToIndex
-} from "./wheelHelpers.ts";
+} from "./wheelFairnessLayout.ts";
 import type { WheelFairnessResult } from "./wheelSpinState.ts";
 
 export async function resolveWheelFairnessSpin(

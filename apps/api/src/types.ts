@@ -1,3 +1,14 @@
+import type {
+  WheelPublicSessionChaseEntry as SharedWheelPublicSessionChaseEntry,
+  WheelPublicSessionChaseHistoryEntry as SharedWheelPublicSessionChaseHistoryEntry,
+  WheelPublicSessionFairnessEntry as SharedWheelPublicSessionFairnessEntry,
+  WheelPublicSessionGridCell as SharedWheelPublicSessionGridCell,
+  WheelPublicSessionSlot as SharedWheelPublicSessionSlot,
+  WheelPublicSessionSnapshot as SharedWheelPublicSessionSnapshot,
+  WheelPublicSessionStatus as SharedWheelPublicSessionStatus,
+  WheelSpectatorHeatLevel as SharedWheelSpectatorHeatLevel
+} from "../../../shared/wheel-public-session-contracts";
+
 export type ApiEnvironment = "dev" | "prod";
 
 export interface ApiConfig {
@@ -55,82 +66,14 @@ export interface SessionDocument {
   absoluteExpiresAt: string;
 }
 
-export type WheelPublicSessionStatus = "starting" | "live" | "ended";
-export type WheelSpectatorHeatLevel = "very_low" | "low" | "medium" | "high" | "very_high";
-
-export interface WheelPublicSessionFairnessEntry {
-  spinNumber: number;
-  label: string;
-  color: string;
-  verificationUrl?: string;
-  timestamp: number;
-}
-
-export interface WheelPublicSessionChaseEntry {
-  tierId: string;
-  label: string;
-  color: string;
-  status: "live" | "claimed";
-  hitCount: number;
-  slots: number;
-  remainingHits: number | null;
-  isFeatured?: boolean;
-}
-
-export interface WheelPublicSessionChaseHistoryEntry {
-  tierId: string;
-  label: string;
-  color: string;
-  count: number;
-}
-
-export interface WheelPublicSessionSlot {
-  name: string;
-  color: string;
-  tier: string;
-  isChase: boolean;
-}
-
-export interface WheelPublicSessionGridCell {
-  index: number;
-  revealed: boolean;
-  label: string;
-  color: string;
-  tier: string;
-  slotIndex: number;
-}
-
-export interface WheelPublicSessionSpinAnimation {
-  spinId: string;
-  startedAt: number;
-  durationMs: number;
-  startAngle: number;
-  endAngle: number;
-  targetIndex: number;
-}
-
-export interface WheelPublicSessionSnapshot {
-  wheelName: string;
-  gameType: "wheel" | "grid";
-  sessionStatus: WheelPublicSessionStatus;
-  isSpinning: boolean;
-  totalSpins: number;
-  lastResultLabel: string;
-  lastResultColor: string;
-  wheelCurrentAngle: number;
-  wheelSlots: WheelPublicSessionSlot[];
-  gridCells: WheelPublicSessionGridCell[];
-  gridHighlightCellIndex: number;
-  gridResetAnimating: boolean;
-  spinAnimation?: WheelPublicSessionSpinAnimation | null;
-  recentFairnessHistory: WheelPublicSessionFairnessEntry[];
-  chaseHistory: WheelPublicSessionChaseHistoryEntry[];
-  chaseBoard: WheelPublicSessionChaseEntry[];
-  featuredChaseLabel: string | null;
-  featuredChaseHeat: WheelSpectatorHeatLevel | null;
-  fairnessVerificationUrl: string | null;
-  updatedAt: number;
-}
+export type WheelPublicSessionStatus = SharedWheelPublicSessionStatus;
+export type WheelSpectatorHeatLevel = SharedWheelSpectatorHeatLevel;
+export type WheelPublicSessionFairnessEntry = SharedWheelPublicSessionFairnessEntry;
+export type WheelPublicSessionChaseEntry = SharedWheelPublicSessionChaseEntry;
+export type WheelPublicSessionChaseHistoryEntry = SharedWheelPublicSessionChaseHistoryEntry;
+export type WheelPublicSessionSlot = SharedWheelPublicSessionSlot;
+export type WheelPublicSessionGridCell = SharedWheelPublicSessionGridCell;
+export type WheelPublicSessionSnapshot = SharedWheelPublicSessionSnapshot;
 
 export interface WheelPublicSessionDocument {
   id: string;

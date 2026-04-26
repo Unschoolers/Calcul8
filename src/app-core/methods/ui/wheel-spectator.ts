@@ -2,6 +2,7 @@ import type { WheelSpectatorSnapshot } from "../../../types/app.ts";
 import type { AppContext } from "../../context-app.ts";
 import type { WorkspaceRealtimeSubscribeToken } from "../sales-live-api.ts";
 import { fetchAuthenticatedApiResponse } from "./shared.ts";
+import { normalizeWheelSpectatorSnapshot } from "./wheel-spectator-contract.ts";
 
 type WheelSpectatorCreateResponse = {
   publicSessionId?: unknown;
@@ -88,9 +89,13 @@ export async function fetchWheelSpectatorSnapshot(baseUrl: string, publicSession
   }
 
   const body = await response.json() as WheelSpectatorReadResponse;
+  const snapshot = normalizeWheelSpectatorSnapshot(body.snapshot);
+  if (!snapshot) {
+    throw new Error("fetch_failed");
+  }
   return {
     publicSessionId: String(body.publicSessionId ?? "").trim(),
-    snapshot: body.snapshot as WheelSpectatorSnapshot
+    snapshot
   };
 }
 

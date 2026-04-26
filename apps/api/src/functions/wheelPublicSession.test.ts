@@ -104,6 +104,7 @@ beforeEach(() => {
       featuredChaseLabel: null,
       featuredChaseHeat: null,
       fairnessVerificationUrl: null,
+      snapshotVersion: 1,
       updatedAt: 123
     }
   });
@@ -128,6 +129,7 @@ beforeEach(() => {
       featuredChaseLabel: null,
       featuredChaseHeat: null,
       fairnessVerificationUrl: null,
+      snapshotVersion: 1,
       updatedAt: 456
     }
   });
@@ -152,6 +154,7 @@ beforeEach(() => {
       featuredChaseLabel: null,
       featuredChaseHeat: null,
       fairnessVerificationUrl: null,
+      snapshotVersion: 1,
       updatedAt: 789
     }
   });
@@ -264,6 +267,7 @@ test("wheelPublicSessionCreate sanitizes the snapshot and verifies workspace acc
       gridHighlightCellIndex: number;
       gridResetAnimating: boolean;
       featuredChaseHeat: string | null;
+      snapshotVersion: number;
       recentFairnessHistory: Array<{ spinNumber: number; timestamp: number }>;
       chaseHistory: Array<{ count: number }>;
       chaseBoard: Array<{ status: string; hitCount: number; remainingHits: number | null }>;
@@ -307,6 +311,7 @@ test("wheelPublicSessionCreate sanitizes the snapshot and verifies workspace acc
   assert.equal(repoInput.snapshot.gridHighlightCellIndex, 5);
   assert.equal(repoInput.snapshot.gridResetAnimating, true);
   assert.equal(repoInput.snapshot.featuredChaseHeat, "medium");
+  assert.equal(repoInput.snapshot.snapshotVersion, 1);
   assert.equal(repoInput.snapshot.recentFairnessHistory[0]?.spinNumber, 2);
   assert.equal(repoInput.snapshot.recentFairnessHistory[0]?.timestamp, 55);
   assert.equal(repoInput.snapshot.chaseHistory[0]?.count, 2);
@@ -350,6 +355,57 @@ test("wheelPublicSessionPublish returns 404 when the session is missing or not o
 
   assert.equal(response.status, 404);
   assert.equal((response.jsonBody as { error: string }).error, "Public wheel session was not found.");
+});
+
+test("wheelPublicSessionPublish upgrades old wheel-only snapshots at the API boundary", async () => {
+  await wheelPublicSessionPublish(createHttpRequest({
+    method: "POST",
+    headers: {
+      authorization: "Bearer user-a"
+    },
+    body: {
+      publicSessionId: "abc123xy",
+      snapshot: {
+        wheelName: "Old Wheel",
+        sessionStatus: "live",
+        totalSpins: "4",
+        lastResultLabel: "Prize",
+        lastResultColor: "#f00",
+        wheelCurrentAngle: "2.5",
+        wheelSlots: [{
+          name: "Prize",
+          color: "#f00",
+          tier: "tier-1",
+          isChase: false
+        }],
+        recentFairnessHistory: [],
+        chaseHistory: [],
+        chaseBoard: [],
+        featuredChaseLabel: null,
+        featuredChaseHeat: null,
+        fairnessVerificationUrl: null,
+        updatedAt: 456
+      }
+    }
+  }) as never, createInvocationContext() as never);
+
+  const repoInput = updateWheelPublicSessionMock.mock.calls.at(-1)?.[1] as {
+    snapshot: {
+      snapshotVersion: number;
+      gameType: string;
+      gridCells: unknown[];
+      gridHighlightCellIndex: number;
+      gridResetAnimating: boolean;
+      totalSpins: number;
+    };
+  };
+
+  assert.equal(repoInput.snapshot.snapshotVersion, 1);
+  assert.equal(repoInput.snapshot.gameType, "wheel");
+  assert.deepEqual(repoInput.snapshot.gridCells, []);
+  assert.equal(repoInput.snapshot.gridHighlightCellIndex, -1);
+  assert.equal(repoInput.snapshot.gridResetAnimating, false);
+  assert.equal(repoInput.snapshot.totalSpins, 4);
 });
 
 test("wheelPublicSessionPublish fans out the sanitized snapshot over realtime after save", async () => {

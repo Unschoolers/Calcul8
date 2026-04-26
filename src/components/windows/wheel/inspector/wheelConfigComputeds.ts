@@ -1,19 +1,19 @@
-import { translateAppMessage } from "../../../app-core/i18n/index.ts";
-import { calculateTotalCaseCost } from "../../../domain/calculations-fees.ts";
-import { getTierChancePercent } from "../../../app-core/shared/wheel-odds.ts";
-import type { Lot, WheelConfig } from "../../../types/app.ts";
-import { getWheelController } from "./wheelControllerState.ts";
+import { translateAppMessage } from "../../../../app-core/i18n/index.ts";
+import { calculateTotalCaseCost } from "../../../../domain/calculations-fees.ts";
+import { getTierChancePercent } from "../../../../app-core/shared/wheel-odds.ts";
+import type { Lot, WheelConfig } from "../../../../types/app.ts";
+import { getWheelController } from "../coordinator/wheelControllerState.ts";
 import {
   getWheelDisplayConfig,
   getWheelDisplaySlots,
   getWheelDisplaySpinCounts,
   getWheelDisplayTotalSpins
-} from "./wheelComputedShared.ts";
-import { computeExpectedMargin, type WheelSlot } from "./wheelHelpers.ts";
+} from "../coordinator/wheelComputedShared.ts";
+import { computeExpectedMargin, type WheelSlot } from "../services/wheelHelpers.ts";
 import {
   getAvailableSinglesQuantityForWheelTier,
   getRemainingPacksForWheelLot
-} from "./wheelSaleSupport.ts";
+} from "../services/wheelSaleSupport.ts";
 
 export const wheelConfigComputeds = {
   hasPendingWheelChanges(this: Record<string, unknown>): boolean {

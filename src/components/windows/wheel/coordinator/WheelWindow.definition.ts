@@ -1,27 +1,27 @@
 import { inject, nextTick, type PropType } from "vue";
-import type { WheelConfig } from "../../../types/app.ts";
-import { createWindowContextBridge } from "../contextBridge.ts";
+import type { WheelConfig } from "../../../../types/app.ts";
+import { createWindowContextBridge } from "../../contextBridge.ts";
 import { wheelComputeds } from "./wheelComputeds.ts";
-import { wheelConfigMethods } from "./wheelConfigMethods.ts";
+import { wheelConfigMethods } from "../commands/wheelConfigMethods.ts";
 import {
   createWheelWindowState, getWheelController, getWheelWindowLocalKeys,
   type WheelWindowThis
 } from "./wheelControllerState.ts";
-import { buildSlotsFromConfig } from "./wheelHelpers.ts";
+import { buildSlotsFromConfig } from "../services/wheelHelpers.ts";
 import {
   WHEEL_COMPACT_LAYOUT_BREAKPOINT,
   isWheelCompactViewport,
   resolveWheelCanvasTargetSize,
   resolveWheelLayoutMode
 } from "./wheelLayoutPolicy.ts";
-import { wheelSessionMethods } from "./wheelSessionMethods.ts";
-import { wheelSpectatorMethods } from "./wheelSpectatorMethods.ts";
-import { wheelSpinMethods } from "./wheelSpinMethods.ts";
+import { wheelSessionMethods } from "../commands/wheelSessionMethods.ts";
+import { wheelSpectatorMethods } from "../commands/wheelSpectatorMethods.ts";
+import { wheelSpinMethods } from "../commands/wheelSpinMethods.ts";
 import {
   buildMysteryGridCells,
   isMysteryGridConfig,
   mysteryGridMethods
-} from "./mysteryGridMethods.ts";
+} from "../commands/mysteryGridMethods.ts";
 
 function getWheelCanvasTargetSize(panel: HTMLElement | null, presentationMode: boolean): number {
   return resolveWheelCanvasTargetSize({
@@ -387,6 +387,12 @@ export const wheelWindowDefinition = {
         return;
       }
       this.startWheelAutospin();
+    },
+    toggleWheelSound(this: WheelWindowThis): void {
+      this.wheelSoundEnabled = !this.wheelSoundEnabled;
+    },
+    toggleWheelReducedMotion(this: WheelWindowThis): void {
+      this.wheelReducedMotion = !this.wheelReducedMotion;
     },
     startWheelAutospin(this: WheelWindowThis): void {
       const slots = ((this.wheelDisplaySlots || []) as unknown[]);

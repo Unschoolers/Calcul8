@@ -1,0 +1,27 @@
+@import './wheel-stage.css';
+@import './mystery-grid.css';
+@import './wheel-session.css';
+@import './wheel-inspector.css';
+@import './wheel-tier-editor.css';
+
+.wheel-layout--reduced-motion .wheel-spin-spark,
+.wheel-layout--reduced-motion .wheel-celebration-burst,
+.wheel-layout--reduced-motion .wheel-celebration-ring,
+.wheel-layout--reduced-motion .wheel-celebration-star,
+.wheel-layout--reduced-motion .wheel-celebration-emoji,
+.wheel-layout--reduced-motion .mystery-grid-cell,
+.wheel-layout--reduced-motion .wheel-pointer,
+.wheel-layout--reduced-motion .wheel-center-cap__icon {
+  animation: none !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+.wheel-layout--reduced-motion .wheel-spin-sparks,
+.wheel-layout--reduced-motion .wheel-celebration-burst,
+.wheel-layout--reduced-motion .wheel-celebration-ring,
+.wheel-layout--reduced-motion .wheel-celebration-stars,
+.wheel-layout--reduced-motion .wheel-celebration-emoji-burst {
+  display: none !important;
+}
+

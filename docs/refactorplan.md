@@ -8,9 +8,11 @@ This is the current refactor plan. This document is alive, kill done tasks and a
 - The wheel feature is now really a game feature. It supports wheel and Mystery Grid modes, shared tier odds, game-level outcome count, spectator snapshots, reveal/reset animation, audio, and public session publishing.
 - Wheel behavior is "with replacement": the same tier can land on consecutive spins according to probability.
 - Mystery Grid behavior is "without replacement inside one board": a generated board has a fixed count of cells per tier, then resets when all cells are revealed.
-- The newest game logic is spread across `src/components/windows/wheel`, `src/app-core/shared`, `src/spectator-main.ts`, `src/styles/spectator.css`, frontend tests, and API public session sanitizers.
-- Sync and public API contracts have improved tests, but frontend and API still duplicate some DTO-like shapes.
+- Core game slot/cell/reveal rules have started moving into shared pure helpers under `src/app-core/shared`, with component methods kept as orchestration.
+- Public spectator session DTOs now live in a shared contract under `shared`, and frontend/API types import that contract instead of maintaining separate snapshot shapes.
+- Sync contracts still need tightening for richer game configs and sessions.
 - The UI still contains rough translation coverage and product language left over from "wheel only", especially around spectator mode and game creation.
+- The repo now has a separate organization target in `docs/repo-organization.md`. Use it as the map for file moves so cleanup does not become random shuffling.
 
 ## Refactor Principles
 
@@ -21,18 +23,39 @@ This is the current refactor plan. This document is alive, kill done tasks and a
 5. Keep frontend and API contracts strict, normalized, and runtime-validated at boundaries.
 6. Preserve local-first behavior, legacy personal mode, and workspace scope safety.
 
-## Priority 1 - Stabilize The Game Domain Boundary
+## Priority 0 - Make The Repo Navigable
 
-The current wheel folder works, but it mixes UI state, session persistence, probability allocation, grid board generation, heat, spectator snapshots, and animation state.
+The whole repo needs a clearer folder story before more feature work piles on. This is not a behavior refactor; it is controlled organization so files are easier to find and future refactors have obvious landing zones.
+
+Target map: `docs/repo-organization.md`.
 
 To do:
 
-1. Create a small game domain layer under `src/app-core/shared` or `src/app-core/game` for pure logic.
-2. Move odds allocation, integer percent normalization, outcome count handling, and tier probability summaries out of component method bags.
-3. Move Mystery Grid board generation into a pure helper with explicit inputs: tiers, odds, outcome count, seed/source entropy, and reveal history.
-4. Keep wheel selection and grid selection as separate functions because their probability semantics differ.
-5. Split `wheelHelpers.ts` into focused modules: pricing, odds, grid layout, wheel segments, fairness/history helpers, and labels.
-6. Replace broad mutable result objects with typed command results, for example `SpinResult`, `GridRevealResult`, `GameResetResult`, and `SpectatorPublishResult`.
+1. Move large frontend windows toward feature folders with consistent subfolders: `coordinator`, `panels`, `components`, `commands`, `services`, and `styles`.
+2. Start with `src/components/windows/wheel` because it is the most active and already partially extracted.
+3. Then apply the same structure to old flat windows: singles, portfolio, sales, config, and live.
+4. Group `src/app-core/methods/ui` by domain over time: auth, entitlements, sync, workspace, realtime, whatnot, spectator.
+5. Keep API route files thin and move larger API feature logic out of `apps/api/src/functions` into feature/service folders.
+6. Group tests by feature only when the related source files are being moved or actively edited.
+
+Done when:
+
+- A new contributor can find UI, commands, services, styles, and tests for a feature without scanning dozens of sibling files.
+- File moves do not change runtime behavior.
+- Temporary compatibility exports are removed after imports are migrated.
+
+## Priority 1 - Finish The Game Domain Boundary
+
+The first boundary is in place, but the wheel folder still mixes session persistence, heat, pricing, spectator snapshots, fairness, inventory, and animation state.
+
+To do:
+
+1. Split the remaining `wheelHelpers.ts` responsibilities into focused modules: pricing, sales creation, fairness serialization, display labels, and legacy compatibility.
+2. Extract wheel spin planning into a pure helper that returns target index, angles, duration, and spectator animation metadata from explicit inputs.
+3. Extract grid reset planning into a pure helper that describes reset timing/state transitions without mutating Vue state directly.
+4. Replace broad mutable result objects with typed command results, for example `SpinResult`, `GridRevealResult`, `GameResetResult`, and `SpectatorPublishResult`.
+5. Keep wheel and grid selection separate in names and tests because wheel is with replacement and grid is a fixed board until reset.
+6. Add fixture builders for game configs, slots, grid reveals, fairness entries, and spectator snapshots so tests stop recreating loose records.
 
 Done when:
 
@@ -40,18 +63,18 @@ Done when:
 - Wheel and grid tests can explain the difference between "with replacement" and "fixed board".
 - Changing odds display does not risk changing spin/reveal math.
 
-## Priority 2 - Make Public Session And Spectator Contracts Shared
+## Priority 2 - Harden Public Session And Spectator Contracts
 
-Spectator mode is now product-critical for both wheel and grid. It should not depend on parallel ad hoc shapes in frontend and API code.
+The shared type contract is in place. The next risk is runtime drift: API sanitization, stored snapshots, realtime payloads, and the standalone spectator page must agree on the same versioned shape.
 
 To do:
 
-1. Define shared public session DTOs for `WheelPublicSession`, `WheelSpectatorSnapshot`, grid cells, heat levels, latest result, reset animation state, and game type.
-2. Use those DTOs from frontend publishing code and API sanitizer code instead of maintaining parallel type definitions.
-3. Add a snapshot version field so future spectator changes can be migrated or ignored deliberately.
-4. Keep API sanitization as the trust boundary: unknown external values become normalized public DTOs or safe defaults.
-5. Add tests for old wheel-only snapshots, current wheel snapshots, current grid snapshots, reset snapshots, and malformed public payloads.
-6. Review `src/spectator-main.ts` so wheel rendering and grid rendering share connection/state plumbing but not renderer-specific assumptions.
+1. Keep API sanitization as the trust boundary: unknown external values become normalized public DTOs or safe defaults.
+2. Add explicit compatibility tests for old wheel-only snapshots, current wheel snapshots, current grid snapshots, reset snapshots, and malformed public payloads.
+3. Add a small frontend normalization helper for spectator fetch/realtime payloads so `src/spectator-main.ts` does not cast unknown data directly.
+4. Review `src/spectator-main.ts` so wheel rendering and grid rendering share connection/state plumbing but not renderer-specific assumptions.
+5. Decide whether the shared contract should stay as `.d.ts` only or become a small runtime package with constants such as `CURRENT_WHEEL_PUBLIC_SESSION_SNAPSHOT_VERSION`.
+6. Document the versioning rule: new required spectator fields need sanitizer defaults and compatibility tests before shipping.
 
 Done when:
 
@@ -63,14 +86,16 @@ Done when:
 
 Heat should be based only on business outcome and statistics: whether the operator is making or losing money for each tier, plus how long the favorable outcomes have been absent versus expectation.
 
-To do:
+Status: done.
 
-1. Move heat calculation out of `wheelSpectator.ts` into a pure helper, for example `src/app-core/shared/game-heat.ts`.
-2. Model all tiers, not just one chase tier. Multiple client-favorable tiers must contribute to heat.
-3. Keep profitable tiers from raising heat unless the product explicitly wants a different signal.
-4. Use tested inputs: tier chance, expected hits, actual hits, spins/reveals since favorable hit, price per play, and tier value.
-5. Return both the public level and a non-public explanation object useful for tests and debugging.
-6. Decide whether the spectator UI should show only the heat label or also an odds board. If shown, it must be product language, not internal margin math.
+What changed:
+
+1. Heat calculation now lives in `src/app-core/shared/game-heat.ts` as a pure helper.
+2. The engine ranks all available tiers, not a single hard-coded chase tier.
+3. Profitable tiers stay at very low heat unless no client-favorable tier is available.
+4. Inputs are explicit: tier chance, total chance, total plays, actual hits, spins since hit, profit per play, and remaining hits.
+5. The result includes the public heat level plus diagnostic fields for expected hits, under-hit gap, due probability, recent-hit state, and client-favorable state.
+6. The spectator UI still shows the public heat label only; an odds board remains a separate product decision.
 
 Done when:
 
@@ -82,38 +107,49 @@ Done when:
 
 The product has outgrown "wheel" as the only game. Translation and wording should be cleaned before more UI is added.
 
-To do:
+Status: done for the shared game UI and public spectator copy. Remaining cleanup should be treated as normal feature copy polish, not a blocker for the next refactor step.
 
-1. Audit visible English and French strings in the game tab, spectator page, sign-in/no-login state, modals, buttons, toasts, and empty states.
-2. Replace "wheel" labels with "game" where the UI applies to both modes.
-3. Keep "wheel" and "grid" only where the distinction matters.
-4. Remove any remaining user-facing "slots" language from odds editing.
-5. Add missing i18n keys for Mystery Grid, spectator grid, reset, audio, odds, and heat.
-6. Add or extend tests that fail on missing locale keys and obvious wheel-only strings in shared game UI.
+What changed:
+
+1. Shared EN/FR game copy now uses game/play/result wording where the UI applies to both wheel and grid.
+2. Wheel-specific copy remains explicit for wheel-only actions such as spinning the visual wheel.
+3. Odds copy avoids user-facing "slots" language.
+4. Spectator empty/loading/error and board copy now use game/prize/result wording instead of defaulting to wheel/chase.
+5. Grid spectator status now says revealing while an animation is running.
+6. I18n tests now lock the most important shared game labels in both languages.
 
 Done when:
 
 - French and English tell the same product story.
 - Spectator mode does not say "Live Wheel Spectator" when watching a grid.
-- New game UI text can be added without hardcoding strings in component files.
+- Shared game UI text can be added without hardcoding strings in component files.
 
 ## Priority 5 - Decompose WheelWindow Into Coordinator Plus Panels
 
-`WheelWindow.definition.ts` and the method modules are doing too much coordination. The target is a thin coordinator with typed services and panels.
+`src/components/windows/wheel` has too many responsibilities in one flat folder. The issue is not just file count: UI components, HTML templates, CSS, Vue coordinators, command modules, canvas rendering, session persistence, spectator publishing, pricing, inventory, and game-mode logic are all siblings. That makes the folder look larger and less intentional than it really is.
+
+The first target is folder organization by responsibility. Behavior refactors should follow after the module boundaries are visible.
 
 To do:
 
-1. Keep `WheelWindow` as the state coordinator for selected config, current session, active game type, and panel routing.
-2. Move game commands into small modules: config editing, session lifecycle, spin execution, grid reveal/reset, spectator publishing, and sale/inventory support.
-3. Give each command module explicit dependencies instead of reading arbitrary component state.
-4. Keep `MysteryGridSurface`, `WheelOddsEditor`, inspector, history, action rail, and session panel as UI components with typed props/events.
-5. Reduce `wheelCtx` and bridge usage where ordinary props/events are enough.
+1. Create a clear folder layout before moving logic:
+   - `coordinator/` for `WheelWindow.definition.ts`, coordinator-only lifecycle, watchers, local state wiring, and route/tab bridge.
+   - `stage/` for stage UI: wheel canvas surface, mystery grid surface, topbar, summary, action rail, celebration overlay.
+   - `inspector/` for builder/session/history panels, tier card, odds editor, and inspector-specific computeds.
+   - `commands/` for imperative flows: config editing, session lifecycle, wheel spin execution, grid reveal/reset, spectator publishing.
+   - `services/` for non-UI helpers that still belong to the feature: canvas rendering, audio, fairness layout, sale/inventory support.
+   - `styles/` for all wheel/game CSS files, grouped by stage, inspector, session, grid, history, and mobile.
+2. Move files in thin compatibility steps. Prefer barrel exports or temporary re-export shims so tests and imports can be migrated gradually.
+3. Keep `WheelWindow` as the state coordinator for selected config, current session, active game type, and panel routing.
+4. After the move, split coordinator-only concerns from command concerns: canvas refresh, compact inspector state, autospin scheduling, celebration timing, and mode switching should not live beside business commands forever.
+5. Reduce `wheelCtx` and bridge usage where ordinary props/events are enough, starting with leaf display components like `WheelStageSummary`, `WheelActionRail`, and `MysteryGridSurface`.
 6. Add component tests only where templates contain meaningful behavior. Keep pure helper tests for rules.
 
 Done when:
 
 - A bug in grid reveal usually touches grid command code and one UI component, not the whole wheel folder.
 - `WheelWindow` mostly wires state, commands, and panels together.
+- The folder tree itself explains the feature: coordinator, stage, inspector, commands, services, styles.
 
 ## Priority 6 - Strengthen Cloud Sync And Entity Contracts
 
@@ -188,13 +224,13 @@ Done when:
 
 ## First Refactor Slice
 
-Start with a small slice that directly reduces current risk:
+The next slice should reduce risk without changing UX:
 
 1. Extract `game-heat` as a pure helper and move the current tests to it.
-2. Create shared spectator/public DTOs and make frontend plus API import them.
-3. Extract grid board generation and reveal selection into pure helpers.
-4. Audit game/spectator i18n keys and fix wheel-only labels.
-5. Add sync contract tests for game config fields: `gameType`, tier odds, outcome count, grid board state, and spectator metadata.
+2. Add frontend spectator payload normalization for fetch and realtime events.
+3. Audit game/spectator i18n keys and fix wheel-only labels.
+4. Add sync contract tests for game config fields: `gameType`, tier odds, outcome count, grid board state, and spectator metadata.
+5. Split `wheelHelpers.ts` pricing/sales/fairness responsibilities into focused modules.
 
 This slice should not change UX except for corrected copy or bug fixes found by the tests.
 
@@ -203,6 +239,7 @@ This slice should not change UX except for corrected copy or bug fixes found by 
 For frontend/game changes:
 
 - `npm run test -- tests/mystery-grid.test.ts tests/wheel-spectator.test.ts tests/wheel-spin.test.ts tests/wheel-spin-methods.test.ts`
+- `npm run test -- tests/game-domain.test.ts tests/wheel-spectator-client-state.test.ts tests/wheel-spectator-methods.test.ts`
 - `npm run test -- tests/i18n.test.ts`
 - `npx tsc -p . --noEmit --strict`
 - `npm run build`

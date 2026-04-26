@@ -1,6 +1,6 @@
-import { translateAppMessage } from "../../../app-core/i18n/index.ts";
-import { getTierChancePercent } from "../../../app-core/shared/wheel-odds.ts";
-import type { Lot, WheelConfig } from "../../../types/app.ts";
+import { translateAppMessage } from "../../../../app-core/i18n/index.ts";
+import { getTierChancePercent } from "../../../../app-core/shared/wheel-odds.ts";
+import type { Lot, WheelConfig } from "../../../../types/app.ts";
 import {
   calculateWheelSessionMarginPercent,
   getWheelDisplayChaseTallyHistory,
@@ -10,11 +10,11 @@ import {
   getWheelSessionCost,
   getWheelSessionProfit,
   getWheelSessionRevenue
-} from "./wheelComputedShared.ts";
+} from "../coordinator/wheelComputedShared.ts";
 import {
   getAvailableSinglesQuantityForWheelTier,
   getRemainingPacksForWheelLot
-} from "./wheelSaleSupport.ts";
+} from "../services/wheelSaleSupport.ts";
 
 export const wheelSessionComputeds = {
   wheelSessionRevenue(this: Record<string, unknown>): number {

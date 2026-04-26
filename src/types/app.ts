@@ -1,4 +1,16 @@
 import type { Chart as ChartJS } from "chart.js";
+import type {
+  LuckGameType as SharedLuckGameType,
+  WheelSpectatorChaseBoardEntry as SharedWheelSpectatorChaseBoardEntry,
+  WheelSpectatorChaseHistoryEntry as SharedWheelSpectatorChaseHistoryEntry,
+  WheelSpectatorFairnessEntry as SharedWheelSpectatorFairnessEntry,
+  WheelSpectatorGridCell as SharedWheelSpectatorGridCell,
+  WheelSpectatorHeatLevel as SharedWheelSpectatorHeatLevel,
+  WheelSpectatorSessionStatus as SharedWheelSpectatorSessionStatus,
+  WheelSpectatorSlot as SharedWheelSpectatorSlot,
+  WheelSpectatorSnapshot as SharedWheelSpectatorSnapshot,
+  WheelSpectatorSpinAnimation as SharedWheelSpectatorSpinAnimation
+} from "../../shared/wheel-public-session-contracts";
 
 export type AppTab = "config" | "live" | "sales" | "portfolio" | "wheel";
 export type LotType = "bulk" | "singles";
@@ -62,7 +74,7 @@ export interface WheelTier {
   celebrationEmoji?: string;
 }
 
-export type LuckGameType = "wheel" | "grid";
+export type LuckGameType = SharedLuckGameType;
 
 export interface WheelConfig {
   id: number;
@@ -113,82 +125,15 @@ export interface WheelFairnessEntry {
   timestamp: number;
 }
 
-export type WheelSpectatorSessionStatus = "inactive" | "starting" | "live" | "ended";
-export type WheelSpectatorHeatLevel = "very_low" | "low" | "medium" | "high" | "very_high";
-
-export interface WheelSpectatorFairnessEntry {
-  spinNumber: number;
-  label: string;
-  color: string;
-  verificationUrl?: string;
-  timestamp: number;
-}
-
-export interface WheelSpectatorChaseHistoryEntry {
-  tierId: string;
-  label: string;
-  color: string;
-  count: number;
-}
-
-export interface WheelSpectatorChaseBoardEntry {
-  tierId: string;
-  label: string;
-  color: string;
-  status: "live" | "claimed";
-  hitCount: number;
-  slots: number;
-  remainingHits: number | null;
-  isFeatured?: boolean;
-}
-
-export interface WheelSpectatorSlot {
-  name: string;
-  color: string;
-  tier: string;
-  isChase: boolean;
-}
-
-export interface WheelSpectatorGridCell {
-  index: number;
-  revealed: boolean;
-  label: string;
-  color: string;
-  tier: string;
-  slotIndex: number;
-}
-
-export interface WheelSpectatorSpinAnimation {
-  spinId: string;
-  startedAt: number;
-  durationMs: number;
-  startAngle: number;
-  endAngle: number;
-  targetIndex: number;
-}
-
-export interface WheelSpectatorSnapshot {
-  wheelName: string;
-  gameType?: LuckGameType;
-  sessionStatus: Exclude<WheelSpectatorSessionStatus, "inactive">;
-  isSpinning: boolean;
-  totalSpins: number;
-  lastResultLabel: string;
-  lastResultColor: string;
-  wheelCurrentAngle: number;
-  wheelSlots: WheelSpectatorSlot[];
-  gridCells?: WheelSpectatorGridCell[];
-  gridHighlightCellIndex?: number;
-  gridResetAnimating?: boolean;
-  spinAnimation?: WheelSpectatorSpinAnimation | null;
-  recentFairnessHistory: WheelSpectatorFairnessEntry[];
-  chaseHistory: WheelSpectatorChaseHistoryEntry[];
-  chaseBoard: WheelSpectatorChaseBoardEntry[];
-  featuredChaseLabel: string | null;
-  featuredChaseHeat: WheelSpectatorHeatLevel | null;
-  fairnessVerificationUrl: string | null;
-  updatedAt: number;
-}
+export type WheelSpectatorSessionStatus = SharedWheelSpectatorSessionStatus;
+export type WheelSpectatorHeatLevel = SharedWheelSpectatorHeatLevel;
+export type WheelSpectatorFairnessEntry = SharedWheelSpectatorFairnessEntry;
+export type WheelSpectatorChaseHistoryEntry = SharedWheelSpectatorChaseHistoryEntry;
+export type WheelSpectatorChaseBoardEntry = SharedWheelSpectatorChaseBoardEntry;
+export type WheelSpectatorSlot = SharedWheelSpectatorSlot;
+export type WheelSpectatorGridCell = SharedWheelSpectatorGridCell;
+export type WheelSpectatorSpinAnimation = SharedWheelSpectatorSpinAnimation;
+export type WheelSpectatorSnapshot = SharedWheelSpectatorSnapshot;
 
 export interface NewSaleDraft {
   type: SaleType;

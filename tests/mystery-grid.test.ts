@@ -51,7 +51,7 @@ vi.mock("../src/app-core/methods/wheel-fairness-api.ts", () => ({
   }))
 }));
 
-vi.mock("../src/components/windows/wheel/wheelAudio.ts", () => wheelAudioMock);
+vi.mock("../src/components/windows/wheel/services/wheelAudio.ts", () => wheelAudioMock);
 
 afterEach(() => {
   vi.clearAllMocks();
@@ -391,6 +391,29 @@ test("mystery grid selector plays shuffle ticks during the random highlight anim
 
   assert.equal(wheelAudioMock.playMysteryGridShuffleTick.mock.calls.length, 18);
   assert.deepEqual(wheelAudioMock.playMysteryGridShuffleTick.mock.calls.at(-1), [1]);
+});
+
+test("mystery grid effects controls can mute reveal sounds and reduce selector motion", async () => {
+  vi.spyOn(Math, "random").mockReturnValue(0);
+  vi.stubGlobal("window", {
+    matchMedia: vi.fn(() => ({ matches: false }))
+  });
+  vi.spyOn(globalThis, "setTimeout").mockImplementation((handler: TimerHandler) => {
+    if (typeof handler === "function") {
+      handler();
+    }
+    return 1 as never;
+  });
+  const vm = createGridVm("config");
+  vm.wheelSoundEnabled = false;
+  vm.wheelReducedMotion = true;
+
+  await mysteryGridMethods.animateMysteryGridRandomSelection.call(vm, 9);
+  await mysteryGridMethods.revealMysteryGridCell.call(vm, 9, true);
+
+  assert.equal(wheelAudioMock.playMysteryGridShuffleTick.mock.calls.length, 0);
+  assert.equal(wheelAudioMock.playMysteryGridRevealDing.mock.calls.length, 0);
+  assert.equal(vm.wheelGridHighlightCellIndex, 9);
 });
 
 test("live grid reveal reuses wheel result recording and fairness history", async () => {

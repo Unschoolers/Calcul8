@@ -17,7 +17,7 @@ vi.mock("../src/app-core/methods/ui/wheel-spectator.ts", () => ({
   publishWheelSpectatorSession: publishWheelSpectatorSessionMock
 }));
 
-vi.mock("../src/components/windows/wheel/wheelSpectator.ts", () => ({
+vi.mock("../src/components/windows/wheel/services/wheelSpectator.ts", () => ({
   buildWheelSpectatorQrImageUrl: vi.fn((value: string) => `qr:${value}`),
   buildWheelSpectatorSessionUrl: vi.fn((value: string) => `https://example.test/spectator.html?session=${value}`),
   buildWheelSpectatorSnapshot: buildWheelSpectatorSnapshotMock

@@ -55,6 +55,24 @@ export default WheelStageTopbar;
   gap: 8px;
 }
 
+.wheel-effects-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 999px;
+  background: rgba(var(--v-theme-on-surface), 0.05);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+}
+
+.wheel-effects-toggle {
+  opacity: 0.76;
+}
+
+.wheel-effects-toggle:hover {
+  opacity: 1;
+}
+
 .wheel-spectator-btn {
   min-width: 0;
   font-weight: 800;
