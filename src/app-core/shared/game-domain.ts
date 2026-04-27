@@ -13,6 +13,7 @@ export interface GameOutcomeSlot {
   packsCount: number;
   deductionType: "packs" | "singles" | "none";
   isChase: boolean;
+  celebrationEmoji?: string;
 }
 
 export interface MysteryGridCellState {
@@ -110,7 +111,8 @@ export function buildGameOutcomeSlots(config: WheelConfig): GameOutcomeSlot[] {
         tier: tier.id,
         packsCount: tier.packsCount,
         deductionType: tier.deductionType,
-        isChase: tier.isChase === true
+        isChase: tier.isChase === true,
+        celebrationEmoji: tier.celebrationEmoji || undefined
       });
     }
     if (slots.length > 0) groups.push({ tier: tier.id, slots });

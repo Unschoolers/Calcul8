@@ -60,6 +60,17 @@ test("buildSlotsFromConfig propagates isChase flag", () => {
   assert.equal(slots.filter((s) => !s.isChase).length, 2);
 });
 
+test("buildSlotsFromConfig propagates tier celebration emoji", () => {
+  const config: WheelConfig = {
+    id: 1, name: "Test", spinPrice: 10, targetMargin: 40, createdAt: "",
+    tiers: [
+      { id: "t1", label: "Normal", color: "#f00", slots: 1, costPerTier: 5, packsCount: 1, deductionType: "packs", sets: [], celebrationEmoji: "🎉" }
+    ]
+  };
+  const slots = buildSlotsFromConfig(config);
+  assert.equal(slots[0]?.celebrationEmoji, "🎉");
+});
+
 test("buildSlotsFromConfig maximises spacing between same-tier slots", () => {
   const config: WheelConfig = {
     id: 1, name: "Test", spinPrice: 10, targetMargin: 40, createdAt: "",

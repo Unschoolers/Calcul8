@@ -64,19 +64,52 @@ test("recordSpinResult increments spin counts", () => {
 });
 
 test("landOnSlot sets result text and color", () => {
+  const triggerWheelCelebration = vi.fn();
   const vm: Record<string, unknown> = {
     activeWheelSlots: [
-      { name: "Prize A", color: "#f00", cost: 5, tier: "t1", packsCount: 1, deductionType: "packs", isChase: false }
+      { name: "Prize A", color: "#f00", cost: 5, tier: "t1", packsCount: 1, deductionType: "packs", isChase: false, celebrationEmoji: "🎉" }
     ],
     wheelLastResult: "",
     wheelLastResultColor: "",
     wheelChaseDialog: false,
+    triggerWheelCelebration,
     saveWheelSession: vi.fn()
   };
 
   WheelWindow.methods!.landOnSlot.call(vm as never, 0);
   assert.equal(vm.wheelLastResult, "🎉 Prize A");
   assert.equal(vm.wheelLastResultColor, "#f00");
+  assert.deepEqual(triggerWheelCelebration.mock.calls, [[{
+    label: "Prize A",
+    color: "#f00",
+    image: undefined,
+    emoji: "🎉",
+    preview: false
+  }]]);
+});
+
+test("landOnSlot triggers the result reveal for regular tiers without an emoji", () => {
+  const triggerWheelCelebration = vi.fn();
+  const vm: Record<string, unknown> = {
+    activeWheelSlots: [
+      { name: "Prize B", color: "#0f0", cost: 5, tier: "t2", packsCount: 1, deductionType: "packs", isChase: false }
+    ],
+    wheelLastResult: "",
+    wheelLastResultColor: "",
+    wheelChaseDialog: false,
+    triggerWheelCelebration,
+    saveWheelSession: vi.fn()
+  };
+
+  WheelWindow.methods!.landOnSlot.call(vm as never, 0);
+
+  assert.deepEqual(triggerWheelCelebration.mock.calls, [[{
+    label: "Prize B",
+    color: "#0f0",
+    image: undefined,
+    emoji: undefined,
+    preview: false
+  }]]);
 });
 
 test("landOnSlot preview mode opens preview chase flow and persists the preview state", () => {

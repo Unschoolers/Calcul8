@@ -77,7 +77,8 @@ function createGridConfig(overrides: Partial<WheelConfig> = {}): WheelConfig {
         costPerTier: 4,
         packsCount: 1,
         deductionType: "packs",
-        sets: []
+        sets: [],
+        celebrationEmoji: "✨"
       },
       {
         id: "tier-b",
@@ -89,7 +90,8 @@ function createGridConfig(overrides: Partial<WheelConfig> = {}): WheelConfig {
         packsCount: 1,
         deductionType: "none",
         sets: [],
-        isChase: true
+        isChase: true,
+        celebrationEmoji: "🏆"
       }
     ],
     ...overrides
@@ -422,6 +424,8 @@ test("live grid reveal reuses wheel result recording and fairness history", asyn
   await mysteryGridMethods.revealMysteryGridCell.call(vm, 7, true);
 
   const controller = getWheelController(vm);
+  const slots = vm.wheelDisplaySlots as Array<{ name: string; color: string; celebrationEmoji?: string }>;
+  const revealedSlot = slots[7]!;
   assert.equal(vm.recordSpinResult.mock.calls.length, 1);
   assert.equal(vm.recordPreviewSpinResult.mock.calls.length, 0);
   assert.equal(Number(vm.wheelTotalSpins), 1);
@@ -432,4 +436,11 @@ test("live grid reveal reuses wheel result recording and fairness history", asyn
   assert.equal((vm.wheelPreviewGridReveals as unknown[]).length, 0);
   assert.equal(vm.landOnSlot.mock.calls[0]?.[0], 7);
   assert.deepEqual(vm.landOnSlot.mock.calls[0]?.[1], { recordSession: true });
+  assert.deepEqual((vm.triggerWheelCelebration as ReturnType<typeof vi.fn>).mock.calls[0], [{
+    label: revealedSlot.name,
+    color: revealedSlot.color,
+    image: undefined,
+    emoji: revealedSlot.celebrationEmoji,
+    preview: false
+  }]);
 });

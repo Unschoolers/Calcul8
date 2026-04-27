@@ -567,24 +567,22 @@ export const wheelSpinMethods = {
       const config = (((this as Record<string, unknown>).wheelDisplayConfig
         || (this as Record<string, unknown>).activeWheelConfig)) as WheelConfig | null;
       const tier = config?.tiers.find((entry) => entry.id === slot.tier);
-      const emoji = tier?.celebrationEmoji || undefined;
-      if (slot.isChase || emoji) {
-        const lot = tier?.boundLotId != null
-          ? ((this.lots || []) as Lot[]).find((entry) => entry.id === tier.boundLotId)
-          : null;
-        const image = slot.isChase && tier?.boundSinglesId != null
-          ? lot?.singlesPurchases?.find((entry) => entry.id === tier.boundSinglesId)?.image
-          : undefined;
-        (this as Record<string, unknown> & {
-          triggerWheelCelebration?: (payload: { label: string; color: string; image?: string; emoji?: string; preview?: boolean }) => void;
-        }).triggerWheelCelebration?.({
-          label: slot.name,
-          color: slot.color,
-          image,
-          emoji,
-          preview: !recordSession
-        });
-      }
+      const emoji = slot.celebrationEmoji || tier?.celebrationEmoji || undefined;
+      const lot = tier?.boundLotId != null
+        ? ((this.lots || []) as Lot[]).find((entry) => entry.id === tier.boundLotId)
+        : null;
+      const image = slot.isChase && tier?.boundSinglesId != null
+        ? lot?.singlesPurchases?.find((entry) => entry.id === tier.boundSinglesId)?.image
+        : undefined;
+      (this as Record<string, unknown> & {
+        triggerWheelCelebration?: (payload: { label: string; color: string; image?: string; emoji?: string; preview?: boolean }) => void;
+      }).triggerWheelCelebration?.({
+        label: slot.name,
+        color: slot.color,
+        image,
+        emoji,
+        preview: !recordSession
+      });
     }
 
     if (!recordSession) {
