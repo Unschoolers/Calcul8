@@ -19,10 +19,8 @@ import {
 } from "../stage/wheelCanvasRender.ts";
 import { playWheelTick } from "../services/wheelAudio.ts";
 import { getWheelController, type WheelWindowThis } from "../coordinator/wheelControllerState.ts";
-import {
-    createWheelSale,
-    type WheelSlot
-} from "../services/wheelHelpers.ts";
+import { createWheelSale } from "../services/wheelSales.ts";
+import type { WheelSlot } from "../services/wheelSlots.ts";
 import { serializeWheelLayoutForFairness } from "../services/wheelFairnessLayout.ts";
 import {
     getAvailableSinglesQuantityForWheelTier,

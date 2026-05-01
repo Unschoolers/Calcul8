@@ -7,7 +7,7 @@ import {
   createWheelWindowState, getWheelController, getWheelWindowLocalKeys,
   type WheelWindowThis
 } from "./wheelControllerState.ts";
-import { buildSlotsFromConfig } from "../services/wheelHelpers.ts";
+import { buildSlotsFromConfig } from "../services/wheelSlots.ts";
 import {
   WHEEL_COMPACT_LAYOUT_BREAKPOINT,
   isWheelCompactViewport,

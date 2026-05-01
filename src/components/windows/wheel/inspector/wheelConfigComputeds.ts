@@ -9,7 +9,8 @@ import {
   getWheelDisplaySpinCounts,
   getWheelDisplayTotalSpins
 } from "../coordinator/wheelComputedShared.ts";
-import { computeExpectedMargin, type WheelSlot } from "../services/wheelHelpers.ts";
+import { computeExpectedMargin } from "../services/wheelPricing.ts";
+import type { WheelSlot } from "../services/wheelSlots.ts";
 import {
   getAvailableSinglesQuantityForWheelTier,
   getRemainingPacksForWheelLot

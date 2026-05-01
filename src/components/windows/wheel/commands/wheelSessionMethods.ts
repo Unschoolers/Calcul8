@@ -6,7 +6,9 @@ import { getActiveStorageScope } from "../../../../app-core/workspace-scope.ts";
 import type { Lot, PendingWheelInventoryIssue, Sale, WheelConfig, WheelFairnessEntry } from "../../../../types/app.ts";
 import type { WheelWindowThis } from "../coordinator/wheelControllerState.ts";
 import { getWheelController } from "../coordinator/wheelControllerState.ts";
-import { buildSlotsFromConfig, createWheelSale, remapSpinCountsByTier, type WheelSlot } from "../services/wheelHelpers.ts";
+import { remapSpinCountsByTier } from "../services/wheelCountRemapping.ts";
+import { createWheelSale } from "../services/wheelSales.ts";
+import { buildSlotsFromConfig, type WheelSlot } from "../services/wheelSlots.ts";
 import {
   getAvailableSinglesQuantityForWheelTier,
   hasAnyAvailableSinglesForWheelTier

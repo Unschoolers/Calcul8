@@ -1,14 +1,11 @@
 import assert from "node:assert/strict";
 import { test, vi } from "vitest";
+import { easeOutQuart } from "../src/app-core/shared/game-spin.ts";
 import { getWheelTierInventoryMeta } from "../src/components/windows/wheel/services/wheelSaleSupport.ts";
-import {
-    buildSlotsFromConfig,
-    computeExpectedMargin,
-    createDefaultTier,
-    createDefaultWheelConfig,
-    easeOutQuart,
-    seedToIndex
-} from "../src/components/windows/wheel/services/wheelHelpers.ts";
+import { createDefaultTier, createDefaultWheelConfig } from "../src/components/windows/wheel/services/wheelDefaults.ts";
+import { seedToIndex } from "../src/components/windows/wheel/services/wheelFairnessLayout.ts";
+import { computeExpectedMargin } from "../src/components/windows/wheel/services/wheelPricing.ts";
+import { buildSlotsFromConfig } from "../src/components/windows/wheel/services/wheelSlots.ts";
 import {
     WheelWindow
 } from "../src/components/windows/wheel/WheelWindow.ts";

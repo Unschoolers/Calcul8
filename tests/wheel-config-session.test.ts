@@ -6,10 +6,8 @@ import {
 } from "../src/app-core/storageKeys.ts";
 import { createNestedWindowContextBridge } from "../src/components/windows/shared/contextBridge.ts";
 import { getWheelController, getWheelWindowLocalKeys } from "../src/components/windows/wheel/coordinator/wheelControllerState.ts";
-import {
-    buildSlotsFromConfig,
-    createWheelSale
-} from "../src/components/windows/wheel/services/wheelHelpers.ts";
+import { createWheelSale } from "../src/components/windows/wheel/services/wheelSales.ts";
+import { buildSlotsFromConfig } from "../src/components/windows/wheel/services/wheelSlots.ts";
 import {
     WheelWindow
 } from "../src/components/windows/wheel/WheelWindow.ts";

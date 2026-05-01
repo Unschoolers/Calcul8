@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { afterEach, test, vi } from "vitest";
 import { normalizeWheelConfig } from "../src/app-core/shared/normalize-wheel-config.ts";
 import { createWheelWindowState, getWheelController } from "../src/components/windows/wheel/coordinator/wheelControllerState.ts";
-import { buildSlotsFromConfig, createDefaultWheelConfig } from "../src/components/windows/wheel/services/wheelHelpers.ts";
+import { createDefaultWheelConfig } from "../src/components/windows/wheel/services/wheelDefaults.ts";
+import { buildSlotsFromConfig } from "../src/components/windows/wheel/services/wheelSlots.ts";
 import {
   buildMysteryGridCells,
   getMysteryGridCellCount,

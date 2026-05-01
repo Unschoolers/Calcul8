@@ -1,5 +1,5 @@
 import { createWheelFairnessCommit, revealWheelFairnessResult } from "../../../../app-core/methods/wheel-fairness-api.ts";
-import type { WheelSlot } from "./wheelHelpers.ts";
+import type { WheelSlot } from "./wheelSlots.ts";
 import {
     generateCryptoSeed,
     hashSeed,

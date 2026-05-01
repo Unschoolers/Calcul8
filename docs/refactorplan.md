@@ -11,7 +11,7 @@ Last repo scan: 2026-05-01.
 - Wheel behavior is "with replacement": the same tier can land on consecutive spins according to probability.
 - Mystery Grid behavior is "without replacement inside one board": a generated board has a fixed count of cells per tier, then resets when all cells are revealed.
 - The wheel folder navigation target has been reached: root files are thin, and feature code is grouped under `coordinator`, `stage`, `inspector`, `dialogs`, `commands`, `services`, and `styles`.
-- Core game slot/cell/spin/heat rules have started moving into pure helpers under `src/app-core/shared`: `game-domain.ts`, `game-spin.ts`, `game-heat.ts`, `wheel-odds.ts`, and config/session compatibility helpers.
+- Core game slot/cell/spin/heat/reset rules now live in pure helpers under `src/app-core/shared`: `game-domain.ts`, `game-spin.ts`, `game-heat.ts`, `wheel-odds.ts`, and config/session compatibility helpers.
 - Public spectator session DTOs live in a shared `.d.ts` contract under `shared`, and frontend/API types import that contract.
 - Frontend spectator payload normalization exists in `src/app-core/methods/ui/wheel-spectator-contract.ts`, and `src/spectator-main.ts` uses it for realtime payloads.
 - API public-session sanitization exists separately in `apps/api/src/features/wheel/publicSessionHandler.ts`; it is intentionally a trust boundary, but it now duplicates a lot of frontend normalization behavior.
@@ -30,46 +30,52 @@ Last repo scan: 2026-05-01.
 6. Preserve local-first behavior, legacy personal mode, and workspace scope safety.
 7. Do not mix file moves with behavior changes unless the behavior change is required to preserve tests.
 
-## Priority 1 - Strengthen Sync And Entity Contracts
+## Closed Scope - Strengthen Sync And Entity Contracts
 
-Status: done for the current sync/entity and realtime surfaces. Future fields should extend the shared DTO module first, then wire through frontend/API boundaries with focused tests.
+Status: closed for the current sync/entity and realtime surfaces.
 
-This is now the top safety risk. Game configs, sessions, sales, live pricing, workspace data, and sync metadata are richer than the current loose DTO layer can describe. A weak sync boundary can erase or corrupt `gameType`, tier odds, outcome counts, grid board state, spectator metadata, sale version fields, or workspace-scoped data.
+The closeout scan found no remaining broad sync/entity contract work to keep this as an active priority. `SyncEntityRecord` remains only at raw storage/network boundary helpers where unknown input is first accepted and immediately normalized into named DTOs. Game configs, sessions, sales, live pricing, workspace data, and sync metadata now cross frontend/API/realtime boundaries through shared DTO parsers before storage, publish, or local apply.
 
 Maintenance rules:
 
 1. Keep current-lot selection and lot display contracts in the verification gate whenever touching lot DTOs, shell extraction, config lot loading, or sync apply/pull code.
 2. Future fields must be added to `shared/sync-contracts` first. Unknown fields are dropped by default unless the contract explicitly allows compatible future data.
 3. Keep optimistic concurrency and conflict paths visible in tests for shared/cloud-authoritative entities.
-4. Make `tests/shared-sync-contracts.test.ts`, `tests/sync-contracts.test.ts`, API sync tests, current-lot selector tests, workspace realtime tests, and API wheel broadcast tests the first verification gate for each sync DTO slice.
+4. Make `tests/shared-sync-contracts.test.ts`, `tests/sync-contracts.test.ts`, API sync tests, current-lot selector tests, workspace realtime tests, and API wheel broadcast tests the first verification gate for any future sync DTO field.
 
-Done when:
+Closed evidence:
 
-- API handlers and frontend sync code share named DTOs instead of parallel loose records. Done.
-- A config saved in one browser keeps the same game type, odds, and grid/session state when loaded elsewhere. Done for current config/session payloads.
-- Selecting a lot remains visually stable and actionable after lot item shape changes, including Vuetify slot payload differences. Done with a focused regression test.
-- Legacy personal-mode migrations still pass without making current entity contracts permissive. Done by normalizing or skipping malformed legacy records.
+- API handlers and frontend sync code share named DTOs instead of parallel loose records.
+- A config saved in one browser keeps the same game type, odds, and grid/session state when loaded elsewhere for current config/session payloads.
+- Selecting a lot remains visually stable and actionable after lot item shape changes, including Vuetify slot payload differences.
+- Legacy personal-mode migrations remain compatibility input only: pulled legacy snapshot records normalize through current DTO parsers, and malformed records are skipped instead of making current contracts permissive.
+- Workspace realtime and API wheel broadcast parse game-session payloads through shared DTO helpers before applying or publishing them.
 
-## Priority 2 - Finish The Game Domain Boundary
+No new feature work should be added under this heading. Future sync fields are ordinary maintenance: extend `shared/sync-contracts`, add focused boundary tests, and run the sync/entity merge gate.
 
-The folder boundary is in place, but several command/service files still mix UI orchestration with pricing, inventory, session revenue, fairness proof display, and animation timing.
+## Closed Scope - Finish The Game Domain Boundary
 
-To do:
+Status: closed for the current wheel and Mystery Grid domain surfaces.
 
-1. Split the remaining `wheelHelpers.ts` responsibilities into focused modules: pricing/revenue math, default config/tier builders, sales creation, count remapping, and legacy compatibility.
-2. Keep `game-spin.ts` as the pure wheel spin-planning helper and add tests for edge cases around invalid target index, zero slots, and spectator animation metadata.
-3. Extract grid reset planning from `mysteryGridMethods.ts` into a pure helper that returns reset timing/state transitions without mutating Vue state directly.
-4. Replace broad mutable command side effects with typed command results where practical: `SpinResult`, `GridRevealResult`, `GameResetResult`, and `SpectatorPublishResult`.
-5. Keep wheel and grid selection separate in names and tests because wheel is with replacement and grid is a fixed board until reset.
-6. Add or reuse fixture builders for game configs, slots, grid reveals, fairness entries, and spectator snapshots so tests stop recreating loose records.
+The closeout pass split the remaining catch-all game helper responsibilities into focused modules and moved grid reset timing into a pure game-domain planner. UI command files still orchestrate Vue state, audio, persistence, and publishing, but they no longer own the core slot, spin, reset, pricing, sales creation, or count-remapping rules.
 
-Done when:
+Maintenance rules:
 
-- Components call typed game helpers instead of owning probability math, reset rules, or revenue math.
-- Wheel and grid tests clearly explain the difference between "with replacement" and "fixed board".
-- Changing odds display or animation polish does not risk changing spin/reveal math.
+1. Keep `src/app-core/shared/game-domain.ts`, `game-spin.ts`, `game-heat.ts`, and `wheel-odds.ts` as the source of truth for pure game rules.
+2. Keep `src/components/windows/wheel/services/wheelHelpers.ts` as compatibility exports only; new production imports should use `wheelSlots`, `wheelDefaults`, `wheelPricing`, `wheelSales`, `wheelCountRemapping`, or fairness/inventory-specific services directly.
+3. Keep wheel and grid behavior separate in names and tests because wheel is with replacement while Mystery Grid is a fixed board until reset.
+4. Future game actions that become hard to test should return typed plans/results from pure helpers before mutating Vue state.
 
-## Priority 3 - Harden Public Session And Spectator Contracts
+Closed evidence:
+
+- Pricing/revenue math lives in `wheelPricing.ts`; default config/tier builders live in `wheelDefaults.ts`; sale creation lives in `wheelSales.ts`; spin-count remapping lives in `wheelCountRemapping.ts`; slot construction and the shared `WheelSlot` type live in `wheelSlots.ts`.
+- `mysteryGridMethods.ts` now asks `createMysteryGridAutoResetPlan` for reset timing instead of embedding the fixed-board completion rule directly in UI orchestration.
+- Game-domain tests cover wheel slot behavior, fixed-grid outcome allocation, reveal planning, auto-reset timing, wheel spin invalid targets/zero slots, and spectator animation metadata.
+- The focused game verification gate includes `tests/wheel-game-boundary.test.ts` so the helper split does not collapse back into a broad catch-all file.
+
+No new feature work should be added under this heading. Future wheel/grid changes are ordinary maintenance unless they introduce a new game rule, in which case add the pure helper and focused test in the same patch.
+
+## Priority 1 - Harden Public Session And Spectator Contracts
 
 The shared type contract and frontend normalization are in place. The remaining risk is duplicated runtime logic: API sanitization, stored snapshots, realtime payloads, and the standalone spectator page must agree on the same versioned shape.
 
@@ -88,7 +94,7 @@ Done when:
 - Grid spectator can never silently fall back to wheel because of a missing or stale `gameType`.
 - Reset/reveal/spin animation state is deterministic across app, API, realtime, and spectator.
 
-## Priority 4 - Split API Wheel Fairness And Public Proof Flow
+## Priority 2 - Split API Wheel Fairness And Public Proof Flow
 
 `apps/api/src/features/wheel/fairnessHandler.ts` is the largest API feature file scanned. It combines request parsing, token encryption, proof verification, layout parsing, HTML rendering, and route behavior. It works, but it is hard to review safely alongside public-session changes.
 
@@ -106,7 +112,7 @@ Done when:
 - Adding grid proof display does not require editing one 1000+ line handler.
 - The public proof page remains output-compatible with existing links.
 
-## Priority 5 - Group Frontend UI Methods By Domain
+## Priority 3 - Group Frontend UI Methods By Domain
 
 `src/app-core/methods/ui` now has many domain-prefixed files in one flat folder. It is not the highest runtime risk, but it slows down changes to auth, entitlements, sync, workspace, realtime, Whatnot, and spectator behavior.
 
@@ -129,7 +135,7 @@ Done when:
 - Entitlement and auth flows are physically separated from sync and Whatnot.
 - `src/app-core/methods/ui` root contains only aggregation or compatibility files.
 
-## Priority 6 - Realtime And Spectator Reliability
+## Priority 4 - Realtime And Spectator Reliability
 
 Realtime and public session behavior should be predictable across local dev, workspace sessions, and public spectator pages. The gateway exists and supports signed subscriptions, workspace presence, public-session publish, room counts, and reconnects, but the config/test story still needs to be boring.
 
@@ -147,7 +153,7 @@ Done when:
 - Public spectator state survives refresh/reconnect without wrong game rendering.
 - A publish failure does not silently mutate local game state in a misleading way.
 
-## Priority 7 - Whatnot And Sales Boundary Cleanup
+## Priority 5 - Whatnot And Sales Boundary Cleanup
 
 Whatnot and authoritative sales flows now cover OAuth, CSV import, duplicate detection, review decisions, lot refreshes, sale entities, and optimistic concurrency. The code is well-covered but still has large orchestration surfaces.
 
@@ -165,7 +171,7 @@ Done when:
 - Sale entity parsing is shared between manual, Whatnot, and wheel sale paths.
 - A conflict path can be tested without a browser or Azure runtime.
 
-## Priority 8 - UI And Animation Polish Without Logic Drift
+## Priority 6 - UI And Animation Polish Without Logic Drift
 
 The game UI is usable, and the wheel folder now has a stage/inspector split. Visual polish should remain separate from probability, inventory, proof, and session rules.
 
@@ -183,7 +189,7 @@ Done when:
 - Visual changes can be shipped without changing odds, proof, inventory, or public session rules.
 - Mobile UI remains touch-friendly and does not require desktop-only drag precision.
 
-## Priority 9 - Test And Repo Organization
+## Priority 7 - Test And Repo Organization
 
 The wheel source folder reached the target layout, but tests are still mostly flat and several large files make ownership harder to see.
 
@@ -211,7 +217,7 @@ Done when:
 - Test moves are behavior-neutral and verified by the smallest relevant suite.
 - The folder tree explains source ownership and test ownership.
 
-## Priority 10 - Developer Tooling And Local Workflow
+## Priority 8 - Developer Tooling And Local Workflow
 
 Local workflow has improved but still depends on knowing the right app/API/realtime/spectator sequence.
 
@@ -274,8 +280,8 @@ Status:
 1. Extract `game-heat` as a pure helper: done.
 2. Add frontend spectator payload normalization for fetch and realtime events: done.
 3. Audit game/spectator i18n keys and fix wheel-only labels: done for shared game/spectator copy.
-4. Add sync contract tests for rich game config fields: still open; now part of Priority 1.
-5. Split `wheelHelpers.ts` pricing/sales/fairness responsibilities: partially done for fairness and inventory support; pricing, default config, sales creation, and revenue math remain.
+4. Add sync contract tests for rich game config fields: done under the closed sync/entity contract scope.
+5. Split `wheelHelpers.ts` pricing/sales/fairness responsibilities: done for pricing/revenue, default builders, sales creation, count remapping, fairness, inventory support, and compatibility exports.
 
 ### Sync Entity Contract Slice
 
@@ -295,13 +301,13 @@ What changed:
 
 ## Next Refactor Slice
 
-The next slice should move to game-domain cleanup without changing UX:
+The next slice should harden public session and spectator contracts without changing UX:
 
 1. Keep `tests/lot-selector-display.test.ts` in the focused gate for any lot DTO, shell bridge, or current-lot selector change.
-2. Split `wheelHelpers.ts` into pricing/revenue, default builders, sales creation, and count remapping modules with existing tests moved to the new imports.
-3. Extract grid reset planning from `mysteryGridMethods.ts` into a pure helper and test reduced-motion/default timing.
-4. Factor shared spectator snapshot sanitizer rules so API and frontend normalization do not drift on `gameType`, `gridCells`, `spinAnimation`, and heat.
-5. Add new sync/realtime contract fields only through `shared/sync-contracts` and update the focused sync/entity gate in the same patch.
+2. Factor shared spectator snapshot sanitizer rules so API and frontend normalization do not drift on `gameType`, `gridCells`, `spinAnimation`, and heat.
+3. Add compatibility tests for old wheel-only snapshots, current wheel snapshots, current grid snapshots, reset snapshots, spin-animation snapshots, and malformed public payloads.
+4. Keep API public-session sanitization as the external trust boundary while sharing constants/defaults with frontend normalization.
+5. Keep new sync/realtime contract fields out of this slice unless public-session compatibility requires them; if required, add them through shared contracts with focused boundary tests in the same patch.
 
 This slice should not change UX except for bug fixes found by the tests.
 

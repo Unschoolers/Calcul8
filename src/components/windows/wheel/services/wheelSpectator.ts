@@ -22,7 +22,7 @@ import {
     getWheelDisplayTotalSpins,
     getWheelLatestFairnessEntry
 } from "../coordinator/wheelComputedShared.ts";
-import { calculateWheelTierNetRevenuePerSpin } from "./wheelHelpers.ts";
+import { calculateWheelTierNetRevenuePerSpin } from "./wheelPricing.ts";
 import { buildMysteryGridCells, isMysteryGridConfig } from "../commands/mysteryGridMethods.ts";
 import { getAvailableSinglesQuantityForWheelTier, getRemainingPacksForWheelLot, hasAnyAvailableSinglesForWheelTier } from "./wheelSaleSupport.ts";
 

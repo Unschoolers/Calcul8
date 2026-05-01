@@ -1,10 +1,10 @@
 import { translateAppMessage } from "../../../../app-core/i18n/index.ts";
 import type { Lot, WheelConfig, WheelFairnessEntry } from "../../../../types/app.ts";
 import { getWheelController } from "./wheelControllerState.ts";
-import type { WheelSlot } from "../services/wheelHelpers.ts";
+import type { WheelSlot } from "../services/wheelSlots.ts";
 import {
   calculateWheelSessionNetRevenue
-} from "../services/wheelHelpers.ts";
+} from "../services/wheelPricing.ts";
 
 function isWheelOwnerContext(vm: Record<string, unknown>): boolean {
   return Reflect.has(vm, "wheelController")

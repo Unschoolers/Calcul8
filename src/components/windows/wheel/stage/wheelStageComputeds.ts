@@ -1,7 +1,7 @@
 import { translateAppMessage } from "../../../../app-core/i18n/index.ts";
 import type { WheelConfig } from "../../../../types/app.ts";
 import { getWheelDisplaySlots } from "../coordinator/wheelComputedShared.ts";
-import type { WheelSlot } from "../services/wheelHelpers.ts";
+import type { WheelSlot } from "../services/wheelSlots.ts";
 import { getMysteryGridCellCount } from "../commands/mysteryGridMethods.ts";
 
 export const wheelStageComputeds = {

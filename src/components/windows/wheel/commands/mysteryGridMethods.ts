@@ -1,6 +1,7 @@
 import type { MysteryGridReveal, WheelConfig, WheelFairnessEntry } from "../../../../types/app.ts";
 import {
   buildMysteryGridCellStates,
+  createMysteryGridAutoResetPlan,
   createMysteryGridRevealPlan,
   getMysteryGridOutcomeCount,
   pickUnrevealedMysteryGridCellIndex,
@@ -10,7 +11,7 @@ import {
 import { getWheelDisplayConfig } from "../coordinator/wheelComputedShared.ts";
 import { getWheelController, type WheelWindowThis } from "../coordinator/wheelControllerState.ts";
 import { hashSeed, hashWheelLayoutForFairness } from "../services/wheelFairnessLayout.ts";
-import type { WheelSlot } from "../services/wheelHelpers.ts";
+import type { WheelSlot } from "../services/wheelSlots.ts";
 import { playMysteryGridRevealDing, playMysteryGridShuffleTick } from "../services/wheelAudio.ts";
 import {
   applyWheelSpinBlockedReason,
@@ -116,7 +117,13 @@ function scheduleMysteryGridAutoReset(
     globalThis.clearTimeout(existingTimer);
   }
 
-  const delayMs = shouldReduceMotion(context) ? 0 : 1800;
+  const resetPlan = createMysteryGridAutoResetPlan({
+    revealedCount: getGridReveals(context, params.preview).length,
+    cellCount: params.gridCellCount,
+    reducedMotion: shouldReduceMotion(context)
+  });
+  if (!resetPlan) return;
+
   context[timerKey] = globalThis.setTimeout(() => {
     const currentReveals = getGridReveals(context, params.preview);
     if (currentReveals.length < params.gridCellCount) return;
@@ -130,8 +137,8 @@ function scheduleMysteryGridAutoReset(
       context.wheelGridRevealAnimating = false;
       context.wheelGridResetAnimating = false;
       ((context as Record<string, unknown> & { saveWheelSession?: () => void }).saveWheelSession)?.();
-    }, shouldReduceMotion(context) ? 0 : 680);
-  }, delayMs);
+    }, resetPlan.resetDelayMs);
+  }, resetPlan.startDelayMs);
 }
 
 function appendGridReveal(

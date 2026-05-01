@@ -1,7 +1,7 @@
 import type { WheelFairnessEntry } from "../../../../types/app.ts";
 import { getWheelDisplaySlots, isWheelPreviewMode } from "../coordinator/wheelComputedShared.ts";
 import { getWheelController } from "../coordinator/wheelControllerState.ts";
-import type { WheelSlot } from "./wheelHelpers.ts";
+import type { WheelSlot } from "./wheelSlots.ts";
 
 export type WheelFairnessResult = {
   resultIndex: number;

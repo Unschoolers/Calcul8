@@ -30,6 +30,11 @@ export interface MysteryGridRevealPlan {
   slot: GameOutcomeSlot;
 }
 
+export interface MysteryGridAutoResetPlan {
+  startDelayMs: number;
+  resetDelayMs: number;
+}
+
 function getTierSlotWeight(tier: WheelTier): number {
   const weight = Math.floor(Number(tier.slots) || 0);
   return Number.isFinite(weight) ? Math.max(0, weight) : 0;
@@ -203,5 +208,19 @@ export function createMysteryGridRevealPlan(
     cellIndex: Math.floor(Number(cellIndex)),
     slotIndex,
     slot
+  };
+}
+
+export function createMysteryGridAutoResetPlan(params: {
+  revealedCount: number;
+  cellCount: number;
+  reducedMotion: boolean;
+}): MysteryGridAutoResetPlan | null {
+  const revealedCount = Math.max(0, Math.floor(Number(params.revealedCount) || 0));
+  const cellCount = Math.max(0, Math.floor(Number(params.cellCount) || 0));
+  if (cellCount <= 0 || revealedCount < cellCount) return null;
+  return {
+    startDelayMs: params.reducedMotion ? 0 : 1800,
+    resetDelayMs: params.reducedMotion ? 0 : 680
   };
 }

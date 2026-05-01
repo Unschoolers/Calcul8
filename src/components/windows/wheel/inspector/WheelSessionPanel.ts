@@ -16,7 +16,7 @@ import {
   getAvailableSinglesQuantityForWheelTier,
   getRemainingPacksForWheelLot
 } from "../services/wheelSaleSupport.ts";
-import type { WheelSlot } from "../services/wheelHelpers.ts";
+import type { WheelSlot } from "../services/wheelSlots.ts";
 
 function getWheelSessionPanelSource(vm: Record<string, unknown>): Record<string, unknown> {
   const explicitCtx = vm.ctx;

@@ -1,4 +1,4 @@
-import type { WheelSlot } from "../services/wheelHelpers.ts";
+import type { WheelSlot } from "../services/wheelSlots.ts";
 
 export type WheelRenderCache = {
   canvas: HTMLCanvasElement;

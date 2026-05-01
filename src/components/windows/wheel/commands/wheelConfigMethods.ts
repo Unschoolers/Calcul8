@@ -14,14 +14,9 @@ import { getActiveStorageScope } from "../../../../app-core/workspace-scope.ts";
 import { calculateTotalCaseCost } from "../../../../domain/calculations-fees.ts";
 import type { Lot, LuckGameType, WheelConfig, WheelTier } from "../../../../types/app.ts";
 import { getWheelController } from "../coordinator/wheelControllerState.ts";
-import {
-    buildSlotsFromConfig,
-    createDefaultTier,
-    createDefaultWheelConfig,
-    generateTierId,
-    remapSpinCountsByTier,
-    type WheelSlot
-} from "../services/wheelHelpers.ts";
+import { remapSpinCountsByTier } from "../services/wheelCountRemapping.ts";
+import { createDefaultTier, createDefaultWheelConfig, generateTierId } from "../services/wheelDefaults.ts";
+import { buildSlotsFromConfig, type WheelSlot } from "../services/wheelSlots.ts";
 import {
     getAvailableSinglesQuantityForWheelTier,
     getRemainingPacksForWheelLot,

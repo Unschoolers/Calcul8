@@ -4,6 +4,7 @@ import {
   buildGameOutcomeSlots,
   buildMysteryGridCellStates,
   countGameOutcomeSlotsByTier,
+  createMysteryGridAutoResetPlan,
   createMysteryGridRevealPlan,
   getMysteryGridOutcomeCount,
   pickUnrevealedMysteryGridCellIndex
@@ -146,4 +147,30 @@ test("game domain returns typed reveal plans for valid grid cells", () => {
 test("game domain normalizes mystery grid outcome count", () => {
   assert.equal(getMysteryGridOutcomeCount(createConfig({ outcomeCount: 36 })), 36);
   assert.equal(getMysteryGridOutcomeCount(createConfig({ outcomeCount: 1 })), 100);
+});
+
+test("game domain plans grid auto-reset timing only after the fixed board is complete", () => {
+  assert.equal(createMysteryGridAutoResetPlan({
+    revealedCount: 2,
+    cellCount: 3,
+    reducedMotion: false
+  }), null);
+
+  assert.deepEqual(createMysteryGridAutoResetPlan({
+    revealedCount: 3,
+    cellCount: 3,
+    reducedMotion: false
+  }), {
+    startDelayMs: 1800,
+    resetDelayMs: 680
+  });
+
+  assert.deepEqual(createMysteryGridAutoResetPlan({
+    revealedCount: 3,
+    cellCount: 3,
+    reducedMotion: true
+  }), {
+    startDelayMs: 0,
+    resetDelayMs: 0
+  });
 });
