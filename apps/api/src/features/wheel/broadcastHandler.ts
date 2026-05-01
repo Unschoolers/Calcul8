@@ -7,7 +7,7 @@ import { publishWorkspaceWheelRealtimeEventBestEffort } from "../../lib/realtime
 import { parseOptionalWorkspaceId } from "../../lib/syncScope";
 import { assertSyncScopeAccess, resolveSyncScope } from "../../lib/syncScopeResolution";
 import { readRequestJsonOrThrow, requireRequestBodyRecord } from "../../lib/httpRequest";
-import { normalizeSyncGameSessionDto } from "../../../../../shared/sync-contracts.cjs";
+import { normalizeSyncGameSessionDto } from "../../shared/sync-contracts.cjs";
 import type { SyncGameSessionDto } from "../../types";
 
 function parseWheelBroadcastBody(rawBody: unknown): {

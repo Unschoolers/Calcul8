@@ -7,7 +7,7 @@ import type {
   WheelPublicSessionSnapshot as SharedWheelPublicSessionSnapshot,
   WheelPublicSessionStatus as SharedWheelPublicSessionStatus,
   WheelSpectatorHeatLevel as SharedWheelSpectatorHeatLevel
-} from "../../../shared/wheel-public-session-contracts";
+} from "./shared/wheel-public-session-contracts";
 import type {
   SyncAdditionalFeeAppliesTo as SharedSyncAdditionalFeeAppliesTo,
   SyncCostInputMode as SharedSyncCostInputMode,
@@ -33,7 +33,7 @@ import type {
   SyncTierDeductionType as SharedSyncTierDeductionType,
   SyncWheelConfigDto as SharedSyncWheelConfigDto,
   SyncWheelTierDto as SharedSyncWheelTierDto
-} from "../../../shared/sync-contracts.cjs";
+} from "./shared/sync-contracts";
 
 export type ApiEnvironment = "dev" | "prod";
 

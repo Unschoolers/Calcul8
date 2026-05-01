@@ -3,7 +3,7 @@ import {
   normalizeSyncLotDto,
   normalizeSyncSaleDto,
   normalizeSyncWheelConfigDto
-} from "../../../../shared/sync-contracts.cjs";
+} from "../shared/sync-contracts.cjs";
 import type {
   SyncEntityRecord,
   SyncLotDto,
