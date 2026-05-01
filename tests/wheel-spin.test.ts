@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test, vi } from "vitest";
-import { getWheelController } from "../src/components/windows/wheel/wheelControllerState.ts";
-import { buildWheelReadableVerificationUrl } from "../src/components/windows/wheel/wheelSpinState.ts";
+import { getWheelController } from "../src/components/windows/wheel/coordinator/wheelControllerState.ts";
+import { buildWheelReadableVerificationUrl } from "../src/components/windows/wheel/services/wheelSpinState.ts";
 import {
     WheelWindow
 } from "../src/components/windows/wheel/WheelWindow.ts";

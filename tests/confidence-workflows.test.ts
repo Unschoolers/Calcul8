@@ -11,9 +11,9 @@ import {
     getScopedWheelConfigSessionStorageKey,
     getScopedWheelSessionStorageKey
 } from "../src/app-core/storageKeys.ts";
-import { createWheelWindowState, getWheelController } from "../src/components/windows/wheel/wheelControllerState.ts";
-import { wheelSessionMethods } from "../src/components/windows/wheel/wheelSessionMethods.ts";
-import { wheelSpinMethods } from "../src/components/windows/wheel/wheelSpinMethods.ts";
+import { createWheelWindowState, getWheelController } from "../src/components/windows/wheel/coordinator/wheelControllerState.ts";
+import { wheelSessionMethods } from "../src/components/windows/wheel/commands/wheelSessionMethods.ts";
+import { wheelSpinMethods } from "../src/components/windows/wheel/commands/wheelSpinMethods.ts";
 import {
     calculateLotPerformanceSummary,
     calculateNetFromGross,

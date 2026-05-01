@@ -9,17 +9,6 @@ import WheelStageSummary from "./stage/WheelStageSummary.vue";
 import WheelStageTopbar from "./stage/WheelStageTopbar.vue";
 import { wheelWindowDefinition } from "./coordinator/WheelWindow.definition.ts";
 
-// Re-export pure functions so existing imports keep working
-export {
-  buildSlotsFromConfig,
-  computeExpectedMargin,
-  createDefaultTier,
-  createDefaultWheelConfig,
-  createWheelSale,
-  easeOutQuart,
-  seedToIndex
-} from "./wheelHelpers.ts";
-
 export const WheelWindow = {
   ...wheelWindowDefinition,
   components: {

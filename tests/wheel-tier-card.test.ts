@@ -1,6 +1,15 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { test, vi } from "vitest";
-import { WheelTierCard } from "../src/components/windows/wheel/WheelTierCard.ts";
+import { WheelTierCard } from "../src/components/windows/wheel/inspector/WheelTierCard.ts";
+
+const TESTS_DIR = path.dirname(fileURLToPath(import.meta.url));
+const WHEEL_TIER_CARD_TEMPLATE = path.resolve(
+  TESTS_DIR,
+  "../src/components/windows/wheel/inspector/WheelTierCard.html"
+);
 
 test("finishTierEditor closes the editor and auto-applies when the wheel can apply", () => {
   const tier = { id: 1, label: "Original", color: "#fff", packsCount: 1, costPerTier: 1, chancePercent: 50 };
@@ -60,6 +69,111 @@ test("tier editor drafts changes until Done", () => {
   assert.equal(vm.editorDraft, null);
   assert.equal(vm.tier.label, "Original");
   assert.equal(vm.applyWheelConfig.mock.calls.length, 0);
+});
+
+test("units deducted field recalculates on input instead of waiting for change", () => {
+  const template = fs.readFileSync(WHEEL_TIER_CARD_TEMPLATE, "utf8");
+
+  assert.match(template, /@input="onTierPacksChange\(editorTier\)"/);
+  assert.doesNotMatch(template, /@change="onTierPacksChange\(editorTier\)"/);
+});
+
+test("tier list uses the celebration emoji as the tier badge when selected", () => {
+  const template = fs.readFileSync(WHEEL_TIER_CARD_TEMPLATE, "utf8");
+
+  assert.match(template, /v-if="tier\.celebrationEmoji"/);
+  assert.match(template, /class="wheel-tier-emoji-badge"/);
+  assert.match(template, /\{\{ tier\.celebrationEmoji \}\}/);
+  assert.match(template, /v-else class="wheel-tier-dot"/);
+});
+
+test("tier card summary shows actual wheel sections instead of repeating chance", () => {
+  const tier = {
+    id: "t1",
+    label: "Original",
+    color: "#fff",
+    slots: 20,
+    packsCount: 3,
+    costPerTier: 25.5,
+    chancePercent: 20,
+    deductionType: "packs",
+    sets: []
+  };
+  const vm = {
+    tier,
+    editingWheelConfig: {
+      id: 1,
+      name: "Wheel",
+      spinPrice: 10,
+      targetMargin: 40,
+      gameType: "wheel",
+      outcomeCount: 25,
+      createdAt: "",
+      tiers: [
+        tier,
+        {
+          id: "t2",
+          label: "Other",
+          color: "#000",
+          slots: 80,
+          packsCount: 1,
+          costPerTier: 1,
+          chancePercent: 80,
+          deductionType: "packs",
+          sets: []
+        }
+      ]
+    }
+  };
+
+  const items = WheelTierCard.computed!.tierSummaryItems.call(vm as never);
+
+  assert.deepEqual(items, ["5 sections", "3 hits", "$25.50"]);
+});
+
+test("tier card summary shows actual mystery grid tiles", () => {
+  const tier = {
+    id: "hit",
+    label: "Hit",
+    color: "#fff",
+    slots: 10,
+    packsCount: 1,
+    costPerTier: 12,
+    chancePercent: 10,
+    deductionType: "packs",
+    sets: []
+  };
+  const vm = {
+    tier,
+    editingWheelConfig: {
+      id: 1,
+      name: "Grid",
+      spinPrice: 10,
+      targetMargin: 40,
+      gameType: "grid",
+      outcomeCount: 100,
+      gridCellCount: 100,
+      createdAt: "",
+      tiers: [
+        {
+          id: "floor",
+          label: "Floor",
+          color: "#000",
+          slots: 90,
+          packsCount: 1,
+          costPerTier: 1,
+          chancePercent: 90,
+          deductionType: "packs",
+          sets: []
+        },
+        tier
+      ]
+    }
+  };
+
+  const items = WheelTierCard.computed!.tierSummaryItems.call(vm as never);
+
+  assert.deepEqual(items, ["10 tiles", "1 hit", "$12.00"]);
 });
 
 test("tier card chance input rebalances the current editing config", () => {

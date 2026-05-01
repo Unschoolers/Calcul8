@@ -1,18 +1,18 @@
 import assert from "node:assert/strict";
 import { afterEach, test, vi } from "vitest";
 import { normalizeWheelConfig } from "../src/app-core/shared/normalize-wheel-config.ts";
-import { createWheelWindowState, getWheelController } from "../src/components/windows/wheel/wheelControllerState.ts";
-import { buildSlotsFromConfig, createDefaultWheelConfig } from "../src/components/windows/wheel/wheelHelpers.ts";
+import { createWheelWindowState, getWheelController } from "../src/components/windows/wheel/coordinator/wheelControllerState.ts";
+import { buildSlotsFromConfig, createDefaultWheelConfig } from "../src/components/windows/wheel/services/wheelHelpers.ts";
 import {
   buildMysteryGridCells,
   getMysteryGridCellCount,
   mysteryGridMethods,
   pickRandomMysteryGridCellIndex
-} from "../src/components/windows/wheel/mysteryGridMethods.ts";
-import { wheelConfigMethods } from "../src/components/windows/wheel/wheelConfigMethods.ts";
-import { MysteryGridSurface } from "../src/components/windows/wheel/MysteryGridSurface.ts";
-import { wheelSessionMethods } from "../src/components/windows/wheel/wheelSessionMethods.ts";
-import { wheelSpinMethods } from "../src/components/windows/wheel/wheelSpinMethods.ts";
+} from "../src/components/windows/wheel/commands/mysteryGridMethods.ts";
+import { wheelConfigMethods } from "../src/components/windows/wheel/commands/wheelConfigMethods.ts";
+import { MysteryGridSurface } from "../src/components/windows/wheel/stage/MysteryGridSurface.ts";
+import { wheelSessionMethods } from "../src/components/windows/wheel/commands/wheelSessionMethods.ts";
+import { wheelSpinMethods } from "../src/components/windows/wheel/commands/wheelSpinMethods.ts";
 import type { WheelConfig } from "../src/types/app.ts";
 
 let committedLayoutHash = "c3ca5e1eef7edf9b0625f714c6eb25287a9e8bcc63a16d0de00ce711ddbe67ad";
@@ -393,6 +393,50 @@ test("mystery grid selector plays shuffle ticks during the random highlight anim
 
   assert.equal(wheelAudioMock.playMysteryGridShuffleTick.mock.calls.length, 18);
   assert.deepEqual(wheelAudioMock.playMysteryGridShuffleTick.mock.calls.at(-1), [1]);
+});
+
+test("mystery grid selector can animate through the surface without updating the window each step", async () => {
+  vi.spyOn(Math, "random").mockReturnValue(0);
+  vi.stubGlobal("window", {
+    matchMedia: vi.fn(() => ({ matches: false }))
+  });
+  vi.spyOn(globalThis, "setTimeout").mockImplementation((handler: TimerHandler) => {
+    if (typeof handler === "function") {
+      handler();
+    }
+    return 1 as never;
+  });
+  const vm = createGridVm("config");
+  const surfacePreview = {
+    previewMysteryGridSelection: vi.fn(),
+    clearMysteryGridSelectionPreview: vi.fn()
+  };
+  vm.$refs = { mysteryGridSurface: surfacePreview };
+
+  await mysteryGridMethods.animateMysteryGridRandomSelection.call(vm, 9);
+
+  assert.equal(surfacePreview.previewMysteryGridSelection.mock.calls.length, 18);
+  assert.equal(surfacePreview.previewMysteryGridSelection.mock.calls.at(-1)?.[0], 9);
+  assert.equal(surfacePreview.clearMysteryGridSelectionPreview.mock.calls.length, 1);
+  assert.equal(vm.wheelGridHighlightCellIndex, 9);
+});
+
+test("mystery grid surface local selector state controls highlighted cells", () => {
+  const vm = {
+    localGridSelectorAnimating: false,
+    localGridHighlightCellIndex: -1,
+    wheelGridRevealAnimating: false,
+    wheelGridHighlightCellIndex: -1
+  };
+  const cell = { index: 3, revealed: false };
+
+  MysteryGridSurface.methods!.previewMysteryGridSelection.call(vm, 3);
+
+  assert.equal(MysteryGridSurface.methods!.isMysteryGridCellHighlighted.call(vm as never, cell as never), true);
+
+  MysteryGridSurface.methods!.clearMysteryGridSelectionPreview.call(vm);
+
+  assert.equal(MysteryGridSurface.methods!.isMysteryGridCellHighlighted.call(vm as never, cell as never), false);
 });
 
 test("mystery grid effects controls can mute reveal sounds and reduce selector motion", async () => {

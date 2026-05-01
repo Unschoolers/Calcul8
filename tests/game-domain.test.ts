@@ -3,6 +3,7 @@ import { test } from "vitest";
 import {
   buildGameOutcomeSlots,
   buildMysteryGridCellStates,
+  countGameOutcomeSlotsByTier,
   createMysteryGridRevealPlan,
   getMysteryGridOutcomeCount,
   pickUnrevealedMysteryGridCellIndex
@@ -54,6 +55,13 @@ test("game domain builds fixed grid outcomes from tier chances and outcome count
   assert.equal(slots.length, 25);
   assert.equal(slots.filter((slot) => slot.tier === "floor").length, 20);
   assert.equal(slots.filter((slot) => slot.tier === "hit").length, 5);
+});
+
+test("game domain exposes the actual rendered outcome count per tier", () => {
+  const counts = countGameOutcomeSlotsByTier(createConfig());
+
+  assert.equal(counts.get("floor"), 20);
+  assert.equal(counts.get("hit"), 5);
 });
 
 test("game domain keeps wheel outcomes based on legacy slot weights when chances are absent", () => {

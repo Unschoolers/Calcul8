@@ -23,6 +23,11 @@ import {
 
 export type MysteryGridCell = MysteryGridCellState;
 
+type MysteryGridSurfacePreviewController = {
+  previewMysteryGridSelection?: (cellIndex: number) => void;
+  clearMysteryGridSelectionPreview?: () => void;
+};
+
 function getGridReveals(context: Record<string, unknown>, preview: boolean): MysteryGridReveal[] {
   const controller = getWheelController(context);
   return ((preview ? controller.previewGridReveals : controller.gridReveals) || []) as MysteryGridReveal[];
@@ -83,9 +88,16 @@ function shouldPlayWheelSounds(context: Record<string, unknown>): boolean {
   return context.wheelSoundEnabled !== false;
 }
 
+function getMysteryGridSurfacePreviewController(context: Record<string, unknown>): MysteryGridSurfacePreviewController | null {
+  const refs = (context.$refs || {}) as Record<string, unknown>;
+  const controller = refs.mysteryGridSurface as MysteryGridSurfacePreviewController | undefined;
+  return controller && typeof controller === "object" ? controller : null;
+}
+
 async function playMysteryGridRevealAnimation(context: Record<string, unknown>, cellIndex: number): Promise<void> {
   context.wheelGridRevealAnimating = true;
   context.wheelGridHighlightCellIndex = cellIndex;
+  getMysteryGridSurfacePreviewController(context)?.previewMysteryGridSelection?.(cellIndex);
   // Publish the pre-reveal highlight so spectator mode can mirror the selector shake.
   ((context as Record<string, unknown>).publishWheelSpectatorSessionSnapshot as (() => Promise<void>) | undefined)?.();
   await waitForMysteryGridAnimationFrame(shouldReduceMotion(context) ? 0 : 620);
@@ -162,9 +174,15 @@ export const mysteryGridMethods = {
       return index === 17 ? targetCellIndex : (randomCell?.index ?? targetCellIndex);
     });
     this.wheelGridRevealAnimating = true;
+    const surfacePreview = getMysteryGridSurfacePreviewController(this);
     try {
       for (let index = 0; index < steps.length; index += 1) {
-        this.wheelGridHighlightCellIndex = steps[index] ?? targetCellIndex;
+        const highlightCellIndex = steps[index] ?? targetCellIndex;
+        if (surfacePreview?.previewMysteryGridSelection) {
+          surfacePreview.previewMysteryGridSelection(highlightCellIndex);
+        } else {
+          this.wheelGridHighlightCellIndex = highlightCellIndex;
+        }
         const progress = steps.length <= 1 ? 1 : index / (steps.length - 1);
         if (!reducedMotion && shouldPlayWheelSounds(this)) {
           playMysteryGridShuffleTick(progress);
@@ -175,6 +193,7 @@ export const mysteryGridMethods = {
     } finally {
       this.wheelGridHighlightCellIndex = targetCellIndex;
       this.wheelGridRevealAnimating = false;
+      surfacePreview?.clearMysteryGridSelectionPreview?.();
     }
   },
 
@@ -281,6 +300,7 @@ export const mysteryGridMethods = {
     vm.wheelSpinning = false;
     vm.wheelGridHighlightCellIndex = targetCellIndex;
     vm.wheelGridRevealAnimating = false;
+    getMysteryGridSurfacePreviewController(vm)?.clearMysteryGridSelectionPreview?.();
     vm.saveWheelSession();
     vm.landOnSlot(targetIndex, { recordSession: shouldRecordLiveSession });
     if (getGridReveals(vm, preview).length >= gridCellCount) {

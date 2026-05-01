@@ -1,12 +1,21 @@
 import { inject, type PropType } from "vue";
+import { countGameOutcomeSlotsByTier } from "../../../../app-core/shared/game-domain.ts";
 import { setWheelTierChancePercent } from "../../../../app-core/shared/wheel-odds.ts";
-import type { WheelTier } from "../../../../types/app.ts";
+import type { WheelConfig, WheelTier } from "../../../../types/app.ts";
 import { createNestedWindowContextBridge } from "../../shared/contextBridge.ts";
 
 const TIER_CELEBRATION_EMOJI_OPTIONS = [
   "✨", "🎉", "🔥", "💎", "⭐", "🏆",
   "🎁", "💥", "⚡", "👑", "🍀", "🎯"
 ];
+
+function getTierOutcomeLabel(config: WheelConfig | null, tier: WheelTier): string {
+  const count = config
+    ? countGameOutcomeSlotsByTier(config).get(tier.id) ?? 0
+    : Math.max(0, Math.floor(Number(tier.slots) || 0));
+  const unit = config?.gameType === "grid" ? "tile" : "section";
+  return `${count} ${unit}${count === 1 ? "" : "s"}`;
+}
 
 export const WheelTierCard = {
   name: "WheelTierCard",
@@ -60,9 +69,9 @@ export const WheelTierCard = {
       const tier = this.tier;
       const hitCount = Number(tier.packsCount || 0);
       const cost = Number(tier.costPerTier || 0);
-      const chance = Number(tier.chancePercent || 0);
+      const config = ((this as Record<string, unknown>).editingWheelConfig || null) as WheelConfig | null;
       return [
-        `${Math.round(chance)}%`,
+        getTierOutcomeLabel(config, tier),
         `${hitCount} hit${hitCount === 1 ? "" : "s"}`,
         `$${cost.toFixed(2)}`
       ];

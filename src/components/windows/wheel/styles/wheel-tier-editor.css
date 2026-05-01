@@ -45,6 +45,16 @@
   flex-shrink: 0;
 }
 
+.wheel-tier-emoji-badge {
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  font-size: 0.92rem;
+  line-height: 1;
+}
+
 .wheel-tier-label-input {
   background: transparent;
   border: none;

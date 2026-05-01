@@ -43,6 +43,15 @@ function hasExplicitTierChance(config: WheelConfig): boolean {
   return config.tiers.some((tier) => Number.isFinite(Number(tier.chancePercent)));
 }
 
+export function countGameOutcomeSlotsByTier(config: WheelConfig): Map<string, number> {
+  const shouldBuildFromOdds = config.gameType === "grid" || hasExplicitTierChance(config);
+  if (shouldBuildFromOdds) {
+    return allocateTierCountsByChance(getNormalizedChanceTiers(config), getWheelOutcomeCount(config));
+  }
+
+  return new Map(config.tiers.map((tier) => [tier.id, getTierSlotWeight(tier)] as const));
+}
+
 function hashStringToUint32(value: string): number {
   let hash = 2166136261;
   for (let index = 0; index < value.length; index += 1) {
@@ -93,15 +102,12 @@ function shuffleSlotsDeterministically<T>(slots: T[], seed: string): T[] {
 }
 
 export function buildGameOutcomeSlots(config: WheelConfig): GameOutcomeSlot[] {
-  const shouldBuildFromOdds = config.gameType === "grid" || hasExplicitTierChance(config);
-  const tierCounts = shouldBuildFromOdds
-    ? allocateTierCountsByChance(getNormalizedChanceTiers(config), getWheelOutcomeCount(config))
-    : null;
+  const tierCounts = countGameOutcomeSlotsByTier(config);
 
   const groups: { tier: string; slots: GameOutcomeSlot[] }[] = [];
   for (const tier of config.tiers) {
     const slots: GameOutcomeSlot[] = [];
-    const slotCount = tierCounts?.get(tier.id) ?? getTierSlotWeight(tier);
+    const slotCount = tierCounts.get(tier.id) ?? 0;
     for (let index = 0; index < slotCount; index += 1) {
       const setLabel = tier.sets.length > 0 ? tier.sets[index % tier.sets.length]! : "";
       slots.push({

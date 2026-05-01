@@ -1,13 +1,15 @@
 import assert from "node:assert/strict";
 import { test, vi } from "vitest";
-import { getWheelTierInventoryMeta } from "../src/components/windows/wheel/wheelSaleSupport.ts";
+import { getWheelTierInventoryMeta } from "../src/components/windows/wheel/services/wheelSaleSupport.ts";
 import {
     buildSlotsFromConfig,
     computeExpectedMargin,
     createDefaultTier,
     createDefaultWheelConfig,
     easeOutQuart,
-    seedToIndex,
+    seedToIndex
+} from "../src/components/windows/wheel/services/wheelHelpers.ts";
+import {
     WheelWindow
 } from "../src/components/windows/wheel/WheelWindow.ts";
 import type { WheelConfig } from "../src/types/app.ts";

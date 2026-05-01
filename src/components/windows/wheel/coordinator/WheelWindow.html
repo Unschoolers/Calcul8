@@ -40,7 +40,10 @@
                         </div>
                     </div>
                 </transition>
-                <mystery-grid-surface :ctx="getWindowComponentContext()"></mystery-grid-surface>
+                <mystery-grid-surface
+                    ref="mysteryGridSurface"
+                    :ctx="getWindowComponentContext()"
+                ></mystery-grid-surface>
             </div>
 
             <div v-else class="wheel-outer" :class="{ 'wheel-outer--spinning': wheelSpinning }" ref="wheelOuter">

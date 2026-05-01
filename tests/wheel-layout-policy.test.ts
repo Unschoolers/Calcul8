@@ -5,7 +5,7 @@ import {
   isWheelCompactViewport,
   resolveWheelCanvasTargetSize,
   resolveWheelLayoutMode
-} from "../src/components/windows/wheel/wheelLayoutPolicy.ts";
+} from "../src/components/windows/wheel/coordinator/wheelLayoutPolicy.ts";
 
 test("wheel compact breakpoint is inclusive at the configured threshold", () => {
   assert.equal(WHEEL_COMPACT_LAYOUT_BREAKPOINT, 1100);

@@ -33,6 +33,7 @@
     linear-gradient(145deg, rgba(var(--v-theme-surface), 0.96), rgba(var(--v-theme-surface), 0.82)),
     radial-gradient(circle at 50% 0%, rgba(var(--v-theme-primary), 0.16), transparent 50%);
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.22);
+  contain: layout paint style;
 }
 
 .mystery-grid-cell {
@@ -49,8 +50,11 @@
   place-items: center;
   padding: 2px;
   cursor: pointer;
-  transition: transform 500ms ease, border-color 500ms ease, background 500ms ease, box-shadow 500ms ease;
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
   width: 100%;
+  contain: layout paint style;
+  backface-visibility: hidden;
+  will-change: transform;
 }
 
 .mystery-grid-cell:hover:not(:disabled) {

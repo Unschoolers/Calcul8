@@ -44,45 +44,41 @@
     <section v-show="wheelInspectorTab === 'config'" class="wheel-panel-section">
 
       <div class="wheel-active-config-toolbar">
-      <v-select v-model="activeWheelConfigId" :items="wheelConfigItems" item-title="title" item-value="value"
-        :label="t('wheelInspectorActiveWheelLabel')" variant="outlined" density="compact" hide-details="auto" class="wheel-active-config-select"
-        @update:model-value="loadWheelConfig">
-        <template #append>
-          <v-btn icon="mdi-plus" size="x-small" variant="text" :title="t('wheelInspectorNewGameAction')"
-            @click="openWheelCreateDialog"></v-btn>
-          <v-btn icon="mdi-pencil-outline" size="x-small" variant="text" :title="t('wheelInspectorEditWheelAction')"
-            @click="openWheelManageDialog"></v-btn>
-        </template>
-      </v-select>
+        <v-select v-model="activeWheelConfigId" :items="wheelConfigItems" item-title="title" item-value="value"
+          :label="t('wheelInspectorActiveWheelLabel')" variant="outlined" density="compact" hide-details="auto" class="wheel-active-config-select"
+          @update:model-value="loadWheelConfig"></v-select>
+        <v-btn icon="mdi-plus" size="small" variant="text" :title="t('wheelInspectorNewGameAction')"
+          :aria-label="t('wheelInspectorNewGameAction')" @click="openWheelCreateDialog"></v-btn>
+        <v-btn icon="mdi-pencil-outline" size="small" variant="text" :title="t('wheelInspectorEditWheelAction')"
+          :aria-label="t('wheelInspectorEditWheelAction')" @click="openWheelManageDialog"></v-btn>
       </div>
 
       <template v-if="editingWheelConfig">
-        <div class="wheel-section-title">{{ t('wheelInspectorGlobalSettingsTitle') }}</div>
-        <div class="wheel-game-type-badge mb-2">
-          <v-icon size="16">{{ editingWheelConfig.gameType === 'grid' ? 'mdi-grid' : 'mdi-chart-donut' }}</v-icon>
-          <span>
-            {{ editingWheelConfig.gameType === 'grid' ? t('wheelGameTypeGridLabel') : t('wheelGameTypeWheelLabel') }}
-          </span>
-        </div>
-        <v-row dense class="mb-2">
-          <v-col cols="12" sm="4">
-            <v-text-field v-model.number="editingWheelConfig.spinPrice" :label="t('wheelInspectorSpinPriceLabel')" type="number"
+        <div class="wheel-compact-settings">
+          <div class="wheel-compact-setting">
+            <div class="wheel-compact-setting__label">{{ t('wheelInspectorSpinPriceLabel') }}</div>
+            <v-text-field v-model.number="editingWheelConfig.spinPrice" type="number"
+              :aria-label="t('wheelInspectorSpinPriceLabel')"
               min="0.5" step="0.5" variant="outlined" density="compact"
               hide-details="auto"></v-text-field>
-          </v-col>
-          <v-col cols="12" sm="4">
-            <v-text-field v-model.number="editingWheelConfig.targetMargin" :label="t('wheelInspectorTargetMarginLabel')"
+          </div>
+          <div class="wheel-compact-setting">
+            <div class="wheel-compact-setting__label">{{ t('wheelInspectorTargetMarginLabel') }}</div>
+            <v-text-field v-model.number="editingWheelConfig.targetMargin"
+              :aria-label="t('wheelInspectorTargetMarginLabel')"
               type="number" min="0" max="100" step="5" variant="outlined" density="compact"
               hide-details="auto"></v-text-field>
-          </v-col>
-          <v-col cols="12" sm="4">
-            <v-text-field v-model.number="editingWheelConfig.outcomeCount" :label="t('wheelInspectorOutcomeCountLabel')"
+          </div>
+          <div class="wheel-compact-setting">
+            <div class="wheel-compact-setting__label">{{ t('wheelInspectorOutcomeCountLabel') }}</div>
+            <v-text-field v-model.number="editingWheelConfig.outcomeCount"
+              :aria-label="t('wheelInspectorOutcomeCountLabel')"
               type="number" min="4" max="200" step="1" variant="outlined" density="compact"
               hide-details="auto"></v-text-field>
-          </v-col>
-        </v-row>
+          </div>
+        </div>
 
-        <v-divider class="my-3"></v-divider>
+        <v-divider class="my-2"></v-divider>
         <div class="wheel-section-heading">
           <div>
             <div class="wheel-section-title">{{ t('wheelInspectorWheelTiersTitle') }}</div>

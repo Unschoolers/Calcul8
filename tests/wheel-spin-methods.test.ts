@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { afterEach, test, vi } from "vitest";
-import { createWheelWindowState, getWheelController } from "../src/components/windows/wheel/wheelControllerState.ts";
-import { wheelSessionMethods } from "../src/components/windows/wheel/wheelSessionMethods.ts";
-import { wheelSpinMethods } from "../src/components/windows/wheel/wheelSpinMethods.ts";
+import { createWheelWindowState, getWheelController } from "../src/components/windows/wheel/coordinator/wheelControllerState.ts";
+import { wheelSessionMethods } from "../src/components/windows/wheel/commands/wheelSessionMethods.ts";
+import { wheelSpinMethods } from "../src/components/windows/wheel/commands/wheelSpinMethods.ts";
 
 const wheelLayoutHash = "c3ca5e1eef7edf9b0625f714c6eb25287a9e8bcc63a16d0de00ce711ddbe67ad";
 

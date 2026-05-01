@@ -38,7 +38,7 @@ import {
 import {
   calculateWheelNetFromGross,
   computeExpectedMargin,
-} from "../src/components/windows/wheel/wheelHelpers.ts";
+} from "../src/components/windows/wheel/services/wheelHelpers.ts";
 import type { Lot, Sale } from "../src/types/app.ts";
 
 type MockStorage = {

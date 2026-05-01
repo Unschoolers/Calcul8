@@ -8,7 +8,7 @@ export default WheelStageTopbar;
 
 <style>
 .wheel-presentation-toggle {
-  align-self: flex-end;
+  align-self: center;
   opacity: 0.72;
 }
 
@@ -43,26 +43,61 @@ export default WheelStageTopbar;
 
 .wheel-stage-topbar {
   width: 100%;
+  container-type: inline-size;
   display: flex;
-  align-items: flex-start;
+  flex-direction: column;
+  gap: 10px;
+  overflow: hidden;
+}
+
+.wheel-stage-headline {
+  display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
+  min-width: 0;
+}
+
+.wheel-stage-commandbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(310px, 0.72fr);
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
 }
 
 .wheel-stage-actions {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(148px, 1fr) minmax(138px, 0.82fr);
   align-items: center;
+  justify-content: stretch;
   gap: 8px;
+  min-width: 0;
+}
+
+.wheel-stage-utility-controls {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: max-content;
 }
 
 .wheel-effects-controls {
   display: inline-flex;
   align-items: center;
   gap: 2px;
+  min-height: 36px;
   padding: 2px;
   border-radius: 999px;
   background: rgba(var(--v-theme-on-surface), 0.05);
   border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+}
+
+.wheel-effects-controls .v-btn,
+.wheel-presentation-toggle {
+  width: 32px !important;
+  height: 32px !important;
 }
 
 .wheel-effects-toggle {
@@ -75,9 +110,17 @@ export default WheelStageTopbar;
 
 .wheel-spectator-btn {
   min-width: 0;
+  min-height: 38px;
+  border-radius: 999px !important;
   font-weight: 800;
   letter-spacing: 0.03em;
   text-transform: uppercase;
+}
+
+.wheel-spectator-btn__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .wheel-spectator-btn.v-btn--variant-tonal {
@@ -110,7 +153,9 @@ export default WheelStageTopbar;
 
 .wheel-mode-toggle {
   display: flex;
-  width: min(100%, 248px);
+  min-width: 0;
+  width: 100%;
+  max-width: none;
   border-radius: 999px !important;
   overflow: hidden;
   background: var(--wheel-chip-bg);
@@ -123,6 +168,12 @@ export default WheelStageTopbar;
   font-weight: 700;
   letter-spacing: 0.02em;
   text-transform: none;
+}
+
+.wheel-mode-toggle__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .wheel-mode-toggle .wheel-mode-toggle__btn--active-config.v-btn--active {
@@ -139,11 +190,11 @@ export default WheelStageTopbar;
   color: rgb(var(--v-theme-success));
 }
 
-.wheel-stage-meta {
-  min-width: 0;
-}
-
 .wheel-stage-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 0.92rem;
   font-weight: 800;
   letter-spacing: 0.02em;
@@ -184,38 +235,76 @@ export default WheelStageTopbar;
   letter-spacing: 0.01em;
 }
 
-@media (max-width: 1100px) {
-  .wheel-stage-topbar {
-    flex-direction: column;
+@container (max-width: 520px) {
+  .wheel-stage-commandbar {
+    grid-template-columns: minmax(0, 1fr);
     align-items: stretch;
     gap: 10px;
   }
 
-  .wheel-stage-meta {
-    width: 100%;
-  }
-
-  .wheel-stage-pills {
-    margin-top: 6px;
-    gap: 6px;
-  }
-
   .wheel-stage-actions {
-    width: 100%;
-    justify-content: space-between;
-    align-items: center;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(88px, 0.54fr);
+    grid-template-areas:
+      "mode spectator";
+    gap: 8px;
   }
 
   .wheel-mode-toggle {
-    flex: 1 1 auto;
+    grid-area: mode;
+    width: 100%;
+  }
+
+  .wheel-spectator-btn {
+    grid-area: spectator;
+    width: 100%;
+    min-width: 0;
+    padding-inline: 10px !important;
+    justify-self: stretch;
+  }
+
+  .wheel-spectator-btn .v-icon {
+    margin-inline-end: 6px !important;
+  }
+
+  .wheel-spectator-btn__label {
+    display: inline-block;
   }
 
   .wheel-mode-toggle .v-btn {
     min-width: 0;
   }
+}
 
-  .wheel-stage-title {
-    font-size: 0.86rem;
+@container (max-width: 340px) {
+  .wheel-mode-toggle .v-icon {
+    margin-inline-end: 0 !important;
+  }
+
+  .wheel-mode-toggle__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .wheel-spectator-btn {
+    padding-inline: 0 !important;
+  }
+
+  .wheel-spectator-btn .v-icon {
+    margin-inline-end: 0 !important;
+  }
+
+  .wheel-spectator-btn__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 }
 </style>

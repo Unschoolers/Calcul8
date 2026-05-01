@@ -23,7 +23,7 @@ vi.mock("../src/components/windows/wheel/services/wheelSpectator.ts", () => ({
   buildWheelSpectatorSnapshot: buildWheelSpectatorSnapshotMock
 }));
 
-import { wheelSpectatorMethods } from "../src/components/windows/wheel/wheelSpectatorMethods.ts";
+import { wheelSpectatorMethods } from "../src/components/windows/wheel/commands/wheelSpectatorMethods.ts";
 
 test("publishWheelSpectatorSessionSnapshot republishes the newest queued state after an in-flight publish", async () => {
   let resolveFirstPublish: (() => void) | null = null;

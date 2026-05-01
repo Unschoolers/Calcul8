@@ -11,8 +11,7 @@ This is the current refactor plan. This document is alive, kill done tasks and a
 - Core game slot/cell/reveal rules have started moving into shared pure helpers under `src/app-core/shared`, with component methods kept as orchestration.
 - Public spectator session DTOs now live in a shared contract under `shared`, and frontend/API types import that contract instead of maintaining separate snapshot shapes.
 - Sync contracts still need tightening for richer game configs and sessions.
-- The UI still contains rough translation coverage and product language left over from "wheel only", especially around spectator mode and game creation.
-- The repo now has a separate organization target in `docs/repo-organization.md`. Use it as the map for file moves so cleanup does not become random shuffling.
+- The repo navigation pass is complete enough to stop blocking feature work: wheel has responsibility folders, API logic has feature folders, and the target map lives in `docs/repo-organization.md`.
 
 ## Refactor Principles
 
@@ -22,27 +21,6 @@ This is the current refactor plan. This document is alive, kill done tasks and a
 4. Keep wheel and grid differences explicit. Do not hide important semantics behind generic names if they behave differently.
 5. Keep frontend and API contracts strict, normalized, and runtime-validated at boundaries.
 6. Preserve local-first behavior, legacy personal mode, and workspace scope safety.
-
-## Priority 0 - Make The Repo Navigable
-
-The whole repo needs a clearer folder story before more feature work piles on. This is not a behavior refactor; it is controlled organization so files are easier to find and future refactors have obvious landing zones.
-
-Target map: `docs/repo-organization.md`.
-
-To do:
-
-1. Move large frontend windows toward feature folders with consistent subfolders: `coordinator`, `panels`, `components`, `commands`, `services`, and `styles`.
-2. Start with `src/components/windows/wheel` because it is the most active and already partially extracted.
-3. Then apply the same structure to old flat windows: singles, portfolio, sales, config, and live.
-4. Group `src/app-core/methods/ui` by domain over time: auth, entitlements, sync, workspace, realtime, whatnot, spectator.
-5. Keep API route files thin and move larger API feature logic out of `apps/api/src/functions` into feature/service folders.
-6. Group tests by feature only when the related source files are being moved or actively edited.
-
-Done when:
-
-- A new contributor can find UI, commands, services, styles, and tests for a feature without scanning dozens of sibling files.
-- File moves do not change runtime behavior.
-- Temporary compatibility exports are removed after imports are migrated.
 
 ## Priority 1 - Finish The Game Domain Boundary
 

@@ -10,11 +10,12 @@
     class="mystery-grid-cell"
     :class="{
       'mystery-grid-cell--revealed': cell.revealed,
-      'mystery-grid-cell--highlighted': wheelGridRevealAnimating && wheelGridHighlightCellIndex === cell.index && !cell.revealed,
-      'mystery-grid-cell--selector-active': wheelGridRevealAnimating && wheelGridHighlightCellIndex === cell.index && !cell.revealed
+      'mystery-grid-cell--highlighted': isMysteryGridCellHighlighted(cell),
+      'mystery-grid-cell--selector-active': isMysteryGridCellHighlighted(cell)
     }"
     :style="cell.revealed ? { '--mystery-grid-cell-color': cell.color } : undefined"
     :disabled="wheelSpinning || wheelGridRevealAnimating || cell.revealed || wheelEndingSession || wheelChaseDialog"
+    :data-mystery-grid-cell-index="cell.index"
     @click="revealMysteryGridCell(cell.index, true)"
   >
     <span v-if="!cell.revealed" class="mystery-grid-cell__number">{{ cell.index + 1 }}</span>

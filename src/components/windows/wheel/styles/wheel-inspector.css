@@ -39,7 +39,8 @@
 .wheel-inspector-panel__body {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
+  padding-top: 10px !important;
 }
 
 .wheel-inspector-toggle {
@@ -61,7 +62,7 @@
 .wheel-panel-section {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .wheel-inspector-hero {
@@ -82,11 +83,59 @@
 }
 
 .wheel-active-config-toolbar {
-  margin-bottom: 10px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 34px 34px;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 2px;
 }
 
 .wheel-active-config-select {
   margin-bottom: 0 !important;
+}
+
+.wheel-active-config-toolbar .v-btn {
+  min-width: 34px !important;
+  width: 34px !important;
+  height: 34px !important;
+}
+
+.wheel-active-config-toolbar .v-field {
+  min-height: 42px;
+}
+
+.wheel-compact-settings {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.wheel-compact-setting {
+  min-width: 0;
+}
+
+.wheel-compact-setting__label {
+  margin: 0 0 4px 2px;
+  color: rgba(var(--v-theme-on-surface), 0.66);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1.15;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wheel-compact-settings .v-field {
+  min-height: 44px;
+}
+
+.wheel-compact-settings .v-field__input {
+  min-height: 42px;
+  padding-top: 8px;
+  padding-bottom: 4px;
+  font-size: 0.95rem;
+  font-weight: 700;
 }
 
 .wheel-section-heading {
@@ -98,8 +147,8 @@
 
 .wheel-section-subtitle {
   color: rgba(var(--v-theme-on-surface), 0.62);
-  font-size: 0.78rem;
-  line-height: 1.35;
+  font-size: 0.72rem;
+  line-height: 1.28;
 }
 
 .wheel-odds-total-badge {

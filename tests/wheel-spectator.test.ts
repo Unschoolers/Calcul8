@@ -4,9 +4,9 @@ import {
   buildWheelSpectatorSessionUrl,
   buildWheelSpectatorSnapshot,
   normalizeWheelPublicSessionId
-} from "../src/components/windows/wheel/wheelSpectator.ts";
-import { buildSlotsFromConfig } from "../src/components/windows/wheel/wheelHelpers.ts";
-import { createWheelWindowState } from "../src/components/windows/wheel/wheelControllerState.ts";
+} from "../src/components/windows/wheel/services/wheelSpectator.ts";
+import { buildSlotsFromConfig } from "../src/components/windows/wheel/services/wheelHelpers.ts";
+import { createWheelWindowState } from "../src/components/windows/wheel/coordinator/wheelControllerState.ts";
 import type { WheelConfig } from "../src/types/app.ts";
 import { makeLot } from "./helpers/fixtures.ts";
 

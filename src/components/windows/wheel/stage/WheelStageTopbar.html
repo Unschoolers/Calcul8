@@ -1,7 +1,41 @@
 <div class="wheel-stage-topbar">
-  <div class="wheel-stage-meta">
+  <div class="wheel-stage-headline">
     <div class="wheel-stage-title">{{ wheelStageTitle }}</div>
-    <div v-if="!wheelPresentationMode" class="wheel-stage-pills">
+    <div class="wheel-stage-utility-controls">
+      <div class="wheel-effects-controls" role="group" :aria-label="t('wheelEffectsControlsLabel')">
+        <v-btn
+          size="x-small"
+          :icon="wheelSoundEnabled ? 'mdi-volume-high' : 'mdi-volume-off'"
+          :color="wheelSoundEnabled ? undefined : 'warning'"
+          variant="text"
+          :title="wheelSoundToggleTitle"
+          :aria-label="wheelSoundToggleTitle"
+          class="wheel-effects-toggle"
+          @click="toggleWheelSound"
+        ></v-btn>
+        <v-btn
+          size="x-small"
+          :icon="wheelReducedMotion ? 'mdi-motion-pause-outline' : 'mdi-motion-play-outline'"
+          :color="wheelReducedMotion ? 'warning' : undefined"
+          variant="text"
+          :title="wheelMotionToggleTitle"
+          :aria-label="wheelMotionToggleTitle"
+          class="wheel-effects-toggle"
+          @click="toggleWheelReducedMotion"
+        ></v-btn>
+      </div>
+      <v-btn
+        size="x-small"
+        :icon="wheelPresentationMode ? 'mdi-arrow-collapse-all' : 'mdi-arrow-expand-all'"
+        variant="text"
+        :title="wheelPresentationToggleTitle"
+        class="wheel-presentation-toggle"
+        @click="wheelPresentationMode = !wheelPresentationMode"
+      ></v-btn>
+    </div>
+  </div>
+  <div v-if="!wheelPresentationMode" class="wheel-stage-commandbar">
+    <div class="wheel-stage-pills">
       <span class="wheel-stage-pill">{{ wheelStageSlotsLabel }}</span>
       <span v-if="wheelDisplayConfig" class="wheel-stage-pill">{{ wheelStageSpinPriceLabel }}</span>
       <span v-if="wheelIsCompactLayout" class="wheel-stage-pill wheel-stage-pill--kpi">
@@ -11,70 +45,40 @@
         </strong>
       </span>
     </div>
-  </div>
-  <div class="wheel-stage-actions">
-    <div class="wheel-effects-controls" role="group" :aria-label="t('wheelEffectsControlsLabel')">
+    <div class="wheel-stage-actions">
+      <v-btn-toggle
+        :model-value="wheelMode"
+        mandatory
+        density="comfortable"
+        divided
+        class="wheel-mode-toggle"
+        @update:model-value="handleWheelModeChange"
+      >
+        <v-btn value="config" size="small" :class="{ 'wheel-mode-toggle__btn--active-config': wheelMode === 'config' }">
+          <v-icon start size="small">mdi-tune</v-icon>
+          <span class="wheel-mode-toggle__label">{{ t('wheelConfigModeLabel') }}</span>
+        </v-btn>
+        <v-btn value="live" size="small" :class="{ 'wheel-mode-toggle__btn--active-live': wheelMode === 'live' }">
+          <v-icon start size="small">mdi-broadcast</v-icon>
+          <span class="wheel-mode-toggle__label">{{ t('wheelLiveModeLabel') }}</span>
+        </v-btn>
+      </v-btn-toggle>
       <v-btn
-        size="x-small"
-        :icon="wheelSoundEnabled ? 'mdi-volume-high' : 'mdi-volume-off'"
-        :color="wheelSoundEnabled ? undefined : 'warning'"
-        variant="text"
-        :title="wheelSoundToggleTitle"
-        :aria-label="wheelSoundToggleTitle"
-        class="wheel-effects-toggle"
-        @click="toggleWheelSound"
-      ></v-btn>
-      <v-btn
-        size="x-small"
-        :icon="wheelReducedMotion ? 'mdi-motion-pause-outline' : 'mdi-motion-play-outline'"
-        :color="wheelReducedMotion ? 'warning' : undefined"
-        variant="text"
-        :title="wheelMotionToggleTitle"
-        :aria-label="wheelMotionToggleTitle"
-        class="wheel-effects-toggle"
-        @click="toggleWheelReducedMotion"
-      ></v-btn>
+        size="small"
+        :variant="wheelSpectatorSessionStatus === 'ended' ? 'elevated' : 'tonal'"
+        prepend-icon="mdi-qrcode"
+        class="wheel-spectator-btn"
+        :class="{
+          'wheel-spectator-btn--inactive': !wheelSpectatorSessionId,
+          'wheel-spectator-btn--live': wheelSpectatorSessionId && wheelSpectatorSessionStatus !== 'ended',
+          'wheel-spectator-btn--ended': wheelSpectatorSessionStatus === 'ended'
+        }"
+        :color="wheelSpectatorSessionId ? (wheelSpectatorSessionStatus === 'ended' ? 'warning' : 'success') : undefined"
+        :title="wheelSpectatorActionLabel"
+        @click="openWheelSpectatorDialog"
+      >
+        <span class="wheel-spectator-btn__label">{{ wheelSpectatorActionLabel }}</span>
+      </v-btn>
     </div>
-    <v-btn
-      size="small"
-      :variant="wheelSpectatorSessionStatus === 'ended' ? 'elevated' : 'tonal'"
-      prepend-icon="mdi-qrcode"
-      class="wheel-spectator-btn"
-      :class="{
-        'wheel-spectator-btn--inactive': !wheelSpectatorSessionId,
-        'wheel-spectator-btn--live': wheelSpectatorSessionId && wheelSpectatorSessionStatus !== 'ended',
-        'wheel-spectator-btn--ended': wheelSpectatorSessionStatus === 'ended'
-      }"
-      :color="wheelSpectatorSessionId ? (wheelSpectatorSessionStatus === 'ended' ? 'warning' : 'success') : undefined"
-      :title="wheelSpectatorActionLabel"
-      @click="openWheelSpectatorDialog"
-    >
-      {{ wheelSpectatorActionLabel }}
-    </v-btn>
-    <v-btn-toggle
-      :model-value="wheelMode"
-      mandatory
-      density="comfortable"
-      divided
-      class="wheel-mode-toggle"
-      @update:model-value="handleWheelModeChange"
-    >
-      <v-btn value="config" size="small" :class="{ 'wheel-mode-toggle__btn--active-config': wheelMode === 'config' }">
-        <v-icon start size="small">mdi-tune</v-icon>
-        {{ t('wheelConfigModeLabel') }}
-      </v-btn>
-      <v-btn value="live" size="small" :class="{ 'wheel-mode-toggle__btn--active-live': wheelMode === 'live' }">
-        <v-icon start size="small">mdi-broadcast</v-icon>
-        {{ t('wheelLiveModeLabel') }}
-      </v-btn>
-    </v-btn-toggle>
-    <v-btn
-      size="x-small"
-      :icon="wheelPresentationMode ? 'mdi-arrow-collapse-all' : 'mdi-arrow-expand-all'"
-      variant="text"
-      :title="wheelPresentationToggleTitle"
-      class="wheel-presentation-toggle"
-      @click="wheelPresentationMode = !wheelPresentationMode"
-    ></v-btn>
   </div>
 </div>

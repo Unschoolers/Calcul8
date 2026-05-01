@@ -11,8 +11,8 @@ import {
   ensureWheelCanvasSize,
   getWheelCanvasDpr,
   renderWheelSurface
-} from "./components/windows/wheel/wheelCanvasRender.ts";
-import { normalizeWheelPublicSessionId } from "./components/windows/wheel/wheelSpectator.ts";
+} from "./components/windows/wheel/stage/wheelCanvasRender.ts";
+import { normalizeWheelPublicSessionId } from "./components/windows/wheel/services/wheelSpectator.ts";
 import "./styles/spectator.css";
 import type { WheelSpectatorHeatLevel, WheelSpectatorSnapshot } from "./types/app.ts";
 

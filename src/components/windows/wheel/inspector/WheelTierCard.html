@@ -1,7 +1,10 @@
 <div class="wheel-tier-card wheel-tier-card--summary">
   <div class="wheel-tier-card__header">
     <div class="wheel-tier-name-cell">
-      <div class="wheel-tier-dot" :style="{ background: tier.color }"></div>
+      <div v-if="tier.celebrationEmoji" class="wheel-tier-emoji-badge" aria-hidden="true">
+        {{ tier.celebrationEmoji }}
+      </div>
+      <div v-else class="wheel-tier-dot" :style="{ background: tier.color }"></div>
       <div class="wheel-tier-card__title-wrap">
         <div class="wheel-tier-card__title">{{ tier.label }}</div>
         <div class="wheel-tier-card__summary">
@@ -122,7 +125,7 @@
                 :max="isBoundLotSingles(editorTier) ? 1 : null"
                 :disabled="isBoundLotSingles(editorTier)"
                 :title="isBoundLotSingles(editorTier) ? t('wheelTierCountSinglesHint') : t('wheelTierCountHint')"
-                @change="onTierPacksChange(editorTier)"
+                @input="onTierPacksChange(editorTier)"
               />
             </div>
             <div class="wheel-tier-metric">

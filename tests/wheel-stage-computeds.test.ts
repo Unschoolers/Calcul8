@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { wheelStageComputeds } from "../src/components/windows/wheel/wheelStageComputeds.ts";
+import { wheelStageComputeds } from "../src/components/windows/wheel/stage/wheelStageComputeds.ts";
 
 test("wheel spectator labels explain recap restart flow", () => {
   const endedVm = {
