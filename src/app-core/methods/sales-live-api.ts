@@ -175,10 +175,23 @@ function normalizeSalesByLot(value: unknown, requestedLotIds: number[] = []): Ma
 export function normalizeLivePricing(value: unknown): LotLivePricingRecord | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const candidate = value as Record<string, unknown>;
+  const livePackPrice = Number(candidate.livePackPrice);
+  const liveBoxPriceSell = Number(candidate.liveBoxPriceSell);
+  const liveSpotPrice = Number(candidate.liveSpotPrice);
+  if (
+    !Number.isFinite(livePackPrice)
+    || !Number.isFinite(liveBoxPriceSell)
+    || !Number.isFinite(liveSpotPrice)
+    || livePackPrice < 0
+    || liveBoxPriceSell < 0
+    || liveSpotPrice < 0
+  ) {
+    return null;
+  }
   return {
-    livePackPrice: Number(candidate.livePackPrice) || 0,
-    liveBoxPriceSell: Number(candidate.liveBoxPriceSell) || 0,
-    liveSpotPrice: Number(candidate.liveSpotPrice) || 0,
+    livePackPrice,
+    liveBoxPriceSell,
+    liveSpotPrice,
     version: Number.isFinite(Number(candidate.version)) ? Math.floor(Number(candidate.version)) : null,
     updatedAt: typeof candidate.updatedAt === "string" ? candidate.updatedAt : undefined,
     updatedBy: typeof candidate.updatedBy === "string" ? candidate.updatedBy : undefined,

@@ -3,6 +3,7 @@ import { test } from "vitest";
 import { parseCloudSnapshot } from "../src/app-core/methods/ui/sync-apply.ts";
 import { createSyncPayload } from "../src/app-core/methods/ui/sync-payload.ts";
 import {
+  normalizeSyncLivePricingDto,
   parseSyncSnapshotDto,
   toSyncLotDtos,
   toSyncSalesByLotDto,
@@ -103,4 +104,163 @@ test("createSyncPayload emits the same entity contract sent to the API", () => {
     activeLotId: 2,
     workspaceId: "team-42"
   });
+});
+
+test("sync wheel config DTOs preserve game fields and drop unknown config data", () => {
+  assert.deepEqual(toSyncWheelConfigDtos([
+    {
+      id: "91",
+      name: " Grid Night ",
+      spinPrice: "12.5",
+      targetMargin: "45",
+      gameType: "grid",
+      outcomeCount: "75",
+      gridCellCount: "88",
+      createdAt: "2026-04-01T00:00:00.000Z",
+      updatedAt: "2026-04-02T00:00:00.000Z",
+      debugOnly: "drop-me",
+      tiers: [
+        {
+          id: "tier-1",
+          label: " Chase ",
+          color: "#ffcc00",
+          chancePercent: "25.5",
+          slots: "26",
+          costPerTier: "8.25",
+          packsCount: "2",
+          deductionType: "singles",
+          sets: ["A", 99],
+          boundLotId: "10",
+          boundSinglesId: "501",
+          isChase: true,
+          celebrationEmoji: "star",
+          extraTierField: "drop"
+        }
+      ]
+    },
+    { id: 92, name: "Bad tiers", tiers: "bad" },
+    { name: "Missing id", tiers: [] }
+  ]), [
+    {
+      id: 91,
+      name: "Grid Night",
+      spinPrice: 12.5,
+      targetMargin: 45,
+      gameType: "grid",
+      outcomeCount: 75,
+      gridCellCount: 88,
+      tiers: [
+        {
+          id: "tier-1",
+          label: "Chase",
+          color: "#ffcc00",
+          chancePercent: 25.5,
+          slots: 26,
+          costPerTier: 8.25,
+          packsCount: 2,
+          deductionType: "singles",
+          sets: ["A"],
+          boundLotId: 10,
+          boundSinglesId: 501,
+          isChase: true,
+          celebrationEmoji: "star"
+        }
+      ],
+      createdAt: "2026-04-01T00:00:00.000Z",
+      updatedAt: "2026-04-02T00:00:00.000Z"
+    }
+  ]);
+});
+
+test("sync sales DTOs preserve concurrency and wheel/singles fields while dropping unknown data", () => {
+  assert.deepEqual(toSyncSalesByLotDto({
+    "10": [
+      {
+        id: "501",
+        type: "wheel",
+        quantity: "1",
+        packsCount: "2",
+        price: "14.25",
+        priceIsTotal: true,
+        customer: " Alex ",
+        memo: " Hit ",
+        buyerShipping: "3.5",
+        date: "2026-04-03",
+        version: "7",
+        updatedAt: "2026-04-03T10:00:00.000Z",
+        updatedBy: "user-1",
+        mutationId: "sale:1",
+        linkedWheelId: "91",
+        winningTierId: "tier-1",
+        costOfWinningTier: "8.25",
+        netRevenue: "10.75",
+        singlesItems: [
+          { singlesPurchaseEntryId: "801", quantity: "2", price: "4.5", extra: "drop" },
+          { singlesPurchaseEntryId: "bad", quantity: 0, price: 2 }
+        ],
+        extraSaleField: "drop"
+      },
+      { id: "bad", price: 1 }
+    ],
+    "bad-lot": [{ id: 1 }],
+    "11": "not-array"
+  }), {
+    "10": [
+      {
+        id: 501,
+        type: "wheel",
+        quantity: 1,
+        packsCount: 2,
+        singlesItems: [
+          {
+            singlesPurchaseEntryId: 801,
+            quantity: 2,
+            price: 4.5
+          }
+        ],
+        price: 14.25,
+        priceIsTotal: true,
+        customer: "Alex",
+        memo: "Hit",
+        buyerShipping: 3.5,
+        date: "2026-04-03",
+        version: 7,
+        updatedAt: "2026-04-03T10:00:00.000Z",
+        updatedBy: "user-1",
+        mutationId: "sale:1",
+        linkedWheelId: 91,
+        winningTierId: "tier-1",
+        costOfWinningTier: 8.25,
+        netRevenue: 10.75
+      }
+    ]
+  });
+});
+
+test("sync live pricing DTOs normalize prices and concurrency metadata", () => {
+  assert.deepEqual(normalizeSyncLivePricingDto({
+    livePackPrice: "4.5",
+    liveBoxPriceSell: "120",
+    liveSpotPrice: "8",
+    version: "3",
+    updatedAt: "2026-04-03T10:00:00.000Z",
+    updatedBy: "user-2",
+    mutationId: "live:1",
+    extra: "drop"
+  }), {
+    livePackPrice: 4.5,
+    liveBoxPriceSell: 120,
+    liveSpotPrice: 8,
+    version: 3,
+    updatedAt: "2026-04-03T10:00:00.000Z",
+    updatedBy: "user-2",
+    mutationId: "live:1"
+  });
+
+  assert.equal(normalizeSyncLivePricingDto(null), null);
+  assert.equal(normalizeSyncLivePricingDto({
+    livePackPrice: -1,
+    liveBoxPriceSell: 2,
+    liveSpotPrice: 3
+  }), null);
 });

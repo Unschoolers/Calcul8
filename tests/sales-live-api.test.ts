@@ -36,6 +36,7 @@ import {
   fetchWorkspacePresenceRealtimeSubscribeToken,
   fetchWorkspaceRealtimeSubscribeToken,
   normalizeLotSalesSyncMeta,
+  normalizeLivePricing,
   normalizeSale,
   saveAuthoritativeLivePricing,
   saveAuthoritativeSale
@@ -571,6 +572,14 @@ test("fetchAuthoritativeLivePricing normalizes payload and saveAuthoritativeLive
   assert.equal(parsedBody.workspaceId, "beta");
   assert.equal(parsedBody.baseVersion, 4);
   assert.match(parsedBody.mutationId, /^live-pricing:/);
+});
+
+test("normalizeLivePricing rejects negative pricing payloads", () => {
+  assert.equal(normalizeLivePricing({
+    livePackPrice: -1,
+    liveBoxPriceSell: 2,
+    liveSpotPrice: 3
+  }), null);
 });
 
 test("fetchWorkspaceRealtimeSubscribeToken requests a workspace-scoped token", async () => {

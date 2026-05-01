@@ -46,6 +46,19 @@ function parseOptionalBaseVersion(value: unknown): number | undefined {
   return Math.floor(parsed);
 }
 
+function parseNonNegativeNumber(value: unknown, fieldName: string): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    throw new HttpError(400, `Field '${fieldName}' must be a non-negative number.`);
+  }
+  return parsed;
+}
+
+function assertOptionalNonNegativeNumber(value: unknown, fieldName: string): void {
+  if (value == null || value === "") return;
+  void parseNonNegativeNumber(value, fieldName);
+}
+
 function parseMutationId(value: unknown): string {
   const mutationId = String(value ?? "").trim();
   if (!mutationId) {
@@ -90,6 +103,12 @@ function sanitizeSalePayload(rawSale: unknown): Record<string, unknown> {
   if (!(typeof saleId === "number" || typeof saleId === "string")) {
     throw new HttpError(400, "Field 'sale.id' is required.");
   }
+  assertOptionalNonNegativeNumber(sale.quantity, "sale.quantity");
+  assertOptionalNonNegativeNumber(sale.packsCount, "sale.packsCount");
+  assertOptionalNonNegativeNumber(sale.price, "sale.price");
+  assertOptionalNonNegativeNumber(sale.buyerShipping, "sale.buyerShipping");
+  assertOptionalNonNegativeNumber(sale.costOfWinningTier, "sale.costOfWinningTier");
+  assertOptionalNonNegativeNumber(sale.netRevenue, "sale.netRevenue");
 
   delete sale.version;
   delete sale.updatedAt;
@@ -159,9 +178,9 @@ function parseLivePricingBody(rawBody: unknown): {
     workspaceId: parseOptionalWorkspaceId(body.workspaceId),
     baseVersion: parseOptionalBaseVersion(body.baseVersion),
     mutationId: parseMutationId(body.mutationId),
-    livePackPrice: Number(body.livePackPrice) || 0,
-    liveBoxPriceSell: Number(body.liveBoxPriceSell) || 0,
-    liveSpotPrice: Number(body.liveSpotPrice) || 0
+    livePackPrice: parseNonNegativeNumber(body.livePackPrice ?? 0, "livePackPrice"),
+    liveBoxPriceSell: parseNonNegativeNumber(body.liveBoxPriceSell ?? 0, "liveBoxPriceSell"),
+    liveSpotPrice: parseNonNegativeNumber(body.liveSpotPrice ?? 0, "liveSpotPrice")
   };
 }
 

@@ -279,6 +279,29 @@ test("lotSalesUpsert writes sale docs with baseVersion and mutationId", async ()
   assert.equal((response.jsonBody as { sale: { version: number } }).sale.version, 3);
 });
 
+test("lotSalesUpsert rejects negative sale money before repository writes", async () => {
+  const response = await lotSalesUpsert(
+    createRequest("POST", {
+      sale: {
+        id: 11,
+        type: "pack",
+        quantity: 1,
+        packsCount: 1,
+        price: -10,
+        buyerShipping: 0,
+        date: "2026-03-17"
+      },
+      baseVersion: 2,
+      mutationId: "sale:save"
+    }, { lotId: "10" }) as never,
+    createContext() as never
+  );
+
+  assert.equal(response.status, 400);
+  assert.equal(upsertSaleDocumentMock.mock.calls.length, 0);
+  assert.match(String((response.jsonBody as { error?: string }).error), /sale\.price/);
+});
+
 test("lotSalesUpsert returns before realtime publish settles", async () => {
   let resolvePublish: ((value: boolean) => void) | null = null;
   publishWorkspaceLotRealtimeEventMock.mockReturnValue(new Promise<boolean>((resolve) => {
@@ -374,6 +397,23 @@ test("lotLivePricingSave persists the live pricing entity", async () => {
   assert.equal(upsertLotLivePricingMock.mock.calls[0]?.[1]?.lotId, "10");
   assert.equal(upsertLotLivePricingMock.mock.calls[0]?.[1]?.baseVersion, 1);
   assert.equal((response.jsonBody as { livePricing: { version: number } }).livePricing.version, 2);
+});
+
+test("lotLivePricingSave rejects negative live pricing before repository writes", async () => {
+  const response = await lotLivePricingSave(
+    createRequest("POST", {
+      livePackPrice: -1,
+      liveBoxPriceSell: 99,
+      liveSpotPrice: 12,
+      baseVersion: 1,
+      mutationId: "live:save"
+    }, { lotId: "10" }) as never,
+    createContext() as never
+  );
+
+  assert.equal(response.status, 400);
+  assert.equal(upsertLotLivePricingMock.mock.calls.length, 0);
+  assert.match(String((response.jsonBody as { error?: string }).error), /livePackPrice/);
 });
 
 test("lotLivePricingSave emits route telemetry for stale live pricing conflicts", async () => {

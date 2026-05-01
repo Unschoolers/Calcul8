@@ -59,11 +59,78 @@ test("parseSyncWheelConfigs accepts object arrays and defaults missing input", (
   assert.deepEqual(parseSyncWheelConfigs([{ id: 91, name: "Wheel" }]), [{ id: 91, name: "Wheel" }]);
 });
 
+test("parseSyncWheelConfigs normalizes game config fields and drops unknown data", () => {
+  assert.deepEqual(parseSyncWheelConfigs([
+    {
+      id: "91",
+      name: " Grid ",
+      spinPrice: "12",
+      targetMargin: "40",
+      gameType: "grid",
+      outcomeCount: "80",
+      gridCellCount: "80",
+      createdAt: "2026-04-01T00:00:00.000Z",
+      unknown: "drop",
+      tiers: [
+        {
+          id: "tier-1",
+          label: " Chase ",
+          color: "#ffcc00",
+          chancePercent: "25",
+          slots: "20",
+          costPerTier: "8",
+          packsCount: "2",
+          deductionType: "singles",
+          sets: ["A", 2],
+          boundLotId: "10",
+          boundSinglesId: "501",
+          isChase: true,
+          extra: "drop"
+        }
+      ]
+    }
+  ]), [
+    {
+      id: 91,
+      name: "Grid",
+      spinPrice: 12,
+      targetMargin: 40,
+      gameType: "grid",
+      outcomeCount: 80,
+      gridCellCount: 80,
+      tiers: [
+        {
+          id: "tier-1",
+          label: "Chase",
+          color: "#ffcc00",
+          chancePercent: 25,
+          slots: 20,
+          costPerTier: 8,
+          packsCount: 2,
+          deductionType: "singles",
+          sets: ["A"],
+          boundLotId: 10,
+          boundSinglesId: 501,
+          isChase: true
+        }
+      ],
+      createdAt: "2026-04-01T00:00:00.000Z"
+    }
+  ]);
+});
+
 test("parseSyncWheelConfigs rejects invalid entries", () => {
   assert.throws(
     () => parseSyncWheelConfigs(["bad"]),
     (error: unknown) => error instanceof HttpError
       && error.status === 400
       && error.message === "Field 'wheelConfigs[0]' must be an object."
+  );
+
+  assert.throws(
+    () => parseSyncWheelConfigs([{ id: 91, tiers: "bad" }]),
+    (error: unknown) => error instanceof HttpError
+      && error.status === 400
+      && error.message === "Field 'wheelConfigs[0].tiers' must be an array when provided."
   );
 });
