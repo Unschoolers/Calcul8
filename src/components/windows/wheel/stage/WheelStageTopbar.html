@@ -1,6 +1,38 @@
 <div class="wheel-stage-topbar">
   <div class="wheel-stage-headline">
-    <div class="wheel-stage-title">{{ wheelStageTitle }}</div>
+    <div v-if="wheelPresentationMode" class="wheel-stage-title">{{ wheelStageTitle }}</div>
+    <div v-else class="wheel-stage-game-toolbar">
+      <v-select
+        v-model="activeWheelConfigId"
+        :items="wheelConfigItems"
+        item-title="title"
+        item-value="value"
+        :label="t('wheelInspectorActiveWheelLabel')"
+        variant="outlined"
+        density="compact"
+        hide-details="auto"
+        class="wheel-stage-game-select"
+      ></v-select>
+      <v-btn
+        icon="mdi-plus"
+        size="small"
+        variant="text"
+        :title="t('wheelInspectorNewGameAction')"
+        :aria-label="t('wheelInspectorNewGameAction')"
+        class="wheel-stage-game-action"
+        @click="openWheelCreateDialog"
+      ></v-btn>
+      <v-btn
+        icon="mdi-pencil-outline"
+        size="small"
+        variant="text"
+        :title="t('wheelInspectorEditWheelAction')"
+        :aria-label="t('wheelInspectorEditWheelAction')"
+        :disabled="!activeWheelConfig"
+        class="wheel-stage-game-action"
+        @click="openWheelManageDialog"
+      ></v-btn>
+    </div>
     <div class="wheel-stage-utility-controls">
       <div class="wheel-effects-controls" role="group" :aria-label="t('wheelEffectsControlsLabel')">
         <v-btn
@@ -33,6 +65,48 @@
         @click="wheelPresentationMode = !wheelPresentationMode"
       ></v-btn>
     </div>
+    <v-menu location="bottom end" content-class="wheel-stage-game-menu" :close-on-content-click="true">
+      <template #activator="{ props }">
+        <v-btn
+          v-bind="props"
+          icon="mdi-dots-vertical"
+          size="small"
+          variant="text"
+          :title="t('wheelGameActionsLabel')"
+          :aria-label="t('wheelGameActionsLabel')"
+          class="wheel-stage-more-action"
+        ></v-btn>
+      </template>
+      <v-list density="compact" class="wheel-stage-game-menu-list">
+        <v-list-item
+          prepend-icon="mdi-plus"
+          :title="t('wheelInspectorNewGameAction')"
+          @click="openWheelCreateDialog"
+        ></v-list-item>
+        <v-list-item
+          prepend-icon="mdi-pencil-outline"
+          :title="t('wheelInspectorEditWheelAction')"
+          :disabled="!activeWheelConfig"
+          @click="openWheelManageDialog"
+        ></v-list-item>
+        <v-divider></v-divider>
+        <v-list-item
+          :prepend-icon="wheelSoundEnabled ? 'mdi-volume-high' : 'mdi-volume-off'"
+          :title="wheelSoundToggleTitle"
+          @click="toggleWheelSound"
+        ></v-list-item>
+        <v-list-item
+          :prepend-icon="wheelReducedMotion ? 'mdi-motion-pause-outline' : 'mdi-motion-play-outline'"
+          :title="wheelMotionToggleTitle"
+          @click="toggleWheelReducedMotion"
+        ></v-list-item>
+        <v-list-item
+          :prepend-icon="wheelPresentationMode ? 'mdi-arrow-collapse-all' : 'mdi-arrow-expand-all'"
+          :title="wheelPresentationToggleTitle"
+          @click="wheelPresentationMode = !wheelPresentationMode"
+        ></v-list-item>
+      </v-list>
+    </v-menu>
   </div>
   <div v-if="!wheelPresentationMode" class="wheel-stage-commandbar">
     <div class="wheel-stage-pills">

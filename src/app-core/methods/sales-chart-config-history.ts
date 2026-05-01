@@ -3,8 +3,8 @@ import type {
   TooltipItem
 } from "chart.js";
 import {
-  calculateSaleNetRevenue,
   calculatePortfolioSellThroughTimeline,
+  calculateSaleNetRevenue,
 } from "../../domain/calculations.ts";
 import { resolveLotBusinessDate } from "../../shared/lot-dates.ts";
 import type {
@@ -293,7 +293,8 @@ export function buildPortfolioHistoryChartConfig(params: {
           pointRadius: 0,
           pointHoverRadius: 0,
           tension: 0,
-          fill: false
+          fill: false,
+          hidden : true
         }
       ]
     },

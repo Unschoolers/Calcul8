@@ -151,6 +151,8 @@ export type WheelWindowThis = {
   resetWheelSession(): void;
   startEndWheelSession(): void;
   loadWheelConfig(options?: { preserveLiveWheelState?: boolean }): void;
+  persistLastWheelConfigSelection(): void;
+  restoreLastWheelConfigSelection(): void;
   openWheelCreateDialog(): void;
   closeWheelCreateDialog(): void;
   createNewGameConfig(gameType: import("../../../../types/app.ts").LuckGameType): void;

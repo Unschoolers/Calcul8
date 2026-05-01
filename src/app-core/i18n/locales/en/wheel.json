@@ -47,6 +47,7 @@
   "wheelGoLiveTitle": "Go live?",
   "wheelGameTypeGridLabel": "Mystery Grid",
   "wheelGameTypeWheelLabel": "Wheel",
+  "wheelGameActionsLabel": "Game actions",
   "wheelGrossProfitLabel": "Gross profit",
   "wheelLiveModeLabel": "Live",
   "wheelLivePrizeCostMeta": "${{amount}} prize cost",

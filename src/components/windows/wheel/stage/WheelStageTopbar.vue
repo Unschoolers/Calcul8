@@ -7,12 +7,14 @@ export default WheelStageTopbar;
 <template src="./WheelStageTopbar.html"></template>
 
 <style>
-.wheel-presentation-toggle {
+.wheel-presentation-toggle,
+.wheel-stage-more-action {
   align-self: center;
   opacity: 0.72;
 }
 
-.wheel-presentation-toggle:hover {
+.wheel-presentation-toggle:hover,
+.wheel-stage-more-action:hover {
   opacity: 1;
 }
 
@@ -47,7 +49,7 @@ export default WheelStageTopbar;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .wheel-stage-headline {
@@ -58,21 +60,49 @@ export default WheelStageTopbar;
   min-width: 0;
 }
 
-.wheel-stage-commandbar {
+.wheel-stage-game-toolbar {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(310px, 0.72fr);
+  grid-template-columns: minmax(180px, 320px) 36px 36px;
   align-items: center;
-  gap: 12px;
+  gap: 6px;
+  flex: 1 1 auto;
   min-width: 0;
 }
 
-.wheel-stage-actions {
-  display: grid;
-  grid-template-columns: minmax(148px, 1fr) minmax(138px, 0.82fr);
-  align-items: center;
-  justify-content: stretch;
-  gap: 8px;
+.wheel-stage-game-select {
   min-width: 0;
+}
+
+.wheel-stage-game-select .v-field {
+  min-height: 42px;
+}
+
+.wheel-stage-game-action,
+.wheel-stage-more-action {
+  width: 36px !important;
+  height: 36px !important;
+  min-width: 36px !important;
+  color: rgba(var(--v-theme-on-surface), 0.78);
+}
+
+.wheel-stage-game-action:hover,
+.wheel-stage-more-action:hover {
+  color: rgb(var(--v-theme-primary));
+}
+
+.wheel-stage-more-action {
+  display: none;
+}
+
+.wheel-stage-game-menu .v-overlay__content,
+.wheel-stage-game-menu-list {
+  border-radius: 12px !important;
+}
+
+.wheel-stage-game-menu-list {
+  min-width: 220px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+  background: rgb(var(--v-theme-surface));
 }
 
 .wheel-stage-utility-controls {
@@ -106,6 +136,23 @@ export default WheelStageTopbar;
 
 .wheel-effects-toggle:hover {
   opacity: 1;
+}
+
+.wheel-stage-commandbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(310px, 0.72fr);
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.wheel-stage-actions {
+  display: grid;
+  grid-template-columns: minmax(148px, 1fr) minmax(138px, 0.82fr);
+  align-items: center;
+  justify-content: stretch;
+  gap: 8px;
+  min-width: 0;
 }
 
 .wheel-spectator-btn {
@@ -273,6 +320,29 @@ export default WheelStageTopbar;
 
   .wheel-mode-toggle .v-btn {
     min-width: 0;
+  }
+}
+
+@container (max-width: 440px) {
+  .wheel-stage-headline {
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .wheel-stage-game-toolbar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .wheel-stage-game-action,
+  .wheel-stage-utility-controls {
+    display: none;
+  }
+
+  .wheel-stage-more-action {
+    display: inline-flex;
+    width: 34px !important;
+    height: 34px !important;
+    min-width: 34px !important;
   }
 }
 

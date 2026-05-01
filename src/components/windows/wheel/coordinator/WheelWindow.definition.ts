@@ -118,6 +118,7 @@ export const wheelWindowDefinition = {
       deep: true
     },
     activeWheelConfigId(this: WheelWindowThis) {
+      this.persistLastWheelConfigSelection();
       this.loadWheelConfig();
       this.ensureWheelEditorState();
     },
@@ -470,7 +471,8 @@ export const wheelWindowDefinition = {
   },
   mounted(this: WheelWindowThis) {
     const configs = (this.wheelConfigs || []) as WheelConfig[];
-    if (configs.length > 0 && (this.activeWheelConfigId as number | null) != null) {
+    if (configs.length > 0) {
+      this.restoreLastWheelConfigSelection();
       this.loadWheelConfig();
       this.ensureWheelEditorState();
     }

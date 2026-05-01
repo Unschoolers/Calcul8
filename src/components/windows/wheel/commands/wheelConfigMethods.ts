@@ -6,7 +6,10 @@ import {
 } from "../../../../app-core/methods/ui/workspace-config-sync.ts";
 import { normalizeWheelConfig } from "../../../../app-core/shared/normalize-wheel-config.ts";
 import { assignWheelPendingInventoryIssues } from "../../../../app-core/shared/wheel-session-compat.ts";
-import { getScopedWheelConfigDraftStorageKey } from "../../../../app-core/storageKeys.ts";
+import {
+    getScopedActiveWheelConfigStorageKey,
+    getScopedWheelConfigDraftStorageKey
+} from "../../../../app-core/storageKeys.ts";
 import { getActiveStorageScope } from "../../../../app-core/workspace-scope.ts";
 import { calculateTotalCaseCost } from "../../../../domain/calculations-fees.ts";
 import type { Lot, LuckGameType, WheelConfig, WheelTier } from "../../../../types/app.ts";
@@ -86,6 +89,23 @@ function getWheelDraftStorageKey(context: Record<string, unknown>, wheelConfigId
   }), wheelConfigId);
 }
 
+function getActiveWheelConfigStorageKey(context: Record<string, unknown>): string {
+  return getScopedActiveWheelConfigStorageKey(getActiveStorageScope(context as {
+    activeScopeType: "personal" | "workspace";
+    activeWorkspaceId: string | null;
+  }));
+}
+
+function normalizeStoredWheelConfigId(value: unknown): number | null {
+  const id = Number(value);
+  if (!Number.isFinite(id) || id <= 0) return null;
+  return Math.floor(id);
+}
+
+function configIdExists(configs: WheelConfig[], id: number | null): id is number {
+  return id != null && configs.some((config) => config.id === id);
+}
+
 function bindDefaultTierSources(context: Record<string, unknown>, config: WheelConfig): void {
   const currentLotId = (context.currentLotId as number | null) ?? null;
   for (const tier of config.tiers) {
@@ -122,6 +142,51 @@ function createGameConfigFromTemplate(
 }
 
 export const wheelConfigMethods = {
+  persistLastWheelConfigSelection(this: Record<string, unknown>): void {
+    const activeId = normalizeStoredWheelConfigId(this.activeWheelConfigId);
+    const storageKey = getActiveWheelConfigStorageKey(this);
+    try {
+      if (activeId == null) {
+        localStorage.removeItem(storageKey);
+        return;
+      }
+      localStorage.setItem(storageKey, String(activeId));
+    } catch {
+      // Ignore unavailable storage.
+    }
+  },
+
+  restoreLastWheelConfigSelection(this: Record<string, unknown>): void {
+    const configs = (this.wheelConfigs || []) as WheelConfig[];
+    const firstConfigId = configs[0]?.id ?? null;
+    const storageKey = getActiveWheelConfigStorageKey(this);
+    let storedId: number | null = null;
+
+    try {
+      storedId = normalizeStoredWheelConfigId(localStorage.getItem(storageKey));
+    } catch {
+      storedId = null;
+    }
+
+    if (configIdExists(configs, storedId)) {
+      this.activeWheelConfigId = storedId;
+      return;
+    }
+
+    const currentId = normalizeStoredWheelConfigId(this.activeWheelConfigId);
+    this.activeWheelConfigId = configIdExists(configs, currentId) ? currentId : firstConfigId;
+
+    try {
+      if (this.activeWheelConfigId == null) {
+        localStorage.removeItem(storageKey);
+      } else {
+        localStorage.setItem(storageKey, String(this.activeWheelConfigId));
+      }
+    } catch {
+      // Ignore unavailable storage.
+    }
+  },
+
   openWheelCreateDialog(this: Record<string, unknown>): void {
     this.wheelCreateDialog = true;
   },
@@ -139,6 +204,7 @@ export const wheelConfigMethods = {
     configs.push(newConfig);
     this.wheelConfigs = [...configs];
     this.activeWheelConfigId = newConfig.id;
+    (this as Record<string, unknown> & { persistLastWheelConfigSelection?: () => void }).persistLastWheelConfigSelection?.();
     this.editingWheelConfig = JSON.parse(JSON.stringify(newConfig)) as WheelConfig;
     this.wheelCreateDialog = false;
     queueCloudConfigSyncPush(this as Parameters<typeof queueCloudConfigSyncPush>[0]);
@@ -213,6 +279,7 @@ export const wheelConfigMethods = {
     } catch { /* ignore */ }
     this.wheelConfigs = [...configs];
     this.activeWheelConfigId = configs.length > 0 ? configs[0]!.id : null;
+    (this as Record<string, unknown> & { persistLastWheelConfigSelection?: () => void }).persistLastWheelConfigSelection?.();
     queueCloudConfigSyncPush(this as Parameters<typeof queueCloudConfigSyncPush>[0]);
     void broadcastWheelSession(this as Parameters<typeof broadcastWheelSession>[0]);
   },
@@ -257,6 +324,7 @@ export const wheelConfigMethods = {
         localStorage.removeItem(getWheelDraftStorageKey(this, updated.id));
       } catch { /* ignore */ }
       this.activeWheelConfigId = sanitizedUpdated.id;
+      (this as Record<string, unknown> & { persistLastWheelConfigSelection?: () => void }).persistLastWheelConfigSelection?.();
       (this as Record<string, unknown>).editingWheelConfig = JSON.parse(JSON.stringify(sanitizedUpdated)) as WheelConfig;
       (this as Record<string, unknown>).appliedWheelConfigSnapshot = JSON.parse(JSON.stringify(sanitizedUpdated)) as WheelConfig;
       applyController.activeSlots = newSlots;

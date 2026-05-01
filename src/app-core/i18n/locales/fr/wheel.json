@@ -47,6 +47,7 @@
   "wheelGoLiveTitle": "Passer en live?",
   "wheelGameTypeGridLabel": "Grille mystere",
   "wheelGameTypeWheelLabel": "Roue",
+  "wheelGameActionsLabel": "Actions du jeu",
   "wheelGrossProfitLabel": "Profit brut",
   "wheelLiveModeLabel": "Live",
   "wheelLivePrizeCostMeta": "${{amount}} cout des prix",

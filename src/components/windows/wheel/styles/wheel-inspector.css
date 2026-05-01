@@ -82,28 +82,6 @@
   letter-spacing: -0.01em;
 }
 
-.wheel-active-config-toolbar {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 34px 34px;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 2px;
-}
-
-.wheel-active-config-select {
-  margin-bottom: 0 !important;
-}
-
-.wheel-active-config-toolbar .v-btn {
-  min-width: 34px !important;
-  width: 34px !important;
-  height: 34px !important;
-}
-
-.wheel-active-config-toolbar .v-field {
-  min-height: 42px;
-}
-
 .wheel-compact-settings {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

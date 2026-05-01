@@ -43,16 +43,6 @@
 
     <section v-show="wheelInspectorTab === 'config'" class="wheel-panel-section">
 
-      <div class="wheel-active-config-toolbar">
-        <v-select v-model="activeWheelConfigId" :items="wheelConfigItems" item-title="title" item-value="value"
-          :label="t('wheelInspectorActiveWheelLabel')" variant="outlined" density="compact" hide-details="auto" class="wheel-active-config-select"
-          @update:model-value="loadWheelConfig"></v-select>
-        <v-btn icon="mdi-plus" size="small" variant="text" :title="t('wheelInspectorNewGameAction')"
-          :aria-label="t('wheelInspectorNewGameAction')" @click="openWheelCreateDialog"></v-btn>
-        <v-btn icon="mdi-pencil-outline" size="small" variant="text" :title="t('wheelInspectorEditWheelAction')"
-          :aria-label="t('wheelInspectorEditWheelAction')" @click="openWheelManageDialog"></v-btn>
-      </div>
-
       <template v-if="editingWheelConfig">
         <div class="wheel-compact-settings">
           <div class="wheel-compact-setting">
