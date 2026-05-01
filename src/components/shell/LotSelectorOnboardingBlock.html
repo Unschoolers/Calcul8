@@ -17,44 +17,44 @@
             @update:model-value="selectLot"
           >
             <template #selection="{ item }">
-              <div v-if="item?.raw" class="lot-selector-selection">
+              <div class="lot-selector-selection">
                 <div class="lot-selector-selection__title-row">
                   <span class="lot-selector-icon-stack">
-                    <v-icon size="16">{{ item.raw.symbolIcon }}</v-icon>
-                    <v-icon v-if="item.raw.completionIcon" size="12" color="success" class="lot-selector-icon-stack__badge">
-                      {{ item.raw.completionIcon }}
+                    <v-icon size="16">{{ item?.raw?.symbolIcon ?? item.symbolIcon }}</v-icon>
+                    <v-icon v-if="item?.raw?.completionIcon ?? item.completionIcon" size="12" color="success" class="lot-selector-icon-stack__badge">
+                      {{ item?.raw?.completionIcon ?? item.completionIcon }}
                     </v-icon>
                   </span>
-                  <div class="lot-selector-selection__title">{{ item.raw.title }}</div>
+                  <div class="lot-selector-selection__title">{{ item?.raw?.title ?? item.title }}</div>
                 </div>
-                <div class="lot-selector-selection__subtitle">{{ item.raw.subtitle }}</div>
+                <div class="lot-selector-selection__subtitle">{{ item?.raw?.subtitle ?? item.subtitle }}</div>
               </div>
             </template>
 
             <template #item="{ props, item }">
               <div>
-                <div v-if="item.raw.groupLabel" class="lot-selector-group-label">
+                <div v-if="item?.raw?.groupLabel || item.groupLabel" class="lot-selector-group-label">
                   <v-icon size="14" class="mr-1">
-                    {{ item.raw.lotType === 'singles' ? 'mdi-cards-outline' : 'mdi-cube-outline' }}
+                    {{ (item?.raw?.lotType ?? item.lotType) === 'singles' ? 'mdi-cards-outline' : 'mdi-cube-outline' }}
                   </v-icon>
-                  {{ item.raw.groupLabel }}
+                  {{ item?.raw?.groupLabel ?? item.groupLabel }}
                 </div>
                 <v-list-item v-bind="props" :title="null" :subtitle="null">
                   <template #prepend>
                     <span class="lot-selector-icon-stack mr-2">
                       <v-icon size="18">
-                        {{ item.raw.symbolIcon }}
+                        {{ item?.raw?.symbolIcon ?? item.symbolIcon }}
                       </v-icon>
-                      <v-icon v-if="item.raw.completionIcon" size="12" color="success" class="lot-selector-icon-stack__badge">
-                        {{ item.raw.completionIcon }}
+                      <v-icon v-if="item?.raw?.completionIcon ?? item.completionIcon" size="12" color="success" class="lot-selector-icon-stack__badge">
+                        {{ item?.raw?.completionIcon ?? item.completionIcon }}
                       </v-icon>
                     </span>
                   </template>
                   <v-list-item-title class="text-body-2 font-weight-medium">
-                    {{ item.raw.title }}
+                    {{ item?.raw?.title ?? item.title }}
                   </v-list-item-title>
                   <v-list-item-subtitle class="text-caption">
-                    {{ item.raw.subtitle }}
+                    {{ item?.raw?.subtitle ?? item.subtitle }}
                   </v-list-item-subtitle>
                 </v-list-item>
               </div>
