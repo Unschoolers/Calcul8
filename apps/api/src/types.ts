@@ -8,6 +8,32 @@ import type {
   WheelPublicSessionStatus as SharedWheelPublicSessionStatus,
   WheelSpectatorHeatLevel as SharedWheelSpectatorHeatLevel
 } from "../../../shared/wheel-public-session-contracts";
+import type {
+  SyncAdditionalFeeAppliesTo as SharedSyncAdditionalFeeAppliesTo,
+  SyncCostInputMode as SharedSyncCostInputMode,
+  SyncCurrencyCode as SharedSyncCurrencyCode,
+  SyncEntityRecord as SharedSyncEntityRecord,
+  SyncFeeProfilePreset as SharedSyncFeeProfilePreset,
+  SyncGameFairnessEntryDto as SharedSyncGameFairnessEntryDto,
+  SyncGameSessionDto as SharedSyncGameSessionDto,
+  SyncGameTallyEntryDto as SharedSyncGameTallyEntryDto,
+  SyncInventoryIssueDto as SharedSyncInventoryIssueDto,
+  SyncLivePricingDto as SharedSyncLivePricingDto,
+  SyncLotDto as SharedSyncLotDto,
+  SyncLotType as SharedSyncLotType,
+  SyncMetadataDto as SharedSyncMetadataDto,
+  SyncPayloadDto as SharedSyncPayloadDto,
+  SyncSaleDto as SharedSyncSaleDto,
+  SyncSaleLineDto as SharedSyncSaleLineDto,
+  SyncSalesByLotDto as SharedSyncSalesByLotDto,
+  SyncSaleType as SharedSyncSaleType,
+  SyncSinglesCatalogSource as SharedSyncSinglesCatalogSource,
+  SyncSinglesPurchaseDto as SharedSyncSinglesPurchaseDto,
+  SyncSnapshotDto as SharedSyncSnapshotDto,
+  SyncTierDeductionType as SharedSyncTierDeductionType,
+  SyncWheelConfigDto as SharedSyncWheelConfigDto,
+  SyncWheelTierDto as SharedSyncWheelTierDto
+} from "../../../shared/sync-contracts.cjs";
 
 export type ApiEnvironment = "dev" | "prod";
 
@@ -203,13 +229,30 @@ export interface WorkspaceJoinLinkDocument {
   updatedAt: string;
 }
 
-export type SyncEntityRecord = Record<string, unknown>;
-export type SyncLotDto = SyncEntityRecord & {
-  id: string | number;
-};
-export type SyncSaleDto = SyncEntityRecord;
-export type SyncWheelConfigDto = SyncEntityRecord;
-export type SyncSalesByLotDto = Record<string, SyncSaleDto[]>;
+export type SyncEntityRecord = SharedSyncEntityRecord;
+export type SyncAdditionalFeeAppliesTo = SharedSyncAdditionalFeeAppliesTo;
+export type SyncCostInputMode = SharedSyncCostInputMode;
+export type SyncCurrencyCode = SharedSyncCurrencyCode;
+export type SyncFeeProfilePreset = SharedSyncFeeProfilePreset;
+export type SyncGameFairnessEntryDto = SharedSyncGameFairnessEntryDto;
+export type SyncGameSessionDto = SharedSyncGameSessionDto;
+export type SyncGameTallyEntryDto = SharedSyncGameTallyEntryDto;
+export type SyncInventoryIssueDto = SharedSyncInventoryIssueDto;
+export type SyncLotDto = SharedSyncLotDto;
+export type SyncLotType = SharedSyncLotType;
+export type SyncMetadataDto = SharedSyncMetadataDto;
+export type SyncSaleType = SharedSyncSaleType;
+export type SyncSaleLineDto = SharedSyncSaleLineDto;
+export type SyncSaleDto = SharedSyncSaleDto;
+export type SyncSinglesCatalogSource = SharedSyncSinglesCatalogSource;
+export type SyncSinglesPurchaseDto = SharedSyncSinglesPurchaseDto;
+export type SyncTierDeductionType = SharedSyncTierDeductionType;
+export type SyncWheelTierDto = SharedSyncWheelTierDto;
+export type SyncWheelConfigDto = SharedSyncWheelConfigDto;
+export type SyncLivePricingDto = SharedSyncLivePricingDto;
+export type SyncSalesByLotDto = SharedSyncSalesByLotDto;
+export type SyncSnapshotDto = SharedSyncSnapshotDto;
+export type SyncPayloadDto = SharedSyncPayloadDto;
 
 export interface SyncSnapshotPayload {
   lots: SyncLotDto[];
@@ -236,16 +279,13 @@ export interface SyncPresetDocument {
   updatedAt: string;
 }
 
-export interface SyncMetaDocument {
+export interface SyncMetaDocument extends Omit<SyncMetadataDto, "activeWheelConfigId"> {
   id: string;
   docType: "sync_meta";
   userId: string;
-  version: number;
   updatedAt: string;
   wheelConfigs?: SyncWheelConfigDto[];
   activeWheelConfigId?: number | null;
-  salesMode?: "snapshot" | "entity";
-  livePricingMode?: "lot_defaults" | "entity";
 }
 
 export type WhatnotConnectionStatus = "active" | "disconnected" | "error";

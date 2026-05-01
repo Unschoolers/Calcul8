@@ -6,11 +6,11 @@ import { parseSyncLotsShape, parseSyncWheelConfigs } from "./syncShape";
 test("parseSyncLotsShape accepts lot payload", () => {
   const result = parseSyncLotsShape({
     lots: [{ id: 2 }],
-    salesByLot: { "2": [{ id: "sale-2" }] }
+    salesByLot: { "2": [{ id: "22" }] }
   });
 
   assert.deepEqual(result.lots, [{ id: 2 }]);
-  assert.deepEqual(result.salesByLot, { "2": [{ id: "sale-2" }] });
+  assert.deepEqual(result.salesByLot, { "2": [{ id: 22 }] });
 });
 
 test("parseSyncLotsShape defaults missing salesByLot to empty object", () => {
@@ -52,6 +52,82 @@ test("parseSyncLotsShape requires lot ids at the boundary", () => {
       && error.status === 400
       && error.message === "Field 'lots[0].id' must be a string or number."
   );
+});
+
+test("parseSyncLotsShape rejects invalid salesByLot partition keys", () => {
+  assert.throws(
+    () => parseSyncLotsShape({ lots: [{ id: 2 }], salesByLot: { "bad-lot": [{ id: 1 }] } }),
+    (error: unknown) => error instanceof HttpError
+      && error.status === 400
+      && error.message === "Field 'salesByLot' contains invalid lot id 'bad-lot'."
+  );
+});
+
+test("parseSyncLotsShape normalizes sale entity fields and drops unknown data", () => {
+  const result = parseSyncLotsShape({
+    lots: [{ id: 10 }],
+    salesByLot: {
+      "10": [
+        {
+          id: "501",
+          type: "wheel",
+          quantity: "1",
+          packsCount: "2",
+          price: "14.25",
+          priceIsTotal: true,
+          customer: " Alex ",
+          memo: " Hit ",
+          buyerShipping: "3.5",
+          date: "2026-04-03",
+          version: "7",
+          updatedAt: "2026-04-03T10:00:00.000Z",
+          updatedBy: "user-1",
+          mutationId: "sale:1",
+          linkedWheelId: "91",
+          winningTierId: "tier-1",
+          costOfWinningTier: "8.25",
+          netRevenue: "10.75",
+          singlesItems: [
+            { singlesPurchaseEntryId: "801", quantity: "2", price: "4.5", extra: "drop" },
+            { singlesPurchaseEntryId: "bad", quantity: 0, price: 2 }
+          ],
+          extraSaleField: "drop"
+        }
+      ]
+    }
+  });
+
+  assert.deepEqual(result.salesByLot, {
+    "10": [
+      {
+        id: 501,
+        type: "wheel",
+        quantity: 1,
+        packsCount: 2,
+        singlesItems: [
+          {
+            singlesPurchaseEntryId: 801,
+            quantity: 2,
+            price: 4.5
+          }
+        ],
+        price: 14.25,
+        priceIsTotal: true,
+        customer: "Alex",
+        memo: "Hit",
+        buyerShipping: 3.5,
+        date: "2026-04-03",
+        version: 7,
+        updatedAt: "2026-04-03T10:00:00.000Z",
+        updatedBy: "user-1",
+        mutationId: "sale:1",
+        linkedWheelId: 91,
+        winningTierId: "tier-1",
+        costOfWinningTier: 8.25,
+        netRevenue: 10.75
+      }
+    ]
+  });
 });
 
 test("parseSyncWheelConfigs accepts object arrays and defaults missing input", () => {

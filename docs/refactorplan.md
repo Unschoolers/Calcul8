@@ -2,7 +2,7 @@
 
 This is the current refactor plan. This document is alive: remove finished tasks, add newly found risks, and keep the next slice small enough to verify locally.
 
-Last repo scan: 2026-04-30.
+Last repo scan: 2026-05-01.
 
 ## Current Baseline
 
@@ -15,7 +15,8 @@ Last repo scan: 2026-04-30.
 - Public spectator session DTOs live in a shared `.d.ts` contract under `shared`, and frontend/API types import that contract.
 - Frontend spectator payload normalization exists in `src/app-core/methods/ui/wheel-spectator-contract.ts`, and `src/spectator-main.ts` uses it for realtime payloads.
 - API public-session sanitization exists separately in `apps/api/src/features/wheel/publicSessionHandler.ts`; it is intentionally a trust boundary, but it now duplicates a lot of frontend normalization behavior.
-- Sync contracts are still loose for rich entities: frontend/API DTOs are mostly `Record<string, unknown>` for lots, sales, and wheel configs, so typed runtime validation for game configs and sessions remains the biggest cross-device safety gap.
+- Sync contracts now use shared frontend/API DTO helpers for lots, singles purchases, sales, wheel/game configs, game sessions, sync metadata, and live pricing. API sync push and wheel broadcast boundaries use those helpers before storage or realtime publish; pulled legacy snapshot sales/configs reuse the current parser; live-pricing entity import/export filters malformed documents at the repository boundary; and workspace realtime applies sale, live-pricing, wheel config, and game-session updates through the same contracts.
+- Current lot selection is a base app workflow. The shell selector now has a focused display resolver for Vuetify slot payloads that may arrive as either `item.raw` or direct item fields; future shell or sync refactors must keep that regression covered.
 - `src/app-core/methods/ui` is navigable but still physically flat across auth, entitlements, sync, workspace, realtime, spectator, Whatnot, and API helper responsibilities.
 - The flat `tests/` directory has broad coverage, but discoverability is declining as game, sync/workspace, sales/Whatnot, config/singles, auth/entitlement, and calculation suites grow.
 
@@ -31,23 +32,23 @@ Last repo scan: 2026-04-30.
 
 ## Priority 1 - Strengthen Sync And Entity Contracts
 
+Status: done for the current sync/entity and realtime surfaces. Future fields should extend the shared DTO module first, then wire through frontend/API boundaries with focused tests.
+
 This is now the top safety risk. Game configs, sessions, sales, live pricing, workspace data, and sync metadata are richer than the current loose DTO layer can describe. A weak sync boundary can erase or corrupt `gameType`, tier odds, outcome counts, grid board state, spectator metadata, sale version fields, or workspace-scoped data.
 
-To do:
+Maintenance rules:
 
-1. Replace broad `SyncEntityRecord` usage with named DTOs for lots, singles purchases, sales, wheel/game configs, game sessions, live pricing, and sync metadata.
-2. Add runtime parsers for those DTOs at frontend storage/import boundaries and API route boundaries.
-3. Keep legacy snapshot import/export compatibility separate from current entity sync so old personal-mode migrations do not weaken current contracts.
-4. Add contract tests for personal and workspace payloads that include wheel configs, grid configs, tier odds, outcome count, grid reveal state, spectator metadata, sale entity versions, and live pricing.
-5. Decide which future fields are preserved. Unknown fields should be dropped by default unless the contract explicitly allows compatible future data.
-6. Keep optimistic concurrency and conflict paths visible in tests for shared/cloud-authoritative entities.
-7. Make `tests/sync-contracts.test.ts`, API sync tests, and workspace realtime tests the first verification gate for each sync DTO slice.
+1. Keep current-lot selection and lot display contracts in the verification gate whenever touching lot DTOs, shell extraction, config lot loading, or sync apply/pull code.
+2. Future fields must be added to `shared/sync-contracts` first. Unknown fields are dropped by default unless the contract explicitly allows compatible future data.
+3. Keep optimistic concurrency and conflict paths visible in tests for shared/cloud-authoritative entities.
+4. Make `tests/shared-sync-contracts.test.ts`, `tests/sync-contracts.test.ts`, API sync tests, current-lot selector tests, workspace realtime tests, and API wheel broadcast tests the first verification gate for each sync DTO slice.
 
 Done when:
 
-- API handlers and frontend sync code share named DTOs instead of parallel loose records.
-- A config saved in one browser keeps the same game type, odds, and grid/session state when loaded elsewhere.
-- Legacy personal-mode migrations still pass without making current entity contracts permissive.
+- API handlers and frontend sync code share named DTOs instead of parallel loose records. Done.
+- A config saved in one browser keeps the same game type, odds, and grid/session state when loaded elsewhere. Done for current config/session payloads.
+- Selecting a lot remains visually stable and actionable after lot item shape changes, including Vuetify slot payload differences. Done with a focused regression test.
+- Legacy personal-mode migrations still pass without making current entity contracts permissive. Done by normalizing or skipping malformed legacy records.
 
 ## Priority 2 - Finish The Game Domain Boundary
 
@@ -276,15 +277,31 @@ Status:
 4. Add sync contract tests for rich game config fields: still open; now part of Priority 1.
 5. Split `wheelHelpers.ts` pricing/sales/fairness responsibilities: partially done for fairness and inventory support; pricing, default config, sales creation, and revenue math remain.
 
+### Sync Entity Contract Slice
+
+Status: done for current surfaces.
+
+What changed:
+
+1. Shared sync contract helpers now emit named DTOs for lots, singles purchase rows, sales, wheel/game configs, sync metadata, and live-pricing shapes instead of passing raw records through.
+2. Frontend sync helpers and API sync push parsing both use `shared/sync-contracts` for sale, lot, singles, wheel/game config, and metadata normalization, while API handlers keep their route-specific error messages.
+3. API sync push parsing normalizes sale entity fields, trims display text, coerces numeric fields, filters invalid singles sale lines, drops unknown sale fields, and rejects malformed `salesByLot` partition keys.
+4. API wheel/game config DTOs are named interfaces instead of loose records, and repository snapshot reads normalize legacy sale/config records through the current sync parser before exposing typed DTOs.
+5. API sync entity import/export filters malformed live-pricing documents before returning them from external sources or upserting them into the target scope.
+6. Pulled legacy personal-mode snapshots remain compatibility input only: sale/config records normalize through the current DTO parser, and malformed legacy records are skipped instead of weakening current entity sync.
+7. Workspace realtime sale, live-pricing, wheel config, and game-session payloads now reuse shared DTO parsers instead of hand-normalizing parallel shapes.
+8. API wheel broadcast uses the same shared game-session DTO parser before publishing realtime session updates.
+9. Current-lot selector display has a focused regression test because lot selection is part of the sync/entity safety surface.
+
 ## Next Refactor Slice
 
-The next slice should reduce data-loss and logic-drift risk without changing UX:
+The next slice should move to game-domain cleanup without changing UX:
 
-1. Add typed runtime parsing for synced wheel/game configs, including `gameType`, tier odds, outcome count, grid cell count, and grid reveal/session fields.
-2. Add personal/workspace sync contract tests that prove those fields survive push/pull and malformed payloads are normalized or rejected intentionally.
-3. Split `wheelHelpers.ts` into pricing/revenue, default builders, sales creation, and count remapping modules with existing tests moved to the new imports.
-4. Extract grid reset planning from `mysteryGridMethods.ts` into a pure helper and test reduced-motion/default timing.
-5. Factor shared spectator snapshot sanitizer rules so API and frontend normalization do not drift on `gameType`, `gridCells`, `spinAnimation`, and heat.
+1. Keep `tests/lot-selector-display.test.ts` in the focused gate for any lot DTO, shell bridge, or current-lot selector change.
+2. Split `wheelHelpers.ts` into pricing/revenue, default builders, sales creation, and count remapping modules with existing tests moved to the new imports.
+3. Extract grid reset planning from `mysteryGridMethods.ts` into a pure helper and test reduced-motion/default timing.
+4. Factor shared spectator snapshot sanitizer rules so API and frontend normalization do not drift on `gameType`, `gridCells`, `spinAnimation`, and heat.
+5. Add new sync/realtime contract fields only through `shared/sync-contracts` and update the focused sync/entity gate in the same patch.
 
 This slice should not change UX except for bug fixes found by the tests.
 
@@ -292,7 +309,10 @@ This slice should not change UX except for bug fixes found by the tests.
 
 For sync/entity contract changes:
 
+- `npm run test -- tests/shared-sync-contracts.test.ts`
+- `npm run test -- tests/lot-selector-display.test.ts`
 - `npm run test -- tests/sync-contracts.test.ts tests/sync-service.test.ts tests/workspace-config-sync.test.ts tests/workspace-realtime.test.ts`
+- `npm --prefix apps/api run test -- src/lib/syncShape.test.ts src/functions/syncPush.test.ts src/functions/syncPull.test.ts src/lib/cosmos/syncSnapshotRepository.test.ts`
 - `npm --prefix apps/api run test`
 - `npm --prefix apps/api run typecheck`
 - `npx tsc -p . --noEmit --strict`

@@ -12,6 +12,9 @@ import {
   normalizeSale
 } from "../sales-live-api.ts";
 import { reconcileIncomingLivePricingSnapshot } from "./lot-entity-polling.ts";
+import {
+  normalizeSyncGameSessionDto
+} from "./sync-contracts.ts";
 import { createSyncPayload, getSyncPayloadSignature } from "./sync-payload.ts";
 import {
   getDesiredRealtimeSubscription,
@@ -127,18 +130,16 @@ function handleWheelSessionUpdatedEvent(app: RealtimeApp, data: unknown): void {
   const raw = typeof data === "object" && data !== null && !Array.isArray(data)
     ? data as Record<string, unknown>
     : {};
+  const session = normalizeSyncGameSessionDto(raw);
 
-  const incomingUpdatedAt = Math.max(0, Math.floor(Number(raw.wheelSessionUpdatedAt) || 0));
+  const incomingUpdatedAt = session.wheelSessionUpdatedAt;
   if (incomingUpdatedAt > 0 && incomingUpdatedAt < app.wheelSessionUpdatedAt) return;
 
   if (Array.isArray(raw.wheelConfigs)) {
-    app.wheelConfigs = normalizeWheelConfigs(raw.wheelConfigs, app.lots) as typeof app.wheelConfigs;
+    app.wheelConfigs = normalizeWheelConfigs(session.wheelConfigs, app.lots) as typeof app.wheelConfigs;
   }
 
-  const incomingTotalSpins = Math.max(0, Math.floor(Number(raw.wheelTotalSpins) || 0));
-  const incomingConfigId = raw.activeWheelConfigId == null
-    ? null
-    : (Number(raw.activeWheelConfigId) || null);
+  const incomingConfigId = session.activeWheelConfigId;
   if (incomingConfigId == null) {
     app.activeWheelConfigId = null;
   } else if (app.wheelConfigs.some((config) => config.id === incomingConfigId)) {
@@ -148,38 +149,8 @@ function handleWheelSessionUpdatedEvent(app: RealtimeApp, data: unknown): void {
   }
 
   applyRootWheelSessionSnapshot(app as unknown as RootWheelSessionStateContext, {
-    ...raw,
-    wheelSessionUpdatedAt: incomingUpdatedAt > 0 ? incomingUpdatedAt : Date.now(),
-    wheelTotalSpins: incomingTotalSpins,
-    wheelSpinCounts: Array.isArray(raw.wheelSpinCounts)
-      ? raw.wheelSpinCounts.map((n) => Math.max(0, Math.floor(Number(n) || 0)))
-      : raw.wheelSpinCounts,
-    wheelFairnessHistory: Array.isArray(raw.wheelFairnessHistory)
-      ? raw.wheelFairnessHistory
-        .filter((entry) => entry && typeof entry === "object" && !Array.isArray(entry))
-        .map((entry) => ({
-          spinNumber: Math.max(0, Math.floor(Number((entry as Record<string, unknown>).spinNumber) || 0)),
-          label: String((entry as Record<string, unknown>).label ?? ""),
-          color: String((entry as Record<string, unknown>).color ?? ""),
-          hash: String((entry as Record<string, unknown>).hash ?? ""),
-          seed: String((entry as Record<string, unknown>).seed ?? ""),
-          clientSeed: String((entry as Record<string, unknown>).clientSeed ?? "").trim() || undefined,
-          verificationUrl: String((entry as Record<string, unknown>).verificationUrl ?? "").trim() || undefined,
-          algorithm: String((entry as Record<string, unknown>).algorithm ?? "").trim() || undefined,
-          timestamp: Math.max(0, Math.floor(Number((entry as Record<string, unknown>).timestamp) || 0))
-        }))
-      : raw.wheelFairnessHistory,
-    wheelChaseTallyHistory: Array.isArray(raw.wheelChaseTallyHistory)
-      ? raw.wheelChaseTallyHistory
-        .filter((entry) => entry && typeof entry === "object" && !Array.isArray(entry))
-        .map((entry) => ({
-          tierId: String((entry as Record<string, unknown>).tierId ?? ""),
-          label: String((entry as Record<string, unknown>).label ?? ""),
-          color: String((entry as Record<string, unknown>).color ?? ""),
-          count: Math.max(0, Math.floor(Number((entry as Record<string, unknown>).count) || 0))
-        }))
-        .filter((entry) => entry.tierId.length > 0)
-      : raw.wheelChaseTallyHistory
+    ...session,
+    wheelSessionUpdatedAt: incomingUpdatedAt > 0 ? incomingUpdatedAt : Date.now()
   });
 }
 

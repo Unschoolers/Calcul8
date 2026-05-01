@@ -19,10 +19,51 @@ function isSaleDocument(resource: unknown): resource is SaleDocument {
     && (resource as { docType?: unknown }).docType === "sale";
 }
 
-function isLotLivePricingDocument(resource: unknown): resource is LotLivePricingDocument {
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function isNonNegativeFiniteNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0;
+}
+
+function isPositiveFiniteInteger(value: unknown): value is number {
+  return typeof value === "number" && Number.isInteger(value) && Number.isFinite(value) && value > 0;
+}
+
+function hasValidLotLivePricingFields(
+  candidate: Partial<LotLivePricingDocument> | null | undefined,
+  scopeKey?: string
+): candidate is LotLivePricingDocument {
+  if (!candidate) return false;
+  const hasValidScope = scopeKey
+    ? candidate.userId === scopeKey && candidate.scopeKey === scopeKey
+    : isNonEmptyString(candidate.userId) && isNonEmptyString(candidate.scopeKey);
+  return hasValidScope
+    && candidate.docType === "lot_live_pricing"
+    && isNonEmptyString(candidate.id)
+    && isNonEmptyString(candidate.lotId)
+    && isNonNegativeFiniteNumber(candidate.livePackPrice)
+    && isNonNegativeFiniteNumber(candidate.liveBoxPriceSell)
+    && isNonNegativeFiniteNumber(candidate.liveSpotPrice)
+    && isPositiveFiniteInteger(candidate.version)
+    && isNonEmptyString(candidate.updatedAt)
+    && isNonEmptyString(candidate.updatedBy)
+    && isNonEmptyString(candidate.mutationId);
+}
+
+function isLotLivePricingDocument(resource: unknown, scopeKey: string): resource is LotLivePricingDocument {
+  const candidate = resource as Partial<LotLivePricingDocument> | null;
   return !!resource
     && typeof resource === "object"
-    && (resource as { docType?: unknown }).docType === "lot_live_pricing";
+    && hasValidLotLivePricingFields(candidate, scopeKey);
+}
+
+function isIncomingLotLivePricingDocument(resource: unknown): resource is LotLivePricingDocument {
+  const candidate = resource as Partial<LotLivePricingDocument> | null;
+  return !!resource
+    && typeof resource === "object"
+    && hasValidLotLivePricingFields(candidate);
 }
 
 async function getSyncScopeEntityDocumentsFromContainer(
@@ -53,7 +94,7 @@ async function getSyncScopeEntityDocumentsFromContainer(
       saleDocuments.push(resource);
       continue;
     }
-    if (isLotLivePricingDocument(resource)) {
+    if (isLotLivePricingDocument(resource, scopeKey)) {
       livePricingDocuments.push(resource);
     }
   }
@@ -96,8 +137,9 @@ export async function replaceSyncScopeEntityDocuments(
   const incomingSalesByKey = new Map(
     input.saleDocuments.map((document) => [getSaleDocumentIdentityKey(document), document] as const)
   );
+  const incomingLivePricingDocuments = input.livePricingDocuments.filter(isIncomingLotLivePricingDocument);
   const incomingLivePricingByKey = new Map(
-    input.livePricingDocuments.map((document) => [getLotLivePricingIdentityKey(document), document] as const)
+    incomingLivePricingDocuments.map((document) => [getLotLivePricingIdentityKey(document), document] as const)
   );
 
   let deletedCount = 0;
@@ -133,7 +175,7 @@ export async function replaceSyncScopeEntityDocuments(
     upsertedCount += 1;
   }
 
-  for (const sourceLivePricing of input.livePricingDocuments) {
+  for (const sourceLivePricing of incomingLivePricingDocuments) {
     const document: LotLivePricingDocument = {
       ...sourceLivePricing,
       id: lotLivePricingDocumentId(scopeKey, sourceLivePricing.lotId),

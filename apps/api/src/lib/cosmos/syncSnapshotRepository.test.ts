@@ -30,6 +30,7 @@ vi.mock("./core", () => ({
 
 import {
   getEffectiveSyncSnapshot,
+  getSyncScopeEntityDocuments,
   replaceSyncScopeEntityDocuments,
   upsertSyncSnapshotIncremental
 } from "./syncSnapshotRepository";
@@ -134,6 +135,112 @@ test("getEffectiveSyncSnapshot reconstructs lots and omits preset sales when ent
     version: 7,
     updatedAt: "2026-03-18T13:00:00.000Z"
   });
+});
+
+test("getEffectiveSyncSnapshot normalizes legacy preset sales and meta wheel configs", async () => {
+  const syncSnapshots = createSyncSnapshotsContainer();
+  const presetDocuments: SyncPresetDocument[] = [
+    {
+      id: "sync:preset:user-1:10",
+      docType: "sync_preset",
+      userId: "user-1",
+      presetId: "10",
+      preset: { id: "10", name: "Legacy lot" },
+      sales: [
+        {
+          id: "501",
+          type: "wheel",
+          quantity: "1",
+          price: "14.25",
+          customer: " Alex ",
+          linkedWheelId: "91",
+          unknownSaleField: "drop"
+        },
+        {
+          id: "bad",
+          price: 5
+        }
+      ],
+      version: 3,
+      updatedAt: "2026-03-18T10:00:00.000Z"
+    }
+  ];
+  const metaDocument: SyncMetaDocument = {
+    id: "sync:meta:user-1",
+    docType: "sync_meta",
+    userId: "user-1",
+    version: 7,
+    updatedAt: "2026-03-18T13:00:00.000Z",
+    wheelConfigs: [
+      {
+        id: "91",
+        name: " Legacy wheel ",
+        spinPrice: "10",
+        gameType: "grid",
+        outcomeCount: "80",
+        unknownConfigField: "drop",
+        tiers: [
+          {
+            id: "tier-1",
+            label: " Chase ",
+            chancePercent: "25",
+            unknownTierField: "drop"
+          }
+        ]
+      },
+      {
+        id: "bad",
+        name: "Bad wheel"
+      }
+    ] as never,
+    activeWheelConfigId: "91" as never,
+    salesMode: "snapshot",
+    livePricingMode: "entity"
+  };
+
+  syncSnapshots.items.query.mockReturnValue({
+    fetchAll: vi.fn().mockResolvedValue({
+      resources: presetDocuments
+    })
+  });
+  syncSnapshots.item.mockImplementation((id: string) => ({
+    read: vi.fn().mockResolvedValue({
+      resource: id === "sync:meta:user-1" ? metaDocument : null
+    })
+  }));
+  getContainersMock.mockReturnValue({ syncSnapshots });
+
+  const snapshot = await getEffectiveSyncSnapshot(createConfig(), "user-1");
+
+  assert.deepEqual(snapshot?.salesByLot, {
+    "10": [
+      {
+        id: 501,
+        type: "wheel",
+        quantity: 1,
+        price: 14.25,
+        customer: "Alex",
+        linkedWheelId: 91
+      }
+    ]
+  });
+  assert.deepEqual(snapshot?.wheelConfigs, [
+    {
+      id: 91,
+      name: "Legacy wheel",
+      spinPrice: 10,
+      gameType: "grid",
+      outcomeCount: 80,
+      tiers: [
+        {
+          id: "tier-1",
+          label: "Chase",
+          chancePercent: 25
+        }
+      ]
+    }
+  ]);
+  assert.equal(snapshot?.activeWheelConfigId, 91);
 });
 
 test("getEffectiveSyncSnapshot returns wheel-only snapshot when meta contains wheel configs", async () => {
@@ -280,6 +387,99 @@ test("replaceSyncScopeEntityDocuments deletes stale docs and rewrites incoming d
   assert.equal(syncSnapshots.items.upsert.mock.calls[2]?.[0]?.id, "lot_live_pricing:ws:team-1:lot-1");
   assert.equal(syncSnapshots.items.upsert.mock.calls[2]?.[0]?.scopeKey, "ws:team-1");
   assert.equal(syncSnapshots.items.upsert.mock.calls[2]?.[0]?.userId, "ws:team-1");
+});
+
+test("getSyncScopeEntityDocuments filters malformed live pricing entity documents", async () => {
+  const syncSnapshots = createSyncSnapshotsContainer();
+  const validLivePricing: LotLivePricingDocument = {
+    id: "lot_live_pricing:ws:team-1:lot-1",
+    docType: "lot_live_pricing",
+    userId: "ws:team-1",
+    scopeKey: "ws:team-1",
+    lotId: "lot-1",
+    livePackPrice: 1,
+    liveBoxPriceSell: 2,
+    liveSpotPrice: 3,
+    version: 1,
+    updatedAt: "2026-03-18T00:00:00.000Z",
+    updatedBy: "user-a",
+    mutationId: "live:1"
+  };
+
+  syncSnapshots.items.query.mockReturnValue({
+    fetchAll: vi.fn().mockResolvedValue({
+      resources: [
+        validLivePricing,
+        {
+          ...validLivePricing,
+          id: "lot_live_pricing:ws:team-1:lot-bad",
+          lotId: "lot-bad",
+          livePackPrice: -1
+        },
+        {
+          ...validLivePricing,
+          id: "lot_live_pricing:ws:team-1:lot-missing-mutation",
+          lotId: "lot-missing-mutation",
+          mutationId: ""
+        },
+        {
+          ...validLivePricing,
+          id: "lot_live_pricing:ws:team-1:lot-wrong-scope",
+          lotId: "lot-wrong-scope",
+          scopeKey: "other-scope"
+        }
+      ]
+    })
+  });
+  getContainersMock.mockReturnValue({ syncSnapshots });
+
+  const result = await getSyncScopeEntityDocuments(createConfig(), "ws:team-1");
+
+  assert.deepEqual(result.livePricingDocuments, [validLivePricing]);
+});
+
+test("replaceSyncScopeEntityDocuments does not upsert malformed live pricing entity input", async () => {
+  const syncSnapshots = createSyncSnapshotsContainer();
+  const validLivePricing: LotLivePricingDocument = {
+    id: "ignored-live",
+    docType: "lot_live_pricing",
+    userId: "source",
+    scopeKey: "source",
+    lotId: "lot-1",
+    livePackPrice: 1,
+    liveBoxPriceSell: 2,
+    liveSpotPrice: 3,
+    version: 1,
+    updatedAt: "2026-03-18T00:00:00.000Z",
+    updatedBy: "user-a",
+    mutationId: "live:1"
+  };
+
+  syncSnapshots.items.query.mockReturnValue({
+    fetchAll: vi.fn().mockResolvedValue({ resources: [] })
+  });
+  syncSnapshots.items.upsert.mockResolvedValue({ resource: null });
+  getContainersMock.mockReturnValue({ syncSnapshots });
+
+  const result = await replaceSyncScopeEntityDocuments(createConfig(), {
+    scopeKey: "ws:team-1",
+    saleDocuments: [],
+    livePricingDocuments: [
+      validLivePricing,
+      {
+        ...validLivePricing,
+        lotId: "lot-bad",
+        liveSpotPrice: Number.NaN
+      }
+    ]
+  });
+
+  assert.deepEqual(result, {
+    upsertedCount: 1,
+    deletedCount: 0
+  });
+  assert.equal(syncSnapshots.items.upsert.mock.calls.length, 1);
+  assert.equal(syncSnapshots.items.upsert.mock.calls[0]?.[0]?.id, "lot_live_pricing:ws:team-1:lot-1");
 });
 
 test("upsertSyncSnapshotIncremental upserts changed presets, deletes removed presets, and preserves sync modes", async () => {

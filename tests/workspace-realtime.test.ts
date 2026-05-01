@@ -492,6 +492,61 @@ test("workspace realtime applies wheel updates including resets when revision is
   assert.equal((app.wheelSkippedDeductions as Array<{ spinNumber?: number }>)[0]?.spinNumber, 2);
 });
 
+test("workspace realtime normalizes wheel config updates through the shared sync contract", async () => {
+  const app = createApp({
+    lots: [{ id: 1, name: "Bulk Lot", lotType: "bulk" }],
+    wheelConfigs: [],
+    activeWheelConfigId: null,
+    wheelSessionUpdatedAt: 100
+  });
+
+  refreshWorkspaceRealtime(app as never);
+  const socket = FakeWebSocket.instances[0]!;
+  socket.triggerOpen();
+  await flushMicrotasks();
+
+  socket.triggerMessage({
+    type: "event",
+    room: "workspace:ws_dcb4d6f021637411:wheel",
+    eventType: "wheel.session.updated",
+    data: {
+      wheelConfigs: [{
+        id: "91",
+        name: " Grid Night ",
+        gameType: "grid",
+        outcomeCount: "80",
+        gridCellCount: "80",
+        spinPrice: "12.5",
+        targetMargin: "45",
+        debugOnly: "drop",
+        tiers: [{
+          id: "tier-1",
+          label: " Chase ",
+          chancePercent: "25",
+          slots: "20",
+          costPerTier: "6",
+          deductionType: "packs",
+          packsCount: "2",
+          extraTierField: "drop"
+        }]
+      }],
+      activeWheelConfigId: "91",
+      wheelSessionUpdatedAt: 200
+    }
+  });
+
+  assert.equal(app.activeWheelConfigId, 91);
+  assert.equal((app.wheelConfigs as Array<{ name?: string }>)[0]?.name, "Grid Night");
+  assert.equal((app.wheelConfigs as Array<{ gameType?: string }>)[0]?.gameType, "grid");
+  assert.equal((app.wheelConfigs as Array<{ outcomeCount?: number }>)[0]?.outcomeCount, 80);
+  assert.equal("debugOnly" in ((app.wheelConfigs as Array<Record<string, unknown>>)[0] ?? {}), false);
+  const tier = (app.wheelConfigs as Array<{ tiers?: Array<Record<string, unknown>> }>)[0]?.tiers?.[0];
+  assert.equal(tier?.label, "Chase");
+  assert.equal(tier?.chancePercent, 100);
+  assert.equal(tier?.slots, 100);
+  assert.equal("extraTierField" in (tier ?? {}), false);
+});
+
 test("workspace realtime reconnects after an unexpected close and stops cleanly", async () => {
   const app = createApp();
 

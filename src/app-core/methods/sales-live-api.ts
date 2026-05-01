@@ -6,6 +6,10 @@ import { getActiveWorkspaceId, resolveWorkspaceScopeContext } from "../workspace
 import { persistSalesCacheToStorage } from "../shared/sales-cache-storage.ts";
 import { replaceRootLotSales } from "../shared/sales-root-state.ts";
 import { parseApiErrorMessage } from "../shared/api-error-message.ts";
+import {
+  normalizeSyncLivePricingDto,
+  normalizeSyncSaleDto
+} from "./ui/sync-contracts.ts";
 
 export class SalesLiveApiError extends Error {
   status: number;
@@ -93,56 +97,29 @@ function getScopeBody(app: Pick<AppContext, "activeScopeType" | "activeWorkspace
 }
 
 export function normalizeSale(value: unknown): Sale | null {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
-  const candidate = value as Record<string, unknown>;
-  const id = Number(candidate.id);
-  if (!Number.isFinite(id)) return null;
-  const linkedWheelId = Number(candidate.linkedWheelId);
-  const costOfWinningTier = Number(candidate.costOfWinningTier);
-  const netRevenue = Number(candidate.netRevenue);
-
+  const sale = normalizeSyncSaleDto(value);
+  if (!sale) return null;
   return {
-    id,
-    type: candidate.type === "box" || candidate.type === "rtyh" || candidate.type === "wheel"
-      ? candidate.type
-      : "pack",
-    quantity: Math.max(0, Math.floor(Number(candidate.quantity) || 0)),
-    packsCount: Math.max(0, Math.floor(Number(candidate.packsCount) || 0)),
-    singlesPurchaseEntryId: Number.isFinite(Number(candidate.singlesPurchaseEntryId))
-      ? Math.floor(Number(candidate.singlesPurchaseEntryId))
-      : undefined,
-    singlesItems: Array.isArray(candidate.singlesItems)
-      ? candidate.singlesItems
-        .map((line) => {
-          if (!line || typeof line !== "object" || Array.isArray(line)) return null;
-          const next = line as Record<string, unknown>;
-          const quantity = Math.max(0, Math.floor(Number(next.quantity) || 0));
-          if (quantity <= 0) return null;
-          const parsedEntryId = Number(next.singlesPurchaseEntryId);
-          return {
-            singlesPurchaseEntryId: Number.isFinite(parsedEntryId) && parsedEntryId > 0
-              ? Math.floor(parsedEntryId)
-              : undefined,
-            quantity,
-            price: Math.max(0, Number(next.price) || 0)
-          };
-        })
-        .filter((line): line is NonNullable<typeof line> => line != null)
-      : undefined,
-    price: Math.max(0, Number(candidate.price) || 0),
-    priceIsTotal: candidate.priceIsTotal === true ? true : undefined,
-    customer: typeof candidate.customer === "string" ? candidate.customer : undefined,
-    memo: typeof candidate.memo === "string" ? candidate.memo : undefined,
-    buyerShipping: Number(candidate.buyerShipping) || 0,
-    date: typeof candidate.date === "string" ? candidate.date : "",
-    version: Number.isFinite(Number(candidate.version)) ? Math.floor(Number(candidate.version)) : undefined,
-    updatedAt: typeof candidate.updatedAt === "string" ? candidate.updatedAt : undefined,
-    updatedBy: typeof candidate.updatedBy === "string" ? candidate.updatedBy : undefined,
-    mutationId: typeof candidate.mutationId === "string" ? candidate.mutationId : undefined,
-    linkedWheelId: Number.isFinite(linkedWheelId) && linkedWheelId > 0 ? Math.floor(linkedWheelId) : undefined,
-    winningTierId: typeof candidate.winningTierId === "string" ? candidate.winningTierId : undefined,
-    costOfWinningTier: Number.isFinite(costOfWinningTier) ? costOfWinningTier : undefined,
-    netRevenue: Number.isFinite(netRevenue) ? Math.max(0, netRevenue) : undefined
+    id: sale.id,
+    type: sale.type ?? "pack",
+    quantity: sale.quantity ?? 0,
+    packsCount: sale.packsCount ?? 0,
+    singlesPurchaseEntryId: sale.singlesPurchaseEntryId,
+    singlesItems: sale.singlesItems,
+    price: sale.price ?? 0,
+    priceIsTotal: sale.priceIsTotal,
+    customer: sale.customer,
+    memo: sale.memo,
+    buyerShipping: sale.buyerShipping ?? 0,
+    date: sale.date ?? "",
+    version: sale.version,
+    updatedAt: sale.updatedAt,
+    updatedBy: sale.updatedBy,
+    mutationId: sale.mutationId,
+    linkedWheelId: sale.linkedWheelId,
+    winningTierId: sale.winningTierId,
+    costOfWinningTier: sale.costOfWinningTier,
+    netRevenue: sale.netRevenue
   };
 }
 
@@ -173,29 +150,16 @@ function normalizeSalesByLot(value: unknown, requestedLotIds: number[] = []): Ma
 }
 
 export function normalizeLivePricing(value: unknown): LotLivePricingRecord | null {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
-  const candidate = value as Record<string, unknown>;
-  const livePackPrice = Number(candidate.livePackPrice);
-  const liveBoxPriceSell = Number(candidate.liveBoxPriceSell);
-  const liveSpotPrice = Number(candidate.liveSpotPrice);
-  if (
-    !Number.isFinite(livePackPrice)
-    || !Number.isFinite(liveBoxPriceSell)
-    || !Number.isFinite(liveSpotPrice)
-    || livePackPrice < 0
-    || liveBoxPriceSell < 0
-    || liveSpotPrice < 0
-  ) {
-    return null;
-  }
+  const livePricing = normalizeSyncLivePricingDto(value);
+  if (!livePricing) return null;
   return {
-    livePackPrice,
-    liveBoxPriceSell,
-    liveSpotPrice,
-    version: Number.isFinite(Number(candidate.version)) ? Math.floor(Number(candidate.version)) : null,
-    updatedAt: typeof candidate.updatedAt === "string" ? candidate.updatedAt : undefined,
-    updatedBy: typeof candidate.updatedBy === "string" ? candidate.updatedBy : undefined,
-    mutationId: typeof candidate.mutationId === "string" ? candidate.mutationId : undefined
+    livePackPrice: livePricing.livePackPrice,
+    liveBoxPriceSell: livePricing.liveBoxPriceSell,
+    liveSpotPrice: livePricing.liveSpotPrice,
+    version: livePricing.version ?? null,
+    updatedAt: livePricing.updatedAt,
+    updatedBy: livePricing.updatedBy,
+    mutationId: livePricing.mutationId
   };
 }
 

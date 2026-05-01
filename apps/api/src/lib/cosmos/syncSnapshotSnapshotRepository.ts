@@ -13,6 +13,7 @@ import {
   type ExternalSyncSourceConfig
 } from "./core";
 import { syncSnapshotId } from "./ids";
+import { parseSyncSale, parseSyncWheelConfig } from "../syncShape";
 import {
   getSyncMetaDocumentFromContainer,
   getSyncPresetDocumentsFromContainer,
@@ -27,14 +28,38 @@ function isSyncLotDto(value: unknown): value is SyncLotDto {
   return isRecord(value) && (typeof value.id === "string" || typeof value.id === "number");
 }
 
+function isSyncSaleDto(value: unknown): value is SyncSaleDto {
+  return isRecord(value) && typeof value.id === "number" && Number.isFinite(value.id) && value.id > 0;
+}
+
+function isSyncWheelConfigDto(value: unknown): value is SyncWheelConfigDto {
+  return isRecord(value) && typeof value.id === "number" && Number.isFinite(value.id) && value.id > 0;
+}
+
 function toSyncSaleDtos(value: unknown): SyncSaleDto[] {
   if (!Array.isArray(value)) return [];
-  return value.filter(isRecord);
+  return value.flatMap((entry, index): SyncSaleDto[] => {
+    if (!isRecord(entry)) return [];
+    if (isSyncSaleDto(entry)) return [entry];
+    try {
+      return [parseSyncSale(entry, `sales[${index}]`)];
+    } catch {
+      return [];
+    }
+  });
 }
 
 function toSyncWheelConfigDtos(value: unknown): SyncWheelConfigDto[] {
   if (!Array.isArray(value)) return [];
-  return value.filter(isRecord);
+  return value.flatMap((entry, index): SyncWheelConfigDto[] => {
+    if (!isRecord(entry)) return [];
+    if (isSyncWheelConfigDto(entry)) return [entry];
+    try {
+      return [parseSyncWheelConfig(entry, `wheelConfigs[${index}]`)];
+    } catch {
+      return [];
+    }
+  });
 }
 
 export async function getSyncSnapshotFromPresetDocuments(

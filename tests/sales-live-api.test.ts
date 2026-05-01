@@ -150,6 +150,45 @@ test("normalizeSale preserves wheel-specific fields and stored net revenue", () 
   });
 });
 
+test("normalizeSale uses the shared sync contract to trim fields and drop unknown sale data", () => {
+  assert.deepEqual(normalizeSale({
+    id: "52",
+    type: "wheel",
+    quantity: "1",
+    packsCount: "2",
+    price: "10.5",
+    customer: " Alex ",
+    memo: " Hit ",
+    buyerShipping: "3",
+    date: "2026-05-01",
+    version: "9",
+    updatedBy: " user-1 ",
+    mutationId: " sale:52 ",
+    unknown: "drop"
+  }), {
+    id: 52,
+    type: "wheel",
+    quantity: 1,
+    packsCount: 2,
+    singlesPurchaseEntryId: undefined,
+    singlesItems: undefined,
+    price: 10.5,
+    priceIsTotal: undefined,
+    customer: "Alex",
+    memo: "Hit",
+    buyerShipping: 3,
+    date: "2026-05-01",
+    version: 9,
+    updatedAt: undefined,
+    updatedBy: "user-1",
+    mutationId: "sale:52",
+    linkedWheelId: undefined,
+    winningTierId: undefined,
+    costOfWinningTier: undefined,
+    netRevenue: undefined
+  });
+});
+
 test("fetchAuthoritativeSales returns null without signed-in entity API access", async () => {
   hasAuthSignalMock.mockReturnValue(false);
 
@@ -580,6 +619,27 @@ test("normalizeLivePricing rejects negative pricing payloads", () => {
     liveBoxPriceSell: 2,
     liveSpotPrice: 3
   }), null);
+});
+
+test("normalizeLivePricing uses the shared sync contract for metadata", () => {
+  assert.deepEqual(normalizeLivePricing({
+    livePackPrice: "4.5",
+    liveBoxPriceSell: "120",
+    liveSpotPrice: "8",
+    version: "3",
+    updatedAt: " 2026-05-01T12:00:00.000Z ",
+    updatedBy: " user-1 ",
+    mutationId: " live:1 ",
+    unknown: "drop"
+  }), {
+    livePackPrice: 4.5,
+    liveBoxPriceSell: 120,
+    liveSpotPrice: 8,
+    version: 3,
+    updatedAt: "2026-05-01T12:00:00.000Z",
+    updatedBy: "user-1",
+    mutationId: "live:1"
+  });
 });
 
 test("fetchWorkspaceRealtimeSubscribeToken requests a workspace-scoped token", async () => {

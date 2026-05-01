@@ -84,7 +84,11 @@ test("wheelBroadcast publishes sanitized wheel session data for workspace member
     createRequest({
       workspaceId: "team-42",
       session: {
-        wheelConfigs: Array.from({ length: 101 }, (_, index) => ({ id: index + 1 })),
+        wheelConfigs: Array.from({ length: 101 }, (_, index) => ({
+          id: String(index + 1),
+          name: index === 76 ? " Grid Night " : undefined,
+          debugOnly: "drop"
+        })),
         activeWheelConfigId: "77",
         wheelTotalSpins: "-12",
         wheelSpinCounts: [1, "2", -3, "banana"],
@@ -148,6 +152,10 @@ test("wheelBroadcast publishes sanitized wheel session data for workspace member
   assert.equal(publishArgs.workspaceId, "team-42");
   assert.equal(publishArgs.eventType, "wheel.session.updated");
   assert.equal(publishArgs.data.wheelConfigs.length, 100);
+  assert.deepEqual(publishArgs.data.wheelConfigs[76], {
+    id: 77,
+    name: "Grid Night"
+  });
   assert.equal(publishArgs.data.activeWheelConfigId, 77);
   assert.equal(publishArgs.data.wheelTotalSpins, 0);
   assert.deepEqual(publishArgs.data.wheelSpinCounts, [1, 2, 0, 0]);
@@ -167,7 +175,7 @@ test("wheelBroadcast publishes sanitized wheel session data for workspace member
   assert.equal(publishArgs.data.wheelLastResultColor, "#ff0000");
   assert.equal(publishArgs.data.wheelSessionUpdatedAt, 12345);
   assert.equal(publishArgs.data.wheelPendingInventoryIssues.length, 3);
-  assert.equal(publishArgs.data.wheelSkippedDeductions.length, 500);
+  assert.equal(publishArgs.data.wheelSkippedDeductions.length, 0);
 });
 
 test("wheelBroadcast validates required workspaceId and session body", async () => {
