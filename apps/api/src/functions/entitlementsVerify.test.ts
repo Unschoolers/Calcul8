@@ -40,7 +40,7 @@ vi.mock("../lib/http", () => ({
   errorResponse: errorResponseMock
 }));
 
-vi.mock("./purchaseVerifiers", () => ({
+vi.mock("../features/entitlements/purchaseVerifiers", () => ({
   resolvePurchaseVerifier: resolvePurchaseVerifierMock,
   getSupportedPurchaseProviders: getSupportedPurchaseProvidersMock
 }));

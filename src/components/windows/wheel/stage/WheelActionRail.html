@@ -1,10 +1,10 @@
-<div class="wheel-mobile-action-rail">
+<div class="wheel-action-rail">
     <v-btn
         icon
         size="large"
         color="error"
         variant="tonal"
-        class="wheel-mobile-action-rail__reset"
+        class="wheel-action-rail__reset"
         :disabled="resetDisabled"
         :title="resetLabel"
         :aria-label="resetLabel"
@@ -17,7 +17,7 @@
         :color="secondaryActive ? 'secondary' : undefined"
         :variant="secondaryActive ? 'elevated' : 'tonal'"
         size="large"
-        class="wheel-mobile-action-rail__secondary"
+        class="wheel-action-rail__secondary"
         :disabled="secondaryDisabled"
         :title="secondaryLabel"
         :aria-label="secondaryLabel"
@@ -28,7 +28,7 @@
     <v-btn
         color="warning"
         variant="elevated"
-        class="wheel-mobile-action-rail__primary"
+        class="wheel-action-rail__primary"
         :disabled="primaryDisabled"
         @click="$emit('primary-spin')"
     >

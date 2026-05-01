@@ -89,26 +89,20 @@
   margin-bottom: 0 !important;
 }
 
-.wheel-odds-editor {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.wheel-odds-editor__head {
+.wheel-section-heading {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
 }
 
-.wheel-odds-editor__subtitle {
+.wheel-section-subtitle {
   color: rgba(var(--v-theme-on-surface), 0.62);
   font-size: 0.78rem;
   line-height: 1.35;
 }
 
-.wheel-odds-editor__total {
+.wheel-odds-total-badge {
   flex: 0 0 auto;
   padding: 4px 9px;
   border-radius: 999px;
@@ -119,97 +113,9 @@
   font-weight: 800;
 }
 
-.wheel-odds-editor__total--valid {
+.wheel-odds-total-badge--valid {
   border-color: rgba(var(--v-theme-success), 0.4);
   background: rgba(var(--v-theme-success), 0.12);
   color: rgb(var(--v-theme-success));
-}
-
-.wheel-odds-editor__rows {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.wheel-odds-editor__row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 88px;
-  gap: 8px 10px;
-  align-items: center;
-  padding: 10px 12px;
-  border: 1px solid var(--wheel-soft-row-border);
-  border-radius: 14px;
-  background: rgba(var(--v-theme-on-surface), 0.025);
-}
-
-.wheel-odds-editor__tier {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-
-.wheel-odds-editor__label {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 0.86rem;
-  font-weight: 800;
-}
-
-.wheel-odds-editor__control {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 4px;
-}
-
-.wheel-odds-editor__input {
-  width: 60px;
-  text-align: right;
-}
-
-.wheel-odds-editor__suffix {
-  color: rgba(var(--v-theme-on-surface), 0.62);
-  font-size: 0.76rem;
-  font-weight: 800;
-}
-
-.wheel-odds-editor__bar {
-  grid-column: 1 / -1;
-  height: 18px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: rgba(var(--v-theme-on-surface), 0.1);
-  cursor: ew-resize;
-  touch-action: pan-y;
-  padding: 5px;
-}
-
-@media (max-width: 560px) {
-  .wheel-odds-editor__row {
-    grid-template-columns: minmax(0, 1fr) 76px;
-  }
-
-  .wheel-odds-editor__control {
-    grid-column: 1 / -1;
-  }
-
-  .wheel-odds-editor__input {
-    width: 54px;
-  }
-}
-
-.wheel-odds-editor__bar span {
-  display: block;
-  height: 100%;
-  min-width: 0;
-  border-radius: inherit;
-}
-
-.wheel-odds-editor__bar:focus-visible {
-  outline: 2px solid rgba(var(--v-theme-primary), 0.72);
-  outline-offset: 2px;
 }
 

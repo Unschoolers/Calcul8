@@ -64,7 +64,7 @@ vi.mock("../lib/auth", async () => {
   };
 });
 
-import { verifyPlayEntitlementRequest } from "./entitlementsVerifyPlay";
+import { verifyPlayEntitlementRequest } from "../features/entitlements/verifyPlayHandler";
 
 function createConfig(overrides: Partial<ApiConfig> = {}): ApiConfig {
   return {

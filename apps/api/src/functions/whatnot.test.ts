@@ -45,7 +45,7 @@ vi.mock("../lib/config", () => ({
   getConfig: getConfigMock
 }));
 
-vi.mock("./whatnot-services", () => ({
+vi.mock("../features/whatnot/services", () => ({
   createWhatnotConnectUrlForActor: createWhatnotConnectUrlForActorMock,
   disconnectWhatnotForActor: disconnectWhatnotForActorMock,
   discardWhatnotImportBatchForActor: discardWhatnotImportBatchForActorMock,

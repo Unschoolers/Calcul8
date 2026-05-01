@@ -62,6 +62,52 @@ test("tier editor drafts changes until Done", () => {
   assert.equal(vm.applyWheelConfig.mock.calls.length, 0);
 });
 
+test("tier card chance input rebalances the current editing config", () => {
+  const tiers = [
+    { id: "t1", label: "A", color: "#fff", slots: 50, packsCount: 1, costPerTier: 1, chancePercent: 50 },
+    { id: "t2", label: "B", color: "#000", slots: 50, packsCount: 1, costPerTier: 1, chancePercent: 50 }
+  ];
+  const vm = {
+    editingWheelConfig: { tiers },
+    setTierChance(tier: (typeof tiers)[number], value: unknown) {
+      WheelTierCard.methods.setTierChance.call(this as never, tier, value);
+    }
+  };
+
+  WheelTierCard.methods.setTierChance.call(vm as never, tiers[0], 70);
+
+  assert.equal(tiers[0]!.chancePercent, 70);
+  assert.equal(tiers[0]!.slots, 70);
+  assert.equal(tiers[1]!.chancePercent, 30);
+  assert.equal(tiers[1]!.slots, 30);
+});
+
+test("tier card chance bar updates odds from pointer position", () => {
+  const tiers = [
+    { id: "t1", label: "A", color: "#fff", slots: 50, packsCount: 1, costPerTier: 1, chancePercent: 50 },
+    { id: "t2", label: "B", color: "#000", slots: 50, packsCount: 1, costPerTier: 1, chancePercent: 50 }
+  ];
+  const vm = {
+    editingWheelConfig: { tiers },
+    setTierChance(tier: (typeof tiers)[number], value: unknown) {
+      WheelTierCard.methods.setTierChance.call(this as never, tier, value);
+    }
+  };
+  const event = {
+    currentTarget: {
+      setPointerCapture: vi.fn(),
+      getBoundingClientRect: () => ({ left: 10, width: 200 })
+    },
+    pointerId: 1,
+    clientX: 60
+  };
+
+  WheelTierCard.methods.setTierChanceFromPointerEvent.call(vm as never, tiers[0], event as unknown as PointerEvent);
+
+  assert.equal(tiers[0]!.chancePercent, 25);
+  assert.equal(tiers[1]!.chancePercent, 75);
+});
+
 test("deleteTierAndClose removes the tier and then auto-applies", () => {
   const vm = {
     editorOpen: true,

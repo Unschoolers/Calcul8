@@ -88,42 +88,7 @@
                 <div class="wheel-pointer"></div>
             </div>
 
-            <div class="wheel-spin-actions">
-                <v-btn
-                    icon
-                    size="large"
-                    color="error"
-                    variant="tonal"
-                    class="wheel-reset-session-btn"
-                    :disabled="wheelResetShortcutDisabled"
-                    :title="wheelResetButtonLabel"
-                    :aria-label="wheelResetButtonLabel"
-                    @click="requestWheelReset()"
-                >
-                    <v-icon>mdi-restore</v-icon>
-                </v-btn>
-                <v-btn
-                    v-if="wheelMode === 'config'"
-                    size="large"
-                    :color="wheelAutospinEnabled ? 'secondary' : undefined"
-                    :variant="wheelAutospinEnabled ? 'elevated' : 'tonal'"
-                    :disabled="wheelAutospinToggleDisabled"
-                    class="wheel-autospin-btn"
-                    :title="wheelAutospinButtonLabel"
-                    :aria-label="wheelAutospinButtonLabel"
-                    @click="toggleWheelAutospin()"
-                >
-                    <v-icon>{{ wheelAutospinButtonIcon }}</v-icon>
-                </v-btn>
-                <v-btn size="large" color="success" variant="elevated" :disabled="wheelPrimarySpinDisabled"
-                    @click="runWheelPrimarySpin()" class="wheel-spin-btn">
-                    <v-icon start>{{ wheelSpinButtonIcon }}</v-icon>
-                    {{ wheelSpinButtonLabel }}
-                </v-btn>
-            </div>
             <wheel-action-rail
-                v-if="!wheelPresentationMode && wheelIsCompactLayout"
-                :mode="wheelMode"
                 :primary-disabled="wheelPrimarySpinDisabled"
                 :primary-icon="wheelSpinButtonIcon"
                 :primary-label="wheelSpinButtonLabel"
@@ -134,8 +99,6 @@
                 :secondary-disabled="wheelAutospinToggleDisabled"
                 :secondary-icon="wheelAutospinButtonIcon"
                 :secondary-label="wheelAutospinButtonLabel"
-                :secondary-compact-label="wheelAutospinCompactLabel"
-                :ending-session="wheelEndingSession"
                 @primary-spin="runWheelPrimarySpin"
                 @secondary-action="toggleWheelAutospin"
                 @reset-session="requestWheelReset"
@@ -323,31 +286,7 @@
         </v-card>
     </v-dialog>
 
-    <v-dialog v-if="wheelCreateDialog" v-model="wheelCreateDialog" max-width="520">
-        <v-card>
-            <v-card-title class="text-subtitle-1">
-                {{ t('wheelCreateGameTitle') }}
-            </v-card-title>
-            <v-card-text class="text-body-2">
-                <div class="wheel-create-game-grid">
-                    <button type="button" class="wheel-create-game-card" @click="createNewGameConfig('wheel')">
-                        <v-icon size="28">mdi-chart-donut</v-icon>
-                        <span class="wheel-create-game-card__title">{{ t('wheelGameTypeWheelLabel') }}</span>
-                        <span class="wheel-create-game-card__copy">{{ t('wheelCreateWheelBody') }}</span>
-                    </button>
-                    <button type="button" class="wheel-create-game-card" @click="createNewGameConfig('grid')">
-                        <v-icon size="28">mdi-grid</v-icon>
-                        <span class="wheel-create-game-card__title">{{ t('wheelGameTypeGridLabel') }}</span>
-                        <span class="wheel-create-game-card__copy">{{ t('wheelCreateGridBody') }}</span>
-                    </button>
-                </div>
-            </v-card-text>
-            <v-card-actions>
-                <v-spacer></v-spacer>
-                <v-btn variant="text" @click="closeWheelCreateDialog">{{ t('commonCancel') }}</v-btn>
-            </v-card-actions>
-        </v-card>
-    </v-dialog>
+    <wheel-create-game-dialog :ctx="getWindowComponentContext()"></wheel-create-game-dialog>
 
     <v-dialog v-if="wheelManageDialog" v-model="wheelManageDialog" max-width="420">
         <v-card>
@@ -385,76 +324,7 @@
         </v-card>
     </v-dialog>
 
-    <v-dialog v-if="wheelSpectatorDialog" v-model="wheelSpectatorDialog" max-width="480">
-        <v-card>
-            <v-card-title class="text-subtitle-1">
-                {{ t('wheelSpectatorDialogTitle') }}
-            </v-card-title>
-            <v-card-text class="text-body-2">
-                <div class="wheel-spectator-dialog__intro">
-                    <div>{{ wheelSpectatorDialogHint }}</div>
-                    <div
-                        v-if="wheelSpectatorSessionId"
-                        class="wheel-spectator-dialog__status"
-                        :class="`wheel-spectator-dialog__status--${wheelSpectatorSessionStatus}`"
-                    >
-                        {{
-                            wheelSpectatorSessionStatus === 'ended'
-                                ? t('wheelSpectatorStatusEnded')
-                                : wheelSpectatorSessionStatus === 'live'
-                                    ? t('wheelSpectatorStatusLive')
-                                    : t('wheelSpectatorStatusStarting')
-                        }}
-                    </div>
-                </div>
-
-                <template v-if="wheelSpectatorSessionId">
-                    <div class="wheel-spectator-dialog__qr-wrap">
-                        <img
-                            :src="wheelSpectatorSessionQrUrl"
-                            :alt="t('wheelSpectatorQrAlt')"
-                            class="wheel-spectator-dialog__qr"
-                        >
-                    </div>
-                    <div class="wheel-spectator-dialog__url">
-                        {{ wheelSpectatorSessionUrl }}
-                    </div>
-                </template>
-            </v-card-text>
-            <v-card-actions class="wheel-spectator-dialog__actions">
-                <v-spacer></v-spacer>
-                <v-btn
-                    v-if="!wheelSpectatorSessionId || wheelSpectatorSessionStatus === 'ended'"
-                    color="success"
-                    variant="elevated"
-                    :loading="wheelSpectatorPublishPending"
-                    @click="startWheelSpectatorMode"
-                >
-                    {{ wheelSpectatorStartButtonLabel }}
-                </v-btn>
-                <template v-if="wheelSpectatorSessionId">
-                    <v-btn variant="text" @click="copyWheelSpectatorLink">
-                        {{ t('wheelSpectatorCopyAction') }}
-                    </v-btn>
-                    <v-btn variant="text" @click="openWheelSpectatorPage">
-                        {{ t('wheelSpectatorOpenAction') }}
-                    </v-btn>
-                    <v-btn
-                        v-if="wheelSpectatorSessionStatus !== 'ended'"
-                        color="error"
-                        variant="tonal"
-                        :loading="wheelSpectatorPublishPending"
-                        @click="endWheelSpectatorMode"
-                    >
-                        {{ t('wheelSpectatorEndAction') }}
-                    </v-btn>
-                </template>
-                <v-btn variant="text" @click="closeWheelSpectatorDialog">
-                    {{ t('commonClose') }}
-                </v-btn>
-            </v-card-actions>
-        </v-card>
-    </v-dialog>
+    <wheel-spectator-dialog :ctx="getWindowComponentContext()"></wheel-spectator-dialog>
 
     <!-- Wheel Config Saved Snackbar -->
     <v-snackbar

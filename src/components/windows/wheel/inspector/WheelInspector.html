@@ -83,13 +83,18 @@
         </v-row>
 
         <v-divider class="my-3"></v-divider>
-        <wheel-odds-editor
-          :ctx="getWindowComponentContext()"
-          :config="editingWheelConfig"
-        ></wheel-odds-editor>
-
-        <v-divider class="my-3"></v-divider>
-        <div class="wheel-section-title">{{ t('wheelInspectorWheelTiersTitle') }}</div>
+        <div class="wheel-section-heading">
+          <div>
+            <div class="wheel-section-title">{{ t('wheelInspectorWheelTiersTitle') }}</div>
+            <div class="wheel-section-subtitle">{{ t('wheelOddsSubtitle') }}</div>
+          </div>
+          <span
+            class="wheel-odds-total-badge"
+            :class="{ 'wheel-odds-total-badge--valid': wheelOddsTotalValid }"
+          >
+            {{ wheelOddsTotalDisplay }}
+          </span>
+        </div>
 
         <div v-if="wheelBuilderTierGroups.length" class="wheel-builder-groups">
           <div

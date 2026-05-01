@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { beforeEach, test, vi } from "vitest";
-import type { EntitlementDocument, PlayPurchaseDocument } from "../types";
+import type { EntitlementDocument, PlayPurchaseDocument } from "../../types";
 import { createApiConfig, createHttpRequest, createInvocationContext } from "../test-support/function-test-helpers";
 
 vi.mock("@azure/functions", () => ({

@@ -5,7 +5,7 @@ const maxWorkers = Number(process.env.VITEST_MAX_WORKERS || "");
 export default defineConfig({
   test: {
     environment: "node",
-    include: ["src/lib/**/*.test.ts", "src/functions/**/*.test.ts"],
+    include: ["src/lib/**/*.test.ts", "src/functions/**/*.test.ts", "src/features/**/*.test.ts"],
     exclude: ["**/dist/**", "**/node_modules/**"],
     fileParallelism: true,
     maxWorkers: Number.isFinite(maxWorkers) && maxWorkers > 0 ? maxWorkers : undefined,

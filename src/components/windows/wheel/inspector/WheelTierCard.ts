@@ -1,4 +1,5 @@
 import { inject, type PropType } from "vue";
+import { setWheelTierChancePercent } from "../../../../app-core/shared/wheel-odds.ts";
 import type { WheelTier } from "../../../../types/app.ts";
 import { createNestedWindowContextBridge } from "../../shared/contextBridge.ts";
 
@@ -102,6 +103,31 @@ export const WheelTierCard = {
     }
   },
   methods: {
+    formatTierChance(this: unknown, tier: WheelTier): string {
+      const chance = Number(tier.chancePercent) || 0;
+      return String(Math.round(chance));
+    },
+    setTierChance(this: Record<string, unknown>, tier: WheelTier, value: unknown): void {
+      const config = (this.editingWheelConfig || null) as { tiers?: WheelTier[] } | null;
+      if (!config?.tiers) return;
+      setWheelTierChancePercent(config.tiers, tier.id, value);
+    },
+    setTierChanceFromPointerEvent(this: Record<string, unknown> & {
+      setTierChance: (tier: WheelTier, value: unknown) => void;
+    }, tier: WheelTier, event: PointerEvent): void {
+      const target = event.currentTarget as HTMLElement | null;
+      if (!target) return;
+      target.setPointerCapture?.(event.pointerId);
+      const rect = target.getBoundingClientRect();
+      const ratio = rect.width > 0 ? (event.clientX - rect.left) / rect.width : 0;
+      this.setTierChance(tier, Math.round(Math.max(0, Math.min(1, ratio)) * 100));
+    },
+    setTierChanceFromEvent(this: Record<string, unknown> & {
+      setTierChance: (tier: WheelTier, value: unknown) => void;
+    }, tier: WheelTier, event: Event): void {
+      const target = event.target as HTMLInputElement | null;
+      this.setTierChance(tier, target?.value);
+    },
     openTierEditor(this: { editorOpen: boolean; editorDraft: WheelTier | null; tier: WheelTier }): void {
       this.editorDraft = { ...this.tier };
       this.editorOpen = true;

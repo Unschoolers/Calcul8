@@ -1,12 +1,8 @@
-import { defineComponent, type PropType } from "vue";
+import { defineComponent } from "vue";
 
 export const WheelActionRail = defineComponent({
   name: "WheelActionRail",
   props: {
-    mode: {
-      type: String as PropType<"config" | "live">,
-      required: true
-    },
     primaryDisabled: {
       type: Boolean,
       default: false
@@ -46,15 +42,7 @@ export const WheelActionRail = defineComponent({
     secondaryLabel: {
       type: String,
       default: ""
-    },
-    secondaryCompactLabel: {
-      type: String,
-      default: ""
-    },
-    endingSession: {
-      type: Boolean,
-      default: false
     }
   },
-  emits: ["open-inspector", "primary-spin", "secondary-action", "reset-session", "end-wheel"]
+  emits: ["primary-spin", "secondary-action", "reset-session"]
 });

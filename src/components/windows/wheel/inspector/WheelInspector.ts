@@ -1,8 +1,8 @@
 import { inject, type PropType } from "vue";
 import { createNestedWindowContextBridge } from "../../shared/contextBridge.ts";
 import { translateAppMessage } from "../../../../app-core/i18n/index.ts";
+import { getWheelChanceTotal } from "../../../../app-core/shared/wheel-odds.ts";
 import WheelHistoryPanel from "./WheelHistoryPanel.vue";
-import WheelOddsEditor from "./WheelOddsEditor.vue";
 import WheelTierCard from "./WheelTierCard.vue";
 import WheelSessionPanel from "./WheelSessionPanel.vue";
 import type { Lot, WheelConfig, WheelTier } from "../../../../types/app.ts";
@@ -24,7 +24,6 @@ export const WheelInspector = {
   name: "WheelInspector",
   components: {
     WheelHistoryPanel,
-    WheelOddsEditor,
     WheelTierCard,
     WheelSessionPanel
   },
@@ -34,6 +33,16 @@ export const WheelInspector = {
     }
   },
   computed: {
+    wheelOddsTotal(this: Record<string, unknown>): number {
+      const config = (this.editingWheelConfig || null) as WheelConfig | null;
+      return config ? getWheelChanceTotal(config.tiers) : 0;
+    },
+    wheelOddsTotalDisplay(this: { wheelOddsTotal: number }): string {
+      return `${Math.round(this.wheelOddsTotal)}%`;
+    },
+    wheelOddsTotalValid(this: { wheelOddsTotal: number }): boolean {
+      return Math.abs(this.wheelOddsTotal - 100) < 0.01;
+    },
     wheelBuilderTierGroups(this: Record<string, unknown>): WheelBuilderTierGroup[] {
       const config = (this.editingWheelConfig || null) as WheelConfig | null;
       if (!config) return [];
