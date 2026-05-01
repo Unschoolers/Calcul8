@@ -1,4 +1,3 @@
-import { HttpError } from "./auth";
 import {
   normalizeSyncLotDto,
   normalizeSyncSaleDto,
@@ -7,10 +6,11 @@ import {
 import type {
   SyncEntityRecord,
   SyncLotDto,
-  SyncSalesByLotDto,
   SyncSaleDto,
+  SyncSalesByLotDto,
   SyncWheelConfigDto
 } from "../types";
+import { HttpError } from "./auth";
 
 export interface SyncLotsShape {
   lots: SyncLotDto[];

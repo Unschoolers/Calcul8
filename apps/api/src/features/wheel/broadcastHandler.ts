@@ -3,10 +3,10 @@ import { HttpError, resolveUserId } from "../../lib/auth";
 import { getConfig } from "../../lib/config";
 import { hasWorkspaceMembership } from "../../lib/cosmos/workspaceRepository";
 import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../../lib/http";
+import { readRequestJsonOrThrow, requireRequestBodyRecord } from "../../lib/httpRequest";
 import { publishWorkspaceWheelRealtimeEventBestEffort } from "../../lib/realtime";
 import { parseOptionalWorkspaceId } from "../../lib/syncScope";
 import { assertSyncScopeAccess, resolveSyncScope } from "../../lib/syncScopeResolution";
-import { readRequestJsonOrThrow, requireRequestBodyRecord } from "../../lib/httpRequest";
 import { normalizeSyncGameSessionDto } from "../../shared/sync-contracts.cjs";
 import type { SyncGameSessionDto } from "../../types";
 
