@@ -186,6 +186,7 @@ test("parseSyncWheelConfigs normalizes game config fields and drops unknown data
           deductionType: "singles",
           sets: ["A"],
           boundLotId: 10,
+          boundLotIds: [10],
           boundSinglesId: 501,
           isChase: true
         }
