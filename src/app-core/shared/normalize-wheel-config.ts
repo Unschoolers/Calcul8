@@ -1,10 +1,20 @@
 import type { Lot, WheelConfig, WheelTier } from "../../types/app.ts";
 import { getWheelOutcomeCount, normalizeWheelTierChances } from "./wheel-odds.ts";
+import { isWheelTierMultiLot, normalizeWheelTierSources } from "./wheel-tier-sources.ts";
 
 function sanitizeWheelTier(tier: WheelTier, lots: Lot[]): WheelTier {
+  normalizeWheelTierSources(tier, lots);
+
   const boundLot = tier.boundLotId == null
     ? null
     : (lots.find((lot) => lot.id === tier.boundLotId) ?? null);
+
+  if (isWheelTierMultiLot(tier)) {
+    tier.deductionType = tier.deductionType === "none" ? "none" : "packs";
+    tier.boundSinglesId = null;
+    tier.isChase = false;
+    return tier;
+  }
 
   if (boundLot?.lotType === "singles") {
     tier.deductionType = "singles";

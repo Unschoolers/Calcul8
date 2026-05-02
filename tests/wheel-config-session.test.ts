@@ -4,6 +4,7 @@ import {
     getScopedWheelConfigDraftStorageKey,
     getScopedWheelConfigSessionStorageKey
 } from "../src/app-core/storageKeys.ts";
+import { normalizeWheelConfig } from "../src/app-core/shared/normalize-wheel-config.ts";
 import { createNestedWindowContextBridge } from "../src/components/windows/shared/contextBridge.ts";
 import { getWheelController, getWheelWindowLocalKeys } from "../src/components/windows/wheel/coordinator/wheelControllerState.ts";
 import { createWheelSale } from "../src/components/windows/wheel/services/wheelSales.ts";
@@ -79,6 +80,55 @@ test("loadWheelConfig clears invalid chase flags for non-singles tiers", () => {
   WheelWindow.methods!.loadWheelConfig.call(vm as never);
   assert.equal((vm.wheelConfigs as WheelConfig[])[0]!.tiers[0]!.isChase, false);
   assert.equal((vm.editingWheelConfig as WheelConfig).tiers[0]!.isChase, false);
+});
+
+test("normalizeWheelConfig derives boundLotIds from legacy boundLotId and keeps multi-lot bulk sources", () => {
+  const lots = [
+    { id: 10, name: "Bulk A", lotType: "bulk" },
+    { id: 11, name: "Bulk B", lotType: "bulk" },
+    { id: 99, name: "Singles", lotType: "singles", singlesPurchases: [{ id: 501, item: "Card", quantity: 1 }] }
+  ];
+
+  const normalized = normalizeWheelConfig({
+    id: 91,
+    name: "Wheel",
+    spinPrice: 10,
+    targetMargin: 15,
+    createdAt: "2026-05-01",
+    tiers: [
+      {
+        id: "legacy",
+        label: "Legacy",
+        color: "#f00",
+        slots: 1,
+        costPerTier: 4,
+        packsCount: 1,
+        deductionType: "packs",
+        sets: [],
+        boundLotId: 10
+      },
+      {
+        id: "multi",
+        label: "Choice",
+        color: "#0f0",
+        slots: 1,
+        costPerTier: 4,
+        packsCount: 1,
+        deductionType: "packs",
+        sets: [],
+        boundLotIds: [10, 11, 99, 10],
+        boundLotId: 10,
+        boundSinglesId: 501,
+        isChase: true
+      }
+    ]
+  }, lots as never);
+
+  assert.deepEqual(normalized?.tiers[0]?.boundLotIds, [10]);
+  assert.deepEqual(normalized?.tiers[1]?.boundLotIds, [10, 11]);
+  assert.equal(normalized?.tiers[1]?.boundLotId, 10);
+  assert.equal(normalized?.tiers[1]?.boundSinglesId, null);
+  assert.equal(normalized?.tiers[1]?.isChase, false);
 });
 
 test("requestWheelReset opens the shared reset confirmation and stops preview autospin", () => {
@@ -1467,7 +1517,6 @@ test("wheelStageSummaryCards provide config-mode summary cards from the shared m
 
   assert.deepEqual(cards.map((card: { id: string }) => card.id), [
     "expected-margin",
-    "target-margin",
     "builder-status"
   ]);
 });

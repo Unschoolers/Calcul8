@@ -24,6 +24,7 @@ export function createDefaultTier(index: number, usedColors: string[] = []): Whe
     costPerTier: 5,
     packsCount: 1,
     deductionType: "packs",
+    boundLotIds: [],
     sets: []
   };
 }
@@ -47,6 +48,7 @@ export function createDefaultWheelConfig(): WheelConfig {
         costPerTier: 4.50,
         packsCount: 1,
         deductionType: "packs",
+        boundLotIds: [],
         sets: []
       }
     ],

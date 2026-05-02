@@ -69,6 +69,7 @@ export interface WheelTier {
   deductionType: "packs" | "singles" | "none";
   sets: string[];
   boundLotId?: number | null;
+  boundLotIds?: number[];
   boundSinglesId?: number | null;
   isChase?: boolean;
   celebrationEmoji?: string;
@@ -110,6 +111,8 @@ export interface PendingWheelInventoryIssue {
   selectedLotId: number | null;
   spinNumber: number;
   slotSinglesId?: number | null;
+  candidateLotIds?: number[];
+  requiresLotSelection?: boolean;
 }
 
 export interface WheelFairnessEntry {

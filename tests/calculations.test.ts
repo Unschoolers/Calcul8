@@ -344,6 +344,57 @@ test("computeExpectedMargin includes buyer shipping from bound lots in fee math"
   assert.ok(Math.abs((margin ?? 0) - 88.1111111111) < 0.001);
 });
 
+test("computeExpectedMargin averages candidate lots for multi-lot tiers", () => {
+  const config = {
+    id: 1,
+    name: "Wheel",
+    spinPrice: 10,
+    targetMargin: 40,
+    tiers: [
+      {
+        id: "tier-1",
+        label: "Customer choice",
+        color: "#ffffff",
+        slots: 1,
+        costPerTier: 4,
+        packsCount: 1,
+        deductionType: "packs" as const,
+        boundLotIds: [10, 20],
+        sets: []
+      }
+    ],
+    createdAt: "2026-03-01"
+  };
+  const lots: Lot[] = [
+    {
+      id: 10,
+      name: "No fee",
+      lotType: "bulk",
+      sellingShippingPerOrder: 0,
+      sellingTaxPercent: 0,
+      platformFeePercent: 0,
+      additionalFeePercent: 0,
+      additionalFeeAppliesTo: "sale_only",
+      fixedFeePerOrder: 0
+    } as Lot,
+    {
+      id: 20,
+      name: "Whatnot fee",
+      lotType: "bulk",
+      sellingShippingPerOrder: 5,
+      sellingTaxPercent: 15,
+      platformFeePercent: 8,
+      additionalFeePercent: 2,
+      additionalFeeAppliesTo: "sale_plus_shipping",
+      fixedFeePerOrder: 0
+    } as Lot
+  ];
+
+  const margin = computeExpectedMargin(config, undefined, lots).margin;
+
+  assert.ok(Math.abs((margin ?? 0) - 136.25) < 0.001);
+});
+
 test("calculatePriceForUnits and calculateDefaultSellingPrices are consistent", () => {
   const totalCaseCost = 1000;
   const targetProfitPercent = 15;

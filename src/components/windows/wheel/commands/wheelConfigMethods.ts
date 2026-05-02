@@ -10,6 +10,11 @@ import {
     getScopedActiveWheelConfigStorageKey,
     getScopedWheelConfigDraftStorageKey
 } from "../../../../app-core/storageKeys.ts";
+import {
+    getWheelTierSourceLotIds,
+    isWheelTierMultiLot,
+    normalizeWheelTierSources
+} from "../../../../app-core/shared/wheel-tier-sources.ts";
 import { getActiveStorageScope } from "../../../../app-core/workspace-scope.ts";
 import { calculateTotalCaseCost } from "../../../../domain/calculations-fees.ts";
 import type { Lot, LuckGameType, WheelConfig, WheelTier } from "../../../../types/app.ts";
@@ -112,6 +117,7 @@ function bindDefaultTierSources(context: Record<string, unknown>, config: WheelC
   const currentLotId = (context.currentLotId as number | null) ?? null;
   for (const tier of config.tiers) {
     tier.boundLotId = currentLotId;
+    tier.boundLotIds = currentLotId == null ? [] : [currentLotId];
   }
 }
 
@@ -480,6 +486,7 @@ export const wheelConfigMethods = {
         : getRemainingPacksForWheelLot(this, currentLot.id) > 0
     );
     tier.boundLotId = canAutoBindCurrentLot ? currentLotId : null;
+    tier.boundLotIds = canAutoBindCurrentLot && currentLotId != null ? [currentLotId] : [];
     if (canAutoBindCurrentLot && costPerPack > 0) {
       tier.costPerTier = Math.round(tier.packsCount * costPerPack * 1000) / 1000;
     }
@@ -501,6 +508,31 @@ export const wheelConfigMethods = {
   },
 
   getCostPerPackForTier(this: Record<string, unknown>, tier: WheelTier): number {
+    if (isWheelTierMultiLot(tier)) {
+      const lots = (this.lots || []) as Lot[];
+      const costs = getWheelTierSourceLotIds(tier)
+        .map((id) => lots.find((l) => l.id === id))
+        .filter((lot): lot is Lot => lot != null && lot.lotType !== "singles")
+        .map((lot) => {
+          const boxes = lot.boxesPurchased || 0;
+          const packsPerBox = lot.packsPerBox || 16;
+          const totalPacks = boxes * packsPerBox;
+          if (totalPacks <= 0) return 0;
+          const totalCost = calculateTotalCaseCost({
+            boxesPurchased: boxes,
+            pricePerBoxCad: lot.boxPriceCost || 0,
+            purchaseShippingCad: lot.purchaseShippingCost || 0,
+            purchaseTaxPercent: lot.purchaseTaxPercent || 0,
+            includeTax: lot.includeTax ?? false,
+            currency: lot.currency || "CAD"
+          });
+          return totalCost / totalPacks;
+        })
+        .filter((cost) => cost > 0);
+      if (costs.length > 0) {
+        return costs.reduce((sum, cost) => sum + cost, 0) / costs.length;
+      }
+    }
     if (tier.boundLotId != null) {
       const lots = (this.lots || []) as Lot[];
       const lot = lots.find((l) => l.id === tier.boundLotId);
@@ -551,6 +583,7 @@ export const wheelConfigMethods = {
   },
 
   isBoundLotSingles(this: Record<string, unknown>, tier: WheelTier): boolean {
+    if (isWheelTierMultiLot(tier)) return false;
     if (tier.boundLotId == null) return false;
     const lots = (this.lots || []) as Lot[];
     const lot = lots.find((l) => l.id === tier.boundLotId);
@@ -560,6 +593,7 @@ export const wheelConfigMethods = {
   onTierLotChange(this: Record<string, unknown>, tier: WheelTier, lotId: unknown): void {
     const normalizedLotId = normalizeOptionalNumericId(lotId);
     tier.boundLotId = normalizedLotId;
+    tier.boundLotIds = normalizedLotId == null ? [] : [normalizedLotId];
     tier.boundSinglesId = null;
     tier.isChase = false;
     if (normalizedLotId == null) {
@@ -583,6 +617,19 @@ export const wheelConfigMethods = {
       if (costPerPack > 0) {
         tier.costPerTier = Math.round(tier.packsCount * costPerPack * 1000) / 1000;
       }
+    }
+  },
+
+  onTierMultiLotChange(this: Record<string, unknown>, tier: WheelTier, lotIds: unknown): void {
+    tier.boundLotIds = Array.isArray(lotIds)
+      ? lotIds
+        .map((id) => normalizeOptionalNumericId(id))
+        .filter((id): id is number => id != null)
+      : [];
+    normalizeWheelTierSources(tier, (this.lots || []) as Lot[]);
+    const costPerPack = (this as Record<string, unknown> & { getCostPerPackForTier: (t: WheelTier) => number }).getCostPerPackForTier(tier);
+    if (costPerPack > 0) {
+      tier.costPerTier = Math.round(tier.packsCount * costPerPack * 1000) / 1000;
     }
   },
 

@@ -117,6 +117,7 @@ export type WheelWindowThis = {
   expectedMarginColor: string;
   wheelSessionMarginColor: string;
   wheelSpinBlockedReason: string;
+  wheelHasRequiredLotSelection: boolean;
   wheelIsMysteryGrid: boolean;
 
   // ===== Private internal state =====
@@ -181,6 +182,7 @@ export type WheelWindowThis = {
   revealMysteryGridCell(cellIndex: number, recordSession?: boolean): Promise<void>;
   appendWheelFairnessHistory(entry: WheelFairnessEntry, options?: { preview?: boolean }): void;
   confirmBatchSale(index: number): void;
+  getPendingWheelIssueLotItems(entry: PendingWheelInventoryIssue): Array<{ title: string; value: number; lotType?: string }>;
   dismissBatchSale(index: number): void;
   confirmAllBatchSales(): void;
   cancelEndWheelSession(): void;

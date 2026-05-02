@@ -231,6 +231,13 @@ export const wheelStageComputeds = {
     });
   },
 
+  wheelHasRequiredLotSelection(this: Record<string, unknown>): boolean {
+    const issues = (((this as Record<string, unknown>).wheelPendingInventoryIssues || []) as Array<{
+      requiresLotSelection?: boolean;
+    }>);
+    return issues.some((entry) => entry.requiresLotSelection === true);
+  },
+
   wheelStageSummaryCards(this: Record<string, unknown>): Array<{
     id: string;
     label: string;
@@ -277,20 +284,6 @@ export const wheelStageComputeds = {
         value: String((this as Record<string, unknown>).expectedMarginDisplay || "—"),
         meta: String((this as Record<string, unknown>).expectedMarginHint || ""),
         valueStyle: String((this as Record<string, unknown>).expectedMarginColor || "")
-      },
-      {
-        id: "target-margin",
-        label: translateAppMessage(preferredLanguage, "wheelStageTargetMarginLabel"),
-        value: `${Number(((this as Record<string, unknown>).wheelDisplayConfig as WheelConfig | null)?.targetMargin || 0)}%`,
-        meta: translateAppMessage(
-          preferredLanguage,
-          ((this as Record<string, unknown>).wheelDisplayConfig as WheelConfig | null)?.gameType === "grid"
-            ? "wheelConfiguredOutcomesMeta"
-            : "wheelConfiguredSlotsMeta",
-          {
-            count: (((this as Record<string, unknown>).wheelDisplaySlots || []) as WheelSlot[]).length
-          }
-        )
       },
       {
         id: "builder-status",

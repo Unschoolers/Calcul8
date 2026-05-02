@@ -1,6 +1,10 @@
 import { translateAppMessage } from "../../../../app-core/i18n/index.ts";
 import { calculateTotalCaseCost } from "../../../../domain/calculations-fees.ts";
 import { getTierChancePercent } from "../../../../app-core/shared/wheel-odds.ts";
+import {
+  getWheelTierSourceLotIds,
+  isWheelTierMultiLot
+} from "../../../../app-core/shared/wheel-tier-sources.ts";
 import type { Lot, WheelConfig } from "../../../../types/app.ts";
 import { getWheelController } from "../coordinator/wheelControllerState.ts";
 import {
@@ -71,7 +75,7 @@ export const wheelConfigComputeds = {
     const config = (this as Record<string, unknown>).editingWheelConfig as WheelConfig | null;
     if (!config || !config.tiers.length) return false;
     const activeTiers = config.tiers.filter((tier) => getTierChancePercent(tier) > 0);
-    return activeTiers.length > 0 && activeTiers.every((tier) => tier.boundLotId != null);
+    return activeTiers.length > 0 && activeTiers.every((tier) => getWheelTierSourceLotIds(tier).length > 0);
   },
 
   wheelInvalidLiveTiers(this: Record<string, unknown>): Array<{ tierId: string; label: string; reason: string }> {
@@ -83,6 +87,36 @@ export const wheelConfigComputeds = {
     const invalid: Array<{ tierId: string; label: string; reason: string }> = [];
     for (const tier of config.tiers) {
       if (getTierChancePercent(tier) <= 0) continue;
+      const sourceLotIds = getWheelTierSourceLotIds(tier);
+      if (!sourceLotIds.length) {
+        invalid.push({ tierId: tier.id, label: tier.label, reason: translateAppMessage(preferredLanguage, "wheelInvalidNoSourceLot") });
+        continue;
+      }
+
+      if (isWheelTierMultiLot(tier)) {
+        const candidateLots = sourceLotIds
+          .map((id) => lots.find((entry) => entry.id === id))
+          .filter((entry): entry is Lot => entry != null && entry.lotType !== "singles");
+        if (!candidateLots.length) {
+          invalid.push({ tierId: tier.id, label: tier.label, reason: translateAppMessage(preferredLanguage, "wheelInvalidLotMissing") });
+          continue;
+        }
+        const needed = Math.max(1, tier.packsCount || 1);
+        const bestRemaining = Math.max(...candidateLots.map((lot) => getRemainingPacksForWheelLot(this, lot.id)));
+        if (tier.deductionType !== "none" && bestRemaining < needed) {
+          invalid.push({
+            tierId: tier.id,
+            label: tier.label,
+            reason: translateAppMessage(preferredLanguage, "wheelInvalidNeedsItems", {
+              needed,
+              neededSuffix: needed === 1 ? "" : "s",
+              remaining: Math.max(0, bestRemaining)
+            })
+          });
+        }
+        continue;
+      }
+
       if (tier.boundLotId == null) {
         invalid.push({ tierId: tier.id, label: tier.label, reason: translateAppMessage(preferredLanguage, "wheelInvalidNoSourceLot") });
         continue;
@@ -136,6 +170,12 @@ export const wheelConfigComputeds = {
 
   wheelSpinBlockedReason(this: Record<string, unknown>): string {
     if ((this as Record<string, unknown>).wheelMode === "config") return "";
+    const pendingIssues = ((this as Record<string, unknown>).wheelPendingInventoryIssues || []) as Array<{
+      requiresLotSelection?: boolean;
+    }>;
+    if (pendingIssues.some((entry) => entry.requiresLotSelection === true)) {
+      return translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelResolvePendingLotSelectionBeforeSpin");
+    }
     const invalid = ((this as Record<string, unknown>).wheelInvalidLiveTiers || []) as Array<{ label: string; reason: string }>;
     if (!invalid.length) return "";
     const first = invalid[0];
@@ -157,7 +197,7 @@ export const wheelConfigComputeds = {
     if (!config) return "";
     const { margin } = computeExpectedMargin(config, this as Record<string, unknown>, ((this as Record<string, unknown>).lots || []) as Lot[]);
     if (margin === null) return "";
-    return margin >= config.targetMargin ? "rgb(var(--v-theme-success))" : "rgb(var(--v-theme-error))";
+    return margin >= 0 ? "rgb(var(--v-theme-success))" : "rgb(var(--v-theme-error))";
   },
 
   expectedMarginHint(this: Record<string, unknown>): string {
@@ -166,16 +206,9 @@ export const wheelConfigComputeds = {
     if (!config) return translateAppMessage(preferredLanguage, "wheelExpectedMarginNoTiers");
     const { margin } = computeExpectedMargin(config, this as Record<string, unknown>, ((this as Record<string, unknown>).lots || []) as Lot[]);
     if (margin === null) return translateAppMessage(preferredLanguage, "wheelExpectedMarginNoSlots");
-    const diff = margin - config.targetMargin;
-    return diff >= 0
-      ? translateAppMessage(preferredLanguage, "wheelExpectedMarginAboveTarget", {
-        diff: diff.toFixed(1),
-        target: config.targetMargin
-      })
-      : translateAppMessage(preferredLanguage, "wheelExpectedMarginBelowTarget", {
-        diff: diff.toFixed(1),
-        target: config.targetMargin
-      });
+    return margin >= 0
+      ? translateAppMessage(preferredLanguage, "wheelExpectedMarginPositive")
+      : translateAppMessage(preferredLanguage, "wheelExpectedMarginNegative");
   },
 
   currentLotCostPerPack(this: Record<string, unknown>): number {
@@ -225,5 +258,16 @@ export const wheelConfigComputeds = {
       prevType = type;
     }
     return items;
+  },
+
+  bulkTierSourceItems(this: Record<string, unknown>): Array<{ title: string; value: number; lotType?: string; groupLabel?: string | null }> {
+    return (((this as Record<string, unknown>).tierSourceItems || []) as Array<{ title: string; value: number; lotType?: string; groupLabel?: string | null }>)
+      .filter((item) => item.lotType !== "singles")
+      .map((item, index) => ({
+        ...item,
+        groupLabel: index === 0
+          ? translateAppMessage(String((this as Record<string, unknown>).preferredLanguage || ""), "lotOptionBulkLotsLabel")
+          : null
+      }));
   }
 };

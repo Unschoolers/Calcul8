@@ -1,4 +1,5 @@
 import { getTierChancePercent, normalizeWheelTierChances } from "../../../../app-core/shared/wheel-odds.ts";
+import { getWheelTierSourceLotIds, isWheelTierMultiLot } from "../../../../app-core/shared/wheel-tier-sources.ts";
 import { calculateNetFromGross, type FeeProfileInput } from "../../../../domain/calculations.ts";
 import type { Lot, WheelConfig, WheelTier } from "../../../../types/app.ts";
 import type { WheelSlot } from "./wheelSlots.ts";
@@ -16,7 +17,51 @@ function getLotSellingTaxPercent(lotId: number | null | undefined, lots: Lot[]):
 }
 
 function getTierShippingPerOrder(tier: WheelTier, lots: Lot[]): number {
+  if (isWheelTierMultiLot(tier)) {
+    const ids = getWheelTierSourceLotIds(tier);
+    if (!ids.length) return 0;
+    return ids.reduce((sum, id) => sum + getLotShippingPerOrder(id, lots), 0) / ids.length;
+  }
   return getLotShippingPerOrder(tier.boundLotId, lots);
+}
+
+function getTierSellingTaxPercent(tier: WheelTier, lots: Lot[]): number {
+  if (isWheelTierMultiLot(tier)) {
+    const ids = getWheelTierSourceLotIds(tier);
+    if (!ids.length) return 0;
+    return ids.reduce((sum, id) => sum + getLotSellingTaxPercent(id, lots), 0) / ids.length;
+  }
+  return getLotSellingTaxPercent(tier.boundLotId, lots);
+}
+
+function calculateAverageTierNetRevenue(
+  config: WheelConfig,
+  tier: WheelTier,
+  lots: Lot[],
+  fallback?: FeeProfileInput
+): number {
+  const lotIds = isWheelTierMultiLot(tier) ? getWheelTierSourceLotIds(tier) : [];
+  if (!lotIds.length) {
+    const lot = tier.boundLotId == null ? undefined : lots.find((entry) => entry.id === tier.boundLotId);
+    return calculateWheelNetFromGross(
+      Number(config.spinPrice) || 0,
+      getResolvedLotFeeProfileInput(lot, fallback),
+      1,
+      Number(lot?.sellingShippingPerOrder) || 0,
+      Number(lot?.sellingTaxPercent) || 0
+    );
+  }
+  const total = lotIds.reduce((sum, id) => {
+    const lot = lots.find((entry) => entry.id === id);
+    return sum + calculateWheelNetFromGross(
+      Number(config.spinPrice) || 0,
+      getResolvedLotFeeProfileInput(lot, fallback),
+      1,
+      Number(lot?.sellingShippingPerOrder) || 0,
+      Number(lot?.sellingTaxPercent) || 0
+    );
+  }, 0);
+  return total / lotIds.length;
 }
 
 export function getLotFeeProfileInput(lot: Lot | undefined): FeeProfileInput | undefined {
@@ -74,6 +119,9 @@ export function calculateWheelTierNetRevenuePerSpin(
   lots: Lot[] = [],
   fallback?: FeeProfileInput
 ): number {
+  if (isWheelTierMultiLot(tier)) {
+    return calculateAverageTierNetRevenue(config, tier, lots, fallback);
+  }
   const lot = tier.boundLotId == null ? undefined : lots.find((entry) => entry.id === tier.boundLotId);
   return calculateWheelNetFromGross(
     Number(config.spinPrice) || 0,
@@ -121,7 +169,7 @@ export function calculateAverageWheelSellingTaxPercent(
   for (const tier of getNormalizedChanceTiers(config)) {
     const chance = getTierChancePercent(tier);
     if (chance <= 0) continue;
-    taxTotal += chance * getLotSellingTaxPercent(tier.boundLotId, lots);
+    taxTotal += chance * getTierSellingTaxPercent(tier, lots);
     totalChance += chance;
   }
 
@@ -156,15 +204,8 @@ export function computeExpectedMargin(
   for (const tier of getNormalizedChanceTiers(config)) {
     const chance = getTierChancePercent(tier);
     if (chance <= 0) continue;
-    const lot = tier.boundLotId == null ? undefined : lots.find((entry) => entry.id === tier.boundLotId);
     totalCost += chance * Number(tier.costPerTier || 0);
-    totalNetRevenue += chance * calculateWheelNetFromGross(
-      Number(config.spinPrice) || 0,
-      getResolvedLotFeeProfileInput(lot, feeProfileInput),
-      1,
-      Number(lot?.sellingShippingPerOrder) || 0,
-      Number(lot?.sellingTaxPercent) || 0
-    );
+    totalNetRevenue += chance * calculateAverageTierNetRevenue(config, tier, lots, feeProfileInput);
     totalChance += chance;
   }
   if (!totalChance || !config.spinPrice) return { margin: null };
@@ -194,6 +235,9 @@ export function calculateWheelSessionNetRevenue(
     if (!slot) return sum;
 
     const tier = tiersById.get(slot.tier);
+    if (tier && isWheelTierMultiLot(tier)) {
+      return sum + (calculateAverageTierNetRevenue(config, tier, lots, feeProfileInput) * count);
+    }
     const lot = tier?.boundLotId == null ? undefined : lots.find((entry) => entry.id === tier.boundLotId);
 
     return sum + calculateWheelNetFromGross(

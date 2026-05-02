@@ -98,6 +98,7 @@ export interface SyncWheelTierDto {
   deductionType?: SyncTierDeductionType;
   sets?: string[];
   boundLotId?: number;
+  boundLotIds?: number[];
   boundSinglesId?: number;
   isChase?: boolean;
   celebrationEmoji?: string;
@@ -191,6 +192,8 @@ export interface SyncInventoryIssueDto {
   selectedLotId: number | null;
   spinNumber: number;
   slotSinglesId: number | null;
+  candidateLotIds?: number[];
+  requiresLotSelection?: boolean;
 }
 
 export interface SyncGameSessionDto {

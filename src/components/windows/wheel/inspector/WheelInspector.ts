@@ -2,6 +2,7 @@ import { inject, type PropType } from "vue";
 import { createNestedWindowContextBridge } from "../../shared/contextBridge.ts";
 import { translateAppMessage } from "../../../../app-core/i18n/index.ts";
 import { getWheelChanceTotal } from "../../../../app-core/shared/wheel-odds.ts";
+import { getWheelTierSourceLotIds, isWheelTierMultiLot } from "../../../../app-core/shared/wheel-tier-sources.ts";
 import WheelHistoryPanel from "./WheelHistoryPanel.vue";
 import WheelTierCard from "./WheelTierCard.vue";
 import WheelSessionPanel from "./WheelSessionPanel.vue";
@@ -17,6 +18,7 @@ type WheelBuilderTierGroup = {
   detail: string;
   countLabel: string;
   warning: boolean;
+  sourceLotNames?: string[];
   tiers: Array<{ tier: WheelTier; index: number }>;
 };
 
@@ -51,6 +53,32 @@ export const WheelInspector = {
       const groups = new Map<string, WheelBuilderTierGroup>();
 
       const ensureGroup = (tier: WheelTier): WheelBuilderTierGroup => {
+        if (isWheelTierMultiLot(tier)) {
+          const ids = getWheelTierSourceLotIds(tier);
+          const key = `customer-choice:${ids.join(":")}`;
+          let group = groups.get(key);
+          if (!group) {
+            const remainingPacks = ids.reduce((sum, id) => sum + getRemainingPacksForWheelLot(this, id), 0);
+            const sourceLotNames = ids
+              .map((id) => lots.find((entry) => entry.id === id)?.name)
+              .filter((entry): entry is string => Boolean(entry));
+            group = {
+              key,
+              title: translateAppMessage(preferredLanguage, "wheelInspectorMultiLotTitle"),
+              detail: translateAppMessage(preferredLanguage, "wheelInspectorItemAvailabilityDetail", {
+                count: remainingPacks,
+                suffix: remainingPacks === 1 ? "" : "s"
+              }),
+              countLabel: "",
+              warning: remainingPacks <= 0,
+              sourceLotNames,
+              tiers: []
+            };
+            groups.set(key, group);
+          }
+          return group;
+        }
+
         if (tier.boundLotId == null) {
           const key = "unassigned";
           let group = groups.get(key);

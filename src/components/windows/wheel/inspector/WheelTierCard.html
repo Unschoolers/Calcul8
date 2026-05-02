@@ -142,19 +142,22 @@
           </div>
 
           <div class="wheel-tier-editor__source-grid">
-            <div class="wheel-tier-source-field">
-              <div class="wheel-tier-source-label">{{ t('wheelTierSourceLotLabel') }}</div>
+            <div v-if="!isBoundLotSingles(editorTier)" class="wheel-tier-source-field wheel-tier-source-field--wide">
+              <div class="wheel-tier-source-label">{{ t('wheelTierSourceLotsLabel') }}</div>
               <v-select
-                :model-value="editorTier.boundLotId"
-                :items="tierSourceItems"
+                :model-value="editorTier.boundLotIds || []"
+                :items="bulkTierSourceItems"
                 item-title="title"
                 item-value="value"
-                :placeholder="t('wheelTierSourceLotPlaceholder')"
+                multiple
+                chips
+                closable-chips
+                :placeholder="t('wheelTierSourceLotsPlaceholder')"
                 variant="outlined"
                 density="compact"
                 hide-details="auto"
                 :menu-props="{ contentClass: 'wheel-tier-source-menu', zIndex: 4200 }"
-                @update:model-value="onTierLotChange(editorTier, $event)"
+                @update:model-value="onTierMultiLotChange(editorTier, $event)"
               ></v-select>
             </div>
 

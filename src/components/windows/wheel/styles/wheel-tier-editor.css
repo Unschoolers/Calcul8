@@ -354,6 +354,15 @@
   text-overflow: ellipsis;
 }
 
+.wheel-builder-group__info {
+  flex: 0 0 auto;
+  color: rgba(var(--v-theme-on-surface), 0.64);
+}
+
+.wheel-builder-group__source-list {
+  max-width: min(320px, calc(100vw - 32px));
+}
+
 .wheel-builder-group__count {
   display: inline-flex;
   align-items: center;

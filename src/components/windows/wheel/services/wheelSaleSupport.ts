@@ -1,6 +1,7 @@
 import { getSinglesSoldQuantityForEntry } from "../../../../app-core/methods/sales-core.ts";
 import { translateAppMessage } from "../../../../app-core/i18n/index.ts";
 import { getRootLotSales } from "../../../../app-core/shared/sales-root-state.ts";
+import { getWheelTierSourceLotIds, isWheelTierMultiLot } from "../../../../app-core/shared/wheel-tier-sources.ts";
 import type { Lot, Sale, SinglesPurchaseEntry, WheelTier } from "../../../../types/app.ts";
 
 type WheelSalesContext = Record<string, unknown> & {
@@ -83,6 +84,18 @@ export function getWheelTierInventoryMeta(
   context: WheelSalesContext,
   tier: WheelTier
 ): { text: string; warning: boolean } | null {
+  if (isWheelTierMultiLot(tier)) {
+    const lots = (context.lots || []) as Lot[];
+    const sourceIds = getWheelTierSourceLotIds(tier);
+    const bulkIds = sourceIds.filter((id) => lots.find((entry) => entry.id === id)?.lotType !== "singles");
+    if (!bulkIds.length) return null;
+    const remainingPacks = bulkIds.reduce((sum, id) => sum + getRemainingPacksForWheelLot(context, id), 0);
+    const perHit = Math.max(1, Number(tier.packsCount) || 0);
+    return {
+      text: `${remainingPacks} items left across ${bulkIds.length} lot${bulkIds.length === 1 ? "" : "s"} • ${perHit} per hit`,
+      warning: !bulkIds.some((id) => getRemainingPacksForWheelLot(context, id) >= perHit)
+    };
+  }
   if (tier.boundLotId == null) return null;
   const lots = (context.lots || []) as Lot[];
   const lot = lots.find((entry) => entry.id === tier.boundLotId);

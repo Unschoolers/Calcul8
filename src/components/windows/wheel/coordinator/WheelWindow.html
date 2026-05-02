@@ -110,12 +110,12 @@
                 {{ wheelStageCaption }}
             </div>
 
-            <v-alert v-if="wheelSpinBlockedReason" type="warning" variant="tonal" density="compact"
+            <v-alert v-if="wheelSpinBlockedReason && !wheelHasRequiredLotSelection" type="warning" variant="tonal" density="compact"
                 class="wheel-inventory-warning">
                 {{ wheelSpinBlockedReason }}
             </v-alert>
 
-            <v-alert v-if="wheelDisplayInventoryWarning" type="warning" variant="tonal" density="compact"
+            <v-alert v-if="wheelDisplayInventoryWarning && !wheelHasRequiredLotSelection" type="warning" variant="tonal" density="compact"
                 class="wheel-inventory-warning">
                 {{ wheelDisplayInventoryWarning }}
             </v-alert>
@@ -189,7 +189,7 @@
         </v-card>
 
         <!-- Batch Deduction Panel (shown when ending session) -->
-        <v-card v-if="wheelEndingSession && wheelPendingInventoryIssues.length" variant="outlined"
+        <v-card v-if="wheelEndingSession && !wheelHasRequiredLotSelection && wheelPendingInventoryIssues.length" variant="outlined"
             class="pa-3 wheel-lot-select-card">
             <div class="text-subtitle-2 mb-2">
                 <v-icon start size="small" color="warning">mdi-clipboard-list</v-icon>
@@ -203,13 +203,13 @@
                         <span class="text-caption font-weight-medium">#{{ entry.spinNumber }} {{ entry.slotName
                             }}</span>
                     </div>
-                    <v-select v-model="entry.selectedLotId" :items="lotItems" item-title="title" item-value="value"
+                    <v-select v-model="entry.selectedLotId" :items="getPendingWheelIssueLotItems(entry)" item-title="title" item-value="value"
                         :label="t('shellLotLabel')" variant="outlined" density="compact" hide-details="auto"
                         class="wheel-batch-lot-select"></v-select>
                     <v-btn icon="mdi-check" size="x-small" variant="text" color="success"
                         :disabled="!entry.selectedLotId" @click="confirmBatchSale(bIdx)"
                         :title="t('wheelRecordSaleAction')"></v-btn>
-                    <v-btn icon="mdi-close" size="x-small" variant="text" color="error" @click="dismissBatchSale(bIdx)"
+                    <v-btn v-if="entry.requiresLotSelection !== true" icon="mdi-close" size="x-small" variant="text" color="error" @click="dismissBatchSale(bIdx)"
                         :title="t('wheelDismissAction')"></v-btn>
                 </div>
             </div>
@@ -217,18 +217,52 @@
             <v-row dense class="mt-2">
                 <v-col cols="6">
                     <v-btn block color="success" variant="elevated" size="small" @click="confirmAllBatchSales">
-                        <v-icon start size="small">mdi-check-all</v-icon>
+                        <v-icon start size="small">mdi-check</v-icon>
                         {{ t('wheelRecordAllAction') }}
                     </v-btn>
                 </v-col>
                 <v-col cols="6">
-                    <v-btn block variant="text" size="small" @click="cancelEndWheelSession">
+                    <v-btn block variant="text" size="small" :disabled="wheelHasRequiredLotSelection" @click="cancelEndWheelSession">
                         {{ t('commonCancel') }}
                     </v-btn>
                 </v-col>
             </v-row>
         </v-card>
     </div>
+
+    <v-dialog v-if="wheelHasRequiredLotSelection && wheelPendingInventoryIssues.length" :model-value="true" max-width="520" persistent>
+        <v-card>
+            <v-card-title class="text-subtitle-1">
+                <v-icon start size="small" color="warning">mdi-clipboard-list</v-icon>
+                {{ wheelPendingInventoryIssuesTitle }}
+            </v-card-title>
+            <v-card-text>
+                <div class="wheel-batch-list">
+                    <div v-for="(entry, bIdx) in wheelPendingInventoryIssues" :key="bIdx" class="wheel-batch-row">
+                        <div class="wheel-batch-slot">
+                            <div class="wheel-tier-dot" :style="{ background: entry.slotColor }"></div>
+                            <span class="text-caption font-weight-medium">#{{ entry.spinNumber }} {{ entry.slotName
+                                }}</span>
+                        </div>
+                        <v-select v-model="entry.selectedLotId" :items="getPendingWheelIssueLotItems(entry)" item-title="title" item-value="value"
+                            :label="t('shellLotLabel')" variant="outlined" density="compact" hide-details="auto"
+                            class="wheel-batch-lot-select"></v-select>
+                        <v-btn icon="mdi-check" size="x-small" variant="text" color="success"
+                            :disabled="!entry.selectedLotId" @click="confirmBatchSale(bIdx)"
+                            :title="t('wheelRecordSaleAction')"></v-btn>
+                    </div>
+                </div>
+            </v-card-text>
+            <v-card-actions>
+                <v-spacer></v-spacer>
+                <v-btn color="success" variant="elevated" size="small"
+                    :disabled="wheelPendingInventoryIssues.some((entry) => !entry.selectedLotId)"
+                    @click="confirmAllBatchSales">
+                    {{ t('wheelRecordAllAction') }}
+                </v-btn>
+            </v-card-actions>
+        </v-card>
+    </v-dialog>
 
     <button
         v-if="!wheelPresentationMode && wheelMobileInspectorOpen"

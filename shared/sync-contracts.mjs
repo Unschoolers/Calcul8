@@ -66,6 +66,19 @@ function normalizeOptionalSyncId(value) {
   return id == null || id === 0 ? null : id;
 }
 
+function normalizeSyncIdArray(value) {
+  if (!Array.isArray(value)) return undefined;
+  const seen = new Set();
+  const ids = [];
+  for (const entry of value) {
+    const id = normalizeOptionalSyncId(entry);
+    if (id == null || id <= 0 || seen.has(id)) continue;
+    seen.add(id);
+    ids.push(id);
+  }
+  return ids;
+}
+
 function normalizeSyncSinglesPurchaseDto(value) {
   if (!isSyncEntityRecord(value)) return null;
   const id = normalizeOptionalSyncId(value.id);
@@ -287,6 +300,12 @@ function normalizeSyncWheelTierDto(value) {
   if (sets) tier.sets = sets;
   const boundLotId = normalizeOptionalSyncId(value.boundLotId);
   if (boundLotId != null) tier.boundLotId = boundLotId;
+  const boundLotIds = normalizeSyncIdArray(value.boundLotIds);
+  if (boundLotIds) {
+    tier.boundLotIds = boundLotIds.length > 0 ? boundLotIds : (boundLotId != null ? [boundLotId] : []);
+  } else if (boundLotId != null) {
+    tier.boundLotIds = [boundLotId];
+  }
   const boundSinglesId = normalizeOptionalSyncId(value.boundSinglesId);
   if (boundSinglesId != null) tier.boundSinglesId = boundSinglesId;
   if (value.isChase === true) tier.isChase = true;
@@ -418,7 +437,7 @@ function normalizeSyncGameTallyEntryDto(value) {
 
 function normalizeSyncInventoryIssueDto(value) {
   if (!isSyncEntityRecord(value)) return null;
-  return {
+  const issue = {
     slotName: normalizeLimitedString(value.slotName, 160),
     slotColor: normalizeLimitedString(value.slotColor, 40),
     slotCost: normalizeNonNegativeNumber(value.slotCost) ?? 0,
@@ -430,6 +449,14 @@ function normalizeSyncInventoryIssueDto(value) {
     spinNumber: normalizeNonNegativeInteger(value.spinNumber) ?? 0,
     slotSinglesId: normalizeOptionalSyncId(value.slotSinglesId)
   };
+  const candidateLotIds = normalizeSyncIdArray(value.candidateLotIds);
+  if (candidateLotIds && candidateLotIds.length > 0) {
+    issue.candidateLotIds = candidateLotIds;
+  }
+  if (value.requiresLotSelection === true) {
+    issue.requiresLotSelection = true;
+  }
+  return issue;
 }
 
 function normalizeSyncGameSessionDto(value, fallbackUpdatedAt = Date.now()) {

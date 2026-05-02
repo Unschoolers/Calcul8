@@ -404,6 +404,19 @@ export const wheelSessionMethods = {
     void broadcastWheelSession(this);
   },
 
+  getPendingWheelIssueLotItems(this: WheelWindowThis, entry: PendingWheelInventoryIssue): Array<{ title: string; value: number; lotType?: string }> {
+    const candidateIds = Array.isArray(entry.candidateLotIds) ? new Set(entry.candidateLotIds) : null;
+    const lots = (this.lots || []) as Lot[];
+    return lots
+      .filter((lot) => entry.slotDeductionType === "singles" ? lot.lotType === "singles" : lot.lotType !== "singles")
+      .filter((lot) => !candidateIds || candidateIds.has(lot.id))
+      .map((lot) => ({
+        title: lot.name,
+        value: lot.id,
+        lotType: lot.lotType
+      }));
+  },
+
   confirmAllBatchSales(this: WheelWindowThis): void {
     const pendingIssues = (this.wheelPendingInventoryIssues || []) as PendingWheelInventoryIssue[];
     for (let i = pendingIssues.length - 1; i >= 0; i--) {
@@ -415,6 +428,7 @@ export const wheelSessionMethods = {
 
   dismissBatchSale(this: WheelWindowThis, index: number): void {
     const pendingIssues = (this.wheelPendingInventoryIssues || []) as PendingWheelInventoryIssue[];
+    if (pendingIssues[index]?.requiresLotSelection === true) return;
     pendingIssues.splice(index, 1);
     assignWheelPendingInventoryIssues(this, pendingIssues);
     if (!pendingIssues.length) {

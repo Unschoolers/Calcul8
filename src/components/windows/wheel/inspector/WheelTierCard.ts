@@ -1,6 +1,7 @@
 import { inject, type PropType } from "vue";
 import { countGameOutcomeSlotsByTier } from "../../../../app-core/shared/game-domain.ts";
 import { setWheelTierChancePercent } from "../../../../app-core/shared/wheel-odds.ts";
+import { getWheelTierSourceLotIds, isWheelTierMultiLot } from "../../../../app-core/shared/wheel-tier-sources.ts";
 import type { WheelConfig, WheelTier } from "../../../../types/app.ts";
 import { createNestedWindowContextBridge } from "../../shared/contextBridge.ts";
 
@@ -45,13 +46,20 @@ export const WheelTierCard = {
     },
     tierSourceSummary(this: Record<string, unknown> & { tier: WheelTier }): string {
       const tier = this.tier;
-      if (tier.boundLotId == null) return "Source lot not selected";
       const lots = (((this as Record<string, unknown>).lots || []) as Array<{
         id: number;
         name: string;
         lotType?: string;
         singlesPurchases?: Array<{ id: number; item: string }>;
       }>);
+      if (isWheelTierMultiLot(tier)) {
+        const names = getWheelTierSourceLotIds(tier)
+          .map((id) => lots.find((entry) => entry.id === id)?.name)
+          .filter((entry): entry is string => Boolean(entry));
+        if (!names.length) return "Source lots not selected";
+        return `${names.length} lot${names.length === 1 ? "" : "s"}: ${names.slice(0, 2).join(", ")}${names.length > 2 ? "..." : ""}`;
+      }
+      if (tier.boundLotId == null) return "Source lot not selected";
       const lot = lots.find((entry) => entry.id === tier.boundLotId);
       if (!lot) return "Source lot unavailable";
       if (lot.lotType === "singles" && tier.boundSinglesId != null) {
@@ -83,7 +91,7 @@ export const WheelTierCard = {
       if (this.tier.isChase === true) {
         chips.push({ label: "Chase", tone: "amber" });
       }
-      if (this.tier.boundLotId == null) {
+      if (!getWheelTierSourceLotIds(this.tier).length) {
         chips.push({ label: "Source needed", tone: "warning" });
       }
       const inventoryMeta = ((this as Record<string, unknown>) as Record<string, unknown> & {
@@ -138,7 +146,7 @@ export const WheelTierCard = {
       this.setTierChance(tier, target?.value);
     },
     openTierEditor(this: { editorOpen: boolean; editorDraft: WheelTier | null; tier: WheelTier }): void {
-      this.editorDraft = { ...this.tier };
+      this.editorDraft = JSON.parse(JSON.stringify(this.tier)) as WheelTier;
       this.editorOpen = true;
     },
     cancelTierEditor(this: { editorOpen: boolean; editorDraft: WheelTier | null }): void {

@@ -1,5 +1,6 @@
 import { broadcastWheelSession } from "../../../../app-core/methods/ui/wheel-broadcast.ts";
 import { createWheelFairnessProofLink } from "../../../../app-core/methods/wheel-fairness-api.ts";
+import { getWheelTierSourceLotIds, isWheelTierMultiLot } from "../../../../app-core/shared/wheel-tier-sources.ts";
 import {
     chooseWheelPreviewTargetIndex,
     createWheelSpinPlan,
@@ -42,8 +43,10 @@ function queuePendingInventoryIssue(
   params: {
     slot: WheelSlot;
     slotIndex: number;
-    boundLotId: number;
+    boundLotId: number | null;
     boundSinglesId?: number | null;
+    candidateLotIds?: number[];
+    requiresLotSelection?: boolean;
     warningText?: string;
   }
 ): void {
@@ -56,9 +59,11 @@ function queuePendingInventoryIssue(
     slotPacksCount: params.slot.packsCount,
     slotDeductionType: params.slot.deductionType,
     slotIndex: params.slotIndex,
-    selectedLotId: params.boundLotId,
+    selectedLotId: params.requiresLotSelection === true ? null : params.boundLotId,
     spinNumber: context.wheelTotalSpins || 0,
-    slotSinglesId: params.boundSinglesId ?? null
+    slotSinglesId: params.boundSinglesId ?? null,
+    ...(params.candidateLotIds?.length ? { candidateLotIds: params.candidateLotIds } : {}),
+    ...(params.requiresLotSelection === true ? { requiresLotSelection: true } : {})
   });
   assignWheelPendingInventoryIssues(context as unknown as Record<string, unknown>, pendingIssues);
   const issueController = getWheelController(context);
@@ -446,6 +451,22 @@ export const wheelSpinMethods = {
       const config = (((this as Record<string, unknown>).wheelDisplayConfig
         || (this as Record<string, unknown>).activeWheelConfig)) as WheelConfig | null;
       const tier = config?.tiers.find((t) => t.id === slot.tier);
+      if (tier && isWheelTierMultiLot(tier)) {
+        const candidateLotIds = getWheelTierSourceLotIds(tier)
+          .filter((lotId) => {
+            const lot = ((this.lots || []) as Lot[]).find((entry) => entry.id === lotId);
+            return lot?.lotType !== "singles";
+          });
+        queuePendingInventoryIssue(this, {
+          slot,
+          slotIndex,
+          boundLotId: null,
+          candidateLotIds,
+          requiresLotSelection: true,
+          warningText: `Resolve the pending lot selection for ${slot.name}.`
+        });
+        return;
+      }
       if (tier?.boundLotId) {
         if (slot.deductionType === "none" || (slot.packsCount || 0) <= 0) {
           recordController.inventoryWarning = "";

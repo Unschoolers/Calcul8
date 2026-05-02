@@ -470,6 +470,34 @@ test("wheelSessionMarginDisplay shows profit relative to cost", () => {
   assert.equal(WheelWindow.computed!.wheelSessionMarginDisplay.call(vm as never), "25.0%");
 });
 
+test("expectedMarginColor is green above zero and red below zero", () => {
+  const positiveVm = {
+    editingWheelConfig: {
+      id: 1,
+      name: "Positive",
+      spinPrice: 10,
+      targetMargin: 99,
+      createdAt: "",
+      tiers: [{ id: "t1", label: "Hit", color: "#f00", slots: 1, costPerTier: 5, packsCount: 1, deductionType: "packs", sets: [] }]
+    },
+    lots: []
+  };
+  const negativeVm = {
+    editingWheelConfig: {
+      id: 2,
+      name: "Negative",
+      spinPrice: 1,
+      targetMargin: 0,
+      createdAt: "",
+      tiers: [{ id: "t1", label: "Hit", color: "#f00", slots: 1, costPerTier: 5, packsCount: 1, deductionType: "packs", sets: [] }]
+    },
+    lots: []
+  };
+
+  assert.equal(WheelWindow.computed!.expectedMarginColor.call(positiveVm as never), "rgb(var(--v-theme-success))");
+  assert.equal(WheelWindow.computed!.expectedMarginColor.call(negativeVm as never), "rgb(var(--v-theme-error))");
+});
+
 test("wheelSessionMarginDisplay fallback uses fee settings from tier-bound lots", () => {
   const vm = {
     wheelMode: "live",
@@ -577,6 +605,17 @@ test("wheelSpinBlockedReason warns when a live tier no longer has enough packs",
   assert.match(invalid[0]!.reason, /only 0 remain/i);
   const reason = WheelWindow.computed!.wheelSpinBlockedReason.call({ ...vm, wheelInvalidLiveTiers: invalid } as never);
   assert.match(reason, /repair the game before going live/i);
+});
+
+test("wheelHasRequiredLotSelection stays true after selection until the pending hit is recorded", () => {
+  const result = WheelWindow.computed!.wheelHasRequiredLotSelection.call({
+    wheelPendingInventoryIssues: [{
+      selectedLotId: 42,
+      requiresLotSelection: true
+    }]
+  } as never);
+
+  assert.equal(result, true);
 });
 
 test("wheelInvalidLiveTiers ignores untracked singles tiers", () => {

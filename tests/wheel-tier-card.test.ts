@@ -3,12 +3,21 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { test, vi } from "vitest";
+import { WheelInspector } from "../src/components/windows/wheel/inspector/WheelInspector.ts";
 import { WheelTierCard } from "../src/components/windows/wheel/inspector/WheelTierCard.ts";
 
 const TESTS_DIR = path.dirname(fileURLToPath(import.meta.url));
 const WHEEL_TIER_CARD_TEMPLATE = path.resolve(
   TESTS_DIR,
   "../src/components/windows/wheel/inspector/WheelTierCard.html"
+);
+const WHEEL_INSPECTOR_TEMPLATE = path.resolve(
+  TESTS_DIR,
+  "../src/components/windows/wheel/inspector/WheelInspector.html"
+);
+const WHEEL_WINDOW_TEMPLATE = path.resolve(
+  TESTS_DIR,
+  "../src/components/windows/wheel/coordinator/WheelWindow.html"
 );
 const WHEEL_TIER_EDITOR_STYLES = path.resolve(
   TESTS_DIR,
@@ -91,15 +100,47 @@ test("tier source selectors use dialog-safe overlay menu props", () => {
   assert.match(styles, /\.wheel-tier-source-menu,[\s\S]*\.wheel-tier-singles-menu\s*\{[\s\S]*z-index: 4200 !important;/);
 });
 
-test("tier source lot select uses Vuetify default item rendering", () => {
+test("tier source bulk lot multi-select uses Vuetify default item rendering", () => {
   const template = fs.readFileSync(WHEEL_TIER_CARD_TEMPLATE, "utf8");
-  const sourceSelectStart = template.indexOf(":items=\"tierSourceItems\"");
+  const sourceSelectStart = template.indexOf(":items=\"bulkTierSourceItems\"");
   const singlesSelectStart = template.indexOf(":items=\"getSinglesItemsForTier(editorTier)\"");
   const sourceSelectBlock = template.slice(sourceSelectStart, singlesSelectStart);
 
   assert.ok(sourceSelectStart > 0);
   assert.ok(singlesSelectStart > sourceSelectStart);
   assert.doesNotMatch(sourceSelectBlock, /<template #item=/);
+});
+
+test("tier source editor uses a bulk lot multi-select without a source mode toggle", () => {
+  const template = fs.readFileSync(WHEEL_TIER_CARD_TEMPLATE, "utf8");
+
+  assert.doesNotMatch(template, /wheelTierSourceModeSingle/);
+  assert.doesNotMatch(template, /wheelTierSourceModeMulti/);
+  assert.match(template, /:items="bulkTierSourceItems"/);
+  assert.match(template, /multiple/);
+  assert.match(template, /boundLotIds/);
+});
+
+test("wheel inspector settings do not expose target margin input", () => {
+  const template = fs.readFileSync(WHEEL_INSPECTOR_TEMPLATE, "utf8");
+
+  assert.doesNotMatch(template, /wheelInspectorTargetMarginLabel/);
+  assert.doesNotMatch(template, /editingWheelConfig\.targetMargin/);
+});
+
+test("required pending lot selections use a persistent modal instead of the inline batch card", () => {
+  const template = fs.readFileSync(WHEEL_WINDOW_TEMPLATE, "utf8");
+
+  assert.match(template, /<v-dialog v-if="wheelHasRequiredLotSelection && wheelPendingInventoryIssues\.length"[\s\S]*persistent/);
+  assert.match(template, /v-if="wheelEndingSession && !wheelHasRequiredLotSelection && wheelPendingInventoryIssues\.length"/);
+  assert.match(template, /:disabled="wheelPendingInventoryIssues\.some\(\(entry\) => !entry\.selectedLotId\)"/);
+});
+
+test("required pending lot selections suppress duplicate stage warnings", () => {
+  const template = fs.readFileSync(WHEEL_WINDOW_TEMPLATE, "utf8");
+
+  assert.match(template, /v-if="wheelSpinBlockedReason && !wheelHasRequiredLotSelection"/);
+  assert.match(template, /v-if="wheelDisplayInventoryWarning && !wheelHasRequiredLotSelection"/);
 });
 
 test("tier list uses the celebration emoji as the tier badge when selected", () => {
@@ -198,6 +239,62 @@ test("tier card summary shows actual mystery grid tiles", () => {
   const items = WheelTierCard.computed!.tierSummaryItems.call(vm as never);
 
   assert.deepEqual(items, ["10 tiles", "1 hit", "$12.00"]);
+});
+
+test("multi-lot tier status keeps Bulk as the type without using Multi-lot as a chip", () => {
+  const tier = {
+    id: "multi",
+    label: "Tier 4",
+    color: "#fff",
+    slots: 1,
+    packsCount: 1,
+    costPerTier: 5.25,
+    deductionType: "packs",
+    boundLotId: 10,
+    boundLotIds: [10, 20],
+    sets: []
+  };
+  const vm = {
+    tier,
+    tierTypeLabel: WheelTierCard.computed!.tierTypeLabel.call({
+      tier,
+      isBoundLotSingles: () => false
+    } as never),
+    tierInventoryMeta: null
+  };
+
+  const chips = WheelTierCard.computed!.tierStatusChips.call(vm as never);
+
+  assert.equal(chips[0]?.label, "Bulk");
+  assert.equal(chips.some((chip) => chip.label === "Multi-lot"), false);
+});
+
+test("multi-lot tiers are grouped under Multi-lot with source lot names for the info menu", () => {
+  const groups = WheelInspector.computed!.wheelBuilderTierGroups.call({
+    preferredLanguage: "en",
+    editingWheelConfig: {
+      tiers: [{
+        id: "multi",
+        label: "Tier 4",
+        color: "#fff",
+        slots: 1,
+        packsCount: 1,
+        costPerTier: 5.25,
+        deductionType: "packs",
+        boundLotId: 10,
+        boundLotIds: [10, 20],
+        sets: []
+      }]
+    },
+    lots: [
+      { id: 10, name: "Jujutsu Kaisen vol2", lotType: "bulk", boxesPurchased: 1, packsPerBox: 36 },
+      { id: 20, name: "Bleach vol3", lotType: "bulk", boxesPurchased: 1, packsPerBox: 28 }
+    ],
+    loadSalesForLotId: () => []
+  } as never);
+
+  assert.equal(groups[0]?.title, "Multi-lot");
+  assert.deepEqual(groups[0]?.sourceLotNames, ["Jujutsu Kaisen vol2", "Bleach vol3"]);
 });
 
 test("tier card chance input rebalances the current editing config", () => {

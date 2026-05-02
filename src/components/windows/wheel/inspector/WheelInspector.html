@@ -53,13 +53,6 @@
               hide-details="auto"></v-text-field>
           </div>
           <div class="wheel-compact-setting">
-            <div class="wheel-compact-setting__label">{{ t('wheelInspectorTargetMarginLabel') }}</div>
-            <v-text-field v-model.number="editingWheelConfig.targetMargin"
-              :aria-label="t('wheelInspectorTargetMarginLabel')"
-              type="number" min="0" max="100" step="5" variant="outlined" density="compact"
-              hide-details="auto"></v-text-field>
-          </div>
-          <div class="wheel-compact-setting">
             <div class="wheel-compact-setting__label">{{ t('wheelInspectorOutcomeCountLabel') }}</div>
             <v-text-field v-model.number="editingWheelConfig.outcomeCount"
               :aria-label="t('wheelInspectorOutcomeCountLabel')"
@@ -95,6 +88,25 @@
                     {{ group.key === 'unassigned' ? 'mdi-alert-circle-outline' : 'mdi-database-outline' }}
                   </v-icon>
                   <div class="wheel-builder-group__title">{{ group.title }}</div>
+                  <v-menu v-if="group.sourceLotNames?.length" location="bottom">
+                    <template #activator="{ props }">
+                      <v-btn
+                        v-bind="props"
+                        icon="mdi-information-outline"
+                        size="x-small"
+                        variant="text"
+                        class="wheel-builder-group__info"
+                        :aria-label="t('wheelInspectorMultiLotInfoLabel')"
+                      ></v-btn>
+                    </template>
+                    <v-list density="compact" class="wheel-builder-group__source-list">
+                      <v-list-item
+                        v-for="name in group.sourceLotNames"
+                        :key="name"
+                        :title="name"
+                      ></v-list-item>
+                    </v-list>
+                  </v-menu>
                   <span class="wheel-builder-group__count">{{ group.countLabel }}</span>
                 </div>
                 <div class="wheel-builder-group__detail">{{ group.detail }}</div>

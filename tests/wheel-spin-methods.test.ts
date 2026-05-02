@@ -3,6 +3,7 @@ import { afterEach, test, vi } from "vitest";
 import { createWheelWindowState, getWheelController } from "../src/components/windows/wheel/coordinator/wheelControllerState.ts";
 import { wheelSessionMethods } from "../src/components/windows/wheel/commands/wheelSessionMethods.ts";
 import { wheelSpinMethods } from "../src/components/windows/wheel/commands/wheelSpinMethods.ts";
+import { wheelConfigComputeds } from "../src/components/windows/wheel/inspector/wheelConfigComputeds.ts";
 
 const wheelLayoutHash = "c3ca5e1eef7edf9b0625f714c6eb25287a9e8bcc63a16d0de00ce711ddbe67ad";
 
@@ -212,4 +213,134 @@ test("recordSpinResult initializes pending inventory issues when older wheel sta
     slotSinglesId: null
   }]);
   assert.deepEqual(state.wheelSkippedDeductions, state.wheelPendingInventoryIssues);
+});
+
+test("recordSpinResult queues required lot selection for multi-lot bulk tiers without creating a sale", () => {
+  const state = createWheelWindowState() as Record<string, unknown>;
+  state.wheelMode = "live";
+  state.wheelSpinCounts = [0];
+  state.wheelTotalSpins = 0;
+  state.wheelDisplaySlots = [{
+    name: "3 Packs",
+    color: "#e74c3c",
+    cost: 12,
+    tier: "tier-1",
+    packsCount: 3,
+    deductionType: "packs",
+    isChase: false
+  }];
+  state.activeWheelConfig = {
+    id: 1,
+    name: "Wheel",
+    spinPrice: 10,
+    tiers: [{
+      id: "tier-1",
+      label: "3 Packs",
+      color: "#e74c3c",
+      costPerTier: 12,
+      packsCount: 3,
+      deductionType: "packs",
+      boundLotId: 10,
+      boundLotIds: [10, 20]
+    }]
+  };
+  state.lots = [
+    { id: 10, name: "Lot A", lotType: "bulk", boxesPurchased: 1, packsPerBox: 10 },
+    { id: 20, name: "Lot B", lotType: "bulk", boxesPurchased: 1, packsPerBox: 10 }
+  ];
+  state.addWheelSaleToLot = vi.fn();
+  state.saveWheelSession = vi.fn();
+
+  wheelSpinMethods.recordSpinResult.call(state as never, 0);
+
+  assert.equal((state.addWheelSaleToLot as ReturnType<typeof vi.fn>).mock.calls.length, 0);
+  assert.deepEqual(state.wheelPendingInventoryIssues, [{
+    slotName: "3 Packs",
+    slotColor: "#e74c3c",
+    slotCost: 12,
+    slotTier: "tier-1",
+    slotPacksCount: 3,
+    slotDeductionType: "packs",
+    slotIndex: 0,
+    selectedLotId: null,
+    spinNumber: 1,
+    slotSinglesId: null,
+    candidateLotIds: [10, 20],
+    requiresLotSelection: true
+  }]);
+});
+
+test("wheelSpinBlockedReason blocks live spins while a required lot selection is unresolved", () => {
+  const reason = wheelConfigComputeds.wheelSpinBlockedReason.call({
+    wheelMode: "live",
+    preferredLanguage: "en",
+    wheelInvalidLiveTiers: [],
+    wheelPendingInventoryIssues: [{
+      slotName: "3 Packs",
+      selectedLotId: null,
+      requiresLotSelection: true
+    }]
+  } as never);
+
+  assert.match(reason, /Resolve the pending lot selection/);
+});
+
+test("wheelSpinBlockedReason keeps live spins blocked after a required lot is selected until recorded", () => {
+  const reason = wheelConfigComputeds.wheelSpinBlockedReason.call({
+    wheelMode: "live",
+    preferredLanguage: "en",
+    wheelInvalidLiveTiers: [],
+    wheelPendingInventoryIssues: [{
+      slotName: "3 Packs",
+      selectedLotId: 20,
+      requiresLotSelection: true
+    }]
+  } as never);
+
+  assert.match(reason, /Resolve the pending lot selection/);
+});
+
+test("confirmBatchSale records a required multi-lot hit against the selected lot", () => {
+  const state = createWheelWindowState() as Record<string, unknown>;
+  state.activeWheelConfig = {
+    id: 1,
+    name: "Wheel",
+    spinPrice: 10,
+    tiers: [{
+      id: "tier-1",
+      label: "3 Packs",
+      color: "#e74c3c",
+      costPerTier: 12,
+      packsCount: 3,
+      deductionType: "packs",
+      boundLotId: 10,
+      boundLotIds: [10, 20]
+    }]
+  };
+  state.lots = [
+    { id: 10, name: "Lot A", lotType: "bulk", sellingShippingPerOrder: 1 },
+    { id: 20, name: "Lot B", lotType: "bulk", sellingShippingPerOrder: 2 }
+  ];
+  state.wheelPendingInventoryIssues = [{
+    slotName: "3 Packs",
+    slotColor: "#e74c3c",
+    slotCost: 12,
+    slotTier: "tier-1",
+    slotPacksCount: 3,
+    slotDeductionType: "packs",
+    slotIndex: 0,
+    selectedLotId: 20,
+    spinNumber: 1,
+    slotSinglesId: null,
+    candidateLotIds: [10, 20],
+    requiresLotSelection: true
+  }];
+  state.addWheelSaleToLot = vi.fn();
+  state.saveWheelSession = vi.fn();
+
+  wheelSessionMethods.confirmBatchSale.call(state as never, 0);
+
+  assert.equal((state.addWheelSaleToLot as ReturnType<typeof vi.fn>).mock.calls[0]?.[0], 20);
+  assert.equal(((state.addWheelSaleToLot as ReturnType<typeof vi.fn>).mock.calls[0]?.[1] as { buyerShipping?: number }).buyerShipping, 2);
+  assert.deepEqual(state.wheelPendingInventoryIssues, []);
 });

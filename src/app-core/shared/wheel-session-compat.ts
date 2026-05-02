@@ -6,7 +6,22 @@ type WheelPendingInventoryIssueContext = Record<string, unknown> & {
 };
 
 export function normalizeWheelPendingInventoryIssues(raw: unknown): PendingWheelInventoryIssue[] {
-  return Array.isArray(raw) ? [...(raw as PendingWheelInventoryIssue[])] : [];
+  if (!Array.isArray(raw)) return [];
+  return (raw as PendingWheelInventoryIssue[]).map((entry) => {
+    const candidateLotIds = Array.isArray(entry.candidateLotIds)
+      ? Array.from(new Set(entry.candidateLotIds
+        .map((id) => Math.floor(Number(id)))
+        .filter((id) => Number.isFinite(id) && id > 0)))
+      : undefined;
+    const rest = { ...entry };
+    delete rest.candidateLotIds;
+    delete rest.requiresLotSelection;
+    return {
+      ...rest,
+      ...(candidateLotIds && candidateLotIds.length > 0 ? { candidateLotIds } : {}),
+      ...(entry.requiresLotSelection === true ? { requiresLotSelection: true } : {})
+    };
+  });
 }
 
 export function assignWheelPendingInventoryIssues(

@@ -57,6 +57,40 @@ test("shared sync contracts normalize game config DTOs for frontend and API boun
   });
 });
 
+test("shared sync contracts normalize multi-lot tier sources", () => {
+  assert.deepEqual(normalizeSyncWheelConfigDto({
+    id: "91",
+    tiers: [
+      {
+        id: "multi",
+        boundLotId: "10",
+        boundLotIds: ["10", "11", "bad", -1, "11"],
+        boundSinglesId: "501"
+      },
+      {
+        id: "legacy",
+        boundLotId: "12",
+        boundLotIds: "bad"
+      }
+    ]
+  }), {
+    id: 91,
+    tiers: [
+      {
+        id: "multi",
+        boundLotId: 10,
+        boundLotIds: [10, 11],
+        boundSinglesId: 501
+      },
+      {
+        id: "legacy",
+        boundLotId: 12,
+        boundLotIds: [12]
+      }
+    ]
+  });
+});
+
 test("shared sync contracts normalize lot DTOs with singles purchase rows", () => {
   assert.deepEqual(toSyncLotDtos([{
     id: "12",
@@ -174,4 +208,36 @@ test("shared sync contracts normalize game session DTOs", () => {
     wheelPendingInventoryIssues: [],
     wheelSkippedDeductions: []
   });
+});
+
+test("shared sync contracts preserve required multi-lot pending selections", () => {
+  assert.deepEqual(normalizeSyncGameSessionDto({
+    wheelPendingInventoryIssues: [{
+      slotName: "3 packs",
+      slotColor: "#f00",
+      slotCost: "12.5",
+      slotTier: "tier-1",
+      slotPacksCount: "3",
+      slotDeductionType: "packs",
+      slotIndex: "2",
+      selectedLotId: "",
+      spinNumber: "4",
+      candidateLotIds: ["10", "11", "bad", "10"],
+      requiresLotSelection: true,
+      unknown: "drop"
+    }]
+  }, 999).wheelPendingInventoryIssues, [{
+    slotName: "3 packs",
+    slotColor: "#f00",
+    slotCost: 12.5,
+    slotTier: "tier-1",
+    slotPacksCount: 3,
+    slotDeductionType: "packs",
+    slotIndex: 2,
+    selectedLotId: null,
+    spinNumber: 4,
+    slotSinglesId: null,
+    candidateLotIds: [10, 11],
+    requiresLotSelection: true
+  }]);
 });
