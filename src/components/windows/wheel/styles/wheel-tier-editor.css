@@ -20,6 +20,11 @@
   color: rgba(var(--v-theme-on-surface), 0.46);
 }
 
+.wheel-tier-source-menu,
+.wheel-tier-singles-menu {
+  z-index: 4200 !important;
+}
+
 .wheel-tier-inventory {
   padding: 2px 2px 0 20px;
   font-size: 0.68rem;

@@ -101,6 +101,13 @@ function configIdExists(configs: WheelConfig[], id: number | null): id is number
   return id != null && configs.some((config) => config.id === id);
 }
 
+function normalizeOptionalNumericId(value: unknown): number | null {
+  if (value == null || value === "") return null;
+  const id = Number(value);
+  if (!Number.isFinite(id)) return null;
+  return Math.floor(id);
+}
+
 function bindDefaultTierSources(context: Record<string, unknown>, config: WheelConfig): void {
   const currentLotId = (context.currentLotId as number | null) ?? null;
   for (const tier of config.tiers) {
@@ -550,11 +557,12 @@ export const wheelConfigMethods = {
     return lot?.lotType === "singles" && (lot.singlesPurchases?.length ?? 0) > 0;
   },
 
-  onTierLotChange(this: Record<string, unknown>, tier: WheelTier, lotId: number | null): void {
-    tier.boundLotId = lotId;
+  onTierLotChange(this: Record<string, unknown>, tier: WheelTier, lotId: unknown): void {
+    const normalizedLotId = normalizeOptionalNumericId(lotId);
+    tier.boundLotId = normalizedLotId;
     tier.boundSinglesId = null;
     tier.isChase = false;
-    if (lotId == null) {
+    if (normalizedLotId == null) {
       tier.deductionType = "packs";
       const costPerPack = (this as Record<string, unknown>).currentLotCostPerPack as number;
       if (costPerPack > 0) {
@@ -563,7 +571,7 @@ export const wheelConfigMethods = {
       return;
     }
     const lots = (this.lots || []) as Lot[];
-    const lot = lots.find((l) => l.id === lotId);
+    const lot = lots.find((l) => l.id === normalizedLotId);
     if (lot?.lotType === "singles") {
       tier.deductionType = "singles";
       tier.packsCount = 1;
@@ -578,19 +586,20 @@ export const wheelConfigMethods = {
     }
   },
 
-  onTierSinglesChange(this: Record<string, unknown>, tier: WheelTier, singlesId: number | null): void {
-    tier.boundSinglesId = singlesId;
+  onTierSinglesChange(this: Record<string, unknown>, tier: WheelTier, singlesId: unknown): void {
+    const normalizedSinglesId = normalizeOptionalNumericId(singlesId);
+    tier.boundSinglesId = normalizedSinglesId;
     if (tier.deductionType === "singles") {
       tier.packsCount = 1;
     }
-    if (singlesId == null) {
+    if (normalizedSinglesId == null) {
       tier.isChase = false;
       tier.costPerTier = 0;
     }
-    if (singlesId != null && tier.boundLotId != null) {
+    if (normalizedSinglesId != null && tier.boundLotId != null) {
       const lots = (this.lots || []) as Lot[];
       const lot = lots.find((l) => l.id === tier.boundLotId);
-      const entry = lot?.singlesPurchases?.find((e) => e.id === singlesId);
+      const entry = lot?.singlesPurchases?.find((e) => e.id === normalizedSinglesId);
       if (entry) {
         tier.costPerTier = entry.cost || entry.marketValue || 0;
         tier.label = entry.item;

@@ -10,6 +10,10 @@ const WHEEL_TIER_CARD_TEMPLATE = path.resolve(
   TESTS_DIR,
   "../src/components/windows/wheel/inspector/WheelTierCard.html"
 );
+const WHEEL_TIER_EDITOR_STYLES = path.resolve(
+  TESTS_DIR,
+  "../src/components/windows/wheel/styles/wheel-tier-editor.css"
+);
 
 test("finishTierEditor closes the editor and auto-applies when the wheel can apply", () => {
   const tier = { id: 1, label: "Original", color: "#fff", packsCount: 1, costPerTier: 1, chancePercent: 50 };
@@ -76,6 +80,26 @@ test("units deducted field recalculates on input instead of waiting for change",
 
   assert.match(template, /@input="onTierPacksChange\(editorTier\)"/);
   assert.doesNotMatch(template, /@change="onTierPacksChange\(editorTier\)"/);
+});
+
+test("tier source selectors use dialog-safe overlay menu props", () => {
+  const template = fs.readFileSync(WHEEL_TIER_CARD_TEMPLATE, "utf8");
+  const styles = fs.readFileSync(WHEEL_TIER_EDITOR_STYLES, "utf8");
+
+  assert.match(template, /contentClass: 'wheel-tier-source-menu'/);
+  assert.match(template, /contentClass: 'wheel-tier-singles-menu'/);
+  assert.match(styles, /\.wheel-tier-source-menu,[\s\S]*\.wheel-tier-singles-menu\s*\{[\s\S]*z-index: 4200 !important;/);
+});
+
+test("tier source lot select uses Vuetify default item rendering", () => {
+  const template = fs.readFileSync(WHEEL_TIER_CARD_TEMPLATE, "utf8");
+  const sourceSelectStart = template.indexOf(":items=\"tierSourceItems\"");
+  const singlesSelectStart = template.indexOf(":items=\"getSinglesItemsForTier(editorTier)\"");
+  const sourceSelectBlock = template.slice(sourceSelectStart, singlesSelectStart);
+
+  assert.ok(sourceSelectStart > 0);
+  assert.ok(singlesSelectStart > sourceSelectStart);
+  assert.doesNotMatch(sourceSelectBlock, /<template #item=/);
 });
 
 test("tier list uses the celebration emoji as the tier badge when selected", () => {

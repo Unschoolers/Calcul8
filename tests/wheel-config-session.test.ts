@@ -911,6 +911,36 @@ test("singles tiers lock count to one and untracked sale resets cost to zero", (
   assert.equal(tier.costPerTier, 0);
 });
 
+test("onTierLotChange accepts string values from the tier source selector", () => {
+  const vm: Record<string, unknown> = {
+    lots: [{
+      id: 77,
+      name: "Singles",
+      lotType: "singles",
+      singlesPurchases: [{ id: 7, item: "Hellish Blizzard", cost: 25, quantity: 1, marketValue: 30 }]
+    }],
+    getCostPerPackForTier: vi.fn(() => 5)
+  };
+  const tier: WheelConfig["tiers"][number] = {
+    id: "t1",
+    label: "Tier",
+    color: "#09f",
+    slots: 1,
+    costPerTier: 99,
+    packsCount: 3,
+    deductionType: "packs",
+    boundLotId: null,
+    boundSinglesId: null,
+    sets: []
+  };
+
+  WheelWindow.methods!.onTierLotChange.call(vm as never, tier as never, "77" as never);
+
+  assert.equal(tier.boundLotId, 77);
+  assert.equal(tier.deductionType, "singles");
+  assert.equal(tier.packsCount, 1);
+});
+
 test("confirmChaseReplacement preserves session cost via adjustment", () => {
   // Setup: chase tier "tc" costs $50, has 2 spins already counted
   // Replacement item costs $10 → adjustment should be 2 × (50 - 10) = 80

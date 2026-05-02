@@ -153,22 +153,9 @@
                 variant="outlined"
                 density="compact"
                 hide-details="auto"
+                :menu-props="{ contentClass: 'wheel-tier-source-menu', zIndex: 4200 }"
                 @update:model-value="onTierLotChange(editorTier, $event)"
-              >
-                <template #item="{ props, item }">
-                  <div>
-                    <div v-if="item.raw.groupLabel" class="lot-selector-group-label">
-                      <v-icon size="14" class="mr-1">
-                        {{ item.raw.lotType === 'singles' ? 'mdi-cards-outline' : 'mdi-cube-outline' }}
-                      </v-icon>
-                      {{ item.raw.groupLabel }}
-                    </div>
-                    <v-list-item v-bind="props" :title="null" :subtitle="null">
-                      <v-list-item-title class="text-body-2">{{ item.raw.title }}</v-list-item-title>
-                    </v-list-item>
-                  </div>
-                </template>
-              </v-select>
+              ></v-select>
             </div>
 
             <div v-if="isBoundLotSingles(editorTier)" class="wheel-tier-source-field">
@@ -182,6 +169,7 @@
                 variant="outlined"
                 density="compact"
                 hide-details="auto"
+                :menu-props="{ contentClass: 'wheel-tier-singles-menu', zIndex: 4200 }"
                 @update:model-value="onTierSinglesChange(editorTier, $event)"
               >
                 <template #item="{ props, item }">
