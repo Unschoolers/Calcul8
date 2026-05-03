@@ -4,7 +4,7 @@ import { afterEach, beforeEach, test, vi } from "vitest";
 import {
   queueWorkspaceConfigSyncPush,
   stopWorkspaceConfigSyncPush
-} from "../src/app-core/methods/ui/workspace-config-sync.ts";
+} from "../src/app-core/methods/ui/workspace/workspace-config-sync.ts";
 
 function createApp(overrides: Record<string, unknown> = {}) {
   return {

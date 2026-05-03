@@ -11,7 +11,7 @@ const {
   buildWheelSpectatorSnapshotMock: vi.fn()
 }));
 
-vi.mock("../src/app-core/methods/ui/wheel-spectator.ts", () => ({
+vi.mock("../src/app-core/methods/ui/spectator/wheel-spectator.ts", () => ({
   createWheelSpectatorSession: createWheelSpectatorSessionMock,
   fetchWheelSpectatorCount: vi.fn(),
   publishWheelSpectatorSession: publishWheelSpectatorSessionMock

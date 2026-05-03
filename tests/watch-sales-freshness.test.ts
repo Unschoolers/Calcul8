@@ -11,7 +11,7 @@ const {
   refreshPersonalLotSalesIfStaleMock: vi.fn(async () => false)
 }));
 
-vi.mock("../src/app-core/methods/ui/workspace-realtime.ts", () => ({
+vi.mock("../src/app-core/methods/ui/workspace/workspace-realtime.ts", () => ({
   refreshWorkspaceRealtime: refreshWorkspaceRealtimeMock,
   stopWorkspaceRealtime: stopWorkspaceRealtimeMock
 }));

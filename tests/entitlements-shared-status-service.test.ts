@@ -12,20 +12,20 @@ vi.mock("../src/app-core/utils/playBilling.ts", () => ({
 import {
   ENTITLEMENT_CACHE_KEY,
   PRO_ACCESS_KEY
-} from "../src/app-core/methods/ui/shared.ts";
+} from "../src/app-core/methods/ui/common/shared.ts";
 import {
   applyTargetProfitAccessDefaults,
   cacheGoogleProfileFromToken,
   formatPlayPurchaseError,
   hasPlayPurchaseSupport,
   isAlreadyOwnedPurchaseError
-} from "../src/app-core/methods/ui/entitlements-shared.ts";
+} from "../src/app-core/methods/ui/entitlements/entitlements-shared.ts";
 import {
   applyCachedEntitlement,
   applyFetchedEntitlement,
   parseEntitlementPayload,
   shouldUseCachedEntitlement
-} from "../src/app-core/methods/ui/entitlements-status-service.ts";
+} from "../src/app-core/methods/ui/entitlements/entitlements-status-service.ts";
 
 type MockStorage = {
   getItem(key: string): string | null;

@@ -87,3 +87,12 @@ export type WheelSpectatorSlot = WheelPublicSessionSlot;
 export type WheelSpectatorGridCell = WheelPublicSessionGridCell;
 export type WheelSpectatorSpinAnimation = WheelPublicSessionSpinAnimation;
 export type WheelSpectatorSnapshot = WheelPublicSessionSnapshot;
+
+export declare const CURRENT_WHEEL_PUBLIC_SESSION_SNAPSHOT_VERSION: WheelPublicSessionSnapshotVersion;
+
+export declare function normalizeWheelPublicSessionSnapshot(
+  value: unknown,
+  fallbackUpdatedAt?: number
+): WheelPublicSessionSnapshot | null;
+
+export declare const normalizeWheelSpectatorSnapshot: typeof normalizeWheelPublicSessionSnapshot;

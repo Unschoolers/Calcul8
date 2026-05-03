@@ -1,4 +1,4 @@
-import { resolveApiBaseUrl } from "../../../app-core/methods/ui/shared.ts";
+import { resolveApiBaseUrl } from "../../../app-core/methods/ui/common/shared.ts";
 import { normalizeSinglesCatalogSource } from "../../../app-core/shared/singles-catalog-source.ts";
 import type { SinglesCatalogSource, SinglesPurchaseEntry } from "../../../types/app.ts";
 import {

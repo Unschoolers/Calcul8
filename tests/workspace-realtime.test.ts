@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test, vi } from "vitest";
-import { createSyncPayload, getSyncPayloadSignature } from "../src/app-core/methods/ui/sync-payload.ts";
+import { createSyncPayload, getSyncPayloadSignature } from "../src/app-core/methods/ui/sync/sync-payload.ts";
 
 const {
   canUseAuthoritativeSalesLiveApiMock,
@@ -30,14 +30,14 @@ vi.mock("../src/app-core/methods/sales-live-api.ts", () => ({
   normalizeLivePricing: normalizeLivePricingMock
 }));
 
-vi.mock("../src/app-core/methods/ui/lot-entity-polling.ts", () => ({
+vi.mock("../src/app-core/methods/ui/sync/lot-entity-polling.ts", () => ({
   reconcileIncomingLivePricingSnapshot: reconcileIncomingLivePricingSnapshotMock
 }));
 
 import {
   refreshWorkspaceRealtime,
   stopWorkspaceRealtime
-} from "../src/app-core/methods/ui/workspace-realtime.ts";
+} from "../src/app-core/methods/ui/workspace/workspace-realtime.ts";
 
 class FakeWebSocket {
   static CONNECTING = 0;

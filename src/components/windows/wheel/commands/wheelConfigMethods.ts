@@ -1,9 +1,9 @@
 import { nextTick } from "vue";
-import { broadcastWheelSession } from "../../../../app-core/methods/ui/wheel-broadcast.ts";
+import { broadcastWheelSession } from "../../../../app-core/methods/ui/spectator/wheel-broadcast.ts";
 import {
     queueCloudConfigSyncPush,
     stopWorkspaceConfigSyncPush
-} from "../../../../app-core/methods/ui/workspace-config-sync.ts";
+} from "../../../../app-core/methods/ui/workspace/workspace-config-sync.ts";
 import { normalizeWheelConfig } from "../../../../app-core/shared/normalize-wheel-config.ts";
 import { assignWheelPendingInventoryIssues } from "../../../../app-core/shared/wheel-session-compat.ts";
 import {

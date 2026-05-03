@@ -15,8 +15,8 @@ const {
   resolveApiBaseUrlMock: vi.fn()
 }));
 
-vi.mock("../src/app-core/methods/ui/shared.ts", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../src/app-core/methods/ui/shared.ts")>();
+vi.mock("../src/app-core/methods/ui/common/shared.ts", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../src/app-core/methods/ui/common/shared.ts")>();
   return {
     ...actual,
     fetchWithRetry: fetchWithRetryMock,
@@ -33,7 +33,7 @@ import {
     parseEntitlementPayload,
     shouldUseCachedEntitlement,
     syncEntitlementStatus
-} from "../src/app-core/methods/ui/entitlements-status-service.ts";
+} from "../src/app-core/methods/ui/entitlements/entitlements-status-service.ts";
 
 type MockStorage = {
   getItem(key: string): string | null;

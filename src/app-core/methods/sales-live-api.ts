@@ -1,7 +1,7 @@
 import type { LotSalesSyncMeta, Sale } from "../../types/app.ts";
 import type { AppContext } from "../context-app.ts";
 import { hasAuthSignal } from "../auth/index.ts";
-import { fetchAuthenticatedApiResponse, resolveApiBaseUrl } from "./ui/shared.ts";
+import { fetchAuthenticatedApiResponse, resolveApiBaseUrl } from "./ui/common/shared.ts";
 import { getActiveWorkspaceId, resolveWorkspaceScopeContext } from "../workspace-scope.ts";
 import { persistSalesCacheToStorage } from "../shared/sales-cache-storage.ts";
 import { replaceRootLotSales } from "../shared/sales-root-state.ts";
@@ -9,7 +9,7 @@ import { parseApiErrorMessage } from "../shared/api-error-message.ts";
 import {
   normalizeSyncLivePricingDto,
   normalizeSyncSaleDto
-} from "./ui/sync-contracts.ts";
+} from "./ui/sync/sync-contracts.ts";
 
 export class SalesLiveApiError extends Error {
   status: number;

@@ -4,7 +4,7 @@ import {
   ENTITLEMENT_CACHE_KEY,
   PRO_ACCESS_KEY,
   submitPlayPurchaseVerification
-} from "../src/app-core/methods/ui/shared.ts";
+} from "../src/app-core/methods/ui/common/shared.ts";
 
 type MockStorage = {
   getItem(key: string): string | null;

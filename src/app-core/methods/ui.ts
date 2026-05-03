@@ -1,11 +1,11 @@
 import type { AppContext, AppMethodState } from "../context-app.ts";
-import { uiAccountMethods } from "./ui/account.ts";
-import { uiBaseMethods } from "./ui/base.ts";
-import { uiEntitlementMethods } from "./ui/entitlements.ts";
-import { uiOnboardingMethods } from "./ui/onboarding.ts";
-import { uiSyncMethods } from "./ui/sync.ts";
-import { uiWhatnotMethods } from "./ui/whatnot.ts";
-import { uiWorkspaceMethods } from "./ui/workspaces.ts";
+import { uiAccountMethods } from "./ui/auth/account.ts";
+import { uiBaseMethods } from "./ui/common/base.ts";
+import { uiEntitlementMethods } from "./ui/entitlements/entitlements.ts";
+import { uiOnboardingMethods } from "./ui/common/onboarding.ts";
+import { uiSyncMethods } from "./ui/sync/sync.ts";
+import { uiWhatnotMethods } from "./ui/whatnot/whatnot.ts";
+import { uiWorkspaceMethods } from "./ui/workspace/workspaces.ts";
 
 export const uiMethods: ThisType<AppContext> & Pick<
   AppMethodState,

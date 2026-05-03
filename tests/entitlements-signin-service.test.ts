@@ -19,8 +19,8 @@ const {
   requestGoogleIdentityPromptMock: vi.fn()
 }));
 
-vi.mock("../src/app-core/methods/ui/shared.ts", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../src/app-core/methods/ui/shared.ts")>();
+vi.mock("../src/app-core/methods/ui/common/shared.ts", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../src/app-core/methods/ui/common/shared.ts")>();
   return {
     ...actual,
     GOOGLE_INIT_RETRY_COUNT: 20,
@@ -30,8 +30,8 @@ vi.mock("../src/app-core/methods/ui/shared.ts", async (importOriginal) => {
   };
 });
 
-vi.mock("../src/app-core/methods/ui/entitlements-shared.ts", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../src/app-core/methods/ui/entitlements-shared.ts")>();
+vi.mock("../src/app-core/methods/ui/entitlements/entitlements-shared.ts", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../src/app-core/methods/ui/entitlements/entitlements-shared.ts")>();
   return {
     ...actual,
     applyTargetProfitAccessDefaults: applyTargetProfitAccessDefaultsMock,
@@ -46,7 +46,7 @@ import {
     openVerifyPurchaseModalFlow,
     promptGoogleSignInFlow,
     renderGoogleSignInButtonFlow
-} from "../src/app-core/methods/ui/entitlements-signin-service.ts";
+} from "../src/app-core/methods/ui/entitlements/entitlements-signin-service.ts";
 
 type MockStorage = {
   getItem(key: string): string | null;

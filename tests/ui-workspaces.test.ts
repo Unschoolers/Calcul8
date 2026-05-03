@@ -15,7 +15,7 @@ const {
   createSyncPayloadMock: vi.fn()
 }));
 
-vi.mock("../src/app-core/methods/ui/shared.ts", () => ({
+vi.mock("../src/app-core/methods/ui/common/shared.ts", () => ({
   fetchWithRetry: fetchWithRetryMock,
   fetchAuthenticatedApiResponse: vi.fn((app: unknown, path: string, init: RequestInit) =>
     fetchWithRetryMock(`https://api.example.test${path}`, init)
@@ -24,15 +24,15 @@ vi.mock("../src/app-core/methods/ui/shared.ts", () => ({
   resolveApiBaseUrl: resolveApiBaseUrlMock
 }));
 
-vi.mock("../src/app-core/methods/ui/sync-service.ts", () => ({
+vi.mock("../src/app-core/methods/ui/sync/sync-service.ts", () => ({
   runCloudSyncPush: runCloudSyncPushMock
 }));
 
-vi.mock("../src/app-core/methods/ui/sync-payload.ts", () => ({
+vi.mock("../src/app-core/methods/ui/sync/sync-payload.ts", () => ({
   createSyncPayload: createSyncPayloadMock
 }));
 
-import { uiWorkspaceMethods } from "../src/app-core/methods/ui/workspaces.ts";
+import { uiWorkspaceMethods } from "../src/app-core/methods/ui/workspace/workspaces.ts";
 
 type MockStorage = {
   getItem(key: string): string | null;

@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { shouldApplySpectatorReadyState } from "../src/app-core/methods/ui/wheel-spectator-client-state.ts";
+import { shouldApplySpectatorReadyState } from "../src/app-core/methods/ui/spectator/wheel-spectator-client-state.ts";
 import {
   CURRENT_WHEEL_PUBLIC_SESSION_SNAPSHOT_VERSION,
   normalizeWheelSpectatorSnapshot
-} from "../src/app-core/methods/ui/wheel-spectator-contract.ts";
+} from "../src/app-core/methods/ui/spectator/wheel-spectator-contract.ts";
 
 test("shouldApplySpectatorReadyState rejects stale ready snapshots", () => {
   const currentState = {

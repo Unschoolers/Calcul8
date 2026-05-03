@@ -72,6 +72,7 @@ import {
     wheelPublicSessionRealtimeTokenGet,
     wheelPublicSessionSpectatorCountGet
 } from "./wheelPublicSession";
+import { normalizeWheelPublicSessionSnapshot } from "../shared/wheel-public-session-contracts.cjs";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -358,6 +359,28 @@ test("wheelPublicSessionPublish returns 404 when the session is missing or not o
 });
 
 test("wheelPublicSessionPublish upgrades old wheel-only snapshots at the API boundary", async () => {
+  const rawSnapshot = {
+    wheelName: "Old Wheel",
+    sessionStatus: "live",
+    totalSpins: "4",
+    lastResultLabel: "Prize",
+    lastResultColor: "#f00",
+    wheelCurrentAngle: "2.5",
+    wheelSlots: [{
+      name: "Prize",
+      color: "#f00",
+      tier: "tier-1",
+      isChase: false
+    }],
+    recentFairnessHistory: [],
+    chaseHistory: [],
+    chaseBoard: [],
+    featuredChaseLabel: null,
+    featuredChaseHeat: null,
+    fairnessVerificationUrl: null,
+    updatedAt: 456
+  };
+
   await wheelPublicSessionPublish(createHttpRequest({
     method: "POST",
     headers: {
@@ -365,27 +388,7 @@ test("wheelPublicSessionPublish upgrades old wheel-only snapshots at the API bou
     },
     body: {
       publicSessionId: "abc123xy",
-      snapshot: {
-        wheelName: "Old Wheel",
-        sessionStatus: "live",
-        totalSpins: "4",
-        lastResultLabel: "Prize",
-        lastResultColor: "#f00",
-        wheelCurrentAngle: "2.5",
-        wheelSlots: [{
-          name: "Prize",
-          color: "#f00",
-          tier: "tier-1",
-          isChase: false
-        }],
-        recentFairnessHistory: [],
-        chaseHistory: [],
-        chaseBoard: [],
-        featuredChaseLabel: null,
-        featuredChaseHeat: null,
-        fairnessVerificationUrl: null,
-        updatedAt: 456
-      }
+      snapshot: rawSnapshot
     }
   }) as never, createInvocationContext() as never);
 
@@ -400,12 +403,41 @@ test("wheelPublicSessionPublish upgrades old wheel-only snapshots at the API bou
     };
   };
 
-  assert.equal(repoInput.snapshot.snapshotVersion, 1);
-  assert.equal(repoInput.snapshot.gameType, "wheel");
-  assert.deepEqual(repoInput.snapshot.gridCells, []);
-  assert.equal(repoInput.snapshot.gridHighlightCellIndex, -1);
-  assert.equal(repoInput.snapshot.gridResetAnimating, false);
-  assert.equal(repoInput.snapshot.totalSpins, 4);
+  assert.deepEqual(repoInput.snapshot, normalizeWheelPublicSessionSnapshot(rawSnapshot));
+});
+
+test("wheelPublicSessionPublish normalizes malformed public payloads like the shared spectator contract", async () => {
+  const rawSnapshot = {
+    gameType: "banana",
+    gridCells: [{ index: -1 }, { index: "2", revealed: true }],
+    spinAnimation: {
+      spinId: "spin-1",
+      startedAt: "2000",
+      durationMs: "45000",
+      startAngle: "0.25",
+      endAngle: "18.5",
+      targetIndex: "3"
+    },
+    featuredChaseHeat: "burning",
+    updatedAt: "999"
+  };
+
+  await wheelPublicSessionPublish(createHttpRequest({
+    method: "POST",
+    headers: {
+      authorization: "Bearer user-a"
+    },
+    body: {
+      publicSessionId: "abc123xy",
+      snapshot: rawSnapshot
+    }
+  }) as never, createInvocationContext() as never);
+
+  const repoInput = updateWheelPublicSessionMock.mock.calls.at(-1)?.[1] as {
+    snapshot: unknown;
+  };
+
+  assert.deepEqual(repoInput.snapshot, normalizeWheelPublicSessionSnapshot(rawSnapshot));
 });
 
 test("wheelPublicSessionPublish fans out the sanitized snapshot over realtime after save", async () => {
@@ -473,6 +505,42 @@ test("wheelPublicSessionGet serves the stored public snapshot and reports 404 wh
 
   assert.equal(missingResponse.status, 404);
   assert.equal((missingResponse.jsonBody as { error: string }).error, "Public wheel session was not found.");
+});
+
+test("wheelPublicSessionGet normalizes stored legacy snapshots before returning them", async () => {
+  const legacySnapshot = {
+    wheelName: "Stored Wheel",
+    sessionStatus: "live",
+    totalSpins: "6",
+    lastResultLabel: "Prize",
+    lastResultColor: "#f00",
+    wheelCurrentAngle: "3.5",
+    wheelSlots: [{
+      name: "Prize",
+      color: "#f00",
+      tier: "tier-1",
+      isChase: false
+    }],
+    updatedAt: 777
+  };
+  getWheelPublicSessionMock.mockResolvedValueOnce({
+    ownerUserId: "user-a",
+    publicSessionId: "abc123xy",
+    snapshot: legacySnapshot
+  });
+
+  const response = await wheelPublicSessionGet(createHttpRequest({
+    method: "GET",
+    params: {
+      publicSessionId: "AbC123xY"
+    }
+  }) as never, createInvocationContext() as never);
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(
+    (response.jsonBody as { snapshot: unknown }).snapshot,
+    normalizeWheelPublicSessionSnapshot(legacySnapshot)
+  );
 });
 
 test("wheelPublicSessionRealtimeTokenGet returns a room-scoped public subscribe token", async () => {

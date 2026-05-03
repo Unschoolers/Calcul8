@@ -4,7 +4,7 @@ import {
     getStoredCsrfToken,
     setStoredCsrfToken
 } from "../src/app-core/auth/index.ts";
-import { fetchWithRetry } from "../src/app-core/methods/ui/shared.ts";
+import { fetchWithRetry } from "../src/app-core/methods/ui/common/shared.ts";
 import { STORAGE_KEYS } from "../src/app-core/storageKeys.ts";
 
 type MockStorage = {

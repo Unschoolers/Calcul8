@@ -6,7 +6,7 @@ import {
   handleExpiredAuth,
   readEntitlementCache,
   resolveApiBaseUrl
-} from "./ui/shared.ts";
+} from "./ui/common/shared.ts";
 import { buildAuthenticatedHeaders } from "../auth/index.ts";
 import { getScopedSyncClientVersionKey } from "../storageKeys.ts";
 import { getActiveStorageScope } from "../workspace-scope.ts";

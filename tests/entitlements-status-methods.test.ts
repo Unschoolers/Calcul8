@@ -7,11 +7,11 @@ const {
   syncEntitlementStatusMock: vi.fn()
 }));
 
-vi.mock("../src/app-core/methods/ui/entitlements-status-service.ts", () => ({
+vi.mock("../src/app-core/methods/ui/entitlements/entitlements-status-service.ts", () => ({
   syncEntitlementStatus: syncEntitlementStatusMock
 }));
 
-import { uiEntitlementStatusMethods } from "../src/app-core/methods/ui/entitlements-status.ts";
+import { uiEntitlementStatusMethods } from "../src/app-core/methods/ui/entitlements/entitlements-status.ts";
 
 beforeEach(() => {
   vi.clearAllMocks();

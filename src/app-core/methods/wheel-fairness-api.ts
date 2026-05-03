@@ -1,5 +1,5 @@
 import { getApiErrorMessage } from "../shared/api-error-message.ts";
-import { fetchWithRetry, resolveApiBaseUrl } from "./ui/shared.ts";
+import { fetchWithRetry, resolveApiBaseUrl } from "./ui/common/shared.ts";
 
 export class WheelFairnessApiError extends Error {
   status: number;

@@ -15,7 +15,7 @@ vi.mock("../src/app-core/auth/index.ts", () => ({
   hasAuthSignal: hasAuthSignalMock
 }));
 
-vi.mock("../src/app-core/methods/ui/shared.ts", () => ({
+vi.mock("../src/app-core/methods/ui/common/shared.ts", () => ({
   fetchAuthenticatedApiResponse: fetchAuthenticatedApiResponseMock,
   resolveApiBaseUrl: resolveApiBaseUrlMock
 }));
@@ -28,7 +28,7 @@ import {
   normalizeWorkspaceMember,
   normalizeWorkspaceMembers,
   upsertWorkspaceMembersState
-} from "../src/app-core/methods/ui/workspace-members.ts";
+} from "../src/app-core/methods/ui/workspace/workspace-members.ts";
 
 function createApp(overrides: Record<string, unknown> = {}) {
   return {

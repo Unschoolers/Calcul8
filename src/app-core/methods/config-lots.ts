@@ -17,8 +17,8 @@ import {
   fetchAuthoritativeLivePricing,
   fetchAuthoritativeSales
 } from "./sales-live-api.ts";
-import { markLivePricingPollingBaseline } from "./ui/lot-entity-polling.ts";
-import { queueWorkspaceConfigSyncPush } from "./ui/workspace-config-sync.ts";
+import { markLivePricingPollingBaseline } from "./ui/sync/lot-entity-polling.ts";
+import { queueWorkspaceConfigSyncPush } from "./ui/workspace/workspace-config-sync.ts";
 import {
   normalizeSinglesPurchaseEntries,
   resetSinglesCsvImportState,

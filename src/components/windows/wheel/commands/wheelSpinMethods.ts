@@ -1,4 +1,4 @@
-import { broadcastWheelSession } from "../../../../app-core/methods/ui/wheel-broadcast.ts";
+import { broadcastWheelSession } from "../../../../app-core/methods/ui/spectator/wheel-broadcast.ts";
 import { createWheelFairnessProofLink } from "../../../../app-core/methods/wheel-fairness-api.ts";
 import { getWheelTierSourceLotIds, isWheelTierMultiLot } from "../../../../app-core/shared/wheel-tier-sources.ts";
 import {

@@ -11,7 +11,7 @@ const {
   handleExpiredAuthMock: vi.fn()
 }));
 
-vi.mock("../src/app-core/methods/ui/shared.ts", () => ({
+vi.mock("../src/app-core/methods/ui/common/shared.ts", () => ({
   resolveApiBaseUrl: resolveApiBaseUrlMock,
   fetchWithRetry: fetchWithRetryMock,
   handleExpiredAuth: handleExpiredAuthMock
@@ -21,7 +21,7 @@ import {
     handleStripeCheckoutReturn,
     runStripePurchaseFlow,
     runStripeVerificationFlow
-} from "../src/app-core/methods/ui/entitlements-stripe.ts";
+} from "../src/app-core/methods/ui/entitlements/entitlements-stripe.ts";
 
 type MockStorage = {
   getItem(key: string): string | null;

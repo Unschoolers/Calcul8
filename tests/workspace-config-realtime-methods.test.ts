@@ -5,7 +5,7 @@ const { queueWorkspaceConfigSyncPushMock } = vi.hoisted(() => ({
   queueWorkspaceConfigSyncPushMock: vi.fn()
 }));
 
-vi.mock("../src/app-core/methods/ui/workspace-config-sync.ts", () => ({
+vi.mock("../src/app-core/methods/ui/workspace/workspace-config-sync.ts", () => ({
   queueWorkspaceConfigSyncPush: queueWorkspaceConfigSyncPushMock
 }));
 

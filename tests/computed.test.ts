@@ -1,9 +1,9 @@
-﻿import assert from "node:assert/strict";
+import assert from "node:assert/strict";
 import { test, vi } from "vitest";
 import { setStoredGoogleIdToken } from "../src/app-core/auth/index.ts";
 import { appComputed } from "../src/app-core/computed.ts";
 import { buildPortfolioSalesByUserChartData } from "../src/app-core/computed/portfolio-sales-by-user.ts";
-import { GOOGLE_PROFILE_CACHE_KEY } from "../src/app-core/methods/ui/shared.ts";
+import { GOOGLE_PROFILE_CACHE_KEY } from "../src/app-core/methods/ui/common/shared.ts";
 import { calculateTotalRevenue } from "../src/domain/calculations.ts";
 
 type MockStorage = {

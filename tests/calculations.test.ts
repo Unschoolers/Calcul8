@@ -4,7 +4,7 @@ import { appComputed } from "../src/app-core/computed.ts";
 import { appLifecycle } from "../src/app-core/lifecycle.ts";
 import { configMethods } from "../src/app-core/methods/config.ts";
 import { salesMethods } from "../src/app-core/methods/sales.ts";
-import { uiBaseMethods } from "../src/app-core/methods/ui/base.ts";
+import { uiBaseMethods } from "../src/app-core/methods/ui/common/base.ts";
 import { getLegacySalesStorageKey, STORAGE_KEYS } from "../src/app-core/storageKeys.ts";
 import { appWatch } from "../src/app-core/watch.ts";
 import {

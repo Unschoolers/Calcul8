@@ -11,7 +11,7 @@ const {
   resolveApiBaseUrlMock: vi.fn()
 }));
 
-vi.mock("../src/app-core/methods/ui/shared.ts", () => ({
+vi.mock("../src/app-core/methods/ui/common/shared.ts", () => ({
   CLOUD_SYNC_INTERVAL_MS: 2500,
   SYNC_CLIENT_VERSION_KEY: "whatfees_sync_client_version",
   SYNC_STATUS_RESET_MS: 1000,
@@ -20,7 +20,7 @@ vi.mock("../src/app-core/methods/ui/shared.ts", () => ({
   resolveApiBaseUrl: resolveApiBaseUrlMock
 }));
 
-import { uiSyncMethods } from "../src/app-core/methods/ui/sync.ts";
+import { uiSyncMethods } from "../src/app-core/methods/ui/sync/sync.ts";
 
 type MockStorage = {
   getItem(key: string): string | null;

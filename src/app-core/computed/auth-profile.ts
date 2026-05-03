@@ -1,4 +1,4 @@
-import { GOOGLE_PROFILE_CACHE_KEY } from "../methods/ui/shared.ts";
+import { GOOGLE_PROFILE_CACHE_KEY } from "../methods/ui/common/shared.ts";
 import type { AppComputedObject } from "../context-contracts.ts";
 import {
   getStoredGoogleIdToken,

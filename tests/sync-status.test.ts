@@ -4,7 +4,7 @@ import {
   setSyncStatusError,
   setSyncStatusSuccess,
   startSyncStatus
-} from "../src/app-core/methods/ui/sync-status.ts";
+} from "../src/app-core/methods/ui/sync/sync-status.ts";
 
 function createContext(overrides: Record<string, unknown> = {}) {
   return {

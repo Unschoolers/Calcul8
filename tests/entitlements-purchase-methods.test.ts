@@ -31,7 +31,7 @@ const {
   formatPlayPurchaseErrorMock: vi.fn(() => "purchase error")
 }));
 
-vi.mock("../src/app-core/methods/ui/shared.ts", () => ({
+vi.mock("../src/app-core/methods/ui/common/shared.ts", () => ({
   resolvePurchaseProvider: resolvePurchaseProviderMock,
   getSupportedPurchaseProviders: getSupportedPurchaseProvidersMock,
   resolveApiBaseUrl: resolveApiBaseUrlMock,
@@ -40,7 +40,7 @@ vi.mock("../src/app-core/methods/ui/shared.ts", () => ({
   submitPlayPurchaseVerification: submitPlayPurchaseVerificationMock
 }));
 
-vi.mock("../src/app-core/methods/ui/entitlements-shared.ts", () => ({
+vi.mock("../src/app-core/methods/ui/entitlements/entitlements-shared.ts", () => ({
   hasPlayPurchaseSupport: hasPlayPurchaseSupportMock,
   isAlreadyOwnedPurchaseError: isAlreadyOwnedPurchaseErrorMock,
   formatPlayPurchaseError: formatPlayPurchaseErrorMock
@@ -53,7 +53,7 @@ vi.mock("../src/app-core/utils/playBilling.ts", () => ({
   extractPurchaseTokenFromResult: extractPurchaseTokenFromResultMock
 }));
 
-import { uiEntitlementPurchaseMethods } from "../src/app-core/methods/ui/entitlements-purchase.ts";
+import { uiEntitlementPurchaseMethods } from "../src/app-core/methods/ui/entitlements/entitlements-purchase.ts";
 
 type MockStorage = {
   getItem(key: string): string | null;

@@ -11,8 +11,8 @@ const {
   resolveApiBaseUrlMock: vi.fn()
 }));
 
-vi.mock("../src/app-core/methods/ui/shared.ts", async () => {
-  const actual = await vi.importActual("../src/app-core/methods/ui/shared.ts") as object;
+vi.mock("../src/app-core/methods/ui/common/shared.ts", async () => {
+  const actual = await vi.importActual("../src/app-core/methods/ui/common/shared.ts") as object;
   return {
     ...actual,
     fetchWithRetry: fetchWithRetryMock,
@@ -21,7 +21,7 @@ vi.mock("../src/app-core/methods/ui/shared.ts", async () => {
   };
 });
 
-import { uiAccountMethods } from "../src/app-core/methods/ui/account.ts";
+import { uiAccountMethods } from "../src/app-core/methods/ui/auth/account.ts";
 
 type MockStorage = {
   getItem(key: string): string | null;

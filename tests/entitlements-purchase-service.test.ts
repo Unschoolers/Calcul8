@@ -11,8 +11,8 @@ const {
   hasPlayPurchaseSupportMock: vi.fn()
 }));
 
-vi.mock("../src/app-core/methods/ui/shared.ts", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../src/app-core/methods/ui/shared.ts")>();
+vi.mock("../src/app-core/methods/ui/common/shared.ts", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../src/app-core/methods/ui/common/shared.ts")>();
   return {
     ...actual,
     resolvePurchaseProvider: resolvePurchaseProviderMock,
@@ -20,8 +20,8 @@ vi.mock("../src/app-core/methods/ui/shared.ts", async (importOriginal) => {
   };
 });
 
-vi.mock("../src/app-core/methods/ui/entitlements-shared.ts", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../src/app-core/methods/ui/entitlements-shared.ts")>();
+vi.mock("../src/app-core/methods/ui/entitlements/entitlements-shared.ts", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../src/app-core/methods/ui/entitlements/entitlements-shared.ts")>();
   return {
     ...actual,
     hasPlayPurchaseSupport: hasPlayPurchaseSupportMock
@@ -33,7 +33,7 @@ import {
   startProPurchaseFlow,
   verifyPlayPurchaseFlow,
   verifyProPurchaseFlow
-} from "../src/app-core/methods/ui/entitlements-purchase-service.ts";
+} from "../src/app-core/methods/ui/entitlements/entitlements-purchase-service.ts";
 
 function createApp(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {

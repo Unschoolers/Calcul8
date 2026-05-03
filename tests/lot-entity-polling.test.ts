@@ -9,7 +9,7 @@ import {
   refreshLotEntityPolling,
   startLotEntityPolling,
   stopLotEntityPolling
-} from "../src/app-core/methods/ui/lot-entity-polling.ts";
+} from "../src/app-core/methods/ui/sync/lot-entity-polling.ts";
 
 function createContext(overrides: Record<string, unknown> = {}) {
   return {

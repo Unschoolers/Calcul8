@@ -17,7 +17,7 @@ vi.mock("../src/app-core/auth/index.ts", () => ({
   hasAuthSignal: hasAuthSignalMock
 }));
 
-vi.mock("../src/app-core/methods/ui/shared.ts", () => ({
+vi.mock("../src/app-core/methods/ui/common/shared.ts", () => ({
   fetchAuthenticatedApiResponse: fetchAuthenticatedApiResponseMock,
   handleExpiredAuth: handleExpiredAuthMock,
   resolveApiBaseUrl: resolveApiBaseUrlMock

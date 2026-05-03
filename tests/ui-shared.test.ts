@@ -8,7 +8,7 @@ import {
     fetchAuthenticatedApiResponse,
     fetchWithRetry,
     resolveApiBaseUrl
-} from "../src/app-core/methods/ui/api-client.ts";
+} from "../src/app-core/methods/ui/common/api-client.ts";
 import {
     ENTITLEMENT_CACHE_KEY,
     GOOGLE_PROFILE_CACHE_KEY,
@@ -18,11 +18,11 @@ import {
     handleExpiredAuth,
     readEntitlementCache,
     writeEntitlementCache
-} from "../src/app-core/methods/ui/entitlement-cache.ts";
+} from "../src/app-core/methods/ui/entitlements/entitlement-cache.ts";
 import {
     resolvePurchaseProvider,
     submitPlayPurchaseVerification
-} from "../src/app-core/methods/ui/purchase-verification.ts";
+} from "../src/app-core/methods/ui/entitlements/purchase-verification.ts";
 import { STORAGE_KEYS } from "../src/app-core/storageKeys.ts";
 
 type MockStorage = {

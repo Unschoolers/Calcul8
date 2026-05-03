@@ -3,9 +3,9 @@ import type { AppContext } from "./context-app.ts";
 import type { AppLifecycleObject } from "./context-contracts.ts";
 import { primeStoredAuthSecretsFromStorage } from "./auth/index.ts";
 import { isDevNoLoginRoute } from "./dev-nologin.ts";
-import { closeStripeEmbeddedCheckout, handleStripeCheckoutReturn } from "./methods/ui/entitlements-stripe.ts";
-import { stopWorkspaceConfigSyncPush } from "./methods/ui/workspace-config-sync.ts";
-import { refreshWorkspaceRealtime, stopWorkspaceRealtime } from "./methods/ui/workspace-realtime.ts";
+import { closeStripeEmbeddedCheckout, handleStripeCheckoutReturn } from "./methods/ui/entitlements/entitlements-stripe.ts";
+import { stopWorkspaceConfigSyncPush } from "./methods/ui/workspace/workspace-config-sync.ts";
+import { refreshWorkspaceRealtime, stopWorkspaceRealtime } from "./methods/ui/workspace/workspace-realtime.ts";
 import { refreshPersonalLotSalesIfStale } from "./methods/sales-freshness.ts";
 import {
     getLegacyStorageKeys,

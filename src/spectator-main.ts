@@ -1,12 +1,12 @@
-import { resolveApiBaseUrl } from "./app-core/methods/ui/shared.ts";
-import { shouldApplySpectatorReadyState } from "./app-core/methods/ui/wheel-spectator-client-state.ts";
-import { normalizeWheelSpectatorSnapshot } from "./app-core/methods/ui/wheel-spectator-contract.ts";
+import { resolveApiBaseUrl } from "./app-core/methods/ui/common/shared.ts";
+import { shouldApplySpectatorReadyState } from "./app-core/methods/ui/spectator/wheel-spectator-client-state.ts";
+import { normalizeWheelSpectatorSnapshot } from "./app-core/methods/ui/spectator/wheel-spectator-contract.ts";
 import {
   fetchWheelSpectatorRealtimeSubscribeToken,
   fetchWheelSpectatorSnapshot
-} from "./app-core/methods/ui/wheel-spectator.ts";
+} from "./app-core/methods/ui/spectator/wheel-spectator.ts";
 import { easeOutQuart } from "./app-core/shared/game-spin.ts";
-import { resolveRealtimeSocketUrl } from "./app-core/methods/ui/workspace-realtime-state.ts";
+import { resolveRealtimeSocketUrl } from "./app-core/methods/ui/workspace/workspace-realtime-state.ts";
 import {
   ensureWheelCanvasSize,
   getWheelCanvasDpr,

@@ -1,14 +1,14 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { parseCloudSnapshot } from "../src/app-core/methods/ui/sync-apply.ts";
-import { createSyncPayload } from "../src/app-core/methods/ui/sync-payload.ts";
+import { parseCloudSnapshot } from "../src/app-core/methods/ui/sync/sync-apply.ts";
+import { createSyncPayload } from "../src/app-core/methods/ui/sync/sync-payload.ts";
 import {
   normalizeSyncLivePricingDto,
   parseSyncSnapshotDto,
   toSyncLotDtos,
   toSyncSalesByLotDto,
   toSyncWheelConfigDtos
-} from "../src/app-core/methods/ui/sync-contracts.ts";
+} from "../src/app-core/methods/ui/sync/sync-contracts.ts";
 
 test("sync contract helpers keep only entity records with usable ids", () => {
   assert.deepEqual(toSyncLotDtos([

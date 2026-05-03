@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test, vi } from "vitest";
-import { applyCloudSnapshotToLocal, parseCloudSnapshot, shouldApplyCloudSnapshot } from "../src/app-core/methods/ui/sync-apply.ts";
-import { getSyncScopeKey, resolveSyncScopeContext, toSyncScopeContext } from "../src/app-core/methods/ui/sync-scope.ts";
+import { applyCloudSnapshotToLocal, parseCloudSnapshot, shouldApplyCloudSnapshot } from "../src/app-core/methods/ui/sync/sync-apply.ts";
+import { getSyncScopeKey, resolveSyncScopeContext, toSyncScopeContext } from "../src/app-core/methods/ui/sync/sync-scope.ts";
 import { getSalesCacheStatusKey } from "../src/app-core/storageKeys.ts";
 
 const {
@@ -12,14 +12,14 @@ const {
   resolveApiBaseUrlMock: vi.fn()
 }));
 
-vi.mock("../src/app-core/methods/ui/shared.ts", () => ({
+vi.mock("../src/app-core/methods/ui/common/shared.ts", () => ({
   CLOUD_SYNC_INTERVAL_MS: 2500,
   SYNC_CLIENT_VERSION_KEY: "whatfees_sync_client_version",
   handleExpiredAuth: handleExpiredAuthMock,
   resolveApiBaseUrl: resolveApiBaseUrlMock
 }));
 
-import { runCloudSyncPull, runCloudSyncPush } from "../src/app-core/methods/ui/sync-service.ts";
+import { runCloudSyncPull, runCloudSyncPush } from "../src/app-core/methods/ui/sync/sync-service.ts";
 
 type MockStorage = {
   getItem(key: string): string | null;

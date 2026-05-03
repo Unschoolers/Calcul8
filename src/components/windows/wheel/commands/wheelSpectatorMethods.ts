@@ -2,7 +2,7 @@ import {
     createWheelSpectatorSession,
     fetchWheelSpectatorCount,
     publishWheelSpectatorSession
-} from "../../../../app-core/methods/ui/wheel-spectator.ts";
+} from "../../../../app-core/methods/ui/spectator/wheel-spectator.ts";
 import { buildWheelSpectatorQrImageUrl, buildWheelSpectatorSessionUrl, buildWheelSpectatorSnapshot } from "../services/wheelSpectator.ts";
 import type { WheelWindowThis } from "../coordinator/wheelControllerState.ts";
 

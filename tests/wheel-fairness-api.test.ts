@@ -9,7 +9,7 @@ const {
   resolveApiBaseUrlMock: vi.fn()
 }));
 
-vi.mock("../src/app-core/methods/ui/shared.ts", () => ({
+vi.mock("../src/app-core/methods/ui/common/shared.ts", () => ({
   fetchWithRetry: fetchWithRetryMock,
   resolveApiBaseUrl: resolveApiBaseUrlMock
 }));

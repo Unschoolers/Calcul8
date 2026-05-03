@@ -13,7 +13,7 @@ const {
   hasAuthSignalMock: vi.fn()
 }));
 
-vi.mock("../src/app-core/methods/ui/shared.ts", () => ({
+vi.mock("../src/app-core/methods/ui/common/shared.ts", () => ({
   fetchAuthenticatedApiResponse: fetchAuthenticatedApiResponseMock,
   handleExpiredAuth: handleExpiredAuthMock,
   resolveApiBaseUrl: resolveApiBaseUrlMock
@@ -23,7 +23,7 @@ vi.mock("../src/app-core/auth/index.ts", () => ({
   hasAuthSignal: hasAuthSignalMock
 }));
 
-import { uiWhatnotMethods } from "../src/app-core/methods/ui/whatnot.ts";
+import { uiWhatnotMethods } from "../src/app-core/methods/ui/whatnot/whatnot.ts";
 
 type MockStorage = {
   getItem(key: string): string | null;

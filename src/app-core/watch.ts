@@ -4,8 +4,8 @@ import { isDevNoLoginRoute } from "./dev-nologin.ts";
 import { refreshPersonalLotSalesIfStale } from "./methods/sales-freshness.ts";
 import { cancelQueuedPortfolioSalesHydration } from "./methods/sales-portfolio-hydration.ts";
 import { cancelQueuedTabChartRefresh, queueTabChartRefreshAfterSettle } from "./methods/sales-ui-helpers.ts";
-import { resetWhatnotSignedOutState, resetWhatnotTransientUiState } from "./methods/ui/whatnot.ts";
-import { refreshWorkspaceRealtime, stopWorkspaceRealtime } from "./methods/ui/workspace-realtime.ts";
+import { resetWhatnotSignedOutState, resetWhatnotTransientUiState } from "./methods/ui/whatnot/whatnot.ts";
+import { refreshWorkspaceRealtime, stopWorkspaceRealtime } from "./methods/ui/workspace/workspace-realtime.ts";
 import { getScopedLastLotStorageKey, STORAGE_KEYS } from "./storageKeys.ts";
 import { getActiveStorageScope } from "./workspace-scope.ts";
 

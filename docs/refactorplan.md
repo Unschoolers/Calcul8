@@ -2,7 +2,7 @@
 
 This is the current refactor plan. This document is alive: remove finished tasks, add newly found risks, and keep the next slice small enough to verify locally.
 
-Last repo scan: 2026-05-01.
+Last repo scan: 2026-05-03.
 
 ## Current Baseline
 
@@ -12,12 +12,11 @@ Last repo scan: 2026-05-01.
 - Mystery Grid behavior is "without replacement inside one board": a generated board has a fixed count of cells per tier, then resets when all cells are revealed.
 - The wheel folder navigation target has been reached: root files are thin, and feature code is grouped under `coordinator`, `stage`, `inspector`, `dialogs`, `commands`, `services`, and `styles`.
 - Core game slot/cell/spin/heat/reset rules now live in pure helpers under `src/app-core/shared`: `game-domain.ts`, `game-spin.ts`, `game-heat.ts`, `wheel-odds.ts`, and config/session compatibility helpers.
-- Public spectator session DTOs live in a shared `.d.ts` contract under `shared`, and frontend/API types import that contract.
-- Frontend spectator payload normalization exists in `src/app-core/methods/ui/wheel-spectator-contract.ts`, and `src/spectator-main.ts` uses it for realtime payloads.
-- API public-session sanitization exists separately in `apps/api/src/features/wheel/publicSessionHandler.ts`; it is intentionally a trust boundary, but it now duplicates a lot of frontend normalization behavior.
+- Public spectator session DTOs and runtime normalization live in `shared/wheel-public-session-contracts`. Frontend uses the ESM contract through `src/app-core/methods/ui/spectator/wheel-spectator-contract.ts`; API uses the CJS copy under `apps/api/src/shared`.
+- API public-session routes remain the external trust boundary, but create, publish, stored GET snapshots, and realtime fanout now normalize through the same shared spectator contract as frontend fetch/realtime payloads.
 - Sync contracts now use shared frontend/API DTO helpers for lots, singles purchases, sales, wheel/game configs, game sessions, sync metadata, and live pricing. API sync push and wheel broadcast boundaries use those helpers before storage or realtime publish; pulled legacy snapshot sales/configs reuse the current parser; live-pricing entity import/export filters malformed documents at the repository boundary; and workspace realtime applies sale, live-pricing, wheel config, and game-session updates through the same contracts.
 - Current lot selection is a base app workflow. The shell selector now has a focused display resolver for Vuetify slot payloads that may arrive as either `item.raw` or direct item fields; future shell or sync refactors must keep that regression covered.
-- `src/app-core/methods/ui` is navigable but still physically flat across auth, entitlements, sync, workspace, realtime, spectator, Whatnot, and API helper responsibilities.
+- `src/app-core/methods/ui` is grouped by domain under `auth`, `common`, `entitlements`, `spectator`, `sync`, `whatnot`, and `workspace`; the root UI methods folder no longer contains flat implementation files.
 - The flat `tests/` directory has broad coverage, but discoverability is declining as game, sync/workspace, sales/Whatnot, config/singles, auth/entitlement, and calculation suites grow.
 
 ## Refactor Principles
@@ -75,24 +74,28 @@ Closed evidence:
 
 No new feature work should be added under this heading. Future wheel/grid changes are ordinary maintenance unless they introduce a new game rule, in which case add the pure helper and focused test in the same patch.
 
-## Priority 1 - Harden Public Session And Spectator Contracts
+## Closed Scope - Harden Public Session And Spectator Contracts
 
-The shared type contract and frontend normalization are in place. The remaining risk is duplicated runtime logic: API sanitization, stored snapshots, realtime payloads, and the standalone spectator page must agree on the same versioned shape.
+Status: done for the current public-session and spectator snapshot contract.
 
-To do:
+The shared type contract now has a runtime normalizer with the current public-session snapshot version. The app, standalone spectator page, API create/publish routes, API stored-snapshot GET route, and API realtime fanout all normalize through that contract instead of carrying parallel game-type, grid-cell, spin-animation, and heat defaults.
 
-1. Keep API sanitization as the external trust boundary, but factor shared normalizer/parsing rules where frontend and API currently duplicate limits and defaults.
-2. Add explicit compatibility tests for old wheel-only snapshots, current wheel snapshots, current grid snapshots, reset snapshots, spin-animation snapshots, and malformed public payloads.
-3. Decide whether the shared contract should stay as `.d.ts` only or become a tiny runtime contract package with constants such as `CURRENT_WHEEL_PUBLIC_SESSION_SNAPSHOT_VERSION`.
-4. Document the versioning rule: new required spectator fields need sanitizer defaults and compatibility tests before shipping.
-5. Review `src/spectator-main.ts` after the contract pass so wheel rendering and grid rendering share connection/state plumbing but not renderer-specific assumptions.
-6. Add API tests that prove malformed `gameType`, `gridCells`, `spinAnimation`, and heat values normalize exactly like frontend realtime payloads.
+Maintenance rules:
 
-Done when:
+1. Keep API routes as the trust boundary for untrusted network input, but delegate snapshot shape/default decisions to `normalizeWheelPublicSessionSnapshot`.
+2. Add new spectator fields in `shared/wheel-public-session-contracts.d.ts`, `shared/wheel-public-session-contracts.mjs`, and `shared/wheel-public-session-contracts.cjs` together, then sync the API CJS/DTS copy.
+3. New required spectator fields need sanitizer defaults plus compatibility tests for old stored snapshots, fetched snapshots, realtime payloads, and API publish/create input before shipping.
+4. Keep grid and wheel rendering logic separate in `src/spectator-main.ts`, but keep fetch/realtime connection and stale-state handling shared.
 
-- A new spectator field is added in one shared contract and tested at the boundary.
-- Grid spectator can never silently fall back to wheel because of a missing or stale `gameType`.
-- Reset/reveal/spin animation state is deterministic across app, API, realtime, and spectator.
+Closed evidence:
+
+- `shared/wheel-public-session-contracts.mjs` and `.cjs` export `CURRENT_WHEEL_PUBLIC_SESSION_SNAPSHOT_VERSION`, `normalizeWheelPublicSessionSnapshot`, and the frontend alias `normalizeWheelSpectatorSnapshot`.
+- `apps/api/src/features/wheel/publicSessionHandler.ts` uses the shared normalizer for create input, publish input, saved publish responses, realtime fanout, and stored public-session GET responses.
+- `src/app-core/methods/ui/spectator/wheel-spectator-contract.ts`, `fetchWheelSpectatorSnapshot`, and `src/spectator-main.ts` use the same normalizer for API fetch and realtime event payloads.
+- `tests/shared-wheel-public-session-contracts.test.ts` covers old wheel-only snapshots, current grid/reset snapshots, spin-animation snapshots, malformed game/grid/heat fields, and non-object rejection.
+- `apps/api/src/functions/wheelPublicSession.test.ts` proves API publish and stored GET snapshots normalize to the same shared contract output.
+
+No new feature work should be added under this heading. Future public-session fields are ordinary contract maintenance only when added through the shared runtime contract and boundary tests.
 
 ## Priority 2 - Split API Wheel Fairness And Public Proof Flow
 
@@ -112,28 +115,27 @@ Done when:
 - Adding grid proof display does not require editing one 1000+ line handler.
 - The public proof page remains output-compatible with existing links.
 
-## Priority 3 - Group Frontend UI Methods By Domain
+## Closed Scope - Group Frontend UI Methods By Domain
 
-`src/app-core/methods/ui` now has many domain-prefixed files in one flat folder. It is not the highest runtime risk, but it slows down changes to auth, entitlements, sync, workspace, realtime, Whatnot, and spectator behavior.
+Status: done for the current frontend UI method layout.
 
-To do:
+The flat `src/app-core/methods/ui` folder has been split into domain folders without compatibility shims. Imports now point directly at the domain-owned files, and the root folder contains no implementation files.
 
-1. Introduce domain folders under `src/app-core/methods/ui` only when touching related files:
-   - `auth/` for session, account, Google identity, and auth-expiry helpers.
-   - `entitlements/` for Stripe, Play, purchase verification, cache, status, and sign-in helpers.
-   - `sync/` for sync apply/pull/push/session/status/network/storage recovery and conflict policy.
-   - `workspace/` for workspace API, members, membership, invite, scope, UI, config sync, and realtime.
-   - `spectator/` for wheel broadcast, public-session client, contract, and spectator fetch helpers.
-   - `whatnot/` for Whatnot UI/service orchestration.
-2. Move one domain at a time with temporary compatibility exports only if the import churn is large.
-3. Remove compatibility exports after the imports are migrated.
-4. Keep app context typing intact while moving files; do not widen types to make moves easier.
+Maintenance rules:
 
-Done when:
+1. Keep new UI method files inside the owning domain folder: `auth`, `common`, `entitlements`, `spectator`, `sync`, `whatnot`, or `workspace`.
+2. Add a new domain folder only when a new responsibility does not fit the existing domains.
+3. Keep cross-domain imports explicit; do not recreate flat root re-export shims for convenience.
+4. Keep app context typing strict while moving UI methods; do not widen `AppContext` or `AppMethodState` to make imports easier.
 
-- A workspace realtime bug is found under a workspace folder, not by scanning all UI methods.
-- Entitlement and auth flows are physically separated from sync and Whatnot.
-- `src/app-core/methods/ui` root contains only aggregation or compatibility files.
+Closed evidence:
+
+- `src/app-core/methods/ui` now contains only the domain folders `auth`, `common`, `entitlements`, `spectator`, `sync`, `whatnot`, and `workspace`.
+- Auth/account/session helpers live under `auth`; entitlement cache, Stripe, Play, purchase, sign-in, and status helpers live under `entitlements`; sync apply/pull/push/session/status/network/storage recovery/conflict helpers live under `sync`; workspace API, members, scope, config sync, and realtime helpers live under `workspace`; spectator broadcast/client/contract helpers live under `spectator`; Whatnot orchestration lives under `whatnot`.
+- `tests/ui-domain-layout.test.ts` locks the folder boundary so implementation files do not drift back into the root UI methods folder.
+- TypeScript strict checking and the focused auth, entitlement, sync, workspace, spectator, Whatnot, and shared UI method suites pass after the move.
+
+No new feature work should be added under this heading. Future UI method files are ordinary maintenance and should land in the owning domain folder with focused tests for the behavior being touched.
 
 ## Priority 4 - Realtime And Spectator Reliability
 
@@ -301,13 +303,13 @@ What changed:
 
 ## Next Refactor Slice
 
-The next slice should harden public session and spectator contracts without changing UX:
+The next slice should split API wheel fairness and public proof flow without changing existing proof-link output:
 
-1. Keep `tests/lot-selector-display.test.ts` in the focused gate for any lot DTO, shell bridge, or current-lot selector change.
-2. Factor shared spectator snapshot sanitizer rules so API and frontend normalization do not drift on `gameType`, `gridCells`, `spinAnimation`, and heat.
-3. Add compatibility tests for old wheel-only snapshots, current wheel snapshots, current grid snapshots, reset snapshots, spin-animation snapshots, and malformed public payloads.
-4. Keep API public-session sanitization as the external trust boundary while sharing constants/defaults with frontend normalization.
-5. Keep new sync/realtime contract fields out of this slice unless public-session compatibility requires them; if required, add them through shared contracts with focused boundary tests in the same patch.
+1. Keep existing public proof links output-compatible.
+2. Extract fairness request parsing into a feature-local parser with focused malformed-input tests.
+3. Extract proof math/verification into a pure service that does not know about Azure Functions.
+4. Extract HTML proof rendering into a renderer with escaping tests.
+5. Keep repository calls at the handler/service boundary, not inside low-level proof math.
 
 This slice should not change UX except for bug fixes found by the tests.
 

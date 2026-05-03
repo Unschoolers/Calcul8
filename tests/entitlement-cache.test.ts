@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { uiEntitlementMethods } from "../src/app-core/methods/ui/entitlements.ts";
-import { ENTITLEMENT_CACHE_KEY } from "../src/app-core/methods/ui/shared.ts";
+import { uiEntitlementMethods } from "../src/app-core/methods/ui/entitlements/entitlements.ts";
+import { ENTITLEMENT_CACHE_KEY } from "../src/app-core/methods/ui/common/shared.ts";
 
 type MockStorage = {
   getItem(key: string): string | null;

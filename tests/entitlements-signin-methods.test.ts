@@ -19,21 +19,21 @@ const {
   requestGoogleIdentityPromptMock: vi.fn()
 }));
 
-vi.mock("../src/app-core/methods/ui/shared.ts", () => ({
+vi.mock("../src/app-core/methods/ui/common/shared.ts", () => ({
   GOOGLE_INIT_RETRY_COUNT: 20,
   GOOGLE_INIT_RETRY_DELAY_MS: 250,
   GOOGLE_PROFILE_CACHE_KEY: "whatfees_google_profile_cache",
   readEntitlementCache: readEntitlementCacheMock
 }));
 
-vi.mock("../src/app-core/methods/ui/entitlements-shared.ts", () => ({
+vi.mock("../src/app-core/methods/ui/entitlements/entitlements-shared.ts", () => ({
   applyTargetProfitAccessDefaults: applyTargetProfitAccessDefaultsMock,
   cacheGoogleProfileFromToken: cacheGoogleProfileFromTokenMock,
   initGoogleAutoLoginWithRetry: initGoogleAutoLoginWithRetryMock,
   requestGoogleIdentityPrompt: requestGoogleIdentityPromptMock
 }));
 
-import { uiEntitlementSignInMethods } from "../src/app-core/methods/ui/entitlements-signin.ts";
+import { uiEntitlementSignInMethods } from "../src/app-core/methods/ui/entitlements/entitlements-signin.ts";
 
 type MockStorage = {
   getItem(key: string): string | null;

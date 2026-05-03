@@ -16,16 +16,8 @@ import {
 } from "../../lib/realtime";
 import { parseOptionalWorkspaceId } from "../../lib/syncScope";
 import { assertSyncScopeAccess, resolveSyncScope } from "../../lib/syncScopeResolution";
-import type {
-    WheelPublicSessionChaseEntry,
-    WheelPublicSessionChaseHistoryEntry,
-    WheelPublicSessionFairnessEntry,
-    WheelPublicSessionGridCell,
-    WheelPublicSessionSlot,
-    WheelPublicSessionSnapshot,
-    WheelPublicSessionStatus,
-    WheelSpectatorHeatLevel
-} from "../../types";
+import type { WheelPublicSessionSnapshot } from "../../types";
+import { normalizeWheelPublicSessionSnapshot } from "../../shared/wheel-public-session-contracts.cjs";
 import {
     readRequestJsonOrThrow,
     requireRequestBodyRecord,
@@ -36,197 +28,13 @@ function buildRealtimeTokenExpiryEpochSeconds(ttlSeconds = 60): number {
   return Math.floor(Date.now() / 1000) + ttlSeconds;
 }
 
-function sanitizeWheelPublicSessionStatus(value: unknown): WheelPublicSessionStatus {
-  if (value === "live" || value === "ended") return value;
-  return "starting";
-}
-
-function sanitizeWheelSpectatorHeatLevel(value: unknown): WheelSpectatorHeatLevel | null {
-  if (
-    value === "very_low"
-    || value === "low"
-    || value === "medium"
-    || value === "high"
-    || value === "very_high"
-  ) return value;
-  return null;
-}
-
-function sanitizeFairnessEntry(value: unknown): WheelPublicSessionFairnessEntry | null {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
-  const candidate = value as Record<string, unknown>;
-  const spinNumber = Math.max(0, Math.floor(Number(candidate.spinNumber) || 0));
-  const label = String(candidate.label ?? "").slice(0, 160).trim();
-  const color = String(candidate.color ?? "").slice(0, 40).trim() || "#d4af37";
-  const timestamp = Math.max(0, Math.floor(Number(candidate.timestamp) || 0));
-  const verificationUrl = String(candidate.verificationUrl ?? "").slice(0, 512).trim();
-  if (!label) return null;
-  return {
-    spinNumber,
-    label,
-    color,
-    verificationUrl: verificationUrl || undefined,
-    timestamp
-  };
-}
-
-function sanitizeChaseHistoryEntry(value: unknown): WheelPublicSessionChaseHistoryEntry | null {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
-  const candidate = value as Record<string, unknown>;
-  const tierId = String(candidate.tierId ?? "").slice(0, 120).trim();
-  const label = String(candidate.label ?? "").slice(0, 160).trim();
-  const color = String(candidate.color ?? "").slice(0, 40).trim() || "#d4af37";
-  const count = Math.max(0, Math.floor(Number(candidate.count) || 0));
-  if (!label) return null;
-  return {
-    tierId,
-    label,
-    color,
-    count
-  };
-}
-
-function sanitizeChaseBoardEntry(value: unknown): WheelPublicSessionChaseEntry | null {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
-  const candidate = value as Record<string, unknown>;
-  const tierId = String(candidate.tierId ?? "").slice(0, 120).trim();
-  const label = String(candidate.label ?? "").slice(0, 160).trim();
-  const color = String(candidate.color ?? "").slice(0, 40).trim() || "#d4af37";
-  const status = candidate.status === "claimed" ? "claimed" : "live";
-  const hitCount = Math.max(0, Math.floor(Number(candidate.hitCount) || 0));
-  const slots = Math.max(0, Math.floor(Number(candidate.slots) || 0));
-  const remainingHitsRaw = candidate.remainingHits;
-  const remainingHits = remainingHitsRaw == null
-    ? null
-    : Math.max(0, Math.floor(Number(remainingHitsRaw) || 0));
-  if (!label) return null;
-  return {
-    tierId,
-    label,
-    color,
-    status,
-    hitCount,
-    slots,
-    remainingHits,
-    isFeatured: candidate.isFeatured === true
-  };
-}
-
-function sanitizeWheelSlot(value: unknown): WheelPublicSessionSlot | null {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
-  const candidate = value as Record<string, unknown>;
-  const name = String(candidate.name ?? "").slice(0, 160).trim();
-  const color = String(candidate.color ?? "").slice(0, 40).trim() || "#d4af37";
-  const tier = String(candidate.tier ?? "").slice(0, 120).trim();
-  if (!name || !tier) return null;
-  return {
-    name,
-    color,
-    tier,
-    isChase: candidate.isChase === true
-  };
-}
-
-function sanitizeGridCell(value: unknown): WheelPublicSessionGridCell | null {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
-  const candidate = value as Record<string, unknown>;
-  const index = Math.floor(Number(candidate.index));
-  if (!Number.isFinite(index) || index < 0) return null;
-  const revealed = candidate.revealed === true;
-  const slotIndex = Math.floor(Number(candidate.slotIndex));
-  return {
-    index,
-    revealed,
-    label: revealed ? String(candidate.label ?? "").slice(0, 160).trim() : "",
-    color: revealed ? String(candidate.color ?? "").slice(0, 40).trim() || "#d4af37" : "",
-    tier: revealed ? String(candidate.tier ?? "").slice(0, 120).trim() : "",
-    slotIndex: Number.isFinite(slotIndex) ? Math.max(-1, slotIndex) : -1
-  };
-}
-
-function sanitizeSpinAnimation(value: unknown): WheelPublicSessionSnapshot["spinAnimation"] {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
-  const candidate = value as Record<string, unknown>;
-  const spinId = String(candidate.spinId ?? "").slice(0, 120).trim();
-  const startedAt = Math.max(0, Math.floor(Number(candidate.startedAt) || 0));
-  const durationMs = Math.max(0, Math.floor(Number(candidate.durationMs) || 0));
-  const startAngle = Number(candidate.startAngle);
-  const endAngle = Number(candidate.endAngle);
-  const targetIndex = Math.max(-1, Math.floor(Number(candidate.targetIndex) || 0));
-  if (
-    !spinId
-    || startedAt <= 0
-    || durationMs <= 0
-    || !Number.isFinite(startAngle)
-    || !Number.isFinite(endAngle)
-    || targetIndex < 0
-  ) {
-    return null;
-  }
-  return {
-    spinId,
-    startedAt,
-    durationMs: Math.min(durationMs, 30_000),
-    startAngle,
-    endAngle,
-    targetIndex
-  };
-}
-
 function sanitizeWheelPublicSessionSnapshot(value: unknown): WheelPublicSessionSnapshot {
-  const candidate = requireRequestBodyRecord(value, "Field 'snapshot' must be an object.");
-  const gridCells = Array.isArray(candidate.gridCells)
-    ? candidate.gridCells
-      .map((entry) => sanitizeGridCell(entry))
-      .filter((entry): entry is WheelPublicSessionGridCell => entry != null)
-      .slice(0, 256)
-    : [];
-  const gridHighlightCellIndex = Math.floor(Number(candidate.gridHighlightCellIndex));
-  return {
-    snapshotVersion: 1,
-    wheelName: String(candidate.wheelName ?? "").slice(0, 120).trim() || "Wheel Session",
-    gameType: candidate.gameType === "grid" || gridCells.length > 0 ? "grid" : "wheel",
-    sessionStatus: sanitizeWheelPublicSessionStatus(candidate.sessionStatus),
-    isSpinning: candidate.isSpinning === true,
-    totalSpins: Math.max(0, Math.floor(Number(candidate.totalSpins) || 0)),
-    lastResultLabel: String(candidate.lastResultLabel ?? "").slice(0, 160).trim(),
-    lastResultColor: String(candidate.lastResultColor ?? "").slice(0, 40).trim() || "#d4af37",
-    wheelCurrentAngle: Number.isFinite(Number(candidate.wheelCurrentAngle)) ? Number(candidate.wheelCurrentAngle) : 0,
-    wheelSlots: Array.isArray(candidate.wheelSlots)
-      ? candidate.wheelSlots
-        .map((entry) => sanitizeWheelSlot(entry))
-        .filter((entry): entry is WheelPublicSessionSlot => entry != null)
-        .slice(0, 256)
-      : [],
-    gridCells,
-    gridHighlightCellIndex: Number.isFinite(gridHighlightCellIndex) && gridHighlightCellIndex >= 0
-      ? gridHighlightCellIndex
-      : -1,
-    gridResetAnimating: candidate.gridResetAnimating === true,
-    spinAnimation: sanitizeSpinAnimation(candidate.spinAnimation),
-    recentFairnessHistory: Array.isArray(candidate.recentFairnessHistory)
-      ? candidate.recentFairnessHistory
-        .map((entry) => sanitizeFairnessEntry(entry))
-        .filter((entry): entry is WheelPublicSessionFairnessEntry => entry != null)
-        .slice(0, 10)
-      : [],
-    chaseHistory: Array.isArray(candidate.chaseHistory)
-      ? candidate.chaseHistory
-        .map((entry) => sanitizeChaseHistoryEntry(entry))
-        .filter((entry): entry is WheelPublicSessionChaseHistoryEntry => entry != null)
-        .slice(0, 20)
-      : [],
-    chaseBoard: Array.isArray(candidate.chaseBoard)
-      ? candidate.chaseBoard
-        .map((entry) => sanitizeChaseBoardEntry(entry))
-        .filter((entry): entry is WheelPublicSessionChaseEntry => entry != null)
-        .slice(0, 24)
-      : [],
-    featuredChaseLabel: String(candidate.featuredChaseLabel ?? "").slice(0, 160).trim() || null,
-    featuredChaseHeat: sanitizeWheelSpectatorHeatLevel(candidate.featuredChaseHeat),
-    fairnessVerificationUrl: String(candidate.fairnessVerificationUrl ?? "").slice(0, 512).trim() || null,
-    updatedAt: Math.max(0, Math.floor(Number(candidate.updatedAt) || Date.now()))
-  };
+  const snapshot = normalizeWheelPublicSessionSnapshot(value);
+  if (!snapshot) {
+    requireRequestBodyRecord(value, "Field 'snapshot' must be an object.");
+    throw new HttpError(400, "Field 'snapshot' must be an object.");
+  }
+  return snapshot;
 }
 
 function parseCreateBody(rawBody: unknown): {
@@ -288,7 +96,7 @@ export async function wheelPublicSessionCreate(
 
     return jsonResponse(request, config, 200, {
       publicSessionId: document.publicSessionId,
-      snapshot: document.snapshot
+      snapshot: sanitizeWheelPublicSessionSnapshot(document.snapshot)
     });
   } catch (error) {
     context.error("Failed to create wheel public session.", error);
@@ -321,12 +129,13 @@ export async function wheelPublicSessionPublish(
     if (!updated) {
       throw new HttpError(404, "Public wheel session was not found.");
     }
+    const snapshot = sanitizeWheelPublicSessionSnapshot(updated.snapshot);
     publishWheelPublicSessionRealtimeEventBestEffort(config, {
       publicSessionId: updated.publicSessionId,
       eventType: "wheel.public-session.updated",
       data: {
         publicSessionId: updated.publicSessionId,
-        snapshot: updated.snapshot
+        snapshot
       },
       logger: context
     });
@@ -334,7 +143,7 @@ export async function wheelPublicSessionPublish(
     return jsonResponse(request, config, 200, {
       ok: true,
       publicSessionId: updated.publicSessionId,
-      snapshot: updated.snapshot
+      snapshot
     });
   } catch (error) {
     context.error("Failed to publish wheel public session.", error);
@@ -359,7 +168,7 @@ export async function wheelPublicSessionGet(
 
     return jsonResponse(request, config, 200, {
       publicSessionId: document.publicSessionId,
-      snapshot: document.snapshot
+      snapshot: sanitizeWheelPublicSessionSnapshot(document.snapshot)
     });
   } catch (error) {
     context.error("Failed to load wheel public session.", error);
