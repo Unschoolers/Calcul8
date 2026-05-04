@@ -181,6 +181,16 @@ export interface SyncGameTallyEntryDto {
   count: number;
 }
 
+export interface SyncGameGridRevealDto {
+  cellIndex: number;
+  slotIndex: number;
+  label: string;
+  color: string;
+  tier: string;
+  spinNumber: number;
+  timestamp: number;
+}
+
 export interface SyncInventoryIssueDto {
   slotName: string;
   slotColor: string;
@@ -205,6 +215,10 @@ export interface SyncGameSessionDto {
   wheelSessionCostAdjustment: number;
   wheelFairnessHistory: SyncGameFairnessEntryDto[];
   wheelChaseTallyHistory: SyncGameTallyEntryDto[];
+  wheelGridLayoutSeed: string;
+  wheelPreviewGridLayoutSeed: string;
+  wheelGridReveals: SyncGameGridRevealDto[];
+  wheelPreviewGridReveals: SyncGameGridRevealDto[];
   wheelCurrentAngle: number;
   wheelLastResult: string;
   wheelLastResultColor: string;

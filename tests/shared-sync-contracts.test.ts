@@ -172,6 +172,27 @@ test("shared sync contracts normalize game session DTOs", () => {
       count: "2",
       unknown: "drop"
     }],
+    wheelGridLayoutSeed: " session-seed ",
+    wheelPreviewGridLayoutSeed: " preview-seed ",
+    wheelGridReveals: [{
+      cellIndex: "4",
+      slotIndex: "7",
+      label: " Floor ",
+      color: " #123456 ",
+      tier: " tier-1 ",
+      spinNumber: "2",
+      timestamp: "1234",
+      unknown: "drop"
+    }],
+    wheelPreviewGridReveals: [{
+      cellIndex: "5",
+      slotIndex: "8",
+      label: " Chase ",
+      color: " #abcdef ",
+      tier: " tier-2 ",
+      spinNumber: "1",
+      timestamp: "5678"
+    }],
     wheelCurrentAngle: "1.25",
     wheelLastResult: " Prize ",
     wheelLastResultColor: " #f00 ",
@@ -200,6 +221,26 @@ test("shared sync contracts normalize game session DTOs", () => {
       label: "Chase",
       color: "#f00",
       count: 2
+    }],
+    wheelGridLayoutSeed: "session-seed",
+    wheelPreviewGridLayoutSeed: "preview-seed",
+    wheelGridReveals: [{
+      cellIndex: 4,
+      slotIndex: 7,
+      label: "Floor",
+      color: "#123456",
+      tier: "tier-1",
+      spinNumber: 2,
+      timestamp: 1234
+    }],
+    wheelPreviewGridReveals: [{
+      cellIndex: 5,
+      slotIndex: 8,
+      label: "Chase",
+      color: "#abcdef",
+      tier: "tier-2",
+      spinNumber: 1,
+      timestamp: 5678
     }],
     wheelCurrentAngle: 1.25,
     wheelLastResult: "Prize",

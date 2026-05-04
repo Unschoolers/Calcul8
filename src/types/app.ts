@@ -629,11 +629,13 @@ export interface AppState extends LotSetup {
   wheelSessionCostAdjustment: number;
   wheelFairnessHistory: WheelFairnessEntry[];
   wheelChaseTallyHistory: Array<{ tierId: string; label: string; color: string; count: number }>;
+  wheelGridLayoutSeed: string;
   wheelGridReveals: MysteryGridReveal[];
   wheelPreviewSpinCounts: number[];
   wheelPreviewTotalSpins: number;
   wheelPreviewFairnessHistory: WheelFairnessEntry[];
   wheelPreviewChaseTallyHistory: Array<{ tierId: string; label: string; color: string; count: number }>;
+  wheelPreviewGridLayoutSeed: string;
   wheelPreviewGridReveals: MysteryGridReveal[];
   wheelLastResultColor: string;
   wheelSpinHash: string;

@@ -1,4 +1,4 @@
-import type { PendingWheelInventoryIssue, WheelFairnessEntry } from "../../types/app.ts";
+import type { MysteryGridReveal, PendingWheelInventoryIssue, WheelFairnessEntry } from "../../types/app.ts";
 import { assignWheelPendingInventoryIssues } from "./wheel-session-compat.ts";
 
 type WheelTallyHistoryEntry = { tierId: string; label: string; color: string; count: number };
@@ -16,6 +16,10 @@ export type RootWheelSessionStateContext = {
   wheelSessionCostAdjustment: number;
   wheelFairnessHistory: WheelFairnessEntry[];
   wheelChaseTallyHistory: WheelTallyHistoryEntry[];
+  wheelGridLayoutSeed: string;
+  wheelPreviewGridLayoutSeed: string;
+  wheelGridReveals: MysteryGridReveal[];
+  wheelPreviewGridReveals: MysteryGridReveal[];
   wheelPreviewSpinCounts: number[];
   wheelPreviewTotalSpins: number;
   wheelPreviewFairnessHistory: WheelFairnessEntry[];
@@ -49,6 +53,10 @@ export function resetRootWheelSessionState(context: RootWheelSessionStateContext
   context.wheelSessionCostAdjustment = 0;
   context.wheelFairnessHistory = [];
   context.wheelChaseTallyHistory = [];
+  context.wheelGridLayoutSeed = "";
+  context.wheelPreviewGridLayoutSeed = "";
+  context.wheelGridReveals = [];
+  context.wheelPreviewGridReveals = [];
   context.wheelPreviewSpinCounts = [];
   context.wheelPreviewTotalSpins = 0;
   context.wheelPreviewFairnessHistory = [];
@@ -95,6 +103,14 @@ export function applyRootWheelSessionSnapshot(
   }
   context.wheelFairnessHistory = limitFairnessHistory(snapshot.wheelFairnessHistory);
   context.wheelChaseTallyHistory = normalizeTallyHistory(snapshot.wheelChaseTallyHistory);
+  context.wheelGridLayoutSeed = String(snapshot.wheelGridLayoutSeed ?? "");
+  context.wheelPreviewGridLayoutSeed = String(snapshot.wheelPreviewGridLayoutSeed ?? "");
+  context.wheelGridReveals = Array.isArray(snapshot.wheelGridReveals)
+    ? (snapshot.wheelGridReveals as MysteryGridReveal[])
+    : [];
+  context.wheelPreviewGridReveals = Array.isArray(snapshot.wheelPreviewGridReveals)
+    ? (snapshot.wheelPreviewGridReveals as MysteryGridReveal[])
+    : [];
   if (Array.isArray(snapshot.wheelPreviewSpinCounts)) {
     context.wheelPreviewSpinCounts = snapshot.wheelPreviewSpinCounts as number[];
   }
@@ -133,6 +149,10 @@ export function buildRootWheelSessionSnapshot(
     wheelSessionCostAdjustment: context.wheelSessionCostAdjustment ?? preserved.wheelSessionCostAdjustment ?? 0,
     wheelFairnessHistory: context.wheelFairnessHistory ?? preserved.wheelFairnessHistory ?? [],
     wheelChaseTallyHistory: context.wheelChaseTallyHistory ?? preserved.wheelChaseTallyHistory ?? [],
+    wheelGridLayoutSeed: context.wheelGridLayoutSeed ?? preserved.wheelGridLayoutSeed ?? "",
+    wheelPreviewGridLayoutSeed: context.wheelPreviewGridLayoutSeed ?? preserved.wheelPreviewGridLayoutSeed ?? "",
+    wheelGridReveals: context.wheelGridReveals ?? preserved.wheelGridReveals ?? [],
+    wheelPreviewGridReveals: context.wheelPreviewGridReveals ?? preserved.wheelPreviewGridReveals ?? [],
     wheelPreviewSpinCounts: context.wheelPreviewSpinCounts ?? preserved.wheelPreviewSpinCounts ?? [],
     wheelPreviewTotalSpins: context.wheelPreviewTotalSpins ?? preserved.wheelPreviewTotalSpins ?? 0,
     wheelPreviewFairnessHistory: context.wheelPreviewFairnessHistory ?? preserved.wheelPreviewFairnessHistory ?? [],

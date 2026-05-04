@@ -435,6 +435,21 @@ function normalizeSyncGameTallyEntryDto(value) {
   };
 }
 
+function normalizeSyncGameGridRevealDto(value) {
+  if (!isSyncEntityRecord(value)) return null;
+  const label = normalizeLimitedString(value.label, 160);
+  const tier = normalizeLimitedString(value.tier, 120);
+  return {
+    cellIndex: normalizeNonNegativeFloor(value.cellIndex),
+    slotIndex: normalizeNonNegativeFloor(value.slotIndex),
+    label,
+    color: normalizeLimitedString(value.color, 40),
+    tier,
+    spinNumber: normalizeNonNegativeFloor(value.spinNumber),
+    timestamp: normalizeNonNegativeFloor(value.timestamp)
+  };
+}
+
 function normalizeSyncInventoryIssueDto(value) {
   if (!isSyncEntityRecord(value)) return null;
   const issue = {
@@ -494,6 +509,20 @@ function normalizeSyncGameSessionDto(value, fallbackUpdatedAt = Date.now()) {
       ? raw.wheelChaseTallyHistory
         .slice(0, 200)
         .map((entry) => normalizeSyncGameTallyEntryDto(entry))
+        .filter((entry) => entry != null)
+      : [],
+    wheelGridLayoutSeed: normalizeLimitedString(raw.wheelGridLayoutSeed, 160),
+    wheelPreviewGridLayoutSeed: normalizeLimitedString(raw.wheelPreviewGridLayoutSeed, 160),
+    wheelGridReveals: Array.isArray(raw.wheelGridReveals)
+      ? raw.wheelGridReveals
+        .slice(0, 500)
+        .map((entry) => normalizeSyncGameGridRevealDto(entry))
+        .filter((entry) => entry != null)
+      : [],
+    wheelPreviewGridReveals: Array.isArray(raw.wheelPreviewGridReveals)
+      ? raw.wheelPreviewGridReveals
+        .slice(0, 500)
+        .map((entry) => normalizeSyncGameGridRevealDto(entry))
         .filter((entry) => entry != null)
       : [],
     wheelCurrentAngle: normalizeFiniteNumber(raw.wheelCurrentAngle, 0),

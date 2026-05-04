@@ -131,6 +131,26 @@ function createApp(overrides: Record<string, unknown> = {}) {
       timestamp: number;
     }>,
     wheelChaseTallyHistory: [] as Array<{ tierId: string; label: string; color: string; count: number }>,
+    wheelGridLayoutSeed: "",
+    wheelPreviewGridLayoutSeed: "",
+    wheelGridReveals: [] as Array<{
+      cellIndex: number;
+      slotIndex: number;
+      label: string;
+      color: string;
+      tier: string;
+      spinNumber: number;
+      timestamp: number;
+    }>,
+    wheelPreviewGridReveals: [] as Array<{
+      cellIndex: number;
+      slotIndex: number;
+      label: string;
+      color: string;
+      tier: string;
+      spinNumber: number;
+      timestamp: number;
+    }>,
     wheelCurrentAngle: 0,
     wheelLastResultColor: "",
     pullCloudSync: vi.fn(async () => undefined),
@@ -417,6 +437,26 @@ test("workspace realtime applies wheel updates including resets when revision is
         color: "#0f0",
         count: 3
       }],
+      wheelGridLayoutSeed: "workspace-grid-seed",
+      wheelPreviewGridLayoutSeed: "workspace-preview-grid-seed",
+      wheelGridReveals: [{
+        cellIndex: "4",
+        slotIndex: "2",
+        label: "Floor",
+        color: "#123456",
+        tier: "tier-1",
+        spinNumber: "1",
+        timestamp: "99"
+      }],
+      wheelPreviewGridReveals: [{
+        cellIndex: "5",
+        slotIndex: "3",
+        label: "Preview",
+        color: "#abcdef",
+        tier: "tier-1",
+        spinNumber: "1",
+        timestamp: "100"
+      }],
       wheelConfigs: [{
         id: 91,
         name: "New Wheel",
@@ -479,6 +519,26 @@ test("workspace realtime applies wheel updates including resets when revision is
     label: "Old Prize",
     color: "#0f0",
     count: 3
+  }]);
+  assert.equal(app.wheelGridLayoutSeed, "workspace-grid-seed");
+  assert.equal(app.wheelPreviewGridLayoutSeed, "workspace-preview-grid-seed");
+  assert.deepEqual(app.wheelGridReveals, [{
+    cellIndex: 4,
+    slotIndex: 2,
+    label: "Floor",
+    color: "#123456",
+    tier: "tier-1",
+    spinNumber: 1,
+    timestamp: 99
+  }]);
+  assert.deepEqual(app.wheelPreviewGridReveals, [{
+    cellIndex: 5,
+    slotIndex: 3,
+    label: "Preview",
+    color: "#abcdef",
+    tier: "tier-1",
+    spinNumber: 1,
+    timestamp: 100
   }]);
   assert.equal(app.wheelCurrentAngle, 1.75);
   assert.equal(app.wheelLastResultColor, "#00ff00");
