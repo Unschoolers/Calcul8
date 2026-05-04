@@ -77,7 +77,7 @@ function createSeededRandom(seed: string): () => number {
   };
 }
 
-function buildGridShuffleSeed(config: WheelConfig): string {
+function buildGridShuffleSeed(config: WheelConfig, layoutSeed = ""): string {
   const tierSeed = config.tiers
     .map((tier) => [
       tier.id,
@@ -92,6 +92,7 @@ function buildGridShuffleSeed(config: WheelConfig): string {
     String(config.id),
     String(config.name || ""),
     String(getWheelOutcomeCount(config)),
+    layoutSeed,
     tierSeed
   ].join("::");
 }
@@ -106,7 +107,7 @@ function shuffleSlotsDeterministically<T>(slots: T[], seed: string): T[] {
   return shuffled;
 }
 
-export function buildGameOutcomeSlots(config: WheelConfig): GameOutcomeSlot[] {
+export function buildGameOutcomeSlots(config: WheelConfig, options: { layoutSeed?: string } = {}): GameOutcomeSlot[] {
   const tierCounts = countGameOutcomeSlotsByTier(config);
 
   const groups: { tier: string; slots: GameOutcomeSlot[] }[] = [];
@@ -151,7 +152,7 @@ export function buildGameOutcomeSlots(config: WheelConfig): GameOutcomeSlot[] {
 
   const slots = spacedSlots.filter((slot): slot is GameOutcomeSlot => slot !== null);
   return config.gameType === "grid"
-    ? shuffleSlotsDeterministically(slots, buildGridShuffleSeed(config))
+    ? shuffleSlotsDeterministically(slots, buildGridShuffleSeed(config, options.layoutSeed))
     : slots;
 }
 

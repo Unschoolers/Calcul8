@@ -1,6 +1,7 @@
 import type { Lot, MysteryGridReveal, PendingWheelInventoryIssue, WheelConfig, WheelFairnessEntry } from "../../../../types/app.ts";
 import type { WheelControllerState } from "../coordinator/wheelControllerState.ts";
 import type { WheelSlot } from "./wheelSlots.ts";
+import { buildSlotsFromConfig, createWheelGridLayoutSeed } from "./wheelSlots.ts";
 
 /** Minimal context interface shared by wheel session helpers. */
 export interface WheelSessionContext {
@@ -102,12 +103,14 @@ export function createWheelSessionSnapshot(
     wheelPreviewFairnessHistory: controller.previewFairnessHistory,
     wheelPreviewChaseTallyHistory: controller.previewChaseTallyHistory,
     wheelPreviewGridReveals: controller.previewGridReveals,
+    wheelPreviewGridLayoutSeed: controller.previewGridLayoutSeed,
     wheelSessionUpdatedAt: context.wheelSessionUpdatedAt,
     wheelSessionNetRevenue: controller.sessionNetRevenue,
     wheelSessionCostAdjustment: controller.sessionCostAdjustment,
     wheelFairnessHistory: controller.fairnessHistory,
     wheelChaseTallyHistory: controller.chaseTallyHistory,
     wheelGridReveals: controller.gridReveals,
+    wheelGridLayoutSeed: controller.gridLayoutSeed,
     wheelPendingInventoryIssues: context.wheelPendingInventoryIssues,
     wheelSkippedDeductions: context.wheelPendingInventoryIssues,
     wheelCurrentAngle: context.wheelCurrentAngle,
@@ -130,7 +133,14 @@ export function applyWheelPreviewReset(
   controller: WheelControllerState,
   previewSlots: WheelSlot[]
 ): void {
-  controller.previewSpinCounts = new Array(previewSlots.length).fill(0);
+  const config = getWheelTargetConfig(context, { preview: true });
+  let nextPreviewSlots = previewSlots;
+  if (config?.gameType === "grid") {
+    controller.previewGridLayoutSeed = createWheelGridLayoutSeed();
+    nextPreviewSlots = buildSlotsFromConfig(config, { layoutSeed: controller.previewGridLayoutSeed });
+    controller.previewSlots = nextPreviewSlots;
+  }
+  controller.previewSpinCounts = new Array(nextPreviewSlots.length).fill(0);
   controller.previewTotalSpins = 0;
   controller.previewFairnessHistory = [];
   controller.previewChaseTallyHistory = [];
@@ -151,6 +161,13 @@ export function applyWheelLiveReset(
   controller: WheelControllerState,
   slots: WheelSlot[]
 ): void {
+  const config = getWheelTargetConfig(context);
+  if (config?.gameType === "grid") {
+    controller.gridLayoutSeed = createWheelGridLayoutSeed();
+    slots = buildSlotsFromConfig(config, { layoutSeed: controller.gridLayoutSeed });
+    controller.activeSlots = slots;
+    controller.previewGridLayoutSeed = controller.gridLayoutSeed;
+  }
   context.wheelTotalSpins = 0;
   context.wheelSpinCounts = new Array(slots.length).fill(0);
   controller.previewSlots = [...slots];
@@ -191,7 +208,9 @@ export function mergeWheelSessionRootFallback(
   session.wheelPreviewFairnessHistory = useRootValue(session.wheelPreviewFairnessHistory as WheelFairnessEntry[] | undefined, rootForActiveConfig.wheelPreviewFairnessHistory as WheelFairnessEntry[] | undefined);
   session.wheelPreviewChaseTallyHistory = useRootValue(session.wheelPreviewChaseTallyHistory as WheelTallyHistoryEntry[] | undefined, rootForActiveConfig.wheelPreviewChaseTallyHistory as WheelTallyHistoryEntry[] | undefined);
   session.wheelPreviewGridReveals = useRootValue(session.wheelPreviewGridReveals as MysteryGridReveal[] | undefined, rootForActiveConfig.wheelPreviewGridReveals as MysteryGridReveal[] | undefined);
+  session.wheelPreviewGridLayoutSeed = useRootValue(session.wheelPreviewGridLayoutSeed as string | undefined, rootForActiveConfig.wheelPreviewGridLayoutSeed as string | undefined);
   session.wheelGridReveals = useRootValue(session.wheelGridReveals as MysteryGridReveal[] | undefined, rootForActiveConfig.wheelGridReveals as MysteryGridReveal[] | undefined);
+  session.wheelGridLayoutSeed = useRootValue(session.wheelGridLayoutSeed as string | undefined, rootForActiveConfig.wheelGridLayoutSeed as string | undefined);
   session.wheelSpinHash = useRootValue(session.wheelSpinHash as string | undefined, rootForActiveConfig.wheelSpinHash as string | undefined);
   session.wheelSpinSeed = useRootValue(session.wheelSpinSeed as string | undefined, rootForActiveConfig.wheelSpinSeed as string | undefined);
   session.wheelSpinClientSeed = useRootValue(session.wheelSpinClientSeed as string | undefined, rootForActiveConfig.wheelSpinClientSeed as string | undefined);

@@ -8,7 +8,7 @@ import type { WheelWindowThis } from "../coordinator/wheelControllerState.ts";
 import { getWheelController } from "../coordinator/wheelControllerState.ts";
 import { remapSpinCountsByTier } from "../services/wheelCountRemapping.ts";
 import { createWheelSale } from "../services/wheelSales.ts";
-import { buildSlotsFromConfig, type WheelSlot } from "../services/wheelSlots.ts";
+import { buildSlotsFromConfig, createWheelGridLayoutSeed, type WheelSlot } from "../services/wheelSlots.ts";
 import {
   getAvailableSinglesQuantityForWheelTier,
   hasAnyAvailableSinglesForWheelTier
@@ -506,6 +506,31 @@ export const wheelSessionMethods = {
         return false;
       }
       const controller = getWheelController(this);
+      const activeConfig = getWheelTargetConfig(this);
+      if (activeConfig?.gameType === "grid") {
+        const savedLiveLayoutSeed = String(session.wheelGridLayoutSeed ?? "").trim();
+        const savedLiveGridReveals = Array.isArray(session.wheelGridReveals) ? session.wheelGridReveals : [];
+        const savedLiveSpinCounts = Array.isArray(session.wheelSpinCounts) ? session.wheelSpinCounts : [];
+        const hasLegacyLiveGridSession = !savedLiveLayoutSeed
+          && (savedLiveGridReveals.length > 0 || savedLiveSpinCounts.some((count) => Number(count) > 0));
+        const liveLayoutSeed = savedLiveLayoutSeed
+          || (hasLegacyLiveGridSession ? "" : (controller.gridLayoutSeed || createWheelGridLayoutSeed()));
+        const previewConfig = getWheelTargetConfig(this, { preview: true }) || activeConfig;
+        const savedPreviewLayoutSeed = String(session.wheelPreviewGridLayoutSeed ?? "").trim();
+        const savedPreviewGridReveals = Array.isArray(session.wheelPreviewGridReveals) ? session.wheelPreviewGridReveals : [];
+        const savedPreviewSpinCounts = Array.isArray(session.wheelPreviewSpinCounts) ? session.wheelPreviewSpinCounts : [];
+        const hasLegacyPreviewGridSession = !savedPreviewLayoutSeed
+          && (savedPreviewGridReveals.length > 0 || savedPreviewSpinCounts.some((count) => Number(count) > 0));
+        const previewLayoutSeed = savedPreviewLayoutSeed
+          || (hasLegacyPreviewGridSession ? "" : (controller.previewGridLayoutSeed || liveLayoutSeed));
+        controller.gridLayoutSeed = liveLayoutSeed;
+        controller.previewGridLayoutSeed = previewLayoutSeed;
+        controller.activeSlots = buildSlotsFromConfig(activeConfig, { layoutSeed: liveLayoutSeed });
+        controller.previewSlots = buildSlotsFromConfig(previewConfig, { layoutSeed: previewLayoutSeed });
+      } else {
+        controller.gridLayoutSeed = "";
+        controller.previewGridLayoutSeed = "";
+      }
       const slots = ((controller.activeSlots || []) as WheelSlot[]);
       const previewSlots = (((controller.previewSlots || slots)) as WheelSlot[]);
       if (!Array.isArray(session.wheelSpinCounts)) return false;

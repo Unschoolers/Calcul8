@@ -111,6 +111,8 @@ function createGridVm(mode: "config" | "live") {
   state.wheelTotalSpins = 0;
   state.wheelSpinCounts = [0, 0];
   state.wheelPendingInventoryIssues = [];
+  state.wheelConfigs = [config];
+  state.activeWheelConfigId = config.id;
   state.wheelDisplayConfig = config;
   state.activeWheelConfig = config;
   state.editingWheelConfig = config;
@@ -488,4 +490,22 @@ test("live grid reveal reuses wheel result recording and fairness history", asyn
     emoji: revealedSlot.celebrationEmoji,
     preview: false
   }]);
+});
+
+test("resetting a live mystery grid session rerolls hidden hit placement", async () => {
+  vi.spyOn(Math, "random")
+    .mockReturnValueOnce(0.111)
+    .mockReturnValueOnce(0.999);
+  const vm = createGridVm("live");
+  const controller = getWheelController(vm);
+  const initialLayout = (controller.activeSlots as Array<{ tier: string }>).map((slot) => slot.tier);
+
+  await mysteryGridMethods.revealMysteryGridCell.call(vm, 0, true);
+  wheelSessionMethods.resetWheelSession.call(vm as never);
+
+  const rerolledLayout = (controller.activeSlots as Array<{ tier: string }>).map((slot) => slot.tier);
+
+  assert.equal((vm.wheelGridReveals as unknown[]).length, 0);
+  assert.equal(rerolledLayout.length, initialLayout.length);
+  assert.notDeepEqual(rerolledLayout, initialLayout);
 });

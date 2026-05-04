@@ -7,7 +7,7 @@ import {
   createWheelWindowState, getWheelController, getWheelWindowLocalKeys,
   type WheelWindowThis
 } from "./wheelControllerState.ts";
-import { buildSlotsFromConfig } from "../services/wheelSlots.ts";
+import { buildSlotsFromConfig, createWheelGridLayoutSeed } from "../services/wheelSlots.ts";
 import {
   WHEEL_COMPACT_LAYOUT_BREAKPOINT,
   isWheelCompactViewport,
@@ -268,12 +268,22 @@ export const wheelWindowDefinition = {
       }
 
       if (!Array.isArray(controller.activeSlots) || controller.activeSlots.length === 0) {
-        controller.activeSlots = buildSlotsFromConfig(activeConfig);
+        if (activeConfig.gameType === "grid" && !controller.gridLayoutSeed) {
+          controller.gridLayoutSeed = createWheelGridLayoutSeed();
+        }
+        controller.activeSlots = buildSlotsFromConfig(activeConfig, {
+          layoutSeed: activeConfig.gameType === "grid" ? controller.gridLayoutSeed : undefined
+        });
         repaired = true;
       }
 
       if (!Array.isArray(controller.previewSlots) || controller.previewSlots.length === 0) {
-        controller.previewSlots = [...controller.activeSlots];
+        if (activeConfig.gameType === "grid") {
+          controller.previewGridLayoutSeed = controller.previewGridLayoutSeed || controller.gridLayoutSeed || createWheelGridLayoutSeed();
+          controller.previewSlots = buildSlotsFromConfig(activeConfig, { layoutSeed: controller.previewGridLayoutSeed });
+        } else {
+          controller.previewSlots = [...controller.activeSlots];
+        }
         repaired = true;
       }
 

@@ -84,6 +84,8 @@ export type WheelWindowThis = {
   wheelChaseTallyHistory: Array<{ tierId: string; label: string; color: string; count: number }>;
   wheelGridReveals: MysteryGridReveal[];
   wheelPreviewGridReveals: MysteryGridReveal[];
+  wheelGridLayoutSeed: string;
+  wheelPreviewGridLayoutSeed: string;
   wheelHighlightedSlotIndex: number;
 
   // ===== AppContext bridge properties =====
@@ -221,6 +223,8 @@ export type WheelControllerState = {
   chaseTallyHistory: Array<{ tierId: string; label: string; color: string; count: number }>;
   gridReveals: MysteryGridReveal[];
   previewGridReveals: MysteryGridReveal[];
+  gridLayoutSeed: string;
+  previewGridLayoutSeed: string;
   highlightedSlotIndex: number;
 };
 
@@ -247,6 +251,8 @@ function createDefaultWheelControllerState(): WheelControllerState {
     chaseTallyHistory: [],
     gridReveals: [],
     previewGridReveals: [],
+    gridLayoutSeed: "",
+    previewGridLayoutSeed: "",
     highlightedSlotIndex: -1
   };
 }
@@ -347,6 +353,8 @@ const WHEEL_CONTROLLER_ALIAS_MAP = {
   wheelChaseTallyHistory: "chaseTallyHistory",
   wheelGridReveals: "gridReveals",
   wheelPreviewGridReveals: "previewGridReveals",
+  wheelGridLayoutSeed: "gridLayoutSeed",
+  wheelPreviewGridLayoutSeed: "previewGridLayoutSeed",
   wheelHighlightedSlotIndex: "highlightedSlotIndex"
 } as const satisfies Record<string, keyof WheelControllerState>;
 

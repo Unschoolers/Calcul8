@@ -21,7 +21,7 @@ import type { Lot, LuckGameType, WheelConfig, WheelTier } from "../../../../type
 import { getWheelController } from "../coordinator/wheelControllerState.ts";
 import { remapSpinCountsByTier } from "../services/wheelCountRemapping.ts";
 import { createDefaultTier, createDefaultWheelConfig, generateTierId } from "../services/wheelDefaults.ts";
-import { buildSlotsFromConfig, type WheelSlot } from "../services/wheelSlots.ts";
+import { buildSlotsFromConfig, createWheelGridLayoutSeed, type WheelSlot } from "../services/wheelSlots.ts";
 import {
     getAvailableSinglesQuantityForWheelTier,
     getRemainingPacksForWheelLot,
@@ -79,6 +79,8 @@ function resetLoadedWheelState(context: Record<string, unknown>): void {
   const controller = getWheelController(context);
   controller.activeSlots = [];
   controller.previewSlots = [];
+  controller.gridLayoutSeed = "";
+  controller.previewGridLayoutSeed = "";
   resetLoadedWheelSessionState(context);
 }
 
@@ -259,7 +261,13 @@ export const wheelConfigMethods = {
     (this as Record<string, unknown>).appliedWheelConfigSnapshot =
       JSON.parse(JSON.stringify(sanitizedConfig)) as WheelConfig;
     const loadController = getWheelController(this as Record<string, unknown>);
-    const builtSlots = buildSlotsFromConfig(sanitizedConfig);
+    if (sanitizedConfig.gameType === "grid") {
+      loadController.gridLayoutSeed = createWheelGridLayoutSeed();
+      loadController.previewGridLayoutSeed = loadController.gridLayoutSeed;
+    }
+    const builtSlots = buildSlotsFromConfig(sanitizedConfig, {
+      layoutSeed: sanitizedConfig.gameType === "grid" ? loadController.gridLayoutSeed : undefined
+    });
     loadController.activeSlots = builtSlots;
     loadController.previewSlots = [...builtSlots];
     const restored = (this as Record<string, unknown> & { loadWheelFromSession: () => boolean }).loadWheelFromSession();
@@ -316,7 +324,13 @@ export const wheelConfigMethods = {
       const oldSlots = ((applyController.activeSlots || []) as WheelSlot[]);
       const oldCounts = ((this.wheelSpinCounts || []) as number[]);
       const oldTierIds = oldSlots.map((slot) => slot.tier);
-      const newSlots = buildSlotsFromConfig(sanitizedUpdated);
+      if (sanitizedUpdated.gameType === "grid" && !applyController.gridLayoutSeed) {
+        applyController.gridLayoutSeed = createWheelGridLayoutSeed();
+        applyController.previewGridLayoutSeed = applyController.gridLayoutSeed;
+      }
+      const newSlots = buildSlotsFromConfig(sanitizedUpdated, {
+        layoutSeed: sanitizedUpdated.gameType === "grid" ? applyController.gridLayoutSeed : undefined
+      });
       const newTierIds = new Set(sanitizedUpdated.tiers.map((tier) => tier.id));
       const hadTierShapeChange = oldTierIds.some((tierId) => !newTierIds.has(tierId))
         || sanitizedUpdated.tiers.some((tier) => !oldTierIds.includes(tier.id));
