@@ -132,11 +132,18 @@ function scheduleMysteryGridAutoReset(
     ((context as Record<string, unknown>).publishWheelSpectatorSessionSnapshot as (() => Promise<void>) | undefined)?.();
 
     globalThis.setTimeout(() => {
-      setGridReveals(context, params.preview, []);
+      const resetSession = params.preview
+        ? (context as Record<string, unknown> & { resetPreviewSession?: () => void }).resetPreviewSession
+        : (context as Record<string, unknown> & { resetWheelSession?: () => void }).resetWheelSession;
+      if (typeof resetSession === "function") {
+        resetSession.call(context);
+      } else {
+        setGridReveals(context, params.preview, []);
+        ((context as Record<string, unknown> & { saveWheelSession?: () => void }).saveWheelSession)?.();
+      }
       context.wheelGridHighlightCellIndex = -1;
       context.wheelGridRevealAnimating = false;
       context.wheelGridResetAnimating = false;
-      ((context as Record<string, unknown> & { saveWheelSession?: () => void }).saveWheelSession)?.();
     }, resetPlan.resetDelayMs);
   }, resetPlan.startDelayMs);
 }

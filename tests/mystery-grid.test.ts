@@ -58,6 +58,7 @@ afterEach(() => {
   vi.clearAllMocks();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
+  vi.useRealTimers();
 });
 
 function createGridConfig(overrides: Partial<WheelConfig> = {}): WheelConfig {
@@ -99,10 +100,9 @@ function createGridConfig(overrides: Partial<WheelConfig> = {}): WheelConfig {
   };
 }
 
-function createGridVm(mode: "config" | "live") {
+function createGridVm(mode: "config" | "live", config = createGridConfig()) {
   const state = createWheelWindowState() as Record<string, unknown>;
   const controller = getWheelController(state);
-  const config = createGridConfig();
   const slots = buildSlotsFromConfig(config);
   state.wheelMode = mode;
   state.wheelSpinning = false;
@@ -127,6 +127,8 @@ function createGridVm(mode: "config" | "live") {
   state.landOnSlot = vi.fn((slotIndex: number, options) => wheelSpinMethods.landOnSlot.call(state as never, slotIndex, options));
   state.triggerWheelCelebration = vi.fn();
   state.drawWheel = vi.fn();
+  state.resetWheelSession = () => wheelSessionMethods.resetWheelSession.call(state as never);
+  state.resetPreviewSession = () => wheelSessionMethods.resetPreviewSession.call(state as never);
   return state as Record<string, unknown> & {
     recordSpinResult: ReturnType<typeof vi.fn>;
     recordPreviewSpinResult: ReturnType<typeof vi.fn>;
@@ -506,6 +508,59 @@ test("resetting a live mystery grid session rerolls hidden hit placement", async
   const rerolledLayout = (controller.activeSlots as Array<{ tier: string }>).map((slot) => slot.tier);
 
   assert.equal((vm.wheelGridReveals as unknown[]).length, 0);
+  assert.equal(rerolledLayout.length, initialLayout.length);
+  assert.notDeepEqual(rerolledLayout, initialLayout);
+});
+
+test("completing a live mystery grid session starts a fresh shuffled board", async () => {
+  vi.useFakeTimers();
+  vi.spyOn(Math, "random")
+    .mockReturnValueOnce(0.111)
+    .mockReturnValueOnce(0.999);
+  const vm = createGridVm("live", createGridConfig({
+    outcomeCount: 4,
+    gridCellCount: 4,
+    tiers: [
+      {
+        id: "tier-a",
+        label: "Floor",
+        color: "#2563eb",
+        chancePercent: 50,
+        slots: 2,
+        costPerTier: 4,
+        packsCount: 1,
+        deductionType: "packs",
+        sets: [],
+        celebrationEmoji: "sparkle"
+      },
+      {
+        id: "tier-b",
+        label: "Chase",
+        color: "#f59e0b",
+        chancePercent: 50,
+        slots: 2,
+        costPerTier: 25,
+        packsCount: 1,
+        deductionType: "none",
+        sets: [],
+        isChase: true,
+        celebrationEmoji: "trophy"
+      }
+    ]
+  }));
+  const controller = getWheelController(vm);
+  const initialLayout = (controller.activeSlots as Array<{ tier: string }>).map((slot) => slot.tier);
+
+  for (let cellIndex = 0; cellIndex < 4; cellIndex += 1) {
+    await mysteryGridMethods.revealMysteryGridCell.call(vm, cellIndex, true);
+  }
+  assert.equal((vm.wheelGridReveals as unknown[]).length, 4);
+
+  await vi.runAllTimersAsync();
+
+  const rerolledLayout = (controller.activeSlots as Array<{ tier: string }>).map((slot) => slot.tier);
+  assert.equal((vm.wheelGridReveals as unknown[]).length, 0);
+  assert.equal(Number(vm.wheelTotalSpins), 0);
   assert.equal(rerolledLayout.length, initialLayout.length);
   assert.notDeepEqual(rerolledLayout, initialLayout);
 });
