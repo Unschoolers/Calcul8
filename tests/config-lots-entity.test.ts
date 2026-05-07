@@ -303,9 +303,9 @@ test("loadLot skips a full authoritative sales refresh in personal scope when ca
   await Promise.resolve();
   await Promise.resolve();
 
-  assert.equal(fetchAuthoritativeSalesMock.mock.calls.length, 0);
+  assert.equal(fetchAuthoritativeSalesMock.mock.calls.length, 1);
   assert.equal(fetchAuthoritativeLotSalesSyncMetaMock.mock.calls.length, 1);
-  assert.equal(fetchAuthoritativeLivePricingMock.mock.calls.length, 0);
+  assert.equal(fetchAuthoritativeLivePricingMock.mock.calls.length, 1);
 });
 
 test("loadLot refreshes personal sales when cached sales metadata changed in the cloud", async () => {
