@@ -2,46 +2,47 @@ import type { LotSetup, SinglesCatalogSource } from "../../types/app.ts";
 import { replaceRootLotSales } from "../shared/sales-root-state.ts";
 import { normalizeSinglesCatalogSource } from "../shared/singles-catalog-source.ts";
 import {
-    getScopedLastLotStorageKey,
+  getScopedLastLotStorageKey,
 } from "../storageKeys.ts";
 import { getActiveStorageScope } from "../workspace-scope.ts";
 import {
-    applyAuthoritativeLivePricingSnapshot,
-    queueAuthoritativeLivePricingSave,
-    resetAuthoritativeLivePricingState
+  applyAuthoritativeLivePricingSnapshot,
+  queueAuthoritativeLivePricingSave,
+  resetAuthoritativeLivePricingState
 } from "./config-live-pricing.ts";
 import {
-    createNewLotRecord,
-    normalizeSelectedLotId,
-    validateRenameLotName
+  createNewLotRecord,
+  normalizeSelectedLotId,
+  validateRenameLotName
 } from "./config-lot-crud.ts";
 import { deleteCurrentLotWithPersistence } from "./config-lot-delete.ts";
 import { applyHydratedLotState, buildHydratedLotState } from "./config-lot-loading.ts";
 import {
-    appendBlankSinglesPurchaseRow,
-    beginSinglesCsvImport,
-    confirmSinglesCsvImport,
-    removeSinglesPurchaseRowById,
-    syncSinglesPurchaseRows
+  appendBlankSinglesPurchaseRow,
+  beginSinglesCsvImport,
+  confirmSinglesCsvImport,
+  removeSinglesPurchaseRowById,
+  syncSinglesPurchaseRows
 } from "./config-lots-singles.ts";
 import {
-    resetSinglesCsvImportState
+  resetSinglesCsvImportState
 } from "./config-lots-state.ts";
 import { type ConfigMethodSubset, getTodayDate } from "./config-shared.ts";
 import {
-    hydrateAuthoritativeLotSalesWithSyncMeta,
-    refreshPersonalLotSalesIfStale
+  hydrateAuthoritativeLotSalesWithSyncMeta,
+  refreshPersonalLotSalesIfStale
 } from "./sales-freshness.ts";
 import {
-    canUseAuthoritativeSalesLiveApi,
-    fetchAuthoritativeLivePricing,
-    fetchAuthoritativeSales
+  canUseAuthoritativeSalesLiveApi,
+  fetchAuthoritativeLivePricing,
+  fetchAuthoritativeSales
 } from "./sales-live-api.ts";
 import { markLivePricingPollingBaseline } from "./ui/sync/lot-entity-polling.ts";
 import { queueWorkspaceConfigSyncPush } from "./ui/workspace/workspace-config-sync.ts";
 type AuthoritativeLotHydrationContext = Pick<ConfigMethodSubset<"getSalesCacheEntry">, "getSalesCacheEntry"> & {
   activeScopeType?: string;
   activeWorkspaceId?: string | null;
+  currentLivePricingVersion: number | null;
 };
 
 function shouldHydrateAuthoritativeLotData(
