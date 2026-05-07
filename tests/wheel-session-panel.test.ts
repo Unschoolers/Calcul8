@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { WheelSessionPanel } from "../src/components/windows/wheel/inspector/WheelSessionPanel.ts";
+import { WheelSessionPanel } from "../src/components/windows/game/inspector/WheelSessionPanel.ts";
 
 test("wheelSessionPanelProfit falls back to fee calculation when live session net revenue is missing", () => {
   const vm = {
@@ -110,3 +110,4 @@ test("wheelSessionPanelProfit uses stored live session net revenue when present"
   const result = WheelSessionPanel.computed!.wheelSessionPanelProfit.call(vm as never);
   assert.ok(Math.abs(result - 54.65) < 0.001);
 });
+

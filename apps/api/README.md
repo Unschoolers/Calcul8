@@ -4,7 +4,6 @@ This is a separate deployable backend project for:
 
 - `GET /api/entitlements/me`
 - `POST /api/entitlements/verify/{provider}`
-- `POST /api/entitlements/verify-play`
 - `POST /api/billing/checkout-session`
 - `POST /api/billing/webhook`
 - `POST /api/sync/pull`
@@ -191,7 +190,7 @@ traces
 ## Entitlement verification flow
 
 1. Frontend gets a Google ID token.
-2. Frontend sends `POST /api/entitlements/verify-play` with:
+2. Frontend sends `POST /api/entitlements/verify/play` with:
    - `purchaseToken` (required)
    - `productId` (optional if configured in API env)
    - `packageName` (optional if configured in API env)
@@ -202,9 +201,7 @@ traces
 7. Frontend calls `GET /api/entitlements/me` to read current access.
 
 Provider routing note:
-- Preferred endpoint is now `POST /api/entitlements/verify/{provider}`.
-- Current supported provider is `play` (so `POST /api/entitlements/verify/play`).
-- Legacy `POST /api/entitlements/verify-play` remains supported for backward compatibility.
+- Current supported provider is `play`.
 
 Note:
 - `GET /api/entitlements/me` now auto-creates a baseline entitlement row on first authenticated request

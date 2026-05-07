@@ -6,12 +6,12 @@ import {
 } from "../src/app-core/storageKeys.ts";
 import { normalizeWheelConfig } from "../src/app-core/shared/normalize-wheel-config.ts";
 import { createNestedWindowContextBridge } from "../src/components/windows/shared/contextBridge.ts";
-import { getWheelController, getWheelWindowLocalKeys } from "../src/components/windows/wheel/coordinator/wheelControllerState.ts";
-import { createWheelSale } from "../src/components/windows/wheel/services/wheelSales.ts";
-import { buildSlotsFromConfig } from "../src/components/windows/wheel/services/wheelSlots.ts";
+import { getWheelController, getGameWindowLocalKeys } from "../src/components/windows/game/coordinator/gameControllerState.ts";
+import { createWheelSale } from "../src/components/windows/game/services/wheelSales.ts";
+import { buildSlotsFromConfig } from "../src/components/windows/game/services/wheelSlots.ts";
 import {
-    WheelWindow
-} from "../src/components/windows/wheel/WheelWindow.ts";
+    GameWindow
+} from "../src/components/windows/game/GameWindow.ts";
 import type { WheelConfig } from "../src/types/app.ts";
 
 
@@ -49,7 +49,7 @@ test("loadWheelFromSession remaps saved spin counts by tier after rebuild", () =
     wheelTotalSpins: 0
   };
 
-  const restored = WheelWindow.methods!.loadWheelFromSession.call(vm as never);
+  const restored = GameWindow.methods!.loadWheelFromSession.call(vm as never);
   assert.equal(restored, true);
   assert.deepEqual(vm.wheelSpinCounts, [2, 1]);
   assert.equal(vm.wheelTotalSpins, 3);
@@ -77,7 +77,7 @@ test("loadWheelConfig clears invalid chase flags for non-singles tiers", () => {
     drawWheel: vi.fn()
   };
 
-  WheelWindow.methods!.loadWheelConfig.call(vm as never);
+  GameWindow.methods!.loadWheelConfig.call(vm as never);
   assert.equal((vm.wheelConfigs as WheelConfig[])[0]!.tiers[0]!.isChase, false);
   assert.equal((vm.editingWheelConfig as WheelConfig).tiers[0]!.isChase, false);
 });
@@ -141,7 +141,7 @@ test("requestWheelReset opens the shared reset confirmation and stops preview au
     })
   };
 
-  WheelWindow.methods!.requestWheelReset.call(vm as never);
+  GameWindow.methods!.requestWheelReset.call(vm as never);
 
   assert.equal(vm.stopWheelAutospin.mock.calls.length, 1);
   assert.equal(vm.wheelAutospinEnabled, false);
@@ -215,7 +215,7 @@ test("loadWheelConfig restores autosaved draft without mutating the live config"
     drawWheel: vi.fn()
   };
 
-  WheelWindow.methods!.loadWheelConfig.call(vm as never);
+  GameWindow.methods!.loadWheelConfig.call(vm as never);
   assert.equal((vm.editingWheelConfig as WheelConfig).spinPrice, 15);
   assert.equal(((vm.wheelConfigs as WheelConfig[])[0]!.spinPrice), 10);
 
@@ -268,7 +268,7 @@ test("loadWheelConfig normalizes legacy singles tiers away from pack deduction",
     drawWheel: vi.fn()
   };
 
-  WheelWindow.methods!.loadWheelConfig.call(vm as never);
+  GameWindow.methods!.loadWheelConfig.call(vm as never);
 
   assert.equal((vm.wheelConfigs as WheelConfig[])[0]!.tiers[0]!.deductionType, "singles");
   assert.equal((vm.editingWheelConfig as WheelConfig).tiers[0]!.deductionType, "singles");
@@ -319,7 +319,7 @@ test("loadWheelConfig clears rendered wheel state when no active config exists",
     drawWheel: vi.fn()
   };
 
-  WheelWindow.methods!.loadWheelConfig.call(vm as never);
+  GameWindow.methods!.loadWheelConfig.call(vm as never);
   const controller = getWheelController(vm);
 
   assert.equal(vm.editingWheelConfig, null);
@@ -377,7 +377,7 @@ test("ensureWheelEditorState rebuilds local editing and slot state from the acti
     drawWheel: vi.fn()
   };
 
-  WheelWindow.methods!.ensureWheelEditorState.call(vm as never);
+  GameWindow.methods!.ensureWheelEditorState.call(vm as never);
 
   assert.equal((vm.editingWheelConfig as WheelConfig | null)?.id, 5);
   assert.equal((vm.activeWheelSlots as Array<unknown>).length, 2);
@@ -420,7 +420,7 @@ test("saveWheelDraft persists the config without changing the applied wheel or p
     pushCloudSync
   };
 
-  WheelWindow.methods!.saveWheelDraft.call(vm as never);
+  GameWindow.methods!.saveWheelDraft.call(vm as never);
 
   assert.equal((vm.wheelConfigs as WheelConfig[])[0]!.spinPrice, 15);
   assert.equal((vm.appliedWheelConfigSnapshot as WheelConfig).spinPrice, 10);
@@ -484,7 +484,7 @@ test("applyWheelConfig clears pending changes and cancels queued draft sync", as
     saveWheelSession: vi.fn(),
     drawWheel: vi.fn(),
     saveWheelDraft: vi.fn(function (this: Record<string, unknown>) {
-      WheelWindow.methods!.saveWheelDraft.call(this as never);
+      GameWindow.methods!.saveWheelDraft.call(this as never);
     })
   };
 
@@ -492,11 +492,11 @@ test("applyWheelConfig clears pending changes and cancels queued draft sync", as
     (vm.saveWheelDraft as () => void)();
   }, 1200);
 
-  WheelWindow.methods!.applyWheelConfig.call(vm as never);
+  GameWindow.methods!.applyWheelConfig.call(vm as never);
   await vi.advanceTimersByTimeAsync(2000);
 
   assert.equal(pushCloudSync.mock.calls.length, 1);
-  assert.equal(WheelWindow.computed!.hasPendingWheelChanges.call(vm as never), false);
+  assert.equal(GameWindow.computed!.hasPendingWheelChanges.call(vm as never), false);
   assert.equal((vm.editingWheelConfig as WheelConfig).spinPrice, 15);
   assert.equal((vm.appliedWheelConfigSnapshot as WheelConfig).spinPrice, 15);
   assert.equal(removeItem.mock.calls.length, 1);
@@ -530,7 +530,7 @@ test("queueWheelConfigSync keeps config sync pending until valid auto-apply fini
     clearWheelDraft
   };
 
-  WheelWindow.methods!.queueWheelConfigSync.call(vm as never);
+  GameWindow.methods!.queueWheelConfigSync.call(vm as never);
 
   assert.equal(vm.wheelConfigSyncPending, true);
   await vi.advanceTimersByTimeAsync(900);
@@ -586,11 +586,11 @@ test("preview chase replacement keeps prior chase tally as a separate tracker li
     drawWheel: vi.fn()
   };
 
-  WheelWindow.methods!.confirmChaseReplacement.call(vm as never);
+  GameWindow.methods!.confirmChaseReplacement.call(vm as never);
   const history = vm.wheelPreviewChaseTallyHistory as Array<{ tierId: string; label: string; color: string; count: number }>;
   assert.deepEqual(history, [{ tierId: "tc", label: "Old Chase", color: "#09f", count: 2 }]);
 
-  const tally = WheelWindow.computed!.wheelTallyByTier.call({
+  const tally = GameWindow.computed!.wheelTallyByTier.call({
     wheelMode: "config",
     wheelDisplayConfig: vm.editingWheelConfig,
     wheelDisplaySlots: vm.wheelPreviewSlots,
@@ -631,7 +631,7 @@ test("landOnSlot opens chase dialog for chase tiers", () => {
     saveWheelSession: vi.fn()
   };
 
-  WheelWindow.methods!.landOnSlot.call(vm as never, 0);
+  GameWindow.methods!.landOnSlot.call(vm as never, 0);
   assert.equal(vm.wheelChaseDialog, true);
   assert.equal(vm.wheelChasePendingTierId, "tc");
   assert.equal(triggerWheelCelebration.mock.calls.length, 1);
@@ -659,7 +659,7 @@ test("recordSpinResult auto-records sale for non-chase tiers with bound lot", ()
     saveWheelSession: vi.fn()
   };
 
-  WheelWindow.methods!.recordSpinResult.call(vm as never, 0);
+  GameWindow.methods!.recordSpinResult.call(vm as never, 0);
   assert.equal(addSaleFn.mock.calls.length, 1);
   assert.equal(addSaleFn.mock.calls[0]![0], 42);
   const sale = addSaleFn.mock.calls[0]![1];
@@ -690,7 +690,7 @@ test("recordSpinResult does not record sale when tier items count is zero", () =
     saveWheelSession: vi.fn()
   };
 
-  WheelWindow.methods!.recordSpinResult.call(vm as never, 0);
+  GameWindow.methods!.recordSpinResult.call(vm as never, 0);
   assert.equal(addSaleFn.mock.calls.length, 0);
   assert.equal((vm.wheelSkippedDeductions as unknown[]).length, 0);
 });
@@ -714,7 +714,7 @@ test("recordSpinResult auto-skips singles with quantity 0", () => {
     saveWheelSession: vi.fn()
   };
 
-  WheelWindow.methods!.recordSpinResult.call(vm as never, 0);
+  GameWindow.methods!.recordSpinResult.call(vm as never, 0);
   // Should NOT record sale
   assert.equal(addSaleFn.mock.calls.length, 0);
   // Should add to skipped deductions
@@ -752,7 +752,7 @@ test("recordSpinResult skips sold-out singles when linked entry has no remaining
     saveWheelSession: vi.fn()
   };
 
-  WheelWindow.methods!.recordSpinResult.call(vm as never, 0);
+  GameWindow.methods!.recordSpinResult.call(vm as never, 0);
   assert.equal(addSaleFn.mock.calls.length, 0);
   assert.equal((vm.wheelSkippedDeductions as unknown[]).length, 1);
 });
@@ -779,7 +779,7 @@ test("recordSpinResult skips pack sale when bound lot lacks remaining packs", ()
     saveWheelSession: vi.fn()
   };
 
-  WheelWindow.methods!.recordSpinResult.call(vm as never, 0);
+  GameWindow.methods!.recordSpinResult.call(vm as never, 0);
   assert.equal(addSaleFn.mock.calls.length, 0);
   assert.equal((vm.wheelSkippedDeductions as unknown[]).length, 1);
   assert.match(String(vm.wheelInventoryWarning), /only 2 remain/i);
@@ -809,7 +809,7 @@ test("getSinglesItemsForTier filters sold-out singles entries", () => {
     }])
   };
 
-  const items = WheelWindow.methods!.getSinglesItemsForTier.call(vm as never, tier);
+  const items = GameWindow.methods!.getSinglesItemsForTier.call(vm as never, tier);
   assert.equal(items.some((item: { value: number | null }) => item.value === 2), false);
   assert.equal(items.some((item: { value: number | null }) => item.value === 1), true);
 });
@@ -835,7 +835,7 @@ test("tierSourceItems excludes bulk lots with no remaining packs even if not mar
     currentLotId: null
   };
 
-  const items = WheelWindow.computed!.tierSourceItems.call(vm as never);
+  const items = GameWindow.computed!.tierSourceItems.call(vm as never);
   assert.equal(items.some((item: { value: number | null }) => item.value === 10), false);
   assert.equal(items.some((item: { value: number | null }) => item.value === 11), true);
 });
@@ -874,7 +874,7 @@ test("tierSourceItems excludes sold-out singles lots even if not marked complete
     currentLotId: null
   };
 
-  const items = WheelWindow.computed!.tierSourceItems.call(vm as never);
+  const items = GameWindow.computed!.tierSourceItems.call(vm as never);
   assert.equal(items.some((item: { value: number | null }) => item.value === 20), false);
   assert.equal(items.some((item: { value: number | null }) => item.value === 21), true);
 });
@@ -889,7 +889,7 @@ test("tierSourceItems does not include a manual null option", () => {
     currentLotId: null
   };
 
-  const items = WheelWindow.computed!.tierSourceItems.call(vm as never);
+  const items = GameWindow.computed!.tierSourceItems.call(vm as never);
   assert.equal(items.some((item: { value: number | null }) => item.value == null), false);
   assert.equal(items[0]!.value, 10);
 });
@@ -920,7 +920,7 @@ test("addTier leaves source blank when current lot has no remaining inventory", 
     }])
   };
 
-  WheelWindow.methods!.addTier.call(vm as never);
+  GameWindow.methods!.addTier.call(vm as never);
   const tier = (vm.editingWheelConfig as WheelConfig).tiers[0]!;
   assert.equal(tier.boundLotId, null);
 });
@@ -947,16 +947,16 @@ test("singles tiers lock count to one and untracked sale resets cost to zero", (
     sets: []
   };
 
-  WheelWindow.methods!.onTierLotChange.call(vm as never, tier as never, 42);
+  GameWindow.methods!.onTierLotChange.call(vm as never, tier as never, 42);
   assert.equal(tier.deductionType, "singles");
   assert.equal(tier.packsCount, 1);
   assert.equal(tier.costPerTier, 0);
 
-  WheelWindow.methods!.onTierSinglesChange.call(vm as never, tier as never, 7);
+  GameWindow.methods!.onTierSinglesChange.call(vm as never, tier as never, 7);
   assert.equal(tier.packsCount, 1);
   assert.equal(tier.costPerTier, 25);
 
-  WheelWindow.methods!.onTierSinglesChange.call(vm as never, tier as never, null);
+  GameWindow.methods!.onTierSinglesChange.call(vm as never, tier as never, null);
   assert.equal(tier.packsCount, 1);
   assert.equal(tier.costPerTier, 0);
 });
@@ -984,7 +984,7 @@ test("onTierLotChange accepts string values from the tier source selector", () =
     sets: []
   };
 
-  WheelWindow.methods!.onTierLotChange.call(vm as never, tier as never, "77" as never);
+  GameWindow.methods!.onTierLotChange.call(vm as never, tier as never, "77" as never);
 
   assert.equal(tier.boundLotId, 77);
   assert.equal(tier.deductionType, "singles");
@@ -1037,9 +1037,9 @@ test("confirmChaseReplacement preserves session cost via adjustment", () => {
 
   // Mock drawWheel and recordChaseSale
   (vm as Record<string, unknown>).drawWheel = vi.fn();
-  vm.recordChaseSale = WheelWindow.methods!.recordChaseSale.bind(vm as never);
+  vm.recordChaseSale = GameWindow.methods!.recordChaseSale.bind(vm as never);
 
-  WheelWindow.methods!.confirmChaseReplacement.call(vm as never);
+  GameWindow.methods!.confirmChaseReplacement.call(vm as never);
 
   // Adjustment should compensate: 2 spins × ($50 old - $10 new) = 80
   assert.equal(vm.wheelSessionCostAdjustment, 80);
@@ -1112,7 +1112,7 @@ test("confirmChaseReplacement accumulates adjustment across multiple replacement
     saveWheelSession: vi.fn()
   };
 
-  WheelWindow.methods!.confirmChaseReplacement.call(vm as never);
+  GameWindow.methods!.confirmChaseReplacement.call(vm as never);
 
   // Previous adjustment: 20
   // New adjustment: 2 × (30 - 10) = 40
@@ -1151,7 +1151,7 @@ test("resetWheelSession clears cost adjustment", () => {
     publishWheelSpectatorSessionSnapshot: vi.fn()
   };
 
-  WheelWindow.methods!.resetWheelSession.call(vm as never);
+  GameWindow.methods!.resetWheelSession.call(vm as never);
 
   assert.equal(vm.wheelTotalSpins, 0);
   assert.equal(vm.wheelSessionNetRevenue, 0);
@@ -1252,7 +1252,7 @@ test("recordChaseSale calls addWheelSaleToLot for the tier's bound lot", () => {
     addWheelSaleToLot: addSaleFn
   };
 
-  WheelWindow.methods!.recordChaseSale.call(vm as never, "tc");
+  GameWindow.methods!.recordChaseSale.call(vm as never, "tc");
 
   assert.equal(addSaleFn.mock.calls.length, 1);
   assert.equal(addSaleFn.mock.calls[0]![0], 100);
@@ -1276,7 +1276,7 @@ test("recordChaseSale does nothing when tier has no bound lot", () => {
     addWheelSaleToLot: addSaleFn
   };
 
-  WheelWindow.methods!.recordChaseSale.call(vm as never, "tc");
+  GameWindow.methods!.recordChaseSale.call(vm as never, "tc");
 
   assert.equal(addSaleFn.mock.calls.length, 0);
 });
@@ -1299,13 +1299,13 @@ test("keepChase records sale and closes dialog", () => {
     }],
     loadSalesForLotId: vi.fn(() => []),
     addWheelSaleToLot: addSaleFn,
-    recordChaseSale: WheelWindow.methods!.recordChaseSale,
+    recordChaseSale: GameWindow.methods!.recordChaseSale,
     saveWheelSession: vi.fn(),
     activeScopeType: "personal",
     activeWorkspaceId: null
   };
 
-  WheelWindow.methods!.keepChase.call(vm as never);
+  GameWindow.methods!.keepChase.call(vm as never);
 
   assert.equal(vm.wheelChaseDialog, false);
   assert.equal(addSaleFn.mock.calls.length, 1);
@@ -1326,7 +1326,7 @@ test("canKeepChase returns true when current chase item has quantity > 1", () =>
     }]
   };
 
-  assert.equal(WheelWindow.methods!.canKeepChase.call(vm as never), true);
+  assert.equal(GameWindow.methods!.canKeepChase.call(vm as never), true);
 });
 
 test("canKeepChase returns false when current chase item has quantity <= 1", () => {
@@ -1343,7 +1343,7 @@ test("canKeepChase returns false when current chase item has quantity <= 1", () 
     }]
   };
 
-  assert.equal(WheelWindow.methods!.canKeepChase.call(vm as never), false);
+  assert.equal(GameWindow.methods!.canKeepChase.call(vm as never), false);
 });
 
 test("canKeepChase returns false when no boundSinglesId", () => {
@@ -1360,7 +1360,7 @@ test("canKeepChase returns false when no boundSinglesId", () => {
     }]
   };
 
-  assert.equal(WheelWindow.methods!.canKeepChase.call(vm as never), false);
+  assert.equal(GameWindow.methods!.canKeepChase.call(vm as never), false);
 });
 
 // ── canApplyWheelConfig ─────────────────────────────────────────
@@ -1375,7 +1375,7 @@ test("canApplyWheelConfig returns true when all tiers have boundLotId", () => {
       ]
     }
   };
-  assert.equal(WheelWindow.computed!.canApplyWheelConfig.call(vm as never), true);
+  assert.equal(GameWindow.computed!.canApplyWheelConfig.call(vm as never), true);
 });
 
 test("canApplyWheelConfig returns false when a tier is missing boundLotId", () => {
@@ -1388,7 +1388,7 @@ test("canApplyWheelConfig returns false when a tier is missing boundLotId", () =
       ]
     }
   };
-  assert.equal(WheelWindow.computed!.canApplyWheelConfig.call(vm as never), false);
+  assert.equal(GameWindow.computed!.canApplyWheelConfig.call(vm as never), false);
 });
 
 test("canApplyWheelConfig returns false with no tiers", () => {
@@ -1398,7 +1398,7 @@ test("canApplyWheelConfig returns false with no tiers", () => {
       tiers: []
     }
   };
-  assert.equal(WheelWindow.computed!.canApplyWheelConfig.call(vm as never), false);
+  assert.equal(GameWindow.computed!.canApplyWheelConfig.call(vm as never), false);
 });
 
 test("handleWheelModeChange asks for confirmation before switching to live and keeps inspector on config", () => {
@@ -1409,7 +1409,7 @@ test("handleWheelModeChange asks for confirmation before switching to live and k
     wheelRequestedMode: null
   };
 
-  WheelWindow.methods!.handleWheelModeChange.call(vm as never, "live");
+  GameWindow.methods!.handleWheelModeChange.call(vm as never, "live");
 
   assert.equal(vm.wheelMode, "config");
   assert.equal(vm.wheelInspectorTab, "config");
@@ -1425,7 +1425,7 @@ test("confirmWheelModeChange applies the requested live mode and moves the inspe
     wheelRequestedMode: "live"
   };
 
-  WheelWindow.methods!.confirmWheelModeChange.call(vm as never);
+  GameWindow.methods!.confirmWheelModeChange.call(vm as never);
 
   assert.equal(vm.wheelMode, "live");
   assert.equal(vm.wheelInspectorTab, "session");
@@ -1444,14 +1444,14 @@ test("confirmWheelModeChange stops config autospin before switching to live", ()
     stopWheelAutospin
   };
 
-  WheelWindow.methods!.confirmWheelModeChange.call(vm as never);
+  GameWindow.methods!.confirmWheelModeChange.call(vm as never);
 
   assert.equal(stopWheelAutospin.mock.calls.length, 1);
   assert.equal(vm.wheelMode, "live");
 });
 
 test("wheelInspectorTabItems reuse a shared tab model for config mode", () => {
-  const items = WheelWindow.computed!.wheelInspectorTabItems.call({
+  const items = GameWindow.computed!.wheelInspectorTabItems.call({
     wheelMode: "config",
     preferredLanguage: "en"
   } as never);
@@ -1460,7 +1460,7 @@ test("wheelInspectorTabItems reuse a shared tab model for config mode", () => {
 });
 
 test("wheelInspectorTabItems hide builder outside config mode", () => {
-  const items = WheelWindow.computed!.wheelInspectorTabItems.call({
+  const items = GameWindow.computed!.wheelInspectorTabItems.call({
     wheelMode: "live",
     preferredLanguage: "en"
   } as never);
@@ -1469,7 +1469,7 @@ test("wheelInspectorTabItems hide builder outside config mode", () => {
 });
 
 test("wheelCompactFabActions expose config-mode history, session, builder ordering", () => {
-  const actions = WheelWindow.computed!.wheelCompactFabActions.call({
+  const actions = GameWindow.computed!.wheelCompactFabActions.call({
     wheelMode: "config",
     preferredLanguage: "en",
     hasLotSelected: true,
@@ -1480,7 +1480,7 @@ test("wheelCompactFabActions expose config-mode history, session, builder orderi
 });
 
 test("wheelCompactFabActions expose live-mode history, session, end ordering", () => {
-  const actions = WheelWindow.computed!.wheelCompactFabActions.call({
+  const actions = GameWindow.computed!.wheelCompactFabActions.call({
     wheelMode: "live",
     preferredLanguage: "en",
     hasLotSelected: true,
@@ -1492,7 +1492,7 @@ test("wheelCompactFabActions expose live-mode history, session, end ordering", (
 });
 
 test("wheel window local keys include top-level mode and inspector state", () => {
-  const localKeys = getWheelWindowLocalKeys();
+  const localKeys = getGameWindowLocalKeys();
 
   assert.ok(localKeys.includes("wheelController"));
   assert.ok(localKeys.includes("wheelMode"));
@@ -1504,7 +1504,7 @@ test("wheel window local keys include top-level mode and inspector state", () =>
 });
 
 test("wheelStageSummaryCards provide config-mode summary cards from the shared model", () => {
-  const cards = WheelWindow.computed!.wheelStageSummaryCards.call({
+  const cards = GameWindow.computed!.wheelStageSummaryCards.call({
     wheelMode: "config",
     preferredLanguage: "en",
     expectedMarginDisplay: "12.5%",
@@ -1529,7 +1529,7 @@ test("handleWheelModeChange returns the inspector to config when switching back"
     wheelRequestedMode: null
   };
 
-  WheelWindow.methods!.handleWheelModeChange.call(vm as never, "config");
+  GameWindow.methods!.handleWheelModeChange.call(vm as never, "config");
 
   assert.equal(vm.wheelMode, "config");
   assert.equal(vm.wheelInspectorTab, "config");
@@ -1548,7 +1548,7 @@ test("focusWheelInspector updates the tab and scrolls the inspector into view wh
     }
   };
 
-  WheelWindow.methods!.focusWheelInspector.call(vm as never, "history");
+  GameWindow.methods!.focusWheelInspector.call(vm as never, "history");
   await Promise.resolve();
   await Promise.resolve();
 
@@ -1563,7 +1563,7 @@ test("focusWheelInspector is safe when the inspector ref is missing", async () =
     $refs: {}
   };
 
-  WheelWindow.methods!.focusWheelInspector.call(vm as never, "session");
+  GameWindow.methods!.focusWheelInspector.call(vm as never, "session");
   await Promise.resolve();
   await Promise.resolve();
 
@@ -1583,7 +1583,7 @@ test("focusWheelInspector supports component refs that expose scrollIntoView via
     }
   };
 
-  WheelWindow.methods!.focusWheelInspector.call(vm as never, "history");
+  GameWindow.methods!.focusWheelInspector.call(vm as never, "history");
   await Promise.resolve();
   await Promise.resolve();
 
@@ -1599,7 +1599,7 @@ test("normalizeWheelCompactInspectorState closes the mobile sheet when layout is
     wheelMobileInspectorOpen: true
   };
 
-  WheelWindow.methods!.normalizeWheelCompactInspectorState.call(vm as never);
+  GameWindow.methods!.normalizeWheelCompactInspectorState.call(vm as never);
 
   assert.equal(vm.wheelMobileInspectorOpen, false);
 });
@@ -1611,7 +1611,7 @@ test("normalizeWheelCompactInspectorState keeps the mobile sheet closed in prese
     wheelMobileInspectorOpen: true
   };
 
-  WheelWindow.methods!.normalizeWheelCompactInspectorState.call(vm as never);
+  GameWindow.methods!.normalizeWheelCompactInspectorState.call(vm as never);
 
   assert.equal(vm.wheelMobileInspectorOpen, false);
 });
@@ -1652,7 +1652,7 @@ test("saveWheelSession stores session to localStorage", () => {
     wheelSpinAlgorithm: "whatfees-wheel-v1"
   };
 
-  WheelWindow.methods!.saveWheelSession.call(vm as never);
+  GameWindow.methods!.saveWheelSession.call(vm as never);
 
   assert.equal(mockStorage.setItem.mock.calls.length, 2);
   assert.equal(mockStorage.setItem.mock.calls[0]![0], "whatfees_wheel_session__cfg__42");
@@ -1731,7 +1731,7 @@ test("loadWheelFromSession restores session from localStorage", () => {
     wheelSpinAlgorithm: ""
   };
 
-  const result = WheelWindow.methods!.loadWheelFromSession.call(vm as never);
+  const result = GameWindow.methods!.loadWheelFromSession.call(vm as never);
 
   assert.equal(result, true);
   assert.deepEqual(vm.wheelSpinCounts, [3, 4]);
@@ -1788,7 +1788,7 @@ test("loadWheelFromSession falls back to the scoped root session snapshot when t
     wheelLastResultColor: ""
   };
 
-  const result = WheelWindow.methods!.loadWheelFromSession.call(vm as never);
+  const result = GameWindow.methods!.loadWheelFromSession.call(vm as never);
 
   assert.equal(result, true);
   assert.deepEqual(vm.wheelSpinCounts, [2, 1]);
@@ -1823,7 +1823,7 @@ test("loadWheelFromSession returns false when slot count mismatches", () => {
     wheelTotalSpins: 0
   };
 
-  const result = WheelWindow.methods!.loadWheelFromSession.call(vm as never);
+  const result = GameWindow.methods!.loadWheelFromSession.call(vm as never);
 
   assert.equal(result, false);
   // Spin counts should NOT have been overwritten
@@ -1831,3 +1831,6 @@ test("loadWheelFromSession returns false when slot count mismatches", () => {
 
   Object.defineProperty(globalThis, "localStorage", { value: origLocalStorage, writable: true, configurable: true });
 });
+
+
+

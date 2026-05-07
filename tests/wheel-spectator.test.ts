@@ -4,9 +4,9 @@ import {
   buildWheelSpectatorSessionUrl,
   buildWheelSpectatorSnapshot,
   normalizeWheelPublicSessionId
-} from "../src/components/windows/wheel/services/wheelSpectator.ts";
-import { buildSlotsFromConfig } from "../src/components/windows/wheel/services/wheelSlots.ts";
-import { createWheelWindowState } from "../src/components/windows/wheel/coordinator/wheelControllerState.ts";
+} from "../src/components/windows/game/services/wheelSpectator.ts";
+import { buildSlotsFromConfig } from "../src/components/windows/game/services/wheelSlots.ts";
+import { createGameWindowState } from "../src/components/windows/game/coordinator/gameControllerState.ts";
 import type { WheelConfig } from "../src/types/app.ts";
 import { makeLot } from "./helpers/fixtures.ts";
 
@@ -63,7 +63,7 @@ test("buildWheelSpectatorSnapshot returns a viewer-safe summary with chase heat 
     ]
   };
 
-  const vm = createWheelWindowState() as Record<string, unknown>;
+  const vm = createGameWindowState() as Record<string, unknown>;
   const activeSlots = buildSlotsFromConfig(config);
   vm.activeWheelConfig = config;
   vm.wheelMode = "live";
@@ -117,13 +117,13 @@ test("buildWheelSpectatorSnapshot returns a viewer-safe summary with chase heat 
 
   const snapshot = buildWheelSpectatorSnapshot(vm, "live");
 
-  assert.equal(snapshot.snapshotVersion, 1);
-  assert.equal(snapshot.wheelName, "Saturday Wheel");
+  assert.equal(snapshot.snapshotVersion, 2);
+  assert.equal(snapshot.gameName, "Saturday Wheel");
   assert.equal(snapshot.sessionStatus, "live");
-  assert.equal(snapshot.totalSpins, 2);
+  assert.equal(snapshot.sessionResultCount, 2);
   assert.equal(snapshot.lastResultLabel, "Alt Art Chase");
-  assert.equal(snapshot.wheelSlots.length, activeSlots.length);
-  assert.equal(snapshot.wheelSlots[chaseIndex]?.tier, "chase-live");
+  assert.equal(snapshot.outcomeSlots.length, activeSlots.length);
+  assert.equal(snapshot.outcomeSlots[chaseIndex]?.tier, "chase-live");
   assert.equal(snapshot.recentFairnessHistory.length, 1);
   assert.equal(snapshot.recentFairnessHistory[0]?.verificationUrl, "https://api.example.test/wheel/fairness/verify?spin=2");
   assert.equal(snapshot.featuredChaseLabel, "Alt Art Chase");
@@ -162,7 +162,7 @@ test("buildWheelSpectatorSnapshot carries active spin animation metadata", () =>
     }]
   };
 
-  const vm = createWheelWindowState() as Record<string, unknown>;
+  const vm = createGameWindowState() as Record<string, unknown>;
   vm.activeWheelConfig = config;
   vm.wheelMode = "live";
   vm.wheelSpinning = true;
@@ -181,7 +181,7 @@ test("buildWheelSpectatorSnapshot carries active spin animation metadata", () =>
   const snapshot = buildWheelSpectatorSnapshot(vm, "live");
 
   assert.equal(snapshot.isSpinning, true);
-  assert.deepEqual(snapshot.spinAnimation, {
+  assert.deepEqual(snapshot.resultAnimation, {
     spinId: "spin-1",
     startedAt: 10_000,
     durationMs: 4_500,
@@ -227,7 +227,7 @@ test("buildWheelSpectatorSnapshot includes mystery grid cells for spectator mode
     ]
   };
 
-  const vm = createWheelWindowState() as Record<string, unknown>;
+  const vm = createGameWindowState() as Record<string, unknown>;
   const activeSlots = buildSlotsFromConfig(config);
   vm.activeWheelConfig = config;
   vm.wheelMode = "live";
@@ -250,11 +250,11 @@ test("buildWheelSpectatorSnapshot includes mystery grid cells for spectator mode
 
   assert.equal(snapshot.gameType, "grid");
   assert.equal(snapshot.isSpinning, true);
-  assert.equal(snapshot.gridCells?.length, 25);
-  assert.equal(snapshot.gridCells?.[4]?.revealed, true);
-  assert.equal(snapshot.gridCells?.[4]?.label, "Floor");
-  assert.equal(snapshot.gridCells?.[7]?.revealed, false);
-  assert.equal(snapshot.gridHighlightCellIndex, 7);
+  assert.equal(snapshot.boardCells?.length, 25);
+  assert.equal(snapshot.boardCells?.[4]?.revealed, true);
+  assert.equal(snapshot.boardCells?.[4]?.label, "Floor");
+  assert.equal(snapshot.boardCells?.[7]?.revealed, false);
+  assert.equal(snapshot.boardHighlightCellIndex, 7);
 });
 
 test("buildWheelSpectatorSnapshot prefers the displayed grid config over a stale active config", () => {
@@ -286,7 +286,7 @@ test("buildWheelSpectatorSnapshot prefers the displayed grid config over a stale
       }
     ]
   };
-  const vm = createWheelWindowState() as Record<string, unknown>;
+  const vm = createGameWindowState() as Record<string, unknown>;
   const activeSlots = buildSlotsFromConfig(displayedGridConfig);
   vm.activeWheelConfig = activeConfig;
   vm.wheelDisplayConfig = displayedGridConfig;
@@ -297,7 +297,7 @@ test("buildWheelSpectatorSnapshot prefers the displayed grid config over a stale
   const snapshot = buildWheelSpectatorSnapshot(vm, "live");
 
   assert.equal(snapshot.gameType, "grid");
-  assert.equal(snapshot.gridCells?.length, 36);
+  assert.equal(snapshot.boardCells?.length, 36);
 });
 
 test("buildWheelSpectatorSnapshot keeps preview grid reveals in spectator mode", () => {
@@ -322,7 +322,7 @@ test("buildWheelSpectatorSnapshot keeps preview grid reveals in spectator mode",
       sets: []
     }]
   };
-  const vm = createWheelWindowState() as Record<string, unknown>;
+  const vm = createGameWindowState() as Record<string, unknown>;
   const previewSlots = buildSlotsFromConfig(config);
   vm.editingWheelConfig = config;
   vm.activeWheelConfig = config;
@@ -343,8 +343,8 @@ test("buildWheelSpectatorSnapshot keeps preview grid reveals in spectator mode",
   const snapshot = buildWheelSpectatorSnapshot(vm, "live");
 
   assert.equal(snapshot.gameType, "grid");
-  assert.equal(snapshot.gridCells?.[3]?.revealed, true);
-  assert.equal(snapshot.gridCells?.[3]?.label, "Floor");
+  assert.equal(snapshot.boardCells?.[3]?.revealed, true);
+  assert.equal(snapshot.boardCells?.[3]?.label, "Floor");
 });
 
 test("buildWheelSpectatorSnapshot falls back to the lowest-profit live tier when no chase is active", () => {
@@ -380,7 +380,7 @@ test("buildWheelSpectatorSnapshot falls back to the lowest-profit live tier when
     ]
   };
 
-  const vm = createWheelWindowState() as Record<string, unknown>;
+  const vm = createGameWindowState() as Record<string, unknown>;
   const activeSlots = buildSlotsFromConfig(config);
   vm.activeWheelConfig = config;
   vm.wheelMode = "live";
@@ -404,7 +404,7 @@ test("buildWheelSpectatorSnapshot falls back to the lowest-profit live tier when
 
   assert.equal(snapshot.featuredChaseLabel, "Sweat Pull");
   assert.equal(snapshot.featuredChaseHeat, "very_low");
-  assert.equal(snapshot.wheelSlots.length, activeSlots.length);
+  assert.equal(snapshot.outcomeSlots.length, activeSlots.length);
   assert.equal(snapshot.chaseBoard.length, 0);
 });
 
@@ -441,7 +441,7 @@ test("buildWheelSpectatorSnapshot ramps fallback heat when the sweat tier is und
     ]
   };
 
-  const vm = createWheelWindowState() as Record<string, unknown>;
+  const vm = createGameWindowState() as Record<string, unknown>;
   const activeSlots = buildSlotsFromConfig(config);
   vm.activeWheelConfig = config;
   vm.wheelMode = "live";
@@ -500,7 +500,7 @@ test("buildWheelSpectatorSnapshot cools fallback heat after the sweat tier just 
     ]
   };
 
-  const vm = createWheelWindowState() as Record<string, unknown>;
+  const vm = createGameWindowState() as Record<string, unknown>;
   const activeSlots = buildSlotsFromConfig(config);
   vm.activeWheelConfig = config;
   vm.wheelMode = "live";
@@ -535,3 +535,7 @@ test("buildWheelSpectatorSnapshot cools fallback heat after the sweat tier just 
   assert.equal(snapshot.featuredChaseLabel, "2 packs");
   assert.equal(snapshot.featuredChaseHeat, "very_low");
 });
+
+
+
+

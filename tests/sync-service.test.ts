@@ -101,7 +101,7 @@ beforeEach(() => {
   });
   vi.stubGlobal("navigator", { onLine: true });
   vi.stubGlobal("localStorage", createMockStorage({
-    whatfees_google_token: "token-abc",
+    whatfees_google_id_token: "token-abc",
     whatfees_sync_client_version: "2",
     whatfees_presets: JSON.stringify([{ id: 1 }])
   }));
@@ -585,7 +585,7 @@ test("runCloudSyncPush forwards intentional empty-overwrite flag for confirmed d
 
 test("runCloudSyncPull applies newer cloud snapshot and stores version", async () => {
   const storage = createMockStorage({
-    whatfees_google_token: "token-abc",
+    whatfees_google_id_token: "token-abc",
     whatfees_sync_client_version: "1"
   });
   vi.stubGlobal("localStorage", storage);
@@ -842,7 +842,7 @@ test("applyCloudSnapshotToLocal sanitizes incoming wheel configs before saving",
 
 test("runCloudSyncPush skips upload and pulls cloud when local storage was cleared mid-session", async () => {
   vi.stubGlobal("localStorage", createMockStorage({
-    whatfees_google_token: "token-abc"
+    whatfees_google_id_token: "token-abc"
   }));
 
   const app = createApp();

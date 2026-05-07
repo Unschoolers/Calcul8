@@ -16,7 +16,7 @@ import LiveWindow from "./components/windows/live/LiveWindow.vue";
 import PortfolioWindow from "./components/windows/portfolio/PortfolioWindow.vue";
 import SalesWindow from "./components/windows/sales/SalesWindow.vue";
 import SinglesConfigWindow from "./components/windows/singles/SinglesConfigWindow.vue";
-import WheelWindow from "./components/windows/wheel/WheelWindow.vue";
+import GameWindow from "./components/windows/game/GameWindow.vue";
 import WhatnotCsvImportDialog from "./components/windows/whatnot/WhatnotCsvImportDialog.vue";
 import WhatnotReviewDialog from "./components/windows/whatnot/WhatnotReviewDialog.vue";
 
@@ -35,7 +35,7 @@ export const appOptions = {
     LiveWindow,
     SalesWindow,
     PortfolioWindow,
-    WheelWindow,
+    GameWindow,
     WhatnotCsvImportDialog,
     WhatnotReviewDialog
   },

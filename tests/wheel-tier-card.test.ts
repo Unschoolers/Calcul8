@@ -3,25 +3,25 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { test, vi } from "vitest";
-import { WheelInspector } from "../src/components/windows/wheel/inspector/WheelInspector.ts";
-import { WheelTierCard } from "../src/components/windows/wheel/inspector/WheelTierCard.ts";
+import { WheelInspector } from "../src/components/windows/game/inspector/WheelInspector.ts";
+import { WheelTierCard } from "../src/components/windows/game/inspector/WheelTierCard.ts";
 
 const TESTS_DIR = path.dirname(fileURLToPath(import.meta.url));
 const WHEEL_TIER_CARD_TEMPLATE = path.resolve(
   TESTS_DIR,
-  "../src/components/windows/wheel/inspector/WheelTierCard.html"
+  "../src/components/windows/game/inspector/WheelTierCard.html"
 );
 const WHEEL_INSPECTOR_TEMPLATE = path.resolve(
   TESTS_DIR,
-  "../src/components/windows/wheel/inspector/WheelInspector.html"
+  "../src/components/windows/game/inspector/WheelInspector.html"
 );
 const WHEEL_WINDOW_TEMPLATE = path.resolve(
   TESTS_DIR,
-  "../src/components/windows/wheel/coordinator/WheelWindow.html"
+  "../src/components/windows/game/coordinator/GameWindow.html"
 );
 const WHEEL_TIER_EDITOR_STYLES = path.resolve(
   TESTS_DIR,
-  "../src/components/windows/wheel/styles/wheel-tier-editor.css"
+  "../src/components/windows/game/styles/wheel-tier-editor.css"
 );
 
 test("finishTierEditor closes the editor and auto-applies when the wheel can apply", () => {
@@ -360,3 +360,5 @@ test("deleteTierAndClose removes the tier and then auto-applies", () => {
   assert.equal(vm.editorDraft, null);
   assert.equal(vm.applyWheelConfig.mock.calls.length, 1);
 });
+
+

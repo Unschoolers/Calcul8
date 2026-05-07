@@ -1,16 +1,16 @@
 import type { Chart as ChartJS } from "chart.js";
 import type {
-  LuckGameType as SharedLuckGameType,
-  WheelSpectatorChaseBoardEntry as SharedWheelSpectatorChaseBoardEntry,
-  WheelSpectatorChaseHistoryEntry as SharedWheelSpectatorChaseHistoryEntry,
-  WheelSpectatorFairnessEntry as SharedWheelSpectatorFairnessEntry,
-  WheelSpectatorGridCell as SharedWheelSpectatorGridCell,
-  WheelSpectatorHeatLevel as SharedWheelSpectatorHeatLevel,
-  WheelSpectatorSessionStatus as SharedWheelSpectatorSessionStatus,
-  WheelSpectatorSlot as SharedWheelSpectatorSlot,
-  WheelSpectatorSnapshot as SharedWheelSpectatorSnapshot,
-  WheelSpectatorSpinAnimation as SharedWheelSpectatorSpinAnimation
-} from "../../shared/wheel-public-session-contracts";
+  GameSpectatorBoardCell as SharedGameSpectatorBoardCell,
+  GameSpectatorChaseBoardEntry as SharedGameSpectatorChaseBoardEntry,
+  GameSpectatorChaseHistoryEntry as SharedGameSpectatorChaseHistoryEntry,
+  GameSpectatorFairnessEntry as SharedGameSpectatorFairnessEntry,
+  GameSpectatorHeatLevel as SharedGameSpectatorHeatLevel,
+  GameSpectatorOutcomeSlot as SharedGameSpectatorOutcomeSlot,
+  GameSpectatorResultAnimation as SharedGameSpectatorResultAnimation,
+  GameSpectatorSessionStatus as SharedGameSpectatorSessionStatus,
+  GameSpectatorSnapshot as SharedGameSpectatorSnapshot,
+  GameType as SharedGameType
+} from "../../shared/game-public-session-contracts";
 
 export type AppTab = "config" | "live" | "sales" | "portfolio" | "wheel";
 export type LotType = "bulk" | "singles";
@@ -75,7 +75,8 @@ export interface WheelTier {
   celebrationEmoji?: string;
 }
 
-export type LuckGameType = SharedLuckGameType;
+export type GameType = SharedGameType;
+export type LuckGameType = GameType;
 
 export interface WheelConfig {
   id: number;
@@ -128,15 +129,24 @@ export interface WheelFairnessEntry {
   timestamp: number;
 }
 
-export type WheelSpectatorSessionStatus = SharedWheelSpectatorSessionStatus;
-export type WheelSpectatorHeatLevel = SharedWheelSpectatorHeatLevel;
-export type WheelSpectatorFairnessEntry = SharedWheelSpectatorFairnessEntry;
-export type WheelSpectatorChaseHistoryEntry = SharedWheelSpectatorChaseHistoryEntry;
-export type WheelSpectatorChaseBoardEntry = SharedWheelSpectatorChaseBoardEntry;
-export type WheelSpectatorSlot = SharedWheelSpectatorSlot;
-export type WheelSpectatorGridCell = SharedWheelSpectatorGridCell;
-export type WheelSpectatorSpinAnimation = SharedWheelSpectatorSpinAnimation;
-export type WheelSpectatorSnapshot = SharedWheelSpectatorSnapshot;
+export type GameSpectatorSessionStatus = SharedGameSpectatorSessionStatus;
+export type GameSpectatorHeatLevel = SharedGameSpectatorHeatLevel;
+export type GameSpectatorFairnessEntry = SharedGameSpectatorFairnessEntry;
+export type GameSpectatorChaseHistoryEntry = SharedGameSpectatorChaseHistoryEntry;
+export type GameSpectatorChaseBoardEntry = SharedGameSpectatorChaseBoardEntry;
+export type GameSpectatorOutcomeSlot = SharedGameSpectatorOutcomeSlot;
+export type GameSpectatorBoardCell = SharedGameSpectatorBoardCell;
+export type GameSpectatorResultAnimation = SharedGameSpectatorResultAnimation;
+export type GameSpectatorSnapshot = SharedGameSpectatorSnapshot;
+export type WheelSpectatorSessionStatus = GameSpectatorSessionStatus;
+export type WheelSpectatorHeatLevel = GameSpectatorHeatLevel;
+export type WheelSpectatorFairnessEntry = GameSpectatorFairnessEntry;
+export type WheelSpectatorChaseHistoryEntry = GameSpectatorChaseHistoryEntry;
+export type WheelSpectatorChaseBoardEntry = GameSpectatorChaseBoardEntry;
+export type WheelSpectatorSlot = GameSpectatorOutcomeSlot;
+export type WheelSpectatorGridCell = GameSpectatorBoardCell;
+export type WheelSpectatorSpinAnimation = GameSpectatorResultAnimation;
+export type WheelSpectatorSnapshot = GameSpectatorSnapshot;
 
 export interface NewSaleDraft {
   type: SaleType;
@@ -274,7 +284,6 @@ export interface Lot extends LotSetup {
   singlesCatalogSource?: SinglesCatalogSource;
   singlesPurchases?: SinglesPurchaseEntry[];
   createdAt?: string;
-  taxRatePercent?: number;
 }
 
 export interface SalesStatus {

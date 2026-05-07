@@ -17,13 +17,13 @@ vi.mock("../src/app-core/methods/ui/spectator/wheel-spectator.ts", () => ({
   publishWheelSpectatorSession: publishWheelSpectatorSessionMock
 }));
 
-vi.mock("../src/components/windows/wheel/services/wheelSpectator.ts", () => ({
+vi.mock("../src/components/windows/game/services/wheelSpectator.ts", () => ({
   buildWheelSpectatorQrImageUrl: vi.fn((value: string) => `qr:${value}`),
   buildWheelSpectatorSessionUrl: vi.fn((value: string) => `https://example.test/spectator.html?session=${value}`),
   buildWheelSpectatorSnapshot: buildWheelSpectatorSnapshotMock
 }));
 
-import { wheelSpectatorMethods } from "../src/components/windows/wheel/commands/wheelSpectatorMethods.ts";
+import { wheelSpectatorMethods } from "../src/components/windows/game/commands/wheelSpectatorMethods.ts";
 
 test("publishWheelSpectatorSessionSnapshot republishes the newest queued state after an in-flight publish", async () => {
   let resolveFirstPublish: (() => void) | null = null;
@@ -93,3 +93,4 @@ test("startWheelSpectatorMode restarts an ended spectator session as active", as
   assert.equal(vm.wheelSpectatorSessionStatus, "starting");
   assert.equal(vm.wheelSpectatorConnectedCount, 0);
 });
+

@@ -7,7 +7,6 @@ import { normalizeSinglesCatalogSource } from "./singles-catalog-source.ts";
 import { normalizeSinglesPurchaseEntries } from "../methods/config-lots-state.ts";
 
 export function normalizeStoredLot(lot: Lot, todayDate: string): Lot {
-  const legacyTax = lot.taxRatePercent;
   const lotType = lot.lotType === "singles" ? "singles" : "bulk";
   const normalizedSinglesCatalogSource = lotType === "singles"
     ? normalizeSinglesCatalogSource(lot.singlesCatalogSource)
@@ -61,14 +60,8 @@ export function normalizeStoredLot(lot: Lot, todayDate: string): Lot {
       lotId: lot.id,
       fallbackDate: todayDate
     }) ?? todayDate,
-    purchaseTaxPercent:
-      lot.purchaseTaxPercent ??
-      legacyTax ??
-      DEFAULT_VALUES.PURCHASE_TAX_RATE_PERCENT,
-    sellingTaxPercent:
-      lot.sellingTaxPercent ??
-      legacyTax ??
-      DEFAULT_VALUES.SELLING_TAX_RATE_PERCENT
+    purchaseTaxPercent: lot.purchaseTaxPercent ?? DEFAULT_VALUES.PURCHASE_TAX_RATE_PERCENT,
+    sellingTaxPercent: lot.sellingTaxPercent ?? DEFAULT_VALUES.SELLING_TAX_RATE_PERCENT
   };
 }
 

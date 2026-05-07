@@ -1,8 +1,10 @@
 export type {
+  GameSpectatorSnapshot,
   WheelSpectatorSnapshot
 } from "../../../../types/app.ts";
 
 export {
-  CURRENT_WHEEL_PUBLIC_SESSION_SNAPSHOT_VERSION,
-  normalizeWheelSpectatorSnapshot
-} from "../../../../../shared/wheel-public-session-contracts.mjs";
+  CURRENT_GAME_PUBLIC_SESSION_SNAPSHOT_VERSION,
+  normalizeGameSpectatorSnapshot,
+  normalizeGameSpectatorSnapshot as normalizeWheelSpectatorSnapshot
+} from "../../../../../shared/game-public-session-contracts.mjs";

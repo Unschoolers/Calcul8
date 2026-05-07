@@ -5,7 +5,7 @@ import { appLifecycle } from "../src/app-core/lifecycle.ts";
 import { configMethods } from "../src/app-core/methods/config.ts";
 import { salesMethods } from "../src/app-core/methods/sales.ts";
 import { uiBaseMethods } from "../src/app-core/methods/ui/common/base.ts";
-import { getLegacySalesStorageKey, STORAGE_KEYS } from "../src/app-core/storageKeys.ts";
+import { STORAGE_KEYS } from "../src/app-core/storageKeys.ts";
 import { appWatch } from "../src/app-core/watch.ts";
 import {
     calculateBoxPriceCostCad,
@@ -38,7 +38,7 @@ import {
 import {
   calculateWheelNetFromGross,
   computeExpectedMargin,
-} from "../src/components/windows/wheel/services/wheelPricing.ts";
+} from "../src/components/windows/game/services/wheelPricing.ts";
 import type { Lot, Sale } from "../src/types/app.ts";
 
 type MockStorage = {
@@ -2553,13 +2553,19 @@ test("openAddSaleModal defaults sale price from live values with config fallback
   assert.equal(context.newSale.price, 25);
 });
 
-test("loadSalesFromStorage restores legacy sales key instead of writing empty current sales", () => {
+test("loadSalesFromStorage restores current sales key without probing old sales keys", () => {
   withMockedLocalStorage((_, data) => {
     const lotId = 901;
-    const legacyKey = getLegacySalesStorageKey(lotId);
     data.set(
-      legacyKey,
+      configMethods.getSalesStorageKey.call({
+        activeScopeType: "personal",
+        activeWorkspaceId: null
+      } as never, lotId),
       JSON.stringify([{ id: 1, type: "pack", quantity: 2, packsCount: 2, price: 9, date: "2026-02-18" }])
+    );
+    data.set(
+      "old_sales_901",
+      JSON.stringify([{ id: 2, type: "pack", quantity: 1, packsCount: 1, price: 99, date: "2026-02-18" }])
     );
 
     const context = {
@@ -2573,10 +2579,7 @@ test("loadSalesFromStorage restores legacy sales key instead of writing empty cu
 
     assert.equal(context.sales.length, 1);
     assert.equal(context.sales[0]?.price, 9);
-    assert.equal(
-      data.get(context.getSalesStorageKey(lotId)),
-      JSON.stringify([{ id: 1, type: "pack", quantity: 2, packsCount: 2, price: 9, date: "2026-02-18" }])
-    );
+    assert.equal(data.get("old_sales_901")?.includes("\"price\":99"), true);
   });
 });
 
@@ -3226,3 +3229,4 @@ test("allLotPerformance applies portfolio preset filter", () => {
   assert.equal(rows.length, 1);
   assert.equal(rows[0]?.lotId, presetA.id);
 });
+

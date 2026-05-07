@@ -46,7 +46,6 @@ export interface SyncLotDto {
   additionalFeePercent?: number;
   fixedFeePerOrder?: number;
   exchangeRate?: number;
-  taxRatePercent?: number;
   currency?: SyncCurrencyCode;
   sellingCurrency?: SyncCurrencyCode;
   costInputMode?: SyncCostInputMode;

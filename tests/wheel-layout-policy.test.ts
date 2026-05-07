@@ -5,7 +5,7 @@ import {
   isWheelCompactViewport,
   resolveWheelCanvasTargetSize,
   resolveWheelLayoutMode
-} from "../src/components/windows/wheel/coordinator/wheelLayoutPolicy.ts";
+} from "../src/components/windows/game/coordinator/gameLayoutPolicy.ts";
 
 test("wheel compact breakpoint is inclusive at the configured threshold", () => {
   assert.equal(WHEEL_COMPACT_LAYOUT_BREAKPOINT, 1100);
@@ -69,3 +69,5 @@ test("wheel canvas sizing falls back to max size when panel width is unavailable
   assert.equal(compactSize, 420);
   assert.equal(expandedSize, 720);
 });
+
+

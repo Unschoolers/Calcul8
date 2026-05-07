@@ -7,9 +7,8 @@ import {
   upsertEntitlement,
   upsertPlayPurchase
 } from "../../lib/cosmos/entitlementRepository";
-import { getConfig } from "../../lib/config";
 import { acknowledgePlayProductPurchase, verifyPlayProductPurchase } from "../../lib/googlePlay";
-import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../../lib/http";
+import { errorResponse, jsonResponse } from "../../lib/http";
 import { assertPurchaseNotLinkedToDifferentUser, hashPurchaseToken, shouldAcknowledgePurchase } from "../../lib/playEntitlements";
 import { buildLegacyUserEntitlementDocumentId } from "../../lib/scopeKeys";
 import type { ApiConfig } from "../../types";
@@ -228,15 +227,4 @@ export async function verifyPlayEntitlementRequest(
     }
     return errorResponse(request, config, error, "Failed to verify Google Play purchase.");
   }
-}
-
-export async function entitlementsVerifyPlay(
-  request: HttpRequest,
-  context: InvocationContext
-): Promise<HttpResponseInit> {
-  const config = getConfig();
-  const guardResponse = maybeHandleHttpGuards(request, config);
-  if (guardResponse) return guardResponse;
-
-  return verifyPlayEntitlementRequest(request, context, config, "/entitlements/verify-play");
 }

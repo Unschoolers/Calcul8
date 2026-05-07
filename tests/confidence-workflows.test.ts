@@ -11,9 +11,9 @@ import {
     getScopedWheelConfigSessionStorageKey,
     getScopedWheelSessionStorageKey
 } from "../src/app-core/storageKeys.ts";
-import { createWheelWindowState, getWheelController } from "../src/components/windows/wheel/coordinator/wheelControllerState.ts";
-import { wheelSessionMethods } from "../src/components/windows/wheel/commands/wheelSessionMethods.ts";
-import { wheelSpinMethods } from "../src/components/windows/wheel/commands/wheelSpinMethods.ts";
+import { createGameWindowState, getWheelController } from "../src/components/windows/game/coordinator/gameControllerState.ts";
+import { wheelSessionMethods } from "../src/components/windows/game/commands/wheelSessionMethods.ts";
+import { wheelSpinMethods } from "../src/components/windows/game/commands/wheelSpinMethods.ts";
 import {
     calculateLotPerformanceSummary,
     calculateNetFromGross,
@@ -114,7 +114,7 @@ function stubFinishedAnimation(): void {
 }
 
 function createWheelWorkflowVm() {
-  const state = createWheelWindowState() as Record<string, unknown>;
+  const state = createGameWindowState() as Record<string, unknown>;
   const controller = getWheelController(state);
   controller.activeSlots = [{
     name: "1 Pack",
@@ -383,3 +383,6 @@ test("workflow: wheel preview and live sessions keep separate full histories acr
     assert.match(String(reloadedController.fairnessHistory[2]?.verificationUrl || ""), /wheel\/fairness\/verify/);
   });
 });
+
+
+

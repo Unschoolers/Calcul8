@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { WheelHistoryPanel } from "../src/components/windows/wheel/inspector/WheelHistoryPanel.ts";
+import { WheelHistoryPanel } from "../src/components/windows/game/inspector/WheelHistoryPanel.ts";
 
 function createController(overrides: Record<string, unknown> = {}) {
   return {
@@ -72,3 +72,4 @@ test("wheelHistoryPanelLatestEntry uses current preview proof fields in config m
   assert.equal(latest?.verificationUrl, "https://example.com/verify");
   assert.equal(latest?.color, "#ff9900");
 });
+

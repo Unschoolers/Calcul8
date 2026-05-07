@@ -1,56 +1,44 @@
-import type { Lot, LotSetup, SinglesCatalogSource, SinglesPurchaseEntry } from "../../types/app.ts";
-import {
-  buildSinglesCsvImportDraft,
-} from "./config-lots-import.ts";
-import {
-  getLegacySalesStorageKey,
-  getLegacyStorageKeys,
-  getScopedLastLotStorageKey,
-  readStorageWithLegacy,
-  removeStorageWithLegacy
-} from "../storageKeys.ts";
+import type { LotSetup, SinglesCatalogSource } from "../../types/app.ts";
+import { replaceRootLotSales } from "../shared/sales-root-state.ts";
 import { normalizeSinglesCatalogSource } from "../shared/singles-catalog-source.ts";
-import { type ConfigMethodSubset, getTodayDate } from "./config-shared.ts";
+import {
+    getScopedLastLotStorageKey,
+} from "../storageKeys.ts";
 import { getActiveStorageScope } from "../workspace-scope.ts";
 import {
-  canUseAuthoritativeSalesLiveApi,
-  fetchAuthoritativeLivePricing,
-  fetchAuthoritativeSales
+    applyAuthoritativeLivePricingSnapshot,
+    queueAuthoritativeLivePricingSave,
+    resetAuthoritativeLivePricingState
+} from "./config-live-pricing.ts";
+import {
+    createNewLotRecord,
+    normalizeSelectedLotId,
+    validateRenameLotName
+} from "./config-lot-crud.ts";
+import { deleteCurrentLotWithPersistence } from "./config-lot-delete.ts";
+import { applyHydratedLotState, buildHydratedLotState } from "./config-lot-loading.ts";
+import {
+    appendBlankSinglesPurchaseRow,
+    beginSinglesCsvImport,
+    confirmSinglesCsvImport,
+    removeSinglesPurchaseRowById,
+    syncSinglesPurchaseRows
+} from "./config-lots-singles.ts";
+import {
+    resetSinglesCsvImportState
+} from "./config-lots-state.ts";
+import { type ConfigMethodSubset, getTodayDate } from "./config-shared.ts";
+import {
+    hydrateAuthoritativeLotSalesWithSyncMeta,
+    refreshPersonalLotSalesIfStale
+} from "./sales-freshness.ts";
+import {
+    canUseAuthoritativeSalesLiveApi,
+    fetchAuthoritativeLivePricing,
+    fetchAuthoritativeSales
 } from "./sales-live-api.ts";
 import { markLivePricingPollingBaseline } from "./ui/sync/lot-entity-polling.ts";
 import { queueWorkspaceConfigSyncPush } from "./ui/workspace/workspace-config-sync.ts";
-import {
-  normalizeSinglesPurchaseEntries,
-  resetSinglesCsvImportState,
-  resolveCurrentLot
-} from "./config-lots-state.ts";
-import {
-  createNewLotRecord,
-  normalizeSelectedLotId,
-  validateRenameLotName
-} from "./config-lot-crud.ts";
-import {
-  appendBlankSinglesPurchaseRow,
-  beginSinglesCsvImport,
-  confirmSinglesCsvImport,
-  removeSinglesPurchaseRowById,
-  syncSinglesPurchaseRows
-} from "./config-lots-singles.ts";
-import { applyHydratedLotState, buildHydratedLotState } from "./config-lot-loading.ts";
-import {
-  applyAuthoritativeLivePricingSnapshot,
-  queueAuthoritativeLivePricingSave,
-  resetAuthoritativeLivePricingState
-} from "./config-live-pricing.ts";
-import { deleteCurrentLotWithPersistence } from "./config-lot-delete.ts";
-import { replaceRootLotSales } from "../shared/sales-root-state.ts";
-import {
-  hydrateAuthoritativeLotSalesWithSyncMeta,
-  refreshPersonalLotSalesIfStale
-} from "./sales-freshness.ts";
-
-const LEGACY_KEYS = getLegacyStorageKeys();
-
 type AuthoritativeLotHydrationContext = Pick<ConfigMethodSubset<"getSalesCacheEntry">, "getSalesCacheEntry"> & {
   activeScopeType?: string;
   activeWorkspaceId?: string | null;
@@ -62,6 +50,13 @@ function shouldHydrateAuthoritativeLotData(
 ): boolean {
   const isWorkspaceScope = context.activeScopeType === "workspace" && Boolean(context.activeWorkspaceId);
   if (isWorkspaceScope) {
+    return true;
+  }
+
+  // If we don't have a live pricing version yet for the currently-loaded lot,
+  // make sure we hydrate authoritative data so `fetchAuthoritativeLivePricing`
+  // runs and the live pricing values are applied.
+  if (context.currentLivePricingVersion == null) {
     return true;
   }
 
@@ -444,14 +439,8 @@ export const configLotMethods: ConfigMethodSubset<
 
   deleteCurrentLot(): void {
     deleteCurrentLotWithPersistence(this, {
-      readStorage: readStorageWithLegacy,
-      removeStorage: removeStorageWithLegacy,
-      getLegacySalesKey: getLegacySalesStorageKey,
       getLastLotStorageKey: getScopedLastLotStorageKey,
-      getStorageScope: getActiveStorageScope,
-      legacyKeys: {
-        LAST_LOT_ID: LEGACY_KEYS.LAST_LOT_ID
-      }
+      getStorageScope: getActiveStorageScope
     });
     if (typeof this.syncGuidedOnboarding === "function") {
       this.syncGuidedOnboarding();

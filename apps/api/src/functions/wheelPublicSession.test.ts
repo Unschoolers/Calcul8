@@ -72,7 +72,6 @@ import {
     wheelPublicSessionRealtimeTokenGet,
     wheelPublicSessionSpectatorCountGet
 } from "./wheelPublicSession";
-import { normalizeWheelPublicSessionSnapshot } from "../shared/wheel-public-session-contracts.cjs";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -249,13 +248,13 @@ test("wheelPublicSessionCreate sanitizes the snapshot and verifies workspace acc
     scopeType: string;
     scopeId: string;
     snapshot: {
-      wheelName: string;
+      gameName: string;
       gameType: string;
       sessionStatus: string;
-      totalSpins: number;
+      sessionResultCount: number;
       lastResultColor: string;
-        wheelCurrentAngle: number;
-      spinAnimation: {
+      gameCurrentAngle: number;
+      resultAnimation: {
         spinId: string;
         startedAt: number;
         durationMs: number;
@@ -263,10 +262,10 @@ test("wheelPublicSessionCreate sanitizes the snapshot and verifies workspace acc
         endAngle: number;
         targetIndex: number;
       } | null;
-      wheelSlots: Array<{ name: string; tier: string; isChase: boolean }>;
-      gridCells: Array<{ index: number; revealed: boolean; label: string; color: string; tier: string; slotIndex: number }>;
-      gridHighlightCellIndex: number;
-      gridResetAnimating: boolean;
+      outcomeSlots: Array<{ name: string; tier: string; isChase: boolean }>;
+      boardCells: Array<{ index: number; revealed: boolean; label: string; color: string; tier: string; slotIndex: number }>;
+      boardHighlightCellIndex: number;
+      boardResetAnimating: boolean;
       featuredChaseHeat: string | null;
       snapshotVersion: number;
       recentFairnessHistory: Array<{ spinNumber: number; timestamp: number }>;
@@ -277,13 +276,13 @@ test("wheelPublicSessionCreate sanitizes the snapshot and verifies workspace acc
 
   assert.equal(repoInput.scopeType, "workspace");
   assert.equal(repoInput.scopeId, "team-42");
-  assert.equal(repoInput.snapshot.wheelName.length, 119);
+  assert.equal(repoInput.snapshot.gameName.length, 119);
   assert.equal(repoInput.snapshot.gameType, "grid");
   assert.equal(repoInput.snapshot.sessionStatus, "starting");
-  assert.equal(repoInput.snapshot.totalSpins, 0);
+  assert.equal(repoInput.snapshot.sessionResultCount, 0);
   assert.equal(repoInput.snapshot.lastResultColor, "#d4af37");
-  assert.equal(repoInput.snapshot.wheelCurrentAngle, 1.5);
-  assert.deepEqual(repoInput.snapshot.spinAnimation, {
+  assert.equal(repoInput.snapshot.gameCurrentAngle, 1.5);
+  assert.deepEqual(repoInput.snapshot.resultAnimation, {
     spinId: "spin-abc",
     startedAt: 2000,
     durationMs: 4500,
@@ -291,10 +290,10 @@ test("wheelPublicSessionCreate sanitizes the snapshot and verifies workspace acc
     endAngle: 18.5,
     targetIndex: 3
   });
-  assert.equal(repoInput.snapshot.wheelSlots[0]?.name, "Tier 1");
-  assert.equal(repoInput.snapshot.wheelSlots[0]?.tier, "tier-1");
-  assert.equal(repoInput.snapshot.wheelSlots[0]?.isChase, true);
-  assert.deepEqual(repoInput.snapshot.gridCells, [{
+  assert.equal(repoInput.snapshot.outcomeSlots[0]?.name, "Tier 1");
+  assert.equal(repoInput.snapshot.outcomeSlots[0]?.tier, "tier-1");
+  assert.equal(repoInput.snapshot.outcomeSlots[0]?.isChase, true);
+  assert.deepEqual(repoInput.snapshot.boardCells, [{
     index: 4,
     revealed: true,
     label: "Chase",
@@ -309,16 +308,22 @@ test("wheelPublicSessionCreate sanitizes the snapshot and verifies workspace acc
     tier: "",
     slotIndex: 13
   }]);
-  assert.equal(repoInput.snapshot.gridHighlightCellIndex, 5);
-  assert.equal(repoInput.snapshot.gridResetAnimating, true);
+  assert.equal(repoInput.snapshot.boardHighlightCellIndex, 5);
+  assert.equal(repoInput.snapshot.boardResetAnimating, true);
   assert.equal(repoInput.snapshot.featuredChaseHeat, "medium");
-  assert.equal(repoInput.snapshot.snapshotVersion, 1);
+  assert.equal(repoInput.snapshot.snapshotVersion, 2);
   assert.equal(repoInput.snapshot.recentFairnessHistory[0]?.spinNumber, 2);
   assert.equal(repoInput.snapshot.recentFairnessHistory[0]?.timestamp, 55);
   assert.equal(repoInput.snapshot.chaseHistory[0]?.count, 2);
   assert.equal(repoInput.snapshot.chaseBoard[0]?.status, "claimed");
   assert.equal(repoInput.snapshot.chaseBoard[0]?.hitCount, 2);
   assert.equal(repoInput.snapshot.chaseBoard[0]?.remainingHits, 0);
+  assert.equal(Object.hasOwn(repoInput.snapshot, "wheelName"), false);
+  assert.equal(Object.hasOwn(repoInput.snapshot, "totalSpins"), false);
+  assert.equal(Object.hasOwn(repoInput.snapshot, "wheelCurrentAngle"), false);
+  assert.equal(Object.hasOwn(repoInput.snapshot, "wheelSlots"), false);
+  assert.equal(Object.hasOwn(repoInput.snapshot, "gridCells"), false);
+  assert.equal(Object.hasOwn(repoInput.snapshot, "spinAnimation"), false);
 });
 
 test("wheelPublicSessionPublish returns 404 when the session is missing or not owned by the actor", async () => {
@@ -395,15 +400,37 @@ test("wheelPublicSessionPublish upgrades old wheel-only snapshots at the API bou
   const repoInput = updateWheelPublicSessionMock.mock.calls.at(-1)?.[1] as {
     snapshot: {
       snapshotVersion: number;
+      gameName: string;
       gameType: string;
-      gridCells: unknown[];
-      gridHighlightCellIndex: number;
-      gridResetAnimating: boolean;
-      totalSpins: number;
+      boardCells: unknown[];
+      boardHighlightCellIndex: number;
+      boardResetAnimating: boolean;
+      sessionResultCount: number;
+      gameCurrentAngle: number;
+      outcomeSlots: Array<{ name: string; color: string; tier: string; isChase: boolean }>;
     };
   };
 
-  assert.deepEqual(repoInput.snapshot, normalizeWheelPublicSessionSnapshot(rawSnapshot));
+  assert.equal(repoInput.snapshot.snapshotVersion, 2);
+  assert.equal(repoInput.snapshot.gameName, "Old Wheel");
+  assert.equal(repoInput.snapshot.gameType, "wheel");
+  assert.equal(repoInput.snapshot.sessionResultCount, 4);
+  assert.equal(repoInput.snapshot.gameCurrentAngle, 2.5);
+  assert.deepEqual(repoInput.snapshot.outcomeSlots, [{
+    name: "Prize",
+    color: "#f00",
+    tier: "tier-1",
+    isChase: false
+  }]);
+  assert.deepEqual(repoInput.snapshot.boardCells, []);
+  assert.equal(repoInput.snapshot.boardHighlightCellIndex, -1);
+  assert.equal(repoInput.snapshot.boardResetAnimating, false);
+  assert.equal(Object.hasOwn(repoInput.snapshot, "wheelName"), false);
+  assert.equal(Object.hasOwn(repoInput.snapshot, "totalSpins"), false);
+  assert.equal(Object.hasOwn(repoInput.snapshot, "wheelCurrentAngle"), false);
+  assert.equal(Object.hasOwn(repoInput.snapshot, "wheelSlots"), false);
+  assert.equal(Object.hasOwn(repoInput.snapshot, "gridCells"), false);
+  assert.equal(Object.hasOwn(repoInput.snapshot, "spinAnimation"), false);
 });
 
 test("wheelPublicSessionPublish normalizes malformed public payloads like the shared spectator contract", async () => {
@@ -434,10 +461,36 @@ test("wheelPublicSessionPublish normalizes malformed public payloads like the sh
   }) as never, createInvocationContext() as never);
 
   const repoInput = updateWheelPublicSessionMock.mock.calls.at(-1)?.[1] as {
-    snapshot: unknown;
+    snapshot: {
+      gameType: string;
+      boardCells: Array<{ index: number; revealed: boolean; label: string; color: string; tier: string; slotIndex: number }>;
+      resultAnimation: {
+        spinId: string;
+        startedAt: number;
+        durationMs: number;
+        startAngle: number;
+        endAngle: number;
+        targetIndex: number;
+      } | null;
+      featuredChaseHeat: string | null;
+      updatedAt: number;
+    };
   };
 
-  assert.deepEqual(repoInput.snapshot, normalizeWheelPublicSessionSnapshot(rawSnapshot));
+  assert.equal(repoInput.snapshot.gameType, "grid");
+  assert.deepEqual(repoInput.snapshot.boardCells, [
+    { index: 2, revealed: true, label: "", color: "#d4af37", tier: "", slotIndex: -1 }
+  ]);
+  assert.deepEqual(repoInput.snapshot.resultAnimation, {
+    spinId: "spin-1",
+    startedAt: 2000,
+    durationMs: 30_000,
+    startAngle: 0.25,
+    endAngle: 18.5,
+    targetIndex: 3
+  });
+  assert.equal(repoInput.snapshot.featuredChaseHeat, null);
+  assert.equal(repoInput.snapshot.updatedAt, 999);
 });
 
 test("wheelPublicSessionPublish fans out the sanitized snapshot over realtime after save", async () => {
@@ -476,11 +529,13 @@ test("wheelPublicSessionPublish fans out the sanitized snapshot over realtime af
   const publishArgs = publishWheelPublicSessionRealtimeEventBestEffortMock.mock.calls[0]?.[1] as {
     publicSessionId: string;
     eventType: string;
-    data: { publicSessionId: string; snapshot: { sessionStatus: string } };
+    data: { publicSessionId: string; snapshot: { sessionStatus: string; snapshotVersion: number; gameName: string } };
   };
   assert.equal(publishArgs.publicSessionId, "abc123xy");
   assert.equal(publishArgs.eventType, "wheel.public-session.updated");
   assert.equal(publishArgs.data.snapshot.sessionStatus, "live");
+  assert.equal(publishArgs.data.snapshot.snapshotVersion, 2);
+  assert.equal(publishArgs.data.snapshot.gameName, "Demo Wheel");
 });
 
 test("wheelPublicSessionGet serves the stored public snapshot and reports 404 when missing", async () => {
@@ -537,10 +592,30 @@ test("wheelPublicSessionGet normalizes stored legacy snapshots before returning 
   }) as never, createInvocationContext() as never);
 
   assert.equal(response.status, 200);
-  assert.deepEqual(
-    (response.jsonBody as { snapshot: unknown }).snapshot,
-    normalizeWheelPublicSessionSnapshot(legacySnapshot)
-  );
+  const snapshot = (response.jsonBody as {
+    snapshot: {
+      snapshotVersion: number;
+      gameName: string;
+      sessionResultCount: number;
+      gameCurrentAngle: number;
+      outcomeSlots: Array<{ name: string; color: string; tier: string; isChase: boolean }>;
+      boardCells: unknown[];
+    };
+  }).snapshot;
+  assert.equal(snapshot.snapshotVersion, 2);
+  assert.equal(snapshot.gameName, "Stored Wheel");
+  assert.equal(snapshot.sessionResultCount, 6);
+  assert.equal(snapshot.gameCurrentAngle, 3.5);
+  assert.deepEqual(snapshot.outcomeSlots, [{
+    name: "Prize",
+    color: "#f00",
+    tier: "tier-1",
+    isChase: false
+  }]);
+  assert.deepEqual(snapshot.boardCells, []);
+  assert.equal(Object.hasOwn(snapshot, "wheelName"), false);
+  assert.equal(Object.hasOwn(snapshot, "totalSpins"), false);
+  assert.equal(Object.hasOwn(snapshot, "wheelSlots"), false);
 });
 
 test("wheelPublicSessionRealtimeTokenGet returns a room-scoped public subscribe token", async () => {

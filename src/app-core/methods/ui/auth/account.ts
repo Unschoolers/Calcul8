@@ -33,7 +33,7 @@ function clearAppLocalStorage(): void {
     }
 
     for (const key of keys) {
-      if (!key.startsWith("whatfees_") && !key.startsWith("rtyh_")) continue;
+      if (!key.startsWith("whatfees_")) continue;
       localStorage.removeItem(key);
     }
   } catch {

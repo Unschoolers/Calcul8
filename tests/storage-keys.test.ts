@@ -3,12 +3,10 @@ import { test } from "vitest";
 import {
   clearScopedSalesStorage,
   getSalesCacheStatusKey,
-  getLegacySalesStorageKey,
   getSalesSyncMetaKey,
   getSalesStorageKey,
-  migrateLegacySalesKey,
-  migrateLegacyStorageKeys,
-  readStorageWithLegacy
+  readStorage,
+  removeStorage
 } from "../src/app-core/storageKeys.ts";
 
 type MockStorage = {
@@ -61,68 +59,43 @@ function withMockedLocalStorage(run: (storage: MockStorage, data: Map<string, st
   }
 }
 
-test("migrateLegacySalesKey promotes legacy value when canonical is empty", () => {
+test("readStorage reads only the requested current key", () => {
   withMockedLocalStorage((_, data) => {
     const canonicalKey = getSalesStorageKey(10);
-    const legacyKey = getLegacySalesStorageKey(10);
-    const legacySales = JSON.stringify([{ id: 1, price: 7 }]);
+    const currentSales = JSON.stringify([{ id: 1, price: 7 }]);
 
-    data.set(canonicalKey, "[]");
-    data.set(legacyKey, legacySales);
+    data.set(canonicalKey, currentSales);
+    data.set("old_sales_10", JSON.stringify([{ id: 2, price: 9 }]));
 
-    migrateLegacySalesKey(10);
-
-    assert.equal(data.get(canonicalKey), legacySales);
-    assert.equal(data.has(legacyKey), false);
+    assert.equal(readStorage(canonicalKey), currentSales);
+    assert.equal(data.get("old_sales_10"), JSON.stringify([{ id: 2, price: 9 }]));
   });
 });
 
-test("migrateLegacySalesKey keeps both keys when canonical and legacy differ with non-empty data", () => {
+test("readStorage does not promote old keys when the current key is empty", () => {
   withMockedLocalStorage((_, data) => {
     const canonicalKey = getSalesStorageKey(11);
-    const legacyKey = getLegacySalesStorageKey(11);
-    const canonicalSales = JSON.stringify([{ id: 1, price: 7 }]);
-    const legacySales = JSON.stringify([{ id: 2, price: 9 }]);
+    const oldKey = "old_sales_11";
 
-    data.set(canonicalKey, canonicalSales);
-    data.set(legacyKey, legacySales);
+    data.set(oldKey, JSON.stringify([{ id: 2, price: 9 }]));
 
-    migrateLegacySalesKey(11);
-
-    assert.equal(data.get(canonicalKey), canonicalSales);
-    assert.equal(data.get(legacyKey), legacySales);
+    assert.equal(readStorage(canonicalKey), null);
+    assert.equal(data.has(oldKey), true);
   });
 });
 
-test("readStorageWithLegacy promotes richer legacy payload over empty canonical payload", () => {
+test("removeStorage deletes only the requested current key", () => {
   withMockedLocalStorage((_, data) => {
     const newKey = getSalesStorageKey(12);
-    const legacyKey = getLegacySalesStorageKey(12);
-    const legacySales = JSON.stringify([{ id: 3, price: 12 }]);
+    const oldKey = "old_sales_12";
 
     data.set(newKey, "[]");
-    data.set(legacyKey, legacySales);
+    data.set(oldKey, JSON.stringify([{ id: 3, price: 12 }]));
 
-    const result = readStorageWithLegacy(newKey, legacyKey);
+    removeStorage(newKey);
 
-    assert.equal(result, legacySales);
-    assert.equal(data.get(newKey), legacySales);
-  });
-});
-
-test("migrateLegacyStorageKeys purges persisted auth secrets instead of promoting them", () => {
-  withMockedLocalStorage((_, data) => {
-    data.set("whatfees_google_id_token", "google-token");
-    data.set("rtyh_google_id_token", "legacy-google-token");
-    data.set("whatfees_csrf_token_v1", "csrf-token");
-    data.set("whatfees_pro_access", "1");
-
-    migrateLegacyStorageKeys();
-
-    assert.equal(data.has("whatfees_google_id_token"), false);
-    assert.equal(data.has("rtyh_google_id_token"), false);
-    assert.equal(data.has("whatfees_csrf_token_v1"), false);
-    assert.equal(data.get("whatfees_pro_access"), "1");
+    assert.equal(data.has(newKey), false);
+    assert.equal(data.has(oldKey), true);
   });
 });
 

@@ -4,12 +4,7 @@ import { primeStoredAuthSecretsFromStorage } from "./auth/index.ts";
 import { getBrowserLocale, normalizeLanguagePreference } from "./i18n/index.ts";
 import { getFeeProfilePreset } from "./shared/fee-profile-presets.ts";
 import { resolveDefaultSinglesCatalogSourceFromEnv } from "./shared/singles-catalog-source.ts";
-import {
-    getLegacyStorageKeys,
-    migrateLegacyStorageKeys,
-    readStorageWithLegacy,
-    STORAGE_KEYS
-} from "./storageKeys.ts";
+import { STORAGE_KEYS } from "./storageKeys.ts";
 
 function getLocalTodayDate(): string {
   const date = new Date();
@@ -36,10 +31,8 @@ function resolveSavedScope(): Pick<AppState, "activeScopeType" | "activeWorkspac
 
 export function createInitialState(): AppState {
   primeStoredAuthSecretsFromStorage();
-  migrateLegacyStorageKeys();
-  const legacyKeys = getLegacyStorageKeys();
   const todayDate = getLocalTodayDate();
-  const hasProAccess = readStorageWithLegacy(STORAGE_KEYS.PRO_ACCESS, legacyKeys.PRO_ACCESS) === "1";
+  const hasProAccess = localStorage.getItem(STORAGE_KEYS.PRO_ACCESS) === "1";
   const preferredLanguage = normalizeLanguagePreference(localStorage.getItem(STORAGE_KEYS.LANGUAGE))
     || normalizeLanguagePreference(getBrowserLocale());
   const purchaseUiMode = hasProAccess && localStorage.getItem(STORAGE_KEYS.PURCHASE_UI_MODE) === "expert"

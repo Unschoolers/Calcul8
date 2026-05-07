@@ -1,14 +1,14 @@
 import assert from "node:assert/strict";
 import { test, vi } from "vitest";
 import { easeOutQuart } from "../src/app-core/shared/game-spin.ts";
-import { getWheelTierInventoryMeta } from "../src/components/windows/wheel/services/wheelSaleSupport.ts";
-import { createDefaultTier, createDefaultWheelConfig } from "../src/components/windows/wheel/services/wheelDefaults.ts";
-import { seedToIndex } from "../src/components/windows/wheel/services/wheelFairnessLayout.ts";
-import { computeExpectedMargin } from "../src/components/windows/wheel/services/wheelPricing.ts";
-import { buildSlotsFromConfig } from "../src/components/windows/wheel/services/wheelSlots.ts";
+import { getWheelTierInventoryMeta } from "../src/components/windows/game/services/wheelSaleSupport.ts";
+import { createDefaultTier, createDefaultWheelConfig } from "../src/components/windows/game/services/wheelDefaults.ts";
+import { seedToIndex } from "../src/components/windows/game/services/wheelFairnessLayout.ts";
+import { computeExpectedMargin } from "../src/components/windows/game/services/wheelPricing.ts";
+import { buildSlotsFromConfig } from "../src/components/windows/game/services/wheelSlots.ts";
 import {
-    WheelWindow
-} from "../src/components/windows/wheel/WheelWindow.ts";
+    GameWindow
+} from "../src/components/windows/game/GameWindow.ts";
 import type { WheelConfig } from "../src/types/app.ts";
 
 // ── Pure functions ──────────────────────────────────────────────
@@ -187,15 +187,15 @@ test("expectedMarginDisplay uses fee settings from tier-bound lots instead of ro
     fixedFeePerOrder: 0
   };
 
-  assert.equal(WheelWindow.computed!.expectedMarginDisplay.call(vm as never), "86.1%");
+  assert.equal(GameWindow.computed!.expectedMarginDisplay.call(vm as never), "86.1%");
 });
 
-test("WheelWindow data defaults the inspector tab to config", () => {
-  const data = WheelWindow.data.call({});
+test("GameWindow data defaults the inspector tab to config", () => {
+  const data = GameWindow.data.call({});
   assert.equal(data.wheelInspectorTab, "config");
 });
 
-test("wheelDisplaySlots prefers WheelWindow local state over parent ctx prop", () => {
+test("wheelDisplaySlots prefers GameWindow local state over parent ctx prop", () => {
   const vm = {
     ctx: {
       wheelMode: "live",
@@ -240,12 +240,12 @@ test("wheelDisplaySlots prefers WheelWindow local state over parent ctx prop", (
     }
   };
 
-  const slots = WheelWindow.computed!.wheelDisplaySlots.call(vm as never);
+  const slots = GameWindow.computed!.wheelDisplaySlots.call(vm as never);
   assert.equal(slots.length, 2);
 });
 
-test("WheelWindow data initializes spin state needed by the template", () => {
-  const data = WheelWindow.data.call({});
+test("GameWindow data initializes spin state needed by the template", () => {
+  const data = GameWindow.data.call({});
   assert.equal(data.wheelSpinning, false);
   assert.equal(data.wheelCurrentAngle, 0);
 });
@@ -270,12 +270,12 @@ test("refreshWheelCanvas retries when the wheel tab activates before refs are re
     wheelPresentationMode: false,
     _wheelCanvasRefreshRetryCount: 0,
     normalizeWheelCompactInspectorState: vi.fn(),
-    refreshWheelCanvas: WheelWindow.methods!.refreshWheelCanvas,
+    refreshWheelCanvas: GameWindow.methods!.refreshWheelCanvas,
     drawWheel: vi.fn()
   };
 
   try {
-    WheelWindow.methods!.refreshWheelCanvas.call(vm as never);
+    GameWindow.methods!.refreshWheelCanvas.call(vm as never);
     await Promise.resolve();
   } finally {
     vi.unstubAllGlobals();
@@ -295,7 +295,7 @@ test("wheelSessionRevenue is spins × spinPrice", () => {
     activeWheelConfig: { spinPrice: 5 },
     wheelTotalSpins: 10
   };
-  const result = WheelWindow.computed!.wheelSessionRevenue.call(vm as never);
+  const result = GameWindow.computed!.wheelSessionRevenue.call(vm as never);
   assert.equal(result, 50);
 });
 
@@ -306,7 +306,7 @@ test("wheelSessionRevenue uses preview spins in config mode", () => {
     wheelPreviewTotalSpins: 4,
     wheelTotalSpins: 10
   };
-  const result = WheelWindow.computed!.wheelSessionRevenue.call(vm as never);
+  const result = GameWindow.computed!.wheelSessionRevenue.call(vm as never);
   assert.equal(result, 20);
 });
 
@@ -322,7 +322,7 @@ test("wheelSessionCost sums slot costs by spin counts", () => {
     wheelSpinCounts: [2, 1],
     wheelSessionCostAdjustment: 0
   };
-  const result = WheelWindow.computed!.wheelSessionCost.call(vm as never);
+  const result = GameWindow.computed!.wheelSessionCost.call(vm as never);
   assert.equal(result, 13); // 2×3 + 1×7
 });
 
@@ -338,7 +338,7 @@ test("wheelSessionCost includes cost adjustment from chase replacements", () => 
     },
     wheelSpinCounts: [1, 2]
   };
-  const result = WheelWindow.computed!.wheelSessionCost.call(vm as never);
+  const result = GameWindow.computed!.wheelSessionCost.call(vm as never);
   // base: 1×10 + 2×5 = 20, plus adjustment 40 = 60
   assert.equal(result, 60);
 });
@@ -369,7 +369,7 @@ test("wheelSessionProfit deducts Whatnot fees and cost", () => {
     additionalFeeAppliesTo: "sale_only",
     fixedFeePerOrder: 0.3
   };
-  const result = WheelWindow.computed!.wheelSessionProfit.call(vm as never);
+  const result = GameWindow.computed!.wheelSessionProfit.call(vm as never);
   // commission: 100 × 0.08 = 8, processing: 100 × 0.029 = 2.9, fixed: 0.30 × 10 = 3
   // net: 100 - 8 - 2.9 - 3 = 86.1, profit: 86.1 - 30 = 56.1
   assert.ok(Math.abs(result - 56.1) < 0.001);
@@ -409,7 +409,7 @@ test("wheelSessionProfit includes buyer shipping from bound lots in fee math", (
     fixedFeePerOrder: 0.3
   };
 
-  const result = WheelWindow.computed!.wheelSessionProfit.call(vm as never);
+  const result = GameWindow.computed!.wheelSessionProfit.call(vm as never);
   // commission: 8, processing on gross+shipping: (100 + 50) * 0.029 = 4.35, fixed: 3
   // net: 84.65, profit: 54.65
   assert.ok(Math.abs(result - 54.65) < 0.001);
@@ -436,7 +436,7 @@ test("wheelSessionProfit prefers stored session net revenue in live mode", () =>
     }
   };
 
-  const result = WheelWindow.computed!.wheelSessionProfit.call(vm as never);
+  const result = GameWindow.computed!.wheelSessionProfit.call(vm as never);
   assert.ok(Math.abs(result - 54.65) < 0.001);
 });
 
@@ -450,7 +450,7 @@ test("wheelSessionMarginDisplay shows dash when no cost", () => {
       sessionCostAdjustment: 0
     }
   };
-  assert.equal(WheelWindow.computed!.wheelSessionMarginDisplay.call(vm as never), "—");
+  assert.equal(GameWindow.computed!.wheelSessionMarginDisplay.call(vm as never), "—");
 });
 
 test("wheelSessionMarginDisplay shows profit relative to cost", () => {
@@ -467,7 +467,7 @@ test("wheelSessionMarginDisplay shows profit relative to cost", () => {
       sessionCostAdjustment: 0
     }
   };
-  assert.equal(WheelWindow.computed!.wheelSessionMarginDisplay.call(vm as never), "25.0%");
+  assert.equal(GameWindow.computed!.wheelSessionMarginDisplay.call(vm as never), "25.0%");
 });
 
 test("expectedMarginColor is green above zero and red below zero", () => {
@@ -494,8 +494,8 @@ test("expectedMarginColor is green above zero and red below zero", () => {
     lots: []
   };
 
-  assert.equal(WheelWindow.computed!.expectedMarginColor.call(positiveVm as never), "rgb(var(--v-theme-success))");
-  assert.equal(WheelWindow.computed!.expectedMarginColor.call(negativeVm as never), "rgb(var(--v-theme-error))");
+  assert.equal(GameWindow.computed!.expectedMarginColor.call(positiveVm as never), "rgb(var(--v-theme-success))");
+  assert.equal(GameWindow.computed!.expectedMarginColor.call(negativeVm as never), "rgb(var(--v-theme-error))");
 });
 
 test("wheelSessionMarginDisplay fallback uses fee settings from tier-bound lots", () => {
@@ -552,7 +552,7 @@ test("wheelSessionMarginDisplay fallback uses fee settings from tier-bound lots"
     fixedFeePerOrder: 0
   };
 
-  assert.equal(WheelWindow.computed!.wheelSessionMarginDisplay.call(vm as never), "86.1%");
+  assert.equal(GameWindow.computed!.wheelSessionMarginDisplay.call(vm as never), "86.1%");
 });
 
 test("hasPendingWheelChanges detects draft edits against the live wheel", () => {
@@ -565,14 +565,14 @@ test("hasPendingWheelChanges detects draft edits against the live wheel", () => 
     tiers: [{ id: "t1", label: "Prize", color: "#f00", slots: 1, costPerTier: 5, packsCount: 1, deductionType: "packs", sets: [], boundLotId: 10 }]
   };
 
-  assert.equal(WheelWindow.computed!.hasPendingWheelChanges.call({
+  assert.equal(GameWindow.computed!.hasPendingWheelChanges.call({
     activeWheelConfig: baseConfig,
     editingWheelConfig: JSON.parse(JSON.stringify(baseConfig))
   } as never), false);
 
   const edited = JSON.parse(JSON.stringify(baseConfig)) as WheelConfig;
   edited.spinPrice = 12;
-  assert.equal(WheelWindow.computed!.hasPendingWheelChanges.call({
+  assert.equal(GameWindow.computed!.hasPendingWheelChanges.call({
     activeWheelConfig: baseConfig,
     editingWheelConfig: edited
   } as never), true);
@@ -600,15 +600,15 @@ test("wheelSpinBlockedReason warns when a live tier no longer has enough packs",
     loadSalesForLotId: vi.fn(() => [{ quantity: 1, packsCount: 1 }])
   };
 
-  const invalid = WheelWindow.computed!.wheelInvalidLiveTiers.call(vm as never);
+  const invalid = GameWindow.computed!.wheelInvalidLiveTiers.call(vm as never);
   assert.equal(invalid.length, 1);
   assert.match(invalid[0]!.reason, /only 0 remain/i);
-  const reason = WheelWindow.computed!.wheelSpinBlockedReason.call({ ...vm, wheelInvalidLiveTiers: invalid } as never);
+  const reason = GameWindow.computed!.wheelSpinBlockedReason.call({ ...vm, wheelInvalidLiveTiers: invalid } as never);
   assert.match(reason, /repair the game before going live/i);
 });
 
 test("wheelHasRequiredLotSelection stays true after selection until the pending hit is recorded", () => {
-  const result = WheelWindow.computed!.wheelHasRequiredLotSelection.call({
+  const result = GameWindow.computed!.wheelHasRequiredLotSelection.call({
     wheelPendingInventoryIssues: [{
       selectedLotId: 42,
       requiresLotSelection: true
@@ -649,7 +649,7 @@ test("wheelInvalidLiveTiers ignores untracked singles tiers", () => {
     }]
   };
 
-  const invalid = WheelWindow.computed!.wheelInvalidLiveTiers.call(vm as never);
+  const invalid = GameWindow.computed!.wheelInvalidLiveTiers.call(vm as never);
   assert.deepEqual(invalid, []);
 });
 
@@ -687,7 +687,7 @@ test("wheelSessionSourceGroups summarizes remaining stock for wheel sources", ()
     sales: []
   };
 
-  const rows = WheelWindow.computed!.wheelSessionSourceGroups.call(vm as never);
+  const rows = GameWindow.computed!.wheelSessionSourceGroups.call(vm as never);
   assert.equal(rows.length, 2);
   assert.equal(rows[0]!.label, "Bulk Lot");
   assert.match(rows[0]!.remainingText, /2 items left/i);
@@ -719,7 +719,7 @@ test("wheelSessionSourceGroups keeps singles card number on the tier label while
     sales: []
   };
 
-  const rows = WheelWindow.computed!.wheelSessionSourceGroups.call(vm as never);
+  const rows = GameWindow.computed!.wheelSessionSourceGroups.call(vm as never);
   assert.equal(rows[0]!.detail, "Singles source");
   assert.equal(rows[0]!.tiers[0]!.label, "Hellish Blizzard #UE06BT/OPM-1-020-ALT1");
 });
@@ -747,7 +747,7 @@ test("wheelSessionSourceGroups groups multiple pack tiers under the same source 
     sales: []
   };
 
-  const rows = WheelWindow.computed!.wheelSessionSourceGroups.call(vm as never);
+  const rows = GameWindow.computed!.wheelSessionSourceGroups.call(vm as never);
   assert.equal(rows.length, 1);
   assert.equal(rows[0]!.label, "Bulk Lot");
   assert.equal(rows[0]!.tiers.length, 2);
@@ -785,7 +785,7 @@ test("wheelSessionSourceGroups groups tracked and pool singles tiers under the s
     sales: []
   };
 
-  const rows = WheelWindow.computed!.wheelSessionSourceGroups.call(vm as never);
+  const rows = GameWindow.computed!.wheelSessionSourceGroups.call(vm as never);
   assert.equal(rows.length, 1);
   assert.equal(rows[0]!.label, "Union arena singles");
   assert.match(rows[0]!.remainingText, /24 items left/i);
@@ -847,3 +847,5 @@ test("getWheelTierInventoryMeta marks exact last-hit stock as low stock", () => 
   assert.equal(packsMeta?.warning, true);
   assert.match(packsMeta?.text || "", /1 item left/i);
 });
+
+

@@ -1,19 +1,19 @@
 import assert from "node:assert/strict";
 import { afterEach, test, vi } from "vitest";
 import { normalizeWheelConfig } from "../src/app-core/shared/normalize-wheel-config.ts";
-import { createWheelWindowState, getWheelController } from "../src/components/windows/wheel/coordinator/wheelControllerState.ts";
-import { createDefaultWheelConfig } from "../src/components/windows/wheel/services/wheelDefaults.ts";
-import { buildSlotsFromConfig } from "../src/components/windows/wheel/services/wheelSlots.ts";
+import { createGameWindowState, getWheelController } from "../src/components/windows/game/coordinator/gameControllerState.ts";
+import { createDefaultWheelConfig } from "../src/components/windows/game/services/wheelDefaults.ts";
+import { buildSlotsFromConfig } from "../src/components/windows/game/services/wheelSlots.ts";
 import {
   buildMysteryGridCells,
   getMysteryGridCellCount,
   mysteryGridMethods,
   pickRandomMysteryGridCellIndex
-} from "../src/components/windows/wheel/commands/mysteryGridMethods.ts";
-import { wheelConfigMethods } from "../src/components/windows/wheel/commands/wheelConfigMethods.ts";
-import { MysteryGridSurface } from "../src/components/windows/wheel/stage/MysteryGridSurface.ts";
-import { wheelSessionMethods } from "../src/components/windows/wheel/commands/wheelSessionMethods.ts";
-import { wheelSpinMethods } from "../src/components/windows/wheel/commands/wheelSpinMethods.ts";
+} from "../src/components/windows/game/commands/mysteryGridMethods.ts";
+import { wheelConfigMethods } from "../src/components/windows/game/commands/wheelConfigMethods.ts";
+import { MysteryGridSurface } from "../src/components/windows/game/stage/MysteryGridSurface.ts";
+import { wheelSessionMethods } from "../src/components/windows/game/commands/wheelSessionMethods.ts";
+import { wheelSpinMethods } from "../src/components/windows/game/commands/wheelSpinMethods.ts";
 import type { WheelConfig } from "../src/types/app.ts";
 
 let committedLayoutHash = "c3ca5e1eef7edf9b0625f714c6eb25287a9e8bcc63a16d0de00ce711ddbe67ad";
@@ -52,7 +52,7 @@ vi.mock("../src/app-core/methods/wheel-fairness-api.ts", () => ({
   }))
 }));
 
-vi.mock("../src/components/windows/wheel/services/wheelAudio.ts", () => wheelAudioMock);
+vi.mock("../src/components/windows/game/services/wheelAudio.ts", () => wheelAudioMock);
 
 afterEach(() => {
   vi.clearAllMocks();
@@ -101,7 +101,7 @@ function createGridConfig(overrides: Partial<WheelConfig> = {}): WheelConfig {
 }
 
 function createGridVm(mode: "config" | "live", config = createGridConfig()) {
-  const state = createWheelWindowState() as Record<string, unknown>;
+  const state = createGameWindowState() as Record<string, unknown>;
   const controller = getWheelController(state);
   const slots = buildSlotsFromConfig(config);
   state.wheelMode = mode;
@@ -549,7 +549,8 @@ test("completing a live mystery grid session starts a fresh shuffled board", asy
     ]
   }));
   const controller = getWheelController(vm);
-  const initialLayout = (controller.activeSlots as Array<{ tier: string }>).map((slot) => slot.tier);
+  const initialSeed = controller.gridLayoutSeed;
+  const initialSlots = controller.activeSlots;
 
   for (let cellIndex = 0; cellIndex < 4; cellIndex += 1) {
     await mysteryGridMethods.revealMysteryGridCell.call(vm, cellIndex, true);
@@ -558,9 +559,13 @@ test("completing a live mystery grid session starts a fresh shuffled board", asy
 
   await vi.runAllTimersAsync();
 
-  const rerolledLayout = (controller.activeSlots as Array<{ tier: string }>).map((slot) => slot.tier);
   assert.equal((vm.wheelGridReveals as unknown[]).length, 0);
   assert.equal(Number(vm.wheelTotalSpins), 0);
-  assert.equal(rerolledLayout.length, initialLayout.length);
-  assert.notDeepEqual(rerolledLayout, initialLayout);
+  assert.equal(controller.activeSlots.length, initialSlots.length);
+  assert.notEqual(controller.activeSlots, initialSlots);
+  assert.notEqual(controller.gridLayoutSeed, initialSeed);
+  assert.notEqual(controller.gridLayoutSeed, "");
 });
+
+
+

@@ -25,15 +25,15 @@ import type {
     SyncWheelTierDto as SharedSyncWheelTierDto
 } from "./shared/sync-contracts";
 import type {
-    WheelPublicSessionChaseEntry as SharedWheelPublicSessionChaseEntry,
-    WheelPublicSessionChaseHistoryEntry as SharedWheelPublicSessionChaseHistoryEntry,
-    WheelPublicSessionFairnessEntry as SharedWheelPublicSessionFairnessEntry,
-    WheelPublicSessionGridCell as SharedWheelPublicSessionGridCell,
-    WheelPublicSessionSlot as SharedWheelPublicSessionSlot,
-    WheelPublicSessionSnapshot as SharedWheelPublicSessionSnapshot,
-    WheelPublicSessionStatus as SharedWheelPublicSessionStatus,
-    WheelSpectatorHeatLevel as SharedWheelSpectatorHeatLevel
-} from "./shared/wheel-public-session-contracts";
+    GamePublicSessionBoardCell as SharedGamePublicSessionBoardCell,
+    GamePublicSessionChaseEntry as SharedGamePublicSessionChaseEntry,
+    GamePublicSessionChaseHistoryEntry as SharedGamePublicSessionChaseHistoryEntry,
+    GamePublicSessionFairnessEntry as SharedGamePublicSessionFairnessEntry,
+    GamePublicSessionOutcomeSlot as SharedGamePublicSessionOutcomeSlot,
+    GamePublicSessionSnapshot as SharedGamePublicSessionSnapshot,
+    GamePublicSessionStatus as SharedGamePublicSessionStatus,
+    GameSpectatorHeatLevel as SharedGameSpectatorHeatLevel
+} from "./shared/game-public-session-contracts";
 
 export type ApiEnvironment = "dev" | "prod";
 
@@ -92,14 +92,23 @@ export interface SessionDocument {
   absoluteExpiresAt: string;
 }
 
-export type WheelPublicSessionStatus = SharedWheelPublicSessionStatus;
-export type WheelSpectatorHeatLevel = SharedWheelSpectatorHeatLevel;
-export type WheelPublicSessionFairnessEntry = SharedWheelPublicSessionFairnessEntry;
-export type WheelPublicSessionChaseEntry = SharedWheelPublicSessionChaseEntry;
-export type WheelPublicSessionChaseHistoryEntry = SharedWheelPublicSessionChaseHistoryEntry;
-export type WheelPublicSessionSlot = SharedWheelPublicSessionSlot;
-export type WheelPublicSessionGridCell = SharedWheelPublicSessionGridCell;
-export type WheelPublicSessionSnapshot = SharedWheelPublicSessionSnapshot;
+export type GamePublicSessionStatus = SharedGamePublicSessionStatus;
+export type GameSpectatorHeatLevel = SharedGameSpectatorHeatLevel;
+export type GamePublicSessionFairnessEntry = SharedGamePublicSessionFairnessEntry;
+export type GamePublicSessionChaseEntry = SharedGamePublicSessionChaseEntry;
+export type GamePublicSessionChaseHistoryEntry = SharedGamePublicSessionChaseHistoryEntry;
+export type GamePublicSessionOutcomeSlot = SharedGamePublicSessionOutcomeSlot;
+export type GamePublicSessionBoardCell = SharedGamePublicSessionBoardCell;
+export type GamePublicSessionSnapshot = SharedGamePublicSessionSnapshot;
+
+export type WheelPublicSessionStatus = GamePublicSessionStatus;
+export type WheelSpectatorHeatLevel = GameSpectatorHeatLevel;
+export type WheelPublicSessionFairnessEntry = GamePublicSessionFairnessEntry;
+export type WheelPublicSessionChaseEntry = GamePublicSessionChaseEntry;
+export type WheelPublicSessionChaseHistoryEntry = GamePublicSessionChaseHistoryEntry;
+export type WheelPublicSessionSlot = GamePublicSessionOutcomeSlot;
+export type WheelPublicSessionGridCell = GamePublicSessionBoardCell;
+export type WheelPublicSessionSnapshot = GamePublicSessionSnapshot;
 
 export interface WheelPublicSessionDocument {
   id: string;

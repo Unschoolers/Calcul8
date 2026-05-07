@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { test, vi } from "vitest";
 
 import { getScopedActiveWheelConfigStorageKey } from "../src/app-core/storageKeys.ts";
-import { WheelWindow } from "../src/components/windows/wheel/WheelWindow.ts";
+import { GameWindow } from "../src/components/windows/game/GameWindow.ts";
 import type { WheelConfig } from "../src/types/app.ts";
 
 type MockStorage = {
@@ -52,8 +52,8 @@ function wheelConfig(id: number, name: string): WheelConfig {
 }
 
 test("wheel stage owns game selection and editor actions instead of the inspector builder", () => {
-  const stageTemplate = readFileSync("src/components/windows/wheel/stage/WheelStageTopbar.html", "utf8");
-  const inspectorTemplate = readFileSync("src/components/windows/wheel/inspector/WheelInspector.html", "utf8");
+  const stageTemplate = readFileSync("src/components/windows/game/stage/WheelStageTopbar.html", "utf8");
+  const inspectorTemplate = readFileSync("src/components/windows/game/inspector/WheelInspector.html", "utf8");
 
   assert.match(stageTemplate, /wheel-stage-game-toolbar/);
   assert.match(stageTemplate, /v-model="activeWheelConfigId"/);
@@ -63,8 +63,8 @@ test("wheel stage owns game selection and editor actions instead of the inspecto
 });
 
 test("wheel stage keeps desktop controls visible and collapses them behind one compact menu", () => {
-  const stageTemplate = readFileSync("src/components/windows/wheel/stage/WheelStageTopbar.html", "utf8");
-  const stageStyles = readFileSync("src/components/windows/wheel/stage/WheelStageTopbar.vue", "utf8");
+  const stageTemplate = readFileSync("src/components/windows/game/stage/WheelStageTopbar.html", "utf8");
+  const stageStyles = readFileSync("src/components/windows/game/stage/WheelStageTopbar.vue", "utf8");
 
   assert.match(stageTemplate, /wheel-stage-game-menu/);
   assert.match(stageTemplate, /mdi-dots-vertical/);
@@ -87,7 +87,7 @@ test("persistLastWheelConfigSelection stores the active game id in the current s
       activeWheelConfigId: 92
     };
 
-    WheelWindow.methods!.persistLastWheelConfigSelection.call(vm as never);
+    GameWindow.methods!.persistLastWheelConfigSelection.call(vm as never);
 
     assert.equal(
       data.get(getScopedActiveWheelConfigStorageKey({ scopeType: "workspace", workspaceId: "team-42" })),
@@ -111,7 +111,7 @@ test("restoreLastWheelConfigSelection selects a saved game only when it exists i
       wheelConfigs: [wheelConfig(91, "Personal Wheel"), wheelConfig(92, "Workspace Wheel")]
     };
 
-    WheelWindow.methods!.restoreLastWheelConfigSelection.call(vm as never);
+    GameWindow.methods!.restoreLastWheelConfigSelection.call(vm as never);
 
     assert.equal(vm.activeWheelConfigId, 92);
   });
@@ -128,9 +128,11 @@ test("restoreLastWheelConfigSelection falls back to the first game and replaces 
       wheelConfigs: [wheelConfig(91, "First Wheel"), wheelConfig(92, "Second Wheel")]
     };
 
-    WheelWindow.methods!.restoreLastWheelConfigSelection.call(vm as never);
+    GameWindow.methods!.restoreLastWheelConfigSelection.call(vm as never);
 
     assert.equal(vm.activeWheelConfigId, 91);
     assert.equal(data.get(key), "91");
   });
 });
+
+

@@ -2,13 +2,9 @@ import { DEFAULT_VALUES } from "../../constants.ts";
 import { calculateNetFromGross } from "../../domain/calculations.ts";
 import type { Lot, LotSalesCacheEntry, Sale } from "../../types/app.ts";
 import {
-  getLegacySalesStorageKey,
   getSalesCacheStatusKey,
-  getLegacyStorageKeys,
   getScopedPresetsStorageKey,
   getSalesStorageKey as getWhatfeesSalesStorageKey,
-  migrateLegacySalesKey,
-  readStorageWithLegacy,
   STORAGE_KEYS
 } from "../storageKeys.ts";
 import { type ConfigMethodSubset, getTodayDate } from "./config-shared.ts";
@@ -23,7 +19,6 @@ type ExchangeRateCacheRecord = {
 
 const EXCHANGE_RATE_CACHE_KEY = STORAGE_KEYS.EXCHANGE_RATE_CACHE;
 const EXCHANGE_RATE_CACHE_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
-const LEGACY_KEYS = getLegacyStorageKeys();
 
 function isExchangeRateCacheRecord(value: unknown): value is ExchangeRateCacheRecord {
   if (!value || typeof value !== "object") return false;
@@ -70,14 +65,9 @@ export const configStorageMethods: ConfigMethodSubset<
   getSalesCacheEntry(lotId: number): LotSalesCacheEntry {
     try {
       const scope = resolveWorkspaceScopeContext(this);
-      if (scope.isPersonal) {
-        migrateLegacySalesKey(lotId);
-      }
       const storageKey = this.getSalesStorageKey(lotId);
       const statusKey = getSalesCacheStatusKey(lotId, scope);
-      const stored = scope.isPersonal
-        ? readStorageWithLegacy(storageKey, getLegacySalesStorageKey(lotId))
-        : localStorage.getItem(storageKey);
+      const stored = localStorage.getItem(storageKey);
       if (!stored) {
         return {
           status: "missing",
@@ -189,9 +179,7 @@ export const configStorageMethods: ConfigMethodSubset<
     try {
       const scope = resolveWorkspaceScopeContext(this);
       const storageKey = getScopedPresetsStorageKey(scope);
-      const stored = scope.isWorkspace
-        ? localStorage.getItem(storageKey)
-        : readStorageWithLegacy(storageKey, LEGACY_KEYS.PRESETS);
+      const stored = localStorage.getItem(storageKey);
       if (stored) {
         const parsed = JSON.parse(stored) as Lot[];
         const todayDate = getTodayDate();

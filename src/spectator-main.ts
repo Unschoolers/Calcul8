@@ -11,8 +11,8 @@ import {
   ensureWheelCanvasSize,
   getWheelCanvasDpr,
   renderWheelSurface
-} from "./components/windows/wheel/stage/wheelCanvasRender.ts";
-import { normalizeWheelPublicSessionId } from "./components/windows/wheel/services/wheelSpectator.ts";
+} from "./components/windows/game/stage/wheelCanvasRender.ts";
+import { normalizeWheelPublicSessionId } from "./components/windows/game/services/wheelSpectator.ts";
 import "./styles/spectator.css";
 import type { WheelSpectatorHeatLevel, WheelSpectatorSnapshot } from "./types/app.ts";
 
@@ -92,12 +92,12 @@ function formatStatusTone(snapshot: WheelSpectatorSnapshot): "ended" | "spinning
   return snapshot.isSpinning ? "spinning" : "waiting";
 }
 
-function getSpectatorWheelSlots(snapshot: WheelSpectatorSnapshot): WheelSpectatorSnapshot["wheelSlots"] {
-  return Array.isArray(snapshot.wheelSlots) ? snapshot.wheelSlots : [];
+function getSpectatorOutcomeSlots(snapshot: WheelSpectatorSnapshot): WheelSpectatorSnapshot["outcomeSlots"] {
+  return Array.isArray(snapshot.outcomeSlots) ? snapshot.outcomeSlots : [];
 }
 
-function getSpectatorGridCells(snapshot: WheelSpectatorSnapshot): NonNullable<WheelSpectatorSnapshot["gridCells"]> {
-  return Array.isArray(snapshot.gridCells) ? snapshot.gridCells : [];
+function getSpectatorBoardCells(snapshot: WheelSpectatorSnapshot): WheelSpectatorSnapshot["boardCells"] {
+  return Array.isArray(snapshot.boardCells) ? snapshot.boardCells : [];
 }
 
 function renderEmpty(title: string, body: string): string {
@@ -124,20 +124,20 @@ function renderState(state: SpectatorPageState): string {
   }
 
   const { snapshot } = state;
-  const wheelSlots = getSpectatorWheelSlots(snapshot);
-  const gridCells = getSpectatorGridCells(snapshot);
-  const isGridGame = snapshot.gameType === "grid" || gridCells.length > 0;
-  const gridColumns = Math.ceil(Math.sqrt(Math.max(1, gridCells.length)));
-  const revealedGridCount = gridCells.filter((cell) => cell.revealed).length;
-  const gridProgressLabel = gridCells.length > 0 ? `${revealedGridCount}/${gridCells.length}` : "0/0";
-  const heroSubcopy = snapshot.totalSpins > 0
+  const outcomeSlots = getSpectatorOutcomeSlots(snapshot);
+  const boardCells = getSpectatorBoardCells(snapshot);
+  const isGridGame = snapshot.gameType === "grid" || boardCells.length > 0;
+  const gridColumns = Math.ceil(Math.sqrt(Math.max(1, boardCells.length)));
+  const revealedGridCount = boardCells.filter((cell) => cell.revealed).length;
+  const gridProgressLabel = boardCells.length > 0 ? `${revealedGridCount}/${boardCells.length}` : "0/0";
+  const heroSubcopy = snapshot.sessionResultCount > 0
     ? (isGridGame
       ? `${gridProgressLabel} cells opened. ${formatHeatCopy(snapshot.featuredChaseHeat, snapshot.featuredChaseLabel)}`
       : `Watching live: ${formatHeatCopy(snapshot.featuredChaseHeat, snapshot.featuredChaseLabel)}`)
     : `The ${isGridGame ? "grid" : "wheel"} is live. Stay here for the next verified result.`;
   const latestResultLabel = String(snapshot.lastResultLabel || "").trim() || "Waiting for the next result";
   const latestResultColor = String(snapshot.lastResultColor || "#d4af37");
-  const latestResultSubcopy = snapshot.totalSpins > 0
+  const latestResultSubcopy = snapshot.sessionResultCount > 0
     ? (isGridGame ? latestResultLabel : formatHeatCopy(snapshot.featuredChaseHeat, snapshot.featuredChaseLabel))
     : `The next verified ${isGridGame ? "reveal" : "result"} will land here as soon as the ${isGridGame ? "cell opens" : "wheel spins"}.`;
   const reelHtml = snapshot.recentFairnessHistory.length
@@ -184,7 +184,7 @@ function renderState(state: SpectatorPageState): string {
     <div class="spectator-shell">
       <section class="spectator-hero">
         <div class="spectator-kicker">${isGridGame ? "Live Grid Spectator" : "Live Wheel Spectator"}</div>
-        <h1 class="spectator-title">${escapeHtml(snapshot.wheelName)}</h1>
+        <h1 class="spectator-title">${escapeHtml(snapshot.gameName)}</h1>
         <p class="spectator-subtitle spectator-subtitle--hero">${escapeHtml(heroSubcopy)}</p>
       </section>
 
@@ -204,7 +204,7 @@ function renderState(state: SpectatorPageState): string {
           <div class="spectator-now__summary">
             <div class="spectator-now__metric">
               <span class="spectator-now__metric-label">${isGridGame ? "Reveal" : "Spin"}</span>
-              <strong class="spectator-now__metric-value">#${snapshot.totalSpins}</strong>
+              <strong class="spectator-now__metric-value">#${snapshot.sessionResultCount}</strong>
             </div>
             <div class="spectator-now__metric spectator-now__metric--heat-${escapeHtml(String(snapshot.featuredChaseHeat || "low"))}">
               <span class="spectator-now__metric-label">Heat</span>
@@ -217,12 +217,12 @@ function renderState(state: SpectatorPageState): string {
           </div>
 
           <div class="spectator-now__stage">
-            ${isGridGame && gridCells.length
+            ${isGridGame && boardCells.length
               ? `
-                <div class="spectator-grid-board ${snapshot.gridResetAnimating === true ? "spectator-grid-board--resetting" : ""}" style="--spectator-grid-columns:${gridColumns}">
-                  ${gridCells.map((cell) => `
+                <div class="spectator-grid-board ${snapshot.boardResetAnimating === true ? "spectator-grid-board--resetting" : ""}" style="--spectator-grid-columns:${gridColumns}">
+                  ${boardCells.map((cell) => `
                     <div
-                      class="spectator-grid-cell ${cell.revealed ? "spectator-grid-cell--revealed" : ""} ${snapshot.gridHighlightCellIndex === cell.index ? "spectator-grid-cell--latest" : ""} ${snapshot.gridHighlightCellIndex === cell.index && !cell.revealed ? "spectator-grid-cell--highlighted" : ""}"
+                      class="spectator-grid-cell ${cell.revealed ? "spectator-grid-cell--revealed" : ""} ${snapshot.boardHighlightCellIndex === cell.index ? "spectator-grid-cell--latest" : ""} ${snapshot.boardHighlightCellIndex === cell.index && !cell.revealed ? "spectator-grid-cell--highlighted" : ""}"
                       style="${cell.revealed ? `--spectator-grid-cell-color:${escapeHtml(cell.color)}` : ""}"
                     >
                       ${cell.revealed
@@ -233,14 +233,14 @@ function renderState(state: SpectatorPageState): string {
                 </div>
               `
               : ""}
-            ${!isGridGame && wheelSlots.length
+            ${!isGridGame && outcomeSlots.length
               ? `
                 <div class="spectator-wheel-frame">
                   <div class="wheel-outer">
                     <div class="wheel-disc">
                       <canvas id="${SPECTATOR_WHEEL_CANVAS_ID}" class="wheel-canvas"></canvas>
                       <div class="wheel-center-cap" aria-hidden="true">
-                        <div class="wheel-center-cap__icon" style="transform: rotate(${Number.isFinite(snapshot.wheelCurrentAngle) ? snapshot.wheelCurrentAngle : 0}rad)">
+                        <div class="wheel-center-cap__icon" style="transform: rotate(${Number.isFinite(snapshot.gameCurrentAngle) ? snapshot.gameCurrentAngle : 0}rad)">
                           <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
                             <path d="M12 2L13.09 8.26L20 12L13.09 15.74L12 22L10.91 15.74L4 12L10.91 8.26L12 2Z"></path>
                           </svg>
@@ -303,7 +303,7 @@ function setState(state: SpectatorPageState): void {
   stopSpectatorWheelAnimation();
   appElement.innerHTML = renderState(state);
   if (state.status === "ready") {
-    document.title = `${state.snapshot.wheelName} • Spectator`;
+    document.title = `${state.snapshot.gameName} • Spectator`;
     lastReadyState = state;
     startSpectatorWheelAnimation(state.snapshot);
   } else if (state.status !== "loading") {
@@ -312,11 +312,11 @@ function setState(state: SpectatorPageState): void {
 }
 
 function resolveHighlightedSpectatorSlotIndex(snapshot: WheelSpectatorSnapshot): number {
-  const wheelSlots = getSpectatorWheelSlots(snapshot);
-  if (!wheelSlots.length) return -1;
+  const outcomeSlots = getSpectatorOutcomeSlots(snapshot);
+  if (!outcomeSlots.length) return -1;
   const targetLabel = String(snapshot.lastResultLabel || "").trim().toLowerCase();
   const targetColor = String(snapshot.lastResultColor || "").trim().toLowerCase();
-  return wheelSlots.findIndex((slot) => (
+  return outcomeSlots.findIndex((slot) => (
     String(slot.name || "").trim().toLowerCase() === targetLabel
     && String(slot.color || "").trim().toLowerCase() === targetColor
   ));
@@ -334,8 +334,8 @@ function drawSpectatorWheel(
   options: { angle?: number; highlightedSlotIndex?: number; highlightTime?: number } = {}
 ): void {
   const canvas = document.getElementById(SPECTATOR_WHEEL_CANVAS_ID) as HTMLCanvasElement | null;
-  const wheelSlots = getSpectatorWheelSlots(snapshot);
-  if (!canvas || !wheelSlots.length) return;
+  const outcomeSlots = getSpectatorOutcomeSlots(snapshot);
+  if (!canvas || !outcomeSlots.length) return;
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
 
@@ -343,7 +343,7 @@ function drawSpectatorWheel(
   const measuredSize = Math.max(220, Math.min(320, Math.floor(frame?.clientWidth || 0)));
   const angle = Number.isFinite(options.angle)
     ? options.angle!
-    : (Number.isFinite(snapshot.wheelCurrentAngle) ? snapshot.wheelCurrentAngle : -Math.PI / 2);
+    : (Number.isFinite(snapshot.gameCurrentAngle) ? snapshot.gameCurrentAngle : -Math.PI / 2);
   const centerIcon = canvas.parentElement?.querySelector(".wheel-center-cap__icon") as HTMLElement | null;
   if (centerIcon) {
     centerIcon.style.transform = `rotate(${angle}rad)`;
@@ -355,7 +355,7 @@ function drawSpectatorWheel(
   ctx.imageSmoothingEnabled = true;
   renderWheelSurface(
     ctx,
-    wheelSlots.map((slot) => ({
+    outcomeSlots.map((slot) => ({
       name: slot.name,
       color: slot.color,
       cost: 0,
@@ -369,14 +369,14 @@ function drawSpectatorWheel(
     Number.isFinite(options.highlightedSlotIndex)
       ? options.highlightedSlotIndex!
       : resolveHighlightedSpectatorSlotIndex(snapshot),
-    Number.isFinite(options.highlightTime) ? options.highlightTime! : (snapshot.totalSpins > 0 ? 0.8 : 0)
+    Number.isFinite(options.highlightTime) ? options.highlightTime! : (snapshot.sessionResultCount > 0 ? 0.8 : 0)
   );
 }
 
 function startSpectatorWheelAnimation(snapshot: WheelSpectatorSnapshot): void {
-  if (snapshot.gameType === "grid" || getSpectatorGridCells(snapshot).length > 0) return;
-  const animation = snapshot.spinAnimation;
-  const slots = getSpectatorWheelSlots(snapshot);
+  if (snapshot.gameType === "grid" || getSpectatorBoardCells(snapshot).length > 0) return;
+  const animation = snapshot.resultAnimation;
+  const slots = getSpectatorOutcomeSlots(snapshot);
   if (
     !animation
     || !snapshot.isSpinning
@@ -582,3 +582,4 @@ window.addEventListener("beforeunload", () => {
 });
 
 void boot();
+

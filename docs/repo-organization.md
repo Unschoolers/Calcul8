@@ -5,7 +5,7 @@ This repo should be organized so the folder tree explains the product before ope
 ## Current Progress
 
 - `src/components/windows` is organized by view/window.
-- `src/components/windows/wheel` reached the target responsibility layout. The root contains only `WheelWindow.ts`, `WheelWindow.vue`, and responsibility folders.
+- `src/components/windows/game` now owns the tier-prize game shell and per-game wheel/grid adapters. `src/components/windows/wheel` is a compatibility entry point only.
 - `apps/api/src/functions` is route-entry oriented. Larger API logic lives under `apps/api/src/features`, with shared support under `apps/api/src/lib`.
 - Compatibility re-export shims from the old flat wheel folder were removed after imports moved to the real subfolders.
 
@@ -75,19 +75,19 @@ Guidelines:
 - `services/` owns non-UI helpers that still belong to the feature.
 - `styles/` owns feature CSS, grouped by panel or surface.
 
-## Wheel Layout
+## Game Layout
 
-Status: reached for folder navigation. Further wheel cleanup should reduce `wheelCtx` usage and split domain responsibilities, but the folder tree now has the intended shape.
+Status: reached for the tier-prize game shell. Further cleanup should continue moving shared tier-prize domain work out of wheel-named services as third-game requirements become concrete, but new UI work should enter through the game module.
 
 ```text
-src/components/windows/wheel/
-  WheelWindow.vue
-  WheelWindow.ts
+src/components/windows/game/
+  GameWindow.vue
+  GameWindow.ts
   coordinator/
-    WheelWindow.definition.ts
-    wheelControllerState.ts
-    wheelLayoutPolicy.ts
-    wheelComputedShared.ts
+    GameWindow.definition.ts
+    gameControllerState.ts
+    gameLayoutPolicy.ts
+    gameComputedShared.ts
   stage/
     WheelStageTopbar.*
     WheelStageSummary.*
@@ -117,6 +117,7 @@ src/components/windows/wheel/
     wheelSpinState.ts
     wheelSessionState.ts
   styles/
+    GameWindow.css
     wheel-core.css
     wheel-stage.css
     wheel-inspector.css
@@ -125,6 +126,10 @@ src/components/windows/wheel/
     mystery-grid.css
     wheel-mobile.css
     wheel-tier-editor.css
+
+src/components/windows/wheel/
+  WheelWindow.vue
+  WheelWindow.ts
 ```
 
 ## API Layout

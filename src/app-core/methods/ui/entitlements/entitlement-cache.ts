@@ -3,12 +3,7 @@ import {
     handleExpiredAuthState
 } from "../../../auth/index.ts";
 import type { AppContext } from "../../../context-app.ts";
-import {
-    getLegacyStorageKeys,
-    readStorageWithLegacy,
-    removeStorageWithLegacy,
-    STORAGE_KEYS
-} from "../../../storageKeys.ts";
+import { removeStorage, STORAGE_KEYS } from "../../../storageKeys.ts";
 
 export interface EntitlementApiResponse {
   userId?: string;
@@ -22,8 +17,6 @@ interface EntitlementCachePayload {
   updatedAt: string | null;
   cachedAt: number;
 }
-
-const LEGACY_KEYS = getLegacyStorageKeys();
 
 export const ENTITLEMENT_CACHE_KEY = STORAGE_KEYS.ENTITLEMENT_CACHE;
 export const PRO_ACCESS_KEY = STORAGE_KEYS.PRO_ACCESS;
@@ -44,7 +37,7 @@ export function getEntitlementTtlMs(): number {
 }
 
 export function readEntitlementCache(): { userId: string | null; hasProAccess: boolean; updatedAt: string | null; cachedAt: number } | null {
-  const raw = readStorageWithLegacy(ENTITLEMENT_CACHE_KEY, LEGACY_KEYS.ENTITLEMENT_CACHE);
+  const raw = localStorage.getItem(ENTITLEMENT_CACHE_KEY);
   if (!raw) return null;
 
   try {
@@ -72,7 +65,7 @@ export function writeEntitlementCache(payload: {
 }
 
 export function clearEntitlementCache(): void {
-  removeStorageWithLegacy(ENTITLEMENT_CACHE_KEY, LEGACY_KEYS.ENTITLEMENT_CACHE);
+  removeStorage(ENTITLEMENT_CACHE_KEY);
 }
 
 export type AuthSessionApp = Pick<AppContext, "googleAuthEpoch" | "hasProAccess">;

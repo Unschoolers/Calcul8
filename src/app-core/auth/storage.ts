@@ -1,10 +1,4 @@
-import {
-  getLegacyStorageKeys,
-  removeStorageWithLegacy,
-  STORAGE_KEYS
-} from "../storageKeys.ts";
-
-const LEGACY_KEYS = getLegacyStorageKeys();
+import { removeStorage, STORAGE_KEYS } from "../storageKeys.ts";
 
 const AUTH_CSRF_TOKEN_KEY = STORAGE_KEYS.CSRF_TOKEN;
 const GOOGLE_AUTH_TOKEN_KEY = STORAGE_KEYS.GOOGLE_ID_TOKEN;
@@ -17,14 +11,9 @@ let storedCsrfToken = "";
 let storedGoogleIdToken = "";
 let storedSessionUserId = "";
 
-function readTrimmedStorageValue(key: string, legacyKey?: string): string {
+function readTrimmedStorageValue(key: string): string {
   try {
-    const currentValue = (localStorage.getItem(key) || "").trim();
-    if (currentValue) {
-      return currentValue;
-    }
-
-    return legacyKey ? (localStorage.getItem(legacyKey) || "").trim() : "";
+    return (localStorage.getItem(key) || "").trim();
   } catch {
     return "";
   }
@@ -58,10 +47,10 @@ function hydrateSecretStorage(): void {
   hydratedSecrets = true;
 
   storedCsrfToken = readTrimmedStorageValue(AUTH_CSRF_TOKEN_KEY);
-  storedGoogleIdToken = readTrimmedStorageValue(GOOGLE_AUTH_TOKEN_KEY, LEGACY_KEYS.GOOGLE_ID_TOKEN);
+  storedGoogleIdToken = readTrimmedStorageValue(GOOGLE_AUTH_TOKEN_KEY);
 
-  removeStorageWithLegacy(AUTH_CSRF_TOKEN_KEY);
-  removeStorageWithLegacy(GOOGLE_AUTH_TOKEN_KEY, LEGACY_KEYS.GOOGLE_ID_TOKEN);
+  removeStorage(AUTH_CSRF_TOKEN_KEY);
+  removeStorage(GOOGLE_AUTH_TOKEN_KEY);
 }
 
 export function primeStoredAuthSecretsFromStorage(): void {
@@ -76,13 +65,13 @@ export function getStoredCsrfToken(): string {
 export function setStoredCsrfToken(token: string): void {
   hydrateSecretStorage();
   storedCsrfToken = String(token || "").trim();
-  removeStorageWithLegacy(AUTH_CSRF_TOKEN_KEY);
+  removeStorage(AUTH_CSRF_TOKEN_KEY);
 }
 
 export function clearStoredCsrfToken(): void {
   hydrateSecretStorage();
   storedCsrfToken = "";
-  removeStorageWithLegacy(AUTH_CSRF_TOKEN_KEY);
+  removeStorage(AUTH_CSRF_TOKEN_KEY);
 }
 
 export function getStoredGoogleIdToken(): string {
@@ -93,13 +82,13 @@ export function getStoredGoogleIdToken(): string {
 export function setStoredGoogleIdToken(token: string): void {
   hydrateSecretStorage();
   storedGoogleIdToken = String(token || "").trim();
-  removeStorageWithLegacy(GOOGLE_AUTH_TOKEN_KEY, LEGACY_KEYS.GOOGLE_ID_TOKEN);
+  removeStorage(GOOGLE_AUTH_TOKEN_KEY);
 }
 
 export function clearStoredGoogleIdToken(): void {
   hydrateSecretStorage();
   storedGoogleIdToken = "";
-  removeStorageWithLegacy(GOOGLE_AUTH_TOKEN_KEY, LEGACY_KEYS.GOOGLE_ID_TOKEN);
+  removeStorage(GOOGLE_AUTH_TOKEN_KEY);
 }
 
 export function getStoredSessionUserId(): string {
@@ -118,7 +107,7 @@ export function clearStoredSessionUserId(): void {
 }
 
 export function clearStoredGoogleProfileCache(): void {
-  removeStorageWithLegacy(GOOGLE_AUTH_PROFILE_CACHE_KEY, LEGACY_KEYS.GOOGLE_PROFILE_CACHE);
+  removeStorage(GOOGLE_AUTH_PROFILE_CACHE_KEY);
 }
 
 export function isGoogleAutoSignInDisabled(): boolean {

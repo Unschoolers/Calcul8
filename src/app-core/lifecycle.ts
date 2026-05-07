@@ -1,23 +1,18 @@
 import type { AppTab, PortfolioLotTypeFilter } from "../types/app.ts";
+import { primeStoredAuthSecretsFromStorage } from "./auth/index.ts";
 import type { AppContext } from "./context-app.ts";
 import type { AppLifecycleObject } from "./context-contracts.ts";
-import { primeStoredAuthSecretsFromStorage } from "./auth/index.ts";
 import { isDevNoLoginRoute } from "./dev-nologin.ts";
+import { refreshPersonalLotSalesIfStale } from "./methods/sales-freshness.ts";
 import { closeStripeEmbeddedCheckout, handleStripeCheckoutReturn } from "./methods/ui/entitlements/entitlements-stripe.ts";
 import { stopWorkspaceConfigSyncPush } from "./methods/ui/workspace/workspace-config-sync.ts";
 import { refreshWorkspaceRealtime, stopWorkspaceRealtime } from "./methods/ui/workspace/workspace-realtime.ts";
-import { refreshPersonalLotSalesIfStale } from "./methods/sales-freshness.ts";
 import {
-    getLegacyStorageKeys,
     getScopedLastLotStorageKey,
     getScopedLastSyncedPayloadHashKey,
-    migrateLegacyStorageKeys,
-    readStorageWithLegacy,
     STORAGE_KEYS
 } from "./storageKeys.ts";
 import { getActiveStorageScope } from "./workspace-scope.ts";
-
-const LEGACY_KEYS = getLegacyStorageKeys();
 
 function isAppTab(value: unknown): value is AppTab {
   return value === "config" || value === "live" || value === "sales" || value === "portfolio" || value === "wheel";
@@ -53,7 +48,6 @@ function canBindForegroundSalesListeners(): boolean {
 export const appLifecycle: AppLifecycleObject = {
   mounted() {
     primeStoredAuthSecretsFromStorage();
-    migrateLegacyStorageKeys();
     try {
       const inviteToken = new URLSearchParams(window.location.search).get("invite");
       this.pendingWorkspaceInviteToken = String(inviteToken || "").trim();
@@ -74,11 +68,7 @@ export const appLifecycle: AppLifecycleObject = {
 
     const storageScope = getActiveStorageScope(this);
     const scopedLastLotKey = getScopedLastLotStorageKey(storageScope);
-    const last = Number(
-      storageScope.scopeType === "workspace"
-        ? localStorage.getItem(scopedLastLotKey)
-        : readStorageWithLegacy(scopedLastLotKey, LEGACY_KEYS.LAST_LOT_ID)
-    );
+    const last = Number(localStorage.getItem(scopedLastLotKey));
     if (last && this.lots.some((p) => p.id === last)) {
       this.currentLotId = last;
       this.loadLot();
@@ -143,6 +133,28 @@ export const appLifecycle: AppLifecycleObject = {
     this.syncLivePricesFromDefaults();
     this.initGoogleAutoLogin();
     this.$nextTick(() => this.renderGoogleSignInButton());
+    // Ensure live pricing is fetched after auth/bootstrap completes on reload.
+    // Some auth providers initialize asynchronously; retry a few times so
+    // the current lot receives its live pricing without requiring user action.
+    void (async () => {
+      const retryDelays = [0, 1500, 4000];
+      for (const delayMs of retryDelays) {
+        if (delayMs) await new Promise((resolve) => window.setTimeout(resolve, delayMs));
+        try {
+          if (!this.currentLotId) return;
+          if (this.currentLivePricingVersion != null) return;
+          const { fetchAuthoritativeLivePricing } = await import("./methods/sales-live-api.ts");
+          const { applyAuthoritativeLivePricingSnapshot } = await import("./methods/config-live-pricing.ts");
+          const latest = await fetchAuthoritativeLivePricing(this as any, Number(this.currentLotId));
+          if (latest) {
+            applyAuthoritativeLivePricingSnapshot(this as any, Number(this.currentLotId), latest);
+            return;
+          }
+        } catch (err) {
+          // ignore transient errors and retry
+        }
+      }
+    })();
     if (typeof this.syncGuidedOnboarding === "function") {
       this.syncGuidedOnboarding();
     }

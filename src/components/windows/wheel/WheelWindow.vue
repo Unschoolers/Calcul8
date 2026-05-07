@@ -1,7 +1,5 @@
 <script lang="ts">
-import { WheelWindow } from "./WheelWindow.ts";
+import GameWindow from "../game/GameWindow.vue";
 
-export default WheelWindow;
+export default GameWindow;
 </script>
-
-<template src="./coordinator/WheelWindow.html"></template>

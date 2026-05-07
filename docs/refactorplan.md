@@ -11,7 +11,7 @@ Last cleaned: 2026-05-04.
 3. Use one game vocabulary: game, tier, odds, outcome count, wheel spin, grid reveal, public session, spectator snapshot.
 4. Keep wheel and grid differences explicit. Do not hide important semantics behind generic names if they behave differently.
 5. Keep frontend and API contracts strict, normalized, and runtime-validated at boundaries.
-6. Preserve local-first behavior, legacy personal mode, and workspace scope safety.
+6. Preserve local-first behavior and workspace scope safety; old local storage contracts may be removed only by an explicit breaking cleanup.
 7. Do not mix file moves with behavior changes unless the behavior change is required to preserve tests.
 
 ## Priority 1 - Realtime And Spectator Reliability
@@ -23,6 +23,8 @@ TODO:
 - [ ] Consolidate realtime endpoint configuration for frontend, API publisher, and websocket gateway.
 - [ ] Keep environment variable names documented and tested, including dev unauthenticated subscribe behavior.
 - [ ] Make spectator reconnect behavior consistent with app realtime behavior where possible.
+- [ ] Keep generic game public-session v2 contracts and legacy wheel snapshot readers covered while third-game work starts.
+- [ ] Add the next tier-prize game only through the game adapter registry and generic spectator snapshot fields.
 - [ ] Add tests for public session publish failures, stale public sessions, reset events, missing realtime connection, and websocket close/reconnect behavior.
 - [ ] Document the local no-login/dev flow for app, API, realtime, spectator, and public links.
 
@@ -153,6 +155,3 @@ For broad refactors:
 
 - Workspace billing and admin layers beyond contract/safety work required by touched code.
 - Large visual redesigns outside the game/spectator surfaces.
-- Removing legacy personal-mode migrations.
-- Production data migrations for Mystery Grid unless the grid has already shipped to real users.
-- New luck games before the shared game contracts are solid.

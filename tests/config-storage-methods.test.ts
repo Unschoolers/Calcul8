@@ -3,26 +3,9 @@ import { afterEach, beforeEach, test, vi } from "vitest";
 import { DEFAULT_VALUES } from "../src/constants.ts";
 
 const {
-  readStorageWithLegacyMock,
-  migrateLegacySalesKeyMock,
-  getLegacySalesStorageKeyMock,
-  getLegacyStorageKeysMock,
   getSalesCacheStatusKeyMock
 } = vi.hoisted(() => ({
-  readStorageWithLegacyMock: vi.fn(),
-  migrateLegacySalesKeyMock: vi.fn(),
-  getLegacySalesStorageKeyMock: vi.fn((lotId: number) => `legacy_sales_${lotId}`),
-  getSalesCacheStatusKeyMock: vi.fn((lotId: number) => `sales_status_${lotId}`),
-  getLegacyStorageKeysMock: vi.fn(() => ({
-    LAST_LOT_ID: "legacy_last_lot_id",
-    PRESETS: "legacy_presets",
-    ENTITLEMENT_CACHE: "legacy_entitlement_cache",
-    PRO_ACCESS: "legacy_pro_access",
-    GOOGLE_ID_TOKEN: "legacy_google_id_token",
-    GOOGLE_PROFILE_CACHE: "legacy_google_profile_cache",
-    DEBUG_USER_ID: "legacy_debug_user_id",
-    SYNC_CLIENT_VERSION: "legacy_sync_client_version"
-  }))
+  getSalesCacheStatusKeyMock: vi.fn((lotId: number) => `sales_status_${lotId}`)
 }));
 
 vi.mock("../src/app-core/storageKeys.ts", async () => {
@@ -31,11 +14,7 @@ vi.mock("../src/app-core/storageKeys.ts", async () => {
   );
   return {
     ...actual,
-    readStorageWithLegacy: readStorageWithLegacyMock,
-    migrateLegacySalesKey: migrateLegacySalesKeyMock,
-    getLegacySalesStorageKey: getLegacySalesStorageKeyMock,
-    getSalesCacheStatusKey: getSalesCacheStatusKeyMock,
-    getLegacyStorageKeys: getLegacyStorageKeysMock
+    getSalesCacheStatusKey: getSalesCacheStatusKeyMock
   };
 });
 
@@ -121,7 +100,6 @@ function createContext(overrides: Record<string, unknown> = {}): Record<string, 
 
 beforeEach(() => {
   vi.clearAllMocks();
-  readStorageWithLegacyMock.mockReturnValue(null);
 });
 
 afterEach(() => {
@@ -146,20 +124,18 @@ test("getSalesCacheEntry distinguishes missing sales from an explicitly loaded e
   withMockedLocalStorage((data) => {
     const context = createContext();
 
-    readStorageWithLegacyMock.mockReturnValueOnce(null);
     assert.deepEqual(configStorageMethods.getSalesCacheEntry.call(context as never, 1), {
       status: "missing",
       sales: []
     });
 
-    readStorageWithLegacyMock.mockReturnValueOnce("[]");
+    data.set("whatfees_sales_1", "[]");
     assert.deepEqual(configStorageMethods.getSalesCacheEntry.call(context as never, 1), {
       status: "missing",
       sales: []
     });
 
     data.set("sales_status_1", "loaded");
-    readStorageWithLegacyMock.mockReturnValueOnce("[]");
     assert.deepEqual(configStorageMethods.getSalesCacheEntry.call(context as never, 1), {
       status: "loaded",
       sales: []
@@ -167,9 +143,9 @@ test("getSalesCacheEntry distinguishes missing sales from an explicitly loaded e
   });
 });
 
-test("loadSalesForLotId migrates legacy key and normalizes loaded sales", () => {
-  withMockedLocalStorage(() => {
-    readStorageWithLegacyMock.mockReturnValue(JSON.stringify([
+test("loadSalesForLotId reads current storage and normalizes loaded sales", () => {
+  withMockedLocalStorage((data) => {
+    data.set("whatfees_sales_99", JSON.stringify([
       { id: 1, type: "pack", quantity: 1, packsCount: 1, price: 9, customer: " Sam ", memo: 123, buyerShipping: "2.5", date: "2026-02-25" },
       { id: 2, type: "box", quantity: 1, packsCount: 16, price: 100, buyerShipping: "oops", date: "2026-02-25" }
     ]));
@@ -177,9 +153,6 @@ test("loadSalesForLotId migrates legacy key and normalizes loaded sales", () => 
     const context = createContext();
     const sales = configStorageMethods.loadSalesForLotId.call(context as never, 99);
 
-    assert.equal(migrateLegacySalesKeyMock.mock.calls.length, 1);
-    assert.equal(migrateLegacySalesKeyMock.mock.calls[0]?.[0], 99);
-    assert.deepEqual(readStorageWithLegacyMock.mock.calls[0], ["whatfees_sales_99", "legacy_sales_99"]);
     assert.equal(sales.length, 2);
     assert.equal(sales[0]?.customer, " Sam ");
     assert.equal(sales[0]?.memo, undefined);
@@ -189,14 +162,14 @@ test("loadSalesForLotId migrates legacy key and normalizes loaded sales", () => 
 });
 
 test("loadSalesForLotId returns empty list on invalid JSON or missing value", () => {
-  withMockedLocalStorage(() => {
+  withMockedLocalStorage((data) => {
     const context = createContext();
 
-    readStorageWithLegacyMock.mockReturnValue(null);
     assert.deepEqual(configStorageMethods.loadSalesForLotId.call(context as never, 1), []);
 
-    readStorageWithLegacyMock.mockReturnValue("not-json");
-    assert.deepEqual(configStorageMethods.loadSalesForLotId.call(context as never, 1), []);
+    data.set("whatfees_sales_2", "not-json");
+    const invalidJsonContext = createContext();
+    assert.deepEqual(configStorageMethods.loadSalesForLotId.call(invalidJsonContext as never, 2), []);
   });
 });
 
@@ -210,7 +183,6 @@ test("loadSalesForLotId prefers the in-memory sales store when available", () =>
 
     const sales = configStorageMethods.loadSalesForLotId.call(context as never, 5);
 
-    assert.equal(readStorageWithLegacyMock.mock.calls.length, 0);
     assert.equal(sales.length, 1);
     assert.equal(sales[0]?.id, 51);
   });
@@ -338,115 +310,120 @@ test("getExchangeRate falls back to default when no cache exists and fetch fails
 });
 
 test("loadLotsFromStorage normalizes lot type and date fields", () => {
-  readStorageWithLegacyMock.mockReturnValue(JSON.stringify([
-    {
-      id: 1704067200000,
-      name: "Singles",
-      lotType: "singles",
-      purchaseDate: "2026-02-23"
-    },
-    {
-      id: 1704067200001,
-      name: "Legacy Bulk",
-      createdAt: "2026-02-20T10:00:00Z"
-    }
-  ]));
-  const context = createContext({
-    lots: []
+  withMockedLocalStorage((data) => {
+    data.set(STORAGE_KEYS.PRESETS, JSON.stringify([
+      {
+        id: 1704067200000,
+        name: "Singles",
+        lotType: "singles",
+        purchaseDate: "2026-02-23"
+      },
+      {
+        id: 1704067200001,
+        name: "Current Bulk",
+        createdAt: "2026-02-20T10:00:00Z"
+      }
+    ]));
+    const context = createContext({
+      lots: []
+    });
+
+    configStorageMethods.loadLotsFromStorage.call(context as never);
+
+    const lots = context.lots as Array<{
+      id: number;
+      lotType: string;
+      purchaseDate: string;
+      createdAt: string;
+    }>;
+    assert.equal(lots.length, 2);
+    assert.equal(lots[0]?.lotType, "singles");
+    assert.equal(lots[0]?.purchaseDate, "2026-02-23");
+    assert.match(lots[0]?.createdAt || "", /^\d{4}-\d{2}-\d{2}$/);
+    assert.equal(lots[1]?.lotType, "bulk");
+    assert.match(lots[1]?.purchaseDate || "", /^\d{4}-\d{2}-\d{2}$/);
+    assert.match(lots[1]?.createdAt || "", /^\d{4}-\d{2}-\d{2}$/);
   });
-
-  configStorageMethods.loadLotsFromStorage.call(context as never);
-
-  const lots = context.lots as Array<{
-    id: number;
-    lotType: string;
-    purchaseDate: string;
-    createdAt: string;
-  }>;
-  assert.equal(lots.length, 2);
-  assert.equal(lots[0]?.lotType, "singles");
-  assert.equal(lots[0]?.purchaseDate, "2026-02-23");
-  assert.match(lots[0]?.createdAt || "", /^\d{4}-\d{2}-\d{2}$/);
-  assert.equal(lots[1]?.lotType, "bulk");
-  assert.match(lots[1]?.purchaseDate || "", /^\d{4}-\d{2}-\d{2}$/);
-  assert.match(lots[1]?.createdAt || "", /^\d{4}-\d{2}-\d{2}$/);
 });
 
-test("loadLotsFromStorage maps legacy taxRatePercent into purchase and selling tax fields", () => {
-  readStorageWithLegacyMock.mockReturnValue(JSON.stringify([
-    {
-      id: 1704067200000,
-      name: "Legacy Tax Lot",
-      taxRatePercent: 11
-    }
-  ]));
-  const context = createContext({
-    lots: []
+test("loadLotsFromStorage defaults missing purchase and selling tax fields", () => {
+  withMockedLocalStorage((data) => {
+    data.set(STORAGE_KEYS.PRESETS, JSON.stringify([
+      {
+        id: 1704067200000,
+        name: "Current Tax Lot"
+      }
+    ]));
+    const context = createContext({
+      lots: []
+    });
+
+    configStorageMethods.loadLotsFromStorage.call(context as never);
+
+    const lot = (context.lots as Array<{
+      purchaseTaxPercent?: number;
+      sellingTaxPercent?: number;
+    }>)[0];
+    assert.equal(lot?.purchaseTaxPercent, DEFAULT_VALUES.PURCHASE_TAX_RATE_PERCENT);
+    assert.equal(lot?.sellingTaxPercent, DEFAULT_VALUES.SELLING_TAX_RATE_PERCENT);
   });
-
-  configStorageMethods.loadLotsFromStorage.call(context as never);
-
-  const lot = (context.lots as Array<{
-    purchaseTaxPercent?: number;
-    sellingTaxPercent?: number;
-  }>)[0];
-  assert.equal(lot?.purchaseTaxPercent, 11);
-  assert.equal(lot?.sellingTaxPercent, 11);
 });
 
-test("loadLotsFromStorage fills default lot setup values for partial legacy lots", () => {
-  readStorageWithLegacyMock.mockReturnValue(JSON.stringify([
-    {
-      id: 1704067200000,
-      name: "Legacy Partial Lot"
-    }
-  ]));
-  const context = createContext({
-    lots: []
+test("loadLotsFromStorage fills default lot setup values for partial current lots", () => {
+  withMockedLocalStorage((data) => {
+    data.set(STORAGE_KEYS.PRESETS, JSON.stringify([
+      {
+        id: 1704067200000,
+        name: "Current Partial Lot"
+      }
+    ]));
+    const context = createContext({
+      lots: []
+    });
+
+    configStorageMethods.loadLotsFromStorage.call(context as never);
+
+    const lot = (context.lots as Array<{
+      boxPriceCost?: number;
+      boxesPurchased?: number;
+      packsPerBox?: number;
+      spotsPerBox?: number;
+      costInputMode?: string;
+      currency?: string;
+      sellingCurrency?: string;
+      exchangeRate?: number;
+      purchaseShippingCost?: number;
+      sellingShippingPerOrder?: number;
+      includeTax?: boolean;
+      spotPrice?: number;
+      boxPriceSell?: number;
+      packPrice?: number;
+      feeProfilePreset?: string;
+      platformFeePercent?: number;
+      additionalFeePercent?: number;
+      additionalFeeAppliesTo?: string;
+      fixedFeePerOrder?: number;
+    }>)[0];
+    assert.equal(lot?.boxPriceCost, DEFAULT_VALUES.BOX_PRICE);
+    assert.equal(lot?.boxesPurchased, DEFAULT_VALUES.BOXES_PURCHASED);
+    assert.equal(lot?.packsPerBox, DEFAULT_VALUES.PACKS_PER_BOX);
+    assert.equal(lot?.spotsPerBox, DEFAULT_VALUES.SPOTS_PER_BOX);
+    assert.equal(lot?.costInputMode, "perBox");
+    assert.equal(lot?.currency, "CAD");
+    assert.equal(lot?.sellingCurrency, "CAD");
+    assert.equal(lot?.exchangeRate, DEFAULT_VALUES.EXCHANGE_RATE);
+    assert.equal(lot?.purchaseShippingCost, DEFAULT_VALUES.PURCHASE_SHIPPING_COST);
+    assert.equal(lot?.sellingShippingPerOrder, DEFAULT_VALUES.SELLING_SHIPPING_PER_ORDER);
+    assert.equal(lot?.includeTax, true);
+    assert.equal(lot?.spotPrice, DEFAULT_VALUES.SPOT_PRICE);
+    assert.equal(lot?.boxPriceSell, DEFAULT_VALUES.BOX_PRICE_SELL);
+    assert.equal(lot?.packPrice, DEFAULT_VALUES.PACK_PRICE);
+    assert.equal(lot?.feeProfilePreset, "whatnot");
+    assert.equal(lot?.platformFeePercent, 8);
+    assert.equal(lot?.additionalFeePercent, 2.9);
+    assert.equal(lot?.additionalFeeAppliesTo, "sale_plus_shipping");
+    assert.equal(lot?.fixedFeePerOrder, 0.3);
   });
-
-  configStorageMethods.loadLotsFromStorage.call(context as never);
-
-  const lot = (context.lots as Array<{
-    boxPriceCost?: number;
-    boxesPurchased?: number;
-    packsPerBox?: number;
-    spotsPerBox?: number;
-    costInputMode?: string;
-    currency?: string;
-    sellingCurrency?: string;
-    exchangeRate?: number;
-    purchaseShippingCost?: number;
-    sellingShippingPerOrder?: number;
-    includeTax?: boolean;
-    spotPrice?: number;
-    boxPriceSell?: number;
-    packPrice?: number;
-    feeProfilePreset?: string;
-    platformFeePercent?: number;
-    additionalFeePercent?: number;
-    additionalFeeAppliesTo?: string;
-    fixedFeePerOrder?: number;
-  }>)[0];
-  assert.equal(lot?.boxPriceCost, DEFAULT_VALUES.BOX_PRICE);
-  assert.equal(lot?.boxesPurchased, DEFAULT_VALUES.BOXES_PURCHASED);
-  assert.equal(lot?.packsPerBox, DEFAULT_VALUES.PACKS_PER_BOX);
-  assert.equal(lot?.spotsPerBox, DEFAULT_VALUES.SPOTS_PER_BOX);
-  assert.equal(lot?.costInputMode, "perBox");
-  assert.equal(lot?.currency, "CAD");
-  assert.equal(lot?.sellingCurrency, "CAD");
-  assert.equal(lot?.exchangeRate, DEFAULT_VALUES.EXCHANGE_RATE);
-  assert.equal(lot?.purchaseShippingCost, DEFAULT_VALUES.PURCHASE_SHIPPING_COST);
-  assert.equal(lot?.sellingShippingPerOrder, DEFAULT_VALUES.SELLING_SHIPPING_PER_ORDER);
-  assert.equal(lot?.includeTax, true);
-  assert.equal(lot?.spotPrice, DEFAULT_VALUES.SPOT_PRICE);
-  assert.equal(lot?.boxPriceSell, DEFAULT_VALUES.BOX_PRICE_SELL);
-  assert.equal(lot?.packPrice, DEFAULT_VALUES.PACK_PRICE);
-  assert.equal(lot?.feeProfilePreset, "whatnot");
-  assert.equal(lot?.platformFeePercent, 8);
-  assert.equal(lot?.additionalFeePercent, 2.9);
-  assert.equal(lot?.additionalFeeAppliesTo, "sale_plus_shipping");
-  assert.equal(lot?.fixedFeePerOrder, 0.3);
 });
 
 test("loadLotsFromStorage reads workspace-scoped presets without touching personal storage", async () => {
@@ -469,7 +446,6 @@ test("loadLotsFromStorage reads workspace-scoped presets without touching person
     const lots = context.lots as Array<{ id: number; name: string }>;
     assert.equal(lots.length, 1);
     assert.equal(lots[0]?.id, 7);
-    assert.equal(readStorageWithLegacyMock.mock.calls.length, 0);
   });
 });
 
@@ -484,23 +460,24 @@ test("loadLotsFromStorage clears in-memory lots when the active scope has no sav
     configStorageMethods.loadLotsFromStorage.call(context as never);
 
     assert.deepEqual(context.lots, []);
-    assert.equal(readStorageWithLegacyMock.mock.calls.length, 0);
   });
 });
 
 test("loadLotsFromStorage handles parse failures by clearing lots", () => {
-  readStorageWithLegacyMock.mockReturnValue("not-json");
-  const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-  try {
-    const context = createContext({
-      lots: [{ id: 1 }]
-    });
-    configStorageMethods.loadLotsFromStorage.call(context as never);
-    assert.deepEqual(context.lots, []);
-    assert.equal(errorSpy.mock.calls.at(-1)?.[0], "Failed to load lots:");
-  } finally {
-    errorSpy.mockRestore();
-  }
+  withMockedLocalStorage((data) => {
+    data.set(STORAGE_KEYS.PRESETS, "not-json");
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const context = createContext({
+        lots: [{ id: 1 }]
+      });
+      configStorageMethods.loadLotsFromStorage.call(context as never);
+      assert.deepEqual(context.lots, []);
+      assert.equal(errorSpy.mock.calls.at(-1)?.[0], "Failed to load lots:");
+    } finally {
+      errorSpy.mockRestore();
+    }
+  });
 });
 
 test("saveLotsToStorage writes JSON and notifies on storage failure", async () => {

@@ -3,14 +3,13 @@ import { test } from "vitest";
 import { buildHydratedLotState } from "../src/app-core/methods/config-lot-loading.ts";
 import { makeLot } from "./helpers/fixtures.ts";
 
-test("buildHydratedLotState applies singles normalization, legacy tax fallback, and free-tier target profit clamp", () => {
+test("buildHydratedLotState applies singles normalization, tax defaults, and free-tier target profit clamp", () => {
   const lotId = 1704067200000;
   const lot = makeLot({
     id: lotId,
     lotType: "singles",
     purchaseDate: undefined,
     createdAt: undefined,
-    taxRatePercent: 11,
     purchaseTaxPercent: undefined,
     sellingTaxPercent: undefined,
     externalSku: "  BULK-BLEACH-02 ",
@@ -37,8 +36,8 @@ test("buildHydratedLotState applies singles normalization, legacy tax fallback, 
   assert.equal(result.newLotType, "singles");
   assert.equal(result.newLotCatalogSource, "ua");
   assert.equal(result.purchaseDate, "2024-01-01");
-  assert.equal(result.purchaseTaxPercent, 11);
-  assert.equal(result.sellingTaxPercent, 11);
+  assert.equal(result.purchaseTaxPercent, 15);
+  assert.equal(result.sellingTaxPercent, 15);
   assert.equal(result.feeProfilePreset, "whatnot");
   assert.equal(result.platformFeePercent, 8);
   assert.equal(result.additionalFeePercent, 2.9);

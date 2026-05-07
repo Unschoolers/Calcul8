@@ -1,11 +1,7 @@
 import type { Lot } from "../../types/app.ts";
-import { getLegacySalesStorageKey, getSalesCacheStatusKey, getScopedLastLotStorageKey, readStorageWithLegacy, removeStorageWithLegacy, STORAGE_KEYS } from "../storageKeys.ts";
+import { getSalesCacheStatusKey, getScopedLastLotStorageKey } from "../storageKeys.ts";
 import { getActiveStorageScope } from "../workspace-scope.ts";
 import { getDeleteLotConfirmationText } from "./config-lot-crud.ts";
-
-type LegacyKeys = {
-  LAST_LOT_ID: string;
-};
 
 export type DeleteLotContext = {
   currentLotId: number | null;
@@ -26,19 +22,11 @@ export type DeleteLotContext = {
 export function deleteCurrentLotWithPersistence(
   context: DeleteLotContext,
   deps: {
-    readStorage: typeof readStorageWithLegacy;
-    removeStorage: typeof removeStorageWithLegacy;
-    getLegacySalesKey: typeof getLegacySalesStorageKey;
     getLastLotStorageKey: typeof getScopedLastLotStorageKey;
     getStorageScope: typeof getActiveStorageScope;
-    legacyKeys: LegacyKeys;
   } = {
-    readStorage: readStorageWithLegacy,
-    removeStorage: removeStorageWithLegacy,
-    getLegacySalesKey: getLegacySalesStorageKey,
     getLastLotStorageKey: getScopedLastLotStorageKey,
-    getStorageScope: getActiveStorageScope,
-    legacyKeys: { LAST_LOT_ID: STORAGE_KEYS.LAST_LOT_ID }
+    getStorageScope: getActiveStorageScope
   }
 ): void {
   if (!context.currentLotId) return;
@@ -56,24 +44,24 @@ export function deleteCurrentLotWithPersistence(
     },
     () => {
       context.lots = context.lots.filter((entry) => entry.id !== lotIdToDelete);
-      deps.removeStorage(
-        context.getSalesStorageKey(lotIdToDelete),
-        deps.getLegacySalesKey(lotIdToDelete)
-      );
+      try {
+        localStorage.removeItem(context.getSalesStorageKey(lotIdToDelete));
+      } catch {
+        // Ignore storage failures.
+      }
       try {
         localStorage.removeItem(getSalesCacheStatusKey(lotIdToDelete, deps.getStorageScope(context as never)));
       } catch {
         // Ignore storage failures.
       }
       const lastLotStorageKey = deps.getLastLotStorageKey(deps.getStorageScope(context as never));
-      const storedLastLotId = context.activeScopeType === "workspace" && context.activeWorkspaceId
-        ? localStorage.getItem(lastLotStorageKey)
-        : deps.readStorage(STORAGE_KEYS.LAST_LOT_ID, deps.legacyKeys.LAST_LOT_ID);
+      const storedLastLotId = localStorage.getItem(lastLotStorageKey);
       if (Number(storedLastLotId) === lotIdToDelete) {
-        deps.removeStorage(
-          lastLotStorageKey,
-          context.activeScopeType === "workspace" && context.activeWorkspaceId ? undefined : deps.legacyKeys.LAST_LOT_ID
-        );
+        try {
+          localStorage.removeItem(lastLotStorageKey);
+        } catch {
+          // Ignore storage failures.
+        }
       }
       context.saveLotsToStorage();
       context.currentLotId = null;

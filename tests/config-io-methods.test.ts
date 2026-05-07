@@ -124,7 +124,7 @@ beforeEach(() => {
   canUseAuthoritativeSalesLiveApiMock.mockReturnValue(true);
   fetchAuthoritativeSalesMock.mockResolvedValue([]);
   resolveApiBaseUrlMock.mockReturnValue("https://api.example");
-  vi.stubGlobal("localStorage", createMockStorage({ whatfees_google_token: "id-token" }));
+  vi.stubGlobal("localStorage", createMockStorage());
 });
 
 afterEach(() => {

@@ -16,8 +16,8 @@ import {
 } from "../../lib/realtime";
 import { parseOptionalWorkspaceId } from "../../lib/syncScope";
 import { assertSyncScopeAccess, resolveSyncScope } from "../../lib/syncScopeResolution";
-import type { WheelPublicSessionSnapshot } from "../../types";
-import { normalizeWheelPublicSessionSnapshot } from "../../shared/wheel-public-session-contracts.cjs";
+import type { GamePublicSessionSnapshot } from "../../types";
+import { normalizeGamePublicSessionSnapshot } from "../../shared/game-public-session-contracts.cjs";
 import {
     readRequestJsonOrThrow,
     requireRequestBodyRecord,
@@ -28,8 +28,8 @@ function buildRealtimeTokenExpiryEpochSeconds(ttlSeconds = 60): number {
   return Math.floor(Date.now() / 1000) + ttlSeconds;
 }
 
-function sanitizeWheelPublicSessionSnapshot(value: unknown): WheelPublicSessionSnapshot {
-  const snapshot = normalizeWheelPublicSessionSnapshot(value);
+function sanitizeGamePublicSessionSnapshot(value: unknown): GamePublicSessionSnapshot {
+  const snapshot = normalizeGamePublicSessionSnapshot(value);
   if (!snapshot) {
     requireRequestBodyRecord(value, "Field 'snapshot' must be an object.");
     throw new HttpError(400, "Field 'snapshot' must be an object.");
@@ -39,18 +39,18 @@ function sanitizeWheelPublicSessionSnapshot(value: unknown): WheelPublicSessionS
 
 function parseCreateBody(rawBody: unknown): {
   workspaceId?: string;
-  snapshot: WheelPublicSessionSnapshot;
+  snapshot: GamePublicSessionSnapshot;
 } {
   const body = requireRequestBodyRecord(rawBody);
   return {
     workspaceId: parseOptionalWorkspaceId(body.workspaceId),
-    snapshot: sanitizeWheelPublicSessionSnapshot(body.snapshot)
+    snapshot: sanitizeGamePublicSessionSnapshot(body.snapshot)
   };
 }
 
 function parsePublishBody(rawBody: unknown): {
   publicSessionId: string;
-  snapshot: WheelPublicSessionSnapshot;
+  snapshot: GamePublicSessionSnapshot;
 } {
   const body = requireRequestBodyRecord(rawBody);
   const publicSessionId = String(body.publicSessionId ?? "").trim().toLowerCase();
@@ -59,7 +59,7 @@ function parsePublishBody(rawBody: unknown): {
   }
   return {
     publicSessionId,
-    snapshot: sanitizeWheelPublicSessionSnapshot(body.snapshot)
+    snapshot: sanitizeGamePublicSessionSnapshot(body.snapshot)
   };
 }
 
@@ -96,7 +96,7 @@ export async function wheelPublicSessionCreate(
 
     return jsonResponse(request, config, 200, {
       publicSessionId: document.publicSessionId,
-      snapshot: sanitizeWheelPublicSessionSnapshot(document.snapshot)
+      snapshot: sanitizeGamePublicSessionSnapshot(document.snapshot)
     });
   } catch (error) {
     context.error("Failed to create wheel public session.", error);
@@ -129,7 +129,7 @@ export async function wheelPublicSessionPublish(
     if (!updated) {
       throw new HttpError(404, "Public wheel session was not found.");
     }
-    const snapshot = sanitizeWheelPublicSessionSnapshot(updated.snapshot);
+    const snapshot = sanitizeGamePublicSessionSnapshot(updated.snapshot);
     publishWheelPublicSessionRealtimeEventBestEffort(config, {
       publicSessionId: updated.publicSessionId,
       eventType: "wheel.public-session.updated",
@@ -168,7 +168,7 @@ export async function wheelPublicSessionGet(
 
     return jsonResponse(request, config, 200, {
       publicSessionId: document.publicSessionId,
-      snapshot: sanitizeWheelPublicSessionSnapshot(document.snapshot)
+      snapshot: sanitizeGamePublicSessionSnapshot(document.snapshot)
     });
   } catch (error) {
     context.error("Failed to load wheel public session.", error);

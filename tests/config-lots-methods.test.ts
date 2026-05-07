@@ -4,38 +4,6 @@ import { appWatch } from "../src/app-core/watch.ts";
 import type { Lot } from "../src/types/app.ts";
 import { makeLot } from "./helpers/fixtures.ts";
 
-const {
-  readStorageWithLegacyMock,
-  removeStorageWithLegacyMock,
-  getLegacySalesStorageKeyMock
-} = vi.hoisted(() => ({
-  readStorageWithLegacyMock: vi.fn(),
-  removeStorageWithLegacyMock: vi.fn(),
-  getLegacySalesStorageKeyMock: vi.fn((lotId: number) => `legacy_sales_${lotId}`)
-}));
-
-vi.mock("../src/app-core/storageKeys.ts", async () => {
-  const actual = await vi.importActual<typeof import("../src/app-core/storageKeys.ts")>(
-    "../src/app-core/storageKeys.ts"
-  );
-  return {
-    ...actual,
-    readStorageWithLegacy: readStorageWithLegacyMock,
-    removeStorageWithLegacy: removeStorageWithLegacyMock,
-    getLegacySalesStorageKey: getLegacySalesStorageKeyMock,
-    getLegacyStorageKeys: () => ({
-      LAST_LOT_ID: "legacy_last_lot_id",
-      PRESETS: "legacy_presets",
-      ENTITLEMENT_CACHE: "legacy_entitlement_cache",
-      PRO_ACCESS: "legacy_pro_access",
-      GOOGLE_ID_TOKEN: "legacy_google_id_token",
-      GOOGLE_PROFILE_CACHE: "legacy_google_profile_cache",
-      DEBUG_USER_ID: "legacy_debug_user_id",
-      SYNC_CLIENT_VERSION: "legacy_sync_client_version"
-    })
-  };
-});
-
 import { configLotMethods } from "../src/app-core/methods/config-lots.ts";
 
 type Ctx = Record<string, unknown>;
@@ -146,7 +114,6 @@ function installCsvEnvironment(rawResult: unknown): void {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  readStorageWithLegacyMock.mockReturnValue(null);
 });
 
 afterEach(() => {
@@ -901,7 +868,6 @@ test("loadLot resets mapper state and applies singles/pro access rules", () => {
     lotType: "singles",
     purchaseDate: undefined,
     createdAt: undefined,
-    taxRatePercent: 11,
     purchaseTaxPercent: undefined,
     sellingTaxPercent: undefined,
     targetProfitPercent: -5,
@@ -952,8 +918,8 @@ test("loadLot resets mapper state and applies singles/pro access rules", () => {
   assert.equal(ctx.singlesCsvMapLanguage, null);
   assert.equal(ctx.newLotType, "singles");
   assert.match(purchaseDate, /^\d{4}-\d{2}-\d{2}$/);
-  assert.equal(ctx.purchaseTaxPercent, 11);
-  assert.equal(ctx.sellingTaxPercent, 11);
+  assert.equal(ctx.purchaseTaxPercent, 15);
+  assert.equal(ctx.sellingTaxPercent, 15);
   assert.equal(ctx.targetProfitPercent, 0);
   assert.equal(ctx.currentTab, "live");
   assert.equal((ctx.loadSalesFromStorage as ReturnType<typeof vi.fn>).mock.calls.length, 1);
@@ -965,7 +931,11 @@ test("loadLot resets mapper state and applies singles/pro access rules", () => {
 
 test("deleteCurrentLot removes lot, linked sales keys, and last-lot key when needed", () => {
   const lotId = 999;
-  readStorageWithLegacyMock.mockReturnValue(String(lotId));
+  const localStorageMock = {
+    getItem: vi.fn(() => String(lotId)),
+    removeItem: vi.fn()
+  };
+  vi.stubGlobal("localStorage", localStorageMock);
   const ctx = createContext({
     currentLotId: lotId,
     lots: [makeLot({ id: lotId, name: "To Delete" }), makeLot({ id: 123, name: "Keep" })],
@@ -983,10 +953,9 @@ test("deleteCurrentLot removes lot, linked sales keys, and last-lot key when nee
   );
   assert.equal((ctx.lots as Array<{ id: number }>).length, 1);
   assert.equal((ctx.lots as Array<{ id: number }>)[0]?.id, 123);
-  assert.equal((removeStorageWithLegacyMock.mock.calls[0] ?? [])[0], "sales_999");
-  assert.equal((removeStorageWithLegacyMock.mock.calls[0] ?? [])[1], "legacy_sales_999");
-  assert.equal((removeStorageWithLegacyMock.mock.calls[1] ?? [])[0], "whatfees_last_lot_id");
-  assert.equal((removeStorageWithLegacyMock.mock.calls[1] ?? [])[1], "legacy_last_lot_id");
+  assert.deepEqual(localStorageMock.removeItem.mock.calls[0], ["sales_999"]);
+  assert.deepEqual(localStorageMock.removeItem.mock.calls[1], ["whatfees_sales_status_999"]);
+  assert.deepEqual(localStorageMock.removeItem.mock.calls[2], ["whatfees_last_lot_id"]);
   assert.equal(ctx.currentLotId, null);
   assert.equal((ctx.saveLotsToStorage as ReturnType<typeof vi.fn>).mock.calls.length, 1);
   assert.deepEqual((ctx.pushCloudSync as ReturnType<typeof vi.fn>).mock.calls[0], [true, { allowEmptyOverwrite: false }]);
@@ -995,7 +964,10 @@ test("deleteCurrentLot removes lot, linked sales keys, and last-lot key when nee
 
 test("deleteCurrentLot allows empty cloud overwrite when deleting the final lot", () => {
   const lotId = 999;
-  readStorageWithLegacyMock.mockReturnValue(String(lotId));
+  vi.stubGlobal("localStorage", {
+    getItem: vi.fn(() => String(lotId)),
+    removeItem: vi.fn()
+  });
   const ctx = createContext({
     currentLotId: lotId,
     lots: [makeLot({ id: lotId, name: "Last Lot" })],

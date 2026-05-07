@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import { test, vi } from "vitest";
-import { createDefaultTier, createDefaultWheelConfig } from "../src/components/windows/wheel/services/wheelDefaults.ts";
-import { createWheelSale } from "../src/components/windows/wheel/services/wheelSales.ts";
-import { remapSpinCountsByTier } from "../src/components/windows/wheel/services/wheelCountRemapping.ts";
-import { buildSlotsFromConfig } from "../src/components/windows/wheel/services/wheelSlots.ts";
+import { createDefaultTier, createDefaultWheelConfig } from "../src/components/windows/game/services/wheelDefaults.ts";
+import { createWheelSale } from "../src/components/windows/game/services/wheelSales.ts";
+import { remapSpinCountsByTier } from "../src/components/windows/game/services/wheelCountRemapping.ts";
+import { buildSlotsFromConfig } from "../src/components/windows/game/services/wheelSlots.ts";
 import {
   calculateWheelSessionNetRevenue,
   computeExpectedMargin
-} from "../src/components/windows/wheel/services/wheelPricing.ts";
+} from "../src/components/windows/game/services/wheelPricing.ts";
 import type { WheelConfig } from "../src/types/app.ts";
 
 function createSingleTierConfig(overrides: Partial<WheelConfig> = {}): WheelConfig {
@@ -123,3 +123,4 @@ test("game boundary modules keep expected and realized wheel revenue in pricing 
   assert.equal(computeExpectedMargin(config, undefined, lots).margin, 80);
   assert.equal(calculateWheelSessionNetRevenue(config, buildSlotsFromConfig(config), [2], undefined, lots), 18);
 });
+

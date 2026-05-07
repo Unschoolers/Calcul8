@@ -1,37 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test, vi } from "vitest";
 
-const {
-  migrateLegacyStorageKeysMock,
-  getLegacyStorageKeysMock,
-  readStorageWithLegacyMock
-} = vi.hoisted(() => ({
-  migrateLegacyStorageKeysMock: vi.fn(),
-  getLegacyStorageKeysMock: vi.fn(() => ({
-    LAST_LOT_ID: "legacy_last_lot_id",
-    PRESETS: "legacy_presets",
-    ENTITLEMENT_CACHE: "legacy_entitlement_cache",
-    PRO_ACCESS: "legacy_pro_access",
-    GOOGLE_ID_TOKEN: "legacy_google_id_token",
-    GOOGLE_PROFILE_CACHE: "legacy_google_profile_cache",
-    DEBUG_USER_ID: "legacy_debug_user_id",
-    SYNC_CLIENT_VERSION: "legacy_sync_client_version"
-  })),
-  readStorageWithLegacyMock: vi.fn()
-}));
-
-vi.mock("../src/app-core/storageKeys.ts", async () => {
-  const actual = await vi.importActual<typeof import("../src/app-core/storageKeys.ts")>(
-    "../src/app-core/storageKeys.ts"
-  );
-  return {
-    ...actual,
-    migrateLegacyStorageKeys: migrateLegacyStorageKeysMock,
-    getLegacyStorageKeys: getLegacyStorageKeysMock,
-    readStorageWithLegacy: readStorageWithLegacyMock
-  };
-});
-
 import { createInitialState } from "../src/app-core/state.ts";
 import { STORAGE_KEYS } from "../src/app-core/storageKeys.ts";
 
@@ -87,7 +56,6 @@ function withMockedLocalStorage(run: (data: Map<string, string>) => Promise<void
 
 beforeEach(() => {
   vi.clearAllMocks();
-  readStorageWithLegacyMock.mockReturnValue("0");
 });
 
 afterEach(() => {
@@ -95,17 +63,14 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-test("createInitialState runs storage migration and initializes expert/pro state", async () => {
+test("createInitialState initializes expert/pro state from current storage keys", async () => {
   await withMockedLocalStorage(async (data) => {
     data.set(STORAGE_KEYS.PURCHASE_UI_MODE, "expert");
-    readStorageWithLegacyMock.mockReturnValue("1");
+    data.set(STORAGE_KEYS.PRO_ACCESS, "1");
     vi.stubGlobal("navigator", { onLine: false });
 
     const state = createInitialState();
 
-    assert.equal(migrateLegacyStorageKeysMock.mock.calls.length, 1);
-    assert.equal(getLegacyStorageKeysMock.mock.calls.length, 1);
-    assert.equal(readStorageWithLegacyMock.mock.calls.length, 1);
     assert.equal(state.purchaseUiMode, "expert");
     assert.equal(state.hasProAccess, true);
     assert.equal(state.targetProfitPercent, 15);
@@ -124,7 +89,6 @@ test("createInitialState initializes simple/non-pro defaults and empty collectio
   await withMockedLocalStorage(async (data) => {
     vi.stubGlobal("navigator", { onLine: true });
     data.set(STORAGE_KEYS.PURCHASE_UI_MODE, "expert");
-    readStorageWithLegacyMock.mockReturnValue("0");
 
     const state = createInitialState();
 

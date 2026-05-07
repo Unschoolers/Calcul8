@@ -78,7 +78,6 @@ export function buildHydratedLotState(
   const normalizedLotCatalogSource = normalizedLotType === "singles"
     ? normalizeSinglesCatalogSource(lot.singlesCatalogSource)
     : options.currentNewLotCatalogSource;
-  const legacyTax = lot.taxRatePercent;
   const parsedTargetProfit = Number(lot.targetProfitPercent);
   const currency = lot.currency === "USD" ? "USD" : "CAD";
   const feeProfile = resolveStoredFeeProfile(lot);
@@ -101,14 +100,8 @@ export function buildHydratedLotState(
       fallbackDate: options.todayDate
     }) ?? options.todayDate,
     purchaseShippingCost: lot.purchaseShippingCost ?? DEFAULT_VALUES.PURCHASE_SHIPPING_COST,
-    purchaseTaxPercent:
-      lot.purchaseTaxPercent ??
-      legacyTax ??
-      DEFAULT_VALUES.PURCHASE_TAX_RATE_PERCENT,
-    sellingTaxPercent:
-      lot.sellingTaxPercent ??
-      legacyTax ??
-      DEFAULT_VALUES.SELLING_TAX_RATE_PERCENT,
+    purchaseTaxPercent: lot.purchaseTaxPercent ?? DEFAULT_VALUES.PURCHASE_TAX_RATE_PERCENT,
+    sellingTaxPercent: lot.sellingTaxPercent ?? DEFAULT_VALUES.SELLING_TAX_RATE_PERCENT,
     sellingShippingPerOrder: lot.sellingShippingPerOrder ?? DEFAULT_VALUES.SELLING_SHIPPING_PER_ORDER,
     feeProfilePreset: feeProfile.feeProfilePreset,
     platformFeePercent: feeProfile.platformFeePercent,

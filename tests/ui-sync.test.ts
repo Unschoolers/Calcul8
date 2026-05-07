@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test, vi } from "vitest";
+import { DEFAULT_VALUES } from "../src/constants.ts";
 
 const {
   fetchWithRetryMock,
@@ -92,7 +93,7 @@ beforeEach(() => {
   });
   vi.stubGlobal("navigator", { onLine: true });
   vi.stubGlobal("localStorage", createMockStorage({
-    whatfees_google_token: "token-abc",
+    whatfees_google_id_token: "token-abc",
     whatfees_sync_client_version: "2",
     whatfees_presets: JSON.stringify([{ id: 1 }])
   }));
@@ -133,7 +134,7 @@ test("pushCloudSync handles auth expiry and marks sync as error", async () => {
 
 test("pullCloudSync applies newer cloud snapshot and stores version", async () => {
   const storage = createMockStorage({
-    whatfees_google_token: "token-abc",
+    whatfees_google_id_token: "token-abc",
     whatfees_sync_client_version: "1"
   });
   vi.stubGlobal("localStorage", storage);
@@ -174,7 +175,7 @@ test("pullCloudSync applies newer cloud snapshot and stores version", async () =
 
 test("pullCloudSync force-applies cloud snapshot even when version gating would normally skip it", async () => {
   const storage = createMockStorage({
-    whatfees_google_token: "token-abc",
+    whatfees_google_id_token: "token-abc",
     whatfees_sync_client_version: "9",
     whatfees_presets: JSON.stringify([{ id: 1 }])
   });
@@ -205,9 +206,9 @@ test("pullCloudSync force-applies cloud snapshot even when version gating would 
   assert.equal(ctx.saveWheelConfigsToStorage.mock.calls.length, 1);
 });
 
-test("pullCloudSync normalizes legacy lot tax fields before applying cloud snapshot", async () => {
+test("pullCloudSync defaults missing current lot tax fields before applying cloud snapshot", async () => {
   const storage = createMockStorage({
-    whatfees_google_token: "token-abc",
+    whatfees_google_id_token: "token-abc",
     whatfees_sync_client_version: "1"
   });
   vi.stubGlobal("localStorage", storage);
@@ -219,7 +220,7 @@ test("pullCloudSync normalizes legacy lot tax fields before applying cloud snaps
     statusText: "OK",
     json: async () => ({
       snapshot: {
-        lots: [{ id: 2, name: "Cloud lot", taxRatePercent: 11 }],
+        lots: [{ id: 2, name: "Cloud lot" }],
         salesByLot: {},
         wheelConfigs: [],
         activeWheelConfigId: null,
@@ -234,13 +235,13 @@ test("pullCloudSync normalizes legacy lot tax fields before applying cloud snaps
     purchaseTaxPercent?: number;
     sellingTaxPercent?: number;
   }>)[0];
-  assert.equal(lot?.purchaseTaxPercent, 11);
-  assert.equal(lot?.sellingTaxPercent, 11);
+  assert.equal(lot?.purchaseTaxPercent, DEFAULT_VALUES.PURCHASE_TAX_RATE_PERCENT);
+  assert.equal(lot?.sellingTaxPercent, DEFAULT_VALUES.SELLING_TAX_RATE_PERCENT);
 });
 
 test("pullCloudSync preserves existing scoped sales caches when a newer cloud snapshot omits sales payloads", async () => {
   const storage = createMockStorage({
-    whatfees_google_token: "token-abc",
+    whatfees_google_id_token: "token-abc",
     whatfees_sync_client_version: "1",
     whatfees_sales_1: JSON.stringify([{ id: 1 }]),
     whatfees_sales_2: JSON.stringify([{ id: 2 }]),
@@ -391,7 +392,7 @@ test("pushCloudSync includes activeLotId metadata for the selected lot", async (
 
 test("pushCloudSync skips upload and pulls cloud when local storage was cleared mid-session", async () => {
   vi.stubGlobal("localStorage", createMockStorage({
-    whatfees_google_token: "token-abc"
+    whatfees_google_id_token: "token-abc"
   }));
 
   const ctx = createContext();
@@ -418,7 +419,7 @@ test("pushCloudSync skips upload and pulls cloud when local storage was cleared 
 
 test("pushCloudSync throttles repeated recovery pulls after local storage reset", async () => {
   vi.stubGlobal("localStorage", createMockStorage({
-    whatfees_google_token: "token-abc"
+    whatfees_google_id_token: "token-abc"
   }));
 
   const ctx = createContext();

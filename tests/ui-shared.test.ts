@@ -144,32 +144,18 @@ test("entitlement cache helpers parse valid payloads and reject malformed ones",
     data.set(ENTITLEMENT_CACHE_KEY, "{bad json");
     assert.equal(readEntitlementCache(), null);
 
-    data.set("rtyh_entitlement_cache_v1", JSON.stringify({
-      userId: "legacy-user",
-      hasProAccess: false,
-      updatedAt: null,
-      cachedAt: 999
-    }));
     data.delete(ENTITLEMENT_CACHE_KEY);
-    assert.deepEqual(readEntitlementCache(), {
-      userId: "legacy-user",
-      hasProAccess: false,
-      updatedAt: null,
-      cachedAt: 999
-    });
+    assert.equal(readEntitlementCache(), null);
 
     clearEntitlementCache();
     assert.equal(data.has(ENTITLEMENT_CACHE_KEY), false);
-    assert.equal(data.has("rtyh_entitlement_cache_v1"), false);
   });
 });
 
 test("handleExpiredAuth clears auth tokens and restores cached entitlement state", async () => {
   await withMockedLocalStorage(async (data) => {
     setStoredGoogleIdToken("google-token");
-    data.set("rtyh_google_id_token", "legacy-google-token");
     data.set(GOOGLE_PROFILE_CACHE_KEY, JSON.stringify({ name: "Alice" }));
-    data.set("rtyh_google_profile_cache_v1", JSON.stringify({ name: "Legacy Alice" }));
     setStoredCsrfToken("csrf-token");
     writeEntitlementCache({
       userId: "user-9",
@@ -188,9 +174,7 @@ test("handleExpiredAuth clears auth tokens and restores cached entitlement state
     assert.equal(app.googleAuthEpoch, 3);
     assert.equal(app.hasProAccess, true);
     assert.equal(data.has(STORAGE_KEYS.GOOGLE_ID_TOKEN), false);
-    assert.equal(data.has("rtyh_google_id_token"), false);
     assert.equal(data.has(GOOGLE_PROFILE_CACHE_KEY), false);
-    assert.equal(data.has("rtyh_google_profile_cache_v1"), false);
     assert.equal(data.has(STORAGE_KEYS.CSRF_TOKEN), false);
     assert.equal(data.get(PRO_ACCESS_KEY), "1");
   });

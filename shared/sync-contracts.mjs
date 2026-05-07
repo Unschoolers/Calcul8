@@ -152,8 +152,7 @@ function normalizeSyncLotDto(value) {
     "platformFeePercent",
     "additionalFeePercent",
     "fixedFeePerOrder",
-    "exchangeRate",
-    "taxRatePercent"
+    "exchangeRate"
   ];
   for (const field of numberFields) {
     const parsed = normalizeNonNegativeNumber(value[field]);

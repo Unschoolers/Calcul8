@@ -88,9 +88,19 @@ async function flushQueuedLivePricingSave(context: AppContext, notifySuccess = t
     if (error instanceof SalesLiveApiError && error.status === 409) {
       const latest = await fetchAuthoritativeLivePricing(context, snapshot.lotId).catch(() => null);
       if (latest) {
-        applyAuthoritativeLivePricingSnapshot(context, snapshot.lotId, latest);
+        // Update context with latest version and queue a retry with the new baseVersion
+        context.currentLivePricingVersion = latest.version;
+        state.queuedSnapshot = {
+          lotId: snapshot.lotId,
+          liveSpotPrice: Number(context.liveSpotPrice) || 0,
+          liveBoxPriceSell: Number(context.liveBoxPriceSell) || 0,
+          livePackPrice: Number(context.livePackPrice) || 0,
+          baseVersion: latest.version ?? 0
+        };
+        context.notify("Live pricing changed. Retrying save with latest version...", "info");
+      } else {
+        context.notify("Live pricing changed in the cloud. Please try saving again.", "warning");
       }
-      context.notify("Live pricing changed in the cloud. Pulled latest saved prices.", "warning");
     } else {
       const message = error instanceof Error && error.message.trim()
         ? error.message

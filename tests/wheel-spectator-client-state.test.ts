@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 import { shouldApplySpectatorReadyState } from "../src/app-core/methods/ui/spectator/wheel-spectator-client-state.ts";
 import {
-  CURRENT_WHEEL_PUBLIC_SESSION_SNAPSHOT_VERSION,
+  CURRENT_GAME_PUBLIC_SESSION_SNAPSHOT_VERSION,
   normalizeWheelSpectatorSnapshot
 } from "../src/app-core/methods/ui/spectator/wheel-spectator-contract.ts";
 
@@ -12,7 +12,7 @@ test("shouldApplySpectatorReadyState rejects stale ready snapshots", () => {
     publicSessionId: "abc123",
     snapshot: {
       updatedAt: 200,
-      wheelName: "Live Wheel"
+      gameName: "Live Wheel"
     }
   };
   const olderState = {
@@ -20,7 +20,7 @@ test("shouldApplySpectatorReadyState rejects stale ready snapshots", () => {
     publicSessionId: "abc123",
     snapshot: {
       updatedAt: 150,
-      wheelName: "Live Wheel"
+      gameName: "Live Wheel"
     }
   };
   const newerState = {
@@ -28,7 +28,7 @@ test("shouldApplySpectatorReadyState rejects stale ready snapshots", () => {
     publicSessionId: "abc123",
     snapshot: {
       updatedAt: 250,
-      wheelName: "Live Wheel"
+      gameName: "Live Wheel"
     }
   };
 
@@ -62,15 +62,15 @@ test("normalizeWheelSpectatorSnapshot upgrades old wheel-only snapshots", () => 
   });
 
   assert.ok(snapshot);
-  assert.equal(snapshot.snapshotVersion, CURRENT_WHEEL_PUBLIC_SESSION_SNAPSHOT_VERSION);
-  assert.equal(snapshot.wheelName, "Legacy Wheel");
+  assert.equal(snapshot.snapshotVersion, CURRENT_GAME_PUBLIC_SESSION_SNAPSHOT_VERSION);
+  assert.equal(snapshot.gameName, "Legacy Wheel");
   assert.equal(snapshot.gameType, "wheel");
   assert.equal(snapshot.sessionStatus, "live");
-  assert.equal(snapshot.totalSpins, 3);
-  assert.equal(snapshot.wheelSlots.length, 1);
-  assert.deepEqual(snapshot.gridCells, []);
-  assert.equal(snapshot.gridHighlightCellIndex, -1);
-  assert.equal(snapshot.gridResetAnimating, false);
+  assert.equal(snapshot.sessionResultCount, 3);
+  assert.equal(snapshot.outcomeSlots.length, 1);
+  assert.deepEqual(snapshot.boardCells, []);
+  assert.equal(snapshot.boardHighlightCellIndex, -1);
+  assert.equal(snapshot.boardResetAnimating, false);
   assert.equal(snapshot.recentFairnessHistory[0]?.spinNumber, 3);
   assert.equal(snapshot.updatedAt, 456);
 });
@@ -110,8 +110,8 @@ test("normalizeWheelSpectatorSnapshot preserves current grid reset snapshots", (
 
   assert.ok(snapshot);
   assert.equal(snapshot.gameType, "grid");
-  assert.equal(snapshot.gridCells.length, 2);
-  assert.deepEqual(snapshot.gridCells[0], {
+  assert.equal(snapshot.boardCells.length, 2);
+  assert.deepEqual(snapshot.boardCells[0], {
     index: 4,
     revealed: true,
     label: "Hit",
@@ -119,7 +119,7 @@ test("normalizeWheelSpectatorSnapshot preserves current grid reset snapshots", (
     tier: "tier-hit",
     slotIndex: 10
   });
-  assert.deepEqual(snapshot.gridCells[1], {
+  assert.deepEqual(snapshot.boardCells[1], {
     index: 5,
     revealed: false,
     label: "",
@@ -127,8 +127,8 @@ test("normalizeWheelSpectatorSnapshot preserves current grid reset snapshots", (
     tier: "",
     slotIndex: 11
   });
-  assert.equal(snapshot.gridHighlightCellIndex, 4);
-  assert.equal(snapshot.gridResetAnimating, true);
+  assert.equal(snapshot.boardHighlightCellIndex, 4);
+  assert.equal(snapshot.boardResetAnimating, true);
   assert.equal(snapshot.featuredChaseHeat, "very_high");
 });
 
@@ -157,13 +157,13 @@ test("normalizeWheelSpectatorSnapshot drops malformed nested entries and rejects
   });
 
   assert.ok(snapshot);
-  assert.equal(snapshot.wheelName, "Wheel Session");
+  assert.equal(snapshot.gameName, "Game Session");
   assert.equal(snapshot.sessionStatus, "starting");
-  assert.equal(snapshot.totalSpins, 0);
+  assert.equal(snapshot.sessionResultCount, 0);
   assert.equal(snapshot.lastResultColor, "#d4af37");
-  assert.equal(snapshot.wheelCurrentAngle, 0);
-  assert.equal(snapshot.wheelSlots.length, 1);
-  assert.equal(snapshot.gridCells.length, 1);
-  assert.equal(snapshot.spinAnimation, null);
+  assert.equal(snapshot.gameCurrentAngle, 0);
+  assert.equal(snapshot.outcomeSlots.length, 1);
+  assert.equal(snapshot.boardCells.length, 1);
+  assert.equal(snapshot.resultAnimation, null);
   assert.equal(snapshot.featuredChaseHeat, null);
 });

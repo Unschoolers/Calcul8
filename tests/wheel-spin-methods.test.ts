@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { afterEach, test, vi } from "vitest";
-import { createWheelWindowState, getWheelController } from "../src/components/windows/wheel/coordinator/wheelControllerState.ts";
-import { wheelSessionMethods } from "../src/components/windows/wheel/commands/wheelSessionMethods.ts";
-import { wheelSpinMethods } from "../src/components/windows/wheel/commands/wheelSpinMethods.ts";
-import { wheelConfigComputeds } from "../src/components/windows/wheel/inspector/wheelConfigComputeds.ts";
+import { createGameWindowState, getWheelController } from "../src/components/windows/game/coordinator/gameControllerState.ts";
+import { wheelSessionMethods } from "../src/components/windows/game/commands/wheelSessionMethods.ts";
+import { wheelSpinMethods } from "../src/components/windows/game/commands/wheelSpinMethods.ts";
+import { wheelConfigComputeds } from "../src/components/windows/game/inspector/wheelConfigComputeds.ts";
 
 const wheelLayoutHash = "c3ca5e1eef7edf9b0625f714c6eb25287a9e8bcc63a16d0de00ce711ddbe67ad";
 
@@ -46,7 +46,7 @@ function stubFinishedAnimation(): void {
 }
 
 function createSpinVm(mode: "config" | "live") {
-  const state = createWheelWindowState() as Record<string, unknown>;
+  const state = createGameWindowState() as Record<string, unknown>;
   state.wheelMode = mode;
   state.wheelSpinning = false;
   state.wheelCurrentAngle = 0;
@@ -161,7 +161,7 @@ test("runWheelAutoPreviewAnimation spins visually without recording preview proo
 });
 
 test("recordSpinResult initializes pending inventory issues when older wheel state is missing the array", () => {
-  const state = createWheelWindowState() as Record<string, unknown>;
+  const state = createGameWindowState() as Record<string, unknown>;
   state.wheelMode = "live";
   state.wheelSpinCounts = [0];
   state.wheelTotalSpins = 0;
@@ -216,7 +216,7 @@ test("recordSpinResult initializes pending inventory issues when older wheel sta
 });
 
 test("recordSpinResult queues required lot selection for multi-lot bulk tiers without creating a sale", () => {
-  const state = createWheelWindowState() as Record<string, unknown>;
+  const state = createGameWindowState() as Record<string, unknown>;
   state.wheelMode = "live";
   state.wheelSpinCounts = [0];
   state.wheelTotalSpins = 0;
@@ -301,7 +301,7 @@ test("wheelSpinBlockedReason keeps live spins blocked after a required lot is se
 });
 
 test("confirmBatchSale records a required multi-lot hit against the selected lot", () => {
-  const state = createWheelWindowState() as Record<string, unknown>;
+  const state = createGameWindowState() as Record<string, unknown>;
   state.activeWheelConfig = {
     id: 1,
     name: "Wheel",
@@ -344,3 +344,6 @@ test("confirmBatchSale records a required multi-lot hit against the selected lot
   assert.equal(((state.addWheelSaleToLot as ReturnType<typeof vi.fn>).mock.calls[0]?.[1] as { buyerShipping?: number }).buyerShipping, 2);
   assert.deepEqual(state.wheelPendingInventoryIssues, []);
 });
+
+
+
