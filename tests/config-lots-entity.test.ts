@@ -120,6 +120,8 @@ function createContext(overrides: Record<string, unknown> = {}) {
     liveBoxPriceSell: 22,
     livePackPrice: 33,
     currentLivePricingVersion: 4,
+    livePricingHydrationStatus: "hydrated",
+    livePricingHydratedLotId: 101,
     singlesPurchases: [],
     sales: [],
     showSinglesCsvMapperModal: false,
@@ -272,7 +274,7 @@ test("loadLot hydrates authoritative sales and live pricing after local defaults
   assert.equal(fetchAuthoritativeLivePricingMock.mock.calls.length, 1);
 });
 
-test("loadLot skips a full authoritative sales refresh in personal scope when cached sales metadata matches", async () => {
+test("loadLot skips full personal sales refresh when metadata matches but still hydrates live pricing", async () => {
   ctx = createContext({
     getSalesCacheEntry: vi.fn(() => ({
       status: "loaded",
@@ -298,14 +300,45 @@ test("loadLot skips a full authoritative sales refresh in personal scope when ca
     activeCount: 1,
     latestUpdatedAt: "2026-03-18T00:00:00.000Z"
   });
+  fetchAuthoritativeLivePricingMock.mockResolvedValue({
+    liveSpotPrice: 44,
+    liveBoxPriceSell: 55,
+    livePackPrice: 66,
+    version: 7
+  });
 
   configLotMethods.loadLot.call(ctx as never);
   await Promise.resolve();
   await Promise.resolve();
 
-  assert.equal(fetchAuthoritativeSalesMock.mock.calls.length, 1);
+  assert.equal(fetchAuthoritativeSalesMock.mock.calls.length, 0);
   assert.equal(fetchAuthoritativeLotSalesSyncMetaMock.mock.calls.length, 1);
   assert.equal(fetchAuthoritativeLivePricingMock.mock.calls.length, 1);
+  assert.equal(ctx.liveSpotPrice, 44);
+  assert.equal(ctx.liveBoxPriceSell, 55);
+  assert.equal(ctx.livePackPrice, 66);
+  assert.equal(ctx.currentLivePricingVersion, 7);
+  assert.equal(ctx.livePricingHydrationStatus, "hydrated");
+  assert.equal(ctx.livePricingHydratedLotId, 101);
+});
+
+test("loadLot records missing live pricing so null version no longer means unhydrated", async () => {
+  ctx = createContext({
+    getSalesCacheEntry: vi.fn(() => ({
+      status: "loaded",
+      sales: []
+    }))
+  });
+  fetchAuthoritativeLivePricingMock.mockResolvedValue(null);
+
+  configLotMethods.loadLot.call(ctx as never);
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assert.equal(fetchAuthoritativeLivePricingMock.mock.calls.length, 1);
+  assert.equal(ctx.currentLivePricingVersion, null);
+  assert.equal(ctx.livePricingHydrationStatus, "missing");
+  assert.equal(ctx.livePricingHydratedLotId, 101);
 });
 
 test("loadLot refreshes personal sales when cached sales metadata changed in the cloud", async () => {

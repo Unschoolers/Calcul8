@@ -471,6 +471,8 @@ export interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
 }
 
+export type LivePricingHydrationStatus = "idle" | "loading" | "hydrated" | "missing" | "error";
+
 export interface AppState extends LotSetup {
   hasProAccess: boolean;
   preferredLanguage: string;
@@ -548,6 +550,8 @@ export interface AppState extends LotSetup {
   liveBoxPriceSell: number;
   livePackPrice: number;
   currentLivePricingVersion: number | null;
+  livePricingHydrationStatus: LivePricingHydrationStatus;
+  livePricingHydratedLotId: number | null;
   showProfitCalculator: boolean;
   sales: Sale[];
   salesByLotId: Map<number, Sale[]>;

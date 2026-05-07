@@ -6,9 +6,8 @@ import {
 } from "../storageKeys.ts";
 import { getActiveStorageScope } from "../workspace-scope.ts";
 import {
-  applyAuthoritativeLivePricingSnapshot,
-  queueAuthoritativeLivePricingSave,
-  resetAuthoritativeLivePricingState
+  hydrateAuthoritativeLivePricingForLot,
+  queueAuthoritativeLivePricingSave
 } from "./config-live-pricing.ts";
 import {
   createNewLotRecord,
@@ -34,7 +33,6 @@ import {
 } from "./sales-freshness.ts";
 import {
   canUseAuthoritativeSalesLiveApi,
-  fetchAuthoritativeLivePricing,
   fetchAuthoritativeSales
 } from "./sales-live-api.ts";
 import { markLivePricingPollingBaseline } from "./ui/sync/lot-entity-polling.ts";
@@ -42,22 +40,14 @@ import { queueWorkspaceConfigSyncPush } from "./ui/workspace/workspace-config-sy
 type AuthoritativeLotHydrationContext = Pick<ConfigMethodSubset<"getSalesCacheEntry">, "getSalesCacheEntry"> & {
   activeScopeType?: string;
   activeWorkspaceId?: string | null;
-  currentLivePricingVersion: number | null;
 };
 
-function shouldHydrateAuthoritativeLotData(
+function shouldHydrateAuthoritativeSales(
   context: AuthoritativeLotHydrationContext,
   lotId: number
 ): boolean {
   const isWorkspaceScope = context.activeScopeType === "workspace" && Boolean(context.activeWorkspaceId);
   if (isWorkspaceScope) {
-    return true;
-  }
-
-  // If we don't have a live pricing version yet for the currently-loaded lot,
-  // make sure we hydrate authoritative data so `fetchAuthoritativeLivePricing`
-  // runs and the live pricing values are applied.
-  if (context.currentLivePricingVersion == null) {
     return true;
   }
 
@@ -150,6 +140,8 @@ export const configLotMethods: ConfigMethodSubset<
       this.boxPriceSell = Number(this.liveBoxPriceSell) || 0;
       this.packPrice = Number(this.livePackPrice) || 0;
       this.currentLivePricingVersion = null;
+      this.livePricingHydrationStatus = "idle";
+      this.livePricingHydratedLotId = null;
       this.autoSaveSetup();
       void this.pushCloudSync();
       this.notify("Live prices saved to config", "success");
@@ -386,6 +378,8 @@ export const configLotMethods: ConfigMethodSubset<
     }
 
     this.currentLivePricingVersion = null;
+    this.livePricingHydrationStatus = "idle";
+    this.livePricingHydratedLotId = null;
     this.syncLivePricesFromDefaults();
     markLivePricingPollingBaseline(this as object, {
       liveSpotPrice: this.liveSpotPrice,
@@ -396,29 +390,25 @@ export const configLotMethods: ConfigMethodSubset<
     this.loadSalesFromStorage();
     if (canUseAuthoritativeSalesLiveApi()) {
       const selectedLotId = lot.id;
-      const shouldHydrateLotData = shouldHydrateAuthoritativeLotData(this, selectedLotId);
+      const shouldHydrateSales = shouldHydrateAuthoritativeSales(this, selectedLotId);
       const isWorkspaceScope = this.activeScopeType === "workspace" && Boolean(this.activeWorkspaceId);
 
-      if (shouldHydrateLotData) {
+      void hydrateAuthoritativeLivePricingForLot(this, selectedLotId).catch((error) => {
+        console.warn("Failed to hydrate authoritative live pricing", error);
+      });
+
+      if (shouldHydrateSales) {
         void (async () => {
           try {
-            const [latestSales, latestLivePricing] = await Promise.all([
-              isWorkspaceScope
-                ? fetchAuthoritativeSales(this, selectedLotId)
-                : hydrateAuthoritativeLotSalesWithSyncMeta(this, selectedLotId),
-              fetchAuthoritativeLivePricing(this, selectedLotId)
-            ]);
+            const latestSales = isWorkspaceScope
+              ? await fetchAuthoritativeSales(this, selectedLotId)
+              : await hydrateAuthoritativeLotSalesWithSyncMeta(this, selectedLotId);
             if (this.currentLotId !== selectedLotId) return;
             if (latestSales) {
               replaceRootLotSales(this, selectedLotId, latestSales);
             }
-            if (latestLivePricing) {
-              applyAuthoritativeLivePricingSnapshot(this, selectedLotId, latestLivePricing);
-            } else {
-              resetAuthoritativeLivePricingState(this);
-            }
           } catch (error) {
-            console.warn("Failed to hydrate authoritative lot data", error);
+            console.warn("Failed to hydrate authoritative sales", error);
           }
         })();
       } else if (!isWorkspaceScope) {
@@ -448,4 +438,3 @@ export const configLotMethods: ConfigMethodSubset<
     }
   }
 };
-

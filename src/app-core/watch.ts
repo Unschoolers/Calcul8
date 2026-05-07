@@ -1,6 +1,7 @@
 import type { AppContext } from "./context-app.ts";
 import type { AppWatchObject } from "./context-contracts.ts";
 import { isDevNoLoginRoute } from "./dev-nologin.ts";
+import { hydrateAuthoritativeLivePricingForLot } from "./methods/config-live-pricing.ts";
 import { refreshPersonalLotSalesIfStale } from "./methods/sales-freshness.ts";
 import { cancelQueuedPortfolioSalesHydration } from "./methods/sales-portfolio-hydration.ts";
 import { cancelQueuedTabChartRefresh, queueTabChartRefreshAfterSettle } from "./methods/sales-ui-helpers.ts";
@@ -32,6 +33,14 @@ function queueCurrentLotSalesFreshnessCheck(
   if (!Number.isFinite(currentLotId) || currentLotId <= 0) return;
   void refreshPersonalLotSalesIfStale(context, currentLotId).catch((error) => {
     console.warn("Failed to refresh personal lot sales from watcher", error);
+  });
+}
+
+function hydrateCurrentLotLivePricing(context: AppContext, lotIdOverride?: number | null): void {
+  const currentLotId = Number(lotIdOverride ?? context.currentLotId);
+  if (!Number.isFinite(currentLotId) || currentLotId <= 0) return;
+  void hydrateAuthoritativeLivePricingForLot(context, currentLotId).catch((error) => {
+    console.warn("Failed to hydrate live pricing from watcher", error);
   });
 }
 
@@ -220,6 +229,7 @@ export const appWatch: AppWatchObject = {
     this.startCloudSyncScheduler();
     refreshWorkspaceRealtime(this);
     queueCurrentLotSalesFreshnessCheck(this);
+    hydrateCurrentLotLivePricing(this);
     void this.refreshWorkspaces();
     void this.refreshWhatnotStatus().then(() => {
       if (!this.whatnotCallbackStatus) return;
@@ -276,6 +286,7 @@ export const appWatch: AppWatchObject = {
 
     refreshWorkspaceRealtime(this);
     queueCurrentLotSalesFreshnessCheck(this, newVal);
+    hydrateCurrentLotLivePricing(this, newVal);
   },
 
   chartView() {

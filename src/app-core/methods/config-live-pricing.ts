@@ -1,5 +1,10 @@
 import type { AppContext } from "../context-app.ts";
-import { fetchAuthoritativeLivePricing, SalesLiveApiError, saveAuthoritativeLivePricing } from "./sales-live-api.ts";
+import {
+  canUseAuthoritativeSalesLiveApi,
+  fetchAuthoritativeLivePricing,
+  SalesLiveApiError,
+  saveAuthoritativeLivePricing
+} from "./sales-live-api.ts";
 import { markLivePricingPollingBaseline } from "./ui/sync/lot-entity-polling.ts";
 
 type QueuedLivePricingSnapshot = {
@@ -9,6 +14,23 @@ type QueuedLivePricingSnapshot = {
   livePackPrice: number;
   baseVersion: number;
 };
+
+type LivePricingHydrationContext = Pick<
+  AppContext,
+  | "currentLotId"
+  | "liveSpotPrice"
+  | "liveBoxPriceSell"
+  | "livePackPrice"
+  | "currentLivePricingVersion"
+  | "livePricingHydrationStatus"
+  | "livePricingHydratedLotId"
+  | "activeScopeType"
+  | "activeWorkspaceId"
+  | "getSalesStorageKey"
+  | "googleAuthEpoch"
+  | "hasProAccess"
+  | "notify"
+>;
 
 type LivePricingQueueState = {
   timeoutId: number | null;
@@ -44,6 +66,42 @@ function createLivePricingHash(snapshot: QueuedLivePricingSnapshot): string {
   });
 }
 
+export function shouldHydrateAuthoritativeLivePricing(
+  context: Pick<AppContext, "livePricingHydrationStatus" | "livePricingHydratedLotId">,
+  lotId: number
+): boolean {
+  if (context.livePricingHydrationStatus === "loading") return false;
+  if (context.livePricingHydratedLotId !== lotId) return true;
+  return context.livePricingHydrationStatus !== "hydrated"
+    && context.livePricingHydrationStatus !== "missing";
+}
+
+export async function hydrateAuthoritativeLivePricingForLot(
+  context: LivePricingHydrationContext,
+  lotId: number
+): Promise<void> {
+  if (!shouldHydrateAuthoritativeLivePricing(context, lotId)) return;
+  if (!canUseAuthoritativeSalesLiveApi()) return;
+
+  context.livePricingHydrationStatus = "loading";
+  context.livePricingHydratedLotId = lotId;
+  try {
+    const latest = await fetchAuthoritativeLivePricing(context, lotId);
+    if (Number(context.currentLotId) !== lotId) return;
+    if (latest) {
+      applyAuthoritativeLivePricingSnapshot(context as AppContext, lotId, latest);
+    } else {
+      resetAuthoritativeLivePricingState(context as AppContext, lotId);
+    }
+  } catch (error) {
+    if (Number(context.currentLotId) === lotId) {
+      context.livePricingHydrationStatus = "error";
+      context.livePricingHydratedLotId = lotId;
+    }
+    throw error;
+  }
+}
+
 async function flushQueuedLivePricingSave(context: AppContext, notifySuccess = true): Promise<void> {
   const state = getLivePricingQueueState(context as object);
   if (state.inFlight || !state.queuedSnapshot) {
@@ -68,6 +126,8 @@ async function flushQueuedLivePricingSave(context: AppContext, notifySuccess = t
       currentLivePricingVersion: snapshot.baseVersion
     });
     context.currentLivePricingVersion = saved.version;
+    context.livePricingHydrationStatus = "hydrated";
+    context.livePricingHydratedLotId = snapshot.lotId;
     state.lastSavedHash = createLivePricingHash({
       lotId: snapshot.lotId,
       liveSpotPrice: saved.liveSpotPrice,
@@ -90,6 +150,8 @@ async function flushQueuedLivePricingSave(context: AppContext, notifySuccess = t
       if (latest) {
         // Update context with latest version and queue a retry with the new baseVersion
         context.currentLivePricingVersion = latest.version;
+        context.livePricingHydrationStatus = "hydrated";
+        context.livePricingHydratedLotId = snapshot.lotId;
         state.queuedSnapshot = {
           lotId: snapshot.lotId,
           liveSpotPrice: Number(context.liveSpotPrice) || 0,
@@ -153,6 +215,8 @@ export function applyAuthoritativeLivePricingSnapshot(
   context.liveBoxPriceSell = latest.liveBoxPriceSell;
   context.livePackPrice = latest.livePackPrice;
   context.currentLivePricingVersion = latest.version;
+  context.livePricingHydrationStatus = "hydrated";
+  context.livePricingHydratedLotId = lotId;
   const state = getLivePricingQueueState(context as object);
   state.lastSavedHash = createLivePricingHash({
     lotId,
@@ -169,8 +233,10 @@ export function applyAuthoritativeLivePricingSnapshot(
   });
 }
 
-export function resetAuthoritativeLivePricingState(context: AppContext): void {
+export function resetAuthoritativeLivePricingState(context: AppContext, lotId?: number): void {
   context.currentLivePricingVersion = null;
+  context.livePricingHydrationStatus = typeof lotId === "number" ? "missing" : "idle";
+  context.livePricingHydratedLotId = typeof lotId === "number" ? lotId : null;
   const state = getLivePricingQueueState(context as object);
   state.lastSavedHash = null;
   markLivePricingPollingBaseline(context as object, {
@@ -180,4 +246,3 @@ export function resetAuthoritativeLivePricingState(context: AppContext): void {
     currentLivePricingVersion: context.currentLivePricingVersion
   });
 }
-

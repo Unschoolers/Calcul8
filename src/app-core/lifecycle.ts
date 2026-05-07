@@ -3,6 +3,7 @@ import { primeStoredAuthSecretsFromStorage } from "./auth/index.ts";
 import type { AppContext } from "./context-app.ts";
 import type { AppLifecycleObject } from "./context-contracts.ts";
 import { isDevNoLoginRoute } from "./dev-nologin.ts";
+import { hydrateAuthoritativeLivePricingForLot } from "./methods/config-live-pricing.ts";
 import { refreshPersonalLotSalesIfStale } from "./methods/sales-freshness.ts";
 import { closeStripeEmbeddedCheckout, handleStripeCheckoutReturn } from "./methods/ui/entitlements/entitlements-stripe.ts";
 import { stopWorkspaceConfigSyncPush } from "./methods/ui/workspace/workspace-config-sync.ts";
@@ -43,6 +44,15 @@ function refreshForegroundLotSales(context: Pick<
 
 function canBindForegroundSalesListeners(): boolean {
   return typeof window !== "undefined" && typeof document !== "undefined";
+}
+
+function hydrateForegroundLivePricing(context: AppContext): void {
+  const currentLotId = Number(context.currentLotId);
+  if (!Number.isFinite(currentLotId) || currentLotId <= 0) return;
+
+  void hydrateAuthoritativeLivePricingForLot(context, currentLotId).catch((error) => {
+    console.warn("Failed to hydrate current lot live pricing", error);
+  });
 }
 
 export const appLifecycle: AppLifecycleObject = {
@@ -140,19 +150,15 @@ export const appLifecycle: AppLifecycleObject = {
       const retryDelays = [0, 1500, 4000];
       for (const delayMs of retryDelays) {
         if (delayMs) await new Promise((resolve) => window.setTimeout(resolve, delayMs));
-        try {
-          if (!this.currentLotId) return;
-          if (this.currentLivePricingVersion != null) return;
-          const { fetchAuthoritativeLivePricing } = await import("./methods/sales-live-api.ts");
-          const { applyAuthoritativeLivePricingSnapshot } = await import("./methods/config-live-pricing.ts");
-          const latest = await fetchAuthoritativeLivePricing(this as any, Number(this.currentLotId));
-          if (latest) {
-            applyAuthoritativeLivePricingSnapshot(this as any, Number(this.currentLotId), latest);
-            return;
-          }
-        } catch (err) {
-          // ignore transient errors and retry
+        const currentLotId = Number(this.currentLotId);
+        if (!Number.isFinite(currentLotId) || currentLotId <= 0) return;
+        if (
+          this.livePricingHydratedLotId === currentLotId
+          && (this.livePricingHydrationStatus === "hydrated" || this.livePricingHydrationStatus === "missing")
+        ) {
+          return;
         }
+        hydrateForegroundLivePricing(this);
       }
     })();
     if (typeof this.syncGuidedOnboarding === "function") {
@@ -247,4 +253,3 @@ export const appLifecycle: AppLifecycleObject = {
     this.hasRegisteredServiceWorkerLifecycle = false;
   }
 };
-

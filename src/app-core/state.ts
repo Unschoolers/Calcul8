@@ -153,6 +153,8 @@ export function createInitialState(): AppState {
     liveBoxPriceSell: DEFAULT_VALUES.BOX_PRICE_SELL,
     livePackPrice: DEFAULT_VALUES.PACK_PRICE,
     currentLivePricingVersion: null,
+    livePricingHydrationStatus: "idle",
+    livePricingHydratedLotId: null,
 
     // Auto-calculate profit
     targetProfitPercent: hasProAccess ? 15 : 0,
