@@ -1,6 +1,7 @@
 @import './wheel-core.css';
 @import './wheel-history.css';
 @import './wheel-mobile.css';
+@import './bracket-battle.css';
 
 .wheel-spectator-dialog__intro {
   display: flex;

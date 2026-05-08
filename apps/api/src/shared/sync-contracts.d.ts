@@ -54,7 +54,6 @@ export interface SyncLotDto {
   includeTax?: boolean;
   isComplete?: boolean;
 }
-
 export type SyncSaleType = "pack" | "box" | "rtyh" | "wheel";
 export type SyncTierDeductionType = "packs" | "singles" | "none";
 
@@ -104,14 +103,33 @@ export interface SyncWheelTierDto {
   celebrationEmoji?: string;
 }
 
+export interface SyncBracketBattlePrizeDto {
+  id: string;
+  sourceType: "manual" | "lot" | "singles";
+  sourceKey: string;
+  label: string;
+  lotId: number | null;
+  singlesPurchaseEntryId: number | null;
+  quantity: number | null;
+  cost: number | null;
+  value: number | null;
+}
+
+export interface SyncBracketBattleConfigDto {
+  participantCount: 4 | 8;
+  participants: string[];
+  prizes: SyncBracketBattlePrizeDto[];
+}
+
 export interface SyncWheelConfigDto {
   id: number;
   name?: string;
   spinPrice?: number;
   targetMargin?: number;
-  gameType?: "wheel" | "grid";
+  gameType?: "wheel" | "grid" | "bracket";
   outcomeCount?: number;
   gridCellCount?: number;
+  bracketBattle?: SyncBracketBattleConfigDto;
   tiers?: SyncWheelTierDto[];
   createdAt?: string;
   updatedAt?: string;
@@ -181,6 +199,16 @@ export interface SyncGameTallyEntryDto {
   count: number;
 }
 
+export interface SyncGameGridRevealDto {
+  cellIndex: number;
+  slotIndex: number;
+  label: string;
+  color: string;
+  tier: string;
+  spinNumber: number;
+  timestamp: number;
+}
+
 export interface SyncInventoryIssueDto {
   slotName: string;
   slotColor: string;
@@ -205,6 +233,10 @@ export interface SyncGameSessionDto {
   wheelSessionCostAdjustment: number;
   wheelFairnessHistory: SyncGameFairnessEntryDto[];
   wheelChaseTallyHistory: SyncGameTallyEntryDto[];
+  wheelGridLayoutSeed: string;
+  wheelPreviewGridLayoutSeed: string;
+  wheelGridReveals: SyncGameGridRevealDto[];
+  wheelPreviewGridReveals: SyncGameGridRevealDto[];
   wheelCurrentAngle: number;
   wheelLastResult: string;
   wheelLastResultColor: string;

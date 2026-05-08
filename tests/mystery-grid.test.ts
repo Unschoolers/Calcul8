@@ -157,6 +157,34 @@ test("wheel configs default to wheel game mode and normalize game type additivel
   assert.equal(legacyConfig?.gameType, "wheel");
 });
 
+test("bracket battle configs normalize as saved game templates", () => {
+  const bracketConfig = normalizeWheelConfig({
+    ...createGridConfig(),
+    gameType: "bracket",
+    name: "Friday Bracket",
+    bracketBattle: {
+      participantCount: 8,
+      participants: ["A", "B", "C", "D", "E", "F", "G", "H"],
+      prizes: Array.from({ length: 7 }, (_unused, index) => ({
+        id: `prize-${index + 1}`,
+        sourceType: "manual",
+        sourceKey: "",
+        label: `Prize ${index + 1}`,
+        lotId: null,
+        singlesPurchaseEntryId: null,
+        quantity: 1,
+        cost: null,
+        value: null
+      }))
+    }
+  }, []);
+
+  assert.equal(bracketConfig?.gameType, "bracket");
+  assert.equal(bracketConfig?.name, "Friday Bracket");
+  assert.equal(bracketConfig?.bracketBattle?.participantCount, 8);
+  assert.equal(bracketConfig?.bracketBattle?.prizes.length, 7);
+});
+
 test("mystery grid uses the configured outcome count instead of a fixed 100 cells", () => {
   const config = createGridConfig({ outcomeCount: 25, gridCellCount: 25 });
   const slots = buildSlotsFromConfig(config);
@@ -256,6 +284,31 @@ test("new game creation fixes game type at creation time", () => {
   assert.equal(created.gameType, "grid");
   assert.equal(created.name, "New Mystery Grid");
   assert.equal(created.tiers[0]?.boundLotId, 42);
+  assert.equal(vm.activeWheelConfigId, created.id);
+  assert.equal(vm.wheelCreateDialog, false);
+});
+
+test("new bracket battle creation adds a config and selects it like other games", () => {
+  const vm: Record<string, unknown> = {
+    wheelConfigs: [],
+    activeWheelConfigId: null,
+    currentLotId: 42,
+    lots: [{ id: 42, name: "Bulk Lot", lotType: "bulk", boxesPurchased: 1, packsPerBox: 10 }],
+    currentLotCostPerPack: 4,
+    activeScopeType: "personal",
+    activeWorkspaceId: null,
+    googleAuthEpoch: 0,
+    hasProAccess: true
+  };
+
+  wheelConfigMethods.createNewGameConfig.call(vm, "bracket");
+
+  const created = (vm.wheelConfigs as WheelConfig[])[0]!;
+  assert.equal(created.gameType, "bracket");
+  assert.equal(created.name, "New Bracket Battle");
+  assert.equal(created.bracketBattle?.participantCount, 4);
+  assert.equal(created.bracketBattle?.participants.length, 4);
+  assert.equal(created.bracketBattle?.prizes.length, 3);
   assert.equal(vm.activeWheelConfigId, created.id);
   assert.equal(vm.wheelCreateDialog, false);
 });

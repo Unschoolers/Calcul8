@@ -92,6 +92,9 @@ export const gameWindowDefinition = {
     wheelIsMysteryGrid(this: GameWindowThis): boolean {
       return isMysteryGridConfig(this.wheelDisplayConfig as WheelConfig | null);
     },
+    wheelIsBracketBattle(this: GameWindowThis): boolean {
+      return (this.wheelDisplayConfig as WheelConfig | null)?.gameType === "bracket";
+    },
     mysteryGridCells(this: GameWindowThis) {
       return buildMysteryGridCells(this as unknown as Record<string, unknown>);
     }
@@ -266,6 +269,10 @@ export const gameWindowDefinition = {
         this.editingWheelConfig =
           JSON.parse(JSON.stringify(activeConfig)) as WheelConfig;
         repaired = true;
+      }
+
+      if (activeConfig.gameType === "bracket") {
+        return;
       }
 
       if (!Array.isArray(controller.activeSlots) || controller.activeSlots.length === 0) {

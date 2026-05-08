@@ -121,6 +121,7 @@ export type GameWindowThis = {
   wheelSpinBlockedReason: string;
   wheelHasRequiredLotSelection: boolean;
   wheelIsMysteryGrid: boolean;
+  wheelIsBracketBattle: boolean;
 
   // ===== Private internal state =====
   _wheelSkipConfigReload?: boolean;

@@ -103,14 +103,33 @@ export interface SyncWheelTierDto {
   celebrationEmoji?: string;
 }
 
+export interface SyncBracketBattlePrizeDto {
+  id: string;
+  sourceType: "manual" | "lot" | "singles";
+  sourceKey: string;
+  label: string;
+  lotId: number | null;
+  singlesPurchaseEntryId: number | null;
+  quantity: number | null;
+  cost: number | null;
+  value: number | null;
+}
+
+export interface SyncBracketBattleConfigDto {
+  participantCount: 4 | 8;
+  participants: string[];
+  prizes: SyncBracketBattlePrizeDto[];
+}
+
 export interface SyncWheelConfigDto {
   id: number;
   name?: string;
   spinPrice?: number;
   targetMargin?: number;
-  gameType?: "wheel" | "grid";
+  gameType?: "wheel" | "grid" | "bracket";
   outcomeCount?: number;
   gridCellCount?: number;
+  bracketBattle?: SyncBracketBattleConfigDto;
   tiers?: SyncWheelTierDto[];
   createdAt?: string;
   updatedAt?: string;

@@ -132,6 +132,7 @@ The approved visual direction is:
 - richer lighting than the current flat UI;
 - visible app context behind the overlay;
 - no blank fullscreen canvas separation from the app.
+- synthwave retro futuristic look and feel
 
 Idle should feel premium but restrained. It should not read as a permanent animated attract mode.
 

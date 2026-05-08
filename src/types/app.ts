@@ -75,8 +75,26 @@ export interface WheelTier {
   celebrationEmoji?: string;
 }
 
-export type GameType = SharedGameType;
+export type GameType = SharedGameType | "bracket";
 export type LuckGameType = GameType;
+
+export interface BracketBattleConfigPrize {
+  id: string;
+  sourceType: "manual" | "lot" | "singles";
+  sourceKey: string;
+  label: string;
+  lotId: number | null;
+  singlesPurchaseEntryId: number | null;
+  quantity: number | null;
+  cost: number | null;
+  value: number | null;
+}
+
+export interface BracketBattleConfig {
+  participantCount: 4 | 8;
+  participants: string[];
+  prizes: BracketBattleConfigPrize[];
+}
 
 export interface WheelConfig {
   id: number;
@@ -86,6 +104,7 @@ export interface WheelConfig {
   gameType?: LuckGameType;
   outcomeCount?: number;
   gridCellCount?: number;
+  bracketBattle?: BracketBattleConfig;
   tiers: WheelTier[];
   createdAt: string;
   updatedAt?: string;

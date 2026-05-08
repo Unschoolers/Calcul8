@@ -5,6 +5,7 @@ import {
   getSalesCacheStatusKey,
   getSalesSyncMetaKey,
   getSalesStorageKey,
+  getScopedBracketBattleSessionStorageKey,
   readStorage,
   removeStorage
 } from "../src/app-core/storageKeys.ts";
@@ -70,6 +71,17 @@ test("readStorage reads only the requested current key", () => {
     assert.equal(readStorage(canonicalKey), currentSales);
     assert.equal(data.get("old_sales_10"), JSON.stringify([{ id: 2, price: 9 }]));
   });
+});
+
+test("getScopedBracketBattleSessionStorageKey is scoped like other game session keys", () => {
+  assert.equal(
+    getScopedBracketBattleSessionStorageKey({ scopeType: "personal", workspaceId: null }),
+    "whatfees_bracket_battle_session"
+  );
+  assert.equal(
+    getScopedBracketBattleSessionStorageKey({ scopeType: "workspace", workspaceId: "team 42" }),
+    "whatfees_bracket_battle_session__ws__team%2042"
+  );
 });
 
 test("readStorage does not promote old keys when the current key is empty", () => {

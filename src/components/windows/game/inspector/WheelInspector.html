@@ -44,6 +44,12 @@
     <section v-show="wheelInspectorTab === 'config'" class="wheel-panel-section">
 
       <template v-if="editingWheelConfig">
+        <bracket-battle-builder
+          v-if="editingWheelConfig.gameType === 'bracket'"
+          :ctx="getWindowComponentContext()"
+        ></bracket-battle-builder>
+
+        <template v-else>
         <div class="wheel-compact-settings">
           <div class="wheel-compact-setting">
             <div class="wheel-compact-setting__label">{{ t('wheelInspectorSpinPriceLabel') }}</div>
@@ -129,6 +135,7 @@
           @click="addTier">
           {{ t('wheelInspectorAddTierAction') }}
         </v-btn>
+        </template>
       </template>
 
       <v-alert v-else type="info" variant="tonal" density="compact" class="mt-2">

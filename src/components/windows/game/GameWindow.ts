@@ -1,4 +1,5 @@
 import "./styles/GameWindow.css";
+import BracketBattlePanel from "./bracket/BracketBattlePanel.vue";
 import WheelActionRail from "./stage/WheelActionRail.vue";
 import WheelCreateGameDialog from "./dialogs/WheelCreateGameDialog.vue";
 import WheelHistoryPanel from "./inspector/WheelHistoryPanel.vue";
@@ -12,6 +13,7 @@ import { gameWindowDefinition } from "./coordinator/GameWindow.definition.ts";
 export const GameWindow = {
   ...gameWindowDefinition,
   components: {
+    BracketBattlePanel,
     WheelHistoryPanel,
     WheelInspector,
     MysteryGridSurface,

@@ -71,11 +71,32 @@ const gridGameAdapter: TierPrizeGameAdapter = {
   }
 };
 
+const bracketGameAdapter: TierPrizeGameAdapter = {
+  gameType: "bracket",
+  isBoardGame: true,
+  stageSlotsLabel(context, config) {
+    return translateAppMessage(getLanguage(context), "bracketBattlePrizesMeta", {
+      count: config?.bracketBattle?.prizes.length ?? 0
+    });
+  },
+  primaryActionIcon() {
+    return "mdi-tournament";
+  },
+  primaryActionLabel(context) {
+    return translateAppMessage(getLanguage(context), "bracketBattleRollAction");
+  },
+  stageCaption(context) {
+    return translateAppMessage(getLanguage(context), "bracketBattleKicker");
+  }
+};
+
 export const tierPrizeGameAdapters: Record<LuckGameType, TierPrizeGameAdapter> = {
   wheel: wheelGameAdapter,
-  grid: gridGameAdapter
+  grid: gridGameAdapter,
+  bracket: bracketGameAdapter
 };
 
 export function getTierPrizeGameAdapter(config: WheelConfig | null | undefined): TierPrizeGameAdapter {
+  if (config?.gameType === "bracket") return bracketGameAdapter;
   return config?.gameType === "grid" ? gridGameAdapter : wheelGameAdapter;
 }

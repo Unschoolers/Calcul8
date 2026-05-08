@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "vitest";
 import { portfolioWindowDefinition } from "../src/components/windows/portfolio/PortfolioWindow.definition.ts";
 
@@ -79,6 +80,38 @@ test("PortfolioWindow filter search regrouping keeps bulk items together", () =>
     ["Kaiju #8", null],
     ["Union arena singles", "Singles lots"]
   ]);
+});
+
+test("PortfolioWindow lot filter item slot does not depend on the old Vuetify raw wrapper", () => {
+  const template = readFileSync("src/components/windows/portfolio/PortfolioWindow.html", "utf8");
+
+  assert.match(template, /resolvePortfolioLotFilterItem\(item\)\.title/);
+  assert.doesNotMatch(template, /item\.raw/);
+});
+
+test("PortfolioWindow clears stale lot-filter search when opening the menu", () => {
+  const vm = {
+    portfolioLotFilterMenuOpen: false,
+    portfolioLotFilterSearchQuery: "missing lot",
+    portfolioLotFilterItems: [
+      { title: "Bleach volume 2", value: 11, subtitle: "Bulk • 2026-02-01", lotType: "bulk", groupLabel: "Bulk lots" },
+      { title: "Union arena singles", value: 22, subtitle: "Singles • 2026-02-21", lotType: "singles", groupLabel: "Singles lots" }
+    ]
+  };
+
+  assert.deepEqual(
+    portfolioWindowDefinition.methods.portfolioVisibleLotFilterItems.call(vm as never).map((item: { title: string }) => item.title),
+    []
+  );
+
+  portfolioWindowDefinition.methods.handlePortfolioLotFilterMenuUpdate.call(vm as never, true);
+
+  assert.equal(vm.portfolioLotFilterMenuOpen, true);
+  assert.equal(vm.portfolioLotFilterSearchQuery, "");
+  assert.deepEqual(
+    portfolioWindowDefinition.methods.portfolioVisibleLotFilterItems.call(vm as never).map((item: { title: string }) => item.title),
+    ["Bleach volume 2", "Union arena singles"]
+  );
 });
 
 test("PortfolioWindow enter closes and blurs the portfolio filter even when search has text", () => {

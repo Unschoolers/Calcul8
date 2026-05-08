@@ -174,6 +174,54 @@ test("sync wheel config DTOs preserve game fields and drop unknown config data",
   ]);
 });
 
+test("sync wheel config DTOs preserve bracket battle templates", () => {
+  assert.deepEqual(toSyncWheelConfigDtos([
+    {
+      id: "93",
+      name: " Bracket Night ",
+      gameType: "bracket",
+      bracketBattle: {
+        participantCount: 8,
+        participants: ["A", "B", "C", "D", "E", "F", "G", "H", "drop"],
+        prizes: Array.from({ length: 7 }, (_unused, index) => ({
+          id: `p-${index + 1}`,
+          sourceType: index === 0 ? "lot" : "manual",
+          sourceKey: index === 0 ? "lot:10" : "",
+          label: `Prize ${index + 1}`,
+          lotId: index === 0 ? "10" : null,
+          singlesPurchaseEntryId: null,
+          quantity: "1",
+          cost: "2.5",
+          value: "5"
+        }))
+      },
+      tiers: [{ id: "should-drop-for-bracket" }]
+    }
+  ]), [
+    {
+      id: 93,
+      name: "Bracket Night",
+      gameType: "bracket",
+      bracketBattle: {
+        participantCount: 8,
+        participants: ["A", "B", "C", "D", "E", "F", "G", "H"],
+        prizes: Array.from({ length: 7 }, (_unused, index) => ({
+          id: `p-${index + 1}`,
+          sourceType: index === 0 ? "lot" : "manual",
+          sourceKey: index === 0 ? "lot:10" : "",
+          label: `Prize ${index + 1}`,
+          lotId: index === 0 ? 10 : null,
+          singlesPurchaseEntryId: null,
+          quantity: 1,
+          cost: 2.5,
+          value: 5
+        }))
+      },
+      tiers: []
+    }
+  ]);
+});
+
 test("sync sales DTOs preserve concurrency and wheel/singles fields while dropping unknown data", () => {
   assert.deepEqual(toSyncSalesByLotDto({
     "10": [

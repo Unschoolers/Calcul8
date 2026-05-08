@@ -1,0 +1,109 @@
+<h2>Shared 3D Stage Overlay</h2>
+<p class="subtitle">Pick the motion envelope first. All three assume realistic gold-and-black dice over the real app UI, click-through by default.</p>
+
+<div class="cards">
+  <div class="card" data-choice="ambient-burst" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">A · Recommended</div>
+        <div class="mockup-body" style="display:grid;gap:12px;">
+          <div style="height:180px;border-radius:18px;background:
+            radial-gradient(circle at 50% 18%, rgba(255,210,96,.22), transparent 36%),
+            linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.01)),
+            #141416; border:1px solid rgba(255,255,255,.08); position:relative; overflow:hidden;">
+            <div style="position:absolute; inset:18px auto auto 18px; font-size:12px; letter-spacing:.08em; text-transform:uppercase; opacity:.72;">Idle</div>
+            <div style="position:absolute; inset:auto 20px 20px 20px; height:44px; border-radius:12px; background:rgba(255,255,255,.05);"></div>
+            <div style="position:absolute; left:50%; top:54%; width:68px; height:68px; transform:translate(-50%,-50%) rotate(18deg); border-radius:16px; background:
+              linear-gradient(145deg, #2b2b2f 0%, #111214 54%, #805f15 100%);
+              border:1px solid rgba(255,217,122,.35); box-shadow:0 0 28px rgba(255,207,84,.16);">
+            </div>
+          </div>
+          <div style="font-size:13px; line-height:1.45; opacity:.82;">
+            Overlay stays mounted with a quiet aura and faint idle die presence. On roll, dice wake up into a brief full-screen burst, then settle back.
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Ambient Idle + Burst Roll</h3>
+      <p>Best balance of drama, performance, and not getting in the way.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="hero-persistent" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">B</div>
+        <div class="mockup-body" style="display:grid;gap:12px;">
+          <div style="height:180px;border-radius:18px;background:
+            radial-gradient(circle at 30% 30%, rgba(255,210,96,.18), transparent 30%),
+            linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.01)),
+            #141416; border:1px solid rgba(255,255,255,.08); position:relative; overflow:hidden;">
+            <div style="position:absolute; inset:18px auto auto 18px; font-size:12px; letter-spacing:.08em; text-transform:uppercase; opacity:.72;">Always visible</div>
+            <div style="position:absolute; right:38px; top:44px; width:96px; height:96px; transform:rotate(24deg); border-radius:22px; background:
+              linear-gradient(145deg, #2c2c30 0%, #131416 50%, #8c6713 100%);
+              border:1px solid rgba(255,217,122,.42); box-shadow:0 0 34px rgba(255,207,84,.2);">
+            </div>
+            <div style="position:absolute; inset:auto 20px 20px 20px; height:44px; border-radius:12px; background:rgba(255,255,255,.05);"></div>
+          </div>
+          <div style="font-size:13px; line-height:1.45; opacity:.82;">
+            A hero die or pair is always on stage, moving slowly even when idle. Rolls escalate from that persistent presence.
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Persistent Hero Dice</h3>
+      <p>More personality, but it permanently occupies visual attention on the page.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="cinematic-event" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">C</div>
+        <div class="mockup-body" style="display:grid;gap:12px;">
+          <div style="height:180px;border-radius:18px;background:
+            radial-gradient(circle at 50% 20%, rgba(255,55,115,.2), transparent 34%),
+            radial-gradient(circle at 70% 30%, rgba(95,145,255,.18), transparent 28%),
+            #141416; border:1px solid rgba(255,255,255,.08); position:relative; overflow:hidden;">
+            <div style="position:absolute; inset:18px auto auto 18px; font-size:12px; letter-spacing:.08em; text-transform:uppercase; opacity:.72;">Invisible until roll</div>
+            <div style="position:absolute; left:28%; top:52%; width:62px; height:62px; transform:translate(-50%,-50%) rotate(18deg); border-radius:16px; background:
+              linear-gradient(145deg, #2f2f33 0%, #121315 54%, #88610b 100%);
+              border:1px solid rgba(255,217,122,.35);"></div>
+            <div style="position:absolute; left:62%; top:48%; width:78px; height:78px; transform:translate(-50%,-50%) rotate(-16deg); border-radius:18px; background:
+              linear-gradient(145deg, #303035 0%, #101113 52%, #8f6710 100%);
+              border:1px solid rgba(255,217,122,.42); box-shadow:0 0 40px rgba(255,77,136,.18), 0 0 42px rgba(92,143,255,.14);"></div>
+          </div>
+          <div style="font-size:13px; line-height:1.45; opacity:.82;">
+            Nothing sits on stage until a match starts. Then the overlay takes over with a short cinematic dice sequence and disappears.
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Event-Only Cinematic</h3>
+      <p>Highest impact per roll, but weakest sense of a persistent branded stage.</p>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:24px;">
+  <div class="pros-cons">
+    <div class="pros">
+      <h4>Recommendation</h4>
+      <ul>
+        <li>Choose A if you want the overlay system to feel shared and reusable.</li>
+        <li>It keeps the page alive without turning every game into a constant spectacle.</li>
+        <li>It gives Bracket Battle a strong roll moment without forcing Wheel/Grid into the same intensity.</li>
+      </ul>
+    </div>
+    <div class="cons">
+      <h4>Watch out for</h4>
+      <ul>
+        <li>B risks feeling decorative and busy.</li>
+        <li>C is exciting but less useful as a shared long-lived overlay system.</li>
+      </ul>
+    </div>
+  </div>
+</div>

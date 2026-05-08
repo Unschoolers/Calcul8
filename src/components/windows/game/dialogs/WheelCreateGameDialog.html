@@ -15,6 +15,11 @@
           <span class="wheel-create-game-card__title">{{ t('wheelGameTypeGridLabel') }}</span>
           <span class="wheel-create-game-card__copy">{{ t('wheelCreateGridBody') }}</span>
         </button>
+        <button type="button" class="wheel-create-game-card" @click="createNewGameConfig('bracket')">
+          <v-icon size="28">mdi-tournament</v-icon>
+          <span class="wheel-create-game-card__title">{{ t('bracketBattleGameLabel') }}</span>
+          <span class="wheel-create-game-card__copy">{{ t('bracketBattleCreateBody') }}</span>
+        </button>
       </div>
     </v-card-text>
     <v-card-actions>

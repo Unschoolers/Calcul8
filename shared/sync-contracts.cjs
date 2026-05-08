@@ -290,6 +290,43 @@ function normalizeSyncWheelTierDto(value) {
   return tier;
 }
 
+function normalizeBracketParticipantCount(value) {
+  return Number(value) === 8 ? 8 : 4;
+}
+
+function getBracketMatchCount(participantCount) {
+  return participantCount === 8 ? 7 : 3;
+}
+
+function normalizeSyncBracketPrizeDto(value, index) {
+  const raw = isSyncEntityRecord(value) ? value : {};
+  const sourceType = raw.sourceType === "lot" || raw.sourceType === "singles" ? raw.sourceType : "manual";
+  return {
+    id: cleanString(raw.id) || `bracket-prize-${index + 1}`,
+    sourceType,
+    sourceKey: sourceType === "manual" ? "" : (cleanString(raw.sourceKey) || ""),
+    label: cleanString(raw.label) || `Match ${index + 1} prize`,
+    lotId: sourceType === "manual" ? null : normalizeOptionalSyncId(raw.lotId),
+    singlesPurchaseEntryId: sourceType === "singles" ? normalizeOptionalSyncId(raw.singlesPurchaseEntryId) : null,
+    quantity: normalizeNonNegativeInteger(raw.quantity) || 1,
+    cost: normalizeNonNegativeNumber(raw.cost),
+    value: normalizeNonNegativeNumber(raw.value)
+  };
+}
+
+function normalizeSyncBracketBattleConfigDto(value) {
+  const raw = isSyncEntityRecord(value) ? value : {};
+  const participantCount = normalizeBracketParticipantCount(raw.participantCount);
+  const rawParticipants = Array.isArray(raw.participants) ? raw.participants : [];
+  const rawPrizes = Array.isArray(raw.prizes) ? raw.prizes : [];
+  const matchCount = getBracketMatchCount(participantCount);
+  return {
+    participantCount,
+    participants: Array.from({ length: participantCount }, (_unused, index) => cleanString(rawParticipants[index]) || ""),
+    prizes: Array.from({ length: matchCount }, (_unused, index) => normalizeSyncBracketPrizeDto(rawPrizes[index], index))
+  };
+}
+
 function normalizeSyncWheelConfigDto(value) {
   if (!isSyncEntityRecord(value)) return null;
   const id = normalizeOptionalSyncId(value.id);
@@ -302,13 +339,17 @@ function normalizeSyncWheelConfigDto(value) {
   if (spinPrice != null) config.spinPrice = spinPrice;
   const targetMargin = normalizeNonNegativeNumber(value.targetMargin);
   if (targetMargin != null) config.targetMargin = targetMargin;
-  if (value.gameType === "grid" || value.gameType === "wheel") config.gameType = value.gameType;
+  if (value.gameType === "grid" || value.gameType === "wheel" || value.gameType === "bracket") config.gameType = value.gameType;
   const outcomeCount = normalizeNonNegativeInteger(value.outcomeCount);
   if (outcomeCount != null) config.outcomeCount = outcomeCount;
   const gridCellCount = normalizeNonNegativeInteger(value.gridCellCount);
   if (gridCellCount != null) config.gridCellCount = gridCellCount;
   if (Array.isArray(value.tiers)) {
     config.tiers = value.tiers.map((entry) => normalizeSyncWheelTierDto(entry)).filter((entry) => entry != null);
+  }
+  if (config.gameType === "bracket") {
+    config.bracketBattle = normalizeSyncBracketBattleConfigDto(value.bracketBattle);
+    config.tiers = [];
   }
   const createdAt = cleanString(value.createdAt);
   if (createdAt) config.createdAt = createdAt;

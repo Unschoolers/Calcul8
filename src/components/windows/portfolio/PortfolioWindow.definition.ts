@@ -17,6 +17,48 @@ import {
   getPortfolioSalesByUserWeekTotals
 } from "./portfolio-window-helpers.ts";
 
+type PortfolioLotFilterDisplayItem = {
+  title: string;
+  value: number | null;
+  subtitle: string;
+  lotType: "bulk" | "singles";
+  symbolIcon: string;
+  completionIcon: string | null;
+  groupLabel: string | null;
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function resolvePortfolioLotFilterSource(item: unknown): Record<string, unknown> | null {
+  if (!isRecord(item)) return null;
+  return isRecord(item.raw) ? item.raw : item;
+}
+
+function toDisplayString(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
+
+function toDisplayNumber(value: unknown): number | null {
+  const normalized = Number(value);
+  return Number.isFinite(normalized) ? normalized : null;
+}
+
+function resolvePortfolioLotFilterDisplayItem(item: unknown): PortfolioLotFilterDisplayItem {
+  const source = resolvePortfolioLotFilterSource(item);
+  const lotType = source?.lotType === "singles" ? "singles" : "bulk";
+  return {
+    title: toDisplayString(source?.title),
+    value: toDisplayNumber(source?.value),
+    subtitle: toDisplayString(source?.subtitle),
+    lotType,
+    symbolIcon: toDisplayString(source?.symbolIcon) || (lotType === "singles" ? "mdi-cards-outline" : "mdi-cube-outline"),
+    completionIcon: source?.completionIcon === "mdi-check-circle" ? "mdi-check-circle" : null,
+    groupLabel: toDisplayString(source?.groupLabel) || null
+  };
+}
+
 export const PortfolioWindowDefinition = {
   name: "PortfolioWindow",
   props: {
@@ -60,9 +102,21 @@ export const PortfolioWindowDefinition = {
       return filterLotOptionItems(items, String(this.portfolioLotFilterSearchQuery || ""));
     },
 
-    portfolioLotFilterItemSelected(this: Record<string, unknown>, value: number): boolean {
+    portfolioLotFilterItemSelected(this: Record<string, unknown>, value: number | null): boolean {
+      if (value == null) return false;
       const selected = Array.isArray(this.portfolioLotFilterIds) ? this.portfolioLotFilterIds : [];
       return selected.some((id) => Number(id) === Number(value));
+    },
+
+    resolvePortfolioLotFilterItem(this: Record<string, unknown>, item: unknown): PortfolioLotFilterDisplayItem {
+      return resolvePortfolioLotFilterDisplayItem(item);
+    },
+
+    handlePortfolioLotFilterMenuUpdate(this: Record<string, unknown>, isOpen: boolean): void {
+      this.portfolioLotFilterMenuOpen = isOpen;
+      if (isOpen) {
+        this.portfolioLotFilterSearchQuery = "";
+      }
     },
 
     closePortfolioLotFilter(this: Record<string, unknown>): void {

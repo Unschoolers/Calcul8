@@ -1,4 +1,5 @@
 import type { Lot, WheelConfig, WheelTier } from "../../types/app.ts";
+import { normalizeBracketBattleConfig } from "./bracket-battle-config.ts";
 import { getWheelOutcomeCount, normalizeWheelTierChances } from "./wheel-odds.ts";
 import { isWheelTierMultiLot, normalizeWheelTierSources } from "./wheel-tier-sources.ts";
 
@@ -31,7 +32,16 @@ function sanitizeWheelTier(tier: WheelTier, lots: Lot[]): WheelTier {
 }
 
 export function sanitizeWheelConfig(config: WheelConfig, lots: Lot[]): WheelConfig {
-  config.gameType = config.gameType === "grid" ? "grid" : "wheel";
+  config.gameType = config.gameType === "grid" || config.gameType === "bracket" ? config.gameType : "wheel";
+  if (config.gameType === "bracket") {
+    config.bracketBattle = normalizeBracketBattleConfig(config.bracketBattle);
+    config.outcomeCount = 0;
+    config.gridCellCount = 0;
+    config.tiers = [];
+    return config;
+  }
+
+  delete config.bracketBattle;
   config.outcomeCount = getWheelOutcomeCount(config);
   config.gridCellCount = config.outcomeCount;
   const tiers = Array.isArray(config.tiers) ? config.tiers : [];

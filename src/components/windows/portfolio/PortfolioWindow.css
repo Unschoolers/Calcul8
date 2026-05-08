@@ -196,6 +196,10 @@
   background: rgb(var(--v-theme-surface));
 }
 
+.portfolio-lot-filter-menu {
+  z-index: 4200 !important;
+}
+
 @media (max-width: 600px) {
   .portfolio-filter-bar {
     border-radius: 16px !important;

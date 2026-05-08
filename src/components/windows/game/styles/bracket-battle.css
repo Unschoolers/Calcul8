@@ -1,0 +1,574 @@
+.bracket-battle-panel,
+.bracket-battle-builder {
+  color: rgb(var(--v-theme-on-surface));
+  --bracket-panel-border: rgba(var(--v-theme-on-surface), 0.1);
+  --bracket-soft-row-bg: rgba(var(--v-theme-on-surface), 0.04);
+  --bracket-soft-row-border: rgba(var(--v-theme-on-surface), 0.08);
+  --bracket-card-bg:
+    linear-gradient(180deg, rgba(var(--v-theme-on-surface), 0.03), rgba(var(--v-theme-on-surface), 0.012)),
+    rgba(var(--v-theme-surface), 0.98);
+  --bracket-hero-bg:
+    radial-gradient(120% 120% at 0% 0%, rgba(var(--v-theme-primary), 0.12), transparent 52%),
+    linear-gradient(180deg, rgba(var(--v-theme-on-surface), 0.03), rgba(var(--v-theme-on-surface), 0.012)),
+    rgba(var(--v-theme-surface), 0.98);
+}
+
+.bracket-battle-panel {
+  width: min(1180px, 100%);
+  margin: 0 auto;
+  padding: 14px;
+}
+
+.bracket-battle-header,
+.bracket-battle-section-head,
+.bracket-battle-builder-hero,
+.bracket-battle-showcase,
+.bracket-battle-showcase-actions,
+.bracket-battle-prize-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.bracket-battle-section-head--stacked {
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.bracket-battle-header-actions,
+.bracket-battle-builder-hero-actions,
+.bracket-battle-showcase-badges,
+.bracket-battle-setup-meta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.bracket-battle-kicker {
+  color: rgb(var(--v-theme-primary));
+  font-weight: 800;
+}
+
+.bracket-battle-title,
+.bracket-battle-section-head h3,
+.bracket-battle-awards h3 {
+  margin: 0;
+  letter-spacing: 0;
+}
+
+.bracket-battle-title {
+  font-size: clamp(1.45rem, 2vw, 2.2rem);
+  line-height: 1.08;
+}
+
+.bracket-battle-setup,
+.bracket-battle-live,
+.bracket-battle-awards,
+.bracket-battle-prize-list,
+.bracket-battle-match-list,
+.bracket-battle-round,
+.bracket-battle-builder {
+  display: grid;
+  gap: 16px;
+}
+
+.bracket-battle-setup,
+.bracket-battle-live,
+.bracket-battle-builder {
+  margin-top: 16px;
+}
+
+.bracket-battle-builder {
+  gap: 12px;
+}
+
+.bracket-battle-setup-hero,
+.bracket-battle-setup-preview,
+.bracket-battle-last-rolls,
+.bracket-battle-builder-card,
+.bracket-battle-prize-row {
+  border: 1px solid var(--bracket-panel-border);
+  border-radius: 8px;
+  background: var(--bracket-card-bg);
+  box-shadow: 0 16px 34px rgba(var(--v-theme-on-surface), 0.12);
+}
+
+.bracket-battle-setup-hero,
+.bracket-battle-showcase,
+.bracket-battle-setup-preview,
+.bracket-battle-builder-card,
+.bracket-battle-prize-row,
+.bracket-battle-last-rolls {
+  padding: 16px;
+}
+
+.bracket-battle-setup-body {
+  margin: 8px 0 0;
+  max-width: 56ch;
+  color: rgba(var(--v-theme-on-surface), 0.76);
+}
+
+.bracket-battle-meta-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--bracket-soft-row-border);
+  border-radius: 999px;
+  background: rgba(var(--v-theme-on-surface), 0.05);
+  color: rgba(var(--v-theme-on-surface), 0.86);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.bracket-battle-meta-pill--accent {
+  border-color: rgba(var(--v-theme-primary), 0.28);
+  background: rgba(var(--v-theme-primary), 0.12);
+  color: rgb(var(--v-theme-primary));
+}
+
+.bracket-battle-setup-roster {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+}
+
+.bracket-battle-setup-roster-slot {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-height: 60px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--bracket-soft-row-bg);
+}
+
+.bracket-battle-setup-roster-index,
+.bracket-battle-prize-index {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: rgba(var(--v-theme-primary), 0.12);
+  color: rgb(var(--v-theme-primary));
+  font-weight: 800;
+}
+
+.bracket-battle-setup-roster-name {
+  font-weight: 700;
+}
+
+.bracket-battle-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.bracket-battle-showcase {
+  align-items: stretch;
+  padding: 18px;
+  border: 1px solid rgba(var(--v-theme-primary), 0.26);
+  border-radius: 8px;
+  background: var(--bracket-hero-bg);
+  box-shadow: 0 22px 48px rgba(var(--v-theme-on-surface), 0.18);
+}
+
+.bracket-battle-showcase--rolling {
+  border-color: rgba(var(--v-theme-primary), 0.44);
+  box-shadow:
+    0 22px 48px rgba(var(--v-theme-on-surface), 0.18),
+    0 0 0 1px rgba(var(--v-theme-primary), 0.16),
+    0 0 28px rgba(var(--v-theme-primary), 0.14);
+}
+
+.bracket-battle-showcase-copy {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.bracket-battle-duel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 14px;
+  align-items: stretch;
+}
+
+.bracket-battle-duelist {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--bracket-soft-row-border);
+  border-radius: 8px;
+  background: rgba(var(--v-theme-surface), 0.9);
+  min-width: 0;
+}
+
+.bracket-battle-duelist--active {
+  border-color: rgba(var(--v-theme-primary), 0.22);
+}
+
+.bracket-battle-duelist--winner {
+  border-color: rgba(var(--v-theme-success), 0.28);
+  background: rgba(var(--v-theme-success), 0.1);
+}
+
+.bracket-battle-duelist--eliminated {
+  opacity: 0.76;
+}
+
+.bracket-battle-duelist-name,
+.bracket-battle-finale-name {
+  font-size: clamp(1.2rem, 2vw, 1.8rem);
+  font-weight: 800;
+  line-height: 1.05;
+  word-break: break-word;
+}
+
+.bracket-battle-duel-roll {
+  display: grid;
+  place-items: center;
+  min-height: 104px;
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(var(--v-theme-primary), 0.08), rgba(var(--v-theme-on-surface), 0.02)),
+    rgba(var(--v-theme-surface), 0.98);
+  color: rgb(var(--v-theme-on-surface));
+  font-size: clamp(2rem, 4vw, 3.6rem);
+  font-weight: 900;
+  line-height: 1;
+  box-shadow: inset 0 0 0 1px rgba(var(--v-theme-primary), 0.08);
+}
+
+.bracket-battle-showcase--rolling .bracket-battle-duel-roll {
+  animation: bracket-battle-roll-pulse 0.6s ease-in-out infinite;
+}
+
+.bracket-battle-duel-center {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 8px;
+  min-width: 132px;
+  text-align: center;
+}
+
+.bracket-battle-duel-versus {
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgb(var(--v-theme-primary));
+}
+
+.bracket-battle-duel-prize {
+  max-width: 18ch;
+  font-weight: 800;
+  text-wrap: balance;
+}
+
+.bracket-battle-duel-caption,
+.bracket-battle-finale-kicker,
+.bracket-battle-finale-award,
+.bracket-battle-match-rolls {
+  color: rgba(var(--v-theme-on-surface), 0.74);
+}
+
+.bracket-battle-showcase-actions {
+  flex: 0 0 220px;
+  align-items: flex-end;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.bracket-battle-showcase-action-copy {
+  display: grid;
+  gap: 2px;
+  justify-items: flex-end;
+  text-align: right;
+}
+
+.bracket-battle-roll-action {
+  min-width: 180px;
+}
+
+.bracket-battle-finale {
+  display: grid;
+  gap: 8px;
+  align-content: center;
+  min-height: 164px;
+}
+
+.bracket-battle-finale-kicker {
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.bracket-battle-last-roll-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.bracket-battle-last-roll-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 38px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(var(--v-theme-on-surface), 0.05);
+  border: 1px solid var(--bracket-soft-row-border);
+}
+
+.bracket-battle-rounds {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+
+.bracket-battle-round-title {
+  font-weight: 800;
+}
+
+.bracket-battle-match {
+  display: grid;
+  gap: 10px;
+  min-height: 148px;
+  padding: 14px;
+  border: 1px solid var(--bracket-panel-border);
+  border-radius: 8px;
+  background: var(--bracket-card-bg);
+}
+
+.bracket-battle-match--active {
+  border-color: rgba(var(--v-theme-primary), 0.34);
+  box-shadow: 0 0 0 1px rgba(var(--v-theme-primary), 0.12);
+}
+
+.bracket-battle-match--complete {
+  border-color: rgba(var(--v-theme-success), 0.28);
+}
+
+.bracket-battle-match-meta,
+.bracket-battle-award-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.bracket-battle-match-buyers {
+  display: grid;
+  gap: 8px;
+}
+
+.bracket-battle-match-buyers span {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--bracket-soft-row-bg);
+  font-weight: 700;
+}
+
+.bracket-battle-winner {
+  color: rgb(var(--v-theme-success));
+  background: rgba(var(--v-theme-success), 0.12) !important;
+}
+
+.bracket-battle-award-row {
+  justify-content: flex-start;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--bracket-soft-row-bg);
+}
+
+.bracket-battle-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.bracket-battle-grid--buyers {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.bracket-battle-builder-hero {
+  align-items: flex-start;
+}
+
+.bracket-battle-count-toggle {
+  background: rgba(var(--v-theme-on-surface), 0.05);
+  border-radius: 8px;
+}
+
+.bracket-battle-builder .bracket-battle-grid--buyers {
+  grid-template-columns: 1fr;
+}
+
+.bracket-battle-builder-card,
+.bracket-battle-prize-row {
+  gap: 12px;
+  overflow: hidden;
+  background: var(--bracket-card-bg);
+  box-shadow: none;
+}
+
+.bracket-battle-prize-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.bracket-battle-prize-title {
+  font-weight: 800;
+}
+
+.bracket-battle-prize-subtitle {
+  color: rgba(var(--v-theme-on-surface), 0.72);
+  font-size: 0.84rem;
+  word-break: break-word;
+}
+
+.bracket-battle-prize-controls {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  align-items: center;
+}
+
+.bracket-battle-source-toggle {
+  width: 100%;
+}
+
+.bracket-battle-builder .v-input,
+.bracket-battle-builder .v-field,
+.bracket-battle-prize-controls > * {
+  min-width: 0;
+}
+
+.bracket-battle-source-toggle .v-btn {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.bracket-battle-builder-hero-actions {
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.bracket-battle-builder-hero-actions .bracket-battle-meta-pill {
+  margin-left: auto;
+}
+
+.bracket-battle-prize-header {
+  align-items: flex-start;
+}
+
+.bracket-battle-builder .bracket-battle-section-head--prizes {
+  align-items: baseline;
+}
+
+@keyframes bracket-battle-roll-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: inset 0 0 0 1px rgba(var(--v-theme-primary), 0.08);
+  }
+
+  50% {
+    transform: scale(1.04);
+    box-shadow:
+      inset 0 0 0 1px rgba(var(--v-theme-primary), 0.18),
+      0 0 18px rgba(var(--v-theme-primary), 0.16);
+  }
+}
+
+@media (max-width: 960px) {
+  .bracket-battle-showcase {
+    flex-direction: column;
+  }
+
+  .bracket-battle-showcase-actions {
+    flex: 1 1 auto;
+    width: 100%;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .bracket-battle-showcase-action-copy {
+    justify-items: flex-start;
+    text-align: left;
+  }
+
+  .bracket-battle-roll-action {
+    width: 100%;
+  }
+
+  .bracket-battle-duel {
+    grid-template-columns: 1fr;
+  }
+
+  .bracket-battle-duel-center {
+    grid-auto-flow: column;
+    grid-template-columns: repeat(3, auto);
+    justify-content: space-between;
+    min-width: 0;
+  }
+
+}
+
+@media (max-width: 760px) {
+  .bracket-battle-panel {
+    padding: 8px 0;
+  }
+
+  .bracket-battle-header,
+  .bracket-battle-builder-hero {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .bracket-battle-header-actions .v-btn,
+  .bracket-battle-builder-hero-actions,
+  .bracket-battle-builder-hero-actions .v-btn-toggle {
+    width: 100%;
+  }
+
+  .bracket-battle-builder-hero-actions .bracket-battle-meta-pill {
+    margin-left: 0;
+  }
+
+  .bracket-battle-showcase,
+  .bracket-battle-setup-hero,
+  .bracket-battle-setup-preview,
+  .bracket-battle-builder-card,
+  .bracket-battle-prize-row,
+  .bracket-battle-last-rolls {
+    padding: 14px;
+  }
+
+  .bracket-battle-setup-roster {
+    grid-template-columns: 1fr;
+  }
+
+  .bracket-battle-last-roll-list {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .bracket-battle-last-roll-chip {
+    justify-content: space-between;
+  }
+
+  .bracket-battle-rounds {
+    grid-template-columns: 1fr;
+  }
+}

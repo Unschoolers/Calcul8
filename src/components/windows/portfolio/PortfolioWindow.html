@@ -19,6 +19,7 @@
                         v-model:menu="portfolioLotFilterMenuOpen"
                         v-model:search="portfolioLotFilterSearchQuery"
                         :items="portfolioVisibleLotFilterItems()"
+                        :menu-props="{ contentClass: 'portfolio-lot-filter-menu', zIndex: 4200 }"
                         item-title="title"
                         item-value="value"
                         :label="portfolioCopy('portfolioLotFilterTitle', 'Filter lots')"
@@ -35,6 +36,7 @@
                         no-filter
                         hide-details="auto"
                         class="portfolio-filter-select"
+                        @update:menu="handlePortfolioLotFilterMenuUpdate"
                         @keydown.enter.prevent="closePortfolioLotFilterOnEnter"
                       >
                         <template #selection="{ index }">
@@ -62,11 +64,11 @@
 
                         <template #item="{ props, item }">
                           <div>
-                            <div v-if="item.raw.groupLabel" class="lot-selector-group-label">
+                            <div v-if="resolvePortfolioLotFilterItem(item).groupLabel" class="lot-selector-group-label">
                               <v-icon size="14" class="mr-1">
-                                {{ item.raw.lotType === 'singles' ? 'mdi-cards-outline' : 'mdi-cube-outline' }}
+                                {{ resolvePortfolioLotFilterItem(item).lotType === 'singles' ? 'mdi-cards-outline' : 'mdi-cube-outline' }}
                               </v-icon>
-                              {{ item.raw.groupLabel }}
+                              {{ resolvePortfolioLotFilterItem(item).groupLabel }}
                             </div>
                             <v-list-item
                               v-bind="props"
@@ -76,27 +78,27 @@
                               <template #prepend>
                                 <span class="portfolio-filter-item-icon-stack mr-2">
                                   <v-icon size="18">
-                                    {{ item.raw.symbolIcon }}
+                                    {{ resolvePortfolioLotFilterItem(item).symbolIcon }}
                                   </v-icon>
                                   <v-icon
-                                    v-if="item.raw.completionIcon"
+                                    v-if="resolvePortfolioLotFilterItem(item).completionIcon"
                                     size="12"
                                     color="success"
                                     class="portfolio-filter-item-icon-stack__badge"
                                   >
-                                    {{ item.raw.completionIcon }}
+                                    {{ resolvePortfolioLotFilterItem(item).completionIcon }}
                                   </v-icon>
                                 </span>
                               </template>
                               <v-list-item-title class="text-body-2 font-weight-medium">
-                                {{ item.raw.title }}
+                                {{ resolvePortfolioLotFilterItem(item).title }}
                               </v-list-item-title>
                               <v-list-item-subtitle class="text-caption">
-                                {{ item.raw.subtitle }}
+                                {{ resolvePortfolioLotFilterItem(item).subtitle }}
                               </v-list-item-subtitle>
                               <template #append>
                                 <v-icon
-                                  v-if="portfolioLotFilterItemSelected(item.raw.value)"
+                                  v-if="portfolioLotFilterItemSelected(resolvePortfolioLotFilterItem(item).value)"
                                   size="14"
                                   color="secondary"
                                   class="portfolio-filter-item-check"

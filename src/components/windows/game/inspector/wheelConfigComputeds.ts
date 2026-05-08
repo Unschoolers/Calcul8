@@ -73,7 +73,9 @@ export const wheelConfigComputeds = {
 
   canApplyWheelConfig(this: Record<string, unknown>): boolean {
     const config = (this as Record<string, unknown>).editingWheelConfig as WheelConfig | null;
-    if (!config || !config.tiers.length) return false;
+    if (!config) return false;
+    if (config.gameType === "bracket") return true;
+    if (!config.tiers.length) return false;
     const activeTiers = config.tiers.filter((tier) => getTierChancePercent(tier) > 0);
     return activeTiers.length > 0 && activeTiers.every((tier) => getWheelTierSourceLotIds(tier).length > 0);
   },

@@ -5,6 +5,7 @@ import {
     stopWorkspaceConfigSyncPush
 } from "../../../../app-core/methods/ui/workspace/workspace-config-sync.ts";
 import { normalizeWheelConfig } from "../../../../app-core/shared/normalize-wheel-config.ts";
+import { createDefaultBracketBattleConfig } from "../../../../app-core/shared/bracket-battle-config.ts";
 import { assignWheelPendingInventoryIssues } from "../../../../app-core/shared/wheel-session-compat.ts";
 import {
     getScopedActiveWheelConfigStorageKey,
@@ -136,11 +137,23 @@ function createGameConfigFromTemplate(
   newConfig.gameType = gameType;
   newConfig.name = existing
     ? `${existing.name} (copy)`
-    : (gameType === "grid" ? "New Mystery Grid" : "New Wheel");
+    : (gameType === "bracket" ? "New Bracket Battle" : (gameType === "grid" ? "New Mystery Grid" : "New Wheel"));
   newConfig.createdAt = new Date().toISOString();
   if (gameType === "grid") {
     newConfig.outcomeCount = newConfig.outcomeCount || 100;
     newConfig.gridCellCount = newConfig.outcomeCount;
+    delete newConfig.bracketBattle;
+  } else if (gameType === "bracket") {
+    newConfig.spinPrice = 0;
+    newConfig.targetMargin = 0;
+    newConfig.outcomeCount = 0;
+    newConfig.gridCellCount = 0;
+    newConfig.tiers = [];
+    newConfig.bracketBattle = existing?.bracketBattle
+      ? JSON.parse(JSON.stringify(existing.bracketBattle)) as WheelConfig["bracketBattle"]
+      : createDefaultBracketBattleConfig(4);
+  } else {
+    delete newConfig.bracketBattle;
   }
   for (const tier of newConfig.tiers) {
     tier.id = generateTierId();
@@ -261,6 +274,13 @@ export const wheelConfigMethods = {
     (this as Record<string, unknown>).appliedWheelConfigSnapshot =
       JSON.parse(JSON.stringify(sanitizedConfig)) as WheelConfig;
     const loadController = getWheelController(this as Record<string, unknown>);
+    if (sanitizedConfig.gameType === "bracket") {
+      resetLoadedWheelState(this as Record<string, unknown>);
+      nextTick(() => (this as Record<string, unknown> & { drawWheel: (offset?: number) => void }).drawWheel(
+        (this as Record<string, unknown>).wheelCurrentAngle as number || 0
+      ));
+      return;
+    }
     if (sanitizedConfig.gameType === "grid") {
       loadController.gridLayoutSeed = createWheelGridLayoutSeed();
       loadController.previewGridLayoutSeed = loadController.gridLayoutSeed;
@@ -321,6 +341,26 @@ export const wheelConfigMethods = {
         configs.push(sanitizedUpdated);
       }
       const applyController = getWheelController(this as Record<string, unknown>);
+      if (sanitizedUpdated.gameType === "bracket") {
+        (this as Record<string, unknown>)._wheelSkipConfigReload = true;
+        this.wheelConfigs = [...configs];
+        try {
+          localStorage.removeItem(getWheelDraftStorageKey(this, updated.id));
+        } catch { /* ignore */ }
+        this.activeWheelConfigId = sanitizedUpdated.id;
+        (this as Record<string, unknown> & { persistLastWheelConfigSelection?: () => void }).persistLastWheelConfigSelection?.();
+        (this as Record<string, unknown>).editingWheelConfig = JSON.parse(JSON.stringify(sanitizedUpdated)) as WheelConfig;
+        (this as Record<string, unknown>).appliedWheelConfigSnapshot = JSON.parse(JSON.stringify(sanitizedUpdated)) as WheelConfig;
+        resetLoadedWheelState(this as Record<string, unknown>);
+        queueCloudConfigSyncPush(this as Parameters<typeof queueCloudConfigSyncPush>[0]);
+        const showWheelConfigSaved = (this as Record<string, unknown> & {
+          showWheelConfigSaved?: () => void;
+        }).showWheelConfigSaved;
+        if (typeof showWheelConfigSaved === "function") {
+          showWheelConfigSaved();
+        }
+        return;
+      }
       const oldSlots = ((applyController.activeSlots || []) as WheelSlot[]);
       const oldCounts = ((this.wheelSpinCounts || []) as number[]);
       const oldTierIds = oldSlots.map((slot) => slot.tier);

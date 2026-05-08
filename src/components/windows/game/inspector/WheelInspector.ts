@@ -6,6 +6,7 @@ import { getWheelTierSourceLotIds, isWheelTierMultiLot } from "../../../../app-c
 import WheelHistoryPanel from "./WheelHistoryPanel.vue";
 import WheelTierCard from "./WheelTierCard.vue";
 import WheelSessionPanel from "./WheelSessionPanel.vue";
+import BracketBattleBuilder from "../bracket/BracketBattleBuilder.vue";
 import type { Lot, WheelConfig, WheelTier } from "../../../../types/app.ts";
 import {
   getAvailableSinglesQuantityForWheelTier,
@@ -25,6 +26,7 @@ type WheelBuilderTierGroup = {
 export const WheelInspector = {
   name: "WheelInspector",
   components: {
+    BracketBattleBuilder,
     WheelHistoryPanel,
     WheelTierCard,
     WheelSessionPanel

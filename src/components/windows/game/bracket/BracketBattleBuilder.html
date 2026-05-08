@@ -1,0 +1,108 @@
+<div class="bracket-battle-builder">
+  <div class="bracket-battle-builder-hero">
+    <div>
+      <div class="bracket-battle-section-head bracket-battle-section-head--stacked">
+        <h3>{{ t('bracketBattleSetupTitle') }}</h3>
+        <span class="text-caption">{{ t('bracketBattleBuilderBody') }}</span>
+      </div>
+    </div>
+    <div class="bracket-battle-builder-hero-actions">
+      <v-btn-toggle
+        :model-value="bracketConfig.participantCount"
+        mandatory
+        density="compact"
+        divided
+        class="bracket-battle-count-toggle"
+        @update:model-value="onBracketParticipantCountChange"
+      >
+        <v-btn :value="4" size="small">4</v-btn>
+        <v-btn :value="8" size="small">8</v-btn>
+      </v-btn-toggle>
+      <div class="bracket-battle-meta-pill bracket-battle-meta-pill--accent">
+        {{ t('bracketBattlePrizesMeta', { count: bracketConfig.prizes.length }) }}
+      </div>
+    </div>
+  </div>
+
+  <div class="bracket-battle-builder-card">
+    <div class="bracket-battle-grid bracket-battle-grid--buyers">
+      <v-text-field
+        v-for="(_buyer, index) in bracketConfig.participants"
+        :key="index"
+        v-model="bracketConfig.participants[index]"
+        :label="t('bracketBattleBuyerLabel', { number: index + 1 })"
+        variant="outlined"
+        density="compact"
+        hide-details="auto"
+      ></v-text-field>
+    </div>
+  </div>
+
+  <div class="bracket-battle-section-head bracket-battle-section-head--prizes">
+    <h3>{{ t('bracketBattlePrizesTitle') }}</h3>
+    <span class="text-caption">{{ t('bracketBattlePrizesMeta', { count: bracketConfig.prizes.length }) }}</span>
+  </div>
+
+  <div class="bracket-battle-prize-list">
+    <article v-for="(prize, index) in bracketConfig.prizes" :key="prize.id" class="bracket-battle-prize-row">
+      <div class="bracket-battle-prize-header">
+        <div class="bracket-battle-prize-index">{{ index + 1 }}</div>
+        <div class="bracket-battle-prize-copy">
+          <div class="bracket-battle-prize-title">{{ t('bracketBattleMatchLabel', { number: index + 1 }) }}</div>
+          <div class="bracket-battle-prize-subtitle">{{ prize.label || t('bracketBattlePrizeFallbackLabel') }}</div>
+        </div>
+      </div>
+
+      <div class="bracket-battle-prize-controls">
+        <v-btn-toggle
+          :model-value="bracketSourceMode(prize)"
+          mandatory
+          density="compact"
+          divided
+          class="bracket-battle-source-toggle"
+          @update:model-value="setBracketPrizeSourceMode(prize, $event)"
+        >
+          <v-btn value="manual" size="small">{{ t('bracketBattleManualPrizeLabel') }}</v-btn>
+          <v-btn value="inventory" size="small">{{ t('bracketBattleInventoryPrizeLabel') }}</v-btn>
+        </v-btn-toggle>
+
+        <v-select
+          v-if="bracketSourceMode(prize) === 'inventory'"
+          :model-value="prize.sourceKey"
+          :items="bracketPrizeCatalog"
+          item-title="title"
+          item-value="value"
+          :label="t('bracketBattlePrizeSourceLabel')"
+          variant="outlined"
+          density="compact"
+          hide-details="auto"
+          class="bracket-battle-prize-source"
+          @update:model-value="onBracketPrizeCatalogSelection(prize, $event)"
+        >
+          <template #item="{ props, item }">
+            <v-list-item
+              v-bind="props"
+              :title="(item.raw ?? item).title"
+              :subtitle="(item.raw ?? item).subtitle"
+            >
+              <template #prepend>
+                <v-icon size="20">
+                  {{ (item.raw ?? item).sourceType === 'singles' ? 'mdi-cards-outline' : 'mdi-package-variant-closed' }}
+                </v-icon>
+              </template>
+            </v-list-item>
+          </template>
+        </v-select>
+
+        <v-text-field
+          v-model="prize.label"
+          :label="t('bracketBattlePrizeLabel')"
+          variant="outlined"
+          density="compact"
+          hide-details="auto"
+          class="bracket-battle-prize-label"
+        ></v-text-field>
+      </div>
+    </article>
+  </div>
+</div>

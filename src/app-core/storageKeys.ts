@@ -24,7 +24,8 @@ export const STORAGE_KEYS = {
   API_BASE_URL: "whatfees_api_base_url",
   WHEEL_CONFIGS: "whatfees_wheel_configs",
   ACTIVE_WHEEL_CONFIG: "whatfees_active_wheel_config",
-  WHEEL_SESSION: "whatfees_wheel_session"
+  WHEEL_SESSION: "whatfees_wheel_session",
+  BRACKET_BATTLE_SESSION: "whatfees_bracket_battle_session"
 } as const;
 
 const SALES_PREFIX = "whatfees_sales_";
@@ -122,6 +123,10 @@ export function getScopedActiveWheelConfigStorageKey(scope: AppStorageScope): st
 
 export function getScopedWheelSessionStorageKey(scope: AppStorageScope): string {
   return buildScopedStorageKey(STORAGE_KEYS.WHEEL_SESSION, scope);
+}
+
+export function getScopedBracketBattleSessionStorageKey(scope: AppStorageScope): string {
+  return buildScopedStorageKey(STORAGE_KEYS.BRACKET_BATTLE_SESSION, scope);
 }
 
 export function getScopedWheelConfigSessionStorageKey(
