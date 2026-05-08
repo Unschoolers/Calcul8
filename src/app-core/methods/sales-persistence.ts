@@ -1,7 +1,8 @@
 import type { Sale } from "../../types/app.ts";
 import type { AppContext } from "../context-app.ts";
 import { removeById, upsertById } from "../shared/collection-updaters.ts";
-import { cacheAuthoritativeSales, canUseAuthoritativeSalesLiveApi, deleteAuthoritativeSale, fetchAuthoritativeSales, SalesLiveApiError, saveAuthoritativeSale } from "./sales-live-api.ts";
+import { canUseAuthoritativeSalesLiveApi, SalesLiveApiError } from "./entity-api-shared.ts";
+import { cacheAuthoritativeSales, deleteAuthoritativeSale, fetchAuthoritativeSales, saveAuthoritativeSale } from "./lot-sales-api.ts";
 import { buildLotSalesSyncMetaFromSales, persistStoredLotSalesSyncMeta } from "./sales-freshness.ts";
 import { refreshChartsForCurrentTab } from "./sales-ui-helpers.ts";
 

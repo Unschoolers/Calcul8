@@ -31,10 +31,8 @@ import {
   hydrateAuthoritativeLotSalesWithSyncMeta,
   refreshPersonalLotSalesIfStale
 } from "./sales-freshness.ts";
-import {
-  canUseAuthoritativeSalesLiveApi,
-  fetchAuthoritativeSales
-} from "./sales-live-api.ts";
+import { canUseAuthoritativeSalesLiveApi } from "./entity-api-shared.ts";
+import { fetchAuthoritativeSales } from "./lot-sales-api.ts";
 import { markLivePricingPollingBaseline } from "./ui/sync/lot-entity-polling.ts";
 import { queueWorkspaceConfigSyncPush } from "./ui/workspace/workspace-config-sync.ts";
 type AuthoritativeLotHydrationContext = Pick<ConfigMethodSubset<"getSalesCacheEntry">, "getSalesCacheEntry"> & {

@@ -30,9 +30,9 @@ import {
 } from "./sales-draft.ts";
 import {
     cacheAuthoritativeSales,
-    canUseAuthoritativeSalesLiveApi,
     saveAuthoritativeSale
-} from "./sales-live-api.ts";
+} from "./lot-sales-api.ts";
+import { canUseAuthoritativeSalesLiveApi } from "./entity-api-shared.ts";
 import {
     deleteSaleWithPersistence,
     persistSaleLocally,

@@ -8,9 +8,9 @@ import {
 } from "../../../shared/wheel-root-session-state.ts";
 import {
   cacheAuthoritativeSales,
-  normalizeLivePricing,
   normalizeSale
-} from "../../sales-live-api.ts";
+} from "../../lot-sales-api.ts";
+import { normalizeLivePricing } from "../../lot-live-pricing-api.ts";
 import { reconcileIncomingLivePricingSnapshot } from "../sync/lot-entity-polling.ts";
 import {
   normalizeSyncGameSessionDto

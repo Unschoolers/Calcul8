@@ -20,13 +20,21 @@ const {
   reconcileIncomingLivePricingSnapshotMock: vi.fn()
 }));
 
-vi.mock("../src/app-core/methods/sales-live-api.ts", () => ({
-  canUseAuthoritativeSalesLiveApi: canUseAuthoritativeSalesLiveApiMock,
-  fetchAuthoritativeAllSales: vi.fn(),
+vi.mock("../src/app-core/methods/entity-api-shared.ts", () => ({
+  canUseAuthoritativeSalesLiveApi: canUseAuthoritativeSalesLiveApiMock
+}));
+
+vi.mock("../src/app-core/methods/workspace-realtime-api.ts", () => ({
   fetchWorkspaceRealtimeSubscribeToken: fetchWorkspaceRealtimeSubscribeTokenMock,
-  fetchWorkspacePresenceRealtimeSubscribeToken: fetchWorkspacePresenceRealtimeSubscribeTokenMock,
+  fetchWorkspacePresenceRealtimeSubscribeToken: fetchWorkspacePresenceRealtimeSubscribeTokenMock
+}));
+
+vi.mock("../src/app-core/methods/lot-sales-api.ts", () => ({
   cacheAuthoritativeSales: cacheAuthoritativeSalesMock,
-  normalizeSale: normalizeSaleMock,
+  normalizeSale: normalizeSaleMock
+}));
+
+vi.mock("../src/app-core/methods/lot-live-pricing-api.ts", () => ({
   normalizeLivePricing: normalizeLivePricingMock
 }));
 

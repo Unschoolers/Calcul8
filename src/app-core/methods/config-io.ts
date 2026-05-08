@@ -1,5 +1,6 @@
 import type { AppContext } from "../context-app.ts";
-import { canUseAuthoritativeSalesLiveApi, fetchAuthoritativeSales } from "./sales-live-api.ts";
+import { canUseAuthoritativeSalesLiveApi } from "./entity-api-shared.ts";
+import { fetchAuthoritativeSales } from "./lot-sales-api.ts";
 import { type ConfigMethodSubset } from "./config-shared.ts";
 import {
   fetchWithRetry,

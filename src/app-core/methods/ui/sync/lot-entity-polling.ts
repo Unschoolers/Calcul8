@@ -1,5 +1,5 @@
 import type { AppContext } from "../../../context-app.ts";
-import { type LotLivePricingRecord } from "../../sales-live-api.ts";
+import { type LotLivePricingRecord } from "../../lot-live-pricing-api.ts";
 
 type LotEntityPollingApp = Pick<
   AppContext,

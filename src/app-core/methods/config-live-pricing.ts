@@ -1,10 +1,6 @@
 import type { AppContext } from "../context-app.ts";
-import {
-  canUseAuthoritativeSalesLiveApi,
-  fetchAuthoritativeLivePricing,
-  SalesLiveApiError,
-  saveAuthoritativeLivePricing
-} from "./sales-live-api.ts";
+import { canUseAuthoritativeSalesLiveApi, SalesLiveApiError } from "./entity-api-shared.ts";
+import { fetchAuthoritativeLivePricing, saveAuthoritativeLivePricing } from "./lot-live-pricing-api.ts";
 import { markLivePricingPollingBaseline } from "./ui/sync/lot-entity-polling.ts";
 
 type QueuedLivePricingSnapshot = {

@@ -1,7 +1,7 @@
 import {
   fetchWorkspacePresenceRealtimeSubscribeToken,
   fetchWorkspaceRealtimeSubscribeToken
-} from "../../sales-live-api.ts";
+} from "../../workspace-realtime-api.ts";
 import { applyRealtimeMessage } from "./workspace-realtime-events.ts";
 import {
   clearReconnectTimeout,

@@ -5,7 +5,7 @@ import { getActiveStorageScope } from "../workspace-scope.ts";
 import {
   fetchAuthoritativeLotSalesSyncMeta,
   fetchAuthoritativeSales
-} from "./sales-live-api.ts";
+} from "./lot-sales-api.ts";
 
 type SalesFreshnessContext = Pick<
   AppContext,

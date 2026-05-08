@@ -1,6 +1,6 @@
 import type { WheelSpectatorSnapshot } from "../../../../types/app.ts";
 import type { AppContext } from "../../../context-app.ts";
-import type { WorkspaceRealtimeSubscribeToken } from "../../sales-live-api.ts";
+import type { WorkspaceRealtimeSubscribeToken } from "../../workspace-realtime-api.ts";
 import { fetchAuthenticatedApiResponse } from "../common/shared.ts";
 import { normalizeWheelSpectatorSnapshot } from "./wheel-spectator-contract.ts";
 

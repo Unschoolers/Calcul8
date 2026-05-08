@@ -18,7 +18,7 @@ const {
   saveAuthoritativeLivePricingMock: vi.fn()
 }));
 
-vi.mock("../src/app-core/methods/sales-live-api.ts", () => {
+vi.mock("../src/app-core/methods/entity-api-shared.ts", () => {
   class SalesLiveApiError extends Error {
     status: number;
 
@@ -30,14 +30,20 @@ vi.mock("../src/app-core/methods/sales-live-api.ts", () => {
 
   return {
     SalesLiveApiError,
-    canUseAuthoritativeSalesLiveApi: canUseAuthoritativeSalesLiveApiMock,
-    fetchAuthoritativeAllSales: fetchAuthoritativeAllSalesMock,
-    fetchAuthoritativeLotSalesSyncMeta: fetchAuthoritativeLotSalesSyncMetaMock,
-    fetchAuthoritativeSales: fetchAuthoritativeSalesMock,
-    fetchAuthoritativeLivePricing: fetchAuthoritativeLivePricingMock,
-    saveAuthoritativeLivePricing: saveAuthoritativeLivePricingMock
+    canUseAuthoritativeSalesLiveApi: canUseAuthoritativeSalesLiveApiMock
   };
 });
+
+vi.mock("../src/app-core/methods/lot-sales-api.ts", () => ({
+    fetchAuthoritativeAllSales: fetchAuthoritativeAllSalesMock,
+    fetchAuthoritativeLotSalesSyncMeta: fetchAuthoritativeLotSalesSyncMetaMock,
+    fetchAuthoritativeSales: fetchAuthoritativeSalesMock
+}));
+
+vi.mock("../src/app-core/methods/lot-live-pricing-api.ts", () => ({
+    fetchAuthoritativeLivePricing: fetchAuthoritativeLivePricingMock,
+    saveAuthoritativeLivePricing: saveAuthoritativeLivePricingMock
+}));
 
 import { configLotMethods } from "../src/app-core/methods/config-lots.ts";
 

@@ -26,8 +26,11 @@ vi.mock("../src/app-core/methods/ui/common/shared.ts", () => ({
   resolveApiBaseUrl: resolveApiBaseUrlMock
 }));
 
-vi.mock("../src/app-core/methods/sales-live-api.ts", () => ({
-  canUseAuthoritativeSalesLiveApi: canUseAuthoritativeSalesLiveApiMock,
+vi.mock("../src/app-core/methods/entity-api-shared.ts", () => ({
+  canUseAuthoritativeSalesLiveApi: canUseAuthoritativeSalesLiveApiMock
+}));
+
+vi.mock("../src/app-core/methods/lot-sales-api.ts", () => ({
   fetchAuthoritativeAllSales: fetchAuthoritativeAllSalesMock,
   fetchAuthoritativeSales: fetchAuthoritativeSalesMock
 }));

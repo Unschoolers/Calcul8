@@ -7,7 +7,7 @@ import type { WorkspaceRealtimeStatus } from "../../../../types/app.ts";
 import type { AppContext } from "../../../context-app.ts";
 import type { RootWheelSessionStateContext } from "../../../shared/wheel-root-session-state.ts";
 import { resolveWorkspaceScopeContext, type WorkspaceScopeContext } from "../../../workspace-scope.ts";
-import { canUseAuthoritativeSalesLiveApi } from "../../sales-live-api.ts";
+import { canUseAuthoritativeSalesLiveApi } from "../../entity-api-shared.ts";
 
 export type RealtimeApp = Pick<
   AppContext,

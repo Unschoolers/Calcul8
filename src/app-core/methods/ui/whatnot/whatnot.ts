@@ -2,7 +2,8 @@ import type { AppContext, AppMethodState } from "../../../context-app.ts";
 import type { WhatnotConnectionSummary, WhatnotCsvPreparedRowInput } from "../../../../types/app.ts";
 import { translateAppMessage } from "../../../i18n/index.ts";
 import { normalizeWhatnotReviewRows } from "../../../shared/whatnot-csv.ts";
-import { cacheAuthoritativeSales, canUseAuthoritativeSalesLiveApi, fetchAuthoritativeSales } from "../../sales-live-api.ts";
+import { canUseAuthoritativeSalesLiveApi } from "../../entity-api-shared.ts";
+import { cacheAuthoritativeSales, fetchAuthoritativeSales } from "../../lot-sales-api.ts";
 import { fetchAuthenticatedApiResponse, handleExpiredAuth, resolveApiBaseUrl } from "../common/shared.ts";
 
 type WhatnotApp = Pick<

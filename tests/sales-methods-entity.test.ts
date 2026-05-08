@@ -33,7 +33,7 @@ vi.mock("../src/app-core/methods/config-shared.ts", async () => {
   };
 });
 
-vi.mock("../src/app-core/methods/sales-live-api.ts", () => {
+vi.mock("../src/app-core/methods/entity-api-shared.ts", () => {
   class SalesLiveApiError extends Error {
     status: number;
 
@@ -45,17 +45,20 @@ vi.mock("../src/app-core/methods/sales-live-api.ts", () => {
 
   return {
     SalesLiveApiError,
-    canUseAuthoritativeSalesLiveApi: canUseAuthoritativeSalesLiveApiMock,
+    canUseAuthoritativeSalesLiveApi: canUseAuthoritativeSalesLiveApiMock
+  };
+});
+
+vi.mock("../src/app-core/methods/lot-sales-api.ts", () => ({
     saveAuthoritativeSale: saveAuthoritativeSaleMock,
     deleteAuthoritativeSale: deleteAuthoritativeSaleMock,
     fetchAuthoritativeAllSales: fetchAuthoritativeAllSalesMock,
     fetchAuthoritativeSales: fetchAuthoritativeSalesMock,
     cacheAuthoritativeSales: cacheAuthoritativeSalesMock
-  };
-});
+}));
 
 import { salesMethods } from "../src/app-core/methods/sales.ts";
-import { SalesLiveApiError } from "../src/app-core/methods/sales-live-api.ts";
+import { SalesLiveApiError } from "../src/app-core/methods/entity-api-shared.ts";
 
 class MockHtmlCanvasElement {
   getContext = vi.fn(() => ({ id: "ctx" }));
@@ -527,4 +530,3 @@ test("initPortfolioChart hydrates missing authoritative sales for selected non-c
   assert.equal((ctx.initPortfolioChart as ReturnType<typeof vi.fn>).mock.calls.length, 1);
   vi.useRealTimers();
 });
-
