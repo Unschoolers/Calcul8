@@ -22,6 +22,9 @@ import {
   isMysteryGridConfig,
   mysteryGridMethods
 } from "../commands/mysteryGridMethods.ts";
+import {
+  type GameStageOverlayCommand
+} from "../overlay/gameStageOverlayTypes.ts";
 
 function getWheelCanvasTargetSize(panel: HTMLElement | null, presentationMode: boolean): number {
   return resolveWheelCanvasTargetSize({
@@ -55,6 +58,12 @@ function getCurrentViewportWidth(): number {
 const WHEEL_AUTOSPIN_DELAY_MS = 650;
 const WHEEL_CANVAS_REFRESH_RETRY_MS = 90;
 const WHEEL_CANVAS_REFRESH_MAX_RETRIES = 12;
+
+type GameWindowOverlayThis = GameWindowThis & {
+  handleGameStageOverlayMountedChange(mounted: boolean): void;
+  setGameStageOverlayCommand(command: GameStageOverlayCommand | null): void;
+  syncGameStageOverlayState(): void;
+};
 
 export const gameWindowDefinition = {
   name: "GameWindow",
@@ -106,25 +115,28 @@ export const gameWindowDefinition = {
     };
   },
   watch: {
-    currentTab(this: GameWindowThis, nextTab: string) {
+    currentTab(this: GameWindowOverlayThis, nextTab: string) {
+      this.syncGameStageOverlayState();
       if (nextTab !== "wheel") return;
       this._wheelCanvasRefreshRetryCount = 0;
       this.refreshWheelCanvas();
     },
     wheelConfigs: {
-      handler(this: GameWindowThis) {
+      handler(this: GameWindowOverlayThis) {
         if (this._wheelSkipConfigReload === true) {
           this._wheelSkipConfigReload = false;
           return;
         }
         this.loadWheelConfig();
+        this.syncGameStageOverlayState();
       },
       deep: true
     },
-    activeWheelConfigId(this: GameWindowThis) {
+    activeWheelConfigId(this: GameWindowOverlayThis) {
       this.persistLastWheelConfigSelection();
       this.loadWheelConfig();
       this.ensureWheelEditorState();
+      this.syncGameStageOverlayState();
     },
     wheelDisplaySlots: {
       handler(this: GameWindowThis) {
@@ -175,6 +187,26 @@ export const gameWindowDefinition = {
     ...wheelSessionMethods,
     ...wheelSpectatorMethods,
     ...mysteryGridMethods,
+    handleGameStageOverlayMountedChange(this: GameWindowOverlayThis, mounted: boolean): void {
+      this.gameStageOverlayMounted = mounted;
+    },
+    setGameStageOverlayCommand(this: GameWindowOverlayThis, command: GameStageOverlayCommand | null): void {
+      this.gameStageOverlayActiveCommand = command;
+      if (command?.type === "rollMatchResolve") {
+        this.gameStageOverlayLastResolvedAt = Date.now();
+      }
+    },
+    syncGameStageOverlayState(this: GameWindowOverlayThis): void {
+      const nextEnabled = this.currentTab === "wheel" && this.wheelIsBracketBattle === true;
+      this.gameStageOverlayEnabled = nextEnabled;
+      if (!nextEnabled) {
+        this.gameStageOverlayMounted = false;
+        if (this.gameStageOverlayActiveCommand) {
+          this.setGameStageOverlayCommand(null);
+        }
+        return;
+      }
+    },
     showWheelConfigSaved(this: GameWindowThis) {
       this.wheelConfigSavedSnackbar = true;
       setTimeout(() => {
@@ -487,13 +519,14 @@ export const gameWindowDefinition = {
       });
     }
   },
-  mounted(this: GameWindowThis) {
+  mounted(this: GameWindowOverlayThis) {
     const configs = (this.wheelConfigs || []) as WheelConfig[];
     if (configs.length > 0) {
       this.restoreLastWheelConfigSelection();
       this.loadWheelConfig();
       this.ensureWheelEditorState();
     }
+    this.syncGameStageOverlayState();
 
     // Resize canvas for container
     nextTick(() => {

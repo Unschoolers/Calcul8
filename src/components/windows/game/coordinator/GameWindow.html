@@ -10,10 +10,18 @@
         <div class="wheel-stage-shell" :class="{ 'wheel-stage-shell--fullscreen': wheelPresentationMode }">
             <wheel-stage-topbar :ctx="getWindowComponentContext()"></wheel-stage-topbar>
 
-            <bracket-battle-panel
-                v-if="wheelIsBracketBattle && !wheelPresentationMode"
-                :ctx="getWindowComponentContext()"
-            ></bracket-battle-panel>
+            <div v-if="wheelIsBracketBattle" class="game-stage-overlay-surface">
+                <bracket-battle-panel
+                    v-if="!wheelPresentationMode"
+                    :ctx="getWindowComponentContext()"
+                    @overlay-command="setGameStageOverlayCommand"
+                ></bracket-battle-panel>
+                <game-stage-overlay-shell
+                    :enabled="gameStageOverlayEnabled"
+                    :command="gameStageOverlayActiveCommand"
+                    @mounted-change="handleGameStageOverlayMountedChange"
+                ></game-stage-overlay-shell>
+            </div>
 
             <template v-else>
             <wheel-stage-summary :ctx="getWindowComponentContext()"></wheel-stage-summary>

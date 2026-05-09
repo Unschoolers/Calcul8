@@ -2,6 +2,7 @@ import { reactive } from "vue";
 import type { Lot, MysteryGridReveal, PendingWheelInventoryIssue, Sale, WheelConfig, WheelFairnessEntry, WorkspaceScopeType } from "../../../../types/app.ts";
 import { unwrapWindowBridgeContext } from "../../shared/contextBridge.ts";
 import type { WheelSlot } from "../services/wheelSlots.ts";
+import type { GameStageOverlayCommand } from "../overlay/gameStageOverlayTypes.ts";
 
 /**
  * Typed `this` context shared across GameWindow computed properties, watchers,
@@ -61,6 +62,10 @@ export type GameWindowThis = {
   wheelSpectatorSessionQrUrl: string;
   wheelSpectatorPublishPending: boolean;
   wheelSpectatorConnectedCount: number;
+  gameStageOverlayEnabled: boolean;
+  gameStageOverlayMounted: boolean;
+  gameStageOverlayActiveCommand: GameStageOverlayCommand | null;
+  gameStageOverlayLastResolvedAt: number;
 
   // ===== WheelControllerState alias properties =====
   activeWheelSlots: WheelSlot[];
@@ -405,7 +410,11 @@ const WHEEL_LOCAL_TOP_LEVEL_KEYS = [
   "wheelSpectatorSessionUrl",
   "wheelSpectatorSessionQrUrl",
   "wheelSpectatorPublishPending",
-  "wheelSpectatorConnectedCount"
+  "wheelSpectatorConnectedCount",
+  "gameStageOverlayEnabled",
+  "gameStageOverlayMounted",
+  "gameStageOverlayActiveCommand",
+  "gameStageOverlayLastResolvedAt"
 ] as const;
 
 export function getGameWindowLocalKeys(): string[] {
@@ -464,7 +473,11 @@ export function createGameWindowState() {
     wheelSpectatorSessionUrl: "" as string,
     wheelSpectatorSessionQrUrl: "" as string,
     wheelSpectatorPublishPending: false,
-    wheelSpectatorConnectedCount: 0
+    wheelSpectatorConnectedCount: 0,
+    gameStageOverlayEnabled: false,
+    gameStageOverlayMounted: false,
+    gameStageOverlayActiveCommand: null as GameStageOverlayCommand | null,
+    gameStageOverlayLastResolvedAt: 0
   } as Record<string, unknown>;
   for (const [legacyKey, controllerKey] of Object.entries(WHEEL_CONTROLLER_ALIAS_MAP)) {
     Object.defineProperty(state, legacyKey, {

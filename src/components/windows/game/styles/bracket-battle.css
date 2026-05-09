@@ -229,6 +229,31 @@
   word-break: break-word;
 }
 
+.bracket-battle-duelist-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bracket-battle-die-swatch {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.22);
+  box-shadow: 0 0 0 1px rgba(var(--v-theme-on-surface), 0.06);
+  flex: 0 0 auto;
+}
+
+.bracket-battle-die-swatch--dark {
+  background: #1a1817;
+  border-color: rgba(212, 175, 55, 0.5);
+}
+
+.bracket-battle-die-swatch--light {
+  background: #f1eadc;
+  border-color: rgba(var(--v-theme-on-surface), 0.22);
+}
+
 .bracket-battle-duel-roll {
   display: grid;
   place-items: center;
@@ -285,6 +310,11 @@
   justify-content: space-between;
 }
 
+.bracket-battle-showcase-actions--stacked {
+  justify-content: flex-start;
+  gap: 12px;
+}
+
 .bracket-battle-showcase-action-copy {
   display: grid;
   gap: 2px;
@@ -292,8 +322,31 @@
   text-align: right;
 }
 
+.bracket-battle-roll-stack {
+  width: min(180px, 100%);
+  display: grid;
+  gap: 10px;
+  justify-items: stretch;
+}
+
 .bracket-battle-roll-action {
-  min-width: 180px;
+  width: 100%;
+  min-width: 0;
+}
+
+.bracket-battle-action-dice-stage {
+  width: 100%;
+  min-height: 0;
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.bracket-battle-action-dice-stage--visible {
+  min-height: 112px;
+  max-height: 112px;
+  opacity: 1;
 }
 
 .bracket-battle-finale {
@@ -325,6 +378,24 @@
   border-radius: 999px;
   background: rgba(var(--v-theme-on-surface), 0.05);
   border: 1px solid var(--bracket-soft-row-border);
+}
+
+.bracket-battle-last-roll-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.22);
+  flex: 0 0 auto;
+}
+
+.bracket-battle-last-roll-swatch--dark {
+  background: #1a1817;
+  border-color: rgba(212, 175, 55, 0.5);
+}
+
+.bracket-battle-last-roll-swatch--light {
+  background: #f1eadc;
+  border-color: rgba(var(--v-theme-on-surface), 0.22);
 }
 
 .bracket-battle-rounds {

@@ -59,6 +59,15 @@ test("Bracket Battle renders inside the normal game chrome", () => {
   assert.ok(bracketIndex > topbarIndex);
 });
 
+test("Bracket Battle stage mounts the overlay shell inside the existing stage chrome", () => {
+  const template = readFileSync("src/components/windows/game/coordinator/GameWindow.html", "utf8");
+
+  assert.match(template, /<game-stage-overlay-shell/);
+  assert.match(template, /:enabled="gameStageOverlayEnabled"/);
+  assert.match(template, /:command="gameStageOverlayActiveCommand"/);
+  assert.match(template, /@mounted-change="handleGameStageOverlayMountedChange"/);
+});
+
 test("selecting an existing Wheel or Mystery Grid config exits Bracket Battle", () => {
   const watcher = String(GameWindow.watch?.activeWheelConfigId ?? "");
 

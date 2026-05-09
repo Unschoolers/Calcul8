@@ -97,9 +97,10 @@
             :class="`bracket-battle-duelist--${bracketParticipantMatchState(activeBracketMatch, activeBracketMatch.participantAId)}`"
           >
             <div class="bracket-battle-duelist-name">
+              <span class="bracket-battle-die-swatch bracket-battle-die-swatch--dark" aria-hidden="true"></span>
               {{ bracketParticipantLabel(activeBracketMatch.participantAId) }}
             </div>
-            <div class="bracket-battle-duel-roll">
+            <div ref="leftRollSlotEl" class="bracket-battle-duel-roll">
               {{ bracketRollDisplayValue(activeBracketMatch.participantAId) }}
             </div>
           </article>
@@ -117,9 +118,10 @@
             :class="`bracket-battle-duelist--${bracketParticipantMatchState(activeBracketMatch, activeBracketMatch.participantBId)}`"
           >
             <div class="bracket-battle-duelist-name">
+              <span class="bracket-battle-die-swatch bracket-battle-die-swatch--light" aria-hidden="true"></span>
               {{ bracketParticipantLabel(activeBracketMatch.participantBId) }}
             </div>
-            <div class="bracket-battle-duel-roll">
+            <div ref="rightRollSlotEl" class="bracket-battle-duel-roll">
               {{ bracketRollDisplayValue(activeBracketMatch.participantBId) }}
             </div>
           </article>
@@ -134,22 +136,33 @@
         </div>
       </div>
 
-      <div class="bracket-battle-showcase-actions">
+      <div
+        class="bracket-battle-showcase-actions"
+        :class="{ 'bracket-battle-showcase-actions--stacked': !activeBracketMatch }"
+      >
         <div v-if="activeBracketMatch" class="bracket-battle-showcase-action-copy">
           <span class="text-caption">{{ t('bracketBattlePrizeAwardLabel') }}</span>
           <strong>{{ bracketPrizeLabel(activeBracketMatch.prizeId) }}</strong>
         </div>
-        <v-btn
-          class="bracket-battle-roll-action"
-          color="primary"
-          variant="elevated"
-          size="large"
-          prepend-icon="mdi-dice-multiple"
-          :disabled="!activeBracketMatch || bracketRolling"
-          @click="rollActiveBracketMatch"
-        >
-          {{ t('bracketBattleRollAction') }}
-        </v-btn>
+        <div class="bracket-battle-roll-stack">
+          <v-btn
+            class="bracket-battle-roll-action"
+            color="primary"
+            variant="elevated"
+            size="large"
+            prepend-icon="mdi-dice-multiple"
+            :disabled="!queuedBracketMatch || bracketRolling"
+            @click="rollActiveBracketMatch"
+          >
+            {{ t('bracketBattleRollAction') }}
+          </v-btn>
+          <div
+            ref="actionDiceStageEl"
+            class="bracket-battle-action-dice-stage"
+            :class="{ 'bracket-battle-action-dice-stage--visible': !activeBracketMatch && bracketSession }"
+            aria-hidden="true"
+          ></div>
+        </div>
       </div>
     </div>
 
@@ -160,6 +173,10 @@
       </div>
       <div class="bracket-battle-last-roll-list">
         <div v-for="roll in bracketLastRolls" :key="roll.id" class="bracket-battle-last-roll-chip">
+          <span
+            class="bracket-battle-last-roll-swatch"
+            :class="`bracket-battle-last-roll-swatch--${bracketRollColorTone(roll)}`"
+          ></span>
           <span>{{ bracketParticipantLabel(roll.participantId) }}</span>
           <strong>{{ roll.value }}</strong>
         </div>

@@ -96,8 +96,10 @@ export type ResolveBracketBattleMatchResult = {
   award: BracketBattleAward;
 };
 
-const DEFAULT_ROLL_MIN = 1;
-const DEFAULT_ROLL_MAX = 100;
+export const BRACKET_BATTLE_DIE_MIN = 1;
+export const BRACKET_BATTLE_DIE_MAX = 6;
+const DEFAULT_ROLL_MIN = BRACKET_BATTLE_DIE_MIN;
+const DEFAULT_ROLL_MAX = BRACKET_BATTLE_DIE_MAX;
 const MAX_TIEBREAKER_PAIRS = 100;
 
 export function getBracketBattleMatchCount(participantCount: BracketBattleParticipantCount): number {
@@ -116,6 +118,24 @@ function createDefaultRandomInt(): (minInclusive: number, maxInclusive: number) 
     const max = Math.floor(maxInclusive);
     return Math.floor(Math.random() * (max - min + 1)) + min;
   };
+}
+
+export function normalizeBracketBattleRollValue(value: unknown): number {
+  const numeric = Math.round(Number(value));
+  if (!Number.isFinite(numeric)) {
+    return BRACKET_BATTLE_DIE_MIN;
+  }
+  return Math.min(BRACKET_BATTLE_DIE_MAX, Math.max(BRACKET_BATTLE_DIE_MIN, numeric));
+}
+
+export function normalizeBracketBattleSessionDice(session: BracketBattleSession): BracketBattleSession {
+  session.rollMin = BRACKET_BATTLE_DIE_MIN;
+  session.rollMax = BRACKET_BATTLE_DIE_MAX;
+  session.rolls = session.rolls.map((roll) => ({
+    ...roll,
+    value: normalizeBracketBattleRollValue(roll.value)
+  }));
+  return session;
 }
 
 function normalizeParticipantNames(participants: string[], participantCount: BracketBattleParticipantCount): string[] {
@@ -323,8 +343,8 @@ export function resolveBracketBattleMatchRoll(
   const matchRolls: BracketBattleRoll[] = [];
   let winnerParticipantId: string | null = null;
   for (let tiebreakerIndex = 0; tiebreakerIndex <= MAX_TIEBREAKER_PAIRS; tiebreakerIndex += 1) {
-    const rollA = randomInt(session.rollMin, session.rollMax);
-    const rollB = randomInt(session.rollMin, session.rollMax);
+    const rollA = normalizeBracketBattleRollValue(randomInt(BRACKET_BATTLE_DIE_MIN, BRACKET_BATTLE_DIE_MAX));
+    const rollB = normalizeBracketBattleRollValue(randomInt(BRACKET_BATTLE_DIE_MIN, BRACKET_BATTLE_DIE_MAX));
     const rollNumber = tiebreakerIndex + 1;
     matchRolls.push({
       id: `roll-${session.rolls.length + matchRolls.length + 1}`,

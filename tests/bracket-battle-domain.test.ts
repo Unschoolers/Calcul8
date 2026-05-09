@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import {
+  normalizeBracketBattleSessionDice,
   createBracketBattleSession,
   getBracketBattleMatchCount,
   resolveBracketBattleMatchRoll
@@ -17,6 +18,8 @@ test("createBracketBattleSession builds a four-player bracket with one pre-assig
   });
 
   assert.equal(getBracketBattleMatchCount(4), 3);
+  assert.equal(session.rollMin, 1);
+  assert.equal(session.rollMax, 6);
   assert.equal(session.matches.length, 3);
   assert.equal(session.prizes.length, 3);
   assert.deepEqual(session.matches.map((match) => match.prizeId), ["prize-1", "prize-2", "prize-3"]);
@@ -103,7 +106,7 @@ test("createBracketBattleSession preserves pre-assigned lot and singles prize me
 });
 
 test("resolveBracketBattleMatchRoll awards the match prize and advances the winner", () => {
-  const rolls = [88, 42];
+  const rolls = [6, 3];
   const session = createBracketBattleSession({
     participantCount: 4,
     participants: ["Alex", "Bri", "Cam", "Dev"],
@@ -114,7 +117,7 @@ test("resolveBracketBattleMatchRoll awards the match prize and advances the winn
   const result = resolveBracketBattleMatchRoll(session, "match-1", () => rolls.shift() ?? 1);
 
   assert.equal(result.winnerParticipantId, "participant-1");
-  assert.deepEqual(result.rolls.map((roll) => roll.value), [88, 42]);
+  assert.deepEqual(result.rolls.map((roll) => roll.value), [6, 3]);
   assert.deepEqual(session.awards, [{
     id: "award-1",
     matchId: "match-1",
@@ -129,7 +132,7 @@ test("resolveBracketBattleMatchRoll awards the match prize and advances the winn
 });
 
 test("resolveBracketBattleMatchRoll records tiebreaker rolls until there is a winner", () => {
-  const rolls = [50, 50, 9, 91];
+  const rolls = [4, 4, 2, 5];
   const session = createBracketBattleSession({
     participantCount: 4,
     participants: ["Alex", "Bri", "Cam", "Dev"],
@@ -140,7 +143,7 @@ test("resolveBracketBattleMatchRoll records tiebreaker rolls until there is a wi
   const result = resolveBracketBattleMatchRoll(session, "match-1", () => rolls.shift() ?? 1);
 
   assert.equal(result.winnerParticipantId, "participant-2");
-  assert.deepEqual(result.rolls.map((roll) => roll.value), [50, 50, 9, 91]);
+  assert.deepEqual(result.rolls.map((roll) => roll.value), [4, 4, 2, 5]);
   assert.deepEqual(result.rolls.map((roll) => roll.tiebreakerIndex), [0, 0, 1, 1]);
 });
 
@@ -151,7 +154,7 @@ test("resolveBracketBattleMatchRoll completes an eight-player bracket through th
     prizeLabels: ["R1A", "R1B", "R1C", "R1D", "Semi A", "Semi B", "Final"],
     randomInt: noShuffle
   });
-  const winningRolls = [100, 1, 100, 1, 100, 1, 100, 1, 100, 1, 100, 1, 100, 1];
+  const winningRolls = [6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6, 1];
 
   for (const matchId of ["match-1", "match-2", "match-3", "match-4", "match-5", "match-6", "match-7"]) {
     resolveBracketBattleMatchRoll(session, matchId, () => winningRolls.shift() ?? 1);
@@ -161,4 +164,40 @@ test("resolveBracketBattleMatchRoll completes an eight-player bracket through th
   assert.equal(session.championParticipantId, "participant-1");
   assert.equal(session.awards.length, 7);
   assert.equal(session.matches.every((match) => match.status === "complete"), true);
+});
+
+test("normalizeBracketBattleSessionDice clamps legacy sessions to d6 values", () => {
+  const session = createBracketBattleSession({
+    participantCount: 4,
+    participants: ["Alex", "Bri", "Cam", "Dev"],
+    prizeLabels: ["Pack 1", "Pack 2", "Box Final"],
+    randomInt: noShuffle
+  });
+
+  session.rollMin = 1;
+  session.rollMax = 100;
+  session.rolls = [
+    {
+      id: "roll-1",
+      matchId: "match-1",
+      participantId: "participant-1",
+      value: 42,
+      rollNumber: 1,
+      tiebreakerIndex: 0
+    },
+    {
+      id: "roll-2",
+      matchId: "match-1",
+      participantId: "participant-2",
+      value: 0,
+      rollNumber: 1,
+      tiebreakerIndex: 0
+    }
+  ];
+
+  normalizeBracketBattleSessionDice(session);
+
+  assert.equal(session.rollMin, 1);
+  assert.equal(session.rollMax, 6);
+  assert.deepEqual(session.rolls.map((roll) => roll.value), [6, 1]);
 });
