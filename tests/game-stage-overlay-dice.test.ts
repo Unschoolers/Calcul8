@@ -10,6 +10,10 @@ import {
   getDicePipLayout,
   sampleDiceRollMotion
 } from "../src/components/windows/game/overlay/gameStageOverlayDice.ts";
+import {
+  getOverlayDieFaceTextureSpec,
+} from "../src/components/windows/game/overlay/gameStageOverlayDieMaterials.ts";
+import { getOverlayRendererPixelRatio } from "../src/components/windows/game/overlay/gameStageOverlayScene.ts";
 
 test("dice pip layouts use standard d6 counts", () => {
   assert.equal(getDicePipLayout(1).length, 1);
@@ -23,14 +27,38 @@ test("dice pip layouts use standard d6 counts", () => {
 test("dice roll motion follows a bounded gravity arc", () => {
   const start = sampleDiceRollMotion(0);
   const mid = sampleDiceRollMotion(0.5);
+  const bounce = sampleDiceRollMotion(0.82);
   const end = sampleDiceRollMotion(1);
 
   assert.equal(start.height, 0);
   assert.equal(end.height, 0);
   assert.ok(mid.height > start.height);
+  assert.ok(bounce.height > 0, "settle phase should keep a small bounce");
+  assert.ok(bounce.height < mid.height, "settle bounce should be lower than the main arc");
   assert.ok(mid.rotation.x > start.rotation.x);
   assert.ok(mid.rotation.y > start.rotation.y);
   assert.ok(mid.rotation.z > start.rotation.z);
+});
+
+test("dice roll motion has a reduced-motion sample without tumbling", () => {
+  const motion = sampleDiceRollMotion(0.5, { reducedMotion: true });
+
+  assert.equal(motion.height, 0);
+  assert.equal(motion.driftX, 0);
+  assert.equal(motion.driftZ, 0);
+  assert.equal(motion.rotation.x, 0);
+  assert.equal(motion.rotation.y, 0);
+  assert.equal(motion.rotation.z, 0);
+});
+
+test("overlay dice use high-DPI face textures and renderer sizing", () => {
+  const textureSpec = getOverlayDieFaceTextureSpec();
+
+  assert.ok(textureSpec.sizePx >= 512);
+  assert.ok(textureSpec.anisotropy >= 8);
+  assert.equal(getOverlayRendererPixelRatio(1), 1);
+  assert.equal(getOverlayRendererPixelRatio(2.5), 2.5);
+  assert.equal(getOverlayRendererPixelRatio(4), 3);
 });
 
 test("overlay die visual spec keeps dice compact and pips inset", () => {

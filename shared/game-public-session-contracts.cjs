@@ -39,6 +39,7 @@ function normalizeSessionStatus(value) {
 }
 
 function normalizeGameType(value, boardCells) {
+  if (value === "bracket") return "bracket";
   return value === "grid" || boardCells.length > 0 ? "grid" : "wheel";
 }
 
@@ -143,6 +144,85 @@ function normalizeResultAnimation(value) {
   };
 }
 
+function normalizeBracketStatus(value) {
+  return value === "complete" || value === "active" ? value : "setup";
+}
+
+function normalizeBracketMatchStatus(value) {
+  return value === "active" || value === "complete" ? value : "pending";
+}
+
+function normalizeBracketMatch(value) {
+  if (!isRecord(value)) return null;
+  const id = cleanString(value.id, 120);
+  if (!id) return null;
+  return {
+    id,
+    round: cleanNonNegativeInteger(value.round),
+    position: cleanNonNegativeInteger(value.position),
+    status: normalizeBracketMatchStatus(value.status),
+    participantAId: cleanString(value.participantAId, 120) || null,
+    participantALabel: cleanString(value.participantALabel, 160),
+    participantBId: cleanString(value.participantBId, 120) || null,
+    participantBLabel: cleanString(value.participantBLabel, 160),
+    winnerParticipantId: cleanString(value.winnerParticipantId, 120) || null,
+    prizeLabel: cleanString(value.prizeLabel, 160),
+    participantAResult: value.participantAResult == null ? null : cleanNonNegativeInteger(value.participantAResult),
+    participantBResult: value.participantBResult == null ? null : cleanNonNegativeInteger(value.participantBResult)
+  };
+}
+
+function normalizeBracketRoll(value) {
+  if (!isRecord(value)) return null;
+  const id = cleanString(value.id, 120);
+  const matchId = cleanString(value.matchId, 120);
+  const participantId = cleanString(value.participantId, 120);
+  if (!id || !matchId || !participantId) return null;
+  return {
+    id,
+    matchId,
+    participantId,
+    participantLabel: cleanString(value.participantLabel, 160),
+    value: cleanNonNegativeInteger(value.value),
+    rollNumber: cleanNonNegativeInteger(value.rollNumber),
+    tiebreakerIndex: cleanNonNegativeInteger(value.tiebreakerIndex)
+  };
+}
+
+function normalizeBracketAward(value) {
+  if (!isRecord(value)) return null;
+  const id = cleanString(value.id, 120);
+  const matchId = cleanString(value.matchId, 120);
+  const participantId = cleanString(value.participantId, 120);
+  const prizeLabel = cleanString(value.prizeLabel, 160);
+  if (!id || !matchId || !participantId || !prizeLabel) return null;
+  return {
+    id,
+    matchId,
+    participantId,
+    participantLabel: cleanString(value.participantLabel, 160),
+    prizeLabel,
+    settlementStatus: value.settlementStatus === "settled" || value.settlementStatus === "error"
+      ? value.settlementStatus
+      : "pending"
+  };
+}
+
+function normalizeBracketSnapshot(value) {
+  if (!isRecord(value)) return null;
+  const activeMatch = normalizeBracketMatch(value.activeMatch);
+  return {
+    status: normalizeBracketStatus(value.status),
+    participantCount: cleanInteger(value.participantCount, 4) === 8 ? 8 : 4,
+    activeMatchId: cleanString(value.activeMatchId, 120) || null,
+    championParticipantId: cleanString(value.championParticipantId, 120) || null,
+    activeMatch,
+    matches: normalizeArray(value.matches, normalizeBracketMatch, 15),
+    recentRolls: normalizeArray(value.recentRolls, normalizeBracketRoll, 12),
+    awards: normalizeArray(value.awards, normalizeBracketAward, 15)
+  };
+}
+
 function normalizeArray(value, normalize, limit) {
   if (!Array.isArray(value)) return [];
   return value
@@ -168,10 +248,11 @@ function normalizeGamePublicSessionSnapshot(value, fallbackUpdatedAt = Date.now(
   );
   const featuredChaseLabel = cleanString(value.featuredChaseLabel, 160);
   const fairnessVerificationUrl = cleanString(value.fairnessVerificationUrl, 512);
+  const gameType = normalizeGameType(value.gameType, boardCells);
   return {
     snapshotVersion: CURRENT_GAME_PUBLIC_SESSION_SNAPSHOT_VERSION,
     gameName: cleanString(getLegacyOrCurrent(value, "gameName", "wheelName"), 120) || "Game Session",
-    gameType: normalizeGameType(value.gameType, boardCells),
+    gameType,
     sessionStatus: normalizeSessionStatus(value.sessionStatus),
     isSpinning: value.isSpinning === true,
     sessionResultCount: cleanNonNegativeInteger(getLegacyOrCurrent(value, "sessionResultCount", "totalSpins")),
@@ -193,6 +274,7 @@ function normalizeGamePublicSessionSnapshot(value, fallbackUpdatedAt = Date.now(
     featuredChaseLabel: featuredChaseLabel || null,
     featuredChaseHeat: normalizeHeatLevel(value.featuredChaseHeat),
     fairnessVerificationUrl: fairnessVerificationUrl || null,
+    bracket: gameType === "bracket" ? normalizeBracketSnapshot(value.bracket) : null,
     updatedAt: cleanNonNegativeInteger(value.updatedAt, fallbackUpdatedAt)
   };
 }

@@ -493,6 +493,107 @@ test("wheelPublicSessionPublish normalizes malformed public payloads like the sh
   assert.equal(repoInput.snapshot.updatedAt, 999);
 });
 
+test("wheelPublicSessionPublish preserves bracket public snapshots at the API boundary", async () => {
+  await wheelPublicSessionPublish(createHttpRequest({
+    method: "POST",
+    headers: {
+      authorization: "Bearer user-a"
+    },
+    body: {
+      publicSessionId: "abc123xy",
+      snapshot: {
+        gameName: "Bracket Night",
+        gameType: "bracket",
+        sessionStatus: "live",
+        isSpinning: true,
+        sessionResultCount: 1,
+        bracket: {
+          status: "active",
+          participantCount: "4",
+          activeMatchId: "match-2",
+          championParticipantId: "",
+          activeMatch: {
+            id: "match-2",
+            round: "1",
+            position: "2",
+            status: "active",
+            participantAId: "a",
+            participantALabel: " Alex ",
+            participantAResult: "5",
+            participantBId: "b",
+            participantBLabel: " Bri ",
+            participantBResult: "3",
+            winnerParticipantId: "",
+            prizeId: "prize-1",
+            prizeLabel: "Top Prize"
+          },
+          matches: [{
+            id: "match-2",
+            round: "1",
+            position: "2",
+            status: "active",
+            participantAId: "a",
+            participantALabel: " Alex ",
+            participantAResult: "5",
+            participantBId: "b",
+            participantBLabel: " Bri ",
+            participantBResult: "3",
+            winnerParticipantId: "",
+            prizeId: "prize-1",
+            prizeLabel: "Top Prize"
+          }],
+          recentRolls: [{
+            id: "roll-1",
+            matchId: "match-2",
+            participantId: "a",
+            participantLabel: "Alex",
+            value: "5",
+            rolledAt: "123"
+          }],
+          awards: [{
+            id: "award-1",
+            matchId: "match-1",
+            participantId: "winner-1",
+            participantLabel: "Winner",
+            prizeId: "prize-2",
+            prizeLabel: "Bonus",
+            awardedAt: "456"
+          }],
+        },
+        updatedAt: 1234
+      }
+    }
+  }) as never, createInvocationContext() as never);
+
+  const repoInput = updateWheelPublicSessionMock.mock.calls.at(-1)?.[1] as {
+    snapshot: {
+      gameType: string;
+      bracket: {
+        status: string;
+        participantCount: number;
+        activeMatch: { id: string; participantALabel: string; participantAResult: number } | null;
+        matches: Array<{ id: string; participantBLabel: string; participantBResult: number }>;
+        recentRolls: Array<{ value: number; rollNumber: number; tiebreakerIndex: number }>;
+        awards: Array<{ prizeLabel: string; settlementStatus: string }>;
+      } | null;
+    };
+  };
+
+  assert.equal(repoInput.snapshot.gameType, "bracket");
+  assert.equal(repoInput.snapshot.bracket?.status, "active");
+  assert.equal(repoInput.snapshot.bracket?.participantCount, 4);
+  assert.equal(repoInput.snapshot.bracket?.activeMatch?.id, "match-2");
+  assert.equal(repoInput.snapshot.bracket?.activeMatch?.participantALabel, "Alex");
+  assert.equal(repoInput.snapshot.bracket?.activeMatch?.participantAResult, 5);
+  assert.equal(repoInput.snapshot.bracket?.matches[0]?.participantBLabel, "Bri");
+  assert.equal(repoInput.snapshot.bracket?.matches[0]?.participantBResult, 3);
+  assert.equal(repoInput.snapshot.bracket?.recentRolls[0]?.value, 5);
+  assert.equal(repoInput.snapshot.bracket?.recentRolls[0]?.rollNumber, 0);
+  assert.equal(repoInput.snapshot.bracket?.recentRolls[0]?.tiebreakerIndex, 0);
+  assert.equal(repoInput.snapshot.bracket?.awards[0]?.prizeLabel, "Bonus");
+  assert.equal(repoInput.snapshot.bracket?.awards[0]?.settlementStatus, "pending");
+});
+
 test("wheelPublicSessionPublish fans out the sanitized snapshot over realtime after save", async () => {
   const response = await wheelPublicSessionPublish(createHttpRequest({
     method: "POST",

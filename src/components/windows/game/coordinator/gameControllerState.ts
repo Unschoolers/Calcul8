@@ -3,6 +3,7 @@ import type { Lot, MysteryGridReveal, PendingWheelInventoryIssue, Sale, WheelCon
 import { unwrapWindowBridgeContext } from "../../shared/contextBridge.ts";
 import type { WheelSlot } from "../services/wheelSlots.ts";
 import type { GameStageOverlayCommand } from "../overlay/gameStageOverlayTypes.ts";
+import type { BracketBattleRoll, BracketBattleSession } from "../bracket/bracketBattleDomain.ts";
 
 /**
  * Typed `this` context shared across GameWindow computed properties, watchers,
@@ -66,6 +67,10 @@ export type GameWindowThis = {
   gameStageOverlayMounted: boolean;
   gameStageOverlayActiveCommand: GameStageOverlayCommand | null;
   gameStageOverlayLastResolvedAt: number;
+  bracketBattleSession: BracketBattleSession | null;
+  bracketBattleLastRolls: BracketBattleRoll[];
+  bracketBattleRolling: boolean;
+  bracketBattleShowcaseMatchId: string | null;
 
   // ===== WheelControllerState alias properties =====
   activeWheelSlots: WheelSlot[];
@@ -414,7 +419,11 @@ const WHEEL_LOCAL_TOP_LEVEL_KEYS = [
   "gameStageOverlayEnabled",
   "gameStageOverlayMounted",
   "gameStageOverlayActiveCommand",
-  "gameStageOverlayLastResolvedAt"
+  "gameStageOverlayLastResolvedAt",
+  "bracketBattleSession",
+  "bracketBattleLastRolls",
+  "bracketBattleRolling",
+  "bracketBattleShowcaseMatchId"
 ] as const;
 
 export function getGameWindowLocalKeys(): string[] {
@@ -477,7 +486,11 @@ export function createGameWindowState() {
     gameStageOverlayEnabled: false,
     gameStageOverlayMounted: false,
     gameStageOverlayActiveCommand: null as GameStageOverlayCommand | null,
-    gameStageOverlayLastResolvedAt: 0
+    gameStageOverlayLastResolvedAt: 0,
+    bracketBattleSession: null as BracketBattleSession | null,
+    bracketBattleLastRolls: [] as BracketBattleRoll[],
+    bracketBattleRolling: false,
+    bracketBattleShowcaseMatchId: null
   } as Record<string, unknown>;
   for (const [legacyKey, controllerKey] of Object.entries(WHEEL_CONTROLLER_ALIAS_MAP)) {
     Object.defineProperty(state, legacyKey, {

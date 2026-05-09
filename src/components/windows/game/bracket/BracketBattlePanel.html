@@ -183,28 +183,44 @@
       </div>
     </div>
 
-    <div class="bracket-battle-rounds">
-      <div v-for="round in bracketRoundGroups" :key="round.round" class="bracket-battle-round">
+    <div class="bracket-battle-tree">
+      <div
+        v-for="(round, roundIndex) in bracketRoundGroups"
+        :key="round.round"
+        class="bracket-battle-tree-round"
+        :class="{ 'bracket-battle-tree-round--final': roundIndex === bracketRoundGroups.length - 1 }"
+      >
         <div class="bracket-battle-round-title">{{ t('bracketBattleRoundLabel', { number: round.round }) }}</div>
-        <div class="bracket-battle-match-list">
+        <div class="bracket-battle-tree-list">
           <article
             v-for="match in round.matches"
             :key="match.id"
-            class="bracket-battle-match"
+            class="bracket-battle-match-node"
             :class="{
-              'bracket-battle-match--active': match.status === 'active',
-              'bracket-battle-match--complete': match.status === 'complete'
+              'bracket-battle-match-node--active': match.status === 'active',
+              'bracket-battle-match-node--complete': match.status === 'complete'
             }"
           >
+            <div
+              v-if="roundIndex !== bracketRoundGroups.length - 1"
+              class="bracket-battle-match-connector"
+              aria-hidden="true"
+            ></div>
             <div class="bracket-battle-match-meta">
               <span>{{ t('bracketBattleMatchLabel', { number: match.position }) }}</span>
               <v-chip size="x-small" variant="tonal">{{ bracketPrizeLabel(match.prizeId) }}</v-chip>
             </div>
             <div class="bracket-battle-match-buyers">
-              <span :class="{ 'bracket-battle-winner': match.winnerParticipantId === match.participantAId }">
+              <span
+                class="bracket-battle-match-buyer"
+                :class="{ 'bracket-battle-winner': match.winnerParticipantId === match.participantAId }"
+              >
                 {{ bracketParticipantLabel(match.participantAId) }}
               </span>
-              <span :class="{ 'bracket-battle-winner': match.winnerParticipantId === match.participantBId }">
+              <span
+                class="bracket-battle-match-buyer"
+                :class="{ 'bracket-battle-winner': match.winnerParticipantId === match.participantBId }"
+              >
                 {{ bracketParticipantLabel(match.participantBId) }}
               </span>
             </div>

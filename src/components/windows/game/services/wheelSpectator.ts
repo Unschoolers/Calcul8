@@ -13,6 +13,12 @@ import {
     resolveFeaturedGameHeatCandidate,
     type GameHeatTierInput
 } from "../../../../app-core/shared/game-heat.ts";
+import type {
+  BracketBattleAward,
+  BracketBattleMatch,
+  BracketBattleRoll,
+  BracketBattleSession
+} from "../bracket/bracketBattleDomain.ts";
 import { getTierChancePercent } from "../../../../app-core/shared/wheel-odds.ts";
 import {
     getWheelDisplayConfig,
@@ -29,6 +35,19 @@ import { getAvailableSinglesQuantityForWheelTier, getRemainingPacksForWheelLot, 
 type WheelSpectatorVm = Record<string, unknown> & {
   lots?: Lot[];
 };
+
+function isBracketBattleSession(value: unknown): value is BracketBattleSession {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Partial<BracketBattleSession>;
+  return (
+    (candidate.participantCount === 4 || candidate.participantCount === 8)
+    && Array.isArray(candidate.participants)
+    && Array.isArray(candidate.matches)
+    && Array.isArray(candidate.prizes)
+    && Array.isArray(candidate.rolls)
+    && Array.isArray(candidate.awards)
+  );
+}
 
 export function normalizeWheelPublicSessionId(value: unknown): string {
   return String(value ?? "").trim().toLowerCase();
@@ -308,12 +327,100 @@ function buildSpectatorGridCells(vm: WheelSpectatorVm, config: WheelConfig | nul
   })).slice(0, 256);
 }
 
+function findBracketParticipantLabel(session: BracketBattleSession, participantId: string | null | undefined): string {
+  if (!participantId) return "";
+  return session.participants.find((entry) => entry.id === participantId)?.buyerName || "";
+}
+
+function findBracketPrizeLabel(session: BracketBattleSession, prizeId: string | null | undefined): string {
+  if (!prizeId) return "";
+  return session.prizes.find((entry) => entry.id === prizeId)?.label || "";
+}
+
+function findBracketMatchResult(session: BracketBattleSession, match: BracketBattleMatch, participantId: string | null): number | null {
+  if (!participantId) return null;
+  const roll = [...session.rolls]
+    .reverse()
+    .find((entry) => entry.matchId === match.id && entry.participantId === participantId);
+  return roll?.value ?? null;
+}
+
+function buildBracketSpectatorMatch(session: BracketBattleSession, match: BracketBattleMatch) {
+  return {
+    id: match.id,
+    round: match.round,
+    position: match.position,
+    status: match.status,
+    participantAId: match.participantAId,
+    participantALabel: findBracketParticipantLabel(session, match.participantAId),
+    participantBId: match.participantBId,
+    participantBLabel: findBracketParticipantLabel(session, match.participantBId),
+    winnerParticipantId: match.winnerParticipantId,
+    prizeLabel: findBracketPrizeLabel(session, match.prizeId),
+    participantAResult: findBracketMatchResult(session, match, match.participantAId),
+    participantBResult: findBracketMatchResult(session, match, match.participantBId)
+  };
+}
+
+function buildBracketSpectatorRoll(session: BracketBattleSession, roll: BracketBattleRoll) {
+  return {
+    id: roll.id,
+    matchId: roll.matchId,
+    participantId: roll.participantId,
+    participantLabel: findBracketParticipantLabel(session, roll.participantId),
+    value: roll.value,
+    rollNumber: roll.rollNumber,
+    tiebreakerIndex: roll.tiebreakerIndex
+  };
+}
+
+function buildBracketSpectatorAward(session: BracketBattleSession, award: BracketBattleAward) {
+  return {
+    id: award.id,
+    matchId: award.matchId,
+    participantId: award.participantId,
+    participantLabel: findBracketParticipantLabel(session, award.participantId),
+    prizeLabel: findBracketPrizeLabel(session, award.prizeId),
+    settlementStatus: award.settlementStatus
+  };
+}
+
+function buildBracketSpectatorSnapshot(vm: WheelSpectatorVm, session: BracketBattleSession) {
+  const sessionActiveMatch = session.status === "complete"
+    ? null
+    : session.matches.find((match) => match.status === "active") ?? null;
+  const showcaseMatchId = String(vm.bracketBattleShowcaseMatchId ?? "").trim();
+  const showcasedMatch = showcaseMatchId
+    ? session.matches.find((match) => match.id === showcaseMatchId) ?? null
+    : null;
+  const activeMatch = vm.bracketBattleRolling === true
+    ? sessionActiveMatch
+    : (showcasedMatch ?? sessionActiveMatch);
+  const recentRolls = Array.isArray(vm.bracketBattleLastRolls) && vm.bracketBattleLastRolls.length
+    ? vm.bracketBattleLastRolls as BracketBattleRoll[]
+    : session.rolls.slice(-12);
+  return {
+    status: session.status,
+    participantCount: session.participantCount,
+    activeMatchId: activeMatch?.id ?? null,
+    championParticipantId: session.championParticipantId,
+    activeMatch: activeMatch ? buildBracketSpectatorMatch(session, activeMatch) : null,
+    matches: session.matches.map((match) => buildBracketSpectatorMatch(session, match)),
+    recentRolls: recentRolls.slice(-12).map((roll) => buildBracketSpectatorRoll(session, roll)),
+    awards: session.awards.slice(-15).map((award) => buildBracketSpectatorAward(session, award))
+  };
+}
+
 export function buildWheelSpectatorSnapshot(
   vm: WheelSpectatorVm,
   status: Exclude<WheelSpectatorSessionStatus, "inactive">
 ): WheelSpectatorSnapshot {
   const config = resolveWheelSpectatorConfig(vm);
-  const gameType = config?.gameType === "grid" ? "grid" : "wheel";
+  const bracketSession = isBracketBattleSession(vm.bracketBattleSession) ? vm.bracketBattleSession : null;
+  const gameType = config?.gameType === "bracket" ? "bracket" : (config?.gameType === "grid" ? "grid" : "wheel");
+  const bracket = gameType === "bracket" && bracketSession
+    ? buildBracketSpectatorSnapshot(vm, bracketSession)
+    : null;
   const fairnessHistory = getWheelDisplayFairnessHistoryEntries(vm)
     .slice(0, 10)
     .map((entry) => normalizeFairnessEntry(entry));
@@ -325,9 +432,19 @@ export function buildWheelSpectatorSnapshot(
     gameName: String(config?.name || "Game Session").trim() || "Game Session",
     gameType,
     sessionStatus: status,
-    isSpinning: vm.wheelSpinning === true || vm.wheelGridRevealAnimating === true,
-    sessionResultCount: getWheelDisplayTotalSpins(vm),
-    lastResultLabel: cleanResultLabel(vm.wheelLastResult) || cleanResultLabel(latestFairnessEntry?.label) || "Waiting for the next spin",
+    isSpinning: gameType === "bracket"
+      ? vm.bracketBattleRolling === true
+      : vm.wheelSpinning === true || vm.wheelGridRevealAnimating === true,
+    sessionResultCount: gameType === "bracket"
+      ? Math.max(0, bracketSession?.awards.length ?? 0)
+      : getWheelDisplayTotalSpins(vm),
+    lastResultLabel: gameType === "bracket"
+      ? (bracket?.activeMatch
+          ? `${bracket.activeMatch.participantALabel} vs ${bracket.activeMatch.participantBLabel}`
+          : (bracketSession?.championParticipantId
+              ? `${findBracketParticipantLabel(bracketSession, bracketSession.championParticipantId)} wins`
+              : "Waiting for the next match"))
+      : cleanResultLabel(vm.wheelLastResult) || cleanResultLabel(latestFairnessEntry?.label) || "Waiting for the next spin",
     lastResultColor: String(vm.wheelLastResultColor || latestFairnessEntry?.color || "#d4af37"),
     gameCurrentAngle: Number.isFinite(Number(vm.wheelCurrentAngle)) ? Number(vm.wheelCurrentAngle) : 0,
     outcomeSlots: buildSpectatorSlots(vm),
@@ -341,6 +458,7 @@ export function buildWheelSpectatorSnapshot(
     featuredChaseLabel: chaseData.featuredChaseLabel,
     featuredChaseHeat: chaseData.featuredChaseHeat,
     fairnessVerificationUrl: latestFairnessEntry?.verificationUrl || fairnessHistory[0]?.verificationUrl || null,
+    bracket,
     updatedAt: Date.now()
   };
 }

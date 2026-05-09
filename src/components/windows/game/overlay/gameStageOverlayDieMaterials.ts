@@ -1,7 +1,8 @@
 import * as THREE from "three";
 import { getDicePipLayout, getOverlayDieBoxFaceValues } from "./gameStageOverlayDice.ts";
 
-const FACE_TEXTURE_SIZE = 256;
+const FACE_TEXTURE_SIZE = 512;
+const FACE_TEXTURE_ANISOTROPY = 12;
 const FACE_CENTER = FACE_TEXTURE_SIZE / 2;
 const FACE_SPREAD = FACE_TEXTURE_SIZE * 0.21;
 const FACE_PIP_RADIUS = FACE_TEXTURE_SIZE * 0.072;
@@ -18,6 +19,13 @@ export type OverlayDieMaterialSet = {
   materials: THREE.MeshPhysicalMaterial[];
   textures: THREE.CanvasTexture[];
 };
+
+export function getOverlayDieFaceTextureSpec(): { sizePx: number; anisotropy: number } {
+  return {
+    sizePx: FACE_TEXTURE_SIZE,
+    anisotropy: FACE_TEXTURE_ANISOTROPY
+  };
+}
 
 function colorNumberToCss(color: number): string {
   return `#${color.toString(16).padStart(6, "0")}`;
@@ -101,7 +109,7 @@ function createFaceTexture(value: number, theme: OverlayDieMaterialTheme): THREE
 
   const texture = new THREE.CanvasTexture(canvas as TexImageSource);
   texture.colorSpace = THREE.SRGBColorSpace;
-  texture.anisotropy = 4;
+  texture.anisotropy = FACE_TEXTURE_ANISOTROPY;
   texture.needsUpdate = true;
   return texture;
 }

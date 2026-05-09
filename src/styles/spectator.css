@@ -619,6 +619,128 @@ a {
   line-height: 1.5;
 }
 
+.spectator-bracket-duel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: stretch;
+  gap: 10px;
+}
+
+.spectator-bracket-duelist,
+.spectator-bracket-champion {
+  display: grid;
+  place-items: center;
+  gap: 10px;
+  min-height: 128px;
+  padding: 14px;
+  border: 1px solid rgba(248, 250, 252, 0.08);
+  border-radius: 18px;
+  background: rgba(15, 23, 42, 0.68);
+  text-align: center;
+}
+
+.spectator-bracket-duelist span {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  font-weight: 800;
+}
+
+.spectator-bracket-dice-tile {
+  display: grid;
+  place-items: center;
+  width: min(112px, 100%);
+  aspect-ratio: 1;
+  border: 1px solid rgba(248, 250, 252, 0.12);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 28% 24%, rgba(248, 250, 252, 0.22), transparent 34%),
+    linear-gradient(180deg, rgba(248, 250, 252, 0.13), rgba(15, 23, 42, 0.84));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 16px 32px rgba(2, 6, 23, 0.28);
+  font-size: clamp(2.2rem, 12vw, 4.2rem);
+  font-weight: 900;
+  line-height: 1;
+}
+
+.spectator-bracket-champion {
+  grid-column: 1 / -1;
+  min-height: 116px;
+  font-size: clamp(1.8rem, 9vw, 3rem);
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+
+.spectator-bracket-versus {
+  display: grid;
+  place-items: center;
+  color: #fbbf24;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+}
+
+.spectator-bracket-tree {
+  display: grid;
+  gap: 10px;
+}
+
+.spectator-bracket-match {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid rgba(248, 250, 252, 0.07);
+  border-radius: 16px;
+  background: rgba(15, 23, 42, 0.54);
+}
+
+.spectator-bracket-match--pending {
+  opacity: 0.62;
+}
+
+.spectator-bracket-match--active {
+  border-color: rgba(96, 165, 250, 0.36);
+  background: rgba(30, 41, 59, 0.76);
+}
+
+.spectator-bracket-match--complete {
+  border-color: rgba(34, 197, 94, 0.18);
+}
+
+.spectator-bracket-match__meta,
+.spectator-bracket-player {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.spectator-bracket-match__meta {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(248, 250, 252, 0.54);
+}
+
+.spectator-bracket-player {
+  min-height: 38px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(248, 250, 252, 0.05);
+  font-weight: 800;
+}
+
+.spectator-bracket-player span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.spectator-bracket-player--winner {
+  color: #86efac;
+  background: rgba(34, 197, 94, 0.12);
+}
+
 .spectator-empty {
   display: grid;
   gap: 12px;
@@ -649,6 +771,14 @@ a {
 
   .spectator-result__subcopy {
     max-width: none;
+  }
+
+  .spectator-bracket-duel {
+    grid-template-columns: 1fr;
+  }
+
+  .spectator-bracket-versus {
+    min-height: 28px;
   }
 }
 

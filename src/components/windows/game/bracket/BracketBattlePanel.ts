@@ -28,6 +28,7 @@ type BracketBattleIntervalHandle = ReturnType<typeof globalThis.setInterval>;
 type BracketBattleTimeoutHandle = ReturnType<typeof globalThis.setTimeout>;
 
 type BracketBattlePanelThis = Record<string, unknown> & {
+  bracketBattleParentCtx?: Record<string, unknown> | null;
   bracketDraft: BracketBattleDraft;
   bracketSession: BracketBattleSession | null;
   bracketLastRolls: BracketBattleRoll[];
@@ -37,10 +38,15 @@ type BracketBattlePanelThis = Record<string, unknown> & {
   bracketRolling: boolean;
   bracketRollIntervalId: BracketBattleIntervalHandle | null;
   bracketRollResolveTimeoutId: BracketBattleTimeoutHandle | null;
+  bracketBattleSession: BracketBattleSession | null;
+  bracketBattleLastRolls: BracketBattleRoll[];
+  bracketBattleRolling: boolean;
+  bracketBattleShowcaseMatchId: string | null;
   canStartBracketBattle: boolean;
   activeBracketMatch: BracketBattleMatch | null;
   queuedBracketMatch: BracketBattleMatch | null;
   wheelDisplayConfig: WheelConfig | null;
+  wheelMode: "config" | "live";
   activeWheelConfigId: number | null;
   lots: Lot[];
   activeScopeType: WorkspaceScopeType;
@@ -62,6 +68,9 @@ type BracketBattlePanelThis = Record<string, unknown> & {
   isBracketFinalMatch(match: BracketBattleMatch | null | undefined): boolean;
   bracketParticipantLabel(participantId: string | null | undefined): string;
   bracketRollColorTone(roll: BracketBattleRoll): "dark" | "light";
+  syncBracketBattleParentState?: () => void;
+  publishLiveBracketSpectatorSnapshot?: () => void;
+  publishWheelSpectatorSessionSnapshot?: (statusOverride?: "starting" | "live" | "ended") => Promise<void>;
 };
 
 const BRACKET_ROLL_PREVIEW_INTERVAL_MS = 90;
@@ -82,11 +91,12 @@ function isBracketBattleSession(value: unknown): value is BracketBattleSession {
 }
 
 function getSessionStorageKey(context: BracketBattlePanelThis): string {
+  const modeSuffix = context.wheelMode === "live" ? "live" : "preview";
   const baseKey = getScopedBracketBattleSessionStorageKey(getActiveStorageScope({
     activeScopeType: context.activeScopeType,
     activeWorkspaceId: context.activeWorkspaceId
   }));
-  return `${baseKey}_${context.activeWheelConfigId ?? "none"}`;
+  return `${baseKey}_${context.activeWheelConfigId ?? "none"}_${modeSuffix}`;
 }
 
 function findById<T extends { id: string }>(items: T[], id: string | null | undefined): T | null {
@@ -109,6 +119,13 @@ function randomRollValue(min: number, max: number): number {
   return Math.floor(Math.random() * (upper - lower + 1)) + lower;
 }
 
+function getBracketBattleParentContext(context: BracketBattlePanelThis): BracketBattlePanelThis {
+  const parent = context.bracketBattleParentCtx;
+  return parent && typeof parent === "object"
+    ? parent as BracketBattlePanelThis
+    : context;
+}
+
 export const BracketBattlePanel = {
   name: "BracketBattlePanel",
   props: {
@@ -118,6 +135,14 @@ export const BracketBattlePanel = {
     }
   },
   emits: ["overlay-command"],
+  watch: {
+    wheelMode(this: BracketBattlePanelThis) {
+      this.loadBracketSession();
+    },
+    activeWheelConfigId(this: BracketBattlePanelThis) {
+      this.loadBracketSession();
+    }
+  },
   data() {
     return {
       bracketSession: null as BracketBattleSession | null,
@@ -171,6 +196,24 @@ export const BracketBattlePanel = {
     }
   },
   methods: {
+    syncBracketBattleParentState(this: BracketBattlePanelThis): void {
+      const parent = getBracketBattleParentContext(this);
+      parent.bracketBattleSession = this.bracketSession;
+      parent.bracketBattleLastRolls = this.bracketLastRolls;
+      parent.bracketBattleRolling = this.bracketRolling;
+      parent.bracketBattleShowcaseMatchId = this.bracketShowcaseMatchId;
+    },
+    publishLiveBracketSpectatorSnapshot(this: BracketBattlePanelThis): void {
+      this.syncBracketBattleParentState?.();
+      if (this.wheelMode !== "live") {
+        return;
+      }
+      const parent = getBracketBattleParentContext(this);
+      const publish = parent.publishWheelSpectatorSessionSnapshot;
+      void (typeof publish === "function"
+        ? publish.call(parent, "live")
+        : Promise.resolve());
+    },
     clearBracketRollAnimation(this: BracketBattlePanelThis): void {
       if (this.bracketRollIntervalId != null) {
         clearInterval(this.bracketRollIntervalId);
@@ -182,6 +225,7 @@ export const BracketBattlePanel = {
       }
       this.bracketRollPreview = [];
       this.bracketRolling = false;
+      this.syncBracketBattleParentState?.();
     },
     loadBracketSession(this: BracketBattlePanelThis): void {
       this.clearBracketRollAnimation();
@@ -191,6 +235,7 @@ export const BracketBattlePanel = {
           this.bracketSession = null;
           this.bracketLastRolls = [];
           this.bracketShowcaseMatchId = null;
+          this.syncBracketBattleParentState?.();
           this.$emit("overlay-command", { type: "clear", effect: "dice" });
           return;
         }
@@ -207,11 +252,13 @@ export const BracketBattlePanel = {
           if (!this.bracketSession.rolls.length) {
             this.$emit("overlay-command", { type: "clear", effect: "dice" });
           }
+          this.syncBracketBattleParentState?.();
         }
       } catch {
         this.bracketSession = null;
         this.bracketLastRolls = [];
         this.bracketShowcaseMatchId = null;
+        this.syncBracketBattleParentState?.();
         this.$emit("overlay-command", { type: "clear", effect: "dice" });
       }
     },
@@ -332,6 +379,7 @@ export const BracketBattlePanel = {
       this.bracketShowcaseMatchId = this.bracketSession.matches.find((match) => match.status === "active")?.id ?? null;
       this.bracketLastRolls = [];
       this.persistBracketSession();
+      this.publishLiveBracketSpectatorSnapshot?.();
       const emitStageEnter = () => {
         const { leftAnchor, rightAnchor } = this.getBracketBattleRollSlotAnchors();
         this.$emit("overlay-command", {
@@ -355,6 +403,8 @@ export const BracketBattlePanel = {
       this.clearBracketRollAnimation();
       this.bracketShowcaseMatchId = match.id;
       this.bracketRolling = true;
+      this.syncBracketBattleParentState?.();
+      this.publishLiveBracketSpectatorSnapshot?.();
       this.bracketRollPreview = [
         {
           participantId: match.participantAId,
@@ -427,6 +477,8 @@ export const BracketBattlePanel = {
         } finally {
           this.bracketRollPreview = [];
           this.bracketRolling = false;
+          this.syncBracketBattleParentState?.();
+          this.publishLiveBracketSpectatorSnapshot?.();
           this.bracketRollResolveTimeoutId = null;
         }
       }, BRACKET_ROLL_RESOLVE_DELAY_MS);
@@ -442,6 +494,7 @@ export const BracketBattlePanel = {
       this.bracketShowcaseMatchId = null;
       this.bracketResetDialog = false;
       this.persistBracketSession();
+      this.publishLiveBracketSpectatorSnapshot?.();
       this.$emit("overlay-command", {
         type: "stageExit",
         effect: "dice",
@@ -493,11 +546,38 @@ export const BracketBattlePanel = {
   },
   beforeUnmount(this: BracketBattlePanelThis) {
     this.clearBracketRollAnimation();
+    const parent = getBracketBattleParentContext(this);
+    parent.bracketBattleSession = null;
+    parent.bracketBattleLastRolls = [];
+    parent.bracketBattleRolling = false;
+    parent.bracketBattleShowcaseMatchId = null;
   },
   setup(props: { ctx: Record<string, unknown> }) {
     const injectedGameCtx = inject<Record<string, unknown> | null>("gameCtx", null);
     const injectedCtx = inject<Record<string, unknown> | null>("appCtx", null);
     const source = (injectedGameCtx ?? props.ctx ?? injectedCtx) as Record<string, unknown>;
-    return createNestedWindowContextBridge(source);
+    const bridge = createNestedWindowContextBridge(source);
+    return new Proxy(bridge, {
+      get(target, key, receiver) {
+        if (key === "bracketBattleParentCtx") {
+          return source;
+        }
+        return Reflect.get(target, key, receiver);
+      },
+      has(target, key) {
+        return key === "bracketBattleParentCtx" || Reflect.has(target, key);
+      },
+      getOwnPropertyDescriptor(target, key) {
+        if (key === "bracketBattleParentCtx") {
+          return {
+            enumerable: true,
+            configurable: true,
+            writable: false,
+            value: source
+          };
+        }
+        return Reflect.getOwnPropertyDescriptor(target, key);
+      }
+    });
   }
 };

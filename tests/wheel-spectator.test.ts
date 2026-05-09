@@ -9,6 +9,10 @@ import { buildSlotsFromConfig } from "../src/components/windows/game/services/wh
 import { createGameWindowState } from "../src/components/windows/game/coordinator/gameControllerState.ts";
 import type { WheelConfig } from "../src/types/app.ts";
 import { makeLot } from "./helpers/fixtures.ts";
+import {
+  createBracketBattleSession,
+  resolveBracketBattleMatchRoll
+} from "../src/components/windows/game/bracket/bracketBattleDomain.ts";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -189,6 +193,124 @@ test("buildWheelSpectatorSnapshot carries active spin animation metadata", () =>
     endAngle: 18.5,
     targetIndex: 0
   });
+});
+
+test("buildWheelSpectatorSnapshot publishes a viewer-safe live bracket snapshot", () => {
+  const config: WheelConfig = {
+    id: 70,
+    name: "Saturday Bracket",
+    spinPrice: 0,
+    targetMargin: 0,
+    gameType: "bracket",
+    outcomeCount: 0,
+    gridCellCount: 0,
+    createdAt: "2026-05-09T00:00:00.000Z",
+    tiers: [],
+    bracketBattle: {
+      participantCount: 4,
+      participants: ["Alex", "Bri", "Cam", "Dev"],
+      prizes: []
+    }
+  };
+  const session = createBracketBattleSession({
+    id: "bracket-70-live",
+    name: "Saturday Bracket",
+    participantCount: 4,
+    participants: ["Alex", "Bri", "Cam", "Dev"],
+    prizes: [
+      { label: "Match 1 prize" },
+      { label: "Match 2 prize" },
+      { label: "Final prize" }
+    ],
+    now: () => 1_000,
+    randomInt: (_min, max) => max
+  });
+  const vm = createGameWindowState() as Record<string, unknown>;
+  vm.activeWheelConfig = config;
+  vm.wheelDisplayConfig = config;
+  vm.wheelMode = "live";
+  vm.bracketBattleSession = session;
+  vm.bracketBattleLastRolls = [{
+    id: "roll-preview",
+    matchId: "match-1",
+    participantId: "participant-1",
+    value: 6,
+    rollNumber: 1,
+    tiebreakerIndex: 0
+  }];
+  vm.bracketBattleRolling = true;
+
+  const snapshot = buildWheelSpectatorSnapshot(vm, "live");
+
+  assert.equal(snapshot.gameType, "bracket");
+  assert.equal(snapshot.gameName, "Saturday Bracket");
+  assert.equal(snapshot.isSpinning, true);
+  assert.equal(snapshot.bracket?.status, "active");
+  assert.equal(snapshot.bracket?.participantCount, 4);
+  assert.equal(snapshot.bracket?.activeMatch?.participantALabel, "Alex");
+  assert.equal(snapshot.bracket?.activeMatch?.participantBLabel, "Bri");
+  assert.equal(snapshot.bracket?.activeMatch?.prizeLabel, "Match 1 prize");
+  assert.equal(snapshot.bracket?.matches.length, 3);
+  assert.equal(snapshot.bracket?.recentRolls[0]?.participantLabel, "Alex");
+  assert.equal(snapshot.outcomeSlots.length, 0);
+  assert.equal(snapshot.chaseBoard.length, 0);
+});
+
+test("buildWheelSpectatorSnapshot keeps the just-settled bracket duel focused for realtime spectators", () => {
+  const config: WheelConfig = {
+    id: 71,
+    name: "Saturday Bracket",
+    spinPrice: 0,
+    targetMargin: 0,
+    gameType: "bracket",
+    outcomeCount: 0,
+    gridCellCount: 0,
+    createdAt: "2026-05-09T00:00:00.000Z",
+    tiers: [],
+    bracketBattle: {
+      participantCount: 4,
+      participants: ["Alex", "Bri", "Cam", "Dev"],
+      prizes: []
+    }
+  };
+  const session = createBracketBattleSession({
+    id: "bracket-71-live",
+    name: "Saturday Bracket",
+    participantCount: 4,
+    participants: ["Alex", "Bri", "Cam", "Dev"],
+    prizes: [
+      { label: "Match 1 prize" },
+      { label: "Match 2 prize" },
+      { label: "Final prize" }
+    ],
+    now: () => 1_000,
+    randomInt: (_min, max) => max
+  });
+  const result = resolveBracketBattleMatchRoll(
+    session,
+    session.matches[0]!.id,
+    (() => {
+      const values = [6, 4];
+      return () => values.shift() ?? 4;
+    })(),
+    () => 2_000
+  );
+  const vm = createGameWindowState() as Record<string, unknown>;
+  vm.activeWheelConfig = config;
+  vm.wheelDisplayConfig = config;
+  vm.wheelMode = "live";
+  vm.bracketBattleSession = session;
+  vm.bracketBattleLastRolls = result.rolls;
+  vm.bracketBattleRolling = false;
+  vm.bracketBattleShowcaseMatchId = session.matches[0]!.id;
+
+  const snapshot = buildWheelSpectatorSnapshot(vm, "live");
+
+  assert.equal(snapshot.isSpinning, false);
+  assert.equal(snapshot.bracket?.activeMatch?.id, session.matches[0]!.id);
+  assert.equal(snapshot.bracket?.activeMatch?.status, "complete");
+  assert.equal(snapshot.bracket?.activeMatch?.participantAResult, result.rolls[0]!.value);
+  assert.equal(snapshot.bracket?.activeMatch?.participantBResult, result.rolls[1]!.value);
 });
 
 test("buildWheelSpectatorSnapshot includes mystery grid cells for spectator mode", () => {

@@ -63,6 +63,7 @@ test("game public session contracts upgrade legacy wheel snapshots into v2 game 
     featuredChaseLabel: null,
     featuredChaseHeat: null,
     fairnessVerificationUrl: null,
+    bracket: null,
     updatedAt: 456
   });
 });
@@ -117,4 +118,90 @@ test("game public session contracts infer grid games from legacy board cells", (
   assert.deepEqual(snapshot?.boardCells, [
     { index: 2, revealed: true, label: "", color: "#d4af37", tier: "", slotIndex: -1 }
   ]);
+});
+
+test("game public session contracts preserve bracket snapshots with bounded public fields", () => {
+  const snapshot = normalizeGamePublicSessionSnapshot({
+    snapshotVersion: 2,
+    gameName: "Saturday Bracket",
+    gameType: "bracket",
+    sessionStatus: "live",
+    isSpinning: true,
+    sessionResultCount: "2",
+    lastResultLabel: "Alex beat Bri",
+    bracket: {
+      status: "active",
+      participantCount: "8",
+      activeMatchId: "match-2",
+      championParticipantId: "participant-1",
+      activeMatch: {
+        id: "match-2",
+        round: "1",
+        position: "2",
+        status: "active",
+        participantAId: "participant-3",
+        participantALabel: "Cam",
+        participantBId: "participant-4",
+        participantBLabel: "Dev",
+        winnerParticipantId: "",
+        prizeLabel: "Round prize",
+        participantAResult: "6",
+        participantBResult: "4"
+      },
+      matches: [{
+        id: "match-1",
+        round: "1",
+        position: "1",
+        status: "complete",
+        participantAId: "participant-1",
+        participantALabel: "Alex",
+        participantBId: "participant-2",
+        participantBLabel: "Bri",
+        winnerParticipantId: "participant-1",
+        prizeLabel: "First prize",
+        participantAResult: "5",
+        participantBResult: "2"
+      }],
+      recentRolls: [{
+        id: "roll-1",
+        matchId: "match-1",
+        participantId: "participant-1",
+        participantLabel: "Alex",
+        value: "5",
+        rollNumber: "1",
+        tiebreakerIndex: "0"
+      }],
+      awards: [{
+        id: "award-1",
+        matchId: "match-1",
+        participantId: "participant-1",
+        participantLabel: "Alex",
+        prizeLabel: "First prize",
+        settlementStatus: "settled"
+      }]
+    },
+    updatedAt: 2000
+  });
+
+  assert.equal(snapshot?.gameType, "bracket");
+  assert.equal(snapshot?.bracket?.status, "active");
+  assert.equal(snapshot?.bracket?.participantCount, 8);
+  assert.equal(snapshot?.bracket?.activeMatch?.participantAResult, 6);
+  assert.equal(snapshot?.bracket?.activeMatch?.participantBResult, 4);
+  assert.deepEqual(snapshot?.bracket?.matches.map((match) => ({
+    id: match.id,
+    status: match.status,
+    winnerParticipantId: match.winnerParticipantId
+  })), [{
+    id: "match-1",
+    status: "complete",
+    winnerParticipantId: "participant-1"
+  }]);
+  assert.deepEqual(snapshot?.bracket?.recentRolls.map((roll) => ({
+    participantLabel: roll.participantLabel,
+    value: roll.value
+  })), [{
+    participantLabel: "Alex",
+    value: 5
+  }]);
 });

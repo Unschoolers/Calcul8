@@ -54,6 +54,7 @@ test("BracketBattlePanel rollActiveBracketMatch animates before settling the mat
     bracketLastRolls: [],
     bracketRollPreview: [],
     bracketShowcaseMatchId: session.matches[0]!.id,
+    wheelMode: "live",
     $el: {
       closest(selector: string) {
         return selector === ".game-stage-overlay-surface"
@@ -151,12 +152,192 @@ test("BracketBattlePanel rollActiveBracketMatch animates before settling the mat
   });
 });
 
+test("BracketBattlePanel publishes bracket spectator snapshots at roll start and settle", async () => {
+  vi.useFakeTimers();
+
+  const draft = createBracketBattleDraft(4);
+  draft.participants = ["Alex", "Bri", "Cam", "Dev"];
+  const session = createBracketBattleSessionFromDraft(draft, {
+    now: () => 123,
+    randomInt: (_min, max) => max
+  });
+  const publishStates: Array<{ rolling: boolean; showcaseMatchId: string | null; rollCount: number }> = [];
+  const vm = {
+    bracketSession: session,
+    activeBracketMatch: session.matches[0],
+    queuedBracketMatch: session.matches[0],
+    bracketRolling: false,
+    bracketLastRolls: [],
+    bracketRollPreview: [],
+    bracketShowcaseMatchId: session.matches[0]!.id,
+    wheelMode: "live",
+    $el: null,
+    $refs: {},
+    $emit() {},
+    persistBracketSession() {},
+    clearBracketRollAnimation: BracketBattlePanel.methods!.clearBracketRollAnimation,
+    getBracketBattleRollSlotAnchors: BracketBattlePanel.methods!.getBracketBattleRollSlotAnchors,
+    isBracketFinalMatch: BracketBattlePanel.methods!.isBracketFinalMatch,
+    bracketParticipantLabel: BracketBattlePanel.methods!.bracketParticipantLabel,
+    syncBracketBattleParentState: BracketBattlePanel.methods!.syncBracketBattleParentState,
+    publishLiveBracketSpectatorSnapshot: BracketBattlePanel.methods!.publishLiveBracketSpectatorSnapshot,
+    publishWheelSpectatorSessionSnapshot() {
+      publishStates.push({
+        rolling: this.bracketBattleRolling,
+        showcaseMatchId: this.bracketBattleShowcaseMatchId,
+        rollCount: this.bracketBattleLastRolls.length
+      });
+      return Promise.resolve();
+    },
+    t(key: string) {
+      return key;
+    }
+  };
+
+  BracketBattlePanel.methods!.rollActiveBracketMatch.call(vm as never);
+
+  assert.deepEqual(publishStates[0], {
+    rolling: true,
+    showcaseMatchId: session.matches[0]!.id,
+    rollCount: 0
+  });
+
+  await vi.advanceTimersByTimeAsync(1_100);
+
+  assert.equal(publishStates.length, 2);
+  assert.equal(publishStates[1]?.rolling, false);
+  assert.equal(publishStates[1]?.showcaseMatchId, session.matches[0]!.id);
+  assert.ok((publishStates[1]?.rollCount ?? 0) >= 2);
+});
+
+test("BracketBattlePanel publishes through the parent game window context", () => {
+  const draft = createBracketBattleDraft(4);
+  draft.participants = ["Alex", "Bri", "Cam", "Dev"];
+  const session = createBracketBattleSessionFromDraft(draft, {
+    now: () => 123,
+    randomInt: (_min, max) => max
+  });
+  const published: Array<{ session: unknown; rolling: unknown; showcaseMatchId: unknown }> = [];
+  const parentCtx = {
+    bracketBattleSession: null,
+    bracketBattleLastRolls: [],
+    bracketBattleRolling: false,
+    bracketBattleShowcaseMatchId: null,
+    publishWheelSpectatorSessionSnapshot() {
+      published.push({
+        session: this.bracketBattleSession,
+        rolling: this.bracketBattleRolling,
+        showcaseMatchId: this.bracketBattleShowcaseMatchId
+      });
+      return Promise.resolve();
+    }
+  };
+  const vm = {
+    bracketBattleParentCtx: parentCtx,
+    bracketSession: session,
+    bracketLastRolls: [],
+    bracketRolling: true,
+    bracketShowcaseMatchId: session.matches[0]!.id,
+    wheelMode: "live",
+    publishLiveBracketSpectatorSnapshot: BracketBattlePanel.methods!.publishLiveBracketSpectatorSnapshot,
+    syncBracketBattleParentState: BracketBattlePanel.methods!.syncBracketBattleParentState
+  };
+
+  BracketBattlePanel.methods!.publishLiveBracketSpectatorSnapshot.call(vm as never);
+
+  assert.equal(parentCtx.bracketBattleSession, session);
+  assert.equal(parentCtx.bracketBattleRolling, true);
+  assert.equal(parentCtx.bracketBattleShowcaseMatchId, session.matches[0]!.id);
+  assert.equal(published.length, 1);
+  assert.deepEqual(published[0], {
+    session,
+    rolling: true,
+    showcaseMatchId: session.matches[0]!.id
+  });
+});
+
 test("BracketBattlePanel template renders the upgraded duel showcase", () => {
   const template = readFileSync("src/components/windows/game/bracket/BracketBattlePanel.html", "utf8");
+  const css = readFileSync("src/components/windows/game/styles/bracket-battle.css", "utf8");
 
   assert.match(template, /bracket-battle-showcase/);
   assert.match(template, /bracket-battle-duel/);
   assert.match(template, /bracket-battle-duel-roll/);
+  assert.match(template, /bracket-battle-tree/);
+  assert.match(template, /bracket-battle-match-node/);
+  assert.match(template, /bracket-battle-match-connector/);
+  assert.match(css, /\.bracket-battle-tree/);
+  assert.match(css, /\.bracket-battle-match-connector/);
+  assert.doesNotMatch(css, /\.bracket-battle-match\s*\{[\s\S]*min-height:\s*148px/);
+});
+
+test("GameWindow template keeps bracket panel and spectator dialog available in fullscreen/live bracket", () => {
+  const template = readFileSync("src/components/windows/game/coordinator/GameWindow.html", "utf8");
+
+  assert.doesNotMatch(template, /<bracket-battle-panel\s+v-if="!wheelPresentationMode"/);
+  assert.match(template, /<bracket-battle-panel[\s\S]*@overlay-command="setGameStageOverlayCommand"/);
+  assert.doesNotMatch(template, /<wheel-spectator-dialog v-if="!wheelIsBracketBattle"/);
+});
+
+test("BracketBattlePanel uses separate preview and live storage and only live publishes spectator snapshots", async () => {
+  const stored = new Map<string, string>();
+  vi.stubGlobal("localStorage", {
+    getItem(key: string) {
+      return stored.get(key) ?? null;
+    },
+    setItem(key: string, value: string) {
+      stored.set(key, value);
+    },
+    removeItem(key: string) {
+      stored.delete(key);
+    }
+  });
+
+  const draft = createBracketBattleDraft(4);
+  draft.participants = ["Alex", "Bri", "Cam", "Dev"];
+  draft.prizes[0]!.label = "Match 1 prize";
+  draft.prizes[1]!.label = "Match 2 prize";
+  draft.prizes[2]!.label = "Final prize";
+
+  const published: string[] = [];
+  const baseVm = {
+    bracketDraft: draft,
+    bracketSession: null,
+    bracketLastRolls: [],
+    bracketShowcaseMatchId: null,
+    bracketRollIntervalId: null,
+    bracketRollResolveTimeoutId: null,
+    activeScopeType: "personal",
+    activeWorkspaceId: null,
+    activeWheelConfigId: 7,
+    canStartBracketBattle: true,
+    getBracketBattleRollSlotAnchors() {
+      return {};
+    },
+    $emit() {},
+    clearBracketRollAnimation: BracketBattlePanel.methods!.clearBracketRollAnimation,
+    persistBracketSession: BracketBattlePanel.methods!.persistBracketSession,
+    publishLiveBracketSpectatorSnapshot: BracketBattlePanel.methods!.publishLiveBracketSpectatorSnapshot,
+    syncBracketBattleParentState: BracketBattlePanel.methods!.syncBracketBattleParentState,
+    publishWheelSpectatorSessionSnapshot(status?: "starting" | "live" | "ended") {
+      published.push(status ?? "live");
+      return Promise.resolve();
+    }
+  };
+
+  BracketBattlePanel.methods!.startBracketBattle.call({
+    ...baseVm,
+    wheelMode: "config"
+  } as never);
+  BracketBattlePanel.methods!.startBracketBattle.call({
+    ...baseVm,
+    wheelMode: "live"
+  } as never);
+
+  assert.equal(stored.size, 2);
+  assert.ok([...stored.keys()].some((key) => key.endsWith("_7_preview")));
+  assert.ok([...stored.keys()].some((key) => key.endsWith("_7_live")));
+  assert.deepEqual(published, ["live"]);
 });
 
 test("BracketBattlePanel keeps the showcased match latched until the next roll begins", () => {

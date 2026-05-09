@@ -14,6 +14,10 @@ export type DiceRollMotionSample = {
   };
 };
 
+export type DiceRollMotionOptions = {
+  reducedMotion?: boolean;
+};
+
 export type OverlayDieVisualSpec = {
   dieSize: number;
   pipRadius: number;
@@ -103,20 +107,47 @@ export function getOverlayDieBoxFaceValues(): readonly number[] {
   return [...OVERLAY_DIE_BOX_FACE_VALUES];
 }
 
-export function sampleDiceRollMotion(progress: number): DiceRollMotionSample {
+export function sampleDiceRollMotion(progress: number, options: DiceRollMotionOptions = {}): DiceRollMotionSample {
+  if (options.reducedMotion) {
+    return {
+      height: 0,
+      driftX: 0,
+      driftZ: 0,
+      rotation: { x: 0, y: 0, z: 0 }
+    };
+  }
+
   const clampedProgress = Math.min(1, Math.max(0, progress));
-  const arc = clampedProgress === 0 || clampedProgress === 1
-    ? 0
-    : Math.sin(clampedProgress * Math.PI);
+  if (clampedProgress === 0 || clampedProgress === 1) {
+    return {
+      height: 0,
+      driftX: clampedProgress === 0 ? -0.27 : 0.27,
+      driftZ: 0,
+      rotation: {
+        x: clampedProgress * Math.PI * 4.25,
+        y: clampedProgress * Math.PI * 5.1,
+        z: clampedProgress * Math.PI * 3.55
+      }
+    };
+  }
+
+  const mainArc = Math.sin(clampedProgress * Math.PI);
+  const settleStart = 0.68;
+  const settleProgress = Math.min(1, Math.max(0, (clampedProgress - settleStart) / (1 - settleStart)));
+  const settleBounce = settleProgress > 0
+    ? Math.sin(settleProgress * Math.PI * 3) * (1 - settleProgress) * 0.16
+    : 0;
+  const height = Math.max(0, mainArc * 0.72 + settleBounce);
+  const rollEase = 1 - (1 - clampedProgress) ** 2.2;
 
   return {
-    height: arc * 0.72,
-    driftX: (clampedProgress - 0.5) * 0.54,
-    driftZ: Math.sin(clampedProgress * Math.PI * 2) * 0.18,
+    height,
+    driftX: (rollEase - 0.5) * 0.54,
+    driftZ: Math.sin(clampedProgress * Math.PI * 2.25) * 0.18 * (1 - settleProgress * 0.62),
     rotation: {
-      x: clampedProgress * Math.PI * 4,
-      y: clampedProgress * Math.PI * 4.75,
-      z: clampedProgress * Math.PI * 3.25
+      x: rollEase * Math.PI * 4.25,
+      y: rollEase * Math.PI * 5.1,
+      z: rollEase * Math.PI * 3.55
     }
   };
 }

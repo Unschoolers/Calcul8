@@ -43,6 +43,20 @@ const ROLL_CYCLE_MS = 720;
 const STAGE_TRANSITION_MS = 760;
 const FINAL_EXIT_MS = 920;
 
+export function getOverlayRendererPixelRatio(devicePixelRatio: number | undefined): number {
+  const ratio = Number(devicePixelRatio);
+  if (!Number.isFinite(ratio) || ratio <= 0) {
+    return 1;
+  }
+  return Math.min(ratio, 3);
+}
+
+function shouldReduceOverlayMotion(): boolean {
+  return typeof window !== "undefined"
+    && typeof window.matchMedia === "function"
+    && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
 function ensureRendererSize(renderer: THREE.WebGLRenderer, camera: THREE.PerspectiveCamera, mountEl: HTMLElement): void {
   const width = Math.max(mountEl.clientWidth || 0, 1);
   const height = Math.max(mountEl.clientHeight || 0, 1);
@@ -127,7 +141,7 @@ export function createGameStageOverlayScene(mountEl: HTMLElement): GameStageOver
     antialias: true,
     powerPreference: "high-performance"
   });
-  renderer.setPixelRatio(Math.min(globalThis.devicePixelRatio || 1, 2));
+  renderer.setPixelRatio(getOverlayRendererPixelRatio(globalThis.devicePixelRatio));
   mountEl.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
@@ -186,6 +200,7 @@ export function createGameStageOverlayScene(mountEl: HTMLElement): GameStageOver
   let currentLeftAnchor: GameStageOverlayAnchor | undefined;
   let currentRightAnchor: GameStageOverlayAnchor | undefined;
   let diceVisible = false;
+  let reducedMotion = shouldReduceOverlayMotion();
 
   function applyAnchorToDie(
     die: OverlayDieVisual,
@@ -220,6 +235,7 @@ export function createGameStageOverlayScene(mountEl: HTMLElement): GameStageOver
   }
 
   function renderScene(): void {
+    reducedMotion = shouldReduceOverlayMotion();
     ensureRendererSize(renderer, camera, mountEl);
     applyCurrentAnchors();
     leftVisual.root.visible = diceVisible;
@@ -438,6 +454,11 @@ export function createGameStageOverlayScene(mountEl: HTMLElement): GameStageOver
       currentLeftAnchor = command.leftAnchor;
       currentRightAnchor = command.rightAnchor;
       rollingStartedAt = performance.now();
+      reducedMotion = shouldReduceOverlayMotion();
+      if (reducedMotion) {
+        renderIdleState();
+        return;
+      }
       animationFrameId = requestAnimationFrame(animateRoll);
     },
     resolveRoll(command: GameStageOverlayRollResolveCommand) {

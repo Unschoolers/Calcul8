@@ -12,7 +12,6 @@
 
             <div v-if="wheelIsBracketBattle" class="game-stage-overlay-surface">
                 <bracket-battle-panel
-                    v-if="!wheelPresentationMode"
                     :ctx="getWindowComponentContext()"
                     @overlay-command="setGameStageOverlayCommand"
                 ></bracket-battle-panel>
@@ -375,7 +374,7 @@
         </v-card>
     </v-dialog>
 
-    <wheel-spectator-dialog v-if="!wheelIsBracketBattle" :ctx="getWindowComponentContext()"></wheel-spectator-dialog>
+    <wheel-spectator-dialog :ctx="getWindowComponentContext()"></wheel-spectator-dialog>
 
     <!-- Wheel Config Saved Snackbar -->
     <v-snackbar
