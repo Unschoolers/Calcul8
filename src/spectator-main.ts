@@ -1,10 +1,11 @@
 import { resolveApiBaseUrl } from "./app-core/methods/ui/common/shared.ts";
 import { shouldApplySpectatorReadyState } from "./app-core/methods/ui/spectator/wheel-spectator-client-state.ts";
-import { normalizeWheelSpectatorSnapshot } from "./app-core/methods/ui/spectator/wheel-spectator-contract.ts";
+import { normalizeGameSpectatorSnapshot } from "./app-core/methods/ui/spectator/wheel-spectator-contract.ts";
 import {
-  fetchWheelSpectatorRealtimeSubscribeToken,
-  fetchWheelSpectatorSnapshot
-} from "./app-core/methods/ui/spectator/wheel-spectator.ts";
+  fetchGameSpectatorRealtimeSubscribeToken,
+  fetchGameSpectatorSnapshot,
+  normalizeGamePublicSessionId
+} from "./app-core/methods/ui/spectator/game-spectator.ts";
 import { easeOutQuart } from "./app-core/shared/game-spin.ts";
 import { resolveRealtimeSocketUrl } from "./app-core/methods/ui/workspace/workspace-realtime-state.ts";
 import {
@@ -12,19 +13,23 @@ import {
   getWheelCanvasDpr,
   renderWheelSurface
 } from "./components/windows/game/stage/wheelCanvasRender.ts";
-import { normalizeWheelPublicSessionId } from "./components/windows/game/services/wheelSpectator.ts";
 import "./styles/spectator.css";
-import type { WheelSpectatorHeatLevel, WheelSpectatorSnapshot } from "./types/app.ts";
+import type { GameSpectatorHeatLevel, GameSpectatorSnapshot } from "./types/app.ts";
 
 type SpectatorPageState =
   | { status: "loading" }
-  | { status: "ready"; publicSessionId: string; snapshot: WheelSpectatorSnapshot }
+  | { status: "ready"; publicSessionId: string; snapshot: GameSpectatorSnapshot }
   | { status: "not_found" }
   | { status: "error" };
 
 type RealtimeEnvelope =
   | { type?: "connected" | "subscribed" | "error" }
   | { type?: "event"; eventType?: string; data?: unknown };
+
+const GAME_PUBLIC_SESSION_EVENT_TYPES = new Set([
+  "game.public-session.updated",
+  "wheel.public-session.updated"
+]);
 
 const REALTIME_RECONNECT_BACKOFF_MS = [1_000, 3_000, 10_000, 30_000] as const;
 
@@ -40,7 +45,7 @@ const SPECTATOR_WHEEL_CANVAS_ID = "spectator-wheel-canvas";
 
 function getPublicSessionId(): string {
   const params = new URLSearchParams(window.location.search);
-  return normalizeWheelPublicSessionId(params.get("session") || "");
+  return normalizeGamePublicSessionId(params.get("session") || "");
 }
 
 function escapeHtml(value: string): string {
@@ -63,7 +68,7 @@ function formatRelativeTime(timestamp: number): string {
   return `${days}d ago`;
 }
 
-function formatHeatCopy(heat: WheelSpectatorHeatLevel | null, label: string | null): string {
+function formatHeatCopy(heat: GameSpectatorHeatLevel | null, label: string | null): string {
   if (!heat || !label) return "The game is warming up.";
   if (heat === "very_high") return `${label} is overdue.`;
   if (heat === "high") return `${label} is heating up.`;
@@ -72,7 +77,7 @@ function formatHeatCopy(heat: WheelSpectatorHeatLevel | null, label: string | nu
   return `${label} is still hanging around.`;
 }
 
-function formatHeatLabel(heat: WheelSpectatorHeatLevel | null): string {
+function formatHeatLabel(heat: GameSpectatorHeatLevel | null): string {
   if (heat === "very_high") return "very high";
   if (heat === "high") return "high";
   if (heat === "medium") return "medium";
@@ -81,22 +86,22 @@ function formatHeatLabel(heat: WheelSpectatorHeatLevel | null): string {
   return "—";
 }
 
-function formatStatusLabel(snapshot: WheelSpectatorSnapshot, isGridGame: boolean): string {
+function formatStatusLabel(snapshot: GameSpectatorSnapshot, isGridGame: boolean): string {
   if (snapshot.sessionStatus === "ended") return "Recap";
   if (!snapshot.isSpinning) return "Waiting";
   return isGridGame ? "Revealing" : "Spinning";
 }
 
-function formatStatusTone(snapshot: WheelSpectatorSnapshot): "ended" | "spinning" | "waiting" {
+function formatStatusTone(snapshot: GameSpectatorSnapshot): "ended" | "spinning" | "waiting" {
   if (snapshot.sessionStatus === "ended") return "ended";
   return snapshot.isSpinning ? "spinning" : "waiting";
 }
 
-function getSpectatorOutcomeSlots(snapshot: WheelSpectatorSnapshot): WheelSpectatorSnapshot["outcomeSlots"] {
+function getSpectatorOutcomeSlots(snapshot: GameSpectatorSnapshot): GameSpectatorSnapshot["outcomeSlots"] {
   return Array.isArray(snapshot.outcomeSlots) ? snapshot.outcomeSlots : [];
 }
 
-function getSpectatorBoardCells(snapshot: WheelSpectatorSnapshot): WheelSpectatorSnapshot["boardCells"] {
+function getSpectatorBoardCells(snapshot: GameSpectatorSnapshot): GameSpectatorSnapshot["boardCells"] {
   return Array.isArray(snapshot.boardCells) ? snapshot.boardCells : [];
 }
 
@@ -449,7 +454,7 @@ function setState(state: SpectatorPageState): void {
   }
 }
 
-function resolveHighlightedSpectatorSlotIndex(snapshot: WheelSpectatorSnapshot): number {
+function resolveHighlightedSpectatorSlotIndex(snapshot: GameSpectatorSnapshot): number {
   const outcomeSlots = getSpectatorOutcomeSlots(snapshot);
   if (!outcomeSlots.length) return -1;
   const targetLabel = String(snapshot.lastResultLabel || "").trim().toLowerCase();
@@ -468,7 +473,7 @@ function stopSpectatorWheelAnimation(): void {
 }
 
 function drawSpectatorWheel(
-  snapshot: WheelSpectatorSnapshot,
+  snapshot: GameSpectatorSnapshot,
   options: { angle?: number; highlightedSlotIndex?: number; highlightTime?: number } = {}
 ): void {
   const canvas = document.getElementById(SPECTATOR_WHEEL_CANVAS_ID) as HTMLCanvasElement | null;
@@ -511,7 +516,7 @@ function drawSpectatorWheel(
   );
 }
 
-function startSpectatorWheelAnimation(snapshot: WheelSpectatorSnapshot): void {
+function startSpectatorWheelAnimation(snapshot: GameSpectatorSnapshot): void {
   if (snapshot.gameType === "grid" || getSpectatorBoardCells(snapshot).length > 0) return;
   const animation = snapshot.resultAnimation;
   const slots = getSpectatorOutcomeSlots(snapshot);
@@ -558,8 +563,8 @@ async function loadState(): Promise<SpectatorPageState> {
   }
 
   try {
-    const result = await fetchWheelSpectatorSnapshot(baseUrl, publicSessionId);
-    const canonicalPublicSessionId = normalizeWheelPublicSessionId(result.publicSessionId || publicSessionId);
+    const result = await fetchGameSpectatorSnapshot(baseUrl, publicSessionId);
+    const canonicalPublicSessionId = normalizeGamePublicSessionId(result.publicSessionId || publicSessionId);
     return {
       status: "ready",
       publicSessionId: canonicalPublicSessionId,
@@ -599,8 +604,8 @@ async function refreshSnapshot(options: { preserveCurrentView?: boolean } = {}):
   return state;
 }
 
-function applyRealtimeSnapshot(publicSessionId: string, snapshot: WheelSpectatorSnapshot): void {
-  currentPublicSessionId = normalizeWheelPublicSessionId(publicSessionId);
+function applyRealtimeSnapshot(publicSessionId: string, snapshot: GameSpectatorSnapshot): void {
+  currentPublicSessionId = normalizeGamePublicSessionId(publicSessionId);
   setState({
     status: "ready",
     publicSessionId: currentPublicSessionId,
@@ -631,7 +636,7 @@ async function connectRealtime(): Promise<void> {
   if (!baseUrl || !currentPublicSessionId || !shouldReconnectRealtime()) return;
 
   try {
-    const subscribeToken = await fetchWheelSpectatorRealtimeSubscribeToken(baseUrl, currentPublicSessionId);
+    const subscribeToken = await fetchGameSpectatorRealtimeSubscribeToken(baseUrl, currentPublicSessionId);
     if (!subscribeToken.rooms.length) return;
 
     closeActiveSocket();
@@ -661,17 +666,17 @@ async function connectRealtime(): Promise<void> {
         return;
       }
 
-      if (payload.type !== "event" || payload.eventType !== "wheel.public-session.updated") {
+      if (payload.type !== "event" || !GAME_PUBLIC_SESSION_EVENT_TYPES.has(String(payload.eventType || ""))) {
         return;
       }
 
       const raw = typeof payload.data === "object" && payload.data !== null && !Array.isArray(payload.data)
         ? payload.data as { publicSessionId?: unknown; snapshot?: unknown }
         : {};
-      if (normalizeWheelPublicSessionId(raw.publicSessionId) !== currentPublicSessionId) {
+      if (normalizeGamePublicSessionId(raw.publicSessionId) !== currentPublicSessionId) {
         return;
       }
-      const snapshot = normalizeWheelSpectatorSnapshot(raw.snapshot);
+      const snapshot = normalizeGameSpectatorSnapshot(raw.snapshot);
       if (!snapshot) {
         void refreshSnapshot({ preserveCurrentView: true });
         return;
@@ -707,7 +712,7 @@ async function boot(): Promise<void> {
   currentPublicSessionId = getPublicSessionId();
   const state = await refreshSnapshot();
   if (state.status === "ready") {
-    currentPublicSessionId = normalizeWheelPublicSessionId(state.publicSessionId || currentPublicSessionId);
+    currentPublicSessionId = normalizeGamePublicSessionId(state.publicSessionId || currentPublicSessionId);
   }
   if (state.status === "ready" && state.snapshot.sessionStatus !== "ended") {
     void connectRealtime();

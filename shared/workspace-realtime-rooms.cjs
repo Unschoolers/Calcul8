@@ -10,8 +10,12 @@ function buildWorkspaceWheelRealtimeRoom(workspaceId) {
   return `workspace:${workspaceId}:wheel`;
 }
 
+function buildGamePublicSessionRealtimeRoom(publicSessionId) {
+  return `wheel-public:${String(publicSessionId ?? "").trim().toLowerCase()}`;
+}
+
 function buildWheelPublicSessionRealtimeRoom(publicSessionId) {
-  return `wheel-public:${publicSessionId}`;
+  return buildGamePublicSessionRealtimeRoom(publicSessionId);
 }
 
 function parseWorkspacePresenceRealtimeRoom(room) {
@@ -23,6 +27,7 @@ module.exports = {
   buildWorkspaceLotRealtimeRoom,
   buildWorkspacePresenceRealtimeRoom,
   buildWorkspaceWheelRealtimeRoom,
+  buildGamePublicSessionRealtimeRoom,
   buildWheelPublicSessionRealtimeRoom,
   parseWorkspacePresenceRealtimeRoom
 };

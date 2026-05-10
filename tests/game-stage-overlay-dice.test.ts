@@ -51,6 +51,15 @@ test("dice roll motion has a reduced-motion sample without tumbling", () => {
   assert.equal(motion.rotation.z, 0);
 });
 
+test("dice roll motion scales down for compact mobile slots", () => {
+  const desktopMotion = sampleDiceRollMotion(0.5);
+  const compactMotion = sampleDiceRollMotion(0.5, { scale: 0.5 } as never);
+
+  assert.ok(compactMotion.height < desktopMotion.height);
+  assert.ok(Math.abs(compactMotion.driftX) < Math.abs(desktopMotion.driftX));
+  assert.ok(Math.abs(compactMotion.driftZ) < Math.abs(desktopMotion.driftZ));
+});
+
 test("overlay dice use high-DPI face textures and renderer sizing", () => {
   const textureSpec = getOverlayDieFaceTextureSpec();
 

@@ -1,4 +1,4 @@
-export type GameType = "wheel" | "grid";
+export type GameType = "wheel" | "grid" | "bracket";
 
 export type GamePublicSessionSnapshotVersion = 2;
 export type GamePublicSessionStatus = "starting" | "live" | "ended";
@@ -56,6 +56,51 @@ export interface GamePublicSessionResultAnimation {
   targetIndex: number;
 }
 
+export interface GamePublicSessionBracketMatch {
+  id: string;
+  round: number;
+  position: number;
+  status: "pending" | "active" | "complete";
+  participantAId: string | null;
+  participantALabel: string;
+  participantBId: string | null;
+  participantBLabel: string;
+  winnerParticipantId: string | null;
+  prizeLabel: string;
+  participantAResult: number | null;
+  participantBResult: number | null;
+}
+
+export interface GamePublicSessionBracketRoll {
+  id: string;
+  matchId: string;
+  participantId: string;
+  participantLabel: string;
+  value: number;
+  rollNumber: number;
+  tiebreakerIndex: number;
+}
+
+export interface GamePublicSessionBracketAward {
+  id: string;
+  matchId: string;
+  participantId: string;
+  participantLabel: string;
+  prizeLabel: string;
+  settlementStatus: "pending" | "settled" | "error";
+}
+
+export interface GamePublicSessionBracketSnapshot {
+  status: "setup" | "active" | "complete";
+  participantCount: 4 | 8;
+  activeMatchId: string | null;
+  championParticipantId: string | null;
+  activeMatch: GamePublicSessionBracketMatch | null;
+  matches: GamePublicSessionBracketMatch[];
+  recentRolls: GamePublicSessionBracketRoll[];
+  awards: GamePublicSessionBracketAward[];
+}
+
 export interface GamePublicSessionSnapshot {
   snapshotVersion: GamePublicSessionSnapshotVersion;
   gameName: string;
@@ -77,6 +122,7 @@ export interface GamePublicSessionSnapshot {
   featuredChaseLabel: string | null;
   featuredChaseHeat: GameSpectatorHeatLevel | null;
   fairnessVerificationUrl: string | null;
+  bracket: GamePublicSessionBracketSnapshot | null;
   updatedAt: number;
 }
 

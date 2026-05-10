@@ -19,10 +19,10 @@ const {
   createWheelPublicSessionMock,
   getWheelPublicSessionMock,
   updateWheelPublicSessionMock,
-  buildWheelPublicSessionRealtimeRoomMock,
+  buildGamePublicSessionRealtimeRoomMock,
   getRealtimeRoomMemberCountMock,
   signRealtimeSubscribeTokenMock,
-  publishWheelPublicSessionRealtimeEventBestEffortMock
+  publishGamePublicSessionRealtimeEventBestEffortMock
 } = vi.hoisted(() => ({
   getConfigMock: vi.fn(),
   resolveUserIdMock: vi.fn(),
@@ -30,10 +30,10 @@ const {
   createWheelPublicSessionMock: vi.fn(),
   getWheelPublicSessionMock: vi.fn(),
   updateWheelPublicSessionMock: vi.fn(),
-  buildWheelPublicSessionRealtimeRoomMock: vi.fn(),
+  buildGamePublicSessionRealtimeRoomMock: vi.fn(),
   getRealtimeRoomMemberCountMock: vi.fn(),
   signRealtimeSubscribeTokenMock: vi.fn(),
-  publishWheelPublicSessionRealtimeEventBestEffortMock: vi.fn()
+  publishGamePublicSessionRealtimeEventBestEffortMock: vi.fn()
 }));
 
 vi.mock("../lib/config", () => ({
@@ -59,10 +59,10 @@ vi.mock("../lib/cosmos/wheelPublicSessionRepository", () => ({
 }));
 
 vi.mock("../lib/realtime", () => ({
-  buildWheelPublicSessionRealtimeRoom: buildWheelPublicSessionRealtimeRoomMock,
+  buildGamePublicSessionRealtimeRoom: buildGamePublicSessionRealtimeRoomMock,
   getRealtimeRoomMemberCount: getRealtimeRoomMemberCountMock,
   signRealtimeSubscribeToken: signRealtimeSubscribeTokenMock,
-  publishWheelPublicSessionRealtimeEventBestEffort: publishWheelPublicSessionRealtimeEventBestEffortMock
+  publishGamePublicSessionRealtimeEventBestEffort: publishGamePublicSessionRealtimeEventBestEffortMock
 }));
 
 import {
@@ -80,7 +80,7 @@ beforeEach(() => {
   }));
   resolveUserIdMock.mockResolvedValue("user-a");
   hasWorkspaceMembershipMock.mockResolvedValue(true);
-  buildWheelPublicSessionRealtimeRoomMock.mockImplementation((publicSessionId: string) => `wheel-public:${publicSessionId}`);
+  buildGamePublicSessionRealtimeRoomMock.mockImplementation((publicSessionId: string) => `wheel-public:${publicSessionId}`);
   signRealtimeSubscribeTokenMock.mockReturnValue("signed-token");
   getRealtimeRoomMemberCountMock.mockResolvedValue(4);
   createWheelPublicSessionMock.mockResolvedValue({
@@ -626,17 +626,24 @@ test("wheelPublicSessionPublish fans out the sanitized snapshot over realtime af
   }) as never, createInvocationContext() as never);
 
   assert.equal(response.status, 200);
-  assert.equal(publishWheelPublicSessionRealtimeEventBestEffortMock.mock.calls.length, 1);
-  const publishArgs = publishWheelPublicSessionRealtimeEventBestEffortMock.mock.calls[0]?.[1] as {
+  assert.equal(publishGamePublicSessionRealtimeEventBestEffortMock.mock.calls.length, 2);
+  const publishArgs = publishGamePublicSessionRealtimeEventBestEffortMock.mock.calls[0]?.[1] as {
     publicSessionId: string;
     eventType: string;
     data: { publicSessionId: string; snapshot: { sessionStatus: string; snapshotVersion: number; gameName: string } };
   };
+  const legacyPublishArgs = publishGamePublicSessionRealtimeEventBestEffortMock.mock.calls[1]?.[1] as {
+    eventType: string;
+    data: { publicSessionId: string; snapshot: { sessionStatus: string; snapshotVersion: number; gameName: string } };
+  };
   assert.equal(publishArgs.publicSessionId, "abc123xy");
-  assert.equal(publishArgs.eventType, "wheel.public-session.updated");
+  assert.equal(publishArgs.eventType, "game.public-session.updated");
   assert.equal(publishArgs.data.snapshot.sessionStatus, "live");
   assert.equal(publishArgs.data.snapshot.snapshotVersion, 2);
   assert.equal(publishArgs.data.snapshot.gameName, "Demo Wheel");
+  assert.equal(legacyPublishArgs.eventType, "wheel.public-session.updated");
+  assert.equal(legacyPublishArgs.data.publicSessionId, "abc123xy");
+  assert.equal(legacyPublishArgs.data.snapshot.snapshotVersion, 2);
 });
 
 test("wheelPublicSessionGet serves the stored public snapshot and reports 404 when missing", async () => {
@@ -728,7 +735,7 @@ test("wheelPublicSessionRealtimeTokenGet returns a room-scoped public subscribe 
   }) as never, createInvocationContext() as never);
 
   assert.equal(response.status, 200);
-  assert.equal(buildWheelPublicSessionRealtimeRoomMock.mock.calls[0]?.[0], "abc123xy");
+  assert.equal(buildGamePublicSessionRealtimeRoomMock.mock.calls[0]?.[0], "abc123xy");
   assert.equal(signRealtimeSubscribeTokenMock.mock.calls.length, 1);
   const body = response.jsonBody as {
     publicSessionId: string;
@@ -756,7 +763,7 @@ test("wheelPublicSessionSpectatorCountGet returns the live spectator count for t
   }) as never, createInvocationContext() as never);
 
   assert.equal(response.status, 200);
-  assert.equal(buildWheelPublicSessionRealtimeRoomMock.mock.calls.at(-1)?.[0], "abc123xy");
+  assert.equal(buildGamePublicSessionRealtimeRoomMock.mock.calls.at(-1)?.[0], "abc123xy");
   assert.equal(getRealtimeRoomMemberCountMock.mock.calls.length, 1);
   const body = response.jsonBody as { publicSessionId: string; spectatorCount: number };
   assert.equal(body.publicSessionId, "abc123xy");

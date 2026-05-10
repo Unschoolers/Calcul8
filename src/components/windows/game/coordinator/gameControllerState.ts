@@ -194,6 +194,13 @@ export type GameWindowThis = {
   runMysteryGridAutoPreviewAnimation(): Promise<void>;
   revealMysteryGridCell(cellIndex: number, recordSession?: boolean): Promise<void>;
   appendWheelFairnessHistory(entry: WheelFairnessEntry, options?: { preview?: boolean }): void;
+  syncBracketBattleState(payload: {
+    session: BracketBattleSession | null;
+    lastRolls: BracketBattleRoll[];
+    rolling: boolean;
+    showcaseMatchId: string | null;
+    publishLive: boolean;
+  }): void;
   confirmBatchSale(index: number): void;
   getPendingWheelIssueLotItems(entry: PendingWheelInventoryIssue): Array<{ title: string; value: number; lotType?: string }>;
   dismissBatchSale(index: number): void;

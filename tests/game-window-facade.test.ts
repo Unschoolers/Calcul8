@@ -66,6 +66,35 @@ test("Bracket Battle stage mounts the overlay shell inside the existing stage ch
   assert.match(template, /:enabled="gameStageOverlayEnabled"/);
   assert.match(template, /:command="gameStageOverlayActiveCommand"/);
   assert.match(template, /@mounted-change="handleGameStageOverlayMountedChange"/);
+  assert.equal(typeof GameWindow.methods?.syncBracketBattleState, "function");
+});
+
+test("GameWindow publishes bracket session-state updates through the spectator host flow in any mode", async () => {
+  const publishes: Array<"starting" | "live" | "ended" | undefined> = [];
+  const vm = {
+    bracketBattleSession: null,
+    bracketBattleLastRolls: [],
+    bracketBattleRolling: false,
+    bracketBattleShowcaseMatchId: null,
+    wheelMode: "config",
+    publishWheelSpectatorSessionSnapshot(status?: "starting" | "live" | "ended") {
+      publishes.push(status);
+      return Promise.resolve();
+    }
+  };
+
+  await GameWindow.methods!.syncBracketBattleState.call(vm as never, {
+    session: { id: "session-1" },
+    lastRolls: [{ id: "roll-1", value: 6 }],
+    rolling: true,
+    showcaseMatchId: "match-1",
+    publishLive: true
+  });
+
+  assert.deepEqual(publishes, [undefined]);
+  assert.deepEqual(vm.bracketBattleLastRolls, [{ id: "roll-1", value: 6 }]);
+  assert.equal(vm.bracketBattleRolling, true);
+  assert.equal(vm.bracketBattleShowcaseMatchId, "match-1");
 });
 
 test("selecting an existing Wheel or Mystery Grid config exits Bracket Battle", () => {

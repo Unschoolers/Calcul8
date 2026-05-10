@@ -9,9 +9,9 @@ import {
 import { hasWorkspaceMembership } from "../../lib/cosmos/workspaceRepository";
 import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../../lib/http";
 import {
-    buildWheelPublicSessionRealtimeRoom,
+    buildGamePublicSessionRealtimeRoom,
     getRealtimeRoomMemberCount,
-    publishWheelPublicSessionRealtimeEventBestEffort,
+    publishGamePublicSessionRealtimeEventBestEffort,
     signRealtimeSubscribeToken
 } from "../../lib/realtime";
 import { parseOptionalWorkspaceId } from "../../lib/syncScope";
@@ -63,7 +63,7 @@ function parsePublishBody(rawBody: unknown): {
   };
 }
 
-export async function wheelPublicSessionCreate(
+export async function gamePublicSessionCreate(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
@@ -75,7 +75,7 @@ export async function wheelPublicSessionCreate(
     const actorUserId = await resolveUserId(request, config, {
       telemetry: {
         logger: context,
-        route: "wheel_public_session_create",
+        route: "game_public_session_create",
         workspaceScope: "unknown"
       }
     });
@@ -99,12 +99,12 @@ export async function wheelPublicSessionCreate(
       snapshot: sanitizeGamePublicSessionSnapshot(document.snapshot)
     });
   } catch (error) {
-    context.error("Failed to create wheel public session.", error);
-    return errorResponse(request, config, error, "Failed to create wheel public session.");
+    context.error("Failed to create game public session.", error);
+    return errorResponse(request, config, error, "Failed to create game public session.");
   }
 }
 
-export async function wheelPublicSessionPublish(
+export async function gamePublicSessionPublish(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
@@ -116,7 +116,7 @@ export async function wheelPublicSessionPublish(
     const actorUserId = await resolveUserId(request, config, {
       telemetry: {
         logger: context,
-        route: "wheel_public_session_publish",
+        route: "game_public_session_publish",
         workspaceScope: "unknown"
       }
     });
@@ -130,7 +130,16 @@ export async function wheelPublicSessionPublish(
       throw new HttpError(404, "Public wheel session was not found.");
     }
     const snapshot = sanitizeGamePublicSessionSnapshot(updated.snapshot);
-    publishWheelPublicSessionRealtimeEventBestEffort(config, {
+    publishGamePublicSessionRealtimeEventBestEffort(config, {
+      publicSessionId: updated.publicSessionId,
+      eventType: "game.public-session.updated",
+      data: {
+        publicSessionId: updated.publicSessionId,
+        snapshot
+      },
+      logger: context
+    });
+    publishGamePublicSessionRealtimeEventBestEffort(config, {
       publicSessionId: updated.publicSessionId,
       eventType: "wheel.public-session.updated",
       data: {
@@ -146,12 +155,12 @@ export async function wheelPublicSessionPublish(
       snapshot
     });
   } catch (error) {
-    context.error("Failed to publish wheel public session.", error);
-    return errorResponse(request, config, error, "Failed to publish wheel public session.");
+    context.error("Failed to publish game public session.", error);
+    return errorResponse(request, config, error, "Failed to publish game public session.");
   }
 }
 
-export async function wheelPublicSessionGet(
+export async function gamePublicSessionGet(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
@@ -171,12 +180,12 @@ export async function wheelPublicSessionGet(
       snapshot: sanitizeGamePublicSessionSnapshot(document.snapshot)
     });
   } catch (error) {
-    context.error("Failed to load wheel public session.", error);
-    return errorResponse(request, config, error, "Failed to load wheel public session.");
+    context.error("Failed to load game public session.", error);
+    return errorResponse(request, config, error, "Failed to load game public session.");
   }
 }
 
-export async function wheelPublicSessionRealtimeTokenGet(
+export async function gamePublicSessionRealtimeTokenGet(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
@@ -191,7 +200,7 @@ export async function wheelPublicSessionRealtimeTokenGet(
       throw new HttpError(404, "Public wheel session was not found.");
     }
 
-    const room = buildWheelPublicSessionRealtimeRoom(publicSessionId);
+    const room = buildGamePublicSessionRealtimeRoom(publicSessionId);
     const rooms = [room];
     const tokenSecret = String(config.realtimeTokenSecret ?? "").trim();
     if (!tokenSecret && config.apiEnv === "prod") {
@@ -210,12 +219,12 @@ export async function wheelPublicSessionRealtimeTokenGet(
       expiresAt
     });
   } catch (error) {
-    context.error("Failed to mint wheel public session realtime token.", error);
-    return errorResponse(request, config, error, "Failed to mint wheel public session realtime token.");
+    context.error("Failed to mint game public session realtime token.", error);
+    return errorResponse(request, config, error, "Failed to mint game public session realtime token.");
   }
 }
 
-export async function wheelPublicSessionSpectatorCountGet(
+export async function gamePublicSessionSpectatorCountGet(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
@@ -227,7 +236,7 @@ export async function wheelPublicSessionSpectatorCountGet(
     const actorUserId = await resolveUserId(request, config, {
       telemetry: {
         logger: context,
-        route: "wheel_public_session_spectator_count",
+        route: "game_public_session_spectator_count",
         workspaceScope: "unknown"
       }
     });
@@ -238,7 +247,7 @@ export async function wheelPublicSessionSpectatorCountGet(
     }
 
     const count = await getRealtimeRoomMemberCount(config, {
-      room: buildWheelPublicSessionRealtimeRoom(publicSessionId),
+      room: buildGamePublicSessionRealtimeRoom(publicSessionId),
       logger: context
     });
 
@@ -247,7 +256,13 @@ export async function wheelPublicSessionSpectatorCountGet(
       spectatorCount: Math.max(0, Number(count ?? 0) || 0)
     });
   } catch (error) {
-    context.error("Failed to load wheel public session spectator count.", error);
-    return errorResponse(request, config, error, "Failed to load wheel public session spectator count.");
+    context.error("Failed to load game public session spectator count.", error);
+    return errorResponse(request, config, error, "Failed to load game public session spectator count.");
   }
 }
+
+export const wheelPublicSessionCreate = gamePublicSessionCreate;
+export const wheelPublicSessionPublish = gamePublicSessionPublish;
+export const wheelPublicSessionGet = gamePublicSessionGet;
+export const wheelPublicSessionRealtimeTokenGet = gamePublicSessionRealtimeTokenGet;
+export const wheelPublicSessionSpectatorCountGet = gamePublicSessionSpectatorCountGet;

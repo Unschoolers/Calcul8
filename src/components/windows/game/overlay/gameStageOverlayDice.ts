@@ -16,6 +16,7 @@ export type DiceRollMotionSample = {
 
 export type DiceRollMotionOptions = {
   reducedMotion?: boolean;
+  scale?: number;
 };
 
 export type OverlayDieVisualSpec = {
@@ -117,11 +118,13 @@ export function sampleDiceRollMotion(progress: number, options: DiceRollMotionOp
     };
   }
 
+  const motionScale = Math.min(1, Math.max(0.38, Number(options.scale) || 1));
+
   const clampedProgress = Math.min(1, Math.max(0, progress));
   if (clampedProgress === 0 || clampedProgress === 1) {
     return {
       height: 0,
-      driftX: clampedProgress === 0 ? -0.27 : 0.27,
+      driftX: (clampedProgress === 0 ? -0.27 : 0.27) * motionScale,
       driftZ: 0,
       rotation: {
         x: clampedProgress * Math.PI * 4.25,
@@ -137,13 +140,13 @@ export function sampleDiceRollMotion(progress: number, options: DiceRollMotionOp
   const settleBounce = settleProgress > 0
     ? Math.sin(settleProgress * Math.PI * 3) * (1 - settleProgress) * 0.16
     : 0;
-  const height = Math.max(0, mainArc * 0.72 + settleBounce);
+  const height = Math.max(0, mainArc * 0.72 + settleBounce) * motionScale;
   const rollEase = 1 - (1 - clampedProgress) ** 2.2;
 
   return {
     height,
-    driftX: (rollEase - 0.5) * 0.54,
-    driftZ: Math.sin(clampedProgress * Math.PI * 2.25) * 0.18 * (1 - settleProgress * 0.62),
+    driftX: (rollEase - 0.5) * 0.54 * motionScale,
+    driftZ: Math.sin(clampedProgress * Math.PI * 2.25) * 0.18 * (1 - settleProgress * 0.62) * motionScale,
     rotation: {
       x: rollEase * Math.PI * 4.25,
       y: rollEase * Math.PI * 5.1,

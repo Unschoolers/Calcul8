@@ -7,6 +7,8 @@ test("spectator page has a bracket-specific render branch and compact tree hooks
   const css = readFileSync("src/styles/spectator.css", "utf8");
 
   assert.match(source, /snapshot\.gameType === "bracket"/);
+  assert.match(source, /game\.public-session\.updated/);
+  assert.match(source, /wheel\.public-session\.updated/);
   assert.match(source, /renderBracketState/);
   assert.match(source, /spectator-bracket-duel/);
   assert.match(source, /spectator-bracket-dice-tile/);

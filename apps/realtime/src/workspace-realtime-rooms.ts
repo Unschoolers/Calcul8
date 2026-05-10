@@ -10,8 +10,12 @@ export function buildWorkspaceWheelRealtimeRoom(workspaceId: string): string {
   return `workspace:${workspaceId}:wheel`;
 }
 
+export function buildGamePublicSessionRealtimeRoom(publicSessionId: string): string {
+  return `wheel-public:${String(publicSessionId ?? "").trim().toLowerCase()}`;
+}
+
 export function buildWheelPublicSessionRealtimeRoom(publicSessionId: string): string {
-  return `wheel-public:${publicSessionId}`;
+  return buildGamePublicSessionRealtimeRoom(publicSessionId);
 }
 
 export function parseWorkspacePresenceRealtimeRoom(room: string): string | null {

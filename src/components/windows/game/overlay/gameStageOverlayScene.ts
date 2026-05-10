@@ -101,7 +101,7 @@ function applyIdlePose(die: OverlayDieVisual, winnerSide: "left" | "right" | nul
 }
 
 function applyRollingPose(die: OverlayDieVisual, progress: number, cycleIndex: number, side: "left" | "right"): void {
-  const motion = sampleDiceRollMotion(progress);
+  const motion = sampleDiceRollMotion(progress, { scale: die.scale });
   const direction = side === "left" ? -1 : 1;
   die.root.position.set(
     die.baseX + motion.driftX * direction,

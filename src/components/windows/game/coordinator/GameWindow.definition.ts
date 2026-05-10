@@ -25,6 +25,7 @@ import {
 import {
   type GameStageOverlayCommand
 } from "../overlay/gameStageOverlayTypes.ts";
+import type { BracketBattleRoll, BracketBattleSession } from "../bracket/bracketBattleDomain.ts";
 
 function getWheelCanvasTargetSize(panel: HTMLElement | null, presentationMode: boolean): number {
   return resolveWheelCanvasTargetSize({
@@ -63,6 +64,14 @@ type GameWindowOverlayThis = GameWindowThis & {
   handleGameStageOverlayMountedChange(mounted: boolean): void;
   setGameStageOverlayCommand(command: GameStageOverlayCommand | null): void;
   syncGameStageOverlayState(): void;
+};
+
+type BracketBattleSessionStatePayload = {
+  session: BracketBattleSession | null;
+  lastRolls: BracketBattleRoll[];
+  rolling: boolean;
+  showcaseMatchId: string | null;
+  publishLive: boolean;
 };
 
 export const gameWindowDefinition = {
@@ -194,6 +203,15 @@ export const gameWindowDefinition = {
       this.gameStageOverlayActiveCommand = command;
       if (command?.type === "rollMatchResolve") {
         this.gameStageOverlayLastResolvedAt = Date.now();
+      }
+    },
+    syncBracketBattleState(this: GameWindowThis, payload: BracketBattleSessionStatePayload): void {
+      this.bracketBattleSession = payload.session;
+      this.bracketBattleLastRolls = payload.lastRolls;
+      this.bracketBattleRolling = payload.rolling;
+      this.bracketBattleShowcaseMatchId = payload.showcaseMatchId;
+      if (payload.publishLive) {
+        void (this.publishWheelSpectatorSessionSnapshot?.() ?? Promise.resolve());
       }
     },
     syncGameStageOverlayState(this: GameWindowOverlayThis): void {

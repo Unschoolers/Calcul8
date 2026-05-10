@@ -11,10 +11,10 @@ const {
   buildWheelSpectatorSnapshotMock: vi.fn()
 }));
 
-vi.mock("../src/app-core/methods/ui/spectator/wheel-spectator.ts", () => ({
-  createWheelSpectatorSession: createWheelSpectatorSessionMock,
-  fetchWheelSpectatorCount: vi.fn(),
-  publishWheelSpectatorSession: publishWheelSpectatorSessionMock
+vi.mock("../src/app-core/methods/ui/spectator/game-spectator.ts", () => ({
+  createGameSpectatorSession: createWheelSpectatorSessionMock,
+  fetchGameSpectatorCount: vi.fn(),
+  publishGameSpectatorSession: publishWheelSpectatorSessionMock
 }));
 
 vi.mock("../src/components/windows/game/services/wheelSpectator.ts", () => ({

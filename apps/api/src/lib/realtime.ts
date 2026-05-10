@@ -25,8 +25,12 @@ export function buildWorkspaceWheelRealtimeRoom(workspaceId: string): string {
   return `workspace:${workspaceId}:wheel`;
 }
 
+export function buildGamePublicSessionRealtimeRoom(publicSessionId: string): string {
+  return `wheel-public:${String(publicSessionId ?? "").trim().toLowerCase()}`;
+}
+
 export function buildWheelPublicSessionRealtimeRoom(publicSessionId: string): string {
-  return `wheel-public:${publicSessionId}`;
+  return buildGamePublicSessionRealtimeRoom(publicSessionId);
 }
 
 export function signRealtimeSubscribeToken(
@@ -216,7 +220,7 @@ export function publishWorkspaceWheelRealtimeEventBestEffort(
   void publishWorkspaceWheelRealtimeEvent(config, args).catch(() => false);
 }
 
-export async function publishWheelPublicSessionRealtimeEvent(
+export async function publishGamePublicSessionRealtimeEvent(
   config: ApiConfig,
   args: {
     publicSessionId: string;
@@ -229,17 +233,31 @@ export async function publishWheelPublicSessionRealtimeEvent(
   if (!publicSessionId) return false;
 
   return publishRealtimeRoomEvent(config, {
-    room: buildWheelPublicSessionRealtimeRoom(publicSessionId),
+    room: buildGamePublicSessionRealtimeRoom(publicSessionId),
     eventType: args.eventType,
     data: args.data,
     logger: args.logger,
-    warningLabel: `wheel public session ${publicSessionId}`
+    warningLabel: `game public session ${publicSessionId}`
   });
+}
+
+export function publishGamePublicSessionRealtimeEventBestEffort(
+  config: ApiConfig,
+  args: Parameters<typeof publishGamePublicSessionRealtimeEvent>[1]
+): void {
+  void publishGamePublicSessionRealtimeEvent(config, args).catch(() => false);
+}
+
+export async function publishWheelPublicSessionRealtimeEvent(
+  config: ApiConfig,
+  args: Parameters<typeof publishGamePublicSessionRealtimeEvent>[1]
+): Promise<boolean> {
+  return publishGamePublicSessionRealtimeEvent(config, args);
 }
 
 export function publishWheelPublicSessionRealtimeEventBestEffort(
   config: ApiConfig,
-  args: Parameters<typeof publishWheelPublicSessionRealtimeEvent>[1]
+  args: Parameters<typeof publishGamePublicSessionRealtimeEvent>[1]
 ): void {
-  void publishWheelPublicSessionRealtimeEvent(config, args).catch(() => false);
+  publishGamePublicSessionRealtimeEventBestEffort(config, args);
 }

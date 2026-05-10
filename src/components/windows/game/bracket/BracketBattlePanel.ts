@@ -24,6 +24,14 @@ type BracketBattleRollPreview = {
   value: number;
 };
 
+type BracketBattleSessionStatePayload = {
+  session: BracketBattleSession | null;
+  lastRolls: BracketBattleRoll[];
+  rolling: boolean;
+  showcaseMatchId: string | null;
+  publishLive: boolean;
+};
+
 type BracketBattleIntervalHandle = ReturnType<typeof globalThis.setInterval>;
 type BracketBattleTimeoutHandle = ReturnType<typeof globalThis.setTimeout>;
 
@@ -52,7 +60,10 @@ type BracketBattlePanelThis = Record<string, unknown> & {
   activeScopeType: WorkspaceScopeType;
   activeWorkspaceId: string | null;
   t: (key: string, params?: Record<string, string | number | null | undefined>) => string;
-  $emit: (event: "overlay-command", command: GameStageOverlayCommand) => void;
+  $emit: {
+    (event: "overlay-command", command: GameStageOverlayCommand): void;
+    (event: "session-state", payload: BracketBattleSessionStatePayload): void;
+  };
   $el?: Element | null;
   $refs?: {
     leftRollSlotEl?: Element | null;
@@ -119,13 +130,6 @@ function randomRollValue(min: number, max: number): number {
   return Math.floor(Math.random() * (upper - lower + 1)) + lower;
 }
 
-function getBracketBattleParentContext(context: BracketBattlePanelThis): BracketBattlePanelThis {
-  const parent = context.bracketBattleParentCtx;
-  return parent && typeof parent === "object"
-    ? parent as BracketBattlePanelThis
-    : context;
-}
-
 export const BracketBattlePanel = {
   name: "BracketBattlePanel",
   props: {
@@ -134,7 +138,7 @@ export const BracketBattlePanel = {
       required: true
     }
   },
-  emits: ["overlay-command"],
+  emits: ["overlay-command", "session-state"],
   watch: {
     wheelMode(this: BracketBattlePanelThis) {
       this.loadBracketSession();
@@ -196,23 +200,27 @@ export const BracketBattlePanel = {
     }
   },
   methods: {
+    emitBracketBattleSessionState(this: BracketBattlePanelThis, publishLive: boolean = false): void {
+      this.$emit("session-state", {
+        session: this.bracketSession,
+        lastRolls: this.bracketLastRolls,
+        rolling: this.bracketRolling,
+        showcaseMatchId: this.bracketShowcaseMatchId,
+        publishLive
+      });
+    },
     syncBracketBattleParentState(this: BracketBattlePanelThis): void {
-      const parent = getBracketBattleParentContext(this);
-      parent.bracketBattleSession = this.bracketSession;
-      parent.bracketBattleLastRolls = this.bracketLastRolls;
-      parent.bracketBattleRolling = this.bracketRolling;
-      parent.bracketBattleShowcaseMatchId = this.bracketShowcaseMatchId;
+      if (typeof this.emitBracketBattleSessionState === "function") {
+        this.emitBracketBattleSessionState(false);
+      }
     },
     publishLiveBracketSpectatorSnapshot(this: BracketBattlePanelThis): void {
-      this.syncBracketBattleParentState?.();
-      if (this.wheelMode !== "live") {
-        return;
+      if (typeof this.syncBracketBattleParentState === "function") {
+        this.syncBracketBattleParentState();
       }
-      const parent = getBracketBattleParentContext(this);
-      const publish = parent.publishWheelSpectatorSessionSnapshot;
-      void (typeof publish === "function"
-        ? publish.call(parent, "live")
-        : Promise.resolve());
+      if (typeof this.emitBracketBattleSessionState === "function") {
+        this.emitBracketBattleSessionState(true);
+      }
     },
     clearBracketRollAnimation(this: BracketBattlePanelThis): void {
       if (this.bracketRollIntervalId != null) {
@@ -546,11 +554,13 @@ export const BracketBattlePanel = {
   },
   beforeUnmount(this: BracketBattlePanelThis) {
     this.clearBracketRollAnimation();
-    const parent = getBracketBattleParentContext(this);
-    parent.bracketBattleSession = null;
-    parent.bracketBattleLastRolls = [];
-    parent.bracketBattleRolling = false;
-    parent.bracketBattleShowcaseMatchId = null;
+    if (typeof this.emitBracketBattleSessionState === "function") {
+      this.bracketSession = null;
+      this.bracketLastRolls = [];
+      this.bracketRolling = false;
+      this.bracketShowcaseMatchId = null;
+      this.emitBracketBattleSessionState(false);
+    }
   },
   setup(props: { ctx: Record<string, unknown> }) {
     const injectedGameCtx = inject<Record<string, unknown> | null>("gameCtx", null);

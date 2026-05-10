@@ -1,8 +1,8 @@
 import {
-    createWheelSpectatorSession,
-    fetchWheelSpectatorCount,
-    publishWheelSpectatorSession
-} from "../../../../app-core/methods/ui/spectator/wheel-spectator.ts";
+    createGameSpectatorSession,
+    fetchGameSpectatorCount,
+    publishGameSpectatorSession
+} from "../../../../app-core/methods/ui/spectator/game-spectator.ts";
 import { buildWheelSpectatorQrImageUrl, buildWheelSpectatorSessionUrl, buildWheelSpectatorSnapshot } from "../services/wheelSpectator.ts";
 import type { GameWindowThis } from "../coordinator/gameControllerState.ts";
 
@@ -96,7 +96,7 @@ export const wheelSpectatorMethods = {
     try {
       const status = resolveNextSpectatorStatus(this as Record<string, unknown>, undefined, { preserveEnded: false });
       const snapshot = buildWheelSpectatorSnapshot(this as Record<string, unknown>, status);
-      const { publicSessionId } = await createWheelSpectatorSession(this as never, snapshot);
+      const { publicSessionId } = await createGameSpectatorSession(this as never, snapshot);
       const publicUrl = buildWheelSpectatorSessionUrl(publicSessionId);
       (this as Record<string, unknown>).wheelSpectatorSessionId = publicSessionId;
       (this as Record<string, unknown>).wheelSpectatorSessionStatus = status;
@@ -135,7 +135,7 @@ export const wheelSpectatorMethods = {
     try {
       const status = resolveNextSpectatorStatus(this as Record<string, unknown>, statusOverride);
       const snapshot = buildWheelSpectatorSnapshot(this as Record<string, unknown>, status);
-      await publishWheelSpectatorSession(this as never, publicSessionId, snapshot);
+      await publishGameSpectatorSession(this as never, publicSessionId, snapshot);
       (this as Record<string, unknown>).wheelSpectatorSessionStatus = status;
     } catch (error) {
       console.warn("Failed to publish spectator snapshot:", error);
@@ -204,7 +204,7 @@ export const wheelSpectatorMethods = {
 
     (this as Record<string, unknown>)._wheelSpectatorCountRequestPending = true;
     try {
-      (this as Record<string, unknown>).wheelSpectatorConnectedCount = await fetchWheelSpectatorCount(this as never, publicSessionId);
+      (this as Record<string, unknown>).wheelSpectatorConnectedCount = await fetchGameSpectatorCount(this as never, publicSessionId);
     } catch {
       // Keep the last known count on transient failures.
     } finally {
