@@ -36,6 +36,9 @@ export function createGameStageOverlayController(input: {
         case "stageEnter":
           input.scene.stageEnter(command);
           return;
+        case "anchorUpdate":
+          input.scene.updateAnchors(command);
+          return;
         case "stageExit":
           input.scene.stageExit(command);
           return;

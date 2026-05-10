@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import type {
   GameStageOverlayAnchor,
+  GameStageOverlayAnchorUpdateCommand,
   GameStageOverlayStageExitCommand,
   GameStageOverlayRollResolveCommand,
   GameStageOverlayRollStartCommand
@@ -23,6 +24,7 @@ export interface GameStageOverlaySceneHandle {
   enterIdle(): void;
   clear(): void;
   stageEnter(command: { leftAnchor?: GameStageOverlayAnchor; rightAnchor?: GameStageOverlayAnchor }): void;
+  updateAnchors(command: GameStageOverlayAnchorUpdateCommand): void;
   stageExit(command: GameStageOverlayStageExitCommand): void;
   startRoll(command: GameStageOverlayRollStartCommand): void;
   resolveRoll(command: GameStageOverlayRollResolveCommand): void;
@@ -425,6 +427,15 @@ export function createGameStageOverlayScene(mountEl: HTMLElement): GameStageOver
       diceVisible = true;
       stageTransitionStartedAt = performance.now();
       animationFrameId = requestAnimationFrame(animateStageEnter);
+    },
+    updateAnchors(command) {
+      currentLeftAnchor = command.leftAnchor ?? currentLeftAnchor;
+      currentRightAnchor = command.rightAnchor ?? currentRightAnchor;
+      if (diceVisible) {
+        renderIdleState();
+        return;
+      }
+      renderScene();
     },
     stageExit(command) {
       if (!diceVisible) {

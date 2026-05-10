@@ -643,3 +643,84 @@ test("BracketBattlePanel final resolve reanchors dice under Roll match and reset
     }
   });
 });
+
+test("BracketBattlePanel refreshBracketBattleDiceAnchors emits an anchor update after layout changes", () => {
+  const draft = createBracketBattleDraft(4);
+  draft.participants = ["Alex", "Bri", "Cam", "Dev"];
+  const session = createBracketBattleSessionFromDraft(draft, {
+    now: () => 123,
+    randomInt: (_min, max) => max
+  });
+  const overlayEvents: Array<{ eventName: string; payload: unknown }> = [];
+  const surfaceRect = {
+    left: 0,
+    top: 0,
+    width: 360,
+    height: 640
+  };
+  const leftRollRect = {
+    left: 32,
+    top: 180,
+    width: 120,
+    height: 92
+  };
+  const rightRollRect = {
+    left: 208,
+    top: 180,
+    width: 120,
+    height: 92
+  };
+  const vm = {
+    bracketSession: session,
+    activeBracketMatch: session.matches[0],
+    bracketRolling: false,
+    $el: {
+      closest(selector: string) {
+        return selector === ".game-stage-overlay-surface"
+          ? {
+              getBoundingClientRect() {
+                return surfaceRect;
+              }
+            }
+          : null;
+      }
+    },
+    $refs: {
+      leftRollSlotEl: {
+        getBoundingClientRect() {
+          return leftRollRect;
+        }
+      },
+      rightRollSlotEl: {
+        getBoundingClientRect() {
+          return rightRollRect;
+        }
+      }
+    },
+    $emit(eventName: string, payload: unknown) {
+      overlayEvents.push({ eventName, payload });
+    },
+    getBracketBattleRollSlotAnchors: BracketBattlePanel.methods!.getBracketBattleRollSlotAnchors,
+    getBracketBattleActionDiceAnchors: BracketBattlePanel.methods!.getBracketBattleActionDiceAnchors
+  };
+
+  BracketBattlePanel.methods!.refreshBracketBattleDiceAnchors.call(vm as never);
+
+  assert.deepEqual(overlayEvents, [{
+    eventName: "overlay-command",
+    payload: {
+      type: "anchorUpdate",
+      effect: "dice",
+      leftAnchor: {
+        x: 0.2556,
+        y: 0.3531,
+        size: 0.2556
+      },
+      rightAnchor: {
+        x: 0.7444,
+        y: 0.3531,
+        size: 0.2556
+      }
+    }
+  }]);
+});

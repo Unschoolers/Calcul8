@@ -97,6 +97,31 @@ test("GameWindow publishes bracket session-state updates through the spectator h
   assert.equal(vm.bracketBattleShowcaseMatchId, "match-1");
 });
 
+test("GameWindow overlay state follows bracket host availability and clears stale dice commands", () => {
+  const vm = {
+    currentTab: "wheel",
+    wheelIsBracketBattle: true,
+    gameStageOverlayEnabled: false,
+    gameStageOverlayMounted: false,
+    gameStageOverlayActiveCommand: null as unknown,
+    setGameStageOverlayCommand(command: unknown) {
+      this.gameStageOverlayActiveCommand = command;
+    }
+  };
+
+  GameWindow.methods!.syncGameStageOverlayState.call(vm as never);
+  assert.equal(vm.gameStageOverlayEnabled, true);
+
+  vm.gameStageOverlayMounted = true;
+  vm.gameStageOverlayActiveCommand = { type: "stageEnter", effect: "dice" };
+  vm.currentTab = "portfolio";
+  GameWindow.methods!.syncGameStageOverlayState.call(vm as never);
+
+  assert.equal(vm.gameStageOverlayEnabled, false);
+  assert.equal(vm.gameStageOverlayMounted, false);
+  assert.equal(vm.gameStageOverlayActiveCommand, null);
+});
+
 test("selecting an existing Wheel or Mystery Grid config exits Bracket Battle", () => {
   const watcher = String(GameWindow.watch?.activeWheelConfigId ?? "");
 

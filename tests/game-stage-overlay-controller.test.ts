@@ -10,6 +10,7 @@ import {
   createGameStageOverlayIdleCommand,
   type GameStageOverlayCommand
 } from "../src/components/windows/game/overlay/gameStageOverlayTypes.ts";
+import type { GameStageOverlaySceneHandle } from "../src/components/windows/game/overlay/gameStageOverlayScene.ts";
 
 test("game window state exposes overlay shell defaults", () => {
   const state = createGameWindowState();
@@ -47,6 +48,10 @@ test("overlay controller mounts cleared, dispatches commands, and suppresses cal
       },
       clear() {
         calls.push("clear");
+      },
+      updateAnchors(command) {
+        calls.push("anchor-update");
+        payloads.push(command);
       },
       stageEnter(command) {
         calls.push("stage-enter");
@@ -144,4 +149,29 @@ test("overlay controller mounts cleared, dispatches commands, and suppresses cal
       finalMatch: true
     }
   ]);
+});
+
+test("game stage overlay controller dispatches anchor updates without replaying stage animations", () => {
+  const calls: string[] = [];
+  const scene: GameStageOverlaySceneHandle = {
+    enterIdle: () => calls.push("enterIdle"),
+    clear: () => calls.push("clear"),
+    updateAnchors: () => calls.push("updateAnchors"),
+    stageEnter: () => calls.push("stageEnter"),
+    stageExit: () => calls.push("stageExit"),
+    startRoll: () => calls.push("startRoll"),
+    resolveRoll: () => calls.push("resolveRoll"),
+    dispose: () => calls.push("dispose")
+  };
+  const controller = createGameStageOverlayController({ scene });
+
+  controller.mount();
+  controller.dispatch({
+    type: "anchorUpdate",
+    effect: "dice",
+    leftAnchor: { x: 0.25, y: 0.35, size: 0.2 },
+    rightAnchor: { x: 0.75, y: 0.35, size: 0.2 }
+  });
+
+  assert.deepEqual(calls, ["clear", "updateAnchors"]);
 });

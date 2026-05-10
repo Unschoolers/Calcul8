@@ -23,6 +23,13 @@ export type GameStageOverlayStageEnterCommand = {
   rightAnchor?: GameStageOverlayAnchor;
 };
 
+export type GameStageOverlayAnchorUpdateCommand = {
+  type: "anchorUpdate";
+  effect: GameStageOverlayEffectType;
+  leftAnchor?: GameStageOverlayAnchor;
+  rightAnchor?: GameStageOverlayAnchor;
+};
+
 export type GameStageOverlayStageExitCommand = {
   type: "stageExit";
   effect: GameStageOverlayEffectType;
@@ -57,6 +64,7 @@ export type GameStageOverlayCommand =
   | GameStageOverlayIdleCommand
   | GameStageOverlayClearCommand
   | GameStageOverlayStageEnterCommand
+  | GameStageOverlayAnchorUpdateCommand
   | GameStageOverlayStageExitCommand
   | GameStageOverlayRollStartCommand
   | GameStageOverlayRollResolveCommand;

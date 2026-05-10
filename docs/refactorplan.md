@@ -1,42 +1,43 @@
 # Calcul8 Refactor TODO
 
-## 1. Public Spectator And Realtime Contract
+## 1. Spectator Render Modules And Realtime Edge Cases
 
 = Priority
 
-Critical
+Done
 
 = Steps
 
-- Extract generic `game` public-session helpers around the existing wheel-compatible route surface.
-- Start from `src/components/windows/game/services/wheelSpectator.ts`, `apps/api/src/features/wheel/publicSessionHandler.ts`, `apps/api/src/lib/realtime.ts`, and `apps/realtime/src/workspace-realtime-rooms.ts`.
-- Make `gameType` dispatch explicit at storage, API, websocket, and spectator-render boundaries.
-- Add contract tests for wheel, grid, and bracket publish, reset, restart, reconnect refresh, stale snapshot ordering, and config/live behavior.
-- Split `src/spectator-main.ts` into small game renderers.
-- Update `docs/superpowers/specs/2026-05-08-bracket-battle-design.md`, which still describes public spectator and realtime support as future work.
+- Split `src/spectator-main.ts` into small shared, wheel/grid, bracket, and realtime modules.
+- Added spectator render tests for bracket dice tiles/tree, grid reset state, and wheel canvas/proof output.
+- Added realtime client tests for malformed websocket payload refresh, reconnect refresh, session filtering, unknown events, and both `game.public-session.updated` and `wheel.public-session.updated`.
+- Verified existing coverage for stale `updatedAt`, queued publishes, ended-session restart, grid reset snapshots, and bracket public snapshots.
+- Kept generic game public-session helpers as the main path while preserving wheel route and `wheel-public:*` room compatibility.
 
 = Acceptance
 
-Spectator sessions for wheel, grid, and bracket update live for rolls/spins/resets/restarts through one tested realtime path.
+Done when `npm run test -- tests/spectator-render.test.ts tests/spectator-realtime-client.test.ts tests/bracket-spectator-page.test.ts`, `npm run test -- tests/wheel-spectator.test.ts tests/wheel-spectator-client-state.test.ts tests/wheel-spectator-methods.test.ts tests/shared-game-public-session-contracts.test.ts`, `npx tsc -p . --noEmit --strict`, and `npm run build` passed.
 
 ## 2. Bracket Battle Host Flow
 
 = Priority
 
-High
+Done
 
 = Steps
 
-- Move bracket session loading/saving, live snapshot construction, and host state resolution out of `src/components/windows/game/bracket/BracketBattlePanel.ts`.
+- Moved bracket session loading/saving, storage key resolution, host payload building, and host state application into `src/components/windows/game/bracket/bracketBattleHostFlow.ts`.
+- Moved bracket live spectator snapshot construction into `src/components/windows/game/bracket/bracketBattleSpectatorSnapshot.ts`.
 - Keep `src/components/windows/game/coordinator/GameWindow.definition.ts` as the host bridge instead of pushing more parent synchronization into the panel.
-- Keep `resolveBracketBattleMatchRoll` as the domain outcome source.
+- Kept `resolveBracketBattleMatchRoll` as the domain outcome source.
 - Keep dice animation visual-only and separate from roll outcomes.
-- Split the UI into current duel, compact bracket tree, recent awards, and reset dialog sections.
-- Add mobile and fullscreen checks for dice overlay placement at 360px, 390px, tablet, desktop, and fullscreen sizes.
+- Kept the panel organized around current duel, compact bracket tree, recent awards, and reset dialog sections.
+- Added host-flow tests for scoped preview/live storage, loaded-session focus, stale storage recovery, showcased match resolution, and live publish intent.
+- Added bracket spectator snapshot tests, GameWindow overlay state tests, and an anchor-update path so presentation/mobile layout changes can re-anchor visible dice without replaying animations.
 
 = Acceptance
 
-Bracket host state is testable without mounting the whole panel, and normal/fullscreen/mobile layouts share one reliable flow.
+Done when `npm run test -- tests/bracket-battle-host-flow.test.ts tests/bracket-battle-spectator-snapshot.test.ts tests/bracket-battle-panel.test.ts tests/game-window-facade.test.ts tests/game-stage-overlay-controller.test.ts tests/game-stage-overlay-dice.test.ts tests/bracket-battle-overlay-anchors.test.ts tests/wheel-spectator.test.ts`, `npx tsc -p . --noEmit --strict`, and `npm run build` passed.
 
 ## 3. Wheel-Named Game Orchestration
 
