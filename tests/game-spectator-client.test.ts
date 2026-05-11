@@ -58,7 +58,7 @@ test("game spectator client uses wheel-compatible public session routes with gen
     clearTimeout
   });
   vi.stubGlobal("localStorage", {
-    getItem: (key: string) => key === "whatfees_api_base_url" ? "https://api.example.test" : null,
+    getItem: () => null,
     setItem: () => undefined
   });
 
