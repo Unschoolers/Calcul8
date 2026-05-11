@@ -3,7 +3,7 @@ import { test } from "vitest";
 import { getTierPrizeGameAdapter, tierPrizeGameAdapters } from "../src/components/windows/game/services/gameAdapters.ts";
 import type { WheelConfig } from "../src/types/app.ts";
 
-function createConfig(gameType: "wheel" | "grid"): WheelConfig {
+function createConfig(gameType: "wheel" | "grid" | "bracket"): WheelConfig {
   return {
     id: 1,
     name: "Game",
@@ -12,25 +12,33 @@ function createConfig(gameType: "wheel" | "grid"): WheelConfig {
     gameType,
     outcomeCount: gameType === "grid" ? 25 : undefined,
     gridCellCount: gameType === "grid" ? 25 : undefined,
+    bracketBattle: gameType === "bracket"
+      ? { participantCount: 4, participants: ["A", "B", "C", "D"], prizes: [] }
+      : undefined,
     createdAt: "",
     tiers: []
   };
 }
 
-test("tier-prize game registry exposes explicit wheel and grid adapters", () => {
+test("tier-prize game registry exposes explicit wheel, grid, and bracket adapters", () => {
   assert.equal(tierPrizeGameAdapters.wheel.gameType, "wheel");
   assert.equal(tierPrizeGameAdapters.grid.gameType, "grid");
+  assert.equal(tierPrizeGameAdapters.bracket.gameType, "bracket");
   assert.equal(tierPrizeGameAdapters.wheel.isBoardGame, false);
   assert.equal(tierPrizeGameAdapters.grid.isBoardGame, true);
+  assert.equal(tierPrizeGameAdapters.bracket.isBoardGame, true);
 });
 
 test("tier-prize game adapter resolves display behavior from game type", () => {
   const wheelAdapter = getTierPrizeGameAdapter(createConfig("wheel"));
   const gridAdapter = getTierPrizeGameAdapter(createConfig("grid"));
+  const bracketAdapter = getTierPrizeGameAdapter(createConfig("bracket"));
 
   assert.equal(wheelAdapter.primaryActionIcon({ wheelMode: "live" }, null), "mdi-lightning-bolt");
   assert.equal(gridAdapter.primaryActionIcon({ wheelMode: "live" }, null), "mdi-grid");
+  assert.equal(bracketAdapter.primaryActionIcon({ wheelMode: "live" }, null), "mdi-tournament");
   assert.match(wheelAdapter.stageSlotsLabel({ wheelDisplaySlots: [{ name: "A" } as never] }, createConfig("wheel")), /1/);
   assert.match(gridAdapter.stageSlotsLabel({}, createConfig("grid")), /25/);
+  assert.match(bracketAdapter.stageSlotsLabel({}, createConfig("bracket")), /0/);
 });
 

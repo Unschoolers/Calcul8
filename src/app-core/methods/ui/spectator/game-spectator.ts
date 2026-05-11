@@ -2,7 +2,7 @@ import type { GameSpectatorSnapshot } from "../../../../types/app.ts";
 import type { AppContext } from "../../../context-app.ts";
 import type { WorkspaceRealtimeSubscribeToken } from "../../workspace-realtime-api.ts";
 import { fetchAuthenticatedApiResponse } from "../common/shared.ts";
-import { normalizeGameSpectatorSnapshot } from "./wheel-spectator-contract.ts";
+import { normalizeGameSpectatorSnapshot } from "./game-spectator-contract.ts";
 
 type GameSpectatorCreateResponse = {
   publicSessionId?: unknown;

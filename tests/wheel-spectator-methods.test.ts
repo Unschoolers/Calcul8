@@ -4,11 +4,11 @@ import { test, vi } from "vitest";
 const {
   createWheelSpectatorSessionMock,
   publishWheelSpectatorSessionMock,
-  buildWheelSpectatorSnapshotMock
+  buildGameSpectatorSnapshotMock
 } = vi.hoisted(() => ({
   createWheelSpectatorSessionMock: vi.fn(),
   publishWheelSpectatorSessionMock: vi.fn(),
-  buildWheelSpectatorSnapshotMock: vi.fn()
+  buildGameSpectatorSnapshotMock: vi.fn()
 }));
 
 vi.mock("../src/app-core/methods/ui/spectator/game-spectator.ts", () => ({
@@ -17,13 +17,13 @@ vi.mock("../src/app-core/methods/ui/spectator/game-spectator.ts", () => ({
   publishGameSpectatorSession: publishWheelSpectatorSessionMock
 }));
 
-vi.mock("../src/components/windows/game/services/wheelSpectator.ts", () => ({
-  buildWheelSpectatorQrImageUrl: vi.fn((value: string) => `qr:${value}`),
-  buildWheelSpectatorSessionUrl: vi.fn((value: string) => `https://example.test/spectator.html?session=${value}`),
-  buildWheelSpectatorSnapshot: buildWheelSpectatorSnapshotMock
+vi.mock("../src/components/windows/game/services/gameSpectator.ts", () => ({
+  buildGameSpectatorQrImageUrl: vi.fn((value: string) => `qr:${value}`),
+  buildGameSpectatorSessionUrl: vi.fn((value: string) => `https://example.test/spectator.html?session=${value}`),
+  buildGameSpectatorSnapshot: buildGameSpectatorSnapshotMock
 }));
 
-import { wheelSpectatorMethods } from "../src/components/windows/game/commands/wheelSpectatorMethods.ts";
+import { gameSpectatorMethods } from "../src/components/windows/game/commands/gameSpectatorMethods.ts";
 
 test("publishWheelSpectatorSessionSnapshot republishes the newest queued state after an in-flight publish", async () => {
   let resolveFirstPublish: (() => void) | null = null;
@@ -32,7 +32,7 @@ test("publishWheelSpectatorSessionSnapshot republishes the newest queued state a
       resolveFirstPublish = resolve;
     }))
     .mockResolvedValueOnce(undefined);
-  buildWheelSpectatorSnapshotMock.mockImplementation((vm: Record<string, unknown>, status: string) => ({
+  buildGameSpectatorSnapshotMock.mockImplementation((vm: Record<string, unknown>, status: string) => ({
     wheelName: "Wheel",
     sessionStatus: status,
     updatedAt: Number(vm.snapshotVersion || 0)
@@ -47,7 +47,7 @@ test("publishWheelSpectatorSessionSnapshot republishes the newest queued state a
     publishWheelSpectatorSessionSnapshot: (statusOverride?: "starting" | "live" | "ended") => Promise<void>;
   };
   vm.publishWheelSpectatorSessionSnapshot = (statusOverride) =>
-    wheelSpectatorMethods.publishWheelSpectatorSessionSnapshot.call(vm as never, statusOverride);
+    gameSpectatorMethods.publishWheelSpectatorSessionSnapshot.call(vm as never, statusOverride);
 
   const firstPublish = vm.publishWheelSpectatorSessionSnapshot();
   vm.snapshotVersion = 2;
@@ -67,7 +67,7 @@ test("publishWheelSpectatorSessionSnapshot republishes the newest queued state a
 
 test("startWheelSpectatorMode restarts an ended spectator session as active", async () => {
   createWheelSpectatorSessionMock.mockResolvedValueOnce({ publicSessionId: "fresh123" });
-  buildWheelSpectatorSnapshotMock.mockImplementation((vm: Record<string, unknown>, status: string) => ({
+  buildGameSpectatorSnapshotMock.mockImplementation((vm: Record<string, unknown>, status: string) => ({
     wheelName: "Wheel",
     sessionStatus: status,
     updatedAt: Number(vm.snapshotVersion || 0)
@@ -85,7 +85,7 @@ test("startWheelSpectatorMode restarts an ended spectator session as active", as
     wheelSpectatorConnectedCount: 2
   };
 
-  await wheelSpectatorMethods.startWheelSpectatorMode.call(vm as never);
+  await gameSpectatorMethods.startWheelSpectatorMode.call(vm as never);
 
   assert.equal(createWheelSpectatorSessionMock.mock.calls.length, 1);
   assert.equal(createWheelSpectatorSessionMock.mock.calls[0]?.[1]?.sessionStatus, "starting");

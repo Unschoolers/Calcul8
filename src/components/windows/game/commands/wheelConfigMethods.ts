@@ -5,7 +5,6 @@ import {
     stopWorkspaceConfigSyncPush
 } from "../../../../app-core/methods/ui/workspace/workspace-config-sync.ts";
 import { normalizeWheelConfig } from "../../../../app-core/shared/normalize-wheel-config.ts";
-import { createDefaultBracketBattleConfig } from "../../../../app-core/shared/bracket-battle-config.ts";
 import { assignWheelPendingInventoryIssues } from "../../../../app-core/shared/wheel-session-compat.ts";
 import {
     getScopedActiveWheelConfigStorageKey,
@@ -21,7 +20,12 @@ import { calculateTotalCaseCost } from "../../../../domain/calculations-fees.ts"
 import type { Lot, LuckGameType, WheelConfig, WheelTier } from "../../../../types/app.ts";
 import { getWheelController } from "../coordinator/gameControllerState.ts";
 import { remapSpinCountsByTier } from "../services/wheelCountRemapping.ts";
-import { createDefaultTier, createDefaultWheelConfig, generateTierId } from "../services/wheelDefaults.ts";
+import { createTierPrizeGameConfigFromTemplate } from "../services/gameConfigTemplates.ts";
+import {
+  resetLoadedTierPrizeGameSessionState,
+  resetLoadedTierPrizeGameState
+} from "../services/gameSessionReset.ts";
+import { createDefaultTier } from "../services/wheelDefaults.ts";
 import { buildSlotsFromConfig, createWheelGridLayoutSeed, type WheelSlot } from "../services/wheelSlots.ts";
 import {
     getAvailableSinglesQuantityForWheelTier,
@@ -35,54 +39,6 @@ function clearQueuedWheelConfigSync(context: Record<string, unknown>): void {
     globalThis.clearTimeout(timeoutId);
     context._wheelDraftSaveTimeoutId = undefined;
   }
-}
-
-function resetLoadedWheelSessionState(context: Record<string, unknown>): void {
-  const controller = getWheelController(context);
-  context.wheelSpinCounts = [];
-  context.wheelTotalSpins = 0;
-  context.wheelLastResult = "";
-  controller.inventoryWarning = "";
-  controller.lastResultColor = "rgb(var(--v-theme-primary))";
-  controller.sessionCostAdjustment = 0;
-  controller.sessionNetRevenue = null;
-  assignWheelPendingInventoryIssues(context, []);
-  context.wheelEndingSession = false;
-  context.wheelChaseDialog = false;
-  context.wheelChaseReplacementSinglesId = null;
-  context.wheelChasePendingTierId = "";
-  context.wheelChasePreviewMode = false;
-  controller.chaseTallyHistory = [];
-  controller.gridReveals = [];
-  controller.fairnessHistory = [];
-  controller.previewSpinCounts = [];
-  controller.previewTotalSpins = 0;
-  controller.previewFairnessHistory = [];
-  controller.previewChaseTallyHistory = [];
-  controller.previewGridReveals = [];
-  controller.spinHash = "";
-  controller.spinSeed = "";
-  controller.spinClientSeed = "";
-  controller.spinVerificationUrl = "";
-  controller.spinAlgorithm = "";
-  controller.showSeed = false;
-  controller.fairnessHistoryOpen = false;
-  controller.highlightedSlotIndex = -1;
-  context.wheelSpectatorDialog = false;
-  context.wheelSpectatorSessionId = "";
-  context.wheelSpectatorSessionStatus = "inactive";
-  context.wheelSpectatorSessionUrl = "";
-  context.wheelSpectatorSessionQrUrl = "";
-  context.wheelSpectatorPublishPending = false;
-}
-
-function resetLoadedWheelState(context: Record<string, unknown>): void {
-  const controller = getWheelController(context);
-  controller.activeSlots = [];
-  controller.previewSlots = [];
-  controller.gridLayoutSeed = "";
-  controller.previewGridLayoutSeed = "";
-  resetLoadedWheelSessionState(context);
 }
 
 function getWheelDraftStorageKey(context: Record<string, unknown>, wheelConfigId: number | null | undefined): string {
@@ -114,54 +70,6 @@ function normalizeOptionalNumericId(value: unknown): number | null {
   const id = Number(value);
   if (!Number.isFinite(id)) return null;
   return Math.floor(id);
-}
-
-function bindDefaultTierSources(context: Record<string, unknown>, config: WheelConfig): void {
-  const currentLotId = (context.currentLotId as number | null) ?? null;
-  for (const tier of config.tiers) {
-    tier.boundLotId = currentLotId;
-    tier.boundLotIds = currentLotId == null ? [] : [currentLotId];
-  }
-}
-
-function createGameConfigFromTemplate(
-  context: Record<string, unknown>,
-  gameType: LuckGameType,
-  template?: WheelConfig | null
-): WheelConfig {
-  const existing = template ?? null;
-  const newConfig = existing
-    ? JSON.parse(JSON.stringify(existing)) as WheelConfig
-    : createDefaultWheelConfig();
-  newConfig.id = Date.now();
-  newConfig.gameType = gameType;
-  newConfig.name = existing
-    ? `${existing.name} (copy)`
-    : (gameType === "bracket" ? "New Bracket Battle" : (gameType === "grid" ? "New Mystery Grid" : "New Wheel"));
-  newConfig.createdAt = new Date().toISOString();
-  if (gameType === "grid") {
-    newConfig.outcomeCount = newConfig.outcomeCount || 100;
-    newConfig.gridCellCount = newConfig.outcomeCount;
-    delete newConfig.bracketBattle;
-  } else if (gameType === "bracket") {
-    newConfig.spinPrice = 0;
-    newConfig.targetMargin = 0;
-    newConfig.outcomeCount = 0;
-    newConfig.gridCellCount = 0;
-    newConfig.tiers = [];
-    newConfig.bracketBattle = existing?.bracketBattle
-      ? JSON.parse(JSON.stringify(existing.bracketBattle)) as WheelConfig["bracketBattle"]
-      : createDefaultBracketBattleConfig(4);
-  } else {
-    delete newConfig.bracketBattle;
-  }
-  for (const tier of newConfig.tiers) {
-    tier.id = generateTierId();
-  }
-  if (!existing) {
-    bindDefaultTierSources(context, newConfig);
-  }
-  return newConfig;
 }
 
 export const wheelConfigMethods = {
@@ -223,7 +131,7 @@ export const wheelConfigMethods = {
     const activeId = this.activeWheelConfigId as number | null;
     const existing = activeId != null ? configs.find((c) => c.id === activeId) : null;
     const shouldCopyExisting = existing?.gameType === gameType;
-    const newConfig = createGameConfigFromTemplate(this, gameType, shouldCopyExisting ? existing : null);
+    const newConfig = createTierPrizeGameConfigFromTemplate(this, gameType, shouldCopyExisting ? existing : null);
     configs.push(newConfig);
     this.wheelConfigs = [...configs];
     this.activeWheelConfigId = newConfig.id;
@@ -262,7 +170,7 @@ export const wheelConfigMethods = {
       : (sanitizedConfig ? JSON.parse(JSON.stringify(sanitizedConfig)) as WheelConfig : null);
     if (!sanitizedConfig) {
       (this as Record<string, unknown>).appliedWheelConfigSnapshot = null;
-      resetLoadedWheelState(this as Record<string, unknown>);
+      resetLoadedTierPrizeGameState(this as Record<string, unknown>);
       nextTick(() => (this as Record<string, unknown> & { drawWheel: (offset?: number) => void }).drawWheel(
         (this.wheelCurrentAngle as number) || 0
       ));
@@ -275,7 +183,7 @@ export const wheelConfigMethods = {
       JSON.parse(JSON.stringify(sanitizedConfig)) as WheelConfig;
     const loadController = getWheelController(this as Record<string, unknown>);
     if (sanitizedConfig.gameType === "bracket") {
-      resetLoadedWheelState(this as Record<string, unknown>);
+      resetLoadedTierPrizeGameState(this as Record<string, unknown>);
       nextTick(() => (this as Record<string, unknown> & { drawWheel: (offset?: number) => void }).drawWheel(
         (this as Record<string, unknown>).wheelCurrentAngle as number || 0
       ));
@@ -292,7 +200,7 @@ export const wheelConfigMethods = {
     loadController.previewSlots = [...builtSlots];
     const restored = (this as Record<string, unknown> & { loadWheelFromSession: () => boolean }).loadWheelFromSession();
     if (!restored) {
-      resetLoadedWheelSessionState(this as Record<string, unknown>);
+      resetLoadedTierPrizeGameSessionState(this as Record<string, unknown>);
       this.wheelSpinCounts = new Array(builtSlots.length).fill(0);
       loadController.previewSpinCounts = new Array(builtSlots.length).fill(0);
       loadController.previewTotalSpins = 0;
@@ -351,7 +259,7 @@ export const wheelConfigMethods = {
         (this as Record<string, unknown> & { persistLastWheelConfigSelection?: () => void }).persistLastWheelConfigSelection?.();
         (this as Record<string, unknown>).editingWheelConfig = JSON.parse(JSON.stringify(sanitizedUpdated)) as WheelConfig;
         (this as Record<string, unknown>).appliedWheelConfigSnapshot = JSON.parse(JSON.stringify(sanitizedUpdated)) as WheelConfig;
-        resetLoadedWheelState(this as Record<string, unknown>);
+        resetLoadedTierPrizeGameState(this as Record<string, unknown>);
         queueCloudConfigSyncPush(this as Parameters<typeof queueCloudConfigSyncPush>[0]);
         const showWheelConfigSaved = (this as Record<string, unknown> & {
           showWheelConfigSaved?: () => void;

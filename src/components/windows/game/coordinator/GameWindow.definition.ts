@@ -15,7 +15,7 @@ import {
   resolveWheelLayoutMode
 } from "./gameLayoutPolicy.ts";
 import { wheelSessionMethods } from "../commands/wheelSessionMethods.ts";
-import { wheelSpectatorMethods } from "../commands/wheelSpectatorMethods.ts";
+import { gameSpectatorMethods } from "../commands/gameSpectatorMethods.ts";
 import { wheelSpinMethods } from "../commands/wheelSpinMethods.ts";
 import {
   buildMysteryGridCells,
@@ -189,7 +189,7 @@ export const gameWindowDefinition = {
     ...wheelConfigMethods,
     ...wheelSpinMethods,
     ...wheelSessionMethods,
-    ...wheelSpectatorMethods,
+    ...gameSpectatorMethods,
     ...mysteryGridMethods,
     handleGameStageOverlayMountedChange(this: GameWindowOverlayThis, mounted: boolean): void {
       this.gameStageOverlayMounted = mounted;

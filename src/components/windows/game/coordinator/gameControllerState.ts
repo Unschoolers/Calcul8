@@ -4,11 +4,12 @@ import { unwrapWindowBridgeContext } from "../../shared/contextBridge.ts";
 import type { WheelSlot } from "../services/wheelSlots.ts";
 import type { GameStageOverlayCommand } from "../overlay/gameStageOverlayTypes.ts";
 import type { BracketBattleRoll, BracketBattleSession } from "../bracket/bracketBattleDomain.ts";
+import { GAME_CONTROLLER_LEGACY_ALIAS_MAP } from "./gameControllerAliases.ts";
 
 /**
  * Typed `this` context shared across GameWindow computed properties, watchers,
- * lifecycle hooks, and all wheel method objects (wheelSessionMethods,
- * wheelSpinMethods, wheelConfigMethods, wheelSpectatorMethods).
+ * lifecycle hooks, and game method objects (wheelSessionMethods,
+ * wheelSpinMethods, wheelConfigMethods, gameSpectatorMethods).
  *
  * Replaces the previous `this: Record<string, unknown>` annotations and the
  * verbose `(this as Record<string, unknown>).prop` access casts throughout
@@ -319,7 +320,7 @@ export function getWheelController(context: object): WheelControllerState {
   }
 
   const controller = reactive(createDefaultWheelControllerState());
-  for (const [legacyKey, controllerKey] of Object.entries(WHEEL_CONTROLLER_ALIAS_MAP)) {
+  for (const [legacyKey, controllerKey] of Object.entries(GAME_CONTROLLER_LEGACY_ALIAS_MAP)) {
     if (Object.prototype.hasOwnProperty.call(resolvedContext, legacyKey)) {
       (controller as Record<string, unknown>)[controllerKey] = resolvedContext[legacyKey];
     }
@@ -331,7 +332,7 @@ export function getWheelController(context: object): WheelControllerState {
 
   resolvedContext.wheelController = controller;
 
-  for (const [legacyKey, controllerKey] of Object.entries(WHEEL_CONTROLLER_ALIAS_MAP)) {
+  for (const [legacyKey, controllerKey] of Object.entries(GAME_CONTROLLER_LEGACY_ALIAS_MAP)) {
     const descriptor = Object.getOwnPropertyDescriptor(resolvedContext, legacyKey);
     if (descriptor?.get || descriptor?.set) continue;
     Object.defineProperty(resolvedContext, legacyKey, {
@@ -348,33 +349,6 @@ export function getWheelController(context: object): WheelControllerState {
 
   return controller;
 }
-
-const WHEEL_CONTROLLER_ALIAS_MAP = {
-  activeWheelSlots: "activeSlots",
-  wheelPreviewSlots: "previewSlots",
-  wheelInventoryWarning: "inventoryWarning",
-  wheelLastResultColor: "lastResultColor",
-  wheelPreviewSpinCounts: "previewSpinCounts",
-  wheelPreviewTotalSpins: "previewTotalSpins",
-  wheelSpinSeed: "spinSeed",
-  wheelSpinHash: "spinHash",
-  wheelSpinClientSeed: "spinClientSeed",
-  wheelSpinVerificationUrl: "spinVerificationUrl",
-  wheelSpinAlgorithm: "spinAlgorithm",
-  wheelShowSeed: "showSeed",
-  wheelFairnessHistoryOpen: "fairnessHistoryOpen",
-  wheelSessionNetRevenue: "sessionNetRevenue",
-  wheelSessionCostAdjustment: "sessionCostAdjustment",
-  wheelPreviewFairnessHistory: "previewFairnessHistory",
-  wheelFairnessHistory: "fairnessHistory",
-  wheelPreviewChaseTallyHistory: "previewChaseTallyHistory",
-  wheelChaseTallyHistory: "chaseTallyHistory",
-  wheelGridReveals: "gridReveals",
-  wheelPreviewGridReveals: "previewGridReveals",
-  wheelGridLayoutSeed: "gridLayoutSeed",
-  wheelPreviewGridLayoutSeed: "previewGridLayoutSeed",
-  wheelHighlightedSlotIndex: "highlightedSlotIndex"
-} as const satisfies Record<string, keyof WheelControllerState>;
 
 const WHEEL_LOCAL_TOP_LEVEL_KEYS = [
   "editingWheelConfig",
@@ -437,7 +411,7 @@ export function getGameWindowLocalKeys(): string[] {
   return [
     "wheelController",
     ...WHEEL_LOCAL_TOP_LEVEL_KEYS,
-    ...Object.keys(WHEEL_CONTROLLER_ALIAS_MAP)
+    ...Object.keys(GAME_CONTROLLER_LEGACY_ALIAS_MAP)
   ];
 }
 
@@ -499,7 +473,7 @@ export function createGameWindowState() {
     bracketBattleRolling: false,
     bracketBattleShowcaseMatchId: null
   } as Record<string, unknown>;
-  for (const [legacyKey, controllerKey] of Object.entries(WHEEL_CONTROLLER_ALIAS_MAP)) {
+  for (const [legacyKey, controllerKey] of Object.entries(GAME_CONTROLLER_LEGACY_ALIAS_MAP)) {
     Object.defineProperty(state, legacyKey, {
       enumerable: true,
       configurable: true,

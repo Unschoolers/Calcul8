@@ -1,6 +1,6 @@
 import { resolveApiBaseUrl } from "./app-core/methods/ui/common/shared.ts";
-import { shouldApplySpectatorReadyState } from "./app-core/methods/ui/spectator/wheel-spectator-client-state.ts";
-import { normalizeGameSpectatorSnapshot } from "./app-core/methods/ui/spectator/wheel-spectator-contract.ts";
+import { shouldApplySpectatorReadyState } from "./app-core/methods/ui/spectator/game-spectator-client-state.ts";
+import { normalizeGameSpectatorSnapshot } from "./app-core/methods/ui/spectator/game-spectator-contract.ts";
 import {
   fetchGameSpectatorRealtimeSubscribeToken,
   fetchGameSpectatorSnapshot,

@@ -821,9 +821,10 @@ test("lot item computeds do not hydrate sales caches during render", () => {
 });
 
 test("portfolio sales by user chart data uses the shared all-sales accessor when available", () => {
+  const today = new Date().toISOString().slice(0, 10);
   const getAllSalesByLotId = vi.fn(() => new Map([
     [22, [
-      { id: 1, type: "pack", quantity: 1, packsCount: 1, price: 12, buyerShipping: 0, date: "2026-03-18", updatedBy: "whoever" }
+      { id: 1, type: "pack", quantity: 1, packsCount: 1, price: 12, buyerShipping: 0, date: today, updatedBy: "whoever" }
     ]]
   ]));
 
