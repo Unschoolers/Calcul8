@@ -1,6 +1,10 @@
 import type { AppContext, AppMethodState } from "../../../context-app.ts";
 import { initGoogleAutoLoginWithRetry, requestGoogleIdentityPrompt } from "../../../utils/googleAutoLogin.ts";
 import { getPlayBillingService } from "../../../utils/playBilling.ts";
+export {
+  applyTargetProfitAccessDefaults,
+  type TargetProfitAccessApp
+} from "./entitlement-access-defaults.ts";
 
 export type UiEntitlementMethodKeys =
   | "initGoogleAutoLogin"
@@ -16,11 +20,6 @@ export type UiEntitlementMethodKeys =
 
 export type UiEntitlementMethodSubset<K extends UiEntitlementMethodKeys> =
   ThisType<AppContext> & Pick<AppMethodState, K>;
-
-export type TargetProfitAccessApp = Pick<
-  AppContext,
-  "hasLotSelected" | "hasProAccess" | "targetProfitPercent" | "autoSaveSetup"
->;
 
 interface GoogleProfileClaims {
   name?: string;
@@ -156,24 +155,6 @@ export function isAlreadyOwnedPurchaseError(error: unknown): boolean {
     || detail.includes("already owned")
     || detail.includes("item already")
     || detail.includes("owned item");
-}
-
-export function applyTargetProfitAccessDefaults(app: TargetProfitAccessApp): void {
-  if (!app.hasLotSelected) return;
-
-  if (!app.hasProAccess) {
-    if (Number(app.targetProfitPercent) !== 0) {
-      app.targetProfitPercent = 0;
-      app.autoSaveSetup();
-    }
-    return;
-  }
-
-  const currentTarget = Number(app.targetProfitPercent);
-  if (!Number.isFinite(currentTarget) || currentTarget <= 0) {
-    app.targetProfitPercent = 15;
-    app.autoSaveSetup();
-  }
 }
 
 export async function hasPlayPurchaseSupport(): Promise<boolean> {

@@ -2,9 +2,12 @@ import assert from "node:assert/strict";
 import { afterEach, beforeEach, test, vi } from "vitest";
 import {
   buildAuthenticatedHeaders,
+  getStoredCsrfToken,
+  getStoredGoogleIdToken,
   setStoredCsrfToken,
   setStoredGoogleIdToken
 } from "../src/app-core/auth/index.ts";
+import { STORAGE_KEYS } from "../src/app-core/storageKeys.ts";
 
 type MockStorage = {
   getItem(key: string): string | null;
@@ -92,4 +95,26 @@ test("buildAuthenticatedHeaders keeps bearer token for cross-origin session-pref
   );
 
   assert.equal(headers.Authorization, "Bearer google-token");
+});
+
+test("auth secrets hydrate from legacy storage once and remove persisted copies", () => {
+  vi.stubGlobal("localStorage", createMockStorage({
+    [STORAGE_KEYS.GOOGLE_ID_TOKEN]: " legacy-google-token ",
+    [STORAGE_KEYS.CSRF_TOKEN]: " legacy-csrf-token "
+  }));
+
+  assert.equal(getStoredGoogleIdToken(), "legacy-google-token");
+  assert.equal(getStoredCsrfToken(), "legacy-csrf-token");
+  assert.equal(localStorage.getItem(STORAGE_KEYS.GOOGLE_ID_TOKEN), null);
+  assert.equal(localStorage.getItem(STORAGE_KEYS.CSRF_TOKEN), null);
+});
+
+test("setting auth secrets keeps them in memory instead of browser storage", () => {
+  setStoredGoogleIdToken("google-token");
+  setStoredCsrfToken("csrf-token");
+
+  assert.equal(getStoredGoogleIdToken(), "google-token");
+  assert.equal(getStoredCsrfToken(), "csrf-token");
+  assert.equal(localStorage.getItem(STORAGE_KEYS.GOOGLE_ID_TOKEN), null);
+  assert.equal(localStorage.getItem(STORAGE_KEYS.CSRF_TOKEN), null);
 });

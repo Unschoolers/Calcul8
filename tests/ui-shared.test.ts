@@ -180,6 +180,31 @@ test("handleExpiredAuth clears auth tokens and restores cached entitlement state
   });
 });
 
+test("handleExpiredAuth applies cached entitlement through the shared state path", async () => {
+  await withMockedLocalStorage(async () => {
+    writeEntitlementCache({
+      userId: "user-9",
+      hasProAccess: true,
+      updatedAt: "2026-03-11T00:00:00Z",
+      cachedAt: 321
+    });
+
+    const app = {
+      googleAuthEpoch: 0,
+      hasLotSelected: true,
+      hasProAccess: false,
+      targetProfitPercent: 0,
+      autoSaveSetup: vi.fn()
+    };
+
+    handleExpiredAuth(app as never);
+
+    assert.equal(app.hasProAccess, true);
+    assert.equal(app.targetProfitPercent, 15);
+    assert.equal(app.autoSaveSetup.mock.calls.length, 1);
+  });
+});
+
 test("fetchAuthenticatedApiResponse prefers the server session over bearer auth", async () => {
   await withMockedLocalStorage(async () => {
     vi.stubEnv("VITE_API_BASE_URL", "https://api.example.test");
@@ -455,5 +480,52 @@ test("submitPlayPurchaseVerification handles API errors", async () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+test("submitPlayPurchaseVerification applies entitlement defaults through the shared state path", async () => {
+  await withMockedLocalStorage(async (data) => {
+    vi.stubGlobal("window", {
+      crypto: {
+        subtle: null
+      },
+      setTimeout: globalThis.setTimeout,
+      clearTimeout: globalThis.clearTimeout
+    });
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
+      userId: "user-verified",
+      hasProAccess: true,
+      updatedAt: "2026-05-14T00:00:00Z"
+    }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" }
+    })));
+
+    const app = {
+      googleAuthEpoch: 0,
+      hasLotSelected: true,
+      hasProAccess: false,
+      targetProfitPercent: 0,
+      autoSaveSetup: vi.fn(),
+      notify: vi.fn(),
+      debugLogEntitlement: vi.fn(async () => undefined)
+    };
+
+    const verified = await submitPlayPurchaseVerification(app as never, {
+      baseUrl: "https://api.example.test",
+      purchaseToken: "purchase-token",
+      productId: "pro_access"
+    });
+
+    assert.equal(verified, true);
+    assert.equal(app.hasProAccess, true);
+    assert.equal(app.targetProfitPercent, 15);
+    assert.equal(app.autoSaveSetup.mock.calls.length, 1);
+    assert.equal(data.get(PRO_ACCESS_KEY), "1");
+
+    const cache = JSON.parse(data.get(ENTITLEMENT_CACHE_KEY) || "{}");
+    assert.equal(cache.userId, "user-verified");
+    assert.equal(cache.hasProAccess, true);
+    assert.equal(cache.updatedAt, "2026-05-14T00:00:00Z");
   });
 });

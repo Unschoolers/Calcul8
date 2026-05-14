@@ -1,9 +1,14 @@
 import {
     GOOGLE_AUTH_PROFILE_CACHE_KEY,
-    handleExpiredAuthState
+    handleExpiredAuthState,
+    setStoredSessionUserId
 } from "../../../auth/index.ts";
 import type { AppContext } from "../../../context-app.ts";
 import { removeStorage, STORAGE_KEYS } from "../../../storageKeys.ts";
+import {
+  applyTargetProfitAccessDefaults,
+  type TargetProfitAccessApp
+} from "./entitlement-access-defaults.ts";
 
 export interface EntitlementApiResponse {
   userId?: string;
@@ -17,6 +22,24 @@ interface EntitlementCachePayload {
   updatedAt: string | null;
   cachedAt: number;
 }
+
+export interface EntitlementStatePayload {
+  userId: string | null;
+  hasProAccess: boolean;
+  updatedAt: string | null;
+  cachedAt?: number;
+}
+
+export interface ApplyEntitlementStateOptions {
+  applyAccessDefaults?: boolean;
+  cacheAt?: number;
+  persistSessionUserId?: boolean;
+  writeCache?: boolean;
+}
+
+export type EntitlementStateApp =
+  & Pick<AppContext, "hasProAccess">
+  & Partial<TargetProfitAccessApp>;
 
 export const ENTITLEMENT_CACHE_KEY = STORAGE_KEYS.ENTITLEMENT_CACHE;
 export const PRO_ACCESS_KEY = STORAGE_KEYS.PRO_ACCESS;
@@ -70,11 +93,52 @@ export function clearEntitlementCache(): void {
 
 export type AuthSessionApp = Pick<AppContext, "googleAuthEpoch" | "hasProAccess">;
 
+function canApplyTargetProfitDefaults(app: EntitlementStateApp): app is TargetProfitAccessApp {
+  return typeof app.hasLotSelected === "boolean"
+    && "targetProfitPercent" in app
+    && typeof app.autoSaveSetup === "function";
+}
+
+export function applyEntitlementState(
+  app: EntitlementStateApp,
+  payload: EntitlementStatePayload,
+  options: ApplyEntitlementStateOptions = {}
+): void {
+  const {
+    applyAccessDefaults = true,
+    cacheAt = Date.now(),
+    persistSessionUserId = true,
+    writeCache = false
+  } = options;
+
+  app.hasProAccess = payload.hasProAccess;
+  localStorage.setItem(PRO_ACCESS_KEY, payload.hasProAccess ? "1" : "0");
+
+  if (persistSessionUserId && payload.userId) {
+    setStoredSessionUserId(payload.userId);
+  }
+
+  if (writeCache) {
+    writeEntitlementCache({
+      userId: payload.userId,
+      hasProAccess: payload.hasProAccess,
+      updatedAt: payload.updatedAt,
+      cachedAt: Number.isFinite(payload.cachedAt) ? Number(payload.cachedAt) : cacheAt
+    });
+  }
+
+  if (applyAccessDefaults && canApplyTargetProfitDefaults(app)) {
+    applyTargetProfitAccessDefaults(app);
+  }
+}
+
 export function handleExpiredAuth(app: AuthSessionApp): void {
   handleExpiredAuthState(app);
   const cached = readEntitlementCache();
   if (cached) {
-    app.hasProAccess = cached.hasProAccess;
-    localStorage.setItem(PRO_ACCESS_KEY, cached.hasProAccess ? "1" : "0");
+    applyEntitlementState(app, cached, {
+      persistSessionUserId: false,
+      writeCache: false
+    });
   }
 }

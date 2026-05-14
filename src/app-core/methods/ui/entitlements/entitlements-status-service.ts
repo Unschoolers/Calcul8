@@ -1,7 +1,6 @@
 import type { AppContext } from "../../../context-app.ts";
 import {
-  PRO_ACCESS_KEY,
-  writeEntitlementCache,
+  applyEntitlementState,
   type EntitlementApiResponse,
   fetchWithRetry,
   getEntitlementTtlMs,
@@ -11,11 +10,10 @@ import {
 } from "../common/shared.ts";
 import {
   buildAuthenticatedHeaders,
-  setStoredSessionUserId,
   getStoredGoogleIdToken,
   hasAuthSignal
 } from "../../../auth/index.ts";
-import { applyTargetProfitAccessDefaults, type TargetProfitAccessApp } from "./entitlements-shared.ts";
+import { type TargetProfitAccessApp } from "./entitlements-shared.ts";
 import { bootstrapServerSession } from "../auth/auth-session.ts";
 
 interface ParsedEntitlementPayload {
@@ -59,9 +57,10 @@ export function shouldUseCachedEntitlement(params: {
 }
 
 export function applyCachedEntitlement(app: EntitlementMutationApp, payload: ParsedEntitlementPayload): void {
-  app.hasProAccess = payload.hasProAccess;
-  localStorage.setItem(PRO_ACCESS_KEY, payload.hasProAccess ? "1" : "0");
-  applyTargetProfitAccessDefaults(app);
+  applyEntitlementState(app, payload, {
+    persistSessionUserId: false,
+    writeCache: false
+  });
 }
 
 export function parseEntitlementPayload(data: EntitlementApiResponse): ParsedEntitlementPayload {
@@ -73,15 +72,10 @@ export function parseEntitlementPayload(data: EntitlementApiResponse): ParsedEnt
 }
 
 export function applyFetchedEntitlement(app: EntitlementMutationApp, payload: ParsedEntitlementPayload): void {
-  applyCachedEntitlement(app, payload);
-  if (payload.userId) {
-    setStoredSessionUserId(payload.userId);
-  }
-  writeEntitlementCache({
-    userId: payload.userId,
-    hasProAccess: payload.hasProAccess,
-    updatedAt: payload.updatedAt,
-    cachedAt: Date.now()
+  applyEntitlementState(app, payload, {
+    cacheAt: Date.now(),
+    persistSessionUserId: true,
+    writeCache: true
   });
 }
 

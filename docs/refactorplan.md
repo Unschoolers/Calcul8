@@ -4,18 +4,19 @@
 
 = Priority
 
-Critical
+Done
 
 = Steps
 
-- Finish the session-first auth path across `src/app-core/auth`, `src/app-core/methods/ui/auth`, and `apps/api/src/lib/auth`: bearer tokens are bootstrap-only, CSRF is required for unsafe cookie-authenticated requests, and auth expiration has one recovery path.
-- Collapse Pro access and entitlement caching around `src/app-core/methods/ui/entitlements/entitlement-cache.ts`, `apps/api/src/features/entitlements`, and `apps/api/src/features/billing` so billing state cannot drift from identity/profile state.
-- Retire legacy browser-secret storage migrations only with explicit tests for sign-in, sign-out, refresh, local storage reset, offline retry, and expired session recovery.
-- Keep Play and Stripe verification provider-neutral, idempotent, and normalized at both frontend and API boundaries.
+- Centralized frontend entitlement application in `src/app-core/methods/ui/entitlements/entitlement-cache.ts` so cached status, fetched status, expired-auth recovery, and Play purchase verification update Pro access, entitlement cache, session user id, and target-profit defaults through one path.
+- Split target-profit access defaults into `src/app-core/methods/ui/entitlements/entitlement-access-defaults.ts` and kept the existing `entitlements-shared.ts` export stable.
+- Covered auth-secret migration and storage behavior: legacy Google token and CSRF storage hydrate once, then auth secrets remain in memory instead of browser storage.
+- Verified the existing API CSRF boundary: unsafe cookie-authenticated requests reject missing CSRF and accept matching CSRF.
+- Kept Stripe verification on the existing entitlement refresh path and Play verification on the shared entitlement writer.
 
 = Acceptance
 
-No auth/session secret is persisted to browser storage after bootstrap; unsafe cookie-authenticated writes fail without CSRF; Pro access fails closed and recovers cleanly after refresh, offline retry, and expired auth.
+Done when `npm run test -- tests/auth-session.test.ts tests/auth-state.test.ts tests/fetch-with-retry-csrf.test.ts tests/ui-shared.test.ts tests/entitlements-shared-status-service.test.ts tests/entitlements-status-sync-service.test.ts tests/entitlements-purchase-methods.test.ts tests/entitlements-purchase-service.test.ts tests/entitlements-stripe-service.test.ts`, `npm --prefix apps/api run test -- src/lib/auth.test.ts`, `npx tsc -p . --noEmit --strict`, and `npm --prefix apps/api run typecheck` passed.
 
 ## 2. Game Public Session And Realtime Naming
 

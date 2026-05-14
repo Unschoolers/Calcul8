@@ -1,9 +1,8 @@
 import type { AppContext } from "../../../context-app.ts";
 import { fetchWithRetry } from "../common/api-client.ts";
 import {
+  applyEntitlementState,
   handleExpiredAuth,
-  PRO_ACCESS_KEY,
-  writeEntitlementCache
 } from "./entitlement-cache.ts";
 
 interface VerifyPlayPurchaseApiResponse {
@@ -176,13 +175,14 @@ export async function submitPlayPurchaseVerification(
   const userId = typeof verifiedPayload?.userId === "string" ? verifiedPayload.userId : null;
   const updatedAt = typeof verifiedPayload?.updatedAt === "string" ? verifiedPayload.updatedAt : null;
 
-  app.hasProAccess = hasProAccess;
-  localStorage.setItem(PRO_ACCESS_KEY, hasProAccess ? "1" : "0");
-  writeEntitlementCache({
+  applyEntitlementState(app, {
     userId,
     hasProAccess,
-    updatedAt,
-    cachedAt: Date.now()
+    updatedAt
+  }, {
+    cacheAt: Date.now(),
+    persistSessionUserId: true,
+    writeCache: true
   });
 
   void app.debugLogEntitlement(true).catch((error: unknown) => {
