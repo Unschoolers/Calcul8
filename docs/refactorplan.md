@@ -25,10 +25,10 @@ High
 
 = Steps
 
-- [70%] Audit remaining workspace document and membership writes in `apps/api/src/features/workspaces` and `apps/api/src/lib/cosmos/workspaceRepository.ts` for optimistic concurrency gaps, especially ownership transfer, workspace deletion, membership deactivation, profile snapshot backfill, and join-link lifecycle callers.
-- [60%] Harden remaining cross-partition workspace write chains with explicit conflict results and compensating cleanup where ownership, membership, and workspace documents can diverge.
-- [65%] Review workspace-scoped presence and billing/access handlers for route or query paths that bypass shared scope validation, reuse stale local workspace state, or miss lost-access recovery.
-- [40%] Add tests for join-link consume races, ownership rollback, lost-access refresh failure, sync conflict pull failure, presence edge cases, billing/access checks, and local storage reset recovery.
+- [100%] Audit remaining workspace document and membership writes in `apps/api/src/features/workspaces` and `apps/api/src/lib/cosmos/workspaceRepository.ts` for optimistic concurrency gaps, especially ownership transfer, workspace deletion, membership deactivation, profile snapshot backfill, and join-link lifecycle callers.
+- [100%] Harden remaining cross-partition workspace write chains with explicit conflict results and compensating cleanup where ownership, membership, and workspace documents can diverge.
+- [100%] Review workspace-scoped presence and billing/access handlers for route or query paths that bypass shared scope validation, reuse stale local workspace state, or miss lost-access recovery.
+- [100%] Add tests for join-link consume races, ownership rollback, lost-access refresh failure, sync conflict pull failure, presence edge cases, billing/access checks, and local storage reset recovery.
 
 = Acceptance
 

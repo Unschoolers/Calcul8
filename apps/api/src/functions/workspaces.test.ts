@@ -22,6 +22,8 @@ const {
   listWorkspaceMembershipsForUserMock,
   listUserProfilesMock,
   listWorkspacesForUserMock,
+  restoreWorkspaceDocumentMock,
+  updateWorkspaceMembershipProfileSnapshotMock,
   upsertWorkspaceMembershipMock,
   deactivateWorkspaceMembershipMock,
   transferWorkspaceOwnershipMock,
@@ -43,6 +45,8 @@ const {
   listWorkspaceMembershipsForUserMock: vi.fn(),
   listUserProfilesMock: vi.fn(),
   listWorkspacesForUserMock: vi.fn(),
+  restoreWorkspaceDocumentMock: vi.fn(),
+  updateWorkspaceMembershipProfileSnapshotMock: vi.fn(),
   upsertWorkspaceMembershipMock: vi.fn(),
   deactivateWorkspaceMembershipMock: vi.fn(),
   transferWorkspaceOwnershipMock: vi.fn(),
@@ -75,6 +79,8 @@ vi.mock("../lib/cosmos/workspaceRepository", () => ({
   listWorkspaceMemberships: listWorkspaceMembershipsMock,
   listWorkspaceMembershipsForUser: listWorkspaceMembershipsForUserMock,
   listWorkspacesForUser: listWorkspacesForUserMock,
+  restoreWorkspaceDocument: restoreWorkspaceDocumentMock,
+  updateWorkspaceMembershipProfileSnapshot: updateWorkspaceMembershipProfileSnapshotMock,
   upsertWorkspaceMembership: upsertWorkspaceMembershipMock,
   deactivateWorkspaceMembership: deactivateWorkspaceMembershipMock,
   transferWorkspaceOwnership: transferWorkspaceOwnershipMock,
@@ -124,6 +130,7 @@ function createContext() {
 beforeEach(() => {
   vi.resetAllMocks();
   getConfigMock.mockReturnValue(createApiConfig());
+  updateWorkspaceMembershipProfileSnapshotMock.mockResolvedValue(null);
   createWorkspaceWithOwnerMock.mockResolvedValue({
     workspace: {
       workspaceId: "team-42",
@@ -327,10 +334,13 @@ test("workspaceMembersList returns members for authorized user", async () => {
   assert.equal(response.status, 200);
   assert.equal((response.jsonBody as { count: number }).count, 2);
   assert.deepEqual(listUserProfilesMock.mock.calls[0]?.[1], ["member-user"]);
-  assert.equal(upsertWorkspaceMembershipMock.mock.calls.length, 1);
-  assert.equal(upsertWorkspaceMembershipMock.mock.calls[0]?.[1]?.userId, "member-user");
-  assert.equal(upsertWorkspaceMembershipMock.mock.calls[0]?.[1]?.displayName, "Member Name");
-  assert.equal(upsertWorkspaceMembershipMock.mock.calls[0]?.[1]?.updatedAt, "2026-02-25T00:00:00.000Z");
+  assert.equal(updateWorkspaceMembershipProfileSnapshotMock.mock.calls.length, 1);
+  assert.equal(updateWorkspaceMembershipProfileSnapshotMock.mock.calls[0]?.[1]?.userId, "member-user");
+  assert.deepEqual(updateWorkspaceMembershipProfileSnapshotMock.mock.calls[0]?.[2], {
+    displayName: "Member Name",
+    photoUrl: "https://example.test/member.png"
+  });
+  assert.equal(upsertWorkspaceMembershipMock.mock.calls.length, 0);
   assert.equal((response.jsonBody as { memberships: Array<{ displayName?: string }> }).memberships[0]?.displayName, "Owner Snapshot");
   assert.equal((response.jsonBody as { memberships: Array<{ displayName?: string }> }).memberships[1]?.displayName, "Member Name");
 });

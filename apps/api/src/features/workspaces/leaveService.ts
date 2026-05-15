@@ -4,6 +4,7 @@ import {
   getWorkspaceById,
   getWorkspaceMembership,
   listWorkspaceMemberships,
+  restoreWorkspaceDocument,
   softDeleteWorkspace,
   transferWorkspaceOwnership,
   upsertWorkspaceMembership
@@ -11,6 +12,7 @@ import {
 import { isActiveMembership, isWorkspaceDeleted } from "./helpers";
 import type {
   ApiConfig,
+  WorkspaceDocument,
   WorkspaceMembershipDocument
 } from "../../types";
 
@@ -52,11 +54,19 @@ export async function leaveWorkspaceForActor(
     if (!payload.deleteWorkspace) {
       throw new HttpError(400, "Last workspace owner must confirm workspace deletion.");
     }
-    const deletedWorkspace = await softDeleteWorkspace(config, workspaceId);
+    const deletedWorkspace = await softDeleteWorkspace(config, workspaceId, actorUserId);
     if (!deletedWorkspace) {
       throw new HttpError(409, "Workspace deletion conflicted. Refresh and try again.");
     }
-    await deactivateWorkspaceMembership(config, actorUserId, workspaceId);
+    try {
+      const removed = await deactivateWorkspaceMembership(config, actorUserId, workspaceId);
+      if (!removed) {
+        throw new HttpError(409, "Workspace deletion conflicted. Refresh and try again.");
+      }
+    } catch (error) {
+      await rollbackWorkspaceDeletion(config, workspace, error);
+      throw error;
+    }
     return {
       workspaceId,
       deletedWorkspace: true
@@ -75,7 +85,7 @@ export async function leaveWorkspaceForActor(
 
   await promoteWorkspaceOwner(config, workspaceId, newOwnerUserId, targetMembership);
   try {
-    const transferredWorkspace = await transferWorkspaceOwnership(config, workspaceId, newOwnerUserId);
+    const transferredWorkspace = await transferWorkspaceOwnership(config, workspaceId, newOwnerUserId, actorUserId);
     if (!transferredWorkspace) {
       throw new HttpError(409, "Workspace ownership transfer conflicted. Refresh and try again.");
     }
@@ -139,7 +149,7 @@ async function rollbackWorkspaceOwnershipTransfer(
   try {
     // Ownership transfer spans workspace and membership partitions, so restore both
     // documents if the final leave write fails after the workspace owner changed.
-    await transferWorkspaceOwnership(config, workspaceId, actorUserId);
+    await transferWorkspaceOwnership(config, workspaceId, actorUserId, targetMembership.userId);
     await restoreWorkspaceMemberRole(config, workspaceId, targetMembership);
     await upsertWorkspaceMembership(config, {
       userId: actorUserId,
@@ -150,6 +160,22 @@ async function rollbackWorkspaceOwnershipTransfer(
       photoUrl: actorMembership.photoUrl,
       updatedAt: actorMembership.updatedAt
     });
+  } catch (cleanupError) {
+    if (cause && typeof cause === "object") {
+      (cause as { cleanupError?: unknown }).cleanupError = cleanupError;
+    }
+  }
+}
+
+async function rollbackWorkspaceDeletion(
+  config: ApiConfig,
+  workspace: WorkspaceDocument,
+  cause: unknown
+): Promise<void> {
+  try {
+    // Last-owner deletion updates the workspace and membership documents separately;
+    // restore the workspace if the membership removal does not land.
+    await restoreWorkspaceDocument(config, workspace);
   } catch (cleanupError) {
     if (cause && typeof cause === "object") {
       (cause as { cleanupError?: unknown }).cleanupError = cleanupError;

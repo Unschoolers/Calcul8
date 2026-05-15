@@ -11,6 +11,7 @@ import {
   getWorkspaceMembership,
   hasWorkspaceMembership,
   listWorkspaceMemberships,
+  updateWorkspaceMembershipProfileSnapshot,
   upsertWorkspaceMembership
 } from "../../lib/cosmos/workspaceRepository";
 import type {
@@ -59,14 +60,9 @@ export async function listWorkspaceMembersForActor(
   if (backfillTargets.length > 0) {
     await Promise.allSettled(
       backfillTargets.map(({ membership, profile }) =>
-        upsertWorkspaceMembership(config, {
-          userId: membership.userId,
-          workspaceId: membership.workspaceId,
-          role: membership.role ?? "member",
-          status: membership.status ?? "active",
+        updateWorkspaceMembershipProfileSnapshot(config, membership, {
           displayName: profile.displayName,
-          photoUrl: profile.photoUrl,
-          updatedAt: membership.updatedAt
+          photoUrl: profile.photoUrl
         })
       )
     );

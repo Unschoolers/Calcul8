@@ -598,6 +598,37 @@ test("handleWorkspaceAccessLost refreshes and falls back to personal when curren
   );
 });
 
+test("handleWorkspaceAccessLost removes stale workspace locally when refresh fails", async () => {
+  const ctx = createContext();
+  ctx.activeScopeType = "workspace";
+  ctx.activeWorkspaceId = "ws_lost";
+  ctx.availableWorkspaces = [
+    {
+      workspaceId: "ws_lost",
+      name: "Lost",
+      role: "member",
+      status: "active"
+    },
+    {
+      workspaceId: "ws_keep",
+      name: "Keep",
+      role: "owner",
+      status: "active"
+    }
+  ];
+  ctx.refreshWorkspaces = vi.fn(async () => false);
+
+  await uiWorkspaceMethods.handleWorkspaceAccessLost.call(ctx, "ws_lost");
+
+  assert.equal(ctx.activeScopeType, "personal");
+  assert.equal(ctx.activeWorkspaceId, null);
+  assert.deepEqual(ctx.availableWorkspaces.map((workspace: { workspaceId: string }) => workspace.workspaceId), ["ws_keep"]);
+  assert.deepEqual(
+    ctx.notify.mock.calls.at(-1),
+    ["You no longer have access to that workspace. Switched back to Personal.", "warning"]
+  );
+});
+
 test("handleWorkspaceAccessLost does nothing when the workspace is still available", async () => {
   const ctx = createContext();
   ctx.activeScopeType = "workspace";

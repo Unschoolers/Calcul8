@@ -43,12 +43,163 @@ export interface CreateWorkspaceJoinLinkInput {
   expiresAt: string;
 }
 
+interface WorkspaceMemberProfileSnapshotInput {
+  displayName?: string;
+  photoUrl?: string;
+}
+
 function isWorkspaceDeleted(workspace: WorkspaceDocument | null | undefined): boolean {
   return workspace?.status === "deleted";
 }
 
 function isActiveWorkspaceMembershipStatus(status: WorkspaceMembershipStatus | undefined): boolean {
   return status !== "disabled" && status !== "removed";
+}
+
+function readCosmosEtag(document: unknown): string {
+  if (!document || typeof document !== "object") return "";
+  return String((document as { _etag?: unknown })._etag ?? "").trim();
+}
+
+function buildWorkspaceWriteDocument(
+  workspace: WorkspaceDocument,
+  overrides: Partial<Pick<WorkspaceDocument, "ownerUserId" | "status">> = {}
+): WorkspaceDocument {
+  const workspaceId = String(workspace.workspaceId || "").trim();
+  return {
+    id: workspace.id || workspaceDocumentId(workspaceId),
+    docType: "workspace",
+    userId: String(workspace.userId || "").trim() || workspaceDocumentPartitionKey(workspaceId),
+    workspaceId,
+    name: workspace.name,
+    ownerUserId: overrides.ownerUserId ?? workspace.ownerUserId,
+    status: overrides.status ?? workspace.status ?? "active",
+    createdAt: workspace.createdAt,
+    updatedAt: new Date().toISOString()
+  };
+}
+
+function buildWorkspaceMembershipWriteDocument(
+  membership: WorkspaceMembershipDocument,
+  overrides: Partial<Pick<
+    WorkspaceMembershipDocument,
+    "role" | "status" | "displayName" | "photoUrl" | "updatedAt"
+  >> = {}
+): WorkspaceMembershipDocument {
+  return {
+    id: membership.id || workspaceMembershipId(membership.userId, membership.workspaceId),
+    docType: "workspace_membership",
+    userId: membership.userId,
+    workspaceId: membership.workspaceId,
+    role: overrides.role ?? membership.role ?? "member",
+    status: overrides.status ?? membership.status ?? "active",
+    displayName: String(overrides.displayName ?? membership.displayName ?? "").trim() || undefined,
+    photoUrl: String(overrides.photoUrl ?? membership.photoUrl ?? "").trim() || undefined,
+    updatedAt: overrides.updatedAt ?? new Date().toISOString()
+  };
+}
+
+async function replaceWorkspaceDocumentIfUnchanged(
+  config: ApiConfig,
+  existing: WorkspaceDocument,
+  overrides: Partial<Pick<WorkspaceDocument, "ownerUserId" | "status">> = {}
+): Promise<WorkspaceDocument | null> {
+  const { entitlements } = getContainers(config);
+  const document = buildWorkspaceWriteDocument(existing, overrides);
+  const etag = readCosmosEtag(existing);
+
+  try {
+    if (etag) {
+      const { resource } = await withCosmosRetry(() =>
+        entitlements.item(document.id, document.userId).replace<WorkspaceDocument>(document, {
+          accessCondition: {
+            type: "IfMatch",
+            condition: etag
+          }
+        })
+      );
+      if (!resource) {
+        throw new Error("Failed to replace workspace.");
+      }
+      return resource;
+    }
+
+    return upsertWorkspaceDocument(config, document);
+  } catch (error) {
+    if (isPreconditionFailedError(error)) return null;
+    throw error;
+  }
+}
+
+async function replaceWorkspaceMembershipIfUnchanged(
+  config: ApiConfig,
+  existing: WorkspaceMembershipDocument,
+  overrides: Partial<Pick<
+    WorkspaceMembershipDocument,
+    "role" | "status" | "displayName" | "photoUrl" | "updatedAt"
+  >> = {}
+): Promise<WorkspaceMembershipDocument | null> {
+  const { entitlements } = getContainers(config);
+  const document = buildWorkspaceMembershipWriteDocument(existing, overrides);
+  const etag = readCosmosEtag(existing);
+
+  try {
+    if (etag) {
+      const { resource } = await withCosmosRetry(() =>
+        entitlements.item(document.id, document.userId).replace<WorkspaceMembershipDocument>(document, {
+          accessCondition: {
+            type: "IfMatch",
+            condition: etag
+          }
+        })
+      );
+      return resource ?? null;
+    }
+
+    return upsertWorkspaceMembership(config, {
+      userId: document.userId,
+      workspaceId: document.workspaceId,
+      role: document.role ?? "member",
+      status: document.status,
+      displayName: document.displayName,
+      photoUrl: document.photoUrl,
+      updatedAt: document.updatedAt
+    });
+  } catch (error) {
+    if (isPreconditionFailedError(error)) return null;
+    throw error;
+  }
+}
+
+async function replaceWorkspaceJoinLinkIfUnchanged(
+  config: ApiConfig,
+  existing: WorkspaceJoinLinkDocument,
+  updated: WorkspaceJoinLinkDocument
+): Promise<WorkspaceJoinLinkDocument | null> {
+  const { entitlements } = getContainers(config);
+  const etag = readCosmosEtag(existing);
+
+  try {
+    if (etag) {
+      const { resource } = await withCosmosRetry(() =>
+        entitlements.item(updated.id, updated.userId).replace<WorkspaceJoinLinkDocument>(updated, {
+          accessCondition: {
+            type: "IfMatch",
+            condition: etag
+          }
+        })
+      );
+      return resource ?? null;
+    }
+
+    const { resource } = await withCosmosRetry(() =>
+      entitlements.items.upsert<WorkspaceJoinLinkDocument>(updated)
+    );
+    return resource ?? null;
+  } catch (error) {
+    if (isPreconditionFailedError(error)) return null;
+    throw error;
+  }
 }
 
 export async function getWorkspaceById(
@@ -77,12 +228,7 @@ export async function upsertWorkspaceDocument(
   workspace: WorkspaceDocument
 ): Promise<WorkspaceDocument> {
   const { entitlements } = getContainers(config);
-  const document: WorkspaceDocument = {
-    ...workspace,
-    userId: String(workspace.userId || "").trim() || workspaceDocumentPartitionKey(workspace.workspaceId),
-    status: workspace.status ?? "active",
-    updatedAt: new Date().toISOString()
-  };
+  const document = buildWorkspaceWriteDocument(workspace);
 
   const { resource } = await withCosmosRetry(() =>
     entitlements.items.upsert<WorkspaceDocument>(document)
@@ -282,15 +428,32 @@ export async function deactivateWorkspaceMembership(
     return false;
   }
 
-  await upsertWorkspaceMembership(config, {
-    userId,
-    workspaceId,
+  const removed = await replaceWorkspaceMembershipIfUnchanged(config, existing, {
     role: existing.role ?? "member",
     status: "removed",
     displayName: existing.displayName,
     photoUrl: existing.photoUrl
   });
-  return true;
+  return !!removed;
+}
+
+export async function updateWorkspaceMembershipProfileSnapshot(
+  config: ApiConfig,
+  membership: WorkspaceMembershipDocument,
+  snapshot: WorkspaceMemberProfileSnapshotInput
+): Promise<WorkspaceMembershipDocument | null> {
+  if (!isActiveWorkspaceMembershipStatus(membership.status)) return null;
+
+  const displayName = String(snapshot.displayName || "").trim();
+  if (!displayName) return null;
+
+  return replaceWorkspaceMembershipIfUnchanged(config, membership, {
+    role: membership.role ?? "member",
+    status: membership.status ?? "active",
+    displayName,
+    photoUrl: String(snapshot.photoUrl || "").trim() || undefined,
+    updatedAt: membership.updatedAt
+  });
 }
 
 export async function hasWorkspaceMembership(
@@ -309,13 +472,14 @@ export async function hasWorkspaceMembership(
 export async function transferWorkspaceOwnership(
   config: ApiConfig,
   workspaceId: string,
-  newOwnerUserId: string
+  newOwnerUserId: string,
+  expectedCurrentOwnerUserId?: string
 ): Promise<WorkspaceDocument | null> {
   const existing = await getWorkspaceById(config, workspaceId);
   if (!existing || isWorkspaceDeleted(existing)) return null;
+  if (expectedCurrentOwnerUserId && existing.ownerUserId !== expectedCurrentOwnerUserId) return null;
 
-  return upsertWorkspaceDocument(config, {
-    ...existing,
+  return replaceWorkspaceDocumentIfUnchanged(config, existing, {
     ownerUserId: newOwnerUserId,
     status: existing.status ?? "active"
   });
@@ -323,15 +487,26 @@ export async function transferWorkspaceOwnership(
 
 export async function softDeleteWorkspace(
   config: ApiConfig,
-  workspaceId: string
+  workspaceId: string,
+  expectedOwnerUserId?: string
 ): Promise<WorkspaceDocument | null> {
   const existing = await getWorkspaceById(config, workspaceId);
   if (!existing) return null;
   if (isWorkspaceDeleted(existing)) return existing;
+  if (expectedOwnerUserId && existing.ownerUserId !== expectedOwnerUserId) return null;
 
-  return upsertWorkspaceDocument(config, {
-    ...existing,
+  return replaceWorkspaceDocumentIfUnchanged(config, existing, {
     status: "deleted"
+  });
+}
+
+export async function restoreWorkspaceDocument(
+  config: ApiConfig,
+  workspace: WorkspaceDocument
+): Promise<WorkspaceDocument> {
+  return upsertWorkspaceDocument(config, {
+    ...workspace,
+    status: workspace.status ?? "active"
   });
 }
 
@@ -432,17 +607,13 @@ export async function revokeWorkspaceJoinLink(
   if (!existing) return null;
   if (existing.status === "revoked") return existing;
 
-  const { entitlements } = getContainers(config);
   const updated: WorkspaceJoinLinkDocument = {
     ...existing,
     status: "revoked",
     updatedAt: new Date().toISOString()
   };
 
-  const { resource } = await withCosmosRetry(() =>
-    entitlements.items.upsert<WorkspaceJoinLinkDocument>(updated)
-  );
-  return resource ?? null;
+  return replaceWorkspaceJoinLinkIfUnchanged(config, existing, updated);
 }
 
 export async function markWorkspaceJoinLinkUsed(
@@ -455,7 +626,6 @@ export async function markWorkspaceJoinLinkUsed(
   if (existing.status !== "active") return null;
 
   const now = new Date().toISOString();
-  const { entitlements } = getContainers(config);
   const updated: WorkspaceJoinLinkDocument = {
     ...existing,
     status: "used",
@@ -464,26 +634,5 @@ export async function markWorkspaceJoinLinkUsed(
     updatedAt: now
   };
 
-  const etag = String((existing as { _etag?: unknown })._etag ?? "").trim();
-  try {
-    if (etag) {
-      const { resource } = await withCosmosRetry(() =>
-        entitlements.item(updated.id, updated.userId).replace<WorkspaceJoinLinkDocument>(updated, {
-          accessCondition: {
-            type: "IfMatch",
-            condition: etag
-          }
-        })
-      );
-      return resource ?? null;
-    }
-
-    const { resource } = await withCosmosRetry(() =>
-      entitlements.items.upsert<WorkspaceJoinLinkDocument>(updated)
-    );
-    return resource ?? null;
-  } catch (error) {
-    if (isPreconditionFailedError(error)) return null;
-    throw error;
-  }
+  return replaceWorkspaceJoinLinkIfUnchanged(config, existing, updated);
 }

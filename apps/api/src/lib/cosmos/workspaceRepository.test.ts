@@ -10,11 +10,13 @@ const {
   getContainersMock,
   isConflictErrorMock,
   isNotFoundErrorMock,
+  isPreconditionFailedErrorMock,
   withCosmosRetryMock
 } = vi.hoisted(() => ({
   getContainersMock: vi.fn(),
   isConflictErrorMock: vi.fn(),
   isNotFoundErrorMock: vi.fn(),
+  isPreconditionFailedErrorMock: vi.fn(),
   withCosmosRetryMock: vi.fn(async <T>(operation: () => Promise<T>) => operation())
 }));
 
@@ -22,6 +24,7 @@ vi.mock("./core", () => ({
   getContainers: getContainersMock,
   isConflictError: isConflictErrorMock,
   isNotFoundError: isNotFoundErrorMock,
+  isPreconditionFailedError: isPreconditionFailedErrorMock,
   withCosmosRetry: withCosmosRetryMock
 }));
 
@@ -36,6 +39,7 @@ import {
   revokeWorkspaceJoinLink,
   softDeleteWorkspace,
   transferWorkspaceOwnership,
+  updateWorkspaceMembershipProfileSnapshot,
   upsertWorkspaceMembership
 } from "./workspaceRepository";
 
@@ -79,6 +83,10 @@ beforeEach(() => {
   isNotFoundErrorMock.mockImplementation((error: unknown) => {
     const statusCode = (error as { statusCode?: unknown })?.statusCode;
     return statusCode === 404;
+  });
+  isPreconditionFailedErrorMock.mockImplementation((error: unknown) => {
+    const statusCode = (error as { statusCode?: unknown })?.statusCode;
+    return statusCode === 412;
   });
 });
 
@@ -346,6 +354,47 @@ test("transferWorkspaceOwnership updates an active workspace owner", async () =>
   assert.equal(entitlements.items.upsert.mock.calls[0]?.[0]?.status, "active");
 });
 
+test("transferWorkspaceOwnership uses etag replacement and rejects stale owners", async () => {
+  const entitlements = createEntitlementsContainer();
+  const existingWorkspace = {
+    id: "workspace:ws-1",
+    docType: "workspace" as const,
+    userId: "ws:ws-1",
+    workspaceId: "ws-1",
+    name: "Workspace One",
+    ownerUserId: "owner-1",
+    status: "active" as const,
+    createdAt: "2026-03-18T00:00:00.000Z",
+    updatedAt: "2026-03-18T00:00:00.000Z",
+    _etag: "etag-1"
+  };
+  const replace = vi.fn(async (document: WorkspaceDocument) => ({
+    resource: document
+  }));
+
+  entitlements.item.mockReturnValue({
+    read: vi.fn().mockResolvedValue({ resource: existingWorkspace }),
+    replace
+  });
+  getContainersMock.mockReturnValue({ entitlements });
+
+  const staleResult = await transferWorkspaceOwnership(createConfig(), "ws-1", "owner-2", "other-owner");
+  assert.equal(staleResult, null);
+  assert.equal(replace.mock.calls.length, 0);
+
+  const result = await transferWorkspaceOwnership(createConfig(), "ws-1", "owner-2", "owner-1");
+
+  assert.equal(result?.ownerUserId, "owner-2");
+  assert.equal(replace.mock.calls.length, 1);
+  assert.deepEqual(replace.mock.calls[0]?.[1], {
+    accessCondition: {
+      type: "IfMatch",
+      condition: "etag-1"
+    }
+  });
+  assert.equal(entitlements.items.upsert.mock.calls.length, 0);
+});
+
 test("softDeleteWorkspace returns the existing document without writing when already deleted", async () => {
   const entitlements = createEntitlementsContainer();
   const deletedWorkspace: WorkspaceDocument = {
@@ -368,6 +417,113 @@ test("softDeleteWorkspace returns the existing document without writing when alr
   const result = await softDeleteWorkspace(createConfig(), "ws-1");
 
   assert.equal(result, deletedWorkspace);
+  assert.equal(entitlements.items.upsert.mock.calls.length, 0);
+});
+
+test("softDeleteWorkspace uses etag replacement and rejects stale owners", async () => {
+  const entitlements = createEntitlementsContainer();
+  const existingWorkspace = {
+    id: "workspace:ws-1",
+    docType: "workspace" as const,
+    userId: "ws:ws-1",
+    workspaceId: "ws-1",
+    name: "Workspace One",
+    ownerUserId: "owner-1",
+    status: "active" as const,
+    createdAt: "2026-03-18T00:00:00.000Z",
+    updatedAt: "2026-03-18T00:00:00.000Z",
+    _etag: "etag-delete"
+  };
+  const replace = vi.fn(async (document: WorkspaceDocument) => ({
+    resource: document
+  }));
+
+  entitlements.item.mockReturnValue({
+    read: vi.fn().mockResolvedValue({ resource: existingWorkspace }),
+    replace
+  });
+  getContainersMock.mockReturnValue({ entitlements });
+
+  const staleResult = await softDeleteWorkspace(createConfig(), "ws-1", "other-owner");
+  assert.equal(staleResult, null);
+  assert.equal(replace.mock.calls.length, 0);
+
+  const result = await softDeleteWorkspace(createConfig(), "ws-1", "owner-1");
+
+  assert.equal(result?.status, "deleted");
+  assert.equal(replace.mock.calls.length, 1);
+  assert.deepEqual(replace.mock.calls[0]?.[1], {
+    accessCondition: {
+      type: "IfMatch",
+      condition: "etag-delete"
+    }
+  });
+  assert.equal(entitlements.items.upsert.mock.calls.length, 0);
+});
+
+test("deactivateWorkspaceMembership treats etag precondition failures as conflicts", async () => {
+  const entitlements = createEntitlementsContainer();
+  const existingMembership = {
+    id: "m:user-1:ws-1",
+    docType: "workspace_membership" as const,
+    userId: "user-1",
+    workspaceId: "ws-1",
+    role: "member" as const,
+    status: "active" as const,
+    updatedAt: "2026-03-18T00:00:00.000Z",
+    _etag: "member-etag"
+  };
+  const replace = vi.fn().mockRejectedValue({ statusCode: 412 });
+
+  entitlements.item.mockReturnValue({
+    read: vi.fn().mockResolvedValue({ resource: existingMembership }),
+    replace
+  });
+  getContainersMock.mockReturnValue({ entitlements });
+
+  const result = await deactivateWorkspaceMembership(createConfig(), "user-1", "ws-1");
+
+  assert.equal(result, false);
+  assert.equal(replace.mock.calls.length, 1);
+  assert.equal(entitlements.items.upsert.mock.calls.length, 0);
+});
+
+test("updateWorkspaceMembershipProfileSnapshot uses etag replacement and skips stale rows", async () => {
+  const entitlements = createEntitlementsContainer();
+  const existingMembership = {
+    id: "m:user-1:ws-1",
+    docType: "workspace_membership" as const,
+    userId: "user-1",
+    workspaceId: "ws-1",
+    role: "member" as const,
+    status: "active" as const,
+    updatedAt: "2026-03-18T00:00:00.000Z",
+    _etag: "snapshot-etag"
+  };
+  const replace = vi.fn()
+    .mockRejectedValueOnce({ statusCode: 412 })
+    .mockImplementationOnce(async (document: WorkspaceMembershipDocument) => ({
+      resource: document
+    }));
+
+  entitlements.item.mockReturnValue({
+    replace
+  });
+  getContainersMock.mockReturnValue({ entitlements });
+
+  const staleResult = await updateWorkspaceMembershipProfileSnapshot(createConfig(), existingMembership, {
+    displayName: "User One",
+    photoUrl: "https://example.test/u1.png"
+  });
+  const result = await updateWorkspaceMembershipProfileSnapshot(createConfig(), existingMembership, {
+    displayName: "User One",
+    photoUrl: "https://example.test/u1.png"
+  });
+
+  assert.equal(staleResult, null);
+  assert.equal(result?.displayName, "User One");
+  assert.equal(result?.photoUrl, "https://example.test/u1.png");
+  assert.equal(replace.mock.calls.length, 2);
   assert.equal(entitlements.items.upsert.mock.calls.length, 0);
 });
 
@@ -424,6 +580,43 @@ test("workspace join links can be created, listed, revoked, and marked used", as
   assert.equal(revoked?.status, "revoked");
   assert.equal(used?.status, "used");
   assert.equal(used?.usedByUserId, "user-2");
+});
+
+test("join link lifecycle writes use etag replacement and report stale consume races", async () => {
+  const entitlements = createEntitlementsContainer();
+  const activeJoinLink = {
+    id: "join_link:invite-1",
+    docType: "workspace_join_link" as const,
+    userId: "ws:ws-1",
+    inviteId: "invite-1",
+    workspaceId: "ws-1",
+    createdByUserId: "owner-1",
+    role: "member" as const,
+    status: "active" as const,
+    tokenHash: "hash-1",
+    expiresAt: "2026-03-20T00:00:00.000Z",
+    updatedAt: "2026-03-18T00:00:00.000Z",
+    _etag: "link-etag"
+  };
+  const replace = vi.fn()
+    .mockImplementationOnce(async (document) => ({ resource: document }))
+    .mockRejectedValueOnce({ statusCode: 412 });
+
+  entitlements.items.query.mockReturnValue({
+    fetchAll: vi.fn().mockResolvedValue({ resources: [activeJoinLink] })
+  });
+  entitlements.item.mockReturnValue({
+    replace
+  });
+  getContainersMock.mockReturnValue({ entitlements });
+
+  const revoked = await revokeWorkspaceJoinLink(createConfig(), "invite-1");
+  const used = await markWorkspaceJoinLinkUsed(createConfig(), "invite-1", "user-2");
+
+  assert.equal(revoked?.status, "revoked");
+  assert.equal(used, null);
+  assert.equal(replace.mock.calls.length, 2);
+  assert.equal(entitlements.items.upsert.mock.calls.length, 0);
 });
 
 test("markWorkspaceJoinLinkUsed returns null without rewriting an inactive link", async () => {

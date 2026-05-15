@@ -6,15 +6,19 @@ const {
   deactivateWorkspaceMembershipMock,
   getWorkspaceByIdMock,
   getWorkspaceMembershipMock,
+  hasWorkspaceMembershipMock,
   listUserProfilesMock,
   listWorkspaceMembershipsMock,
+  updateWorkspaceMembershipProfileSnapshotMock,
   upsertWorkspaceMembershipMock
 } = vi.hoisted(() => ({
   deactivateWorkspaceMembershipMock: vi.fn(),
   getWorkspaceByIdMock: vi.fn(),
   getWorkspaceMembershipMock: vi.fn(),
+  hasWorkspaceMembershipMock: vi.fn(),
   listUserProfilesMock: vi.fn(),
   listWorkspaceMembershipsMock: vi.fn(),
+  updateWorkspaceMembershipProfileSnapshotMock: vi.fn(),
   upsertWorkspaceMembershipMock: vi.fn()
 }));
 
@@ -26,12 +30,13 @@ vi.mock("../../lib/cosmos/workspaceRepository", () => ({
   deactivateWorkspaceMembership: deactivateWorkspaceMembershipMock,
   getWorkspaceById: getWorkspaceByIdMock,
   getWorkspaceMembership: getWorkspaceMembershipMock,
-  hasWorkspaceMembership: vi.fn(),
+  hasWorkspaceMembership: hasWorkspaceMembershipMock,
   listWorkspaceMemberships: listWorkspaceMembershipsMock,
+  updateWorkspaceMembershipProfileSnapshot: updateWorkspaceMembershipProfileSnapshotMock,
   upsertWorkspaceMembership: upsertWorkspaceMembershipMock
 }));
 
-import { removeWorkspaceMemberForActor } from "./membersService";
+import { listWorkspaceMembersForActor, removeWorkspaceMemberForActor } from "./membersService";
 
 function createConfig(): ApiConfig {
   return {
@@ -86,7 +91,36 @@ beforeEach(() => {
   getWorkspaceMembershipMock
     .mockResolvedValueOnce(membership("owner-1", "owner"))
     .mockResolvedValueOnce(membership("member-1", "member"));
+  hasWorkspaceMembershipMock.mockResolvedValue(true);
   deactivateWorkspaceMembershipMock.mockResolvedValue(true);
+  updateWorkspaceMembershipProfileSnapshotMock.mockResolvedValue(null);
+});
+
+test("listWorkspaceMembersForActor backfills profile snapshots without broad membership upserts", async () => {
+  const ownerMembership = membership("owner-1", "owner");
+  const memberMembership = membership("member-1", "member");
+  listWorkspaceMembershipsMock.mockResolvedValue([ownerMembership, memberMembership]);
+  listUserProfilesMock.mockResolvedValue([
+    {
+      id: "profile:member-1",
+      docType: "user_profile",
+      userId: "member-1",
+      displayName: "Member One",
+      photoUrl: "https://example.test/member.png",
+      updatedAt: "2026-05-15T00:00:00.000Z"
+    }
+  ]);
+
+  const result = await listWorkspaceMembersForActor(createConfig(), "owner-1", "team-42");
+
+  assert.equal(result.memberships.find((entry) => entry.userId === "member-1")?.displayName, "Member One");
+  assert.equal(updateWorkspaceMembershipProfileSnapshotMock.mock.calls.length, 1);
+  assert.deepEqual(updateWorkspaceMembershipProfileSnapshotMock.mock.calls[0]?.[1], memberMembership);
+  assert.deepEqual(updateWorkspaceMembershipProfileSnapshotMock.mock.calls[0]?.[2], {
+    displayName: "Member One",
+    photoUrl: "https://example.test/member.png"
+  });
+  assert.equal(upsertWorkspaceMembershipMock.mock.calls.length, 0);
 });
 
 test("removeWorkspaceMemberForActor reports a conflict when the member disappears before deactivation", async () => {

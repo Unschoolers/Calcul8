@@ -7,6 +7,7 @@ const {
   getWorkspaceByIdMock,
   getWorkspaceMembershipMock,
   listWorkspaceMembershipsMock,
+  restoreWorkspaceDocumentMock,
   softDeleteWorkspaceMock,
   transferWorkspaceOwnershipMock,
   upsertWorkspaceMembershipMock
@@ -15,6 +16,7 @@ const {
   getWorkspaceByIdMock: vi.fn(),
   getWorkspaceMembershipMock: vi.fn(),
   listWorkspaceMembershipsMock: vi.fn(),
+  restoreWorkspaceDocumentMock: vi.fn(),
   softDeleteWorkspaceMock: vi.fn(),
   transferWorkspaceOwnershipMock: vi.fn(),
   upsertWorkspaceMembershipMock: vi.fn()
@@ -25,6 +27,7 @@ vi.mock("../../lib/cosmos/workspaceRepository", () => ({
   getWorkspaceById: getWorkspaceByIdMock,
   getWorkspaceMembership: getWorkspaceMembershipMock,
   listWorkspaceMemberships: listWorkspaceMembershipsMock,
+  restoreWorkspaceDocument: restoreWorkspaceDocumentMock,
   softDeleteWorkspace: softDeleteWorkspaceMock,
   transferWorkspaceOwnership: transferWorkspaceOwnershipMock,
   upsertWorkspaceMembership: upsertWorkspaceMembershipMock
@@ -167,4 +170,36 @@ test("leaveWorkspaceForActor treats missing delete result as conflict and keeps 
   );
 
   assert.equal(deactivateWorkspaceMembershipMock.mock.calls.length, 0);
+});
+
+test("leaveWorkspaceForActor restores the workspace when last-owner membership removal fails after deletion", async () => {
+  const actorMembership = membership("owner-1", "owner");
+  const activeWorkspace = {
+    id: "workspace:ws-1",
+    docType: "workspace" as const,
+    userId: "ws:ws-1",
+    workspaceId: "ws-1",
+    name: "Workspace 1",
+    ownerUserId: "owner-1",
+    status: "active" as const,
+    createdAt: "2026-05-15T00:00:00.000Z",
+    updatedAt: "2026-05-15T00:00:00.000Z"
+  };
+  getWorkspaceByIdMock.mockResolvedValue(activeWorkspace);
+  getWorkspaceMembershipMock.mockResolvedValue(actorMembership);
+  listWorkspaceMembershipsMock.mockResolvedValue([actorMembership]);
+  softDeleteWorkspaceMock.mockResolvedValue({ ...activeWorkspace, status: "deleted" });
+  deactivateWorkspaceMembershipMock.mockRejectedValue(new Error("membership write failed"));
+  restoreWorkspaceDocumentMock.mockResolvedValue(activeWorkspace);
+
+  await assert.rejects(
+    () => leaveWorkspaceForActor(createConfig(), "owner-1", "ws-1", {
+      newOwnerUserId: "",
+      deleteWorkspace: true
+    }),
+    /membership write failed/
+  );
+
+  assert.equal(restoreWorkspaceDocumentMock.mock.calls.length, 1);
+  assert.deepEqual(restoreWorkspaceDocumentMock.mock.calls[0]?.[1], activeWorkspace);
 });
