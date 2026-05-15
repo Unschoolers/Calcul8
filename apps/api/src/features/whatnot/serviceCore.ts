@@ -4,7 +4,7 @@ import {
   consumeWhatnotOAuthState,
   upsertWhatnotConnection
 } from "../../lib/cosmos/whatnotRepository";
-import { getWorkspaceMembership } from "../../lib/cosmos/workspaceRepository";
+import { getWorkspaceMembership, hasWorkspaceMembership } from "../../lib/cosmos/workspaceRepository";
 import { refreshWhatnotAccessToken } from "../../lib/whatnot";
 import { resolveSyncScope } from "../../lib/syncScopeResolution";
 import type {
@@ -65,6 +65,17 @@ export async function resolveWhatnotScope(
   const connectionScopeKey = getWhatnotConnectionScopeKey(syncScope);
 
   if (syncScope.scopeType === "workspace") {
+    const hasActiveWorkspaceAccess = await hasWorkspaceMembership(config, actorUserId, syncScope.scopeId);
+    if (!hasActiveWorkspaceAccess) {
+      throw new HttpError(403, "User is not a member of this workspace.");
+    }
+    if (!requireOwner) {
+      return {
+        ...syncScope,
+        connectionScopeKey
+      };
+    }
+
     const membership = await getWorkspaceMembership(config, actorUserId, syncScope.scopeId);
     if (!membership || membership.status === "disabled" || membership.status === "removed") {
       throw new HttpError(403, "User is not a member of this workspace.");

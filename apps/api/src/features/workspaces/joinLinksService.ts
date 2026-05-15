@@ -2,6 +2,7 @@ import { HttpError } from "../../lib/auth";
 import {
   createWorkspaceJoinLink,
   getWorkspaceById,
+  getWorkspaceJoinLinkByInviteId,
   listWorkspaceJoinLinks,
   revokeWorkspaceJoinLink
 } from "../../lib/cosmos/workspaceRepository";
@@ -89,8 +90,13 @@ export async function revokeWorkspaceJoinLinkForActor(
 }> {
   await assertCanManageWorkspaceMembership(config, actorUserId, workspaceId);
 
+  const existing = await getWorkspaceJoinLinkByInviteId(config, inviteId);
+  if (!existing || existing.workspaceId !== workspaceId) {
+    throw new HttpError(404, "Workspace join link was not found.");
+  }
+
   const revoked = await revokeWorkspaceJoinLink(config, inviteId);
-  if (!revoked || revoked.workspaceId !== workspaceId) {
+  if (!revoked) {
     throw new HttpError(404, "Workspace join link was not found.");
   }
 

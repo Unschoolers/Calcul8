@@ -1,5 +1,6 @@
 import { HttpError } from "../../lib/auth";
 import {
+  deactivateWorkspaceMembership,
   getWorkspaceById,
   getWorkspaceJoinLinkByTokenHash,
   getWorkspaceMembership,
@@ -74,7 +75,7 @@ export async function acceptWorkspaceJoinLinkForActor(
     role: "member",
     status: "active"
   });
-  await markWorkspaceJoinLinkUsed(config, joinLink.inviteId, actorUserId);
+  await markJoinLinkUsedOrRollbackMembership(config, joinLink.inviteId, actorUserId, joinLink.workspaceId);
 
   return {
     ok: true,
@@ -82,4 +83,27 @@ export async function acceptWorkspaceJoinLinkForActor(
     workspaceName: workspace.name,
     membership
   };
+}
+
+async function markJoinLinkUsedOrRollbackMembership(
+  config: ApiConfig,
+  inviteId: string,
+  actorUserId: string,
+  workspaceId: string
+): Promise<void> {
+  try {
+    const consumedLink = await markWorkspaceJoinLinkUsed(config, inviteId, actorUserId);
+    if (!consumedLink || consumedLink.status !== "used") {
+      throw new HttpError(409, "Workspace join link has already been used.");
+    }
+  } catch (error) {
+    try {
+      await deactivateWorkspaceMembership(config, actorUserId, workspaceId);
+    } catch (cleanupError) {
+      if (error && typeof error === "object") {
+        (error as { cleanupError?: unknown }).cleanupError = cleanupError;
+      }
+    }
+    throw error;
+  }
 }

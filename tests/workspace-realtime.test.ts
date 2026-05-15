@@ -162,6 +162,7 @@ function createApp(overrides: Record<string, unknown> = {}) {
     wheelCurrentAngle: 0,
     wheelLastResultColor: "",
     pullCloudSync: vi.fn(async () => undefined),
+    handleWorkspaceAccessLost: vi.fn(async () => undefined),
     getSalesStorageKey: (lotId: number) => `sales:${lotId}`,
     loadSalesForLotId: vi.fn(() => []),
     ...overrides
@@ -653,6 +654,26 @@ test("workspace realtime reconnects after an unexpected close and stops cleanly"
   assert.deepEqual(secondSocket.closeCalls[0], {
     code: 1000,
     reason: "realtime-refresh"
+  });
+});
+
+test("workspace realtime handles lost workspace access when subscribe token is forbidden", async () => {
+  const app = createApp();
+  fetchWorkspaceRealtimeSubscribeTokenMock.mockRejectedValueOnce(Object.assign(new Error("forbidden"), {
+    status: 403
+  }));
+
+  refreshWorkspaceRealtime(app as never);
+  const socket = FakeWebSocket.instances[0]!;
+  socket.triggerOpen();
+  await flushMicrotasks();
+
+  assert.equal((app.handleWorkspaceAccessLost as ReturnType<typeof vi.fn>).mock.calls.length, 1);
+  assert.equal((app.handleWorkspaceAccessLost as ReturnType<typeof vi.fn>).mock.calls[0]?.[0], "ws_dcb4d6f021637411");
+  assert.equal(app.workspaceRealtimeStatus, "disconnected");
+  assert.deepEqual(socket.closeCalls[0], {
+    code: 1011,
+    reason: "realtime-subscribe-failed"
   });
 });
 

@@ -36,6 +36,11 @@ export async function assertCanManageWorkspaceMembership(
   actorUserId: string,
   workspaceId: string
 ): Promise<WorkspaceMembershipDocument> {
+  const workspace = await getWorkspaceById(config, workspaceId);
+  if (!workspace || isWorkspaceDeleted(workspace)) {
+    throw new HttpError(404, "Workspace was not found.");
+  }
+
   const actorMembership = await getWorkspaceMembership(config, actorUserId, workspaceId);
   if (!canManageWorkspaceMembership(actorMembership)) {
     throw new HttpError(403, "Only workspace owner can manage members.");

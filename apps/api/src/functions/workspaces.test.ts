@@ -29,6 +29,7 @@ const {
   createWorkspaceJoinLinkMock,
   listWorkspaceJoinLinksMock,
   revokeWorkspaceJoinLinkMock,
+  getWorkspaceJoinLinkByInviteIdMock,
   getWorkspaceJoinLinkByTokenHashMock,
   markWorkspaceJoinLinkUsedMock,
   resolveUserIdMock
@@ -49,6 +50,7 @@ const {
   createWorkspaceJoinLinkMock: vi.fn(),
   listWorkspaceJoinLinksMock: vi.fn(),
   revokeWorkspaceJoinLinkMock: vi.fn(),
+  getWorkspaceJoinLinkByInviteIdMock: vi.fn(),
   getWorkspaceJoinLinkByTokenHashMock: vi.fn(),
   markWorkspaceJoinLinkUsedMock: vi.fn(),
   resolveUserIdMock: vi.fn(async (request: { headers: { get(name: string): string | null } }) => {
@@ -80,6 +82,7 @@ vi.mock("../lib/cosmos/workspaceRepository", () => ({
   createWorkspaceJoinLink: createWorkspaceJoinLinkMock,
   listWorkspaceJoinLinks: listWorkspaceJoinLinksMock,
   revokeWorkspaceJoinLink: revokeWorkspaceJoinLinkMock,
+  getWorkspaceJoinLinkByInviteId: getWorkspaceJoinLinkByInviteIdMock,
   getWorkspaceJoinLinkByTokenHash: getWorkspaceJoinLinkByTokenHashMock,
   markWorkspaceJoinLinkUsed: markWorkspaceJoinLinkUsedMock
 }));
@@ -181,6 +184,12 @@ beforeEach(() => {
     status: "revoked",
     expiresAt: "2026-03-25T00:00:00.000Z"
   });
+  getWorkspaceJoinLinkByInviteIdMock.mockResolvedValue({
+    inviteId: "invite-1",
+    workspaceId: "team-42",
+    status: "active",
+    expiresAt: "2026-03-25T00:00:00.000Z"
+  });
   getWorkspaceJoinLinkByTokenHashMock.mockResolvedValue({
     inviteId: "invite-1",
     workspaceId: "team-42",
@@ -233,6 +242,12 @@ test("workspacesMe returns all active workspaces for the caller", async () => {
 });
 
 test("workspaceMembersAdd requires owner membership", async () => {
+  getWorkspaceByIdMock.mockResolvedValue({
+    workspaceId: "team-42",
+    name: "Team 42",
+    ownerUserId: "owner-user",
+    status: "active"
+  });
   getWorkspaceMembershipMock.mockResolvedValue({
     userId: "basic-user",
     workspaceId: "team-42",
@@ -255,6 +270,34 @@ test("workspaceMembersAdd requires owner membership", async () => {
   assert.equal(context.warn.mock.calls[0]?.[1]?.route, "workspace_members");
   assert.equal(context.warn.mock.calls[0]?.[1]?.workspace_scope, "workspace");
   assert.equal(context.warn.mock.calls[0]?.[1]?.outcome, "http_403");
+});
+
+test("workspaceMembersAdd rejects owner role changes outside the transfer flow", async () => {
+  getWorkspaceByIdMock.mockResolvedValue({
+    workspaceId: "team-42",
+    name: "Team 42",
+    ownerUserId: "owner-user",
+    status: "active"
+  });
+  getWorkspaceMembershipMock.mockResolvedValue({
+    userId: "owner-user",
+    workspaceId: "team-42",
+    role: "owner",
+    status: "active"
+  });
+
+  const response = await workspaceMembersAdd(
+    createRequest(
+      "POST",
+      { authorization: "Bearer owner-user" },
+      { userId: "new-owner", role: "owner" },
+      { workspaceId: "team-42" }
+    ) as never,
+    createContext() as never
+  );
+
+  assert.equal(response.status, 400);
+  assert.equal(upsertWorkspaceMembershipMock.mock.calls.length, 0);
 });
 
 test("workspaceMembersList returns members for authorized user", async () => {
@@ -293,6 +336,12 @@ test("workspaceMembersList returns members for authorized user", async () => {
 });
 
 test("workspaceMembersRemove rejects removing owner membership", async () => {
+  getWorkspaceByIdMock.mockResolvedValue({
+    workspaceId: "team-42",
+    name: "Team 42",
+    ownerUserId: "owner-user",
+    status: "active"
+  });
   getWorkspaceMembershipMock
     .mockResolvedValueOnce({
       userId: "owner-user",
@@ -321,6 +370,12 @@ test("workspaceMembersRemove rejects removing owner membership", async () => {
 });
 
 test("workspaceLeave removes a regular member from the workspace", async () => {
+  getWorkspaceByIdMock.mockResolvedValue({
+    workspaceId: "team-42",
+    name: "Team 42",
+    ownerUserId: "owner-user",
+    status: "active"
+  });
   getWorkspaceMembershipMock.mockResolvedValueOnce({
     userId: "member-user",
     workspaceId: "team-42",
@@ -344,6 +399,12 @@ test("workspaceLeave removes a regular member from the workspace", async () => {
 });
 
 test("workspaceLeave transfers ownership when owner leaves and members remain", async () => {
+  getWorkspaceByIdMock.mockResolvedValue({
+    workspaceId: "team-42",
+    name: "Team 42",
+    ownerUserId: "owner-user",
+    status: "active"
+  });
   getWorkspaceMembershipMock.mockResolvedValue({
     userId: "owner-user",
     workspaceId: "team-42",
@@ -372,6 +433,12 @@ test("workspaceLeave transfers ownership when owner leaves and members remain", 
 });
 
 test("workspaceLeave rejects transfer when selected new owner is not an active member", async () => {
+  getWorkspaceByIdMock.mockResolvedValue({
+    workspaceId: "team-42",
+    name: "Team 42",
+    ownerUserId: "owner-user",
+    status: "active"
+  });
   getWorkspaceMembershipMock.mockResolvedValue({
     userId: "owner-user",
     workspaceId: "team-42",
@@ -400,6 +467,12 @@ test("workspaceLeave rejects transfer when selected new owner is not an active m
 });
 
 test("workspaceLeave requires delete confirmation for last owner", async () => {
+  getWorkspaceByIdMock.mockResolvedValue({
+    workspaceId: "team-42",
+    name: "Team 42",
+    ownerUserId: "owner-user",
+    status: "active"
+  });
   getWorkspaceMembershipMock.mockResolvedValue({
     userId: "owner-user",
     workspaceId: "team-42",
@@ -425,6 +498,12 @@ test("workspaceLeave requires delete confirmation for last owner", async () => {
 });
 
 test("workspaceLeave soft deletes workspace when last owner confirms delete", async () => {
+  getWorkspaceByIdMock.mockResolvedValue({
+    workspaceId: "team-42",
+    name: "Team 42",
+    ownerUserId: "owner-user",
+    status: "active"
+  });
   getWorkspaceMembershipMock.mockResolvedValue({
     userId: "owner-user",
     workspaceId: "team-42",
@@ -496,6 +575,12 @@ test("workspaceJoinLinksCreate rejects deleted workspaces", async () => {
 });
 
 test("workspaceJoinLinksList returns join links for owner", async () => {
+  getWorkspaceByIdMock.mockResolvedValue({
+    workspaceId: "team-42",
+    name: "Team 42",
+    ownerUserId: "owner-user",
+    status: "active"
+  });
   listWorkspaceJoinLinksMock.mockResolvedValue([
     { inviteId: "invite-1", workspaceId: "team-42", status: "active", expiresAt: "2099-01-01T00:00:00.000Z" },
     { inviteId: "invite-2", workspaceId: "team-42", status: "used", expiresAt: "2099-01-01T00:00:00.000Z" }
@@ -516,6 +601,12 @@ test("workspaceJoinLinksList returns join links for owner", async () => {
 });
 
 test("workspaceJoinLinksRemove revokes join link", async () => {
+  getWorkspaceByIdMock.mockResolvedValue({
+    workspaceId: "team-42",
+    name: "Team 42",
+    ownerUserId: "owner-user",
+    status: "active"
+  });
   const response = await workspaceJoinLinksRemove(
     createRequest(
       "DELETE",

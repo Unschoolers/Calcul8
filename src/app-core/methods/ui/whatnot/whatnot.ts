@@ -1,226 +1,14 @@
 import type { AppContext, AppMethodState } from "../../../context-app.ts";
-import type { WhatnotConnectionSummary, WhatnotCsvPreparedRowInput } from "../../../../types/app.ts";
+import type { WhatnotCsvPreparedRowInput } from "../../../../types/app.ts";
 import { translateAppMessage } from "../../../i18n/index.ts";
 import { normalizeWhatnotReviewRows } from "../../../shared/whatnot-csv.ts";
-import { canUseAuthoritativeSalesLiveApi } from "../../entity-api-shared.ts";
-import { cacheAuthoritativeSales, fetchAuthoritativeSales } from "../../lot-sales-api.ts";
-import { fetchAuthenticatedApiResponse, handleExpiredAuth, resolveApiBaseUrl } from "../common/shared.ts";
+import { buildWhatnotReviewDecisions, validateWhatnotReviewRowsForImport } from "./whatnot-review-decisions.ts";
+import { getAffectedWhatnotLotIds, refreshAffectedWhatnotSales } from "./whatnot-sales-refresh.ts";
+import { buildWhatnotScopeBody, canManageWhatnot, fetchWhatnotJson } from "./whatnot-http.ts";
+import { resetWhatnotCsvImportState, resetWhatnotReviewState } from "./whatnot-state.ts";
+import { applyWhatnotStatus } from "./whatnot-status.ts";
 
-type WhatnotApp = Pick<
-  AppContext,
-  | "activeScopeType"
-  | "activeWorkspaceId"
-  | "askConfirmation"
-  | "googleAuthEpoch"
-  | "hasProAccess"
-  | "isCurrentWorkspaceOwner"
-  | "notify"
-  | "preferredLanguage"
-  | "whatnotConnectionStatus"
-  | "whatnotSyncStatus"
-  | "whatnotConnectionSummary"
-  | "whatnotCsvRawInput"
-  | "whatnotCsvSellerAccountId"
-  | "whatnotCsvHeaders"
-  | "whatnotCsvRows"
-  | "whatnotCsvMapExternalSaleId"
-  | "whatnotCsvMapOrderId"
-  | "whatnotCsvMapOrderItemId"
-  | "whatnotCsvMapSellerAccountId"
-  | "whatnotCsvMapTitle"
-  | "whatnotCsvMapListingTitle"
-  | "whatnotCsvMapBuyerName"
-  | "whatnotCsvMapOrderPlacedAt"
-  | "whatnotCsvMapOriginalItemPrice"
-  | "whatnotCsvMapSku"
-  | "whatnotCsvMapProductCategory"
-  | "whatnotCsvMapQuantity"
-  | "whatnotCsvMapPrice"
-  | "whatnotCsvMapBuyerShipping"
-  | "whatnotCsvMapDate"
-  | "whatnotCsvMapOrderStatus"
-  | "whatnotReviewBatchId"
-  | "whatnotReviewRows"
-  | "showWhatnotCsvImportDialog"
-  | "showWhatnotReviewDialog"
-  | "whatnotCallbackStatus"
-  | "whatnotCallbackMessage"
-  | "pullCloudSync"
-  | "currentLotId"
-  | "sales"
-  | "getSalesStorageKey"
->;
-
-const EMPTY_WHATNOT_CSV_IMPORT_STATE = {
-  whatnotCsvRawInput: "",
-  whatnotCsvSellerAccountId: "",
-  whatnotCsvHeaders: [],
-  whatnotCsvRows: [],
-  whatnotCsvMapExternalSaleId: null,
-  whatnotCsvMapOrderId: null,
-  whatnotCsvMapOrderItemId: null,
-  whatnotCsvMapSellerAccountId: null,
-  whatnotCsvMapTitle: null,
-  whatnotCsvMapListingTitle: null,
-  whatnotCsvMapBuyerName: null,
-  whatnotCsvMapOrderPlacedAt: null,
-  whatnotCsvMapOriginalItemPrice: null,
-  whatnotCsvMapSku: null,
-  whatnotCsvMapProductCategory: null,
-  whatnotCsvMapQuantity: null,
-  whatnotCsvMapPrice: null,
-  whatnotCsvMapBuyerShipping: null,
-  whatnotCsvMapDate: null,
-  whatnotCsvMapOrderStatus: null
-};
-
-const EMPTY_WHATNOT_REVIEW_STATE = {
-  whatnotReviewBatchId: null,
-  whatnotReviewRows: []
-};
-
-function resetWhatnotCsvImportState(app: WhatnotApp): void {
-  Object.assign(app, EMPTY_WHATNOT_CSV_IMPORT_STATE);
-}
-
-function resetWhatnotReviewState(app: WhatnotApp): void {
-  Object.assign(app, EMPTY_WHATNOT_REVIEW_STATE);
-}
-
-function getAffectedWhatnotLotIds(rows: WhatnotApp["whatnotReviewRows"]): number[] {
-  const lotIds = new Set<number>();
-  for (const row of rows) {
-    const selectedImportAction = row.selectedImportAction ?? (row.action === "update" ? "update_existing" : row.action === "skip" ? "skip" : "create");
-    if (row.skipImport || selectedImportAction === "skip") {
-      continue;
-    }
-    const lotId = Math.max(0, Math.floor(Number(row.selectedLotId) || 0));
-    if (lotId > 0) {
-      lotIds.add(lotId);
-    }
-  }
-  return [...lotIds];
-}
-
-async function refreshAffectedWhatnotSales(app: WhatnotApp, lotIds: number[]): Promise<void> {
-  if (!canUseAuthoritativeSalesLiveApi() || lotIds.length === 0) {
-    return;
-  }
-
-  await Promise.all(lotIds.map(async (lotId) => {
-    try {
-      const latestSales = await fetchAuthoritativeSales(app, lotId);
-      if (!latestSales) {
-        return;
-      }
-      cacheAuthoritativeSales(app, lotId, latestSales);
-      if (app.currentLotId === lotId) {
-        app.sales = latestSales;
-      }
-    } catch (error) {
-      console.warn("Failed to refresh authoritative sales after Whatnot import", {
-        lotId,
-        error
-      });
-    }
-  }));
-}
-
-export function resetWhatnotTransientUiState(app: WhatnotApp): void {
-  app.showWhatnotCsvImportDialog = false;
-  app.showWhatnotReviewDialog = false;
-  resetWhatnotCsvImportState(app);
-  resetWhatnotReviewState(app);
-}
-
-export function resetWhatnotSignedOutState(app: WhatnotApp): void {
-  app.whatnotConnectionStatus = "unconfigured";
-  app.whatnotSyncStatus = "idle";
-  app.whatnotConnectionSummary = null;
-  app.whatnotCallbackStatus = null;
-  app.whatnotCallbackMessage = "";
-  resetWhatnotTransientUiState(app);
-}
-
-function canManageWhatnot(app: Pick<AppContext, "activeScopeType" | "isCurrentWorkspaceOwner">): boolean {
-  return app.activeScopeType === "personal" || app.isCurrentWorkspaceOwner;
-}
-
-function buildWhatnotScopeBody(app: Pick<AppContext, "activeScopeType" | "activeWorkspaceId">): Record<string, string> {
-  return {
-    ...(app.activeScopeType === "workspace" && app.activeWorkspaceId
-      ? { workspaceId: app.activeWorkspaceId }
-      : {}),
-    appReturnUrl: window.location.origin
-  };
-}
-
-async function fetchWhatnotJson(
-  app: WhatnotApp,
-  path: string,
-  init: RequestInit,
-  fallbackMessage: string,
-  options: {
-    expireAuthOn401?: boolean;
-  } = {}
-): Promise<{ ok: true; body: unknown } | { ok: false }> {
-  const baseUrl = resolveApiBaseUrl();
-  if (!baseUrl) {
-    app.notify("Whatnot integration is unavailable until the API base URL is configured.", "warning");
-    return { ok: false };
-  }
-
-  const response = await fetchAuthenticatedApiResponse(app, path, init, options);
-
-  if (response.status === 401) {
-    if (options.expireAuthOn401 !== false) {
-      handleExpiredAuth(app);
-    }
-    app.notify("Your sign-in expired. Please sign in again.", "warning");
-    return { ok: false };
-  }
-
-  let body: unknown = null;
-  try {
-    body = await response.json();
-  } catch {
-    body = null;
-  }
-
-  if (!response.ok) {
-    const message = String((body as { error?: unknown } | null)?.error ?? fallbackMessage).trim() || fallbackMessage;
-    app.notify(message, "error");
-    return { ok: false };
-  }
-
-  return { ok: true, body };
-}
-
-function applyWhatnotStatus(
-  app: WhatnotApp,
-  payload: unknown
-): void {
-  const body = (payload && typeof payload === "object" && !Array.isArray(payload))
-    ? payload as Record<string, unknown>
-    : {};
-  const summary: WhatnotConnectionSummary = {
-    configured: body.configured === true,
-    connected: body.connected === true,
-    displayName: String(body.displayName ?? "").trim(),
-    externalAccountId: String(body.externalAccountId ?? "").trim(),
-    scopes: Array.isArray(body.scopes) ? body.scopes.map((value) => String(value ?? "").trim()).filter((value) => value.length > 0) : [],
-    lastSyncedAt: String(body.lastSyncedAt ?? "").trim() || null,
-    pendingReviewCount: Math.max(0, Math.floor(Number(body.pendingReviewCount) || 0)),
-    pendingBatchId: String(body.pendingBatchId ?? "").trim() || null
-  };
-
-  app.whatnotConnectionSummary = summary;
-  if (!summary.configured) {
-    app.whatnotConnectionStatus = "unconfigured";
-    return;
-  }
-  app.whatnotConnectionStatus = summary.connected ? "connected" : "disconnected";
-}
+export { resetWhatnotSignedOutState, resetWhatnotTransientUiState } from "./whatnot-state.ts";
 
 export const uiWhatnotMethods: ThisType<AppContext> & Pick<
   AppMethodState,
@@ -478,31 +266,8 @@ export const uiWhatnotMethods: ThisType<AppContext> & Pick<
 
     const affectedLotIds = getAffectedWhatnotLotIds(this.whatnotReviewRows);
 
-    for (const row of this.whatnotReviewRows) {
-      const selectedImportAction = row.selectedImportAction ?? (row.action === "update" ? "update_existing" : row.action === "skip" ? "skip" : "create");
-      const shouldSkip = row.skipImport || selectedImportAction === "skip";
-      if (shouldSkip) continue;
-
-      if (!row.selectedLotId) {
-        this.notify(`Choose a lot for ${row.title || row.externalOrderId}.`, "warning");
-        return;
-      }
-      const selectedSaleType = row.selectedSaleType ?? (row.suggestedSaleType ?? null);
-      if (!selectedSaleType) {
-        this.notify(`Choose a sale type for ${row.title || row.externalOrderId}.`, "warning");
-        return;
-      }
-      if (selectedSaleType === "rtyh" && (!row.selectedPacksCount || row.selectedPacksCount <= 0)) {
-        this.notify(`Enter sold items for RTYH row ${row.title || row.externalOrderId}.`, "warning");
-        return;
-      }
-      if (selectedImportAction === "update_existing") {
-        const targetSaleId = String(row.targetSaleId ?? row.manualDuplicateCandidate?.saleId ?? row.existingSaleId ?? "").trim();
-        if (!targetSaleId) {
-          this.notify(`Choose a matching sale to update for ${row.title || row.externalOrderId}.`, "warning");
-          return;
-        }
-      }
+    if (!validateWhatnotReviewRowsForImport(this)) {
+      return;
     }
 
     const result = await fetchWhatnotJson(
@@ -516,31 +281,7 @@ export const uiWhatnotMethods: ThisType<AppContext> & Pick<
         body: JSON.stringify({
           ...buildWhatnotScopeBody(this),
           batchId: this.whatnotReviewBatchId,
-          decisions: this.whatnotReviewRows.map((row) => {
-            const selectedImportAction = row.selectedImportAction ?? (row.action === "update" ? "update_existing" : row.action === "skip" ? "skip" : "create");
-            const targetSaleId = String(row.targetSaleId ?? row.manualDuplicateCandidate?.saleId ?? row.existingSaleId ?? "").trim();
-            const targetKind = selectedImportAction === "update_existing"
-              ? (row.targetKind
-                ?? (row.manualDuplicateCandidate
-                  ? "manual_candidate"
-                  : targetSaleId
-                    ? "whatnot_mapping"
-                    : null))
-              : selectedImportAction === "create"
-                ? "new"
-                : null;
-
-            return {
-              rowId: row.rowId,
-              lotId: row.selectedLotId,
-              saleType: row.selectedSaleType,
-              packsCount: row.selectedPacksCount,
-              skip: row.skipImport || selectedImportAction === "skip",
-              selectedImportAction,
-              targetKind,
-              targetSaleId: targetSaleId || undefined
-            };
-          })
+          decisions: buildWhatnotReviewDecisions(this.whatnotReviewRows)
         })
       },
       "Failed to import Whatnot sales."

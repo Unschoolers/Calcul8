@@ -238,7 +238,7 @@ Recommended partition key for both containers: `/userId`.
     - `docType`: `workspace_membership`
     - `userId`
     - `workspaceId`
-    - `role`: `owner|admin|member`
+    - `role`: `owner|member` (`owner` is assigned by workspace create or ownership transfer, not member add)
     - `status`: `active|disabled|removed`
     - `updatedAt`
 

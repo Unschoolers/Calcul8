@@ -2,9 +2,13 @@ import assert from "node:assert/strict";
 import { beforeEach, test, vi } from "vitest";
 
 const {
-  getSaleDocumentMock
+  getSaleDocumentMock,
+  getWorkspaceMembershipMock,
+  hasWorkspaceMembershipMock
 } = vi.hoisted(() => ({
-  getSaleDocumentMock: vi.fn()
+  getSaleDocumentMock: vi.fn(),
+  getWorkspaceMembershipMock: vi.fn(),
+  hasWorkspaceMembershipMock: vi.fn()
 }));
 
 vi.mock("../../lib/cosmos/salesRepository", () => ({
@@ -12,11 +16,17 @@ vi.mock("../../lib/cosmos/salesRepository", () => ({
   listSalesForLot: vi.fn()
 }));
 
+vi.mock("../../lib/cosmos/workspaceRepository", () => ({
+  getWorkspaceMembership: getWorkspaceMembershipMock,
+  hasWorkspaceMembership: hasWorkspaceMembershipMock
+}));
+
 import { buildWhatnotManualDuplicateCandidate } from "./duplicateDetection";
 import {
     buildImportedSalePayload,
     buildMergedManualSalePayload
 } from "./saleBuilders";
+import { resolveWhatnotScope } from "./serviceCore";
 
 function toExpectedLocalDate(value: string): string {
   const date = new Date(value);
@@ -28,6 +38,29 @@ function toExpectedLocalDate(value: string): string {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  hasWorkspaceMembershipMock.mockResolvedValue(true);
+  getWorkspaceMembershipMock.mockResolvedValue({
+    userId: "owner-1",
+    workspaceId: "team-42",
+    role: "owner",
+    status: "active"
+  });
+});
+
+test("resolveWhatnotScope rejects stale workspace membership when the workspace is no longer active", async () => {
+  hasWorkspaceMembershipMock.mockResolvedValue(false);
+  getWorkspaceMembershipMock.mockResolvedValue({
+    userId: "owner-1",
+    workspaceId: "team-42",
+    role: "owner",
+    status: "active"
+  });
+
+  await assert.rejects(
+    () => resolveWhatnotScope({} as never, "owner-1", "team-42", true),
+    (error: { status?: number; message?: string }) =>
+      error.status === 403 && error.message === "User is not a member of this workspace."
+  );
 });
 
 test("buildWhatnotManualDuplicateCandidate finds a high-confidence buyer match", () => {

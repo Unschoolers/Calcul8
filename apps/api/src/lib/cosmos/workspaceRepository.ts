@@ -95,6 +95,19 @@ export async function upsertWorkspaceDocument(
   return resource;
 }
 
+async function deleteWorkspaceDocument(config: ApiConfig, workspaceId: string): Promise<void> {
+  const { entitlements } = getContainers(config);
+  const id = workspaceDocumentId(workspaceId);
+  const partitionKey = workspaceDocumentPartitionKey(workspaceId);
+
+  try {
+    await withCosmosRetry(() => entitlements.item(id, partitionKey).delete());
+  } catch (error) {
+    if (isNotFoundError(error)) return;
+    throw error;
+  }
+}
+
 export async function getWorkspaceMembership(
   config: ApiConfig,
   userId: string,
@@ -227,12 +240,24 @@ export async function createWorkspaceWithOwner(
       throw new Error("Failed to create workspace.");
     }
 
-    const ownerMembership = await upsertWorkspaceMembership(config, {
-      userId: input.ownerUserId,
-      workspaceId: input.workspaceId,
-      role: "owner",
-      status: "active"
-    });
+    let ownerMembership: WorkspaceMembershipDocument;
+    try {
+      ownerMembership = await upsertWorkspaceMembership(config, {
+        userId: input.ownerUserId,
+        workspaceId: input.workspaceId,
+        role: "owner",
+        status: "active"
+      });
+    } catch (error) {
+      try {
+        await deleteWorkspaceDocument(config, input.workspaceId);
+      } catch (cleanupError) {
+        if (error && typeof error === "object") {
+          (error as { cleanupError?: unknown }).cleanupError = cleanupError;
+        }
+      }
+      throw error;
+    }
 
     return {
       workspace: resource,
@@ -427,6 +452,7 @@ export async function markWorkspaceJoinLinkUsed(
 ): Promise<WorkspaceJoinLinkDocument | null> {
   const existing = await getWorkspaceJoinLinkByInviteId(config, inviteId);
   if (!existing) return null;
+  if (existing.status !== "active") return null;
 
   const now = new Date().toISOString();
   const { entitlements } = getContainers(config);

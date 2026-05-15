@@ -90,6 +90,10 @@ export async function addWorkspaceMemberForActor(
 }> {
   await assertCanManageWorkspaceMembership(config, actorUserId, workspaceId);
 
+  if (payload.role === "owner") {
+    throw new HttpError(400, "Workspace ownership changes must use the transfer flow.");
+  }
+
   const membership = await upsertWorkspaceMembership(config, {
     userId: payload.userId,
     workspaceId,
@@ -126,7 +130,11 @@ export async function removeWorkspaceMemberForActor(
     throw new HttpError(400, "Workspace owner membership cannot be removed.");
   }
 
-  await deactivateWorkspaceMembership(config, memberUserId, workspaceId);
+  const removed = await deactivateWorkspaceMembership(config, memberUserId, workspaceId);
+  if (!removed) {
+    throw new HttpError(409, "Workspace member removal conflicted. Refresh and try again.");
+  }
+
   return {
     workspaceId,
     memberUserId

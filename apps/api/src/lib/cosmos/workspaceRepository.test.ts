@@ -219,6 +219,31 @@ test("createWorkspaceWithOwner maps Cosmos conflicts to a friendly error", async
   );
 });
 
+test("createWorkspaceWithOwner removes the workspace document when owner membership creation fails", async () => {
+  const entitlements = createEntitlementsContainer();
+  const deleteWorkspace = vi.fn().mockResolvedValue({});
+  entitlements.items.create.mockImplementation(async (document: WorkspaceDocument) => ({
+    resource: document
+  }));
+  entitlements.items.upsert.mockRejectedValue(new Error("membership unavailable"));
+  entitlements.item.mockReturnValue({
+    delete: deleteWorkspace
+  });
+  getContainersMock.mockReturnValue({ entitlements });
+
+  await assert.rejects(
+    () => createWorkspaceWithOwner(createConfig(), {
+      workspaceId: "ws-orphan",
+      name: "Orphan Risk",
+      ownerUserId: "owner-1"
+    }),
+    /membership unavailable/
+  );
+
+  assert.equal(deleteWorkspace.mock.calls.length, 1);
+  assert.deepEqual(entitlements.item.mock.calls.at(-1), ["workspace:ws-orphan", "ws:ws-orphan"]);
+});
+
 test("hasWorkspaceMembership returns false for deleted workspaces and removed memberships", async () => {
   const entitlements = createEntitlementsContainer();
   const activeWorkspace: WorkspaceDocument = {
@@ -399,4 +424,33 @@ test("workspace join links can be created, listed, revoked, and marked used", as
   assert.equal(revoked?.status, "revoked");
   assert.equal(used?.status, "used");
   assert.equal(used?.usedByUserId, "user-2");
+});
+
+test("markWorkspaceJoinLinkUsed returns null without rewriting an inactive link", async () => {
+  const entitlements = createEntitlementsContainer();
+  const usedJoinLink = {
+    id: "join_link:invite-1",
+    docType: "workspace_join_link" as const,
+    userId: "ws:ws-1",
+    inviteId: "invite-1",
+    workspaceId: "ws-1",
+    createdByUserId: "owner-1",
+    role: "member" as const,
+    status: "used" as const,
+    tokenHash: "hash-1",
+    expiresAt: "2026-03-20T00:00:00.000Z",
+    usedByUserId: "user-2",
+    usedAt: "2026-03-18T00:00:00.000Z",
+    updatedAt: "2026-03-18T00:00:00.000Z"
+  };
+
+  entitlements.items.query.mockReturnValue({
+    fetchAll: vi.fn().mockResolvedValue({ resources: [usedJoinLink] })
+  });
+  getContainersMock.mockReturnValue({ entitlements });
+
+  const result = await markWorkspaceJoinLinkUsed(createConfig(), "invite-1", "user-3");
+
+  assert.equal(result, null);
+  assert.equal(entitlements.items.upsert.mock.calls.length, 0);
 });
