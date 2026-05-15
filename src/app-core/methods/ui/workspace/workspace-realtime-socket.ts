@@ -41,11 +41,18 @@ function tryScheduleRealtimeReconnect(
   }
 }
 
+function readErrorStatus(error: unknown): number | null {
+  if (!error || typeof error !== "object") return null;
+  const status = Number((error as { status?: unknown }).status);
+  return Number.isFinite(status) ? Math.floor(status) : null;
+}
+
 async function subscribeRealtimeSocket(
   app: RealtimeApp,
   state: RealtimeSocketState,
   socket: WebSocket,
-  subscribeAttemptId: number
+  subscribeAttemptId: number,
+  workspaceId: string | null
 ): Promise<void> {
   if (state.socket !== socket || state.rooms.length === 0) return;
 
@@ -70,8 +77,11 @@ async function subscribeRealtimeSocket(
       rooms: nextRooms,
       ...(subscribeToken?.token ? { token: subscribeToken.token } : {})
     }));
-  } catch {
+  } catch (error) {
     setWorkspaceRealtimeStatus(app, "disconnected");
+    if (readErrorStatus(error) === 403 && workspaceId) {
+      await app.handleWorkspaceAccessLost(workspaceId);
+    }
     if (state.socket === socket && socket.readyState === WebSocket.OPEN) {
       socket.close(1011, "realtime-subscribe-failed");
     }
@@ -83,10 +93,11 @@ function attachRealtimeSocketListeners(
   state: RealtimeSocketState,
   socket: WebSocket,
   desiredRooms: string[],
-  subscribeAttemptId: number
+  subscribeAttemptId: number,
+  workspaceId: string | null
 ): void {
   socket.addEventListener("open", () => {
-    void subscribeRealtimeSocket(app, state, socket, subscribeAttemptId);
+    void subscribeRealtimeSocket(app, state, socket, subscribeAttemptId, workspaceId);
   });
 
   socket.addEventListener("message", (event) => {
@@ -145,6 +156,7 @@ export function refreshWorkspaceRealtime(app: RealtimeApp): void {
 
   const desiredSubscription = realtimeSession.desiredSubscription;
   const nextUrl = realtimeSession.socketUrl;
+  const desiredWorkspaceId = realtimeSession.scope.workspaceId;
   const state = getRealtimeSocketState(app as object);
   clearReconnectTimeout(state);
 
@@ -162,7 +174,7 @@ export function refreshWorkspaceRealtime(app: RealtimeApp): void {
 
   const socket = new WebSocket(nextUrl);
   state.socket = socket;
-  attachRealtimeSocketListeners(app, state, socket, desiredSubscription.rooms, subscribeAttemptId);
+  attachRealtimeSocketListeners(app, state, socket, desiredSubscription.rooms, subscribeAttemptId, desiredWorkspaceId);
 }
 
 export function stopWorkspaceRealtime(app: RealtimeApp): void {

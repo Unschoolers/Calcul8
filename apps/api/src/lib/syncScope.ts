@@ -17,3 +17,11 @@ export function parseOptionalWorkspaceId(value: unknown): string | undefined {
   }
   return normalized;
 }
+
+export function parseRequiredWorkspaceId(value: unknown, label = "workspaceId"): string {
+  const workspaceId = parseOptionalWorkspaceId(value);
+  if (!workspaceId) {
+    throw new HttpError(400, `Field '${label}' is required.`);
+  }
+  return workspaceId;
+}

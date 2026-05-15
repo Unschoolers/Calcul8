@@ -320,9 +320,10 @@ export async function mintLotRealtimeTokenForActor(
     (userId, nextWorkspaceId) => hasWorkspaceMembership(config, userId, nextWorkspaceId)
   );
 
-  const room = buildWorkspaceLotRealtimeRoom(workspaceId, lotId);
-  const presenceRoom = buildWorkspacePresenceRealtimeRoom(workspaceId);
-  const wheelRoom = buildWorkspaceWheelRealtimeRoom(workspaceId);
+  const normalizedWorkspaceId = syncScope.scopeId;
+  const room = buildWorkspaceLotRealtimeRoom(normalizedWorkspaceId, lotId);
+  const presenceRoom = buildWorkspacePresenceRealtimeRoom(normalizedWorkspaceId);
+  const wheelRoom = buildWorkspaceWheelRealtimeRoom(normalizedWorkspaceId);
   const rooms = [room, presenceRoom, wheelRoom];
   const tokenSecret = String(config.realtimeTokenSecret ?? "").trim();
   if (!tokenSecret && config.apiEnv === "prod") {
@@ -332,7 +333,7 @@ export async function mintLotRealtimeTokenForActor(
 
   return {
     lotId,
-    workspaceId,
+    workspaceId: normalizedWorkspaceId,
     room,
     rooms,
     token: tokenSecret ? signRealtimeSubscribeToken(tokenSecret, {
@@ -361,7 +362,8 @@ export async function mintWorkspaceRealtimeTokenForActor(
     (userId, nextWorkspaceId) => hasWorkspaceMembership(config, userId, nextWorkspaceId)
   );
 
-  const room = buildWorkspacePresenceRealtimeRoom(workspaceId);
+  const normalizedWorkspaceId = syncScope.scopeId;
+  const room = buildWorkspacePresenceRealtimeRoom(normalizedWorkspaceId);
   const rooms = [room];
   const tokenSecret = String(config.realtimeTokenSecret ?? "").trim();
   if (!tokenSecret && config.apiEnv === "prod") {
@@ -370,7 +372,7 @@ export async function mintWorkspaceRealtimeTokenForActor(
   const expiresAt = buildRealtimeTokenExpiryEpochSeconds();
 
   return {
-    workspaceId,
+    workspaceId: normalizedWorkspaceId,
     room,
     rooms,
     token: tokenSecret ? signRealtimeSubscribeToken(tokenSecret, {

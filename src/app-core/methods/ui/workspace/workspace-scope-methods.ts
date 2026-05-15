@@ -19,17 +19,17 @@ export const uiWorkspaceScopeMethods: ThisType<AppContext> & Pick<
   | "createWorkspace"
   | "handleWorkspaceAccessLost"
 > = {
-  async refreshWorkspaces(): Promise<void> {
+  async refreshWorkspaces(): Promise<boolean> {
     const googleIdToken = getGoogleIdToken();
     if (!googleIdToken) {
       this.availableWorkspaces = [];
-      return;
+      return false;
     }
 
     this.isWorkspaceLoading = true;
     try {
       const result = await fetchWorkspaceJson(this, "/workspaces/me", { method: "GET" }, "Failed to load workspaces.");
-      if (!result.ok) return;
+      if (!result.ok) return false;
 
       const body = result.body as WorkspaceListResponse;
       this.availableWorkspaces = normalizeWorkspaceSummaries(body.workspaces);
@@ -49,6 +49,7 @@ export const uiWorkspaceScopeMethods: ThisType<AppContext> & Pick<
           expireAuthOn401: false
         });
       }
+      return true;
     } finally {
       this.isWorkspaceLoading = false;
     }
@@ -174,12 +175,14 @@ export const uiWorkspaceScopeMethods: ThisType<AppContext> & Pick<
 
   async handleWorkspaceAccessLost(workspaceId?: string): Promise<void> {
     const lostWorkspaceId = String(workspaceId ?? this.activeWorkspaceId ?? "").trim();
-    await this.refreshWorkspaces();
+    const refreshResult = await this.refreshWorkspaces();
 
     if (!lostWorkspaceId) return;
-    if (this.availableWorkspaces.some((workspace) => workspace.workspaceId === lostWorkspaceId)) {
+    if (refreshResult !== false && this.availableWorkspaces.some((workspace) => workspace.workspaceId === lostWorkspaceId)) {
       return;
     }
+
+    this.availableWorkspaces = this.availableWorkspaces.filter((workspace) => workspace.workspaceId !== lostWorkspaceId);
 
     if (this.activeScopeType === "workspace" && this.activeWorkspaceId === lostWorkspaceId) {
       await applyWorkspaceScope(this, "personal", null, { getGoogleIdToken });

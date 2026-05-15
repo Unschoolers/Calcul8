@@ -365,7 +365,7 @@ export interface AppMethodState {
   closeWhatnotReviewDialog(): void;
   discardWhatnotReviewBatch(): void;
   confirmWhatnotImportBatch(): Promise<void>;
-  refreshWorkspaces(): Promise<void>;
+  refreshWorkspaces(): Promise<boolean>;
   switchToPersonalWorkspace(): Promise<void>;
   switchToWorkspace(workspaceId: string): Promise<void>;
   createWorkspace(): Promise<void>;

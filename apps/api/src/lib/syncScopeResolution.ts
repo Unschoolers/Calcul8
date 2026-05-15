@@ -1,5 +1,6 @@
 import { HttpError } from "./auth";
 import { buildSyncScopePartitionKey, type ScopeType } from "./scopeKeys";
+import { parseOptionalWorkspaceId } from "./syncScope";
 
 function normalizeScopeId(raw: string | undefined): string {
   return String(raw || "").trim();
@@ -25,7 +26,7 @@ export function resolveSyncScope(actorUserId: string, workspaceId?: string): Res
     throw new HttpError(401, "Authentication is required.");
   }
 
-  const normalizedWorkspaceId = normalizeScopeId(workspaceId);
+  const normalizedWorkspaceId = parseOptionalWorkspaceId(workspaceId);
 
   if (normalizedWorkspaceId) {
     const partitionKey = buildSyncScopePartitionKey("workspace", normalizedWorkspaceId);

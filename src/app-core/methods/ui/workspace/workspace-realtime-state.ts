@@ -25,6 +25,7 @@ export type RealtimeApp = Pick<
   | "currentLivePricingVersion"
   | "loadSalesForLotId"
   | "pullCloudSync"
+  | "handleWorkspaceAccessLost"
   | "getSalesStorageKey"
   | "workspaceRealtimeStatus"
   | "workspacePresenceByUserId"

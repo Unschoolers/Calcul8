@@ -35,7 +35,10 @@ export async function leaveWorkspaceForActor(
   }
 
   if (actorMembership.role !== "owner") {
-    await deactivateWorkspaceMembership(config, actorUserId, workspaceId);
+    const removed = await deactivateWorkspaceMembership(config, actorUserId, workspaceId);
+    if (!removed) {
+      throw new HttpError(409, "Workspace leave conflicted. Refresh and try again.");
+    }
     return {
       workspaceId,
       leftWorkspace: true
@@ -80,7 +83,12 @@ export async function leaveWorkspaceForActor(
     await restoreWorkspaceMemberRole(config, workspaceId, targetMembership);
     throw error;
   }
-  await deactivateWorkspaceMembership(config, actorUserId, workspaceId);
+  try {
+    await deactivateWorkspaceMembership(config, actorUserId, workspaceId);
+  } catch (error) {
+    await rollbackWorkspaceOwnershipTransfer(config, workspaceId, actorUserId, actorMembership, targetMembership, error);
+    throw error;
+  }
 
   return {
     workspaceId,
@@ -118,4 +126,33 @@ async function restoreWorkspaceMemberRole(
     photoUrl: membership.photoUrl,
     updatedAt: membership.updatedAt
   });
+}
+
+async function rollbackWorkspaceOwnershipTransfer(
+  config: ApiConfig,
+  workspaceId: string,
+  actorUserId: string,
+  actorMembership: WorkspaceMembershipDocument,
+  targetMembership: WorkspaceMembershipDocument,
+  cause: unknown
+): Promise<void> {
+  try {
+    // Ownership transfer spans workspace and membership partitions, so restore both
+    // documents if the final leave write fails after the workspace owner changed.
+    await transferWorkspaceOwnership(config, workspaceId, actorUserId);
+    await restoreWorkspaceMemberRole(config, workspaceId, targetMembership);
+    await upsertWorkspaceMembership(config, {
+      userId: actorUserId,
+      workspaceId,
+      role: actorMembership.role ?? "owner",
+      status: actorMembership.status ?? "active",
+      displayName: actorMembership.displayName,
+      photoUrl: actorMembership.photoUrl,
+      updatedAt: actorMembership.updatedAt
+    });
+  } catch (cleanupError) {
+    if (cause && typeof cause === "object") {
+      (cause as { cleanupError?: unknown }).cleanupError = cleanupError;
+    }
+  }
 }

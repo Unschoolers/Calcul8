@@ -12,6 +12,7 @@ import {
 } from "../../lib/cosmos/workspaceRepository";
 import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../../lib/http";
 import { logApiTelemetry } from "../../lib/telemetry";
+import { parseRequiredWorkspaceId } from "../../lib/syncScope";
 import type {
   WorkspaceJoinLinkDocument,
 } from "../../types";
@@ -151,7 +152,7 @@ export async function workspaceMembersList(
         workspaceScope: "workspace"
       }
     });
-    const workspaceId = requireRouteParam(request, "workspaceId");
+    const workspaceId = parseRequiredWorkspaceId(requireRouteParam(request, "workspaceId"));
     const responseBody = await listWorkspaceMembersForActor(config, actorUserId, workspaceId);
     return jsonResponse(request, config, 200, responseBody);
   } catch (error) {
@@ -177,7 +178,7 @@ export async function workspaceMembersAdd(
         workspaceScope: "workspace"
       }
     });
-    const workspaceId = requireRouteParam(request, "workspaceId");
+    const workspaceId = parseRequiredWorkspaceId(requireRouteParam(request, "workspaceId"));
     const payload = parseUpsertWorkspaceMemberBody(await request.json());
     const result = await addWorkspaceMemberForActor(config, actorUserId, workspaceId, payload);
 
@@ -227,7 +228,7 @@ export async function workspaceMembersRemove(
         workspaceScope: "workspace"
       }
     });
-    const workspaceId = requireRouteParam(request, "workspaceId");
+    const workspaceId = parseRequiredWorkspaceId(requireRouteParam(request, "workspaceId"));
     const memberUserId = requireRouteParam(request, "memberUserId");
     const result = await removeWorkspaceMemberForActor(config, actorUserId, workspaceId, memberUserId);
     return jsonResponse(request, config, 200, {
@@ -258,7 +259,7 @@ export async function workspaceLeave(
         workspaceScope: "workspace"
       }
     });
-    const workspaceId = requireRouteParam(request, "workspaceId");
+    const workspaceId = parseRequiredWorkspaceId(requireRouteParam(request, "workspaceId"));
     const payload = parseLeaveWorkspaceBody(await readRequestJsonOrNull(request));
     const result = await leaveWorkspaceForActor(config, actorUserId, workspaceId, payload);
 
@@ -289,7 +290,7 @@ export async function workspaceJoinLinksList(
         workspaceScope: "workspace"
       }
     });
-    const workspaceId = requireRouteParam(request, "workspaceId");
+    const workspaceId = parseRequiredWorkspaceId(requireRouteParam(request, "workspaceId"));
     const responseBody = await listWorkspaceJoinLinksForActor(config, actorUserId, workspaceId);
     return jsonResponse(request, config, 200, responseBody);
   } catch (error) {
@@ -315,7 +316,7 @@ export async function workspaceJoinLinksCreate(
         workspaceScope: "workspace"
       }
     });
-    const workspaceId = requireRouteParam(request, "workspaceId");
+    const workspaceId = parseRequiredWorkspaceId(requireRouteParam(request, "workspaceId"));
     const result = await createWorkspaceJoinLinkForActor(config, actorUserId, workspaceId);
 
     return jsonResponse(request, config, 201, {
@@ -365,7 +366,7 @@ export async function workspaceJoinLinksRemove(
         workspaceScope: "workspace"
       }
     });
-    const workspaceId = requireRouteParam(request, "workspaceId");
+    const workspaceId = parseRequiredWorkspaceId(requireRouteParam(request, "workspaceId"));
     const inviteId = requireRouteParam(request, "inviteId");
     const result = await revokeWorkspaceJoinLinkForActor(config, actorUserId, workspaceId, inviteId);
 

@@ -7,7 +7,7 @@ import { hasWorkspaceMembership } from "../../lib/cosmos/workspaceRepository";
 import { getConfig } from "../../lib/config";
 import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../../lib/http";
 import { publishWorkspaceLotRealtimeEventBestEffort } from "../../lib/realtime";
-import { parseOptionalWorkspaceId } from "../../lib/syncScope";
+import { parseOptionalWorkspaceId, parseRequiredWorkspaceId } from "../../lib/syncScope";
 import { assertSyncScopeAccess, resolveSyncScope } from "../../lib/syncScopeResolution";
 import { readRequestJsonOrThrow, requireRequestBodyRecord, requireRouteParam } from "../../lib/httpRequest";
 import { handleApiFunctionError } from "../../lib/httpErrors";
@@ -539,6 +539,7 @@ export async function workspaceRealtimeTokenGet(
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   const config = getConfig();
+  let workspaceId: string | undefined;
   const guardResponse = maybeHandleHttpGuards(request, config);
   if (guardResponse) return guardResponse;
 
@@ -550,7 +551,7 @@ export async function workspaceRealtimeTokenGet(
         workspaceScope: "workspace"
       }
     });
-    const workspaceId = requireRouteParam(request, "workspaceId");
+    workspaceId = parseRequiredWorkspaceId(requireRouteParam(request, "workspaceId"));
     const responseBody = await mintWorkspaceRealtimeTokenForActor(config, actorUserId, workspaceId);
     return jsonResponse(request, config, 200, responseBody);
   } catch (error) {
@@ -559,7 +560,8 @@ export async function workspaceRealtimeTokenGet(
       context,
       error,
       "Failed to mint workspace realtime subscribe token.",
-      "workspace_realtime_token_get"
+      "workspace_realtime_token_get",
+      workspaceId
     );
   }
 }

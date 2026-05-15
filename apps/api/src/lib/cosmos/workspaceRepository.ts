@@ -6,7 +6,7 @@ import type {
   WorkspaceMembershipStatus,
   WorkspaceRole
 } from "../../types";
-import { getContainers, isConflictError, isNotFoundError, withCosmosRetry } from "./core";
+import { getContainers, isConflictError, isNotFoundError, isPreconditionFailedError, withCosmosRetry } from "./core";
 import {
   workspaceDocumentId,
   workspaceDocumentPartitionKey,
@@ -464,8 +464,26 @@ export async function markWorkspaceJoinLinkUsed(
     updatedAt: now
   };
 
-  const { resource } = await withCosmosRetry(() =>
-    entitlements.items.upsert<WorkspaceJoinLinkDocument>(updated)
-  );
-  return resource ?? null;
+  const etag = String((existing as { _etag?: unknown })._etag ?? "").trim();
+  try {
+    if (etag) {
+      const { resource } = await withCosmosRetry(() =>
+        entitlements.item(updated.id, updated.userId).replace<WorkspaceJoinLinkDocument>(updated, {
+          accessCondition: {
+            type: "IfMatch",
+            condition: etag
+          }
+        })
+      );
+      return resource ?? null;
+    }
+
+    const { resource } = await withCosmosRetry(() =>
+      entitlements.items.upsert<WorkspaceJoinLinkDocument>(updated)
+    );
+    return resource ?? null;
+  } catch (error) {
+    if (isPreconditionFailedError(error)) return null;
+    throw error;
+  }
 }

@@ -44,6 +44,14 @@ export function isConflictError(error: unknown): boolean {
   return code === 409 || statusCode === 409 || code === "Conflict" || code === "conflict";
 }
 
+export function isPreconditionFailedError(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false;
+  const code = (error as { code?: unknown }).code;
+  const statusCode = (error as { statusCode?: unknown }).statusCode;
+
+  return code === 412 || statusCode === 412 || code === "PreconditionFailed" || code === "preconditionfailed";
+}
+
 function isRetryableCosmosError(error: unknown): boolean {
   if (typeof error !== "object" || error === null) return false;
   const statusCode = (error as { statusCode?: unknown }).statusCode;
