@@ -1,8 +1,8 @@
 import { inject, type PropType } from "vue";
 import { createNestedWindowContextBridge } from "../../shared/contextBridge.ts";
 
-export const WheelSpectatorDialog = {
-  name: "WheelSpectatorDialog",
+export const GameSpectatorDialog = {
+  name: "GameSpectatorDialog",
   props: {
     ctx: {
       type: Object as PropType<Record<string, unknown>>,
@@ -11,9 +11,8 @@ export const WheelSpectatorDialog = {
   },
   setup(props: { ctx: Record<string, unknown> }) {
     const injectedGameCtx = inject<Record<string, unknown> | null>("gameCtx", null);
-    const injectedWheelCtx = inject<Record<string, unknown> | null>("wheelCtx", null);
     const injectedCtx = inject<Record<string, unknown> | null>("appCtx", null);
-    const source = (injectedGameCtx ?? injectedWheelCtx ?? props.ctx ?? injectedCtx) as Record<string, unknown>;
+    const source = (injectedGameCtx ?? props.ctx ?? injectedCtx) as Record<string, unknown>;
     return createNestedWindowContextBridge(source);
   }
 };

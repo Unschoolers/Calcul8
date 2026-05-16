@@ -155,7 +155,7 @@ export default WheelStageTopbar;
   min-width: 0;
 }
 
-.wheel-spectator-btn {
+.game-spectator-btn {
   min-width: 0;
   min-height: 38px;
   border-radius: 999px !important;
@@ -164,28 +164,28 @@ export default WheelStageTopbar;
   text-transform: uppercase;
 }
 
-.wheel-spectator-btn__label {
+.game-spectator-btn__label {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.wheel-spectator-btn.v-btn--variant-tonal {
+.game-spectator-btn.v-btn--variant-tonal {
   border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
 }
 
-.wheel-spectator-btn--inactive.v-btn--variant-tonal {
+.game-spectator-btn--inactive.v-btn--variant-tonal {
   background: rgba(var(--v-theme-on-surface), 0.05) !important;
   color: rgba(var(--v-theme-on-surface), 0.84) !important;
 }
 
-.wheel-spectator-btn--live.v-btn--variant-tonal {
+.game-spectator-btn--live.v-btn--variant-tonal {
   background: rgba(var(--v-theme-success), 0.14) !important;
   color: rgb(var(--v-theme-success)) !important;
   border-color: rgba(var(--v-theme-success), 0.22) !important;
 }
 
-.wheel-spectator-btn--ended.v-btn--variant-elevated {
+.game-spectator-btn--ended.v-btn--variant-elevated {
   background:
     linear-gradient(135deg, rgba(var(--v-theme-warning), 0.28), rgba(var(--v-theme-warning), 0.18)),
     rgb(var(--v-theme-surface)) !important;
@@ -194,7 +194,7 @@ export default WheelStageTopbar;
   box-shadow: 0 0 0 1px rgba(var(--v-theme-warning), 0.08) inset !important;
 }
 
-.wheel-spectator-btn--ended .v-icon {
+.game-spectator-btn--ended .v-icon {
   color: rgb(var(--v-theme-warning)) !important;
 }
 
@@ -302,7 +302,7 @@ export default WheelStageTopbar;
     width: 100%;
   }
 
-  .wheel-spectator-btn {
+  .game-spectator-btn {
     grid-area: spectator;
     width: 100%;
     min-width: 0;
@@ -310,11 +310,11 @@ export default WheelStageTopbar;
     justify-self: stretch;
   }
 
-  .wheel-spectator-btn .v-icon {
+  .game-spectator-btn .v-icon {
     margin-inline-end: 6px !important;
   }
 
-  .wheel-spectator-btn__label {
+  .game-spectator-btn__label {
     display: inline-block;
   }
 
@@ -360,15 +360,15 @@ export default WheelStageTopbar;
     white-space: nowrap;
   }
 
-  .wheel-spectator-btn {
+  .game-spectator-btn {
     padding-inline: 0 !important;
   }
 
-  .wheel-spectator-btn .v-icon {
+  .game-spectator-btn .v-icon {
     margin-inline-end: 0 !important;
   }
 
-  .wheel-spectator-btn__label {
+  .game-spectator-btn__label {
     position: absolute;
     width: 1px;
     height: 1px;

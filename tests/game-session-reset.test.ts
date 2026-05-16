@@ -13,12 +13,12 @@ test("resetLoadedTierPrizeGameSessionState clears session and spectator state wi
   state.wheelTotalSpins = 2;
   state.wheelLastResult = "Prize";
   state.wheelPendingInventoryIssues = [{ slotTier: "t1" }];
-  state.wheelSpectatorDialog = true;
-  state.wheelSpectatorSessionId = "abc123";
-  state.wheelSpectatorSessionStatus = "live";
-  state.wheelSpectatorSessionUrl = "https://example.test";
-  state.wheelSpectatorSessionQrUrl = "qr";
-  state.wheelSpectatorPublishPending = true;
+  state.gameSpectatorDialog = true;
+  state.gameSpectatorSessionId = "abc123";
+  state.gameSpectatorSessionStatus = "live";
+  state.gameSpectatorSessionUrl = "https://example.test";
+  state.gameSpectatorSessionQrUrl = "qr";
+  state.gameSpectatorPublishPending = true;
 
   resetLoadedTierPrizeGameSessionState(state);
 
@@ -27,12 +27,12 @@ test("resetLoadedTierPrizeGameSessionState clears session and spectator state wi
   assert.equal(state.wheelTotalSpins, 0);
   assert.equal(state.wheelLastResult, "");
   assert.deepEqual(state.wheelPendingInventoryIssues, []);
-  assert.equal(state.wheelSpectatorDialog, false);
-  assert.equal(state.wheelSpectatorSessionId, "");
-  assert.equal(state.wheelSpectatorSessionStatus, "inactive");
-  assert.equal(state.wheelSpectatorSessionUrl, "");
-  assert.equal(state.wheelSpectatorSessionQrUrl, "");
-  assert.equal(state.wheelSpectatorPublishPending, false);
+  assert.equal(state.gameSpectatorDialog, false);
+  assert.equal(state.gameSpectatorSessionId, "");
+  assert.equal(state.gameSpectatorSessionStatus, "inactive");
+  assert.equal(state.gameSpectatorSessionUrl, "");
+  assert.equal(state.gameSpectatorSessionQrUrl, "");
+  assert.equal(state.gameSpectatorPublishPending, false);
 });
 
 test("resetLoadedTierPrizeGameState clears loaded slots plus session state", () => {

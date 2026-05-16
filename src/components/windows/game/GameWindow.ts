@@ -6,7 +6,7 @@ import GameStageOverlayShell from "./overlay/GameStageOverlayShell.vue";
 import WheelHistoryPanel from "./inspector/WheelHistoryPanel.vue";
 import WheelInspector from "./inspector/WheelInspector.vue";
 import MysteryGridSurface from "./stage/MysteryGridSurface.vue";
-import WheelSpectatorDialog from "./dialogs/WheelSpectatorDialog.vue";
+import GameSpectatorDialog from "./dialogs/GameSpectatorDialog.vue";
 import WheelStageSummary from "./stage/WheelStageSummary.vue";
 import WheelStageTopbar from "./stage/WheelStageTopbar.vue";
 import { gameWindowDefinition } from "./coordinator/GameWindow.definition.ts";
@@ -21,7 +21,7 @@ export const GameWindow = {
     MysteryGridSurface,
     WheelActionRail,
     WheelCreateGameDialog,
-    WheelSpectatorDialog,
+    GameSpectatorDialog,
     WheelStageSummary,
     WheelStageTopbar
   }

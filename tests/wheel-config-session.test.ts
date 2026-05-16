@@ -1147,8 +1147,8 @@ test("resetWheelSession clears cost adjustment", () => {
     wheelSessionCostAdjustment: 80,
     wheelChaseTallyHistory: [{ tierId: "tc", label: "Old", color: "#f00", count: 3 }],
     saveWheelSession: vi.fn(),
-    endWheelSpectatorMode: vi.fn(),
-    publishWheelSpectatorSessionSnapshot: vi.fn()
+    endGameSpectatorMode: vi.fn(),
+    publishGameSpectatorSessionSnapshot: vi.fn()
   };
 
   GameWindow.methods!.resetWheelSession.call(vm as never);
@@ -1164,8 +1164,8 @@ test("resetWheelSession clears cost adjustment", () => {
   assert.deepEqual(vm.wheelFairnessHistory, []);
   assert.equal(vm.wheelFairnessHistoryOpen, false);
   assert.deepEqual(vm.wheelChaseTallyHistory, []);
-  assert.equal((vm.endWheelSpectatorMode as ReturnType<typeof vi.fn>).mock.calls.length, 0);
-  assert.equal((vm.publishWheelSpectatorSessionSnapshot as ReturnType<typeof vi.fn>).mock.calls.length, 1);
+  assert.equal((vm.endGameSpectatorMode as ReturnType<typeof vi.fn>).mock.calls.length, 0);
+  assert.equal((vm.publishGameSpectatorSessionSnapshot as ReturnType<typeof vi.fn>).mock.calls.length, 1);
 });
 
 test("createWheelSale builds a sale with lot shipping", () => {

@@ -100,7 +100,7 @@ async function playMysteryGridRevealAnimation(context: Record<string, unknown>, 
   context.wheelGridHighlightCellIndex = cellIndex;
   getMysteryGridSurfacePreviewController(context)?.previewMysteryGridSelection?.(cellIndex);
   // Publish the pre-reveal highlight so spectator mode can mirror the selector shake.
-  ((context as Record<string, unknown>).publishWheelSpectatorSessionSnapshot as (() => Promise<void>) | undefined)?.();
+  ((context as Record<string, unknown>).publishGameSpectatorSessionSnapshot as (() => Promise<void>) | undefined)?.();
   await waitForMysteryGridAnimationFrame(shouldReduceMotion(context) ? 0 : 620);
 }
 
@@ -129,7 +129,7 @@ function scheduleMysteryGridAutoReset(
     if (currentReveals.length < params.gridCellCount) return;
 
     context.wheelGridResetAnimating = true;
-    ((context as Record<string, unknown>).publishWheelSpectatorSessionSnapshot as (() => Promise<void>) | undefined)?.();
+    ((context as Record<string, unknown>).publishGameSpectatorSessionSnapshot as (() => Promise<void>) | undefined)?.();
 
     globalThis.setTimeout(() => {
       const resetSession = params.preview

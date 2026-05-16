@@ -156,16 +156,8 @@ export type GameSpectatorChaseBoardEntry = SharedGameSpectatorChaseBoardEntry;
 export type GameSpectatorOutcomeSlot = SharedGameSpectatorOutcomeSlot;
 export type GameSpectatorBoardCell = SharedGameSpectatorBoardCell;
 export type GameSpectatorResultAnimation = SharedGameSpectatorResultAnimation;
+export type GameSpectatorSpinAnimation = GameSpectatorResultAnimation;
 export type GameSpectatorSnapshot = SharedGameSpectatorSnapshot;
-export type WheelSpectatorSessionStatus = GameSpectatorSessionStatus;
-export type WheelSpectatorHeatLevel = GameSpectatorHeatLevel;
-export type WheelSpectatorFairnessEntry = GameSpectatorFairnessEntry;
-export type WheelSpectatorChaseHistoryEntry = GameSpectatorChaseHistoryEntry;
-export type WheelSpectatorChaseBoardEntry = GameSpectatorChaseBoardEntry;
-export type WheelSpectatorSlot = GameSpectatorOutcomeSlot;
-export type WheelSpectatorGridCell = GameSpectatorBoardCell;
-export type WheelSpectatorSpinAnimation = GameSpectatorResultAnimation;
-export type WheelSpectatorSnapshot = GameSpectatorSnapshot;
 
 export interface NewSaleDraft {
   type: SaleType;

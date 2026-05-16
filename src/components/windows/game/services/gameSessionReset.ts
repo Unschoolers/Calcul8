@@ -32,12 +32,12 @@ export function resetLoadedTierPrizeGameSessionState(context: Record<string, unk
   controller.showSeed = false;
   controller.fairnessHistoryOpen = false;
   controller.highlightedSlotIndex = -1;
-  context.wheelSpectatorDialog = false;
-  context.wheelSpectatorSessionId = "";
-  context.wheelSpectatorSessionStatus = "inactive";
-  context.wheelSpectatorSessionUrl = "";
-  context.wheelSpectatorSessionQrUrl = "";
-  context.wheelSpectatorPublishPending = false;
+  context.gameSpectatorDialog = false;
+  context.gameSpectatorSessionId = "";
+  context.gameSpectatorSessionStatus = "inactive";
+  context.gameSpectatorSessionUrl = "";
+  context.gameSpectatorSessionQrUrl = "";
+  context.gameSpectatorPublishPending = false;
 }
 
 export function resetLoadedTierPrizeGameState(context: Record<string, unknown>): void {

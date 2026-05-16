@@ -162,7 +162,7 @@ test("bracket host flow builds and applies host session state with publish inten
     bracketBattleLastRolls: [],
     bracketBattleRolling: false,
     bracketBattleShowcaseMatchId: null,
-    publishWheelSpectatorSessionSnapshot: publish
+    publishGameSpectatorSessionSnapshot: publish
   };
 
   await applyBracketBattleHostState(host, payload);

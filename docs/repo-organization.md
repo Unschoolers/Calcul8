@@ -102,13 +102,13 @@ src/components/windows/game/
     WheelHistoryPanel.*
   dialogs/
     WheelCreateGameDialog.*
-    WheelSpectatorDialog.*
+    GameSpectatorDialog.*
   commands/
     wheelConfigMethods.ts
     wheelSessionMethods.ts
     wheelSpinMethods.ts
     mysteryGridMethods.ts
-    wheelSpectatorMethods.ts
+    gameSpectatorMethods.ts
   services/
     wheelAudio.ts
     wheelFairnessLayout.ts

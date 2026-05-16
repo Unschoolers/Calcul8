@@ -1,0 +1,70 @@
+<v-dialog v-if="gameSpectatorDialog" v-model="gameSpectatorDialog" max-width="480">
+  <v-card>
+    <v-card-title class="text-subtitle-1">
+      {{ t('gameSpectatorDialogTitle') }}
+    </v-card-title>
+    <v-card-text class="text-body-2">
+      <div class="game-spectator-dialog__intro">
+        <div>{{ gameSpectatorDialogHint }}</div>
+        <div
+          v-if="gameSpectatorSessionId"
+          class="game-spectator-dialog__status"
+          :class="`game-spectator-dialog__status--${gameSpectatorSessionStatus}`"
+        >
+          {{
+            gameSpectatorSessionStatus === 'ended'
+              ? t('gameSpectatorStatusEnded')
+              : gameSpectatorSessionStatus === 'live'
+                ? t('gameSpectatorStatusLive')
+                : t('gameSpectatorStatusStarting')
+          }}
+        </div>
+      </div>
+
+      <template v-if="gameSpectatorSessionId">
+        <div class="game-spectator-dialog__qr-wrap">
+          <img
+            :src="gameSpectatorSessionQrUrl"
+            :alt="t('gameSpectatorQrAlt')"
+            class="game-spectator-dialog__qr"
+          >
+        </div>
+        <div class="game-spectator-dialog__url">
+          {{ gameSpectatorSessionUrl }}
+        </div>
+      </template>
+    </v-card-text>
+    <v-card-actions class="game-spectator-dialog__actions">
+      <v-spacer></v-spacer>
+      <v-btn
+        v-if="!gameSpectatorSessionId || gameSpectatorSessionStatus === 'ended'"
+        color="success"
+        variant="elevated"
+        :loading="gameSpectatorPublishPending"
+        @click="startGameSpectatorMode"
+      >
+        {{ gameSpectatorStartButtonLabel }}
+      </v-btn>
+      <template v-if="gameSpectatorSessionId">
+        <v-btn variant="text" @click="copyGameSpectatorLink">
+          {{ t('gameSpectatorCopyAction') }}
+        </v-btn>
+        <v-btn variant="text" @click="openGameSpectatorPage">
+          {{ t('gameSpectatorOpenAction') }}
+        </v-btn>
+        <v-btn
+          v-if="gameSpectatorSessionStatus !== 'ended'"
+          color="error"
+          variant="tonal"
+          :loading="gameSpectatorPublishPending"
+          @click="endGameSpectatorMode"
+        >
+          {{ t('gameSpectatorEndAction') }}
+        </v-btn>
+      </template>
+      <v-btn variant="text" @click="closeGameSpectatorDialog">
+        {{ t('commonClose') }}
+      </v-btn>
+    </v-card-actions>
+  </v-card>
+</v-dialog>

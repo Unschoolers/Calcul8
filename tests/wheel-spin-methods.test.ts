@@ -116,7 +116,7 @@ test("spinWheelInternal publishes spectator animation during the spin and clears
   const vm = createSpinVm("live");
   const spectatorAnimationStates: unknown[] = [];
   vm.saveWheelSession = vi.fn(function (this: Record<string, unknown>) {
-    spectatorAnimationStates.push(this._wheelSpectatorSpinAnimation ?? null);
+    spectatorAnimationStates.push(this._gameSpectatorSpinAnimation ?? null);
   });
 
   await wheelSpinMethods.spinWheelInternal.call(vm, true);
@@ -136,7 +136,7 @@ test("spinWheelInternal publishes spectator animation during the spin and clears
   assert.equal(typeof firstAnimation.durationMs, "number");
   assert.equal(typeof firstAnimation.startedAt, "number");
   assert.equal(spectatorAnimationStates.at(-1), null);
-  assert.equal(vm._wheelSpectatorSpinAnimation, null);
+  assert.equal(vm._gameSpectatorSpinAnimation, null);
 });
 
 test("runWheelAutoPreviewAnimation spins visually without recording preview proof or result", async () => {

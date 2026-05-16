@@ -38,7 +38,7 @@ export type BracketBattleHostStateTarget = {
   bracketBattleLastRolls: BracketBattleRoll[];
   bracketBattleRolling: boolean;
   bracketBattleShowcaseMatchId: string | null;
-  publishWheelSpectatorSessionSnapshot?: (statusOverride?: "starting" | "live" | "ended") => Promise<void>;
+  publishGameSpectatorSessionSnapshot?: (statusOverride?: "starting" | "live" | "ended") => Promise<void>;
 };
 
 export function isBracketBattleSession(value: unknown): value is BracketBattleSession {
@@ -185,6 +185,6 @@ export async function applyBracketBattleHostState(
   target.bracketBattleRolling = payload.rolling;
   target.bracketBattleShowcaseMatchId = payload.showcaseMatchId;
   if (payload.publishLive) {
-    await (target.publishWheelSpectatorSessionSnapshot?.() ?? Promise.resolve());
+    await (target.publishGameSpectatorSessionSnapshot?.() ?? Promise.resolve());
   }
 }

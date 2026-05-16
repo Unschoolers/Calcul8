@@ -21,6 +21,55 @@ test("app shell renders the generic game window with the existing wheel ref", ()
   assert.doesNotMatch(template, /<wheel-window ref="wheelWindow"/);
 });
 
+test("game window children use the game context without the wheelCtx compatibility bridge", () => {
+  const definition = readFileSync("src/components/windows/game/coordinator/GameWindow.definition.ts", "utf8");
+  const contextConsumers = [
+    "src/components/windows/game/dialogs/WheelCreateGameDialog.ts",
+    "src/components/windows/game/dialogs/GameSpectatorDialog.ts",
+    "src/components/windows/game/stage/WheelStageTopbar.ts",
+    "src/components/windows/game/stage/WheelStageSummary.ts",
+    "src/components/windows/game/stage/MysteryGridSurface.ts",
+    "src/components/windows/game/bracket/BracketBattleBuilder.ts",
+    "src/components/windows/game/inspector/WheelInspector.ts",
+    "src/components/windows/game/inspector/WheelTierCard.ts"
+  ];
+
+  assert.match(definition, /gameCtx: this/);
+  assert.doesNotMatch(definition, /wheelCtx:/);
+  for (const file of contextConsumers) {
+    const source = readFileSync(file, "utf8");
+    assert.doesNotMatch(source, /["']wheelCtx["']/);
+    assert.doesNotMatch(source, /injectedWheelCtx/);
+  }
+});
+
+test("game spectator host state keeps wheel-named fields inside the storage compatibility adapter only", () => {
+  const checkedFiles = [
+    "src/components/windows/game/GameWindow.ts",
+    "src/components/windows/game/coordinator/GameWindow.definition.ts",
+    "src/components/windows/game/coordinator/gameControllerState.ts",
+    "src/components/windows/game/commands/gameSpectatorMethods.ts",
+    "src/components/windows/game/commands/mysteryGridMethods.ts",
+    "src/components/windows/game/commands/wheelSessionMethods.ts",
+    "src/components/windows/game/commands/wheelSpinMethods.ts",
+    "src/components/windows/game/services/gameSessionReset.ts",
+    "src/components/windows/game/services/gameSpectator.ts",
+    "src/components/windows/game/services/wheelSessionState.ts",
+    "src/components/windows/game/stage/gameStageComputeds.ts",
+    "src/components/windows/game/stage/WheelStageTopbar.html",
+    "src/components/windows/game/dialogs/GameSpectatorDialog.html",
+    "src/components/windows/game/dialogs/GameSpectatorDialog.ts",
+    "src/components/windows/game/dialogs/GameSpectatorDialog.vue",
+    "src/components/windows/game/bracket/BracketBattlePanel.ts",
+    "src/components/windows/game/bracket/bracketBattleHostFlow.ts"
+  ];
+
+  for (const file of checkedFiles) {
+    const source = readFileSync(file, "utf8");
+    assert.doesNotMatch(source, /wheelSpectator|WheelSpectator|wheel-spectator/);
+  }
+});
+
 test("app shell lets the portfolio lot filter menu escape tab clipping", () => {
   const template = readFileSync("src/App.html", "utf8");
 
@@ -77,7 +126,7 @@ test("GameWindow publishes bracket session-state updates through the spectator h
     bracketBattleRolling: false,
     bracketBattleShowcaseMatchId: null,
     wheelMode: "config",
-    publishWheelSpectatorSessionSnapshot(status?: "starting" | "live" | "ended") {
+    publishGameSpectatorSessionSnapshot(status?: "starting" | "live" | "ended") {
       publishes.push(status);
       return Promise.resolve();
     }

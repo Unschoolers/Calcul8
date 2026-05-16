@@ -358,7 +358,7 @@ export function buildGameSpectatorSnapshot(
     boardCells: buildSpectatorGridCells(vm, config),
     boardHighlightCellIndex: Number.isFinite(Number(vm.wheelGridHighlightCellIndex)) ? Number(vm.wheelGridHighlightCellIndex) : -1,
     boardResetAnimating: vm.wheelGridResetAnimating === true,
-    resultAnimation: (vm._wheelSpectatorSpinAnimation as GameSpectatorSnapshot["resultAnimation"]) ?? null,
+    resultAnimation: (vm._gameSpectatorSpinAnimation as GameSpectatorSnapshot["resultAnimation"]) ?? null,
     recentFairnessHistory: fairnessHistory,
     chaseHistory: chaseData.chaseHistory,
     chaseBoard: chaseData.chaseBoard,

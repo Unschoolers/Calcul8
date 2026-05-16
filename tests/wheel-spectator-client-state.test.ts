@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { shouldApplySpectatorReadyState } from "../src/app-core/methods/ui/spectator/wheel-spectator-client-state.ts";
+import { shouldApplySpectatorReadyState } from "../src/app-core/methods/ui/spectator/game-spectator-client-state.ts";
 import {
   CURRENT_GAME_PUBLIC_SESSION_SNAPSHOT_VERSION,
-  normalizeWheelSpectatorSnapshot
-} from "../src/app-core/methods/ui/spectator/wheel-spectator-contract.ts";
+  normalizeGameSpectatorSnapshot
+} from "../src/app-core/methods/ui/spectator/game-spectator-contract.ts";
 
 test("shouldApplySpectatorReadyState rejects stale ready snapshots", () => {
   const currentState = {
@@ -36,8 +36,8 @@ test("shouldApplySpectatorReadyState rejects stale ready snapshots", () => {
   assert.equal(shouldApplySpectatorReadyState(currentState as never, newerState as never), true);
 });
 
-test("normalizeWheelSpectatorSnapshot upgrades old wheel-only snapshots", () => {
-  const snapshot = normalizeWheelSpectatorSnapshot({
+test("normalizeGameSpectatorSnapshot upgrades old wheel-only snapshots", () => {
+  const snapshot = normalizeGameSpectatorSnapshot({
     wheelName: " Legacy Wheel ",
     sessionStatus: "live",
     isSpinning: false,
@@ -75,8 +75,8 @@ test("normalizeWheelSpectatorSnapshot upgrades old wheel-only snapshots", () => 
   assert.equal(snapshot.updatedAt, 456);
 });
 
-test("normalizeWheelSpectatorSnapshot preserves current grid reset snapshots", () => {
-  const snapshot = normalizeWheelSpectatorSnapshot({
+test("normalizeGameSpectatorSnapshot preserves current grid reset snapshots", () => {
+  const snapshot = normalizeGameSpectatorSnapshot({
     snapshotVersion: 1,
     wheelName: "Grid",
     gameType: "grid",
@@ -132,11 +132,11 @@ test("normalizeWheelSpectatorSnapshot preserves current grid reset snapshots", (
   assert.equal(snapshot.featuredChaseHeat, "very_high");
 });
 
-test("normalizeWheelSpectatorSnapshot drops malformed nested entries and rejects non-objects", () => {
-  assert.equal(normalizeWheelSpectatorSnapshot(null), null);
-  assert.equal(normalizeWheelSpectatorSnapshot([]), null);
+test("normalizeGameSpectatorSnapshot drops malformed nested entries and rejects non-objects", () => {
+  assert.equal(normalizeGameSpectatorSnapshot(null), null);
+  assert.equal(normalizeGameSpectatorSnapshot([]), null);
 
-  const snapshot = normalizeWheelSpectatorSnapshot({
+  const snapshot = normalizeGameSpectatorSnapshot({
     wheelName: "",
     sessionStatus: "banana",
     totalSpins: -10,

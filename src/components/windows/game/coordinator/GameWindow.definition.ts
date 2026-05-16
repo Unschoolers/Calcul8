@@ -114,8 +114,7 @@ export const gameWindowDefinition = {
   },
   provide(this: GameWindowThis) {
     return {
-      gameCtx: this,
-      wheelCtx: this
+      gameCtx: this
     };
   },
   watch: {
@@ -178,11 +177,11 @@ export const gameWindowDefinition = {
         this.normalizeWheelCompactInspectorState();
       }
     },
-    wheelSpectatorSessionId(this: GameWindowThis) {
-      this.syncWheelSpectatorCountPolling();
+    gameSpectatorSessionId(this: GameWindowThis) {
+      this.syncGameSpectatorCountPolling();
     },
-    wheelSpectatorSessionStatus(this: GameWindowThis) {
-      this.syncWheelSpectatorCountPolling();
+    gameSpectatorSessionStatus(this: GameWindowThis) {
+      this.syncGameSpectatorCountPolling();
     }
   },
   methods: {
@@ -552,7 +551,7 @@ export const gameWindowDefinition = {
       if (this.currentTab === "wheel") {
         this.refreshWheelCanvas();
       }
-      this.syncWheelSpectatorCountPolling();
+      this.syncGameSpectatorCountPolling();
 
       // Watch the spinner panel for size changes (window resize, layout shifts)
       if (panel) {
@@ -621,7 +620,7 @@ export const gameWindowDefinition = {
       clearTimeout(canvasRefreshTimeoutId);
       this._wheelCanvasRefreshTimeoutId = undefined;
     }
-    this.stopWheelSpectatorCountPolling();
+    this.stopGameSpectatorCountPolling();
   },
   setup(props: { ctx: Record<string, unknown> }) {
     const injectedCtx = inject<Record<string, unknown> | null>("appCtx", null);

@@ -7,6 +7,7 @@ import type { Lot, PendingWheelInventoryIssue, Sale, WheelConfig, WheelFairnessE
 import type { GameWindowThis } from "../coordinator/gameControllerState.ts";
 import { getWheelController } from "../coordinator/gameControllerState.ts";
 import { remapSpinCountsByTier } from "../services/wheelCountRemapping.ts";
+import { readGameSpectatorSessionStorageState } from "../services/gameSpectatorSessionStorage.ts";
 import { createWheelSale } from "../services/wheelSales.ts";
 import { buildSlotsFromConfig, createWheelGridLayoutSeed, type WheelSlot } from "../services/wheelSlots.ts";
 import {
@@ -99,7 +100,7 @@ export const wheelSessionMethods = {
     const previewSlots = ((controller.previewSlots || controller.activeSlots) as WheelSlot[]);
     applyWheelPreviewReset(this, controller, previewSlots);
     this.saveWheelSession?.();
-    void (this.publishWheelSpectatorSessionSnapshot?.() ?? Promise.resolve());
+    void (this.publishGameSpectatorSessionSnapshot?.() ?? Promise.resolve());
   },
 
   getChaseReplacementItems(this: GameWindowThis): Array<{ title: string; value: number; image?: string; cardNumber?: string; stockLabel?: string }> {
@@ -309,7 +310,7 @@ export const wheelSessionMethods = {
     this.wheelSessionUpdatedAt = Date.now();
     this.saveWheelSession();
     void broadcastWheelSession(this);
-    void (this.publishWheelSpectatorSessionSnapshot?.() ?? Promise.resolve());
+    void (this.publishGameSpectatorSessionSnapshot?.() ?? Promise.resolve());
   },
 
   requestWheelReset(this: GameWindowThis): void {
@@ -466,12 +467,12 @@ export const wheelSessionMethods = {
       );
     } catch { /* quota exceeded — non-critical */ }
     if (
-      String(this.wheelSpectatorSessionId || "").trim()
-      && this.wheelSpectatorSessionStatus !== "ended"
+      String(this.gameSpectatorSessionId || "").trim()
+      && this.gameSpectatorSessionStatus !== "ended"
     ) {
       // Intentional: spectator mode mirrors the current wheel display state,
       // including config-mode preview/test spins, so hosts can rehearse publicly.
-      void (this.publishWheelSpectatorSessionSnapshot?.() ?? Promise.resolve());
+      void (this.publishGameSpectatorSessionSnapshot?.() ?? Promise.resolve());
     }
   },
 
@@ -592,17 +593,13 @@ export const wheelSessionMethods = {
       controller.spinClientSeed = String(session.wheelSpinClientSeed ?? "");
       controller.spinVerificationUrl = String(session.wheelSpinVerificationUrl ?? "");
       controller.spinAlgorithm = String(session.wheelSpinAlgorithm ?? "");
-      this.wheelSpectatorSessionId = String(session.wheelSpectatorSessionId ?? "");
-      const savedSpectatorStatus = String(session.wheelSpectatorSessionStatus ?? "inactive");
-      this.wheelSpectatorSessionStatus = savedSpectatorStatus === "starting"
-        || savedSpectatorStatus === "live"
-        || savedSpectatorStatus === "ended"
-        ? savedSpectatorStatus
-        : "inactive";
-      this.wheelSpectatorSessionUrl = String(session.wheelSpectatorSessionUrl ?? "");
-      this.wheelSpectatorSessionQrUrl = String(session.wheelSpectatorSessionQrUrl ?? "");
-      this.wheelSpectatorPublishPending = false;
-      this.syncWheelSpectatorLinks?.();
+      const spectatorState = readGameSpectatorSessionStorageState(session);
+      this.gameSpectatorSessionId = spectatorState.publicSessionId;
+      this.gameSpectatorSessionStatus = spectatorState.status;
+      this.gameSpectatorSessionUrl = spectatorState.url;
+      this.gameSpectatorSessionQrUrl = spectatorState.qrUrl;
+      this.gameSpectatorPublishPending = false;
+      this.syncGameSpectatorLinks?.();
       return true;
     } catch {
       return false;

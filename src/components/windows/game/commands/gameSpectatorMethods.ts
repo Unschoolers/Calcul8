@@ -6,7 +6,7 @@ import {
 import { buildGameSpectatorQrImageUrl, buildGameSpectatorSessionUrl, buildGameSpectatorSnapshot } from "../services/gameSpectator.ts";
 import type { GameWindowThis } from "../coordinator/gameControllerState.ts";
 
-const WHEEL_SPECTATOR_COUNT_POLL_MS = 10_000;
+const GAME_SPECTATOR_COUNT_POLL_MS = 10_000;
 
 type GameSpectatorVm = GameWindowThis & {
   notify?: (message: string, color?: string) => void;
@@ -33,7 +33,7 @@ function resolveNextSpectatorStatus(
   options: { preserveEnded?: boolean } = {}
 ): "starting" | "live" | "ended" {
   if (override) return override;
-  if (options.preserveEnded !== false && vm.wheelSpectatorSessionStatus === "ended") return "ended";
+  if (options.preserveEnded !== false && vm.gameSpectatorSessionStatus === "ended") return "ended";
   return Number(vm.wheelTotalSpins || 0) > 0 || vm.wheelMode === "live" ? "live" : "starting";
 }
 
@@ -56,16 +56,16 @@ function fallbackCopyText(value: string): boolean {
 }
 
 export const gameSpectatorMethods = {
-  openWheelSpectatorDialog(this: Record<string, unknown>): void {
-    (this as Record<string, unknown>).wheelSpectatorDialog = true;
+  openGameSpectatorDialog(this: Record<string, unknown>): void {
+    (this as Record<string, unknown>).gameSpectatorDialog = true;
   },
 
-  closeWheelSpectatorDialog(this: Record<string, unknown>): void {
-    (this as Record<string, unknown>).wheelSpectatorDialog = false;
+  closeGameSpectatorDialog(this: Record<string, unknown>): void {
+    (this as Record<string, unknown>).gameSpectatorDialog = false;
   },
 
-  async copyWheelSpectatorLink(this: GameSpectatorVm): Promise<void> {
-    const publicUrl = String(this.wheelSpectatorSessionUrl || "").trim();
+  async copyGameSpectatorLink(this: GameSpectatorVm): Promise<void> {
+    const publicUrl = String(this.gameSpectatorSessionUrl || "").trim();
     if (!publicUrl) {
       notifyGameSpectator(this, "Start spectator mode first.", "warning");
       return;
@@ -83,96 +83,96 @@ export const gameSpectatorMethods = {
     }
   },
 
-  openWheelSpectatorPage(this: GameSpectatorVm): void {
-    const publicUrl = String(this.wheelSpectatorSessionUrl || "").trim();
+  openGameSpectatorPage(this: GameSpectatorVm): void {
+    const publicUrl = String(this.gameSpectatorSessionUrl || "").trim();
     if (!publicUrl) return;
     window.open(publicUrl, "_blank", "noopener,noreferrer");
   },
 
-  async startWheelSpectatorMode(this: GameSpectatorVm): Promise<void> {
-    if ((this.wheelSpectatorPublishPending as boolean) === true) return;
-    (this as Record<string, unknown>).wheelSpectatorPublishPending = true;
+  async startGameSpectatorMode(this: GameSpectatorVm): Promise<void> {
+    if ((this.gameSpectatorPublishPending as boolean) === true) return;
+    (this as Record<string, unknown>).gameSpectatorPublishPending = true;
 
     try {
       const status = resolveNextSpectatorStatus(this as Record<string, unknown>, undefined, { preserveEnded: false });
       const snapshot = buildGameSpectatorSnapshot(this as Record<string, unknown>, status);
       const { publicSessionId } = await createGameSpectatorSession(this as never, snapshot);
       const publicUrl = buildGameSpectatorSessionUrl(publicSessionId);
-      (this as Record<string, unknown>).wheelSpectatorSessionId = publicSessionId;
-      (this as Record<string, unknown>).wheelSpectatorSessionStatus = status;
-      (this as Record<string, unknown>).wheelSpectatorSessionUrl = publicUrl;
-      (this as Record<string, unknown>).wheelSpectatorSessionQrUrl = buildGameSpectatorQrImageUrl(publicUrl);
-      (this as Record<string, unknown>).wheelSpectatorConnectedCount = 0;
+      (this as Record<string, unknown>).gameSpectatorSessionId = publicSessionId;
+      (this as Record<string, unknown>).gameSpectatorSessionStatus = status;
+      (this as Record<string, unknown>).gameSpectatorSessionUrl = publicUrl;
+      (this as Record<string, unknown>).gameSpectatorSessionQrUrl = buildGameSpectatorQrImageUrl(publicUrl);
+      (this as Record<string, unknown>).gameSpectatorConnectedCount = 0;
       notifyGameSpectator(this, "Spectator mode is live.", "success");
     } catch (error) {
       console.warn("Failed to start spectator mode:", error);
       notifyGameSpectator(this, "Could not start spectator mode right now.", "error");
     } finally {
-      (this as Record<string, unknown>).wheelSpectatorPublishPending = false;
+      (this as Record<string, unknown>).gameSpectatorPublishPending = false;
     }
   },
 
-  async publishWheelSpectatorSessionSnapshot(
+  async publishGameSpectatorSessionSnapshot(
     this: GameSpectatorVm,
     statusOverride?: "starting" | "live" | "ended"
   ): Promise<void> {
-    const publicSessionId = String(this.wheelSpectatorSessionId || "").trim();
+    const publicSessionId = String(this.gameSpectatorSessionId || "").trim();
     if (!publicSessionId) return;
-    if (this.wheelSpectatorSessionStatus === "inactive") return;
-    if ((this.wheelSpectatorPublishPending as boolean) === true) {
-      (this as Record<string, unknown>)._wheelSpectatorPublishQueued = true;
-      (this as Record<string, unknown>)._wheelSpectatorQueuedStatusOverride = mergeQueuedSpectatorStatusOverride(
-        (this as Record<string, unknown>)._wheelSpectatorQueuedStatusOverride as "starting" | "live" | "ended" | undefined,
+    if (this.gameSpectatorSessionStatus === "inactive") return;
+    if ((this.gameSpectatorPublishPending as boolean) === true) {
+      (this as Record<string, unknown>)._gameSpectatorPublishQueued = true;
+      (this as Record<string, unknown>)._gameSpectatorQueuedStatusOverride = mergeQueuedSpectatorStatusOverride(
+        (this as Record<string, unknown>)._gameSpectatorQueuedStatusOverride as "starting" | "live" | "ended" | undefined,
         statusOverride
       );
       return;
     }
 
-    (this as Record<string, unknown>).wheelSpectatorPublishPending = true;
-    (this as Record<string, unknown>)._wheelSpectatorPublishQueued = false;
-    (this as Record<string, unknown>)._wheelSpectatorQueuedStatusOverride = undefined;
+    (this as Record<string, unknown>).gameSpectatorPublishPending = true;
+    (this as Record<string, unknown>)._gameSpectatorPublishQueued = false;
+    (this as Record<string, unknown>)._gameSpectatorQueuedStatusOverride = undefined;
 
     try {
       const status = resolveNextSpectatorStatus(this as Record<string, unknown>, statusOverride);
       const snapshot = buildGameSpectatorSnapshot(this as Record<string, unknown>, status);
       await publishGameSpectatorSession(this as never, publicSessionId, snapshot);
-      (this as Record<string, unknown>).wheelSpectatorSessionStatus = status;
+      (this as Record<string, unknown>).gameSpectatorSessionStatus = status;
     } catch (error) {
       console.warn("Failed to publish spectator snapshot:", error);
     } finally {
-      (this as Record<string, unknown>).wheelSpectatorPublishPending = false;
+      (this as Record<string, unknown>).gameSpectatorPublishPending = false;
     }
 
-    const queuedPublish = (this as Record<string, unknown>)._wheelSpectatorPublishQueued === true;
-    const queuedStatusOverride = (this as Record<string, unknown>)._wheelSpectatorQueuedStatusOverride as "starting" | "live" | "ended" | undefined;
-    (this as Record<string, unknown>)._wheelSpectatorPublishQueued = false;
-    (this as Record<string, unknown>)._wheelSpectatorQueuedStatusOverride = undefined;
-    const replayPublish = this.publishWheelSpectatorSessionSnapshot;
+    const queuedPublish = (this as Record<string, unknown>)._gameSpectatorPublishQueued === true;
+    const queuedStatusOverride = (this as Record<string, unknown>)._gameSpectatorQueuedStatusOverride as "starting" | "live" | "ended" | undefined;
+    (this as Record<string, unknown>)._gameSpectatorPublishQueued = false;
+    (this as Record<string, unknown>)._gameSpectatorQueuedStatusOverride = undefined;
+    const replayPublish = this.publishGameSpectatorSessionSnapshot;
     if (queuedPublish && typeof replayPublish === "function") {
       await replayPublish.call(this, queuedStatusOverride);
     }
   },
 
-  async endWheelSpectatorMode(
+  async endGameSpectatorMode(
     this: GameSpectatorVm,
     options: {
       notifyOnSuccess?: boolean;
       closeDialog?: boolean;
     } = {}
   ): Promise<void> {
-    const publicSessionId = String(this.wheelSpectatorSessionId || "").trim();
+    const publicSessionId = String(this.gameSpectatorSessionId || "").trim();
     if (!publicSessionId) return;
     try {
-      (this as Record<string, unknown>).wheelSpectatorSessionStatus = "ended";
-      (this as Record<string, unknown>).wheelSpectatorConnectedCount = 0;
+      (this as Record<string, unknown>).gameSpectatorSessionStatus = "ended";
+      (this as Record<string, unknown>).gameSpectatorConnectedCount = 0;
       await (this as Record<string, unknown> & {
-        publishWheelSpectatorSessionSnapshot: (statusOverride?: "starting" | "live" | "ended") => Promise<void>;
-      }).publishWheelSpectatorSessionSnapshot("ended");
+        publishGameSpectatorSessionSnapshot: (statusOverride?: "starting" | "live" | "ended") => Promise<void>;
+      }).publishGameSpectatorSessionSnapshot("ended");
       if (options.notifyOnSuccess !== false) {
         notifyGameSpectator(this, "Spectator mode ended. The public page is now a recap.", "success");
       }
       if (options.closeDialog !== false) {
-        (this as Record<string, unknown>).wheelSpectatorDialog = false;
+        (this as Record<string, unknown>).gameSpectatorDialog = false;
       }
     } catch (error) {
       console.warn("Failed to end spectator mode:", error);
@@ -180,68 +180,68 @@ export const gameSpectatorMethods = {
     }
   },
 
-  syncWheelSpectatorLinks(this: Record<string, unknown>): void {
-    const publicSessionId = String(this.wheelSpectatorSessionId || "").trim();
+  syncGameSpectatorLinks(this: Record<string, unknown>): void {
+    const publicSessionId = String(this.gameSpectatorSessionId || "").trim();
     if (!publicSessionId) {
-      (this as Record<string, unknown>).wheelSpectatorSessionUrl = "";
-      (this as Record<string, unknown>).wheelSpectatorSessionQrUrl = "";
+      (this as Record<string, unknown>).gameSpectatorSessionUrl = "";
+      (this as Record<string, unknown>).gameSpectatorSessionQrUrl = "";
       return;
     }
     const publicUrl = buildGameSpectatorSessionUrl(publicSessionId);
-    (this as Record<string, unknown>).wheelSpectatorSessionUrl = publicUrl;
-    (this as Record<string, unknown>).wheelSpectatorSessionQrUrl = buildGameSpectatorQrImageUrl(publicUrl);
+    (this as Record<string, unknown>).gameSpectatorSessionUrl = publicUrl;
+    (this as Record<string, unknown>).gameSpectatorSessionQrUrl = buildGameSpectatorQrImageUrl(publicUrl);
   },
 
-  async refreshWheelSpectatorCount(this: GameSpectatorVm): Promise<void> {
-    const publicSessionId = String(this.wheelSpectatorSessionId || "").trim();
-    if (!publicSessionId || this.wheelSpectatorSessionStatus === "ended") {
-      (this as Record<string, unknown>).wheelSpectatorConnectedCount = 0;
+  async refreshGameSpectatorCount(this: GameSpectatorVm): Promise<void> {
+    const publicSessionId = String(this.gameSpectatorSessionId || "").trim();
+    if (!publicSessionId || this.gameSpectatorSessionStatus === "ended") {
+      (this as Record<string, unknown>).gameSpectatorConnectedCount = 0;
       return;
     }
-    if ((this as Record<string, unknown>)._wheelSpectatorCountRequestPending === true) {
+    if ((this as Record<string, unknown>)._gameSpectatorCountRequestPending === true) {
       return;
     }
 
-    (this as Record<string, unknown>)._wheelSpectatorCountRequestPending = true;
+    (this as Record<string, unknown>)._gameSpectatorCountRequestPending = true;
     try {
-      (this as Record<string, unknown>).wheelSpectatorConnectedCount = await fetchGameSpectatorCount(this as never, publicSessionId);
+      (this as Record<string, unknown>).gameSpectatorConnectedCount = await fetchGameSpectatorCount(this as never, publicSessionId);
     } catch {
       // Keep the last known count on transient failures.
     } finally {
-      (this as Record<string, unknown>)._wheelSpectatorCountRequestPending = false;
+      (this as Record<string, unknown>)._gameSpectatorCountRequestPending = false;
     }
   },
 
-  stopWheelSpectatorCountPolling(this: Record<string, unknown>): void {
-    const intervalId = (this as Record<string, unknown>)._wheelSpectatorCountPollIntervalId as number | undefined;
+  stopGameSpectatorCountPolling(this: Record<string, unknown>): void {
+    const intervalId = (this as Record<string, unknown>)._gameSpectatorCountPollIntervalId as number | undefined;
     if (intervalId != null) {
       clearInterval(intervalId);
-      (this as Record<string, unknown>)._wheelSpectatorCountPollIntervalId = undefined;
+      (this as Record<string, unknown>)._gameSpectatorCountPollIntervalId = undefined;
     }
-    (this as Record<string, unknown>)._wheelSpectatorCountRequestPending = false;
+    (this as Record<string, unknown>)._gameSpectatorCountRequestPending = false;
   },
 
-  syncWheelSpectatorCountPolling(this: Record<string, unknown>): void {
-    const publicSessionId = String((this as Record<string, unknown>).wheelSpectatorSessionId || "").trim();
-    const sessionStatus = String((this as Record<string, unknown>).wheelSpectatorSessionStatus || "inactive");
+  syncGameSpectatorCountPolling(this: Record<string, unknown>): void {
+    const publicSessionId = String((this as Record<string, unknown>).gameSpectatorSessionId || "").trim();
+    const sessionStatus = String((this as Record<string, unknown>).gameSpectatorSessionStatus || "inactive");
     const shouldPoll = publicSessionId.length > 0 && sessionStatus !== "inactive" && sessionStatus !== "ended";
 
     if (!shouldPoll) {
-      (this as Record<string, unknown> & { stopWheelSpectatorCountPolling: () => void }).stopWheelSpectatorCountPolling();
-      (this as Record<string, unknown>).wheelSpectatorConnectedCount = 0;
+      (this as Record<string, unknown> & { stopGameSpectatorCountPolling: () => void }).stopGameSpectatorCountPolling();
+      (this as Record<string, unknown>).gameSpectatorConnectedCount = 0;
       return;
     }
 
-    void ((this as Record<string, unknown> & { refreshWheelSpectatorCount: () => Promise<void> }).refreshWheelSpectatorCount());
+    void ((this as Record<string, unknown> & { refreshGameSpectatorCount: () => Promise<void> }).refreshGameSpectatorCount());
 
-    const existingIntervalId = (this as Record<string, unknown>)._wheelSpectatorCountPollIntervalId as number | undefined;
+    const existingIntervalId = (this as Record<string, unknown>)._gameSpectatorCountPollIntervalId as number | undefined;
     if (existingIntervalId != null) {
       return;
     }
 
-    (this as Record<string, unknown>)._wheelSpectatorCountPollIntervalId = window.setInterval(() => {
-      void ((this as Record<string, unknown> & { refreshWheelSpectatorCount: () => Promise<void> }).refreshWheelSpectatorCount());
-    }, WHEEL_SPECTATOR_COUNT_POLL_MS);
+    (this as Record<string, unknown>)._gameSpectatorCountPollIntervalId = window.setInterval(() => {
+      void ((this as Record<string, unknown> & { refreshGameSpectatorCount: () => Promise<void> }).refreshGameSpectatorCount());
+    }, GAME_SPECTATOR_COUNT_POLL_MS);
   }
 };
 

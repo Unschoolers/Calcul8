@@ -101,16 +101,7 @@ export type GamePublicSessionOutcomeSlot = SharedGamePublicSessionOutcomeSlot;
 export type GamePublicSessionBoardCell = SharedGamePublicSessionBoardCell;
 export type GamePublicSessionSnapshot = SharedGamePublicSessionSnapshot;
 
-export type WheelPublicSessionStatus = GamePublicSessionStatus;
-export type WheelSpectatorHeatLevel = GameSpectatorHeatLevel;
-export type WheelPublicSessionFairnessEntry = GamePublicSessionFairnessEntry;
-export type WheelPublicSessionChaseEntry = GamePublicSessionChaseEntry;
-export type WheelPublicSessionChaseHistoryEntry = GamePublicSessionChaseHistoryEntry;
-export type WheelPublicSessionSlot = GamePublicSessionOutcomeSlot;
-export type WheelPublicSessionGridCell = GamePublicSessionBoardCell;
-export type WheelPublicSessionSnapshot = GamePublicSessionSnapshot;
-
-export interface WheelPublicSessionDocument {
+export interface GamePublicSessionDocument {
   id: string;
   docType: "wheel_public_session";
   publicSessionId: string;
@@ -121,8 +112,18 @@ export interface WheelPublicSessionDocument {
   createdAt: string;
   updatedAt: string;
   endedAt?: string | null;
-  snapshot: WheelPublicSessionSnapshot;
+  snapshot: GamePublicSessionSnapshot;
 }
+
+export type WheelPublicSessionStatus = GamePublicSessionStatus;
+export type WheelPublicSessionFairnessEntry = GamePublicSessionFairnessEntry;
+export type WheelPublicSessionChaseEntry = GamePublicSessionChaseEntry;
+export type WheelPublicSessionChaseHistoryEntry = GamePublicSessionChaseHistoryEntry;
+export type WheelPublicSessionSlot = GamePublicSessionOutcomeSlot;
+export type WheelPublicSessionGridCell = GamePublicSessionBoardCell;
+export type WheelPublicSessionSnapshot = GamePublicSessionSnapshot;
+
+export type WheelPublicSessionDocument = GamePublicSessionDocument;
 
 export interface WheelFairnessProofLayoutSlot {
   name: string;

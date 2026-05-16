@@ -8,28 +8,30 @@ import {
 
 vi.mock("@azure/functions", () => ({
   app: {
-    http: vi.fn()
+    http: appHttpMock
   }
 }));
 
 const {
+  appHttpMock,
   getConfigMock,
   resolveUserIdMock,
   hasWorkspaceMembershipMock,
-  createWheelPublicSessionMock,
-  getWheelPublicSessionMock,
-  updateWheelPublicSessionMock,
+  createGamePublicSessionMock,
+  getGamePublicSessionMock,
+  updateGamePublicSessionMock,
   buildGamePublicSessionRealtimeRoomMock,
   getRealtimeRoomMemberCountMock,
   signRealtimeSubscribeTokenMock,
   publishGamePublicSessionRealtimeEventBestEffortMock
 } = vi.hoisted(() => ({
+  appHttpMock: vi.fn(),
   getConfigMock: vi.fn(),
   resolveUserIdMock: vi.fn(),
   hasWorkspaceMembershipMock: vi.fn(),
-  createWheelPublicSessionMock: vi.fn(),
-  getWheelPublicSessionMock: vi.fn(),
-  updateWheelPublicSessionMock: vi.fn(),
+  createGamePublicSessionMock: vi.fn(),
+  getGamePublicSessionMock: vi.fn(),
+  updateGamePublicSessionMock: vi.fn(),
   buildGamePublicSessionRealtimeRoomMock: vi.fn(),
   getRealtimeRoomMemberCountMock: vi.fn(),
   signRealtimeSubscribeTokenMock: vi.fn(),
@@ -52,10 +54,10 @@ vi.mock("../lib/cosmos/workspaceRepository", () => ({
   hasWorkspaceMembership: hasWorkspaceMembershipMock
 }));
 
-vi.mock("../lib/cosmos/wheelPublicSessionRepository", () => ({
-  createWheelPublicSession: createWheelPublicSessionMock,
-  getWheelPublicSession: getWheelPublicSessionMock,
-  updateWheelPublicSession: updateWheelPublicSessionMock
+vi.mock("../lib/cosmos/gamePublicSessionRepository", () => ({
+  createGamePublicSession: createGamePublicSessionMock,
+  getGamePublicSession: getGamePublicSessionMock,
+  updateGamePublicSession: updateGamePublicSessionMock
 }));
 
 vi.mock("../lib/realtime", () => ({
@@ -73,6 +75,40 @@ import {
     wheelPublicSessionSpectatorCountGet
 } from "./wheelPublicSession";
 
+test("public session routes register generic game paths and legacy wheel adapters", async () => {
+  vi.resetModules();
+  appHttpMock.mockClear();
+
+  await import("./gamePublicSession");
+
+  const routes = new Map(appHttpMock.mock.calls.map((call) => [
+    call[0],
+    (call[1] as { route?: string; handler?: unknown })?.route
+  ]));
+  assert.equal(routes.get("gamePublicSessionCreate"), "game/public-session");
+  assert.equal(routes.get("gamePublicSessionPublish"), "game/public-session/publish");
+  assert.equal(routes.get("gamePublicSessionGet"), "game/public-session/{publicSessionId}");
+  assert.equal(routes.get("gamePublicSessionRealtimeTokenGet"), "game/public-session/{publicSessionId}/realtime-token");
+  assert.equal(routes.get("gamePublicSessionSpectatorCountGet"), "game/public-session/{publicSessionId}/spectator-count");
+  assert.equal(routes.has("wheelPublicSessionCreate"), false);
+
+  vi.resetModules();
+  appHttpMock.mockClear();
+
+  await import("./wheelPublicSession");
+
+  const legacyRoutes = new Map(appHttpMock.mock.calls.map((call) => [
+    call[0],
+    (call[1] as { route?: string; handler?: unknown })?.route
+  ]));
+  assert.equal(legacyRoutes.has("gamePublicSessionCreate"), false);
+  assert.equal(legacyRoutes.get("wheelPublicSessionCreate"), "wheel/public-session");
+  assert.equal(legacyRoutes.get("wheelPublicSessionPublish"), "wheel/public-session/publish");
+  assert.equal(legacyRoutes.get("wheelPublicSessionGet"), "wheel/public-session/{publicSessionId}");
+  assert.equal(legacyRoutes.get("wheelPublicSessionRealtimeTokenGet"), "wheel/public-session/{publicSessionId}/realtime-token");
+  assert.equal(legacyRoutes.get("wheelPublicSessionSpectatorCountGet"), "wheel/public-session/{publicSessionId}/spectator-count");
+});
+
 beforeEach(() => {
   vi.clearAllMocks();
   getConfigMock.mockReturnValue(createApiConfig({
@@ -83,7 +119,7 @@ beforeEach(() => {
   buildGamePublicSessionRealtimeRoomMock.mockImplementation((publicSessionId: string) => `wheel-public:${publicSessionId}`);
   signRealtimeSubscribeTokenMock.mockReturnValue("signed-token");
   getRealtimeRoomMemberCountMock.mockResolvedValue(4);
-  createWheelPublicSessionMock.mockResolvedValue({
+  createGamePublicSessionMock.mockResolvedValue({
     ownerUserId: "user-a",
     publicSessionId: "abc123xy",
     snapshot: {
@@ -108,7 +144,7 @@ beforeEach(() => {
       updatedAt: 123
     }
   });
-  updateWheelPublicSessionMock.mockResolvedValue({
+  updateGamePublicSessionMock.mockResolvedValue({
     ownerUserId: "user-a",
     publicSessionId: "abc123xy",
     snapshot: {
@@ -133,7 +169,7 @@ beforeEach(() => {
       updatedAt: 456
     }
   });
-  getWheelPublicSessionMock.mockResolvedValue({
+  getGamePublicSessionMock.mockResolvedValue({
     ownerUserId: "user-a",
     publicSessionId: "abc123xy",
     snapshot: {
@@ -242,9 +278,9 @@ test("wheelPublicSessionCreate sanitizes the snapshot and verifies workspace acc
   assert.equal(hasWorkspaceMembershipMock.mock.calls.length, 1);
   assert.equal(hasWorkspaceMembershipMock.mock.calls[0]?.[1], "user-a");
   assert.equal(hasWorkspaceMembershipMock.mock.calls[0]?.[2], "team-42");
-  assert.equal(createWheelPublicSessionMock.mock.calls.length, 1);
+  assert.equal(createGamePublicSessionMock.mock.calls.length, 1);
 
-  const repoInput = createWheelPublicSessionMock.mock.calls[0]?.[1] as {
+  const repoInput = createGamePublicSessionMock.mock.calls[0]?.[1] as {
     scopeType: string;
     scopeId: string;
     snapshot: {
@@ -327,7 +363,7 @@ test("wheelPublicSessionCreate sanitizes the snapshot and verifies workspace acc
 });
 
 test("wheelPublicSessionPublish returns 404 when the session is missing or not owned by the actor", async () => {
-  updateWheelPublicSessionMock.mockResolvedValue(null);
+  updateGamePublicSessionMock.mockResolvedValue(null);
 
   const response = await wheelPublicSessionPublish(createHttpRequest({
     method: "POST",
@@ -360,7 +396,7 @@ test("wheelPublicSessionPublish returns 404 when the session is missing or not o
   }) as never, createInvocationContext() as never);
 
   assert.equal(response.status, 404);
-  assert.equal((response.jsonBody as { error: string }).error, "Public wheel session was not found.");
+  assert.equal((response.jsonBody as { error: string }).error, "Public game session was not found.");
 });
 
 test("wheelPublicSessionPublish upgrades old wheel-only snapshots at the API boundary", async () => {
@@ -397,7 +433,7 @@ test("wheelPublicSessionPublish upgrades old wheel-only snapshots at the API bou
     }
   }) as never, createInvocationContext() as never);
 
-  const repoInput = updateWheelPublicSessionMock.mock.calls.at(-1)?.[1] as {
+  const repoInput = updateGamePublicSessionMock.mock.calls.at(-1)?.[1] as {
     snapshot: {
       snapshotVersion: number;
       gameName: string;
@@ -460,7 +496,7 @@ test("wheelPublicSessionPublish normalizes malformed public payloads like the sh
     }
   }) as never, createInvocationContext() as never);
 
-  const repoInput = updateWheelPublicSessionMock.mock.calls.at(-1)?.[1] as {
+  const repoInput = updateGamePublicSessionMock.mock.calls.at(-1)?.[1] as {
     snapshot: {
       gameType: string;
       boardCells: Array<{ index: number; revealed: boolean; label: string; color: string; tier: string; slotIndex: number }>;
@@ -565,7 +601,7 @@ test("wheelPublicSessionPublish preserves bracket public snapshots at the API bo
     }
   }) as never, createInvocationContext() as never);
 
-  const repoInput = updateWheelPublicSessionMock.mock.calls.at(-1)?.[1] as {
+  const repoInput = updateGamePublicSessionMock.mock.calls.at(-1)?.[1] as {
     snapshot: {
       gameType: string;
       bracket: {
@@ -655,10 +691,10 @@ test("wheelPublicSessionGet serves the stored public snapshot and reports 404 wh
   }) as never, createInvocationContext() as never);
 
   assert.equal(successResponse.status, 200);
-  assert.equal(getWheelPublicSessionMock.mock.calls[0]?.[1], "abc123xy");
+  assert.equal(getGamePublicSessionMock.mock.calls[0]?.[1], "abc123xy");
   assert.equal((successResponse.jsonBody as { snapshot: { sessionStatus: string } }).snapshot.sessionStatus, "ended");
 
-  getWheelPublicSessionMock.mockResolvedValueOnce(null);
+  getGamePublicSessionMock.mockResolvedValueOnce(null);
   const missingResponse = await wheelPublicSessionGet(createHttpRequest({
     method: "GET",
     params: {
@@ -667,7 +703,7 @@ test("wheelPublicSessionGet serves the stored public snapshot and reports 404 wh
   }) as never, createInvocationContext() as never);
 
   assert.equal(missingResponse.status, 404);
-  assert.equal((missingResponse.jsonBody as { error: string }).error, "Public wheel session was not found.");
+  assert.equal((missingResponse.jsonBody as { error: string }).error, "Public game session was not found.");
 });
 
 test("wheelPublicSessionGet normalizes stored legacy snapshots before returning them", async () => {
@@ -686,7 +722,7 @@ test("wheelPublicSessionGet normalizes stored legacy snapshots before returning 
     }],
     updatedAt: 777
   };
-  getWheelPublicSessionMock.mockResolvedValueOnce({
+  getGamePublicSessionMock.mockResolvedValueOnce({
     ownerUserId: "user-a",
     publicSessionId: "abc123xy",
     snapshot: legacySnapshot

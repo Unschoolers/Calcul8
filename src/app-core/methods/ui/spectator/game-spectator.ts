@@ -29,11 +29,17 @@ export function normalizeGamePublicSessionId(value: unknown): string {
   return String(value ?? "").trim().toLowerCase();
 }
 
+function buildGamePublicSessionPath(publicSessionId?: string, suffix = ""): string {
+  const basePath = "/game/public-session";
+  if (!publicSessionId) return `${basePath}${suffix}`;
+  return `${basePath}/${encodeURIComponent(normalizeGamePublicSessionId(publicSessionId))}${suffix}`;
+}
+
 export async function createGameSpectatorSession(
   app: Pick<AppContext, "activeScopeType" | "activeWorkspaceId" | "googleAuthEpoch" | "hasProAccess">,
   snapshot: GameSpectatorSnapshot
 ): Promise<{ publicSessionId: string }> {
-  const response = await fetchAuthenticatedApiResponse(app as AppContext, "/wheel/public-session", {
+  const response = await fetchAuthenticatedApiResponse(app as AppContext, buildGamePublicSessionPath(), {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
@@ -62,7 +68,7 @@ export async function publishGameSpectatorSession(
   publicSessionId: string,
   snapshot: GameSpectatorSnapshot
 ): Promise<void> {
-  const response = await fetchAuthenticatedApiResponse(app as AppContext, "/wheel/public-session/publish", {
+  const response = await fetchAuthenticatedApiResponse(app as AppContext, buildGamePublicSessionPath(undefined, "/publish"), {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
@@ -85,7 +91,7 @@ export async function fetchGameSpectatorSnapshot(baseUrl: string, publicSessionI
   snapshot: GameSpectatorSnapshot;
 }> {
   const normalizedPublicSessionId = normalizeGamePublicSessionId(publicSessionId);
-  const response = await fetch(`${baseUrl.replace(/\/+$/, "")}/wheel/public-session/${encodeURIComponent(normalizedPublicSessionId)}`, {
+  const response = await fetch(`${baseUrl.replace(/\/+$/, "")}${buildGamePublicSessionPath(normalizedPublicSessionId)}`, {
     method: "GET",
     credentials: "include"
   });
@@ -110,7 +116,7 @@ export async function fetchGameSpectatorRealtimeSubscribeToken(
 ): Promise<WorkspaceRealtimeSubscribeToken> {
   const normalizedPublicSessionId = normalizeGamePublicSessionId(publicSessionId);
   const response = await fetch(
-    `${baseUrl.replace(/\/+$/, "")}/wheel/public-session/${encodeURIComponent(normalizedPublicSessionId)}/realtime-token`,
+    `${baseUrl.replace(/\/+$/, "")}${buildGamePublicSessionPath(normalizedPublicSessionId, "/realtime-token")}`,
     {
       method: "GET",
       credentials: "include"
@@ -145,7 +151,7 @@ export async function fetchGameSpectatorCount(
 ): Promise<number> {
   const response = await fetchAuthenticatedApiResponse(
     app as AppContext,
-    `/wheel/public-session/${encodeURIComponent(normalizeGamePublicSessionId(publicSessionId))}/spectator-count`,
+    buildGamePublicSessionPath(publicSessionId, "/spectator-count"),
     {
       method: "GET"
     },

@@ -328,7 +328,7 @@ test("GameWindow template keeps bracket panel and spectator dialog available in 
   assert.doesNotMatch(template, /<bracket-battle-panel\s+v-if="!wheelPresentationMode"/);
   assert.match(template, /<bracket-battle-panel[\s\S]*@overlay-command="setGameStageOverlayCommand"/);
   assert.match(template, /<bracket-battle-panel[\s\S]*@session-state="syncBracketBattleState"/);
-  assert.doesNotMatch(template, /<wheel-spectator-dialog v-if="!wheelIsBracketBattle"/);
+  assert.doesNotMatch(template, /<game-spectator-dialog v-if="!wheelIsBracketBattle"/);
 });
 
 test("BracketBattlePanel keeps separate preview and live storage and publishes spectator snapshots in both modes", async () => {

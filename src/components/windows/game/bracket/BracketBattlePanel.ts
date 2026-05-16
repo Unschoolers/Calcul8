@@ -83,7 +83,7 @@ type BracketBattlePanelThis = Record<string, unknown> & {
   bracketRollColorTone(roll: BracketBattleRoll): "dark" | "light";
   syncBracketBattleParentState?: () => void;
   publishLiveBracketSpectatorSnapshot?: () => void;
-  publishWheelSpectatorSessionSnapshot?: (statusOverride?: "starting" | "live" | "ended") => Promise<void>;
+  publishGameSpectatorSessionSnapshot?: (statusOverride?: "starting" | "live" | "ended") => Promise<void>;
 };
 
 const BRACKET_ROLL_PREVIEW_INTERVAL_MS = 90;

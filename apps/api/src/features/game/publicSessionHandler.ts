@@ -2,10 +2,10 @@ import { type HttpRequest, type HttpResponseInit, type InvocationContext } from 
 import { HttpError, resolveUserId } from "../../lib/auth";
 import { getConfig } from "../../lib/config";
 import {
-    createWheelPublicSession,
-    getWheelPublicSession,
-    updateWheelPublicSession
-} from "../../lib/cosmos/wheelPublicSessionRepository";
+    createGamePublicSession,
+    getGamePublicSession,
+    updateGamePublicSession
+} from "../../lib/cosmos/gamePublicSessionRepository";
 import { hasWorkspaceMembership } from "../../lib/cosmos/workspaceRepository";
 import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../../lib/http";
 import {
@@ -86,7 +86,7 @@ export async function gamePublicSessionCreate(
       (userId, workspaceId) => hasWorkspaceMembership(config, userId, workspaceId)
     );
 
-    const document = await createWheelPublicSession(config, {
+    const document = await createGamePublicSession(config, {
       ownerUserId: actorUserId,
       scopeType: syncScope.scopeType,
       scopeId: syncScope.scopeId,
@@ -121,13 +121,13 @@ export async function gamePublicSessionPublish(
       }
     });
     const body = parsePublishBody(await readRequestJsonOrThrow(request));
-    const updated = await updateWheelPublicSession(config, {
+    const updated = await updateGamePublicSession(config, {
       publicSessionId: body.publicSessionId,
       ownerUserId: actorUserId,
       snapshot: body.snapshot
     });
     if (!updated) {
-      throw new HttpError(404, "Public wheel session was not found.");
+      throw new HttpError(404, "Public game session was not found.");
     }
     const snapshot = sanitizeGamePublicSessionSnapshot(updated.snapshot);
     publishGamePublicSessionRealtimeEventBestEffort(config, {
@@ -170,9 +170,9 @@ export async function gamePublicSessionGet(
 
   try {
     const publicSessionId = requireRouteParam(request, "publicSessionId").toLowerCase();
-    const document = await getWheelPublicSession(config, publicSessionId);
+    const document = await getGamePublicSession(config, publicSessionId);
     if (!document) {
-      throw new HttpError(404, "Public wheel session was not found.");
+      throw new HttpError(404, "Public game session was not found.");
     }
 
     return jsonResponse(request, config, 200, {
@@ -195,9 +195,9 @@ export async function gamePublicSessionRealtimeTokenGet(
 
   try {
     const publicSessionId = requireRouteParam(request, "publicSessionId").toLowerCase();
-    const document = await getWheelPublicSession(config, publicSessionId);
+    const document = await getGamePublicSession(config, publicSessionId);
     if (!document) {
-      throw new HttpError(404, "Public wheel session was not found.");
+      throw new HttpError(404, "Public game session was not found.");
     }
 
     const room = buildGamePublicSessionRealtimeRoom(publicSessionId);
@@ -241,9 +241,9 @@ export async function gamePublicSessionSpectatorCountGet(
       }
     });
     const publicSessionId = requireRouteParam(request, "publicSessionId").toLowerCase();
-    const document = await getWheelPublicSession(config, publicSessionId);
+    const document = await getGamePublicSession(config, publicSessionId);
     if (!document || document.ownerUserId !== actorUserId) {
-      throw new HttpError(404, "Public wheel session was not found.");
+      throw new HttpError(404, "Public game session was not found.");
     }
 
     const count = await getRealtimeRoomMemberCount(config, {
@@ -260,9 +260,3 @@ export async function gamePublicSessionSpectatorCountGet(
     return errorResponse(request, config, error, "Failed to load game public session spectator count.");
   }
 }
-
-export const wheelPublicSessionCreate = gamePublicSessionCreate;
-export const wheelPublicSessionPublish = gamePublicSessionPublish;
-export const wheelPublicSessionGet = gamePublicSessionGet;
-export const wheelPublicSessionRealtimeTokenGet = gamePublicSessionRealtimeTokenGet;
-export const wheelPublicSessionSpectatorCountGet = gamePublicSessionSpectatorCountGet;

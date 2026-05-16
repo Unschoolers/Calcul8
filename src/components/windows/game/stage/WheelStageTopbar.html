@@ -139,19 +139,19 @@
       </v-btn-toggle>
       <v-btn
         size="small"
-        :variant="wheelSpectatorSessionStatus === 'ended' ? 'elevated' : 'tonal'"
+        :variant="gameSpectatorSessionStatus === 'ended' ? 'elevated' : 'tonal'"
         prepend-icon="mdi-qrcode"
-        class="wheel-spectator-btn"
+        class="game-spectator-btn"
         :class="{
-          'wheel-spectator-btn--inactive': !wheelSpectatorSessionId,
-          'wheel-spectator-btn--live': wheelSpectatorSessionId && wheelSpectatorSessionStatus !== 'ended',
-          'wheel-spectator-btn--ended': wheelSpectatorSessionStatus === 'ended'
+          'game-spectator-btn--inactive': !gameSpectatorSessionId,
+          'game-spectator-btn--live': gameSpectatorSessionId && gameSpectatorSessionStatus !== 'ended',
+          'game-spectator-btn--ended': gameSpectatorSessionStatus === 'ended'
         }"
-        :color="wheelSpectatorSessionId ? (wheelSpectatorSessionStatus === 'ended' ? 'warning' : 'success') : undefined"
-        :title="wheelSpectatorActionLabel"
-        @click="openWheelSpectatorDialog"
+        :color="gameSpectatorSessionId ? (gameSpectatorSessionStatus === 'ended' ? 'warning' : 'success') : undefined"
+        :title="gameSpectatorActionLabel"
+        @click="openGameSpectatorDialog"
       >
-        <span class="wheel-spectator-btn__label">{{ wheelSpectatorActionLabel }}</span>
+        <span class="game-spectator-btn__label">{{ gameSpectatorActionLabel }}</span>
       </v-btn>
     </div>
   </div>

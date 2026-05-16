@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { afterEach, test, vi } from "vitest";
 import {
-  buildWheelSpectatorSessionUrl,
-  buildWheelSpectatorSnapshot,
-  normalizeWheelPublicSessionId
-} from "../src/components/windows/game/services/wheelSpectator.ts";
+  buildGameSpectatorSessionUrl,
+  buildGameSpectatorSnapshot,
+  normalizeGamePublicSessionId
+} from "../src/components/windows/game/services/gameSpectator.ts";
 import { buildSlotsFromConfig } from "../src/components/windows/game/services/wheelSlots.ts";
 import { createGameWindowState } from "../src/components/windows/game/coordinator/gameControllerState.ts";
 import type { WheelConfig } from "../src/types/app.ts";
@@ -14,21 +14,21 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-test("wheel spectator session ids are normalized for generated links", () => {
+test("game spectator session ids are normalized for generated links", () => {
   vi.stubGlobal("window", {
     location: {
       href: "https://app.whatfees.ca/spectator.html?session=AbC123"
     }
   });
 
-  assert.equal(normalizeWheelPublicSessionId(" AbC123 "), "abc123");
+  assert.equal(normalizeGamePublicSessionId(" AbC123 "), "abc123");
   assert.equal(
-    buildWheelSpectatorSessionUrl(" AbC123 "),
+    buildGameSpectatorSessionUrl(" AbC123 "),
     "https://app.whatfees.ca/spectator.html?session=abc123"
   );
 });
 
-test("buildWheelSpectatorSnapshot returns a viewer-safe summary with chase heat and proof", () => {
+test("buildGameSpectatorSnapshot returns a viewer-safe wheel summary with chase heat and proof", () => {
   const config: WheelConfig = {
     id: 1,
     name: "Saturday Wheel",
@@ -115,7 +115,7 @@ test("buildWheelSpectatorSnapshot returns a viewer-safe summary with chase heat 
   vm.sales = [];
   vm.singlesSoldCountByPurchaseId = {};
 
-  const snapshot = buildWheelSpectatorSnapshot(vm, "live");
+  const snapshot = buildGameSpectatorSnapshot(vm, "live");
 
   assert.equal(snapshot.snapshotVersion, 2);
   assert.equal(snapshot.gameName, "Saturday Wheel");
@@ -143,7 +143,7 @@ test("buildWheelSpectatorSnapshot returns a viewer-safe summary with chase heat 
   assert.equal("wheelPendingInventoryIssues" in snapshot, false);
 });
 
-test("buildWheelSpectatorSnapshot carries active spin animation metadata", () => {
+test("buildGameSpectatorSnapshot carries active spin animation metadata", () => {
   const config: WheelConfig = {
     id: 5,
     name: "Animated Wheel",
@@ -169,7 +169,7 @@ test("buildWheelSpectatorSnapshot carries active spin animation metadata", () =>
   vm.wheelController.activeSlots = buildSlotsFromConfig(config);
   vm.wheelSpinCounts = [1];
   vm.wheelTotalSpins = 1;
-  vm._wheelSpectatorSpinAnimation = {
+  vm._gameSpectatorSpinAnimation = {
     spinId: "spin-1",
     startedAt: 10_000,
     durationMs: 4_500,
@@ -178,7 +178,7 @@ test("buildWheelSpectatorSnapshot carries active spin animation metadata", () =>
     targetIndex: 0
   };
 
-  const snapshot = buildWheelSpectatorSnapshot(vm, "live");
+  const snapshot = buildGameSpectatorSnapshot(vm, "live");
 
   assert.equal(snapshot.isSpinning, true);
   assert.deepEqual(snapshot.resultAnimation, {
@@ -191,7 +191,7 @@ test("buildWheelSpectatorSnapshot carries active spin animation metadata", () =>
   });
 });
 
-test("buildWheelSpectatorSnapshot falls back to the lowest-profit live tier when no chase is active", () => {
+test("buildGameSpectatorSnapshot falls back to the lowest-profit live tier when no chase is active", () => {
   const config: WheelConfig = {
     id: 2,
     name: "No Chase Wheel",
@@ -244,7 +244,7 @@ test("buildWheelSpectatorSnapshot falls back to the lowest-profit live tier when
     })
   ];
 
-  const snapshot = buildWheelSpectatorSnapshot(vm, "live");
+  const snapshot = buildGameSpectatorSnapshot(vm, "live");
 
   assert.equal(snapshot.featuredChaseLabel, "Sweat Pull");
   assert.equal(snapshot.featuredChaseHeat, "very_low");
@@ -252,7 +252,7 @@ test("buildWheelSpectatorSnapshot falls back to the lowest-profit live tier when
   assert.equal(snapshot.chaseBoard.length, 0);
 });
 
-test("buildWheelSpectatorSnapshot ramps fallback heat when the sweat tier is under-hitting its slot share", () => {
+test("buildGameSpectatorSnapshot ramps fallback heat when the sweat tier is under-hitting its slot share", () => {
   const config: WheelConfig = {
     id: 3,
     name: "Pressure Wheel",
@@ -305,13 +305,13 @@ test("buildWheelSpectatorSnapshot ramps fallback heat when the sweat tier is und
     })
   ];
 
-  const snapshot = buildWheelSpectatorSnapshot(vm, "live");
+  const snapshot = buildGameSpectatorSnapshot(vm, "live");
 
   assert.equal(snapshot.featuredChaseLabel, "2 packs");
   assert.equal(snapshot.featuredChaseHeat, "very_high");
 });
 
-test("buildWheelSpectatorSnapshot cools fallback heat after the sweat tier just landed", () => {
+test("buildGameSpectatorSnapshot cools fallback heat after the sweat tier just landed", () => {
   const config: WheelConfig = {
     id: 4,
     name: "Cooldown Wheel",
@@ -374,7 +374,7 @@ test("buildWheelSpectatorSnapshot cools fallback heat after the sweat tier just 
     })
   ];
 
-  const snapshot = buildWheelSpectatorSnapshot(vm, "live");
+  const snapshot = buildGameSpectatorSnapshot(vm, "live");
 
   assert.equal(snapshot.featuredChaseLabel, "2 packs");
   assert.equal(snapshot.featuredChaseHeat, "very_low");

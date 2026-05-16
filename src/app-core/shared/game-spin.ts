@@ -1,4 +1,4 @@
-import type { WheelSpectatorSpinAnimation } from "../../types/app.ts";
+import type { GameSpectatorSpinAnimation } from "../../types/app.ts";
 
 const FULL_TURN_RADIANS = 2 * Math.PI;
 
@@ -18,7 +18,7 @@ export interface WheelSpinPlan {
   startAngle: number;
   endAngle: number;
   durationMs: number;
-  spectatorAnimation: WheelSpectatorSpinAnimation;
+  spectatorAnimation: GameSpectatorSpinAnimation;
 }
 
 export function easeOutQuart(t: number): number {

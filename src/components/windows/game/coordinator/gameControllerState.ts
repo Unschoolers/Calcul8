@@ -4,7 +4,7 @@ import { unwrapWindowBridgeContext } from "../../shared/contextBridge.ts";
 import type { WheelSlot } from "../services/wheelSlots.ts";
 import type { GameStageOverlayCommand } from "../overlay/gameStageOverlayTypes.ts";
 import type { BracketBattleRoll, BracketBattleSession } from "../bracket/bracketBattleDomain.ts";
-import { GAME_CONTROLLER_LEGACY_ALIAS_MAP } from "./gameControllerAliases.ts";
+import { GAME_CONTROLLER_LEGACY_ALIAS_MAP } from "./gameControllerLegacyAliases.ts";
 
 /**
  * Typed `this` context shared across GameWindow computed properties, watchers,
@@ -57,13 +57,13 @@ export type GameWindowThis = {
   wheelCreateDialog: boolean;
   wheelManageDialog: boolean;
   wheelManageName: string;
-  wheelSpectatorDialog: boolean;
-  wheelSpectatorSessionId: string;
-  wheelSpectatorSessionStatus: "inactive" | "starting" | "live" | "ended";
-  wheelSpectatorSessionUrl: string;
-  wheelSpectatorSessionQrUrl: string;
-  wheelSpectatorPublishPending: boolean;
-  wheelSpectatorConnectedCount: number;
+  gameSpectatorDialog: boolean;
+  gameSpectatorSessionId: string;
+  gameSpectatorSessionStatus: "inactive" | "starting" | "live" | "ended";
+  gameSpectatorSessionUrl: string;
+  gameSpectatorSessionQrUrl: string;
+  gameSpectatorPublishPending: boolean;
+  gameSpectatorConnectedCount: number;
   gameStageOverlayEnabled: boolean;
   gameStageOverlayMounted: boolean;
   gameStageOverlayActiveCommand: GameStageOverlayCommand | null;
@@ -140,9 +140,9 @@ export type GameWindowThis = {
   _wheelCelebrationTimeoutId?: number;
   _wheelHighlightTimeoutId?: number;
   _wheelCelebrationAnimId?: number;
-  _wheelSpectatorPublishQueued?: boolean;
-  _wheelSpectatorQueuedStatusOverride?: "starting" | "live" | "ended";
-  _wheelSpectatorSpinAnimation?: import("../../../../types/app.ts").WheelSpectatorSpinAnimation | null;
+  _gameSpectatorPublishQueued?: boolean;
+  _gameSpectatorQueuedStatusOverride?: "starting" | "live" | "ended";
+  _gameSpectatorSpinAnimation?: import("../../../../types/app.ts").GameSpectatorSpinAnimation | null;
   _wheelDraftSaveTimeoutId?: number;
   _wheelResizeObserver?: ResizeObserver;
   _wheelViewportResizeHandler?: () => void;
@@ -174,9 +174,9 @@ export type GameWindowThis = {
   ensureWheelEditorState(): void;
   queueWheelConfigSync(): void;
   deleteWheelConfig(): void;
-  syncWheelSpectatorCountPolling(): void;
-  stopWheelSpectatorCountPolling(): void;
-  syncWheelSpectatorLinks(): void;
+  syncGameSpectatorCountPolling(): void;
+  stopGameSpectatorCountPolling(): void;
+  syncGameSpectatorLinks(): void;
   stopWheelAutospin(): void;
   toggleWheelSound(): void;
   toggleWheelReducedMotion(): void;
@@ -213,8 +213,8 @@ export type GameWindowThis = {
   // ===== Optional AppContext bridge methods =====
   addWheelSaleToLot(lotId: number, sale: Sale): void;
   triggerWheelCelebration?(payload: { label: string; color: string; image?: string; emoji?: string; preview?: boolean }): void;
-  endWheelSpectatorMode?(options?: { notifyOnSuccess?: boolean; closeDialog?: boolean }): Promise<void>;
-  publishWheelSpectatorSessionSnapshot?(statusOverride?: "starting" | "live" | "ended"): Promise<void>;
+  endGameSpectatorMode?(options?: { notifyOnSuccess?: boolean; closeDialog?: boolean }): Promise<void>;
+  publishGameSpectatorSessionSnapshot?(statusOverride?: "starting" | "live" | "ended"): Promise<void>;
 
   // ===== Data-only properties defined in data() but not in state helpers =====
   wheelConfigSavedSnackbar: boolean;
@@ -390,13 +390,13 @@ const WHEEL_LOCAL_TOP_LEVEL_KEYS = [
   "wheelCreateDialog",
   "wheelManageDialog",
   "wheelManageName",
-  "wheelSpectatorDialog",
-  "wheelSpectatorSessionId",
-  "wheelSpectatorSessionStatus",
-  "wheelSpectatorSessionUrl",
-  "wheelSpectatorSessionQrUrl",
-  "wheelSpectatorPublishPending",
-  "wheelSpectatorConnectedCount",
+  "gameSpectatorDialog",
+  "gameSpectatorSessionId",
+  "gameSpectatorSessionStatus",
+  "gameSpectatorSessionUrl",
+  "gameSpectatorSessionQrUrl",
+  "gameSpectatorPublishPending",
+  "gameSpectatorConnectedCount",
   "gameStageOverlayEnabled",
   "gameStageOverlayMounted",
   "gameStageOverlayActiveCommand",
@@ -457,13 +457,13 @@ export function createGameWindowState() {
     wheelCreateDialog: false,
     wheelManageDialog: false,
     wheelManageName: "",
-    wheelSpectatorDialog: false,
-    wheelSpectatorSessionId: "" as string,
-    wheelSpectatorSessionStatus: "inactive" as "inactive" | "starting" | "live" | "ended",
-    wheelSpectatorSessionUrl: "" as string,
-    wheelSpectatorSessionQrUrl: "" as string,
-    wheelSpectatorPublishPending: false,
-    wheelSpectatorConnectedCount: 0,
+    gameSpectatorDialog: false,
+    gameSpectatorSessionId: "" as string,
+    gameSpectatorSessionStatus: "inactive" as "inactive" | "starting" | "live" | "ended",
+    gameSpectatorSessionUrl: "" as string,
+    gameSpectatorSessionQrUrl: "" as string,
+    gameSpectatorPublishPending: false,
+    gameSpectatorConnectedCount: 0,
     gameStageOverlayEnabled: false,
     gameStageOverlayMounted: false,
     gameStageOverlayActiveCommand: null as GameStageOverlayCommand | null,

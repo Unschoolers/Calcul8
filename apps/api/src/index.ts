@@ -9,6 +9,7 @@ import "./functions/migrationRunsList";
 import "./functions/workspaces";
 import "./functions/salesLive";
 import "./functions/wheelBroadcast";
+import "./functions/gamePublicSession";
 import "./functions/wheelPublicSession";
 import "./functions/wheelFairness";
 import "./functions/whatnot";

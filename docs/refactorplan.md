@@ -8,10 +8,10 @@ High
 
 = Steps
 
-- [50%] Finish replacing wheel-named spectator helpers, events, and contracts in `src/app-core/methods/ui/spectator`, `src/components/windows/game`, `src/spectator-main.ts`, `shared`, `apps/api`, and `apps/realtime`.
-- [45%] Keep `/wheel/public-session` and `wheel-public:*` as compatibility adapters only until public URLs and realtime rooms have a deliberate migration path.
-- [35%] Move `wheelSpectator*`, `wheelController` aliasing, `wheelCtx`, `activeWheelSlots`, and `wheelPreviewSlots` bridges behind named legacy adapter files, then delete them after tests prove no live callers remain.
-- [40%] Add contract and realtime tests for wheel, mystery grid, bracket, stale snapshots, reconnect refresh, room counts, and compatibility events.
+- [100%] Keep game-named spectator helpers, events, contracts, host state, storage compatibility, and public-session APIs isolated in `src/app-core/methods/ui/spectator`, `src/components/windows/game`, `src/spectator-main.ts`, `shared`, `apps/api`, and `apps/realtime`.
+- [100%] Keep `/wheel/public-session`, `wheel-public:*`, and `wheel.public-session.updated` only as compatibility adapters while `/game/public-session`, `game.public-session.updated`, and game-named helper APIs remain the authoritative path.
+- [100%] Keep legacy `wheelSpectator*`, `wheelController`, `activeWheelSlots`, and `wheelPreviewSlots` bridges isolated in named compatibility adapters until saved session and controller migrations can safely drop them.
+- [100%] Keep contract and realtime coverage around wheel, mystery grid, bracket, stale snapshots, reconnect refresh, room counts, compatibility routes, compatibility events, and legacy saved spectator sessions.
 
 = Acceptance
 

@@ -3,14 +3,14 @@
 @import './wheel-mobile.css';
 @import './bracket-battle.css';
 
-.wheel-spectator-dialog__intro {
+.game-spectator-dialog__intro {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
 
-.wheel-spectator-dialog__status {
+.game-spectator-dialog__status {
   padding: 4px 10px;
   border-radius: 999px;
   font-size: 0.72rem;
@@ -20,28 +20,28 @@
   white-space: nowrap;
 }
 
-.wheel-spectator-dialog__status--starting {
+.game-spectator-dialog__status--starting {
   background: rgba(var(--v-theme-warning), 0.16);
   color: rgb(var(--v-theme-warning));
 }
 
-.wheel-spectator-dialog__status--live {
+.game-spectator-dialog__status--live {
   background: rgba(var(--v-theme-success), 0.16);
   color: rgb(var(--v-theme-success));
 }
 
-.wheel-spectator-dialog__status--ended {
+.game-spectator-dialog__status--ended {
   background: rgba(var(--v-theme-secondary), 0.14);
   color: rgb(var(--v-theme-secondary));
 }
 
-.wheel-spectator-dialog__qr-wrap {
+.game-spectator-dialog__qr-wrap {
   display: flex;
   justify-content: center;
   margin: 18px 0 14px;
 }
 
-.wheel-spectator-dialog__qr {
+.game-spectator-dialog__qr {
   width: min(68vw, 240px);
   height: min(68vw, 240px);
   border-radius: 20px;
@@ -51,7 +51,7 @@
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.14);
 }
 
-.wheel-spectator-dialog__url {
+.game-spectator-dialog__url {
   padding: 10px 12px;
   border-radius: 14px;
   background: rgba(var(--v-theme-on-surface), 0.05);
@@ -60,7 +60,7 @@
   word-break: break-word;
 }
 
-.wheel-spectator-dialog__actions {
+.game-spectator-dialog__actions {
   gap: 8px;
   flex-wrap: wrap;
 }

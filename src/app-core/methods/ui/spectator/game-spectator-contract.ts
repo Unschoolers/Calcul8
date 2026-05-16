@@ -1,6 +1,5 @@
 export type {
-  GameSpectatorSnapshot,
-  WheelSpectatorSnapshot
+  GameSpectatorSnapshot
 } from "../../../../types/app.ts";
 
 import type { GameSpectatorSnapshot } from "../../../../types/app.ts";
@@ -17,5 +16,3 @@ export function normalizeGameSpectatorSnapshot(
 ): GameSpectatorSnapshot | null {
   return normalizeSharedGameSpectatorSnapshot(value, fallbackUpdatedAt) as GameSpectatorSnapshot | null;
 }
-
-export const normalizeWheelSpectatorSnapshot = normalizeGameSpectatorSnapshot;

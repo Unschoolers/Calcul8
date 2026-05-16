@@ -5,29 +5,29 @@ import { gameStageComputeds } from "../src/components/windows/game/stage/gameSta
 test("wheel spectator labels explain recap restart flow", () => {
   const endedVm = {
     preferredLanguage: "en",
-    wheelSpectatorSessionStatus: "ended",
-    wheelSpectatorConnectedCount: 0
+    gameSpectatorSessionStatus: "ended",
+    gameSpectatorConnectedCount: 0
   };
   const liveVm = {
     preferredLanguage: "en",
-    wheelSpectatorSessionStatus: "live",
-    wheelSpectatorConnectedCount: 3
+    gameSpectatorSessionStatus: "live",
+    gameSpectatorConnectedCount: 3
   };
 
   assert.equal(
-    gameStageComputeds.wheelSpectatorActionLabel.call(endedVm),
+    gameStageComputeds.gameSpectatorActionLabel.call(endedVm),
     "Spectator recap"
   );
   assert.match(
-    gameStageComputeds.wheelSpectatorDialogHint.call(endedVm),
+    gameStageComputeds.gameSpectatorDialogHint.call(endedVm),
     /brand new spectator link/i
   );
   assert.equal(
-    gameStageComputeds.wheelSpectatorStartButtonLabel.call(endedVm),
+    gameStageComputeds.gameSpectatorStartButtonLabel.call(endedVm),
     "Start new spectator mode"
   );
   assert.equal(
-    gameStageComputeds.wheelSpectatorActionLabel.call(liveVm),
+    gameStageComputeds.gameSpectatorActionLabel.call(liveVm),
     "3 Spectators"
   );
 });

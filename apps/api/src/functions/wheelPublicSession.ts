@@ -1,7 +1,19 @@
 import { app } from "@azure/functions";
-import { wheelPublicSessionCreate, wheelPublicSessionPublish, wheelPublicSessionGet, wheelPublicSessionRealtimeTokenGet, wheelPublicSessionSpectatorCountGet } from "../features/wheel/publicSessionHandler";
+import {
+  gamePublicSessionCreate as wheelPublicSessionCreate,
+  gamePublicSessionGet as wheelPublicSessionGet,
+  gamePublicSessionPublish as wheelPublicSessionPublish,
+  gamePublicSessionRealtimeTokenGet as wheelPublicSessionRealtimeTokenGet,
+  gamePublicSessionSpectatorCountGet as wheelPublicSessionSpectatorCountGet
+} from "../features/game/publicSessionHandler";
 
-export { wheelPublicSessionCreate, wheelPublicSessionPublish, wheelPublicSessionGet, wheelPublicSessionRealtimeTokenGet, wheelPublicSessionSpectatorCountGet } from "../features/wheel/publicSessionHandler";
+export {
+  wheelPublicSessionCreate,
+  wheelPublicSessionGet,
+  wheelPublicSessionPublish,
+  wheelPublicSessionRealtimeTokenGet,
+  wheelPublicSessionSpectatorCountGet
+};
 
 app.http("wheelPublicSessionCreate", {
   methods: ["POST", "OPTIONS"],

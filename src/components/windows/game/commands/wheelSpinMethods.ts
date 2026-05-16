@@ -297,7 +297,7 @@ export const wheelSpinMethods = {
     if (!plan) return;
     const { sliceAngle, endAngle, durationMs: duration, startAngle } = plan;
     const startTime = performance.now();
-    vm._wheelSpectatorSpinAnimation = plan.spectatorAnimation;
+    vm._gameSpectatorSpinAnimation = plan.spectatorAnimation;
     if (shouldRecordLiveSession) {
       vm.recordSpinResult(targetIndex);
     } else {
@@ -398,7 +398,7 @@ export const wheelSpinMethods = {
         ...fairnessResult,
         verificationUrl
       };
-      vm._wheelSpectatorSpinAnimation = null;
+      vm._gameSpectatorSpinAnimation = null;
       finalizeWheelSpinProof(vm as Record<string, unknown>, readableFairnessResult);
       vm.appendWheelFairnessHistory(buildWheelSpinFairnessEntry(vm as Record<string, unknown>, {
         fairnessResult: readableFairnessResult,

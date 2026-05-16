@@ -1,6 +1,7 @@
 import type { Lot, MysteryGridReveal, PendingWheelInventoryIssue, WheelConfig, WheelFairnessEntry } from "../../../../types/app.ts";
 import type { WheelControllerState } from "../coordinator/gameControllerState.ts";
 import type { WheelSlot } from "./wheelSlots.ts";
+import { writeGameSpectatorSessionStorageState } from "./gameSpectatorSessionStorage.ts";
 import { buildSlotsFromConfig, createWheelGridLayoutSeed } from "./wheelSlots.ts";
 
 /** Minimal context interface shared by wheel session helpers. */
@@ -17,11 +18,11 @@ export interface WheelSessionContext {
   wheelPendingInventoryIssues: PendingWheelInventoryIssue[];
   wheelEndingSession: boolean;
   wheelEndSessionReviewActive: boolean;
-  wheelSpectatorPublishPending: boolean;
-  wheelSpectatorSessionId: string;
-  wheelSpectatorSessionStatus: string;
-  wheelSpectatorSessionUrl: string;
-  wheelSpectatorSessionQrUrl: string;
+  gameSpectatorPublishPending: boolean;
+  gameSpectatorSessionId: string;
+  gameSpectatorSessionStatus: string;
+  gameSpectatorSessionUrl: string;
+  gameSpectatorSessionQrUrl: string;
   wheelGridHighlightCellIndex: number;
   wheelGridRevealAnimating: boolean;
   wheelGridResetAnimating: boolean;
@@ -93,7 +94,7 @@ export function createWheelSessionSnapshot(
   controller: WheelControllerState
 ): Record<string, unknown> {
   const slots = ((controller.activeSlots || []) as WheelSlot[]);
-  return {
+  const snapshot = {
     wheelSpinCounts: context.wheelSpinCounts,
     wheelSlotTiers: slots.map((slot) => slot.tier),
     wheelTotalSpins: context.wheelTotalSpins,
@@ -120,12 +121,10 @@ export function createWheelSessionSnapshot(
     wheelSpinSeed: controller.spinSeed,
     wheelSpinClientSeed: controller.spinClientSeed,
     wheelSpinVerificationUrl: controller.spinVerificationUrl,
-    wheelSpinAlgorithm: controller.spinAlgorithm,
-    wheelSpectatorSessionId: String(context.wheelSpectatorSessionId ?? ""),
-    wheelSpectatorSessionStatus: String(context.wheelSpectatorSessionStatus ?? "inactive"),
-    wheelSpectatorSessionUrl: String(context.wheelSpectatorSessionUrl ?? ""),
-    wheelSpectatorSessionQrUrl: String(context.wheelSpectatorSessionQrUrl ?? "")
+    wheelSpinAlgorithm: controller.spinAlgorithm
   };
+  writeGameSpectatorSessionStorageState(snapshot, context);
+  return snapshot;
 }
 
 export function applyWheelPreviewReset(
@@ -179,7 +178,7 @@ export function applyWheelLiveReset(
   controller.gridReveals = [];
   context.wheelEndingSession = false;
   context.wheelEndSessionReviewActive = false;
-  context.wheelSpectatorPublishPending = false;
+  context.gameSpectatorPublishPending = false;
 }
 
 export function mergeWheelSessionRootFallback(

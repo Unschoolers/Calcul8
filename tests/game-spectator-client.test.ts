@@ -16,7 +16,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-test("game spectator client uses wheel-compatible public session routes with generic helper names", async () => {
+test("game spectator client uses generic public session routes while preserving compatible rooms", async () => {
   const fetchMock = vi.fn();
   globalThis.fetch = fetchMock as typeof fetch;
   const responseHeaders = { get: () => "" };
@@ -105,8 +105,8 @@ vi.stubGlobal("localStorage", {
     expiresAt: 123
   });
 
-  assert.equal(fetchMock.mock.calls[0]?.[0], "http://localhost:7071/api/wheel/public-session");
-  assert.equal(fetchMock.mock.calls[1]?.[0], "http://localhost:7071/api/wheel/public-session/publish");
-  assert.equal(fetchMock.mock.calls[2]?.[0], "https://api.example.test/wheel/public-session/abc123xy");
-  assert.equal(fetchMock.mock.calls[3]?.[0], "https://api.example.test/wheel/public-session/abc123xy/realtime-token");
+  assert.equal(fetchMock.mock.calls[0]?.[0], "http://localhost:7071/api/game/public-session");
+  assert.equal(fetchMock.mock.calls[1]?.[0], "http://localhost:7071/api/game/public-session/publish");
+  assert.equal(fetchMock.mock.calls[2]?.[0], "https://api.example.test/game/public-session/abc123xy");
+  assert.equal(fetchMock.mock.calls[3]?.[0], "https://api.example.test/game/public-session/abc123xy/realtime-token");
 });
