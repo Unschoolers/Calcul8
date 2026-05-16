@@ -45,8 +45,28 @@ npm run test:coverage:hotpaths
 
 ## Quality checks
 
+Web check:
+
 ```bash
 npm run verify
+```
+
+API check:
+
+```bash
+npm run verify:api
+```
+
+Realtime gateway check:
+
+```bash
+npm run verify:realtime
+```
+
+Whole-repo CI mirror:
+
+```bash
+npm run verify:all
 ```
 
 ## Production build

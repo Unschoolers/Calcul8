@@ -9,15 +9,16 @@ Run locally:
 
 ```bash
 npm ci
-npm run verify
-npm run test:api
+npm run verify:all
 npm run build:prod
 ```
 
 Notes:
 
 - `npm run verify` covers the frontend security scan, frontend tests, typecheck, and a web build.
-- `npm run test:api` is still separate and should be run before release when backend code changed.
+- `npm run verify:api` covers API tests, typecheck, and build.
+- `npm run verify:realtime` covers realtime typecheck and build.
+- `npm run verify:all` runs the frontend, API, and realtime verification gates together.
 
 Or run the automated PowerShell flow (recommended on Windows):
 
@@ -33,7 +34,7 @@ npm run release:play
 - generates `public/.well-known/assetlinks.json`
 - builds the TWA `.aab` with Bubblewrap
 
-It does **not** run `npm run test:api`, so keep that in your manual pre-flight whenever API or shared contracts changed.
+It does **not** run `npm run verify:all`, so keep that in your manual pre-flight whenever API, realtime, or shared contracts changed.
 
 Useful flags:
 

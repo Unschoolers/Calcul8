@@ -42,13 +42,9 @@ jobs:
         working-directory: apps/realtime
         run: npm ci
 
-      - name: Realtime typecheck
+      - name: Realtime verification
         working-directory: apps/realtime
-        run: npm run typecheck
-
-      - name: Build realtime gateway
-        working-directory: apps/realtime
-        run: npm run build
+        run: npm run verify
 
   deploy:
     runs-on: ubuntu-latest

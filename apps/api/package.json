@@ -13,6 +13,7 @@
     "start": "func start",
     "start:build": "npm run build && func start",
     "typecheck": "tsc --noEmit",
+    "verify": "node ../../scripts/run-parallel.mjs --task test::npm run test --task typecheck::npm run typecheck && npm run build",
     "test": "vitest run --config vitest.config.mjs",
     "test:coverage": "vitest run --config vitest.config.mjs --coverage",
     "test:watch": "vitest --config vitest.config.mjs"

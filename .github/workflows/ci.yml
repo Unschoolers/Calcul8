@@ -98,17 +98,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Security scan
-        run: npm run security:scan
-
-      - name: Unit tests
-        run: npm run test
-
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Build
-        run: npm run build
+      - name: Web verification
+        run: npm run verify
 
   validate-api:
     name: Validate API
@@ -130,13 +121,9 @@ jobs:
         working-directory: apps/api
         run: npm ci
 
-      - name: API unit tests
+      - name: API verification
         working-directory: apps/api
-        run: npm run test
-
-      - name: API typecheck
-        working-directory: apps/api
-        run: npm run typecheck
+        run: npm run verify
 
   validate-realtime:
     name: Validate realtime
@@ -158,10 +145,6 @@ jobs:
         working-directory: apps/realtime
         run: npm ci
 
-      - name: Realtime typecheck
+      - name: Realtime verification
         working-directory: apps/realtime
-        run: npm run typecheck
-
-      - name: Build realtime gateway
-        working-directory: apps/realtime
-        run: npm run build
+        run: npm run verify

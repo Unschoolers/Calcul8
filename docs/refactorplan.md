@@ -1,69 +1,65 @@
 # Calcul8 Refactor TODO
 
-## 1. Game Public Session And Realtime Naming
+Ordered from critical to low. This file only lists remaining work found during the current frontend, API, and realtime scan.
 
-= Priority
+## Critical
 
-High
+### 1. Realtime Gateway Coverage And Safety
 
-= Steps
+- Finding: `apps/realtime` has no test script, while `apps/realtime/src/index.ts` owns HTTP routing, WebSocket upgrades, subscription authorization, room membership, heartbeat cleanup, and presence state in one runtime entry point.
+- Scope: `apps/realtime/src/index.ts`, `apps/realtime/src/realtime-auth.ts`, `apps/realtime/src/realtime-helpers.ts`, `apps/realtime/package.json`.
+- Acceptance: add automated coverage for signed subscribe tokens, unauthenticated development mode, internal publish and room-count authorization, allowed-origin handling, invalid JSON/body handling, heartbeat termination, disconnect cleanup, and presence snapshots.
 
-- [100%] Keep game-named spectator helpers, events, contracts, host state, storage compatibility, and public-session APIs isolated in `src/app-core/methods/ui/spectator`, `src/components/windows/game`, `src/spectator-main.ts`, `shared`, `apps/api`, and `apps/realtime`.
-- [100%] Keep `/wheel/public-session`, `wheel-public:*`, and `wheel.public-session.updated` only as compatibility adapters while `/game/public-session`, `game.public-session.updated`, and game-named helper APIs remain the authoritative path.
-- [100%] Keep legacy `wheelSpectator*`, `wheelController`, `activeWheelSlots`, and `wheelPreviewSlots` bridges isolated in named compatibility adapters until saved session and controller migrations can safely drop them.
-- [100%] Keep contract and realtime coverage around wheel, mystery grid, bracket, stale snapshots, reconnect refresh, room counts, compatibility routes, compatibility events, and legacy saved spectator sessions.
+## High
 
-= Acceptance
+### 2. Realtime Runtime Boundaries
 
-Game and spectator internals use game-named APIs; legacy wheel route and room names are isolated at adapter boundaries; all game types publish and receive realtime updates through one tested public-session contract.
+- Finding: the realtime gateway is hard to change safely because server routing, websocket protocol handling, room membership, and presence publishing are coupled in `apps/realtime/src/index.ts`.
+- Scope: realtime server bootstrap, HTTP route handlers, websocket message handlers, room store, presence store, and shared payload helpers.
+- Acceptance: split the runtime into typed modules after coverage exists, centralize room and payload validation, add body-size and malformed-message limits, and keep the server bootstrap thin.
 
-## 2. Workspace Sync, Access, And Conflict Semantics
+### 3. Whatnot Import And Review Boundaries
 
-= Priority
+- Finding: Whatnot import/review behavior is split across large frontend components and separate API normalization paths, with UI files still owning grouping, duplicate matching, preview state, and mutation orchestration.
+- Scope: `src/components/windows/whatnot/WhatnotReviewDialog.ts`, `src/components/windows/whatnot/WhatnotCsvImportDialog.ts`, `src/app-core/shared/whatnot-csv.ts`, `apps/api/src/features/whatnot/*`, `apps/api/src/lib/whatnot.ts`.
+- Acceptance: move duplicate matching, row grouping, import preview mapping, and shared normalization into typed service helpers used consistently at the UI and API boundaries.
 
-High
+### 4. Large Frontend Window Surfaces
 
-= Steps
+- Finding: several user-facing windows remain large enough that feature changes risk accidental cross-behavior edits, especially Singles, Portfolio, and Live surfaces.
+- Scope: `src/components/windows/singles/*`, `src/components/windows/portfolio/*`, `src/components/windows/live/*`.
+- Acceptance: extract typed view-model helpers and focused panels when touching these areas; reduce `this: any` component contracts; keep mobile, tablet, and desktop behavior in the same logic path.
 
-- [100%] Audit remaining workspace document and membership writes in `apps/api/src/features/workspaces` and `apps/api/src/lib/cosmos/workspaceRepository.ts` for optimistic concurrency gaps, especially ownership transfer, workspace deletion, membership deactivation, profile snapshot backfill, and join-link lifecycle callers.
-- [100%] Harden remaining cross-partition workspace write chains with explicit conflict results and compensating cleanup where ownership, membership, and workspace documents can diverge.
-- [100%] Review workspace-scoped presence and billing/access handlers for route or query paths that bypass shared scope validation, reuse stale local workspace state, or miss lost-access recovery.
-- [100%] Add tests for join-link consume races, ownership rollback, lost-access refresh failure, sync conflict pull failure, presence edge cases, billing/access checks, and local storage reset recovery.
+### 5. Game Command Surface Cleanup
 
-= Acceptance
+- Finding: after the public-session naming pass, the game window still has large wheel-named command modules and compatibility adapters around session/config/spin behavior.
+- Scope: `src/components/windows/game/commands/*`, `src/components/windows/game/coordinator/*`, `src/app-core/game/*`, remaining wheel compatibility adapters.
+- Acceptance: keep compatibility isolated, move reusable behavior into typed game/session helpers, and only leave wheel-specific names where the product concept is actually wheel-specific.
 
-Workspace operations cannot leave a shared workspace without a valid owner membership; conflict/auth/lost-access paths return explicit errors; the frontend recovers to Personal scope without data bleed or silent destructive overwrite.
+## Medium
 
-## 3. Whatnot, Sales, And Window Boundaries
+### 6. API Route Boundary Standardization
 
-= Priority
+- Finding: API feature handlers are thin enough to work, but sales, whatnot, and workspace routes still repeat request parsing, telemetry, response shaping, and error translation patterns.
+- Scope: `apps/api/src/features/sales/handlers.ts`, `apps/api/src/features/whatnot/handlers.ts`, `apps/api/src/features/workspaces/*`, shared HTTP/response helpers.
+- Acceptance: introduce focused route-boundary helpers for validation, actor/session extraction, telemetry context, and domain error mapping without moving business behavior back into function entry points.
 
-Medium
+### 7. Workspace Multi-Write Regression Coverage
 
-= Steps
+- Finding: workspace create, leave, ownership transfer, join accept, and access-loss flows now have explicit rollback/recovery logic, but those multi-write semantics need regression coverage for partial failure and race cases.
+- Scope: `apps/api/src/features/workspaces/*`, `apps/api/src/lib/cosmos/workspaceRepository.ts`, workspace sync/access tests.
+- Acceptance: cover owner membership creation failure cleanup, owner-leave transfer rollback, workspace deletion rollback, join-link accept rollback, concurrent membership changes, and Personal fallback after access loss.
 
-- [45%] Continue splitting the remaining `src/app-core/methods/ui/whatnot/whatnot.ts` facade by connect, sync, CSV import, review, confirm, and discard workflows as each flow is changed, preserving local-first behavior and scope guards.
-- [50%] Continue moving Whatnot parsing, normalization, duplicate detection, and conflict decisions into typed service helpers shared by `src/app-core/shared/whatnot-csv.ts` and `apps/api/src/features/whatnot`, including a shared boundary audit for CSV/API duplicate logic.
-- [50%] Keep `src/components/windows/whatnot/WhatnotReviewDialog.ts` presentation-focused and extract repeated sales/window orchestration from large surfaces such as `LiveSinglesPanel`, `PortfolioWindow`, and `SinglesConfigWindow` only along real domain boundaries.
-- [45%] Add regression tests around auth expiry, offline recovery, workspace ownership, duplicate/update decisions, sale refresh, and workspace/personal scope isolation.
+## Low
 
-= Acceptance
+### 8. Test Suite Organization
 
-Whatnot and sales workflows are testable without mounting large windows or Azure runtime state; UI files coordinate user interactions while domain services own normalization, conflict handling, persistence, and recovery behavior.
+- Finding: several frontend and API tests are very large, which makes failures hard to triage and encourages unrelated setup reuse.
+- Scope: large suites such as calculations, wheel/game config/session, singles config, sales methods, sync service, and API workspace/public-session tests.
+- Acceptance: split large suites by feature behavior as nearby code changes require it, move shared fixture builders into explicit helpers, and keep exact-output fixture tests authoritative where they represent real business contracts.
 
-## 4. Verification, Release, And Artifact Hygiene
+### 9. Generated Artifact And Contract Hygiene
 
-= Priority
-
-Low
-
-= Steps
-
-- [45%] Decide whether `npm run verify` should include API and realtime checks, or document the split command set clearly beside the existing frontend/API/realtime scripts.
-- [65%] Keep release docs aligned with the current CI, API, realtime, Google Play, and generated-asset scripts.
-- [70%] Keep generated output, local build artifacts, coverage output, API/realtime `dist`, and one-time migration products out of source-control review surfaces.
-- [35%] Gradually group flat tests by feature area when touched so failures point to the product boundary they cover.
-
-= Acceptance
-
-Developers can tell which command set mirrors CI for the area they touched; release docs match the live scripts; generated artifacts do not pollute code review or refactor diffs.
+- Finding: generated shared contract copies, build output, and coverage artifacts can still distract from source changes during broad refactors.
+- Scope: `shared/*`, `apps/api/src/shared/*`, `apps/*/dist`, coverage/build artifacts, contract-generation scripts.
+- Acceptance: document the regeneration path, keep generated outputs out of normal review unless intentionally refreshed, and make version/compiler drift visible before release work.
