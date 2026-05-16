@@ -94,7 +94,10 @@ export async function leaveWorkspaceForActor(
     throw error;
   }
   try {
-    await deactivateWorkspaceMembership(config, actorUserId, workspaceId);
+    const removed = await deactivateWorkspaceMembership(config, actorUserId, workspaceId);
+    if (!removed) {
+      throw new HttpError(409, "Workspace leave conflicted. Refresh and try again.");
+    }
   } catch (error) {
     await rollbackWorkspaceOwnershipTransfer(config, workspaceId, actorUserId, actorMembership, targetMembership, error);
     throw error;

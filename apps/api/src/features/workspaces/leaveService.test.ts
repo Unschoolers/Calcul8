@@ -153,6 +153,51 @@ test("leaveWorkspaceForActor treats missing ownership transfer result as conflic
   assert.deepEqual(upsertWorkspaceMembershipMock.mock.calls.map((call) => call[1]?.role), ["owner", "member"]);
 });
 
+test("leaveWorkspaceForActor rolls back a completed owner transfer when owner removal conflicts", async () => {
+  const actorMembership = membership("owner-1", "owner");
+  const targetMembership = membership("member-1", "member");
+  getWorkspaceMembershipMock.mockResolvedValue(actorMembership);
+  listWorkspaceMembershipsMock.mockResolvedValue([actorMembership, targetMembership]);
+  upsertWorkspaceMembershipMock.mockResolvedValue({ ...targetMembership, role: "owner" });
+  transferWorkspaceOwnershipMock.mockResolvedValue({
+    id: "workspace:ws-1",
+    docType: "workspace",
+    userId: "ws:ws-1",
+    workspaceId: "ws-1",
+    name: "Workspace 1",
+    ownerUserId: "member-1",
+    status: "active",
+    createdAt: "2026-05-15T00:00:00.000Z",
+    updatedAt: "2026-05-15T00:00:00.000Z"
+  });
+  deactivateWorkspaceMembershipMock.mockResolvedValue(false);
+
+  await assert.rejects(
+    () => leaveWorkspaceForActor(createConfig(), "owner-1", "ws-1", {
+      newOwnerUserId: "member-1",
+      deleteWorkspace: false
+    }),
+    (error: { status?: number; message?: string }) =>
+      error.status === 409 && error.message === "Workspace leave conflicted. Refresh and try again."
+  );
+
+  assert.deepEqual(
+    transferWorkspaceOwnershipMock.mock.calls.map((call) => call.slice(1)),
+    [
+      ["ws-1", "member-1", "owner-1"],
+      ["ws-1", "owner-1", "member-1"]
+    ]
+  );
+  assert.deepEqual(upsertWorkspaceMembershipMock.mock.calls.map((call) => ({
+    userId: call[1]?.userId,
+    role: call[1]?.role
+  })), [
+    { userId: "member-1", role: "owner" },
+    { userId: "member-1", role: "member" },
+    { userId: "owner-1", role: "owner" }
+  ]);
+});
+
 test("leaveWorkspaceForActor treats missing delete result as conflict and keeps last owner membership", async () => {
   const actorMembership = membership("owner-1", "owner");
   getWorkspaceMembershipMock.mockResolvedValue(actorMembership);
@@ -198,6 +243,39 @@ test("leaveWorkspaceForActor restores the workspace when last-owner membership r
       deleteWorkspace: true
     }),
     /membership write failed/
+  );
+
+  assert.equal(restoreWorkspaceDocumentMock.mock.calls.length, 1);
+  assert.deepEqual(restoreWorkspaceDocumentMock.mock.calls[0]?.[1], activeWorkspace);
+});
+
+test("leaveWorkspaceForActor restores the workspace when last-owner membership removal conflicts after deletion", async () => {
+  const actorMembership = membership("owner-1", "owner");
+  const activeWorkspace = {
+    id: "workspace:ws-1",
+    docType: "workspace" as const,
+    userId: "ws:ws-1",
+    workspaceId: "ws-1",
+    name: "Workspace 1",
+    ownerUserId: "owner-1",
+    status: "active" as const,
+    createdAt: "2026-05-15T00:00:00.000Z",
+    updatedAt: "2026-05-15T00:00:00.000Z"
+  };
+  getWorkspaceByIdMock.mockResolvedValue(activeWorkspace);
+  getWorkspaceMembershipMock.mockResolvedValue(actorMembership);
+  listWorkspaceMembershipsMock.mockResolvedValue([actorMembership]);
+  softDeleteWorkspaceMock.mockResolvedValue({ ...activeWorkspace, status: "deleted" });
+  deactivateWorkspaceMembershipMock.mockResolvedValue(false);
+  restoreWorkspaceDocumentMock.mockResolvedValue(activeWorkspace);
+
+  await assert.rejects(
+    () => leaveWorkspaceForActor(createConfig(), "owner-1", "ws-1", {
+      newOwnerUserId: "",
+      deleteWorkspace: true
+    }),
+    (error: { status?: number; message?: string }) =>
+      error.status === 409 && error.message === "Workspace deletion conflicted. Refresh and try again."
   );
 
   assert.equal(restoreWorkspaceDocumentMock.mock.calls.length, 1);

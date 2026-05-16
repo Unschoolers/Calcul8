@@ -17,7 +17,7 @@ Notes:
 
 - `npm run verify` covers the frontend security scan, frontend tests, typecheck, and a web build.
 - `npm run verify:api` covers API tests, typecheck, and build.
-- `npm run verify:realtime` covers realtime typecheck and build.
+- `npm run verify:realtime` covers realtime tests, typecheck, and build.
 - `npm run verify:all` runs the frontend, API, and realtime verification gates together.
 
 Or run the automated PowerShell flow (recommended on Windows):

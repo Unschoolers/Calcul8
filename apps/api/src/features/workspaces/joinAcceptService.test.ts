@@ -125,3 +125,19 @@ test("acceptWorkspaceJoinLinkForActor removes created membership when consuming 
   assert.equal(deactivateWorkspaceMembershipMock.mock.calls.length, 1);
   assert.deepEqual(deactivateWorkspaceMembershipMock.mock.calls[0]?.slice(1), ["joiner-1", "team-42"]);
 });
+
+test("acceptWorkspaceJoinLinkForActor removes created membership when consuming the invite throws", async () => {
+  markWorkspaceJoinLinkUsedMock.mockRejectedValue(new Error("consume race"));
+
+  await assert.rejects(
+    () => acceptWorkspaceJoinLinkForActor(createConfig(), "joiner-1", {
+      inviteToken: "token-123",
+      preview: false
+    }),
+    /consume race/
+  );
+
+  assert.equal(upsertWorkspaceMembershipMock.mock.calls.length, 1);
+  assert.equal(deactivateWorkspaceMembershipMock.mock.calls.length, 1);
+  assert.deepEqual(deactivateWorkspaceMembershipMock.mock.calls[0]?.slice(1), ["joiner-1", "team-42"]);
+});

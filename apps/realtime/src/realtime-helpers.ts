@@ -32,6 +32,16 @@ export type WorkspacePresenceMember = {
   lastSeenAt?: string;
 };
 
+export class JsonBodyError extends Error {
+  readonly statusCode: number;
+
+  constructor(statusCode: number, message: string) {
+    super(message);
+    this.name = "JsonBodyError";
+    this.statusCode = statusCode;
+  }
+}
+
 export function normalizeOptionalString(value: unknown): string | undefined {
   if (typeof value !== "string") return undefined;
   const trimmed = value.trim();
@@ -80,15 +90,31 @@ export function normalizeRooms(body: unknown): string[] {
   throw new Error("Field 'room' or 'rooms' is required.");
 }
 
-export async function readJsonBody(request: IncomingMessage): Promise<unknown> {
+export async function readJsonBody(
+  request: IncomingMessage,
+  options: { maxBytes?: number } = {}
+): Promise<unknown> {
   const chunks: Buffer[] = [];
+  const maxBytes = options.maxBytes ?? 1024 * 1024;
+  let totalBytes = 0;
+
   for await (const chunk of request) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    totalBytes += buffer.length;
+    if (totalBytes > maxBytes) {
+      throw new JsonBodyError(413, "JSON body is too large.");
+    }
+    chunks.push(buffer);
   }
 
   const raw = Buffer.concat(chunks).toString("utf8");
   if (!raw) return {};
-  return JSON.parse(raw);
+
+  try {
+    return JSON.parse(raw);
+  } catch {
+    throw new JsonBodyError(400, "Invalid JSON body.");
+  }
 }
 
 export function getQueryToken(request: IncomingMessage): string | undefined {
