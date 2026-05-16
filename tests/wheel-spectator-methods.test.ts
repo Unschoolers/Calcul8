@@ -121,6 +121,7 @@ test("publishGameSpectatorSessionSnapshot disables local spectator mode after ba
     gameSpectatorSessionQrUrl: "qr:dead123",
     gameSpectatorPublishPending: false,
     gameSpectatorConnectedCount: 3,
+    saveWheelSession: vi.fn(),
     notify: vi.fn()
   } as Record<string, unknown> & {
     publishGameSpectatorSessionSnapshot: (statusOverride?: "starting" | "live" | "ended") => Promise<void>;
@@ -138,6 +139,7 @@ test("publishGameSpectatorSessionSnapshot disables local spectator mode after ba
   assert.equal(vm.gameSpectatorSessionUrl, "");
   assert.equal(vm.gameSpectatorSessionQrUrl, "");
   assert.equal(vm.gameSpectatorConnectedCount, 0);
+  assert.equal((vm.saveWheelSession as ReturnType<typeof vi.fn>).mock.calls.length, 1);
   assert.deepEqual((vm.notify as ReturnType<typeof vi.fn>).mock.calls[0], [
     "Spectator session expired. Start spectator mode again to create a new link.",
     "warning"
@@ -159,6 +161,7 @@ test("refreshGameSpectatorCount clears stale local spectator state after a backe
     gameSpectatorConnectedCount: 2,
     _gameSpectatorCountRequestPending: false,
     _gameSpectatorCountPollIntervalId: 123,
+    saveWheelSession: vi.fn(),
     notify: vi.fn()
   } as Record<string, unknown>;
   vi.stubGlobal("clearInterval", vi.fn());
@@ -171,6 +174,7 @@ test("refreshGameSpectatorCount clears stale local spectator state after a backe
   assert.equal(vm.gameSpectatorSessionQrUrl, "");
   assert.equal(vm.gameSpectatorConnectedCount, 0);
   assert.equal(vm._gameSpectatorCountPollIntervalId, undefined);
+  assert.equal((vm.saveWheelSession as ReturnType<typeof vi.fn>).mock.calls.length, 1);
   assert.deepEqual((vm.notify as ReturnType<typeof vi.fn>).mock.calls[0], [
     "Spectator session expired. Start spectator mode again to create a new link.",
     "warning"

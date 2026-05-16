@@ -35,6 +35,7 @@ function disableStaleGameSpectatorSession(vm: GameSpectatorVm): void {
   (vm as Record<string, unknown>).gameSpectatorSessionUrl = "";
   (vm as Record<string, unknown>).gameSpectatorSessionQrUrl = "";
   (vm as Record<string, unknown>).gameSpectatorConnectedCount = 0;
+  vm.saveWheelSession();
   notifyGameSpectator(vm, "Spectator session expired. Start spectator mode again to create a new link.", "warning");
 }
 
