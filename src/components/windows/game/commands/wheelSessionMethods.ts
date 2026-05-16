@@ -469,9 +469,10 @@ export const wheelSessionMethods = {
     if (
       String(this.gameSpectatorSessionId || "").trim()
       && this.gameSpectatorSessionStatus !== "ended"
+      && this.wheelMode !== "config"
     ) {
-      // Intentional: spectator mode mirrors the current wheel display state,
-      // including config-mode preview/test spins, so hosts can rehearse publicly.
+      // Spectator mode is live-only. Config-mode preview/test spins stay local
+      // so draft games are not broadcast to public viewers.
       void (this.publishGameSpectatorSessionSnapshot?.() ?? Promise.resolve());
     }
   },

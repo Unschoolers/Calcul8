@@ -1,5 +1,3 @@
-import type { SpectatorPageState } from "./spectatorRenderTypes.ts";
-import { SPECTATOR_WHEEL_CANVAS_ID } from "./spectatorRenderTypes.ts";
 import {
   escapeHtml,
   formatHeatCopy,
@@ -10,6 +8,8 @@ import {
   getSpectatorBoardCells,
   getSpectatorOutcomeSlots
 } from "./spectatorRenderShared.ts";
+import type { SpectatorPageState } from "./spectatorRenderTypes.ts";
+import { SPECTATOR_WHEEL_CANVAS_ID } from "./spectatorRenderTypes.ts";
 
 export function renderWheelOrGridState(state: Extract<SpectatorPageState, { status: "ready" }>): string {
   const { snapshot } = state;
@@ -73,7 +73,6 @@ export function renderWheelOrGridState(state: Extract<SpectatorPageState, { stat
     <div class="spectator-shell">
       <section class="spectator-hero">
         <div class="spectator-kicker">${isGridGame ? "Live Grid Spectator" : "Live Wheel Spectator"}</div>
-        <h1 class="spectator-title">${escapeHtml(snapshot.gameName)}</h1>
         <p class="spectator-subtitle spectator-subtitle--hero">${escapeHtml(heroSubcopy)}</p>
       </section>
 

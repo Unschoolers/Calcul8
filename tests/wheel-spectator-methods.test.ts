@@ -81,7 +81,7 @@ test("startGameSpectatorMode restarts an ended spectator session as active", asy
   }));
 
   const vm = {
-    wheelMode: "config",
+    wheelMode: "live",
     wheelTotalSpins: 0,
     snapshotVersion: 3,
     gameSpectatorSessionId: "old123",
@@ -95,10 +95,48 @@ test("startGameSpectatorMode restarts an ended spectator session as active", asy
   await gameSpectatorMethods.startGameSpectatorMode.call(vm as never);
 
   assert.equal(createGameSpectatorSessionMock.mock.calls.length, 1);
-  assert.equal(createGameSpectatorSessionMock.mock.calls[0]?.[1]?.sessionStatus, "starting");
+  assert.equal(createGameSpectatorSessionMock.mock.calls[0]?.[1]?.sessionStatus, "live");
   assert.equal(vm.gameSpectatorSessionId, "fresh123");
-  assert.equal(vm.gameSpectatorSessionStatus, "starting");
+  assert.equal(vm.gameSpectatorSessionStatus, "live");
   assert.equal(vm.gameSpectatorConnectedCount, 0);
+});
+
+test("startGameSpectatorMode refuses config mode", async () => {
+  const vm = {
+    wheelMode: "config",
+    wheelTotalSpins: 0,
+    gameSpectatorSessionId: "",
+    gameSpectatorSessionStatus: "inactive",
+    gameSpectatorPublishPending: false,
+    notify: vi.fn()
+  };
+
+  await gameSpectatorMethods.startGameSpectatorMode.call(vm as never);
+
+  assert.equal(createGameSpectatorSessionMock.mock.calls.length, 0);
+  assert.equal(vm.gameSpectatorSessionId, "");
+  assert.equal(vm.gameSpectatorSessionStatus, "inactive");
+  assert.deepEqual(vm.notify.mock.calls[0], [
+    "Switch to live mode before starting spectator mode.",
+    "warning"
+  ]);
+});
+
+test("publishGameSpectatorSessionSnapshot ignores config mode preview updates", async () => {
+  const vm = {
+    wheelMode: "config",
+    wheelTotalSpins: 0,
+    wheelPreviewTotalSpins: 1,
+    gameSpectatorSessionId: "preview123",
+    gameSpectatorSessionStatus: "live",
+    gameSpectatorPublishPending: false
+  } as Record<string, unknown>;
+
+  await gameSpectatorMethods.publishGameSpectatorSessionSnapshot.call(vm as never);
+
+  assert.equal(publishGameSpectatorSessionMock.mock.calls.length, 0);
+  assert.equal(buildGameSpectatorSnapshotMock.mock.calls.length, 0);
+  assert.equal(vm.gameSpectatorSessionStatus, "live");
 });
 
 test("publishGameSpectatorSessionSnapshot disables local spectator mode after backend 404", async () => {

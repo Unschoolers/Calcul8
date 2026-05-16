@@ -1675,6 +1675,43 @@ test("saveWheelSession stores session to localStorage", () => {
   Object.defineProperty(globalThis, "localStorage", { value: origLocalStorage, writable: true, configurable: true });
 });
 
+test("saveWheelSession does not publish spectator updates from config mode", () => {
+  const store: Record<string, string> = {};
+  const mockStorage = { setItem: vi.fn((key: string, value: string) => { store[key] = value; }) };
+  const origLocalStorage = globalThis.localStorage;
+  Object.defineProperty(globalThis, "localStorage", { value: mockStorage, writable: true, configurable: true });
+
+  const vm: Record<string, unknown> = {
+    activeWheelConfigId: 42,
+    activeScopeType: "personal",
+    activeWorkspaceId: null,
+    wheelMode: "config",
+    wheelSpinCounts: [0],
+    wheelPreviewSpinCounts: [1],
+    wheelPreviewTotalSpins: 1,
+    wheelTotalSpins: 0,
+    wheelSessionUpdatedAt: 0,
+    wheelSessionNetRevenue: 0,
+    wheelSessionCostAdjustment: 0,
+    wheelPendingInventoryIssues: [],
+    wheelCurrentAngle: 0,
+    wheelLastResult: "",
+    gameSpectatorSessionId: "preview123",
+    gameSpectatorSessionStatus: "live",
+    gameSpectatorSessionUrl: "https://example.test/spectator.html?session=preview123",
+    gameSpectatorSessionQrUrl: "qr:preview123",
+    gameSpectatorPublishPending: false,
+    publishGameSpectatorSessionSnapshot: vi.fn()
+  };
+
+  GameWindow.methods!.saveWheelSession.call(vm as never);
+
+  assert.equal(mockStorage.setItem.mock.calls.length, 2);
+  assert.equal((vm.publishGameSpectatorSessionSnapshot as ReturnType<typeof vi.fn>).mock.calls.length, 0);
+
+  Object.defineProperty(globalThis, "localStorage", { value: origLocalStorage, writable: true, configurable: true });
+});
+
 test("loadWheelFromSession restores session from localStorage", () => {
   const session = {
     wheelSpinCounts: [3, 4],

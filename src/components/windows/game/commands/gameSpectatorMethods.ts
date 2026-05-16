@@ -19,6 +19,10 @@ function notifyGameSpectator(vm: GameSpectatorVm, message: string, color: string
   }
 }
 
+function isGameSpectatorConfigMode(vm: Record<string, unknown>): boolean {
+  return String(vm.wheelMode || "") === "config";
+}
+
 function clearGameSpectatorCountPolling(vm: Record<string, unknown>): void {
   const intervalId = vm._gameSpectatorCountPollIntervalId as number | undefined;
   if (intervalId != null) {
@@ -111,6 +115,10 @@ export const gameSpectatorMethods = {
   },
 
   async startGameSpectatorMode(this: GameSpectatorVm): Promise<void> {
+    if (isGameSpectatorConfigMode(this as Record<string, unknown>)) {
+      notifyGameSpectator(this, "Switch to live mode before starting spectator mode.", "warning");
+      return;
+    }
     if ((this.gameSpectatorPublishPending as boolean) === true) return;
     (this as Record<string, unknown>).gameSpectatorPublishPending = true;
 
@@ -140,6 +148,7 @@ export const gameSpectatorMethods = {
     const publicSessionId = String(this.gameSpectatorSessionId || "").trim();
     if (!publicSessionId) return;
     if (this.gameSpectatorSessionStatus === "inactive") return;
+    if (isGameSpectatorConfigMode(this as Record<string, unknown>) && statusOverride !== "ended") return;
     if ((this.gameSpectatorPublishPending as boolean) === true) {
       (this as Record<string, unknown>)._gameSpectatorPublishQueued = true;
       (this as Record<string, unknown>)._gameSpectatorQueuedStatusOverride = mergeQueuedSpectatorStatusOverride(

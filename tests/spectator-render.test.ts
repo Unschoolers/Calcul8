@@ -99,6 +99,8 @@ test("renderSpectatorState renders grid cells and reset animation state", () => 
   });
 
   assert.match(html, /class="spectator-kicker">Live Grid Spectator</);
+  assert.doesNotMatch(htmlText(html), /Grid Night/);
+  assert.match(htmlText(html), /1\/2 cells opened/);
   assert.match(html, /spectator-grid-board--resetting/);
   assert.equal(countMatches(html, /class="spectator-grid-cell /g), 2);
   assert.match(html, /spectator-grid-cell--highlighted[\s\S]*spectator-grid-cell__number">2</);
