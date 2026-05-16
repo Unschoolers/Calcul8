@@ -992,6 +992,7 @@ test("row editor helpers handle selection, editing branch, and remove confirmati
     },
     closeSinglesRowEditor: vi.fn(),
     removeSinglesPurchaseRow: vi.fn(),
+    preloadSinglesEditorPreview: vi.fn(async () => undefined),
     askConfirmation: vi.fn((_payload, onConfirm: () => void) => onConfirm())
   });
 

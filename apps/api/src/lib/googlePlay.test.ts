@@ -20,6 +20,32 @@ test("getProductIdsFromProductsV2Response extracts ids from line items", () => {
   assert.deepEqual(productIds.sort(), ["pro_access", "pro_access_plus"]);
 });
 
+test("getProductIdsFromProductsV2Response skips malformed entries and deduplicates ids", () => {
+  const payload = {
+    productLineItem: [
+      null,
+      [],
+      {
+        productId: " pro_access "
+      },
+      {
+        productOfferDetails: {
+          productId: "pro_access"
+        }
+      },
+      {
+        productOfferDetails: {
+          productId: ""
+        }
+      }
+    ]
+  };
+
+  assert.deepEqual(getProductIdsFromProductsV2Response(payload), ["pro_access"]);
+  assert.deepEqual(getProductIdsFromProductsV2Response(null), []);
+  assert.deepEqual(getProductIdsFromProductsV2Response({ productLineItem: "bad" }), []);
+});
+
 test("normalizeProductsV2PurchasePayload maps purchased and acknowledged states", () => {
   const payload = {
     productLineItem: [
@@ -107,5 +133,33 @@ test("normalizeProductsV2PurchasePayload handles unknown purchase state safely",
   assert.equal(normalized.isValid, false);
   assert.equal(normalized.purchaseState, null);
   assert.equal(normalized.acknowledgementState, null);
+});
+
+test("normalizeProductsV2PurchasePayload handles malformed payloads and dates safely", () => {
+  const normalized = normalizeProductsV2PurchasePayload({
+    productLineItem: [],
+    purchaseStateContext: {
+      purchaseState: "  purchased  "
+    },
+    acknowledgementState: " acknowledged ",
+    orderId: "   ",
+    purchaseCompletionTime: "not-a-date"
+  });
+
+  assert.equal(normalized.isValid, true);
+  assert.deepEqual(normalized.productIds, []);
+  assert.equal(normalized.purchaseState, 0);
+  assert.equal(normalized.acknowledgementState, 1);
+  assert.equal(normalized.orderId, null);
+  assert.equal(normalized.purchaseTimeMillis, null);
+
+  assert.deepEqual(normalizeProductsV2PurchasePayload([]), {
+    isValid: false,
+    productIds: [],
+    orderId: null,
+    purchaseState: null,
+    acknowledgementState: null,
+    purchaseTimeMillis: null
+  });
 });
 

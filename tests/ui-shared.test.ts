@@ -118,6 +118,31 @@ test("resolveApiBaseUrl normalizes configured value and caches it locally", asyn
   });
 });
 
+test("resolveApiBaseUrl ignores non-browser localStorage placeholders", () => {
+  const original = (globalThis as { localStorage?: unknown }).localStorage;
+  const placeholder = new Proxy({}, {
+    has: () => false,
+    get: () => {
+      throw new Error("localStorage methods should not be read");
+    }
+  });
+
+  Object.defineProperty(globalThis, "localStorage", {
+    configurable: true,
+    value: placeholder
+  });
+
+  try {
+    vi.stubEnv("VITE_API_BASE_URL", "");
+    assert.equal(resolveApiBaseUrl(), "");
+  } finally {
+    Object.defineProperty(globalThis, "localStorage", {
+      configurable: true,
+      value: original
+    });
+  }
+});
+
 test("entitlement cache helpers parse valid payloads and reject malformed ones", async () => {
   await withMockedLocalStorage(async (data) => {
     writeEntitlementCache({

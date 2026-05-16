@@ -17,6 +17,40 @@ const API_MAX_RETRY_ATTEMPTS = 3;
 const API_BASE_RETRY_DELAY_MS = 500;
 const API_FETCH_TIMEOUT_MS = 12_000;
 
+type ApiBaseStorage = {
+  getItem(key: string): string | null;
+  setItem?(key: string, value: string): void;
+};
+
+function resolveApiBaseStorage(): ApiBaseStorage | null {
+  const candidate = (globalThis as { localStorage?: unknown }).localStorage;
+  if (!candidate || (typeof candidate !== "object" && typeof candidate !== "function")) return null;
+
+  // Node 25 exposes a placeholder localStorage object that warns when storage
+  // methods are read without a configured --localstorage-file. Check method
+  // presence before touching them so non-browser tests stay quiet.
+  const target = candidate as object;
+  if (!("getItem" in target)) return null;
+
+  const storage = candidate as { getItem?: unknown; setItem?: unknown };
+  const getItem = storage.getItem;
+  if (typeof getItem !== "function") return null;
+
+  const setItem = "setItem" in target ? storage.setItem : undefined;
+  return {
+    getItem(key: string): string | null {
+      const value = (getItem as (this: unknown, key: string) => unknown).call(candidate, key);
+      if (value == null) return null;
+      return String(value);
+    },
+    setItem: typeof setItem === "function"
+      ? (key: string, value: string): void => {
+        (setItem as (this: unknown, key: string, value: string) => void).call(candidate, key, value);
+      }
+      : undefined
+  };
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => {
     window.setTimeout(resolve, ms);
@@ -55,14 +89,14 @@ function isUnsafeMethod(method: string | undefined): boolean {
 }
 
 export function resolveApiBaseUrl(): string {
-  const storage = (globalThis as { localStorage?: { getItem?: (key: string) => string | null; setItem?: (key: string, value: string) => void } }).localStorage;
+  const storage = resolveApiBaseStorage();
   const configuredApiBase = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim() || "";
   if (configuredApiBase) {
     const normalized = configuredApiBase.replace(/\/+$/, "");
     storage?.setItem?.(STORAGE_KEYS.API_BASE_URL, normalized);
     return normalized;
   }
-  const cachedBase = String(storage?.getItem?.(STORAGE_KEYS.API_BASE_URL) || "").trim();
+  const cachedBase = String(storage?.getItem(STORAGE_KEYS.API_BASE_URL) || "").trim();
   if (cachedBase) return cachedBase.replace(/\/+$/, "");
   return "";
 }
