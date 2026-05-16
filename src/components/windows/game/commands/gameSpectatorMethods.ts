@@ -1,6 +1,7 @@
 import {
     createGameSpectatorSession,
     fetchGameSpectatorCount,
+    isGameSpectatorSessionNotFoundError,
     publishGameSpectatorSession
 } from "../../../../app-core/methods/ui/spectator/game-spectator.ts";
 import { buildGameSpectatorQrImageUrl, buildGameSpectatorSessionUrl, buildGameSpectatorSnapshot } from "../services/gameSpectator.ts";
@@ -16,6 +17,25 @@ function notifyGameSpectator(vm: GameSpectatorVm, message: string, color: string
   if (typeof vm.notify === "function") {
     vm.notify(message, color);
   }
+}
+
+function clearGameSpectatorCountPolling(vm: Record<string, unknown>): void {
+  const intervalId = vm._gameSpectatorCountPollIntervalId as number | undefined;
+  if (intervalId != null) {
+    clearInterval(intervalId);
+    vm._gameSpectatorCountPollIntervalId = undefined;
+  }
+  vm._gameSpectatorCountRequestPending = false;
+}
+
+function disableStaleGameSpectatorSession(vm: GameSpectatorVm): void {
+  clearGameSpectatorCountPolling(vm as unknown as Record<string, unknown>);
+  (vm as Record<string, unknown>).gameSpectatorSessionId = "";
+  (vm as Record<string, unknown>).gameSpectatorSessionStatus = "inactive";
+  (vm as Record<string, unknown>).gameSpectatorSessionUrl = "";
+  (vm as Record<string, unknown>).gameSpectatorSessionQrUrl = "";
+  (vm as Record<string, unknown>).gameSpectatorConnectedCount = 0;
+  notifyGameSpectator(vm, "Spectator session expired. Start spectator mode again to create a new link.", "warning");
 }
 
 function mergeQueuedSpectatorStatusOverride(
@@ -138,6 +158,10 @@ export const gameSpectatorMethods = {
       await publishGameSpectatorSession(this as never, publicSessionId, snapshot);
       (this as Record<string, unknown>).gameSpectatorSessionStatus = status;
     } catch (error) {
+      if (isGameSpectatorSessionNotFoundError(error)) {
+        disableStaleGameSpectatorSession(this);
+        return;
+      }
       console.warn("Failed to publish spectator snapshot:", error);
     } finally {
       (this as Record<string, unknown>).gameSpectatorPublishPending = false;
@@ -205,7 +229,11 @@ export const gameSpectatorMethods = {
     (this as Record<string, unknown>)._gameSpectatorCountRequestPending = true;
     try {
       (this as Record<string, unknown>).gameSpectatorConnectedCount = await fetchGameSpectatorCount(this as never, publicSessionId);
-    } catch {
+    } catch (error) {
+      if (isGameSpectatorSessionNotFoundError(error)) {
+        disableStaleGameSpectatorSession(this);
+        return;
+      }
       // Keep the last known count on transient failures.
     } finally {
       (this as Record<string, unknown>)._gameSpectatorCountRequestPending = false;
@@ -213,12 +241,7 @@ export const gameSpectatorMethods = {
   },
 
   stopGameSpectatorCountPolling(this: Record<string, unknown>): void {
-    const intervalId = (this as Record<string, unknown>)._gameSpectatorCountPollIntervalId as number | undefined;
-    if (intervalId != null) {
-      clearInterval(intervalId);
-      (this as Record<string, unknown>)._gameSpectatorCountPollIntervalId = undefined;
-    }
-    (this as Record<string, unknown>)._gameSpectatorCountRequestPending = false;
+    clearGameSpectatorCountPolling(this as Record<string, unknown>);
   },
 
   syncGameSpectatorCountPolling(this: Record<string, unknown>): void {

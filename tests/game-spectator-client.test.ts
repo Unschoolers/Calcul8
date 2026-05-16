@@ -4,6 +4,8 @@ import {
   createGameSpectatorSession,
   fetchGameSpectatorRealtimeSubscribeToken,
   fetchGameSpectatorSnapshot,
+  fetchGameSpectatorCount,
+  isGameSpectatorSessionNotFoundError,
   normalizeGamePublicSessionId,
   publishGameSpectatorSession
 } from "../src/app-core/methods/ui/spectator/game-spectator.ts";
@@ -109,4 +111,68 @@ vi.stubGlobal("localStorage", {
   assert.equal(fetchMock.mock.calls[1]?.[0], "http://localhost:7071/api/game/public-session/publish");
   assert.equal(fetchMock.mock.calls[2]?.[0], "https://api.example.test/game/public-session/abc123xy");
   assert.equal(fetchMock.mock.calls[3]?.[0], "https://api.example.test/game/public-session/abc123xy/realtime-token");
+});
+
+test("game spectator client identifies stale public sessions from publish and count 404s", async () => {
+  const fetchMock = vi.fn();
+  globalThis.fetch = fetchMock as typeof fetch;
+  const responseHeaders = { get: () => "" };
+  fetchMock
+    .mockResolvedValueOnce({
+      ok: false,
+      status: 404,
+      headers: responseHeaders
+    })
+    .mockResolvedValueOnce({
+      ok: false,
+      status: 404,
+      headers: responseHeaders
+    });
+  vi.stubGlobal("window", {
+    setTimeout,
+    clearTimeout
+  });
+  vi.stubGlobal("localStorage", {
+    getItem: (key: string) =>
+      key === "whatfees_api_base_url" ? "http://localhost:7071/api" : null,
+    setItem: () => undefined
+  });
+
+  const app = {
+    googleAuthEpoch: 1,
+    hasProAccess: true
+  };
+  const snapshot = {
+    snapshotVersion: 2,
+    gameName: "Wheel",
+    gameType: "wheel",
+    sessionStatus: "live",
+    isSpinning: false,
+    sessionResultCount: 0,
+    lastResultLabel: "",
+    lastResultColor: "#d4af37",
+    gameCurrentAngle: 0,
+    outcomeSlots: [],
+    boardCells: [],
+    boardHighlightCellIndex: -1,
+    boardResetAnimating: false,
+    resultAnimation: null,
+    recentFairnessHistory: [],
+    chaseHistory: [],
+    chaseBoard: [],
+    featuredChaseLabel: null,
+    featuredChaseHeat: null,
+    fairnessVerificationUrl: null,
+    bracket: null,
+    updatedAt: 100
+  } as const;
+
+  await assert.rejects(
+    () => publishGameSpectatorSession(app as never, "dead123", snapshot as never),
+    (error: unknown) => isGameSpectatorSessionNotFoundError(error)
+  );
+  await assert.rejects(
+    () => fetchGameSpectatorCount(app as never, "dead123"),
+    (error: unknown) => isGameSpectatorSessionNotFoundError(error)
+  );
 });

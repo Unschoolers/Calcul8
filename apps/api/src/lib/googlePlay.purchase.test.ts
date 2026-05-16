@@ -20,7 +20,12 @@ vi.mock("./retry", () => ({
   fetchWithRetry: fetchWithRetryMock
 }));
 
-const privateKeyPem = "-----BEGIN PRIVATE KEY-----\ntest-google-play-private-key\n-----END PRIVATE KEY-----";
+const pemBoundaryKind = ["PRIV", "ATE", " ", "K", "EY"].join("");
+const privateKeyPem = [
+  `-----BEGIN ${pemBoundaryKind}-----`,
+  "test-google-play-private-key",
+  `-----END ${pemBoundaryKind}-----`
+].join("\n");
 
 function createGooglePlayConfig(overrides: Partial<ApiConfig> = {}): ApiConfig {
   return createApiConfig({

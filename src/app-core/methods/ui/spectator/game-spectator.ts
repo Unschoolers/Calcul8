@@ -25,6 +25,18 @@ type GameSpectatorCountResponse = {
   spectatorCount?: unknown;
 };
 
+export class GameSpectatorSessionNotFoundError extends Error {
+  constructor() {
+    super("Spectator session was not found.");
+    this.name = "GameSpectatorSessionNotFoundError";
+  }
+}
+
+export function isGameSpectatorSessionNotFoundError(error: unknown): boolean {
+  return error instanceof GameSpectatorSessionNotFoundError
+    || (error instanceof Error && error.name === "GameSpectatorSessionNotFoundError");
+}
+
 export function normalizeGamePublicSessionId(value: unknown): string {
   return String(value ?? "").trim().toLowerCase();
 }
@@ -82,6 +94,9 @@ export async function publishGameSpectatorSession(
   });
 
   if (!response.ok) {
+    if (response.status === 404) {
+      throw new GameSpectatorSessionNotFoundError();
+    }
     throw new Error("Failed to publish spectator session.");
   }
 }
@@ -161,6 +176,9 @@ export async function fetchGameSpectatorCount(
   );
 
   if (!response.ok) {
+    if (response.status === 404) {
+      throw new GameSpectatorSessionNotFoundError();
+    }
     throw new Error("Failed to fetch spectator count.");
   }
 
