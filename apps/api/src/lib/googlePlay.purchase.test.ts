@@ -1,20 +1,26 @@
 import assert from "node:assert/strict";
-import { generateKeyPairSync } from "node:crypto";
 import { afterEach, beforeEach, test, vi } from "vitest";
 import { createApiConfig } from "../test-support/function-test-helpers";
 import type { ApiConfig } from "../types";
 
-const { fetchWithRetryMock } = vi.hoisted(() => ({
-  fetchWithRetryMock: vi.fn()
+const { fetchWithRetryMock, signJwtMock } = vi.hoisted(() => ({
+  fetchWithRetryMock: vi.fn(),
+  signJwtMock: vi.fn(() => "signed-jwt-signature")
+}));
+
+vi.mock("node:crypto", () => ({
+  createSign: vi.fn(() => ({
+    update: vi.fn(),
+    end: vi.fn(),
+    sign: signJwtMock
+  }))
 }));
 
 vi.mock("./retry", () => ({
   fetchWithRetry: fetchWithRetryMock
 }));
 
-const privateKeyPem = generateKeyPairSync("rsa", { modulusLength: 2048 })
-  .privateKey
-  .export({ type: "pkcs8", format: "pem" }) as string;
+const privateKeyPem = "-----BEGIN PRIVATE KEY-----\ntest-google-play-private-key\n-----END PRIVATE KEY-----";
 
 function createGooglePlayConfig(overrides: Partial<ApiConfig> = {}): ApiConfig {
   return createApiConfig({
