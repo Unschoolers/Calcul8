@@ -1,45 +1,79 @@
 # Calcul8 Refactor TODO
 
-Ordered from critical to low. This file only lists remaining work found during the current frontend, API, and realtime scan.
+Regenerated on 2026-05-18 from a frontend, API, realtime, CI, dependency, and TypeScript 7 readiness scan.
+
+This file only lists remaining Critical and High priority work. Completed, medium, and low priority cleanup is intentionally omitted.
+
+## Critical
+
+### 1. Account Deletion Must Remove All Personal Credentials
+
+- Finding: Account deletion removes entitlement, profile, Play purchases, sync data, and sessions, but it does not remove the personal Whatnot connection row that stores encrypted OAuth access and refresh tokens.
+- Evidence: `apps/api/src/features/account/deleteHandler.ts`, `apps/api/src/lib/cosmos/whatnotRepository.ts`.
+- Risk: deleted accounts can leave recoverable third-party credentials in Cosmos.
+- Next: add a personal Whatnot connection deletion path, make workspace-owned connections an explicit decision, and add `accountDelete` coverage proving personal Whatnot credentials are erased.
+
+### 2. Production CORS Must Not Allow Credentialed Wildcards
+
+- Finding: `ALLOWED_ORIGINS=*` reflects any origin while also allowing credentials and exposing `x-csrf-token`.
+- Evidence: `apps/api/src/lib/http.ts`, `apps/api/src/lib/config.ts`.
+- Risk: a hostile origin could read a session CSRF token and issue cookie-authenticated writes if wildcard origins reach production.
+- Next: reject wildcard origins when `API_ENV=prod`, or disable credentials and exposed auth headers for wildcard mode; add HTTP guard tests for prod wildcard behavior.
+
+### 3. Payment Entitlements Need Atomic Provider Facts
+
+- Finding: Google Play purchase token uniqueness is checked with read-before-write, and Stripe webhook events overwrite one boolean entitlement without processed-event idempotency or provider-specific facts.
+- Evidence: `apps/api/src/features/entitlements/verifyPlayHandler.ts`, `apps/api/src/lib/cosmos/entitlementRepository.ts`, `apps/api/src/features/billing/webhookHandler.ts`.
+- Risk: two users can race the same Play token, stale Stripe subscription events can revoke access granted by another provider, and duplicate/out-of-order webhook events can change access incorrectly.
+- Next: store token claims in a token-hash partition or create-only claim document; record processed Stripe event ids; persist provider-specific entitlement facts; derive final access from all active providers. Cover duplicate Play token races, duplicate Stripe events, out-of-order subscription events, and Stripe revocation while Play or lifetime access remains valid.
+
+### 4. Shared Sync Needs Atomic Compare-And-Swap And Non-Destructive Conflict Recovery
+
+- Finding: API sync push checks `clientVersion` against a read snapshot, then writes presets/meta without an ETag or transactional guard; frontend stale-version recovery can pull and apply cloud state over dirty local changes.
+- Evidence: `apps/api/src/features/sync/pushHandler.ts`, `apps/api/src/lib/cosmos/syncSnapshotIncrementalRepository.ts`, `src/app-core/methods/ui/sync/sync-conflict-policy.ts`, `src/app-core/methods/ui/sync/sync-apply.ts`.
+- Risk: concurrent workspace pushes can both pass and overwrite/delete each other, and conflict recovery can become a data-loss path.
+- Next: make sync meta the compare-and-swap authority with Cosmos `IfMatch` or a transactional batch where possible; add concurrent same-version push tests expecting one success and one `409`; add frontend tests for stale conflicts with dirty local sales/lots/game changes and require a resolver or preserved pending edits before applying cloud.
+
+### 5. Realtime Production Must Be Authenticated And Single-Replica Safe Until It Has A Backplane
+
+- Finding: prod realtime allows up to two replicas while rooms, clients, and presence are in memory; the manual bootstrap can deploy production with no `REALTIME_TOKEN_SECRET`, enabling unauthenticated room subscriptions.
+- Evidence: `.github/workflows/deploy-realtime-prod.yml`, `apps/realtime/src/realtime-room-store.ts`, `apps/realtime/src/realtime-presence-store.ts`, `scripts/bootstrap-realtime.ps1`, `apps/realtime/src/realtime-auth.ts`.
+- Risk: publishes can miss sockets connected to another replica, and manual deployments can expose arbitrary room subscriptions in production.
+- Next: pin prod realtime to one replica until Redis, Azure SignalR, or another shared backplane exists; require token secret for every production bootstrap path; remove docs that describe missing token secret as acceptable; add startup/bootstrap tests for production without `REALTIME_TOKEN_SECRET`.
 
 ## High
 
-### 1. Whatnot Import And Review Boundaries
+### 6. Move Every Package To A TypeScript 6 Baseline And Add TypeScript 7 Native Preview Checks
 
-- Finding: Whatnot import/review behavior is split across large frontend components and separate API normalization paths, with UI files still owning grouping, duplicate matching, preview state, and mutation orchestration.
-- Scope: `src/components/windows/whatnot/WhatnotReviewDialog.ts`, `src/components/windows/whatnot/WhatnotCsvImportDialog.ts`, `src/app-core/shared/whatnot-csv.ts`, `apps/api/src/features/whatnot/*`, `apps/api/src/lib/whatnot.ts`.
-- Acceptance: move duplicate matching, row grouping, import preview mapping, and shared normalization into typed service helpers used consistently at the UI and API boundaries.
+- Finding: root and API are already on TypeScript 6, but realtime and CardSync still use TypeScript 5.9.3; TypeScript 7 beta ships as `@typescript/native-preview` with `tsgo`, and TS7 adopts TS6 defaults and hard-errors deprecated flags.
+- Evidence: `package.json`, `apps/api/package.json`, `apps/realtime/package.json`, `CardSync/package.json`, `tsconfig.json`, `apps/api/tsconfig.json`, `apps/realtime/tsconfig.json`, `CardSync/tsconfig.json`; TypeScript 7 beta notes at `https://devblogs.microsoft.com/typescript/announcing-typescript-7-0-beta/`.
+- Risk: toolchain drift will make the TS7 move harder, especially around explicit `rootDir`, explicit `types`, `moduleResolution`, and TS6 deprecations.
+- Next: upgrade realtime and CardSync to TypeScript 6.0.3 or newer; add explicit TS7 readiness scripts using `@typescript/native-preview` and `tsgo` side-by-side with `tsc`; keep `typescript` as the stable compiler until TS7 is published under the main package; run TS7 checks for root, API, realtime, and CardSync in a non-blocking or opt-in CI lane first.
 
-### 2. Large Frontend Window Surfaces
+### 7. Bring Dependencies To Current Latest Deliberately
 
-- Finding: several user-facing windows remain large enough that feature changes risk accidental cross-behavior edits, especially Singles, Portfolio, and Live surfaces.
-- Scope: `src/components/windows/singles/*`, `src/components/windows/portfolio/*`, `src/components/windows/live/*`.
-- Acceptance: extract typed view-model helpers and focused panels when touching these areas; reduce `this: any` component contracts; keep mobile, tablet, and desktop behavior in the same logic path.
+- Finding: npm reports newer packages across root, API, realtime, and CardSync. Known desired updates include `@azure/cosmos` 4.9.3 and `@azure/functions` 4.14.0; other current latests include Vite 8.0.13, Vitest 4.1.6, Vue 3.5.34, Vuetify 4.0.7, Three 0.184.0, `vite-plugin-pwa` 1.3.0, `ws` 8.20.1, and `dotenv` 17.4.2.
+- Evidence: `package.json`, `package-lock.json`, `apps/api/package.json`, `apps/api/package-lock.json`, `apps/realtime/package.json`, `apps/realtime/package-lock.json`, `CardSync/package.json`, `CardSync/package-lock.json`; latest versions checked with `npm outdated` on 2026-05-18.
+- Risk: stale SDKs and build tools hide compatibility work until a release crunch; major build/test upgrades can also break CI if taken casually.
+- Next: update Azure SDKs first (`@azure/cosmos` 4.9.3, `@azure/functions` 4.14.0), then upgrade runtime/build/test packages in small batches. Each batch must run the affected verifier: `npm run verify`, `npm --prefix apps/api run verify`, `npm --prefix apps/realtime run verify`, and `npm --prefix CardSync run build`.
 
-### 3. Game Command Surface Cleanup
+### 8. Cosmos Optimistic Concurrency Must Cover Sales, Whatnot, And Public Sessions
 
-- Finding: after the public-session naming pass, the game window still has large wheel-named command modules and compatibility adapters around session/config/spin behavior.
-- Scope: `src/components/windows/game/commands/*`, `src/components/windows/game/coordinator/*`, `src/app-core/game/*`, remaining wheel compatibility adapters.
-- Acceptance: keep compatibility isolated, move reusable behavior into typed game/session helpers, and only leave wheel-specific names where the product concept is actually wheel-specific.
+- Finding: sale/live-pricing `baseVersion`, Whatnot review confirmation, and public game session publishing still rely on read-before-write or full upserts without ETag/status-transition guards.
+- Evidence: `apps/api/src/lib/cosmos/salesRepository.ts`, `apps/api/src/features/whatnot/importConfirm.ts`, `apps/api/src/features/whatnot/saleBuilders.ts`, `apps/api/src/lib/cosmos/whatnotRepository.ts`, `apps/api/src/features/game/publicSessionHandler.ts`, `apps/api/src/lib/cosmos/gamePublicSessionRepository.ts`.
+- Risk: two writers can both pass version checks, double-submit can process a Whatnot batch twice, and a stale live public-session publish can regress an ended spectator session.
+- Next: replace read-then-upsert flows with ETag-based replace/create or status-claim transitions; make Whatnot confirm idempotent by `batchId`; require monotonic public-session snapshot versions or ETags; add concurrent writer and stale-live-after-ended regression tests.
 
-## Medium
+### 9. Realtime Delivery Needs Recovery, Payload Limits, And Deployment Smoke Tests
 
-### 4. API Route Boundary Standardization
+- Finding: API writes publish realtime events best-effort, HTTP payloads are capped but WebSocket frames are not, API/Pages deploys do not fully validate realtime env, and current smoke checks only hit `/healthz`.
+- Evidence: `apps/api/src/lib/realtime.ts`, `apps/api/src/features/sales/handlers.ts`, `apps/api/src/features/sync/pushHandler.ts`, `apps/realtime/src/realtime-gateway.ts`, `.github/workflows/deploy-api-prod.yml`, `.github/workflows/deploy-pages.yml`, `src/app-core/methods/ui/workspace/workspace-realtime-state.ts`.
+- Risk: clients can stay stale after dropped publishes, unauthenticated oversized WebSocket messages can stress memory/CPU, and prod can deploy with broken publish/subscribe wiring.
+- Next: add retry/outbox or client refresh-on-reconnect/version-mismatch recovery; set WebSocket `maxPayload` and close oversized frames with `1009`; validate `REALTIME_*` and `VITE_REALTIME_SOCKET_URL` in deployment workflows; add smoke tests for token minting plus publish/subscribe.
 
-- Finding: API feature handlers are thin enough to work, but sales, whatnot, and workspace routes still repeat request parsing, telemetry, response shaping, and error translation patterns.
-- Scope: `apps/api/src/features/sales/handlers.ts`, `apps/api/src/features/whatnot/handlers.ts`, `apps/api/src/features/workspaces/*`, shared HTTP/response helpers.
-- Acceptance: introduce focused route-boundary helpers for validation, actor/session extraction, telemetry context, and domain error mapping without moving business behavior back into function entry points.
+### 10. Release And CI Filters Must Cover All Shipping Entry Points
 
-## Low
-
-### 5. Test Suite Organization
-
-- Finding: several frontend and API tests are very large, which makes failures hard to triage and encourages unrelated setup reuse.
-- Scope: large suites such as calculations, wheel/game config/session, singles config, sales methods, sync service, and API workspace/public-session tests.
-- Acceptance: split large suites by feature behavior as nearby code changes require it, move shared fixture builders into explicit helpers, and keep exact-output fixture tests authoritative where they represent real business contracts.
-
-### 6. Generated Artifact And Contract Hygiene
-
-- Finding: generated shared contract copies, build output, and coverage artifacts can still distract from source changes during broad refactors.
-- Scope: `shared/*`, `apps/api/src/shared/*`, `apps/*/dist`, coverage/build artifacts, contract-generation scripts.
-- Acceptance: document the regeneration path, keep generated outputs out of normal review unless intentionally refreshed, and make version/compiler drift visible before release work.
+- Finding: `release:play` runs web verification but not API/realtime verification, and CI/Pages path filters omit `spectator.html` even though Vite builds it as a shipping entry.
+- Evidence: `package.json`, `scripts/release-google-play.ps1`, `docs/google-play-release.md`, `vite.config.ts`, `spectator.html`, `.github/workflows/ci.yml`, `.github/workflows/deploy-pages.yml`.
+- Risk: Android releases can ship while API/realtime contracts are broken, and spectator-only entry changes can miss CI or deployment.
+- Next: make `release:play` run `npm run verify:all` by default or require an explicit skip; add a dry-run preflight test for the release script; add `spectator.html` to CI and Pages path filters or simplify filters for root HTML entries.
