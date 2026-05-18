@@ -1,13 +1,4 @@
-import type { GameSpectatorHeatLevel, GameSpectatorSnapshot } from "../../types/app.ts";
-
-export function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
+import type { GameSpectatorHeatLevel, GameSpectatorSnapshot } from "../types/app.ts";
 
 export function formatRelativeTime(timestamp: number): string {
   const elapsedMs = Math.max(0, Date.now() - timestamp);
@@ -35,7 +26,7 @@ export function formatHeatLabel(heat: GameSpectatorHeatLevel | null): string {
   if (heat === "medium") return "medium";
   if (heat === "low") return "low";
   if (heat === "very_low") return "very low";
-  return "—";
+  return "-";
 }
 
 export function formatStatusLabel(snapshot: GameSpectatorSnapshot, isGridGame: boolean): string {
@@ -49,22 +40,11 @@ export function formatStatusTone(snapshot: GameSpectatorSnapshot): "ended" | "sp
   return snapshot.isSpinning ? "spinning" : "waiting";
 }
 
-export function getSpectatorOutcomeSlots(snapshot: GameSpectatorSnapshot): GameSpectatorSnapshot["outcomeSlots"] {
-  return Array.isArray(snapshot.outcomeSlots) ? snapshot.outcomeSlots : [];
+export function formatBracketParticipant(value: string | null | undefined): string {
+  return String(value || "").trim() || "Waiting";
 }
 
-export function getSpectatorBoardCells(snapshot: GameSpectatorSnapshot): GameSpectatorSnapshot["boardCells"] {
-  return Array.isArray(snapshot.boardCells) ? snapshot.boardCells : [];
-}
-
-export function renderEmpty(title: string, body: string): string {
-  return `
-    <div class="spectator-shell">
-      <section class="spectator-card spectator-empty">
-        <div class="spectator-kicker">Game Spectator</div>
-        <h1 class="spectator-empty__title">${escapeHtml(title)}</h1>
-        <p class="spectator-empty__body">${escapeHtml(body)}</p>
-      </section>
-    </div>
-  `;
+export function formatBracketRoll(value: number | null | undefined): string {
+  if (value == null) return "--";
+  return Number.isFinite(Number(value)) ? String(value) : "--";
 }

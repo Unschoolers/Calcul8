@@ -8,22 +8,24 @@ const {
   fetchGameSpectatorSnapshotMock,
   getSpectatorBoardCellsMock,
   getSpectatorOutcomeSlotsMock,
-  renderSpectatorStateMock,
   renderWheelSurfaceMock,
+  mountSpectatorAppMock,
   resolveApiBaseUrlMock,
   resolveSpectatorRealtimeMessageMock,
-  shouldApplySpectatorReadyStateMock
+  shouldApplySpectatorReadyStateMock,
+  spectatorAppSetStateMock
 } = vi.hoisted(() => ({
   ensureWheelCanvasSizeMock: vi.fn(),
   fetchGameSpectatorRealtimeSubscribeTokenMock: vi.fn(),
   fetchGameSpectatorSnapshotMock: vi.fn(),
   getSpectatorBoardCellsMock: vi.fn(),
   getSpectatorOutcomeSlotsMock: vi.fn(),
-  renderSpectatorStateMock: vi.fn(),
   renderWheelSurfaceMock: vi.fn(),
+  mountSpectatorAppMock: vi.fn(),
   resolveApiBaseUrlMock: vi.fn(),
   resolveSpectatorRealtimeMessageMock: vi.fn(),
-  shouldApplySpectatorReadyStateMock: vi.fn()
+  shouldApplySpectatorReadyStateMock: vi.fn(),
+  spectatorAppSetStateMock: vi.fn()
 }));
 
 vi.mock("../src/app-core/methods/ui/common/shared.ts", () => ({
@@ -58,14 +60,13 @@ vi.mock("../src/components/windows/game/stage/wheelCanvasRender.ts", () => ({
   renderWheelSurface: renderWheelSurfaceMock
 }));
 
-vi.mock("../src/spectator/render/spectatorRenderShared.ts", () => ({
+vi.mock("../src/spectator/spectatorSnapshot.ts", () => ({
   getSpectatorBoardCells: getSpectatorBoardCellsMock,
   getSpectatorOutcomeSlots: getSpectatorOutcomeSlotsMock
 }));
 
-vi.mock("../src/spectator/render/spectatorRender.ts", () => ({
-  SPECTATOR_WHEEL_CANVAS_ID: "spectator-wheel-canvas",
-  renderSpectatorState: renderSpectatorStateMock
+vi.mock("../src/spectator/spectatorAppMount.ts", () => ({
+  mountSpectatorApp: mountSpectatorAppMock
 }));
 
 vi.mock("../src/spectator/realtime/spectatorRealtimeClient.ts", () => ({
@@ -145,8 +146,8 @@ async function flushMicrotasks(): Promise<void> {
   await Promise.resolve();
 }
 
-function stubBrowser(search: string): { appElement: { innerHTML: string }; beforeUnload: Array<() => void> } {
-  const appElement = { innerHTML: "" };
+function stubBrowser(search: string): { appElement: Record<string, never>; beforeUnload: Array<() => void> } {
+  const appElement = {};
   const centerIcon = { style: { transform: "" } };
   const canvasContext = {
     setTransform: vi.fn(),
@@ -211,7 +212,10 @@ beforeEach(() => {
   getSpectatorOutcomeSlotsMock.mockReturnValue([
     { name: "Prize", color: "#d4af37", tier: "hit", isChase: false }
   ]);
-  renderSpectatorStateMock.mockImplementation((state: { status: string }) => `<main data-status="${state.status}"></main>`);
+  mountSpectatorAppMock.mockReturnValue({
+    setState: spectatorAppSetStateMock,
+    getState: vi.fn(() => ({ status: "loading" }))
+  });
   resolveSpectatorRealtimeMessageMock.mockReturnValue({ action: "ignore" });
 });
 
@@ -220,13 +224,13 @@ afterEach(() => {
 });
 
 test("spectator-main renders not found when the URL has no public session", async () => {
-  const { appElement } = stubBrowser("");
+  stubBrowser("");
 
   await importSpectatorMain();
 
   assert.equal(fetchGameSpectatorSnapshotMock.mock.calls.length, 0);
-  assert.equal(renderSpectatorStateMock.mock.calls.at(-1)?.[0]?.status, "not_found");
-  assert.match(appElement.innerHTML, /data-status="not_found"/);
+  assert.equal(mountSpectatorAppMock.mock.calls[0]?.[0], "#spectator-app");
+  assert.equal(spectatorAppSetStateMock.mock.calls.at(-1)?.[0]?.status, "not_found");
   assert.equal(FakeWebSocket.instances.length, 0);
 });
 
@@ -274,7 +278,7 @@ test("spectator-main loads a ready snapshot, subscribes to realtime, and closes 
     })
   });
 
-  assert.equal(renderSpectatorStateMock.mock.calls.at(-1)?.[0]?.snapshot.gameName, "Ended Game");
+  assert.equal(spectatorAppSetStateMock.mock.calls.at(-1)?.[0]?.snapshot.gameName, "Ended Game");
   assert.deepEqual(socket.closeCalls.at(-1), {
     code: 1000,
     reason: "spectator-refresh"
@@ -303,7 +307,7 @@ test("spectator-main refreshes the current view on realtime refresh messages and
   await flushMicrotasks();
 
   assert.equal(fetchGameSpectatorSnapshotMock.mock.calls.length, 2);
-  assert.equal(renderSpectatorStateMock.mock.calls.at(-1)?.[0]?.snapshot.gameName, "Refreshed Game");
+  assert.equal(spectatorAppSetStateMock.mock.calls.at(-1)?.[0]?.snapshot.gameName, "Refreshed Game");
 
   socket.emit("error");
   assert.equal((window.setTimeout as ReturnType<typeof vi.fn>).mock.calls.length, 1);
@@ -315,7 +319,7 @@ test("spectator-main renders error states and handles missing realtime sessions"
 
   await importSpectatorMain();
 
-  assert.equal(renderSpectatorStateMock.mock.calls.at(-1)?.[0]?.status, "error");
+  assert.equal(spectatorAppSetStateMock.mock.calls.at(-1)?.[0]?.status, "error");
 
   vi.unstubAllGlobals();
   stubBrowser("?session=abc123");
@@ -328,5 +332,5 @@ test("spectator-main renders error states and handles missing realtime sessions"
   await importSpectatorMain();
   await flushMicrotasks();
 
-  assert.equal(renderSpectatorStateMock.mock.calls.at(-1)?.[0]?.status, "not_found");
+  assert.equal(spectatorAppSetStateMock.mock.calls.at(-1)?.[0]?.status, "not_found");
 });

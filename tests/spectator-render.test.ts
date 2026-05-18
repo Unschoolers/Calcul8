@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
+import { createSSRApp } from "vue";
+import { renderToString } from "@vue/server-renderer";
 import { test } from "vitest";
-import { renderSpectatorState } from "../src/spectator/render/spectatorRender.ts";
+import SpectatorApp from "../src/spectator/SpectatorApp.vue";
+import type { SpectatorPageState } from "../src/spectator/spectatorTypes.ts";
 import type { GameSpectatorSnapshot } from "../src/types/app.ts";
 
 function makeSnapshot(overrides: Partial<GameSpectatorSnapshot> = {}): GameSpectatorSnapshot {
@@ -39,8 +42,12 @@ function countMatches(html: string, pattern: RegExp): number {
   return [...html.matchAll(pattern)].length;
 }
 
-test("renderSpectatorState renders bracket duel and tree with dice tiles", () => {
-  const html = renderSpectatorState({
+async function renderSpectatorAppHtml(state: SpectatorPageState): Promise<string> {
+  return renderToString(createSSRApp(SpectatorApp, { state }));
+}
+
+test("SpectatorApp renders bracket duel and tree with dice tiles", async () => {
+  const html = await renderSpectatorAppHtml({
     status: "ready",
     publicSessionId: "abc123",
     snapshot: makeSnapshot({
@@ -74,14 +81,15 @@ test("renderSpectatorState renders bracket duel and tree with dice tiles", () =>
   });
 
   assert.match(html, /class="spectator-kicker">Live Bracket Spectator</);
+  assert.doesNotMatch(htmlText(html), /Bracket Night/);
   assert.equal(countMatches(html, /class="spectator-bracket-dice-tile"/g), 2);
   assert.match(htmlText(html), /Alex/);
   assert.match(htmlText(html), /Bri/);
   assert.match(htmlText(html), /Top Prize/);
 });
 
-test("renderSpectatorState renders grid cells and reset animation state", () => {
-  const html = renderSpectatorState({
+test("SpectatorApp renders grid cells and reset animation state", async () => {
+  const html = await renderSpectatorAppHtml({
     status: "ready",
     publicSessionId: "abc123",
     snapshot: makeSnapshot({
@@ -106,8 +114,8 @@ test("renderSpectatorState renders grid cells and reset animation state", () => 
   assert.match(html, /spectator-grid-cell--highlighted[\s\S]*spectator-grid-cell__number">2</);
 });
 
-test("renderSpectatorState renders wheel canvas and proof link", () => {
-  const html = renderSpectatorState({
+test("SpectatorApp renders wheel canvas and proof link", async () => {
+  const html = await renderSpectatorAppHtml({
     status: "ready",
     publicSessionId: "abc123",
     snapshot: makeSnapshot({

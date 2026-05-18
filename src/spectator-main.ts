@@ -16,19 +16,18 @@ import {
 import {
   getSpectatorBoardCells,
   getSpectatorOutcomeSlots
-} from "./spectator/render/spectatorRenderShared.ts";
-import {
-  renderSpectatorState,
-  SPECTATOR_WHEEL_CANVAS_ID,
-  type SpectatorPageState
-} from "./spectator/render/spectatorRender.ts";
+} from "./spectator/spectatorSnapshot.ts";
+import { mountSpectatorApp } from "./spectator/spectatorAppMount.ts";
+import { SPECTATOR_WHEEL_CANVAS_ID, type SpectatorPageState } from "./spectator/spectatorTypes.ts";
 import { resolveSpectatorRealtimeMessage } from "./spectator/realtime/spectatorRealtimeClient.ts";
 import "./styles/spectator.css";
 import type { GameSpectatorSnapshot } from "./types/app.ts";
 
 const REALTIME_RECONNECT_BACKOFF_MS = [1_000, 3_000, 10_000, 30_000] as const;
 
-const appElement = document.getElementById("spectator-app");
+const spectatorApp = document.getElementById("spectator-app")
+  ? mountSpectatorApp("#spectator-app")
+  : null;
 let activeSocket: WebSocket | null = null;
 let reconnectTimeoutId: number | null = null;
 let reconnectAttempt = 0;
@@ -46,13 +45,17 @@ function setState(state: SpectatorPageState): void {
   if (state.status === "ready" && !shouldApplySpectatorReadyState(lastReadyState, state)) {
     return;
   }
-  if (!appElement) return;
+  if (!spectatorApp) return;
   stopSpectatorWheelAnimation();
-  appElement.innerHTML = renderSpectatorState(state);
+  spectatorApp.setState(state);
   if (state.status === "ready") {
     document.title = `${state.snapshot.gameName} • Spectator`;
     lastReadyState = state;
-    startSpectatorWheelAnimation(state.snapshot);
+    void Promise.resolve().then(() => {
+      if (lastReadyState === state) {
+        startSpectatorWheelAnimation(state.snapshot);
+      }
+    });
   } else if (state.status !== "loading") {
     lastReadyState = null;
   }
