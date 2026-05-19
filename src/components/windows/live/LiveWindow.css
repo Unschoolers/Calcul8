@@ -1,6 +1,8 @@
 .live-card {
-  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  border-radius: 16px !important;
+  transition:
+    transform var(--app-motion-slow) var(--app-ease-emphasized),
+    box-shadow var(--app-motion-slow) var(--app-ease-emphasized);
+  border-radius: var(--app-radius-card) !important;
 }
 
 .live-window-shell {
@@ -8,7 +10,7 @@
 }
 
 .live-pricing-grid {
-  width: min(100%, 1480px);
+  width: min(100%, var(--app-content-max-width-wide));
   margin: 0 auto;
 }
 
@@ -21,7 +23,7 @@
 }
 
 .live-singles-shell {
-  width: min(100%, 1120px);
+  width: min(100%, var(--app-content-max-width-narrow));
   margin: 0 auto;
 }
 
@@ -30,8 +32,8 @@
 }
 
 .live-pricing-card {
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08) !important;
-  transition: border-color 0.15s ease;
+  border: var(--app-stroke-hairline) solid var(--app-stroke-subtle) !important;
+  transition: border-color var(--app-motion-standard) ease;
   background:
     radial-gradient(120% 120% at 0% 0%, rgba(var(--v-theme-primary), 0.05), transparent 46%),
     linear-gradient(180deg, rgba(var(--v-theme-on-surface), 0.025), rgba(var(--v-theme-on-surface), 0.01)),
@@ -39,13 +41,13 @@
 }
 
 .live-pricing-card:hover {
-  border-color: rgba(var(--v-theme-on-surface), 0.12) !important;
+  border-color: var(--app-stroke-default) !important;
 }
 
 .live-pricing-card__body {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--app-space-2);
   height: 100%;
 }
 
@@ -53,7 +55,7 @@
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 8px;
+  gap: var(--app-space-2);
 }
 
 .live-pricing-card__identity {
@@ -68,7 +70,7 @@
 }
 
 .live-pricing-card__avatar {
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1px var(--app-stroke-inverse-subtle);
 }
 
 .live-pricing-card__identity-copy {
@@ -84,14 +86,14 @@
 }
 
 .live-pricing-card__label {
-  font-size: 0.9rem;
-  font-weight: 800;
-  letter-spacing: -0.01em;
+  font-size: var(--app-font-size-body);
+  font-weight: var(--app-font-weight-emphasis);
+  letter-spacing: var(--app-letter-spacing-none);
 }
 
 .live-pricing-card__helper {
   margin-top: 0.02rem;
-  font-size: 0.72rem;
+  font-size: var(--app-font-size-caption);
   line-height: 1.35;
   color: rgba(var(--v-theme-on-surface), 0.62);
 }
@@ -121,13 +123,13 @@
 
 .live-pricing-card__price {
   font-size: clamp(1.68rem, 2.35vw, 2rem);
-  font-weight: 900;
+  font-weight: var(--app-font-weight-display);
   line-height: 1;
   letter-spacing: -0.04em;
 }
 
 .live-pricing-card__profit-chip {
-  font-weight: 800;
+  font-weight: var(--app-font-weight-emphasis);
   font-size: 0.7rem;
   letter-spacing: 0.01em;
 }
@@ -149,11 +151,11 @@
 
 .live-pricing-card__decision-tile--success {
   padding: 0.9rem 1rem;
-  border-radius: 14px;
+  border-radius: var(--app-radius-card);
   background:
-    linear-gradient(180deg, rgba(52, 199, 89, 0.08), rgba(52, 199, 89, 0.03)),
+    linear-gradient(180deg, color-mix(in srgb, var(--app-status-success) 8%, transparent), color-mix(in srgb, var(--app-status-success) 3%, transparent)),
     rgba(var(--v-theme-surface), 0.52);
-  border: 1px solid rgba(52, 199, 89, 0.14);
+  border: var(--app-stroke-hairline) solid color-mix(in srgb, var(--app-status-success) 14%, transparent);
 }
 
 .live-pricing-card__status-head {
@@ -163,9 +165,9 @@
 }
 
 .live-pricing-card__status-title {
-  font-size: 0.9rem;
-  font-weight: 800;
-  letter-spacing: -0.01em;
+  font-size: var(--app-font-size-body);
+  font-weight: var(--app-font-weight-emphasis);
+  letter-spacing: var(--app-letter-spacing-none);
 }
 
 .live-pricing-card__status-body {
@@ -182,7 +184,7 @@
 
 .live-pricing-card__decision-title {
   font-size: 0.8rem;
-  font-weight: 800;
+  font-weight: var(--app-font-weight-emphasis);
   letter-spacing: -0.01em;
   color: rgba(var(--v-theme-on-surface), 0.82);
 }
@@ -196,19 +198,19 @@
 
 .live-pricing-card__decision-gap {
   font-size: 0.74rem;
-  font-weight: 800;
+  font-weight: var(--app-font-weight-emphasis);
   line-height: 1.2;
 }
 
 .live-pricing-card__decision-price {
   font-size: 1.22rem;
-  font-weight: 900;
+  font-weight: var(--app-font-weight-display);
   letter-spacing: -0.02em;
 }
 
 .live-pricing-card__decision-kicker {
   font-size: 0.68rem;
-  font-weight: 800;
+  font-weight: var(--app-font-weight-emphasis);
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: rgba(var(--v-theme-on-surface), 0.5);
@@ -221,7 +223,7 @@
   gap: 12px;
   padding-top: 5px;
   margin-top: 2px;
-  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border-top: var(--app-stroke-hairline) solid var(--app-stroke-subtle);
 }
 
 .live-pricing-card__decision-outcome-values {
@@ -232,13 +234,13 @@
 
 .live-pricing-card__decision-outcome-profit {
   font-size: 1rem;
-  font-weight: 800;
+  font-weight: var(--app-font-weight-emphasis);
   letter-spacing: -0.01em;
 }
 
 .live-pricing-card__decision-outcome-percent {
   font-size: 0.76rem;
-  font-weight: 700;
+  font-weight: var(--app-font-weight-strong);
   color: rgba(var(--v-theme-on-surface), 0.58);
 }
 
@@ -267,9 +269,9 @@
   flex-direction: column;
   gap: 3px;
   padding: 7px 10px;
-  border-radius: 14px;
+  border-radius: var(--app-radius-card);
   background: rgba(var(--v-theme-surface), 0.42);
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.05);
+  border: var(--app-stroke-hairline) solid var(--app-stroke-subtle);
 }
 
 .live-pricing-card__metric-tile--needed {
@@ -277,12 +279,12 @@
     linear-gradient(180deg, rgba(var(--v-theme-on-surface), 0.045), rgba(var(--v-theme-on-surface), 0.02)),
     rgba(var(--v-theme-surface), 0.56);
   border-color: rgba(var(--v-theme-on-surface), 0.08);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
+  box-shadow: var(--app-inset-highlight-subtle);
 }
 
 .live-pricing-card__metric-label {
   font-size: 0.7rem;
-  font-weight: 800;
+  font-weight: var(--app-font-weight-emphasis);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: rgba(var(--v-theme-on-surface), 0.5);
@@ -291,7 +293,7 @@
 .live-pricing-card__metric-value,
 .live-pricing-card__scenario-profit {
   font-size: 1.05rem;
-  font-weight: 800;
+  font-weight: var(--app-font-weight-emphasis);
   letter-spacing: -0.01em;
 }
 
@@ -326,24 +328,24 @@
   align-items: center;
   min-height: 1.55rem;
   padding: 0.14rem 0.5rem;
-  border-radius: 999px;
+  border-radius: var(--app-radius-pill);
   background: rgba(var(--v-theme-on-surface), 0.045);
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.05);
+  border: var(--app-stroke-hairline) solid var(--app-stroke-subtle);
   font-size: 0.68rem;
-  font-weight: 800;
+  font-weight: var(--app-font-weight-emphasis);
   letter-spacing: 0.03em;
   text-transform: uppercase;
 }
 
 .live-pricing-card__scenario-price {
   font-size: 0.78rem;
-  font-weight: 700;
+  font-weight: var(--app-font-weight-strong);
   color: rgba(var(--v-theme-on-surface), 0.58);
 }
 
 .live-pricing-card__scenario-percent {
   font-size: 0.72rem;
-  font-weight: 700;
+  font-weight: var(--app-font-weight-strong);
   color: rgba(var(--v-theme-on-surface), 0.58);
 }
 

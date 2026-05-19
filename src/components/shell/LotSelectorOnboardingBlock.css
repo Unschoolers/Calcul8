@@ -3,12 +3,12 @@
   align-items: center;
   min-height: 0 !important;
   padding: 0.8rem 0.95rem !important;
-  border: 1px solid rgba(var(--v-theme-warning), 0.18);
-  border-radius: 18px !important;
+  border: var(--app-stroke-hairline) solid color-mix(in srgb, var(--app-status-warning) 18%, transparent);
+  border-radius: var(--app-radius-card) !important;
   background:
     linear-gradient(135deg, rgba(var(--v-theme-warning), 0.14), rgba(var(--v-theme-warning), 0.06)) !important;
   color: rgba(var(--v-theme-on-surface), 0.9) !important;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--app-shadow-lg);
 }
 
 .app-empty-state-alert .v-alert__content {
@@ -27,12 +27,12 @@
 }
 
 .app-empty-state-alert__label {
-  font-weight: 800;
+  font-weight: var(--app-font-weight-emphasis);
   color: rgb(var(--v-theme-warning));
 }
 
 .onboarding-intro-card {
-  border: 1px solid rgba(var(--v-theme-secondary), 0.18);
+  border: var(--app-stroke-hairline) solid var(--app-stroke-accent-subtle);
   background:
     radial-gradient(80% 60% at 15% 0%, rgba(var(--v-theme-secondary), 0.16), transparent 60%),
     linear-gradient(180deg, rgba(var(--v-theme-surface), 0.98), rgba(var(--v-theme-surface), 0.94));
@@ -41,22 +41,22 @@
 
 .onboarding-intro-card__content {
   display: grid;
-  gap: 0.6rem;
-  padding: 1rem 1.05rem 1.05rem;
+  gap: var(--app-space-3);
+  padding: var(--app-space-4) 1.05rem 1.05rem;
 }
 
 .onboarding-intro-card__eyebrow {
-  font-size: 0.76rem;
-  font-weight: 800;
-  letter-spacing: 0.12em;
+  font-size: var(--app-font-size-meta);
+  font-weight: var(--app-font-weight-emphasis);
+  letter-spacing: var(--app-letter-spacing-overline);
   text-transform: uppercase;
   color: rgb(var(--v-theme-secondary));
 }
 
 .onboarding-intro-card__title {
-  font-size: 1.12rem;
+  font-size: var(--app-font-size-title);
   line-height: 1.2;
-  font-weight: 800;
+  font-weight: var(--app-font-weight-emphasis);
   color: rgb(var(--v-theme-on-surface));
 }
 
@@ -73,9 +73,9 @@
 
 .onboarding-intro-card__summary {
   padding: 0.8rem 0.9rem;
-  border-radius: 14px;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  background: rgba(var(--v-theme-on-surface), 0.035);
+  border-radius: var(--app-radius-card);
+  border: var(--app-stroke-hairline) solid var(--app-stroke-subtle);
+  background: var(--app-surface-muted);
   color: rgba(var(--v-theme-on-surface), 0.78);
   line-height: 1.4;
 }
@@ -128,7 +128,7 @@
 }
 
 .lot-selector-selection__subtitle {
-  font-size: 0.72rem;
+  font-size: var(--app-font-size-caption);
   color: rgba(var(--v-theme-on-surface), 0.62);
   white-space: nowrap;
   overflow: hidden;
@@ -149,7 +149,7 @@
   position: absolute;
   right: -0.1rem;
   bottom: -0.1rem;
-  border-radius: 999px;
+  border-radius: var(--app-radius-pill);
   background: rgb(var(--v-theme-surface));
 }
 
@@ -162,12 +162,10 @@
 }
 
 .v-theme--unionArenaLight .preset-card {
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.18);
+  border: var(--app-stroke-hairline) solid var(--app-stroke-strong);
   background:
     linear-gradient(180deg, rgba(var(--v-theme-surface-bright), 0.985), rgba(var(--v-theme-surface), 0.955));
-  box-shadow:
-    0 16px 34px rgba(44, 36, 28, 0.11),
-    0 3px 10px rgba(44, 36, 28, 0.07);
+  box-shadow: var(--app-shadow-lg);
 }
 
 .v-theme--unionArenaLight .lot-selector-selection__subtitle {
@@ -177,7 +175,7 @@
 @media (max-width: 600px) {
   .app-empty-state-alert {
     padding: 0.72rem 0.82rem !important;
-    border-radius: 16px !important;
+    border-radius: var(--app-radius-card) !important;
   }
 
   .app-empty-state-alert .v-alert__content {
@@ -195,7 +193,7 @@
 
   .preset-card {
     margin-bottom: 1rem !important;
-    border-radius: 18px !important;
+    border-radius: var(--app-radius-card) !important;
   }
 
   .preset-card .v-card-text {
@@ -239,7 +237,7 @@
     padding: 0 !important;
     flex: 0 0 34px;
     aspect-ratio: 1 / 1;
-    border-radius: 999px !important;
+    border-radius: var(--app-radius-pill) !important;
   }
 
   .lot-selector-actions .v-btn .v-icon {

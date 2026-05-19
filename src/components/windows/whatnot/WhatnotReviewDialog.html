@@ -2,11 +2,11 @@
   :model-value="showWhatnotReviewDialog"
   max-width="980"
   scrollable
-  content-class="whatnot-review-dialog"
+  content-class="whatnot-review-dialog app-mobile-fullscreen-dialog"
   @update:model-value="(value) => { if (!value) closeWhatnotReviewDialog(); }"
 >
-  <v-card class="whatnot-review-card">
-    <v-card-title class="d-flex align-center justify-space-between">
+  <v-card class="whatnot-review-card app-dialog-card">
+    <v-card-title class="app-dialog-title d-flex align-center justify-space-between">
       <div>
         <v-icon class="mr-2">mdi-shopping</v-icon>
         {{ t('whatnotReviewTitle') }}
@@ -20,8 +20,8 @@
       ></v-btn>
     </v-card-title>
     <v-divider></v-divider>
-    <v-card-text class="whatnot-review-content">
-      <div class="whatnot-review-summary mb-4">
+    <v-card-text class="whatnot-review-content app-dialog-content">
+      <div class="whatnot-review-summary app-summary-panel mb-4">
         <div class="text-medium-emphasis">
           {{ t('whatnotReviewSummaryIntro', { scope: activeScopeType === 'workspace' ? currentWorkspaceName : t('personalLabel') }) }}
         </div>
@@ -97,7 +97,7 @@
           <v-card
             v-for="row in group.rows"
             :key="row.rowId"
-            :class="['mb-3', 'whatnot-review-row', { 'whatnot-review-row--skipped': row.skipImport }]"
+            :class="['mb-3', 'whatnot-review-row', 'app-section-card', { 'whatnot-review-row--skipped': row.skipImport }]"
             variant="outlined"
           >
           <v-card-text>
@@ -298,7 +298,7 @@
         </div>
       </div>
     </v-card-text>
-    <v-card-actions class="justify-space-between">
+    <v-card-actions class="app-dialog-actions justify-space-between">
       <div class="d-flex align-center ga-2">
         <v-btn
           v-if="whatnotReviewRows.length > 0"

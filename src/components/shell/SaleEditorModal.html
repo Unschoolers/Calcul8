@@ -1,7 +1,7 @@
 <v-dialog v-model="showAddSaleModal" max-width="560" class="sale-editor-dialog" scrollable
   :fullscreen="$vuetify?.display?.smAndDown" transition="dialog-bottom-transition">
-  <v-card class="sale-editor-card">
-    <v-card-title class="sale-editor-title">
+  <v-card class="sale-editor-card app-dialog-card">
+    <v-card-title class="sale-editor-title app-dialog-title">
       <div class="d-flex align-center">
         <v-icon class="mr-2">mdi-cart-plus</v-icon>
         <div>
@@ -12,7 +12,7 @@
         </div>
       </div>
     </v-card-title>
-    <v-card-text class="sale-editor-content">
+    <v-card-text class="sale-editor-content app-dialog-content">
       <v-alert v-if="hasLotSelected && !hasProAccess" type="info" variant="tonal" density="compact"
         icon="mdi-lock" class="mb-3">
         {{ t('saleEditorLockedNotice') }}
@@ -216,7 +216,7 @@
       </div>
     </v-card-text>
 
-    <v-card-actions class="sale-editor-actions">
+    <v-card-actions class="sale-editor-actions app-dialog-actions">
       <v-spacer></v-spacer>
       <v-btn text @click="cancelSale">{{ t('commonCancel') }}</v-btn>
       <v-btn color="primary" @click="saveSale" :disabled="!canUsePaidActions">{{ editingSale ? t('saleEditorUpdateAction') : t('saleEditorAddAction')

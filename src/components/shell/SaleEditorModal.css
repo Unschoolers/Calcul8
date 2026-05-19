@@ -1,5 +1,5 @@
 .sale-editor-card {
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border: var(--app-stroke-hairline) solid var(--app-stroke-subtle);
   background:
     radial-gradient(60% 120% at 0% 0%, rgba(var(--v-theme-primary), 0.08), transparent 60%),
     rgba(var(--v-theme-surface), 0.96);
@@ -11,7 +11,7 @@
 .sale-editor-title {
   padding-top: 0.85rem;
   padding-bottom: 0.7rem;
-  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border-bottom: var(--app-stroke-hairline) solid var(--app-stroke-subtle);
 }
 
 .sale-editor-content {
@@ -24,20 +24,20 @@
 
 .sale-editor-form {
   display: grid;
-  gap: 0.65rem;
+  gap: var(--app-space-3);
 }
 
 .sale-editor-section {
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  border-radius: 12px;
-  padding: 0.65rem;
-  background: rgba(var(--v-theme-on-surface), 0.02);
+  border: var(--app-stroke-hairline) solid var(--app-stroke-subtle);
+  border-radius: var(--app-radius-card);
+  padding: var(--app-space-3);
+  background: var(--app-surface-quiet);
 }
 
 .sale-editor-section-label {
-  font-size: 0.72rem;
-  letter-spacing: 0.04em;
-  font-weight: 700;
+  font-size: var(--app-font-size-caption);
+  letter-spacing: var(--app-letter-spacing-ui);
+  font-weight: var(--app-font-weight-strong);
   text-transform: uppercase;
   color: rgba(var(--v-theme-on-surface), 0.62);
   margin-bottom: 0.4rem;
@@ -53,9 +53,9 @@
 }
 
 .sale-editor-singles-line {
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  border-radius: 9px;
-  background: rgba(var(--v-theme-on-surface), 0.02);
+  border: var(--app-stroke-hairline) solid var(--app-stroke-subtle);
+  border-radius: var(--app-radius-card);
+  background: var(--app-surface-quiet);
   padding: 0.4rem 0.45rem 0.35rem;
 }
 
@@ -87,8 +87,8 @@
   width: 46px;
   height: 64px;
   object-fit: contain;
-  border-radius: 5px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  border-radius: var(--app-radius-md);
+  box-shadow: var(--app-shadow-sm);
   display: block;
 }
 
@@ -105,7 +105,7 @@
   width: 30px;
   height: 42px;
   object-fit: contain;
-  border-radius: 3px;
+  border-radius: var(--app-radius-xs);
   flex-shrink: 0;
   margin-right: 0.5rem;
 }
@@ -123,11 +123,11 @@
 }
 
 .sale-editor-singles-profit-pill {
-  border-radius: 999px;
+  border-radius: var(--app-radius-pill);
   padding: 0.16rem 0.5rem;
   white-space: nowrap;
   background: rgba(var(--v-theme-on-surface), 0.06);
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border: var(--app-stroke-hairline) solid var(--app-stroke-subtle);
 }
 
 .sale-editor-singles-footer {
@@ -145,17 +145,17 @@
 
 .sale-editor-singles-add-btn {
   min-width: auto;
-  font-weight: 700;
+  font-weight: var(--app-font-weight-strong);
   letter-spacing: 0.01em;
   text-transform: none;
-  border-radius: 999px;
+  border-radius: var(--app-radius-pill);
   padding-inline: 0.65rem;
 }
 
 .sale-editor-singles-total {
   margin-top: 0;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
-  border-radius: 10px;
+  border: var(--app-stroke-hairline) solid var(--app-stroke-default);
+  border-radius: var(--app-radius-card);
   padding: 0.4rem 0.5rem;
   background: rgba(var(--v-theme-on-surface), 0.03);
   line-height: 1.25;
@@ -174,8 +174,8 @@
   align-items: center;
   min-height: 1.65rem;
   padding: 0.14rem 0.5rem;
-  border-radius: 999px;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border-radius: var(--app-radius-pill);
+  border: var(--app-stroke-hairline) solid var(--app-stroke-subtle);
   background: rgba(var(--v-theme-on-surface), 0.045);
 }
 
@@ -194,12 +194,12 @@
 }
 
 .sale-editor-actions {
-  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border-top: var(--app-stroke-hairline) solid var(--app-stroke-subtle);
   padding-top: 0.55rem;
   padding-bottom: 0.55rem;
   position: sticky;
   bottom: 0;
-  background: rgba(var(--v-theme-surface), 0.98);
+  background: var(--app-surface-sticky);
   z-index: 2;
 }
 

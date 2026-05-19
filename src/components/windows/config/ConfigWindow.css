@@ -1,13 +1,11 @@
 .config-card {
   position: relative;
   overflow: hidden;
-  border-radius: 14px !important;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.14);
-  background: rgba(var(--v-theme-surface), 0.96);
+  border-radius: var(--app-radius-card) !important;
+  border: var(--app-stroke-hairline) solid var(--app-stroke-default);
+  background: var(--app-surface-raised);
   backdrop-filter: blur(4px);
-  box-shadow:
-    0 12px 26px rgba(19, 28, 45, 0.08),
-    0 2px 8px rgba(19, 28, 45, 0.06);
+  box-shadow: var(--app-shadow-md);
 }
 
 .config-card:not(.config-summary-hero)::before {
@@ -19,20 +17,16 @@
 }
 
 .v-theme--unionArenaDark .config-card {
-  border-color: rgba(var(--v-theme-on-surface), 0.22);
-  background: rgba(var(--v-theme-surface), 0.94);
-  box-shadow:
-    0 14px 30px rgba(0, 0, 0, 0.34),
-    0 2px 10px rgba(0, 0, 0, 0.24);
+  border-color: var(--app-stroke-strong);
+  background: var(--app-surface-raised);
+  box-shadow: var(--app-shadow-lg);
 }
 
 .v-theme--unionArenaLight .config-card {
-  border-color: rgba(var(--v-theme-on-surface), 0.22);
+  border-color: var(--app-stroke-strong);
   background:
     linear-gradient(180deg, rgba(var(--v-theme-surface-bright), 0.985), rgba(var(--v-theme-surface), 0.965));
-  box-shadow:
-    0 18px 38px rgba(44, 36, 28, 0.12),
-    0 4px 12px rgba(44, 36, 28, 0.08);
+  box-shadow: var(--app-shadow-lg);
 }
 
 .config-card .v-card-title {
@@ -41,9 +35,9 @@
   background: transparent;
   border-bottom: 0;
   color: rgba(var(--v-theme-secondary), 0.96);
-  font-size: 0.8rem !important;
-  font-weight: 800;
-  letter-spacing: 0.08em;
+  font-size: var(--app-font-size-body-sm) !important;
+  font-weight: var(--app-font-weight-emphasis);
+  letter-spacing: var(--app-letter-spacing-section);
   line-height: 1.2;
   text-transform: uppercase;
 }
@@ -97,14 +91,14 @@
   min-width: 0;
   max-width: 100%;
   overflow: hidden;
-  border-radius: 14px !important;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.14);
-  background: rgba(var(--v-theme-surface), 0.98);
+  border-radius: var(--app-radius-card) !important;
+  border: var(--app-stroke-hairline) solid var(--app-stroke-default);
+  background: var(--app-surface-overlay);
 }
 
 .v-theme--unionArenaDark .fee-profile-popover {
-  border-color: rgba(var(--v-theme-on-surface), 0.22);
-  background: rgba(var(--v-theme-surface), 0.96);
+  border-color: var(--app-stroke-strong);
+  background: var(--app-surface-overlay);
 }
 
 .v-theme--unionArenaLight .fee-profile-popover {
@@ -118,9 +112,9 @@
   background: transparent !important;
   border-bottom: 0 !important;
   font-size: 0.78rem !important;
-  font-weight: 800;
+  font-weight: var(--app-font-weight-emphasis);
   line-height: 1.2;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--app-letter-spacing-section);
   text-transform: uppercase;
   color: rgba(var(--v-theme-secondary), 0.96);
 }
@@ -154,7 +148,7 @@
   overflow-wrap: anywhere;
   font-size: 0.82rem;
   line-height: 1.2;
-  font-weight: 800;
+  font-weight: var(--app-font-weight-emphasis);
   color: rgba(var(--v-theme-on-surface), 0.95);
 }
 
@@ -170,7 +164,7 @@
 }
 
 .segment-toggle .v-btn {
-  border-radius: 10px !important;
+  border-radius: var(--app-radius-lg) !important;
   text-transform: none;
   letter-spacing: 0.01em;
   min-height: 36px !important;
@@ -189,7 +183,7 @@
 }
 
 .pill-toggle .v-btn {
-  border-radius: 999px !important;
+  border-radius: var(--app-radius-pill) !important;
   text-transform: none;
   font-weight: 600;
   letter-spacing: 0.01em;
@@ -203,7 +197,7 @@
 }
 
 .purchase-summary-card {
-  border-radius: 14px !important;
+  border-radius: var(--app-radius-card) !important;
 }
 
 .config-summary-hero {
@@ -238,9 +232,9 @@
 .config-summary-hero__eyebrow {
   font-size: 0.8rem;
   line-height: 1.2;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--app-letter-spacing-section);
   text-transform: uppercase;
-  font-weight: 800;
+  font-weight: var(--app-font-weight-emphasis);
   color: rgba(var(--v-theme-secondary), 0.96);
 }
 
@@ -259,7 +253,7 @@
 .config-summary-hero__value {
   font-size: clamp(2rem, 4vw, 2.9rem);
   line-height: 0.96;
-  font-weight: 900;
+  font-weight: var(--app-font-weight-display);
   letter-spacing: -0.035em;
   color: rgb(var(--v-theme-on-surface));
 }
@@ -281,9 +275,9 @@
 .config-summary-pill {
   min-width: 110px;
   padding: 0.72rem 0.82rem;
-  border-radius: 14px;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
-  background: rgba(var(--v-theme-on-surface), 0.04);
+  border-radius: var(--app-radius-card);
+  border: var(--app-stroke-hairline) solid var(--app-stroke-subtle);
+  background: var(--app-surface-muted);
   display: flex;
   flex-direction: column;
   gap: 0.1rem;
@@ -293,20 +287,20 @@
   border-color: rgba(var(--v-theme-on-surface), 0.16);
   background:
     linear-gradient(180deg, rgba(var(--v-theme-surface-bright), 0.82), rgba(var(--v-theme-surface), 0.92));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.32);
+  box-shadow: var(--app-inset-highlight-field);
 }
 
 .config-summary-pill strong {
   font-size: 1.02rem;
   line-height: 1.15;
-  font-weight: 800;
+  font-weight: var(--app-font-weight-emphasis);
 }
 
 .config-summary-pill__label {
   font-size: 0.72rem;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  font-weight: 700;
+  font-weight: var(--app-font-weight-strong);
   color: rgba(var(--v-theme-on-surface), 0.62);
 }
 
@@ -348,14 +342,14 @@
 }
 
 .price-link-list {
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
-  border-radius: 12px;
-  background: rgba(var(--v-theme-on-surface), 0.02);
+  border: var(--app-stroke-hairline) solid var(--app-stroke-default);
+  border-radius: var(--app-radius-xl);
+  background: var(--app-surface-quiet);
   padding: 0.2rem;
 }
 
 .price-link-list .v-list-item {
-  border-radius: 10px;
+  border-radius: var(--app-radius-lg);
   margin: 0.12rem 0;
   min-height: 48px;
 }
@@ -366,7 +360,7 @@
 
 @media (max-width: 600px) {
   .config-card {
-    border-radius: 16px !important;
+    border-radius: var(--app-radius-card) !important;
   }
 
   .config-card .v-card-title {
@@ -433,7 +427,7 @@
   .config-summary-pill {
     min-width: 0;
     padding: 0.55rem 0.62rem;
-    border-radius: 12px;
+    border-radius: var(--app-radius-card);
   }
 
   .config-summary-pill strong {

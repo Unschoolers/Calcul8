@@ -8,13 +8,13 @@
 .portfolio-report-table th,
 .portfolio-report-table td {
   padding: 0.52rem 0.6rem;
-  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.09);
+  border-bottom: var(--app-stroke-hairline) solid var(--app-stroke-subtle);
   text-align: left;
   white-space: nowrap;
 }
 
 .portfolio-report-table th {
-  font-weight: 700;
+  font-weight: var(--app-font-weight-strong);
   color: rgba(var(--v-theme-on-surface), 0.78);
   background: rgba(var(--v-theme-on-surface), 0.04);
 }
@@ -61,8 +61,8 @@
 }
 
 .portfolio-report-actions {
-  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.08);
-  background: rgba(var(--v-theme-surface), 0.92);
+  border-top: var(--app-stroke-hairline) solid var(--app-stroke-subtle);
+  background: var(--app-surface-sticky);
   backdrop-filter: blur(8px);
 }
 
@@ -74,8 +74,8 @@
 
 .portfolio-report-card {
   cursor: pointer;
-  border-radius: 16px;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border-radius: var(--app-radius-card);
+  border: var(--app-stroke-hairline) solid var(--app-stroke-subtle);
   background:
     radial-gradient(110% 120% at 100% 0%, rgba(var(--v-theme-secondary), 0.08), transparent 58%),
     linear-gradient(165deg, rgba(var(--v-theme-surface), 0.98), rgba(var(--v-theme-surface), 0.95));
@@ -83,13 +83,13 @@
 }
 
 .portfolio-report-card:focus-visible {
-  outline: 2px solid rgba(var(--v-theme-secondary), 0.9);
+  outline: 2px solid var(--app-focus-ring-color);
   outline-offset: 2px;
 }
 
 .portfolio-report-card.is-expanded {
-  border-color: rgba(var(--v-theme-on-surface), 0.12);
-  box-shadow: inset 0 0 0 1px rgba(var(--v-theme-secondary), 0.08);
+  border-color: var(--app-stroke-default);
+  box-shadow: var(--app-shadow-focus-accent);
 }
 
 .portfolio-report-card-head {
@@ -109,7 +109,7 @@
   align-items: center;
   gap: 0.45rem;
   font-size: 1rem;
-  font-weight: 700;
+  font-weight: var(--app-font-weight-strong);
   line-height: 1.2;
   color: rgba(var(--v-theme-on-surface), 0.94);
 }
@@ -150,7 +150,7 @@
 .portfolio-report-card-details {
   margin-top: 0.85rem;
   padding-top: 0.8rem;
-  border-top: 1px solid rgba(var(--v-theme-on-surface), 0.06);
+  border-top: var(--app-stroke-hairline) solid var(--app-stroke-subtle);
 }
 
 .portfolio-report-card-details .portfolio-report-card-label {
@@ -176,7 +176,7 @@
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.07em;
-  font-weight: 700;
+  font-weight: var(--app-font-weight-strong);
   color: rgba(var(--v-theme-on-surface), 0.56);
 }
 
@@ -189,11 +189,11 @@
 }
 
 .portfolio-report-card-value.is-positive {
-  color: rgba(var(--v-theme-success), 1);
+  color: var(--app-profit-positive);
 }
 
 .portfolio-report-card-value.is-negative {
-  color: rgba(var(--v-theme-error), 1);
+  color: var(--app-profit-negative);
 }
 
 .portfolio-report-card-value.is-neutral {

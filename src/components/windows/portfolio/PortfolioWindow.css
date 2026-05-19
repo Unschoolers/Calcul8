@@ -1,10 +1,8 @@
 .portfolio-filter-bar {
-  border-radius: 14px !important;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
-  background: rgba(var(--v-theme-surface), 0.94);
-  box-shadow:
-    0 8px 18px rgba(0, 0, 0, 0.1),
-    0 2px 6px rgba(0, 0, 0, 0.08);
+  border-radius: var(--app-radius-card) !important;
+  border: var(--app-stroke-hairline) solid var(--app-stroke-default);
+  background: var(--app-surface-raised);
+  box-shadow: var(--app-shadow-md);
 }
 
 .portfolio-filter-bar .v-card-text {
@@ -15,18 +13,18 @@
 .portfolio-kpi-card {
   position: relative;
   overflow: hidden;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.09);
+  border: var(--app-stroke-hairline) solid var(--app-stroke-subtle);
   background:
     radial-gradient(120% 130% at 100% 0%, rgba(var(--kpi-accent-rgb), 0.14), transparent 55%),
     linear-gradient(165deg, rgba(var(--v-theme-surface), 0.98), rgba(var(--v-theme-surface), 0.94));
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--app-shadow-md);
 }
 
 .portfolio-section-card {
   position: relative;
   overflow: hidden;
-  border-radius: 14px !important;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.09);
+  border-radius: var(--app-radius-card) !important;
+  border: var(--app-stroke-hairline) solid var(--app-stroke-subtle);
   background:
     radial-gradient(95% 110% at 100% 0%, rgba(var(--v-theme-secondary), 0.08), transparent 60%),
     linear-gradient(165deg, rgba(var(--v-theme-surface), 0.98), rgba(var(--v-theme-surface), 0.95));
@@ -46,10 +44,10 @@
   background: transparent;
   border-bottom: 0;
   color: rgba(var(--v-theme-secondary), 0.96);
-  font-size: 0.8rem !important;
-  font-weight: 800;
+  font-size: var(--app-font-size-body-sm) !important;
+  font-weight: var(--app-font-weight-emphasis);
   line-height: 1.2;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--app-letter-spacing-section);
   text-transform: uppercase;
 }
 
@@ -75,15 +73,15 @@
 
 .portfolio-performance-summary-label {
   font-size: 0.68rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
+  font-weight: var(--app-font-weight-emphasis);
+  letter-spacing: var(--app-letter-spacing-section);
   text-transform: uppercase;
   color: rgba(var(--v-theme-on-surface), 0.52);
 }
 
 .portfolio-performance-summary-value {
   font-size: 0.9rem;
-  font-weight: 700;
+  font-weight: var(--app-font-weight-strong);
   letter-spacing: -0.01em;
 }
 
@@ -127,7 +125,7 @@
 
 .portfolio-filter-type-toggle {
   flex: 0 0 auto;
-  border-radius: 12px;
+  border-radius: var(--app-radius-card);
   overflow: hidden;
 }
 
@@ -136,7 +134,7 @@
   min-width: 0;
   padding-inline: 0.75rem;
   font-size: 0.78rem;
-  font-weight: 700;
+  font-weight: var(--app-font-weight-strong);
   letter-spacing: 0.03em;
   color: rgba(var(--v-theme-on-surface), 0.72);
 }
@@ -202,7 +200,7 @@
 
 @media (max-width: 600px) {
   .portfolio-filter-bar {
-    border-radius: 16px !important;
+    border-radius: var(--app-radius-card) !important;
   }
 
   .portfolio-filter-toolbar {
@@ -300,14 +298,14 @@
   line-height: 1.2;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  font-weight: 700;
+  font-weight: var(--app-font-weight-strong);
   color: rgba(var(--v-theme-on-surface), 0.65);
 }
 
 .portfolio-kpi-icon-wrap {
   width: 26px;
   height: 26px;
-  border-radius: 999px;
+  border-radius: var(--app-radius-pill);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -365,12 +363,14 @@
 .portfolio-kpi-pager-dot {
   width: 6px;
   height: 6px;
-  border-radius: 999px;
+  border-radius: var(--app-radius-pill);
   border: 0;
   padding: 0;
   background: rgba(var(--v-theme-on-surface), 0.28);
   cursor: pointer;
-  transition: background-color 0.15s ease, transform 0.15s ease;
+  transition:
+    background-color var(--app-motion-standard) ease,
+    transform var(--app-motion-standard) ease;
 }
 
 .portfolio-kpi-pager-dot.is-active {
@@ -402,7 +402,7 @@
   line-height: 1.2;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  font-weight: 800;
+  font-weight: var(--app-font-weight-emphasis);
   color: rgba(var(--v-theme-secondary), 0.96);
 }
 
@@ -445,7 +445,7 @@
 .portfolio-sales-by-user-toggle .v-btn {
   min-width: 72px;
   text-transform: none;
-  font-weight: 700;
+  font-weight: var(--app-font-weight-strong);
 }
 
 .portfolio-sales-by-user-toggle .v-btn .v-btn__content {
@@ -454,7 +454,7 @@
 }
 
 .portfolio-sales-by-user-leader-chip {
-  font-weight: 700;
+  font-weight: var(--app-font-weight-strong);
   border: 1px solid rgba(var(--v-theme-secondary), 0.22);
 }
 
@@ -465,7 +465,7 @@
 
 .portfolio-sales-by-user-stat-chip__value {
   margin-left: 0.35rem;
-  font-weight: 800;
+  font-weight: var(--app-font-weight-emphasis);
   color: rgba(var(--v-theme-on-surface), 0.94);
 }
 
@@ -482,7 +482,7 @@
   gap: 0.55rem;
   min-width: 0;
   padding: 0.38rem 0.55rem 0.38rem 0.42rem;
-  border-radius: 999px;
+  border-radius: var(--app-radius-pill);
   border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
   background: rgba(var(--v-theme-on-surface), 0.03);
 }
@@ -493,7 +493,7 @@
   flex: 0 0 auto;
   width: 28px;
   height: 28px;
-  border-radius: 999px;
+  border-radius: var(--app-radius-pill);
   overflow: hidden;
   display: inline-flex;
   align-items: center;
@@ -510,7 +510,7 @@
 
 .portfolio-sales-by-user-avatar__fallback {
   font-size: 0.74rem;
-  font-weight: 800;
+  font-weight: var(--app-font-weight-emphasis);
   letter-spacing: 0.03em;
   color: rgba(var(--v-theme-on-surface), 0.9);
 }
@@ -521,7 +521,7 @@
   bottom: 1px;
   width: 7px;
   height: 7px;
-  border-radius: 999px;
+  border-radius: var(--app-radius-pill);
   border: 1.5px solid rgba(var(--v-theme-surface), 1);
   background: rgba(var(--v-theme-on-surface), 0.35);
 }
@@ -549,7 +549,7 @@
   --sales-user-color: #f7b500;
   width: 9px;
   height: 9px;
-  border-radius: 999px;
+  border-radius: var(--app-radius-pill);
   background: var(--sales-user-color);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--sales-user-color) 18%, transparent);
 }
@@ -562,7 +562,7 @@
 
 .portfolio-sales-by-user-legend-total {
   font-size: 0.78rem;
-  font-weight: 700;
+  font-weight: var(--app-font-weight-strong);
   color: rgba(var(--v-theme-on-surface), 0.66);
 }
 
@@ -582,7 +582,7 @@
   align-items: center;
   gap: 0.38rem;
   padding: 0.34rem 0.55rem;
-  border-radius: 999px;
+  border-radius: var(--app-radius-pill);
   border: 1px solid rgba(var(--v-theme-secondary), 0.14);
   background:
     linear-gradient(180deg, rgba(var(--v-theme-secondary), 0.08), rgba(var(--v-theme-secondary), 0.04)),
@@ -591,13 +591,13 @@
 
 .portfolio-sales-by-user-week-pill__label {
   font-size: 0.74rem;
-  font-weight: 700;
+  font-weight: var(--app-font-weight-strong);
   color: rgba(var(--v-theme-on-surface), 0.64);
 }
 
 .portfolio-sales-by-user-week-pill__value {
   font-size: 0.8rem;
-  font-weight: 800;
+  font-weight: var(--app-font-weight-emphasis);
   color: rgba(var(--v-theme-on-surface), 0.9);
 }
 
@@ -668,7 +668,7 @@
 .portfolio-lot-profit-chip {
   min-width: 96px;
   justify-content: center;
-  font-weight: 700;
+  font-weight: var(--app-font-weight-strong);
   border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
   text-transform: none;
 }

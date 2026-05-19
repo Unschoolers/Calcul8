@@ -8,10 +8,10 @@
 
 .auth-gate-card {
   width: min(100%, 430px);
-  border: 1px solid rgba(255, 184, 0, 0.25);
+  border: var(--app-stroke-hairline) solid rgba(var(--v-theme-secondary), 0.25);
   background:
-    radial-gradient(85% 60% at 12% 0%, rgba(230, 57, 70, 0.15), transparent 65%),
-    radial-gradient(70% 58% at 88% 100%, rgba(255, 184, 0, 0.14), transparent 72%),
+    radial-gradient(85% 60% at 12% 0%, rgba(var(--v-theme-primary), 0.15), transparent 65%),
+    radial-gradient(70% 58% at 88% 100%, rgba(var(--v-theme-secondary), 0.14), transparent 72%),
     rgba(var(--v-theme-surface), 0.95);
   backdrop-filter: blur(6px);
 }
@@ -19,16 +19,16 @@
 .auth-gate-logo {
   width: 72px;
   height: 72px;
-  border-radius: 16px;
+  border-radius: var(--app-radius-media);
   display: block;
   margin: 0 auto 0.9rem;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+  box-shadow: var(--app-shadow-lg);
 }
 
 .auth-gate-overline {
   letter-spacing: 0.14em;
   color: rgb(var(--v-theme-secondary));
-  font-weight: 700;
+  font-weight: var(--app-font-weight-strong);
 }
 
 .auth-gate-title {
@@ -42,7 +42,7 @@
   margin: 0 auto 0.85rem;
   line-height: 0;
   text-align: center;
-  border-radius: 4px;
+  border-radius: var(--app-radius-sm);
   overflow: hidden;
 }
 
@@ -52,7 +52,7 @@
 }
 
 .auth-gate-google-button iframe {
-  border-radius: 4px;
+  border-radius: var(--app-radius-sm);
   color-scheme: auto;
 }
 
@@ -71,13 +71,13 @@
   margin-inline: auto !important;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  font-weight: 800;
+  font-weight: var(--app-font-weight-emphasis);
 }
 
 .auth-gate-btn--fallback {
   text-transform: none;
   letter-spacing: 0;
-  font-weight: 700;
+  font-weight: var(--app-font-weight-strong);
   border-color: rgba(var(--v-theme-secondary), 0.42) !important;
   background: rgba(var(--v-theme-secondary), 0.08) !important;
 }

@@ -1,17 +1,58 @@
+@import './design-tokens.css';
+
 :root {
   --v-theme-primary: 230, 57, 70;
   --v-theme-surface: 30, 30, 30;
+  --spectator-text: #f8fafc;
+  --spectator-text-strong: rgba(248, 250, 252, 0.95);
+  --spectator-text-high: rgba(248, 250, 252, 0.9);
+  --spectator-text-default: rgba(248, 250, 252, 0.8);
+  --spectator-text-muted: rgba(248, 250, 252, 0.72);
+  --spectator-text-subtle: rgba(248, 250, 252, 0.56);
+  --spectator-accent: #fbbf24;
+  --spectator-accent-soft: #fcd34d;
+  --spectator-success: #86efac;
+  --spectator-info: #bfdbfe;
+  --spectator-info-strong: #93c5fd;
+  --spectator-neutral: #cbd5e1;
+  --spectator-error: #fda4af;
+  --spectator-error-soft: #fecdd3;
+  --spectator-bg-deep: #020617;
+  --spectator-page-bg:
+    radial-gradient(circle at top, rgba(245, 158, 11, 0.18), transparent 24%),
+    radial-gradient(circle at 82% 12%, rgba(59, 130, 246, 0.14), transparent 20%),
+    linear-gradient(180deg, #111827 0%, #0f172a 46%, #020617 100%);
+  --spectator-card-bg: linear-gradient(180deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.96));
+  --spectator-grid-board-bg:
+    radial-gradient(circle at 50% 0%, rgba(96, 165, 250, 0.18), transparent 46%),
+    rgba(2, 6, 23, 0.54);
+  --spectator-grid-cell-bg:
+    linear-gradient(155deg, rgba(96, 165, 250, 0.18), rgba(15, 23, 42, 0.86)),
+    rgba(15, 23, 42, 0.92);
+  --spectator-result-bg: linear-gradient(180deg, rgba(9, 15, 28, 0.92), rgba(15, 23, 42, 0.76));
+  --spectator-info-surface: rgba(96, 165, 250, 0.12);
+  --spectator-info-border: rgba(147, 197, 253, 0.16);
+  --spectator-panel-bg: rgba(15, 23, 42, 0.62);
+  --spectator-panel-bg-strong: rgba(15, 23, 42, 0.68);
+  --spectator-panel-bg-muted: rgba(248, 250, 252, 0.05);
+  --spectator-border-subtle: rgba(248, 250, 252, 0.06);
+  --spectator-border-default: rgba(248, 250, 252, 0.08);
+  --spectator-border-strong: rgba(248, 250, 252, 0.12);
+  --spectator-radius-card: 24px;
+  --spectator-radius-panel: 18px;
+  --spectator-radius-item: 16px;
+  --spectator-shadow-card: 0 18px 42px rgba(0, 0, 0, 0.24);
+  --spectator-shadow-active-card: 0 22px 48px rgba(0, 0, 0, 0.3);
+  --spectator-shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --spectator-grid-prize-fallback: #d4af37;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
-  font-family: "Avenir Next", "Trebuchet MS", "Segoe UI", sans-serif;
-  background:
-    radial-gradient(circle at top, rgba(245, 158, 11, 0.18), transparent 24%),
-    radial-gradient(circle at 82% 12%, rgba(59, 130, 246, 0.14), transparent 20%),
-    linear-gradient(180deg, #111827 0%, #0f172a 46%, #020617 100%);
-  color: #f8fafc;
+  font-family: var(--app-font-family-base);
+  background: var(--spectator-page-bg);
+  color: var(--spectator-text);
 }
 
 a {
@@ -36,10 +77,10 @@ a {
   align-items: center;
   gap: 8px;
   font-size: 0.76rem;
-  font-weight: 800;
-  letter-spacing: 0.16em;
+  font-weight: var(--app-font-weight-emphasis);
+  letter-spacing: var(--app-letter-spacing-overline);
   text-transform: uppercase;
-  color: #fbbf24;
+  color: var(--spectator-accent);
 }
 
 .spectator-title {
@@ -53,12 +94,12 @@ a {
   margin: 0;
   font-size: 0.98rem;
   line-height: 1.5;
-  color: rgba(248, 250, 252, 0.78);
+  color: var(--spectator-text-default);
 }
 
 .spectator-subtitle--hero {
   max-width: 36ch;
-  color: rgba(248, 250, 252, 0.7);
+  color: var(--spectator-text-muted);
 }
 
 .spectator-grid {
@@ -69,19 +110,19 @@ a {
 .spectator-card {
   position: relative;
   overflow: hidden;
-  border: 1px solid rgba(248, 250, 252, 0.08);
-  background: linear-gradient(180deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.96));
-  border-radius: 24px;
+  border: 1px solid var(--spectator-border-default);
+  background: var(--spectator-card-bg);
+  border-radius: var(--spectator-radius-card);
   padding: 16px;
-  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.24);
+  box-shadow: var(--spectator-shadow-card);
 }
 
 .spectator-card__eyebrow {
   font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.14em;
+  font-weight: var(--app-font-weight-emphasis);
+  letter-spacing: var(--app-letter-spacing-overline);
   text-transform: uppercase;
-  color: rgba(248, 250, 252, 0.56);
+  color: var(--spectator-text-subtle);
 }
 
 .spectator-now {
@@ -89,8 +130,8 @@ a {
   gap: 12px;
   border-color: rgba(96, 165, 250, 0.14);
   box-shadow:
-    0 22px 48px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    var(--spectator-shadow-active-card),
+    var(--spectator-shadow-inset);
 }
 
 .spectator-now__glow {
@@ -99,7 +140,7 @@ a {
   right: -24px;
   width: 180px;
   height: 180px;
-  border-radius: 999px;
+  border-radius: var(--app-radius-pill);
   filter: blur(20px);
   opacity: 0.28;
   pointer-events: none;
@@ -127,35 +168,35 @@ a {
 .spectator-now__headline {
   margin-top: 4px;
   font-size: 1.08rem;
-  font-weight: 800;
-  color: rgba(248, 250, 252, 0.9);
+  font-weight: var(--app-font-weight-emphasis);
+  color: var(--spectator-text-high);
 }
 
 .spectator-status {
   padding: 8px 12px;
-  border-radius: 999px;
+  border-radius: var(--app-radius-pill);
   font-size: 0.74rem;
-  font-weight: 800;
-  letter-spacing: 0.14em;
+  font-weight: var(--app-font-weight-emphasis);
+  letter-spacing: var(--app-letter-spacing-overline);
   text-transform: uppercase;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--spectator-border-default);
 }
 
 .spectator-status--starting,
 .spectator-status--waiting {
   background: rgba(245, 158, 11, 0.18);
-  color: #fbbf24;
+  color: var(--spectator-accent);
 }
 
 .spectator-status--live,
 .spectator-status--spinning {
   background: rgba(34, 197, 94, 0.18);
-  color: #86efac;
+  color: var(--spectator-success);
 }
 
 .spectator-status--ended {
   background: rgba(148, 163, 184, 0.16);
-  color: #cbd5e1;
+  color: var(--spectator-neutral);
 }
 
 .spectator-now__stage {
@@ -174,53 +215,53 @@ a {
   display: grid;
   gap: 6px;
   padding: 14px 14px 13px;
-  border-radius: 18px;
-  background: rgba(248, 250, 252, 0.05);
-  border: 1px solid rgba(248, 250, 252, 0.06);
+  border-radius: var(--spectator-radius-panel);
+  background: var(--spectator-panel-bg-muted);
+  border: 1px solid var(--spectator-border-subtle);
 }
 
 .spectator-now__metric-label {
   font-size: 0.68rem;
-  font-weight: 800;
-  letter-spacing: 0.12em;
+  font-weight: var(--app-font-weight-emphasis);
+  letter-spacing: var(--app-letter-spacing-overline);
   text-transform: uppercase;
-  color: rgba(248, 250, 252, 0.54);
+  color: var(--spectator-text-subtle);
 }
 
 .spectator-now__metric-value {
   font-size: 1.08rem;
   line-height: 1.08;
-  font-weight: 900;
+  font-weight: var(--app-font-weight-display);
 }
 
 .spectator-now__metric--accent {
   background: rgba(96, 165, 250, 0.1);
-  color: #dbeafe;
+  color: var(--spectator-info);
 }
 
 .spectator-now__metric--heat-very_low {
   background: rgba(71, 85, 105, 0.12);
-  color: #cbd5e1;
+  color: var(--spectator-neutral);
 }
 
 .spectator-now__metric--heat-low {
   background: rgba(148, 163, 184, 0.12);
-  color: #e2e8f0;
+  color: var(--spectator-text-default);
 }
 
 .spectator-now__metric--heat-medium {
   background: rgba(245, 158, 11, 0.14);
-  color: #fcd34d;
+  color: var(--spectator-accent-soft);
 }
 
 .spectator-now__metric--heat-high {
   background: rgba(239, 68, 68, 0.14);
-  color: #fda4af;
+  color: var(--spectator-error);
 }
 
 .spectator-now__metric--heat-very_high {
   background: rgba(244, 63, 94, 0.2);
-  color: #fecdd3;
+  color: var(--spectator-error-soft);
 }
 
 .spectator-wheel-frame {
@@ -268,7 +309,7 @@ a {
     rgb(var(--v-theme-primary)) 45%,
     color-mix(in srgb, rgb(var(--v-theme-primary)) 55%, black) 100%
   );
-  filter: drop-shadow(-3px 0 4px rgba(0, 0, 0, 0.45));
+  filter: drop-shadow(-3px 0 4px rgba(var(--app-shadow-rgb), 0.45));
   z-index: 10;
 }
 
@@ -310,7 +351,7 @@ a {
   justify-content: center;
   color: rgb(var(--v-theme-primary));
   transform-origin: center;
-  transition: transform 80ms linear;
+  transition: transform var(--app-motion-instant) linear;
 }
 
 .spectator-wheel-frame .wheel-center-cap__icon svg {
@@ -328,11 +369,9 @@ a {
   margin: 0 auto;
   padding: clamp(8px, 2vw, 14px);
   box-sizing: border-box;
-  border-radius: 24px;
-  border: 1px solid rgba(248, 250, 252, 0.08);
-  background:
-    radial-gradient(circle at 50% 0%, rgba(96, 165, 250, 0.18), transparent 46%),
-    rgba(2, 6, 23, 0.54);
+  border-radius: var(--spectator-radius-card);
+  border: 1px solid var(--spectator-border-default);
+  background: var(--spectator-grid-board-bg);
 }
 
 .spectator-grid-board--resetting::after {
@@ -368,12 +407,10 @@ a {
   display: grid;
   place-items: center;
   border-radius: clamp(6px, 1.6vw, 12px);
-  border: 1px solid rgba(248, 250, 252, 0.1);
-  background:
-    linear-gradient(155deg, rgba(96, 165, 250, 0.18), rgba(15, 23, 42, 0.86)),
-    rgba(15, 23, 42, 0.92);
-  color: rgba(248, 250, 252, 0.78);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--spectator-border-default);
+  background: var(--spectator-grid-cell-bg);
+  color: var(--spectator-text-default);
+  box-shadow: var(--spectator-shadow-inset);
 }
 
 .spectator-grid-cell--highlighted {
@@ -385,12 +422,12 @@ a {
 }
 
 .spectator-grid-cell--revealed {
-  --spectator-grid-cell-color: #d4af37;
+  --spectator-grid-cell-color: var(--spectator-grid-prize-fallback);
   background:
     radial-gradient(circle at 50% 18%, color-mix(in srgb, var(--spectator-grid-cell-color) 46%, transparent), transparent 64%),
-    linear-gradient(155deg, color-mix(in srgb, var(--spectator-grid-cell-color) 56%, #020617), rgba(15, 23, 42, 0.88));
+    linear-gradient(155deg, color-mix(in srgb, var(--spectator-grid-cell-color) 56%, var(--spectator-bg-deep)), rgba(15, 23, 42, 0.88));
   border-color: color-mix(in srgb, var(--spectator-grid-cell-color) 72%, transparent);
-  color: #f8fafc;
+  color: var(--spectator-text);
 }
 
 .spectator-grid-cell--revealed.spectator-grid-cell--latest {
@@ -402,14 +439,14 @@ a {
 
 .spectator-grid-cell__number {
   font-size: clamp(0.56rem, 2.4vw, 0.82rem);
-  font-weight: 900;
+  font-weight: var(--app-font-weight-display);
   line-height: 1;
 }
 
 .spectator-grid-cell__dot {
   width: clamp(7px, 1.8vw, 11px);
   height: clamp(7px, 1.8vw, 11px);
-  border-radius: 999px;
+  border-radius: var(--app-radius-pill);
   background: var(--spectator-grid-cell-color);
   box-shadow: 0 0 14px color-mix(in srgb, var(--spectator-grid-cell-color) 72%, transparent);
 }
@@ -423,26 +460,26 @@ a {
   padding: 0 2px;
   box-sizing: border-box;
   font-size: clamp(0.44rem, 1.8vw, 0.68rem);
-  font-weight: 900;
+  font-weight: var(--app-font-weight-display);
   line-height: 1.1;
   text-align: center;
 }
 
 .spectator-result {
-  --spectator-result-color: #d4af37;
+  --spectator-result-color: var(--spectator-grid-prize-fallback);
   display: grid;
   align-content: start;
   gap: 12px;
   min-height: 0;
   padding: 20px;
-  border-radius: 24px;
+  border-radius: var(--spectator-radius-card);
   background:
     radial-gradient(circle at top left, color-mix(in srgb, var(--spectator-result-color) 16%, transparent), transparent 42%),
-    linear-gradient(180deg, rgba(9, 15, 28, 0.92), rgba(15, 23, 42, 0.76));
-  border: 1px solid rgba(255, 255, 255, 0.06);
+    var(--spectator-result-bg);
+  border: 1px solid var(--spectator-border-subtle);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.03),
-    0 14px 32px rgba(0, 0, 0, 0.18);
+    var(--spectator-shadow-inset),
+    0 14px 32px rgba(var(--app-shadow-rgb), 0.18);
 }
 
 .spectator-result__meta {
@@ -451,15 +488,15 @@ a {
   justify-content: space-between;
   gap: 10px;
   font-size: 0.82rem;
-  color: rgba(248, 250, 252, 0.72);
+  color: var(--spectator-text-muted);
 }
 
 .spectator-result__eyebrow {
   font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.14em;
+  font-weight: var(--app-font-weight-emphasis);
+  letter-spacing: var(--app-letter-spacing-overline);
   text-transform: uppercase;
-  color: rgba(248, 250, 252, 0.56);
+  color: var(--spectator-text-subtle);
 }
 
 .spectator-result__meta strong {
@@ -476,13 +513,13 @@ a {
   font-size: clamp(1.85rem, 7vw, 2.8rem);
   line-height: 1;
   letter-spacing: -0.03em;
-  font-weight: 900;
+  font-weight: var(--app-font-weight-display);
 }
 
 .spectator-result__dot {
   width: 16px;
   height: 16px;
-  border-radius: 999px;
+  border-radius: var(--app-radius-pill);
   flex: 0 0 auto;
   box-shadow: 0 0 18px currentColor;
 }
@@ -490,7 +527,7 @@ a {
 .spectator-result__subcopy {
   font-size: 1rem;
   line-height: 1.48;
-  color: rgba(248, 250, 252, 0.8);
+  color: var(--spectator-text-default);
   max-width: 34ch;
 }
 
@@ -500,13 +537,13 @@ a {
   width: fit-content;
   margin-top: 4px;
   padding: 10px 14px;
-  border-radius: 999px;
+  border-radius: var(--app-radius-pill);
   text-decoration: none;
   font-size: 0.82rem;
-  font-weight: 800;
-  color: #bfdbfe;
-  background: rgba(96, 165, 250, 0.12);
-  border: 1px solid rgba(147, 197, 253, 0.16);
+  font-weight: var(--app-font-weight-emphasis);
+  color: var(--spectator-info);
+  background: var(--spectator-info-surface);
+  border: 1px solid var(--spectator-info-border);
 }
 
 .spectator-reel {
@@ -518,8 +555,8 @@ a {
   display: grid;
   gap: 8px;
   padding: 13px 14px;
-  border-radius: 18px;
-  background: rgba(15, 23, 42, 0.62);
+  border-radius: var(--spectator-radius-panel);
+  background: var(--spectator-panel-bg);
 }
 
 .spectator-reel__top {
@@ -531,17 +568,17 @@ a {
 
 .spectator-reel__spin {
   font-size: 0.76rem;
-  font-weight: 800;
-  letter-spacing: 0.12em;
+  font-weight: var(--app-font-weight-emphasis);
+  letter-spacing: var(--app-letter-spacing-overline);
   text-transform: uppercase;
-  color: rgba(248, 250, 252, 0.54);
+  color: var(--spectator-text-subtle);
 }
 
 .spectator-reel__label {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-weight: 800;
+  font-weight: var(--app-font-weight-emphasis);
 }
 
 .spectator-reel__verify {
@@ -550,9 +587,9 @@ a {
   gap: 8px;
   width: fit-content;
   text-decoration: none;
-  color: #93c5fd;
+  color: var(--spectator-info-strong);
   font-size: 0.84rem;
-  font-weight: 700;
+  font-weight: var(--app-font-weight-strong);
 }
 
 .spectator-chases {
@@ -564,8 +601,8 @@ a {
   display: grid;
   gap: 8px;
   padding: 14px;
-  border-radius: 18px;
-  background: rgba(15, 23, 42, 0.62);
+  border-radius: var(--spectator-radius-panel);
+  background: var(--spectator-panel-bg);
 }
 
 .spectator-chase--claimed {
@@ -583,22 +620,22 @@ a {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-weight: 800;
+  font-weight: var(--app-font-weight-emphasis);
 }
 
 .spectator-chase__status {
   font-size: 0.74rem;
-  font-weight: 800;
+  font-weight: var(--app-font-weight-emphasis);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .spectator-chase__status--live {
-  color: #86efac;
+  color: var(--spectator-success);
 }
 
 .spectator-chase__status--claimed {
-  color: #cbd5e1;
+  color: var(--spectator-neutral);
 }
 
 .spectator-chase__meta {
@@ -615,7 +652,7 @@ a {
 .spectator-trust__steps {
   margin: 0;
   padding-left: 18px;
-  color: rgba(248, 250, 252, 0.8);
+  color: var(--spectator-text-default);
   line-height: 1.5;
 }
 
@@ -633,16 +670,16 @@ a {
   gap: 10px;
   min-height: 128px;
   padding: 14px;
-  border: 1px solid rgba(248, 250, 252, 0.08);
-  border-radius: 18px;
-  background: rgba(15, 23, 42, 0.68);
+  border: 1px solid var(--spectator-border-default);
+  border-radius: var(--spectator-radius-panel);
+  background: var(--spectator-panel-bg-strong);
   text-align: center;
 }
 
 .spectator-bracket-duelist span {
   max-width: 100%;
   overflow-wrap: anywhere;
-  font-weight: 800;
+  font-weight: var(--app-font-weight-emphasis);
 }
 
 .spectator-bracket-dice-tile {
@@ -650,16 +687,16 @@ a {
   place-items: center;
   width: min(112px, 100%);
   aspect-ratio: 1;
-  border: 1px solid rgba(248, 250, 252, 0.12);
-  border-radius: 18px;
+  border: 1px solid var(--spectator-border-strong);
+  border-radius: var(--spectator-radius-panel);
   background:
     radial-gradient(circle at 28% 24%, rgba(248, 250, 252, 0.22), transparent 34%),
     linear-gradient(180deg, rgba(248, 250, 252, 0.13), rgba(15, 23, 42, 0.84));
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    var(--app-inset-highlight-strong),
     0 16px 32px rgba(2, 6, 23, 0.28);
   font-size: clamp(2.2rem, 12vw, 4.2rem);
-  font-weight: 900;
+  font-weight: var(--app-font-weight-display);
   line-height: 1;
 }
 
@@ -667,17 +704,17 @@ a {
   grid-column: 1 / -1;
   min-height: 116px;
   font-size: clamp(1.8rem, 9vw, 3rem);
-  font-weight: 900;
+  font-weight: var(--app-font-weight-display);
   overflow-wrap: anywhere;
 }
 
 .spectator-bracket-versus {
   display: grid;
   place-items: center;
-  color: #fbbf24;
+  color: var(--spectator-accent);
   font-size: 0.78rem;
-  font-weight: 900;
-  letter-spacing: 0.14em;
+  font-weight: var(--app-font-weight-display);
+  letter-spacing: var(--app-letter-spacing-overline);
 }
 
 .spectator-bracket-tree {
@@ -689,8 +726,8 @@ a {
   display: grid;
   gap: 8px;
   padding: 12px;
-  border: 1px solid rgba(248, 250, 252, 0.07);
-  border-radius: 16px;
+  border: 1px solid var(--spectator-border-subtle);
+  border-radius: var(--spectator-radius-item);
   background: rgba(15, 23, 42, 0.54);
 }
 
@@ -717,18 +754,18 @@ a {
 
 .spectator-bracket-match__meta {
   font-size: 0.72rem;
-  font-weight: 800;
+  font-weight: var(--app-font-weight-emphasis);
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: rgba(248, 250, 252, 0.54);
+  color: var(--spectator-text-subtle);
 }
 
 .spectator-bracket-player {
   min-height: 38px;
   padding: 8px 10px;
-  border-radius: 12px;
-  background: rgba(248, 250, 252, 0.05);
-  font-weight: 800;
+  border-radius: var(--app-radius-xl);
+  background: var(--spectator-panel-bg-muted);
+  font-weight: var(--app-font-weight-emphasis);
 }
 
 .spectator-bracket-player span {
@@ -737,7 +774,7 @@ a {
 }
 
 .spectator-bracket-player--winner {
-  color: #86efac;
+  color: var(--spectator-success);
   background: rgba(34, 197, 94, 0.12);
 }
 
@@ -751,12 +788,12 @@ a {
 .spectator-empty__title {
   margin: 0;
   font-size: 1.2rem;
-  font-weight: 800;
+  font-weight: var(--app-font-weight-emphasis);
 }
 
 .spectator-empty__body {
   margin: 0;
-  color: rgba(248, 250, 252, 0.72);
+  color: var(--spectator-text-muted);
   line-height: 1.5;
 }
 

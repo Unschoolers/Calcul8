@@ -43,6 +43,44 @@ Every item below is done only when the affected screens pass these checks:
 
 **Scope:** `src/styles/app.css`, `src/vuetify.ts`, `src/components/**/*.css`, `src/styles/spectator.css`, Vue component scoped styles.
 
+**Phase progress:**
+
+- 100% - Inventory current token drift and classify exceptions for game art, spectator presentation, imported brand assets, and user-selected colors.
+- 100% - Add the shared token foundation for spacing, radius, elevation, stroke, focus, type scale, section width, sticky offsets, action zones, status colors, and motion.
+- 100% - Migrate global app chrome to tokens: root background wash, focus rings, shell widths, default action sizing, bottom nav, FAB offsets, transition timings, and shared profit/price helpers.
+- 100% - Migrate high-signal screen surfaces to tokens: shell/auth/workspace, Live, Singles, Portfolio, and reusable report/modal surfaces.
+- 100% - Run a hardcoded visual-value scan, document remaining exceptions, and verify TypeScript/build safety for the touched frontend files.
+
+**Continuation progress:**
+
+- 100% - Expand token vocabulary for fields, selected rows, interactive shadows, media shadows, inverse strokes, cost/market accents, and dark-theme field overrides.
+- 100% - Reduce remaining hardcoded values in Singles mobile list, editor preview, search, thumbnail, pricing, and sticky toolbar surfaces.
+- 100% - Add spectator-local presentation tokens so the public spectator page has one source for its expressive palette, surfaces, borders, radii, shadows, and status colors.
+- 100% - Normalize leftover font-weight, radius, and inset-shadow literals in Live, Portfolio, shell account, auth, report, and global lot-selector styles.
+- 100% - Re-run the hardcoded-value scan and frontend build after the second-pass token migration.
+
+**Broader continuation progress:**
+
+- 100% - Scan the remaining CSS and Vue style clusters outside the first token pass and classify core app UI separately from game art and public presentation exceptions.
+- 100% - Migrate Sales window status, history, forecast, chart, list, pill, and section surfaces to shared radius, stroke, typography, and motion tokens.
+- 100% - Migrate Config window cards, summary hero, fee popover, toggles, summary pills, and price-link list to shared radius, stroke, shadow, typography, and surface tokens.
+- 100% - Re-run targeted hardcoded-value checks for Sales and Config and verify the frontend build after the broader pass.
+
+**Surface-token hardening progress:**
+
+- 100% - Fold the section-3 dialog, card, table, sticky action, and mobile dialog contracts back into the shared token vocabulary.
+- 100% - Tokenize shared surface backgrounds, table state backgrounds, sticky blur, text tone aliases, and mobile fullscreen dialog dimensions.
+- 100% - Tokenize remaining core app-chrome literals for skip links, highlighted prices, FAB badge sizing, tab slide distance, mobile shell padding, lot chip width, Stripe shell height, and lot-selector labels.
+- 100% - Re-run targeted token scans, whitespace checks, and the frontend build after the hardening pass.
+
+**Remaining documented exceptions after this phase:**
+
+- Game art, wheel-stage/game-board presentation, spectator-local presentation tokens, splash/brand moments, and generated public/share surfaces may keep hardcoded visual values when they are deliberately expressive rather than core app chrome.
+- User-selected prize colors, sales-user colors, card artwork, and third-party embedded UI are data/content values, not design-system tokens.
+- The global `v-card` radius is now token-gated as a compatibility guard; removing the broad selector entirely belongs to item 12 after repeated section/card patterns move to explicit shared components.
+- Singles still has deep, screen-specific density/layout styling that should be cleaned during items 3, 6, and 12 rather than forced into this token foundation pass.
+- Verification for this phase: `npm run build` passes after the token imports and CSS migrations.
+
 **Must do:**
 
 - Add app-level CSS tokens for spacing, radius, elevation, stroke, focus, type scale, section width, sticky offsets, and motion duration.
@@ -63,6 +101,15 @@ Every item below is done only when the affected screens pass these checks:
 **Problem:** Whatnot, Singles, Live, Sales, Portfolio, Workspace, and Game screens all use their own combinations of `v-card`, title bars, section headers, alerts, tables, sticky actions, and compact controls.
 
 **Scope:** `src/components/shell`, `src/components/windows`, `src/components/live-price`, shared UI helpers/components to be introduced as needed.
+
+**Phase progress:**
+
+- 100% - Inventory reusable surface drift across core app CSS and classify core app surfaces separately from game art, spectator presentation, and user/content colors.
+- 100% - Add shared app-level CSS contracts for dialog cards, dialog title/content/actions, section cards, summary panels, sticky action footers, table wrappers, and data tables.
+- 100% - Migrate high-visibility dialog/table surfaces to shared contracts: Whatnot review, Whatnot CSV import, Sale editor, Workspace dialogs, and Portfolio report.
+- 60% - Normalize existing cards, panels, forms, and list/table shells through tokenized CSS in Sales, Config, Live, Singles, Portfolio, and shell surfaces.
+- 0% - Extract reusable Vue shell components for section card, KPI/stat card, toolbar/filter bar, empty/loading/error states, confirmation dialog, destructive warning, and sticky action footer.
+- 100% - Re-run targeted surface scans and frontend build after the first normalization pass.
 
 **Must do:**
 

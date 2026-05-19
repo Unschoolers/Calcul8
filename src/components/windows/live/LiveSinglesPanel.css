@@ -1,7 +1,7 @@
 .live-singles-panel {
   position: relative;
   overflow: hidden;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08) !important;
+  border: var(--app-stroke-hairline) solid var(--app-stroke-subtle) !important;
   background:
     radial-gradient(120% 180% at 100% 0%, rgba(var(--v-theme-primary), 0.05), transparent 45%),
     rgba(var(--v-theme-surface), 0.92);
@@ -12,7 +12,7 @@
   position: absolute;
   inset: 0 0 auto 0;
   height: 3px;
-  clip-path: inset(0 round 14px 14px 0 0);
+  clip-path: inset(0 round var(--app-radius-card) var(--app-radius-card) 0 0);
   background: linear-gradient(90deg, rgba(var(--v-theme-secondary), 0.95), rgba(var(--v-theme-secondary), 0.22));
 }
 
@@ -22,10 +22,10 @@
   background: transparent !important;
   border-bottom: 0 !important;
   color: rgba(var(--v-theme-secondary), 0.96) !important;
-  font-size: 0.8rem !important;
-  font-weight: 800;
+  font-size: var(--app-font-size-body-sm) !important;
+  font-weight: var(--app-font-weight-emphasis);
   line-height: 1.2;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--app-letter-spacing-section);
   text-transform: uppercase;
 }
 
@@ -52,9 +52,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--app-space-3);
   margin-top: 0;
-  margin-bottom: 8px;
+  margin-bottom: var(--app-space-2);
   flex-wrap: wrap;
 }
 
@@ -66,7 +66,7 @@
   margin-bottom: 0.5rem;
   padding-top: 0.25rem;
   padding-bottom: 0.35rem;
-  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+  border-bottom: var(--app-stroke-hairline) solid var(--app-stroke-default);
   background:
     linear-gradient(
       180deg,
@@ -100,10 +100,10 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   padding: 0.08rem 0.42rem;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
-  border-radius: 999px;
+  border: var(--app-stroke-hairline) solid var(--app-stroke-default);
+  border-radius: var(--app-radius-pill);
   background: rgba(var(--v-theme-on-surface), 0.04);
-  font-size: 0.72rem;
+  font-size: var(--app-font-size-caption);
   color: rgba(var(--v-theme-on-surface), 0.74);
 }
 
@@ -125,13 +125,13 @@
   justify-content: center;
   width: 32px;
   height: 44px;
-  border-radius: 10px;
+  border-radius: var(--app-radius-card);
   overflow: hidden;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
+  border: var(--app-stroke-hairline) solid var(--app-stroke-default);
   background:
     linear-gradient(180deg, rgba(var(--v-theme-surface), 0.98), rgba(var(--v-theme-on-surface), 0.03));
   color: rgba(var(--v-theme-on-surface), 0.55);
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.14);
+  box-shadow: var(--app-shadow-md);
 }
 
 .live-singles-suggestion-thumb img {
@@ -142,7 +142,7 @@
 
 .live-singles-suggestion-title {
   font-size: 0.92rem;
-  font-weight: 700;
+  font-weight: var(--app-font-weight-strong);
   color: rgba(var(--v-theme-on-surface), 0.94);
 }
 
@@ -153,11 +153,11 @@
 
 .live-singles-list {
   display: grid;
-  gap: 10px;
+  gap: var(--app-space-2);
 }
 
 .live-singles-list-item {
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08) !important;
+  border: var(--app-stroke-hairline) solid var(--app-stroke-subtle) !important;
   background: rgba(var(--v-theme-on-surface), 0.015);
 }
 
@@ -165,14 +165,14 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: var(--app-space-2);
 }
 
 .live-singles-item-title-wrap {
   display: flex;
   align-items: center;
   min-width: 0;
-  gap: 8px;
+  gap: var(--app-space-2);
 }
 
 .live-singles-item-icon {
@@ -216,7 +216,7 @@
 
 .live-singles-control-label {
   font-size: 0.66rem;
-  font-weight: 700;
+  font-weight: var(--app-font-weight-strong);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: rgba(var(--v-theme-on-surface), 0.52);
@@ -252,7 +252,7 @@
   border-radius: 999px;
   text-align: center;
   font-size: 0.92rem;
-  font-weight: 800;
+  font-weight: var(--app-font-weight-emphasis);
   color: rgba(var(--v-theme-on-surface), 0.92);
   background: rgba(var(--v-theme-on-surface), 0.06);
   border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
@@ -311,7 +311,7 @@
 
 .live-singles-convert-btn {
   min-height: 38px !important;
-  font-weight: 700 !important;
+  font-weight: var(--app-font-weight-strong) !important;
   letter-spacing: 0.01em;
 }
 
@@ -436,7 +436,7 @@
   .live-singles-summary-pill {
     width: 100%;
     justify-content: flex-start;
-    border-radius: 12px;
+    border-radius: var(--app-radius-xl);
   }
 
   .live-singles-summary-subline {

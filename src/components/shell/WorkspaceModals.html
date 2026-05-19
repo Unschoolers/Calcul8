@@ -1,8 +1,8 @@
 <div>
-  <v-dialog v-model="showCreateWorkspaceModal" max-width="460">
-    <v-card>
-      <v-card-title>{{ t('shellCreateWorkspaceTitle') }}</v-card-title>
-      <v-card-text>
+  <v-dialog v-model="showCreateWorkspaceModal" max-width="460" content-class="app-mobile-fullscreen-dialog">
+    <v-card class="app-dialog-card">
+      <v-card-title class="app-dialog-title">{{ t('shellCreateWorkspaceTitle') }}</v-card-title>
+      <v-card-text class="app-dialog-content">
         <p class="text-body-2 text-medium-emphasis mb-4">
           {{ t('shellCreateWorkspaceBody') }}
         </p>
@@ -14,7 +14,7 @@
           @keyup.enter="createWorkspace"
         ></v-text-field>
       </v-card-text>
-      <v-card-actions>
+      <v-card-actions class="app-dialog-actions">
         <v-spacer></v-spacer>
         <v-btn variant="text" @click="showCreateWorkspaceModal = false">{{ t('commonCancel') }}</v-btn>
         <v-btn color="primary" :loading="isCreatingWorkspace" :disabled="activeScopeType !== 'personal'" @click="createWorkspace">
@@ -24,9 +24,9 @@
     </v-card>
   </v-dialog>
 
-  <v-dialog v-model="showWorkspaceMembersModal" max-width="760" content-class="workspace-members-dialog">
-    <v-card class="workspace-members-card">
-      <v-card-title class="workspace-members-card__title">
+  <v-dialog v-model="showWorkspaceMembersModal" max-width="760" content-class="workspace-members-dialog app-mobile-fullscreen-dialog">
+    <v-card class="workspace-members-card app-dialog-card">
+      <v-card-title class="workspace-members-card__title app-dialog-title">
         <div class="workspace-members-card__title-copy">
           <div class="workspace-members-card__eyebrow">{{ t('shellSharedWorkspaceTitle') }}</div>
           <div class="workspace-members-card__headline-row">
@@ -60,7 +60,7 @@
           </div>
         </div>
       </v-card-title>
-      <v-card-text class="workspace-members-card__content">
+      <v-card-text class="workspace-members-card__content app-dialog-content">
         <div class="workspace-members-section">
           <div class="workspace-members-section__header">
             {{
@@ -163,17 +163,17 @@
           </div>
         </div>
       </v-card-text>
-      <v-card-actions class="workspace-members-card__actions">
+      <v-card-actions class="workspace-members-card__actions app-dialog-actions">
         <v-spacer></v-spacer>
         <v-btn variant="text" @click="showWorkspaceMembersModal = false">{{ t('commonClose') }}</v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>
 
-  <v-dialog v-model="showLeaveWorkspaceModal" max-width="480">
-    <v-card>
-      <v-card-title>{{ t('shellLeaveWorkspaceTitle') }}</v-card-title>
-      <v-card-text>
+  <v-dialog v-model="showLeaveWorkspaceModal" max-width="480" content-class="app-mobile-fullscreen-dialog">
+    <v-card class="app-dialog-card">
+      <v-card-title class="app-dialog-title">{{ t('shellLeaveWorkspaceTitle') }}</v-card-title>
+      <v-card-text class="app-dialog-content">
         <p class="text-body-2 text-medium-emphasis mb-4">
           {{
             isCurrentWorkspaceOwner
@@ -210,7 +210,7 @@
           hide-details
         ></v-checkbox>
       </v-card-text>
-      <v-card-actions>
+      <v-card-actions class="app-dialog-actions">
         <v-spacer></v-spacer>
         <v-btn variant="text" @click="showLeaveWorkspaceModal = false">{{ t('commonCancel') }}</v-btn>
         <v-btn color="error" :loading="isLeavingWorkspace" @click="leaveCurrentWorkspace">
@@ -220,10 +220,10 @@
     </v-card>
   </v-dialog>
 
-  <v-dialog v-model="showWorkspaceJoinDialog" max-width="460">
-    <v-card>
-      <v-card-title>{{ t('shellJoinWorkspaceTitle') }}</v-card-title>
-      <v-card-text>
+  <v-dialog v-model="showWorkspaceJoinDialog" max-width="460" content-class="app-mobile-fullscreen-dialog">
+    <v-card class="app-dialog-card">
+      <v-card-title class="app-dialog-title">{{ t('shellJoinWorkspaceTitle') }}</v-card-title>
+      <v-card-text class="app-dialog-content">
         <p class="text-body-1 mb-2">
           {{ t('shellJoinWorkspacePrompt', { name: pendingWorkspaceInviteTargetName }) }}
         </p>
@@ -231,7 +231,7 @@
           {{ t('shellJoinWorkspaceBody') }}
         </p>
       </v-card-text>
-      <v-card-actions>
+      <v-card-actions class="app-dialog-actions">
         <v-spacer></v-spacer>
         <v-btn variant="text" @click="dismissPendingWorkspaceInvite">{{ t('commonCancel') }}</v-btn>
         <v-btn color="primary" :loading="isAcceptingWorkspaceInvite" @click="acceptPendingWorkspaceInvite">
