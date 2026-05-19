@@ -10,13 +10,19 @@ vi.mock("@azure/functions", () => ({
 
 const {
   getConfigMock,
-  getEntitlementMock,
+  claimStripeWebhookEventMock,
+  listPlayPurchasesForUserMock,
+  listStripeEntitlementFactsForUserMock,
   upsertEntitlementMock,
+  upsertStripeEntitlementFactMock,
   verifyStripeWebhookEventMock
 } = vi.hoisted(() => ({
   getConfigMock: vi.fn(),
-  getEntitlementMock: vi.fn(),
+  claimStripeWebhookEventMock: vi.fn(),
+  listPlayPurchasesForUserMock: vi.fn(),
+  listStripeEntitlementFactsForUserMock: vi.fn(),
   upsertEntitlementMock: vi.fn(),
+  upsertStripeEntitlementFactMock: vi.fn(),
   verifyStripeWebhookEventMock: vi.fn()
 }));
 
@@ -25,8 +31,11 @@ vi.mock("../lib/config", () => ({
 }));
 
 vi.mock("../lib/cosmos/entitlementRepository", () => ({
-  getEntitlement: getEntitlementMock,
-  upsertEntitlement: upsertEntitlementMock
+  claimStripeWebhookEvent: claimStripeWebhookEventMock,
+  listPlayPurchasesForUser: listPlayPurchasesForUserMock,
+  listStripeEntitlementFactsForUser: listStripeEntitlementFactsForUserMock,
+  upsertEntitlement: upsertEntitlementMock,
+  upsertStripeEntitlementFact: upsertStripeEntitlementFactMock
 }));
 
 vi.mock("../lib/stripe", () => ({
@@ -66,7 +75,10 @@ beforeEach(() => {
     stripeCancelUrl: "https://app.whatfees.ca/settings",
     allowedOrigins: ["https://app.whatfees.ca"]
   }));
-  getEntitlementMock.mockResolvedValue(null);
+  claimStripeWebhookEventMock.mockResolvedValue(true);
+  listPlayPurchasesForUserMock.mockResolvedValue([]);
+  listStripeEntitlementFactsForUserMock.mockResolvedValue([]);
+  upsertStripeEntitlementFactMock.mockImplementation(async (_config, fact) => fact);
   upsertEntitlementMock.mockResolvedValue({
     id: "entitlement:user-1",
     userId: "user-1",
@@ -102,6 +114,7 @@ test("billingWebhook grants entitlement on completed payment checkout", async ()
     type: "checkout.session.completed",
     data: {
       object: {
+        id: "cs_1",
         mode: "payment",
         payment_status: "paid",
         client_reference_id: "user-1"
@@ -113,10 +126,148 @@ test("billingWebhook grants entitlement on completed payment checkout", async ()
 
   assert.equal(response.status, 200);
   assert.equal((response.jsonBody as { handled: boolean }).handled, true);
+  assert.equal(claimStripeWebhookEventMock.mock.calls.length, 1);
+  assert.equal(claimStripeWebhookEventMock.mock.calls[0]?.[1]?.stripeEventId, "evt_1");
+  assert.equal(upsertStripeEntitlementFactMock.mock.calls.length, 1);
+  assert.equal(upsertStripeEntitlementFactMock.mock.calls[0]?.[1]?.active, true);
+  assert.equal(upsertStripeEntitlementFactMock.mock.calls[0]?.[1]?.stripeObjectId, "cs_1");
   assert.equal(upsertEntitlementMock.mock.calls.length, 1);
   assert.equal(upsertEntitlementMock.mock.calls[0]?.[1]?.userId, "user-1");
   assert.equal(upsertEntitlementMock.mock.calls[0]?.[1]?.hasProAccess, true);
   assert.equal(upsertEntitlementMock.mock.calls[0]?.[1]?.purchaseSource, "stripe");
+});
+
+test("billingWebhook ignores duplicate Stripe events after the event claim already exists", async () => {
+  const request = createRequest("{\"id\":\"evt_dup\"}", {
+    "stripe-signature": "t=1700000000,v1=good"
+  });
+  const context = createInvocationContext();
+  claimStripeWebhookEventMock.mockResolvedValue(false);
+  verifyStripeWebhookEventMock.mockReturnValue({
+    id: "evt_dup",
+    type: "checkout.session.completed",
+    data: {
+      object: {
+        id: "cs_dup",
+        mode: "payment",
+        payment_status: "paid",
+        client_reference_id: "user-1"
+      }
+    }
+  });
+
+  const response = await billingWebhook(request as never, context as never);
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(response.jsonBody, {
+    received: true,
+    eventId: "evt_dup",
+    handled: true,
+    duplicate: true,
+    updated: false
+  });
+  assert.equal(upsertStripeEntitlementFactMock.mock.calls.length, 0);
+  assert.equal(upsertEntitlementMock.mock.calls.length, 0);
+});
+
+test("billingWebhook keeps Play access when a Stripe subscription cancellation is inactive", async () => {
+  const request = createRequest("{\"id\":\"evt_cancel\"}", {
+    "stripe-signature": "t=1700000000,v1=good"
+  });
+  const context = createInvocationContext();
+  verifyStripeWebhookEventMock.mockReturnValue({
+    id: "evt_cancel",
+    type: "customer.subscription.deleted",
+    data: {
+      object: {
+        id: "sub_1",
+        status: "canceled",
+        metadata: {
+          userId: "user-1"
+        }
+      }
+    }
+  });
+  listPlayPurchasesForUserMock.mockResolvedValue([
+    {
+      id: "play_purchase:hash-1",
+      docType: "play_purchase",
+      userId: "user-1",
+      purchaseTokenHash: "hash-1",
+      packageName: "io.whatfees",
+      productId: "pro_access",
+      orderId: null,
+      purchaseState: 0,
+      acknowledgementState: 1,
+      consumptionState: null,
+      purchaseTimeMillis: "1770000000000",
+      updatedAt: "2026-01-01T00:00:00.000Z"
+    }
+  ]);
+  listStripeEntitlementFactsForUserMock.mockResolvedValue([
+    {
+      id: "stripe_entitlement:user-1:subscription:sub_1",
+      docType: "stripe_entitlement_fact",
+      userId: "user-1",
+      stripeObjectId: "sub_1",
+      stripeObjectType: "subscription",
+      active: false,
+      sourceEventId: "evt_cancel",
+      sourceEventType: "customer.subscription.deleted",
+      status: "canceled",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-02T00:00:00.000Z"
+    }
+  ]);
+
+  const response = await billingWebhook(request as never, context as never);
+
+  assert.equal(response.status, 200);
+  assert.equal(upsertEntitlementMock.mock.calls.length, 1);
+  assert.equal(upsertEntitlementMock.mock.calls[0]?.[1]?.hasProAccess, true);
+  assert.equal(upsertEntitlementMock.mock.calls[0]?.[1]?.purchaseSource, "google_play");
+});
+
+test("billingWebhook revokes Stripe access when no provider facts remain active", async () => {
+  const request = createRequest("{\"id\":\"evt_cancel\"}", {
+    "stripe-signature": "t=1700000000,v1=good"
+  });
+  const context = createInvocationContext();
+  verifyStripeWebhookEventMock.mockReturnValue({
+    id: "evt_cancel",
+    type: "customer.subscription.deleted",
+    data: {
+      object: {
+        id: "sub_1",
+        status: "canceled",
+        metadata: {
+          userId: "user-1"
+        }
+      }
+    }
+  });
+  listStripeEntitlementFactsForUserMock.mockResolvedValue([
+    {
+      id: "stripe_entitlement:user-1:subscription:sub_1",
+      docType: "stripe_entitlement_fact",
+      userId: "user-1",
+      stripeObjectId: "sub_1",
+      stripeObjectType: "subscription",
+      active: false,
+      sourceEventId: "evt_cancel",
+      sourceEventType: "customer.subscription.deleted",
+      status: "canceled",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-02T00:00:00.000Z"
+    }
+  ]);
+
+  const response = await billingWebhook(request as never, context as never);
+
+  assert.equal(response.status, 200);
+  assert.equal(upsertEntitlementMock.mock.calls.length, 1);
+  assert.equal(upsertEntitlementMock.mock.calls[0]?.[1]?.hasProAccess, false);
+  assert.equal(upsertEntitlementMock.mock.calls[0]?.[1]?.purchaseSource, null);
 });
 
 test("billingWebhook ignores unrelated events", async () => {

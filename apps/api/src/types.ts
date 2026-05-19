@@ -151,7 +151,7 @@ export interface EntitlementDocument {
   id: string;
   userId: string;
   hasProAccess: boolean;
-  purchaseSource?: string;
+  purchaseSource?: string | null;
   updatedAt: string;
 }
 
@@ -179,6 +179,45 @@ export interface PlayPurchaseDocument {
   acknowledgementState: number | null;
   consumptionState: number | null;
   purchaseTimeMillis: string | null;
+  updatedAt: string;
+}
+
+export type StripeEntitlementObjectType = "checkout_session" | "subscription";
+
+export interface StripeEntitlementFactDocument {
+  id: string;
+  docType: "stripe_entitlement_fact";
+  userId: string;
+  stripeObjectId: string;
+  stripeObjectType: StripeEntitlementObjectType;
+  active: boolean;
+  sourceEventId: string;
+  sourceEventType: string;
+  sourceEventCreated?: number | null;
+  mode?: string;
+  status?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StripeProcessedEventDocument {
+  id: string;
+  docType: "stripe_processed_event";
+  userId: string;
+  ownerUserId: string;
+  stripeEventId: string;
+  eventType: string;
+  processedAt: string;
+  updatedAt: string;
+}
+
+export interface PlayPurchaseTokenClaimDocument {
+  id: string;
+  docType: "play_purchase_token_claim";
+  userId: string;
+  ownerUserId: string;
+  purchaseTokenHash: string;
+  createdAt: string;
   updatedAt: string;
 }
 

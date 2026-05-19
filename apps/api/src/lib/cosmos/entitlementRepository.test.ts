@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import { beforeEach, test, vi } from "vitest";
-import type { ApiConfig, PurchaseVerificationResultDocument, UserProfileDocument } from "../../types";
+import type {
+  ApiConfig,
+  PurchaseVerificationResultDocument,
+  StripeEntitlementFactDocument,
+  UserProfileDocument
+} from "../../types";
 
 const {
   getContainersMock,
@@ -22,12 +27,17 @@ vi.mock("./core", () => ({
 }));
 
 import {
+  claimPlayPurchaseTokenForUser,
+  claimStripeWebhookEvent,
   deletePlayPurchasesForUser,
   deleteUserProfile,
   createPurchaseVerificationResult,
   getPurchaseVerificationResult,
   getUserProfile,
   listUserProfiles,
+  listStripeEntitlementFactsForUser,
+  PlayPurchaseTokenConflictError,
+  upsertStripeEntitlementFact,
   upsertUserProfile
 } from "./entitlementRepository";
 
@@ -147,6 +157,138 @@ test("createPurchaseVerificationResult returns the existing row after a conflict
   assert.equal(result, existingResult);
   assert.equal(entitlements.items.create.mock.calls.length, 1);
   assert.equal(entitlements.item.mock.calls.length, 1);
+});
+
+test("claimStripeWebhookEvent returns false when the event marker already exists", async () => {
+  const entitlements = createEntitlementsContainer();
+  entitlements.items.create.mockRejectedValue({ statusCode: 409 });
+  getContainersMock.mockReturnValue({ entitlements });
+
+  const claimed = await claimStripeWebhookEvent(createConfig(), {
+    userId: "user-1",
+    stripeEventId: "evt_1",
+    eventType: "checkout.session.completed",
+    processedAt: "2026-03-18T00:00:00.000Z"
+  });
+
+  assert.equal(claimed, false);
+  assert.equal(entitlements.items.create.mock.calls.length, 1);
+  assert.deepEqual(entitlements.items.create.mock.calls[0]?.[0], {
+    id: "stripe_event:evt_1",
+    docType: "stripe_processed_event",
+    userId: "stripe_event:evt_1",
+    ownerUserId: "user-1",
+    stripeEventId: "evt_1",
+    eventType: "checkout.session.completed",
+    processedAt: "2026-03-18T00:00:00.000Z",
+    updatedAt: "2026-03-18T00:00:00.000Z"
+  });
+});
+
+test("claimPlayPurchaseTokenForUser rejects a token already claimed by another user", async () => {
+  const entitlements = createEntitlementsContainer();
+  entitlements.items.create.mockRejectedValue({ statusCode: 409 });
+  entitlements.item.mockReturnValue({
+    read: vi.fn().mockResolvedValue({
+      resource: {
+        id: "play_purchase_token_claim:hash-1",
+        docType: "play_purchase_token_claim",
+        userId: "play_token:hash-1",
+        ownerUserId: "user-2",
+        purchaseTokenHash: "hash-1",
+        createdAt: "2026-03-17T00:00:00.000Z",
+        updatedAt: "2026-03-17T00:00:00.000Z"
+      }
+    })
+  });
+  getContainersMock.mockReturnValue({ entitlements });
+
+  await assert.rejects(
+    () => claimPlayPurchaseTokenForUser(createConfig(), {
+      userId: "user-1",
+      purchaseTokenHash: "hash-1",
+      createdAt: "2026-03-18T00:00:00.000Z"
+    }),
+    PlayPurchaseTokenConflictError
+  );
+
+  assert.equal(entitlements.items.create.mock.calls.length, 1);
+  assert.deepEqual(entitlements.item.mock.calls[0], [
+    "play_purchase_token_claim:hash-1",
+    "play_token:hash-1"
+  ]);
+});
+
+test("upsertStripeEntitlementFact does not regress a newer provider fact with an older event", async () => {
+  const entitlements = createEntitlementsContainer();
+  const existingFact: StripeEntitlementFactDocument = {
+    id: "stripe_entitlement:user-1:subscription:sub_1",
+    docType: "stripe_entitlement_fact",
+    userId: "user-1",
+    stripeObjectId: "sub_1",
+    stripeObjectType: "subscription",
+    active: true,
+    sourceEventId: "evt_new",
+    sourceEventType: "customer.subscription.updated",
+    sourceEventCreated: 20,
+    status: "active",
+    createdAt: "2026-03-18T00:00:00.000Z",
+    updatedAt: "2026-03-18T00:00:00.000Z"
+  };
+  entitlements.item.mockReturnValue({
+    read: vi.fn().mockResolvedValue({ resource: existingFact })
+  });
+  getContainersMock.mockReturnValue({ entitlements });
+
+  const result = await upsertStripeEntitlementFact(createConfig(), {
+    id: "stripe_entitlement:user-1:subscription:sub_1",
+    docType: "stripe_entitlement_fact",
+    userId: "user-1",
+    stripeObjectId: "sub_1",
+    stripeObjectType: "subscription",
+    active: false,
+    sourceEventId: "evt_old",
+    sourceEventType: "customer.subscription.deleted",
+    sourceEventCreated: 10,
+    status: "canceled",
+    createdAt: "2026-03-17T00:00:00.000Z",
+    updatedAt: "2026-03-17T00:00:00.000Z"
+  });
+
+  assert.equal(result, existingFact);
+  assert.equal(entitlements.items.upsert.mock.calls.length, 0);
+});
+
+test("listStripeEntitlementFactsForUser queries Stripe facts within the user partition", async () => {
+  const entitlements = createEntitlementsContainer();
+  entitlements.items.query.mockReturnValue({
+    fetchAll: vi.fn().mockResolvedValue({
+      resources: [
+        {
+          id: "stripe_entitlement:user-1:subscription:sub_1",
+          docType: "stripe_entitlement_fact",
+          userId: "user-1",
+          stripeObjectId: "sub_1",
+          stripeObjectType: "subscription",
+          active: true,
+          sourceEventId: "evt_1",
+          sourceEventType: "customer.subscription.updated",
+          createdAt: "2026-03-18T00:00:00.000Z",
+          updatedAt: "2026-03-18T00:00:00.000Z"
+        }
+      ]
+    })
+  });
+  getContainersMock.mockReturnValue({ entitlements });
+
+  const result = await listStripeEntitlementFactsForUser(createConfig(), "user-1");
+
+  assert.equal(result.length, 1);
+  assert.equal(entitlements.items.query.mock.calls[0]?.[1]?.partitionKey, "user-1");
+  assert.deepEqual(entitlements.items.query.mock.calls[0]?.[0]?.parameters, [
+    { name: "@userId", value: "user-1" },
+    { name: "@docType", value: "stripe_entitlement_fact" }
+  ]);
 });
 
 test("getUserProfile returns null for missing or invalid profile documents", async () => {

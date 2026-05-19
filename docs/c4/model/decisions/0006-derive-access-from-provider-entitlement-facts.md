@@ -4,7 +4,7 @@ Date: 2026-05-19
 
 ## Status
 
-Proposed
+Accepted
 
 ## Context
 
@@ -14,7 +14,7 @@ The current refactor plan identifies race and ordering risks when provider event
 
 ## Decision
 
-Persist provider-specific entitlement facts and derive the user's effective access from those facts.
+Persist provider-specific entitlement facts and derive the user's effective access from those facts while keeping the legacy entitlement summary as a compatibility projection.
 
 Google Play token claims should use create-only or otherwise atomic ownership records. Stripe webhook processing should record processed event ids and handle duplicate or out-of-order events idempotently.
 
@@ -24,5 +24,4 @@ One provider cannot accidentally revoke access granted by another active provide
 
 Billing support and audits can explain why a user has access.
 
-The API needs tests for duplicate Play token claims, duplicate Stripe events, out-of-order subscription changes, and provider overlap.
-
+The API needs continued coverage as new provider event types are added, but the core duplicate Play token claim, duplicate Stripe event, out-of-order subscription change, and provider-overlap cases are covered.

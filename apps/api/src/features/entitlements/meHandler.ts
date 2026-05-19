@@ -1,9 +1,14 @@
 import { type HttpRequest, type HttpResponseInit, type InvocationContext } from "@azure/functions";
 import { resolveUserId } from "../../lib/auth";
-import { getEntitlement, listPlayPurchasesForUser, upsertEntitlement } from "../../lib/cosmos/entitlementRepository";
+import {
+  getEntitlement,
+  listPlayPurchasesForUser,
+  listStripeEntitlementFactsForUser,
+  upsertEntitlement
+} from "../../lib/cosmos/entitlementRepository";
 import { getConfig } from "../../lib/config";
+import { deriveEntitlementState, entitlementStateMatches } from "../../lib/entitlementFacts";
 import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../../lib/http";
-import { hasValidProPurchase } from "../../lib/playEntitlements";
 import { buildLegacyUserEntitlementDocumentId } from "../../lib/scopeKeys";
 
 export async function entitlementsMe(
@@ -25,17 +30,27 @@ export async function entitlementsMe(
         updatedAt: new Date().toISOString()
       });
 
-    // Self-heal: if entitlement row is false but a valid purchase record exists, restore pro access.
-    if (!entitlement.hasProAccess) {
-      const purchases = await listPlayPurchasesForUser(config, userId);
-      if (hasValidProPurchase(purchases, config.googlePlayProProductIds)) {
-        entitlement = await upsertEntitlement(config, {
-          ...entitlement,
-          hasProAccess: true,
-          purchaseSource: "google_play",
-          updatedAt: new Date().toISOString()
-        });
-      }
+    const [playPurchases, stripeFacts] = await Promise.all([
+      listPlayPurchasesForUser(config, userId),
+      listStripeEntitlementFactsForUser(config, userId)
+    ]);
+    const derivedState = deriveEntitlementState({
+      existingEntitlement: entitlement,
+      playPurchases,
+      stripeFacts,
+      allowedPlayProductIds: config.googlePlayProProductIds,
+      now: new Date().toISOString(),
+      allowLegacyFallback: true
+    });
+
+    if (!entitlementStateMatches(entitlement, derivedState)) {
+      entitlement = await upsertEntitlement(config, {
+        id: buildLegacyUserEntitlementDocumentId(userId),
+        userId,
+        hasProAccess: derivedState.hasProAccess,
+        purchaseSource: derivedState.purchaseSource,
+        updatedAt: derivedState.updatedAt
+      });
     }
 
     return jsonResponse(request, config, 200, {

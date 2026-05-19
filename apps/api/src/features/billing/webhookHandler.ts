@@ -1,25 +1,44 @@
 import { type HttpRequest, type HttpResponseInit, type InvocationContext } from "@azure/functions";
-import { getEntitlement, upsertEntitlement } from "../../lib/cosmos/entitlementRepository";
 import { getConfig } from "../../lib/config";
+import {
+  claimStripeWebhookEvent,
+  listPlayPurchasesForUser,
+  listStripeEntitlementFactsForUser,
+  upsertEntitlement,
+  upsertStripeEntitlementFact
+} from "../../lib/cosmos/entitlementRepository";
+import { stripeEntitlementFactId } from "../../lib/cosmos/ids";
+import { deriveEntitlementState } from "../../lib/entitlementFacts";
 import { maybeHandleHttpGuards } from "../../lib/http";
 import { buildLegacyUserEntitlementDocumentId } from "../../lib/scopeKeys";
 import { verifyStripeWebhookEvent, type StripeWebhookEvent } from "../../lib/stripe";
+import type {
+  StripeEntitlementFactDocument,
+  StripeEntitlementObjectType
+} from "../../types";
 
 interface StripeCheckoutSessionPayload {
+  id?: string;
   mode?: string;
   payment_status?: string;
+  subscription?: unknown;
   client_reference_id?: string;
   metadata?: Record<string, unknown>;
 }
 
 interface StripeSubscriptionPayload {
+  id?: string;
   status?: string;
   metadata?: Record<string, unknown>;
 }
 
 interface StripeEntitlementUpdate {
   userId: string;
-  hasProAccess: boolean;
+  stripeObjectId: string;
+  stripeObjectType: StripeEntitlementObjectType;
+  active: boolean;
+  mode?: string;
+  status?: string;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -28,6 +47,17 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function readString(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function readStripeObjectId(value: unknown): string {
+  if (typeof value === "string") return value.trim();
+  if (isRecord(value)) return readString(value.id);
+  return "";
+}
+
+function readFiniteNumber(value: unknown): number | null {
+  if (typeof value !== "number" || !Number.isFinite(value)) return null;
+  return value;
 }
 
 function resolveStripeUserId(payload: Record<string, unknown>): string {
@@ -65,18 +95,30 @@ function resolveEntitlementUpdate(event: StripeWebhookEvent): StripeEntitlementU
       }
       const userId = resolveStripeUserId(checkout);
       if (!userId) return null;
+      const stripeObjectId = readString(checkout.id);
+      if (!stripeObjectId) return null;
       return {
         userId,
-        hasProAccess: true
+        stripeObjectId,
+        stripeObjectType: "checkout_session",
+        active: true,
+        mode,
+        status: paymentStatus || undefined
       };
     }
 
     if (mode === "subscription") {
       const userId = resolveStripeUserId(checkout);
       if (!userId) return null;
+      const stripeObjectId = readStripeObjectId(checkout.subscription);
+      if (!stripeObjectId) return null;
       return {
         userId,
-        hasProAccess: true
+        stripeObjectId,
+        stripeObjectType: "subscription",
+        active: true,
+        mode,
+        status: paymentStatus || undefined
       };
     }
   }
@@ -93,14 +135,28 @@ function resolveEntitlementUpdate(event: StripeWebhookEvent): StripeEntitlementU
 
     const userId = resolveStripeUserId(subscription);
     if (!userId) return null;
+    const stripeObjectId = readString(subscription.id);
+    if (!stripeObjectId) return null;
 
     return {
       userId,
-      hasProAccess
+      stripeObjectId,
+      stripeObjectType: "subscription",
+      active: hasProAccess,
+      status
     };
   }
 
   return null;
+}
+
+function mergeStripeFact(
+  facts: StripeEntitlementFactDocument[],
+  changedFact: StripeEntitlementFactDocument
+): StripeEntitlementFactDocument[] {
+  const byId = new Map(facts.map((fact) => [fact.id, fact]));
+  byId.set(changedFact.id, changedFact);
+  return [...byId.values()];
 }
 
 function createResponse(status: number, body: Record<string, unknown>): HttpResponseInit {
@@ -156,15 +212,59 @@ export async function billingWebhook(
   }
 
   try {
-    const existingEntitlement = await getEntitlement(config, entitlementUpdate.userId);
+    const updatedAt = new Date().toISOString();
+    const claimed = await claimStripeWebhookEvent(config, {
+      userId: entitlementUpdate.userId,
+      stripeEventId: event.id,
+      eventType: event.type,
+      processedAt: updatedAt
+    });
+    if (!claimed) {
+      return createResponse(200, {
+        received: true,
+        eventId: event.id,
+        handled: true,
+        duplicate: true,
+        updated: false
+      });
+    }
+
+    const changedFact = await upsertStripeEntitlementFact(config, {
+      id: stripeEntitlementFactId(
+        entitlementUpdate.userId,
+        entitlementUpdate.stripeObjectType,
+        entitlementUpdate.stripeObjectId
+      ),
+      docType: "stripe_entitlement_fact",
+      userId: entitlementUpdate.userId,
+      stripeObjectId: entitlementUpdate.stripeObjectId,
+      stripeObjectType: entitlementUpdate.stripeObjectType,
+      active: entitlementUpdate.active,
+      sourceEventId: event.id,
+      sourceEventType: event.type,
+      sourceEventCreated: readFiniteNumber(event.created),
+      mode: entitlementUpdate.mode,
+      status: entitlementUpdate.status,
+      createdAt: updatedAt,
+      updatedAt
+    });
+    const [playPurchases, stripeFacts] = await Promise.all([
+      listPlayPurchasesForUser(config, entitlementUpdate.userId),
+      listStripeEntitlementFactsForUser(config, entitlementUpdate.userId)
+    ]);
+    const derivedState = deriveEntitlementState({
+      playPurchases,
+      stripeFacts: mergeStripeFact(stripeFacts, changedFact),
+      allowedPlayProductIds: config.googlePlayProProductIds,
+      now: updatedAt
+    });
+
     await upsertEntitlement(config, {
       id: buildLegacyUserEntitlementDocumentId(entitlementUpdate.userId),
       userId: entitlementUpdate.userId,
-      hasProAccess: entitlementUpdate.hasProAccess,
-      purchaseSource: entitlementUpdate.hasProAccess
-        ? "stripe"
-        : (existingEntitlement?.purchaseSource ?? "stripe"),
-      updatedAt: new Date().toISOString()
+      hasProAccess: derivedState.hasProAccess,
+      purchaseSource: derivedState.purchaseSource,
+      updatedAt: derivedState.updatedAt
     });
   } catch (error) {
     context.error("Stripe webhook entitlement update failed", error);

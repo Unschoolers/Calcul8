@@ -20,21 +20,14 @@ This file only lists remaining Critical and High priority work. Completed, mediu
 - Risk: a hostile origin could read a session CSRF token and issue cookie-authenticated writes if wildcard origins reach production.
 - Next: reject wildcard origins when `API_ENV=prod`, or disable credentials and exposed auth headers for wildcard mode; add HTTP guard tests for prod wildcard behavior.
 
-### 3. Payment Entitlements Need Atomic Provider Facts
-
-- Finding: Google Play purchase token uniqueness is checked with read-before-write, and Stripe webhook events overwrite one boolean entitlement without processed-event idempotency or provider-specific facts.
-- Evidence: `apps/api/src/features/entitlements/verifyPlayHandler.ts`, `apps/api/src/lib/cosmos/entitlementRepository.ts`, `apps/api/src/features/billing/webhookHandler.ts`.
-- Risk: two users can race the same Play token, stale Stripe subscription events can revoke access granted by another provider, and duplicate/out-of-order webhook events can change access incorrectly.
-- Next: store token claims in a token-hash partition or create-only claim document; record processed Stripe event ids; persist provider-specific entitlement facts; derive final access from all active providers. Cover duplicate Play token races, duplicate Stripe events, out-of-order subscription events, and Stripe revocation while Play or lifetime access remains valid.
-
-### 4. Shared Sync Needs Atomic Compare-And-Swap And Non-Destructive Conflict Recovery
+### 3. Shared Sync Needs Atomic Compare-And-Swap And Non-Destructive Conflict Recovery
 
 - Finding: API sync push checks `clientVersion` against a read snapshot, then writes presets/meta without an ETag or transactional guard; frontend stale-version recovery can pull and apply cloud state over dirty local changes.
 - Evidence: `apps/api/src/features/sync/pushHandler.ts`, `apps/api/src/lib/cosmos/syncSnapshotIncrementalRepository.ts`, `src/app-core/methods/ui/sync/sync-conflict-policy.ts`, `src/app-core/methods/ui/sync/sync-apply.ts`.
 - Risk: concurrent workspace pushes can both pass and overwrite/delete each other, and conflict recovery can become a data-loss path.
 - Next: make sync meta the compare-and-swap authority with Cosmos `IfMatch` or a transactional batch where possible; add concurrent same-version push tests expecting one success and one `409`; add frontend tests for stale conflicts with dirty local sales/lots/game changes and require a resolver or preserved pending edits before applying cloud.
 
-### 5. Realtime Production Must Be Authenticated And Single-Replica Safe Until It Has A Backplane
+### 4. Realtime Production Must Be Authenticated And Single-Replica Safe Until It Has A Backplane
 
 - Finding: prod realtime allows up to two replicas while rooms, clients, and presence are in memory; the manual bootstrap can deploy production with no `REALTIME_TOKEN_SECRET`, enabling unauthenticated room subscriptions.
 - Evidence: `.github/workflows/deploy-realtime-prod.yml`, `apps/realtime/src/realtime-room-store.ts`, `apps/realtime/src/realtime-presence-store.ts`, `scripts/bootstrap-realtime.ps1`, `apps/realtime/src/realtime-auth.ts`.
@@ -43,35 +36,35 @@ This file only lists remaining Critical and High priority work. Completed, mediu
 
 ## High
 
-### 6. Move Every Package To A TypeScript 6 Baseline And Add TypeScript 7 Native Preview Checks
+### 5. Move Every Package To A TypeScript 6 Baseline And Add TypeScript 7 Native Preview Checks
 
 - Finding: root and API are already on TypeScript 6, but realtime and CardSync still use TypeScript 5.9.3; TypeScript 7 beta ships as `@typescript/native-preview` with `tsgo`, and TS7 adopts TS6 defaults and hard-errors deprecated flags.
 - Evidence: `package.json`, `apps/api/package.json`, `apps/realtime/package.json`, `CardSync/package.json`, `tsconfig.json`, `apps/api/tsconfig.json`, `apps/realtime/tsconfig.json`, `CardSync/tsconfig.json`; TypeScript 7 beta notes at `https://devblogs.microsoft.com/typescript/announcing-typescript-7-0-beta/`.
 - Risk: toolchain drift will make the TS7 move harder, especially around explicit `rootDir`, explicit `types`, `moduleResolution`, and TS6 deprecations.
 - Next: upgrade realtime and CardSync to TypeScript 6.0.3 or newer; add explicit TS7 readiness scripts using `@typescript/native-preview` and `tsgo` side-by-side with `tsc`; keep `typescript` as the stable compiler until TS7 is published under the main package; run TS7 checks for root, API, realtime, and CardSync in a non-blocking or opt-in CI lane first.
 
-### 7. Bring Dependencies To Current Latest Deliberately
+### 6. Bring Dependencies To Current Latest Deliberately
 
 - Finding: npm reports newer packages across root, API, realtime, and CardSync. Known desired updates include `@azure/cosmos` 4.9.3 and `@azure/functions` 4.14.0; other current latests include Vite 8.0.13, Vitest 4.1.6, Vue 3.5.34, Vuetify 4.0.7, Three 0.184.0, `vite-plugin-pwa` 1.3.0, `ws` 8.20.1, and `dotenv` 17.4.2.
 - Evidence: `package.json`, `package-lock.json`, `apps/api/package.json`, `apps/api/package-lock.json`, `apps/realtime/package.json`, `apps/realtime/package-lock.json`, `CardSync/package.json`, `CardSync/package-lock.json`; latest versions checked with `npm outdated` on 2026-05-18.
 - Risk: stale SDKs and build tools hide compatibility work until a release crunch; major build/test upgrades can also break CI if taken casually.
 - Next: update Azure SDKs first (`@azure/cosmos` 4.9.3, `@azure/functions` 4.14.0), then upgrade runtime/build/test packages in small batches. Each batch must run the affected verifier: `npm run verify`, `npm --prefix apps/api run verify`, `npm --prefix apps/realtime run verify`, and `npm --prefix CardSync run build`.
 
-### 8. Cosmos Optimistic Concurrency Must Cover Sales, Whatnot, And Public Sessions
+### 7. Cosmos Optimistic Concurrency Must Cover Sales, Whatnot, And Public Sessions
 
 - Finding: sale/live-pricing `baseVersion`, Whatnot review confirmation, and public game session publishing still rely on read-before-write or full upserts without ETag/status-transition guards.
 - Evidence: `apps/api/src/lib/cosmos/salesRepository.ts`, `apps/api/src/features/whatnot/importConfirm.ts`, `apps/api/src/features/whatnot/saleBuilders.ts`, `apps/api/src/lib/cosmos/whatnotRepository.ts`, `apps/api/src/features/game/publicSessionHandler.ts`, `apps/api/src/lib/cosmos/gamePublicSessionRepository.ts`.
 - Risk: two writers can both pass version checks, double-submit can process a Whatnot batch twice, and a stale live public-session publish can regress an ended spectator session.
 - Next: replace read-then-upsert flows with ETag-based replace/create or status-claim transitions; make Whatnot confirm idempotent by `batchId`; require monotonic public-session snapshot versions or ETags; add concurrent writer and stale-live-after-ended regression tests.
 
-### 9. Realtime Delivery Needs Recovery, Payload Limits, And Deployment Smoke Tests
+### 8. Realtime Delivery Needs Recovery, Payload Limits, And Deployment Smoke Tests
 
 - Finding: API writes publish realtime events best-effort, HTTP payloads are capped but WebSocket frames are not, API/Pages deploys do not fully validate realtime env, and current smoke checks only hit `/healthz`.
 - Evidence: `apps/api/src/lib/realtime.ts`, `apps/api/src/features/sales/handlers.ts`, `apps/api/src/features/sync/pushHandler.ts`, `apps/realtime/src/realtime-gateway.ts`, `.github/workflows/deploy-api-prod.yml`, `.github/workflows/deploy-pages.yml`, `src/app-core/methods/ui/workspace/workspace-realtime-state.ts`.
 - Risk: clients can stay stale after dropped publishes, unauthenticated oversized WebSocket messages can stress memory/CPU, and prod can deploy with broken publish/subscribe wiring.
 - Next: add retry/outbox or client refresh-on-reconnect/version-mismatch recovery; set WebSocket `maxPayload` and close oversized frames with `1009`; validate `REALTIME_*` and `VITE_REALTIME_SOCKET_URL` in deployment workflows; add smoke tests for token minting plus publish/subscribe.
 
-### 10. Release And CI Filters Must Cover All Shipping Entry Points
+### 9. Release And CI Filters Must Cover All Shipping Entry Points
 
 - Finding: `release:play` runs web verification but not API/realtime verification, and CI/Pages path filters omit `spectator.html` even though Vite builds it as a shipping entry.
 - Evidence: `package.json`, `scripts/release-google-play.ps1`, `docs/google-play-release.md`, `vite.config.ts`, `spectator.html`, `.github/workflows/ci.yml`, `.github/workflows/deploy-pages.yml`.

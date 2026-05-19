@@ -1,6 +1,7 @@
 import { type HttpRequest, type HttpResponseInit, type InvocationContext } from "@azure/functions";
 import { HttpError, resolveUserId } from "../../lib/auth";
 import {
+  claimPlayPurchaseTokenForUser,
   createPurchaseVerificationResult,
   getPlayPurchaseByTokenHash,
   getPurchaseVerificationResult,
@@ -87,6 +88,10 @@ function resolveRequestedProductId(requestProductId: string | undefined, configu
   return productId;
 }
 
+function isPlayPurchaseTokenConflict(error: unknown): boolean {
+  return error instanceof Error && error.name === "PlayPurchaseTokenConflictError";
+}
+
 export async function verifyPlayEntitlementRequest(
   request: HttpRequest,
   context: InvocationContext,
@@ -158,6 +163,20 @@ export async function verifyPlayEntitlementRequest(
       throw new HttpError(502, "Could not determine purchased product ID from Google Play response.");
     }
 
+    const updatedAt = new Date().toISOString();
+    try {
+      await claimPlayPurchaseTokenForUser(config, {
+        userId,
+        purchaseTokenHash,
+        createdAt: updatedAt
+      });
+    } catch (error) {
+      if (isPlayPurchaseTokenConflict(error)) {
+        throw new HttpError(409, "This purchase is already linked to a different account.");
+      }
+      throw error;
+    }
+
     let acknowledgementState = verification.acknowledgementState;
     if (shouldAcknowledgePurchase(acknowledgementState)) {
       await acknowledgePlayProductPurchase(config, {
@@ -168,7 +187,6 @@ export async function verifyPlayEntitlementRequest(
       acknowledgementState = 1;
     }
 
-    const updatedAt = new Date().toISOString();
     const successPayload: Record<string, unknown> = {
       ok: true,
       userId,

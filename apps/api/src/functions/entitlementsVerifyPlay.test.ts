@@ -11,6 +11,7 @@ vi.mock("@azure/functions", () => ({
 const {
   getPurchaseVerificationResultMock,
   getPlayPurchaseByTokenHashMock,
+  claimPlayPurchaseTokenForUserMock,
   upsertEntitlementMock,
   upsertPlayPurchaseMock,
   createPurchaseVerificationResultMock,
@@ -23,6 +24,7 @@ const {
 } = vi.hoisted(() => ({
   getPurchaseVerificationResultMock: vi.fn(),
   getPlayPurchaseByTokenHashMock: vi.fn(),
+  claimPlayPurchaseTokenForUserMock: vi.fn(),
   upsertEntitlementMock: vi.fn(),
   upsertPlayPurchaseMock: vi.fn(),
   createPurchaseVerificationResultMock: vi.fn(),
@@ -40,6 +42,7 @@ const {
 vi.mock("../lib/cosmos/entitlementRepository", () => ({
   getPurchaseVerificationResult: getPurchaseVerificationResultMock,
   getPlayPurchaseByTokenHash: getPlayPurchaseByTokenHashMock,
+  claimPlayPurchaseTokenForUser: claimPlayPurchaseTokenForUserMock,
   upsertEntitlement: upsertEntitlementMock,
   upsertPlayPurchase: upsertPlayPurchaseMock,
   createPurchaseVerificationResult: createPurchaseVerificationResultMock
@@ -118,6 +121,15 @@ beforeEach(() => {
   vi.clearAllMocks();
   getPurchaseVerificationResultMock.mockResolvedValue(null);
   getPlayPurchaseByTokenHashMock.mockResolvedValue(null);
+  claimPlayPurchaseTokenForUserMock.mockResolvedValue({
+    id: "play_purchase_token_claim:token-hash",
+    docType: "play_purchase_token_claim",
+    userId: "play_token:token-hash",
+    ownerUserId: "user-3",
+    purchaseTokenHash: "token-hash",
+    createdAt: "2026-03-18T00:00:00.000Z",
+    updatedAt: "2026-03-18T00:00:00.000Z"
+  });
   hashPurchaseTokenMock.mockReturnValue("token-hash");
   shouldAcknowledgePurchaseMock.mockReturnValue(false);
 });
@@ -201,6 +213,9 @@ test("verifyPlayEntitlementRequest persists entitlement for valid purchase", asy
   assert.equal(response.status, 200);
   assert.equal((response.jsonBody as { hasProAccess: boolean }).hasProAccess, true);
   assert.equal(acknowledgePlayProductPurchaseMock.mock.calls.length, 1);
+  assert.equal(claimPlayPurchaseTokenForUserMock.mock.calls.length, 1);
+  assert.equal(claimPlayPurchaseTokenForUserMock.mock.calls[0]?.[1]?.purchaseTokenHash, "token-hash");
+  assert.equal(claimPlayPurchaseTokenForUserMock.mock.calls[0]?.[1]?.userId, "user-3");
   assert.equal(upsertEntitlementMock.mock.calls.length, 1);
   assert.equal(upsertPlayPurchaseMock.mock.calls.length, 1);
   assert.equal(createPurchaseVerificationResultMock.mock.calls.length, 1);

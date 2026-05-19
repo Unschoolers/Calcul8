@@ -29,6 +29,7 @@ export interface StripeCheckoutSession {
 export interface StripeWebhookEvent<TObject = Record<string, unknown>> {
   id: string;
   type: string;
+  created?: number;
   data: {
     object: TObject;
   };
@@ -239,6 +240,9 @@ export function verifyStripeWebhookEvent(
   return {
     id,
     type,
+    created: typeof event.created === "number" && Number.isFinite(event.created)
+      ? event.created
+      : undefined,
     data: {
       object: (event.data as { object: Record<string, unknown> }).object
     }

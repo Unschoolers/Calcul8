@@ -1,18 +1,33 @@
 import type {
   ApiConfig,
   EntitlementDocument,
+  PlayPurchaseTokenClaimDocument,
   PlayPurchaseDocument,
   PurchaseVerificationResultDocument,
+  StripeEntitlementFactDocument,
+  StripeProcessedEventDocument,
   UserProfileDisplayNameSource,
   UserProfileDocument
 } from "../../types";
 import { getContainers, isConflictError, isNotFoundError, withCosmosRetry } from "./core";
 import {
   entitlementId,
+  playPurchaseTokenClaimId,
+  playPurchaseTokenClaimPartitionKey,
   playPurchaseId,
   purchaseVerificationResultId,
+  stripeEntitlementFactId,
+  stripeProcessedEventId,
+  stripeProcessedEventPartitionKey,
   userProfileId
 } from "./ids";
+
+export class PlayPurchaseTokenConflictError extends Error {
+  constructor(purchaseTokenHash: string) {
+    super(`Play purchase token is already claimed: ${purchaseTokenHash}`);
+    this.name = "PlayPurchaseTokenConflictError";
+  }
+}
 
 export async function getEntitlement(
   config: ApiConfig,
@@ -176,6 +191,73 @@ export async function listPlayPurchasesForUser(
   return resources ?? [];
 }
 
+interface ClaimPlayPurchaseTokenInput {
+  userId: string;
+  purchaseTokenHash: string;
+  createdAt: string;
+}
+
+async function getPlayPurchaseTokenClaim(
+  config: ApiConfig,
+  purchaseTokenHash: string
+): Promise<PlayPurchaseTokenClaimDocument | null> {
+  const { entitlements } = getContainers(config);
+  const id = playPurchaseTokenClaimId(purchaseTokenHash);
+  const partitionKey = playPurchaseTokenClaimPartitionKey(purchaseTokenHash);
+
+  try {
+    const { resource } = await withCosmosRetry(() =>
+      entitlements.item(id, partitionKey).read<PlayPurchaseTokenClaimDocument>()
+    );
+    if (!resource || resource.docType !== "play_purchase_token_claim") {
+      return null;
+    }
+    return resource;
+  } catch (error) {
+    if (isNotFoundError(error)) return null;
+    throw error;
+  }
+}
+
+export async function claimPlayPurchaseTokenForUser(
+  config: ApiConfig,
+  input: ClaimPlayPurchaseTokenInput
+): Promise<PlayPurchaseTokenClaimDocument> {
+  const { entitlements } = getContainers(config);
+  const partitionKey = playPurchaseTokenClaimPartitionKey(input.purchaseTokenHash);
+  const document: PlayPurchaseTokenClaimDocument = {
+    id: playPurchaseTokenClaimId(input.purchaseTokenHash),
+    docType: "play_purchase_token_claim",
+    userId: partitionKey,
+    ownerUserId: input.userId,
+    purchaseTokenHash: input.purchaseTokenHash,
+    createdAt: input.createdAt,
+    updatedAt: input.createdAt
+  };
+
+  try {
+    const { resource } = await withCosmosRetry(() =>
+      entitlements.items.create<PlayPurchaseTokenClaimDocument>(document)
+    );
+
+    if (!resource) {
+      throw new Error("Failed to claim Play purchase token.");
+    }
+
+    return resource;
+  } catch (error) {
+    if (!isConflictError(error)) {
+      throw error;
+    }
+
+    const existing = await getPlayPurchaseTokenClaim(config, input.purchaseTokenHash);
+    if (existing?.ownerUserId === input.userId) {
+      return existing;
+    }
+    throw new PlayPurchaseTokenConflictError(input.purchaseTokenHash);
+  }
+}
+
 export async function upsertPlayPurchase(
   config: ApiConfig,
   purchase: PlayPurchaseDocument
@@ -193,6 +275,130 @@ export async function upsertPlayPurchase(
   }
 
   return resource;
+}
+
+interface ClaimStripeWebhookEventInput {
+  userId: string;
+  stripeEventId: string;
+  eventType: string;
+  processedAt: string;
+}
+
+export async function claimStripeWebhookEvent(
+  config: ApiConfig,
+  input: ClaimStripeWebhookEventInput
+): Promise<boolean> {
+  const { entitlements } = getContainers(config);
+  const document: StripeProcessedEventDocument = {
+    id: stripeProcessedEventId(input.stripeEventId),
+    docType: "stripe_processed_event",
+    userId: stripeProcessedEventPartitionKey(input.stripeEventId),
+    ownerUserId: input.userId,
+    stripeEventId: input.stripeEventId,
+    eventType: input.eventType,
+    processedAt: input.processedAt,
+    updatedAt: input.processedAt
+  };
+
+  try {
+    const { resource } = await withCosmosRetry(() =>
+      entitlements.items.create<StripeProcessedEventDocument>(document)
+    );
+    if (!resource) {
+      throw new Error("Failed to claim Stripe webhook event.");
+    }
+    return true;
+  } catch (error) {
+    if (isConflictError(error)) {
+      return false;
+    }
+    throw error;
+  }
+}
+
+async function getStripeEntitlementFact(
+  config: ApiConfig,
+  fact: Pick<StripeEntitlementFactDocument, "userId" | "stripeObjectType" | "stripeObjectId">
+): Promise<StripeEntitlementFactDocument | null> {
+  const { entitlements } = getContainers(config);
+  const id = stripeEntitlementFactId(fact.userId, fact.stripeObjectType, fact.stripeObjectId);
+
+  try {
+    const { resource } = await withCosmosRetry(() =>
+      entitlements.item(id, fact.userId).read<StripeEntitlementFactDocument>()
+    );
+    if (!resource || resource.docType !== "stripe_entitlement_fact") {
+      return null;
+    }
+    return resource;
+  } catch (error) {
+    if (isNotFoundError(error)) return null;
+    throw error;
+  }
+}
+
+function hasNewerStripeFact(
+  existing: StripeEntitlementFactDocument | null,
+  incoming: StripeEntitlementFactDocument
+): boolean {
+  const existingCreated = existing?.sourceEventCreated;
+  const incomingCreated = incoming.sourceEventCreated;
+  return (
+    typeof existingCreated === "number"
+    && Number.isFinite(existingCreated)
+    && typeof incomingCreated === "number"
+    && Number.isFinite(incomingCreated)
+    && existingCreated > incomingCreated
+  );
+}
+
+export async function upsertStripeEntitlementFact(
+  config: ApiConfig,
+  fact: StripeEntitlementFactDocument
+): Promise<StripeEntitlementFactDocument> {
+  const { entitlements } = getContainers(config);
+  const document: StripeEntitlementFactDocument = {
+    ...fact,
+    id: stripeEntitlementFactId(fact.userId, fact.stripeObjectType, fact.stripeObjectId)
+  };
+  const existing = await getStripeEntitlementFact(config, document);
+
+  if (existing && hasNewerStripeFact(existing, document)) {
+    return existing;
+  }
+
+  const { resource } = await withCosmosRetry(() =>
+    entitlements.items.upsert<StripeEntitlementFactDocument>({
+      ...document,
+      createdAt: existing?.createdAt ?? document.createdAt
+    })
+  );
+
+  if (!resource) {
+    throw new Error("Failed to upsert Stripe entitlement fact.");
+  }
+
+  return resource;
+}
+
+export async function listStripeEntitlementFactsForUser(
+  config: ApiConfig,
+  userId: string
+): Promise<StripeEntitlementFactDocument[]> {
+  const { entitlements } = getContainers(config);
+  const querySpec = {
+    query: "SELECT * FROM c WHERE c.userId = @userId AND c.docType = @docType",
+    parameters: [
+      { name: "@userId", value: userId },
+      { name: "@docType", value: "stripe_entitlement_fact" }
+    ]
+  };
+
+  const iterator = entitlements.items.query<StripeEntitlementFactDocument>(querySpec, {
+    partitionKey: userId
+  });
+  const { resources } = await withCosmosRetry(() => iterator.fetchAll());
+  return resources ?? [];
 }
 
 interface PurchaseVerificationResultLookupInput {

@@ -12,6 +12,26 @@ export function purchaseVerificationResultId(userId: string, provider: string, i
   return `purchase_verify:${userId}:${provider}:${idempotencyKey}`;
 }
 
+export function stripeEntitlementFactId(userId: string, objectType: string, objectId: string): string {
+  return `stripe_entitlement:${userId}:${objectType}:${objectId}`;
+}
+
+export function stripeProcessedEventId(stripeEventId: string): string {
+  return `stripe_event:${stripeEventId}`;
+}
+
+export function stripeProcessedEventPartitionKey(stripeEventId: string): string {
+  return stripeProcessedEventId(stripeEventId);
+}
+
+export function playPurchaseTokenClaimId(purchaseTokenHash: string): string {
+  return `play_purchase_token_claim:${purchaseTokenHash}`;
+}
+
+export function playPurchaseTokenClaimPartitionKey(purchaseTokenHash: string): string {
+  return `play_token:${purchaseTokenHash}`;
+}
+
 export function userProfileId(userId: string): string {
   return `profile:${userId}`;
 }
