@@ -25,7 +25,7 @@ If a layout needs to be preserved, commit the DSL/layout source that produced it
 
 ## Naming
 
-- Use PascalCase for view keys: `ContainerView`, `RealtimeComponents`, `WorkspaceSyncFlow`.
+- Use PascalCase for view keys: `SystemContext`, `ContainerView`, `WebPwaComponents`, `ApiComponents`, `RealtimeComponents`, `WorkspaceSyncFlow`.
 - Use product names for systems and containers: `Web PWA`, `API Functions`, `Realtime Gateway`.
 - Use responsibility names for components: `Payload Parser`, `Room Store`, `Presence Store`.
 - Keep descriptions operational: what it does, what boundary it owns, and what risk it helps explain.
@@ -48,6 +48,8 @@ Prefer concrete protocols in technology labels:
 - C2/container: deployable/runtime containers and their protocols.
 - C3/component: internals of one container only.
 - Dynamic: one risky or important runtime flow.
+
+Do not add a system landscape view until Calcul8 has more than one first-party software system to map. With a single product boundary it duplicates the C1 system context view and weakens drilldown.
 
 Do not make a view only because a folder exists in the repo. Make a view when it explains a boundary, operational risk, or recurring refactor decision.
 

@@ -1,0 +1,10 @@
+calcul8.web -> calcul8.api.functionEntryPoints "Calls authenticated seller API endpoints." "HTTPS JSON"
+calcul8.spectator -> calcul8.api.functionEntryPoints "Calls public session and spectator endpoints." "HTTPS JSON"
+stripe -> calcul8.api.functionEntryPoints "Sends checkout and subscription webhook events." "HTTPS"
+
+calcul8.api.cosmosRepositories -> calcul8.cosmos "Executes Cosmos queries, creates, upserts, replaces, deletes, and conflict-aware reads." "Cosmos SDK"
+calcul8.api.providerClients -> googleIdentity "Validates Google identity tokens when needed." "HTTPS"
+calcul8.api.providerClients -> googlePlay "Verifies and acknowledges Android/TWA purchase tokens." "HTTPS"
+calcul8.api.providerClients -> stripe "Creates checkout sessions and validates webhook-derived provider facts." "HTTPS"
+calcul8.api.providerClients -> whatnot "Calls OAuth, identity, and orders APIs." "OAuth/HTTPS"
+calcul8.api.realtimePublisher -> calcul8.realtime "Posts internal publish events." "HTTPS JSON"

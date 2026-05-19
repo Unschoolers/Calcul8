@@ -9,9 +9,10 @@ workspace "Calcul8" "C4 architecture model for the Calcul8 local-first sales, sy
     }
 
     views {
-        !include views/system-landscape.dsl
         !include views/system-context.dsl
         !include views/containers.dsl
+        !include views/components/web.dsl
+        !include views/components/api.dsl
         !include views/components/realtime.dsl
         !include views/deployment.dsl
         !include views/dynamics/workspace-sync.dsl

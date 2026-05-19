@@ -36,8 +36,16 @@ This setup is intentionally local-only. The npm script runs the Structurizr `loc
 - `workspace.dsl` is the only Structurizr entry point.
 - `model/` defines people, external systems, Calcul8 containers, and deployment nodes.
 - `model/docs/` and `model/decisions/` attach documentation and ADRs to the Calcul8 software system.
-- `views/` defines system, container, deployment, and dynamic flow views.
+- `views/` defines the C1 system context, C2 container, selected C3 component, deployment, and dynamic flow views.
 - `styles/` keeps tags and visual styling consistent.
+
+The active C4 drilldown is:
+
+- C1: `SystemContext`
+- C2: `ContainerView`
+- C3: `WebPwaComponents`, `ApiComponents`, and `RealtimeComponents`
+
+There is intentionally no active system landscape view while Calcul8 is modeled as one first-party software system; it would duplicate `SystemContext`.
 
 ## Source Of Truth
 

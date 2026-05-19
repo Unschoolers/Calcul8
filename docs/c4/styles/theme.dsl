@@ -33,6 +33,18 @@ element "Realtime Component" {
     color "#ffffff"
 }
 
+element "Web Component" {
+    shape Component
+    background "#1d4ed8"
+    color "#ffffff"
+}
+
+element "API Component" {
+    shape Component
+    background "#6d28d9"
+    color "#ffffff"
+}
+
 element "Runtime Entry" {
     shape Component
     background "#0369a1"
@@ -67,9 +79,26 @@ element "Shared Contract" {
     color "#ffffff"
 }
 
+element "External Client" {
+    background "#0f766e"
+    color "#ffffff"
+}
+
+element "Database Boundary" {
+    shape Cylinder
+    background "#334155"
+    color "#ffffff"
+}
+
 element "Database" {
     shape Cylinder
     background "#475569"
+    color "#ffffff"
+}
+
+element "Local State" {
+    shape Cylinder
+    background "#1e40af"
     color "#ffffff"
 }
 

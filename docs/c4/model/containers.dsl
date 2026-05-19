@@ -4,6 +4,8 @@ calcul8 = softwareSystem "Calcul8" "Local-first PWA for live selling, profitabil
 
     web = container "Web PWA" "Vue/Vuetify app for authenticated sellers, local-first workflows, sales, lots, games, Whatnot import, and workspace sync." "Vue, TypeScript, Vite" {
         tags "Web App"
+
+        !include components/web.dsl
     }
 
     spectator = container "Spectator Page" "Public read-only browser entry for game sessions and live audience displays." "TypeScript, Vite" {
@@ -12,6 +14,8 @@ calcul8 = softwareSystem "Calcul8" "Local-first PWA for live selling, profitabil
 
     api = container "API Functions" "HTTP API for auth-bound sync, sales, workspace, billing, Whatnot, and public game-session operations." "Azure Functions, TypeScript" {
         tags "API"
+
+        !include components/api.dsl
     }
 
     realtime = container "Realtime Gateway" "WebSocket and HTTP publish gateway for workspace lot rooms, presence, and public game-session updates." "Node.js, ws, TypeScript" {
@@ -52,3 +56,6 @@ calcul8.api -> stripe "Creates checkout sessions and processes webhooks." "HTTPS
 calcul8.api -> whatnot "Connects OAuth accounts and imports sales data." "OAuth/HTTPS"
 calcul8.api -> azureHosting "Runs inside managed hosting and deployment infrastructure." "Azure Functions"
 calcul8.realtime -> azureHosting "Runs as the deployed realtime process." "Container/App Service"
+
+!include components/web-relationships.dsl
+!include components/api-relationships.dsl

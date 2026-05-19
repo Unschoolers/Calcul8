@@ -1,0 +1,15 @@
+seller -> calcul8.web.appShell "Uses the authenticated app shell for sales, lots, sync, imports, and games." "Browser"
+admin -> calcul8.web.appShell "Uses admin-facing diagnostics and import tooling." "Browser"
+
+calcul8.web.authClient -> calcul8.web.apiClient "Calls auth, profile, account deletion, billing, and entitlement endpoints." "HTTPS JSON"
+calcul8.web.workspaceState -> calcul8.web.apiClient "Calls workspace membership, join-link, and leave endpoints." "HTTPS JSON"
+calcul8.web.workspaceState -> calcul8.web.realtimeClient "Starts or stops workspace realtime subscriptions for active scope." "In-process calls"
+calcul8.web.syncCoordinator -> calcul8.web.apiClient "Pushes and pulls scoped cloud snapshots." "HTTPS JSON"
+calcul8.web.salesWorkflows -> calcul8.web.apiClient "Sends live-pricing and sales cloud updates when scoped sync is active." "HTTPS JSON"
+calcul8.web.gameWorkflows -> calcul8.web.apiClient "Creates, publishes, loads, and ends public game sessions and fairness proofs." "HTTPS JSON"
+calcul8.web.gameWorkflows -> calcul8.web.realtimeClient "Subscribes to public-session and workspace game update rooms." "WebSocket"
+calcul8.web.whatnotWorkflows -> calcul8.web.apiClient "Connects OAuth accounts, starts imports, and submits review decisions." "HTTPS JSON"
+
+calcul8.web.apiClient -> calcul8.api "Calls API Functions." "HTTPS JSON"
+calcul8.web.realtimeClient -> calcul8.realtime "Subscribes to workspace, wheel, presence, and public-session rooms." "WebSocket"
+calcul8.web.localStateStore -> calcul8.browserStorage "Persists local-first app state." "Browser APIs"
