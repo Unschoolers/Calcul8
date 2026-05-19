@@ -50,3 +50,7 @@ tmp-pokemon.json
 CardSync/pokemon-all.json
 CardSync/tmp-pokemon.json
 CardSync/en.json
+
+# Structurizr local generated workspace/cache artifacts
+docs/c4/.structurizr/
+docs/c4/workspace.json

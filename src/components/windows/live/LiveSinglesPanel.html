@@ -281,6 +281,12 @@
 
       <v-card elevation="0" rounded="lg" class="live-singles-summary-card mt-3">
         <v-card-text class="py-2 px-3">
+          <div class="live-singles-mobile-summary-head text-caption">
+            <span>{{ t('liveSinglesActiveSummaryLabel') }}</span>
+            <span>
+              {{ liveSinglesPricingMode === 'individual' ? t('liveSinglesIndividualModeLabel') : t('liveSinglesBundleModeLabel') }}
+            </span>
+          </div>
           <div v-if="liveSinglesPricingMode === 'individual'" class="live-singles-summary-copy text-caption text-medium-emphasis">
             <div class="live-singles-summary-line">
               <span class="live-singles-summary-pill">{{ liveSinglesSelectedCount }} {{ t('liveSinglesItemsLabel') }}</span>

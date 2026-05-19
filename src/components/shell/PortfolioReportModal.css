@@ -60,12 +60,6 @@
   background: linear-gradient(0deg, rgba(var(--v-theme-surface), 0.96), rgba(var(--v-theme-surface), 0));
 }
 
-.portfolio-report-actions {
-  border-top: var(--app-stroke-hairline) solid var(--app-stroke-subtle);
-  background: var(--app-surface-sticky);
-  backdrop-filter: blur(8px);
-}
-
 .portfolio-report-card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));

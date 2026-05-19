@@ -281,6 +281,10 @@
   gap: 0.35rem;
 }
 
+.live-singles-mobile-summary-head {
+  display: none;
+}
+
 .live-singles-summary-line {
   display: flex;
   flex-wrap: wrap;
@@ -397,20 +401,46 @@
   }
 
   .live-singles-item-body {
-    align-items: flex-start;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+    gap: var(--app-space-3);
   }
 
   .live-singles-controls {
-    min-width: 38px;
+    flex-direction: row;
+    justify-content: flex-end;
+    min-width: 0;
   }
 
   .live-singles-control-group--quantity {
-    align-items: flex-start;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    min-width: 0;
+    padding: var(--app-space-2) var(--app-space-3);
+    border: var(--app-stroke-hairline) solid var(--app-stroke-subtle);
+    border-radius: var(--app-radius-card);
+    background: rgba(var(--v-theme-on-surface), 0.025);
   }
 
   .live-singles-control-group--price {
-    margin-inline-start: auto;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    width: 100%;
+    min-width: 0;
+    padding-top: var(--app-space-1);
+    border-top: var(--app-stroke-hairline) solid var(--app-stroke-subtle);
+  }
+
+  .live-singles-price-block {
+    text-align: left;
+  }
+
+  .live-singles-control-label {
+    text-align: left;
   }
 
   .live-singles-step-btn {
@@ -429,6 +459,34 @@
     max-width: min(42vw, 170px);
   }
 
+  .live-singles-summary-card {
+    position: sticky;
+    bottom: calc(-0.9rem - env(safe-area-inset-bottom));
+    z-index: 14;
+    margin-inline: calc(-1 * var(--app-space-1));
+    border-color: var(--app-stroke-default) !important;
+    background: var(--app-surface-sticky) !important;
+    box-shadow: var(--app-shadow-sticky-bottom);
+    backdrop-filter: blur(var(--app-backdrop-blur-sticky));
+  }
+
+  .live-singles-summary-card > .v-card-text {
+    display: grid;
+    gap: var(--app-space-2);
+    padding-bottom: calc(var(--app-space-3) + env(safe-area-inset-bottom)) !important;
+  }
+
+  .live-singles-mobile-summary-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--app-space-2);
+    color: rgba(var(--v-theme-on-surface), 0.72);
+    font-weight: var(--app-font-weight-strong);
+    letter-spacing: var(--app-letter-spacing-section);
+    text-transform: uppercase;
+  }
+
   .live-singles-summary-line {
     gap: 0.32rem;
   }
@@ -445,9 +503,11 @@
 
   .live-singles-summary-actions {
     justify-content: stretch;
+    margin-top: 0;
   }
 
   .live-singles-convert-btn {
     width: 100%;
+    min-height: var(--app-action-size-min) !important;
   }
 }

@@ -216,11 +216,11 @@
       </div>
     </v-card-text>
 
-    <v-card-actions class="sale-editor-actions app-dialog-actions">
+    <app-sticky-action-footer footer-class="sale-editor-actions">
       <v-spacer></v-spacer>
       <v-btn text @click="cancelSale">{{ t('commonCancel') }}</v-btn>
       <v-btn color="primary" @click="saveSale" :disabled="!canUsePaidActions">{{ editingSale ? t('saleEditorUpdateAction') : t('saleEditorAddAction')
         }}</v-btn>
-    </v-card-actions>
+    </app-sticky-action-footer>
   </v-card>
 </v-dialog>

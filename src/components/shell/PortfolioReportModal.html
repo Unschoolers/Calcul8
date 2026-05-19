@@ -186,7 +186,7 @@
       </div>
     </v-card-text>
 
-    <v-card-actions class="app-dialog-actions justify-space-between portfolio-report-actions">
+    <app-sticky-action-footer footer-class="justify-space-between portfolio-report-actions">
       <v-btn variant="text" @click="showPortfolioReportModal = false">{{ t('portfolioReportCloseAction') }}</v-btn>
       <div class="d-flex align-center ga-2">
         <v-btn variant="text" prepend-icon="mdi-content-copy" :disabled="!hasPortfolioData" @click="copyPortfolioReportTable">
@@ -196,6 +196,6 @@
           {{ t('portfolioReportSaveAction') }}
         </v-btn>
       </div>
-    </v-card-actions>
+    </app-sticky-action-footer>
   </v-card>
 </v-dialog>

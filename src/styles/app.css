@@ -323,6 +323,12 @@
   backdrop-filter: blur(var(--app-backdrop-blur-sticky));
 }
 
+.app-sticky-action-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 4;
+}
+
 .app-dialog-actions {
   flex-wrap: wrap;
   gap: var(--app-space-2);

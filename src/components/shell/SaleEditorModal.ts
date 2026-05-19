@@ -1,9 +1,13 @@
 import { inject, type PropType } from "vue";
+import AppStickyActionFooter from "../ui/AppStickyActionFooter.vue";
 import { createWindowContextBridge } from "../windows/shared/contextBridge.ts";
 import "./SaleEditorModal.css";
 
 export const SaleEditorModal = {
   name: "SaleEditorModal",
+  components: {
+    AppStickyActionFooter
+  },
   props: {
     ctx: {
       type: Object as PropType<Record<string, unknown>>,

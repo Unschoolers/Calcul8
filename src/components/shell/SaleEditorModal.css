@@ -194,13 +194,8 @@
 }
 
 .sale-editor-actions {
-  border-top: var(--app-stroke-hairline) solid var(--app-stroke-subtle);
   padding-top: 0.55rem;
   padding-bottom: 0.55rem;
-  position: sticky;
-  bottom: 0;
-  background: var(--app-surface-sticky);
-  z-index: 2;
 }
 
 @media (max-width: 600px) {

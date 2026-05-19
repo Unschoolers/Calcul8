@@ -182,15 +182,10 @@
 }
 
 .singles-editor-actions {
-  padding: 0.9rem 1.15rem calc(var(--app-space-4) + var(--app-safe-area-bottom));
+  padding: 0.9rem 1.15rem calc(var(--app-space-4) + var(--app-safe-area-bottom)) !important;
   display: flex;
   flex-direction: column;
   gap: 0.55rem;
-  position: sticky;
-  bottom: 0;
-  z-index: 2;
-  background: var(--app-surface-sticky);
-  backdrop-filter: blur(10px);
 }
 
 .singles-editor-actions .v-btn {
