@@ -65,8 +65,13 @@
                       </v-card-text>
                     </v-card>
 
-                    <v-card elevation="4" class="mt-3 sales-section-card sales-history-card">
-                      <v-card-title class="d-flex align-center justify-space-between sales-section-title-bar sales-history-title-bar">
+                    <app-section-card
+                      card-class="mt-3 sales-section-card sales-history-card"
+                      title-class="d-flex align-center justify-space-between sales-section-title-bar sales-history-title-bar"
+                      :wrap-content="false"
+                      divider
+                    >
+                      <template #header>
                         <div class="sales-section-title-group">
                           <v-icon size="16">mdi-history</v-icon>
                           <span>{{ t('salesHistoryTitle') }}</span>
@@ -75,14 +80,16 @@
                           <span class="sales-history-summary-label">{{ t('salesHistorySoldLabel') }}</span>
                           <span class="sales-history-summary-value" :style="salesHistorySummaryValueStyle()">{{ salesHistorySummaryLabel }}</span>
                         </div>
-                      </v-card-title>
-                      <v-divider></v-divider>
+                      </template>
 
-                      <v-card-text v-if="(sales?.length ?? 0) === 0" class="text-center py-8">
-                        <v-icon size="64" color="grey">mdi-package-variant-closed</v-icon>
-                        <p class="text-h6 mt-4 text-grey">{{ t('salesNoSalesTitle') }}</p>
-                        <p class="text-caption">{{ t('salesNoSalesBody') }}</p>
-                      </v-card-text>
+                      <app-empty-state
+                        v-if="(sales?.length ?? 0) === 0"
+                        icon="mdi-package-variant-closed"
+                        :icon-size="64"
+                        :title="t('salesNoSalesTitle')"
+                        :body="t('salesNoSalesBody')"
+                        state-class="py-8"
+                      ></app-empty-state>
 
                       <v-list v-else class="sales-history-list" density="compact">
                         <v-list-item
@@ -179,13 +186,12 @@
                           </v-btn>
                         </v-list-item>
                       </v-list>
-                    </v-card>
+                    </app-section-card>
                   </v-col>
 
                   <!-- Chart + Forecast -->
                   <v-col cols="12" md="6">
-                    <v-card elevation="4" class="sales-section-card sales-chart-card">
-                      <v-card-text>
+                    <app-section-card card-class="sales-section-card sales-chart-card">
                         <div class="sales-section-head sales-chart-head">
                           <div class="sales-section-head-main">
                             <v-icon size="16">mdi-chart-areaspline</v-icon>
@@ -223,10 +229,13 @@
                         ></canvas>
 
                         <div v-else class="pa-0">
-                          <div v-if="(sales?.length ?? 0) === 0" class="text-center py-8">
-                            <v-icon size="48" color="grey">mdi-chart-line</v-icon>
-                            <p class="text-body-2 mt-4 text-grey">{{ t('salesChartEmptyBody') }}</p>
-                          </div>
+                          <app-empty-state
+                            v-if="(sales?.length ?? 0) === 0"
+                            icon="mdi-chart-line"
+                            :body="t('salesChartEmptyBody')"
+                            compact
+                            state-class="py-8"
+                          ></app-empty-state>
 
                           <div v-else>
                             <canvas
@@ -237,11 +246,16 @@
                             ></canvas>
                           </div>
                         </div>
-                      </v-card-text>
-                    </v-card>
+                    </app-section-card>
 
-                    <v-card v-if="(liveForecastScenarios?.length ?? 0) > 0" elevation="4" class="mt-3 sales-section-card sales-forecast-card">
-                      <v-card-title class="sales-section-title-bar sales-forecast-title-bar">
+                    <app-section-card
+                      v-if="(liveForecastScenarios?.length ?? 0) > 0"
+                      card-class="mt-3 sales-section-card sales-forecast-card"
+                      title-class="sales-section-title-bar sales-forecast-title-bar"
+                      :wrap-content="false"
+                      divider
+                    >
+                      <template #header>
                         <div class="sales-section-title-group">
                           <v-icon size="16">mdi-crystal-ball</v-icon>
                           <span>{{ t('salesForecastTitle') }}</span>
@@ -276,8 +290,7 @@
                             </v-btn>
                           </div>
                         </div>
-                      </v-card-title>
-                      <v-divider></v-divider>
+                      </template>
                       <v-card-text class="sales-forecast-content">
                         <div
                           v-for="scenario in (visibleLiveForecastScenarios || [])"
@@ -304,6 +317,6 @@
                           </div>
                         </div>
                       </v-card-text>
-                    </v-card>
+                    </app-section-card>
                   </v-col>
                 </v-row>

@@ -2,6 +2,12 @@ function isValidCsvColumnIndex(value: unknown, headersLength: number): value is 
   return Number.isInteger(value) && Number(value) >= 0 && Number(value) < headersLength;
 }
 
+type SinglesCsvPreviewColumn = {
+  index: number;
+  header: string;
+  label: string;
+};
+
 export const singlesImportComputed = {
   csvColumnOptions(this: any): Array<{ title: string; value: number }> {
     const headers = Array.isArray(this.singlesCsvImportHeaders) ? this.singlesCsvImportHeaders : [];
@@ -56,6 +62,28 @@ export const singlesImportComputed = {
     return Object.fromEntries(
       Object.entries(labelsByColumn).map(([columnIndex, labels]) => [Number(columnIndex), labels.join(" + ")])
     );
+  },
+
+  singlesCsvPreviewColumns(this: any): SinglesCsvPreviewColumn[] {
+    const headers = Array.isArray(this.singlesCsvImportHeaders) ? this.singlesCsvImportHeaders : [];
+    const labelsByColumn = this.csvMappedFieldLabelsByColumn as Record<number, string>;
+    const mappedColumns: SinglesCsvPreviewColumn[] = headers
+      .map((header: string, index: number) => ({
+        index,
+        header: String(header || `Column ${index + 1}`),
+        label: String(labelsByColumn?.[index] || "")
+      }))
+      .filter((column: SinglesCsvPreviewColumn) => column.label.length > 0);
+
+    if (mappedColumns.length > 0) {
+      return mappedColumns;
+    }
+
+    return headers.slice(0, 6).map((header: string, index: number) => ({
+      index,
+      header: String(header || `Column ${index + 1}`),
+      label: "CSV"
+    }));
   }
 };
 
@@ -69,4 +97,3 @@ export const singlesImportMethods = {
     return this.csvMappedFieldLabel(columnIndex).length > 0;
   }
 };
-

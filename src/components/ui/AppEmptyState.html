@@ -1,0 +1,13 @@
+<div :class="resolvedClasses">
+  <v-icon
+    v-if="icon"
+    :size="iconSize"
+    :color="resolvedIconColor"
+    class="app-empty-state-view__icon"
+  >
+    {{ icon }}
+  </v-icon>
+  <p v-if="title" class="app-empty-state-view__title">{{ title }}</p>
+  <p v-if="body" class="app-empty-state-view__body">{{ body }}</p>
+  <slot></slot>
+</div>

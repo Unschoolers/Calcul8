@@ -30,6 +30,7 @@
   --app-font-size-title: 1.12rem;
   --app-font-size-display-sm: 1.55rem;
   --app-font-size-badge: 0.7rem;
+  --app-font-weight-normal: 400;
   --app-font-weight-strong: 700;
   --app-font-weight-emphasis: 800;
   --app-font-weight-display: 900;
@@ -77,6 +78,8 @@
   --app-dialog-mobile-max-width: none;
   --app-dialog-mobile-margin: 0;
   --app-dialog-mobile-radius: 0;
+  --app-empty-state-min-height: 8rem;
+  --app-empty-state-compact-min-height: 5rem;
   --app-surface-padding: var(--app-space-4);
   --app-surface-gap: var(--app-space-3);
   --app-form-grid-gap: var(--app-space-3);

@@ -1,11 +1,18 @@
-<v-dialog v-model="showSinglesCsvMapperModal" max-width="980">
-  <v-card class="singles-import-card">
-    <v-card-title class="text-subtitle-1 d-flex align-center">
+<v-dialog
+  v-model="showSinglesCsvMapperModal"
+  max-width="980"
+  scrollable
+  content-class="singles-csv-dialog app-mobile-fullscreen-dialog"
+  :fullscreen="$vuetify?.display?.smAndDown"
+  transition="dialog-bottom-transition"
+>
+  <v-card class="singles-import-card app-dialog-card">
+    <v-card-title class="text-subtitle-1 d-flex align-center app-dialog-title">
       <v-icon class="mr-2">mdi-table-arrow-right</v-icon>
       {{ t('singlesCsvMapTitle') }}
     </v-card-title>
     <v-divider></v-divider>
-    <v-card-text>
+    <v-card-text class="app-dialog-content">
       <div class="text-body-2 text-medium-emphasis mb-3">
         {{ t('singlesCsvMapIntro') }}
       </div>
@@ -21,6 +28,32 @@
           </v-chip>
           <v-chip size="small" variant="tonal">
             {{ t('singlesCsvOptionalMappedLabel', { count: optionalCsvMappedCount }) }}
+          </v-chip>
+        </div>
+      </div>
+
+      <div class="singles-csv-mobile-summary app-summary-panel">
+        <div class="singles-csv-mobile-summary__copy">
+          <div class="singles-csv-mobile-summary__title">
+            {{ t('singlesCsvMobileProgressLabel') }}
+          </div>
+          <div class="singles-csv-mobile-summary__body">
+            {{ t('singlesCsvMobileReadySummary', {
+              required: requiredCsvMappedCount,
+              optional: optionalCsvMappedCount
+            }) }}
+          </div>
+        </div>
+        <div class="singles-csv-mobile-summary__chips">
+          <v-chip
+            size="small"
+            :color="requiredCsvMappingsComplete ? 'success' : 'warning'"
+            variant="tonal"
+          >
+            {{ t('singlesCsvRequiredMappedLabel', { count: requiredCsvMappedCount }) }}
+          </v-chip>
+          <v-chip size="small" variant="tonal">
+            {{ String(singlesCsvImportMode || '').toUpperCase() }} · {{ singlesCsvImportCurrency }}
           </v-chip>
         </div>
       </div>
@@ -196,8 +229,8 @@
       <div class="text-caption text-medium-emphasis mt-4 mb-2">
         {{ t('singlesCsvPreviewTitle') }}
       </div>
-      <div class="singles-import-preview-wrap">
-        <v-table density="compact" class="singles-import-preview-table">
+      <div class="singles-csv-preview-desktop singles-import-preview-wrap app-table-wrap">
+        <v-table density="compact" class="singles-import-preview-table app-data-table">
           <thead>
             <tr>
               <th
@@ -236,8 +269,37 @@
           </tbody>
         </v-table>
       </div>
+      <div class="singles-csv-preview-mobile app-mobile-preview-list" aria-live="polite">
+        <div
+          v-for="(row, rowIndex) in singlesCsvImportRows.slice(0, 5)"
+          :key="`singles-preview-mobile-row-${rowIndex}`"
+          class="app-mobile-preview-card app-section-card"
+        >
+          <div class="app-mobile-preview-card__head">
+            <div class="app-mobile-preview-card__title">
+              {{ t('singlesCsvPreviewRowLabel', { number: rowIndex + 1 }) }}
+            </div>
+            <v-chip size="x-small" variant="tonal">
+              {{ singlesCsvPreviewColumns.length }} {{ t('singlesCsvPreviewFieldsLabel') }}
+            </v-chip>
+          </div>
+          <dl class="app-mobile-preview-card__fields">
+            <div
+              v-for="column in singlesCsvPreviewColumns"
+              :key="`singles-preview-mobile-cell-${rowIndex}-${column.index}`"
+              class="app-mobile-preview-card__field"
+            >
+              <dt>
+                <span>{{ column.label }}</span>
+                <small>{{ column.header }}</small>
+              </dt>
+              <dd>{{ row[column.index] || "—" }}</dd>
+            </div>
+          </dl>
+        </div>
+      </div>
     </v-card-text>
-    <v-card-actions>
+    <v-card-actions class="app-dialog-actions">
       <v-spacer></v-spacer>
       <v-btn variant="text" @click="cancelSinglesPurchasesCsvImport">
         {{ t('commonCancel') }}

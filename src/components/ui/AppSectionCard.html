@@ -1,0 +1,22 @@
+<v-card :elevation="elevation" :class="resolvedCardClasses">
+  <slot name="before"></slot>
+
+  <v-card-title v-if="hasHeader" :class="resolvedTitleClasses">
+    <slot name="header">
+      <div class="app-section-title-group">
+        <v-icon v-if="icon" :size="iconSize">{{ icon }}</v-icon>
+        <span>{{ title }}</span>
+      </div>
+      <slot name="header-actions"></slot>
+    </slot>
+  </v-card-title>
+
+  <v-divider v-if="showDivider"></v-divider>
+
+  <v-card-text v-if="wrapContent" :class="resolvedContentClasses">
+    <slot></slot>
+  </v-card-text>
+  <slot v-else></slot>
+
+  <slot name="actions"></slot>
+</v-card>

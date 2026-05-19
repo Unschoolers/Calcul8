@@ -50,6 +50,31 @@
         </div>
       </div>
 
+      <div
+        v-if="whatnotReviewRows.length > 0"
+        class="whatnot-review-mobile-summary app-summary-panel"
+      >
+        <div class="whatnot-review-mobile-summary__copy">
+          <div class="whatnot-review-mobile-summary__title">
+            {{ t('whatnotReviewMobileProgressLabel') }}
+          </div>
+          <div class="whatnot-review-mobile-summary__body">
+            {{ t('whatnotReviewMobileReadySummary', {
+              ready: whatnotReviewRows.filter((row) => !row.skipImport).length,
+              total: whatnotReviewRows.length
+            }) }}
+          </div>
+        </div>
+        <div class="whatnot-review-mobile-summary__chips">
+          <v-chip size="small" color="warning" variant="tonal">
+            {{ t('whatnotReviewNeedsReviewCount', { count: whatnotReviewRows.filter((row) => row.requiresManualReview && !row.skipImport).length }) }}
+          </v-chip>
+          <v-chip size="small" color="info" variant="tonal">
+            {{ t('whatnotReviewConfirmReadyCount', { count: whatnotReviewRows.filter((row) => !row.skipImport).length }) }}
+          </v-chip>
+        </div>
+      </div>
+
       <v-alert
         v-if="activeScopeType === 'workspace' && !isCurrentWorkspaceOwner && whatnotConnectionSummary?.connected"
         type="info"

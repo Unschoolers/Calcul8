@@ -252,6 +252,12 @@ test("CSV mapping computed helpers track required/optional columns and labels", 
   const labelsByColumn = getComputed<Record<number, string>>("csvMappedFieldLabelsByColumn").call(context);
   assert.equal(labelsByColumn[0], "Item");
   assert.equal(labelsByColumn[6], "Market");
+  context.csvMappedFieldLabelsByColumn = labelsByColumn;
+
+  const previewColumns = getComputed<Array<{ index: number; header: string; label: string }>>("singlesCsvPreviewColumns").call(context);
+  assert.deepEqual(previewColumns.map((column) => column.index), [0, 1, 2, 3, 4, 5, 6]);
+  assert.equal(previewColumns[0]?.header, "Name");
+  assert.equal(previewColumns[0]?.label, "Item");
 });
 
 test("saveSinglesRowEditor validates and creates row with non-colliding id", () => {

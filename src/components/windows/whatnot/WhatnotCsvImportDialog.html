@@ -300,8 +300,8 @@
         <div class="text-caption text-medium-emphasis mb-2">
           {{ t('whatnotCsvPreviewLabel') }}
         </div>
-        <div class="singles-import-preview-wrap app-table-wrap">
-          <v-table density="compact" class="singles-import-preview-table app-data-table">
+        <div class="whatnot-csv-preview-desktop singles-import-preview-wrap app-table-wrap">
+          <v-table density="compact" class="whatnot-csv-preview-table singles-import-preview-table app-data-table">
             <thead>
               <tr>
                 <th
@@ -329,6 +329,35 @@
               </tr>
             </tbody>
           </v-table>
+        </div>
+        <div class="whatnot-csv-preview-mobile app-mobile-preview-list" aria-live="polite">
+          <div
+            v-for="(row, rowIndex) in whatnotCsvRows.slice(0, 5)"
+            :key="`whatnot-preview-mobile-row-${rowIndex}`"
+            class="app-mobile-preview-card app-section-card"
+          >
+            <div class="app-mobile-preview-card__head">
+              <div class="app-mobile-preview-card__title">
+                {{ t('whatnotCsvPreviewRowLabel', { number: rowIndex + 1 }) }}
+              </div>
+              <v-chip size="x-small" variant="tonal">
+                {{ whatnotCsvPreviewColumns.length }} {{ t('whatnotCsvPreviewFieldsLabel') }}
+              </v-chip>
+            </div>
+            <dl class="app-mobile-preview-card__fields">
+              <div
+                v-for="column in whatnotCsvPreviewColumns"
+                :key="`whatnot-preview-mobile-cell-${rowIndex}-${column.index}`"
+                class="app-mobile-preview-card__field"
+              >
+                <dt>
+                  <span>{{ column.label }}</span>
+                  <small>{{ column.header }}</small>
+                </dt>
+                <dd>{{ row[column.index] || "—" }}</dd>
+              </div>
+            </dl>
+          </div>
         </div>
       </div>
     </v-card-text>

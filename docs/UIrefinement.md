@@ -107,9 +107,16 @@ Every item below is done only when the affected screens pass these checks:
 - 100% - Inventory reusable surface drift across core app CSS and classify core app surfaces separately from game art, spectator presentation, and user/content colors.
 - 100% - Add shared app-level CSS contracts for dialog cards, dialog title/content/actions, section cards, summary panels, sticky action footers, table wrappers, and data tables.
 - 100% - Migrate high-visibility dialog/table surfaces to shared contracts: Whatnot review, Whatnot CSV import, Sale editor, Workspace dialogs, and Portfolio report.
-- 60% - Normalize existing cards, panels, forms, and list/table shells through tokenized CSS in Sales, Config, Live, Singles, Portfolio, and shell surfaces.
-- 0% - Extract reusable Vue shell components for section card, KPI/stat card, toolbar/filter bar, empty/loading/error states, confirmation dialog, destructive warning, and sticky action footer.
+- 70% - Normalize existing cards, panels, forms, and list/table shells through tokenized CSS in Sales, Config, Live, Singles, Portfolio, and shell surfaces.
+- 30% - Extract reusable Vue shell components for section card, KPI/stat card, toolbar/filter bar, empty/loading/error states, confirmation dialog, destructive warning, and sticky action footer.
 - 100% - Re-run targeted surface scans and frontend build after the first normalization pass.
+
+**Continuation progress:**
+
+- 100% - Add reusable `AppSectionCard` and `AppEmptyState` shell primitives backed by the shared surface and empty-state classes.
+- 100% - Migrate Sales history, Sales chart, Sales forecast, Portfolio chart, Portfolio lot performance, and Portfolio sales-by-person panels onto the shared section-card primitive.
+- 100% - Replace repeated Sales and Portfolio inline empty-state markup with the shared empty-state primitive.
+- 100% - Re-run component usage scans, whitespace checks, typecheck, and frontend build after the component extraction pass.
 
 **Must do:**
 
@@ -130,6 +137,22 @@ Every item below is done only when the affected screens pass these checks:
 **Problem:** Several workflows contain dense tables, multi-column editors, heavy charts, or inspector panels. Some have mobile-specific workarounds, but the design language is not unified.
 
 **Scope:** `WhatnotCsvImportDialog`, `WhatnotReviewDialog`, `SinglesConfigWindow`, `SinglesPurchasingCard`, `LiveSinglesPanel`, `PortfolioWindow`, `GameWindow`, wheel inspector/game panels.
+
+**Phase progress:**
+
+- 100% - Inventory the first dense workflow targets and start with Whatnot import because it combines CSV preview, review decisions, grouping, and long mobile scroll.
+- 100% - Replace the Whatnot CSV preview's horizontal-table-only mobile experience with a mapped mobile card list while keeping the compact desktop table.
+- 100% - Add a sticky mobile review-progress summary to the Whatnot review dialog so pending/manual rows and import-ready rows remain visible while scrolling.
+- 100% - Stack Whatnot review row action toggles on mobile so create/update/skip actions stay readable and tappable in French.
+- 25% - Convert Singles CSV import, Singles editor, Live Singles, and Portfolio dense chart/list flows to the same summary-first mobile pattern.
+- 0% - Define and apply one mobile inspector pattern for game configuration across wheel, mystery grid, and bracket modes.
+- 100% - Re-run targeted mobile workflow scans, typecheck, and frontend build after the first mobile-first pass.
+
+**Continuation progress:**
+
+- 100% - Extend the mobile CSV preview pattern to Singles import with a fullscreen mobile dialog, sticky mapping summary, and card-based first-five-row preview.
+- 100% - Keep Singles CSV desktop behavior intact with the existing compact table while hiding horizontal table preview on narrow screens.
+- 100% - Re-run Singles CSV mobile workflow scans, locale parsing, targeted Singles tests, typecheck, and frontend build after the second mobile-first pass.
 
 **Must do:**
 
