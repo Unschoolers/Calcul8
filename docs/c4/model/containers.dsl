@@ -1,4 +1,7 @@
 calcul8 = softwareSystem "Calcul8" "Local-first PWA for live selling, profitability tracking, workspace sync, and public game sessions." {
+    !docs docs
+    !adrs decisions adrtools
+
     web = container "Web PWA" "Vue/Vuetify app for authenticated sellers, local-first workflows, sales, lots, games, Whatnot import, and workspace sync." "Vue, TypeScript, Vite" {
         tags "Web App"
     }
@@ -13,6 +16,8 @@ calcul8 = softwareSystem "Calcul8" "Local-first PWA for live selling, profitabil
 
     realtime = container "Realtime Gateway" "WebSocket and HTTP publish gateway for workspace lot rooms, presence, and public game-session updates." "Node.js, ws, TypeScript" {
         tags "Realtime"
+
+        !include components/realtime.dsl
     }
 
     cosmos = container "Cosmos DB" "Cloud-authoritative storage for profiles, workspaces, sync snapshots, sales, billing facts, Whatnot connections, and public game sessions." "Azure Cosmos DB" {

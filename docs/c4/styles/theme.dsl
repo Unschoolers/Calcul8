@@ -27,6 +27,46 @@ element "Realtime" {
     color "#ffffff"
 }
 
+element "Realtime Component" {
+    shape Component
+    background "#ef4444"
+    color "#ffffff"
+}
+
+element "Runtime Entry" {
+    shape Component
+    background "#0369a1"
+    color "#ffffff"
+}
+
+element "Boundary" {
+    stroke "#111827"
+    strokeWidth 4
+}
+
+element "Security Boundary" {
+    background "#b91c1c"
+    color "#ffffff"
+    stroke "#111827"
+    strokeWidth 4
+}
+
+element "Validation Boundary" {
+    background "#c2410c"
+    color "#ffffff"
+}
+
+element "In Memory State" {
+    shape Cylinder
+    background "#7f1d1d"
+    color "#ffffff"
+}
+
+element "Shared Contract" {
+    background "#be123c"
+    color "#ffffff"
+}
+
 element "Database" {
     shape Cylinder
     background "#475569"
@@ -49,4 +89,3 @@ relationship "Relationship" {
     color "#64748b"
     thickness 2
 }
-

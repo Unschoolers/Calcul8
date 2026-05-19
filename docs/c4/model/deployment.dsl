@@ -2,9 +2,6 @@ development = deploymentEnvironment "Development" {
     devMachine = deploymentNode "Developer workstation" "Local Windows development machine." "Windows, PowerShell, Docker Desktop" {
         localWeb = containerInstance calcul8.web
         localSpectator = containerInstance calcul8.spectator
-        localStructurizr = infrastructureNode "Structurizr local" "Local-only architecture viewer on http://localhost:8080." "Docker image: structurizr/structurizr local" {
-            tags "Tooling"
-        }
     }
 
     localDocker = deploymentNode "Local Docker" "Optional local container runtime." "Docker" {
@@ -14,20 +11,20 @@ development = deploymentEnvironment "Development" {
 
 production = deploymentEnvironment "Production" {
     azure = deploymentNode "Azure" "Production hosting boundary." "Azure" {
-        staticSite = deploymentNode "Static web hosting" "Ships the PWA and spectator entry." {
+        staticSite = deploymentNode "Static web hosting" "Ships the PWA and spectator entry." "Azure Static Web Apps / Pages" {
             prodWeb = containerInstance calcul8.web
             prodSpectator = containerInstance calcul8.spectator
         }
 
-        functions = deploymentNode "Azure Functions" "Production API host." {
+        functions = deploymentNode "Azure Functions" "Production API host." "Azure Functions v4" {
             prodApi = containerInstance calcul8.api
         }
 
-        realtimeHost = deploymentNode "Realtime host" "Production realtime gateway. Keep single-instance until a shared backplane exists." {
+        realtimeHost = deploymentNode "Realtime host" "Production realtime gateway. Keep single-instance until a shared backplane exists." "Azure App Service / Container host" {
             prodRealtime = containerInstance calcul8.realtime
         }
 
-        database = deploymentNode "Cosmos account" "Production data plane." {
+        database = deploymentNode "Cosmos account" "Production data plane." "Azure Cosmos DB" {
             prodCosmos = containerInstance calcul8.cosmos
         }
     }

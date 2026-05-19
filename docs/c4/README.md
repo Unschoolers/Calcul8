@@ -35,9 +35,9 @@ This setup is intentionally local-only. The npm script runs the Structurizr `loc
 
 - `workspace.dsl` is the only Structurizr entry point.
 - `model/` defines people, external systems, Calcul8 containers, and deployment nodes.
+- `model/docs/` and `model/decisions/` attach documentation and ADRs to the Calcul8 software system.
 - `views/` defines system, container, deployment, and dynamic flow views.
 - `styles/` keeps tags and visual styling consistent.
-- `decisions/` stores ADRs rendered by Structurizr local.
 
 ## Source Of Truth
 
@@ -54,4 +54,10 @@ Validate the DSL without starting the viewer:
 
 ```powershell
 npm run docs:c4:validate
+```
+
+Run Structurizr's model inspections as a stricter quality gate:
+
+```powershell
+npm run docs:c4:inspect
 ```

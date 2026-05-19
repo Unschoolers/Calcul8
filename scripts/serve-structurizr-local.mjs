@@ -1,26 +1,15 @@
 import { spawn } from "node:child_process";
-import { existsSync } from "node:fs";
 import { createServer } from "node:net";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-
-const scriptDir = path.dirname(fileURLToPath(import.meta.url));
-const repoRoot = path.resolve(scriptDir, "..");
-const c4Dir = path.join(repoRoot, "docs", "c4");
-const workspacePath = path.join(c4Dir, "workspace.dsl");
-const windowsDockerDesktopCli = "C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe";
+import {
+  assertWorkspaceExists,
+  buildDockerEnvironment,
+  c4Dir,
+  containerStructurizrDir,
+  readOption,
+  resolveDockerCli
+} from "./structurizr-docker.mjs";
 
 const args = process.argv.slice(2);
-
-function readOption(name, fallback) {
-  const inline = args.find((arg) => arg.startsWith(`${name}=`));
-  if (inline) return inline.slice(name.length + 1);
-
-  const index = args.indexOf(name);
-  if (index >= 0 && args[index + 1]) return args[index + 1];
-
-  return fallback;
-}
 
 function printHelp() {
   console.log(`Usage: npm run docs:c4 -- [--port 8080] [--image structurizr/structurizr]
@@ -33,27 +22,6 @@ Options:
   DOCKER_CLI can point to docker.exe when Docker is not on PATH.
   --help   Show this help text
 `);
-}
-
-function resolveDockerCli() {
-  if (process.env.DOCKER_CLI) return process.env.DOCKER_CLI;
-  if (process.platform === "win32" && existsSync(windowsDockerDesktopCli)) {
-    return windowsDockerDesktopCli;
-  }
-  return "docker";
-}
-
-function buildDockerEnvironment(dockerCliPath) {
-  const env = { ...process.env };
-  const dockerDir = path.dirname(dockerCliPath);
-  const pathKey = Object.keys(env).find((key) => key.toLowerCase() === "path") || "PATH";
-  const currentPath = env[pathKey] || "";
-
-  if (dockerCliPath !== "docker" && !currentPath.split(path.delimiter).includes(dockerDir)) {
-    env[pathKey] = `${dockerDir}${path.delimiter}${currentPath}`;
-  }
-
-  return env;
 }
 
 async function assertPortAvailable(nextPort) {
@@ -85,13 +53,10 @@ if (args.includes("--help") || args.includes("-h")) {
   process.exit(0);
 }
 
-if (!existsSync(workspacePath)) {
-  console.error(`Structurizr workspace not found: ${workspacePath}`);
-  process.exit(1);
-}
+assertWorkspaceExists();
 
-const port = readOption("--port", process.env.STRUCTURIZR_PORT || "8080");
-const image = readOption("--image", process.env.STRUCTURIZR_IMAGE || "structurizr/structurizr");
+const port = readOption(args, "--port", process.env.STRUCTURIZR_PORT || "8080");
+const image = readOption(args, "--image", process.env.STRUCTURIZR_IMAGE || "structurizr/structurizr");
 const dockerCli = resolveDockerCli();
 
 if (!/^\d+$/.test(port) || Number(port) <= 0 || Number(port) > 65535) {
@@ -110,7 +75,7 @@ const dockerArgs = [
   "-e",
   `PORT=${port}`,
   "-v",
-  `${c4Dir}:/usr/local/structurizr`,
+  `${c4Dir}:${containerStructurizrDir}`,
   image,
   "local"
 ];
