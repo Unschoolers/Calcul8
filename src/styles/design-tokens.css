@@ -115,6 +115,8 @@
   --app-section-card-bg: var(--app-surface-card-bg);
   --app-summary-panel-bg: var(--app-surface-card-bg);
   --app-empty-state-bg: var(--app-surface-card-bg);
+  --app-stat-card-bg: var(--app-surface-card-bg);
+  --app-toolbar-card-bg: var(--app-surface-raised);
   --app-current-price-surface: rgba(var(--v-theme-secondary), 0.15);
   --app-table-wrap-bg: var(--app-surface-quiet);
   --app-data-table-header-bg: var(--app-surface-muted);

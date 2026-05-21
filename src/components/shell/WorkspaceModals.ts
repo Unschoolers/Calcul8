@@ -1,9 +1,15 @@
 import { inject, type PropType } from "vue";
+import AppConfirmDialog from "../ui/AppConfirmDialog.vue";
+import AppDestructiveWarning from "../ui/AppDestructiveWarning.vue";
 import { createWindowContextBridge } from "../windows/shared/contextBridge.ts";
 import "./WorkspaceModals.css";
 
 export const WorkspaceModals = {
   name: "WorkspaceModals",
+  components: {
+    AppConfirmDialog,
+    AppDestructiveWarning
+  },
   props: {
     ctx: {
       type: Object as PropType<Record<string, unknown>>,

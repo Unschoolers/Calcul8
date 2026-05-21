@@ -1,9 +1,13 @@
 import { defineComponent, type PropType } from "vue";
+import AppStatCard from "../../ui/AppStatCard.vue";
 
 type ClassValue = string | string[];
 
 export const PortfolioKpiCard = defineComponent({
   name: "PortfolioKpiCard",
+  components: {
+    AppStatCard
+  },
   props: {
     label: {
       type: String,
@@ -38,6 +42,13 @@ export const PortfolioKpiCard = defineComponent({
     resolvedValueClasses(): string[] {
       const value = this.valueClasses;
       return Array.isArray(value) ? value : [value];
+    },
+    resolvedCardTone(): "success" | "error" | "secondary" | "primary" {
+      const classes = this.resolvedCardClasses;
+      if (classes.includes("portfolio-kpi-card--profit-positive")) return "success";
+      if (classes.includes("portfolio-kpi-card--profit-negative")) return "error";
+      if (classes.includes("portfolio-kpi-card--cost")) return "primary";
+      return "secondary";
     }
   }
 });

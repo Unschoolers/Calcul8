@@ -1,5 +1,4 @@
-                <v-card class="mb-4 portfolio-filter-bar" elevation="2">
-                  <v-card-text class="py-2">
+                <app-toolbar-card card-class="mb-4 portfolio-filter-bar" content-class="py-2">
                     <div class="portfolio-filter-toolbar">
                       <v-btn-toggle
                         v-model="portfolioLotTypeFilter"
@@ -111,8 +110,7 @@
                         </template>
                       </v-autocomplete>
                     </div>
-                  </v-card-text>
-                </v-card>
+                </app-toolbar-card>
 
                 <div v-if="$vuetify?.display?.smAndDown" class="portfolio-kpi-carousel-shell">
                   <div v-if="mobileKpiSlideCount() > 1" class="portfolio-kpi-pager-head">

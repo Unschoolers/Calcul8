@@ -118,3 +118,48 @@ relationship "Relationship" {
     color "#64748b"
     thickness 2
 }
+
+element "Perspective:Technical Debt" {
+    stroke "#334155"
+    strokeWidth 4
+}
+
+element "Perspective:Technical Debt[value==Critical]" {
+    stroke "#991b1b"
+    strokeWidth 8
+}
+
+element "Perspective:Technical Debt[value==High]" {
+    stroke "#dc2626"
+    strokeWidth 6
+}
+
+element "Perspective:Technical Debt[value==Medium]" {
+    stroke "#f59e0b"
+    strokeWidth 5
+}
+
+element "Perspective:Technical Debt[value==Low]" {
+    stroke "#16a34a"
+    strokeWidth 4
+}
+
+relationship "Perspective:Technical Debt" {
+    color "#334155"
+    thickness 3
+}
+
+relationship "Perspective:Technical Debt[value==Critical]" {
+    color "#991b1b"
+    thickness 6
+}
+
+relationship "Perspective:Technical Debt[value==High]" {
+    color "#dc2626"
+    thickness 5
+}
+
+relationship "Perspective:Technical Debt[value==Medium]" {
+    color "#f59e0b"
+    thickness 4
+}

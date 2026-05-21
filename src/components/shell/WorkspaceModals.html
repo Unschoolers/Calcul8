@@ -170,55 +170,45 @@
     </v-card>
   </v-dialog>
 
-  <v-dialog v-model="showLeaveWorkspaceModal" max-width="480" content-class="app-mobile-fullscreen-dialog">
-    <v-card class="app-dialog-card">
-      <v-card-title class="app-dialog-title">{{ t('shellLeaveWorkspaceTitle') }}</v-card-title>
-      <v-card-text class="app-dialog-content">
-        <p class="text-body-2 text-medium-emphasis mb-4">
-          {{
-            isCurrentWorkspaceOwner
-              ? t('shellLeaveWorkspaceOwnerBody')
-              : t('shellLeaveWorkspaceMemberBody')
-          }}
-        </p>
+  <app-confirm-dialog
+    v-model="showLeaveWorkspaceModal"
+    :title="t('shellLeaveWorkspaceTitle')"
+    :body="isCurrentWorkspaceOwner ? t('shellLeaveWorkspaceOwnerBody') : t('shellLeaveWorkspaceMemberBody')"
+    :cancel-text="t('commonCancel')"
+    :confirm-text="t('shellLeaveWorkspaceAction')"
+    confirm-color="error"
+    :confirm-loading="isLeavingWorkspace"
+    @confirm="leaveCurrentWorkspace"
+  >
+    <v-select
+      v-if="isCurrentWorkspaceOwner && workspaceMembers.some(member => member.role === 'member' && member.status === 'active')"
+      v-model="leaveWorkspaceTransferMemberUserId"
+      :items="workspaceMembers
+        .filter(member => member.role === 'member' && member.status === 'active')
+        .map(member => ({
+          title: member.displayName
+            ? `${member.displayName} (${member.userId.slice(0, 8)}...${member.userId.slice(-4)})`
+            : member.userId,
+          value: member.userId
+        }))"
+      item-title="title"
+      item-value="value"
+      :label="t('shellTransferOwnerLabel')"
+      variant="outlined"
+      density="comfortable"
+      :hint="t('shellTransferOwnerHint')"
+      persistent-hint
+    ></v-select>
 
-        <v-select
-          v-if="isCurrentWorkspaceOwner && workspaceMembers.some(member => member.role === 'member' && member.status === 'active')"
-          v-model="leaveWorkspaceTransferMemberUserId"
-          :items="workspaceMembers
-            .filter(member => member.role === 'member' && member.status === 'active')
-            .map(member => ({
-              title: member.displayName
-                ? `${member.displayName} (${member.userId.slice(0, 8)}...${member.userId.slice(-4)})`
-                : member.userId,
-              value: member.userId
-            }))"
-          item-title="title"
-          item-value="value"
-          :label="t('shellTransferOwnerLabel')"
-          variant="outlined"
-          density="comfortable"
-          :hint="t('shellTransferOwnerHint')"
-          persistent-hint
-        ></v-select>
-
-        <v-checkbox
-          v-else-if="isCurrentWorkspaceOwner"
-          v-model="leaveWorkspaceDeleteConfirmation"
-          color="error"
-          :label="t('shellLeaveWorkspaceDeleteConfirm')"
-          hide-details
-        ></v-checkbox>
-      </v-card-text>
-      <v-card-actions class="app-dialog-actions">
-        <v-spacer></v-spacer>
-        <v-btn variant="text" @click="showLeaveWorkspaceModal = false">{{ t('commonCancel') }}</v-btn>
-        <v-btn color="error" :loading="isLeavingWorkspace" @click="leaveCurrentWorkspace">
-          {{ t('shellLeaveWorkspaceAction') }}
-        </v-btn>
-      </v-card-actions>
-    </v-card>
-  </v-dialog>
+    <app-destructive-warning v-else-if="isCurrentWorkspaceOwner">
+      <v-checkbox
+        v-model="leaveWorkspaceDeleteConfirmation"
+        color="error"
+        :label="t('shellLeaveWorkspaceDeleteConfirm')"
+        hide-details
+      ></v-checkbox>
+    </app-destructive-warning>
+  </app-confirm-dialog>
 
   <v-dialog v-model="showWorkspaceJoinDialog" max-width="460" content-class="app-mobile-fullscreen-dialog">
     <v-card class="app-dialog-card">

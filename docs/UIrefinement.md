@@ -107,8 +107,8 @@ Every item below is done only when the affected screens pass these checks:
 - 100% - Inventory reusable surface drift across core app CSS and classify core app surfaces separately from game art, spectator presentation, and user/content colors.
 - 100% - Add shared app-level CSS contracts for dialog cards, dialog title/content/actions, section cards, summary panels, sticky action footers, table wrappers, and data tables.
 - 100% - Migrate high-visibility dialog/table surfaces to shared contracts: Whatnot review, Whatnot CSV import, Sale editor, Workspace dialogs, and Portfolio report.
-- 75% - Normalize existing cards, panels, forms, and list/table shells through tokenized CSS in Sales, Config, Live, Singles, Portfolio, and shell surfaces.
-- 45% - Extract reusable Vue shell components for section card, KPI/stat card, toolbar/filter bar, empty/loading/error states, confirmation dialog, destructive warning, and sticky action footer.
+- 80% - Normalize existing cards, panels, forms, and list/table shells through tokenized CSS in Sales, Config, Live, Singles, Portfolio, and shell surfaces.
+- 70% - Extract reusable Vue shell components for section card, KPI/stat card, toolbar/filter bar, empty/loading/error states, confirmation dialog, destructive warning, and sticky action footer.
 - 100% - Re-run targeted surface scans and frontend build after the first normalization pass.
 
 **Continuation progress:**
@@ -119,6 +119,9 @@ Every item below is done only when the affected screens pass these checks:
 - 100% - Re-run component usage scans, whitespace checks, typecheck, and frontend build after the component extraction pass.
 - 100% - Add reusable `AppStickyActionFooter` and migrate Sale editor, Portfolio report, and Singles editor action footers onto the shared sticky footer primitive.
 - 100% - Re-run sticky footer component scans, focused modal/window tests, whitespace checks, typecheck, and frontend build after the sticky footer pass.
+- 100% - Add reusable `AppStatCard`, `AppToolbarCard`, `AppConfirmDialog`, and `AppDestructiveWarning` primitives backed by shared tokenized CSS.
+- 100% - Migrate Portfolio KPI cards, the Portfolio filter toolbar, and the Workspace leave confirmation flow onto the new shared primitives.
+- 100% - Re-run focused Portfolio and Workspace tests, whitespace checks, and TypeScript after the stat/toolbar/confirmation pass.
 
 **Must do:**
 

@@ -37,13 +37,22 @@ This setup is intentionally local-only. The npm script runs the Structurizr `loc
 - `model/` defines people, external systems, Calcul8 containers, and deployment nodes.
 - `model/docs/` and `model/decisions/` attach documentation and ADRs to the Calcul8 software system.
 - `views/` defines the C1 system context, C2 container, selected C3 component, deployment, and dynamic flow views.
-- `styles/` keeps tags and visual styling consistent.
+- `styles/` keeps Calcul8-specific tags and visual styling consistent.
+
+The workspace uses Structurizr's official Microsoft Azure 2024.07.15 icons-only theme. Local styles still override the theme for Calcul8-specific colors, shapes, and relationship styling.
 
 The active C4 drilldown is:
 
 - C1: `SystemContext`
 - C2: `ContainerView`
 - C3: `WebPwaComponents`, `ApiComponents`, and `RealtimeComponents`
+- Dynamic: `WorkspaceSyncFlow`, `PublicGameSessionFlow`, `WhatnotImportFlow`, `BillingEntitlementsFlow`, `RealtimePublishSubscribeFlow`, and `TechnicalDebtFlow`
+
+The software system and drilldown-ready containers also have explicit named links using Structurizr's `{workspace}/diagrams#ViewKey` URL syntax. This keeps navigation available even when the viewer does not automatically infer the next diagram.
+
+The model follows the Structurizr tutorial's implied-relationship pattern: lower-level component relationships are the source of truth, and C1/C2 parent relationships are inferred by Structurizr instead of being duplicated by hand.
+
+The `Technical Debt` perspective is attached to the model as an overlay in `model/technical-debt.dsl`. Use the perspectives control in Structurizr, or press `p`, to highlight the current debt ratings on the C2/C3 diagrams. `TechnicalDebtFlow` shows the debt feedback loop as a dynamic view.
 
 There is intentionally no active system landscape view while Calcul8 is modeled as one first-party software system; it would duplicate `SystemContext`.
 

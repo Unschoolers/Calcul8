@@ -31,8 +31,6 @@ roomNames = component "Room Naming" "Builds and parses workspace, wheel, and pub
 }
 
 entryPoint -> gateway "Starts with allowed origins, publish key, token secret, and dev-auth flags." "Environment config"
-calcul8.api -> gateway "Publishes workspace, sales, sync, and public-session events." "HTTPS JSON"
-calcul8.web -> gateway "Subscribes to workspace lot, wheel, and presence rooms." "WebSocket"
 calcul8.spectator -> gateway "Subscribes to public game-session rooms." "WebSocket"
 
 gateway -> auth "Checks publish credentials and subscribe tokens." "HMAC / shared secret"
@@ -47,5 +45,5 @@ roomStore -> roomNames "Builds workspace presence room names for active-subscrip
 presenceStore -> roomStore "Checks whether a user still has an active presence subscription." "In-memory calls"
 presenceStore -> roomNames "Builds and parses workspace presence rooms." "Room strings"
 
-gateway -> calcul8.web "Delivers workspace events and presence snapshots to subscribed clients." "WebSocket"
+gateway -> calcul8.web.realtimeClient "Delivers workspace events and presence snapshots to subscribed clients." "WebSocket"
 gateway -> calcul8.spectator "Delivers public game-session events to subscribed spectators." "WebSocket"

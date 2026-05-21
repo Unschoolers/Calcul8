@@ -1,0 +1,17 @@
+<v-card :elevation="elevation" :class="resolvedCardClasses">
+  <v-card-text :class="resolvedContentClasses">
+    <div :class="resolvedHeadClasses">
+      <div :class="resolvedLabelClasses">{{ label }}</div>
+      <div v-if="icon" :class="resolvedIconWrapClasses">
+        <v-icon :size="iconSize">{{ icon }}</v-icon>
+      </div>
+    </div>
+    <div :class="resolvedValueClasses">
+      {{ value }}
+    </div>
+    <div v-if="meta || $slots.meta" :class="resolvedMetaClasses">
+      <slot name="meta">{{ meta }}</slot>
+    </div>
+    <slot></slot>
+  </v-card-text>
+</v-card>

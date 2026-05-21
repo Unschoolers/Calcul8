@@ -1,0 +1,8 @@
+<div :class="resolvedClasses" role="alert">
+  <v-icon v-if="icon" size="20" class="app-destructive-warning__icon">{{ icon }}</v-icon>
+  <div class="app-destructive-warning__content">
+    <div v-if="title" class="app-destructive-warning__title">{{ title }}</div>
+    <div v-if="body" class="app-destructive-warning__body">{{ body }}</div>
+    <slot></slot>
+  </div>
+</div>

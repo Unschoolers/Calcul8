@@ -1,0 +1,31 @@
+<v-dialog
+  :model-value="modelValue"
+  :max-width="maxWidth"
+  :persistent="persistent"
+  content-class="app-mobile-fullscreen-dialog"
+  @update:model-value="updateModelValue"
+>
+  <v-card class="app-dialog-card">
+    <v-card-title class="app-dialog-title">
+      <slot name="title">{{ title }}</slot>
+    </v-card-title>
+    <v-card-text class="app-dialog-content">
+      <p v-if="body" class="text-body-2 text-medium-emphasis mb-4">
+        {{ body }}
+      </p>
+      <slot></slot>
+    </v-card-text>
+    <v-card-actions class="app-dialog-actions">
+      <v-spacer></v-spacer>
+      <v-btn variant="text" @click="cancel">{{ cancelText }}</v-btn>
+      <v-btn
+        :color="confirmColor"
+        :loading="confirmLoading"
+        :disabled="confirmDisabled"
+        @click="confirm"
+      >
+        {{ confirmText }}
+      </v-btn>
+    </v-card-actions>
+  </v-card>
+</v-dialog>

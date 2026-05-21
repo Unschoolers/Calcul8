@@ -10,6 +10,7 @@ calcul8.web.gameWorkflows -> calcul8.web.apiClient "Creates, publishes, loads, a
 calcul8.web.gameWorkflows -> calcul8.web.realtimeClient "Subscribes to public-session and workspace game update rooms." "WebSocket"
 calcul8.web.whatnotWorkflows -> calcul8.web.apiClient "Connects OAuth accounts, starts imports, and submits review decisions." "HTTPS JSON"
 
-calcul8.web.apiClient -> calcul8.api "Calls API Functions." "HTTPS JSON"
-calcul8.web.realtimeClient -> calcul8.realtime "Subscribes to workspace, wheel, presence, and public-session rooms." "WebSocket"
+calcul8.web.authClient -> googleIdentity "Signs users in and receives session identity." "OAuth/OIDC"
+calcul8.web.apiClient -> calcul8.api.functionEntryPoints "Calls API Functions." "HTTPS JSON"
+calcul8.web.realtimeClient -> calcul8.realtime.gateway "Subscribes to workspace, wheel, presence, and public-session rooms." "WebSocket"
 calcul8.web.localStateStore -> calcul8.browserStorage "Persists local-first app state." "Browser APIs"
