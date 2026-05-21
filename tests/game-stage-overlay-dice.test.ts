@@ -145,3 +145,17 @@ test("screen-slot die scaling compensates for taller overlay viewports", () => {
   assert.ok(compactScale > 0);
   assert.ok(tallScale > 0);
 });
+
+test("screen-slot die scaling is capped for mobile viewport measurement drift", () => {
+  const spec = getOverlayDieVisualSpec();
+
+  const scale = getOverlayDieScaleForScreenSlot({
+    slotSizePx: 260,
+    viewportHeightPx: 360,
+    cameraDistance: 9.5,
+    cameraFovDegrees: 28,
+    dieSize: spec.dieSize
+  });
+
+  assert.equal(scale, 1.05);
+});

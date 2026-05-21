@@ -27,6 +27,7 @@ export type OverlayDieVisualSpec = {
 };
 
 const PIP_OFFSET = 0.34;
+const MAX_OVERLAY_DIE_SCREEN_SLOT_SCALE = 1.05;
 const OVERLAY_DIE_BOX_FACE_VALUES = [2, 5, 3, 4, 1, 6] as const;
 const OVERLAY_DIE_VISUAL_SPEC: OverlayDieVisualSpec = {
   dieSize: 0.6,
@@ -101,7 +102,7 @@ export function getOverlayDieScaleForScreenSlot(input: {
   const fovRadians = (input.cameraFovDegrees * Math.PI) / 180;
   const visibleWorldHeight = 2 * Math.tan(fovRadians / 2) * cameraDistance;
   const desiredWorldSize = (slotSizePx * fillRatio / viewportHeightPx) * visibleWorldHeight;
-  return desiredWorldSize / dieSize;
+  return Math.min(MAX_OVERLAY_DIE_SCREEN_SLOT_SCALE, desiredWorldSize / dieSize);
 }
 
 export function getOverlayDieBoxFaceValues(): readonly number[] {

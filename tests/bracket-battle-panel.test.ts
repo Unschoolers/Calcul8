@@ -107,13 +107,13 @@ test("BracketBattlePanel rollActiveBracketMatch animates before settling the mat
       leftAnchor: {
         x: 0.18,
         y: 0.4467,
-        size: 0.1733
+        size: 0.1467
       },
       leftLabel: "Alex",
       rightAnchor: {
         x: 0.82,
         y: 0.4467,
-        size: 0.1733
+        size: 0.1467
       },
       rightLabel: "Bri"
     }
@@ -137,13 +137,13 @@ test("BracketBattlePanel rollActiveBracketMatch animates before settling the mat
       leftAnchor: {
         x: 0.18,
         y: 0.4467,
-        size: 0.1733
+        size: 0.1467
       },
       leftValue: decidingRolls[0]!.value,
       rightAnchor: {
         x: 0.82,
         y: 0.4467,
-        size: 0.1733
+        size: 0.1467
       },
       rightValue: decidingRolls[1]!.value,
       finalMatch: false,
@@ -779,12 +779,12 @@ test("BracketBattlePanel refreshBracketBattleDiceAnchors emits an anchor update 
       leftAnchor: {
         x: 0.2556,
         y: 0.3531,
-        size: 0.2556
+        size: 0.2444
       },
       rightAnchor: {
         x: 0.7444,
         y: 0.3531,
-        size: 0.2556
+        size: 0.2444
       }
     }
   }]);
