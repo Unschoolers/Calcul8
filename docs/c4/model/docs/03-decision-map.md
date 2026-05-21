@@ -10,6 +10,7 @@ The ADRs attached to the Calcul8 software system are split into two groups.
 - Keep personal and workspace state explicitly scoped.
 - Use session-first provider-neutral auth.
 - Derive access from provider entitlement facts.
+- Require bilingual user-facing UI.
 
 ## Proposed Target Decisions
 

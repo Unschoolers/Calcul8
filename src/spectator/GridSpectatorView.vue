@@ -9,6 +9,7 @@ import {
   formatStatusLabel,
   formatStatusTone
 } from "./spectatorFormatting.ts";
+import { translateSpectatorMessage } from "./spectatorI18n.ts";
 import {
   getSpectatorBoardCells
 } from "./spectatorSnapshot.ts";
@@ -16,9 +17,12 @@ import type { SpectatorPageState } from "./spectatorTypes.ts";
 
 const props = defineProps<{
   state: Extract<SpectatorPageState, { status: "ready" }>;
+  language: string;
 }>();
 
 const snapshot = computed(() => props.state.snapshot);
+const t = (key: string, params?: Record<string, string | number | null | undefined>) =>
+  translateSpectatorMessage(props.language, key, params);
 const boardCells = computed(() => getSpectatorBoardCells(snapshot.value));
 const gridColumns = computed(() => Math.ceil(Math.sqrt(Math.max(1, boardCells.value.length))));
 const revealedGridCount = computed(() => boardCells.value.filter((cell) => cell.revealed).length);
@@ -27,17 +31,17 @@ const gridProgressLabel = computed(() => (
 ));
 const heroSubcopy = computed(() => (
   snapshot.value.sessionResultCount > 0
-    ? `${gridProgressLabel.value} cells opened. ${formatHeatCopy(snapshot.value.featuredChaseHeat, snapshot.value.featuredChaseLabel)}`
-    : "The grid is live. Stay here for the next verified result."
+    ? `${t("spectatorGridOpenedSummary", { progress: gridProgressLabel.value })} ${formatHeatCopy(snapshot.value.featuredChaseHeat, snapshot.value.featuredChaseLabel, props.language)}`
+    : t("spectatorGridEmptyHero")
 ));
 const latestResultLabel = computed(() => (
-  String(snapshot.value.lastResultLabel || "").trim() || "Waiting for the next result"
+  String(snapshot.value.lastResultLabel || "").trim() || t("spectatorStatusWaiting")
 ));
 const latestResultColor = computed(() => String(snapshot.value.lastResultColor || "#d4af37"));
 const latestResultSubcopy = computed(() => (
   snapshot.value.sessionResultCount > 0
     ? latestResultLabel.value
-    : "The next verified reveal will land here as soon as the cell opens."
+    : t("spectatorGridPendingResult")
 ));
 
 function cellClasses(cell: (typeof boardCells.value)[number]): string[] {
@@ -61,7 +65,7 @@ function cellStyle(cell: (typeof boardCells.value)[number]): Record<string, stri
 <template>
   <div class="spectator-shell">
     <section class="spectator-hero">
-      <div class="spectator-kicker">Live Grid Spectator</div>
+      <div class="spectator-kicker">{{ t('spectatorGridKicker') }}</div>
       <p class="spectator-subtitle spectator-subtitle--hero">{{ heroSubcopy }}</p>
     </section>
 
@@ -70,19 +74,20 @@ function cellStyle(cell: (typeof boardCells.value)[number]): Record<string, stri
         <div :class="['spectator-now__glow', `spectator-now__glow--${snapshot.featuredChaseHeat || 'low'}`]"></div>
         <div class="spectator-now__header">
           <div>
-            <div class="spectator-card__eyebrow">Now</div>
-            <div class="spectator-now__headline">Current moment</div>
+            <div class="spectator-card__eyebrow">{{ t('spectatorNowLabel') }}</div>
+            <div class="spectator-now__headline">{{ t('spectatorCurrentMoment') }}</div>
           </div>
           <div :class="['spectator-status', `spectator-status--${formatStatusTone(snapshot)}`]">
-            {{ formatStatusLabel(snapshot, true) }}
+            {{ formatStatusLabel(snapshot, true, language) }}
           </div>
         </div>
 
         <SpectatorNowMetrics
-          result-label="Reveal"
+          :result-label="t('spectatorRevealLabel')"
           :result-count="snapshot.sessionResultCount"
           :featured-chase-heat="snapshot.featuredChaseHeat"
           :featured-chase-label="snapshot.featuredChaseLabel"
+          :language="language"
         />
 
         <div class="spectator-now__stage">
@@ -113,8 +118,8 @@ function cellStyle(cell: (typeof boardCells.value)[number]): Record<string, stri
             :style="{ '--spectator-result-color': latestResultColor }"
           >
             <div class="spectator-result__meta">
-              <span class="spectator-result__eyebrow">Latest result</span>
-              <strong>{{ snapshot.isSpinning ? "Live" : "Settled" }}</strong>
+              <span class="spectator-result__eyebrow">{{ t('spectatorLatestResultLabel') }}</span>
+              <strong>{{ snapshot.isSpinning ? t('spectatorLiveLabel') : t('spectatorSettledLabel') }}</strong>
             </div>
             <div class="spectator-result__subcopy">{{ latestResultSubcopy }}</div>
             <a
@@ -123,19 +128,24 @@ function cellStyle(cell: (typeof boardCells.value)[number]): Record<string, stri
               :href="snapshot.fairnessVerificationUrl"
               target="_blank"
               rel="noopener noreferrer"
-            >Verify this result</a>
+            >{{ t('spectatorVerifyThisResult') }}</a>
           </div>
         </div>
       </section>
 
-      <SpectatorRecentResults :entries="snapshot.recentFairnessHistory" />
+      <SpectatorRecentResults
+        :entries="snapshot.recentFairnessHistory"
+        :language="language"
+      />
       <SpectatorPrizeBoard
         :chase-board="snapshot.chaseBoard"
         :featured-chase-heat="snapshot.featuredChaseHeat"
+        :language="language"
       />
       <SpectatorTrustCard
-        reveal-text="cell opens"
+        :reveal-text="t('spectatorRevealTextCell')"
         :fairness-verification-url="snapshot.fairnessVerificationUrl"
+        :language="language"
       />
     </div>
   </div>

@@ -216,6 +216,8 @@ Every item below is done only when the affected screens pass these checks:
 
 ### 7. Complete The Bilingual UI Contract
 
+**Status:** Complete. Spectator pages now use the shared app i18n catalogs with a visible English/French toggle, the spectator render tests cover French output, and the French catalog audit is enforced by `tests/i18n.test.ts`.
+
 **Problem:** The main app has i18n coverage, but public spectator pages and some fallback strings remain hardcoded. Some French copy misses diacritics, which makes the UI feel unfinished.
 
 **Scope:** `src/app-core/i18n`, `src/spectator`, `src/spectator-main.ts`, fallback copy in TS/HTML/Vue files.

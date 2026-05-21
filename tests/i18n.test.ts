@@ -43,6 +43,25 @@ test("translation catalogs stay aligned across locales", () => {
   );
 });
 
+test("spectator translations are part of the bilingual app contract", () => {
+  assert.equal(translateAppMessage("en", "spectatorLanguageLabel"), "Language");
+  assert.equal(translateAppMessage("fr-CA", "spectatorLanguageLabel"), "Langue");
+  assert.equal(translateAppMessage("fr-CA", "spectatorGridKicker"), "Spectateur de grille en direct");
+  assert.equal(
+    translateAppMessage("fr-CA", "spectatorGridOpenedSummary", { progress: "1/2" }),
+    "1/2 cases ouvertes."
+  );
+});
+
+test("French user-facing copy keeps audited terms accented", () => {
+  const frenchCopy = Object.values(APP_TRANSLATIONS["fr-CA"]).join("\n");
+
+  assert.doesNotMatch(
+    frenchCopy,
+    /\b(couts?|resultats?|selectionne|revision|integration|echec|reussie|lies|probabilites|ponderees)\b/i
+  );
+});
+
 test("shared game copy stays game-neutral while wheel-specific actions stay explicit", () => {
   assert.equal(translateAppMessage("en", "wheelNameLabel"), "Game name");
   assert.equal(translateAppMessage("en", "wheelInspectorSpinPriceLabel"), "Price per play ($)");
@@ -51,7 +70,7 @@ test("shared game copy stays game-neutral while wheel-specific actions stay expl
 
   assert.equal(translateAppMessage("fr-CA", "wheelNameLabel"), "Nom du jeu");
   assert.equal(translateAppMessage("fr-CA", "wheelInspectorSpinPriceLabel"), "Prix par partie ($)");
-  assert.equal(translateAppMessage("fr-CA", "wheelCreateWheelBody"), "Tournez une roue visuelle avec des probabilites de prix ponderees.");
+  assert.equal(translateAppMessage("fr-CA", "wheelCreateWheelBody"), "Tournez une roue visuelle avec des probabilités de prix pondérées.");
   assert.equal(translateAppMessage("fr-CA", "wheelSpinButtonLabel"), "Tourner");
 });
 

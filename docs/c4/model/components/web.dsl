@@ -38,7 +38,7 @@ realtimeClient = component "Realtime Client" "Manages workspace and public-sessi
     tags "Web Component", "Shared Contract"
 }
 
-i18nDisplay = component "I18n And Display Helpers" "Translates user-facing text and derives compact display state for sync, realtime, Whatnot, sales, and portfolio views." "src/app-core/i18n, src/app-core/computed" {
+i18nDisplay = component "I18n And Display Helpers" "Translates user-facing text for the PWA and spectator entry, and derives compact display state for sync, realtime, Whatnot, sales, and portfolio views." "src/app-core/i18n, src/app-core/computed" {
     tags "Web Component"
 }
 

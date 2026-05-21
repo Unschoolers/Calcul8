@@ -9,6 +9,7 @@ import {
   formatStatusLabel,
   formatStatusTone
 } from "./spectatorFormatting.ts";
+import { translateSpectatorMessage } from "./spectatorI18n.ts";
 import {
   getSpectatorOutcomeSlots
 } from "./spectatorSnapshot.ts";
@@ -19,20 +20,25 @@ import {
 
 const props = defineProps<{
   state: Extract<SpectatorPageState, { status: "ready" }>;
+  language: string;
 }>();
 
 const snapshot = computed(() => props.state.snapshot);
+const t = (key: string, params?: Record<string, string | number | null | undefined>) =>
+  translateSpectatorMessage(props.language, key, params);
 const outcomeSlots = computed(() => getSpectatorOutcomeSlots(snapshot.value));
 const heroSubcopy = computed(() => (
   snapshot.value.sessionResultCount > 0
-    ? `Watching live: ${formatHeatCopy(snapshot.value.featuredChaseHeat, snapshot.value.featuredChaseLabel)}`
-    : "The wheel is live. Stay here for the next verified result."
+    ? t("spectatorWatchingLive", {
+      heatCopy: formatHeatCopy(snapshot.value.featuredChaseHeat, snapshot.value.featuredChaseLabel, props.language)
+    })
+    : t("spectatorWheelEmptyHero")
 ));
 const latestResultColor = computed(() => String(snapshot.value.lastResultColor || "#d4af37"));
 const latestResultSubcopy = computed(() => (
   snapshot.value.sessionResultCount > 0
-    ? formatHeatCopy(snapshot.value.featuredChaseHeat, snapshot.value.featuredChaseLabel)
-    : "The next verified result will land here as soon as the wheel spins."
+    ? formatHeatCopy(snapshot.value.featuredChaseHeat, snapshot.value.featuredChaseLabel, props.language)
+    : t("spectatorWheelPendingResult")
 ));
 const centerCapAngle = computed(() => (
   Number.isFinite(snapshot.value.gameCurrentAngle) ? snapshot.value.gameCurrentAngle : 0
@@ -42,7 +48,7 @@ const centerCapAngle = computed(() => (
 <template>
   <div class="spectator-shell">
     <section class="spectator-hero">
-      <div class="spectator-kicker">Live Wheel Spectator</div>
+      <div class="spectator-kicker">{{ t('spectatorWheelKicker') }}</div>
       <p class="spectator-subtitle spectator-subtitle--hero">{{ heroSubcopy }}</p>
     </section>
 
@@ -51,19 +57,20 @@ const centerCapAngle = computed(() => (
         <div :class="['spectator-now__glow', `spectator-now__glow--${snapshot.featuredChaseHeat || 'low'}`]"></div>
         <div class="spectator-now__header">
           <div>
-            <div class="spectator-card__eyebrow">Now</div>
-            <div class="spectator-now__headline">Current moment</div>
+            <div class="spectator-card__eyebrow">{{ t('spectatorNowLabel') }}</div>
+            <div class="spectator-now__headline">{{ t('spectatorCurrentMoment') }}</div>
           </div>
           <div :class="['spectator-status', `spectator-status--${formatStatusTone(snapshot)}`]">
-            {{ formatStatusLabel(snapshot, false) }}
+            {{ formatStatusLabel(snapshot, false, language) }}
           </div>
         </div>
 
         <SpectatorNowMetrics
-          result-label="Spin"
+          :result-label="t('spectatorSpinLabel')"
           :result-count="snapshot.sessionResultCount"
           :featured-chase-heat="snapshot.featuredChaseHeat"
           :featured-chase-label="snapshot.featuredChaseLabel"
+          :language="language"
         />
 
         <div class="spectator-now__stage">
@@ -110,8 +117,8 @@ const centerCapAngle = computed(() => (
             :style="{ '--spectator-result-color': latestResultColor }"
           >
             <div class="spectator-result__meta">
-              <span class="spectator-result__eyebrow">Latest result</span>
-              <strong>{{ snapshot.isSpinning ? "Live" : "Settled" }}</strong>
+              <span class="spectator-result__eyebrow">{{ t('spectatorLatestResultLabel') }}</span>
+              <strong>{{ snapshot.isSpinning ? t('spectatorLiveLabel') : t('spectatorSettledLabel') }}</strong>
             </div>
             <div class="spectator-result__subcopy">{{ latestResultSubcopy }}</div>
             <a
@@ -120,19 +127,24 @@ const centerCapAngle = computed(() => (
               :href="snapshot.fairnessVerificationUrl"
               target="_blank"
               rel="noopener noreferrer"
-            >Verify this result</a>
+            >{{ t('spectatorVerifyThisResult') }}</a>
           </div>
         </div>
       </section>
 
-      <SpectatorRecentResults :entries="snapshot.recentFairnessHistory" />
+      <SpectatorRecentResults
+        :entries="snapshot.recentFairnessHistory"
+        :language="language"
+      />
       <SpectatorPrizeBoard
         :chase-board="snapshot.chaseBoard"
         :featured-chase-heat="snapshot.featuredChaseHeat"
+        :language="language"
       />
       <SpectatorTrustCard
-        reveal-text="spin"
+        :reveal-text="t('spectatorRevealTextSpin')"
         :fairness-verification-url="snapshot.fairnessVerificationUrl"
+        :language="language"
       />
     </div>
   </div>

@@ -59,10 +59,43 @@ a {
   color: inherit;
 }
 
+.spectator-page {
+  min-height: 100vh;
+}
+
+.spectator-language-toggle {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  width: min(100%, 620px);
+  margin: 0 auto;
+  padding: 14px 16px 0;
+  box-sizing: border-box;
+}
+
+.spectator-language-toggle__button {
+  border: 1px solid var(--spectator-border-strong);
+  border-radius: var(--app-radius-pill);
+  background: var(--spectator-panel-bg);
+  color: var(--spectator-text-muted);
+  min-height: 34px;
+  padding: 0 12px;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: var(--app-font-weight-emphasis);
+  cursor: pointer;
+}
+
+.spectator-language-toggle__button--active {
+  border-color: var(--spectator-accent);
+  background: var(--spectator-info-surface);
+  color: var(--spectator-text-strong);
+}
+
 .spectator-shell {
   width: min(100%, 620px);
   margin: 0 auto;
-  padding: 24px 16px 40px;
+  padding: 16px 16px 40px;
   box-sizing: border-box;
 }
 

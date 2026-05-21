@@ -6,16 +6,20 @@ import {
   formatBracketRoll,
   formatStatusTone
 } from "./spectatorFormatting.ts";
+import { translateSpectatorMessage } from "./spectatorI18n.ts";
 import type { GameSpectatorSnapshot } from "../types/app.ts";
 import type { SpectatorPageState } from "./spectatorTypes.ts";
 
 const props = defineProps<{
   state: Extract<SpectatorPageState, { status: "ready" }>;
+  language: string;
 }>();
 
 type BracketMatch = NonNullable<GameSpectatorSnapshot["bracket"]>["matches"][number];
 
 const snapshot = computed(() => props.state.snapshot);
+const t = (key: string, params?: Record<string, string | number | null | undefined>) =>
+  translateSpectatorMessage(props.language, key, params);
 const bracket = computed(() => snapshot.value.bracket);
 const activeMatch = computed(() => bracket.value?.activeMatch ?? null);
 const championMatch = computed(() => {
@@ -35,8 +39,10 @@ const championLabel = computed(() => {
 });
 const heroSubcopy = computed(() => (
   bracket.value?.status === "complete"
-    ? `${formatBracketParticipant(championLabel.value)} won the bracket.`
-    : "Follow the current duel and the bracket tree as winners advance."
+    ? t("spectatorBracketChampionWon", {
+      champion: formatBracketParticipant(championLabel.value, props.language)
+    })
+    : t("spectatorBracketFollow")
 ));
 
 function playerClasses(match: BracketMatch, participantId: string | null): string[] {
@@ -55,7 +61,7 @@ function playerClasses(match: BracketMatch, participantId: string | null): strin
     class="spectator-shell"
   >
     <section class="spectator-hero">
-      <div class="spectator-kicker">Live Bracket Spectator</div>
+      <div class="spectator-kicker">{{ t('spectatorBracketKicker') }}</div>
       <p class="spectator-subtitle spectator-subtitle--hero">{{ heroSubcopy }}</p>
     </section>
 
@@ -63,31 +69,31 @@ function playerClasses(match: BracketMatch, participantId: string | null): strin
       <section class="spectator-card spectator-now">
         <div class="spectator-now__header">
           <div>
-            <div class="spectator-card__eyebrow">Now</div>
-            <div class="spectator-now__headline">{{ activeMatch ? "Current duel" : "Champion" }}</div>
+            <div class="spectator-card__eyebrow">{{ t('spectatorNowLabel') }}</div>
+            <div class="spectator-now__headline">{{ activeMatch ? t('spectatorCurrentDuel') : t('spectatorChampionLabel') }}</div>
           </div>
           <div :class="['spectator-status', `spectator-status--${formatStatusTone(snapshot)}`]">
-            {{ snapshot.sessionStatus === "ended" ? "Recap" : (snapshot.isSpinning ? "Rolling" : "Waiting") }}
+            {{ snapshot.sessionStatus === "ended" ? t('spectatorStatusRecap') : (snapshot.isSpinning ? t('spectatorStatusRolling') : t('spectatorStatusWaiting')) }}
           </div>
         </div>
 
         <div class="spectator-bracket-duel">
           <template v-if="activeMatch">
             <article class="spectator-bracket-duelist">
-              <span>{{ formatBracketParticipant(activeMatch.participantALabel) }}</span>
+              <span>{{ formatBracketParticipant(activeMatch.participantALabel, language) }}</span>
               <div
                 class="spectator-bracket-dice-tile"
-                :aria-label="`Dice result for ${formatBracketParticipant(activeMatch.participantALabel)}`"
+                :aria-label="t('spectatorDiceResultFor', { participant: formatBracketParticipant(activeMatch.participantALabel, language) })"
               >
                 {{ formatBracketRoll(activeMatch.participantAResult) }}
               </div>
             </article>
-            <div class="spectator-bracket-versus">VS</div>
+            <div class="spectator-bracket-versus">{{ t('spectatorBracketVersus') }}</div>
             <article class="spectator-bracket-duelist">
-              <span>{{ formatBracketParticipant(activeMatch.participantBLabel) }}</span>
+              <span>{{ formatBracketParticipant(activeMatch.participantBLabel, language) }}</span>
               <div
                 class="spectator-bracket-dice-tile"
-                :aria-label="`Dice result for ${formatBracketParticipant(activeMatch.participantBLabel)}`"
+                :aria-label="t('spectatorDiceResultFor', { participant: formatBracketParticipant(activeMatch.participantBLabel, language) })"
               >
                 {{ formatBracketRoll(activeMatch.participantBResult) }}
               </div>
@@ -97,23 +103,23 @@ function playerClasses(match: BracketMatch, participantId: string | null): strin
             v-else
             class="spectator-bracket-champion"
           >
-            {{ formatBracketParticipant(championLabel) }}
+            {{ formatBracketParticipant(championLabel, language) }}
           </div>
         </div>
 
         <div class="spectator-result">
           <div class="spectator-result__meta">
-            <span class="spectator-result__eyebrow">Prize</span>
-            <strong>{{ activeMatch?.prizeLabel || "Settled" }}</strong>
+            <span class="spectator-result__eyebrow">{{ t('spectatorPrizeLabel') }}</span>
+            <strong>{{ activeMatch?.prizeLabel || t('spectatorSettledLabel') }}</strong>
           </div>
           <div class="spectator-result__subcopy">
-            {{ snapshot.isSpinning ? "Dice are rolling." : (snapshot.lastResultLabel || "Waiting for the next match.") }}
+            {{ snapshot.isSpinning ? t('spectatorDiceRolling') : (snapshot.lastResultLabel || t('spectatorWaitingNextMatch')) }}
           </div>
         </div>
       </section>
 
       <section class="spectator-card">
-        <div class="spectator-card__eyebrow">Bracket</div>
+        <div class="spectator-card__eyebrow">{{ t('spectatorBracketLabel') }}</div>
         <div class="spectator-bracket-tree">
           <article
             v-for="match in bracket.matches"
@@ -121,15 +127,15 @@ function playerClasses(match: BracketMatch, participantId: string | null): strin
             :class="['spectator-bracket-match', `spectator-bracket-match--${match.status}`]"
           >
             <div class="spectator-bracket-match__meta">
-              <span>Round {{ match.round }}</span>
-              <span>{{ match.prizeLabel || "Prize" }}</span>
+              <span>{{ t('spectatorRoundLabel', { round: match.round }) }}</span>
+              <span>{{ match.prizeLabel || t('spectatorPrizeLabel') }}</span>
             </div>
             <div :class="playerClasses(match, match.participantAId)">
-              <span>{{ formatBracketParticipant(match.participantALabel) }}</span>
+              <span>{{ formatBracketParticipant(match.participantALabel, language) }}</span>
               <strong>{{ formatBracketRoll(match.participantAResult) }}</strong>
             </div>
             <div :class="playerClasses(match, match.participantBId)">
-              <span>{{ formatBracketParticipant(match.participantBLabel) }}</span>
+              <span>{{ formatBracketParticipant(match.participantBLabel, language) }}</span>
               <strong>{{ formatBracketRoll(match.participantBResult) }}</strong>
             </div>
           </article>
@@ -137,13 +143,13 @@ function playerClasses(match: BracketMatch, participantId: string | null): strin
             v-if="!bracket.matches.length"
             class="spectator-empty"
           >
-            <p class="spectator-empty__body">Waiting for the bracket to start.</p>
+            <p class="spectator-empty__body">{{ t('spectatorWaitingBracketStart') }}</p>
           </div>
         </div>
       </section>
 
       <section class="spectator-card">
-        <div class="spectator-card__eyebrow">Awards</div>
+        <div class="spectator-card__eyebrow">{{ t('spectatorAwardsLabel') }}</div>
         <div class="spectator-reel">
           <article
             v-for="award in bracket.awards"
@@ -152,7 +158,7 @@ function playerClasses(match: BracketMatch, participantId: string | null): strin
           >
             <div class="spectator-reel__label">
               <span class="spectator-result__dot"></span>
-              {{ award.participantLabel || "Winner" }}
+              {{ award.participantLabel || t('spectatorWinnerFallback') }}
             </div>
             <div class="spectator-subtitle">{{ award.prizeLabel }}</div>
           </article>
@@ -160,7 +166,7 @@ function playerClasses(match: BracketMatch, participantId: string | null): strin
             v-if="!bracket.awards.length"
             class="spectator-empty"
           >
-            <p class="spectator-empty__body">Awards will appear as matches resolve.</p>
+            <p class="spectator-empty__body">{{ t('spectatorAwardsPending') }}</p>
           </div>
         </div>
       </section>
@@ -168,7 +174,8 @@ function playerClasses(match: BracketMatch, participantId: string | null): strin
   </div>
   <SpectatorEmptyState
     v-else
-    title="Bracket unavailable"
-    body="Refresh in a moment to load the latest bracket state."
+    :title="t('spectatorBracketUnavailableTitle')"
+    :body="t('spectatorBracketUnavailableBody')"
+    :language="language"
   />
 </template>

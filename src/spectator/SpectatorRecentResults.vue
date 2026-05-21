@@ -1,15 +1,20 @@
 <script setup lang="ts">
 import { formatRelativeTime } from "./spectatorFormatting.ts";
+import { translateSpectatorMessage } from "./spectatorI18n.ts";
 import type { GameSpectatorSnapshot } from "../types/app.ts";
 
-defineProps<{
+const props = defineProps<{
   entries: GameSpectatorSnapshot["recentFairnessHistory"];
+  language: string;
 }>();
+
+const t = (key: string, params?: Record<string, string | number | null | undefined>) =>
+  translateSpectatorMessage(props.language, key, params);
 </script>
 
 <template>
   <section class="spectator-card">
-    <div class="spectator-card__eyebrow">Recent</div>
+    <div class="spectator-card__eyebrow">{{ t('spectatorRecentLabel') }}</div>
     <div class="spectator-reel">
       <article
         v-for="entry in entries"
@@ -17,8 +22,8 @@ defineProps<{
         class="spectator-reel__item"
       >
         <div class="spectator-reel__top">
-          <div class="spectator-reel__spin">Result #{{ entry.spinNumber }}</div>
-          <div>{{ formatRelativeTime(entry.timestamp) }}</div>
+          <div class="spectator-reel__spin">{{ t('spectatorResultNumber', { count: entry.spinNumber }) }}</div>
+          <div>{{ formatRelativeTime(entry.timestamp, language) }}</div>
         </div>
         <div class="spectator-reel__label">
           <span
@@ -33,15 +38,14 @@ defineProps<{
           :href="entry.verificationUrl"
           target="_blank"
           rel="noopener noreferrer"
-        >Open proof</a>
+        >{{ t('spectatorOpenProof') }}</a>
       </article>
       <div
         v-if="!entries.length"
         class="spectator-empty"
       >
-        <p class="spectator-empty__body">Waiting for the first verified result.</p>
+        <p class="spectator-empty__body">{{ t('spectatorWaitingFirstVerified') }}</p>
       </div>
     </div>
   </section>
 </template>
-

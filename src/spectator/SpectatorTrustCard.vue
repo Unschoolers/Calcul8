@@ -1,20 +1,26 @@
 <script setup lang="ts">
-defineProps<{
+import { translateSpectatorMessage } from "./spectatorI18n.ts";
+
+const props = defineProps<{
   revealText: string;
   fairnessVerificationUrl: string | null;
+  language: string;
 }>();
+
+const t = (key: string, params?: Record<string, string | number | null | undefined>) =>
+  translateSpectatorMessage(props.language, key, params);
 </script>
 
 <template>
   <section class="spectator-card spectator-trust">
-    <div class="spectator-card__eyebrow">Trust</div>
+    <div class="spectator-card__eyebrow">{{ t('spectatorTrustLabel') }}</div>
     <p class="spectator-subtitle">
-      The result is committed before it lands, then revealed after the {{ revealText }} so anyone can verify it.
+      {{ t('spectatorTrustBody', { revealText }) }}
     </p>
     <ol class="spectator-trust__steps">
-      <li>The proof is locked before the result finishes.</li>
-      <li>The winning result is revealed after the {{ revealText }}.</li>
-      <li>Anyone can open the proof page and verify the outcome.</li>
+      <li>{{ t('spectatorTrustStepLocked') }}</li>
+      <li>{{ t('spectatorTrustStepRevealed', { revealText }) }}</li>
+      <li>{{ t('spectatorTrustStepVerify') }}</li>
     </ol>
     <a
       v-if="fairnessVerificationUrl"
@@ -22,7 +28,6 @@ defineProps<{
       :href="fairnessVerificationUrl"
       target="_blank"
       rel="noopener noreferrer"
-    >Open the latest proof</a>
+    >{{ t('spectatorOpenLatestProof') }}</a>
   </section>
 </template>
-

@@ -11,6 +11,7 @@ import portfolioEn from "./locales/en/portfolio.json";
 import wheelEn from "./locales/en/wheel.json";
 import whatnotEn from "./locales/en/whatnot.json";
 import miscEn from "./locales/en/misc.json";
+import spectatorEn from "./locales/en/spectator.json";
 import commonFr from "./locales/fr/common.json";
 import authFr from "./locales/fr/auth.json";
 import shellFr from "./locales/fr/shell.json";
@@ -24,6 +25,7 @@ import portfolioFr from "./locales/fr/portfolio.json";
 import wheelFr from "./locales/fr/wheel.json";
 import whatnotFr from "./locales/fr/whatnot.json";
 import miscFr from "./locales/fr/misc.json";
+import spectatorFr from "./locales/fr/spectator.json";
 
 export const SUPPORTED_APP_LOCALES = ["en", "fr-CA"] as const;
 
@@ -47,7 +49,8 @@ const EN_TRANSLATIONS: TranslationCatalog = {
   ...portfolioEn,
   ...wheelEn,
   ...whatnotEn,
-  ...miscEn
+  ...miscEn,
+  ...spectatorEn
 };
 
 const FR_TRANSLATIONS: TranslationCatalog = {
@@ -63,7 +66,8 @@ const FR_TRANSLATIONS: TranslationCatalog = {
   ...portfolioFr,
   ...wheelFr,
   ...whatnotFr,
-  ...miscFr
+  ...miscFr,
+  ...spectatorFr
 };
 
 export const APP_TRANSLATIONS: Record<SupportedAppLocale, TranslationCatalog> = {

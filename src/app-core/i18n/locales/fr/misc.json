@@ -1,5 +1,6 @@
 {
   "appUpdateReadyMessage": "Refresh: WhatFees has an update ready.",
   "stripeCheckoutCancelAction": "Annuler le paiement",
-  "stripeCheckoutTitle": "Paiement securise"
+  "stripeCheckoutTitle": "Paiement sécurisé"
 }
+

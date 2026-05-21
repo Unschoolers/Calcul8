@@ -145,7 +145,7 @@
 !element calcul8.spectator {
     perspectives {
         perspective "Technical Debt" {
-            description "Medium debt: the spectator page has moved toward Vue, but public-session recovery and multilingual display still need continued hardening."
+            description "Medium debt: the spectator page now has shared bilingual display, but public-session recovery still needs continued hardening."
             value "Medium"
         }
     }

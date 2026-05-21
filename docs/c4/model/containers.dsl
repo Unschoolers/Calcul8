@@ -14,7 +14,7 @@ calcul8 = softwareSystem "Calcul8" "Local-first PWA for live selling, profitabil
         !include components/web.dsl
     }
 
-    spectator = container "Spectator Page" "Public read-only browser entry for game sessions and live audience displays." "TypeScript, Vite" {
+    spectator = container "Spectator Page" "Public read-only bilingual browser entry for game sessions and live audience displays." "TypeScript, Vite" {
         tags "Web App", "Public Surface", "Microsoft Azure - Static Apps"
     }
 

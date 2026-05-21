@@ -42,8 +42,11 @@ function countMatches(html: string, pattern: RegExp): number {
   return [...html.matchAll(pattern)].length;
 }
 
-async function renderSpectatorAppHtml(state: SpectatorPageState): Promise<string> {
-  return renderToString(createSSRApp(SpectatorApp, { state }));
+async function renderSpectatorAppHtml(
+  state: SpectatorPageState,
+  initialLanguage = "en"
+): Promise<string> {
+  return renderToString(createSSRApp(SpectatorApp, { state, initialLanguage }));
 }
 
 test("SpectatorApp renders bracket duel and tree with dice tiles", async () => {
@@ -136,4 +139,31 @@ test("SpectatorApp renders wheel canvas and proof link", async () => {
   assert.match(html, /class="spectator-kicker">Live Wheel Spectator</);
   assert.match(html, /id="spectator-wheel-canvas"/);
   assert.match(html, /href="https:\/\/example\.test\/proof"/);
+});
+
+test("SpectatorApp renders public spectator copy in French with a visible language toggle", async () => {
+  const html = await renderSpectatorAppHtml({
+    status: "ready",
+    publicSessionId: "abc123",
+    snapshot: makeSnapshot({
+      gameName: "Soiree Test",
+      gameType: "grid",
+      sessionResultCount: 1,
+      lastResultLabel: "Prix",
+      boardCells: [
+        { index: 0, revealed: true, label: "Prix", color: "#f00", tier: "hit", slotIndex: 3 },
+        { index: 1, revealed: false, label: "", color: "", tier: "", slotIndex: -1 }
+      ],
+      recentFairnessHistory: [
+        { spinNumber: 1, label: "Prix", color: "#f00", verificationUrl: "https://example.test/proof", timestamp: Date.now() }
+      ]
+    })
+  }, "fr-CA");
+
+  assert.match(html, /class="spectator-language-toggle"/);
+  assert.match(htmlText(html), /Français/);
+  assert.match(htmlText(html), /Spectateur de grille en direct/);
+  assert.match(htmlText(html), /1\/2 cases ouvertes/);
+  assert.match(htmlText(html), /Preuve ouverte|Ouvrir la preuve/);
+  assert.doesNotMatch(htmlText(html), /Live Grid Spectator|cells opened|Open proof/);
 });

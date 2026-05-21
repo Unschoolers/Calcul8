@@ -1,15 +1,20 @@
 <script setup lang="ts">
+import { translateSpectatorMessage } from "./spectatorI18n.ts";
 import type { GameSpectatorSnapshot } from "../types/app.ts";
 
-defineProps<{
+const props = defineProps<{
   chaseBoard: GameSpectatorSnapshot["chaseBoard"];
   featuredChaseHeat: GameSpectatorSnapshot["featuredChaseHeat"];
+  language: string;
 }>();
+
+const t = (key: string, params?: Record<string, string | number | null | undefined>) =>
+  translateSpectatorMessage(props.language, key, params);
 </script>
 
 <template>
   <section class="spectator-card">
-    <div class="spectator-card__eyebrow">Prizes</div>
+    <div class="spectator-card__eyebrow">{{ t('spectatorPrizesLabel') }}</div>
     <div class="spectator-chases">
       <article
         v-for="entry in chaseBoard"
@@ -25,29 +30,28 @@ defineProps<{
             {{ entry.label }}
           </div>
           <div :class="['spectator-chase__status', `spectator-chase__status--${entry.status}`]">
-            {{ entry.status === "live" ? "Live" : "Claimed" }}
+            {{ entry.status === "live" ? t('spectatorPrizeLive') : t('spectatorPrizeClaimed') }}
           </div>
         </div>
         <div class="spectator-chase__meta">
-          <span class="spectator-pill">Hits {{ entry.hitCount }}</span>
-          <span class="spectator-pill">Chance {{ Math.round(Number(entry.slots || 0)) }}%</span>
+          <span class="spectator-pill">{{ t('spectatorHitsCount', { count: entry.hitCount }) }}</span>
+          <span class="spectator-pill">{{ t('spectatorChancePercent', { percent: Math.round(Number(entry.slots || 0)) }) }}</span>
           <span
             v-if="entry.remainingHits != null"
             class="spectator-pill"
-          >{{ entry.remainingHits }} hit{{ entry.remainingHits === 1 ? "" : "s" }} left</span>
+          >{{ entry.remainingHits === 1 ? t('spectatorOneHitLeft') : t('spectatorHitsLeft', { count: entry.remainingHits }) }}</span>
           <span
             v-if="entry.isFeatured"
             :class="['spectator-pill', `spectator-pill--heat-${featuredChaseHeat || 'low'}`]"
-          >Featured prize</span>
+          >{{ t('spectatorFeaturedPrize') }}</span>
         </div>
       </article>
       <div
         v-if="!chaseBoard.length"
         class="spectator-empty"
       >
-        <p class="spectator-empty__body">No prize board is active for this game.</p>
+        <p class="spectator-empty__body">{{ t('spectatorNoPrizeBoard') }}</p>
       </div>
     </div>
   </section>
 </template>
-
