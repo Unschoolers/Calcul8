@@ -351,11 +351,7 @@ export const BracketBattlePanel = {
           rightAnchor
         });
       };
-      if (typeof queueMicrotask === "function") {
-        queueMicrotask(emitStageEnter);
-      } else {
-        globalThis.setTimeout(emitStageEnter, 0);
-      }
+      void nextTick(emitStageEnter);
     },
     rollActiveBracketMatch(this: BracketBattlePanelThis): void {
       const session = this.bracketSession;
@@ -377,17 +373,16 @@ export const BracketBattlePanel = {
           value: randomRollValue(session.rollMin, session.rollMax)
         }
       ];
-      const activeAnchors: { leftAnchor?: GameStageOverlayAnchor; rightAnchor?: GameStageOverlayAnchor } = this.getBracketBattleRollSlotAnchors();
-      const startPreview = (leftAnchor?: GameStageOverlayAnchor, rightAnchor?: GameStageOverlayAnchor) => {
-        activeAnchors.leftAnchor = leftAnchor;
-        activeAnchors.rightAnchor = rightAnchor;
+      const startPreview = () => {
+        const activeAnchors: { leftAnchor?: GameStageOverlayAnchor; rightAnchor?: GameStageOverlayAnchor } =
+          this.getBracketBattleRollSlotAnchors();
         this.$emit("overlay-command", {
           type: "rollMatchStart",
           effect: "dice",
           leftLabel: this.bracketParticipantLabel(match.participantAId),
           rightLabel: this.bracketParticipantLabel(match.participantBId),
-          leftAnchor,
-          rightAnchor
+          leftAnchor: activeAnchors.leftAnchor,
+          rightAnchor: activeAnchors.rightAnchor
         });
         this.bracketRollIntervalId = globalThis.setInterval(() => {
           this.bracketRollPreview = this.bracketRollPreview.map((entry) => ({
@@ -395,55 +390,59 @@ export const BracketBattlePanel = {
             value: randomRollValue(session.rollMin, session.rollMax)
           }));
         }, BRACKET_ROLL_PREVIEW_INTERVAL_MS);
-      };
-      startPreview(activeAnchors.leftAnchor, activeAnchors.rightAnchor);
-      this.bracketRollResolveTimeoutId = globalThis.setTimeout(() => {
-        try {
-          if (this.bracketRollIntervalId != null) {
-            clearInterval(this.bracketRollIntervalId);
-            this.bracketRollIntervalId = null;
-          }
-          const result = resolveBracketBattleMatchRoll(session, match.id);
-          this.bracketLastRolls = result.rolls;
-          const decidingRolls = result.rolls.slice(-2);
-          const leftRoll = decidingRolls.find((entry) => entry.participantId === match.participantAId);
-          const rightRoll = decidingRolls.find((entry) => entry.participantId === match.participantBId);
-          if (session.status === "complete") {
-            this.bracketShowcaseMatchId = null;
-          }
-          this.persistBracketSession();
-          if (leftRoll && rightRoll) {
-            const emitResolve = (resolvedLeftAnchor?: GameStageOverlayAnchor, resolvedRightAnchor?: GameStageOverlayAnchor) => {
-              this.$emit("overlay-command", {
-                type: "rollMatchResolve",
-                effect: "dice",
-                leftValue: leftRoll.value,
-                rightValue: rightRoll.value,
-                winnerSide: result.winnerParticipantId === match.participantAId ? "left" : "right",
-                winnerLabel: this.bracketParticipantLabel(result.winnerParticipantId),
-                leftAnchor: resolvedLeftAnchor ?? activeAnchors.leftAnchor,
-                rightAnchor: resolvedRightAnchor ?? activeAnchors.rightAnchor,
-                finalMatch: session.status === "complete"
-              });
-            };
 
-            if (session.status === "complete") {
-              void nextTick(() => {
-                const championAnchors = this.getBracketBattleActionDiceAnchors();
-                emitResolve(championAnchors.leftAnchor, championAnchors.rightAnchor);
-              });
-            } else {
-              emitResolve(activeAnchors.leftAnchor, activeAnchors.rightAnchor);
+        this.bracketRollResolveTimeoutId = globalThis.setTimeout(() => {
+          try {
+            if (this.bracketRollIntervalId != null) {
+              clearInterval(this.bracketRollIntervalId);
+              this.bracketRollIntervalId = null;
             }
+            const result = resolveBracketBattleMatchRoll(session, match.id);
+            this.bracketLastRolls = result.rolls;
+            const decidingRolls = result.rolls.slice(-2);
+            const leftRoll = decidingRolls.find((entry) => entry.participantId === match.participantAId);
+            const rightRoll = decidingRolls.find((entry) => entry.participantId === match.participantBId);
+            if (session.status === "complete") {
+              this.bracketShowcaseMatchId = null;
+            }
+            this.persistBracketSession();
+            if (leftRoll && rightRoll) {
+              const emitResolve = (resolvedLeftAnchor?: GameStageOverlayAnchor, resolvedRightAnchor?: GameStageOverlayAnchor) => {
+                this.$emit("overlay-command", {
+                  type: "rollMatchResolve",
+                  effect: "dice",
+                  leftValue: leftRoll.value,
+                  rightValue: rightRoll.value,
+                  winnerSide: result.winnerParticipantId === match.participantAId ? "left" : "right",
+                  winnerLabel: this.bracketParticipantLabel(result.winnerParticipantId),
+                  leftAnchor: resolvedLeftAnchor ?? activeAnchors.leftAnchor,
+                  rightAnchor: resolvedRightAnchor ?? activeAnchors.rightAnchor,
+                  finalMatch: session.status === "complete"
+                });
+              };
+
+              if (session.status === "complete") {
+                void nextTick(() => {
+                  const championAnchors = this.getBracketBattleActionDiceAnchors();
+                  emitResolve(championAnchors.leftAnchor, championAnchors.rightAnchor);
+                });
+              } else {
+                emitResolve(activeAnchors.leftAnchor, activeAnchors.rightAnchor);
+              }
+            }
+          } finally {
+            this.bracketRollPreview = [];
+            this.bracketRolling = false;
+            this.syncBracketBattleParentState?.();
+            this.publishLiveBracketSpectatorSnapshot?.();
+            this.bracketRollResolveTimeoutId = null;
           }
-        } finally {
-          this.bracketRollPreview = [];
-          this.bracketRolling = false;
-          this.syncBracketBattleParentState?.();
-          this.publishLiveBracketSpectatorSnapshot?.();
-          this.bracketRollResolveTimeoutId = null;
-        }
-      }, BRACKET_ROLL_RESOLVE_DELAY_MS);
+        }, BRACKET_ROLL_RESOLVE_DELAY_MS);
+      };
+      void nextTick(() => {
+        if (!this.bracketRolling || this.bracketShowcaseMatchId !== match.id) return;
+        startPreview();
+      });
     },
     resetBracketBattle(this: BracketBattlePanelThis): void {
       const resetAnchors = this.bracketSession?.status === "complete"

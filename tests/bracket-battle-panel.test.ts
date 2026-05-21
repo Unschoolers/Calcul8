@@ -98,6 +98,7 @@ test("BracketBattlePanel rollActiveBracketMatch animates before settling the mat
   assert.equal(vm.bracketRolling, true);
   assert.equal(session.rolls.length, 0);
   assert.equal(vm.bracketRollPreview.length, 2);
+  await nextTick();
   assert.deepEqual(overlayEvents[0], {
     eventName: "overlay-command",
     payload: {
@@ -148,6 +149,67 @@ test("BracketBattlePanel rollActiveBracketMatch animates before settling the mat
       finalMatch: false,
       winnerSide: session.matches[0]!.winnerParticipantId === session.matches[0]!.participantAId ? "left" : "right",
       winnerLabel: session.matches[0]!.winnerParticipantId === session.matches[0]!.participantAId ? "Alex" : "Bri"
+    }
+  });
+});
+
+test("BracketBattlePanel waits for the repainted mobile duel before sampling dice anchors", async () => {
+  vi.useFakeTimers();
+
+  const draft = createBracketBattleDraft(4);
+  draft.participants = ["Alex", "Bri", "Cam", "Dev"];
+  draft.prizes[0]!.label = "Match 1 prize";
+  draft.prizes[1]!.label = "Match 2 prize";
+  draft.prizes[2]!.label = "Final prize";
+  const session = createBracketBattleSessionFromDraft(draft, {
+    now: () => 123,
+    randomInt: (_min, max) => max
+  });
+
+  const overlayEvents: unknown[] = [];
+  const vm = {
+    bracketSession: session,
+    activeBracketMatch: session.matches[0],
+    queuedBracketMatch: session.matches[0],
+    bracketRolling: false,
+    bracketLastRolls: [],
+    bracketRollPreview: [],
+    bracketShowcaseMatchId: session.matches[0]!.id,
+    wheelMode: "live",
+    $emit(eventName: string, payload: unknown) {
+      overlayEvents.push({ eventName, payload });
+    },
+    persistBracketSession() {},
+    clearBracketRollAnimation: BracketBattlePanel.methods!.clearBracketRollAnimation,
+    getBracketBattleRollSlotAnchors() {
+      return {
+        leftAnchor: { x: 0.48, y: 0.24, size: 0.2 },
+        rightAnchor: { x: 0.48, y: 0.56, size: 0.2 }
+      };
+    },
+    isBracketFinalMatch: BracketBattlePanel.methods!.isBracketFinalMatch,
+    bracketParticipantLabel: BracketBattlePanel.methods!.bracketParticipantLabel,
+    t(key: string) {
+      return key;
+    }
+  };
+
+  BracketBattlePanel.methods!.rollActiveBracketMatch.call(vm as never);
+
+  assert.equal(vm.bracketRolling, true);
+  assert.equal(overlayEvents.length, 0);
+
+  await nextTick();
+
+  assert.deepEqual(overlayEvents[0], {
+    eventName: "overlay-command",
+    payload: {
+      type: "rollMatchStart",
+      effect: "dice",
+      leftAnchor: { x: 0.48, y: 0.24, size: 0.2 },
+      leftLabel: "Alex",
+      rightAnchor: { x: 0.48, y: 0.56, size: 0.2 },
+      rightLabel: "Bri"
     }
   });
 });
@@ -215,6 +277,7 @@ test("BracketBattlePanel publishes bracket spectator snapshots at roll start and
     publishLive: true
   });
 
+  await nextTick();
   await vi.advanceTimersByTimeAsync(1_100);
 
   const livePublishes = sessionStates.filter((entry) => entry.publishLive);
@@ -301,6 +364,7 @@ test("BracketBattlePanel emits session-state updates for the host live publisher
   const startState = emitted.find((entry) => entry.eventName === "session-state");
   assert.ok(startState, "expected a host session-state event at roll start");
 
+  await nextTick();
   await vi.advanceTimersByTimeAsync(1_100);
 
   const stateEvents = emitted.filter((entry) => entry.eventName === "session-state");
@@ -588,6 +652,7 @@ test("BracketBattlePanel final resolve reanchors dice under Roll match and reset
   };
 
   BracketBattlePanel.methods!.rollActiveBracketMatch.call(vm as never);
+  await nextTick();
   await vi.advanceTimersByTimeAsync(1250);
   await nextTick();
 
