@@ -26,8 +26,16 @@ export type OverlayDieVisualSpec = {
   facePadding: number;
 };
 
+export type OverlayDieShadowState = {
+  opacity: number;
+  scaleX: number;
+  scaleY: number;
+  offsetY: number;
+};
+
 const PIP_OFFSET = 0.34;
 const MAX_OVERLAY_DIE_SCREEN_SLOT_SCALE = 1.05;
+const ROLL_SPIN_SPEED = 0.5;
 const OVERLAY_DIE_BOX_FACE_VALUES = [2, 5, 3, 4, 1, 6] as const;
 const OVERLAY_DIE_VISUAL_SPEC: OverlayDieVisualSpec = {
   dieSize: 0.6,
@@ -105,6 +113,24 @@ export function getOverlayDieScaleForScreenSlot(input: {
   return Math.min(MAX_OVERLAY_DIE_SCREEN_SLOT_SCALE, desiredWorldSize / dieSize);
 }
 
+export function getOverlayDieShadowState(input: {
+  baseY: number;
+  currentY: number;
+  scale: number;
+}): OverlayDieShadowState {
+  const scale = Math.max(0.1, Number(input.scale) || 1);
+  const lift = Math.max(0, Number(input.currentY) - Number(input.baseY));
+  const liftRatio = Math.min(1, lift / Math.max(0.42 * scale, 0.001));
+  const opacity = 0.58 - liftRatio * 0.3;
+
+  return {
+    opacity: Number(opacity.toFixed(4)),
+    scaleX: Number((scale * (1.42 + liftRatio * 0.5)).toFixed(4)),
+    scaleY: Number((scale * (0.42 + liftRatio * 0.18)).toFixed(4)),
+    offsetY: Number((-scale * 0.64).toFixed(4))
+  };
+}
+
 export function getOverlayDieBoxFaceValues(): readonly number[] {
   return [...OVERLAY_DIE_BOX_FACE_VALUES];
 }
@@ -128,30 +154,26 @@ export function sampleDiceRollMotion(progress: number, options: DiceRollMotionOp
       driftX: (clampedProgress === 0 ? -0.27 : 0.27) * motionScale,
       driftZ: 0,
       rotation: {
-        x: clampedProgress * Math.PI * 4.25,
-        y: clampedProgress * Math.PI * 5.1,
-        z: clampedProgress * Math.PI * 3.55
+        x: clampedProgress * Math.PI * 4.25 * ROLL_SPIN_SPEED,
+        y: clampedProgress * Math.PI * 5.1 * ROLL_SPIN_SPEED,
+        z: clampedProgress * Math.PI * 3.55 * ROLL_SPIN_SPEED
       }
     };
   }
 
-  const mainArc = Math.sin(clampedProgress * Math.PI);
   const settleStart = 0.68;
   const settleProgress = Math.min(1, Math.max(0, (clampedProgress - settleStart) / (1 - settleStart)));
-  const settleBounce = settleProgress > 0
-    ? Math.sin(settleProgress * Math.PI * 3) * (1 - settleProgress) * 0.16
-    : 0;
-  const height = Math.max(0, mainArc * 0.72 + settleBounce) * motionScale;
   const rollEase = 1 - (1 - clampedProgress) ** 2.2;
+  const singleHop = Math.sin(clampedProgress * Math.PI) * 0.22 * motionScale;
 
   return {
-    height,
+    height: Number(singleHop.toFixed(4)),
     driftX: (rollEase - 0.5) * 0.54 * motionScale,
     driftZ: Math.sin(clampedProgress * Math.PI * 2.25) * 0.18 * (1 - settleProgress * 0.62) * motionScale,
     rotation: {
-      x: rollEase * Math.PI * 4.25,
-      y: rollEase * Math.PI * 5.1,
-      z: rollEase * Math.PI * 3.55
+      x: rollEase * Math.PI * 4.25 * ROLL_SPIN_SPEED,
+      y: rollEase * Math.PI * 5.1 * ROLL_SPIN_SPEED,
+      z: rollEase * Math.PI * 3.55 * ROLL_SPIN_SPEED
     }
   };
 }

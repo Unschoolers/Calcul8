@@ -8,12 +8,16 @@ import {
   getDieTopFaceRotation,
   getOverlayDieVisualSpec,
   getDicePipLayout,
+  getOverlayDieShadowState,
   sampleDiceRollMotion
 } from "../src/components/windows/game/overlay/gameStageOverlayDice.ts";
 import {
   getOverlayDieFaceTextureSpec,
 } from "../src/components/windows/game/overlay/gameStageOverlayDieMaterials.ts";
-import { getOverlayRendererPixelRatio } from "../src/components/windows/game/overlay/gameStageOverlayScene.ts";
+import {
+  getOverlayRendererPixelRatio,
+  getOverlayRendererSizeUpdateStyle
+} from "../src/components/windows/game/overlay/gameStageOverlayScene.ts";
 
 test("dice pip layouts use standard d6 counts", () => {
   assert.equal(getDicePipLayout(1).length, 1);
@@ -24,17 +28,17 @@ test("dice pip layouts use standard d6 counts", () => {
   assert.equal(getDicePipLayout(6).length, 6);
 });
 
-test("dice roll motion follows a bounded gravity arc", () => {
+test("dice roll motion uses one continuous hop without looping", () => {
   const start = sampleDiceRollMotion(0);
   const mid = sampleDiceRollMotion(0.5);
-  const bounce = sampleDiceRollMotion(0.82);
+  const late = sampleDiceRollMotion(0.82);
   const end = sampleDiceRollMotion(1);
 
   assert.equal(start.height, 0);
   assert.equal(end.height, 0);
   assert.ok(mid.height > start.height);
-  assert.ok(bounce.height > 0, "settle phase should keep a small bounce");
-  assert.ok(bounce.height < mid.height, "settle bounce should be lower than the main arc");
+  assert.ok(mid.height > late.height);
+  assert.ok(late.height > 0);
   assert.ok(mid.rotation.x > start.rotation.x);
   assert.ok(mid.rotation.y > start.rotation.y);
   assert.ok(mid.rotation.z > start.rotation.z);
@@ -63,11 +67,12 @@ test("dice roll motion scales down for compact mobile slots", () => {
 test("overlay dice use high-DPI face textures and renderer sizing", () => {
   const textureSpec = getOverlayDieFaceTextureSpec();
 
-  assert.ok(textureSpec.sizePx >= 512);
-  assert.ok(textureSpec.anisotropy >= 8);
+  assert.ok(textureSpec.sizePx >= 1024);
+  assert.ok(textureSpec.anisotropy >= 12);
   assert.equal(getOverlayRendererPixelRatio(1), 1);
   assert.equal(getOverlayRendererPixelRatio(2.5), 2.5);
   assert.equal(getOverlayRendererPixelRatio(4), 3);
+  assert.equal(getOverlayRendererSizeUpdateStyle(), true);
 });
 
 test("overlay die visual spec keeps dice compact and pips inset", () => {
@@ -158,4 +163,24 @@ test("screen-slot die scaling is capped for mobile viewport measurement drift", 
   });
 
   assert.equal(scale, 1.05);
+});
+
+test("die shadow softens as the die lifts from its base plane", () => {
+  const grounded = getOverlayDieShadowState({
+    baseY: 0.5,
+    currentY: 0.5,
+    scale: 0.8
+  });
+  const airborne = getOverlayDieShadowState({
+    baseY: 0.5,
+    currentY: 1.1,
+    scale: 0.8
+  });
+
+  assert.ok(grounded.opacity > airborne.opacity);
+  assert.ok(airborne.scaleX > grounded.scaleX);
+  assert.ok(airborne.scaleY > grounded.scaleY);
+  assert.equal(grounded.offsetY, airborne.offsetY);
+  assert.ok(grounded.opacity >= 0.5);
+  assert.ok(Math.abs(grounded.offsetY) >= 0.48);
 });

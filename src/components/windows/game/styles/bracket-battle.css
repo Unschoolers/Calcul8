@@ -47,7 +47,7 @@
 }
 
 .bracket-battle-kicker {
-  color: rgb(var(--v-theme-primary));
+  color: rgba(var(--v-theme-on-surface), 0.72);
   font-weight: 800;
 }
 
@@ -74,6 +74,10 @@
   gap: 16px;
 }
 
+.bracket-battle-live {
+  gap: 12px;
+}
+
 .bracket-battle-setup,
 .bracket-battle-live,
 .bracket-battle-builder {
@@ -86,7 +90,6 @@
 
 .bracket-battle-setup-hero,
 .bracket-battle-setup-preview,
-.bracket-battle-last-rolls,
 .bracket-battle-builder-card,
 .bracket-battle-prize-row {
   border: 1px solid var(--bracket-panel-border);
@@ -99,8 +102,7 @@
 .bracket-battle-showcase,
 .bracket-battle-setup-preview,
 .bracket-battle-builder-card,
-.bracket-battle-prize-row,
-.bracket-battle-last-rolls {
+.bracket-battle-prize-row {
   padding: 16px;
 }
 
@@ -124,9 +126,14 @@
 }
 
 .bracket-battle-meta-pill--accent {
-  border-color: rgba(var(--v-theme-primary), 0.28);
-  background: rgba(var(--v-theme-primary), 0.12);
-  color: rgb(var(--v-theme-primary));
+  border-color: rgba(var(--v-theme-on-surface), 0.16);
+  background: rgba(var(--v-theme-on-surface), 0.07);
+  color: rgba(var(--v-theme-on-surface), 0.9);
+}
+
+.bracket-battle-meta-pill--progress {
+  color: rgba(var(--v-theme-on-surface), 0.68);
+  font-weight: 650;
 }
 
 .bracket-battle-setup-roster {
@@ -168,62 +175,84 @@
 }
 
 .bracket-battle-showcase {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
   align-items: stretch;
-  padding: 18px;
-  border: 1px solid rgba(var(--v-theme-primary), 0.26);
+  padding: 14px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
   border-radius: 8px;
   background: var(--bracket-hero-bg);
   box-shadow: 0 22px 48px rgba(var(--v-theme-on-surface), 0.18);
 }
 
 .bracket-battle-showcase--rolling {
-  border-color: rgba(var(--v-theme-primary), 0.44);
+  border-color: rgba(var(--v-theme-on-surface), 0.2);
   box-shadow:
     0 22px 48px rgba(var(--v-theme-on-surface), 0.18),
-    0 0 0 1px rgba(var(--v-theme-primary), 0.16),
-    0 0 28px rgba(var(--v-theme-primary), 0.14);
+    0 0 0 1px rgba(var(--v-theme-on-surface), 0.08),
+    0 0 28px rgba(var(--v-theme-on-surface), 0.1);
 }
 
 .bracket-battle-showcase-copy {
   display: grid;
-  gap: 14px;
+  gap: 10px;
   min-width: 0;
   flex: 1 1 auto;
 }
 
 .bracket-battle-duel {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  gap: 14px;
+  grid-template-columns: minmax(170px, 1fr) minmax(170px, 0.76fr) minmax(170px, 1fr);
+  gap: 12px;
   align-items: stretch;
 }
 
 .bracket-battle-duelist {
   display: grid;
-  gap: 12px;
-  padding: 16px;
+  grid-template-rows: auto minmax(94px, 1fr);
+  gap: 10px;
+  padding: 12px;
   border: 1px solid var(--bracket-soft-row-border);
   border-radius: 8px;
   background: rgba(var(--v-theme-surface), 0.9);
   min-width: 0;
+  transition:
+    border-color 0.18s ease,
+    background 0.18s ease,
+    box-shadow 0.18s ease,
+    opacity 0.18s ease;
 }
 
 .bracket-battle-duelist--active {
-  border-color: rgba(var(--v-theme-primary), 0.22);
+  border-color: rgba(var(--v-theme-on-surface), 0.14);
 }
 
 .bracket-battle-duelist--winner {
-  border-color: rgba(var(--v-theme-success), 0.28);
-  background: rgba(var(--v-theme-success), 0.1);
+  border-color: rgba(var(--v-theme-success), 0.5);
+  background:
+    linear-gradient(180deg, rgba(var(--v-theme-success), 0.16), rgba(var(--v-theme-success), 0.08)),
+    rgba(var(--v-theme-surface), 0.92);
+  box-shadow:
+    inset 0 0 0 1px rgba(var(--v-theme-success), 0.14),
+    0 16px 34px rgba(var(--v-theme-success), 0.12);
 }
 
 .bracket-battle-duelist--eliminated {
-  opacity: 0.76;
+  opacity: 0.58;
+}
+
+.bracket-battle-duelist-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
 }
 
 .bracket-battle-duelist-name,
 .bracket-battle-finale-name {
-  font-size: clamp(1.2rem, 2vw, 1.8rem);
+  font-size: clamp(1.12rem, 1.8vw, 1.55rem);
   font-weight: 800;
   line-height: 1.05;
   word-break: break-word;
@@ -233,6 +262,19 @@
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.bracket-battle-winner-chip {
+  flex: 0 0 auto;
+  min-height: 24px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgba(var(--v-theme-success), 0.16);
+  border: 1px solid rgba(var(--v-theme-success), 0.3);
+  color: rgb(var(--v-theme-success));
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.02em;
 }
 
 .bracket-battle-die-swatch {
@@ -254,31 +296,59 @@
   border-color: rgba(var(--v-theme-on-surface), 0.22);
 }
 
-.bracket-battle-duel-roll {
+.bracket-battle-duel-result {
+  display: grid;
+  grid-template-columns: minmax(82px, 0.75fr) minmax(96px, 1fr);
+  gap: 10px;
+  min-height: 94px;
+  min-width: 0;
+}
+
+.bracket-battle-score-value,
+.bracket-battle-duel-dice-slot {
   display: grid;
   place-items: center;
-  min-height: 104px;
   border-radius: 8px;
+  min-width: 0;
+}
+
+.bracket-battle-score-value {
   background:
     linear-gradient(180deg, rgba(var(--v-theme-primary), 0.08), rgba(var(--v-theme-on-surface), 0.02)),
     rgba(var(--v-theme-surface), 0.98);
   color: rgb(var(--v-theme-on-surface));
-  font-size: clamp(2rem, 4vw, 3.6rem);
+  font-size: clamp(1.9rem, 3.4vw, 3.05rem);
   font-weight: 900;
   line-height: 1;
   box-shadow: inset 0 0 0 1px rgba(var(--v-theme-primary), 0.08);
 }
 
-.bracket-battle-showcase--rolling .bracket-battle-duel-roll {
+.bracket-battle-duel-dice-slot {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(90% 90% at 50% 56%, rgba(var(--v-theme-on-surface), 0.08), transparent 68%),
+    rgba(var(--v-theme-on-surface), 0.035);
+  box-shadow: inset 0 0 0 1px rgba(var(--v-theme-on-surface), 0.07);
+}
+
+.bracket-battle-showcase--rolling .bracket-battle-score-value,
+.bracket-battle-showcase--rolling .bracket-battle-duel-dice-slot {
   animation: bracket-battle-roll-pulse 0.6s ease-in-out infinite;
 }
 
 .bracket-battle-duel-center {
   display: grid;
   align-content: center;
-  justify-items: center;
+  justify-items: stretch;
   gap: 8px;
-  min-width: 132px;
+  min-width: 0;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(var(--v-theme-primary), 0.16);
+  background:
+    linear-gradient(180deg, rgba(var(--v-theme-primary), 0.08), rgba(var(--v-theme-on-surface), 0.02)),
+    rgba(var(--v-theme-surface), 0.78);
   text-align: center;
 }
 
@@ -287,19 +357,31 @@
   font-weight: 900;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: rgb(var(--v-theme-primary));
+  color: rgba(var(--v-theme-on-surface), 0.72);
 }
 
-.bracket-battle-duel-prize {
-  max-width: 18ch;
+.bracket-battle-duel-prize-block {
+  display: grid;
+  gap: 3px;
+  justify-items: center;
+  min-width: 0;
+}
+
+.bracket-battle-duel-prize-block span {
+  color: rgba(var(--v-theme-on-surface), 0.64);
+  font-size: 0.78rem;
   font-weight: 800;
+}
+
+.bracket-battle-duel-prize-block strong {
+  font-size: clamp(0.95rem, 1.35vw, 1.12rem);
+  line-height: 1.12;
   text-wrap: balance;
 }
 
 .bracket-battle-duel-caption,
 .bracket-battle-finale-kicker,
-.bracket-battle-finale-award,
-.bracket-battle-match-rolls {
+.bracket-battle-finale-award {
   color: rgba(var(--v-theme-on-surface), 0.74);
 }
 
@@ -344,16 +426,21 @@
 }
 
 .bracket-battle-action-dice-stage--visible {
-  min-height: 112px;
-  max-height: 112px;
+  min-height: 92px;
+  max-height: 92px;
   opacity: 1;
 }
 
 .bracket-battle-finale {
   display: grid;
-  gap: 8px;
+  gap: 6px;
   align-content: center;
-  min-height: 164px;
+  min-height: 112px;
+}
+
+.bracket-battle-showcase--complete {
+  grid-template-columns: minmax(0, 1fr) minmax(210px, 0.38fr);
+  align-items: center;
 }
 
 .bracket-battle-finale-kicker {
@@ -363,21 +450,61 @@
   text-transform: uppercase;
 }
 
+.bracket-battle-last-rolls {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--bracket-panel-border);
+  border-radius: 8px;
+  background: rgba(var(--v-theme-on-surface), 0.035);
+}
+
+.bracket-battle-last-rolls-label {
+  color: rgba(var(--v-theme-on-surface), 0.7);
+  font-size: 0.78rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
 .bracket-battle-last-roll-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 6px;
+  min-width: 0;
 }
 
-.bracket-battle-last-roll-chip {
+.bracket-battle-last-roll-duel {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  min-height: 38px;
-  padding: 0 12px;
+  gap: 4px;
+  min-height: 32px;
+  padding: 3px;
   border-radius: 999px;
   background: rgba(var(--v-theme-on-surface), 0.05);
   border: 1px solid var(--bracket-soft-row-border);
+}
+
+.bracket-battle-last-roll-entry {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 26px;
+  padding: 0 8px;
+  border-radius: 999px;
+  color: rgba(var(--v-theme-on-surface), 0.82);
+}
+
+.bracket-battle-last-roll-entry--winner {
+  background: rgba(var(--v-theme-success), 0.14);
+  color: rgb(var(--v-theme-success));
+  box-shadow: inset 0 0 0 1px rgba(var(--v-theme-success), 0.22);
+}
+
+.bracket-battle-last-roll-duel--tie .bracket-battle-last-roll-entry {
+  color: rgba(var(--v-theme-on-surface), 0.76);
 }
 
 .bracket-battle-last-roll-swatch {
@@ -399,18 +526,19 @@
 }
 
 .bracket-battle-tree {
+  --bracket-round-gap: 28px;
   --bracket-line-color: rgba(var(--v-theme-on-surface), 0.42);
   --bracket-node-bg: rgb(var(--v-theme-surface));
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(178px, 1fr));
-  gap: 24px;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: var(--bracket-round-gap);
   align-items: stretch;
   overflow: hidden;
   padding: 4px 0;
 }
 
 .bracket-battle-round-title {
-  margin-bottom: 10px;
+  margin-bottom: 6px;
   font-weight: 800;
   font-size: 0.78rem;
   letter-spacing: 0.06em;
@@ -425,18 +553,22 @@
 
 .bracket-battle-tree-round {
   min-width: 0;
+  grid-template-rows: auto 1fr;
 }
 
 .bracket-battle-tree-list {
-  min-height: clamp(220px, 34vw, 500px);
-  align-content: space-around;
-  gap: 22px;
+  align-content: space-between;
+  gap: 14px;
+}
+
+.bracket-battle-tree-round--final .bracket-battle-tree-list {
+  align-content: center;
 }
 
 .bracket-battle-match-node {
   position: relative;
   display: grid;
-  gap: 6px;
+  gap: 4px;
   min-width: 0;
   padding: 0;
   border: 0;
@@ -455,8 +587,8 @@
 .bracket-battle-match-connector {
   position: absolute;
   top: 50%;
-  right: -24px;
-  width: 24px;
+  right: calc(-1 * (var(--bracket-round-gap) - 10px));
+  width: calc(var(--bracket-round-gap) - 10px);
   height: 2px;
   background: var(--bracket-line-color);
   transform: translateY(-50%);
@@ -481,7 +613,7 @@
 }
 
 .bracket-battle-match-meta {
-  min-height: 22px;
+  min-height: 20px;
   color: rgba(var(--v-theme-on-surface), 0.62);
   font-size: 0.72rem;
   font-weight: 800;
@@ -496,7 +628,7 @@
 .bracket-battle-match-buyer {
   display: block;
   min-width: 0;
-  padding: 9px 10px 9px 12px;
+  padding: 7px 9px 7px 11px;
   border: 1px solid var(--bracket-panel-border);
   border-left: 0;
   background: var(--bracket-node-bg);
@@ -506,6 +638,41 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.bracket-battle-awards {
+  gap: 8px;
+  padding: 0;
+  border: 1px solid var(--bracket-panel-border);
+  border-radius: 8px;
+  background: var(--bracket-card-bg);
+  box-shadow: 0 12px 28px rgba(var(--v-theme-on-surface), 0.1);
+  overflow: hidden;
+}
+
+.bracket-battle-awards[open] {
+  padding-bottom: 8px;
+}
+
+.bracket-battle-awards-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 14px;
+  cursor: pointer;
+  color: rgba(var(--v-theme-on-surface), 0.88);
+  font-weight: 850;
+  list-style-position: inside;
+}
+
+.bracket-battle-awards-summary strong {
+  color: rgba(var(--v-theme-on-surface), 0.68);
+  font-size: 0.86rem;
+}
+
+.bracket-battle-awards .bracket-battle-award-row {
+  margin: 0 10px;
 }
 
 .bracket-battle-match-buyer + .bracket-battle-match-buyer {
@@ -627,7 +794,7 @@
 
 @media (max-width: 960px) {
   .bracket-battle-showcase {
-    flex-direction: column;
+    grid-template-columns: 1fr;
   }
 
   .bracket-battle-showcase-actions {
@@ -651,9 +818,8 @@
   }
 
   .bracket-battle-duel-center {
-    grid-auto-flow: column;
-    grid-template-columns: repeat(3, auto);
-    justify-content: space-between;
+    grid-template-columns: 1fr;
+    justify-content: stretch;
     min-width: 0;
   }
 
@@ -698,8 +864,12 @@
     grid-template-columns: 1fr;
   }
 
-  .bracket-battle-last-roll-chip {
+  .bracket-battle-last-roll-duel {
     justify-content: space-between;
+  }
+
+  .bracket-battle-duel-result {
+    grid-template-columns: minmax(84px, 0.7fr) minmax(112px, 1fr);
   }
 
   .bracket-battle-tree {

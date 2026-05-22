@@ -237,8 +237,11 @@
   "bracketBattleCompleteLabel": "Champion:",
   "bracketBattlePrizeAwardLabel": "Prize:",
   "bracketBattleRollAction": "Roll match",
+  "bracketBattleNextMatchAction": "Next match",
   "bracketBattleReadyLabel": "Ready to roll",
   "bracketBattleRollingLabel": "Rolling for the win",
+  "bracketBattleMatchWonLabel": "{{winner}} wins {{prize}}",
+  "bracketBattleProgressSummary": "Match {{current}} of {{total}} · Round {{round}} · {{awards}} awarded",
   "bracketBattleVersusLabel": "vs",
   "bracketBattleRoundLabel": "Round {{number}}",
   "bracketBattleMatchLabel": "Match {{number}}",
@@ -248,5 +251,6 @@
   "bracketBattleResetTitle": "Reset bracket?",
   "bracketBattleResetBody": "This clears the current Bracket Battle session and removes the saved local bracket state.",
   "bracketBattleWaitingLabel": "Waiting",
+  "bracketBattleWinnerLabel": "Winner",
   "bracketBattlePrizeFallbackLabel": "Prize"
 }

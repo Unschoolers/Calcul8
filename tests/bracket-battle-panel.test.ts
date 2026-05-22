@@ -83,6 +83,7 @@ test("BracketBattlePanel rollActiveBracketMatch animates before settling the mat
     },
     persistBracketSession() {
       persistCalls += 1;
+      surfaceRect.height = 420;
     },
     clearBracketRollAnimation: BracketBattlePanel.methods!.clearBracketRollAnimation,
     getBracketBattleRollSlotAnchors: BracketBattlePanel.methods!.getBracketBattleRollSlotAnchors,
@@ -123,6 +124,7 @@ test("BracketBattlePanel rollActiveBracketMatch animates before settling the mat
   assert.equal(session.rolls.length, 0);
 
   await vi.advanceTimersByTimeAsync(250);
+  await nextTick();
   assert.equal(vm.bracketRolling, false);
   assert.ok(session.rolls.length >= 2);
   assert.ok(vm.bracketLastRolls.length >= 2);
@@ -136,13 +138,13 @@ test("BracketBattlePanel rollActiveBracketMatch animates before settling the mat
       effect: "dice",
       leftAnchor: {
         x: 0.18,
-        y: 0.4467,
+        y: 0.319,
         size: 0.1467
       },
       leftValue: decidingRolls[0]!.value,
       rightAnchor: {
         x: 0.82,
-        y: 0.4467,
+        y: 0.319,
         size: 0.1467
       },
       rightValue: decidingRolls[1]!.value,
@@ -377,13 +379,181 @@ test("BracketBattlePanel template renders the upgraded duel showcase", () => {
 
   assert.match(template, /bracket-battle-showcase/);
   assert.match(template, /bracket-battle-duel/);
-  assert.match(template, /bracket-battle-duel-roll/);
+  assert.match(template, /bracket-battle-score-value/);
+  assert.match(template, /bracket-battle-duel-dice-slot/);
+  assert.match(template, /bracketBattleWinnerLabel/);
+  assert.match(template, /bracket-battle-last-rolls-label/);
+  assert.match(template, /<details v-if="bracketSession\.awards\.length" class="bracket-battle-awards">/);
+  assert.match(template, /bracket-battle-awards-summary/);
   assert.match(template, /bracket-battle-tree/);
   assert.match(template, /bracket-battle-match-node/);
   assert.match(template, /bracket-battle-match-connector/);
   assert.match(css, /\.bracket-battle-tree/);
   assert.match(css, /\.bracket-battle-match-connector/);
   assert.doesNotMatch(css, /\.bracket-battle-match\s*\{[\s\S]*min-height:\s*148px/);
+  assert.doesNotMatch(template, /bracketMatchRollSummary\(match\)/);
+  assert.doesNotMatch(css, /\.bracket-battle-tree-list\s*\{[^}]*min-height:\s*clamp/);
+});
+
+test("BracketBattlePanel groups latest rolls by duel and highlights the winning throw", () => {
+  const draft = createBracketBattleDraft(4);
+  draft.participants = ["Alex", "Bri", "Cam", "Dev"];
+  const session = createBracketBattleSessionFromDraft(draft, {
+    now: () => 123,
+    randomInt: (_min, max) => max
+  });
+  const match = session.matches[0]!;
+  const vm = {
+    bracketSession: session,
+    bracketLastRolls: [
+      { id: "r1", matchId: match.id, participantId: match.participantAId!, value: 4, rollNumber: 1, tiebreakerIndex: 0 },
+      { id: "r2", matchId: match.id, participantId: match.participantBId!, value: 4, rollNumber: 1, tiebreakerIndex: 0 },
+      { id: "r3", matchId: match.id, participantId: match.participantAId!, value: 1, rollNumber: 2, tiebreakerIndex: 1 },
+      { id: "r4", matchId: match.id, participantId: match.participantBId!, value: 6, rollNumber: 2, tiebreakerIndex: 1 }
+    ],
+    bracketParticipantLabel: BracketBattlePanel.methods!.bracketParticipantLabel,
+    bracketRollColorTone: BracketBattlePanel.methods!.bracketRollColorTone,
+    t(key: string) {
+      return key;
+    }
+  };
+
+  const groups = BracketBattlePanel.methods!.bracketLatestRollDuelGroups.call(vm as never);
+
+  assert.deepEqual(groups.map((group) => ({
+    id: group.id,
+    tied: group.tied,
+    entries: group.entries.map((entry) => ({
+      label: entry.label,
+      value: entry.value,
+      tone: entry.tone,
+      winner: entry.winner
+    }))
+  })), [
+    {
+      id: `${match.id}-1`,
+      tied: true,
+      entries: [
+        { label: "Alex", value: 4, tone: "dark", winner: false },
+        { label: "Bri", value: 4, tone: "light", winner: false }
+      ]
+    },
+    {
+      id: `${match.id}-2`,
+      tied: false,
+      entries: [
+        { label: "Alex", value: 1, tone: "dark", winner: false },
+        { label: "Bri", value: 6, tone: "light", winner: true }
+      ]
+    }
+  ]);
+});
+
+test("BracketBattlePanel exposes clear live match status, next action, and progress copy", () => {
+  const draft = createBracketBattleDraft(4);
+  draft.participants = ["Alex", "Bri", "Cam", "Dev"];
+  draft.prizes[0]!.label = "Match 1 prize";
+  const session = createBracketBattleSessionFromDraft(draft, {
+    now: () => 123,
+    randomInt: (_min, max) => max
+  });
+  const match = session.matches[0]!;
+  const messages: string[] = [];
+  const vm = {
+    bracketSession: session,
+    activeBracketMatch: match,
+    queuedBracketMatch: match,
+    bracketRolling: false,
+    bracketParticipantLabel: BracketBattlePanel.methods!.bracketParticipantLabel,
+    bracketPrizeLabel: BracketBattlePanel.methods!.bracketPrizeLabel,
+    t(key: string, params?: Record<string, string | number | null | undefined>) {
+      messages.push(`${key}:${JSON.stringify(params ?? {})}`);
+      return `${key}:${params ? Object.values(params).join("|") : ""}`;
+    }
+  };
+
+  assert.equal(
+    BracketBattlePanel.methods!.bracketDuelStatusLabel.call(vm as never),
+    "bracketBattleReadyLabel:"
+  );
+  assert.equal(
+    BracketBattlePanel.methods!.bracketRollButtonLabel.call(vm as never),
+    "bracketBattleRollAction:"
+  );
+
+  match.status = "complete";
+  match.winnerParticipantId = match.participantBId;
+  session.matches[1]!.status = "active";
+  vm.queuedBracketMatch = session.matches[1]!;
+
+  assert.equal(
+    BracketBattlePanel.methods!.bracketDuelStatusLabel.call(vm as never),
+    "bracketBattleMatchWonLabel:Bri|Match 1 prize"
+  );
+  assert.equal(
+    BracketBattlePanel.methods!.bracketRollButtonLabel.call(vm as never),
+    "bracketBattleNextMatchAction:"
+  );
+  assert.equal(
+    BracketBattlePanel.methods!.bracketProgressSummary.call(vm as never),
+    "bracketBattleProgressSummary:1|3|1|0"
+  );
+  assert.ok(messages.some((entry) => entry.startsWith("bracketBattleMatchWonLabel:")));
+});
+
+test("BracketBattlePanel advances to the next match before allowing the next roll", async () => {
+  const draft = createBracketBattleDraft(4);
+  draft.participants = ["Alex", "Bri", "Cam", "Dev"];
+  draft.prizes[0]!.label = "Match 1 prize";
+  draft.prizes[1]!.label = "Match 2 prize";
+  draft.prizes[2]!.label = "Final prize";
+  const session = createBracketBattleSessionFromDraft(draft, {
+    now: () => 123,
+    randomInt: (_min, max) => max
+  });
+  const matchOne = session.matches[0]!;
+  const matchTwo = session.matches[1]!;
+  matchOne.status = "complete";
+  matchOne.winnerParticipantId = matchOne.participantAId;
+  matchTwo.status = "active";
+
+  const published: boolean[] = [];
+  let rollCalls = 0;
+  let anchorRefreshes = 0;
+  const vm = {
+    bracketSession: session,
+    activeBracketMatch: matchOne,
+    queuedBracketMatch: matchTwo,
+    bracketRolling: false,
+    bracketShowcaseMatchId: matchOne.id,
+    advanceBracketBattleToQueuedMatch: BracketBattlePanel.methods!.advanceBracketBattleToQueuedMatch,
+    rollActiveBracketMatch() {
+      rollCalls += 1;
+    },
+    syncBracketBattleParentState() {
+      published.push(false);
+    },
+    publishLiveBracketSpectatorSnapshot() {
+      this.syncBracketBattleParentState();
+      published.push(true);
+    },
+    refreshBracketBattleDiceAnchors() {
+      anchorRefreshes += 1;
+    }
+  };
+
+  BracketBattlePanel.methods!.runBracketBattlePrimaryAction.call(vm as never);
+  await nextTick();
+
+  assert.equal(vm.bracketShowcaseMatchId, matchTwo.id);
+  assert.equal(rollCalls, 0);
+  assert.deepEqual(published, [false, true]);
+  assert.equal(anchorRefreshes, 1);
+
+  vm.activeBracketMatch = matchTwo;
+  BracketBattlePanel.methods!.runBracketBattlePrimaryAction.call(vm as never);
+
+  assert.equal(rollCalls, 1);
 });
 
 test("GameWindow template keeps bracket panel and spectator dialog available in fullscreen/live bracket", () => {

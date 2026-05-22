@@ -31,6 +31,20 @@ type BracketBattleRollPreview = {
   value: number;
 };
 
+type BracketBattleLatestRollDuelEntry = {
+  id: string;
+  label: string;
+  value: number;
+  tone: "dark" | "light";
+  winner: boolean;
+};
+
+type BracketBattleLatestRollDuelGroup = {
+  id: string;
+  tied: boolean;
+  entries: BracketBattleLatestRollDuelEntry[];
+};
+
 type BracketBattleIntervalHandle = ReturnType<typeof globalThis.setInterval>;
 type BracketBattleTimeoutHandle = ReturnType<typeof globalThis.setTimeout>;
 
@@ -79,8 +93,16 @@ type BracketBattlePanelThis = Record<string, unknown> & {
   refreshBracketBattleDiceAnchors(): void;
   getBracketBattleChampionWinnerSide(): "left" | "right" | null;
   isBracketFinalMatch(match: BracketBattleMatch | null | undefined): boolean;
+  advanceBracketBattleToQueuedMatch(): boolean;
+  runBracketBattlePrimaryAction(): void;
+  rollActiveBracketMatch(): void;
   bracketParticipantLabel(participantId: string | null | undefined): string;
   bracketRollColorTone(roll: BracketBattleRoll): "dark" | "light";
+  bracketPrizeLabel(prizeId: string | null | undefined): string;
+  bracketLatestRollDuelGroups(): BracketBattleLatestRollDuelGroup[];
+  bracketDuelStatusLabel(): string;
+  bracketRollButtonLabel(): string;
+  bracketProgressSummary(): string;
   syncBracketBattleParentState?: () => void;
   publishLiveBracketSpectatorSnapshot?: () => void;
   publishGameSpectatorSessionSnapshot?: (statusOverride?: "starting" | "live" | "ended") => Promise<void>;
@@ -353,6 +375,34 @@ export const BracketBattlePanel = {
       };
       void nextTick(emitStageEnter);
     },
+    advanceBracketBattleToQueuedMatch(this: BracketBattlePanelThis): boolean {
+      const activeMatch = this.activeBracketMatch;
+      const queuedMatch = this.queuedBracketMatch;
+      if (
+        this.bracketRolling
+        || activeMatch?.status !== "complete"
+        || !queuedMatch
+        || queuedMatch.id === activeMatch.id
+      ) {
+        return false;
+      }
+
+      this.bracketShowcaseMatchId = queuedMatch.id;
+      this.bracketRollPreview = [];
+      this.publishLiveBracketSpectatorSnapshot?.();
+      void nextTick(() => {
+        if (!this.bracketRolling && this.bracketShowcaseMatchId === queuedMatch.id) {
+          this.refreshBracketBattleDiceAnchors();
+        }
+      });
+      return true;
+    },
+    runBracketBattlePrimaryAction(this: BracketBattlePanelThis): void {
+      if (this.advanceBracketBattleToQueuedMatch()) {
+        return;
+      }
+      this.rollActiveBracketMatch();
+    },
     rollActiveBracketMatch(this: BracketBattlePanelThis): void {
       const session = this.bracketSession;
       const match = this.queuedBracketMatch;
@@ -421,14 +471,12 @@ export const BracketBattlePanel = {
                 });
               };
 
-              if (session.status === "complete") {
-                void nextTick(() => {
-                  const championAnchors = this.getBracketBattleActionDiceAnchors();
-                  emitResolve(championAnchors.leftAnchor, championAnchors.rightAnchor);
-                });
-              } else {
-                emitResolve(activeAnchors.leftAnchor, activeAnchors.rightAnchor);
-              }
+              void nextTick(() => {
+                const resolvedAnchors = session.status === "complete"
+                  ? this.getBracketBattleActionDiceAnchors()
+                  : this.getBracketBattleRollSlotAnchors();
+                emitResolve(resolvedAnchors.leftAnchor, resolvedAnchors.rightAnchor);
+              });
             }
           } finally {
             this.bracketRollPreview = [];
@@ -480,10 +528,70 @@ export const BracketBattlePanel = {
       const prize = findById(this.bracketSession?.prizes ?? [], prizeId);
       return prize?.label || this.t("bracketBattlePrizeFallbackLabel");
     },
-    bracketMatchRollSummary(this: BracketBattlePanelThis, match: BracketBattleMatch): string {
-      const rolls = (this.bracketSession?.rolls || []).filter((roll) => roll.matchId === match.id);
-      if (!rolls.length) return "";
-      return rolls.map((roll) => `${this.bracketParticipantLabel(roll.participantId)} ${roll.value}`).join(" / ");
+    bracketLatestRollDuelGroups(this: BracketBattlePanelThis): BracketBattleLatestRollDuelGroup[] {
+      const groups = new Map<string, BracketBattleRoll[]>();
+      for (const roll of this.bracketLastRolls) {
+        const key = `${roll.matchId}-${roll.rollNumber}`;
+        const entries = groups.get(key) ?? [];
+        entries.push(roll);
+        groups.set(key, entries);
+      }
+
+      return [...groups.entries()].map(([id, rolls]) => {
+        const highestValue = Math.max(...rolls.map((roll) => roll.value));
+        const tied = rolls.filter((roll) => roll.value === highestValue).length !== 1;
+        return {
+          id,
+          tied,
+          entries: rolls.map((roll) => ({
+            id: roll.id,
+            label: this.bracketParticipantLabel(roll.participantId),
+            value: roll.value,
+            tone: this.bracketRollColorTone(roll),
+            winner: !tied && roll.value === highestValue
+          }))
+        };
+      });
+    },
+    bracketDuelStatusLabel(this: BracketBattlePanelThis): string {
+      const match = this.activeBracketMatch;
+      if (this.bracketRolling) {
+        return this.t("bracketBattleRollingLabel");
+      }
+      if (match?.status === "complete" && match.winnerParticipantId) {
+        return this.t("bracketBattleMatchWonLabel", {
+          winner: this.bracketParticipantLabel(match.winnerParticipantId),
+          prize: this.bracketPrizeLabel(match.prizeId)
+        });
+      }
+      return this.t("bracketBattleReadyLabel");
+    },
+    bracketRollButtonLabel(this: BracketBattlePanelThis): string {
+      const activeMatch = this.activeBracketMatch;
+      const queuedMatch = this.queuedBracketMatch;
+      if (activeMatch?.status === "complete" && queuedMatch && queuedMatch.id !== activeMatch.id) {
+        return this.t("bracketBattleNextMatchAction");
+      }
+      return this.t("bracketBattleRollAction");
+    },
+    bracketProgressSummary(this: BracketBattlePanelThis): string {
+      const session = this.bracketSession;
+      if (!session) return "";
+      const totalMatches = session.matches.length;
+      const match = this.activeBracketMatch
+        ?? this.queuedBracketMatch
+        ?? session.matches[session.matches.length - 1]
+        ?? null;
+      const matchIndex = match
+        ? Math.max(1, session.matches.findIndex((entry) => entry.id === match.id) + 1)
+        : totalMatches;
+      const round = match?.round ?? Math.log2(session.participantCount);
+      return this.t("bracketBattleProgressSummary", {
+        current: matchIndex,
+        total: totalMatches,
+        round,
+        awards: session.awards.length
+      });
     },
     bracketRollDisplayValue(this: BracketBattlePanelThis, participantId: string | null | undefined): string {
       if (!participantId) return "--";
