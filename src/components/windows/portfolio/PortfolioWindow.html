@@ -44,7 +44,7 @@
                               <v-icon
                                 size="12"
                                 start
-                                :color="portfolioLotFilterPrimaryItem()?.completionIcon ? 'success' : undefined"
+                                :color="portfolioLotFilterPrimaryItem()?.completionIcon ? 'success' : null"
                               >
                                 {{ portfolioLotFilterPrimaryItem()?.completionIcon || portfolioLotFilterPrimaryItem()?.symbolIcon || 'mdi-bookmark-outline' }}
                               </v-icon>
@@ -71,8 +71,8 @@
                             </div>
                             <v-list-item
                               v-bind="props"
-                              :title="undefined"
-                              :subtitle="undefined"
+                              :title="null"
+                              :subtitle="null"
                             >
                               <template #prepend>
                                 <span class="portfolio-filter-item-icon-stack mr-2">
@@ -419,7 +419,7 @@
                                 <v-chip
                                   size="x-small"
                                   variant="tonal"
-                                  :color="row.totalProfit < 0 ? 'error' : undefined"
+                                  :color="row.totalProfit < 0 ? 'error' : null"
                                   class="portfolio-lot-forecast-chip portfolio-lot-risk-chip"
                                   :class="{ 'portfolio-lot-risk-chip--neutral': row.totalProfit >= 0 }"
                                 >

@@ -38,7 +38,7 @@
         <v-btn
           size="x-small"
           :icon="wheelSoundEnabled ? 'mdi-volume-high' : 'mdi-volume-off'"
-          :color="wheelSoundEnabled ? undefined : 'warning'"
+          :color="wheelSoundEnabled ? null : 'warning'"
           variant="text"
           :title="wheelSoundToggleTitle"
           :aria-label="wheelSoundToggleTitle"
@@ -48,7 +48,7 @@
         <v-btn
           size="x-small"
           :icon="wheelReducedMotion ? 'mdi-motion-pause-outline' : 'mdi-motion-play-outline'"
-          :color="wheelReducedMotion ? 'warning' : undefined"
+          :color="wheelReducedMotion ? 'warning' : null"
           variant="text"
           :title="wheelMotionToggleTitle"
           :aria-label="wheelMotionToggleTitle"
@@ -147,7 +147,7 @@
           'game-spectator-btn--live': gameSpectatorSessionId && gameSpectatorSessionStatus !== 'ended',
           'game-spectator-btn--ended': gameSpectatorSessionStatus === 'ended'
         }"
-        :color="gameSpectatorSessionId ? (gameSpectatorSessionStatus === 'ended' ? 'warning' : 'success') : undefined"
+        :color="gameSpectatorSessionId ? (gameSpectatorSessionStatus === 'ended' ? 'warning' : 'success') : null"
         :title="gameSpectatorActionLabel"
         @click="openGameSpectatorDialog"
       >

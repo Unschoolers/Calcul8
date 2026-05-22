@@ -44,7 +44,7 @@
                     @error="$event.target.closest('.sale-editor-line-thumb-col').style.display='none'" />
                 </div>
                 <div class="sale-editor-line-fields">
-                  <v-row dense class="sale-editor-singles-grid">
+                  <v-row density="comfortable" class="sale-editor-singles-grid">
                     <v-col :cols="$vuetify?.display?.smAndDown ? 12 : 6">
                       <v-autocomplete v-model="line.singlesPurchaseEntryId" :items="singlesSaleCardOptions"
                         item-title="title" item-value="value" :label="t('saleEditorItemOptionalLabel')" variant="outlined"
@@ -162,7 +162,7 @@
 
         <div v-if="currentLotType !== 'singles'" class="sale-editor-section">
           <div class="sale-editor-section-label">{{ t('saleEditorSectionDetailsLabel') }}</div>
-          <v-row dense>
+          <v-row density="comfortable">
             <v-col cols="12" sm="6">
               <v-select v-model="newSale.type" :items="[
                 { title: t('saleEditorTypeItemLabel'), value: 'pack' },
@@ -193,7 +193,7 @@
 
         <div class="sale-editor-section">
           <div class="sale-editor-section-label">{{ t('saleEditorSectionNotesLabel') }}</div>
-          <v-row dense>
+          <v-row density="comfortable">
             <v-col cols="12" sm="6">
               <v-text-field v-model="newSale.customer" :label="t('salesCustomerLabel')" variant="outlined"
                 :disabled="!hasLotSelected" hide-details="auto"></v-text-field>

@@ -38,3 +38,23 @@ test("all external html templates compile", () => {
     assertTemplateCompiles(path.relative(ROOT, filePath), template);
   }
 });
+
+test("external html templates avoid known Vuetify and Vue runtime warning patterns", () => {
+  const htmlFiles = collectHtmlFiles(SRC_ROOT);
+  const deprecatedDenseRows: string[] = [];
+  const literalUndefinedBindings: string[] = [];
+
+  for (const filePath of htmlFiles) {
+    const relativePath = path.relative(ROOT, filePath);
+    const template = fs.readFileSync(filePath, "utf8");
+    if (/<v-row[^>]*\sdense(?=[\s>])/.test(template)) {
+      deprecatedDenseRows.push(relativePath);
+    }
+    if (/\bundefined\b/.test(template)) {
+      literalUndefinedBindings.push(relativePath);
+    }
+  }
+
+  assert.deepEqual(deprecatedDenseRows, [], "use v-row density=\"comfortable\" instead of dense");
+  assert.deepEqual(literalUndefinedBindings, [], "use null instead of undefined in templates");
+});

@@ -27,7 +27,7 @@
         </v-btn-toggle>
       </div>
 
-      <v-row dense>
+      <v-row density="comfortable">
         <v-col cols="12">
           <v-autocomplete
             v-model="liveSinglesSelectedId"
@@ -67,8 +67,8 @@
               <v-list-item
                 v-bind="props"
                 class="live-singles-suggestion-item"
-                :title="undefined"
-                :subtitle="undefined"
+                :title="null"
+                :subtitle="null"
               >
                 <template #prepend>
                   <div class="live-singles-suggestion-media">
@@ -117,7 +117,7 @@
         class="live-singles-bundle-card mt-3"
       >
         <v-card-text class="pa-3">
-          <v-row dense align="center">
+          <v-row density="comfortable" align="center">
             <v-col cols="8" class="text-center">
               <div class="text-caption text-medium-emphasis">{{ t('liveSinglesBundleTotalLabel') }}</div>
               <div class="text-h4 font-weight-bold mb-1">${{ fmtCurrency(liveSinglesEffectiveBundlePrice, 2) }}</div>

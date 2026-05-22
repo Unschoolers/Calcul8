@@ -22,7 +22,7 @@
           <v-btn value="USD" title="USD">🇺🇸</v-btn>
         </v-btn-toggle>
       </div>
-      <v-row dense class="align-center mb-2">
+      <v-row density="comfortable" class="align-center mb-2">
         <v-col cols="9">
           <v-text-field
             :model-value="!hasProAccess
@@ -80,7 +80,7 @@
       ></v-text-field>
 
       <div class="fee-profile-section mb-2">
-        <v-row dense class="align-center">
+        <v-row density="comfortable" class="align-center">
             <v-col :cols="$vuetify?.display?.smAndDown ? 12 : 10" class="py-0">
               <v-select
                 v-model="feeProfilePreset"

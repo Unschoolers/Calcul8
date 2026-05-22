@@ -13,7 +13,7 @@
       'mystery-grid-cell--highlighted': isMysteryGridCellHighlighted(cell),
       'mystery-grid-cell--selector-active': isMysteryGridCellHighlighted(cell)
     }"
-    :style="cell.revealed ? { '--mystery-grid-cell-color': cell.color } : undefined"
+    :style="cell.revealed ? { '--mystery-grid-cell-color': cell.color } : null"
     :disabled="wheelSpinning || wheelGridRevealAnimating || cell.revealed || wheelEndingSession || wheelChaseDialog"
     :data-mystery-grid-cell-index="cell.index"
     @click="revealMysteryGridCell(cell.index, true)"

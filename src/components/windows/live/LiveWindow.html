@@ -3,7 +3,7 @@
   <div v-if="currentLotType === 'singles'" class="live-singles-shell">
     <live-singles-panel ref="liveSinglesPanel"></live-singles-panel>
   </div>
-  <v-row v-else dense class="live-pricing-grid">
+  <v-row v-else density="comfortable" class="live-pricing-grid">
     <v-col cols="12" md="6" lg="4" class="live-pricing-grid__col">
       <live-price-card
         :ctx="ctx"
