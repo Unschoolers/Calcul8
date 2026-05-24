@@ -100,6 +100,27 @@ function getWorkspaceRealtimeDisplay(
       icon: "mdi-sync"
     };
   }
+  if (status === "catching_up") {
+    return {
+      title: translateAppMessage(preferredLanguage, "workspaceRealtimeCatchingUpTitle"),
+      subtitle: translateAppMessage(preferredLanguage, "workspaceRealtimeCatchingUpSubtitle"),
+      icon: "mdi-cloud-sync-outline"
+    };
+  }
+  if (status === "recovered") {
+    return {
+      title: translateAppMessage(preferredLanguage, "workspaceRealtimeRecoveredTitle"),
+      subtitle: translateAppMessage(preferredLanguage, "workspaceRealtimeRecoveredSubtitle"),
+      icon: "mdi-cloud-check-outline"
+    };
+  }
+  if (status === "stale") {
+    return {
+      title: translateAppMessage(preferredLanguage, "workspaceRealtimeStaleTitle"),
+      subtitle: translateAppMessage(preferredLanguage, "workspaceRealtimeStaleSubtitle"),
+      icon: "mdi-cloud-alert-outline"
+    };
+  }
   if (status === "disconnected") {
     return {
       title: translateAppMessage(preferredLanguage, "workspaceRealtimeDisconnectedTitle"),
@@ -174,6 +195,14 @@ function getWhatnotConnectionDisplay(
       : "mdi-shopping-outline");
 
   return { title, subtitle, icon };
+}
+
+function isWorkspaceRealtimeBusy(status: WorkspaceRealtimeStatus): boolean {
+  return status === "connecting" || status === "reconnecting" || status === "catching_up";
+}
+
+function isWorkspaceRealtimeProblem(status: WorkspaceRealtimeStatus): boolean {
+  return status === "stale" || status === "disconnected";
 }
 
 function formatProfitTargetBadgeLabel(value: number): string {
@@ -263,8 +292,10 @@ export const appComputed: AppComputedObject = {
   },
   accountSyncBadgeClass() {
     if (this.isWorkspaceScopeActive) {
-      if (this.workspaceRealtimeStatus === "connected") return "account-menu-sync-badge--success";
-      if (this.workspaceRealtimeStatus === "disconnected") return "account-menu-sync-badge--error";
+      if (this.workspaceRealtimeStatus === "connected" || this.workspaceRealtimeStatus === "recovered") {
+        return "account-menu-sync-badge--success";
+      }
+      if (isWorkspaceRealtimeProblem(this.workspaceRealtimeStatus)) return "account-menu-sync-badge--error";
       return "account-menu-sync-badge--syncing";
     }
     if (this.syncStatus === "syncing") return "account-menu-sync-badge--syncing";
@@ -273,23 +304,23 @@ export const appComputed: AppComputedObject = {
   },
   accountSyncIcon() {
     if (this.isWorkspaceScopeActive) {
-      return (this.workspaceRealtimeStatus === "connecting" || this.workspaceRealtimeStatus === "reconnecting")
+      return isWorkspaceRealtimeBusy(this.workspaceRealtimeStatus)
         ? "mdi-sync"
-        : (this.workspaceRealtimeStatus === "connected" ? "mdi-check-bold" : "mdi-alert");
+        : ((this.workspaceRealtimeStatus === "connected" || this.workspaceRealtimeStatus === "recovered")
+          ? "mdi-check-bold"
+          : "mdi-alert");
     }
     return this.syncStatus === "syncing"
       ? "mdi-sync"
       : (this.syncStatus === "success" ? "mdi-check-bold" : "mdi-alert");
   },
   accountSyncIconSize() {
-    const isSpinning = (this.isWorkspaceScopeActive
-      && (this.workspaceRealtimeStatus === "connecting" || this.workspaceRealtimeStatus === "reconnecting"))
+    const isSpinning = (this.isWorkspaceScopeActive && isWorkspaceRealtimeBusy(this.workspaceRealtimeStatus))
       || (!this.isWorkspaceScopeActive && this.syncStatus === "syncing");
     return isSpinning ? 10 : 11;
   },
   accountSyncIconClass() {
-    const isSpinning = (this.isWorkspaceScopeActive
-      && (this.workspaceRealtimeStatus === "connecting" || this.workspaceRealtimeStatus === "reconnecting"))
+    const isSpinning = (this.isWorkspaceScopeActive && isWorkspaceRealtimeBusy(this.workspaceRealtimeStatus))
       || (!this.isWorkspaceScopeActive && this.syncStatus === "syncing");
     return isSpinning ? "sync-spinning" : "";
   },
@@ -301,6 +332,12 @@ export const appComputed: AppComputedObject = {
   },
   workspaceRealtimeIcon() {
     return getWorkspaceRealtimeDisplay(this.workspaceRealtimeStatus, this.preferredLanguage).icon;
+  },
+  workspaceRealtimeManualRefreshVisible() {
+    return this.isWorkspaceScopeActive && isWorkspaceRealtimeProblem(this.workspaceRealtimeStatus);
+  },
+  workspaceRealtimeManualRefreshLabel() {
+    return translateAppMessage(this.preferredLanguage, "workspaceRealtimeRefreshAction");
   },
   syncStatusTitle() {
     return getSyncStatusDisplay(this.syncStatus, this.preferredLanguage).title;

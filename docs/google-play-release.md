@@ -139,7 +139,7 @@ Output will include an `.aab` suitable for Play upload.
 Set frontend build env:
 
 - `VITE_API_BASE_URL=https://<your-function-app>.azurewebsites.net/api`
-- `VITE_REALTIME_SOCKET_URL=wss://ws.whatfees.ca/socket` (optional override; recommended for workspace realtime in production)
+- `VITE_REALTIME_SOCKET_URL=wss://ws.whatfees.ca/socket`
 - `VITE_GOOGLE_CLIENT_ID=<google web client id>`
 - `VITE_PLAY_PRO_PRODUCT_ID=<play in-app product id>`
 - `VITE_PURCHASE_PROVIDER` (optional debug override: `auto` default, `play` supported today)
@@ -152,13 +152,13 @@ Set backend Function App settings:
 - `GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL=<service-account-email>`
 - `GOOGLE_PLAY_SERVICE_ACCOUNT_PRIVATE_KEY=<full private key with \n>`
 
-Optional workspace realtime backend settings:
+Required workspace realtime backend settings:
 
 - `REALTIME_PUBLISH_URL=https://ws.whatfees.ca/internal/publish`
 - `REALTIME_INTERNAL_API_KEY=<shared internal publish key>`
 - `REALTIME_TOKEN_SECRET=<shared subscribe token secret>`
 
-If you deploy the websocket gateway separately, keep `VITE_REALTIME_SOCKET_URL`, `REALTIME_PUBLISH_URL`, `REALTIME_INTERNAL_API_KEY`, and `REALTIME_TOKEN_SECRET` aligned so workspace subscribe tokens and server-side publish calls target the same realtime environment.
+Production frontend builds must also set `VITE_REALTIME_SOCKET_URL=wss://ws.whatfees.ca/socket`. Keep `VITE_REALTIME_SOCKET_URL`, `REALTIME_PUBLISH_URL`, `REALTIME_INTERNAL_API_KEY`, and `REALTIME_TOKEN_SECRET` aligned so workspace subscribe tokens and server-side publish calls target the same realtime environment.
 
 ## 7) Update flow note
 

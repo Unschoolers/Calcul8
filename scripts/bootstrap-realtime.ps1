@@ -11,7 +11,7 @@ param(
   [string]$ImageTag = "",
   [string]$AllowedOrigin = "https://app.whatfees.ca,https://whatfees.ca",
   [int]$MinReplicas = 1,
-  [int]$MaxReplicas = 2,
+  [int]$MaxReplicas = 1,
   [string]$InternalApiKey = "",
   [string]$TokenSecret = "",
   [switch]$SkipBuild
@@ -107,7 +107,10 @@ try {
   }
 
   if ([string]::IsNullOrWhiteSpace($TokenSecret)) {
-    $TokenSecret = Read-Host "Enter REALTIME_TOKEN_SECRET (optional, press Enter to skip)"
+    $TokenSecret = Read-Host "Enter REALTIME_TOKEN_SECRET"
+  }
+  if ([string]::IsNullOrWhiteSpace($TokenSecret)) {
+    throw "REALTIME_TOKEN_SECRET cannot be empty."
   }
 
   Write-Step "Checking Azure login"
@@ -178,19 +181,17 @@ try {
     throw "Failed to read ACR admin credentials from '$RegistryName'. Ensure admin user is enabled."
   }
 
-  $allowUnauthenticatedSubscribe = if ([string]::IsNullOrWhiteSpace($TokenSecret)) { "true" } else { "false" }
-  $secretArgs = @("realtime-internal-api-key=$InternalApiKey")
+  $secretArgs = @(
+    "realtime-internal-api-key=$InternalApiKey",
+    "realtime-token-secret=$TokenSecret"
+  )
   $envArgs = @(
     "NODE_ENV=production",
     "REALTIME_ALLOWED_ORIGIN=$AllowedOrigin",
-    "REALTIME_DEV_ALLOW_UNAUTH_SUBSCRIBE=$allowUnauthenticatedSubscribe",
-    "REALTIME_INTERNAL_API_KEY=secretref:realtime-internal-api-key"
+    "REALTIME_DEV_ALLOW_UNAUTH_SUBSCRIBE=false",
+    "REALTIME_INTERNAL_API_KEY=secretref:realtime-internal-api-key",
+    "REALTIME_TOKEN_SECRET=secretref:realtime-token-secret"
   )
-
-  if (-not [string]::IsNullOrWhiteSpace($TokenSecret)) {
-    $secretArgs += "realtime-token-secret=$TokenSecret"
-    $envArgs += "REALTIME_TOKEN_SECRET=secretref:realtime-token-secret"
-  }
 
   Write-Step "Creating or updating Container App '$ContainerAppName'"
   if (-not (Test-AzCommand @("containerapp", "show", "--name", $ContainerAppName, "--resource-group", $ResourceGroup))) {

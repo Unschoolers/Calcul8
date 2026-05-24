@@ -92,6 +92,51 @@ a {
   color: var(--spectator-text-strong);
 }
 
+.spectator-realtime-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: min(100%, 620px);
+  margin: 8px auto 0;
+  padding: 0 16px;
+  box-sizing: border-box;
+  color: var(--spectator-text-muted);
+  font-size: 0.82rem;
+}
+
+.spectator-realtime-pill__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--app-radius-pill);
+  background: var(--spectator-neutral);
+  box-shadow: 0 0 0 3px rgba(248, 250, 252, 0.08);
+  flex: 0 0 auto;
+}
+
+.spectator-realtime-pill--live .spectator-realtime-pill__dot,
+.spectator-realtime-pill--recovered .spectator-realtime-pill__dot {
+  background: var(--spectator-success);
+}
+
+.spectator-realtime-pill--connecting .spectator-realtime-pill__dot,
+.spectator-realtime-pill--reconnecting .spectator-realtime-pill__dot,
+.spectator-realtime-pill--catching_up .spectator-realtime-pill__dot {
+  background: var(--spectator-accent);
+}
+
+.spectator-realtime-pill--stale .spectator-realtime-pill__dot {
+  background: var(--spectator-error);
+}
+
+.spectator-realtime-pill__label {
+  font-weight: var(--app-font-weight-emphasis);
+  color: var(--spectator-text-high);
+}
+
+.spectator-realtime-pill__body {
+  color: var(--spectator-text-subtle);
+}
+
 .spectator-shell {
   width: min(100%, 620px);
   margin: 0 auto;

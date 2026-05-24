@@ -406,6 +406,11 @@
   margin: 0.2rem 0 !important;
 }
 
+.account-menu-realtime-refresh {
+  min-width: 0;
+  white-space: nowrap;
+}
+
 .account-menu-list__language-item .v-list-item__append {
   margin-inline-start: 0.65rem;
 }

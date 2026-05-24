@@ -67,7 +67,7 @@ That script will:
 It prompts for:
 
 - `REALTIME_INTERNAL_API_KEY`
-- optional `REALTIME_TOKEN_SECRET`
+- `REALTIME_TOKEN_SECRET`
 
 ## Environment variables
 
@@ -76,7 +76,7 @@ It prompts for:
   - default `8080`
 - `REALTIME_INTERNAL_API_KEY`
   - optional in local development
-  - recommended in production
+  - required in production
   - required header for publish calls:
     - `x-realtime-key: <value>`
     - or `Authorization: Bearer <value>`
@@ -89,7 +89,8 @@ It prompts for:
   - default `true` outside production
   - if `false`, clients must provide a signed token
 - `REALTIME_TOKEN_SECRET`
-  - optional
+  - optional in local development
+  - required in production
   - when set, subscribe requests can include a signed token
 
 ## Subscribe protocol
@@ -159,6 +160,21 @@ You can also send `rooms: string[]` to fan out to multiple rooms in one call.
 - Use `wss://ws.whatfees.ca` from the browser.
 - Keep REST as the source of truth.
 - Keep polling as a reconnect / fallback path until websocket flow is proven stable.
+- Keep production at one replica until a shared backplane owns room membership and publish fan-out.
+
+## Smoke checks
+
+From the repo root, a deployed gateway can be checked with:
+
+```bash
+REALTIME_SMOKE_BASE_URL=https://ws.whatfees.ca \
+REALTIME_INTERNAL_API_KEY=<shared internal publish key> \
+REALTIME_TOKEN_SECRET=<shared subscribe token secret> \
+REALTIME_SMOKE_ORIGIN=https://app.whatfees.ca \
+npm run smoke:realtime
+```
+
+The smoke runner checks `/healthz`, opens a signed WebSocket subscription, publishes an internal event to the same room, and fails unless the event is delivered back over the socket.
 
 ## GitHub Actions deployment
 
@@ -180,12 +196,7 @@ Required variables:
 Required secrets:
 
 - `REALTIME_INTERNAL_API_KEY_PROD`
-
-Optional secret:
-
 - `REALTIME_TOKEN_SECRET_PROD`
-
-If `REALTIME_TOKEN_SECRET_PROD` is not set, the workflow leaves unauthenticated subscribe enabled in production, which is acceptable only for initial smoke testing.
 
 The deploy workflow uses GitHub OIDC via `azure/login@v2`, so you do not need a stored Azure credentials JSON secret.
 
@@ -197,4 +208,4 @@ The workflow currently hardcodes these production values to keep setup minimal:
   - update this to include every real frontend host, for example:
     - `https://app.whatfees.ca,https://whatfees.ca`
 - min replicas: `1`
-- max replicas: `2`
+- max replicas: `1`

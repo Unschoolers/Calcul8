@@ -5,6 +5,8 @@ on:
     branches: ["main"]
     paths:
       - "apps/realtime/**"
+      - "scripts/smoke-realtime.mjs"
+      - "package.json"
       - ".github/workflows/deploy-realtime-prod.yml"
   workflow_dispatch:
 
@@ -18,7 +20,7 @@ env:
   AZURE_CONTAINER_REPOSITORY_KEEP_TAGS_PROD: 1
   REALTIME_ALLOWED_ORIGIN_PROD: https://app.whatfees.ca,https://whatfees.ca
   REALTIME_MIN_REPLICAS_PROD: 1
-  REALTIME_MAX_REPLICAS_PROD: 2
+  REALTIME_MAX_REPLICAS_PROD: 1
 
 jobs:
   verify:
@@ -99,6 +101,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: apps/realtime/package-lock.json
+
+      - name: Install realtime smoke dependencies
+        working-directory: apps/realtime
+        run: npm ci --omit=dev
+
       - name: Log in to Azure
         uses: azure/login@v2
         with:
@@ -150,10 +163,13 @@ jobs:
               REALTIME_INTERNAL_API_KEY=secretref:realtime-internal-api-key \
               REALTIME_TOKEN_SECRET=secretref:realtime-token-secret
 
-      - name: Smoke check realtime health endpoint
+      - name: Smoke check realtime publish and subscribe
         shell: bash
         env:
           AZURE_CONTAINER_APP_NAME_REALTIME_PROD: ${{ vars.AZURE_CONTAINER_APP_NAME_REALTIME_PROD }}
+          REALTIME_INTERNAL_API_KEY: ${{ secrets.REALTIME_INTERNAL_API_KEY_PROD }}
+          REALTIME_TOKEN_SECRET: ${{ secrets.REALTIME_TOKEN_SECRET_PROD }}
+          REALTIME_SMOKE_ORIGIN: https://app.whatfees.ca
         run: |
           set -euo pipefail
 
@@ -168,20 +184,19 @@ jobs:
             exit 1
           fi
 
-          health_url="https://${fqdn}/healthz"
-          echo "Checking ${health_url}"
+          realtime_url="https://${fqdn}"
+          echo "Checking realtime publish/subscribe smoke flow at ${realtime_url}"
 
           for attempt in 1 2 3 4 5; do
-            if curl --fail --silent --show-error "${health_url}" > /tmp/realtime-health.json; then
-              cat /tmp/realtime-health.json
+            if REALTIME_SMOKE_BASE_URL="${realtime_url}" npm run --silent smoke:realtime; then
               exit 0
             fi
 
-            echo "Health check attempt ${attempt} failed; retrying in 5s..."
+            echo "Realtime smoke attempt ${attempt} failed; retrying in 5s..."
             sleep 5
           done
 
-          echo "Realtime health check failed after deployment."
+          echo "Realtime publish/subscribe smoke check failed after deployment."
           exit 1
 
       - name: Prune old realtime images from ACR

@@ -313,6 +313,51 @@ test("spectator-main refreshes the current view on realtime refresh messages and
   assert.equal((window.setTimeout as ReturnType<typeof vi.fn>).mock.calls.length, 1);
 });
 
+test("spectator-main keeps last snapshot visible when background refresh fails", async () => {
+  stubBrowser("?session=abc123");
+
+  await importSpectatorMain();
+  await flushMicrotasks();
+
+  const socket = FakeWebSocket.instances[0]!;
+  resolveSpectatorRealtimeMessageMock.mockReturnValueOnce({ action: "refresh" });
+  fetchGameSpectatorSnapshotMock.mockRejectedValueOnce(new Error("fetch_failed"));
+
+  socket.emit("message", {
+    data: JSON.stringify({ type: "subscribed" })
+  });
+  await flushMicrotasks();
+
+  const latestState = spectatorAppSetStateMock.mock.calls.at(-1)?.[0];
+  assert.equal(latestState.status, "ready");
+  assert.equal(latestState.snapshot.gameName, "Spectator Night");
+  assert.equal(latestState.realtimeStatus, "stale");
+});
+
+test("spectator-main marks recovered after successful background refresh", async () => {
+  stubBrowser("?session=abc123");
+
+  await importSpectatorMain();
+  await flushMicrotasks();
+
+  const socket = FakeWebSocket.instances[0]!;
+  resolveSpectatorRealtimeMessageMock.mockReturnValueOnce({ action: "refresh" });
+  fetchGameSpectatorSnapshotMock.mockResolvedValueOnce({
+    publicSessionId: "abc123",
+    snapshot: makeSnapshot({ gameName: "Recovered Game", updatedAt: 400 })
+  });
+
+  socket.emit("message", {
+    data: JSON.stringify({ type: "subscribed" })
+  });
+  await flushMicrotasks();
+
+  const latestState = spectatorAppSetStateMock.mock.calls.at(-1)?.[0];
+  assert.equal(latestState.status, "ready");
+  assert.equal(latestState.snapshot.gameName, "Recovered Game");
+  assert.equal(latestState.realtimeStatus, "recovered");
+});
+
 test("spectator-main renders error states and handles missing realtime sessions", async () => {
   stubBrowser("?session=abc123");
   fetchGameSpectatorSnapshotMock.mockRejectedValueOnce(new Error("upstream failed"));

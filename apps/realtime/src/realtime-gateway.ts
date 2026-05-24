@@ -29,6 +29,7 @@ export type RealtimeGatewayOptions = {
   allowUnauthenticatedSubscribe?: boolean;
   heartbeatMs?: number;
   maxJsonBodyBytes?: number;
+  maxWebSocketPayloadBytes?: number;
 };
 
 export type RealtimeGateway = {
@@ -44,6 +45,7 @@ export function createRealtimeGateway(options: RealtimeGatewayOptions = {}): Rea
   const allowUnauthenticatedSubscribe = options.allowUnauthenticatedSubscribe ?? false;
   const heartbeatMs = options.heartbeatMs ?? 30000;
   const maxJsonBodyBytes = options.maxJsonBodyBytes ?? 1024 * 1024;
+  const maxWebSocketPayloadBytes = options.maxWebSocketPayloadBytes ?? 64 * 1024;
 
   const roomStore = new RealtimeRoomStore();
   const presenceStore = new WorkspacePresenceStore();
@@ -120,7 +122,8 @@ export function createRealtimeGateway(options: RealtimeGatewayOptions = {}): Rea
   });
 
   const websocketServer = new WebSocketServer({
-    noServer: true
+    noServer: true,
+    maxPayload: maxWebSocketPayloadBytes
   });
 
   server.on("upgrade", (request, socket, head) => {

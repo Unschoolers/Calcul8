@@ -15,7 +15,9 @@ import { reconcileIncomingLivePricingSnapshot } from "../sync/lot-entity-polling
 import {
   normalizeSyncGameSessionDto
 } from "../sync/sync-contracts.ts";
-import { createSyncPayload, getSyncPayloadSignature } from "../sync/sync-payload.ts";
+import {
+  runWorkspaceRealtimeCatchUp
+} from "./workspace-realtime-recovery.ts";
 import {
   getDesiredRealtimeSubscription,
   type RealtimeApp,
@@ -68,22 +70,6 @@ function applyWorkspacePresenceSnapshot(
   app.workspacePresenceByUserId = nextPresenceByUserId;
 }
 
-function isWorkspaceSnapshotSyncClean(app: RealtimeApp): boolean {
-  const expectedSignature = String(app.lastSyncedPayloadHash ?? "").trim();
-  if (!expectedSignature) return false;
-
-  const currentSignature = getSyncPayloadSignature(createSyncPayload({
-    lots: app.lots,
-    currentLotId: app.currentLotId,
-    sales: app.sales,
-    loadSalesForLotId: app.loadSalesForLotId,
-    wheelConfigs: app.wheelConfigs,
-    activeWheelConfigId: app.activeWheelConfigId,
-    workspaceId: getActiveWorkspaceId(app)
-  }));
-  return currentSignature === expectedSignature;
-}
-
 function parseRealtimeEventPayload(app: RealtimeApp, data: unknown): RealtimeEventPayload | null {
   const raw = typeof data === "object" && data !== null && !Array.isArray(data)
     ? data as Record<string, unknown>
@@ -119,8 +105,7 @@ function handleLivePricingUpdatedEvent(app: RealtimeApp, payload: RealtimeEventP
 
 function handleLotConfigUpdatedEvent(app: RealtimeApp, payload: RealtimeEventPayload): void {
   if (app.currentLotId !== payload.lotId) return;
-  if (!isWorkspaceSnapshotSyncClean(app)) return;
-  void app.pullCloudSync();
+  void runWorkspaceRealtimeCatchUp(app, { reason: "uncertain-event" });
 }
 
 function handleWheelSessionUpdatedEvent(app: RealtimeApp, data: unknown): void {

@@ -167,6 +167,31 @@ test("reports malformed websocket and HTTP bodies without leaking server errors"
   }
 });
 
+test("closes oversized websocket messages with policy code 1009", async () => {
+  const context = await startGateway({
+    allowUnauthenticatedSubscribe: true,
+    maxWebSocketPayloadBytes: 16
+  });
+
+  try {
+    const socket = await openSocket(context.socketUrl);
+    const closeEvent = once(socket, "close");
+
+    socket.send(JSON.stringify({
+      type: "subscribe",
+      rooms: ["workspace:oversized:lot:1"]
+    }));
+
+    const [code] = await Promise.race([
+      closeEvent,
+      timeout("oversized websocket close")
+    ]);
+    assert.equal(code, 1009);
+  } finally {
+    await context.close();
+  }
+});
+
 test("publishes presence snapshots and marks disconnected members offline", async () => {
   const presenceRoom = "workspace:presence-test:presence";
   const tokenSecret = "presence-secret";

@@ -194,7 +194,20 @@
           :title="workspaceRealtimeTitle"
           :subtitle="workspaceRealtimeSubtitle"
           :prepend-icon="workspaceRealtimeIcon"
-        ></v-list-item>
+        >
+          <template #append>
+            <v-btn
+              v-if="workspaceRealtimeManualRefreshVisible"
+              size="small"
+              variant="tonal"
+              color="primary"
+              class="account-menu-realtime-refresh"
+              @click.stop="recoverWorkspaceRealtimeNow"
+            >
+              {{ workspaceRealtimeManualRefreshLabel }}
+            </v-btn>
+          </template>
+        </v-list-item>
         <v-list-item
           :title="syncStatusTitle"
           :subtitle="syncStatusSubtitle"

@@ -66,6 +66,25 @@ const readyComponent = computed(() => {
   }
   return WheelSpectatorView;
 });
+
+const realtimeStatusCopy = computed(() => {
+  const status = readyState.value?.realtimeStatus
+    ?? (readyState.value?.snapshot.sessionStatus === "ended" ? "ended" : "live");
+  const keyByStatus = {
+    connecting: "spectatorRealtimeConnecting",
+    live: "spectatorRealtimeLive",
+    reconnecting: "spectatorRealtimeReconnecting",
+    catching_up: "spectatorRealtimeCatchingUp",
+    recovered: "spectatorRealtimeRecovered",
+    stale: "spectatorRealtimeStale",
+    ended: "spectatorRealtimeEnded"
+  } as const;
+  return {
+    status,
+    label: t(keyByStatus[status]),
+    body: status === "stale" ? t("spectatorRealtimeStaleBody") : ""
+  };
+});
 </script>
 
 <template>
@@ -91,6 +110,17 @@ const readyComponent = computed(() => {
       >
         {{ t('spectatorLanguageFrench') }}
       </button>
+    </div>
+    <div
+      v-if="readyState"
+      class="spectator-realtime-pill"
+      :class="`spectator-realtime-pill--${realtimeStatusCopy.status}`"
+    >
+      <span class="spectator-realtime-pill__dot" aria-hidden="true"></span>
+      <span class="spectator-realtime-pill__label">{{ realtimeStatusCopy.label }}</span>
+      <span v-if="realtimeStatusCopy.body" class="spectator-realtime-pill__body">
+        {{ realtimeStatusCopy.body }}
+      </span>
     </div>
     <component
       :is="readyComponent"

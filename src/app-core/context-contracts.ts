@@ -106,6 +106,8 @@ export interface AppComputedObject {
   workspaceRealtimeTitle(this: AppContext): string;
   workspaceRealtimeSubtitle(this: AppContext): string;
   workspaceRealtimeIcon(this: AppContext): string;
+  workspaceRealtimeManualRefreshVisible(this: AppContext): boolean;
+  workspaceRealtimeManualRefreshLabel(this: AppContext): string;
   syncStatusTitle(this: AppContext): string;
   syncStatusSubtitle(this: AppContext): string;
   syncStatusIcon(this: AppContext): string;

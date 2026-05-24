@@ -75,6 +75,7 @@ export const uiMethods: ThisType<AppContext> & Pick<
   | "handleWorkspaceAccessLost"
   | "getWorkspaceMemberPresenceState"
   | "getWorkspaceMemberPresenceLabel"
+  | "recoverWorkspaceRealtimeNow"
 > = {
   ...uiBaseMethods,
   ...uiOnboardingMethods,

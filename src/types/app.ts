@@ -28,7 +28,15 @@ export type PortfolioChartViewMode = "breakdown" | "trend" | "sellthrough" | "ma
 export type PortfolioLotTypeFilter = "both" | "bulk" | "singles";
 export type PortfolioSalesByUserMetric = "revenue" | "profit" | "count";
 export type SyncStatus = "idle" | "syncing" | "success" | "error";
-export type WorkspaceRealtimeStatus = "idle" | "connecting" | "connected" | "reconnecting" | "disconnected";
+export type WorkspaceRealtimeStatus =
+  | "idle"
+  | "connecting"
+  | "connected"
+  | "reconnecting"
+  | "catching_up"
+  | "recovered"
+  | "stale"
+  | "disconnected";
 export type WorkspacePresenceState = "online" | "recent" | "offline";
 export type LiveSinglesSelectionSource = "manual" | "external";
 export type LiveSinglesSelectionMode = "replace" | "merge";

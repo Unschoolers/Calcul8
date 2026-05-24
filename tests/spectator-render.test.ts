@@ -141,6 +141,24 @@ test("SpectatorApp renders wheel canvas and proof link", async () => {
   assert.match(html, /href="https:\/\/example\.test\/proof"/);
 });
 
+test("SpectatorApp renders realtime confidence for stale ready sessions", async () => {
+  const html = await renderSpectatorAppHtml({
+    status: "ready",
+    publicSessionId: "abc123",
+    realtimeStatus: "stale",
+    snapshot: makeSnapshot({
+      gameType: "wheel",
+      sessionStatus: "live",
+      outcomeSlots: [
+        { name: "Prize", color: "#f00", tier: "tier-1", isChase: false }
+      ]
+    })
+  }, "fr-CA");
+
+  assert.match(htmlText(html), /En retard/);
+  assert.match(htmlText(html), /La page garde le dernier état connu/);
+});
+
 test("SpectatorApp renders public spectator copy in French with a visible language toggle", async () => {
   const html = await renderSpectatorAppHtml({
     status: "ready",

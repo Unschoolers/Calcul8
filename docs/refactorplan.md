@@ -27,13 +27,6 @@ This file only lists remaining Critical and High priority work. Completed, mediu
 - Risk: concurrent workspace pushes can both pass and overwrite/delete each other, and conflict recovery can become a data-loss path.
 - Next: make sync meta the compare-and-swap authority with Cosmos `IfMatch` or a transactional batch where possible; add concurrent same-version push tests expecting one success and one `409`; add frontend tests for stale conflicts with dirty local sales/lots/game changes and require a resolver or preserved pending edits before applying cloud.
 
-### 4. Realtime Production Must Be Authenticated And Single-Replica Safe Until It Has A Backplane
-
-- Finding: prod realtime allows up to two replicas while rooms, clients, and presence are in memory; the manual bootstrap can deploy production with no `REALTIME_TOKEN_SECRET`, enabling unauthenticated room subscriptions.
-- Evidence: `.github/workflows/deploy-realtime-prod.yml`, `apps/realtime/src/realtime-room-store.ts`, `apps/realtime/src/realtime-presence-store.ts`, `scripts/bootstrap-realtime.ps1`, `apps/realtime/src/realtime-auth.ts`.
-- Risk: publishes can miss sockets connected to another replica, and manual deployments can expose arbitrary room subscriptions in production.
-- Next: pin prod realtime to one replica until Redis, Azure SignalR, or another shared backplane exists; require token secret for every production bootstrap path; remove docs that describe missing token secret as acceptable; add startup/bootstrap tests for production without `REALTIME_TOKEN_SECRET`.
-
 ## High
 
 ### 5. Move Every Package To A TypeScript 6 Baseline And Add TypeScript 7 Native Preview Checks
@@ -57,16 +50,9 @@ This file only lists remaining Critical and High priority work. Completed, mediu
 - Risk: two writers can both pass version checks, double-submit can process a Whatnot batch twice, and a stale live public-session publish can regress an ended spectator session.
 - Next: replace read-then-upsert flows with ETag-based replace/create or status-claim transitions; make Whatnot confirm idempotent by `batchId`; require monotonic public-session snapshot versions or ETags; add concurrent writer and stale-live-after-ended regression tests.
 
-### 8. Realtime Delivery Needs Recovery, Payload Limits, And Deployment Smoke Tests
-
-- Finding: API writes publish realtime events best-effort, HTTP payloads are capped but WebSocket frames are not, API/Pages deploys do not fully validate realtime env, and current smoke checks only hit `/healthz`.
-- Evidence: `apps/api/src/lib/realtime.ts`, `apps/api/src/features/sales/handlers.ts`, `apps/api/src/features/sync/pushHandler.ts`, `apps/realtime/src/realtime-gateway.ts`, `.github/workflows/deploy-api-prod.yml`, `.github/workflows/deploy-pages.yml`, `src/app-core/methods/ui/workspace/workspace-realtime-state.ts`.
-- Risk: clients can stay stale after dropped publishes, unauthenticated oversized WebSocket messages can stress memory/CPU, and prod can deploy with broken publish/subscribe wiring.
-- Next: add retry/outbox or client refresh-on-reconnect/version-mismatch recovery; set WebSocket `maxPayload` and close oversized frames with `1009`; validate `REALTIME_*` and `VITE_REALTIME_SOCKET_URL` in deployment workflows; add smoke tests for token minting plus publish/subscribe.
-
 ### 9. Release And CI Filters Must Cover All Shipping Entry Points
 
-- Finding: `release:play` runs web verification but not API/realtime verification, and CI/Pages path filters omit `spectator.html` even though Vite builds it as a shipping entry.
-- Evidence: `package.json`, `scripts/release-google-play.ps1`, `docs/google-play-release.md`, `vite.config.ts`, `spectator.html`, `.github/workflows/ci.yml`, `.github/workflows/deploy-pages.yml`.
-- Risk: Android releases can ship while API/realtime contracts are broken, and spectator-only entry changes can miss CI or deployment.
-- Next: make `release:play` run `npm run verify:all` by default or require an explicit skip; add a dry-run preflight test for the release script; add `spectator.html` to CI and Pages path filters or simplify filters for root HTML entries.
+- Finding: `release:play` runs web verification but not API/realtime verification, and CI path filters omit `spectator.html` even though Vite builds it as a shipping entry.
+- Evidence: `package.json`, `scripts/release-google-play.ps1`, `docs/google-play-release.md`, `vite.config.ts`, `spectator.html`, `.github/workflows/ci.yml`.
+- Risk: Android releases can ship while API/realtime contracts are broken, and spectator-only entry changes can miss CI.
+- Next: make `release:play` run `npm run verify:all` by default or require an explicit skip; add a dry-run preflight test for the release script; add `spectator.html` to CI path filters or simplify filters for root HTML entries.

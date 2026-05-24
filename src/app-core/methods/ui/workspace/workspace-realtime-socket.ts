@@ -3,6 +3,7 @@ import {
   fetchWorkspaceRealtimeSubscribeToken
 } from "../../workspace-realtime-api.ts";
 import { applyRealtimeMessage } from "./workspace-realtime-events.ts";
+import { runWorkspaceRealtimeCatchUp } from "./workspace-realtime-recovery.ts";
 import {
   clearReconnectTimeout,
   closeRealtimeSocket,
@@ -110,7 +111,7 @@ function attachRealtimeSocketListeners(
 
     if (payload.type === "subscribed") {
       resetRealtimeReconnectAttempts(state);
-      setWorkspaceRealtimeStatus(app, "connected");
+      void runWorkspaceRealtimeCatchUp(app, { reason: "subscribed" });
       return;
     }
 

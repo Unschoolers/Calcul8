@@ -32,6 +32,7 @@
     "verify:api": "npm --prefix apps/api run verify",
     "verify:realtime": "npm --prefix apps/realtime run verify",
     "verify:all": "node scripts/run-parallel.mjs --task web::npm run verify --task api::npm run verify:api --task realtime::npm run verify:realtime",
+    "smoke:realtime": "node scripts/smoke-realtime.mjs",
     "assetlinks": "node scripts/generate-assetlinks.mjs",
     "release:play": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/release-google-play.ps1",
     "api:install": "npm --prefix apps/api install",

@@ -24,6 +24,7 @@ import "./styles/spectator.css";
 import type { GameSpectatorSnapshot } from "./types/app.ts";
 
 const REALTIME_RECONNECT_BACKOFF_MS = [1_000, 3_000, 10_000, 30_000] as const;
+type SpectatorReadyState = Extract<SpectatorPageState, { status: "ready" }>;
 
 const spectatorApp = document.getElementById("spectator-app")
   ? mountSpectatorApp("#spectator-app")
@@ -32,7 +33,7 @@ let activeSocket: WebSocket | null = null;
 let reconnectTimeoutId: number | null = null;
 let reconnectAttempt = 0;
 let currentPublicSessionId = "";
-let lastReadyState: Extract<SpectatorPageState, { status: "ready" }> | null = null;
+let lastReadyState: SpectatorReadyState | null = null;
 let spectatorWheelAnimationFrameId: number | null = null;
 const intentionallyClosedSockets = new WeakSet<WebSocket>();
 
@@ -59,6 +60,14 @@ function setState(state: SpectatorPageState): void {
   } else if (state.status !== "loading") {
     lastReadyState = null;
   }
+}
+
+function updateReadyRealtimeStatus(realtimeStatus: SpectatorReadyState["realtimeStatus"]): void {
+  if (!lastReadyState || lastReadyState.realtimeStatus === realtimeStatus) return;
+  setState({
+    ...lastReadyState,
+    realtimeStatus
+  });
 }
 
 function resolveHighlightedSpectatorSlotIndex(snapshot: GameSpectatorSnapshot): number {
@@ -162,21 +171,26 @@ function startSpectatorWheelAnimation(snapshot: GameSpectatorSnapshot): void {
   drawFrame();
 }
 
-async function loadState(): Promise<SpectatorPageState> {
+async function loadReadyState(): Promise<SpectatorReadyState> {
   const publicSessionId = getPublicSessionId();
   const baseUrl = resolveApiBaseUrl();
   if (!publicSessionId || !baseUrl) {
-    return { status: "not_found" };
+    throw new Error("not_found");
   }
 
+  const result = await fetchGameSpectatorSnapshot(baseUrl, publicSessionId);
+  const canonicalPublicSessionId = normalizeGamePublicSessionId(result.publicSessionId || publicSessionId);
+  return {
+    status: "ready",
+    publicSessionId: canonicalPublicSessionId,
+    snapshot: result.snapshot,
+    realtimeStatus: result.snapshot.sessionStatus === "ended" ? "ended" : "connecting"
+  };
+}
+
+async function loadState(): Promise<SpectatorPageState> {
   try {
-    const result = await fetchGameSpectatorSnapshot(baseUrl, publicSessionId);
-    const canonicalPublicSessionId = normalizeGamePublicSessionId(result.publicSessionId || publicSessionId);
-    return {
-      status: "ready",
-      publicSessionId: canonicalPublicSessionId,
-      snapshot: result.snapshot
-    };
+    return await loadReadyState();
   } catch (error) {
     return error instanceof Error && error.message === "not_found"
       ? { status: "not_found" }
@@ -202,13 +216,43 @@ function closeActiveSocket(): void {
   }
 }
 
-async function refreshSnapshot(options: { preserveCurrentView?: boolean } = {}): Promise<SpectatorPageState> {
-  if (!options.preserveCurrentView) {
+async function refreshSnapshot(
+  options: { preserveCurrentView?: boolean; recoveredWhenReady?: boolean } = {}
+): Promise<SpectatorPageState> {
+  if (options.preserveCurrentView) {
+    updateReadyRealtimeStatus("catching_up");
+  } else {
     setState({ status: "loading" });
   }
-  const state = await loadState();
-  setState(state);
-  return state;
+
+  try {
+    const readyState = await loadReadyState();
+    const state: SpectatorReadyState = {
+      ...readyState,
+      realtimeStatus: options.preserveCurrentView
+        ? (options.recoveredWhenReady ? "recovered" : "live")
+        : readyState.realtimeStatus
+    };
+    setState(state);
+    return state;
+  } catch (error) {
+    if (error instanceof Error && error.message === "not_found") {
+      const state: SpectatorPageState = { status: "not_found" };
+      setState(state);
+      return state;
+    }
+    if (options.preserveCurrentView && lastReadyState) {
+      const state: SpectatorReadyState = {
+        ...lastReadyState,
+        realtimeStatus: "stale"
+      };
+      setState(state);
+      return state;
+    }
+    const state: SpectatorPageState = { status: "error" };
+    setState(state);
+    return state;
+  }
 }
 
 function applyRealtimeSnapshot(publicSessionId: string, snapshot: GameSpectatorSnapshot): void {
@@ -216,7 +260,8 @@ function applyRealtimeSnapshot(publicSessionId: string, snapshot: GameSpectatorS
   setState({
     status: "ready",
     publicSessionId: currentPublicSessionId,
-    snapshot
+    snapshot,
+    realtimeStatus: snapshot.sessionStatus === "ended" ? "ended" : "live"
   });
   if (snapshot.sessionStatus === "ended") {
     closeActiveSocket();
@@ -241,6 +286,7 @@ function scheduleRealtimeReconnect(): void {
 async function connectRealtime(): Promise<void> {
   const baseUrl = resolveApiBaseUrl();
   if (!baseUrl || !currentPublicSessionId || !shouldReconnectRealtime()) return;
+  updateReadyRealtimeStatus(reconnectAttempt > 0 ? "reconnecting" : "connecting");
 
   try {
     const subscribeToken = await fetchGameSpectatorRealtimeSubscribeToken(baseUrl, currentPublicSessionId);
@@ -281,7 +327,7 @@ async function connectRealtime(): Promise<void> {
         reconnectAttempt = 0;
       }
       if (realtimeMessage.action === "refresh") {
-        void refreshSnapshot({ preserveCurrentView: true });
+        void refreshSnapshot({ preserveCurrentView: true, recoveredWhenReady: true });
         return;
       }
       if (realtimeMessage.action !== "apply") {
@@ -298,10 +344,12 @@ async function connectRealtime(): Promise<void> {
       if (activeSocket === socket) {
         activeSocket = null;
       }
+      updateReadyRealtimeStatus("reconnecting");
       scheduleRealtimeReconnect();
     });
 
     socket.addEventListener("error", () => {
+      updateReadyRealtimeStatus("reconnecting");
       scheduleRealtimeReconnect();
     });
   } catch (error) {

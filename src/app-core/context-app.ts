@@ -216,6 +216,8 @@ export interface AppComputedState {
   workspaceRealtimeTitle: string;
   workspaceRealtimeSubtitle: string;
   workspaceRealtimeIcon: string;
+  workspaceRealtimeManualRefreshVisible: boolean;
+  workspaceRealtimeManualRefreshLabel: string;
   syncStatusTitle: string;
   syncStatusSubtitle: string;
   syncStatusIcon: string;
@@ -378,6 +380,7 @@ export interface AppMethodState {
   leaveCurrentWorkspace(): Promise<void>;
   removeWorkspaceMember(memberUserId: string): Promise<void>;
   handleWorkspaceAccessLost(workspaceId?: string): Promise<void>;
+  recoverWorkspaceRealtimeNow(): Promise<void>;
   getWorkspaceMemberPresenceState(member: Pick<WorkspaceMember, "userId">): WorkspacePresenceState;
   getWorkspaceMemberPresenceLabel(member: Pick<WorkspaceMember, "userId">): string;
   unregisterServiceWorkersForDev(): Promise<void>;

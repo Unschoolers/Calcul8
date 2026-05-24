@@ -7,6 +7,8 @@ const {
   fetchWorkspaceRealtimeSubscribeTokenMock,
   fetchWorkspacePresenceRealtimeSubscribeTokenMock,
   cacheAuthoritativeSalesMock,
+  fetchAuthoritativeSalesMock,
+  fetchAuthoritativeLivePricingMock,
   normalizeSaleMock,
   normalizeLivePricingMock,
   reconcileIncomingLivePricingSnapshotMock
@@ -15,6 +17,8 @@ const {
   fetchWorkspaceRealtimeSubscribeTokenMock: vi.fn(),
   fetchWorkspacePresenceRealtimeSubscribeTokenMock: vi.fn(),
   cacheAuthoritativeSalesMock: vi.fn(),
+  fetchAuthoritativeSalesMock: vi.fn(),
+  fetchAuthoritativeLivePricingMock: vi.fn(),
   normalizeSaleMock: vi.fn(),
   normalizeLivePricingMock: vi.fn(),
   reconcileIncomingLivePricingSnapshotMock: vi.fn()
@@ -31,10 +35,12 @@ vi.mock("../src/app-core/methods/workspace-realtime-api.ts", () => ({
 
 vi.mock("../src/app-core/methods/lot-sales-api.ts", () => ({
   cacheAuthoritativeSales: cacheAuthoritativeSalesMock,
+  fetchAuthoritativeSales: fetchAuthoritativeSalesMock,
   normalizeSale: normalizeSaleMock
 }));
 
 vi.mock("../src/app-core/methods/lot-live-pricing-api.ts", () => ({
+  fetchAuthoritativeLivePricing: fetchAuthoritativeLivePricingMock,
   normalizeLivePricing: normalizeLivePricingMock
 }));
 
@@ -169,7 +175,21 @@ function createApp(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function createCurrentWorkspaceSignature(app: ReturnType<typeof createApp>): string {
+  return getSyncPayloadSignature(createSyncPayload({
+    lots: app.lots,
+    currentLotId: app.currentLotId,
+    sales: app.sales,
+    loadSalesForLotId: app.loadSalesForLotId,
+    wheelConfigs: app.wheelConfigs,
+    activeWheelConfigId: app.activeWheelConfigId,
+    workspaceId: app.activeWorkspaceId
+  }));
+}
+
 async function flushMicrotasks(): Promise<void> {
+  await Promise.resolve();
+  await Promise.resolve();
   await Promise.resolve();
   await Promise.resolve();
 }
@@ -200,6 +220,8 @@ beforeEach(() => {
   });
   normalizeSaleMock.mockImplementation((value: unknown) => value);
   normalizeLivePricingMock.mockImplementation((value: unknown) => value);
+  fetchAuthoritativeSalesMock.mockResolvedValue(null);
+  fetchAuthoritativeLivePricingMock.mockResolvedValue(null);
   vi.spyOn(Math, "random").mockReturnValue(0.5);
   vi.stubGlobal("WebSocket", FakeWebSocket);
   vi.stubGlobal("window", {
@@ -220,6 +242,7 @@ afterEach(() => {
 
 test("refreshWorkspaceRealtime connects to prod socket host and subscribes with a signed token", async () => {
   const app = createApp();
+  app.lastSyncedPayloadHash = createCurrentWorkspaceSignature(app);
 
   refreshWorkspaceRealtime(app as never);
   assert.equal(app.workspaceRealtimeStatus, "connecting");
@@ -251,8 +274,9 @@ test("refreshWorkspaceRealtime connects to prod socket host and subscribes with 
       "workspace:ws_dcb4d6f021637411:wheel"
     ]
   });
+  await flushMicrotasks();
 
-  assert.equal(app.workspaceRealtimeStatus, "connected");
+  assert.equal(app.workspaceRealtimeStatus, "recovered");
 });
 
 test("refreshWorkspaceRealtime keeps workspace presence alive without a selected lot", async () => {
@@ -260,6 +284,7 @@ test("refreshWorkspaceRealtime keeps workspace presence alive without a selected
     currentLotId: null,
     currentTab: "config"
   });
+  app.lastSyncedPayloadHash = createCurrentWorkspaceSignature(app);
 
   refreshWorkspaceRealtime(app as never);
   assert.equal(app.workspaceRealtimeStatus, "connecting");
@@ -288,8 +313,99 @@ test("refreshWorkspaceRealtime keeps workspace presence alive without a selected
       "workspace:ws_dcb4d6f021637411:presence"
     ]
   });
+  await flushMicrotasks();
 
-  assert.equal(app.workspaceRealtimeStatus, "connected");
+  assert.equal(app.workspaceRealtimeStatus, "recovered");
+});
+
+test("workspace realtime catch-up refreshes authoritative lot state and marks recovered", async () => {
+  const app = createApp();
+  app.lastSyncedPayloadHash = createCurrentWorkspaceSignature(app);
+  fetchAuthoritativeSalesMock.mockResolvedValueOnce([{
+    id: 9,
+    type: "pack",
+    quantity: 1,
+    packsCount: 1,
+    price: 15,
+    buyerShipping: 0,
+    date: "2026-05-23"
+  }]);
+  fetchAuthoritativeLivePricingMock.mockResolvedValueOnce({
+    livePackPrice: 11,
+    liveBoxPriceSell: 22,
+    liveSpotPrice: 33,
+    version: 4
+  });
+
+  const { runWorkspaceRealtimeCatchUp } = await import(
+    "../src/app-core/methods/ui/workspace/workspace-realtime-recovery.ts"
+  );
+  await runWorkspaceRealtimeCatchUp(app as never, { reason: "manual" });
+
+  assert.equal(app.workspaceRealtimeStatus, "recovered");
+  assert.deepEqual(app.sales, [{
+    id: 9,
+    type: "pack",
+    quantity: 1,
+    packsCount: 1,
+    price: 15,
+    buyerShipping: 0,
+    date: "2026-05-23"
+  }]);
+  assert.equal(fetchAuthoritativeSalesMock.mock.calls.length, 1);
+  assert.equal(fetchAuthoritativeLivePricingMock.mock.calls.length, 1);
+  assert.equal(reconcileIncomingLivePricingSnapshotMock.mock.calls.length, 1);
+  assert.equal(app.pullCloudSync.mock.calls.length, 1);
+});
+
+test("workspace realtime catch-up blocks broad cloud pull when local state is dirty", async () => {
+  const app = createApp({
+    lastSyncedPayloadHash: "old-signature",
+    sales: [{
+      id: 5,
+      type: "pack",
+      quantity: 1,
+      packsCount: 1,
+      price: 20,
+      buyerShipping: 0,
+      date: "2026-05-23"
+    }]
+  });
+  fetchAuthoritativeSalesMock.mockResolvedValueOnce(app.sales);
+  fetchAuthoritativeLivePricingMock.mockResolvedValueOnce(null);
+
+  const { runWorkspaceRealtimeCatchUp } = await import(
+    "../src/app-core/methods/ui/workspace/workspace-realtime-recovery.ts"
+  );
+  await runWorkspaceRealtimeCatchUp(app as never, { reason: "manual" });
+
+  assert.equal(app.workspaceRealtimeStatus, "stale");
+  assert.equal(app.pullCloudSync.mock.calls.length, 0);
+});
+
+test("workspace realtime runs catch-up after subscription succeeds", async () => {
+  const app = createApp();
+  app.lastSyncedPayloadHash = createCurrentWorkspaceSignature(app);
+  fetchAuthoritativeSalesMock.mockResolvedValueOnce([]);
+  fetchAuthoritativeLivePricingMock.mockResolvedValueOnce(null);
+
+  refreshWorkspaceRealtime(app as never);
+  const socket = FakeWebSocket.instances[0]!;
+  socket.triggerOpen();
+  await flushMicrotasks();
+
+  socket.triggerMessage({
+    type: "subscribed",
+    rooms: [
+      "workspace:ws_dcb4d6f021637411:lot:1773766061603",
+      "workspace:ws_dcb4d6f021637411:presence",
+      "workspace:ws_dcb4d6f021637411:wheel"
+    ]
+  });
+  await flushMicrotasks();
+
+  assert.equal(fetchAuthoritativeSalesMock.mock.calls.length, 1);
+  assert.equal(app.workspaceRealtimeStatus, "recovered");
 });
 
 test("workspace realtime applies incoming sale and live pricing events for the active room", async () => {
@@ -618,6 +734,7 @@ test("workspace realtime normalizes wheel config updates through the shared sync
 
 test("workspace realtime reconnects after an unexpected close and stops cleanly", async () => {
   const app = createApp();
+  app.lastSyncedPayloadHash = createCurrentWorkspaceSignature(app);
 
   refreshWorkspaceRealtime(app as never);
   const firstSocket = FakeWebSocket.instances[0]!;
@@ -627,7 +744,8 @@ test("workspace realtime reconnects after an unexpected close and stops cleanly"
     type: "subscribed",
     rooms: ["workspace:ws_dcb4d6f021637411:lot:1773766061603"]
   });
-  assert.equal(app.workspaceRealtimeStatus, "connected");
+  await flushMicrotasks();
+  assert.equal(app.workspaceRealtimeStatus, "recovered");
   firstSocket.triggerClose();
   assert.equal(app.workspaceRealtimeStatus, "reconnecting");
 
@@ -645,7 +763,8 @@ test("workspace realtime reconnects after an unexpected close and stops cleanly"
     type: "subscribed",
     rooms: ["workspace:ws_dcb4d6f021637411:lot:1773766061603"]
   });
-  assert.equal(app.workspaceRealtimeStatus, "connected");
+  await flushMicrotasks();
+  assert.equal(app.workspaceRealtimeStatus, "recovered");
 
   stopWorkspaceRealtime(app as never);
   assert.equal(app.workspaceRealtimeStatus, "idle");
@@ -709,6 +828,7 @@ test("workspace realtime connects on config tab and pulls cloud sync for clean c
   await flushMicrotasks();
 
   assert.equal((app.pullCloudSync as ReturnType<typeof vi.fn>).mock.calls.length, 1);
+  assert.equal(app.workspaceRealtimeStatus, "recovered");
 });
 
 test("workspace realtime ignores config invalidations when local config is dirty", async () => {
@@ -735,4 +855,5 @@ test("workspace realtime ignores config invalidations when local config is dirty
   await flushMicrotasks();
 
   assert.equal((app.pullCloudSync as ReturnType<typeof vi.fn>).mock.calls.length, 0);
+  assert.equal(app.workspaceRealtimeStatus, "stale");
 });

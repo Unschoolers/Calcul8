@@ -668,6 +668,32 @@ test("portfolio summary wrappers return expected totals and presence flags", () 
   assert.equal(noData, false);
 });
 
+test("workspace realtime display maps recovery states in English and French", () => {
+  const catchingUp = appComputed.workspaceRealtimeTitle.call({
+    workspaceRealtimeStatus: "catching_up",
+    preferredLanguage: "en"
+  } as never);
+  assert.equal(catchingUp, "Catching up with cloud data");
+
+  const recovered = appComputed.workspaceRealtimeTitle.call({
+    workspaceRealtimeStatus: "recovered",
+    preferredLanguage: "en"
+  } as never);
+  assert.equal(recovered, "Workspace data recovered");
+
+  const stale = appComputed.workspaceRealtimeSubtitle.call({
+    workspaceRealtimeStatus: "stale",
+    preferredLanguage: "fr-CA"
+  } as never);
+  assert.equal(stale, "Actualisez pour récupérer les dernières données.");
+
+  const actionVisible = appComputed.workspaceRealtimeManualRefreshVisible.call({
+    isWorkspaceScopeActive: true,
+    workspaceRealtimeStatus: "stale"
+  } as never);
+  assert.equal(actionVisible, true);
+});
+
 test("portfolio sales by user chart data groups the last 8 weeks by teammate in workspace mode", () => {
   const data = buildPortfolioSalesByUserChartData({
     lots: [

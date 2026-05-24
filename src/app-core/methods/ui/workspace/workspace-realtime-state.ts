@@ -27,6 +27,9 @@ export type RealtimeApp = Pick<
   | "pullCloudSync"
   | "handleWorkspaceAccessLost"
   | "getSalesStorageKey"
+  | "googleAuthEpoch"
+  | "hasProAccess"
+  | "notify"
   | "workspaceRealtimeStatus"
   | "workspacePresenceByUserId"
   | "wheelConfigs"
@@ -47,6 +50,8 @@ export type RealtimeSocketState = {
   isIntentionalClose: boolean;
   subscribeAttemptId: number;
   reconnectAttempt: number;
+  catchUpPromise: Promise<void> | null;
+  recoveredTimeoutId: number | null;
 };
 
 export type RealtimeEnvelope =
@@ -90,7 +95,9 @@ export function getRealtimeSocketState(app: object): RealtimeSocketState {
       url: null,
       isIntentionalClose: false,
       subscribeAttemptId: 0,
-      reconnectAttempt: 0
+      reconnectAttempt: 0,
+      catchUpPromise: null,
+      recoveredTimeoutId: null
     };
     realtimeSocketStateByApp.set(app, state);
   }
@@ -166,6 +173,13 @@ export function clearReconnectTimeout(state: RealtimeSocketState): void {
   }
 }
 
+export function clearRealtimeRecoveredTimeout(state: RealtimeSocketState): void {
+  if (state.recoveredTimeoutId != null) {
+    globalThis.clearTimeout(state.recoveredTimeoutId);
+    state.recoveredTimeoutId = null;
+  }
+}
+
 export function resetRealtimeReconnectAttempts(state: RealtimeSocketState): void {
   state.reconnectAttempt = 0;
 }
@@ -180,6 +194,7 @@ export function getRealtimeReconnectDelayMs(state: RealtimeSocketState): number 
 export function closeRealtimeSocket(app: RealtimeApp): void {
   const state = getRealtimeSocketState(app as object);
   clearReconnectTimeout(state);
+  clearRealtimeRecoveredTimeout(state);
   state.isIntentionalClose = true;
   const activeSocket = state.socket;
   state.socket = null;

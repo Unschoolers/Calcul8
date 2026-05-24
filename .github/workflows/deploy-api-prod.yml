@@ -51,6 +51,9 @@ jobs:
         env:
           AZURE_FUNCTIONAPP_NAME_PROD: ${{ vars.AZURE_FUNCTIONAPP_NAME_PROD }}
           MIGRATIONS_API_BASE_URL: ${{ vars.MIGRATIONS_API_BASE_URL }}
+          REALTIME_PUBLISH_URL_PROD: ${{ vars.REALTIME_PUBLISH_URL_PROD }}
+          REALTIME_INTERNAL_API_KEY_PROD: ${{ secrets.REALTIME_INTERNAL_API_KEY_PROD }}
+          REALTIME_TOKEN_SECRET_PROD: ${{ secrets.REALTIME_TOKEN_SECRET_PROD }}
           AZURE_FUNCTIONAPP_PUBLISH_PROFILE_PROD: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE_PROD }}
         run: |
           if [ -z "${AZURE_FUNCTIONAPP_NAME_PROD}" ]; then
@@ -69,6 +72,24 @@ jobs:
           fi
           if [ -z "${AZURE_FUNCTIONAPP_PUBLISH_PROFILE_PROD}" ]; then
             echo "Missing secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE_PROD in prod-backend environment."
+            exit 1
+          fi
+          if [ -z "${REALTIME_PUBLISH_URL_PROD}" ]; then
+            echo "Missing vars.REALTIME_PUBLISH_URL_PROD in prod-backend environment."
+            echo "Expected format: https://<realtime-host>/internal/publish"
+            exit 1
+          fi
+          if [[ "${REALTIME_PUBLISH_URL_PROD}" != https://*"/internal/publish" ]]; then
+            echo "REALTIME_PUBLISH_URL_PROD must start with https:// and end with /internal/publish."
+            echo "Current value: ${REALTIME_PUBLISH_URL_PROD}"
+            exit 1
+          fi
+          if [ -z "${REALTIME_INTERNAL_API_KEY_PROD}" ]; then
+            echo "Missing secrets.REALTIME_INTERNAL_API_KEY_PROD in prod-backend environment."
+            exit 1
+          fi
+          if [ -z "${REALTIME_TOKEN_SECRET_PROD}" ]; then
+            echo "Missing secrets.REALTIME_TOKEN_SECRET_PROD in prod-backend environment."
             exit 1
           fi
 
