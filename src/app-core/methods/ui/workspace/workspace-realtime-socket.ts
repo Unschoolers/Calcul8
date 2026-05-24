@@ -19,6 +19,9 @@ import {
   type RealtimeSocketState
 } from "./workspace-realtime-state.ts";
 
+const WORKSPACE_REALTIME_SUBSCRIBE_FAILED_CLOSE_CODE = 4001;
+const WORKSPACE_REALTIME_SERVER_ERROR_CLOSE_CODE = 4002;
+
 function scheduleRealtimeReconnect(app: RealtimeApp): void {
   const state = getRealtimeSocketState(app as object);
   if (state.reconnectTimeoutId != null) return;
@@ -84,7 +87,7 @@ async function subscribeRealtimeSocket(
       await app.handleWorkspaceAccessLost(workspaceId);
     }
     if (state.socket === socket && socket.readyState === WebSocket.OPEN) {
-      socket.close(1011, "realtime-subscribe-failed");
+      socket.close(WORKSPACE_REALTIME_SUBSCRIBE_FAILED_CLOSE_CODE, "realtime-subscribe-failed");
     }
   }
 }
@@ -118,7 +121,7 @@ function attachRealtimeSocketListeners(
     if (payload.type === "error") {
       setWorkspaceRealtimeStatus(app, "disconnected");
       if (state.socket === socket && socket.readyState === WebSocket.OPEN) {
-        socket.close(1011, "realtime-server-error");
+        socket.close(WORKSPACE_REALTIME_SERVER_ERROR_CLOSE_CODE, "realtime-server-error");
       }
       return;
     }
