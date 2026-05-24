@@ -82,6 +82,12 @@ class FakeWebSocket {
   }
 
   close(code?: number, reason?: string): void {
+    if (code !== undefined && code !== 1000 && (code < 3000 || code > 4999)) {
+      throw new DOMException(
+        `The close code must be either 1000, or between 3000 and 4999. ${code} is neither.`,
+        "InvalidAccessError"
+      );
+    }
     this.closeCalls.push({ code, reason });
     this.readyState = FakeWebSocket.CLOSED;
   }
@@ -791,8 +797,28 @@ test("workspace realtime handles lost workspace access when subscribe token is f
   assert.equal((app.handleWorkspaceAccessLost as ReturnType<typeof vi.fn>).mock.calls[0]?.[0], "ws_dcb4d6f021637411");
   assert.equal(app.workspaceRealtimeStatus, "disconnected");
   assert.deepEqual(socket.closeCalls[0], {
-    code: 1011,
+    code: 4001,
     reason: "realtime-subscribe-failed"
+  });
+});
+
+test("workspace realtime uses browser-safe close codes for gateway error messages", async () => {
+  const app = createApp();
+
+  refreshWorkspaceRealtime(app as never);
+  const socket = FakeWebSocket.instances[0]!;
+  socket.triggerOpen();
+  await flushMicrotasks();
+
+  socket.triggerMessage({
+    type: "error",
+    message: "server exploded"
+  });
+
+  assert.equal(app.workspaceRealtimeStatus, "disconnected");
+  assert.deepEqual(socket.closeCalls[0], {
+    code: 4002,
+    reason: "realtime-server-error"
   });
 });
 
