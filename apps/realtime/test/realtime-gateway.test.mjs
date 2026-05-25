@@ -246,6 +246,33 @@ test("terminates stale websocket clients during heartbeat cleanup", async () => 
   }
 });
 
+test("health reports runtime auth configuration without exposing secrets", async () => {
+  const context = await startGateway({
+    allowedOrigins: ["https://app.whatfees.ca"],
+    internalApiKey: "internal-key",
+    tokenSecret: "token-secret",
+    allowUnauthenticatedSubscribe: false
+  });
+
+  try {
+    const response = await fetch(`${context.baseUrl}/healthz`);
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+      ok: true,
+      clients: 0,
+      rooms: 0,
+      auth: {
+        allowedOrigins: 1,
+        allowUnauthenticatedSubscribe: false,
+        hasInternalApiKey: true,
+        hasTokenSecret: true
+      }
+    });
+  } finally {
+    await context.close();
+  }
+});
+
 function signSubscribeToken(payload, secret) {
   const encodedPayload = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
   const signature = createHmac("sha256", secret)

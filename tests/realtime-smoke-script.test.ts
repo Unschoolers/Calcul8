@@ -61,6 +61,20 @@ class FakeWebSocket {
   }
 }
 
+class RejectingSubscribeWebSocket extends FakeWebSocket {
+  send(payload: string): void {
+    this.sent.push(payload);
+    const message = JSON.parse(payload) as { type?: string };
+    if (message.type === "subscribe") {
+      queueMicrotask(() => {
+        this.emit("message", {
+          data: JSON.stringify({ type: "error", message: "Subscribe request is not authorized." })
+        });
+      });
+    }
+  }
+}
+
 test("resolveRealtimeSmokeConfig requires realtime endpoints and secrets", async () => {
   const { resolveRealtimeSmokeConfig } = await importSmokeModule();
 
@@ -125,7 +139,7 @@ test("runRealtimeSmoke subscribes, publishes, and waits for the delivered event"
   const publishedBodies: Array<Record<string, unknown>> = [];
   const fetchImpl = vi.fn(async (url: string, init?: RequestInit) => {
     if (url === "https://ws.example.test/healthz") {
-      return fakeResponse(200, { ok: true, clients: 0, rooms: 0 });
+      return fakeResponse(200, healthyRealtimeBody());
     }
 
     if (url === "https://ws.example.test/internal/publish") {
@@ -185,6 +199,68 @@ test("runRealtimeSmoke subscribes, publishes, and waits for the delivered event"
   assert.equal(typeof sentSubscribe.token, "string");
 });
 
+test("runRealtimeSmoke fails fast when realtime health reports missing auth settings", async () => {
+  const { runRealtimeSmoke } = await importSmokeModule();
+  const fetchImpl = vi.fn(async (url: string) => {
+    if (url === "https://ws.example.test/healthz") {
+      return fakeResponse(200, {
+        ...healthyRealtimeBody(),
+        auth: {
+          allowedOrigins: 1,
+          allowUnauthenticatedSubscribe: false,
+          hasInternalApiKey: true,
+          hasTokenSecret: false
+        }
+      });
+    }
+    throw new Error(`Unexpected fetch: ${url}`);
+  });
+
+  await assert.rejects(
+    () => runRealtimeSmoke({
+      baseUrl: "https://ws.example.test",
+      socketUrl: "wss://ws.example.test/socket",
+      internalApiKey: "internal-key",
+      tokenSecret: "token-secret",
+      room: "smoke:run",
+      eventType: "realtime.smoke",
+      timeoutMs: 1500
+    }, {
+      fetchImpl,
+      WebSocketCtor: FakeWebSocket,
+      now: () => 1_770_000_000_000
+    }),
+    /REALTIME_TOKEN_SECRET/
+  );
+});
+
+test("runRealtimeSmoke reports realtime gateway subscribe errors", async () => {
+  const { runRealtimeSmoke } = await importSmokeModule();
+  const fetchImpl = vi.fn(async (url: string) => {
+    if (url === "https://ws.example.test/healthz") {
+      return fakeResponse(200, healthyRealtimeBody());
+    }
+    throw new Error(`Unexpected fetch: ${url}`);
+  });
+
+  await assert.rejects(
+    () => runRealtimeSmoke({
+      baseUrl: "https://ws.example.test",
+      socketUrl: "wss://ws.example.test/socket",
+      internalApiKey: "internal-key",
+      tokenSecret: "wrong-token-secret",
+      room: "smoke:run",
+      eventType: "realtime.smoke",
+      timeoutMs: 1500
+    }, {
+      fetchImpl,
+      WebSocketCtor: RejectingSubscribeWebSocket,
+      now: () => 1_770_000_000_000
+    }),
+    /Subscribe request is not authorized/
+  );
+});
+
 test("deploy workflows validate and smoke realtime recovery wiring", async () => {
   const realtimeWorkflow = await readFile(".github/workflows/deploy-realtime-prod.yml", "utf8");
   assert.match(realtimeWorkflow, /npm run --silent smoke:realtime/);
@@ -218,4 +294,18 @@ function fakeResponse(status: number, body: unknown): Response {
     json: async () => body,
     text: async () => JSON.stringify(body)
   } as Response;
+}
+
+function healthyRealtimeBody(): Record<string, unknown> {
+  return {
+    ok: true,
+    clients: 0,
+    rooms: 0,
+    auth: {
+      allowedOrigins: 1,
+      allowUnauthenticatedSubscribe: false,
+      hasInternalApiKey: true,
+      hasTokenSecret: true
+    }
+  };
 }

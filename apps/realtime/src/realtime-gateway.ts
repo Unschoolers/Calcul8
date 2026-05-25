@@ -56,7 +56,13 @@ export function createRealtimeGateway(options: RealtimeGatewayOptions = {}): Rea
         writeJson(response, 200, {
           ok: true,
           clients: roomStore.clientCount,
-          rooms: roomStore.roomCount
+          rooms: roomStore.roomCount,
+          auth: {
+            allowedOrigins: allowedOrigins.length,
+            allowUnauthenticatedSubscribe,
+            hasInternalApiKey: Boolean(internalApiKey),
+            hasTokenSecret: Boolean(tokenSecret)
+          }
         });
         return;
       }

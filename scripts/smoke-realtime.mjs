@@ -170,6 +170,20 @@ async function assertHealth(fetchImpl, config) {
   if (health.body?.ok !== true) {
     throw new Error("Realtime health check did not report ok=true.");
   }
+
+  const auth = health.body?.auth;
+  if (!auth || typeof auth !== "object" || Array.isArray(auth)) {
+    throw new Error("Realtime health check did not report runtime auth settings.");
+  }
+  if (auth.hasInternalApiKey !== true) {
+    throw new Error("Realtime health reports REALTIME_INTERNAL_API_KEY is not configured.");
+  }
+  if (auth.hasTokenSecret !== true) {
+    throw new Error("Realtime health reports REALTIME_TOKEN_SECRET is not configured.");
+  }
+  if (auth.allowUnauthenticatedSubscribe !== false) {
+    throw new Error("Realtime health reports REALTIME_DEV_ALLOW_UNAUTH_SUBSCRIBE is not disabled.");
+  }
 }
 
 async function fetchJson(fetchImpl, url, init, label) {
@@ -258,7 +272,13 @@ function waitForSocketMessage(socket, predicate, timeoutMs, label) {
 
     const cleanupMessage = addSocketListener(socket, "message", (event) => {
       const message = parseSocketMessage(event);
-      if (!message || !predicate(message)) return;
+      if (!message) return;
+      if (message.type === "error") {
+        cleanup();
+        reject(new Error(`Realtime gateway error while waiting for ${label}: ${message.message ?? "Unknown error."}`));
+        return;
+      }
+      if (!predicate(message)) return;
       cleanup();
       resolve(message);
     });
