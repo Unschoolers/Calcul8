@@ -1,5 +1,9 @@
 import { inject, type PropType } from "vue";
 import { countGameOutcomeSlotsByTier } from "../../../../app-core/shared/game-domain.ts";
+import {
+  resolveVuetifySlotString,
+  resolveVuetifySlotValue
+} from "../../../../app-core/shared/vuetify-slot-items.ts";
 import { setWheelTierChancePercent } from "../../../../app-core/shared/wheel-odds.ts";
 import { getWheelTierSourceLotIds, isWheelTierMultiLot } from "../../../../app-core/shared/wheel-tier-sources.ts";
 import type { WheelConfig, WheelTier } from "../../../../types/app.ts";
@@ -120,6 +124,8 @@ export const WheelTierCard = {
     }
   },
   methods: {
+    resolveVuetifySlotString,
+    resolveVuetifySlotValue,
     formatTierChance(this: unknown, tier: WheelTier): string {
       const chance = Number(tier.chancePercent) || 0;
       return String(Math.round(chance));

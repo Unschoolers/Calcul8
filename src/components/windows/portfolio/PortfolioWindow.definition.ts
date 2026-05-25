@@ -2,6 +2,10 @@ import { inject, type PropType } from "vue";
 import { createWindowContextBridge } from "../shared/contextBridge.ts";
 import { filterLotOptionItems } from "../../../app-core/shared/lot-option-items.ts";
 import {
+  resolveVuetifySlotString,
+  resolveVuetifySlotValue
+} from "../../../app-core/shared/vuetify-slot-items.ts";
+import {
   buildPortfolioSalesByUserLegendItems,
   getNextPortfolioChartView,
   getPortfolioChartAriaLabel,
@@ -27,35 +31,21 @@ type PortfolioLotFilterDisplayItem = {
   groupLabel: string | null;
 };
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
-}
-
-function resolvePortfolioLotFilterSource(item: unknown): Record<string, unknown> | null {
-  if (!isRecord(item)) return null;
-  return isRecord(item.raw) ? item.raw : item;
-}
-
-function toDisplayString(value: unknown): string {
-  return typeof value === "string" ? value : "";
-}
-
 function toDisplayNumber(value: unknown): number | null {
   const normalized = Number(value);
   return Number.isFinite(normalized) ? normalized : null;
 }
 
 function resolvePortfolioLotFilterDisplayItem(item: unknown): PortfolioLotFilterDisplayItem {
-  const source = resolvePortfolioLotFilterSource(item);
-  const lotType = source?.lotType === "singles" ? "singles" : "bulk";
+  const lotType = resolveVuetifySlotString(item, ["lotType"]) === "singles" ? "singles" : "bulk";
   return {
-    title: toDisplayString(source?.title),
-    value: toDisplayNumber(source?.value),
-    subtitle: toDisplayString(source?.subtitle),
+    title: resolveVuetifySlotString(item, ["title"]),
+    value: toDisplayNumber(resolveVuetifySlotValue(item, ["value"])),
+    subtitle: resolveVuetifySlotString(item, ["subtitle"]),
     lotType,
-    symbolIcon: toDisplayString(source?.symbolIcon) || (lotType === "singles" ? "mdi-cards-outline" : "mdi-cube-outline"),
-    completionIcon: source?.completionIcon === "mdi-check-circle" ? "mdi-check-circle" : null,
-    groupLabel: toDisplayString(source?.groupLabel) || null
+    symbolIcon: resolveVuetifySlotString(item, ["symbolIcon"]) || (lotType === "singles" ? "mdi-cards-outline" : "mdi-cube-outline"),
+    completionIcon: resolveVuetifySlotString(item, ["completionIcon"]) === "mdi-check-circle" ? "mdi-check-circle" : null,
+    groupLabel: resolveVuetifySlotString(item, ["groupLabel"]) || null
   };
 }
 

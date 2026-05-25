@@ -157,31 +157,35 @@
                 <template #item="{ props, item }">
                     <v-list-item v-bind="props" :title="null" :subtitle="null">
                         <template #prepend>
-                            <div class="wheel-card-thumb" v-if="item.raw.image">
-                                <img :src="item.raw.image" alt="" loading="lazy">
+                            <div class="wheel-card-thumb" v-if="resolveVuetifySlotString(item, ['image'])">
+                                <img :src="resolveVuetifySlotString(item, ['image'])" alt="" loading="lazy">
                             </div>
                             <v-icon v-else size="20" class="mr-2">mdi-cards-outline</v-icon>
                         </template>
-                        <v-list-item-title class="text-body-2">{{ item.raw.title }}</v-list-item-title>
+                        <v-list-item-title class="text-body-2">{{ resolveVuetifySlotString(item, ['title', 'item', 'name']) }}</v-list-item-title>
                         <v-list-item-subtitle class="text-caption">
-                            <template v-if="item.raw.cardNumber">#{{ item.raw.cardNumber }}</template>
-                            <template v-if="item.raw.stockLabel">
-                                <span v-if="item.raw.cardNumber"> • </span>{{ item.raw.stockLabel }}
+                            <template v-if="resolveVuetifySlotString(item, ['cardNumber', 'cardNo'])">
+                                #{{ resolveVuetifySlotString(item, ['cardNumber', 'cardNo']) }}
+                            </template>
+                            <template v-if="resolveVuetifySlotString(item, ['stockLabel'])">
+                                <span v-if="resolveVuetifySlotString(item, ['cardNumber', 'cardNo'])"> • </span>{{ resolveVuetifySlotString(item, ['stockLabel']) }}
                             </template>
                         </v-list-item-subtitle>
                     </v-list-item>
                 </template>
                 <template #selection="{ item }">
                     <div class="wheel-chase-selection">
-                        <div class="wheel-card-thumb" v-if="item.raw.image">
-                            <img :src="item.raw.image" alt="" loading="lazy">
+                        <div class="wheel-card-thumb" v-if="resolveVuetifySlotString(item, ['image'])">
+                            <img :src="resolveVuetifySlotString(item, ['image'])" alt="" loading="lazy">
                         </div>
                         <div class="wheel-chase-selection-text">
-                            <div class="text-body-2">{{ item.raw.title }}</div>
+                            <div class="text-body-2">{{ resolveVuetifySlotString(item, ['title', 'item', 'name']) }}</div>
                             <div class="text-caption" style="opacity: 0.6">
-                                <template v-if="item.raw.cardNumber">#{{ item.raw.cardNumber }}</template>
-                                <template v-if="item.raw.stockLabel">
-                                    <span v-if="item.raw.cardNumber"> • </span>{{ item.raw.stockLabel }}
+                                <template v-if="resolveVuetifySlotString(item, ['cardNumber', 'cardNo'])">
+                                    #{{ resolveVuetifySlotString(item, ['cardNumber', 'cardNo']) }}
+                                </template>
+                                <template v-if="resolveVuetifySlotString(item, ['stockLabel'])">
+                                    <span v-if="resolveVuetifySlotString(item, ['cardNumber', 'cardNo'])"> • </span>{{ resolveVuetifySlotString(item, ['stockLabel']) }}
                                 </template>
                             </div>
                         </div>

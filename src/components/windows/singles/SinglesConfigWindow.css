@@ -417,12 +417,12 @@
 }
 
 .singles-grid-table table tbody td {
-  padding-top: 6px !important;
-  padding-bottom: 6px !important;
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
 }
 
 .singles-grid-table tbody tr:not(.singles-virtual-spacer-row) {
-  height: 52px;
+  height: 104px;
 }
 
 .singles-virtual-spacer-row td {
@@ -515,7 +515,7 @@
 .singles-row-main {
   display: flex;
   align-items: center;
-  gap: 0.48rem;
+  gap: 0.72rem;
   min-width: 0;
 }
 
@@ -542,23 +542,22 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 36px;
+  width: 64px;
+  height: 90px;
   flex: 0 0 auto;
   overflow: hidden;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
-  border-radius: 8px;
-  background:
-    linear-gradient(180deg, rgba(var(--v-theme-surface-bright), 0.95), rgba(var(--v-theme-surface), 0.98));
-  box-shadow:
-    var(--app-inset-highlight-subtle),
-    var(--app-shadow-sm);
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  box-shadow: none;
 }
 
 .singles-row-thumb img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
+  border-radius: 6px;
+  box-shadow: var(--app-shadow-sm);
 }
 
 .singles-thumb-button {
@@ -625,7 +624,7 @@
   background:
     linear-gradient(135deg, rgba(var(--v-theme-primary), 0.06), rgba(var(--v-theme-surface), 0.96) 42%),
     rgba(var(--v-theme-surface), 0.9);
-  min-height: 78px;
+  min-height: 132px;
   box-shadow:
     var(--app-inset-highlight-subtle),
     var(--app-shadow-interactive);
@@ -646,13 +645,14 @@
 }
 
 .singles-mobile-item .v-list-item__content {
-  padding-top: 7px;
-  padding-bottom: 6px;
+  padding-top: 10px;
+  padding-bottom: 10px;
 }
 
 .singles-mobile-item .v-list-item__prepend {
-  align-self: center;
-  margin-inline-end: 0.58rem;
+  align-self: flex-start;
+  margin-top: 10px;
+  margin-inline-end: 0.75rem;
 }
 
 .singles-mobile-item .v-list-item__append {
@@ -664,23 +664,22 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 50px;
+  width: 64px;
+  height: 90px;
   flex: 0 0 auto;
   overflow: hidden;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.14);
-  border-radius: var(--app-radius-xl);
-  background:
-    linear-gradient(180deg, rgba(var(--v-theme-surface-bright), 0.95), rgba(var(--v-theme-surface), 0.98));
-  box-shadow:
-    var(--app-inset-highlight-default),
-    var(--app-shadow-media);
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  box-shadow: none;
 }
 
 .singles-mobile-thumb img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
+  border-radius: 6px;
+  box-shadow: var(--app-shadow-sm);
 }
 
 .singles-mobile-title {
@@ -1332,7 +1331,11 @@
 }
 
 .v-theme--unionArenaDark .singles-row-thumb,
-.v-theme--unionArenaDark .singles-mobile-thumb,
+.v-theme--unionArenaDark .singles-mobile-thumb {
+  border-color: transparent;
+  background: transparent;
+}
+
 .v-theme--unionArenaDark .singles-editor-preview-card {
   border-color: var(--app-stroke-inverse-default);
   background: linear-gradient(180deg, rgba(var(--v-theme-surface-bright), 0.18), rgba(var(--v-theme-surface), 0.98));
@@ -1695,14 +1698,9 @@
     text-align: left;
   }
 
-  .singles-mobile-item {
-    min-height: 76px;
-  }
-
   .singles-mobile-thumb {
-    width: 32px;
-    height: 46px;
-    border-radius: var(--app-radius-lg);
+    width: 64px;
+    height: 90px;
   }
 
   .singles-mobile-chip {

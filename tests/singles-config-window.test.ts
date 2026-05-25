@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import { test, vi } from "vitest";
 import { singlesConfigWindowDefinition } from "../src/components/windows/singles/SinglesConfigWindow.definition.ts";
 import type { SinglesPurchaseEntry } from "../src/types/app.ts";
@@ -14,6 +15,20 @@ type AnyContext = Record<string, unknown> & {
 const singlesConfigData = singlesConfigWindowDefinition.data as () => Record<string, unknown>;
 const singlesConfigMethods = Object.entries(singlesConfigWindowDefinition.methods as Record<string, unknown>)
   .filter(([, method]) => typeof method === "function") as Array<[string, (...args: unknown[]) => unknown]>;
+
+test("singles inventory table uses a larger unframed card image row", async () => {
+  const source = await readFile("src/components/windows/singles/SinglesConfigWindow.definition.ts", "utf8");
+  const css = await readFile("src/components/windows/singles/SinglesConfigWindow.css", "utf8");
+
+  assert.match(source, /const DESKTOP_VIRTUAL_ROW_HEIGHT = 104;/);
+  assert.match(css, /\.singles-grid-table tbody tr:not\(\.singles-virtual-spacer-row\) \{\s*height: 104px;/);
+  assert.match(css, /\.singles-row-thumb \{[\s\S]*width: 64px;[\s\S]*height: 90px;/);
+  assert.match(css, /\.singles-row-thumb \{[\s\S]*border: 0;/);
+  assert.match(css, /\.singles-row-thumb img \{[\s\S]*object-fit: contain;/);
+  assert.match(css, /\.singles-mobile-item \{[\s\S]*min-height: 132px;/);
+  assert.match(css, /\.singles-mobile-thumb \{[\s\S]*width: 64px;[\s\S]*height: 90px;/);
+  assert.match(css, /\.singles-mobile-thumb \{[\s\S]*border: 0;/);
+});
 
 function getComputed<T>(name: string): (this: AnyContext) => T {
   return (singlesConfigWindowDefinition.computed as Record<string, unknown>)[name] as (this: AnyContext) => T;
@@ -134,10 +149,10 @@ test("virtualization computed values derive from scroll position", () => {
   context.desktopVirtualStartIndex = getComputed<number>("desktopVirtualStartIndex").call(context);
   context.desktopVirtualEndIndex = getComputed<number>("desktopVirtualEndIndex").call(context);
 
-  assert.equal(context.desktopVirtualStartIndex, 4);
-  assert.equal(context.desktopVirtualEndIndex, 27);
-  assert.equal(getComputed<number>("desktopTopSpacerPx").call(context), 208);
-  assert.equal(getComputed<number>("desktopBottomSpacerPx").call(context), 8996);
+  assert.equal(context.desktopVirtualStartIndex, 0);
+  assert.equal(context.desktopVirtualEndIndex, 18);
+  assert.equal(getComputed<number>("desktopTopSpacerPx").call(context), 0);
+  assert.equal(getComputed<number>("desktopBottomSpacerPx").call(context), 18928);
 });
 
 test("mobile pagination renders in batches and can load more rows", () => {

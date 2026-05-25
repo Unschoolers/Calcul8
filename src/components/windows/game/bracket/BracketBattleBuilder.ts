@@ -3,6 +3,9 @@ import {
   createDefaultBracketBattleConfig,
   resizeBracketBattleConfig
 } from "../../../../app-core/shared/bracket-battle-config.ts";
+import {
+  resolveVuetifySlotString
+} from "../../../../app-core/shared/vuetify-slot-items.ts";
 import type { BracketBattleConfig, BracketBattleConfigPrize, Lot, WheelConfig } from "../../../../types/app.ts";
 import { createNestedWindowContextBridge } from "../../shared/contextBridge.ts";
 import {
@@ -44,6 +47,7 @@ export const BracketBattleBuilder = {
     }
   },
   methods: {
+    resolveVuetifySlotString,
     onBracketParticipantCountChange(this: BracketBattleBuilderThis, value: unknown): void {
       const config = this.editingWheelConfig;
       if (!config) return;

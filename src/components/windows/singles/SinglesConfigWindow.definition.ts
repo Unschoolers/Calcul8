@@ -1,6 +1,11 @@
 import { inject, type PropType } from "vue";
 import { compareLocalizedText } from "../../../app-core/i18n/index.ts";
 import { resolveDefaultSinglesMarketValueCurrency } from "../../../app-core/shared/singles-market-value-currency.ts";
+import {
+  resolveVuetifySlotNumber,
+  resolveVuetifySlotString,
+  resolveVuetifySlotValue
+} from "../../../app-core/shared/vuetify-slot-items.ts";
 import { getSinglesEntryUnitMarketValueInSellingCurrency } from "../../../domain/calculations.ts";
 import type { CurrencyCode, SinglesCatalogSource, SinglesPurchaseEntry } from "../../../types/app.ts";
 import { createWindowContextBridge } from "../shared/contextBridge.ts";
@@ -17,7 +22,7 @@ const SINGLES_INFO_NOTICE_DISMISSED_KEY = "whatfees_singles_info_notice_dismisse
 type SinglesDesktopSortKey = "item" | "cardNumber" | "cost" | "quantity" | "marketValue";
 type SinglesMobileSortKey = "recent" | "item" | "marketValue";
 const DESKTOP_VIRTUAL_THRESHOLD = 150;
-const DESKTOP_VIRTUAL_ROW_HEIGHT = 52;
+const DESKTOP_VIRTUAL_ROW_HEIGHT = 104;
 const DESKTOP_VIRTUAL_VIEWPORT_HEIGHT = 560;
 const DESKTOP_VIRTUAL_BUFFER_ROWS = 6;
 const MOBILE_RENDER_INITIAL_COUNT = 30;
@@ -458,6 +463,9 @@ export const singlesConfigWindowDefinition = {
   methods: {
     ...singlesImportMethods,
     ...singlesCatalogSearchMethods,
+    resolveVuetifySlotNumber,
+    resolveVuetifySlotString,
+    resolveVuetifySlotValue,
     fmtCurrency(this: SinglesWindowThis, value: number | null | undefined, decimals = 2): string {
       const formatter = this?.formatCurrency as
         | ((nextValue: number | null | undefined, nextDecimals?: number) => string)

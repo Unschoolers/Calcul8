@@ -1,4 +1,7 @@
 import { inject, nextTick, type PropType } from "vue";
+import {
+  resolveVuetifySlotString
+} from "../../../../app-core/shared/vuetify-slot-items.ts";
 import type { WheelConfig } from "../../../../types/app.ts";
 import { createWindowContextBridge } from "../../shared/contextBridge.ts";
 import { gameComputeds } from "./gameComputeds.ts";
@@ -185,6 +188,7 @@ export const gameWindowDefinition = {
     }
   },
   methods: {
+    resolveVuetifySlotString,
     ...wheelConfigMethods,
     ...wheelSpinMethods,
     ...wheelSessionMethods,

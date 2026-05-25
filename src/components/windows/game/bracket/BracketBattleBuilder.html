@@ -82,12 +82,12 @@
           <template #item="{ props, item }">
             <v-list-item
               v-bind="props"
-              :title="(item.raw ?? item).title"
-              :subtitle="(item.raw ?? item).subtitle"
+              :title="resolveVuetifySlotString(item, ['title', 'item', 'name'])"
+              :subtitle="resolveVuetifySlotString(item, ['subtitle'])"
             >
               <template #prepend>
                 <v-icon size="20">
-                  {{ (item.raw ?? item).sourceType === 'singles' ? 'mdi-cards-outline' : 'mdi-package-variant-closed' }}
+                  {{ resolveVuetifySlotString(item, ['sourceType']) === 'singles' ? 'mdi-cards-outline' : 'mdi-package-variant-closed' }}
                 </v-icon>
               </template>
             </v-list-item>

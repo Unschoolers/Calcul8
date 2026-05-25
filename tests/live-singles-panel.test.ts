@@ -173,20 +173,33 @@ test("live singles autocomplete can search by card number with the same picker f
 test("live singles autocomplete template renders normalized item fallbacks", async () => {
   const template = await readFile("src/components/windows/live/LiveSinglesPanel.html", "utf8");
 
-  assert.match(template, /item\?\.raw\?\.name\s*\|\|\s*item\?\.raw\?\.title\s*\|\|\s*item\?\.title/);
-  assert.match(template, /resolveLiveSinglesSuggestionImage\(item\)/);
+  assert.match(template, /resolveVuetifySlotString\(item, \['name', 'title', 'item'\]\)/);
+  assert.match(template, /resolveVuetifySlotString\(item, \['image'\]\)/);
   assert.match(template, /entry\.image/);
-  assert.match(template, /live-singles-item-thumb/);
+  assert.match(template, /live-singles-item-media/);
+  assert.match(template, /openLiveSinglesImagePreview\(entry\)/);
+  assert.match(template, /mdi-magnify-plus-outline/);
+  assert.doesNotMatch(template, /item\??\.raw\??\./);
 });
 
-test("resolveLiveSinglesSuggestionImage handles Vuetify slot item shapes", () => {
+test("live singles image preview opens and closes for selected cards", () => {
   const context = createContext();
-  const resolveImage = getMethod<(this: PanelCtx, item: unknown) => string>("resolveLiveSinglesSuggestionImage");
+  const openPreview = getMethod<(this: PanelCtx, entry: SinglesPurchaseEntry) => void>("openLiveSinglesImagePreview");
+  const closePreview = getMethod<(this: PanelCtx) => void>("closeLiveSinglesImagePreview");
 
-  assert.equal(resolveImage.call(context, { raw: { image: " https://img.test/raw.jpg " } }), "https://img.test/raw.jpg");
-  assert.equal(resolveImage.call(context, { props: { image: "https://img.test/props.jpg" } }), "https://img.test/props.jpg");
-  assert.equal(resolveImage.call(context, { image: "https://img.test/direct.jpg" }), "https://img.test/direct.jpg");
-  assert.equal(resolveImage.call(context, { raw: {}, props: {} }), "");
+  openPreview.call(context, entry({ image: "" }));
+  assert.equal(context.liveSinglesImagePreviewOpen, false);
+  assert.equal(context.liveSinglesImagePreviewSrc, "");
+
+  openPreview.call(context, entry({ item: "Asuka", image: " https://img.test/asuka.webp " }));
+  assert.equal(context.liveSinglesImagePreviewOpen, true);
+  assert.equal(context.liveSinglesImagePreviewSrc, "https://img.test/asuka.webp");
+  assert.equal(context.liveSinglesImagePreviewTitle, "Asuka");
+
+  closePreview.call(context);
+  assert.equal(context.liveSinglesImagePreviewOpen, false);
+  assert.equal(context.liveSinglesImagePreviewSrc, "");
+  assert.equal(context.liveSinglesImagePreviewTitle, "");
 });
 
 test("bundle metrics and allocations are derived from selected entries", () => {

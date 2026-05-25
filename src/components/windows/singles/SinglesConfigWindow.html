@@ -134,13 +134,13 @@
                 <template #selection="{ item }">
                   <div class="singles-card-selection">
                     <span class="singles-card-selection-name">
-                      {{ item?.raw?.name || editingSinglesRow.item || item?.title || "" }}
+                      {{ resolveVuetifySlotString(item, ['name', 'title', 'item']) || editingSinglesRow.item || "" }}
                     </span>
                     <span
-                      v-if="item?.raw?.cardNo || editingSinglesRow.cardNumber"
+                      v-if="resolveVuetifySlotString(item, ['cardNo', 'cardNumber']) || editingSinglesRow.cardNumber"
                       class="singles-card-selection-number"
                     >
-                      #{{ item?.raw?.cardNo || editingSinglesRow.cardNumber }}
+                      #{{ resolveVuetifySlotString(item, ['cardNo', 'cardNumber']) || editingSinglesRow.cardNumber }}
                     </span>
                   </div>
                 </template>
@@ -155,8 +155,8 @@
                       <div class="singles-card-suggestion-media">
                         <div class="singles-card-suggestion-thumb" aria-hidden="true">
                           <img
-                            v-if="item?.raw?.image"
-                            :src="item.raw.image"
+                            v-if="resolveVuetifySlotString(item, ['image'])"
+                            :src="resolveVuetifySlotString(item, ['image'])"
                             alt=""
                             loading="lazy"
                           >
@@ -165,15 +165,17 @@
                       </div>
                     </template>
                     <v-list-item-title class="singles-card-suggestion-title">
-                      {{ item?.raw?.name || item?.title }}
+                      {{ resolveVuetifySlotString(item, ['name', 'title', 'item']) }}
                     </v-list-item-title>
                     <v-list-item-subtitle class="singles-card-suggestion-subtitle">
-                      <span v-if="item?.raw?.cardNo">#{{ item.raw.cardNo }}</span>
-                      <span>
-                        • {{ formatSuggestionRarity(item?.raw?.rarity) }}
+                      <span v-if="resolveVuetifySlotString(item, ['cardNo', 'cardNumber'])">
+                        #{{ resolveVuetifySlotString(item, ['cardNo', 'cardNumber']) }}
                       </span>
-                      <span v-if="item?.raw?.marketPrice != null">
-                        • M ${{ fmtCurrency(item.raw.marketPrice) }}
+                      <span>
+                        • {{ formatSuggestionRarity(resolveVuetifySlotValue(item, ['rarity'])) }}
+                      </span>
+                      <span v-if="resolveVuetifySlotValue(item, ['marketPrice']) != null">
+                        • M ${{ fmtCurrency(resolveVuetifySlotNumber(item, ['marketPrice'])) }}
                       </span>
                     </v-list-item-subtitle>
                   </v-list-item>

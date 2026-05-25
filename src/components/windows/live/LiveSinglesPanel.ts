@@ -5,6 +5,11 @@ import {
     toPositiveIntOrNull as toPositiveInt,
     toNonNegativeInt as toWholeNonNegative
 } from "../../../app-core/shared/singles-normalizers.ts";
+import {
+  resolveVuetifySlotNumber,
+  resolveVuetifySlotString,
+  resolveVuetifySlotValue
+} from "../../../app-core/shared/vuetify-slot-items.ts";
 import { STORAGE_KEYS } from "../../../app-core/storageKeys.ts";
 import { DEFAULT_VALUES } from "../../../constants.ts";
 import { calculateBoxPriceCostCad, getSinglesEntryUnitMarketValueInSellingCurrency } from "../../../domain/calculations.ts";
@@ -51,6 +56,9 @@ type LiveSinglesPanelThis = {
   liveSinglesIndividualPrices: Record<number, number>;
   liveSinglesBundlePrice: number | null;
   liveSinglesBundleSelectionKey: string;
+  liveSinglesImagePreviewOpen: boolean;
+  liveSinglesImagePreviewSrc: string;
+  liveSinglesImagePreviewTitle: string;
 
   // ===== AppContext bridge =====
   ctx: Record<string, unknown> | undefined;
@@ -95,7 +103,6 @@ type LiveSinglesPanelThis = {
   getEntryCostInSellingCurrency(entry: SinglesPurchaseEntry): number;
   getEntryMarketValueInSellingCurrency(entry: SinglesPurchaseEntry): number;
   resolveEntryBasis(entry: SinglesPurchaseEntry): number;
-  resolveLiveSinglesSuggestionImage(item: unknown): string;
   getIndividualPrice(entry: SinglesPurchaseEntry): number;
   getIndividualProfit(entry: SinglesPurchaseEntry): number;
   getSuggestedIndividualPrice(entry: SinglesPurchaseEntry): number;
@@ -118,6 +125,9 @@ type LiveSinglesPanelThis = {
   convertLiveSinglesToSale(): void;
   adjustIndividualPrice(entry: SinglesPurchaseEntry, direction: -1 | 1): void;
   adjustBundlePrice(direction: -1 | 1): void;
+  openLiveSinglesImagePreview(entry: SinglesPurchaseEntry): void;
+  closeLiveSinglesImagePreview(): void;
+  onLiveSinglesImagePreviewModelValue(value: boolean): void;
   getBundleAllocationForEntry(entryId: number): { id: number; share: number; percent: number } | null;
 };
 
@@ -138,7 +148,10 @@ export const LiveSinglesPanel = {
       liveSinglesQuantities: {} as Record<number, number>,
       liveSinglesIndividualPrices: {} as Record<number, number>,
       liveSinglesBundlePrice: null as number | null,
-      liveSinglesBundleSelectionKey: ""
+      liveSinglesBundleSelectionKey: "",
+      liveSinglesImagePreviewOpen: false,
+      liveSinglesImagePreviewSrc: "",
+      liveSinglesImagePreviewTitle: ""
     };
   },
   computed: {
@@ -304,6 +317,9 @@ export const LiveSinglesPanel = {
     }
   },
   methods: {
+    resolveVuetifySlotNumber,
+    resolveVuetifySlotString,
+    resolveVuetifySlotValue,
     t(this: LiveSinglesPanelThis, key: string, fallback = ""): string {
       const context = (this.ctx || this.$root) as Record<string, unknown> | undefined;
       const translator = context?.t as ((messageKey: string) => string) | undefined;
@@ -327,6 +343,27 @@ export const LiveSinglesPanel = {
       }
       if (value == null || Number.isNaN(Number(value))) return "0.00";
       return Number(value).toFixed(decimals);
+    },
+
+    openLiveSinglesImagePreview(this: LiveSinglesPanelThis, entry: SinglesPurchaseEntry): void {
+      const image = String(entry?.image || "").trim();
+      if (!image) return;
+
+      this.liveSinglesImagePreviewSrc = image;
+      this.liveSinglesImagePreviewTitle = String(entry?.item || entry?.cardNumber || "").trim();
+      this.liveSinglesImagePreviewOpen = true;
+    },
+
+    closeLiveSinglesImagePreview(this: LiveSinglesPanelThis): void {
+      this.liveSinglesImagePreviewOpen = false;
+      this.liveSinglesImagePreviewSrc = "";
+      this.liveSinglesImagePreviewTitle = "";
+    },
+
+    onLiveSinglesImagePreviewModelValue(this: LiveSinglesPanelThis, value: boolean): void {
+      if (!value) {
+        this.closeLiveSinglesImagePreview();
+      }
     },
 
     getStockLabel(this: LiveSinglesPanelThis, entry: SinglesPurchaseEntry): string {
@@ -417,23 +454,6 @@ export const LiveSinglesPanel = {
       const marketValue = this.getEntryMarketValueInSellingCurrency(entry);
       if (marketValue > 0) return marketValue;
       return this.getEntryCostInSellingCurrency(entry);
-    },
-
-    resolveLiveSinglesSuggestionImage(this: LiveSinglesPanelThis, item: unknown): string {
-      if (!item || typeof item !== "object") return "";
-      const raw = (item as { raw?: unknown }).raw;
-      if (raw && typeof raw === "object") {
-        const image = String((raw as { image?: unknown }).image || "").trim();
-        if (image) return image;
-      }
-
-      const props = (item as { props?: unknown }).props;
-      if (props && typeof props === "object") {
-        const image = String((props as { image?: unknown }).image || "").trim();
-        if (image) return image;
-      }
-
-      return String((item as { image?: unknown }).image || "").trim();
     },
 
     getSuggestedIndividualPrice(this: LiveSinglesPanelThis, entry: SinglesPurchaseEntry): number {

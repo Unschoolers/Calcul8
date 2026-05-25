@@ -52,25 +52,25 @@
                         @update:model-value="onSinglesSaleLineCardSelectionChange(lineIndex, $event)">
                         <template #item="{ props, item }">
                           <v-list-item v-bind="props" class="sale-editor-dropdown-item">
-                            <template v-if="item.raw.image" #prepend>
-                              <img :src="item.raw.image" :alt="item.raw.item" class="sale-editor-dropdown-thumb"
+                            <template v-if="resolveVuetifySlotString(item, ['image'])" #prepend>
+                              <img :src="resolveVuetifySlotString(item, ['image'])" :alt="resolveVuetifySlotString(item, ['item', 'title', 'name'])" class="sale-editor-dropdown-thumb"
                                 loading="lazy" @error="$event.target.style.display='none'" />
                             </template>
                             <v-list-item-title class="text-body-2 font-weight-medium">
-                              {{ item.raw.item }}
-                              <span v-if="item.raw.cardNumber" class="text-medium-emphasis">#{{
-                                item.raw.cardNumber }}</span>
+                              {{ resolveVuetifySlotString(item, ['item', 'title', 'name']) }}
+                              <span v-if="resolveVuetifySlotString(item, ['cardNumber', 'cardNo'])" class="text-medium-emphasis">#{{
+                                resolveVuetifySlotString(item, ['cardNumber', 'cardNo']) }}</span>
                             </v-list-item-title>
                             <v-list-item-subtitle class="text-caption">
-                              {{ t('saleEditorLineOptionSummary', { quantity: item.raw.quantity, cost: formatCurrency(item.raw.costBasis) }) }}
+                              {{ t('saleEditorLineOptionSummary', { quantity: resolveVuetifySlotNumber(item, ['quantity']) ?? 0, cost: formatCurrency(resolveVuetifySlotNumber(item, ['costBasis'])) }) }}
                             </v-list-item-subtitle>
                           </v-list-item>
                         </template>
                         <template #selection="{ item }">
                           <div class="text-body-2 text-truncate">
-                            {{ item.raw.item }}
-                            <span v-if="item.raw.cardNumber" class="text-medium-emphasis">#{{
-                              item.raw.cardNumber }}</span>
+                            {{ resolveVuetifySlotString(item, ['item', 'title', 'name']) }}
+                            <span v-if="resolveVuetifySlotString(item, ['cardNumber', 'cardNo'])" class="text-medium-emphasis">#{{
+                              resolveVuetifySlotString(item, ['cardNumber', 'cardNo']) }}</span>
                           </div>
                         </template>
                       </v-autocomplete>
