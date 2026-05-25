@@ -164,6 +164,31 @@ jobs:
               REALTIME_INTERNAL_API_KEY=secretref:realtime-internal-api-key \
               REALTIME_TOKEN_SECRET=secretref:realtime-token-secret
 
+          mapfile -t active_revisions < <(
+            az containerapp revision list \
+              --name "${AZURE_CONTAINER_APP_NAME_REALTIME_PROD}" \
+              --resource-group "${AZURE_RESOURCE_GROUP_PROD}" \
+              --query "[?properties.active].name" \
+              --output tsv
+          )
+
+          if [ "${#active_revisions[@]}" -eq 0 ]; then
+            echo "No active realtime revisions found to restart after secret updates."
+            exit 1
+          fi
+
+          for revision in "${active_revisions[@]}"; do
+            if [ -z "${revision}" ]; then
+              continue
+            fi
+
+            echo "Restarting realtime revision ${revision} so updated secrets take effect."
+            az containerapp revision restart \
+              --name "${AZURE_CONTAINER_APP_NAME_REALTIME_PROD}" \
+              --resource-group "${AZURE_RESOURCE_GROUP_PROD}" \
+              --revision "${revision}"
+          done
+
       - name: Smoke check realtime publish and subscribe
         shell: bash
         env:

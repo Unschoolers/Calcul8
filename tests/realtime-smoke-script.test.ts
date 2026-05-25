@@ -272,6 +272,15 @@ test("deploy workflows validate and smoke realtime recovery wiring", async () =>
   assert.match(realtimeWorkflow, /REALTIME_PUBLIC_BASE_URL_PROD/);
   assert.match(realtimeWorkflow, /https:\/\/ws\.whatfees\.ca/);
   assert.match(realtimeWorkflow, /smoke_urls=/);
+  assert.match(realtimeWorkflow, /az containerapp revision list/);
+  assert.match(realtimeWorkflow, /az containerapp revision restart/);
+
+  const secretSetIndex = realtimeWorkflow.indexOf("az containerapp secret set");
+  const revisionRestartIndex = realtimeWorkflow.indexOf("az containerapp revision restart");
+  const smokeIndex = realtimeWorkflow.indexOf("Smoke check realtime publish and subscribe");
+  assert.ok(secretSetIndex >= 0, "realtime workflow should set Container App secrets");
+  assert.ok(revisionRestartIndex > secretSetIndex, "realtime workflow should restart revisions after secret updates");
+  assert.ok(revisionRestartIndex < smokeIndex, "realtime workflow should restart revisions before smoke checks");
 
   const pagesWorkflow = await readFile(".github/workflows/deploy-pages.yml", "utf8");
   assert.match(pagesWorkflow, /VITE_REALTIME_SOCKET_URL/);
