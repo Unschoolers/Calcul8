@@ -805,3 +805,29 @@ test("wheelPublicSessionSpectatorCountGet returns the live spectator count for t
   assert.equal(body.publicSessionId, "abc123xy");
   assert.equal(body.spectatorCount, 4);
 });
+
+test("wheelPublicSessionSpectatorCountGet reports when realtime count is unavailable", async () => {
+  getRealtimeRoomMemberCountMock.mockResolvedValueOnce(null);
+
+  const response = await wheelPublicSessionSpectatorCountGet(createHttpRequest({
+    method: "GET",
+    headers: {
+      authorization: "Bearer user-a"
+    },
+    params: {
+      publicSessionId: "AbC123xY"
+    }
+  }) as never, createInvocationContext() as never);
+
+  assert.equal(response.status, 200);
+  const body = response.jsonBody as {
+    publicSessionId: string;
+    spectatorCount: number;
+    countAvailable?: boolean;
+    room?: string;
+  };
+  assert.equal(body.publicSessionId, "abc123xy");
+  assert.equal(body.spectatorCount, 0);
+  assert.equal(body.countAvailable, false);
+  assert.equal(body.room, "wheel-public:abc123xy");
+});

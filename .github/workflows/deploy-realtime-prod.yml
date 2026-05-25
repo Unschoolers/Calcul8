@@ -19,6 +19,7 @@ env:
   AZURE_CONTAINER_REPOSITORY_NAME_REALTIME_PROD: whatfees-realtime
   AZURE_CONTAINER_REPOSITORY_KEEP_TAGS_PROD: 1
   REALTIME_ALLOWED_ORIGIN_PROD: https://app.whatfees.ca,https://whatfees.ca
+  REALTIME_PUBLIC_BASE_URL_PROD: https://ws.whatfees.ca
   REALTIME_MIN_REPLICAS_PROD: 1
   REALTIME_MAX_REPLICAS_PROD: 1
 
@@ -184,20 +185,30 @@ jobs:
             exit 1
           fi
 
-          realtime_url="https://${fqdn}"
-          echo "Checking realtime publish/subscribe smoke flow at ${realtime_url}"
+          smoke_urls=("https://${fqdn}")
+          if [ -n "${REALTIME_PUBLIC_BASE_URL_PROD:-}" ] && [ "${REALTIME_PUBLIC_BASE_URL_PROD}" != "https://${fqdn}" ]; then
+            smoke_urls+=("${REALTIME_PUBLIC_BASE_URL_PROD}")
+          fi
 
-          for attempt in 1 2 3 4 5; do
-            if REALTIME_SMOKE_BASE_URL="${realtime_url}" npm run --silent smoke:realtime; then
-              exit 0
+          for realtime_url in "${smoke_urls[@]}"; do
+            echo "Checking realtime publish/subscribe smoke flow at ${realtime_url}"
+
+            smoke_passed=0
+            for attempt in 1 2 3 4 5; do
+              if REALTIME_SMOKE_BASE_URL="${realtime_url}" npm run --silent smoke:realtime; then
+                smoke_passed=1
+                break
+              fi
+
+              echo "Realtime smoke attempt ${attempt} failed for ${realtime_url}; retrying in 5s..."
+              sleep 5
+            done
+
+            if [ "${smoke_passed}" -ne 1 ]; then
+              echo "Realtime publish/subscribe smoke check failed for ${realtime_url} after deployment."
+              exit 1
             fi
-
-            echo "Realtime smoke attempt ${attempt} failed; retrying in 5s..."
-            sleep 5
           done
-
-          echo "Realtime publish/subscribe smoke check failed after deployment."
-          exit 1
 
       - name: Prune old realtime images from ACR
         shell: bash

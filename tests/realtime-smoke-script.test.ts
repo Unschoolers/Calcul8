@@ -268,6 +268,9 @@ test("deploy workflows validate and smoke realtime recovery wiring", async () =>
   assert.match(realtimeWorkflow, /REALTIME_INTERNAL_API_KEY/);
   assert.match(realtimeWorkflow, /REALTIME_TOKEN_SECRET/);
   assert.match(realtimeWorkflow, /REALTIME_SMOKE_ORIGIN/);
+  assert.match(realtimeWorkflow, /REALTIME_PUBLIC_BASE_URL_PROD/);
+  assert.match(realtimeWorkflow, /https:\/\/ws\.whatfees\.ca/);
+  assert.match(realtimeWorkflow, /smoke_urls=/);
 
   const pagesWorkflow = await readFile(".github/workflows/deploy-pages.yml", "utf8");
   assert.match(pagesWorkflow, /VITE_REALTIME_SOCKET_URL/);
@@ -277,6 +280,12 @@ test("deploy workflows validate and smoke realtime recovery wiring", async () =>
   assert.match(apiWorkflow, /REALTIME_PUBLISH_URL_PROD/);
   assert.match(apiWorkflow, /REALTIME_INTERNAL_API_KEY_PROD/);
   assert.match(apiWorkflow, /REALTIME_TOKEN_SECRET_PROD/);
+  assert.match(apiWorkflow, /id-token: write/);
+  assert.match(apiWorkflow, /azure\/login@v2/);
+  assert.match(apiWorkflow, /az functionapp config appsettings set/);
+  assert.match(apiWorkflow, /REALTIME_PUBLISH_URL="\$\{REALTIME_PUBLISH_URL_PROD\}"/);
+  assert.match(apiWorkflow, /REALTIME_INTERNAL_API_KEY="\$\{REALTIME_INTERNAL_API_KEY_PROD\}"/);
+  assert.match(apiWorkflow, /REALTIME_TOKEN_SECRET="\$\{REALTIME_TOKEN_SECRET_PROD\}"/);
 
   const bootstrapScript = await readFile("scripts/bootstrap-realtime.ps1", "utf8");
   assert.doesNotMatch(bootstrapScript, /REALTIME_TOKEN_SECRET \(optional/);

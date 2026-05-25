@@ -246,14 +246,18 @@ export async function gamePublicSessionSpectatorCountGet(
       throw new HttpError(404, "Public game session was not found.");
     }
 
+    const room = buildGamePublicSessionRealtimeRoom(publicSessionId);
     const count = await getRealtimeRoomMemberCount(config, {
-      room: buildGamePublicSessionRealtimeRoom(publicSessionId),
+      room,
       logger: context
     });
+    const countAvailable = count !== null;
 
     return jsonResponse(request, config, 200, {
       publicSessionId,
-      spectatorCount: Math.max(0, Number(count ?? 0) || 0)
+      room,
+      countAvailable,
+      spectatorCount: countAvailable ? Math.max(0, Number(count) || 0) : 0
     });
   } catch (error) {
     context.error("Failed to load game public session spectator count.", error);

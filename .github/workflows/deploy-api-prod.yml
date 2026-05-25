@@ -10,6 +10,7 @@ on:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  AZURE_RESOURCE_GROUP_PROD: DefaultResourceGroup-CCAN
 
 jobs:
   verify:
@@ -44,11 +45,15 @@ jobs:
     environment: prod-backend
     permissions:
       contents: read
+      id-token: write
 
     steps:
       - name: Validate deployment env wiring
         shell: bash
         env:
+          AZURE_CLIENT_ID_PROD: ${{ vars.AZURE_CLIENT_ID_PROD }}
+          AZURE_TENANT_ID_PROD: ${{ vars.AZURE_TENANT_ID_PROD }}
+          AZURE_SUBSCRIPTION_ID_PROD: ${{ vars.AZURE_SUBSCRIPTION_ID_PROD }}
           AZURE_FUNCTIONAPP_NAME_PROD: ${{ vars.AZURE_FUNCTIONAPP_NAME_PROD }}
           MIGRATIONS_API_BASE_URL: ${{ vars.MIGRATIONS_API_BASE_URL }}
           REALTIME_PUBLISH_URL_PROD: ${{ vars.REALTIME_PUBLISH_URL_PROD }}
@@ -56,6 +61,18 @@ jobs:
           REALTIME_TOKEN_SECRET_PROD: ${{ secrets.REALTIME_TOKEN_SECRET_PROD }}
           AZURE_FUNCTIONAPP_PUBLISH_PROFILE_PROD: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE_PROD }}
         run: |
+          if [ -z "${AZURE_CLIENT_ID_PROD}" ]; then
+            echo "Missing vars.AZURE_CLIENT_ID_PROD in prod-backend environment."
+            exit 1
+          fi
+          if [ -z "${AZURE_TENANT_ID_PROD}" ]; then
+            echo "Missing vars.AZURE_TENANT_ID_PROD in prod-backend environment."
+            exit 1
+          fi
+          if [ -z "${AZURE_SUBSCRIPTION_ID_PROD}" ]; then
+            echo "Missing vars.AZURE_SUBSCRIPTION_ID_PROD in prod-backend environment."
+            exit 1
+          fi
           if [ -z "${AZURE_FUNCTIONAPP_NAME_PROD}" ]; then
             echo "Missing vars.AZURE_FUNCTIONAPP_NAME_PROD in prod-backend environment."
             exit 1
@@ -184,6 +201,13 @@ jobs:
           node -e "require('./dist/index.js'); console.log('Staged deploy package loaded successfully.');"
           popd > /dev/null
 
+      - name: Log in to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID_PROD }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID_PROD }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID_PROD }}
+
       - name: Deploy to Azure Functions (Prod)
         uses: Azure/functions-action@v1
         with:
@@ -191,6 +215,24 @@ jobs:
           package: apps/api
           sku: flexconsumption
           publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE_PROD }}
+
+      - name: Configure Function App realtime runtime settings
+        shell: bash
+        env:
+          AZURE_FUNCTIONAPP_NAME_PROD: ${{ vars.AZURE_FUNCTIONAPP_NAME_PROD }}
+          REALTIME_PUBLISH_URL_PROD: ${{ vars.REALTIME_PUBLISH_URL_PROD }}
+          REALTIME_INTERNAL_API_KEY_PROD: ${{ secrets.REALTIME_INTERNAL_API_KEY_PROD }}
+          REALTIME_TOKEN_SECRET_PROD: ${{ secrets.REALTIME_TOKEN_SECRET_PROD }}
+        run: |
+          set -euo pipefail
+
+          az functionapp config appsettings set \
+            --name "${AZURE_FUNCTIONAPP_NAME_PROD}" \
+            --resource-group "${AZURE_RESOURCE_GROUP_PROD}" \
+            --settings \
+              REALTIME_PUBLISH_URL="${REALTIME_PUBLISH_URL_PROD}" \
+              REALTIME_INTERNAL_API_KEY="${REALTIME_INTERNAL_API_KEY_PROD}" \
+              REALTIME_TOKEN_SECRET="${REALTIME_TOKEN_SECRET_PROD}"
 
       - name: Smoke test deployed routes
         shell: bash
