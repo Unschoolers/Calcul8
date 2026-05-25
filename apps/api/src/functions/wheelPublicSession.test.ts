@@ -22,6 +22,7 @@ const {
   updateGamePublicSessionMock,
   buildGamePublicSessionRealtimeRoomMock,
   getRealtimeRoomMemberCountMock,
+  getRealtimeRoomMemberCountStatusMock,
   signRealtimeSubscribeTokenMock,
   publishGamePublicSessionRealtimeEventBestEffortMock
 } = vi.hoisted(() => ({
@@ -34,6 +35,7 @@ const {
   updateGamePublicSessionMock: vi.fn(),
   buildGamePublicSessionRealtimeRoomMock: vi.fn(),
   getRealtimeRoomMemberCountMock: vi.fn(),
+  getRealtimeRoomMemberCountStatusMock: vi.fn(),
   signRealtimeSubscribeTokenMock: vi.fn(),
   publishGamePublicSessionRealtimeEventBestEffortMock: vi.fn()
 }));
@@ -63,6 +65,7 @@ vi.mock("../lib/cosmos/gamePublicSessionRepository", () => ({
 vi.mock("../lib/realtime", () => ({
   buildGamePublicSessionRealtimeRoom: buildGamePublicSessionRealtimeRoomMock,
   getRealtimeRoomMemberCount: getRealtimeRoomMemberCountMock,
+  getRealtimeRoomMemberCountStatus: getRealtimeRoomMemberCountStatusMock,
   signRealtimeSubscribeToken: signRealtimeSubscribeTokenMock,
   publishGamePublicSessionRealtimeEventBestEffort: publishGamePublicSessionRealtimeEventBestEffortMock
 }));
@@ -119,6 +122,10 @@ beforeEach(() => {
   buildGamePublicSessionRealtimeRoomMock.mockImplementation((publicSessionId: string) => `wheel-public:${publicSessionId}`);
   signRealtimeSubscribeTokenMock.mockReturnValue("signed-token");
   getRealtimeRoomMemberCountMock.mockResolvedValue(4);
+  getRealtimeRoomMemberCountStatusMock.mockResolvedValue({
+    available: true,
+    count: 4
+  });
   createGamePublicSessionMock.mockResolvedValue({
     ownerUserId: "user-a",
     publicSessionId: "abc123xy",
@@ -800,14 +807,18 @@ test("wheelPublicSessionSpectatorCountGet returns the live spectator count for t
 
   assert.equal(response.status, 200);
   assert.equal(buildGamePublicSessionRealtimeRoomMock.mock.calls.at(-1)?.[0], "abc123xy");
-  assert.equal(getRealtimeRoomMemberCountMock.mock.calls.length, 1);
+  assert.equal(getRealtimeRoomMemberCountStatusMock.mock.calls.length, 1);
   const body = response.jsonBody as { publicSessionId: string; spectatorCount: number };
   assert.equal(body.publicSessionId, "abc123xy");
   assert.equal(body.spectatorCount, 4);
 });
 
 test("wheelPublicSessionSpectatorCountGet reports when realtime count is unavailable", async () => {
-  getRealtimeRoomMemberCountMock.mockResolvedValueOnce(null);
+  getRealtimeRoomMemberCountStatusMock.mockResolvedValueOnce({
+    available: false,
+    reason: "unauthorized",
+    status: 401
+  });
 
   const response = await wheelPublicSessionSpectatorCountGet(createHttpRequest({
     method: "GET",
@@ -824,10 +835,14 @@ test("wheelPublicSessionSpectatorCountGet reports when realtime count is unavail
     publicSessionId: string;
     spectatorCount: number;
     countAvailable?: boolean;
+    countUnavailableReason?: string;
+    countHttpStatus?: number;
     room?: string;
   };
   assert.equal(body.publicSessionId, "abc123xy");
   assert.equal(body.spectatorCount, 0);
   assert.equal(body.countAvailable, false);
+  assert.equal(body.countUnavailableReason, "unauthorized");
+  assert.equal(body.countHttpStatus, 401);
   assert.equal(body.room, "wheel-public:abc123xy");
 });

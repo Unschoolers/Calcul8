@@ -13,6 +13,25 @@ type SignedSubscribeTokenPayload = {
   exp?: number;
 };
 
+export type RealtimeRoomMemberCountUnavailableReason =
+  | "missing_room"
+  | "not_configured"
+  | "unauthorized"
+  | "http_error"
+  | "invalid_response"
+  | "request_failed";
+
+export type RealtimeRoomMemberCountStatus =
+  | {
+    available: true;
+    count: number;
+  }
+  | {
+    available: false;
+    reason: RealtimeRoomMemberCountUnavailableReason;
+    status?: number;
+  };
+
 export function buildWorkspaceLotRealtimeRoom(workspaceId: string, lotId: string): string {
   return `workspace:${workspaceId}:lot:${lotId}`;
 }
@@ -123,11 +142,32 @@ export async function getRealtimeRoomMemberCount(
     logger?: RealtimeLogger;
   }
 ): Promise<number | null> {
+  const result = await getRealtimeRoomMemberCountStatus(config, args);
+  return result.available ? result.count : null;
+}
+
+export async function getRealtimeRoomMemberCountStatus(
+  config: ApiConfig,
+  args: {
+    room: string;
+    logger?: RealtimeLogger;
+  }
+): Promise<RealtimeRoomMemberCountStatus> {
   const room = String(args.room ?? "").trim();
-  if (!room) return null;
+  if (!room) {
+    return {
+      available: false,
+      reason: "missing_room"
+    };
+  }
   const roomCountUrl = resolveRealtimeRoomCountUrl(config);
   const internalApiKey = String(config.realtimeInternalApiKey ?? "").trim();
-  if (!roomCountUrl || !internalApiKey) return null;
+  if (!roomCountUrl || !internalApiKey) {
+    return {
+      available: false,
+      reason: "not_configured"
+    };
+  }
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), REALTIME_PUBLISH_TIMEOUT_MS);
@@ -147,18 +187,50 @@ export async function getRealtimeRoomMemberCount(
       args.logger?.warn?.(
         `[realtime] Failed to fetch room count for ${room} (${response.status}).`
       );
-      return null;
+      return {
+        available: false,
+        reason: response.status === 401 || response.status === 403 ? "unauthorized" : "http_error",
+        status: response.status
+      };
     }
 
-    const body = await response.json() as { count?: unknown };
+    let body: { count?: unknown };
+    try {
+      body = await response.json() as { count?: unknown };
+    } catch {
+      args.logger?.warn?.(
+        `[realtime] Failed to parse room count response for ${room}.`
+      );
+      return {
+        available: false,
+        reason: "invalid_response"
+      };
+    }
+
     const count = Number(body.count);
-    return Number.isFinite(count) && count >= 0 ? Math.floor(count) : 0;
+    if (!Number.isFinite(count) || count < 0) {
+      args.logger?.warn?.(
+        `[realtime] Invalid room count response for ${room}.`
+      );
+      return {
+        available: false,
+        reason: "invalid_response"
+      };
+    }
+
+    return {
+      available: true,
+      count: Math.floor(count)
+    };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown realtime room count error.";
     args.logger?.warn?.(
       `[realtime] Failed to fetch room count for ${room}: ${message}`
     );
-    return null;
+    return {
+      available: false,
+      reason: "request_failed"
+    };
   } finally {
     clearTimeout(timeoutId);
   }

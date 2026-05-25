@@ -7,6 +7,7 @@ import {
   buildWorkspaceLotRealtimeRoom,
   buildWorkspacePresenceRealtimeRoom,
   buildWorkspaceWheelRealtimeRoom,
+  getRealtimeRoomMemberCountStatus,
   publishGamePublicSessionRealtimeEvent,
   publishWheelPublicSessionRealtimeEvent,
   publishWorkspaceLotRealtimeEvent,
@@ -210,6 +211,71 @@ test("publishGamePublicSessionRealtimeEvent posts spectator updates through the 
     room: "wheel-public:abc123xy",
     eventType: "game.public-session.updated",
     data: { publicSessionId: "abc123xy", snapshot: { gameType: "bracket" } }
+  });
+});
+
+test("getRealtimeRoomMemberCountStatus reads counts from the internal room-count endpoint", async () => {
+  const fetchMock = vi.fn().mockResolvedValue({
+    ok: true,
+    json: async () => ({ count: 3.8 })
+  });
+  globalThis.fetch = fetchMock as typeof fetch;
+
+  const result = await getRealtimeRoomMemberCountStatus(createApiConfig({
+    realtimePublishUrl: "https://ws.example/internal/publish",
+    realtimeInternalApiKey: "internal-key"
+  }), {
+    room: "wheel-public:abc123xy"
+  });
+
+  assert.deepEqual(result, {
+    available: true,
+    count: 3
+  });
+  assert.equal(fetchMock.mock.calls[0]?.[0], "https://ws.example/internal/room-count");
+  const requestInit = fetchMock.mock.calls[0]?.[1] as {
+    method: string;
+    headers: Record<string, string>;
+    body: string;
+  };
+  assert.equal(requestInit.method, "POST");
+  assert.equal(requestInit.headers.Authorization, "Bearer internal-key");
+  assert.deepEqual(JSON.parse(requestInit.body), {
+    room: "wheel-public:abc123xy"
+  });
+});
+
+test("getRealtimeRoomMemberCountStatus reports non-secret unavailable reasons", async () => {
+  globalThis.fetch = vi.fn();
+
+  const notConfigured = await getRealtimeRoomMemberCountStatus(createApiConfig({
+    realtimePublishUrl: "https://ws.example/internal/publish",
+    realtimeInternalApiKey: ""
+  }), {
+    room: "wheel-public:abc123xy"
+  });
+  assert.deepEqual(notConfigured, {
+    available: false,
+    reason: "not_configured"
+  });
+  assert.equal((globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls.length, 0);
+
+  const fetchMock = vi.fn().mockResolvedValue({
+    ok: false,
+    status: 401
+  });
+  globalThis.fetch = fetchMock as typeof fetch;
+
+  const unauthorized = await getRealtimeRoomMemberCountStatus(createApiConfig({
+    realtimePublishUrl: "https://ws.example/internal/publish",
+    realtimeInternalApiKey: "wrong-key"
+  }), {
+    room: "wheel-public:abc123xy"
+  });
+  assert.deepEqual(unauthorized, {
+    available: false,
+    reason: "unauthorized",
+    status: 401
   });
 });
 

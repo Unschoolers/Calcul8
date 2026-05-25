@@ -10,7 +10,7 @@ import { hasWorkspaceMembership } from "../../lib/cosmos/workspaceRepository";
 import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../../lib/http";
 import {
     buildGamePublicSessionRealtimeRoom,
-    getRealtimeRoomMemberCount,
+    getRealtimeRoomMemberCountStatus,
     publishGamePublicSessionRealtimeEventBestEffort,
     signRealtimeSubscribeToken
 } from "../../lib/realtime";
@@ -247,17 +247,21 @@ export async function gamePublicSessionSpectatorCountGet(
     }
 
     const room = buildGamePublicSessionRealtimeRoom(publicSessionId);
-    const count = await getRealtimeRoomMemberCount(config, {
+    const countStatus = await getRealtimeRoomMemberCountStatus(config, {
       room,
       logger: context
     });
-    const countAvailable = count !== null;
+    const countAvailable = countStatus.available;
 
     return jsonResponse(request, config, 200, {
       publicSessionId,
       room,
       countAvailable,
-      spectatorCount: countAvailable ? Math.max(0, Number(count) || 0) : 0
+      spectatorCount: countStatus.available ? countStatus.count : 0,
+      ...(countStatus.available ? {} : {
+        countUnavailableReason: countStatus.reason,
+        ...(typeof countStatus.status === "number" ? { countHttpStatus: countStatus.status } : {})
+      })
     });
   } catch (error) {
     context.error("Failed to load game public session spectator count.", error);
