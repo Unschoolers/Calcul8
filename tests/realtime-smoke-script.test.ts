@@ -187,7 +187,8 @@ test("runRealtimeSmoke subscribes, publishes, and waits for the delivered event"
       room: "smoke:run"
     }
   });
-  assert.equal(fetchImpl.mock.calls[1]?.[1]?.headers?.["x-realtime-key"], "internal-key");
+  const publishHeaders = new Headers(fetchImpl.mock.calls[1]?.[1]?.headers);
+  assert.equal(publishHeaders.get("x-realtime-key"), "internal-key");
 
   const sentSubscribe = JSON.parse(FakeWebSocket.last?.sent[0] ?? "{}") as {
     rooms?: string[];
@@ -277,15 +278,12 @@ test("deploy workflows validate and smoke realtime recovery wiring", async () =>
   assert.match(pagesWorkflow, /wss:\/\/\*\/socket/);
 
   const apiWorkflow = await readFile(".github/workflows/deploy-api-prod.yml", "utf8");
-  assert.match(apiWorkflow, /REALTIME_PUBLISH_URL_PROD/);
-  assert.match(apiWorkflow, /REALTIME_INTERNAL_API_KEY_PROD/);
-  assert.match(apiWorkflow, /REALTIME_TOKEN_SECRET_PROD/);
-  assert.match(apiWorkflow, /id-token: write/);
-  assert.match(apiWorkflow, /azure\/login@v2/);
-  assert.match(apiWorkflow, /az functionapp config appsettings set/);
-  assert.match(apiWorkflow, /REALTIME_PUBLISH_URL="\$\{REALTIME_PUBLISH_URL_PROD\}"/);
-  assert.match(apiWorkflow, /REALTIME_INTERNAL_API_KEY="\$\{REALTIME_INTERNAL_API_KEY_PROD\}"/);
-  assert.match(apiWorkflow, /REALTIME_TOKEN_SECRET="\$\{REALTIME_TOKEN_SECRET_PROD\}"/);
+  assert.doesNotMatch(apiWorkflow, /REALTIME_PUBLISH_URL_PROD/);
+  assert.doesNotMatch(apiWorkflow, /REALTIME_INTERNAL_API_KEY_PROD/);
+  assert.doesNotMatch(apiWorkflow, /REALTIME_TOKEN_SECRET_PROD/);
+  assert.doesNotMatch(apiWorkflow, /id-token: write/);
+  assert.doesNotMatch(apiWorkflow, /azure\/login@v2/);
+  assert.doesNotMatch(apiWorkflow, /az functionapp config appsettings set/);
 
   const bootstrapScript = await readFile("scripts/bootstrap-realtime.ps1", "utf8");
   assert.doesNotMatch(bootstrapScript, /REALTIME_TOKEN_SECRET \(optional/);
