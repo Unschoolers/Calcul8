@@ -74,8 +74,8 @@
                   <div class="live-singles-suggestion-media">
                     <div class="live-singles-suggestion-thumb" aria-hidden="true">
                       <img
-                        v-if="item?.raw?.image"
-                        :src="item.raw.image"
+                        v-if="resolveLiveSinglesSuggestionImage(item)"
+                        :src="resolveLiveSinglesSuggestionImage(item)"
                         alt=""
                         loading="lazy"
                       >
@@ -84,12 +84,12 @@
                   </div>
                 </template>
                 <v-list-item-title class="live-singles-suggestion-title">
-                  {{ item?.raw?.name || item?.raw?.title }}
+                  {{ item?.raw?.name || item?.raw?.title || item?.title }}
                 </v-list-item-title>
                 <v-list-item-subtitle class="live-singles-suggestion-subtitle">
                   <span v-if="item?.raw?.cardNumber">#{{ item.raw.cardNumber }}</span>
-                  <span v-if="item?.raw?.subtitle">
-                    • {{ item.raw.subtitle }}
+                  <span v-if="item?.raw?.subtitle || item?.props?.subtitle">
+                    • {{ item?.raw?.subtitle || item?.props?.subtitle }}
                   </span>
                 </v-list-item-subtitle>
               </v-list-item>
@@ -164,7 +164,15 @@
         <v-card-text class="pa-3">
           <div class="live-singles-item-header">
             <div class="live-singles-item-title-wrap">
-              <v-icon size="16" class="live-singles-item-icon">mdi-cards-outline</v-icon>
+              <div class="live-singles-item-thumb" aria-hidden="true">
+                <img
+                  v-if="entry.image"
+                  :src="entry.image"
+                  alt=""
+                  loading="lazy"
+                >
+                <v-icon v-else size="16" class="live-singles-item-icon">mdi-cards-outline</v-icon>
+              </div>
               <div class="live-singles-item-title text-body-2 font-weight-medium">
                 {{ entry.item || t('liveSinglesUnnamedItemLabel') }}
                 <span v-if="entry.cardNumber" class="text-medium-emphasis">#{{ entry.cardNumber }}</span>

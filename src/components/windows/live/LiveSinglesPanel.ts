@@ -95,6 +95,7 @@ type LiveSinglesPanelThis = {
   getEntryCostInSellingCurrency(entry: SinglesPurchaseEntry): number;
   getEntryMarketValueInSellingCurrency(entry: SinglesPurchaseEntry): number;
   resolveEntryBasis(entry: SinglesPurchaseEntry): number;
+  resolveLiveSinglesSuggestionImage(item: unknown): string;
   getIndividualPrice(entry: SinglesPurchaseEntry): number;
   getIndividualProfit(entry: SinglesPurchaseEntry): number;
   getSuggestedIndividualPrice(entry: SinglesPurchaseEntry): number;
@@ -416,6 +417,23 @@ export const LiveSinglesPanel = {
       const marketValue = this.getEntryMarketValueInSellingCurrency(entry);
       if (marketValue > 0) return marketValue;
       return this.getEntryCostInSellingCurrency(entry);
+    },
+
+    resolveLiveSinglesSuggestionImage(this: LiveSinglesPanelThis, item: unknown): string {
+      if (!item || typeof item !== "object") return "";
+      const raw = (item as { raw?: unknown }).raw;
+      if (raw && typeof raw === "object") {
+        const image = String((raw as { image?: unknown }).image || "").trim();
+        if (image) return image;
+      }
+
+      const props = (item as { props?: unknown }).props;
+      if (props && typeof props === "object") {
+        const image = String((props as { image?: unknown }).image || "").trim();
+        if (image) return image;
+      }
+
+      return String((item as { image?: unknown }).image || "").trim();
     },
 
     getSuggestedIndividualPrice(this: LiveSinglesPanelThis, entry: SinglesPurchaseEntry): number {

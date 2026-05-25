@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import { afterEach, test, vi } from "vitest";
 import { LiveSinglesPanel } from "../src/components/windows/live/LiveSinglesPanel.ts";
 import { STORAGE_KEYS } from "../src/app-core/storageKeys.ts";
@@ -167,6 +168,25 @@ test("live singles autocomplete can search by card number with the same picker f
   assert.equal(items[0]?.name, "Mari Makinami Illustrious");
   assert.equal(items[0]?.cardNumber, "UE15BT/EVA-1-017-ALT1");
   assert.equal(items[0]?.image, "https://example.com/mari.webp");
+});
+
+test("live singles autocomplete template renders normalized item fallbacks", async () => {
+  const template = await readFile("src/components/windows/live/LiveSinglesPanel.html", "utf8");
+
+  assert.match(template, /item\?\.raw\?\.name\s*\|\|\s*item\?\.raw\?\.title\s*\|\|\s*item\?\.title/);
+  assert.match(template, /resolveLiveSinglesSuggestionImage\(item\)/);
+  assert.match(template, /entry\.image/);
+  assert.match(template, /live-singles-item-thumb/);
+});
+
+test("resolveLiveSinglesSuggestionImage handles Vuetify slot item shapes", () => {
+  const context = createContext();
+  const resolveImage = getMethod<(this: PanelCtx, item: unknown) => string>("resolveLiveSinglesSuggestionImage");
+
+  assert.equal(resolveImage.call(context, { raw: { image: " https://img.test/raw.jpg " } }), "https://img.test/raw.jpg");
+  assert.equal(resolveImage.call(context, { props: { image: "https://img.test/props.jpg" } }), "https://img.test/props.jpg");
+  assert.equal(resolveImage.call(context, { image: "https://img.test/direct.jpg" }), "https://img.test/direct.jpg");
+  assert.equal(resolveImage.call(context, { raw: {}, props: {} }), "");
 });
 
 test("bundle metrics and allocations are derived from selected entries", () => {
