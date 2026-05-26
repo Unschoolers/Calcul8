@@ -30,6 +30,22 @@ test("singles inventory table uses a larger unframed card image row", async () =
   assert.match(css, /\.singles-mobile-thumb \{[\s\S]*border: 0;/);
 });
 
+test("manual singles editor exposes image upload controls for custom inventory", async () => {
+  const template = await readFile("src/components/windows/singles/SinglesConfigWindow.html", "utf8");
+  const css = await readFile("src/components/windows/singles/SinglesConfigWindow.css", "utf8");
+
+  assert.match(template, /v-if="!showCatalogSuggestions"[\s\S]*type="file"[\s\S]*accept="image\/\*"/);
+  assert.match(template, /@change="handleSinglesImageUpload"/);
+  assert.match(template, /@click="triggerSinglesImageUpload"/);
+  assert.match(template, /@click="clearEditingSinglesImage"/);
+  assert.match(template, /singlesEditorAddImageAction/);
+  assert.match(template, /singlesEditorChangeImageAction/);
+  assert.match(template, /singlesEditorImageUploadHelp/);
+  assert.match(template, /singlesImageUploadError/);
+  assert.match(css, /\.singles-editor-image-actions/);
+  assert.match(css, /\.singles-editor-image-error/);
+});
+
 function getComputed<T>(name: string): (this: AnyContext) => T {
   return (singlesConfigWindowDefinition.computed as Record<string, unknown>)[name] as (this: AnyContext) => T;
 }
@@ -423,6 +439,84 @@ test("editing quantity stepper stays compact and never drops below one", () => {
 
   context.setEditingSinglesQuantity(0);
   assert.equal(context.editingSinglesRow.quantity, 1);
+});
+
+test("manual image helpers update and clear the editing row image", () => {
+  const context = createContext({
+    editingSinglesRow: {
+      item: "Manual item",
+      cardNumber: "",
+      image: "",
+      condition: "",
+      language: "",
+      cost: 1,
+      currency: "CAD",
+      quantity: 1,
+      marketValue: 2
+    }
+  });
+
+  assert.equal(context.singlesImageUploadBusy, false);
+  assert.equal(context.singlesImageUploadError, "");
+  assert.equal(typeof context.setEditingSinglesImageFromDataUrl, "function");
+  assert.equal(typeof context.clearEditingSinglesImage, "function");
+
+  context.singlesImageUploadError = "old error";
+  context.setEditingSinglesImageFromDataUrl(" data:image/jpeg;base64,abc ");
+  assert.equal(context.editingSinglesRow.image, "data:image/jpeg;base64,abc");
+  assert.equal(context.singlesImageUploadError, "");
+
+  context.clearEditingSinglesImage();
+  assert.equal(context.editingSinglesRow.image, "");
+  assert.equal(context.singlesImageUploadError, "");
+});
+
+test("uploaded manual image previews before the item name is typed", () => {
+  const context = createContext({
+    showCatalogSuggestions: false,
+    editingSinglesRow: {
+      item: "",
+      cardNumber: "",
+      image: "data:image/jpeg;base64,abc",
+      condition: "",
+      language: "",
+      cost: 1,
+      currency: "CAD",
+      quantity: 1,
+      marketValue: 2
+    }
+  });
+
+  assert.equal(
+    getComputed<string>("editingSinglesPreviewImage").call(context),
+    "data:image/jpeg;base64,abc"
+  );
+});
+
+test("manual image upload reports invalid files without changing the editor image", async () => {
+  const context = createContext({
+    t: (key: string) => ({
+      singlesEditorImageUploadInvalidType: "Choose an image file."
+    })[key] || key,
+    editingSinglesRow: {
+      item: "Manual item",
+      cardNumber: "",
+      image: "data:image/jpeg;base64,old",
+      condition: "",
+      language: "",
+      cost: 1,
+      currency: "CAD",
+      quantity: 1,
+      marketValue: 2
+    }
+  });
+
+  await context.applySinglesImageFile({ type: "text/plain", name: "notes.txt" } as File);
+
+  assert.equal(context.singlesImageUploadBusy, false);
+  assert.equal(context.singlesImageUploadError, "Choose an image file.");
+  assert.equal(context.editingSinglesRow.image, "data:image/jpeg;base64,old");
+  assert.deepEqual(context.notify.mock.calls.at(-1), ["Choose an image file.", "warning"]);
 });
 
 test("saveSinglesRowEditor updates existing row and rejects invalid input", () => {

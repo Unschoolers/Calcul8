@@ -209,9 +209,9 @@
                 <div class="text-caption text-medium-emphasis mb-2">{{ t('itemCatalogSourceLabel') }}</div>
                 <v-btn-toggle v-model="newLotCatalogSource" mandatory divided density="compact" variant="outlined"
                   class="segment-toggle">
+                  <v-btn value="none" size="small">{{ t('itemCatalogCustom') }}</v-btn>
                   <v-btn value="ua" size="small">{{ t('itemCatalogUnionArena') }}</v-btn>
                   <v-btn value="pokemon" size="small">{{ t('itemCatalogPokemon') }}</v-btn>
-                  <v-btn value="none" size="small">{{ t('itemCatalogCustom') }}</v-btn>
                 </v-btn-toggle>
               </div>
             </v-card-text>
@@ -234,9 +234,9 @@
                 <div class="text-caption text-medium-emphasis mb-2">{{ t('itemCatalogSourceLabel') }}</div>
                 <v-btn-toggle :model-value="currentLotCatalogSource" mandatory divided density="compact"
                   variant="outlined" class="segment-toggle" @update:model-value="setCurrentLotCatalogSource">
+                  <v-btn value="none" size="small">{{ t('itemCatalogCustom') }}</v-btn>
                   <v-btn value="ua" size="small">{{ t('itemCatalogUnionArena') }}</v-btn>
                   <v-btn value="pokemon" size="small">{{ t('itemCatalogPokemon') }}</v-btn>
-                  <v-btn value="none" size="small">{{ t('itemCatalogCustom') }}</v-btn>
                 </v-btn-toggle>
                 <div class="text-caption text-medium-emphasis mt-2">
                   {{

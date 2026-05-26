@@ -274,36 +274,36 @@ test("list and portfolio filter item computed values mirror lots", () => {
   assert.deepEqual(lotItems[0], {
     title: "A",
     value: 11,
-    subtitle: "Bulk | 2026-02-01",
+    subtitle: "Grouped | 2026-02-01",
     lotType: "bulk",
     isComplete: false,
     symbolIcon: "mdi-cube-outline",
     completionIcon: null,
-    groupLabel: "Bulk lots"
+    groupLabel: "Grouped inventory"
   });
   assert.deepEqual(lotItems[1], {
     title: "B",
     value: 22,
-    subtitle: "Singles | Pokemon | 2026-03-01",
+    subtitle: "Individual | Pokemon | 2026-03-01",
     lotType: "singles",
     isComplete: false,
     symbolIcon: "mdi-cards-outline",
     completionIcon: null,
-    groupLabel: "Singles lots"
+    groupLabel: "Individual items"
   });
 
   const visibleLotItems = appComputed.visibleLotItems.call({
     lotItems: [
-      { title: "Alpha bulk", value: 11, subtitle: "Bulk | 2026-02-01", lotType: "bulk", isComplete: false, symbolIcon: "mdi-cube-outline", completionIcon: null, groupLabel: "Bulk lots" },
-      { title: "Union arena singles", value: 22, subtitle: "Singles | Pokemon | 2026-03-01", lotType: "singles", isComplete: false, symbolIcon: "mdi-cards-outline", completionIcon: null, groupLabel: "Singles lots" },
-      { title: "Kagurabachi", value: 33, subtitle: "Bulk | 2026-03-03", lotType: "bulk", isComplete: false, symbolIcon: "mdi-cube-outline", completionIcon: null, groupLabel: null }
+      { title: "Alpha bulk", value: 11, subtitle: "Grouped | 2026-02-01", lotType: "bulk", isComplete: false, symbolIcon: "mdi-cube-outline", completionIcon: null, groupLabel: "Grouped inventory" },
+      { title: "Union arena singles", value: 22, subtitle: "Individual | Pokemon | 2026-03-01", lotType: "singles", isComplete: false, symbolIcon: "mdi-cards-outline", completionIcon: null, groupLabel: "Individual items" },
+      { title: "Kagurabachi", value: 33, subtitle: "Grouped | 2026-03-03", lotType: "bulk", isComplete: false, symbolIcon: "mdi-cube-outline", completionIcon: null, groupLabel: null }
     ],
     lotSearchQuery: "a"
   } as unknown as Parameters<typeof appComputed.visibleLotItems>[0]);
   assert.deepEqual(visibleLotItems.map((item) => [item.title, item.groupLabel]), [
-    ["Alpha bulk", "Bulk lots"],
+    ["Alpha bulk", "Grouped inventory"],
     ["Kagurabachi", null],
-    ["Union arena singles", "Singles lots"]
+    ["Union arena singles", "Individual items"]
   ]);
 
   const filterItems = appComputed.portfolioLotFilterItems.call({
@@ -314,22 +314,22 @@ test("list and portfolio filter item computed values mirror lots", () => {
     {
       title: "A",
       value: 11,
-      subtitle: "Bulk | 2026-02-01",
+      subtitle: "Grouped | 2026-02-01",
       lotType: "bulk",
       isComplete: false,
       symbolIcon: "mdi-cube-outline",
       completionIcon: null,
-      groupLabel: "Bulk lots"
+      groupLabel: "Grouped inventory"
     },
     {
       title: "B",
       value: 22,
-      subtitle: "Singles | Pokemon | 2026-03-01",
+      subtitle: "Individual | Pokemon | 2026-03-01",
       lotType: "singles",
       isComplete: false,
       symbolIcon: "mdi-cards-outline",
       completionIcon: null,
-      groupLabel: "Singles lots"
+      groupLabel: "Individual items"
     }
   ]);
 
@@ -341,12 +341,12 @@ test("list and portfolio filter item computed values mirror lots", () => {
     {
       title: "B",
       value: 22,
-      subtitle: "Singles | Pokemon | 2026-03-01",
+      subtitle: "Individual | Pokemon | 2026-03-01",
       lotType: "singles",
       isComplete: false,
       symbolIcon: "mdi-cards-outline",
       completionIcon: null,
-      groupLabel: "Singles lots"
+      groupLabel: "Individual items"
     }
   ]);
 });

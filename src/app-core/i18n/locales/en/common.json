@@ -1,6 +1,6 @@
 {
   "commonBack": "Back",
-  "commonBulk": "Bulk",
+  "commonBulk": "Grouped",
   "commonCancel": "Cancel",
   "commonCreate": "Create",
   "commonDone": "Done",
@@ -11,7 +11,7 @@
   "commonSave": "Save",
   "commonNext": "Next",
   "commonRefresh": "Refresh",
-  "commonSingles": "Singles",
+  "commonSingles": "Individual",
   "commonSkipForNow": "Skip for now",
   "commonApply": "Apply",
   "commonClose": "Close",

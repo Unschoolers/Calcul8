@@ -86,6 +86,45 @@
                 </span>
               </div>
             </div>
+            <div v-if="!showCatalogSuggestions" class="singles-editor-image-tools">
+              <input
+                ref="singlesImageUploadInput"
+                class="singles-editor-image-input"
+                type="file"
+                accept="image/*"
+                @change="handleSinglesImageUpload"
+              >
+              <div class="singles-editor-image-actions">
+                <v-btn
+                  size="small"
+                  variant="tonal"
+                  color="primary"
+                  prepend-icon="mdi-image-plus"
+                  :loading="singlesImageUploadBusy"
+                  @click="triggerSinglesImageUpload"
+                >
+                  {{ editingSinglesPreviewImage ? t('singlesEditorChangeImageAction') : t('singlesEditorAddImageAction') }}
+                </v-btn>
+                <v-btn
+                  v-if="editingSinglesPreviewImage"
+                  size="small"
+                  variant="text"
+                  color="error"
+                  prepend-icon="mdi-image-remove-outline"
+                  @click="clearEditingSinglesImage"
+                >
+                  {{ t('singlesEditorRemoveImageAction') }}
+                </v-btn>
+              </div>
+              <div class="singles-editor-image-help">{{ t('singlesEditorImageUploadHelp') }}</div>
+              <div
+                v-if="singlesImageUploadError"
+                class="singles-editor-image-error"
+                role="alert"
+              >
+                {{ singlesImageUploadError }}
+              </div>
+            </div>
           </div>
         </div>
 

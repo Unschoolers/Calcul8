@@ -65,9 +65,9 @@ test("PortfolioWindow portfolio filter helpers keep hidden ids out of the visibl
 test("PortfolioWindow filter search regrouping keeps bulk items together", () => {
   const vm = {
     portfolioLotFilterItems: [
-      { title: "Bleach volume 2", value: 11, subtitle: "Bulk • 2026-02-01", lotType: "bulk", groupLabel: "Bulk lots" },
+      { title: "Bleach volume 2", value: 11, subtitle: "Grouped • 2026-02-01", lotType: "bulk", groupLabel: "Grouped inventory" },
       { title: "One punch man", value: 22, subtitle: "Bulk • 2026-02-14", lotType: "bulk", groupLabel: null },
-      { title: "Union arena singles", value: 33, subtitle: "Singles • 2026-02-21", lotType: "singles", groupLabel: "Singles lots" },
+      { title: "Union arena singles", value: 33, subtitle: "Individual • 2026-02-21", lotType: "singles", groupLabel: "Individual items" },
       { title: "Kaiju #8", value: 44, subtitle: "Bulk • 2026-03-01", lotType: "bulk", groupLabel: null }
     ],
     portfolioLotFilterSearchQuery: "a"
@@ -75,10 +75,10 @@ test("PortfolioWindow filter search regrouping keeps bulk items together", () =>
 
   const visibleItems = portfolioWindowDefinition.methods.portfolioVisibleLotFilterItems.call(vm as never);
   assert.deepEqual(visibleItems.map((item: { title: string; groupLabel?: string | null }) => [item.title, item.groupLabel ?? null]), [
-    ["Bleach volume 2", "Bulk lots"],
+    ["Bleach volume 2", "Grouped inventory"],
     ["One punch man", null],
     ["Kaiju #8", null],
-    ["Union arena singles", "Singles lots"]
+    ["Union arena singles", "Individual items"]
   ]);
 });
 
@@ -94,8 +94,8 @@ test("PortfolioWindow clears stale lot-filter search when opening the menu", () 
     portfolioLotFilterMenuOpen: false,
     portfolioLotFilterSearchQuery: "missing lot",
     portfolioLotFilterItems: [
-      { title: "Bleach volume 2", value: 11, subtitle: "Bulk • 2026-02-01", lotType: "bulk", groupLabel: "Bulk lots" },
-      { title: "Union arena singles", value: 22, subtitle: "Singles • 2026-02-21", lotType: "singles", groupLabel: "Singles lots" }
+      { title: "Bleach volume 2", value: 11, subtitle: "Grouped • 2026-02-01", lotType: "bulk", groupLabel: "Grouped inventory" },
+      { title: "Union arena singles", value: 22, subtitle: "Individual • 2026-02-21", lotType: "singles", groupLabel: "Individual items" }
     ]
   };
 
@@ -118,7 +118,7 @@ test("PortfolioWindow enter closes and blurs the portfolio filter even when sear
   let blurred = false;
   const vm = {
     portfolioLotFilterItems: [
-      { title: "Bleach volume 2", value: 11, subtitle: "Bulk • 2026-02-01", lotType: "bulk", groupLabel: "Bulk lots" },
+      { title: "Bleach volume 2", value: 11, subtitle: "Grouped • 2026-02-01", lotType: "bulk", groupLabel: "Grouped inventory" },
       { title: "Kagurabachi", value: 22, subtitle: "Bulk • 2026-03-03", lotType: "bulk", groupLabel: null }
     ],
     portfolioLotFilterIds: [11],

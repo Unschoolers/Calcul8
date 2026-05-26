@@ -183,11 +183,11 @@ export const singlesCatalogSearchComputed = {
   },
 
   editingSinglesPreviewImage(this: SinglesCatalogSearchContext): string {
-    const item = String(this.editingSinglesRow?.item || "").trim();
-    if (!item) return "";
     const directImage = String(this.editingSinglesRow?.image || "").trim();
     if (directImage) return directImage;
 
+    const item = String(this.editingSinglesRow?.item || "").trim();
+    if (!item) return "";
     const cardNo = String(this.editingSinglesRow?.cardNumber || "").trim();
     const itemLower = item.toLocaleLowerCase();
     const cardNoLower = cardNo.toLocaleLowerCase();

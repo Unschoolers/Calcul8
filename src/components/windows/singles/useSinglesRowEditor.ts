@@ -1,5 +1,9 @@
 import type { SinglesCatalogSource, SinglesPurchaseEntry } from "../../../types/app.ts";
 import { resolveDefaultSinglesMarketValueCurrency } from "../../../app-core/shared/singles-market-value-currency.ts";
+import {
+  compressSinglesImageFile,
+  SinglesImageUploadError
+} from "./singlesImageUpload.ts";
 
 type SinglesRowEditorContext = {
   currentSinglesCatalogSource?: SinglesCatalogSource;
@@ -20,12 +24,17 @@ type SinglesRowEditorContext = {
     marketValueCurrency: "CAD" | "USD";
   };
   showSinglesRowEditor: boolean;
+  singlesImageUploadBusy: boolean;
+  singlesImageUploadError: string;
+  singlesImageUploadRequestSeq: number;
   singlesItemSearchText: string;
   singlesItemMenuOpen: boolean;
   singlesEditorPreviewLoading: boolean;
   singlesItemSuggestions: unknown[];
   singlesItemSearchLoading: boolean;
   suppressNextSinglesItemSearchUpdate: boolean;
+  $refs?: Record<string, unknown>;
+  t?: (key: string) => string;
   notify(message: string, color?: string): void;
   askConfirmation(
     payload: { title: string; text: string; color?: string },
@@ -41,12 +50,29 @@ type SinglesRowEditorContext = {
     condition?: string;
     language?: string;
   }): void;
+  applySinglesImageFile(file: File): Promise<void>;
+  setEditingSinglesImageFromDataUrl(dataUrl: unknown): void;
   closeSinglesRowEditor(): void;
   confirmRemoveSinglesPurchaseRow(rowId: number, closeEditor?: boolean): void;
   openSinglesRowEditor(entry?: SinglesPurchaseEntry): void;
   getEditingSinglesQuantity(): number;
   setEditingSinglesQuantity(nextQuantity: unknown): void;
 };
+
+function translate(context: SinglesRowEditorContext, key: string, fallback: string): string {
+  const value = typeof context.t === "function" ? context.t(key) : "";
+  return value && value !== key ? value : fallback;
+}
+
+function resolveImageUploadErrorMessage(context: SinglesRowEditorContext, error: unknown): string {
+  if (error instanceof SinglesImageUploadError && error.code === "invalid_type") {
+    return translate(context, "singlesEditorImageUploadInvalidType", "Choose an image file.");
+  }
+  if (error instanceof SinglesImageUploadError && error.code === "too_large") {
+    return translate(context, "singlesEditorImageUploadTooLarge", "Image is too large after compression. Try a smaller file.");
+  }
+  return translate(context, "singlesEditorImageUploadFailed", "Could not read this image.");
+}
 
 function resolveEditorMarketValueCurrency(
   catalogSource: SinglesCatalogSource | undefined,
@@ -69,6 +95,61 @@ function createNextSinglesEntryId(entries: SinglesPurchaseEntry[]): number {
 }
 
 export const singlesRowEditorMethods = {
+  triggerSinglesImageUpload(this: SinglesRowEditorContext): void {
+    const inputRef = this.$refs?.singlesImageUploadInput;
+    const input = Array.isArray(inputRef) ? inputRef[0] : inputRef;
+    const click = (input as { click?: () => void } | undefined)?.click;
+    if (typeof click === "function") {
+      click.call(input);
+    }
+  },
+
+  handleSinglesImageUpload(this: SinglesRowEditorContext, event: Event): void {
+    const input = event.target as HTMLInputElement | null;
+    const file = input?.files?.[0] ?? null;
+    if (input) {
+      input.value = "";
+    }
+    if (!file) return;
+    void this.applySinglesImageFile(file);
+  },
+
+  async applySinglesImageFile(this: SinglesRowEditorContext, file: File): Promise<void> {
+    const requestSeq = Number(this.singlesImageUploadRequestSeq || 0) + 1;
+    this.singlesImageUploadRequestSeq = requestSeq;
+    this.singlesImageUploadBusy = true;
+    this.singlesImageUploadError = "";
+
+    try {
+      const dataUrl = await compressSinglesImageFile(file);
+      if (this.singlesImageUploadRequestSeq !== requestSeq) return;
+      this.setEditingSinglesImageFromDataUrl(dataUrl);
+    } catch (error) {
+      if (this.singlesImageUploadRequestSeq !== requestSeq) return;
+      const message = resolveImageUploadErrorMessage(this, error);
+      this.singlesImageUploadError = message;
+      this.notify(message, "warning");
+    } finally {
+      if (this.singlesImageUploadRequestSeq === requestSeq) {
+        this.singlesImageUploadBusy = false;
+      }
+    }
+  },
+
+  setEditingSinglesImageFromDataUrl(this: SinglesRowEditorContext, dataUrl: unknown): void {
+    const nextImage = String(dataUrl || "").trim();
+    if (!nextImage) return;
+    this.editingSinglesRow.image = nextImage;
+    this.singlesImageUploadError = "";
+  },
+
+  clearEditingSinglesImage(this: SinglesRowEditorContext): void {
+    this.singlesImageUploadRequestSeq = Number(this.singlesImageUploadRequestSeq || 0) + 1;
+    this.editingSinglesRow.image = "";
+    this.singlesImageUploadBusy = false;
+    this.singlesImageUploadError = "";
+  },
+
   getEditingSinglesQuantity(this: SinglesRowEditorContext): number {
     const quantity = Number(this.editingSinglesRow?.quantity);
     if (!Number.isFinite(quantity) || quantity < 1) return 1;
@@ -109,12 +190,12 @@ export const singlesRowEditorMethods = {
       nextCurrency,
       options?.marketValueCurrency
     );
-      this.editingSinglesRow = {
-        item: "",
-        cardNumber: "",
-        externalSku: "",
-        image: "",
-        condition: String(options?.condition || ""),
+    this.editingSinglesRow = {
+      item: "",
+      cardNumber: "",
+      externalSku: "",
+      image: "",
+      condition: String(options?.condition || ""),
       language: String(options?.language || ""),
       cost: 0,
       currency: nextCurrency,
@@ -127,6 +208,9 @@ export const singlesRowEditorMethods = {
     this.singlesEditorPreviewLoading = false;
     this.singlesItemSuggestions = [];
     this.singlesItemSearchLoading = false;
+    this.singlesImageUploadRequestSeq = Number(this.singlesImageUploadRequestSeq || 0) + 1;
+    this.singlesImageUploadBusy = false;
+    this.singlesImageUploadError = "";
     this.cancelSinglesItemSearch();
   },
 

@@ -80,8 +80,8 @@
   "portfolioSalesByUserUnknownLabel": "Unknown",
   "portfolioSalesByUserYouLabel": "You",
   "portfolioSalesCountLabel": "sale",
-  "lotOptionBulkLabel": "Bulk",
-  "lotOptionBulkLotsLabel": "Bulk lots",
-  "lotOptionSinglesLabel": "Singles",
-  "lotOptionSinglesLotsLabel": "Singles lots"
+  "lotOptionBulkLabel": "Grouped",
+  "lotOptionBulkLotsLabel": "Grouped inventory",
+  "lotOptionSinglesLabel": "Individual",
+  "lotOptionSinglesLotsLabel": "Individual items"
 }

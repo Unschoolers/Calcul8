@@ -1,11 +1,11 @@
 {
-  "itemCatalogCustom": "Custom",
+  "itemCatalogCustom": "Manual / any item",
   "itemCatalogPokemon": "Pokemon",
-  "itemCatalogSourceLabel": "Item catalog source",
+  "itemCatalogSourceLabel": "Catalog",
   "itemCatalogUnionArena": "Union Arena",
-  "editLotTitle": "Edit Lot",
-  "lotNameLabel": "Lot name",
-  "newLotTitle": "New Lot",
-  "itemCatalogAutocompleteDisabledHelp": "Custom mode: autocomplete is disabled for this lot.",
-  "itemCatalogAutocompleteEnabledHelp": "Autocomplete suggestions use the selected catalog source."
+  "editLotTitle": "Edit inventory",
+  "lotNameLabel": "Inventory name",
+  "newLotTitle": "New inventory",
+  "itemCatalogAutocompleteDisabledHelp": "Manual mode: type your own item names. Catalog autocomplete is off for this inventory.",
+  "itemCatalogAutocompleteEnabledHelp": "Autocomplete suggestions use the selected catalog."
 }

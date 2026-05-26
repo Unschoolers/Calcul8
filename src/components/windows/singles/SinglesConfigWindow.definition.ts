@@ -112,6 +112,9 @@ type SinglesWindowThis = {
   mobileRenderCount: number;
   mobileSortBy: SinglesMobileSortKey;
   editingSinglesRowId: number | null;
+  singlesImageUploadBusy: boolean;
+  singlesImageUploadError: string;
+  singlesImageUploadRequestSeq: number;
   editingSinglesRow: {
     item: string;
     cardNumber: string;
@@ -219,6 +222,9 @@ export const singlesConfigWindowDefinition = {
       mobileRenderCount: MOBILE_RENDER_INITIAL_COUNT,
       mobileSortBy: "item" as SinglesMobileSortKey,
       editingSinglesRowId: null as number | null,
+      singlesImageUploadBusy: false,
+      singlesImageUploadError: "",
+      singlesImageUploadRequestSeq: 0,
       editingSinglesRow: {
         item: "",
         cardNumber: "",

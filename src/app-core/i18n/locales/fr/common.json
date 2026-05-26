@@ -1,6 +1,6 @@
 {
   "commonBack": "Retour",
-  "commonBulk": "Bulk",
+  "commonBulk": "Groupé",
   "commonCancel": "Annuler",
   "commonCreate": "Créer",
   "commonDone": "Termine",
@@ -11,7 +11,7 @@
   "commonSave": "Save",
   "commonNext": "Suivant",
   "commonRefresh": "Actualiser",
-  "commonSingles": "Singles",
+  "commonSingles": "Individuel",
   "commonSkipForNow": "Plus tard",
   "commonApply": "Appliquer",
   "commonClose": "Fermer",

@@ -1,12 +1,12 @@
 {
-  "itemCatalogCustom": "Personnalise",
+  "itemCatalogCustom": "Manuel / tout item",
   "itemCatalogPokemon": "Pokemon",
-  "itemCatalogSourceLabel": "Source du catalogue d'items",
+  "itemCatalogSourceLabel": "Catalogue",
   "itemCatalogUnionArena": "Union Arena",
-  "editLotTitle": "Modifier le lot",
-  "lotNameLabel": "Nom du lot",
-  "newLotTitle": "Nouveau lot",
-  "itemCatalogAutocompleteDisabledHelp": "Mode personnalise : l'autocompletion est desactivee pour ce lot.",
-  "itemCatalogAutocompleteEnabledHelp": "Les suggestions d'autocompletion utilisent la source de catalogue choisie."
+  "editLotTitle": "Modifier l'inventaire",
+  "lotNameLabel": "Nom de l'inventaire",
+  "newLotTitle": "Nouvel inventaire",
+  "itemCatalogAutocompleteDisabledHelp": "Mode manuel : tapez vos propres noms d'items. L'autocomplétion du catalogue est désactivée pour cet inventaire.",
+  "itemCatalogAutocompleteEnabledHelp": "Les suggestions d'autocomplétion utilisent le catalogue choisi."
 }
 

@@ -28,12 +28,31 @@ test("resolveAppTranslationLocale falls back to English unless French is request
 
 test("translateAppMessage returns the configured string and interpolates params", () => {
   assert.equal(translateAppMessage("en", "personalLabel"), "Personal");
-  assert.equal(translateAppMessage("en", "onboardingIntroTitle"), "Let's get your first lot set up");
+  assert.equal(translateAppMessage("en", "onboardingIntroTitle"), "What are you selling?");
   assert.equal(translateAppMessage("fr-CA", "shellLanguageLabel"), "Langue de l'application");
   assert.equal(
     translateAppMessage("en", "whatnotConnectedSummary", { name: "A", pendingCountSuffix: " (2)" }),
     "A (2)"
   );
+});
+
+test("first-run onboarding uses seller-facing inventory language", () => {
+  const englishOnboarding = [
+    "onboardingIntroTitle",
+    "onboardingIntroBody",
+    "onboardingBulkCta",
+    "onboardingBulkSummary",
+    "onboardingSinglesCta",
+    "onboardingSinglesSummary"
+  ].map((key) => translateAppMessage("en", key)).join("\n");
+
+  assert.match(englishOnboarding, /Individual items/);
+  assert.match(englishOnboarding, /Grouped inventory/);
+  assert.doesNotMatch(englishOnboarding, /\b(singles|bulk|lot|custom)\b/i);
+
+  assert.equal(translateAppMessage("en", "itemCatalogCustom"), "Manual / any item");
+  assert.equal(translateAppMessage("en", "newLotTitle"), "New inventory");
+  assert.equal(translateAppMessage("en", "shellLotLabel"), "Current inventory");
 });
 
 test("translation catalogs stay aligned across locales", () => {
