@@ -1,5 +1,6 @@
 import type { Lot, WheelConfig, WheelTier } from "../../types/app.ts";
 import { normalizeBracketBattleConfig } from "./bracket-battle-config.ts";
+import { isSinglesLot } from "./lot-types.ts";
 import { getWheelOutcomeCount, normalizeWheelTierChances } from "./wheel-odds.ts";
 import { isWheelTierMultiLot, normalizeWheelTierSources } from "./wheel-tier-sources.ts";
 
@@ -17,7 +18,7 @@ function sanitizeWheelTier(tier: WheelTier, lots: Lot[]): WheelTier {
     return tier;
   }
 
-  if (boundLot?.lotType === "singles") {
+  if (isSinglesLot(boundLot)) {
     tier.deductionType = "singles";
     tier.packsCount = 1;
   } else if (tier.deductionType !== "singles") {

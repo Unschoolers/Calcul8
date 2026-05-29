@@ -11,6 +11,7 @@ import type {
   WorkspaceMember,
   WorkspaceScopeType
 } from "../../types/app.ts";
+import { getLotType } from "../shared/lot-types.ts";
 
 const PORTFOLIO_SALES_BY_USER_SERIES_COLORS = [
   "#F7B500",
@@ -159,7 +160,7 @@ export function buildPortfolioSalesByUserChartData(params: {
           ? saleNetRevenue
           : calculateSaleProfit({
             sale,
-            lotType: lot.lotType === "singles" ? "singles" : "bulk",
+            lotType: getLotType(lot),
             sellingTaxPercent: lot.sellingTaxPercent,
             totalCaseCost: lotSummary.totalCost,
             totalPacks: lotSummary.totalPacks,

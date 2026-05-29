@@ -1,5 +1,6 @@
 import { broadcastWheelSession } from "../../../../app-core/methods/ui/spectator/wheel-broadcast.ts";
 import { createWheelFairnessProofLink } from "../../../../app-core/methods/wheel-fairness-api.ts";
+import { isSinglesLot } from "../../../../app-core/shared/lot-types.ts";
 import { getWheelTierSourceLotIds, isWheelTierMultiLot } from "../../../../app-core/shared/wheel-tier-sources.ts";
 import {
     chooseWheelPreviewTargetIndex,
@@ -455,7 +456,7 @@ export const wheelSpinMethods = {
         const candidateLotIds = getWheelTierSourceLotIds(tier)
           .filter((lotId) => {
             const lot = ((this.lots || []) as Lot[]).find((entry) => entry.id === lotId);
-            return lot?.lotType !== "singles";
+            return !isSinglesLot(lot);
           });
         queuePendingInventoryIssue(this, {
           slot,

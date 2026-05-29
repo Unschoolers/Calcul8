@@ -60,6 +60,32 @@ function normalizeAdditionalFeeAppliesTo(value) {
   return value === "sale_only" || value === "sale_plus_shipping" ? value : undefined;
 }
 
+function normalizeSyncSystemPricingDefaultsDto(value) {
+  if (!isSyncEntityRecord(value)) return null;
+  const defaults = {};
+  const sellingCurrency = normalizeCurrencyCode(value.sellingCurrency);
+  if (sellingCurrency) defaults.sellingCurrency = sellingCurrency;
+  const sellingTaxPercent = normalizeNonNegativeNumber(value.sellingTaxPercent);
+  if (sellingTaxPercent != null) defaults.sellingTaxPercent = sellingTaxPercent;
+  const sellingShippingPerOrder = normalizeNonNegativeNumber(value.sellingShippingPerOrder);
+  if (sellingShippingPerOrder != null) defaults.sellingShippingPerOrder = sellingShippingPerOrder;
+  const targetProfitPercent = normalizeNonNegativeNumber(value.targetProfitPercent);
+  if (targetProfitPercent != null) defaults.targetProfitPercent = targetProfitPercent;
+  const spotsPerBox = normalizeNonNegativeInteger(value.spotsPerBox);
+  if (spotsPerBox != null && spotsPerBox > 0) defaults.spotsPerBox = spotsPerBox;
+  const feeProfilePreset = normalizeFeeProfilePreset(value.feeProfilePreset);
+  if (feeProfilePreset) defaults.feeProfilePreset = feeProfilePreset;
+  const platformFeePercent = normalizeNonNegativeNumber(value.platformFeePercent);
+  if (platformFeePercent != null) defaults.platformFeePercent = platformFeePercent;
+  const additionalFeePercent = normalizeNonNegativeNumber(value.additionalFeePercent);
+  if (additionalFeePercent != null) defaults.additionalFeePercent = additionalFeePercent;
+  const fixedFeePerOrder = normalizeNonNegativeNumber(value.fixedFeePerOrder);
+  if (fixedFeePerOrder != null) defaults.fixedFeePerOrder = fixedFeePerOrder;
+  const additionalFeeAppliesTo = normalizeAdditionalFeeAppliesTo(value.additionalFeeAppliesTo);
+  if (additionalFeeAppliesTo) defaults.additionalFeeAppliesTo = additionalFeeAppliesTo;
+  return Object.keys(defaults).length > 0 ? defaults : null;
+}
+
 function normalizeOptionalSyncId(value) {
   if (value == null) return null;
   const id = normalizeEntityId(value);
@@ -170,6 +196,8 @@ function normalizeSyncLotDto(value) {
   if (additionalFeeAppliesTo) lot.additionalFeeAppliesTo = additionalFeeAppliesTo;
   const includeTax = normalizeBoolean(value.includeTax);
   if (includeTax != null) lot.includeTax = includeTax;
+  const usesSystemPricingDefaults = normalizeBoolean(value.usesSystemPricingDefaults);
+  if (usesSystemPricingDefaults != null) lot.usesSystemPricingDefaults = usesSystemPricingDefaults;
   const isComplete = normalizeBoolean(value.isComplete);
   if (isComplete != null) lot.isComplete = isComplete;
   return lot;
@@ -596,6 +624,7 @@ function parseSyncSnapshotDto(value) {
     salesByLot: toSyncSalesByLotDto(rawSnapshot.salesByLot),
     wheelConfigs: toSyncWheelConfigDtos(rawSnapshot.wheelConfigs),
     activeWheelConfigId: normalizeOptionalSyncId(rawSnapshot.activeWheelConfigId),
+    systemPricingDefaults: normalizeSyncSystemPricingDefaultsDto(rawSnapshot.systemPricingDefaults),
     version: Number.isFinite(rawVersion) ? rawVersion : 0,
     updatedAt: typeof rawSnapshot.updatedAt === "string" || rawSnapshot.updatedAt === null
       ? rawSnapshot.updatedAt
@@ -614,6 +643,7 @@ export {
   normalizeSyncGameSessionDto,
   normalizeSyncMetadataDto,
   normalizeOptionalSyncId,
+  normalizeSyncSystemPricingDefaultsDto,
   normalizeSyncLivePricingDto,
   normalizeSyncLotDto,
   normalizeSyncSaleDto,

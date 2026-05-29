@@ -4,12 +4,14 @@ import type { Lot, LotSalesCacheEntry, Sale } from "../../types/app.ts";
 import {
   getSalesCacheStatusKey,
   getScopedPresetsStorageKey,
+  getScopedSystemPricingDefaultsStorageKey,
   getSalesStorageKey as getWhatfeesSalesStorageKey,
   STORAGE_KEYS
 } from "../storageKeys.ts";
 import { type ConfigMethodSubset, getTodayDate } from "./config-shared.ts";
 import { resolveWorkspaceScopeContext } from "../workspace-scope.ts";
 import { normalizeStoredLot } from "../shared/normalize-lot.ts";
+import { applySystemPricingDefaultsToLot, normalizeSystemPricingDefaults } from "../shared/system-pricing-defaults.ts";
 import { getRootLotSales, replaceRootLotSales, resetRootSalesState } from "../shared/sales-root-state.ts";
 
 type ExchangeRateCacheRecord = {
@@ -57,6 +59,8 @@ export const configStorageMethods: ConfigMethodSubset<
   | "getExchangeRate"
   | "loadLotsFromStorage"
   | "saveLotsToStorage"
+  | "loadSystemPricingDefaultsFromStorage"
+  | "saveSystemPricingDefaultsToStorage"
 > = {
   getSalesStorageKey(lotId: number): string {
     return getWhatfeesSalesStorageKey(lotId, resolveWorkspaceScopeContext(this));
@@ -175,6 +179,11 @@ export const configStorageMethods: ConfigMethodSubset<
   loadLotsFromStorage(): void {
     this.lots = [];
     resetRootSalesState(this);
+    if (typeof this.loadSystemPricingDefaultsFromStorage === "function") {
+      this.loadSystemPricingDefaultsFromStorage();
+    } else {
+      this.systemPricingDefaults = normalizeSystemPricingDefaults(this.systemPricingDefaults);
+    }
 
     try {
       const scope = resolveWorkspaceScopeContext(this);
@@ -183,7 +192,9 @@ export const configStorageMethods: ConfigMethodSubset<
       if (stored) {
         const parsed = JSON.parse(stored) as Lot[];
         const todayDate = getTodayDate();
-        this.lots = parsed.map((lot) => normalizeStoredLot(lot, todayDate));
+        this.lots = parsed
+          .map((lot) => normalizeStoredLot(lot, todayDate))
+          .map((lot) => applySystemPricingDefaultsToLot(lot, this.systemPricingDefaults));
       }
     } catch (error) {
       console.error("Failed to load lots:", error);
@@ -201,6 +212,39 @@ export const configStorageMethods: ConfigMethodSubset<
     } catch (error) {
       console.error("Failed to save lots:", error);
       this.notify("Could not save lots. Storage may be full.", "error");
+    }
+  },
+
+  loadSystemPricingDefaultsFromStorage(): void {
+    try {
+      const scope = resolveWorkspaceScopeContext(this);
+      const stored = localStorage.getItem(getScopedSystemPricingDefaultsStorageKey(scope));
+      if (!stored) {
+        this.systemPricingDefaults = normalizeSystemPricingDefaults(this.systemPricingDefaults);
+        return;
+      }
+      const parsed = JSON.parse(stored) as unknown;
+      this.systemPricingDefaults = normalizeSystemPricingDefaults(
+        parsed && typeof parsed === "object" ? parsed as Record<string, unknown> : null,
+        this.systemPricingDefaults
+      );
+    } catch (error) {
+      console.error("Failed to load system pricing defaults:", error);
+      this.systemPricingDefaults = normalizeSystemPricingDefaults(this.systemPricingDefaults);
+    }
+  },
+
+  saveSystemPricingDefaultsToStorage(): void {
+    try {
+      const scope = resolveWorkspaceScopeContext(this);
+      this.systemPricingDefaults = normalizeSystemPricingDefaults(this.systemPricingDefaults);
+      localStorage.setItem(
+        getScopedSystemPricingDefaultsStorageKey(scope),
+        JSON.stringify(this.systemPricingDefaults)
+      );
+    } catch (error) {
+      console.error("Failed to save system pricing defaults:", error);
+      this.notify("Could not save system configuration. Storage may be full.", "error");
     }
   }
 };

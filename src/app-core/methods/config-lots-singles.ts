@@ -1,4 +1,5 @@
 import type { Lot, SinglesPurchaseEntry } from "../../types/app.ts";
+import { isSinglesLot } from "../shared/lot-types.ts";
 import { resolveDefaultSinglesMarketValueCurrency } from "../shared/singles-market-value-currency.ts";
 import {
   applySinglesCsvImportRows,
@@ -64,7 +65,7 @@ export function syncSinglesPurchaseRows(context: SinglesRowsContext): void {
   if (context.currentLotType !== "singles") return;
   const lot = resolveCurrentLot(context.lots, context.currentLotId);
   const defaultMarketValueCurrency = resolveDefaultSinglesMarketValueCurrency(
-    lot?.lotType === "singles" ? lot.singlesCatalogSource : undefined,
+    isSinglesLot(lot) ? lot.singlesCatalogSource : undefined,
     context.currency === "USD" ? "USD" : "CAD"
   );
 
@@ -75,7 +76,7 @@ export function syncSinglesPurchaseRows(context: SinglesRowsContext): void {
   );
   context.singlesPurchases = normalizedRows;
 
-  if (!lot || lot.lotType !== "singles") return;
+  if (!isSinglesLot(lot)) return;
 
   lot.singlesPurchases = [...normalizedRows];
   context.recalculateDefaultPrices();

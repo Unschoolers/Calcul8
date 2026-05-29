@@ -1,8 +1,9 @@
 import { inject, type PropType } from "vue";
-import { createWindowContextBridge } from "../shared/contextBridge.ts";
+import { createWindowContextBridge } from "../windows/shared/contextBridge.ts";
+import "../windows/config/ConfigWindow.css";
 
-export const SinglesSellingCard = {
-  name: "SinglesSellingCard",
+export const SystemConfigurationDialog = {
+  name: "SystemConfigurationDialog",
   props: {
     ctx: {
       type: Object as PropType<Record<string, unknown>>,
@@ -11,7 +12,7 @@ export const SinglesSellingCard = {
   },
   setup(props: { ctx: Record<string, unknown> }) {
     const injectedCtx = inject<Record<string, unknown> | null>("appCtx", null);
-    const source = (props.ctx ?? injectedCtx ?? {}) as Record<string, unknown>;
+    const source = (injectedCtx ?? props.ctx) as Record<string, unknown>;
     return createWindowContextBridge(source);
   }
 };

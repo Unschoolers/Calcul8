@@ -295,6 +295,14 @@ export interface LotSetup extends FeeProfileFields {
   targetProfitPercent: number;
 }
 
+export interface SystemPricingDefaults extends FeeProfileFields {
+  sellingCurrency: CurrencyCode;
+  sellingTaxPercent: number;
+  sellingShippingPerOrder: number;
+  targetProfitPercent: number;
+  spotsPerBox: number;
+}
+
 export interface Lot extends LotSetup {
   id: number;
   name: string;
@@ -303,6 +311,7 @@ export interface Lot extends LotSetup {
   singlesCatalogSource?: SinglesCatalogSource;
   singlesPurchases?: SinglesPurchaseEntry[];
   createdAt?: string;
+  usesSystemPricingDefaults?: boolean;
 }
 
 export interface SalesStatus {
@@ -563,6 +572,8 @@ export interface AppState extends LotSetup {
   confirmText: string;
   confirmColor: UiColor;
   confirmAction: (() => void) | null;
+  showSystemConfigurationDialog: boolean;
+  systemPricingDefaults: SystemPricingDefaults;
   liveSinglesManualIds: number[];
   liveSinglesExternalIds: number[];
   liveSpotPrice: number;

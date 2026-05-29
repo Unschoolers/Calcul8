@@ -175,6 +175,12 @@
           @click="promptInstall"
         ></v-list-item>
         <v-list-item
+          :title="t('configSystemConfigurationAction')"
+          :subtitle="t('shellSystemConfigurationSubtitle')"
+          prepend-icon="mdi-tune-variant"
+          @click="showSystemConfigurationDialog = true"
+        ></v-list-item>
+        <v-list-item
           :title="t('shellImportWhatnotCsvAction')"
           :subtitle="t('shellImportWhatnotCsvSubtitle')"
           prepend-icon="mdi-file-delimited-outline"

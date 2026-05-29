@@ -21,6 +21,7 @@ export type {
   SyncSinglesCatalogSource,
   SyncSinglesPurchaseDto,
   SyncSnapshotDto,
+  SyncSystemPricingDefaultsDto,
   SyncTierDeductionType,
   SyncWheelConfigDto,
   SyncWheelTierDto
@@ -29,6 +30,7 @@ export type {
 export {
   isSyncEntityRecord,
   normalizeOptionalSyncId,
+  normalizeSyncSystemPricingDefaultsDto,
   normalizeSyncGameSessionDto,
   normalizeSyncLivePricingDto,
   normalizeSyncLotDto,

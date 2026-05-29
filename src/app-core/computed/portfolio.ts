@@ -7,6 +7,7 @@ import {
 import type { Sale } from "../../types/app.ts";
 import type { AppComputedObject } from "../context-contracts.ts";
 import { buildLotOptionItems } from "../shared/lot-option-items.ts";
+import { getLotType } from "../shared/lot-types.ts";
 import {
   getLotSalesFromAccessContext,
   getSalesByLotIdFromAccessContext,
@@ -51,8 +52,7 @@ function lotMatchesPortfolioTypeFilter(
   filter: "both" | "bulk" | "singles"
 ): boolean {
   if (filter === "both") return true;
-  const lotType = lot?.lotType === "singles" ? "singles" : "bulk";
-  return lotType === filter;
+  return getLotType(lot) === filter;
 }
 
 export const portfolioComputed: Pick<
@@ -252,7 +252,7 @@ export const portfolioComputed: Pick<
         const realizedProfit = sales.reduce((sum, sale) => {
           return sum + calculateSaleProfit({
             sale,
-            lotType: lot.lotType === "singles" ? "singles" : "bulk",
+            lotType: getLotType(lot),
             sellingTaxPercent: lot.sellingTaxPercent,
             totalCaseCost: summary.totalCost,
             totalPacks: summary.totalPacks,
@@ -288,7 +288,7 @@ export const portfolioComputed: Pick<
           baseCost: summary.totalCost
         });
 
-        const lotType: "Bulk" | "Singles" = lot.lotType === "singles" ? "Singles" : "Bulk";
+        const lotType: "Bulk" | "Singles" = getLotType(lot) === "singles" ? "Singles" : "Bulk";
         return {
           ...summary,
           lotId: summary.lotId,

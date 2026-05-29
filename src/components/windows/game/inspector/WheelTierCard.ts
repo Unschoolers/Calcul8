@@ -1,5 +1,6 @@
 import { inject, type PropType } from "vue";
 import { countGameOutcomeSlotsByTier } from "../../../../app-core/shared/game-domain.ts";
+import { isSinglesLot } from "../../../../app-core/shared/lot-types.ts";
 import {
   resolveVuetifySlotString,
   resolveVuetifySlotValue
@@ -66,7 +67,7 @@ export const WheelTierCard = {
       if (tier.boundLotId == null) return "Source lot not selected";
       const lot = lots.find((entry) => entry.id === tier.boundLotId);
       if (!lot) return "Source lot unavailable";
-      if (lot.lotType === "singles" && tier.boundSinglesId != null) {
+      if (isSinglesLot(lot) && tier.boundSinglesId != null) {
         const item = lot.singlesPurchases?.find((entry) => entry.id === tier.boundSinglesId);
         return item ? `${lot.name} · ${item.item}` : `${lot.name} · Prize item not selected`;
       }

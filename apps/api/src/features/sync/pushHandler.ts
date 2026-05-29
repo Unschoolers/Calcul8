@@ -9,6 +9,7 @@ import { parseSyncLotsShape, parseSyncWheelConfigs } from "../../lib/syncShape";
 import { assertSafeSyncPush } from "../../lib/syncSafety";
 import { handleSyncFunctionError, isRecord, resolveAuthorizedSyncScope } from "./helpers";
 import type { SyncPushPayload } from "../../types";
+import { normalizeSyncSystemPricingDefaultsDto } from "../../shared/sync-contracts.cjs";
 
 function parseLotIds(lots: SyncPushPayload["lots"]): string[] {
   const ids: string[] = [];
@@ -71,7 +72,7 @@ async function parseSyncPushPayload(request: HttpRequest): Promise<SyncPushPaylo
     throw new HttpError(400, "Field 'allowEmptyOverwrite' must be a boolean when provided.");
   }
 
-  return {
+  const parsedPayload: SyncPushPayload = {
     lots: syncShape.lots,
     salesByLot: syncShape.salesByLot,
     wheelConfigs: parseSyncWheelConfigs(payload.wheelConfigs),
@@ -81,6 +82,12 @@ async function parseSyncPushPayload(request: HttpRequest): Promise<SyncPushPaylo
     allowEmptyOverwrite: payload.allowEmptyOverwrite === true,
     workspaceId
   };
+
+  if (Object.hasOwn(payload, "systemPricingDefaults")) {
+    parsedPayload.systemPricingDefaults = normalizeSyncSystemPricingDefaultsDto(payload.systemPricingDefaults);
+  }
+
+  return parsedPayload;
 }
 
 function assertSyncPushVersion(
@@ -131,7 +138,7 @@ export async function syncPush(
     const version = Math.max(previousVersion + 1, candidateVersion + 1);
     const updatedAt = new Date().toISOString();
 
-    const syncResult = await upsertSyncSnapshotIncremental(config, {
+    const syncInput = {
       userId: syncScope.partitionKey,
       lots: payload.lots,
       salesByLot: payload.salesByLot,
@@ -139,7 +146,12 @@ export async function syncPush(
       activeWheelConfigId: payload.activeWheelConfigId,
       version,
       updatedAt
-    });
+    };
+    if (Object.hasOwn(payload, "systemPricingDefaults")) {
+      Object.assign(syncInput, { systemPricingDefaults: payload.systemPricingDefaults });
+    }
+
+    const syncResult = await upsertSyncSnapshotIncremental(config, syncInput);
 
     if (!syncResult.changed) {
       return jsonResponse(request, config, 200, {

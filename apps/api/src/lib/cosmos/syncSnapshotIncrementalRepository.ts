@@ -63,12 +63,20 @@ export async function upsertSyncSnapshotIncremental(
 
   const nextWheelConfigs = Array.isArray(input.wheelConfigs) ? input.wheelConfigs : [];
   const nextActiveWheelConfigId = normalizeActiveWheelConfigId(input.activeWheelConfigId);
+  const hasIncomingSystemPricingDefaults = input.systemPricingDefaults !== undefined;
+  const existingSystemPricingDefaults = existingMetaDocument?.systemPricingDefaults ?? null;
+  const nextSystemPricingDefaults = hasIncomingSystemPricingDefaults
+    ? input.systemPricingDefaults ?? null
+    : existingSystemPricingDefaults;
   const existingWheelConfigs = Array.isArray(existingMetaDocument?.wheelConfigs) ? existingMetaDocument.wheelConfigs : [];
   const existingActiveWheelConfigId = normalizeActiveWheelConfigId(existingMetaDocument?.activeWheelConfigId);
   const wheelConfigChanged =
     JSON.stringify(existingWheelConfigs) !== JSON.stringify(nextWheelConfigs)
     || existingActiveWheelConfigId !== nextActiveWheelConfigId;
-  const changed = upsertedCount > 0 || deletedCount > 0 || wheelConfigChanged;
+  const systemPricingDefaultsChanged =
+    hasIncomingSystemPricingDefaults
+    && JSON.stringify(existingSystemPricingDefaults) !== JSON.stringify(nextSystemPricingDefaults);
+  const changed = upsertedCount > 0 || deletedCount > 0 || wheelConfigChanged || systemPricingDefaultsChanged;
 
   if (changed) {
     const metaDocument: SyncMetaDocument = {
@@ -82,6 +90,9 @@ export async function upsertSyncSnapshotIncremental(
       salesMode: existingMetaDocument?.salesMode,
       livePricingMode: existingMetaDocument?.livePricingMode
     };
+    if (nextSystemPricingDefaults) {
+      metaDocument.systemPricingDefaults = nextSystemPricingDefaults;
+    }
     await withCosmosRetry(() => syncSnapshots.items.upsert<SyncMetaDocument>(metaDocument));
   }
 

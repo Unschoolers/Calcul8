@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { buildHydratedLotState } from "../src/app-core/methods/config-lot-loading.ts";
+import { normalizeSystemPricingDefaults } from "../src/app-core/shared/system-pricing-defaults.ts";
 import { makeLot } from "./helpers/fixtures.ts";
 
 test("buildHydratedLotState applies singles normalization, tax defaults, and free-tier target profit clamp", () => {
@@ -103,4 +104,46 @@ test("buildHydratedLotState defaults custom singles market value currency to the
 
   assert.equal(result.newLotCatalogSource, "none");
   assert.equal(result.singlesPurchases[0]?.marketValueCurrency, "CAD");
+});
+
+test("buildHydratedLotState resolves seller fields from system defaults for inheriting lots", () => {
+  const systemPricingDefaults = normalizeSystemPricingDefaults({
+    sellingCurrency: "USD",
+    sellingTaxPercent: 7,
+    sellingShippingPerOrder: 3,
+    targetProfitPercent: 19,
+    spotsPerBox: 11,
+    feeProfilePreset: "none"
+  });
+  const lot = makeLot({
+    usesSystemPricingDefaults: true,
+    sellingCurrency: "CAD",
+    sellingTaxPercent: 99,
+    sellingShippingPerOrder: 99,
+    targetProfitPercent: 2,
+    spotsPerBox: 4,
+    feeProfilePreset: "whatnot",
+    platformFeePercent: 8,
+    additionalFeePercent: 2.9,
+    additionalFeeAppliesTo: "sale_plus_shipping",
+    fixedFeePerOrder: 0.3
+  });
+
+  const result = buildHydratedLotState(lot, {
+    hasProAccess: true,
+    todayDate: "2026-03-22",
+    currentNewLotCatalogSource: "pokemon",
+    systemPricingDefaults
+  });
+
+  assert.equal(result.sellingCurrency, "USD");
+  assert.equal(result.sellingTaxPercent, 7);
+  assert.equal(result.sellingShippingPerOrder, 3);
+  assert.equal(result.targetProfitPercent, 19);
+  assert.equal(result.spotsPerBox, 11);
+  assert.equal(result.feeProfilePreset, "none");
+  assert.equal(result.platformFeePercent, 0);
+  assert.equal(result.additionalFeePercent, 0);
+  assert.equal(result.additionalFeeAppliesTo, "sale_only");
+  assert.equal(result.fixedFeePerOrder, 0);
 });

@@ -1,6 +1,7 @@
 import { nextTick } from "vue";
 import { broadcastWheelSession } from "../../../../app-core/methods/ui/spectator/wheel-broadcast.ts";
 import { assignWheelPendingInventoryIssues } from "../../../../app-core/shared/wheel-session-compat.ts";
+import { isSinglesLot } from "../../../../app-core/shared/lot-types.ts";
 import { getScopedWheelConfigSessionStorageKey, getScopedWheelSessionStorageKey } from "../../../../app-core/storageKeys.ts";
 import { getActiveStorageScope } from "../../../../app-core/workspace-scope.ts";
 import type { Lot, PendingWheelInventoryIssue, Sale, WheelConfig, WheelFairnessEntry } from "../../../../types/app.ts";
@@ -409,7 +410,7 @@ export const wheelSessionMethods = {
     const candidateIds = Array.isArray(entry.candidateLotIds) ? new Set(entry.candidateLotIds) : null;
     const lots = (this.lots || []) as Lot[];
     return lots
-      .filter((lot) => entry.slotDeductionType === "singles" ? lot.lotType === "singles" : lot.lotType !== "singles")
+      .filter((lot) => entry.slotDeductionType === "singles" ? isSinglesLot(lot) : !isSinglesLot(lot))
       .filter((lot) => !candidateIds || candidateIds.has(lot.id))
       .map((lot) => ({
         title: lot.name,

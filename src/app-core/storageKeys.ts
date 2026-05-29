@@ -11,6 +11,7 @@ export const STORAGE_KEYS = {
   LANGUAGE: "whatfees_language",
   LAST_LOT_ID: "whatfees_last_lot_id",
   PRESETS: "whatfees_presets",
+  SYSTEM_PRICING_DEFAULTS: "whatfees_system_pricing_defaults_v1",
   EXCHANGE_RATE_CACHE: "whatfees_exchange_rate_usd_cad_v1",
   ENTITLEMENT_CACHE: "whatfees_entitlement_cache_v1",
   PRO_ACCESS: "whatfees_pro_access",
@@ -111,6 +112,10 @@ export function clearScopedSalesStorage(scope: AppStorageScope = { scopeType: "p
 
 export function getScopedPresetsStorageKey(scope: AppStorageScope): string {
   return buildScopedStorageKey(STORAGE_KEYS.PRESETS, scope);
+}
+
+export function getScopedSystemPricingDefaultsStorageKey(scope: AppStorageScope): string {
+  return buildScopedStorageKey(STORAGE_KEYS.SYSTEM_PRICING_DEFAULTS, scope);
 }
 
 export function getScopedWheelConfigsStorageKey(scope: AppStorageScope): string {

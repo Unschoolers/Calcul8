@@ -61,6 +61,7 @@
   "shellSignOutAction": "Fermer la session",
   "shellSwitchToDarkModeAction": "Passer au mode sombre",
   "shellSwitchToLightModeAction": "Passer au mode clair",
+  "shellSystemConfigurationSubtitle": "Hypothèses vendeur, frais et remplacements par inventaire",
   "shellTagline": "Fixez vos prix avec confiance",
   "shellUpgradePortfolioReportAction": "Passez à Pro pour débloquer les rapports de portefeuille",
   "shellUpgradePriceCalculatorAction": "Passez à Pro pour débloquer le calculateur",

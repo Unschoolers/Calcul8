@@ -1,6 +1,7 @@
 import type { LotType } from "../../types/app.ts";
 import { resolveLotBusinessDate } from "../../shared/lot-dates.ts";
 import { translateAppMessage } from "../i18n/index.ts";
+import { getLotType } from "./lot-types.ts";
 
 export type LotOptionItem = {
   title: string;
@@ -23,10 +24,6 @@ type LotLike = {
   singlesCatalogSource?: string;
 };
 
-function normalizeLotType(lotType: LotType | undefined): LotType {
-  return lotType === "singles" ? "singles" : "bulk";
-}
-
 function getLotTypeGroupLabel(lotType: LotType, preferredLanguage = ""): string {
   return lotType === "singles"
     ? translateAppMessage(preferredLanguage, "lotOptionSinglesLotsLabel")
@@ -44,8 +41,8 @@ function getSinglesCatalogLabel(source: string | undefined, preferredLanguage = 
 }
 
 function sortLotOptionItemsByType(items: Array<Omit<LotOptionItem, "groupLabel"> | LotOptionItem>) {
-  const bulkItems = items.filter((item) => normalizeLotType(item.lotType) !== "singles");
-  const singlesItems = items.filter((item) => normalizeLotType(item.lotType) === "singles");
+  const bulkItems = items.filter((item) => getLotType(item) !== "singles");
+  const singlesItems = items.filter((item) => getLotType(item) === "singles");
   return [...bulkItems, ...singlesItems];
 }
 
@@ -55,10 +52,10 @@ export function formatLotOptionSubtitle(lot: LotLike, preferredLanguage = ""): s
     createdAt: lot.createdAt,
     lotId: lot.id
   });
-  const lotTypeLabel = normalizeLotType(lot.lotType) === "singles"
+  const lotTypeLabel = getLotType(lot) === "singles"
     ? translateAppMessage(preferredLanguage, "lotOptionSinglesLabel")
     : translateAppMessage(preferredLanguage, "lotOptionBulkLabel");
-  const singlesCatalogLabel = normalizeLotType(lot.lotType) === "singles"
+  const singlesCatalogLabel = getLotType(lot) === "singles"
     ? getSinglesCatalogLabel(lot.singlesCatalogSource, preferredLanguage)
     : null;
   const subtitleParts = [
@@ -77,11 +74,11 @@ export function attachLotOptionGroupLabels(
     title: item.title,
     value: item.value,
     subtitle: item.subtitle,
-    lotType: normalizeLotType(item.lotType),
+    lotType: getLotType(item),
     isComplete: item.isComplete === true,
     symbolIcon: typeof item.symbolIcon === "string" && item.symbolIcon.trim()
       ? item.symbolIcon
-      : getLotSymbolIcon(normalizeLotType(item.lotType)),
+      : getLotSymbolIcon(getLotType(item)),
     completionIcon: item.completionIcon === "mdi-check-circle" ? item.completionIcon : null
   }));
 
@@ -100,9 +97,9 @@ export function buildLotOptionItems(lots: LotLike[], preferredLanguage = ""): Lo
       title: lot.name,
       value: lot.id,
       subtitle: formatLotOptionSubtitle(lot, preferredLanguage),
-      lotType: normalizeLotType(lot.lotType),
+      lotType: getLotType(lot),
       isComplete: lot.isComplete === true,
-      symbolIcon: getLotSymbolIcon(normalizeLotType(lot.lotType)),
+      symbolIcon: getLotSymbolIcon(getLotType(lot)),
       completionIcon: lot.isComplete === true ? "mdi-check-circle" : null
     })),
     preferredLanguage

@@ -19,6 +19,7 @@ import {
   getSyncPresetDocumentsFromContainer,
   normalizeActiveWheelConfigId
 } from "./syncSnapshotRepository.shared";
+import { normalizeSyncSystemPricingDefaultsDto } from "../../shared/sync-contracts.cjs";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -81,8 +82,9 @@ async function getSyncSnapshotFromContainer(
 
   const wheelConfigs = toSyncWheelConfigDtos(metaDocument?.wheelConfigs);
   const activeWheelConfigId = normalizeActiveWheelConfigId(metaDocument?.activeWheelConfigId);
+  const systemPricingDefaults = normalizeSyncSystemPricingDefaultsDto(metaDocument?.systemPricingDefaults);
 
-  if (presetDocuments.length === 0 && wheelConfigs.length === 0) {
+  if (presetDocuments.length === 0 && wheelConfigs.length === 0 && !systemPricingDefaults) {
     return null;
   }
 
@@ -118,6 +120,7 @@ async function getSyncSnapshotFromContainer(
     salesByLot,
     wheelConfigs,
     activeWheelConfigId,
+    ...(systemPricingDefaults ? { systemPricingDefaults } : {}),
     version: maxVersion,
     updatedAt: latestUpdatedAt
   };

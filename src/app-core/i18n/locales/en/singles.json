@@ -100,8 +100,5 @@
   "singlesCsvPreviewTitle": "CSV preview (first 5 rows)",
   "singlesCsvRequiredFieldsLabel": "Required fields",
   "singlesCsvRequiredMappedLabel": "{{count}}/2 required mapped",
-  "singlesCsvSelectColumnLabel": "Select column",
-  "singlesMarketplaceFeeMathHelp": "Marketplace fee math only. Taxes and shipping are separate inputs.",
-  "singlesSellingCurrencyLabel": "Selling currency",
-  "singlesSellingTitle": "Selling"
+  "singlesCsvSelectColumnLabel": "Select column"
 }

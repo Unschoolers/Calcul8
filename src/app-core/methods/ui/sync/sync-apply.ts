@@ -3,6 +3,7 @@ import type { AppContext } from "../../../context-app.ts";
 import { getScopedSyncClientVersionKey } from "../../../storageKeys.ts";
 import { getActiveStorageScope } from "../../../workspace-scope.ts";
 import { normalizeStoredLot } from "../../../shared/normalize-lot.ts";
+import { applySystemPricingDefaultsToLot, normalizeSystemPricingDefaults } from "../../../shared/system-pricing-defaults.ts";
 import { normalizeWheelConfigs } from "../../../shared/normalize-wheel-config.ts";
 import { persistSalesCacheToStorage } from "../../../shared/sales-cache-storage.ts";
 import { replaceRootLotSales, resetRootSalesState } from "../../../shared/sales-root-state.ts";
@@ -18,6 +19,7 @@ export interface ParsedCloudSnapshot {
   salesByLot: SyncSalesByLotDto;
   wheelConfigs: SyncWheelConfigDto[];
   activeWheelConfigId: number | null;
+  systemPricingDefaults?: AppContext["systemPricingDefaults"];
   version: number;
   hasData: boolean;
 }
@@ -30,14 +32,18 @@ export function parseCloudSnapshot(snapshot: unknown): ParsedCloudSnapshot {
   const parsed = parseSyncSnapshotDto(snapshot);
   const { lots, salesByLot, wheelConfigs, activeWheelConfigId, version } = parsed.snapshot;
   const hasLots = lots.length > 0;
+  const systemPricingDefaults = parsed.snapshot.systemPricingDefaults
+    ? normalizeSystemPricingDefaults(parsed.snapshot.systemPricingDefaults)
+    : null;
   const hasData = parsed.hasRequiredCollections
-    && (hasLots || hasSalesDataByLot(salesByLot) || wheelConfigs.length > 0);
+    && (hasLots || hasSalesDataByLot(salesByLot) || wheelConfigs.length > 0 || Boolean(systemPricingDefaults));
 
   return {
     lots,
     salesByLot,
     wheelConfigs,
     activeWheelConfigId,
+    ...(systemPricingDefaults ? { systemPricingDefaults } : {}),
     version,
     hasData
   };
@@ -68,12 +74,18 @@ export type SyncApplyApp = Pick<
   | "sales"
   | "activeScopeType"
   | "activeWorkspaceId"
->;
+> & Partial<Pick<AppContext, "systemPricingDefaults" | "saveSystemPricingDefaultsToStorage">>;
 
 export function applyCloudSnapshotToLocal(context: SyncApplyApp, snapshot: ParsedCloudSnapshot): void {
   const todayDate = new Date().toISOString().slice(0, 10);
+  if (snapshot.systemPricingDefaults) {
+    context.systemPricingDefaults = snapshot.systemPricingDefaults;
+    context.saveSystemPricingDefaultsToStorage?.();
+  }
+  const systemPricingDefaults = context.systemPricingDefaults;
   const normalizedLots = (snapshot.lots as unknown as typeof context.lots)
-    .map((lot) => normalizeStoredLot(lot, todayDate));
+    .map((lot) => normalizeStoredLot(lot, todayDate))
+    .map((lot) => systemPricingDefaults ? applySystemPricingDefaultsToLot(lot, systemPricingDefaults) : lot);
   resetRootSalesState(context);
   for (const lot of normalizedLots) {
     if (!Object.prototype.hasOwnProperty.call(snapshot.salesByLot, String(lot.id))) {

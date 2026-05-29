@@ -61,6 +61,7 @@
   "shellSignOutAction": "Sign out",
   "shellSwitchToDarkModeAction": "Switch to dark mode",
   "shellSwitchToLightModeAction": "Switch to light mode",
+  "shellSystemConfigurationSubtitle": "Seller defaults, fees, and lot overrides",
   "shellTagline": "Price with confidence",
   "shellUpgradePortfolioReportAction": "Upgrade to unlock portfolio reports",
   "shellUpgradePriceCalculatorAction": "Upgrade to unlock the calculator",

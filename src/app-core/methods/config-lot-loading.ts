@@ -1,7 +1,9 @@
 import { DEFAULT_VALUES } from "../../constants.ts";
-import type { Lot, LotType, SinglesCatalogSource, SinglesPurchaseEntry } from "../../types/app.ts";
+import type { Lot, LotType, SinglesCatalogSource, SinglesPurchaseEntry, SystemPricingDefaults } from "../../types/app.ts";
 import { resolveLotBusinessDate } from "../../shared/lot-dates.ts";
 import { resolveStoredFeeProfile } from "../shared/fee-profile-presets.ts";
+import { getLotType } from "../shared/lot-types.ts";
+import { applySystemPricingDefaultsToLot, lotUsesSystemPricingDefaults } from "../shared/system-pricing-defaults.ts";
 import { resolveDefaultSinglesMarketValueCurrency } from "../shared/singles-market-value-currency.ts";
 import { normalizeSinglesCatalogSource } from "../shared/singles-catalog-source.ts";
 import { normalizeSinglesPurchaseEntries, resetSinglesCsvImportState, type SinglesCsvImportStateTarget } from "./config-lots-state.ts";
@@ -72,15 +74,19 @@ export function buildHydratedLotState(
     hasProAccess: boolean;
     todayDate: string;
     currentNewLotCatalogSource: SinglesCatalogSource;
+    systemPricingDefaults?: SystemPricingDefaults | null;
   }
 ): HydratedLotState {
-  const normalizedLotType: LotType = lot.lotType === "singles" ? "singles" : "bulk";
+  const pricingLot = lotUsesSystemPricingDefaults(lot) && options.systemPricingDefaults
+    ? applySystemPricingDefaultsToLot(lot, options.systemPricingDefaults)
+    : lot;
+  const normalizedLotType: LotType = getLotType(lot);
   const normalizedLotCatalogSource = normalizedLotType === "singles"
     ? normalizeSinglesCatalogSource(lot.singlesCatalogSource)
     : options.currentNewLotCatalogSource;
-  const parsedTargetProfit = Number(lot.targetProfitPercent);
+  const parsedTargetProfit = Number(pricingLot.targetProfitPercent);
   const currency = lot.currency === "USD" ? "USD" : "CAD";
-  const feeProfile = resolveStoredFeeProfile(lot);
+  const feeProfile = resolveStoredFeeProfile(pricingLot);
 
   return {
     newLotType: normalizedLotType,
@@ -88,10 +94,10 @@ export function buildHydratedLotState(
     boxPriceCost: lot.boxPriceCost ?? DEFAULT_VALUES.BOX_PRICE,
     boxesPurchased: lot.boxesPurchased ?? DEFAULT_VALUES.BOXES_PURCHASED,
     packsPerBox: lot.packsPerBox ?? DEFAULT_VALUES.PACKS_PER_BOX,
-    spotsPerBox: lot.spotsPerBox ?? DEFAULT_VALUES.SPOTS_PER_BOX,
+    spotsPerBox: pricingLot.spotsPerBox ?? DEFAULT_VALUES.SPOTS_PER_BOX,
     costInputMode: lot.costInputMode ?? "perBox",
     currency,
-    sellingCurrency: lot.sellingCurrency === "USD" ? "USD" : "CAD",
+    sellingCurrency: pricingLot.sellingCurrency === "USD" ? "USD" : "CAD",
     exchangeRate: lot.exchangeRate ?? DEFAULT_VALUES.EXCHANGE_RATE,
     purchaseDate: resolveLotBusinessDate({
       purchaseDate: lot.purchaseDate,
@@ -101,8 +107,8 @@ export function buildHydratedLotState(
     }) ?? options.todayDate,
     purchaseShippingCost: lot.purchaseShippingCost ?? DEFAULT_VALUES.PURCHASE_SHIPPING_COST,
     purchaseTaxPercent: lot.purchaseTaxPercent ?? DEFAULT_VALUES.PURCHASE_TAX_RATE_PERCENT,
-    sellingTaxPercent: lot.sellingTaxPercent ?? DEFAULT_VALUES.SELLING_TAX_RATE_PERCENT,
-    sellingShippingPerOrder: lot.sellingShippingPerOrder ?? DEFAULT_VALUES.SELLING_SHIPPING_PER_ORDER,
+    sellingTaxPercent: pricingLot.sellingTaxPercent ?? DEFAULT_VALUES.SELLING_TAX_RATE_PERCENT,
+    sellingShippingPerOrder: pricingLot.sellingShippingPerOrder ?? DEFAULT_VALUES.SELLING_SHIPPING_PER_ORDER,
     feeProfilePreset: feeProfile.feeProfilePreset,
     platformFeePercent: feeProfile.platformFeePercent,
     additionalFeePercent: feeProfile.additionalFeePercent,

@@ -9,6 +9,7 @@ import type {
     GameSpectatorOutcomeSlot,
     GameSpectatorSnapshot
 } from "../../../../types/app.ts";
+import { isSinglesLot } from "../../../../app-core/shared/lot-types.ts";
 import {
     resolveFeaturedGameHeatCandidate,
     type GameHeatTierInput
@@ -88,7 +89,7 @@ function getTierRemainingHits(vm: GameSpectatorVm, tier: WheelConfig["tiers"][nu
   if (!lot) return null;
   const quantityPerHit = Math.max(1, Number(tier.packsCount) || 1);
 
-  if (lot.lotType === "singles") {
+  if (isSinglesLot(lot)) {
     if (tier.boundSinglesId != null) {
       const availableQuantity = getAvailableSinglesQuantityForWheelTier(vm, tier.boundLotId, tier.boundSinglesId);
       return Math.max(0, Math.floor(availableQuantity / quantityPerHit));

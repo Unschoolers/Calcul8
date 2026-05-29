@@ -1,5 +1,7 @@
 import { DEFAULT_VALUES } from "../../constants.ts";
-import type { Lot, LotSetup, LotType, SinglesCatalogSource, SinglesPurchaseEntry } from "../../types/app.ts";
+import type { Lot, LotSetup, LotType, SinglesCatalogSource, SinglesPurchaseEntry, SystemPricingDefaults } from "../../types/app.ts";
+import { isSinglesLot, normalizeLotType } from "../shared/lot-types.ts";
+import { pickSystemPricingFields } from "../shared/system-pricing-defaults.ts";
 import { normalizeSinglesCatalogSource } from "../shared/singles-catalog-source.ts";
 
 export type CreateNewLotOptions = {
@@ -10,6 +12,7 @@ export type CreateNewLotOptions = {
   newLotCatalogSource: SinglesCatalogSource;
   purchaseUiMode: "simple" | "expert";
   setup: LotSetup;
+  systemPricingDefaults?: SystemPricingDefaults | null;
   todayDate: string;
   generatedId?: number;
 };
@@ -26,6 +29,7 @@ export function createNewLotRecord({
   newLotCatalogSource,
   purchaseUiMode,
   setup,
+  systemPricingDefaults,
   todayDate,
   generatedId = Date.now()
 }: CreateNewLotOptions): {
@@ -35,9 +39,9 @@ export function createNewLotRecord({
 } {
   const selectedLot = currentLotId ? lots.find((lot) => lot.id === currentLotId) : null;
   const selectedLotCatalogSource = normalizeSinglesCatalogSource(
-    selectedLot?.lotType === "singles" ? selectedLot.singlesCatalogSource : undefined
+    isSinglesLot(selectedLot) ? selectedLot.singlesCatalogSource : undefined
   );
-  const nextLotType: LotType = newLotType === "singles" ? "singles" : "bulk";
+  const nextLotType: LotType = normalizeLotType(newLotType);
   const nextLotCatalogSource = nextLotType === "singles"
     ? normalizeSinglesCatalogSource(newLotCatalogSource, selectedLotCatalogSource)
     : "none";
@@ -47,11 +51,17 @@ export function createNewLotRecord({
     fallbackPreviousLot?.sellingTaxPercent ??
     DEFAULT_VALUES.SELLING_TAX_RATE_PERCENT;
   const previousSellingTax = Number(previousSellingTaxRaw);
+  const systemPricingFields = systemPricingDefaults
+    ? pickSystemPricingFields(systemPricingDefaults)
+    : null;
   const nextSetup: LotSetup = {
     ...setup,
+    ...(systemPricingFields ?? {}),
     externalSku: "",
     sellingTaxPercent:
-      Number.isFinite(previousSellingTax) && previousSellingTax >= 0
+      systemPricingFields
+        ? systemPricingFields.sellingTaxPercent
+        : Number.isFinite(previousSellingTax) && previousSellingTax >= 0
         ? previousSellingTax
         : DEFAULT_VALUES.SELLING_TAX_RATE_PERCENT,
     purchaseDate: todayDate
@@ -81,6 +91,7 @@ export function createNewLotRecord({
       name: newLotName.trim(),
       createdAt: todayDate,
       lotType: nextLotType,
+      usesSystemPricingDefaults: systemPricingFields ? true : undefined,
       singlesCatalogSource: nextLotType === "singles" ? nextLotCatalogSource : undefined,
       singlesPurchases: nextLotType === "singles" ? [] as SinglesPurchaseEntry[] : undefined,
       ...nextSetup

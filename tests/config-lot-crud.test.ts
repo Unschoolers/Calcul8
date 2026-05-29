@@ -8,6 +8,8 @@ import {
   normalizeSelectedLotId,
   validateRenameLotName
 } from "../src/app-core/methods/config-lot-crud.ts";
+import { normalizeSystemPricingDefaults } from "../src/app-core/shared/system-pricing-defaults.ts";
+import { createLotTypeContractCases } from "./helpers/lot-type-contract.ts";
 import { makeLot, makeLotSetup } from "./helpers/fixtures.ts";
 
 test("createNewLotRecord builds singles lots with normalized defaults", () => {
@@ -54,6 +56,56 @@ test("createNewLotRecord uses fallback selling tax when previous tax is invalid"
   assert.equal(result.lot.sellingTaxPercent, DEFAULT_VALUES.SELLING_TAX_RATE_PERCENT);
   assert.equal(result.lot.externalSku, "");
   assert.equal(result.nextLotCatalogSource, "none");
+});
+
+test("createNewLotRecord stamps system seller defaults onto new bulk and singles lots", () => {
+  const systemPricingDefaults = normalizeSystemPricingDefaults({
+    sellingCurrency: "USD",
+    sellingTaxPercent: 8,
+    sellingShippingPerOrder: 6,
+    targetProfitPercent: 18,
+    spotsPerBox: 10,
+    feeProfilePreset: "none"
+  });
+
+  for (const { lotType } of createLotTypeContractCases()) {
+    const result = createNewLotRecord({
+      lots: [makeLot({ id: 1, sellingTaxPercent: 17 })],
+      currentLotId: 1,
+      newLotName: `${lotType} Lot`,
+      newLotType: lotType,
+      newLotCatalogSource: "pokemon",
+      purchaseUiMode: "expert",
+      setup: makeLotSetup({
+        sellingCurrency: "CAD",
+        sellingTaxPercent: 99,
+        sellingShippingPerOrder: 99,
+        targetProfitPercent: 2,
+        spotsPerBox: 3,
+        feeProfilePreset: "whatnot",
+        platformFeePercent: 8,
+        additionalFeePercent: 2.9,
+        additionalFeeAppliesTo: "sale_plus_shipping",
+        fixedFeePerOrder: 0.3
+      }),
+      systemPricingDefaults,
+      todayDate: "2026-03-22",
+      generatedId: 201
+    });
+
+    assert.equal(result.lot.lotType, lotType);
+    assert.equal(result.lot.usesSystemPricingDefaults, true);
+    assert.equal(result.lot.sellingCurrency, "USD");
+    assert.equal(result.lot.sellingTaxPercent, 8);
+    assert.equal(result.lot.sellingShippingPerOrder, 6);
+    assert.equal(result.lot.targetProfitPercent, 18);
+    assert.equal(result.lot.spotsPerBox, 10);
+    assert.equal(result.lot.feeProfilePreset, "none");
+    assert.equal(result.lot.platformFeePercent, 0);
+    assert.equal(result.lot.additionalFeePercent, 0);
+    assert.equal(result.lot.additionalFeeAppliesTo, "sale_only");
+    assert.equal(result.lot.fixedFeePerOrder, 0);
+  }
 });
 
 test("validateRenameLotName enforces blank and duplicate checks", () => {

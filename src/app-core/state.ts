@@ -3,6 +3,7 @@ import type { AppState } from "../types/app.ts";
 import { primeStoredAuthSecretsFromStorage } from "./auth/index.ts";
 import { getBrowserLocale, normalizeLanguagePreference } from "./i18n/index.ts";
 import { getFeeProfilePreset } from "./shared/fee-profile-presets.ts";
+import { createDefaultSystemPricingDefaults } from "./shared/system-pricing-defaults.ts";
 import { resolveDefaultSinglesCatalogSourceFromEnv } from "./shared/singles-catalog-source.ts";
 import { STORAGE_KEYS } from "./storageKeys.ts";
 
@@ -43,6 +44,7 @@ export function createInitialState(): AppState {
     import.meta.env.DEV ||
     String(import.meta.env.VITE_SHOW_MANUAL_PURCHASE_VERIFY || "").toLowerCase() === "true";
   const defaultFeeProfile = getFeeProfilePreset("whatnot");
+  const systemPricingDefaults = createDefaultSystemPricingDefaults(hasProAccess ? 15 : 0);
 
   return {
     hasProAccess,
@@ -120,6 +122,8 @@ export function createInitialState(): AppState {
     confirmText: "",
     confirmColor: "error",
     confirmAction: null,
+    showSystemConfigurationDialog: false,
+    systemPricingDefaults,
     liveSinglesManualIds: [],
     liveSinglesExternalIds: [],
 

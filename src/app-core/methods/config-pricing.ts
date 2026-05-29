@@ -6,13 +6,23 @@ import {
 } from "../../domain/calculations.ts";
 import type { FeeProfilePreset } from "../../types/app.ts";
 import { getFeeProfilePreset } from "../shared/fee-profile-presets.ts";
+import {
+  applySystemPricingDefaultsToLot,
+  lotUsesSystemPricingDefaults,
+  normalizeSystemPricingDefaults,
+  pickSystemPricingFields
+} from "../shared/system-pricing-defaults.ts";
 import { type ConfigMethodSubset, getTodayDate, toDateOnly } from "./config-shared.ts";
+import { queueWorkspaceConfigSyncPush } from "./ui/workspace/workspace-config-sync.ts";
 
 export const configPricingMethods: ConfigMethodSubset<
   | "calculateProfit"
   | "recalculateDefaultPrices"
   | "calculateOptimalPrices"
   | "setFeeProfilePreset"
+  | "setSystemFeeProfilePreset"
+  | "onSystemPricingDefaultsChange"
+  | "setCurrentLotSystemPricingDefaultsMode"
   | "updatePurchaseCostInput"
   | "onPurchaseConfigChange"
   | "calculatePriceForUnits"
@@ -70,6 +80,59 @@ export const configPricingMethods: ConfigMethodSubset<
     this.additionalFeeAppliesTo = feeProfile.additionalFeeAppliesTo;
     this.fixedFeePerOrder = feeProfile.fixedFeePerOrder;
     this.recalculateDefaultPrices();
+  },
+
+  setSystemFeeProfilePreset(preset: FeeProfilePreset): void {
+    const feeProfile = getFeeProfilePreset(preset);
+    this.systemPricingDefaults = normalizeSystemPricingDefaults({
+      ...this.systemPricingDefaults,
+      ...feeProfile
+    });
+    this.onSystemPricingDefaultsChange();
+  },
+
+  onSystemPricingDefaultsChange(): void {
+    const normalizedDefaults = normalizeSystemPricingDefaults(this.systemPricingDefaults);
+    this.systemPricingDefaults = normalizedDefaults;
+
+    this.lots = this.lots.map((lot) => applySystemPricingDefaultsToLot(lot, normalizedDefaults));
+
+    const currentLot = this.currentLotId
+      ? this.lots.find((lot) => lot.id === this.currentLotId)
+      : null;
+    if (currentLot && lotUsesSystemPricingDefaults(currentLot)) {
+      Object.assign(this, pickSystemPricingFields(normalizedDefaults));
+    }
+
+    if (typeof this.saveSystemPricingDefaultsToStorage === "function") {
+      this.saveSystemPricingDefaultsToStorage();
+    }
+    this.saveLotsToStorage();
+    this.recalculateDefaultPrices();
+    queueWorkspaceConfigSyncPush(this);
+  },
+
+  setCurrentLotSystemPricingDefaultsMode(useSystemDefaults: boolean): void {
+    if (!this.currentLotId) {
+      this.notify("Select a lot first", "warning");
+      return;
+    }
+
+    const lot = this.lots.find((candidate) => candidate.id === this.currentLotId);
+    if (!lot) return;
+
+    lot.usesSystemPricingDefaults = useSystemDefaults;
+    if (useSystemDefaults) {
+      const fields = pickSystemPricingFields(normalizeSystemPricingDefaults(this.systemPricingDefaults));
+      Object.assign(lot, fields);
+      Object.assign(this, fields);
+    } else {
+      Object.assign(lot, this.getCurrentSetup(), { usesSystemPricingDefaults: false });
+    }
+
+    this.saveLotsToStorage();
+    this.recalculateDefaultPrices();
+    queueWorkspaceConfigSyncPush(this);
   },
 
   updatePurchaseCostInput(value: unknown): void {

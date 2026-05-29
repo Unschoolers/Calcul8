@@ -20,6 +20,7 @@ import type {
     SyncSinglesCatalogSource as SharedSyncSinglesCatalogSource,
     SyncSinglesPurchaseDto as SharedSyncSinglesPurchaseDto,
     SyncSnapshotDto as SharedSyncSnapshotDto,
+    SyncSystemPricingDefaultsDto as SharedSyncSystemPricingDefaultsDto,
     SyncTierDeductionType as SharedSyncTierDeductionType,
     SyncWheelConfigDto as SharedSyncWheelConfigDto,
     SyncWheelTierDto as SharedSyncWheelTierDto
@@ -302,12 +303,14 @@ export type SyncLivePricingDto = SharedSyncLivePricingDto;
 export type SyncSalesByLotDto = SharedSyncSalesByLotDto;
 export type SyncSnapshotDto = SharedSyncSnapshotDto;
 export type SyncPayloadDto = SharedSyncPayloadDto;
+export type SyncSystemPricingDefaultsDto = SharedSyncSystemPricingDefaultsDto;
 
 export interface SyncSnapshotPayload {
   lots: SyncLotDto[];
   salesByLot: SyncSalesByLotDto;
   wheelConfigs: SyncWheelConfigDto[];
   activeWheelConfigId: number | null;
+  systemPricingDefaults?: SyncSystemPricingDefaultsDto | null;
 }
 
 export interface SyncSnapshotDocument extends SyncSnapshotPayload {
@@ -335,6 +338,7 @@ export interface SyncMetaDocument extends Omit<SyncMetadataDto, "activeWheelConf
   updatedAt: string;
   wheelConfigs?: SyncWheelConfigDto[];
   activeWheelConfigId?: number | null;
+  systemPricingDefaults?: SyncSystemPricingDefaultsDto | null;
 }
 
 export type WhatnotConnectionStatus = "active" | "disconnected" | "error";
@@ -544,6 +548,7 @@ export interface SyncPushPayload {
   salesByLot: SyncSalesByLotDto;
   wheelConfigs: SyncWheelConfigDto[];
   activeWheelConfigId: number | null;
+  systemPricingDefaults?: SyncSystemPricingDefaultsDto | null;
   activeLotId?: number;
   clientVersion?: number;
   allowEmptyOverwrite?: boolean;

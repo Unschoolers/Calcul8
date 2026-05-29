@@ -6,6 +6,7 @@ import {
   calculateTotalSpots
 } from "../../domain/calculations.ts";
 import type { Lot } from "../../types/app.ts";
+import { getLotType } from "../shared/lot-types.ts";
 import {
   createForecastScenario,
   type ForecastScenario,
@@ -68,7 +69,7 @@ export function computeLotModeProjections(payload: {
 
   const lotTaxPercent = Math.max(0, Number(payload.lot.sellingTaxPercent) || 0);
   const lotShipping = Math.max(0, Number(payload.lot.sellingShippingPerOrder) || 0);
-  const lotType = payload.lot.lotType === "singles" ? "singles" : "bulk";
+  const lotType = getLotType(payload.lot);
 
   let itemUnitPrice = 0;
   if (lotType === "singles") {

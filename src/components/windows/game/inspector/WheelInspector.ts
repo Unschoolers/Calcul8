@@ -1,6 +1,7 @@
 import { inject, type PropType } from "vue";
 import { createNestedWindowContextBridge } from "../../shared/contextBridge.ts";
 import { translateAppMessage } from "../../../../app-core/i18n/index.ts";
+import { isSinglesLot } from "../../../../app-core/shared/lot-types.ts";
 import { getWheelChanceTotal } from "../../../../app-core/shared/wheel-odds.ts";
 import { getWheelTierSourceLotIds, isWheelTierMultiLot } from "../../../../app-core/shared/wheel-tier-sources.ts";
 import WheelHistoryPanel from "./WheelHistoryPanel.vue";
@@ -105,7 +106,7 @@ export const WheelInspector = {
           let detail = translateAppMessage(preferredLanguage, "wheelInspectorSourceMissingDetail");
           let warning = lot == null;
           if (lot) {
-            if (lot.lotType === "singles") {
+            if (isSinglesLot(lot)) {
               const remainingSingles = (lot.singlesPurchases || []).reduce((sum, entry) => (
                 sum + getAvailableSinglesQuantityForWheelTier(this, lot.id, entry.id)
               ), 0);

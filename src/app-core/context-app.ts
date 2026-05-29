@@ -41,6 +41,7 @@ export interface AppComputedState {
   lotNameDraft: string;
   currentLotType: LotType;
   currentLotCatalogSource: SinglesCatalogSource;
+  currentLotUsesSystemPricingDefaults: boolean;
   hasLotSelected: boolean;
   isLiveTabDisabled: boolean;
   canUsePaidActions: boolean;
@@ -255,6 +256,8 @@ export interface AppMethodState {
   getExchangeRate(): Promise<void>;
   loadLotsFromStorage(): void;
   saveLotsToStorage(): void;
+  loadSystemPricingDefaultsFromStorage(): void;
+  saveSystemPricingDefaultsToStorage(): void;
   getCurrentSetup(): LotSetup;
   autoSaveSetup(): void;
   syncLivePricesFromDefaults(): void;
@@ -296,6 +299,9 @@ export interface AppMethodState {
   recalculateDefaultPrices(opts?: { closeModal?: boolean }): void;
   calculateOptimalPrices(): void;
   setFeeProfilePreset(preset: FeeProfilePreset): void;
+  setSystemFeeProfilePreset(preset: FeeProfilePreset): void;
+  onSystemPricingDefaultsChange(): void;
+  setCurrentLotSystemPricingDefaultsMode(useSystemDefaults: boolean): void;
   updatePurchaseCostInput(value: unknown): void;
   onPurchaseConfigChange(): void;
   calculatePriceForUnits(units: number, targetNetRevenue: number): number;

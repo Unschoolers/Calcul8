@@ -100,9 +100,6 @@
   "singlesCsvPreviewTitle": "Aperçu CSV (5 premières lignes)",
   "singlesCsvRequiredFieldsLabel": "Champs requis",
   "singlesCsvRequiredMappedLabel": "{{count}}/2 requis mappés",
-  "singlesCsvSelectColumnLabel": "Choisir une colonne",
-  "singlesMarketplaceFeeMathHelp": "Calcul des frais de plateforme seulement. Les taxes et la livraison sont séparées.",
-  "singlesSellingCurrencyLabel": "Devise de vente",
-  "singlesSellingTitle": "Vente"
+  "singlesCsvSelectColumnLabel": "Choisir une colonne"
 }
 

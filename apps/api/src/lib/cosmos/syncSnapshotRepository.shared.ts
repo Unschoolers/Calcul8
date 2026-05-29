@@ -6,6 +6,7 @@ import type {
   SyncPresetDocument,
   SyncLotDto,
   SyncSalesByLotDto,
+  SyncSystemPricingDefaultsDto,
   SyncWheelConfigDto
 } from "../../types";
 import { isNotFoundError, withCosmosRetry } from "./core";
@@ -27,6 +28,7 @@ export interface IncrementalSyncUpsertInput {
   salesByLot: SyncSalesByLotDto;
   wheelConfigs: SyncWheelConfigDto[];
   activeWheelConfigId: number | null;
+  systemPricingDefaults?: SyncSystemPricingDefaultsDto | null;
   version: number;
   updatedAt: string;
 }

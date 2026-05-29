@@ -214,6 +214,86 @@ test("syncPush computes next version and returns changed payload", async () => {
   assert.equal((response.jsonBody as { changed: boolean }).changed, true);
 });
 
+test("syncPush forwards normalized system pricing defaults to sync storage", async () => {
+  parseSyncLotsShapeMock.mockReturnValue({
+    lots: [{ id: 1 }],
+    salesByLot: { "1": [] }
+  });
+  getEffectiveSyncSnapshotMock.mockResolvedValue({
+    version: 1,
+    updatedAt: "2026-02-21T10:00:00.000Z"
+  });
+  upsertSyncSnapshotIncrementalMock.mockResolvedValue({
+    changed: true,
+    upsertedCount: 1,
+    deletedCount: 0
+  });
+
+  const request = createHttpRequest({
+    body: {
+      lots: [{ id: 1 }],
+      salesByLot: { "1": [] },
+      systemPricingDefaults: {
+        sellingCurrency: "USD",
+        sellingTaxPercent: "8.5",
+        sellingShippingPerOrder: "2",
+        targetProfitPercent: "21",
+        spotsPerBox: "9",
+        feeProfilePreset: "none"
+      },
+      clientVersion: 1
+    },
+    method: "POST",
+    headers: { authorization: "Bearer user-a" }
+  });
+  const context = createInvocationContext();
+
+  await syncPush(request as never, context as never);
+
+  assert.deepEqual(upsertSyncSnapshotIncrementalMock.mock.calls[0]?.[1]?.systemPricingDefaults, {
+    sellingCurrency: "USD",
+    sellingTaxPercent: 8.5,
+    sellingShippingPerOrder: 2,
+    targetProfitPercent: 21,
+    spotsPerBox: 9,
+    feeProfilePreset: "none"
+  });
+});
+
+test("syncPush omits system pricing defaults for legacy clients", async () => {
+  parseSyncLotsShapeMock.mockReturnValue({
+    lots: [{ id: 1 }],
+    salesByLot: { "1": [] }
+  });
+  getEffectiveSyncSnapshotMock.mockResolvedValue({
+    version: 1,
+    updatedAt: "2026-02-21T10:00:00.000Z"
+  });
+  upsertSyncSnapshotIncrementalMock.mockResolvedValue({
+    changed: true,
+    upsertedCount: 1,
+    deletedCount: 0
+  });
+
+  const request = createHttpRequest({
+    body: {
+      lots: [{ id: 1 }],
+      salesByLot: { "1": [] },
+      clientVersion: 1
+    },
+    method: "POST",
+    headers: { authorization: "Bearer user-a" }
+  });
+  const context = createInvocationContext();
+
+  await syncPush(request as never, context as never);
+
+  assert.equal(
+    Object.hasOwn(upsertSyncSnapshotIncrementalMock.mock.calls[0]?.[1] ?? {}, "systemPricingDefaults"),
+    false
+  );
+});
+
 test("syncPush rejects stale clientVersion when cloud version is newer", async () => {
   parseSyncLotsShapeMock.mockReturnValue({
     lots: [{ id: 10 }],

@@ -1,4 +1,5 @@
 import { DEFAULT_FEE_PROFILE_FIELDS, DEFAULT_VALUES, TAX_RATES } from "../constants.ts";
+import { normalizeLotType } from "../shared/lot-types.ts";
 import type {
     AdditionalFeeAppliesTo,
     CurrencyCode,
@@ -591,7 +592,7 @@ export function calculateSaleProfit(params: {
     params.feeProfileInput
   );
 
-  if (params.lotType === "singles") {
+  if (normalizeLotType(params.lotType) === "singles") {
     const allocatedCost = calculateSinglesSaleCostBasis({
       sale: params.sale,
       singlesPurchases: params.singlesPurchases,
@@ -627,7 +628,7 @@ export function getSaleProfitPreview(params: {
     params.feeProfileInput
   );
 
-  if (params.lotType === "singles") {
+  if (normalizeLotType(params.lotType) === "singles") {
     const entriesById = new Map(
       (params.singlesPurchases || []).map((entry) => [entry.id, entry] as const)
     );

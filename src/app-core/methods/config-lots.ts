@@ -1,5 +1,6 @@
 import type { LotSetup, SinglesCatalogSource } from "../../types/app.ts";
 import { replaceRootLotSales } from "../shared/sales-root-state.ts";
+import { getLotType, isSinglesLot, normalizeLotType } from "../shared/lot-types.ts";
 import { normalizeSinglesCatalogSource } from "../shared/singles-catalog-source.ts";
 import {
   getScopedLastLotStorageKey,
@@ -241,10 +242,11 @@ export const configLotMethods: ConfigMethodSubset<
       lots: this.lots,
       currentLotId: this.currentLotId,
       newLotName: name,
-      newLotType: this.newLotType === "singles" ? "singles" : "bulk",
+      newLotType: normalizeLotType(this.newLotType),
       newLotCatalogSource: this.newLotCatalogSource,
       purchaseUiMode: this.purchaseUiMode,
       setup: this.getCurrentSetup(),
+      systemPricingDefaults: this.systemPricingDefaults,
       todayDate: getTodayDate()
     });
     this.lots.push(newLot);
@@ -258,7 +260,7 @@ export const configLotMethods: ConfigMethodSubset<
     this.newLotCatalogSource = nextLotCatalogSource;
     this.showNewLotModal = false;
     if (typeof this.handleGuidedOnboardingLotCreated === "function") {
-      this.handleGuidedOnboardingLotCreated(newLot.lotType === "singles" ? "singles" : "bulk", newLot.id);
+      this.handleGuidedOnboardingLotCreated(getLotType(newLot), newLot.id);
     }
     this.notify("Lot created", "success");
   },
@@ -282,7 +284,7 @@ export const configLotMethods: ConfigMethodSubset<
     if (!this.currentLotId) return;
 
     const lot = this.lots.find((candidate) => candidate.id === this.currentLotId);
-    if (!lot || lot.lotType !== "singles") return;
+    if (!isSinglesLot(lot)) return;
 
     const normalizedSource = normalizeSinglesCatalogSource(
       nextValue,
@@ -352,14 +354,15 @@ export const configLotMethods: ConfigMethodSubset<
 
     const lot = this.lots.find((p) => p.id === this.currentLotId);
     if (!lot) return;
-    if (lot.lotType === "singles") {
+    if (isSinglesLot(lot)) {
       lot.singlesCatalogSource = normalizeSinglesCatalogSource(lot.singlesCatalogSource);
     }
     const todayDate = getTodayDate();
     const nextHydratedState = buildHydratedLotState(lot, {
       hasProAccess: this.hasProAccess,
       todayDate,
-      currentNewLotCatalogSource: this.newLotCatalogSource
+      currentNewLotCatalogSource: this.newLotCatalogSource,
+      systemPricingDefaults: this.systemPricingDefaults
     });
 
     const hydrationRevision = (Number(this.lotHydrationRevision) || 0) + 1;

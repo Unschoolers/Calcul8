@@ -1,4 +1,5 @@
 import { translateAppMessage } from "../../../../app-core/i18n/index.ts";
+import { getLotType, isSinglesLot } from "../../../../app-core/shared/lot-types.ts";
 import { calculateTotalCaseCost } from "../../../../domain/calculations-fees.ts";
 import { getTierChancePercent } from "../../../../app-core/shared/wheel-odds.ts";
 import {
@@ -98,7 +99,7 @@ export const wheelConfigComputeds = {
       if (isWheelTierMultiLot(tier)) {
         const candidateLots = sourceLotIds
           .map((id) => lots.find((entry) => entry.id === id))
-          .filter((entry): entry is Lot => entry != null && entry.lotType !== "singles");
+          .filter((entry): entry is Lot => entry != null && !isSinglesLot(entry));
         if (!candidateLots.length) {
           invalid.push({ tierId: tier.id, label: tier.label, reason: translateAppMessage(preferredLanguage, "wheelInvalidLotMissing") });
           continue;
@@ -232,20 +233,20 @@ export const wheelConfigComputeds = {
   tierSourceItems(this: Record<string, unknown>): Array<{ title: string; value: number; lotType?: string; groupLabel?: string | null }> {
     const lots = (this.lots || []) as Lot[];
     const selectableLots = lots.filter((lot) => {
-      if (lot.lotType === "singles") {
+      if (isSinglesLot(lot)) {
         return (lot.singlesPurchases || []).some((entry) => (
           getAvailableSinglesQuantityForWheelTier(this, lot.id, entry.id) > 0
         ));
       }
       return getRemainingPacksForWheelLot(this, lot.id) > 0;
     });
-    const bulkLots = selectableLots.filter((l) => l.lotType !== "singles");
-    const singlesLots = selectableLots.filter((l) => l.lotType === "singles");
+    const bulkLots = selectableLots.filter((lot) => !isSinglesLot(lot));
+    const singlesLots = selectableLots.filter((lot) => isSinglesLot(lot));
     const sorted = [...bulkLots, ...singlesLots];
     const items: Array<{ title: string; value: number; lotType?: string; groupLabel?: string | null }> = [];
     let prevType: string | null = null;
     for (const lot of sorted) {
-      const type = lot.lotType === "singles" ? "singles" : "bulk";
+      const type = getLotType(lot);
       items.push({
         title: lot.name,
         value: lot.id,
@@ -264,7 +265,7 @@ export const wheelConfigComputeds = {
 
   bulkTierSourceItems(this: Record<string, unknown>): Array<{ title: string; value: number; lotType?: string; groupLabel?: string | null }> {
     return (((this as Record<string, unknown>).tierSourceItems || []) as Array<{ title: string; value: number; lotType?: string; groupLabel?: string | null }>)
-      .filter((item) => item.lotType !== "singles")
+      .filter((item) => !isSinglesLot(item))
       .map((item, index) => ({
         ...item,
         groupLabel: index === 0

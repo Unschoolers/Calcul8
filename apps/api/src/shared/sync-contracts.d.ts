@@ -6,6 +6,19 @@ export type SyncCostInputMode = "perBox" | "total";
 export type SyncFeeProfilePreset = "whatnot" | "none";
 export type SyncAdditionalFeeAppliesTo = "sale_only" | "sale_plus_shipping";
 
+export interface SyncSystemPricingDefaultsDto {
+  sellingCurrency?: SyncCurrencyCode;
+  sellingTaxPercent?: number;
+  sellingShippingPerOrder?: number;
+  targetProfitPercent?: number;
+  spotsPerBox?: number;
+  feeProfilePreset?: SyncFeeProfilePreset;
+  platformFeePercent?: number;
+  additionalFeePercent?: number;
+  fixedFeePerOrder?: number;
+  additionalFeeAppliesTo?: SyncAdditionalFeeAppliesTo;
+}
+
 export interface SyncSinglesPurchaseDto {
   id: number;
   item: string;
@@ -52,6 +65,7 @@ export interface SyncLotDto {
   feeProfilePreset?: SyncFeeProfilePreset;
   additionalFeeAppliesTo?: SyncAdditionalFeeAppliesTo;
   includeTax?: boolean;
+  usesSystemPricingDefaults?: boolean;
   isComplete?: boolean;
 }
 export type SyncSaleType = "pack" | "box" | "rtyh" | "wheel";
@@ -152,6 +166,7 @@ export interface SyncSnapshotDto {
   salesByLot: SyncSalesByLotDto;
   wheelConfigs: SyncWheelConfigDto[];
   activeWheelConfigId: number | null;
+  systemPricingDefaults?: SyncSystemPricingDefaultsDto | null;
   version: number;
   updatedAt?: string | null;
 }
@@ -161,6 +176,7 @@ export interface SyncPayloadDto {
   salesByLot: SyncSalesByLotDto;
   wheelConfigs: SyncWheelConfigDto[];
   activeWheelConfigId: number | null;
+  systemPricingDefaults?: SyncSystemPricingDefaultsDto | null;
   activeLotId?: number;
   clientVersion?: number;
   allowEmptyOverwrite?: boolean;
@@ -248,6 +264,7 @@ export interface SyncGameSessionDto {
 export function isSyncEntityRecord(value: unknown): value is SyncEntityRecord;
 export function normalizeOptionalSyncId(value: unknown): number | null;
 export function normalizeSyncGameSessionDto(value: unknown, fallbackUpdatedAt?: number): SyncGameSessionDto;
+export function normalizeSyncSystemPricingDefaultsDto(value: unknown): SyncSystemPricingDefaultsDto | null;
 export function normalizeSyncLivePricingDto(value: unknown): SyncLivePricingDto | null;
 export function normalizeSyncLotDto(value: unknown): SyncLotDto | null;
 export function normalizeSyncMetadataDto(value: unknown): SyncMetadataDto | null;

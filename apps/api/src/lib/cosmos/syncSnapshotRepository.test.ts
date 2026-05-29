@@ -655,3 +655,138 @@ test("upsertSyncSnapshotIncremental updates meta when only wheel config data cha
   }]);
   assert.equal(syncSnapshots.items.upsert.mock.calls[0]?.[0]?.activeWheelConfigId, 42);
 });
+
+test("upsertSyncSnapshotIncremental updates meta when only system pricing defaults change", async () => {
+  const syncSnapshots = createSyncSnapshotsContainer();
+  const existingPresetDocuments: SyncPresetDocument[] = [
+    {
+      id: "sync:preset:user-1:keep",
+      docType: "sync_preset",
+      userId: "user-1",
+      presetId: "keep",
+      preset: { id: "keep", name: "Keep" },
+      sales: [{ id: 1 }],
+      version: 1,
+      updatedAt: "2026-03-18T09:00:00.000Z"
+    }
+  ];
+  const metaDocument: SyncMetaDocument = {
+    id: "sync:meta:user-1",
+    docType: "sync_meta",
+    userId: "user-1",
+    version: 3,
+    updatedAt: "2026-03-18T09:00:00.000Z",
+    wheelConfigs: [],
+    activeWheelConfigId: null,
+    systemPricingDefaults: {
+      sellingCurrency: "CAD",
+      sellingTaxPercent: 15
+    }
+  };
+
+  syncSnapshots.items.query.mockReturnValue({
+    fetchAll: vi.fn().mockResolvedValue({
+      resources: existingPresetDocuments
+    })
+  });
+  syncSnapshots.items.upsert.mockResolvedValue({ resource: null });
+  syncSnapshots.item.mockImplementation((id: string, userId: string) => ({
+    read: vi.fn().mockResolvedValue({
+      resource: id === "sync:meta:user-1" ? metaDocument : null
+    }),
+    delete: vi.fn().mockResolvedValue({ id, userId })
+  }));
+  getContainersMock.mockReturnValue({ syncSnapshots });
+
+  const result = await upsertSyncSnapshotIncremental(createConfig(), {
+    userId: "user-1",
+    lots: [{ id: "keep", name: "Keep" }],
+    salesByLot: {
+      keep: [{ id: 1 }]
+    },
+    wheelConfigs: [],
+    activeWheelConfigId: null,
+    systemPricingDefaults: {
+      sellingCurrency: "USD",
+      sellingTaxPercent: 8,
+      targetProfitPercent: 21
+    },
+    version: 10,
+    updatedAt: "2026-03-18T16:00:00.000Z"
+  });
+
+  assert.deepEqual(result, {
+    changed: true,
+    upsertedCount: 0,
+    deletedCount: 0
+  });
+  assert.equal(syncSnapshots.items.upsert.mock.calls.length, 1);
+  assert.equal(syncSnapshots.items.upsert.mock.calls[0]?.[0]?.id, "sync:meta:user-1");
+  assert.deepEqual(syncSnapshots.items.upsert.mock.calls[0]?.[0]?.systemPricingDefaults, {
+    sellingCurrency: "USD",
+    sellingTaxPercent: 8,
+    targetProfitPercent: 21
+  });
+});
+
+test("upsertSyncSnapshotIncremental preserves system pricing defaults when clients omit the field", async () => {
+  const syncSnapshots = createSyncSnapshotsContainer();
+  const existingPresetDocuments: SyncPresetDocument[] = [
+    {
+      id: "sync:preset:user-1:keep",
+      docType: "sync_preset",
+      userId: "user-1",
+      presetId: "keep",
+      preset: { id: "keep", name: "Keep" },
+      sales: [{ id: 1 }],
+      version: 1,
+      updatedAt: "2026-03-18T09:00:00.000Z"
+    }
+  ];
+  const metaDocument: SyncMetaDocument = {
+    id: "sync:meta:user-1",
+    docType: "sync_meta",
+    userId: "user-1",
+    version: 3,
+    updatedAt: "2026-03-18T09:00:00.000Z",
+    wheelConfigs: [],
+    activeWheelConfigId: null,
+    systemPricingDefaults: {
+      sellingCurrency: "CAD",
+      sellingTaxPercent: 15
+    }
+  };
+
+  syncSnapshots.items.query.mockReturnValue({
+    fetchAll: vi.fn().mockResolvedValue({
+      resources: existingPresetDocuments
+    })
+  });
+  syncSnapshots.items.upsert.mockResolvedValue({ resource: null });
+  syncSnapshots.item.mockImplementation((id: string, userId: string) => ({
+    read: vi.fn().mockResolvedValue({
+      resource: id === "sync:meta:user-1" ? metaDocument : null
+    }),
+    delete: vi.fn().mockResolvedValue({ id, userId })
+  }));
+  getContainersMock.mockReturnValue({ syncSnapshots });
+
+  const result = await upsertSyncSnapshotIncremental(createConfig(), {
+    userId: "user-1",
+    lots: [{ id: "keep", name: "Keep" }],
+    salesByLot: {
+      keep: [{ id: 1 }]
+    },
+    wheelConfigs: [],
+    activeWheelConfigId: null,
+    version: 10,
+    updatedAt: "2026-03-18T16:00:00.000Z"
+  });
+
+  assert.deepEqual(result, {
+    changed: false,
+    upsertedCount: 0,
+    deletedCount: 0
+  });
+  assert.equal(syncSnapshots.items.upsert.mock.calls.length, 0);
+});

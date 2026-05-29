@@ -11,6 +11,7 @@ import {
 } from "../../domain/calculations.ts";
 import type { AppComputedObject } from "../context-contracts.ts";
 import { buildLotOptionItems, filterLotOptionItems } from "../shared/lot-option-items.ts";
+import { getLotType, isSinglesLot } from "../shared/lot-types.ts";
 import {
     getLotSalesFromAccessContext,
     type LotSalesAccessContext
@@ -124,6 +125,7 @@ export const singlesComputed: Pick<
   AppComputedObject,
   "currentLotType" |
   "currentLotCatalogSource" |
+  "currentLotUsesSystemPricingDefaults" |
   "hasLotSelected" |
   "isLiveTabDisabled" |
   "canUsePaidActions" |
@@ -143,14 +145,20 @@ export const singlesComputed: Pick<
   currentLotType() {
     if (!this.currentLotId) return "bulk";
     const currentLot = this.lots.find((lot) => lot.id === this.currentLotId);
-    return currentLot?.lotType === "singles" ? "singles" : "bulk";
+    return getLotType(currentLot);
   },
 
   currentLotCatalogSource(): "ua" | "pokemon" | "none" {
     if (!this.currentLotId) return "none";
     const currentLot = this.lots.find((lot) => lot.id === this.currentLotId);
-    if (currentLot?.lotType !== "singles") return "none";
+    if (!isSinglesLot(currentLot)) return "none";
     return normalizeSinglesCatalogSource(currentLot.singlesCatalogSource);
+  },
+
+  currentLotUsesSystemPricingDefaults(): boolean {
+    if (!this.currentLotId) return false;
+    const currentLot = this.lots.find((lot) => lot.id === this.currentLotId);
+    return currentLot?.usesSystemPricingDefaults === true;
   },
 
   hasLotSelected(): boolean {
@@ -166,8 +174,8 @@ export const singlesComputed: Pick<
   },
 
   lotItems() {
-    const bulkLots = this.lots.filter((lot) => lot.lotType !== "singles");
-    const singlesLots = this.lots.filter((lot) => lot.lotType === "singles");
+    const bulkLots = this.lots.filter((lot) => !isSinglesLot(lot));
+    const singlesLots = this.lots.filter((lot) => isSinglesLot(lot));
     return buildLotOptionItems(
       [...bulkLots, ...singlesLots].map((lot) => ({
         ...lot,

@@ -1,4 +1,5 @@
 import { DEFAULT_VALUES } from "../constants.ts";
+import { isSinglesLot } from "../shared/lot-types.ts";
 import type {
   Lot,
   LotPerformanceSummary,
@@ -158,7 +159,7 @@ export function calculateLotPerformanceSummary(
   defaultExchangeRate: number,
   feeProfileInput: FeeProfileInput = lot
 ): LotPerformanceSummary {
-  const isSinglesLot = lot.lotType === "singles";
+  const isSinglesLotType = isSinglesLot(lot);
   const singlesTotals = calculateSinglesPurchaseTotals(lot.singlesPurchases);
   const singlesTotalCostInSellingCurrency = calculateSinglesPurchaseTotalCostInSellingCurrency({
     entries: lot.singlesPurchases,
@@ -167,11 +168,11 @@ export function calculateLotPerformanceSummary(
     exchangeRate: lot.exchangeRate,
     defaultExchangeRate
   });
-  const totalPacks = isSinglesLot
+  const totalPacks = isSinglesLotType
     ? (singlesTotalCostInSellingCurrency > 0 ? singlesTotals.totalQuantity : 0)
     : calculateTotalPacks(lot.boxesPurchased, lot.packsPerBox, 16);
   const soldPacks = calculateSoldPacksCount(sales);
-  const totalCost = isSinglesLot
+  const totalCost = isSinglesLotType
     ? singlesTotalCostInSellingCurrency
     : calculateTotalCaseCost({
       boxesPurchased: lot.boxesPurchased,

@@ -1,5 +1,6 @@
 import { getSinglesSoldQuantityForEntry } from "../../../../app-core/methods/sales-core.ts";
 import { translateAppMessage } from "../../../../app-core/i18n/index.ts";
+import { isSinglesLot } from "../../../../app-core/shared/lot-types.ts";
 import { getRootLotSales } from "../../../../app-core/shared/sales-root-state.ts";
 import { getWheelTierSourceLotIds, isWheelTierMultiLot } from "../../../../app-core/shared/wheel-tier-sources.ts";
 import type { Lot, Sale, SinglesPurchaseEntry, WheelTier } from "../../../../types/app.ts";
@@ -87,7 +88,7 @@ export function getWheelTierInventoryMeta(
   if (isWheelTierMultiLot(tier)) {
     const lots = (context.lots || []) as Lot[];
     const sourceIds = getWheelTierSourceLotIds(tier);
-    const bulkIds = sourceIds.filter((id) => lots.find((entry) => entry.id === id)?.lotType !== "singles");
+    const bulkIds = sourceIds.filter((id) => !isSinglesLot(lots.find((entry) => entry.id === id)));
     if (!bulkIds.length) return null;
     const remainingPacks = bulkIds.reduce((sum, id) => sum + getRemainingPacksForWheelLot(context, id), 0);
     const perHit = Math.max(1, Number(tier.packsCount) || 0);
@@ -101,7 +102,7 @@ export function getWheelTierInventoryMeta(
   const lot = lots.find((entry) => entry.id === tier.boundLotId);
   if (!lot) return null;
 
-  if (lot.lotType === "singles") {
+  if (isSinglesLot(lot)) {
     const preferredLanguage = String(context.preferredLanguage ?? "");
     if (tier.boundSinglesId != null) {
       const purchase = lot.singlesPurchases?.find((entry) => entry.id === tier.boundSinglesId);

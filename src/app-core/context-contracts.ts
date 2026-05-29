@@ -122,6 +122,7 @@ export interface AppComputedObject {
   lotNameDraft: StringProxyComputed;
   currentLotType(this: AppContext): LotType;
   currentLotCatalogSource(this: AppContext): SinglesCatalogSource;
+  currentLotUsesSystemPricingDefaults(this: AppContext): boolean;
   hasLotSelected(this: AppContext): boolean;
   isLiveTabDisabled(this: AppContext): boolean;
   canUsePaidActions(this: AppContext): boolean;

@@ -1,4 +1,5 @@
 import type { Lot } from "../../../../types/app.ts";
+import { isSinglesLot } from "../../../../app-core/shared/lot-types.ts";
 import {
   createBracketBattleSession,
   getBracketBattleMatchCount,
@@ -122,7 +123,7 @@ export function buildBracketBattlePrizeCatalog(lots: Lot[]): BracketBattlePrizeC
   const items: BracketBattlePrizeCatalogItem[] = [];
   for (const lot of lots || []) {
     if (!lot || !Number.isFinite(Number(lot.id))) continue;
-    if (lot.lotType === "singles") {
+    if (isSinglesLot(lot)) {
       for (const entry of lot.singlesPurchases || []) {
         if (!entry || !Number.isFinite(Number(entry.id))) continue;
         const cardNumber = normalizeText(entry.cardNumber);

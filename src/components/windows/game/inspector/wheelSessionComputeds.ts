@@ -1,4 +1,5 @@
 import { translateAppMessage } from "../../../../app-core/i18n/index.ts";
+import { getLotType } from "../../../../app-core/shared/lot-types.ts";
 import { getTierChancePercent } from "../../../../app-core/shared/wheel-odds.ts";
 import type { Lot, WheelConfig } from "../../../../types/app.ts";
 import {
@@ -146,7 +147,7 @@ export const wheelSessionComputeds = {
       const lot = lots.find((entry) => entry.id === tier.boundLotId);
       if (!lot) continue;
 
-      const rowKey = `${tier.boundLotId}:${lot.lotType === "singles" ? "singles" : "packs"}`;
+      const rowKey = `${tier.boundLotId}:${getLotType(lot) === "singles" ? "singles" : "packs"}`;
 
       if (tier.deductionType === "singles") {
         const purchase = tier.boundSinglesId != null

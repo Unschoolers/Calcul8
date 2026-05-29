@@ -1,6 +1,7 @@
 import { inject, type PropType } from "vue";
 import { createWindowContextBridge } from "../shared/contextBridge.ts";
 import { translateAppMessage } from "../../../app-core/i18n/index.ts";
+import { isSinglesLot } from "../../../app-core/shared/lot-types.ts";
 import type {
   Sale,
   WhatnotImportReviewRow,
@@ -489,7 +490,7 @@ export const WhatnotReviewDialog = {
     handleWhatnotLotSelection(this: any, row: WhatnotImportReviewRow, value: number | null): void {
       row.selectedLotId = value;
       const selectedLot = this.lotItems.find((lot: { value: number; lotType?: string }) => lot.value === value);
-      if (selectedLot?.lotType === "singles") {
+      if (isSinglesLot(selectedLot)) {
         row.selectedSaleType = "pack";
       } else if (!row.selectedSaleType) {
         row.selectedSaleType = row.suggestedSaleType || "pack";

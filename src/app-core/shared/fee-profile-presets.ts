@@ -13,7 +13,7 @@ type FeeFieldValues = Pick<
   "fixedFeePerOrder"
 >;
 
-type StoredFeeProfileLike = Partial<FeeProfileFields> & {
+type StoredFeeProfileLike = Partial<Record<keyof FeeProfileFields, unknown>> & {
   feeProfilePreset?: unknown;
 };
 
@@ -37,7 +37,7 @@ export function getDefaultFeeProfileFields(): FeeFieldValues {
   return { ...DEFAULT_FEE_PROFILE_FIELDS };
 }
 
-export function detectFeeProfilePreset(input?: Partial<FeeFieldValues> | null): FeeProfilePreset | null {
+export function detectFeeProfilePreset(input?: Partial<Record<keyof FeeFieldValues, unknown>> | null): FeeProfilePreset | null {
   const platformFeePercent = Number(input?.platformFeePercent);
   const additionalFeePercent = Number(input?.additionalFeePercent);
   const fixedFeePerOrder = Number(input?.fixedFeePerOrder);

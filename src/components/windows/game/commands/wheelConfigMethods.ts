@@ -5,6 +5,7 @@ import {
     stopWorkspaceConfigSyncPush
 } from "../../../../app-core/methods/ui/workspace/workspace-config-sync.ts";
 import { normalizeWheelConfig } from "../../../../app-core/shared/normalize-wheel-config.ts";
+import { isSinglesLot } from "../../../../app-core/shared/lot-types.ts";
 import { assignWheelPendingInventoryIssues } from "../../../../app-core/shared/wheel-session-compat.ts";
 import {
     getScopedActiveWheelConfigStorageKey,
@@ -441,7 +442,7 @@ export const wheelConfigMethods = {
     const lots = (this.lots || []) as Lot[];
     const currentLot = currentLotId != null ? lots.find((lot) => lot.id === currentLotId) : null;
     const canAutoBindCurrentLot = currentLot != null && (
-      currentLot.lotType === "singles"
+      isSinglesLot(currentLot)
         ? (currentLot.singlesPurchases || []).some((entry) => (
           getAvailableSinglesQuantityForWheelTier(this, currentLot.id, entry.id) > 0
         ))
@@ -474,7 +475,7 @@ export const wheelConfigMethods = {
       const lots = (this.lots || []) as Lot[];
       const costs = getWheelTierSourceLotIds(tier)
         .map((id) => lots.find((l) => l.id === id))
-        .filter((lot): lot is Lot => lot != null && lot.lotType !== "singles")
+        .filter((lot): lot is Lot => lot != null && !isSinglesLot(lot))
         .map((lot) => {
           const boxes = lot.boxesPurchased || 0;
           const packsPerBox = lot.packsPerBox || 16;
@@ -522,7 +523,7 @@ export const wheelConfigMethods = {
     if (tier.boundLotId == null) return [];
     const lots = (this.lots || []) as Lot[];
     const lot = lots.find((l) => l.id === tier.boundLotId);
-    if (!lot || lot.lotType !== "singles" || !lot.singlesPurchases?.length) return [];
+    if (!isSinglesLot(lot) || !lot.singlesPurchases?.length) return [];
     const items: Array<{ title: string; value: number | null; image?: string; cardNumber?: string; stockLabel?: string }> = [
       { title: "Untracked sale", value: null }
     ];
@@ -549,7 +550,7 @@ export const wheelConfigMethods = {
     if (tier.boundLotId == null) return false;
     const lots = (this.lots || []) as Lot[];
     const lot = lots.find((l) => l.id === tier.boundLotId);
-    return lot?.lotType === "singles" && (lot.singlesPurchases?.length ?? 0) > 0;
+    return isSinglesLot(lot) && (lot.singlesPurchases?.length ?? 0) > 0;
   },
 
   onTierLotChange(this: Record<string, unknown>, tier: WheelTier, lotId: unknown): void {
@@ -568,7 +569,7 @@ export const wheelConfigMethods = {
     }
     const lots = (this.lots || []) as Lot[];
     const lot = lots.find((l) => l.id === normalizedLotId);
-    if (lot?.lotType === "singles") {
+    if (isSinglesLot(lot)) {
       tier.deductionType = "singles";
       tier.packsCount = 1;
       tier.costPerTier = 0;

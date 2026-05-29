@@ -1,4 +1,5 @@
 import { resolveApiBaseUrl } from "../../../app-core/methods/ui/common/shared.ts";
+import { isSinglesLot } from "../../../app-core/shared/lot-types.ts";
 import { normalizeSinglesCatalogSource } from "../../../app-core/shared/singles-catalog-source.ts";
 import type { SinglesCatalogSource, SinglesPurchaseEntry } from "../../../types/app.ts";
 import {
@@ -66,7 +67,7 @@ function resolveSinglesLot(context: SinglesCatalogSearchContext): Record<string,
   if (!context.currentLotId) return null;
   const lots = Array.isArray(context.lots) ? context.lots : [];
   const lot = lots.find((candidate) => candidate.id === context.currentLotId);
-  if (!lot || lot.lotType !== "singles") return null;
+  if (!isSinglesLot(lot)) return null;
   return lot;
 }
 

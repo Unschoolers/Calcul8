@@ -1,4 +1,5 @@
 import type { AppContext } from "../../../context-app.ts";
+import { normalizeSystemPricingDefaults } from "../../../shared/system-pricing-defaults.ts";
 import {
   normalizeOptionalSyncId,
   toSyncLotDtos,
@@ -11,7 +12,7 @@ export type SyncPayload = SyncPayloadDto;
 export type SyncPayloadContext = Pick<
   AppContext,
   "lots" | "currentLotId" | "sales" | "loadSalesForLotId" | "wheelConfigs" | "activeWheelConfigId"
-> & { workspaceId?: unknown };
+> & Partial<Pick<AppContext, "systemPricingDefaults">> & { workspaceId?: unknown };
 
 export function createSyncPayload(context: SyncPayloadContext, clientVersion?: number): SyncPayload {
   const payload: SyncPayload = {
@@ -21,6 +22,10 @@ export function createSyncPayload(context: SyncPayloadContext, clientVersion?: n
     activeWheelConfigId: normalizeOptionalSyncId(context.activeWheelConfigId),
     clientVersion
   };
+
+  if ("systemPricingDefaults" in context && context.systemPricingDefaults) {
+    payload.systemPricingDefaults = normalizeSystemPricingDefaults(context.systemPricingDefaults);
+  }
 
   const activeLotId = normalizeOptionalSyncId(context.currentLotId);
   if (activeLotId != null) {
@@ -44,6 +49,7 @@ export function getSyncPayloadSignature(payload: SyncPayload): string {
     salesByLot: payload.salesByLot,
     wheelConfigs: payload.wheelConfigs,
     activeWheelConfigId: payload.activeWheelConfigId,
+    systemPricingDefaults: payload.systemPricingDefaults,
     workspaceId: payload.workspaceId
   });
 }

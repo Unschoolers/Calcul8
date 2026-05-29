@@ -1,4 +1,5 @@
 import type { Lot, WheelTier } from "../../types/app.ts";
+import { isSinglesLot } from "./lot-types.ts";
 
 function normalizePositiveId(value: unknown): number | null {
   const id = Math.floor(Number(value));
@@ -43,7 +44,7 @@ export function normalizeWheelTierSources(tier: WheelTier, lots: Lot[] = []): Wh
 
   if (ids.length > 1) {
     if (hasLotCatalog) {
-      ids = ids.filter((id) => lotById.get(id)?.lotType !== "singles");
+      ids = ids.filter((id) => !isSinglesLot(lotById.get(id)));
     }
     tier.boundLotIds = ids;
     tier.boundLotId = ids[0] ?? null;
@@ -63,5 +64,5 @@ export function getWheelTierBulkSourceLotIds(tier: WheelTier, lots: Lot[] = []):
   const ids = getWheelTierSourceLotIds(tier);
   if (!ids.length || !lots.length) return ids;
   const lotById = new Map(lots.map((lot) => [lot.id, lot] as const));
-  return ids.filter((id) => lotById.get(id)?.lotType !== "singles");
+  return ids.filter((id) => !isSinglesLot(lotById.get(id)));
 }

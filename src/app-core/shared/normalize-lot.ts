@@ -2,12 +2,13 @@ import { DEFAULT_VALUES } from "../../constants.ts";
 import type { Lot } from "../../types/app.ts";
 import { resolveLotBusinessDate, resolveLotCreatedDate } from "../../shared/lot-dates.ts";
 import { resolveStoredFeeProfile } from "./fee-profile-presets.ts";
+import { getLotType } from "./lot-types.ts";
 import { resolveDefaultSinglesMarketValueCurrency } from "./singles-market-value-currency.ts";
 import { normalizeSinglesCatalogSource } from "./singles-catalog-source.ts";
 import { normalizeSinglesPurchaseEntries } from "../methods/config-lots-state.ts";
 
 export function normalizeStoredLot(lot: Lot, todayDate: string): Lot {
-  const lotType = lot.lotType === "singles" ? "singles" : "bulk";
+  const lotType = getLotType(lot);
   const normalizedSinglesCatalogSource = lotType === "singles"
     ? normalizeSinglesCatalogSource(lot.singlesCatalogSource)
     : undefined;
