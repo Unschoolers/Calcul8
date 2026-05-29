@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test, vi } from "vitest";
 import { DEFAULT_VALUES } from "../src/constants.ts";
+import { normalizeSystemPricingDefaults } from "../src/app-core/shared/system-pricing-defaults.ts";
 
 const {
   fetchWithRetryMock,
@@ -388,6 +389,34 @@ test("pushCloudSync includes activeLotId metadata for the selected lot", async (
   };
   assert.equal(parsedBody.activeLotId, 77);
   assert.equal(parsedBody.workspaceId, "team-42");
+});
+
+test("pushCloudSync includes system seller defaults from the app context", async () => {
+  const ctx = createContext() as ReturnType<typeof createContext> & {
+    systemPricingDefaults: ReturnType<typeof normalizeSystemPricingDefaults>;
+  };
+  ctx.systemPricingDefaults = normalizeSystemPricingDefaults({
+    sellingCurrency: "USD",
+    sellingTaxPercent: 8,
+    sellingShippingPerOrder: 6,
+    targetProfitPercent: 18,
+    feeProfilePreset: "none"
+  });
+  fetchWithRetryMock.mockResolvedValue({
+    ok: true,
+    status: 200,
+    statusText: "OK",
+    json: async () => ({ version: 3 })
+  });
+
+  await uiSyncMethods.pushCloudSync.call(ctx, true);
+
+  assert.equal(fetchWithRetryMock.mock.calls.length, 1);
+  const requestInit = fetchWithRetryMock.mock.calls[0]?.[1] as { body?: string };
+  const parsedBody = JSON.parse(String(requestInit?.body ?? "{}")) as {
+    systemPricingDefaults?: unknown;
+  };
+  assert.deepEqual(parsedBody.systemPricingDefaults, ctx.systemPricingDefaults);
 });
 
 test("pushCloudSync skips upload and pulls cloud when local storage was cleared mid-session", async () => {

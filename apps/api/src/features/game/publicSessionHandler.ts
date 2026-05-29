@@ -3,6 +3,7 @@ import { HttpError, resolveUserId } from "../../lib/auth";
 import { getConfig } from "../../lib/config";
 import {
     createGamePublicSession,
+    GamePublicSessionConflictError,
     getGamePublicSession,
     updateGamePublicSession
 } from "../../lib/cosmos/gamePublicSessionRepository";
@@ -61,6 +62,19 @@ function parsePublishBody(rawBody: unknown): {
     publicSessionId,
     snapshot: sanitizeGamePublicSessionSnapshot(body.snapshot)
   };
+}
+
+function normalizePublicSessionPublishError(error: unknown): unknown {
+  const isPublicSessionConflict = error instanceof GamePublicSessionConflictError
+    || (
+      error instanceof Error
+      && error.name === "GamePublicSessionConflictError"
+    );
+  if (!isPublicSessionConflict) return error;
+  return new HttpError(
+    409,
+    error instanceof Error ? error.message : "Public game session changed since it was last published."
+  );
 }
 
 export async function gamePublicSessionCreate(
@@ -155,8 +169,9 @@ export async function gamePublicSessionPublish(
       snapshot
     });
   } catch (error) {
-    context.error("Failed to publish game public session.", error);
-    return errorResponse(request, config, error, "Failed to publish game public session.");
+    const handledError = normalizePublicSessionPublishError(error);
+    context.error("Failed to publish game public session.", handledError);
+    return errorResponse(request, config, handledError, "Failed to publish game public session.");
   }
 }
 

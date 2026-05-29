@@ -325,6 +325,7 @@ export interface SyncPresetDocument {
   docType: "sync_preset";
   userId: string;
   presetId: string;
+  presetSetId?: string;
   preset: unknown;
   sales: unknown[];
   version: number;
@@ -338,11 +339,12 @@ export interface SyncMetaDocument extends Omit<SyncMetadataDto, "activeWheelConf
   updatedAt: string;
   wheelConfigs?: SyncWheelConfigDto[];
   activeWheelConfigId?: number | null;
+  presetSetId?: string;
   systemPricingDefaults?: SyncSystemPricingDefaultsDto | null;
 }
 
 export type WhatnotConnectionStatus = "active" | "disconnected" | "error";
-export type WhatnotImportBatchStatus = "pending_review" | "completed" | "failed";
+export type WhatnotImportBatchStatus = "pending_review" | "processing" | "completed" | "failed";
 export type WhatnotSaleImportAction = "create" | "update" | "skip";
 export type WhatnotTargetMatchSource = "remembered" | "title" | "none";
 export type WhatnotMappedSaleType = "pack" | "box" | "rtyh" | "wheel";

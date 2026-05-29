@@ -19,25 +19,34 @@ vi.mock("node:crypto", () => ({
 
 const {
   getContainersMock,
+  isConflictErrorMock,
   isNotFoundErrorMock,
+  isPreconditionFailedErrorMock,
   withCosmosRetryMock
 } = vi.hoisted(() => ({
   getContainersMock: vi.fn(),
+  isConflictErrorMock: vi.fn(),
   isNotFoundErrorMock: vi.fn(),
+  isPreconditionFailedErrorMock: vi.fn(),
   withCosmosRetryMock: vi.fn(async <T>(operation: () => Promise<T>) => operation())
 }));
 
 vi.mock("./core", () => ({
   getContainers: getContainersMock,
+  isConflictError: isConflictErrorMock,
   isNotFoundError: isNotFoundErrorMock,
+  isPreconditionFailedError: isPreconditionFailedErrorMock,
   withCosmosRetry: withCosmosRetryMock
 }));
 
 import {
+  claimPendingWhatnotImportBatch,
+  completeWhatnotImportBatch,
   consumeWhatnotOAuthState,
   createPendingWhatnotImportBatch,
   getLatestPendingWhatnotImportBatch,
   getWhatnotConnection,
+  releaseClaimedWhatnotImportBatch,
   getWhatnotTargetMappingByMatchKeyHash,
   upsertWhatnotConnection,
   upsertWhatnotSaleImportMapping,
@@ -77,6 +86,7 @@ function createEntitlementsContainer() {
 function createSyncSnapshotsContainer() {
   return {
     items: {
+      create: vi.fn(),
       query: vi.fn(),
       upsert: vi.fn()
     },
@@ -90,6 +100,16 @@ beforeEach(() => {
     const statusCode = (error as { statusCode?: unknown })?.statusCode;
     const code = (error as { code?: unknown })?.code;
     return statusCode === 404 || code === 404 || code === "NotFound";
+  });
+  isConflictErrorMock.mockImplementation((error: unknown) => {
+    const statusCode = (error as { statusCode?: unknown })?.statusCode;
+    const code = (error as { code?: unknown })?.code;
+    return statusCode === 409 || code === 409 || code === "Conflict";
+  });
+  isPreconditionFailedErrorMock.mockImplementation((error: unknown) => {
+    const statusCode = (error as { statusCode?: unknown })?.statusCode;
+    const code = (error as { code?: unknown })?.code;
+    return statusCode === 412 || code === 412 || code === "PreconditionFailed";
   });
 });
 
@@ -295,4 +315,224 @@ test("upsertWhatnotSaleImportMapping strips externalSaleKeyHash before persistin
   assert.equal(result.id, "whatnot_sale_import_mapping:user-1:ext-hash-1");
   assert.equal(result.scopeKey, "user-1");
   assert.equal("externalSaleKeyHash" in (syncSnapshots.items.upsert.mock.calls[0]?.[0] as object), false);
+});
+
+test("claimPendingWhatnotImportBatch atomically moves a pending batch to processing", async () => {
+  const syncSnapshots = createSyncSnapshotsContainer();
+  const batch: WhatnotImportBatchDocument & { _etag: string } = {
+    id: "whatnot_import_batch:user-1:batch-1",
+    docType: "whatnot_import_batch",
+    userId: "user-1",
+    scopeKey: "user-1",
+    provider: "whatnot",
+    batchId: "batch-1",
+    origin: "csv_manual",
+    externalAccountId: "seller-1",
+    startedByUserId: "user-1",
+    status: "pending_review",
+    startedAt: "2026-04-11T12:00:00.000Z",
+    completedAt: null,
+    updatedAt: "2026-04-11T12:00:00.000Z",
+    importWindowStartedAt: "2026-04-10T00:00:00.000Z",
+    importedCount: 0,
+    updatedCount: 0,
+    skippedCount: 0,
+    rows: [],
+    _etag: "etag-batch-1"
+  };
+  const replace = vi.fn(async (document: WhatnotImportBatchDocument) => ({
+    resource: {
+      ...document,
+      _etag: "etag-batch-2"
+    }
+  }));
+  syncSnapshots.item.mockReturnValue({
+    read: vi.fn().mockResolvedValue({ resource: batch }),
+    replace
+  });
+  getContainersMock.mockReturnValue({ entitlements: createEntitlementsContainer(), syncSnapshots });
+
+  const result = await claimPendingWhatnotImportBatch(
+    createConfig(),
+    " user-1 ",
+    " batch-1 ",
+    "2026-04-11T12:01:00.000Z"
+  );
+
+  assert.equal(result.status, "claimed");
+  assert.equal(result.batch?.status, "processing");
+  assert.equal(replace.mock.calls.length, 1);
+  assert.equal(replace.mock.calls[0]?.[0]?.status, "processing");
+  assert.equal(replace.mock.calls[0]?.[0]?.updatedAt, "2026-04-11T12:01:00.000Z");
+  assert.deepEqual(replace.mock.calls[0]?.[1], {
+    accessCondition: {
+      type: "IfMatch",
+      condition: "etag-batch-1"
+    }
+  });
+});
+
+test("claimPendingWhatnotImportBatch returns completed batches idempotently and reports claim conflicts", async () => {
+  const syncSnapshots = createSyncSnapshotsContainer();
+  const completedBatch: WhatnotImportBatchDocument & { _etag: string } = {
+    id: "whatnot_import_batch:user-1:batch-1",
+    docType: "whatnot_import_batch",
+    userId: "user-1",
+    scopeKey: "user-1",
+    provider: "whatnot",
+    batchId: "batch-1",
+    origin: "csv_manual",
+    externalAccountId: "seller-1",
+    startedByUserId: "user-1",
+    status: "completed",
+    startedAt: "2026-04-11T12:00:00.000Z",
+    completedAt: "2026-04-11T12:02:00.000Z",
+    updatedAt: "2026-04-11T12:02:00.000Z",
+    importWindowStartedAt: "2026-04-10T00:00:00.000Z",
+    importedCount: 2,
+    updatedCount: 1,
+    skippedCount: 3,
+    rows: [],
+    _etag: "etag-batch-1"
+  };
+  const pendingBatch: WhatnotImportBatchDocument & { _etag: string } = {
+    ...completedBatch,
+    status: "pending_review",
+    completedAt: null,
+    importedCount: 0,
+    updatedCount: 0,
+    skippedCount: 0
+  };
+  const replace = vi.fn()
+    .mockRejectedValueOnce({ statusCode: 412 });
+  syncSnapshots.item
+    .mockReturnValueOnce({
+      read: vi.fn().mockResolvedValue({ resource: completedBatch }),
+      replace
+    })
+    .mockReturnValue({
+      read: vi.fn().mockResolvedValue({ resource: pendingBatch }),
+      replace
+    });
+  getContainersMock.mockReturnValue({ entitlements: createEntitlementsContainer(), syncSnapshots });
+
+  const alreadyCompleted = await claimPendingWhatnotImportBatch(
+    createConfig(),
+    "user-1",
+    "batch-1",
+    "2026-04-11T12:03:00.000Z"
+  );
+  assert.equal(alreadyCompleted.status, "already_completed");
+  assert.equal(alreadyCompleted.batch?.importedCount, 2);
+  assert.equal(replace.mock.calls.length, 0);
+
+  const conflicted = await claimPendingWhatnotImportBatch(
+    createConfig(),
+    "user-1",
+    "batch-1",
+    "2026-04-11T12:03:00.000Z"
+  );
+  assert.equal(conflicted.status, "conflict");
+});
+
+test("completeWhatnotImportBatch completes a claimed batch with If-Match", async () => {
+  const syncSnapshots = createSyncSnapshotsContainer();
+  const processingBatch: WhatnotImportBatchDocument & { _etag: string } = {
+    id: "whatnot_import_batch:user-1:batch-1",
+    docType: "whatnot_import_batch",
+    userId: "user-1",
+    scopeKey: "user-1",
+    provider: "whatnot",
+    batchId: "batch-1",
+    origin: "csv_manual",
+    externalAccountId: "seller-1",
+    startedByUserId: "user-1",
+    status: "processing",
+    startedAt: "2026-04-11T12:00:00.000Z",
+    completedAt: null,
+    updatedAt: "2026-04-11T12:01:00.000Z",
+    importWindowStartedAt: "2026-04-10T00:00:00.000Z",
+    importedCount: 0,
+    updatedCount: 0,
+    skippedCount: 0,
+    rows: [],
+    _etag: "etag-processing-1"
+  };
+  const replace = vi.fn(async (document: WhatnotImportBatchDocument) => ({ resource: document }));
+  syncSnapshots.item.mockReturnValue({ replace });
+  getContainersMock.mockReturnValue({ entitlements: createEntitlementsContainer(), syncSnapshots });
+
+  const result = await completeWhatnotImportBatch(createConfig(), processingBatch, {
+    importedCount: 2,
+    updatedCount: 1,
+    skippedCount: 3,
+    completedAt: "2026-04-11T12:04:00.000Z"
+  });
+
+  assert.equal(result.status, "completed");
+  assert.equal(result.importedCount, 2);
+  assert.equal(result.updatedCount, 1);
+  assert.equal(result.skippedCount, 3);
+  assert.equal(replace.mock.calls[0]?.[0]?.completedAt, "2026-04-11T12:04:00.000Z");
+  assert.equal(replace.mock.calls[0]?.[1]?.accessCondition?.condition, "etag-processing-1");
+
+  replace.mockRejectedValueOnce({ statusCode: 412 });
+  await assert.rejects(
+    () => completeWhatnotImportBatch(createConfig(), processingBatch, {
+      importedCount: 2,
+      updatedCount: 1,
+      skippedCount: 3,
+      completedAt: "2026-04-11T12:05:00.000Z"
+    }),
+    /changed while it was being confirmed/
+  );
+});
+
+test("releaseClaimedWhatnotImportBatch restores a pre-write claim with If-Match", async () => {
+  const syncSnapshots = createSyncSnapshotsContainer();
+  const processingBatch: WhatnotImportBatchDocument & { _etag: string } = {
+    id: "whatnot_import_batch:user-1:batch-1",
+    docType: "whatnot_import_batch",
+    userId: "user-1",
+    scopeKey: "user-1",
+    provider: "whatnot",
+    batchId: "batch-1",
+    origin: "csv_manual",
+    externalAccountId: "seller-1",
+    startedByUserId: "user-1",
+    status: "processing",
+    startedAt: "2026-04-11T12:00:00.000Z",
+    completedAt: null,
+    updatedAt: "2026-04-11T12:01:00.000Z",
+    importWindowStartedAt: "2026-04-10T00:00:00.000Z",
+    importedCount: 0,
+    updatedCount: 0,
+    skippedCount: 0,
+    rows: [],
+    _etag: "etag-processing-release"
+  };
+  const replace = vi.fn(async (document: WhatnotImportBatchDocument) => ({ resource: document }));
+  syncSnapshots.item.mockReturnValue({ replace });
+  getContainersMock.mockReturnValue({ entitlements: createEntitlementsContainer(), syncSnapshots });
+
+  const result = await releaseClaimedWhatnotImportBatch(
+    createConfig(),
+    processingBatch,
+    "2026-04-11T12:06:00.000Z",
+    "Lot 99 was not found."
+  );
+
+  assert.equal(result?.status, "pending_review");
+  assert.equal(result?.updatedAt, "2026-04-11T12:06:00.000Z");
+  assert.equal(result?.errorMessage, "Lot 99 was not found.");
+  assert.equal(replace.mock.calls[0]?.[1]?.accessCondition?.condition, "etag-processing-release");
+
+  replace.mockRejectedValueOnce({ statusCode: 412 });
+  const conflict = await releaseClaimedWhatnotImportBatch(
+    createConfig(),
+    processingBatch,
+    "2026-04-11T12:07:00.000Z",
+    "Retry"
+  );
+  assert.equal(conflict, null);
 });

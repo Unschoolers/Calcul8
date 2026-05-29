@@ -1,6 +1,10 @@
 import { type HttpRequest, type HttpResponseInit, type InvocationContext } from "@azure/functions";
 import { HttpError } from "../../lib/auth";
-import { getEffectiveSyncSnapshot, upsertSyncSnapshotIncremental } from "../../lib/cosmos/syncSnapshotRepository";
+import {
+  getEffectiveSyncSnapshot,
+  isSyncSnapshotConflictError,
+  upsertSyncSnapshotIncremental
+} from "../../lib/cosmos/syncSnapshotRepository";
 import { getConfig } from "../../lib/config";
 import { jsonResponse, maybeHandleHttpGuards } from "../../lib/http";
 import { publishWorkspaceLotRealtimeEventBestEffort } from "../../lib/realtime";
@@ -144,6 +148,7 @@ export async function syncPush(
       salesByLot: payload.salesByLot,
       wheelConfigs: payload.wheelConfigs,
       activeWheelConfigId: payload.activeWheelConfigId,
+      expectedVersion: previousVersion,
       version,
       updatedAt
     };
@@ -151,7 +156,15 @@ export async function syncPush(
       Object.assign(syncInput, { systemPricingDefaults: payload.systemPricingDefaults });
     }
 
-    const syncResult = await upsertSyncSnapshotIncremental(config, syncInput);
+    let syncResult;
+    try {
+      syncResult = await upsertSyncSnapshotIncremental(config, syncInput);
+    } catch (error) {
+      if (isSyncSnapshotConflictError(error)) {
+        throw new HttpError(409, error.message);
+      }
+      throw error;
+    }
 
     if (!syncResult.changed) {
       return jsonResponse(request, config, 200, {

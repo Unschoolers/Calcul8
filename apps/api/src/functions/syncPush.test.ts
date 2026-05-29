@@ -15,6 +15,7 @@ vi.mock("@azure/functions", () => ({
 const {
   getConfigMock,
   getEffectiveSyncSnapshotMock,
+  isSyncSnapshotConflictErrorMock,
   upsertSyncSnapshotIncrementalMock,
   hasWorkspaceMembershipMock,
   parseSyncLotsShapeMock,
@@ -25,6 +26,7 @@ const {
 } = vi.hoisted(() => ({
   getConfigMock: vi.fn(),
   getEffectiveSyncSnapshotMock: vi.fn(),
+  isSyncSnapshotConflictErrorMock: vi.fn(),
   upsertSyncSnapshotIncrementalMock: vi.fn(),
   hasWorkspaceMembershipMock: vi.fn(),
   parseSyncLotsShapeMock: vi.fn(),
@@ -43,6 +45,7 @@ vi.mock("../lib/config", () => ({
 
 vi.mock("../lib/cosmos/syncSnapshotRepository", () => ({
   getEffectiveSyncSnapshot: getEffectiveSyncSnapshotMock,
+  isSyncSnapshotConflictError: isSyncSnapshotConflictErrorMock,
   upsertSyncSnapshotIncremental: upsertSyncSnapshotIncrementalMock
 }));
 
@@ -86,6 +89,7 @@ function createContext() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  isSyncSnapshotConflictErrorMock.mockReturnValue(false);
   hasWorkspaceMembershipMock.mockResolvedValue(true);
   publishWorkspaceLotRealtimeEventMock.mockResolvedValue(true);
   getConfigMock.mockReturnValue(createApiConfig());
@@ -324,6 +328,42 @@ test("syncPush rejects stale clientVersion when cloud version is newer", async (
   assert.equal(upsertSyncSnapshotIncrementalMock.mock.calls.length, 0);
   assert.equal(context.warn.mock.calls.length, 1);
   assert.equal(context.warn.mock.calls[0]?.[0], "api.telemetry");
+  assert.equal(context.warn.mock.calls[0]?.[1]?.route, "sync_push");
+  assert.equal(context.warn.mock.calls[0]?.[1]?.outcome, "http_409");
+});
+
+test("syncPush maps atomic sync write conflicts to 409", async () => {
+  const conflictError = new Error("Cloud data changed since your last sync. Pull latest data and retry.");
+  parseSyncLotsShapeMock.mockReturnValue({
+    lots: [{ id: 10 }],
+    salesByLot: { "10": [] }
+  });
+  getEffectiveSyncSnapshotMock.mockResolvedValue({
+    version: 6,
+    updatedAt: "2026-02-21T10:00:00.000Z"
+  });
+  isSyncSnapshotConflictErrorMock.mockReturnValue(true);
+  upsertSyncSnapshotIncrementalMock.mockRejectedValue(conflictError);
+
+  const request = createHttpRequest({
+    body: {
+      lots: [{ id: 10 }],
+      salesByLot: { "10": [] },
+      clientVersion: 6
+    },
+    method: "POST",
+    headers: { authorization: "Bearer user-race" }
+  });
+  const context = createInvocationContext();
+
+  const response = await syncPush(request as never, context as never);
+
+  assert.equal(response.status, 409);
+  assert.equal(
+    (response.jsonBody as { error: string }).error,
+    "Cloud data changed since your last sync. Pull latest data and retry."
+  );
+  assert.equal(context.warn.mock.calls.length, 1);
   assert.equal(context.warn.mock.calls[0]?.[1]?.route, "sync_push");
   assert.equal(context.warn.mock.calls[0]?.[1]?.outcome, "http_409");
 });

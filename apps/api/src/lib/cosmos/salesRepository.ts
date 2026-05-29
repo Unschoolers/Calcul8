@@ -7,7 +7,9 @@ import type {
 } from "../../types";
 import {
   getContainers,
+  isConflictError,
   isNotFoundError,
+  isPreconditionFailedError,
   withCosmosRetry
 } from "./core";
 import {
@@ -82,6 +84,31 @@ function isLotLivePricingDocument(resource: unknown): resource is LotLivePricing
 function isSyncMetaDocument(resource: unknown): resource is SyncMetaDocument {
   if (!resource || typeof resource !== "object") return false;
   return (resource as { docType?: unknown }).docType === "sync_meta";
+}
+
+function readCosmosEtag(document: unknown): string {
+  if (!document || typeof document !== "object") return "";
+  return String((document as { _etag?: unknown })._etag ?? "").trim();
+}
+
+function buildIfMatchOptions(etag: string) {
+  return {
+    accessCondition: {
+      type: "IfMatch" as const,
+      condition: etag
+    }
+  };
+}
+
+function throwEntityConflict(message: string): never {
+  throw new EntityVersionConflictError(message);
+}
+
+function mapCosmosWriteConflict(error: unknown, message: string): never {
+  if (isPreconditionFailedError(error) || isConflictError(error)) {
+    throwEntityConflict(message);
+  }
+  throw error;
 }
 
 function compareSaleDocuments(left: SaleDocument, right: SaleDocument): number {
@@ -298,9 +325,26 @@ export async function upsertSaleDocument(
     deletedAt: null
   };
 
-  const { resource } = await withCosmosRetry(() =>
-    syncSnapshots.items.upsert<SaleDocument>(document)
-  );
+  let resource: SaleDocument | undefined;
+  try {
+    if (existing) {
+      const etag = readCosmosEtag(existing);
+      if (!etag) {
+        throwEntityConflict("Sale changed since it was last loaded.");
+      }
+      ({ resource } = await withCosmosRetry(() =>
+        syncSnapshots
+          .item(document.id, scopeKey)
+          .replace<SaleDocument>(document, buildIfMatchOptions(etag))
+      ));
+    } else {
+      ({ resource } = await withCosmosRetry(() =>
+        syncSnapshots.items.create<SaleDocument>(document)
+      ));
+    }
+  } catch (error) {
+    mapCosmosWriteConflict(error, "Sale changed since it was last loaded.");
+  }
 
   if (!resource) {
     throw new Error("Failed to upsert sale document.");
@@ -338,9 +382,21 @@ export async function deleteSaleDocument(
     deletedAt: new Date().toISOString()
   };
 
-  const { resource } = await withCosmosRetry(() =>
-    syncSnapshots.items.upsert<SaleDocument>(document)
-  );
+  const etag = readCosmosEtag(existing);
+  if (!etag) {
+    throwEntityConflict("Sale changed since it was last loaded.");
+  }
+
+  let resource: SaleDocument | undefined;
+  try {
+    ({ resource } = await withCosmosRetry(() =>
+      syncSnapshots
+        .item(document.id, scopeKey)
+        .replace<SaleDocument>(document, buildIfMatchOptions(etag))
+    ));
+  } catch (error) {
+    mapCosmosWriteConflict(error, "Sale changed since it was last loaded.");
+  }
 
   if (!resource) {
     throw new Error("Failed to delete sale document.");
@@ -406,9 +462,26 @@ export async function upsertLotLivePricing(
     mutationId: normalizeId(input.mutationId)
   };
 
-  const { resource } = await withCosmosRetry(() =>
-    syncSnapshots.items.upsert<LotLivePricingDocument>(document)
-  );
+  let resource: LotLivePricingDocument | undefined;
+  try {
+    if (existing) {
+      const etag = readCosmosEtag(existing);
+      if (!etag) {
+        throwEntityConflict("Live pricing changed since it was last loaded.");
+      }
+      ({ resource } = await withCosmosRetry(() =>
+        syncSnapshots
+          .item(document.id, scopeKey)
+          .replace<LotLivePricingDocument>(document, buildIfMatchOptions(etag))
+      ));
+    } else {
+      ({ resource } = await withCosmosRetry(() =>
+        syncSnapshots.items.create<LotLivePricingDocument>(document)
+      ));
+    }
+  } catch (error) {
+    mapCosmosWriteConflict(error, "Live pricing changed since it was last loaded.");
+  }
 
   if (!resource) {
     throw new Error("Failed to upsert live pricing document.");

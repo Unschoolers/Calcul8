@@ -64,6 +64,10 @@ export function syncPresetId(userId: string, presetId: string): string {
   return `sync:preset:${userId}:${presetId}`;
 }
 
+export function syncPresetSetId(userId: string, presetSetId: string, presetId: string): string {
+  return `sync:preset-set:${userId}:${presetSetId}:${presetId}`;
+}
+
 export function syncMetaId(userId: string): string {
   return `sync:meta:${userId}`;
 }

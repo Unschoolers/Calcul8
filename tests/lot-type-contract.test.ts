@@ -103,7 +103,7 @@ test("system pricing defaults contract covers inherited and overridden bulk and 
     assert.equal(applied.sellingTaxPercent, 7);
     assert.equal(applied.sellingShippingPerOrder, 3);
     assert.equal(applied.targetProfitPercent, 19);
-    assert.equal(applied.spotsPerBox, 11);
+    assert.equal(applied.spotsPerBox, lotType === "bulk" ? 11 : 4);
   }
 
   for (const { lot } of createLotTypeContractCases({

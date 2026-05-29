@@ -31,7 +31,7 @@ function canQueueWorkspaceConfigSync(app: WorkspaceConfigSyncApp): boolean {
   const scope = resolveWorkspaceScopeContext(app);
   if (!scope.isWorkspace) return false;
   if (app.isOffline) return false;
-  return Number.isFinite(Number(app.currentLotId)) && Number(app.currentLotId) > 0;
+  return true;
 }
 
 function canQueueCloudConfigSync(app: WorkspaceConfigSyncApp): boolean {

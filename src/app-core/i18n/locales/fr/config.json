@@ -38,7 +38,7 @@
   "configSellingTaxesLabel": "Taxe de vente",
   "configSellingTitle": "Configuration des ventes",
   "configShippingLabel": "Livraison",
-  "configSimpleModeHelp": "Le mode simple garde seulement les champs essentiels pour comprendre votre coût de base et vos prix.",
+  "configSimpleModeHelp": "Le mode Simple garde seulement les champs nécessaires pour comprendre votre coût de base et vos prix.",
   "configSimpleModeLabel": "Simple",
   "configTargetProfitLabel": "Profit cible",
   "configTaxIncludedStatus": "incluse",
@@ -68,4 +68,3 @@
   "priceCalculatorUnlockProAction": "Débloquer Pro",
   "priceCalculatorVerifyAction": "Vérifier l'achat"
 }
-

@@ -18,6 +18,7 @@ export type RealtimeApp = Pick<
   | "isOffline"
   | "lots"
   | "lastSyncedPayloadHash"
+  | "systemPricingDefaults"
   | "sales"
   | "liveSpotPrice"
   | "liveBoxPriceSell"

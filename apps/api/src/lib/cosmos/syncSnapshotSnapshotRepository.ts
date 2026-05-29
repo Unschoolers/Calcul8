@@ -17,7 +17,8 @@ import { parseSyncSale, parseSyncWheelConfig } from "../syncShape";
 import {
   getSyncMetaDocumentFromContainer,
   getSyncPresetDocumentsFromContainer,
-  normalizeActiveWheelConfigId
+  normalizeActiveWheelConfigId,
+  selectCurrentSyncPresetDocuments
 } from "./syncSnapshotRepository.shared";
 import { normalizeSyncSystemPricingDefaultsDto } from "../../shared/sync-contracts.cjs";
 
@@ -80,21 +81,22 @@ async function getSyncSnapshotFromContainer(
     getSyncMetaDocumentFromContainer(container, userId)
   ]);
 
+  const currentPresetDocuments = selectCurrentSyncPresetDocuments(presetDocuments, metaDocument);
   const wheelConfigs = toSyncWheelConfigDtos(metaDocument?.wheelConfigs);
   const activeWheelConfigId = normalizeActiveWheelConfigId(metaDocument?.activeWheelConfigId);
   const systemPricingDefaults = normalizeSyncSystemPricingDefaultsDto(metaDocument?.systemPricingDefaults);
 
-  if (presetDocuments.length === 0 && wheelConfigs.length === 0 && !systemPricingDefaults) {
+  if (currentPresetDocuments.length === 0 && wheelConfigs.length === 0 && !systemPricingDefaults) {
     return null;
   }
 
-  const lots = presetDocuments
+  const lots = currentPresetDocuments
     .map((document) => document.preset)
     .filter(isSyncLotDto);
   const salesByLot = metaDocument?.salesMode === "entity"
     ? {}
     : Object.fromEntries(
-      presetDocuments.filter((document) => isSyncLotDto(document.preset)).map((document) => [
+      currentPresetDocuments.filter((document) => isSyncLotDto(document.preset)).map((document) => [
         document.presetId,
         toSyncSaleDtos(document.sales)
       ])
@@ -103,11 +105,11 @@ async function getSyncSnapshotFromContainer(
   const maxVersion = Math.max(
     0,
     metaDocument?.version ?? 0,
-    ...presetDocuments.map((document) => document.version || 0)
+    ...currentPresetDocuments.map((document) => document.version || 0)
   );
   const latestUpdatedAt = [
     metaDocument?.updatedAt,
-    ...presetDocuments.map((document) => document.updatedAt)
+    ...currentPresetDocuments.map((document) => document.updatedAt)
   ]
     .filter((value): value is string => typeof value === "string")
     .toSorted()

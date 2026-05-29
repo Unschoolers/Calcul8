@@ -21,12 +21,6 @@ export async function handleSyncPushConflict({
   }
 
   deps.setSyncStatusError(app);
-  try {
-    await app.pullCloudSync();
-    app.notify("Cloud data changed. Pulled latest data. Please retry your change.", "warning");
-    console.warn("[whatfees] Cloud sync push conflict: pulled latest snapshot");
-  } catch (error) {
-    app.notify("Cloud data changed. Pull latest data before retrying your change.", "warning");
-    console.warn("[whatfees] Cloud sync push conflict recovery failed", error);
-  }
+  app.notify("Cloud data changed. Your local changes were kept. Pull latest data before retrying.", "warning");
+  console.warn("[whatfees] Cloud sync push conflict: kept local edits for manual recovery");
 }

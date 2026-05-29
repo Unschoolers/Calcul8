@@ -17,6 +17,7 @@ const {
   getConfigMock,
   resolveUserIdMock,
   hasWorkspaceMembershipMock,
+  GamePublicSessionConflictErrorMock,
   createGamePublicSessionMock,
   getGamePublicSessionMock,
   updateGamePublicSessionMock,
@@ -30,6 +31,7 @@ const {
   getConfigMock: vi.fn(),
   resolveUserIdMock: vi.fn(),
   hasWorkspaceMembershipMock: vi.fn(),
+  GamePublicSessionConflictErrorMock: class GamePublicSessionConflictError extends Error {},
   createGamePublicSessionMock: vi.fn(),
   getGamePublicSessionMock: vi.fn(),
   updateGamePublicSessionMock: vi.fn(),
@@ -57,6 +59,7 @@ vi.mock("../lib/cosmos/workspaceRepository", () => ({
 }));
 
 vi.mock("../lib/cosmos/gamePublicSessionRepository", () => ({
+  GamePublicSessionConflictError: GamePublicSessionConflictErrorMock,
   createGamePublicSession: createGamePublicSessionMock,
   getGamePublicSession: getGamePublicSessionMock,
   updateGamePublicSession: updateGamePublicSessionMock
@@ -404,6 +407,49 @@ test("wheelPublicSessionPublish returns 404 when the session is missing or not o
 
   assert.equal(response.status, 404);
   assert.equal((response.jsonBody as { error: string }).error, "Public game session was not found.");
+});
+
+test("wheelPublicSessionPublish maps stale public-session writes to 409", async () => {
+  updateGamePublicSessionMock.mockRejectedValue(new GamePublicSessionConflictErrorMock(
+    "Public game session changed since it was last published."
+  ));
+
+  const response = await wheelPublicSessionPublish(createHttpRequest({
+    method: "POST",
+    headers: {
+      authorization: "Bearer user-a"
+    },
+    body: {
+      publicSessionId: "abc123xy",
+      snapshot: {
+        wheelName: "Demo Wheel",
+        gameType: "wheel",
+        sessionStatus: "live",
+        totalSpins: 1,
+        lastResultLabel: "Prize",
+        lastResultColor: "#f00",
+        wheelCurrentAngle: 1.25,
+        wheelSlots: [],
+        gridCells: [],
+        gridHighlightCellIndex: -1,
+        gridResetAnimating: false,
+        recentFairnessHistory: [],
+        chaseHistory: [],
+        chaseBoard: [],
+        featuredChaseLabel: null,
+        featuredChaseHeat: null,
+        fairnessVerificationUrl: null,
+        updatedAt: 456
+      }
+    }
+  }) as never, createInvocationContext() as never);
+
+  assert.equal(response.status, 409);
+  assert.equal(
+    (response.jsonBody as { error: string }).error,
+    "Public game session changed since it was last published."
+  );
+  assert.equal(publishGamePublicSessionRealtimeEventBestEffortMock.mock.calls.length, 0);
 });
 
 test("wheelPublicSessionPublish upgrades old wheel-only snapshots at the API boundary", async () => {

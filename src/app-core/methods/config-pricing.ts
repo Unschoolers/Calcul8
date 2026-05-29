@@ -10,7 +10,7 @@ import {
   applySystemPricingDefaultsToLot,
   lotUsesSystemPricingDefaults,
   normalizeSystemPricingDefaults,
-  pickSystemPricingFields
+  pickSystemPricingFieldsForLot
 } from "../shared/system-pricing-defaults.ts";
 import { type ConfigMethodSubset, getTodayDate, toDateOnly } from "./config-shared.ts";
 import { queueWorkspaceConfigSyncPush } from "./ui/workspace/workspace-config-sync.ts";
@@ -101,7 +101,7 @@ export const configPricingMethods: ConfigMethodSubset<
       ? this.lots.find((lot) => lot.id === this.currentLotId)
       : null;
     if (currentLot && lotUsesSystemPricingDefaults(currentLot)) {
-      Object.assign(this, pickSystemPricingFields(normalizedDefaults));
+      Object.assign(this, pickSystemPricingFieldsForLot(currentLot, normalizedDefaults));
     }
 
     if (typeof this.saveSystemPricingDefaultsToStorage === "function") {
@@ -123,7 +123,7 @@ export const configPricingMethods: ConfigMethodSubset<
 
     lot.usesSystemPricingDefaults = useSystemDefaults;
     if (useSystemDefaults) {
-      const fields = pickSystemPricingFields(normalizeSystemPricingDefaults(this.systemPricingDefaults));
+      const fields = pickSystemPricingFieldsForLot(lot, normalizeSystemPricingDefaults(this.systemPricingDefaults));
       Object.assign(lot, fields);
       Object.assign(this, fields);
     } else {

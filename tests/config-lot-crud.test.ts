@@ -99,7 +99,7 @@ test("createNewLotRecord stamps system seller defaults onto new bulk and singles
     assert.equal(result.lot.sellingTaxPercent, 8);
     assert.equal(result.lot.sellingShippingPerOrder, 6);
     assert.equal(result.lot.targetProfitPercent, 18);
-    assert.equal(result.lot.spotsPerBox, 10);
+    assert.equal(result.lot.spotsPerBox, lotType === "bulk" ? 10 : 3);
     assert.equal(result.lot.feeProfilePreset, "none");
     assert.equal(result.lot.platformFeePercent, 0);
     assert.equal(result.lot.additionalFeePercent, 0);

@@ -11,12 +11,16 @@ import type {
 const {
   getContainersMock,
   getExternalSyncContainerMock,
+  isConflictErrorMock,
   isNotFoundErrorMock,
+  isPreconditionFailedErrorMock,
   withCosmosRetryMock
 } = vi.hoisted(() => ({
   getContainersMock: vi.fn(),
   getExternalSyncContainerMock: vi.fn(),
+  isConflictErrorMock: vi.fn(),
   isNotFoundErrorMock: vi.fn(),
+  isPreconditionFailedErrorMock: vi.fn(),
   withCosmosRetryMock: vi.fn(async <T>(operation: () => Promise<T>) => operation())
 }));
 
@@ -24,7 +28,9 @@ vi.mock("./core", () => ({
   EPOCH_DATE_ISO: "1970-01-01T00:00:00.000Z",
   getContainers: getContainersMock,
   getExternalSyncContainer: getExternalSyncContainerMock,
+  isConflictError: isConflictErrorMock,
   isNotFoundError: isNotFoundErrorMock,
+  isPreconditionFailedError: isPreconditionFailedErrorMock,
   withCosmosRetry: withCosmosRetryMock
 }));
 
@@ -59,7 +65,8 @@ function createSyncSnapshotsContainer() {
   return {
     items: {
       query: vi.fn(),
-      upsert: vi.fn()
+      upsert: vi.fn(),
+      batch: vi.fn()
     },
     item: vi.fn()
   };
@@ -67,10 +74,20 @@ function createSyncSnapshotsContainer() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  isConflictErrorMock.mockImplementation((error: unknown) => {
+    const statusCode = (error as { statusCode?: unknown })?.statusCode;
+    const code = (error as { code?: unknown })?.code;
+    return statusCode === 409 || code === 409 || code === "Conflict";
+  });
   isNotFoundErrorMock.mockImplementation((error: unknown) => {
     const statusCode = (error as { statusCode?: unknown })?.statusCode;
     const code = (error as { code?: unknown })?.code;
     return statusCode === 404 || code === 404 || code === "NotFound";
+  });
+  isPreconditionFailedErrorMock.mockImplementation((error: unknown) => {
+    const statusCode = (error as { statusCode?: unknown })?.statusCode;
+    const code = (error as { code?: unknown })?.code;
+    return statusCode === 412 || code === 412 || code === "PreconditionFailed";
   });
 });
 
@@ -135,6 +152,71 @@ test("getEffectiveSyncSnapshot reconstructs lots and omits preset sales when ent
     version: 7,
     updatedAt: "2026-03-18T13:00:00.000Z"
   });
+});
+
+test("getEffectiveSyncSnapshot follows the meta preset set and ignores orphaned pending documents", async () => {
+  const syncSnapshots = createSyncSnapshotsContainer();
+  const presetDocuments = [
+    {
+      id: "sync:preset:user-1:legacy",
+      docType: "sync_preset",
+      userId: "user-1",
+      presetId: "legacy",
+      preset: { id: "legacy", name: "Legacy should be ignored" },
+      sales: [{ id: 1 }],
+      version: 3,
+      updatedAt: "2026-03-18T10:00:00.000Z"
+    },
+    {
+      id: "sync:preset-set:user-1:pending:orphan",
+      docType: "sync_preset",
+      userId: "user-1",
+      presetId: "orphan",
+      preset: { id: "orphan", name: "Orphan should be ignored" },
+      sales: [{ id: 2 }],
+      presetSetId: "pending",
+      version: 99,
+      updatedAt: "2026-03-18T14:00:00.000Z"
+    },
+    {
+      id: "sync:preset-set:user-1:current:current",
+      docType: "sync_preset",
+      userId: "user-1",
+      presetId: "current",
+      preset: { id: "current", name: "Current" },
+      sales: [{ id: 3 }],
+      presetSetId: "current",
+      version: 8,
+      updatedAt: "2026-03-18T12:00:00.000Z"
+    }
+  ] as SyncPresetDocument[];
+  const metaDocument = {
+    id: "sync:meta:user-1",
+    docType: "sync_meta",
+    userId: "user-1",
+    version: 8,
+    updatedAt: "2026-03-18T13:00:00.000Z",
+    presetSetId: "current"
+  } as SyncMetaDocument;
+
+  syncSnapshots.items.query.mockReturnValue({
+    fetchAll: vi.fn().mockResolvedValue({
+      resources: presetDocuments
+    })
+  });
+  syncSnapshots.item.mockImplementation((id: string) => ({
+    read: vi.fn().mockResolvedValue({
+      resource: id === "sync:meta:user-1" ? metaDocument : null
+    })
+  }));
+  getContainersMock.mockReturnValue({ syncSnapshots });
+
+  const snapshot = await getEffectiveSyncSnapshot(createConfig(), "user-1");
+
+  assert.deepEqual(snapshot?.lots, [{ id: "current", name: "Current" }]);
+  assert.deepEqual(snapshot?.salesByLot, { current: [{ id: 3 }] });
+  assert.equal(snapshot?.version, 8);
+  assert.equal(snapshot?.updatedAt, "2026-03-18T13:00:00.000Z");
 });
 
 test("getEffectiveSyncSnapshot normalizes legacy preset sales and meta wheel configs", async () => {
@@ -560,15 +642,30 @@ test("upsertSyncSnapshotIncremental upserts changed presets, deletes removed pre
     upsertedCount: 2,
     deletedCount: 1
   });
-  assert.equal(syncSnapshots.item.mock.calls.some((call: unknown[]) =>
-    call[0] === "sync:preset:user-1:drop" && call[1] === "user-1"
+  assert.equal(syncSnapshots.items.upsert.mock.calls.length, 0);
+  assert.equal(syncSnapshots.items.batch.mock.calls.length, 1);
+  const operations = syncSnapshots.items.batch.mock.calls[0]?.[0] as Array<{
+    operationType: string;
+    id?: string;
+    ifMatch?: string;
+    resourceBody?: SyncMetaDocument | SyncPresetDocument;
+  }>;
+  const presetOperations = operations.slice(0, -1);
+  const metaOperation = operations.at(-1);
+  const presetSetId = (metaOperation?.resourceBody as SyncMetaDocument | undefined)?.presetSetId ?? "";
+
+  assert.equal(syncSnapshots.items.batch.mock.calls[0]?.[1], "user-1");
+  assert.deepEqual(presetOperations.map((operation) => operation.operationType), ["Upsert", "Upsert"]);
+  assert.deepEqual(presetOperations.map((operation) => operation.resourceBody?.presetId), ["keep", "new"]);
+  assert.equal(presetOperations.every((operation) =>
+    (operation.resourceBody as SyncPresetDocument | undefined)?.presetSetId === presetSetId
   ), true);
-  assert.equal(syncSnapshots.items.upsert.mock.calls[0]?.[0]?.id, "sync:preset:user-1:keep");
-  assert.equal(syncSnapshots.items.upsert.mock.calls[1]?.[0]?.id, "sync:preset:user-1:new");
-  assert.equal(syncSnapshots.items.upsert.mock.calls[2]?.[0]?.id, "sync:meta:user-1");
-  assert.equal(syncSnapshots.items.upsert.mock.calls[2]?.[0]?.salesMode, "entity");
-  assert.equal(syncSnapshots.items.upsert.mock.calls[2]?.[0]?.livePricingMode, "entity");
-  assert.deepEqual(syncSnapshots.items.upsert.mock.calls[2]?.[0]?.wheelConfigs, [{
+  assert.match(presetSetId, /^v9:/);
+  assert.equal(metaOperation?.operationType, "Replace");
+  assert.equal(metaOperation?.id, "sync:meta:user-1");
+  assert.equal((metaOperation?.resourceBody as SyncMetaDocument)?.salesMode, "entity");
+  assert.equal((metaOperation?.resourceBody as SyncMetaDocument)?.livePricingMode, "entity");
+  assert.deepEqual((metaOperation?.resourceBody as SyncMetaDocument)?.wheelConfigs, [{
     id: 91,
     name: "Wheel A",
     spinPrice: 10,
@@ -576,7 +673,340 @@ test("upsertSyncSnapshotIncremental upserts changed presets, deletes removed pre
     createdAt: "",
     tiers: []
   }]);
-  assert.equal(syncSnapshots.items.upsert.mock.calls[2]?.[0]?.activeWheelConfigId, 91);
+  assert.equal((metaOperation?.resourceBody as SyncMetaDocument)?.activeWheelConfigId, 91);
+});
+
+test("upsertSyncSnapshotIncremental writes changed presets and meta in one ETag guarded batch", async () => {
+  const syncSnapshots = createSyncSnapshotsContainer();
+  const metaDocument = {
+    id: "sync:meta:user-1",
+    docType: "sync_meta" as const,
+    userId: "user-1",
+    version: 3,
+    updatedAt: "2026-03-18T09:00:00.000Z",
+    wheelConfigs: [],
+    activeWheelConfigId: null,
+    _etag: "etag-3"
+  };
+
+  syncSnapshots.items.query.mockReturnValue({
+    fetchAll: vi.fn().mockResolvedValue({
+      resources: []
+    })
+  });
+  syncSnapshots.items.batch.mockResolvedValue({ result: [] });
+  syncSnapshots.item.mockImplementation((id: string, userId: string) => ({
+    read: vi.fn().mockResolvedValue({
+      resource: id === "sync:meta:user-1" ? metaDocument : null
+    }),
+    delete: vi.fn().mockResolvedValue({ id, userId })
+  }));
+  getContainersMock.mockReturnValue({ syncSnapshots });
+
+  const input = {
+    userId: "user-1",
+    lots: [{ id: "new", name: "New preset" }],
+    salesByLot: {
+      new: [{ id: 22 }]
+    },
+    wheelConfigs: [],
+    activeWheelConfigId: null,
+    version: 4,
+    expectedVersion: 3,
+    updatedAt: "2026-03-18T15:00:00.000Z"
+  } as Parameters<typeof upsertSyncSnapshotIncremental>[1] & { expectedVersion: number };
+
+  const result = await upsertSyncSnapshotIncremental(createConfig(), input);
+
+  assert.deepEqual(result, {
+    changed: true,
+    upsertedCount: 1,
+    deletedCount: 0
+  });
+  assert.equal(syncSnapshots.items.upsert.mock.calls.length, 0);
+  assert.equal(syncSnapshots.items.batch.mock.calls.length, 1);
+  assert.equal(syncSnapshots.items.batch.mock.calls[0]?.[1], "user-1");
+  const operations = syncSnapshots.items.batch.mock.calls[0]?.[0] as Array<{
+    operationType: string;
+    id?: string;
+    ifMatch?: string;
+    resourceBody?: SyncMetaDocument | SyncPresetDocument;
+  }>;
+  const presetOperation = operations[0];
+  const metaOperation = operations.at(-1);
+  const presetSetId = (metaOperation?.resourceBody as SyncMetaDocument | undefined)?.presetSetId ?? "";
+  assert.equal(presetOperation?.operationType, "Upsert");
+  assert.equal(presetOperation?.resourceBody?.id, `sync:preset-set:user-1:${presetSetId}:new`);
+  assert.equal((presetOperation?.resourceBody as SyncPresetDocument | undefined)?.presetSetId, presetSetId);
+  assert.equal(metaOperation?.operationType, "Replace");
+  assert.equal(metaOperation?.id, "sync:meta:user-1");
+  assert.equal(metaOperation?.ifMatch, "etag-3");
+  assert.match(presetSetId, /^v4:/);
+});
+
+test("upsertSyncSnapshotIncremental writes a versioned preset set before swapping the meta pointer", async () => {
+  const syncSnapshots = createSyncSnapshotsContainer();
+  const existingPresetDocuments: SyncPresetDocument[] = [
+    {
+      id: "sync:preset:user-1:keep",
+      docType: "sync_preset",
+      userId: "user-1",
+      presetId: "keep",
+      preset: { id: "keep", name: "Keep" },
+      sales: [{ id: 1 }],
+      version: 3,
+      updatedAt: "2026-03-18T09:00:00.000Z"
+    },
+    {
+      id: "sync:preset:user-1:drop",
+      docType: "sync_preset",
+      userId: "user-1",
+      presetId: "drop",
+      preset: { id: "drop", name: "Drop" },
+      sales: [],
+      version: 3,
+      updatedAt: "2026-03-18T09:00:00.000Z"
+    }
+  ];
+  const metaDocument = {
+    id: "sync:meta:user-1",
+    docType: "sync_meta" as const,
+    userId: "user-1",
+    version: 3,
+    updatedAt: "2026-03-18T09:00:00.000Z",
+    wheelConfigs: [],
+    activeWheelConfigId: null,
+    _etag: "etag-3"
+  };
+
+  syncSnapshots.items.query.mockReturnValue({
+    fetchAll: vi.fn().mockResolvedValue({
+      resources: existingPresetDocuments
+    })
+  });
+  syncSnapshots.items.batch.mockResolvedValue({ result: [] });
+  syncSnapshots.item.mockImplementation((id: string) => ({
+    read: vi.fn().mockResolvedValue({
+      resource: id === "sync:meta:user-1" ? metaDocument : null
+    })
+  }));
+  getContainersMock.mockReturnValue({ syncSnapshots });
+
+  const input = {
+    userId: "user-1",
+    lots: [
+      { id: "keep", name: "Keep renamed" },
+      { id: "new", name: "New preset" }
+    ],
+    salesByLot: {
+      keep: [{ id: 11 }],
+      new: [{ id: 22 }]
+    },
+    wheelConfigs: [],
+    activeWheelConfigId: null,
+    version: 4,
+    expectedVersion: 3,
+    updatedAt: "2026-03-18T15:00:00.000Z"
+  } as Parameters<typeof upsertSyncSnapshotIncremental>[1] & { expectedVersion: number };
+
+  const result = await upsertSyncSnapshotIncremental(createConfig(), input);
+
+  assert.deepEqual(result, {
+    changed: true,
+    upsertedCount: 2,
+    deletedCount: 1
+  });
+  const operations = syncSnapshots.items.batch.mock.calls[0]?.[0] as Array<{
+    operationType: string;
+    id?: string;
+    ifMatch?: string;
+    resourceBody?: SyncMetaDocument | SyncPresetDocument;
+  }>;
+  const presetOperations = operations.slice(0, -1);
+  const metaOperation = operations.at(-1);
+  const presetSetIds = new Set(presetOperations.map((operation) =>
+    String((operation.resourceBody as SyncPresetDocument | undefined)?.presetSetId ?? "")
+  ));
+
+  assert.equal(syncSnapshots.items.batch.mock.calls[0]?.[1], "user-1");
+  assert.deepEqual(presetOperations.map((operation) => operation.operationType), ["Upsert", "Upsert"]);
+  assert.deepEqual(presetOperations.map((operation) => operation.resourceBody?.presetId), ["keep", "new"]);
+  assert.equal([...presetSetIds].length, 1);
+  assert.match([...presetSetIds][0] ?? "", /^v4:/);
+  assert.deepEqual(
+    presetOperations.map((operation) => operation.resourceBody?.id).every((id) =>
+      typeof id === "string" && id.startsWith(`sync:preset-set:user-1:${[...presetSetIds][0]}:`)
+    ),
+    true
+  );
+  assert.equal(metaOperation?.operationType, "Replace");
+  assert.equal(metaOperation?.ifMatch, "etag-3");
+  assert.equal((metaOperation?.resourceBody as SyncMetaDocument | undefined)?.presetSetId, [...presetSetIds][0]);
+});
+
+test("upsertSyncSnapshotIncremental keeps large writes behind the final meta CAS", async () => {
+  const syncSnapshots = createSyncSnapshotsContainer();
+  const replaceMock = vi.fn().mockResolvedValue({ resource: null });
+  const metaDocument = {
+    id: "sync:meta:user-1",
+    docType: "sync_meta" as const,
+    userId: "user-1",
+    version: 1,
+    updatedAt: "2026-03-18T09:00:00.000Z",
+    wheelConfigs: [],
+    activeWheelConfigId: null,
+    _etag: "etag-1"
+  };
+  const lots = Array.from({ length: 101 }, (_, index) => ({
+    id: `lot-${index + 1}`,
+    name: `Lot ${index + 1}`
+  }));
+
+  syncSnapshots.items.query.mockReturnValue({
+    fetchAll: vi.fn().mockResolvedValue({
+      resources: []
+    })
+  });
+  syncSnapshots.items.upsert.mockResolvedValue({ resource: null });
+  syncSnapshots.item.mockImplementation((id: string) => ({
+    read: vi.fn().mockResolvedValue({
+      resource: id === "sync:meta:user-1" ? metaDocument : null
+    }),
+    replace: replaceMock
+  }));
+  getContainersMock.mockReturnValue({ syncSnapshots });
+
+  await upsertSyncSnapshotIncremental(createConfig(), {
+    userId: "user-1",
+    lots,
+    salesByLot: Object.fromEntries(lots.map((lot) => [lot.id, []])),
+    wheelConfigs: [],
+    activeWheelConfigId: null,
+    version: 2,
+    expectedVersion: 1,
+    updatedAt: "2026-03-18T15:00:00.000Z"
+  });
+
+  const stagedPresetSetIds = new Set(syncSnapshots.items.upsert.mock.calls.map((call) =>
+    String((call[0] as SyncPresetDocument | undefined)?.presetSetId ?? "")
+  ));
+  const metaBody = replaceMock.mock.calls[0]?.[0] as SyncMetaDocument;
+  const replaceOptions = replaceMock.mock.calls[0]?.[1] as {
+    accessCondition?: { type?: string; condition?: string };
+  };
+
+  assert.equal(syncSnapshots.items.batch.mock.calls.length, 0);
+  assert.equal(syncSnapshots.items.upsert.mock.calls.length, 101);
+  assert.equal(replaceMock.mock.calls.length, 1);
+  assert.equal(stagedPresetSetIds.size, 1);
+  assert.equal(metaBody.presetSetId, [...stagedPresetSetIds][0]);
+  assert.equal(replaceOptions.accessCondition?.type, "IfMatch");
+  assert.equal(replaceOptions.accessCondition?.condition, "etag-1");
+});
+
+test("upsertSyncSnapshotIncremental rejects stale expected versions before writing", async () => {
+  const syncSnapshots = createSyncSnapshotsContainer();
+  const metaDocument: SyncMetaDocument = {
+    id: "sync:meta:user-1",
+    docType: "sync_meta",
+    userId: "user-1",
+    version: 3,
+    updatedAt: "2026-03-18T09:00:00.000Z",
+    wheelConfigs: [],
+    activeWheelConfigId: null
+  };
+
+  syncSnapshots.items.query.mockReturnValue({
+    fetchAll: vi.fn().mockResolvedValue({
+      resources: []
+    })
+  });
+  syncSnapshots.item.mockImplementation((id: string) => ({
+    read: vi.fn().mockResolvedValue({
+      resource: id === "sync:meta:user-1" ? metaDocument : null
+    })
+  }));
+  getContainersMock.mockReturnValue({ syncSnapshots });
+
+  const input = {
+    userId: "user-1",
+    lots: [{ id: "new", name: "New preset" }],
+    salesByLot: {
+      new: [{ id: 22 }]
+    },
+    wheelConfigs: [],
+    activeWheelConfigId: null,
+    version: 4,
+    expectedVersion: 2,
+    updatedAt: "2026-03-18T15:00:00.000Z"
+  } as Parameters<typeof upsertSyncSnapshotIncremental>[1] & { expectedVersion: number };
+
+  await assert.rejects(
+    () => upsertSyncSnapshotIncremental(createConfig(), input),
+    /Cloud data changed since your last sync/
+  );
+  assert.equal(syncSnapshots.items.upsert.mock.calls.length, 0);
+  assert.equal(syncSnapshots.items.batch.mock.calls.length, 0);
+});
+
+test("upsertSyncSnapshotIncremental ignores orphaned preset sets when checking expected versions", async () => {
+  const syncSnapshots = createSyncSnapshotsContainer();
+  const orphanedDocument = {
+    id: "sync:preset-set:user-1:orphan:orphan",
+    docType: "sync_preset",
+    userId: "user-1",
+    presetId: "orphan",
+    preset: { id: "orphan", name: "Orphan should not advance CAS" },
+    sales: [],
+    presetSetId: "orphan",
+    version: 99,
+    updatedAt: "2026-03-18T15:00:00.000Z"
+  } as SyncPresetDocument;
+  const legacyDocument: SyncPresetDocument = {
+    id: "sync:preset:user-1:keep",
+    docType: "sync_preset",
+    userId: "user-1",
+    presetId: "keep",
+    preset: { id: "keep", name: "Keep" },
+    sales: [],
+    version: 3,
+    updatedAt: "2026-03-18T09:00:00.000Z"
+  };
+  const metaDocument: SyncMetaDocument = {
+    id: "sync:meta:user-1",
+    docType: "sync_meta",
+    userId: "user-1",
+    version: 3,
+    updatedAt: "2026-03-18T09:00:00.000Z",
+    wheelConfigs: [],
+    activeWheelConfigId: null
+  };
+
+  syncSnapshots.items.query.mockReturnValue({
+    fetchAll: vi.fn().mockResolvedValue({
+      resources: [legacyDocument, orphanedDocument]
+    })
+  });
+  syncSnapshots.items.batch.mockResolvedValue({ result: [] });
+  syncSnapshots.item.mockImplementation((id: string) => ({
+    read: vi.fn().mockResolvedValue({
+      resource: id === "sync:meta:user-1" ? metaDocument : null
+    })
+  }));
+  getContainersMock.mockReturnValue({ syncSnapshots });
+
+  await upsertSyncSnapshotIncremental(createConfig(), {
+    userId: "user-1",
+    lots: [{ id: "keep", name: "Keep renamed" }],
+    salesByLot: { keep: [] },
+    wheelConfigs: [],
+    activeWheelConfigId: null,
+    version: 4,
+    expectedVersion: 3,
+    updatedAt: "2026-03-18T15:00:00.000Z"
+  });
+
+  assert.equal(syncSnapshots.items.batch.mock.calls.length, 1);
 });
 
 test("upsertSyncSnapshotIncremental updates meta when only wheel config data changes", async () => {
@@ -643,9 +1073,16 @@ test("upsertSyncSnapshotIncremental updates meta when only wheel config data cha
     upsertedCount: 0,
     deletedCount: 0
   });
-  assert.equal(syncSnapshots.items.upsert.mock.calls.length, 1);
-  assert.equal(syncSnapshots.items.upsert.mock.calls[0]?.[0]?.id, "sync:meta:user-1");
-  assert.deepEqual(syncSnapshots.items.upsert.mock.calls[0]?.[0]?.wheelConfigs, [{
+  assert.equal(syncSnapshots.items.upsert.mock.calls.length, 0);
+  assert.equal(syncSnapshots.items.batch.mock.calls.length, 1);
+  const metaOperation = syncSnapshots.items.batch.mock.calls[0]?.[0]?.[0] as {
+    operationType: string;
+    id: string;
+    resourceBody: SyncMetaDocument;
+  };
+  assert.equal(metaOperation.operationType, "Replace");
+  assert.equal(metaOperation.id, "sync:meta:user-1");
+  assert.deepEqual(metaOperation.resourceBody.wheelConfigs, [{
     id: 42,
     name: "Synced wheel",
     spinPrice: 25,
@@ -653,7 +1090,7 @@ test("upsertSyncSnapshotIncremental updates meta when only wheel config data cha
     createdAt: "",
     tiers: []
   }]);
-  assert.equal(syncSnapshots.items.upsert.mock.calls[0]?.[0]?.activeWheelConfigId, 42);
+  assert.equal(metaOperation.resourceBody.activeWheelConfigId, 42);
 });
 
 test("upsertSyncSnapshotIncremental updates meta when only system pricing defaults change", async () => {
@@ -720,9 +1157,16 @@ test("upsertSyncSnapshotIncremental updates meta when only system pricing defaul
     upsertedCount: 0,
     deletedCount: 0
   });
-  assert.equal(syncSnapshots.items.upsert.mock.calls.length, 1);
-  assert.equal(syncSnapshots.items.upsert.mock.calls[0]?.[0]?.id, "sync:meta:user-1");
-  assert.deepEqual(syncSnapshots.items.upsert.mock.calls[0]?.[0]?.systemPricingDefaults, {
+  assert.equal(syncSnapshots.items.upsert.mock.calls.length, 0);
+  assert.equal(syncSnapshots.items.batch.mock.calls.length, 1);
+  const metaOperation = syncSnapshots.items.batch.mock.calls[0]?.[0]?.[0] as {
+    operationType: string;
+    id: string;
+    resourceBody: SyncMetaDocument;
+  };
+  assert.equal(metaOperation.operationType, "Replace");
+  assert.equal(metaOperation.id, "sync:meta:user-1");
+  assert.deepEqual(metaOperation.resourceBody.systemPricingDefaults, {
     sellingCurrency: "USD",
     sellingTaxPercent: 8,
     targetProfitPercent: 21

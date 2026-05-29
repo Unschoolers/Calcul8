@@ -4,17 +4,23 @@ import type { ApiConfig, SaleDocument } from "../../types";
 
 const {
   getContainersMock,
+  isConflictErrorMock,
   isNotFoundErrorMock,
+  isPreconditionFailedErrorMock,
   withCosmosRetryMock
 } = vi.hoisted(() => ({
   getContainersMock: vi.fn(),
+  isConflictErrorMock: vi.fn(),
   isNotFoundErrorMock: vi.fn(),
+  isPreconditionFailedErrorMock: vi.fn(),
   withCosmosRetryMock: vi.fn(async <T>(operation: () => Promise<T>) => operation())
 }));
 
 vi.mock("./core", () => ({
   getContainers: getContainersMock,
+  isConflictError: isConflictErrorMock,
   isNotFoundError: isNotFoundErrorMock,
+  isPreconditionFailedError: isPreconditionFailedErrorMock,
   withCosmosRetry: withCosmosRetryMock
 }));
 
@@ -53,6 +59,7 @@ function createConfig(): ApiConfig {
 function createSyncSnapshotsContainer() {
   return {
     items: {
+      create: vi.fn(),
       upsert: vi.fn()
     },
     item: vi.fn()
@@ -65,6 +72,14 @@ beforeEach(() => {
     const statusCode = (error as { statusCode?: unknown })?.statusCode;
     return statusCode === 404;
   });
+  isConflictErrorMock.mockImplementation((error: unknown) => {
+    const statusCode = (error as { statusCode?: unknown })?.statusCode;
+    return statusCode === 409;
+  });
+  isPreconditionFailedErrorMock.mockImplementation((error: unknown) => {
+    const statusCode = (error as { statusCode?: unknown })?.statusCode;
+    return statusCode === 412;
+  });
 });
 
 test("upsertSaleDocument trims identifiers and creates version 1 for new rows", async () => {
@@ -72,7 +87,7 @@ test("upsertSaleDocument trims identifiers and creates version 1 for new rows", 
   syncSnapshots.item.mockReturnValue({
     read: vi.fn().mockRejectedValue({ statusCode: 404 })
   });
-  syncSnapshots.items.upsert.mockImplementation(async (document: SaleDocument) => ({
+  syncSnapshots.items.create.mockImplementation(async (document: SaleDocument) => ({
     resource: document
   }));
   getContainersMock.mockReturnValue({ syncSnapshots });
@@ -94,7 +109,117 @@ test("upsertSaleDocument trims identifiers and creates version 1 for new rows", 
   assert.equal(result.updatedBy, "actor-1");
   assert.equal(result.mutationId, "mutation-1");
   assert.equal(result.version, 1);
-  assert.equal(syncSnapshots.items.upsert.mock.calls.length, 1);
+  assert.equal(syncSnapshots.items.create.mock.calls.length, 1);
+  assert.equal(syncSnapshots.items.upsert.mock.calls.length, 0);
+});
+
+test("upsertSaleDocument creates new rows with create so duplicate writers conflict atomically", async () => {
+  const syncSnapshots = createSyncSnapshotsContainer();
+  syncSnapshots.item.mockReturnValue({
+    read: vi.fn().mockRejectedValue({ statusCode: 404 })
+  });
+  syncSnapshots.items.create.mockImplementation(async (document: SaleDocument) => ({
+    resource: document
+  }));
+  getContainersMock.mockReturnValue({ syncSnapshots });
+
+  const result = await upsertSaleDocument(createConfig(), {
+    scopeKey: "user-1",
+    lotId: "lot-1",
+    saleId: "sale-1",
+    sale: { id: 1 },
+    updatedBy: "user-1",
+    mutationId: "m-1",
+    baseVersion: 0
+  });
+
+  assert.equal(result.version, 1);
+  assert.equal(syncSnapshots.items.create.mock.calls.length, 1);
+  assert.equal(syncSnapshots.items.upsert.mock.calls.length, 0);
+
+  syncSnapshots.items.create.mockRejectedValueOnce({ statusCode: 409 });
+  await assert.rejects(
+    () => upsertSaleDocument(createConfig(), {
+      scopeKey: "user-1",
+      lotId: "lot-1",
+      saleId: "sale-2",
+      sale: { id: 2 },
+      updatedBy: "user-1",
+      mutationId: "m-2",
+      baseVersion: 0
+    }),
+    (error: unknown) => {
+      assert.ok(error instanceof EntityVersionConflictError);
+      assert.equal(error.message, "Sale changed since it was last loaded.");
+      return true;
+    }
+  );
+});
+
+test("upsertSaleDocument replaces existing rows with an If-Match ETag", async () => {
+  const syncSnapshots = createSyncSnapshotsContainer();
+  const existingSale: SaleDocument & { _etag: string } = {
+    id: "sale:user-1:lot-1:sale-1",
+    docType: "sale",
+    userId: "user-1",
+    scopeKey: "user-1",
+    lotId: "lot-1",
+    saleId: "sale-1",
+    sale: { id: 1 },
+    version: 3,
+    updatedAt: "2026-03-18T00:00:00.000Z",
+    updatedBy: "user-1",
+    mutationId: "m-1",
+    deletedAt: null,
+    _etag: "etag-sale-3"
+  };
+  const replace = vi.fn(async (document: SaleDocument) => ({ resource: document }));
+  syncSnapshots.item.mockReturnValue({
+    read: vi.fn().mockResolvedValue({ resource: existingSale }),
+    replace
+  });
+  syncSnapshots.items.upsert.mockImplementation(async (document: SaleDocument) => ({
+    resource: document
+  }));
+  getContainersMock.mockReturnValue({ syncSnapshots });
+
+  const result = await upsertSaleDocument(createConfig(), {
+    scopeKey: "user-1",
+    lotId: "lot-1",
+    saleId: "sale-1",
+    sale: { id: 1, price: 12 },
+    updatedBy: "user-2",
+    mutationId: "m-2",
+    baseVersion: 3
+  });
+
+  assert.equal(result.version, 4);
+  assert.equal(syncSnapshots.items.upsert.mock.calls.length, 0);
+  assert.equal(replace.mock.calls.length, 1);
+  assert.deepEqual(replace.mock.calls[0]?.[1], {
+    accessCondition: {
+      type: "IfMatch",
+      condition: "etag-sale-3"
+    }
+  });
+
+  replace.mockRejectedValueOnce({ statusCode: 412 });
+  await assert.rejects(
+    () => upsertSaleDocument(createConfig(), {
+      scopeKey: "user-1",
+      lotId: "lot-1",
+      saleId: "sale-1",
+      sale: { id: 1, price: 13 },
+      updatedBy: "user-2",
+      mutationId: "m-3",
+      baseVersion: 3
+    }),
+    (error: unknown) => {
+      assert.ok(error instanceof EntityVersionConflictError);
+      assert.equal(error.message, "Sale changed since it was last loaded.");
+      return true;
+    }
+  );
 });
 
 test("upsertSaleDocument rejects stale base versions", async () => {
@@ -182,6 +307,45 @@ test("deleteSaleDocument returns null when the row is missing or already deleted
   assert.equal(missing, null);
   assert.equal(alreadyDeleted, null);
   assert.equal(syncSnapshots.items.upsert.mock.calls.length, 0);
+});
+
+test("deleteSaleDocument soft-deletes with an If-Match ETag", async () => {
+  const syncSnapshots = createSyncSnapshotsContainer();
+  const existingSale: SaleDocument & { _etag: string } = {
+    id: "sale:user-1:lot-1:sale-1",
+    docType: "sale",
+    userId: "user-1",
+    scopeKey: "user-1",
+    lotId: "lot-1",
+    saleId: "sale-1",
+    sale: { id: 1 },
+    version: 2,
+    updatedAt: "2026-03-18T00:00:00.000Z",
+    updatedBy: "user-1",
+    mutationId: "m-1",
+    deletedAt: null,
+    _etag: "etag-delete-2"
+  };
+  const replace = vi.fn(async (document: SaleDocument) => ({ resource: document }));
+  syncSnapshots.item.mockReturnValue({
+    read: vi.fn().mockResolvedValue({ resource: existingSale }),
+    replace
+  });
+  getContainersMock.mockReturnValue({ syncSnapshots });
+
+  const result = await deleteSaleDocument(createConfig(), {
+    scopeKey: "user-1",
+    lotId: "lot-1",
+    saleId: "sale-1",
+    updatedBy: "user-2",
+    mutationId: "m-delete",
+    baseVersion: 2
+  });
+
+  assert.equal(result?.version, 3);
+  assert.equal(syncSnapshots.items.upsert.mock.calls.length, 0);
+  assert.equal(replace.mock.calls.length, 1);
+  assert.equal(replace.mock.calls[0]?.[1]?.accessCondition?.condition, "etag-delete-2");
 });
 
 test("listSalesForLot filters invalid docs and sorts by date then sale id", async () => {
@@ -377,6 +541,85 @@ test("upsertLotLivePricing rejects stale base versions", async () => {
       updatedBy: "user-1",
       mutationId: "m-2",
       baseVersion: 2
+    }),
+    (error: unknown) => {
+      assert.ok(error instanceof EntityVersionConflictError);
+      assert.equal(error.message, "Live pricing changed since it was last loaded.");
+      return true;
+    }
+  );
+});
+
+test("upsertLotLivePricing creates new rows and replaces existing rows with Cosmos CAS", async () => {
+  const syncSnapshots = createSyncSnapshotsContainer();
+  const existingPricing = {
+    id: "lot_live_pricing:user-1:lot-1",
+    docType: "lot_live_pricing",
+    userId: "user-1",
+    scopeKey: "user-1",
+    lotId: "lot-1",
+    livePackPrice: 1,
+    liveBoxPriceSell: 2,
+    liveSpotPrice: 3,
+    version: 4,
+    updatedAt: "2026-03-18T00:00:00.000Z",
+    updatedBy: "user-1",
+    mutationId: "m-1",
+    _etag: "etag-live-4"
+  };
+  const replace = vi.fn(async (document) => ({ resource: document }));
+  syncSnapshots.item
+    .mockReturnValueOnce({
+      read: vi.fn().mockRejectedValue({ statusCode: 404 })
+    })
+    .mockReturnValue({
+      read: vi.fn().mockResolvedValue({ resource: existingPricing }),
+      replace
+    });
+  syncSnapshots.items.create.mockImplementation(async (document) => ({ resource: document }));
+  getContainersMock.mockReturnValue({ syncSnapshots });
+
+  const created = await upsertLotLivePricing(createConfig(), {
+    scopeKey: "user-1",
+    lotId: "lot-1",
+    livePackPrice: 4,
+    liveBoxPriceSell: 5,
+    liveSpotPrice: 6,
+    updatedBy: "user-1",
+    mutationId: "m-2",
+    baseVersion: 0
+  });
+
+  assert.equal(created.version, 1);
+  assert.equal(syncSnapshots.items.create.mock.calls.length, 1);
+  assert.equal(syncSnapshots.items.upsert.mock.calls.length, 0);
+
+  const updated = await upsertLotLivePricing(createConfig(), {
+    scopeKey: "user-1",
+    lotId: "lot-1",
+    livePackPrice: 7,
+    liveBoxPriceSell: 8,
+    liveSpotPrice: 9,
+    updatedBy: "user-1",
+    mutationId: "m-3",
+    baseVersion: 4
+  });
+
+  assert.equal(updated.version, 5);
+  assert.equal(replace.mock.calls.length, 1);
+  assert.equal(replace.mock.calls[0]?.[1]?.accessCondition?.condition, "etag-live-4");
+
+  replace.mockRejectedValueOnce({ statusCode: 412 });
+  await assert.rejects(
+    () => upsertLotLivePricing(createConfig(), {
+      scopeKey: "user-1",
+      lotId: "lot-1",
+      livePackPrice: 10,
+      liveBoxPriceSell: 11,
+      liveSpotPrice: 12,
+      updatedBy: "user-1",
+      mutationId: "m-4",
+      baseVersion: 4
     }),
     (error: unknown) => {
       assert.ok(error instanceof EntityVersionConflictError);

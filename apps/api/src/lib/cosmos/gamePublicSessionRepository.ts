@@ -6,7 +6,14 @@ import type {
   GamePublicSessionStatus
 } from "../../types";
 import { gamePublicSessionDocumentId } from "./ids";
-import { getContainers, isNotFoundError, withCosmosRetry } from "./core";
+import { getContainers, isConflictError, isNotFoundError, isPreconditionFailedError, withCosmosRetry } from "./core";
+
+export class GamePublicSessionConflictError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "GamePublicSessionConflictError";
+  }
+}
 
 function buildPublicSessionId(): string {
   return randomBytes(6).toString("base64url").replace(/[^a-zA-Z0-9]/g, "").slice(0, 8).toLowerCase();
@@ -14,6 +21,38 @@ function buildPublicSessionId(): string {
 
 function normalizePublicSessionId(value: string): string {
   return String(value || "").trim().toLowerCase();
+}
+
+function readCosmosEtag(document: unknown): string {
+  if (!document || typeof document !== "object") return "";
+  return String((document as { _etag?: unknown })._etag ?? "").trim();
+}
+
+function buildIfMatchOptions(etag: string) {
+  return {
+    accessCondition: {
+      type: "IfMatch" as const,
+      condition: etag
+    }
+  };
+}
+
+function getSnapshotUpdatedAt(snapshot: GamePublicSessionSnapshot): number {
+  const updatedAt = Number(snapshot.updatedAt);
+  return Number.isFinite(updatedAt) ? updatedAt : 0;
+}
+
+function assertPublicSessionCanMoveForward(
+  existing: GamePublicSessionDocument,
+  nextSnapshot: GamePublicSessionSnapshot
+): void {
+  if (existing.snapshot.sessionStatus === "ended" && nextSnapshot.sessionStatus !== "ended") {
+    throw new GamePublicSessionConflictError("Ended public game sessions cannot be restarted.");
+  }
+
+  if (getSnapshotUpdatedAt(nextSnapshot) < getSnapshotUpdatedAt(existing.snapshot)) {
+    throw new GamePublicSessionConflictError("Public game session changed since it was last published.");
+  }
 }
 
 export async function createGamePublicSession(
@@ -64,13 +103,6 @@ export async function createGamePublicSession(
   throw new Error("Failed to allocate a public game session id.");
 }
 
-function isConflictError(error: unknown): boolean {
-  if (typeof error !== "object" || error === null) return false;
-  const code = (error as { code?: unknown }).code;
-  const statusCode = (error as { statusCode?: unknown }).statusCode;
-  return code === 409 || statusCode === 409 || code === "Conflict" || code === "conflict";
-}
-
 export async function getGamePublicSession(
   config: ApiConfig,
   publicSessionId: string
@@ -104,9 +136,14 @@ export async function updateGamePublicSession(
   if (!existing || existing.ownerUserId !== input.ownerUserId) {
     return null;
   }
+  assertPublicSessionCanMoveForward(existing, input.snapshot);
 
   const { sessions } = getContainers(config);
   const nowIso = new Date().toISOString();
+  const etag = readCosmosEtag(existing);
+  if (!etag) {
+    throw new GamePublicSessionConflictError("Public game session changed since it was last published.");
+  }
   const updatedDocument: GamePublicSessionDocument = {
     ...existing,
     updatedAt: nowIso,
@@ -116,9 +153,19 @@ export async function updateGamePublicSession(
     snapshot: input.snapshot
   };
 
-  const { resource } = await withCosmosRetry(() =>
-    sessions.items.upsert<GamePublicSessionDocument>(updatedDocument)
-  );
+  let resource: GamePublicSessionDocument | undefined;
+  try {
+    ({ resource } = await withCosmosRetry(() =>
+      sessions
+        .item(updatedDocument.id, updatedDocument.id)
+        .replace<GamePublicSessionDocument>(updatedDocument, buildIfMatchOptions(etag))
+    ));
+  } catch (error) {
+    if (isPreconditionFailedError(error) || isConflictError(error)) {
+      throw new GamePublicSessionConflictError("Public game session changed since it was last published.");
+    }
+    throw error;
+  }
   if (!resource) {
     throw new Error("Failed to update game public session.");
   }

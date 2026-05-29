@@ -29,6 +29,7 @@ export interface IncrementalSyncUpsertInput {
   wheelConfigs: SyncWheelConfigDto[];
   activeWheelConfigId: number | null;
   systemPricingDefaults?: SyncSystemPricingDefaultsDto | null;
+  expectedVersion?: number;
   version: number;
   updatedAt: string;
 }
@@ -37,6 +38,22 @@ export interface IncrementalSyncUpsertResult {
   changed: boolean;
   upsertedCount: number;
   deletedCount: number;
+}
+
+export class SyncSnapshotConflictError extends Error {
+  constructor(message = "Cloud data changed since your last sync. Pull latest data and retry.") {
+    super(message);
+    this.name = "SyncSnapshotConflictError";
+  }
+}
+
+export function isSyncSnapshotConflictError(error: unknown): error is SyncSnapshotConflictError {
+  return error instanceof SyncSnapshotConflictError
+    || (
+      typeof error === "object"
+      && error !== null
+      && (error as { name?: unknown }).name === "SyncSnapshotConflictError"
+    );
 }
 
 export async function getSyncPresetDocumentsFromContainer(
@@ -86,6 +103,22 @@ export function normalizeActiveWheelConfigId(value: unknown): number | null {
     return null;
   }
   return Math.floor(parsed);
+}
+
+export function normalizePresetSetId(value: unknown): string {
+  if (typeof value !== "string") return "";
+  return value.trim();
+}
+
+export function selectCurrentSyncPresetDocuments(
+  documents: SyncPresetDocument[],
+  metaDocument: SyncMetaDocument | null
+): SyncPresetDocument[] {
+  const currentPresetSetId = normalizePresetSetId(metaDocument?.presetSetId);
+  if (currentPresetSetId) {
+    return documents.filter((document) => normalizePresetSetId(document.presetSetId) === currentPresetSetId);
+  }
+  return documents.filter((document) => !normalizePresetSetId(document.presetSetId));
 }
 
 export function buildIncomingPresetStates(

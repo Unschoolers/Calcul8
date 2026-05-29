@@ -1,6 +1,6 @@
 import { inject, type PropType } from "vue";
 import { createWindowContextBridge } from "../windows/shared/contextBridge.ts";
-import "../windows/config/ConfigWindow.css";
+import "./SystemConfigurationDialog.css";
 
 export const SystemConfigurationDialog = {
   name: "SystemConfigurationDialog",

@@ -43,6 +43,23 @@ test("System configuration is opened from the global app menu", () => {
   assert.match(appTemplate, /<system-configuration-dialog :ctx="this"><\/system-configuration-dialog>/);
 });
 
+test("SystemConfigurationDialog keeps random-hit spots scoped to bulk lots", () => {
+  const template = readFileSync("src/components/shell/SystemConfigurationDialog.html", "utf8");
+
+  assert.equal((template.match(/configRtyhSpotsPerBoxLabel/g) ?? []).length, 2);
+  assert.equal((template.match(/v-if="currentLotType !== 'singles'"/g) ?? []).length, 2);
+});
+
+test("SystemConfigurationDialog owns its styling instead of importing ConfigWindow CSS", () => {
+  const definition = readFileSync("src/components/shell/SystemConfigurationDialog.ts", "utf8");
+  const configCss = readFileSync("src/components/windows/config/ConfigWindow.css", "utf8");
+
+  assert.match(definition, /SystemConfigurationDialog\.css/);
+  assert.doesNotMatch(definition, /windows\/config\/ConfigWindow\.css/);
+  assert.doesNotMatch(configCss, /config-system-dialog/);
+  assert.doesNotMatch(configCss, /config-system-section/);
+});
+
 test("ConfigWindow provides system defaults and lot override copy in both locales", () => {
   const en = JSON.parse(readFileSync("src/app-core/i18n/locales/en/config.json", "utf8")) as Record<string, string>;
   const fr = JSON.parse(readFileSync("src/app-core/i18n/locales/fr/config.json", "utf8")) as Record<string, string>;

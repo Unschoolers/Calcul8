@@ -7,7 +7,7 @@ import type {
   WhatnotSaleImportMappingDocument,
   WhatnotTargetMappingDocument
 } from "../../types";
-import { getContainers, isNotFoundError, withCosmosRetry } from "./core";
+import { getContainers, isConflictError, isNotFoundError, isPreconditionFailedError, withCosmosRetry } from "./core";
 import {
   whatnotConnectionId,
   whatnotImportBatchId,
@@ -50,6 +50,31 @@ function isWhatnotSaleImportMappingDocument(resource: unknown): resource is What
   return !!resource
     && typeof resource === "object"
     && (resource as { docType?: unknown }).docType === "sale_import_mapping";
+}
+
+function readCosmosEtag(document: unknown): string {
+  if (!document || typeof document !== "object") return "";
+  return String((document as { _etag?: unknown })._etag ?? "").trim();
+}
+
+function buildIfMatchOptions(etag: string) {
+  return {
+    accessCondition: {
+      type: "IfMatch" as const,
+      condition: etag
+    }
+  };
+}
+
+export type WhatnotImportBatchClaimResult =
+  | { status: "claimed"; batch: WhatnotImportBatchDocument }
+  | { status: "already_completed"; batch: WhatnotImportBatchDocument }
+  | { status: "not_claimable"; batch: WhatnotImportBatchDocument }
+  | { status: "conflict"; batch: null }
+  | { status: "not_found"; batch: null };
+
+function isCosmosClaimConflict(error: unknown): boolean {
+  return isPreconditionFailedError(error) || isConflictError(error);
 }
 
 export async function getWhatnotConnection(
@@ -258,6 +283,150 @@ export async function upsertWhatnotImportBatch(
   }
 
   return resource;
+}
+
+export async function claimPendingWhatnotImportBatch(
+  config: ApiConfig,
+  scopeKey: string,
+  batchId: string,
+  claimedAt: string
+): Promise<WhatnotImportBatchClaimResult> {
+  const { syncSnapshots } = getContainers(config);
+  const normalizedScopeKey = normalizeId(scopeKey);
+  const normalizedBatchId = normalizeId(batchId);
+  const existing = await getWhatnotImportBatch(config, normalizedScopeKey, normalizedBatchId);
+  if (!existing) {
+    return { status: "not_found", batch: null };
+  }
+
+  if (existing.status === "completed") {
+    return { status: "already_completed", batch: existing };
+  }
+
+  if (existing.status !== "pending_review") {
+    return { status: "not_claimable", batch: existing };
+  }
+
+  const etag = readCosmosEtag(existing);
+  if (!etag) {
+    return { status: "conflict", batch: null };
+  }
+
+  const document: WhatnotImportBatchDocument = {
+    ...existing,
+    status: "processing",
+    updatedAt: claimedAt
+  };
+
+  try {
+    const { resource } = await withCosmosRetry(() =>
+      syncSnapshots
+        .item(document.id, normalizedScopeKey)
+        .replace<WhatnotImportBatchDocument>(document, buildIfMatchOptions(etag))
+    );
+    if (!resource) {
+      throw new Error("Failed to claim Whatnot import batch.");
+    }
+    return { status: "claimed", batch: resource };
+  } catch (error) {
+    if (isCosmosClaimConflict(error)) {
+      return { status: "conflict", batch: null };
+    }
+    throw error;
+  }
+}
+
+export async function completeWhatnotImportBatch(
+  config: ApiConfig,
+  batch: WhatnotImportBatchDocument,
+  counts: {
+    importedCount: number;
+    updatedCount: number;
+    skippedCount: number;
+    completedAt: string;
+  }
+): Promise<WhatnotImportBatchDocument> {
+  const { syncSnapshots } = getContainers(config);
+  const normalizedScopeKey = normalizeId(batch.scopeKey);
+  const etag = readCosmosEtag(batch);
+  if (!etag) {
+    throw new Error("Whatnot import batch changed while it was being confirmed.");
+  }
+
+  const document: WhatnotImportBatchDocument = {
+    ...batch,
+    id: whatnotImportBatchId(normalizedScopeKey, batch.batchId),
+    userId: normalizedScopeKey,
+    scopeKey: normalizedScopeKey,
+    status: "completed",
+    importedCount: Math.max(0, Math.floor(Number(counts.importedCount) || 0)),
+    updatedCount: Math.max(0, Math.floor(Number(counts.updatedCount) || 0)),
+    skippedCount: Math.max(0, Math.floor(Number(counts.skippedCount) || 0)),
+    completedAt: counts.completedAt,
+    updatedAt: counts.completedAt
+  };
+
+  try {
+    const { resource } = await withCosmosRetry(() =>
+      syncSnapshots
+        .item(document.id, normalizedScopeKey)
+        .replace<WhatnotImportBatchDocument>(document, buildIfMatchOptions(etag))
+    );
+    if (!resource) {
+      throw new Error("Failed to complete Whatnot import batch.");
+    }
+    return resource;
+  } catch (error) {
+    if (isCosmosClaimConflict(error)) {
+      throw new Error("Whatnot import batch changed while it was being confirmed.");
+    }
+    throw error;
+  }
+}
+
+export async function releaseClaimedWhatnotImportBatch(
+  config: ApiConfig,
+  batch: WhatnotImportBatchDocument,
+  releasedAt: string,
+  errorMessage?: string
+): Promise<WhatnotImportBatchDocument | null> {
+  if (batch.status !== "processing") {
+    return null;
+  }
+
+  const { syncSnapshots } = getContainers(config);
+  const normalizedScopeKey = normalizeId(batch.scopeKey);
+  const etag = readCosmosEtag(batch);
+  if (!etag) {
+    return null;
+  }
+
+  const document: WhatnotImportBatchDocument = {
+    ...batch,
+    id: whatnotImportBatchId(normalizedScopeKey, batch.batchId),
+    userId: normalizedScopeKey,
+    scopeKey: normalizedScopeKey,
+    status: "pending_review",
+    updatedAt: releasedAt,
+    errorMessage: normalizeId(errorMessage)
+  };
+
+  try {
+    const { resource } = await withCosmosRetry(() =>
+      syncSnapshots
+        .item(document.id, normalizedScopeKey)
+        .replace<WhatnotImportBatchDocument>(document, buildIfMatchOptions(etag))
+    );
+    if (!resource) {
+      throw new Error("Failed to release Whatnot import batch claim.");
+    }
+    return resource;
+  } catch (error) {
+    if (isCosmosClaimConflict(error)) {
+      return null;
+    }
+    throw error;
+  }
 }
 
 export async function createPendingWhatnotImportBatch(

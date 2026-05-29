@@ -35,6 +35,7 @@ export type SyncApp = Pick<
   | "syncStatus"
   | "isOffline"
   | "lastSyncedPayloadHash"
+  | "systemPricingDefaults"
   | "googleAuthEpoch"
   | "hasProAccess"
   | "activeScopeType"
@@ -43,6 +44,7 @@ export type SyncApp = Pick<
   | "getSalesStorageKey"
   | "saveLotsToStorage"
   | "saveWheelConfigsToStorage"
+  | "saveSystemPricingDefaultsToStorage"
   | "loadLot"
   | "notify"
   | "startOfflineReconnectScheduler"
@@ -95,6 +97,7 @@ const defaultDeps: SyncServiceDeps = {
     loadSalesForLotId: app.loadSalesForLotId,
     wheelConfigs: app.wheelConfigs,
     activeWheelConfigId: app.activeWheelConfigId,
+    systemPricingDefaults: app.systemPricingDefaults,
     workspaceId: scope?.scopeType === "workspace" ? scope.workspaceId : undefined
   }, clientVersion),
   getSyncPayloadSignature,

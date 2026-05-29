@@ -318,71 +318,6 @@
   color: rgba(var(--v-theme-on-surface), 0.68);
 }
 
-.config-system-dialog__help,
-.config-system-section p {
-  margin: 0;
-  color: rgba(var(--v-theme-on-surface), 0.68);
-  font-size: 0.86rem;
-  line-height: 1.35;
-}
-
-.config-system-section h3 {
-  display: block;
-  font-size: 0.72rem;
-  line-height: 1.2;
-  letter-spacing: var(--app-letter-spacing-section);
-  text-transform: uppercase;
-  font-weight: var(--app-font-weight-strong);
-  color: rgba(var(--v-theme-on-surface), 0.62);
-}
-
-.config-system-dialog {
-  max-height: min(86vh, 760px);
-}
-
-.config-system-dialog__title {
-  display: flex !important;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-  padding-bottom: 0.65rem !important;
-  color: rgb(var(--v-theme-on-surface)) !important;
-  text-transform: none !important;
-  letter-spacing: 0 !important;
-}
-
-.config-system-dialog__eyebrow {
-  margin-bottom: 0.2rem;
-  font-size: 0.72rem;
-  line-height: 1.2;
-  letter-spacing: var(--app-letter-spacing-section);
-  text-transform: uppercase;
-  color: rgba(var(--v-theme-secondary), 0.96);
-}
-
-.config-system-dialog__body {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.config-system-section {
-  height: 100%;
-  padding: 0.95rem;
-  border-radius: var(--app-radius-card);
-  border: var(--app-stroke-hairline) solid var(--app-stroke-default);
-  background: var(--app-surface-quiet);
-}
-
-.config-system-section h3 {
-  margin: 0 0 0.35rem;
-  color: rgba(var(--v-theme-secondary), 0.96);
-}
-
-.config-system-section p {
-  margin-bottom: 0.85rem;
-}
-
 .v-theme--unionArenaLight .config-card .v-field {
   background:
     linear-gradient(180deg, rgba(var(--v-theme-surface-bright), 0.95), rgba(var(--v-theme-surface), 0.92));
@@ -513,7 +448,4 @@
     gap: 0.2rem 0.6rem;
   }
 
-  .config-system-section {
-    padding: 0.78rem;
-  }
 }

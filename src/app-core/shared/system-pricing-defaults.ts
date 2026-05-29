@@ -6,6 +6,7 @@ import type {
   SystemPricingDefaults
 } from "../../types/app.ts";
 import { getFeeProfilePreset, resolveStoredFeeProfile } from "./fee-profile-presets.ts";
+import { isSinglesLot, type LotTypeSource } from "./lot-types.ts";
 
 export type SystemPricingDefaultsInput = Partial<Record<keyof SystemPricingDefaults, unknown>>;
 
@@ -93,6 +94,36 @@ export function pickSystemPricingFields(defaults: SystemPricingDefaults): Pick<
   };
 }
 
+export type SystemPricingFieldsForLot = Pick<
+  LotSetup,
+  | "sellingCurrency"
+  | "sellingTaxPercent"
+  | "sellingShippingPerOrder"
+  | "targetProfitPercent"
+> & FeeProfileFields & Partial<Pick<LotSetup, "spotsPerBox">>;
+
+export function pickSystemPricingFieldsForLot(
+  lot: LotTypeSource,
+  defaults: SystemPricingDefaults
+): SystemPricingFieldsForLot {
+  const fields = pickSystemPricingFields(defaults);
+  if (!isSinglesLot(lot)) {
+    return fields;
+  }
+
+  return {
+    sellingCurrency: fields.sellingCurrency,
+    sellingTaxPercent: fields.sellingTaxPercent,
+    sellingShippingPerOrder: fields.sellingShippingPerOrder,
+    targetProfitPercent: fields.targetProfitPercent,
+    feeProfilePreset: fields.feeProfilePreset,
+    platformFeePercent: fields.platformFeePercent,
+    additionalFeePercent: fields.additionalFeePercent,
+    additionalFeeAppliesTo: fields.additionalFeeAppliesTo,
+    fixedFeePerOrder: fields.fixedFeePerOrder
+  };
+}
+
 export function applySystemPricingDefaultsToLot(lot: Lot, defaults: SystemPricingDefaults): Lot {
   if (!lotUsesSystemPricingDefaults(lot)) {
     return { ...lot };
@@ -100,7 +131,7 @@ export function applySystemPricingDefaultsToLot(lot: Lot, defaults: SystemPricin
 
   return {
     ...lot,
-    ...pickSystemPricingFields(defaults),
+    ...pickSystemPricingFieldsForLot(lot, defaults),
     usesSystemPricingDefaults: true
   };
 }

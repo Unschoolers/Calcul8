@@ -18,3 +18,8 @@ export {
 } from "./syncSnapshotEntityRepository";
 
 export { upsertSyncSnapshotIncremental } from "./syncSnapshotIncrementalRepository";
+
+export {
+  isSyncSnapshotConflictError,
+  SyncSnapshotConflictError
+} from "./syncSnapshotRepository.shared";

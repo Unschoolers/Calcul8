@@ -211,7 +211,7 @@ test("runCloudSyncPull shares one in-flight request across overlapping callers",
   assert.equal(app.syncStatus, "success");
 });
 
-test("runCloudSyncPush pulls latest data on stale-version conflict", async () => {
+test("runCloudSyncPush reports manual recovery on stale-version conflict", async () => {
   const app = createApp();
   const requestCloudSyncPush = vi.fn().mockResolvedValue({
     ok: false,
@@ -238,15 +238,58 @@ test("runCloudSyncPush pulls latest data on stale-version conflict", async () =>
   });
 
   assert.equal(requestCloudSyncPush.mock.calls.length, 1);
-  assert.equal(app.pullCloudSync.mock.calls.length, 1);
+  assert.equal(app.pullCloudSync.mock.calls.length, 0);
   assert.equal(app.syncStatus, "error");
   assert.deepEqual(
     app.notify.mock.calls.at(-1),
-    ["Cloud data changed. Pulled latest data. Please retry your change.", "warning"]
+    ["Cloud data changed. Your local changes were kept. Pull latest data before retrying.", "warning"]
   );
 });
 
-test("runCloudSyncPush reports manual pull when stale-version recovery pull fails", async () => {
+test("runCloudSyncPush keeps local edits intact on stale-version conflict", async () => {
+  const app = createApp();
+  app.lots = [{ id: 1, name: "Unsaved local lot" }];
+  app.wheelConfigs = [{ id: 91, name: "Unsaved local wheel", spinPrice: 10, targetMargin: 40, createdAt: "", tiers: [] }];
+  app.pullCloudSync = vi.fn(async () => {
+    app.lots = [{ id: 2, name: "Cloud lot that should not be auto-applied" }];
+    app.wheelConfigs = [];
+  });
+  const requestCloudSyncPush = vi.fn().mockResolvedValue({
+    ok: false,
+    status: 409,
+    statusText: "Conflict",
+    json: async () => ({
+      error: "Cloud data changed since your last sync. Pull latest data and retry."
+    })
+  });
+
+  await runCloudSyncPush(app, false, {
+    requestCloudSyncPush,
+    createSyncPayload: () => ({ lots: app.lots, salesByLot: { "1": [] }, wheelConfigs: app.wheelConfigs, activeWheelConfigId: null }),
+    getSyncPayloadSignature: () => "local-edit-sig",
+    startSyncStatus: (target) => {
+      target.syncStatus = "syncing";
+    },
+    setSyncStatusSuccess: (target) => {
+      target.syncStatus = "success";
+    },
+    setSyncStatusError: (target) => {
+      target.syncStatus = "error";
+    }
+  });
+
+  assert.equal(requestCloudSyncPush.mock.calls.length, 1);
+  assert.equal(app.pullCloudSync.mock.calls.length, 0);
+  assert.deepEqual(app.lots, [{ id: 1, name: "Unsaved local lot" }]);
+  assert.deepEqual(app.wheelConfigs, [{ id: 91, name: "Unsaved local wheel", spinPrice: 10, targetMargin: 40, createdAt: "", tiers: [] }]);
+  assert.equal(app.syncStatus, "error");
+  assert.deepEqual(
+    app.notify.mock.calls.at(-1),
+    ["Cloud data changed. Your local changes were kept. Pull latest data before retrying.", "warning"]
+  );
+});
+
+test("runCloudSyncPush does not call pull recovery when stale-version recovery would fail", async () => {
   const app = createApp();
   app.pullCloudSync = vi.fn(async () => {
     throw new Error("pull failed");
@@ -276,11 +319,11 @@ test("runCloudSyncPush reports manual pull when stale-version recovery pull fail
   });
 
   assert.equal(requestCloudSyncPush.mock.calls.length, 1);
-  assert.equal(app.pullCloudSync.mock.calls.length, 1);
+  assert.equal(app.pullCloudSync.mock.calls.length, 0);
   assert.equal(app.syncStatus, "error");
   assert.deepEqual(
     app.notify.mock.calls.at(-1),
-    ["Cloud data changed. Pull latest data before retrying your change.", "warning"]
+    ["Cloud data changed. Your local changes were kept. Pull latest data before retrying.", "warning"]
   );
 });
 

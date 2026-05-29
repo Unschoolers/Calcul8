@@ -5,6 +5,9 @@ import { createApiConfig } from "../../test-support/function-test-helpers";
 const {
   getWhatnotConnectionMock,
   getWhatnotImportBatchMock,
+  claimPendingWhatnotImportBatchMock,
+  completeWhatnotImportBatchMock,
+  releaseClaimedWhatnotImportBatchMock,
   getWhatnotSaleImportMappingByExternalSaleKeyHashMock,
   getWhatnotTargetMappingByMatchKeyHashMock,
   listPendingWhatnotImportBatchesMock,
@@ -20,6 +23,9 @@ const {
 } = vi.hoisted(() => ({
   getWhatnotConnectionMock: vi.fn(),
   getWhatnotImportBatchMock: vi.fn(),
+  claimPendingWhatnotImportBatchMock: vi.fn(),
+  completeWhatnotImportBatchMock: vi.fn(),
+  releaseClaimedWhatnotImportBatchMock: vi.fn(),
   getWhatnotSaleImportMappingByExternalSaleKeyHashMock: vi.fn(),
   getWhatnotTargetMappingByMatchKeyHashMock: vi.fn(),
   listPendingWhatnotImportBatchesMock: vi.fn(),
@@ -35,6 +41,9 @@ const {
 }));
 
 vi.mock("../../lib/cosmos/whatnotRepository", () => ({
+  claimPendingWhatnotImportBatch: claimPendingWhatnotImportBatchMock,
+  completeWhatnotImportBatch: completeWhatnotImportBatchMock,
+  releaseClaimedWhatnotImportBatch: releaseClaimedWhatnotImportBatchMock,
   createPendingWhatnotImportBatch: createPendingWhatnotImportBatchMock,
   getWhatnotConnection: getWhatnotConnectionMock,
   getWhatnotImportBatch: getWhatnotImportBatchMock,
@@ -67,6 +76,32 @@ beforeEach(() => {
   vi.resetAllMocks();
   getWhatnotConnectionMock.mockResolvedValue(null);
   getWhatnotImportBatchMock.mockResolvedValue(null);
+  claimPendingWhatnotImportBatchMock.mockImplementation(async (...args: unknown[]) => {
+    const batch = await getWhatnotImportBatchMock(...args);
+    if (!batch) {
+      return { status: "not_found", batch: null };
+    }
+    if (batch.status === "completed") {
+      return { status: "already_completed", batch };
+    }
+    if (batch.status !== "pending_review") {
+      return { status: "not_claimable", batch };
+    }
+    return {
+      status: "claimed",
+      batch: {
+        ...batch,
+        status: "processing"
+      }
+    };
+  });
+  completeWhatnotImportBatchMock.mockImplementation(async (_config, batch, counts) => ({
+    ...batch,
+    ...counts,
+    status: "completed",
+    updatedAt: counts.completedAt
+  }));
+  releaseClaimedWhatnotImportBatchMock.mockResolvedValue(null);
   getWhatnotSaleImportMappingByExternalSaleKeyHashMock.mockResolvedValue(null);
   getWhatnotTargetMappingByMatchKeyHashMock.mockResolvedValue(null);
   listPendingWhatnotImportBatchesMock.mockResolvedValue([]);
@@ -303,6 +338,141 @@ test("confirmWhatnotImportBatchForActor updates a manual candidate sale and pres
   assert.equal((upsertSaleDocumentMock.mock.calls[0]?.[1]?.sale as { customer?: string; memo?: string }).customer, "Jordan Lee");
   assert.equal((upsertSaleDocumentMock.mock.calls[0]?.[1]?.sale as { customer?: string; memo?: string }).memo, "Keep this memo");
   assert.equal(upsertWhatnotSaleImportMappingMock.mock.calls[0]?.[1]?.saleId, "7");
+});
+
+test("confirmWhatnotImportBatchForActor claims the batch before writing sales and completes the claimed batch", async () => {
+  getWhatnotImportBatchMock.mockResolvedValue({
+    batchId: "batch-claim",
+    status: "pending_review",
+    origin: "csv_manual",
+    externalAccountId: "seller-1",
+    rows: [{
+      rowId: "item-claim",
+      externalSaleId: "order-claim:item-claim",
+      externalOrderId: "order-claim",
+      externalOrderItemId: "item-claim",
+      externalAccountId: "seller-1",
+      title: "Lot A",
+      quantity: 1,
+      price: 18,
+      buyerShipping: 0,
+      date: "2026-03-25",
+      orderStatus: "COMPLETED",
+      payloadFingerprint: "fp-claim",
+      action: "create",
+      matchSource: "none",
+      requiresManualReview: false
+    }]
+  });
+
+  const result = await confirmWhatnotImportBatchForActor(createApiConfig(), "user-a", {
+    batchId: "batch-claim",
+    decisions: [{
+      rowId: "item-claim",
+      lotId: "10",
+      saleType: "pack"
+    }]
+  });
+
+  assert.deepEqual(result, {
+    importedCount: 1,
+    updatedCount: 0,
+    skippedCount: 0
+  });
+  assert.equal(claimPendingWhatnotImportBatchMock.mock.calls.length, 1);
+  assert.equal(claimPendingWhatnotImportBatchMock.mock.invocationCallOrder[0] < upsertSaleDocumentMock.mock.invocationCallOrder[0], true);
+  assert.equal(completeWhatnotImportBatchMock.mock.calls.length, 1);
+  assert.equal(completeWhatnotImportBatchMock.mock.invocationCallOrder[0] > upsertSaleDocumentMock.mock.invocationCallOrder[0], true);
+  assert.equal(completeWhatnotImportBatchMock.mock.calls[0]?.[1]?.status, "processing");
+  assert.deepEqual(completeWhatnotImportBatchMock.mock.calls[0]?.[2], {
+    importedCount: 1,
+    updatedCount: 0,
+    skippedCount: 0,
+    completedAt: completeWhatnotImportBatchMock.mock.calls[0]?.[2]?.completedAt
+  });
+});
+
+test("confirmWhatnotImportBatchForActor returns completed batch counts without duplicating work", async () => {
+  claimPendingWhatnotImportBatchMock.mockResolvedValueOnce({
+    status: "already_completed",
+    batch: {
+      batchId: "batch-done",
+      status: "completed",
+      origin: "csv_manual",
+      externalAccountId: "seller-1",
+      importedCount: 2,
+      updatedCount: 1,
+      skippedCount: 3,
+      rows: []
+    }
+  });
+
+  const result = await confirmWhatnotImportBatchForActor(createApiConfig(), "user-a", {
+    batchId: "batch-done",
+    decisions: [{
+      rowId: "item-1",
+      lotId: "10",
+      saleType: "pack"
+    }]
+  });
+
+  assert.deepEqual(result, {
+    importedCount: 2,
+    updatedCount: 1,
+    skippedCount: 3
+  });
+  assert.equal(upsertSaleDocumentMock.mock.calls.length, 0);
+  assert.equal(upsertWhatnotSaleImportMappingMock.mock.calls.length, 0);
+  assert.equal(upsertWhatnotTargetMappingMock.mock.calls.length, 0);
+  assert.equal(completeWhatnotImportBatchMock.mock.calls.length, 0);
+});
+
+test("confirmWhatnotImportBatchForActor releases a claimed batch when validation fails before writes", async () => {
+  getWhatnotImportBatchMock.mockResolvedValue({
+    batchId: "batch-invalid",
+    status: "pending_review",
+    origin: "csv_manual",
+    externalAccountId: "seller-1",
+    rows: [{
+      rowId: "item-invalid",
+      externalSaleId: "order-invalid:item-invalid",
+      externalOrderId: "order-invalid",
+      externalOrderItemId: "item-invalid",
+      externalAccountId: "seller-1",
+      title: "Lot A",
+      quantity: 1,
+      price: 18,
+      buyerShipping: 0,
+      date: "2026-03-25",
+      orderStatus: "COMPLETED",
+      payloadFingerprint: "fp-invalid",
+      action: "create",
+      matchSource: "none",
+      requiresManualReview: false
+    }]
+  });
+
+  await assert.rejects(
+    () => confirmWhatnotImportBatchForActor(createApiConfig(), "user-a", {
+      batchId: "batch-invalid",
+      decisions: [{
+        rowId: "item-invalid",
+        lotId: "99",
+        saleType: "pack"
+      }]
+    }),
+    (error: unknown) => {
+      assert.equal((error as { status?: unknown }).status, 400);
+      assert.match((error as Error).message, /Lot 99 was not found/);
+      return true;
+    }
+  );
+
+  assert.equal(upsertSaleDocumentMock.mock.calls.length, 0);
+  assert.equal(upsertWhatnotSaleImportMappingMock.mock.calls.length, 0);
+  assert.equal(releaseClaimedWhatnotImportBatchMock.mock.calls.length, 1);
+  assert.equal(releaseClaimedWhatnotImportBatchMock.mock.calls[0]?.[1]?.status, "processing");
+  assert.match(releaseClaimedWhatnotImportBatchMock.mock.calls[0]?.[3], /Lot 99 was not found/);
 });
 
 test("confirmWhatnotImportBatchForActor preserves hard Whatnot mapping updates", async () => {

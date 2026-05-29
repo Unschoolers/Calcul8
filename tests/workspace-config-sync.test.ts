@@ -40,26 +40,32 @@ test("queueWorkspaceConfigSyncPush debounces repeated workspace edits into one p
   assert.equal((app.pushCloudSync as ReturnType<typeof vi.fn>).mock.calls.length, 1);
 });
 
-test("queueWorkspaceConfigSyncPush no-ops outside workspace scope or without an active lot", async () => {
+test("queueWorkspaceConfigSyncPush no-ops outside workspace scope or while offline", async () => {
   const personalApp = createApp({
     activeScopeType: "personal",
     activeWorkspaceId: null
-  });
-  const noLotApp = createApp({
-    currentLotId: null
   });
   const offlineApp = createApp({
     isOffline: true
   });
 
   queueWorkspaceConfigSyncPush(personalApp as never);
-  queueWorkspaceConfigSyncPush(noLotApp as never);
   queueWorkspaceConfigSyncPush(offlineApp as never);
   await vi.advanceTimersByTimeAsync(500);
 
   assert.equal((personalApp.pushCloudSync as ReturnType<typeof vi.fn>).mock.calls.length, 0);
-  assert.equal((noLotApp.pushCloudSync as ReturnType<typeof vi.fn>).mock.calls.length, 0);
   assert.equal((offlineApp.pushCloudSync as ReturnType<typeof vi.fn>).mock.calls.length, 0);
+});
+
+test("queueWorkspaceConfigSyncPush can sync global system defaults without an active lot", async () => {
+  const app = createApp({
+    currentLotId: null
+  });
+
+  queueWorkspaceConfigSyncPush(app as never);
+  await vi.advanceTimersByTimeAsync(500);
+
+  assert.equal((app.pushCloudSync as ReturnType<typeof vi.fn>).mock.calls.length, 1);
 });
 
 test("stopWorkspaceConfigSyncPush cancels a pending debounced push", async () => {

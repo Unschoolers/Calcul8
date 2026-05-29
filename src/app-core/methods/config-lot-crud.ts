@@ -1,7 +1,7 @@
 import { DEFAULT_VALUES } from "../../constants.ts";
 import type { Lot, LotSetup, LotType, SinglesCatalogSource, SinglesPurchaseEntry, SystemPricingDefaults } from "../../types/app.ts";
 import { isSinglesLot, normalizeLotType } from "../shared/lot-types.ts";
-import { pickSystemPricingFields } from "../shared/system-pricing-defaults.ts";
+import { pickSystemPricingFieldsForLot } from "../shared/system-pricing-defaults.ts";
 import { normalizeSinglesCatalogSource } from "../shared/singles-catalog-source.ts";
 
 export type CreateNewLotOptions = {
@@ -52,7 +52,7 @@ export function createNewLotRecord({
     DEFAULT_VALUES.SELLING_TAX_RATE_PERCENT;
   const previousSellingTax = Number(previousSellingTaxRaw);
   const systemPricingFields = systemPricingDefaults
-    ? pickSystemPricingFields(systemPricingDefaults)
+    ? pickSystemPricingFieldsForLot({ lotType: nextLotType }, systemPricingDefaults)
     : null;
   const nextSetup: LotSetup = {
     ...setup,

@@ -142,6 +142,7 @@ export const uiWorkspaceScopeMethods: ThisType<AppContext> & Pick<
         loadSalesForLotId: this.loadSalesForLotId,
         wheelConfigs: this.wheelConfigs,
         activeWheelConfigId: this.activeWheelConfigId,
+        systemPricingDefaults: this.systemPricingDefaults,
         workspaceId: createdWorkspaceId
       });
 

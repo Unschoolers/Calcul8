@@ -28,6 +28,7 @@ export function isWorkspaceRealtimeSyncClean(app: RealtimeApp): boolean {
     loadSalesForLotId: app.loadSalesForLotId,
     wheelConfigs: app.wheelConfigs,
     activeWheelConfigId: app.activeWheelConfigId,
+    systemPricingDefaults: app.systemPricingDefaults,
     workspaceId: app.activeWorkspaceId
   }));
 
