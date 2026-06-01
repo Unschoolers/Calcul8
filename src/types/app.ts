@@ -26,6 +26,7 @@ export type SaleType = "pack" | "box" | "rtyh" | "wheel";
 export type ChartViewMode = "pie" | "sparkline";
 export type PortfolioChartViewMode = "breakdown" | "trend" | "sellthrough" | "margin";
 export type PortfolioLotTypeFilter = "both" | "bulk" | "singles";
+export type PortfolioDashboardPreset = "all" | "active" | "needs_first_sale" | "at_risk" | "profit_winners" | "finished";
 export type PortfolioSalesByUserMetric = "revenue" | "profit" | "count";
 export type SyncStatus = "idle" | "syncing" | "success" | "error";
 export type WorkspaceRealtimeStatus =
@@ -594,6 +595,7 @@ export interface AppState extends LotSetup {
   portfolioSalesByUserChart: ChartJS | null;
   portfolioChartView: PortfolioChartViewMode;
   portfolioLotTypeFilter: PortfolioLotTypeFilter;
+  portfolioDashboardPreset: PortfolioDashboardPreset;
   portfolioLotFilterIds: number[];
   portfolioSalesByUserMetric: PortfolioSalesByUserMetric;
   lotSearchQuery: string;

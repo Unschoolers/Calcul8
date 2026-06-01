@@ -4,15 +4,13 @@ import {
   calculatePortfolioTotals,
   calculateSaleProfit
 } from "../../domain/calculations.ts";
-import type { Sale } from "../../types/app.ts";
+import type { Lot, LotPerformanceSummary, PortfolioDashboardPreset, Sale } from "../../types/app.ts";
 import type { AppComputedObject } from "../context-contracts.ts";
 import { buildLotOptionItems } from "../shared/lot-option-items.ts";
 import { getLotType } from "../shared/lot-types.ts";
 import {
-  getLotSalesFromAccessContext,
   getSalesByLotIdFromAccessContext,
-  type AllLotSalesAccessContext,
-  type LotSalesAccessContext
+  type AllLotSalesAccessContext
 } from "../shared/lot-sales-access.ts";
 import {
   pickBestForecastScenario,
@@ -35,24 +33,59 @@ function getAllSalesByLotIdForPortfolio(
   return getSalesByLotIdFromAccessContext(context, lotIds);
 }
 
-function lotIsCompleteByDefault(context: LotSalesAccessContext, lot: {
-  id: number;
-}): boolean {
-  const sales = getLotSalesFromAccessContext(context, lot.id);
-  const summary = calculateLotPerformanceSummary(
-    lot as never,
-    sales,
-    DEFAULT_VALUES.EXCHANGE_RATE
-  );
-
-  return summary.totalPacks > 0 && summary.soldPacks >= summary.totalPacks;
-}
 function lotMatchesPortfolioTypeFilter(
   lot: { lotType?: string } | undefined,
   filter: "both" | "bulk" | "singles"
 ): boolean {
   if (filter === "both") return true;
   return getLotType(lot) === filter;
+}
+
+function normalizePortfolioDashboardPreset(value: unknown): PortfolioDashboardPreset {
+  if (
+    value === "active"
+    || value === "needs_first_sale"
+    || value === "at_risk"
+    || value === "profit_winners"
+    || value === "finished"
+  ) {
+    return value;
+  }
+  return "all";
+}
+
+function lotIsSoldOut(summary: Pick<LotPerformanceSummary, "soldPacks" | "totalPacks">): boolean {
+  return Number(summary.totalPacks) > 0 && Number(summary.soldPacks) >= Number(summary.totalPacks);
+}
+
+function lotMatchesPortfolioDashboardPreset(
+  summary: LotPerformanceSummary,
+  preset: PortfolioDashboardPreset
+): boolean {
+  const hasSales = Number(summary.salesCount) > 0;
+  const soldOut = lotIsSoldOut(summary);
+
+  if (preset === "active") return hasSales && !soldOut;
+  if (preset === "needs_first_sale") return !hasSales && !soldOut;
+  if (preset === "finished") return soldOut;
+  if (preset === "at_risk") return hasSales && !soldOut && Number(summary.totalProfit) < 0;
+  if (preset === "profit_winners") return hasSales && Number(summary.totalProfit) > 0;
+  return true;
+}
+
+function getPortfolioPerformanceSummaries(
+  context: AllLotSalesAccessContext,
+  lots: Lot[]
+): Map<number, LotPerformanceSummary> {
+  const salesByLotId = getAllSalesByLotIdForPortfolio(context, lots.map((lot) => lot.id));
+  return new Map(lots.map((lot) => [
+    lot.id,
+    calculateLotPerformanceSummary(
+      lot,
+      salesByLotId.get(lot.id) ?? [],
+      DEFAULT_VALUES.EXCHANGE_RATE
+    )
+  ] as const));
 }
 
 export const portfolioComputed: Pick<
@@ -73,12 +106,18 @@ export const portfolioComputed: Pick<
     const filter = this.portfolioLotTypeFilter === "bulk" || this.portfolioLotTypeFilter === "singles"
       ? this.portfolioLotTypeFilter
       : "both";
+    const preset = normalizePortfolioDashboardPreset(this.portfolioDashboardPreset);
+    const typedLots = this.lots.filter((lot) => lotMatchesPortfolioTypeFilter(lot, filter));
+    const summaryByLotId = getPortfolioPerformanceSummaries(this, typedLots);
     return buildLotOptionItems(
-      this.lots
-        .filter((lot) => lotMatchesPortfolioTypeFilter(lot, filter))
+      typedLots
+        .filter((lot) => {
+          const summary = summaryByLotId.get(lot.id);
+          return summary ? lotMatchesPortfolioDashboardPreset(summary, preset) : false;
+        })
         .map((lot) => ({
           ...lot,
-          isComplete: lotIsCompleteByDefault(this, lot)
+          isComplete: lotIsSoldOut(summaryByLotId.get(lot.id) ?? { soldPacks: 0, totalPacks: 0 })
         })),
       this.preferredLanguage
     );
@@ -88,11 +127,21 @@ export const portfolioComputed: Pick<
     const filter = this.portfolioLotTypeFilter === "bulk" || this.portfolioLotTypeFilter === "singles"
       ? this.portfolioLotTypeFilter
       : "both";
+    const preset = normalizePortfolioDashboardPreset(this.portfolioDashboardPreset);
     const lotsById = new Map(this.lots.map((lot) => [lot.id, lot] as const));
     const allLotIds = this.lots.map((lot) => lot.id);
     const selectedIds = this.portfolioLotFilterIds.filter((id) => allLotIds.includes(id));
     const baseIds = selectedIds.length > 0 ? selectedIds : allLotIds;
-    return baseIds.filter((id) => lotMatchesPortfolioTypeFilter(lotsById.get(id), filter));
+    const baseLots = baseIds
+      .map((id) => lotsById.get(id))
+      .filter((lot): lot is Lot => !!lot && lotMatchesPortfolioTypeFilter(lot, filter));
+    const summaryByLotId = getPortfolioPerformanceSummaries(this, baseLots);
+    return baseLots
+      .filter((lot) => {
+        const summary = summaryByLotId.get(lot.id);
+        return summary ? lotMatchesPortfolioDashboardPreset(summary, preset) : false;
+      })
+      .map((lot) => lot.id);
   },
 
   portfolioForecastScenarios(): PortfolioForecastScenario[] {

@@ -1,0 +1,62 @@
+<section class="portfolio-pulse-panel" :class="`is-${profitTone}`">
+  <div class="portfolio-pulse-main">
+    <div class="portfolio-pulse-eyebrow">
+      <v-icon size="16">mdi-pulse</v-icon>
+      <span>{{ title }}</span>
+    </div>
+
+    <div class="portfolio-pulse-profit">
+      <div class="portfolio-pulse-profit__label">{{ profitLabel }}</div>
+      <div class="portfolio-pulse-profit__value" :class="`is-${profitTone}`">
+        {{ profitValue }}
+      </div>
+      <div class="portfolio-pulse-profit__meta">
+        <span>{{ scopeLabel }}</span>
+        <span aria-hidden="true">•</span>
+        <span>{{ profitableSummary }}</span>
+      </div>
+    </div>
+
+    <div class="portfolio-pulse-stats portfolio-pulse-stat-rail" :aria-label="summaryLabel">
+      <div
+        v-for="stat in stats"
+        :key="stat.key"
+        class="portfolio-pulse-stat"
+        :class="`is-${stat.tone}`"
+      >
+        <div class="portfolio-pulse-stat__icon">
+          <v-icon size="16">{{ stat.icon }}</v-icon>
+        </div>
+        <div class="portfolio-pulse-stat__copy">
+          <div class="portfolio-pulse-stat__label">{{ stat.label }}</div>
+          <div class="portfolio-pulse-stat__value">{{ stat.value }}</div>
+          <div class="portfolio-pulse-stat__meta">{{ stat.meta }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <aside class="portfolio-pulse-insights portfolio-pulse-insights--actions" :aria-label="insightsTitle">
+    <div class="portfolio-pulse-insights__head">
+      <v-icon size="16">mdi-lightbulb-on-outline</v-icon>
+      <span>{{ insightsTitle }}</span>
+    </div>
+    <div class="portfolio-pulse-insights__grid">
+      <div
+        v-for="insight in insights"
+        :key="insight.key"
+        class="portfolio-pulse-insight"
+        :class="`is-${insight.tone}`"
+      >
+        <div class="portfolio-pulse-insight__icon">
+          <v-icon size="16">{{ insight.icon }}</v-icon>
+        </div>
+        <div class="portfolio-pulse-insight__copy">
+          <div class="portfolio-pulse-insight__label">{{ insight.label }}</div>
+          <div class="portfolio-pulse-insight__title">{{ insight.title }}</div>
+          <div class="portfolio-pulse-insight__meta">{{ insight.meta }}</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+</section>

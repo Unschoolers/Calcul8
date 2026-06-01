@@ -319,6 +319,18 @@ export const appWatch: AppWatchObject = {
     }
   },
 
+  portfolioDashboardPreset(newValue) {
+    try {
+      localStorage.setItem(STORAGE_KEYS.PORTFOLIO_DASHBOARD_PRESET, newValue);
+    } catch {
+      // Ignore storage errors (private mode/quota restrictions).
+    }
+
+    if (this.currentTab === "portfolio") {
+      this.$nextTick(() => this.initPortfolioChart());
+    }
+  },
+
   portfolioLotFilterIds: {
     handler() {
       try {

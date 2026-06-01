@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "vitest";
 import { portfolioWindowDefinition } from "../src/components/windows/portfolio/PortfolioWindow.definition.ts";
+import * as portfolioWindowHelpers from "../src/components/windows/portfolio/portfolio-window-helpers.ts";
 
 test("PortfolioWindow formatting helpers use fallback and formatter", () => {
   const withFormatter = {
@@ -82,11 +83,221 @@ test("PortfolioWindow filter search regrouping keeps bulk items together", () =>
   ]);
 });
 
+test("PortfolioWindow dashboard preset items use seller-facing labels and safe slot resolution", () => {
+  const vm = {
+    portfolioCopy(key: string, fallback: string) {
+      return `${key}:${fallback}`;
+    }
+  };
+
+  const items = portfolioWindowDefinition.methods.portfolioDashboardPresetItems.call(vm as never);
+
+  assert.deepEqual(items.map((item: { value: string }) => item.value), [
+    "all",
+    "active",
+    "needs_first_sale",
+    "at_risk",
+    "profit_winners",
+    "finished"
+  ]);
+  assert.equal(items[1]?.title, "portfolioDashboardPresetActiveLabel:Active sellers");
+  assert.deepEqual(
+    portfolioWindowDefinition.methods.resolvePortfolioDashboardPresetItem.call(vm as never, items[3]),
+    {
+      title: "portfolioDashboardPresetAtRiskLabel:At risk",
+      value: "at_risk",
+      subtitle: "portfolioDashboardPresetAtRiskDescription:Selling lots that are still below break-even.",
+      icon: "mdi-alert-circle-outline"
+    }
+  );
+});
+
 test("PortfolioWindow lot filter item slot does not depend on the old Vuetify raw wrapper", () => {
   const template = readFileSync("src/components/windows/portfolio/PortfolioWindow.html", "utf8");
 
   assert.match(template, /resolvePortfolioLotFilterItem\(item\)\.title/);
+  assert.match(template, /resolvePortfolioDashboardPresetItem\(item\)\.title/);
   assert.doesNotMatch(template, /item\.raw/);
+});
+
+test("PortfolioWindow uses one profit-led pulse panel instead of duplicate KPI strips", () => {
+  const template = readFileSync("src/components/windows/portfolio/PortfolioWindow.html", "utf8");
+
+  assert.match(template, /<portfolio-pulse-panel/);
+  assert.doesNotMatch(template, /portfolio-kpi-carousel-shell/);
+  assert.doesNotMatch(template, /<portfolio-kpi-card/);
+});
+
+test("Portfolio pulse insights surface the biggest risk, best performer, and next action", () => {
+  type PulseHelper = (rows: Array<{
+    lotId: number;
+    lotName: string;
+    salesCount: number;
+    realizedProfit?: number;
+    totalProfit: number;
+    soldPacks: number;
+    totalPacks: number;
+  }>) => Array<{
+    kind: string;
+    lotId: number;
+    lotName: string;
+    amount: number | null;
+    tone: string;
+  }>;
+
+  const buildInsights = (portfolioWindowHelpers as Record<string, unknown>).buildPortfolioPulseInsights;
+  assert.equal(typeof buildInsights, "function");
+
+  const insights = (buildInsights as PulseHelper)([
+    {
+      lotId: 1,
+      lotName: "Union arena singles",
+      salesCount: 18,
+      realizedProfit: 304.2,
+      totalProfit: 304.2,
+      soldPacks: 16,
+      totalPacks: 16
+    },
+    {
+      lotId: 2,
+      lotName: "Nikke",
+      salesCount: 7,
+      realizedProfit: -12.5,
+      totalProfit: -91.08,
+      soldPacks: 8,
+      totalPacks: 14
+    },
+    {
+      lotId: 3,
+      lotName: "One punch man",
+      salesCount: 5,
+      realizedProfit: -44,
+      totalProfit: -200.28,
+      soldPacks: 4,
+      totalPacks: 12
+    },
+    {
+      lotId: 4,
+      lotName: "Bleach",
+      salesCount: 0,
+      realizedProfit: 0,
+      totalProfit: -30,
+      soldPacks: 0,
+      totalPacks: 10
+    }
+  ]);
+
+  assert.deepEqual(
+    insights.map((insight) => [insight.kind, insight.lotName, insight.amount, insight.tone]),
+    [
+      ["risk", "One punch man", 200.28, "negative"],
+      ["winner", "Union arena singles", 304.2, "positive"],
+      ["next_move", "Nikke", 91.08, "warning"]
+    ]
+  );
+});
+
+test("PortfolioWindow pulse stats explain forecast context in seller language", () => {
+  const vm = {
+    portfolioTotals: {
+      totalRevenue: 3485.5,
+      totalCost: 4952.73,
+      totalSalesCount: 62
+    },
+    averagePortfolioForecastScenario: {
+      forecastProfit: 1137.54,
+      forecastRevenue: 6090.27,
+      label: "Average forecast",
+      modeCount: 3
+    },
+    portfolioCopy(_key: string, fallback: string) {
+      return fallback;
+    },
+    formatCurrency(value: number | null | undefined, decimals = 2) {
+      return new Intl.NumberFormat("en-US", {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals
+      }).format(value == null || Number.isNaN(Number(value)) ? 0 : Number(value));
+    },
+    fmtCurrency: portfolioWindowDefinition.methods.fmtCurrency,
+    portfolioSignedCurrency: portfolioWindowDefinition.methods.portfolioSignedCurrency
+  };
+
+  const stats = portfolioWindowDefinition.methods.portfolioPulseStats.call(vm as never);
+  const projected = stats.find((stat: { key: string }) => stat.key === "projected");
+
+  assert.equal(projected?.value, "+$1,137.54");
+  assert.equal(
+    projected?.meta,
+    "If remaining inventory sells at forecast - Average revenue $6,090.27"
+  );
+});
+
+test("PortfolioWindow pulse insight display copy is action-oriented", () => {
+  const vm = {
+    allLotPerformance: [
+      {
+        lotId: 1,
+        lotName: "Union arena singles",
+        salesCount: 18,
+        realizedProfit: 304.2,
+        totalProfit: 304.2,
+        soldPacks: 16,
+        totalPacks: 16
+      },
+      {
+        lotId: 2,
+        lotName: "Nikke",
+        salesCount: 7,
+        realizedProfit: -12.5,
+        totalProfit: -91.08,
+        soldPacks: 8,
+        totalPacks: 14
+      },
+      {
+        lotId: 3,
+        lotName: "One punch man",
+        salesCount: 5,
+        realizedProfit: -44,
+        totalProfit: -200.28,
+        soldPacks: 4,
+        totalPacks: 12
+      }
+    ],
+    portfolioCopy(_key: string, fallback: string) {
+      return fallback;
+    },
+    formatCurrency(value: number | null | undefined, decimals = 2) {
+      return Number(value == null || Number.isNaN(Number(value)) ? 0 : value).toFixed(decimals);
+    },
+    fmtCurrency: portfolioWindowDefinition.methods.fmtCurrency,
+    portfolioSignedCurrency: portfolioWindowDefinition.methods.portfolioSignedCurrency
+  };
+
+  const insights = portfolioWindowDefinition.methods.portfolioPulseInsights.call(vm as never);
+
+  assert.deepEqual(
+    insights.map((insight: { label: string; title: string }) => [insight.label, insight.title]),
+    [
+      ["Break-even gap", "Recover One punch man"],
+      ["Keep working", "Protect Union arena singles"],
+      ["Next action", "Fix Nikke"]
+    ]
+  );
+});
+
+test("Portfolio pulse panel uses a neutral surface, compact stat rail, and action insight layout", () => {
+  const template = readFileSync("src/components/windows/portfolio/PortfolioPulsePanel.html", "utf8");
+  const css = readFileSync("src/components/windows/portfolio/PortfolioPulsePanel.css", "utf8");
+  const panelRuleStart = css.indexOf(".portfolio-pulse-panel {");
+  const panelRuleEnd = css.indexOf(".portfolio-pulse-panel.is-negative");
+  const panelRule = css.slice(panelRuleStart, panelRuleEnd);
+
+  assert.match(template, /portfolio-pulse-stat-rail/);
+  assert.match(template, /portfolio-pulse-insights--actions/);
+  assert.doesNotMatch(panelRule, /--portfolio-pulse-accent-rgb/);
+  assert.match(css, /portfolio-pulse-stat-rail/);
+  assert.match(css, /@media \(max-width: 700px\)[\s\S]*portfolio-pulse-stat-rail/);
 });
 
 test("PortfolioWindow clears stale lot-filter search when opening the menu", () => {
@@ -165,46 +376,6 @@ test("PortfolioWindow enter closes the portfolio filter menu when search is empt
   assert.deepEqual(vm.portfolioLotFilterIds, [22]);
   assert.equal(vm.portfolioLotFilterMenuOpen, false);
   assert.equal(blurred, true);
-});
-
-test("PortfolioWindow mobile KPI helpers clamp, wrap, and expand when average forecast exists", () => {
-  const vm = {
-    averagePortfolioForecastScenario: { label: "Average" },
-    mobileKpiIndex: 0,
-    mobileKpiSlideCount: portfolioWindowDefinition.methods.mobileKpiSlideCount,
-    mobileKpiEffectiveIndex: portfolioWindowDefinition.methods.mobileKpiEffectiveIndex
-  };
-
-  assert.equal(portfolioWindowDefinition.methods.mobileKpiSlideCount.call(vm as never), 4);
-  assert.equal(portfolioWindowDefinition.methods.mobileKpiEffectiveIndex.call({ ...vm, mobileKpiIndex: 7 } as never), 3);
-  assert.equal(portfolioWindowDefinition.methods.mobileKpiEffectiveIndex.call({ ...vm, mobileKpiIndex: -2 } as never), 0);
-
-  portfolioWindowDefinition.methods.setMobileKpiIndex.call(vm as never, 2);
-  assert.equal(vm.mobileKpiIndex, 2);
-  portfolioWindowDefinition.methods.setMobileKpiIndex.call(vm as never, 99);
-  assert.equal(vm.mobileKpiIndex, 3);
-
-  portfolioWindowDefinition.methods.cycleMobileKpi.call(vm as never, 1);
-  assert.equal(vm.mobileKpiIndex, 0);
-  portfolioWindowDefinition.methods.cycleMobileKpi.call(vm as never, -1);
-  assert.equal(vm.mobileKpiIndex, 3);
-});
-
-test("PortfolioWindow mobile KPI helpers fall back safely when count is zero or invalid", () => {
-  const zeroVm = {
-    mobileKpiIndex: 5,
-    mobileKpiSlideCount: () => 0
-  };
-  portfolioWindowDefinition.methods.setMobileKpiIndex.call(zeroVm as never, 3);
-  assert.equal(zeroVm.mobileKpiIndex, 0);
-
-  const singleVm = {
-    mobileKpiIndex: 2,
-    mobileKpiSlideCount: () => 1,
-    mobileKpiEffectiveIndex: () => 0
-  };
-  portfolioWindowDefinition.methods.cycleMobileKpi.call(singleVm as never, 1);
-  assert.equal(singleVm.mobileKpiIndex, 0);
 });
 
 test("PortfolioWindow lot status, incomplete state, and profit labels prefer forecast when incomplete", () => {

@@ -4,6 +4,7 @@ import type {
   CostInputMode,
   LotPerformanceSummary,
   LotType,
+  PortfolioDashboardPreset,
   PortfolioLotTypeFilter,
   PortfolioSalesByUserChartData,
   PortfolioSalesByUserMetric,
@@ -31,6 +32,7 @@ export interface AppWatchObject {
   portfolioChartView(this: AppContext): void;
   portfolioSalesByUserMetric(this: AppContext, newValue: PortfolioSalesByUserMetric): void;
   portfolioLotTypeFilter(this: AppContext, newValue: PortfolioLotTypeFilter): void;
+  portfolioDashboardPreset(this: AppContext, newValue: PortfolioDashboardPreset): void;
   portfolioLotFilterIds: {
     handler(this: AppContext): void;
     deep: true;

@@ -5,6 +5,7 @@ export const STORAGE_KEYS = {
   LIVE_SINGLES_MODE: "whatfees_live_singles_mode",
   PORTFOLIO_FILTER_IDS: "whatfees_portfolio_filter_ids",
   PORTFOLIO_FILTER_TYPE: "whatfees_portfolio_filter_type",
+  PORTFOLIO_DASHBOARD_PRESET: "whatfees_portfolio_dashboard_preset",
   PURCHASE_UI_MODE: "whatfees_purchase_ui_mode",
   ACTIVE_SCOPE_TYPE: "whatfees_active_scope_type",
   ACTIVE_WORKSPACE_ID: "whatfees_active_workspace_id",

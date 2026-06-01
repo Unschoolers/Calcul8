@@ -1,6 +1,25 @@
 type PortfolioChartView = "breakdown" | "trend" | "sellthrough" | "margin";
 type PortfolioCopyFn = (key: string, fallback: string) => string;
 
+type PortfolioPulseRow = {
+  lotId?: number;
+  lotName?: string;
+  salesCount?: number;
+  realizedProfit?: number;
+  totalProfit?: number;
+  soldPacks?: number;
+  totalPacks?: number;
+};
+
+export type PortfolioPulseInsight = {
+  kind: "risk" | "winner" | "next_move";
+  lotId: number;
+  lotName: string;
+  amount: number | null;
+  tone: "positive" | "negative" | "warning" | "neutral";
+  icon: string;
+};
+
 function resolvePortfolioCopy(
   translate: PortfolioCopyFn | undefined,
   key: string,
@@ -155,6 +174,94 @@ export function getPortfolioSalesByUserAriaLabel(metric: unknown, translate?: Po
     "portfolioSalesByUserAriaLabel",
     `Portfolio sales by person chart for the last 8 weeks by ${metricLabel}.`
   ).replace(/\{\{metricLabel\}\}/g, metricLabel);
+}
+
+function normalizePulseRows(rows: PortfolioPulseRow[] | undefined): Array<Required<Pick<PortfolioPulseRow, "lotId" | "lotName" | "salesCount" | "totalProfit" | "soldPacks" | "totalPacks">> & { realizedProfit: number }> {
+  return (Array.isArray(rows) ? rows : [])
+    .map((row) => {
+      const lotId = Number(row?.lotId);
+      const lotName = typeof row?.lotName === "string" ? row.lotName.trim() : "";
+      return {
+        lotId,
+        lotName,
+        salesCount: Number(row?.salesCount ?? 0) || 0,
+        realizedProfit: Number(row?.realizedProfit ?? row?.totalProfit ?? 0) || 0,
+        totalProfit: Number(row?.totalProfit ?? 0) || 0,
+        soldPacks: Number(row?.soldPacks ?? 0) || 0,
+        totalPacks: Number(row?.totalPacks ?? 0) || 0
+      };
+    })
+    .filter((row) => Number.isFinite(row.lotId) && row.lotId > 0 && row.lotName.length > 0);
+}
+
+function hasOpenInventory(row: { soldPacks: number; totalPacks: number }): boolean {
+  return row.totalPacks <= 0 || row.soldPacks < row.totalPacks;
+}
+
+function roundedMoneyAmount(value: number): number {
+  return Math.round(Math.abs(value) * 100) / 100;
+}
+
+export function buildPortfolioPulseInsights(rows: PortfolioPulseRow[] | undefined): PortfolioPulseInsight[] {
+  const normalizedRows = normalizePulseRows(rows);
+  const sellingRiskRows = normalizedRows
+    .filter((row) => row.salesCount > 0 && row.totalProfit < 0 && hasOpenInventory(row))
+    .sort((left, right) => left.totalProfit - right.totalProfit);
+  const riskRows = sellingRiskRows.length > 0
+    ? sellingRiskRows
+    : normalizedRows
+      .filter((row) => row.totalProfit < 0 && hasOpenInventory(row))
+      .sort((left, right) => left.totalProfit - right.totalProfit);
+  const winnerRows = normalizedRows
+    .filter((row) => row.salesCount > 0 && row.realizedProfit > 0)
+    .sort((left, right) => right.realizedProfit - left.realizedProfit);
+
+  const insights: PortfolioPulseInsight[] = [];
+  const usedLotIds = new Set<number>();
+  const biggestRisk = riskRows[0] ?? null;
+  const bestWinner = winnerRows[0] ?? null;
+
+  if (biggestRisk) {
+    usedLotIds.add(biggestRisk.lotId);
+    insights.push({
+      kind: "risk",
+      lotId: biggestRisk.lotId,
+      lotName: biggestRisk.lotName,
+      amount: roundedMoneyAmount(biggestRisk.totalProfit),
+      tone: "negative",
+      icon: "mdi-alert-circle-outline"
+    });
+  }
+
+  if (bestWinner) {
+    usedLotIds.add(bestWinner.lotId);
+    insights.push({
+      kind: "winner",
+      lotId: bestWinner.lotId,
+      lotName: bestWinner.lotName,
+      amount: roundedMoneyAmount(bestWinner.realizedProfit),
+      tone: "positive",
+      icon: "mdi-trophy-outline"
+    });
+  }
+
+  const nextMove = riskRows.find((row) => !usedLotIds.has(row.lotId))
+    ?? normalizedRows.find((row) => row.salesCount === 0 && hasOpenInventory(row) && !usedLotIds.has(row.lotId))
+    ?? normalizedRows.find((row) => hasOpenInventory(row) && !usedLotIds.has(row.lotId))
+    ?? null;
+
+  if (nextMove) {
+    insights.push({
+      kind: "next_move",
+      lotId: nextMove.lotId,
+      lotName: nextMove.lotName,
+      amount: nextMove.totalProfit < 0 ? roundedMoneyAmount(nextMove.totalProfit) : null,
+      tone: nextMove.totalProfit < 0 ? "warning" : "neutral",
+      icon: nextMove.salesCount > 0 ? "mdi-arrow-decision-outline" : "mdi-sparkles"
+    });
+  }
+
+  return insights.slice(0, 3);
 }
 
 export function buildPortfolioSalesByUserLegendItems(

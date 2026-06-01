@@ -196,6 +196,7 @@ export function createInitialState(): AppState {
     lotSearchQuery: "",
     portfolioChartView: "trend",
     portfolioLotTypeFilter: "both",
+    portfolioDashboardPreset: "all",
     portfolioLotFilterIds: [],
     portfolioSalesByUserMetric: "revenue",
 

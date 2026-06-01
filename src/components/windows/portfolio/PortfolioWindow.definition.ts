@@ -6,6 +6,7 @@ import {
   resolveVuetifySlotValue
 } from "../../../app-core/shared/vuetify-slot-items.ts";
 import {
+  buildPortfolioPulseInsights,
   buildPortfolioSalesByUserLegendItems,
   getNextPortfolioChartView,
   getPortfolioChartAriaLabel,
@@ -18,8 +19,14 @@ import {
   getPortfolioSalesByUserMetricLabel,
   getPortfolioSalesByUserSubtitle,
   getPortfolioSalesByUserTotalValue,
-  getPortfolioSalesByUserWeekTotals
+  getPortfolioSalesByUserWeekTotals,
+  type PortfolioPulseInsight
 } from "./portfolio-window-helpers.ts";
+import type {
+  PortfolioPulseDisplayInsight,
+  PortfolioPulseStat,
+  PortfolioPulseTone
+} from "./PortfolioPulsePanel.ts";
 
 type PortfolioLotFilterDisplayItem = {
   title: string;
@@ -31,9 +38,20 @@ type PortfolioLotFilterDisplayItem = {
   groupLabel: string | null;
 };
 
+type PortfolioDashboardPresetDisplayItem = {
+  title: string;
+  value: string;
+  subtitle: string;
+  icon: string;
+};
+
 function toDisplayNumber(value: unknown): number | null {
   const normalized = Number(value);
   return Number.isFinite(normalized) ? normalized : null;
+}
+
+function toDisplayString(value: unknown): string {
+  return typeof value === "string" ? value : "";
 }
 
 function resolvePortfolioLotFilterDisplayItem(item: unknown): PortfolioLotFilterDisplayItem {
@@ -49,6 +67,15 @@ function resolvePortfolioLotFilterDisplayItem(item: unknown): PortfolioLotFilter
   };
 }
 
+function resolvePortfolioDashboardPresetDisplayItem(item: unknown): PortfolioDashboardPresetDisplayItem {
+  return {
+    title: resolveVuetifySlotString(item, ["title"]),
+    value: toDisplayString(resolveVuetifySlotValue(item, ["value"])),
+    subtitle: resolveVuetifySlotString(item, ["subtitle"]),
+    icon: resolveVuetifySlotString(item, ["icon"]) || "mdi-view-dashboard-outline"
+  };
+}
+
 export const PortfolioWindowDefinition = {
   name: "PortfolioWindow",
   props: {
@@ -59,7 +86,6 @@ export const PortfolioWindowDefinition = {
   },
   data() {
     return {
-      mobileKpiIndex: 0,
       portfolioLotFilterSearchQuery: "",
       portfolioLotFilterMenuOpen: false
     };
@@ -96,6 +122,241 @@ export const PortfolioWindowDefinition = {
       if (value == null) return false;
       const selected = Array.isArray(this.portfolioLotFilterIds) ? this.portfolioLotFilterIds : [];
       return selected.some((id) => Number(id) === Number(value));
+    },
+
+    portfolioDashboardPresetItems(this: Record<string, unknown>): PortfolioDashboardPresetDisplayItem[] {
+      const copy = this.portfolioCopy as ((key: string, fallback: string) => string) | undefined;
+      const getCopy = (key: string, fallback: string) => (
+        typeof copy === "function" ? copy.call(this, key, fallback) : fallback
+      );
+      return [
+        {
+          value: "all",
+          icon: "mdi-view-dashboard-outline",
+          title: getCopy("portfolioDashboardPresetAllLabel", "All lots"),
+          subtitle: getCopy("portfolioDashboardPresetAllDescription", "Every lot in the selected type.")
+        },
+        {
+          value: "active",
+          icon: "mdi-trending-up",
+          title: getCopy("portfolioDashboardPresetActiveLabel", "Active sellers"),
+          subtitle: getCopy("portfolioDashboardPresetActiveDescription", "Lots with sales and inventory left.")
+        },
+        {
+          value: "needs_first_sale",
+          icon: "mdi-sparkles",
+          title: getCopy("portfolioDashboardPresetNeedsFirstSaleLabel", "Needs first sale"),
+          subtitle: getCopy("portfolioDashboardPresetNeedsFirstSaleDescription", "Available lots that have not moved yet.")
+        },
+        {
+          value: "at_risk",
+          icon: "mdi-alert-circle-outline",
+          title: getCopy("portfolioDashboardPresetAtRiskLabel", "At risk"),
+          subtitle: getCopy("portfolioDashboardPresetAtRiskDescription", "Selling lots that are still below break-even.")
+        },
+        {
+          value: "profit_winners",
+          icon: "mdi-trophy-outline",
+          title: getCopy("portfolioDashboardPresetProfitWinnersLabel", "Profit winners"),
+          subtitle: getCopy("portfolioDashboardPresetProfitWinnersDescription", "Lots with sales and positive profit.")
+        },
+        {
+          value: "finished",
+          icon: "mdi-check-circle-outline",
+          title: getCopy("portfolioDashboardPresetFinishedLabel", "Finished lots"),
+          subtitle: getCopy("portfolioDashboardPresetFinishedDescription", "Sold-out lots ready for review.")
+        }
+      ];
+    },
+
+    resolvePortfolioDashboardPresetItem(this: Record<string, unknown>, item: unknown): PortfolioDashboardPresetDisplayItem {
+      return resolvePortfolioDashboardPresetDisplayItem(item);
+    },
+
+    portfolioSignedCurrency(this: Record<string, unknown>, value: number | null | undefined, includePositiveSign = true): string {
+      const numericValue = Number(value ?? 0);
+      const normalized = Number.isFinite(numericValue) ? numericValue : 0;
+      const sign = normalized < 0 ? "-" : includePositiveSign && normalized > 0 ? "+" : "";
+      const format = this.fmtCurrency as ((value: number | null | undefined, decimals?: number) => string) | undefined;
+      const formatted = typeof format === "function"
+        ? format.call(this, Math.abs(normalized))
+        : Math.abs(normalized).toFixed(2);
+      return `${sign}$${formatted}`;
+    },
+
+    portfolioPulseProfitTone(this: Record<string, unknown>): PortfolioPulseTone {
+      const totals = this.portfolioTotals as { totalProfit?: number } | undefined;
+      const profit = Number(totals?.totalProfit ?? 0);
+      if (profit > 0) return "positive";
+      if (profit < 0) return "negative";
+      return "neutral";
+    },
+
+    portfolioPulseScopeLabel(this: Record<string, unknown>): string {
+      const getVisibleSelected = this.portfolioVisibleLotFilterIds as (() => number[]) | undefined;
+      const selected = typeof getVisibleSelected === "function" ? getVisibleSelected.call(this) : [];
+      const copy = this.portfolioCopy as ((key: string, fallback: string) => string) | undefined;
+      const getCopy = (key: string, fallback: string): string => (
+        typeof copy === "function" ? copy.call(this, key, fallback) : fallback
+      );
+
+      if (selected.length > 0) {
+        const primaryLabel = this.portfolioLotFilterPrimaryLabel as (() => string) | undefined;
+        const label = typeof primaryLabel === "function" ? primaryLabel.call(this) : getCopy("portfolioPulseSelectedLotsLabel", "Selected lots");
+        const remaining = Math.max(0, selected.length - 1);
+        return remaining > 0 ? `${label} +${remaining}` : label;
+      }
+
+      const preset = String(this.portfolioDashboardPreset || "all");
+      if (preset !== "all") {
+        const items = this.portfolioDashboardPresetItems as (() => PortfolioDashboardPresetDisplayItem[]) | undefined;
+        const item = typeof items === "function" ? items.call(this).find((candidate) => candidate.value === preset) : null;
+        return item?.title || getCopy("portfolioDashboardPresetAllLabel", "All lots");
+      }
+
+      const defaultLabel = this.portfolioLotFilterDefaultLabel as (() => string) | undefined;
+      return typeof defaultLabel === "function" ? defaultLabel.call(this) : getCopy("portfolioLotFilterAllLabel", "All lots");
+    },
+
+    portfolioPulseProfitableSummary(this: Record<string, unknown>): string {
+      const totals = this.portfolioTotals as { profitableLotCount?: number; lotCount?: number } | undefined;
+      const profitable = Number(totals?.profitableLotCount ?? 0);
+      const lotCount = Number(totals?.lotCount ?? 0);
+      const copy = this.portfolioCopy as ((key: string, fallback: string) => string) | undefined;
+      const lotLabel = typeof copy === "function" ? copy.call(this, "portfolioLotCountLabel", "lot") : "lot";
+      const profitableLabel = typeof copy === "function" ? copy.call(this, "portfolioKpiProfitableLabel", "profitable") : "profitable";
+      return `${profitable} / ${lotCount} ${lotLabel}${lotCount === 1 ? "" : "s"} ${profitableLabel}`;
+    },
+
+    portfolioPulseStats(this: Record<string, unknown>): PortfolioPulseStat[] {
+      const totals = this.portfolioTotals as {
+        totalRevenue?: number;
+        totalCost?: number;
+        totalSalesCount?: number;
+      } | undefined;
+      const forecast = this.averagePortfolioForecastScenario as {
+        forecastProfit?: number;
+        forecastRevenue?: number;
+        label?: string;
+        modeCount?: number;
+      } | null | undefined;
+      const copy = this.portfolioCopy as ((key: string, fallback: string) => string) | undefined;
+      const getCopy = (key: string, fallback: string): string => (
+        typeof copy === "function" ? copy.call(this, key, fallback) : fallback
+      );
+      const signedCurrency = this.portfolioSignedCurrency as ((value: number | null | undefined, includePositiveSign?: boolean) => string) | undefined;
+      const formatSigned = (value: number, includePositiveSign = true): string => (
+        typeof signedCurrency === "function" ? signedCurrency.call(this, value, includePositiveSign) : `${value >= 0 ? "+" : "-"}$${Math.abs(value).toFixed(2)}`
+      );
+      const salesCount = Number(totals?.totalSalesCount ?? 0);
+      const salesLabel = getCopy("portfolioSalesCountLabel", "sale");
+      const forecastProfit = Number(forecast?.forecastProfit ?? 0);
+      const forecastContext = getCopy("portfolioPulseProjectedForecastMeta", "If remaining inventory sells at forecast");
+
+      return [
+        {
+          key: "revenue",
+          label: getCopy("portfolioKpiTotalRevenueLabel", "Total revenue"),
+          value: formatSigned(Number(totals?.totalRevenue ?? 0), false),
+          meta: `${salesCount} ${salesLabel}${salesCount === 1 ? "" : "s"}`,
+          icon: "mdi-cash-multiple",
+          tone: "neutral"
+        },
+        {
+          key: "cost",
+          label: getCopy("portfolioKpiTotalCostLabel", "Total cost"),
+          value: formatSigned(Number(totals?.totalCost ?? 0), false),
+          meta: getCopy("portfolioPulseCurrentViewMeta", "Current view"),
+          icon: "mdi-receipt-text-outline",
+          tone: "neutral"
+        },
+        {
+          key: "projected",
+          label: getCopy("portfolioKpiProjectedProfitLabel", "Projected profit"),
+          value: forecast ? formatSigned(forecastProfit) : "--",
+          meta: forecast
+            ? `${forecastContext} - ${getCopy("portfolioKpiAverageRevenueLabel", "Average revenue")} ${formatSigned(Number(forecast.forecastRevenue ?? 0), false)}`
+            : getCopy("portfolioPulseNoForecastMeta", "No forecast yet"),
+          icon: "mdi-crystal-ball",
+          tone: forecastProfit > 0 ? "positive" : forecastProfit < 0 ? "negative" : "neutral"
+        }
+      ];
+    },
+
+    portfolioPulseInsights(this: Record<string, unknown>): PortfolioPulseDisplayInsight[] {
+      const rows = Array.isArray(this.allLotPerformance)
+        ? this.allLotPerformance as Array<{
+          lotId: number;
+          lotName: string;
+          salesCount: number;
+          realizedProfit?: number;
+          totalProfit: number;
+          soldPacks: number;
+          totalPacks: number;
+        }>
+        : [];
+      const copy = this.portfolioCopy as ((key: string, fallback: string) => string) | undefined;
+      const getCopy = (key: string, fallback: string): string => (
+        typeof copy === "function" ? copy.call(this, key, fallback) : fallback
+      );
+      const signedCurrency = this.portfolioSignedCurrency as ((value: number | null | undefined, includePositiveSign?: boolean) => string) | undefined;
+      const formatSigned = (value: number, includePositiveSign = true): string => (
+        typeof signedCurrency === "function" ? signedCurrency.call(this, value, includePositiveSign) : `${value >= 0 ? "+" : "-"}$${Math.abs(value).toFixed(2)}`
+      );
+      const insights = buildPortfolioPulseInsights(rows);
+
+      if (insights.length === 0) {
+        return [
+          {
+            key: "empty",
+            label: getCopy("portfolioPulseNextMoveLabel", "Next move"),
+            title: getCopy("portfolioPulseEmptyInsightTitle", "Record sales to unlock insights"),
+            meta: getCopy("portfolioPulseEmptyInsightMeta", "Profit signals appear here after sales."),
+            icon: "mdi-lightbulb-outline",
+            tone: "neutral"
+          }
+        ];
+      }
+
+      const toDisplayInsight = (insight: PortfolioPulseInsight): PortfolioPulseDisplayInsight => {
+        if (insight.kind === "risk") {
+          return {
+            key: `${insight.kind}-${insight.lotId}`,
+            label: getCopy("portfolioPulseBreakEvenGapLabel", "Break-even gap"),
+            title: `${getCopy("portfolioPulseRiskActionVerb", "Recover")} ${insight.lotName}`,
+            meta: `${formatSigned(insight.amount ?? 0, false)} ${getCopy("portfolioPulseBreakEvenMeta", "to break even")}`,
+            icon: insight.icon,
+            tone: insight.tone
+          };
+        }
+
+        if (insight.kind === "winner") {
+          return {
+            key: `${insight.kind}-${insight.lotId}`,
+            label: getCopy("portfolioPulseKeepWorkingLabel", "Keep working"),
+            title: `${getCopy("portfolioPulseWinnerActionVerb", "Protect")} ${insight.lotName}`,
+            meta: `${formatSigned(insight.amount ?? 0)} ${getCopy("portfolioPulseProfitMeta", "profit")}`,
+            icon: insight.icon,
+            tone: insight.tone
+          };
+        }
+
+        const nextActionVerb = insight.amount != null
+          ? getCopy("portfolioPulseNextActionFixVerb", "Fix")
+          : getCopy("portfolioPulseNextActionReviewVerb", "Review");
+        return {
+          key: `${insight.kind}-${insight.lotId}`,
+          label: getCopy("portfolioPulseNextActionLabel", "Next action"),
+          title: `${nextActionVerb} ${insight.lotName}`,
+          meta: insight.amount != null
+            ? `${formatSigned(insight.amount, false)} ${getCopy("portfolioPulseStillAtRiskMeta", "still at risk")}`
+            : getCopy("portfolioPulseNeedsAttentionMeta", "Needs attention"),
+          icon: insight.icon,
+          tone: insight.tone
+        };
+      };
+
+      return insights.map(toDisplayInsight);
     },
 
     resolvePortfolioLotFilterItem(this: Record<string, unknown>, item: unknown): PortfolioLotFilterDisplayItem {
@@ -154,42 +415,6 @@ export const PortfolioWindowDefinition = {
       if (filter === "bulk") return typeof translate === "function" ? translate.call(this, "portfolioLotFilterBulkLabel", "All bulk lots") : "All bulk lots";
       if (filter === "singles") return typeof translate === "function" ? translate.call(this, "portfolioLotFilterSinglesLabel", "All singles lots") : "All singles lots";
       return typeof translate === "function" ? translate.call(this, "portfolioLotFilterAllLabel", "All lots") : "All lots";
-    },
-
-    mobileKpiSlideCount(this: Record<string, unknown>): number {
-      return this.averagePortfolioForecastScenario ? 4 : 3;
-    },
-
-    mobileKpiEffectiveIndex(this: Record<string, unknown>): number {
-      const getCount = this.mobileKpiSlideCount as (() => number) | undefined;
-      const count = typeof getCount === "function" ? getCount.call(this) : 3;
-      const raw = Number(this.mobileKpiIndex ?? 0);
-      const normalized = Number.isFinite(raw) ? raw : 0;
-      return Math.max(0, Math.min(count - 1, normalized));
-    },
-
-    setMobileKpiIndex(this: Record<string, unknown>, value: number): void {
-      const getCount = this.mobileKpiSlideCount as (() => number) | undefined;
-      const count = typeof getCount === "function" ? getCount.call(this) : 3;
-      if (count <= 0) {
-        this.mobileKpiIndex = 0;
-        return;
-      }
-      const normalized = Number.isFinite(Number(value)) ? Number(value) : 0;
-      this.mobileKpiIndex = Math.max(0, Math.min(count - 1, normalized));
-    },
-
-    cycleMobileKpi(this: Record<string, unknown>, delta: number): void {
-      const getCount = this.mobileKpiSlideCount as (() => number) | undefined;
-      const count = typeof getCount === "function" ? getCount.call(this) : 3;
-      if (count <= 1) {
-        this.mobileKpiIndex = 0;
-        return;
-      }
-      const getIndex = this.mobileKpiEffectiveIndex as (() => number) | undefined;
-      const current = typeof getIndex === "function" ? getIndex.call(this) : 0;
-      const next = (current + delta + count) % count;
-      this.mobileKpiIndex = next;
     },
 
     portfolioLotFilterPrimaryLabel(this: Record<string, unknown>): string {

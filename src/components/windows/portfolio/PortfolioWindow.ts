@@ -2,7 +2,7 @@ import "./PortfolioWindow.css";
 import AppEmptyState from "../../ui/AppEmptyState.vue";
 import AppSectionCard from "../../ui/AppSectionCard.vue";
 import AppToolbarCard from "../../ui/AppToolbarCard.vue";
-import PortfolioKpiCard from "./PortfolioKpiCard.vue";
+import PortfolioPulsePanel from "./PortfolioPulsePanel.vue";
 import { portfolioWindowDefinition } from "./PortfolioWindow.definition.ts";
 
 export const PortfolioWindow = {
@@ -11,6 +11,6 @@ export const PortfolioWindow = {
     AppEmptyState,
     AppSectionCard,
     AppToolbarCard,
-    PortfolioKpiCard
+    PortfolioPulsePanel
   }
 };

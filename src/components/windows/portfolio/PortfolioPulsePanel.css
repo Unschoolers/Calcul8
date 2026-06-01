@@ -1,0 +1,315 @@
+.portfolio-pulse-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(280px, 0.85fr);
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding: 1.05rem;
+  border-radius: var(--app-radius-card);
+  border: var(--app-stroke-hairline) solid var(--app-stroke-subtle);
+  background:
+    radial-gradient(120% 130% at 0% 0%, rgba(var(--v-theme-secondary), 0.07), transparent 58%),
+    linear-gradient(155deg, rgba(var(--v-theme-surface), 0.99), rgba(var(--v-theme-surface), 0.95));
+  box-shadow: var(--app-shadow-lg);
+  overflow: hidden;
+}
+
+.portfolio-pulse-panel.is-negative {
+  --portfolio-pulse-accent-rgb: var(--v-theme-error);
+}
+
+.portfolio-pulse-panel.is-positive {
+  --portfolio-pulse-accent-rgb: var(--v-theme-success);
+}
+
+.portfolio-pulse-panel.is-neutral,
+.portfolio-pulse-panel.is-warning {
+  --portfolio-pulse-accent-rgb: var(--v-theme-secondary);
+}
+
+.portfolio-pulse-main {
+  min-width: 0;
+}
+
+.portfolio-pulse-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  color: rgba(var(--v-theme-secondary), 0.96);
+  font-size: 0.76rem;
+  line-height: 1.2;
+  letter-spacing: var(--app-letter-spacing-section);
+  text-transform: uppercase;
+  font-weight: var(--app-font-weight-emphasis);
+}
+
+.portfolio-pulse-insights__head {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  color: rgba(var(--v-theme-secondary), 0.96);
+  font-size: 0.86rem;
+  line-height: 1.2;
+  letter-spacing: 0;
+  font-weight: var(--app-font-weight-emphasis);
+}
+
+.portfolio-pulse-profit {
+  margin-top: 0.65rem;
+}
+
+.portfolio-pulse-profit__label {
+  color: rgba(var(--v-theme-on-surface), 0.66);
+  font-size: 0.82rem;
+  font-weight: var(--app-font-weight-strong);
+  line-height: 1.2;
+}
+
+.portfolio-pulse-profit__value {
+  margin-top: 0.18rem;
+  color: rgba(var(--v-theme-on-surface), 0.96);
+  font-size: 3.35rem;
+  font-weight: 800;
+  line-height: 0.98;
+  letter-spacing: 0;
+}
+
+.portfolio-pulse-profit__value.is-positive {
+  color: rgb(var(--v-theme-success));
+}
+
+.portfolio-pulse-profit__value.is-negative {
+  color: rgb(var(--v-theme-error));
+}
+
+.portfolio-pulse-profit__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.55rem;
+  color: rgba(var(--v-theme-on-surface), 0.72);
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.28;
+}
+
+.portfolio-pulse-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  margin-top: 1rem;
+}
+
+.portfolio-pulse-stat-rail {
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border-radius: var(--app-radius-card);
+  background: rgba(var(--v-theme-on-surface), 0.024);
+  overflow: hidden;
+}
+
+.portfolio-pulse-stat,
+.portfolio-pulse-insight {
+  min-width: 0;
+}
+
+.portfolio-pulse-stat {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 0.55rem;
+  padding: 0.72rem 0.82rem;
+  border-left: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  background: transparent;
+}
+
+.portfolio-pulse-stat:first-child {
+  border-left: 0;
+}
+
+.portfolio-pulse-stat__icon,
+.portfolio-pulse-insight__icon {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--app-radius-pill);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(var(--v-theme-on-surface), 0.82);
+  background: rgba(var(--v-theme-on-surface), 0.055);
+}
+
+.portfolio-pulse-stat.is-positive .portfolio-pulse-stat__icon,
+.portfolio-pulse-insight.is-positive .portfolio-pulse-insight__icon {
+  color: rgb(var(--v-theme-success));
+  background: rgba(var(--v-theme-success), 0.14);
+}
+
+.portfolio-pulse-stat.is-negative .portfolio-pulse-stat__icon,
+.portfolio-pulse-insight.is-negative .portfolio-pulse-insight__icon {
+  color: rgb(var(--v-theme-error));
+  background: rgba(var(--v-theme-error), 0.14);
+}
+
+.portfolio-pulse-stat.is-warning .portfolio-pulse-stat__icon,
+.portfolio-pulse-insight.is-warning .portfolio-pulse-insight__icon {
+  color: rgb(var(--v-theme-secondary));
+  background: rgba(var(--v-theme-secondary), 0.14);
+}
+
+.portfolio-pulse-stat__copy,
+.portfolio-pulse-insight__copy {
+  min-width: 0;
+}
+
+.portfolio-pulse-stat__label,
+.portfolio-pulse-insight__label {
+  color: rgba(var(--v-theme-on-surface), 0.62);
+  font-size: 0.74rem;
+  letter-spacing: 0;
+  font-weight: var(--app-font-weight-strong);
+  line-height: 1.15;
+}
+
+.portfolio-pulse-stat__value {
+  margin-top: 0.14rem;
+  color: rgba(var(--v-theme-on-surface), 0.94);
+  font-size: 1.08rem;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.portfolio-pulse-stat__meta,
+.portfolio-pulse-insight__meta {
+  margin-top: 0.18rem;
+  color: rgba(var(--v-theme-on-surface), 0.64);
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.24;
+}
+
+.portfolio-pulse-insights {
+  min-width: 0;
+  padding: 0.8rem;
+  border-radius: var(--app-radius-card);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  background: rgba(var(--v-theme-on-surface), 0.022);
+}
+
+.portfolio-pulse-insights__grid {
+  display: grid;
+  gap: 0.52rem;
+  margin-top: 0.7rem;
+}
+
+.portfolio-pulse-insight {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 0.55rem;
+  padding: 0.62rem;
+  border-radius: calc(var(--app-radius-card) - 2px);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.075);
+  border-left-width: 3px;
+  background: rgba(var(--v-theme-on-surface), 0.027);
+}
+
+.portfolio-pulse-insight.is-positive {
+  border-left-color: rgba(var(--v-theme-success), 0.58);
+}
+
+.portfolio-pulse-insight.is-negative {
+  border-left-color: rgba(var(--v-theme-error), 0.58);
+}
+
+.portfolio-pulse-insight.is-warning {
+  border-left-color: rgba(var(--v-theme-secondary), 0.58);
+}
+
+.portfolio-pulse-insight__title {
+  margin-top: 0.08rem;
+  color: rgba(var(--v-theme-on-surface), 0.94);
+  font-size: 0.94rem;
+  font-weight: var(--app-font-weight-emphasis);
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 960px) {
+  .portfolio-pulse-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .portfolio-pulse-insights__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .portfolio-pulse-panel {
+    padding: 0.9rem;
+    gap: 0.85rem;
+  }
+
+  .portfolio-pulse-profit__value {
+    font-size: 2.35rem;
+  }
+
+  .portfolio-pulse-profit__meta {
+    font-size: 0.86rem;
+  }
+
+  .portfolio-pulse-stat-rail {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .portfolio-pulse-stat {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.34rem;
+    padding: 0.62rem;
+    border-left: 0;
+  }
+
+  .portfolio-pulse-stat:nth-child(2n) {
+    border-left: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  }
+
+  .portfolio-pulse-stat:nth-child(n + 3) {
+    border-top: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  }
+
+  .portfolio-pulse-stat:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+
+  .portfolio-pulse-stat__icon,
+  .portfolio-pulse-insight__icon {
+    width: 26px;
+    height: 26px;
+  }
+
+  .portfolio-pulse-stat__label,
+  .portfolio-pulse-insight__label {
+    font-size: 0.7rem;
+  }
+
+  .portfolio-pulse-stat__value {
+    font-size: 1rem;
+  }
+
+  .portfolio-pulse-stat__meta,
+  .portfolio-pulse-insight__meta {
+    font-size: 0.74rem;
+  }
+
+  .portfolio-pulse-insights {
+    padding: 0.72rem;
+  }
+
+  .portfolio-pulse-insights__grid {
+    grid-template-columns: 1fr;
+    gap: 0.45rem;
+  }
+
+  .portfolio-pulse-insight {
+    grid-template-columns: 26px minmax(0, 1fr);
+    padding: 0.58rem;
+  }
+}

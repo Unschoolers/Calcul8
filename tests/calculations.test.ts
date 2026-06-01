@@ -1516,6 +1516,27 @@ test("watch.portfolioLotTypeFilter persists type scope and refreshes chart in po
   });
 });
 
+test("watch.portfolioDashboardPreset persists seller preset and refreshes chart in portfolio tab", () => {
+  withMockedLocalStorage((_storage, data) => {
+    let portfolioInitCalled = false;
+
+    const context = {
+      currentTab: "portfolio",
+      $nextTick(callback: () => void) {
+        callback();
+      },
+      initPortfolioChart() {
+        portfolioInitCalled = true;
+      }
+    } as unknown as Parameters<typeof appWatch.portfolioDashboardPreset>[0];
+
+    appWatch.portfolioDashboardPreset.call(context, "active");
+
+    assert.equal(data.get("whatfees_portfolio_dashboard_preset"), "active");
+    assert.equal(portfolioInitCalled, true);
+  });
+});
+
 test("watch.purchaseUiMode persists mode and enforces total mode in simple", () => {
   withMockedLocalStorage((_storage, data) => {
     let purchaseConfigChanged = false;
@@ -3042,6 +3063,59 @@ test("portfolioSelectedLotIds applies type scope without dropping saved lot ids"
   assert.deepEqual(ids, [22]);
 });
 
+test("portfolioSelectedLotIds applies active sellers preset after type and saved lot filters", () => {
+  const salesByLotId = new Map([
+    [11, [{ id: 1, type: "pack", quantity: 1, packsCount: 1, price: 20, buyerShipping: 0, date: "2026-03-01" }]],
+    [22, [{ id: 2, type: "pack", quantity: 1, packsCount: 1, price: 20, buyerShipping: 0, date: "2026-03-01" }]],
+    [33, [{ id: 3, type: "pack", quantity: 1, packsCount: 10, price: 20, buyerShipping: 0, date: "2026-03-01" }]]
+  ]);
+
+  const ids = appComputed.portfolioSelectedLotIds.call({
+    lots: [
+      { id: 11, name: "Active bulk", lotType: "bulk", boxesPurchased: 1, packsPerBox: 10, boxPriceCost: 100 },
+      { id: 22, name: "Active singles", lotType: "singles", singlesPurchases: [{ id: 1, quantity: 3, cost: 10, currency: "CAD" }] },
+      { id: 33, name: "Finished bulk", lotType: "bulk", boxesPurchased: 1, packsPerBox: 10, boxPriceCost: 100 },
+      { id: 44, name: "Unsold singles", lotType: "singles", singlesPurchases: [{ id: 2, quantity: 3, cost: 10, currency: "CAD" }] }
+    ],
+    portfolioLotFilterIds: [11, 22, 33, 44],
+    portfolioLotTypeFilter: "singles",
+    portfolioDashboardPreset: "active",
+    getAllSalesByLotId(lotIds?: number[] | null) {
+      return new Map((lotIds || []).map((lotId) => [lotId, salesByLotId.get(lotId) || []]));
+    }
+  } as unknown as Parameters<typeof appComputed.portfolioSelectedLotIds>[0]);
+
+  assert.deepEqual(ids, [22]);
+});
+
+test("portfolioSelectedLotIds supports seller dashboard presets", () => {
+  const lots = [
+    { id: 11, name: "Active risk", lotType: "bulk", boxesPurchased: 1, packsPerBox: 10, boxPriceCost: 200 },
+    { id: 22, name: "Needs first sale", lotType: "bulk", boxesPurchased: 1, packsPerBox: 10, boxPriceCost: 100 },
+    { id: 33, name: "Finished", lotType: "bulk", boxesPurchased: 1, packsPerBox: 4, boxPriceCost: 40 },
+    { id: 44, name: "Profit winner", lotType: "bulk", boxesPurchased: 1, packsPerBox: 10, boxPriceCost: 20 }
+  ];
+  const salesByLotId = new Map([
+    [11, [{ id: 1, type: "pack", quantity: 1, packsCount: 2, price: 5, buyerShipping: 0, date: "2026-03-01" }]],
+    [33, [{ id: 2, type: "pack", quantity: 1, packsCount: 4, price: 20, buyerShipping: 0, date: "2026-03-01" }]],
+    [44, [{ id: 3, type: "pack", quantity: 1, packsCount: 2, price: 200, buyerShipping: 0, date: "2026-03-01" }]]
+  ]);
+  const context = {
+    lots,
+    portfolioLotFilterIds: [],
+    portfolioLotTypeFilter: "both",
+    getAllSalesByLotId(lotIds?: number[] | null) {
+      return new Map((lotIds || []).map((lotId) => [lotId, salesByLotId.get(lotId) || []]));
+    }
+  };
+
+  assert.deepEqual(appComputed.portfolioSelectedLotIds.call({ ...context, portfolioDashboardPreset: "active" } as never), [11, 44]);
+  assert.deepEqual(appComputed.portfolioSelectedLotIds.call({ ...context, portfolioDashboardPreset: "needs_first_sale" } as never), [22]);
+  assert.deepEqual(appComputed.portfolioSelectedLotIds.call({ ...context, portfolioDashboardPreset: "finished" } as never), [33]);
+  assert.deepEqual(appComputed.portfolioSelectedLotIds.call({ ...context, portfolioDashboardPreset: "at_risk" } as never), [11]);
+  assert.deepEqual(appComputed.portfolioSelectedLotIds.call({ ...context, portfolioDashboardPreset: "profit_winners" } as never), [44]);
+});
+
 test("mounted restores persisted portfolio lot type filter", () => {
   withMockedLocalStorage((_storage, data) => {
     data.set("whatfees_portfolio_filter_type", "bulk");
@@ -3051,6 +3125,7 @@ test("mounted restores persisted portfolio lot type filter", () => {
       currentLotId: null,
       portfolioLotFilterIds: [] as number[],
       portfolioLotTypeFilter: "both" as const,
+      portfolioDashboardPreset: "all" as const,
       currentTab: "config",
       loadLotsFromStorage() {
         this.lots = [];
@@ -3099,6 +3174,67 @@ test("mounted restores persisted portfolio lot type filter", () => {
     appLifecycle.mounted.call(context);
 
     assert.equal(context.portfolioLotTypeFilter, "bulk");
+  });
+});
+
+test("mounted restores persisted portfolio dashboard preset", () => {
+  withMockedLocalStorage((_storage, data) => {
+    data.set("whatfees_portfolio_dashboard_preset", "active");
+
+    const context = {
+      lots: [] as Lot[],
+      currentLotId: null,
+      portfolioLotFilterIds: [] as number[],
+      portfolioLotTypeFilter: "both" as const,
+      portfolioDashboardPreset: "all" as const,
+      currentTab: "config",
+      loadLotsFromStorage() {
+        this.lots = [];
+      },
+      loadLot() {
+        // noop
+      },
+      getExchangeRate() {
+        // noop
+      },
+      loadSalesFromStorage() {
+        // noop
+      },
+      loadWheelFromStorage() {
+        // noop
+      },
+      syncLivePricesFromDefaults() {
+        // noop
+      },
+      initGoogleAutoLogin() {
+        // noop
+      },
+      renderGoogleSignInButton() {
+        // noop
+      },
+      $nextTick(callback: () => void) {
+        callback();
+      },
+      debugLogEntitlement() {
+        return Promise.resolve();
+      },
+      startCloudSyncScheduler() {
+        // noop
+      },
+      unregisterServiceWorkersForDev() {
+        return Promise.resolve();
+      },
+      setupPwaUiHandlers() {
+        // noop
+      },
+      registerServiceWorker() {
+        // noop
+      }
+    } as unknown as Parameters<typeof appLifecycle.mounted>[0];
+
+    appLifecycle.mounted.call(context);
+
+    assert.equal(context.portfolioDashboardPreset, "active");
   });
 });
 

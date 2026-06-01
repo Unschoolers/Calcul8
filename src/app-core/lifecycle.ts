@@ -1,4 +1,4 @@
-import type { AppTab, PortfolioLotTypeFilter } from "../types/app.ts";
+import type { AppTab, PortfolioDashboardPreset, PortfolioLotTypeFilter } from "../types/app.ts";
 import { primeStoredAuthSecretsFromStorage } from "./auth/index.ts";
 import type { AppContext } from "./context-app.ts";
 import type { AppLifecycleObject } from "./context-contracts.ts";
@@ -21,6 +21,15 @@ function isAppTab(value: unknown): value is AppTab {
 
 function isPortfolioLotTypeFilter(value: unknown): value is PortfolioLotTypeFilter {
   return value === "both" || value === "bulk" || value === "singles";
+}
+
+function isPortfolioDashboardPreset(value: unknown): value is PortfolioDashboardPreset {
+  return value === "all"
+    || value === "active"
+    || value === "needs_first_sale"
+    || value === "at_risk"
+    || value === "profit_winners"
+    || value === "finished";
 }
 
 function refreshForegroundLotSales(context: Pick<
@@ -106,6 +115,15 @@ export const appLifecycle: AppLifecycleObject = {
       const savedTypeFilter = localStorage.getItem(STORAGE_KEYS.PORTFOLIO_FILTER_TYPE);
       if (isPortfolioLotTypeFilter(savedTypeFilter)) {
         this.portfolioLotTypeFilter = savedTypeFilter;
+      }
+    } catch {
+      // Ignore storage read errors.
+    }
+
+    try {
+      const savedDashboardPreset = localStorage.getItem(STORAGE_KEYS.PORTFOLIO_DASHBOARD_PRESET);
+      if (isPortfolioDashboardPreset(savedDashboardPreset)) {
+        this.portfolioDashboardPreset = savedDashboardPreset;
       }
     } catch {
       // Ignore storage read errors.
