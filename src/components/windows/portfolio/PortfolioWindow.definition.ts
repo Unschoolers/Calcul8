@@ -27,6 +27,7 @@ import type {
   PortfolioPulseStat,
   PortfolioPulseTone
 } from "./PortfolioPulsePanel.ts";
+import type { PortfolioSalesByUserDrilldownRow } from "../../../types/app.ts";
 
 type PortfolioLotFilterDisplayItem = {
   title: string;
@@ -87,7 +88,9 @@ export const PortfolioWindowDefinition = {
   data() {
     return {
       portfolioLotFilterSearchQuery: "",
-      portfolioLotFilterMenuOpen: false
+      portfolioLotFilterMenuOpen: false,
+      portfolioSalesByUserDrilldownDialog: false,
+      portfolioSalesByUserDrilldownWeekKey: ""
     };
   },
   methods: {
@@ -255,24 +258,24 @@ export const PortfolioWindowDefinition = {
 
       return [
         {
-          key: "revenue",
-          label: getCopy("portfolioKpiTotalRevenueLabel", "Total revenue"),
+          key: "sold",
+          label: getCopy("portfolioPulseSoldLabel", "Sold"),
           value: formatSigned(Number(totals?.totalRevenue ?? 0), false),
           meta: `${salesCount} ${salesLabel}${salesCount === 1 ? "" : "s"}`,
           icon: "mdi-cash-multiple",
           tone: "neutral"
         },
         {
-          key: "cost",
-          label: getCopy("portfolioKpiTotalCostLabel", "Total cost"),
+          key: "invested",
+          label: getCopy("portfolioPulseInvestedLabel", "Invested"),
           value: formatSigned(Number(totals?.totalCost ?? 0), false),
           meta: getCopy("portfolioPulseCurrentViewMeta", "Current view"),
           icon: "mdi-receipt-text-outline",
           tone: "neutral"
         },
         {
-          key: "projected",
-          label: getCopy("portfolioKpiProjectedProfitLabel", "Projected profit"),
+          key: "forecast",
+          label: getCopy("portfolioPulseForecastLabel", "Forecast"),
           value: forecast ? formatSigned(forecastProfit) : "--",
           meta: forecast
             ? `${forecastContext} - ${getCopy("portfolioKpiAverageRevenueLabel", "Average revenue")} ${formatSigned(Number(forecast.forecastRevenue ?? 0), false)}`
@@ -320,11 +323,12 @@ export const PortfolioWindowDefinition = {
 
       const toDisplayInsight = (insight: PortfolioPulseInsight): PortfolioPulseDisplayInsight => {
         if (insight.kind === "risk") {
+          const amount = formatSigned(insight.amount ?? 0, false);
           return {
             key: `${insight.kind}-${insight.lotId}`,
-            label: getCopy("portfolioPulseBreakEvenGapLabel", "Break-even gap"),
-            title: `${getCopy("portfolioPulseRiskActionVerb", "Recover")} ${insight.lotName}`,
-            meta: `${formatSigned(insight.amount ?? 0, false)} ${getCopy("portfolioPulseBreakEvenMeta", "to break even")}`,
+            label: getCopy("portfolioPulseRecoveryTargetLabel", "Recovery target"),
+            title: `${getCopy("portfolioPulseNeedsPrefix", "Needs")} ${amount} ${getCopy("portfolioPulseBreakEvenMeta", "to break even")}`,
+            meta: insight.lotName,
             icon: insight.icon,
             tone: insight.tone
           };
@@ -333,8 +337,8 @@ export const PortfolioWindowDefinition = {
         if (insight.kind === "winner") {
           return {
             key: `${insight.kind}-${insight.lotId}`,
-            label: getCopy("portfolioPulseKeepWorkingLabel", "Keep working"),
-            title: `${getCopy("portfolioPulseWinnerActionVerb", "Protect")} ${insight.lotName}`,
+            label: getCopy("portfolioPulseBestLotToKeepMovingLabel", "Best lot to keep moving"),
+            title: `${getCopy("portfolioPulseKeepSellingVerb", "Keep selling")} ${insight.lotName}`,
             meta: `${formatSigned(insight.amount ?? 0)} ${getCopy("portfolioPulseProfitMeta", "profit")}`,
             icon: insight.icon,
             tone: insight.tone
@@ -342,21 +346,27 @@ export const PortfolioWindowDefinition = {
         }
 
         const nextActionVerb = insight.amount != null
-          ? getCopy("portfolioPulseNextActionFixVerb", "Fix")
+          ? getCopy("portfolioPulseRiskActionVerb", "Recover")
           : getCopy("portfolioPulseNextActionReviewVerb", "Review");
         return {
           key: `${insight.kind}-${insight.lotId}`,
-          label: getCopy("portfolioPulseNextActionLabel", "Next action"),
-          title: `${nextActionVerb} ${insight.lotName}`,
+          label: getCopy("portfolioPulseNextBestActionLabel", "Next best action"),
+          title: insight.amount != null
+            ? `${nextActionVerb} ${formatSigned(insight.amount, false)} ${getCopy("portfolioPulseOnLotConnector", "on")} ${insight.lotName}`
+            : `${nextActionVerb} ${insight.lotName}`,
           meta: insight.amount != null
-            ? `${formatSigned(insight.amount, false)} ${getCopy("portfolioPulseStillAtRiskMeta", "still at risk")}`
+            ? getCopy("portfolioPulseStillAtRiskMeta", "still at risk")
             : getCopy("portfolioPulseNeedsAttentionMeta", "Needs attention"),
           icon: insight.icon,
           tone: insight.tone
         };
       };
 
-      return insights.map(toDisplayInsight);
+      const displayInsights = insights.map(toDisplayInsight);
+      const primaryAction = displayInsights.find((insight, index) => insights[index]?.kind === "next_move");
+      return primaryAction
+        ? [primaryAction, ...displayInsights.filter((insight) => insight !== primaryAction)]
+        : displayInsights;
     },
 
     resolvePortfolioLotFilterItem(this: Record<string, unknown>, item: unknown): PortfolioLotFilterDisplayItem {
@@ -644,13 +654,99 @@ export const PortfolioWindowDefinition = {
     portfolioSalesByUserWeekTotals(this: Record<string, unknown>) {
       const chartData = (this as {
         portfolioSalesByUserChartData?: {
-          weeks?: Array<{ label: string }>;
+          weeks?: Array<{ key?: string; label: string }>;
           series?: Array<{ values: number[] }>;
         };
       }).portfolioSalesByUserChartData;
       const weeks = Array.isArray(chartData?.weeks) ? chartData!.weeks : [];
       const series = Array.isArray(chartData?.series) ? chartData!.series : [];
       return getPortfolioSalesByUserWeekTotals(weeks, series);
+    },
+
+    openPortfolioSalesByUserWeekDrilldown(this: Record<string, unknown>, week: { key?: string; label?: string } | null | undefined): void {
+      const weekKey = String(week?.key || "").trim();
+      if (!weekKey) return;
+      this.portfolioSalesByUserDrilldownWeekKey = weekKey;
+      this.portfolioSalesByUserDrilldownDialog = true;
+    },
+
+    closePortfolioSalesByUserWeekDrilldown(this: Record<string, unknown>): void {
+      this.portfolioSalesByUserDrilldownDialog = false;
+      this.portfolioSalesByUserDrilldownWeekKey = "";
+    },
+
+    portfolioSalesByUserSelectedDrilldownRows(this: Record<string, unknown>): PortfolioSalesByUserDrilldownRow[] {
+      const selectedWeekKey = String(this.portfolioSalesByUserDrilldownWeekKey || "").trim();
+      const rows = Array.isArray(this.portfolioSalesByUserDrilldownRows)
+        ? this.portfolioSalesByUserDrilldownRows as PortfolioSalesByUserDrilldownRow[]
+        : [];
+      if (!selectedWeekKey) return [];
+      return rows.filter((row) => row.weekKey === selectedWeekKey);
+    },
+
+    portfolioSalesByUserSelectedDrilldownWeekLabel(this: Record<string, unknown>): string {
+      const selectedWeekKey = String(this.portfolioSalesByUserDrilldownWeekKey || "").trim();
+      if (!selectedWeekKey) return "";
+      const chartData = (this as {
+        portfolioSalesByUserChartData?: {
+          weeks?: Array<{ key?: string; label: string }>;
+        };
+      }).portfolioSalesByUserChartData;
+      const weeks = Array.isArray(chartData?.weeks) ? chartData!.weeks : [];
+      const week = weeks.find((candidate) => String(candidate.key || "") === selectedWeekKey);
+      if (week?.label) return week.label;
+      const rows = this.portfolioSalesByUserSelectedDrilldownRows as (() => PortfolioSalesByUserDrilldownRow[]) | undefined;
+      if (typeof rows === "function") return rows.call(this)[0]?.weekLabel ?? "";
+      const drilldownRows = Array.isArray(this.portfolioSalesByUserDrilldownRows)
+        ? this.portfolioSalesByUserDrilldownRows as PortfolioSalesByUserDrilldownRow[]
+        : [];
+      return drilldownRows.find((row) => row.weekKey === selectedWeekKey)?.weekLabel ?? "";
+    },
+
+    portfolioSalesByUserDrilldownTitle(this: Record<string, unknown>): string {
+      const copy = this.portfolioCopy as ((key: string, fallback: string) => string) | undefined;
+      const getWeekLabel = this.portfolioSalesByUserSelectedDrilldownWeekLabel as (() => string) | undefined;
+      const weekLabel = typeof getWeekLabel === "function"
+        ? getWeekLabel.call(this)
+        : PortfolioWindowDefinition.methods.portfolioSalesByUserSelectedDrilldownWeekLabel.call(this);
+      const template = typeof copy === "function"
+        ? copy.call(this, "portfolioSalesByUserDrilldownTitle", "Sales for {{week}}")
+        : "Sales for {{week}}";
+      return template.replace(/\{\{week\}\}/g, weekLabel);
+    },
+
+    portfolioSalesByUserWeekDrilldownLabel(this: Record<string, unknown>, week: { label?: string } | null | undefined): string {
+      const copy = this.portfolioCopy as ((key: string, fallback: string) => string) | undefined;
+      const template = typeof copy === "function"
+        ? copy.call(this, "portfolioSalesByUserOpenWeekDrilldownLabel", "View sales for {{week}}")
+        : "View sales for {{week}}";
+      return template.replace(/\{\{week\}\}/g, String(week?.label || ""));
+    },
+
+    portfolioSalesByUserDrilldownSummary(this: Record<string, unknown>): string {
+      const getRows = this.portfolioSalesByUserSelectedDrilldownRows as (() => PortfolioSalesByUserDrilldownRow[]) | undefined;
+      const rows = typeof getRows === "function"
+        ? getRows.call(this)
+        : PortfolioWindowDefinition.methods.portfolioSalesByUserSelectedDrilldownRows.call(this);
+      const copy = this.portfolioCopy as ((key: string, fallback: string) => string) | undefined;
+      const getCopy = (key: string, fallback: string): string => (
+        typeof copy === "function" ? copy.call(this, key, fallback) : fallback
+      );
+      const format = this.fmtCurrency as ((value: number | null | undefined, decimals?: number) => string) | undefined;
+      const formatCurrency = (value: number): string => `$${typeof format === "function" ? format.call(this, value) : value.toFixed(2)}`;
+      const formatSigned = this.portfolioSignedCurrency as ((value: number | null | undefined, includePositiveSign?: boolean) => string) | undefined;
+      const signedProfit = (value: number): string => (
+        typeof formatSigned === "function"
+          ? formatSigned.call(this, value)
+          : `${value >= 0 ? "+" : "-"}$${Math.abs(value).toFixed(2)}`
+      );
+      const revenue = rows.reduce((sum, row) => sum + (Number(row.revenue) || 0), 0);
+      const profit = rows.reduce((sum, row) => sum + (Number(row.profit) || 0), 0);
+      const saleLabel = getCopy("portfolioSalesCountLabel", "sale");
+      const revenueLabel = getCopy("portfolioSalesByUserMetricRevenueLabel", "revenue").toLowerCase();
+      const profitLabel = getCopy("portfolioSalesByUserMetricProfitLabel", "profit").toLowerCase();
+
+      return `${rows.length} ${saleLabel}${rows.length === 1 ? "" : "s"} - ${formatCurrency(revenue)} ${revenueLabel} - ${signedProfit(profit)} ${profitLabel}`;
     },
 
     portfolioSalesByUserSubtitle(): string {

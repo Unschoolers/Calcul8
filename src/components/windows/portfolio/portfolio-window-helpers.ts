@@ -145,13 +145,14 @@ export function getPortfolioSalesByUserBestWeek(
 }
 
 export function getPortfolioSalesByUserWeekTotals(
-  weeks: Array<{ label: string }> | undefined,
+  weeks: Array<{ key?: string; label: string }> | undefined,
   series: Array<{ values: number[] }> | undefined
-): Array<{ label: string; total: number }> {
+): Array<{ key: string; label: string; total: number }> {
   const normalizedWeeks = Array.isArray(weeks) ? weeks : [];
   const normalizedSeries = Array.isArray(series) ? series : [];
   return normalizedWeeks
     .map((week, index) => ({
+      key: String(week.key || week.label || ""),
       label: week.label,
       total: normalizedSeries.reduce((sum, row) => sum + (Number(row?.values?.[index]) || 0), 0)
     }))

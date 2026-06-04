@@ -479,6 +479,24 @@
   background:
     linear-gradient(180deg, rgba(var(--v-theme-secondary), 0.08), rgba(var(--v-theme-secondary), 0.04)),
     rgba(var(--v-theme-on-surface), 0.02);
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  transition: border-color 0.16s ease, background 0.16s ease, transform 0.16s ease;
+}
+
+.portfolio-sales-by-user-week-pill:hover,
+.portfolio-sales-by-user-week-pill:focus-visible {
+  border-color: rgba(var(--v-theme-secondary), 0.38);
+  background:
+    linear-gradient(180deg, rgba(var(--v-theme-secondary), 0.16), rgba(var(--v-theme-secondary), 0.07)),
+    rgba(var(--v-theme-on-surface), 0.035);
+  transform: translateY(-1px);
+}
+
+.portfolio-sales-by-user-week-pill:focus-visible {
+  outline: 2px solid rgba(var(--v-theme-secondary), 0.55);
+  outline-offset: 2px;
 }
 
 .portfolio-sales-by-user-week-pill__label {
@@ -496,6 +514,59 @@
 .portfolio-lot-row {
   padding-top: 0.3rem;
   padding-bottom: 0.35rem;
+}
+
+.portfolio-sales-drilldown-card {
+  max-height: min(78vh, 720px);
+}
+
+.portfolio-sales-drilldown-content {
+  overflow-x: auto;
+}
+
+.portfolio-sales-drilldown-table {
+  min-width: 720px;
+}
+
+.portfolio-sales-drilldown-table th {
+  white-space: nowrap;
+  color: rgba(var(--v-theme-on-surface), 0.62);
+  font-size: 0.72rem;
+  letter-spacing: var(--app-letter-spacing-section);
+  text-transform: uppercase;
+}
+
+.portfolio-sales-drilldown-table td {
+  vertical-align: top;
+}
+
+.portfolio-sales-drilldown-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.16rem;
+  min-width: 0;
+}
+
+.portfolio-sales-drilldown-item__title {
+  font-weight: var(--app-font-weight-strong);
+  color: rgba(var(--v-theme-on-surface), 0.92);
+}
+
+.portfolio-sales-drilldown-item__meta {
+  font-size: 0.74rem;
+  color: rgba(var(--v-theme-on-surface), 0.58);
+}
+
+.portfolio-sales-drilldown-profit {
+  font-weight: var(--app-font-weight-strong);
+}
+
+.portfolio-sales-drilldown-profit.is-positive {
+  color: rgba(var(--v-theme-success), 0.92);
+}
+
+.portfolio-sales-drilldown-profit.is-negative {
+  color: rgba(var(--v-theme-error), 0.92);
 }
 
 .portfolio-lot-row .v-list-item__append {
@@ -635,6 +706,23 @@
 
   .portfolio-sales-by-user-canvas {
     max-height: 280px;
+  }
+
+  .portfolio-sales-by-user-week-strip {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    margin-inline: -0.2rem;
+    padding: 0.15rem 0.2rem 0.35rem;
+    scrollbar-width: thin;
+  }
+
+  .portfolio-sales-by-user-week-pill {
+    flex: 0 0 auto;
+  }
+
+  .portfolio-sales-drilldown-table {
+    min-width: 640px;
   }
 
   .portfolio-sales-by-user-legend {

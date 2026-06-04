@@ -7,7 +7,9 @@ import { DEFAULT_VALUES } from "../../constants.ts";
 import { compareLocalizedText, formatLocalizedCompactDate, translateAppMessage } from "../i18n/index.ts";
 import type {
   Lot,
+  PortfolioSalesByUserDrilldownRow,
   Sale,
+  SaleType,
   WorkspaceMember,
   WorkspaceScopeType
 } from "../../types/app.ts";
@@ -111,6 +113,63 @@ function getSeriesIdentity(
   };
 }
 
+function getSaleTypeLabel(type: SaleType, preferredLanguage?: string): string {
+  const keyByType: Record<SaleType, string> = {
+    pack: "portfolioSalesByUserSaleTypePack",
+    box: "portfolioSalesByUserSaleTypeBox",
+    rtyh: "portfolioSalesByUserSaleTypeRtyh",
+    wheel: "portfolioSalesByUserSaleTypeWheel"
+  };
+  const fallbackByType: Record<SaleType, string> = {
+    pack: "Pack",
+    box: "Box",
+    rtyh: "RTYH",
+    wheel: "Wheel"
+  };
+  const translated = translateAppMessage(preferredLanguage || "", keyByType[type]);
+  return translated && translated !== keyByType[type] ? translated : fallbackByType[type];
+}
+
+function getSaleQuantity(sale: Sale): number {
+  if (Array.isArray(sale.singlesItems) && sale.singlesItems.length > 0) {
+    return sale.singlesItems.reduce((sum, line) => sum + Math.max(0, Number(line?.quantity ?? 0) || 0), 0);
+  }
+  return Math.max(0, Number(sale.quantity ?? 0) || 0);
+}
+
+function resolveSinglesSaleItemLabel(lot: Lot, sale: Sale): string | null {
+  const purchases = Array.isArray(lot.singlesPurchases) ? lot.singlesPurchases : [];
+  if (purchases.length === 0) return null;
+  const purchaseById = new Map(purchases.map((entry) => [Number(entry.id), entry] as const));
+  const entryIds = Array.isArray(sale.singlesItems) && sale.singlesItems.length > 0
+    ? sale.singlesItems.map((line) => Number(line?.singlesPurchaseEntryId))
+    : [Number(sale.singlesPurchaseEntryId)];
+  const labels = [...new Set(entryIds)]
+    .map((entryId) => purchaseById.get(entryId))
+    .filter((entry): entry is NonNullable<typeof entry> => !!entry)
+    .map((entry) => {
+      const item = String(entry.item || "").trim();
+      const cardNumber = String(entry.cardNumber || "").trim();
+      if (item && cardNumber) return `${item} #${cardNumber}`;
+      return item || cardNumber;
+    })
+    .filter((label) => label.length > 0);
+
+  if (labels.length === 0) return null;
+  if (labels.length === 1) return labels[0]!;
+  return `${labels[0]} +${labels.length - 1}`;
+}
+
+function resolveSaleItemLabel(lot: Lot, sale: Sale, preferredLanguage?: string): string {
+  if (getLotType(lot) === "singles") {
+    const singlesLabel = resolveSinglesSaleItemLabel(lot, sale);
+    if (singlesLabel) return singlesLabel;
+  }
+
+  const lotName = String(lot.name || "").trim() || "Lot";
+  return `${lotName} - ${getSaleTypeLabel(sale.type, preferredLanguage)}`;
+}
+
 function hasAnyNonZeroValue(values: number[]): boolean {
   return values.some((value) => Math.abs(Number(value) || 0) > 0.000001);
 }
@@ -192,4 +251,76 @@ export function buildPortfolioSalesByUserChartData(params: {
         || compareLocalizedText(left.label, right.label, params.preferredLanguage || "")
       ))
   };
+}
+
+export function buildPortfolioSalesByUserDrilldownRows(params: {
+  lots: Lot[];
+  salesByLotId: Map<number, Sale[]>;
+  selectedLotIds: number[];
+  scopeType: WorkspaceScopeType;
+  workspaceMembers: WorkspaceMember[];
+  todayDate: string;
+  preferredLanguage?: string;
+}): PortfolioSalesByUserDrilldownRow[] {
+  const selectedLotIdSet = new Set(params.selectedLotIds);
+  const weeks = buildWeekBucketsWithLocale(params.todayDate, params.preferredLanguage || "");
+  const weekByKey = new Map(weeks.map((week) => [week.key, week] as const));
+  const rows: PortfolioSalesByUserDrilldownRow[] = [];
+
+  for (const lot of params.lots) {
+    if (!selectedLotIdSet.has(lot.id)) continue;
+    const sales = params.salesByLotId.get(lot.id) ?? [];
+    const lotSummary = calculateLotPerformanceSummary(lot, sales, DEFAULT_VALUES.EXCHANGE_RATE);
+
+    for (const sale of sales) {
+      const saleDate = parseDateOnly(String(sale.date || ""));
+      if (!saleDate) continue;
+      const weekKey = toDateKey(startOfWeek(saleDate));
+      const week = weekByKey.get(weekKey);
+      if (!week) continue;
+
+      const identity = getSeriesIdentity(
+        params.scopeType,
+        sale.updatedBy,
+        params.workspaceMembers,
+        params.preferredLanguage
+      );
+      const revenue = calculateSaleNetRevenue(sale, lot.sellingTaxPercent, lot);
+      const profit = calculateSaleProfit({
+        sale,
+        lotType: getLotType(lot),
+        sellingTaxPercent: lot.sellingTaxPercent,
+        totalCaseCost: lotSummary.totalCost,
+        totalPacks: lotSummary.totalPacks,
+        purchaseCurrency: lot.currency,
+        sellingCurrency: lot.sellingCurrency,
+        exchangeRate: lot.exchangeRate,
+        singlesPurchases: lot.singlesPurchases,
+        defaultExchangeRate: DEFAULT_VALUES.EXCHANGE_RATE,
+        feeProfileInput: lot
+      });
+
+      rows.push({
+        weekKey,
+        weekLabel: week.label,
+        saleId: sale.id,
+        lotId: lot.id,
+        lotName: String(lot.name || "").trim() || "Lot",
+        itemLabel: resolveSaleItemLabel(lot, sale, params.preferredLanguage),
+        date: String(sale.date || ""),
+        dateLabel: formatLocalizedCompactDate(String(sale.date || ""), params.preferredLanguage || ""),
+        sellerKey: identity.key,
+        sellerLabel: identity.label,
+        quantity: getSaleQuantity(sale),
+        revenue,
+        profit
+      });
+    }
+  }
+
+  return rows.sort((left, right) => (
+    String(right.date).localeCompare(String(left.date))
+    || right.saleId - left.saleId
+    || compareLocalizedText(left.itemLabel, right.itemLabel, params.preferredLanguage || "")
+  ));
 }

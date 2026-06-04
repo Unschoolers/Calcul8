@@ -158,7 +158,7 @@
 
                 <portfolio-pulse-panel
                   :title="portfolioCopy('portfolioPulseTitle', 'Portfolio pulse')"
-                  :profit-label="portfolioCopy('portfolioKpiTotalProfitLabel', 'Total profit')"
+                  :profit-label="portfolioCopy('portfolioPulseCurrentProfitLabel', 'Current P/L')"
                   :profit-value="portfolioSignedCurrency(portfolioTotals?.totalProfit ?? 0)"
                   :profit-tone="portfolioPulseProfitTone()"
                   :scope-label="portfolioPulseScopeLabel()"
@@ -332,13 +332,17 @@
                           ></canvas>
                         </template>
                         <div
-                          v-if="hasPortfolioSalesByUserData && !$vuetify?.display?.smAndDown && portfolioSalesByUserWeekTotals().length > 0"
+                          v-if="hasPortfolioSalesByUserData && portfolioSalesByUserWeekTotals().length > 0"
                           class="portfolio-sales-by-user-week-strip"
                         >
-                          <div
+                          <button
                             v-for="week in portfolioSalesByUserWeekTotals()"
-                            :key="`sales-user-week-${week.label}`"
+                            :key="`sales-user-week-${week.key}`"
+                            type="button"
                             class="portfolio-sales-by-user-week-pill"
+                            :title="portfolioSalesByUserWeekDrilldownLabel(week)"
+                            :aria-label="portfolioSalesByUserWeekDrilldownLabel(week)"
+                            @click="openPortfolioSalesByUserWeekDrilldown(week)"
                           >
                             <span class="portfolio-sales-by-user-week-pill__label">{{ week.label }}</span>
                             <span class="portfolio-sales-by-user-week-pill__value">
@@ -349,7 +353,7 @@
                                 ${{ fmtCurrency(week.total) }}
                               </template>
                             </span>
-                          </div>
+                          </button>
                         </div>
                     </app-section-card>
                   </v-col>
@@ -455,3 +459,80 @@
                     </app-section-card>
                   </v-col>
                 </v-row>
+
+                <v-dialog
+                  v-model="portfolioSalesByUserDrilldownDialog"
+                  max-width="840"
+                  scrollable
+                  content-class="portfolio-sales-drilldown-dialog app-mobile-fullscreen-dialog"
+                >
+                  <v-card class="portfolio-sales-drilldown-card app-dialog-card">
+                    <v-card-title class="app-dialog-title d-flex align-center justify-space-between">
+                      <div>
+                        <div class="text-subtitle-1 font-weight-bold">
+                          {{ portfolioSalesByUserDrilldownTitle() }}
+                        </div>
+                        <div class="text-caption text-medium-emphasis">
+                          {{ portfolioSalesByUserDrilldownSummary() }}
+                        </div>
+                      </div>
+                      <v-btn
+                        icon="mdi-close"
+                        variant="text"
+                        :aria-label="portfolioCopy('portfolioSalesByUserDrilldownCloseLabel', 'Close sales drilldown')"
+                        @click="closePortfolioSalesByUserWeekDrilldown"
+                      ></v-btn>
+                    </v-card-title>
+                    <v-card-text class="portfolio-sales-drilldown-content app-dialog-content">
+                      <v-table
+                        density="compact"
+                        class="portfolio-sales-drilldown-table app-data-table"
+                      >
+                        <thead>
+                          <tr>
+                            <th>{{ portfolioCopy('portfolioSalesByUserDrilldownItemLabel', 'Item') }}</th>
+                            <th>{{ portfolioCopy('portfolioSalesByUserDrilldownLotLabel', 'Lot') }}</th>
+                            <th>{{ portfolioCopy('portfolioSalesByUserDrilldownDateLabel', 'Date') }}</th>
+                            <th>{{ portfolioCopy('portfolioSalesByUserDrilldownSellerLabel', 'Sold by') }}</th>
+                            <th class="text-right">{{ portfolioCopy('portfolioSalesByUserMetricRevenueLabel', 'Revenue') }}</th>
+                            <th class="text-right">{{ portfolioCopy('portfolioSalesByUserMetricProfitLabel', 'Profit') }}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr
+                            v-for="row in portfolioSalesByUserSelectedDrilldownRows()"
+                            :key="`portfolio-sales-drilldown-${row.lotId}-${row.saleId}`"
+                          >
+                            <td>
+                              <div class="portfolio-sales-drilldown-item">
+                                <span class="portfolio-sales-drilldown-item__title">{{ row.itemLabel }}</span>
+                                <span class="portfolio-sales-drilldown-item__meta">
+                                  {{ portfolioCopy('portfolioSalesByUserDrilldownQuantityLabel', 'Qty') }} {{ fmtCurrency(row.quantity, 0) }}
+                                </span>
+                              </div>
+                            </td>
+                            <td>{{ row.lotName }}</td>
+                            <td>{{ row.dateLabel }}</td>
+                            <td>{{ row.sellerLabel }}</td>
+                            <td class="text-right">${{ fmtCurrency(row.revenue) }}</td>
+                            <td
+                              class="text-right portfolio-sales-drilldown-profit"
+                              :class="{ 'is-negative': row.profit < 0, 'is-positive': row.profit > 0 }"
+                            >
+                              {{ portfolioSignedCurrency(row.profit) }}
+                            </td>
+                          </tr>
+                        </tbody>
+                      </v-table>
+                    </v-card-text>
+                    <v-card-actions class="app-dialog-actions">
+                      <v-spacer></v-spacer>
+                      <v-btn
+                        variant="text"
+                        @click="closePortfolioSalesByUserWeekDrilldown"
+                      >
+                        {{ portfolioCopy('commonClose', 'Close') }}
+                      </v-btn>
+                    </v-card-actions>
+                  </v-card>
+                </v-dialog>

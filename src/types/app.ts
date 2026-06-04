@@ -366,6 +366,22 @@ export interface PortfolioSalesByUserChartData {
   series: PortfolioSalesByUserSeries[];
 }
 
+export interface PortfolioSalesByUserDrilldownRow {
+  weekKey: string;
+  weekLabel: string;
+  saleId: number;
+  lotId: number;
+  lotName: string;
+  itemLabel: string;
+  date: string;
+  dateLabel: string;
+  sellerKey: string;
+  sellerLabel: string;
+  quantity: number;
+  revenue: number;
+  profit: number;
+}
+
 export interface WorkspaceSummary {
   workspaceId: string;
   name: string;
@@ -519,6 +535,7 @@ export interface AppState extends LotSetup {
   purchaseProductIdInput: string;
   purchasePackageNameInput: string;
   adminImportSourceUserId: string;
+  adminImportSourceWorkspaceId: string;
   isAdminImportInProgress: boolean;
   purchaseUiMode: PurchaseUiMode;
   activeScopeType: WorkspaceScopeType;

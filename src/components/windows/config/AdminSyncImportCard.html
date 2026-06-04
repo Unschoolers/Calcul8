@@ -8,13 +8,31 @@
       <v-divider></v-divider>
       <v-card-text>
         <div class="text-caption text-medium-emphasis mb-2">
-          Copy cloud sync data from a source userId into your current account (debug tool).
+          Copy cloud sync data from a source userId into your current personal account or active workspace (debug tool).
+        </div>
+        <div class="text-caption text-medium-emphasis mb-3">
+          Target:
+          <strong v-if="activeScopeType === 'workspace' && activeWorkspaceId">
+            Workspace {{ currentWorkspaceName || activeWorkspaceId }}
+          </strong>
+          <strong v-else>Personal account</strong>
         </div>
         <v-row density="comfortable">
-          <v-col cols="12" md="8">
+          <v-col cols="12" md="4">
             <v-text-field
               v-model="adminImportSourceUserId"
               label="Source userId"
+              variant="outlined"
+              density="compact"
+              hide-details
+              autocomplete="off"
+            ></v-text-field>
+          </v-col>
+          <v-col cols="12" md="4">
+            <v-text-field
+              v-model="adminImportSourceWorkspaceId"
+              label="Source workspaceId"
+              placeholder="Leave empty for personal source"
               variant="outlined"
               density="compact"
               hide-details

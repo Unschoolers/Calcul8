@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { beforeEach, test, vi } from "vitest";
+import { afterEach, beforeEach, test, vi } from "vitest";
 import type { ApiConfig } from "../../types";
 
 vi.mock("@azure/functions", () => ({
@@ -15,6 +15,7 @@ const {
   getEffectiveSyncSnapshotFromExternalSourceMock,
   getSyncMetaDocumentFromExternalSourceMock,
   getSyncScopeEntityDocumentsFromExternalSourceMock,
+  hasWorkspaceMembershipMock,
   replaceSyncScopeEntityDocumentsMock,
   setSyncScopeEntityModesMock,
   upsertSyncSnapshotIncrementalMock
@@ -25,6 +26,7 @@ const {
   getEffectiveSyncSnapshotFromExternalSourceMock: vi.fn(),
   getSyncMetaDocumentFromExternalSourceMock: vi.fn(),
   getSyncScopeEntityDocumentsFromExternalSourceMock: vi.fn(),
+  hasWorkspaceMembershipMock: vi.fn(),
   replaceSyncScopeEntityDocumentsMock: vi.fn(),
   setSyncScopeEntityModesMock: vi.fn(),
   upsertSyncSnapshotIncrementalMock: vi.fn()
@@ -58,6 +60,10 @@ vi.mock("../lib/cosmos/syncSnapshotRepository", () => ({
 
 vi.mock("../lib/cosmos/salesRepository", () => ({
   setSyncScopeEntityModes: setSyncScopeEntityModesMock
+}));
+
+vi.mock("../lib/cosmos/workspaceRepository", () => ({
+  hasWorkspaceMembership: hasWorkspaceMembershipMock
 }));
 
 import { syncImportUser } from "./syncImportUser";
@@ -114,9 +120,12 @@ function createContext() {
 }
 
 beforeEach(() => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date("2026-03-09T12:00:00.000Z"));
   vi.clearAllMocks();
   getConfigMock.mockReturnValue(createConfig());
   resolveUserIdMock.mockResolvedValue("107850224060485991888");
+  hasWorkspaceMembershipMock.mockResolvedValue(true);
   getEffectiveSyncSnapshotFromExternalSourceMock.mockResolvedValue({
     lots: [{ id: 1, name: "Lot A" }],
     salesByLot: { "1": [{ id: 11 }] },
@@ -195,6 +204,10 @@ beforeEach(() => {
   setSyncScopeEntityModesMock.mockResolvedValue(undefined);
 });
 
+afterEach(() => {
+  vi.useRealTimers();
+});
+
 test("syncImportUser rejects non-admin actor", async () => {
   resolveUserIdMock.mockResolvedValue("not-admin");
   const response = await syncImportUser(createRequest({ sourceUserId: "123" }) as never, createContext() as never);
@@ -225,7 +238,29 @@ test("syncImportUser returns 404 when source snapshot is not found", async () =>
   assert.equal(replaceSyncScopeEntityDocumentsMock.mock.calls.length, 0);
 });
 
+test("syncImportUser rejects workspace imports without workspace membership", async () => {
+  hasWorkspaceMembershipMock.mockResolvedValueOnce(false);
+  const response = await syncImportUser(
+    createRequest({ sourceUserId: "1234567890", workspaceId: "team-42" }) as never,
+    createContext() as never
+  );
+
+  assert.equal(response.status, 403);
+  assert.equal((response.jsonBody as { error: string }).error, "User is not a member of this workspace.");
+  assert.equal(getEffectiveSyncSnapshotFromExternalSourceMock.mock.calls.length, 0);
+  assert.equal(upsertSyncSnapshotIncrementalMock.mock.calls.length, 0);
+  assert.equal(replaceSyncScopeEntityDocumentsMock.mock.calls.length, 0);
+});
+
 test("syncImportUser copies source snapshot into actor partition", async () => {
+  const systemPricingDefaults = {
+    sellingCurrency: "CAD",
+    targetProfitPercent: 18,
+    sellingTaxPercent: 15,
+    sellingShippingPerOrder: 8,
+    feeProfilePreset: "whatnot",
+    spotsPerBox: 5
+  };
   getEffectiveSyncSnapshotFromExternalSourceMock.mockResolvedValue({
     lots: [{ id: 2, name: "Imported lot" }],
     salesByLot: { "2": [{ id: 22 }] },
@@ -238,6 +273,7 @@ test("syncImportUser copies source snapshot into actor partition", async () => {
       tiers: []
     }],
     activeWheelConfigId: 42,
+    systemPricingDefaults,
     version: 7,
     updatedAt: "2026-03-09T10:00:00.000Z"
   });
@@ -272,6 +308,7 @@ test("syncImportUser copies source snapshot into actor partition", async () => {
   assert.equal(upsertSyncSnapshotIncrementalMock.mock.calls[0]?.[1]?.userId, "107850224060485991888");
   assert.deepEqual(upsertSyncSnapshotIncrementalMock.mock.calls[0]?.[1]?.lots, [{ id: 2, name: "Imported lot" }]);
   assert.deepEqual(upsertSyncSnapshotIncrementalMock.mock.calls[0]?.[1]?.salesByLot, { "2": [{ id: 22 }] });
+  assert.deepEqual(upsertSyncSnapshotIncrementalMock.mock.calls[0]?.[1]?.systemPricingDefaults, systemPricingDefaults);
   assert.deepEqual(upsertSyncSnapshotIncrementalMock.mock.calls[0]?.[1]?.wheelConfigs, [{
     id: 42,
     name: "Workspace wheel",
@@ -288,6 +325,102 @@ test("syncImportUser copies source snapshot into actor partition", async () => {
   assert.equal(setSyncScopeEntityModesMock.mock.calls.length, 1);
   assert.equal((response.jsonBody as { sourceWheelConfigsCount: number }).sourceWheelConfigsCount, 1);
   assert.equal((response.jsonBody as { sourceActiveWheelConfigId: number | null }).sourceActiveWheelConfigId, 42);
+  assert.equal((response.jsonBody as { sourceLotsCount: number }).sourceLotsCount, 1);
+  assert.equal((response.jsonBody as { sourceSystemPricingDefaultsPresent: boolean }).sourceSystemPricingDefaultsPresent, true);
+  assert.deepEqual((response.jsonBody as {
+    snapshot: {
+      lots: unknown[];
+      systemPricingDefaults: typeof systemPricingDefaults;
+      version: number;
+    };
+  }).snapshot, {
+    id: "sync:107850224060485991888",
+    userId: "107850224060485991888",
+    lots: [{ id: 2, name: "Imported lot" }],
+    salesByLot: { "2": [{ id: 22 }] },
+    systemPricingDefaults,
+    wheelConfigs: [{
+      id: 42,
+      name: "Workspace wheel",
+      spinPrice: 25,
+      targetMargin: 30,
+      createdAt: "",
+      tiers: []
+    }],
+    activeWheelConfigId: 42,
+    version: 8,
+    updatedAt: "2026-03-09T12:00:00.000Z"
+  });
   assert.deepEqual((response.jsonBody as { salesMode: string; livePricingMode: string }).salesMode, "entity");
   assert.deepEqual((response.jsonBody as { salesMode: string; livePricingMode: string }).livePricingMode, "entity");
+});
+
+test("syncImportUser copies source snapshot into authorized workspace partition", async () => {
+  getEffectiveSyncSnapshotFromExternalSourceMock.mockResolvedValue({
+    lots: [{ id: 2, name: "Imported workspace lot" }],
+    salesByLot: { "2": [{ id: 22 }] },
+    wheelConfigs: [],
+    activeWheelConfigId: null,
+    version: 7,
+    updatedAt: "2026-03-09T10:00:00.000Z"
+  });
+  getEffectiveSyncSnapshotMock.mockImplementation(async (_config: ApiConfig, scopeKey: string) => {
+    if (scopeKey !== "ws:team-42") return null;
+    return {
+      lots: [{ id: 1, name: "Workspace lot" }],
+      salesByLot: {},
+      wheelConfigs: [],
+      activeWheelConfigId: null,
+      version: 3,
+      updatedAt: "2026-03-09T09:00:00.000Z"
+    };
+  });
+
+  const response = await syncImportUser(
+    createRequest({ sourceUserId: "1234567890", workspaceId: "team-42" }) as never,
+    createContext() as never
+  );
+
+  assert.equal(response.status, 200);
+  assert.equal((response.jsonBody as { ok: boolean }).ok, true);
+  assert.equal(upsertSyncSnapshotIncrementalMock.mock.calls.length, 1);
+  assert.equal(upsertSyncSnapshotIncrementalMock.mock.calls[0]?.[1]?.userId, "ws:team-42");
+  assert.equal(replaceSyncScopeEntityDocumentsMock.mock.calls.length, 1);
+  assert.equal(replaceSyncScopeEntityDocumentsMock.mock.calls[0]?.[1]?.scopeKey, "ws:team-42");
+  assert.equal(setSyncScopeEntityModesMock.mock.calls.length, 1);
+  assert.equal(setSyncScopeEntityModesMock.mock.calls[0]?.[1]?.scopeKey, "ws:team-42");
+  assert.equal((response.jsonBody as { targetScopeKey: string }).targetScopeKey, "ws:team-42");
+  assert.equal((response.jsonBody as { workspaceId: string }).workspaceId, "team-42");
+});
+
+test("syncImportUser can read from a source workspace scope while writing to the target workspace", async () => {
+  getEffectiveSyncSnapshotMock.mockResolvedValue({
+    lots: [],
+    salesByLot: {},
+    wheelConfigs: [],
+    activeWheelConfigId: null,
+    version: 3,
+    updatedAt: "2026-03-09T09:00:00.000Z"
+  });
+
+  const response = await syncImportUser(
+    createRequest({
+      sourceUserId: "1234567890",
+      sourceWorkspaceId: "prod-team",
+      workspaceId: "dev-team"
+    }) as never,
+    createContext() as never
+  );
+
+  assert.equal(response.status, 200);
+  assert.equal(getEffectiveSyncSnapshotFromExternalSourceMock.mock.calls[0]?.[1], "ws:prod-team");
+  assert.equal(getSyncMetaDocumentFromExternalSourceMock.mock.calls[0]?.[1], "ws:prod-team");
+  assert.equal(getSyncScopeEntityDocumentsFromExternalSourceMock.mock.calls[0]?.[1], "ws:prod-team");
+  assert.equal(upsertSyncSnapshotIncrementalMock.mock.calls[0]?.[1]?.userId, "ws:dev-team");
+  assert.equal(replaceSyncScopeEntityDocumentsMock.mock.calls[0]?.[1]?.scopeKey, "ws:dev-team");
+  assert.equal(setSyncScopeEntityModesMock.mock.calls[0]?.[1]?.scopeKey, "ws:dev-team");
+  assert.equal((response.jsonBody as { sourceWorkspaceId: string }).sourceWorkspaceId, "prod-team");
+  assert.equal((response.jsonBody as { sourceScopeKey: string }).sourceScopeKey, "ws:prod-team");
+  assert.equal((response.jsonBody as { workspaceId: string }).workspaceId, "dev-team");
+  assert.equal((response.jsonBody as { targetScopeKey: string }).targetScopeKey, "ws:dev-team");
 });

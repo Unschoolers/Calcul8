@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import { test, vi } from "vitest";
 import { setStoredGoogleIdToken } from "../src/app-core/auth/index.ts";
 import { appComputed } from "../src/app-core/computed.ts";
-import { buildPortfolioSalesByUserChartData } from "../src/app-core/computed/portfolio-sales-by-user.ts";
+import {
+  buildPortfolioSalesByUserChartData,
+  buildPortfolioSalesByUserDrilldownRows
+} from "../src/app-core/computed/portfolio-sales-by-user.ts";
 import { GOOGLE_PROFILE_CACHE_KEY } from "../src/app-core/methods/ui/common/shared.ts";
 import { calculateTotalRevenue } from "../src/domain/calculations.ts";
 
@@ -756,6 +759,89 @@ test("portfolio sales by user chart data groups the last 8 weeks by teammate in 
   ]);
   assert.deepEqual(data.series.find((series) => series.key === "owner-1")?.values, [0, 0, 0, 0, 0, 0, 0, 1]);
   assert.deepEqual(data.series.find((series) => series.key === "member-2")?.values, [0, 0, 0, 0, 0, 0, 1, 0]);
+});
+
+test("portfolio sales by user drilldown rows keep sale details for the clicked week", () => {
+  const rows = buildPortfolioSalesByUserDrilldownRows({
+    lots: [
+      {
+        id: 11,
+        name: "Bleach volume 2",
+        lotType: "bulk",
+        boxPriceCost: 80,
+        boxesPurchased: 1,
+        packsPerBox: 16,
+        spotsPerBox: 16,
+        costInputMode: "perBox",
+        currency: "CAD",
+        sellingCurrency: "CAD",
+        exchangeRate: 1,
+        purchaseDate: "2026-02-01",
+        purchaseShippingCost: 0,
+        purchaseTaxPercent: 0,
+        sellingTaxPercent: 0,
+        sellingShippingPerOrder: 0,
+        includeTax: true,
+        spotPrice: 0,
+        boxPriceSell: 0,
+        packPrice: 0,
+        targetProfitPercent: 15
+      },
+      {
+        id: 22,
+        name: "Union arena singles",
+        lotType: "singles",
+        boxPriceCost: 0,
+        boxesPurchased: 0,
+        packsPerBox: 16,
+        spotsPerBox: 16,
+        costInputMode: "perBox",
+        currency: "CAD",
+        sellingCurrency: "CAD",
+        exchangeRate: 1,
+        purchaseDate: "2026-02-01",
+        purchaseShippingCost: 0,
+        purchaseTaxPercent: 0,
+        sellingTaxPercent: 0,
+        sellingShippingPerOrder: 0,
+        includeTax: true,
+        spotPrice: 0,
+        boxPriceSell: 0,
+        packPrice: 0,
+        targetProfitPercent: 15,
+        singlesPurchases: [
+          { id: 501, item: "Asuna", cardNumber: "UE07BT/SAO-1-071-ALT1", cost: 12, quantity: 1, marketValue: 27.5 }
+        ]
+      }
+    ],
+    salesByLotId: new Map([
+      [11, [
+        { id: 1, type: "pack", quantity: 1, packsCount: 2, price: 25, buyerShipping: 0, date: "2026-03-11", updatedBy: "member-2" },
+        { id: 2, type: "pack", quantity: 1, packsCount: 2, price: 23, buyerShipping: 0, date: "2026-02-04", updatedBy: "github-actions:Unschoolers" }
+      ]],
+      [22, [
+        { id: 3, type: "pack", quantity: 1, packsCount: 1, singlesPurchaseEntryId: 501, price: 30, buyerShipping: 0, date: "2026-03-12", updatedBy: "owner-1" }
+      ]]
+    ]),
+    selectedLotIds: [11, 22],
+    scopeType: "workspace",
+    workspaceMembers: [
+      { userId: "owner-1", workspaceId: "ws_team", role: "owner", status: "active", updatedAt: "2026-03-18T00:00:00Z", displayName: "Jules" },
+      { userId: "member-2", workspaceId: "ws_team", role: "member", status: "active", updatedAt: "2026-03-18T00:00:00Z", displayName: "Wyatt" }
+    ],
+    todayDate: "2026-03-21",
+    preferredLanguage: "en"
+  });
+
+  assert.deepEqual(
+    rows.map((row) => [row.weekKey, row.saleId, row.itemLabel, row.lotName, row.sellerLabel, row.dateLabel, row.quantity]),
+    [
+      ["2026-03-09", 3, "Asuna #UE07BT/SAO-1-071-ALT1", "Union arena singles", "Jules", "Mar 12", 1],
+      ["2026-03-09", 1, "Bleach volume 2 - Pack", "Bleach volume 2", "Wyatt", "Mar 11", 1],
+      ["2026-02-02", 2, "Bleach volume 2 - Pack", "Bleach volume 2", "Imported", "Feb 4", 1]
+    ]
+  );
+  assert.ok(rows.every((row) => Number.isFinite(row.revenue) && Number.isFinite(row.profit)));
 });
 
 test("portfolio sales by user chart data collapses personal mode into a single You series", () => {

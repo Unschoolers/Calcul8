@@ -124,6 +124,7 @@ test("PortfolioWindow uses one profit-led pulse panel instead of duplicate KPI s
   const template = readFileSync("src/components/windows/portfolio/PortfolioWindow.html", "utf8");
 
   assert.match(template, /<portfolio-pulse-panel/);
+  assert.match(template, /portfolioPulseCurrentProfitLabel/);
   assert.doesNotMatch(template, /portfolio-kpi-carousel-shell/);
   assert.doesNotMatch(template, /<portfolio-kpi-card/);
 });
@@ -224,11 +225,19 @@ test("PortfolioWindow pulse stats explain forecast context in seller language", 
   };
 
   const stats = portfolioWindowDefinition.methods.portfolioPulseStats.call(vm as never);
-  const projected = stats.find((stat: { key: string }) => stat.key === "projected");
+  const forecast = stats.find((stat: { key: string }) => stat.key === "forecast");
 
-  assert.equal(projected?.value, "+$1,137.54");
+  assert.deepEqual(
+    stats.map((stat: { key: string; label: string }) => [stat.key, stat.label]),
+    [
+      ["sold", "Sold"],
+      ["invested", "Invested"],
+      ["forecast", "Forecast"]
+    ]
+  );
+  assert.equal(forecast?.value, "+$1,137.54");
   assert.equal(
-    projected?.meta,
+    forecast?.meta,
     "If remaining inventory sells at forecast - Average revenue $6,090.27"
   );
 });
@@ -277,16 +286,16 @@ test("PortfolioWindow pulse insight display copy is action-oriented", () => {
   const insights = portfolioWindowDefinition.methods.portfolioPulseInsights.call(vm as never);
 
   assert.deepEqual(
-    insights.map((insight: { label: string; title: string }) => [insight.label, insight.title]),
+    insights.map((insight: { label: string; title: string; meta: string }) => [insight.label, insight.title, insight.meta]),
     [
-      ["Break-even gap", "Recover One punch man"],
-      ["Keep working", "Protect Union arena singles"],
-      ["Next action", "Fix Nikke"]
+      ["Next best action", "Recover $91.08 on Nikke", "still at risk"],
+      ["Recovery target", "Needs $200.28 to break even", "One punch man"],
+      ["Best lot to keep moving", "Keep selling Union arena singles", "+$304.20 profit"]
     ]
   );
 });
 
-test("Portfolio pulse panel uses a neutral surface, compact stat rail, and action insight layout", () => {
+test("Portfolio pulse panel uses a neutral surface, compact stat rail, and mobile-first command layout", () => {
   const template = readFileSync("src/components/windows/portfolio/PortfolioPulsePanel.html", "utf8");
   const css = readFileSync("src/components/windows/portfolio/PortfolioPulsePanel.css", "utf8");
   const panelRuleStart = css.indexOf(".portfolio-pulse-panel {");
@@ -294,10 +303,20 @@ test("Portfolio pulse panel uses a neutral surface, compact stat rail, and actio
   const panelRule = css.slice(panelRuleStart, panelRuleEnd);
 
   assert.match(template, /portfolio-pulse-stat-rail/);
+  assert.doesNotMatch(template, /portfolio-pulse-recovery/);
+  assert.match(template, /portfolio-pulse-action-card/);
+  assert.match(template, /primaryInsight/);
   assert.match(template, /portfolio-pulse-insights--actions/);
+  assert.match(template, /`is-\$\{stat\.key\}`/);
   assert.doesNotMatch(panelRule, /--portfolio-pulse-accent-rgb/);
+  assert.match(panelRule, /align-items:\s*stretch/);
+  assert.match(css, /\.portfolio-pulse-main\s*{[\s\S]*display:\s*flex[\s\S]*flex-direction:\s*column/);
+  assert.match(css, /\.portfolio-pulse-insights\s*{[\s\S]*height:\s*100%/);
+  assert.doesNotMatch(css, /portfolio-pulse-recovery/);
+  assert.doesNotMatch(css, /max-width:\s*min\(100%,\s*34rem\)/);
   assert.match(css, /portfolio-pulse-stat-rail/);
-  assert.match(css, /@media \(max-width: 700px\)[\s\S]*portfolio-pulse-stat-rail/);
+  assert.match(css, /portfolio-pulse-action-card/);
+  assert.match(css, /@media \(max-width: 700px\)[\s\S]*portfolio-pulse-stat\.is-forecast[\s\S]*order:\s*-1/);
 });
 
 test("PortfolioWindow clears stale lot-filter search when opening the menu", () => {
@@ -571,6 +590,90 @@ test("PortfolioWindow sales per user helpers return expected labels for each met
   );
 });
 
+test("PortfolioWindow keeps sales per user week pills visible on mobile", () => {
+  const template = readFileSync("src/components/windows/portfolio/PortfolioWindow.html", "utf8");
+  const css = readFileSync("src/components/windows/portfolio/PortfolioWindow.css", "utf8");
+
+  assert.match(template, /class="portfolio-sales-by-user-week-strip"/);
+  assert.match(template, /<button[\s\S]*portfolio-sales-by-user-week-pill/);
+  assert.match(template, /@click="openPortfolioSalesByUserWeekDrilldown\(week\)"/);
+  assert.match(template, /portfolio-sales-drilldown-dialog/);
+  assert.doesNotMatch(
+    template,
+    /v-if="hasPortfolioSalesByUserData && !\$vuetify\?\.display\?\.smAndDown && portfolioSalesByUserWeekTotals\(\)\.length > 0"/
+  );
+  assert.match(template, /v-if="hasPortfolioSalesByUserData && portfolioSalesByUserWeekTotals\(\)\.length > 0"/);
+  assert.match(css, /@media \(max-width: 600px\)[\s\S]*\.portfolio-sales-by-user-week-strip\s*{[\s\S]*overflow-x:\s*auto/);
+  assert.match(css, /@media \(max-width: 600px\)[\s\S]*\.portfolio-sales-by-user-week-pill\s*{[\s\S]*flex:\s*0 0 auto/);
+});
+
+test("PortfolioWindow sales per user drilldown opens rows for the selected week", () => {
+  const vm = {
+    portfolioSalesByUserDrilldownDialog: false,
+    portfolioSalesByUserDrilldownWeekKey: "",
+    portfolioSalesByUserDrilldownRows: [
+      {
+        weekKey: "2026-03-09",
+        weekLabel: "Mar 9",
+        saleId: 1,
+        lotId: 11,
+        lotName: "Bleach",
+        itemLabel: "Bleach - Pack",
+        date: "2026-03-11",
+        dateLabel: "Mar 11",
+        sellerLabel: "Wyatt",
+        quantity: 1,
+        revenue: 25,
+        profit: 10
+      },
+      {
+        weekKey: "2026-03-16",
+        weekLabel: "Mar 16",
+        saleId: 2,
+        lotId: 22,
+        lotName: "Union arena singles",
+        itemLabel: "Asuna",
+        date: "2026-03-18",
+        dateLabel: "Mar 18",
+        sellerLabel: "Jules",
+        quantity: 1,
+        revenue: 30,
+        profit: 18
+      }
+    ],
+    portfolioCopy(_key: string, fallback: string) {
+      return fallback;
+    },
+    formatCurrency(value: number | null | undefined, decimals = 2) {
+      return Number(value ?? 0).toFixed(decimals);
+    },
+    fmtCurrency: portfolioWindowDefinition.methods.fmtCurrency
+  };
+
+  portfolioWindowDefinition.methods.openPortfolioSalesByUserWeekDrilldown.call(vm as never, {
+    key: "2026-03-09",
+    label: "Mar 9",
+    total: 1
+  });
+
+  assert.equal(vm.portfolioSalesByUserDrilldownDialog, true);
+  assert.equal(vm.portfolioSalesByUserDrilldownWeekKey, "2026-03-09");
+  assert.equal(portfolioWindowDefinition.methods.portfolioSalesByUserDrilldownTitle.call(vm as never), "Sales for Mar 9");
+  assert.deepEqual(
+    portfolioWindowDefinition.methods.portfolioSalesByUserSelectedDrilldownRows.call(vm as never).map((row: { saleId: number }) => row.saleId),
+    [1]
+  );
+  assert.equal(
+    portfolioWindowDefinition.methods.portfolioSalesByUserDrilldownSummary.call(vm as never),
+    "1 sale - $25.00 revenue - +$10.00 profit"
+  );
+
+  portfolioWindowDefinition.methods.closePortfolioSalesByUserWeekDrilldown.call(vm as never);
+
+  assert.equal(vm.portfolioSalesByUserDrilldownDialog, false);
+  assert.equal(vm.portfolioSalesByUserDrilldownWeekKey, "");
+});
+
 test("PortfolioWindow sales per user summary helpers derive leader, totals, and legend items", () => {
   const vm = {
     portfolioSalesByUserChartData: {
@@ -606,9 +709,9 @@ test("PortfolioWindow sales per user summary helpers derive leader, totals, and 
     total: 50
   });
   assert.deepEqual(portfolioWindowDefinition.methods.portfolioSalesByUserWeekTotals.call(vm as never), [
-    { label: "Mar 2", total: 10 },
-    { label: "Mar 9", total: 20 },
-    { label: "Mar 16", total: 50 }
+    { key: "2026-03-02", label: "Mar 2", total: 10 },
+    { key: "2026-03-09", label: "Mar 9", total: 20 },
+    { key: "2026-03-16", label: "Mar 16", total: 50 }
   ]);
 
   const legendItems = portfolioWindowDefinition.methods.portfolioSalesByUserLegendItems.call(vm as never);

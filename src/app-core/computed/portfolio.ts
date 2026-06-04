@@ -16,7 +16,10 @@ import {
   pickBestForecastScenario,
   type ForecastScenario
 } from "./forecast-scenarios.ts";
-import { buildPortfolioSalesByUserChartData } from "./portfolio-sales-by-user.ts";
+import {
+  buildPortfolioSalesByUserChartData,
+  buildPortfolioSalesByUserDrilldownRows
+} from "./portfolio-sales-by-user.ts";
 import {
   buildScenarioFromProjection,
   computeLotModeProjections,
@@ -96,6 +99,7 @@ export const portfolioComputed: Pick<
   "averagePortfolioForecastScenario" |
   "bestPortfolioForecastScenario" |
   "portfolioSalesByUserChartData" |
+  "portfolioSalesByUserDrilldownRows" |
   "hasPortfolioSalesByUserData" |
   "allLotPerformance" |
   "portfolioTotals" |
@@ -276,6 +280,24 @@ export const portfolioComputed: Pick<
       scopeType: this.activeScopeType,
       workspaceMembers: this.workspaceMembers,
       metric: this.portfolioSalesByUserMetric,
+      todayDate: new Date().toISOString().slice(0, 10),
+      preferredLanguage: this.preferredLanguage
+    });
+  },
+
+  portfolioSalesByUserDrilldownRows() {
+    void this.salesCacheEpoch;
+    const selectedLotIds = Array.isArray(this.portfolioSelectedLotIds)
+      ? this.portfolioSelectedLotIds
+      : this.lots.map((lot) => lot.id);
+    const salesByLotId = getAllSalesByLotIdForPortfolio(this, this.lots.map((lot) => lot.id));
+
+    return buildPortfolioSalesByUserDrilldownRows({
+      lots: this.lots,
+      salesByLotId,
+      selectedLotIds,
+      scopeType: this.activeScopeType,
+      workspaceMembers: this.workspaceMembers,
       todayDate: new Date().toISOString().slice(0, 10),
       preferredLanguage: this.preferredLanguage
     });

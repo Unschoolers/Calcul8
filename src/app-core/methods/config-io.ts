@@ -1,6 +1,6 @@
 import type { AppContext } from "../context-app.ts";
 import { canUseAuthoritativeSalesLiveApi } from "./entity-api-shared.ts";
-import { fetchAuthoritativeSales } from "./lot-sales-api.ts";
+import { fetchAuthoritativeAllSales, fetchAuthoritativeSales } from "./lot-sales-api.ts";
 import { type ConfigMethodSubset } from "./config-shared.ts";
 import {
   fetchWithRetry,
@@ -9,10 +9,13 @@ import {
   resolveApiBaseUrl
 } from "./ui/common/shared.ts";
 import { buildAuthenticatedHeaders } from "../auth/index.ts";
-import { getScopedSyncClientVersionKey } from "../storageKeys.ts";
+import { clearScopedSalesStorage, getScopedSyncClientVersionKey } from "../storageKeys.ts";
 import { getActiveStorageScope } from "../workspace-scope.ts";
+import { replaceRootLotSales } from "../shared/sales-root-state.ts";
+import { applyCloudSnapshotToLocal, parseCloudSnapshot } from "./ui/sync/sync-apply.ts";
 
 const ADMIN_SYNC_USER_ID = "107850224060485991888";
+const ADMIN_SYNC_WORKSPACE_ID_REGEX = /^[A-Za-z0-9:_-]{1,128}$/;
 
 function isAdminSyncImportEnabled(): boolean {
   return String(import.meta.env.VITE_ENABLE_ADMIN_SYNC_IMPORT || "").trim().toLowerCase() === "true";
@@ -95,15 +98,38 @@ async function hydrateImportedAuthoritativeSales(context: AppContext): Promise<v
   );
   if (lotIds.length === 0) return;
 
+  let refreshedAnySalesCache = false;
+  try {
+    const salesByLot = await fetchAuthoritativeAllSales(context, lotIds);
+    if (salesByLot) {
+      for (const lotId of lotIds) {
+        const sales = salesByLot.get(lotId);
+        if (!Array.isArray(sales)) continue;
+        replaceRootLotSales(context, lotId, sales);
+        refreshedAnySalesCache = true;
+      }
+      if (refreshedAnySalesCache) {
+        context.salesCacheEpoch += 1;
+      }
+      return;
+    }
+  } catch (error) {
+    console.warn("Failed to hydrate imported lot sales in bulk", error);
+  }
+
   for (const lotId of lotIds) {
     try {
       const sales = await fetchAuthoritativeSales(context, lotId);
-      if (lotId === context.currentLotId && Array.isArray(sales)) {
-        context.sales = sales;
+      if (Array.isArray(sales)) {
+        replaceRootLotSales(context, lotId, sales);
+        refreshedAnySalesCache = true;
       }
     } catch (error) {
       console.warn("Failed to hydrate imported lot sales", error);
     }
+  }
+  if (refreshedAnySalesCache) {
+    context.salesCacheEpoch += 1;
   }
 }
 
@@ -138,6 +164,11 @@ export const configIoMethods: ConfigMethodSubset<
       this.notify("Invalid source userId format.", "warning");
       return;
     }
+    const sourceWorkspaceId = String(this.adminImportSourceWorkspaceId || "").trim();
+    if (sourceWorkspaceId && !ADMIN_SYNC_WORKSPACE_ID_REGEX.test(sourceWorkspaceId)) {
+      this.notify("Invalid source workspaceId format.", "warning");
+      return;
+    }
 
     const baseUrl = resolveApiBaseUrl();
     if (!baseUrl) {
@@ -147,15 +178,25 @@ export const configIoMethods: ConfigMethodSubset<
 
     this.isAdminImportInProgress = true;
     try {
+      const activeScope = getActiveStorageScope(this);
+      const requestPayload: {
+        sourceUserId: string;
+        sourceWorkspaceId?: string;
+        workspaceId?: string;
+      } = { sourceUserId };
+      if (sourceWorkspaceId) {
+        requestPayload.sourceWorkspaceId = sourceWorkspaceId;
+      }
+      if (activeScope.scopeType === "workspace" && activeScope.workspaceId) {
+        requestPayload.workspaceId = activeScope.workspaceId;
+      }
       const requestUrl = `${baseUrl}/ops/sync/import-user`;
       const response = await fetchWithRetry(requestUrl, {
         method: "POST",
         headers: buildAuthenticatedHeaders("session-preferred", {
           "Content-Type": "application/json"
         }, requestUrl),
-        body: JSON.stringify({
-          sourceUserId
-        })
+        body: JSON.stringify(requestPayload)
       });
 
       if (response.status === 401) {
@@ -164,9 +205,9 @@ export const configIoMethods: ConfigMethodSubset<
         return;
       }
 
-      let responsePayload: { error?: string; version?: number } | null = null;
+      let responsePayload: { error?: string; version?: number; snapshot?: unknown } | null = null;
       try {
-        responsePayload = (await response.json()) as { error?: string };
+        responsePayload = (await response.json()) as { error?: string; version?: number; snapshot?: unknown };
       } catch {
         responsePayload = null;
       }
@@ -180,20 +221,21 @@ export const configIoMethods: ConfigMethodSubset<
         return;
       }
 
-      const importedVersion = Number(responsePayload?.version);
-      if (Number.isFinite(importedVersion) && importedVersion > 0) {
-        try {
-          localStorage.setItem(
-            getScopedSyncClientVersionKey(getActiveStorageScope(this)),
-            String(Math.floor(importedVersion))
-          );
-        } catch {
-          // Ignore storage failures and continue with the forced pull.
+      clearScopedSalesStorage(activeScope);
+      if (responsePayload?.snapshot) {
+        applyCloudSnapshotToLocal(this, parseCloudSnapshot(responsePayload.snapshot));
+      } else {
+        const importedVersion = Number(responsePayload?.version);
+        if (Number.isFinite(importedVersion) && importedVersion > 0) {
+          try {
+            localStorage.removeItem(getScopedSyncClientVersionKey(activeScope));
+          } catch {
+            // Ignore storage failures and continue with the forced pull.
+          }
         }
+        await this.pullCloudSync(true);
       }
-
       this.notify(`Imported cloud sync data from user ${sourceUserId}.`, "success");
-      await this.pullCloudSync(true);
       await hydrateImportedAuthoritativeSales(this);
     } catch (error) {
       console.warn("Failed to import sync data from source user:", error);

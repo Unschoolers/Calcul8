@@ -64,5 +64,14 @@ export const PortfolioPulsePanel = defineComponent({
       type: Array as PropType<PortfolioPulseDisplayInsight[]>,
       default: () => []
     }
+  },
+  computed: {
+    primaryInsight(): PortfolioPulseDisplayInsight | null {
+      return this.insights[0] ?? null;
+    },
+
+    secondaryInsights(): PortfolioPulseDisplayInsight[] {
+      return this.insights.slice(1);
+    }
   }
 });

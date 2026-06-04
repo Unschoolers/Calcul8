@@ -1,0 +1,21 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"github-actions.workflows.pinned.workflows": [
+			".github/workflows/deploy-api-prod.yml",
+			".github/workflows/deploy-pages.yml"
+		],
+		"chatgpt.openOnStartup": true,
+		"chat.tools.terminal.autoApprove": {
+			"npx vitest": true,
+			"npm --prefix apps/api": true,
+			"ForEach-Object": true,
+			"Set-Content": true,
+			"npx tsc": true
+		}
+	}
+}

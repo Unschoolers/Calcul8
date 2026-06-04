@@ -3,8 +3,8 @@ import type { AppState } from "../types/app.ts";
 import { primeStoredAuthSecretsFromStorage } from "./auth/index.ts";
 import { getBrowserLocale, normalizeLanguagePreference } from "./i18n/index.ts";
 import { getFeeProfilePreset } from "./shared/fee-profile-presets.ts";
-import { createDefaultSystemPricingDefaults } from "./shared/system-pricing-defaults.ts";
 import { resolveDefaultSinglesCatalogSourceFromEnv } from "./shared/singles-catalog-source.ts";
+import { createDefaultSystemPricingDefaults } from "./shared/system-pricing-defaults.ts";
 import { STORAGE_KEYS } from "./storageKeys.ts";
 
 function getLocalTodayDate(): string {
@@ -62,7 +62,8 @@ export function createInitialState(): AppState {
     purchaseTokenInput: "",
     purchaseProductIdInput: "",
     purchasePackageNameInput: "",
-    adminImportSourceUserId: "",
+    adminImportSourceUserId: "107850224060485991888",
+    adminImportSourceWorkspaceId: "",
     isAdminImportInProgress: false,
     purchaseUiMode,
     activeScopeType: savedScope.activeScopeType,

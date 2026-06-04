@@ -164,8 +164,13 @@ traces
 
 ## Admin sync import (prod -> dev)
 
-- `POST /api/ops/sync/import-user` copies sync data from a source `userId` into the caller account.
+- `POST /api/ops/sync/import-user` copies sync data from a source `userId` into the caller personal sync scope, or into the requested `workspaceId` sync scope when one is provided.
+- Request body:
+  - `sourceUserId`: required. The user id used for admin import source ownership/debugging.
+  - `sourceWorkspaceId`: optional. When present, the importer reads from source partition `ws:<sourceWorkspaceId>` instead of the source user's personal partition.
+  - `workspaceId`: optional. When present, the importer writes into target partition `ws:<workspaceId>` instead of the actor's personal partition.
 - This endpoint is restricted in code to admin user id `107850224060485991888`.
+- Workspace imports still require the admin actor to be a member of the target workspace.
 - Write target always uses `COSMOSDB_*` settings (your local/dev environment).
 - Read source uses `SYNC_IMPORT_SOURCE_COSMOSDB_*` when provided; otherwise it falls back to `COSMOSDB_*`.
 

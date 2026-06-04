@@ -7,6 +7,7 @@ import type {
   PortfolioDashboardPreset,
   PortfolioLotTypeFilter,
   PortfolioSalesByUserChartData,
+  PortfolioSalesByUserDrilldownRow,
   PortfolioSalesByUserMetric,
   PortfolioTotals,
   Sale,
@@ -160,6 +161,7 @@ export interface AppComputedObject {
   }>;
   portfolioSelectedLotIds(this: AppContext): number[];
   portfolioSalesByUserChartData(this: AppContext): PortfolioSalesByUserChartData;
+  portfolioSalesByUserDrilldownRows(this: AppContext): PortfolioSalesByUserDrilldownRow[];
   hasPortfolioSalesByUserData(this: AppContext): boolean;
   singlesPurchaseTotalQuantity(this: AppContext): number;
   singlesPurchaseTotalCost(this: AppContext): number;

@@ -11,6 +11,7 @@ import type {
     LotType,
     PortfolioLotTypeFilter,
     PortfolioSalesByUserChartData,
+    PortfolioSalesByUserDrilldownRow,
     PortfolioSalesByUserMetric,
     PortfolioTotals,
     LotSalesCacheEntry,
@@ -197,6 +198,7 @@ export interface AppComputedState {
     }
   >;
   portfolioSalesByUserChartData: PortfolioSalesByUserChartData;
+  portfolioSalesByUserDrilldownRows: PortfolioSalesByUserDrilldownRow[];
   hasPortfolioSalesByUserData: boolean;
   portfolioTotals: PortfolioTotals;
   hasPortfolioData: boolean;
