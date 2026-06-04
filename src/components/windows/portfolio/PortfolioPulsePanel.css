@@ -31,7 +31,7 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  height: 100%;
+  justify-content: end;
 }
 
 .portfolio-pulse-eyebrow {
