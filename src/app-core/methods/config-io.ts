@@ -9,7 +9,7 @@ import {
   resolveApiBaseUrl
 } from "./ui/common/shared.ts";
 import { buildAuthenticatedHeaders } from "../auth/index.ts";
-import { clearScopedSalesStorage, getScopedSyncClientVersionKey } from "../storageKeys.ts";
+import { clearScopedSyncDataStorage } from "../storageKeys.ts";
 import { getActiveStorageScope } from "../workspace-scope.ts";
 import { replaceRootLotSales } from "../shared/sales-root-state.ts";
 import { applyCloudSnapshotToLocal, parseCloudSnapshot } from "./ui/sync/sync-apply.ts";
@@ -221,20 +221,11 @@ export const configIoMethods: ConfigMethodSubset<
         return;
       }
 
-      clearScopedSalesStorage(activeScope);
+      clearScopedSyncDataStorage(activeScope);
       if (responsePayload?.snapshot) {
         applyCloudSnapshotToLocal(this, parseCloudSnapshot(responsePayload.snapshot));
-      } else {
-        const importedVersion = Number(responsePayload?.version);
-        if (Number.isFinite(importedVersion) && importedVersion > 0) {
-          try {
-            localStorage.removeItem(getScopedSyncClientVersionKey(activeScope));
-          } catch {
-            // Ignore storage failures and continue with the forced pull.
-          }
-        }
-        await this.pullCloudSync(true);
       }
+      await this.pullCloudSync(true);
       this.notify(`Imported cloud sync data from user ${sourceUserId}.`, "success");
       await hydrateImportedAuthoritativeSales(this);
     } catch (error) {

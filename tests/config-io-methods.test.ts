@@ -400,7 +400,7 @@ test("importLotsFromUserId applies the imported overwrite snapshot before any fa
 
   await configIoMethods.importLotsFromUserId.call(ctx as never);
 
-  assert.equal(ctx.pullCloudSync.mock.calls.length, 0);
+  assert.deepEqual(ctx.pullCloudSync.mock.calls, [[true]]);
   assert.equal(ctx.lots.length, 1);
   assert.equal(ctx.lots[0]?.id, 1780489007286);
   assert.equal(ctx.lots[0]?.name, "My hero academia");
@@ -409,7 +409,6 @@ test("importLotsFromUserId applies the imported overwrite snapshot before any fa
   assert.equal(ctx.systemPricingDefaults.targetProfitPercent, 20);
   assert.equal(ctx.saveLotsToStorage.mock.calls.length, 1);
   assert.equal(ctx.saveSystemPricingDefaultsToStorage.mock.calls.length, 1);
-  assert.equal(localStorage.getItem("whatfees_sync_client_version"), "994");
 });
 
 test("importLotsFromUserId clears stale local sales and hydrates all imported lot sales", async () => {

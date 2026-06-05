@@ -111,6 +111,28 @@ export function clearScopedSalesStorage(scope: AppStorageScope = { scopeType: "p
   }
 }
 
+export function clearScopedSyncDataStorage(scope: AppStorageScope = { scopeType: "personal" }): void {
+  const keys = [
+    getScopedPresetsStorageKey(scope),
+    getScopedSystemPricingDefaultsStorageKey(scope),
+    getScopedWheelConfigsStorageKey(scope),
+    getScopedActiveWheelConfigStorageKey(scope),
+    getScopedLastLotStorageKey(scope),
+    getScopedSyncClientVersionKey(scope),
+    getScopedLastSyncedPayloadHashKey(scope)
+  ];
+
+  try {
+    for (const key of keys) {
+      localStorage.removeItem(key);
+    }
+  } catch {
+    // Ignore storage failures; the subsequent forced pull still refreshes memory.
+  }
+
+  clearScopedSalesStorage(scope);
+}
+
 export function getScopedPresetsStorageKey(scope: AppStorageScope): string {
   return buildScopedStorageKey(STORAGE_KEYS.PRESETS, scope);
 }
