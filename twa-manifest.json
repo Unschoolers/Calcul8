@@ -20,8 +20,8 @@
     "path": "whatfees-upload.jks",
     "alias": "whatfees-upload"
   },
-  "appVersionName": "1.0.356",
-  "appVersionCode": 362,
+  "appVersionName": "1.0.357",
+  "appVersionCode": 363,
   "shortcuts": [],
   "generatorApp": "bubblewrap-cli",
   "webManifestUrl": "https://app.whatfees.ca/manifest.webmanifest",
@@ -47,5 +47,5 @@
   "fileHandlers": [],
   "launchHandlerClientMode": "",
   "displayOverride": [],
-  "appVersion": "1.0.356"
+  "appVersion": "1.0.357"
 }
