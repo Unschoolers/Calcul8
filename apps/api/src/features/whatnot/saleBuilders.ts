@@ -15,6 +15,87 @@ function normalizeOptionalString(raw: unknown): string | undefined {
   return value || undefined;
 }
 
+type ExternalTransactionRef = {
+  provider: "whatnot" | string;
+  accountId?: string;
+  ledgerTransactionId: string;
+  orderId: string;
+  orderItemId: string;
+};
+
+function normalizeExternalTransactionRef(raw: unknown): ExternalTransactionRef | null {
+  if (!isRecord(raw)) {
+    return null;
+  }
+
+  const provider = normalizeOptionalString(raw.provider);
+  const ledgerTransactionId = normalizeOptionalString(raw.ledgerTransactionId);
+  const orderId = normalizeOptionalString(raw.orderId);
+  const orderItemId = normalizeOptionalString(raw.orderItemId);
+  if (!provider || !ledgerTransactionId || !orderId || !orderItemId) {
+    return null;
+  }
+
+  const ref: ExternalTransactionRef = {
+    provider,
+    ledgerTransactionId,
+    orderId,
+    orderItemId
+  };
+  const accountId = normalizeOptionalString(raw.accountId);
+  if (accountId) {
+    ref.accountId = accountId;
+  }
+  return ref;
+}
+
+function buildExternalTransactionRef(row: WhatnotImportRowDocument): ExternalTransactionRef | null {
+  const orderId = normalizeOptionalString(row.externalOrderId);
+  const orderItemId = normalizeOptionalString(row.externalOrderItemId);
+  const ledgerTransactionId = normalizeOptionalString(row.externalSaleId)
+    ?? (orderId && orderItemId ? `${orderId}:${orderItemId}` : undefined);
+  if (!ledgerTransactionId || !orderId || !orderItemId) {
+    return null;
+  }
+
+  const ref: ExternalTransactionRef = {
+    provider: "whatnot",
+    ledgerTransactionId,
+    orderId,
+    orderItemId
+  };
+  const accountId = normalizeOptionalString(row.externalAccountId);
+  if (accountId) {
+    ref.accountId = accountId;
+  }
+  return ref;
+}
+
+function mergeExternalTransactionRefs(...groups: Array<unknown[] | undefined>): ExternalTransactionRef[] {
+  const refs: ExternalTransactionRef[] = [];
+  const seen = new Set<string>();
+  for (const group of groups) {
+    if (!Array.isArray(group)) continue;
+    for (const rawRef of group) {
+      const ref = normalizeExternalTransactionRef(rawRef);
+      if (!ref) continue;
+      const key = `${ref.provider}::${ref.ledgerTransactionId}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      refs.push(ref);
+    }
+  }
+  return refs;
+}
+
+function getImportedTransactionRefs(row: WhatnotImportRowDocument): ExternalTransactionRef[] {
+  const directRef = buildExternalTransactionRef(row);
+  return mergeExternalTransactionRefs(
+    Array.isArray(row.externalTransactionRefs) ? row.externalTransactionRefs : undefined,
+    directRef ? [directRef] : undefined
+  );
+}
+
 export function buildImportedSalePayload(
   row: WhatnotImportRowDocument,
   decision: ReviewDecisionInput,
@@ -27,12 +108,7 @@ export function buildImportedSalePayload(
   const quantity = Math.max(1, Math.floor(Number(row.quantity) || 1));
   const totalPrice = Number(row.price) || 0;
   const unitPrice = quantity > 0 ? totalPrice / quantity : totalPrice;
-  const memoParts = [
-    `Whatnot ${row.externalOrderId}`,
-    row.title
-  ]
-    .map((part) => normalizeId(part))
-    .filter((part) => part.length > 0);
+  const transactionRefs = getImportedTransactionRefs(row);
 
   const salePayload: Record<string, unknown> = {
     id: saleId,
@@ -48,12 +124,16 @@ export function buildImportedSalePayload(
     buyerShipping: Number(row.buyerShipping) || 0,
     date: row.date,
     customer: normalizeOptionalString(row.buyerName),
+    externalProvider: "whatnot",
     externalAccountId: normalizeOptionalString(row.externalAccountId),
     externalSaleId: normalizeOptionalString(row.externalSaleId),
     externalOrderId: normalizeOptionalString(row.externalOrderId),
     externalOrderItemId: normalizeOptionalString(row.externalOrderItemId),
-    memo: memoParts.join(" • ")
+    memo: normalizeOptionalString(row.title)
   };
+  if (transactionRefs.length > 0) {
+    salePayload.externalTransactionRefs = transactionRefs;
+  }
 
   return salePayload;
 }
@@ -77,8 +157,12 @@ export async function buildMergedManualSalePayload(
   const importedMemo = normalizeOptionalString(importedPayload.memo);
   const customer = normalizeOptionalString(row.buyerName)
     || normalizeOptionalString(existingSaleRecord.customer);
+  const transactionRefs = mergeExternalTransactionRefs(
+    Array.isArray(existingSaleRecord.externalTransactionRefs) ? existingSaleRecord.externalTransactionRefs : undefined,
+    Array.isArray(importedPayload.externalTransactionRefs) ? importedPayload.externalTransactionRefs : undefined
+  );
 
-  return {
+  const mergedPayload: Record<string, unknown> = {
     ...existingSaleRecord,
     date: importedPayload.date,
     price: importedPayload.price,
@@ -88,6 +172,11 @@ export async function buildMergedManualSalePayload(
     customer,
     memo: existingMemo || importedMemo || undefined
   };
+  if (transactionRefs.length > 0) {
+    mergedPayload.externalTransactionRefs = transactionRefs;
+  }
+
+  return mergedPayload;
 }
 
 export function buildMutationId(batchId: string, row: WhatnotImportRowDocument): string {

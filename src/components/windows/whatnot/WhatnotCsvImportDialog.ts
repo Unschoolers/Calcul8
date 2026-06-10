@@ -3,10 +3,14 @@ import { createWindowContextBridge } from "../shared/contextBridge.ts";
 import type { WhatnotImportReviewRow } from "../../../types/app.ts";
 import {
   buildWhatnotCsvImportDraft,
+  buildWhatnotWeeklyReportPreflight,
   isValidWhatnotCsvColumnIndex,
   parseWhatnotCsvRowsWithMapping
 } from "../../../app-core/shared/whatnot-csv.ts";
-import type { WhatnotCsvColumnMapping } from "../../../app-core/shared/whatnot-csv.ts";
+import type {
+  WhatnotCsvColumnMapping,
+  WhatnotWeeklyReportPreflight
+} from "../../../app-core/shared/whatnot-csv.ts";
 
 function emptyMapping(): WhatnotCsvColumnMapping {
   return {
@@ -121,6 +125,16 @@ export const WhatnotCsvImportDialog = {
 
     whatnotCsvPresetReady(this: any): boolean {
       return this.whatnotCsvRequiredMappingsComplete;
+    },
+
+    whatnotCsvWeeklyPreflight(this: any): WhatnotWeeklyReportPreflight {
+      const headers = Array.isArray(this.whatnotCsvHeaders) ? this.whatnotCsvHeaders : [];
+      const rows = Array.isArray(this.whatnotCsvRows) ? this.whatnotCsvRows : [];
+      return buildWhatnotWeeklyReportPreflight({
+        headers,
+        rows,
+        mapping: emptyMapping()
+      });
     },
 
     whatnotCsvMappedFieldLabelsByColumn(this: any): Record<number, string[]> {

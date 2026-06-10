@@ -47,21 +47,59 @@
       >
         <div class="font-weight-medium mb-1">{{ t('whatnotCsvReadyTitle') }}</div>
         <div class="text-body-2">
-          Auto-detected <strong>{{ whatnotCsvRequiredMappedCount }}/5</strong> core fields and <strong>{{ whatnotCsvOptionalMappedCount }}</strong> supporting fields.
-          We use <strong>{{ whatnotCsvDetectedDateHeader }}</strong> for the sale date and <strong>{{ whatnotCsvDetectedPriceHeader }}</strong> for sale total.
-          <template v-if="whatnotCsvDetectedOrderPlacedAtHeader || whatnotCsvDetectedOriginalItemPriceHeader">
-            Supporting import metadata includes <strong>{{ whatnotCsvDetectedOriginalItemPriceHeader }}</strong>
-            <template v-if="whatnotCsvDetectedDateHeader !== whatnotCsvDetectedOrderPlacedAtHeader">
-              and <strong>{{ whatnotCsvDetectedOrderPlacedAtHeader }}</strong>
-            </template>.
+          <template v-if="whatnotCsvWeeklyPreflight.detected">
+            {{ t('whatnotCsvPreflightWillImport', {
+              importable: whatnotCsvWeeklyPreflight.importableRows,
+              total: whatnotCsvWeeklyPreflight.totalRows
+            }) }}
           </template>
+          <template v-else>
+            {{ t('whatnotCsvGenericReadyBody', {
+              required: whatnotCsvRequiredMappedCount,
+              optional: whatnotCsvOptionalMappedCount
+            }) }}
+          </template>
+          {{ t('whatnotCsvPreflightDateAndPrice', {
+            date: whatnotCsvDetectedDateHeader,
+            price: whatnotCsvDetectedPriceHeader
+          }) }}
         </div>
-        <div v-if="whatnotCsvParsedPreview" class="d-flex flex-wrap ga-2 mt-2">
+        <div v-if="whatnotCsvWeeklyPreflight.detected" class="d-flex flex-wrap ga-2 mt-3">
+          <div class="whatnot-csv-preflight-stat" data-testid="whatnotCsvPreflightStat">
+            <span>{{ t('whatnotCsvPreflightRowsLabel') }}</span>
+            <strong>{{ whatnotCsvWeeklyPreflight.importableRows }} / {{ whatnotCsvWeeklyPreflight.totalRows }}</strong>
+          </div>
+          <div class="whatnot-csv-preflight-stat" data-testid="whatnotCsvPreflightStat">
+            <span>{{ t('whatnotCsvPreflightGrossLabel') }}</span>
+            <strong>${{ formatCurrency(whatnotCsvWeeklyPreflight.grossAmount) }}</strong>
+          </div>
+          <div class="whatnot-csv-preflight-stat" data-testid="whatnotCsvPreflightStat">
+            <span>{{ t('whatnotCsvPreflightFeesLabel') }}</span>
+            <strong>${{ formatCurrency(whatnotCsvWeeklyPreflight.feeAmount) }}</strong>
+          </div>
+          <div class="whatnot-csv-preflight-stat" data-testid="whatnotCsvPreflightStat">
+            <span>{{ t('whatnotCsvPreflightNetLabel') }}</span>
+            <strong>${{ formatCurrency(whatnotCsvWeeklyPreflight.netAmount) }}</strong>
+          </div>
+          <div class="whatnot-csv-preflight-stat" data-testid="whatnotCsvPreflightStat">
+            <span>{{ t('whatnotCsvPreflightBuyerPaidLabel') }}</span>
+            <strong>${{ formatCurrency(whatnotCsvWeeklyPreflight.buyerPaidAmount) }}</strong>
+          </div>
+        </div>
+        <div class="d-flex flex-wrap ga-2 mt-3">
           <v-chip size="small" color="success" variant="tonal">
-            {{ whatnotCsvParsedPreview.readyCount }} rows ready
+            {{ t('whatnotCsvPreflightReadyRows', { count: whatnotCsvWeeklyPreflight.importableRows }) }}
           </v-chip>
           <v-chip size="small" variant="tonal">
-            {{ whatnotCsvParsedPreview.skippedCount }} rows skipped
+            {{ t('whatnotCsvPreflightSkippedRows', { count: whatnotCsvWeeklyPreflight.skippedRows }) }}
+          </v-chip>
+          <v-chip
+            v-if="whatnotCsvWeeklyPreflight.issueCount > 0"
+            size="small"
+            color="warning"
+            variant="tonal"
+          >
+            {{ t('whatnotCsvPreflightIssues', { count: whatnotCsvWeeklyPreflight.issueCount }) }}
           </v-chip>
         </div>
       </v-alert>

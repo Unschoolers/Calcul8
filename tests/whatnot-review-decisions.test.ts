@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import type { WhatnotImportReviewRow } from "../src/types/app.ts";
+import type { Sale, WhatnotImportReviewRow } from "../src/types/app.ts";
 import {
+  buildWhatnotReviewChangeDiffs,
   buildWhatnotReviewDecisions,
+  buildWhatnotReviewDecisionSummary,
   validateWhatnotReviewRowsForImport
 } from "../src/app-core/methods/ui/whatnot/whatnot-review-decisions.ts";
 
@@ -49,6 +51,28 @@ test("validateWhatnotReviewRowsForImport blocks update decisions without a targe
 
   assert.equal(result, false);
   assert.deepEqual(notices, [["Choose a matching sale to update for Bleach Volume 2 box.", "warning"]]);
+});
+
+test("validateWhatnotReviewRowsForImport blocks non-skipped rows without stable Whatnot identity", () => {
+  const notices: Array<[string, string | undefined]> = [];
+  const result = validateWhatnotReviewRowsForImport({
+    whatnotReviewRows: [
+      createReviewRow({
+        externalSaleId: "",
+        externalOrderItemId: "",
+        selectedImportAction: "create"
+      })
+    ],
+    notify: (message, color) => {
+      notices.push([message, color]);
+    }
+  });
+
+  assert.equal(result, false);
+  assert.deepEqual(notices, [[
+    "Whatnot row Bleach Volume 2 box is missing a stable import id. Skip it or upload the weekly Whatnot order report.",
+    "warning"
+  ]]);
 });
 
 test("buildWhatnotReviewDecisions keeps manual duplicate targets and explicit skips", () => {
@@ -100,5 +124,79 @@ test("buildWhatnotReviewDecisions keeps manual duplicate targets and explicit sk
       targetKind: null,
       targetSaleId: undefined
     }
+  ]);
+});
+
+test("buildWhatnotReviewDecisionSummary exposes repeat-safe import decisions", () => {
+  const summary = buildWhatnotReviewDecisionSummary([
+    createReviewRow({
+      rowId: "row-create",
+      action: "create",
+      selectedImportAction: "create"
+    }),
+    createReviewRow({
+      rowId: "row-skip",
+      action: "skip",
+      existingSaleId: "11",
+      targetSaleId: "11",
+      targetKind: "whatnot_mapping"
+    }),
+    createReviewRow({
+      rowId: "row-update",
+      action: "update",
+      existingSaleId: "12",
+      targetSaleId: "12",
+      targetKind: "whatnot_mapping",
+      requiresManualReview: false
+    }),
+    createReviewRow({
+      rowId: "row-missing",
+      externalSaleId: "",
+      externalOrderItemId: "",
+      selectedImportAction: "create"
+    })
+  ]);
+
+  assert.deepEqual(summary, {
+    totalCount: 4,
+    readyCount: 2,
+    createCount: 1,
+    updateCount: 1,
+    skipCount: 1,
+    alreadyImportedCount: 1,
+    changedCount: 1,
+    missingIdentityCount: 1,
+    blockedCount: 1,
+    manualReviewCount: 1
+  });
+});
+
+test("buildWhatnotReviewChangeDiffs compares imported rows to the target sale", () => {
+  const existingSale: Sale = {
+    id: 12,
+    type: "pack",
+    quantity: 1,
+    packsCount: 1,
+    price: 20,
+    buyerShipping: 0,
+    date: "2026-03-08"
+  };
+
+  const diffs = buildWhatnotReviewChangeDiffs(
+    createReviewRow({
+      action: "update",
+      existingSaleId: "12",
+      targetSaleId: "12",
+      price: 22.5,
+      buyerShipping: 1.25,
+      date: "2026-03-09"
+    }),
+    existingSale
+  );
+
+  assert.deepEqual(diffs, [
+    { field: "date", before: "2026-03-08", after: "2026-03-09" },
+    { field: "saleTotal", before: 20, after: 22.5 },
+    { field: "buyerShipping", before: 0, after: 1.25 }
   ]);
 });

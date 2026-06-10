@@ -28,6 +28,10 @@ function normalizeTitle(raw: unknown): string {
   return normalizeId(raw).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 }
 
+function rowTitleCanBelongToLot(rowTitle: string, lotTitle: string): boolean {
+  return lotTitle.length >= 4 && (rowTitle === lotTitle || rowTitle.startsWith(`${lotTitle} `));
+}
+
 function applySuggestedTarget(
   row: WhatnotImportRowDocument,
   target: { lotId: string; saleType: WhatnotMappedSaleType; source: "remembered" | "title" }
@@ -67,14 +71,15 @@ export async function resolveSuggestedTarget(
   if (!normalizedTitle) return row;
 
   const exactLot = lots.find((lot) => normalizeTitle(lot.name) === normalizedTitle);
-  if (!exactLot) return row;
+  const titleMatchedLot = exactLot ?? lots.find((lot) => rowTitleCanBelongToLot(normalizedTitle, normalizeTitle(lot.name)));
+  if (!titleMatchedLot) return row;
 
-  const saleType: WhatnotMappedSaleType = exactLot.lotType === "singles"
+  const saleType: WhatnotMappedSaleType = titleMatchedLot.lotType === "singles"
     ? "pack"
     : (isWhatnotRowLikelyRtyh(row) ? "rtyh" : "pack");
 
   return applySuggestedTarget(row, {
-    lotId: exactLot.id,
+    lotId: titleMatchedLot.id,
     saleType,
     source: "title"
   });

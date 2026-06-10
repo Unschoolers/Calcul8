@@ -19,10 +19,26 @@ test("sync contract helpers keep only entity records with usable ids", () => {
   ]), [{ id: 12, name: "Cloud lot" }]);
 
   assert.deepEqual(toSyncSalesByLotDto({
-    "12": [{ id: 1, price: 10 }, null, "bad"],
+    "12": [{
+      id: 1,
+      price: 10,
+      externalProvider: "whatnot",
+      externalAccountId: " seller-1 ",
+      externalSaleId: " ledger-1 ",
+      externalOrderId: " order-1 ",
+      externalOrderItemId: " item-1 "
+    }, null, "bad"],
     "13": "bad"
   }), {
-    "12": [{ id: 1, price: 10 }]
+    "12": [{
+      id: 1,
+      price: 10,
+      externalProvider: "whatnot",
+      externalAccountId: "seller-1",
+      externalSaleId: "ledger-1",
+      externalOrderId: "order-1",
+      externalOrderItemId: "item-1"
+    }]
   });
 
   assert.deepEqual(toSyncWheelConfigDtos([
@@ -240,6 +256,27 @@ test("sync sales DTOs preserve concurrency and wheel/singles fields while droppi
         updatedAt: "2026-04-03T10:00:00.000Z",
         updatedBy: "user-1",
         mutationId: "sale:1",
+        externalProvider: " whatnot ",
+        externalAccountId: " seller-1 ",
+        externalSaleId: " ledger-1 ",
+        externalOrderId: " order-1 ",
+        externalOrderItemId: " item-1 ",
+        externalTransactionRefs: [
+          {
+            provider: " whatnot ",
+            accountId: " seller-1 ",
+            ledgerTransactionId: " ledger-1 ",
+            orderId: " order-1 ",
+            orderItemId: " item-1 ",
+            extra: "drop"
+          },
+          {
+            provider: "",
+            ledgerTransactionId: "missing-provider",
+            orderId: "bad-order",
+            orderItemId: "bad-item"
+          }
+        ],
         linkedWheelId: "91",
         winningTierId: "tier-1",
         costOfWinningTier: "8.25",
@@ -278,6 +315,20 @@ test("sync sales DTOs preserve concurrency and wheel/singles fields while droppi
         updatedAt: "2026-04-03T10:00:00.000Z",
         updatedBy: "user-1",
         mutationId: "sale:1",
+        externalProvider: "whatnot",
+        externalAccountId: "seller-1",
+        externalSaleId: "ledger-1",
+        externalOrderId: "order-1",
+        externalOrderItemId: "item-1",
+        externalTransactionRefs: [
+          {
+            provider: "whatnot",
+            accountId: "seller-1",
+            ledgerTransactionId: "ledger-1",
+            orderId: "order-1",
+            orderItemId: "item-1"
+          }
+        ],
         linkedWheelId: 91,
         winningTierId: "tier-1",
         costOfWinningTier: 8.25,

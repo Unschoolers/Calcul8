@@ -27,25 +27,48 @@
         </div>
         <div class="whatnot-review-summary__chips">
           <v-chip size="small" color="warning" variant="tonal">
-            {{ t('whatnotReviewNeedsReviewCount', { count: whatnotReviewRows.filter((row) => row.requiresManualReview && !row.skipImport).length }) }}
+            {{ t('whatnotReviewNeedsReviewCount', { count: whatnotReviewDecisionSummary.manualReviewCount }) }}
           </v-chip>
           <v-chip size="small" color="success" variant="tonal">
-            {{ t('whatnotReviewAutoCreateCount', { count: whatnotReviewRows.filter((row) => row.action === 'create').length }) }}
+            {{ t('whatnotReviewActionCreateSelectedCount', { count: whatnotReviewDecisionSummary.createCount }) }}
           </v-chip>
           <v-chip size="small" color="warning" variant="tonal">
-            {{ t('whatnotReviewAutoUpdateCount', { count: whatnotReviewRows.filter((row) => row.action === 'update').length }) }}
+            {{ t('whatnotReviewActionUpdateSelectedCount', { count: whatnotReviewDecisionSummary.updateCount }) }}
           </v-chip>
           <v-chip size="small" variant="tonal">
-            {{ t('whatnotReviewAutoSkipCount', { count: whatnotReviewRows.filter((row) => row.action === 'skip').length }) }}
+            {{ t('whatnotReviewActionSkipSelectedCount', { count: whatnotReviewDecisionSummary.skipCount }) }}
           </v-chip>
-          <v-chip size="small" color="success" variant="tonal">
-            {{ t('whatnotReviewActionCreateSelectedCount', { count: whatnotReviewRows.filter((row) => (row.selectedImportAction ?? (row.action === 'update' ? 'update_existing' : row.action === 'skip' ? 'skip' : 'create')) === 'create').length }) }}
+          <v-chip
+            v-if="whatnotReviewDecisionSummary.alreadyImportedCount > 0"
+            size="small"
+            color="info"
+            variant="tonal"
+          >
+            {{ t('whatnotReviewAlreadyImportedCount', { count: whatnotReviewDecisionSummary.alreadyImportedCount }) }}
           </v-chip>
-          <v-chip size="small" color="warning" variant="tonal">
-            {{ t('whatnotReviewActionUpdateSelectedCount', { count: whatnotReviewRows.filter((row) => (row.selectedImportAction ?? (row.action === 'update' ? 'update_existing' : row.action === 'skip' ? 'skip' : 'create')) === 'update_existing').length }) }}
+          <v-chip
+            v-if="whatnotReviewDecisionSummary.changedCount > 0"
+            size="small"
+            color="warning"
+            variant="tonal"
+          >
+            {{ t('whatnotReviewChangedCount', { count: whatnotReviewDecisionSummary.changedCount }) }}
           </v-chip>
-          <v-chip size="small" variant="tonal">
-            {{ t('whatnotReviewActionSkipSelectedCount', { count: whatnotReviewRows.filter((row) => (row.selectedImportAction ?? (row.action === 'update' ? 'update_existing' : row.action === 'skip' ? 'skip' : 'create')) === 'skip').length }) }}
+          <v-chip
+            v-if="whatnotReviewDecisionSummary.missingIdentityCount > 0"
+            size="small"
+            color="error"
+            variant="tonal"
+          >
+            {{ t('whatnotReviewMissingIdentityCount', { count: whatnotReviewDecisionSummary.missingIdentityCount }) }}
+          </v-chip>
+          <v-chip
+            v-if="whatnotReviewDecisionSummary.blockedCount > 0"
+            size="small"
+            color="error"
+            variant="outlined"
+          >
+            {{ t('whatnotReviewBlockedCount', { count: whatnotReviewDecisionSummary.blockedCount }) }}
           </v-chip>
         </div>
       </div>
@@ -60,17 +83,17 @@
           </div>
           <div class="whatnot-review-mobile-summary__body">
             {{ t('whatnotReviewMobileReadySummary', {
-              ready: whatnotReviewRows.filter((row) => !row.skipImport).length,
+              ready: whatnotReviewDecisionSummary.readyCount,
               total: whatnotReviewRows.length
             }) }}
           </div>
         </div>
         <div class="whatnot-review-mobile-summary__chips">
           <v-chip size="small" color="warning" variant="tonal">
-            {{ t('whatnotReviewNeedsReviewCount', { count: whatnotReviewRows.filter((row) => row.requiresManualReview && !row.skipImport).length }) }}
+            {{ t('whatnotReviewNeedsReviewCount', { count: whatnotReviewDecisionSummary.manualReviewCount }) }}
           </v-chip>
           <v-chip size="small" color="info" variant="tonal">
-            {{ t('whatnotReviewConfirmReadyCount', { count: whatnotReviewRows.filter((row) => !row.skipImport).length }) }}
+            {{ t('whatnotReviewConfirmReadyCount', { count: whatnotReviewDecisionSummary.readyCount }) }}
           </v-chip>
         </div>
       </div>
@@ -142,6 +165,13 @@
                 <v-chip
                   size="small"
                   variant="tonal"
+                  :color="whatnotReviewIdentityBadge(row).color"
+                >
+                  {{ whatnotReviewIdentityBadge(row).label }}
+                </v-chip>
+                <v-chip
+                  size="small"
+                  variant="tonal"
                   :color="row.action === 'update' ? 'warning' : (row.action === 'skip' ? 'default' : 'success')"
                 >
                   {{ whatnotAutomaticActionLabel(row) }}
@@ -188,6 +218,28 @@
                 {{ row.manualDuplicateCandidate.reasonSummary }}
               </div>
             </div>
+
+            <v-alert
+              v-if="whatnotSelectedImportAction(row) === 'update_existing' && whatnotReviewChangeDiffs(row).length > 0"
+              type="warning"
+              variant="tonal"
+              density="compact"
+              class="mb-3"
+            >
+              <div class="text-caption font-weight-medium mb-1">
+                {{ t('whatnotReviewChangeDiffsLabel') }}
+              </div>
+              <div
+                v-for="diff in whatnotReviewChangeDiffs(row)"
+                :key="diff.field"
+                class="text-caption"
+              >
+                {{ whatnotReviewChangeDiffLabel(diff) }}:
+                {{ whatnotReviewChangeDiffValue(diff, diff.before) }}
+                {{ t('whatnotReviewChangeToLabel') }}
+                {{ whatnotReviewChangeDiffValue(diff, diff.after) }}
+              </div>
+            </v-alert>
 
             <div class="text-caption text-medium-emphasis mb-3 whatnot-review-row__submeta">
               <span v-if="row.externalSaleId">{{ t('whatnotReviewTargetSaleLabel', { id: row.externalSaleId }) }}</span>
@@ -343,12 +395,12 @@
           variant="tonal"
           color="info"
         >
-          {{ t('whatnotReviewConfirmReadyCount', { count: whatnotReviewRows.filter((row) => !row.skipImport).length }) }}
+          {{ t('whatnotReviewConfirmReadyCount', { count: whatnotReviewDecisionSummary.readyCount }) }}
         </v-chip>
         <v-btn
           color="primary"
           prepend-icon="mdi-check-bold"
-          :disabled="whatnotReviewRows.length === 0"
+          :disabled="whatnotReviewRows.length === 0 || whatnotReviewDecisionSummary.blockedCount > 0"
           @click="confirmWhatnotImportBatch"
         >
           {{ t('whatnotReviewImportReviewedSalesAction') }}

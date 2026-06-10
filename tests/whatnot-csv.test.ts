@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 import {
   buildWhatnotCsvImportDraft,
+  buildWhatnotWeeklyReportPreflight,
   normalizeWhatnotReviewRows,
   parseWhatnotCsvRowsWithMapping
 } from "../src/app-core/shared/whatnot-csv.ts";
@@ -54,6 +55,29 @@ test("buildWhatnotCsvImportDraft auto-maps real weekly Whatnot export headers wi
   assert.equal(draft?.mapping.price, 27);
   assert.equal(draft?.mapping.buyerShipping, 28);
   assert.equal(draft?.mapping.orderStatus, 5);
+});
+
+test("buildWhatnotWeeklyReportPreflight summarizes official weekly report import impact", () => {
+  const draft = buildWhatnotCsvImportDraft(
+    "\"REPORT_START_DATE\",\"WEEK_NUMBER\",\"ORDER_PLACED_AT_UTC\",\"TRANSACTION_COMPLETED_AT_UTC\",\"SELLER_ID\",\"TRANSACTION_TYPE\",\"TRANSACTION_MESSAGE\",\"ORDER_ID\",\"LISTING_TITLE\",\"LISTING_DESCRIPTION\",\"PRODUCT_CATEGORY\",\"BUY_FORMAT\",\"SALE_TYPE\",\"QUANTITY_SOLD\",\"SKU\",\"COST_OF_GOODS\",\"LIVESTREAM_ID\",\"LIVESTREAM_TITLE\",\"BUYER_NAME\",\"BUYER_STATE\",\"BUYER_COUNTRY\",\"SHIPMENT_ID\",\"TRANSACTION_CURRENCY\",\"TRANSACTION_AMOUNT\",\"BUYER_PAID\",\"ORIGINAL_ITEM_PRICE\",\"COUPON_COST\",\"POST_COUPON_PRICE\",\"SHIPPING_FEE\",\"COMMISSION_FEE\",\"PAYMENT_PROCESSING_FEE\",\"TAX_ON_COMMISSION_FEE\",\"TAX_ON_PAYMENT_PROCESSING_FEE\",\"LEDGER_TRANSACTION_ID\"\n" +
+      "\"2026-06-01 00:00:00\",23,\"2026-05-30 00:00:05\",\"2026-06-06 00:53:44\",49208085,\"ORDER_EARNINGS\",\"Earnings for selling a Jujutsu Kaisen vol2 Pack\",\"1073366887\",\"Jujutsu Kaisen vol2 Pack\",\"One JJKvol2 Pack\",\"Union Arena\",\"BUY_IT_NOW\",\"\",1,\"\",\"\",\"030a130a-58c7-4402-a0d3-f27f80fa9e0f\",\"C'est bon la poutine\",\"genbenji_tcg\",\"QC\",\"CA\",\"375880115\",\"CAD\",\"6.79\",\"9.20\",\"8.00\",\"0.00\",\"8.00\",\"0.00\",\"0.64\",\"0.57\",\"0.00\",\"0.00\",\"1083346744\"\n" +
+      "\"2026-06-01 00:00:00\",23,\"2026-05-29 23:56:54\",\"2026-06-06 00:53:44\",49208085,\"ORDER_EARNINGS\",\"Earnings for selling a Demon Slayer English pack\",\"1073358393\",\"Demon Slayer English pack\",\"1 pack\",\"Union Arena\",\"BUY_IT_NOW\",\"\",1,\"\",\"\",\"030a130a-58c7-4402-a0d3-f27f80fa9e0f\",\"C'est bon la poutine\",\"genbenji_tcg\",\"QC\",\"CA\",\"375880115\",\"CAD\",\"6.79\",\"9.20\",\"8.00\",\"0.00\",\"8.00\",\"0.00\",\"0.64\",\"0.57\",\"0.00\",\"0.00\",\"1083338111\"\n" +
+      "\"2026-06-01 00:00:00\",23,\"2026-05-30 01:00:00\",\"2026-06-06 00:53:44\",49208085,\"TIP\",\"Received a tip from genbenji_tcg\",\"1073366999\",\"Tip\",\"\",\"Union Arena\",\"BUY_IT_NOW\",\"\",1,\"\",\"\",\"030a130a-58c7-4402-a0d3-f27f80fa9e0f\",\"C'est bon la poutine\",\"genbenji_tcg\",\"QC\",\"CA\",\"375880115\",\"CAD\",\"2.00\",\"2.00\",\"2.00\",\"0.00\",\"2.00\",\"0.00\",\"0.00\",\"0.00\",\"0.00\",\"0.00\",\"1083346999\""
+  );
+
+  assert.ok(draft);
+  const preflight = buildWhatnotWeeklyReportPreflight(draft);
+
+  assert.equal(preflight.detected, true);
+  assert.equal(preflight.importableRows, 2);
+  assert.equal(preflight.skippedRows, 1);
+  assert.equal(preflight.totalRows, 3);
+  assert.equal(preflight.grossAmount, 16);
+  assert.equal(preflight.feeAmount, 2.42);
+  assert.equal(preflight.netAmount, 13.58);
+  assert.equal(preflight.buyerPaidAmount, 18.4);
+  assert.equal(preflight.issueCount, 0);
+  assert.deepEqual(preflight.skipReasons, { TIP: 1 });
 });
 
 test("parseWhatnotCsvRowsWithMapping normalizes sparse rows and skips blank titles", () => {
@@ -158,6 +182,8 @@ test("parseWhatnotCsvRowsWithMapping normalizes whatnot weekly export rows with 
   assert.equal(parsed.entries.length, 1);
   assert.equal(parsed.entries[0]?.externalOrderId, "847164719");
   assert.equal(parsed.entries[0]?.externalSaleId, "849694245");
+  assert.equal(parsed.entries[0]?.externalOrderItemId, "849694245");
+  assert.equal(parsed.entries[0]?.rowId, "849694245");
   assert.equal(parsed.entries[0]?.externalAccountId, "49208085");
   assert.equal(parsed.entries[0]?.buyerName, "cougarraph");
   assert.equal(parsed.entries[0]?.listingTitle, "Bleach vol2 box");
@@ -446,9 +472,13 @@ test("parseWhatnotCsvRowsWithMapping preserves raw ORDER_PLACED_AT_UTC and norma
 
   assert.equal(parsed.entries.length, 2);
   assert.equal(parsed.entries[0]?.externalOrderId, "871874070");
+  assert.equal(parsed.entries[0]?.externalOrderItemId, "875067696");
+  assert.equal(parsed.entries[0]?.rowId, "875067696");
   assert.equal(parsed.entries[0]?.orderPlacedAtRaw, "3/5/2026 0:47");
   assert.equal(parsed.entries[0]?.orderPlacedAt, toExpectedLocalDate("2026-03-05T00:47:00.000Z"));
   assert.equal(parsed.entries[1]?.externalOrderId, "894778611");
+  assert.equal(parsed.entries[1]?.externalOrderItemId, "898672481");
+  assert.equal(parsed.entries[1]?.rowId, "898672481");
   assert.equal(parsed.entries[1]?.orderPlacedAtRaw, "3/15/2026 0:20");
   assert.equal(parsed.entries[1]?.orderPlacedAt, toExpectedLocalDate("2026-03-15T00:20:00.000Z"));
 });

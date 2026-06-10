@@ -77,6 +77,14 @@ export interface SyncSaleLineDto {
   price: number;
 }
 
+export interface SyncSaleExternalTransactionRefDto {
+  provider: string;
+  accountId?: string;
+  ledgerTransactionId: string;
+  orderId: string;
+  orderItemId: string;
+}
+
 export interface SyncSaleDto {
   id: number;
   type?: SyncSaleType;
@@ -94,6 +102,12 @@ export interface SyncSaleDto {
   updatedAt?: string;
   updatedBy?: string;
   mutationId?: string;
+  externalProvider?: string;
+  externalAccountId?: string;
+  externalSaleId?: string;
+  externalOrderId?: string;
+  externalOrderItemId?: string;
+  externalTransactionRefs?: SyncSaleExternalTransactionRefDto[];
   linkedWheelId?: number;
   winningTierId?: string;
   costOfWinningTier?: number;

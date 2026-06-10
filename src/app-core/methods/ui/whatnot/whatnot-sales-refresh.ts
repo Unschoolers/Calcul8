@@ -1,11 +1,12 @@
 import { canUseAuthoritativeSalesLiveApi } from "../../entity-api-shared.ts";
 import { cacheAuthoritativeSales, fetchAuthoritativeSales } from "../../lot-sales-api.ts";
 import type { WhatnotApp } from "./whatnot-types.ts";
+import { resolveWhatnotSelectedImportAction } from "./whatnot-review-decisions.ts";
 
 export function getAffectedWhatnotLotIds(rows: WhatnotApp["whatnotReviewRows"]): number[] {
   const lotIds = new Set<number>();
   for (const row of rows) {
-    const selectedImportAction = row.selectedImportAction ?? (row.action === "update" ? "update_existing" : row.action === "skip" ? "skip" : "create");
+    const selectedImportAction = resolveWhatnotSelectedImportAction(row);
     if (row.skipImport || selectedImportAction === "skip") {
       continue;
     }

@@ -36,6 +36,9 @@ vi.mock("../src/app-core/methods/lot-sales-api.ts", () => ({
 }));
 
 import { configIoMethods } from "../src/app-core/methods/config-io.ts";
+import { configStorageMethods } from "../src/app-core/methods/config-storage.ts";
+import { salesMethods } from "../src/app-core/methods/sales.ts";
+import { uiSyncMethods } from "../src/app-core/methods/ui/sync/sync.ts";
 
 type MockStorage = {
   getItem(key: string): string | null;
@@ -407,8 +410,198 @@ test("importLotsFromUserId applies the imported overwrite snapshot before any fa
   assert.equal(ctx.currentLotId, 1780489007286);
   assert.equal(ctx.activeWheelConfigId, 42);
   assert.equal(ctx.systemPricingDefaults.targetProfitPercent, 20);
-  assert.equal(ctx.saveLotsToStorage.mock.calls.length, 1);
-  assert.equal(ctx.saveSystemPricingDefaultsToStorage.mock.calls.length, 1);
+  assert.equal(ctx.saveLotsToStorage.mock.calls.length, 2);
+  assert.equal(ctx.saveSystemPricingDefaultsToStorage.mock.calls.length, 2);
+});
+
+test("importLotsFromUserId overwrites the personal presets storage key from the imported snapshot", async () => {
+  const storage = createMockStorage({
+    whatfees_presets: JSON.stringify([{ id: 1779748689543, name: "Stale dev lot", lotType: "singles" }])
+  });
+  vi.stubGlobal("localStorage", storage);
+  fetchWithRetryMock.mockResolvedValue({
+    ok: true,
+    status: 200,
+    json: async () => ({
+      ok: true,
+      version: 994,
+      snapshot: {
+        lots: [{
+          id: 1780489007286,
+          name: "My hero academia",
+          lotType: "bulk"
+        }],
+        salesByLot: {},
+        wheelConfigs: [],
+        activeWheelConfigId: null,
+        version: 994,
+        updatedAt: "2026-06-04T19:38:48.000Z"
+      }
+    })
+  });
+
+  const ctx = createImportContext({
+    adminImportSourceUserId: "1234567890",
+    currentLotId: 1779748689543,
+    lots: [{ id: 1779748689543, name: "Stale dev lot", lotType: "singles" }],
+    saveLotsToStorage: configStorageMethods.saveLotsToStorage
+  });
+
+  await configIoMethods.importLotsFromUserId.call(ctx as never);
+
+  const storedLots = JSON.parse(storage.getItem("whatfees_presets") ?? "null") as Array<{ id: number; name: string }>;
+  assert.equal(storedLots.length, 1);
+  assert.equal(storedLots[0]?.id, 1780489007286);
+  assert.equal(storedLots[0]?.name, "My hero academia");
+  assert.equal(storage.getItem("whatfees_presets")?.includes("Stale dev lot"), false);
+});
+
+test("importLotsFromUserId overwrites personal presets through the forced pull fallback", async () => {
+  const storage = createMockStorage({
+    whatfees_presets: JSON.stringify([{ id: 1779748689543, name: "Stale dev lot", lotType: "singles" }]),
+    whatfees_sync_client_version: "4"
+  });
+  vi.stubGlobal("localStorage", storage);
+  vi.stubGlobal("navigator", { onLine: true });
+  fetchWithRetryMock.mockImplementation(async (url: string) => {
+    if (url.endsWith("/ops/sync/import-user")) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ ok: true, version: 994 })
+      };
+    }
+    if (url.endsWith("/sync/pull")) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          snapshot: {
+            lots: [{
+              id: 1780489007286,
+              name: "My hero academia",
+              lotType: "bulk"
+            }],
+            salesByLot: {},
+            wheelConfigs: [],
+            activeWheelConfigId: null,
+            version: 994,
+            updatedAt: "2026-06-04T19:38:48.000Z"
+          }
+        })
+      };
+    }
+    throw new Error(`Unexpected request: ${url}`);
+  });
+
+  const ctx = createImportContext({
+    adminImportSourceUserId: "1234567890",
+    currentLotId: 1779748689543,
+    lots: [{ id: 1779748689543, name: "Stale dev lot", lotType: "singles" }],
+    cloudSyncIntervalId: null,
+    syncStatusResetTimeoutId: null,
+    syncStatus: "idle",
+    isOffline: false,
+    lastSyncedPayloadHash: "",
+    googleAuthEpoch: 0,
+    hasProAccess: true,
+    startOfflineReconnectScheduler: vi.fn(),
+    stopCloudSyncScheduler: vi.fn(),
+    handleWorkspaceAccessLost: vi.fn(async () => undefined),
+    saveLotsToStorage: configStorageMethods.saveLotsToStorage,
+    saveWheelConfigsToStorage: salesMethods.saveWheelConfigsToStorage,
+    pullCloudSync: uiSyncMethods.pullCloudSync
+  });
+
+  await configIoMethods.importLotsFromUserId.call(ctx as never);
+
+  const storedLots = JSON.parse(storage.getItem("whatfees_presets") ?? "null") as Array<{ id: number; name: string }>;
+  assert.equal(storedLots.length, 1);
+  assert.equal(storedLots[0]?.id, 1780489007286);
+  assert.equal(storedLots[0]?.name, "My hero academia");
+  assert.equal(storage.getItem("whatfees_presets")?.includes("Stale dev lot"), false);
+  assert.equal(storage.getItem("whatfees_sync_client_version"), "994");
+});
+
+test("importLotsFromUserId keeps the imported response snapshot authoritative when the follow-up pull is stale", async () => {
+  const storage = createMockStorage({
+    whatfees_presets: JSON.stringify([{ id: 1779748689543, name: "Stale dev lot", lotType: "singles" }]),
+    whatfees_sync_client_version: "4"
+  });
+  vi.stubGlobal("localStorage", storage);
+  vi.stubGlobal("navigator", { onLine: true });
+  fetchWithRetryMock.mockImplementation(async (url: string) => {
+    if (url.endsWith("/ops/sync/import-user")) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          ok: true,
+          version: 994,
+          snapshot: {
+            lots: [{
+              id: 1780489007286,
+              name: "Imported prod lot",
+              lotType: "bulk"
+            }],
+            salesByLot: {},
+            wheelConfigs: [],
+            activeWheelConfigId: null,
+            version: 994,
+            updatedAt: "2026-06-04T19:38:48.000Z"
+          }
+        })
+      };
+    }
+    if (url.endsWith("/sync/pull")) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          snapshot: {
+            lots: [{
+              id: 1779748689543,
+              name: "Stale dev lot",
+              lotType: "singles"
+            }],
+            salesByLot: {},
+            wheelConfigs: [],
+            activeWheelConfigId: null,
+            version: 995,
+            updatedAt: "2026-06-04T19:39:00.000Z"
+          }
+        })
+      };
+    }
+    throw new Error(`Unexpected request: ${url}`);
+  });
+
+  const ctx = createImportContext({
+    adminImportSourceUserId: "1234567890",
+    currentLotId: 1779748689543,
+    lots: [{ id: 1779748689543, name: "Stale dev lot", lotType: "singles" }],
+    cloudSyncIntervalId: null,
+    syncStatusResetTimeoutId: null,
+    syncStatus: "idle",
+    isOffline: false,
+    lastSyncedPayloadHash: "",
+    googleAuthEpoch: 0,
+    hasProAccess: true,
+    startOfflineReconnectScheduler: vi.fn(),
+    stopCloudSyncScheduler: vi.fn(),
+    handleWorkspaceAccessLost: vi.fn(async () => undefined),
+    saveLotsToStorage: configStorageMethods.saveLotsToStorage,
+    saveWheelConfigsToStorage: salesMethods.saveWheelConfigsToStorage,
+    pullCloudSync: uiSyncMethods.pullCloudSync
+  });
+
+  await configIoMethods.importLotsFromUserId.call(ctx as never);
+
+  const storedLots = JSON.parse(storage.getItem("whatfees_presets") ?? "null") as Array<{ id: number; name: string }>;
+  assert.equal(storedLots.length, 1);
+  assert.equal(storedLots[0]?.id, 1780489007286);
+  assert.equal(storedLots[0]?.name, "Imported prod lot");
+  assert.equal(storage.getItem("whatfees_presets")?.includes("Stale dev lot"), false);
 });
 
 test("importLotsFromUserId clears stale local sales and hydrates all imported lot sales", async () => {

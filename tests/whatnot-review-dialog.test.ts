@@ -61,3 +61,135 @@ test("whatnotRowTargetLabel does not call a computed language value like a funct
 
   assert.equal(label, "Skipping this row");
 });
+
+test("whatnotReviewIdentityBadge labels repeat-safe import states", () => {
+  const context = {
+    preferredLanguage: "en"
+  };
+
+  assert.deepEqual(
+    WhatnotReviewDialog.methods.whatnotReviewIdentityBadge.call(context, {
+      externalSaleId: "ledger-1",
+      externalOrderId: "order-1",
+      externalOrderItemId: "ledger-1",
+      action: "create"
+    }),
+    { color: "success", label: "New" }
+  );
+  assert.deepEqual(
+    WhatnotReviewDialog.methods.whatnotReviewIdentityBadge.call(context, {
+      externalSaleId: "ledger-1",
+      externalOrderId: "order-1",
+      externalOrderItemId: "ledger-1",
+      existingSaleId: "7",
+      action: "skip"
+    }),
+    { color: "info", label: "Already imported" }
+  );
+  assert.deepEqual(
+    WhatnotReviewDialog.methods.whatnotReviewIdentityBadge.call(context, {
+      externalSaleId: "ledger-1",
+      externalOrderId: "order-1",
+      externalOrderItemId: "ledger-1",
+      existingSaleId: "7",
+      action: "update"
+    }),
+    { color: "warning", label: "Changed" }
+  );
+  assert.deepEqual(
+    WhatnotReviewDialog.methods.whatnotReviewIdentityBadge.call(context, {
+      externalSaleId: "",
+      externalOrderId: "order-1",
+      externalOrderItemId: "",
+      action: "create"
+    }),
+    { color: "error", label: "Missing id" }
+  );
+});
+
+test("whatnotReviewDecisionSummary exposes repeat-safe counts for the review header", () => {
+  const context = {
+    preferredLanguage: "en",
+    whatnotReviewRows: [
+      {
+        rowId: "new",
+        externalSaleId: "ledger-1",
+        externalOrderId: "order-1",
+        externalOrderItemId: "ledger-1",
+        action: "create",
+        requiresManualReview: true,
+        skipImport: false
+      },
+      {
+        rowId: "already",
+        externalSaleId: "ledger-2",
+        externalOrderId: "order-2",
+        externalOrderItemId: "ledger-2",
+        action: "skip",
+        existingSaleId: "8",
+        targetKind: "whatnot_mapping",
+        targetSaleId: "8",
+        requiresManualReview: false,
+        skipImport: true
+      },
+      {
+        rowId: "changed",
+        externalSaleId: "ledger-3",
+        externalOrderId: "order-3",
+        externalOrderItemId: "ledger-3",
+        action: "update",
+        existingSaleId: "9",
+        targetKind: "whatnot_mapping",
+        targetSaleId: "9",
+        requiresManualReview: false,
+        skipImport: false
+      }
+    ]
+  };
+
+  const summary = WhatnotReviewDialog.computed.whatnotReviewDecisionSummary.call(context);
+
+  assert.equal(summary.readyCount, 2);
+  assert.equal(summary.createCount, 1);
+  assert.equal(summary.updateCount, 1);
+  assert.equal(summary.skipCount, 1);
+  assert.equal(summary.alreadyImportedCount, 1);
+  assert.equal(summary.changedCount, 1);
+});
+
+test("whatnotReviewChangeDiffs resolves the mapped sale from the selected lot", () => {
+  const context = {
+    preferredLanguage: "en",
+    loadSalesForLotId: (lotId: number) => lotId === 7
+      ? [{
+          id: 9,
+          type: "pack",
+          quantity: 1,
+          packsCount: 1,
+          price: 20,
+          buyerShipping: 0,
+          date: "2026-03-08"
+        }]
+      : []
+  };
+
+  const diffs = WhatnotReviewDialog.methods.whatnotReviewChangeDiffs.call(context, {
+    rowId: "changed",
+    externalSaleId: "ledger-3",
+    externalOrderId: "order-3",
+    externalOrderItemId: "ledger-3",
+    action: "update",
+    existingSaleId: "9",
+    targetSaleId: "9",
+    selectedLotId: 7,
+    price: 21.5,
+    buyerShipping: 1,
+    date: "2026-03-09"
+  });
+
+  assert.deepEqual(diffs, [
+    { field: "date", before: "2026-03-08", after: "2026-03-09" },
+    { field: "saleTotal", before: 20, after: 21.5 },
+    { field: "buyerShipping", before: 0, after: 1 }
+  ]);
+});

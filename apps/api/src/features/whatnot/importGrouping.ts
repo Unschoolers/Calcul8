@@ -51,6 +51,24 @@ function buildManualCandidateGroupKey(
   ].join("::");
 }
 
+function buildLooseManualCandidateGroupKey(
+  row: Pick<WhatnotImportRowDocument, "buyerName" | "orderPlacedAt" | "date" | "externalAccountId">,
+  lotId: string
+): string | null {
+  const buyerName = normalizeGroupingValue(row.buyerName);
+  const orderDate = normalizeGroupingDate(row.orderPlacedAt ?? row.date);
+  const normalizedLotId = normalizeId(lotId);
+  if (!buyerName || !orderDate || !normalizedLotId) {
+    return null;
+  }
+  return [
+    normalizeGroupingValue(row.externalAccountId),
+    normalizedLotId,
+    orderDate,
+    buyerName
+  ].join("::");
+}
+
 export function buildManualConfirmGroupKey(
   row: Pick<WhatnotImportRowDocument, "listingTitle" | "title" | "orderPlacedAt" | "date" | "externalAccountId">,
   lotId: string,
@@ -88,7 +106,14 @@ export function buildGroupedImportRow(rows: WhatnotImportRowDocument[]): Whatnot
     title: resolveFirstNonEmpty((row) => row.title) ?? firstRow.title,
     quantity: rows.reduce((sum, row) => sum + Math.max(1, Math.floor(Number(row.quantity) || 1)), 0),
     price: rows.reduce((sum, row) => sum + (Number(row.price) || 0), 0),
-    buyerShipping: rows.reduce((sum, row) => sum + (Number(row.buyerShipping) || 0), 0)
+    buyerShipping: rows.reduce((sum, row) => sum + (Number(row.buyerShipping) || 0), 0),
+    externalTransactionRefs: rows.map((row) => ({
+      provider: "whatnot",
+      accountId: normalizeId(row.externalAccountId) || undefined,
+      ledgerTransactionId: normalizeId(row.externalSaleId),
+      orderId: normalizeId(row.externalOrderId),
+      orderItemId: normalizeId(row.externalOrderItemId)
+    }))
   };
 }
 
@@ -145,37 +170,44 @@ export async function attachManualDuplicateCandidates(
   }));
 
   const groupedRows = [...individuallyMatchedRows];
-  const groupedIndexesByKey = new Map<string, number[]>();
-  for (let index = 0; index < groupedRows.length; index += 1) {
-    const row = groupedRows[index]!;
-    if (row.targetKind === "whatnot_mapping" || row.manualDuplicateCandidate) {
-      continue;
+  const attachGroupedCandidatesBy = async (
+    buildGroupKey: (row: WhatnotImportRowDocument, lotId: string) => string | null
+  ): Promise<void> => {
+    const groupedIndexesByKey = new Map<string, number[]>();
+    for (let index = 0; index < groupedRows.length; index += 1) {
+      const row = groupedRows[index]!;
+      if (row.targetKind === "whatnot_mapping" || row.manualDuplicateCandidate) {
+        continue;
+      }
+      const lotId = parseLotIdNumber(row.suggestedLotId);
+      if (!lotId) continue;
+      const groupKey = buildGroupKey(row, String(lotId));
+      if (!groupKey) continue;
+      const groupIndexes = groupedIndexesByKey.get(groupKey) ?? [];
+      groupIndexes.push(index);
+      groupedIndexesByKey.set(groupKey, groupIndexes);
     }
-    const lotId = parseLotIdNumber(row.suggestedLotId);
-    if (!lotId) continue;
-    const groupKey = buildManualCandidateGroupKey(row, String(lotId));
-    if (!groupKey) continue;
-    const groupIndexes = groupedIndexesByKey.get(groupKey) ?? [];
-    groupIndexes.push(index);
-    groupedIndexesByKey.set(groupKey, groupIndexes);
-  }
 
-  for (const indexes of groupedIndexesByKey.values()) {
-    if (indexes.length <= 1) continue;
-    const firstRow = groupedRows[indexes[0]!]!;
-    const lotId = parseLotIdNumber(firstRow.suggestedLotId);
-    if (!lotId) continue;
-    const lot = lots.find((candidate) => Number(candidate.id) === lotId);
-    if (!lot) continue;
-    const sales = await getSalesForLot(lot.id);
-    const groupedImportRow = buildGroupedImportRow(indexes.map((index) => groupedRows[index]!));
-    const manualDuplicateCandidate = buildWhatnotManualDuplicateCandidate(groupedImportRow, lot, sales);
-    if (!manualDuplicateCandidate) continue;
+    for (const indexes of groupedIndexesByKey.values()) {
+      if (indexes.length <= 1) continue;
+      const firstRow = groupedRows[indexes[0]!]!;
+      const lotId = parseLotIdNumber(firstRow.suggestedLotId);
+      if (!lotId) continue;
+      const lot = lots.find((candidate) => Number(candidate.id) === lotId);
+      if (!lot) continue;
+      const sales = await getSalesForLot(lot.id);
+      const groupedImportRow = buildGroupedImportRow(indexes.map((index) => groupedRows[index]!));
+      const manualDuplicateCandidate = buildWhatnotManualDuplicateCandidate(groupedImportRow, lot, sales);
+      if (!manualDuplicateCandidate) continue;
 
-    for (const index of indexes) {
-      groupedRows[index] = applyManualDuplicateCandidate(groupedRows[index]!, manualDuplicateCandidate);
+      for (const index of indexes) {
+        groupedRows[index] = applyManualDuplicateCandidate(groupedRows[index]!, manualDuplicateCandidate);
+      }
     }
-  }
+  };
+
+  await attachGroupedCandidatesBy(buildManualCandidateGroupKey);
+  await attachGroupedCandidatesBy(buildLooseManualCandidateGroupKey);
 
   return groupedRows;
 }

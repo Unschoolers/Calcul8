@@ -255,6 +255,83 @@ test("createWhatnotImportBatchFromRowsForActor groups same customer and listing 
   assert.equal(batch.rows[2]?.manualDuplicateCandidate, undefined);
 });
 
+test("createWhatnotImportBatchFromRowsForActor suggests grouped manual sale when buyer date lot and total match despite title drift", async () => {
+  getEffectiveSyncSnapshotMock.mockResolvedValue({
+    lots: [{
+      id: "10",
+      name: "Nikke Box",
+      lotType: "bulk",
+      packsPerBox: 12
+    }]
+  });
+  listSalesForLotMock.mockResolvedValue([
+    {
+      id: "sale-doc-12",
+      docType: "sale",
+      userId: "scope-1",
+      scopeKey: "scope-1",
+      lotId: "10",
+      saleId: "12",
+      sale: {
+        date: "2026-05-08",
+        price: 100,
+        quantity: 3,
+        packsCount: 36,
+        type: "box",
+        customer: "genbenji_tcg",
+        memo: "3 Nikke boxes"
+      },
+      version: 1,
+      updatedAt: "2026-05-08T18:00:00.000Z",
+      updatedBy: "user-a",
+      mutationId: "sale:12"
+    }
+  ]);
+
+  const batch = await createWhatnotImportBatchFromRowsForActor(createApiConfig(), "user-a", {
+    externalAccountId: "seller-1",
+    rows: [
+      {
+        externalOrderId: "order-1",
+        externalOrderItemId: "item-1",
+        title: "Nikke Box",
+        listingTitle: "Nikke Box",
+        buyerName: "genbenji_tcg",
+        quantity: 1,
+        price: 100,
+        date: "2026-05-08",
+        orderPlacedAt: "2026-05-08T20:16:16.000Z"
+      },
+      {
+        externalOrderId: "order-2",
+        externalOrderItemId: "item-2",
+        title: "Nikke Box #2",
+        listingTitle: "Nikke Box #2",
+        buyerName: "genbenji_tcg",
+        quantity: 1,
+        price: 100,
+        date: "2026-05-08",
+        orderPlacedAt: "2026-05-08T20:37:13.000Z"
+      },
+      {
+        externalOrderId: "order-3",
+        externalOrderItemId: "item-3",
+        title: "Nikke Box #3",
+        listingTitle: "Nikke Box #3",
+        buyerName: "genbenji_tcg",
+        quantity: 1,
+        price: 100,
+        date: "2026-05-08",
+        orderPlacedAt: "2026-05-08T20:56:28.000Z"
+      }
+    ]
+  });
+
+  assert.deepEqual(batch.rows.map((row) => row.targetSaleId), ["12", "12", "12"]);
+  assert.deepEqual(batch.rows.map((row) => row.targetKind), ["manual_candidate", "manual_candidate", "manual_candidate"]);
+  assert.match(batch.rows[0]?.manualDuplicateCandidate?.reasonSummary ?? "", /customer matches buyer name/);
+});
+
 test("confirmWhatnotImportBatchForActor updates a manual candidate sale and preserves memo", async () => {
   getWhatnotImportBatchMock.mockResolvedValue({
     batchId: "batch-1",
@@ -337,6 +414,13 @@ test("confirmWhatnotImportBatchForActor updates a manual candidate sale and pres
   assert.equal(upsertSaleDocumentMock.mock.calls[0]?.[1]?.saleId, "7");
   assert.equal((upsertSaleDocumentMock.mock.calls[0]?.[1]?.sale as { customer?: string; memo?: string }).customer, "Jordan Lee");
   assert.equal((upsertSaleDocumentMock.mock.calls[0]?.[1]?.sale as { customer?: string; memo?: string }).memo, "Keep this memo");
+  assert.deepEqual((upsertSaleDocumentMock.mock.calls[0]?.[1]?.sale as { externalTransactionRefs?: unknown }).externalTransactionRefs, [{
+    provider: "whatnot",
+    accountId: "seller-1",
+    ledgerTransactionId: "order-1:item-1",
+    orderId: "order-1",
+    orderItemId: "item-1"
+  }]);
   assert.equal(upsertWhatnotSaleImportMappingMock.mock.calls[0]?.[1]?.saleId, "7");
 });
 
@@ -384,6 +468,24 @@ test("confirmWhatnotImportBatchForActor claims the batch before writing sales an
   assert.equal(completeWhatnotImportBatchMock.mock.calls.length, 1);
   assert.equal(completeWhatnotImportBatchMock.mock.invocationCallOrder[0] > upsertSaleDocumentMock.mock.invocationCallOrder[0], true);
   assert.equal(completeWhatnotImportBatchMock.mock.calls[0]?.[1]?.status, "processing");
+  assert.deepEqual(
+    Object.fromEntries(Object.entries(upsertSaleDocumentMock.mock.calls[0]?.[1]?.sale as Record<string, unknown>).filter(([key]) => key.startsWith("external"))),
+    {
+      externalProvider: "whatnot",
+      externalAccountId: "seller-1",
+      externalSaleId: "order-claim:item-claim",
+      externalOrderId: "order-claim",
+      externalOrderItemId: "item-claim",
+      externalTransactionRefs: [{
+        provider: "whatnot",
+        accountId: "seller-1",
+        ledgerTransactionId: "order-claim:item-claim",
+        orderId: "order-claim",
+        orderItemId: "item-claim"
+      }]
+    }
+  );
+  assert.equal((upsertSaleDocumentMock.mock.calls[0]?.[1]?.sale as { memo?: string }).memo, "Lot A");
   assert.deepEqual(completeWhatnotImportBatchMock.mock.calls[0]?.[2], {
     importedCount: 1,
     updatedCount: 0,
@@ -608,7 +710,14 @@ test("confirmWhatnotImportBatchForActor aggregates grouped manual candidate rows
       buyerShipping: 0,
       customer: "old customer",
       memo: "keep this memo",
-      type: "box"
+      type: "box",
+      externalTransactionRefs: [{
+        provider: "whatnot",
+        accountId: "seller-1",
+        ledgerTransactionId: "old-ledger",
+        orderId: "old-order",
+        orderItemId: "old-item"
+      }]
     },
     version: 1,
     updatedAt: "2026-02-22T00:00:00.000Z",
@@ -647,6 +756,29 @@ test("confirmWhatnotImportBatchForActor aggregates grouped manual candidate rows
   assert.equal((upsertSaleDocumentMock.mock.calls[0]?.[1]?.sale as { quantity?: number; price?: number; customer?: string; memo?: string }).price, 82);
   assert.equal((upsertSaleDocumentMock.mock.calls[0]?.[1]?.sale as { quantity?: number; price?: number; customer?: string; memo?: string }).customer, "cougarraph");
   assert.equal((upsertSaleDocumentMock.mock.calls[0]?.[1]?.sale as { quantity?: number; price?: number; customer?: string; memo?: string }).memo, "keep this memo");
+  assert.deepEqual((upsertSaleDocumentMock.mock.calls[0]?.[1]?.sale as { externalTransactionRefs?: unknown }).externalTransactionRefs, [
+    {
+      provider: "whatnot",
+      accountId: "seller-1",
+      ledgerTransactionId: "old-ledger",
+      orderId: "old-order",
+      orderItemId: "old-item"
+    },
+    {
+      provider: "whatnot",
+      accountId: "seller-1",
+      ledgerTransactionId: "order-1:item-1",
+      orderId: "order-1",
+      orderItemId: "item-1"
+    },
+    {
+      provider: "whatnot",
+      accountId: "seller-1",
+      ledgerTransactionId: "order-2:item-2",
+      orderId: "order-2",
+      orderItemId: "item-2"
+    }
+  ]);
   assert.equal(upsertWhatnotSaleImportMappingMock.mock.calls.length, 2);
 });
 

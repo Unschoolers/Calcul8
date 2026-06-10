@@ -194,6 +194,14 @@ export interface SinglesSaleLine {
   price: number;
 }
 
+export interface SaleExternalTransactionRef {
+  provider: "whatnot" | string;
+  accountId?: string;
+  ledgerTransactionId: string;
+  orderId: string;
+  orderItemId: string;
+}
+
 export interface Sale {
   id: number;
   type: SaleType;
@@ -211,6 +219,12 @@ export interface Sale {
   updatedAt?: string;
   updatedBy?: string;
   mutationId?: string;
+  externalProvider?: "whatnot" | string;
+  externalAccountId?: string;
+  externalSaleId?: string;
+  externalOrderId?: string;
+  externalOrderItemId?: string;
+  externalTransactionRefs?: SaleExternalTransactionRef[];
   linkedWheelId?: number;
   winningTierId?: string;
   costOfWinningTier?: number;

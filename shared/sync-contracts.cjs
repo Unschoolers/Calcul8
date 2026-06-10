@@ -210,6 +210,19 @@ function normalizeSyncSaleLineDto(value) {
   return line;
 }
 
+function normalizeSyncSaleExternalTransactionRefDto(value) {
+  if (!isSyncEntityRecord(value)) return null;
+  const provider = cleanString(value.provider);
+  const ledgerTransactionId = cleanString(value.ledgerTransactionId);
+  const orderId = cleanString(value.orderId);
+  const orderItemId = cleanString(value.orderItemId);
+  if (!provider || !ledgerTransactionId || !orderId || !orderItemId) return null;
+  const ref = { provider, ledgerTransactionId, orderId, orderItemId };
+  const accountId = cleanString(value.accountId);
+  if (accountId) ref.accountId = accountId;
+  return ref;
+}
+
 function normalizeSyncSaleType(value) {
   return value === "box" || value === "rtyh" || value === "wheel" || value === "pack" ? value : undefined;
 }
@@ -250,6 +263,20 @@ function normalizeSyncSaleDto(value) {
   if (updatedBy) sale.updatedBy = updatedBy;
   const mutationId = cleanString(value.mutationId);
   if (mutationId) sale.mutationId = mutationId;
+  const externalProvider = cleanString(value.externalProvider);
+  if (externalProvider) sale.externalProvider = externalProvider;
+  const externalAccountId = cleanString(value.externalAccountId);
+  if (externalAccountId) sale.externalAccountId = externalAccountId;
+  const externalSaleId = cleanString(value.externalSaleId);
+  if (externalSaleId) sale.externalSaleId = externalSaleId;
+  const externalOrderId = cleanString(value.externalOrderId);
+  if (externalOrderId) sale.externalOrderId = externalOrderId;
+  const externalOrderItemId = cleanString(value.externalOrderItemId);
+  if (externalOrderItemId) sale.externalOrderItemId = externalOrderItemId;
+  if (Array.isArray(value.externalTransactionRefs)) {
+    const externalTransactionRefs = value.externalTransactionRefs.map((entry) => normalizeSyncSaleExternalTransactionRefDto(entry)).filter((entry) => entry != null);
+    if (externalTransactionRefs.length > 0) sale.externalTransactionRefs = externalTransactionRefs;
+  }
   const linkedWheelId = normalizeOptionalSyncId(value.linkedWheelId);
   if (linkedWheelId != null) sale.linkedWheelId = linkedWheelId;
   const winningTierId = cleanString(value.winningTierId);

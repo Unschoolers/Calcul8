@@ -437,6 +437,13 @@ export interface WhatnotImportRowDocument {
   targetKind?: WhatnotImportDecisionKind;
   targetSaleId?: string;
   manualDuplicateCandidate?: WhatnotManualDuplicateCandidate;
+  externalTransactionRefs?: Array<{
+    provider: "whatnot";
+    accountId?: string;
+    ledgerTransactionId: string;
+    orderId: string;
+    orderItemId: string;
+  }>;
   requiresManualReview: boolean;
 }
 

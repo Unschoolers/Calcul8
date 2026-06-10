@@ -1,6 +1,13 @@
 import { inject, type PropType } from "vue";
 import { createWindowContextBridge } from "../shared/contextBridge.ts";
 import { translateAppMessage } from "../../../app-core/i18n/index.ts";
+import {
+  buildWhatnotReviewChangeDiffs,
+  buildWhatnotReviewDecisionSummary,
+  hasStableWhatnotReviewIdentity,
+  resolveWhatnotSelectedImportAction,
+  type WhatnotReviewChangeDiff
+} from "../../../app-core/methods/ui/whatnot/whatnot-review-decisions.ts";
 import { isSinglesLot } from "../../../app-core/shared/lot-types.ts";
 import type {
   Sale,
@@ -147,6 +154,24 @@ function getSaleCustomerValue(sale: Sale): string {
   return String(sale.customer ?? sale.memo ?? "").trim();
 }
 
+function findWhatnotReviewTargetSale(
+  context: Record<string, unknown>,
+  row: WhatnotImportReviewRow
+): Sale | null {
+  const selectedLotId = Number(row.selectedLotId ?? row.suggestedLotId ?? 0);
+  if (!Number.isFinite(selectedLotId) || selectedLotId <= 0) return null;
+
+  const targetSaleId = String(row.targetSaleId ?? row.manualDuplicateCandidate?.saleId ?? row.existingSaleId ?? "").trim();
+  if (!targetSaleId) return null;
+
+  const loadSalesForLotId = context.loadSalesForLotId;
+  if (typeof loadSalesForLotId !== "function") return null;
+
+  const sales = loadSalesForLotId.call(context, selectedLotId);
+  if (!Array.isArray(sales)) return null;
+  return (sales as Sale[]).find((sale) => String(sale.id ?? "").trim() === targetSaleId) ?? null;
+}
+
 function resolveWhatnotBuyerLabel(row: WhatnotImportReviewRow, preferredLanguage: string): string {
   const buyerName = String(row.buyerName ?? "").trim();
   if (buyerName) return buyerName;
@@ -245,6 +270,10 @@ export const WhatnotReviewDialog = {
       }
 
       return groups;
+    },
+
+    whatnotReviewDecisionSummary(this: any) {
+      return buildWhatnotReviewDecisionSummary(Array.isArray(this.whatnotReviewRows) ? this.whatnotReviewRows as WhatnotImportReviewRow[] : []);
     }
   },
   methods: {
@@ -267,11 +296,7 @@ export const WhatnotReviewDialog = {
     },
 
     whatnotSelectedImportAction(this: any, row: WhatnotImportReviewRow): WhatnotReviewImportAction {
-      return row.selectedImportAction ?? (row.action === "update"
-        ? "update_existing"
-        : row.action === "skip"
-          ? "skip"
-          : "create");
+      return resolveWhatnotSelectedImportAction(row);
     },
 
     whatnotSelectedImportActionLabel(this: any, row: WhatnotImportReviewRow): string {
@@ -409,6 +434,57 @@ export const WhatnotReviewDialog = {
 
     whatnotAutomaticActionLabel(this: any, row: WhatnotImportReviewRow): string {
       return formatWhatnotAutomaticAction(row.action, getWhatnotPreferredLanguage(this));
+    },
+
+    whatnotReviewIdentityBadge(this: any, row: WhatnotImportReviewRow): { color: string; label: string } {
+      const preferredLanguage = getWhatnotPreferredLanguage(this);
+      if (!hasStableWhatnotReviewIdentity(row)) {
+        return {
+          color: "error",
+          label: translateWhatnotMessage(preferredLanguage, "whatnotReviewIdentityMissingLabel")
+        };
+      }
+
+      const hasMappedSale = Boolean(String(row.existingSaleId ?? row.targetSaleId ?? "").trim() || row.targetKind === "whatnot_mapping");
+      if (row.action === "skip" && hasMappedSale) {
+        return {
+          color: "info",
+          label: translateWhatnotMessage(preferredLanguage, "whatnotReviewIdentityAlreadyImportedLabel")
+        };
+      }
+
+      if (row.action === "update" && hasMappedSale) {
+        return {
+          color: "warning",
+          label: translateWhatnotMessage(preferredLanguage, "whatnotReviewIdentityChangedLabel")
+        };
+      }
+
+      return {
+        color: "success",
+        label: translateWhatnotMessage(preferredLanguage, "whatnotReviewIdentityNewLabel")
+      };
+    },
+
+    whatnotReviewChangeDiffs(this: any, row: WhatnotImportReviewRow): WhatnotReviewChangeDiff[] {
+      if (resolveWhatnotSelectedImportAction(row) !== "update_existing") return [];
+      return buildWhatnotReviewChangeDiffs(row, findWhatnotReviewTargetSale(this, row));
+    },
+
+    whatnotReviewChangeDiffLabel(this: any, diff: WhatnotReviewChangeDiff): string {
+      const preferredLanguage = getWhatnotPreferredLanguage(this);
+      if (diff.field === "date") return translateWhatnotMessage(preferredLanguage, "whatnotReviewChangeDateLabel");
+      if (diff.field === "buyerShipping") return translateWhatnotMessage(preferredLanguage, "whatnotReviewChangeBuyerShippingLabel");
+      return translateWhatnotMessage(preferredLanguage, "whatnotReviewChangeSaleTotalLabel");
+    },
+
+    whatnotReviewChangeDiffValue(this: any, diff: WhatnotReviewChangeDiff, value: string | number): string {
+      if (typeof value !== "number") return value;
+      if (diff.field === "saleTotal" || diff.field === "buyerShipping") {
+        const formatter = typeof this.formatCurrency === "function" ? this.formatCurrency : (amount: number) => amount.toFixed(2);
+        return `$${formatter.call(this, value)}`;
+      }
+      return String(value);
     },
 
     whatnotManualDuplicateCandidateLabel(candidate: WhatnotManualDuplicateCandidate): string {

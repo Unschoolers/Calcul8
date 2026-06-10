@@ -76,6 +76,20 @@ export interface WhatnotCsvImportDraft {
   mapping: WhatnotCsvColumnMapping;
 }
 
+export interface WhatnotWeeklyReportPreflight {
+  detected: boolean;
+  totalRows: number;
+  importableRows: number;
+  skippedRows: number;
+  grossAmount: number;
+  feeAmount: number;
+  netAmount: number;
+  buyerPaidAmount: number;
+  issueCount: number;
+  duplicateOrderCount: number;
+  skipReasons: Record<string, number>;
+}
+
 export interface WhatnotCsvColumnMapping {
   title: number | null;
   listingTitle: number | null;
@@ -195,6 +209,14 @@ function parseCurrencyLikeNumber(value: string): number {
   return parsed;
 }
 
+function roundCurrency(value: number): number {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+function readCsvCell(row: string[], index: number): string {
+  return index >= 0 ? String(row[index] ?? "").trim() : "";
+}
+
 function parsePositiveIntegerOrNull(value: string): number | null {
   const trimmed = value.trim();
   if (!trimmed) return null;
@@ -304,11 +326,11 @@ function inferWhatnotSaleType(rawType: unknown, title: string): WhatnotMappedSal
 
 function buildRowId(row: Record<string, unknown>, index: number): string {
   const candidates = [
-    row.rowId,
     row.externalSaleId,
     row.externalOrderItemId,
     row.externalOrderId,
-    row.externalAccountId
+    row.externalAccountId,
+    row.rowId
   ];
   for (const candidate of candidates) {
     const value = String(candidate ?? "").trim();
@@ -345,6 +367,137 @@ function buildMapping(headers: string[]): WhatnotCsvColumnMapping {
     externalAccountId: resolveCsvColumnIndex(headers, CSV_EXTERNAL_ACCOUNT_ID_ALIASES),
     saleType: resolveCsvColumnIndex(headers, CSV_SALE_TYPE_ALIASES),
     packsCount: resolveCsvColumnIndex(headers, CSV_PACKS_COUNT_ALIASES)
+  };
+}
+
+function resolveRequiredWeeklyColumn(headers: string[], headerName: string): number {
+  const normalizedHeaderName = normalizeCsvToken(headerName);
+  return headers.findIndex((header) => normalizeCsvToken(header) === normalizedHeaderName);
+}
+
+function incrementReason(reasons: Record<string, number>, reason: string): void {
+  const key = reason || "UNKNOWN";
+  reasons[key] = (reasons[key] ?? 0) + 1;
+}
+
+export function buildWhatnotWeeklyReportPreflight(
+  draft: WhatnotCsvImportDraft | null | undefined
+): WhatnotWeeklyReportPreflight {
+  const empty: WhatnotWeeklyReportPreflight = {
+    detected: false,
+    totalRows: 0,
+    importableRows: 0,
+    skippedRows: 0,
+    grossAmount: 0,
+    feeAmount: 0,
+    netAmount: 0,
+    buyerPaidAmount: 0,
+    issueCount: 0,
+    duplicateOrderCount: 0,
+    skipReasons: {}
+  };
+  if (!draft) return empty;
+
+  const headers = Array.isArray(draft.headers) ? draft.headers : [];
+  const rows = Array.isArray(draft.rows) ? draft.rows : [];
+  const orderPlacedAtIndex = resolveRequiredWeeklyColumn(headers, "ORDER_PLACED_AT_UTC");
+  const transactionTypeIndex = resolveRequiredWeeklyColumn(headers, "TRANSACTION_TYPE");
+  const orderIdIndex = resolveRequiredWeeklyColumn(headers, "ORDER_ID");
+  const titleIndex = resolveRequiredWeeklyColumn(headers, "LISTING_TITLE");
+  const buyerNameIndex = resolveRequiredWeeklyColumn(headers, "BUYER_NAME");
+  const quantityIndex = resolveRequiredWeeklyColumn(headers, "QUANTITY_SOLD");
+  const grossIndex = resolveRequiredWeeklyColumn(headers, "POST_COUPON_PRICE");
+  const netIndex = resolveRequiredWeeklyColumn(headers, "TRANSACTION_AMOUNT");
+  const buyerPaidIndex = resolveRequiredWeeklyColumn(headers, "BUYER_PAID");
+  const commissionFeeIndex = resolveRequiredWeeklyColumn(headers, "COMMISSION_FEE");
+  const paymentFeeIndex = resolveRequiredWeeklyColumn(headers, "PAYMENT_PROCESSING_FEE");
+  const taxCommissionFeeIndex = resolveRequiredWeeklyColumn(headers, "TAX_ON_COMMISSION_FEE");
+  const taxPaymentFeeIndex = resolveRequiredWeeklyColumn(headers, "TAX_ON_PAYMENT_PROCESSING_FEE");
+  const ledgerTransactionIdIndex = resolveRequiredWeeklyColumn(headers, "LEDGER_TRANSACTION_ID");
+
+  const requiredIndexes = [
+    orderPlacedAtIndex,
+    transactionTypeIndex,
+    orderIdIndex,
+    titleIndex,
+    quantityIndex,
+    grossIndex,
+    netIndex,
+    buyerPaidIndex,
+    commissionFeeIndex,
+    paymentFeeIndex,
+    ledgerTransactionIdIndex
+  ];
+  const detected = requiredIndexes.every((index) => index >= 0);
+  if (!detected) {
+    return {
+      ...empty,
+      totalRows: rows.filter((row) => row.some((cell) => String(cell || "").trim().length > 0)).length
+    };
+  }
+
+  const skipReasons: Record<string, number> = {};
+  const seenOrderIds = new Set<string>();
+  const duplicateOrderIds = new Set<string>();
+  let importableRows = 0;
+  let skippedRows = 0;
+  let issueCount = 0;
+  let grossAmount = 0;
+  let feeAmount = 0;
+  let netAmount = 0;
+  let buyerPaidAmount = 0;
+
+  for (const row of rows) {
+    if (!row.some((cell) => String(cell || "").trim().length > 0)) continue;
+    const transactionType = readCsvCell(row, transactionTypeIndex).toUpperCase() || "UNKNOWN";
+    if (transactionType !== "ORDER_EARNINGS") {
+      skippedRows += 1;
+      incrementReason(skipReasons, transactionType);
+      continue;
+    }
+
+    importableRows += 1;
+    const orderId = readCsvCell(row, orderIdIndex);
+    if (orderId) {
+      if (seenOrderIds.has(orderId)) {
+        duplicateOrderIds.add(orderId);
+      }
+      seenOrderIds.add(orderId);
+    }
+
+    const missingCoreValue = !orderId
+      || !readCsvCell(row, titleIndex)
+      || !readCsvCell(row, buyerNameIndex)
+      || !readCsvCell(row, orderPlacedAtIndex)
+      || parsePositiveIntegerOrNull(readCsvCell(row, quantityIndex)) == null
+      || parseCurrencyLikeNumber(readCsvCell(row, grossIndex)) <= 0;
+    if (missingCoreValue) {
+      issueCount += 1;
+    }
+
+    grossAmount += parseCurrencyLikeNumber(readCsvCell(row, grossIndex));
+    buyerPaidAmount += parseCurrencyLikeNumber(readCsvCell(row, buyerPaidIndex));
+    netAmount += parseCurrencyLikeNumber(readCsvCell(row, netIndex));
+    feeAmount += parseCurrencyLikeNumber(readCsvCell(row, commissionFeeIndex))
+      + parseCurrencyLikeNumber(readCsvCell(row, paymentFeeIndex))
+      + parseCurrencyLikeNumber(readCsvCell(row, taxCommissionFeeIndex))
+      + parseCurrencyLikeNumber(readCsvCell(row, taxPaymentFeeIndex));
+  }
+
+  issueCount += duplicateOrderIds.size;
+
+  return {
+    detected: true,
+    totalRows: importableRows + skippedRows,
+    importableRows,
+    skippedRows,
+    grossAmount: roundCurrency(grossAmount),
+    feeAmount: roundCurrency(feeAmount),
+    netAmount: roundCurrency(netAmount),
+    buyerPaidAmount: roundCurrency(buyerPaidAmount),
+    issueCount,
+    duplicateOrderCount: duplicateOrderIds.size,
+    skipReasons
   };
 }
 
@@ -448,18 +601,24 @@ export function parseWhatnotCsvRowsWithMapping(
     const suggestedSaleType = inferWhatnotSaleType(rawSaleType, title);
     const suggestedPacksCount = parsePositiveIntegerOrNull(rawPacksCount) ?? undefined;
     const rowId = buildRowId({
-      rowId: `whatnot-csv:${index + 1}`,
       externalSaleId: rawExternalSaleId,
       externalOrderItemId: rawExternalOrderItemId,
       externalOrderId: rawExternalOrderId,
-      externalAccountId: rawExternalAccountId
+      externalAccountId: rawExternalAccountId,
+      rowId: `whatnot-csv:${index + 1}`
     }, index);
+    const externalSaleId = buildValueOrFallback({ externalSaleId: rawExternalSaleId }, ["externalSaleId"], rowId);
+    const externalOrderItemId = buildValueOrFallback(
+      { externalOrderItemId: rawExternalOrderItemId, externalSaleId: rawExternalSaleId },
+      ["externalOrderItemId", "externalSaleId"],
+      rowId
+    );
 
     entries.push({
       rowId,
-      externalSaleId: buildValueOrFallback({ externalSaleId: rawExternalSaleId }, ["externalSaleId"], rowId),
+      externalSaleId,
       externalOrderId: buildValueOrFallback({ externalOrderId: rawExternalOrderId }, ["externalOrderId"], rowId),
-      externalOrderItemId: buildValueOrFallback({ externalOrderItemId: rawExternalOrderItemId }, ["externalOrderItemId"], rowId),
+      externalOrderItemId,
       externalAccountId: externalAccountId,
       title,
       listingTitle: rawListingTitle.trim() || title,
