@@ -111,12 +111,14 @@ function formatWhatnotOrderStatus(value: string, preferredLanguage: string): str
 
 function formatWhatnotReviewAction(value: WhatnotReviewImportAction | null | undefined, preferredLanguage: string): string {
   if (value === "update_existing") return translateWhatnotMessage(preferredLanguage, "whatnotReviewActionUpdateExistingLabel");
+  if (value === "split_group") return translateWhatnotMessage(preferredLanguage, "whatnotReviewActionSplitGroupLabel");
   if (value === "skip") return translateWhatnotMessage(preferredLanguage, "whatnotReviewActionSkipLabel");
   return translateWhatnotMessage(preferredLanguage, "whatnotReviewActionCreateLabel");
 }
 
 function formatWhatnotReviewActionHint(value: WhatnotReviewImportAction | null | undefined, preferredLanguage: string): string {
   if (value === "update_existing") return translateWhatnotMessage(preferredLanguage, "whatnotReviewActionUpdateExistingHint");
+  if (value === "split_group") return translateWhatnotMessage(preferredLanguage, "whatnotReviewActionSplitGroupHint");
   if (value === "skip") return translateWhatnotMessage(preferredLanguage, "whatnotReviewActionSkipHint");
   return translateWhatnotMessage(preferredLanguage, "whatnotReviewActionCreateHint");
 }
@@ -170,6 +172,52 @@ function findWhatnotReviewTargetSale(
   const sales = loadSalesForLotId.call(context, selectedLotId);
   if (!Array.isArray(sales)) return null;
   return (sales as Sale[]).find((sale) => String(sale.id ?? "").trim() === targetSaleId) ?? null;
+}
+
+type WhatnotReviewSelectionChanges = {
+  selectedLotId?: number | null;
+  selectedSaleType?: WhatnotMappedSaleType | null;
+  selectedPacksCount?: number | null;
+  selectedImportAction?: WhatnotReviewImportAction;
+  targetKind?: WhatnotImportDecisionKind | null;
+  targetSaleId?: string | null;
+  skipImport?: boolean;
+};
+
+function getWhatnotSelectedLotId(row: WhatnotImportReviewRow): number {
+  const selectedLotId = Number(row.selectedLotId ?? row.suggestedLotId ?? 0);
+  return Number.isFinite(selectedLotId) && selectedLotId > 0 ? selectedLotId : 0;
+}
+
+function getWhatnotManualCandidateSaleId(row: WhatnotImportReviewRow): string {
+  return String(row.manualDuplicateCandidate?.saleId ?? row.targetSaleId ?? "").trim();
+}
+
+function applyWhatnotRowSelectionChanges(
+  row: WhatnotImportReviewRow,
+  changes: WhatnotReviewSelectionChanges
+): void {
+  if ("selectedLotId" in changes) {
+    row.selectedLotId = changes.selectedLotId ?? null;
+  }
+  if ("selectedSaleType" in changes) {
+    row.selectedSaleType = changes.selectedSaleType ?? null;
+  }
+  if ("selectedPacksCount" in changes) {
+    row.selectedPacksCount = changes.selectedPacksCount ?? null;
+  }
+  if ("selectedImportAction" in changes) {
+    row.selectedImportAction = changes.selectedImportAction;
+  }
+  if ("targetKind" in changes) {
+    row.targetKind = changes.targetKind ?? null;
+  }
+  if ("targetSaleId" in changes) {
+    row.targetSaleId = changes.targetSaleId ?? null;
+  }
+  if ("skipImport" in changes) {
+    row.skipImport = changes.skipImport ?? false;
+  }
 }
 
 function resolveWhatnotBuyerLabel(row: WhatnotImportReviewRow, preferredLanguage: string): string {
@@ -291,6 +339,7 @@ export const WhatnotReviewDialog = {
 
     whatnotReviewActionColor(action: WhatnotReviewImportAction | null | undefined): string {
       if (action === "update_existing") return "warning";
+      if (action === "split_group") return "info";
       if (action === "skip") return "default";
       return "success";
     },
@@ -414,9 +463,27 @@ export const WhatnotReviewDialog = {
       return Boolean(candidates.length > 0 || row.existingSaleId || row.targetSaleId);
     },
 
+    whatnotSplitGroupRowCount(this: any, row: WhatnotImportReviewRow): number {
+      const targetSaleId = getWhatnotManualCandidateSaleId(row);
+      const selectedLotId = getWhatnotSelectedLotId(row);
+      if (!targetSaleId || !selectedLotId) return 1;
+      return (this.whatnotReviewRows as WhatnotImportReviewRow[]).filter((candidate) => (
+        candidate.rowId === row.rowId
+        || (
+          getWhatnotSelectedLotId(candidate) === selectedLotId
+          && getWhatnotManualCandidateSaleId(candidate) === targetSaleId
+        )
+      )).length;
+    },
+
+    whatnotCanSplitGroup(this: any, row: WhatnotImportReviewRow): boolean {
+      return this.whatnotSplitGroupRowCount(row) > 1;
+    },
+
     whatnotRowTargetLabel(this: any, row: WhatnotImportReviewRow): string {
       const selectedImportAction = this.whatnotSelectedImportAction(row);
       if (selectedImportAction === "skip") return translateWhatnotMessage(getWhatnotPreferredLanguage(this), "whatnotReviewSelectedActionSkipLabel");
+      if (selectedImportAction === "split_group") return translateWhatnotMessage(getWhatnotPreferredLanguage(this), "whatnotReviewSplitGroupTargetLabel", { count: this.whatnotSplitGroupRowCount(row) });
       if (selectedImportAction === "create") return translateWhatnotMessage(getWhatnotPreferredLanguage(this), "whatnotReviewCreateNewSaleLabel");
       const candidates = this.buildWhatnotClientManualDuplicateCandidates(row);
       const selectedCandidate = candidates.find((candidate: WhatnotManualDuplicateCandidate) => candidate.saleId === String(row.targetSaleId ?? "").trim()) ?? candidates[0];
@@ -524,42 +591,30 @@ export const WhatnotReviewDialog = {
     applyWhatnotSelectionToSimilarRows(
       this: any,
       row: WhatnotImportReviewRow,
-        changes: {
-          selectedLotId?: number | null;
-          selectedSaleType?: WhatnotMappedSaleType | null;
-          selectedPacksCount?: number | null;
-          selectedImportAction?: WhatnotReviewImportAction;
-          targetKind?: WhatnotImportDecisionKind | null;
-          targetSaleId?: string | null;
-          skipImport?: boolean;
-        }
+        changes: WhatnotReviewSelectionChanges
     ): void {
       const groupKey = getWhatnotRowGroupKey(row);
       if (!groupKey) return;
       for (const candidate of this.whatnotReviewRows as WhatnotImportReviewRow[]) {
         if (candidate.rowId === row.rowId) continue;
         if (getWhatnotRowGroupKey(candidate) !== groupKey) continue;
-        if ("selectedLotId" in changes) {
-          candidate.selectedLotId = changes.selectedLotId ?? null;
-        }
-        if ("selectedSaleType" in changes) {
-          candidate.selectedSaleType = changes.selectedSaleType ?? null;
-        }
-        if ("selectedPacksCount" in changes) {
-          candidate.selectedPacksCount = changes.selectedPacksCount ?? null;
-        }
-        if ("selectedImportAction" in changes) {
-          candidate.selectedImportAction = changes.selectedImportAction;
-        }
-        if ("targetKind" in changes) {
-          candidate.targetKind = changes.targetKind ?? null;
-        }
-        if ("targetSaleId" in changes) {
-          candidate.targetSaleId = changes.targetSaleId ?? null;
-        }
-        if ("skipImport" in changes) {
-          candidate.skipImport = changes.skipImport ?? false;
-        }
+        applyWhatnotRowSelectionChanges(candidate, changes);
+      }
+    },
+
+    applyWhatnotSelectionToManualCandidateRows(
+      this: any,
+      row: WhatnotImportReviewRow,
+      changes: WhatnotReviewSelectionChanges
+    ): void {
+      const targetSaleId = getWhatnotManualCandidateSaleId(row);
+      const selectedLotId = getWhatnotSelectedLotId(row);
+      if (!targetSaleId || !selectedLotId) return;
+      for (const candidate of this.whatnotReviewRows as WhatnotImportReviewRow[]) {
+        if (candidate.rowId === row.rowId) continue;
+        if (getWhatnotSelectedLotId(candidate) !== selectedLotId) continue;
+        if (getWhatnotManualCandidateSaleId(candidate) !== targetSaleId) continue;
+        applyWhatnotRowSelectionChanges(candidate, changes);
       }
     },
 
@@ -601,6 +656,9 @@ export const WhatnotReviewDialog = {
       if (selectedImportAction === "skip") {
         row.targetKind = null;
         row.targetSaleId = null;
+      } else if (selectedImportAction === "split_group") {
+        row.targetKind = "new";
+        row.targetSaleId = null;
       } else if (selectedImportAction === "create") {
         row.targetKind = "new";
         row.targetSaleId = null;
@@ -617,12 +675,16 @@ export const WhatnotReviewDialog = {
         row.targetKind = "whatnot_mapping";
       }
 
-      this.applyWhatnotSelectionToSimilarRows(row, {
+      const changes = {
         selectedImportAction: row.selectedImportAction,
         targetKind: row.targetKind,
         targetSaleId: row.targetSaleId,
         skipImport: row.skipImport
-      });
+      };
+      this.applyWhatnotSelectionToSimilarRows(row, changes);
+      if (selectedImportAction === "split_group" || selectedImportAction === "update_existing") {
+        this.applyWhatnotSelectionToManualCandidateRows(row, changes);
+      }
       this.syncWhatnotManualDuplicateCandidatesForGroup(row);
 
       const candidate = this.buildWhatnotClientManualDuplicateCandidate(row);

@@ -32,6 +32,14 @@
           <v-chip size="small" color="success" variant="tonal">
             {{ t('whatnotReviewActionCreateSelectedCount', { count: whatnotReviewDecisionSummary.createCount }) }}
           </v-chip>
+          <v-chip
+            v-if="whatnotReviewDecisionSummary.splitCount > 0"
+            size="small"
+            color="info"
+            variant="tonal"
+          >
+            {{ t('whatnotReviewActionSplitSelectedCount', { count: whatnotReviewDecisionSummary.splitCount }) }}
+          </v-chip>
           <v-chip size="small" color="warning" variant="tonal">
             {{ t('whatnotReviewActionUpdateSelectedCount', { count: whatnotReviewDecisionSummary.updateCount }) }}
           </v-chip>
@@ -279,13 +287,21 @@
                 >
                   {{ t('whatnotReviewActionUpdateExistingLabel') }}
                 </v-btn>
+                <v-btn
+                  v-if="whatnotCanSplitGroup(row) || whatnotSelectedImportAction(row) === 'split_group'"
+                  value="split_group"
+                  prepend-icon="mdi-call-split"
+                  :disabled="!whatnotCanSplitGroup(row)"
+                >
+                  {{ t('whatnotReviewActionSplitGroupLabel') }}
+                </v-btn>
                 <v-btn value="skip" prepend-icon="mdi-cancel">
                   {{ t('whatnotReviewActionSkipLabel') }}
                 </v-btn>
               </v-btn-toggle>
               <div class="text-caption text-medium-emphasis mt-2">
                 {{ whatnotSelectedImportActionHint(row) }}
-                <template v-if="whatnotSelectedImportAction(row) === 'update_existing'">
+                <template v-if="whatnotSelectedImportAction(row) === 'update_existing' || whatnotSelectedImportAction(row) === 'split_group'">
                   • {{ whatnotRowTargetLabel(row) }}
                 </template>
               </div>

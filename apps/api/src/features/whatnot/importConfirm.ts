@@ -82,7 +82,14 @@ export async function confirmWhatnotImportBatchForActor(
 
     for (const row of batch.rows) {
       const decision = decisionsByRowId.get(row.rowId);
-      if (!decision || decision.skip) continue;
+      if (
+        !decision
+        || decision.skip
+        || decision.selectedImportAction === "skip"
+        || decision.selectedImportAction === "split_group"
+      ) {
+        continue;
+      }
 
       const targetLotId = parseLotIdNumber(decision.lotId ?? row.suggestedLotId);
       const requestedTargetKind = decision.targetKind ?? row.targetKind ?? "new";
@@ -110,10 +117,12 @@ export async function confirmWhatnotImportBatchForActor(
 
     for (const row of batch.rows) {
       const decision = decisionsByRowId.get(row.rowId);
-      if (!decision || decision.skip) {
+      const shouldSkip = !decision || decision.skip || decision.selectedImportAction === "skip";
+      if (shouldSkip) {
         skippedCount += 1;
         continue;
       }
+      const shouldSplitGroup = decision.selectedImportAction === "split_group";
 
       const targetLotId = parseLotIdNumber(decision.lotId ?? row.suggestedLotId);
       if (!targetLotId) {
@@ -125,7 +134,9 @@ export async function confirmWhatnotImportBatchForActor(
         throw new HttpError(400, `Lot ${targetLotId} was not found in the current scope.`);
       }
 
-      const requestedTargetKind = decision.targetKind ?? row.targetKind ?? "new";
+      const requestedTargetKind = shouldSplitGroup
+        ? "new"
+        : (decision.targetKind ?? row.targetKind ?? "new");
       const requestedTargetSaleId = normalizeId(decision.targetSaleId ?? row.targetSaleId);
       const desiredSaleType = lot.lotType === "singles"
         ? "pack"
@@ -156,7 +167,11 @@ export async function confirmWhatnotImportBatchForActor(
       let salePayload: Record<string, unknown>;
       let shouldWriteSale = true;
 
-      if (requestedTargetKind === "manual_candidate") {
+      if (shouldSplitGroup && existingMapping) {
+        saleIdNumber = Math.max(1, Math.floor(Number(existingMapping.saleId) || 0));
+        salePayload = buildImportedSalePayload(row, decision, lot, saleIdNumber);
+        updateMode = "mapped";
+      } else if (requestedTargetKind === "manual_candidate") {
         if (!requestedTargetSaleId) {
           throw new HttpError(400, `Manual duplicate rows require a target sale for row ${row.rowId}.`);
         }

@@ -8,7 +8,7 @@ import {
   readRequestJsonOrThrow,
   requireRequestBodyRecord
 } from "../../lib/httpRequest";
-import type { WhatnotImportDecisionKind, WhatnotMappedSaleType } from "../../types";
+import type { WhatnotImportDecisionKind, WhatnotMappedSaleType, WhatnotReviewImportAction } from "../../types";
 import {
   confirmWhatnotImportBatchForActor,
   createWhatnotImportBatchFromRowsForActor,
@@ -87,6 +87,7 @@ function parseConfirmBody(rawBody: unknown): {
     saleType?: "pack" | "box" | "rtyh";
     packsCount?: number;
     skip?: boolean;
+    selectedImportAction?: WhatnotReviewImportAction;
     targetKind?: WhatnotImportDecisionKind;
     targetSaleId?: string;
   }>;
@@ -117,12 +118,21 @@ function parseConfirmBody(rawBody: unknown): {
         targetKindRaw === "new" || targetKindRaw === "whatnot_mapping" || targetKindRaw === "manual_candidate"
           ? targetKindRaw
           : undefined;
+      const selectedImportActionRaw = String(decision.selectedImportAction ?? "").trim();
+      const selectedImportAction: WhatnotReviewImportAction | undefined =
+        selectedImportActionRaw === "create"
+          || selectedImportActionRaw === "update_existing"
+          || selectedImportActionRaw === "split_group"
+          || selectedImportActionRaw === "skip"
+          ? selectedImportActionRaw
+          : undefined;
       return {
         rowId,
         lotId: decision.lotId == null ? undefined : String(decision.lotId).trim(),
         saleType,
         packsCount: decision.packsCount == null ? undefined : Number(decision.packsCount),
         skip: decision.skip === true,
+        selectedImportAction,
         targetKind,
         targetSaleId: decision.targetSaleId == null ? undefined : String(decision.targetSaleId).trim() || undefined
       };

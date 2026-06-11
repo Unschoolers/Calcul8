@@ -100,6 +100,12 @@ test("buildWhatnotReviewDecisions keeps manual duplicate targets and explicit sk
       rowId: "row-skip",
       selectedImportAction: "skip",
       skipImport: true
+    }),
+    createReviewRow({
+      rowId: "row-split",
+      selectedImportAction: "split_group",
+      targetKind: "manual_candidate",
+      targetSaleId: "sale-existing"
     })
   ]);
 
@@ -122,6 +128,16 @@ test("buildWhatnotReviewDecisions keeps manual duplicate targets and explicit sk
       skip: true,
       selectedImportAction: "skip",
       targetKind: null,
+      targetSaleId: undefined
+    },
+    {
+      rowId: "row-split",
+      lotId: 7,
+      saleType: "box",
+      packsCount: null,
+      skip: false,
+      selectedImportAction: "split_group",
+      targetKind: "new",
       targetSaleId: undefined
     }
   ]);
@@ -150,6 +166,21 @@ test("buildWhatnotReviewDecisionSummary exposes repeat-safe import decisions", (
       requiresManualReview: false
     }),
     createReviewRow({
+      rowId: "row-split",
+      selectedImportAction: "split_group",
+      manualDuplicateCandidate: {
+        saleId: "12",
+        confidence: "high",
+        reasonSummary: "Grouped rows match sale",
+        saleSummary: {
+          date: "2026-03-08",
+          price: 75,
+          quantity: 3,
+          packsCount: 36
+        }
+      }
+    }),
+    createReviewRow({
       rowId: "row-missing",
       externalSaleId: "",
       externalOrderItemId: "",
@@ -158,10 +189,11 @@ test("buildWhatnotReviewDecisionSummary exposes repeat-safe import decisions", (
   ]);
 
   assert.deepEqual(summary, {
-    totalCount: 4,
-    readyCount: 2,
+    totalCount: 5,
+    readyCount: 3,
     createCount: 1,
     updateCount: 1,
+    splitCount: 1,
     skipCount: 1,
     alreadyImportedCount: 1,
     changedCount: 1,

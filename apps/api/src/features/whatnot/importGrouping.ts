@@ -70,23 +70,21 @@ function buildLooseManualCandidateGroupKey(
 }
 
 export function buildManualConfirmGroupKey(
-  row: Pick<WhatnotImportRowDocument, "listingTitle" | "title" | "orderPlacedAt" | "date" | "externalAccountId">,
+  row: Pick<WhatnotImportRowDocument, "orderPlacedAt" | "date" | "externalAccountId">,
   lotId: string,
   targetSaleId: string
 ): string | null {
-  const listingTitle = normalizeGroupingValue(row.listingTitle ?? row.title);
   const orderDate = normalizeGroupingDate(row.orderPlacedAt ?? row.date);
   const normalizedLotId = normalizeId(lotId);
   const normalizedTargetSaleId = normalizeId(targetSaleId);
-  if (!listingTitle || !orderDate || !normalizedLotId || !normalizedTargetSaleId) {
+  if (!orderDate || !normalizedLotId || !normalizedTargetSaleId) {
     return null;
   }
   return [
     normalizedTargetSaleId,
     normalizeGroupingValue(row.externalAccountId),
     normalizedLotId,
-    orderDate,
-    listingTitle
+    orderDate
   ].join("::");
 }
 

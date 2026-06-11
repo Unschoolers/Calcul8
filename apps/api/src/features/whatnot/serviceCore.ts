@@ -12,6 +12,7 @@ import type {
   WhatnotConnectionDocument,
   WhatnotMappedSaleType,
   WhatnotImportDecisionKind,
+  WhatnotReviewImportAction,
   WhatnotNormalizedImportRowInput
 } from "../../types";
 
@@ -30,6 +31,7 @@ export interface ReviewDecisionInput {
   saleType?: WhatnotMappedSaleType;
   packsCount?: number;
   skip?: boolean;
+  selectedImportAction?: WhatnotReviewImportAction;
   targetKind?: WhatnotImportDecisionKind;
   targetSaleId?: string;
 }

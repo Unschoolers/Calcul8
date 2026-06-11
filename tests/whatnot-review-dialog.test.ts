@@ -193,3 +193,92 @@ test("whatnotReviewChangeDiffs resolves the mapped sale from the selected lot", 
     { field: "buyerShipping", before: 0, after: 1 }
   ]);
 });
+
+test("handleWhatnotImportActionSelection splits rows that share one manual candidate sale", () => {
+  const duplicateCandidate = {
+    saleId: "12",
+    confidence: "high",
+    reasonSummary: "Grouped local sale",
+    saleSummary: {
+      date: "2026-05-08",
+      price: 316.97,
+      quantity: 3,
+      packsCount: 3
+    }
+  };
+  const rows = [
+    {
+      rowId: "row-1",
+      selectedLotId: 7,
+      selectedImportAction: "update_existing",
+      targetKind: "manual_candidate",
+      targetSaleId: "12",
+      manualDuplicateCandidate: duplicateCandidate,
+      listingTitle: "Nikke Box",
+      title: "Nikke Box"
+    },
+    {
+      rowId: "row-2",
+      selectedLotId: 7,
+      selectedImportAction: "update_existing",
+      targetKind: "manual_candidate",
+      targetSaleId: "12",
+      manualDuplicateCandidate: duplicateCandidate,
+      listingTitle: "Nikke Box #2",
+      title: "Nikke Box #2"
+    },
+    {
+      rowId: "row-3",
+      selectedLotId: 7,
+      selectedImportAction: "update_existing",
+      targetKind: "manual_candidate",
+      targetSaleId: "12",
+      manualDuplicateCandidate: duplicateCandidate,
+      listingTitle: "Nikke Box #3",
+      title: "Nikke Box #3"
+    },
+    {
+      rowId: "row-4",
+      selectedLotId: 7,
+      selectedImportAction: "update_existing",
+      targetKind: "manual_candidate",
+      targetSaleId: "99",
+      manualDuplicateCandidate: {
+        ...duplicateCandidate,
+        saleId: "99"
+      },
+      listingTitle: "Other Box",
+      title: "Other Box"
+    }
+  ];
+  const context = {
+    preferredLanguage: "en",
+    whatnotReviewRows: rows,
+    buildWhatnotClientManualDuplicateCandidate: () => null,
+    buildWhatnotClientManualDuplicateCandidates: () => [duplicateCandidate],
+    syncWhatnotManualDuplicateCandidatesForGroup: () => null,
+    whatnotSplitGroupRowCount: WhatnotReviewDialog.methods.whatnotSplitGroupRowCount,
+    applyWhatnotSelectionToSimilarRows: WhatnotReviewDialog.methods.applyWhatnotSelectionToSimilarRows,
+    applyWhatnotSelectionToManualCandidateRows: WhatnotReviewDialog.methods.applyWhatnotSelectionToManualCandidateRows
+  };
+
+  assert.equal(WhatnotReviewDialog.methods.whatnotCanSplitGroup.call(context, rows[0]), true);
+
+  WhatnotReviewDialog.methods.handleWhatnotImportActionSelection.call(context, rows[0], "split_group");
+
+  assert.deepEqual(
+    rows.slice(0, 3).map((row) => ({
+      selectedImportAction: row.selectedImportAction,
+      targetKind: row.targetKind,
+      targetSaleId: row.targetSaleId,
+      skipImport: row.skipImport
+    })),
+    [
+      { selectedImportAction: "split_group", targetKind: "new", targetSaleId: null, skipImport: false },
+      { selectedImportAction: "split_group", targetKind: "new", targetSaleId: null, skipImport: false },
+      { selectedImportAction: "split_group", targetKind: "new", targetSaleId: null, skipImport: false }
+    ]
+  );
+  assert.equal(rows[3]?.selectedImportAction, "update_existing");
+  assert.equal(rows[3]?.targetSaleId, "99");
+});

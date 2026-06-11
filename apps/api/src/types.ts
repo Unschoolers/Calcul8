@@ -350,6 +350,7 @@ export type WhatnotTargetMatchSource = "remembered" | "title" | "none";
 export type WhatnotMappedSaleType = "pack" | "box" | "rtyh" | "wheel";
 export type WhatnotImportBatchOrigin = "oauth_sync" | "csv_manual";
 export type WhatnotImportDecisionKind = "new" | "whatnot_mapping" | "manual_candidate";
+export type WhatnotReviewImportAction = "create" | "update_existing" | "split_group" | "skip";
 
 export interface WhatnotManualDuplicateSaleSummary {
   date: string;

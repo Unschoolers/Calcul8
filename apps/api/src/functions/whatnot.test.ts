@@ -287,8 +287,15 @@ test("whatnotReviewConfirm validates decisions and forwards parsed data", async 
             lotId: 123,
             saleType: "pack",
             packsCount: 4,
+            selectedImportAction: "update_existing",
             targetKind: "manual_candidate",
             targetSaleId: "sale-22"
+          },
+          {
+            rowId: "row-3",
+            lotId: 456,
+            saleType: "box",
+            selectedImportAction: "split_group"
           },
           {
             rowId: "row-2",
@@ -311,6 +318,7 @@ test("whatnotReviewConfirm validates decisions and forwards parsed data", async 
       saleType?: string;
       packsCount?: number;
       skip?: boolean;
+      selectedImportAction?: string;
       targetKind?: string;
       targetSaleId?: string;
     }>;
@@ -324,8 +332,19 @@ test("whatnotReviewConfirm validates decisions and forwards parsed data", async 
       saleType: "pack",
       packsCount: 4,
       skip: false,
+      selectedImportAction: "update_existing",
       targetKind: "manual_candidate",
       targetSaleId: "sale-22"
+    },
+    {
+      rowId: "row-3",
+      lotId: "456",
+      saleType: "box",
+      packsCount: undefined,
+      skip: false,
+      selectedImportAction: "split_group",
+      targetKind: undefined,
+      targetSaleId: undefined
     },
     {
       rowId: "row-2",
@@ -333,6 +352,7 @@ test("whatnotReviewConfirm validates decisions and forwards parsed data", async 
       saleType: undefined,
       packsCount: undefined,
       skip: true,
+      selectedImportAction: undefined,
       targetKind: undefined,
       targetSaleId: undefined
     }

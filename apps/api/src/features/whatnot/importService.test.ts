@@ -782,6 +782,408 @@ test("confirmWhatnotImportBatchForActor aggregates grouped manual candidate rows
   assert.equal(upsertWhatnotSaleImportMappingMock.mock.calls.length, 2);
 });
 
+test("confirmWhatnotImportBatchForActor keeps loose grouped title-drift rows merged into one sale", async () => {
+  getEffectiveSyncSnapshotMock.mockResolvedValue({
+    lots: [{
+      id: "10",
+      name: "Nikke Box",
+      lotType: "bulk",
+      packsPerBox: 12
+    }]
+  });
+  getWhatnotImportBatchMock.mockResolvedValue({
+    batchId: "batch-title-drift",
+    status: "pending_review",
+    origin: "csv_manual",
+    externalAccountId: "seller-1",
+    rows: [
+      {
+        rowId: "item-1",
+        externalSaleId: "ledger-1",
+        externalOrderId: "order-1",
+        externalOrderItemId: "ledger-1",
+        externalAccountId: "seller-1",
+        title: "Nikke Box",
+        listingTitle: "Nikke Box",
+        buyerName: "genbenji_tcg",
+        quantity: 1,
+        price: 104.66,
+        buyerShipping: 0,
+        date: "2026-05-08",
+        orderPlacedAt: "2026-05-08T20:16:16.000Z",
+        orderStatus: "ORDER_EARNINGS",
+        payloadFingerprint: "fp-1",
+        action: "create",
+        matchSource: "none",
+        requiresManualReview: true,
+        targetKind: "manual_candidate",
+        targetSaleId: "12"
+      },
+      {
+        rowId: "item-2",
+        externalSaleId: "ledger-2",
+        externalOrderId: "order-2",
+        externalOrderItemId: "ledger-2",
+        externalAccountId: "seller-1",
+        title: "Nikke Box #2",
+        listingTitle: "Nikke Box #2",
+        buyerName: "genbenji_tcg",
+        quantity: 1,
+        price: 105.86,
+        buyerShipping: 0,
+        date: "2026-05-08",
+        orderPlacedAt: "2026-05-08T20:37:13.000Z",
+        orderStatus: "ORDER_EARNINGS",
+        payloadFingerprint: "fp-2",
+        action: "create",
+        matchSource: "none",
+        requiresManualReview: true,
+        targetKind: "manual_candidate",
+        targetSaleId: "12"
+      },
+      {
+        rowId: "item-3",
+        externalSaleId: "ledger-3",
+        externalOrderId: "order-3",
+        externalOrderItemId: "ledger-3",
+        externalAccountId: "seller-1",
+        title: "Nikke Box #3",
+        listingTitle: "Nikke Box #3",
+        buyerName: "genbenji_tcg",
+        quantity: 1,
+        price: 106.45,
+        buyerShipping: 0,
+        date: "2026-05-08",
+        orderPlacedAt: "2026-05-08T20:56:28.000Z",
+        orderStatus: "ORDER_EARNINGS",
+        payloadFingerprint: "fp-3",
+        action: "create",
+        matchSource: "none",
+        requiresManualReview: true,
+        targetKind: "manual_candidate",
+        targetSaleId: "12"
+      }
+    ]
+  });
+  getSaleDocumentMock.mockResolvedValue({
+    id: "sale-doc-12",
+    docType: "sale",
+    userId: "scope-1",
+    scopeKey: "scope-1",
+    lotId: "10",
+    saleId: "12",
+    sale: {
+      date: "2026-05-08",
+      price: 105.6566666667,
+      quantity: 3,
+      packsCount: 36,
+      buyerShipping: 0,
+      customer: "genbenji_tcg",
+      memo: "3 Nikke boxes",
+      type: "box"
+    },
+    version: 1,
+    updatedAt: "2026-05-08T00:00:00.000Z",
+    updatedBy: "user-a",
+    mutationId: "sale:12"
+  });
+
+  const result = await confirmWhatnotImportBatchForActor(createApiConfig(), "user-a", {
+    batchId: "batch-title-drift",
+    decisions: [
+      {
+        rowId: "item-1",
+        lotId: "10",
+        saleType: "box",
+        targetKind: "manual_candidate",
+        targetSaleId: "12"
+      },
+      {
+        rowId: "item-2",
+        lotId: "10",
+        saleType: "box",
+        targetKind: "manual_candidate",
+        targetSaleId: "12"
+      },
+      {
+        rowId: "item-3",
+        lotId: "10",
+        saleType: "box",
+        targetKind: "manual_candidate",
+        targetSaleId: "12"
+      }
+    ]
+  });
+
+  assert.deepEqual(result, {
+    importedCount: 0,
+    updatedCount: 3,
+    skippedCount: 0
+  });
+  assert.equal(upsertSaleDocumentMock.mock.calls.length, 1);
+  const sale = upsertSaleDocumentMock.mock.calls[0]?.[1]?.sale as {
+    quantity?: number;
+    price?: number;
+    memo?: string;
+    externalTransactionRefs?: unknown[];
+  };
+  assert.equal(sale.quantity, 3);
+  assert.equal(sale.price, (104.66 + 105.86 + 106.45) / 3);
+  assert.equal(sale.memo, "3 Nikke boxes");
+  assert.deepEqual(sale.externalTransactionRefs, [
+    {
+      provider: "whatnot",
+      accountId: "seller-1",
+      ledgerTransactionId: "ledger-1",
+      orderId: "order-1",
+      orderItemId: "ledger-1"
+    },
+    {
+      provider: "whatnot",
+      accountId: "seller-1",
+      ledgerTransactionId: "ledger-2",
+      orderId: "order-2",
+      orderItemId: "ledger-2"
+    },
+    {
+      provider: "whatnot",
+      accountId: "seller-1",
+      ledgerTransactionId: "ledger-3",
+      orderId: "order-3",
+      orderItemId: "ledger-3"
+    }
+  ]);
+  assert.equal(upsertWhatnotSaleImportMappingMock.mock.calls.length, 3);
+});
+
+test("confirmWhatnotImportBatchForActor splits grouped manual candidates into individual Whatnot sales", async () => {
+  getEffectiveSyncSnapshotMock.mockResolvedValue({
+    lots: [{
+      id: "10",
+      name: "Nikke Box",
+      lotType: "bulk",
+      packsPerBox: 12
+    }]
+  });
+  listSalesForLotMock.mockResolvedValue([
+    {
+      id: "sale-doc-12",
+      docType: "sale",
+      userId: "scope-1",
+      scopeKey: "scope-1",
+      lotId: "10",
+      saleId: "12",
+      sale: {
+        date: "2026-05-08",
+        price: 105.6566666667,
+        quantity: 3,
+        packsCount: 36,
+        buyerShipping: 0,
+        customer: "genbenji_tcg",
+        memo: "3 Nikke boxes",
+        type: "box"
+      },
+      version: 1,
+      updatedAt: "2026-05-08T00:00:00.000Z",
+      updatedBy: "user-a",
+      mutationId: "sale:12"
+    }
+  ]);
+  getWhatnotImportBatchMock.mockResolvedValue({
+    batchId: "batch-split-title-drift",
+    status: "pending_review",
+    origin: "csv_manual",
+    externalAccountId: "seller-1",
+    rows: [
+      {
+        rowId: "item-1",
+        externalSaleId: "ledger-1",
+        externalOrderId: "order-1",
+        externalOrderItemId: "ledger-1",
+        externalAccountId: "seller-1",
+        title: "Nikke Box",
+        listingTitle: "Nikke Box",
+        buyerName: "genbenji_tcg",
+        quantity: 1,
+        price: 104.66,
+        buyerShipping: 0,
+        date: "2026-05-08",
+        orderPlacedAt: "2026-05-08T20:16:16.000Z",
+        orderStatus: "ORDER_EARNINGS",
+        payloadFingerprint: "fp-1",
+        action: "create",
+        matchSource: "none",
+        requiresManualReview: true,
+        targetKind: "manual_candidate",
+        targetSaleId: "12"
+      },
+      {
+        rowId: "item-2",
+        externalSaleId: "ledger-2",
+        externalOrderId: "order-2",
+        externalOrderItemId: "ledger-2",
+        externalAccountId: "seller-1",
+        title: "Nikke Box #2",
+        listingTitle: "Nikke Box #2",
+        buyerName: "genbenji_tcg",
+        quantity: 1,
+        price: 105.86,
+        buyerShipping: 0,
+        date: "2026-05-08",
+        orderPlacedAt: "2026-05-08T20:37:13.000Z",
+        orderStatus: "ORDER_EARNINGS",
+        payloadFingerprint: "fp-2",
+        action: "create",
+        matchSource: "none",
+        requiresManualReview: true,
+        targetKind: "manual_candidate",
+        targetSaleId: "12"
+      },
+      {
+        rowId: "item-3",
+        externalSaleId: "ledger-3",
+        externalOrderId: "order-3",
+        externalOrderItemId: "ledger-3",
+        externalAccountId: "seller-1",
+        title: "Nikke Box #3",
+        listingTitle: "Nikke Box #3",
+        buyerName: "genbenji_tcg",
+        quantity: 1,
+        price: 106.45,
+        buyerShipping: 0,
+        date: "2026-05-08",
+        orderPlacedAt: "2026-05-08T20:56:28.000Z",
+        orderStatus: "ORDER_EARNINGS",
+        payloadFingerprint: "fp-3",
+        action: "create",
+        matchSource: "none",
+        requiresManualReview: true,
+        targetKind: "manual_candidate",
+        targetSaleId: "12"
+      }
+    ]
+  });
+
+  const result = await confirmWhatnotImportBatchForActor(createApiConfig(), "user-a", {
+    batchId: "batch-split-title-drift",
+    decisions: [
+      {
+        rowId: "item-1",
+        lotId: "10",
+        saleType: "box",
+        selectedImportAction: "split_group"
+      },
+      {
+        rowId: "item-2",
+        lotId: "10",
+        saleType: "box",
+        selectedImportAction: "split_group"
+      },
+      {
+        rowId: "item-3",
+        lotId: "10",
+        saleType: "box",
+        selectedImportAction: "split_group"
+      }
+    ]
+  });
+
+  assert.deepEqual(result, {
+    importedCount: 3,
+    updatedCount: 0,
+    skippedCount: 0
+  });
+  assert.deepEqual(upsertSaleDocumentMock.mock.calls.map((call) => call[1].saleId), ["13", "14", "15"]);
+  assert.deepEqual(upsertSaleDocumentMock.mock.calls.map((call) => ({
+    saleId: call[1].saleId,
+    sale: call[1].sale
+  })), [
+    {
+      saleId: "13",
+      sale: {
+        id: 13,
+        type: "box",
+        quantity: 1,
+        packsCount: 12,
+        price: 104.66,
+        priceIsTotal: undefined,
+        buyerShipping: 0,
+        date: "2026-05-08",
+        customer: "genbenji_tcg",
+        externalProvider: "whatnot",
+        externalAccountId: "seller-1",
+        externalSaleId: "ledger-1",
+        externalOrderId: "order-1",
+        externalOrderItemId: "ledger-1",
+        memo: "Nikke Box",
+        externalTransactionRefs: [{
+          provider: "whatnot",
+          accountId: "seller-1",
+          ledgerTransactionId: "ledger-1",
+          orderId: "order-1",
+          orderItemId: "ledger-1"
+        }]
+      }
+    },
+    {
+      saleId: "14",
+      sale: {
+        id: 14,
+        type: "box",
+        quantity: 1,
+        packsCount: 12,
+        price: 105.86,
+        priceIsTotal: undefined,
+        buyerShipping: 0,
+        date: "2026-05-08",
+        customer: "genbenji_tcg",
+        externalProvider: "whatnot",
+        externalAccountId: "seller-1",
+        externalSaleId: "ledger-2",
+        externalOrderId: "order-2",
+        externalOrderItemId: "ledger-2",
+        memo: "Nikke Box #2",
+        externalTransactionRefs: [{
+          provider: "whatnot",
+          accountId: "seller-1",
+          ledgerTransactionId: "ledger-2",
+          orderId: "order-2",
+          orderItemId: "ledger-2"
+        }]
+      }
+    },
+    {
+      saleId: "15",
+      sale: {
+        id: 15,
+        type: "box",
+        quantity: 1,
+        packsCount: 12,
+        price: 106.45,
+        priceIsTotal: undefined,
+        buyerShipping: 0,
+        date: "2026-05-08",
+        customer: "genbenji_tcg",
+        externalProvider: "whatnot",
+        externalAccountId: "seller-1",
+        externalSaleId: "ledger-3",
+        externalOrderId: "order-3",
+        externalOrderItemId: "ledger-3",
+        memo: "Nikke Box #3",
+        externalTransactionRefs: [{
+          provider: "whatnot",
+          accountId: "seller-1",
+          ledgerTransactionId: "ledger-3",
+          orderId: "order-3",
+          orderItemId: "ledger-3"
+        }]
+      }
+    }
+  ]);
+  assert.equal(getSaleDocumentMock.mock.calls.length, 0);
+  assert.equal(upsertWhatnotSaleImportMappingMock.mock.calls.length, 3);
+});
+
 test("confirmWhatnotImportBatchForActor grouped manual updates use the first non-empty buyer name", async () => {
   getEffectiveSyncSnapshotMock.mockResolvedValue({
     lots: [{

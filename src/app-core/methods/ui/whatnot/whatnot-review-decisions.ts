@@ -22,6 +22,7 @@ export interface WhatnotReviewDecisionSummary {
   totalCount: number;
   readyCount: number;
   createCount: number;
+  splitCount: number;
   updateCount: number;
   skipCount: number;
   alreadyImportedCount: number;
@@ -101,6 +102,7 @@ export function buildWhatnotReviewDecisionSummary(rows: WhatnotImportReviewRow[]
     totalCount: 0,
     readyCount: 0,
     createCount: 0,
+    splitCount: 0,
     updateCount: 0,
     skipCount: 0,
     alreadyImportedCount: 0,
@@ -132,18 +134,20 @@ export function buildWhatnotReviewDecisionSummary(rows: WhatnotImportReviewRow[]
 
     if (shouldSkip) {
       summary.skipCount += 1;
+    } else if (!isBlocked && selectedImportAction === "split_group") {
+      summary.splitCount += 1;
     } else if (!isBlocked && selectedImportAction === "update_existing") {
       summary.updateCount += 1;
     } else if (!isBlocked) {
       summary.createCount += 1;
     }
 
-    if (row.requiresManualReview && !shouldSkip && !isBlocked) {
+    if (row.requiresManualReview && !shouldSkip && !isBlocked && selectedImportAction !== "split_group") {
       summary.manualReviewCount += 1;
     }
   }
 
-  summary.readyCount = summary.createCount + summary.updateCount;
+  summary.readyCount = summary.createCount + summary.splitCount + summary.updateCount;
   return summary;
 }
 
@@ -151,7 +155,9 @@ export function buildWhatnotReviewDecisions(rows: WhatnotImportReviewRow[]): Wha
   return rows.map((row) => {
     const selectedImportAction = resolveWhatnotSelectedImportAction(row);
     const targetSaleId = String(row.targetSaleId ?? row.manualDuplicateCandidate?.saleId ?? row.existingSaleId ?? "").trim();
-    const targetKind = selectedImportAction === "update_existing"
+    const targetKind = selectedImportAction === "split_group"
+      ? "new"
+      : selectedImportAction === "update_existing"
       ? (row.targetKind
         ?? (row.manualDuplicateCandidate
           ? "manual_candidate"
@@ -161,6 +167,7 @@ export function buildWhatnotReviewDecisions(rows: WhatnotImportReviewRow[]): Wha
       : selectedImportAction === "create"
         ? "new"
         : null;
+    const resolvedTargetSaleId = selectedImportAction === "split_group" ? "" : targetSaleId;
 
     return {
       rowId: row.rowId,
@@ -170,7 +177,7 @@ export function buildWhatnotReviewDecisions(rows: WhatnotImportReviewRow[]): Wha
       skip: row.skipImport || selectedImportAction === "skip",
       selectedImportAction,
       targetKind,
-      targetSaleId: targetSaleId || undefined
+      targetSaleId: resolvedTargetSaleId || undefined
     };
   });
 }
