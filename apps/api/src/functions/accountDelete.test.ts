@@ -16,6 +16,7 @@ const {
   deleteUserProfileMock,
   deletePlayPurchasesForUserMock,
   deleteAllSyncDataMock,
+  eraseAccountDataMock,
   revokeAllSessionsForUserMock
 } = vi.hoisted(() => ({
   getConfigMock: vi.fn(),
@@ -25,6 +26,7 @@ const {
   deleteUserProfileMock: vi.fn(),
   deletePlayPurchasesForUserMock: vi.fn(),
   deleteAllSyncDataMock: vi.fn(),
+  eraseAccountDataMock: vi.fn(),
   revokeAllSessionsForUserMock: vi.fn()
 }));
 
@@ -56,6 +58,10 @@ vi.mock("../lib/cosmos/syncSnapshotRepository", () => ({
   deleteAllSyncData: deleteAllSyncDataMock
 }));
 
+vi.mock("../features/account/accountErasureService", () => ({
+  eraseAccountData: eraseAccountDataMock
+}));
+
 vi.mock("../lib/cosmos/sessionRepository", () => ({
   revokeAllSessionsForUser: revokeAllSessionsForUserMock
 }));
@@ -71,6 +77,7 @@ beforeEach(() => {
   deleteUserProfileMock.mockResolvedValue(undefined);
   deletePlayPurchasesForUserMock.mockResolvedValue(undefined);
   deleteAllSyncDataMock.mockResolvedValue(undefined);
+  eraseAccountDataMock.mockResolvedValue(undefined);
   revokeAllSessionsForUserMock.mockResolvedValue(2);
 });
 
@@ -84,6 +91,7 @@ test("accountDelete clears personal account data, revokes sessions, and clears t
   assert.equal(deleteUserProfileMock.mock.calls[0]?.[1], "user-1");
   assert.equal(deletePlayPurchasesForUserMock.mock.calls[0]?.[1], "user-1");
   assert.equal(deleteAllSyncDataMock.mock.calls[0]?.[1], "user-1");
+  assert.equal(eraseAccountDataMock.mock.calls[0]?.[1], "user-1");
   assert.equal(revokeAllSessionsForUserMock.mock.calls[0]?.[1], "user-1");
   assert.equal(clearSessionCookieMock.mock.calls.length, 1);
   assert.equal(response.status, 200);

@@ -5,6 +5,7 @@ import { revokeAllSessionsForUser } from "../../lib/cosmos/sessionRepository";
 import { deleteEntitlement, deletePlayPurchasesForUser, deleteUserProfile } from "../../lib/cosmos/entitlementRepository";
 import { deleteAllSyncData } from "../../lib/cosmos/syncSnapshotRepository";
 import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../../lib/http";
+import { eraseAccountData } from "./accountErasureService";
 
 export async function accountDelete(
   request: HttpRequest,
@@ -22,6 +23,7 @@ export async function accountDelete(
       deleteUserProfile(config, userId),
       deletePlayPurchasesForUser(config, userId),
       deleteAllSyncData(config, userId),
+      eraseAccountData(config, userId),
       revokeAllSessionsForUser(config, userId)
     ]);
     await clearSessionCookie(request, config);
