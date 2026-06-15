@@ -72,3 +72,35 @@ test("spectator styling has explicit light and dark theme mappings", () => {
   assert.match(spectatorStyles, /--spectator-status-live-surface:\s*var\(--app-status-live-surface\)/);
   assert.match(spectatorStyles, /--spectator-status-ended-surface:\s*var\(--app-status-inactive-surface\)/);
 });
+
+test("dark theme hierarchy and desktop dashboard rhythm have explicit contracts", () => {
+  const tokens = read("src/styles/design-tokens.css");
+  const appStyles = read("src/styles/app.css");
+  const liveStyles = read("src/components/windows/live/LiveWindow.css");
+  const salesStyles = read("src/components/windows/sales/SalesWindow.css");
+  const portfolioStyles = read("src/components/windows/portfolio/PortfolioWindow.css");
+
+  for (const token of [
+    "--app-text-subtle",
+    "--app-bottom-nav-active-surface",
+    "--app-bottom-nav-inactive-text",
+    "--app-dashboard-desktop-gap",
+    "--app-dashboard-card-max-width"
+  ]) {
+    assert.match(tokens, new RegExp(`${token}:`), `${token} should be defined`);
+  }
+
+  assert.match(tokens, /\.v-theme--unionArenaDark[\s\S]+--app-text-muted:/);
+  assert.match(tokens, /\.v-theme--unionArenaDark[\s\S]+--app-bottom-nav-active-surface:/);
+
+  assert.match(appStyles, /\.v-theme--unionArenaDark \.v-bottom-navigation/);
+  assert.match(appStyles, /\.v-theme--unionArenaDark \.v-bottom-navigation \.v-btn:not\(\.v-btn--active\)/);
+  assert.match(appStyles, /\.v-theme--unionArenaDark \.v-bottom-navigation \.v-btn\.v-btn--active/);
+
+  assert.match(liveStyles, /--app-dashboard-card-max-width/);
+  assert.match(liveStyles, /@media \(min-width: 960px\)/);
+  assert.match(salesStyles, /--app-dashboard-desktop-gap/);
+  assert.match(salesStyles, /\.v-theme--unionArenaDark \.sales-section-card/);
+  assert.match(portfolioStyles, /--app-dashboard-desktop-gap/);
+  assert.match(portfolioStyles, /\.v-theme--unionArenaDark \.portfolio-section-card/);
+});

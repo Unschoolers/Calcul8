@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "vitest";
 import { SalesWindowDefinition } from "../src/components/windows/sales/SalesWindow.definition.ts";
 import type { Sale, SinglesPurchaseEntry } from "../src/types/app.ts";
@@ -14,6 +15,8 @@ function makeSale(overrides: Partial<Sale> = {}): Sale {
     ...overrides
   };
 }
+
+const read = (path: string) => readFileSync(path, "utf8");
 
 test("SalesWindow computed pagination helpers work from sortedSales and render count", () => {
   const sales = Array.from({ length: 205 }, (_, idx) => makeSale({ id: idx + 1 }));
@@ -117,6 +120,95 @@ test("SalesWindow computes realized sold margin percent from realized profit and
       salesStatus: { revenue: 0 }
     } as never),
     null
+  );
+});
+
+test("SalesWindow renders snapshot KPIs through the shared KPI grid", () => {
+  const template = read("src/components/windows/sales/SalesWindow.html");
+  const script = read("src/components/windows/sales/SalesWindow.ts");
+
+  assert.match(template, /sales-status-progress-wrap/);
+  assert.match(template, /salesStatusProgressPercentLabel/);
+  assert.match(template, /salesStatusRealizedProfitLabel/);
+  assert.match(template, /salesStatusBreakEvenGapLabel/);
+  assert.match(template, /<app-kpi-grid\b/);
+  assert.match(template, /:items="salesSnapshotKpis"/);
+  assert.doesNotMatch(template, /salesStatusSummaryLine/);
+  assert.doesNotMatch(template, /salesStatusProgressLine/);
+  assert.match(script, /AppKpiGrid/);
+});
+
+test("SalesWindow builds bulk snapshot KPIs from practical sales context", () => {
+  const vm = {
+    currentLotType: "bulk",
+    sortedSales: [
+      makeSale({ id: 2, quantity: 3, packsCount: 3, price: 45, netRevenue: 38.5, date: "2026-06-15" }),
+      makeSale({ id: 1, quantity: 4, packsCount: 4, price: 40, netRevenue: 35.5, date: "2026-06-01" })
+    ],
+    soldPacksCount: 7,
+    totalPacks: 64,
+    packsPerBox: 16,
+    totalCaseCost: 319,
+    salesProgress: 10.9375,
+    salesStatus: { revenue: 74 },
+    fmtCurrency: SalesWindowDefinition.methods.fmtCurrency,
+    fmtUnits: SalesWindowDefinition.methods.fmtUnits,
+    formatCurrency: (value: number | null | undefined, decimals = 2) => Number(value || 0).toFixed(decimals),
+    formatDate: (value: string) => `D:${value}`,
+    t: (key: string) => key
+  };
+
+  const kpis = SalesWindowDefinition.computed.salesSnapshotKpis.call(vm as never);
+  const progressPercent = SalesWindowDefinition.computed.salesStatusProgressPercentLabel.call(vm as never);
+
+  assert.equal(progressPercent, "10.9%");
+  assert.deepEqual(
+    kpis.map((kpi) => [kpi.id, kpi.label, kpi.value, kpi.meta, kpi.icon, kpi.tone]),
+    [
+      ["revenue", "salesStatusRevenueLabel", "$74.00", "salesKpiSoldNetMeta", "mdi-cash-register", "secondary"],
+      ["cost", "salesStatusCostLabel", "$319.00", "salesKpiLotCostMeta", "mdi-receipt-text-outline", "neutral"],
+      ["sales-progress", "salesKpiSalesProgressLabel", "0.44 / 4 salesBoxesLabel", "7 / 64 salesItemsLabel", "mdi-view-dashboard-outline", "primary"],
+      ["last-sale", "salesKpiLastSaleLabel", "D:2026-06-15", "3 salesKpiItemsNetMeta $38.50", "mdi-calendar-clock", "secondary"],
+      ["remaining", "salesKpiRemainingLabel", "57 salesItemsLabel", "89.1% salesKpiRemainingMeta", "mdi-package-variant", "warning"],
+      ["box-progress", "salesKpiNextBoxLabel", "9 salesKpiToNextBoxValue", "7 / 16 salesKpiCurrentBoxMeta", "mdi-package-variant-closed", "primary"]
+    ]
+  );
+});
+
+test("SalesWindow builds singles snapshot KPIs without bulk box progress", () => {
+  const vm = {
+    currentLotType: "singles",
+    sortedSales: [
+      makeSale({ id: 3, quantity: 1, packsCount: 1, price: 24, netRevenue: 21, date: "2026-06-14" })
+    ],
+    soldPacksCount: 2,
+    totalPacks: 8,
+    singlesTrackedSoldCount: 2,
+    singlesTrackedTotalCount: 10,
+    singlesUnlinkedSoldCount: 1,
+    totalCaseCost: 30,
+    salesStatus: { revenue: 42 },
+    fmtCurrency: SalesWindowDefinition.methods.fmtCurrency,
+    fmtUnits: SalesWindowDefinition.methods.fmtUnits,
+    formatCurrency: (value: number | null | undefined, decimals = 2) => Number(value || 0).toFixed(decimals),
+    formatDate: (value: string) => `D:${value}`,
+    t: (key: string) => key
+  };
+
+  const kpis = SalesWindowDefinition.computed.salesSnapshotKpis.call(vm as never);
+  const progressPercent = SalesWindowDefinition.computed.salesStatusProgressPercentLabel.call(vm as never);
+
+  assert.equal(progressPercent, "20.0%");
+  assert.deepEqual(
+    kpis.map((kpi) => [kpi.id, kpi.label, kpi.value, kpi.meta, kpi.icon, kpi.tone]),
+    [
+      ["revenue", "salesStatusRevenueLabel", "$42.00", "salesKpiSoldNetMeta", "mdi-cash-register", "secondary"],
+      ["cost", "salesStatusCostLabel", "$30.00", "salesKpiLotCostMeta", "mdi-receipt-text-outline", "neutral"],
+      ["sales-progress", "salesKpiSalesProgressLabel", "2 / 10", "1 salesUnlinkedLabel", "mdi-view-dashboard-outline", "primary"],
+      ["last-sale", "salesKpiLastSaleLabel", "D:2026-06-14", "1 salesKpiItemNetMeta $21.00", "mdi-calendar-clock", "secondary"],
+      ["remaining", "salesKpiRemainingLabel", "8 salesItemsLabel", "80.0% salesKpiRemainingMeta", "mdi-package-variant", "warning"],
+      ["avg-net", "salesKpiAvgNetItemLabel", "$21.00", "salesKpiAvgNetItemMeta", "mdi-cash-multiple", "success"]
+    ]
   );
 });
 
@@ -249,4 +341,3 @@ test("SalesWindow forecast carousel cycles index with wrap-around", () => {
   SalesWindowDefinition.methods.cycleLiveForecastScenario.call(vm as never, 1);
   assert.equal(vm.liveForecastScenarioIndex, 0);
 });
-

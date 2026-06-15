@@ -44,6 +44,20 @@ test("chart surfaces use shared responsive chart containers", () => {
   }
 });
 
+test("responsive chart canvases are not height-scaled by CSS after Chart.js renders", () => {
+  const appStyles = read("src/styles/app.css");
+  const salesStyles = read("src/components/windows/sales/SalesWindow.css");
+  const portfolioStyles = read("src/components/windows/portfolio/PortfolioWindow.css");
+
+  assert.doesNotMatch(appStyles, /\.app-responsive-chart__plot canvas[\s\S]{0,180}max-height:/);
+  assert.doesNotMatch(appStyles, /\.app-responsive-chart__plot canvas[\s\S]{0,180}height:\s*100% !important/);
+  assert.doesNotMatch(appStyles, /\.app-responsive-chart__plot[\s\S]{0,180}height:\s*var\(--app-dashboard-chart-max-height\)/);
+  assert.doesNotMatch(salesStyles, /\.sales-chart-card \.app-responsive-chart__plot canvas[\s\S]{0,180}max-height:/);
+  assert.doesNotMatch(salesStyles, /\.sales-chart-card \.app-responsive-chart__plot[\s\S]{0,180}height:/);
+  assert.doesNotMatch(portfolioStyles, /\.portfolio-chart-card \.app-responsive-chart__plot canvas[\s\S]{0,180}max-height:/);
+  assert.doesNotMatch(portfolioStyles, /\.portfolio-chart-card \.app-responsive-chart__plot[\s\S]{0,180}height:/);
+});
+
 test("true data tables expose scroll affordances while mobile card alternatives stay explicit", () => {
   const tableTemplates = [
     "src/components/shell/PortfolioReportModal.html",

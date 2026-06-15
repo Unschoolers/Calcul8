@@ -197,7 +197,7 @@ export function buildPortfolioHistoryChartConfig(params: {
       options: {
         animation: false,
         responsive: true,
-        maintainAspectRatio: true,
+        maintainAspectRatio: false,
         layout: {
           padding: {
             left: params.compactMode ? 4 : 2,
@@ -301,7 +301,7 @@ export function buildPortfolioHistoryChartConfig(params: {
     options: {
       animation: false,
       responsive: true,
-      maintainAspectRatio: true,
+      maintainAspectRatio: false,
       interaction: {
         mode: "nearest",
         intersect: false

@@ -16,7 +16,11 @@ export const vuetify = createVuetify({
           error: "#FF3B30",
           success: "#34C759",
           background: "#121212",
-          surface: "#1E1E1E"
+          surface: "#1E1E1E",
+          "surface-bright": "#292929",
+          "surface-variant": "#2A2522",
+          "on-surface": "#F4F1EA",
+          "on-background": "#F4F1EA"
         }
       },
       unionArenaLight: {

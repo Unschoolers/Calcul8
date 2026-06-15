@@ -15,25 +15,56 @@ Every remaining item is done only when the affected screens pass these checks:
 - Screens use shared spacing, typography, radius, elevation, icon, empty-state, loading, error, and dialog patterns unless an exception is documented.
 - Visual QA screenshots exist for changed top-level screens and modals when the change affects layout, theme contrast, responsive behavior, brand polish, or public-facing presentation.
 
+## Current Smoke Evidence
+
+`npm run test:visual` now runs a Playwright smoke path for seeded real app-shell tabs on desktop/light/English and mobile/dark/French. Screenshots are local artifacts only and ignored by git.
+
+The first smoke screenshots surfaced these remaining UI issues:
+
+- Mobile screenshots show fixed bottom navigation and floating actions covering meaningful content, especially Sales charts, Portfolio charts, and lower Config inventory/totals content.
+- Mobile French/dark screenshots expose aggressive truncation in the current-inventory selector and dense sale/lot cards, making the active lot and item names hard to verify.
+- Mobile Config totals and inventory rows are too cramped: footer metrics can collide with labels/values, and the bottom nav cuts across the item list.
+- Desktop Portfolio has chart/card content running close to or underneath persistent navigation, which makes the bottom of dashboards feel unfinished even on a large viewport.
+
 ## Critical
 
-### Add Visual QA For Real Screens
+### Fix Mobile Shell Overlays And Safe Areas
 
-**Why now:** The current repo has strong unit/template coverage, but no obvious screenshot/visual-regression command in `package.json`. That leaves the most important UI risks unguarded: French text fit, theme contrast, mobile overflow, modal spacing, and public spectator/report polish.
+**Why now:** The first smoke screenshots show the fixed bottom nav and floating action buttons covering real content on mobile. This is critical because the user cannot reliably read Sales charts, Portfolio charts, Config item rows, or footer totals without scrolling around persistent chrome.
 
-**Scope:** Top-level tabs, high-risk modals, spectator pages, reports, light/dark themes, English/French.
+**Scope:** App shell bottom navigation, contextual FAB rail, mobile Config, Live, Sales, Portfolio, Game, and report screens.
 
 **Must do:**
 
-- Add browser screenshot coverage for the app shell and each top-level tab in light and dark themes.
-- Capture mobile, tablet, and desktop fixtures for Singles config, Whatnot import/review, Live singles, Sales, Portfolio, Game wheel/grid/bracket, spectator pages, and Portfolio reports.
-- Add overflow assertions for nav labels, dialog titles, chips, table/list rows, sticky action bars, and French copy.
-- Add a local visual QA command and checklist for major UI work.
+- Define one mobile safe-area contract for bottom navigation plus contextual actions.
+- Add consistent bottom padding or scroll affordance so the last card, table row, chart, and footer metric are never hidden behind fixed chrome.
+- Prevent red primary FABs from overlapping chart cards and dashboard content on mobile.
+- Verify 360x740, 390x844, and 412x915 with English/French and both themes.
+- Add visual smoke assertions or targeted screenshots for the bottom of each top-level tab.
 
 **Acceptance:**
 
-- A UI refinement can prove it did not break mobile layout, theme contrast, public pages, or French text fit.
-- The visual QA path is documented and runnable locally before merging broad UI changes.
+- The last meaningful element on every top-level mobile tab is readable and tappable without being covered by nav or FAB controls.
+- Mobile screenshots show a deliberate relationship between content, fixed navigation, and floating actions.
+
+### Fix Mobile Dense-Card Legibility And Metric Fit
+
+**Why now:** The mobile French/dark screenshots show several places where important text and metrics are technically present but visually hard to use: the current-inventory selector truncates the active lot and metadata, Config totals collide at the bottom, sale cards clamp long item names aggressively, and Portfolio lot/insight cards compress names and values into a narrow row.
+
+**Scope:** Mobile app-shell inventory selector, Config inventory cards and totals, Sales history cards, Portfolio pulse/insight/lot-performance cards, bottom metric bars.
+
+**Must do:**
+
+- Give the current-inventory selector a mobile layout that exposes enough of the lot name, type, source, and date to confirm context without relying on a hidden dropdown.
+- Define mobile card rules for long item and lot names: controlled two-line clamps, secondary metadata on its own line, and a detail affordance when text is intentionally abbreviated.
+- Rework Config footer metrics so labels and values wrap or stack cleanly instead of colliding, especially in French and dark theme.
+- Audit Sales and Portfolio metric chips for long translated labels, currency values, percentages, and profit/loss states.
+- Add visual QA captures for dense-data examples with long names, accents, CAD/USD labels, and multiple metric chips.
+
+**Acceptance:**
+
+- A mobile user can identify the active lot, read item names, read metric labels/values, and understand profit/loss state without guessing from clipped text.
+- Dense cards preserve hierarchy and spacing at 360px, 390px, and 412px widths in English and French.
 
 ### Normalize Recoverable States And Offline/Sync Feedback
 
@@ -55,6 +86,43 @@ Every remaining item is done only when the affected screens pass these checks:
 - Similar failures look and behave the same across private app screens and public spectator surfaces.
 
 ## High
+
+### Refine Dark-Theme Hierarchy And Contrast
+
+**Why now:** Shared dark tokens, dark bottom navigation, integrated dark alert surfaces, and first-pass Live/Sales/Portfolio metadata hierarchy are in place. The remaining risk is that Config, the current-inventory selector, FAB hierarchy, and edge states have not had the same screenshot-backed polish pass yet.
+
+**Scope:** Mobile dark theme across app shell, current inventory selector, Config cards, Live panel, Sales history, Portfolio cards, bottom navigation, contextual FABs.
+
+**Must do:**
+
+- Finish the dark contrast pass for Config fieldsets, current-inventory selector metadata, dense item cards, and footer metric labels.
+- Reduce visual competition between large red/pink FABs and dark card/dashboard content on mobile.
+- Verify focus, selected, disabled, destructive, offline, and recoverable alert states in dark screenshots.
+- Add targeted mobile dark screenshots with long French lot/item names and multiple metric chips.
+
+**Acceptance:**
+
+- Dark mode has a clear information hierarchy from title to body to metadata to chrome.
+- Secondary text remains readable without overpowering primary values or actions.
+
+### Rebalance Desktop Dashboard Density And Vertical Rhythm
+
+**Why now:** Shared desktop chart max-height, dashboard gap, and card-width tokens now cap Live, Sales, and Portfolio dashboard density. The remaining risk is lower-page composition and the persistent bottom navigation relationship once screenshots include more seeded desktop content.
+
+**Scope:** Desktop Live, Sales, Portfolio, chart/dashboard cards, page gutters, bottom nav relationship, large empty states.
+
+**Must do:**
+
+- Verify the new dashboard width/chart/rhythm tokens against 1280x800 and 1440x900 screenshots with seeded content.
+- Continue reducing single-card empty-stage feeling where Live has only one active panel.
+- Keep dashboard sections clear of persistent navigation and contextual actions on 1280x800 and 1440x900.
+- Review whether desktop top-level navigation should continue occupying a bottom bar when dashboards need vertical space.
+- Add desktop smoke examples with enough content to show first-screen and lower-page behavior.
+
+**Acceptance:**
+
+- Desktop tabs feel intentionally composed, with balanced density and no content visually trapped under fixed chrome.
+- Chart and dashboard sections scale up gracefully without becoming oversized blocks.
 
 ### Polish Brand And Public-Facing Surfaces
 
@@ -113,6 +181,25 @@ Every remaining item is done only when the affected screens pass these checks:
 - Reduced-motion users get stable, comfortable alternatives.
 
 ## Medium
+
+### Expand Visual QA Coverage Beyond Smoke
+
+**Why now:** The smoke path is done, but it intentionally covers only seeded app-shell Config, Live, Sales, and Portfolio states on desktop/light/English and mobile/dark/French. The missing coverage is still useful, but it is no longer the top blocker now that a local visual QA command exists.
+
+**Scope:** Tablet fixtures, high-risk modals, Whatnot import/review, Game wheel/grid/bracket, spectator pages, Portfolio reports, high-zoom checks, deeper overflow assertions.
+
+**Must do:**
+
+- Add tablet fixtures for the top-level tabs and dashboards.
+- Add targeted screenshots for high-risk modals and review flows, especially Whatnot import/review and Portfolio reports.
+- Add spectator and public-share captures so public-facing polish is covered.
+- Add Game wheel/grid/bracket captures for both operator and spectator contexts.
+- Extend overflow assertions beyond page-level overflow to nav labels, dialog titles, chips, table/list rows, sticky action bars, and French copy.
+
+**Acceptance:**
+
+- Broad UI changes can prove they did not regress tablet layout, public pages, game/spectator screens, reports, modals, or dense translated text.
+- Visual QA remains fast enough for local use by keeping smoke and expanded coverage separable.
 
 ### Reduce Section, Card, And Toolbar Duplication
 

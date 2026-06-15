@@ -41,6 +41,13 @@ apps/api/.azure/
 coverage/
 *.ts.html
 
+# Playwright local artifacts
+test-results/
+playwright-report/
+blob-report/
+tests/visual/**/*-snapshots/
+debug.log
+
 # Local dataset clones
 pokemondata_real/
 

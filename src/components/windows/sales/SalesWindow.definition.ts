@@ -1,5 +1,6 @@
 import { inject, type PropType } from "vue";
 import type { Sale, SinglesPurchaseEntry } from "../../../types/app.ts";
+import type { AppKpiItem } from "../../ui/AppKpiGrid.ts";
 import { createWindowContextBridge } from "../shared/contextBridge.ts";
 
 const SALES_HISTORY_INITIAL_RENDER_COUNT = 80;
@@ -18,6 +19,54 @@ function resolveSalesTranslation(
     }
   }
   return fallback;
+}
+
+function formatSalesKpiCurrency(vm: Record<string, unknown>, value: number, decimals = 2): string {
+  const format = vm.fmtCurrency;
+  if (typeof format === "function") {
+    return String((format as (amount: number, decimals?: number) => string).call(vm, value, decimals));
+  }
+  const contextFormat = vm.formatCurrency;
+  if (typeof contextFormat === "function") {
+    return String((contextFormat as (amount: number, decimals?: number) => string).call(vm, value, decimals));
+  }
+  return Number(value || 0).toFixed(decimals);
+}
+
+function formatSalesKpiUnits(vm: Record<string, unknown>, value: number): string {
+  const format = vm.fmtUnits;
+  if (typeof format === "function") {
+    return String((format as (amount: number) => string).call(vm, value));
+  }
+  return Math.abs(value - Math.round(value)) < 0.0001 ? String(Math.round(value)) : value.toFixed(2);
+}
+
+function formatSalesKpiDate(vm: Record<string, unknown>, value: string): string {
+  const format = vm.formatDate;
+  if (typeof format === "function") {
+    return String((format as (date: string) => string).call(vm, value));
+  }
+  return value;
+}
+
+function saleUnits(sale: Sale): number {
+  return Math.max(0, Number(sale.packsCount ?? sale.quantity) || 0);
+}
+
+function saleNetRevenue(sale: Sale): number {
+  const netRevenue = Number(sale.netRevenue);
+  if (Number.isFinite(netRevenue)) return netRevenue;
+  return Math.max(0, Number(sale.price) || 0);
+}
+
+function salesProgressPercent(vm: Record<string, unknown>): number {
+  const lotType = String(vm.currentLotType || "bulk");
+  if (lotType === "singles") {
+    const trackedTotal = Math.max(0, Number(vm.singlesTrackedTotalCount) || 0);
+    const trackedSold = Math.max(0, Number(vm.singlesTrackedSoldCount) || 0);
+    return trackedTotal > 0 ? (trackedSold / trackedTotal) * 100 : 0;
+  }
+  return Math.max(0, Number(vm.salesProgress) || 0);
 }
 
 export const SalesWindowDefinition = {
@@ -118,13 +167,11 @@ export const SalesWindowDefinition = {
     },
 
     salesHistorySoldPercent(this: Record<string, unknown>): number {
-      const lotType = String(this.currentLotType || "bulk");
-      if (lotType === "singles") {
-        const trackedTotal = Math.max(0, Number(this.singlesTrackedTotalCount) || 0);
-        const trackedSold = Math.max(0, Number(this.singlesTrackedSoldCount) || 0);
-        return trackedTotal > 0 ? (trackedSold / trackedTotal) * 100 : 0;
-      }
-      return Math.max(0, Number(this.salesProgress) || 0);
+      return salesProgressPercent(this);
+    },
+
+    salesStatusProgressPercentLabel(this: Record<string, unknown>): string {
+      return `${formatSalesKpiCurrency(this, salesProgressPercent(this), 1)}%`;
     },
 
     salesStatusRealizedProfit(this: Record<string, unknown>): number {
@@ -151,42 +198,121 @@ export const SalesWindowDefinition = {
       return (realizedProfit / realizedRevenue) * 100;
     },
 
-    salesStatusSummaryLine(this: Record<string, unknown>): string {
-      const vm = this as Record<string, unknown> & {
-        fmtCurrency?: (value: number | null | undefined, decimals?: number) => string;
-        salesStatus?: { revenue?: number } | null;
-        totalCaseCost?: number;
-      };
-      const format = typeof vm.fmtCurrency === "function"
-        ? vm.fmtCurrency.bind(this)
-        : (value: number | null | undefined) => Number(value || 0).toFixed(2);
-      const revenueLabel = resolveSalesTranslation(vm, "salesStatusRevenueLabel", "Revenue");
-      const costLabel = resolveSalesTranslation(vm, "salesStatusCostLabel", "Cost");
-      return `${revenueLabel} $${format(vm.salesStatus?.revenue ?? 0)} • ${costLabel} $${format(vm.totalCaseCost)}`;
-    },
-
-    salesStatusProgressLine(this: Record<string, unknown>): string {
+    salesSnapshotKpis(this: Record<string, unknown>): AppKpiItem[] {
       const lotType = String(this.currentLotType || "bulk");
+      const sales = Array.isArray(this.sortedSales) ? this.sortedSales as Sale[] : [];
+      const soldItems = Math.max(0, Number(this.soldPacksCount) || 0);
+      const trackedSoldItems = Math.max(0, Number(this.singlesTrackedSoldCount) || 0);
+      const totalItems = lotType === "singles"
+        ? Math.max(0, Number(this.singlesTrackedTotalCount) || 0)
+        : Math.max(0, Number(this.totalPacks) || 0);
+      const remainingItems = Math.max(0, totalItems - (lotType === "singles"
+        ? trackedSoldItems
+        : soldItems));
+      const soldBasis = lotType === "singles"
+        ? trackedSoldItems
+        : soldItems;
+      const revenue = Number((this.salesStatus as { revenue?: number } | undefined)?.revenue ?? 0);
+      const cost = Math.max(0, Number(this.totalCaseCost) || 0);
+      const averageNet = soldItems > 0 ? revenue / soldItems : 0;
+      const remainingPercent = totalItems > 0 ? (remainingItems / totalItems) * 100 : 0;
+      const kpis: AppKpiItem[] = [];
+      const lastSale = sales[0];
+
+      kpis.push({
+        id: "revenue",
+        label: resolveSalesTranslation(this, "salesStatusRevenueLabel", "Revenue"),
+        value: `$${formatSalesKpiCurrency(this, revenue)}`,
+        meta: resolveSalesTranslation(this, "salesKpiSoldNetMeta", "Recorded sold net"),
+        icon: "mdi-cash-register",
+        tone: revenue > 0 ? "secondary" : "neutral"
+      });
+
+      kpis.push({
+        id: "cost",
+        label: resolveSalesTranslation(this, "salesStatusCostLabel", "Cost"),
+        value: `$${formatSalesKpiCurrency(this, cost)}`,
+        meta: resolveSalesTranslation(this, "salesKpiLotCostMeta", "Lot cost basis"),
+        icon: "mdi-receipt-text-outline",
+        tone: "neutral"
+      });
+
       if (lotType === "singles") {
-        const trackedSold = Math.max(0, Number(this.singlesTrackedSoldCount) || 0);
-        const trackedTotal = Math.max(0, Number(this.singlesTrackedTotalCount) || 0);
-        const parts = [`${trackedSold} / ${trackedTotal} ${resolveSalesTranslation(this, "salesItemsLabel", "items")}`];
-        const unlinkedSold = Math.max(0, Number(this.singlesUnlinkedSoldCount) || 0);
-        if (unlinkedSold > 0) {
-          parts.push(`${unlinkedSold} ${resolveSalesTranslation(this, "salesUnlinkedLabel", "unlinked")}`);
-        }
-        return parts.join(" • ");
+        const unlinked = Math.max(0, Number(this.singlesUnlinkedSoldCount) || 0);
+        kpis.push({
+          id: "sales-progress",
+          label: resolveSalesTranslation(this, "salesKpiSalesProgressLabel", "Sales progress"),
+          value: `${formatSalesKpiUnits(this, soldBasis)} / ${formatSalesKpiUnits(this, totalItems)}`,
+          meta: unlinked > 0
+            ? `${formatSalesKpiUnits(this, unlinked)} ${resolveSalesTranslation(this, "salesUnlinkedLabel", "unlinked")}`
+            : resolveSalesTranslation(this, "salesKpiAllLinkedMeta", "All linked"),
+          icon: "mdi-view-dashboard-outline",
+          tone: "primary"
+        });
+      } else {
+        const packsPerBox = Math.max(0, Number(this.packsPerBox) || 0);
+        const boxLabel = resolveSalesTranslation(this, "salesBoxesLabel", "boxes");
+        const itemLabel = resolveSalesTranslation(this, "salesItemsLabel", "items");
+        kpis.push({
+          id: "sales-progress",
+          label: resolveSalesTranslation(this, "salesKpiSalesProgressLabel", "Sales progress"),
+          value: packsPerBox > 0
+            ? `${formatSalesKpiUnits(this, soldItems / packsPerBox)} / ${formatSalesKpiUnits(this, totalItems / packsPerBox)} ${boxLabel}`
+            : `${formatSalesKpiUnits(this, soldItems)} / ${formatSalesKpiUnits(this, totalItems)} ${itemLabel}`,
+          meta: `${formatSalesKpiUnits(this, soldItems)} / ${formatSalesKpiUnits(this, totalItems)} ${itemLabel}`,
+          icon: "mdi-view-dashboard-outline",
+          tone: "primary"
+        });
       }
 
-      const soldPacks = Math.max(0, Number(this.soldPacksCount) || 0);
-      const totalPacks = Math.max(0, Number(this.totalPacks) || 0);
-      const parts: string[] = [];
-      const bulkBoxProgressText = String(this.bulkBoxProgressText || "");
-      if (bulkBoxProgressText) {
-        parts.push(bulkBoxProgressText);
+      kpis.push({
+        id: "last-sale",
+        label: resolveSalesTranslation(this, "salesKpiLastSaleLabel", "Last sale"),
+        value: lastSale ? formatSalesKpiDate(this, lastSale.date) : resolveSalesTranslation(this, "salesKpiNoSalesValue", "None"),
+        meta: lastSale
+          ? `${formatSalesKpiUnits(this, saleUnits(lastSale))} ${resolveSalesTranslation(this, saleUnits(lastSale) === 1 ? "salesKpiItemNetMeta" : "salesKpiItemsNetMeta", saleUnits(lastSale) === 1 ? "item net" : "items net")} $${formatSalesKpiCurrency(this, saleNetRevenue(lastSale))}`
+          : resolveSalesTranslation(this, "salesKpiNoSalesMeta", "Record a sale to start tracking"),
+        icon: "mdi-calendar-clock",
+        tone: lastSale ? "secondary" : "neutral"
+      });
+
+      kpis.push({
+        id: "remaining",
+        label: resolveSalesTranslation(this, "salesKpiRemainingLabel", "Remaining"),
+        value: `${formatSalesKpiUnits(this, remainingItems)} ${resolveSalesTranslation(this, "salesItemsLabel", "items")}`,
+        meta: `${formatSalesKpiCurrency(this, remainingPercent, 1)}% ${resolveSalesTranslation(this, "salesKpiRemainingMeta", "remaining")}`,
+        icon: "mdi-package-variant",
+        tone: remainingItems > 0 ? "warning" : "success"
+      });
+
+      if (lotType !== "singles") {
+        const packsPerBox = Math.max(0, Number(this.packsPerBox) || 0);
+        const currentBoxSold = packsPerBox > 0 ? soldItems % packsPerBox : 0;
+        const toNextBox = packsPerBox > 0 && currentBoxSold > 0 ? packsPerBox - currentBoxSold : 0;
+        kpis.push({
+          id: "box-progress",
+          label: resolveSalesTranslation(this, "salesKpiNextBoxLabel", "Next full box"),
+          value: `${formatSalesKpiUnits(this, toNextBox)} ${resolveSalesTranslation(this, "salesKpiToNextBoxValue", "to next box")}`,
+          meta: packsPerBox > 0
+            ? `${formatSalesKpiUnits(this, currentBoxSold)} / ${formatSalesKpiUnits(this, packsPerBox)} ${resolveSalesTranslation(this, "salesKpiCurrentBoxMeta", "current box")}`
+            : resolveSalesTranslation(this, "salesKpiBoxUnavailableMeta", "Set packs per box"),
+          icon: "mdi-package-variant-closed",
+          tone: "primary"
+        });
       }
-      parts.push(`${soldPacks} / ${totalPacks} ${resolveSalesTranslation(this, "salesItemsLabel", "items")}`);
-      return parts.join(" • ");
+
+      if (lotType === "singles") {
+        kpis.push({
+          id: "avg-net",
+          label: resolveSalesTranslation(this, "salesKpiAvgNetItemLabel", "Avg net/item"),
+          value: `$${formatSalesKpiCurrency(this, averageNet)}`,
+          meta: resolveSalesTranslation(this, "salesKpiAvgNetItemMeta", "Across sold items"),
+          icon: "mdi-cash-multiple",
+          tone: averageNet > 0 ? "success" : "neutral"
+        });
+      }
+
+      return kpis;
     }
   },
   watch: {

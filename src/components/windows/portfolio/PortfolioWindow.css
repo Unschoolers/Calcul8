@@ -66,7 +66,7 @@
   font-weight: var(--app-font-weight-emphasis);
   letter-spacing: var(--app-letter-spacing-section);
   text-transform: uppercase;
-  color: rgba(var(--v-theme-on-surface), 0.52);
+  color: var(--app-text-subtle);
 }
 
 .portfolio-performance-summary-value {
@@ -126,7 +126,7 @@
   font-size: 0.78rem;
   font-weight: var(--app-font-weight-strong);
   letter-spacing: 0.03em;
-  color: rgba(var(--v-theme-on-surface), 0.72);
+  color: var(--app-text-muted);
 }
 
 .portfolio-filter-type-toggle .v-btn .v-btn__content {
@@ -138,7 +138,7 @@
 }
 
 .portfolio-filter-type-toggle .v-btn.v-btn--active {
-  color: rgba(var(--v-theme-on-surface), 0.94);
+  color: var(--app-text-strong);
 }
 
 .portfolio-filter-type-toggle .v-btn:not(.v-btn--active) {
@@ -289,10 +289,10 @@
 }
 
 .portfolio-section-eyebrow {
-  min-width:250px;
+  min-width: 0;
   font-size: 0.8rem;
   line-height: 1.2;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--app-letter-spacing-section);
   text-transform: uppercase;
   font-weight: var(--app-font-weight-emphasis);
   color: rgba(var(--v-theme-secondary), 0.96);
@@ -301,7 +301,7 @@
 .portfolio-section-subtitle {
   margin-top: 0.2rem;
   font-size: 0.84rem;
-  color: rgba(var(--v-theme-on-surface), 0.68);
+  color: var(--app-text-subtle);
   line-height: 1.3;
 }
 
@@ -358,7 +358,7 @@
 .portfolio-sales-by-user-stat-chip__value {
   margin-left: 0.35rem;
   font-weight: var(--app-font-weight-emphasis);
-  color: rgba(var(--v-theme-on-surface), 0.94);
+  color: var(--app-text-strong);
 }
 
 .portfolio-sales-by-user-legend {
@@ -449,13 +449,13 @@
 .portfolio-sales-by-user-legend-label {
   font-size: 0.83rem;
   font-weight: 600;
-  color: rgba(var(--v-theme-on-surface), 0.88);
+  color: var(--app-text-strong);
 }
 
 .portfolio-sales-by-user-legend-total {
   font-size: 0.78rem;
   font-weight: var(--app-font-weight-strong);
-  color: rgba(var(--v-theme-on-surface), 0.66);
+  color: var(--app-text-subtle);
 }
 
 .portfolio-sales-by-user-canvas {
@@ -502,13 +502,13 @@
 .portfolio-sales-by-user-week-pill__label {
   font-size: 0.74rem;
   font-weight: var(--app-font-weight-strong);
-  color: rgba(var(--v-theme-on-surface), 0.64);
+  color: var(--app-text-subtle);
 }
 
 .portfolio-sales-by-user-week-pill__value {
   font-size: 0.8rem;
   font-weight: var(--app-font-weight-emphasis);
-  color: rgba(var(--v-theme-on-surface), 0.9);
+  color: var(--app-text-strong);
 }
 
 .portfolio-lot-row {
@@ -606,16 +606,16 @@
 }
 
 .portfolio-lot-meta-line {
-  color: rgba(var(--v-theme-on-surface), 0.76);
+  color: var(--app-text-muted);
   line-height: 1.22;
 }
 
 .portfolio-lot-meta-secondary {
-  color: rgba(var(--v-theme-on-surface), 0.62);
+  color: var(--app-text-subtle);
 }
 
 .portfolio-lot-empty-state {
-  color: rgba(var(--v-theme-on-surface), 0.66);
+  color: var(--app-text-subtle);
 }
 
 .portfolio-lot-status-avatar {
@@ -678,9 +678,35 @@
 }
 
 .portfolio-lot-risk-chip--neutral {
-  color: rgba(var(--v-theme-on-surface), 0.62) !important;
+  color: var(--app-text-subtle) !important;
   border-color: rgba(var(--v-theme-on-surface), 0.1);
   background: rgba(var(--v-theme-on-surface), 0.04) !important;
+}
+
+.v-theme--unionArenaDark .portfolio-filter-bar,
+.v-theme--unionArenaDark .portfolio-section-card {
+  border-color: var(--app-stroke-default);
+  background:
+    radial-gradient(95% 110% at 100% 0%, rgba(var(--v-theme-secondary), 0.055), transparent 60%),
+    linear-gradient(165deg, rgba(var(--v-theme-surface-bright), 0.72), rgba(var(--v-theme-surface), 0.96));
+  box-shadow: var(--app-shadow-md);
+}
+
+.v-theme--unionArenaDark .portfolio-filter-type-toggle .v-btn:not(.v-btn--active) {
+  background: var(--app-surface-quiet);
+  color: var(--app-text-muted);
+}
+
+.v-theme--unionArenaDark .portfolio-filter-type-toggle .v-btn.v-btn--active,
+.v-theme--unionArenaDark .portfolio-sales-by-user-toggle .v-btn.v-btn--active {
+  color: var(--app-text-strong);
+}
+
+@media (min-width: 960px) {
+  .portfolio-filter-bar,
+  .portfolio-section-card {
+    margin-bottom: var(--app-dashboard-desktop-gap);
+  }
 }
 
 @media (max-width: 600px) {

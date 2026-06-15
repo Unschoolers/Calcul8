@@ -140,6 +140,8 @@ test("buildPortfolioBreakdownChartConfig uses right-side legend for compact mode
   assert.equal(config?.type, "pie");
   assert.equal(config?.options?.plugins?.legend?.display, true);
   assert.equal(config?.options?.plugins?.legend?.position, "bottom");
+  assert.equal(config?.options?.maintainAspectRatio, true);
+  assert.equal(config?.options?.aspectRatio, 2);
   assert.equal(config?.data.labels?.[0], "Lot 1");
   assert.equal(config?.data.datasets[0]?.backgroundColor?.[0], "#D7A300");
   assert.equal(config?.data.datasets[0]?.borderColor, "rgba(247, 181, 0, 0.9)");

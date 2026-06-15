@@ -1,6 +1,6 @@
                 <v-row>
                   <!-- Snapshot + History -->
-                  <v-col cols="12" md="6">
+                  <v-col cols="12" md="7">
                     <v-card
                       elevation="4"
                       :class="['sales-status-card', salesStatusToneClass()]"
@@ -17,50 +17,59 @@
                             </div>
                           </div>
                         </div>
+                        <div class="sales-status-progress-wrap" :aria-label="salesStatusProgressPercentLabel">
+                          <v-progress-linear
+                            :model-value="salesHistorySoldPercent"
+                            height="12"
+                            rounded
+                            class="sales-status-progress"
+                            :color="salesStatusProgressFillColor()"
+                          ></v-progress-linear>
+                          <span class="sales-status-progress-label">
+                            {{ salesStatusProgressPercentLabel }}
+                          </span>
+                        </div>
                         <div class="sales-status-value-row">
-                          <app-metric-value
-                            kind="money"
-                            :tone="(salesStatusRealizedProfit ?? 0) >= 0 ? 'positive' : 'negative'"
-                            value-class="sales-status-value"
-                          >
-                            <span class="sales-status-value__amount">
-                              {{ (salesStatusRealizedProfit ?? 0) < 0 ? '-' : '' }}${{ fmtCurrency(Math.abs(salesStatusRealizedProfit ?? 0)) }}
-                            </span>
-                            <span v-if="salesStatusRealizedMarginPercent != null" class="sales-status-value__percent">
-                              ({{ salesStatusRealizedMarginPercent < 0 ? '-' : '' }}{{ fmtCurrency(Math.abs(salesStatusRealizedMarginPercent), 1) }}%)
-                            </span>
-                          </app-metric-value>
-                          <app-metric-value
-                            v-if="(sales?.length ?? 0) > 0"
-                            kind="money"
-                            :tone="(salesStatus?.profit ?? 0) >= 0 ? 'positive' : 'negative'"
-                            pill
-                            value-class="sales-status-net-pill"
-                            :title="t('salesStatusNetBadgeLabel')"
-                            :aria-label="t('salesStatusNetBadgeLabel')"
-                          >
-                            <span class="sales-status-net-pill__value">
-                              {{ (salesStatus?.profit ?? 0) < 0 ? '-' : '' }}${{ fmtCurrency(Math.abs(salesStatus?.profit ?? 0)) }}
-                            </span>
-                          </app-metric-value>
+                          <div class="sales-status-primary-metric">
+                            <div class="sales-status-metric-label">
+                              {{ t('salesStatusRealizedProfitLabel') }}
+                            </div>
+                            <app-metric-value
+                              kind="money"
+                              :tone="(salesStatusRealizedProfit ?? 0) >= 0 ? 'positive' : 'negative'"
+                              value-class="sales-status-value"
+                            >
+                              <span class="sales-status-value__amount">
+                                {{ (salesStatusRealizedProfit ?? 0) < 0 ? '-' : '' }}${{ fmtCurrency(Math.abs(salesStatusRealizedProfit ?? 0)) }}
+                              </span>
+                              <span v-if="salesStatusRealizedMarginPercent != null" class="sales-status-value__percent">
+                                ({{ salesStatusRealizedMarginPercent < 0 ? '-' : '' }}{{ fmtCurrency(Math.abs(salesStatusRealizedMarginPercent), 1) }}%)
+                              </span>
+                            </app-metric-value>
+                          </div>
+                          <div v-if="(sales?.length ?? 0) > 0" class="sales-status-gap-metric">
+                            <div class="sales-status-gap-label">
+                              {{ t('salesStatusBreakEvenGapLabel') }}
+                            </div>
+                            <app-metric-value
+                              kind="money"
+                              :tone="(salesStatus?.profit ?? 0) >= 0 ? 'positive' : 'negative'"
+                              pill
+                              value-class="sales-status-net-pill"
+                              :title="t('salesStatusBreakEvenGapLabel')"
+                              :aria-label="t('salesStatusBreakEvenGapLabel')"
+                            >
+                              <span class="sales-status-net-pill__value">
+                                {{ (salesStatus?.profit ?? 0) < 0 ? '-' : '' }}${{ fmtCurrency(Math.abs(salesStatus?.profit ?? 0)) }}
+                              </span>
+                            </app-metric-value>
+                          </div>
                         </div>
-                        <div class="sales-status-summary">
-                          {{ salesStatusSummaryLine }}
-                        </div>
-                        <v-progress-linear
-                          :model-value="currentLotType === 'singles'
-                            ? (singlesTrackedTotalCount > 0
-                              ? (singlesTrackedSoldCount / singlesTrackedTotalCount) * 100
-                              : 0)
-                            : salesProgress"
-                          height="8"
-                          rounded
-                          class="sales-status-progress"
-                          :color="salesStatusProgressFillColor()"
-                        ></v-progress-linear>
-                        <div class="sales-status-line">
-                          {{ salesStatusProgressLine }}
-                        </div>
+                        <app-kpi-grid
+                          :items="salesSnapshotKpis"
+                          grid-class="sales-snapshot-kpi-grid"
+                          card-class="sales-snapshot-kpi-card"
+                        ></app-kpi-grid>
                       </v-card-text>
                     </v-card>
 
@@ -187,7 +196,7 @@
                   </v-col>
 
                   <!-- Chart + Forecast -->
-                  <v-col cols="12" md="6">
+                  <v-col cols="12" md="5">
                     <app-section-card card-class="sales-section-card sales-chart-card app-responsive-chart">
                         <div class="sales-section-head sales-chart-head app-responsive-chart__head">
                           <div class="sales-section-head-main">

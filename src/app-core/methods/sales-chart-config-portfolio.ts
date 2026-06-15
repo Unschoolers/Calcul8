@@ -97,7 +97,7 @@ export function buildPortfolioMarginChartConfig(params: {
     options: {
       animation: false,
       responsive: true,
-      maintainAspectRatio: true,
+      maintainAspectRatio: false,
       indexAxis: "y",
       plugins: {
         legend: { display: false },
@@ -176,7 +176,7 @@ export function buildPortfolioSalesByUserChartConfig(params: {
     options: {
       animation: false,
       responsive: true,
-      maintainAspectRatio: true,
+      maintainAspectRatio: false,
       interaction: {
         mode: "index",
         intersect: false

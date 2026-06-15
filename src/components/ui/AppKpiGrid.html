@@ -1,0 +1,16 @@
+<div :class="resolvedGridClass">
+  <app-stat-card
+    v-for="item in items"
+    :key="item.id"
+    :label="item.label"
+    :value="item.value"
+    :meta="item.meta || ''"
+    :icon="item.icon || ''"
+    :tone="item.tone || 'neutral'"
+    :elevation="0"
+    :card-classes="['app-kpi-grid__item', cardClass]"
+    content-class="app-kpi-grid__item-content"
+    value-classes="app-kpi-grid__item-value"
+    meta-class="app-kpi-grid__item-meta"
+  ></app-stat-card>
+</div>

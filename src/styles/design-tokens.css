@@ -36,6 +36,7 @@
   --app-font-weight-display: 900;
   --app-text-strong: rgba(var(--v-theme-on-surface), 0.94);
   --app-text-muted: rgba(var(--v-theme-on-surface), 0.78);
+  --app-text-subtle: rgba(var(--v-theme-on-surface), 0.64);
   --app-text-section: rgba(var(--v-theme-secondary), 0.96);
   --app-line-height-tight: 1.15;
   --app-line-height-normal: 1.35;
@@ -53,6 +54,9 @@
   --app-safe-area-left: env(safe-area-inset-left, 0px);
   --app-action-size-min: 44px;
   --app-bottom-nav-height: 4.5rem;
+  --app-bottom-nav-active-surface: rgba(var(--v-theme-primary), 0.16);
+  --app-bottom-nav-active-text: rgb(var(--v-theme-primary));
+  --app-bottom-nav-inactive-text: rgba(var(--v-theme-on-surface), 0.72);
   --app-shell-mobile-padding-top: 0.6rem;
   --app-current-price-border-width: 3px;
   --app-context-action-inline-offset: max(var(--app-space-4), var(--app-safe-area-right));
@@ -95,6 +99,8 @@
   --app-chart-min-height: 230px;
   --app-chart-mobile-min-height: 260px;
   --app-chart-max-height: 280px;
+  --app-dashboard-desktop-gap: var(--app-space-4);
+  --app-dashboard-card-max-width: 1320px;
   --app-table-scroll-shadow-width: 1.8rem;
   --app-report-print-page-margin: 0.55in;
   --app-backdrop-blur-soft: 4px;
@@ -283,9 +289,19 @@
 
 .v-theme--unionArenaDark {
   --app-shadow-rgb: 0, 0, 0;
+  --app-text-strong: rgba(var(--v-theme-on-surface), 0.96);
+  --app-text-muted: rgba(var(--v-theme-on-surface), 0.82);
+  --app-text-subtle: rgba(var(--v-theme-on-surface), 0.68);
   --app-stroke-field: rgba(var(--v-theme-on-surface), 0.34);
-  --app-surface-row-alt: rgba(0, 0, 0, 0.26);
+  --app-stroke-subtle: rgba(var(--v-theme-on-surface), 0.1);
+  --app-stroke-default: rgba(var(--v-theme-on-surface), 0.15);
+  --app-surface-quiet: rgba(var(--v-theme-on-surface), 0.04);
+  --app-surface-muted: rgba(var(--v-theme-on-surface), 0.065);
+  --app-surface-row-alt: rgba(var(--v-theme-on-surface), 0.05);
   --app-surface-field: rgba(var(--v-theme-surface), 0.54);
+  --app-bottom-nav-active-surface: rgba(var(--v-theme-primary), 0.24);
+  --app-bottom-nav-active-text: rgb(var(--v-theme-primary));
+  --app-bottom-nav-inactive-text: rgba(var(--v-theme-on-surface), 0.76);
   --app-shadow-focus-primary: 0 0 0 2px rgba(var(--v-theme-primary), 0.2);
   --app-inset-highlight-field: inset 0 1px 0 rgba(255, 255, 255, 0.03);
   --app-surface-raised: rgba(var(--v-theme-surface), 0.96);
