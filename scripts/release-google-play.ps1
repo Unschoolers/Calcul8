@@ -107,10 +107,10 @@ try {
   }
 
   if (-not $SkipVerify) {
-    Write-Step "Running npm run verify"
-    Invoke-Checked "npm" @("run", "verify")
+    Write-Step "Running npm run verify:all"
+    Invoke-Checked "npm" @("run", "verify:all")
   } else {
-    Write-Host "Skipping verify step by request." -ForegroundColor Yellow
+    Write-Host "Skipping full release preflight by request." -ForegroundColor Yellow
   }
 
   if (-not $SkipWebBuild) {

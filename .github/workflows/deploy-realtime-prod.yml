@@ -5,8 +5,11 @@ on:
     branches: ["main"]
     paths:
       - "apps/realtime/**"
+      - "shared/**"
       - "scripts/smoke-realtime.mjs"
       - "package.json"
+      - "package-lock.json"
+      - "apps/realtime/package-lock.json"
       - ".github/workflows/deploy-realtime-prod.yml"
   workflow_dispatch:
 

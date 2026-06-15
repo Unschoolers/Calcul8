@@ -31,6 +31,12 @@ function parseAllowedOrigins(raw: string): string[] {
     .filter((part) => part.length > 0);
 }
 
+function validateAllowedOrigins(apiEnv: ApiEnvironment, allowedOrigins: string[]): void {
+  if (apiEnv === "prod" && allowedOrigins.includes("*")) {
+    throw new Error("ALLOWED_ORIGINS cannot include wildcard * when API_ENV=prod.");
+  }
+}
+
 function parseCsv(raw: string): string[] {
   if (!raw) return [];
   return raw
@@ -52,6 +58,8 @@ export function getConfig(): ApiConfig {
 
   const apiEnvValue = readEnv("API_ENV").toLowerCase();
   const apiEnv: ApiEnvironment = apiEnvValue === "prod" ? "prod" : "dev";
+  const allowedOrigins = parseAllowedOrigins(readEnv("ALLOWED_ORIGINS"));
+  validateAllowedOrigins(apiEnv, allowedOrigins);
 
   cachedConfig = {
     apiEnv,
@@ -78,7 +86,7 @@ export function getConfig(): ApiConfig {
     googlePlayProProductIds: parseCsv(readEnv("GOOGLE_PLAY_PRO_PRODUCT_IDS")),
     googlePlayServiceAccountEmail: readEnv("GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL"),
     googlePlayServiceAccountPrivateKey: readEnv("GOOGLE_PLAY_SERVICE_ACCOUNT_PRIVATE_KEY").replace(/\\n/g, "\n"),
-    allowedOrigins: parseAllowedOrigins(readEnv("ALLOWED_ORIGINS")),
+    allowedOrigins,
     cosmosEndpoint: requireEnv("COSMOSDB_ENDPOINT"),
     cosmosKey: requireEnv("COSMOSDB_KEY"),
     cosmosDatabaseId: readEnv("COSMOSDB_DATABASE_ID") || "whatfees",

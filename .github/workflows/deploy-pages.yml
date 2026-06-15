@@ -13,6 +13,8 @@ on:
       - "package-lock.json"
       - "tsconfig.json"
       - "vite.config.ts"
+      - "shared/**"
+      - "scripts/**"
       - "scripts/stamp-sw-version.mjs"
       - "scripts/obfuscate.mjs"
       - ".github/workflows/deploy-pages.yml"

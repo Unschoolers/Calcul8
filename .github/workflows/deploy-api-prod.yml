@@ -5,6 +5,10 @@ on:
     branches: ["main"]
     paths:
       - "apps/api/**"
+      - "shared/**"
+      - "package.json"
+      - "package-lock.json"
+      - "apps/api/package-lock.json"
       - ".github/workflows/deploy-api-prod.yml"
   workflow_dispatch:
 

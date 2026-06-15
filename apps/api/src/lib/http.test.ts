@@ -85,7 +85,31 @@ test("returns preflight response before rate limit check", () => {
   const response = maybeHandleHttpGuards(request, makeConfig());
 
   assert.equal(response?.status, 204);
+  const headers = response?.headers as Record<string, string>;
+  assert.equal(headers["Access-Control-Allow-Origin"], "https://example.app");
+  assert.equal(headers["Access-Control-Allow-Credentials"], "true");
+  assert.equal(headers["Access-Control-Expose-Headers"], "x-csrf-token");
+  assert.equal(headers.Vary, "Origin");
   assert.equal(checkGlobalRateLimitMock.mock.calls.length, 0);
+});
+
+test("returns preflight response without CORS headers for disallowed origins", () => {
+  const request = makeRequest("OPTIONS", { origin: "https://hostile.example" });
+  const response = maybeHandleHttpGuards(request, makeConfig());
+
+  assert.equal(response?.status, 204);
+  assert.deepEqual(response?.headers, {});
+  assert.equal(checkGlobalRateLimitMock.mock.calls.length, 0);
+});
+
+test("allows deliberate dev wildcard preflight origins", () => {
+  const request = makeRequest("OPTIONS", { origin: "https://local-tool.example" });
+  const response = maybeHandleHttpGuards(request, makeConfig({ allowedOrigins: ["*"] }));
+
+  const headers = response?.headers as Record<string, string>;
+  assert.equal(response?.status, 204);
+  assert.equal(headers["Access-Control-Allow-Origin"], "https://local-tool.example");
+  assert.equal(headers["Access-Control-Allow-Credentials"], "true");
 });
 
 test("returns null when request passes guards", () => {

@@ -56,19 +56,19 @@ jobs:
             [ -n "${file}" ] || continue
 
             case "${file}" in
-              index.html|package.json|package-lock.json|tsconfig*.json|vite*.config.*|vitest*.config.*|src/*|public/*|tests/*|scripts/*|icons/*|.github/workflows/ci.yml)
+              index.html|spectator.html|package.json|package-lock.json|tsconfig*.json|vite*.config.*|vitest*.config.*|src/*|public/*|tests/*|scripts/*|shared/*|apps/api/package.json|apps/api/package-lock.json|apps/realtime/package.json|apps/realtime/package-lock.json|icons/*|.github/workflows/ci.yml)
                 web=true
                 ;;
             esac
 
             case "${file}" in
-              apps/api/*|.github/workflows/ci.yml)
+              apps/api/*|shared/*|apps/api/package.json|apps/api/package-lock.json|package.json|package-lock.json|.github/workflows/ci.yml)
                 api=true
                 ;;
             esac
 
             case "${file}" in
-              apps/realtime/*|.github/workflows/ci.yml)
+              apps/realtime/*|shared/*|apps/realtime/package.json|apps/realtime/package-lock.json|package.json|package-lock.json|.github/workflows/ci.yml)
                 realtime=true
                 ;;
             esac

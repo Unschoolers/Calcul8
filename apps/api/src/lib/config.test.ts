@@ -149,6 +149,50 @@ test("config parses prod and explicit false auth bypass", () => {
   );
 });
 
+test("config rejects wildcard CORS origins in prod", () => {
+  withEnv(
+    {
+      ...requiredBaseEnv(),
+      API_ENV: "prod",
+      ALLOWED_ORIGINS: "*"
+    },
+    () => {
+      assert.throws(
+        () => getConfig(),
+        /ALLOWED_ORIGINS cannot include wildcard \* when API_ENV=prod/
+      );
+    }
+  );
+});
+
+test("config allows wildcard CORS origins outside prod", () => {
+  withEnv(
+    {
+      ...requiredBaseEnv(),
+      API_ENV: "dev",
+      ALLOWED_ORIGINS: "*"
+    },
+    () => {
+      const config = getConfig();
+      assert.deepEqual(config.allowedOrigins, ["*"]);
+    }
+  );
+});
+
+test("config allows explicit CORS allowlists in prod", () => {
+  withEnv(
+    {
+      ...requiredBaseEnv(),
+      API_ENV: "prod",
+      ALLOWED_ORIGINS: "https://app.whatfees.ca, https://whatfees.ca"
+    },
+    () => {
+      const config = getConfig();
+      assert.deepEqual(config.allowedOrigins, ["https://app.whatfees.ca", "https://whatfees.ca"]);
+    }
+  );
+});
+
 test("config parses comma-separated origins and product ids", () => {
   withEnv(
     {

@@ -28,13 +28,13 @@ npm run release:play
 
 `release:play` now does this automatically:
 
-- `npm run verify` (unless skipped)
+- `npm run verify:all` (unless skipped)
 - `npm run build:prod` (unless skipped)
 - syncs `twa-manifest.json` version fields from root `package.json`
 - generates `public/.well-known/assetlinks.json`
 - builds the TWA `.aab` with Bubblewrap
 
-It does **not** run `npm run verify:all`, so keep that in your manual pre-flight whenever API, realtime, or shared contracts changed.
+Use `-SkipVerify` only after running and reviewing the equivalent frontend, API, and realtime checks for the release.
 
 Useful flags:
 
