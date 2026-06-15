@@ -2,9 +2,9 @@
       <template v-if="isGoogleSignedIn">
         <app-shell-top-bar :ctx="this"></app-shell-top-bar>
 
-        <v-main id="app-main" tabindex="-1">
-          <v-container fluid class="pa-4 app-shell fill-height">
-            <v-alert v-if="isOffline" type="warning" variant="tonal" density="compact" class="mb-3">
+        <v-main id="app-main" class="app-shell-root" tabindex="-1">
+          <v-container fluid class="pa-4 app-shell app-shell-content-zone fill-height">
+            <v-alert v-if="isOffline" type="warning" variant="tonal" density="compact" class="app-shell-offline-notice mb-3">
               {{ t('shellOfflineNotice') }}
             </v-alert>
 
@@ -12,8 +12,7 @@
 
 
             <!-- Tab Content -->
-            <div :class="{ 'interaction-disabled': !hasLotSelected }"
-              :style="!hasLotSelected ? 'pointer-events: none;' : null">
+            <div class="app-shell-tab-zone">
               <v-window v-model="currentTab"
                 :class="['tabs-window', { 'tabs-window--allow-sticky': currentTab === 'wheel' || currentTab === 'portfolio' || (currentLotType === 'singles' && (currentTab === 'live' || currentTab === 'config')) }]"
                 transition="tab-slide-fast" reverse-transition="tab-slide-fast-reverse">
@@ -51,7 +50,7 @@
           </v-container>
 
           <!-- Bottom Nav -->
-          <v-bottom-navigation v-model="currentTab" color="primary" grow elevation="8" mandatory
+          <v-bottom-navigation v-model="currentTab" class="app-shell-bottom-nav" color="primary" grow elevation="8" mandatory
             :aria-label="t('shellPrimaryNavigationAriaLabel')">
             <v-btn value="config" :ripple="false">
               <v-icon>mdi-cog</v-icon>
@@ -82,6 +81,7 @@
           </v-bottom-navigation>
         </v-main>
 
+        <div class="app-shell-action-zone" :aria-label="t('shellContextActionsAriaLabel')">
         <v-fab
           v-if="currentTab === 'config' && currentLotType === 'singles'"
           id="guided-onboarding-singles-add-fab"
@@ -93,18 +93,18 @@
           :aria-label="t('shellAddSinglesPurchaseAction')"
           :disabled="!hasLotSelected"
           @click="$refs.singlesConfigWindow?.handleAddSinglesPurchase?.()"
-          class="fab-primary fab-add-preset"
+          class="app-context-action app-context-action--slot-1"
         ></v-fab>
 
-        <div v-if="currentTab === 'live'" class="fab-badge-wrap fab-live-calc-wrap">
+        <div v-if="currentTab === 'live'" class="app-context-action-badge-wrap app-context-action--slot-2">
           <v-fab icon="mdi-calculator" color="secondary" size="large"
             :title="hasProAccess ? t('shellPriceCalculatorAction') : t('shellUpgradePriceCalculatorAction')"
             :aria-label="hasProAccess ? t('shellPriceCalculatorAction') : t('shellUpgradePriceCalculatorAction')"
             :disabled="!hasLotSelected" @click="accessProFeature('autoCalculate')"
-            class="fab-primary fab-live-calc"></v-fab>
+            class="app-context-action"></v-fab>
           <div
             v-if="liveProfitTargetBadgeVisible"
-            class="fab-profit-target-badge"
+            class="app-context-action-profit-target-badge"
             aria-hidden="true"
           >{{ liveProfitTargetBadgeLabel }}</div>
         </div>
@@ -118,23 +118,23 @@
             color: 'error'
           },
           () => clearLiveSinglesSelection()
-        )" class="fab-primary fab-live-clear"></v-fab>
+        )" class="app-context-action app-context-action--slot-1"></v-fab>
 
         <v-fab v-if="currentTab === 'live'" icon="mdi-restore" color="surface" size="large"
           :title="currentLotType === 'singles' ? t('shellResetLiveSinglesPricesAction') : t('shellResetLivePricesAction')"
           :aria-label="currentLotType === 'singles' ? t('shellResetLiveSinglesPricesAction') : t('shellResetLivePricesAction')"
-          @click="resetLivePrices" class="fab-primary fab-live-reset"></v-fab>
+          @click="resetLivePrices" class="app-context-action app-context-action--slot-3"></v-fab>
 
         <v-fab v-if="currentTab === 'live' && currentLotType !== 'singles'" icon="mdi-content-save-outline"
           color="primary" size="large" :title="t('shellApplyLivePricesAction')" :aria-label="t('shellApplyLivePricesAction')"
-          :disabled="!hasLotSelected" @click="applyLivePricesToDefaults" class="fab-primary fab-calculate"></v-fab>
+          :disabled="!hasLotSelected" @click="applyLivePricesToDefaults" class="app-context-action app-context-action--slot-1"></v-fab>
 
         <div
           v-if="currentTab === 'wheel'
             && $refs.wheelWindow?.wheelIsCompactLayout
             && !$refs.wheelWindow?.wheelPresentationMode
             && !$refs.wheelWindow?.wheelMobileInspectorOpen"
-          class="fab-overflow-wrap fab-wheel-stack"
+          class="app-context-action-rail app-context-action--slot-1"
         >
           <v-fab
             v-for="action in ($refs.wheelWindow?.wheelCompactFabActions || [])"
@@ -148,12 +148,12 @@
             @click="action.actionType === 'end'
               ? $refs.wheelWindow?.requestWheelSessionEnd?.()
               : $refs.wheelWindow?.openWheelInspector?.(action.targetTab)"
-            class="fab-primary"
+            class="app-context-action"
           ></v-fab>
         </div>
 
         <!-- Primary FAB - Sales -->
-        <div v-if="currentTab === 'sales' && hasProAccess" class="fab-overflow-wrap fab-overflow-sales">
+        <div v-if="currentTab === 'sales' && hasProAccess" class="app-context-action-rail app-context-action--slot-1">
           <v-speed-dial v-model="speedDialOpenSales" location="top center" transition="scale-transition"
             :open-on-hover="false" :close-on-content-click="false">
             <template v-slot:activator="{ props: activatorProps }">
@@ -181,7 +181,7 @@
 
         <v-fab v-else-if="currentTab === 'sales'" icon="mdi-cart-plus" color="primary" size="large"
           :title="t('shellUpgradeSalesTrackingAction')" :aria-label="t('shellUpgradeSalesTrackingAction')"
-          :disabled="!hasLotSelected" @click="accessProFeature('salesTracking')" class="fab-primary"></v-fab>
+          :disabled="!hasLotSelected" @click="accessProFeature('salesTracking')" class="app-context-action app-context-action--slot-1"></v-fab>
 
         <v-fab v-if="currentTab === 'portfolio'" icon="mdi-table" color="primary" size="large" :title="!hasPortfolioData
           ? t('shellOpenPortfolioReportAction')
@@ -189,7 +189,8 @@
           ? t('shellOpenPortfolioReportAction')
           : (hasProAccess ? t('shellOpenPortfolioReportAction') : t('shellUpgradePortfolioReportAction'))"
           :disabled="!hasPortfolioData" @click="accessProFeature('portfolioReport')"
-          class="fab-primary fab-portfolio-report"></v-fab>
+          class="app-context-action app-context-action--slot-1"></v-fab>
+        </div>
 
         <workspace-modals :ctx="this"></workspace-modals>
         <system-configuration-dialog :ctx="this"></system-configuration-dialog>
@@ -323,19 +324,21 @@
         <whatnot-csv-import-dialog :ctx="this"></whatnot-csv-import-dialog>
         <whatnot-review-dialog :ctx="this"></whatnot-review-dialog>
 
-        <v-snackbar v-model="showAppUpdatePrompt" color="secondary" location="top" :timeout="-1" role="status"
-          aria-live="polite" aria-atomic="true" :close-on-content-click="false">
-          {{ t('appUpdateReadyMessage') }}
-          <template #actions>
-            <v-btn variant="text" @click="dismissAppUpdate">{{ t('commonSkipForNow') }}</v-btn>
-            <v-btn variant="flat" color="secondary" @click="applyAppUpdate">{{ t('shellRefreshAction') }}</v-btn>
-          </template>
-        </v-snackbar>
+        <div class="app-shell-snackbar-zone" aria-live="polite">
+          <v-snackbar v-model="showAppUpdatePrompt" color="secondary" location="top" :timeout="-1" role="status"
+            aria-live="polite" aria-atomic="true" :close-on-content-click="false">
+            {{ t('appUpdateReadyMessage') }}
+            <template #actions>
+              <v-btn variant="text" @click="dismissAppUpdate">{{ t('commonSkipForNow') }}</v-btn>
+              <v-btn variant="flat" color="secondary" @click="applyAppUpdate">{{ t('shellRefreshAction') }}</v-btn>
+            </template>
+          </v-snackbar>
 
-        <v-snackbar v-model="snackbar.show" :color="snackbar.color" location="bottom" timeout="2400" role="status"
-          aria-live="polite" aria-atomic="true">
-          {{ snackbar.text }}
-        </v-snackbar>
+          <v-snackbar v-model="snackbar.show" :color="snackbar.color" location="bottom" timeout="2400" role="status"
+            aria-live="polite" aria-atomic="true">
+            {{ snackbar.text }}
+          </v-snackbar>
+        </div>
 
       </template>
 

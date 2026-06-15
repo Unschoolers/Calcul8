@@ -1,5 +1,8 @@
 import { inject, type PropType } from "vue";
 import { createWindowContextBridge } from "../shared/contextBridge.ts";
+import AppActionButton from "../../ui/AppActionButton.vue";
+import AppErrorState from "../../ui/AppErrorState.vue";
+import AppMetricValue from "../../ui/AppMetricValue.vue";
 import type { WhatnotImportReviewRow } from "../../../types/app.ts";
 import {
   buildWhatnotCsvImportDraft,
@@ -79,6 +82,11 @@ const OPTIONAL_MAPPING_FIELDS = [
 
 export const WhatnotCsvImportDialog = {
   name: "WhatnotCsvImportDialog",
+  components: {
+    AppActionButton,
+    AppErrorState,
+    AppMetricValue
+  },
   props: {
     ctx: {
       type: Object as PropType<Record<string, unknown> | null>,

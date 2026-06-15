@@ -18,11 +18,10 @@
                           </div>
                         </div>
                         <div class="sales-status-value-row">
-                          <div
-                            :class="[
-                              'sales-status-value',
-                              (salesStatusRealizedProfit ?? 0) >= 0 ? 'is-positive' : 'is-negative'
-                            ]"
+                          <app-metric-value
+                            kind="money"
+                            :tone="(salesStatusRealizedProfit ?? 0) >= 0 ? 'positive' : 'negative'"
+                            value-class="sales-status-value"
                           >
                             <span class="sales-status-value__amount">
                               {{ (salesStatusRealizedProfit ?? 0) < 0 ? '-' : '' }}${{ fmtCurrency(Math.abs(salesStatusRealizedProfit ?? 0)) }}
@@ -30,20 +29,20 @@
                             <span v-if="salesStatusRealizedMarginPercent != null" class="sales-status-value__percent">
                               ({{ salesStatusRealizedMarginPercent < 0 ? '-' : '' }}{{ fmtCurrency(Math.abs(salesStatusRealizedMarginPercent), 1) }}%)
                             </span>
-                          </div>
-                          <div
+                          </app-metric-value>
+                          <app-metric-value
                             v-if="(sales?.length ?? 0) > 0"
-                            :class="[
-                              'sales-status-net-pill',
-                              (salesStatus?.profit ?? 0) >= 0 ? 'is-positive' : 'is-negative'
-                            ]"
+                            kind="money"
+                            :tone="(salesStatus?.profit ?? 0) >= 0 ? 'positive' : 'negative'"
+                            pill
+                            value-class="sales-status-net-pill"
                             :title="t('salesStatusNetBadgeLabel')"
                             :aria-label="t('salesStatusNetBadgeLabel')"
                           >
                             <span class="sales-status-net-pill__value">
                               {{ (salesStatus?.profit ?? 0) < 0 ? '-' : '' }}${{ fmtCurrency(Math.abs(salesStatus?.profit ?? 0)) }}
                             </span>
-                          </div>
+                          </app-metric-value>
                         </div>
                         <div class="sales-status-summary">
                           {{ salesStatusSummaryLine }}
@@ -125,25 +124,24 @@
                               </template>
                             </v-tooltip>
                           </div>
-                          <v-btn
+                          <app-action-button
+                            action="delete"
+                            icon-only
                             class="sales-history-action-btn"
                             size="small"
-                            variant="text"
-                            :title="t('salesHistoryDeleteSaleLabel')"
+                            :label="t('salesHistoryDeleteSaleLabel')"
                             :aria-label="t('salesHistoryDeleteSaleLabel')"
                             @click.stop="deleteSale(sale.id)"
-                          >
-                            <v-icon size="16">mdi-trash-can-outline</v-icon>
-                            </v-btn>
+                          ></app-action-button>
                           </v-list-item-title>
                           <v-list-item-subtitle class="sales-history-profit-row">
-                            <span
-                              :class="[
-                                'sales-history-profit-pill',
-                                getSaleProfitPreview(sale)
-                                  ? (getSaleProfitPreview(sale).value >= 0 ? 'is-positive' : 'is-negative')
-                                  : (calculateSaleProfit(sale) >= 0 ? 'is-positive' : 'is-negative')
-                              ]"
+                            <app-metric-value
+                              kind="money"
+                              :tone="getSaleProfitPreview(sale)
+                                ? (getSaleProfitPreview(sale).value >= 0 ? 'positive' : 'negative')
+                                : (calculateSaleProfit(sale) >= 0 ? 'positive' : 'negative')"
+                              pill
+                              value-class="sales-history-profit-pill"
                             >
                               <template v-if="getSaleProfitPreview(sale)">
                                 {{ getSaleProfitPreview(sale).sign }}${{ fmtCurrency(Math.abs(getSaleProfitPreview(sale).value)) }} {{ t('salesProfitVsLabel') }} {{ getSaleProfitPreview(sale).basisLabel }}
@@ -151,17 +149,16 @@
                               <template v-else>
                                 {{ t('salesProfitLabel') }} {{ calculateSaleProfit(sale) >= 0 ? '+' : '-' }}${{ fmtCurrency(Math.abs(calculateSaleProfit(sale))) }}
                               </template>
-                            </span>
-                            <span
+                            </app-metric-value>
+                            <app-metric-value
                               v-if="getSaleProfitPreview(sale)?.marketBasisValue > 0"
-                              :class="[
-                                'sales-history-profit-pill',
-                                'sales-history-profit-pill--secondary',
-                                getSaleProfitPreview(sale).allCostValue >= 0 ? 'is-positive' : 'is-negative'
-                              ]"
+                              kind="money"
+                              :tone="getSaleProfitPreview(sale).allCostValue >= 0 ? 'positive' : 'negative'"
+                              pill
+                              value-class="sales-history-profit-pill sales-history-profit-pill--secondary"
                             >
                               {{ getSaleProfitPreview(sale).allCostValue >= 0 ? '+' : '-' }}${{ fmtCurrency(Math.abs(getSaleProfitPreview(sale).allCostValue)) }} {{ t('salesProfitVsCostLabel') }}
-                            </span>
+                            </app-metric-value>
                           </v-list-item-subtitle>
                           <v-list-item-subtitle class="sales-history-item-subtitle">
                             <span class="sales-history-date">{{ formatDate(sale.date) }}</span>
@@ -191,8 +188,8 @@
 
                   <!-- Chart + Forecast -->
                   <v-col cols="12" md="6">
-                    <app-section-card card-class="sales-section-card sales-chart-card">
-                        <div class="sales-section-head sales-chart-head">
+                    <app-section-card card-class="sales-section-card sales-chart-card app-responsive-chart">
+                        <div class="sales-section-head sales-chart-head app-responsive-chart__head">
                           <div class="sales-section-head-main">
                             <v-icon size="16">mdi-chart-areaspline</v-icon>
                             <div class="sales-section-head-copy">
@@ -218,19 +215,18 @@
                             <v-icon>{{ chartView === 'pie' ? 'mdi-chart-line' : 'mdi-chart-pie' }}</v-icon>
                           </v-btn>
                         </div>
-                        <canvas
-                          v-if="chartView === 'pie'"
-                          ref="salesChartCanvas"
-                          role="img"
-                          style="max-height: 250px;"
-                          :aria-label="currentLotType === 'singles'
-                            ? t('salesChartSinglesAriaLabel')
-                            : t('salesChartBulkAriaLabel')"
-                        ></canvas>
+                        <div class="app-responsive-chart__plot">
+                          <canvas
+                            v-if="chartView === 'pie'"
+                            ref="salesChartCanvas"
+                            role="img"
+                            :aria-label="currentLotType === 'singles'
+                              ? t('salesChartSinglesAriaLabel')
+                              : t('salesChartBulkAriaLabel')"
+                          ></canvas>
 
-                        <div v-else class="pa-0">
                           <app-empty-state
-                            v-if="(sales?.length ?? 0) === 0"
+                            v-else-if="(sales?.length ?? 0) === 0"
                             icon="mdi-chart-line"
                             :body="t('salesChartEmptyBody')"
                             compact
@@ -241,7 +237,6 @@
                             <canvas
                               ref="salesTrendChart"
                               role="img"
-                              style="max-height: 250px;"
                               :aria-label="t('salesChartTrendAriaLabel')"
                             ></canvas>
                           </div>
@@ -299,12 +294,13 @@
                         >
                           <div class="sales-forecast-row-head">
                             <div class="sales-forecast-row-label">{{ scenario.label }}</div>
-                            <div
-                              class="sales-forecast-row-profit"
-                              :class="scenario.forecastProfit >= 0 ? 'is-positive' : 'is-negative'"
+                            <app-metric-value
+                              kind="money"
+                              :tone="scenario.forecastProfit >= 0 ? 'positive' : 'negative'"
+                              value-class="sales-forecast-row-profit"
                             >
                               {{ scenario.forecastProfit >= 0 ? '+' : '' }}${{ fmtCurrency(scenario.forecastProfit) }}
-                            </div>
+                            </app-metric-value>
                           </div>
                           <div class="sales-forecast-row-meta">
                             {{ fmtUnits(scenario.units) }} {{ scenario.unitLabel }}{{ Number(scenario.units) === 1 ? '' : 's' }}

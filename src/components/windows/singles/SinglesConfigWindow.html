@@ -4,8 +4,8 @@
   <admin-sync-import-card :ctx="ctx"></admin-sync-import-card>
 
   <v-bottom-sheet v-model="showSinglesRowEditor" inset class="singles-editor-sheet-dialog">
-    <v-card class="singles-editor-sheet">
-      <v-card-title class="text-subtitle-1 singles-editor-title-bar">
+    <app-section-card card-class="singles-editor-sheet" content-class="singles-editor-form" divider>
+      <template #header>
         <div class="singles-editor-title-bar__row">
           <div class="singles-section-title-group">
             <v-icon size="16">mdi-pencil-box-outline</v-icon>
@@ -24,9 +24,7 @@
             ></v-btn>
           </div>
         </div>
-      </v-card-title>
-      <v-divider></v-divider>
-      <v-card-text class="singles-editor-form">
+      </template>
         <div class="singles-editor-preview">
           <button
             type="button"
@@ -380,7 +378,7 @@
             </v-col>
           </v-row>
         </div>
-      </v-card-text>
+      <template #actions>
       <app-sticky-action-footer footer-class="singles-editor-actions">
         <div class="singles-editor-actions__row singles-editor-actions__row--main">
           <v-btn
@@ -418,7 +416,8 @@
           </div>
         </div>
       </app-sticky-action-footer>
-    </v-card>
+      </template>
+    </app-section-card>
   </v-bottom-sheet>
 
   <v-dialog v-model="showSinglesImagePreview" max-width="420" class="singles-image-preview-dialog">

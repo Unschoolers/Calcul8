@@ -131,7 +131,8 @@ test("wheel inspector settings do not expose target margin input", () => {
 test("required pending lot selections use a persistent modal instead of the inline batch card", () => {
   const template = fs.readFileSync(WHEEL_WINDOW_TEMPLATE, "utf8");
 
-  assert.match(template, /<v-dialog v-if="wheelHasRequiredLotSelection && wheelPendingInventoryIssues\.length"[\s\S]*persistent/);
+  assert.match(template, /<v-dialog[\s\S]*v-if="wheelHasRequiredLotSelection && wheelPendingInventoryIssues\.length"[\s\S]*persistent/);
+  assert.match(template, /content-class="wheel-pending-lot-dialog app-mobile-fullscreen-dialog"/);
   assert.match(template, /v-if="wheelEndingSession && !wheelHasRequiredLotSelection && wheelPendingInventoryIssues\.length"/);
   assert.match(template, /:disabled="wheelPendingInventoryIssues\.some\(\(entry\) => !entry\.selectedLotId\)"/);
 });

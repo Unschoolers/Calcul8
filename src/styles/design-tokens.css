@@ -55,13 +55,20 @@
   --app-bottom-nav-height: 4.5rem;
   --app-shell-mobile-padding-top: 0.6rem;
   --app-current-price-border-width: 3px;
-  --app-fab-inline-offset: max(var(--app-space-4), var(--app-safe-area-right));
+  --app-context-action-inline-offset: max(var(--app-space-4), var(--app-safe-area-right));
+  --app-context-action-gap: var(--app-space-4);
+  --app-context-action-bottom-1: calc(var(--app-bottom-nav-height) + var(--app-space-2) + var(--app-safe-area-bottom));
+  --app-context-action-bottom-2: calc(var(--app-bottom-nav-height) + 5.5rem + var(--app-safe-area-bottom));
+  --app-context-action-bottom-3: calc(var(--app-bottom-nav-height) + 10.5rem + var(--app-safe-area-bottom));
+  --app-shell-content-bottom-padding: calc(var(--app-bottom-nav-height) + var(--app-space-5) + var(--app-safe-area-bottom));
+  --app-shell-snackbar-bottom: calc(var(--app-bottom-nav-height) + var(--app-space-3) + var(--app-safe-area-bottom));
+  --app-fab-inline-offset: var(--app-context-action-inline-offset);
   --app-fab-badge-size: 2rem;
   --app-fab-badge-padding: 0 0.2rem;
   --app-fab-badge-border-width: 3px;
-  --app-fab-bottom-1: calc(var(--app-bottom-nav-height) + var(--app-space-2) + var(--app-safe-area-bottom));
-  --app-fab-bottom-2: calc(var(--app-bottom-nav-height) + 5.5rem + var(--app-safe-area-bottom));
-  --app-fab-bottom-3: calc(var(--app-bottom-nav-height) + 10.5rem + var(--app-safe-area-bottom));
+  --app-fab-bottom-1: var(--app-context-action-bottom-1);
+  --app-fab-bottom-2: var(--app-context-action-bottom-2);
+  --app-fab-bottom-3: var(--app-context-action-bottom-3);
   --app-sticky-footer-offset: calc(var(--app-bottom-nav-height) + var(--app-safe-area-bottom));
   --app-skip-link-hidden-top: -48px;
   --app-skip-link-focus-top: 10px;
@@ -85,6 +92,11 @@
   --app-form-grid-gap: var(--app-space-3);
   --app-table-cell-padding-y: 0.52rem;
   --app-table-cell-padding-x: 0.6rem;
+  --app-chart-min-height: 230px;
+  --app-chart-mobile-min-height: 260px;
+  --app-chart-max-height: 280px;
+  --app-table-scroll-shadow-width: 1.8rem;
+  --app-report-print-page-margin: 0.55in;
   --app-backdrop-blur-soft: 4px;
   --app-backdrop-blur-sticky: 8px;
   --app-stripe-checkout-min-height: 420px;
@@ -111,6 +123,14 @@
   --app-surface-card-gradient: linear-gradient(165deg, rgba(var(--v-theme-surface), 0.98), rgba(var(--v-theme-surface), 0.95));
   --app-surface-accent-wash: radial-gradient(110% 120% at 100% 0%, rgba(var(--v-theme-secondary), 0.08), transparent 58%);
   --app-surface-card-bg: var(--app-surface-accent-wash), var(--app-surface-card-gradient);
+  --app-operational-surface-bg: var(--app-surface-card-bg);
+  --app-operational-panel-bg: var(--app-surface-raised);
+  --app-operational-border: var(--app-stroke-subtle);
+  --app-expressive-surface-bg:
+    radial-gradient(120% 120% at 100% 0%, rgba(var(--v-theme-secondary), 0.16), transparent 58%),
+    linear-gradient(155deg, rgba(var(--v-theme-surface), 0.98), rgba(var(--v-theme-surface), 0.9));
+  --app-expressive-panel-bg: rgba(var(--v-theme-surface), 0.82);
+  --app-expressive-border: rgba(var(--v-theme-secondary), 0.22);
   --app-dialog-card-bg: var(--app-surface-card-bg);
   --app-section-card-bg: var(--app-surface-card-bg);
   --app-summary-panel-bg: var(--app-surface-card-bg);
@@ -161,9 +181,52 @@
   --app-status-error: rgb(var(--v-theme-error, 255, 59, 48));
   --app-status-warning: rgb(var(--v-theme-warning, 255, 184, 0));
   --app-status-info: rgb(var(--v-theme-info, 33, 150, 243));
+  --app-status-success-text: var(--app-status-success);
+  --app-status-success-surface: rgba(var(--v-theme-success), 0.14);
+  --app-status-success-stroke: rgba(var(--v-theme-success), 0.24);
+  --app-status-error-text: var(--app-status-error);
+  --app-status-error-surface: rgba(var(--v-theme-error), 0.14);
+  --app-status-error-stroke: rgba(var(--v-theme-error), 0.24);
+  --app-status-warning-text: var(--app-status-warning);
+  --app-status-warning-surface: rgba(var(--v-theme-warning), 0.16);
+  --app-status-warning-stroke: rgba(var(--v-theme-warning), 0.28);
+  --app-status-info-text: var(--app-status-info);
+  --app-status-info-surface: rgba(var(--v-theme-info), 0.13);
+  --app-status-info-stroke: rgba(var(--v-theme-info), 0.24);
+  --app-status-live-text: var(--app-status-success-text);
+  --app-status-live-surface: var(--app-status-success-surface);
+  --app-status-live-stroke: var(--app-status-success-stroke);
+  --app-status-inactive-text: rgba(var(--v-theme-on-surface), 0.72);
+  --app-status-inactive-surface: rgba(var(--v-theme-on-surface), 0.07);
+  --app-status-inactive-stroke: rgba(var(--v-theme-on-surface), 0.14);
+  --app-status-claimed-text: rgba(var(--v-theme-on-surface), 0.72);
+  --app-status-claimed-surface: rgba(var(--v-theme-on-surface), 0.07);
+  --app-status-claimed-stroke: rgba(var(--v-theme-on-surface), 0.14);
+  --app-status-selected-text: rgb(var(--v-theme-primary));
+  --app-status-selected-surface: rgba(var(--v-theme-primary), 0.14);
+  --app-status-selected-stroke: rgba(var(--v-theme-primary), 0.24);
+  --app-status-disabled-text: rgba(var(--v-theme-on-surface), 0.48);
+  --app-status-disabled-surface: rgba(var(--v-theme-on-surface), 0.045);
+  --app-status-disabled-stroke: rgba(var(--v-theme-on-surface), 0.1);
   --app-profit-positive: var(--app-status-success);
   --app-profit-negative: var(--app-status-error);
   --app-profit-neutral: rgba(var(--v-theme-on-surface), 0.72);
+  --app-profit-positive-surface: var(--app-status-success-surface);
+  --app-profit-positive-stroke: var(--app-status-success-stroke);
+  --app-profit-negative-surface: var(--app-status-error-surface);
+  --app-profit-negative-stroke: var(--app-status-error-stroke);
+  --app-financial-positive-text: var(--app-profit-positive);
+  --app-financial-positive-surface: var(--app-profit-positive-surface);
+  --app-financial-positive-stroke: var(--app-profit-positive-stroke);
+  --app-financial-negative-text: var(--app-profit-negative);
+  --app-financial-negative-surface: var(--app-profit-negative-surface);
+  --app-financial-negative-stroke: var(--app-profit-negative-stroke);
+  --app-financial-neutral-text: var(--app-profit-neutral);
+  --app-financial-neutral-surface: rgba(var(--v-theme-on-surface), 0.065);
+  --app-financial-neutral-stroke: rgba(var(--v-theme-on-surface), 0.13);
+  --app-financial-target-text: rgb(var(--v-theme-secondary));
+  --app-financial-target-surface: rgba(var(--v-theme-secondary), 0.13);
+  --app-financial-target-stroke: rgba(var(--v-theme-secondary), 0.24);
   --app-success-contrast: rgb(var(--v-theme-on-success, 255, 255, 255));
   --app-primary-solid: rgb(var(--v-theme-primary));
   --app-secondary-solid: rgb(var(--v-theme-secondary));
@@ -185,6 +248,16 @@
     rgb(var(--v-theme-primary)) 0%,
     color-mix(in srgb, rgb(var(--v-theme-primary)) 74%, rgb(var(--v-theme-secondary))) 100%
   );
+  --app-splash-bg: var(--app-secondary-solid);
+  --app-splash-stage-bg:
+    radial-gradient(90% 70% at 50% 30%, rgba(var(--v-theme-secondary), 0.2), transparent 70%),
+    linear-gradient(145deg, rgb(var(--v-theme-background)) 0%, rgb(var(--v-theme-surface)) 55%, rgb(var(--v-theme-surface-bright, var(--v-theme-surface))) 100%);
+  --app-splash-card-bg:
+    linear-gradient(170deg, rgba(var(--v-theme-secondary), 0.12), rgba(var(--v-theme-background), 0.58));
+  --app-splash-border: rgba(var(--v-theme-secondary), 0.4);
+  --app-splash-accent: color-mix(in srgb, var(--app-secondary-solid) 78%, rgb(var(--v-theme-on-surface)));
+  --app-splash-subtitle: rgba(var(--v-theme-on-surface), 0.78);
+  --app-qr-code-bg: rgb(var(--v-theme-surface-bright, var(--v-theme-surface)));
   --app-success-gradient: linear-gradient(
     180deg,
     color-mix(in srgb, var(--app-status-success) 88%, white) 0%,
@@ -201,6 +274,11 @@
   --app-surface-raised: rgba(var(--v-theme-surface), 0.98);
   --app-surface-sticky: rgba(var(--v-theme-surface), 0.985);
   --app-surface-overlay: rgba(var(--v-theme-surface-bright), 0.99);
+  --app-expressive-surface-bg:
+    radial-gradient(120% 120% at 100% 0%, rgba(var(--v-theme-secondary), 0.18), transparent 58%),
+    linear-gradient(155deg, rgba(var(--v-theme-surface-bright), 0.98), rgba(var(--v-theme-surface), 0.94));
+  --app-expressive-panel-bg: rgba(var(--v-theme-surface-bright), 0.86);
+  --app-expressive-border: rgba(var(--v-theme-secondary), 0.24);
 }
 
 .v-theme--unionArenaDark {
@@ -213,6 +291,11 @@
   --app-surface-raised: rgba(var(--v-theme-surface), 0.96);
   --app-surface-sticky: rgba(var(--v-theme-surface), 0.96);
   --app-surface-overlay: rgba(var(--v-theme-surface), 0.98);
+  --app-expressive-surface-bg:
+    radial-gradient(120% 120% at 100% 0%, rgba(var(--v-theme-secondary), 0.12), transparent 58%),
+    linear-gradient(155deg, rgba(var(--v-theme-surface), 0.96), rgba(var(--v-theme-background), 0.86));
+  --app-expressive-panel-bg: rgba(var(--v-theme-surface), 0.72);
+  --app-expressive-border: rgba(var(--v-theme-secondary), 0.18);
   --app-data-cost-stroke: rgba(var(--v-theme-primary), 0.44);
   --app-data-cost-text: rgba(var(--v-theme-primary), 0.95);
   --app-data-cost-surface: rgba(var(--v-theme-primary), 0.18);

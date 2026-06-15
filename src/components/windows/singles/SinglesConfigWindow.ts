@@ -1,5 +1,6 @@
 import "../config/ConfigWindow.css";
 import "./SinglesConfigWindow.css";
+import AppSectionCard from "../../ui/AppSectionCard.vue";
 import AppStickyActionFooter from "../../ui/AppStickyActionFooter.vue";
 import SinglesCsvImportDialog from "./SinglesCsvImportDialog.vue";
 import SinglesPurchasingCard from "./SinglesPurchasingCard.vue";
@@ -9,6 +10,7 @@ import { singlesConfigWindowDefinition } from "./SinglesConfigWindow.definition.
 export const SinglesConfigWindow: any = {
   ...singlesConfigWindowDefinition,
   components: {
+    AppSectionCard,
     AppStickyActionFooter,
     SinglesPurchasingCard,
     SinglesCsvImportDialog,

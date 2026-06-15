@@ -1,0 +1,7 @@
+<span :class="resolvedClasses" :title="resolvedTitle">
+  <span v-if="label" class="app-financial-value__label">{{ label }}</span>
+  <span class="app-financial-value__amount">
+    <slot>{{ renderedValue }}</slot>
+  </span>
+  <span v-if="secondary" class="app-financial-value__secondary">{{ secondary }}</span>
+</span>

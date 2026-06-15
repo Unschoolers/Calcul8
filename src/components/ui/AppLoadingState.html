@@ -1,0 +1,11 @@
+<div :class="resolvedClasses" role="status" aria-live="polite">
+  <v-progress-circular
+    indeterminate
+    :size="size"
+    :color="color"
+    class="app-loading-state__progress"
+  ></v-progress-circular>
+  <p v-if="title" class="app-state-view__title">{{ title }}</p>
+  <p v-if="body" class="app-state-view__body">{{ body }}</p>
+  <slot></slot>
+</div>

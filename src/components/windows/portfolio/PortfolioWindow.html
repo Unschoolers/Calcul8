@@ -171,8 +171,8 @@
 
                 <v-row class="mt-4">
                   <v-col cols="12" md="6">
-                    <app-section-card card-class="portfolio-section-card portfolio-chart-card">
-                        <div class="portfolio-chart-head">
+                    <app-section-card card-class="portfolio-section-card portfolio-chart-card app-responsive-chart">
+                        <div class="portfolio-chart-head app-responsive-chart__head">
                           <div class="portfolio-section-head-main">
                             <v-icon size="16">mdi-chart-line</v-icon>
                             <div class="portfolio-section-head-copy">
@@ -194,25 +194,26 @@
                             <v-icon>{{ portfolioChartToggleIcon() }}</v-icon>
                           </v-btn>
                         </div>
-                        <app-empty-state
-                          v-if="!hasPortfolioData"
-                          :title="portfolioCopy('portfolioChartEmptyTitle', 'No portfolio data yet')"
-                          :body="portfolioCopy('portfolioChartEmptyBody', 'Create a lot and record sales to see your trends here.')"
-                          compact
-                          state-class="py-6"
-                        ></app-empty-state>
-                        <canvas
-                          v-else
-                          ref="portfolioChartCanvas"
-                          role="img"
-                          :aria-label="portfolioChartAriaLabel()"
-                          style="max-height: 250px;"
-                        ></canvas>
+                        <div class="app-responsive-chart__plot">
+                          <app-empty-state
+                            v-if="!hasPortfolioData"
+                            :title="portfolioCopy('portfolioChartEmptyTitle', 'No portfolio data yet')"
+                            :body="portfolioCopy('portfolioChartEmptyBody', 'Create a lot and record sales to see your trends here.')"
+                            compact
+                            state-class="py-6"
+                          ></app-empty-state>
+                          <canvas
+                            v-else
+                            ref="portfolioChartCanvas"
+                            role="img"
+                            :aria-label="portfolioChartAriaLabel()"
+                          ></canvas>
+                        </div>
                     </app-section-card>
                   </v-col>
                   <v-col cols="12" md="6">
-                    <app-section-card card-class="portfolio-section-card portfolio-sales-by-user-card">
-                        <div class="portfolio-chart-head">
+                    <app-section-card card-class="portfolio-section-card portfolio-sales-by-user-card app-responsive-chart">
+                        <div class="portfolio-chart-head app-responsive-chart__head">
                           <div class="portfolio-section-head-main">
                             <v-icon size="16">mdi-account-group-outline</v-icon>
                             <div class="portfolio-section-head-copy">
@@ -250,14 +251,20 @@
                                 class="portfolio-sales-by-user-stat-chip"
                               >
                                 {{ portfolioCopy('portfolioSalesByUserTotalLabel', '8-week total') }}
-                                <span class="portfolio-sales-by-user-stat-chip__value">
-                                  <template v-if="portfolioSalesByUserMetric === 'count'">
-                                    {{ fmtCurrency(portfolioSalesByUserTotalValue(), 0) }}
-                                  </template>
-                                  <template v-else>
-                                    ${{ fmtCurrency(portfolioSalesByUserTotalValue()) }}
-                                  </template>
-                                </span>
+                            <app-metric-value
+                              class="portfolio-sales-by-user-stat-chip__value"
+                              :kind="portfolioSalesByUserMetric === 'count' ? 'count' : 'money'"
+                              :tone="portfolioSalesByUserMetric === 'profit'
+                                ? (portfolioSalesByUserTotalValue() >= 0 ? 'positive' : 'negative')
+                                : 'neutral'"
+                            >
+                              <template v-if="portfolioSalesByUserMetric === 'count'">
+                                {{ fmtCurrency(portfolioSalesByUserTotalValue(), 0) }}
+                              </template>
+                              <template v-else>
+                                ${{ fmtCurrency(portfolioSalesByUserTotalValue()) }}
+                              </template>
+                            </app-metric-value>
                               </v-chip>
                             </div>
                             <v-btn-toggle
@@ -313,23 +320,31 @@
                                   :style="{ '--sales-user-color': item.color }"
                                 ></span>
                                 <span class="portfolio-sales-by-user-legend-label">{{ item.label }}</span>
-                                <span class="portfolio-sales-by-user-legend-total">
+                                <app-metric-value
+                                  class="portfolio-sales-by-user-legend-total"
+                                  :kind="portfolioSalesByUserMetric === 'count' ? 'count' : 'money'"
+                                  :tone="portfolioSalesByUserMetric === 'profit'
+                                    ? (item.total >= 0 ? 'positive' : 'negative')
+                                    : 'neutral'"
+                                >
                                   <template v-if="portfolioSalesByUserMetric === 'count'">
                                     {{ fmtCurrency(item.total, 0) }}
                                   </template>
                                   <template v-else>
                                     ${{ fmtCurrency(item.total) }}
                                   </template>
-                                </span>
+                                </app-metric-value>
                               </div>
                             </div>
                           </div>
-                          <canvas
-                            ref="portfolioSalesByUserChartCanvas"
-                            role="img"
-                            :aria-label="portfolioSalesByUserAriaLabel()"
-                            class="portfolio-sales-by-user-canvas"
-                          ></canvas>
+                          <div class="app-responsive-chart__plot">
+                            <canvas
+                              ref="portfolioSalesByUserChartCanvas"
+                              role="img"
+                              :aria-label="portfolioSalesByUserAriaLabel()"
+                              class="portfolio-sales-by-user-canvas"
+                            ></canvas>
+                          </div>
                         </template>
                         <div
                           v-if="hasPortfolioSalesByUserData && portfolioSalesByUserWeekTotals().length > 0"
@@ -345,14 +360,20 @@
                             @click="openPortfolioSalesByUserWeekDrilldown(week)"
                           >
                             <span class="portfolio-sales-by-user-week-pill__label">{{ week.label }}</span>
-                            <span class="portfolio-sales-by-user-week-pill__value">
+                            <app-metric-value
+                              class="portfolio-sales-by-user-week-pill__value"
+                              :kind="portfolioSalesByUserMetric === 'count' ? 'count' : 'money'"
+                              :tone="portfolioSalesByUserMetric === 'profit'
+                                ? (week.total >= 0 ? 'positive' : 'negative')
+                                : 'neutral'"
+                            >
                               <template v-if="portfolioSalesByUserMetric === 'count'">
                                 {{ fmtCurrency(week.total, 0) }}
                               </template>
                               <template v-else>
                                 ${{ fmtCurrency(week.total) }}
                               </template>
-                            </span>
+                            </app-metric-value>
                           </button>
                         </div>
                     </app-section-card>
@@ -376,12 +397,16 @@
                         <div v-if="hasPortfolioData" class="portfolio-performance-summary">
                           <div class="portfolio-performance-summary-stat is-error">
                             <span class="portfolio-performance-summary-label">{{ portfolioCopy('portfolioPerformanceLossLabel', 'Loss') }}</span>
-                            <span class="portfolio-performance-summary-value">${{ portfolioLotPerformanceUnderAmount() }}</span>
+                            <app-metric-value kind="money" tone="negative" value-class="portfolio-performance-summary-value">
+                              ${{ portfolioLotPerformanceUnderAmount() }}
+                            </app-metric-value>
                           </div>
                           <div class="portfolio-performance-summary-divider" aria-hidden="true"></div>
                           <div class="portfolio-performance-summary-stat is-success">
                             <span class="portfolio-performance-summary-label">{{ portfolioCopy('portfolioPerformanceGainLabel', 'Gain') }}</span>
-                            <span class="portfolio-performance-summary-value">${{ portfolioLotPerformanceOverAmount() }}</span>
+                            <app-metric-value kind="money" tone="positive" value-class="portfolio-performance-summary-value">
+                              ${{ portfolioLotPerformanceOverAmount() }}
+                            </app-metric-value>
                           </div>
                         </div>
                       </template>
@@ -476,54 +501,120 @@
                           {{ portfolioSalesByUserDrilldownSummary() }}
                         </div>
                       </div>
-                      <v-btn
-                        icon="mdi-close"
+                      <app-action-button
+                        action="close"
+                        icon-only
                         variant="text"
+                        :label="portfolioCopy('portfolioSalesByUserDrilldownCloseLabel', 'Close sales drilldown')"
                         :aria-label="portfolioCopy('portfolioSalesByUserDrilldownCloseLabel', 'Close sales drilldown')"
                         @click="closePortfolioSalesByUserWeekDrilldown"
-                      ></v-btn>
+                      ></app-action-button>
                     </v-card-title>
                     <v-card-text class="portfolio-sales-drilldown-content app-dialog-content">
-                      <v-table
-                        density="compact"
-                        class="portfolio-sales-drilldown-table app-data-table"
-                      >
-                        <thead>
-                          <tr>
-                            <th>{{ portfolioCopy('portfolioSalesByUserDrilldownItemLabel', 'Item') }}</th>
-                            <th>{{ portfolioCopy('portfolioSalesByUserDrilldownLotLabel', 'Lot') }}</th>
-                            <th>{{ portfolioCopy('portfolioSalesByUserDrilldownDateLabel', 'Date') }}</th>
-                            <th>{{ portfolioCopy('portfolioSalesByUserDrilldownSellerLabel', 'Sold by') }}</th>
-                            <th class="text-right">{{ portfolioCopy('portfolioSalesByUserMetricRevenueLabel', 'Revenue') }}</th>
-                            <th class="text-right">{{ portfolioCopy('portfolioSalesByUserMetricProfitLabel', 'Profit') }}</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr
-                            v-for="row in portfolioSalesByUserSelectedDrilldownRows()"
-                            :key="`portfolio-sales-drilldown-${row.lotId}-${row.saleId}`"
-                          >
-                            <td>
-                              <div class="portfolio-sales-drilldown-item">
-                                <span class="portfolio-sales-drilldown-item__title">{{ row.itemLabel }}</span>
-                                <span class="portfolio-sales-drilldown-item__meta">
-                                  {{ portfolioCopy('portfolioSalesByUserDrilldownQuantityLabel', 'Qty') }} {{ fmtCurrency(row.quantity, 0) }}
-                                </span>
-                              </div>
-                            </td>
-                            <td>{{ row.lotName }}</td>
-                            <td>{{ row.dateLabel }}</td>
-                            <td>{{ row.sellerLabel }}</td>
-                            <td class="text-right">${{ fmtCurrency(row.revenue) }}</td>
-                            <td
-                              class="text-right portfolio-sales-drilldown-profit"
-                              :class="{ 'is-negative': row.profit < 0, 'is-positive': row.profit > 0 }"
+                      <div class="portfolio-sales-drilldown-desktop-table app-table-wrap app-table-wrap--scroll" tabindex="0">
+                        <span class="app-table-scroll-hint" aria-hidden="true">
+                          <v-icon size="14">mdi-arrow-left-right</v-icon>
+                        </span>
+                        <v-table
+                          density="compact"
+                          class="portfolio-sales-drilldown-table app-data-table"
+                        >
+                          <thead>
+                            <tr>
+                              <th>{{ portfolioCopy('portfolioSalesByUserDrilldownItemLabel', 'Item') }}</th>
+                              <th>{{ portfolioCopy('portfolioSalesByUserDrilldownLotLabel', 'Lot') }}</th>
+                              <th>{{ portfolioCopy('portfolioSalesByUserDrilldownDateLabel', 'Date') }}</th>
+                              <th>{{ portfolioCopy('portfolioSalesByUserDrilldownSellerLabel', 'Sold by') }}</th>
+                              <th class="text-right">{{ portfolioCopy('portfolioSalesByUserMetricRevenueLabel', 'Revenue') }}</th>
+                              <th class="text-right">{{ portfolioCopy('portfolioSalesByUserMetricProfitLabel', 'Profit') }}</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr
+                              v-for="row in portfolioSalesByUserSelectedDrilldownRows()"
+                              :key="`portfolio-sales-drilldown-${row.lotId}-${row.saleId}`"
                             >
-                              {{ portfolioSignedCurrency(row.profit) }}
-                            </td>
-                          </tr>
-                        </tbody>
-                      </v-table>
+                              <td>
+                                <div class="portfolio-sales-drilldown-item">
+                                  <span class="portfolio-sales-drilldown-item__title">{{ row.itemLabel }}</span>
+                                  <span class="portfolio-sales-drilldown-item__meta">
+                                    {{ portfolioCopy('portfolioSalesByUserDrilldownQuantityLabel', 'Qty') }} {{ fmtCurrency(row.quantity, 0) }}
+                                  </span>
+                                </div>
+                              </td>
+                              <td>{{ row.lotName }}</td>
+                              <td>{{ row.dateLabel }}</td>
+                              <td>{{ row.sellerLabel }}</td>
+                              <td class="text-right">
+                                <app-metric-value kind="money" tone="neutral" cell>
+                                  ${{ fmtCurrency(row.revenue) }}
+                                </app-metric-value>
+                              </td>
+                              <td class="text-right">
+                                <app-metric-value
+                                  kind="money"
+                                  :tone="row.profit < 0 ? 'negative' : (row.profit > 0 ? 'positive' : 'neutral')"
+                                  cell
+                                  value-class="portfolio-sales-drilldown-profit"
+                                >
+                                  {{ portfolioSignedCurrency(row.profit) }}
+                                </app-metric-value>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </v-table>
+                      </div>
+                      <div class="portfolio-sales-drilldown-mobile-list app-mobile-preview-list" aria-live="polite">
+                        <article
+                          v-for="row in portfolioSalesByUserSelectedDrilldownRows()"
+                          :key="`portfolio-sales-drilldown-mobile-${row.lotId}-${row.saleId}`"
+                          class="portfolio-sales-drilldown-mobile-card app-mobile-preview-card app-section-card"
+                        >
+                          <div class="app-mobile-preview-card__head">
+                            <div class="app-mobile-preview-card__title">
+                              {{ row.itemLabel }}
+                            </div>
+                            <v-chip size="x-small" variant="tonal">
+                              {{ portfolioCopy('portfolioSalesByUserDrilldownQuantityLabel', 'Qty') }} {{ fmtCurrency(row.quantity, 0) }}
+                            </v-chip>
+                          </div>
+                          <dl class="app-mobile-preview-card__fields">
+                            <div class="app-mobile-preview-card__field">
+                              <dt>{{ portfolioCopy('portfolioSalesByUserDrilldownLotLabel', 'Lot') }}</dt>
+                              <dd>{{ row.lotName }}</dd>
+                            </div>
+                            <div class="app-mobile-preview-card__field">
+                              <dt>{{ portfolioCopy('portfolioSalesByUserDrilldownDateLabel', 'Date') }}</dt>
+                              <dd>{{ row.dateLabel }}</dd>
+                            </div>
+                            <div class="app-mobile-preview-card__field">
+                              <dt>{{ portfolioCopy('portfolioSalesByUserDrilldownSellerLabel', 'Sold by') }}</dt>
+                              <dd>{{ row.sellerLabel }}</dd>
+                            </div>
+                            <div class="app-mobile-preview-card__field">
+                              <dt>{{ portfolioCopy('portfolioSalesByUserMetricRevenueLabel', 'Revenue') }}</dt>
+                              <dd>
+                                <app-metric-value kind="money" tone="neutral" cell>
+                                  ${{ fmtCurrency(row.revenue) }}
+                                </app-metric-value>
+                              </dd>
+                            </div>
+                            <div class="app-mobile-preview-card__field">
+                              <dt>{{ portfolioCopy('portfolioSalesByUserMetricProfitLabel', 'Profit') }}</dt>
+                              <dd>
+                                <app-metric-value
+                                  kind="money"
+                                  :tone="row.profit < 0 ? 'negative' : (row.profit > 0 ? 'positive' : 'neutral')"
+                                  cell
+                                  value-class="portfolio-sales-drilldown-profit"
+                                >
+                                  {{ portfolioSignedCurrency(row.profit) }}
+                                </app-metric-value>
+                              </dd>
+                            </div>
+                          </dl>
+                        </article>
+                      </div>
                     </v-card-text>
                     <v-card-actions class="app-dialog-actions">
                       <v-spacer></v-spacer>

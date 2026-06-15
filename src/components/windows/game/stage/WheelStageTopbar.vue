@@ -171,31 +171,31 @@ export default WheelStageTopbar;
 }
 
 .game-spectator-btn.v-btn--variant-tonal {
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border: 1px solid var(--app-status-inactive-stroke);
 }
 
 .game-spectator-btn--inactive.v-btn--variant-tonal {
-  background: rgba(var(--v-theme-on-surface), 0.05) !important;
-  color: rgba(var(--v-theme-on-surface), 0.84) !important;
+  background: var(--app-status-inactive-surface) !important;
+  color: var(--app-status-inactive-text) !important;
 }
 
 .game-spectator-btn--live.v-btn--variant-tonal {
-  background: rgba(var(--v-theme-success), 0.14) !important;
-  color: rgb(var(--v-theme-success)) !important;
-  border-color: rgba(var(--v-theme-success), 0.22) !important;
+  background: var(--app-status-live-surface) !important;
+  color: var(--app-status-live-text) !important;
+  border-color: var(--app-status-live-stroke) !important;
 }
 
 .game-spectator-btn--ended.v-btn--variant-elevated {
   background:
-    linear-gradient(135deg, rgba(var(--v-theme-warning), 0.28), rgba(var(--v-theme-warning), 0.18)),
+    linear-gradient(135deg, var(--app-status-warning-surface), var(--app-status-warning-surface)),
     rgb(var(--v-theme-surface)) !important;
-  color: rgb(var(--v-theme-warning)) !important;
-  border: 1px solid rgba(var(--v-theme-warning), 0.3) !important;
-  box-shadow: 0 0 0 1px rgba(var(--v-theme-warning), 0.08) inset !important;
+  color: var(--app-status-warning-text) !important;
+  border: 1px solid var(--app-status-warning-stroke) !important;
+  box-shadow: 0 0 0 1px var(--app-status-warning-stroke) inset !important;
 }
 
 .game-spectator-btn--ended .v-icon {
-  color: rgb(var(--v-theme-warning)) !important;
+  color: var(--app-status-warning-text) !important;
 }
 
 .wheel-mode-toggle {
@@ -229,12 +229,12 @@ export default WheelStageTopbar;
 }
 
 .wheel-mode-toggle .wheel-mode-toggle__btn--active-live.v-btn--active {
-  background: rgba(var(--v-theme-success), 0.2);
-  color: rgb(var(--v-theme-success));
+  background: var(--app-status-live-surface);
+  color: var(--app-status-live-text);
 }
 
 .wheel-mode-toggle .wheel-mode-toggle__btn--active-live.v-btn--active .v-icon {
-  color: rgb(var(--v-theme-success));
+  color: var(--app-status-live-text);
 }
 
 .wheel-stage-title {

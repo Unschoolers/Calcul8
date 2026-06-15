@@ -11,13 +11,15 @@
         <v-icon class="mr-2">mdi-file-delimited-outline</v-icon>
         {{ t('whatnotCsvTitle') }}
       </div>
-      <v-btn
-        icon="mdi-close"
+      <app-action-button
+        action="close"
+        icon-only
         variant="text"
+        :label="t('whatnotCsvCloseAction')"
         :title="t('whatnotCsvCloseAction')"
         :aria-label="t('whatnotCsvCloseAction')"
         @click="closeWhatnotCsvDialog"
-      ></v-btn>
+      ></app-action-button>
     </v-card-title>
     <v-divider></v-divider>
     <v-card-text class="whatnot-csv-content app-dialog-content">
@@ -71,19 +73,27 @@
           </div>
           <div class="whatnot-csv-preflight-stat" data-testid="whatnotCsvPreflightStat">
             <span>{{ t('whatnotCsvPreflightGrossLabel') }}</span>
-            <strong>${{ formatCurrency(whatnotCsvWeeklyPreflight.grossAmount) }}</strong>
+            <app-metric-value kind="money" tone="neutral">
+              ${{ formatCurrency(whatnotCsvWeeklyPreflight.grossAmount) }}
+            </app-metric-value>
           </div>
           <div class="whatnot-csv-preflight-stat" data-testid="whatnotCsvPreflightStat">
             <span>{{ t('whatnotCsvPreflightFeesLabel') }}</span>
-            <strong>${{ formatCurrency(whatnotCsvWeeklyPreflight.feeAmount) }}</strong>
+            <app-metric-value kind="money" tone="negative">
+              ${{ formatCurrency(whatnotCsvWeeklyPreflight.feeAmount) }}
+            </app-metric-value>
           </div>
           <div class="whatnot-csv-preflight-stat" data-testid="whatnotCsvPreflightStat">
             <span>{{ t('whatnotCsvPreflightNetLabel') }}</span>
-            <strong>${{ formatCurrency(whatnotCsvWeeklyPreflight.netAmount) }}</strong>
+            <app-metric-value kind="money" tone="positive">
+              ${{ formatCurrency(whatnotCsvWeeklyPreflight.netAmount) }}
+            </app-metric-value>
           </div>
           <div class="whatnot-csv-preflight-stat" data-testid="whatnotCsvPreflightStat">
             <span>{{ t('whatnotCsvPreflightBuyerPaidLabel') }}</span>
-            <strong>${{ formatCurrency(whatnotCsvWeeklyPreflight.buyerPaidAmount) }}</strong>
+            <app-metric-value kind="money" tone="neutral">
+              ${{ formatCurrency(whatnotCsvWeeklyPreflight.buyerPaidAmount) }}
+            </app-metric-value>
           </div>
         </div>
         <div class="d-flex flex-wrap ga-2 mt-3">
@@ -104,16 +114,15 @@
         </div>
       </v-alert>
 
-      <v-alert
+      <app-error-state
         v-else-if="whatnotCsvHeaders.length > 0"
-        type="warning"
-        variant="tonal"
-        density="comfortable"
-        class="mb-4"
-      >
-        This file does not look like a complete Whatnot weekly export yet. If you know it is the right file, open
-        <strong>Advanced mapping</strong> and check the required fields.
-      </v-alert>
+        tone="warning"
+        surface
+        compact
+        state-class="mb-4"
+        :title="t('whatnotCsvIncompleteTitle')"
+        :body="t('whatnotCsvIncompleteBody')"
+      ></app-error-state>
 
       <v-expansion-panels v-if="whatnotCsvHeaders.length > 0" variant="accordion" class="mt-4">
         <v-expansion-panel>
@@ -338,7 +347,10 @@
         <div class="text-caption text-medium-emphasis mb-2">
           {{ t('whatnotCsvPreviewLabel') }}
         </div>
-        <div class="whatnot-csv-preview-desktop singles-import-preview-wrap app-table-wrap">
+        <div class="whatnot-csv-preview-desktop singles-import-preview-wrap app-table-wrap app-table-wrap--scroll" tabindex="0">
+          <span class="app-table-scroll-hint" aria-hidden="true">
+            <v-icon size="14">mdi-arrow-left-right</v-icon>
+          </span>
           <v-table density="compact" class="whatnot-csv-preview-table singles-import-preview-table app-data-table">
             <thead>
               <tr>
@@ -401,10 +413,24 @@
     </v-card-text>
     <v-card-actions class="app-dialog-actions">
       <v-spacer></v-spacer>
-      <v-btn variant="text" @click="closeWhatnotCsvDialog">{{ t('commonCancel') }}</v-btn>
-      <v-btn color="primary" variant="flat" :disabled="!whatnotCsvRequiredMappingsComplete" @click="confirmWhatnotCsvImport">
+      <app-action-button
+        action="close"
+        variant="text"
+        :label="t('commonCancel')"
+        @click="closeWhatnotCsvDialog"
+      >
+        {{ t('commonCancel') }}
+      </app-action-button>
+      <app-action-button
+        action="import"
+        color="primary"
+        variant="flat"
+        :disabled="!whatnotCsvRequiredMappingsComplete"
+        :label="t('whatnotPrepareReviewAction')"
+        @click="confirmWhatnotCsvImport"
+      >
         {{ t('whatnotPrepareReviewAction') }}
-      </v-btn>
+      </app-action-button>
     </v-card-actions>
   </v-card>
 </v-dialog>

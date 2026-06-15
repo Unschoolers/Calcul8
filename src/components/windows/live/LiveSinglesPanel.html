@@ -122,11 +122,22 @@
           <v-row density="comfortable" align="center">
             <v-col cols="8" class="text-center">
               <div class="text-caption text-medium-emphasis">{{ t('liveSinglesBundleTotalLabel') }}</div>
-              <div class="text-h4 font-weight-bold mb-1">${{ fmtCurrency(liveSinglesEffectiveBundlePrice, 2) }}</div>
-              <v-chip size="small" :color="liveSinglesBundleProfit >= 0 ? 'success' : 'error'" class="font-weight-medium">
+              <app-metric-value
+                kind="money"
+                tone="target"
+                value-class="text-h4 font-weight-bold mb-1"
+              >
+                ${{ fmtCurrency(liveSinglesEffectiveBundlePrice, 2) }}
+              </app-metric-value>
+              <app-metric-value
+                kind="delta"
+                :tone="liveSinglesBundleProfit >= 0 ? 'positive' : 'negative'"
+                pill
+                value-class="font-weight-medium"
+              >
                 {{ liveSinglesBundleProfit >= 0 ? '+' : '' }}${{ fmtCurrency(liveSinglesBundleProfit, 2) }}
                 ({{ fmtCurrency(liveSinglesBundleProfitPercent, 1) }}%) {{ t('liveSinglesEstimatedProfitLabel') }}
-              </v-chip>
+              </app-metric-value>
             </v-col>
               <v-col cols="4" class="text-center">
                 <div class="d-flex flex-column align-center justify-center ga-1">
@@ -244,17 +255,25 @@
                 <template v-if="liveSinglesPricingMode === 'individual'">
                   <div class="live-singles-price-block">
                     <div class="text-caption text-medium-emphasis">{{ t('liveSinglesEachPriceLabel') }}</div>
-                    <div class="text-h6 font-weight-bold">${{ fmtCurrency(getIndividualPrice(entry), 2) }}</div>
+                    <app-metric-value
+                      kind="money"
+                      tone="target"
+                      value-class="text-h6 font-weight-bold"
+                    >
+                      ${{ fmtCurrency(getIndividualPrice(entry), 2) }}
+                    </app-metric-value>
                     <div class="text-caption text-medium-emphasis">
                       {{ t('liveSinglesLineTotalLabel') }} ${{ fmtCurrency(getIndividualPrice(entry) * getLiveSinglesEntryQuantity(entry), 2) }}
                     </div>
-                    <v-chip
-                      size="x-small"
-                      :color="getIndividualProfit(entry) >= 0 ? 'success' : 'error'"
+                    <app-metric-value
+                      kind="delta"
+                      :tone="getIndividualProfit(entry) >= 0 ? 'positive' : 'negative'"
+                      pill
+                      value-class="text-caption"
                     >
                       {{ getIndividualProfit(entry) >= 0 ? '+' : '' }}${{ fmtCurrency(getIndividualProfit(entry), 2) }}
                       ({{ fmtCurrency(getIndividualProfitPercent(entry), 1) }}%)
-                    </v-chip>
+                    </app-metric-value>
                   </div>
                   <div class="live-singles-control-group live-singles-control-group--price">
                     <div class="live-singles-control-label">{{ t('liveSinglesPriceLabel') }}</div>
@@ -281,9 +300,13 @@
                 <template v-else>
                   <div class="live-singles-price-block">
                     <div class="text-caption text-medium-emphasis">{{ t('liveSinglesBundleShareLabel') }}</div>
-                    <div class="text-subtitle-1 font-weight-bold">
+                    <app-metric-value
+                      kind="money"
+                      tone="target"
+                      value-class="text-subtitle-1 font-weight-bold"
+                    >
                       ${{ fmtCurrency(getBundleAllocationForEntry(entry.id)?.share || 0, 2) }}
-                    </div>
+                    </app-metric-value>
                     <div class="text-caption text-medium-emphasis">
                       {{ fmtCurrency(getBundleAllocationForEntry(entry.id)?.percent || 0, 1) }}% {{ t('liveSinglesShareOfBundleLabel') }} ·
                       {{ t('liveSinglesQuantityLabel') }} {{ getLiveSinglesEntryQuantity(entry) }}
@@ -314,8 +337,22 @@
           <div v-if="liveSinglesPricingMode === 'individual'" class="live-singles-summary-copy text-caption text-medium-emphasis">
             <div class="live-singles-summary-line">
               <span class="live-singles-summary-pill">{{ liveSinglesSelectedCount }} {{ t('liveSinglesItemsLabel') }}</span>
-              <span class="live-singles-summary-pill">{{ t('liveSinglesSummaryTotalLabel') }} ${{ fmtCurrency(liveSinglesIndividualTotalPrice, 2) }}</span>
-              <span class="live-singles-summary-pill">{{ t('liveSinglesSummaryProfitLabel') }} {{ liveSinglesIndividualTotalProfit >= 0 ? '+' : '' }}${{ fmtCurrency(liveSinglesIndividualTotalProfit, 2) }}</span>
+              <app-metric-value
+                class="live-singles-summary-pill"
+                kind="money"
+                tone="target"
+                :label="t('liveSinglesSummaryTotalLabel')"
+              >
+                ${{ fmtCurrency(liveSinglesIndividualTotalPrice, 2) }}
+              </app-metric-value>
+              <app-metric-value
+                class="live-singles-summary-pill"
+                kind="delta"
+                :tone="liveSinglesIndividualTotalProfit >= 0 ? 'positive' : 'negative'"
+                :label="t('liveSinglesSummaryProfitLabel')"
+              >
+                {{ liveSinglesIndividualTotalProfit >= 0 ? '+' : '' }}${{ fmtCurrency(liveSinglesIndividualTotalProfit, 2) }}
+              </app-metric-value>
             </div>
             <div class="live-singles-summary-subline">
               {{ fmtCurrency(liveSinglesIndividualTotalProfitPercent, 1) }}% {{ t('liveSinglesSummaryMarginLabel') }}
@@ -324,20 +361,36 @@
           <div v-else class="live-singles-summary-copy text-caption text-medium-emphasis">
             <div class="live-singles-summary-line">
               <span class="live-singles-summary-pill">{{ liveSinglesSelectedCount }} {{ t('liveSinglesItemsLabel') }}</span>
-              <span class="live-singles-summary-pill">{{ t('liveSinglesBundleSummaryLabel') }} ${{ fmtCurrency(liveSinglesEffectiveBundlePrice, 2) }}</span>
-              <span class="live-singles-summary-pill">{{ t('liveSinglesSummaryProfitLabel') }} {{ liveSinglesBundleProfit >= 0 ? '+' : '' }}${{ fmtCurrency(liveSinglesBundleProfit, 2) }}</span>
+              <app-metric-value
+                class="live-singles-summary-pill"
+                kind="money"
+                tone="target"
+                :label="t('liveSinglesBundleSummaryLabel')"
+              >
+                ${{ fmtCurrency(liveSinglesEffectiveBundlePrice, 2) }}
+              </app-metric-value>
+              <app-metric-value
+                class="live-singles-summary-pill"
+                kind="delta"
+                :tone="liveSinglesBundleProfit >= 0 ? 'positive' : 'negative'"
+                :label="t('liveSinglesSummaryProfitLabel')"
+              >
+                {{ liveSinglesBundleProfit >= 0 ? '+' : '' }}${{ fmtCurrency(liveSinglesBundleProfit, 2) }}
+              </app-metric-value>
             </div>
           </div>
           <div class="live-singles-summary-actions">
-            <v-btn
+            <app-action-button
+              action="add"
               color="secondary"
               variant="tonal"
-              prepend-icon="mdi-cart-arrow-right"
+              icon="mdi-cart-arrow-right"
               class="live-singles-convert-btn"
+              :label="t('liveSinglesConvertToSaleLabel')"
               @click="convertLiveSinglesToSale"
             >
               {{ t('liveSinglesConvertToSaleLabel') }}
-            </v-btn>
+            </app-action-button>
           </div>
         </v-card-text>
       </v-card>

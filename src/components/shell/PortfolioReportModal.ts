@@ -1,4 +1,6 @@
 import { inject, type PropType } from "vue";
+import AppActionButton from "../ui/AppActionButton.vue";
+import AppMetricValue from "../ui/AppMetricValue.vue";
 import AppStickyActionFooter from "../ui/AppStickyActionFooter.vue";
 import { createWindowContextBridge } from "../windows/shared/contextBridge.ts";
 import "./PortfolioReportModal.css";
@@ -6,6 +8,8 @@ import "./PortfolioReportModal.css";
 export const PortfolioReportModal = {
   name: "PortfolioReportModal",
   components: {
+    AppActionButton,
+    AppMetricValue,
     AppStickyActionFooter
   },
   props: {

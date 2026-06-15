@@ -1,0 +1,18 @@
+<v-btn
+  v-bind="$attrs"
+  :class="resolvedClasses"
+  :color="resolvedColor"
+  :variant="resolvedVariant"
+  :size="size"
+  :density="density"
+  :disabled="disabled"
+  :loading="loading"
+  :block="block"
+  :icon="resolvedIconProp"
+  :prepend-icon="resolvedPrependIcon"
+  :title="resolvedTitle"
+  :aria-label="resolvedAriaLabel"
+  @click="$emit('click', $event)"
+>
+  <slot>{{ iconOnly ? "" : label }}</slot>
+</v-btn>

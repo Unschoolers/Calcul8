@@ -123,16 +123,15 @@
     </v-card-text>
   </v-card>
 
-  <v-alert
+  <app-error-state
     v-else-if="guidedOnboardingStatus !== 'running' && !hasLotSelected"
     id="guided-onboarding-empty-state"
-    type="warning"
-    variant="tonal"
-    density="compact"
+    tone="warning"
     icon="mdi-information-outline"
-    class="app-empty-state-alert mb-4"
-  >
-    <span class="app-empty-state-alert__label">{{ t('shellNoLotTitle') }}</span>
-    {{ t('shellNoLotBody') }}
-  </v-alert>
+    surface
+    compact
+    state-class="app-shell-blocking-surface mb-4"
+    :title="t('shellNoLotTitle')"
+    :body="t('shellNoLotBody')"
+  ></app-error-state>
 </div>

@@ -528,6 +528,14 @@
   min-width: 720px;
 }
 
+.portfolio-sales-drilldown-mobile-list {
+  display: none;
+}
+
+.portfolio-sales-drilldown-mobile-card {
+  margin-bottom: var(--app-space-3);
+}
+
 .portfolio-sales-drilldown-table th {
   white-space: nowrap;
   color: rgba(var(--v-theme-on-surface), 0.62);
@@ -567,6 +575,20 @@
 
 .portfolio-sales-drilldown-profit.is-negative {
   color: rgba(var(--v-theme-error), 0.92);
+}
+
+@media (max-width: 700px) {
+  .portfolio-sales-drilldown-content {
+    overflow-x: visible;
+  }
+
+  .portfolio-sales-drilldown-desktop-table {
+    display: none;
+  }
+
+  .portfolio-sales-drilldown-mobile-list {
+    display: block;
+  }
 }
 
 .portfolio-lot-row .v-list-item__append {
@@ -719,10 +741,6 @@
 
   .portfolio-sales-by-user-week-pill {
     flex: 0 0 auto;
-  }
-
-  .portfolio-sales-drilldown-table {
-    min-width: 640px;
   }
 
   .portfolio-sales-by-user-legend {

@@ -155,13 +155,14 @@
           </article>
         </div>
 
-        <div v-else class="workspace-members-empty">
-          <v-icon size="34" color="medium-emphasis">mdi-account-off-outline</v-icon>
-          <div class="workspace-members-empty__title">{{ t('shellMembersEmptyTitle') }}</div>
-          <div class="workspace-members-empty__body">
-            {{ t('shellMembersEmptyBody') }}
-          </div>
-        </div>
+        <app-empty-state
+          v-else
+          icon="mdi-account-off-outline"
+          surface
+          compact
+          :title="t('shellMembersEmptyTitle')"
+          :body="t('shellMembersEmptyBody')"
+        ></app-empty-state>
       </v-card-text>
       <v-card-actions class="workspace-members-card__actions app-dialog-actions">
         <v-spacer></v-spacer>

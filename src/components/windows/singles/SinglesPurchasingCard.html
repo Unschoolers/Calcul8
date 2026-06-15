@@ -1,18 +1,13 @@
 <v-col cols="12">
-  <v-card
+  <app-section-card
     id="guided-onboarding-singles-purchasing"
     data-driver-target="guided-onboarding-singles-purchasing"
-    elevation="4"
-    class="singles-grid-card"
+    :title="t('singlesPurchasingTitle')"
+    icon="mdi-table-large"
+    card-class="singles-grid-card"
+    content-class="singles-grid-card__content"
+    divider
   >
-    <v-card-title class="text-subtitle-1 singles-section-title-bar">
-      <div class="singles-section-title-group">
-        <v-icon size="16">mdi-table-large</v-icon>
-        <span>{{ t('singlesPurchasingTitle') }}</span>
-      </div>
-    </v-card-title>
-    <v-divider></v-divider>
-    <v-card-text>
       <div class="d-flex align-center justify-space-between flex-wrap ga-2 mb-3">
         <div class="text-caption text-medium-emphasis">{{ t('singlesDefaultPurchaseCurrencyLabel') }}</div>
         <v-btn-toggle
@@ -58,7 +53,7 @@
       >
         {{ t('singlesInfoNotice') }}
       </v-alert>
-      <div class="singles-mobile-sticky-tools">
+      <app-toolbar-card card-class="singles-mobile-sticky-tools" content-class="singles-mobile-sticky-tools__content">
         <v-text-field
           v-model="singlesSearchQuery"
           variant="outlined"
@@ -73,16 +68,18 @@
             <div class="singles-search-actions">
               <v-tooltip :text="t('singlesImportCsvAction')" location="top">
                 <template #activator="{ props }">
-                  <v-btn
+                  <app-action-button
                     v-bind="props"
+                    action="import"
                     icon="mdi-file-delimited"
+                    icon-only
                     size="x-small"
                     variant="text"
                     class="singles-search-action-btn"
-                    :title="t('singlesImportCsvAction')"
+                    :label="t('singlesImportCsvAction')"
                     :aria-label="t('singlesImportCsvAction')"
                     @click.stop="importSinglesPurchasesCsv"
-                  ></v-btn>
+                  ></app-action-button>
                 </template>
               </v-tooltip>
               <v-tooltip :text="showFullySoldSingles ? t('singlesHideSoldOutItems') : t('singlesShowSoldOutItems')" location="top">
@@ -145,48 +142,69 @@
             {{ mobileSortLabel }}
           </v-btn>
         </div>
+      </app-toolbar-card>
+      <div
+        v-if="$vuetify?.display?.smAndDown"
+        class="singles-mobile-summary-panel app-summary-panel"
+      >
+        <div class="singles-mobile-summary-panel__copy">
+          <div class="singles-mobile-summary-panel__title">{{ t('singlesPurchasingTitle') }}</div>
+          <div class="singles-mobile-summary-panel__body">
+            {{ visibleSinglesPurchases.length }} item{{ visibleSinglesPurchases.length === 1 ? '' : 's' }}
+          </div>
+        </div>
+        <div class="singles-mobile-summary-panel__values">
+          <div class="singles-mobile-summary-panel__value">
+            <span>{{ t('singlesSummaryTotalCostLabel') }}</span>
+            <app-metric-value kind="money" tone="negative">
+              ${{ fmtCurrency(singlesPurchaseTotalCost) }}
+            </app-metric-value>
+          </div>
+          <div class="singles-mobile-summary-panel__value">
+            <span>{{ t('singlesSummaryTotalMarketLabel') }}</span>
+            <app-metric-value kind="money" tone="positive">
+              ${{ fmtCurrency(singlesPurchaseTotalMarketValue) }}
+            </app-metric-value>
+          </div>
+        </div>
       </div>
-      <v-alert
+      <app-empty-state
         v-if="singlesPurchases.length === 0"
-        type="info"
-        variant="tonal"
-        density="compact"
-        class="mb-3"
-      >
-        {{ t('singlesEmptyState') }}
-      </v-alert>
-      <v-alert
+        icon="mdi-cards-outline"
+        surface
+        compact
+        state-class="mb-3"
+        :title="t('singlesEmptyState')"
+      ></app-empty-state>
+      <app-empty-state
         v-else-if="hasSinglesSearchQuery && visibleSinglesPurchases.length === 0"
-        type="info"
-        variant="tonal"
-        density="compact"
-        class="mb-3"
-      >
-        {{ t('singlesSearchEmptyState') }}
-      </v-alert>
-      <v-alert
+        icon="mdi-magnify"
+        surface
+        compact
+        state-class="mb-3"
+        :title="t('singlesSearchEmptyState')"
+      ></app-empty-state>
+      <app-empty-state
         v-else-if="!hasSinglesSearchQuery && visibleSinglesPurchases.length === 0"
-        type="info"
-        variant="tonal"
-        density="compact"
-        class="mb-3"
-      >
-        {{ t('singlesSoldOutEmptyState') }}
-      </v-alert>
+        icon="mdi-eye-off-outline"
+        surface
+        compact
+        state-class="mb-3"
+        :title="t('singlesSoldOutEmptyState')"
+      ></app-empty-state>
       <div v-if="isDesktopSelectMode" class="singles-bulk-bar singles-desktop-grid">
         <div class="text-caption text-medium-emphasis">
           {{ selectedDesktopRowIds.length }} selected
         </div>
-        <v-btn
-          icon="mdi-delete-outline"
+        <app-action-button
+          action="delete"
+          icon-only
           size="small"
-          variant="text"
-          color="error"
-          :title="t('singlesDeleteSelectedRowsAction')"
+          :label="t('singlesDeleteSelectedRowsAction')"
           :aria-label="t('singlesDeleteSelectedRowsAction')"
           :disabled="selectedDesktopRowIds.length === 0"
           @click="deleteSelectedDesktopRows"
-        ></v-btn>
+        ></app-action-button>
       </div>
 
       <div
@@ -340,8 +358,14 @@
                 {{ languageShortLabel(entry.language) }}
               </td>
               <td class="text-right text-body-2">
-                ${{ fmtCurrency((Number(entry.cost) || 0) * (Number(entry.quantity) || 0)) }}
-                    <span class="text-caption text-medium-emphasis ml-1">{{ entry.currency || currency }}</span>
+                <app-metric-value
+                  kind="money"
+                  tone="negative"
+                  cell
+                  :secondary="entry.currency || currency"
+                >
+                  ${{ fmtCurrency((Number(entry.cost) || 0) * (Number(entry.quantity) || 0)) }}
+                </app-metric-value>
               </td>
               <td>
                 <div class="text-body-2 text-right">
@@ -349,20 +373,26 @@
                 </div>
               </td>
               <td class="text-right text-body-2">
-                ${{ fmtCurrency(getSinglesEntryMarketTotalInSellingCurrency(entry)) }}
-                <span class="text-caption text-medium-emphasis ml-1">{{ sellingCurrency }}</span>
+                <app-metric-value
+                  kind="money"
+                  tone="positive"
+                  cell
+                  :secondary="sellingCurrency"
+                >
+                  ${{ fmtCurrency(getSinglesEntryMarketTotalInSellingCurrency(entry)) }}
+                </app-metric-value>
               </td>
               <td class="text-right">
                 <div v-if="!isDesktopSelectMode" class="singles-row-actions">
-                  <v-btn
+                  <app-action-button
+                    action="delete"
                     icon="mdi-trash-can-outline"
+                    icon-only
                     size="x-small"
-                    variant="text"
-                    color="error"
-                    :title="t('singlesRemoveRowAction')"
+                    :label="t('singlesRemoveRowAction')"
                     :aria-label="t('singlesRemoveRowAction')"
                     @click.stop="confirmRemoveSinglesPurchaseRow(entry.id)"
-                  ></v-btn>
+                  ></app-action-button>
                 </div>
               </td>
             </tr>
@@ -419,17 +449,25 @@
                 <span class="singles-mobile-chip singles-mobile-chip--stock">{{ getSinglesEntryStockLabel(entry) }}</span>
                 <span class="singles-mobile-value-pair">
                   <span class="singles-mobile-value-label">{{ t('singlesMobileMarketAbbrev') }}</span>
-                  <span class="singles-mobile-value">${{ fmtCurrency(getSinglesEntryMarketValueInSellingCurrency(entry)) }}</span>
+                  <app-metric-value class="singles-mobile-value" kind="money" tone="positive">
+                    ${{ fmtCurrency(getSinglesEntryMarketValueInSellingCurrency(entry)) }}
+                  </app-metric-value>
                   <span class="singles-mobile-value-currency">{{ sellingCurrency }}</span>
                   <span class="singles-mobile-value-label">{{ t('singlesMobileTotalMarketAbbrev') }}</span>
-                  <span class="singles-mobile-value">${{ fmtCurrency(getSinglesEntryMarketTotalInSellingCurrency(entry)) }}</span>
+                  <app-metric-value class="singles-mobile-value" kind="money" tone="positive">
+                    ${{ fmtCurrency(getSinglesEntryMarketTotalInSellingCurrency(entry)) }}
+                  </app-metric-value>
                   <span class="singles-mobile-value-currency">{{ sellingCurrency }}</span>
                 </span>
                 <span class="singles-mobile-value-pair singles-mobile-value-pair--muted">
                   <span class="singles-mobile-value-label">{{ t('singlesMobileCostAbbrev') }}</span>
-                  <span class="singles-mobile-value">${{ fmtCurrency(Number(entry.cost) || 0) }}</span>
+                  <app-metric-value class="singles-mobile-value" kind="money" tone="negative">
+                    ${{ fmtCurrency(Number(entry.cost) || 0) }}
+                  </app-metric-value>
                   <span class="singles-mobile-value-label">{{ t('singlesMobileTotalCostAbbrev') }}</span>
-                  <span class="singles-mobile-value">${{ fmtCurrency((Number(entry.cost) || 0) * (Number(entry.quantity) || 0)) }}</span>
+                  <app-metric-value class="singles-mobile-value" kind="money" tone="negative">
+                    ${{ fmtCurrency((Number(entry.cost) || 0) * (Number(entry.quantity) || 0)) }}
+                  </app-metric-value>
                   <span class="singles-mobile-value-currency">{{ entry.currency || currency }}</span>
                 </span>
               </div>
@@ -467,7 +505,13 @@
             </span>
             <span class="singles-summary-label">{{ t('singlesSummaryTotalCostLabel') }}</span>
           </span>
-          <strong class="singles-summary-value">${{ fmtCurrency(singlesPurchaseTotalCost) }}</strong>
+          <app-metric-value
+            kind="money"
+            tone="negative"
+            value-class="singles-summary-value"
+          >
+            ${{ fmtCurrency(singlesPurchaseTotalCost) }}
+          </app-metric-value>
         </div>
         <div class="singles-summary-pill singles-summary-pill--market">
           <span class="singles-summary-pill__lead">
@@ -476,9 +520,14 @@
             </span>
             <span class="singles-summary-label">{{ t('singlesSummaryTotalMarketLabel') }}</span>
           </span>
-          <strong class="singles-summary-value">${{ fmtCurrency(singlesPurchaseTotalMarketValue) }}</strong>
+          <app-metric-value
+            kind="money"
+            tone="positive"
+            value-class="singles-summary-value"
+          >
+            ${{ fmtCurrency(singlesPurchaseTotalMarketValue) }}
+          </app-metric-value>
         </div>
       </div>
-    </v-card-text>
-  </v-card>
+  </app-section-card>
 </v-col>

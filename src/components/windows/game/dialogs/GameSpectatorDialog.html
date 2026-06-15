@@ -1,14 +1,19 @@
-<v-dialog v-if="gameSpectatorDialog" v-model="gameSpectatorDialog" max-width="480">
-  <v-card>
-    <v-card-title class="text-subtitle-1">
+<v-dialog
+  v-if="gameSpectatorDialog"
+  v-model="gameSpectatorDialog"
+  max-width="480"
+  content-class="game-spectator-dialog app-mobile-fullscreen-dialog"
+>
+  <v-card class="app-dialog-card">
+    <v-card-title class="app-dialog-title text-subtitle-1">
       {{ t('gameSpectatorDialogTitle') }}
     </v-card-title>
-    <v-card-text class="text-body-2">
+    <v-card-text class="app-dialog-content text-body-2">
       <div class="game-spectator-dialog__intro">
         <div>{{ gameSpectatorDialogHint }}</div>
         <div
           v-if="gameSpectatorSessionId"
-          class="game-spectator-dialog__status"
+          class="game-spectator-dialog__status app-status-chip"
           :class="`game-spectator-dialog__status--${gameSpectatorSessionStatus}`"
         >
           {{
@@ -34,37 +39,52 @@
         </div>
       </template>
     </v-card-text>
-    <v-card-actions class="game-spectator-dialog__actions">
+    <v-card-actions class="game-spectator-dialog__actions app-dialog-actions">
       <v-spacer></v-spacer>
-      <v-btn
+      <app-action-button
         v-if="!gameSpectatorSessionId || gameSpectatorSessionStatus === 'ended'"
-        color="success"
-        variant="elevated"
+        action="live"
         :loading="gameSpectatorPublishPending"
+        :label="gameSpectatorStartButtonLabel"
         @click="startGameSpectatorMode"
       >
         {{ gameSpectatorStartButtonLabel }}
-      </v-btn>
+      </app-action-button>
       <template v-if="gameSpectatorSessionId">
-        <v-btn variant="text" @click="copyGameSpectatorLink">
+        <app-action-button
+          action="copy"
+          variant="text"
+          :label="t('gameSpectatorCopyAction')"
+          @click="copyGameSpectatorLink"
+        >
           {{ t('gameSpectatorCopyAction') }}
-        </v-btn>
-        <v-btn variant="text" @click="openGameSpectatorPage">
+        </app-action-button>
+        <app-action-button
+          action="open"
+          variant="text"
+          :label="t('gameSpectatorOpenAction')"
+          @click="openGameSpectatorPage"
+        >
           {{ t('gameSpectatorOpenAction') }}
-        </v-btn>
-        <v-btn
+        </app-action-button>
+        <app-action-button
           v-if="gameSpectatorSessionStatus !== 'ended'"
-          color="error"
-          variant="tonal"
+          action="delete"
           :loading="gameSpectatorPublishPending"
+          :label="t('gameSpectatorEndAction')"
           @click="endGameSpectatorMode"
         >
           {{ t('gameSpectatorEndAction') }}
-        </v-btn>
+        </app-action-button>
       </template>
-      <v-btn variant="text" @click="closeGameSpectatorDialog">
+      <app-action-button
+        action="close"
+        variant="text"
+        :label="t('commonClose')"
+        @click="closeGameSpectatorDialog"
+      >
         {{ t('commonClose') }}
-      </v-btn>
+      </app-action-button>
     </v-card-actions>
   </v-card>
 </v-dialog>

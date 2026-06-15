@@ -11,13 +11,15 @@
         <v-icon class="mr-2">mdi-shopping</v-icon>
         {{ t('whatnotReviewTitle') }}
       </div>
-      <v-btn
-        icon="mdi-close"
+      <app-action-button
+        action="close"
+        icon-only
         variant="text"
+        :label="t('whatnotReviewCloseAction')"
         :title="t('whatnotReviewCloseAction')"
         :aria-label="t('whatnotReviewCloseAction')"
         @click="closeWhatnotReviewDialog"
-      ></v-btn>
+      ></app-action-button>
     </v-card-title>
     <v-divider></v-divider>
     <v-card-text class="whatnot-review-content app-dialog-content">
@@ -116,14 +118,15 @@
         {{ t('whatnotReviewOwnerOnlyNotice') }}
       </v-alert>
 
-      <v-alert
+      <app-empty-state
         v-if="whatnotReviewRows.length === 0"
-        type="info"
-        variant="tonal"
-        density="compact"
-      >
-        {{ t('whatnotReviewEmptyState') }}
-      </v-alert>
+        icon="mdi-clipboard-text-search-outline"
+        surface
+        compact
+        state-class="mb-4"
+        :title="t('whatnotReviewEmptyTitle')"
+        :body="t('whatnotReviewEmptyState')"
+      ></app-empty-state>
 
       <div v-else class="whatnot-review-rows">
         <div
@@ -393,16 +396,24 @@
     </v-card-text>
     <v-card-actions class="app-dialog-actions justify-space-between">
       <div class="d-flex align-center ga-2">
-        <v-btn
+        <app-action-button
           v-if="whatnotReviewRows.length > 0"
+          action="delete"
           variant="text"
           color="warning"
-          prepend-icon="mdi-trash-can-outline"
+          :label="t('whatnotReviewDiscardBatchAction')"
           @click="discardWhatnotReviewBatch"
         >
           {{ t('whatnotReviewDiscardBatchAction') }}
-        </v-btn>
-        <v-btn variant="text" @click="closeWhatnotReviewDialog">{{ t('commonClose') }}</v-btn>
+        </app-action-button>
+        <app-action-button
+          action="close"
+          variant="text"
+          :label="t('commonClose')"
+          @click="closeWhatnotReviewDialog"
+        >
+          {{ t('commonClose') }}
+        </app-action-button>
       </div>
       <div class="d-flex align-center ga-2">
         <v-chip
@@ -413,14 +424,16 @@
         >
           {{ t('whatnotReviewConfirmReadyCount', { count: whatnotReviewDecisionSummary.readyCount }) }}
         </v-chip>
-        <v-btn
+        <app-action-button
+          action="import"
           color="primary"
-          prepend-icon="mdi-check-bold"
+          icon="mdi-check-bold"
           :disabled="whatnotReviewRows.length === 0 || whatnotReviewDecisionSummary.blockedCount > 0"
+          :label="t('whatnotReviewImportReviewedSalesAction')"
           @click="confirmWhatnotImportBatch"
         >
           {{ t('whatnotReviewImportReviewedSalesAction') }}
-        </v-btn>
+        </app-action-button>
       </div>
     </v-card-actions>
   </v-card>

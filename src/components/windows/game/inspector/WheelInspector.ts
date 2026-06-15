@@ -4,6 +4,7 @@ import { translateAppMessage } from "../../../../app-core/i18n/index.ts";
 import { isSinglesLot } from "../../../../app-core/shared/lot-types.ts";
 import { getWheelChanceTotal } from "../../../../app-core/shared/wheel-odds.ts";
 import { getWheelTierSourceLotIds, isWheelTierMultiLot } from "../../../../app-core/shared/wheel-tier-sources.ts";
+import AppSectionCard from "../../../ui/AppSectionCard.vue";
 import WheelHistoryPanel from "./WheelHistoryPanel.vue";
 import WheelTierCard from "./WheelTierCard.vue";
 import WheelSessionPanel from "./WheelSessionPanel.vue";
@@ -27,6 +28,7 @@ type WheelBuilderTierGroup = {
 export const WheelInspector = {
   name: "WheelInspector",
   components: {
+    AppSectionCard,
     BracketBattleBuilder,
     WheelHistoryPanel,
     WheelTierCard,

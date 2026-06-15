@@ -1,4 +1,6 @@
 import { inject, type PropType } from "vue";
+import AppActionButton from "../../ui/AppActionButton.vue";
+import AppMetricValue from "../../ui/AppMetricValue.vue";
 import { compareLocalizedText } from "../../../app-core/i18n/index.ts";
 import {
     toNonNegativeNumber,
@@ -133,6 +135,10 @@ type LiveSinglesPanelThis = {
 
 export const LiveSinglesPanel = {
   name: "LiveSinglesPanel",
+  components: {
+    AppActionButton,
+    AppMetricValue
+  },
   props: {
     ctx: {
       type: Object as PropType<Record<string, unknown>>,

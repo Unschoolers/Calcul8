@@ -1,0 +1,18 @@
+<div :class="resolvedClasses" role="alert">
+  <v-icon :color="resolvedColor" size="32" class="app-error-state__icon">
+    {{ resolvedIcon }}
+  </v-icon>
+  <p v-if="title" class="app-state-view__title">{{ title }}</p>
+  <p v-if="body" class="app-state-view__body">{{ body }}</p>
+  <slot></slot>
+  <v-btn
+    v-if="actionLabel"
+    :color="resolvedColor"
+    variant="tonal"
+    size="small"
+    class="app-error-state__action"
+    @click="emitAction"
+  >
+    {{ actionLabel }}
+  </v-btn>
+</div>

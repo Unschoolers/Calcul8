@@ -1,26 +1,35 @@
 <v-dialog v-model="showPortfolioReportModal" max-width="980" scrollable content-class="portfolio-report-dialog app-mobile-fullscreen-dialog">
-  <v-card class="portfolio-report-modal-card app-dialog-card">
+  <v-card class="portfolio-report-modal-card app-dialog-card app-report-surface">
     <v-card-title class="app-dialog-title d-flex align-center justify-space-between">
       <div>
         <v-icon class="mr-2">mdi-table</v-icon>
         {{ t('portfolioReportTitle') }}
       </div>
-      <v-btn
-        icon="mdi-close"
+      <app-action-button
+        action="close"
+        icon-only
         variant="text"
+        :label="t('portfolioReportCloseAction')"
         :title="t('portfolioReportCloseAction')"
         :aria-label="t('portfolioReportCloseAction')"
         @click="showPortfolioReportModal = false"
-      ></v-btn>
+      ></app-action-button>
     </v-card-title>
     <v-divider></v-divider>
 
     <v-card-text class="portfolio-report-content app-dialog-content">
-      <div class="text-medium-emphasis mb-4">
+      <div class="app-report-meta mb-4">
         {{ t('portfolioReportGeneratedOnLabel') }} {{ formatDate(new Date().toISOString()) }}
       </div>
 
-      <div v-if="$vuetify?.display?.lgAndUp" class="app-table-wrap">
+      <div
+        v-if="$vuetify?.display?.lgAndUp"
+        class="app-table-wrap app-table-wrap--scroll portfolio-report-table-wrap"
+        tabindex="0"
+      >
+        <span class="app-table-scroll-hint" aria-hidden="true">
+          <v-icon size="14">mdi-arrow-left-right</v-icon>
+        </span>
         <table class="portfolio-report-table app-data-table">
           <thead>
             <tr>
@@ -47,19 +56,55 @@
               <td>{{ row.salesCount }}</td>
               <td>{{ row.soldPacks }}</td>
               <td>{{ row.totalPacks }}</td>
-              <td>${{ formatCurrency(row.totalRevenue) }}</td>
-              <td>{{ row.salesCount > 0 ? `$${formatCurrency(row.realizedCost ?? 0)}` : '-' }}</td>
-              <td>{{ row.salesCount > 0 ? `${(row.realizedProfit ?? 0) >= 0 ? '+' : ''}$${formatCurrency(row.realizedProfit ?? 0)}` : t('portfolioReportNoRealizedProfitYet') }}</td>
-              <td>{{ row.totalProfit >= 0 ? '+' : '' }}${{ formatCurrency(row.totalProfit) }}</td>
-              <td>{{ row.salesCount > 0 && row.realizedMarginPercent != null ? `${formatCurrency(row.realizedMarginPercent, 2)}%` : '-' }}</td>
-              <td>{{ row.forecastProfitAverage == null ? '-' : `${row.forecastProfitAverage >= 0 ? '+' : ''}$${formatCurrency(row.forecastProfitAverage)}` }}</td>
+              <td>
+                <app-metric-value kind="money" tone="neutral" cell>
+                  ${{ formatCurrency(row.totalRevenue) }}
+                </app-metric-value>
+              </td>
+              <td>
+                <app-metric-value kind="money" :tone="row.salesCount > 0 ? 'negative' : 'neutral'" cell>
+                  {{ row.salesCount > 0 ? `$${formatCurrency(row.realizedCost ?? 0)}` : '-' }}
+                </app-metric-value>
+              </td>
+              <td>
+                <app-metric-value
+                  kind="money"
+                  :tone="row.salesCount > 0
+                    ? ((row.realizedProfit ?? 0) >= 0 ? 'positive' : 'negative')
+                    : 'neutral'"
+                  cell
+                >
+                  {{ row.salesCount > 0 ? `${(row.realizedProfit ?? 0) >= 0 ? '+' : ''}$${formatCurrency(row.realizedProfit ?? 0)}` : t('portfolioReportNoRealizedProfitYet') }}
+                </app-metric-value>
+              </td>
+              <td>
+                <app-metric-value kind="money" :tone="row.totalProfit >= 0 ? 'positive' : 'negative'" cell>
+                  {{ row.totalProfit >= 0 ? '+' : '' }}${{ formatCurrency(row.totalProfit) }}
+                </app-metric-value>
+              </td>
+              <td>
+                <app-metric-value kind="percent" tone="neutral" cell>
+                  {{ row.salesCount > 0 && row.realizedMarginPercent != null ? `${formatCurrency(row.realizedMarginPercent, 2)}%` : '-' }}
+                </app-metric-value>
+              </td>
+              <td>
+                <app-metric-value
+                  kind="money"
+                  :tone="row.forecastProfitAverage == null
+                    ? 'neutral'
+                    : (row.forecastProfitAverage >= 0 ? 'positive' : 'negative')"
+                  cell
+                >
+                  {{ row.forecastProfitAverage == null ? '-' : `${row.forecastProfitAverage >= 0 ? '+' : ''}$${formatCurrency(row.forecastProfitAverage)}` }}
+                </app-metric-value>
+              </td>
               <td>{{ row.lastSaleDate ? formatDate(row.lastSaleDate) : '-' }}</td>
             </tr>
           </tbody>
         </table>
       </div>
 
-      <div v-else class="portfolio-report-card-grid">
+      <div v-else class="portfolio-report-card-grid app-report-card-grid">
         <article
           v-for="row in allLotPerformance"
           :key="`report-card-${row.lotId}`"
@@ -103,23 +148,28 @@
           <div class="portfolio-report-card-summary">
             <div class="portfolio-report-card-metric">
               <span class="portfolio-report-card-label">{{ t('portfolioReportColumnRealizedProfit') }}</span>
-              <span
-                class="portfolio-report-card-value"
-                :class="row.salesCount > 0
-                  ? ((row.realizedProfit ?? 0) >= 0 ? 'is-positive' : 'is-negative')
-                  : 'is-neutral'"
+              <app-metric-value
+                kind="money"
+                :tone="row.salesCount > 0
+                  ? ((row.realizedProfit ?? 0) >= 0 ? 'positive' : 'negative')
+                  : 'neutral'"
+                value-class="portfolio-report-card-value"
               >
                 {{ row.salesCount > 0
                   ? `${(row.realizedProfit ?? 0) >= 0 ? '+' : ''}$${formatCurrency(row.realizedProfit ?? 0)}`
                   : t('portfolioReportNoRealizedProfitShort') }}
-              </span>
+              </app-metric-value>
             </div>
 
             <div class="portfolio-report-card-metric">
               <span class="portfolio-report-card-label">{{ t('portfolioReportColumnCurrentLotProfit') }}</span>
-              <span class="portfolio-report-card-value" :class="row.totalProfit >= 0 ? 'is-positive' : 'is-negative'">
+              <app-metric-value
+                kind="money"
+                :tone="row.totalProfit >= 0 ? 'positive' : 'negative'"
+                value-class="portfolio-report-card-value"
+              >
                 {{ row.totalProfit >= 0 ? '+' : '' }}${{ formatCurrency(row.totalProfit) }}
-              </span>
+              </app-metric-value>
             </div>
           </div>
 
@@ -148,30 +198,36 @@
 
               <div class="portfolio-report-card-metric">
                 <span class="portfolio-report-card-label">{{ t('portfolioReportColumnSoldRevenue') }}</span>
-                <span class="portfolio-report-card-value">${{ formatCurrency(row.totalRevenue) }}</span>
+                <app-metric-value kind="money" tone="neutral" value-class="portfolio-report-card-value">
+                  ${{ formatCurrency(row.totalRevenue) }}
+                </app-metric-value>
               </div>
 
               <div class="portfolio-report-card-metric">
                 <span class="portfolio-report-card-label">{{ t('portfolioReportColumnSoldCost') }}</span>
-                <span class="portfolio-report-card-value">
+                <app-metric-value kind="money" :tone="row.salesCount > 0 ? 'negative' : 'neutral'" value-class="portfolio-report-card-value">
                   {{ row.salesCount > 0 ? `$${formatCurrency(row.realizedCost ?? 0)}` : '-' }}
-                </span>
+                </app-metric-value>
               </div>
 
               <div class="portfolio-report-card-metric">
                 <span class="portfolio-report-card-label">{{ t('portfolioReportColumnSoldMargin') }}</span>
-                <span class="portfolio-report-card-value">
+                <app-metric-value kind="percent" tone="neutral" value-class="portfolio-report-card-value">
                   {{ row.salesCount > 0 && row.realizedMarginPercent != null
                     ? `${formatCurrency(row.realizedMarginPercent, 2)}%`
                     : '-' }}
-                </span>
+                </app-metric-value>
               </div>
 
               <div v-if="row.forecastProfitAverage != null" class="portfolio-report-card-metric">
                 <span class="portfolio-report-card-label">{{ t('portfolioReportColumnForecastAverage') }}</span>
-                <span class="portfolio-report-card-value" :class="row.forecastProfitAverage >= 0 ? 'is-positive' : 'is-negative'">
+                <app-metric-value
+                  kind="money"
+                  :tone="row.forecastProfitAverage >= 0 ? 'positive' : 'negative'"
+                  value-class="portfolio-report-card-value"
+                >
                   {{ `${row.forecastProfitAverage >= 0 ? '+' : ''}$${formatCurrency(row.forecastProfitAverage)}` }}
-                </span>
+                </app-metric-value>
               </div>
 
               <div class="portfolio-report-card-metric portfolio-report-card-metric--full">
@@ -187,14 +243,31 @@
     </v-card-text>
 
     <app-sticky-action-footer footer-class="justify-space-between portfolio-report-actions">
-      <v-btn variant="text" @click="showPortfolioReportModal = false">{{ t('portfolioReportCloseAction') }}</v-btn>
+      <app-action-button
+        action="close"
+        variant="text"
+        :label="t('portfolioReportCloseAction')"
+        @click="showPortfolioReportModal = false"
+      ></app-action-button>
       <div class="d-flex align-center ga-2">
-        <v-btn variant="text" prepend-icon="mdi-content-copy" :disabled="!hasPortfolioData" @click="copyPortfolioReportTable">
+        <app-action-button
+          action="copy"
+          variant="text"
+          :disabled="!hasPortfolioData"
+          :label="t('portfolioReportCopyAction')"
+          @click="copyPortfolioReportTable"
+        >
           {{ t('portfolioReportCopyAction') }}
-        </v-btn>
-        <v-btn color="error" prepend-icon="mdi-content-save-outline" :disabled="!hasPortfolioData" @click="savePortfolioReportTable">
+        </app-action-button>
+        <app-action-button
+          action="save"
+          color="error"
+          :disabled="!hasPortfolioData"
+          :label="t('portfolioReportSaveAction')"
+          @click="savePortfolioReportTable"
+        >
           {{ t('portfolioReportSaveAction') }}
-        </v-btn>
+        </app-action-button>
       </div>
     </app-sticky-action-footer>
   </v-card>

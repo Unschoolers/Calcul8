@@ -1,4 +1,5 @@
 import { inject, type PropType } from "vue";
+import { AppErrorState } from "../ui/AppErrorState.ts";
 import { createWindowContextBridge } from "../windows/shared/contextBridge.ts";
 import { resolveLotSelectorDisplayItem } from "./lotSelectorDisplay.ts";
 import "./LotSelectorOnboardingBlock.css";
@@ -31,6 +32,9 @@ export function createLotSelectorContextBridge(source: Record<string, unknown>):
 
 export const LotSelectorOnboardingBlock = {
   name: "LotSelectorOnboardingBlock",
+  components: {
+    AppErrorState
+  },
   props: {
     ctx: {
       type: Object as PropType<Record<string, unknown>>,

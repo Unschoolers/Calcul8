@@ -1,5 +1,7 @@
 import { inject, type PropType } from "vue";
 import { createWindowContextBridge } from "../shared/contextBridge.ts";
+import AppActionButton from "../../ui/AppActionButton.vue";
+import AppEmptyState from "../../ui/AppEmptyState.vue";
 import { translateAppMessage } from "../../../app-core/i18n/index.ts";
 import {
   buildWhatnotReviewChangeDiffs,
@@ -252,6 +254,10 @@ function buildWhatnotCandidateFromSale(
 
 export const WhatnotReviewDialog = {
   name: "WhatnotReviewDialog",
+  components: {
+    AppActionButton,
+    AppEmptyState
+  },
   props: {
     ctx: {
       type: Object as PropType<Record<string, unknown> | null>,

@@ -229,7 +229,10 @@
       <div class="text-caption text-medium-emphasis mt-4 mb-2">
         {{ t('singlesCsvPreviewTitle') }}
       </div>
-      <div class="singles-csv-preview-desktop singles-import-preview-wrap app-table-wrap">
+      <div class="singles-csv-preview-desktop singles-import-preview-wrap app-table-wrap app-table-wrap--scroll" tabindex="0">
+        <span class="app-table-scroll-hint" aria-hidden="true">
+          <v-icon size="14">mdi-arrow-left-right</v-icon>
+        </span>
         <v-table density="compact" class="singles-import-preview-table app-data-table">
           <thead>
             <tr>

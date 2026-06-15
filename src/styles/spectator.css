@@ -2,49 +2,98 @@
 
 :root {
   --v-theme-primary: 230, 57, 70;
+  --v-theme-secondary: 255, 184, 0;
+  --v-theme-success: 52, 199, 89;
+  --v-theme-error: 255, 59, 48;
+  --v-theme-warning: 255, 184, 0;
+  --v-theme-info: 59, 130, 246;
+  --v-theme-background: 18, 18, 18;
   --v-theme-surface: 30, 30, 30;
-  --spectator-text: #f8fafc;
-  --spectator-text-strong: rgba(248, 250, 252, 0.95);
-  --spectator-text-high: rgba(248, 250, 252, 0.9);
-  --spectator-text-default: rgba(248, 250, 252, 0.8);
-  --spectator-text-muted: rgba(248, 250, 252, 0.72);
-  --spectator-text-subtle: rgba(248, 250, 252, 0.56);
-  --spectator-accent: #fbbf24;
-  --spectator-accent-soft: #fcd34d;
-  --spectator-success: #86efac;
-  --spectator-info: #bfdbfe;
-  --spectator-info-strong: #93c5fd;
-  --spectator-neutral: #cbd5e1;
-  --spectator-error: #fda4af;
-  --spectator-error-soft: #fecdd3;
-  --spectator-bg-deep: #020617;
+  --v-theme-surface-bright: 48, 48, 48;
+  --v-theme-on-surface: 248, 250, 252;
+  --spectator-text: var(--app-text-strong);
+  --spectator-text-strong: rgba(var(--v-theme-on-surface), 0.95);
+  --spectator-text-high: rgba(var(--v-theme-on-surface), 0.9);
+  --spectator-text-default: rgba(var(--v-theme-on-surface), 0.8);
+  --spectator-text-muted: rgba(var(--v-theme-on-surface), 0.72);
+  --spectator-text-subtle: rgba(var(--v-theme-on-surface), 0.56);
+  --spectator-accent: var(--app-secondary-solid);
+  --spectator-accent-soft: color-mix(in srgb, var(--app-secondary-solid) 78%, rgb(var(--v-theme-on-surface)));
+  --spectator-success: var(--app-status-live-text);
+  --spectator-info: var(--app-status-info-text);
+  --spectator-info-strong: color-mix(in srgb, var(--app-status-info-text) 80%, rgb(var(--v-theme-on-surface)));
+  --spectator-neutral: var(--app-status-inactive-text);
+  --spectator-error: var(--app-status-error-text);
+  --spectator-error-soft: color-mix(in srgb, var(--app-status-error-text) 72%, rgb(var(--v-theme-on-surface)));
+  --spectator-bg-deep: rgb(var(--v-theme-background));
   --spectator-page-bg:
-    radial-gradient(circle at top, rgba(245, 158, 11, 0.18), transparent 24%),
-    radial-gradient(circle at 82% 12%, rgba(59, 130, 246, 0.14), transparent 20%),
-    linear-gradient(180deg, #111827 0%, #0f172a 46%, #020617 100%);
-  --spectator-card-bg: linear-gradient(180deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.96));
+    radial-gradient(circle at top, rgba(var(--v-theme-secondary), 0.18), transparent 24%),
+    radial-gradient(circle at 82% 12%, rgba(var(--v-theme-info), 0.14), transparent 20%),
+    linear-gradient(180deg, rgb(var(--v-theme-surface-bright)) 0%, rgb(var(--v-theme-surface)) 46%, rgb(var(--v-theme-background)) 100%);
+  --spectator-card-bg: var(--app-expressive-surface-bg);
   --spectator-grid-board-bg:
-    radial-gradient(circle at 50% 0%, rgba(96, 165, 250, 0.18), transparent 46%),
-    rgba(2, 6, 23, 0.54);
+    radial-gradient(circle at 50% 0%, rgba(var(--v-theme-info), 0.18), transparent 46%),
+    var(--app-expressive-panel-bg);
   --spectator-grid-cell-bg:
-    linear-gradient(155deg, rgba(96, 165, 250, 0.18), rgba(15, 23, 42, 0.86)),
-    rgba(15, 23, 42, 0.92);
-  --spectator-result-bg: linear-gradient(180deg, rgba(9, 15, 28, 0.92), rgba(15, 23, 42, 0.76));
-  --spectator-info-surface: rgba(96, 165, 250, 0.12);
-  --spectator-info-border: rgba(147, 197, 253, 0.16);
-  --spectator-panel-bg: rgba(15, 23, 42, 0.62);
-  --spectator-panel-bg-strong: rgba(15, 23, 42, 0.68);
-  --spectator-panel-bg-muted: rgba(248, 250, 252, 0.05);
-  --spectator-border-subtle: rgba(248, 250, 252, 0.06);
-  --spectator-border-default: rgba(248, 250, 252, 0.08);
-  --spectator-border-strong: rgba(248, 250, 252, 0.12);
+    linear-gradient(155deg, rgba(var(--v-theme-info), 0.18), rgba(var(--v-theme-surface), 0.86)),
+    var(--app-expressive-panel-bg);
+  --spectator-result-bg: linear-gradient(180deg, rgba(var(--v-theme-background), 0.92), rgba(var(--v-theme-surface), 0.76));
+  --spectator-info-surface: var(--app-status-info-surface);
+  --spectator-info-border: var(--app-status-info-stroke);
+  --spectator-panel-bg: var(--app-expressive-panel-bg);
+  --spectator-panel-bg-strong: color-mix(in srgb, var(--app-expressive-panel-bg) 86%, rgb(var(--v-theme-surface)));
+  --spectator-panel-bg-muted: rgba(var(--v-theme-on-surface), 0.05);
+  --spectator-border-subtle: var(--app-stroke-subtle);
+  --spectator-border-default: var(--app-expressive-border);
+  --spectator-border-strong: var(--app-stroke-strong);
+  --spectator-status-live-surface: var(--app-status-live-surface);
+  --spectator-status-ended-surface: var(--app-status-inactive-surface);
+  --spectator-status-waiting-surface: var(--app-status-warning-surface);
+  --spectator-status-live-stroke: var(--app-status-live-stroke);
+  --spectator-status-ended-stroke: var(--app-status-inactive-stroke);
+  --spectator-status-waiting-stroke: var(--app-status-warning-stroke);
   --spectator-radius-card: 24px;
   --spectator-radius-panel: 18px;
   --spectator-radius-item: 16px;
-  --spectator-shadow-card: 0 18px 42px rgba(0, 0, 0, 0.24);
-  --spectator-shadow-active-card: 0 22px 48px rgba(0, 0, 0, 0.3);
-  --spectator-shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --spectator-shadow-card: var(--app-shadow-lg);
+  --spectator-shadow-active-card: var(--app-shadow-modal);
+  --spectator-shadow-inset: var(--app-inset-highlight-subtle);
   --spectator-grid-prize-fallback: #d4af37;
+}
+
+.v-theme--unionArenaLight,
+:root[data-theme="light"] {
+  --v-theme-primary: 230, 57, 70;
+  --v-theme-secondary: 183, 121, 0;
+  --v-theme-success: 38, 145, 76;
+  --v-theme-error: 210, 50, 48;
+  --v-theme-warning: 183, 121, 0;
+  --v-theme-info: 35, 103, 176;
+  --v-theme-background: 231, 224, 215;
+  --v-theme-surface: 241, 231, 217;
+  --v-theme-surface-bright: 251, 245, 236;
+  --v-theme-on-surface: 34, 31, 26;
+  --spectator-text: var(--app-text-strong);
+  --spectator-page-bg:
+    radial-gradient(circle at top, rgba(var(--v-theme-secondary), 0.16), transparent 24%),
+    radial-gradient(circle at 82% 12%, rgba(var(--v-theme-info), 0.12), transparent 20%),
+    linear-gradient(180deg, rgb(var(--v-theme-surface-bright)) 0%, rgb(var(--v-theme-surface)) 52%, rgb(var(--v-theme-background)) 100%);
+  --spectator-panel-bg-muted: rgba(var(--v-theme-on-surface), 0.045);
+}
+
+.v-theme--unionArenaDark,
+:root[data-theme="dark"] {
+  --v-theme-primary: 230, 57, 70;
+  --v-theme-secondary: 255, 184, 0;
+  --v-theme-success: 52, 199, 89;
+  --v-theme-error: 255, 59, 48;
+  --v-theme-warning: 255, 184, 0;
+  --v-theme-info: 59, 130, 246;
+  --v-theme-background: 18, 18, 18;
+  --v-theme-surface: 30, 30, 30;
+  --v-theme-surface-bright: 48, 48, 48;
+  --v-theme-on-surface: 248, 250, 252;
+  --spectator-text: var(--app-text-strong);
 }
 
 body {
@@ -109,7 +158,7 @@ a {
   height: 8px;
   border-radius: var(--app-radius-pill);
   background: var(--spectator-neutral);
-  box-shadow: 0 0 0 3px rgba(248, 250, 252, 0.08);
+  box-shadow: 0 0 0 3px var(--app-status-inactive-stroke);
   flex: 0 0 auto;
 }
 
@@ -206,7 +255,7 @@ a {
 .spectator-now {
   display: grid;
   gap: 12px;
-  border-color: rgba(96, 165, 250, 0.14);
+  border-color: var(--spectator-info-border);
   box-shadow:
     var(--spectator-shadow-active-card),
     var(--spectator-shadow-inset);
@@ -225,15 +274,15 @@ a {
 }
 
 .spectator-now__glow--low {
-  background: rgba(148, 163, 184, 0.32);
+  background: var(--app-status-inactive-surface);
 }
 
 .spectator-now__glow--medium {
-  background: rgba(245, 158, 11, 0.28);
+  background: var(--app-status-warning-surface);
 }
 
 .spectator-now__glow--high {
-  background: rgba(239, 68, 68, 0.3);
+  background: var(--app-status-error-surface);
 }
 
 .spectator-now__header {
@@ -262,18 +311,21 @@ a {
 
 .spectator-status--starting,
 .spectator-status--waiting {
-  background: rgba(245, 158, 11, 0.18);
+  border-color: var(--spectator-status-waiting-stroke);
+  background: var(--spectator-status-waiting-surface);
   color: var(--spectator-accent);
 }
 
 .spectator-status--live,
 .spectator-status--spinning {
-  background: rgba(34, 197, 94, 0.18);
+  border-color: var(--spectator-status-live-stroke);
+  background: var(--spectator-status-live-surface);
   color: var(--spectator-success);
 }
 
 .spectator-status--ended {
-  background: rgba(148, 163, 184, 0.16);
+  border-color: var(--spectator-status-ended-stroke);
+  background: var(--spectator-status-ended-surface);
   color: var(--spectator-neutral);
 }
 
@@ -313,32 +365,32 @@ a {
 }
 
 .spectator-now__metric--accent {
-  background: rgba(96, 165, 250, 0.1);
+  background: var(--spectator-info-surface);
   color: var(--spectator-info);
 }
 
 .spectator-now__metric--heat-very_low {
-  background: rgba(71, 85, 105, 0.12);
+  background: var(--app-status-disabled-surface);
   color: var(--spectator-neutral);
 }
 
 .spectator-now__metric--heat-low {
-  background: rgba(148, 163, 184, 0.12);
+  background: var(--app-status-inactive-surface);
   color: var(--spectator-text-default);
 }
 
 .spectator-now__metric--heat-medium {
-  background: rgba(245, 158, 11, 0.14);
+  background: var(--app-status-warning-surface);
   color: var(--spectator-accent-soft);
 }
 
 .spectator-now__metric--heat-high {
-  background: rgba(239, 68, 68, 0.14);
+  background: var(--app-status-error-surface);
   color: var(--spectator-error);
 }
 
 .spectator-now__metric--heat-very_high {
-  background: rgba(244, 63, 94, 0.2);
+  background: var(--app-status-error-surface);
   color: var(--spectator-error-soft);
 }
 
@@ -398,9 +450,9 @@ a {
   clip-path: polygon(0% 50%, 100% 0%, 90% 50%, 100% 100%);
   background: linear-gradient(
     135deg,
-    rgba(255, 255, 255, 0.3) 0%,
+    rgba(var(--v-theme-on-surface), 0.3) 0%,
     transparent 50%,
-    rgba(0, 0, 0, 0.15) 100%
+    rgba(var(--v-theme-background), 0.15) 100%
   );
 }
 

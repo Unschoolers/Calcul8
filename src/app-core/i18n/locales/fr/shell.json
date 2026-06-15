@@ -34,6 +34,7 @@
   "shellClearLiveSinglesConfirmBody": "Retirer tous les items de la liste de prix live?",
   "shellClearLiveSinglesConfirmTitle": "Vider la liste d'items live?",
   "shellCreateSharedWorkspaceAction": "Créer un espace partage",
+  "shellContextActionsAriaLabel": "Actions contextuelles",
   "shellDisconnectWhatnotAction": "Déconnecter Whatnot",
   "shellEditLotAction": "Modifier l'inventaire",
   "shellImportWhatnotCsvAction": "Importer un CSV Whatnot",

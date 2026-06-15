@@ -1,9 +1,11 @@
-<v-card
-  class="wheel-inspector-panel"
-  :class="{ 'wheel-inspector-panel--mobile-open': wheelMobileInspectorOpen }"
+<app-section-card
   variant="outlined"
+  :card-class="['wheel-inspector-panel', { 'wheel-inspector-panel--mobile-open': wheelMobileInspectorOpen }]"
+  title-class="wheel-panel-title app-section-title-bar"
+  content-class="wheel-inspector-panel__body"
+  divider
 >
-  <v-card-title class="wheel-panel-title">
+  <template #header>
     <div class="wheel-inspector-mobile-handle" aria-hidden="true"></div>
     <div class="wheel-panel-title__row">
       <div class="wheel-panel-title__copy">
@@ -23,8 +25,7 @@
         @click="closeWheelInspector"
       ></v-btn>
     </div>
-  </v-card-title>
-  <v-card-text class="wheel-inspector-panel__body">
+  </template>
     <v-btn-toggle
       v-if="!wheelIsCompactLayout"
       :model-value="wheelInspectorTab"
@@ -151,5 +152,4 @@
     <section v-show="wheelInspectorTab === 'history'" class="wheel-panel-section">
       <wheel-history-panel :ctx="getWindowComponentContext()"></wheel-history-panel>
     </section>
-  </v-card-text>
-</v-card>
+  </app-section-card>

@@ -1,6 +1,7 @@
 import { inject, type PropType } from "vue";
 import AppConfirmDialog from "../ui/AppConfirmDialog.vue";
 import AppDestructiveWarning from "../ui/AppDestructiveWarning.vue";
+import AppEmptyState from "../ui/AppEmptyState.vue";
 import { createWindowContextBridge } from "../windows/shared/contextBridge.ts";
 import "./WorkspaceModals.css";
 
@@ -8,7 +9,8 @@ export const WorkspaceModals = {
   name: "WorkspaceModals",
   components: {
     AppConfirmDialog,
-    AppDestructiveWarning
+    AppDestructiveWarning,
+    AppEmptyState
   },
   props: {
     ctx: {
