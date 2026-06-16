@@ -186,10 +186,31 @@ jobs:
             fi
 
             echo "Restarting realtime revision ${revision} so updated secrets take effect."
+            set +e
             az containerapp revision restart \
               --name "${AZURE_CONTAINER_APP_NAME_REALTIME_PROD}" \
               --resource-group "${AZURE_RESOURCE_GROUP_PROD}" \
               --revision "${revision}"
+            restart_exit=$?
+            set -e
+
+            if [ "${restart_exit}" -ne 0 ]; then
+              mapfile -t refreshed_active_revisions < <(
+                az containerapp revision list \
+                  --name "${AZURE_CONTAINER_APP_NAME_REALTIME_PROD}" \
+                  --resource-group "${AZURE_RESOURCE_GROUP_PROD}" \
+                  --query "[?properties.active].name" \
+                  --output tsv
+              )
+
+              if ! printf '%s\n' "${refreshed_active_revisions[@]}" | grep -Fxq "${revision}"; then
+                echo "Skipping stale realtime revision ${revision}; it is no longer active after the latest deployment."
+                continue
+              fi
+
+              echo "Failed to restart active realtime revision ${revision}."
+              exit "${restart_exit}"
+            fi
           done
 
       - name: Smoke check realtime publish and subscribe

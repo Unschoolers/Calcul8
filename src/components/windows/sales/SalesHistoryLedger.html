@@ -1,0 +1,116 @@
+<div class="sales-history-ledger">
+  <div class="sales-history-ledger__sortbar" :aria-label="t('salesHistorySortLabel')">
+    <button
+      v-for="option in sortOptions"
+      :key="option.key"
+      type="button"
+      class="sales-history-ledger__sort"
+      :class="sortButtonClass(option.key)"
+      @click="setSort(option.key)"
+    >
+      <span>{{ option.label }}</span>
+      <v-icon size="13">{{ sortIcon(option.key) }}</v-icon>
+    </button>
+  </div>
+
+  <div class="sales-history-ledger__table" role="table">
+    <div class="sales-history-ledger__head" role="row">
+      <span>{{ t('salesHistoryColumnSaleLabel') }}</span>
+      <span>{{ t('salesHistoryColumnDateLabel') }}</span>
+      <span>{{ t('salesHistoryColumnUnitsLabel') }}</span>
+      <span>{{ t('salesHistoryColumnPriceLabel') }}</span>
+      <span>{{ t('salesHistoryColumnCustomerLabel') }}</span>
+      <span></span>
+    </div>
+
+    <div
+      v-for="sale in sortedLedgerSales"
+      :key="sale.id"
+      class="sales-history-ledger__row"
+      role="row"
+      tabindex="0"
+      @click="$emit('edit', sale)"
+      @keydown.enter="$emit('edit', sale)"
+    >
+      <div class="sales-history-ledger__cell sales-history-ledger__sale" role="cell">
+        <v-avatar class="sales-history-type-token" size="28">
+          <v-icon size="16" :color="getSaleColor(sale.type)">{{ getSaleIcon(sale.type) }}</v-icon>
+        </v-avatar>
+        <div class="sales-history-ledger__sale-copy">
+          <div class="sales-history-ledger__sale-title">
+            <span>{{ saleListTitle(sale) }}</span>
+            <app-metric-value
+              kind="money"
+              :tone="saleProfitTone(sale)"
+              pill
+              value-class="sales-history-profit-pill sales-history-ledger__sale-profit"
+            >
+              {{ saleProfitLabel(sale) }}
+            </app-metric-value>
+            <app-metric-value
+              v-if="saleSecondaryProfitLabel(sale)"
+              kind="money"
+              :tone="saleProfitValue(sale) >= 0 ? 'positive' : 'negative'"
+              pill
+              value-class="sales-history-profit-pill sales-history-profit-pill--secondary sales-history-ledger__sale-profit"
+            >
+              {{ saleSecondaryProfitLabel(sale) }}
+            </app-metric-value>
+            <v-tooltip
+              v-if="isUnlinkedSinglesSale(sale)"
+              :text="t('salesHistoryUnlinkedSaleTooltip')"
+              location="top"
+            >
+              <template #activator="{ props }">
+                <v-icon
+                  v-bind="props"
+                  size="14"
+                  color="warning"
+                  :aria-label="t('salesHistoryUnlinkedSaleLabel')"
+                  :title="t('salesHistoryUnlinkedSaleTooltip')"
+                >mdi-link-variant-off</v-icon>
+              </template>
+            </v-tooltip>
+          </div>
+          <div v-if="sale.memo" class="sales-history-ledger__memo">{{ sale.memo }}</div>
+        </div>
+      </div>
+
+      <div class="sales-history-ledger__cell" role="cell" :data-label="t('salesHistoryColumnDateLabel')">
+        {{ formatDate(sale.date) }}
+      </div>
+      <div class="sales-history-ledger__cell" role="cell" :data-label="t('salesHistoryColumnUnitsLabel')">
+        {{ saleUnitsLabel(sale) }}
+      </div>
+      <div class="sales-history-ledger__cell" role="cell" :data-label="t('salesHistoryColumnPriceLabel')">
+        {{ saleRevenueLabel(sale) }}
+      </div>
+      <div class="sales-history-ledger__cell sales-history-ledger__customer" role="cell" :data-label="t('salesHistoryColumnCustomerLabel')">
+        {{ saleCustomerLabel(sale) }}
+      </div>
+      <div class="sales-history-ledger__actions" role="cell">
+        <app-action-button
+          action="delete"
+          icon-only
+          class="sales-history-action-btn"
+          size="small"
+          :label="t('salesHistoryDeleteSaleLabel')"
+          :aria-label="t('salesHistoryDeleteSaleLabel')"
+          @click.stop="$emit('delete', sale.id)"
+        ></app-action-button>
+      </div>
+    </div>
+  </div>
+
+  <div v-if="hasMore" class="sales-history-ledger__loadmore">
+    <v-btn
+      variant="text"
+      size="small"
+      prepend-icon="mdi-chevron-down"
+      @click="$emit('load-more')"
+    >
+      {{ t('salesHistoryLoadMoreLabel') }} {{ nextBatchCount }} {{ t('salesHistoryMoreLabel') }}
+      <span class="text-medium-emphasis ml-1">({{ remainingCount }} {{ t('salesHistoryRemainingLabel') }})</span>
+    </v-btn>
+  </div>
+</div>

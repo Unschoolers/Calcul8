@@ -274,6 +274,8 @@ test("deploy workflows validate and smoke realtime recovery wiring", async () =>
   assert.match(realtimeWorkflow, /smoke_urls=/);
   assert.match(realtimeWorkflow, /az containerapp revision list/);
   assert.match(realtimeWorkflow, /az containerapp revision restart/);
+  assert.match(realtimeWorkflow, /restart_exit=\$?/);
+  assert.match(realtimeWorkflow, /Skipping stale realtime revision/);
 
   const secretSetIndex = realtimeWorkflow.indexOf("az containerapp secret set");
   const revisionRestartIndex = realtimeWorkflow.indexOf("az containerapp revision restart");

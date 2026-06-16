@@ -99,99 +99,26 @@
                         state-class="py-8"
                       ></app-empty-state>
 
-                      <v-list v-else class="sales-history-list" density="compact">
-                        <v-list-item
-                          v-for="sale in (visibleSortedSales || [])"
-                          :key="sale.id"
-                          class="my-1 sales-history-row"
-                          @click="editSale(sale)"
-                        >
-                          <template v-slot:prepend>
-                            <v-avatar class="sales-history-type-token" size="28">
-                              <v-icon size="16" :color="getSaleColor(sale.type)">{{ getSaleIcon(sale.type) }}</v-icon>
-                            </v-avatar>
-                          </template>
-
-                          <v-list-item-title class="sales-history-row-head">
-                            <div class="sales-history-row-main">
-                              <span class="sales-history-item-main">
-                              {{ saleListTitle(sale) }}
-                            </span>
-                            <v-tooltip
-                              v-if="isUnlinkedSinglesSale(sale)"
-                              :text="t('salesHistoryUnlinkedSaleTooltip')"
-                              location="top"
-                            >
-                              <template #activator="{ props }">
-                                <v-icon
-                                  v-bind="props"
-                                  size="14"
-                                  color="warning"
-                                  :aria-label="t('salesHistoryUnlinkedSaleLabel')"
-                                  :title="t('salesHistoryUnlinkedSaleTooltip')"
-                                >mdi-link-variant-off</v-icon>
-                              </template>
-                            </v-tooltip>
-                          </div>
-                          <app-action-button
-                            action="delete"
-                            icon-only
-                            class="sales-history-action-btn"
-                            size="small"
-                            :label="t('salesHistoryDeleteSaleLabel')"
-                            :aria-label="t('salesHistoryDeleteSaleLabel')"
-                            @click.stop="deleteSale(sale.id)"
-                          ></app-action-button>
-                          </v-list-item-title>
-                          <v-list-item-subtitle class="sales-history-profit-row">
-                            <app-metric-value
-                              kind="money"
-                              :tone="getSaleProfitPreview(sale)
-                                ? (getSaleProfitPreview(sale).value >= 0 ? 'positive' : 'negative')
-                                : (calculateSaleProfit(sale) >= 0 ? 'positive' : 'negative')"
-                              pill
-                              value-class="sales-history-profit-pill"
-                            >
-                              <template v-if="getSaleProfitPreview(sale)">
-                                {{ getSaleProfitPreview(sale).sign }}${{ fmtCurrency(Math.abs(getSaleProfitPreview(sale).value)) }} {{ t('salesProfitVsLabel') }} {{ getSaleProfitPreview(sale).basisLabel }}
-                              </template>
-                              <template v-else>
-                                {{ t('salesProfitLabel') }} {{ calculateSaleProfit(sale) >= 0 ? '+' : '-' }}${{ fmtCurrency(Math.abs(calculateSaleProfit(sale))) }}
-                              </template>
-                            </app-metric-value>
-                            <app-metric-value
-                              v-if="getSaleProfitPreview(sale)?.marketBasisValue > 0"
-                              kind="money"
-                              :tone="getSaleProfitPreview(sale).allCostValue >= 0 ? 'positive' : 'negative'"
-                              pill
-                              value-class="sales-history-profit-pill sales-history-profit-pill--secondary"
-                            >
-                              {{ getSaleProfitPreview(sale).allCostValue >= 0 ? '+' : '-' }}${{ fmtCurrency(Math.abs(getSaleProfitPreview(sale).allCostValue)) }} {{ t('salesProfitVsCostLabel') }}
-                            </app-metric-value>
-                          </v-list-item-subtitle>
-                          <v-list-item-subtitle class="sales-history-item-subtitle">
-                            <span class="sales-history-date">{{ formatDate(sale.date) }}</span>
-                            <div v-if="sale.customer" class="sales-history-customer">
-                              {{ t('salesCustomerLabel') }}: {{ sale.customer }}
-                            </div>
-                            <div v-if="sale.memo" class="sales-history-memo">
-                              {{ sale.memo }}
-                            </div>
-                          </v-list-item-subtitle>
-                        </v-list-item>
-
-                        <v-list-item v-if="hasMoreSalesHistory" class="justify-center sales-history-loadmore">
-                          <v-btn
-                            variant="text"
-                            size="small"
-                            prepend-icon="mdi-chevron-down"
-                            @click="loadMoreSalesHistory"
-                          >
-                            {{ t('salesHistoryLoadMoreLabel') }} {{ nextSalesHistoryBatchCount }} {{ t('salesHistoryMoreLabel') }}
-                            <span class="text-medium-emphasis ml-1">({{ remainingSalesHistoryCount }} {{ t('salesHistoryRemainingLabel') }})</span>
-                          </v-btn>
-                        </v-list-item>
-                      </v-list>
+                      <sales-history-ledger
+                        v-else
+                        :sales="visibleSortedSales || []"
+                        :has-more="hasMoreSalesHistory"
+                        :next-batch-count="nextSalesHistoryBatchCount"
+                        :remaining-count="remainingSalesHistoryCount"
+                        :t="t"
+                        :format-date="formatDate"
+                        :fmt-currency="fmtCurrency"
+                        :fmt-units="fmtUnits"
+                        :sale-list-title="saleListTitle"
+                        :get-sale-icon="getSaleIcon"
+                        :get-sale-color="getSaleColor"
+                        :calculate-sale-profit="calculateSaleProfit"
+                        :get-sale-profit-preview="getSaleProfitPreview"
+                        :is-unlinked-singles-sale="isUnlinkedSinglesSale"
+                        @edit="editSale"
+                        @delete="deleteSale"
+                        @load-more="loadMoreSalesHistory"
+                      ></sales-history-ledger>
                     </app-section-card>
                   </v-col>
 
@@ -263,6 +190,9 @@
                         <div class="sales-section-title-group">
                           <v-icon size="16">mdi-crystal-ball</v-icon>
                           <span>{{ t('salesForecastTitle') }}</span>
+                          <span class="sales-forecast-projection-badge">
+                            {{ t('salesForecastProjectionBadgeLabel') }}
+                          </span>
                         </div>
                         <div class="sales-forecast-title-actions">
                           <div
@@ -296,20 +226,31 @@
                         </div>
                       </template>
                       <v-card-text class="sales-forecast-content">
+                        <div class="sales-forecast-subtitle">
+                          {{ t('salesForecastSubtitle') }}
+                        </div>
                         <div
                           v-for="scenario in (visibleLiveForecastScenarios || [])"
                           :key="scenario.id"
                           class="sales-forecast-row"
                         >
                           <div class="sales-forecast-row-head">
-                            <div class="sales-forecast-row-label">{{ scenario.label }}</div>
-                            <app-metric-value
-                              kind="money"
-                              :tone="scenario.forecastProfit >= 0 ? 'positive' : 'negative'"
-                              value-class="sales-forecast-row-profit"
-                            >
-                              {{ scenario.forecastProfit >= 0 ? '+' : '' }}${{ fmtCurrency(scenario.forecastProfit) }}
-                            </app-metric-value>
+                            <div class="sales-forecast-row-label">
+                              <span class="sales-forecast-row-prefix">{{ t('salesForecastScenarioPrefix') }}</span>
+                              {{ scenario.label }}
+                            </div>
+                            <div class="sales-forecast-profit-block">
+                              <div class="sales-forecast-profit-label">
+                                {{ t('salesForecastProjectedProfitLabel') }}
+                              </div>
+                              <app-metric-value
+                                kind="money"
+                                :tone="scenario.forecastProfit >= 0 ? 'positive' : 'negative'"
+                                value-class="sales-forecast-row-profit"
+                              >
+                                {{ scenario.forecastProfit >= 0 ? '+' : '' }}${{ fmtCurrency(scenario.forecastProfit) }}
+                              </app-metric-value>
+                            </div>
                           </div>
                           <div class="sales-forecast-row-meta">
                             {{ fmtUnits(scenario.units) }} {{ scenario.unitLabel }}{{ Number(scenario.units) === 1 ? '' : 's' }}

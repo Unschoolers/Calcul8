@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "vitest";
+import { SalesHistoryLedgerDefinition } from "../src/components/windows/sales/SalesHistoryLedger.ts";
 import { SalesWindowDefinition } from "../src/components/windows/sales/SalesWindow.definition.ts";
 import type { Sale, SinglesPurchaseEntry } from "../src/types/app.ts";
 
@@ -131,11 +132,61 @@ test("SalesWindow renders snapshot KPIs through the shared KPI grid", () => {
   assert.match(template, /salesStatusProgressPercentLabel/);
   assert.match(template, /salesStatusRealizedProfitLabel/);
   assert.match(template, /salesStatusBreakEvenGapLabel/);
+  assert.match(template, /salesForecastProjectionBadgeLabel/);
+  assert.match(template, /salesForecastScenarioPrefix/);
+  assert.match(template, /salesForecastProjectedProfitLabel/);
   assert.match(template, /<app-kpi-grid\b/);
   assert.match(template, /:items="salesSnapshotKpis"/);
   assert.doesNotMatch(template, /salesStatusSummaryLine/);
   assert.doesNotMatch(template, /salesStatusProgressLine/);
   assert.match(script, /AppKpiGrid/);
+});
+
+test("SalesWindow renders sales history through one responsive ledger component", () => {
+  const template = read("src/components/windows/sales/SalesWindow.html");
+  const ledgerTemplate = read("src/components/windows/sales/SalesHistoryLedger.html");
+  const script = read("src/components/windows/sales/SalesWindow.ts");
+
+  assert.match(template, /<sales-history-ledger\b/);
+  assert.doesNotMatch(template, /<v-list v-else class="sales-history-list"/);
+  assert.match(script, /SalesHistoryLedger/);
+  assert.match(ledgerTemplate, /sales-history-ledger__sale-profit/);
+  assert.doesNotMatch(ledgerTemplate, /sales-history-ledger__profit/);
+  assert.doesNotMatch(ledgerTemplate, /salesHistoryColumnProfitLabel/);
+  const ledgerCss = read("src/components/windows/sales/SalesWindow.css");
+  assert.match(ledgerCss, /grid-template-columns:\s*minmax\(0,\s*1fr\)\s+82px\s+52px\s+74px\s+minmax\(96px,\s*0\.65fr\)\s+28px/);
+  assert.doesNotMatch(ledgerCss, /grid-area:\s*profit/);
+});
+
+test("SalesHistoryLedger sorts through one stateful ledger model", () => {
+  const vm = {
+    sales: [
+      makeSale({ id: 1, quantity: 1, packsCount: 1, price: 15, date: "2026-06-01", customer: "Zed" }),
+      makeSale({ id: 2, quantity: 4, packsCount: 4, price: 30, date: "2026-06-03", customer: "Amy" }),
+      makeSale({ id: 3, quantity: 2, packsCount: 2, price: 18, date: "2026-05-29", customer: "" })
+    ],
+    sortKey: "profit",
+    sortDirection: "desc",
+    calculateSaleProfit(sale: Sale) {
+      return sale.id === 1 ? 5 : sale.id === 2 ? 12 : 7;
+    },
+    getSaleProfitPreview() {
+      return null;
+    }
+  };
+
+  const byProfit = SalesHistoryLedgerDefinition.computed.sortedLedgerSales.call(vm as never);
+  assert.deepEqual(byProfit.map((sale) => sale.id), [2, 3, 1]);
+
+  SalesHistoryLedgerDefinition.methods.setSort.call(vm as never, "profit");
+  const byProfitAsc = SalesHistoryLedgerDefinition.computed.sortedLedgerSales.call(vm as never);
+  assert.equal(vm.sortDirection, "asc");
+  assert.deepEqual(byProfitAsc.map((sale) => sale.id), [1, 3, 2]);
+
+  SalesHistoryLedgerDefinition.methods.setSort.call(vm as never, "customer");
+  const byCustomer = SalesHistoryLedgerDefinition.computed.sortedLedgerSales.call(vm as never);
+  assert.equal(vm.sortDirection, "asc");
+  assert.deepEqual(byCustomer.map((sale) => sale.id), [3, 2, 1]);
 });
 
 test("SalesWindow builds bulk snapshot KPIs from practical sales context", () => {
