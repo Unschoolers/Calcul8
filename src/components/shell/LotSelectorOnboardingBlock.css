@@ -51,6 +51,10 @@
   row-gap: 0.35rem;
 }
 
+.lot-selector-shell-card {
+  border-radius: var(--app-radius-card) !important;
+}
+
 .lot-selector-meta-col {
   display: flex;
   align-items: center;
@@ -137,6 +141,27 @@
 
 .v-theme--unionArenaLight .lot-selector-selection__subtitle {
   color: rgba(var(--v-theme-on-surface), 0.72);
+}
+
+@media (min-width: 960px) {
+  .lot-selector-shell-card {
+    margin-bottom: 1rem !important;
+  }
+
+  .lot-selector-shell-card .v-card-text {
+    padding: 0.55rem 0.75rem !important;
+  }
+
+  .lot-selector-shell-card .v-field {
+    min-height: 46px;
+  }
+
+  .lot-selector-actions .v-btn {
+    width: 42px !important;
+    height: 42px !important;
+    min-width: 42px !important;
+    min-height: 42px !important;
+  }
 }
 
 @media (max-width: 600px) {

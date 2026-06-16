@@ -78,3 +78,11 @@ test("no-lot blocking state uses the shared error state surface", () => {
   assert.doesNotMatch(styles, /app-empty-state-alert/);
 });
 
+test("lot selector stays compact as the shared current-inventory strip", () => {
+  const template = read("src/components/shell/LotSelectorOnboardingBlock.html");
+  const styles = read("src/components/shell/LotSelectorOnboardingBlock.css");
+
+  assert.match(template, /lot-selector-shell-card/);
+  assert.match(styles, /@media \(min-width:\s*960px\)[\s\S]*\.lot-selector-shell-card \.v-card-text\s*{[\s\S]*padding:\s*0\.55rem\s+0\.75rem/);
+  assert.match(styles, /@media \(min-width:\s*960px\)[\s\S]*\.lot-selector-actions \.v-btn\s*{[\s\S]*width:\s*42px/);
+});

@@ -251,7 +251,7 @@ export const SalesWindowDefinition = {
         value: `$${formatSalesKpiCurrency(this, revenue)}`,
         meta: resolveSalesTranslation(this, "salesKpiSoldNetMeta", "Recorded sold net"),
         icon: "mdi-cash-register",
-        tone: revenue > 0 ? "secondary" : "neutral"
+        tone: "neutral"
       });
 
       kpis.push({
@@ -278,7 +278,7 @@ export const SalesWindowDefinition = {
           `${formatSalesKpiCurrency(this, soldPercent, 1)}%`
         ].join(" • "),
         icon: "mdi-view-dashboard-outline",
-        tone: "primary"
+        tone: "neutral"
       });
 
       kpis.push({
@@ -289,7 +289,7 @@ export const SalesWindowDefinition = {
           ? `${formatSalesKpiUnits(this, topBuyer.units)} ${itemLabel} • $${formatSalesKpiCurrency(this, topBuyer.gross)}`
           : resolveSalesTranslation(this, "salesKpiNoBuyerMeta", "No named buyer yet"),
         icon: "mdi-account-star-outline",
-        tone: topBuyer ? "secondary" : "neutral"
+        tone: "neutral"
       });
 
       kpis.push({
@@ -300,7 +300,7 @@ export const SalesWindowDefinition = {
           ? `${formatSalesKpiUnits(this, saleUnits(lastSale))} ${resolveSalesTranslation(this, saleUnits(lastSale) === 1 ? "salesKpiItemNetMeta" : "salesKpiItemsNetMeta", saleUnits(lastSale) === 1 ? "item net" : "items net")} $${formatSalesKpiCurrency(this, saleNetRevenue(lastSale))}`
           : resolveSalesTranslation(this, "salesKpiNoSalesMeta", "Record a sale to start tracking"),
         icon: "mdi-calendar-clock",
-        tone: lastSale ? "secondary" : "neutral"
+        tone: "neutral"
       });
 
       if (lotType !== "singles") {
@@ -314,7 +314,7 @@ export const SalesWindowDefinition = {
             ? `${formatSalesKpiUnits(this, currentBoxSold)} / ${formatSalesKpiUnits(this, packsPerBox)} ${resolveSalesTranslation(this, "salesKpiCurrentBoxMeta", "current box")}`
             : resolveSalesTranslation(this, "salesKpiBoxUnavailableMeta", "Set packs per box"),
           icon: "mdi-package-variant-closed",
-          tone: "primary"
+          tone: "neutral"
         });
       }
 
@@ -325,7 +325,7 @@ export const SalesWindowDefinition = {
           value: `$${formatSalesKpiCurrency(this, averageNet)}`,
           meta: resolveSalesTranslation(this, "salesKpiAvgNetItemMeta", "Across sold items"),
           icon: "mdi-cash-multiple",
-          tone: averageNet > 0 ? "success" : "neutral"
+          tone: "neutral"
         });
       }
 

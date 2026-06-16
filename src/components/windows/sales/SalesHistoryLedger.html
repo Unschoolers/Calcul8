@@ -16,12 +16,30 @@
   <div class="sales-history-ledger__table" role="table">
     <div class="sales-history-ledger__head" role="row">
       <span></span>
-      <span>{{ t('salesHistoryColumnUnitsLabel') }}</span>
-      <span>{{ t('salesHistoryColumnTypeLabel') }}</span>
-      <span>{{ t('salesHistoryColumnPriceLabel') }}</span>
-      <span>{{ t('salesHistoryColumnProfitLabel') }}</span>
-      <span>{{ t('salesHistoryColumnDateLabel') }}</span>
-      <span>{{ t('salesHistoryColumnCustomerLabel') }}</span>
+      <button type="button" class="sales-history-ledger__head-sort" :class="sortButtonClass('units')" @click="setSort('units')">
+        <span>{{ t('salesHistoryColumnUnitsLabel') }}</span>
+        <v-icon size="13">{{ sortIcon('units') }}</v-icon>
+      </button>
+      <button type="button" class="sales-history-ledger__head-sort" :class="sortButtonClass('type')" @click="setSort('type')">
+        <span>{{ t('salesHistoryColumnTypeLabel') }}</span>
+        <v-icon size="13">{{ sortIcon('type') }}</v-icon>
+      </button>
+      <button type="button" class="sales-history-ledger__head-sort" :class="sortButtonClass('price')" @click="setSort('price')">
+        <span>{{ t('salesHistoryColumnPriceLabel') }}</span>
+        <v-icon size="13">{{ sortIcon('price') }}</v-icon>
+      </button>
+      <button type="button" class="sales-history-ledger__head-sort" :class="sortButtonClass('profit')" @click="setSort('profit')">
+        <span>{{ t('salesHistoryColumnProfitLabel') }}</span>
+        <v-icon size="13">{{ sortIcon('profit') }}</v-icon>
+      </button>
+      <button type="button" class="sales-history-ledger__head-sort" :class="sortButtonClass('date')" @click="setSort('date')">
+        <span>{{ t('salesHistoryColumnDateLabel') }}</span>
+        <v-icon size="13">{{ sortIcon('date') }}</v-icon>
+      </button>
+      <button type="button" class="sales-history-ledger__head-sort" :class="sortButtonClass('customer')" @click="setSort('customer')">
+        <span>{{ t('salesHistoryColumnCustomerLabel') }}</span>
+        <v-icon size="13">{{ sortIcon('customer') }}</v-icon>
+      </button>
       <span></span>
     </div>
 

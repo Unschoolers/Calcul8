@@ -85,7 +85,7 @@ test("buildSaleSaveResult builds a bulk RTYH sale and normalizes invalid date", 
     throw new Error("expected save result");
   }
   assert.equal(result.sale.type, "rtyh");
-  assert.equal(result.sale.quantity, 3);
+  assert.equal(result.sale.quantity, 1);
   assert.equal(result.sale.packsCount, 7);
   assert.equal(result.sale.date, "2026-02-22");
 });

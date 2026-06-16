@@ -167,7 +167,12 @@ export const SalesHistoryLedgerDefinition = defineComponent({
       };
     },
     saleUnitsLabel(sale: Sale): string {
-      return this.fmtUnits(saleUnits(sale));
+      const unitsLabel = this.fmtUnits(saleUnits(sale));
+      if (sale.type !== "rtyh") return unitsLabel;
+
+      const soldItemCount = Math.max(0, Number(sale.packsCount) || 0);
+      if (soldItemCount <= 0) return unitsLabel;
+      return this.fmtUnits(soldItemCount);
     },
     saleTypeText(sale: Sale): string {
       if (sale.type === "box") return this.t("salesHistoryTypeBoxesLabel");

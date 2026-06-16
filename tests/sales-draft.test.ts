@@ -94,7 +94,7 @@ test("changeNewSaleType preserves singles pack-only behavior and bulk resets lin
     currentLotType: "bulk",
     newSale: {
       type: "pack",
-      quantity: 1,
+      quantity: 5,
       packsCount: 4,
       singlesPurchaseEntryId: 10,
       singlesItems: [{ lineId: 1, singlesPurchaseEntryId: 10, quantity: 1, price: 5 }],
@@ -108,6 +108,7 @@ test("changeNewSaleType preserves singles pack-only behavior and bulk resets lin
 
   changeNewSaleType(bulkCtx as never, "rtyh");
   assert.equal((bulkCtx.newSale as { type?: string }).type, "rtyh");
+  assert.equal((bulkCtx.newSale as { quantity?: number | null }).quantity, 1);
   assert.equal((bulkCtx.newSale as { singlesPurchaseEntryId?: number | null }).singlesPurchaseEntryId, null);
   assert.equal((bulkCtx.newSale as { singlesItems?: unknown }).singlesItems, undefined);
 });

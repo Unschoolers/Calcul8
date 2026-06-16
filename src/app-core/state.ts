@@ -191,7 +191,7 @@ export function createInitialState(): AppState {
     },
 
     salesChart: null,
-    chartView: "pie",
+    chartView: "sparkline",
     portfolioChart: null,
     portfolioSalesByUserChart: null,
     lotSearchQuery: "",

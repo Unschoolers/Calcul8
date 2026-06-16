@@ -172,21 +172,21 @@
                 @update:model-value="onNewSaleTypeChange"></v-select>
             </v-col>
 
-            <v-col cols="12" sm="6">
+            <v-col v-if="newSale.type !== 'rtyh'" cols="12" sm="6">
               <v-text-field ref="saleQuantityInput" v-model.number="newSale.quantity" :label="t('saleEditorQuantityLabel')"
                 type="number" variant="outlined" :disabled="!hasLotSelected" :min="1"
                 hide-details="auto"></v-text-field>
             </v-col>
 
             <v-col cols="12" sm="6">
-              <v-text-field v-model.number="newSale.price" :label="t('saleEditorPricePerItemLabel')" type="number"
+              <v-text-field v-model.number="newSale.price" :label="newSale.type === 'rtyh' ? t('saleEditorRtyhSpotPriceLabel') : t('saleEditorPricePerItemLabel')" type="number"
                 variant="outlined" :disabled="!hasLotSelected" prefix="$" hide-details="auto"></v-text-field>
             </v-col>
 
             <v-col v-if="newSale.type === 'rtyh'" cols="12" sm="6">
-              <v-text-field v-model.number="newSale.packsCount" :label="t('saleEditorItemsSoldRandomHitLabel')" type="number"
+              <v-text-field v-model.number="newSale.packsCount" :label="t('saleEditorRtyhItemsWonLabel')" type="number"
                 variant="outlined" :disabled="!hasLotSelected" :min="1"
-                :rules="[v => !!v || t('saleEditorRandomHitRequiredLabel')]" hide-details="auto"></v-text-field>
+                :rules="[v => !!v || t('saleEditorRtyhItemsWonRequiredLabel')]" hide-details="auto"></v-text-field>
             </v-col>
           </v-row>
         </div>

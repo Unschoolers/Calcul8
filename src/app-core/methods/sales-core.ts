@@ -191,9 +191,10 @@ export function buildSaleSaveResult(params: SaleSaveParams): SaleSaveResult {
   }
 
   const isSinglesLot = params.currentLotType === "singles";
+  const isManualRtyhSale = !isSinglesLot && params.newSale.type === "rtyh";
   const rtyhPacks = Number(params.newSale.packsCount);
-  if (!isSinglesLot && params.newSale.type === "rtyh" && (!Number.isFinite(rtyhPacks) || rtyhPacks <= 0)) {
-    return fail("Please enter the number of items sold for RTYH");
+  if (isManualRtyhSale && (!Number.isFinite(rtyhPacks) || rtyhPacks <= 0)) {
+    return fail("Please enter the number of items won for RTYH");
   }
 
   let quantity = Number(params.newSale.quantity);
@@ -251,6 +252,9 @@ export function buildSaleSaveResult(params: SaleSaveParams): SaleSaveResult {
       ? (uniqueLinkedIds.values().next().value as number)
       : null;
   } else {
+    if (isManualRtyhSale) {
+      quantity = 1;
+    }
     if (!Number.isFinite(quantity) || quantity <= 0) {
       return fail("Please enter a valid quantity greater than 0");
     }

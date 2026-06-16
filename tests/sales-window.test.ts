@@ -156,11 +156,40 @@ test("SalesWindow renders sales history through one responsive ledger component"
   );
   assert.match(ledgerTemplate, /saleTypeIcon\(sale\)/);
   assert.match(ledgerTemplate, /saleTypeText\(sale\)/);
+  assert.match(ledgerTemplate, /sales-history-ledger__head-sort[\s\S]*@click="setSort\('units'\)"/);
+  assert.match(ledgerTemplate, /@click="setSort\('type'\)"[\s\S]*@click="setSort\('price'\)"[\s\S]*@click="setSort\('profit'\)"[\s\S]*@click="setSort\('date'\)"[\s\S]*@click="setSort\('customer'\)"/);
   assert.doesNotMatch(ledgerTemplate, /sales-history-ledger__type"[\s\S]*<v-avatar/);
   assert.doesNotMatch(ledgerTemplate, /saleListTitle\(sale\)/);
   const ledgerCss = read("src/components/windows/sales/SalesWindow.css");
   assert.match(ledgerCss, /grid-template-columns:\s*32px\s+58px\s+minmax\(76px,\s*0\.7fr\)\s+74px\s+minmax\(112px,\s*0\.9fr\)\s+82px\s+minmax\(96px,\s*0\.65fr\)\s+28px/);
+  assert.match(ledgerCss, /@media \(min-width:\s*601px\)[\s\S]*\.sales-history-ledger__sortbar\s*{[\s\S]*display:\s*none/);
+  assert.match(ledgerCss, /@media \(max-width:\s*600px\)[\s\S]*\.sales-history-ledger__head\s*{[\s\S]*display:\s*none/);
   assert.match(ledgerCss, /"type-icon units type price actions"/);
+});
+
+test("SaleEditorModal presents RTYH as spot price and items won", () => {
+  const template = read("src/components/shell/SaleEditorModal.html");
+
+  assert.match(template, /v-if="newSale\.type !== 'rtyh'"[\s\S]*saleEditorQuantityLabel/);
+  assert.match(template, /newSale\.type === 'rtyh'\s*\? t\('saleEditorRtyhSpotPriceLabel'\)\s*:\s*t\('saleEditorPricePerItemLabel'\)/);
+  assert.match(template, /newSale\.type === 'rtyh'[\s\S]*saleEditorRtyhItemsWonLabel/);
+  assert.doesNotMatch(template, /saleEditorItemsSoldRandomHitLabel/);
+});
+
+test("SalesWindow keeps the selected sales page dense on desktop", () => {
+  const template = read("src/components/windows/sales/SalesWindow.html");
+  const css = read("src/components/windows/sales/SalesWindow.css");
+
+  assert.match(template, /class="sales-screen-grid"/);
+  assert.match(template, /class="sales-right-column"/);
+  assert.match(css, /@media \(min-width:\s*960px\)[\s\S]*\.sales-screen-grid\s*{[\s\S]*align-items:\s*start/);
+  assert.match(css, /@media \(min-width:\s*960px\)[\s\S]*\.sales-right-column\s*{[\s\S]*display:\s*grid[\s\S]*gap:\s*0\.75rem/);
+  assert.match(css, /@media \(min-width:\s*960px\)[\s\S]*\.sales-chart-card[\s\S]*\.app-responsive-chart__plot\s*{[\s\S]*min-block-size:\s*280px/);
+  assert.match(css, /@media \(min-width:\s*960px\)[\s\S]*\.sales-snapshot-kpi-grid\s*{[\s\S]*grid-template-columns:\s*repeat\(6,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(css, /\.sales-snapshot-kpi-card:nth-child\(odd\)/);
+  assert.match(css, /\.sales-snapshot-kpi-card:nth-child\(even\)/);
+  assert.match(css, /\.v-theme--unionArenaLight \.sales-snapshot-kpi-card:nth-child\(odd\)/);
+  assert.match(css, /\.v-theme--unionArenaLight \.sales-snapshot-kpi-card:nth-child\(even\)/);
 });
 
 test("SalesHistoryLedger sorts through one stateful ledger model", () => {
@@ -199,7 +228,8 @@ test("SalesHistoryLedger presents compact unit type and price columns", () => {
     salesHistoryTypeSinglesLabel: "Singles",
     salesHistoryTypeBoxesLabel: "Boxes",
     salesHistoryTypeRandomHitLabel: "Random hit",
-    salesHistoryTypeWheelLabel: "Wheel"
+    salesHistoryTypeWheelLabel: "Wheel",
+    salesItemsLabel: "items"
   })[key] || key;
   const vm = {
     t,
@@ -210,6 +240,7 @@ test("SalesHistoryLedger presents compact unit type and price columns", () => {
 
   const singlesSale = makeSale({ quantity: 14, packsCount: 14, type: "pack", price: 7 });
   const boxSale = makeSale({ quantity: 3, packsCount: 48, type: "box", price: 127 });
+  const rtyhSale = makeSale({ quantity: 10, packsCount: 32, type: "rtyh", price: 26 });
 
   assert.equal(SalesHistoryLedgerDefinition.methods.saleUnitsLabel.call(vm as never, singlesSale), "14");
   assert.equal(SalesHistoryLedgerDefinition.methods.saleTypeText.call(vm as never, singlesSale), "Singles");
@@ -219,6 +250,9 @@ test("SalesHistoryLedger presents compact unit type and price columns", () => {
   assert.equal(SalesHistoryLedgerDefinition.methods.saleTypeText.call(vm as never, boxSale), "Boxes");
   assert.equal(SalesHistoryLedgerDefinition.methods.saleTypeIcon.call(vm as never, boxSale), "icon:box");
   assert.equal(SalesHistoryLedgerDefinition.methods.saleRevenueLabel.call(vm as never, boxSale), "$127.00");
+  assert.equal(SalesHistoryLedgerDefinition.methods.saleUnitsLabel.call(vm as never, rtyhSale), "32");
+  assert.equal(SalesHistoryLedgerDefinition.methods.saleTypeText.call(vm as never, rtyhSale), "Random hit");
+  assert.equal(SalesHistoryLedgerDefinition.methods.saleRevenueLabel.call(vm as never, rtyhSale), "$26.00");
 });
 
 test("SalesWindow builds bulk snapshot KPIs from practical sales context", () => {
@@ -248,12 +282,12 @@ test("SalesWindow builds bulk snapshot KPIs from practical sales context", () =>
   assert.deepEqual(
     kpis.map((kpi) => [kpi.id, kpi.label, kpi.value, kpi.meta, kpi.icon, kpi.tone]),
     [
-      ["revenue", "salesStatusRevenueLabel", "$74.00", "salesKpiSoldNetMeta", "mdi-cash-register", "secondary"],
+      ["revenue", "salesStatusRevenueLabel", "$74.00", "salesKpiSoldNetMeta", "mdi-cash-register", "neutral"],
       ["cost", "salesStatusCostLabel", "$319.00", "salesKpiLotCostMeta", "mdi-receipt-text-outline", "neutral"],
-      ["inventory", "salesKpiInventoryLabel", "0.44 / 4 salesBoxesLabel", "7 salesKpiSoldShortMeta • 57 salesKpiLeftShortMeta • 10.9%", "mdi-view-dashboard-outline", "primary"],
-      ["top-buyer", "salesKpiTopBuyerLabel", "Ollielav", "7 salesItemsLabel • $295.00", "mdi-account-star-outline", "secondary"],
-      ["last-sale", "salesKpiLastSaleLabel", "D:2026-06-15", "3 salesKpiItemsNetMeta $38.50", "mdi-calendar-clock", "secondary"],
-      ["box-progress", "salesKpiNextBoxLabel", "9 salesKpiToNextBoxValue", "7 / 16 salesKpiCurrentBoxMeta", "mdi-package-variant-closed", "primary"]
+      ["inventory", "salesKpiInventoryLabel", "0.44 / 4 salesBoxesLabel", "7 salesKpiSoldShortMeta • 57 salesKpiLeftShortMeta • 10.9%", "mdi-view-dashboard-outline", "neutral"],
+      ["top-buyer", "salesKpiTopBuyerLabel", "Ollielav", "7 salesItemsLabel • $295.00", "mdi-account-star-outline", "neutral"],
+      ["last-sale", "salesKpiLastSaleLabel", "D:2026-06-15", "3 salesKpiItemsNetMeta $38.50", "mdi-calendar-clock", "neutral"],
+      ["box-progress", "salesKpiNextBoxLabel", "9 salesKpiToNextBoxValue", "7 / 16 salesKpiCurrentBoxMeta", "mdi-package-variant-closed", "neutral"]
     ]
   );
 });
@@ -285,12 +319,12 @@ test("SalesWindow builds singles snapshot KPIs without bulk box progress", () =>
   assert.deepEqual(
     kpis.map((kpi) => [kpi.id, kpi.label, kpi.value, kpi.meta, kpi.icon, kpi.tone]),
     [
-      ["revenue", "salesStatusRevenueLabel", "$42.00", "salesKpiSoldNetMeta", "mdi-cash-register", "secondary"],
+      ["revenue", "salesStatusRevenueLabel", "$42.00", "salesKpiSoldNetMeta", "mdi-cash-register", "neutral"],
       ["cost", "salesStatusCostLabel", "$30.00", "salesKpiLotCostMeta", "mdi-receipt-text-outline", "neutral"],
-      ["inventory", "salesKpiInventoryLabel", "2 / 10 salesItemsLabel", "2 salesKpiSoldShortMeta • 8 salesKpiLeftShortMeta • 20.0%", "mdi-view-dashboard-outline", "primary"],
-      ["top-buyer", "salesKpiTopBuyerLabel", "Ollielav", "1 salesItemsLabel • $24.00", "mdi-account-star-outline", "secondary"],
-      ["last-sale", "salesKpiLastSaleLabel", "D:2026-06-14", "1 salesKpiItemNetMeta $21.00", "mdi-calendar-clock", "secondary"],
-      ["avg-net", "salesKpiAvgNetItemLabel", "$21.00", "salesKpiAvgNetItemMeta", "mdi-cash-multiple", "success"]
+      ["inventory", "salesKpiInventoryLabel", "2 / 10 salesItemsLabel", "2 salesKpiSoldShortMeta • 8 salesKpiLeftShortMeta • 20.0%", "mdi-view-dashboard-outline", "neutral"],
+      ["top-buyer", "salesKpiTopBuyerLabel", "Ollielav", "1 salesItemsLabel • $24.00", "mdi-account-star-outline", "neutral"],
+      ["last-sale", "salesKpiLastSaleLabel", "D:2026-06-14", "1 salesKpiItemNetMeta $21.00", "mdi-calendar-clock", "neutral"],
+      ["avg-net", "salesKpiAvgNetItemLabel", "$21.00", "salesKpiAvgNetItemMeta", "mdi-cash-multiple", "neutral"]
     ]
   );
 });

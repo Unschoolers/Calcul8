@@ -65,6 +65,17 @@ class MockHtmlInputElement {
 class MockHtmlCanvasElement {
   context = { id: "ctx" };
   getContext = vi.fn(() => this.context);
+  getBoundingClientRect = vi.fn(() => ({
+    width: 420,
+    height: 260,
+    top: 0,
+    right: 420,
+    bottom: 260,
+    left: 0,
+    x: 0,
+    y: 0,
+    toJSON: () => ({})
+  }));
 }
 
 type Ctx = Record<string, unknown>;
@@ -1248,6 +1259,41 @@ test("initSalesChart creates line chart for trend view", () => {
   assert.equal(chartCtorMock.mock.calls.length, 1);
   const config = chartCtorMock.mock.calls[0]?.[1] as { type: string };
   assert.equal(config.type, "line");
+});
+
+test("initSalesChart retries when trend canvas is not mounted yet", () => {
+  vi.useFakeTimers();
+  const trendCanvas = new MockHtmlCanvasElement();
+  const ctx = createContext({
+    chartView: "trend",
+    sales: [
+      {
+        id: 1,
+        type: "pack",
+        quantity: 1,
+        packsCount: 1,
+        price: 10,
+        date: "2026-02-20"
+      }
+    ],
+    $refs: {
+      salesWindow: {
+        $refs: {}
+      }
+    }
+  });
+  ctx.initSalesChart = () => salesMethods.initSalesChart.call(ctx as never);
+
+  salesMethods.initSalesChart.call(ctx as never);
+  assert.equal(chartCtorMock.mock.calls.length, 0);
+
+  (ctx.$refs as { salesWindow: { $refs: Record<string, unknown> } }).salesWindow.$refs.salesTrendChart = trendCanvas;
+  vi.advanceTimersByTime(120);
+
+  assert.equal(chartCtorMock.mock.calls.length, 1);
+  const config = chartCtorMock.mock.calls[0]?.[1] as { type: string };
+  assert.equal(config.type, "line");
+  vi.useRealTimers();
 });
 
 test("initSalesChart creates pie chart and destroys stale sales chart safely", () => {

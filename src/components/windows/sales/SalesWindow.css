@@ -254,8 +254,21 @@
 
 .sales-snapshot-kpi-card {
   background:
-    linear-gradient(180deg, rgba(var(--v-theme-on-surface), 0.045), rgba(var(--v-theme-on-surface), 0.02)),
-    rgba(var(--v-theme-surface), 0.44);
+    linear-gradient(180deg, rgba(var(--v-theme-on-surface), 0.025), rgba(var(--v-theme-on-surface), 0.012)),
+    rgba(var(--v-theme-surface), 0.64);
+  border-color: rgba(var(--v-theme-on-surface), 0.1);
+}
+
+.sales-snapshot-kpi-card:nth-child(odd) {
+  background:
+    linear-gradient(180deg, rgba(var(--v-theme-on-surface), 0.024), rgba(var(--v-theme-on-surface), 0.01)),
+    rgba(var(--v-theme-surface), 0.58);
+}
+
+.sales-snapshot-kpi-card:nth-child(even) {
+  background:
+    linear-gradient(180deg, rgba(var(--v-theme-on-surface), 0.038), rgba(var(--v-theme-on-surface), 0.018)),
+    rgba(var(--v-theme-surface), 0.68);
 }
 
 .sales-section-title-bar {
@@ -380,6 +393,43 @@
   font-weight: var(--app-font-weight-emphasis);
   line-height: var(--app-line-height-tight);
   text-transform: uppercase;
+}
+
+.sales-history-ledger__head-sort {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.14rem;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+  text-align: left;
+  text-transform: inherit;
+  cursor: pointer;
+}
+
+.sales-history-ledger__head-sort > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sales-history-ledger__head-sort .v-icon {
+  flex: 0 0 auto;
+  color: currentColor !important;
+  opacity: 0.58;
+}
+
+.sales-history-ledger__head-sort.is-active {
+  color: rgb(var(--v-theme-secondary));
+}
+
+.sales-history-ledger__head-sort.is-active .v-icon {
+  opacity: 1;
 }
 
 .sales-history-ledger__row {
@@ -714,6 +764,18 @@
     linear-gradient(165deg, rgba(var(--v-theme-surface-bright), 0.7), rgba(var(--v-theme-surface), 0.96));
 }
 
+.v-theme--unionArenaDark .sales-snapshot-kpi-card:nth-child(odd) {
+  background:
+    linear-gradient(180deg, rgba(var(--v-theme-on-surface), 0.018), rgba(var(--v-theme-on-surface), 0.006)),
+    rgba(var(--v-theme-background), 0.34);
+}
+
+.v-theme--unionArenaDark .sales-snapshot-kpi-card:nth-child(even) {
+  background:
+    linear-gradient(180deg, rgba(var(--v-theme-on-surface), 0.032), rgba(var(--v-theme-on-surface), 0.012)),
+    rgba(var(--v-theme-background), 0.46);
+}
+
 .v-theme--unionArenaDark .sales-history-list .v-list-item,
 .v-theme--unionArenaDark .sales-history-ledger__row,
 .v-theme--unionArenaDark .sales-forecast-row {
@@ -729,9 +791,68 @@
 }
 
 @media (min-width: 960px) {
+  .sales-screen-grid {
+    align-items: start;
+  }
+
   .sales-status-card,
   .sales-section-card {
     margin-bottom: var(--app-dashboard-desktop-gap);
+  }
+
+  .sales-status-content {
+    padding: 0.85rem 1rem 0.78rem;
+  }
+
+  .sales-status-value-row {
+    margin-top: 0.32rem;
+  }
+
+  .sales-snapshot-kpi-grid {
+    margin-top: 0.62rem;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .sales-right-column {
+    display: grid;
+    gap: 0.75rem;
+    align-content: start;
+  }
+
+  .sales-right-column .sales-section-card {
+    margin-bottom: 0;
+  }
+
+  .sales-chart-card .app-responsive-chart__plot {
+    min-block-size: 280px;
+  }
+
+  .sales-chart-head {
+    margin-bottom: 0.45rem;
+  }
+
+  .sales-forecast-content {
+    gap: 0.38rem;
+    padding-top: 0.5rem;
+    padding-bottom: 0.62rem;
+  }
+
+  .sales-forecast-subtitle {
+    margin-bottom: 0.28rem;
+  }
+
+  .sales-forecast-row {
+    padding: 0.52rem 0.62rem;
+  }
+
+  .sales-forecast-row-meta {
+    margin-top: 0.18rem;
+  }
+}
+
+@media (min-width: 601px) {
+  .sales-history-ledger__sortbar {
+    display: none;
   }
 }
 
@@ -746,6 +867,18 @@
 
 .v-theme--unionArenaLight .sales-history-action-btn {
   background: rgba(var(--v-theme-on-surface), 0.06);
+}
+
+.v-theme--unionArenaLight .sales-snapshot-kpi-card:nth-child(odd) {
+  background:
+    linear-gradient(180deg, rgba(var(--v-theme-on-surface), 0.018), rgba(var(--v-theme-on-surface), 0.008)),
+    rgba(var(--v-theme-surface), 0.88);
+}
+
+.v-theme--unionArenaLight .sales-snapshot-kpi-card:nth-child(even) {
+  background:
+    linear-gradient(180deg, rgba(var(--v-theme-on-surface), 0.034), rgba(var(--v-theme-on-surface), 0.014)),
+    rgba(var(--v-theme-surface), 0.96);
 }
 
 @media (max-width: 600px) {

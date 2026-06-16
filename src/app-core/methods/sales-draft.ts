@@ -202,10 +202,11 @@ export function applySinglesSaleLineQuantityChange(context: SalesDraftTarget, li
 export function openAddSaleDraft(context: SalesDraftTarget, saleType: SaleType = "pack"): void {
   const normalizedType: SaleType = context.currentLotType === "singles" ? "pack" : saleType;
   const nextPrice = context.currentLotType === "singles" ? null : resolveDefaultSaleUnitPrice(context as never, normalizedType);
+  const isManualRtyhSale = context.currentLotType !== "singles" && normalizedType === "rtyh";
   context.editingSale = null;
   context.newSale = {
     type: normalizedType,
-    quantity: null,
+    quantity: isManualRtyhSale ? 1 : null,
     packsCount: null,
     singlesPurchaseEntryId: null,
     singlesItems: context.currentLotType === "singles" ? [createEmptySinglesSaleDraftLine()] : undefined,
@@ -271,6 +272,9 @@ export function changeNewSaleType(context: SalesDraftTarget, type: SaleType): vo
   context.newSale.singlesPurchaseEntryId = null;
   context.newSale.singlesItems = undefined;
   if (context.editingSale) return;
+  if (nextType === "rtyh") {
+    context.newSale.quantity = 1;
+  }
   context.newSale.price = resolveDefaultSaleUnitPrice(context as never, nextType);
 }
 
@@ -297,7 +301,7 @@ export function editSaleDraft(context: SalesDraftTarget, sale: Sale): void {
   const singlesItems = context.currentLotType === "singles" ? getDraftSinglesSaleLinesFromSale(sale) : undefined;
   context.newSale = {
     type: sale.type,
-    quantity: sale.quantity,
+    quantity: sale.type === "rtyh" ? 1 : sale.quantity,
     packsCount: sale.type === "rtyh" ? sale.packsCount : null,
     singlesPurchaseEntryId: normalizeSinglesPurchaseEntryId(sale.singlesPurchaseEntryId),
     singlesItems,

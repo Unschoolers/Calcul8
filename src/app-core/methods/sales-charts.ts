@@ -12,6 +12,48 @@ import { getTodayDate } from "./config-shared.ts";
 import { formatCompactChartDate, isSmallDisplay, resolveCanvasRef, safeDestroyChart } from "./sales-ui-helpers.ts";
 import { queuePortfolioSalesHydration } from "./sales-portfolio-hydration.ts";
 
+const SALES_CHART_RETRY_DELAY_MS = 120;
+const SALES_CHART_MAX_INIT_RETRIES = 5;
+const pendingSalesChartInitRetries = new WeakMap<object, number>();
+const salesChartInitRetryCounts = new WeakMap<object, number>();
+
+function clearPendingSalesChartRetry(context: object): void {
+  const timeoutId = pendingSalesChartInitRetries.get(context);
+  if (timeoutId != null) {
+    globalThis.clearTimeout(timeoutId);
+    pendingSalesChartInitRetries.delete(context);
+  }
+  salesChartInitRetryCounts.delete(context);
+}
+
+function isCanvasReady(canvas: HTMLCanvasElement): boolean {
+  if (typeof canvas.isConnected === "boolean" && !canvas.isConnected) return false;
+  if (typeof canvas.getBoundingClientRect !== "function") return true;
+  const rect = canvas.getBoundingClientRect();
+  return Number(rect.width) > 0 && Number(rect.height) > 0;
+}
+
+function queueSalesChartInitRetry(context: AppContext): void {
+  if (context.currentTab !== "sales") return;
+  if (pendingSalesChartInitRetries.has(context)) return;
+
+  const attempt = (salesChartInitRetryCounts.get(context) ?? 0) + 1;
+  if (attempt > SALES_CHART_MAX_INIT_RETRIES) return;
+  salesChartInitRetryCounts.set(context, attempt);
+
+  const timeoutId = globalThis.setTimeout(() => {
+    pendingSalesChartInitRetries.delete(context);
+    if (context.currentTab !== "sales") return;
+    const runRetry = () => context.initSalesChart();
+    if (typeof context.$nextTick === "function") {
+      void context.$nextTick(runRetry);
+      return;
+    }
+    runRetry();
+  }, SALES_CHART_RETRY_DELAY_MS) as unknown as number;
+  pendingSalesChartInitRetries.set(context, timeoutId);
+}
+
 function getPortfolioSalesByLotId(
   context: Pick<AppContext, "currentLotId" | "sales" | "loadSalesForLotId"> & Partial<Pick<AppContext, "getAllSalesByLotId">>,
   lotIds: number[]
@@ -31,10 +73,21 @@ export function initSalesChartDisplay(context: AppContext): void {
   safeDestroyChart(context.salesChart);
   context.salesChart = null;
 
+  const hasTrendSales = Array.isArray(context.sales) && context.sales.length > 0;
+  if (context.chartView !== "pie" && !hasTrendSales) {
+    clearPendingSalesChartRetry(context);
+    return;
+  }
+
   const chartCanvas = context.chartView === "pie"
     ? resolveCanvasRef(context, "salesWindow", "salesChartCanvas")
     : resolveCanvasRef(context, "salesWindow", "salesTrendChart");
-  if (!chartCanvas) return;
+  if (!chartCanvas || !isCanvasReady(chartCanvas)) {
+    queueSalesChartInitRetry(context);
+    return;
+  }
+  clearPendingSalesChartRetry(context);
+
   const existingSalesChart = Chart.getChart(chartCanvas);
   if (existingSalesChart) {
     safeDestroyChart(existingSalesChart);
