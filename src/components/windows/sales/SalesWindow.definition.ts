@@ -59,6 +59,31 @@ function saleNetRevenue(sale: Sale): number {
   return Math.max(0, Number(sale.price) || 0);
 }
 
+function saleGrossRevenue(sale: Sale): number {
+  const price = Math.max(0, Number(sale.price) || 0);
+  if (sale.priceIsTotal) return price;
+  return price * Math.max(1, Number(sale.quantity) || 1);
+}
+
+function topBuyerSummary(sales: Sale[]): { name: string; units: number; gross: number } | null {
+  const buyers = new Map<string, { name: string; units: number; gross: number }>();
+  for (const sale of sales) {
+    const name = String(sale.customer || "").trim();
+    if (!name) continue;
+    const key = name.toLocaleLowerCase();
+    const current = buyers.get(key) ?? { name, units: 0, gross: 0 };
+    current.units += saleUnits(sale);
+    current.gross += saleGrossRevenue(sale);
+    buyers.set(key, current);
+  }
+
+  return [...buyers.values()].sort((left, right) => {
+    if (right.units !== left.units) return right.units - left.units;
+    if (right.gross !== left.gross) return right.gross - left.gross;
+    return left.name.localeCompare(right.name);
+  })[0] ?? null;
+}
+
 function salesProgressPercent(vm: Record<string, unknown>): number {
   const lotType = String(vm.currentLotType || "bulk");
   if (lotType === "singles") {
@@ -215,9 +240,10 @@ export const SalesWindowDefinition = {
       const revenue = Number((this.salesStatus as { revenue?: number } | undefined)?.revenue ?? 0);
       const cost = Math.max(0, Number(this.totalCaseCost) || 0);
       const averageNet = soldItems > 0 ? revenue / soldItems : 0;
-      const remainingPercent = totalItems > 0 ? (remainingItems / totalItems) * 100 : 0;
+      const soldPercent = totalItems > 0 ? (soldBasis / totalItems) * 100 : 0;
       const kpis: AppKpiItem[] = [];
       const lastSale = sales[0];
+      const topBuyer = topBuyerSummary(sales);
 
       kpis.push({
         id: "revenue",
@@ -237,33 +263,34 @@ export const SalesWindowDefinition = {
         tone: "neutral"
       });
 
-      if (lotType === "singles") {
-        const unlinked = Math.max(0, Number(this.singlesUnlinkedSoldCount) || 0);
-        kpis.push({
-          id: "sales-progress",
-          label: resolveSalesTranslation(this, "salesKpiSalesProgressLabel", "Sales progress"),
-          value: `${formatSalesKpiUnits(this, soldBasis)} / ${formatSalesKpiUnits(this, totalItems)}`,
-          meta: unlinked > 0
-            ? `${formatSalesKpiUnits(this, unlinked)} ${resolveSalesTranslation(this, "salesUnlinkedLabel", "unlinked")}`
-            : resolveSalesTranslation(this, "salesKpiAllLinkedMeta", "All linked"),
-          icon: "mdi-view-dashboard-outline",
-          tone: "primary"
-        });
-      } else {
-        const packsPerBox = Math.max(0, Number(this.packsPerBox) || 0);
-        const boxLabel = resolveSalesTranslation(this, "salesBoxesLabel", "boxes");
-        const itemLabel = resolveSalesTranslation(this, "salesItemsLabel", "items");
-        kpis.push({
-          id: "sales-progress",
-          label: resolveSalesTranslation(this, "salesKpiSalesProgressLabel", "Sales progress"),
-          value: packsPerBox > 0
-            ? `${formatSalesKpiUnits(this, soldItems / packsPerBox)} / ${formatSalesKpiUnits(this, totalItems / packsPerBox)} ${boxLabel}`
-            : `${formatSalesKpiUnits(this, soldItems)} / ${formatSalesKpiUnits(this, totalItems)} ${itemLabel}`,
-          meta: `${formatSalesKpiUnits(this, soldItems)} / ${formatSalesKpiUnits(this, totalItems)} ${itemLabel}`,
-          icon: "mdi-view-dashboard-outline",
-          tone: "primary"
-        });
-      }
+      const packsPerBox = Math.max(0, Number(this.packsPerBox) || 0);
+      const boxLabel = resolveSalesTranslation(this, "salesBoxesLabel", "boxes");
+      const itemLabel = resolveSalesTranslation(this, "salesItemsLabel", "items");
+      kpis.push({
+        id: "inventory",
+        label: resolveSalesTranslation(this, "salesKpiInventoryLabel", "Inventory"),
+        value: lotType !== "singles" && packsPerBox > 0
+          ? `${formatSalesKpiUnits(this, soldItems / packsPerBox)} / ${formatSalesKpiUnits(this, totalItems / packsPerBox)} ${boxLabel}`
+          : `${formatSalesKpiUnits(this, soldBasis)} / ${formatSalesKpiUnits(this, totalItems)} ${itemLabel}`,
+        meta: [
+          `${formatSalesKpiUnits(this, soldBasis)} ${resolveSalesTranslation(this, "salesKpiSoldShortMeta", "sold")}`,
+          `${formatSalesKpiUnits(this, remainingItems)} ${resolveSalesTranslation(this, "salesKpiLeftShortMeta", "left")}`,
+          `${formatSalesKpiCurrency(this, soldPercent, 1)}%`
+        ].join(" • "),
+        icon: "mdi-view-dashboard-outline",
+        tone: "primary"
+      });
+
+      kpis.push({
+        id: "top-buyer",
+        label: resolveSalesTranslation(this, "salesKpiTopBuyerLabel", "Top buyer"),
+        value: topBuyer?.name || resolveSalesTranslation(this, "salesKpiNoSalesValue", "None"),
+        meta: topBuyer
+          ? `${formatSalesKpiUnits(this, topBuyer.units)} ${itemLabel} • $${formatSalesKpiCurrency(this, topBuyer.gross)}`
+          : resolveSalesTranslation(this, "salesKpiNoBuyerMeta", "No named buyer yet"),
+        icon: "mdi-account-star-outline",
+        tone: topBuyer ? "secondary" : "neutral"
+      });
 
       kpis.push({
         id: "last-sale",
@@ -276,17 +303,7 @@ export const SalesWindowDefinition = {
         tone: lastSale ? "secondary" : "neutral"
       });
 
-      kpis.push({
-        id: "remaining",
-        label: resolveSalesTranslation(this, "salesKpiRemainingLabel", "Remaining"),
-        value: `${formatSalesKpiUnits(this, remainingItems)} ${resolveSalesTranslation(this, "salesItemsLabel", "items")}`,
-        meta: `${formatSalesKpiCurrency(this, remainingPercent, 1)}% ${resolveSalesTranslation(this, "salesKpiRemainingMeta", "remaining")}`,
-        icon: "mdi-package-variant",
-        tone: remainingItems > 0 ? "warning" : "success"
-      });
-
       if (lotType !== "singles") {
-        const packsPerBox = Math.max(0, Number(this.packsPerBox) || 0);
         const currentBoxSold = packsPerBox > 0 ? soldItems % packsPerBox : 0;
         const toNextBox = packsPerBox > 0 && currentBoxSold > 0 ? packsPerBox - currentBoxSold : 0;
         kpis.push({

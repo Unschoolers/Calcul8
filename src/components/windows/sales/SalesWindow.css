@@ -368,7 +368,7 @@
 .sales-history-ledger__head,
 .sales-history-ledger__row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 82px 52px 74px minmax(96px, 0.65fr) 28px;
+  grid-template-columns: 32px 58px minmax(76px, 0.7fr) 74px minmax(112px, 0.9fr) 82px minmax(96px, 0.65fr) 28px;
   align-items: center;
   gap: 0.45rem;
 }
@@ -408,55 +408,38 @@
   line-height: var(--app-line-height-tight);
 }
 
-.sales-history-ledger__sale {
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-}
-
-.sales-history-ledger__sale-copy {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.sales-history-ledger__sale-title {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  min-width: 0;
+.sales-history-ledger__units {
   color: var(--app-text-strong);
-  font-size: 0.9rem;
   font-weight: var(--app-font-weight-emphasis);
-  line-height: var(--app-line-height-tight);
 }
 
-.sales-history-ledger__sale-title > span {
-  flex: 1 1 auto;
-  min-width: 0;
+.sales-history-ledger__type-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.sales-history-ledger__sale-profit {
-  flex: 0 1 auto;
-  margin-left: auto;
-  max-width: min(14rem, 48%);
-  min-width: 0;
+.sales-history-ledger__type,
+.sales-history-ledger__profit {
+  display: flex;
+  align-items: center;
+  gap: 0.38rem;
+}
+
+.sales-history-ledger__type {
+  color: var(--app-text-strong);
+  font-weight: var(--app-font-weight-emphasis);
+}
+
+.sales-history-ledger__profit {
+  flex-wrap: nowrap;
+}
+
+.sales-history-ledger__type > span,
+.sales-history-ledger__customer {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.sales-history-ledger__sale-title > span,
-.sales-history-ledger__customer,
-.sales-history-ledger__memo {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.sales-history-ledger__memo {
-  margin-top: 0.12rem;
-  color: var(--app-text-subtle);
-  font-size: var(--app-font-size-caption);
 }
 
 .sales-history-ledger__actions {
@@ -489,6 +472,15 @@
   min-height: 22px;
 }
 
+.sales-history-ledger__profit-value {
+  flex: 0 1 auto;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .sales-history-profit-pill.is-positive {
   color: rgb(var(--v-theme-success));
   background: rgba(var(--v-theme-success), 0.1);
@@ -503,7 +495,7 @@
 
 .sales-history-profit-pill--secondary {
   margin-left: 0;
-  max-width: min(12rem, 42%);
+  max-width: min(12rem, 48%);
   opacity: 0.72;
   font-weight: 520;
 }
@@ -829,47 +821,46 @@
   }
 
   .sales-history-ledger__row {
-    grid-template-columns: minmax(0, 1fr) auto auto auto;
+    grid-template-columns: 28px 34px minmax(70px, 1fr) auto auto;
     grid-template-areas:
-      "sale sale sale actions"
-      "date units price customer";
+      "type-icon units type price actions"
+      "profit profit profit date customer";
     gap: 0.16rem 0.45rem;
     min-height: 0;
     padding: 0.42rem 0.52rem;
   }
 
-  .sales-history-ledger__sale {
-    grid-area: sale;
+  .sales-history-ledger__type-icon {
+    grid-area: type-icon;
+  }
+
+  .sales-history-ledger__units {
+    grid-area: units;
+  }
+
+  .sales-history-ledger__type {
+    grid-area: type;
     gap: 0.42rem;
+  }
+
+  .sales-history-ledger__profit {
+    grid-area: profit;
   }
 
   .sales-history-ledger__actions {
     grid-area: actions;
   }
 
-  .sales-history-ledger__cell:nth-of-type(2) {
-    grid-area: date;
-  }
-
-  .sales-history-ledger__cell:nth-of-type(3) {
-    grid-area: units;
-  }
-
   .sales-history-ledger__cell:nth-of-type(4) {
     grid-area: price;
   }
 
-  .sales-history-ledger__customer {
-    grid-area: customer;
+  .sales-history-ledger__cell:nth-of-type(6) {
+    grid-area: date;
   }
 
-  .sales-history-ledger__cell:not(.sales-history-ledger__sale)::before {
-    content: attr(data-label);
-    margin-right: 0.16rem;
-    color: var(--app-text-subtle);
-    font-size: var(--app-font-size-caption);
-    font-weight: var(--app-font-weight-emphasis);
-    text-transform: uppercase;
+  .sales-history-ledger__customer {
+    grid-area: customer;
   }
 
   .sales-history-ledger__cell,
@@ -877,14 +868,6 @@
     font-size: 0.74rem;
     line-height: 1.1;
     white-space: nowrap;
-  }
-
-  .sales-history-ledger__sale-title {
-    font-size: 0.86rem;
-  }
-
-  .sales-history-ledger__memo {
-    display: none;
   }
 
   .sales-history-type-token {

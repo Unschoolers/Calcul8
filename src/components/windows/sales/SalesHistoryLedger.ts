@@ -4,7 +4,7 @@ import AppActionButton from "../../ui/AppActionButton.vue";
 import AppMetricValue from "../../ui/AppMetricValue.vue";
 
 type SortDirection = "asc" | "desc";
-type SortKey = "date" | "units" | "price" | "profit" | "customer";
+type SortKey = "units" | "type" | "price" | "profit" | "date" | "customer";
 
 type SaleProfitPreviewLike = {
   value: number;
@@ -15,7 +15,7 @@ type SaleProfitPreviewLike = {
 } | null;
 
 function saleUnits(sale: Sale): number {
-  return Math.max(0, Number(sale.packsCount ?? sale.quantity) || 0);
+  return Math.max(0, Number(sale.quantity) || 0);
 }
 
 function saleDateValue(sale: Sale): number {
@@ -33,6 +33,7 @@ function ledgerSortValue(
 ): number | string {
   if (key === "date") return saleDateValue(sale);
   if (key === "units") return saleUnits(sale);
+  if (key === "type") return sale.type;
   if (key === "price") return Number(sale.price) || 0;
   if (key === "customer") return String(sale.customer || "").toLocaleLowerCase();
   return Number(ctx.getSaleProfitPreview(sale)?.value ?? ctx.calculateSaleProfit(sale)) || 0;
@@ -75,10 +76,6 @@ export const SalesHistoryLedgerDefinition = defineComponent({
     },
     fmtUnits: {
       type: Function as PropType<(value: number | null | undefined) => string>,
-      required: true
-    },
-    saleListTitle: {
-      type: Function as PropType<(sale: Sale) => string>,
       required: true
     },
     getSaleIcon: {
@@ -132,10 +129,11 @@ export const SalesHistoryLedgerDefinition = defineComponent({
     },
     sortOptions(this: { t: (key: string) => string }): Array<{ key: SortKey; label: string }> {
       return [
-        { key: "date", label: this.t("salesHistorySortDateLabel") },
         { key: "units", label: this.t("salesHistorySortUnitsLabel") },
+        { key: "type", label: this.t("salesHistorySortTypeLabel") },
         { key: "price", label: this.t("salesHistorySortPriceLabel") },
         { key: "profit", label: this.t("salesHistorySortProfitLabel") },
+        { key: "date", label: this.t("salesHistorySortDateLabel") },
         { key: "customer", label: this.t("salesHistorySortCustomerLabel") }
       ];
     }
@@ -170,6 +168,15 @@ export const SalesHistoryLedgerDefinition = defineComponent({
     },
     saleUnitsLabel(sale: Sale): string {
       return this.fmtUnits(saleUnits(sale));
+    },
+    saleTypeText(sale: Sale): string {
+      if (sale.type === "box") return this.t("salesHistoryTypeBoxesLabel");
+      if (sale.type === "rtyh") return this.t("salesHistoryTypeRandomHitLabel");
+      if (sale.type === "wheel") return this.t("salesHistoryTypeWheelLabel");
+      return this.t("salesHistoryTypeSinglesLabel");
+    },
+    saleTypeIcon(sale: Sale): string {
+      return this.getSaleIcon(sale.type);
     },
     saleCustomerLabel(sale: Sale): string {
       const customer = String(sale.customer || "").trim();

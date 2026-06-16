@@ -15,10 +15,12 @@
 
   <div class="sales-history-ledger__table" role="table">
     <div class="sales-history-ledger__head" role="row">
-      <span>{{ t('salesHistoryColumnSaleLabel') }}</span>
-      <span>{{ t('salesHistoryColumnDateLabel') }}</span>
+      <span></span>
       <span>{{ t('salesHistoryColumnUnitsLabel') }}</span>
+      <span>{{ t('salesHistoryColumnTypeLabel') }}</span>
       <span>{{ t('salesHistoryColumnPriceLabel') }}</span>
+      <span>{{ t('salesHistoryColumnProfitLabel') }}</span>
+      <span>{{ t('salesHistoryColumnDateLabel') }}</span>
       <span>{{ t('salesHistoryColumnCustomerLabel') }}</span>
       <span></span>
     </div>
@@ -32,58 +34,59 @@
       @click="$emit('edit', sale)"
       @keydown.enter="$emit('edit', sale)"
     >
-      <div class="sales-history-ledger__cell sales-history-ledger__sale" role="cell">
+      <div class="sales-history-ledger__cell sales-history-ledger__type-icon" role="cell">
         <v-avatar class="sales-history-type-token" size="28">
-          <v-icon size="16" :color="getSaleColor(sale.type)">{{ getSaleIcon(sale.type) }}</v-icon>
+          <v-icon size="16" :color="getSaleColor(sale.type)">{{ saleTypeIcon(sale) }}</v-icon>
         </v-avatar>
-        <div class="sales-history-ledger__sale-copy">
-          <div class="sales-history-ledger__sale-title">
-            <span>{{ saleListTitle(sale) }}</span>
-            <app-metric-value
-              kind="money"
-              :tone="saleProfitTone(sale)"
-              pill
-              value-class="sales-history-profit-pill sales-history-ledger__sale-profit"
-            >
-              {{ saleProfitLabel(sale) }}
-            </app-metric-value>
-            <app-metric-value
-              v-if="saleSecondaryProfitLabel(sale)"
-              kind="money"
-              :tone="saleProfitValue(sale) >= 0 ? 'positive' : 'negative'"
-              pill
-              value-class="sales-history-profit-pill sales-history-profit-pill--secondary sales-history-ledger__sale-profit"
-            >
-              {{ saleSecondaryProfitLabel(sale) }}
-            </app-metric-value>
-            <v-tooltip
-              v-if="isUnlinkedSinglesSale(sale)"
-              :text="t('salesHistoryUnlinkedSaleTooltip')"
-              location="top"
-            >
-              <template #activator="{ props }">
-                <v-icon
-                  v-bind="props"
-                  size="14"
-                  color="warning"
-                  :aria-label="t('salesHistoryUnlinkedSaleLabel')"
-                  :title="t('salesHistoryUnlinkedSaleTooltip')"
-                >mdi-link-variant-off</v-icon>
-              </template>
-            </v-tooltip>
-          </div>
-          <div v-if="sale.memo" class="sales-history-ledger__memo">{{ sale.memo }}</div>
-        </div>
       </div>
 
-      <div class="sales-history-ledger__cell" role="cell" :data-label="t('salesHistoryColumnDateLabel')">
-        {{ formatDate(sale.date) }}
-      </div>
-      <div class="sales-history-ledger__cell" role="cell" :data-label="t('salesHistoryColumnUnitsLabel')">
+      <div class="sales-history-ledger__cell sales-history-ledger__units" role="cell" :data-label="t('salesHistoryColumnUnitsLabel')">
         {{ saleUnitsLabel(sale) }}
       </div>
+
+      <div class="sales-history-ledger__cell sales-history-ledger__type" role="cell" :data-label="t('salesHistoryColumnTypeLabel')">
+        <span>{{ saleTypeText(sale) }}</span>
+        <v-tooltip
+          v-if="isUnlinkedSinglesSale(sale)"
+          :text="t('salesHistoryUnlinkedSaleTooltip')"
+          location="top"
+        >
+          <template #activator="{ props }">
+            <v-icon
+              v-bind="props"
+              size="14"
+              color="warning"
+              :aria-label="t('salesHistoryUnlinkedSaleLabel')"
+              :title="t('salesHistoryUnlinkedSaleTooltip')"
+            >mdi-link-variant-off</v-icon>
+          </template>
+        </v-tooltip>
+      </div>
+
       <div class="sales-history-ledger__cell" role="cell" :data-label="t('salesHistoryColumnPriceLabel')">
         {{ saleRevenueLabel(sale) }}
+      </div>
+      <div class="sales-history-ledger__cell sales-history-ledger__profit" role="cell" :data-label="t('salesHistoryColumnProfitLabel')">
+        <app-metric-value
+          kind="money"
+          :tone="saleProfitTone(sale)"
+          pill
+          value-class="sales-history-profit-pill sales-history-ledger__profit-value"
+        >
+          {{ saleProfitLabel(sale) }}
+        </app-metric-value>
+        <app-metric-value
+          v-if="saleSecondaryProfitLabel(sale)"
+          kind="money"
+          :tone="saleProfitValue(sale) >= 0 ? 'positive' : 'negative'"
+          pill
+          value-class="sales-history-profit-pill sales-history-profit-pill--secondary sales-history-ledger__profit-value"
+        >
+          {{ saleSecondaryProfitLabel(sale) }}
+        </app-metric-value>
+      </div>
+      <div class="sales-history-ledger__cell" role="cell" :data-label="t('salesHistoryColumnDateLabel')">
+        {{ formatDate(sale.date) }}
       </div>
       <div class="sales-history-ledger__cell sales-history-ledger__customer" role="cell" :data-label="t('salesHistoryColumnCustomerLabel')">
         {{ saleCustomerLabel(sale) }}

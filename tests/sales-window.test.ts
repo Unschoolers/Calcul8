@@ -150,12 +150,17 @@ test("SalesWindow renders sales history through one responsive ledger component"
   assert.match(template, /<sales-history-ledger\b/);
   assert.doesNotMatch(template, /<v-list v-else class="sales-history-list"/);
   assert.match(script, /SalesHistoryLedger/);
-  assert.match(ledgerTemplate, /sales-history-ledger__sale-profit/);
-  assert.doesNotMatch(ledgerTemplate, /sales-history-ledger__profit/);
-  assert.doesNotMatch(ledgerTemplate, /salesHistoryColumnProfitLabel/);
+  assert.match(
+    ledgerTemplate,
+    /sales-history-ledger__type-icon[\s\S]*salesHistoryColumnUnitsLabel[\s\S]*salesHistoryColumnTypeLabel[\s\S]*salesHistoryColumnPriceLabel[\s\S]*salesHistoryColumnProfitLabel[\s\S]*salesHistoryColumnDateLabel[\s\S]*salesHistoryColumnCustomerLabel/
+  );
+  assert.match(ledgerTemplate, /saleTypeIcon\(sale\)/);
+  assert.match(ledgerTemplate, /saleTypeText\(sale\)/);
+  assert.doesNotMatch(ledgerTemplate, /sales-history-ledger__type"[\s\S]*<v-avatar/);
+  assert.doesNotMatch(ledgerTemplate, /saleListTitle\(sale\)/);
   const ledgerCss = read("src/components/windows/sales/SalesWindow.css");
-  assert.match(ledgerCss, /grid-template-columns:\s*minmax\(0,\s*1fr\)\s+82px\s+52px\s+74px\s+minmax\(96px,\s*0\.65fr\)\s+28px/);
-  assert.doesNotMatch(ledgerCss, /grid-area:\s*profit/);
+  assert.match(ledgerCss, /grid-template-columns:\s*32px\s+58px\s+minmax\(76px,\s*0\.7fr\)\s+74px\s+minmax\(112px,\s*0\.9fr\)\s+82px\s+minmax\(96px,\s*0\.65fr\)\s+28px/);
+  assert.match(ledgerCss, /"type-icon units type price actions"/);
 });
 
 test("SalesHistoryLedger sorts through one stateful ledger model", () => {
@@ -189,12 +194,39 @@ test("SalesHistoryLedger sorts through one stateful ledger model", () => {
   assert.deepEqual(byCustomer.map((sale) => sale.id), [3, 2, 1]);
 });
 
+test("SalesHistoryLedger presents compact unit type and price columns", () => {
+  const t = (key: string) => ({
+    salesHistoryTypeSinglesLabel: "Singles",
+    salesHistoryTypeBoxesLabel: "Boxes",
+    salesHistoryTypeRandomHitLabel: "Random hit",
+    salesHistoryTypeWheelLabel: "Wheel"
+  })[key] || key;
+  const vm = {
+    t,
+    fmtCurrency: (value: number | null | undefined) => Number(value || 0).toFixed(2),
+    fmtUnits: (value: number | null | undefined) => String(Number(value || 0)),
+    getSaleIcon: (type: Sale["type"]) => `icon:${type}`
+  };
+
+  const singlesSale = makeSale({ quantity: 14, packsCount: 14, type: "pack", price: 7 });
+  const boxSale = makeSale({ quantity: 3, packsCount: 48, type: "box", price: 127 });
+
+  assert.equal(SalesHistoryLedgerDefinition.methods.saleUnitsLabel.call(vm as never, singlesSale), "14");
+  assert.equal(SalesHistoryLedgerDefinition.methods.saleTypeText.call(vm as never, singlesSale), "Singles");
+  assert.equal(SalesHistoryLedgerDefinition.methods.saleTypeIcon.call(vm as never, singlesSale), "icon:pack");
+  assert.equal(SalesHistoryLedgerDefinition.methods.saleRevenueLabel.call(vm as never, singlesSale), "$7.00");
+  assert.equal(SalesHistoryLedgerDefinition.methods.saleUnitsLabel.call(vm as never, boxSale), "3");
+  assert.equal(SalesHistoryLedgerDefinition.methods.saleTypeText.call(vm as never, boxSale), "Boxes");
+  assert.equal(SalesHistoryLedgerDefinition.methods.saleTypeIcon.call(vm as never, boxSale), "icon:box");
+  assert.equal(SalesHistoryLedgerDefinition.methods.saleRevenueLabel.call(vm as never, boxSale), "$127.00");
+});
+
 test("SalesWindow builds bulk snapshot KPIs from practical sales context", () => {
   const vm = {
     currentLotType: "bulk",
     sortedSales: [
-      makeSale({ id: 2, quantity: 3, packsCount: 3, price: 45, netRevenue: 38.5, date: "2026-06-15" }),
-      makeSale({ id: 1, quantity: 4, packsCount: 4, price: 40, netRevenue: 35.5, date: "2026-06-01" })
+      makeSale({ id: 2, quantity: 3, packsCount: 3, price: 45, netRevenue: 38.5, date: "2026-06-15", customer: "Ollielav" }),
+      makeSale({ id: 1, quantity: 4, packsCount: 4, price: 40, netRevenue: 35.5, date: "2026-06-01", customer: "Ollielav" })
     ],
     soldPacksCount: 7,
     totalPacks: 64,
@@ -218,9 +250,9 @@ test("SalesWindow builds bulk snapshot KPIs from practical sales context", () =>
     [
       ["revenue", "salesStatusRevenueLabel", "$74.00", "salesKpiSoldNetMeta", "mdi-cash-register", "secondary"],
       ["cost", "salesStatusCostLabel", "$319.00", "salesKpiLotCostMeta", "mdi-receipt-text-outline", "neutral"],
-      ["sales-progress", "salesKpiSalesProgressLabel", "0.44 / 4 salesBoxesLabel", "7 / 64 salesItemsLabel", "mdi-view-dashboard-outline", "primary"],
+      ["inventory", "salesKpiInventoryLabel", "0.44 / 4 salesBoxesLabel", "7 salesKpiSoldShortMeta • 57 salesKpiLeftShortMeta • 10.9%", "mdi-view-dashboard-outline", "primary"],
+      ["top-buyer", "salesKpiTopBuyerLabel", "Ollielav", "7 salesItemsLabel • $295.00", "mdi-account-star-outline", "secondary"],
       ["last-sale", "salesKpiLastSaleLabel", "D:2026-06-15", "3 salesKpiItemsNetMeta $38.50", "mdi-calendar-clock", "secondary"],
-      ["remaining", "salesKpiRemainingLabel", "57 salesItemsLabel", "89.1% salesKpiRemainingMeta", "mdi-package-variant", "warning"],
       ["box-progress", "salesKpiNextBoxLabel", "9 salesKpiToNextBoxValue", "7 / 16 salesKpiCurrentBoxMeta", "mdi-package-variant-closed", "primary"]
     ]
   );
@@ -230,7 +262,7 @@ test("SalesWindow builds singles snapshot KPIs without bulk box progress", () =>
   const vm = {
     currentLotType: "singles",
     sortedSales: [
-      makeSale({ id: 3, quantity: 1, packsCount: 1, price: 24, netRevenue: 21, date: "2026-06-14" })
+      makeSale({ id: 3, quantity: 1, packsCount: 1, price: 24, netRevenue: 21, date: "2026-06-14", customer: "Ollielav" })
     ],
     soldPacksCount: 2,
     totalPacks: 8,
@@ -255,9 +287,9 @@ test("SalesWindow builds singles snapshot KPIs without bulk box progress", () =>
     [
       ["revenue", "salesStatusRevenueLabel", "$42.00", "salesKpiSoldNetMeta", "mdi-cash-register", "secondary"],
       ["cost", "salesStatusCostLabel", "$30.00", "salesKpiLotCostMeta", "mdi-receipt-text-outline", "neutral"],
-      ["sales-progress", "salesKpiSalesProgressLabel", "2 / 10", "1 salesUnlinkedLabel", "mdi-view-dashboard-outline", "primary"],
+      ["inventory", "salesKpiInventoryLabel", "2 / 10 salesItemsLabel", "2 salesKpiSoldShortMeta • 8 salesKpiLeftShortMeta • 20.0%", "mdi-view-dashboard-outline", "primary"],
+      ["top-buyer", "salesKpiTopBuyerLabel", "Ollielav", "1 salesItemsLabel • $24.00", "mdi-account-star-outline", "secondary"],
       ["last-sale", "salesKpiLastSaleLabel", "D:2026-06-14", "1 salesKpiItemNetMeta $21.00", "mdi-calendar-clock", "secondary"],
-      ["remaining", "salesKpiRemainingLabel", "8 salesItemsLabel", "80.0% salesKpiRemainingMeta", "mdi-package-variant", "warning"],
       ["avg-net", "salesKpiAvgNetItemLabel", "$21.00", "salesKpiAvgNetItemMeta", "mdi-cash-multiple", "success"]
     ]
   );
