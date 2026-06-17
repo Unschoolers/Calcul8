@@ -228,6 +228,35 @@ test("fetchWhatnotSellerIdentity surfaces GraphQL errors and missing seller ids"
   );
 });
 
+test("fetchWhatnotSellerIdentity maps HTTP and empty GraphQL payload failures", async () => {
+  const config = createWhatnotConfig();
+  const encrypted = encryptWhatnotTokenPayload(config, {
+    access_token: "access-token",
+    refresh_token: "refresh-token"
+  });
+
+  fetchMock.mockResolvedValue(createJsonResponse({ error: "denied" }, { status: 401 }));
+  await assert.rejects(
+    () => fetchWhatnotSellerIdentity(config, encrypted.accessToken),
+    (error: { status?: number; message?: string }) =>
+      error.status === 401 && error.message === "Whatnot API request failed."
+  );
+
+  fetchMock.mockResolvedValue(createJsonResponse({ errors: [{ message: "" }] }));
+  await assert.rejects(
+    () => fetchWhatnotSellerIdentity(config, encrypted.accessToken),
+    (error: { status?: number; message?: string }) =>
+      error.status === 502 && error.message === "Whatnot API request failed."
+  );
+
+  fetchMock.mockResolvedValue(createJsonResponse({ data: null }));
+  await assert.rejects(
+    () => fetchWhatnotSellerIdentity(config, encrypted.accessToken),
+    (error: { status?: number; message?: string }) =>
+      error.status === 502 && error.message === "Whatnot API response was missing data."
+  );
+});
+
 test("fetchWhatnotOrdersPage skips malformed edges and normalizes order item rows", async () => {
   const config = createWhatnotConfig();
   const encrypted = encryptWhatnotTokenPayload(config, {
@@ -298,6 +327,55 @@ test("fetchWhatnotOrdersPage skips malformed edges and normalizes order item row
       }
     }
   });
+});
+
+test("fetchWhatnotOrdersPage falls back to item price and empty pagination", async () => {
+  const config = createWhatnotConfig();
+  const encrypted = encryptWhatnotTokenPayload(config, {
+    access_token: "access-token",
+    refresh_token: "refresh-token"
+  });
+  fetchMock.mockResolvedValue(createJsonResponse({
+    data: {
+      orders: {
+        pageInfo: {
+          endCursor: ""
+        },
+        edges: [{
+          node: {
+            id: "order-2",
+            status: "COMPLETED",
+            createdAt: "2026-04-02T05:30:00.000Z",
+            items: {
+              edges: [{
+                node: {
+                  id: "item-2",
+                  quantity: 0,
+                  price: {
+                    amount: 900
+                  }
+                }
+              }]
+            }
+          }
+        }]
+      }
+    }
+  }));
+
+  const page = await fetchWhatnotOrdersPage(config, encrypted.accessToken, "seller-2", {
+    createdAtGte: "2026-04-01T00:00:00.000Z",
+    after: null
+  });
+
+  assert.equal(page.nextCursor, null);
+  assert.equal(page.rows.length, 1);
+  assert.equal(page.rows[0]?.externalAccountId, "seller-2");
+  assert.equal(page.rows[0]?.quantity, 1);
+  assert.equal(page.rows[0]?.price, 9);
+  assert.equal(page.rows[0]?.originalItemPrice, 9);
+  assert.equal(page.rows[0]?.buyerShipping, 0);
+  assert.equal(page.rows[0]?.orderStatus, "COMPLETED");
 });
 
 test("buildWhatnotImportRowFromNormalizedInput rejects required field and money validation failures", () => {

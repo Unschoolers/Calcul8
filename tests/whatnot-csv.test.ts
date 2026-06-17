@@ -80,6 +80,41 @@ test("buildWhatnotWeeklyReportPreflight summarizes official weekly report import
   assert.deepEqual(preflight.skipReasons, { TIP: 1 });
 });
 
+test("buildWhatnotWeeklyReportPreflight reports missing weekly columns without detecting the report", () => {
+  const draft = buildWhatnotCsvImportDraft(
+    "Title,Price\n" +
+      "Kaiju #8,$8.00\n" +
+      ",\n" +
+      "Bleach volume 2,$12.00"
+  );
+
+  const preflight = buildWhatnotWeeklyReportPreflight(draft);
+
+  assert.equal(preflight.detected, false);
+  assert.equal(preflight.totalRows, 2);
+  assert.equal(preflight.importableRows, 0);
+  assert.equal(preflight.skippedRows, 0);
+  assert.deepEqual(preflight.skipReasons, {});
+});
+
+test("buildWhatnotWeeklyReportPreflight counts duplicates and missing core values", () => {
+  const draft = buildWhatnotCsvImportDraft(
+    "\"ORDER_PLACED_AT_UTC\",\"TRANSACTION_TYPE\",\"ORDER_ID\",\"LISTING_TITLE\",\"BUYER_NAME\",\"QUANTITY_SOLD\",\"POST_COUPON_PRICE\",\"TRANSACTION_AMOUNT\",\"BUYER_PAID\",\"COMMISSION_FEE\",\"PAYMENT_PROCESSING_FEE\",\"TAX_ON_COMMISSION_FEE\",\"TAX_ON_PAYMENT_PROCESSING_FEE\",\"LEDGER_TRANSACTION_ID\"\n" +
+      "\"2026-05-30 00:00:05\",\"ORDER_EARNINGS\",\"order-1\",\"Kaiju #8\",\"buyer-1\",\"1\",\"8.00\",\"6.79\",\"9.20\",\"0.64\",\"0.57\",\"0.00\",\"0.00\",\"ledger-1\"\n" +
+      "\"2026-05-30 00:05:05\",\"ORDER_EARNINGS\",\"order-1\",\"\",\"buyer-1\",\"0\",\"8.00\",\"6.79\",\"9.20\",\"0.64\",\"0.57\",\"0.00\",\"0.00\",\"ledger-2\"\n" +
+      "\"2026-05-30 00:10:05\",\"REFUND\",\"order-2\",\"Bleach\",\"buyer-2\",\"1\",\"12.00\",\"10.00\",\"14.00\",\"1.00\",\"1.00\",\"0.00\",\"0.00\",\"ledger-3\""
+  );
+
+  const preflight = buildWhatnotWeeklyReportPreflight(draft);
+
+  assert.equal(preflight.detected, true);
+  assert.equal(preflight.importableRows, 2);
+  assert.equal(preflight.skippedRows, 1);
+  assert.equal(preflight.issueCount, 2);
+  assert.equal(preflight.duplicateOrderCount, 1);
+  assert.deepEqual(preflight.skipReasons, { REFUND: 1 });
+});
+
 test("parseWhatnotCsvRowsWithMapping normalizes sparse rows and skips blank titles", () => {
   const parsed = parseWhatnotCsvRowsWithMapping(
     [
@@ -115,6 +150,49 @@ test("parseWhatnotCsvRowsWithMapping normalizes sparse rows and skips blank titl
   assert.equal(parsed.entries[0]?.suggestedPacksCount, 16);
   assert.equal(parsed.entries[0]?.selectedSaleType, null);
   assert.equal(parsed.entries[0]?.requiresManualReview, true);
+});
+
+test("parseWhatnotCsvRowsWithMapping falls back to generated ids and seller account ids", () => {
+  const parsed = parseWhatnotCsvRowsWithMapping(
+    [
+      ["Mystery wheel pick", "single", "not-a-number", "-4", "bad-date"],
+      ["Union Arena pack", "item", "2", "$7.50", ""]
+    ],
+    5,
+    {
+      title: 0,
+      saleType: 1,
+      quantity: 2,
+      price: 3,
+      orderPlacedAt: 4,
+      listingTitle: null,
+      buyerName: null,
+      originalItemPrice: null,
+      sku: null,
+      productCategory: null,
+      buyerShipping: null,
+      date: null,
+      orderStatus: null,
+      externalSaleId: null,
+      externalOrderId: null,
+      externalOrderItemId: null,
+      externalAccountId: null,
+      packsCount: null
+    },
+    "seller-fallback"
+  );
+
+  assert.equal(parsed.entries.length, 2);
+  assert.equal(parsed.entries[0]?.rowId, "whatnot-csv:1");
+  assert.equal(parsed.entries[0]?.externalSaleId, "whatnot-csv:1");
+  assert.equal(parsed.entries[0]?.externalOrderId, "whatnot-csv:1");
+  assert.equal(parsed.entries[0]?.externalAccountId, "seller-fallback");
+  assert.equal(parsed.entries[0]?.quantity, 1);
+  assert.equal(parsed.entries[0]?.price, 0);
+  assert.equal(parsed.entries[0]?.date, "");
+  assert.equal(parsed.entries[0]?.orderPlacedAtRaw, "bad-date");
+  assert.equal(parsed.entries[0]?.suggestedSaleType, "pack");
+  assert.equal(parsed.entries[1]?.suggestedSaleType, "pack");
 });
 
 test("parseWhatnotCsvRowsWithMapping normalizes whatnot weekly export rows with order placed date priority and box inference", () => {
@@ -333,6 +411,45 @@ test("normalizeWhatnotReviewRows preserves manual duplicate candidates and selec
   assert.equal(rows[0]?.manualDuplicateCandidate?.saleId, "sale-99");
   assert.equal(rows[0]?.manualDuplicateCandidate?.saleSummary.customer, "Memo Buyer");
   assert.equal(rows[0]?.manualDuplicateCandidate?.saleSummary.memo, "Manually added");
+});
+
+test("normalizeWhatnotReviewRows skips non-object rows and falls back from import action to target state", () => {
+  const rows = normalizeWhatnotReviewRows([
+    null,
+    "bad-row",
+    {
+      name: "Bleach box",
+      saleId: "sale-1",
+      action: "skip",
+      existingSaleId: "existing-1",
+      requiresManualReview: false,
+      manualDuplicateCandidate: {
+        saleId: "",
+        reasonSummary: "missing id"
+      }
+    },
+    {
+      item: "Kaiju wheel pick",
+      mode: "rtyh",
+      quantity: "0",
+      price: "23",
+      buyerShipping: "2"
+    }
+  ]);
+
+  assert.equal(rows.length, 2);
+  assert.equal(rows[0]?.title, "Bleach box");
+  assert.equal(rows[0]?.selectedImportAction, "skip");
+  assert.equal(rows[0]?.targetKind, null);
+  assert.equal(rows[0]?.targetSaleId, undefined);
+  assert.equal(rows[0]?.manualDuplicateCandidate, null);
+  assert.equal(rows[0]?.skipImport, true);
+  assert.equal(rows[0]?.requiresManualReview, false);
+  assert.equal(rows[1]?.title, "Kaiju wheel pick");
+  assert.equal(rows[1]?.suggestedSaleType, "rtyh");
+  assert.equal(rows[1]?.quantity, 1);
+  assert.equal(rows[1]?.price, 23);
+  assert.equal(rows[1]?.buyerShipping, 2);
 });
 
 test("parseWhatnotCsvRowsWithMapping skips TIP transaction rows", () => {

@@ -160,6 +160,80 @@ test("buildWhatnotManualDuplicateCandidate rejects cross-seller mismatches", () 
   assert.equal(candidate, null);
 });
 
+test("buildWhatnotManualDuplicateCandidate matches memo buyers and rejects collapsed box rows", () => {
+  const sales = [
+    {
+      id: "sale:77:12",
+      docType: "sale",
+      userId: "scope-1",
+      scopeKey: "scope-1",
+      lotId: "77",
+      saleId: "12",
+      sale: {
+        id: 12,
+        type: "pack",
+        date: "2026-03-01",
+        quantity: 2,
+        packsCount: 2,
+        price: 7,
+        memo: "Sold live to Memo Buyer"
+      },
+      version: 1,
+      updatedAt: "2026-03-02T00:00:00.000Z",
+      updatedBy: "user-a",
+      mutationId: "m1",
+      deletedAt: null
+    },
+    {
+      id: "sale:77:13",
+      docType: "sale",
+      userId: "scope-1",
+      scopeKey: "scope-1",
+      lotId: "77",
+      saleId: "13",
+      sale: {
+        id: 13,
+        type: "box",
+        date: "2026-03-01",
+        quantity: 2,
+        packsCount: 2,
+        price: 14,
+        customer: "Memo Buyer"
+      },
+      version: 1,
+      updatedAt: "2026-03-02T00:00:00.000Z",
+      updatedBy: "user-a",
+      mutationId: "m2",
+      deletedAt: null
+    }
+  ];
+
+  const candidate = buildWhatnotManualDuplicateCandidate(
+    {
+      externalAccountId: "seller-1",
+      buyerName: "Memo Buyer",
+      quantity: 2,
+      price: 14,
+      date: "2026-03-01",
+      orderPlacedAt: "2026-03-01",
+      title: "Kaiju #8",
+      listingTitle: "Kaiju #8"
+    },
+    {
+      id: "77",
+      name: "Kaiju #8",
+      lotType: "bulk",
+      packsPerBox: 12
+    },
+    sales
+  );
+
+  assert.equal(candidate?.saleId, "12");
+  assert.equal(candidate?.confidence, "medium");
+  assert.match(candidate?.reasonSummary ?? "", /memo matches buyer name/i);
+  assert.equal(candidate?.saleSummary.memo, "Sold live to Memo Buyer");
+});
+
 test("buildWhatnotManualDuplicateCandidate matches against the local calendar day for UTC timestamps", () => {
   const orderPlacedAt = "2026-03-08T00:30:00.000Z";
   const localDate = toExpectedLocalDate(orderPlacedAt);
