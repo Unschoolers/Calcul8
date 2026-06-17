@@ -1,6 +1,25 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test, vi } from "vitest";
 import { liveWindowDefinition } from "../src/components/windows/live/LiveWindow.definition.ts";
+
+test("LiveWindow keeps bulk pricing cards stacked until desktop", () => {
+  const template = readFileSync("src/components/windows/live/LiveWindow.html", "utf8");
+  const css = readFileSync("src/components/windows/live/LiveWindow.css", "utf8");
+  const phoneBlockStart = css.indexOf("@media (max-width: 600px)");
+  const desktopBlockStart = css.indexOf("@media (min-width: 1280px)");
+  const phoneBlock = css.slice(phoneBlockStart, desktopBlockStart);
+
+  assert.equal((template.match(/<v-col cols="12" lg="4" class="live-pricing-grid__col">/g) ?? []).length, 3);
+  assert.doesNotMatch(template, /md="6"/);
+  assert.match(css, /\.live-pricing-card__target-summary\s*{[\s\S]*min-height:\s*0/);
+  assert.match(css, /\.live-pricing-card__scenario-grid\s*{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(css, /@media \(min-width:\s*1280px\)[\s\S]*\.live-window-shell\s*{[\s\S]*padding-top:\s*var\(--app-dashboard-desktop-gap\)/);
+  assert.match(css, /@media \(min-width:\s*1280px\)[\s\S]*\.live-pricing-card__target-summary\s*{[\s\S]*min-height:\s*118px/);
+  assert.doesNotMatch(css, /@media \(max-width:\s*959px\)[\s\S]*\.live-pricing-card__scenario-grid/);
+  assert.doesNotMatch(phoneBlock, /\.live-pricing-card__target-summary/);
+  assert.doesNotMatch(css, /@media \(min-width:\s*960px\)[\s\S]*\.live-pricing-grid/);
+});
 
 test("liveWindowDefinition getLiveSinglesPanelVm returns panel instance when ref exists", () => {
   const panel = { foo: "bar" };

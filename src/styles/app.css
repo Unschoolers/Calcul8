@@ -564,6 +564,17 @@
   min-width: 0;
 }
 
+.app-kpi-grid--six-three {
+  --app-kpi-grid-six-three-card-min: 7.75rem;
+  grid-template-columns: repeat(6, minmax(var(--app-kpi-grid-six-three-card-min), 1fr));
+}
+
+@container (max-width: 52rem) {
+  .app-kpi-grid--six-three {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 .app-kpi-grid__item {
   min-width: 0;
   border: var(--app-stroke-hairline) solid var(--app-stroke-subtle);

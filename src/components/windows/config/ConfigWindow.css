@@ -358,6 +358,24 @@
   background: rgba(var(--v-theme-primary), 0.08);
 }
 
+@media (max-width: 1279px) {
+  .config-summary-hero__main {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.55rem;
+  }
+
+  .config-summary-hero__stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.45rem;
+  }
+
+  .config-summary-pill {
+    min-width: 0;
+  }
+}
+
 @media (max-width: 600px) {
   .config-card {
     border-radius: var(--app-radius-card) !important;
@@ -403,12 +421,6 @@
     padding: 0.85rem 0.9rem 0.8rem !important;
   }
 
-  .config-summary-hero__main {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.55rem;
-  }
-
   .config-summary-hero__value {
     font-size: 1.85rem;
   }
@@ -418,14 +430,7 @@
     font-size: 0.8rem;
   }
 
-  .config-summary-hero__stats {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.45rem;
-  }
-
   .config-summary-pill {
-    min-width: 0;
     padding: 0.55rem 0.62rem;
     border-radius: var(--app-radius-card);
   }

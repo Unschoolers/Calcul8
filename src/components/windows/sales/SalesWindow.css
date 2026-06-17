@@ -60,6 +60,7 @@
 }
 
 .sales-status-content {
+  container-type: inline-size;
   padding-top: 0.95rem;
   padding-bottom: 0.85rem;
 }
@@ -249,7 +250,6 @@
 
 .sales-snapshot-kpi-grid {
   margin-top: 0.75rem;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 118px), 1fr));
 }
 
 .sales-snapshot-kpi-card {
@@ -810,7 +810,6 @@
 
   .sales-snapshot-kpi-grid {
     margin-top: 0.62rem;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 
   .sales-right-column {

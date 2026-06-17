@@ -2,6 +2,7 @@ import { defineComponent, type PropType } from "vue";
 import AppStatCard from "./AppStatCard.vue";
 
 export type AppKpiTone = "primary" | "secondary" | "success" | "warning" | "error" | "neutral";
+export type AppKpiGridLayout = "auto" | "six-three";
 
 export interface AppKpiItem {
   id: string;
@@ -29,11 +30,19 @@ export const AppKpiGrid = defineComponent({
     cardClass: {
       type: [String, Array, Object],
       default: ""
+    },
+    layout: {
+      type: String as PropType<AppKpiGridLayout>,
+      default: "auto"
     }
   },
   computed: {
     resolvedGridClass(): unknown[] {
-      return ["app-kpi-grid", this.gridClass];
+      return [
+        "app-kpi-grid",
+        this.layout === "auto" ? "" : `app-kpi-grid--${this.layout}`,
+        this.gridClass
+      ];
     }
   }
 });

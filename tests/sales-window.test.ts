@@ -136,6 +136,7 @@ test("SalesWindow renders snapshot KPIs through the shared KPI grid", () => {
   assert.match(template, /salesForecastScenarioPrefix/);
   assert.match(template, /salesForecastProjectedProfitLabel/);
   assert.match(template, /<app-kpi-grid\b/);
+  assert.match(template, /layout="six-three"/);
   assert.match(template, /:items="salesSnapshotKpis"/);
   assert.doesNotMatch(template, /salesStatusSummaryLine/);
   assert.doesNotMatch(template, /salesStatusProgressLine/);
@@ -179,13 +180,20 @@ test("SaleEditorModal presents RTYH as spot price and items won", () => {
 test("SalesWindow keeps the selected sales page dense on desktop", () => {
   const template = read("src/components/windows/sales/SalesWindow.html");
   const css = read("src/components/windows/sales/SalesWindow.css");
+  const appCss = read("src/styles/app.css");
 
   assert.match(template, /class="sales-screen-grid"/);
   assert.match(template, /class="sales-right-column"/);
+  assert.match(template, /<v-col cols="12" lg="7">/);
+  assert.match(template, /<v-col cols="12" lg="5" class="sales-right-column">/);
+  assert.doesNotMatch(template, /<v-col cols="12" md="[57]"/);
+  assert.match(css, /\.sales-status-content\s*{[\s\S]*container-type:\s*inline-size/);
   assert.match(css, /@media \(min-width:\s*960px\)[\s\S]*\.sales-screen-grid\s*{[\s\S]*align-items:\s*start/);
   assert.match(css, /@media \(min-width:\s*960px\)[\s\S]*\.sales-right-column\s*{[\s\S]*display:\s*grid[\s\S]*gap:\s*0\.75rem/);
   assert.match(css, /@media \(min-width:\s*960px\)[\s\S]*\.sales-chart-card[\s\S]*\.app-responsive-chart__plot\s*{[\s\S]*min-block-size:\s*280px/);
-  assert.match(css, /@media \(min-width:\s*960px\)[\s\S]*\.sales-snapshot-kpi-grid\s*{[\s\S]*grid-template-columns:\s*repeat\(6,\s*minmax\(0,\s*1fr\)\)/);
+  assert.doesNotMatch(css, /repeat\(6,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(appCss, /\.app-kpi-grid--six-three\s*{[\s\S]*grid-template-columns:\s*repeat\(6,\s*minmax\(var\(--app-kpi-grid-six-three-card-min\),\s*1fr\)\)/);
+  assert.match(appCss, /@container \(max-width:\s*52rem\)\s*{[\s\S]*\.app-kpi-grid--six-three\s*{[\s\S]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
   assert.match(css, /\.sales-snapshot-kpi-card:nth-child\(odd\)/);
   assert.match(css, /\.sales-snapshot-kpi-card:nth-child\(even\)/);
   assert.match(css, /\.v-theme--unionArenaLight \.sales-snapshot-kpi-card:nth-child\(odd\)/);
