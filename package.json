@@ -58,6 +58,7 @@
   },
   "homepage": "https://github.com/Unschoolers/WhatFees#readme",
   "dependencies": {
+    "@vueuse/core": "^14.3.0",
     "chart.js": "^4.5.1",
     "driver.js": "^1.4.0",
     "three": "^0.179.1",

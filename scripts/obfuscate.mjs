@@ -13,7 +13,22 @@ const files = fs
   .readdirSync(distAssetsDir)
   .filter((file) => file.endsWith(".js"));
 
+const skipChunkPrefixes = [
+  "vendor-",
+  "vuetify-",
+  "chartjs-"
+];
+
+function shouldSkipObfuscation(file) {
+  return skipChunkPrefixes.some((prefix) => file.startsWith(prefix));
+}
+
 for (const file of files) {
+  if (shouldSkipObfuscation(file)) {
+    console.log(`Skipped ${file}`);
+    continue;
+  }
+
   const fullPath = path.join(distAssetsDir, file);
   const source = fs.readFileSync(fullPath, "utf8");
   const result = JavaScriptObfuscator.obfuscate(source, {
@@ -28,4 +43,3 @@ for (const file of files) {
   fs.writeFileSync(fullPath, result.getObfuscatedCode(), "utf8");
   console.log(`Obfuscated ${file}`);
 }
-

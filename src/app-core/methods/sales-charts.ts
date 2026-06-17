@@ -11,17 +11,24 @@ import {
 import { getTodayDate } from "./config-shared.ts";
 import { formatCompactChartDate, isSmallDisplay, resolveCanvasRef, safeDestroyChart } from "./sales-ui-helpers.ts";
 import { queuePortfolioSalesHydration } from "./sales-portfolio-hydration.ts";
+import { observeElementResize, type StopHandle } from "../ui/vueuse.ts";
 
 const SALES_CHART_RETRY_DELAY_MS = 120;
 const SALES_CHART_MAX_INIT_RETRIES = 5;
 const pendingSalesChartInitRetries = new WeakMap<object, number>();
 const salesChartInitRetryCounts = new WeakMap<object, number>();
+const pendingSalesChartResizeObservers = new WeakMap<object, StopHandle>();
 
 function clearPendingSalesChartRetry(context: object): void {
   const timeoutId = pendingSalesChartInitRetries.get(context);
   if (timeoutId != null) {
     globalThis.clearTimeout(timeoutId);
     pendingSalesChartInitRetries.delete(context);
+  }
+  const stopResizeObserver = pendingSalesChartResizeObservers.get(context);
+  if (stopResizeObserver) {
+    stopResizeObserver();
+    pendingSalesChartResizeObservers.delete(context);
   }
   salesChartInitRetryCounts.delete(context);
 }
@@ -54,6 +61,27 @@ function queueSalesChartInitRetry(context: AppContext): void {
   pendingSalesChartInitRetries.set(context, timeoutId);
 }
 
+function queueSalesChartResizeRetry(context: AppContext, canvas: HTMLCanvasElement): void {
+  if (context.currentTab !== "sales") return;
+  if (pendingSalesChartResizeObservers.has(context)) return;
+
+  const stop = observeElementResize(canvas, () => {
+    if (!isCanvasReady(canvas)) return;
+    const stopResizeObserver = pendingSalesChartResizeObservers.get(context);
+    if (stopResizeObserver) {
+      stopResizeObserver();
+      pendingSalesChartResizeObservers.delete(context);
+    }
+    const runRetry = () => context.initSalesChart();
+    if (typeof context.$nextTick === "function") {
+      void context.$nextTick(runRetry);
+      return;
+    }
+    runRetry();
+  });
+  pendingSalesChartResizeObservers.set(context, stop);
+}
+
 function getPortfolioSalesByLotId(
   context: Pick<AppContext, "currentLotId" | "sales" | "loadSalesForLotId"> & Partial<Pick<AppContext, "getAllSalesByLotId">>,
   lotIds: number[]
@@ -82,7 +110,12 @@ export function initSalesChartDisplay(context: AppContext): void {
   const chartCanvas = context.chartView === "pie"
     ? resolveCanvasRef(context, "salesWindow", "salesChartCanvas")
     : resolveCanvasRef(context, "salesWindow", "salesTrendChart");
-  if (!chartCanvas || !isCanvasReady(chartCanvas)) {
+  if (!chartCanvas) {
+    queueSalesChartInitRetry(context);
+    return;
+  }
+  if (!isCanvasReady(chartCanvas)) {
+    queueSalesChartResizeRetry(context, chartCanvas);
     queueSalesChartInitRetry(context);
     return;
   }
