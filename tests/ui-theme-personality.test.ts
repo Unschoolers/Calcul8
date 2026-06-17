@@ -98,7 +98,7 @@ test("dark theme hierarchy and desktop dashboard rhythm have explicit contracts"
   assert.match(appStyles, /\.v-theme--unionArenaDark \.v-bottom-navigation \.v-btn\.v-btn--active/);
 
   assert.match(liveStyles, /--app-dashboard-card-max-width/);
-  assert.match(liveStyles, /@media \(min-width: 960px\)/);
+  assert.match(liveStyles, /@media \(min-width: 1280px\)/);
   assert.match(salesStyles, /--app-dashboard-desktop-gap/);
   assert.match(salesStyles, /\.v-theme--unionArenaDark \.sales-section-card/);
   assert.match(portfolioStyles, /--app-dashboard-desktop-gap/);
