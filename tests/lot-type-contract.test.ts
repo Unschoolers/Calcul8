@@ -6,6 +6,7 @@ import {
   applySystemPricingDefaultsToLot,
   normalizeSystemPricingDefaults
 } from "../src/app-core/shared/system-pricing-defaults.ts";
+import type { Lot } from "../src/types/app.ts";
 
 type LotTypeHelpers = {
   LOT_TYPES: readonly string[];
@@ -17,7 +18,7 @@ type LotTypeHelpers = {
 type LotTypeContractHelpers = {
   createLotTypeContractCases: (overrides?: Record<string, unknown>) => Array<{
     lotType: "bulk" | "singles";
-    lot: Record<string, unknown>;
+    lot: Lot;
   }>;
 };
 

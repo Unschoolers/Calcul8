@@ -38,9 +38,9 @@ test("resolveDefaultSaleUnitPrice selects the right live or fallback sale price"
     packPrice: 7
   };
 
-  assert.equal(resolveDefaultSaleUnitPrice(context, "box"), 99);
-  assert.equal(resolveDefaultSaleUnitPrice(context, "rtyh"), 15);
-  assert.equal(resolveDefaultSaleUnitPrice(context, "pack"), 7);
+  assert.equal(resolveDefaultSaleUnitPrice(context as any, "box"), 99);
+  assert.equal(resolveDefaultSaleUnitPrice(context as any, "rtyh"), 15);
+  assert.equal(resolveDefaultSaleUnitPrice(context as any, "pack"), 7);
 });
 
 test("formatCompactChartDate returns a compact month/day label", () => {
@@ -51,14 +51,17 @@ test("formatCompactChartDate returns a compact month/day label", () => {
 test("refreshChartsForCurrentTab schedules the right chart refresh", () => {
   const initSalesChart = vi.fn();
   const initPortfolioChart = vi.fn();
-  const nextTick = vi.fn((callback: () => void) => callback());
+  const nextTick = vi.fn((callback: () => void) => {
+    callback();
+    return Promise.resolve();
+  });
 
   refreshChartsForCurrentTab({
     currentTab: "portfolio",
     initSalesChart,
     initPortfolioChart,
     $nextTick: nextTick
-  });
+  } as any);
   assert.equal(nextTick.mock.calls.length, 1);
   assert.equal(initPortfolioChart.mock.calls.length, 1);
   assert.equal(initSalesChart.mock.calls.length, 0);
@@ -67,7 +70,7 @@ test("refreshChartsForCurrentTab schedules the right chart refresh", () => {
     currentTab: "sales",
     initSalesChart,
     initPortfolioChart
-  });
+  } as any);
   assert.equal(initSalesChart.mock.calls.length, 1);
 });
 
@@ -75,7 +78,10 @@ test("queueTabChartRefreshAfterSettle waits for the settle window and supports c
   vi.useFakeTimers();
   const initSalesChart = vi.fn();
   const initPortfolioChart = vi.fn();
-  const nextTick = vi.fn((callback: () => void) => callback());
+  const nextTick = vi.fn((callback: () => void) => {
+    callback();
+    return Promise.resolve();
+  });
   const context = {
     currentTab: "sales" as const,
     initSalesChart,
@@ -83,7 +89,7 @@ test("queueTabChartRefreshAfterSettle waits for the settle window and supports c
     $nextTick: nextTick
   };
 
-  queueTabChartRefreshAfterSettle(context, "sales", 250);
+  queueTabChartRefreshAfterSettle(context as any, "sales", 250);
   assert.equal(initSalesChart.mock.calls.length, 0);
 
   vi.advanceTimersByTime(249);
@@ -93,8 +99,8 @@ test("queueTabChartRefreshAfterSettle waits for the settle window and supports c
   assert.equal(nextTick.mock.calls.length, 1);
   assert.equal(initSalesChart.mock.calls.length, 1);
 
-  queueTabChartRefreshAfterSettle(context, "sales", 250);
-  cancelQueuedTabChartRefresh(context);
+  queueTabChartRefreshAfterSettle(context as any, "sales", 250);
+  cancelQueuedTabChartRefresh(context as any);
   vi.runAllTimers();
 
   assert.equal(initSalesChart.mock.calls.length, 1);
@@ -109,7 +115,7 @@ test("focusSaleQuantityInput supports direct and nested input refs", () => {
         focus: directFocus
       }
     }
-  });
+  } as any);
   assert.equal(directFocus.mock.calls.length, 1);
 
   const nestedInput = new MockHtmlInputElement();
@@ -121,6 +127,6 @@ test("focusSaleQuantityInput supports direct and nested input refs", () => {
         }
       }
     }
-  });
+  } as any);
   assert.equal(nestedInput.focus.mock.calls.length, 1);
 });

@@ -222,7 +222,9 @@ test("applyLivePricesToDefaults coalesces repeated clicks into one authoritative
 
 test("applyLivePricesToDefaults does not overwrite already-updated live values when the save resolves", async () => {
   vi.useFakeTimers();
-  let resolveSave: ((value: unknown) => void) | null = null;
+  let resolveSave: (value: unknown) => void = () => {
+    throw new Error("Save resolver was not initialized.");
+  };
   const savePromise = new Promise((resolve) => {
     resolveSave = resolve;
   });
@@ -236,7 +238,7 @@ test("applyLivePricesToDefaults does not overwrite already-updated live values w
   ctx.livePackPrice = 99;
   ctx.currentLivePricingVersion = 5;
 
-  resolveSave?.({
+  resolveSave({
     liveSpotPrice: 11,
     liveBoxPriceSell: 22,
     livePackPrice: 33,

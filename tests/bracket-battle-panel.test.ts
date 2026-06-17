@@ -46,7 +46,7 @@ test("BracketBattlePanel rollActiveBracketMatch animates before settling the mat
     width: 160,
     height: 104
   };
-  const vm = {
+  const vm: any = {
     bracketSession: session,
     activeBracketMatch: session.matches[0],
     queuedBracketMatch: session.matches[0],
@@ -130,7 +130,7 @@ test("BracketBattlePanel rollActiveBracketMatch animates before settling the mat
   assert.ok(vm.bracketLastRolls.length >= 2);
   assert.equal(vm.bracketRollPreview.length, 0);
   assert.equal(persistCalls, 1);
-  const decidingRolls = vm.bracketLastRolls.slice(-2);
+  const decidingRolls = vm.bracketLastRolls.slice(-2) as Array<{ value: number }>;
   assert.deepEqual(overlayEvents[1], {
     eventName: "overlay-command",
     payload: {
@@ -169,7 +169,7 @@ test("BracketBattlePanel waits for the repainted mobile duel before sampling dic
   });
 
   const overlayEvents: unknown[] = [];
-  const vm = {
+  const vm: any = {
     bracketSession: session,
     activeBracketMatch: session.matches[0],
     queuedBracketMatch: session.matches[0],
@@ -697,7 +697,7 @@ test("BracketBattlePanel loadBracketSession normalizes legacy d100 sessions to d
     removeItem() {}
   });
 
-  const vm = {
+  const vm: any = {
     activeScopeType: "personal",
     activeWorkspaceId: null,
     activeWheelConfigId: 7,
@@ -710,7 +710,7 @@ test("BracketBattlePanel loadBracketSession normalizes legacy d100 sessions to d
 
   assert.equal(vm.bracketSession?.rollMin, 1);
   assert.equal(vm.bracketSession?.rollMax, 6);
-  assert.deepEqual(vm.bracketSession?.rolls.map((roll) => roll.value), [6, 1]);
+  assert.deepEqual(vm.bracketSession?.rolls.map((roll: any) => roll.value), [6, 1]);
 });
 
 test("BracketBattlePanel final resolve reanchors dice under Roll match and reset reuses that champion exit", async () => {

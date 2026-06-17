@@ -31,6 +31,7 @@ type MockStorage = {
   removeItem(key: string): void;
   clear(): void;
 };
+type FetchCall = [RequestInfo | URL, RequestInit | undefined];
 
 function withMockedLocalStorage(run: (data: Map<string, string>) => Promise<void> | void): Promise<void> | void {
   const original = (globalThis as { localStorage?: MockStorage }).localStorage;
@@ -252,10 +253,11 @@ test("fetchAuthenticatedApiResponse prefers the server session over bearer auth"
     });
 
     assert.equal(response.status, 200);
-    assert.equal(fetchMock.mock.calls.length, 1);
-    assert.equal(fetchMock.mock.calls[0]?.[0], "https://api.example.test/sync/pull");
+    const fetchCalls = fetchMock.mock.calls as unknown as FetchCall[];
+    assert.equal(fetchCalls.length, 1);
+    assert.equal(fetchCalls[0]?.[0], "https://api.example.test/sync/pull");
 
-    const requestInit = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    const requestInit = fetchCalls[0]?.[1] as RequestInit;
     const headers = new Headers(requestInit.headers);
     assert.equal(headers.has("Authorization"), false);
     assert.equal(headers.get("x-csrf-token"), "csrf-token");
@@ -284,9 +286,10 @@ test("fetchAuthenticatedApiResponse keeps bearer auth when no server session exi
     });
 
     assert.equal(response.status, 200);
-    assert.equal(fetchMock.mock.calls.length, 1);
+    const fetchCalls = fetchMock.mock.calls as unknown as FetchCall[];
+    assert.equal(fetchCalls.length, 1);
 
-    const requestInit = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    const requestInit = fetchCalls[0]?.[1] as RequestInit;
     const headers = new Headers(requestInit.headers);
     assert.equal(headers.get("Authorization"), "Bearer google-token");
   });
@@ -321,7 +324,8 @@ test("fetchAuthenticatedApiResponse keeps bearer auth for cross-origin session-p
     });
 
     assert.equal(response.status, 200);
-    const requestInit = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    const fetchCalls = fetchMock.mock.calls as unknown as FetchCall[];
+    const requestInit = fetchCalls[0]?.[1] as RequestInit;
     const headers = new Headers(requestInit.headers);
     assert.equal(headers.get("Authorization"), "Bearer google-token");
   });
@@ -330,7 +334,7 @@ test("fetchAuthenticatedApiResponse keeps bearer auth for cross-origin session-p
 test("fetchWithRetry retries retryable responses and network errors", async () => {
   await withMockedLocalStorage(async () => {
     vi.useFakeTimers();
-    const fetchMock = vi.fn<Parameters<typeof fetch>, ReturnType<typeof fetch>>()
+    const fetchMock = vi.fn<typeof fetch>()
       .mockResolvedValueOnce(new Response("{}", {
         status: 429,
         headers: {
@@ -458,7 +462,8 @@ test("submitPlayPurchaseVerification handles pending purchases", async () => {
       assert.equal(verified, false);
       assert.equal(notify.mock.calls.at(-1)?.[0], "Still pending");
       assert.equal(debugLogEntitlement.mock.calls.length, 1);
-      assert.equal(debugLogEntitlement.mock.calls.at(-1)?.[0], true);
+      const debugCalls = debugLogEntitlement.mock.calls as unknown as Array<[boolean]>;
+      assert.equal(debugCalls.at(-1)?.[0], true);
     } finally {
       Object.defineProperty(globalThis, "fetch", {
         configurable: true,

@@ -68,13 +68,13 @@ function createMockStorage(): MockStorage {
   };
 }
 
-function createApp(overrides: Record<string, unknown> = {}) {
+function createApp(overrides: Record<string, any> = {}): any {
   return {
-    activeScopeType: "personal",
-    activeWorkspaceId: null,
-    currentLotId: null,
-    sales: [],
-    salesByLotId: new Map(),
+    activeScopeType: "personal" as const,
+    activeWorkspaceId: null as string | null,
+    currentLotId: null as number | null,
+    sales: [] as any[],
+    salesByLotId: new Map<number, any[]>(),
     getSalesStorageKey: (lotId: number) => `sales:${lotId}`,
     googleAuthEpoch: 0,
     hasProAccess: false,

@@ -62,12 +62,12 @@ async function flushMicrotasks(times = 3): Promise<void> {
   }
 }
 
-function createApp() {
+function createApp(): any {
   return {
-    lots: [{ id: 1 }],
-    wheelConfigs: [],
+    lots: [{ id: 1 }] as any[],
+    wheelConfigs: [] as any[],
     activeWheelConfigId: null as number | null,
-    sales: [],
+    sales: [] as any[],
     currentLotId: 1,
     cloudSyncIntervalId: null as number | null,
     syncStatusResetTimeoutId: null as number | null,
@@ -706,7 +706,7 @@ test("runCloudSyncPull applies newer cloud snapshot and stores version", async (
       activeWheelConfigId: (snapshot as { activeWheelConfigId: number | null }).activeWheelConfigId,
       version: 3,
       hasData: true
-    }),
+    } as any),
     shouldApplyCloudSnapshot: () => true,
     applyCloudSnapshotToLocal: (target, parsed) => {
       target.lots = parsed.lots as typeof target.lots;
@@ -888,7 +888,7 @@ test("applyCloudSnapshotToLocal sanitizes incoming wheel configs before saving",
     activeWheelConfigId: 91,
     version: 4,
     hasData: true
-  });
+  } as any);
 
   const wheelConfig = (app.wheelConfigs as Array<{
     tiers: Array<{ deductionType: string; packsCount: number; isChase: boolean }>;

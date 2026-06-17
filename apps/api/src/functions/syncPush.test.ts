@@ -467,7 +467,9 @@ test("syncPush publishes lot.config.updated for changed workspace config pushes 
 });
 
 test("syncPush returns before realtime publish settles", async () => {
-  let resolvePublish: ((value: boolean) => void) | null = null;
+  let resolvePublish: (value: boolean) => void = () => {
+    throw new Error("Publish resolver was not initialized.");
+  };
   publishWorkspaceLotRealtimeEventMock.mockReturnValue(new Promise<boolean>((resolve) => {
     resolvePublish = resolve;
   }));
@@ -502,7 +504,7 @@ test("syncPush returns before realtime publish settles", async () => {
 
   assert.equal(response.status, 200);
   assert.equal(publishWorkspaceLotRealtimeEventMock.mock.calls.length, 1);
-  resolvePublish?.(true);
+  resolvePublish(true);
 });
 
 test("syncPush does not publish config invalidation for unchanged or personal pushes", async () => {

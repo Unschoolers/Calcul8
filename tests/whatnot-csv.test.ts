@@ -124,7 +124,12 @@ test("parseWhatnotCsvRowsWithMapping normalizes sparse rows and skips blank titl
     9,
     {
       title: 0,
+      listingTitle: null,
+      buyerName: null,
+      orderPlacedAt: null,
+      originalItemPrice: null,
       sku: 1,
+      productCategory: null,
       quantity: 2,
       price: 3,
       buyerShipping: 4,
@@ -252,6 +257,7 @@ test("parseWhatnotCsvRowsWithMapping normalizes whatnot weekly export rows with 
       externalOrderItemId: null,
       externalAccountId: 4,
       saleType: 12,
+      productCategory: null,
       packsCount: null
     }
   );

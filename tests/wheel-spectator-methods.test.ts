@@ -33,7 +33,9 @@ beforeEach(() => {
 });
 
 test("publishGameSpectatorSessionSnapshot republishes the newest queued state after an in-flight publish", async () => {
-  let resolveFirstPublish: (() => void) | null = null;
+  let resolveFirstPublish: () => void = () => {
+    throw new Error("Publish resolver was not initialized.");
+  };
   publishGameSpectatorSessionMock
     .mockImplementationOnce(() => new Promise<void>((resolve) => {
       resolveFirstPublish = resolve;
@@ -50,7 +52,7 @@ test("publishGameSpectatorSessionSnapshot republishes the newest queued state af
     gameSpectatorSessionStatus: "starting",
     gameSpectatorPublishPending: false,
     snapshotVersion: 1
-  } as Record<string, unknown> & {
+  } as unknown as Record<string, unknown> & {
     publishGameSpectatorSessionSnapshot: (statusOverride?: "starting" | "live" | "ended") => Promise<void>;
   };
   vm.publishGameSpectatorSessionSnapshot = (statusOverride) =>
@@ -62,7 +64,7 @@ test("publishGameSpectatorSessionSnapshot republishes the newest queued state af
   const queuedPublish = vm.publishGameSpectatorSessionSnapshot();
 
   assert.equal(publishGameSpectatorSessionMock.mock.calls.length, 1);
-  resolveFirstPublish?.();
+  resolveFirstPublish();
   await firstPublish;
   await queuedPublish;
 
@@ -161,7 +163,7 @@ test("publishGameSpectatorSessionSnapshot disables local spectator mode after ba
     gameSpectatorConnectedCount: 3,
     saveWheelSession: vi.fn(),
     notify: vi.fn()
-  } as Record<string, unknown> & {
+  } as unknown as Record<string, unknown> & {
     publishGameSpectatorSessionSnapshot: (statusOverride?: "starting" | "live" | "ended") => Promise<void>;
   };
   vm.publishGameSpectatorSessionSnapshot = (statusOverride) =>

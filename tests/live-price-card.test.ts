@@ -9,6 +9,9 @@ type CardCtx = {
   profitBasis: number | null;
   forecastProfit?: number | null;
   forecastPercent?: number | null;
+  avgPriceNeeded?: number | null;
+  neededProfit?: number | null;
+  neededPercent?: number | null;
   estimateProfitAtPrice?: ((price: number) => number | null) | null;
   estimatePercentAtPrice?: ((price: number) => number | null) | null;
   calculateProfit: ((units: number, pricePerUnit: number) => number) | null;

@@ -55,6 +55,7 @@ function createConfig(): ApiConfig {
     cosmosEndpoint: "https://example.documents.azure.com:443/",
     cosmosKey: "key",
     cosmosDatabaseId: "whatfees",
+    migrationCosmosDatabaseId: "whatfees",
     entitlementsContainerId: "entitlements",
     syncContainerId: "sync_data",
     migrationRunsContainerId: "migration_runs"
@@ -571,8 +572,8 @@ test("upsertSyncSnapshotIncremental upserts changed presets, deletes removed pre
       id: "sync:preset:user-1:keep",
       docType: "sync_preset",
       userId: "user-1",
-      presetId: "keep",
-      preset: { id: "keep", name: "Keep" },
+      presetId: "1",
+      preset: { id: 1, name: "Keep" },
       sales: [{ id: 1 }],
       version: 1,
       updatedAt: "2026-03-18T09:00:00.000Z"
@@ -581,8 +582,8 @@ test("upsertSyncSnapshotIncremental upserts changed presets, deletes removed pre
       id: "sync:preset:user-1:drop",
       docType: "sync_preset",
       userId: "user-1",
-      presetId: "drop",
-      preset: { id: "drop", name: "Drop" },
+      presetId: "3",
+      preset: { id: 3, name: "Drop" },
       sales: [],
       version: 1,
       updatedAt: "2026-03-18T09:00:00.000Z"
@@ -617,12 +618,12 @@ test("upsertSyncSnapshotIncremental upserts changed presets, deletes removed pre
   const result = await upsertSyncSnapshotIncremental(createConfig(), {
     userId: "user-1",
     lots: [
-      { id: "keep", name: "Keep v2" },
-      { id: "new", name: "New preset" }
+      { id: 1, name: "Keep v2" },
+      { id: 2, name: "New preset" }
     ],
     salesByLot: {
-      keep: [{ id: 11 }],
-      new: [{ id: 22 }]
+      "1": [{ id: 11 }],
+      "2": [{ id: 22 }]
     },
     wheelConfigs: [{
       id: 91,
@@ -656,7 +657,7 @@ test("upsertSyncSnapshotIncremental upserts changed presets, deletes removed pre
 
   assert.equal(syncSnapshots.items.batch.mock.calls[0]?.[1], "user-1");
   assert.deepEqual(presetOperations.map((operation) => operation.operationType), ["Upsert", "Upsert"]);
-  assert.deepEqual(presetOperations.map((operation) => operation.resourceBody?.presetId), ["keep", "new"]);
+  assert.deepEqual(presetOperations.map((operation) => (operation.resourceBody as SyncPresetDocument | undefined)?.presetId), ["1", "2"]);
   assert.equal(presetOperations.every((operation) =>
     (operation.resourceBody as SyncPresetDocument | undefined)?.presetSetId === presetSetId
   ), true);
@@ -705,9 +706,9 @@ test("upsertSyncSnapshotIncremental writes changed presets and meta in one ETag 
 
   const input = {
     userId: "user-1",
-    lots: [{ id: "new", name: "New preset" }],
+    lots: [{ id: 2, name: "New preset" }],
     salesByLot: {
-      new: [{ id: 22 }]
+      "2": [{ id: 22 }]
     },
     wheelConfigs: [],
     activeWheelConfigId: null,
@@ -736,7 +737,7 @@ test("upsertSyncSnapshotIncremental writes changed presets and meta in one ETag 
   const metaOperation = operations.at(-1);
   const presetSetId = (metaOperation?.resourceBody as SyncMetaDocument | undefined)?.presetSetId ?? "";
   assert.equal(presetOperation?.operationType, "Upsert");
-  assert.equal(presetOperation?.resourceBody?.id, `sync:preset-set:user-1:${presetSetId}:new`);
+  assert.equal((presetOperation?.resourceBody as SyncPresetDocument | undefined)?.id, `sync:preset-set:user-1:${presetSetId}:2`);
   assert.equal((presetOperation?.resourceBody as SyncPresetDocument | undefined)?.presetSetId, presetSetId);
   assert.equal(metaOperation?.operationType, "Replace");
   assert.equal(metaOperation?.id, "sync:meta:user-1");
@@ -751,8 +752,8 @@ test("upsertSyncSnapshotIncremental writes a versioned preset set before swappin
       id: "sync:preset:user-1:keep",
       docType: "sync_preset",
       userId: "user-1",
-      presetId: "keep",
-      preset: { id: "keep", name: "Keep" },
+      presetId: "1",
+      preset: { id: 1, name: "Keep" },
       sales: [{ id: 1 }],
       version: 3,
       updatedAt: "2026-03-18T09:00:00.000Z"
@@ -761,8 +762,8 @@ test("upsertSyncSnapshotIncremental writes a versioned preset set before swappin
       id: "sync:preset:user-1:drop",
       docType: "sync_preset",
       userId: "user-1",
-      presetId: "drop",
-      preset: { id: "drop", name: "Drop" },
+      presetId: "3",
+      preset: { id: 3, name: "Drop" },
       sales: [],
       version: 3,
       updatedAt: "2026-03-18T09:00:00.000Z"
@@ -795,12 +796,12 @@ test("upsertSyncSnapshotIncremental writes a versioned preset set before swappin
   const input = {
     userId: "user-1",
     lots: [
-      { id: "keep", name: "Keep renamed" },
-      { id: "new", name: "New preset" }
+      { id: 1, name: "Keep renamed" },
+      { id: 2, name: "New preset" }
     ],
     salesByLot: {
-      keep: [{ id: 11 }],
-      new: [{ id: 22 }]
+      "1": [{ id: 11 }],
+      "2": [{ id: 22 }]
     },
     wheelConfigs: [],
     activeWheelConfigId: null,
@@ -830,7 +831,7 @@ test("upsertSyncSnapshotIncremental writes a versioned preset set before swappin
 
   assert.equal(syncSnapshots.items.batch.mock.calls[0]?.[1], "user-1");
   assert.deepEqual(presetOperations.map((operation) => operation.operationType), ["Upsert", "Upsert"]);
-  assert.deepEqual(presetOperations.map((operation) => operation.resourceBody?.presetId), ["keep", "new"]);
+  assert.deepEqual(presetOperations.map((operation) => (operation.resourceBody as SyncPresetDocument | undefined)?.presetId), ["1", "2"]);
   assert.equal([...presetSetIds].length, 1);
   assert.match([...presetSetIds][0] ?? "", /^v4:/);
   assert.deepEqual(
@@ -858,7 +859,7 @@ test("upsertSyncSnapshotIncremental keeps large writes behind the final meta CAS
     _etag: "etag-1"
   };
   const lots = Array.from({ length: 101 }, (_, index) => ({
-    id: `lot-${index + 1}`,
+    id: index + 1,
     name: `Lot ${index + 1}`
   }));
 
@@ -879,7 +880,7 @@ test("upsertSyncSnapshotIncremental keeps large writes behind the final meta CAS
   await upsertSyncSnapshotIncremental(createConfig(), {
     userId: "user-1",
     lots,
-    salesByLot: Object.fromEntries(lots.map((lot) => [lot.id, []])),
+    salesByLot: Object.fromEntries(lots.map((lot) => [String(lot.id), []])),
     wheelConfigs: [],
     activeWheelConfigId: null,
     version: 2,
@@ -930,9 +931,9 @@ test("upsertSyncSnapshotIncremental rejects stale expected versions before writi
 
   const input = {
     userId: "user-1",
-    lots: [{ id: "new", name: "New preset" }],
+    lots: [{ id: 2, name: "New preset" }],
     salesByLot: {
-      new: [{ id: 22 }]
+      "2": [{ id: 22 }]
     },
     wheelConfigs: [],
     activeWheelConfigId: null,
@@ -966,8 +967,8 @@ test("upsertSyncSnapshotIncremental ignores orphaned preset sets when checking e
     id: "sync:preset:user-1:keep",
     docType: "sync_preset",
     userId: "user-1",
-    presetId: "keep",
-    preset: { id: "keep", name: "Keep" },
+    presetId: "1",
+    preset: { id: 1, name: "Keep" },
     sales: [],
     version: 3,
     updatedAt: "2026-03-18T09:00:00.000Z"
@@ -997,8 +998,8 @@ test("upsertSyncSnapshotIncremental ignores orphaned preset sets when checking e
 
   await upsertSyncSnapshotIncremental(createConfig(), {
     userId: "user-1",
-    lots: [{ id: "keep", name: "Keep renamed" }],
-    salesByLot: { keep: [] },
+    lots: [{ id: 1, name: "Keep renamed" }],
+    salesByLot: { "1": [] },
     wheelConfigs: [],
     activeWheelConfigId: null,
     version: 4,
@@ -1016,8 +1017,8 @@ test("upsertSyncSnapshotIncremental updates meta when only wheel config data cha
       id: "sync:preset:user-1:keep",
       docType: "sync_preset",
       userId: "user-1",
-      presetId: "keep",
-      preset: { id: "keep", name: "Keep" },
+      presetId: "1",
+      preset: { id: 1, name: "Keep" },
       sales: [{ id: 1 }],
       version: 1,
       updatedAt: "2026-03-18T09:00:00.000Z"
@@ -1051,9 +1052,9 @@ test("upsertSyncSnapshotIncremental updates meta when only wheel config data cha
 
   const result = await upsertSyncSnapshotIncremental(createConfig(), {
     userId: "user-1",
-    lots: [{ id: "keep", name: "Keep" }],
+    lots: [{ id: 1, name: "Keep" }],
     salesByLot: {
-      keep: [{ id: 1 }]
+      "1": [{ id: 1 }]
     },
     wheelConfigs: [{
       id: 42,
@@ -1100,8 +1101,8 @@ test("upsertSyncSnapshotIncremental updates meta when only system pricing defaul
       id: "sync:preset:user-1:keep",
       docType: "sync_preset",
       userId: "user-1",
-      presetId: "keep",
-      preset: { id: "keep", name: "Keep" },
+      presetId: "1",
+      preset: { id: 1, name: "Keep" },
       sales: [{ id: 1 }],
       version: 1,
       updatedAt: "2026-03-18T09:00:00.000Z"
@@ -1137,9 +1138,9 @@ test("upsertSyncSnapshotIncremental updates meta when only system pricing defaul
 
   const result = await upsertSyncSnapshotIncremental(createConfig(), {
     userId: "user-1",
-    lots: [{ id: "keep", name: "Keep" }],
+    lots: [{ id: 1, name: "Keep" }],
     salesByLot: {
-      keep: [{ id: 1 }]
+      "1": [{ id: 1 }]
     },
     wheelConfigs: [],
     activeWheelConfigId: null,
@@ -1180,8 +1181,8 @@ test("upsertSyncSnapshotIncremental preserves system pricing defaults when clien
       id: "sync:preset:user-1:keep",
       docType: "sync_preset",
       userId: "user-1",
-      presetId: "keep",
-      preset: { id: "keep", name: "Keep" },
+      presetId: "1",
+      preset: { id: 1, name: "Keep" },
       sales: [{ id: 1 }],
       version: 1,
       updatedAt: "2026-03-18T09:00:00.000Z"
@@ -1217,9 +1218,9 @@ test("upsertSyncSnapshotIncremental preserves system pricing defaults when clien
 
   const result = await upsertSyncSnapshotIncremental(createConfig(), {
     userId: "user-1",
-    lots: [{ id: "keep", name: "Keep" }],
+    lots: [{ id: 1, name: "Keep" }],
     salesByLot: {
-      keep: [{ id: 1 }]
+      "1": [{ id: 1 }]
     },
     wheelConfigs: [],
     activeWheelConfigId: null,

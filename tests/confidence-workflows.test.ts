@@ -113,8 +113,8 @@ function stubFinishedAnimation(): void {
   }) as typeof requestAnimationFrame);
 }
 
-function createWheelWorkflowVm() {
-  const state = createGameWindowState() as Record<string, unknown>;
+function createWheelWorkflowVm(): any {
+  const state = createGameWindowState() as Record<string, any>;
   const controller = getWheelController(state);
   controller.activeSlots = [{
     name: "1 Pack",
@@ -138,34 +138,27 @@ function createWheelWorkflowVm() {
   state.wheelDisplaySlots = controller.previewSlots;
   state.drawWheel = vi.fn();
   state.landOnSlot = vi.fn();
-  state.saveWheelSession = vi.fn(function (this: Record<string, unknown>) {
-    wheelSessionMethods.saveWheelSession.call(this);
+  state.saveWheelSession = vi.fn(function (this: Record<string, any>) {
+    wheelSessionMethods.saveWheelSession.call(this as never);
   });
-  state.loadWheelFromSession = vi.fn(function (this: Record<string, unknown>) {
-    return wheelSessionMethods.loadWheelFromSession.call(this);
+  state.loadWheelFromSession = vi.fn(function (this: Record<string, any>) {
+    return wheelSessionMethods.loadWheelFromSession.call(this as never);
   });
-  state.recordSpinResult = vi.fn(function (this: Record<string, unknown>, slotIndex: number) {
-    wheelSpinMethods.recordSpinResult.call(this, slotIndex);
+  state.recordSpinResult = vi.fn(function (this: Record<string, any>, slotIndex: number) {
+    wheelSpinMethods.recordSpinResult.call(this as never, slotIndex);
   });
-  state.recordPreviewSpinResult = vi.fn(function (this: Record<string, unknown>, slotIndex: number) {
-    wheelSpinMethods.recordPreviewSpinResult.call(this, slotIndex);
+  state.recordPreviewSpinResult = vi.fn(function (this: Record<string, any>, slotIndex: number) {
+    wheelSpinMethods.recordPreviewSpinResult.call(this as never, slotIndex);
   });
   state.appendWheelFairnessHistory = vi.fn(function (
-    this: Record<string, unknown>,
+    this: Record<string, any>,
     entry,
     options
   ) {
-    wheelSessionMethods.appendWheelFairnessHistory.call(this, entry, options);
+    wheelSessionMethods.appendWheelFairnessHistory.call(this as never, entry, options);
   });
 
-  return state as Record<string, unknown> & {
-    saveWheelSession: ReturnType<typeof vi.fn>;
-    loadWheelFromSession: ReturnType<typeof vi.fn>;
-    recordSpinResult: ReturnType<typeof vi.fn>;
-    recordPreviewSpinResult: ReturnType<typeof vi.fn>;
-    appendWheelFairnessHistory: ReturnType<typeof vi.fn>;
-    landOnSlot: ReturnType<typeof vi.fn>;
-  };
+  return state as any;
 }
 
 afterEach(() => {
@@ -214,13 +207,13 @@ test("workflow: singles market currencies stay coherent across UA/custom normali
     ]
   } as Lot, "2026-04-08");
 
-  assert.equal(normalizedUaLot.singlesPurchases[0]?.marketValueCurrency, "USD");
-  assert.equal(normalizedCustomLot.singlesPurchases[0]?.marketValueCurrency, "CAD");
+  assert.equal(normalizedUaLot.singlesPurchases![0]?.marketValueCurrency, "USD");
+  assert.equal(normalizedCustomLot.singlesPurchases![0]?.marketValueCurrency, "CAD");
 
   const totalMarketValue = calculateSinglesPurchaseTotalMarketValueInSellingCurrency({
     entries: [
-      ...normalizedUaLot.singlesPurchases,
-      ...normalizedCustomLot.singlesPurchases
+      ...normalizedUaLot.singlesPurchases!,
+      ...normalizedCustomLot.singlesPurchases!
     ],
     fallbackMarketCurrency: "CAD",
     sellingCurrency: "CAD",
@@ -272,7 +265,7 @@ test("workflow: imported singles flow into linked sales profit and final lot mar
   assert.equal(parsed.entries.length, 1);
 
   const applied = applySinglesCsvImportRows({
-    existingRows: baseLot.singlesPurchases,
+    existingRows: baseLot.singlesPurchases!,
     parsedRows: parsed.entries,
     importMode: "merge",
     now: 10_000
@@ -307,7 +300,7 @@ test("workflow: imported singles flow into linked sales profit and final lot mar
     purchaseCurrency: lot.currency,
     sellingCurrency: lot.sellingCurrency,
     exchangeRate: lot.exchangeRate,
-    singlesPurchases: lot.singlesPurchases
+    singlesPurchases: lot.singlesPurchases!
   });
 
   const summary = calculateLotPerformanceSummary(lot, sales, 1.4);

@@ -22,6 +22,9 @@ function createGoogleIdentity() {
     },
     prompt() {
       prompted += 1;
+    },
+    renderButton() {
+      // Not needed by auto-login retry tests.
     }
   };
 

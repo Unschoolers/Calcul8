@@ -302,7 +302,7 @@ test("deploy workflows validate and smoke realtime recovery wiring", async () =>
 });
 
 async function importSmokeModule(): Promise<SmokeModule> {
-  return await import("../scripts/smoke-realtime.mjs") as SmokeModule;
+  return await import("../scripts/smoke-realtime.mjs") as unknown as SmokeModule;
 }
 
 function fakeResponse(status: number, body: unknown): Response {

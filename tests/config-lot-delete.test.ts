@@ -27,6 +27,16 @@ beforeEach(() => {
   });
 });
 
+function getLocalStorageMock(): {
+  getItem: ReturnType<typeof vi.fn>;
+  removeItem: ReturnType<typeof vi.fn>;
+} {
+  return globalThis.localStorage as unknown as {
+    getItem: ReturnType<typeof vi.fn>;
+    removeItem: ReturnType<typeof vi.fn>;
+  };
+}
+
 test("deleteCurrentLotWithPersistence returns early when there is no current lot or matching lot", () => {
   const noCurrentLot = createContext({
     currentLotId: null,
@@ -54,10 +64,7 @@ test("deleteCurrentLotWithPersistence returns early when there is no current lot
 });
 
 test("deleteCurrentLotWithPersistence removes lot storage and allows empty overwrite only for final lot", () => {
-  const localStorageMock = globalThis.localStorage as {
-    getItem: ReturnType<typeof vi.fn>;
-    removeItem: ReturnType<typeof vi.fn>;
-  };
+  const localStorageMock = getLocalStorageMock();
   localStorageMock.getItem.mockReturnValue("999");
   const ctx = createContext();
 
@@ -84,10 +91,7 @@ test("deleteCurrentLotWithPersistence removes lot storage and allows empty overw
 });
 
 test("deleteCurrentLotWithPersistence uses workspace-scoped last lot storage without legacy fallback", () => {
-  const localStorageMock = globalThis.localStorage as {
-    getItem: ReturnType<typeof vi.fn>;
-    removeItem: ReturnType<typeof vi.fn>;
-  };
+  const localStorageMock = getLocalStorageMock();
   localStorageMock.getItem.mockReturnValue("999");
   const ctx = createContext({
     activeScopeType: "workspace",
@@ -103,10 +107,7 @@ test("deleteCurrentLotWithPersistence uses workspace-scoped last lot storage wit
 });
 
 test("deleteCurrentLotWithPersistence ignores localStorage cache status cleanup failures", () => {
-  const localStorageMock = globalThis.localStorage as {
-    getItem: ReturnType<typeof vi.fn>;
-    removeItem: ReturnType<typeof vi.fn>;
-  };
+  const localStorageMock = getLocalStorageMock();
   localStorageMock.getItem.mockReturnValue("999");
   localStorageMock.removeItem.mockImplementation(() => {
     throw new Error("quota");

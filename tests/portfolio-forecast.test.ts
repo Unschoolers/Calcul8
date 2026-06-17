@@ -17,6 +17,11 @@ test("computeLotModeProjections uses live prices for current bulk lot and return
       spotsPerBox: 5,
       sellingTaxPercent: 0,
       sellingShippingPerOrder: 0,
+      feeProfilePreset: "none",
+      platformFeePercent: 0,
+      additionalFeePercent: 0,
+      additionalFeeAppliesTo: "sale_only",
+      fixedFeePerOrder: 0,
       packPrice: 9,
       boxPriceSell: 40,
       spotPrice: 2,
@@ -52,6 +57,11 @@ test("computeLotModeProjections for singles only returns item mode using target 
       spotsPerBox: 0,
       sellingTaxPercent: 0,
       sellingShippingPerOrder: 0,
+      feeProfilePreset: "none",
+      platformFeePercent: 0,
+      additionalFeePercent: 0,
+      additionalFeeAppliesTo: "sale_only",
+      fixedFeePerOrder: 0,
       packPrice: 0,
       boxPriceSell: 0,
       spotPrice: 0,
@@ -69,7 +79,12 @@ test("computeLotModeProjections for singles only returns item mode using target 
     liveSpotPrice: 0
   });
 
-  const expectedUnitPrice = calculatePriceForUnits(1, 5.5, 0, 0);
+  const expectedUnitPrice = calculatePriceForUnits(1, 5.5, 0, 0, {
+    platformFeePercent: 0,
+    additionalFeePercent: 0,
+    additionalFeeAppliesTo: "sale_only",
+    fixedFeePerOrder: 0
+  });
   assert.equal(projection.item?.units, 4);
   assert.ok(Math.abs((projection.item?.gross || 0) - (expectedUnitPrice * 4)) < 0.000001);
   assert.equal(projection.box, null);

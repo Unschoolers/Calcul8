@@ -277,6 +277,7 @@ test("upsertWhatnotTargetMapping strips matchKeyHash and getWhatnotTargetMapping
   const result = await upsertWhatnotTargetMapping(createConfig(), {
     scopeKey: " user-1 ",
     matchKeyHash: " hash-1 ",
+    docType: "whatnot_target_mapping",
     provider: "whatnot",
     externalAccountId: "seller-1",
     matchKey: "lot a|pack",
@@ -301,6 +302,7 @@ test("upsertWhatnotSaleImportMapping strips externalSaleKeyHash before persistin
   const result = await upsertWhatnotSaleImportMapping(createConfig(), {
     scopeKey: " user-1 ",
     externalSaleKeyHash: " ext-hash-1 ",
+    docType: "sale_import_mapping",
     provider: "whatnot",
     externalAccountId: "seller-1",
     externalSaleId: "sale-1",
@@ -340,7 +342,7 @@ test("claimPendingWhatnotImportBatch atomically moves a pending batch to process
     rows: [],
     _etag: "etag-batch-1"
   };
-  const replace = vi.fn(async (document: WhatnotImportBatchDocument) => ({
+  const replace = vi.fn(async (document: WhatnotImportBatchDocument, _options?: unknown) => ({
     resource: {
       ...document,
       _etag: "etag-batch-2"
@@ -458,7 +460,7 @@ test("completeWhatnotImportBatch completes a claimed batch with If-Match", async
     rows: [],
     _etag: "etag-processing-1"
   };
-  const replace = vi.fn(async (document: WhatnotImportBatchDocument) => ({ resource: document }));
+  const replace = vi.fn(async (document: WhatnotImportBatchDocument, _options?: unknown) => ({ resource: document }));
   syncSnapshots.item.mockReturnValue({ replace });
   getContainersMock.mockReturnValue({ entitlements: createEntitlementsContainer(), syncSnapshots });
 
@@ -474,7 +476,10 @@ test("completeWhatnotImportBatch completes a claimed batch with If-Match", async
   assert.equal(result.updatedCount, 1);
   assert.equal(result.skippedCount, 3);
   assert.equal(replace.mock.calls[0]?.[0]?.completedAt, "2026-04-11T12:04:00.000Z");
-  assert.equal(replace.mock.calls[0]?.[1]?.accessCondition?.condition, "etag-processing-1");
+  const completeOptions = replace.mock.calls[0]?.[1] as {
+    accessCondition?: { condition?: string };
+  } | undefined;
+  assert.equal(completeOptions?.accessCondition?.condition, "etag-processing-1");
 
   replace.mockRejectedValueOnce({ statusCode: 412 });
   await assert.rejects(
@@ -511,7 +516,7 @@ test("releaseClaimedWhatnotImportBatch restores a pre-write claim with If-Match"
     rows: [],
     _etag: "etag-processing-release"
   };
-  const replace = vi.fn(async (document: WhatnotImportBatchDocument) => ({ resource: document }));
+  const replace = vi.fn(async (document: WhatnotImportBatchDocument, _options?: unknown) => ({ resource: document }));
   syncSnapshots.item.mockReturnValue({ replace });
   getContainersMock.mockReturnValue({ entitlements: createEntitlementsContainer(), syncSnapshots });
 
@@ -525,7 +530,10 @@ test("releaseClaimedWhatnotImportBatch restores a pre-write claim with If-Match"
   assert.equal(result?.status, "pending_review");
   assert.equal(result?.updatedAt, "2026-04-11T12:06:00.000Z");
   assert.equal(result?.errorMessage, "Lot 99 was not found.");
-  assert.equal(replace.mock.calls[0]?.[1]?.accessCondition?.condition, "etag-processing-release");
+  const releaseOptions = replace.mock.calls[0]?.[1] as {
+    accessCondition?: { condition?: string };
+  } | undefined;
+  assert.equal(releaseOptions?.accessCondition?.condition, "etag-processing-release");
 
   replace.mockRejectedValueOnce({ statusCode: 412 });
   const conflict = await releaseClaimedWhatnotImportBatch(

@@ -80,6 +80,16 @@ function createContext() {
   };
 }
 
+function getGoogleIdentityMock(): {
+  cancel: ReturnType<typeof vi.fn>;
+  disableAutoSelect: ReturnType<typeof vi.fn>;
+} {
+  return window.google?.accounts.id as unknown as {
+    cancel: ReturnType<typeof vi.fn>;
+    disableAutoSelect: ReturnType<typeof vi.fn>;
+  };
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   vi.useFakeTimers();
@@ -133,8 +143,8 @@ test("logoutCurrentSession signs out, clears local auth state, and reloads", asy
   assert.equal(ctx.activeScopeType, "personal");
   assert.equal(ctx.activeWorkspaceId, null);
   assert.equal(ctx.googleAuthEpoch, 1);
-  assert.equal((window.google.accounts.id.cancel as ReturnType<typeof vi.fn>).mock.calls.length, 1);
-  assert.equal((window.google.accounts.id.disableAutoSelect as ReturnType<typeof vi.fn>).mock.calls.length, 1);
+  assert.equal(getGoogleIdentityMock().cancel.mock.calls.length, 1);
+  assert.equal(getGoogleIdentityMock().disableAutoSelect.mock.calls.length, 1);
   assert.equal((window.location.reload as ReturnType<typeof vi.fn>).mock.calls.length, 1);
 });
 

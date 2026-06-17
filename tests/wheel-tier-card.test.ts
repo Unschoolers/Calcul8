@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { test, vi } from "vitest";
 import { WheelInspector } from "../src/components/windows/game/inspector/WheelInspector.ts";
 import { WheelTierCard } from "../src/components/windows/game/inspector/WheelTierCard.ts";
+import type { WheelTier } from "../src/types/app.ts";
 
 const TESTS_DIR = path.dirname(fileURLToPath(import.meta.url));
 const WHEEL_TIER_CARD_TEMPLATE = path.resolve(
@@ -64,7 +65,7 @@ test("tier editor drafts changes until Done", () => {
   const tier = { id: 1, label: "Original", color: "#fff", packsCount: 1, costPerTier: 1, chancePercent: 50 };
   const vm = {
     editorOpen: false,
-    editorDraft: null,
+    editorDraft: null as typeof tier | null,
     tier,
     canApplyWheelConfig: true,
     applyWheelConfig: vi.fn()
@@ -299,9 +300,9 @@ test("multi-lot tiers are grouped under Multi-lot with source lot names for the 
 });
 
 test("tier card chance input rebalances the current editing config", () => {
-  const tiers = [
-    { id: "t1", label: "A", color: "#fff", slots: 50, packsCount: 1, costPerTier: 1, chancePercent: 50 },
-    { id: "t2", label: "B", color: "#000", slots: 50, packsCount: 1, costPerTier: 1, chancePercent: 50 }
+  const tiers: WheelTier[] = [
+    { id: "t1", label: "A", color: "#fff", slots: 50, packsCount: 1, costPerTier: 1, chancePercent: 50, deductionType: "packs", sets: [] },
+    { id: "t2", label: "B", color: "#000", slots: 50, packsCount: 1, costPerTier: 1, chancePercent: 50, deductionType: "packs", sets: [] }
   ];
   const vm = {
     editingWheelConfig: { tiers },
@@ -319,9 +320,9 @@ test("tier card chance input rebalances the current editing config", () => {
 });
 
 test("tier card chance bar updates odds from pointer position", () => {
-  const tiers = [
-    { id: "t1", label: "A", color: "#fff", slots: 50, packsCount: 1, costPerTier: 1, chancePercent: 50 },
-    { id: "t2", label: "B", color: "#000", slots: 50, packsCount: 1, costPerTier: 1, chancePercent: 50 }
+  const tiers: WheelTier[] = [
+    { id: "t1", label: "A", color: "#fff", slots: 50, packsCount: 1, costPerTier: 1, chancePercent: 50, deductionType: "packs", sets: [] },
+    { id: "t2", label: "B", color: "#000", slots: 50, packsCount: 1, costPerTier: 1, chancePercent: 50, deductionType: "packs", sets: [] }
   ];
   const vm = {
     editingWheelConfig: { tiers },

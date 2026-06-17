@@ -57,6 +57,7 @@ function createConfig(): ApiConfig {
     cosmosEndpoint: "https://example.documents.azure.com:443/",
     cosmosKey: "key",
     cosmosDatabaseId: "whatfees",
+    migrationCosmosDatabaseId: "whatfees",
     entitlementsContainerId: "entitlements",
     syncContainerId: "sync_data",
     migrationRunsContainerId: "migration_runs"
@@ -368,7 +369,7 @@ test("transferWorkspaceOwnership uses etag replacement and rejects stale owners"
     updatedAt: "2026-03-18T00:00:00.000Z",
     _etag: "etag-1"
   };
-  const replace = vi.fn(async (document: WorkspaceDocument) => ({
+  const replace = vi.fn(async (document: WorkspaceDocument, _options?: unknown) => ({
     resource: document
   }));
 
@@ -434,7 +435,7 @@ test("softDeleteWorkspace uses etag replacement and rejects stale owners", async
     updatedAt: "2026-03-18T00:00:00.000Z",
     _etag: "etag-delete"
   };
-  const replace = vi.fn(async (document: WorkspaceDocument) => ({
+  const replace = vi.fn(async (document: WorkspaceDocument, _options?: unknown) => ({
     resource: document
   }));
 

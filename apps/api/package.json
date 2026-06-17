@@ -13,6 +13,7 @@
     "start": "func start",
     "start:build": "npm run build && func start",
     "typecheck": "tsc --noEmit",
+    "typecheck:tests": "tsc -p tsconfig.tests.json --noEmit",
     "verify": "npm run build && npm run test",
     "test": "vitest run --config vitest.config.mjs",
     "test:coverage": "vitest run --config vitest.config.mjs --coverage",

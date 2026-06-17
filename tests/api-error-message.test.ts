@@ -19,7 +19,7 @@ test("parseApiErrorMessage falls back when response json cannot be parsed", asyn
     json: async () => {
       throw new Error("bad json");
     }
-  } as Response;
+  } as unknown as Response;
 
   await assert.doesNotReject(async () => {
     const message = await parseApiErrorMessage(response, "fallback");

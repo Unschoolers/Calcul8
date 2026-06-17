@@ -65,9 +65,9 @@ function createSpinVm(mode: "config" | "live") {
   }];
   state.drawWheel = vi.fn();
   state.saveWheelSession = vi.fn();
-  state.recordSpinResult = vi.fn((slotIndex: number) => wheelSpinMethods.recordSpinResult.call(state, slotIndex));
-  state.recordPreviewSpinResult = vi.fn((slotIndex: number) => wheelSpinMethods.recordPreviewSpinResult.call(state, slotIndex));
-  state.appendWheelFairnessHistory = vi.fn((entry, options) => wheelSessionMethods.appendWheelFairnessHistory.call(state, entry, options));
+  state.recordSpinResult = vi.fn((slotIndex: number) => wheelSpinMethods.recordSpinResult.call(state as never, slotIndex));
+  state.recordPreviewSpinResult = vi.fn((slotIndex: number) => wheelSpinMethods.recordPreviewSpinResult.call(state as never, slotIndex));
+  state.appendWheelFairnessHistory = vi.fn((entry, options) => wheelSessionMethods.appendWheelFairnessHistory.call(state as never, entry, options));
   state.landOnSlot = vi.fn();
   return state as Record<string, unknown> & {
     recordSpinResult: ReturnType<typeof vi.fn>;
@@ -81,7 +81,7 @@ test("config spins always record preview session data even if spinWheelInternal 
   stubFinishedAnimation();
   const vm = createSpinVm("config");
 
-  await wheelSpinMethods.spinWheelInternal.call(vm, true);
+  await wheelSpinMethods.spinWheelInternal.call(vm as never, true);
 
   const controller = getWheelController(vm);
   assert.equal(vm.recordSpinResult.mock.calls.length, 0);

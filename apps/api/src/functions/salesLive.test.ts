@@ -303,7 +303,9 @@ test("lotSalesUpsert rejects negative sale money before repository writes", asyn
 });
 
 test("lotSalesUpsert returns before realtime publish settles", async () => {
-  let resolvePublish: ((value: boolean) => void) | null = null;
+  let resolvePublish: (value: boolean) => void = () => {
+    throw new Error("Publish resolver was not initialized.");
+  };
   publishWorkspaceLotRealtimeEventMock.mockReturnValue(new Promise<boolean>((resolve) => {
     resolvePublish = resolve;
   }));
@@ -341,7 +343,7 @@ test("lotSalesUpsert returns before realtime publish settles", async () => {
 
   assert.equal(response.status, 200);
   assert.equal(publishWorkspaceLotRealtimeEventMock.mock.calls.length, 1);
-  resolvePublish?.(true);
+  resolvePublish(true);
 });
 
 test("lotSalesDelete removes a sale for the resolved scope", async () => {

@@ -9,6 +9,7 @@ import {
   computeExpectedMargin
 } from "../src/components/windows/game/services/wheelPricing.ts";
 import type { WheelConfig } from "../src/types/app.ts";
+import { makeLot } from "./helpers/fixtures.ts";
 
 function createSingleTierConfig(overrides: Partial<WheelConfig> = {}): WheelConfig {
   return {
@@ -72,7 +73,7 @@ test("game boundary modules keep sales creation separate from pricing math", () 
     deductionType: "packs",
     label: "Prize",
     lotId: 44,
-    lots: [{
+    lots: [makeLot({
       id: 44,
       name: "Lot",
       lotType: "bulk",
@@ -82,7 +83,7 @@ test("game boundary modules keep sales creation separate from pricing math", () 
       additionalFeePercent: 0,
       additionalFeeAppliesTo: "sale_only",
       fixedFeePerOrder: 0
-    }],
+    })],
     spinNumber: 7
   });
 
@@ -108,7 +109,7 @@ test("game boundary modules keep expected and realized wheel revenue in pricing 
       boundLotId: 5
     }]
   });
-  const lots = [{
+  const lots = [makeLot({
     id: 5,
     name: "Fees",
     lotType: "bulk" as const,
@@ -118,7 +119,7 @@ test("game boundary modules keep expected and realized wheel revenue in pricing 
     additionalFeePercent: 0,
     additionalFeeAppliesTo: "sale_only" as const,
     fixedFeePerOrder: 0
-  }];
+  })];
 
   assert.equal(computeExpectedMargin(config, undefined, lots).margin, 80);
   assert.equal(calculateWheelSessionNetRevenue(config, buildSlotsFromConfig(config), [2], undefined, lots), 18);

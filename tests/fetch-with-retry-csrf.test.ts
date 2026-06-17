@@ -72,7 +72,7 @@ afterEach(() => {
 test("fetchWithRetry stores csrf token from response and sends it on unsafe requests", async () => {
   await withMockedLocalStorage(async (data) => {
     const fetchMock = vi
-      .fn<Parameters<typeof fetch>, ReturnType<typeof fetch>>()
+      .fn<typeof fetch>()
       .mockResolvedValueOnce(
         new Response("{}", {
           status: 200,
@@ -111,7 +111,7 @@ test("fetchWithRetry stores csrf token from response and sends it on unsafe requ
 test("fetchWithRetry does not overwrite existing csrf header", async () => {
   await withMockedLocalStorage(async () => {
     setStoredCsrfToken("csrf-token-stored");
-    const fetchMock = vi.fn(async () =>
+    const fetchMock = vi.fn<typeof fetch>(async () =>
       new Response("{}", {
         status: 200
       })

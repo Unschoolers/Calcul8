@@ -25,6 +25,8 @@ vi.mock("../src/app-core/methods/ui/common/shared.ts", () => ({
 import { uiSyncMethods } from "../src/app-core/methods/ui/sync/sync.ts";
 
 type MockStorage = {
+  readonly length: number;
+  key(index: number): string | null;
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
   removeItem(key: string): void;
@@ -57,10 +59,10 @@ function createMockStorage(seed: Record<string, string> = {}): MockStorage {
 
 function createContext() {
   return {
-    lots: [{ id: 1 }],
-    wheelConfigs: [],
+    lots: [{ id: 1 }] as any[],
+    wheelConfigs: [] as any[],
     activeWheelConfigId: null as number | null,
-    sales: [],
+    sales: [] as any[],
     currentLotId: 1,
     cloudSyncIntervalId: null as number | null,
     syncStatusResetTimeoutId: null as number | null,
@@ -329,7 +331,7 @@ test("pullCloudSync sends workspaceId when the active scope is shared", async ()
 
   await uiSyncMethods.pullCloudSync.call(ctx);
 
-  const requestInit = fetchWithRetryMock.mock.calls[0]?.[1] as { body?: string };
+  const requestInit = (fetchWithRetryMock.mock.calls as unknown as Array<[string, { body?: string }]>)[0]?.[1];
   assert.deepEqual(JSON.parse(String(requestInit.body)), { workspaceId: "team-42" });
 });
 
@@ -515,5 +517,6 @@ test("pullCloudSync handles workspace access loss using the scope resolved at re
   await pullPromise;
 
   assert.equal(ctx.handleWorkspaceAccessLost.mock.calls.length, 1);
-  assert.equal(ctx.handleWorkspaceAccessLost.mock.calls[0]?.[0], "team-42");
+  const accessLostCalls = ctx.handleWorkspaceAccessLost.mock.calls as unknown as Array<[string]>;
+  assert.equal(accessLostCalls[0]?.[0], "team-42");
 });

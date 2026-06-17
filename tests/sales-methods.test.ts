@@ -302,6 +302,7 @@ test("saveSale shows error when editing sale is missing from list", () => {
     quantity: 1,
     packsCount: 1,
     price: 10,
+    buyerShipping: 0,
     date: "2026-02-21"
   };
   const ctx = createContext({
@@ -807,6 +808,7 @@ test("getSinglesSaleLineMaxQuantity releases editing quantity and excludes other
     packsCount: 2,
     singlesPurchaseEntryId: 51,
     price: 20,
+    buyerShipping: 0,
     date: "2026-02-21"
   };
 

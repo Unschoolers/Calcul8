@@ -63,7 +63,7 @@ test("buildGameSpectatorSnapshot returns a viewer-safe wheel summary with chase 
     ]
   };
 
-  const vm = createGameWindowState() as Record<string, unknown>;
+  const vm = createGameWindowState() as Record<string, any>;
   const activeSlots = buildSlotsFromConfig(config);
   vm.activeWheelConfig = config;
   vm.wheelMode = "live";
@@ -162,7 +162,7 @@ test("buildGameSpectatorSnapshot carries active spin animation metadata", () => 
     }]
   };
 
-  const vm = createGameWindowState() as Record<string, unknown>;
+  const vm = createGameWindowState() as Record<string, any>;
   vm.activeWheelConfig = config;
   vm.wheelMode = "live";
   vm.wheelSpinning = true;
@@ -224,7 +224,7 @@ test("buildGameSpectatorSnapshot falls back to the lowest-profit live tier when 
     ]
   };
 
-  const vm = createGameWindowState() as Record<string, unknown>;
+  const vm = createGameWindowState() as Record<string, any>;
   const activeSlots = buildSlotsFromConfig(config);
   vm.activeWheelConfig = config;
   vm.wheelMode = "live";
@@ -285,7 +285,7 @@ test("buildGameSpectatorSnapshot ramps fallback heat when the sweat tier is unde
     ]
   };
 
-  const vm = createGameWindowState() as Record<string, unknown>;
+  const vm = createGameWindowState() as Record<string, any>;
   const activeSlots = buildSlotsFromConfig(config);
   vm.activeWheelConfig = config;
   vm.wheelMode = "live";
@@ -344,7 +344,7 @@ test("buildGameSpectatorSnapshot cools fallback heat after the sweat tier just l
     ]
   };
 
-  const vm = createGameWindowState() as Record<string, unknown>;
+  const vm = createGameWindowState() as Record<string, any>;
   const activeSlots = buildSlotsFromConfig(config);
   vm.activeWheelConfig = config;
   vm.wheelMode = "live";

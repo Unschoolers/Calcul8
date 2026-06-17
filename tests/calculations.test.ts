@@ -48,6 +48,22 @@ type MockStorage = {
   clear(): void;
 };
 
+const NO_FEES = {
+  feeProfilePreset: "none" as const,
+  platformFeePercent: 0,
+  additionalFeePercent: 0,
+  additionalFeeAppliesTo: "sale_only" as const,
+  fixedFeePerOrder: 0
+};
+
+const WHATNOT_FEES = {
+  feeProfilePreset: "whatnot" as const,
+  platformFeePercent: 8,
+  additionalFeePercent: 2.9,
+  additionalFeeAppliesTo: "sale_plus_shipping" as const,
+  fixedFeePerOrder: 0.3
+};
+
 function getTodayLocalDate(): string {
   const now = new Date();
   const year = now.getFullYear();
@@ -166,7 +182,7 @@ test("calculateSinglesLineProfitPreview uses converted market value basis curren
     grossRevenue: 25,
     netRevenue: 25,
     singlesPurchases: [
-      { id: 10, item: "UA Card", cost: 10, marketValue: 12, marketValueCurrency: "USD", quantity: 1, currency: "CAD" }
+      { id: 10, cost: 10, marketValue: 12, marketValueCurrency: "USD", currency: "CAD" }
     ],
     purchaseCurrency: "CAD",
     sellingCurrency: "CAD",
@@ -596,7 +612,7 @@ test("calculateSinglesLineProfitPreview allocates net revenue proportionally and
     grossRevenue: 80,
     netRevenue: 72,
     singlesPurchases: [
-      { id: 10, item: "Card A", cost: 15, marketValue: 20, quantity: 3, currency: "CAD" }
+      { id: 10, cost: 15, marketValue: 20, currency: "CAD" }
     ],
     purchaseCurrency: "CAD",
     sellingCurrency: "CAD",
@@ -618,7 +634,7 @@ test("calculateSinglesLineProfitPreview falls back to converted cost basis and i
     grossRevenue: 20,
     netRevenue: 18,
     singlesPurchases: [
-      { id: 10, item: "Card A", cost: 10, marketValue: 0, quantity: 3, currency: "USD" }
+      { id: 10, cost: 10, marketValue: 0, currency: "USD" }
     ],
     purchaseCurrency: "USD",
     sellingCurrency: "CAD",
@@ -782,6 +798,7 @@ test("preset and portfolio summaries aggregate correctly", () => {
     purchaseTaxPercent: 0,
     sellingTaxPercent: 15,
     sellingShippingPerOrder: 0,
+    ...WHATNOT_FEES,
     includeTax: false,
     spotPrice: 10,
     boxPriceSell: 100,
@@ -836,6 +853,7 @@ test("preset performance summary handles empty sales with conversion, tax, custo
     purchaseTaxPercent: 10,
     sellingTaxPercent: 15,
     sellingShippingPerOrder: 0,
+    ...NO_FEES,
     includeTax: true,
     spotPrice: 25,
     boxPriceSell: 100,
@@ -871,6 +889,7 @@ test("preset performance summary uses latest sale date and shipping-aware revenu
     purchaseTaxPercent: 0,
     sellingTaxPercent: 15,
     sellingShippingPerOrder: 0,
+    ...WHATNOT_FEES,
     includeTax: false,
     spotPrice: 25,
     boxPriceSell: 100,
@@ -914,6 +933,7 @@ test("preset performance summary uses singles purchase grid as cost basis", () =
     purchaseTaxPercent: 0,
     sellingTaxPercent: 15,
     sellingShippingPerOrder: 0,
+    ...NO_FEES,
     includeTax: false,
     spotPrice: 0,
     boxPriceSell: 0,
@@ -952,6 +972,7 @@ test("preset performance summary converts singles cost basis from purchase to se
     purchaseTaxPercent: 0,
     sellingTaxPercent: 15,
     sellingShippingPerOrder: 0,
+    ...NO_FEES,
     includeTax: false,
     spotPrice: 0,
     boxPriceSell: 0,
@@ -984,6 +1005,7 @@ test("preset performance summary converts singles cost basis per purchase curren
     purchaseTaxPercent: 0,
     sellingTaxPercent: 15,
     sellingShippingPerOrder: 0,
+    ...NO_FEES,
     includeTax: false,
     spotPrice: 0,
     boxPriceSell: 0,
@@ -1017,6 +1039,7 @@ test("preset performance summary treats zero-cost singles rows as no cost-basis 
     purchaseTaxPercent: 0,
     sellingTaxPercent: 15,
     sellingShippingPerOrder: 0,
+    ...NO_FEES,
     includeTax: false,
     spotPrice: 0,
     boxPriceSell: 0,
@@ -1095,19 +1118,19 @@ test("canUsePaidActions requires preset + pro access", () => {
   const blockedNoPreset = appComputed.canUsePaidActions.call({
     hasLotSelected: false,
     hasProAccess: true
-  } as unknown as Parameters<typeof appComputed.canUsePaidActions>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.canUsePaidActions>);
   assert.equal(blockedNoPreset, false);
 
   const blockedNoPro = appComputed.canUsePaidActions.call({
     hasLotSelected: true,
     hasProAccess: false
-  } as unknown as Parameters<typeof appComputed.canUsePaidActions>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.canUsePaidActions>);
   assert.equal(blockedNoPro, false);
 
   const allowed = appComputed.canUsePaidActions.call({
     hasLotSelected: true,
     hasProAccess: true
-  } as unknown as Parameters<typeof appComputed.canUsePaidActions>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.canUsePaidActions>);
   assert.equal(allowed, true);
 });
 
@@ -1116,14 +1139,14 @@ test("computed totalCaseCost uses singles purchase cost and 100% fallback when g
     currentLotType: "singles",
     singlesPurchaseTotalQuantity: 4,
     singlesPurchaseTotalCost: 42
-  } as unknown as Parameters<typeof appComputed.totalCaseCost>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.totalCaseCost>);
   assert.equal(withRows, 42);
 
   const emptyRows = appComputed.totalCaseCost.call({
     currentLotType: "singles",
     singlesPurchaseTotalQuantity: 0,
     singlesPurchaseTotalCost: 99
-  } as unknown as Parameters<typeof appComputed.totalCaseCost>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.totalCaseCost>);
   assert.equal(emptyRows, 0);
 });
 
@@ -1133,7 +1156,7 @@ test("computed singlesPurchaseTotalCost converts purchase currency to selling cu
     currency: "USD",
     sellingCurrency: "CAD",
     exchangeRate: 1.5
-  } as unknown as Parameters<typeof appComputed.singlesPurchaseTotalCost>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.singlesPurchaseTotalCost>);
   assert.equal(converted, 30);
 });
 
@@ -1146,7 +1169,7 @@ test("computed singlesPurchaseTotalCost converts each row from its own currency"
     currency: "CAD",
     sellingCurrency: "CAD",
     exchangeRate: 1.5
-  } as unknown as Parameters<typeof appComputed.singlesPurchaseTotalCost>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.singlesPurchaseTotalCost>);
   assert.equal(converted, 34);
 });
 
@@ -1158,7 +1181,7 @@ test("computed totalPacks uses singles quantity even when total cost is zero", (
     singlesPurchaseTotalCost: 42,
     singlesSoldCountByPurchaseId: {},
     sales: []
-  } as unknown as Parameters<typeof appComputed.totalPacks>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.totalPacks>);
   assert.equal(withCost, 4);
 
   const zeroCost = appComputed.totalPacks.call({
@@ -1168,7 +1191,7 @@ test("computed totalPacks uses singles quantity even when total cost is zero", (
     singlesPurchaseTotalCost: 0,
     singlesSoldCountByPurchaseId: {},
     sales: []
-  } as unknown as Parameters<typeof appComputed.totalPacks>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.totalPacks>);
   assert.equal(zeroCost, 4);
 });
 
@@ -1179,7 +1202,7 @@ test("computed totalPacks in singles uses tracked inventory total when it covers
     singlesPurchaseTotalQuantity: 6,
     singlesSoldCountByPurchaseId: { 11: 4, 12: 3 },
     sales: []
-  } as unknown as Parameters<typeof appComputed.totalPacks>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.totalPacks>);
   assert.equal(total, 6);
 });
 
@@ -1193,7 +1216,7 @@ test("computed totalPacks in singles is at least all sold cards from sales list"
       { id: 1, type: "pack", quantity: 1, packsCount: 1, price: 10, date: "2026-02-01" },
       { id: 2, type: "pack", quantity: 6, packsCount: 6, price: 10, date: "2026-02-02" }
     ]
-  } as unknown as Parameters<typeof appComputed.totalPacks>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.totalPacks>);
   assert.equal(total, 7);
 });
 
@@ -1209,7 +1232,7 @@ test("computed totalPacks in singles ignores linked sold counts for deleted entr
       { id: 3, type: "pack", quantity: 1, packsCount: 1, price: 10, date: "2026-02-03" },
       { id: 4, type: "pack", quantity: 3, packsCount: 3, price: 10, date: "2026-02-04" }
     ]
-  } as unknown as Parameters<typeof appComputed.totalPacks>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.totalPacks>);
   assert.equal(total, 7);
 });
 
@@ -1221,7 +1244,7 @@ test("computed singlesSoldCountByPurchaseId sums sold quantity for valid linked 
       { id: 3, type: "pack", quantity: 1, packsCount: 1, singlesPurchaseEntryId: 12, price: 7, date: "2026-02-03" },
       { id: 4, type: "pack", quantity: 1, packsCount: 1, singlesPurchaseEntryId: 0, price: 7, date: "2026-02-04" }
     ]
-  } as unknown as Parameters<typeof appComputed.singlesSoldCountByPurchaseId>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.singlesSoldCountByPurchaseId>);
 
   assert.deepEqual(result, { 10: 3, 12: 1 });
 });
@@ -1233,7 +1256,7 @@ test("computed soldPacksCount in singles uses all sales quantities", () => {
       { id: 1, type: "pack", quantity: 4, packsCount: 4, price: 10, date: "2026-02-01" },
       { id: 2, type: "pack", quantity: 3, packsCount: 3, price: 9, date: "2026-02-02" }
     ]
-  } as unknown as Parameters<typeof appComputed.soldPacksCount>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.soldPacksCount>);
   assert.equal(count, 7);
 });
 
@@ -1242,14 +1265,14 @@ test("computed singlesTrackedSoldCount and singlesTrackedTotalCount only use cur
     currentLotType: "singles",
     singlesPurchases: [{ id: 10 }, { id: 20 }, { id: 30 }],
     singlesSoldCountByPurchaseId: { 10: 1, 20: 2, 999: 5 }
-  } as unknown as Parameters<typeof appComputed.singlesTrackedSoldCount>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.singlesTrackedSoldCount>);
   assert.equal(trackedSold, 3);
 
   const trackedTotal = appComputed.singlesTrackedTotalCount.call({
     currentLotType: "singles",
     singlesPurchaseTotalQuantity: 4,
     singlesTrackedSoldCount: trackedSold
-  } as unknown as Parameters<typeof appComputed.singlesTrackedTotalCount>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.singlesTrackedTotalCount>);
   assert.equal(trackedTotal, 4);
 });
 
@@ -1258,7 +1281,7 @@ test("computed singlesUnlinkedSoldCount shows delta between total sold and track
     currentLotType: "singles",
     soldPacksCount: 10,
     singlesTrackedSoldCount: 7
-  } as unknown as Parameters<typeof appComputed.singlesUnlinkedSoldCount>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.singlesUnlinkedSoldCount>);
   assert.equal(unlinked, 3);
 });
 
@@ -1275,7 +1298,7 @@ test("computed singlesSaleCardOptions computes remaining quantity from total and
     currency: "CAD",
     sellingCurrency: "CAD",
     exchangeRate: 1.4
-  } as unknown as Parameters<typeof appComputed.singlesSaleCardOptions>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.singlesSaleCardOptions>);
 
   assert.equal(options.length, 2);
   const soldOut = options.find((option) => option.value === 20);
@@ -1296,7 +1319,7 @@ test("computed selectedSinglesSaleMaxQuantity restores editing quantity for same
     editingSale: { singlesPurchaseEntryId: 50, quantity: 2 },
     singlesSoldCountByPurchaseId: { 50: 2 },
     singlesPurchases: [{ id: 50, item: "Card", cost: 1, quantity: 2, marketValue: 1 }]
-  } as unknown as Parameters<typeof appComputed.selectedSinglesSaleMaxQuantity>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.selectedSinglesSaleMaxQuantity>);
   assert.equal(sameCard, 2);
 
   const differentCard = appComputed.selectedSinglesSaleMaxQuantity.call({
@@ -1304,7 +1327,7 @@ test("computed selectedSinglesSaleMaxQuantity restores editing quantity for same
     newSale: { singlesPurchaseEntryId: 51 },
     editingSale: { singlesPurchaseEntryId: 50, quantity: 2 },
     singlesPurchases: [{ id: 51, item: "Card", cost: 1, quantity: 1, marketValue: 1 }]
-  } as unknown as Parameters<typeof appComputed.selectedSinglesSaleMaxQuantity>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.selectedSinglesSaleMaxQuantity>);
   assert.equal(differentCard, 1);
 });
 
@@ -1318,7 +1341,7 @@ test("computed saleEditorProfitPreview shows live singles profit value and perce
     exchangeRate: 1.4,
     singlesPurchases: [{ id: 123, item: "Charizard", cost: 23, quantity: 2, marketValue: 50, currency: "CAD" }],
     newSale: { singlesPurchaseEntryId: 123, quantity: 2, price: 100, buyerShipping: 0 }
-  } as unknown as Parameters<typeof appComputed.saleEditorProfitPreview>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.saleEditorProfitPreview>);
 
   assert.equal(preview?.sign, "-");
   assert.equal(preview?.colorClass, "text-error");
@@ -1338,7 +1361,7 @@ test("computed saleEditorProfitPreview defaults to 100% when no linked card cost
     exchangeRate: 1.4,
     singlesPurchases: [],
     newSale: { singlesPurchaseEntryId: null, quantity: 1, price: 20, buyerShipping: 0 }
-  } as unknown as Parameters<typeof appComputed.saleEditorProfitPreview>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.saleEditorProfitPreview>);
 
   assert.equal(preview?.value, calculateNetFromGross(20, 15, 0, 1));
   assert.equal(preview?.percent, 100);
@@ -1365,7 +1388,7 @@ test("computed saleEditorLineProfitPreviews returns per-line profit entries", ()
       ],
       buyerShipping: 0
     }
-  } as unknown as Parameters<typeof appComputed.saleEditorLineProfitPreviews>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.saleEditorLineProfitPreviews>);
 
   assert.equal(linePreviews.length, 2);
   assert.equal(linePreviews[0]?.basisLabel, "Market");
@@ -1396,7 +1419,7 @@ test("computed saleEditorProfitPreview aggregates basis across singles line item
       ],
       buyerShipping: 0
     }
-  } as unknown as Parameters<typeof appComputed.saleEditorProfitPreview>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.saleEditorProfitPreview>);
 
   const expectedValue = calculateNetFromGross(140, 15, 0, 1) - 110;
   assert.ok(Math.abs((preview?.value ?? 0) - expectedValue) < 1e-9);
@@ -1428,7 +1451,7 @@ test("watch.currentTab persists selected tab and triggers portfolio chart init a
       initPortfolioChart() {
         portfolioInitCalled = true;
       }
-    } as unknown as Parameters<typeof appWatch.currentTab>[0];
+    } as any;
 
     appWatch.currentTab.call(context, "portfolio");
 
@@ -1464,7 +1487,7 @@ test("watch.currentTab destroys existing portfolio chart when leaving portfolio"
       initPortfolioChart() {
         // noop
       }
-    } as unknown as Parameters<typeof appWatch.currentTab>[0];
+    } as any;
 
     appWatch.currentTab.call(context, "sales");
 
@@ -1486,7 +1509,7 @@ test("watch.portfolioLotFilterIds persists filter and refreshes chart in portfol
       initPortfolioChart() {
         portfolioInitCalled = true;
       }
-    } as unknown as Parameters<NonNullable<typeof appWatch.portfolioLotFilterIds>["handler"]>[0];
+    } as any;
 
     appWatch.portfolioLotFilterIds.handler.call(context);
 
@@ -1507,7 +1530,7 @@ test("watch.portfolioLotTypeFilter persists type scope and refreshes chart in po
       initPortfolioChart() {
         portfolioInitCalled = true;
       }
-    } as unknown as Parameters<typeof appWatch.portfolioLotTypeFilter>[0];
+    } as any;
 
     appWatch.portfolioLotTypeFilter.call(context, "singles");
 
@@ -1528,7 +1551,7 @@ test("watch.portfolioDashboardPreset persists seller preset and refreshes chart 
       initPortfolioChart() {
         portfolioInitCalled = true;
       }
-    } as unknown as Parameters<typeof appWatch.portfolioDashboardPreset>[0];
+    } as any;
 
     appWatch.portfolioDashboardPreset.call(context, "active");
 
@@ -1545,7 +1568,7 @@ test("watch.purchaseUiMode persists mode and enforces total mode in simple", () 
       onPurchaseConfigChange() {
         purchaseConfigChanged = true;
       }
-    } as unknown as Parameters<typeof appWatch.purchaseUiMode>[0];
+    } as any;
 
     appWatch.purchaseUiMode.call(context, "simple");
 
@@ -1560,7 +1583,7 @@ test("watch.boxesPurchased keeps total purchase anchored in total modes", () => 
     purchaseUiMode: "simple",
     costInputMode: "total",
     boxPriceCost: 25
-  } as unknown as Parameters<typeof appWatch.boxesPurchased>[0];
+  } as any;
 
   appWatch.boxesPurchased.call(simpleContext, 5, 2);
   assert.equal(simpleContext.boxPriceCost, 10);
@@ -1569,7 +1592,7 @@ test("watch.boxesPurchased keeps total purchase anchored in total modes", () => 
     purchaseUiMode: "expert",
     costInputMode: "total",
     boxPriceCost: 40
-  } as unknown as Parameters<typeof appWatch.boxesPurchased>[0];
+  } as any;
 
   appWatch.boxesPurchased.call(expertTotalContext, 8, 4);
   assert.equal(expertTotalContext.boxPriceCost, 20);
@@ -1578,7 +1601,7 @@ test("watch.boxesPurchased keeps total purchase anchored in total modes", () => 
     purchaseUiMode: "expert",
     costInputMode: "perBox",
     boxPriceCost: 40
-  } as unknown as Parameters<typeof appWatch.boxesPurchased>[0];
+  } as any;
 
   appWatch.boxesPurchased.call(perBoxContext, 8, 4);
   assert.equal(perBoxContext.boxPriceCost, 40);
@@ -1590,7 +1613,7 @@ test("watch.boxesPurchased ignores lot hydration so fixed totals stay fixed on l
     purchaseUiMode: "simple",
     costInputMode: "total",
     boxPriceCost: 25
-  } as unknown as Parameters<typeof appWatch.boxesPurchased>[0];
+  } as any;
 
   appWatch.boxesPurchased.call(hydrationContext, 5, 2);
   assert.equal(hydrationContext.boxPriceCost, 25);
@@ -1608,7 +1631,7 @@ test("calculateOptimalPrices is blocked when paywall is locked", () => {
     recalculateDefaultPrices() {
       recalculated = true;
     }
-  } as unknown as Parameters<typeof configMethods.calculateOptimalPrices>[0];
+  } as any;
 
   configMethods.calculateOptimalPrices.call(context);
 
@@ -1628,7 +1651,7 @@ test("calculateOptimalPrices calls recalculate when paywall is unlocked", () => 
     recalculateDefaultPrices(opts?: { closeModal?: boolean }) {
       closeModalValue = opts?.closeModal ?? null;
     }
-  } as unknown as Parameters<typeof configMethods.calculateOptimalPrices>[0]);
+  } as any);
 
   assert.equal(closeModalValue, true);
 });
@@ -1641,7 +1664,7 @@ test("syncLivePricesFromDefaults copies config selling prices into live prices",
     liveSpotPrice: 0,
     liveBoxPriceSell: 0,
     livePackPrice: 0
-  } as unknown as Parameters<typeof configMethods.syncLivePricesFromDefaults>[0];
+  } as any;
 
   configMethods.syncLivePricesFromDefaults.call(context);
 
@@ -1663,7 +1686,7 @@ test("resetLivePrices syncs from config defaults and notifies", () => {
       notifyMessage = message;
       notifyColor = color;
     }
-  } as unknown as Parameters<typeof configMethods.resetLivePrices>[0];
+  } as any;
 
   configMethods.resetLivePrices.call(context);
 
@@ -1694,7 +1717,7 @@ test("recalculateDefaultPrices syncs live prices even when current tab is live",
     autoSaveSetup() {
       saved = true;
     }
-  } as unknown as Parameters<typeof configMethods.recalculateDefaultPrices>[0];
+  } as any;
 
   configMethods.recalculateDefaultPrices.call(context, { closeModal: true });
 
@@ -1717,7 +1740,7 @@ test("updatePurchaseCostInput applies the entered total before recalculating and
       changeCalls += 1;
       assert.equal(this.boxPriceCost, 277.5);
     }
-  } as unknown as Parameters<typeof configMethods.updatePurchaseCostInput>[0] & {
+  } as any & {
     boxPriceCost: number;
     boxesPurchased: number;
   };
@@ -1759,7 +1782,7 @@ test("applyLivePricesToDefaults saves live prices into config defaults", () => {
     notify(message: string) {
       notified = message;
     }
-  } as unknown as Parameters<typeof configMethods.applyLivePricesToDefaults>[0];
+  } as any;
 
   configMethods.applyLivePricesToDefaults.call(context);
 
@@ -1788,7 +1811,7 @@ test("applyLivePricesToDefaults is blocked when no preset is selected", () => {
     notify(message: string) {
       notified = message;
     }
-  } as unknown as Parameters<typeof configMethods.applyLivePricesToDefaults>[0];
+  } as any;
 
   configMethods.applyLivePricesToDefaults.call(context);
 
@@ -1842,7 +1865,7 @@ test("createNewLot in simple mode resets purchase defaults for new lots", () => 
     notify(message: string) {
       notified = message;
     }
-  } as unknown as Parameters<typeof configMethods.createNewLot>[0];
+  } as any;
 
   configMethods.createNewLot.call(context);
 
@@ -1901,7 +1924,7 @@ test("createNewLot in expert mode uses 15 selling tax for the first lot", () => 
     notify() {
       // noop
     }
-  } as unknown as Parameters<typeof configMethods.createNewLot>[0];
+  } as any;
 
   configMethods.createNewLot.call(context);
 
@@ -1931,6 +1954,7 @@ test("createNewLot uses previous lot selling tax for second+ lots", () => {
     purchaseTaxPercent: 0,
     sellingTaxPercent: 9.5,
     sellingShippingPerOrder: 0,
+    ...NO_FEES,
     includeTax: false,
     spotPrice: 18,
     boxPriceSell: 85,
@@ -1975,7 +1999,7 @@ test("createNewLot uses previous lot selling tax for second+ lots", () => {
     notify() {
       // noop
     }
-  } as unknown as Parameters<typeof configMethods.createNewLot>[0];
+  } as any;
 
   configMethods.createNewLot.call(context);
 
@@ -1996,7 +2020,7 @@ test("openRenameLotModal pre-fills selected lot name and opens modal", () => {
     notify() {
       // noop
     }
-  } as unknown as Parameters<typeof configMethods.openRenameLotModal>[0];
+  } as any;
 
   configMethods.openRenameLotModal.call(context);
 
@@ -2030,7 +2054,7 @@ test("renameCurrentLot rejects duplicates and renames unique names", () => {
     notify(message: string) {
       notifiedMessage = message;
     }
-  } as unknown as Parameters<typeof configMethods.renameCurrentLot>[0];
+  } as any;
 
   configMethods.renameCurrentLot.call(context);
   assert.equal(savedCount, 0);
@@ -2064,6 +2088,7 @@ test("loadLot forces target profit to 0 for non-pro users", async () => {
     purchaseTaxPercent: 0,
     sellingTaxPercent: 15,
     sellingShippingPerOrder: 0,
+    ...NO_FEES,
     includeTax: false,
     spotPrice: 20,
     boxPriceSell: 95,
@@ -2092,7 +2117,7 @@ test("loadLot forces target profit to 0 for non-pro users", async () => {
       callback();
       return Promise.resolve();
     }
-  } as unknown as Parameters<typeof configMethods.loadLot>[0];
+  } as any;
 
   configMethods.loadLot.call(context);
   assert.equal(context.targetProfitPercent, 0);
@@ -2114,6 +2139,7 @@ test("loadLot defaults target profit to 15 for pro users when missing", () => {
     purchaseTaxPercent: 0,
     sellingTaxPercent: 15,
     sellingShippingPerOrder: 0,
+    ...NO_FEES,
     includeTax: false,
     spotPrice: 20,
     boxPriceSell: 95,
@@ -2142,7 +2168,7 @@ test("loadLot defaults target profit to 15 for pro users when missing", () => {
       callback();
       return Promise.resolve();
     }
-  } as unknown as Parameters<typeof configMethods.loadLot>[0];
+  } as any;
 
   configMethods.loadLot.call(context);
   assert.equal(context.targetProfitPercent, 15);
@@ -2156,7 +2182,7 @@ test("saveSale is blocked when paywall is locked", () => {
     notify(message: string) {
       notified = message;
     }
-  } as unknown as Parameters<typeof salesMethods.saveSale>[0]);
+  } as any);
 
   assert.equal(notified, "Pro access required to add or update sales");
 });
@@ -2198,7 +2224,7 @@ test("saveSale computes packsCount for pack/box/rtyh and stores buyerShipping", 
       cancelSale() {
         cancelCalled = true;
       }
-    } as unknown as Parameters<typeof salesMethods.saveSale>[0];
+    } as any;
 
     salesMethods.saveSale.call(context);
 
@@ -2229,7 +2255,7 @@ test("saveSale normalizes slash date input to YYYY-MM-DD", () => {
     cancelSale() {
       // noop
     }
-  } as unknown as Parameters<typeof salesMethods.saveSale>[0];
+  } as any;
 
   salesMethods.saveSale.call(context);
 
@@ -2259,7 +2285,7 @@ test("saveSale falls back to local today date when date input is invalid", () =>
     cancelSale() {
       // noop
     }
-  } as unknown as Parameters<typeof salesMethods.saveSale>[0];
+  } as any;
 
   salesMethods.saveSale.call(context);
 
@@ -2290,7 +2316,7 @@ test("saveSale validates negative buyer shipping", () => {
     cancelSale() {
       // noop
     }
-  } as unknown as Parameters<typeof salesMethods.saveSale>[0]);
+  } as any);
 
   assert.equal(sales.length, 0);
   assert.equal(notifiedMessage, "Please enter a valid buyer shipping amount (0 or greater)");
@@ -2304,15 +2330,15 @@ test("formatDate keeps date-only values in local time", () => {
   });
 
   const fromIsoDateOnly = uiBaseMethods.formatDate.call(
-    { preferredLanguage: "en" } as unknown as Parameters<typeof uiBaseMethods.formatDate>[0],
+    { preferredLanguage: "en" } as any,
     "2026-02-21"
   );
   const fromSlashDate = uiBaseMethods.formatDate.call(
-    { preferredLanguage: "en" } as unknown as Parameters<typeof uiBaseMethods.formatDate>[0],
+    { preferredLanguage: "en" } as any,
     "2/21/2026"
   );
   const invalidRaw = uiBaseMethods.formatDate.call(
-    {} as unknown as Parameters<typeof uiBaseMethods.formatDate>[0],
+    {} as any,
     "not-a-date"
   );
 
@@ -2344,7 +2370,7 @@ test("calculateSaleProfit in singles uses linked card cost multiplied by sold qu
     exchangeRate: 1.4,
     totalPacks: 100,
     totalCaseCost: 1000
-  } as unknown as Parameters<typeof uiBaseMethods.calculateSaleProfit>[0], sale);
+  } as any, sale);
 
   const expectedNet = calculateNetFromGross(90, 15, 0, 1);
   assert.equal(profit, expectedNet - 30);
@@ -2370,7 +2396,7 @@ test("calculateSaleProfit in singles without linked card returns net revenue wit
     exchangeRate: 1.4,
     totalPacks: 100,
     totalCaseCost: 1000
-  } as unknown as Parameters<typeof uiBaseMethods.calculateSaleProfit>[0], sale);
+  } as any, sale);
 
   assert.equal(profit, calculateNetFromGross(10, 15, 0, 1));
 });
@@ -2403,7 +2429,7 @@ test("calculateSaleProfit in singles uses summed line-item cost basis", () => {
     exchangeRate: 1.4,
     totalPacks: 100,
     totalCaseCost: 1000
-  } as unknown as Parameters<typeof uiBaseMethods.calculateSaleProfit>[0], sale);
+  } as any, sale);
 
   const expectedNet = calculateNetFromGross(90, 15, 0, 1);
   assert.equal(profit, expectedNet - 50);
@@ -2422,7 +2448,7 @@ test("accessProFeature routes locked users into purchase flow", async () => {
     openPortfolioReportModal: () => {
       throw new Error("report should stay locked");
     }
-  } as unknown as Parameters<typeof uiBaseMethods.accessProFeature>[0];
+  } as any;
 
   await uiBaseMethods.accessProFeature.call(context, "autoCalculate");
   await uiBaseMethods.accessProFeature.call(context, "portfolioReport");
@@ -2447,7 +2473,7 @@ test("accessProFeature opens unlocked features directly", async () => {
     openPortfolioReportModal: () => {
       reportOpened += 1;
     }
-  } as unknown as Parameters<typeof uiBaseMethods.accessProFeature>[0];
+  } as any;
 
   await uiBaseMethods.accessProFeature.call(context, "autoCalculate");
   await uiBaseMethods.accessProFeature.call(context, "portfolioReport");
@@ -2470,7 +2496,7 @@ test("requestPurchaseUiMode upgrades locked expert requests and applies allowed 
         requestedUpgrade += 1;
       }
     }
-  } as unknown as Parameters<typeof uiBaseMethods.requestPurchaseUiMode>[0];
+  } as any;
 
   await uiBaseMethods.requestPurchaseUiMode.call(lockedContext, "expert");
   assert.equal(requestedUpgrade, 1);
@@ -2482,7 +2508,7 @@ test("requestPurchaseUiMode upgrades locked expert requests and applies allowed 
     accessProFeature: async () => {
       throw new Error("should not request upgrade");
     }
-  } as unknown as Parameters<typeof uiBaseMethods.requestPurchaseUiMode>[0];
+  } as any;
 
   await uiBaseMethods.requestPurchaseUiMode.call(unlockedContext, "expert");
   assert.equal(unlockedContext.purchaseUiMode, "expert");
@@ -2522,7 +2548,7 @@ test("saveSale updates existing sale in edit mode", () => {
     cancelSale() {
       // noop
     }
-  } as unknown as Parameters<typeof salesMethods.saveSale>[0];
+  } as any;
 
   salesMethods.saveSale.call(context);
 
@@ -2559,7 +2585,7 @@ test("openAddSaleModal defaults sale price from live values with config fallback
       buyerShipping: 0,
       date: "2026-01-01"
     }
-  } as unknown as Parameters<typeof salesMethods.openAddSaleModal>[0];
+  } as any;
 
   salesMethods.openAddSaleModal.call(context, "pack");
   assert.equal(context.showAddSaleModal, true);
@@ -2594,7 +2620,7 @@ test("loadSalesFromStorage restores current sales key without probing old sales 
       sales: [],
       getSalesStorageKey: configMethods.getSalesStorageKey,
       loadSalesForLotId: configMethods.loadSalesForLotId
-    } as unknown as Parameters<typeof salesMethods.loadSalesFromStorage>[0];
+    } as any;
 
     salesMethods.loadSalesFromStorage.call(context);
 
@@ -2622,7 +2648,7 @@ test("onNewSaleTypeChange updates default price for new sales only", () => {
         buyerShipping: 0,
         date: "2026-02-13"
       }
-    }) as unknown as Parameters<typeof salesMethods.onNewSaleTypeChange>[0];
+    }) as any;
 
   const createMode = createContext(null);
   salesMethods.onNewSaleTypeChange.call(createMode, "box");
@@ -2650,7 +2676,7 @@ test("required price computed values handle reached/empty/remaining cases", () =
     remainingPacksCount: 10,
     sellingTaxPercent: 15,
     sellingShippingPerOrder: 5
-  } as unknown as Parameters<typeof appComputed.requiredPackPriceFromNow>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.requiredPackPriceFromNow>);
   assert.equal(reachedTargetPack, 0);
 
   const noInventoryPack = appComputed.requiredPackPriceFromNow.call({
@@ -2658,7 +2684,7 @@ test("required price computed values handle reached/empty/remaining cases", () =
     remainingPacksCount: 0,
     sellingTaxPercent: 15,
     sellingShippingPerOrder: 5
-  } as unknown as Parameters<typeof appComputed.requiredPackPriceFromNow>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.requiredPackPriceFromNow>);
   assert.equal(noInventoryPack, null);
 
   const noInventoryBox = appComputed.requiredBoxPriceFromNow.call({
@@ -2666,7 +2692,7 @@ test("required price computed values handle reached/empty/remaining cases", () =
     remainingBoxesEquivalent: 0,
     sellingTaxPercent: 15,
     sellingShippingPerOrder: 5
-  } as unknown as Parameters<typeof appComputed.requiredBoxPriceFromNow>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.requiredBoxPriceFromNow>);
   assert.equal(noInventoryBox, null);
 
   const noInventorySpot = appComputed.requiredSpotPriceFromNow.call({
@@ -2674,7 +2700,7 @@ test("required price computed values handle reached/empty/remaining cases", () =
     remainingSpotsEquivalent: 0,
     sellingTaxPercent: 15,
     sellingShippingPerOrder: 5
-  } as unknown as Parameters<typeof appComputed.requiredSpotPriceFromNow>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.requiredSpotPriceFromNow>);
   assert.equal(noInventorySpot, null);
 
   const remainingRevenue = 720;
@@ -2688,7 +2714,7 @@ test("required price computed values handle reached/empty/remaining cases", () =
     remainingPacksCount: remainingPacks,
     sellingTaxPercent: tax,
     sellingShippingPerOrder: ship
-  } as unknown as Parameters<typeof appComputed.requiredPackPriceFromNow>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.requiredPackPriceFromNow>);
 
   assert.equal(computedPack, expectedPack);
 });
@@ -2698,7 +2724,7 @@ test("remainingSpotsEquivalent uses dynamic totalSpots instead of fixed 80", () 
     remainingPacksCount: 64,
     totalPacks: 128,
     totalSpots: 40
-  } as unknown as Parameters<typeof appComputed.remainingSpotsEquivalent>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.remainingSpotsEquivalent>);
 
   assert.equal(remainingSpots, 20);
 });
@@ -2719,7 +2745,7 @@ test("liveForecastScenarios builds bulk forecasts from current live prices", () 
     netFromGross(grossRevenue: number, _shipping?: number, orderCount?: number) {
       return grossRevenue - (orderCount || 0);
     }
-  } as unknown as Parameters<typeof appComputed.liveForecastScenarios>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.liveForecastScenarios>);
 
   assert.equal(scenarios.length, 3);
   assert.equal(scenarios[0]?.id, "item");
@@ -2756,7 +2782,7 @@ test("liveForecastScenarios builds singles forecast from remaining inventory sug
     netFromGross(grossRevenue: number) {
       return grossRevenue;
     }
-  } as unknown as Parameters<typeof appComputed.liveForecastScenarios>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.liveForecastScenarios>);
 
   assert.equal(scenarios.length, 1);
   assert.equal(scenarios[0]?.id, "singles-suggested");
@@ -2770,7 +2796,7 @@ test("liveForecastScenarios builds singles forecast from remaining inventory sug
 test("bestLiveForecastScenario returns null on empty and highest-profit scenario otherwise", () => {
   const none = appComputed.bestLiveForecastScenario.call({
     liveForecastScenarios: []
-  } as unknown as Parameters<typeof appComputed.bestLiveForecastScenario>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.bestLiveForecastScenario>);
   assert.equal(none, null);
 
   const best = appComputed.bestLiveForecastScenario.call({
@@ -2798,7 +2824,7 @@ test("bestLiveForecastScenario returns null on empty and highest-profit scenario
         forecastMarginPercent: 10
       }
     ]
-  } as unknown as Parameters<typeof appComputed.bestLiveForecastScenario>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.bestLiveForecastScenario>);
   assert.equal(best?.id, "box");
 });
 
@@ -2886,7 +2912,7 @@ test("portfolioForecastScenarios aggregates forecast across selected lots", () =
     liveBoxPriceSell: 100,
     liveSpotPrice: 6,
     hasProAccess: true
-  } as unknown as Parameters<typeof appComputed.portfolioForecastScenarios>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.portfolioForecastScenarios>);
 
   const item = scenarios.find((scenario) => scenario.id === "item");
   const box = scenarios.find((scenario) => scenario.id === "box");
@@ -2929,7 +2955,7 @@ test("bestPortfolioForecastScenario returns highest aggregated forecast", () => 
         forecastMarginPercent: 14
       }
     ]
-  } as unknown as Parameters<typeof appComputed.bestPortfolioForecastScenario>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.bestPortfolioForecastScenario>);
 
   assert.equal(best?.id, "box");
 });
@@ -2974,7 +3000,7 @@ test("averagePortfolioForecastScenario returns mean forecast across selling mode
     portfolioTotals: {
       totalCost: 200
     }
-  } as unknown as Parameters<typeof appComputed.averagePortfolioForecastScenario>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.averagePortfolioForecastScenario>);
 
   assert.equal(average?.modeCount, 3);
   assert.ok(Math.abs((average?.forecastRevenue || 0) - 116.6666667) < 0.0001);
@@ -2998,6 +3024,7 @@ test("allLotPerformance uses in-memory sales for active preset before storage sy
     purchaseTaxPercent: 0,
     sellingTaxPercent: 15,
     sellingShippingPerOrder: 0,
+    ...NO_FEES,
     includeTax: false,
     spotPrice: 25,
     boxPriceSell: 100,
@@ -3027,7 +3054,7 @@ test("allLotPerformance uses in-memory sales for active preset before storage sy
       if (lotId === otherPreset.id) return otherStoredSales;
       return [];
     }
-  } as unknown as Parameters<typeof appComputed.allLotPerformance>[0];
+  } as unknown as ThisParameterType<typeof appComputed.allLotPerformance>;
 
   const rows = appComputed.allLotPerformance.call(context);
   const activeRow = rows.find((row) => row.lotId === activePreset.id);
@@ -3044,7 +3071,7 @@ test("portfolioSelectedLotIds defaults to all lots when filter is empty", () => 
     lots: [{ id: 11 }, { id: 22 }, { id: 33 }],
     portfolioLotFilterIds: [],
     portfolioLotTypeFilter: "both"
-  } as unknown as Parameters<typeof appComputed.portfolioSelectedLotIds>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.portfolioSelectedLotIds>);
 
   assert.deepEqual(ids, [11, 22, 33]);
 });
@@ -3058,7 +3085,7 @@ test("portfolioSelectedLotIds applies type scope without dropping saved lot ids"
     ],
     portfolioLotFilterIds: [11, 22],
     portfolioLotTypeFilter: "singles"
-  } as unknown as Parameters<typeof appComputed.portfolioSelectedLotIds>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.portfolioSelectedLotIds>);
 
   assert.deepEqual(ids, [22]);
 });
@@ -3083,7 +3110,7 @@ test("portfolioSelectedLotIds applies active sellers preset after type and saved
     getAllSalesByLotId(lotIds?: number[] | null) {
       return new Map((lotIds || []).map((lotId) => [lotId, salesByLotId.get(lotId) || []]));
     }
-  } as unknown as Parameters<typeof appComputed.portfolioSelectedLotIds>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.portfolioSelectedLotIds>);
 
   assert.deepEqual(ids, [22]);
 });
@@ -3169,7 +3196,7 @@ test("mounted restores persisted portfolio lot type filter", () => {
       registerServiceWorker() {
         // noop
       }
-    } as unknown as Parameters<typeof appLifecycle.mounted>[0];
+    } as any;
 
     appLifecycle.mounted.call(context);
 
@@ -3230,7 +3257,7 @@ test("mounted restores persisted portfolio dashboard preset", () => {
       registerServiceWorker() {
         // noop
       }
-    } as unknown as Parameters<typeof appLifecycle.mounted>[0];
+    } as any;
 
     appLifecycle.mounted.call(context);
 
@@ -3250,7 +3277,7 @@ test("toggleTheme persists the selected theme", () => {
           }
         }
       }
-    } as unknown as Parameters<typeof uiBaseMethods.toggleTheme>[0];
+    } as any;
 
     uiBaseMethods.toggleTheme.call(context);
 
@@ -3319,7 +3346,7 @@ test("mounted restores persisted theme", () => {
       registerServiceWorker() {
         // noop
       }
-    } as unknown as Parameters<typeof appLifecycle.mounted>[0];
+    } as any;
 
     appLifecycle.mounted.call(context);
 
@@ -3343,6 +3370,7 @@ test("allLotPerformance applies portfolio preset filter", () => {
     purchaseTaxPercent: 0,
     sellingTaxPercent: 15,
     sellingShippingPerOrder: 0,
+    ...NO_FEES,
     includeTax: false,
     spotPrice: 25,
     boxPriceSell: 100,
@@ -3359,7 +3387,7 @@ test("allLotPerformance applies portfolio preset filter", () => {
     loadSalesForLotId(): Sale[] {
       return [];
     }
-  } as unknown as Parameters<typeof appComputed.allLotPerformance>[0];
+  } as unknown as ThisParameterType<typeof appComputed.allLotPerformance>;
 
   const rows = appComputed.allLotPerformance.call(context);
   assert.equal(rows.length, 1);

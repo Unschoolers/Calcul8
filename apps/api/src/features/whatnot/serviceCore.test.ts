@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { beforeEach, test, vi } from "vitest";
+import type { SaleDocument } from "../../types";
 
 const {
   getSaleDocumentMock,
@@ -161,7 +162,7 @@ test("buildWhatnotManualDuplicateCandidate rejects cross-seller mismatches", () 
 });
 
 test("buildWhatnotManualDuplicateCandidate matches memo buyers and rejects collapsed box rows", () => {
-  const sales = [
+  const sales: SaleDocument[] = [
     {
       id: "sale:77:12",
       docType: "sale",

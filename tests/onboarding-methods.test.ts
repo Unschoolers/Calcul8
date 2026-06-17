@@ -51,9 +51,9 @@ function createContext(overrides: Record<string, unknown> = {}) {
       return Promise.resolve();
     }),
     ...overrides
-  } as Record<string, unknown>;
+  } as unknown as Record<string, unknown>;
 
-  for (const [name, method] of Object.entries(uiOnboardingMethods as Record<string, unknown>)) {
+  for (const [name, method] of Object.entries(uiOnboardingMethods as unknown as Record<string, unknown>)) {
     if (typeof method === "function") {
       ctx[name] = (method as (...args: unknown[]) => unknown).bind(ctx);
     }

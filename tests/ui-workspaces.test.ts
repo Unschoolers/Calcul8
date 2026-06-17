@@ -119,9 +119,9 @@ function createContext() {
     refreshWorkspaces: vi.fn(),
     switchToWorkspace: vi.fn(async () => undefined),
     openWorkspaceMembersModal: vi.fn(async () => undefined)
-  } as Record<string, unknown>;
+  } as Record<string, any>;
 
-  for (const [name, method] of Object.entries(uiWorkspaceMethods as Record<string, unknown>)) {
+  for (const [name, method] of Object.entries(uiWorkspaceMethods as Record<string, any>)) {
     if (typeof method === "function") {
       ctx[name] = (method as (...args: unknown[]) => unknown).bind(ctx);
     }

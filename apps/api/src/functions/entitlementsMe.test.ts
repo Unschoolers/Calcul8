@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { beforeEach, test, vi } from "vitest";
-import type { EntitlementDocument, PlayPurchaseDocument } from "../../types";
+import type { EntitlementDocument, PlayPurchaseDocument } from "../types";
 import { createApiConfig, createHttpRequest, createInvocationContext } from "../test-support/function-test-helpers";
 
 vi.mock("@azure/functions", () => ({
@@ -164,12 +164,14 @@ test("entitlementsMe self-heals pro access when a valid Play purchase exists", a
       id: "play_purchase:hash-1",
       docType: "play_purchase",
       userId: "user-1",
-      provider: "google_play",
-      productId: "pro_access",
       purchaseTokenHash: "hash-1",
-      purchaseState: "PURCHASED",
-      acknowledged: true,
-      createdAt: "2026-03-17T00:00:00.000Z",
+      packageName: "io.whatfees",
+      productId: "pro_access",
+      orderId: "order-1",
+      purchaseState: 1,
+      acknowledgementState: 1,
+      consumptionState: 0,
+      purchaseTimeMillis: "1781716800000",
       updatedAt: "2026-03-17T00:00:00.000Z"
     }
   ];

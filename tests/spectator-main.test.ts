@@ -310,7 +310,7 @@ test("spectator-main refreshes the current view on realtime refresh messages and
   assert.equal(spectatorAppSetStateMock.mock.calls.at(-1)?.[0]?.snapshot.gameName, "Refreshed Game");
 
   socket.emit("error");
-  assert.equal((window.setTimeout as ReturnType<typeof vi.fn>).mock.calls.length, 1);
+  assert.equal((window.setTimeout as unknown as ReturnType<typeof vi.fn>).mock.calls.length, 1);
 });
 
 test("spectator-main keeps last snapshot visible when background refresh fails", async () => {

@@ -4,7 +4,7 @@ import { test, vi } from "vitest";
 import { singlesConfigWindowDefinition } from "../src/components/windows/singles/SinglesConfigWindow.definition.ts";
 import type { SinglesPurchaseEntry } from "../src/types/app.ts";
 
-type AnyContext = Record<string, unknown> & {
+type AnyContext = Record<string, any> & {
   notify: ReturnType<typeof vi.fn>;
   askConfirmation: ReturnType<typeof vi.fn>;
   onSinglesPurchaseRowsChange: ReturnType<typeof vi.fn>;
@@ -722,7 +722,8 @@ test("fetchSinglesItemSuggestions uses lot catalog source as cards search game",
     await context.fetchSinglesItemSuggestions("rukia");
 
     assert.equal(fetchMock.mock.calls.length, 1);
-    const requestUrl = String(fetchMock.mock.calls[0]?.[0] || "");
+    const fetchCalls = fetchMock.mock.calls as unknown as Array<[RequestInfo | URL]>;
+    const requestUrl = String(fetchCalls[0]?.[0] || "");
     assert.equal(requestUrl.includes("game=pokemon"), true);
     assert.equal(requestUrl.includes("q=rukia"), true);
     assert.equal(requestUrl.includes("limit=25"), true);
@@ -774,7 +775,8 @@ test("fetchSinglesItemSuggestions filters multi-field queries across name, numbe
 
     await context.fetchSinglesItemSuggestions("rei r*");
 
-    const requestUrl = new URL(String(fetchMock.mock.calls[0]?.[0] || ""));
+    const fetchCalls = fetchMock.mock.calls as unknown as Array<[RequestInfo | URL]>;
+    const requestUrl = new URL(String(fetchCalls[0]?.[0] || ""));
     assert.equal(requestUrl.searchParams.get("q"), "rei r*");
     assert.equal((context.singlesItemSuggestions as Array<{ rarity: string }>).length, 1);
     assert.equal((context.singlesItemSuggestions as Array<{ rarity: string }>)[0]?.rarity, "R★");
@@ -816,7 +818,8 @@ test("fetchSinglesItemSuggestions supports rarity-only wildcard queries like r*"
 
     await context.fetchSinglesItemSuggestions("r*");
 
-    const requestUrl = new URL(String(fetchMock.mock.calls[0]?.[0] || ""));
+    const fetchCalls = fetchMock.mock.calls as unknown as Array<[RequestInfo | URL]>;
+    const requestUrl = new URL(String(fetchCalls[0]?.[0] || ""));
     assert.equal(requestUrl.searchParams.get("q"), "r*");
     assert.equal((context.singlesItemSuggestions as Array<{ rarity: string }>).length, 1);
     assert.equal((context.singlesItemSuggestions as Array<{ rarity: string }>)[0]?.rarity, "R★");
@@ -911,7 +914,8 @@ test("fetchSinglesItemSuggestions keeps full multi-token rarity queries like sr*
 
     await context.fetchSinglesItemSuggestions("sr** eva");
 
-    const requestUrl = new URL(String(fetchMock.mock.calls[0]?.[0] || ""));
+    const fetchCalls = fetchMock.mock.calls as unknown as Array<[RequestInfo | URL]>;
+    const requestUrl = new URL(String(fetchCalls[0]?.[0] || ""));
     assert.equal(requestUrl.searchParams.get("q"), "sr** eva");
     assert.equal((context.singlesItemSuggestions as Array<{ name: string }>).length, 1);
     assert.equal(
@@ -984,7 +988,7 @@ test("catalog source computed getters/setters and labels normalize values", () =
     showCatalogSourceSheet: true
   });
 
-  const sourceComputed = (singlesConfigWindowDefinition.computed as Record<string, { get?: (this: AnyContext) => unknown; set?: (this: AnyContext, v: unknown) => void }>).currentSinglesCatalogSource;
+  const sourceComputed = (singlesConfigWindowDefinition.computed as unknown as Record<string, { get?: (this: AnyContext) => unknown; set?: (this: AnyContext, v: unknown) => void }>).currentSinglesCatalogSource;
   assert.equal(sourceComputed.get?.call(context), "pokemon");
   sourceComputed.set?.call(context, "none");
   assert.deepEqual((context.setCurrentSinglesCatalogSource as ReturnType<typeof vi.fn>).mock.calls[0], ["none"]);
@@ -1468,15 +1472,15 @@ test("desktop selection, scroll, icons, watcher, and lifecycle branches execute"
   context.desktopSortDesc = true;
   assert.equal(context.sortIconFor("item"), "mdi-arrow-down");
 
-  const watchHandler = (singlesConfigWindowDefinition.watch as Record<string, (this: AnyContext) => void>).visibleSinglesPurchases;
+  const watchHandler = (singlesConfigWindowDefinition.watch as unknown as Record<string, (this: AnyContext) => void>).visibleSinglesPurchases;
   watchHandler.call(context);
   assert.equal(context.mobileRenderCount, 1);
 
-  (singlesConfigWindowDefinition.mounted as (this: AnyContext) => void).call(context);
+  (singlesConfigWindowDefinition.mounted as unknown as (this: AnyContext) => void).call(context);
   assert.equal((context.loadSinglesInfoNoticeState as ReturnType<typeof vi.fn>).mock.calls.length, 1);
   assert.equal((context.resetMobileRowsPagination as ReturnType<typeof vi.fn>).mock.calls.length, 1);
 
-  (singlesConfigWindowDefinition.beforeUnmount as (this: AnyContext) => void).call(context);
+  (singlesConfigWindowDefinition.beforeUnmount as unknown as (this: AnyContext) => void).call(context);
   assert.equal((context.cancelSinglesItemSearch as ReturnType<typeof vi.fn>).mock.calls.length, 1);
 
   const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});

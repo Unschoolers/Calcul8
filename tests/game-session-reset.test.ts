@@ -7,7 +7,7 @@ import {
 import { createGameWindowState } from "../src/components/windows/game/coordinator/gameControllerState.ts";
 
 test("resetLoadedTierPrizeGameSessionState clears session and spectator state without dropping slots", () => {
-  const state = createGameWindowState() as Record<string, unknown>;
+  const state = createGameWindowState() as Record<string, any>;
   state.wheelController.activeSlots = [{ tier: "t1" }];
   state.wheelSpinCounts = [2];
   state.wheelTotalSpins = 2;
@@ -36,7 +36,7 @@ test("resetLoadedTierPrizeGameSessionState clears session and spectator state wi
 });
 
 test("resetLoadedTierPrizeGameState clears loaded slots plus session state", () => {
-  const state = createGameWindowState() as Record<string, unknown>;
+  const state = createGameWindowState() as Record<string, any>;
   state.wheelController.activeSlots = [{ tier: "t1" }];
   state.wheelController.previewSlots = [{ tier: "t1" }];
   state.wheelController.gridLayoutSeed = "live-seed";

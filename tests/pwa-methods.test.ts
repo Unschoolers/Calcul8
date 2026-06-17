@@ -3,8 +3,15 @@ import { afterEach, beforeEach, test, vi } from "vitest";
 import { pwaMethods } from "../src/app-core/methods/pwa.ts";
 import type { BeforeInstallPromptEvent } from "../src/types/app.ts";
 
-type PwaContext = Record<string, unknown>;
+type PwaContext = Record<string, any>;
 const DISMISSED_APP_UPDATE_SESSION_KEY = "whatfees_dismissed_app_update_worker";
+const pwa = pwaMethods as Record<string, any>;
+
+function callMaybe(callback: unknown): void {
+  if (typeof callback === "function") {
+    callback();
+  }
+}
 
 function createContext(overrides: PwaContext = {}): PwaContext {
   return {
@@ -59,7 +66,7 @@ function createStorageMock(): Storage {
   } as Storage;
 }
 
-function stubWindow(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+function stubWindow(overrides: Record<string, any> = {}): Record<string, any> {
   const baseWindow = {
     addEventListener: vi.fn(),
     removeEventListener: vi.fn(),
@@ -87,7 +94,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-function stubDocument(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+function stubDocument(overrides: Record<string, any> = {}): Record<string, any> {
   const documentMock = {
     readyState: "loading",
     ...overrides
@@ -106,7 +113,7 @@ test("setupPwaUiHandlers wires listeners and handles online/offline/install even
     stopOfflineReconnectScheduler: vi.fn()
   });
 
-  pwaMethods.setupPwaUiHandlers.call(context as never);
+  pwa.setupPwaUiHandlers.call(context as never);
 
   assert.equal((windowMock.addEventListener as ReturnType<typeof vi.fn>).mock.calls.length, 4);
   assert.equal((context.startOfflineReconnectScheduler as ReturnType<typeof vi.fn>).mock.calls.length, 1);
@@ -143,8 +150,8 @@ test("setupPwaUiHandlers is idempotent and does not duplicate global listeners",
   vi.stubGlobal("navigator", { onLine: true });
   const context = createContext();
 
-  pwaMethods.setupPwaUiHandlers.call(context as never);
-  pwaMethods.setupPwaUiHandlers.call(context as never);
+  pwa.setupPwaUiHandlers.call(context as never);
+  pwa.setupPwaUiHandlers.call(context as never);
 
   assert.equal(context.hasPwaUiHandlersBound, true);
   assert.equal((windowMock.addEventListener as ReturnType<typeof vi.fn>).mock.calls.length, 4);
@@ -158,7 +165,7 @@ test("setupPwaUiHandlers does not push cloud sync while signed out", () => {
     isGoogleSignedIn: false
   });
 
-  pwaMethods.setupPwaUiHandlers.call(context as never);
+  pwa.setupPwaUiHandlers.call(context as never);
   (context.onlineListener as () => void)();
 
   assert.equal((context.debugLogEntitlement as ReturnType<typeof vi.fn>).mock.calls.length, 1);
@@ -184,20 +191,20 @@ test("startOfflineReconnectScheduler no-ops when already running and reconnects 
   });
 
   context.offlineReconnectIntervalId = 12;
-  pwaMethods.startOfflineReconnectScheduler.call(context as never);
+  pwa.startOfflineReconnectScheduler.call(context as never);
   assert.equal((windowMock.setInterval as ReturnType<typeof vi.fn>).mock.calls.length, 0);
 
   context.offlineReconnectIntervalId = null;
-  pwaMethods.startOfflineReconnectScheduler.call(context as never);
+  pwa.startOfflineReconnectScheduler.call(context as never);
   assert.equal(context.offlineReconnectIntervalId, 77);
   assert.equal((windowMock.setInterval as ReturnType<typeof vi.fn>).mock.calls.length, 1);
 
-  intervalTick?.();
+  callMaybe(intervalTick);
   assert.equal((context.notify as ReturnType<typeof vi.fn>).mock.calls.length, 0);
   assert.equal((context.stopOfflineReconnectScheduler as ReturnType<typeof vi.fn>).mock.calls.length, 0);
 
   navigatorMock.onLine = true;
-  intervalTick?.();
+  callMaybe(intervalTick);
   assert.equal(context.isOffline, false);
   assert.equal((context.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0], "Connection restored. Syncing…");
   assert.equal((context.stopOfflineReconnectScheduler as ReturnType<typeof vi.fn>).mock.calls.length, 1);
@@ -220,8 +227,8 @@ test("startOfflineReconnectScheduler stops itself when app is no longer offline"
     stopOfflineReconnectScheduler: vi.fn()
   });
 
-  pwaMethods.startOfflineReconnectScheduler.call(context as never);
-  intervalTick?.();
+  pwa.startOfflineReconnectScheduler.call(context as never);
+  callMaybe(intervalTick);
 
   assert.equal((context.stopOfflineReconnectScheduler as ReturnType<typeof vi.fn>).mock.calls.length, 1);
   assert.equal((context.notify as ReturnType<typeof vi.fn>).mock.calls.length, 0);
@@ -233,11 +240,11 @@ test("stopOfflineReconnectScheduler clears interval id", () => {
     offlineReconnectIntervalId: 123
   });
 
-  pwaMethods.stopOfflineReconnectScheduler.call(context as never);
+  pwa.stopOfflineReconnectScheduler.call(context as never);
   assert.equal((windowMock.clearInterval as ReturnType<typeof vi.fn>).mock.calls.length, 1);
   assert.equal(context.offlineReconnectIntervalId, null);
 
-  pwaMethods.stopOfflineReconnectScheduler.call(context as never);
+  pwa.stopOfflineReconnectScheduler.call(context as never);
   assert.equal((windowMock.clearInterval as ReturnType<typeof vi.fn>).mock.calls.length, 1);
 });
 
@@ -250,7 +257,7 @@ test("promptInstall prompts and notifies when accepted", async () => {
     }
   });
 
-  await pwaMethods.promptInstall.call(context as never);
+  await pwa.promptInstall.call(context as never);
 
   assert.equal(prompt.mock.calls.length, 1);
   assert.equal(context.showInstallPrompt, false);
@@ -264,7 +271,7 @@ test("promptInstall exits when no deferred prompt and does not notify dismissed 
     showInstallPrompt: true
   });
 
-  await pwaMethods.promptInstall.call(contextWithoutPrompt as never);
+  await pwa.promptInstall.call(contextWithoutPrompt as never);
   assert.equal(contextWithoutPrompt.showInstallPrompt, true);
   assert.equal((contextWithoutPrompt.notify as ReturnType<typeof vi.fn>).mock.calls.length, 0);
 
@@ -274,7 +281,7 @@ test("promptInstall exits when no deferred prompt and does not notify dismissed 
       userChoice: Promise.resolve({ outcome: "dismissed", platform: "web" })
     }
   });
-  await pwaMethods.promptInstall.call(contextDismissed as never);
+  await pwa.promptInstall.call(contextDismissed as never);
   assert.equal((contextDismissed.notify as ReturnType<typeof vi.fn>).mock.calls.length, 0);
 });
 
@@ -297,14 +304,14 @@ test("unregisterServiceWorkersForDev unregisters registrations and clears caches
     caches: cachesMock
   });
 
-  await pwaMethods.unregisterServiceWorkersForDev.call(createContext() as never);
+  await pwa.unregisterServiceWorkersForDev.call(createContext() as never);
 
   assert.equal(getRegistrations.mock.calls.length, 1);
   assert.equal(registrationA.unregister.mock.calls.length, 1);
   assert.equal(registrationB.unregister.mock.calls.length, 1);
   assert.equal(cachesMock.keys.mock.calls.length, 1);
   assert.deepEqual(
-    cachesMock.delete.mock.calls.map((call) => call[0]),
+    (cachesMock.delete.mock.calls as unknown as Array<[string]>).map((call) => call[0]),
     ["a", "b"]
   );
 });
@@ -314,7 +321,7 @@ test("unregisterServiceWorkersForDev warns on cleanup failure and no-ops without
   vi.stubGlobal("navigator", {});
   stubWindow();
 
-  await pwaMethods.unregisterServiceWorkersForDev.call(createContext() as never);
+  await pwa.unregisterServiceWorkersForDev.call(createContext() as never);
   assert.equal(warnSpy.mock.calls.length, 0);
 
   vi.stubGlobal("navigator", {
@@ -324,7 +331,7 @@ test("unregisterServiceWorkersForDev warns on cleanup failure and no-ops without
       })
     }
   });
-  await pwaMethods.unregisterServiceWorkersForDev.call(createContext() as never);
+  await pwa.unregisterServiceWorkersForDev.call(createContext() as never);
   assert.equal(warnSpy.mock.calls[0]?.[0], "Failed to clean service workers in dev:");
 });
 
@@ -377,7 +384,7 @@ test("registerServiceWorker queues updates and performs a cache-busted navigatio
   });
 
   const context = createContext();
-  pwaMethods.registerServiceWorker.call(context as never);
+  pwa.registerServiceWorker.call(context as never);
   assert.equal((windowMock.addEventListener as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0], "load");
   assert.equal(typeof context.serviceWorkerLoadListener, "function");
 
@@ -388,16 +395,17 @@ test("registerServiceWorker queues updates and performs a cache-busted navigatio
   await Promise.resolve();
 
   assert.equal(register.mock.calls.length, 1);
-  assert.equal(register.mock.calls[0]?.[0], "./sw.js");
-  assert.deepEqual(register.mock.calls[0]?.[1], { updateViaCache: "none" });
+  const registerCalls = register.mock.calls as unknown as Array<[string, RegistrationOptions]>;
+  assert.equal(registerCalls[0]?.[0], "./sw.js");
+  assert.deepEqual(registerCalls[0]?.[1], { updateViaCache: "none" });
   assert.equal(context.showAppUpdatePrompt, true);
   assert.equal(context.appUpdateWorker, waitingWorker);
   assert.equal(waitingWorker.postMessage.mock.calls.length, 0);
 
-  updateFoundListener?.();
+  callMaybe(updateFoundListener);
   assert.equal(installingWorker.addEventListener.mock.calls.length, 1);
   installingWorker.state = "installed";
-  stateChangeListener?.();
+  callMaybe(stateChangeListener);
   assert.equal(context.showAppUpdatePrompt, true);
   assert.equal(context.appUpdateWorker, waitingWorker);
   assert.equal(waitingWorker.postMessage.mock.calls.length, 0);
@@ -406,7 +414,7 @@ test("registerServiceWorker queues updates and performs a cache-busted navigatio
   assert.equal(context.serviceWorkerUpdateIntervalId, 88);
   assert.equal(typeof context.serviceWorkerControllerChangeListener, "function");
 
-  pwaMethods.applyAppUpdate.call(context as never);
+  pwa.applyAppUpdate.call(context as never);
   assert.equal(context.isApplyingAppUpdate, true);
   assert.equal(context.showAppUpdatePrompt, false);
   assert.equal(waitingWorker.postMessage.mock.calls.length, 1);
@@ -437,12 +445,12 @@ test("applyAppUpdate falls back to a direct refresh when controllerchange does n
     showAppUpdatePrompt: true
   });
 
-  pwaMethods.applyAppUpdate.call(context as never);
+  pwa.applyAppUpdate.call(context as never);
 
   assert.equal(waitingWorker.postMessage.mock.calls.length, 1);
   assert.equal((windowMock.setTimeout as ReturnType<typeof vi.fn>).mock.calls.length, 1);
 
-  timeoutCallback?.();
+  callMaybe(timeoutCallback);
 
   assert.equal(windowMock.location.replace.mock.calls.length, 1);
   const refreshUrl = String(windowMock.location.replace.mock.calls[0]?.[0] ?? "");
@@ -464,7 +472,7 @@ test("dismissAppUpdate hides the prompt without applying the worker", () => {
     appUpdateWorker: waitingWorker
   });
 
-  pwaMethods.dismissAppUpdate.call(context as never);
+  pwa.dismissAppUpdate.call(context as never);
 
   assert.equal(context.showAppUpdatePrompt, false);
   assert.equal(waitingWorker.postMessage.mock.calls.length, 0);
@@ -524,12 +532,12 @@ test("registerServiceWorker keeps the same dismissed worker hidden but shows a n
   });
 
   const firstContext = createContext();
-  pwaMethods.registerServiceWorker.call(firstContext as never);
+  pwa.registerServiceWorker.call(firstContext as never);
   const firstLoadListener = firstWindowListeners.get("load") as (() => Promise<void>) | undefined;
   await firstLoadListener?.();
   assert.equal(firstContext.showAppUpdatePrompt, true);
 
-  pwaMethods.dismissAppUpdate.call(firstContext as never);
+  pwa.dismissAppUpdate.call(firstContext as never);
   assert.equal(firstContext.showAppUpdatePrompt, false);
   assert.equal(
     sessionStorage.getItem(DISMISSED_APP_UPDATE_SESSION_KEY),
@@ -545,7 +553,7 @@ test("registerServiceWorker keeps the same dismissed worker hidden but shows a n
   });
 
   const secondContext = createContext();
-  pwaMethods.registerServiceWorker.call(secondContext as never);
+  pwa.registerServiceWorker.call(secondContext as never);
   const secondLoadListener = secondWindowListeners.get("load") as (() => Promise<void>) | undefined;
   await secondLoadListener?.();
   assert.equal(secondContext.showAppUpdatePrompt, false);
@@ -571,15 +579,15 @@ test("registerServiceWorker keeps the same dismissed worker hidden but shows a n
   });
 
   const thirdContext = createContext();
-  pwaMethods.registerServiceWorker.call(thirdContext as never);
+  pwa.registerServiceWorker.call(thirdContext as never);
   const thirdLoadListener = thirdWindowListeners.get("load") as (() => Promise<void>) | undefined;
   await thirdLoadListener?.();
   assert.equal(thirdContext.showAppUpdatePrompt, true);
   assert.equal(thirdContext.appUpdateWorker, newerWaitingWorker);
 
-  updateFoundListener?.();
+  callMaybe(updateFoundListener);
   installingWorker.state = "installed";
-  stateChangeListener?.();
+  callMaybe(stateChangeListener);
 
   assert.equal(thirdContext.showAppUpdatePrompt, true);
   assert.equal(thirdContext.appUpdateWorker, newerWaitingWorker);
@@ -597,7 +605,7 @@ test("registerServiceWorker no-ops without service worker support and warns on r
   });
 
   vi.stubGlobal("navigator", {});
-  pwaMethods.registerServiceWorker.call(createContext() as never);
+  pwa.registerServiceWorker.call(createContext() as never);
   assert.equal((windowMock.addEventListener as ReturnType<typeof vi.fn>).mock.calls.length, 0);
 
   vi.stubGlobal("navigator", {
@@ -609,7 +617,7 @@ test("registerServiceWorker no-ops without service worker support and warns on r
       addEventListener: vi.fn()
     }
   });
-  pwaMethods.registerServiceWorker.call(createContext() as never);
+  pwa.registerServiceWorker.call(createContext() as never);
   const loadListener = windowListeners.get("load") as (() => Promise<void>) | undefined;
   await loadListener?.();
   assert.equal(warnSpy.mock.calls[0]?.[0], "Service worker registration failed:");
@@ -635,8 +643,8 @@ test("registerServiceWorker is idempotent and can register immediately after loa
   });
 
   const context = createContext();
-  pwaMethods.registerServiceWorker.call(context as never);
-  pwaMethods.registerServiceWorker.call(context as never);
+  pwa.registerServiceWorker.call(context as never);
+  pwa.registerServiceWorker.call(context as never);
 
   await Promise.resolve();
   await Promise.resolve();

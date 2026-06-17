@@ -8,12 +8,29 @@ import {
 } from "../src/app-core/computed/portfolio-sales-by-user.ts";
 import { GOOGLE_PROFILE_CACHE_KEY } from "../src/app-core/methods/ui/common/shared.ts";
 import { calculateTotalRevenue } from "../src/domain/calculations.ts";
+import type { Sale } from "../src/types/app.ts";
 
 type MockStorage = {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
   removeItem(key: string): void;
   clear(): void;
+};
+
+const NO_FEES = {
+  feeProfilePreset: "none" as const,
+  platformFeePercent: 0,
+  additionalFeePercent: 0,
+  additionalFeeAppliesTo: "sale_only" as const,
+  fixedFeePerOrder: 0
+};
+
+const WHATNOT_FEES = {
+  feeProfilePreset: "whatnot" as const,
+  platformFeePercent: 8,
+  additionalFeePercent: 2.9,
+  additionalFeeAppliesTo: "sale_plus_shipping" as const,
+  fixedFeePerOrder: 0.3
 };
 
 function withMockedLocalStorage(run: (storage: MockStorage, data: Map<string, string>) => void): void {
@@ -68,11 +85,11 @@ test("computed auth flags and decoded Google profile fields resolve token and ca
   withMockedLocalStorage((_storage, data) => {
     const unsignedVm = { googleAuthEpoch: 0 };
     assert.equal(
-      appComputed.isGoogleSignedIn.call(unsignedVm as unknown as Parameters<typeof appComputed.isGoogleSignedIn>[0]),
+      appComputed.isGoogleSignedIn.call(unsignedVm as unknown as ThisParameterType<typeof appComputed.isGoogleSignedIn>),
       false
     );
     assert.equal(
-      appComputed.googleProfileName.call(unsignedVm as unknown as Parameters<typeof appComputed.googleProfileName>[0]),
+      appComputed.googleProfileName.call(unsignedVm as unknown as ThisParameterType<typeof appComputed.googleProfileName>),
       ""
     );
 
@@ -86,30 +103,30 @@ test("computed auth flags and decoded Google profile fields resolve token and ca
 
     const signedVm = { googleAuthEpoch: 1 };
     assert.equal(
-      appComputed.isGoogleSignedIn.call(signedVm as unknown as Parameters<typeof appComputed.isGoogleSignedIn>[0]),
+      appComputed.isGoogleSignedIn.call(signedVm as unknown as ThisParameterType<typeof appComputed.isGoogleSignedIn>),
       true
     );
     assert.equal(
-      appComputed.googleProfileUserId.call(signedVm as unknown as Parameters<typeof appComputed.googleProfileUserId>[0]),
+      appComputed.googleProfileUserId.call(signedVm as unknown as ThisParameterType<typeof appComputed.googleProfileUserId>),
       "google-user-123"
     );
     assert.equal(
-      appComputed.googleProfileName.call(signedVm as unknown as Parameters<typeof appComputed.googleProfileName>[0]),
+      appComputed.googleProfileName.call(signedVm as unknown as ThisParameterType<typeof appComputed.googleProfileName>),
       "Token Name"
     );
     assert.equal(
-      appComputed.googleProfileEmail.call(signedVm as unknown as Parameters<typeof appComputed.googleProfileEmail>[0]),
+      appComputed.googleProfileEmail.call(signedVm as unknown as ThisParameterType<typeof appComputed.googleProfileEmail>),
       "token@example.com"
     );
     assert.equal(
-      appComputed.googleProfilePicture.call(signedVm as unknown as Parameters<typeof appComputed.googleProfilePicture>[0]),
+      appComputed.googleProfilePicture.call(signedVm as unknown as ThisParameterType<typeof appComputed.googleProfilePicture>),
       "token.png"
     );
 
     setStoredGoogleIdToken("not.a.valid.jwt");
     const cacheFallbackVm = { googleAuthEpoch: 2 };
     assert.equal(
-      appComputed.googleProfileName.call(cacheFallbackVm as unknown as Parameters<typeof appComputed.googleProfileName>[0]),
+      appComputed.googleProfileName.call(cacheFallbackVm as unknown as ThisParameterType<typeof appComputed.googleProfileName>),
       "Cache Name"
     );
   });
@@ -129,15 +146,15 @@ test("computed auth flags allow the dev-only nologin route", () => {
   try {
     const vm = { googleAuthEpoch: 0 };
     assert.equal(
-      appComputed.isGoogleSignedIn.call(vm as unknown as Parameters<typeof appComputed.isGoogleSignedIn>[0]),
+      appComputed.isGoogleSignedIn.call(vm as unknown as ThisParameterType<typeof appComputed.isGoogleSignedIn>),
       true
     );
     assert.equal(
-      appComputed.googleProfileUserId.call(vm as unknown as Parameters<typeof appComputed.googleProfileUserId>[0]),
+      appComputed.googleProfileUserId.call(vm as unknown as ThisParameterType<typeof appComputed.googleProfileUserId>),
       "dev-nologin-user"
     );
     assert.equal(
-      appComputed.googleProfileName.call(vm as unknown as Parameters<typeof appComputed.googleProfileName>[0]),
+      appComputed.googleProfileName.call(vm as unknown as ThisParameterType<typeof appComputed.googleProfileName>),
       "Dev No Login"
     );
   } finally {
@@ -151,21 +168,21 @@ test("computed auth flags allow the dev-only nologin route", () => {
 test("computed theme and lot proxies map expected values", () => {
   const darkValue = appComputed.isDark.call({
     $vuetify: { theme: { global: { name: "unionArenaDark" } } }
-  } as unknown as Parameters<typeof appComputed.isDark>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.isDark>);
   assert.equal(darkValue, true);
 
   const lightValue = appComputed.isDark.call({
     $vuetify: { theme: { global: { name: "unionArenaLight" } } }
-  } as unknown as Parameters<typeof appComputed.isDark>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.isDark>);
   assert.equal(lightValue, false);
 
   const vm = { newLotName: "Initial" };
   assert.equal(
-    appComputed.lotNameDraft.get.call(vm as unknown as Parameters<typeof appComputed.lotNameDraft.get>[0]),
+    appComputed.lotNameDraft.get.call(vm as unknown as ThisParameterType<typeof appComputed.lotNameDraft.get>),
     "Initial"
   );
   appComputed.lotNameDraft.set.call(
-    vm as unknown as Parameters<typeof appComputed.lotNameDraft.set>[0],
+    vm as unknown as ThisParameterType<typeof appComputed.lotNameDraft.set>,
     "Renamed"
   );
   assert.equal(vm.newLotName, "Renamed");
@@ -176,35 +193,35 @@ test("live profit target badge computed values follow the selected lot target", 
     appComputed.liveProfitTargetBadgeVisible.call({
       hasLotSelected: true,
       targetProfitPercent: 15
-    } as unknown as Parameters<typeof appComputed.liveProfitTargetBadgeVisible>[0]),
+    } as unknown as ThisParameterType<typeof appComputed.liveProfitTargetBadgeVisible>),
     true
   );
   assert.equal(
     appComputed.liveProfitTargetBadgeLabel.call({
       hasLotSelected: true,
       targetProfitPercent: 15
-    } as unknown as Parameters<typeof appComputed.liveProfitTargetBadgeLabel>[0]),
+    } as unknown as ThisParameterType<typeof appComputed.liveProfitTargetBadgeLabel>),
     "15%"
   );
   assert.equal(
     appComputed.liveProfitTargetBadgeLabel.call({
       hasLotSelected: true,
       targetProfitPercent: 12.46
-    } as unknown as Parameters<typeof appComputed.liveProfitTargetBadgeLabel>[0]),
+    } as unknown as ThisParameterType<typeof appComputed.liveProfitTargetBadgeLabel>),
     "12.5%"
   );
   assert.equal(
     appComputed.liveProfitTargetBadgeVisible.call({
       hasLotSelected: false,
       targetProfitPercent: 15
-    } as unknown as Parameters<typeof appComputed.liveProfitTargetBadgeVisible>[0]),
+    } as unknown as ThisParameterType<typeof appComputed.liveProfitTargetBadgeVisible>),
     false
   );
   assert.equal(
     appComputed.liveProfitTargetBadgeVisible.call({
       hasLotSelected: true,
       targetProfitPercent: 0
-    } as unknown as Parameters<typeof appComputed.liveProfitTargetBadgeVisible>[0]),
+    } as unknown as ThisParameterType<typeof appComputed.liveProfitTargetBadgeVisible>),
     false
   );
 });
@@ -213,35 +230,35 @@ test("lot type/source and selection helpers normalize data for singles", () => {
   const lotTypeSingles = appComputed.currentLotType.call({
     currentLotId: 2,
     lots: [{ id: 2, lotType: "singles" }]
-  } as unknown as Parameters<typeof appComputed.currentLotType>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.currentLotType>);
   assert.equal(lotTypeSingles, "singles");
 
   const lotTypeDefault = appComputed.currentLotType.call({
     currentLotId: null,
     lots: []
-  } as unknown as Parameters<typeof appComputed.currentLotType>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.currentLotType>);
   assert.equal(lotTypeDefault, "bulk");
 
   const catalogSource = appComputed.currentLotCatalogSource.call({
     currentLotId: 2,
     lots: [{ id: 2, lotType: "singles", singlesCatalogSource: "pkmn" }]
-  } as unknown as Parameters<typeof appComputed.currentLotCatalogSource>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.currentLotCatalogSource>);
   assert.equal(catalogSource, "pokemon");
 
   const catalogFallback = appComputed.currentLotCatalogSource.call({
     currentLotId: 3,
     lots: [{ id: 3, lotType: "singles", singlesCatalogSource: "unknown" }]
-  } as unknown as Parameters<typeof appComputed.currentLotCatalogSource>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.currentLotCatalogSource>);
   assert.equal(catalogFallback, "ua");
 
   const hasLot = appComputed.hasLotSelected.call({
     currentLotId: 1
-  } as unknown as Parameters<typeof appComputed.hasLotSelected>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.hasLotSelected>);
   assert.equal(hasLot, true);
 
   const liveDisabled = appComputed.isLiveTabDisabled.call({
     hasLotSelected: false
-  } as unknown as Parameters<typeof appComputed.isLiveTabDisabled>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.isLiveTabDisabled>);
   assert.equal(liveDisabled, true);
 
   const ids = appComputed.effectiveLiveSinglesIds.call({
@@ -249,7 +266,7 @@ test("lot type/source and selection helpers normalize data for singles", () => {
     liveSinglesManualIds: [1, 1, 0, 2, 999],
     liveSinglesExternalIds: [2, 3, -1],
     singlesPurchases: [{ id: 1 }, { id: 2 }, { id: 3 }]
-  } as unknown as Parameters<typeof appComputed.effectiveLiveSinglesIds>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.effectiveLiveSinglesIds>);
   assert.deepEqual(ids, [1, 2, 3]);
 
   const entries = appComputed.effectiveLiveSinglesEntries.call({
@@ -260,7 +277,7 @@ test("lot type/source and selection helpers normalize data for singles", () => {
       { id: 2, item: "Two" },
       { id: 3, item: "Three" }
     ]
-  } as unknown as Parameters<typeof appComputed.effectiveLiveSinglesEntries>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.effectiveLiveSinglesEntries>);
   assert.deepEqual(entries.map((entry) => entry.id), [3, 2, 1]);
 });
 
@@ -272,7 +289,7 @@ test("list and portfolio filter item computed values mirror lots", () => {
 
   const lotItems = appComputed.lotItems.call({
     lots
-  } as unknown as Parameters<typeof appComputed.lotItems>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.lotItems>);
   assert.equal(lotItems.length, 2);
   assert.deepEqual(lotItems[0], {
     title: "A",
@@ -302,7 +319,7 @@ test("list and portfolio filter item computed values mirror lots", () => {
       { title: "Kagurabachi", value: 33, subtitle: "Grouped | 2026-03-03", lotType: "bulk", isComplete: false, symbolIcon: "mdi-cube-outline", completionIcon: null, groupLabel: null }
     ],
     lotSearchQuery: "a"
-  } as unknown as Parameters<typeof appComputed.visibleLotItems>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.visibleLotItems>);
   assert.deepEqual(visibleLotItems.map((item) => [item.title, item.groupLabel]), [
     ["Alpha bulk", "Grouped inventory"],
     ["Kagurabachi", null],
@@ -312,7 +329,7 @@ test("list and portfolio filter item computed values mirror lots", () => {
   const filterItems = appComputed.portfolioLotFilterItems.call({
     lots,
     portfolioLotTypeFilter: "both"
-  } as unknown as Parameters<typeof appComputed.portfolioLotFilterItems>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.portfolioLotFilterItems>);
   assert.deepEqual(filterItems, [
     {
       title: "A",
@@ -339,7 +356,7 @@ test("list and portfolio filter item computed values mirror lots", () => {
   const singlesOnly = appComputed.portfolioLotFilterItems.call({
     lots,
     portfolioLotTypeFilter: "singles"
-  } as unknown as Parameters<typeof appComputed.portfolioLotFilterItems>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.portfolioLotFilterItems>);
   assert.deepEqual(singlesOnly, [
     {
       title: "B",
@@ -377,7 +394,7 @@ test("lot items mark fully sold lots complete by default", () => {
     loadSalesForLotId() {
       return [{ id: 1, type: "pack", quantity: 16, packsCount: 16, price: 10, buyerShipping: 0, date: "2026-03-01" }];
     }
-  } as unknown as Parameters<typeof appComputed.lotItems>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.lotItems>);
 
   assert.equal(lotItems[0]?.isComplete, true);
   assert.equal(lotItems[0]?.completionIcon, "mdi-check-circle");
@@ -407,7 +424,7 @@ test("lot items ignore legacy manual complete flags when sales do not support co
     loadSalesForLotId() {
       return [];
     }
-  } as unknown as Parameters<typeof appComputed.lotItems>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.lotItems>);
 
   assert.equal(lotItems[0]?.isComplete, false);
   assert.equal(lotItems[0]?.completionIcon, null);
@@ -419,7 +436,7 @@ test("single totals and basic sales aggregates are exposed via computed wrappers
       { id: 1, quantity: 2, cost: 5, marketValue: 8 },
       { id: 2, quantity: 3, cost: 1, marketValue: 2 }
     ]
-  } as unknown as Parameters<typeof appComputed.singlesPurchaseTotalQuantity>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.singlesPurchaseTotalQuantity>);
   assert.equal(singlesQuantity, 5);
 
   const singlesMarket = appComputed.singlesPurchaseTotalMarketValue.call({
@@ -427,20 +444,20 @@ test("single totals and basic sales aggregates are exposed via computed wrappers
       { id: 1, quantity: 2, cost: 5, marketValue: 8 },
       { id: 2, quantity: 3, cost: 1, marketValue: 2 }
     ]
-  } as unknown as Parameters<typeof appComputed.singlesPurchaseTotalMarketValue>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.singlesPurchaseTotalMarketValue>);
   assert.equal(singlesMarket, 22);
 
-  const sales = [{ id: 1, type: "pack", quantity: 2, packsCount: 2, price: 40, buyerShipping: 2, date: "2026-03-01" }];
+  const sales: Sale[] = [{ id: 1, type: "pack", quantity: 2, packsCount: 2, price: 40, buyerShipping: 2, date: "2026-03-01" }];
   const revenue = appComputed.totalRevenue.call({
     sales,
     sellingTaxPercent: 15
-  } as unknown as Parameters<typeof appComputed.totalRevenue>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.totalRevenue>);
   assert.equal(revenue, calculateTotalRevenue(sales, 15));
 
   const progress = appComputed.salesProgress.call({
     soldPacksCount: 5,
     totalPacks: 20
-  } as unknown as Parameters<typeof appComputed.salesProgress>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.salesProgress>);
   assert.equal(progress, 25);
 });
 
@@ -452,15 +469,15 @@ test("pricing/cost proxy and conversion computed fields handle simple and expert
     boxesPurchased: 2
   };
   assert.equal(
-    appComputed.purchaseCostInputLabel.call(simpleVm as unknown as Parameters<typeof appComputed.purchaseCostInputLabel>[0]),
+    appComputed.purchaseCostInputLabel.call(simpleVm as unknown as ThisParameterType<typeof appComputed.purchaseCostInputLabel>),
     "Total Purchase"
   );
   assert.equal(
-    appComputed.purchaseCostInputValue.get.call(simpleVm as unknown as Parameters<typeof appComputed.purchaseCostInputValue.get>[0]),
+    appComputed.purchaseCostInputValue.get.call(simpleVm as unknown as ThisParameterType<typeof appComputed.purchaseCostInputValue.get>),
     20
   );
   appComputed.purchaseCostInputValue.set.call(
-    simpleVm as unknown as Parameters<typeof appComputed.purchaseCostInputValue.set>[0],
+    simpleVm as unknown as ThisParameterType<typeof appComputed.purchaseCostInputValue.set>,
     50
   );
   assert.equal(simpleVm.boxPriceCost, 25);
@@ -472,11 +489,11 @@ test("pricing/cost proxy and conversion computed fields handle simple and expert
     boxesPurchased: 3
   };
   assert.equal(
-    appComputed.purchaseCostInputLabel.call(expertVm as unknown as Parameters<typeof appComputed.purchaseCostInputLabel>[0]),
+    appComputed.purchaseCostInputLabel.call(expertVm as unknown as ThisParameterType<typeof appComputed.purchaseCostInputLabel>),
     "Price per Box (No Tax)"
   );
   appComputed.purchaseCostInputValue.set.call(
-    expertVm as unknown as Parameters<typeof appComputed.purchaseCostInputValue.set>[0],
+    expertVm as unknown as ThisParameterType<typeof appComputed.purchaseCostInputValue.set>,
     18
   );
   assert.equal(expertVm.boxPriceCost, 18);
@@ -488,7 +505,7 @@ test("pricing/cost proxy and conversion computed fields handle simple and expert
     boxesPurchased: 0
   };
   appComputed.purchaseCostInputValue.set.call(
-    totalModeVm as unknown as Parameters<typeof appComputed.purchaseCostInputValue.set>[0],
+    totalModeVm as unknown as ThisParameterType<typeof appComputed.purchaseCostInputValue.set>,
     999
   );
   assert.equal(totalModeVm.boxPriceCost, 0);
@@ -498,7 +515,7 @@ test("pricing/cost proxy and conversion computed fields handle simple and expert
     currency: "USD",
     sellingCurrency: "CAD",
     exchangeRate: 1.4
-  } as unknown as Parameters<typeof appComputed.boxPriceCostCAD>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.boxPriceCostCAD>);
   assert.equal(convertedBox, 140);
 
   const convertedShipping = appComputed.purchaseShippingCostCAD.call({
@@ -506,7 +523,7 @@ test("pricing/cost proxy and conversion computed fields handle simple and expert
     currency: "USD",
     sellingCurrency: "CAD",
     exchangeRate: 1.4
-  } as unknown as Parameters<typeof appComputed.purchaseShippingCostCAD>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.purchaseShippingCostCAD>);
   assert.equal(convertedShipping, 14);
 
   const singlesConversion = appComputed.conversionInfo.call({
@@ -521,7 +538,7 @@ test("pricing/cost proxy and conversion computed fields handle simple and expert
     formatCurrency(value: number) {
       return Number(value).toFixed(2);
     }
-  } as unknown as Parameters<typeof appComputed.conversionInfo>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.conversionInfo>);
   assert.ok(singlesConversion.includes("Converted purchase costs to CAD"));
 
   const bulkNoConversion = appComputed.conversionInfo.call({
@@ -535,7 +552,7 @@ test("pricing/cost proxy and conversion computed fields handle simple and expert
     formatCurrency(value: number) {
       return Number(value).toFixed(2);
     }
-  } as unknown as Parameters<typeof appComputed.conversionInfo>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.conversionInfo>);
   assert.equal(bulkNoConversion, "");
 });
 
@@ -543,39 +560,39 @@ test("derived target and remaining quantity computed values return expected numb
   const targetNet = appComputed.targetNetRevenue.call({
     totalCaseCost: 1000,
     targetProfitPercent: 15
-  } as unknown as Parameters<typeof appComputed.targetNetRevenue>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.targetNetRevenue>);
   assert.equal(targetNet, 1150);
 
   const remainingNet = appComputed.remainingNetRevenueForTarget.call({
     targetNetRevenue: 1150,
     totalRevenue: 800
-  } as unknown as Parameters<typeof appComputed.remainingNetRevenueForTarget>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.remainingNetRevenueForTarget>);
   assert.equal(remainingNet, 350);
 
   const remainingPacks = appComputed.remainingPacksCount.call({
     totalPacks: 20,
     soldPacksCount: 4
-  } as unknown as Parameters<typeof appComputed.remainingPacksCount>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.remainingPacksCount>);
   assert.equal(remainingPacks, 16);
 
   const boxesEquivalent = appComputed.remainingBoxesEquivalent.call({
     packsPerBox: 8,
     remainingPacksCount: 16
-  } as unknown as Parameters<typeof appComputed.remainingBoxesEquivalent>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.remainingBoxesEquivalent>);
   assert.equal(boxesEquivalent, 2);
 
   const spotsEquivalent = appComputed.remainingSpotsEquivalent.call({
     remainingPacksCount: 16,
     totalPacks: 20,
     totalSpots: 50
-  } as unknown as Parameters<typeof appComputed.remainingSpotsEquivalent>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.remainingSpotsEquivalent>);
   assert.equal(spotsEquivalent, 40);
 
   const totalSpots = appComputed.totalSpots.call({
     currentLotType: "bulk",
     boxesPurchased: 3,
     spotsPerBox: 6
-  } as unknown as Parameters<typeof appComputed.totalSpots>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.totalSpots>);
   assert.equal(totalSpots, 18);
 });
 
@@ -585,7 +602,7 @@ test("sales status and sorting computed values cover singles and generic cases",
     sales: [],
     totalRevenue: 0,
     totalCaseCost: 25
-  } as unknown as Parameters<typeof appComputed.salesStatus>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.salesStatus>);
   assert.equal(noSalesStatus.title, "No Sales Yet");
 
   const positiveStatus = appComputed.salesStatus.call({
@@ -593,7 +610,7 @@ test("sales status and sorting computed values cover singles and generic cases",
     sales: [{ id: 1, type: "pack", quantity: 1, packsCount: 1, price: 10, date: "2026-03-01" }],
     totalRevenue: 100,
     totalCaseCost: 80
-  } as unknown as Parameters<typeof appComputed.salesStatus>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.salesStatus>);
   assert.equal(positiveStatus.title, "Net Positive");
 
   const genericStatus = appComputed.salesStatus.call({
@@ -601,7 +618,7 @@ test("sales status and sorting computed values cover singles and generic cases",
     totalRevenue: 100,
     totalCaseCost: 80,
     salesProgress: 50
-  } as unknown as Parameters<typeof appComputed.salesStatus>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.salesStatus>);
   assert.ok(typeof genericStatus.title === "string");
 
   const sorted = appComputed.sortedSales.call({
@@ -610,21 +627,21 @@ test("sales status and sorting computed values cover singles and generic cases",
       { id: 2, date: "2026-03-03" },
       { id: 3, date: "2026-03-02" }
     ]
-  } as unknown as Parameters<typeof appComputed.sortedSales>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.sortedSales>);
   assert.deepEqual(sorted.map((sale) => sale.id), [2, 3, 1]);
 
   const sparkline = appComputed.sparklineData.call({
     sales: [],
     totalCaseCost: 0,
     sellingTaxPercent: 15
-  } as unknown as Parameters<typeof appComputed.sparklineData>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.sparklineData>);
   assert.ok(Array.isArray(sparkline));
 
   const gradient = appComputed.sparklineGradient.call({
     sales: [],
     totalCaseCost: 0,
     sellingTaxPercent: 15
-  } as unknown as Parameters<typeof appComputed.sparklineGradient>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.sparklineGradient>);
   assert.ok(Array.isArray(gradient));
 });
 
@@ -656,18 +673,18 @@ test("portfolio summary wrappers return expected totals and presence flags", () 
         lastSaleDate: null
       }
     ]
-  } as unknown as Parameters<typeof appComputed.portfolioTotals>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.portfolioTotals>);
   assert.equal(totals.lotCount, 2);
   assert.equal(totals.totalProfit, 25);
 
   const hasData = appComputed.hasPortfolioData.call({
     allLotPerformance: [{}]
-  } as unknown as Parameters<typeof appComputed.hasPortfolioData>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.hasPortfolioData>);
   assert.equal(hasData, true);
 
   const noData = appComputed.hasPortfolioData.call({
     allLotPerformance: []
-  } as unknown as Parameters<typeof appComputed.hasPortfolioData>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.hasPortfolioData>);
   assert.equal(noData, false);
 });
 
@@ -717,6 +734,7 @@ test("portfolio sales by user chart data groups the last 8 weeks by teammate in 
         purchaseTaxPercent: 0,
         sellingTaxPercent: 0,
         sellingShippingPerOrder: 0,
+        ...WHATNOT_FEES,
         includeTax: true,
         spotPrice: 0,
         boxPriceSell: 0,
@@ -781,6 +799,7 @@ test("portfolio sales by user drilldown rows keep sale details for the clicked w
         purchaseTaxPercent: 0,
         sellingTaxPercent: 0,
         sellingShippingPerOrder: 0,
+        ...WHATNOT_FEES,
         includeTax: true,
         spotPrice: 0,
         boxPriceSell: 0,
@@ -804,6 +823,7 @@ test("portfolio sales by user drilldown rows keep sale details for the clicked w
         purchaseTaxPercent: 0,
         sellingTaxPercent: 0,
         sellingShippingPerOrder: 0,
+        ...WHATNOT_FEES,
         includeTax: true,
         spotPrice: 0,
         boxPriceSell: 0,
@@ -864,6 +884,7 @@ test("portfolio sales by user chart data collapses personal mode into a single Y
         purchaseTaxPercent: 0,
         sellingTaxPercent: 0,
         sellingShippingPerOrder: 0,
+        ...NO_FEES,
         includeTax: true,
         spotPrice: 0,
         boxPriceSell: 0,
@@ -909,7 +930,7 @@ test("lot item computeds do not hydrate sales caches during render", () => {
     ],
     loadSalesForLotId,
     getSalesCacheEntry
-  } as unknown as Parameters<typeof appComputed.lotItems>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.lotItems>);
 
   assert.equal(loadSalesForLotId.mock.calls.length, 0);
   assert.equal(getSalesCacheEntry.mock.calls.length, 1);
@@ -925,7 +946,7 @@ test("lot item computeds do not hydrate sales caches during render", () => {
     portfolioLotTypeFilter: "both",
     loadSalesForLotId,
     getSalesCacheEntry
-  } as unknown as Parameters<typeof appComputed.portfolioLotFilterItems>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.portfolioLotFilterItems>);
 
   assert.equal(loadSalesForLotId.mock.calls.length, 0);
   assert.equal(getSalesCacheEntry.mock.calls.length, 2);
@@ -961,6 +982,7 @@ test("portfolio sales by user chart data uses the shared all-sales accessor when
         purchaseTaxPercent: 0,
         sellingTaxPercent: 0,
         sellingShippingPerOrder: 0,
+        ...NO_FEES,
         includeTax: true,
         spotPrice: 0,
         boxPriceSell: 0,
@@ -981,7 +1003,7 @@ test("portfolio sales by user chart data uses the shared all-sales accessor when
     workspaceMembers: [],
     portfolioSalesByUserMetric: "count",
     preferredLanguage: "en"
-  } as unknown as Parameters<typeof appComputed.portfolioSalesByUserChartData>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.portfolioSalesByUserChartData>);
 
   assert.equal(getAllSalesByLotId.mock.calls.length, 1);
   assert.deepEqual(data.series.map((series) => [series.key, series.label, series.total]), [
@@ -1021,6 +1043,7 @@ test("allLotPerformance uses cached lot sales without hydrating storage during r
         purchaseTaxPercent: 0,
         sellingTaxPercent: 0,
         sellingShippingPerOrder: 0,
+        ...NO_FEES,
         includeTax: true,
         spotPrice: 0,
         boxPriceSell: 0,
@@ -1036,7 +1059,7 @@ test("allLotPerformance uses cached lot sales without hydrating storage during r
     livePackPrice: 0,
     liveBoxPriceSell: 0,
     liveSpotPrice: 0
-  } as unknown as Parameters<typeof appComputed.allLotPerformance>[0]);
+  } as unknown as ThisParameterType<typeof appComputed.allLotPerformance>);
 
   assert.equal(loadSalesForLotId.mock.calls.length, 0);
   assert.equal(getSalesCacheEntry.mock.calls.length, 1);
@@ -1065,6 +1088,7 @@ test("portfolio sales by user profit uses realized per-sale profit only", () => 
         purchaseTaxPercent: 0,
         sellingTaxPercent: 0,
         sellingShippingPerOrder: 0,
+        ...WHATNOT_FEES,
         includeTax: true,
         spotPrice: 0,
         boxPriceSell: 0,
@@ -1117,6 +1141,7 @@ test("portfolio sales by user revenue uses stored net revenue when available", (
         purchaseTaxPercent: 0,
         sellingTaxPercent: 0,
         sellingShippingPerOrder: 0,
+        ...NO_FEES,
         includeTax: true,
         spotPrice: 0,
         boxPriceSell: 0,
@@ -1162,6 +1187,7 @@ test("portfolio sales by user keeps real negative sale profit series instead of 
         purchaseTaxPercent: 0,
         sellingTaxPercent: 0,
         sellingShippingPerOrder: 0,
+        ...NO_FEES,
         includeTax: true,
         spotPrice: 0,
         boxPriceSell: 0,
@@ -1186,15 +1212,3 @@ test("portfolio sales by user keeps real negative sale profit series instead of 
   assert.equal(data.series.length, 1);
   assert.ok((data.series[0]?.total || 0) < 0);
 });
-
-
-
-
-
-
-
-
-
-
-
-

@@ -119,9 +119,9 @@ test("initGoogleAutoLogin keeps pro access from entitlement cache without login 
           autoSaveCalled = true;
         },
         hasProAccess: false
-      } as unknown as Parameters<typeof uiEntitlementMethods.initGoogleAutoLogin>[0];
+      };
 
-      uiEntitlementMethods.initGoogleAutoLogin.call(context);
+      uiEntitlementMethods.initGoogleAutoLogin.call(context as never);
 
       assert.equal(context.hasProAccess, true);
       assert.equal(context.targetProfitPercent, 15);

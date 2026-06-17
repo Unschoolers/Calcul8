@@ -336,18 +336,18 @@ test("apply/reset pricing and storage hooks behave as expected", () => {
   getMethod<(this: PanelCtx) => void>("persistLiveSinglesMode").call(context);
   assert.deepEqual(setItemMock.mock.calls[0], [STORAGE_KEYS.LIVE_SINGLES_MODE, "individual"]);
 
-  const idsWatcher = (LiveSinglesPanel.watch as Record<string, { handler: (this: PanelCtx) => void }>).effectiveLiveSinglesIds.handler;
+  const idsWatcher = (LiveSinglesPanel.watch as unknown as Record<string, { handler: (this: PanelCtx) => void }>).effectiveLiveSinglesIds.handler;
   context.syncLiveSinglesPricingState = vi.fn();
   idsWatcher.call(context);
   assert.equal((context.syncLiveSinglesPricingState as ReturnType<typeof vi.fn>).mock.calls.length, 1);
 
-  const modeWatcher = (LiveSinglesPanel.watch as Record<string, ((this: PanelCtx) => void) | { handler: (this: PanelCtx) => void }>).liveSinglesPricingMode as (this: PanelCtx) => void;
+  const modeWatcher = (LiveSinglesPanel.watch as unknown as Record<string, ((this: PanelCtx) => void) | { handler: (this: PanelCtx) => void }>).liveSinglesPricingMode as (this: PanelCtx) => void;
   context.persistLiveSinglesMode = vi.fn();
   modeWatcher.call(context);
   assert.equal((context.persistLiveSinglesMode as ReturnType<typeof vi.fn>).mock.calls.length, 1);
 
   context.loadLiveSinglesModeFromStorage = vi.fn();
-  (LiveSinglesPanel.mounted as (this: PanelCtx) => void).call(context);
+  (LiveSinglesPanel.mounted as unknown as (this: PanelCtx) => void).call(context);
   assert.equal((context.loadLiveSinglesModeFromStorage as ReturnType<typeof vi.fn>).mock.calls.length, 1);
 });
 

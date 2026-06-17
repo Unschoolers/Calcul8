@@ -4,7 +4,7 @@ import { MIGRATION_REGISTRY, getMigrationById } from "./migrations/registry";
 import { createFirstMigration } from "./migrations/definitions/firstMigration";
 import { createSalesLiveEntityMigration } from "./migrations/definitions/salesLiveEntityMigration";
 import { createMigrationRunner } from "./migrations/runner";
-import type { ApiConfig } from "../types";
+import type { ApiConfig, SyncSnapshotDocument } from "../types";
 import type { MigrationContext, MigrationDefinition, MigrationPlan } from "./migrations/types";
 
 function createConfigStub(): ApiConfig {
@@ -126,9 +126,13 @@ test("sales_live_entity_migration analyze counts scopes, lots, sales, and skippe
             { price: 6 }
           ]
         },
+        wheelConfigs: [],
+        activeWheelConfigId: null,
         version: 1,
         updatedAt: "2026-03-17T00:00:00.000Z"
-      }
+      // This fixture intentionally includes a malformed sale row so the
+      // migration can prove it skips legacy storage data it cannot normalize.
+      } as unknown as SyncSnapshotDocument
       : null,
     async () => {
       throw new Error("sale writer should not be called during analyze");
@@ -190,6 +194,8 @@ test("sales_live_entity_migration apply writes deterministic sales/live docs and
           { id: 100, price: 5 }
         ]
       },
+      wheelConfigs: [],
+      activeWheelConfigId: null,
       version: 1,
       updatedAt: "2026-03-17T00:00:00.000Z"
     }),

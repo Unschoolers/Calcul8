@@ -71,8 +71,8 @@ test("applyCloudSnapshotToLocal restores system pricing defaults before normaliz
     version: 4
   });
   const context = {
-    lots: [],
-    wheelConfigs: [],
+    lots: [] as Array<ReturnType<typeof makeLot>>,
+    wheelConfigs: [] as unknown[],
     activeWheelConfigId: null,
     currentLotId: 1,
     sales: [],
@@ -89,7 +89,7 @@ test("applyCloudSnapshotToLocal restores system pricing defaults before normaliz
     setItem: vi.fn()
   });
 
-  applyCloudSnapshotToLocal(context, snapshot);
+  applyCloudSnapshotToLocal(context as never, snapshot);
 
   assert.equal(context.systemPricingDefaults.sellingCurrency, "USD");
   assert.equal(context.systemPricingDefaults.sellingTaxPercent, 8);

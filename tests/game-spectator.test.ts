@@ -49,7 +49,6 @@ test("buildGameSpectatorSnapshot publishes a viewer-safe bracket snapshot", () =
     }
   };
   const session = createBracketBattleSession({
-    id: "bracket-70-live",
     name: "Saturday Bracket",
     participantCount: 4,
     participants: ["Alex", "Bri", "Cam", "Dev"],
@@ -70,7 +69,7 @@ test("buildGameSpectatorSnapshot publishes a viewer-safe bracket snapshot", () =
     })(),
     () => 2_000
   );
-  const vm = createGameWindowState() as Record<string, unknown>;
+  const vm = createGameWindowState() as Record<string, any>;
   vm.activeWheelConfig = config;
   vm.wheelDisplayConfig = config;
   vm.wheelMode = "live";
@@ -113,7 +112,7 @@ test("buildGameSpectatorSnapshot includes mystery grid cells without wheel-prefi
       sets: []
     }]
   };
-  const vm = createGameWindowState() as Record<string, unknown>;
+  const vm = createGameWindowState() as Record<string, any>;
   const activeSlots = buildSlotsFromConfig(config);
   vm.activeWheelConfig = config;
   vm.wheelMode = "live";
@@ -170,7 +169,7 @@ test("buildGameSpectatorSnapshot prefers displayed grid config over stale active
       sets: []
     }]
   };
-  const vm = createGameWindowState() as Record<string, unknown>;
+  const vm = createGameWindowState() as Record<string, any>;
   const activeSlots = buildSlotsFromConfig(displayedGridConfig);
   vm.activeWheelConfig = activeConfig;
   vm.wheelDisplayConfig = displayedGridConfig;
@@ -206,7 +205,7 @@ test("buildGameSpectatorSnapshot keeps preview grid reveals in spectator mode", 
       sets: []
     }]
   };
-  const vm = createGameWindowState() as Record<string, unknown>;
+  const vm = createGameWindowState() as Record<string, any>;
   const previewSlots = buildSlotsFromConfig(config);
   vm.editingWheelConfig = config;
   vm.activeWheelConfig = config;

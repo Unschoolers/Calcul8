@@ -121,9 +121,9 @@ function createGridVm(mode: "config" | "live", config = createGridConfig()) {
   controller.previewSlots = slots;
   controller.previewSpinCounts = new Array(slots.length).fill(0);
   state.saveWheelSession = vi.fn();
-  state.recordSpinResult = vi.fn((slotIndex: number) => wheelSpinMethods.recordSpinResult.call(state, slotIndex));
-  state.recordPreviewSpinResult = vi.fn((slotIndex: number) => wheelSpinMethods.recordPreviewSpinResult.call(state, slotIndex));
-  state.appendWheelFairnessHistory = vi.fn((entry, options) => wheelSessionMethods.appendWheelFairnessHistory.call(state, entry, options));
+  state.recordSpinResult = vi.fn((slotIndex: number) => wheelSpinMethods.recordSpinResult.call(state as never, slotIndex));
+  state.recordPreviewSpinResult = vi.fn((slotIndex: number) => wheelSpinMethods.recordPreviewSpinResult.call(state as never, slotIndex));
+  state.appendWheelFairnessHistory = vi.fn((entry, options) => wheelSessionMethods.appendWheelFairnessHistory.call(state as never, entry, options));
   state.landOnSlot = vi.fn((slotIndex: number, options) => wheelSpinMethods.landOnSlot.call(state as never, slotIndex, options));
   state.triggerWheelCelebration = vi.fn();
   state.drawWheel = vi.fn();
@@ -426,9 +426,9 @@ test("random mystery grid reveal animates a selector before revealing the chosen
     vm.wheelGridHighlightCellIndex = _targetCellIndex;
   });
 
-  await mysteryGridMethods.revealMysteryGridRandomCell.call(vm, true);
+  await mysteryGridMethods.revealMysteryGridRandomCell.call(vm as never, true);
 
-  assert.deepEqual(vm.animateMysteryGridRandomSelection.mock.calls[0], [99]);
+  assert.deepEqual((vm.animateMysteryGridRandomSelection as ReturnType<typeof vi.fn>).mock.calls[0], [99]);
   assert.equal((vm.wheelPreviewGridReveals as Array<{ cellIndex: number }>)[0]?.cellIndex, 99);
   assert.equal(wheelAudioMock.playMysteryGridRevealDing.mock.calls.length, 1);
   vi.useRealTimers();

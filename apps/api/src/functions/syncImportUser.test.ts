@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test, vi } from "vitest";
-import type { ApiConfig } from "../../types";
+import type { ApiConfig } from "../types";
 
 vi.mock("@azure/functions", () => ({
   app: {

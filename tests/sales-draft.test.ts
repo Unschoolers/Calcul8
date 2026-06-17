@@ -121,6 +121,7 @@ test("computeSinglesSaleLineMaxQuantity releases editing quantity and excludes o
     packsCount: 2,
     singlesPurchaseEntryId: 51,
     price: 20,
+    buyerShipping: 0,
     date: "2026-02-21"
   };
 

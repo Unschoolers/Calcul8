@@ -191,7 +191,7 @@ test("expectedMarginDisplay uses fee settings from tier-bound lots instead of ro
 });
 
 test("GameWindow data defaults the inspector tab to config", () => {
-  const data = GameWindow.data.call({});
+  const data = GameWindow.data.call({}) as Record<string, unknown>;
   assert.equal(data.wheelInspectorTab, "config");
 });
 
@@ -245,7 +245,7 @@ test("wheelDisplaySlots prefers GameWindow local state over parent ctx prop", ()
 });
 
 test("GameWindow data initializes spin state needed by the template", () => {
-  const data = GameWindow.data.call({});
+  const data = GameWindow.data.call({}) as Record<string, unknown>;
   assert.equal(data.wheelSpinning, false);
   assert.equal(data.wheelCurrentAngle, 0);
 });

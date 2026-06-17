@@ -61,11 +61,12 @@ test("syncSinglesPurchaseRows normalizes rows and updates the active singles lot
         condition: " Near Mint ",
         language: " English ",
         cost: -5,
-        currency: "USD",
+        currency: "USD" as const,
         quantity: "3.9" as unknown as number,
         marketValue: "4.25" as unknown as number
       }
     ],
+    onSinglesPurchaseRowsChange: vi.fn(),
     recalculateDefaultPrices: vi.fn()
   };
 

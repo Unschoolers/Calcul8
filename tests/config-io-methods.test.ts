@@ -41,6 +41,8 @@ import { salesMethods } from "../src/app-core/methods/sales.ts";
 import { uiSyncMethods } from "../src/app-core/methods/ui/sync/sync.ts";
 
 type MockStorage = {
+  readonly length: number;
+  key(index: number): string | null;
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
   removeItem(key: string): void;
@@ -77,7 +79,7 @@ function createImportContext(overrides: Record<string, unknown> = {}) {
     adminImportSourceWorkspaceId: "",
     isAdminImportInProgress: false,
     currentLotId: 2,
-    lots: [{ id: 1 }, { id: 2 }],
+    lots: [{ id: 1 }, { id: 2 }] as Array<{ id: number; name?: string; lotType?: string }>,
     sales: [],
     salesByLotId: new Map(),
     wheelConfigs: [],
@@ -184,7 +186,8 @@ test("copyPortfolioReportTable uses clipboard API when available", async () => {
     await configIoMethods.copyPortfolioReportTable.call(ctx as never);
 
     assert.equal(writeText.mock.calls.length, 1);
-    const tsv = String(writeText.mock.calls[0]?.[0] ?? "");
+    const writeCalls = writeText.mock.calls as unknown as Array<[string]>;
+    const tsv = String(writeCalls[0]?.[0] ?? "");
     assert.equal(tsv.includes("WhatFees Portfolio"), true);
     assert.equal(tsv.includes("Lot A"), true);
     assert.equal(tsv.includes("Realized Status"), true);
@@ -236,7 +239,8 @@ test("savePortfolioReportTable downloads the same TSV payload", () => {
     assert.equal(createObjectURL.mock.calls.length, 1);
     assert.equal(click.mock.calls.length, 1);
     assert.equal(revokeObjectURL.mock.calls.length, 1);
-    const blobInstance = createObjectURL.mock.calls[0]?.[0] as { parts?: unknown[] };
+    const createObjectUrlCalls = createObjectURL.mock.calls as unknown as Array<[{ parts?: unknown[] }]>;
+    const blobInstance = createObjectUrlCalls[0]?.[0];
     const tsv = String(blobInstance?.parts?.[0] ?? "");
     assert.equal(tsv.includes("WhatFees Portfolio"), true);
     assert.equal(tsv.includes("Lot A"), true);

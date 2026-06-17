@@ -63,6 +63,7 @@ function createConfig(): ApiConfig {
     cosmosEndpoint: "https://example.documents.azure.com:443/",
     cosmosKey: "key",
     cosmosDatabaseId: "whatfees",
+    migrationCosmosDatabaseId: "whatfees",
     entitlementsContainerId: "entitlements",
     syncContainerId: "sync_data",
     migrationRunsContainerId: "migration_runs"
@@ -96,10 +97,9 @@ test("getEntitlement returns the entitlement document or null when missing", asy
   const entitlements = createEntitlementsContainer();
   const entitlement: EntitlementDocument = {
     id: "entitlement:user-1",
-    docType: "entitlement",
     userId: "user-1",
     hasProAccess: true,
-    source: "play",
+    purchaseSource: "play",
     updatedAt: "2026-03-18T00:00:00.000Z"
   };
   entitlements.item
@@ -129,10 +129,9 @@ test("upsertEntitlement writes the canonical entitlement id and rejects empty re
 
   const result = await upsertEntitlement(createConfig(), {
     id: "stale-id",
-    docType: "entitlement",
     userId: "user-1",
     hasProAccess: false,
-    source: "stripe",
+    purchaseSource: "stripe",
     updatedAt: "2026-03-18T00:00:00.000Z"
   });
 
@@ -141,10 +140,9 @@ test("upsertEntitlement writes the canonical entitlement id and rejects empty re
   await assert.rejects(
     () => upsertEntitlement(createConfig(), {
       id: "stale-id",
-      docType: "entitlement",
       userId: "user-2",
       hasProAccess: true,
-      source: "play",
+      purchaseSource: "play",
       updatedAt: "2026-03-18T00:00:00.000Z"
     }),
     /Failed to upsert entitlement\./

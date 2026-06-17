@@ -43,6 +43,7 @@ function createConfig(): ApiConfig {
     cosmosEndpoint: "https://example.documents.azure.com:443/",
     cosmosKey: "key",
     cosmosDatabaseId: "whatfees",
+    migrationCosmosDatabaseId: "whatfees",
     entitlementsContainerId: "entitlements",
     syncContainerId: "sync_data",
     migrationRunsContainerId: "migration_runs"
@@ -127,7 +128,7 @@ beforeEach(() => {
 test("updateGamePublicSession replaces the stored session with If-Match", async () => {
   const sessions = createSessionsContainer();
   const existing = createSessionDocument({}, { updatedAt: 100 });
-  const replace = vi.fn(async (document: GamePublicSessionDocument) => ({ resource: document }));
+  const replace = vi.fn(async (document: GamePublicSessionDocument, _options?: unknown) => ({ resource: document }));
   sessions.item.mockReturnValue({
     read: vi.fn().mockResolvedValue({ resource: existing }),
     replace

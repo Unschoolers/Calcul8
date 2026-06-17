@@ -48,6 +48,11 @@ function makeLot(overrides: Partial<Lot> = {}): Lot {
     purchaseTaxPercent: 0,
     sellingTaxPercent: 15,
     sellingShippingPerOrder: 3,
+    feeProfilePreset: "none",
+    platformFeePercent: 0,
+    additionalFeePercent: 0,
+    additionalFeeAppliesTo: "sale_only",
+    fixedFeePerOrder: 0,
     includeTax: true,
     spotPrice: 0,
     boxPriceSell: 0,
@@ -143,7 +148,8 @@ test("buildPortfolioBreakdownChartConfig uses right-side legend for compact mode
   assert.equal(config?.options?.maintainAspectRatio, true);
   assert.equal(config?.options?.aspectRatio, 2);
   assert.equal(config?.data.labels?.[0], "Lot 1");
-  assert.equal(config?.data.datasets[0]?.backgroundColor?.[0], "#D7A300");
+  const backgroundColor = config?.data.datasets[0]?.backgroundColor as readonly string[] | undefined;
+  assert.equal(backgroundColor?.[0], "#D7A300");
   assert.equal(config?.data.datasets[0]?.borderColor, "rgba(247, 181, 0, 0.9)");
 });
 
@@ -181,7 +187,8 @@ test("buildPortfolioHistoryChartConfig creates a trend config with target datase
   assert.equal(config?.data.datasets.length, 2);
   assert.equal(config?.data.datasets[0]?.label, "Actual cumulative P/L");
   assert.equal(config?.data.datasets[1]?.label, "Target P/L");
-  assert.equal(typeof config?.data.datasets[0]?.segment?.borderColor, "function");
+  const segment = config?.data.datasets[0]?.segment as { borderColor?: unknown } | undefined;
+  assert.equal(typeof segment?.borderColor, "function");
   assert.ok(Array.isArray(config?.data.datasets[0]?.pointBackgroundColor));
 });
 
@@ -262,8 +269,9 @@ test("buildPortfolioHistoryChartConfig uses compact tick settings for sell-throu
   assert.equal(config?.options?.scales?.x?.offset, true);
   assert.equal(config?.options?.scales?.x?.ticks?.callback, undefined);
   assert.equal(config?.options?.scales?.x?.ticks?.maxTicksLimit, 4);
-  assert.equal(config?.options?.layout?.padding?.left, 4);
-  assert.equal(config?.options?.layout?.padding?.right, 4);
+  const padding = config?.options?.layout?.padding as { left?: number; right?: number } | undefined;
+  assert.equal(padding?.left, 4);
+  assert.equal(padding?.right, 4);
   assert.equal(config?.data.datasets[0]?.clip, 8);
   assert.equal(config?.data.datasets[0]?.categoryPercentage, 0.96);
   assert.equal(config?.data.datasets[0]?.barPercentage, 0.92);

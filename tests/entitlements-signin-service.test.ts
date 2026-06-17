@@ -98,7 +98,7 @@ function withMockedLocalStorage(run: (data: Map<string, string>) => Promise<void
   }
 }
 
-function stubWindow(googleIdApi?: { initialize: (...args: unknown[]) => void; prompt: () => void; renderButton?: (...args: unknown[]) => void }): void {
+function stubWindow(googleIdApi?: { initialize: (config: { callback: (response: { credential?: string }) => void }) => void; prompt: () => void; renderButton?: (...args: unknown[]) => void }): void {
   vi.stubGlobal("window", {
     location: { origin: "https://localhost" },
     setTimeout: vi.fn((callback: () => void) => {
@@ -249,7 +249,9 @@ test("initGoogleAutoLoginFlow starts retry flow and credential callback persists
 
 test("promptGoogleSignInFlow initializes, prompts, and handles credential callback", async () => {
   await withMockedLocalStorage(async (data) => {
-    let callback: ((response: { credential?: string }) => void) | null = null;
+    let callback: (response: { credential?: string }) => void = () => {
+      throw new Error("Credential callback was not initialized.");
+    };
     const initialize = vi.fn((config: { callback: (response: { credential?: string }) => void }) => {
       callback = config.callback;
     });
@@ -260,7 +262,7 @@ test("promptGoogleSignInFlow initializes, prompts, and handles credential callba
     data.set("whatfees_google_auto_signin_disabled_v1", "1");
 
     promptGoogleSignInFlow(context as never);
-    callback?.({ credential: "  signed-token  " });
+    callback({ credential: "  signed-token  " });
 
     assert.equal(initialize.mock.calls.length, 1);
     assert.equal(requestGoogleIdentityPromptMock.mock.calls.length, 1);
@@ -276,7 +278,9 @@ test("promptGoogleSignInFlow initializes, prompts, and handles credential callba
 
 test("renderGoogleSignInButtonFlow initializes GIS button and handles credential callback", async () => {
   await withMockedLocalStorage(async (data) => {
-    let callback: ((response: { credential?: string }) => void) | null = null;
+    let callback: (response: { credential?: string }) => void = () => {
+      throw new Error("Credential callback was not initialized.");
+    };
     const initialize = vi.fn((config: { callback: (response: { credential?: string }) => void }) => {
       callback = config.callback;
     });
@@ -288,7 +292,7 @@ test("renderGoogleSignInButtonFlow initializes GIS button and handles credential
     });
 
     renderGoogleSignInButtonFlow(context as never);
-    callback?.({ credential: "  rendered-token  " });
+    callback({ credential: "  rendered-token  " });
 
     assert.equal(initialize.mock.calls.length, 1);
     assert.equal(renderButton.mock.calls.length, 1);

@@ -83,6 +83,7 @@ function createConfig(overrides: Partial<ApiConfig> = {}): ApiConfig {
     cosmosEndpoint: "https://example.documents.azure.com:443/",
     cosmosKey: "key",
     cosmosDatabaseId: "whatfees",
+    migrationCosmosDatabaseId: "whatfees",
     entitlementsContainerId: "entitlements",
     syncContainerId: "sync_data",
     migrationRunsContainerId: "migration_runs",

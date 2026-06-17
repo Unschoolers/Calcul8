@@ -117,15 +117,15 @@ class FakeWebSocket {
   }
 }
 
-function createApp(overrides: Record<string, unknown> = {}) {
+function createApp(overrides: Record<string, any> = {}): any {
   return {
     activeScopeType: "workspace",
     activeWorkspaceId: "ws_dcb4d6f021637411",
     currentLotId: 1773766061603,
     currentTab: "live",
     isOffline: false,
-    lots: [{ id: 1773766061603, name: "Lot A" }],
-    sales: [],
+    lots: [{ id: 1773766061603, name: "Lot A" }] as any[],
+    sales: [] as any[],
     liveSpotPrice: 0,
     liveBoxPriceSell: 0,
     livePackPrice: 0,
@@ -133,7 +133,7 @@ function createApp(overrides: Record<string, unknown> = {}) {
     lastSyncedPayloadHash: null,
     workspaceRealtimeStatus: "idle",
     workspacePresenceByUserId: {},
-    wheelConfigs: [],
+    wheelConfigs: [] as any[],
     activeWheelConfigId: null as number | null,
     wheelTotalSpins: 0,
     wheelSpinCounts: [] as number[],
@@ -181,7 +181,7 @@ function createApp(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function createCurrentWorkspaceSignature(app: ReturnType<typeof createApp>): string {
+function createCurrentWorkspaceSignature(app: any): string {
   return getSyncPayloadSignature(createSyncPayload({
     lots: app.lots,
     currentLotId: app.currentLotId,

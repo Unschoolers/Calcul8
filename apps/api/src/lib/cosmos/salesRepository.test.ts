@@ -50,6 +50,7 @@ function createConfig(): ApiConfig {
     cosmosEndpoint: "https://example.documents.azure.com:443/",
     cosmosKey: "key",
     cosmosDatabaseId: "whatfees",
+    migrationCosmosDatabaseId: "whatfees",
     entitlementsContainerId: "entitlements",
     syncContainerId: "sync_data",
     migrationRunsContainerId: "migration_runs"
@@ -60,6 +61,7 @@ function createSyncSnapshotsContainer() {
   return {
     items: {
       create: vi.fn(),
+      query: vi.fn(),
       upsert: vi.fn()
     },
     item: vi.fn()
@@ -173,7 +175,7 @@ test("upsertSaleDocument replaces existing rows with an If-Match ETag", async ()
     deletedAt: null,
     _etag: "etag-sale-3"
   };
-  const replace = vi.fn(async (document: SaleDocument) => ({ resource: document }));
+  const replace = vi.fn(async (document: SaleDocument, _options?: unknown) => ({ resource: document }));
   syncSnapshots.item.mockReturnValue({
     read: vi.fn().mockResolvedValue({ resource: existingSale }),
     replace
@@ -326,7 +328,7 @@ test("deleteSaleDocument soft-deletes with an If-Match ETag", async () => {
     deletedAt: null,
     _etag: "etag-delete-2"
   };
-  const replace = vi.fn(async (document: SaleDocument) => ({ resource: document }));
+  const replace = vi.fn(async (document: SaleDocument, _options?: unknown) => ({ resource: document }));
   syncSnapshots.item.mockReturnValue({
     read: vi.fn().mockResolvedValue({ resource: existingSale }),
     replace
@@ -345,7 +347,10 @@ test("deleteSaleDocument soft-deletes with an If-Match ETag", async () => {
   assert.equal(result?.version, 3);
   assert.equal(syncSnapshots.items.upsert.mock.calls.length, 0);
   assert.equal(replace.mock.calls.length, 1);
-  assert.equal(replace.mock.calls[0]?.[1]?.accessCondition?.condition, "etag-delete-2");
+  const replaceOptions = replace.mock.calls[0]?.[1] as {
+    accessCondition?: { condition?: string };
+  } | undefined;
+  assert.equal(replaceOptions?.accessCondition?.condition, "etag-delete-2");
 });
 
 test("listSalesForLot filters invalid docs and sorts by date then sale id", async () => {
@@ -567,7 +572,7 @@ test("upsertLotLivePricing creates new rows and replaces existing rows with Cosm
     mutationId: "m-1",
     _etag: "etag-live-4"
   };
-  const replace = vi.fn(async (document) => ({ resource: document }));
+  const replace = vi.fn(async (document, _options?: unknown) => ({ resource: document }));
   syncSnapshots.item
     .mockReturnValueOnce({
       read: vi.fn().mockRejectedValue({ statusCode: 404 })
@@ -607,7 +612,10 @@ test("upsertLotLivePricing creates new rows and replaces existing rows with Cosm
 
   assert.equal(updated.version, 5);
   assert.equal(replace.mock.calls.length, 1);
-  assert.equal(replace.mock.calls[0]?.[1]?.accessCondition?.condition, "etag-live-4");
+  const replaceOptions = replace.mock.calls[0]?.[1] as {
+    accessCondition?: { condition?: string };
+  } | undefined;
+  assert.equal(replaceOptions?.accessCondition?.condition, "etag-live-4");
 
   replace.mockRejectedValueOnce({ statusCode: 412 });
   await assert.rejects(

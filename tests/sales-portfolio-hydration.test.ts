@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { beforeEach, test, vi } from "vitest";
 import { hydrateMissingPortfolioSales } from "../src/app-core/methods/sales-portfolio-hydration.ts";
 
-function createContext(overrides: Record<string, unknown> = {}) {
+function createContext(overrides: Record<string, any> = {}) {
   const context = {
     currentTab: "portfolio",
     isOffline: false,
@@ -89,7 +89,7 @@ test("hydrateMissingPortfolioSales fetches only missing non-current lots and ref
     getSalesStorageKey: (lotId: number) => `sales_${lotId}`
   });
 
-  const localStorageMock = globalThis.localStorage as {
+  const localStorageMock = globalThis.localStorage as unknown as {
     getItem: ReturnType<typeof vi.fn>;
   };
   localStorageMock.getItem.mockImplementation((key: string) => {
@@ -105,7 +105,7 @@ test("hydrateMissingPortfolioSales fetches only missing non-current lots and ref
     fetchSalesByLot,
     cacheSales,
     refreshCharts
-  });
+  } as any);
 
   await new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -121,7 +121,7 @@ test("hydrateMissingPortfolioSales respects an explicitly loaded empty sales cac
   const context = createContext({
     getSalesStorageKey: (lotId: number) => `sales_${lotId}`
   });
-  const localStorageMock = globalThis.localStorage as {
+  const localStorageMock = globalThis.localStorage as unknown as {
     getItem: ReturnType<typeof vi.fn>;
   };
   localStorageMock.getItem.mockImplementation((key: string) => {
@@ -136,7 +136,7 @@ test("hydrateMissingPortfolioSales respects an explicitly loaded empty sales cac
     fetchSales,
     cacheSales: vi.fn(),
     refreshCharts: vi.fn()
-  });
+  } as any);
 
   await new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -151,7 +151,7 @@ test("hydrateMissingPortfolioSales force-refreshes selected non-current lots eve
     getSalesStorageKey: (lotId: number) => `sales_${lotId}`
   });
 
-  const localStorageMock = globalThis.localStorage as {
+  const localStorageMock = globalThis.localStorage as unknown as {
     getItem: ReturnType<typeof vi.fn>;
   };
   localStorageMock.getItem.mockImplementation((key: string) => {
@@ -165,7 +165,7 @@ test("hydrateMissingPortfolioSales force-refreshes selected non-current lots eve
     fetchSales,
     cacheSales,
     refreshCharts
-  });
+  } as any);
 
   await new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -189,12 +189,12 @@ test("hydrateMissingPortfolioSales does not double-fetch a lot already hydrating
     refreshCharts: vi.fn()
   };
 
-  hydrateMissingPortfolioSales(context as never, { force: false }, deps);
-  hydrateMissingPortfolioSales(context as never, { force: false }, deps);
+  hydrateMissingPortfolioSales(context as never, { force: false }, deps as any);
+  hydrateMissingPortfolioSales(context as never, { force: false }, deps as any);
 
   assert.equal(fetchSalesByLot.mock.calls.length, 1);
 
-  resolveFetch?.();
+  (resolveFetch as (() => void) | null)?.();
   await Promise.resolve();
   await Promise.resolve();
 });

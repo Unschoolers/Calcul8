@@ -5,13 +5,14 @@ import { SalesHistoryLedgerDefinition } from "../src/components/windows/sales/Sa
 import { SalesWindowDefinition } from "../src/components/windows/sales/SalesWindow.definition.ts";
 import type { Sale, SinglesPurchaseEntry } from "../src/types/app.ts";
 
-function makeSale(overrides: Partial<Sale> = {}): Sale {
+function makeSale(overrides: Record<string, any> = {}): Sale {
   return {
     id: 1,
     type: "pack",
     quantity: 1,
     packsCount: 1,
     price: 10,
+    buyerShipping: 0,
     date: "2026-03-05",
     ...overrides
   };
@@ -217,16 +218,16 @@ test("SalesHistoryLedger sorts through one stateful ledger model", () => {
     }
   };
 
-  const byProfit = SalesHistoryLedgerDefinition.computed.sortedLedgerSales.call(vm as never);
+  const byProfit = SalesHistoryLedgerDefinition.computed!.sortedLedgerSales.call(vm as never);
   assert.deepEqual(byProfit.map((sale) => sale.id), [2, 3, 1]);
 
-  SalesHistoryLedgerDefinition.methods.setSort.call(vm as never, "profit");
-  const byProfitAsc = SalesHistoryLedgerDefinition.computed.sortedLedgerSales.call(vm as never);
+  SalesHistoryLedgerDefinition.methods!.setSort.call(vm as never, "profit");
+  const byProfitAsc = SalesHistoryLedgerDefinition.computed!.sortedLedgerSales.call(vm as never);
   assert.equal(vm.sortDirection, "asc");
   assert.deepEqual(byProfitAsc.map((sale) => sale.id), [1, 3, 2]);
 
-  SalesHistoryLedgerDefinition.methods.setSort.call(vm as never, "customer");
-  const byCustomer = SalesHistoryLedgerDefinition.computed.sortedLedgerSales.call(vm as never);
+  SalesHistoryLedgerDefinition.methods!.setSort.call(vm as never, "customer");
+  const byCustomer = SalesHistoryLedgerDefinition.computed!.sortedLedgerSales.call(vm as never);
   assert.equal(vm.sortDirection, "asc");
   assert.deepEqual(byCustomer.map((sale) => sale.id), [3, 2, 1]);
 });
@@ -250,17 +251,17 @@ test("SalesHistoryLedger presents compact unit type and price columns", () => {
   const boxSale = makeSale({ quantity: 3, packsCount: 48, type: "box", price: 127 });
   const rtyhSale = makeSale({ quantity: 10, packsCount: 32, type: "rtyh", price: 26 });
 
-  assert.equal(SalesHistoryLedgerDefinition.methods.saleUnitsLabel.call(vm as never, singlesSale), "14");
-  assert.equal(SalesHistoryLedgerDefinition.methods.saleTypeText.call(vm as never, singlesSale), "Singles");
-  assert.equal(SalesHistoryLedgerDefinition.methods.saleTypeIcon.call(vm as never, singlesSale), "icon:pack");
-  assert.equal(SalesHistoryLedgerDefinition.methods.saleRevenueLabel.call(vm as never, singlesSale), "$7.00");
-  assert.equal(SalesHistoryLedgerDefinition.methods.saleUnitsLabel.call(vm as never, boxSale), "3");
-  assert.equal(SalesHistoryLedgerDefinition.methods.saleTypeText.call(vm as never, boxSale), "Boxes");
-  assert.equal(SalesHistoryLedgerDefinition.methods.saleTypeIcon.call(vm as never, boxSale), "icon:box");
-  assert.equal(SalesHistoryLedgerDefinition.methods.saleRevenueLabel.call(vm as never, boxSale), "$127.00");
-  assert.equal(SalesHistoryLedgerDefinition.methods.saleUnitsLabel.call(vm as never, rtyhSale), "32");
-  assert.equal(SalesHistoryLedgerDefinition.methods.saleTypeText.call(vm as never, rtyhSale), "Random hit");
-  assert.equal(SalesHistoryLedgerDefinition.methods.saleRevenueLabel.call(vm as never, rtyhSale), "$26.00");
+  assert.equal(SalesHistoryLedgerDefinition.methods!.saleUnitsLabel.call(vm as never, singlesSale), "14");
+  assert.equal(SalesHistoryLedgerDefinition.methods!.saleTypeText.call(vm as never, singlesSale), "Singles");
+  assert.equal(SalesHistoryLedgerDefinition.methods!.saleTypeIcon.call(vm as never, singlesSale), "icon:pack");
+  assert.equal(SalesHistoryLedgerDefinition.methods!.saleRevenueLabel.call(vm as never, singlesSale), "$7.00");
+  assert.equal(SalesHistoryLedgerDefinition.methods!.saleUnitsLabel.call(vm as never, boxSale), "3");
+  assert.equal(SalesHistoryLedgerDefinition.methods!.saleTypeText.call(vm as never, boxSale), "Boxes");
+  assert.equal(SalesHistoryLedgerDefinition.methods!.saleTypeIcon.call(vm as never, boxSale), "icon:box");
+  assert.equal(SalesHistoryLedgerDefinition.methods!.saleRevenueLabel.call(vm as never, boxSale), "$127.00");
+  assert.equal(SalesHistoryLedgerDefinition.methods!.saleUnitsLabel.call(vm as never, rtyhSale), "32");
+  assert.equal(SalesHistoryLedgerDefinition.methods!.saleTypeText.call(vm as never, rtyhSale), "Random hit");
+  assert.equal(SalesHistoryLedgerDefinition.methods!.saleRevenueLabel.call(vm as never, rtyhSale), "$26.00");
 });
 
 test("SalesWindow builds bulk snapshot KPIs from practical sales context", () => {

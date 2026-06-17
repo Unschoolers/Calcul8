@@ -85,7 +85,7 @@ function withMockedLocalStorage(run: (data: Map<string, string>) => Promise<void
   }
 }
 
-function stubWindow(googleIdApi?: { initialize: (...args: unknown[]) => void; prompt: () => void; renderButton?: (...args: unknown[]) => void }): void {
+function stubWindow(googleIdApi?: { initialize: (config: { callback: (response: { credential?: string }) => void }) => void; prompt: () => void; renderButton?: (...args: unknown[]) => void }): void {
   vi.stubGlobal("window", {
     location: { origin: "https://localhost" },
     setTimeout: vi.fn((callback: () => void) => {
@@ -265,7 +265,9 @@ test("promptGoogleSignIn warns when Google identity API is unavailable", async (
 
 test("promptGoogleSignIn initializes, prompts, and handles credential callback", async () => {
   await withMockedLocalStorage(async (data) => {
-    let callback: ((response: { credential?: string }) => void) | null = null;
+    let callback: (response: { credential?: string }) => void = () => {
+      throw new Error("Credential callback was not initialized.");
+    };
     const initialize = vi.fn((config: { callback: (response: { credential?: string }) => void }) => {
       callback = config.callback;
     });
@@ -278,7 +280,7 @@ test("promptGoogleSignIn initializes, prompts, and handles credential callback",
 
     assert.equal(initialize.mock.calls.length, 1);
     assert.equal(requestGoogleIdentityPromptMock.mock.calls.length, 1);
-    callback?.({ credential: "  signed-token  " });
+    callback({ credential: "  signed-token  " });
 
     assert.equal(getStoredGoogleIdToken(), "signed-token");
     assert.equal(context.googleAuthEpoch, 1);
@@ -291,7 +293,9 @@ test("promptGoogleSignIn initializes, prompts, and handles credential callback",
 
 test("promptGoogleSignIn ignores empty credential callback and handles initialize exception", async () => {
   await withMockedLocalStorage(async (data) => {
-    let callback: ((response: { credential?: string }) => void) | null = null;
+    let callback: (response: { credential?: string }) => void = () => {
+      throw new Error("Credential callback was not initialized.");
+    };
     const initialize = vi.fn((config: { callback: (response: { credential?: string }) => void }) => {
       callback = config.callback;
     });
@@ -299,7 +303,7 @@ test("promptGoogleSignIn ignores empty credential callback and handles initializ
     const context = createContext();
 
     uiEntitlementSignInMethods.promptGoogleSignIn.call(context as never);
-    callback?.({ credential: "   " });
+    callback({ credential: "   " });
     assert.equal(getStoredGoogleIdToken(), "");
     assert.equal((context.notify as ReturnType<typeof vi.fn>).mock.calls.length, 0);
 

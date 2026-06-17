@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { WhatnotReviewDialog } from "../src/components/windows/whatnot/WhatnotReviewDialog.ts";
+import type { WhatnotImportReviewRow } from "../src/types/app.ts";
+
+function reviewRow(overrides: Record<string, any>): WhatnotImportReviewRow {
+  return overrides as unknown as WhatnotImportReviewRow;
+}
 
 test("whatnotReviewGroups groups rows without relying on a callable computed helper", () => {
   const context = {
@@ -55,9 +60,9 @@ test("whatnotRowTargetLabel does not call a computed language value like a funct
     buildWhatnotClientManualDuplicateCandidates: () => []
   };
 
-  const label = WhatnotReviewDialog.methods.whatnotRowTargetLabel.call(context, {
+  const label = WhatnotReviewDialog.methods.whatnotRowTargetLabel.call(context, reviewRow({
     rowId: "row-1"
-  });
+  }));
 
   assert.equal(label, "Skipping this row");
 });
@@ -68,41 +73,41 @@ test("whatnotReviewIdentityBadge labels repeat-safe import states", () => {
   };
 
   assert.deepEqual(
-    WhatnotReviewDialog.methods.whatnotReviewIdentityBadge.call(context, {
+    WhatnotReviewDialog.methods.whatnotReviewIdentityBadge.call(context, reviewRow({
       externalSaleId: "ledger-1",
       externalOrderId: "order-1",
       externalOrderItemId: "ledger-1",
       action: "create"
-    }),
+    })),
     { color: "success", label: "New" }
   );
   assert.deepEqual(
-    WhatnotReviewDialog.methods.whatnotReviewIdentityBadge.call(context, {
+    WhatnotReviewDialog.methods.whatnotReviewIdentityBadge.call(context, reviewRow({
       externalSaleId: "ledger-1",
       externalOrderId: "order-1",
       externalOrderItemId: "ledger-1",
       existingSaleId: "7",
       action: "skip"
-    }),
+    })),
     { color: "info", label: "Already imported" }
   );
   assert.deepEqual(
-    WhatnotReviewDialog.methods.whatnotReviewIdentityBadge.call(context, {
+    WhatnotReviewDialog.methods.whatnotReviewIdentityBadge.call(context, reviewRow({
       externalSaleId: "ledger-1",
       externalOrderId: "order-1",
       externalOrderItemId: "ledger-1",
       existingSaleId: "7",
       action: "update"
-    }),
+    })),
     { color: "warning", label: "Changed" }
   );
   assert.deepEqual(
-    WhatnotReviewDialog.methods.whatnotReviewIdentityBadge.call(context, {
+    WhatnotReviewDialog.methods.whatnotReviewIdentityBadge.call(context, reviewRow({
       externalSaleId: "",
       externalOrderId: "order-1",
       externalOrderItemId: "",
       action: "create"
-    }),
+    })),
     { color: "error", label: "Missing id" }
   );
 });
@@ -173,7 +178,7 @@ test("whatnotReviewChangeDiffs resolves the mapped sale from the selected lot", 
       : []
   };
 
-  const diffs = WhatnotReviewDialog.methods.whatnotReviewChangeDiffs.call(context, {
+  const diffs = WhatnotReviewDialog.methods.whatnotReviewChangeDiffs.call(context, reviewRow({
     rowId: "changed",
     externalSaleId: "ledger-3",
     externalOrderId: "order-3",
@@ -185,7 +190,7 @@ test("whatnotReviewChangeDiffs resolves the mapped sale from the selected lot", 
     price: 21.5,
     buyerShipping: 1,
     date: "2026-03-09"
-  });
+  }));
 
   assert.deepEqual(diffs, [
     { field: "date", before: "2026-03-08", after: "2026-03-09" },
@@ -250,7 +255,7 @@ test("handleWhatnotImportActionSelection splits rows that share one manual candi
       listingTitle: "Other Box",
       title: "Other Box"
     }
-  ];
+  ] as Array<Record<string, any>>;
   const context = {
     preferredLanguage: "en",
     whatnotReviewRows: rows,
@@ -262,9 +267,9 @@ test("handleWhatnotImportActionSelection splits rows that share one manual candi
     applyWhatnotSelectionToManualCandidateRows: WhatnotReviewDialog.methods.applyWhatnotSelectionToManualCandidateRows
   };
 
-  assert.equal(WhatnotReviewDialog.methods.whatnotCanSplitGroup.call(context, rows[0]), true);
+  assert.equal(WhatnotReviewDialog.methods.whatnotCanSplitGroup.call(context, reviewRow(rows[0]!)), true);
 
-  WhatnotReviewDialog.methods.handleWhatnotImportActionSelection.call(context, rows[0], "split_group");
+  WhatnotReviewDialog.methods.handleWhatnotImportActionSelection.call(context, reviewRow(rows[0]!), "split_group");
 
   assert.deepEqual(
     rows.slice(0, 3).map((row) => ({

@@ -11,7 +11,7 @@ test("GameWindow owns the tier-prize game shell behavior", () => {
   assert.ok(GameWindow.components?.MysteryGridSurface);
   assert.ok(GameWindow.components?.WheelActionRail);
   assert.notEqual(typeof GameWindow.methods?.createNewGameConfig, "undefined");
-  assert.equal(typeof GameWindow.methods?.selectBracketBattleGame, "undefined");
+  assert.equal(typeof (GameWindow.methods as Record<string, unknown> | undefined)?.selectBracketBattleGame, "undefined");
 });
 
 test("app shell renders the generic game window with the existing wheel ref", () => {
@@ -133,8 +133,8 @@ test("GameWindow publishes bracket session-state updates through the spectator h
   };
 
   await GameWindow.methods!.syncBracketBattleState.call(vm as never, {
-    session: { id: "session-1" },
-    lastRolls: [{ id: "roll-1", value: 6 }],
+    session: { id: "session-1" } as never,
+    lastRolls: [{ id: "roll-1", value: 6 }] as never,
     rolling: true,
     showcaseMatchId: "match-1",
     publishLive: true

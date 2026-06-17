@@ -7,6 +7,7 @@ export function makeSale(overrides: Partial<Sale> = {}): Sale {
     quantity: 1,
     packsCount: 1,
     price: 10,
+    buyerShipping: 0,
     date: "2026-02-21",
     ...overrides
   };

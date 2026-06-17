@@ -13,7 +13,7 @@ test("fairness token encrypts and decrypts commit payloads without exposing raw 
   const config = createApiConfig({ cosmosKey: "token-key" });
   const payload = {
     version: "v1" as const,
-    algorithm: WHEEL_FAIRNESS_ALGORITHM,
+    algorithm: WHEEL_FAIRNESS_ALGORITHM as "whatfees-wheel-v1",
     serverSeed: "server-seed",
     serverSeedHash: "a".repeat(64),
     layoutHash: "b".repeat(64),

@@ -72,14 +72,14 @@ function createContext(overrides: Record<string, unknown> = {}) {
     isOffline: false,
     canUsePaidActions: true,
     packsPerBox: 16,
-    singlesPurchases: [],
+    singlesPurchases: [] as Array<Record<string, unknown>>,
     singlesSoldCountByPurchaseId: {},
-    sales: [],
+    sales: [] as Array<Record<string, unknown>>,
     salesByLotId: new Map(),
-    lots: [],
-    portfolioSelectedLotIds: [],
+    lots: [] as Array<Record<string, unknown>>,
+    portfolioSelectedLotIds: [] as number[],
     portfolioChartView: "trend",
-    allLotPerformance: [],
+    allLotPerformance: [] as Array<Record<string, unknown>>,
     salesCacheEpoch: 0,
     editingSale: null,
     newSale: {
@@ -248,7 +248,9 @@ test("addWheelSaleToLot uses authoritative persistence for non-current lots too"
 });
 
 test("saveSale ignores duplicate submit clicks while the authoritative save is in flight", async () => {
-  let resolveSave: ((value: unknown) => void) | null = null;
+  let resolveSave: (value: unknown) => void = () => {
+    throw new Error("Save resolver was not initialized.");
+  };
   const savePromise = new Promise((resolve) => {
     resolveSave = resolve;
   });
@@ -261,7 +263,7 @@ test("saveSale ignores duplicate submit clicks while the authoritative save is i
 
   assert.equal(saveAuthoritativeSaleMock.mock.calls.length, 1);
 
-  resolveSave?.({
+  resolveSave({
     id: 1,
     type: "pack",
     quantity: 1,
@@ -276,7 +278,9 @@ test("saveSale ignores duplicate submit clicks while the authoritative save is i
 });
 
 test("saveSale does not duplicate a sale already inserted by realtime before the save resolves", async () => {
-  let resolveSave: ((value: unknown) => void) | null = null;
+  let resolveSave: (value: unknown) => void = () => {
+    throw new Error("Save resolver was not initialized.");
+  };
   const savePromise = new Promise((resolve) => {
     resolveSave = resolve;
   });
@@ -297,7 +301,7 @@ test("saveSale does not duplicate a sale already inserted by realtime before the
     version: 3
   }];
 
-  resolveSave?.({
+  resolveSave({
     id: 1,
     type: "box",
     quantity: 2,
@@ -413,7 +417,9 @@ test("deleteSale reloads latest sales on authoritative conflict", async () => {
 });
 
 test("deleteSale stays stable if realtime already removed the sale before delete resolves", async () => {
-  let resolveDelete: (() => void) | null = null;
+  let resolveDelete: () => void = () => {
+    throw new Error("Delete resolver was not initialized.");
+  };
   const deletePromise = new Promise<void>((resolve) => {
     resolveDelete = resolve;
   });
@@ -437,7 +443,7 @@ test("deleteSale stays stable if realtime already removed the sale before delete
 
   ctx.sales = [];
 
-  resolveDelete?.();
+  resolveDelete();
   await Promise.resolve();
   await Promise.resolve();
 
@@ -451,7 +457,7 @@ test("deleteSale stays stable if realtime already removed the sale before delete
 test("initPortfolioChart hydrates missing authoritative sales for selected non-current lots", async () => {
   vi.useFakeTimers();
   const portfolioCanvas = new MockHtmlCanvasElement();
-  const localStorageMock = globalThis.localStorage as {
+  const localStorageMock = globalThis.localStorage as unknown as {
     getItem: ReturnType<typeof vi.fn>;
     setItem: ReturnType<typeof vi.fn>;
   };

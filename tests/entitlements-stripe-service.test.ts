@@ -208,7 +208,8 @@ test("runStripePurchaseFlow opens embedded checkout when client secret and Strip
 
     assert.equal(ctx.showStripeCheckoutModal, true);
     assert.equal(ctx.stripeCheckoutClientSecret, "cs_test_embedded_secret_123");
-    assert.equal(stripeFactoryMock.mock.calls[0]?.[0], "pk_test_123");
+    const stripeFactoryCalls = stripeFactoryMock.mock.calls as unknown as Array<[string]>;
+    assert.equal(stripeFactoryCalls[0]?.[0], "pk_test_123");
     assert.equal(stripeInitEmbeddedCheckoutMock.mock.calls.length, 1);
     assert.equal(stripeMountMock.mock.calls.length, 1);
     assert.equal(assignMock.mock.calls.length, 0);
