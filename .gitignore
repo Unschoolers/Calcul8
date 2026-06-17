@@ -1,5 +1,6 @@
 node_modules
 dist
+.cache/
 .bubblewrap
 android
 # Bubblewrap / TWA generated Android project artifacts

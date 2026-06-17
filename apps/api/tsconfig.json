@@ -7,6 +7,8 @@
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
+    "incremental": true,
+    "tsBuildInfoFile": "../../.cache/tsconfig.api.tsbuildinfo",
     "allowJs": true,
     "outDir": "dist",
     "rootDir": "src",

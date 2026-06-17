@@ -13,7 +13,7 @@
     "start:dev": "npm run build && node --env-file=.env.local dist/index.js",
     "typecheck": "tsc --noEmit",
     "test": "node --test test/*.test.mjs",
-    "verify": "node ../../scripts/run-parallel.mjs --task typecheck::npm run typecheck --task build::npm run build && npm run test"
+    "verify": "npm run build && npm run test"
   },
   "dependencies": {
     "ws": "^8.18.0"
