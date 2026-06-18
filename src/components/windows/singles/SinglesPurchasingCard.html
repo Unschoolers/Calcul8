@@ -498,32 +498,32 @@
     </div>
 
       <div class="singles-summary-row mt-2">
-        <div class="singles-summary-pill singles-summary-pill--cost">
+        <div class="singles-summary-pill singles-summary-pill--cost app-dense-metric">
           <span class="singles-summary-pill__lead">
             <span class="singles-summary-pill__icon" aria-hidden="true">
               <v-icon size="14">mdi-cash-minus</v-icon>
             </span>
-            <span class="singles-summary-label">{{ t('singlesSummaryTotalCostLabel') }}</span>
+            <span class="singles-summary-label app-dense-card-meta">{{ t('singlesSummaryTotalCostLabel') }}</span>
           </span>
           <app-metric-value
             kind="money"
             tone="negative"
-            value-class="singles-summary-value"
+            value-class="singles-summary-value app-dense-metric__value"
           >
             ${{ fmtCurrency(singlesPurchaseTotalCost) }}
           </app-metric-value>
         </div>
-        <div class="singles-summary-pill singles-summary-pill--market">
+        <div class="singles-summary-pill singles-summary-pill--market app-dense-metric">
           <span class="singles-summary-pill__lead">
             <span class="singles-summary-pill__icon" aria-hidden="true">
               <v-icon size="14">mdi-chart-line</v-icon>
             </span>
-            <span class="singles-summary-label">{{ t('singlesSummaryTotalMarketLabel') }}</span>
+            <span class="singles-summary-label app-dense-card-meta">{{ t('singlesSummaryTotalMarketLabel') }}</span>
           </span>
           <app-metric-value
             kind="money"
             tone="positive"
-            value-class="singles-summary-value"
+            value-class="singles-summary-value app-dense-metric__value"
           >
             ${{ fmtCurrency(singlesPurchaseTotalMarketValue) }}
           </app-metric-value>

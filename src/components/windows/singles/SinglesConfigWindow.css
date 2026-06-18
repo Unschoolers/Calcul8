@@ -1828,9 +1828,12 @@
   }
 
   .singles-summary-pill {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-content: center;
     min-height: 36px;
     padding-inline: 0.42rem;
-    gap: 0.3rem;
+    gap: 0.12rem 0.34rem;
+    border-radius: var(--app-radius-card);
   }
 
   .singles-summary-pill__icon {
@@ -1838,12 +1841,23 @@
     height: 20px;
   }
 
+  .singles-summary-pill__lead {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
   .singles-summary-label {
     font-size: 0.67rem;
+    white-space: normal;
+    -webkit-line-clamp: 2;
   }
 
   .singles-summary-value {
+    grid-column: 1 / -1;
+    justify-self: end;
     font-size: 0.8rem;
+    max-width: 100%;
+    white-space: normal;
   }
 
   .singles-import-card {

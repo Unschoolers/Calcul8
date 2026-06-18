@@ -75,6 +75,10 @@ export const LivePriceCard = defineComponent({
       type: Number as PropType<number | null>,
       default: null
     },
+    targetProfitPercent: {
+      type: Number as PropType<number | null>,
+      default: 15
+    },
     profitBasis: {
       type: Number as PropType<number | null>,
       default: null
@@ -116,6 +120,11 @@ export const LivePriceCard = defineComponent({
     changePrice(delta: number) {
       const current = Number(this.modelValue || 0);
       this.$emit("update:modelValue", current + delta);
+    },
+    selectScenarioPrice(offset: number) {
+      const candidatePrice = Number(this.modelValue || 0) + offset;
+      if (!Number.isFinite(candidatePrice) || candidatePrice < 0) return;
+      this.$emit("update:modelValue", candidatePrice);
     },
     profitAt(price: number) {
       const fn = this.calculateProfit;
@@ -192,6 +201,58 @@ export const LivePriceCard = defineComponent({
       const adjustment = this.adjustmentNeeded();
       if (adjustment == null || !Number.isFinite(adjustment)) return false;
       return Math.abs(adjustment) >= 0.005;
+    },
+    scenarioOffsets(): number[] {
+      const current = Number(this.modelValue);
+      if (!Number.isFinite(current)) return [-1, 1];
+
+      const pairedOffsets: number[] = [];
+      const positiveOffsets = [1, 2, 3, 4, 5];
+      let positiveIndex = 0;
+      for (let step = 5; step >= 1; step -= 1) {
+        const negativeOffset = -step;
+        if (current + negativeOffset >= 0) {
+          pairedOffsets.push(negativeOffset, positiveOffsets[positiveIndex]);
+          positiveIndex += 1;
+        }
+      }
+      return [...pairedOffsets, ...positiveOffsets.slice(positiveIndex)];
+    },
+    scenarioDeltaLabel(offset: number): string {
+      const sign = offset >= 0 ? "+" : "-";
+      return `${sign}$${this.formatAt(Math.abs(offset), 0)}`;
+    },
+    scenarioTileClass(offset: number): Record<string, boolean> {
+      return {
+        "live-pricing-card__scenario-tile--desktop-extra": Math.abs(offset) > 1
+      };
+    },
+    scenarioTileStyle(offset: number): Record<string, string> {
+      const current = Number(this.modelValue);
+      const percent = this.displayProfitPercentAtPrice(current + offset);
+      const targetPercent = Math.max(0, Number(this.targetProfitPercent) || 0);
+      const targetScale = Math.max(1, targetPercent);
+      let negativeIntensity = 0;
+      let positiveIntensity = 0;
+      let progressPercent = 50;
+
+      if (Number.isFinite(percent)) {
+        if (percent < 0) {
+          negativeIntensity = Math.min(1, Math.abs(percent) / targetScale);
+          progressPercent = 50 - negativeIntensity * 50;
+        } else if (percent > 0) {
+          positiveIntensity = Math.min(1, percent / targetScale);
+          progressPercent = 50 + positiveIntensity * 50;
+        }
+      }
+
+      const intensity = Math.max(negativeIntensity, positiveIntensity);
+      const borderTone = negativeIntensity > positiveIntensity ? "var(--v-theme-error)" : positiveIntensity > 0 ? "var(--v-theme-success)" : "var(--v-theme-on-surface)";
+      return {
+        "--live-scenario-border-rgb": borderTone,
+        "--live-scenario-border-alpha": (0.12 + intensity * 0.34).toFixed(3),
+        "--live-scenario-progress-percent": `${Math.min(100, Math.max(0, progressPercent)).toFixed(1)}%`
+      };
     },
     priceAdjustLabel(direction: -1 | 1): string {
       const action = direction < 0

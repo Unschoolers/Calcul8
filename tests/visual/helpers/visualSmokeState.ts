@@ -23,13 +23,13 @@ const personalScope = { scopeType: "personal" as const };
 
 const smokeLot: Lot = {
   id: smokeLotId,
-  name: "Collection Étoile - smoke mobile desktop",
+  name: "Collection Étoile Très Long Nom Mobile - smoke dense cards",
   lotType: "singles",
   singlesCatalogSource: "none",
   singlesPurchases: [
     {
       id: 91001,
-      item: "Blue-Eyes White Dragon - première édition",
+      item: "Blue-Eyes White Dragon - première édition ultra rare longue",
       cardNumber: "SDK-001",
       condition: "NM",
       language: "fr",
@@ -41,7 +41,7 @@ const smokeLot: Lot = {
     },
     {
       id: 91002,
-      item: "Pikachu promo long-title smoke check",
+      item: "Pikachu promo long-title smoke check avec accents Édition spéciale",
       cardNumber: "SM-P-001",
       condition: "LP",
       language: "en",
@@ -58,7 +58,7 @@ const smokeLot: Lot = {
   packsPerBox: 12,
   spotsPerBox: 12,
   costInputMode: "perBox",
-  currency: "CAD",
+  currency: "USD",
   sellingCurrency: "CAD",
   exchangeRate: 1.35,
   purchaseDate: smokeDate,
@@ -88,7 +88,7 @@ const smokeSales: Sale[] = [
     packsCount: 1,
     price: 48,
     priceIsTotal: true,
-    customer: "Alex Smoke",
+    customer: "Alex Smoke Client Très Long",
     memo: "Visual smoke seeded sale",
     buyerShipping: 4,
     date: smokeDate,
@@ -109,7 +109,7 @@ const smokeSales: Sale[] = [
     ],
     price: 55,
     priceIsTotal: true,
-    customer: "Camille Démo",
+    customer: "Camille Démonstration Étoile Client Très Long",
     memo: "Vente avec accents pour le rendu mobile",
     buyerShipping: 4,
     date: smokeDate,

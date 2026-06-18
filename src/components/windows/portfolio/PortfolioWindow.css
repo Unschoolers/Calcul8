@@ -731,12 +731,27 @@
     font-size: 0.84rem;
   }
 
+  .portfolio-lot-title {
+    white-space: normal;
+    -webkit-line-clamp: 2;
+  }
+
   .portfolio-lot-meta-line {
     color: rgba(var(--v-theme-on-surface), 0.8);
+    white-space: normal;
+    -webkit-line-clamp: 2;
   }
 
   .portfolio-lot-profit-chip {
     min-width: 86px;
+    max-width: 100%;
+    min-height: 0;
+  }
+
+  .portfolio-lot-profit-chip .v-chip__content {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    white-space: normal;
   }
 
   .portfolio-sales-by-user-toolbar {

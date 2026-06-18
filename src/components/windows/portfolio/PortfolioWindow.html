@@ -441,12 +441,12 @@
                               </v-avatar>
                             </template>
 
-                            <v-list-item-title class="portfolio-lot-title">{{ row.lotName }}</v-list-item-title>
+                            <v-list-item-title class="portfolio-lot-title app-dense-card-title">{{ row.lotName }}</v-list-item-title>
                             <v-list-item-subtitle class="portfolio-lot-subtitle d-flex flex-column ga-1">
-                              <div v-if="row.salesCount === 0" class="portfolio-lot-meta-line portfolio-lot-empty-state">
+                              <div v-if="row.salesCount === 0" class="portfolio-lot-meta-line app-dense-card-meta portfolio-lot-empty-state">
                                 {{ portfolioCopy('portfolioLotNoSalesLabel', 'No sales yet') }}
                               </div>
-                              <div v-if="row.realizedMarginPercent != null" class="portfolio-lot-meta-line portfolio-lot-forecast-line">
+                              <div v-if="row.realizedMarginPercent != null" class="portfolio-lot-meta-line app-dense-card-meta portfolio-lot-forecast-line">
                                 <v-chip
                                   size="x-small"
                                   variant="tonal"
@@ -456,7 +456,7 @@
                                 {{ portfolioCopy('portfolioLotSoldMarginLabel', 'Sold margin') }} {{ row.realizedMarginPercent >= 0 ? '+' : '' }}{{ fmtCurrency(row.realizedMarginPercent, 1) }}%
                               </v-chip>
                               </div>
-                              <div class="portfolio-lot-meta-line portfolio-lot-forecast-line portfolio-lot-signal-row">
+                              <div class="portfolio-lot-meta-line app-dense-card-meta portfolio-lot-forecast-line portfolio-lot-signal-row">
                                 <v-chip
                                   size="x-small"
                                   variant="tonal"
@@ -474,7 +474,7 @@
                               size="small"
                               variant="tonal"
                               :color="portfolioLotPrimaryProfitChipColor(row)"
-                              class="portfolio-lot-profit-chip"
+                              class="portfolio-lot-profit-chip app-dense-metric__value"
                             >
                               {{ portfolioLotPrimaryProfitLabel(row) }}
                             </v-chip>

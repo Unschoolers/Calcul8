@@ -22,6 +22,7 @@
         :forecast-percent="liveScenarioPercent('item')"
         :needed-profit="liveScenarioProfitAtNeeded('item')"
         :needed-percent="liveScenarioPercentAtNeeded('item')"
+        :target-profit-percent="targetProfitPercent"
         :profit-basis="totalCaseCost"
       ></live-price-card>
     </v-col>
@@ -44,6 +45,7 @@
         :forecast-percent="liveScenarioPercent('box')"
         :needed-profit="liveScenarioProfitAtNeeded('box')"
         :needed-percent="liveScenarioPercentAtNeeded('box')"
+        :target-profit-percent="targetProfitPercent"
         :profit-basis="totalCaseCost"
       ></live-price-card>
     </v-col>
@@ -66,6 +68,7 @@
         :forecast-percent="liveScenarioPercent('rtyh')"
         :needed-profit="liveScenarioProfitAtNeeded('rtyh')"
         :needed-percent="liveScenarioPercentAtNeeded('rtyh')"
+        :target-profit-percent="targetProfitPercent"
         :profit-basis="totalCaseCost"
       ></live-price-card>
     </v-col>

@@ -433,6 +433,7 @@
   .config-summary-pill {
     padding: 0.55rem 0.62rem;
     border-radius: var(--app-radius-card);
+    min-height: 0;
   }
 
   .config-summary-pill strong {

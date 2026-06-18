@@ -485,7 +485,7 @@
   flex-wrap: nowrap;
 }
 
-.sales-history-ledger__type > span,
+.sales-history-ledger__type-text,
 .sales-history-ledger__customer {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1000,6 +1000,16 @@
     font-size: 0.74rem;
     line-height: 1.1;
     white-space: nowrap;
+  }
+
+  .sales-history-ledger__type-text {
+    white-space: normal;
+    -webkit-line-clamp: 2;
+  }
+
+  .sales-history-ledger__customer {
+    white-space: normal;
+    -webkit-line-clamp: 2;
   }
 
   .sales-history-type-token {

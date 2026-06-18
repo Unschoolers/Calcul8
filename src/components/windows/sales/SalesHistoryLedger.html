@@ -63,7 +63,7 @@
       </div>
 
       <div class="sales-history-ledger__cell sales-history-ledger__type" role="cell" :data-label="t('salesHistoryColumnTypeLabel')">
-        <span>{{ saleTypeText(sale) }}</span>
+        <span class="sales-history-ledger__type-text app-dense-card-title">{{ saleTypeText(sale) }}</span>
         <v-tooltip
           v-if="isUnlinkedSinglesSale(sale)"
           :text="t('salesHistoryUnlinkedSaleTooltip')"
@@ -89,7 +89,7 @@
           kind="money"
           :tone="saleProfitTone(sale)"
           pill
-          value-class="sales-history-profit-pill sales-history-ledger__profit-value"
+          value-class="sales-history-profit-pill sales-history-ledger__profit-value app-dense-metric__value"
         >
           {{ saleProfitLabel(sale) }}
         </app-metric-value>
@@ -98,7 +98,7 @@
           kind="money"
           :tone="saleProfitValue(sale) >= 0 ? 'positive' : 'negative'"
           pill
-          value-class="sales-history-profit-pill sales-history-profit-pill--secondary sales-history-ledger__profit-value"
+          value-class="sales-history-profit-pill sales-history-profit-pill--secondary sales-history-ledger__profit-value app-dense-metric__value"
         >
           {{ saleSecondaryProfitLabel(sale) }}
         </app-metric-value>
@@ -106,7 +106,7 @@
       <div class="sales-history-ledger__cell" role="cell" :data-label="t('salesHistoryColumnDateLabel')">
         {{ formatDate(sale.date) }}
       </div>
-      <div class="sales-history-ledger__cell sales-history-ledger__customer" role="cell" :data-label="t('salesHistoryColumnCustomerLabel')">
+      <div class="sales-history-ledger__cell sales-history-ledger__customer app-dense-card-meta" role="cell" :data-label="t('salesHistoryColumnCustomerLabel')">
         {{ saleCustomerLabel(sale) }}
       </div>
       <div class="sales-history-ledger__actions" role="cell">

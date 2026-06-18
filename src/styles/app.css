@@ -353,6 +353,50 @@
   color: var(--app-status-error-text);
 }
 
+.app-dense-card-title,
+.app-dense-card-meta {
+  display: -webkit-box;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+}
+
+.app-dense-card-title {
+  -webkit-line-clamp: 2;
+}
+
+.app-dense-card-meta {
+  -webkit-line-clamp: 2;
+}
+
+.app-dense-metric {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  min-width: 0;
+}
+
+.app-dense-metric__label,
+.app-dense-metric__value,
+.app-dense-metric__meta {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.app-dense-metric__value {
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+@media (max-width: 600px) {
+  .app-dense-metric {
+    grid-template-columns: 1fr;
+  }
+}
+
 .app-action-button {
   letter-spacing: var(--app-letter-spacing-ui);
 }

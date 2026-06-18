@@ -17,13 +17,12 @@ Every remaining item is done only when the affected screens pass these checks:
 
 ## Current Smoke Evidence
 
-`npm run test:visual` now runs a Playwright smoke path for seeded real app-shell tabs on desktop/light/English and mobile/dark/French. Screenshots are local artifacts only and ignored by git.
+`npm run test:visual` now runs a Playwright smoke path for seeded real app-shell tabs on desktop/light/English and mobile/dark/French. The seed includes long accented names, dense buyer labels, and USD cost/CAD selling data so compact cards and metric chips stay exercised. Screenshots are local artifacts only and ignored by git.
 
 The first smoke screenshots surfaced these remaining UI issues:
 
 - Mobile screenshots show fixed bottom navigation and floating actions covering meaningful content, especially Sales charts, Portfolio charts, and lower Config inventory/totals content.
-- Mobile French/dark screenshots expose aggressive truncation in the current-inventory selector and dense sale/lot cards, making the active lot and item names hard to verify.
-- Mobile Config totals and inventory rows are too cramped: footer metrics can collide with labels/values, and the bottom nav cuts across the item list.
+- Mobile Config inventory rows are still vulnerable to bottom-nav overlap near the end of the list.
 - Desktop Portfolio has chart/card content running close to or underneath persistent navigation, which makes the bottom of dashboards feel unfinished even on a large viewport.
 
 ## Critical
@@ -46,25 +45,6 @@ The first smoke screenshots surfaced these remaining UI issues:
 
 - The last meaningful element on every top-level mobile tab is readable and tappable without being covered by nav or FAB controls.
 - Mobile screenshots show a deliberate relationship between content, fixed navigation, and floating actions.
-
-### Fix Mobile Dense-Card Legibility And Metric Fit
-
-**Why now:** The mobile French/dark screenshots show several places where important text and metrics are technically present but visually hard to use: the current-inventory selector truncates the active lot and metadata, Config totals collide at the bottom, sale cards clamp long item names aggressively, and Portfolio lot/insight cards compress names and values into a narrow row.
-
-**Scope:** Mobile app-shell inventory selector, Config inventory cards and totals, Sales history cards, Portfolio pulse/insight/lot-performance cards, bottom metric bars.
-
-**Must do:**
-
-- Give the current-inventory selector a mobile layout that exposes enough of the lot name, type, source, and date to confirm context without relying on a hidden dropdown.
-- Define mobile card rules for long item and lot names: controlled two-line clamps, secondary metadata on its own line, and a detail affordance when text is intentionally abbreviated.
-- Rework Config footer metrics so labels and values wrap or stack cleanly instead of colliding, especially in French and dark theme.
-- Audit Sales and Portfolio metric chips for long translated labels, currency values, percentages, and profit/loss states.
-- Add visual QA captures for dense-data examples with long names, accents, CAD/USD labels, and multiple metric chips.
-
-**Acceptance:**
-
-- A mobile user can identify the active lot, read item names, read metric labels/values, and understand profit/loss state without guessing from clipped text.
-- Dense cards preserve hierarchy and spacing at 360px, 390px, and 412px widths in English and French.
 
 ### Normalize Recoverable States And Offline/Sync Feedback
 

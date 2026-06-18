@@ -102,30 +102,29 @@
     </div>
 
     <div class="live-pricing-card__scenario-grid">
-      <div class="live-pricing-card__scenario-tile">
-        <div class="live-pricing-card__scenario-head">
-          <span class="live-pricing-card__scenario-chip">{{ scenarioDownLabel() }}</span>
-          <span class="live-pricing-card__scenario-price">${{ formatCurrency(modelValue - 1) }}</span>
+      <button
+        v-for="offset in scenarioOffsets()"
+        :key="offset"
+        type="button"
+        class="live-pricing-card__scenario-tile"
+        :class="scenarioTileClass(offset)"
+        :style="scenarioTileStyle(offset)"
+        @click="selectScenarioPrice(offset)"
+      >
+        <div class="live-pricing-card__scenario-main">
+          <span class="live-pricing-card__scenario-chip">{{ scenarioDeltaLabel(offset) }}</span>
+          <span class="live-pricing-card__scenario-price">${{ formatCurrency(modelValue + offset) }}</span>
+          <span class="live-pricing-card__scenario-percent">
+            {{ formatCurrency(displayProfitPercentAtPrice(modelValue + offset), 1) }}%
+          </span>
         </div>
-        <div class="live-pricing-card__scenario-profit" :class="displayProfitAtPrice(modelValue - 1) >= 0 ? 'text-success' : 'text-error'">
-          {{ displayProfitAtPrice(modelValue - 1) >= 0 ? '+' : '' }}${{ formatCurrency(displayProfitAtPrice(modelValue - 1)) }}
+        <div class="live-pricing-card__scenario-detail">
+          <span class="live-pricing-card__scenario-detail-label">{{ targetProfitShortLabel() }}</span>
+          <span class="live-pricing-card__scenario-profit" :class="displayProfitAtPrice(modelValue + offset) >= 0 ? 'text-success' : 'text-error'">
+            {{ displayProfitAtPrice(modelValue + offset) >= 0 ? '+' : '' }}${{ formatCurrency(displayProfitAtPrice(modelValue + offset)) }}
+          </span>
         </div>
-        <div class="live-pricing-card__scenario-percent">
-          {{ formatCurrency(displayProfitPercentAtPrice(modelValue - 1), 1) }}%
-        </div>
-      </div>
-      <div class="live-pricing-card__scenario-tile">
-        <div class="live-pricing-card__scenario-head">
-          <span class="live-pricing-card__scenario-chip">{{ scenarioUpLabel() }}</span>
-          <span class="live-pricing-card__scenario-price">${{ formatCurrency(modelValue + 1) }}</span>
-        </div>
-        <div class="live-pricing-card__scenario-profit" :class="displayProfitAtPrice(modelValue + 1) >= 0 ? 'text-success' : 'text-error'">
-          {{ displayProfitAtPrice(modelValue + 1) >= 0 ? '+' : '' }}${{ formatCurrency(displayProfitAtPrice(modelValue + 1)) }}
-        </div>
-        <div class="live-pricing-card__scenario-percent">
-          {{ formatCurrency(displayProfitPercentAtPrice(modelValue + 1), 1) }}%
-        </div>
-      </div>
+      </button>
     </div>
   </v-card-text>
 </v-card>

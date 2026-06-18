@@ -192,6 +192,10 @@
     padding-right: 0.35rem !important;
   }
 
+  .lot-selector-shell-card .v-field {
+    min-height: 58px;
+  }
+
   .lot-selector-meta-col {
     padding-top: 0 !important;
     padding-left: 0 !important;
@@ -229,9 +233,17 @@
 
   .lot-selector-selection__title {
     font-size: 0.92rem;
+    white-space: normal;
+    -webkit-line-clamp: 2;
+  }
+
+  .lot-selector-selection__title-row {
+    align-items: flex-start;
   }
 
   .lot-selector-selection__subtitle {
     font-size: 0.68rem;
+    white-space: normal;
+    -webkit-line-clamp: 2;
   }
 }

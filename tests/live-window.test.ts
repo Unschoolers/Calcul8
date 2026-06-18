@@ -11,11 +11,22 @@ test("LiveWindow keeps bulk pricing cards stacked until desktop", () => {
   const phoneBlock = css.slice(phoneBlockStart, desktopBlockStart);
 
   assert.equal((template.match(/<v-col cols="12" lg="4" class="live-pricing-grid__col">/g) ?? []).length, 3);
+  assert.equal((template.match(/:target-profit-percent="targetProfitPercent"/g) ?? []).length, 3);
   assert.doesNotMatch(template, /md="6"/);
   assert.match(css, /\.live-pricing-card__target-summary\s*{[\s\S]*min-height:\s*0/);
   assert.match(css, /\.live-pricing-card__scenario-grid\s*{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(css, /\.live-pricing-card\s*{[\s\S]*display:\s*flex[\s\S]*flex-direction:\s*column/);
+  assert.match(css, /\.live-pricing-card__body\s*{[\s\S]*flex:\s*1 1 auto/);
+  assert.doesNotMatch(css, /\.live-pricing-card__body\s*{[\s\S]*height:\s*100%/);
   assert.match(css, /@media \(min-width:\s*1280px\)[\s\S]*\.live-window-shell\s*{[\s\S]*padding-top:\s*var\(--app-dashboard-desktop-gap\)/);
-  assert.match(css, /@media \(min-width:\s*1280px\)[\s\S]*\.live-pricing-card__target-summary\s*{[\s\S]*min-height:\s*118px/);
+  assert.match(css, /@media \(min-width:\s*1280px\)[\s\S]*\.live-window-shell\s*{[\s\S]*min-height:\s*clamp\(26rem,\s*calc\(100dvh - var\(--app-bottom-nav-height\) - 13rem\),\s*42rem\)/);
+  assert.match(css, /@media \(min-width:\s*1280px\)[\s\S]*\.live-window-shell\s*{[\s\S]*display:\s*flex[\s\S]*flex-direction:\s*column/);
+  assert.match(css, /@media \(min-width:\s*1280px\)[\s\S]*\.live-pricing-grid\s*{[\s\S]*flex:\s*1 1 auto[\s\S]*align-items:\s*stretch/);
+  assert.match(css, /@media \(min-width:\s*1280px\)[\s\S]*\.live-pricing-grid__col > \*\s*{[\s\S]*flex:\s*1 1 auto/);
+  assert.match(css, /@media \(min-width:\s*1280px\)[\s\S]*\.live-pricing-card__body\s*{[\s\S]*justify-content:\s*space-between/);
+  assert.match(css, /@media \(min-width:\s*1280px\)[\s\S]*\.live-pricing-card__target-summary\s*{[\s\S]*justify-content:\s*center/);
+  assert.doesNotMatch(css, /@media \(min-width:\s*1280px\)[\s\S]*\.live-pricing-card__target-summary\s*{[\s\S]*flex:\s*1 1 auto/);
+  assert.doesNotMatch(css, /@media \(min-width:\s*1280px\)[\s\S]*\.live-pricing-card__target-summary\s*{[\s\S]*min-height:\s*118px/);
   assert.doesNotMatch(css, /@media \(max-width:\s*959px\)[\s\S]*\.live-pricing-card__scenario-grid/);
   assert.doesNotMatch(phoneBlock, /\.live-pricing-card__target-summary/);
   assert.doesNotMatch(css, /@media \(min-width:\s*960px\)[\s\S]*\.live-pricing-grid/);

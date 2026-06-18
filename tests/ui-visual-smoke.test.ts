@@ -41,6 +41,12 @@ describe("visual smoke test harness", () => {
     assert.match(smokeSpec, /page\.screenshot/);
     assert.match(smokeSpec, /expectNoPageOverflow/);
 
+    const smokeState = read("tests/visual/helpers/visualSmokeState.ts");
+    assert.match(smokeState, /Très Long Nom Mobile/);
+    assert.match(smokeState, /currency:\s*"USD"/);
+    assert.match(smokeState, /sellingCurrency:\s*"CAD"/);
+    assert.match(smokeState, /Client Très Long/);
+
     const docs = read("docs/ui-visual-qa.md");
     assert.match(docs, /npm run test:visual/);
     assert.match(docs, /smoke/i);

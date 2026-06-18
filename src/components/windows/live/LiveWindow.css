@@ -32,6 +32,8 @@
 }
 
 .live-pricing-card {
+  display: flex !important;
+  flex-direction: column;
   border: var(--app-stroke-hairline) solid var(--app-stroke-subtle) !important;
   transition: border-color var(--app-motion-standard) ease;
   background:
@@ -48,7 +50,8 @@
   display: flex;
   flex-direction: column;
   gap: var(--app-space-2);
-  height: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .live-pricing-card__hero {
@@ -150,7 +153,10 @@
 }
 
 .live-pricing-card__decision-tile--success {
-  padding: 0.9rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.65rem 0.75rem;
   border-radius: var(--app-radius-card);
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--app-status-success) 8%, transparent), color-mix(in srgb, var(--app-status-success) 3%, transparent)),
@@ -162,6 +168,7 @@
   display: flex;
   align-items: center;
   gap: 0.45rem;
+  flex: 0 0 auto;
 }
 
 .live-pricing-card__status-title {
@@ -172,7 +179,7 @@
 
 .live-pricing-card__status-body {
   font-size: 0.8rem;
-  line-height: 1.45;
+  line-height: 1.35;
   color: var(--app-text-muted);
 }
 
@@ -274,6 +281,65 @@
   border: var(--app-stroke-hairline) solid var(--app-stroke-subtle);
 }
 
+.live-pricing-card__scenario-tile {
+  --live-scenario-border-rgb: var(--v-theme-on-surface);
+  --live-scenario-border-alpha: 0.12;
+  --live-scenario-progress-percent: 50%;
+
+  position: relative;
+  overflow: hidden;
+  appearance: none;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  background: rgba(var(--v-theme-surface), 0.44);
+  border-color: rgba(var(--live-scenario-border-rgb), var(--live-scenario-border-alpha));
+}
+
+.live-pricing-card__scenario-tile:focus-visible {
+  outline: 2px solid rgba(var(--v-theme-primary), 0.82);
+  outline-offset: 2px;
+}
+
+.live-pricing-card__scenario-tile:hover {
+  border-color: rgba(var(--live-scenario-border-rgb), 0.64);
+  box-shadow: 0 0 0 1px rgba(var(--live-scenario-border-rgb), 0.16);
+}
+
+.live-pricing-card__scenario-tile::before,
+.live-pricing-card__scenario-tile::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  height: 4px;
+  pointer-events: none;
+}
+
+.live-pricing-card__scenario-tile::before {
+  left: 0;
+  right: 0;
+  background: linear-gradient(90deg,
+    rgba(var(--v-theme-error), 0.8) 0%,
+    rgba(var(--v-theme-on-surface), 0.46) 50%,
+    rgba(var(--v-theme-success), 0.82) 100%
+  );
+  opacity: 0.52;
+}
+
+.live-pricing-card__scenario-tile::after {
+  left: var(--live-scenario-progress-percent);
+  width: 12px;
+  border-radius: var(--app-radius-pill);
+  background: rgba(var(--live-scenario-border-rgb), 0.95);
+  box-shadow: 0 0 10px rgba(var(--live-scenario-border-rgb), 0.48);
+  transform: translateX(-50%);
+}
+
+.live-pricing-card__scenario-tile--desktop-extra {
+  display: none;
+}
+
 .live-pricing-card__metric-tile--needed {
   background:
     linear-gradient(180deg, rgba(var(--v-theme-on-surface), 0.045), rgba(var(--v-theme-on-surface), 0.02)),
@@ -290,8 +356,7 @@
   color: var(--app-text-subtle);
 }
 
-.live-pricing-card__metric-value,
-.live-pricing-card__scenario-profit {
+.live-pricing-card__metric-value {
   font-size: 1.05rem;
   font-weight: var(--app-font-weight-emphasis);
   letter-spacing: -0.01em;
@@ -314,13 +379,15 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 5px;
+  align-content: end;
 }
 
-.live-pricing-card__scenario-head {
-  display: flex;
+.live-pricing-card__scenario-main {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  gap: 10px;
+  min-width: 0;
 }
 
 .live-pricing-card__scenario-chip {
@@ -329,8 +396,9 @@
   min-height: 1.55rem;
   padding: 0.14rem 0.5rem;
   border-radius: var(--app-radius-pill);
-  background: rgba(var(--v-theme-on-surface), 0.045);
-  border: var(--app-stroke-hairline) solid var(--app-stroke-subtle);
+  background: rgba(var(--v-theme-surface), 0.86);
+  border: var(--app-stroke-hairline) solid rgba(var(--v-theme-on-surface), 0.18);
+  box-shadow: 0 1px 4px rgba(var(--v-theme-shadow), 0.18);
   font-size: 0.68rem;
   font-weight: var(--app-font-weight-emphasis);
   letter-spacing: 0.03em;
@@ -338,15 +406,37 @@
 }
 
 .live-pricing-card__scenario-price {
-  font-size: 0.78rem;
+  font-size: 1.04rem;
+  font-weight: var(--app-font-weight-display);
+  line-height: 1.08;
+  color: var(--app-text-primary);
+  min-width: 0;
+}
+
+.live-pricing-card__scenario-percent {
+  font-size: 0.82rem;
   font-weight: var(--app-font-weight-strong);
   color: var(--app-text-subtle);
 }
 
-.live-pricing-card__scenario-percent {
-  font-size: 0.72rem;
-  font-weight: var(--app-font-weight-strong);
+.live-pricing-card__scenario-detail {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.76rem;
+  line-height: 1.25;
   color: var(--app-text-subtle);
+}
+
+.live-pricing-card__scenario-detail-label {
+  font-weight: var(--app-font-weight-strong);
+}
+
+.live-pricing-card__scenario-profit {
+  font-size: 0.76rem;
+  font-weight: var(--app-font-weight-emphasis);
+  line-height: 1.25;
 }
 
 .live-price-target-summary {
@@ -411,6 +501,9 @@
 
 @media (min-width: 1280px) {
   .live-window-shell {
+    display: flex;
+    flex-direction: column;
+    min-height: clamp(26rem, calc(100dvh - var(--app-bottom-nav-height) - 13rem), 42rem);
     padding-top: var(--app-dashboard-desktop-gap) !important;
   }
 
@@ -420,10 +513,50 @@
   }
 
   .live-pricing-grid {
+    flex: 1 1 auto;
+    align-items: stretch;
+    min-height: 0;
     row-gap: var(--app-dashboard-desktop-gap);
   }
 
+  .live-pricing-grid__col > * {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  .live-pricing-card__body {
+    justify-content: space-between;
+  }
+
   .live-pricing-card__target-summary {
-    min-height: 118px;
+    justify-content: center;
+  }
+
+  .live-pricing-card__scenario-grid {
+    gap: 7px;
+  }
+
+  .live-pricing-card__scenario-tile {
+    gap: 4px;
+    padding-block: 8px;
+  }
+
+  .live-pricing-card__scenario-detail {
+    min-height: 1.25rem;
+    opacity: 0;
+    transform: translateY(2px);
+    transition:
+      opacity var(--app-motion-standard) ease,
+      transform var(--app-motion-standard) ease;
+  }
+
+  .live-pricing-card__scenario-tile:hover .live-pricing-card__scenario-detail,
+  .live-pricing-card__scenario-tile:focus-visible .live-pricing-card__scenario-detail {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .live-pricing-card__scenario-tile--desktop-extra {
+    display: flex;
   }
 }
