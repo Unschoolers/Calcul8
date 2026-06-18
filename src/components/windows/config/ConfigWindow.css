@@ -358,7 +358,7 @@
   background: rgba(var(--v-theme-primary), 0.08);
 }
 
-@media (max-width: 1279px) {
+@media (max-width: 1144px) {
   .config-summary-hero__main {
     flex-direction: column;
     align-items: stretch;

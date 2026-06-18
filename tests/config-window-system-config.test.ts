@@ -13,8 +13,8 @@ test("ConfigWindow keeps the main setup focused on cost basis and purchasing onl
   assert.doesNotMatch(template, /v-model="showSystemConfigurationDialog"/);
   assert.doesNotMatch(template, /configSellingTitle/);
   assert.doesNotMatch(template, /<!-- Default Prices -->/);
-  assert.match(css, /@media \(max-width:\s*1279px\)[\s\S]*\.config-summary-hero__main\s*{[\s\S]*flex-direction:\s*column/);
-  assert.match(css, /@media \(max-width:\s*1279px\)[\s\S]*\.config-summary-hero__stats\s*{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(css, /@media \(max-width:\s*1144px\)[\s\S]*\.config-summary-hero__main\s*{[\s\S]*flex-direction:\s*column/);
+  assert.match(css, /@media \(max-width:\s*1144px\)[\s\S]*\.config-summary-hero__stats\s*{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
   assert.doesNotMatch(css, /@media \(max-width:\s*600px\)[\s\S]*\.config-summary-hero__main\s*{[\s\S]*flex-direction:\s*column/);
 });
 

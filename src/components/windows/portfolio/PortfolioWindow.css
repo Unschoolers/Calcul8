@@ -211,7 +211,7 @@
   z-index: 4200 !important;
 }
 
-@media (max-width: 1279px) {
+@media (max-width: 1144px) {
   .portfolio-filter-bar {
     border-radius: var(--app-radius-card) !important;
   }
@@ -704,7 +704,7 @@
   color: var(--app-text-strong);
 }
 
-@media (min-width: 1280px) {
+@media (min-width: 1145px) {
   .portfolio-filter-bar,
   .portfolio-section-card {
     margin-bottom: var(--app-dashboard-desktop-gap);

@@ -316,7 +316,7 @@ test("Portfolio pulse panel uses a neutral surface, compact stat rail, and mobil
   assert.doesNotMatch(css, /max-width:\s*min\(100%,\s*34rem\)/);
   assert.match(css, /portfolio-pulse-stat-rail/);
   assert.match(css, /portfolio-pulse-action-card/);
-  assert.match(css, /@media \(max-width: 1279px\)[\s\S]*portfolio-pulse-stat\.is-forecast[\s\S]*order:\s*-1/);
+  assert.match(css, /@media \(max-width: 1144px\)[\s\S]*portfolio-pulse-stat\.is-forecast[\s\S]*order:\s*-1/);
 });
 
 test("PortfolioWindow keeps dashboard cards stacked until desktop", () => {
@@ -331,36 +331,36 @@ test("PortfolioWindow keeps dashboard cards stacked until desktop", () => {
   assert.doesNotMatch(template, /<v-col cols="12" md="12">/);
   assert.match(
     css,
-    /@media \(min-width: 1280px\)[\s\S]*\.portfolio-filter-bar,[\s\S]*\.portfolio-section-card\s*{[\s\S]*margin-bottom:\s*var\(--app-dashboard-desktop-gap\)/
+    /@media \(min-width: 1145px\)[\s\S]*\.portfolio-filter-bar,[\s\S]*\.portfolio-section-card\s*{[\s\S]*margin-bottom:\s*var\(--app-dashboard-desktop-gap\)/
   );
   assert.match(
     css,
-    /@media \(max-width: 1279px\)[\s\S]*\.portfolio-filter-toolbar\s*{[\s\S]*flex-direction:\s*column/
+    /@media \(max-width: 1144px\)[\s\S]*\.portfolio-filter-toolbar\s*{[\s\S]*flex-direction:\s*column/
   );
   assert.match(
     css,
-    /@media \(max-width: 1279px\)[\s\S]*\.portfolio-filter-type-toggle,[\s\S]*\.portfolio-preset-select,[\s\S]*\.portfolio-filter-select\s*{[\s\S]*width:\s*100%/
+    /@media \(max-width: 1144px\)[\s\S]*\.portfolio-filter-type-toggle,[\s\S]*\.portfolio-preset-select,[\s\S]*\.portfolio-filter-select\s*{[\s\S]*width:\s*100%/
   );
   assert.doesNotMatch(css, /@media \(min-width: 960px\)[\s\S]*\.portfolio-filter-bar/);
   assert.match(
     pulseCss,
-    /@media \(max-width: 1279px\)[\s\S]*\.portfolio-pulse-panel\s*{[\s\S]*grid-template-columns:\s*1fr/
+    /@media \(max-width: 1144px\)[\s\S]*\.portfolio-pulse-panel\s*{[\s\S]*grid-template-columns:\s*1fr/
   );
   assert.match(
     pulseCss,
-    /@media \(max-width: 1279px\)[\s\S]*\.portfolio-pulse-profit__value\s*{[\s\S]*font-size:\s*2\.35rem/
+    /@media \(max-width: 1144px\)[\s\S]*\.portfolio-pulse-profit__value\s*{[\s\S]*font-size:\s*2\.35rem/
   );
   assert.match(
     pulseCss,
-    /@media \(max-width: 1279px\)[\s\S]*\.portfolio-pulse-stat-rail\s*{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/
+    /@media \(max-width: 1144px\)[\s\S]*\.portfolio-pulse-stat-rail\s*{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/
   );
   assert.match(
     pulseCss,
-    /@media \(max-width: 1279px\)[\s\S]*\.portfolio-pulse-stat\.is-forecast\s*{[\s\S]*grid-column:\s*1\s*\/\s*-1/
+    /@media \(max-width: 1144px\)[\s\S]*\.portfolio-pulse-stat\.is-forecast\s*{[\s\S]*grid-column:\s*1\s*\/\s*-1/
   );
   assert.match(
     pulseCss,
-    /@media \(max-width: 1279px\)[\s\S]*\.portfolio-pulse-insights__grid\s*{[\s\S]*grid-template-columns:\s*1fr/
+    /@media \(max-width: 1144px\)[\s\S]*\.portfolio-pulse-insights__grid\s*{[\s\S]*grid-template-columns:\s*1fr/
   );
   assert.doesNotMatch(pulseCss, /@media \(max-width: 960px\)[\s\S]*\.portfolio-pulse-panel/);
   assert.doesNotMatch(phoneBlock, /\.portfolio-pulse-profit__value/);
