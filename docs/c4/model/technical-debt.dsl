@@ -19,8 +19,8 @@
 !element calcul8.web.syncCoordinator {
     perspectives {
         perspective "Technical Debt" {
-            description "High debt: sync conflict recovery is safer than before, but it remains one of the most failure-sensitive cross-boundary flows."
-            value "High"
+            description "Medium debt: sync conflict recovery now isolates failed queued operations and auto-pulls clean stale-version conflicts, while dirty local edits still require explicit user recovery."
+            value "Medium"
         }
     }
 }
@@ -28,7 +28,16 @@
 !element calcul8.web.salesWorkflows {
     perspectives {
         perspective "Technical Debt" {
-            description "Medium debt: sales, live pricing, singles, forecasting, and portfolio screens are broad workflow clusters that need continued mobile-first polish and branch coverage."
+            description "Medium debt: sales, live pricing, singles, forecasting, and portfolio screens now share stronger layout contracts, but still need continued mobile-first polish, chart resilience, and branch coverage."
+            value "Medium"
+        }
+    }
+}
+
+!element calcul8.web.uiContracts {
+    perspectives {
+        perspective "Technical Debt" {
+            description "Medium debt: shared UI contracts reduce breakpoint drift, but every new screen must reuse them instead of reintroducing one-off responsive behavior."
             value "Medium"
         }
     }
@@ -73,8 +82,8 @@
 !element calcul8.api.syncWorkspaceServices {
     perspectives {
         perspective "Technical Debt" {
-            description "High debt: workspace membership, scoped sync, stale-version conflicts, and access-loss recovery remain concurrency-sensitive."
-            value "High"
+            description "Medium debt: workspace sync now rechecks membership at the final pull/push boundary and stale-version writes use guarded conflicts, while cross-partition workspace lifecycle changes still require careful tests."
+            value "Medium"
         }
     }
 }

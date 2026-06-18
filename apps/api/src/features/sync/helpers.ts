@@ -56,6 +56,19 @@ export async function resolveAuthorizedSyncScope(
   return { userId, syncScope };
 }
 
+export async function assertAuthorizedSyncScopeStillActive(
+  config: ApiConfig,
+  syncScope: ResolvedSyncScope
+): Promise<void> {
+  // Workspace access can change while a sync request is validating payloads or
+  // reading data. Recheck at the last service boundary before returning or
+  // mutating workspace-scoped state.
+  await assertSyncScopeAccess(
+    syncScope,
+    (actorUserId, workspaceId) => hasWorkspaceMembership(config, actorUserId, workspaceId)
+  );
+}
+
 export function handleSyncFunctionError(input: HandleSyncFunctionErrorInput) {
   return handleApiFunctionError({
     request: input.request,

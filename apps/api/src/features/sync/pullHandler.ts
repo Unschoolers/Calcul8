@@ -3,7 +3,12 @@ import { getEffectiveSyncSnapshot } from "../../lib/cosmos/syncSnapshotRepositor
 import { getConfig } from "../../lib/config";
 import { jsonResponse, maybeHandleHttpGuards } from "../../lib/http";
 import { parseOptionalWorkspaceId } from "../../lib/syncScope";
-import { handleSyncFunctionError, isRecord, resolveAuthorizedSyncScope } from "./helpers";
+import {
+  assertAuthorizedSyncScopeStillActive,
+  handleSyncFunctionError,
+  isRecord,
+  resolveAuthorizedSyncScope
+} from "./helpers";
 import type { SyncPullPayload } from "../../types";
 
 const EMPTY_SYNC_SNAPSHOT = {
@@ -51,6 +56,7 @@ export async function syncPull(
       workspaceId: payload.workspaceId
     });
     const snapshot = await getEffectiveSyncSnapshot(config, syncScope.partitionKey);
+    await assertAuthorizedSyncScopeStillActive(config, syncScope);
 
     return jsonResponse(request, config, 200, {
       userId,

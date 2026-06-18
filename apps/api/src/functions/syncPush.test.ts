@@ -656,3 +656,38 @@ test("syncPush rejects workspace sync when user is not a member", async () => {
   assert.equal(context.warn.mock.calls[0]?.[1]?.workspace_scope, "workspace");
   assert.equal(context.warn.mock.calls[0]?.[1]?.outcome, "http_403");
 });
+
+test("syncPush rechecks workspace membership before writing scoped data", async () => {
+  parseSyncLotsShapeMock.mockReturnValue({
+    lots: [{ id: 21 }],
+    salesByLot: { "21": [] }
+  });
+  getEffectiveSyncSnapshotMock.mockResolvedValue({
+    version: 1,
+    updatedAt: "2026-02-21T10:00:00.000Z"
+  });
+  hasWorkspaceMembershipMock
+    .mockResolvedValueOnce(true)
+    .mockResolvedValueOnce(false);
+
+  const request = createRequest(
+    {
+      lots: [{ id: 21 }],
+      salesByLot: { "21": [] },
+      clientVersion: 1,
+      workspaceId: "team-race",
+      activeLotId: 21
+    },
+    "POST",
+    { authorization: "Bearer user-race" }
+  );
+  const context = createContext();
+
+  const response = await syncPush(request as never, context as never);
+
+  assert.equal(response.status, 403);
+  assert.equal((response.jsonBody as { error: string }).error, "User is not a member of this workspace.");
+  assert.equal(hasWorkspaceMembershipMock.mock.calls.length, 2);
+  assert.equal(upsertSyncSnapshotIncrementalMock.mock.calls.length, 0);
+  assert.equal(publishWorkspaceLotRealtimeEventMock.mock.calls.length, 0);
+});

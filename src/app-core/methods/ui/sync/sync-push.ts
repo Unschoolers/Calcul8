@@ -52,7 +52,8 @@ export async function performCloudSyncPush(
         app,
         deps,
         scope,
-        options
+        options,
+        attemptedPayloadSignature: payloadSignature
       });
       return;
     }

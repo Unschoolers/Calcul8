@@ -157,6 +157,54 @@ test("runCloudSyncPull marks the app offline and schedules reconnect when alread
   assert.equal(app.startOfflineReconnectScheduler.mock.calls.length, 1);
 });
 
+test("runCloudSyncPull recovers the coordinator after an unexpected setup error", async () => {
+  const app = createApp();
+  const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+  const firstRequestCloudSyncPull = vi.fn();
+  const secondRequestCloudSyncPull = vi.fn().mockResolvedValue({
+    ok: true,
+    status: 200,
+    statusText: "OK",
+    json: async () => ({})
+  });
+
+  await runCloudSyncPull(app, {
+    requestCloudSyncPull: firstRequestCloudSyncPull,
+    startSyncStatus: () => {
+      throw new Error("status setup failed");
+    },
+    setSyncStatusSuccess: (target) => {
+      target.syncStatus = "success";
+    },
+    setSyncStatusError: (target) => {
+      target.syncStatus = "error";
+    }
+  });
+
+  assert.equal(firstRequestCloudSyncPull.mock.calls.length, 0);
+  assert.equal(app.syncStatus, "error");
+  assert.match(String(warnSpy.mock.calls[0]?.[0] ?? ""), /Cloud sync pull coordinator error/);
+
+  await runCloudSyncPull(app, {
+    requestCloudSyncPull: secondRequestCloudSyncPull,
+    createSyncPayload: () => ({ lots: app.lots, salesByLot: {}, wheelConfigs: [], activeWheelConfigId: null }),
+    getSyncPayloadSignature: () => "sig-after-recovery",
+    startSyncStatus: (target) => {
+      target.syncStatus = "syncing";
+    },
+    setSyncStatusSuccess: (target) => {
+      target.syncStatus = "success";
+    },
+    setSyncStatusError: (target) => {
+      target.syncStatus = "error";
+    }
+  });
+
+  assert.equal(secondRequestCloudSyncPull.mock.calls.length, 1);
+  assert.equal(app.syncStatus, "success");
+  warnSpy.mockRestore();
+});
+
 test("runCloudSyncPull shares one in-flight request across overlapping callers", async () => {
   const app = createApp();
   const pullDeferred = createDeferred<{
@@ -244,6 +292,39 @@ test("runCloudSyncPush reports manual recovery on stale-version conflict", async
     app.notify.mock.calls.at(-1),
     ["Cloud data changed. Your local changes were kept. Pull latest data before retrying.", "warning"]
   );
+});
+
+test("runCloudSyncPush pulls latest cloud data when a conflict has no local edits", async () => {
+  const app = createApp();
+  app.lastSyncedPayloadHash = "clean-sig";
+  const requestCloudSyncPush = vi.fn().mockResolvedValue({
+    ok: false,
+    status: 409,
+    statusText: "Conflict",
+    json: async () => ({
+      error: "Cloud data changed since your last sync. Pull latest data and retry."
+    })
+  });
+
+  await runCloudSyncPush(app, true, {
+    requestCloudSyncPush,
+    createSyncPayload: () => ({ lots: app.lots, salesByLot: { "1": [] }, wheelConfigs: [], activeWheelConfigId: null }),
+    getSyncPayloadSignature: () => "clean-sig",
+    startSyncStatus: (target) => {
+      target.syncStatus = "syncing";
+    },
+    setSyncStatusSuccess: (target) => {
+      target.syncStatus = "success";
+    },
+    setSyncStatusError: (target) => {
+      target.syncStatus = "error";
+    }
+  });
+
+  assert.equal(requestCloudSyncPush.mock.calls.length, 1);
+  assert.equal(app.pullCloudSync.mock.calls.length, 1);
+  assert.equal(app.notify.mock.calls.length, 0);
+  assert.notEqual(app.syncStatus, "error");
 });
 
 test("runCloudSyncPush keeps local edits intact on stale-version conflict", async () => {

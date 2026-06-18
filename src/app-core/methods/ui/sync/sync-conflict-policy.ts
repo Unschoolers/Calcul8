@@ -7,16 +7,25 @@ export type SyncPushConflictPolicyArgs = {
   deps: SyncServiceDeps;
   scope: SyncScopeContext;
   options: SyncPushOptions;
+  attemptedPayloadSignature: string;
 };
 
 export async function handleSyncPushConflict({
   app,
   deps,
-  options
+  options,
+  attemptedPayloadSignature
 }: SyncPushConflictPolicyArgs): Promise<void> {
   if (options.treatConflictAsSuccess === true) {
     deps.setSyncStatusSuccess(app);
     console.warn("[whatfees] Cloud sync push conflict ignored for scoped seed");
+    return;
+  }
+
+  const lastSyncedPayloadHash = String(app.lastSyncedPayloadHash || "");
+  if (lastSyncedPayloadHash && lastSyncedPayloadHash === attemptedPayloadSignature) {
+    console.info("[whatfees] Cloud sync push conflict: pulling latest clean state");
+    await app.pullCloudSync();
     return;
   }
 

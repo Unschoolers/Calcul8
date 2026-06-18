@@ -1,4 +1,4 @@
-appShell = component "App Shell" "Owns the main Vue/Vuetify app frame, account menu, workspace controls, window registry, dialogs, and theme-aware layout." "src/App.vue, src/app-shell" {
+appShell = component "App Shell" "Owns the main Vue/Vuetify app frame, account menu, workspace controls, window registry, dialogs, named layout zones, and theme-aware layout." "src/App.vue, src/App.html, src/app-shell" {
     tags "Web Component", "Boundary"
 }
 
@@ -20,6 +20,10 @@ syncCoordinator = component "Sync Coordinator" "Pushes and pulls scoped snapshot
 
 salesWorkflows = component "Sales And Lot Workflows" "Owns lot setup, sales entry, live pricing, singles workflows, forecasting, portfolio, and sales charts." "src/components/windows/config, src/components/windows/sales, src/components/windows/live, src/components/windows/singles, src/components/windows/portfolio" {
     tags "Web Component"
+}
+
+uiContracts = component "Shared UI Contracts" "Owns design tokens, mobile-first shell zones, KPI grids, cards, tables, dialogs, responsive chart wrappers, and utility-library adapters." "src/styles, src/components/shared, src/app-core/ui" {
+    tags "Web Component", "Shared Contract"
 }
 
 gameWorkflows = component "Game Workflows" "Owns wheel and grid game configuration, live stage rendering, fairness links, public session publishing, and spectator mode controls." "src/components/windows/game, src/components/windows/wheel" {
@@ -47,10 +51,12 @@ appShell -> workspaceState "Reads active scope and workspace controls." "In-proc
 appShell -> salesWorkflows "Hosts lot, sales, live, singles, and portfolio windows." "Vue component composition"
 appShell -> gameWorkflows "Hosts game and wheel windows." "Vue component composition"
 appShell -> whatnotWorkflows "Hosts Whatnot connection, import, and review flows." "Vue component composition"
+appShell -> uiContracts "Applies shared shell zones, actions, cards, dialogs, tables, and responsive layout rules." "Vue component composition"
 appShell -> i18nDisplay "Renders translated labels and derived status display." "In-process calls"
 
 workspaceState -> localStateStore "Separates personal and workspace storage scopes." "Scope keys"
 syncCoordinator -> localStateStore "Reads local snapshot state and applies safe sync results." "Local cache"
 salesWorkflows -> localStateStore "Reads and writes lots, sales, prices, and local workflow state." "Local cache"
+salesWorkflows -> uiContracts "Uses shared KPI grids, responsive charts, compact ledgers, and projection badges." "Vue component composition"
 gameWorkflows -> localStateStore "Reads and writes game configuration, sessions, and local stage state." "Local cache"
 whatnotWorkflows -> localStateStore "Maps imported sales into local lots and sales state." "Local cache"

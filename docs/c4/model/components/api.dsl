@@ -1,8 +1,8 @@
-functionEntryPoints = component "Function Entry Points" "Azure Functions route bindings that expose the API surface and delegate request handling." "apps/api/src/functions" {
+functionEntryPoints = component "Function Entry Points" "Azure Functions route bindings that expose the API surface and delegate request handling to feature handler factories." "apps/api/src/functions" {
     tags "API Component", "Boundary"
 }
 
-httpBoundary = component "HTTP Boundary" "Applies CORS, JSON responses, guard handling, auth resolution, CSRF checks, and error mapping." "apps/api/src/lib/http.ts, apps/api/src/lib/auth" {
+httpBoundary = component "HTTP Boundary" "Applies CORS, JSON responses, guard handling, session-first auth resolution, CSRF checks, and error mapping." "apps/api/src/lib/http.ts, apps/api/src/lib/auth" {
     tags "API Component", "Security Boundary", "Validation Boundary"
 }
 
@@ -22,7 +22,7 @@ billingEntitlementServices = component "Billing Entitlement Services" "Creates c
     tags "API Component", "Security Boundary"
 }
 
-whatnotImportServices = component "Whatnot Import Services" "Manages Whatnot OAuth connections, import batches, review decisions, token refresh, and sale mapping." "apps/api/src/features/whatnot, apps/api/src/lib/whatnot.ts" {
+whatnotImportServices = component "Whatnot Import Services" "Manages Whatnot OAuth connections, import batches, review decisions, token refresh, sale mapping, seller-note preservation, and external import metadata." "apps/api/src/features/whatnot, apps/api/src/lib/whatnot.ts" {
     tags "API Component", "Security Boundary"
 }
 

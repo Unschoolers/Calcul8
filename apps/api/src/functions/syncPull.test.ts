@@ -162,3 +162,28 @@ test("syncPull rejects workspace sync when user is not a member", async () => {
   assert.equal((response.jsonBody as { error: string }).error, "User is not a member of this workspace.");
   assert.equal(getEffectiveSyncSnapshotMock.mock.calls.length, 0);
 });
+
+test("syncPull rechecks workspace membership before returning scoped data", async () => {
+  hasWorkspaceMembershipMock
+    .mockResolvedValueOnce(true)
+    .mockResolvedValueOnce(false);
+  getEffectiveSyncSnapshotMock.mockResolvedValue({
+    lots: [{ id: 10 }],
+    salesByLot: { "10": [] },
+    version: 8,
+    updatedAt: "2026-02-21T00:00:00.000Z"
+  });
+  const request = createHttpRequest({
+    method: "POST",
+    headers: { authorization: "Bearer user-ws" },
+    body: { workspaceId: "team-42" }
+  });
+  const context = createInvocationContext();
+
+  const response = await syncPull(request as never, context as never);
+
+  assert.equal(response.status, 403);
+  assert.equal((response.jsonBody as { error: string }).error, "User is not a member of this workspace.");
+  assert.equal(getEffectiveSyncSnapshotMock.mock.calls.length, 1);
+  assert.equal(hasWorkspaceMembershipMock.mock.calls.length, 2);
+});

@@ -11,7 +11,12 @@ import { publishWorkspaceLotRealtimeEventBestEffort } from "../../lib/realtime";
 import { parseOptionalWorkspaceId } from "../../lib/syncScope";
 import { parseSyncLotsShape, parseSyncWheelConfigs } from "../../lib/syncShape";
 import { assertSafeSyncPush } from "../../lib/syncSafety";
-import { handleSyncFunctionError, isRecord, resolveAuthorizedSyncScope } from "./helpers";
+import {
+  assertAuthorizedSyncScopeStillActive,
+  handleSyncFunctionError,
+  isRecord,
+  resolveAuthorizedSyncScope
+} from "./helpers";
 import type { SyncPushPayload } from "../../types";
 import { normalizeSyncSystemPricingDefaultsDto } from "../../shared/sync-contracts.cjs";
 
@@ -137,6 +142,7 @@ export async function syncPush(
       payload.wheelConfigs,
       payload.allowEmptyOverwrite === true
     );
+    await assertAuthorizedSyncScopeStillActive(config, syncScope);
 
     const candidateVersion = Math.floor(payload.clientVersion ?? 0);
     const version = Math.max(previousVersion + 1, candidateVersion + 1);

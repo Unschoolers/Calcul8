@@ -67,7 +67,9 @@ Keep cross-cutting perspectives in dedicated model overlay files, not scattered 
 
 ## Refactor Plan Alignment
 
-When `docs/refactorplan.md` identifies critical or high-risk architecture, add or update a C4 view if a diagram would clarify ownership or failure modes. Current high-value areas are account deletion credentials, payment entitlements, workspace sync conflict recovery, realtime delivery, public game sessions, and release/deployment paths.
+When `docs/refactorplan.md` identifies critical or high-risk architecture, add or update a C4 view if a diagram would clarify ownership or failure modes. Current high-value areas are session-first auth, recoverable cross-document writes, generated artifact hygiene, fixture-builder driven verification, workspace sync conflict recovery, realtime delivery, public game sessions, and release/deployment paths.
+
+UI-only work belongs in C4 when it becomes a cross-screen contract: app shell zones, shared action rails, shared KPI/card/table/dialog primitives, responsive chart behavior, or a rule that prevents mobile/tablet/desktop layout forks. Cosmetic backlog stays in `docs/UIrefinement.md`.
 
 ## Verification
 

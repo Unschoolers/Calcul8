@@ -42,15 +42,21 @@ export function getSyncCoordinatorState(app: object, scopeKey: string): SyncCoor
 async function drainSyncQueue(
   session: SyncSession
 ): Promise<void> {
-  const { app, state } = session;
+  const { app, deps, state } = session;
   while (state.pendingPull || state.pendingPush) {
     if (state.pendingPull) {
       const forceApply = state.pendingPullForceApply;
       state.pendingPull = false;
       state.pendingPullForceApply = false;
       state.activeOperation = "pull";
-      await performCloudSyncPull(session, { forceApply });
-      state.activeOperation = null;
+      try {
+        await performCloudSyncPull(session, { forceApply });
+      } catch (error) {
+        deps.setSyncStatusError(app);
+        console.warn("[whatfees] Cloud sync pull coordinator error", error);
+      } finally {
+        state.activeOperation = null;
+      }
       continue;
     }
 
@@ -62,8 +68,14 @@ async function drainSyncQueue(
     state.pendingPushAllowEmptyOverwrite = false;
     state.pendingPushTreatConflictAsSuccess = false;
     state.activeOperation = "push";
-    await performCloudSyncPush(session, force, { allowEmptyOverwrite, treatConflictAsSuccess });
-    state.activeOperation = null;
+    try {
+      await performCloudSyncPush(session, force, { allowEmptyOverwrite, treatConflictAsSuccess });
+    } catch (error) {
+      deps.setSyncStatusError(app);
+      console.warn("[whatfees] Cloud sync push coordinator error", error);
+    } finally {
+      state.activeOperation = null;
+    }
   }
 }
 
