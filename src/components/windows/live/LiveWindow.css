@@ -499,7 +499,7 @@
   }
 }
 
-@media (min-width: 1280px) {
+@media (min-width: 1145px) {
   .live-window-shell {
     display: flex;
     flex-direction: column;

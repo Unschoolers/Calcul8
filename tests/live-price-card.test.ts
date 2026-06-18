@@ -216,14 +216,14 @@ test("LivePriceCard template and CSS keep extra scenario tiles desktop-only", ()
   assert.match(styles, /\.live-pricing-card__scenario-tile::before[\s\S]*linear-gradient\(90deg/);
   assert.match(styles, /\.live-pricing-card__scenario-tile::after[\s\S]*left:\s*var\(--live-scenario-progress-percent\)/);
   assert.match(styles, /\.live-pricing-card__scenario-tile--desktop-extra\s*{[\s\S]*display:\s*none/);
-  assert.match(styles, /@media \(min-width:\s*1280px\)[\s\S]*\.live-pricing-card__scenario-detail\s*{[\s\S]*min-height:\s*1\.25rem[\s\S]*opacity:\s*0[\s\S]*transition:\s*opacity/);
+  assert.match(styles, /@media \(min-width:\s*1145px\)[\s\S]*\.live-pricing-card__scenario-detail\s*{[\s\S]*min-height:\s*1\.25rem[\s\S]*opacity:\s*0[\s\S]*transition:\s*opacity/);
   assert.doesNotMatch(styles, /\.live-pricing-card__scenario-detail\s*{[\s\S]*max-height/);
   assert.match(styles, /\.live-pricing-card__scenario-tile:hover \.live-pricing-card__scenario-detail[\s\S]*opacity:\s*1/);
   assert.match(styles, /\.live-pricing-card__scenario-tile:focus-visible \.live-pricing-card__scenario-detail[\s\S]*opacity:\s*1/);
-  assert.match(styles, /@media \(min-width:\s*1280px\)[\s\S]*\.live-pricing-card__scenario-tile--desktop-extra\s*{[\s\S]*display:\s*flex/);
+  assert.match(styles, /@media \(min-width:\s*1145px\)[\s\S]*\.live-pricing-card__scenario-tile--desktop-extra\s*{[\s\S]*display:\s*flex/);
   assert.match(styles, /\.live-pricing-card__decision-tile--success\s*{[\s\S]*display:\s*flex[\s\S]*align-items:\s*center/);
   assert.match(styles, /\.live-pricing-card__decision-tile--success\s*{[\s\S]*padding:\s*0\.65rem 0\.75rem/);
-  assert.doesNotMatch(styles, /@media \(min-width:\s*1280px\)[\s\S]*\.live-pricing-card__target-summary\s*{[\s\S]*min-height:\s*118px/);
+  assert.doesNotMatch(styles, /@media \(min-width:\s*1145px\)[\s\S]*\.live-pricing-card__target-summary\s*{[\s\S]*min-height:\s*118px/);
 });
 
 test("needed display helpers and delta use needed values", () => {

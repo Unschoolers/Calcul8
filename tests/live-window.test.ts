@@ -7,7 +7,7 @@ test("LiveWindow keeps bulk pricing cards stacked until desktop", () => {
   const template = readFileSync("src/components/windows/live/LiveWindow.html", "utf8");
   const css = readFileSync("src/components/windows/live/LiveWindow.css", "utf8");
   const phoneBlockStart = css.indexOf("@media (max-width: 600px)");
-  const desktopBlockStart = css.indexOf("@media (min-width: 1280px)");
+  const desktopBlockStart = css.indexOf("@media (min-width: 1145px)");
   const phoneBlock = css.slice(phoneBlockStart, desktopBlockStart);
 
   assert.equal((template.match(/<v-col cols="12" lg="4" class="live-pricing-grid__col">/g) ?? []).length, 3);
@@ -18,18 +18,19 @@ test("LiveWindow keeps bulk pricing cards stacked until desktop", () => {
   assert.match(css, /\.live-pricing-card\s*{[\s\S]*display:\s*flex[\s\S]*flex-direction:\s*column/);
   assert.match(css, /\.live-pricing-card__body\s*{[\s\S]*flex:\s*1 1 auto/);
   assert.doesNotMatch(css, /\.live-pricing-card__body\s*{[\s\S]*height:\s*100%/);
-  assert.match(css, /@media \(min-width:\s*1280px\)[\s\S]*\.live-window-shell\s*{[\s\S]*padding-top:\s*var\(--app-dashboard-desktop-gap\)/);
-  assert.match(css, /@media \(min-width:\s*1280px\)[\s\S]*\.live-window-shell\s*{[\s\S]*min-height:\s*clamp\(26rem,\s*calc\(100dvh - var\(--app-bottom-nav-height\) - 13rem\),\s*42rem\)/);
-  assert.match(css, /@media \(min-width:\s*1280px\)[\s\S]*\.live-window-shell\s*{[\s\S]*display:\s*flex[\s\S]*flex-direction:\s*column/);
-  assert.match(css, /@media \(min-width:\s*1280px\)[\s\S]*\.live-pricing-grid\s*{[\s\S]*flex:\s*1 1 auto[\s\S]*align-items:\s*stretch/);
-  assert.match(css, /@media \(min-width:\s*1280px\)[\s\S]*\.live-pricing-grid__col > \*\s*{[\s\S]*flex:\s*1 1 auto/);
-  assert.match(css, /@media \(min-width:\s*1280px\)[\s\S]*\.live-pricing-card__body\s*{[\s\S]*justify-content:\s*space-between/);
-  assert.match(css, /@media \(min-width:\s*1280px\)[\s\S]*\.live-pricing-card__target-summary\s*{[\s\S]*justify-content:\s*center/);
-  assert.doesNotMatch(css, /@media \(min-width:\s*1280px\)[\s\S]*\.live-pricing-card__target-summary\s*{[\s\S]*flex:\s*1 1 auto/);
-  assert.doesNotMatch(css, /@media \(min-width:\s*1280px\)[\s\S]*\.live-pricing-card__target-summary\s*{[\s\S]*min-height:\s*118px/);
+  assert.match(css, /@media \(min-width:\s*1145px\)[\s\S]*\.live-window-shell\s*{[\s\S]*padding-top:\s*var\(--app-dashboard-desktop-gap\)/);
+  assert.match(css, /@media \(min-width:\s*1145px\)[\s\S]*\.live-window-shell\s*{[\s\S]*min-height:\s*clamp\(26rem,\s*calc\(100dvh - var\(--app-bottom-nav-height\) - 13rem\),\s*42rem\)/);
+  assert.match(css, /@media \(min-width:\s*1145px\)[\s\S]*\.live-window-shell\s*{[\s\S]*display:\s*flex[\s\S]*flex-direction:\s*column/);
+  assert.match(css, /@media \(min-width:\s*1145px\)[\s\S]*\.live-pricing-grid\s*{[\s\S]*flex:\s*1 1 auto[\s\S]*align-items:\s*stretch/);
+  assert.match(css, /@media \(min-width:\s*1145px\)[\s\S]*\.live-pricing-grid__col > \*\s*{[\s\S]*flex:\s*1 1 auto/);
+  assert.match(css, /@media \(min-width:\s*1145px\)[\s\S]*\.live-pricing-card__body\s*{[\s\S]*justify-content:\s*space-between/);
+  assert.match(css, /@media \(min-width:\s*1145px\)[\s\S]*\.live-pricing-card__target-summary\s*{[\s\S]*justify-content:\s*center/);
+  assert.doesNotMatch(css, /@media \(min-width:\s*1145px\)[\s\S]*\.live-pricing-card__target-summary\s*{[\s\S]*flex:\s*1 1 auto/);
+  assert.doesNotMatch(css, /@media \(min-width:\s*1145px\)[\s\S]*\.live-pricing-card__target-summary\s*{[\s\S]*min-height:\s*118px/);
   assert.doesNotMatch(css, /@media \(max-width:\s*959px\)[\s\S]*\.live-pricing-card__scenario-grid/);
   assert.doesNotMatch(phoneBlock, /\.live-pricing-card__target-summary/);
   assert.doesNotMatch(css, /@media \(min-width:\s*960px\)[\s\S]*\.live-pricing-grid/);
+  assert.doesNotMatch(css, /@media \(min-width:\s*1280px\)[\s\S]*\.live-pricing-card__scenario-tile--desktop-extra/);
 });
 
 test("liveWindowDefinition getLiveSinglesPanelVm returns panel instance when ref exists", () => {
