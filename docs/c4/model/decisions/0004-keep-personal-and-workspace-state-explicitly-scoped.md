@@ -1,4 +1,4 @@
-# 4. Keep personal and workspace state explicitly scoped
+# 4. Explicit scopes
 
 Date: 2026-05-19
 
@@ -25,4 +25,3 @@ Cross-cutting identifiers must stay centralized and typed.
 Workspace access loss must be handled as a state transition, not as a generic sync failure.
 
 Tests for shared behavior should prove personal and workspace data cannot bleed into each other.
-

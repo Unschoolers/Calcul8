@@ -1,4 +1,4 @@
-# 5. Use session-first provider-neutral auth
+# 5. Session-first auth
 
 Date: 2026-05-19
 
@@ -25,4 +25,3 @@ Future identity-provider changes should not rewrite business APIs.
 Browser-stored sensitive material must be minimized.
 
 Production CORS wildcard behavior remains a hard safety issue until guarded by API config/tests.
-

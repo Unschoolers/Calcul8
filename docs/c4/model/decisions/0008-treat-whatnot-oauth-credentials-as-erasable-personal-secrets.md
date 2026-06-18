@@ -1,4 +1,4 @@
-# 8. Treat Whatnot OAuth credentials as erasable personal secrets
+# 8. Erasable Whatnot secrets
 
 Date: 2026-05-19
 
@@ -27,4 +27,3 @@ Account deletion tests must prove personal Whatnot credentials are erased.
 The system avoids leaving third-party credentials recoverable after a user deletes their account.
 
 Future workspace Whatnot support will require an explicit architecture decision rather than a silent data-model expansion.
-

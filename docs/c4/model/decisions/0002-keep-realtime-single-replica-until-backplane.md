@@ -1,4 +1,4 @@
-# 2. Keep realtime single-replica until a shared backplane exists
+# 2. Single-replica realtime
 
 Date: 2026-05-19
 
@@ -23,4 +23,3 @@ Production bootstrap and deployment paths must require `REALTIME_TOKEN_SECRET` s
 The current deployment is operationally simpler and consistent with the implementation.
 
 Horizontal scale for realtime is intentionally deferred until the backplane is implemented.
-

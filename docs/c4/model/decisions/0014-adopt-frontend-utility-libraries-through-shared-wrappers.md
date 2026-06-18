@@ -1,4 +1,4 @@
-# 14. Adopt frontend utility libraries through shared wrappers
+# 14. Wrapped utility libraries
 
 Date: 2026-06-17
 

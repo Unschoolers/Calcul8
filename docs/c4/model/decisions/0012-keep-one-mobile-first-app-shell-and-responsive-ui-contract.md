@@ -1,4 +1,4 @@
-# 12. Keep one mobile-first app shell and responsive UI contract
+# 12. One app shell
 
 Date: 2026-06-17
 

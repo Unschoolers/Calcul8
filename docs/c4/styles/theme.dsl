@@ -28,25 +28,25 @@ element "Realtime" {
 }
 
 element "Realtime Component" {
-    shape Component
+    shape RoundedBox
     background "#ef4444"
     color "#ffffff"
 }
 
 element "Web Component" {
-    shape Component
+    shape RoundedBox
     background "#1d4ed8"
     color "#ffffff"
 }
 
 element "API Component" {
-    shape Component
+    shape RoundedBox
     background "#6d28d9"
     color "#ffffff"
 }
 
 element "Runtime Entry" {
-    shape Component
+    shape RoundedBox
     background "#0369a1"
     color "#ffffff"
 }

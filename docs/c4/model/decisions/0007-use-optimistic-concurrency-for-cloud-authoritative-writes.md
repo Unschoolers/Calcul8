@@ -1,14 +1,14 @@
-# 7. Use optimistic concurrency for cloud-authoritative writes
+# 7. Optimistic concurrency
 
 Date: 2026-05-19
 
 ## Status
 
-Proposed
+Accepted
 
 ## Context
 
-Cloud-authoritative entities can be written by more than one actor or browser session. Current refactor risks include sync snapshots, sales, Whatnot import confirmation, and public game-session publishing.
+Cloud-authoritative entities can be written by more than one actor or browser session. The high-risk paths include sync snapshots, sales, workspace membership changes, Whatnot import confirmation, and public game-session publishing.
 
 Read-before-write checks are not enough when two writers can pass the same check before either write is committed.
 
@@ -26,3 +26,4 @@ Conflict recovery becomes part of product behavior and needs user-visible resolu
 
 Repositories should translate Cosmos conflicts into domain errors instead of leaking storage details into handlers.
 
+This decision is accepted as the architecture rule. Implementation follow-up belongs in `docs/refactorplan.md` when a specific cloud-authoritative write path still needs conflict handling, idempotency, or user-visible recovery.

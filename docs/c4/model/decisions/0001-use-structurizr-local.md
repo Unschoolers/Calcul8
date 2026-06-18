@@ -1,4 +1,4 @@
-# 1. Use Structurizr local for C4 architecture docs
+# 1. Structurizr local
 
 Date: 2026-05-19
 
@@ -25,4 +25,3 @@ Architecture docs are editable as code and visible locally at `http://localhost:
 Developers need Docker to use the local viewer.
 
 Publishing or syncing to a hosted/shared Structurizr workspace remains an explicit future decision, not a default behavior.
-

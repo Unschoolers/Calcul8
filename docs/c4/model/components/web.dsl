@@ -1,62 +1,134 @@
-appShell = component "App Shell" "Owns the main Vue/Vuetify app frame, account menu, workspace controls, window registry, dialogs, named layout zones, and theme-aware layout." "src/App.vue, src/App.html, src/app-shell" {
+appShell = component "App Shell" "Main Vue/Vuetify application frame." "src/App.vue, src/App.html, src/app-shell" {
     tags "Web Component", "Boundary"
+    properties {
+        "Owns" "Top-level app composition, navigation chrome, active window hosting, global dialogs, and shared shell zones."
+        "Must not own" "Lot math, sync conflict policy, provider API details, or screen-specific business rules."
+        "Boundary data" "Active tab/window ids, authenticated profile display state, workspace selection, theme/layout state, and dialog commands."
+        "Failure recovery" "Keep the app navigable when auth, workspace, or child-window loading fails; route users to the owning workflow surface."
+    }
 }
 
-authClient = component "Auth Client" "Tracks signed-in state, Google sign-in, session refresh, logout, account deletion, and entitlement cache updates." "src/app-core/auth, src/app-core/methods/ui/auth, src/app-core/methods/ui/entitlements" {
+authClient = component "Auth Client" "Browser session and entitlement state." "src/app-core/auth, src/app-core/methods/ui/auth, src/app-core/methods/ui/entitlements" {
     tags "Web Component", "Security Boundary"
+    properties {
+        "Owns" "Browser-side session state, sign-in/out commands, profile refresh, entitlement refresh, and account-deletion initiation."
+        "Must not own" "Provider credential verification, billing fact projection, workspace authorization, or local lot/sale persistence."
+        "Boundary data" "Session status, profile display fields, entitlement summary, CSRF/session cookies, and account lifecycle commands."
+        "Failure recovery" "Recover from expired sessions by clearing unsafe auth state, refreshing when possible, and forcing explicit sign-in when not."
+    }
 }
 
-workspaceState = component "Workspace State" "Resolves personal versus workspace scope, active workspace id, membership state, and workspace UI actions." "src/app-core/workspace-scope.ts, src/app-core/methods/ui/workspace" {
+workspaceState = component "Workspace State" "Personal and workspace scope state." "src/app-core/workspace-scope.ts, src/app-core/methods/ui/workspace" {
     tags "Web Component", "Shared Contract"
+    properties {
+        "Owns" "Current personal/workspace scope, active workspace metadata, membership lists, join/leave actions, and scope transitions."
+        "Must not own" "Cloud snapshot storage, sync payload mutation, realtime transport internals, or API membership persistence."
+        "Boundary data" "Workspace ids, membership roles/status, active scope keys, join-link input, and personal fallback commands."
+        "Failure recovery" "Fall back to personal mode when workspace access is lost and trigger scoped local-state recovery without mixing data."
+    }
 }
 
-localStateStore = component "Local State Store" "Centralizes local-first state, scope-aware storage keys, local cache reads/writes, and browser storage recovery." "src/app-core/state.ts, src/app-core/storageKeys.ts, src/app-core/methods/config-storage.ts" {
+localStateStore = component "Local State Store" "Scoped local-first browser state." "src/app-core/state.ts, src/app-core/storageKeys.ts, src/app-core/methods/config-storage.ts" {
     tags "Web Component", "Local State"
+    properties {
+        "Owns" "Scoped browser storage keys, local lot/sale/game snapshots, sync metadata, migration reads, and local reset recovery."
+        "Must not own" "Remote authorization, cloud conflict decisions, realtime delivery, or API document schemas beyond shared contracts."
+        "Boundary data" "Serialized lots, sales, wheel configs, active ids, client versions, payload hashes, and storage-scope identifiers."
+        "Failure recovery" "Protect against missing/corrupt local storage by validating snapshots, preserving recoverable data, and avoiding cross-scope bleed."
+    }
 }
 
-syncCoordinator = component "Sync Coordinator" "Pushes and pulls scoped snapshots, handles conflict policy, stale-version recovery, auth expiry, and local reset recovery." "src/app-core/methods/ui/sync" {
+syncCoordinator = component "Sync Coordinator" "Scoped snapshot sync orchestration." "src/app-core/methods/ui/sync" {
     tags "Web Component", "Validation Boundary"
+    properties {
+        "Owns" "Queued pull/push orchestration, local dirty-state decisions, stale-version handling, snapshot apply, and sync status display."
+        "Must not own" "API membership checks, Cosmos conflict translation, component rendering, or provider auth verification."
+        "Boundary data" "Sync payloads, client versions, payload signatures, scope keys, push/pull responses, and conflict notifications."
+        "Failure recovery" "Isolate failed queued operations, auto-pull clean stale conflicts, preserve dirty local edits, and surface explicit recovery when needed."
+    }
 }
 
-salesWorkflows = component "Sales And Lot Workflows" "Owns lot setup, sales entry, live pricing, singles workflows, forecasting, portfolio, and sales charts." "src/components/windows/config, src/components/windows/sales, src/components/windows/live, src/components/windows/singles, src/components/windows/portfolio" {
+salesWorkflows = component "Sales And Lot Workflows" "Selling and inventory workflows." "src/components/windows/config, src/components/windows/sales, src/components/windows/live, src/components/windows/singles, src/components/windows/portfolio" {
     tags "Web Component"
+    properties {
+        "Owns" "Lot setup, cost basis, sales entry/editing, live pricing inputs, portfolio summaries, forecasts, charts, and sales history UI."
+        "Must not own" "Shared shell layout, reusable UI primitive definitions, cloud sync authorization, or provider import token handling."
+        "Boundary data" "Lots, sales, live prices, inventory counts, forecast scenarios, cost/profit calculations, and display-ready KPI values."
+        "Failure recovery" "Keep local-first selling workflows usable when sync or realtime is unavailable, and avoid presenting forecasts as recorded facts."
+    }
 }
 
-uiContracts = component "Shared UI Contracts" "Owns design tokens, mobile-first shell zones, KPI grids, cards, tables, dialogs, responsive chart wrappers, and utility-library adapters." "src/styles, src/components/shared, src/app-core/ui" {
+uiContracts = component "Shared UI Contracts" "Reusable mobile-first UI contracts." "src/styles, src/components/shared, src/app-core/ui" {
     tags "Web Component", "Shared Contract"
+    properties {
+        "Owns" "Reusable layout primitives, tokens, responsive breakpoints, KPI/card/table/dialog/chart contracts, and utility-library wrappers."
+        "Must not own" "Feature-specific business decisions, API calls, stored data, or screen-only copy beyond shared component labels."
+        "Boundary data" "Presentation props, slots, visual states, sort/filter commands, density choices, and theme-aware CSS variables."
+        "Failure recovery" "Prevent layout forks by keeping mobile/tablet together, preserve readable light/dark contrast, and avoid component-specific breakpoint drift."
+    }
 }
 
-gameWorkflows = component "Game Workflows" "Owns wheel and grid game configuration, live stage rendering, fairness links, public session publishing, and spectator mode controls." "src/components/windows/game, src/components/windows/wheel" {
+gameWorkflows = component "Game Workflows" "Wheel, grid, and public game workflows." "src/components/windows/game, src/components/windows/wheel" {
     tags "Web Component"
+    properties {
+        "Owns" "Wheel/grid configuration, staged hits, live game controls, fairness proof links, public-session UI state, and spectator publishing controls."
+        "Must not own" "Realtime socket infrastructure, API token validation, shared room naming contracts, or unrelated sales import behavior."
+        "Boundary data" "Game configs, spin outcomes, pending inventory issues, public session ids, fairness tokens, and staged display state."
+        "Failure recovery" "Block unsafe game actions until required lot selections resolve and recover public-session display after realtime gaps."
+    }
 }
 
-whatnotWorkflows = component "Whatnot Workflows" "Owns Whatnot connection status, CSV import, OAuth sync, import review, and mapping review screens." "src/components/windows/whatnot, src/app-core/methods/ui/whatnot" {
+whatnotWorkflows = component "Whatnot Workflows" "Whatnot import and review workflows." "src/components/windows/whatnot, src/app-core/methods/ui/whatnot" {
     tags "Web Component"
+    properties {
+        "Owns" "Whatnot connection status UI, CSV upload/review, import mapping screens, review decisions, and seller-facing import metadata display."
+        "Must not own" "OAuth secret storage, token refresh, provider API calls, backend import persistence, or sale repository writes."
+        "Boundary data" "CSV rows, mapped sale candidates, review decisions, import batch ids, external order ids, and existing-sale match hints."
+        "Failure recovery" "Preserve seller-authored notes, keep external identifiers separate from notes, and make skipped/updated rows auditable."
+    }
 }
 
-apiClient = component "API Client Methods" "Wraps browser fetch calls for sync, sales, workspaces, billing, entitlements, Whatnot, public sessions, and fairness APIs." "src/app-core/methods" {
+apiClient = component "API Client Methods" "Browser HTTP client boundary." "src/app-core/methods" {
     tags "Web Component", "External Client"
+    properties {
+        "Owns" "Browser fetch wrappers, request payload shaping, response parsing, CSRF inclusion, and API error normalization for UI workflows."
+        "Must not own" "Server-side authorization, provider secrets, Cosmos conflict logic, or direct local-state mutation beyond caller contracts."
+        "Boundary data" "HTTP JSON payloads, auth headers/cookies, CSRF tokens, response DTOs, and normalized API errors."
+        "Failure recovery" "Return typed failures that let workflows distinguish auth loss, access loss, conflicts, validation errors, and offline/network failures."
+    }
 }
 
-realtimeClient = component "Realtime Client" "Manages workspace and public-session WebSocket subscriptions, room naming, reconnect state, and presence updates." "src/app-core/methods/workspace-realtime-api.ts, src/app-core/methods/ui/workspace/workspace-realtime.ts" {
+realtimeClient = component "Realtime Client" "Browser WebSocket client boundary." "src/app-core/methods/workspace-realtime-api.ts, src/app-core/methods/ui/workspace/workspace-realtime.ts" {
     tags "Web Component", "Shared Contract"
+    properties {
+        "Owns" "WebSocket lifecycle, subscribe/unsubscribe commands, reconnect status, workspace presence updates, and public-session event application."
+        "Must not own" "Authoritative data writes, room authorization, server heartbeat policy, or local sync conflict decisions."
+        "Boundary data" "Signed subscribe tokens, room names, realtime events, presence snapshots, reconnect reasons, and delivery-gap signals."
+        "Failure recovery" "Refresh authoritative state after reconnects, stale versions, publish uncertainty, or missed realtime delivery."
+    }
 }
 
-i18nDisplay = component "I18n And Display Helpers" "Translates user-facing text for the PWA and spectator entry, and derives compact display state for sync, realtime, Whatnot, sales, and portfolio views." "src/app-core/i18n, src/app-core/computed" {
+i18nDisplay = component "I18n And Display Helpers" "Bilingual display helpers." "src/app-core/i18n, src/app-core/computed" {
     tags "Web Component"
+    properties {
+        "Owns" "Bilingual UI strings, locale-aware labels, compact display derivations, and reusable presentation helpers."
+        "Must not own" "Business persistence, API authorization, provider integration, or feature workflow control flow."
+        "Boundary data" "Translation keys, formatted numbers/dates/currency, status labels, and display-only derived state."
+        "Failure recovery" "Keep fallback copy readable, preserve French diacritics, and avoid leaking internal error text into user-facing UI."
+    }
 }
 
-appShell -> authClient "Loads session, profile, entitlement, and account actions." "In-process calls"
-appShell -> workspaceState "Reads active scope and workspace controls." "In-process calls"
-appShell -> salesWorkflows "Hosts lot, sales, live, singles, and portfolio windows." "Vue component composition"
-appShell -> gameWorkflows "Hosts game and wheel windows." "Vue component composition"
-appShell -> whatnotWorkflows "Hosts Whatnot connection, import, and review flows." "Vue component composition"
-appShell -> uiContracts "Applies shared shell zones, actions, cards, dialogs, tables, and responsive layout rules." "Vue component composition"
-appShell -> i18nDisplay "Renders translated labels and derived status display." "In-process calls"
+appShell -> authClient "Loads session." "Calls"
+appShell -> workspaceState "Reads scope." "Calls"
+appShell -> salesWorkflows "Hosts." "Vue"
+appShell -> gameWorkflows "Hosts." "Vue"
+appShell -> whatnotWorkflows "Hosts." "Vue"
+appShell -> uiContracts "Composes." "Vue"
+appShell -> i18nDisplay "Renders labels." "Calls"
 
-workspaceState -> localStateStore "Separates personal and workspace storage scopes." "Scope keys"
-syncCoordinator -> localStateStore "Reads local snapshot state and applies safe sync results." "Local cache"
-salesWorkflows -> localStateStore "Reads and writes lots, sales, prices, and local workflow state." "Local cache"
-salesWorkflows -> uiContracts "Uses shared KPI grids, responsive charts, compact ledgers, and projection badges." "Vue component composition"
-gameWorkflows -> localStateStore "Reads and writes game configuration, sessions, and local stage state." "Local cache"
-whatnotWorkflows -> localStateStore "Maps imported sales into local lots and sales state." "Local cache"
+workspaceState -> localStateStore "Scopes." "Keys"
+syncCoordinator -> localStateStore "Applies sync." "Cache"
+salesWorkflows -> localStateStore "Reads/writes." "Cache"
+salesWorkflows -> uiContracts "Composes." "Vue"
+gameWorkflows -> localStateStore "Reads/writes." "Cache"
+whatnotWorkflows -> localStateStore "Maps imports." "Cache"

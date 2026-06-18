@@ -1,4 +1,4 @@
-# 11. Require bilingual user-facing UI
+# 11. Bilingual UI
 
 Date: 2026-05-20
 

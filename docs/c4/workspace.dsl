@@ -20,6 +20,7 @@ workspace "Calcul8" "C4 architecture model for the Calcul8 local-first sales, sy
         !include views/system-context.dsl
         !include views/containers.dsl
         !include views/components/web.dsl
+        !include views/components/web-adapters.dsl
         !include views/components/api.dsl
         !include views/components/realtime.dsl
         !include views/deployment.dsl
@@ -28,7 +29,6 @@ workspace "Calcul8" "C4 architecture model for the Calcul8 local-first sales, sy
         !include views/dynamics/whatnot-import.dsl
         !include views/dynamics/billing-entitlements.dsl
         !include views/dynamics/realtime-publish-subscribe.dsl
-        !include views/dynamics/technical-debt.dsl
 
         styles {
             !include styles/theme.dsl

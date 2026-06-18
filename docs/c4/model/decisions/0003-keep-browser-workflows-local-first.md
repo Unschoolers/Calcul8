@@ -1,4 +1,4 @@
-# 3. Keep browser workflows local-first
+# 3. Local-first browser
 
 Date: 2026-05-19
 
@@ -25,4 +25,3 @@ The UI can continue working when the network is unavailable.
 Sync and conflict handling must be explicit, deterministic, and non-destructive.
 
 Shared data must never rely on implicit global local storage keys; it needs scope-aware keys and version metadata.
-

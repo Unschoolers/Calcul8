@@ -1,4 +1,4 @@
-# 10. Verify all shipping entry points before release
+# 10. Release verification
 
 Date: 2026-05-19
 

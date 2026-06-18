@@ -45,14 +45,14 @@ The active C4 drilldown is:
 
 - C1: `SystemContext`
 - C2: `ContainerView`
-- C3: `WebPwaComponents`, `ApiComponents`, and `RealtimeComponents`
-- Dynamic: `WorkspaceSyncFlow`, `PublicGameSessionFlow`, `WhatnotImportFlow`, `BillingEntitlementsFlow`, `RealtimePublishSubscribeFlow`, and `TechnicalDebtFlow`
+- C3: `WebPwaComponents`, `WebPwaBoundaryAdapters`, `ApiComponents`, and `RealtimeComponents`
+- Dynamic: `WorkspaceSyncFlow`, `PublicGameSessionFlow`, `WhatnotImportFlow`, `BillingEntitlementsFlow`, and `RealtimePublishSubscribeFlow`
 
 The software system and drilldown-ready containers also have explicit named links using Structurizr's `{workspace}/diagrams#ViewKey` URL syntax. This keeps navigation available even when the viewer does not automatically infer the next diagram.
 
 The model follows the Structurizr tutorial's implied-relationship pattern: lower-level component relationships are the source of truth, and C1/C2 parent relationships are inferred by Structurizr instead of being duplicated by hand.
 
-The `Technical Debt` perspective is attached to the model as an overlay in `model/technical-debt.dsl`. Use the perspectives control in Structurizr, or press `p`, to highlight the current debt ratings on the C2/C3 diagrams. `TechnicalDebtFlow` shows the debt feedback loop as a dynamic view.
+The `Technical Debt` perspective is attached to the model as an overlay in `model/technical-debt.dsl`. Use the perspectives control in Structurizr, or press `p`, to highlight the current debt ratings on the C2/C3 diagrams. Technical-debt explanations should live on concrete components and flow views, not in an abstract feedback-loop diagram.
 
 There is intentionally no active system landscape view while Calcul8 is modeled as one first-party software system; it would duplicate `SystemContext`.
 

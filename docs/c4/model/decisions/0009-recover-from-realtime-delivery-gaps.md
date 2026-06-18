@@ -1,4 +1,4 @@
-# 9. Recover from realtime delivery gaps
+# 9. Realtime recovery
 
 Date: 2026-05-19
 

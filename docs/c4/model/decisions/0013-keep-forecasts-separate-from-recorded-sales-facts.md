@@ -1,4 +1,4 @@
-# 13. Keep forecasts separate from recorded sales facts
+# 13. Forecasts are not facts
 
 Date: 2026-06-17
 

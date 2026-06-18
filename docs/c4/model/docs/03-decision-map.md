@@ -10,6 +10,7 @@ The ADRs attached to the Calcul8 software system are split into two groups.
 - Keep personal and workspace state explicitly scoped.
 - Use session-first provider-neutral auth.
 - Derive access from provider entitlement facts.
+- Use optimistic concurrency for cloud-authoritative writes.
 - Recover from realtime delivery gaps.
 - Verify all shipping entry points before release.
 - Require bilingual user-facing UI.
@@ -23,7 +24,6 @@ These decisions describe the direction needed to close active critical or high-r
 
 - Finish removing bearer-token fallback from authenticated API flows.
 - Make cross-document writes recoverable and idempotent.
-- Use optimistic concurrency for cloud-authoritative writes.
 - Treat Whatnot OAuth credentials as erasable personal secrets.
 - Standardize raw test fixtures behind shared builders.
 

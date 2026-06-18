@@ -25,7 +25,7 @@ If a layout needs to be preserved, commit the DSL/layout source that produced it
 
 ## Naming
 
-- Use PascalCase for view keys: `SystemContext`, `ContainerView`, `WebPwaComponents`, `ApiComponents`, `RealtimeComponents`, `WorkspaceSyncFlow`, `TechnicalDebtFlow`.
+- Use PascalCase for view keys: `SystemContext`, `ContainerView`, `WebPwaComponents`, `WebPwaBoundaryAdapters`, `ApiComponents`, `RealtimeComponents`, and concrete flow views such as `WorkspaceSyncFlow`.
 - Use product names for systems and containers: `Web PWA`, `API Functions`, `Realtime Gateway`.
 - Use responsibility names for components: `Payload Parser`, `Room Store`, `Presence Store`.
 - Keep descriptions operational: what it does, what boundary it owns, and what risk it helps explain.
@@ -57,13 +57,28 @@ When a container has a component view, add an explicit named element property th
 
 Do not make a view only because a folder exists in the repo. Make a view when it explains a boundary, operational risk, or recurring refactor decision.
 
+## Behavioral Components
+
+Important C3 components should describe behavior, not only labels. Use element properties for these fields so the diagram stays readable while inspectors and generated docs carry the operational detail:
+
+- `Owns`: the responsibilities this component is accountable for.
+- `Must not own`: responsibilities that belong to another boundary.
+- `Boundary data`: the data or commands crossing in or out.
+- `Failure recovery`: how this component prevents or handles the failure mode it is closest to.
+
+Keep the component description short enough for diagrams. Put the deeper behavior in properties and keep it current when ownership moves.
+
 ## Theme Tags
 
 Use Structurizr's `Microsoft Azure - ...` tags only for Azure-backed containers, systems, and deployment nodes. Keep product/runtime tags such as `Web App`, `API`, and `Realtime` on the same element so local styles remain readable when the icon theme changes.
 
+Use `RoundedBox` for C3 component tags instead of Structurizr's built-in `Component` shape. The built-in shape adds a small side glyph that becomes visually noisy in dense component views and technical-debt overlays.
+
 ## Perspectives
 
 Keep cross-cutting perspectives in dedicated model overlay files, not scattered through every element definition. The `Technical Debt` perspective uses `Critical`, `High`, `Medium`, and `Low` values; ratings should describe current architectural risk, not wishlist priority.
+
+Do not add abstract technical-debt loop views. Show debt through the perspective overlay, component properties, and concrete failure/recovery flows.
 
 ## Refactor Plan Alignment
 

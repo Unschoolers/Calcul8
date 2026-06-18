@@ -1,4 +1,4 @@
-# 6. Derive access from provider entitlement facts
+# 6. Provider-derived access
 
 Date: 2026-05-19
 
