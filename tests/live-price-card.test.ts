@@ -137,8 +137,21 @@ test("desktop scenario grid exposes paired price sensitivity offsets from five d
   assert.deepEqual(scenarioOffsets.call(context), [-5, 1, -4, 2, -3, 3, -2, 4, -1, 5]);
   assert.equal(scenarioDeltaLabel.call(context, -5), "-$5");
   assert.equal(scenarioDeltaLabel.call(context, 5), "+$5");
-  assert.deepEqual(scenarioTileClass.call(context, -5), { "live-pricing-card__scenario-tile--desktop-extra": true });
-  assert.deepEqual(scenarioTileClass.call(context, 1), { "live-pricing-card__scenario-tile--desktop-extra": false });
+  assert.deepEqual(scenarioTileClass.call(context, -5), {
+    "live-pricing-card__scenario-tile--desktop-extra": true,
+    "live-pricing-card__scenario-tile--mobile-negative": false,
+    "live-pricing-card__scenario-tile--mobile-positive": false
+  });
+  assert.deepEqual(scenarioTileClass.call(context, 1), {
+    "live-pricing-card__scenario-tile--desktop-extra": false,
+    "live-pricing-card__scenario-tile--mobile-negative": false,
+    "live-pricing-card__scenario-tile--mobile-positive": true
+  });
+  assert.deepEqual(scenarioTileClass.call(context, -1), {
+    "live-pricing-card__scenario-tile--desktop-extra": false,
+    "live-pricing-card__scenario-tile--mobile-negative": true,
+    "live-pricing-card__scenario-tile--mobile-positive": false
+  });
   assert.deepEqual(scenarioTileStyle.call(context, -5), {
     "--live-scenario-border-rgb": "var(--v-theme-error)",
     "--live-scenario-border-alpha": "0.460",
@@ -215,11 +228,14 @@ test("LivePriceCard template and CSS keep extra scenario tiles desktop-only", ()
   assert.match(styles, /\.live-pricing-card__scenario-tile:focus-visible\s*{/);
   assert.match(styles, /\.live-pricing-card__scenario-tile::before[\s\S]*linear-gradient\(90deg/);
   assert.match(styles, /\.live-pricing-card__scenario-tile::after[\s\S]*left:\s*var\(--live-scenario-progress-percent\)/);
+  assert.match(styles, /\.live-pricing-card__scenario-tile--mobile-negative\s*{[\s\S]*order:\s*1/);
+  assert.match(styles, /\.live-pricing-card__scenario-tile--mobile-positive\s*{[\s\S]*order:\s*2/);
   assert.match(styles, /\.live-pricing-card__scenario-tile--desktop-extra\s*{[\s\S]*display:\s*none/);
   assert.match(styles, /@media \(min-width:\s*1145px\)[\s\S]*\.live-pricing-card__scenario-detail\s*{[\s\S]*min-height:\s*1\.25rem[\s\S]*opacity:\s*0[\s\S]*transition:\s*opacity/);
   assert.doesNotMatch(styles, /\.live-pricing-card__scenario-detail\s*{[\s\S]*max-height/);
   assert.match(styles, /\.live-pricing-card__scenario-tile:hover \.live-pricing-card__scenario-detail[\s\S]*opacity:\s*1/);
   assert.match(styles, /\.live-pricing-card__scenario-tile:focus-visible \.live-pricing-card__scenario-detail[\s\S]*opacity:\s*1/);
+  assert.match(styles, /@media \(min-width:\s*1145px\)[\s\S]*\.live-pricing-card__scenario-tile\s*{[\s\S]*order:\s*0/);
   assert.match(styles, /@media \(min-width:\s*1145px\)[\s\S]*\.live-pricing-card__scenario-tile--desktop-extra\s*{[\s\S]*display:\s*flex/);
   assert.match(styles, /\.live-pricing-card__decision-tile--success\s*{[\s\S]*display:\s*flex[\s\S]*align-items:\s*center/);
   assert.match(styles, /\.live-pricing-card__decision-tile--success\s*{[\s\S]*padding:\s*0\.65rem 0\.75rem/);

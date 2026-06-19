@@ -340,6 +340,14 @@
   display: none;
 }
 
+.live-pricing-card__scenario-tile--mobile-negative {
+  order: 1;
+}
+
+.live-pricing-card__scenario-tile--mobile-positive {
+  order: 2;
+}
+
 .live-pricing-card__metric-tile--needed {
   background:
     linear-gradient(180deg, rgba(var(--v-theme-on-surface), 0.045), rgba(var(--v-theme-on-surface), 0.02)),
@@ -537,6 +545,7 @@
   }
 
   .live-pricing-card__scenario-tile {
+    order: 0;
     gap: 4px;
     padding-block: 8px;
   }

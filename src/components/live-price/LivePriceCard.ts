@@ -224,7 +224,9 @@ export const LivePriceCard = defineComponent({
     },
     scenarioTileClass(offset: number): Record<string, boolean> {
       return {
-        "live-pricing-card__scenario-tile--desktop-extra": Math.abs(offset) > 1
+        "live-pricing-card__scenario-tile--desktop-extra": Math.abs(offset) > 1,
+        "live-pricing-card__scenario-tile--mobile-negative": offset === -1,
+        "live-pricing-card__scenario-tile--mobile-positive": offset === 1
       };
     },
     scenarioTileStyle(offset: number): Record<string, string> {
