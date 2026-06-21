@@ -266,7 +266,7 @@ test("fetchAuthenticatedApiResponse prefers the server session over bearer auth"
   });
 });
 
-test("fetchAuthenticatedApiResponse keeps bearer auth when no server session exists", async () => {
+test("fetchAuthenticatedApiResponse does not attach bearer auth when no server session is known", async () => {
   await withMockedLocalStorage(async () => {
     vi.stubEnv("VITE_API_BASE_URL", "https://api.example.test");
     setStoredGoogleIdToken("google-token");
@@ -282,8 +282,9 @@ test("fetchAuthenticatedApiResponse keeps bearer auth when no server session exi
     const response = await fetchAuthenticatedApiResponse({
       googleAuthEpoch: 0,
       hasProAccess: false
-    } as never, "/auth/me", {
-      method: "GET"
+    } as never, "/sync/pull", {
+      method: "POST",
+      body: "{}"
     });
 
     assert.equal(response.status, 200);
@@ -292,11 +293,11 @@ test("fetchAuthenticatedApiResponse keeps bearer auth when no server session exi
 
     const requestInit = fetchCalls[0]?.[1] as RequestInit;
     const headers = new Headers(requestInit.headers);
-    assert.equal(headers.get("Authorization"), "Bearer google-token");
+    assert.equal(headers.has("Authorization"), false);
   });
 });
 
-test("fetchAuthenticatedApiResponse keeps bearer auth for cross-origin session-preferred requests", async () => {
+test("fetchAuthenticatedApiResponse omits bearer auth for cross-origin session-preferred requests", async () => {
   await withMockedLocalStorage(async () => {
     vi.stubEnv("VITE_API_BASE_URL", "https://api.example.test");
     vi.stubGlobal("window", {
@@ -328,7 +329,7 @@ test("fetchAuthenticatedApiResponse keeps bearer auth for cross-origin session-p
     const fetchCalls = fetchMock.mock.calls as unknown as FetchCall[];
     const requestInit = fetchCalls[0]?.[1] as RequestInit;
     const headers = new Headers(requestInit.headers);
-    assert.equal(headers.get("Authorization"), "Bearer google-token");
+    assert.equal(headers.has("Authorization"), false);
   });
 });
 

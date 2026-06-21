@@ -10,6 +10,7 @@ import type { BearerAuthIdentity, BearerAuthProvider } from "./providers/types";
 import { resolveUserIdFromSession, tryIssueSessionCookie } from "./sessions";
 
 interface ResolveUserIdOptions {
+  allowBearerAuth?: boolean;
   issueSessionCookie?: boolean;
   telemetry?: {
     logger?: TelemetryLogger | null;
@@ -97,6 +98,26 @@ export async function resolveUserId(
       });
     }
     return sessionUserId;
+  }
+
+  if (!options.allowBearerAuth) {
+    if (telemetry) {
+      const hasBearerHeader = hasBearerAuthHeader(request);
+      logAuthTelemetry({
+        logger: telemetry.logger,
+        level: "warn",
+        request,
+        config,
+        route: telemetry.route,
+        workspaceScope: telemetry.workspaceScope,
+        authMethod: hasBearerHeader ? "bearer" : "none",
+        authResult: "401",
+        outcome: hasBearerHeader
+          ? "bearer_not_allowed"
+          : (hasSessionCookie ? "session_missing_or_expired" : "authentication_required")
+      });
+    }
+    throw new HttpError(401, "Authentication is required.");
   }
 
   let bearerIdentity: BearerAuthIdentity | null = null;

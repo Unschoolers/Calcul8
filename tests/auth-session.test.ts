@@ -4,9 +4,11 @@ import {
   buildAuthenticatedHeaders,
   getStoredCsrfToken,
   getStoredGoogleIdToken,
+  getStoredSessionUserId,
   setStoredCsrfToken,
   setStoredGoogleIdToken
 } from "../src/app-core/auth/index.ts";
+import { bootstrapServerSession } from "../src/app-core/methods/ui/auth/auth-session.ts";
 import { STORAGE_KEYS } from "../src/app-core/storageKeys.ts";
 
 type MockStorage = {
@@ -53,12 +55,12 @@ test("buildAuthenticatedHeaders sends bearer token for bearer-required requests"
   assert.equal(headers["Content-Type"], "application/json");
 });
 
-test("buildAuthenticatedHeaders bootstraps session-preferred requests with bearer token when no server session exists", () => {
+test("buildAuthenticatedHeaders omits bearer token for session-preferred requests without server session", () => {
   setStoredGoogleIdToken("google-token");
 
   const headers = buildAuthenticatedHeaders("session-preferred");
 
-  assert.equal(headers.Authorization, "Bearer google-token");
+  assert.equal("Authorization" in headers, false);
 });
 
 test("buildAuthenticatedHeaders omits bearer token for session-preferred requests when a server session exists", () => {
@@ -79,7 +81,7 @@ test("buildAuthenticatedHeaders keeps bearer token for bearer-required requests 
   assert.equal(headers.Authorization, "Bearer google-token");
 });
 
-test("buildAuthenticatedHeaders keeps bearer token for cross-origin session-preferred requests", () => {
+test("buildAuthenticatedHeaders omits bearer token for cross-origin session-preferred requests", () => {
   vi.stubGlobal("window", {
     location: {
       origin: "https://app.example.test"
@@ -94,7 +96,37 @@ test("buildAuthenticatedHeaders keeps bearer token for cross-origin session-pref
     "https://api.example.test/entitlements/me"
   );
 
-  assert.equal(headers.Authorization, "Bearer google-token");
+  assert.equal("Authorization" in headers, false);
+});
+
+test("bootstrapServerSession sends bearer only to the auth bootstrap endpoint", async () => {
+  vi.stubGlobal("window", {
+    location: {
+      origin: "https://app.example.test"
+    },
+    setTimeout: globalThis.setTimeout,
+    clearTimeout: globalThis.clearTimeout
+  });
+  setStoredGoogleIdToken("google-token");
+  const fetchMock = vi.fn<typeof fetch>(async () =>
+    new Response(JSON.stringify({ userId: "user-1" }), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+        "x-csrf-token": "csrf-token"
+      }
+    })
+  );
+  vi.stubGlobal("fetch", fetchMock);
+
+  const bootstrapped = await bootstrapServerSession({ googleAuthEpoch: 0 }, "https://api.example.test/");
+
+  assert.equal(bootstrapped, true);
+  assert.equal(getStoredSessionUserId(), "user-1");
+  const requestInit = fetchMock.mock.calls[0]?.[1] as RequestInit;
+  const headers = new Headers(requestInit.headers);
+  assert.equal(fetchMock.mock.calls[0]?.[0], "https://api.example.test/auth/me");
+  assert.equal(headers.get("Authorization"), "Bearer google-token");
 });
 
 test("auth secrets hydrate from legacy storage once and remove persisted copies", () => {

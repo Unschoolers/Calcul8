@@ -11,7 +11,8 @@ import {
 import {
   buildAuthenticatedHeaders,
   getStoredGoogleIdToken,
-  hasAuthSignal
+  hasAuthSignal,
+  hasServerSession
 } from "../../../auth/index.ts";
 import { type TargetProfitAccessApp } from "./entitlements-shared.ts";
 import { bootstrapServerSession } from "../auth/auth-session.ts";
@@ -36,6 +37,7 @@ type EntitlementStatusDeps = {
   getEntitlementTtlMs: typeof getEntitlementTtlMs;
   fetchWithRetry: typeof fetchWithRetry;
   bootstrapServerSession: (app: Pick<EntitlementStatusApp, "googleAuthEpoch">, baseUrl: string) => Promise<boolean>;
+  hasServerSession: () => boolean;
   shouldUseCachedEntitlement: typeof shouldUseCachedEntitlement;
   applyCachedEntitlement: typeof applyCachedEntitlement;
   parseEntitlementPayload: typeof parseEntitlementPayload;
@@ -87,6 +89,7 @@ const defaultDeps: EntitlementStatusDeps = {
   getEntitlementTtlMs,
   fetchWithRetry,
   bootstrapServerSession,
+  hasServerSession: () => hasServerSession(),
   shouldUseCachedEntitlement,
   applyCachedEntitlement,
   parseEntitlementPayload,
@@ -107,9 +110,10 @@ export async function syncEntitlementStatus(
     return;
   }
 
-  let hasActiveAuthSignal = resolvedDeps.hasAuthSignal();
-  if (!hasActiveAuthSignal) {
-    hasActiveAuthSignal = await resolvedDeps.bootstrapServerSession(app, base);
+  const hasAnyAuthSignal = resolvedDeps.hasAuthSignal();
+  let hasActiveServerSession = resolvedDeps.hasServerSession();
+  if (!hasActiveServerSession) {
+    hasActiveServerSession = await resolvedDeps.bootstrapServerSession(app, base);
   }
 
   const googleIdToken = resolvedDeps.getGoogleIdToken();
@@ -128,7 +132,7 @@ export async function syncEntitlementStatus(
       hasProAccess: cached.hasProAccess,
       updatedAt: cached.updatedAt
     });
-    if (!hasActiveAuthSignal) {
+    if (!hasActiveServerSession) {
       console.info("[whatfees] Entitlement sync skipped: no active auth session.");
       return;
     }
@@ -141,7 +145,12 @@ export async function syncEntitlementStatus(
     return;
   }
 
-  if (!hasActiveAuthSignal) {
+  if (!hasActiveServerSession) {
+    if (hasAnyAuthSignal) {
+      resolvedDeps.handleExpiredAuth(app);
+      app.notify("Your sign-in expired. Please sign in again.", "warning");
+      return;
+    }
     console.info("[whatfees] Entitlement sync skipped: no active auth session.");
     return;
   }

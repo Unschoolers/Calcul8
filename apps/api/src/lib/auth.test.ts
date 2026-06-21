@@ -221,6 +221,7 @@ test("valid bearer token resolves user and issues session cookie", async () => {
 
   try {
     const userId = await resolveUserId(request, makeConfig(), {
+      allowBearerAuth: true,
       telemetry: {
         logger: telemetry,
         route: "auth_me",
@@ -271,6 +272,36 @@ test("valid bearer token resolves user and issues session cookie", async () => {
   }
 });
 
+test("valid bearer token is rejected unless bearer auth is explicitly allowed", async () => {
+  const request = makeRequest({ authorization: "Bearer token-abc" });
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = vi.fn(async () =>
+    ({
+      ok: true,
+      json: async () => ({
+        aud: "test-client.apps.googleusercontent.com",
+        sub: "google-user-42"
+      })
+    }) as Response
+  ) as typeof fetch;
+
+  try {
+    await assert.rejects(
+      () => resolveUserId(request, makeConfig()),
+      (error: unknown) => {
+        assert.ok(error instanceof HttpError);
+        assert.equal(error.status, 401);
+        assert.equal(error.message, "Authentication is required.");
+        return true;
+      }
+    );
+    assert.equal((globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mock.calls.length, 0);
+    assert.equal(createSessionMock.mock.calls.length, 0);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("repeated bearer bootstrap requests reuse the same session id for the same token", async () => {
   const requestA = makeRequest({ authorization: "Bearer token-abc" });
   const requestB = makeRequest({ authorization: "Bearer token-abc" });
@@ -286,8 +317,8 @@ test("repeated bearer bootstrap requests reuse the same session id for the same 
     }) as Response) as typeof fetch;
 
   try {
-    const userA = await resolveUserId(requestA, makeConfig());
-    const userB = await resolveUserId(requestB, makeConfig());
+    const userA = await resolveUserId(requestA, makeConfig(), { allowBearerAuth: true });
+    const userB = await resolveUserId(requestB, makeConfig(), { allowBearerAuth: true });
 
     assert.equal(userA, "google-user-42");
     assert.equal(userB, "google-user-42");
@@ -357,7 +388,7 @@ test("valid session cookie skips touch when touch interval is not reached", asyn
   assert.equal(consumeAuthResponseCookies(request).length, 0);
 });
 
-test("expired session is cleared and bearer fallback is used", async () => {
+test("expired session is cleared without falling back to bearer auth", async () => {
   const request = makeRequest({
     cookie: "whatfees_session=expired-1",
     authorization: "Bearer token-abc"
@@ -370,25 +401,35 @@ test("expired session is cleared and bearer fallback is used", async () => {
   );
 
   const originalFetch = globalThis.fetch;
-  globalThis.fetch = (async () =>
+  const fetchMock = vi.fn(async () =>
     ({
       ok: true,
       json: async () => ({
         aud: "test-client.apps.googleusercontent.com",
         sub: "google-user-99"
       })
-    }) as Response) as typeof fetch;
+    }) as Response);
+  globalThis.fetch = fetchMock as typeof fetch;
 
   try {
-    const userId = await resolveUserId(request, makeConfig());
-    assert.equal(userId, "google-user-99");
+    await assert.rejects(
+      () => resolveUserId(request, makeConfig()),
+      (error: unknown) => {
+        assert.ok(error instanceof HttpError);
+        assert.equal(error.status, 401);
+        assert.equal(error.message, "Authentication is required.");
+        return true;
+      }
+    );
     assert.equal(deleteSessionMock.mock.calls.length, 1);
-    assert.equal(createSessionMock.mock.calls.length, 1);
+    assert.equal(createSessionMock.mock.calls.length, 0);
+    assert.equal(fetchMock.mock.calls.length, 0);
 
     const authCookies = consumeAuthResponseCookies(request);
     const sessionCookie = findLastCookie(authCookies, "whatfees_session");
     assert.ok(sessionCookie);
-    assert.notEqual(sessionCookie.value, "");
+    assert.equal(sessionCookie.value, "");
+    assert.equal(sessionCookie.maxAge, 0);
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -426,7 +467,7 @@ test("invalid bearer token is rejected when no valid session exists", async () =
 
   try {
     await assert.rejects(
-      () => resolveUserId(request, makeConfig()),
+      () => resolveUserId(request, makeConfig(), { allowBearerAuth: true }),
       (error: unknown) => {
         assert.ok(error instanceof HttpError);
         assert.equal(error.status, 401);
@@ -502,6 +543,24 @@ test("refresh token cookie rotates and issues a new session cookie without beare
   const cookies = consumeAuthResponseCookies(request);
   assert.ok(cookies.find((cookie) => cookie.name === "whatfees_session" && cookie.value === createdSession.id));
   assert.ok(cookies.find((cookie) => cookie.name === "whatfees_refresh" && cookie.value.startsWith("refresh-1.")));
+});
+
+test("refresh token rejects missing cookies as expired auth and clears refresh cookie", async () => {
+  const request = makeRequest({}, "POST");
+
+  await assert.rejects(
+    () => refreshSessionFromRequest(request, makeConfig()),
+    (error: unknown) => {
+      assert.ok(error instanceof HttpError);
+      assert.equal(error.status, 401);
+      assert.equal(error.message, "Refresh token is invalid or expired.");
+      return true;
+    }
+  );
+
+  const clearedRefreshCookie = consumeAuthResponseCookies(request).find((cookie) => cookie.name === "whatfees_refresh");
+  assert.equal(clearedRefreshCookie?.value, "");
+  assert.equal(clearedRefreshCookie?.maxAge, 0);
 });
 
 test("refresh token rejects replayed or revoked cookies and clears refresh cookie", async () => {

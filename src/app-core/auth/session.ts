@@ -8,22 +8,8 @@ import {
   clearStoredGoogleIdToken,
   clearStoredGoogleProfileCache
 } from "./providers/google.ts";
-import { hasServerSession } from "./state.ts";
 
 export type FrontendAuthMode = "session-preferred" | "bearer-required";
-
-function canPreferServerSession(requestUrl?: string): boolean {
-  if (!hasServerSession()) return false;
-  if (!requestUrl) return true;
-
-  try {
-    const currentOrigin = globalThis.window?.location?.origin?.trim();
-    if (!currentOrigin) return true;
-    return new URL(requestUrl, currentOrigin).origin === currentOrigin;
-  } catch {
-    return true;
-  }
-}
 
 export function buildAuthenticatedHeaders(
   mode: FrontendAuthMode,
@@ -32,7 +18,8 @@ export function buildAuthenticatedHeaders(
 ): Record<string, string> {
   const headers: Record<string, string> = { ...extraHeaders };
   const googleIdToken = getStoredGoogleIdToken();
-  const shouldAttachBearer = mode === "bearer-required" || !canPreferServerSession(requestUrl);
+  void requestUrl;
+  const shouldAttachBearer = mode === "bearer-required";
 
   if (googleIdToken && shouldAttachBearer) {
     headers.Authorization = `Bearer ${googleIdToken}`;

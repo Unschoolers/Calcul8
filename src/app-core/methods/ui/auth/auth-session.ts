@@ -1,5 +1,6 @@
 import type { AppContext } from "../../../context-app.ts";
 import {
+  buildAuthenticatedHeaders,
   clearStoredCsrfToken,
   clearStoredSessionUserId,
   hasAuthSignal,
@@ -29,8 +30,10 @@ export async function bootstrapServerSession(
   const hadAuthSignal = hasAuthSignal();
 
   try {
-    const response = await fetchWithRetry(`${normalizedBaseUrl}/auth/me`, {
-      method: "GET"
+    const requestUrl = `${normalizedBaseUrl}/auth/me`;
+    const response = await fetchWithRetry(requestUrl, {
+      method: "GET",
+      headers: buildAuthenticatedHeaders("bearer-required", {}, requestUrl)
     });
 
     if (response.status === 401) {

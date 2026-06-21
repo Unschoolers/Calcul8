@@ -99,7 +99,9 @@ export async function verifyPlayEntitlementRequest(
   routeLabel = "/entitlements/verify/play"
 ): Promise<HttpResponseInit> {
   try {
-    const userId = await resolveUserId(request, config);
+    const userId = await resolveUserId(request, config, {
+      allowBearerAuth: true
+    });
     const body = await parseVerifyBody(request);
     const existingVerificationResult = await getPurchaseVerificationResult(config, {
       userId,

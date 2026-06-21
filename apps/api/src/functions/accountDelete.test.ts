@@ -17,7 +17,8 @@ const {
   deletePlayPurchasesForUserMock,
   deleteAllSyncDataMock,
   eraseAccountDataMock,
-  revokeAllSessionsForUserMock
+  revokeAllSessionsForUserMock,
+  revokeAllRefreshSessionsForUserMock
 } = vi.hoisted(() => ({
   getConfigMock: vi.fn(),
   resolveUserIdMock: vi.fn(),
@@ -27,7 +28,8 @@ const {
   deletePlayPurchasesForUserMock: vi.fn(),
   deleteAllSyncDataMock: vi.fn(),
   eraseAccountDataMock: vi.fn(),
-  revokeAllSessionsForUserMock: vi.fn()
+  revokeAllSessionsForUserMock: vi.fn(),
+  revokeAllRefreshSessionsForUserMock: vi.fn()
 }));
 
 vi.mock("../lib/config", () => ({
@@ -44,6 +46,7 @@ vi.mock("../lib/auth", () => ({
     }
   },
   consumeAuthResponseHeaders: vi.fn(() => ({})),
+  consumeAuthResponseCookies: vi.fn(() => []),
   resolveUserId: resolveUserIdMock,
   clearSessionCookie: clearSessionCookieMock
 }));
@@ -63,7 +66,8 @@ vi.mock("../features/account/accountErasureService", () => ({
 }));
 
 vi.mock("../lib/cosmos/sessionRepository", () => ({
-  revokeAllSessionsForUser: revokeAllSessionsForUserMock
+  revokeAllSessionsForUser: revokeAllSessionsForUserMock,
+  revokeAllRefreshSessionsForUser: revokeAllRefreshSessionsForUserMock
 }));
 
 import { accountDelete } from "./accountDelete";
@@ -79,9 +83,10 @@ beforeEach(() => {
   deleteAllSyncDataMock.mockResolvedValue(undefined);
   eraseAccountDataMock.mockResolvedValue(undefined);
   revokeAllSessionsForUserMock.mockResolvedValue(2);
+  revokeAllRefreshSessionsForUserMock.mockResolvedValue(3);
 });
 
-test("accountDelete clears personal account data, revokes sessions, and clears the cookie", async () => {
+test("accountDelete clears personal account data, revokes sessions and refresh tokens, and clears the cookie", async () => {
   const request = createHttpRequest({ method: "POST" });
   const context = createInvocationContext();
 
@@ -93,6 +98,7 @@ test("accountDelete clears personal account data, revokes sessions, and clears t
   assert.equal(deleteAllSyncDataMock.mock.calls[0]?.[1], "user-1");
   assert.equal(eraseAccountDataMock.mock.calls[0]?.[1], "user-1");
   assert.equal(revokeAllSessionsForUserMock.mock.calls[0]?.[1], "user-1");
+  assert.equal(revokeAllRefreshSessionsForUserMock.mock.calls[0]?.[1], "user-1");
   assert.equal(clearSessionCookieMock.mock.calls.length, 1);
   assert.equal(response.status, 200);
   assert.equal((response.jsonBody as { ok?: boolean; userId?: string }).ok, true);

@@ -119,7 +119,8 @@ test("syncEntitlementStatus uses cached entitlement and pulls cloud sync when al
       shouldUseCachedEntitlement,
       applyCachedEntitlement,
       applyFetchedEntitlement,
-      parseEntitlementPayload
+      parseEntitlementPayload,
+      hasServerSession: () => true
     });
 
     assert.equal(app.hasProAccess, true);
@@ -131,18 +132,22 @@ test("syncEntitlementStatus uses cached entitlement and pulls cloud sync when al
 test("syncEntitlementStatus skips remote fetch when there is no auth signal", async () => {
   await withMockedLocalStorage(async () => {
     const app = createApp();
+    const bootstrapServerSession = vi.fn(async () => false);
 
     await syncEntitlementStatus(app as never, false, {
       shouldUseCachedEntitlement,
       applyCachedEntitlement,
       applyFetchedEntitlement,
       parseEntitlementPayload,
-      hasAuthSignal: () => false
+      hasAuthSignal: () => false,
+      hasServerSession: () => false,
+      bootstrapServerSession
     });
 
     assert.equal(fetchWithRetryMock.mock.calls.length, 0);
     assert.equal((app.pullCloudSync as ReturnType<typeof vi.fn>).mock.calls.length, 0);
     assert.equal(handleExpiredAuthMock.mock.calls.length, 0);
+    assert.equal(bootstrapServerSession.mock.calls.length, 1);
   });
 });
 
@@ -155,24 +160,29 @@ test("syncEntitlementStatus applies cached entitlement without pulling when ther
       cachedAt: Date.now()
     });
     const app = createApp();
+    const bootstrapServerSession = vi.fn(async () => false);
 
     await syncEntitlementStatus(app as never, false, {
       shouldUseCachedEntitlement,
       applyCachedEntitlement,
       applyFetchedEntitlement,
       parseEntitlementPayload,
-      hasAuthSignal: () => false
+      hasAuthSignal: () => false,
+      hasServerSession: () => false,
+      bootstrapServerSession
     });
 
     assert.equal(app.hasProAccess, true);
     assert.equal(fetchWithRetryMock.mock.calls.length, 0);
     assert.equal((app.pullCloudSync as ReturnType<typeof vi.fn>).mock.calls.length, 0);
+    assert.equal(bootstrapServerSession.mock.calls.length, 1);
   });
 });
 
 test("syncEntitlementStatus handles 401 by expiring auth and notifying", async () => {
   await withMockedLocalStorage(async (data) => {
     data.set("whatfees_google_id_token", "google-token");
+    const bootstrapServerSession = vi.fn(async () => true);
     fetchWithRetryMock.mockResolvedValue({
       ok: false,
       status: 401,
@@ -185,10 +195,13 @@ test("syncEntitlementStatus handles 401 by expiring auth and notifying", async (
       shouldUseCachedEntitlement,
       applyCachedEntitlement,
       applyFetchedEntitlement,
-      parseEntitlementPayload
+      parseEntitlementPayload,
+      hasServerSession: () => false,
+      bootstrapServerSession
     });
 
     assert.equal(handleExpiredAuthMock.mock.calls.length, 1);
+    assert.equal(bootstrapServerSession.mock.calls.length, 1);
     assert.equal((app.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0], "Your sign-in expired. Please sign in again.");
   });
 });
@@ -196,6 +209,7 @@ test("syncEntitlementStatus handles 401 by expiring auth and notifying", async (
 test("syncEntitlementStatus fetches entitlement payload, applies it, and pulls cloud sync", async () => {
   await withMockedLocalStorage(async (data) => {
     data.set("whatfees_google_id_token", "google-token");
+    const bootstrapServerSession = vi.fn(async () => true);
     fetchWithRetryMock.mockResolvedValue({
       ok: true,
       status: 200,
@@ -216,11 +230,14 @@ test("syncEntitlementStatus fetches entitlement payload, applies it, and pulls c
       shouldUseCachedEntitlement,
       applyCachedEntitlement,
       applyFetchedEntitlement,
-      parseEntitlementPayload
+      parseEntitlementPayload,
+      hasServerSession: () => false,
+      bootstrapServerSession
     });
 
     assert.equal(app.hasProAccess, true);
     assert.equal((app.pullCloudSync as ReturnType<typeof vi.fn>).mock.calls.length, 1);
+    assert.equal(bootstrapServerSession.mock.calls.length, 1);
     assert.equal(fetchWithRetryMock.mock.calls.length, 1);
   });
 });

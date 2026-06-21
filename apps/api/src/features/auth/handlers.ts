@@ -42,6 +42,7 @@ export async function authMe(
 
   try {
     const userId = await resolveUserId(request, config, {
+      allowBearerAuth: true,
       telemetry: {
         logger: context,
         route: "auth_me",
