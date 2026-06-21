@@ -1,7 +1,13 @@
 import { type HttpRequest, type HttpResponseInit, type InvocationContext } from "@azure/functions";
-import { clearSessionCookie, HttpError, resolveUserId, revokeSessionFromRequest } from "../../lib/auth";
+import {
+  clearSessionCookie,
+  HttpError,
+  refreshSessionFromRequest,
+  resolveUserId,
+  revokeSessionFromRequest
+} from "../../lib/auth";
 import { getConfig } from "../../lib/config";
-import { revokeAllSessionsForUser } from "../../lib/cosmos/sessionRepository";
+import { revokeAllRefreshSessionsForUser, revokeAllSessionsForUser } from "../../lib/cosmos/sessionRepository";
 import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../../lib/http";
 import { logApiTelemetry } from "../../lib/telemetry";
 
@@ -88,6 +94,36 @@ export async function authLogout(
   }
 }
 
+export async function authRefresh(
+  request: HttpRequest,
+  context: InvocationContext
+): Promise<HttpResponseInit> {
+  const config = getConfig();
+  const guardResponse = maybeHandleHttpGuards(request, config);
+  if (guardResponse) return guardResponse;
+
+  try {
+    const userId = await refreshSessionFromRequest(request, config);
+    logApiTelemetry({
+      logger: context,
+      level: "info",
+      request,
+      config,
+      route: "auth_refresh",
+      workspaceScope: "unknown",
+      outcome: "session_refreshed"
+    });
+    return jsonResponse(request, config, 200, {
+      ok: true,
+      userId
+    });
+  } catch (error) {
+    logAuthRouteFailure(request, context, "auth_refresh", error);
+    context.error("POST /auth/refresh failed", error);
+    return errorResponse(request, config, error, "Failed to refresh auth session.");
+  }
+}
+
 export async function authLogoutAll(
   request: HttpRequest,
   context: InvocationContext
@@ -106,12 +142,14 @@ export async function authLogoutAll(
       }
     });
     const revokedSessionCount = await revokeAllSessionsForUser(config, userId);
+    const revokedRefreshSessionCount = await revokeAllRefreshSessionsForUser(config, userId);
     await clearSessionCookie(request, config);
 
     return jsonResponse(request, config, 200, {
       ok: true,
       userId,
-      revokedSessionCount
+      revokedSessionCount,
+      revokedRefreshSessionCount
     });
   } catch (error) {
     logAuthRouteFailure(request, context, "auth_logout_all", error);

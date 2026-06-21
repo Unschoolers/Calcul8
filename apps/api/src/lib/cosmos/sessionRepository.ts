@@ -1,10 +1,17 @@
-import type { ApiConfig, SessionDocument } from "../../types";
+import type { ApiConfig, RefreshSessionDocument, SessionDocument } from "../../types";
 import { getContainers, isNotFoundError, withCosmosRetry } from "./core";
 
 interface TouchSessionInput {
   sessionId: string;
   lastSeenAt: string;
   idleExpiresAt: string;
+}
+
+interface RotateRefreshSessionInput {
+  refreshSessionId: string;
+  tokenHash: string;
+  sessionId: string;
+  lastUsedAt: string;
 }
 
 export async function createSession(
@@ -70,6 +77,132 @@ export async function deleteSession(
     if (isNotFoundError(error)) return;
     throw error;
   }
+}
+
+export async function createRefreshSession(
+  config: ApiConfig,
+  refreshSession: RefreshSessionDocument
+): Promise<RefreshSessionDocument> {
+  const { sessions } = getContainers(config);
+  const { resource } = await withCosmosRetry(() =>
+    sessions.items.create<RefreshSessionDocument>(refreshSession)
+  );
+
+  if (!resource) {
+    throw new Error("Failed to create refresh session.");
+  }
+
+  return resource;
+}
+
+export async function getRefreshSession(
+  config: ApiConfig,
+  refreshSessionId: string
+): Promise<RefreshSessionDocument | null> {
+  const { sessions } = getContainers(config);
+
+  try {
+    const { resource } = await withCosmosRetry(() =>
+      sessions.item(refreshSessionId, refreshSessionId).read<RefreshSessionDocument>()
+    );
+    if (!resource || resource.docType !== "refresh_session") return null;
+    return resource;
+  } catch (error) {
+    if (isNotFoundError(error)) return null;
+    throw error;
+  }
+}
+
+export async function rotateRefreshSession(
+  config: ApiConfig,
+  input: RotateRefreshSessionInput
+): Promise<void> {
+  const existing = await getRefreshSession(config, input.refreshSessionId);
+  if (!existing) {
+    throw new Error("Refresh session was not found.");
+  }
+
+  const { sessions } = getContainers(config);
+  const updatedDocument: RefreshSessionDocument = {
+    ...existing,
+    tokenHash: input.tokenHash,
+    sessionId: input.sessionId,
+    lastUsedAt: input.lastUsedAt,
+    revokedAt: null
+  };
+  await withCosmosRetry(() =>
+    sessions.items.upsert<RefreshSessionDocument>(updatedDocument)
+  );
+}
+
+export async function revokeRefreshSessionForSession(
+  config: ApiConfig,
+  sessionId: string
+): Promise<number> {
+  const { sessions } = getContainers(config);
+  const now = new Date().toISOString();
+  const querySpec = {
+    query: "SELECT * FROM c WHERE c.docType = @docType AND c.sessionId = @sessionId",
+    parameters: [
+      { name: "@docType", value: "refresh_session" },
+      { name: "@sessionId", value: sessionId }
+    ]
+  };
+  const iterator = sessions.items.query<RefreshSessionDocument>(querySpec);
+  const { resources } = await withCosmosRetry(() => iterator.fetchAll());
+  const rows = resources ?? [];
+  let revokedCount = 0;
+
+  for (const row of rows) {
+    const id = String(row.id || "").trim();
+    if (!id) continue;
+    const revoked: RefreshSessionDocument = {
+      ...row,
+      sessionId: null,
+      revokedAt: row.revokedAt || now
+    };
+    await withCosmosRetry(() =>
+      sessions.items.upsert<RefreshSessionDocument>(revoked)
+    );
+    revokedCount += 1;
+  }
+
+  return revokedCount;
+}
+
+export async function revokeAllRefreshSessionsForUser(
+  config: ApiConfig,
+  userId: string
+): Promise<number> {
+  const { sessions } = getContainers(config);
+  const now = new Date().toISOString();
+  const querySpec = {
+    query: "SELECT * FROM c WHERE c.docType = @docType AND c.userId = @userId",
+    parameters: [
+      { name: "@docType", value: "refresh_session" },
+      { name: "@userId", value: userId }
+    ]
+  };
+  const iterator = sessions.items.query<RefreshSessionDocument>(querySpec);
+  const { resources } = await withCosmosRetry(() => iterator.fetchAll());
+  const rows = resources ?? [];
+  let revokedCount = 0;
+
+  for (const row of rows) {
+    const id = String(row.id || "").trim();
+    if (!id) continue;
+    const revoked: RefreshSessionDocument = {
+      ...row,
+      sessionId: null,
+      revokedAt: row.revokedAt || now
+    };
+    await withCosmosRetry(() =>
+      sessions.items.upsert<RefreshSessionDocument>(revoked)
+    );
+    revokedCount += 1;
+  }
+
+  return revokedCount;
 }
 
 export async function revokeAllSessionsForUser(

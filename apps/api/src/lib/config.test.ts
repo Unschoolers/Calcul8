@@ -55,9 +55,11 @@ test("config defaults to dev and sensible defaults", () => {
       COSMOSDB_CARD_CATALOG_CONTAINER_ID: undefined,
       COSMOSDB_SESSIONS_CONTAINER_ID: undefined,
       SESSION_COOKIE_NAME: undefined,
+      REFRESH_COOKIE_NAME: undefined,
       SESSION_IDLE_TTL_SECONDS: undefined,
       SESSION_ABSOLUTE_TTL_SECONDS: undefined,
       SESSION_TOUCH_INTERVAL_SECONDS: undefined,
+      REFRESH_TOKEN_TTL_SECONDS: undefined,
       ALLOWED_ORIGINS: undefined,
       GOOGLE_PLAY_PRO_PRODUCT_IDS: undefined
     },
@@ -77,9 +79,11 @@ test("config defaults to dev and sensible defaults", () => {
       assert.equal(config.cardCatalogContainerId, "card_catalog");
       assert.equal(config.sessionsContainerId, "sessions");
       assert.equal(config.sessionCookieName, "whatfees_session");
+      assert.equal(config.refreshCookieName, "whatfees_refresh");
       assert.equal(config.sessionIdleTtlSeconds, 7 * 24 * 60 * 60);
       assert.equal(config.sessionAbsoluteTtlSeconds, 30 * 24 * 60 * 60);
       assert.equal(config.sessionTouchIntervalSeconds, 15 * 60);
+      assert.equal(config.refreshTokenTtlSeconds, 60 * 24 * 60 * 60);
       assert.equal(config.migrationsAdminKey, "");
       assert.equal(config.stripeSecretKey, "");
       assert.equal(config.stripeWebhookSecret, "");
@@ -227,17 +231,21 @@ test("config parses custom session settings", () => {
       ...requiredBaseEnv(),
       COSMOSDB_SESSIONS_CONTAINER_ID: "sessions_custom",
       SESSION_COOKIE_NAME: "wf_sid",
+      REFRESH_COOKIE_NAME: "wf_refresh",
       SESSION_IDLE_TTL_SECONDS: "7200",
       SESSION_ABSOLUTE_TTL_SECONDS: "2592000",
-      SESSION_TOUCH_INTERVAL_SECONDS: "60"
+      SESSION_TOUCH_INTERVAL_SECONDS: "60",
+      REFRESH_TOKEN_TTL_SECONDS: "5184000"
     },
     () => {
       const config = getConfig();
       assert.equal(config.sessionsContainerId, "sessions_custom");
       assert.equal(config.sessionCookieName, "wf_sid");
+      assert.equal(config.refreshCookieName, "wf_refresh");
       assert.equal(config.sessionIdleTtlSeconds, 7200);
       assert.equal(config.sessionAbsoluteTtlSeconds, 2592000);
       assert.equal(config.sessionTouchIntervalSeconds, 60);
+      assert.equal(config.refreshTokenTtlSeconds, 5184000);
     }
   );
 });

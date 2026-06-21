@@ -107,9 +107,11 @@ export function getConfig(): ApiConfig {
     cardCatalogContainerId: readEnv("COSMOSDB_CARD_CATALOG_CONTAINER_ID") || "card_catalog",
     sessionsContainerId: readEnv("COSMOSDB_SESSIONS_CONTAINER_ID") || "sessions",
     sessionCookieName: readEnv("SESSION_COOKIE_NAME") || "whatfees_session",
+    refreshCookieName: readEnv("REFRESH_COOKIE_NAME") || "whatfees_refresh",
     sessionIdleTtlSeconds: parsePositiveInt(readEnv("SESSION_IDLE_TTL_SECONDS"), 7 * 24 * 60 * 60),
     sessionAbsoluteTtlSeconds: parsePositiveInt(readEnv("SESSION_ABSOLUTE_TTL_SECONDS"), 30 * 24 * 60 * 60),
-    sessionTouchIntervalSeconds: parsePositiveInt(readEnv("SESSION_TOUCH_INTERVAL_SECONDS"), 15 * 60)
+    sessionTouchIntervalSeconds: parsePositiveInt(readEnv("SESSION_TOUCH_INTERVAL_SECONDS"), 15 * 60),
+    refreshTokenTtlSeconds: parsePositiveInt(readEnv("REFRESH_TOKEN_TTL_SECONDS"), 60 * 24 * 60 * 60)
   };
 
   return cachedConfig;

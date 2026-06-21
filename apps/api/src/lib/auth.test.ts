@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { beforeEach, test, vi } from "vitest";
 import type { HttpRequest } from "@azure/functions";
 import type { ApiConfig, SessionDocument } from "../types";
@@ -8,12 +9,20 @@ const {
   getSessionMock,
   touchSessionMock,
   deleteSessionMock,
+  createRefreshSessionMock,
+  getRefreshSessionMock,
+  rotateRefreshSessionMock,
+  revokeRefreshSessionForSessionMock,
   upsertUserProfileMock
 } = vi.hoisted(() => ({
   createSessionMock: vi.fn(),
   getSessionMock: vi.fn(),
   touchSessionMock: vi.fn(),
   deleteSessionMock: vi.fn(),
+  createRefreshSessionMock: vi.fn(),
+  getRefreshSessionMock: vi.fn(),
+  rotateRefreshSessionMock: vi.fn(),
+  revokeRefreshSessionForSessionMock: vi.fn(),
   upsertUserProfileMock: vi.fn()
 }));
 
@@ -21,7 +30,11 @@ vi.mock("./cosmos", () => ({
   createSession: createSessionMock,
   getSession: getSessionMock,
   touchSession: touchSessionMock,
-  deleteSession: deleteSessionMock
+  deleteSession: deleteSessionMock,
+  createRefreshSession: createRefreshSessionMock,
+  getRefreshSession: getRefreshSessionMock,
+  rotateRefreshSession: rotateRefreshSessionMock,
+  revokeRefreshSessionForSession: revokeRefreshSessionForSessionMock
 }));
 
 vi.mock("./cosmos/entitlementRepository", () => ({
@@ -31,9 +44,25 @@ vi.mock("./cosmos/entitlementRepository", () => ({
 import {
   createSessionCsrfToken,
   HttpError,
+  consumeAuthResponseCookies,
   consumeAuthResponseHeaders,
+  refreshSessionFromRequest,
   resolveUserId
 } from "./auth";
+
+interface TestRefreshSessionDocument {
+  id: string;
+  docType: "refresh_session";
+  userId: string;
+  tokenHash: string;
+  sessionId: string | null;
+  createdAt: string;
+  lastUsedAt: string;
+  expiresAt: string;
+  revokedAt?: string | null;
+}
+
+const REFRESH_SECRET_OLD = "secret-old-secret-old-secret-old-12345";
 
 function makeConfig(overrides: Partial<ApiConfig> = {}): ApiConfig {
   return {
@@ -55,9 +84,11 @@ function makeConfig(overrides: Partial<ApiConfig> = {}): ApiConfig {
     migrationRunsContainerId: "migration_runs",
     sessionsContainerId: "sessions",
     sessionCookieName: "whatfees_session",
+    refreshCookieName: "whatfees_refresh",
     sessionIdleTtlSeconds: 1000,
     sessionAbsoluteTtlSeconds: 3000,
     sessionTouchIntervalSeconds: 60,
+    refreshTokenTtlSeconds: 60 * 24 * 60 * 60,
     ...overrides
   };
 }
@@ -92,6 +123,30 @@ function buildSession(overrides: Partial<SessionDocument> = {}): SessionDocument
   };
 }
 
+function hashRefreshSecret(secret: string): string {
+  return createHash("sha256").update(secret).digest("hex");
+}
+
+function buildRefreshSession(overrides: Partial<TestRefreshSessionDocument> = {}): TestRefreshSessionDocument {
+  const now = Date.now();
+  return {
+    id: "refresh-1",
+    docType: "refresh_session",
+    userId: "refresh-user",
+    tokenHash: hashRefreshSecret(REFRESH_SECRET_OLD),
+    sessionId: "session-old",
+    createdAt: new Date(now - 120_000).toISOString(),
+    lastUsedAt: new Date(now - 120_000).toISOString(),
+    expiresAt: new Date(now + 30 * 24 * 60 * 60 * 1000).toISOString(),
+    revokedAt: null,
+    ...overrides
+  };
+}
+
+function findLastCookie(cookies: Array<{ name: string; value: string }>, name: string): { name: string; value: string } | null {
+  return cookies.filter((cookie) => cookie.name === name).at(-1) ?? null;
+}
+
 function createTelemetryLogger() {
   return {
     log: vi.fn(),
@@ -107,6 +162,10 @@ beforeEach(() => {
   touchSessionMock.mockResolvedValue(undefined);
   deleteSessionMock.mockResolvedValue(undefined);
   createSessionMock.mockImplementation(async (_config: ApiConfig, input: SessionDocument) => input);
+  createRefreshSessionMock.mockImplementation(async (_config: ApiConfig, input: unknown) => input);
+  getRefreshSessionMock.mockResolvedValue(null);
+  rotateRefreshSessionMock.mockResolvedValue(undefined);
+  revokeRefreshSessionForSessionMock.mockResolvedValue(undefined);
   upsertUserProfileMock.mockResolvedValue(undefined);
 });
 
@@ -179,10 +238,21 @@ test("valid bearer token resolves user and issues session cookie", async () => {
     });
 
     const authHeaders = consumeAuthResponseHeaders(request);
-    const setCookie = authHeaders["Set-Cookie"] ?? "";
-    assert.match(setCookie, /^whatfees_session=/);
-    assert.match(setCookie, /HttpOnly/);
-    assert.match(setCookie, /SameSite=Lax/);
+    const authCookies = consumeAuthResponseCookies(request);
+    const sessionCookie = authCookies.find((cookie) => cookie.name === "whatfees_session");
+    const refreshCookie = authCookies.find((cookie) => cookie.name === "whatfees_refresh");
+    assert.ok(sessionCookie);
+    assert.equal(sessionCookie.httpOnly, true);
+    assert.equal(sessionCookie.sameSite, "Lax");
+    assert.ok(refreshCookie);
+    assert.equal(refreshCookie.httpOnly, true);
+    assert.equal(refreshCookie.sameSite, "Lax");
+    assert.match(String(refreshCookie.value), /^[A-Za-z0-9_-]{16,128}\.[A-Za-z0-9_-]{32,256}$/);
+    assert.equal(createRefreshSessionMock.mock.calls.length, 1);
+    const createdRefreshSession = createRefreshSessionMock.mock.calls[0]?.[1] as TestRefreshSessionDocument;
+    assert.equal(createdRefreshSession.userId, "google-user-42");
+    assert.equal(createdRefreshSession.sessionId, sessionCookie.value);
+    assert.notEqual(createdRefreshSession.tokenHash, refreshCookie.value.split(".")[1]);
     assert.equal(telemetry.info.mock.calls.length, 1);
     assert.deepEqual(telemetry.info.mock.calls[0]?.[1], {
       category: "auth",
@@ -229,9 +299,11 @@ test("repeated bearer bootstrap requests reuse the same session id for the same 
     assert.equal(secondSession.userId, "google-user-42");
     assert.equal(firstSession.id, secondSession.id);
 
-    const headersA = consumeAuthResponseHeaders(requestA);
-    const headersB = consumeAuthResponseHeaders(requestB);
-    assert.equal(headersA["Set-Cookie"], headersB["Set-Cookie"]);
+    const cookiesA = consumeAuthResponseCookies(requestA);
+    const cookiesB = consumeAuthResponseCookies(requestB);
+    assert.equal(findLastCookie(cookiesA, "whatfees_session")?.value, findLastCookie(cookiesB, "whatfees_session")?.value);
+    assert.notEqual(findLastCookie(cookiesA, "whatfees_refresh")?.value ?? "", "");
+    assert.notEqual(findLastCookie(cookiesB, "whatfees_refresh")?.value ?? "", "");
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -254,7 +326,9 @@ test("valid session cookie authenticates and touches stale sessions", async () =
   assert.equal(createSessionMock.mock.calls.length, 0);
 
   const authHeaders = consumeAuthResponseHeaders(request);
-  assert.match(String(authHeaders["Set-Cookie"]), /^whatfees_session=session-1/);
+  const authCookies = consumeAuthResponseCookies(request);
+  const touchedSessionCookie = authCookies.find((cookie) => cookie.name === "whatfees_session");
+  assert.equal(touchedSessionCookie?.value, "session-1");
   assert.equal(telemetry.info.mock.calls.length, 1);
   assert.equal(telemetry.info.mock.calls[0]?.[1]?.auth_method, "session");
   assert.equal(telemetry.info.mock.calls[0]?.[1]?.auth_result, "success");
@@ -280,6 +354,7 @@ test("valid session cookie skips touch when touch interval is not reached", asyn
 
   const authHeaders = consumeAuthResponseHeaders(request);
   assert.equal(authHeaders["Set-Cookie"], undefined);
+  assert.equal(consumeAuthResponseCookies(request).length, 0);
 });
 
 test("expired session is cleared and bearer fallback is used", async () => {
@@ -310,9 +385,10 @@ test("expired session is cleared and bearer fallback is used", async () => {
     assert.equal(deleteSessionMock.mock.calls.length, 1);
     assert.equal(createSessionMock.mock.calls.length, 1);
 
-    const setCookie = consumeAuthResponseHeaders(request)["Set-Cookie"] ?? "";
-    assert.match(setCookie, /^whatfees_session=/);
-    assert.doesNotMatch(setCookie, /^whatfees_session=;/);
+    const authCookies = consumeAuthResponseCookies(request);
+    const sessionCookie = findLastCookie(authCookies, "whatfees_session");
+    assert.ok(sessionCookie);
+    assert.notEqual(sessionCookie.value, "");
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -399,4 +475,69 @@ test("unsafe request with session auth accepts matching csrf token", async () =>
 
   const userId = await resolveUserId(request, config);
   assert.equal(userId, "session-user");
+});
+
+test("refresh token cookie rotates and issues a new session cookie without bearer auth", async () => {
+  const request = makeRequest({
+    cookie: `whatfees_refresh=refresh-1.${REFRESH_SECRET_OLD}`
+  }, "POST");
+  getRefreshSessionMock.mockResolvedValue(buildRefreshSession());
+
+  const userId = await refreshSessionFromRequest(request, makeConfig());
+
+  assert.equal(userId, "refresh-user");
+  assert.equal(createSessionMock.mock.calls.length, 1);
+  const createdSession = createSessionMock.mock.calls[0]?.[1] as SessionDocument;
+  assert.equal(createdSession.userId, "refresh-user");
+  assert.equal(rotateRefreshSessionMock.mock.calls.length, 1);
+  const rotation = rotateRefreshSessionMock.mock.calls[0]?.[1] as {
+    refreshSessionId: string;
+    tokenHash: string;
+    sessionId: string;
+  };
+  assert.equal(rotation.refreshSessionId, "refresh-1");
+  assert.equal(rotation.sessionId, createdSession.id);
+  assert.notEqual(rotation.tokenHash, hashRefreshSecret(REFRESH_SECRET_OLD));
+
+  const cookies = consumeAuthResponseCookies(request);
+  assert.ok(cookies.find((cookie) => cookie.name === "whatfees_session" && cookie.value === createdSession.id));
+  assert.ok(cookies.find((cookie) => cookie.name === "whatfees_refresh" && cookie.value.startsWith("refresh-1.")));
+});
+
+test("refresh token rejects replayed or revoked cookies and clears refresh cookie", async () => {
+  const request = makeRequest({
+    cookie: `whatfees_refresh=refresh-1.${REFRESH_SECRET_OLD}`
+  }, "POST");
+  getRefreshSessionMock.mockResolvedValue(buildRefreshSession({
+    tokenHash: hashRefreshSecret("different-secret")
+  }));
+
+  await assert.rejects(
+    () => refreshSessionFromRequest(request, makeConfig()),
+    (error: unknown) => {
+      assert.ok(error instanceof HttpError);
+      assert.equal(error.status, 401);
+      assert.equal(error.message, "Refresh token is invalid or expired.");
+      return true;
+    }
+  );
+
+  const clearedRefreshCookie = consumeAuthResponseCookies(request).find((cookie) => cookie.name === "whatfees_refresh");
+  assert.equal(clearedRefreshCookie?.value, "");
+  assert.equal(clearedRefreshCookie?.maxAge, 0);
+});
+
+test("logout revokes the refresh token tied to the current session", async () => {
+  const request = makeRequest({
+    cookie: `whatfees_session=session-1; whatfees_refresh=refresh-1.${REFRESH_SECRET_OLD}`
+  }, "POST");
+
+  const revoked = await (await import("./auth")).revokeSessionFromRequest(request, makeConfig());
+
+  assert.equal(revoked, true);
+  assert.equal(deleteSessionMock.mock.calls.length, 1);
+  assert.deepEqual(revokeRefreshSessionForSessionMock.mock.calls[0]?.slice(1), ["session-1"]);
+  const cookies = consumeAuthResponseCookies(request);
+  assert.ok(cookies.find((cookie) => cookie.name === "whatfees_session" && cookie.maxAge === 0));
+  assert.ok(cookies.find((cookie) => cookie.name === "whatfees_refresh" && cookie.maxAge === 0));
 });

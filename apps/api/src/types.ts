@@ -78,9 +78,11 @@ export interface ApiConfig {
   cardCatalogContainerId?: string;
   sessionsContainerId?: string;
   sessionCookieName?: string;
+  refreshCookieName?: string;
   sessionIdleTtlSeconds?: number;
   sessionAbsoluteTtlSeconds?: number;
   sessionTouchIntervalSeconds?: number;
+  refreshTokenTtlSeconds?: number;
 }
 
 export interface SessionDocument {
@@ -91,6 +93,18 @@ export interface SessionDocument {
   lastSeenAt: string;
   idleExpiresAt: string;
   absoluteExpiresAt: string;
+}
+
+export interface RefreshSessionDocument {
+  id: string;
+  docType: "refresh_session";
+  userId: string;
+  tokenHash: string;
+  sessionId: string | null;
+  createdAt: string;
+  lastUsedAt: string;
+  expiresAt: string;
+  revokedAt?: string | null;
 }
 
 export type GamePublicSessionStatus = SharedGamePublicSessionStatus;

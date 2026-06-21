@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test, vi } from "vitest";
 import {
+    getStoredCsrfToken,
     setStoredCsrfToken,
     setStoredGoogleIdToken
 } from "../src/app-core/auth/index.ts";
@@ -328,6 +329,86 @@ test("fetchAuthenticatedApiResponse keeps bearer auth for cross-origin session-p
     const requestInit = fetchCalls[0]?.[1] as RequestInit;
     const headers = new Headers(requestInit.headers);
     assert.equal(headers.get("Authorization"), "Bearer google-token");
+  });
+});
+
+test("fetchAuthenticatedApiResponse refreshes an expired session once before expiring auth", async () => {
+  await withMockedLocalStorage(async () => {
+    vi.stubEnv("VITE_API_BASE_URL", "https://api.example.test");
+    setStoredCsrfToken("csrf-stale");
+
+    const fetchMock = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response("{}", {
+        status: 401,
+        headers: {
+          "Content-Type": "application/json"
+        }
+      }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ ok: true, userId: "user-1" }), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "x-csrf-token": "csrf-refreshed"
+        }
+      }))
+      .mockResolvedValueOnce(new Response("{\"ok\":true}", {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json"
+        }
+      }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const app = {
+      googleAuthEpoch: 0,
+      hasProAccess: false
+    };
+
+    const response = await fetchAuthenticatedApiResponse(app as never, "/sync/pull", {
+      method: "POST",
+      body: "{}"
+    });
+
+    assert.equal(response.status, 200);
+    assert.equal(app.googleAuthEpoch, 0);
+    assert.equal(getStoredCsrfToken(), "csrf-refreshed");
+
+    const fetchCalls = fetchMock.mock.calls as unknown as FetchCall[];
+    assert.deepEqual(fetchCalls.map((call) => call[0]), [
+      "https://api.example.test/sync/pull",
+      "https://api.example.test/auth/refresh",
+      "https://api.example.test/sync/pull"
+    ]);
+
+    const refreshInit = fetchCalls[1]?.[1] as RequestInit;
+    assert.equal(refreshInit.method, "POST");
+    assert.equal(refreshInit.credentials, "include");
+  });
+});
+
+test("fetchAuthenticatedApiResponse expires auth when refresh cannot recover the session", async () => {
+  await withMockedLocalStorage(async () => {
+    vi.stubEnv("VITE_API_BASE_URL", "https://api.example.test");
+    setStoredCsrfToken("csrf-stale");
+
+    const fetchMock = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response("{}", { status: 401 }))
+      .mockResolvedValueOnce(new Response("{}", { status: 401 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const app = {
+      googleAuthEpoch: 0,
+      hasProAccess: false
+    };
+
+    const response = await fetchAuthenticatedApiResponse(app as never, "/sync/pull", {
+      method: "POST",
+      body: "{}"
+    });
+
+    assert.equal(response.status, 401);
+    assert.equal(app.googleAuthEpoch, 1);
+    assert.equal(fetchMock.mock.calls.length, 2);
   });
 });
 

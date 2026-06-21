@@ -40,10 +40,15 @@ export {
 } from "./cosmos/salesRepository";
 
 export {
+  createRefreshSession,
   createSession,
   deleteSession,
+  getRefreshSession,
   getSession,
+  revokeAllRefreshSessionsForUser,
   revokeAllSessionsForUser,
+  revokeRefreshSessionForSession,
+  rotateRefreshSession,
   touchSession
 } from "./cosmos/sessionRepository";
 

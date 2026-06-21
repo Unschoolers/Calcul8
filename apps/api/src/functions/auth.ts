@@ -1,7 +1,7 @@
 import { app } from "@azure/functions";
-import { authMe, authLogout, authLogoutAll } from "../features/auth/handlers";
+import { authMe, authLogout, authLogoutAll, authRefresh } from "../features/auth/handlers";
 
-export { authMe, authLogout, authLogoutAll } from "../features/auth/handlers";
+export { authMe, authLogout, authLogoutAll, authRefresh } from "../features/auth/handlers";
 
 app.http("authMe", {
   methods: ["GET", "OPTIONS"],
@@ -15,6 +15,13 @@ app.http("authLogout", {
   authLevel: "anonymous",
   route: "auth/logout",
   handler: authLogout
+});
+
+app.http("authRefresh", {
+  methods: ["POST", "OPTIONS"],
+  authLevel: "anonymous",
+  route: "auth/refresh",
+  handler: authRefresh
 });
 
 app.http("authLogoutAll", {

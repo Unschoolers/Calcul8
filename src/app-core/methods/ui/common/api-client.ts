@@ -1,6 +1,7 @@
 import {
     buildAuthenticatedHeaders,
     getStoredCsrfToken,
+    setStoredSessionUserId,
     setStoredCsrfToken
 } from "../../../auth/index.ts";
 import type { AppContext } from "../../../context-app.ts";
@@ -88,6 +89,14 @@ function isUnsafeMethod(method: string | undefined): boolean {
   return normalized !== "GET" && normalized !== "HEAD" && normalized !== "OPTIONS";
 }
 
+interface RefreshAuthResponse {
+  userId?: unknown;
+}
+
+function normalizeResponseUserId(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
 export function resolveApiBaseUrl(): string {
   const storage = resolveApiBaseStorage();
   const configuredApiBase = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim() || "";
@@ -170,7 +179,7 @@ export async function fetchAuthenticatedApiResponse(
   }
   const requestUrl = `${baseUrl}${path}`;
 
-  const response = await fetchWithRetry(requestUrl, {
+  const buildRequestInit = (): RequestInit => ({
     ...init,
     headers: buildAuthenticatedHeaders(
       "session-preferred",
@@ -179,9 +188,47 @@ export async function fetchAuthenticatedApiResponse(
     )
   });
 
+  const response = await fetchWithRetry(requestUrl, buildRequestInit());
+
   if (response.status === 401 && options.expireAuthOn401 !== false) {
+    const refreshed = await tryRefreshAuthSession(baseUrl);
+    if (refreshed) {
+      const retryResponse = await fetchWithRetry(requestUrl, buildRequestInit());
+      if (retryResponse.status !== 401) {
+        return retryResponse;
+      }
+      handleExpiredAuth(app);
+      return retryResponse;
+    }
+
     handleExpiredAuth(app);
   }
 
   return response;
+}
+
+async function tryRefreshAuthSession(baseUrl: string): Promise<boolean> {
+  try {
+    const response = await fetchWithRetry(`${baseUrl}/auth/refresh`, {
+      method: "POST"
+    }, {
+      maxAttempts: 1
+    });
+    if (!response.ok) return false;
+
+    let payload: RefreshAuthResponse | null = null;
+    try {
+      payload = await response.json() as RefreshAuthResponse;
+    } catch {
+      payload = null;
+    }
+
+    const userId = normalizeResponseUserId(payload?.userId);
+    if (userId) {
+      setStoredSessionUserId(userId);
+    }
+    return true;
+  } catch {
+    return false;
+  }
 }

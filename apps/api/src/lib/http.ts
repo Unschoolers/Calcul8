@@ -1,6 +1,6 @@
 import type { HttpRequest, HttpResponseInit } from "@azure/functions";
 import type { ApiConfig } from "../types";
-import { consumeAuthResponseHeaders, HttpError } from "./auth";
+import { consumeAuthResponseCookies, consumeAuthResponseHeaders, HttpError } from "./auth";
 import { checkGlobalRateLimit } from "./rateLimit";
 
 function isAllowedOrigin(origin: string, allowedOrigins: string[]): boolean {
@@ -85,9 +85,13 @@ export function jsonResponse(
   const authHeaders = typeof consumeAuthResponseHeaders === "function"
     ? consumeAuthResponseHeaders(request)
     : {};
+  const authCookies = typeof consumeAuthResponseCookies === "function"
+    ? consumeAuthResponseCookies(request)
+    : [];
 
   return {
     status,
+    ...(authCookies.length > 0 ? { cookies: authCookies } : {}),
     headers: {
       "Content-Type": "application/json; charset=utf-8",
       ...buildCorsHeaders(request, config),

@@ -11,15 +11,19 @@ vi.mock("@azure/functions", () => ({
 const {
   getConfigMock,
   resolveUserIdMock,
+  refreshSessionFromRequestMock,
   revokeSessionFromRequestMock,
   clearSessionCookieMock,
-  revokeAllSessionsForUserMock
+  revokeAllSessionsForUserMock,
+  revokeAllRefreshSessionsForUserMock
 } = vi.hoisted(() => ({
   getConfigMock: vi.fn(),
   resolveUserIdMock: vi.fn(),
+  refreshSessionFromRequestMock: vi.fn(),
   revokeSessionFromRequestMock: vi.fn(),
   clearSessionCookieMock: vi.fn(),
-  revokeAllSessionsForUserMock: vi.fn()
+  revokeAllSessionsForUserMock: vi.fn(),
+  revokeAllRefreshSessionsForUserMock: vi.fn()
 }));
 
 vi.mock("../lib/config", () => ({
@@ -36,24 +40,29 @@ vi.mock("../lib/auth", () => ({
     }
   },
   resolveUserId: resolveUserIdMock,
+  refreshSessionFromRequest: refreshSessionFromRequestMock,
   revokeSessionFromRequest: revokeSessionFromRequestMock,
   clearSessionCookie: clearSessionCookieMock,
-  consumeAuthResponseHeaders: vi.fn(() => ({}))
+  consumeAuthResponseHeaders: vi.fn(() => ({})),
+  consumeAuthResponseCookies: vi.fn(() => [])
 }));
 
 vi.mock("../lib/cosmos/sessionRepository", () => ({
-  revokeAllSessionsForUser: revokeAllSessionsForUserMock
+  revokeAllSessionsForUser: revokeAllSessionsForUserMock,
+  revokeAllRefreshSessionsForUser: revokeAllRefreshSessionsForUserMock
 }));
 
-import { authLogout, authLogoutAll, authMe } from "./auth";
+import { authLogout, authLogoutAll, authMe, authRefresh } from "./auth";
 
 beforeEach(() => {
   vi.clearAllMocks();
   getConfigMock.mockReturnValue(createApiConfig());
   resolveUserIdMock.mockResolvedValue("user-1");
+  refreshSessionFromRequestMock.mockResolvedValue("user-1");
   revokeSessionFromRequestMock.mockResolvedValue(true);
   clearSessionCookieMock.mockResolvedValue(undefined);
   revokeAllSessionsForUserMock.mockResolvedValue(3);
+  revokeAllRefreshSessionsForUserMock.mockResolvedValue(4);
 });
 
 test("authMe resolves user and returns payload", async () => {
@@ -81,6 +90,19 @@ test("authLogout clears current session and returns revoked flag", async () => {
   });
 });
 
+test("authRefresh rotates refresh token and returns user payload", async () => {
+  const request = createHttpRequest({ method: "POST" });
+  const context = createInvocationContext();
+
+  const response = await authRefresh(request as never, context as never);
+  assert.equal(response.status, 200);
+  assert.deepEqual(response.jsonBody, {
+    ok: true,
+    userId: "user-1"
+  });
+  assert.equal(refreshSessionFromRequestMock.mock.calls.length, 1);
+});
+
 test("authLogoutAll revokes all sessions and clears cookie", async () => {
   const request = createHttpRequest({ method: "POST" });
   const context = createInvocationContext();
@@ -90,7 +112,8 @@ test("authLogoutAll revokes all sessions and clears cookie", async () => {
   assert.deepEqual(response.jsonBody, {
     ok: true,
     userId: "user-1",
-    revokedSessionCount: 3
+    revokedSessionCount: 3,
+    revokedRefreshSessionCount: 4
   });
   assert.equal(clearSessionCookieMock.mock.calls.length, 1);
 });
