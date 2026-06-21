@@ -1263,6 +1263,41 @@ test("initSalesChart creates line chart for trend view", () => {
   assert.equal(config.type, "line");
 });
 
+test("initSalesChart creates realized profit line chart for profit view", () => {
+  const trendCanvas = new MockHtmlCanvasElement();
+  const ctx = createContext({
+    chartView: "profit",
+    sales: [
+      {
+        id: 1,
+        type: "pack",
+        quantity: 1,
+        packsCount: 1,
+        price: 10,
+        date: "2026-02-20"
+      }
+    ],
+    calculateSaleProfit: vi.fn(() => 6.25),
+    $refs: {
+      salesWindow: {
+        $refs: {
+          salesTrendChart: trendCanvas
+        }
+      }
+    }
+  });
+
+  salesMethods.initSalesChart.call(ctx as never);
+  assert.equal(chartCtorMock.mock.calls.length, 1);
+  const config = chartCtorMock.mock.calls[0]?.[1] as {
+    type: string;
+    data: { datasets: Array<{ label?: string; data: number[] }> };
+  };
+  assert.equal(config.type, "line");
+  assert.equal(config.data.datasets[0]?.label, "Realized profit");
+  assert.deepEqual(config.data.datasets[0]?.data, [0, 6.25]);
+});
+
 test("initSalesChart retries when trend canvas is not mounted yet", () => {
   vi.useFakeTimers();
   const trendCanvas = new MockHtmlCanvasElement();

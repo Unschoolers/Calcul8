@@ -7,6 +7,7 @@ import {
   buildPortfolioSalesByUserChartConfig,
   buildPortfolioHistoryChartConfig,
   buildSalesPieChartConfig,
+  buildSalesProfitTrendChartConfig,
   buildSalesTrendChartConfig
 } from "../src/app-core/methods/sales-chart-config.ts";
 
@@ -113,6 +114,28 @@ test("buildSalesTrendChartConfig uses the first sale date for the initial label"
   assert.deepEqual(config?.data.datasets[0]?.pointHoverRadius, [0, 5]);
   const tooltipTitle = (config?.options?.plugins?.tooltip?.callbacks?.title as ((items: Array<{ dataIndex?: number }>) => string) | undefined)?.([{ dataIndex: 1 }]);
   assert.equal(tooltipTitle, "D:2026-02-20");
+});
+
+test("buildSalesProfitTrendChartConfig plots cumulative realized sale profit", () => {
+  const config = buildSalesProfitTrendChartConfig({
+    sales: [
+      makeSale({ id: 1, date: "2026-02-20" }),
+      makeSale({ id: 2, date: "2026-02-22" })
+    ],
+    calculateSaleProfit: (sale) => sale.id === 1 ? -5 : 12,
+    formatCurrency,
+    formatDate,
+    formatCompactDate: (value) => `C:${value}`
+  });
+
+  assert.equal(config?.type, "line");
+  assert.deepEqual(config?.data.labels, ["", "C:2026-02-20", "C:2026-02-22"]);
+  assert.deepEqual(config?.data.datasets[0]?.data, [0, -5, 7]);
+  assert.equal(config?.data.datasets[0]?.borderColor, "#34C759");
+  const tooltipTitle = (config?.options?.plugins?.tooltip?.callbacks?.title as ((items: Array<{ dataIndex?: number }>) => string) | undefined)?.([{ dataIndex: 2 }]);
+  const tooltipLabel = (config?.options?.plugins?.tooltip?.callbacks?.label as ((context: { parsed?: { y?: number } }) => string) | undefined)?.({ parsed: { y: 7 } });
+  assert.equal(tooltipTitle, "D:2026-02-22");
+  assert.equal(tooltipLabel, "Realized profit: $7.00");
 });
 
 test("buildSalesPieChartConfig uses card inventory labels for singles lots", () => {

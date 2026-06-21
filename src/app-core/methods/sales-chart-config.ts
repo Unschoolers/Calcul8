@@ -6,6 +6,6 @@ export {
 export { buildPortfolioHistoryChartConfig } from "./sales-chart-config-history.ts";
 export {
   buildSalesPieChartConfig,
+  buildSalesProfitTrendChartConfig,
   buildSalesTrendChartConfig
 } from "./sales-chart-config-sales.ts";
-

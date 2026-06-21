@@ -1,5 +1,8 @@
 import type { ChartConfiguration } from "chart.js";
-import { calculateSparklineData } from "../../domain/calculations.ts";
+import {
+  calculateSaleNetRevenue,
+  calculateSparklineData
+} from "../../domain/calculations.ts";
 import type { LotType, Sale } from "../../types/app.ts";
 import {
   buildBottomLegendOptions,
@@ -8,26 +11,27 @@ import {
   PORTFOLIO_BREAKDOWN_COLORS
 } from "./sales-chart-config.shared.ts";
 
-export function buildSalesTrendChartConfig(params: {
-  sales: Sale[];
-  totalCaseCost: number;
-  sellingTaxPercent: number;
+function sortSalesByDateAsc(sales: Sale[]): Sale[] {
+  return [...sales].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+}
+
+function buildSalesLineChartConfig(params: {
+  values: number[];
+  sortedSales: Sale[];
+  label: string;
+  tooltipLabel: string;
   formatCurrency: FormatCurrency;
   formatDate: FormatDate;
   formatCompactDate: FormatDate;
-}): ChartConfiguration<"line", number[], string> | null {
-  if (params.sales.length === 0) return null;
-
-  const sortedSales = [...params.sales].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  const data = calculateSparklineData(params.sales, params.totalCaseCost, params.sellingTaxPercent);
-  const fullLabels = ["", ...sortedSales.map((sale) => params.formatDate(sale.date))];
-  const compactLabels = ["", ...sortedSales.map((sale) => params.formatCompactDate(sale.date))];
-  const finalValue = data[data.length - 1] ?? 0;
-  const lineColor = finalValue > 0 ? "#34C759" : "#FF3B30";
-  const fillColor = finalValue > 0 ? "rgba(52, 199, 89, 0.16)" : "rgba(255, 59, 48, 0.16)";
-  const pointRadius = data.map((_, index) => (index === 0 ? 0 : 3));
-  const pointHoverRadius = data.map((_, index) => (index === 0 ? 0 : 5));
-  const pointHitRadius = data.map((_, index) => (index === 0 ? 0 : 10));
+}): ChartConfiguration<"line", number[], string> {
+  const fullLabels = ["", ...params.sortedSales.map((sale) => params.formatDate(sale.date))];
+  const compactLabels = ["", ...params.sortedSales.map((sale) => params.formatCompactDate(sale.date))];
+  const finalValue = params.values[params.values.length - 1] ?? 0;
+  const lineColor = finalValue >= 0 ? "#34C759" : "#FF3B30";
+  const fillColor = finalValue >= 0 ? "rgba(52, 199, 89, 0.16)" : "rgba(255, 59, 48, 0.16)";
+  const pointRadius = params.values.map((_, index) => (index === 0 ? 0 : 3));
+  const pointHoverRadius = params.values.map((_, index) => (index === 0 ? 0 : 5));
+  const pointHitRadius = params.values.map((_, index) => (index === 0 ? 0 : 10));
 
   return {
     type: "line",
@@ -35,7 +39,8 @@ export function buildSalesTrendChartConfig(params: {
       labels: compactLabels,
       datasets: [
         {
-          data,
+          label: params.label,
+          data: params.values,
           borderColor: lineColor,
           backgroundColor: fillColor,
           borderWidth: 3,
@@ -70,7 +75,7 @@ export function buildSalesTrendChartConfig(params: {
               const index = Number(items?.[0]?.dataIndex ?? 0);
               return fullLabels[index] || fullLabels[1] || "Sale";
             },
-            label: (context) => `Progress: $${params.formatCurrency(Number(context.parsed?.y || 0))}`
+            label: (context) => `${params.tooltipLabel}: $${params.formatCurrency(Number(context.parsed?.y || 0))}`
           }
         }
       },
@@ -94,6 +99,85 @@ export function buildSalesTrendChartConfig(params: {
       }
     }
   };
+}
+
+function buildCumulativeProfitData(params: {
+  sortedSales: Sale[];
+  calculateSaleProfit: (sale: Sale) => number;
+}): number[] {
+  let cumulativeProfit = 0;
+  const values = [0];
+  for (const sale of params.sortedSales) {
+    cumulativeProfit += Number(params.calculateSaleProfit(sale)) || 0;
+    values.push(cumulativeProfit);
+  }
+  return values;
+}
+
+function buildCumulativeRevenueData(params: {
+  sortedSales: Sale[];
+  sellingTaxPercent: number;
+}): number[] {
+  let cumulativeRevenue = 0;
+  const values = [0];
+  for (const sale of params.sortedSales) {
+    cumulativeRevenue += calculateSaleNetRevenue(sale, params.sellingTaxPercent);
+    values.push(cumulativeRevenue);
+  }
+  return values;
+}
+
+export function buildSalesTrendChartConfig(params: {
+  sales: Sale[];
+  totalCaseCost: number;
+  sellingTaxPercent: number;
+  formatCurrency: FormatCurrency;
+  formatDate: FormatDate;
+  formatCompactDate: FormatDate;
+}): ChartConfiguration<"line", number[], string> | null {
+  if (params.sales.length === 0) return null;
+
+  const sortedSales = sortSalesByDateAsc(params.sales);
+  const legacyData = calculateSparklineData(params.sales, params.totalCaseCost, params.sellingTaxPercent);
+  const revenueData = buildCumulativeRevenueData({
+    sortedSales,
+    sellingTaxPercent: params.sellingTaxPercent
+  });
+  const data = legacyData.length === revenueData.length ? revenueData : legacyData;
+
+  return buildSalesLineChartConfig({
+    values: data,
+    sortedSales,
+    label: "Sales revenue",
+    tooltipLabel: "Sales revenue",
+    formatCurrency: params.formatCurrency,
+    formatDate: params.formatDate,
+    formatCompactDate: params.formatCompactDate
+  });
+}
+
+export function buildSalesProfitTrendChartConfig(params: {
+  sales: Sale[];
+  calculateSaleProfit: (sale: Sale) => number;
+  formatCurrency: FormatCurrency;
+  formatDate: FormatDate;
+  formatCompactDate: FormatDate;
+}): ChartConfiguration<"line", number[], string> | null {
+  if (params.sales.length === 0) return null;
+
+  const sortedSales = sortSalesByDateAsc(params.sales);
+  return buildSalesLineChartConfig({
+    values: buildCumulativeProfitData({
+      sortedSales,
+      calculateSaleProfit: params.calculateSaleProfit
+    }),
+    sortedSales,
+    label: "Realized profit",
+    tooltipLabel: "Realized profit",
+    formatCurrency: params.formatCurrency,
+    formatDate: params.formatDate,
+    formatCompactDate: params.formatCompactDate
+  });
 }
 
 export function buildSalesPieChartConfig(params: {

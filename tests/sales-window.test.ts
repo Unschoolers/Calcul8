@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { test } from "vitest";
 import { SalesHistoryLedgerDefinition } from "../src/components/windows/sales/SalesHistoryLedger.ts";
 import { SalesWindowDefinition } from "../src/components/windows/sales/SalesWindow.definition.ts";
+import { uiBaseMethods } from "../src/app-core/methods/ui/common/base.ts";
 import type { Sale, SinglesPurchaseEntry } from "../src/types/app.ts";
 
 function makeSale(overrides: Record<string, any> = {}): Sale {
@@ -142,6 +143,26 @@ test("SalesWindow renders snapshot KPIs through the shared KPI grid", () => {
   assert.doesNotMatch(template, /salesStatusSummaryLine/);
   assert.doesNotMatch(template, /salesStatusProgressLine/);
   assert.match(script, /AppKpiGrid/);
+});
+
+test("SalesWindow exposes sales, profit, and inventory chart modes", () => {
+  const template = read("src/components/windows/sales/SalesWindow.html");
+  const context = { chartView: "pie" };
+
+  uiBaseMethods.toggleChartView.call(context as never);
+  assert.equal(context.chartView, "sparkline");
+  uiBaseMethods.toggleChartView.call(context as never);
+  assert.equal(context.chartView, "profit");
+  uiBaseMethods.toggleChartView.call(context as never);
+  assert.equal(context.chartView, "pie");
+
+  assert.match(template, /salesChartRevenueSubtitle/);
+  assert.match(template, /salesChartProfitSubtitle/);
+  assert.match(template, /salesChartInventoryTitle/);
+  assert.match(template, /salesChartRevenueTitle/);
+  assert.match(template, /salesChartProfitTitle/);
+  assert.match(template, /salesChartToggleProfitLabel/);
+  assert.match(template, /salesChartProfitAriaLabel/);
 });
 
 test("SalesWindow renders sales history through one responsive ledger component", () => {

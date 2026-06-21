@@ -6,6 +6,7 @@ import {
   buildPortfolioMarginChartConfig,
   buildPortfolioSalesByUserChartConfig,
   buildSalesPieChartConfig,
+  buildSalesProfitTrendChartConfig,
   buildSalesTrendChartConfig
 } from "./sales-chart-config.ts";
 import { getTodayDate } from "./config-shared.ts";
@@ -129,14 +130,22 @@ export function initSalesChartDisplay(context: AppContext): void {
   const ctx = chartCanvas.getContext("2d");
   if (!ctx) return;
   if (context.chartView !== "pie") {
-    const trendConfig = buildSalesTrendChartConfig({
-      sales: context.sales,
-      totalCaseCost: context.totalCaseCost,
-      sellingTaxPercent: context.sellingTaxPercent,
-      formatCurrency: (value, decimals) => context.formatCurrency(value, decimals),
-      formatDate: (value) => context.formatDate(value),
-      formatCompactDate: (value) => formatCompactChartDate(value, context.preferredLanguage)
-    });
+    const trendConfig = context.chartView === "profit"
+      ? buildSalesProfitTrendChartConfig({
+        sales: context.sales,
+        calculateSaleProfit: (sale) => context.calculateSaleProfit(sale),
+        formatCurrency: (value, decimals) => context.formatCurrency(value, decimals),
+        formatDate: (value) => context.formatDate(value),
+        formatCompactDate: (value) => formatCompactChartDate(value, context.preferredLanguage)
+      })
+      : buildSalesTrendChartConfig({
+        sales: context.sales,
+        totalCaseCost: context.totalCaseCost,
+        sellingTaxPercent: context.sellingTaxPercent,
+        formatCurrency: (value, decimals) => context.formatCurrency(value, decimals),
+        formatDate: (value) => context.formatDate(value),
+        formatCompactDate: (value) => formatCompactChartDate(value, context.preferredLanguage)
+      });
     if (!trendConfig) return;
     context.salesChart = new Chart(ctx, trendConfig);
     return;

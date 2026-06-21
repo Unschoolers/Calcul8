@@ -88,7 +88,11 @@ export const uiBaseMethods: ThisType<AppContext> & Pick<
   },
 
   toggleChartView(): void {
-    this.chartView = this.chartView === "pie" ? "sparkline" : "pie";
+    this.chartView = this.chartView === "pie"
+      ? "sparkline"
+      : this.chartView === "sparkline"
+        ? "profit"
+        : "pie";
   },
 
   togglePortfolioChartView(): void {

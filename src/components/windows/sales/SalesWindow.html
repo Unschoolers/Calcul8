@@ -129,13 +129,21 @@
                           <div class="sales-section-head-main">
                             <v-icon size="16">mdi-chart-areaspline</v-icon>
                             <div class="sales-section-head-copy">
-                              <div class="sales-section-eyebrow">{{ t('salesChartTitle') }}</div>
+                              <div class="sales-section-eyebrow">
+                                {{ chartView === 'pie'
+                                  ? t('salesChartInventoryTitle')
+                                  : chartView === 'profit'
+                                    ? t('salesChartProfitTitle')
+                                    : t('salesChartRevenueTitle') }}
+                              </div>
                               <div class="sales-section-subtitle">
                                 {{ chartView === 'pie'
                                   ? (currentLotType === 'singles'
                                     ? t('salesChartSinglesSubtitle')
                                     : t('salesChartBulkSubtitle'))
-                                  : t('salesChartLineSubtitle') }}
+                                  : chartView === 'profit'
+                                    ? t('salesChartProfitSubtitle')
+                                    : t('salesChartRevenueSubtitle') }}
                               </div>
                             </div>
                           </div>
@@ -144,11 +152,23 @@
                             size="small"
                             variant="text"
                             class="sales-section-toggle-btn"
-                            :title="chartView === 'pie' ? t('salesChartToggleLineLabel') : t('salesChartTogglePieLabel')"
-                            :aria-label="chartView === 'pie' ? t('salesChartToggleLineLabel') : t('salesChartTogglePieLabel')"
+                            :title="chartView === 'pie'
+                              ? t('salesChartToggleLineLabel')
+                              : chartView === 'sparkline'
+                                ? t('salesChartToggleProfitLabel')
+                                : t('salesChartTogglePieLabel')"
+                            :aria-label="chartView === 'pie'
+                              ? t('salesChartToggleLineLabel')
+                              : chartView === 'sparkline'
+                                ? t('salesChartToggleProfitLabel')
+                                : t('salesChartTogglePieLabel')"
                             @click="toggleChartView"
                           >
-                            <v-icon>{{ chartView === 'pie' ? 'mdi-chart-line' : 'mdi-chart-pie' }}</v-icon>
+                            <v-icon>{{ chartView === 'pie'
+                              ? 'mdi-chart-line'
+                              : chartView === 'sparkline'
+                                ? 'mdi-finance'
+                                : 'mdi-chart-pie' }}</v-icon>
                           </v-btn>
                         </div>
                         <div class="app-responsive-chart__plot">
@@ -173,7 +193,9 @@
                             <canvas
                               ref="salesTrendChart"
                               role="img"
-                              :aria-label="t('salesChartTrendAriaLabel')"
+                              :aria-label="chartView === 'profit'
+                                ? t('salesChartProfitAriaLabel')
+                                : t('salesChartRevenueAriaLabel')"
                             ></canvas>
                           </div>
                         </div>
