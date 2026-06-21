@@ -1,7 +1,7 @@
 import { type HttpRequest, type HttpResponseInit, type InvocationContext } from "@azure/functions";
 import { clearSessionCookie, resolveUserId } from "../../lib/auth";
 import { getConfig } from "../../lib/config";
-import { revokeAllSessionsForUser } from "../../lib/cosmos/sessionRepository";
+import { revokeAllRefreshSessionsForUser, revokeAllSessionsForUser } from "../../lib/cosmos/sessionRepository";
 import { deleteEntitlement, deletePlayPurchasesForUser, deleteUserProfile } from "../../lib/cosmos/entitlementRepository";
 import { deleteAllSyncData } from "../../lib/cosmos/syncSnapshotRepository";
 import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../../lib/http";
@@ -24,7 +24,8 @@ export async function accountDelete(
       deletePlayPurchasesForUser(config, userId),
       deleteAllSyncData(config, userId),
       eraseAccountData(config, userId),
-      revokeAllSessionsForUser(config, userId)
+      revokeAllSessionsForUser(config, userId),
+      revokeAllRefreshSessionsForUser(config, userId)
     ]);
     await clearSessionCookie(request, config);
 

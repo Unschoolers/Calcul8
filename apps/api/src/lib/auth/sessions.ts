@@ -314,7 +314,11 @@ export async function refreshSessionFromRequest(request: HttpRequest, config: Ap
   const refreshCookie = parseRefreshTokenFromCookie(request, config);
   const getRefreshSessionFn = getCosmosFn<GetRefreshSessionFn>("getRefreshSession");
   const rotateRefreshSessionFn = getCosmosFn<RotateRefreshSessionFn>("rotateRefreshSession");
-  if (!refreshCookie || !getRefreshSessionFn || !rotateRefreshSessionFn) {
+  if (!refreshCookie) {
+    clearRefreshCookieOnResponse(request, config);
+    throw new HttpError(401, "Refresh token is invalid or expired.");
+  }
+  if (!getRefreshSessionFn || !rotateRefreshSessionFn) {
     clearRefreshCookieOnResponse(request, config);
     throw new Error("Refresh token support is not configured.");
   }
