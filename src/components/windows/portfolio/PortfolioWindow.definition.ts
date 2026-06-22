@@ -40,6 +40,9 @@ import type {
 import type { Lot, PortfolioSalesByUserDrilldownRow, Sale } from "../../../types/app.ts";
 
 type PortfolioPerformanceView = "lots" | "customers";
+type PortfolioSortDirection = "asc" | "desc";
+type PortfolioLotPerformanceSortKey = "source" | "name" | "status" | "soldMargin" | "risk" | "profit";
+type PortfolioCustomerPerformanceSortKey = "customer" | "spent" | "purchases" | "lots" | "last" | "topLot";
 
 type PortfolioLotFilterDisplayItem = {
   title: string;
@@ -89,6 +92,27 @@ function resolvePortfolioDashboardPresetDisplayItem(item: unknown): PortfolioDas
   };
 }
 
+function compareText(left: unknown, right: unknown): number {
+  return String(left ?? "").localeCompare(String(right ?? ""), undefined, { sensitivity: "base" });
+}
+
+function compareNumbers(left: unknown, right: unknown): number {
+  const leftNumber = Number(left);
+  const rightNumber = Number(right);
+  const normalizedLeft = Number.isFinite(leftNumber) ? leftNumber : Number.NEGATIVE_INFINITY;
+  const normalizedRight = Number.isFinite(rightNumber) ? rightNumber : Number.NEGATIVE_INFINITY;
+  return normalizedLeft - normalizedRight;
+}
+
+function applySortDirection(value: number, direction: PortfolioSortDirection): number {
+  return direction === "asc" ? value : -value;
+}
+
+function timestampOrStart(value: unknown): number {
+  const time = Date.parse(String(value ?? ""));
+  return Number.isFinite(time) ? time : Number.NEGATIVE_INFINITY;
+}
+
 export const PortfolioWindowDefinition = {
   name: "PortfolioWindow",
   props: {
@@ -104,6 +128,10 @@ export const PortfolioWindowDefinition = {
       portfolioSalesByUserDrilldownDialog: false,
       portfolioSalesByUserDrilldownWeekKey: "",
       portfolioPerformanceView: "lots" as PortfolioPerformanceView,
+      portfolioLotPerformanceSortKey: "source" as PortfolioLotPerformanceSortKey,
+      portfolioLotPerformanceSortDirection: "asc" as PortfolioSortDirection,
+      portfolioCustomerPerformanceSortKey: "spent" as PortfolioCustomerPerformanceSortKey,
+      portfolioCustomerPerformanceSortDirection: "desc" as PortfolioSortDirection,
       buyerQuickViewOpen: false,
       buyerQuickViewName: ""
     };
@@ -139,6 +167,77 @@ export const PortfolioWindowDefinition = {
         lots: typeof visibleLots === "function" ? visibleLots.call(this) : [],
         salesByLotId: typeof salesMap === "function" ? salesMap.call(this) : new Map<number, Sale[]>()
       });
+    },
+
+    sortedCustomerPerformanceRows(this: Record<string, unknown>): CustomerPerformanceRow[] {
+      const rows = (this.customerPerformanceRows as (() => CustomerPerformanceRow[]) | undefined)?.call(this) ?? [];
+      const key = String(this.portfolioCustomerPerformanceSortKey || "spent") as PortfolioCustomerPerformanceSortKey;
+      const direction = (this.portfolioCustomerPerformanceSortDirection === "asc" ? "asc" : "desc") as PortfolioSortDirection;
+      return [...rows].sort((left, right) => {
+        let result = 0;
+        if (key === "customer") result = compareText(left.username, right.username);
+        else if (key === "spent") result = compareNumbers(left.totalSpent, right.totalSpent);
+        else if (key === "purchases") result = compareNumbers(left.purchaseCount, right.purchaseCount);
+        else if (key === "lots") result = compareNumbers(left.lotCount, right.lotCount);
+        else if (key === "last") result = compareNumbers(timestampOrStart(left.lastPurchaseDate), timestampOrStart(right.lastPurchaseDate));
+        else if (key === "topLot") result = compareText(left.topLotName, right.topLotName);
+        return applySortDirection(result || compareText(left.username, right.username), direction);
+      });
+    },
+
+    setPortfolioCustomerPerformanceSort(this: Record<string, unknown>, key: PortfolioCustomerPerformanceSortKey): void {
+      if (this.portfolioCustomerPerformanceSortKey === key) {
+        this.portfolioCustomerPerformanceSortDirection = this.portfolioCustomerPerformanceSortDirection === "asc" ? "desc" : "asc";
+        return;
+      }
+      this.portfolioCustomerPerformanceSortKey = key;
+      this.portfolioCustomerPerformanceSortDirection = key === "customer" || key === "topLot" ? "asc" : "desc";
+    },
+
+    sortedPortfolioLotPerformanceRows(this: Record<string, unknown>): Array<Record<string, unknown>> {
+      const rows = Array.isArray(this.allLotPerformance)
+        ? this.allLotPerformance as Array<Record<string, unknown>>
+        : [];
+      const key = String(this.portfolioLotPerformanceSortKey || "source") as PortfolioLotPerformanceSortKey;
+      const direction = (this.portfolioLotPerformanceSortDirection === "desc" ? "desc" : "asc") as PortfolioSortDirection;
+      if (key === "source") return [...rows];
+      return [...rows].sort((left, right) => {
+        let result = 0;
+        if (key === "name") result = compareText(left.lotName, right.lotName);
+        else if (key === "status") {
+          const leftTotal = Number(left.totalPacks ?? 0);
+          const rightTotal = Number(right.totalPacks ?? 0);
+          const leftRatio = leftTotal > 0 ? Number(left.soldPacks ?? 0) / leftTotal : Number(left.salesCount ?? 0);
+          const rightRatio = rightTotal > 0 ? Number(right.soldPacks ?? 0) / rightTotal : Number(right.salesCount ?? 0);
+          result = compareNumbers(leftRatio, rightRatio);
+        } else if (key === "soldMargin") result = compareNumbers(left.realizedMarginPercent, right.realizedMarginPercent);
+        else if (key === "risk") {
+          result = compareNumbers(
+            Math.max(0, -Number(left.totalProfit ?? 0)),
+            Math.max(0, -Number(right.totalProfit ?? 0))
+          );
+        } else if (key === "profit") result = compareNumbers(left.totalProfit, right.totalProfit);
+        return applySortDirection(result || compareText(left.lotName, right.lotName), direction);
+      });
+    },
+
+    setPortfolioLotPerformanceSort(this: Record<string, unknown>, key: PortfolioLotPerformanceSortKey): void {
+      if (this.portfolioLotPerformanceSortKey === key) {
+        this.portfolioLotPerformanceSortDirection = this.portfolioLotPerformanceSortDirection === "asc" ? "desc" : "asc";
+        return;
+      }
+      this.portfolioLotPerformanceSortKey = key;
+      this.portfolioLotPerformanceSortDirection = key === "name" ? "asc" : "desc";
+    },
+
+    portfolioLotPerformanceSortIcon(this: Record<string, unknown>, key: PortfolioLotPerformanceSortKey): string {
+      if (this.portfolioLotPerformanceSortKey !== key) return "mdi-swap-vertical";
+      return this.portfolioLotPerformanceSortDirection === "asc" ? "mdi-arrow-up" : "mdi-arrow-down";
+    },
+
+    portfolioCustomerPerformanceSortIcon(this: Record<string, unknown>, key: PortfolioCustomerPerformanceSortKey): string {
+      if (this.portfolioCustomerPerformanceSortKey !== key) return "mdi-swap-vertical";
+      return this.portfolioCustomerPerformanceSortDirection === "asc" ? "mdi-arrow-up" : "mdi-arrow-down";
     },
 
     customerPerformanceSummary(this: Record<string, unknown>): CustomerPerformanceSummary {
@@ -603,7 +702,12 @@ export const PortfolioWindowDefinition = {
         return `${formatCount(soldPacks)} / ${formatCount(totalPacks)}`;
       }
       const salesCount = Math.max(0, Number(row?.salesCount ?? 0) || 0);
-      if (salesCount > 0) return `${formatCount(salesCount)} ${getCopy("portfolioSalesCountLabel", "sale")}`;
+      if (salesCount > 0) {
+        const label = salesCount === 1
+          ? getCopy("portfolioSalesCountLabel", "sale")
+          : getCopy("portfolioSalesPluralCountLabel", "sales");
+        return `${formatCount(salesCount)} ${label}`;
+      }
       return getCopy("portfolioLotNoSalesLabel", "No sales yet");
     },
 

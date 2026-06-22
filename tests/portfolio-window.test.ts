@@ -198,6 +198,116 @@ test("Portfolio pulse insights surface the biggest risk, best performer, and nex
   );
 });
 
+test("PortfolioWindow lot performance status pluralizes sale counts", () => {
+  const vm = {
+    portfolioCopy(_key: string, fallback: string) {
+      return fallback;
+    },
+    fmtCurrency: portfolioWindowDefinition.methods.fmtCurrency
+  };
+
+  assert.equal(
+    portfolioWindowDefinition.methods.portfolioLotStatusLabel.call(vm as never, {
+      salesCount: 1,
+      soldPacks: 0,
+      totalPacks: 0
+    }),
+    "1 sale"
+  );
+  assert.equal(
+    portfolioWindowDefinition.methods.portfolioLotStatusLabel.call(vm as never, {
+      salesCount: 6,
+      soldPacks: 0,
+      totalPacks: 0
+    }),
+    "6 sales"
+  );
+});
+
+test("PortfolioWindow performance grids sort by clicked columns", () => {
+  const vm = {
+    portfolioLotPerformanceSortKey: "risk",
+    portfolioLotPerformanceSortDirection: "desc",
+    portfolioCustomerPerformanceSortKey: "last",
+    portfolioCustomerPerformanceSortDirection: "asc",
+    allLotPerformance: [
+      {
+        lotId: 1,
+        lotName: "Low risk",
+        salesCount: 2,
+        soldPacks: 8,
+        totalPacks: 16,
+        realizedMarginPercent: 12,
+        totalProfit: -5,
+        realizedProfit: 20,
+        forecastProfitAverage: 10
+      },
+      {
+        lotId: 2,
+        lotName: "High risk",
+        salesCount: 1,
+        soldPacks: 4,
+        totalPacks: 16,
+        realizedMarginPercent: 6,
+        totalProfit: -100,
+        realizedProfit: 4,
+        forecastProfitAverage: 8
+      },
+      {
+        lotId: 3,
+        lotName: "Winner",
+        salesCount: 3,
+        soldPacks: 16,
+        totalPacks: 16,
+        realizedMarginPercent: 22,
+        totalProfit: 50,
+        realizedProfit: 50,
+        forecastProfitAverage: 50
+      }
+    ],
+    customerPerformanceRows() {
+      return [
+        {
+          username: "Recent",
+          normalizedKey: "recent",
+          totalSpent: 10,
+          purchaseCount: 1,
+          lotCount: 1,
+          lastPurchaseDate: "2026-05-01",
+          topLotId: 1,
+          topLotName: "Low risk",
+          topLotSpent: 10
+        },
+        {
+          username: "Older",
+          normalizedKey: "older",
+          totalSpent: 100,
+          purchaseCount: 2,
+          lotCount: 2,
+          lastPurchaseDate: "2026-03-01",
+          topLotId: 2,
+          topLotName: "High risk",
+          topLotSpent: 80
+        }
+      ];
+    }
+  };
+
+  assert.deepEqual(
+    portfolioWindowDefinition.methods.sortedPortfolioLotPerformanceRows.call(vm as never)
+      .map((row: { lotName: string }) => row.lotName),
+    ["High risk", "Low risk", "Winner"]
+  );
+  assert.deepEqual(
+    portfolioWindowDefinition.methods.sortedCustomerPerformanceRows.call(vm as never)
+      .map((row: { username: string }) => row.username),
+    ["Older", "Recent"]
+  );
+
+  portfolioWindowDefinition.methods.setPortfolioLotPerformanceSort.call(vm as never, "risk");
+  assert.equal(vm.portfolioLotPerformanceSortDirection, "asc");
+});
+
 test("PortfolioWindow pulse stats explain forecast context in seller language", () => {
   const vm = {
     portfolioTotals: {

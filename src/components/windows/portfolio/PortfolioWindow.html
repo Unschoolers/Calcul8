@@ -394,7 +394,29 @@
                           <v-icon size="16">mdi-table-eye</v-icon>
                           <span>{{ portfolioCopy('portfolioPerformanceSheetTitle', 'Performance sheet') }}</span>
                         </div>
-                        <div class="portfolio-performance-header-actions">
+                      </template>
+
+                      <div class="portfolio-performance-sheet-switch">
+                        <div class="portfolio-performance-sheet-switch__mode">
+                          <span class="portfolio-performance-sheet-switch__label">
+                            {{ portfolioCopy('portfolioPerformanceViewModeLabel', 'View') }}
+                          </span>
+                          <v-btn-toggle
+                            v-model="portfolioPerformanceView"
+                            mandatory
+                            density="compact"
+                            variant="tonal"
+                            class="portfolio-performance-mode-toggle"
+                          >
+                            <v-btn value="lots" prepend-icon="mdi-view-grid-outline">
+                              {{ portfolioCopy('portfolioPerformanceLotsViewLabel', 'Lot performance') }}
+                            </v-btn>
+                            <v-btn value="customers" prepend-icon="mdi-account-group-outline">
+                              {{ portfolioCopy('portfolioPerformanceCustomersViewLabel', 'Customer performance') }}
+                            </v-btn>
+                          </v-btn-toggle>
+                        </div>
+                        <div class="portfolio-performance-sheet-switch__summary">
                           <div v-if="hasPortfolioData && portfolioPerformanceView === 'lots'" class="portfolio-performance-summary">
                             <div class="portfolio-performance-summary-stat is-error">
                               <span class="portfolio-performance-summary-label">{{ portfolioCopy('portfolioPerformanceLossLabel', 'Loss') }}</span>
@@ -421,34 +443,12 @@
                               <span class="portfolio-performance-summary-value">{{ customerPerformanceSummary().repeatBuyerCount }}</span>
                             </div>
                           </div>
-                        </div>
-                      </template>
-
-                      <div class="portfolio-performance-sheet-switch">
-                        <div class="portfolio-performance-sheet-switch__copy">
-                          <div class="portfolio-performance-sheet-switch__label">
-                            {{ portfolioCopy('portfolioPerformanceViewModeLabel', 'View mode') }}
-                          </div>
                           <div class="portfolio-performance-sheet-switch__title">
                             {{ portfolioPerformanceView === 'customers'
                               ? portfolioCopy('portfolioCustomerPerformanceTitle', 'Customer performance')
                               : portfolioCopy('portfolioPerformanceTitle', 'Lot performance') }}
                           </div>
                         </div>
-                        <v-btn-toggle
-                          v-model="portfolioPerformanceView"
-                          mandatory
-                          density="compact"
-                          variant="tonal"
-                          class="portfolio-performance-mode-toggle"
-                        >
-                          <v-btn value="lots" prepend-icon="mdi-view-grid-outline">
-                            {{ portfolioCopy('portfolioPerformanceLotsViewLabel', 'Lot performance') }}
-                          </v-btn>
-                          <v-btn value="customers" prepend-icon="mdi-account-group-outline">
-                            {{ portfolioCopy('portfolioPerformanceCustomersViewLabel', 'Customer performance') }}
-                          </v-btn>
-                        </v-btn-toggle>
                       </div>
 
                       <app-empty-state
@@ -463,14 +463,44 @@
                       <div v-else-if="portfolioPerformanceView === 'lots'" class="portfolio-performance-layout">
                         <div class="portfolio-performance-main portfolio-performance-grid portfolio-lot-performance">
                           <div class="portfolio-performance-grid__head" role="row">
-                            <span>{{ portfolioCopy('portfolioLotColumnNameLabel', 'Lot') }}</span>
-                            <span>{{ portfolioCopy('portfolioLotColumnStatusLabel', 'Status') }}</span>
-                            <span>{{ portfolioCopy('portfolioLotColumnSoldMarginLabel', 'Sold margin') }}</span>
-                            <span>{{ portfolioCopy('portfolioLotColumnRiskLabel', 'At risk') }}</span>
-                            <span>{{ portfolioCopy('portfolioLotColumnProfitLabel', 'Profit') }}</span>
+                            <span>
+                              <button type="button" class="portfolio-performance-grid__sort-button" @click="setPortfolioLotPerformanceSort('name')">
+                                {{ portfolioCopy('portfolioLotColumnNameLabel', 'Lot') }}
+                                <v-icon size="12">{{ portfolioLotPerformanceSortIcon('name') }}</v-icon>
+                                <span class="portfolio-performance-grid__sort-label">{{ portfolioCopy('portfolioPerformanceSortLabel', 'Sort by') }}</span>
+                              </button>
+                            </span>
+                            <span>
+                              <button type="button" class="portfolio-performance-grid__sort-button" @click="setPortfolioLotPerformanceSort('status')">
+                                {{ portfolioCopy('portfolioLotColumnStatusLabel', 'Status') }}
+                                <v-icon size="12">{{ portfolioLotPerformanceSortIcon('status') }}</v-icon>
+                                <span class="portfolio-performance-grid__sort-label">{{ portfolioCopy('portfolioPerformanceSortLabel', 'Sort by') }}</span>
+                              </button>
+                            </span>
+                            <span class="portfolio-performance-grid__cell--number">
+                              <button type="button" class="portfolio-performance-grid__sort-button portfolio-performance-grid__sort-button--numeric" @click="setPortfolioLotPerformanceSort('soldMargin')">
+                                {{ portfolioCopy('portfolioLotColumnSoldMarginLabel', 'Sold margin') }}
+                                <v-icon size="12">{{ portfolioLotPerformanceSortIcon('soldMargin') }}</v-icon>
+                                <span class="portfolio-performance-grid__sort-label">{{ portfolioCopy('portfolioPerformanceSortLabel', 'Sort by') }}</span>
+                              </button>
+                            </span>
+                            <span class="portfolio-performance-grid__cell--number">
+                              <button type="button" class="portfolio-performance-grid__sort-button portfolio-performance-grid__sort-button--numeric" @click="setPortfolioLotPerformanceSort('risk')">
+                                {{ portfolioCopy('portfolioLotColumnRiskLabel', 'At risk') }}
+                                <v-icon size="12">{{ portfolioLotPerformanceSortIcon('risk') }}</v-icon>
+                                <span class="portfolio-performance-grid__sort-label">{{ portfolioCopy('portfolioPerformanceSortLabel', 'Sort by') }}</span>
+                              </button>
+                            </span>
+                            <span class="portfolio-performance-grid__cell--number">
+                              <button type="button" class="portfolio-performance-grid__sort-button portfolio-performance-grid__sort-button--numeric" @click="setPortfolioLotPerformanceSort('profit')">
+                                {{ portfolioCopy('portfolioLotColumnProfitLabel', 'Profit') }}
+                                <v-icon size="12">{{ portfolioLotPerformanceSortIcon('profit') }}</v-icon>
+                                <span class="portfolio-performance-grid__sort-label">{{ portfolioCopy('portfolioPerformanceSortLabel', 'Sort by') }}</span>
+                              </button>
+                            </span>
                           </div>
                           <div
-                            v-for="row in (allLotPerformance || [])"
+                            v-for="row in sortedPortfolioLotPerformanceRows()"
                             :key="row.lotId"
                             class="portfolio-performance-grid__row"
                           >
@@ -487,13 +517,13 @@
                             <span :data-label="portfolioCopy('portfolioLotColumnStatusLabel', 'Status')">
                               {{ portfolioLotStatusLabel(row) }}
                             </span>
-                            <span :data-label="portfolioCopy('portfolioLotColumnSoldMarginLabel', 'Sold margin')">
+                            <span class="portfolio-performance-grid__cell--number" :data-label="portfolioCopy('portfolioLotColumnSoldMarginLabel', 'Sold margin')">
                               {{ row.realizedMarginPercent != null ? `${row.realizedMarginPercent >= 0 ? '+' : ''}${fmtCurrency(row.realizedMarginPercent, 1)}%` : portfolioCopy('portfolioLotNoSoldMarginLabel', 'No sold margin') }}
                             </span>
-                            <span :data-label="portfolioCopy('portfolioLotColumnRiskLabel', 'At risk')">
+                            <span class="portfolio-performance-grid__cell--number" :data-label="portfolioCopy('portfolioLotColumnRiskLabel', 'At risk')">
                               ${{ fmtCurrency(Math.max(0, -(row.totalProfit ?? 0))) }}
                             </span>
-                            <span :data-label="portfolioCopy('portfolioLotColumnProfitLabel', 'Profit')">
+                            <span class="portfolio-performance-grid__cell--number" :data-label="portfolioCopy('portfolioLotColumnProfitLabel', 'Profit')">
                               <v-chip
                                 size="x-small"
                                 variant="tonal"
@@ -505,10 +535,10 @@
                             </span>
                           </div>
                         </div>
-                        <aside class="portfolio-performance-rail" :aria-label="portfolioCopy('portfolioCustomerHighlightsTitle', 'Customer highlights')">
+                        <aside class="portfolio-performance-rail" :aria-label="portfolioCopy('portfolioBuyerContextTitle', 'Buyer context')">
                           <div class="portfolio-performance-rail-title">
                             <v-icon size="15">mdi-account-heart-outline</v-icon>
-                            <span>{{ portfolioCopy('portfolioCustomerHighlightsTitle', 'Customer highlights') }}</span>
+                            <span>{{ portfolioCopy('portfolioBuyerContextTitle', 'Buyer context') }}</span>
                           </div>
                           <div
                             v-for="highlight in customerPerformanceHighlights()"
@@ -539,15 +569,51 @@
                       <div v-else class="portfolio-performance-layout">
                         <div class="portfolio-performance-main portfolio-performance-grid portfolio-customer-performance">
                           <div class="portfolio-performance-grid__head" role="row">
-                            <span>{{ portfolioCopy('portfolioCustomerColumnNameLabel', 'Customer') }}</span>
-                            <span>{{ portfolioCopy('portfolioCustomerColumnSpentLabel', 'Spent') }}</span>
-                            <span>{{ portfolioCopy('portfolioCustomerColumnPurchasesLabel', 'Purchases') }}</span>
-                            <span>{{ portfolioCopy('portfolioCustomerColumnLotsLabel', 'Lots') }}</span>
-                            <span>{{ portfolioCopy('portfolioCustomerColumnLastLabel', 'Last purchase') }}</span>
-                            <span>{{ portfolioCopy('portfolioCustomerColumnTopLotLabel', 'Top lot') }}</span>
+                            <span>
+                              <button type="button" class="portfolio-performance-grid__sort-button" @click="setPortfolioCustomerPerformanceSort('customer')">
+                                {{ portfolioCopy('portfolioCustomerColumnNameLabel', 'Customer') }}
+                                <v-icon size="12">{{ portfolioCustomerPerformanceSortIcon('customer') }}</v-icon>
+                                <span class="portfolio-performance-grid__sort-label">{{ portfolioCopy('portfolioPerformanceSortLabel', 'Sort by') }}</span>
+                              </button>
+                            </span>
+                            <span class="portfolio-performance-grid__cell--number">
+                              <button type="button" class="portfolio-performance-grid__sort-button portfolio-performance-grid__sort-button--numeric" @click="setPortfolioCustomerPerformanceSort('spent')">
+                                {{ portfolioCopy('portfolioCustomerColumnSpentLabel', 'Spent') }}
+                                <v-icon size="12">{{ portfolioCustomerPerformanceSortIcon('spent') }}</v-icon>
+                                <span class="portfolio-performance-grid__sort-label">{{ portfolioCopy('portfolioPerformanceSortLabel', 'Sort by') }}</span>
+                              </button>
+                            </span>
+                            <span class="portfolio-performance-grid__cell--number">
+                              <button type="button" class="portfolio-performance-grid__sort-button portfolio-performance-grid__sort-button--numeric" @click="setPortfolioCustomerPerformanceSort('purchases')">
+                                {{ portfolioCopy('portfolioCustomerColumnPurchasesLabel', 'Purchases') }}
+                                <v-icon size="12">{{ portfolioCustomerPerformanceSortIcon('purchases') }}</v-icon>
+                                <span class="portfolio-performance-grid__sort-label">{{ portfolioCopy('portfolioPerformanceSortLabel', 'Sort by') }}</span>
+                              </button>
+                            </span>
+                            <span class="portfolio-performance-grid__cell--number">
+                              <button type="button" class="portfolio-performance-grid__sort-button portfolio-performance-grid__sort-button--numeric" @click="setPortfolioCustomerPerformanceSort('lots')">
+                                {{ portfolioCopy('portfolioCustomerColumnLotsLabel', 'Lots') }}
+                                <v-icon size="12">{{ portfolioCustomerPerformanceSortIcon('lots') }}</v-icon>
+                                <span class="portfolio-performance-grid__sort-label">{{ portfolioCopy('portfolioPerformanceSortLabel', 'Sort by') }}</span>
+                              </button>
+                            </span>
+                            <span>
+                              <button type="button" class="portfolio-performance-grid__sort-button" @click="setPortfolioCustomerPerformanceSort('last')">
+                                {{ portfolioCopy('portfolioCustomerColumnLastLabel', 'Last purchase') }}
+                                <v-icon size="12">{{ portfolioCustomerPerformanceSortIcon('last') }}</v-icon>
+                                <span class="portfolio-performance-grid__sort-label">{{ portfolioCopy('portfolioPerformanceSortLabel', 'Sort by') }}</span>
+                              </button>
+                            </span>
+                            <span>
+                              <button type="button" class="portfolio-performance-grid__sort-button" @click="setPortfolioCustomerPerformanceSort('topLot')">
+                                {{ portfolioCopy('portfolioCustomerColumnTopLotLabel', 'Top lot') }}
+                                <v-icon size="12">{{ portfolioCustomerPerformanceSortIcon('topLot') }}</v-icon>
+                                <span class="portfolio-performance-grid__sort-label">{{ portfolioCopy('portfolioPerformanceSortLabel', 'Sort by') }}</span>
+                              </button>
+                            </span>
                           </div>
                           <button
-                            v-for="row in customerPerformanceRows()"
+                            v-for="row in sortedCustomerPerformanceRows()"
                             :key="`customer-performance-${row.normalizedKey}`"
                             type="button"
                             class="portfolio-performance-grid__row"
@@ -557,19 +623,19 @@
                               <v-icon size="16">mdi-account-outline</v-icon>
                               {{ row.username }}
                             </span>
-                            <span :data-label="portfolioCopy('portfolioCustomerColumnSpentLabel', 'Spent')">${{ fmtCurrency(row.totalSpent) }}</span>
-                            <span :data-label="portfolioCopy('portfolioCustomerColumnPurchasesLabel', 'Purchases')">{{ row.purchaseCount }}</span>
-                            <span :data-label="portfolioCopy('portfolioCustomerColumnLotsLabel', 'Lots')">{{ row.lotCount }}</span>
+                            <span class="portfolio-performance-grid__cell--number" :data-label="portfolioCopy('portfolioCustomerColumnSpentLabel', 'Spent')">${{ fmtCurrency(row.totalSpent) }}</span>
+                            <span class="portfolio-performance-grid__cell--number" :data-label="portfolioCopy('portfolioCustomerColumnPurchasesLabel', 'Purchases')">{{ row.purchaseCount }}</span>
+                            <span class="portfolio-performance-grid__cell--number" :data-label="portfolioCopy('portfolioCustomerColumnLotsLabel', 'Lots')">{{ row.lotCount }}</span>
                             <span :data-label="portfolioCopy('portfolioCustomerColumnLastLabel', 'Last purchase')">
                               {{ row.lastPurchaseDate ? formatDate(row.lastPurchaseDate) : portfolioCopy('portfolioCustomerNoLastPurchaseLabel', 'No purchase') }}
                             </span>
                             <span :data-label="portfolioCopy('portfolioCustomerColumnTopLotLabel', 'Top lot')">{{ row.topLotName }}</span>
                           </button>
                         </div>
-                        <aside class="portfolio-performance-rail" :aria-label="portfolioCopy('portfolioLotHighlightsTitle', 'Lot highlights')">
+                        <aside class="portfolio-performance-rail" :aria-label="portfolioCopy('portfolioLotContextTitle', 'Lot context')">
                           <div class="portfolio-performance-rail-title">
                             <v-icon size="15">mdi-view-grid-plus-outline</v-icon>
-                            <span>{{ portfolioCopy('portfolioLotHighlightsTitle', 'Lot highlights') }}</span>
+                            <span>{{ portfolioCopy('portfolioLotContextTitle', 'Lot context') }}</span>
                           </div>
                           <div
                             v-for="highlight in lotPerformanceHighlights()"

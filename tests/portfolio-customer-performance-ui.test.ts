@@ -9,9 +9,12 @@ describe("portfolio customer performance UI", () => {
     const component = readFileSync("src/components/windows/portfolio/PortfolioWindow.ts", "utf8");
 
     assert.match(definition, /portfolioPerformanceView/);
+    assert.match(definition, /portfolioLotPerformanceSortKey/);
+    assert.match(definition, /portfolioCustomerPerformanceSortKey/);
     assert.match(template, /portfolioPerformanceSheetTitle/);
     assert.match(template, /portfolioPerformanceViewModeLabel/);
     assert.match(template, /portfolio-performance-sheet-switch/);
+    assert.match(template, /portfolio-performance-sheet-switch__summary/);
     assert.match(template, /portfolio-performance-mode-toggle/);
     assert.match(template, /portfolioPerformanceLotsViewLabel/);
     assert.match(template, /portfolioPerformanceCustomersViewLabel/);
@@ -33,8 +36,20 @@ describe("portfolio customer performance UI", () => {
     assert.match(template, /portfolioLotColumnSoldMarginLabel/);
     assert.match(template, /portfolioLotColumnRiskLabel/);
     assert.match(template, /portfolioLotColumnProfitLabel/);
+    assert.match(template, /portfolioPerformanceSortLabel/);
+    assert.match(template, /portfolio-performance-grid__sort-button/);
+    assert.match(template, /portfolio-performance-grid__sort-label/);
+    assert.doesNotMatch(template, /class="sr-only"/);
+    assert.match(template, /portfolio-performance-grid__cell--number/);
+    assert.match(template, /sortedPortfolioLotPerformanceRows/);
+    assert.match(template, /portfolioBuyerContextTitle/);
+    assert.match(template, /portfolioLotContextTitle/);
     assert.match(styles, /\.portfolio-performance-grid__head/);
     assert.match(styles, /\.portfolio-performance-grid__row/);
+    assert.match(styles, /\.portfolio-performance-grid__cell--number/);
+    assert.match(styles, /\.portfolio-performance-grid__sort-button/);
+    assert.match(styles, /\.portfolio-performance-grid__sort-label\s*{[\s\S]*position:\s*absolute/);
+    assert.match(styles, /\.portfolio-performance-grid__sort-label\s*{[\s\S]*clip-path:\s*inset\(50%\)/);
     assert.match(styles, /portfolio-lot-performance/);
   });
 });
