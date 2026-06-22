@@ -118,6 +118,7 @@
                         @edit="editSale"
                         @delete="deleteSale"
                         @load-more="loadMoreSalesHistory"
+                        @open-buyer="openBuyerQuickView"
                       ></sales-history-ledger>
                     </app-section-card>
                   </v-col>
@@ -288,3 +289,11 @@
                     </app-section-card>
                   </v-col>
                 </v-row>
+
+                <buyer-quick-view-modal
+                  v-model="buyerQuickViewOpen"
+                  :summary="buyerQuickViewSummary"
+                  :t="t"
+                  :format-date="formatDate"
+                  :fmt-currency="fmtCurrency"
+                ></buyer-quick-view-modal>

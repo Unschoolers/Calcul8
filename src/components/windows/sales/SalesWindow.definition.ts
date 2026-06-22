@@ -1,5 +1,9 @@
 import { inject, type PropType } from "vue";
-import type { Sale, SinglesPurchaseEntry } from "../../../types/app.ts";
+import {
+  buildBuyerQuickViewSummary,
+  type BuyerQuickViewSummary
+} from "../../../app-core/computed/buyer-quick-view.ts";
+import type { Lot, Sale, SinglesPurchaseEntry } from "../../../types/app.ts";
 import type { AppKpiItem } from "../../ui/AppKpiGrid.ts";
 import { createWindowContextBridge } from "../shared/contextBridge.ts";
 
@@ -105,10 +109,23 @@ export const SalesWindowDefinition = {
   data() {
     return {
       salesHistoryRenderCount: SALES_HISTORY_INITIAL_RENDER_COUNT,
-      liveForecastScenarioIndex: 0
+      liveForecastScenarioIndex: 0,
+      buyerQuickViewOpen: false,
+      buyerQuickViewName: ""
     };
   },
   computed: {
+    buyerQuickViewSummary(this: Record<string, unknown>): BuyerQuickViewSummary | null {
+      const lots = Array.isArray(this.lots) ? this.lots as Lot[] : [];
+      const salesByLotId = this.salesByLotId instanceof Map ? this.salesByLotId as Map<number, Sale[]> : new Map<number, Sale[]>();
+      return buildBuyerQuickViewSummary({
+        buyerName: String(this.buyerQuickViewName || ""),
+        currentLotId: Number(this.currentLotId) || null,
+        lots,
+        salesByLotId
+      });
+    },
+
     visibleSortedSales(this: Record<string, unknown>): Sale[] {
       const vm = this as Record<string, unknown>;
       const sales = Array.isArray(vm.sortedSales) ? vm.sortedSales as Sale[] : [];
@@ -494,6 +511,17 @@ export const SalesWindowDefinition = {
     loadMoreSalesHistory(): void {
       const vm = this as Record<string, unknown> & { salesHistoryRenderCount?: number };
       vm.salesHistoryRenderCount = Number(vm.salesHistoryRenderCount || 0) + SALES_HISTORY_RENDER_BATCH_SIZE;
+    },
+
+    openBuyerQuickView(buyerName: string): void {
+      const normalizedName = String(buyerName || "").trim();
+      if (!normalizedName) return;
+      const vm = this as Record<string, unknown> & {
+        buyerQuickViewOpen?: boolean;
+        buyerQuickViewName?: string;
+      };
+      vm.buyerQuickViewName = normalizedName;
+      vm.buyerQuickViewOpen = true;
     },
 
     cycleLiveForecastScenario(direction: -1 | 1): void {

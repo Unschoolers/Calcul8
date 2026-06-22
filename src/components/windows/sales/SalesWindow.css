@@ -492,6 +492,30 @@
   white-space: nowrap;
 }
 
+.sales-history-ledger__customer-button {
+  max-width: 100%;
+  overflow: hidden;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  text-decoration: underline;
+  text-decoration-color: rgba(var(--v-theme-primary), 0.55);
+  text-underline-offset: 3px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: transparent;
+  cursor: pointer;
+}
+
+.sales-history-ledger__customer-button:hover,
+.sales-history-ledger__customer-button:focus-visible {
+  color: rgb(var(--v-theme-primary));
+  outline: none;
+  text-decoration-color: currentColor;
+}
+
 .sales-history-ledger__actions {
   display: flex;
   justify-content: flex-end;

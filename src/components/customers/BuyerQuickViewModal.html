@@ -1,0 +1,92 @@
+<v-dialog
+  v-model="isOpen"
+  max-width="760"
+  scrollable
+  content-class="buyer-quick-view-dialog app-mobile-fullscreen-dialog"
+>
+  <v-card class="buyer-quick-view-card">
+    <v-card-title class="buyer-quick-view-title">
+      <div class="buyer-quick-view-title__main">
+        <v-avatar class="buyer-quick-view-title__icon" size="40">
+          <v-icon size="22">mdi-account-circle-outline</v-icon>
+        </v-avatar>
+        <div class="buyer-quick-view-title__copy">
+          <div class="buyer-quick-view-eyebrow">{{ t('buyerQuickViewTitle') }}</div>
+          <div class="buyer-quick-view-name">
+            {{ summary?.username || t('buyerQuickViewUnknownBuyerLabel') }}
+          </div>
+        </div>
+      </div>
+      <v-btn
+        icon
+        variant="text"
+        size="small"
+        :title="closeLabel"
+        :aria-label="closeLabel"
+        @click="isOpen = false"
+      >
+        <v-icon>mdi-close</v-icon>
+      </v-btn>
+    </v-card-title>
+
+    <v-card-text v-if="summary" class="buyer-quick-view-content">
+      <div class="buyer-quick-view-metrics">
+        <div class="buyer-quick-view-metric">
+          <span class="buyer-quick-view-metric__label">{{ t('buyerQuickViewTotalLotLabel') }}</span>
+          <strong>{{ money(summary.totalSpentForCurrentLot) }}</strong>
+        </div>
+        <div class="buyer-quick-view-metric">
+          <span class="buyer-quick-view-metric__label">{{ t('buyerQuickViewTotalAllLotsLabel') }}</span>
+          <strong>{{ money(summary.totalSpentAllLots) }}</strong>
+        </div>
+        <div class="buyer-quick-view-metric">
+          <span class="buyer-quick-view-metric__label">{{ t('buyerQuickViewPurchasesLotLabel') }}</span>
+          <strong>{{ purchasesLabel(summary.purchasesForCurrentLot) }}</strong>
+        </div>
+        <div class="buyer-quick-view-metric">
+          <span class="buyer-quick-view-metric__label">{{ t('buyerQuickViewPurchasesAllLotsLabel') }}</span>
+          <strong>{{ purchasesLabel(summary.purchasesAllLots) }}</strong>
+        </div>
+        <div class="buyer-quick-view-metric buyer-quick-view-metric--wide">
+          <span class="buyer-quick-view-metric__label">{{ t('buyerQuickViewLastPurchaseLabel') }}</span>
+          <strong>{{ dateLabel(summary.lastPurchaseDate) }}</strong>
+        </div>
+      </div>
+
+      <div class="buyer-quick-view-lots">
+        <div class="buyer-quick-view-section-title">{{ t('buyerQuickViewGroupedTitle') }}</div>
+        <div class="buyer-quick-view-lot-list" role="table" :aria-label="t('buyerQuickViewGroupedTitle')">
+          <div class="buyer-quick-view-lot-row buyer-quick-view-lot-row--head" role="row">
+            <span role="columnheader">{{ t('buyerQuickViewLotColumnLabel') }}</span>
+            <span role="columnheader">{{ t('buyerQuickViewPurchasesColumnLabel') }}</span>
+            <span role="columnheader">{{ t('buyerQuickViewTotalColumnLabel') }}</span>
+            <span role="columnheader">{{ t('buyerQuickViewLastColumnLabel') }}</span>
+          </div>
+          <div
+            v-for="entry in summary.groupedByLot"
+            :key="entry.lotId"
+            class="buyer-quick-view-lot-row"
+            :class="{ 'buyer-quick-view-lot-row--current': entry.isCurrentLot }"
+            role="row"
+          >
+            <div class="buyer-quick-view-lot-cell buyer-quick-view-lot-cell--name" role="cell" :data-label="t('buyerQuickViewLotColumnLabel')">
+              <span>{{ entry.lotName }}</span>
+              <span v-if="entry.isCurrentLot" class="buyer-quick-view-current-badge">
+                {{ t('buyerQuickViewCurrentLotBadge') }}
+              </span>
+            </div>
+            <div class="buyer-quick-view-lot-cell" role="cell" :data-label="t('buyerQuickViewPurchasesColumnLabel')">
+              {{ purchasesLabel(entry.purchaseCount) }}
+            </div>
+            <div class="buyer-quick-view-lot-cell" role="cell" :data-label="t('buyerQuickViewTotalColumnLabel')">
+              {{ money(entry.totalSpent) }}
+            </div>
+            <div class="buyer-quick-view-lot-cell" role="cell" :data-label="t('buyerQuickViewLastColumnLabel')">
+              {{ dateLabel(entry.lastPurchaseDate) }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </v-card-text>
+  </v-card>
+</v-dialog>

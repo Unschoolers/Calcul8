@@ -99,7 +99,7 @@ export const SalesHistoryLedgerDefinition = defineComponent({
       required: true
     }
   },
-  emits: ["edit", "delete", "load-more"],
+  emits: ["edit", "delete", "load-more", "open-buyer"],
   data(): { sortKey: SortKey; sortDirection: SortDirection } {
     return {
       sortKey: "date",
@@ -186,6 +186,9 @@ export const SalesHistoryLedgerDefinition = defineComponent({
     saleCustomerLabel(sale: Sale): string {
       const customer = String(sale.customer || "").trim();
       return customer || this.t("salesHistoryNoCustomerLabel");
+    },
+    hasNamedCustomer(sale: Sale): boolean {
+      return String(sale.customer || "").trim().length > 0;
     },
     saleRevenueLabel(sale: Sale): string {
       return `$${this.fmtCurrency(Number(sale.price) || 0)}`;

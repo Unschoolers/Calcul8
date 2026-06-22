@@ -107,7 +107,17 @@
         {{ formatDate(sale.date) }}
       </div>
       <div class="sales-history-ledger__cell sales-history-ledger__customer app-dense-card-meta" role="cell" :data-label="t('salesHistoryColumnCustomerLabel')">
-        {{ saleCustomerLabel(sale) }}
+        <button
+          v-if="hasNamedCustomer(sale)"
+          type="button"
+          class="sales-history-ledger__customer-button"
+          :title="t('buyerQuickViewOpenLabel')"
+          :aria-label="t('buyerQuickViewOpenLabel')"
+          @click.stop="$emit('open-buyer', saleCustomerLabel(sale))"
+        >
+          {{ saleCustomerLabel(sale) }}
+        </button>
+        <span v-else>{{ saleCustomerLabel(sale) }}</span>
       </div>
       <div class="sales-history-ledger__actions" role="cell">
         <app-action-button
