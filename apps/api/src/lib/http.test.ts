@@ -3,7 +3,8 @@ import { afterEach, beforeEach, test, vi } from "vitest";
 import type { HttpRequest } from "@azure/functions";
 import type { ApiConfig } from "../types";
 
-const { consumeAuthResponseHeadersMock, checkGlobalRateLimitMock } = vi.hoisted(() => ({
+const { consumeAuthResponseCookiesMock, consumeAuthResponseHeadersMock, checkGlobalRateLimitMock } = vi.hoisted(() => ({
+  consumeAuthResponseCookiesMock: vi.fn(() => []),
   consumeAuthResponseHeadersMock: vi.fn(() => ({})),
   checkGlobalRateLimitMock: vi.fn(() => ({
     allowed: true,
@@ -23,7 +24,8 @@ vi.mock("./auth", () => ({
       this.status = status;
     }
   },
-  consumeAuthResponseHeaders: consumeAuthResponseHeadersMock
+  consumeAuthResponseHeaders: consumeAuthResponseHeadersMock,
+  consumeAuthResponseCookies: consumeAuthResponseCookiesMock
 }));
 
 vi.mock("./rateLimit", () => ({

@@ -143,7 +143,9 @@ function buildRefreshSession(overrides: Partial<TestRefreshSessionDocument> = {}
   };
 }
 
-function findLastCookie(cookies: Array<{ name: string; value: string }>, name: string): { name: string; value: string } | null {
+type TestResponseCookie = ReturnType<typeof consumeAuthResponseCookies>[number];
+
+function findLastCookie(cookies: TestResponseCookie[], name: string): TestResponseCookie | null {
   return cookies.filter((cookie) => cookie.name === name).at(-1) ?? null;
 }
 

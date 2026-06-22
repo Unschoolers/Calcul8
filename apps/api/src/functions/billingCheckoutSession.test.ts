@@ -32,7 +32,8 @@ vi.mock("../lib/auth", () => ({
     }
   },
   resolveUserId: resolveUserIdMock,
-  consumeAuthResponseHeaders: vi.fn(() => ({}))
+  consumeAuthResponseHeaders: vi.fn(() => ({})),
+  consumeAuthResponseCookies: vi.fn(() => [])
 }));
 
 vi.mock("../lib/stripe", () => ({

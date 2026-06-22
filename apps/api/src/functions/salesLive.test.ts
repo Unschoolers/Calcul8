@@ -81,6 +81,7 @@ vi.mock("../lib/auth", async () => {
   return {
     HttpError,
     consumeAuthResponseHeaders: vi.fn(() => ({})),
+    consumeAuthResponseCookies: vi.fn(() => []),
     resolveUserId: resolveUserIdMock
   };
 });
