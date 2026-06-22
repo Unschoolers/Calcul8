@@ -1,4 +1,14 @@
 import { inject, type PropType } from "vue";
+import {
+  buildBuyerQuickViewSummary,
+  type BuyerQuickViewSummary
+} from "../../../app-core/computed/buyer-quick-view.ts";
+import {
+  buildCustomerPerformanceRows,
+  buildCustomerPerformanceSummary,
+  type CustomerPerformanceRow,
+  type CustomerPerformanceSummary
+} from "../../../app-core/computed/customer-performance.ts";
 import { createWindowContextBridge } from "../shared/contextBridge.ts";
 import { filterLotOptionItems } from "../../../app-core/shared/lot-option-items.ts";
 import {
@@ -27,7 +37,9 @@ import type {
   PortfolioPulseStat,
   PortfolioPulseTone
 } from "./PortfolioPulsePanel.ts";
-import type { PortfolioSalesByUserDrilldownRow } from "../../../types/app.ts";
+import type { Lot, PortfolioSalesByUserDrilldownRow, Sale } from "../../../types/app.ts";
+
+type PortfolioPerformanceView = "lots" | "customers";
 
 type PortfolioLotFilterDisplayItem = {
   title: string;
@@ -90,10 +102,115 @@ export const PortfolioWindowDefinition = {
       portfolioLotFilterSearchQuery: "",
       portfolioLotFilterMenuOpen: false,
       portfolioSalesByUserDrilldownDialog: false,
-      portfolioSalesByUserDrilldownWeekKey: ""
+      portfolioSalesByUserDrilldownWeekKey: "",
+      portfolioPerformanceView: "lots" as PortfolioPerformanceView,
+      buyerQuickViewOpen: false,
+      buyerQuickViewName: ""
     };
   },
   methods: {
+    portfolioPerformanceLots(this: Record<string, unknown>): Lot[] {
+      const lots = Array.isArray(this.lots) ? this.lots as Lot[] : [];
+      const performanceRows = Array.isArray(this.allLotPerformance)
+        ? this.allLotPerformance as Array<{ lotId?: number }>
+        : [];
+      const visibleIds = new Set(
+        performanceRows.map((row) => Number(row?.lotId)).filter((lotId) => Number.isFinite(lotId))
+      );
+      if (visibleIds.size === 0) return lots;
+      return lots.filter((lot) => visibleIds.has(Number(lot.id)));
+    },
+
+    portfolioPerformanceSalesByLotId(this: Record<string, unknown>): Map<number, Sale[]> {
+      const source = this.salesByLotId instanceof Map ? this.salesByLotId as Map<number, Sale[]> : new Map<number, Sale[]>();
+      const visibleLots = this.portfolioPerformanceLots as (() => Lot[]) | undefined;
+      const lots = typeof visibleLots === "function" ? visibleLots.call(this) : [];
+      if (lots.length === 0) return source;
+      return new Map(lots.map((lot) => {
+        const lotId = Number(lot.id);
+        return [lotId, source.get(lotId) ?? []] as [number, Sale[]];
+      }));
+    },
+
+    customerPerformanceRows(this: Record<string, unknown>): CustomerPerformanceRow[] {
+      const visibleLots = this.portfolioPerformanceLots as (() => Lot[]) | undefined;
+      const salesMap = this.portfolioPerformanceSalesByLotId as (() => Map<number, Sale[]>) | undefined;
+      return buildCustomerPerformanceRows({
+        lots: typeof visibleLots === "function" ? visibleLots.call(this) : [],
+        salesByLotId: typeof salesMap === "function" ? salesMap.call(this) : new Map<number, Sale[]>()
+      });
+    },
+
+    customerPerformanceSummary(this: Record<string, unknown>): CustomerPerformanceSummary {
+      const rows = this.customerPerformanceRows as (() => CustomerPerformanceRow[]) | undefined;
+      return buildCustomerPerformanceSummary(typeof rows === "function" ? rows.call(this) : []);
+    },
+
+    openPortfolioBuyerQuickView(this: Record<string, unknown>, buyerName: string): void {
+      const name = String(buyerName || "").trim();
+      if (!name) return;
+      this.buyerQuickViewName = name;
+      this.buyerQuickViewOpen = true;
+    },
+
+    portfolioBuyerQuickViewSummary(this: Record<string, unknown>): BuyerQuickViewSummary | null {
+      const visibleLots = this.portfolioPerformanceLots as (() => Lot[]) | undefined;
+      const salesMap = this.portfolioPerformanceSalesByLotId as (() => Map<number, Sale[]>) | undefined;
+      return buildBuyerQuickViewSummary({
+        buyerName: String(this.buyerQuickViewName || ""),
+        currentLotId: Number(this.currentLotId) || null,
+        lots: typeof visibleLots === "function" ? visibleLots.call(this) : [],
+        salesByLotId: typeof salesMap === "function" ? salesMap.call(this) : new Map<number, Sale[]>()
+      });
+    },
+
+    customerPerformanceHighlights(this: Record<string, unknown>): Array<{ key: string; label: string; value: string; meta: string; icon: string }> {
+      const summary = (this.customerPerformanceSummary as (() => CustomerPerformanceSummary) | undefined)?.call(this)
+        ?? buildCustomerPerformanceSummary([]);
+      const copy = this.portfolioCopy as ((key: string, fallback: string) => string) | undefined;
+      const getCopy = (key: string, fallback: string): string => (
+        typeof copy === "function" ? copy.call(this, key, fallback) : fallback
+      );
+      const format = this.fmtCurrency as ((value: number | null | undefined, decimals?: number) => string) | undefined;
+      const formatMoney = (value: number): string => `$${typeof format === "function" ? format.call(this, value) : value.toFixed(2)}`;
+      const formatPercent = (value: number): string => `${typeof format === "function" ? format.call(this, value, 1) : value.toFixed(1)}%`;
+      return [
+        {
+          key: "top-customer",
+          label: getCopy("portfolioCustomerHighlightTopLabel", "Top customer"),
+          value: summary.topCustomer?.username || getCopy("portfolioCustomerNoneLabel", "None"),
+          meta: summary.topCustomer ? formatMoney(summary.topCustomer.totalSpent) : getCopy("portfolioCustomerNoSalesMeta", "No named customer sales"),
+          icon: "mdi-account-star-outline"
+        },
+        {
+          key: "repeat-buyers",
+          label: getCopy("portfolioCustomerHighlightRepeatLabel", "Repeat buyers"),
+          value: String(summary.repeatBuyerCount),
+          meta: `${summary.customerCount} ${getCopy("portfolioCustomerCountMeta", "customers")}`,
+          icon: "mdi-account-multiple-check-outline"
+        },
+        {
+          key: "top-five-share",
+          label: getCopy("portfolioCustomerHighlightConcentrationLabel", "Top 5 share"),
+          value: formatPercent(summary.topFiveSharePercent),
+          meta: formatMoney(summary.totalSpent),
+          icon: "mdi-chart-pie"
+        }
+      ];
+    },
+
+    lotPerformanceHighlights(this: Record<string, unknown>): Array<{ key: string; label: string; value: string; meta: string; icon: string; tone: string }> {
+      const insights = this.portfolioPulseInsights as (() => PortfolioPulseDisplayInsight[]) | undefined;
+      return (typeof insights === "function" ? insights.call(this) : []).slice(0, 3).map((insight) => ({
+        key: insight.key,
+        label: insight.label,
+        value: insight.title,
+        meta: insight.meta,
+        icon: insight.icon,
+        tone: insight.tone
+      }));
+    },
+
     portfolioVisibleLotFilterIds(this: Record<string, unknown>): number[] {
       const selected = Array.isArray(this.portfolioLotFilterIds) ? this.portfolioLotFilterIds : [];
       const items = Array.isArray(this.portfolioLotFilterItems)
@@ -462,6 +579,32 @@ export const PortfolioWindowDefinition = {
         return forecastProfitAverage > 0 ? "positive" : "negative";
       }
       return row?.salesCount ? "positive" : "neutral";
+    },
+
+    portfolioLotStatusLabel(this: Record<string, unknown>, row: {
+      salesCount?: number;
+      soldPacks?: number;
+      totalPacks?: number;
+    }): string {
+      const copy = this.portfolioCopy as ((key: string, fallback: string) => string) | undefined;
+      const format = this.fmtCurrency as ((value: number | null | undefined, decimals?: number) => string) | undefined;
+      const getCopy = (key: string, fallback: string): string => (
+        typeof copy === "function" ? copy.call(this, key, fallback) : fallback
+      );
+      const formatCount = (value: number): string => (
+        typeof format === "function" ? format.call(this, value, 0) : String(Math.round(value))
+      );
+      const soldPacks = Math.max(0, Number(row?.soldPacks ?? 0) || 0);
+      const totalPacks = Math.max(0, Number(row?.totalPacks ?? 0) || 0);
+      if (totalPacks > 0 && soldPacks >= totalPacks) {
+        return getCopy("portfolioLotCompleteLabel", "Complete");
+      }
+      if (totalPacks > 0) {
+        return `${formatCount(soldPacks)} / ${formatCount(totalPacks)}`;
+      }
+      const salesCount = Math.max(0, Number(row?.salesCount ?? 0) || 0);
+      if (salesCount > 0) return `${formatCount(salesCount)} ${getCopy("portfolioSalesCountLabel", "sale")}`;
+      return getCopy("portfolioLotNoSalesLabel", "No sales yet");
     },
 
     portfolioLotIsIncomplete(this: Record<string, unknown>, row: {

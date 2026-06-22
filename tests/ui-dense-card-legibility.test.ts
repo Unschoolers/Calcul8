@@ -64,8 +64,9 @@ test("Sales and Portfolio dense cards use the shared legibility contract", () =>
   assert.match(portfolioTemplate, /portfolio-pulse-insight__title app-dense-card-title/);
   assert.match(portfolioStyles, /@media \(max-width:\s*700px\)[\s\S]*\.portfolio-pulse-stat\s*{[\s\S]*min-height:\s*0/);
 
-  assert.match(portfolioWindowTemplate, /portfolio-lot-title app-dense-card-title/);
-  assert.match(portfolioWindowTemplate, /portfolio-lot-meta-line app-dense-card-meta/);
+  assert.match(portfolioWindowTemplate, /portfolio-performance-grid__primary portfolio-lot-performance__name/);
+  assert.match(portfolioWindowTemplate, /portfolio-performance-grid__row/);
   assert.match(portfolioWindowTemplate, /portfolio-lot-profit-chip app-dense-metric__value/);
-  assert.match(portfolioWindowStyles, /@media \(max-width:\s*600px\)[\s\S]*\.portfolio-lot-title\s*{[\s\S]*-webkit-line-clamp:\s*2/);
+  assert.match(portfolioWindowStyles, /@media \(max-width:\s*600px\)[\s\S]*\.portfolio-performance-grid__row\s*{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(portfolioWindowStyles, /@media \(max-width:\s*600px\)[\s\S]*\.portfolio-performance-grid__primary\s*{[\s\S]*grid-column:\s*1 \/ -1/);
 });

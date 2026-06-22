@@ -39,7 +39,7 @@ function normalizeDisplayName(value: unknown): string {
   return String(value ?? "").trim().replace(/\s+/g, " ");
 }
 
-function saleGrossSpend(sale: Sale): number {
+export function saleGrossBuyerSpend(sale: Sale): number {
   const price = Math.max(0, Number(sale.price) || 0);
   if (sale.priceIsTotal) return price;
   return price * Math.max(1, Number(sale.quantity) || 1);
@@ -79,7 +79,7 @@ export function buildBuyerQuickViewSummary(params: BuildBuyerQuickViewSummaryPar
 
     for (const sale of sales) {
       if (normalizeBuyerKey(sale.customer) !== normalizedKey) continue;
-      const spend = saleGrossSpend(sale);
+      const spend = saleGrossBuyerSpend(sale);
       const current = grouped.get(lotId) ?? {
         lotId,
         lotName: namesById.get(lotId) ?? `Lot ${lotId}`,
