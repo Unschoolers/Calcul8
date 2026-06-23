@@ -27,6 +27,7 @@ describe("portfolio customer performance UI", () => {
   test("lot performance uses the same responsive grid contract as customer performance", () => {
     const template = readFileSync("src/components/windows/portfolio/PortfolioWindow.html", "utf8");
     const styles = readFileSync("src/components/windows/portfolio/PortfolioWindow.css", "utf8");
+    const sortbarRule = styles.match(/\.portfolio-performance-grid__sortbar\s*{[^}]*}/)?.[0] ?? "";
 
     assert.match(template, /portfolio-lot-performance/);
     assert.match(template, /portfolio-performance-grid__head/);
@@ -60,6 +61,10 @@ describe("portfolio customer performance UI", () => {
     assert.match(styles, /\.portfolio-performance-grid__sortbar/);
     assert.match(styles, /\.portfolio-performance-grid__sortbar\s*{[\s\S]*display:\s*none/);
     assert.match(styles, /@media \(max-width:\s*900px\)[\s\S]*\.portfolio-performance-grid__sortbar\s*{[\s\S]*display:\s*flex/);
+    assert.match(styles, /@media \(max-width:\s*900px\)[\s\S]*\.portfolio-performance-grid__sortbar\s*{[\s\S]*flex-wrap:\s*wrap/);
+    assert.match(styles, /@media \(max-width:\s*900px\)[\s\S]*\.portfolio-performance-grid__sortbar\s*{[\s\S]*overflow:\s*visible/);
+    assert.doesNotMatch(sortbarRule, /overflow-x:\s*auto/);
+    assert.match(styles, /@media \(max-width:\s*600px\)[\s\S]*\.portfolio-customer-performance \.portfolio-performance-grid__sort:nth-child\(3\),[\s\S]*\.portfolio-customer-performance \.portfolio-performance-grid__sort:nth-child\(4\),[\s\S]*\.portfolio-customer-performance \.portfolio-performance-grid__sort:nth-child\(6\)\s*{[\s\S]*display:\s*none/);
     assert.match(styles, /@media \(max-width:\s*900px\)[\s\S]*\.portfolio-performance-grid__head\s*{[\s\S]*display:\s*none/);
     assert.match(styles, /@media \(max-width:\s*900px\)[\s\S]*\.portfolio-performance-grid__row\s*{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
     assert.match(styles, /@media \(max-width:\s*900px\)[\s\S]*\.portfolio-customer-performance \.portfolio-performance-grid__row\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1\.15fr\)\s+minmax\(56px,\s*0\.55fr\)\s+minmax\(56px,\s*0\.55fr\)/);
