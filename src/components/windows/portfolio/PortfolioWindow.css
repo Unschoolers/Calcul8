@@ -265,13 +265,14 @@
 .portfolio-performance-grid__sortbar {
   display: none;
   align-items: center;
+  max-width: 100%;
   gap: 0.3rem;
   padding: 0.1rem 0.05rem 0.24rem;
-  overflow-x: auto;
 }
 
 .portfolio-performance-grid__sort {
   display: inline-flex;
+  flex: 0 0 auto;
   align-items: center;
   gap: 0.18rem;
   min-height: 1.55rem;
@@ -996,6 +997,8 @@
 @media (max-width: 900px) {
   .portfolio-performance-grid__sortbar {
     display: flex;
+    flex-wrap: wrap;
+    overflow: visible;
   }
 
   .portfolio-performance-grid__head {
@@ -1008,6 +1011,10 @@
     padding: 0.72rem;
   }
 
+  .portfolio-customer-performance .portfolio-performance-grid__row {
+    grid-template-columns: minmax(0, 1.15fr) minmax(56px, 0.55fr) minmax(56px, 0.55fr);
+  }
+
   .portfolio-performance-grid__row > span {
     display: flex;
     min-width: 0;
@@ -1018,6 +1025,14 @@
     overflow: visible;
     text-overflow: clip;
     line-height: 1.22;
+  }
+
+  .portfolio-customer-performance .portfolio-performance-grid__row > span {
+    overflow-wrap: anywhere;
+  }
+
+  .portfolio-customer-performance .portfolio-performance-grid__row > span:nth-child(6) {
+    grid-column: 2 / 4;
   }
 
   .portfolio-performance-grid__cell--number {
@@ -1046,14 +1061,19 @@
   }
 
   .portfolio-lot-profit-chip {
+    height: auto;
     min-width: 86px;
     max-width: 100%;
-    min-height: 0;
+    min-height: 1.8rem;
+    align-self: flex-start;
+    padding-block: 0.12rem;
   }
 
   .portfolio-lot-profit-chip .v-chip__content {
     min-width: 0;
     overflow-wrap: anywhere;
+    line-height: 1.05;
+    text-align: center;
     white-space: normal;
   }
 }
@@ -1076,6 +1096,12 @@
 
   .portfolio-performance-summary-value {
     font-size: 0.84rem;
+  }
+
+  .portfolio-customer-performance .portfolio-performance-grid__sort:nth-child(3),
+  .portfolio-customer-performance .portfolio-performance-grid__sort:nth-child(4),
+  .portfolio-customer-performance .portfolio-performance-grid__sort:nth-child(6) {
+    display: none;
   }
 
   .portfolio-performance-layout {

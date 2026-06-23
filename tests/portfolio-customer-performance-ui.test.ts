@@ -62,6 +62,11 @@ describe("portfolio customer performance UI", () => {
     assert.match(styles, /@media \(max-width:\s*900px\)[\s\S]*\.portfolio-performance-grid__sortbar\s*{[\s\S]*display:\s*flex/);
     assert.match(styles, /@media \(max-width:\s*900px\)[\s\S]*\.portfolio-performance-grid__head\s*{[\s\S]*display:\s*none/);
     assert.match(styles, /@media \(max-width:\s*900px\)[\s\S]*\.portfolio-performance-grid__row\s*{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+    assert.match(styles, /@media \(max-width:\s*900px\)[\s\S]*\.portfolio-customer-performance \.portfolio-performance-grid__row\s*{[\s\S]*grid-template-columns:\s*minmax\(0,\s*1\.15fr\)\s+minmax\(56px,\s*0\.55fr\)\s+minmax\(56px,\s*0\.55fr\)/);
+    assert.match(styles, /@media \(max-width:\s*900px\)[\s\S]*\.portfolio-customer-performance \.portfolio-performance-grid__row > span:nth-child\(6\)\s*{[\s\S]*grid-column:\s*2 \/ 4/);
+    assert.match(styles, /@media \(max-width:\s*900px\)[\s\S]*\.portfolio-customer-performance \.portfolio-performance-grid__row > span\s*{[\s\S]*overflow-wrap:\s*anywhere/);
+    assert.match(styles, /@media \(max-width:\s*900px\)[\s\S]*\.portfolio-lot-profit-chip\s*{[\s\S]*height:\s*auto/);
+    assert.match(styles, /@media \(max-width:\s*900px\)[\s\S]*\.portfolio-lot-profit-chip \.v-chip__content\s*{[\s\S]*white-space:\s*normal/);
     assert.match(styles, /portfolio-lot-performance/);
   });
 });
