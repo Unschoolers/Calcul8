@@ -67,6 +67,6 @@ test("Sales and Portfolio dense cards use the shared legibility contract", () =>
   assert.match(portfolioWindowTemplate, /portfolio-performance-grid__primary portfolio-lot-performance__name/);
   assert.match(portfolioWindowTemplate, /portfolio-performance-grid__row/);
   assert.match(portfolioWindowTemplate, /portfolio-lot-profit-chip app-dense-metric__value/);
-  assert.match(portfolioWindowStyles, /@media \(max-width:\s*600px\)[\s\S]*\.portfolio-performance-grid__row\s*{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
-  assert.match(portfolioWindowStyles, /@media \(max-width:\s*600px\)[\s\S]*\.portfolio-performance-grid__primary\s*{[\s\S]*grid-column:\s*1 \/ -1/);
+  assert.match(portfolioWindowStyles, /@media \(max-width:\s*900px\)[\s\S]*\.portfolio-performance-grid__row\s*{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(portfolioWindowStyles, /@media \(max-width:\s*900px\)[\s\S]*\.portfolio-performance-grid__primary\s*{[\s\S]*grid-column:\s*1 \/ -1/);
 });

@@ -43,6 +43,10 @@ type PortfolioPerformanceView = "lots" | "customers";
 type PortfolioSortDirection = "asc" | "desc";
 type PortfolioLotPerformanceSortKey = "source" | "name" | "status" | "soldMargin" | "risk" | "profit";
 type PortfolioCustomerPerformanceSortKey = "customer" | "spent" | "purchases" | "lots" | "last" | "topLot";
+type PortfolioSortOption<Key extends string> = {
+  key: Key;
+  label: string;
+};
 
 type PortfolioLotFilterDisplayItem = {
   title: string;
@@ -238,6 +242,47 @@ export const PortfolioWindowDefinition = {
     portfolioCustomerPerformanceSortIcon(this: Record<string, unknown>, key: PortfolioCustomerPerformanceSortKey): string {
       if (this.portfolioCustomerPerformanceSortKey !== key) return "mdi-swap-vertical";
       return this.portfolioCustomerPerformanceSortDirection === "asc" ? "mdi-arrow-up" : "mdi-arrow-down";
+    },
+
+    portfolioLotPerformanceSortOptions(this: Record<string, unknown>): Array<PortfolioSortOption<PortfolioLotPerformanceSortKey>> {
+      const copy = this.portfolioCopy as ((key: string, fallback: string) => string) | undefined;
+      const getCopy = (key: string, fallback: string): string => (
+        typeof copy === "function" ? copy.call(this, key, fallback) : fallback
+      );
+      return [
+        { key: "name", label: getCopy("portfolioLotColumnNameLabel", "Lot") },
+        { key: "status", label: getCopy("portfolioLotColumnStatusLabel", "Status") },
+        { key: "soldMargin", label: getCopy("portfolioLotColumnSoldMarginLabel", "Sold margin") },
+        { key: "risk", label: getCopy("portfolioLotColumnRiskLabel", "At risk") },
+        { key: "profit", label: getCopy("portfolioLotColumnProfitLabel", "Profit") }
+      ];
+    },
+
+    portfolioCustomerPerformanceSortOptions(this: Record<string, unknown>): Array<PortfolioSortOption<PortfolioCustomerPerformanceSortKey>> {
+      const copy = this.portfolioCopy as ((key: string, fallback: string) => string) | undefined;
+      const getCopy = (key: string, fallback: string): string => (
+        typeof copy === "function" ? copy.call(this, key, fallback) : fallback
+      );
+      return [
+        { key: "customer", label: getCopy("portfolioCustomerColumnNameLabel", "Customer") },
+        { key: "spent", label: getCopy("portfolioCustomerColumnSpentLabel", "Spent") },
+        { key: "purchases", label: getCopy("portfolioCustomerColumnPurchasesLabel", "Purchases") },
+        { key: "lots", label: getCopy("portfolioCustomerColumnLotsLabel", "Lots") },
+        { key: "last", label: getCopy("portfolioCustomerColumnLastLabel", "Last purchase") },
+        { key: "topLot", label: getCopy("portfolioCustomerColumnTopLotLabel", "Top lot") }
+      ];
+    },
+
+    portfolioLotPerformanceSortButtonClass(this: Record<string, unknown>, key: PortfolioLotPerformanceSortKey): Record<string, boolean> {
+      return {
+        "is-active": this.portfolioLotPerformanceSortKey === key
+      };
+    },
+
+    portfolioCustomerPerformanceSortButtonClass(this: Record<string, unknown>, key: PortfolioCustomerPerformanceSortKey): Record<string, boolean> {
+      return {
+        "is-active": this.portfolioCustomerPerformanceSortKey === key
+      };
     },
 
     customerPerformanceSummary(this: Record<string, unknown>): CustomerPerformanceSummary {

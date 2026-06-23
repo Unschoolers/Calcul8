@@ -308,6 +308,50 @@ test("PortfolioWindow performance grids sort by clicked columns", () => {
   assert.equal(vm.portfolioLotPerformanceSortDirection, "asc");
 });
 
+test("PortfolioWindow performance sortbars expose the table sort controls", () => {
+  const vm = {
+    portfolioLotPerformanceSortKey: "profit",
+    portfolioLotPerformanceSortDirection: "desc",
+    portfolioCustomerPerformanceSortKey: "spent",
+    portfolioCustomerPerformanceSortDirection: "desc",
+    portfolioCopy(_key: string, fallback: string) {
+      return fallback;
+    }
+  };
+
+  assert.deepEqual(
+    portfolioWindowDefinition.methods.portfolioLotPerformanceSortOptions.call(vm as never)
+      .map((option: { key: string; label: string }) => `${option.key}:${option.label}`),
+    [
+      "name:Lot",
+      "status:Status",
+      "soldMargin:Sold margin",
+      "risk:At risk",
+      "profit:Profit"
+    ]
+  );
+  assert.deepEqual(
+    portfolioWindowDefinition.methods.portfolioCustomerPerformanceSortOptions.call(vm as never)
+      .map((option: { key: string; label: string }) => `${option.key}:${option.label}`),
+    [
+      "customer:Customer",
+      "spent:Spent",
+      "purchases:Purchases",
+      "lots:Lots",
+      "last:Last purchase",
+      "topLot:Top lot"
+    ]
+  );
+  assert.deepEqual(
+    portfolioWindowDefinition.methods.portfolioLotPerformanceSortButtonClass.call(vm as never, "profit"),
+    { "is-active": true }
+  );
+  assert.deepEqual(
+    portfolioWindowDefinition.methods.portfolioCustomerPerformanceSortButtonClass.call(vm as never, "customer"),
+    { "is-active": false }
+  );
+});
+
 test("PortfolioWindow pulse stats explain forecast context in seller language", () => {
   const vm = {
     portfolioTotals: {

@@ -40,6 +40,13 @@ describe("portfolio customer performance UI", () => {
     assert.match(template, /portfolio-performance-grid__sort-button/);
     assert.match(template, /portfolio-performance-grid__sort-label/);
     assert.doesNotMatch(template, /class="sr-only"/);
+    assert.match(template, /portfolio-performance-grid__sortbar/);
+    assert.match(template, /v-for="option in portfolioLotPerformanceSortOptions\(\)"/);
+    assert.match(template, /v-for="option in portfolioCustomerPerformanceSortOptions\(\)"/);
+    assert.match(template, /setPortfolioLotPerformanceSort\(option\.key\)/);
+    assert.match(template, /setPortfolioCustomerPerformanceSort\(option\.key\)/);
+    assert.match(template, /portfolioLotPerformanceSortButtonClass\(option\.key\)/);
+    assert.match(template, /portfolioCustomerPerformanceSortButtonClass\(option\.key\)/);
     assert.match(template, /portfolio-performance-grid__cell--number/);
     assert.match(template, /sortedPortfolioLotPerformanceRows/);
     assert.match(template, /portfolioBuyerContextTitle/);
@@ -50,6 +57,11 @@ describe("portfolio customer performance UI", () => {
     assert.match(styles, /\.portfolio-performance-grid__sort-button/);
     assert.match(styles, /\.portfolio-performance-grid__sort-label\s*{[\s\S]*position:\s*absolute/);
     assert.match(styles, /\.portfolio-performance-grid__sort-label\s*{[\s\S]*clip-path:\s*inset\(50%\)/);
+    assert.match(styles, /\.portfolio-performance-grid__sortbar/);
+    assert.match(styles, /\.portfolio-performance-grid__sortbar\s*{[\s\S]*display:\s*none/);
+    assert.match(styles, /@media \(max-width:\s*900px\)[\s\S]*\.portfolio-performance-grid__sortbar\s*{[\s\S]*display:\s*flex/);
+    assert.match(styles, /@media \(max-width:\s*900px\)[\s\S]*\.portfolio-performance-grid__head\s*{[\s\S]*display:\s*none/);
+    assert.match(styles, /@media \(max-width:\s*900px\)[\s\S]*\.portfolio-performance-grid__row\s*{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
     assert.match(styles, /portfolio-lot-performance/);
   });
 });

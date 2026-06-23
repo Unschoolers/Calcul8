@@ -499,6 +499,19 @@
                               </button>
                             </span>
                           </div>
+                          <div class="portfolio-performance-grid__sortbar" :aria-label="portfolioCopy('portfolioPerformanceSortLabel', 'Sort by')">
+                            <button
+                              v-for="option in portfolioLotPerformanceSortOptions()"
+                              :key="`lot-performance-sort-${option.key}`"
+                              type="button"
+                              class="portfolio-performance-grid__sort"
+                              :class="portfolioLotPerformanceSortButtonClass(option.key)"
+                              @click="setPortfolioLotPerformanceSort(option.key)"
+                            >
+                              <span>{{ option.label }}</span>
+                              <v-icon size="13">{{ portfolioLotPerformanceSortIcon(option.key) }}</v-icon>
+                            </button>
+                          </div>
                           <div
                             v-for="row in sortedPortfolioLotPerformanceRows()"
                             :key="row.lotId"
@@ -611,6 +624,19 @@
                                 <span class="portfolio-performance-grid__sort-label">{{ portfolioCopy('portfolioPerformanceSortLabel', 'Sort by') }}</span>
                               </button>
                             </span>
+                          </div>
+                          <div class="portfolio-performance-grid__sortbar" :aria-label="portfolioCopy('portfolioPerformanceSortLabel', 'Sort by')">
+                            <button
+                              v-for="option in portfolioCustomerPerformanceSortOptions()"
+                              :key="`customer-performance-sort-${option.key}`"
+                              type="button"
+                              class="portfolio-performance-grid__sort"
+                              :class="portfolioCustomerPerformanceSortButtonClass(option.key)"
+                              @click="setPortfolioCustomerPerformanceSort(option.key)"
+                            >
+                              <span>{{ option.label }}</span>
+                              <v-icon size="13">{{ portfolioCustomerPerformanceSortIcon(option.key) }}</v-icon>
+                            </button>
                           </div>
                           <button
                             v-for="row in sortedCustomerPerformanceRows()"
