@@ -57,4 +57,26 @@ test.describe("@visual-smoke real app screens", () => {
       });
     }
   });
+
+  test("portfolio performance sheet stays readable at mobile width", async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== "mobile-smoke", "This targeted smoke state is mobile-only.");
+
+    await seedVisualSmokeState(page, seedOptionsForProject(testInfo));
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/nologin");
+    await waitForVisualAppReady(page);
+    await openSmokeTab(page, "portfolio");
+
+    const performanceSheet = page.locator(".portfolio-performance-card");
+    await expect(performanceSheet).toBeVisible();
+    await performanceSheet.locator(".portfolio-performance-mode-toggle .v-btn").nth(1).click();
+    await expect(performanceSheet.locator(".portfolio-customer-performance .portfolio-performance-grid__row").first()).toBeVisible();
+    await performanceSheet.scrollIntoViewIfNeeded();
+    await expectNoPageOverflow(page);
+    await performanceSheet.screenshot({
+      path: testInfo.outputPath("portfolio-performance-sheet-mobile.png"),
+      animations: "disabled",
+      caret: "hide"
+    });
+  });
 });

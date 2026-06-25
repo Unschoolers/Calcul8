@@ -9,6 +9,19 @@ import {
   type CustomerPerformanceRow,
   type CustomerPerformanceSummary
 } from "../../../app-core/computed/customer-performance.ts";
+import {
+  getPortfolioCustomerPerformanceSortOptions,
+  getPortfolioLotPerformanceSortOptions,
+  getPortfolioPerformanceSortButtonClass,
+  getPortfolioPerformanceSortIcon,
+  normalizePortfolioSortDirection,
+  sortCustomerPerformanceRows,
+  sortPortfolioLotPerformanceRows,
+  type PortfolioCustomerPerformanceSortKey,
+  type PortfolioLotPerformanceSortKey,
+  type PortfolioSortDirection,
+  type PortfolioSortOption
+} from "../../../app-core/computed/portfolio-performance.ts";
 import { createWindowContextBridge } from "../shared/contextBridge.ts";
 import { filterLotOptionItems } from "../../../app-core/shared/lot-option-items.ts";
 import {
@@ -32,6 +45,7 @@ import {
   getPortfolioSalesByUserWeekTotals,
   type PortfolioPulseInsight
 } from "./portfolio-window-helpers.ts";
+import type { PortfolioPerformanceGridColumn } from "./PortfolioPerformanceGrid.ts";
 import type {
   PortfolioPulseDisplayInsight,
   PortfolioPulseStat,
@@ -40,13 +54,6 @@ import type {
 import type { Lot, PortfolioSalesByUserDrilldownRow, Sale } from "../../../types/app.ts";
 
 type PortfolioPerformanceView = "lots" | "customers";
-type PortfolioSortDirection = "asc" | "desc";
-type PortfolioLotPerformanceSortKey = "source" | "name" | "status" | "soldMargin" | "risk" | "profit";
-type PortfolioCustomerPerformanceSortKey = "customer" | "spent" | "purchases" | "lots" | "last" | "topLot";
-type PortfolioSortOption<Key extends string> = {
-  key: Key;
-  label: string;
-};
 
 type PortfolioLotFilterDisplayItem = {
   title: string;
@@ -94,27 +101,6 @@ function resolvePortfolioDashboardPresetDisplayItem(item: unknown): PortfolioDas
     subtitle: resolveVuetifySlotString(item, ["subtitle"]),
     icon: resolveVuetifySlotString(item, ["icon"]) || "mdi-view-dashboard-outline"
   };
-}
-
-function compareText(left: unknown, right: unknown): number {
-  return String(left ?? "").localeCompare(String(right ?? ""), undefined, { sensitivity: "base" });
-}
-
-function compareNumbers(left: unknown, right: unknown): number {
-  const leftNumber = Number(left);
-  const rightNumber = Number(right);
-  const normalizedLeft = Number.isFinite(leftNumber) ? leftNumber : Number.NEGATIVE_INFINITY;
-  const normalizedRight = Number.isFinite(rightNumber) ? rightNumber : Number.NEGATIVE_INFINITY;
-  return normalizedLeft - normalizedRight;
-}
-
-function applySortDirection(value: number, direction: PortfolioSortDirection): number {
-  return direction === "asc" ? value : -value;
-}
-
-function timestampOrStart(value: unknown): number {
-  const time = Date.parse(String(value ?? ""));
-  return Number.isFinite(time) ? time : Number.NEGATIVE_INFINITY;
 }
 
 export const PortfolioWindowDefinition = {
@@ -176,17 +162,8 @@ export const PortfolioWindowDefinition = {
     sortedCustomerPerformanceRows(this: Record<string, unknown>): CustomerPerformanceRow[] {
       const rows = (this.customerPerformanceRows as (() => CustomerPerformanceRow[]) | undefined)?.call(this) ?? [];
       const key = String(this.portfolioCustomerPerformanceSortKey || "spent") as PortfolioCustomerPerformanceSortKey;
-      const direction = (this.portfolioCustomerPerformanceSortDirection === "asc" ? "asc" : "desc") as PortfolioSortDirection;
-      return [...rows].sort((left, right) => {
-        let result = 0;
-        if (key === "customer") result = compareText(left.username, right.username);
-        else if (key === "spent") result = compareNumbers(left.totalSpent, right.totalSpent);
-        else if (key === "purchases") result = compareNumbers(left.purchaseCount, right.purchaseCount);
-        else if (key === "lots") result = compareNumbers(left.lotCount, right.lotCount);
-        else if (key === "last") result = compareNumbers(timestampOrStart(left.lastPurchaseDate), timestampOrStart(right.lastPurchaseDate));
-        else if (key === "topLot") result = compareText(left.topLotName, right.topLotName);
-        return applySortDirection(result || compareText(left.username, right.username), direction);
-      });
+      const direction = normalizePortfolioSortDirection(this.portfolioCustomerPerformanceSortDirection, "desc");
+      return sortCustomerPerformanceRows(rows, key, direction);
     },
 
     setPortfolioCustomerPerformanceSort(this: Record<string, unknown>, key: PortfolioCustomerPerformanceSortKey): void {
@@ -203,26 +180,8 @@ export const PortfolioWindowDefinition = {
         ? this.allLotPerformance as Array<Record<string, unknown>>
         : [];
       const key = String(this.portfolioLotPerformanceSortKey || "source") as PortfolioLotPerformanceSortKey;
-      const direction = (this.portfolioLotPerformanceSortDirection === "desc" ? "desc" : "asc") as PortfolioSortDirection;
-      if (key === "source") return [...rows];
-      return [...rows].sort((left, right) => {
-        let result = 0;
-        if (key === "name") result = compareText(left.lotName, right.lotName);
-        else if (key === "status") {
-          const leftTotal = Number(left.totalPacks ?? 0);
-          const rightTotal = Number(right.totalPacks ?? 0);
-          const leftRatio = leftTotal > 0 ? Number(left.soldPacks ?? 0) / leftTotal : Number(left.salesCount ?? 0);
-          const rightRatio = rightTotal > 0 ? Number(right.soldPacks ?? 0) / rightTotal : Number(right.salesCount ?? 0);
-          result = compareNumbers(leftRatio, rightRatio);
-        } else if (key === "soldMargin") result = compareNumbers(left.realizedMarginPercent, right.realizedMarginPercent);
-        else if (key === "risk") {
-          result = compareNumbers(
-            Math.max(0, -Number(left.totalProfit ?? 0)),
-            Math.max(0, -Number(right.totalProfit ?? 0))
-          );
-        } else if (key === "profit") result = compareNumbers(left.totalProfit, right.totalProfit);
-        return applySortDirection(result || compareText(left.lotName, right.lotName), direction);
-      });
+      const direction = normalizePortfolioSortDirection(this.portfolioLotPerformanceSortDirection, "asc");
+      return sortPortfolioLotPerformanceRows(rows, key, direction);
     },
 
     setPortfolioLotPerformanceSort(this: Record<string, unknown>, key: PortfolioLotPerformanceSortKey): void {
@@ -235,13 +194,19 @@ export const PortfolioWindowDefinition = {
     },
 
     portfolioLotPerformanceSortIcon(this: Record<string, unknown>, key: PortfolioLotPerformanceSortKey): string {
-      if (this.portfolioLotPerformanceSortKey !== key) return "mdi-swap-vertical";
-      return this.portfolioLotPerformanceSortDirection === "asc" ? "mdi-arrow-up" : "mdi-arrow-down";
+      return getPortfolioPerformanceSortIcon(
+        String(this.portfolioLotPerformanceSortKey || "source") as PortfolioLotPerformanceSortKey,
+        normalizePortfolioSortDirection(this.portfolioLotPerformanceSortDirection, "asc"),
+        key
+      );
     },
 
     portfolioCustomerPerformanceSortIcon(this: Record<string, unknown>, key: PortfolioCustomerPerformanceSortKey): string {
-      if (this.portfolioCustomerPerformanceSortKey !== key) return "mdi-swap-vertical";
-      return this.portfolioCustomerPerformanceSortDirection === "asc" ? "mdi-arrow-up" : "mdi-arrow-down";
+      return getPortfolioPerformanceSortIcon(
+        String(this.portfolioCustomerPerformanceSortKey || "spent") as PortfolioCustomerPerformanceSortKey,
+        normalizePortfolioSortDirection(this.portfolioCustomerPerformanceSortDirection, "desc"),
+        key
+      );
     },
 
     portfolioLotPerformanceSortOptions(this: Record<string, unknown>): Array<PortfolioSortOption<PortfolioLotPerformanceSortKey>> {
@@ -249,13 +214,16 @@ export const PortfolioWindowDefinition = {
       const getCopy = (key: string, fallback: string): string => (
         typeof copy === "function" ? copy.call(this, key, fallback) : fallback
       );
-      return [
-        { key: "name", label: getCopy("portfolioLotColumnNameLabel", "Lot") },
-        { key: "status", label: getCopy("portfolioLotColumnStatusLabel", "Status") },
-        { key: "soldMargin", label: getCopy("portfolioLotColumnSoldMarginLabel", "Sold margin") },
-        { key: "risk", label: getCopy("portfolioLotColumnRiskLabel", "At risk") },
-        { key: "profit", label: getCopy("portfolioLotColumnProfitLabel", "Profit") }
-      ];
+      return getPortfolioLotPerformanceSortOptions(getCopy);
+    },
+
+    portfolioLotPerformanceGridColumns(this: Record<string, unknown>): Array<PortfolioPerformanceGridColumn<PortfolioLotPerformanceSortKey>> {
+      return (this.portfolioLotPerformanceSortOptions as (() => Array<PortfolioSortOption<PortfolioLotPerformanceSortKey>>) | undefined)
+        ?.call(this)
+        .map((option) => ({
+          ...option,
+          numeric: option.key === "soldMargin" || option.key === "risk" || option.key === "profit"
+        })) ?? [];
     },
 
     portfolioCustomerPerformanceSortOptions(this: Record<string, unknown>): Array<PortfolioSortOption<PortfolioCustomerPerformanceSortKey>> {
@@ -263,26 +231,30 @@ export const PortfolioWindowDefinition = {
       const getCopy = (key: string, fallback: string): string => (
         typeof copy === "function" ? copy.call(this, key, fallback) : fallback
       );
-      return [
-        { key: "customer", label: getCopy("portfolioCustomerColumnNameLabel", "Customer") },
-        { key: "spent", label: getCopy("portfolioCustomerColumnSpentLabel", "Spent") },
-        { key: "purchases", label: getCopy("portfolioCustomerColumnPurchasesLabel", "Purchases") },
-        { key: "lots", label: getCopy("portfolioCustomerColumnLotsLabel", "Lots") },
-        { key: "last", label: getCopy("portfolioCustomerColumnLastLabel", "Last purchase") },
-        { key: "topLot", label: getCopy("portfolioCustomerColumnTopLotLabel", "Top lot") }
-      ];
+      return getPortfolioCustomerPerformanceSortOptions(getCopy);
+    },
+
+    portfolioCustomerPerformanceGridColumns(this: Record<string, unknown>): Array<PortfolioPerformanceGridColumn<PortfolioCustomerPerformanceSortKey>> {
+      return (this.portfolioCustomerPerformanceSortOptions as (() => Array<PortfolioSortOption<PortfolioCustomerPerformanceSortKey>>) | undefined)
+        ?.call(this)
+        .map((option) => ({
+          ...option,
+          numeric: option.key === "spent" || option.key === "purchases" || option.key === "lots"
+        })) ?? [];
     },
 
     portfolioLotPerformanceSortButtonClass(this: Record<string, unknown>, key: PortfolioLotPerformanceSortKey): Record<string, boolean> {
-      return {
-        "is-active": this.portfolioLotPerformanceSortKey === key
-      };
+      return getPortfolioPerformanceSortButtonClass(
+        String(this.portfolioLotPerformanceSortKey || "source") as PortfolioLotPerformanceSortKey,
+        key
+      );
     },
 
     portfolioCustomerPerformanceSortButtonClass(this: Record<string, unknown>, key: PortfolioCustomerPerformanceSortKey): Record<string, boolean> {
-      return {
-        "is-active": this.portfolioCustomerPerformanceSortKey === key
-      };
+      return getPortfolioPerformanceSortButtonClass(
+        String(this.portfolioCustomerPerformanceSortKey || "spent") as PortfolioCustomerPerformanceSortKey,
+        key
+      );
     },
 
     customerPerformanceSummary(this: Record<string, unknown>): CustomerPerformanceSummary {
@@ -774,37 +746,33 @@ export const PortfolioWindowDefinition = {
       const isIncomplete = this.portfolioLotIsIncomplete as ((r: typeof row) => boolean) | undefined;
       const incomplete = typeof isIncomplete === "function" ? isIncomplete.call(this, row) : false;
       const format = this.fmtCurrency as ((value: number | null | undefined, decimals?: number) => string) | undefined;
-      const copy = this.portfolioCopy as ((key: string, fallback: string) => string) | undefined;
-      const getCopy = (key: string, fallback: string): string => (
-        typeof copy === "function" ? copy.call(this, key, fallback) : fallback
-      );
+      const formatSigned = (value: number, approximate = false): string => {
+        const normalized = Number.isFinite(value) ? value : 0;
+        const formatted = typeof format === "function"
+          ? format.call(this, Math.abs(normalized), 0)
+          : String(Math.round(Math.abs(normalized)));
+        return `${approximate ? "~" : ""}${normalized >= 0 ? "+" : "-"}$${formatted}`;
+      };
 
       if (incomplete && typeof row?.forecastProfitAverage === "number") {
-        const value = row.forecastProfitAverage;
-        const formatted = typeof format === "function" ? format.call(this, Math.abs(value)) : String(Math.abs(value));
-        return `${getCopy("portfolioLotProjectedLabel", "Projected")} ${value >= 0 ? "+" : "-"}$${formatted}`;
+        return formatSigned(row.forecastProfitAverage, true);
       }
 
       if ((row?.salesCount ?? 0) > 0) {
-        const value = Number(row?.realizedProfit ?? 0);
-        const formatted = typeof format === "function" ? format.call(this, Math.abs(value)) : String(Math.abs(value));
-        const label = value >= 0 ? getCopy("portfolioLotProfitLabel", "Profit") : getCopy("portfolioLotLossLabel", "Loss");
-        return `${label} ${value >= 0 ? "+" : "-"}$${formatted}`;
+        return formatSigned(Number(row?.realizedProfit ?? 0));
       }
 
-      const value = Number(row?.totalProfit ?? 0);
-      const formatted = typeof format === "function" ? format.call(this, Math.abs(value)) : String(Math.abs(value));
-      return `${getCopy("portfolioLotNetLabel", "Net")} ${value >= 0 ? "+" : "-"}$${formatted}`;
+      return formatSigned(Number(row?.totalProfit ?? 0));
     },
 
-    portfolioLotPrimaryProfitChipColor(this: Record<string, unknown>, row: {
+    portfolioLotPrimaryProfitTone(this: Record<string, unknown>, row: {
       salesCount?: number;
       realizedProfit?: number;
       forecastProfitAverage?: number | null;
       soldPacks?: number;
       totalPacks?: number;
       totalProfit?: number;
-    }): "success" | "error" | "secondary" {
+    }): "success" | "error" {
       const isIncomplete = this.portfolioLotIsIncomplete as ((r: typeof row) => boolean) | undefined;
       const incomplete = typeof isIncomplete === "function" ? isIncomplete.call(this, row) : false;
       if (incomplete && typeof row?.forecastProfitAverage === "number") {
@@ -813,7 +781,28 @@ export const PortfolioWindowDefinition = {
       if ((row?.salesCount ?? 0) > 0) {
         return Number(row?.realizedProfit ?? 0) >= 0 ? "success" : "error";
       }
-      return Number(row?.totalProfit ?? 0) >= 0 ? "success" : "secondary";
+      return Number(row?.totalProfit ?? 0) >= 0 ? "success" : "error";
+    },
+
+    portfolioLotPrimaryProfitValueClass(this: Record<string, unknown>, row: {
+      salesCount?: number;
+      realizedProfit?: number;
+      forecastProfitAverage?: number | null;
+      soldPacks?: number;
+      totalPacks?: number;
+      totalProfit?: number;
+    }): Record<string, boolean> {
+      const getTone = this.portfolioLotPrimaryProfitTone as ((r: typeof row) => "success" | "error") | undefined;
+      const tone = typeof getTone === "function"
+        ? getTone.call(this, row)
+        : PortfolioWindowDefinition.methods.portfolioLotPrimaryProfitTone.call(this, row);
+      const isIncomplete = this.portfolioLotIsIncomplete as ((r: typeof row) => boolean) | undefined;
+      const incomplete = typeof isIncomplete === "function" ? isIncomplete.call(this, row) : false;
+      return {
+        "is-positive": tone === "success",
+        "is-negative": tone === "error",
+        "is-projected": incomplete && typeof row?.forecastProfitAverage === "number"
+      };
     },
 
     portfolioAtRiskLotCount(this: Record<string, unknown>): number {

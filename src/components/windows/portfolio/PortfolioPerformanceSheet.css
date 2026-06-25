@@ -1,0 +1,253 @@
+.portfolio-performance-summary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.portfolio-performance-summary-stat {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.28rem;
+}
+
+.portfolio-performance-summary-label {
+  font-size: 0.68rem;
+  font-weight: var(--app-font-weight-emphasis);
+  letter-spacing: var(--app-letter-spacing-section);
+  text-transform: uppercase;
+  color: var(--app-text-subtle);
+}
+
+.portfolio-performance-summary-value {
+  font-size: 0.9rem;
+  font-weight: var(--app-font-weight-strong);
+  letter-spacing: -0.01em;
+}
+
+.portfolio-performance-summary-stat.is-success .portfolio-performance-summary-value {
+  color: rgba(var(--v-theme-success), 0.76);
+}
+
+.portfolio-performance-summary-stat.is-error .portfolio-performance-summary-value {
+  color: rgba(var(--v-theme-error), 0.76);
+}
+
+.portfolio-performance-summary-divider {
+  width: 1px;
+  height: 18px;
+  background: rgba(var(--v-theme-on-surface), 0.12);
+}
+
+.portfolio-performance-mode-toggle {
+  flex: 0 0 auto;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.09);
+  border-radius: var(--app-radius-card);
+  overflow: hidden;
+}
+
+.portfolio-performance-mode-toggle .v-btn {
+  min-width: 96px;
+  text-transform: none;
+  font-size: 0.76rem;
+  font-weight: var(--app-font-weight-strong);
+  letter-spacing: 0.01em;
+}
+
+.portfolio-performance-summary--customers .portfolio-performance-summary-value {
+  color: var(--app-text-strong);
+}
+
+.portfolio-performance-sheet-switch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0.65rem 1rem 0;
+  padding: 0.52rem 0.58rem 0.52rem 0.7rem;
+  border-radius: var(--app-radius-card);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.09);
+  background:
+    linear-gradient(135deg, rgba(var(--v-theme-secondary), 0.065), rgba(var(--v-theme-on-surface), 0.02)),
+    rgba(var(--v-theme-surface), 0.68);
+}
+
+.portfolio-performance-sheet-switch__mode,
+.portfolio-performance-sheet-switch__summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.portfolio-performance-sheet-switch__summary {
+  justify-content: flex-end;
+}
+
+.portfolio-performance-sheet-switch__label {
+  font-size: 0.66rem;
+  font-weight: var(--app-font-weight-emphasis);
+  letter-spacing: var(--app-letter-spacing-section);
+  text-transform: uppercase;
+  color: var(--app-text-subtle);
+}
+
+.portfolio-performance-sheet-switch__title {
+  font-size: 0.74rem;
+  line-height: 1.18;
+  font-weight: var(--app-font-weight-emphasis);
+  color: var(--app-text-subtle);
+}
+
+.portfolio-performance-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+  padding: 0.75rem 1rem 1rem;
+}
+
+.portfolio-performance-rail {
+  min-width: 0;
+  display: grid;
+  gap: 0.65rem;
+  align-content: start;
+}
+
+.portfolio-performance-rail-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.74rem;
+  font-weight: var(--app-font-weight-emphasis);
+  letter-spacing: var(--app-letter-spacing-section);
+  text-transform: uppercase;
+  color: rgba(var(--v-theme-secondary), 0.92);
+}
+
+.portfolio-performance-rail-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.65rem;
+  align-items: start;
+  padding: 0.72rem 0.78rem;
+  border-radius: var(--app-radius-card);
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.1);
+  background:
+    linear-gradient(160deg, rgba(var(--v-theme-on-surface), 0.045), rgba(var(--v-theme-on-surface), 0.018)),
+    rgba(var(--v-theme-surface), 0.7);
+}
+
+.portfolio-performance-rail-card.is-danger,
+.portfolio-performance-rail-card.is-error,
+.portfolio-performance-rail-card.is-negative {
+  border-color: rgba(var(--v-theme-error), 0.24);
+  background:
+    linear-gradient(160deg, rgba(var(--v-theme-error), 0.1), rgba(var(--v-theme-on-surface), 0.018)),
+    rgba(var(--v-theme-surface), 0.7);
+}
+
+.portfolio-performance-rail-card.is-success,
+.portfolio-performance-rail-card.is-positive {
+  border-color: rgba(var(--v-theme-success), 0.2);
+  background:
+    linear-gradient(160deg, rgba(var(--v-theme-success), 0.08), rgba(var(--v-theme-on-surface), 0.018)),
+    rgba(var(--v-theme-surface), 0.7);
+}
+
+.portfolio-performance-rail-card__icon {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--app-radius-pill);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(var(--v-theme-secondary), 0.98);
+  background: rgba(var(--v-theme-secondary), 0.12);
+  border: 1px solid rgba(var(--v-theme-secondary), 0.2);
+}
+
+.portfolio-performance-rail-card__copy {
+  min-width: 0;
+}
+
+.portfolio-performance-rail-card__label {
+  font-size: 0.68rem;
+  line-height: 1.15;
+  font-weight: var(--app-font-weight-emphasis);
+  letter-spacing: var(--app-letter-spacing-section);
+  text-transform: uppercase;
+  color: var(--app-text-subtle);
+}
+
+.portfolio-performance-rail-card__value {
+  margin-top: 0.12rem;
+  font-size: 0.94rem;
+  line-height: 1.18;
+  font-weight: var(--app-font-weight-strong);
+  color: var(--app-text-strong);
+  overflow-wrap: anywhere;
+}
+
+.portfolio-performance-rail-card__meta {
+  margin-top: 0.16rem;
+  font-size: 0.76rem;
+  line-height: 1.25;
+  color: var(--app-text-subtle);
+  overflow-wrap: anywhere;
+}
+
+@media (min-width: 1145px) {
+  .portfolio-performance-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(240px, 0.34fr);
+    align-items: start;
+  }
+}
+
+@media (max-width: 1144px) {
+  .portfolio-performance-mode-toggle {
+    width: 100%;
+  }
+
+  .portfolio-performance-mode-toggle .v-btn {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 600px) {
+  .portfolio-performance-summary {
+    justify-content: flex-start;
+    padding-top: 0.15rem;
+  }
+
+  .portfolio-performance-summary-value {
+    font-size: 0.84rem;
+  }
+
+  .portfolio-performance-layout {
+    padding: 0.65rem 0.75rem 0.85rem;
+    gap: 0.8rem;
+  }
+
+  .portfolio-performance-sheet-switch {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 0.55rem;
+  }
+
+  .portfolio-performance-sheet-switch__mode,
+  .portfolio-performance-sheet-switch__summary {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 0.42rem;
+  }
+
+  .portfolio-performance-sheet-switch__summary {
+    justify-content: flex-start;
+  }
+
+  .portfolio-performance-rail-card {
+    padding: 0.66rem 0.7rem;
+  }
+}

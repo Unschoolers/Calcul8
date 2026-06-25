@@ -50,7 +50,7 @@ test("Sales and Portfolio dense cards use the shared legibility contract", () =>
   const salesTemplate = read("src/components/windows/sales/SalesHistoryLedger.html");
   const salesStyles = read("src/components/windows/sales/SalesWindow.css");
   const portfolioWindowTemplate = read("src/components/windows/portfolio/PortfolioWindow.html");
-  const portfolioWindowStyles = read("src/components/windows/portfolio/PortfolioWindow.css");
+  const portfolioGridStyles = read("src/components/windows/portfolio/PortfolioPerformanceGrid.css");
   const portfolioTemplate = read("src/components/windows/portfolio/PortfolioPulsePanel.html");
   const portfolioStyles = read("src/components/windows/portfolio/PortfolioPulsePanel.css");
 
@@ -66,7 +66,7 @@ test("Sales and Portfolio dense cards use the shared legibility contract", () =>
 
   assert.match(portfolioWindowTemplate, /portfolio-performance-grid__primary portfolio-lot-performance__name/);
   assert.match(portfolioWindowTemplate, /portfolio-performance-grid__row/);
-  assert.match(portfolioWindowTemplate, /portfolio-lot-profit-chip app-dense-metric__value/);
-  assert.match(portfolioWindowStyles, /@media \(max-width:\s*900px\)[\s\S]*\.portfolio-performance-grid__row\s*{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
-  assert.match(portfolioWindowStyles, /@media \(max-width:\s*900px\)[\s\S]*\.portfolio-performance-grid__primary\s*{[\s\S]*grid-column:\s*1 \/ -1/);
+  assert.match(portfolioWindowTemplate, /portfolio-lot-profit-value app-dense-metric__value/);
+  assert.match(portfolioGridStyles, /@media \(max-width:\s*900px\)[\s\S]*\.portfolio-performance-grid__row\s*{[\s\S]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(portfolioGridStyles, /@media \(max-width:\s*900px\)[\s\S]*\.portfolio-performance-grid__primary\s*{[\s\S]*grid-column:\s*1 \/ -1/);
 });

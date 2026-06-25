@@ -1,0 +1,114 @@
+<app-section-card
+  card-class="portfolio-section-card portfolio-performance-card"
+  title-class="d-flex align-center justify-space-between portfolio-section-title-bar"
+  :wrap-content="false"
+  divider
+>
+  <template #header>
+    <div class="portfolio-section-title-group">
+      <v-icon size="16">mdi-table-eye</v-icon>
+      <span>{{ title }}</span>
+    </div>
+  </template>
+
+  <div class="portfolio-performance-sheet-switch">
+    <div class="portfolio-performance-sheet-switch__mode">
+      <span class="portfolio-performance-sheet-switch__label">
+        {{ viewModeLabel }}
+      </span>
+      <v-btn-toggle
+        v-model="selectedView"
+        mandatory
+        density="compact"
+        variant="tonal"
+        class="portfolio-performance-mode-toggle"
+      >
+        <v-btn value="lots" prepend-icon="mdi-view-grid-outline">
+          {{ lotsViewLabel }}
+        </v-btn>
+        <v-btn value="customers" prepend-icon="mdi-account-group-outline">
+          {{ customersViewLabel }}
+        </v-btn>
+      </v-btn-toggle>
+    </div>
+    <div class="portfolio-performance-sheet-switch__summary">
+      <div v-if="hasPortfolioData && view === 'lots'" class="portfolio-performance-summary">
+        <div class="portfolio-performance-summary-stat is-error">
+          <span class="portfolio-performance-summary-label">{{ lossLabel }}</span>
+          <app-metric-value kind="money" tone="negative" value-class="portfolio-performance-summary-value">
+            ${{ lossAmount }}
+          </app-metric-value>
+        </div>
+        <div class="portfolio-performance-summary-divider" aria-hidden="true"></div>
+        <div class="portfolio-performance-summary-stat is-success">
+          <span class="portfolio-performance-summary-label">{{ gainLabel }}</span>
+          <app-metric-value kind="money" tone="positive" value-class="portfolio-performance-summary-value">
+            ${{ gainAmount }}
+          </app-metric-value>
+        </div>
+      </div>
+      <div v-if="view === 'customers'" class="portfolio-performance-summary portfolio-performance-summary--customers">
+        <div class="portfolio-performance-summary-stat">
+          <span class="portfolio-performance-summary-label">{{ customerCountLabel }}</span>
+          <span class="portfolio-performance-summary-value">{{ customerCount }}</span>
+        </div>
+        <div class="portfolio-performance-summary-divider" aria-hidden="true"></div>
+        <div class="portfolio-performance-summary-stat">
+          <span class="portfolio-performance-summary-label">{{ repeatCustomerLabel }}</span>
+          <span class="portfolio-performance-summary-value">{{ repeatCustomerCount }}</span>
+        </div>
+      </div>
+      <div class="portfolio-performance-sheet-switch__title">
+        {{ currentTitle }}
+      </div>
+    </div>
+  </div>
+
+  <app-empty-state
+    v-if="view === 'lots' && !hasPortfolioData"
+    icon="mdi-chart-box-outline"
+    :icon-size="64"
+    :title="lotEmptyTitle"
+    :body="lotEmptyBody"
+    state-class="py-8"
+  ></app-empty-state>
+
+  <div v-else-if="view === 'lots'" class="portfolio-performance-layout">
+    <portfolio-performance-grid
+      grid-class="portfolio-lot-performance"
+      :columns="lotColumns"
+      :sort-options="lotSortOptions"
+      :active-sort-key="lotSortKey"
+      :sort-direction="lotSortDirection"
+      :sort-label="sortLabel"
+      @sort="$emit('sort-lot', $event)"
+    >
+      <slot name="lot-rows"></slot>
+    </portfolio-performance-grid>
+    <slot name="buyer-rail"></slot>
+  </div>
+
+  <app-empty-state
+    v-else-if="customerRowCount === 0"
+    icon="mdi-account-search-outline"
+    :icon-size="64"
+    :title="customerEmptyTitle"
+    :body="customerEmptyBody"
+    state-class="py-8"
+  ></app-empty-state>
+
+  <div v-else class="portfolio-performance-layout">
+    <portfolio-performance-grid
+      grid-class="portfolio-customer-performance"
+      :columns="customerColumns"
+      :sort-options="customerSortOptions"
+      :active-sort-key="customerSortKey"
+      :sort-direction="customerSortDirection"
+      :sort-label="sortLabel"
+      @sort="$emit('sort-customer', $event)"
+    >
+      <slot name="customer-rows"></slot>
+    </portfolio-performance-grid>
+    <slot name="lot-rail"></slot>
+  </div>
+</app-section-card>

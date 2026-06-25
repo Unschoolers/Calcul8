@@ -1,0 +1,36 @@
+<div class="portfolio-performance-main portfolio-performance-grid" :class="gridClass">
+  <div class="portfolio-performance-grid__head" role="row">
+    <span
+      v-for="column in columns"
+      :key="`portfolio-performance-column-${column.key}`"
+      :class="{ 'portfolio-performance-grid__cell--number': column.numeric }"
+    >
+      <button
+        type="button"
+        class="portfolio-performance-grid__sort-button"
+        :class="{ 'portfolio-performance-grid__sort-button--numeric': column.numeric }"
+        @click="emitSort(column.key)"
+      >
+        {{ column.label }}
+        <v-icon size="12">{{ sortIcon(column.key) }}</v-icon>
+        <span class="portfolio-performance-grid__sort-label">{{ sortLabel }}</span>
+      </button>
+    </span>
+  </div>
+
+  <div class="portfolio-performance-grid__sortbar" :aria-label="sortLabel">
+    <button
+      v-for="option in sortOptions"
+      :key="`portfolio-performance-sort-${option.key}`"
+      type="button"
+      class="portfolio-performance-grid__sort"
+      :class="sortClass(option.key)"
+      @click="emitSort(option.key)"
+    >
+      <span>{{ option.label }}</span>
+      <v-icon size="13">{{ sortIcon(option.key) }}</v-icon>
+    </button>
+  </div>
+
+  <slot></slot>
+</div>

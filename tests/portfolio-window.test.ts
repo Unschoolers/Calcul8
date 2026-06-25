@@ -640,7 +640,7 @@ test("PortfolioWindow lot status, incomplete state, and profit labels prefer for
       totalPacks: 5,
       forecastProfitAverage: 12.34
     }),
-    "Projected +$12.34"
+    "~+$12"
   );
   assert.equal(
     portfolioWindowDefinition.methods.portfolioLotPrimaryProfitLabel.call(vm as never, {
@@ -648,7 +648,7 @@ test("PortfolioWindow lot status, incomplete state, and profit labels prefer for
       totalPacks: 5,
       forecastProfitAverage: -12.34
     }),
-    "Projected -$12.34"
+    "~-$12"
   );
   assert.equal(
     portfolioWindowDefinition.methods.portfolioLotPrimaryProfitLabel.call(vm as never, {
@@ -657,7 +657,7 @@ test("PortfolioWindow lot status, incomplete state, and profit labels prefer for
       soldPacks: 5,
       totalPacks: 5
     }),
-    "Loss -$8.50"
+    "-$9"
   );
   assert.equal(
     portfolioWindowDefinition.methods.portfolioLotPrimaryProfitLabel.call(vm as never, {
@@ -666,11 +666,23 @@ test("PortfolioWindow lot status, incomplete state, and profit labels prefer for
       soldPacks: 5,
       totalPacks: 5
     }),
-    "Net +$7.25"
+    "+$7"
+  );
+  assert.deepEqual(
+    portfolioWindowDefinition.methods.portfolioLotPrimaryProfitValueClass.call(vm as never, {
+      soldPacks: 2,
+      totalPacks: 5,
+      forecastProfitAverage: 12.34
+    }),
+    {
+      "is-positive": true,
+      "is-negative": false,
+      "is-projected": true
+    }
   );
 });
 
-test("PortfolioWindow profit chip and performance amount helpers summarize mixed lots", () => {
+test("PortfolioWindow profit values and performance amount helpers summarize mixed lots", () => {
   const vm = {
     allLotPerformance: [
       { totalProfit: -10 },
@@ -685,7 +697,7 @@ test("PortfolioWindow profit chip and performance amount helpers summarize mixed
   };
 
   assert.equal(
-    portfolioWindowDefinition.methods.portfolioLotPrimaryProfitChipColor.call(vm as never, {
+    portfolioWindowDefinition.methods.portfolioLotPrimaryProfitTone.call(vm as never, {
       soldPacks: 1,
       totalPacks: 4,
       forecastProfitAverage: -4
@@ -693,7 +705,7 @@ test("PortfolioWindow profit chip and performance amount helpers summarize mixed
     "error"
   );
   assert.equal(
-    portfolioWindowDefinition.methods.portfolioLotPrimaryProfitChipColor.call(vm as never, {
+    portfolioWindowDefinition.methods.portfolioLotPrimaryProfitTone.call(vm as never, {
       salesCount: 2,
       realizedProfit: 4,
       soldPacks: 4,
@@ -702,13 +714,13 @@ test("PortfolioWindow profit chip and performance amount helpers summarize mixed
     "success"
   );
   assert.equal(
-    portfolioWindowDefinition.methods.portfolioLotPrimaryProfitChipColor.call(vm as never, {
+    portfolioWindowDefinition.methods.portfolioLotPrimaryProfitTone.call(vm as never, {
       salesCount: 0,
       totalProfit: -4,
       soldPacks: 4,
       totalPacks: 4
     }),
-    "secondary"
+    "error"
   );
 
   assert.equal(portfolioWindowDefinition.methods.portfolioAtRiskLotCount.call(vm as never), 2);
