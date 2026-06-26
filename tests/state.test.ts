@@ -83,6 +83,7 @@ test("createInitialState initializes expert/pro state from current storage keys"
     assert.equal(state.chartView, "sparkline");
     assert.equal(state.syncStatus, "idle");
     assert.equal(state.workspaceRealtimeStatus, "idle");
+    assert.equal(state.isAuthSessionResolving, true);
   });
 });
 

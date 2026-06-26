@@ -582,6 +582,7 @@ export interface AppState extends LotSetup {
   isOffline: boolean;
   deferredInstallPrompt: BeforeInstallPromptEvent | null;
   showInstallPrompt: boolean;
+  isAuthSessionResolving: boolean;
   showGoogleSignInFallback: boolean;
   googleAuthEpoch: number;
   googleAvatarLoadFailed: boolean;

@@ -131,7 +131,9 @@ test("syncEntitlementStatus uses cached entitlement and pulls cloud sync when al
 
 test("syncEntitlementStatus skips remote fetch when there is no auth signal", async () => {
   await withMockedLocalStorage(async () => {
-    const app = createApp();
+    const app = createApp({
+      isAuthSessionResolving: true
+    });
     const bootstrapServerSession = vi.fn(async () => false);
 
     await syncEntitlementStatus(app as never, false, {
@@ -148,6 +150,7 @@ test("syncEntitlementStatus skips remote fetch when there is no auth signal", as
     assert.equal((app.pullCloudSync as ReturnType<typeof vi.fn>).mock.calls.length, 0);
     assert.equal(handleExpiredAuthMock.mock.calls.length, 0);
     assert.equal(bootstrapServerSession.mock.calls.length, 1);
+    assert.equal(app.isAuthSessionResolving, false);
   });
 });
 

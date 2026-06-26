@@ -26,7 +26,13 @@ interface ParsedEntitlementPayload {
 export type EntitlementMutationApp = Pick<AppContext, "hasProAccess"> & TargetProfitAccessApp;
 export type EntitlementStatusApp = Pick<
   AppContext,
-  "googleAuthEpoch" | "hasProAccess" | "isOffline" | "pullCloudSync" | "notify" | "startOfflineReconnectScheduler"
+  | "googleAuthEpoch"
+  | "hasProAccess"
+  | "isAuthSessionResolving"
+  | "isOffline"
+  | "pullCloudSync"
+  | "notify"
+  | "startOfflineReconnectScheduler"
 > & TargetProfitAccessApp;
 
 type EntitlementStatusDeps = {
@@ -98,100 +104,108 @@ const defaultDeps: EntitlementStatusDeps = {
   isOnline: () => navigator.onLine
 };
 
+function markAuthSessionResolved(app: Pick<EntitlementStatusApp, "isAuthSessionResolving">): void {
+  app.isAuthSessionResolving = false;
+}
+
 export async function syncEntitlementStatus(
   app: EntitlementStatusApp,
   forceRefresh = false,
   deps: Partial<EntitlementStatusDeps> = {}
 ): Promise<void> {
   const resolvedDeps = { ...defaultDeps, ...deps } satisfies EntitlementStatusDeps;
-  const base = resolvedDeps.resolveApiBaseUrl();
-  if (!base) {
-    console.info("[whatfees] Entitlement sync skipped: VITE_API_BASE_URL is not set.");
-    return;
-  }
+  try {
+    const base = resolvedDeps.resolveApiBaseUrl();
+    if (!base) {
+      console.info("[whatfees] Entitlement sync skipped: VITE_API_BASE_URL is not set.");
+      return;
+    }
 
-  const hasAnyAuthSignal = resolvedDeps.hasAuthSignal();
-  let hasActiveServerSession = resolvedDeps.hasServerSession();
-  if (!hasActiveServerSession) {
-    hasActiveServerSession = await resolvedDeps.bootstrapServerSession(app, base);
-  }
-
-  const googleIdToken = resolvedDeps.getGoogleIdToken();
-
-  const cached = resolvedDeps.readEntitlementCache();
-  const ttlMs = resolvedDeps.getEntitlementTtlMs();
-  const shouldUseCache = !!cached && resolvedDeps.shouldUseCachedEntitlement({
-    cachedAt: cached.cachedAt,
-    googleIdToken,
-    forceRefresh,
-    ttlMs
-  });
-  if (shouldUseCache && cached) {
-    resolvedDeps.applyCachedEntitlement(app, {
-      userId: cached.userId,
-      hasProAccess: cached.hasProAccess,
-      updatedAt: cached.updatedAt
-    });
+    const hasAnyAuthSignal = resolvedDeps.hasAuthSignal();
+    let hasActiveServerSession = resolvedDeps.hasServerSession();
     if (!hasActiveServerSession) {
+      hasActiveServerSession = await resolvedDeps.bootstrapServerSession(app, base);
+    }
+
+    const googleIdToken = resolvedDeps.getGoogleIdToken();
+
+    const cached = resolvedDeps.readEntitlementCache();
+    const ttlMs = resolvedDeps.getEntitlementTtlMs();
+    const shouldUseCache = !!cached && resolvedDeps.shouldUseCachedEntitlement({
+      cachedAt: cached.cachedAt,
+      googleIdToken,
+      forceRefresh,
+      ttlMs
+    });
+    if (shouldUseCache && cached) {
+      resolvedDeps.applyCachedEntitlement(app, {
+        userId: cached.userId,
+        hasProAccess: cached.hasProAccess,
+        updatedAt: cached.updatedAt
+      });
+      if (!hasActiveServerSession) {
+        console.info("[whatfees] Entitlement sync skipped: no active auth session.");
+        return;
+      }
+      console.info("[whatfees] Entitlement cache hit", {
+        userId: cached.userId,
+        hasProAccess: cached.hasProAccess,
+        updatedAt: cached.updatedAt
+      });
+      await app.pullCloudSync();
+      return;
+    }
+
+    if (!hasActiveServerSession) {
+      if (hasAnyAuthSignal) {
+        resolvedDeps.handleExpiredAuth(app);
+        app.notify("Your sign-in expired. Please sign in again.", "warning");
+        return;
+      }
       console.info("[whatfees] Entitlement sync skipped: no active auth session.");
       return;
     }
-    console.info("[whatfees] Entitlement cache hit", {
-      userId: cached.userId,
-      hasProAccess: cached.hasProAccess,
-      updatedAt: cached.updatedAt
-    });
-    await app.pullCloudSync();
-    return;
-  }
 
-  if (!hasActiveServerSession) {
-    if (hasAnyAuthSignal) {
-      resolvedDeps.handleExpiredAuth(app);
-      app.notify("Your sign-in expired. Please sign in again.", "warning");
-      return;
-    }
-    console.info("[whatfees] Entitlement sync skipped: no active auth session.");
-    return;
-  }
-
-  try {
-    const requestUrl = `${base}/entitlements/me`;
-    const response = await resolvedDeps.fetchWithRetry(requestUrl, {
-      headers: buildAuthenticatedHeaders("session-preferred", {}, requestUrl)
-    });
-
-    if (response.status === 401) {
-      resolvedDeps.handleExpiredAuth(app);
-      app.notify("Your sign-in expired. Please sign in again.", "warning");
-      return;
-    }
-
-    if (!response.ok) {
-      console.warn("[whatfees] Entitlement debug fetch failed", {
-        status: response.status,
-        statusText: response.statusText
+    try {
+      const requestUrl = `${base}/entitlements/me`;
+      const response = await resolvedDeps.fetchWithRetry(requestUrl, {
+        headers: buildAuthenticatedHeaders("session-preferred", {}, requestUrl)
       });
-      return;
+
+      if (response.status === 401) {
+        resolvedDeps.handleExpiredAuth(app);
+        app.notify("Your sign-in expired. Please sign in again.", "warning");
+        return;
+      }
+
+      if (!response.ok) {
+        console.warn("[whatfees] Entitlement debug fetch failed", {
+          status: response.status,
+          statusText: response.statusText
+        });
+        return;
+      }
+
+      const data = (await response.json()) as EntitlementApiResponse;
+      const entitlementPayload = resolvedDeps.parseEntitlementPayload(data);
+      resolvedDeps.applyFetchedEntitlement(app, entitlementPayload);
+
+      console.log("[whatfees] Entitlement sync", {
+        userId: entitlementPayload.userId,
+        hasProAccess: entitlementPayload.hasProAccess,
+        updatedAt: entitlementPayload.updatedAt
+      });
+
+      await app.pullCloudSync();
+    } catch (error) {
+      if (!resolvedDeps.isOnline()) {
+        app.isOffline = true;
+        app.startOfflineReconnectScheduler();
+      }
+      console.warn("[whatfees] Entitlement sync error", error);
     }
-
-    const data = (await response.json()) as EntitlementApiResponse;
-    const entitlementPayload = resolvedDeps.parseEntitlementPayload(data);
-    resolvedDeps.applyFetchedEntitlement(app, entitlementPayload);
-
-    console.log("[whatfees] Entitlement sync", {
-      userId: entitlementPayload.userId,
-      hasProAccess: entitlementPayload.hasProAccess,
-      updatedAt: entitlementPayload.updatedAt
-    });
-
-    await app.pullCloudSync();
-  } catch (error) {
-    if (!resolvedDeps.isOnline()) {
-      app.isOffline = true;
-      app.startOfflineReconnectScheduler();
-    }
-    console.warn("[whatfees] Entitlement sync error", error);
+  } finally {
+    markAuthSessionResolved(app);
   }
 }
 

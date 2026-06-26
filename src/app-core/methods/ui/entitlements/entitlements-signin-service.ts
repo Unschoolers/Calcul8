@@ -25,6 +25,7 @@ export type SignInApp = Pick<
   AppContext,
   | "hasProAccess"
   | "hasLotSelected"
+  | "isAuthSessionResolving"
   | "isDark"
   | "preferredLanguage"
   | "showGoogleSignInFallback"
@@ -178,6 +179,11 @@ export function initGoogleAutoLoginFlow(app: SignInApp, deps: Partial<SignInDeps
     });
     app.googleAuthEpoch += 1;
     resolvedDeps.cacheGoogleProfileFromToken(existingToken, GOOGLE_PROFILE_CACHE_KEY);
+    return;
+  }
+
+  if (app.isAuthSessionResolving) {
+    logAuthDebug("init:auto:skip_prompt_session_resolving");
     return;
   }
 

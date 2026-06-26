@@ -22,6 +22,16 @@ test("app shell exposes named mobile-first layout zones", () => {
   assert.doesNotMatch(template, /pointer-events:\s*none/);
 });
 
+test("auth shell waits for session bootstrap before showing the sign-in gate", () => {
+  const template = read("src/App.html");
+
+  assert.match(template, /v-if="isGoogleSignedIn"/);
+  assert.match(template, /v-else-if="isAuthSessionResolving"/);
+  assert.match(template, /authCheckingSessionTitle/);
+  assert.match(template, /authCheckingSessionSubtitle/);
+  assert.match(template, /v-else[\s\S]*<auth-gate-card :ctx="this"><\/auth-gate-card>/);
+});
+
 test("contextual shell actions use shared slots instead of per-tab bottom offsets", () => {
   const template = read("src/App.html");
   const styles = read("src/styles/app.css");

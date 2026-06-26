@@ -342,6 +342,33 @@
 
       </template>
 
+      <template v-else-if="isAuthSessionResolving">
+        <v-main id="app-main" tabindex="-1">
+          <v-container fluid class="auth-gate-shell">
+            <v-card class="auth-gate-card auth-gate-card--checking" elevation="8" max-width="430">
+              <v-card-text class="pa-6 pa-sm-8 text-center">
+                <img src="../icons/icon-192.png" alt="" class="auth-gate-logo" />
+                <p class="auth-gate-overline text-caption mb-5">WhatFees</p>
+                <v-progress-circular
+                  indeterminate
+                  color="secondary"
+                  size="32"
+                  width="3"
+                  class="auth-gate-checking-spinner mb-4"
+                  aria-hidden="true"
+                ></v-progress-circular>
+                <h1 class="auth-gate-title text-h5 text-sm-h4 font-weight-bold mb-4">
+                  {{ t('authCheckingSessionTitle') }}
+                </h1>
+                <p class="text-body-2 text-medium-emphasis mb-0">
+                  {{ t('authCheckingSessionSubtitle') }}
+                </p>
+              </v-card-text>
+            </v-card>
+          </v-container>
+        </v-main>
+      </template>
+
       <template v-else>
         <auth-gate-card :ctx="this"></auth-gate-card>
       </template>

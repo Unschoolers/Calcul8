@@ -131,6 +131,7 @@ function createContext(overrides: Record<string, unknown> = {}): Record<string, 
     hasLotSelected: false,
     isDark: true,
     preferredLanguage: "en",
+    isAuthSessionResolving: false,
     showGoogleSignInFallback: false,
     targetProfitPercent: 0,
     autoSaveSetup: vi.fn(),
@@ -203,6 +204,23 @@ test("initGoogleAutoLoginFlow skips auto prompt while auth gate is visible", asy
       prompt: vi.fn()
     });
     const context = createContext();
+
+    initGoogleAutoLoginFlow(context as never);
+
+    assert.equal(initGoogleAutoLoginWithRetryMock.mock.calls.length, 0);
+    assert.equal(context.googleAuthEpoch, 0);
+  });
+});
+
+test("initGoogleAutoLoginFlow waits while server session bootstrap is resolving", async () => {
+  await withMockedLocalStorage(async () => {
+    stubWindow({
+      initialize: vi.fn(),
+      prompt: vi.fn()
+    });
+    const context = createContext({
+      isAuthSessionResolving: true
+    });
 
     initGoogleAutoLoginFlow(context as never);
 

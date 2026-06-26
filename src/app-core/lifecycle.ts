@@ -183,10 +183,16 @@ export const appLifecycle: AppLifecycleObject = {
       this.syncGuidedOnboarding();
     }
     void (async () => {
-      if (isDevNoLoginRoute()) return;
-      const stripeReturn = await handleStripeCheckoutReturn(this);
-      if (stripeReturn !== "success") {
-        await this.debugLogEntitlement(false);
+      try {
+        if (isDevNoLoginRoute()) return;
+        const stripeReturn = await handleStripeCheckoutReturn(this);
+        if (stripeReturn !== "success") {
+          await this.debugLogEntitlement(false);
+        }
+      } finally {
+        this.isAuthSessionResolving = false;
+        this.initGoogleAutoLogin();
+        this.$nextTick(() => this.renderGoogleSignInButton());
       }
     })();
     if (this.isGoogleSignedIn && !isDevNoLoginRoute()) {

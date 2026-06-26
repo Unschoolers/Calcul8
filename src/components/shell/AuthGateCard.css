@@ -25,6 +25,10 @@
   box-shadow: var(--app-shadow-lg);
 }
 
+.auth-gate-checking-spinner {
+  color: rgb(var(--v-theme-secondary));
+}
+
 .auth-gate-overline {
   letter-spacing: 0.14em;
   color: rgb(var(--v-theme-secondary));
