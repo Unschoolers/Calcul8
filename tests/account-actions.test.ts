@@ -22,6 +22,10 @@ vi.mock("../src/app-core/methods/ui/common/shared.ts", async () => {
 });
 
 import { uiAccountMethods } from "../src/app-core/methods/ui/auth/account.ts";
+import {
+  getStoredSessionUserId,
+  setStoredSessionUserId
+} from "../src/app-core/auth/index.ts";
 
 type MockStorage = {
   getItem(key: string): string | null;
@@ -129,6 +133,7 @@ afterEach(() => {
 
 test("logoutCurrentSession signs out, clears local auth state, and reloads", async () => {
   const ctx = createContext();
+  setStoredSessionUserId("user-1");
 
   await uiAccountMethods.logoutCurrentSession.call(ctx as never);
   vi.runAllTimers();
@@ -139,6 +144,7 @@ test("logoutCurrentSession signs out, clears local auth state, and reloads", asy
   assert.equal(localStorage.getItem("whatfees_csrf_token_v1"), null);
   assert.equal(localStorage.getItem("whatfees_entitlement_cache_v1"), null);
   assert.equal(localStorage.getItem("whatfees_google_auto_signin_disabled_v1"), "1");
+  assert.equal(getStoredSessionUserId(), "");
   assert.equal(ctx.hasProAccess, false);
   assert.equal(ctx.activeScopeType, "personal");
   assert.equal(ctx.activeWorkspaceId, null);
@@ -150,6 +156,7 @@ test("logoutCurrentSession signs out, clears local auth state, and reloads", asy
 
 test("clearPersonalAccountData clears app storage and reloads after success", async () => {
   const ctx = createContext();
+  setStoredSessionUserId("user-1");
 
   await uiAccountMethods.clearPersonalAccountData.call(ctx as never);
   vi.runAllTimers();
@@ -159,6 +166,7 @@ test("clearPersonalAccountData clears app storage and reloads after success", as
   assert.equal(localStorage.getItem("whatfees_sales_1"), null);
   assert.equal(localStorage.getItem("whatfees_google_id_token"), null);
   assert.equal(localStorage.getItem("whatfees_google_auto_signin_disabled_v1"), "1");
+  assert.equal(getStoredSessionUserId(), "");
   assert.equal(ctx.hasProAccess, false);
   assert.equal((window.location.reload as ReturnType<typeof vi.fn>).mock.calls.length, 1);
 });

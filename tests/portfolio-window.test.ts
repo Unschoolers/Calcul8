@@ -293,14 +293,15 @@ test("PortfolioWindow performance grids sort by clicked columns", () => {
     }
   };
 
+  const sortedLotRows = portfolioWindowDefinition.methods.sortedPortfolioLotPerformanceRows.call(vm as never) as Array<{ lotName: string }>;
+  const sortedCustomerRows = portfolioWindowDefinition.methods.sortedCustomerPerformanceRows.call(vm as never) as Array<{ username: string }>;
+
   assert.deepEqual(
-    portfolioWindowDefinition.methods.sortedPortfolioLotPerformanceRows.call(vm as never)
-      .map((row: { lotName: string }) => row.lotName),
+    sortedLotRows.map((row) => row.lotName),
     ["High risk", "Low risk", "Winner"]
   );
   assert.deepEqual(
-    portfolioWindowDefinition.methods.sortedCustomerPerformanceRows.call(vm as never)
-      .map((row: { username: string }) => row.username),
+    sortedCustomerRows.map((row) => row.username),
     ["Older", "Recent"]
   );
 

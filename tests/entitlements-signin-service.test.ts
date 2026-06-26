@@ -145,6 +145,11 @@ function createContext(overrides: Record<string, unknown> = {}): Record<string, 
   };
 }
 
+async function flushMicrotasks(): Promise<void> {
+  await Promise.resolve();
+  await Promise.resolve();
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   vi.stubEnv("VITE_GOOGLE_CLIENT_ID", "test-google-client-id");
@@ -258,6 +263,8 @@ test("initGoogleAutoLoginFlow starts retry flow and credential callback persists
 
     params.onCredential("auto-token");
     assert.equal(getStoredGoogleIdToken(), "auto-token");
+    assert.equal(context.googleAuthEpoch, 0);
+    await flushMicrotasks();
     assert.equal(context.googleAuthEpoch, 1);
     assert.equal(context.googleAvatarLoadFailed, false);
     assert.equal(cacheGoogleProfileFromTokenMock.mock.calls.at(-1)?.[0], "auto-token");
@@ -286,6 +293,8 @@ test("promptGoogleSignInFlow initializes, prompts, and handles credential callba
     assert.equal(requestGoogleIdentityPromptMock.mock.calls.length, 1);
     assert.equal(data.get("whatfees_google_auto_signin_disabled_v1"), undefined);
     assert.equal(getStoredGoogleIdToken(), "signed-token");
+    assert.equal(context.googleAuthEpoch, 0);
+    await flushMicrotasks();
     assert.equal(context.googleAuthEpoch, 1);
     assert.equal(context.googleAvatarLoadFailed, false);
     assert.equal((context.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0], "Signed in with Google.");
@@ -318,6 +327,8 @@ test("renderGoogleSignInButtonFlow initializes GIS button and handles credential
     assert.equal(renderButton.mock.calls[0]?.[1]?.locale, "fr");
     assert.equal(renderButton.mock.calls[0]?.[1]?.theme, "filled_black");
     assert.equal(getStoredGoogleIdToken(), "rendered-token");
+    assert.equal(context.googleAuthEpoch, 0);
+    await flushMicrotasks();
     assert.equal(context.googleAuthEpoch, 1);
     assert.equal(context.showGoogleSignInFallback, false);
     assert.equal((context.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0], "Signed in with Google.");

@@ -5,7 +5,8 @@ import {
   buildAuthenticatedHeaders,
   clearStoredCsrfToken,
   clearStoredGoogleIdToken,
-  clearStoredGoogleProfileCache
+  clearStoredGoogleProfileCache,
+  clearStoredSessionUserId
 } from "../../../auth/index.ts";
 import { STORAGE_KEYS } from "../../../storageKeys.ts";
 
@@ -44,6 +45,7 @@ function clearAppLocalStorage(): void {
 function clearLocalAuthState(app: AccountActionApp): void {
   clearStoredGoogleIdToken();
   clearStoredGoogleProfileCache();
+  clearStoredSessionUserId();
   clearStoredCsrfToken();
   clearEntitlementCache();
   try {
