@@ -12,19 +12,24 @@ interface AuthMeResponse {
   userId?: unknown;
 }
 
+export interface ServerSessionBootstrapResult {
+  ok: boolean;
+  authExpired: boolean;
+}
+
 function normalizeUserId(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
-export async function bootstrapServerSession(
+export async function bootstrapServerSessionStatus(
   app: Pick<AppContext, "googleAuthEpoch">,
   baseUrl: string
-): Promise<boolean> {
+): Promise<ServerSessionBootstrapResult> {
   const normalizedBaseUrl = String(baseUrl || "").trim().replace(/\/+$/, "");
   if (!normalizedBaseUrl) {
     clearStoredSessionUserId();
     clearStoredCsrfToken();
-    return false;
+    return { ok: false, authExpired: false };
   }
 
   const hadAuthSignal = hasAuthSignal();
@@ -39,11 +44,11 @@ export async function bootstrapServerSession(
     if (response.status === 401) {
       clearStoredSessionUserId();
       clearStoredCsrfToken();
-      return false;
+      return { ok: false, authExpired: true };
     }
 
     if (!response.ok) {
-      return false;
+      return { ok: false, authExpired: false };
     }
 
     let payload: AuthMeResponse | null = null;
@@ -56,15 +61,23 @@ export async function bootstrapServerSession(
     const userId = normalizeUserId(payload?.userId);
     if (!userId) {
       clearStoredSessionUserId();
-      return false;
+      return { ok: false, authExpired: false };
     }
 
     setStoredSessionUserId(userId);
     if (!hadAuthSignal) {
       app.googleAuthEpoch += 1;
     }
-    return true;
+    return { ok: true, authExpired: false };
   } catch {
-    return false;
+    return { ok: false, authExpired: false };
   }
+}
+
+export async function bootstrapServerSession(
+  app: Pick<AppContext, "googleAuthEpoch">,
+  baseUrl: string
+): Promise<boolean> {
+  const result = await bootstrapServerSessionStatus(app, baseUrl);
+  return result.ok;
 }

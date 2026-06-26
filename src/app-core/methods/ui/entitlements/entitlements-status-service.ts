@@ -15,7 +15,10 @@ import {
   hasServerSession
 } from "../../../auth/index.ts";
 import { type TargetProfitAccessApp } from "./entitlements-shared.ts";
-import { bootstrapServerSession } from "../auth/auth-session.ts";
+import {
+  bootstrapServerSessionStatus,
+  type ServerSessionBootstrapResult
+} from "../auth/auth-session.ts";
 
 interface ParsedEntitlementPayload {
   userId: string | null;
@@ -42,7 +45,10 @@ type EntitlementStatusDeps = {
   readEntitlementCache: typeof readEntitlementCache;
   getEntitlementTtlMs: typeof getEntitlementTtlMs;
   fetchWithRetry: typeof fetchWithRetry;
-  bootstrapServerSession: (app: Pick<EntitlementStatusApp, "googleAuthEpoch">, baseUrl: string) => Promise<boolean>;
+  bootstrapServerSession: (
+    app: Pick<EntitlementStatusApp, "googleAuthEpoch">,
+    baseUrl: string
+  ) => Promise<boolean | ServerSessionBootstrapResult>;
   hasServerSession: () => boolean;
   shouldUseCachedEntitlement: typeof shouldUseCachedEntitlement;
   applyCachedEntitlement: typeof applyCachedEntitlement;
@@ -94,7 +100,7 @@ const defaultDeps: EntitlementStatusDeps = {
   readEntitlementCache,
   getEntitlementTtlMs,
   fetchWithRetry,
-  bootstrapServerSession,
+  bootstrapServerSession: bootstrapServerSessionStatus,
   hasServerSession: () => hasServerSession(),
   shouldUseCachedEntitlement,
   applyCachedEntitlement,
@@ -106,6 +112,10 @@ const defaultDeps: EntitlementStatusDeps = {
 
 function markAuthSessionResolved(app: Pick<EntitlementStatusApp, "isAuthSessionResolving">): void {
   app.isAuthSessionResolving = false;
+}
+
+function normalizeBootstrapResult(result: boolean | ServerSessionBootstrapResult): ServerSessionBootstrapResult {
+  return typeof result === "boolean" ? { ok: result, authExpired: false } : result;
 }
 
 export async function syncEntitlementStatus(
@@ -123,8 +133,13 @@ export async function syncEntitlementStatus(
 
     const hasAnyAuthSignal = resolvedDeps.hasAuthSignal();
     let hasActiveServerSession = resolvedDeps.hasServerSession();
+    let bootstrapAuthExpired = false;
     if (!hasActiveServerSession) {
-      hasActiveServerSession = await resolvedDeps.bootstrapServerSession(app, base);
+      const bootstrapResult = normalizeBootstrapResult(
+        await resolvedDeps.bootstrapServerSession(app, base)
+      );
+      hasActiveServerSession = bootstrapResult.ok;
+      bootstrapAuthExpired = bootstrapResult.authExpired;
     }
 
     const googleIdToken = resolvedDeps.getGoogleIdToken();
@@ -157,7 +172,7 @@ export async function syncEntitlementStatus(
     }
 
     if (!hasActiveServerSession) {
-      if (hasAnyAuthSignal) {
+      if (bootstrapAuthExpired || (hasAnyAuthSignal && !googleIdToken)) {
         resolvedDeps.handleExpiredAuth(app);
         app.notify("Your sign-in expired. Please sign in again.", "warning");
         return;

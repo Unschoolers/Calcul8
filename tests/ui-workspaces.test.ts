@@ -3,12 +3,14 @@ import { afterEach, beforeEach, test, vi } from "vitest";
 
 const {
   fetchWithRetryMock,
+  bootstrapServerSessionStatusMock,
   handleExpiredAuthMock,
   resolveApiBaseUrlMock,
   runCloudSyncPushMock,
   createSyncPayloadMock
 } = vi.hoisted(() => ({
   fetchWithRetryMock: vi.fn(),
+  bootstrapServerSessionStatusMock: vi.fn(),
   handleExpiredAuthMock: vi.fn(),
   resolveApiBaseUrlMock: vi.fn(),
   runCloudSyncPushMock: vi.fn(),
@@ -30,6 +32,10 @@ vi.mock("../src/app-core/methods/ui/sync/sync-service.ts", () => ({
 
 vi.mock("../src/app-core/methods/ui/sync/sync-payload.ts", () => ({
   createSyncPayload: createSyncPayloadMock
+}));
+
+vi.mock("../src/app-core/methods/ui/auth/auth-session.ts", () => ({
+  bootstrapServerSessionStatus: bootstrapServerSessionStatusMock
 }));
 
 import { uiWorkspaceMethods } from "../src/app-core/methods/ui/workspace/workspaces.ts";
@@ -158,6 +164,10 @@ beforeEach(() => {
     whatfees_active_scope_type: "personal",
     whatfees_last_lot_id: "1"
   }));
+  bootstrapServerSessionStatusMock.mockResolvedValue({
+    ok: false,
+    authExpired: false
+  });
 });
 
 afterEach(() => {
@@ -596,6 +606,45 @@ test("handleWorkspaceAccessLost refreshes and falls back to personal when curren
     ctx.notify.mock.calls.at(-1),
     ["You no longer have access to that workspace. Switched back to Personal.", "warning"]
   );
+});
+
+test("refreshWorkspaces bootstraps the server session before expiring fresh Google auth", async () => {
+  const ctx = createContext();
+  fetchWithRetryMock
+    .mockResolvedValueOnce(new Response("{}", { status: 401 }))
+    .mockResolvedValueOnce(createResponse({
+      workspaces: [
+        { workspaceId: "ws_a", name: "Alpha", role: "owner", status: "active" }
+      ]
+    }));
+  bootstrapServerSessionStatusMock.mockResolvedValueOnce({
+    ok: true,
+    authExpired: false
+  });
+
+  await uiWorkspaceMethods.refreshWorkspaces.call(ctx);
+
+  assert.deepEqual(ctx.availableWorkspaces.map((workspace: { workspaceId: string }) => workspace.workspaceId), ["ws_a"]);
+  assert.equal(bootstrapServerSessionStatusMock.mock.calls.length, 1);
+  assert.equal(fetchWithRetryMock.mock.calls.length, 2);
+  assert.equal(handleExpiredAuthMock.mock.calls.length, 0);
+  assert.equal(ctx.notify.mock.calls.length, 0);
+});
+
+test("refreshWorkspaces does not expire auth when bootstrap failure is inconclusive", async () => {
+  const ctx = createContext();
+  fetchWithRetryMock.mockResolvedValueOnce(new Response("{}", { status: 401 }));
+  bootstrapServerSessionStatusMock.mockResolvedValueOnce({
+    ok: false,
+    authExpired: false
+  });
+
+  await uiWorkspaceMethods.refreshWorkspaces.call(ctx);
+
+  assert.equal(bootstrapServerSessionStatusMock.mock.calls.length, 1);
+  assert.equal(fetchWithRetryMock.mock.calls.length, 1);
+  assert.equal(handleExpiredAuthMock.mock.calls.length, 0);
+  assert.equal(ctx.notify.mock.calls.length, 0);
 });
 
 test("handleWorkspaceAccessLost removes stale workspace locally when refresh fails", async () => {

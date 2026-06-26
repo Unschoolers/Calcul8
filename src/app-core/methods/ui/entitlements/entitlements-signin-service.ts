@@ -21,6 +21,22 @@ import {
 
 type GoogleAccountsApi = NonNullable<Window["google"]>["accounts"]["id"];
 
+interface GoogleCredentialResponse {
+  credential?: string;
+}
+
+interface GoogleIdentityInitConfig {
+  client_id: string;
+  auto_select: boolean;
+  itp_support: boolean;
+  callback: (response: GoogleCredentialResponse) => void;
+}
+
+interface GoogleIdentityInitState {
+  clientId: string;
+  callback: (response: GoogleCredentialResponse) => void;
+}
+
 export type SignInApp = Pick<
   AppContext,
   | "hasProAccess"
@@ -106,13 +122,14 @@ const defaultDeps: SignInDeps = {
 };
 
 const GOOGLE_SIGN_IN_BUTTON_CONTAINER_ID = "google-signin-button";
+const initializedGoogleIdentityApis = new WeakMap<GoogleAccountsApi, GoogleIdentityInitState>();
 
 function isAuthGateVisible(documentRef: Document | undefined): boolean {
   return !!documentRef?.getElementById(GOOGLE_SIGN_IN_BUTTON_CONTAINER_ID);
 }
 
 function createGoogleCredentialCallback(app: SignInApp, deps: SignInDeps) {
-  return (response: { credential?: string }) => {
+  return (response: GoogleCredentialResponse) => {
     const idToken = response.credential?.trim();
     if (!idToken) {
       logAuthWarn("signin:manual:empty_credential_callback", {
@@ -123,14 +140,61 @@ function createGoogleCredentialCallback(app: SignInApp, deps: SignInDeps) {
     logAuthDebug("signin:manual:credential_received", {
       tokenLength: idToken.length
     });
-    deps.enableGoogleAutoSignIn();
-    deps.setGoogleIdToken(idToken);
-    app.googleAuthEpoch += 1;
-    app.googleAvatarLoadFailed = false;
-    deps.cacheGoogleProfileFromToken(idToken, GOOGLE_PROFILE_CACHE_KEY);
-    app.notify("Signed in with Google.", "success");
-    void app.debugLogEntitlement(true);
+    void finalizeGoogleCredentialSignIn(app, deps, idToken, {
+      notifySuccess: true
+    });
   };
+}
+
+async function finalizeGoogleCredentialSignIn(
+  app: SignInApp,
+  deps: SignInDeps,
+  idToken: string,
+  options: {
+    notifySuccess: boolean;
+  }
+): Promise<void> {
+  deps.enableGoogleAutoSignIn();
+  deps.setGoogleIdToken(idToken);
+  app.googleAvatarLoadFailed = false;
+  deps.cacheGoogleProfileFromToken(idToken, GOOGLE_PROFILE_CACHE_KEY);
+
+  try {
+    await app.debugLogEntitlement(true);
+  } catch (error) {
+    logAuthWarn("signin:session_bootstrap_failed", {
+      error: error instanceof Error ? error.message : String(error)
+    });
+  } finally {
+    // The auth watcher starts workspace, Whatnot, realtime, and sync requests.
+    // Keep that fan-out behind session bootstrap so session-first requests do
+    // not race ahead, receive 401, and clear the fresh Google credential.
+    app.googleAuthEpoch += 1;
+  }
+
+  if (options.notifySuccess) {
+    app.notify("Signed in with Google.", "success");
+  }
+}
+
+function initializeGoogleIdentityOnce(googleId: GoogleAccountsApi, config: GoogleIdentityInitConfig): void {
+  const existing = initializedGoogleIdentityApis.get(googleId);
+  if (existing?.clientId === config.client_id) {
+    existing.callback = config.callback;
+    return;
+  }
+
+  const state: GoogleIdentityInitState = {
+    clientId: config.client_id,
+    callback: config.callback
+  };
+  initializedGoogleIdentityApis.set(googleId, state);
+  googleId.initialize({
+    ...config,
+    callback: (response: GoogleCredentialResponse) => {
+      state.callback(response);
+    }
+  });
 }
 
 function normalizeGoogleButtonLocale(language: string): string | undefined {
@@ -199,11 +263,9 @@ export function initGoogleAutoLoginFlow(app: SignInApp, deps: Partial<SignInDeps
       logAuthDebug("init:auto:credential_received", {
         tokenLength: idToken.length
       });
-      resolvedDeps.setGoogleIdToken(idToken);
-      app.googleAuthEpoch += 1;
-      app.googleAvatarLoadFailed = false;
-      resolvedDeps.cacheGoogleProfileFromToken(idToken, GOOGLE_PROFILE_CACHE_KEY);
-      void app.debugLogEntitlement(true);
+      void finalizeGoogleCredentialSignIn(app, resolvedDeps, idToken, {
+        notifySuccess: false
+      });
     },
     retryCount: GOOGLE_INIT_RETRY_COUNT,
     retryDelayMs: GOOGLE_INIT_RETRY_DELAY_MS,
@@ -245,7 +307,7 @@ export function renderGoogleSignInButtonFlow(
   }
 
   try {
-    googleId.initialize({
+    initializeGoogleIdentityOnce(googleId, {
       client_id: clientId,
       auto_select: false,
       itp_support: true,
@@ -313,7 +375,7 @@ export function promptGoogleSignInFlow(app: SignInApp, deps: Partial<SignInDeps>
       clientId: summarizeClientId(clientId)
     });
 
-    googleId.initialize({
+    initializeGoogleIdentityOnce(googleId, {
       client_id: clientId,
       auto_select: false,
       itp_support: true,

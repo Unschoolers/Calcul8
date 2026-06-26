@@ -5,6 +5,7 @@ import {
   getStoredGoogleIdToken,
   hasAuthSignal
 } from "../../../auth/index.ts";
+import { bootstrapServerSessionStatus } from "../auth/auth-session.ts";
 import { parseWorkspaceApiError } from "./workspace-ui-helpers.ts";
 
 export function getGoogleIdToken(): string {
@@ -30,17 +31,19 @@ export async function fetchWorkspaceJson(
     return { ok: false, handled: true };
   }
 
+  const requestUrl = `${baseUrl}${path}`;
+  const buildRequestInit = (): RequestInit => ({
+    ...init,
+    headers: buildAuthenticatedHeaders(
+      "session-preferred",
+      init.headers as Record<string, string> | undefined,
+      requestUrl
+    )
+  });
+
   let response: Response;
   try {
-    const requestUrl = `${baseUrl}${path}`;
-    response = await fetchWithRetry(requestUrl, {
-      ...init,
-      headers: buildAuthenticatedHeaders(
-        "session-preferred",
-        init.headers as Record<string, string> | undefined,
-        requestUrl
-      )
-    });
+    response = await fetchWithRetry(requestUrl, buildRequestInit());
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
     const isOfflineFailure =
@@ -58,6 +61,21 @@ export async function fetchWorkspaceJson(
   }
 
   if (response.status === 401) {
+    const bootstrapToken = getStoredGoogleIdToken();
+    if (bootstrapToken) {
+      const bootstrapResult = await bootstrapServerSessionStatus(app, baseUrl);
+      if (bootstrapResult.ok) {
+        response = await fetchWithRetry(requestUrl, buildRequestInit());
+        if (response.status !== 401) {
+          return await parseWorkspaceJsonResponse(response);
+        }
+      }
+
+      if (!bootstrapResult.authExpired) {
+        return { ok: false, handled: true };
+      }
+    }
+
     handleExpiredAuth(app);
     app.notify("Your sign-in expired. Please sign in again.", "warning");
     return { ok: false, handled: true };
@@ -68,6 +86,10 @@ export async function fetchWorkspaceJson(
     return { ok: false, handled: true };
   }
 
+  return await parseWorkspaceJsonResponse(response);
+}
+
+async function parseWorkspaceJsonResponse(response: Response): Promise<{ ok: true; response: Response; body: unknown }> {
   let body: unknown = null;
   try {
     body = await response.json();

@@ -154,6 +154,64 @@ test("syncEntitlementStatus skips remote fetch when there is no auth signal", as
   });
 });
 
+test("syncEntitlementStatus keeps Google auth when server session bootstrap is inconclusive", async () => {
+  await withMockedLocalStorage(async () => {
+    const app = createApp({
+      isAuthSessionResolving: true
+    });
+    const bootstrapServerSession = vi.fn(async () => ({
+      ok: false,
+      authExpired: false
+    }));
+
+    await syncEntitlementStatus(app as never, false, {
+      shouldUseCachedEntitlement,
+      applyCachedEntitlement,
+      applyFetchedEntitlement,
+      parseEntitlementPayload,
+      getGoogleIdToken: () => "google-token",
+      hasAuthSignal: () => true,
+      hasServerSession: () => false,
+      bootstrapServerSession
+    });
+
+    assert.equal(fetchWithRetryMock.mock.calls.length, 0);
+    assert.equal((app.pullCloudSync as ReturnType<typeof vi.fn>).mock.calls.length, 0);
+    assert.equal(handleExpiredAuthMock.mock.calls.length, 0);
+    assert.equal((app.notify as ReturnType<typeof vi.fn>).mock.calls.length, 0);
+    assert.equal(app.isAuthSessionResolving, false);
+  });
+});
+
+test("syncEntitlementStatus expires auth when server session bootstrap returns 401", async () => {
+  await withMockedLocalStorage(async () => {
+    const app = createApp({
+      isAuthSessionResolving: true
+    });
+    const bootstrapServerSession = vi.fn(async () => ({
+      ok: false,
+      authExpired: true
+    }));
+
+    await syncEntitlementStatus(app as never, false, {
+      shouldUseCachedEntitlement,
+      applyCachedEntitlement,
+      applyFetchedEntitlement,
+      parseEntitlementPayload,
+      getGoogleIdToken: () => "google-token",
+      hasAuthSignal: () => true,
+      hasServerSession: () => false,
+      bootstrapServerSession
+    });
+
+    assert.equal(fetchWithRetryMock.mock.calls.length, 0);
+    assert.equal((app.pullCloudSync as ReturnType<typeof vi.fn>).mock.calls.length, 0);
+    assert.equal(handleExpiredAuthMock.mock.calls.length, 1);
+    assert.equal((app.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0], "Your sign-in expired. Please sign in again.");
+    assert.equal(app.isAuthSessionResolving, false);
+  });
+});
+
 test("syncEntitlementStatus applies cached entitlement without pulling when there is no auth signal", async () => {
   await withMockedLocalStorage(async () => {
     readEntitlementCacheMock.mockReturnValue({

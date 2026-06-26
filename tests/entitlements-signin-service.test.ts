@@ -324,6 +324,22 @@ test("renderGoogleSignInButtonFlow initializes GIS button and handles credential
   });
 });
 
+test("renderGoogleSignInButtonFlow rerenders the button without reinitializing GIS", async () => {
+  await withMockedLocalStorage(async () => {
+    const initialize = vi.fn();
+    const renderButton = vi.fn();
+    stubWindow({ initialize, prompt: vi.fn(), renderButton });
+    stubDocumentWithButtonContainer();
+    const context = createContext();
+
+    renderGoogleSignInButtonFlow(context as never);
+    renderGoogleSignInButtonFlow(context as never);
+
+    assert.equal(initialize.mock.calls.length, 1);
+    assert.equal(renderButton.mock.calls.length, 2);
+  });
+});
+
 test("renderGoogleSignInButtonFlow exposes fallback after GIS button render exhausts retries", async () => {
   await withMockedLocalStorage(async () => {
     stubWindow();

@@ -8,7 +8,10 @@ import {
   setStoredCsrfToken,
   setStoredGoogleIdToken
 } from "../src/app-core/auth/index.ts";
-import { bootstrapServerSession } from "../src/app-core/methods/ui/auth/auth-session.ts";
+import {
+  bootstrapServerSession,
+  bootstrapServerSessionStatus
+} from "../src/app-core/methods/ui/auth/auth-session.ts";
 import { STORAGE_KEYS } from "../src/app-core/storageKeys.ts";
 
 type MockStorage = {
@@ -127,6 +130,55 @@ test("bootstrapServerSession sends bearer only to the auth bootstrap endpoint", 
   const headers = new Headers(requestInit.headers);
   assert.equal(fetchMock.mock.calls[0]?.[0], "https://api.example.test/auth/me");
   assert.equal(headers.get("Authorization"), "Bearer google-token");
+});
+
+test("bootstrapServerSessionStatus marks only explicit 401 responses as expired", async () => {
+  vi.stubGlobal("window", {
+    location: {
+      origin: "https://app.example.test"
+    },
+    setTimeout: globalThis.setTimeout,
+    clearTimeout: globalThis.clearTimeout
+  });
+  setStoredGoogleIdToken("google-token");
+  setStoredCsrfToken("csrf-token");
+  const fetchMock = vi.fn<typeof fetch>(async () =>
+    new Response("bad request", {
+      status: 400,
+      statusText: "Bad Request"
+    })
+  );
+  vi.stubGlobal("fetch", fetchMock);
+
+  const result = await bootstrapServerSessionStatus({ googleAuthEpoch: 0 }, "https://api.example.test/");
+
+  assert.deepEqual(result, { ok: false, authExpired: false });
+  assert.equal(getStoredGoogleIdToken(), "google-token");
+  assert.equal(getStoredCsrfToken(), "csrf-token");
+});
+
+test("bootstrapServerSessionStatus clears session bootstrap secrets on 401", async () => {
+  vi.stubGlobal("window", {
+    location: {
+      origin: "https://app.example.test"
+    },
+    setTimeout: globalThis.setTimeout,
+    clearTimeout: globalThis.clearTimeout
+  });
+  setStoredGoogleIdToken("google-token");
+  setStoredCsrfToken("csrf-token");
+  const fetchMock = vi.fn<typeof fetch>(async () =>
+    new Response(null, {
+      status: 401,
+      statusText: "Unauthorized"
+    })
+  );
+  vi.stubGlobal("fetch", fetchMock);
+
+  const result = await bootstrapServerSessionStatus({ googleAuthEpoch: 0 }, "https://api.example.test/");
+
+  assert.deepEqual(result, { ok: false, authExpired: true });
+  assert.equal(getStoredCsrfToken(), "");
 });
 
 test("auth secrets hydrate from legacy storage once and remove persisted copies", () => {

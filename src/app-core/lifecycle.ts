@@ -191,8 +191,10 @@ export const appLifecycle: AppLifecycleObject = {
         }
       } finally {
         this.isAuthSessionResolving = false;
-        this.initGoogleAutoLogin();
-        this.$nextTick(() => this.renderGoogleSignInButton());
+        this.$nextTick(() => {
+          this.renderGoogleSignInButton();
+          this.initGoogleAutoLogin();
+        });
       }
     })();
     if (this.isGoogleSignedIn && !isDevNoLoginRoute()) {

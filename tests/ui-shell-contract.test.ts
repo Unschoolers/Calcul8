@@ -32,6 +32,15 @@ test("auth shell waits for session bootstrap before showing the sign-in gate", (
   assert.match(template, /v-else[\s\S]*<auth-gate-card :ctx="this"><\/auth-gate-card>/);
 });
 
+test("auth startup renders the sign-in button before retrying auto-login", () => {
+  const lifecycle = read("src/app-core/lifecycle.ts");
+
+  assert.match(
+    lifecycle,
+    /this\.isAuthSessionResolving = false;[\s\S]*this\.\$nextTick\(\(\) => \{[\s\S]*this\.renderGoogleSignInButton\(\);[\s\S]*this\.initGoogleAutoLogin\(\);[\s\S]*\}\);/
+  );
+});
+
 test("contextual shell actions use shared slots instead of per-tab bottom offsets", () => {
   const template = read("src/App.html");
   const styles = read("src/styles/app.css");
