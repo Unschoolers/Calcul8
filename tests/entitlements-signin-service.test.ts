@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { afterEach, beforeEach, test, vi } from "vitest";
 import {
     getStoredGoogleIdToken,
-    setStoredGoogleIdToken
+    setStoredGoogleIdToken,
+    setStoredSessionUserId
 } from "../src/app-core/auth/index.ts";
 
 const {
@@ -191,6 +192,22 @@ test("initGoogleAutoLoginFlow stays signed out after an intentional logout", asy
       prompt: vi.fn()
     });
     data.set("whatfees_google_auto_signin_disabled_v1", "1");
+    const context = createContext();
+
+    initGoogleAutoLoginFlow(context as never);
+
+    assert.equal(initGoogleAutoLoginWithRetryMock.mock.calls.length, 0);
+    assert.equal(context.googleAuthEpoch, 0);
+  });
+});
+
+test("initGoogleAutoLoginFlow skips auto prompt when server session already exists", async () => {
+  await withMockedLocalStorage(async () => {
+    stubWindow({
+      initialize: vi.fn(),
+      prompt: vi.fn()
+    });
+    setStoredSessionUserId("google-user-123");
     const context = createContext();
 
     initGoogleAutoLoginFlow(context as never);

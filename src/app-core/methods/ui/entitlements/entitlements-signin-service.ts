@@ -246,6 +246,11 @@ export function initGoogleAutoLoginFlow(app: SignInApp, deps: Partial<SignInDeps
     return;
   }
 
+  if (hasAuthSignal()) {
+    logAuthDebug("init:auto:skip_prompt_existing_session");
+    return;
+  }
+
   if (app.isAuthSessionResolving) {
     logAuthDebug("init:auto:skip_prompt_session_resolving");
     return;
