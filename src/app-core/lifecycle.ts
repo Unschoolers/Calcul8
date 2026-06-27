@@ -159,8 +159,6 @@ export const appLifecycle: AppLifecycleObject = {
     this.loadSalesFromStorage();
     this.loadWheelFromStorage();
     this.syncLivePricesFromDefaults();
-    this.initGoogleAutoLogin();
-    this.$nextTick(() => this.renderGoogleSignInButton());
     // Ensure live pricing is fetched after auth/bootstrap completes on reload.
     // Some auth providers initialize asynchronously; retry a few times so
     // the current lot receives its live pricing without requiring user action.

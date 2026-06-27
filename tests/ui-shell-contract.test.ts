@@ -35,6 +35,11 @@ test("auth shell waits for session bootstrap before showing the sign-in gate", (
 test("auth startup renders the sign-in button before retrying auto-login", () => {
   const lifecycle = read("src/app-core/lifecycle.ts");
 
+  assert.doesNotMatch(
+    lifecycle,
+    /this\.syncLivePricesFromDefaults\(\);\s*this\.initGoogleAutoLogin\(\);/,
+    "startup must not open Google auto-login before server session bootstrap finishes"
+  );
   assert.match(
     lifecycle,
     /this\.isAuthSessionResolving = false;[\s\S]*this\.\$nextTick\(\(\) => \{[\s\S]*this\.renderGoogleSignInButton\(\);[\s\S]*this\.initGoogleAutoLogin\(\);[\s\S]*\}\);/
