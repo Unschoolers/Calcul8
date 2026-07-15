@@ -2,7 +2,7 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "types": ["node", "vite/client", "vitest"],
+    "types": ["node", "vite/client", "vitest", "@testing-library/jest-dom"],
     "tsBuildInfoFile": ".cache/tsconfig.tests.web.tsbuildinfo"
   },
   "include": [
@@ -145,6 +145,7 @@
     "tests/wheel-stage-computeds.test.ts",
     "tests/wheel-tier-card.test.ts",
     "tests/wheel-window.test.ts",
+    "tests/vue/**/*.test.ts",
     "tests/workspace-config-realtime-methods.test.ts",
     "tests/workspace-config-sync.test.ts",
     "tests/workspace-members.test.ts",
