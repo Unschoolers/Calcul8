@@ -249,7 +249,7 @@ export interface PurchaseVerificationResultDocument {
 }
 
 export type WorkspaceRole = "owner" | "member";
-export type WorkspaceStatus = "active" | "deleted";
+export type WorkspaceStatus = "creating" | "active" | "creation_failed" | "deleted";
 export type WorkspaceMembershipStatus = "active" | "disabled" | "removed";
 export type WorkspaceJoinLinkStatus = "active" | "revoked" | "expired" | "used";
 
@@ -263,6 +263,12 @@ export interface WorkspaceDocument {
   status?: WorkspaceStatus;
   createdAt: string;
   updatedAt: string;
+  creationKeyHash?: string;
+  creationFingerprint?: string;
+  creationAttemptCount?: number;
+  creationLastAttemptAt?: string;
+  creationErrorCode?: string;
+  creationErrorMessage?: string;
 }
 
 export interface WorkspaceMembershipDocument {
@@ -358,13 +364,56 @@ export interface SyncMetaDocument extends Omit<SyncMetadataDto, "activeWheelConf
 }
 
 export type WhatnotConnectionStatus = "active" | "disconnected" | "error";
-export type WhatnotImportBatchStatus = "pending_review" | "processing" | "completed" | "failed";
+export type WhatnotImportBatchStatus = "pending_review" | "processing" | "recoverable_error" | "completed" | "failed";
 export type WhatnotSaleImportAction = "create" | "update" | "skip";
 export type WhatnotTargetMatchSource = "remembered" | "title" | "none";
 export type WhatnotMappedSaleType = "pack" | "box" | "rtyh" | "wheel";
 export type WhatnotImportBatchOrigin = "oauth_sync" | "csv_manual";
 export type WhatnotImportDecisionKind = "new" | "whatnot_mapping" | "manual_candidate";
 export type WhatnotReviewImportAction = "create" | "update_existing" | "split_group" | "skip";
+
+export interface WhatnotConfirmationDecisionDocument {
+  rowId: string;
+  skip: boolean;
+  lotId: number | null;
+  saleType: WhatnotMappedSaleType | null;
+  packsCount: number | null;
+  targetKind: WhatnotImportDecisionKind | null;
+  targetSaleId: string | null;
+  selectedImportAction: WhatnotReviewImportAction | null;
+}
+
+export interface WhatnotConfirmationAttemptDocument {
+  attemptId: string;
+  actorUserId: string;
+  attemptNumber: number;
+  adoptedLegacyProcessing?: boolean;
+  claimedAt: string;
+  leaseExpiresAt: string;
+}
+
+export interface WhatnotConfirmationProgressDocument {
+  outcome: "imported" | "updated" | "skipped";
+  saleId?: string;
+  lotId?: string;
+  completedAt: string;
+}
+
+export interface WhatnotConfirmationPlanOperationDocument {
+  operationKey: string;
+  rowIds: string[];
+  mutationId: string;
+  outcome: "imported" | "updated" | "skipped";
+  updateMode: "new" | "mapped" | "manual" | "skip";
+  lotId?: string;
+  saleId?: string;
+  targetSaleType?: WhatnotMappedSaleType;
+  expectedSaleVersion?: number;
+  expectedSaleMutationId?: string;
+  saleWriteProven?: boolean;
+  externalSaleKeyHashes: string[];
+  rememberedMatchKeyHashes: string[];
+}
 
 export interface WhatnotManualDuplicateSaleSummary {
   date: string;
@@ -505,6 +554,13 @@ export interface WhatnotImportBatchDocument {
   skippedCount: number;
   rows: WhatnotImportRowDocument[];
   errorMessage?: string;
+  confirmationFingerprint?: string;
+  confirmationDecisions?: WhatnotConfirmationDecisionDocument[];
+  confirmationPlan?: WhatnotConfirmationPlanOperationDocument[];
+  confirmationAttempt?: WhatnotConfirmationAttemptDocument;
+  confirmationProgress?: Record<string, WhatnotConfirmationProgressDocument>;
+  failedOperationKey?: string;
+  failedPhase?: string;
 }
 
 export interface WhatnotTargetMappingDocument {
@@ -535,6 +591,8 @@ export interface WhatnotSaleImportMappingDocument {
   saleId: string;
   payloadFingerprint: string;
   updatedAt: string;
+  importBatchId?: string;
+  importOperationKey?: string;
 }
 
 export interface SaleDocument {

@@ -40,18 +40,103 @@ vi.mock("./core", () => ({
 }));
 
 import {
+  checkpointWhatnotImportOperation,
   claimPendingWhatnotImportBatch,
   completeWhatnotImportBatch,
   consumeWhatnotOAuthState,
   createPendingWhatnotImportBatch,
   getLatestPendingWhatnotImportBatch,
   getWhatnotConnection,
+  initializeWhatnotConfirmationPlan,
+  markWhatnotImportBatchRecoverable,
+  renewWhatnotImportConfirmationLease,
   releaseClaimedWhatnotImportBatch,
   getWhatnotTargetMappingByMatchKeyHash,
   upsertWhatnotConnection,
   upsertWhatnotSaleImportMapping,
   upsertWhatnotTargetMapping
 } from "./whatnotRepository";
+
+test("initializeWhatnotConfirmationPlan persists the immutable plan with the claimed attempt", async () => {
+  const syncSnapshots = createSyncSnapshotsContainer();
+  const batch: WhatnotImportBatchDocument & { _etag: string } = {
+    id: "whatnot_import_batch:user-1:batch-plan",
+    docType: "whatnot_import_batch",
+    userId: "user-1",
+    scopeKey: "user-1",
+    provider: "whatnot",
+    batchId: "batch-plan",
+    origin: "csv_manual",
+    externalAccountId: "seller-1",
+    startedByUserId: "user-1",
+    status: "processing",
+    startedAt: "2026-04-11T12:00:00.000Z",
+    updatedAt: "2026-04-11T12:00:00.000Z",
+    importWindowStartedAt: "2026-04-11T12:00:00.000Z",
+    importedCount: 0,
+    updatedCount: 0,
+    skippedCount: 0,
+    rows: [],
+    confirmationAttempt: {
+      attemptId: "attempt-plan",
+      actorUserId: "user-1",
+      attemptNumber: 1,
+      claimedAt: "2026-04-11T12:00:00.000Z",
+      leaseExpiresAt: "2026-04-11T12:05:00.000Z"
+    },
+    _etag: "etag-plan"
+  };
+  const replace = vi.fn(async (document: WhatnotImportBatchDocument, _options?: {
+    accessCondition?: { condition?: string };
+  }) => ({ resource: document }));
+  syncSnapshots.item.mockReturnValue({
+    read: vi.fn().mockResolvedValue({ resource: batch }),
+    replace
+  });
+  getContainersMock.mockReturnValue({ entitlements: createEntitlementsContainer(), syncSnapshots });
+  const plan = [{
+    operationKey: "operation-1",
+    rowIds: ["row-1"],
+    mutationId: "mutation-1",
+    outcome: "imported" as const,
+    updateMode: "new" as const,
+    lotId: "10",
+    saleId: "7",
+    targetSaleType: "pack" as const,
+    externalSaleKeyHashes: ["external-hash"],
+    rememberedMatchKeyHashes: ["match-hash"]
+  }];
+
+  const initialized = await initializeWhatnotConfirmationPlan(createConfig(), {
+    scopeKey: "user-1",
+    batchId: "batch-plan",
+    attemptId: "attempt-plan",
+    plan,
+    initializedAt: "2026-04-11T12:01:00.000Z"
+  });
+
+  assert.deepEqual(initialized.confirmationPlan, plan);
+  assert.deepEqual(replace.mock.calls[0]?.[0]?.confirmationPlan, plan);
+  assert.equal(replace.mock.calls[0]?.[1]?.accessCondition?.condition, "etag-plan");
+
+  const renewed = await renewWhatnotImportConfirmationLease(createConfig(), {
+    scopeKey: "user-1",
+    batchId: "batch-plan",
+    attemptId: "attempt-plan",
+    renewedAt: "2026-04-11T12:02:00.000Z",
+    leaseExpiresAt: "2026-04-11T12:07:00.000Z"
+  });
+  assert.equal(renewed?.confirmationAttempt?.leaseExpiresAt, "2026-04-11T12:07:00.000Z");
+
+  const lostLease = await renewWhatnotImportConfirmationLease(createConfig(), {
+    scopeKey: "user-1",
+    batchId: "batch-plan",
+    attemptId: "another-attempt",
+    renewedAt: "2026-04-11T12:03:00.000Z",
+    leaseExpiresAt: "2026-04-11T12:08:00.000Z"
+  });
+  assert.equal(lostLease, null);
+});
 
 function createConfig(): ApiConfig {
   return {
@@ -194,7 +279,7 @@ test("consumeWhatnotOAuthState returns the document and tolerates missing delete
   assert.deepEqual(entitlements.item.mock.calls[0], ["whatnot_oauth_state:state-1", "oauth:whatnot"]);
 });
 
-test("getLatestPendingWhatnotImportBatch queries the partition and filters to valid batch docs", async () => {
+test("getLatestPendingWhatnotImportBatch exposes recoverable batches for user-triggered retry", async () => {
   const syncSnapshots = createSyncSnapshotsContainer();
   const batch: WhatnotImportBatchDocument = {
     id: "whatnot_import_batch:user-1:batch-1",
@@ -228,6 +313,9 @@ test("getLatestPendingWhatnotImportBatch queries the partition and filters to va
   const result = await getLatestPendingWhatnotImportBatch(createConfig(), " user-1 ");
 
   assert.equal(result?.batchId, "batch-1");
+  const queryParameters = syncSnapshots.items.query.mock.calls[0]?.[0]?.parameters as Array<{ value?: unknown }>;
+  assert.equal(queryParameters.some((parameter) => parameter.value === "recoverable_error"), true);
+  assert.equal(queryParameters.some((parameter) => parameter.value === "processing"), true);
   assert.equal(syncSnapshots.items.query.mock.calls[0]?.[1]?.partitionKey, "user-1");
   assert.equal(syncSnapshots.items.query.mock.calls[0]?.[1]?.maxItemCount, 1);
 });
@@ -331,7 +419,7 @@ test("claimPendingWhatnotImportBatch atomically moves a pending batch to process
     origin: "csv_manual",
     externalAccountId: "seller-1",
     startedByUserId: "user-1",
-    status: "pending_review",
+    status: "recoverable_error",
     startedAt: "2026-04-11T12:00:00.000Z",
     completedAt: null,
     updatedAt: "2026-04-11T12:00:00.000Z",
@@ -543,4 +631,204 @@ test("releaseClaimedWhatnotImportBatch restores a pre-write claim with If-Match"
     "Retry"
   );
   assert.equal(conflict, null);
+});
+
+test("claimPendingWhatnotImportBatch resumes recoverable and expired attempts but rejects mismatches", async () => {
+  const syncSnapshots = createSyncSnapshotsContainer();
+  const base: WhatnotImportBatchDocument & { _etag: string } = {
+    id: "whatnot_import_batch:user-1:batch-1",
+    docType: "whatnot_import_batch",
+    userId: "user-1",
+    scopeKey: "user-1",
+    provider: "whatnot",
+    batchId: "batch-1",
+    origin: "csv_manual",
+    externalAccountId: "seller-1",
+    startedByUserId: "user-1",
+    status: "recoverable_error",
+    startedAt: "2026-04-11T12:00:00.000Z",
+    completedAt: null,
+    updatedAt: "2026-04-11T12:01:00.000Z",
+    importWindowStartedAt: "2026-04-10T00:00:00.000Z",
+    importedCount: 0,
+    updatedCount: 0,
+    skippedCount: 0,
+    rows: [],
+    confirmationFingerprint: "fingerprint-1",
+    _etag: "etag-1"
+  };
+  const replace = vi.fn(async (document: WhatnotImportBatchDocument) => ({
+    resource: { ...document, _etag: "etag-next" }
+  }));
+  let current = base;
+  syncSnapshots.item.mockImplementation(() => ({
+    read: vi.fn().mockImplementation(async () => ({ resource: current })),
+    replace
+  }));
+  getContainersMock.mockReturnValue({ entitlements: createEntitlementsContainer(), syncSnapshots });
+
+  const resumed = await claimPendingWhatnotImportBatch(
+    createConfig(),
+    "user-1",
+    "batch-1",
+    "2026-04-11T12:05:00.000Z",
+    {
+      fingerprint: "fingerprint-1",
+      decisions: [],
+      attemptId: "attempt-2",
+      actorUserId: "user-1",
+      leaseExpiresAt: "2026-04-11T12:10:00.000Z"
+    }
+  );
+  assert.equal(resumed.status, "claimed");
+  assert.equal(resumed.batch?.confirmationAttempt?.attemptId, "attempt-2");
+
+  current = {
+    ...base,
+    status: "processing",
+    confirmationAttempt: {
+      attemptId: "attempt-old",
+      actorUserId: "user-1",
+      attemptNumber: 1,
+      claimedAt: "2026-04-11T12:00:00.000Z",
+      leaseExpiresAt: "2026-04-11T12:04:00.000Z"
+    }
+  };
+  const reclaimed = await claimPendingWhatnotImportBatch(
+    createConfig(),
+    "user-1",
+    "batch-1",
+    "2026-04-11T12:05:00.000Z",
+    {
+      fingerprint: "fingerprint-1",
+      decisions: [],
+      attemptId: "attempt-3",
+      actorUserId: "user-1",
+      leaseExpiresAt: "2026-04-11T12:10:00.000Z"
+    }
+  );
+  assert.equal(reclaimed.status, "claimed");
+  assert.equal(reclaimed.batch?.confirmationAttempt?.attemptNumber, 2);
+
+  current = {
+    ...base,
+    status: "processing",
+    confirmationAttempt: undefined
+  };
+  const reclaimedLegacyBatch = await claimPendingWhatnotImportBatch(
+    createConfig(),
+    "user-1",
+    "batch-1",
+    "2026-04-11T12:05:00.000Z",
+    {
+      fingerprint: "fingerprint-1",
+      decisions: [],
+      attemptId: "attempt-legacy-recovery",
+      actorUserId: "user-1",
+      leaseExpiresAt: "2026-04-11T12:10:00.000Z"
+    }
+  );
+  assert.equal(reclaimedLegacyBatch.status, "claimed");
+  assert.equal(reclaimedLegacyBatch.batch?.confirmationAttempt?.attemptNumber, 2);
+  assert.equal(reclaimedLegacyBatch.batch?.confirmationAttempt?.adoptedLegacyProcessing, true);
+
+  current = base;
+  const mismatch = await claimPendingWhatnotImportBatch(
+    createConfig(),
+    "user-1",
+    "batch-1",
+    "2026-04-11T12:05:00.000Z",
+    {
+      fingerprint: "fingerprint-other",
+      decisions: [],
+      attemptId: "attempt-4",
+      actorUserId: "user-1",
+      leaseExpiresAt: "2026-04-11T12:10:00.000Z"
+    }
+  );
+  assert.equal(mismatch.status, "idempotency_mismatch");
+
+  current = { ...base, status: "completed", completedAt: "2026-04-11T12:06:00.000Z" };
+  const completedMismatch = await claimPendingWhatnotImportBatch(
+    createConfig(),
+    "user-1",
+    "batch-1",
+    "2026-04-11T12:07:00.000Z",
+    {
+      fingerprint: "fingerprint-other",
+      decisions: [],
+      attemptId: "attempt-5",
+      actorUserId: "user-1",
+      leaseExpiresAt: "2026-04-11T12:12:00.000Z"
+    }
+  );
+  assert.equal(completedMismatch.status, "idempotency_mismatch");
+});
+
+test("Whatnot recovery checkpoints operation outcomes and records recoverable failures", async () => {
+  const syncSnapshots = createSyncSnapshotsContainer();
+  let current: WhatnotImportBatchDocument & { _etag: string } = {
+    id: "whatnot_import_batch:user-1:batch-1",
+    docType: "whatnot_import_batch",
+    userId: "user-1",
+    scopeKey: "user-1",
+    provider: "whatnot",
+    batchId: "batch-1",
+    origin: "csv_manual",
+    externalAccountId: "seller-1",
+    startedByUserId: "user-1",
+    status: "processing",
+    startedAt: "2026-04-11T12:00:00.000Z",
+    completedAt: null,
+    updatedAt: "2026-04-11T12:01:00.000Z",
+    importWindowStartedAt: "2026-04-10T00:00:00.000Z",
+    importedCount: 0,
+    updatedCount: 0,
+    skippedCount: 0,
+    rows: [],
+    confirmationAttempt: {
+      attemptId: "attempt-1",
+      actorUserId: "user-1",
+      attemptNumber: 1,
+      claimedAt: "2026-04-11T12:01:00.000Z",
+      leaseExpiresAt: "2026-04-11T12:10:00.000Z"
+    },
+    _etag: "etag-1"
+  };
+  const replace = vi.fn(async (document: WhatnotImportBatchDocument) => {
+    current = { ...document, _etag: `etag-${replace.mock.calls.length + 2}` };
+    return { resource: current };
+  });
+  syncSnapshots.item.mockImplementation(() => ({
+    read: vi.fn().mockImplementation(async () => ({ resource: current })),
+    replace
+  }));
+  getContainersMock.mockReturnValue({ entitlements: createEntitlementsContainer(), syncSnapshots });
+
+  const checkpointed = await checkpointWhatnotImportOperation(createConfig(), {
+    scopeKey: "user-1",
+    batchId: "batch-1",
+    attemptId: "attempt-1",
+    operationKey: "operation-1",
+    outcome: "imported",
+    saleId: "12",
+    lotId: "8",
+    completedAt: "2026-04-11T12:02:00.000Z",
+    leaseExpiresAt: "2026-04-11T12:12:00.000Z"
+  });
+  assert.equal(checkpointed.confirmationProgress?.["operation-1"]?.outcome, "imported");
+  assert.equal(checkpointed.confirmationAttempt?.leaseExpiresAt, "2026-04-11T12:12:00.000Z");
+
+  const failed = await markWhatnotImportBatchRecoverable(createConfig(), {
+    scopeKey: "user-1",
+    batchId: "batch-1",
+    attemptId: "attempt-1",
+    failedOperationKey: "operation-2",
+    failedPhase: "sale_mapping",
+    errorMessage: "mapping unavailable",
+    failedAt: "2026-04-11T12:03:00.000Z"
+  });
+  assert.equal(failed?.status, "recoverable_error");
+  assert.equal(failed?.failedOperationKey, "operation-2");
+  assert.equal(failed?.failedPhase, "sale_mapping");
 });

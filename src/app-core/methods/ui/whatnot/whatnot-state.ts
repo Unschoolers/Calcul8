@@ -49,9 +49,13 @@ const EMPTY_WHATNOT_REVIEW_STATE: Pick<
   WhatnotApp,
   | "whatnotReviewBatchId"
   | "whatnotReviewRows"
+  | "isConfirmingWhatnotImport"
+  | "whatnotConfirmationRetryPayload"
 > = {
   whatnotReviewBatchId: null,
-  whatnotReviewRows: []
+  whatnotReviewRows: [],
+  isConfirmingWhatnotImport: false,
+  whatnotConfirmationRetryPayload: null
 };
 
 export function resetWhatnotCsvImportState(app: WhatnotApp): void {

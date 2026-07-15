@@ -27,6 +27,7 @@ vi.mock("./core", () => ({
 import {
   deleteSaleDocument,
   EntityVersionConflictError,
+  findSaleDocumentForWhatnotRecovery,
   getLotSalesSyncMeta,
   listSalesForScope,
   listSalesForLot,
@@ -724,4 +725,69 @@ test("listSyncScopeKeys de-duplicates and sorts scope keys", async () => {
   const result = await listSyncScopeKeys(createConfig());
 
   assert.deepEqual(result, ["user-1", "ws:team-b"]);
+});
+
+test("findSaleDocumentForWhatnotRecovery requires the current mutation and external identity without rewriting sales", async () => {
+  const syncSnapshots = createSyncSnapshotsContainer();
+  const existing: SaleDocument = {
+    id: "sale:user-1:8:12",
+    docType: "sale",
+    userId: "user-1",
+    scopeKey: "user-1",
+    lotId: "8",
+    saleId: "12",
+    sale: {
+      id: 12,
+      externalProvider: "whatnot",
+      externalAccountId: "seller-1",
+      externalOrderId: "order-1",
+      externalOrderItemId: "item-1"
+    },
+    version: 3,
+    updatedAt: "2026-04-11T12:00:00.000Z",
+    updatedBy: "user-1",
+    mutationId: "whatnot_import:batch-1:order-1:item-1",
+    deletedAt: null
+  };
+  syncSnapshots.items.query.mockReturnValue({
+    fetchAll: vi.fn().mockResolvedValue({ resources: [existing] })
+  });
+  getContainersMock.mockReturnValue({ syncSnapshots });
+
+  const result = await findSaleDocumentForWhatnotRecovery(createConfig(), {
+    scopeKey: " user-1 ",
+    mutationId: " whatnot_import:batch-1:order-1:item-1 ",
+    externalAccountId: "seller-1",
+    externalOrderId: "order-1",
+    externalOrderItemId: "item-1"
+  });
+
+  assert.equal(result, existing);
+  assert.equal(syncSnapshots.items.query.mock.calls[0]?.[1]?.partitionKey, "user-1");
+  assert.equal(syncSnapshots.items.query.mock.calls[0]?.[1]?.maxItemCount, 2);
+  const query = String(syncSnapshots.items.query.mock.calls[0]?.[0]?.query ?? "");
+  assert.match(query, /c\.mutationId = @mutationId/);
+  assert.match(query, /AND c\.sale\.externalOrderItemId = @externalOrderItemId/);
+  assert.equal(syncSnapshots.items.create.mock.calls.length, 0);
+});
+
+test("findSaleDocumentForWhatnotRecovery can adopt exact Whatnot identity after a later mutation", async () => {
+  const syncSnapshots = createSyncSnapshotsContainer();
+  syncSnapshots.items.query.mockReturnValue({
+    fetchAll: vi.fn().mockResolvedValue({ resources: [] })
+  });
+  getContainersMock.mockReturnValue({ syncSnapshots });
+
+  await findSaleDocumentForWhatnotRecovery(createConfig(), {
+    scopeKey: "user-1",
+    mutationId: "whatnot_import:batch-1:order-1:item-1",
+    externalAccountId: "seller-1",
+    externalOrderId: "order-1",
+    externalOrderItemId: "item-1",
+    allowExternalIdentityMatch: true
+  });
+
+  const query = String(syncSnapshots.items.query.mock.calls[0]?.[0]?.query ?? "");
+  assert.match(query, /c\.mutationId = @mutationId OR/);
+  assert.match(query, /c\.sale\.externalOrderItemId = @externalOrderItemId/);
 });

@@ -22,7 +22,7 @@ The realtime gateway is a separate runtime because workspace presence, lot updat
 The C4 model intentionally highlights the same areas tracked in `docs/refactorplan.md`:
 
 - Auth must finish the move to session-first behavior by removing remaining bearer fallback surfaces and avoiding browser-stored auth material.
-- Cross-document account, workspace, billing, Whatnot, sales, and sync writes must become recoverable and idempotent when a partial failure occurs.
+- Whatnot confirmation and workspace creation now use durable recovery state, deterministic idempotency identities, and user-triggered resume; other cross-document account, billing, sales, and sync workflows still need the same scrutiny when they change.
 - Generated release, visual QA, coverage, and architecture artifacts must stay untracked so releases remain reproducible from source.
 - Shared test fixtures need builders so strict `verify:all` typechecking catches real contract drift without forcing every test to copy full schemas.
 - Recorded sales, sales history, and portfolio metrics must stay distinct from what-if forecasts and projection-only UI.

@@ -559,6 +559,8 @@ export interface AppState extends LotSetup {
   showCreateWorkspaceModal: boolean;
   isCreatingWorkspace: boolean;
   newWorkspaceName: string;
+  newWorkspaceIdempotencyKey: string;
+  newWorkspaceIdempotencyName: string;
   showWorkspaceMembersModal: boolean;
   workspaceMembers: WorkspaceMember[];
   workspacePresenceByUserId: Record<string, WorkspacePresenceEntry>;
@@ -687,6 +689,8 @@ export interface AppState extends LotSetup {
   whatnotCsvMapOrderStatus: number | null;
   whatnotReviewBatchId: string | null;
   whatnotReviewRows: WhatnotImportReviewRow[];
+  isConfirmingWhatnotImport: boolean;
+  whatnotConfirmationRetryPayload: string | null;
   whatnotCallbackStatus: "connected" | "error" | null;
   whatnotCallbackMessage: string;
 

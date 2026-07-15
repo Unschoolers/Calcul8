@@ -22,6 +22,7 @@ export async function fetchWhatnotJson(
   fallbackMessage: string,
   options: {
     expireAuthOn401?: boolean;
+    errorMessagesByCode?: Readonly<Record<string, string>>;
   } = {}
 ): Promise<{ ok: true; body: unknown } | { ok: false }> {
   const baseUrl = resolveApiBaseUrl();
@@ -48,7 +49,13 @@ export async function fetchWhatnotJson(
   }
 
   if (!response.ok) {
-    const message = String((body as { error?: unknown } | null)?.error ?? fallbackMessage).trim() || fallbackMessage;
+    const errorBody = body as { code?: unknown; error?: unknown } | null;
+    const errorCode = String(errorBody?.code ?? "").trim();
+    const message = String(
+      (errorCode ? options.errorMessagesByCode?.[errorCode] : undefined)
+      ?? errorBody?.error
+      ?? fallbackMessage
+    ).trim() || fallbackMessage;
     app.notify(message, "error");
     return { ok: false };
   }

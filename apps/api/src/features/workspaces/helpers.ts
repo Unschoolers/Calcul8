@@ -11,11 +11,17 @@ import type {
   WorkspaceRole
 } from "../../types";
 import { requireRequestBodyRecord } from "../../lib/httpRequest";
+import {
+  normalizeWorkspaceIdempotencyKey,
+  normalizeWorkspaceName
+} from "./creationIdentity";
 
 const JOIN_LINK_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
-export function isWorkspaceDeleted(workspace: WorkspaceDocument | null | undefined): boolean {
-  return workspace?.status === "deleted";
+export function isWorkspaceActive(
+  workspace: WorkspaceDocument | null | undefined
+): workspace is WorkspaceDocument {
+  return !!workspace && (!workspace.status || workspace.status === "active");
 }
 
 export function isActiveMembership(
@@ -37,7 +43,7 @@ export async function assertCanManageWorkspaceMembership(
   workspaceId: string
 ): Promise<WorkspaceMembershipDocument> {
   const workspace = await getWorkspaceById(config, workspaceId);
-  if (!workspace || isWorkspaceDeleted(workspace)) {
+  if (!isWorkspaceActive(workspace)) {
     throw new HttpError(404, "Workspace was not found.");
   }
 
@@ -56,30 +62,22 @@ function normalizeWorkspaceRole(rawRole: unknown): WorkspaceRole {
   throw new HttpError(400, "Field 'role' must be one of: owner, member.");
 }
 
-export function parseCreateWorkspaceBody(raw: unknown): { name: string } {
-  const payload = requireRequestBodyRecord(raw) as { name?: unknown };
-  const name = String(payload.name ?? "").trim();
+export function parseCreateWorkspaceBody(raw: unknown): { name: string; idempotencyKey: string } {
+  const payload = requireRequestBodyRecord(raw) as { name?: unknown; idempotencyKey?: unknown };
+  const name = normalizeWorkspaceName(payload.name);
 
   if (!name) {
     throw new HttpError(400, "Field 'name' is required.");
   }
 
-  return { name };
-}
-
-export async function createUniqueWorkspaceId(
-  config: ApiConfig,
-  maxAttempts = 5
-): Promise<string> {
-  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-    const workspaceId = `ws_${randomBytes(8).toString("hex")}`;
-    const existing = await getWorkspaceById(config, workspaceId);
-    if (!existing || isWorkspaceDeleted(existing)) {
-      return workspaceId;
-    }
+  try {
+    return {
+      name,
+      idempotencyKey: normalizeWorkspaceIdempotencyKey(payload.idempotencyKey)
+    };
+  } catch (error) {
+    throw new HttpError(400, error instanceof Error ? error.message : "Workspace idempotency key is invalid.");
   }
-
-  throw new HttpError(500, "Failed to generate a unique workspace id.");
 }
 
 export function parseUpsertWorkspaceMemberBody(raw: unknown): { userId: string; role: WorkspaceRole } {

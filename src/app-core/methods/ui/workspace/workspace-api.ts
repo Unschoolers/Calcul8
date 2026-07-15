@@ -18,7 +18,8 @@ export async function fetchWorkspaceJson(
   app: AppContext,
   path: string,
   init: RequestInit,
-  fallbackMessage: string
+  fallbackMessage: string,
+  options: { errorMessagesByCode?: Readonly<Record<string, string>> } = {}
 ): Promise<{ ok: true; response: Response; body: unknown } | { ok: false; handled: true }> {
   const baseUrl = resolveApiBaseUrl();
   if (!baseUrl) {
@@ -82,7 +83,7 @@ export async function fetchWorkspaceJson(
   }
 
   if (!response.ok) {
-    app.notify(await parseWorkspaceApiError(response, fallbackMessage), "error");
+    app.notify(await parseWorkspaceApiError(response, fallbackMessage, options.errorMessagesByCode), "error");
     return { ok: false, handled: true };
   }
 

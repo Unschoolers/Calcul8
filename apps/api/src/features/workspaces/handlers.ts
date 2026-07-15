@@ -18,15 +18,18 @@ import type {
 } from "../../types";
 import {
   assertCanManageWorkspaceMembership,
-  createUniqueWorkspaceId,
   isActiveMembership,
-  isWorkspaceDeleted,
   parseCreateWorkspaceBody,
   parseJoinAcceptBody,
   parseLeaveWorkspaceBody,
   parseUpsertWorkspaceMemberBody,
   hashJoinToken
 } from "./helpers";
+import {
+  buildWorkspaceCreationFingerprint,
+  buildWorkspaceCreationKeyHash,
+  deriveWorkspaceCreationId
+} from "./creationIdentity";
 import { readRequestJsonOrNull, requireRouteParam } from "../../lib/httpRequest";
 import {
   addWorkspaceMemberForActor,
@@ -50,6 +53,9 @@ function logWorkspaceTelemetry(
 ): void {
   const config = getConfig();
   const status = typeof error === "object" && error && "status" in error ? Number((error as { status?: unknown }).status) : null;
+  const errorCode = typeof error === "object" && error && "code" in error
+    ? String((error as { code?: unknown }).code ?? "").trim().toLowerCase()
+    : "";
   if (status === 401 || status === 403 || status === 409 || status === 410) {
     logApiTelemetry({
       logger: context,
@@ -58,7 +64,7 @@ function logWorkspaceTelemetry(
       config,
       route,
       workspaceScope,
-      outcome: `http_${status}`
+      outcome: errorCode || `http_${status}`
     });
   }
 }
@@ -80,12 +86,14 @@ export async function workspacesCreate(
       }
     });
     const payload = parseCreateWorkspaceBody(await request.json());
-    const workspaceId = await createUniqueWorkspaceId(config);
+    const workspaceId = deriveWorkspaceCreationId(ownerUserId, payload.idempotencyKey);
 
     const created = await createWorkspaceWithOwner(config, {
       workspaceId,
       name: payload.name,
-      ownerUserId
+      ownerUserId,
+      creationKeyHash: buildWorkspaceCreationKeyHash(payload.idempotencyKey),
+      creationFingerprint: buildWorkspaceCreationFingerprint(ownerUserId, payload.name)
     });
 
     return jsonResponse(request, config, 201, {
@@ -94,9 +102,14 @@ export async function workspacesCreate(
       membership: created.ownerMembership
     });
   } catch (error) {
-    logWorkspaceTelemetry(request, context, "workspaces_create", error, "personal");
+    const responseError = error instanceof Error && error.name === "WorkspaceCreationConflictError"
+      ? new HttpError(409, error.message, "IDEMPOTENCY_MISMATCH")
+      : error instanceof Error && error.name === "WorkspaceCreationInProgressError"
+        ? new HttpError(409, error.message, "OPERATION_IN_PROGRESS")
+        : error;
+    logWorkspaceTelemetry(request, context, "workspaces_create", responseError, "personal");
     context.error("POST /workspaces failed", error);
-    return errorResponse(request, config, error, "Failed to create workspace.");
+    return errorResponse(request, config, responseError, "Failed to create workspace.");
   }
 }
 

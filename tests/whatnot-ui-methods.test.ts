@@ -191,6 +191,80 @@ test("confirmWhatnotImportBatch refreshes authoritative sales for affected lots 
   assert.equal(localStorage.getItem("sales:7"), JSON.stringify(context.sales));
 });
 
+test("confirmWhatnotImportBatch guards duplicate requests and retains frozen decisions for recovery", async () => {
+  let resolveRequest!: (response: Response) => void;
+  fetchAuthenticatedApiResponseMock.mockImplementationOnce(() => new Promise<Response>((resolve) => {
+    resolveRequest = resolve;
+  }));
+  const notify = vi.fn();
+  const context = {
+    activeScopeType: "personal",
+    activeWorkspaceId: null,
+    googleAuthEpoch: 0,
+    hasProAccess: true,
+    isCurrentWorkspaceOwner: true,
+    preferredLanguage: "fr",
+    notify,
+    whatnotReviewBatchId: "batch-recovery",
+    whatnotReviewRows: [{
+      rowId: "row-1",
+      externalSaleId: "sale-1",
+      externalOrderId: "order-1",
+      externalOrderItemId: "item-1",
+      externalAccountId: "seller-1",
+      title: "Boîte",
+      quantity: 1,
+      price: 25,
+      buyerShipping: 0,
+      date: "2026-03-08",
+      orderStatus: "ORDER_EARNINGS",
+      action: "create",
+      matchSource: "none",
+      requiresManualReview: false,
+      skipImport: false,
+      selectedLotId: 7,
+      selectedSaleType: "box",
+      selectedPacksCount: 0,
+      selectedImportAction: "create"
+    }],
+    isConfirmingWhatnotImport: false,
+    whatnotConfirmationRetryPayload: null,
+    pullCloudSync: vi.fn(),
+    refreshWhatnotStatus: vi.fn(),
+    currentLotId: 7,
+    sales: [],
+    getSalesStorageKey: (lotId: number) => `sales:${lotId}`
+  };
+
+  const first = uiWhatnotMethods.confirmWhatnotImportBatch.call(context as never);
+  const duplicate = uiWhatnotMethods.confirmWhatnotImportBatch.call(context as never);
+  assert.equal(fetchAuthenticatedApiResponseMock.mock.calls.length, 1);
+  assert.equal(context.isConfirmingWhatnotImport, true);
+  assert.match(String(context.whatnotConfirmationRetryPayload), /"rowId":"row-1"/);
+
+  resolveRequest(new Response(JSON.stringify({ code: "RECOVERY_CONFLICT" }), {
+    status: 503,
+    headers: { "Content-Type": "application/json" }
+  }));
+  await Promise.all([first, duplicate]);
+
+  assert.equal(context.isConfirmingWhatnotImport, false);
+  assert.match(String(context.whatnotConfirmationRetryPayload), /"rowId":"row-1"/);
+  assert.match(String(notify.mock.calls[0]?.[0]), /enregistrée partiellement/i);
+
+  context.whatnotReviewRows[0]!.externalOrderId = "";
+  context.whatnotReviewRows[0]!.selectedLotId = null as never;
+  fetchAuthenticatedApiResponseMock.mockResolvedValueOnce(new Response(JSON.stringify({ code: "RECOVERY_CONFLICT" }), {
+    status: 503,
+    headers: { "Content-Type": "application/json" }
+  }));
+  await uiWhatnotMethods.confirmWhatnotImportBatch.call(context as never);
+  const retryBody = JSON.parse(String(fetchAuthenticatedApiResponseMock.mock.calls[1]?.[2]?.body)) as {
+    decisions?: Array<{ lotId?: number }>;
+  };
+  assert.equal(retryBody.decisions?.[0]?.lotId, 7);
+});
+
 test("discardWhatnotReviewBatch clears the staged batch and refreshes Whatnot status", async () => {
   fetchAuthenticatedApiResponseMock.mockResolvedValueOnce(new Response(JSON.stringify({
     ok: true,

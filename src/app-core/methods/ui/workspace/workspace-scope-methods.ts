@@ -2,6 +2,7 @@ import type { AppContext, AppMethodState } from "../../../context-app.ts";
 import { createSyncPayload } from "../sync/sync-payload.ts";
 import { runCloudSyncPush } from "../sync/sync-service.ts";
 import { resolveApiBaseUrl } from "../common/shared.ts";
+import { translateAppMessage } from "../../../i18n/index.ts";
 import { loadWorkspaceMembers } from "./workspace-members.ts";
 import {
   applyWorkspaceScope,
@@ -10,6 +11,12 @@ import {
   type WorkspaceListResponse
 } from "./workspace-ui-helpers.ts";
 import { fetchWorkspaceJson, getGoogleIdToken } from "./workspace-api.ts";
+
+function createWorkspaceIdempotencyKey(): string {
+  const randomUuid = globalThis.crypto?.randomUUID?.();
+  if (randomUuid) return randomUuid;
+  return `workspace-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 14)}`;
+}
 
 export const uiWorkspaceScopeMethods: ThisType<AppContext> & Pick<
   AppMethodState,
@@ -89,6 +96,7 @@ export const uiWorkspaceScopeMethods: ThisType<AppContext> & Pick<
   },
 
   async createWorkspace(): Promise<void> {
+    if (this.isCreatingWorkspace) return;
     if (this.activeScopeType !== "personal") {
       this.notify("Create shared workspaces from Personal mode for now.", "warning");
       return;
@@ -111,6 +119,12 @@ export const uiWorkspaceScopeMethods: ThisType<AppContext> & Pick<
       return;
     }
 
+    if (!this.newWorkspaceIdempotencyKey || this.newWorkspaceIdempotencyName !== name) {
+      this.newWorkspaceIdempotencyKey = createWorkspaceIdempotencyKey();
+      this.newWorkspaceIdempotencyName = name;
+    }
+    const idempotencyKey = this.newWorkspaceIdempotencyKey;
+
     this.isCreatingWorkspace = true;
     try {
       const createResult = await fetchWorkspaceJson(
@@ -122,10 +136,18 @@ export const uiWorkspaceScopeMethods: ThisType<AppContext> & Pick<
             "Content-Type": "application/json"
           },
           body: JSON.stringify({
-            name
+            name,
+            idempotencyKey
           })
         },
-        "Failed to create workspace."
+        translateAppMessage(this.preferredLanguage, "workspaceCreateFailedNotice"),
+        {
+          errorMessagesByCode: {
+            OPERATION_IN_PROGRESS: translateAppMessage(this.preferredLanguage, "workspaceCreateInProgressNotice"),
+            IDEMPOTENCY_MISMATCH: translateAppMessage(this.preferredLanguage, "workspaceCreateMismatchNotice"),
+            RECOVERY_CONFLICT: translateAppMessage(this.preferredLanguage, "workspaceCreateRecoveryConflictNotice")
+          }
+        }
       );
       if (!createResult.ok) return;
 
@@ -164,6 +186,8 @@ export const uiWorkspaceScopeMethods: ThisType<AppContext> & Pick<
       );
 
       this.newWorkspaceName = "";
+      this.newWorkspaceIdempotencyKey = "";
+      this.newWorkspaceIdempotencyName = "";
       this.showCreateWorkspaceModal = false;
 
       await this.refreshWorkspaces();

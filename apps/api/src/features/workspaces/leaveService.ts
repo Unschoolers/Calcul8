@@ -9,7 +9,7 @@ import {
   transferWorkspaceOwnership,
   upsertWorkspaceMembership
 } from "../../lib/cosmos/workspaceRepository";
-import { isActiveMembership, isWorkspaceDeleted } from "./helpers";
+import { isActiveMembership, isWorkspaceActive } from "./helpers";
 import type {
   ApiConfig,
   WorkspaceDocument,
@@ -27,7 +27,7 @@ export async function leaveWorkspaceForActor(
   | { workspaceId: string; newOwnerUserId: string }
 > {
   const workspace = await getWorkspaceById(config, workspaceId);
-  if (!workspace || isWorkspaceDeleted(workspace)) {
+  if (!isWorkspaceActive(workspace)) {
     throw new HttpError(404, "Workspace was not found.");
   }
 

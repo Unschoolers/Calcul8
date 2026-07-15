@@ -128,6 +128,10 @@
   "shellTransferOwnerHint": "Choisissez le membre qui deviendra propriétaire quand vous quitterez l'espace.",
   "shellTransferOwnerLabel": "Nouveau propriétaire",
   "shellWorkspaceMemberFallback": "Membre de l'espace",
-  "shellWorkspaceNameLabel": "Nom de l'espace"
+  "shellWorkspaceNameLabel": "Nom de l'espace",
+  "workspaceCreateFailedNotice": "Impossible de créer l’espace de travail.",
+  "workspaceCreateInProgressNotice": "Cet espace de travail est déjà en cours de création. Gardez cette fenêtre ouverte et réessayez sous peu.",
+  "workspaceCreateMismatchNotice": "Cette demande de création a changé après son démarrage. Fermez la fenêtre et recommencez.",
+  "workspaceCreateRecoveryConflictNotice": "La création de l’espace de travail n’a pas pu reprendre en toute sécurité. Gardez cette fenêtre ouverte et réessayez."
 }
 

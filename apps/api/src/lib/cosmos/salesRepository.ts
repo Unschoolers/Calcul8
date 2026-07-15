@@ -67,6 +67,15 @@ export interface LotSalesSyncMetaRecord {
   latestUpdatedAt: string | null;
 }
 
+interface FindWhatnotRecoverySaleInput {
+  scopeKey: string;
+  mutationId: string;
+  externalAccountId: string;
+  externalOrderId: string;
+  externalOrderItemId: string;
+  allowExternalIdentityMatch?: boolean;
+}
+
 function normalizeId(raw: string | number): string {
   return String(raw ?? "").trim();
 }
@@ -118,6 +127,54 @@ function compareSaleDocuments(left: SaleDocument, right: SaleDocument): number {
   const rightDate = String((right.sale as { date?: unknown })?.date ?? "");
   if (leftDate !== rightDate) return leftDate.localeCompare(rightDate);
   return left.saleId.localeCompare(right.saleId);
+}
+
+export async function findSaleDocumentForWhatnotRecovery(
+  config: ApiConfig,
+  input: FindWhatnotRecoverySaleInput
+): Promise<SaleDocument | null> {
+  const { syncSnapshots } = getContainers(config);
+  const scopeKey = normalizeId(input.scopeKey);
+  const identityPredicate = input.allowExternalIdentityMatch
+    ? `(c.mutationId = @mutationId OR (
+          c.sale.externalProvider = @provider
+          AND c.sale.externalAccountId = @externalAccountId
+          AND c.sale.externalOrderId = @externalOrderId
+          AND c.sale.externalOrderItemId = @externalOrderItemId
+        ))`
+    : `c.mutationId = @mutationId
+        AND c.sale.externalProvider = @provider
+        AND c.sale.externalAccountId = @externalAccountId
+        AND c.sale.externalOrderId = @externalOrderId
+        AND c.sale.externalOrderItemId = @externalOrderItemId`;
+  const querySpec = {
+    query: `
+      SELECT * FROM c
+      WHERE c.userId = @scopeKey
+        AND c.docType = @docType
+        AND (NOT IS_DEFINED(c.deletedAt) OR IS_NULL(c.deletedAt))
+        AND ${identityPredicate}
+    `,
+    parameters: [
+      { name: "@scopeKey", value: scopeKey },
+      { name: "@docType", value: "sale" },
+      { name: "@mutationId", value: normalizeId(input.mutationId) },
+      { name: "@provider", value: "whatnot" },
+      { name: "@externalAccountId", value: normalizeId(input.externalAccountId) },
+      { name: "@externalOrderId", value: normalizeId(input.externalOrderId) },
+      { name: "@externalOrderItemId", value: normalizeId(input.externalOrderItemId) }
+    ]
+  };
+  const iterator = syncSnapshots.items.query<SaleDocument>(querySpec, {
+    partitionKey: scopeKey,
+    maxItemCount: 2
+  });
+  const { resources } = await withCosmosRetry(() => iterator.fetchAll());
+  const matches = (resources ?? []).filter(isSaleDocument).filter((document) => !document.deletedAt);
+  if (matches.length > 1) {
+    throw new Error("Whatnot recovery found multiple matching sales.");
+  }
+  return matches[0] ?? null;
 }
 
 function normalizeLotIds(lotIds: string[] | null | undefined): string[] {

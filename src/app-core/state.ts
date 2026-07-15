@@ -73,6 +73,8 @@ export function createInitialState(): AppState {
     showCreateWorkspaceModal: false,
     isCreatingWorkspace: false,
     newWorkspaceName: "",
+    newWorkspaceIdempotencyKey: "",
+    newWorkspaceIdempotencyName: "",
     showWorkspaceMembersModal: false,
     workspaceMembers: [],
     workspacePresenceByUserId: {},
@@ -261,6 +263,8 @@ export function createInitialState(): AppState {
     whatnotCsvMapOrderStatus: null,
     whatnotReviewBatchId: null,
     whatnotReviewRows: [],
+    isConfirmingWhatnotImport: false,
+    whatnotConfirmationRetryPayload: null,
     whatnotCallbackStatus: null,
     whatnotCallbackMessage: "",
 

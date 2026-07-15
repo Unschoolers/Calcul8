@@ -29,6 +29,7 @@ vi.mock("./core", () => ({
 }));
 
 import {
+  auditWorkspaceOwnerMemberships,
   createWorkspaceJoinLink,
   createWorkspaceWithOwner,
   deactivateWorkspaceMembership,
@@ -37,6 +38,7 @@ import {
   listWorkspacesForUser,
   markWorkspaceJoinLinkUsed,
   revokeWorkspaceJoinLink,
+  repairWorkspaceOwnerMembership,
   softDeleteWorkspace,
   transferWorkspaceOwnership,
   updateWorkspaceMembershipProfileSnapshot,
@@ -112,6 +114,11 @@ test("listWorkspacesForUser filters deleted and missing workspaces", async () =>
     id: "m:user-1:ws-missing",
     workspaceId: "ws-missing"
   };
+  const creatingMembership: WorkspaceMembershipDocument = {
+    ...activeMembership,
+    id: "m:user-1:ws-creating",
+    workspaceId: "ws-creating"
+  };
   const activeWorkspace: WorkspaceDocument = {
     id: "workspace:ws-active",
     docType: "workspace",
@@ -129,10 +136,17 @@ test("listWorkspacesForUser filters deleted and missing workspaces", async () =>
     workspaceId: "ws-deleted",
     status: "deleted"
   };
+  const creatingWorkspace: WorkspaceDocument = {
+    ...activeWorkspace,
+    id: "workspace:ws-creating",
+    userId: "ws:ws-creating",
+    workspaceId: "ws-creating",
+    status: "creating"
+  };
 
   entitlements.items.query.mockReturnValue({
     fetchAll: vi.fn().mockResolvedValue({
-      resources: [activeMembership, deletedMembership, missingMembership]
+      resources: [activeMembership, deletedMembership, missingMembership, creatingMembership]
     })
   });
   entitlements.item.mockImplementation((id: string) => {
@@ -144,6 +158,9 @@ test("listWorkspacesForUser filters deleted and missing workspaces", async () =>
     }
     if (id === "workspace:ws-missing") {
       return { read: vi.fn().mockRejectedValue({ statusCode: 404 }) };
+    }
+    if (id === "workspace:ws-creating") {
+      return { read: vi.fn().mockResolvedValue({ resource: creatingWorkspace }) };
     }
     return { read: vi.fn().mockResolvedValue({ resource: null }) };
   });
@@ -213,44 +230,279 @@ test("upsertWorkspaceMembership stores optional profile snapshots and preserves 
   assert.equal(membership.updatedAt, "2026-03-18T00:00:00.000Z");
 });
 
-test("createWorkspaceWithOwner maps Cosmos conflicts to a friendly error", async () => {
+test("createWorkspaceWithOwner rejects reuse of a creation key with changed input", async () => {
   const entitlements = createEntitlementsContainer();
   entitlements.items.create.mockRejectedValue({ statusCode: 409 });
+  entitlements.item.mockReturnValue({
+    read: vi.fn().mockResolvedValue({
+      resource: {
+        id: "workspace:ws-1",
+        docType: "workspace",
+        userId: "ws:ws-1",
+        workspaceId: "ws-1",
+        name: "Original Team",
+        ownerUserId: "owner-1",
+        status: "creation_failed",
+        creationKeyHash: "key-hash",
+        creationFingerprint: "original-fingerprint",
+        creationAttemptCount: 1,
+        createdAt: "2026-03-18T00:00:00.000Z",
+        updatedAt: "2026-03-18T00:00:00.000Z"
+      }
+    })
+  });
   getContainersMock.mockReturnValue({ entitlements });
 
   await assert.rejects(
     () => createWorkspaceWithOwner(createConfig(), {
       workspaceId: "ws-1",
       name: "Team One",
-      ownerUserId: "owner-1"
+      ownerUserId: "owner-1",
+      creationKeyHash: "key-hash",
+      creationFingerprint: "changed-fingerprint"
     }),
-    /Workspace already exists\./
+    /idempotency key.*different request/i
   );
 });
 
-test("createWorkspaceWithOwner removes the workspace document when owner membership creation fails", async () => {
+test("createWorkspaceWithOwner activates only after the owner membership is durable", async () => {
   const entitlements = createEntitlementsContainer();
-  const deleteWorkspace = vi.fn().mockResolvedValue({});
+  const replaceWorkspace = vi.fn(async (document: WorkspaceDocument) => ({
+    resource: { ...document, _etag: "active-etag" }
+  }));
   entitlements.items.create.mockImplementation(async (document: WorkspaceDocument) => ({
+    resource: { ...document, _etag: "creating-etag" }
+  }));
+  entitlements.items.upsert.mockImplementation(async (document: WorkspaceMembershipDocument) => ({
     resource: document
   }));
-  entitlements.items.upsert.mockRejectedValue(new Error("membership unavailable"));
-  entitlements.item.mockReturnValue({
-    delete: deleteWorkspace
+  entitlements.item.mockReturnValue({ replace: replaceWorkspace });
+  getContainersMock.mockReturnValue({ entitlements });
+
+  const result = await createWorkspaceWithOwner(createConfig(), {
+    workspaceId: "ws-ready",
+    name: "Ready Team",
+    ownerUserId: "owner-1",
+    creationKeyHash: "key-hash",
+    creationFingerprint: "fingerprint"
   });
+
+  assert.equal(entitlements.items.create.mock.calls[0]?.[0]?.status, "creating");
+  assert.equal(entitlements.items.upsert.mock.calls[0]?.[0]?.role, "owner");
+  assert.equal(replaceWorkspace.mock.calls[0]?.[0]?.status, "active");
+  assert.equal(result.workspace.status, "active");
+  assert.equal(result.workspace.creationAttemptCount, 1);
+  assert.equal(
+    entitlements.items.upsert.mock.invocationCallOrder[0] < replaceWorkspace.mock.invocationCallOrder[0],
+    true
+  );
+});
+
+test("createWorkspaceWithOwner records a recoverable failure instead of deleting the workspace", async () => {
+  const entitlements = createEntitlementsContainer();
+  const replaceWorkspace = vi.fn(async (document: WorkspaceDocument) => ({ resource: document }));
+  entitlements.items.create.mockImplementation(async (document: WorkspaceDocument) => ({
+    resource: { ...document, _etag: "creating-etag" }
+  }));
+  entitlements.items.upsert.mockRejectedValue(new Error("membership unavailable"));
+  entitlements.item.mockReturnValue({ replace: replaceWorkspace });
   getContainersMock.mockReturnValue({ entitlements });
 
   await assert.rejects(
     () => createWorkspaceWithOwner(createConfig(), {
       workspaceId: "ws-orphan",
       name: "Orphan Risk",
-      ownerUserId: "owner-1"
+      ownerUserId: "owner-1",
+      creationKeyHash: "key-hash",
+      creationFingerprint: "fingerprint"
     }),
     /membership unavailable/
   );
 
-  assert.equal(deleteWorkspace.mock.calls.length, 1);
-  assert.deepEqual(entitlements.item.mock.calls.at(-1), ["workspace:ws-orphan", "ws:ws-orphan"]);
+  assert.equal(replaceWorkspace.mock.calls.length, 1);
+  assert.equal(replaceWorkspace.mock.calls[0]?.[0]?.status, "creation_failed");
+  assert.equal(replaceWorkspace.mock.calls[0]?.[0]?.creationErrorCode, "owner_membership_failed");
+});
+
+test("createWorkspaceWithOwner repairs a failed creation on retry", async () => {
+  const entitlements = createEntitlementsContainer();
+  const failedWorkspace: WorkspaceDocument = {
+    id: "workspace:ws-retry",
+    docType: "workspace",
+    userId: "ws:ws-retry",
+    workspaceId: "ws-retry",
+    name: "Retry Team",
+    ownerUserId: "owner-1",
+    status: "creation_failed",
+    creationKeyHash: "key-hash",
+    creationFingerprint: "fingerprint",
+    creationAttemptCount: 1,
+    createdAt: "2026-03-18T00:00:00.000Z",
+    updatedAt: "2026-03-18T00:00:00.000Z",
+    _etag: "failed-etag"
+  } as WorkspaceDocument;
+  const readWorkspace = vi.fn().mockResolvedValue({ resource: failedWorkspace });
+  const replaceWorkspace = vi.fn(async (document: WorkspaceDocument) => ({
+    resource: { ...document, _etag: `etag-${document.status}` }
+  }));
+  entitlements.items.create.mockRejectedValue({ statusCode: 409 });
+  entitlements.items.upsert.mockImplementation(async (document: WorkspaceMembershipDocument) => ({ resource: document }));
+  entitlements.item.mockReturnValue({ read: readWorkspace, replace: replaceWorkspace });
+  getContainersMock.mockReturnValue({ entitlements });
+
+  const result = await createWorkspaceWithOwner(createConfig(), {
+    workspaceId: "ws-retry",
+    name: "Retry Team",
+    ownerUserId: "owner-1",
+    creationKeyHash: "key-hash",
+    creationFingerprint: "fingerprint"
+  });
+
+  assert.equal(result.workspace.status, "active");
+  assert.equal(result.workspace.creationAttemptCount, 2);
+  assert.equal(entitlements.items.upsert.mock.calls.length, 1);
+});
+
+test("createWorkspaceWithOwner returns the winner when activation contention completes the same request", async () => {
+  const entitlements = createEntitlementsContainer();
+  const activeWorkspace: WorkspaceDocument = {
+    id: "workspace:ws-race",
+    docType: "workspace",
+    userId: "ws:ws-race",
+    workspaceId: "ws-race",
+    name: "Race Team",
+    ownerUserId: "owner-1",
+    status: "active",
+    creationKeyHash: "key-hash",
+    creationFingerprint: "fingerprint",
+    creationAttemptCount: 1,
+    createdAt: "2026-03-18T00:00:00.000Z",
+    updatedAt: "2026-03-18T00:01:00.000Z",
+    _etag: "active-etag"
+  } as WorkspaceDocument;
+  entitlements.items.create.mockImplementation(async (document: WorkspaceDocument) => ({
+    resource: { ...document, _etag: "creating-etag" }
+  }));
+  entitlements.items.upsert.mockImplementation(async (document: WorkspaceMembershipDocument) => ({ resource: document }));
+  entitlements.item.mockReturnValue({
+    replace: vi.fn().mockRejectedValue({ statusCode: 412 }),
+    read: vi.fn().mockResolvedValue({ resource: activeWorkspace })
+  });
+  getContainersMock.mockReturnValue({ entitlements });
+
+  const result = await createWorkspaceWithOwner(createConfig(), {
+    workspaceId: "ws-race",
+    name: "Race Team",
+    ownerUserId: "owner-1",
+    creationKeyHash: "key-hash",
+    creationFingerprint: "fingerprint"
+  });
+
+  assert.equal(result.workspace.status, "active");
+  assert.equal(result.workspace.workspaceId, "ws-race");
+  assert.equal(entitlements.items.upsert.mock.calls.length, 2);
+});
+
+test("workspace owner audit is bounded and repair verifies the current owner", async () => {
+  const entitlements = createEntitlementsContainer();
+  const workspace: WorkspaceDocument = {
+    id: "workspace:ws-audit",
+    docType: "workspace",
+    userId: "ws:ws-audit",
+    workspaceId: "ws-audit",
+    name: "Audit Team",
+    ownerUserId: "owner-1",
+    status: "active",
+    createdAt: "2026-03-18T00:00:00.000Z",
+    updatedAt: "2026-03-18T00:00:00.000Z"
+  };
+  (workspace as WorkspaceDocument & { _etag: string })._etag = "audit-etag";
+  entitlements.item.mockImplementation((id: string) => ({
+    read: vi.fn().mockResolvedValue({
+      resource: id === "workspace:ws-audit" ? workspace : null
+    }),
+    replace: vi.fn(async (document: WorkspaceDocument) => ({ resource: document }))
+  }));
+  entitlements.items.upsert.mockImplementation(async (document: WorkspaceMembershipDocument) => ({ resource: document }));
+  getContainersMock.mockReturnValue({ entitlements });
+
+  const findings = await auditWorkspaceOwnerMemberships(createConfig(), ["ws-audit", "ws-audit"]);
+  assert.deepEqual(findings, [{ workspaceId: "ws-audit", ownerUserId: "owner-1", reason: "missing" }]);
+
+  const repaired = await repairWorkspaceOwnerMembership(createConfig(), "ws-audit", "owner-1");
+  assert.equal(repaired.role, "owner");
+  assert.equal(repaired.status, "active");
+  await assert.rejects(
+    () => repairWorkspaceOwnerMembership(createConfig(), "ws-audit", "owner-2"),
+    /owner changed/i
+  );
+  await assert.rejects(
+    () => auditWorkspaceOwnerMemberships(createConfig(), Array.from({ length: 101 }, (_, index) => `ws-${index}`)),
+    /limited to 100/i
+  );
+});
+
+test("workspace owner repair restores an existing member exactly when ownership changes concurrently", async () => {
+  const entitlements = createEntitlementsContainer();
+  const initialWorkspace = {
+    id: "workspace:ws-race-repair",
+    docType: "workspace" as const,
+    userId: "ws:ws-race-repair",
+    workspaceId: "ws-race-repair",
+    name: "Repair Race",
+    ownerUserId: "owner-1",
+    status: "active" as const,
+    createdAt: "2026-03-18T00:00:00.000Z",
+    updatedAt: "2026-03-18T00:00:00.000Z",
+    _etag: "workspace-etag-1"
+  };
+  const transferredWorkspace = {
+    ...initialWorkspace,
+    ownerUserId: "owner-2",
+    _etag: "workspace-etag-2"
+  };
+  const priorMembership = {
+    id: "m:owner-1:ws-race-repair",
+    docType: "workspace_membership" as const,
+    userId: "owner-1",
+    workspaceId: "ws-race-repair",
+    role: "member" as const,
+    status: "active" as const,
+    displayName: "Owner One",
+    photoUrl: "https://example.test/owner-1.png",
+    updatedAt: "2026-03-18T00:00:00.000Z",
+    _etag: "membership-etag-1"
+  };
+  const workspaceRead = vi.fn()
+    .mockResolvedValueOnce({ resource: initialWorkspace })
+    .mockResolvedValueOnce({ resource: transferredWorkspace });
+  const membershipReplace = vi.fn(async (document: WorkspaceMembershipDocument) => ({
+    resource: { ...document, _etag: `membership-etag-${membershipReplace.mock.calls.length + 1}` }
+  }));
+  entitlements.item.mockImplementation((id: string) => {
+    if (id === initialWorkspace.id) {
+      return {
+        read: workspaceRead,
+        replace: vi.fn(async (document: WorkspaceDocument) => ({ resource: document }))
+      };
+    }
+    return {
+      read: vi.fn().mockResolvedValue({ resource: priorMembership }),
+      replace: membershipReplace
+    };
+  });
+  getContainersMock.mockReturnValue({ entitlements });
+
+  await assert.rejects(
+    () => repairWorkspaceOwnerMembership(createConfig(), "ws-race-repair", "owner-1"),
+    /owner changed during/i
+  );
+
+  assert.equal(membershipReplace.mock.calls[0]?.[0]?.role, "owner");
+  assert.equal(membershipReplace.mock.calls[0]?.[0]?.displayName, "Owner One");
+  assert.equal(membershipReplace.mock.calls[1]?.[0]?.role, "member");
+  assert.equal(membershipReplace.mock.calls[1]?.[0]?.status, "active");
+  assert.equal(membershipReplace.mock.calls[1]?.[0]?.photoUrl, "https://example.test/owner-1.png");
 });
 
 test("hasWorkspaceMembership returns false for deleted workspaces and removed memberships", async () => {

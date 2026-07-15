@@ -82,7 +82,7 @@
 !element calcul8.api.syncWorkspaceServices {
     perspectives {
         perspective "Technical Debt" {
-            description "Medium debt: workspace sync now rechecks membership at the final pull/push boundary and stale-version writes use guarded conflicts, while cross-partition workspace lifecycle changes still require careful tests."
+            description "Medium debt: workspace sync rechecks membership, stale-version writes use guarded conflicts, and creation now activates only after owner membership is durable with idempotent repair on retry."
             value "Medium"
         }
     }
@@ -100,8 +100,8 @@
 !element calcul8.api.whatnotImportServices {
     perspectives {
         perspective "Technical Debt" {
-            description "High debt: Whatnot OAuth credentials, import batches, review decisions, and mapping persistence still need sharp ownership and branch coverage."
-            value "High"
+            description "Medium debt: Whatnot confirmation now freezes decisions, checkpoints operations, and resumes partial writes, while OAuth and provider-facing import behavior remain high-change surfaces."
+            value "Medium"
         }
     }
 }

@@ -401,6 +401,7 @@
           action="delete"
           variant="text"
           color="warning"
+          :disabled="isConfirmingWhatnotImport"
           :label="t('whatnotReviewDiscardBatchAction')"
           @click="discardWhatnotReviewBatch"
         >
@@ -428,7 +429,8 @@
           action="import"
           color="primary"
           icon="mdi-check-bold"
-          :disabled="whatnotReviewRows.length === 0 || whatnotReviewDecisionSummary.blockedCount > 0"
+          :disabled="isConfirmingWhatnotImport || whatnotReviewRows.length === 0 || whatnotReviewDecisionSummary.blockedCount > 0"
+          :loading="isConfirmingWhatnotImport"
           :label="t('whatnotReviewImportReviewedSalesAction')"
           @click="confirmWhatnotImportBatch"
         >

@@ -137,6 +137,7 @@ export const uiWhatnotMethods: ThisType<AppContext> & Pick<
       : {};
     this.whatnotReviewBatchId = String(body.batchId ?? "").trim() || null;
     this.whatnotReviewRows = normalizeWhatnotReviewRows(Array.isArray(body.rows) ? body.rows : []);
+    this.whatnotConfirmationRetryPayload = null;
     this.showWhatnotReviewDialog = true;
     this.whatnotSyncStatus = "success";
     await this.refreshWhatnotStatus();
@@ -184,6 +185,7 @@ export const uiWhatnotMethods: ThisType<AppContext> & Pick<
       : {};
     this.whatnotReviewBatchId = String(body.batchId ?? "").trim() || null;
     this.whatnotReviewRows = normalizeWhatnotReviewRows(Array.isArray(body.rows) ? body.rows : []);
+    this.whatnotConfirmationRetryPayload = null;
     resetWhatnotCsvImportState(this);
     this.showWhatnotCsvImportDialog = false;
     this.showWhatnotReviewDialog = true;
@@ -210,6 +212,9 @@ export const uiWhatnotMethods: ThisType<AppContext> & Pick<
       : {};
     this.whatnotReviewBatchId = String(body.batchId ?? "").trim() || null;
     this.whatnotReviewRows = normalizeWhatnotReviewRows(Array.isArray(body.rows) ? body.rows : []);
+    this.whatnotConfirmationRetryPayload = Array.isArray(body.confirmationDecisions)
+      ? JSON.stringify(body.confirmationDecisions)
+      : null;
     this.showWhatnotReviewDialog = true;
   },
 
@@ -218,6 +223,7 @@ export const uiWhatnotMethods: ThisType<AppContext> & Pick<
   },
 
   discardWhatnotReviewBatch(): void {
+    if (this.isConfirmingWhatnotImport) return;
     if (!this.whatnotReviewBatchId) {
       this.notify(translateAppMessage(this.preferredLanguage, "whatnotReviewNoBatchLoadedNotice"), "warning");
       return;
@@ -259,52 +265,82 @@ export const uiWhatnotMethods: ThisType<AppContext> & Pick<
   },
 
   async confirmWhatnotImportBatch(): Promise<void> {
+    if (this.isConfirmingWhatnotImport) return;
     if (!this.whatnotReviewBatchId) {
       this.notify(translateAppMessage(this.preferredLanguage, "whatnotReviewNoBatchLoadedNotice"), "warning");
       return;
     }
 
-    const affectedLotIds = getAffectedWhatnotLotIds(this.whatnotReviewRows);
-
-    if (!validateWhatnotReviewRowsForImport(this)) {
+    const hasFrozenRetry = Boolean(this.whatnotConfirmationRetryPayload);
+    if (!hasFrozenRetry && !validateWhatnotReviewRowsForImport(this)) {
       return;
     }
 
-    const result = await fetchWhatnotJson(
-      this,
-      "/integrations/whatnot/review/confirm",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
+    const currentDecisions = buildWhatnotReviewDecisions(this.whatnotReviewRows);
+    const retryPayload = this.whatnotConfirmationRetryPayload ?? JSON.stringify(currentDecisions);
+    this.whatnotConfirmationRetryPayload = retryPayload;
+    let retryDecisions: Array<{ lotId?: unknown }> = currentDecisions;
+    try {
+      const parsed = JSON.parse(retryPayload) as unknown;
+      retryDecisions = Array.isArray(parsed)
+        ? parsed.filter((decision): decision is { lotId?: unknown } => Boolean(decision) && typeof decision === "object" && !Array.isArray(decision))
+        : currentDecisions;
+    } catch {
+      this.whatnotConfirmationRetryPayload = JSON.stringify(currentDecisions);
+    }
+    const affectedLotIds = hasFrozenRetry
+      ? [...new Set(retryDecisions
+        .map((decision) => Math.floor(Number(decision.lotId) || 0))
+        .filter((lotId) => lotId > 0))]
+      : getAffectedWhatnotLotIds(this.whatnotReviewRows);
+
+    this.isConfirmingWhatnotImport = true;
+    try {
+      const result = await fetchWhatnotJson(
+        this,
+        "/integrations/whatnot/review/confirm",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            ...buildWhatnotScopeBody(this),
+            batchId: this.whatnotReviewBatchId,
+            decisions: retryDecisions
+          })
         },
-        body: JSON.stringify({
-          ...buildWhatnotScopeBody(this),
-          batchId: this.whatnotReviewBatchId,
-          decisions: buildWhatnotReviewDecisions(this.whatnotReviewRows)
-        })
-      },
-      "Failed to import Whatnot sales."
-    );
-    if (!result.ok) return;
+        translateAppMessage(this.preferredLanguage, "whatnotReviewConfirmFailedNotice"),
+        {
+          errorMessagesByCode: {
+            RECOVERY_CONFLICT: translateAppMessage(this.preferredLanguage, "whatnotReviewRecoveryRequiredNotice"),
+            OPERATION_IN_PROGRESS: translateAppMessage(this.preferredLanguage, "whatnotReviewRecoveryInProgressNotice"),
+            IDEMPOTENCY_MISMATCH: translateAppMessage(this.preferredLanguage, "whatnotReviewIdempotencyMismatchNotice")
+          }
+        }
+      );
+      if (!result.ok) return;
 
-    const body = (result.body && typeof result.body === "object" && !Array.isArray(result.body))
-      ? result.body as Record<string, unknown>
-      : {};
-    const importedCount = Math.max(0, Math.floor(Number(body.importedCount) || 0));
-    const updatedCount = Math.max(0, Math.floor(Number(body.updatedCount) || 0));
-    const skippedCount = Math.max(0, Math.floor(Number(body.skippedCount) || 0));
+      const body = (result.body && typeof result.body === "object" && !Array.isArray(result.body))
+        ? result.body as Record<string, unknown>
+        : {};
+      const importedCount = Math.max(0, Math.floor(Number(body.importedCount) || 0));
+      const updatedCount = Math.max(0, Math.floor(Number(body.updatedCount) || 0));
+      const skippedCount = Math.max(0, Math.floor(Number(body.skippedCount) || 0));
 
-    this.showWhatnotReviewDialog = false;
-    resetWhatnotReviewState(this);
-    resetWhatnotCsvImportState(this);
-    await this.refreshWhatnotStatus();
-    await this.pullCloudSync();
-    await refreshAffectedWhatnotSales(this, affectedLotIds);
-    this.notify(
-      `Whatnot import complete: ${importedCount} new, ${updatedCount} updated, ${skippedCount} skipped.`,
-      "success"
-    );
+      this.showWhatnotReviewDialog = false;
+      resetWhatnotReviewState(this);
+      resetWhatnotCsvImportState(this);
+      await this.refreshWhatnotStatus();
+      await this.pullCloudSync();
+      await refreshAffectedWhatnotSales(this, affectedLotIds);
+      this.notify(
+        `Whatnot import complete: ${importedCount} new, ${updatedCount} updated, ${skippedCount} skipped.`,
+        "success"
+      );
+    } finally {
+      this.isConfirmingWhatnotImport = false;
+    }
   }
 };
 

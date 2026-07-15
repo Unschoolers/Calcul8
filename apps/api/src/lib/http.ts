@@ -115,7 +115,8 @@ export function errorResponse(
 ): HttpResponseInit {
   if (error instanceof HttpError) {
     return jsonResponse(request, config, error.status, {
-      error: error.message
+      error: error.message,
+      ...(error.code ? { code: error.code } : {})
     });
   }
 

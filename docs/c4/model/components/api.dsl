@@ -34,7 +34,7 @@ syncWorkspaceServices = component "Sync And Workspace Services" "Scoped sync and
         "Owns" "Workspace-scoped sync push/pull handlers, membership checks, join links, leave/delete flows, and access-loss responses."
         "Must not own" "Frontend dirty-state decisions, browser storage migrations, realtime room membership, or billing access projection."
         "Boundary data" "Workspace ids, sync snapshots, client versions, membership roles/status, join tokens, and conflict responses."
-        "Failure recovery" "Recheck membership before returning or writing workspace data, reject stale versions, and preserve consistency on partial workspace lifecycle writes."
+        "Failure recovery" "Recheck membership, reject stale versions, keep creation non-active until owner membership exists, and expose bounded migration-admin audit/repair for older owner-membership orphans."
     }
 }
 
@@ -64,7 +64,7 @@ whatnotImportServices = component "Whatnot Import Services" "Whatnot OAuth and i
         "Owns" "Whatnot OAuth connection lifecycle, token refresh, order import, import batches, mapping persistence, and sale-import metadata."
         "Must not own" "Frontend review layout, seller-authored local notes, billing access projection, or workspace ownership inference for credentials."
         "Boundary data" "OAuth codes/tokens, imported orders, normalized rows, review decisions, external ids, sale mappings, and import audit records."
-        "Failure recovery" "Keep provider credentials erasable, preserve seller notes on updates, and make create/update/skip decisions repeatable and auditable."
+        "Failure recovery" "Freeze reviewed decisions and planned sale identities, lease each attempt, checkpoint logical sale operations, recover sales by mutation or provider identity, and expose partial failures for deterministic user-triggered retry."
     }
 }
 

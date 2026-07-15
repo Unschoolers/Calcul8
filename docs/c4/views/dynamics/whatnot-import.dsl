@@ -7,7 +7,7 @@ dynamic calcul8 "WhatnotImportFlow" {
     calcul8.api -> calcul8.web "Returns mapped rows and review decisions."
     seller -> calcul8.web "Confirms create, update, or skip decisions."
     calcul8.web -> calcul8.api "Submits reviewed import batch."
-    calcul8.api -> calcul8.cosmos "Writes resulting sales and import audit metadata."
+    calcul8.api -> calcul8.cosmos "Claims the batch, writes sales and mappings, and checkpoints each operation."
+    calcul8.cosmos -> calcul8.api "Returns completed checkpoints or recoverable workflow state for deterministic retry."
     autoLayout lr
 }
-

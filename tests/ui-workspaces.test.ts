@@ -105,6 +105,8 @@ function createContext() {
     showWorkspaceMembersModal: false,
     showLeaveWorkspaceModal: false,
     newWorkspaceName: "",
+    newWorkspaceIdempotencyKey: "",
+    newWorkspaceIdempotencyName: "",
     leaveWorkspaceTransferMemberUserId: "",
     leaveWorkspaceDeleteConfirmation: false,
     isWorkspaceLoading: false,
@@ -115,6 +117,7 @@ function createContext() {
     isAcceptingWorkspaceInvite: false,
     isLeavingWorkspace: false,
     isCurrentWorkspaceOwner: false,
+    preferredLanguage: "en",
     notify: vi.fn(),
     pullCloudSync: vi.fn(async () => undefined),
     loadLotsFromStorage: vi.fn(),
@@ -296,7 +299,9 @@ test("createWorkspace creates, seeds, refreshes, and switches to the new workspa
 
   assert.equal(fetchWithRetryMock.mock.calls.length, 1);
   const createInit = fetchWithRetryMock.mock.calls[0]?.[1] as { body?: string };
-  assert.deepEqual(JSON.parse(String(createInit.body)), { name: "Team Alpha" });
+  const createBody = JSON.parse(String(createInit.body)) as { name: string; idempotencyKey: string };
+  assert.equal(createBody.name, "Team Alpha");
+  assert.match(createBody.idempotencyKey, /^[A-Za-z0-9._:-]{8,128}$/);
   assert.equal(createSyncPayloadMock.mock.calls.length, 1);
   assert.equal(runCloudSyncPushMock.mock.calls.length, 1);
   assert.equal(runCloudSyncPushMock.mock.calls[0]?.[1], true);
@@ -311,7 +316,48 @@ test("createWorkspace creates, seeds, refreshes, and switches to the new workspa
   assert.equal(ctx.switchToWorkspace.mock.calls.length, 1);
   assert.equal(ctx.switchToWorkspace.mock.calls[0]?.[0], "ws_created");
   assert.equal(ctx.newWorkspaceName, "");
+  assert.equal(ctx.newWorkspaceIdempotencyKey, "");
+  assert.equal(ctx.newWorkspaceIdempotencyName, "");
   assert.equal(ctx.showCreateWorkspaceModal, false);
+});
+
+test("createWorkspace reuses its idempotency key after a recoverable request failure", async () => {
+  const ctx = createContext();
+  ctx.newWorkspaceName = "Team Retry";
+  ctx.refreshWorkspaces = vi.fn(async () => undefined);
+  ctx.switchToWorkspace = vi.fn(async () => undefined);
+  fetchWithRetryMock
+    .mockResolvedValueOnce(createResponse({ error: "temporarily unavailable" }, { status: 503 }))
+    .mockResolvedValueOnce(createResponse({ workspace: { workspaceId: "ws_retry" } }));
+
+  await uiWorkspaceMethods.createWorkspace.call(ctx);
+  const firstBody = JSON.parse(String(fetchWithRetryMock.mock.calls[0]?.[1]?.body)) as { idempotencyKey: string };
+  assert.equal(ctx.newWorkspaceIdempotencyKey, firstBody.idempotencyKey);
+
+  await uiWorkspaceMethods.createWorkspace.call(ctx);
+  const secondBody = JSON.parse(String(fetchWithRetryMock.mock.calls[1]?.[1]?.body)) as { idempotencyKey: string };
+
+  assert.equal(secondBody.idempotencyKey, firstBody.idempotencyKey);
+  assert.equal(ctx.newWorkspaceIdempotencyKey, "");
+  assert.equal(ctx.switchToWorkspace.mock.calls[0]?.[0], "ws_retry");
+});
+
+test("createWorkspace renders stable lifecycle errors in French and keeps retry state", async () => {
+  const ctx = createContext();
+  ctx.preferredLanguage = "fr";
+  ctx.newWorkspaceName = "Équipe reprise";
+  ctx.showCreateWorkspaceModal = true;
+  fetchWithRetryMock.mockResolvedValueOnce(createResponse({
+    code: "OPERATION_IN_PROGRESS",
+    error: "server fallback"
+  }, { status: 409 }));
+
+  await uiWorkspaceMethods.createWorkspace.call(ctx);
+
+  assert.match(String(ctx.notify.mock.calls[0]?.[0]), /déjà en cours de création/i);
+  assert.equal(ctx.showCreateWorkspaceModal, true);
+  assert.notEqual(ctx.newWorkspaceIdempotencyKey, "");
+  assert.equal(ctx.isCreatingWorkspace, false);
 });
 
 test("createWorkspace warns when called outside personal scope", async () => {

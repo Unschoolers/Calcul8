@@ -361,6 +361,31 @@ test("whatnotReviewConfirm validates decisions and forwards parsed data", async 
   assert.equal((response.jsonBody as { ok: boolean }).ok, true);
 });
 
+test("whatnotReviewConfirm emits structured telemetry for recoverable partial writes", async () => {
+  const { HttpError } = await import("../lib/auth/errors");
+  confirmWhatnotImportBatchForActorMock.mockRejectedValueOnce(
+    new HttpError(503, "Retry the confirmation.", "RECOVERY_CONFLICT")
+  );
+  const context = createInvocationContext();
+
+  const response = await whatnotReviewConfirm(
+    createHttpRequest({
+      method: "POST",
+      body: {
+        batchId: "batch-recovery",
+        decisions: [{ rowId: "row-1", lotId: 10, saleType: "pack" }]
+      },
+      headers: { authorization: "Bearer user-a" }
+    }) as never,
+    context as never
+  );
+
+  assert.equal(response.status, 503);
+  assert.equal((response.jsonBody as { code?: string }).code, "RECOVERY_CONFLICT");
+  assert.equal(context.warn.mock.calls[0]?.[0], "api.telemetry");
+  assert.equal(context.warn.mock.calls[0]?.[1]?.outcome, "recovery_conflict");
+});
+
 test("whatnotReviewDiscard forwards batch lookup and returns discard result", async () => {
   const response = await whatnotReviewDiscard(
     createHttpRequest({

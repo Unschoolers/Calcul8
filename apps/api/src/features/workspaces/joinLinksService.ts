@@ -14,7 +14,7 @@ import {
   createJoinToken,
   getJoinLinkState,
   hashJoinToken,
-  isWorkspaceDeleted
+  isWorkspaceActive
 } from "./helpers";
 import type {
   ApiConfig,
@@ -57,7 +57,7 @@ export async function createWorkspaceJoinLinkForActor(
   await assertCanManageWorkspaceMembership(config, actorUserId, workspaceId);
 
   const workspace = await getWorkspaceById(config, workspaceId);
-  if (!workspace || isWorkspaceDeleted(workspace)) {
+  if (!isWorkspaceActive(workspace)) {
     throw new HttpError(404, "Workspace was not found.");
   }
 

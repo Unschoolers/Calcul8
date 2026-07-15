@@ -3,6 +3,7 @@ import { HttpError, resolveUserId } from "../../lib/auth";
 import { getConfig } from "../../lib/config";
 import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../../lib/http";
 import { parseOptionalWorkspaceId } from "../../lib/syncScope";
+import { logApiTelemetry } from "../../lib/telemetry";
 import {
   readRequestJsonOrNull,
   readRequestJsonOrThrow,
@@ -372,7 +373,8 @@ export async function whatnotReviewGet(
     const batch = await getWhatnotReviewBatchForActor(config, actorUserId, workspaceId, batchId);
     return jsonResponse(request, config, 200, {
       batchId: batch?.batchId ?? null,
-      rows: batch?.rows ?? []
+      rows: batch?.rows ?? [],
+      confirmationDecisions: batch?.confirmationDecisions ?? null
     });
   } catch (error) {
     context.error("GET /integrations/whatnot/review failed", error);
@@ -397,6 +399,17 @@ export async function whatnotReviewConfirm(
       ...result
     });
   } catch (error) {
+    if (error instanceof HttpError && error.code) {
+      logApiTelemetry({
+        logger: context,
+        level: "warn",
+        request,
+        config,
+        route: "whatnot_review_confirm",
+        workspaceScope: "unknown",
+        outcome: error.code.toLowerCase()
+      });
+    }
     context.error("POST /integrations/whatnot/review/confirm failed", error);
     return errorResponse(request, config, error, "Failed to confirm Whatnot import.");
   }

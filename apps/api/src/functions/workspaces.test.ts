@@ -215,7 +215,7 @@ test("workspacesCreate creates a new workspace with owner membership", async () 
   const request = createRequest(
     "POST",
     { authorization: "Bearer owner-user" },
-    { name: "Team 42" }
+    { name: "Team 42", idempotencyKey: "create-team-42" }
   );
   const context = createContext();
 
@@ -225,6 +225,58 @@ test("workspacesCreate creates a new workspace with owner membership", async () 
   assert.equal(createWorkspaceWithOwnerMock.mock.calls.length, 1);
   assert.match(String(createWorkspaceWithOwnerMock.mock.calls[0]?.[1]?.workspaceId ?? ""), /^ws_[0-9a-f]{16}$/);
   assert.equal(createWorkspaceWithOwnerMock.mock.calls[0]?.[1]?.ownerUserId, "owner-user");
+  assert.match(String(createWorkspaceWithOwnerMock.mock.calls[0]?.[1]?.creationKeyHash ?? ""), /^[0-9a-f]{64}$/);
+  assert.match(String(createWorkspaceWithOwnerMock.mock.calls[0]?.[1]?.creationFingerprint ?? ""), /^[0-9a-f]{64}$/);
+});
+
+test("workspacesCreate requires a valid idempotency key before writing", async () => {
+  const response = await workspacesCreate(
+    createRequest(
+      "POST",
+      { authorization: "Bearer owner-user" },
+      { name: "Team 42", idempotencyKey: "short" }
+    ) as never,
+    createContext() as never
+  );
+
+  assert.equal(response.status, 400);
+  assert.equal(createWorkspaceWithOwnerMock.mock.calls.length, 0);
+});
+
+test("workspacesCreate returns a stable conflict code when a key is reused with changed input", async () => {
+  const conflict = new Error("Workspace idempotency key was already used for a different request.");
+  conflict.name = "WorkspaceCreationConflictError";
+  createWorkspaceWithOwnerMock.mockRejectedValueOnce(conflict);
+
+  const response = await workspacesCreate(
+    createRequest(
+      "POST",
+      { authorization: "Bearer owner-user" },
+      { name: "Changed Team", idempotencyKey: "create-team-42" }
+    ) as never,
+    createContext() as never
+  );
+
+  assert.equal(response.status, 409);
+  assert.equal((response.jsonBody as { code?: string }).code, "IDEMPOTENCY_MISMATCH");
+});
+
+test("workspacesCreate distinguishes same-request lifecycle contention", async () => {
+  const inProgress = new Error("Workspace creation is already being activated.");
+  inProgress.name = "WorkspaceCreationInProgressError";
+  createWorkspaceWithOwnerMock.mockRejectedValueOnce(inProgress);
+
+  const response = await workspacesCreate(
+    createRequest(
+      "POST",
+      { authorization: "Bearer owner-user" },
+      { name: "Team 42", idempotencyKey: "create-team-42" }
+    ) as never,
+    createContext() as never
+  );
+
+  assert.equal(response.status, 409);
+  assert.equal((response.jsonBody as { code?: string }).code, "OPERATION_IN_PROGRESS");
 });
 
 test("workspacesMe returns all active workspaces for the caller", async () => {

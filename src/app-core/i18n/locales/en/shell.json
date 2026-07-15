@@ -128,5 +128,9 @@
   "shellTransferOwnerHint": "Choose the member who should become owner when you leave.",
   "shellTransferOwnerLabel": "New owner",
   "shellWorkspaceMemberFallback": "Workspace member",
-  "shellWorkspaceNameLabel": "Workspace name"
+  "shellWorkspaceNameLabel": "Workspace name",
+  "workspaceCreateFailedNotice": "Failed to create the workspace.",
+  "workspaceCreateInProgressNotice": "This workspace is already being created. Keep this dialog open and try again shortly.",
+  "workspaceCreateMismatchNotice": "This creation request changed after it started. Close the dialog and start again.",
+  "workspaceCreateRecoveryConflictNotice": "Workspace creation could not resume safely. Keep this dialog open and try again."
 }

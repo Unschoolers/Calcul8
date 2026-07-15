@@ -35,6 +35,8 @@ export type WhatnotApp = Pick<
   | "whatnotCsvMapOrderStatus"
   | "whatnotReviewBatchId"
   | "whatnotReviewRows"
+  | "isConfirmingWhatnotImport"
+  | "whatnotConfirmationRetryPayload"
   | "showWhatnotCsvImportDialog"
   | "showWhatnotReviewDialog"
   | "whatnotCallbackStatus"

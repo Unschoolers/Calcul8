@@ -18,11 +18,37 @@ export interface CreateWorkspaceWithOwnerInput {
   workspaceId: string;
   name: string;
   ownerUserId: string;
+  creationKeyHash: string;
+  creationFingerprint: string;
 }
 
 export interface CreateWorkspaceWithOwnerResult {
   workspace: WorkspaceDocument;
   ownerMembership: WorkspaceMembershipDocument;
+}
+
+export class WorkspaceCreationConflictError extends Error {
+  readonly status = 409;
+
+  constructor(message: string) {
+    super(message);
+    this.name = "WorkspaceCreationConflictError";
+  }
+}
+
+export class WorkspaceCreationInProgressError extends Error {
+  readonly status = 409;
+
+  constructor(message: string) {
+    super(message);
+    this.name = "WorkspaceCreationInProgressError";
+  }
+}
+
+export interface WorkspaceOwnerMembershipAuditFinding {
+  workspaceId: string;
+  ownerUserId: string;
+  reason: "missing" | "inactive";
 }
 
 interface UpsertWorkspaceMembershipInput {
@@ -48,8 +74,31 @@ interface WorkspaceMemberProfileSnapshotInput {
   photoUrl?: string;
 }
 
-function isWorkspaceDeleted(workspace: WorkspaceDocument | null | undefined): boolean {
-  return workspace?.status === "deleted";
+function isWorkspaceActive(workspace: WorkspaceDocument | null | undefined): boolean {
+  return !!workspace && (!workspace.status || workspace.status === "active");
+}
+
+function matchesWorkspaceCreation(
+  workspace: WorkspaceDocument,
+  input: CreateWorkspaceWithOwnerInput
+): boolean {
+  return workspace.ownerUserId === input.ownerUserId
+    && workspace.creationKeyHash === input.creationKeyHash
+    && workspace.creationFingerprint === input.creationFingerprint;
+}
+
+async function returnActiveWorkspaceWithOwner(
+  config: ApiConfig,
+  workspace: WorkspaceDocument,
+  ownerUserId: string
+): Promise<CreateWorkspaceWithOwnerResult> {
+  const ownerMembership = await upsertWorkspaceMembership(config, {
+    userId: ownerUserId,
+    workspaceId: workspace.workspaceId,
+    role: "owner",
+    status: "active"
+  });
+  return { workspace, ownerMembership };
 }
 
 function isActiveWorkspaceMembershipStatus(status: WorkspaceMembershipStatus | undefined): boolean {
@@ -61,9 +110,17 @@ function readCosmosEtag(document: unknown): string {
   return String((document as { _etag?: unknown })._etag ?? "").trim();
 }
 
+function readWorkspaceOverride<K extends keyof WorkspaceDocument>(
+  workspace: WorkspaceDocument,
+  overrides: Partial<WorkspaceDocument>,
+  key: K
+): WorkspaceDocument[K] {
+  return (Object.prototype.hasOwnProperty.call(overrides, key) ? overrides[key] : workspace[key]) as WorkspaceDocument[K];
+}
+
 function buildWorkspaceWriteDocument(
   workspace: WorkspaceDocument,
-  overrides: Partial<Pick<WorkspaceDocument, "ownerUserId" | "status">> = {}
+  overrides: Partial<WorkspaceDocument> = {}
 ): WorkspaceDocument {
   const workspaceId = String(workspace.workspaceId || "").trim();
   return {
@@ -71,11 +128,17 @@ function buildWorkspaceWriteDocument(
     docType: "workspace",
     userId: String(workspace.userId || "").trim() || workspaceDocumentPartitionKey(workspaceId),
     workspaceId,
-    name: workspace.name,
+    name: overrides.name ?? workspace.name,
     ownerUserId: overrides.ownerUserId ?? workspace.ownerUserId,
     status: overrides.status ?? workspace.status ?? "active",
     createdAt: workspace.createdAt,
-    updatedAt: new Date().toISOString()
+    updatedAt: overrides.updatedAt ?? new Date().toISOString(),
+    creationKeyHash: readWorkspaceOverride(workspace, overrides, "creationKeyHash"),
+    creationFingerprint: readWorkspaceOverride(workspace, overrides, "creationFingerprint"),
+    creationAttemptCount: readWorkspaceOverride(workspace, overrides, "creationAttemptCount"),
+    creationLastAttemptAt: readWorkspaceOverride(workspace, overrides, "creationLastAttemptAt"),
+    creationErrorCode: readWorkspaceOverride(workspace, overrides, "creationErrorCode"),
+    creationErrorMessage: readWorkspaceOverride(workspace, overrides, "creationErrorMessage")
   };
 }
 
@@ -102,7 +165,7 @@ function buildWorkspaceMembershipWriteDocument(
 async function replaceWorkspaceDocumentIfUnchanged(
   config: ApiConfig,
   existing: WorkspaceDocument,
-  overrides: Partial<Pick<WorkspaceDocument, "ownerUserId" | "status">> = {}
+  overrides: Partial<WorkspaceDocument> = {}
 ): Promise<WorkspaceDocument | null> {
   const { entitlements } = getContainers(config);
   const document = buildWorkspaceWriteDocument(existing, overrides);
@@ -241,19 +304,6 @@ export async function upsertWorkspaceDocument(
   return resource;
 }
 
-async function deleteWorkspaceDocument(config: ApiConfig, workspaceId: string): Promise<void> {
-  const { entitlements } = getContainers(config);
-  const id = workspaceDocumentId(workspaceId);
-  const partitionKey = workspaceDocumentPartitionKey(workspaceId);
-
-  try {
-    await withCosmosRetry(() => entitlements.item(id, partitionKey).delete());
-  } catch (error) {
-    if (isNotFoundError(error)) return;
-    throw error;
-  }
-}
-
 export async function getWorkspaceMembership(
   config: ApiConfig,
   userId: string,
@@ -328,7 +378,7 @@ export async function listWorkspacesForUser(
 
   return workspaces
     .filter((entry): entry is { workspace: WorkspaceDocument; membership: WorkspaceMembershipDocument } =>
-      !!entry.workspace && !isWorkspaceDeleted(entry.workspace)
+      !!entry.workspace && isWorkspaceActive(entry.workspace)
     );
 }
 
@@ -366,55 +416,193 @@ export async function createWorkspaceWithOwner(
 ): Promise<CreateWorkspaceWithOwnerResult> {
   const { entitlements } = getContainers(config);
   const now = new Date().toISOString();
-  const workspace: WorkspaceDocument = {
+  const proposedWorkspace: WorkspaceDocument = {
     id: workspaceDocumentId(input.workspaceId),
     docType: "workspace",
     userId: workspaceDocumentPartitionKey(input.workspaceId),
     workspaceId: input.workspaceId,
     name: input.name,
     ownerUserId: input.ownerUserId,
-    status: "active",
+    status: "creating",
     createdAt: now,
-    updatedAt: now
+    updatedAt: now,
+    creationKeyHash: input.creationKeyHash,
+    creationFingerprint: input.creationFingerprint,
+    creationAttemptCount: 1,
+    creationLastAttemptAt: now
   };
 
+  let workspace: WorkspaceDocument;
   try {
     const { resource } = await withCosmosRetry(() =>
-      entitlements.items.create<WorkspaceDocument>(workspace)
+      entitlements.items.create<WorkspaceDocument>(proposedWorkspace)
     );
     if (!resource) {
       throw new Error("Failed to create workspace.");
     }
-
-    let ownerMembership: WorkspaceMembershipDocument;
-    try {
-      ownerMembership = await upsertWorkspaceMembership(config, {
-        userId: input.ownerUserId,
-        workspaceId: input.workspaceId,
-        role: "owner",
-        status: "active"
-      });
-    } catch (error) {
-      try {
-        await deleteWorkspaceDocument(config, input.workspaceId);
-      } catch (cleanupError) {
-        if (error && typeof error === "object") {
-          (error as { cleanupError?: unknown }).cleanupError = cleanupError;
-        }
-      }
-      throw error;
+    workspace = resource;
+  } catch (error) {
+    if (!isConflictError(error)) throw error;
+    const existing = await getWorkspaceById(config, input.workspaceId);
+    if (!existing) throw new WorkspaceCreationConflictError("Workspace creation conflicted. Retry the request.");
+    if (!matchesWorkspaceCreation(existing, input)) {
+      throw new WorkspaceCreationConflictError(
+        "Workspace idempotency key was already used for a different request."
+      );
     }
 
-    return {
-      workspace: resource,
-      ownerMembership
-    };
+    if (isWorkspaceActive(existing)) {
+      return returnActiveWorkspaceWithOwner(config, existing, input.ownerUserId);
+    }
+    if (existing.status === "deleted") {
+      throw new WorkspaceCreationConflictError("Workspace creation key belongs to a deleted workspace.");
+    }
+
+    const resumed = await replaceWorkspaceDocumentIfUnchanged(config, existing, {
+      status: "creating",
+      creationAttemptCount: Math.max(1, existing.creationAttemptCount ?? 1) + 1,
+      creationLastAttemptAt: now,
+      creationErrorCode: undefined,
+      creationErrorMessage: undefined
+    });
+    if (!resumed) {
+      const current = await getWorkspaceById(config, input.workspaceId);
+      if (current && matchesWorkspaceCreation(current, input) && isWorkspaceActive(current)) {
+        return returnActiveWorkspaceWithOwner(config, current, input.ownerUserId);
+      }
+      throw new WorkspaceCreationInProgressError("Workspace creation is already being retried.");
+    }
+    workspace = resumed;
+  }
+
+  try {
+    const ownerMembership = await upsertWorkspaceMembership(config, {
+      userId: input.ownerUserId,
+      workspaceId: input.workspaceId,
+      role: "owner",
+      status: "active"
+    });
+    const activeWorkspace = await replaceWorkspaceDocumentIfUnchanged(config, workspace, {
+      status: "active",
+      creationErrorCode: undefined,
+      creationErrorMessage: undefined
+    });
+    if (!activeWorkspace) {
+      const current = await getWorkspaceById(config, input.workspaceId);
+      if (current && matchesWorkspaceCreation(current, input) && isWorkspaceActive(current)) {
+        return returnActiveWorkspaceWithOwner(config, current, input.ownerUserId);
+      }
+      throw new WorkspaceCreationInProgressError("Workspace creation is already being activated.");
+    }
+    return { workspace: activeWorkspace, ownerMembership };
   } catch (error) {
-    if (isConflictError(error)) {
-      throw new Error("Workspace already exists.");
+    if (error instanceof WorkspaceCreationInProgressError) {
+      throw error;
+    }
+    const failedWorkspace = await replaceWorkspaceDocumentIfUnchanged(config, workspace, {
+      status: "creation_failed",
+      creationErrorCode: error instanceof WorkspaceCreationConflictError
+        ? "activation_conflict"
+        : "owner_membership_failed",
+      creationErrorMessage: error instanceof WorkspaceCreationConflictError
+        ? "Workspace activation conflicted with another lifecycle update."
+        : "Workspace owner membership could not be completed."
+    }).catch(() => null);
+    if (!failedWorkspace && error && typeof error === "object") {
+      (error as { recoveryStateWriteFailed?: boolean }).recoveryStateWriteFailed = true;
     }
     throw error;
   }
+}
+
+export async function auditWorkspaceOwnerMemberships(
+  config: ApiConfig,
+  workspaceIds: readonly string[]
+): Promise<WorkspaceOwnerMembershipAuditFinding[]> {
+  const normalizedIds = Array.from(new Set(workspaceIds.map((value) => String(value).trim()).filter(Boolean)));
+  if (normalizedIds.length > 100) {
+    throw new Error("Workspace owner-membership audits are limited to 100 workspaces per run.");
+  }
+
+  const findings: WorkspaceOwnerMembershipAuditFinding[] = [];
+  for (const workspaceId of normalizedIds) {
+    const workspace = await getWorkspaceById(config, workspaceId);
+    if (!workspace || !isWorkspaceActive(workspace)) continue;
+    const membership = await getWorkspaceMembership(config, workspace.ownerUserId, workspace.workspaceId);
+    if (!membership) {
+      findings.push({ workspaceId, ownerUserId: workspace.ownerUserId, reason: "missing" });
+    } else if (!isActiveWorkspaceMembershipStatus(membership.status) || membership.role !== "owner") {
+      findings.push({ workspaceId, ownerUserId: workspace.ownerUserId, reason: "inactive" });
+    }
+  }
+  return findings;
+}
+
+export async function repairWorkspaceOwnerMembership(
+  config: ApiConfig,
+  workspaceId: string,
+  expectedOwnerUserId: string
+): Promise<WorkspaceMembershipDocument> {
+  const normalizedWorkspaceId = String(workspaceId).trim();
+  const normalizedOwnerUserId = String(expectedOwnerUserId).trim();
+  const workspace = await getWorkspaceById(config, normalizedWorkspaceId);
+  if (!workspace || !isWorkspaceActive(workspace)) {
+    throw new WorkspaceCreationConflictError("Only an active workspace can have its owner membership repaired.");
+  }
+  if (workspace.ownerUserId !== normalizedOwnerUserId) {
+    throw new WorkspaceCreationConflictError("Workspace owner changed before membership repair.");
+  }
+  const priorMembership = await getWorkspaceMembership(config, normalizedOwnerUserId, normalizedWorkspaceId);
+  if (!readCosmosEtag(workspace)) {
+    throw new WorkspaceCreationConflictError("Workspace version is unavailable for a safe membership repair.");
+  }
+  const verifiedWorkspace = await replaceWorkspaceDocumentIfUnchanged(config, workspace, {
+    status: "active",
+    updatedAt: workspace.updatedAt
+  });
+  if (!verifiedWorkspace || verifiedWorkspace.ownerUserId !== normalizedOwnerUserId) {
+    throw new WorkspaceCreationConflictError("Workspace owner changed before membership repair.");
+  }
+
+  const repaired = priorMembership
+    ? await replaceWorkspaceMembershipIfUnchanged(config, priorMembership, {
+      role: "owner",
+      status: "active",
+      displayName: priorMembership.displayName,
+      photoUrl: priorMembership.photoUrl,
+      updatedAt: priorMembership.updatedAt
+    })
+    : await upsertWorkspaceMembership(config, {
+      userId: normalizedOwnerUserId,
+      workspaceId: normalizedWorkspaceId,
+      role: "owner",
+      status: "active"
+    });
+  if (!repaired) {
+    throw new WorkspaceCreationConflictError("Workspace membership changed before repair completed.");
+  }
+  const currentWorkspace = await getWorkspaceById(config, normalizedWorkspaceId);
+  if (!currentWorkspace || !isWorkspaceActive(currentWorkspace) || currentWorkspace.ownerUserId !== normalizedOwnerUserId) {
+    if (priorMembership) {
+      await replaceWorkspaceMembershipIfUnchanged(config, repaired, {
+        role: priorMembership.role ?? "member",
+        status: priorMembership.status ?? "active",
+        displayName: priorMembership.displayName,
+        photoUrl: priorMembership.photoUrl,
+        updatedAt: priorMembership.updatedAt
+      }).catch(() => null);
+    } else {
+      await replaceWorkspaceMembershipIfUnchanged(config, repaired, {
+        role: repaired.role ?? "owner",
+        status: "removed",
+        displayName: repaired.displayName,
+        photoUrl: repaired.photoUrl,
+        updatedAt: repaired.updatedAt
+      }).catch(() => null);
+    }
+    throw new WorkspaceCreationConflictError("Workspace owner changed during membership repair.");
+  }
+  return repaired;
 }
 
 export async function deactivateWorkspaceMembership(
@@ -465,7 +653,7 @@ export async function hasWorkspaceMembership(
   if (!membership) return false;
   if (!isActiveWorkspaceMembershipStatus(membership.status)) return false;
   const workspace = await getWorkspaceById(config, workspaceId);
-  if (!workspace || isWorkspaceDeleted(workspace)) return false;
+  if (!isWorkspaceActive(workspace)) return false;
   return true;
 }
 
@@ -476,7 +664,7 @@ export async function transferWorkspaceOwnership(
   expectedCurrentOwnerUserId?: string
 ): Promise<WorkspaceDocument | null> {
   const existing = await getWorkspaceById(config, workspaceId);
-  if (!existing || isWorkspaceDeleted(existing)) return null;
+  if (!existing || !isWorkspaceActive(existing)) return null;
   if (expectedCurrentOwnerUserId && existing.ownerUserId !== expectedCurrentOwnerUserId) return null;
 
   return replaceWorkspaceDocumentIfUnchanged(config, existing, {
@@ -492,7 +680,7 @@ export async function softDeleteWorkspace(
 ): Promise<WorkspaceDocument | null> {
   const existing = await getWorkspaceById(config, workspaceId);
   if (!existing) return null;
-  if (isWorkspaceDeleted(existing)) return existing;
+  if (existing.status === "deleted") return existing;
   if (expectedOwnerUserId && existing.ownerUserId !== expectedOwnerUserId) return null;
 
   return replaceWorkspaceDocumentIfUnchanged(config, existing, {

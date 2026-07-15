@@ -4,6 +4,7 @@ import { getScopedLastLotStorageKey, getScopedLastSyncedPayloadHashKey, STORAGE_
 import { resolveWorkspaceScopeContext, sortWorkspacesByName } from "../../../workspace-scope.ts";
 
 type WorkspaceApiError = {
+  code?: unknown;
   error?: unknown;
   message?: unknown;
 };
@@ -32,9 +33,15 @@ export type LeaveWorkspaceResponse = {
   newOwnerUserId?: unknown;
 };
 
-export async function parseWorkspaceApiError(response: Response, fallbackMessage: string): Promise<string> {
+export async function parseWorkspaceApiError(
+  response: Response,
+  fallbackMessage: string,
+  errorMessagesByCode: Readonly<Record<string, string>> = {}
+): Promise<string> {
   try {
     const body = (await response.json()) as WorkspaceApiError;
+    const code = String(body.code ?? "").trim();
+    if (code && errorMessagesByCode[code]) return errorMessagesByCode[code]!;
     const errorMessage = typeof body.error === "string" ? body.error.trim() : "";
     if (errorMessage) return errorMessage;
     const message = typeof body.message === "string" ? body.message.trim() : "";

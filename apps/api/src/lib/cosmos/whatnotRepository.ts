@@ -3,6 +3,7 @@ import type {
   ApiConfig,
   WhatnotConnectionDocument,
   WhatnotImportBatchDocument,
+  WhatnotConfirmationDecisionDocument,
   WhatnotOAuthStateDocument,
   WhatnotSaleImportMappingDocument,
   WhatnotTargetMappingDocument
@@ -70,6 +71,7 @@ export type WhatnotImportBatchClaimResult =
   | { status: "claimed"; batch: WhatnotImportBatchDocument }
   | { status: "already_completed"; batch: WhatnotImportBatchDocument }
   | { status: "not_claimable"; batch: WhatnotImportBatchDocument }
+  | { status: "idempotency_mismatch"; batch: WhatnotImportBatchDocument }
   | { status: "conflict"; batch: null }
   | { status: "not_found"; batch: null };
 
@@ -196,13 +198,15 @@ export async function getLatestPendingWhatnotImportBatch(
       SELECT TOP 1 * FROM c
       WHERE c.userId = @scopeKey
         AND c.docType = @docType
-        AND c.status = @status
+        AND c.status IN (@pendingStatus, @recoverableStatus, @processingStatus)
       ORDER BY c.updatedAt DESC
     `,
     parameters: [
       { name: "@scopeKey", value: normalizedScopeKey },
       { name: "@docType", value: "whatnot_import_batch" },
-      { name: "@status", value: "pending_review" }
+      { name: "@pendingStatus", value: "pending_review" },
+      { name: "@recoverableStatus", value: "recoverable_error" },
+      { name: "@processingStatus", value: "processing" }
     ]
   };
   const iterator = syncSnapshots.items.query<WhatnotImportBatchDocument>(querySpec, {
@@ -225,13 +229,14 @@ export async function listPendingWhatnotImportBatches(
       SELECT * FROM c
       WHERE c.userId = @scopeKey
         AND c.docType = @docType
-        AND c.status = @status
+        AND c.status IN (@pendingStatus, @recoverableStatus)
       ORDER BY c.updatedAt DESC
     `,
     parameters: [
       { name: "@scopeKey", value: normalizedScopeKey },
       { name: "@docType", value: "whatnot_import_batch" },
-      { name: "@status", value: "pending_review" }
+      { name: "@pendingStatus", value: "pending_review" },
+      { name: "@recoverableStatus", value: "recoverable_error" }
     ]
   };
   const iterator = syncSnapshots.items.query<WhatnotImportBatchDocument>(querySpec, {
@@ -289,7 +294,14 @@ export async function claimPendingWhatnotImportBatch(
   config: ApiConfig,
   scopeKey: string,
   batchId: string,
-  claimedAt: string
+  claimedAt: string,
+  recovery?: {
+    fingerprint: string;
+    decisions: WhatnotConfirmationDecisionDocument[];
+    attemptId: string;
+    actorUserId: string;
+    leaseExpiresAt: string;
+  }
 ): Promise<WhatnotImportBatchClaimResult> {
   const { syncSnapshots } = getContainers(config);
   const normalizedScopeKey = normalizeId(scopeKey);
@@ -299,11 +311,27 @@ export async function claimPendingWhatnotImportBatch(
     return { status: "not_found", batch: null };
   }
 
+  if (
+    recovery
+    && existing.confirmationFingerprint
+    && existing.confirmationFingerprint !== recovery.fingerprint
+  ) {
+    return { status: "idempotency_mismatch", batch: existing };
+  }
+
   if (existing.status === "completed") {
     return { status: "already_completed", batch: existing };
   }
 
-  if (existing.status !== "pending_review") {
+  const leaseExpiresAt = Date.parse(existing.confirmationAttempt?.leaseExpiresAt ?? "");
+  const claimedAtMs = Date.parse(claimedAt);
+  const processingLeaseExpired = existing.status === "processing"
+    && (!Number.isFinite(leaseExpiresAt) || leaseExpiresAt <= claimedAtMs);
+  const canClaim = existing.status === "pending_review"
+    || existing.status === "recoverable_error"
+    || processingLeaseExpired;
+
+  if (!canClaim) {
     return { status: "not_claimable", batch: existing };
   }
 
@@ -315,7 +343,28 @@ export async function claimPendingWhatnotImportBatch(
   const document: WhatnotImportBatchDocument = {
     ...existing,
     status: "processing",
-    updatedAt: claimedAt
+    updatedAt: claimedAt,
+    ...(recovery ? {
+      confirmationFingerprint: existing.confirmationFingerprint || recovery.fingerprint,
+      confirmationDecisions: existing.confirmationDecisions ?? recovery.decisions,
+      confirmationAttempt: {
+        attemptId: normalizeId(recovery.attemptId),
+        actorUserId: normalizeId(recovery.actorUserId),
+        // Legacy processing batches predate attempt metadata. Reclaiming one is
+        // necessarily recovery attempt 2, not a fresh first execution.
+        attemptNumber: Math.max(
+          0,
+          existing.confirmationAttempt?.attemptNumber ?? (existing.status === "processing" ? 1 : 0)
+        ) + 1,
+        adoptedLegacyProcessing: existing.confirmationAttempt?.adoptedLegacyProcessing
+          ?? (existing.status === "processing" && !existing.confirmationAttempt),
+        claimedAt,
+        leaseExpiresAt: recovery.leaseExpiresAt
+      },
+      failedOperationKey: undefined,
+      failedPhase: undefined,
+      errorMessage: undefined
+    } : {})
   };
 
   try {
@@ -332,6 +381,187 @@ export async function claimPendingWhatnotImportBatch(
     if (isCosmosClaimConflict(error)) {
       return { status: "conflict", batch: null };
     }
+    throw error;
+  }
+}
+
+export async function checkpointWhatnotImportOperation(
+  config: ApiConfig,
+  input: {
+    scopeKey: string;
+    batchId: string;
+    attemptId: string;
+    operationKey: string;
+    outcome: "imported" | "updated" | "skipped";
+    saleId?: string;
+    lotId?: string;
+    completedAt: string;
+    leaseExpiresAt?: string;
+  }
+): Promise<WhatnotImportBatchDocument> {
+  const scopeKey = normalizeId(input.scopeKey);
+  const batch = await getWhatnotImportBatch(config, scopeKey, input.batchId);
+  if (!batch || batch.status !== "processing") {
+    throw new Error("Whatnot import batch is not being confirmed.");
+  }
+  if (normalizeId(batch.confirmationAttempt?.attemptId) !== normalizeId(input.attemptId)) {
+    throw new Error("Whatnot import batch confirmation attempt changed.");
+  }
+  const operationKey = normalizeId(input.operationKey);
+  if (batch.confirmationProgress?.[operationKey]) return batch;
+  const etag = readCosmosEtag(batch);
+  if (!etag) throw new Error("Whatnot import batch changed while it was being confirmed.");
+
+  const document: WhatnotImportBatchDocument = {
+    ...batch,
+    confirmationProgress: {
+      ...(batch.confirmationProgress ?? {}),
+      [operationKey]: {
+        outcome: input.outcome,
+        ...(normalizeId(input.saleId) ? { saleId: normalizeId(input.saleId) } : {}),
+        ...(normalizeId(input.lotId) ? { lotId: normalizeId(input.lotId) } : {}),
+        completedAt: input.completedAt
+      }
+    },
+    confirmationAttempt: batch.confirmationAttempt && normalizeId(input.leaseExpiresAt)
+      ? {
+        ...batch.confirmationAttempt,
+        leaseExpiresAt: normalizeId(input.leaseExpiresAt)
+      }
+      : batch.confirmationAttempt,
+    updatedAt: input.completedAt
+  };
+  const { syncSnapshots } = getContainers(config);
+  try {
+    const { resource } = await withCosmosRetry(() =>
+      syncSnapshots.item(batch.id, scopeKey).replace<WhatnotImportBatchDocument>(document, buildIfMatchOptions(etag))
+    );
+    if (!resource) throw new Error("Failed to checkpoint Whatnot import operation.");
+    return resource;
+  } catch (error) {
+    if (isCosmosClaimConflict(error)) {
+      throw new Error("Whatnot import batch changed while it was being confirmed.");
+    }
+    throw error;
+  }
+}
+
+export async function initializeWhatnotConfirmationPlan(
+  config: ApiConfig,
+  input: {
+    scopeKey: string;
+    batchId: string;
+    attemptId: string;
+    plan: WhatnotImportBatchDocument["confirmationPlan"];
+    initializedAt: string;
+  }
+): Promise<WhatnotImportBatchDocument> {
+  const scopeKey = normalizeId(input.scopeKey);
+  const batch = await getWhatnotImportBatch(config, scopeKey, input.batchId);
+  if (!batch || batch.status !== "processing") {
+    throw new Error("Whatnot import batch is not being confirmed.");
+  }
+  if (normalizeId(batch.confirmationAttempt?.attemptId) !== normalizeId(input.attemptId)) {
+    throw new Error("Whatnot import batch confirmation attempt changed.");
+  }
+  if (batch.confirmationPlan) {
+    if (JSON.stringify(batch.confirmationPlan) !== JSON.stringify(input.plan ?? [])) {
+      throw new Error("Whatnot confirmation plan changed after initialization.");
+    }
+    return batch;
+  }
+  const etag = readCosmosEtag(batch);
+  if (!etag) throw new Error("Whatnot import batch changed while its plan was initialized.");
+  const document: WhatnotImportBatchDocument = {
+    ...batch,
+    confirmationPlan: input.plan ?? [],
+    updatedAt: input.initializedAt
+  };
+  const { syncSnapshots } = getContainers(config);
+  try {
+    const { resource } = await withCosmosRetry(() =>
+      syncSnapshots.item(batch.id, scopeKey).replace<WhatnotImportBatchDocument>(document, buildIfMatchOptions(etag))
+    );
+    if (!resource) throw new Error("Failed to initialize Whatnot confirmation plan.");
+    return resource;
+  } catch (error) {
+    if (isCosmosClaimConflict(error)) {
+      throw new Error("Whatnot import batch changed while its plan was initialized.");
+    }
+    throw error;
+  }
+}
+
+export async function renewWhatnotImportConfirmationLease(
+  config: ApiConfig,
+  input: {
+    scopeKey: string;
+    batchId: string;
+    attemptId: string;
+    renewedAt: string;
+    leaseExpiresAt: string;
+  }
+): Promise<WhatnotImportBatchDocument | null> {
+  const scopeKey = normalizeId(input.scopeKey);
+  const batch = await getWhatnotImportBatch(config, scopeKey, input.batchId);
+  if (!batch || batch.status !== "processing") return null;
+  if (normalizeId(batch.confirmationAttempt?.attemptId) !== normalizeId(input.attemptId)) return null;
+  const etag = readCosmosEtag(batch);
+  if (!etag || !batch.confirmationAttempt) return null;
+  const document: WhatnotImportBatchDocument = {
+    ...batch,
+    confirmationAttempt: {
+      ...batch.confirmationAttempt,
+      leaseExpiresAt: input.leaseExpiresAt
+    },
+    updatedAt: input.renewedAt
+  };
+  const { syncSnapshots } = getContainers(config);
+  try {
+    const { resource } = await withCosmosRetry(() =>
+      syncSnapshots.item(batch.id, scopeKey).replace<WhatnotImportBatchDocument>(document, buildIfMatchOptions(etag))
+    );
+    return resource ?? null;
+  } catch (error) {
+    if (isCosmosClaimConflict(error)) return null;
+    throw error;
+  }
+}
+
+export async function markWhatnotImportBatchRecoverable(
+  config: ApiConfig,
+  input: {
+    scopeKey: string;
+    batchId: string;
+    attemptId: string;
+    failedOperationKey?: string;
+    failedPhase?: string;
+    errorMessage: string;
+    failedAt: string;
+  }
+): Promise<WhatnotImportBatchDocument | null> {
+  const scopeKey = normalizeId(input.scopeKey);
+  const batch = await getWhatnotImportBatch(config, scopeKey, input.batchId);
+  if (!batch || batch.status !== "processing") return batch;
+  if (normalizeId(batch.confirmationAttempt?.attemptId) !== normalizeId(input.attemptId)) return null;
+  const etag = readCosmosEtag(batch);
+  if (!etag) return null;
+  const document: WhatnotImportBatchDocument = {
+    ...batch,
+    status: "recoverable_error",
+    updatedAt: input.failedAt,
+    failedOperationKey: normalizeId(input.failedOperationKey) || undefined,
+    failedPhase: normalizeId(input.failedPhase) || undefined,
+    errorMessage: normalizeId(input.errorMessage)
+  };
+  const { syncSnapshots } = getContainers(config);
+  try {
+    const { resource } = await withCosmosRetry(() =>
+      syncSnapshots.item(batch.id, scopeKey).replace<WhatnotImportBatchDocument>(document, buildIfMatchOptions(etag))
+    );
+    return resource ?? null;
+  } catch (error) {
+    if (isCosmosClaimConflict(error)) return null;
     throw error;
   }
 }
