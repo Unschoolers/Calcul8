@@ -96,7 +96,8 @@ function disableGoogleIdentityAutoSelect(): void {
 async function postAccountAction(
   app: AccountActionApp,
   path: string,
-  fallbackMessage: string
+  fallbackMessage: string,
+  options: { returnFailureResponse?: boolean } = {}
 ): Promise<Response | null> {
   const baseUrl = resolveApiBaseUrl();
   if (!baseUrl) {
@@ -117,8 +118,10 @@ async function postAccountAction(
   }
 
   if (!response.ok) {
-    app.notify(fallbackMessage, "error");
-    return null;
+    if (options.returnFailureResponse !== true) {
+      app.notify(fallbackMessage, "error");
+      return null;
+    }
   }
 
   return response;
@@ -129,13 +132,22 @@ export const uiAccountMethods: ThisType<AppContext> & Pick<
   "logoutCurrentSession" | "clearPersonalAccountData"
 > = {
   async logoutCurrentSession(): Promise<void> {
-    const response = await postAccountAction(this, "/auth/logout", "Failed to sign out.");
+    const response = await postAccountAction(this, "/auth/logout", "Failed to sign out.", {
+      returnFailureResponse: true
+    });
     if (!response) return;
 
     disableGoogleAutoSignIn();
     disableGoogleIdentityAutoSelect();
     clearLocalAuthState(this);
-    this.notify("Signed out.", "success");
+    if (response.ok) {
+      this.notify("Signed out.", "success");
+    } else {
+      this.notify(
+        "Signed out on this device, but server session revocation could not be confirmed.",
+        "warning"
+      );
+    }
     reloadAppSoon();
   },
 

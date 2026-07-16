@@ -1,5 +1,11 @@
 import type { ApiConfig, RefreshSessionDocument, SessionDocument } from "../../types";
-import { getContainers, isNotFoundError, withCosmosRetry } from "./core";
+import {
+  getContainers,
+  isConflictError,
+  isNotFoundError,
+  isPreconditionFailedError,
+  withCosmosRetry
+} from "./core";
 
 interface TouchSessionInput {
   sessionId: string;
@@ -9,9 +15,31 @@ interface TouchSessionInput {
 
 interface RotateRefreshSessionInput {
   refreshSessionId: string;
+  expectedTokenHash: string;
   tokenHash: string;
   sessionId: string;
   lastUsedAt: string;
+}
+
+export class RefreshSessionConflictError extends Error {
+  constructor() {
+    super("Refresh token was already rotated.");
+    this.name = "RefreshSessionConflictError";
+  }
+}
+
+function readCosmosEtag(document: unknown): string {
+  if (!document || typeof document !== "object") return "";
+  return String((document as { _etag?: unknown })._etag ?? "").trim();
+}
+
+function buildIfMatchOptions(etag: string) {
+  return {
+    accessCondition: {
+      type: "IfMatch" as const,
+      condition: etag
+    }
+  };
 }
 
 export async function createSession(
@@ -119,7 +147,11 @@ export async function rotateRefreshSession(
 ): Promise<void> {
   const existing = await getRefreshSession(config, input.refreshSessionId);
   if (!existing) {
-    throw new Error("Refresh session was not found.");
+    throw new RefreshSessionConflictError();
+  }
+  const etag = readCosmosEtag(existing);
+  if (!etag || existing.tokenHash !== input.expectedTokenHash) {
+    throw new RefreshSessionConflictError();
   }
 
   const { sessions } = getContainers(config);
@@ -130,9 +162,18 @@ export async function rotateRefreshSession(
     lastUsedAt: input.lastUsedAt,
     revokedAt: null
   };
-  await withCosmosRetry(() =>
-    sessions.items.upsert<RefreshSessionDocument>(updatedDocument)
-  );
+  try {
+    await withCosmosRetry(() =>
+      sessions
+        .item(updatedDocument.id, updatedDocument.id)
+        .replace<RefreshSessionDocument>(updatedDocument, buildIfMatchOptions(etag))
+    );
+  } catch (error) {
+    if (isPreconditionFailedError(error) || isConflictError(error)) {
+      throw new RefreshSessionConflictError();
+    }
+    throw error;
+  }
 }
 
 export async function revokeRefreshSessionForSession(

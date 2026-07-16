@@ -47,6 +47,7 @@ import {
   consumeAuthResponseCookies,
   consumeAuthResponseHeaders,
   refreshSessionFromRequest,
+  revokeSessionFromRequest,
   resolveUserId
 } from "./auth";
 
@@ -535,16 +536,46 @@ test("refresh token cookie rotates and issues a new session cookie without beare
   assert.equal(rotateRefreshSessionMock.mock.calls.length, 1);
   const rotation = rotateRefreshSessionMock.mock.calls[0]?.[1] as {
     refreshSessionId: string;
+    expectedTokenHash: string;
     tokenHash: string;
     sessionId: string;
   };
   assert.equal(rotation.refreshSessionId, "refresh-1");
+  assert.equal(rotation.expectedTokenHash, hashRefreshSecret(REFRESH_SECRET_OLD));
   assert.equal(rotation.sessionId, createdSession.id);
   assert.notEqual(rotation.tokenHash, hashRefreshSecret(REFRESH_SECRET_OLD));
 
   const cookies = consumeAuthResponseCookies(request);
   assert.ok(cookies.find((cookie) => cookie.name === "whatfees_session" && cookie.value === createdSession.id));
   assert.ok(cookies.find((cookie) => cookie.name === "whatfees_refresh" && cookie.value.startsWith("refresh-1.")));
+});
+
+test("refresh token rotation failure removes the unissued session and clears auth cookies", async () => {
+  const request = makeRequest({
+    cookie: `whatfees_refresh=refresh-1.${REFRESH_SECRET_OLD}`
+  }, "POST");
+  getRefreshSessionMock.mockResolvedValue(buildRefreshSession());
+  rotateRefreshSessionMock.mockRejectedValue(
+    Object.assign(new Error("Refresh token was already rotated."), {
+      name: "RefreshSessionConflictError"
+    })
+  );
+
+  await assert.rejects(
+    () => refreshSessionFromRequest(request, makeConfig()),
+    (error: unknown) => {
+      assert.ok(error instanceof HttpError);
+      assert.equal(error.status, 401);
+      assert.equal(error.message, "Refresh token is invalid or expired.");
+      return true;
+    }
+  );
+
+  const createdSession = createSessionMock.mock.calls[0]?.[1] as SessionDocument;
+  assert.deepEqual(deleteSessionMock.mock.calls[0]?.slice(1), [createdSession.id]);
+  const cookies = consumeAuthResponseCookies(request);
+  assert.equal(findLastCookie(cookies, "whatfees_session")?.maxAge, 0);
+  assert.equal(findLastCookie(cookies, "whatfees_refresh")?.maxAge, 0);
 });
 
 test("refresh token rejects missing cookies as expired auth and clears refresh cookie", async () => {
@@ -593,7 +624,7 @@ test("logout revokes the refresh token tied to the current session", async () =>
     cookie: `whatfees_session=session-1; whatfees_refresh=refresh-1.${REFRESH_SECRET_OLD}`
   }, "POST");
 
-  const revoked = await (await import("./auth")).revokeSessionFromRequest(request, makeConfig());
+  const revoked = await revokeSessionFromRequest(request, makeConfig());
 
   assert.equal(revoked, true);
   assert.equal(deleteSessionMock.mock.calls.length, 1);
@@ -601,4 +632,21 @@ test("logout revokes the refresh token tied to the current session", async () =>
   const cookies = consumeAuthResponseCookies(request);
   assert.ok(cookies.find((cookie) => cookie.name === "whatfees_session" && cookie.maxAge === 0));
   assert.ok(cookies.find((cookie) => cookie.name === "whatfees_refresh" && cookie.maxAge === 0));
+});
+
+test("logout fails when server-side session revocation cannot be confirmed", async () => {
+  const request = makeRequest({
+    cookie: `whatfees_session=session-1; whatfees_refresh=refresh-1.${REFRESH_SECRET_OLD}`
+  }, "POST");
+  deleteSessionMock.mockRejectedValue(new Error("Cosmos unavailable"));
+
+  await assert.rejects(
+    () => revokeSessionFromRequest(request, makeConfig()),
+    /Failed to revoke server session/
+  );
+
+  assert.equal(revokeRefreshSessionForSessionMock.mock.calls.length, 1);
+  const cookies = consumeAuthResponseCookies(request);
+  assert.equal(findLastCookie(cookies, "whatfees_session")?.maxAge, 0);
+  assert.equal(findLastCookie(cookies, "whatfees_refresh")?.maxAge, 0);
 });

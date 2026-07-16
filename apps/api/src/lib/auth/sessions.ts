@@ -203,7 +203,7 @@ export async function tryIssueSessionCookie(
   config: ApiConfig,
   userId: string,
   bootstrapToken: string | null = null,
-  options: { issueRefreshCookie?: boolean } = {}
+  options: { issueRefreshCookie?: boolean; deferResponseAuth?: boolean } = {}
 ): Promise<string | null> {
   const createSessionFn = getCosmosFn<CreateSessionFn>("createSession");
   if (!createSessionFn) return null;
@@ -224,8 +224,10 @@ export async function tryIssueSessionCookie(
 
   try {
     await createSessionFn(config, session);
-    setSessionCookie(request, sessionId, config);
-    setAuthResponseHeader(request, CSRF_HEADER_NAME, createSessionCsrfToken(sessionId, config));
+    if (options.deferResponseAuth !== true) {
+      setSessionCookie(request, sessionId, config);
+      setAuthResponseHeader(request, CSRF_HEADER_NAME, createSessionCsrfToken(sessionId, config));
+    }
     if (options.issueRefreshCookie !== false) {
       await tryIssueRefreshCookie(request, config, userId, sessionId, nowMs);
     }
@@ -286,28 +288,42 @@ export async function clearSessionCookie(request: HttpRequest, config: ApiConfig
 
 export async function revokeSessionFromRequest(request: HttpRequest, config: ApiConfig): Promise<boolean> {
   const sessionId = parseSessionIdFromCookie(request, config);
+  if (!sessionId) {
+    clearSessionCookieOnResponse(request, config);
+    clearRefreshCookieOnResponse(request, config);
+    return false;
+  }
+
+  let revocationFailed = false;
   const deleteSessionFn = getCosmosFn<DeleteSessionFn>("deleteSession");
-  if (sessionId && deleteSessionFn) {
+  if (deleteSessionFn) {
     try {
       await deleteSessionFn(config, sessionId);
     } catch {
-      // Keep logout idempotent even if the row no longer exists.
+      revocationFailed = true;
     }
+  } else {
+    revocationFailed = true;
   }
 
   const revokeRefreshSessionForSessionFn =
     getCosmosFn<RevokeRefreshSessionForSessionFn>("revokeRefreshSessionForSession");
-  if (sessionId && revokeRefreshSessionForSessionFn) {
+  if (revokeRefreshSessionForSessionFn) {
     try {
       await revokeRefreshSessionForSessionFn(config, sessionId);
     } catch {
-      // Cookie cleanup below still ensures this browser stops using the token.
+      revocationFailed = true;
     }
+  } else {
+    revocationFailed = true;
   }
 
   clearSessionCookieOnResponse(request, config);
   clearRefreshCookieOnResponse(request, config);
-  return !!sessionId;
+  if (revocationFailed) {
+    throw new Error("Failed to revoke server session.");
+  }
+  return true;
 }
 
 export async function refreshSessionFromRequest(request: HttpRequest, config: ApiConfig): Promise<string> {
@@ -339,7 +355,8 @@ export async function refreshSessionFromRequest(request: HttpRequest, config: Ap
 
   const userId = sanitizeUserId(refreshSession.userId);
   const sessionId = await tryIssueSessionCookie(request, config, userId, null, {
-    issueRefreshCookie: false
+    issueRefreshCookie: false,
+    deferResponseAuth: true
   });
   if (!sessionId) {
     throw new Error("Failed to create refreshed session.");
@@ -351,12 +368,30 @@ export async function refreshSessionFromRequest(request: HttpRequest, config: Ap
   };
   nextToken.cookieValue = `${refreshCookie.refreshSessionId}.${nextToken.secret}`;
 
-  await rotateRefreshSessionFn(config, {
-    refreshSessionId: refreshCookie.refreshSessionId,
-    tokenHash: nextToken.tokenHash,
-    sessionId,
-    lastUsedAt: new Date(nowMs).toISOString()
-  });
+  try {
+    await rotateRefreshSessionFn(config, {
+      refreshSessionId: refreshCookie.refreshSessionId,
+      expectedTokenHash: refreshSession.tokenHash,
+      tokenHash: nextToken.tokenHash,
+      sessionId,
+      lastUsedAt: new Date(nowMs).toISOString()
+    });
+  } catch (error) {
+    const deleteSessionFn = getCosmosFn<DeleteSessionFn>("deleteSession");
+    try {
+      await deleteSessionFn?.(config, sessionId);
+    } catch {
+      // The session id was never returned to the client; cleanup can be retried separately.
+    }
+    clearSessionCookieOnResponse(request, config);
+    clearRefreshCookieOnResponse(request, config);
+    if (error instanceof Error && error.name === "RefreshSessionConflictError") {
+      throw new HttpError(401, "Refresh token is invalid or expired.");
+    }
+    throw new Error("Failed to rotate refresh token.", { cause: error });
+  }
+  setSessionCookie(request, sessionId, config);
+  setAuthResponseHeader(request, CSRF_HEADER_NAME, createSessionCsrfToken(sessionId, config));
   setRefreshCookie(request, nextToken.cookieValue, config);
   return userId;
 }

@@ -154,6 +154,27 @@ test("logoutCurrentSession signs out, clears local auth state, and reloads", asy
   assert.equal((window.location.reload as ReturnType<typeof vi.fn>).mock.calls.length, 1);
 });
 
+test("logoutCurrentSession clears local auth but warns when server revocation fails", async () => {
+  const ctx = createContext();
+  setStoredSessionUserId("user-1");
+  fetchWithRetryMock.mockResolvedValue(createResponse(
+    { error: "Failed to logout." },
+    { status: 500 }
+  ));
+
+  await uiAccountMethods.logoutCurrentSession.call(ctx as never);
+  vi.runAllTimers();
+
+  assert.equal(localStorage.getItem("whatfees_google_id_token"), null);
+  assert.equal(localStorage.getItem("whatfees_google_auto_signin_disabled_v1"), "1");
+  assert.equal(getStoredSessionUserId(), "");
+  assert.deepEqual(ctx.notify.mock.calls.at(-1), [
+    "Signed out on this device, but server session revocation could not be confirmed.",
+    "warning"
+  ]);
+  assert.equal((window.location.reload as ReturnType<typeof vi.fn>).mock.calls.length, 1);
+});
+
 test("clearPersonalAccountData clears app storage and reloads after success", async () => {
   const ctx = createContext();
   setStoredSessionUserId("user-1");
