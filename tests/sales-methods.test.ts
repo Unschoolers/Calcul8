@@ -200,7 +200,7 @@ test("openAddSaleModal focuses nested input from $el fallback", () => {
   assert.equal(input.focus.mock.calls.length, 1);
 });
 
-test("saveSalesToStorage catches storage errors", () => {
+test("saveSalesToStorage reports storage errors to the user", () => {
   const failingStorage = {
     setItem: vi.fn(() => {
       throw new Error("disk full");
@@ -213,6 +213,10 @@ test("saveSalesToStorage catches storage errors", () => {
   salesMethods.saveSalesToStorage.call(ctx as never);
 
   assert.equal(consoleSpy.mock.calls.length > 0, true);
+  assert.deepEqual((ctx.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1), [
+    "Could not save sales. Storage may be full.",
+    "error"
+  ]);
   consoleSpy.mockRestore();
 });
 

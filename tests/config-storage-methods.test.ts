@@ -143,6 +143,22 @@ test("getSalesCacheEntry distinguishes missing sales from an explicitly loaded e
   });
 });
 
+test("getSalesCacheEntry distinguishes corrupt sales from missing sales", () => {
+  withMockedLocalStorage((data) => {
+    data.set("whatfees_sales_1", "not-json");
+    const context = createContext();
+
+    assert.deepEqual(configStorageMethods.getSalesCacheEntry.call(context as never, 1), {
+      status: "corrupt",
+      sales: []
+    });
+    assert.deepEqual((context.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1), [
+      "Local sales data is damaged. Cloud recovery will be attempted.",
+      "warning"
+    ]);
+  });
+});
+
 test("loadSalesForLotId reads current storage and normalizes loaded sales", () => {
   withMockedLocalStorage((data) => {
     data.set("whatfees_sales_99", JSON.stringify([
@@ -463,7 +479,7 @@ test("loadLotsFromStorage clears in-memory lots when the active scope has no sav
   });
 });
 
-test("loadLotsFromStorage handles parse failures by clearing lots", () => {
+test("loadLotsFromStorage marks parse failures for cloud recovery", () => {
   withMockedLocalStorage((data) => {
     data.set(STORAGE_KEYS.PRESETS, "not-json");
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
@@ -474,6 +490,10 @@ test("loadLotsFromStorage handles parse failures by clearing lots", () => {
       configStorageMethods.loadLotsFromStorage.call(context as never);
       assert.deepEqual(context.lots, []);
       assert.equal(errorSpy.mock.calls.at(-1)?.[0], "Failed to load lots:");
+      assert.deepEqual((context.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1), [
+        "Local lot data is damaged. Cloud recovery will be attempted.",
+        "warning"
+      ]);
     } finally {
       errorSpy.mockRestore();
     }

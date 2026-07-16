@@ -23,6 +23,7 @@ vi.mock("../src/app-core/methods/ui/common/shared.ts", () => ({
 }));
 
 import { uiSyncMethods } from "../src/app-core/methods/ui/sync/sync.ts";
+import { configStorageMethods } from "../src/app-core/methods/config-storage.ts";
 
 type MockStorage = {
   readonly length: number;
@@ -478,6 +479,24 @@ test("pushCloudSync throttles repeated recovery pulls after local storage reset"
   assert.equal(fetchWithRetryMock.mock.calls.length, 0);
   assert.equal(pullCloudSyncMock.mock.calls.length, 1);
   dateNowSpy.mockRestore();
+});
+
+test("pushCloudSync pulls first when scoped local data is corrupt", async () => {
+  vi.stubGlobal("localStorage", createMockStorage({
+    whatfees_google_id_token: "token-abc",
+    whatfees_presets: "not-json"
+  }));
+
+  const ctx = createContext();
+  ctx.lastSyncedPayloadHash = "";
+  const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+  configStorageMethods.loadLotsFromStorage.call(ctx as never);
+
+  await uiSyncMethods.pushCloudSync.call(ctx, false);
+
+  assert.equal(fetchWithRetryMock.mock.calls.length, 0);
+  assert.equal(ctx.pullCloudSync.mock.calls.length, 1);
+  errorSpy.mockRestore();
 });
 
 test("pullCloudSync handles workspace access loss using the scope resolved at request time", async () => {

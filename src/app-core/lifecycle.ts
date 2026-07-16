@@ -11,6 +11,7 @@ import { refreshWorkspaceRealtime, stopWorkspaceRealtime } from "./methods/ui/wo
 import {
     getScopedLastLotStorageKey,
     getScopedLastSyncedPayloadHashKey,
+    readStorage,
     STORAGE_KEYS
 } from "./storageKeys.ts";
 import { getActiveStorageScope } from "./workspace-scope.ts";
@@ -87,7 +88,7 @@ export const appLifecycle: AppLifecycleObject = {
 
     const storageScope = getActiveStorageScope(this);
     const scopedLastLotKey = getScopedLastLotStorageKey(storageScope);
-    const last = Number(localStorage.getItem(scopedLastLotKey));
+    const last = Number(readStorage(scopedLastLotKey));
     if (last && this.lots.some((p) => p.id === last)) {
       this.currentLotId = last;
       this.loadLot();

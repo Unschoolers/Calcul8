@@ -74,6 +74,7 @@ function createContext(overrides: Record<string, unknown> = {}): Record<string, 
     wheelSessionUpdatedAt: 0,
     wheelSessionLotSelections: {},
     wheelSkippedDeductions: [],
+    notify: vi.fn(),
     ...overrides
   };
 }
@@ -194,6 +195,33 @@ test("loadWheelFromStorage reads workspace-scoped wheel state without falling ba
   });
 });
 
+test("loadWheelFromStorage marks corrupt wheel data for recovery", async () => {
+  await withMockedLocalStorage(async (data) => {
+    data.set(getScopedWheelConfigsStorageKey({ scopeType: "personal" }), "not-json");
+    data.set(getScopedWheelSessionStorageKey({ scopeType: "personal" }), "also-not-json");
+    const context = createContext();
+
+    salesMethods.loadWheelFromStorage.call(context as never);
+
+    assert.deepEqual((context.notify as ReturnType<typeof vi.fn>).mock.calls, [
+      ["Local wheel configuration is damaged. Cloud recovery will be attempted.", "warning"],
+      ["Local wheel session is damaged. Cloud recovery will be attempted.", "warning"]
+    ]);
+  });
+});
+
+test("loadWheelFromStorage rejects structurally invalid wheel data", async () => {
+  await withMockedLocalStorage(async (data) => {
+    data.set(getScopedWheelConfigsStorageKey({ scopeType: "personal" }), "{}");
+    data.set(getScopedWheelSessionStorageKey({ scopeType: "personal" }), "[]");
+    const context = createContext();
+
+    salesMethods.loadWheelFromStorage.call(context as never);
+
+    assert.equal((context.notify as ReturnType<typeof vi.fn>).mock.calls.length, 2);
+  });
+});
+
 test("saveWheelSessionToStorage preserves richer wheel session fields already mirrored by the wheel window", async () => {
   await withMockedLocalStorage(async (data) => {
     data.set(
@@ -280,4 +308,39 @@ test("saveSalesToStorage updates the root sales cache without reassigning curren
     assert.deepEqual(getRootLotSales(context as never, 77), sales);
     assert.equal(localStorage.getItem("sales:77"), JSON.stringify(sales));
   });
+});
+
+test("saveWheelConfigsToStorage reports storage failures", () => {
+  vi.stubGlobal("localStorage", {
+    setItem: vi.fn(() => {
+      throw new Error("quota exceeded");
+    })
+  });
+  const context = createContext({
+    wheelConfigs: [{ id: 1, name: "Wheel", tiers: [] }]
+  });
+
+  salesMethods.saveWheelConfigsToStorage.call(context as never);
+
+  assert.deepEqual((context.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1), [
+    "Could not save wheel configuration. Storage may be full.",
+    "error"
+  ]);
+});
+
+test("saveWheelSessionToStorage reports storage failures", () => {
+  vi.stubGlobal("localStorage", {
+    getItem: vi.fn(() => null),
+    setItem: vi.fn(() => {
+      throw new Error("quota exceeded");
+    })
+  });
+  const context = createContext();
+
+  salesMethods.saveWheelSessionToStorage.call(context as never);
+
+  assert.deepEqual((context.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1), [
+    "Could not save wheel session. Storage may be full.",
+    "error"
+  ]);
 });

@@ -5,6 +5,7 @@ import {
 import type { SyncSession } from "./sync-session.ts";
 import type { SyncApp, SyncServiceDeps } from "./sync-service.ts";
 import type { SyncScopeContext } from "./sync-scope.ts";
+import { hasStorageReadFailure } from "../../../storage-health.ts";
 
 const STORAGE_RESET_RECOVERY_COOLDOWN_MS = 30_000;
 
@@ -13,6 +14,7 @@ type SyncRecoveryState = {
 };
 
 export function isLocalSyncCacheReset(app: SyncApp, deps: SyncServiceDeps, scope: SyncScopeContext): boolean {
+  if (hasStorageReadFailure(app, scope)) return true;
   if (!app.lastSyncedPayloadHash) return false;
   if (!Array.isArray(app.lots) || app.lots.length === 0) return false;
 

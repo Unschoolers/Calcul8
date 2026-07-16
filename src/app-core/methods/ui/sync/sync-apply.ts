@@ -7,6 +7,7 @@ import { applySystemPricingDefaultsToLot, normalizeSystemPricingDefaults } from 
 import { normalizeWheelConfigs } from "../../../shared/normalize-wheel-config.ts";
 import { persistSalesCacheToStorage } from "../../../shared/sales-cache-storage.ts";
 import { replaceRootLotSales, resetRootSalesState } from "../../../shared/sales-root-state.ts";
+import { clearStorageReadFailuresForScope } from "../../../storage-health.ts";
 import {
   parseSyncSnapshotDto,
   type SyncLotDto,
@@ -77,6 +78,7 @@ export type SyncApplyApp = Pick<
 > & Partial<Pick<AppContext, "systemPricingDefaults" | "saveSystemPricingDefaultsToStorage">>;
 
 export function applyCloudSnapshotToLocal(context: SyncApplyApp, snapshot: ParsedCloudSnapshot): void {
+  const storageScope = getActiveStorageScope(context);
   const todayDate = new Date().toISOString().slice(0, 10);
   if (snapshot.systemPricingDefaults) {
     context.systemPricingDefaults = snapshot.systemPricingDefaults;
@@ -116,9 +118,10 @@ export function applyCloudSnapshotToLocal(context: SyncApplyApp, snapshot: Parse
 
   if (Number.isFinite(snapshot.version)) {
     localStorage.setItem(
-      getScopedSyncClientVersionKey(getActiveStorageScope(context)),
+      getScopedSyncClientVersionKey(storageScope),
       String(snapshot.version)
     );
   }
+  clearStorageReadFailuresForScope(context, storageScope);
 }
 

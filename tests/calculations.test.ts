@@ -3204,6 +3204,76 @@ test("mounted restores persisted portfolio lot type filter", () => {
   });
 });
 
+test("mounted continues when local storage access is denied", () => {
+  const originalStorage = (globalThis as { localStorage?: unknown }).localStorage;
+  const originalWindow = (globalThis as { window?: unknown }).window;
+  Object.defineProperty(globalThis, "localStorage", {
+    configurable: true,
+    value: {
+      getItem() {
+        throw new DOMException("Storage denied", "SecurityError");
+      },
+      removeItem() {
+        throw new DOMException("Storage denied", "SecurityError");
+      }
+    }
+  });
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: {
+      location: { pathname: "/nologin", search: "" },
+      setTimeout,
+      clearTimeout,
+      setInterval,
+      clearInterval
+    }
+  });
+
+  const context = {
+    activeScopeType: "personal",
+    activeWorkspaceId: null,
+    lots: [] as Lot[],
+    currentLotId: null,
+    portfolioLotFilterIds: [] as number[],
+    portfolioLotTypeFilter: "both" as const,
+    portfolioDashboardPreset: "all" as const,
+    currentTab: "config",
+    isGoogleSignedIn: false,
+    loadLotsFromStorage() {
+      this.lots = [];
+    },
+    loadLot: vi.fn(),
+    getExchangeRate: vi.fn(),
+    loadSalesFromStorage: vi.fn(),
+    loadWheelFromStorage: vi.fn(),
+    syncLivePricesFromDefaults: vi.fn(),
+    syncGuidedOnboarding: vi.fn(),
+    initGoogleAutoLogin: vi.fn(),
+    renderGoogleSignInButton: vi.fn(),
+    $nextTick(callback: () => void) {
+      callback();
+    },
+    debugLogEntitlement: vi.fn(async () => undefined),
+    startCloudSyncScheduler: vi.fn(),
+    unregisterServiceWorkersForDev: vi.fn(async () => undefined),
+    setupPwaUiHandlers: vi.fn(),
+    registerServiceWorker: vi.fn()
+  } as any;
+
+  try {
+    assert.doesNotThrow(() => appLifecycle.mounted.call(context));
+  } finally {
+    Object.defineProperty(globalThis, "localStorage", {
+      configurable: true,
+      value: originalStorage
+    });
+    Object.defineProperty(globalThis, "window", {
+      configurable: true,
+      value: originalWindow
+    });
+  }
+});
+
 test("mounted restores persisted portfolio dashboard preset", () => {
   withMockedLocalStorage((_storage, data) => {
     data.set("whatfees_portfolio_dashboard_preset", "active");

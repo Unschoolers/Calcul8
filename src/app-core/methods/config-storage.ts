@@ -13,6 +13,7 @@ import { resolveWorkspaceScopeContext } from "../workspace-scope.ts";
 import { normalizeStoredLot } from "../shared/normalize-lot.ts";
 import { applySystemPricingDefaultsToLot, normalizeSystemPricingDefaults } from "../shared/system-pricing-defaults.ts";
 import { getRootLotSales, replaceRootLotSales, resetRootSalesState } from "../shared/sales-root-state.ts";
+import { clearStorageReadFailure, markStorageReadFailure } from "../storage-health.ts";
 
 type ExchangeRateCacheRecord = {
   cadRate: number;
@@ -67,12 +68,13 @@ export const configStorageMethods: ConfigMethodSubset<
   },
 
   getSalesCacheEntry(lotId: number): LotSalesCacheEntry {
+    const scope = resolveWorkspaceScopeContext(this);
+    const storageKey = this.getSalesStorageKey(lotId);
     try {
-      const scope = resolveWorkspaceScopeContext(this);
-      const storageKey = this.getSalesStorageKey(lotId);
       const statusKey = getSalesCacheStatusKey(lotId, scope);
       const stored = localStorage.getItem(storageKey);
       if (!stored) {
+        clearStorageReadFailure(this, scope, storageKey);
         return {
           status: "missing",
           sales: []
@@ -105,13 +107,17 @@ export const configStorageMethods: ConfigMethodSubset<
       }));
       const hasExplicitLoadedState = localStorage.getItem(statusKey) === "loaded";
       const isLoaded = hasExplicitLoadedState || normalizedSales.length > 0;
+      clearStorageReadFailure(this, scope, storageKey);
       return {
         status: isLoaded ? "loaded" : "missing",
         sales: normalizedSales
       };
     } catch {
+      if (markStorageReadFailure(this, scope, storageKey)) {
+        this.notify("Local sales data is damaged. Cloud recovery will be attempted.", "warning");
+      }
       return {
-        status: "missing",
+        status: "corrupt",
         sales: []
       };
     }
@@ -185,9 +191,9 @@ export const configStorageMethods: ConfigMethodSubset<
       this.systemPricingDefaults = normalizeSystemPricingDefaults(this.systemPricingDefaults);
     }
 
+    const scope = resolveWorkspaceScopeContext(this);
+    const storageKey = getScopedPresetsStorageKey(scope);
     try {
-      const scope = resolveWorkspaceScopeContext(this);
-      const storageKey = getScopedPresetsStorageKey(scope);
       const stored = localStorage.getItem(storageKey);
       if (stored) {
         const parsed = JSON.parse(stored) as Lot[];
@@ -196,9 +202,13 @@ export const configStorageMethods: ConfigMethodSubset<
           .map((lot) => normalizeStoredLot(lot, todayDate))
           .map((lot) => applySystemPricingDefaultsToLot(lot, this.systemPricingDefaults));
       }
+      clearStorageReadFailure(this, scope, storageKey);
     } catch (error) {
       console.error("Failed to load lots:", error);
       this.lots = [];
+      if (markStorageReadFailure(this, scope, storageKey)) {
+        this.notify("Local lot data is damaged. Cloud recovery will be attempted.", "warning");
+      }
     }
   },
 

@@ -51,6 +51,12 @@ import {
 } from "../shared/wheel-root-session-state.ts";
 import { persistSalesCacheToStorage } from "../shared/sales-cache-storage.ts";
 import { cacheRootLotSales, replaceRootLotSales } from "../shared/sales-root-state.ts";
+import {
+  clearStorageReadFailure,
+  clearStorageWriteFailure,
+  markStorageReadFailure,
+  markStorageWriteFailure
+} from "../storage-health.ts";
 
 export const salesMethods: ThisType<AppContext> & Pick<
   AppMethodState,
@@ -112,12 +118,18 @@ export const salesMethods: ThisType<AppContext> & Pick<
   saveSalesToStorage(): void {
     if (!this.currentLotId) return;
 
+    const scope = getActiveStorageScope(this);
+    const storageKey = this.getSalesStorageKey(this.currentLotId);
     try {
       persistSalesCacheToStorage(this, this.currentLotId, this.sales);
       // Keep the root cache in sync without reassigning `sales` from inside the `sales` watcher.
       cacheRootLotSales(this, this.currentLotId, this.sales);
+      clearStorageWriteFailure(this, scope, storageKey);
     } catch (error) {
       console.error("Failed to save sales:", error);
+      if (markStorageWriteFailure(this, scope, storageKey)) {
+        this.notify("Could not save sales. Storage may be full.", "error");
+      }
     }
   },
 
@@ -274,50 +286,71 @@ export const salesMethods: ThisType<AppContext> & Pick<
     this.wheelConfigs = [];
     this.activeWheelConfigId = null;
 
+    const storageScope = getActiveStorageScope(this);
+    const configsStorageKey = getScopedWheelConfigsStorageKey(storageScope);
     try {
-      const raw = localStorage.getItem(getScopedWheelConfigsStorageKey(getActiveStorageScope(this)));
+      const raw = localStorage.getItem(configsStorageKey);
       if (raw) {
-        const parsed = JSON.parse(raw) as WheelConfig[];
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        const parsed = JSON.parse(raw) as unknown;
+        if (!Array.isArray(parsed)) {
+          throw new Error("Stored wheel configuration must be an array.");
+        }
+        if (parsed.length > 0) {
           this.wheelConfigs = normalizeWheelConfigs(parsed, this.lots);
           this.activeWheelConfigId = this.wheelConfigs[0]?.id ?? null;
         }
       }
+      clearStorageReadFailure(this, storageScope, configsStorageKey);
     } catch {
-      // Ignore parse errors
+      if (markStorageReadFailure(this, storageScope, configsStorageKey)) {
+        this.notify("Local wheel configuration is damaged. Cloud recovery will be attempted.", "warning");
+      }
     }
 
     resetRootWheelSessionState(this as unknown as RootWheelSessionStateContext);
 
+    const sessionStorageKey = getScopedWheelSessionStorageKey(storageScope);
     try {
-      const rawSession = localStorage.getItem(getScopedWheelSessionStorageKey(getActiveStorageScope(this)));
+      const rawSession = localStorage.getItem(sessionStorageKey);
       if (rawSession) {
-        const session = JSON.parse(rawSession) as Record<string, unknown>;
+        const parsedSession = JSON.parse(rawSession) as unknown;
+        if (!parsedSession || typeof parsedSession !== "object" || Array.isArray(parsedSession)) {
+          throw new Error("Stored wheel session must be an object.");
+        }
+        const session = parsedSession as Record<string, unknown>;
         if (session.activeWheelConfigId != null) {
           this.activeWheelConfigId = session.activeWheelConfigId as number;
         }
         applyRootWheelSessionSnapshot(this as unknown as RootWheelSessionStateContext, session);
       }
+      clearStorageReadFailure(this, storageScope, sessionStorageKey);
     } catch {
-      // Ignore parse errors
+      if (markStorageReadFailure(this, storageScope, sessionStorageKey)) {
+        this.notify("Local wheel session is damaged. Cloud recovery will be attempted.", "warning");
+      }
     }
   },
 
   saveWheelConfigsToStorage(): void {
+    const storageScope = getActiveStorageScope(this);
+    const storageKey = getScopedWheelConfigsStorageKey(storageScope);
     try {
       localStorage.setItem(
-        getScopedWheelConfigsStorageKey(getActiveStorageScope(this)),
+        storageKey,
         JSON.stringify(this.wheelConfigs)
       );
+      clearStorageWriteFailure(this, storageScope, storageKey);
     } catch {
-      // Storage full or unavailable
+      if (markStorageWriteFailure(this, storageScope, storageKey)) {
+        this.notify("Could not save wheel configuration. Storage may be full.", "error");
+      }
     }
   },
 
   saveWheelSessionToStorage(): void {
+    const storageScope = getActiveStorageScope(this);
+    const storageKey = getScopedWheelSessionStorageKey(storageScope);
     try {
-      const storageScope = getActiveStorageScope(this);
-      const storageKey = getScopedWheelSessionStorageKey(storageScope);
       let preserved: Record<string, unknown> = {};
       try {
         const raw = localStorage.getItem(storageKey);
@@ -347,8 +380,11 @@ export const salesMethods: ThisType<AppContext> & Pick<
           JSON.stringify(session)
         );
       }
+      clearStorageWriteFailure(this, storageScope, storageKey);
     } catch {
-      // Storage full or unavailable
+      if (markStorageWriteFailure(this, storageScope, storageKey)) {
+        this.notify("Could not save wheel session. Storage may be full.", "error");
+      }
     }
   }
 };

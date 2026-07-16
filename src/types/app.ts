@@ -232,7 +232,7 @@ export interface Sale {
 }
 
 export interface LotSalesCacheEntry {
-  status: "missing" | "loaded";
+  status: "missing" | "loaded" | "corrupt";
   sales: Sale[];
 }
 
