@@ -280,9 +280,11 @@ test("initGoogleAutoLoginFlow starts retry flow and credential callback persists
 
     params.onCredential("auto-token");
     assert.equal(getStoredGoogleIdToken(), "auto-token");
-    assert.equal(context.googleAuthEpoch, 0);
-    await flushMicrotasks();
     assert.equal(context.googleAuthEpoch, 1);
+    assert.equal(context.isAuthSessionResolving, true);
+    await flushMicrotasks();
+    assert.equal(context.googleAuthEpoch, 2);
+    assert.equal(context.isAuthSessionResolving, false);
     assert.equal(context.googleAvatarLoadFailed, false);
     assert.equal(cacheGoogleProfileFromTokenMock.mock.calls.at(-1)?.[0], "auto-token");
     assert.equal((context.debugLogEntitlement as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0], true);
@@ -310,9 +312,11 @@ test("promptGoogleSignInFlow initializes, prompts, and handles credential callba
     assert.equal(requestGoogleIdentityPromptMock.mock.calls.length, 1);
     assert.equal(data.get("whatfees_google_auto_signin_disabled_v1"), undefined);
     assert.equal(getStoredGoogleIdToken(), "signed-token");
-    assert.equal(context.googleAuthEpoch, 0);
-    await flushMicrotasks();
     assert.equal(context.googleAuthEpoch, 1);
+    assert.equal(context.isAuthSessionResolving, true);
+    await flushMicrotasks();
+    assert.equal(context.googleAuthEpoch, 2);
+    assert.equal(context.isAuthSessionResolving, false);
     assert.equal(context.googleAvatarLoadFailed, false);
     assert.equal((context.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0], "Signed in with Google.");
     assert.equal(cacheGoogleProfileFromTokenMock.mock.calls.at(-1)?.[0], "signed-token");
@@ -344,11 +348,47 @@ test("renderGoogleSignInButtonFlow initializes GIS button and handles credential
     assert.equal(renderButton.mock.calls[0]?.[1]?.locale, "fr");
     assert.equal(renderButton.mock.calls[0]?.[1]?.theme, "filled_black");
     assert.equal(getStoredGoogleIdToken(), "rendered-token");
-    assert.equal(context.googleAuthEpoch, 0);
-    await flushMicrotasks();
     assert.equal(context.googleAuthEpoch, 1);
+    assert.equal(context.isAuthSessionResolving, true);
+    await flushMicrotasks();
+    assert.equal(context.googleAuthEpoch, 2);
+    assert.equal(context.isAuthSessionResolving, false);
     assert.equal(context.showGoogleSignInFallback, false);
     assert.equal((context.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0], "Signed in with Google.");
+  });
+});
+
+test("rendered Google sign-in unlocks the app before post-login sync completes", async () => {
+  await withMockedLocalStorage(async () => {
+    let callback: (response: { credential?: string }) => void = () => {
+      throw new Error("Credential callback was not initialized.");
+    };
+    const initialize = vi.fn((config: { callback: (response: { credential?: string }) => void }) => {
+      callback = config.callback;
+    });
+    stubWindow({ initialize, prompt: vi.fn(), renderButton: vi.fn() });
+    stubDocumentWithButtonContainer();
+
+    let finishPostLoginSync: (() => void) | undefined;
+    const postLoginSync = new Promise<void>((resolve) => {
+      finishPostLoginSync = resolve;
+    });
+    const context = createContext({
+      debugLogEntitlement: vi.fn(() => postLoginSync)
+    });
+
+    renderGoogleSignInButtonFlow(context as never);
+    callback({ credential: "signed-token" });
+
+    assert.equal(getStoredGoogleIdToken(), "signed-token");
+    assert.equal(context.googleAuthEpoch, 1);
+    assert.equal(context.isAuthSessionResolving, true);
+
+    finishPostLoginSync?.();
+    await flushMicrotasks();
+
+    assert.equal(context.googleAuthEpoch, 2);
+    assert.equal(context.isAuthSessionResolving, false);
   });
 });
 

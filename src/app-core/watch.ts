@@ -223,6 +223,10 @@ export const appWatch: AppWatchObject = {
       return;
     }
 
+    if (this.isAuthSessionResolving) {
+      return;
+    }
+
     if (isDevNoLoginRoute()) {
       return;
     }

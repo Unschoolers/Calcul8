@@ -88,7 +88,7 @@ jobs:
 
       - name: Build production bundle
         shell: bash
-        run: npm run build:prod
+        run: npm run verify:checks && npm run build:prod
         env:
           VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
           VITE_GOOGLE_CLIENT_ID: ${{ vars.VITE_GOOGLE_CLIENT_ID }}

@@ -159,6 +159,13 @@ async function finalizeGoogleCredentialSignIn(
   app.googleAvatarLoadFailed = false;
   deps.cacheGoogleProfileFromToken(idToken, GOOGLE_PROFILE_CACHE_KEY);
 
+  // Make the accepted credential reactive immediately so the auth gate does
+  // not remain visible while entitlement and cloud-sync work finishes. The
+  // auth watcher observes isAuthSessionResolving and holds its network fan-out
+  // until the session bootstrap attempt has completed.
+  app.isAuthSessionResolving = true;
+  app.googleAuthEpoch += 1;
+
   try {
     await app.debugLogEntitlement(true);
   } catch (error) {
@@ -166,9 +173,9 @@ async function finalizeGoogleCredentialSignIn(
       error: error instanceof Error ? error.message : String(error)
     });
   } finally {
-    // The auth watcher starts workspace, Whatnot, realtime, and sync requests.
-    // Keep that fan-out behind session bootstrap so session-first requests do
-    // not race ahead, receive 401, and clear the fresh Google credential.
+    app.isAuthSessionResolving = false;
+    // Release the auth watcher after session bootstrap so workspace, Whatnot,
+    // realtime, and sync requests stay session-first.
     app.googleAuthEpoch += 1;
   }
 

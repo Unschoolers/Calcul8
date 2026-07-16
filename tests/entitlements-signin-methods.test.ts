@@ -198,9 +198,11 @@ test("initGoogleAutoLogin starts retry flow and credential callback persists tok
 
     params.onCredential("auto-token");
     assert.equal(getStoredGoogleIdToken(), "auto-token");
-    assert.equal(context.googleAuthEpoch, 0);
-    await flushMicrotasks();
     assert.equal(context.googleAuthEpoch, 1);
+    assert.equal(context.isAuthSessionResolving, true);
+    await flushMicrotasks();
+    assert.equal(context.googleAuthEpoch, 2);
+    assert.equal(context.isAuthSessionResolving, false);
     assert.equal(context.googleAvatarLoadFailed, false);
     assert.equal(cacheGoogleProfileFromTokenMock.mock.calls.at(-1)?.[0], "auto-token");
     assert.equal((context.debugLogEntitlement as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0], true);
@@ -290,9 +292,11 @@ test("promptGoogleSignIn initializes, prompts, and handles credential callback",
     callback({ credential: "  signed-token  " });
 
     assert.equal(getStoredGoogleIdToken(), "signed-token");
-    assert.equal(context.googleAuthEpoch, 0);
-    await flushMicrotasks();
     assert.equal(context.googleAuthEpoch, 1);
+    assert.equal(context.isAuthSessionResolving, true);
+    await flushMicrotasks();
+    assert.equal(context.googleAuthEpoch, 2);
+    assert.equal(context.isAuthSessionResolving, false);
     assert.equal(context.googleAvatarLoadFailed, false);
     assert.equal((context.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0], "Signed in with Google.");
     assert.equal(cacheGoogleProfileFromTokenMock.mock.calls.at(-1)?.[0], "signed-token");
