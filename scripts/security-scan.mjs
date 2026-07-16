@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
 
 const ROOT = process.cwd();
 const IGNORE_DIRS = new Set([
@@ -15,6 +16,13 @@ const IGNORE_FILES = new Set([
 ]);
 
 const MAX_FILE_SIZE_BYTES = 1024 * 1024; // 1 MB
+
+const FORBIDDEN_TRACKED_ARTIFACT_PATTERNS = [
+  /\.(?:apk|aab|idsig|jks|keystore|p12|pem|key)$/i,
+  /(?:^|\/)keystore\.properties$/i,
+  /(?:^|\/)play-credentials\.json$/i,
+  /(?:^|\/)service-account[^/]*\.json$/i
+];
 
 const DETECTORS = [
   { name: "Private key block", regex: /-----BEGIN (?:RSA |EC |OPENSSH |DSA |PGP )?PRIVATE KEY-----/g },
@@ -33,6 +41,29 @@ const DETECTORS = [
 function isLikelyText(buffer) {
   // If a NUL byte exists, treat as binary.
   return !buffer.includes(0);
+}
+
+function listTrackedFiles() {
+  try {
+    return execFileSync("git", ["-c", "core.quotepath=false", "ls-files", "-z"], {
+      cwd: ROOT,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"]
+    })
+      .split("\0")
+      .map((filePath) => filePath.replaceAll("\\", "/").trim())
+      .filter(Boolean);
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    console.error(`Security scan could not inspect the Git index: ${detail}`);
+    process.exit(1);
+  }
+}
+
+function findTrackedReleaseArtifacts() {
+  return listTrackedFiles().filter((filePath) =>
+    FORBIDDEN_TRACKED_ARTIFACT_PATTERNS.some((pattern) => pattern.test(filePath))
+  );
 }
 
 function walk(dir, results) {
@@ -72,11 +103,23 @@ function walk(dir, results) {
 const findings = [];
 walk(ROOT, findings);
 
+const trackedReleaseArtifacts = findTrackedReleaseArtifacts();
+
+if (trackedReleaseArtifacts.length > 0) {
+  console.error("Generated release or signing artifacts must not be tracked:");
+  for (const filePath of trackedReleaseArtifacts) {
+    console.error(`- ${filePath}`);
+  }
+}
+
 if (findings.length > 0) {
   console.error("Potential secret exposures found:");
   for (const finding of findings) {
     console.error(`- [${finding.detector}] ${finding.file}`);
   }
+}
+
+if (trackedReleaseArtifacts.length > 0 || findings.length > 0) {
   process.exit(1);
 }
 

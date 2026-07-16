@@ -16,8 +16,9 @@ gradle.properties
 local.properties
 manifest-checksum.txt
 store_icon.png
-app-release-*.apk
+*.apk
 *.aab
+*.idsig
 *.jks
 *.keystore
 *.pem

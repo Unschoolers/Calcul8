@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { afterEach, test, vi } from "vitest";
+import { afterEach, beforeEach, test, vi } from "vitest";
 import {
   createGameSpectatorSession,
   fetchGameSpectatorRealtimeSubscribeToken,
@@ -12,8 +12,15 @@ import {
 
 const originalFetch = globalThis.fetch;
 
+beforeEach(() => {
+  // These tests intentionally exercise the cached API-base fallback. Keep a
+  // developer or CI VITE_API_BASE_URL from overriding that boundary.
+  vi.stubEnv("VITE_API_BASE_URL", "");
+});
+
 afterEach(() => {
   globalThis.fetch = originalFetch;
+  vi.unstubAllEnvs();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
@@ -59,11 +66,11 @@ test("game spectator client uses generic public session routes while preserving 
     setTimeout,
     clearTimeout
   });
-vi.stubGlobal("localStorage", {
-  getItem: (key: string) =>
-    key === "whatfees_api_base_url" ? "http://localhost:7071/api" : null,
-  setItem: () => undefined
-});
+  vi.stubGlobal("localStorage", {
+    getItem: (key: string) =>
+      key === "whatfees_api_base_url" ? "http://localhost:7071/api" : null,
+    setItem: () => undefined
+  });
 
   const app = {
     activeScopeType: "workspace",

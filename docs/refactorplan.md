@@ -1,29 +1,12 @@
 # Calcul8 Refactor Plan
 
-Updated on 2026-07-13 after implementing recoverable Whatnot confirmation and workspace creation. Completed UI, bilingual contract, realtime recovery, system configuration, bracket battle, singles-image work, personal Whatnot credential erasure, production CORS wildcard rejection, release-gate coverage, and the two cross-document recovery workflows are intentionally removed from this plan.
+Updated on 2026-07-16 after enforcing generated release artifact hygiene. Completed UI, bilingual contract, realtime recovery, system configuration, bracket battle, singles-image work, personal Whatnot credential erasure, production CORS wildcard rejection, release-gate coverage, generated artifact hygiene, and the two cross-document recovery workflows are intentionally removed from this plan.
 
 This is the active technical and security backlog, plus a staged test-maintenance follow-up discovered while promoting all tests into `verify:all`. Each item should be implemented TDD-style, verified against the affected package, and deleted from this file once the repo proves it is done.
 
 ## Top Priorities
 
-### 1. Stop Tracking Generated Release Artifacts And Enforce Artifact Hygiene
-
-**Priority:** Critical security and release hygiene.
-
-**Scan finding:** `app-release-signed.apk.idsig` is tracked in git even though `.gitignore` blocks most Android release byproducts (`app-release-*.apk`, `*.aab`, `*.jks`, `*.keystore`, signing credentials, and Play service-account files). The release scripts and security checks already exist, but the ignore policy does not catch this `.idsig` artifact class and the repository currently contains one generated release file.
-
-**Risk:** Release artifacts and signing byproducts are easy to treat as harmless, but committed build outputs are public forever and can drift from the reproducible release path. This weakens the security posture around Play release automation and makes future secret hygiene reviews less trustworthy.
-
-**Implementation direction:**
-
-- Remove tracked generated Android release artifacts after confirming they are not required source files.
-- Extend `.gitignore` and the existing security/release checks to block `.idsig` and any other generated signing sidecars emitted by the current TWA/Bubblewrap flow.
-- Add or update a focused test/check so future generated release files fail locally before commit.
-- Keep `public/.well-known/assetlinks.json` tracked; it is deploy source, not a generated signing secret.
-
-**Done when:** `git ls-files` shows no generated `.apk`, `.aab`, `.idsig`, `.jks`, `.keystore`, or credential material; the release/security check fails on a fixture or staged sample for those artifact classes; `npm run verify` or the smallest release/security verification command covering the changed guard passes.
-
-### 2. Finish Session-First Auth By Removing Normal-Flow Bearer Fallback
+### 1. Finish Session-First Auth By Removing Normal-Flow Bearer Fallback
 
 **Priority:** Critical auth boundary hardening.
 
