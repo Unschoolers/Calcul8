@@ -84,14 +84,25 @@ export async function touchSession(
   if (!existing) return;
 
   const { sessions } = getContainers(config);
+  const etag = readCosmosEtag(existing);
+  if (!etag) return;
   const updatedDocument: SessionDocument = {
     ...existing,
     lastSeenAt: input.lastSeenAt,
     idleExpiresAt: input.idleExpiresAt
   };
-  await withCosmosRetry(() =>
-    sessions.items.upsert<SessionDocument>(updatedDocument)
-  );
+  try {
+    await withCosmosRetry(() =>
+      sessions
+        .item(updatedDocument.id, updatedDocument.id)
+        .replace<SessionDocument>(updatedDocument, buildIfMatchOptions(etag))
+    );
+  } catch (error) {
+    // Logout wins a race with passive activity updates. A touch must never
+    // recreate a deleted or concurrently changed authentication session.
+    if (isPreconditionFailedError(error) || isNotFoundError(error)) return;
+    throw error;
+  }
 }
 
 export async function deleteSession(

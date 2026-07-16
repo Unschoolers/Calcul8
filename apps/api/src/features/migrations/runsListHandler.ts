@@ -36,7 +36,7 @@ export async function migrationRunsList(
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   const config = getConfig();
-  const guardResponse = maybeHandleHttpGuards(request, config);
+  const guardResponse = await maybeHandleHttpGuards(request, config);
   if (guardResponse) return guardResponse;
 
   try {

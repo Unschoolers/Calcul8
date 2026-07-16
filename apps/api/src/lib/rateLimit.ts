@@ -1,4 +1,6 @@
 import type { HttpRequest } from "@azure/functions";
+import type { ApiConfig } from "../types";
+import { incrementRateLimitCounter } from "./cosmos/rateLimitRepository";
 
 export const GLOBAL_RATE_LIMIT_MINUTE_LIMIT = 120;
 export const GLOBAL_RATE_LIMIT_BURST_LIMIT = 30;
@@ -32,15 +34,12 @@ let requestCountSinceCleanup = 0;
 function parseClientIp(request: HttpRequest): string {
   const fromForwardedFor = String(request.headers.get("x-forwarded-for") || "").trim();
   if (fromForwardedFor) {
-    const first = fromForwardedFor.split(",")[0]?.trim();
-    if (first) return first.slice(0, 128).toLowerCase();
+    // Azure's trusted edge appends the connected client address. User-supplied
+    // values appear to its left and must never select the rate-limit bucket.
+    const forwardedChain = fromForwardedFor.split(",");
+    const connectedClient = forwardedChain[forwardedChain.length - 1]?.trim();
+    if (connectedClient) return connectedClient.slice(0, 128).toLowerCase();
   }
-
-  const fromRealIp = String(request.headers.get("x-real-ip") || "").trim();
-  if (fromRealIp) return fromRealIp.slice(0, 128).toLowerCase();
-
-  const fromClientIp = String(request.headers.get("x-client-ip") || "").trim();
-  if (fromClientIp) return fromClientIp.slice(0, 128).toLowerCase();
 
   return "unknown";
 }
@@ -143,6 +142,52 @@ export function checkGlobalRateLimit(request: HttpRequest, nowMs = Date.now()): 
     remaining: Math.min(remainingMinute, remainingBurst),
     windowSeconds: GLOBAL_RATE_LIMIT_BURST_WINDOW_SECONDS,
     retryAfterSeconds: null
+  };
+}
+
+export async function checkDistributedGlobalRateLimit(
+  request: HttpRequest,
+  config: ApiConfig,
+  nowMs = Date.now()
+): Promise<RateLimitDecision> {
+  if (String(request.method || "GET").toUpperCase() === "OPTIONS") {
+    return checkGlobalRateLimit(request, nowMs);
+  }
+
+  const clientKey = parseClientIp(request);
+  const minuteWindowStartMs = floorWindowStart(nowMs, MINUTE_WINDOW_MS);
+  const burstWindowStartMs = floorWindowStart(nowMs, BURST_WINDOW_MS);
+  const [minuteCount, burstCount] = await Promise.all([
+    incrementRateLimitCounter(config, {
+      clientKey,
+      windowStartMs: minuteWindowStartMs,
+      windowSeconds: GLOBAL_RATE_LIMIT_MINUTE_WINDOW_SECONDS
+    }),
+    incrementRateLimitCounter(config, {
+      clientKey,
+      windowStartMs: burstWindowStartMs,
+      windowSeconds: GLOBAL_RATE_LIMIT_BURST_WINDOW_SECONDS
+    })
+  ]);
+  const minuteExceeded = minuteCount > GLOBAL_RATE_LIMIT_MINUTE_LIMIT;
+  const burstExceeded = burstCount > GLOBAL_RATE_LIMIT_BURST_LIMIT;
+  const exceededWindowMs = minuteExceeded ? MINUTE_WINDOW_MS : BURST_WINDOW_MS;
+  const exceededWindowStartMs = minuteExceeded ? minuteWindowStartMs : burstWindowStartMs;
+  const limit = minuteExceeded ? GLOBAL_RATE_LIMIT_MINUTE_LIMIT : GLOBAL_RATE_LIMIT_BURST_LIMIT;
+
+  return {
+    allowed: !minuteExceeded && !burstExceeded,
+    limit,
+    remaining: Math.max(0, Math.min(
+      GLOBAL_RATE_LIMIT_MINUTE_LIMIT - minuteCount,
+      GLOBAL_RATE_LIMIT_BURST_LIMIT - burstCount
+    )),
+    windowSeconds: minuteExceeded
+      ? GLOBAL_RATE_LIMIT_MINUTE_WINDOW_SECONDS
+      : GLOBAL_RATE_LIMIT_BURST_WINDOW_SECONDS,
+    retryAfterSeconds: minuteExceeded || burstExceeded
+      ? Math.max(1, Math.ceil((exceededWindowStartMs + exceededWindowMs - nowMs) / 1000))
+      : null
   };
 }
 

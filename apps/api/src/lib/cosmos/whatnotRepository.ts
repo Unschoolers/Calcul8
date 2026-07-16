@@ -120,6 +120,41 @@ export async function upsertWhatnotConnection(
   return resource;
 }
 
+/**
+ * Replaces credentials only while the connection version read by the caller is
+ * still current. A concurrent disconnect deletes the document, so this method
+ * deliberately never falls back to an upsert that could recreate it.
+ */
+export async function replaceWhatnotConnectionIfUnchanged(
+  config: ApiConfig,
+  existing: WhatnotConnectionDocument,
+  updated: WhatnotConnectionDocument
+): Promise<WhatnotConnectionDocument | null> {
+  const { entitlements } = getContainers(config);
+  const normalizedScopeKey = normalizeId(existing.scopeKey);
+  const etag = readCosmosEtag(existing);
+  if (!normalizedScopeKey || !etag || existing.status !== "active") return null;
+
+  const document: WhatnotConnectionDocument = {
+    ...updated,
+    id: whatnotConnectionId(normalizedScopeKey),
+    userId: normalizedScopeKey,
+    scopeKey: normalizedScopeKey
+  };
+
+  try {
+    const { resource } = await withCosmosRetry(() =>
+      entitlements
+        .item(document.id, normalizedScopeKey)
+        .replace<WhatnotConnectionDocument>(document, buildIfMatchOptions(etag))
+    );
+    return isWhatnotConnectionDocument(resource) ? resource : null;
+  } catch (error) {
+    if (isPreconditionFailedError(error) || isNotFoundError(error)) return null;
+    throw error;
+  }
+}
+
 export async function deleteWhatnotConnection(
   config: ApiConfig,
   scopeKey: string

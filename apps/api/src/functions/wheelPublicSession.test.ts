@@ -409,6 +409,44 @@ test("wheelPublicSessionPublish returns 404 when the session is missing or not o
   assert.equal((response.jsonBody as { error: string }).error, "Public game session was not found.");
 });
 
+test("wheelPublicSessionPublish rejects a former workspace member before updating the session", async () => {
+  getGamePublicSessionMock.mockResolvedValueOnce({
+    ownerUserId: "user-a",
+    publicSessionId: "abc123xy",
+    scopeType: "workspace",
+    scopeId: "team-42",
+    workspaceId: "team-42",
+    snapshot: {
+      gameName: "Demo Wheel",
+      gameType: "wheel",
+      sessionStatus: "live",
+      snapshotVersion: 2,
+      updatedAt: 456
+    }
+  });
+  hasWorkspaceMembershipMock.mockResolvedValueOnce(false);
+
+  const response = await wheelPublicSessionPublish(createHttpRequest({
+    method: "POST",
+    headers: { authorization: "Bearer user-a" },
+    body: {
+      publicSessionId: "abc123xy",
+      snapshot: {
+        gameName: "Demo Wheel",
+        gameType: "wheel",
+        sessionStatus: "live",
+        snapshotVersion: 2,
+        updatedAt: 456
+      }
+    }
+  }) as never, createInvocationContext() as never);
+
+  assert.equal(response.status, 404);
+  assert.equal(hasWorkspaceMembershipMock.mock.calls[0]?.[1], "user-a");
+  assert.equal(hasWorkspaceMembershipMock.mock.calls[0]?.[2], "team-42");
+  assert.equal(updateGamePublicSessionMock.mock.calls.length, 0);
+});
+
 test("wheelPublicSessionPublish maps stale public-session writes to 409", async () => {
   updateGamePublicSessionMock.mockRejectedValue(new GamePublicSessionConflictErrorMock(
     "Public game session changed since it was last published."
@@ -857,6 +895,27 @@ test("wheelPublicSessionSpectatorCountGet returns the live spectator count for t
   const body = response.jsonBody as { publicSessionId: string; spectatorCount: number };
   assert.equal(body.publicSessionId, "abc123xy");
   assert.equal(body.spectatorCount, 4);
+});
+
+test("wheelPublicSessionSpectatorCountGet rejects a former workspace member", async () => {
+  getGamePublicSessionMock.mockResolvedValueOnce({
+    ownerUserId: "user-a",
+    publicSessionId: "abc123xy",
+    scopeType: "workspace",
+    scopeId: "team-42",
+    workspaceId: "team-42",
+    snapshot: { gameName: "Demo Wheel", gameType: "wheel", sessionStatus: "live", snapshotVersion: 2 }
+  });
+  hasWorkspaceMembershipMock.mockResolvedValueOnce(false);
+
+  const response = await wheelPublicSessionSpectatorCountGet(createHttpRequest({
+    method: "GET",
+    headers: { authorization: "Bearer user-a" },
+    params: { publicSessionId: "abc123xy" }
+  }) as never, createInvocationContext() as never);
+
+  assert.equal(response.status, 404);
+  assert.equal(getRealtimeRoomMemberCountStatusMock.mock.calls.length, 0);
 });
 
 test("wheelPublicSessionSpectatorCountGet reports when realtime count is unavailable", async () => {

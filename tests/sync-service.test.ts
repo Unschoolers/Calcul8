@@ -999,7 +999,55 @@ test("applyCloudSnapshotToLocal sanitizes incoming wheel configs before saving",
     date: "2026-03-30",
     netRevenue: 8.61
   }]);
-  assert.deepEqual(saves, ["lots", "wheel", "loadLot"]);
+  assert.deepEqual(saves, ["loadLot"]);
+});
+
+test("applyCloudSnapshotToLocal rolls back storage and live state when persistence fails", () => {
+  const baseStorage = createMockStorage({
+    whatfees_sales_1: JSON.stringify([{ id: 11, price: 4 }]),
+    whatfees_lots: JSON.stringify([{ id: 1, name: "Local lot" }])
+  });
+  let writes = 0;
+  vi.stubGlobal("localStorage", {
+    ...baseStorage,
+    setItem(key: string, value: string) {
+      writes += 1;
+      if (writes === 2) throw new Error("quota exceeded");
+      baseStorage.setItem(key, value);
+    }
+  });
+  const originalLots = [{ id: 1, name: "Local lot" }];
+  const originalSales = [{ id: 11, price: 4 }];
+  const app = {
+    lots: originalLots,
+    wheelConfigs: [],
+    activeWheelConfigId: null,
+    currentLotId: 1,
+    sales: originalSales,
+    salesByLotId: new Map([[1, originalSales]]),
+    activeScopeType: "personal" as const,
+    activeWorkspaceId: null,
+    saveLotsToStorage: vi.fn(),
+    saveWheelConfigsToStorage: vi.fn(),
+    loadLot: vi.fn(),
+    getSalesStorageKey: (lotId: number) => `whatfees_sales_${lotId}`
+  };
+
+  assert.throws(() => applyCloudSnapshotToLocal(app as never, {
+    lots: [{ id: 2, name: "Cloud lot" }],
+    salesByLot: { "2": [{ id: 22, price: 8 }] },
+    wheelConfigs: [],
+    activeWheelConfigId: null,
+    version: 9,
+    hasData: true
+  } as never), /quota exceeded/);
+
+  assert.deepEqual(app.lots, originalLots);
+  assert.deepEqual(app.sales, originalSales);
+  assert.deepEqual(app.salesByLotId.get(1), originalSales);
+  assert.equal(baseStorage.getItem("whatfees_sales_1"), JSON.stringify(originalSales));
+  assert.equal(baseStorage.getItem("whatfees_sales_2"), null);
+  assert.equal(app.loadLot.mock.calls.length, 0);
 });
 
 test("runCloudSyncPush skips upload and pulls cloud when local storage was cleared mid-session", async () => {

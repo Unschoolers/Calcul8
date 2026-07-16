@@ -13,11 +13,13 @@ const {
   getContainersMock,
   isConflictErrorMock,
   isNotFoundErrorMock,
+  isPreconditionFailedErrorMock,
   withCosmosRetryMock
 } = vi.hoisted(() => ({
   getContainersMock: vi.fn(),
   isConflictErrorMock: vi.fn(),
   isNotFoundErrorMock: vi.fn(),
+  isPreconditionFailedErrorMock: vi.fn(),
   withCosmosRetryMock: vi.fn(async <T>(operation: () => Promise<T>) => operation())
 }));
 
@@ -25,6 +27,7 @@ vi.mock("./core", () => ({
   getContainers: getContainersMock,
   isConflictError: isConflictErrorMock,
   isNotFoundError: isNotFoundErrorMock,
+  isPreconditionFailedError: isPreconditionFailedErrorMock,
   withCosmosRetry: withCosmosRetryMock
 }));
 
@@ -32,6 +35,7 @@ import {
   claimPlayPurchaseTokenForUser,
   claimStripeWebhookEvent,
   createPurchaseVerificationResult,
+  deleteAllEntitlementDataForUser,
   deleteEntitlement,
   deletePlayPurchasesForUser,
   deleteUserProfile,
@@ -91,6 +95,37 @@ beforeEach(() => {
     const statusCode = (error as { statusCode?: unknown })?.statusCode;
     return statusCode === 404;
   });
+  isPreconditionFailedErrorMock.mockImplementation((error: unknown) => (
+    (error as { statusCode?: unknown })?.statusCode === 412
+  ));
+});
+
+test("deleteAllEntitlementDataForUser erases direct and externally partitioned user records", async () => {
+  const entitlements = createEntitlementsContainer();
+  const documents = [
+    { id: "entitlement:user-1", userId: "user-1", docType: "entitlement" },
+    { id: "stripe_fact:user-1:sub-1", userId: "user-1", docType: "stripe_entitlement_fact" },
+    {
+      id: "stripe_event:evt-1",
+      userId: "stripe-event:evt-1",
+      ownerUserId: "user-1",
+      docType: "stripe_processed_event"
+    }
+  ];
+  const deletes = new Map(documents.map((document) => [document.id, vi.fn().mockResolvedValue({})]));
+  entitlements.items.query.mockReturnValue({
+    fetchAll: vi.fn().mockResolvedValue({ resources: documents })
+  });
+  entitlements.item.mockImplementation((id: string) => ({ delete: deletes.get(id) }));
+  getContainersMock.mockReturnValue({ entitlements });
+
+  await deleteAllEntitlementDataForUser(createConfig(), "user-1");
+
+  assert.deepEqual(entitlements.item.mock.calls, [
+    ["entitlement:user-1", "user-1"],
+    ["stripe_fact:user-1:sub-1", "user-1"],
+    ["stripe_event:evt-1", "stripe-event:evt-1"]
+  ]);
 });
 
 test("getEntitlement returns the entitlement document or null when missing", async () => {
@@ -486,7 +521,7 @@ test("claimPlayPurchaseTokenForUser rejects a token already claimed by another u
 
 test("upsertStripeEntitlementFact does not regress a newer provider fact with an older event", async () => {
   const entitlements = createEntitlementsContainer();
-  const existingFact: StripeEntitlementFactDocument = {
+  const existingFact: StripeEntitlementFactDocument & { _etag: string } = {
     id: "stripe_entitlement:user-1:subscription:sub_1",
     docType: "stripe_entitlement_fact",
     userId: "user-1",
@@ -538,14 +573,14 @@ test("upsertStripeEntitlementFact preserves createdAt when updating an older fac
     sourceEventCreated: 10,
     status: "incomplete",
     createdAt: "2026-03-17T00:00:00.000Z",
-    updatedAt: "2026-03-17T00:00:00.000Z"
+    updatedAt: "2026-03-17T00:00:00.000Z",
+    _etag: "etag-old"
   };
+  const replace = vi.fn(async (document: StripeEntitlementFactDocument) => ({ resource: document }));
   entitlements.item.mockReturnValue({
-    read: vi.fn().mockResolvedValue({ resource: existingFact })
+    read: vi.fn().mockResolvedValue({ resource: existingFact }),
+    replace
   });
-  entitlements.items.upsert.mockImplementation(async (document: StripeEntitlementFactDocument) => ({
-    resource: document
-  }));
   getContainersMock.mockReturnValue({ entitlements });
 
   const result = await upsertStripeEntitlementFact(createConfig(), {
@@ -568,6 +603,50 @@ test("upsertStripeEntitlementFact preserves createdAt when updating an older fac
   assert.equal(result.status, "active");
 });
 
+test("upsertStripeEntitlementFact rechecks provider order after a concurrent write", async () => {
+  const entitlements = createEntitlementsContainer();
+  const older = {
+    id: "stripe_entitlement:user-1:subscription:sub_1",
+    docType: "stripe_entitlement_fact",
+    userId: "user-1",
+    stripeObjectId: "sub_1",
+    stripeObjectType: "subscription",
+    active: false,
+    sourceEventId: "evt_old",
+    sourceEventType: "customer.subscription.created",
+    sourceEventCreated: 10,
+    createdAt: "2026-03-17T00:00:00.000Z",
+    updatedAt: "2026-03-17T00:00:00.000Z",
+    _etag: "etag-old"
+  } satisfies StripeEntitlementFactDocument & { _etag: string };
+  const newest = {
+    ...older,
+    active: true,
+    sourceEventId: "evt_newest",
+    sourceEventCreated: 30,
+    _etag: "etag-newest"
+  };
+  const read = vi.fn()
+    .mockResolvedValueOnce({ resource: older })
+    .mockResolvedValueOnce({ resource: newest });
+  const replace = vi.fn().mockRejectedValueOnce({ statusCode: 412 });
+  entitlements.item.mockReturnValue({ read, replace });
+  getContainersMock.mockReturnValue({ entitlements });
+
+  const result = await upsertStripeEntitlementFact(createConfig(), {
+    ...older,
+    active: false,
+    sourceEventId: "evt_middle",
+    sourceEventType: "customer.subscription.deleted",
+    sourceEventCreated: 20,
+    updatedAt: "2026-03-18T00:00:00.000Z"
+  });
+
+  assert.equal(result.sourceEventId, "evt_newest");
+  assert.equal(replace.mock.calls.length, 1);
+  assert.equal(entitlements.items.upsert.mock.calls.length, 0);
+});
+
 test("upsertStripeEntitlementFact returns null typed reads and rejects empty upserts", async () => {
   const entitlements = createEntitlementsContainer();
   entitlements.item.mockReturnValue({
@@ -578,7 +657,7 @@ test("upsertStripeEntitlementFact returns null typed reads and rejects empty ups
       }
     })
   });
-  entitlements.items.upsert.mockResolvedValue({ resource: null });
+  entitlements.items.create.mockResolvedValue({ resource: null });
   getContainersMock.mockReturnValue({ entitlements });
 
   await assert.rejects(

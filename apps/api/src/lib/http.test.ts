@@ -3,10 +3,17 @@ import { afterEach, beforeEach, test, vi } from "vitest";
 import type { HttpRequest } from "@azure/functions";
 import type { ApiConfig } from "../types";
 
-const { consumeAuthResponseCookiesMock, consumeAuthResponseHeadersMock, checkGlobalRateLimitMock } = vi.hoisted(() => ({
+const { consumeAuthResponseCookiesMock, consumeAuthResponseHeadersMock, checkGlobalRateLimitMock, checkDistributedGlobalRateLimitMock } = vi.hoisted(() => ({
   consumeAuthResponseCookiesMock: vi.fn(() => []),
   consumeAuthResponseHeadersMock: vi.fn(() => ({})),
   checkGlobalRateLimitMock: vi.fn(() => ({
+    allowed: true,
+    limit: 30,
+    remaining: 29,
+    windowSeconds: 10,
+    retryAfterSeconds: null as number | null
+  })),
+  checkDistributedGlobalRateLimitMock: vi.fn(async () => ({
     allowed: true,
     limit: 30,
     remaining: 29,
@@ -29,7 +36,8 @@ vi.mock("./auth", () => ({
 }));
 
 vi.mock("./rateLimit", () => ({
-  checkGlobalRateLimit: checkGlobalRateLimitMock
+  checkGlobalRateLimit: checkGlobalRateLimitMock,
+  checkDistributedGlobalRateLimit: checkDistributedGlobalRateLimitMock
 }));
 
 import { maybeHandleHttpGuards } from "./http";
@@ -83,9 +91,9 @@ afterEach(() => {
   process.env.NODE_ENV = originalNodeEnv;
 });
 
-test("returns preflight response before rate limit check", () => {
+test("returns preflight response before rate limit check", async () => {
   const request = makeRequest("OPTIONS", { origin: "https://example.app" });
-  const response = maybeHandleHttpGuards(request, makeConfig());
+  const response = await maybeHandleHttpGuards(request, makeConfig());
 
   assert.equal(response?.status, 204);
   const headers = response?.headers as Record<string, string>;
@@ -96,18 +104,18 @@ test("returns preflight response before rate limit check", () => {
   assert.equal(checkGlobalRateLimitMock.mock.calls.length, 0);
 });
 
-test("returns preflight response without CORS headers for disallowed origins", () => {
+test("returns preflight response without CORS headers for disallowed origins", async () => {
   const request = makeRequest("OPTIONS", { origin: "https://hostile.example" });
-  const response = maybeHandleHttpGuards(request, makeConfig());
+  const response = await maybeHandleHttpGuards(request, makeConfig());
 
   assert.equal(response?.status, 204);
   assert.deepEqual(response?.headers, {});
   assert.equal(checkGlobalRateLimitMock.mock.calls.length, 0);
 });
 
-test("allows deliberate dev wildcard preflight origins", () => {
+test("allows deliberate dev wildcard preflight origins", async () => {
   const request = makeRequest("OPTIONS", { origin: "https://local-tool.example" });
-  const response = maybeHandleHttpGuards(request, makeConfig({ allowedOrigins: ["*"] }));
+  const response = await maybeHandleHttpGuards(request, makeConfig({ allowedOrigins: ["*"] }));
 
   const headers = response?.headers as Record<string, string>;
   assert.equal(response?.status, 204);
@@ -115,7 +123,7 @@ test("allows deliberate dev wildcard preflight origins", () => {
   assert.equal(headers["Access-Control-Allow-Credentials"], "true");
 });
 
-test("returns null when request passes guards", () => {
+test("returns null when request passes guards", async () => {
   const request = makeRequest("GET", { origin: "https://example.app" });
   checkGlobalRateLimitMock.mockReturnValue({
     allowed: true,
@@ -125,14 +133,14 @@ test("returns null when request passes guards", () => {
     retryAfterSeconds: null
   });
 
-  const response = maybeHandleHttpGuards(request, makeConfig());
+  const response = await maybeHandleHttpGuards(request, makeConfig());
   assert.equal(response, null);
   assert.equal(checkGlobalRateLimitMock.mock.calls.length, 0);
 });
 
-test("checks global rate limits in prod requests", () => {
+test("checks global rate limits in prod requests", async () => {
   const request = makeRequest("GET", { origin: "https://example.app" });
-  checkGlobalRateLimitMock.mockReturnValue({
+  checkDistributedGlobalRateLimitMock.mockResolvedValue({
     allowed: true,
     limit: 30,
     remaining: 29,
@@ -140,15 +148,15 @@ test("checks global rate limits in prod requests", () => {
     retryAfterSeconds: null
   });
 
-  const response = maybeHandleHttpGuards(request, makeConfig({ apiEnv: "prod" }));
+  const response = await maybeHandleHttpGuards(request, makeConfig({ apiEnv: "prod" }));
 
   assert.equal(response, null);
-  assert.equal(checkGlobalRateLimitMock.mock.calls.length, 1);
+  assert.equal(checkDistributedGlobalRateLimitMock.mock.calls.length, 1);
 });
 
-test("returns 429 payload and headers when global limit is exceeded", () => {
+test("returns 429 payload and headers when global limit is exceeded", async () => {
   const request = makeRequest("POST", { origin: "https://example.app" });
-  checkGlobalRateLimitMock.mockReturnValue({
+  checkDistributedGlobalRateLimitMock.mockResolvedValue({
     allowed: false,
     limit: 30,
     remaining: 0,
@@ -156,7 +164,7 @@ test("returns 429 payload and headers when global limit is exceeded", () => {
     retryAfterSeconds: 4
   });
 
-  const response = maybeHandleHttpGuards(request, makeConfig({ apiEnv: "prod" }));
+  const response = await maybeHandleHttpGuards(request, makeConfig({ apiEnv: "prod" }));
 
   assert.equal(response?.status, 429);
   assert.equal((response?.jsonBody as { error: string }).error, "Too many requests. Please retry shortly.");

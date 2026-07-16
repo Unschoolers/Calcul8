@@ -6,7 +6,6 @@ import {
   type ExternalSyncSourceConfig,
   withCosmosRetry
 } from "./core";
-import { syncMetaId, syncSnapshotId } from "./ids";
 import {
   getSyncMetaDocumentFromContainer,
   getSyncPresetDocumentsFromContainer
@@ -42,23 +41,19 @@ export async function deleteAllSyncData(
 ): Promise<void> {
   const { syncSnapshots } = getContainers(config);
 
-  const presetDocuments = await getSyncPresetDocuments(config, userId);
-  for (const document of presetDocuments) {
+  // Personal data spans configuration, sales/pricing entities, Whatnot
+  // workflow records, and fairness proofs. Enumerating the partition keeps
+  // erasure complete as new personal document types are introduced.
+  const iterator = syncSnapshots.items.query<{ id?: string }>({
+    query: "SELECT c.id FROM c WHERE c.userId = @userId",
+    parameters: [{ name: "@userId", value: userId }]
+  }, { partitionKey: userId });
+  const { resources } = await withCosmosRetry(() => iterator.fetchAll());
+  for (const document of resources ?? []) {
+    const id = String(document.id ?? "").trim();
+    if (!id) continue;
     try {
-      await withCosmosRetry(() => syncSnapshots.item(document.id, userId).delete());
-    } catch (error) {
-      if (!isNotFoundError(error)) throw error;
-    }
-  }
-
-  const deletions = [
-    () => syncSnapshots.item(syncMetaId(userId), userId).delete(),
-    () => syncSnapshots.item(syncSnapshotId(userId), userId).delete()
-  ];
-
-  for (const deletion of deletions) {
-    try {
-      await withCosmosRetry(deletion);
+      await withCosmosRetry(() => syncSnapshots.item(id, userId).delete());
     } catch (error) {
       if (!isNotFoundError(error)) throw error;
     }

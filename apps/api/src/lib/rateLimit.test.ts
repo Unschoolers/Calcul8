@@ -1,13 +1,22 @@
 import assert from "node:assert/strict";
-import { beforeEach, test } from "vitest";
+import { beforeEach, test, vi } from "vitest";
 import type { HttpRequest } from "@azure/functions";
 import {
   checkGlobalRateLimit,
+  checkDistributedGlobalRateLimit,
   GLOBAL_RATE_LIMIT_BURST_LIMIT,
   GLOBAL_RATE_LIMIT_BURST_WINDOW_SECONDS,
   GLOBAL_RATE_LIMIT_MINUTE_LIMIT,
   resetRateLimitState
 } from "./rateLimit";
+
+const { incrementRateLimitCounterMock } = vi.hoisted(() => ({
+  incrementRateLimitCounterMock: vi.fn()
+}));
+
+vi.mock("./cosmos/rateLimitRepository", () => ({
+  incrementRateLimitCounter: incrementRateLimitCounterMock
+}));
 
 function makeRequest(overrides: {
   method?: string;
@@ -32,6 +41,7 @@ function makeRequest(overrides: {
 
 beforeEach(() => {
   resetRateLimitState();
+  incrementRateLimitCounterMock.mockReset();
 });
 
 test("allows requests until burst limit and blocks next request", () => {
@@ -83,6 +93,37 @@ test("tracks limits independently per client key", () => {
 
   const allowedB = checkGlobalRateLimit(requestB, 100);
   assert.equal(allowedB.allowed, true);
+});
+
+test("uses the proxy-appended client address instead of a spoofable forwarded prefix", () => {
+  const actualClientIp = "198.51.100.77";
+  for (let index = 0; index < GLOBAL_RATE_LIMIT_BURST_LIMIT; index += 1) {
+    const request = makeRequest({ ip: `spoof-${index}, ${actualClientIp}` });
+    assert.equal(checkGlobalRateLimit(request, index).allowed, true);
+  }
+
+  const blocked = checkGlobalRateLimit(
+    makeRequest({ ip: `another-spoof, ${actualClientIp}` }),
+    GLOBAL_RATE_LIMIT_BURST_LIMIT + 1
+  );
+  assert.equal(blocked.allowed, false);
+});
+
+test("enforces shared counters for production instances", async () => {
+  incrementRateLimitCounterMock
+    .mockResolvedValueOnce(GLOBAL_RATE_LIMIT_MINUTE_LIMIT - 1)
+    .mockResolvedValueOnce(GLOBAL_RATE_LIMIT_BURST_LIMIT + 1);
+
+  const decision = await checkDistributedGlobalRateLimit(
+    makeRequest({ ip: "spoofed, 198.51.100.88" }),
+    {} as never,
+    5_000
+  );
+
+  assert.equal(decision.allowed, false);
+  assert.equal(decision.limit, GLOBAL_RATE_LIMIT_BURST_LIMIT);
+  assert.equal(incrementRateLimitCounterMock.mock.calls.length, 2);
+  assert.equal(incrementRateLimitCounterMock.mock.calls[0]?.[1].clientKey, "198.51.100.88");
 });
 
 test("skips limiting for OPTIONS preflight requests", () => {

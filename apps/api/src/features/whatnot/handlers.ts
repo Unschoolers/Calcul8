@@ -234,7 +234,7 @@ export async function whatnotStatus(
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   const config = getConfig();
-  const guardResponse = maybeHandleHttpGuards(request, config);
+  const guardResponse = await maybeHandleHttpGuards(request, config);
   if (guardResponse) return guardResponse;
 
   try {
@@ -253,7 +253,7 @@ export async function whatnotConnectStart(
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   const config = getConfig();
-  const guardResponse = maybeHandleHttpGuards(request, config);
+  const guardResponse = await maybeHandleHttpGuards(request, config);
   if (guardResponse) return guardResponse;
 
   try {
@@ -272,7 +272,7 @@ export async function whatnotConnectCallback(
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   const config = getConfig();
-  const guardResponse = maybeHandleHttpGuards(request, config);
+  const guardResponse = await maybeHandleHttpGuards(request, config);
   if (guardResponse) return guardResponse;
 
   try {
@@ -299,7 +299,7 @@ export async function whatnotDisconnect(
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   const config = getConfig();
-  const guardResponse = maybeHandleHttpGuards(request, config);
+  const guardResponse = await maybeHandleHttpGuards(request, config);
   if (guardResponse) return guardResponse;
 
   try {
@@ -318,7 +318,7 @@ export async function whatnotSync(
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   const config = getConfig();
-  const guardResponse = maybeHandleHttpGuards(request, config);
+  const guardResponse = await maybeHandleHttpGuards(request, config);
   if (guardResponse) return guardResponse;
 
   try {
@@ -341,7 +341,7 @@ export async function whatnotImport(
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   const config = getConfig();
-  const guardResponse = maybeHandleHttpGuards(request, config);
+  const guardResponse = await maybeHandleHttpGuards(request, config);
   if (guardResponse) return guardResponse;
 
   try {
@@ -364,7 +364,7 @@ export async function whatnotReviewGet(
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   const config = getConfig();
-  const guardResponse = maybeHandleHttpGuards(request, config);
+  const guardResponse = await maybeHandleHttpGuards(request, config);
   if (guardResponse) return guardResponse;
 
   try {
@@ -387,7 +387,7 @@ export async function whatnotReviewConfirm(
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   const config = getConfig();
-  const guardResponse = maybeHandleHttpGuards(request, config);
+  const guardResponse = await maybeHandleHttpGuards(request, config);
   if (guardResponse) return guardResponse;
 
   try {
@@ -420,7 +420,7 @@ export async function whatnotReviewDiscard(
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   const config = getConfig();
-  const guardResponse = maybeHandleHttpGuards(request, config);
+  const guardResponse = await maybeHandleHttpGuards(request, config);
   if (guardResponse) return guardResponse;
 
   try {

@@ -215,7 +215,7 @@ export async function lotSalesList(
 ): Promise<HttpResponseInit> {
   const config = getConfig();
   const workspaceId = parseWorkspaceIdFromRequest(request, null);
-  const guardResponse = maybeHandleHttpGuards(request, config);
+  const guardResponse = await maybeHandleHttpGuards(request, config);
   if (guardResponse) return guardResponse;
 
   try {
@@ -245,7 +245,7 @@ export async function allSalesList(
 ): Promise<HttpResponseInit> {
   const config = getConfig();
   const workspaceId = parseWorkspaceIdFromRequest(request, null);
-  const guardResponse = maybeHandleHttpGuards(request, config);
+  const guardResponse = await maybeHandleHttpGuards(request, config);
   if (guardResponse) return guardResponse;
 
   try {
@@ -269,7 +269,7 @@ export async function lotSalesMetaGet(
 ): Promise<HttpResponseInit> {
   const config = getConfig();
   const workspaceId = parseWorkspaceIdFromRequest(request, null);
-  const guardResponse = maybeHandleHttpGuards(request, config);
+  const guardResponse = await maybeHandleHttpGuards(request, config);
   if (guardResponse) return guardResponse;
 
   try {
@@ -299,7 +299,7 @@ export async function lotSalesUpsert(
 ): Promise<HttpResponseInit> {
   const config = getConfig();
   let workspaceId: string | undefined;
-  const guardResponse = maybeHandleHttpGuards(request, config);
+  const guardResponse = await maybeHandleHttpGuards(request, config);
   if (guardResponse) return guardResponse;
 
   try {
@@ -348,7 +348,7 @@ export async function lotSalesDelete(
 ): Promise<HttpResponseInit> {
   const config = getConfig();
   let workspaceId: string | undefined;
-  const guardResponse = maybeHandleHttpGuards(request, config);
+  const guardResponse = await maybeHandleHttpGuards(request, config);
   if (guardResponse) return guardResponse;
 
   try {
@@ -426,7 +426,7 @@ export async function lotLivePricingGet(
 ): Promise<HttpResponseInit> {
   const config = getConfig();
   const workspaceId = parseWorkspaceIdFromRequest(request, null);
-  const guardResponse = maybeHandleHttpGuards(request, config);
+  const guardResponse = await maybeHandleHttpGuards(request, config);
   if (guardResponse) return guardResponse;
 
   try {
@@ -457,7 +457,7 @@ export async function lotLivePricingSave(
 ): Promise<HttpResponseInit> {
   const config = getConfig();
   let workspaceId: string | undefined;
-  const guardResponse = maybeHandleHttpGuards(request, config);
+  const guardResponse = await maybeHandleHttpGuards(request, config);
   if (guardResponse) return guardResponse;
 
   try {
@@ -508,7 +508,7 @@ export async function lotRealtimeTokenGet(
 ): Promise<HttpResponseInit> {
   const config = getConfig();
   const workspaceId = parseWorkspaceIdFromRequest(request, null);
-  const guardResponse = maybeHandleHttpGuards(request, config);
+  const guardResponse = await maybeHandleHttpGuards(request, config);
   if (guardResponse) return guardResponse;
 
   try {
@@ -540,7 +540,7 @@ export async function workspaceRealtimeTokenGet(
 ): Promise<HttpResponseInit> {
   const config = getConfig();
   let workspaceId: string | undefined;
-  const guardResponse = maybeHandleHttpGuards(request, config);
+  const guardResponse = await maybeHandleHttpGuards(request, config);
   if (guardResponse) return guardResponse;
 
   try {

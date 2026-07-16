@@ -35,6 +35,7 @@ vi.mock("./core", () => ({
 }));
 
 import {
+  deleteAllSyncData,
   getEffectiveSyncSnapshot,
   getSyncScopeEntityDocuments,
   replaceSyncScopeEntityDocuments,
@@ -90,6 +91,28 @@ beforeEach(() => {
     const code = (error as { code?: unknown })?.code;
     return statusCode === 412 || code === 412 || code === "PreconditionFailed";
   });
+});
+
+test("deleteAllSyncData erases every document in the personal sync partition", async () => {
+  const syncSnapshots = createSyncSnapshotsContainer();
+  const documents = [
+    { id: "sync:meta:user-1", userId: "user-1", docType: "sync_meta" },
+    { id: "sale:user-1:lot-1:1", userId: "user-1", docType: "sale" },
+    { id: "whatnot:batch:user-1:batch-1", userId: "user-1", docType: "whatnot_import_batch" }
+  ];
+  const deletes = new Map(documents.map((document) => [document.id, vi.fn().mockResolvedValue({})]));
+  syncSnapshots.items.query.mockReturnValue({
+    fetchAll: vi.fn().mockResolvedValue({ resources: documents })
+  });
+  syncSnapshots.item.mockImplementation((id: string) => ({
+    delete: deletes.get(id)
+  }));
+  getContainersMock.mockReturnValue({ syncSnapshots });
+
+  await deleteAllSyncData(createConfig(), "user-1");
+
+  assert.deepEqual([...deletes.values()].map((remove) => remove.mock.calls.length), [1, 1, 1]);
+  assert.deepEqual(syncSnapshots.item.mock.calls, documents.map((document) => [document.id, "user-1"]));
 });
 
 test("getEffectiveSyncSnapshot reconstructs lots and omits preset sales when entity mode is enabled", async () => {

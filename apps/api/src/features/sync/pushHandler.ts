@@ -118,7 +118,7 @@ export async function syncPush(
 ): Promise<HttpResponseInit> {
   const config = getConfig();
   let workspaceId: string | undefined;
-  const guardResponse = maybeHandleHttpGuards(request, config);
+  const guardResponse = await maybeHandleHttpGuards(request, config);
   if (guardResponse) return guardResponse;
 
   try {

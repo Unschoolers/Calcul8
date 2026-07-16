@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 import { HttpError } from "../../lib/auth";
 import {
   consumeWhatnotOAuthState,
-  upsertWhatnotConnection
+  replaceWhatnotConnectionIfUnchanged
 } from "../../lib/cosmos/whatnotRepository";
 import { getWorkspaceMembership, hasWorkspaceMembership } from "../../lib/cosmos/workspaceRepository";
 import { refreshWhatnotAccessToken } from "../../lib/whatnot";
@@ -132,7 +132,7 @@ export async function ensureFreshWhatnotConnection(
   }
 
   const refreshed = await refreshWhatnotAccessToken(config, connection.refreshTokenCiphertext);
-  return upsertWhatnotConnection(config, {
+  const updated = await replaceWhatnotConnectionIfUnchanged(config, connection, {
     ...connection,
     accessTokenCiphertext: refreshed.accessToken,
     refreshTokenCiphertext: refreshed.refreshToken,
@@ -141,6 +141,10 @@ export async function ensureFreshWhatnotConnection(
     updatedAt: new Date().toISOString(),
     status: "active"
   });
+  if (!updated) {
+    throw new HttpError(409, "Whatnot connection changed while credentials were refreshed.");
+  }
+  return updated;
 }
 
 export function parseWhatnotConfigured(config: ApiConfig): boolean {

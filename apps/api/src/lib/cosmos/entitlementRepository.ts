@@ -9,7 +9,13 @@ import type {
   UserProfileDisplayNameSource,
   UserProfileDocument
 } from "../../types";
-import { getContainers, isConflictError, isNotFoundError, withCosmosRetry } from "./core";
+import {
+  getContainers,
+  isConflictError,
+  isNotFoundError,
+  isPreconditionFailedError,
+  withCosmosRetry
+} from "./core";
 import {
   entitlementId,
   playPurchaseTokenClaimId,
@@ -352,6 +358,11 @@ function hasNewerStripeFact(
   );
 }
 
+function readCosmosEtag(document: unknown): string {
+  if (!document || typeof document !== "object") return "";
+  return String((document as { _etag?: unknown })._etag ?? "").trim();
+}
+
 export async function upsertStripeEntitlementFact(
   config: ApiConfig,
   fact: StripeEntitlementFactDocument
@@ -361,24 +372,33 @@ export async function upsertStripeEntitlementFact(
     ...fact,
     id: stripeEntitlementFactId(fact.userId, fact.stripeObjectType, fact.stripeObjectId)
   };
-  const existing = await getStripeEntitlementFact(config, document);
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const existing = await getStripeEntitlementFact(config, document);
+    if (existing && hasNewerStripeFact(existing, document)) return existing;
 
-  if (existing && hasNewerStripeFact(existing, document)) {
-    return existing;
-  }
-
-  const { resource } = await withCosmosRetry(() =>
-    entitlements.items.upsert<StripeEntitlementFactDocument>({
+    const nextDocument = {
       ...document,
       createdAt: existing?.createdAt ?? document.createdAt
-    })
-  );
-
-  if (!resource) {
-    throw new Error("Failed to upsert Stripe entitlement fact.");
+    };
+    try {
+      const result = existing
+        ? await withCosmosRetry(() => {
+          const etag = readCosmosEtag(existing);
+          if (!etag) throw new Error("Stripe entitlement fact version is unavailable.");
+          return entitlements.item(document.id, document.userId).replace<StripeEntitlementFactDocument>(
+            nextDocument,
+            { accessCondition: { type: "IfMatch", condition: etag } }
+          );
+        })
+        : await withCosmosRetry(() => entitlements.items.create<StripeEntitlementFactDocument>(nextDocument));
+      if (!result?.resource) throw new Error("Failed to upsert Stripe entitlement fact.");
+      return result.resource;
+    } catch (error) {
+      if (isConflictError(error) || isPreconditionFailedError(error)) continue;
+      throw error;
+    }
   }
-
-  return resource;
+  throw new Error("Stripe entitlement fact changed during update.");
 }
 
 export async function listStripeEntitlementFactsForUser(
@@ -517,6 +537,33 @@ export async function deletePlayPurchasesForUser(
   for (const purchase of purchases) {
     try {
       await withCosmosRetry(() => entitlements.item(purchase.id, userId).delete());
+    } catch (error) {
+      if (!isNotFoundError(error)) throw error;
+    }
+  }
+}
+
+export async function deleteAllEntitlementDataForUser(
+  config: ApiConfig,
+  userId: string
+): Promise<void> {
+  const { entitlements } = getContainers(config);
+  const iterator = entitlements.items.query<{ id?: string; userId?: string }>({
+    query: `
+      SELECT c.id, c.userId
+      FROM c
+      WHERE c.userId = @userId OR c.ownerUserId = @userId
+    `,
+    parameters: [{ name: "@userId", value: userId }]
+  });
+  const { resources } = await withCosmosRetry(() => iterator.fetchAll());
+
+  for (const document of resources ?? []) {
+    const id = String(document.id ?? "").trim();
+    const partitionKey = String(document.userId ?? "").trim();
+    if (!id || !partitionKey) continue;
+    try {
+      await withCosmosRetry(() => entitlements.item(id, partitionKey).delete());
     } catch (error) {
       if (!isNotFoundError(error)) throw error;
     }

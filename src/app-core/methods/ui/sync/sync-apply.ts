@@ -1,13 +1,18 @@
 import type { Sale } from "../../../../types/app.ts";
 import type { AppContext } from "../../../context-app.ts";
-import { getScopedSyncClientVersionKey } from "../../../storageKeys.ts";
+import {
+  getSalesCacheStatusKey,
+  getScopedPresetsStorageKey,
+  getScopedSyncClientVersionKey,
+  getScopedSystemPricingDefaultsStorageKey,
+  getScopedWheelConfigsStorageKey
+} from "../../../storageKeys.ts";
 import { getActiveStorageScope } from "../../../workspace-scope.ts";
 import { normalizeStoredLot } from "../../../shared/normalize-lot.ts";
 import { applySystemPricingDefaultsToLot, normalizeSystemPricingDefaults } from "../../../shared/system-pricing-defaults.ts";
 import { normalizeWheelConfigs } from "../../../shared/normalize-wheel-config.ts";
-import { persistSalesCacheToStorage } from "../../../shared/sales-cache-storage.ts";
-import { replaceRootLotSales, resetRootSalesState } from "../../../shared/sales-root-state.ts";
 import { clearStorageReadFailuresForScope } from "../../../storage-health.ts";
+import { commitLocalStorageWrites, type LocalStorageWrite } from "../../../shared/local-storage-transaction.ts";
 import {
   parseSyncSnapshotDto,
   type SyncLotDto,
@@ -75,36 +80,55 @@ export type SyncApplyApp = Pick<
   | "sales"
   | "activeScopeType"
   | "activeWorkspaceId"
-> & Partial<Pick<AppContext, "systemPricingDefaults" | "saveSystemPricingDefaultsToStorage">>;
+> & Partial<Pick<AppContext, "systemPricingDefaults" | "saveSystemPricingDefaultsToStorage" | "salesByLotId">>;
 
 export function applyCloudSnapshotToLocal(context: SyncApplyApp, snapshot: ParsedCloudSnapshot): void {
   const storageScope = getActiveStorageScope(context);
   const todayDate = new Date().toISOString().slice(0, 10);
-  if (snapshot.systemPricingDefaults) {
-    context.systemPricingDefaults = snapshot.systemPricingDefaults;
-    context.saveSystemPricingDefaultsToStorage?.();
-  }
-  const systemPricingDefaults = context.systemPricingDefaults;
+  const systemPricingDefaults = snapshot.systemPricingDefaults ?? context.systemPricingDefaults;
   const normalizedLots = (snapshot.lots as unknown as typeof context.lots)
     .map((lot) => normalizeStoredLot(lot, todayDate))
     .map((lot) => systemPricingDefaults ? applySystemPricingDefaultsToLot(lot, systemPricingDefaults) : lot);
-  resetRootSalesState(context);
+  const normalizedWheelConfigs = normalizeWheelConfigs(snapshot.wheelConfigs, normalizedLots);
+  const activeWheelConfigId = normalizedWheelConfigs.some((config) => config.id === snapshot.activeWheelConfigId)
+    ? snapshot.activeWheelConfigId
+    : (normalizedWheelConfigs[0]?.id ?? null);
+  const salesByLotId = new Map<number, Sale[]>();
+  const writes: LocalStorageWrite[] = [];
   for (const lot of normalizedLots) {
     if (!Object.prototype.hasOwnProperty.call(snapshot.salesByLot, String(lot.id))) {
       continue;
     }
     const rawSales = snapshot.salesByLot[String(lot.id)];
     const sales = Array.isArray(rawSales) ? rawSales as unknown as Sale[] : [];
-    persistSalesCacheToStorage(context, lot.id, sales);
-    replaceRootLotSales(context, lot.id, sales);
+    salesByLotId.set(lot.id, [...sales]);
+    writes.push(
+      { key: context.getSalesStorageKey(lot.id), value: JSON.stringify(sales) },
+      { key: getSalesCacheStatusKey(lot.id, storageScope), value: "loaded" }
+    );
   }
+  writes.push(
+    { key: getScopedPresetsStorageKey(storageScope), value: JSON.stringify(normalizedLots) },
+    { key: getScopedWheelConfigsStorageKey(storageScope), value: JSON.stringify(normalizedWheelConfigs) }
+  );
+  if (snapshot.systemPricingDefaults) {
+    writes.push({
+      key: getScopedSystemPricingDefaultsStorageKey(storageScope),
+      value: JSON.stringify(snapshot.systemPricingDefaults)
+    });
+  }
+  if (Number.isFinite(snapshot.version)) {
+    writes.push({ key: getScopedSyncClientVersionKey(storageScope), value: String(snapshot.version) });
+  }
+
+  // Persist the complete prepared snapshot before exposing any of it in memory.
+  commitLocalStorageWrites(writes);
+
+  if (snapshot.systemPricingDefaults) context.systemPricingDefaults = snapshot.systemPricingDefaults;
   context.lots = normalizedLots;
-  context.saveLotsToStorage();
-  context.wheelConfigs = normalizeWheelConfigs(snapshot.wheelConfigs, normalizedLots);
-  context.activeWheelConfigId = context.wheelConfigs.some((config) => config.id === snapshot.activeWheelConfigId)
-    ? snapshot.activeWheelConfigId
-    : (context.wheelConfigs[0]?.id ?? null);
-  context.saveWheelConfigsToStorage();
+  context.wheelConfigs = normalizedWheelConfigs;
+  context.activeWheelConfigId = activeWheelConfigId;
+  context.salesByLotId = salesByLotId;
 
   if (context.currentLotId && context.lots.some((lot) => lot.id === context.currentLotId)) {
     context.loadLot();
@@ -116,12 +140,6 @@ export function applyCloudSnapshotToLocal(context: SyncApplyApp, snapshot: Parse
     context.sales = [];
   }
 
-  if (Number.isFinite(snapshot.version)) {
-    localStorage.setItem(
-      getScopedSyncClientVersionKey(storageScope),
-      String(snapshot.version)
-    );
-  }
   clearStorageReadFailuresForScope(context, storageScope);
 }
 

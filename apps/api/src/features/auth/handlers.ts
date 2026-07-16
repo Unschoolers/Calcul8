@@ -37,7 +37,7 @@ export async function authMe(
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   const config = getConfig();
-  const guardResponse = maybeHandleHttpGuards(request, config);
+  const guardResponse = await maybeHandleHttpGuards(request, config);
   if (guardResponse) return guardResponse;
 
   try {
@@ -65,7 +65,7 @@ export async function authLogout(
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   const config = getConfig();
-  const guardResponse = maybeHandleHttpGuards(request, config);
+  const guardResponse = await maybeHandleHttpGuards(request, config);
   if (guardResponse) return guardResponse;
 
   try {
@@ -100,7 +100,7 @@ export async function authRefresh(
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   const config = getConfig();
-  const guardResponse = maybeHandleHttpGuards(request, config);
+  const guardResponse = await maybeHandleHttpGuards(request, config);
   if (guardResponse) return guardResponse;
 
   try {
@@ -130,7 +130,7 @@ export async function authLogoutAll(
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   const config = getConfig();
-  const guardResponse = maybeHandleHttpGuards(request, config);
+  const guardResponse = await maybeHandleHttpGuards(request, config);
   if (guardResponse) return guardResponse;
 
   try {

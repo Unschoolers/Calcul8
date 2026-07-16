@@ -93,6 +93,8 @@ interface RefreshAuthResponse {
   userId?: unknown;
 }
 
+let authRefreshPromise: Promise<boolean> | null = null;
+
 function normalizeResponseUserId(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
@@ -191,7 +193,7 @@ export async function fetchAuthenticatedApiResponse(
   const response = await fetchWithRetry(requestUrl, buildRequestInit());
 
   if (response.status === 401 && options.expireAuthOn401 !== false) {
-    const refreshed = await tryRefreshAuthSession(baseUrl);
+    const refreshed = await refreshAuthSessionSingleFlight(baseUrl);
     if (refreshed) {
       const retryResponse = await fetchWithRetry(requestUrl, buildRequestInit());
       if (retryResponse.status !== 401) {
@@ -205,6 +207,14 @@ export async function fetchAuthenticatedApiResponse(
   }
 
   return response;
+}
+
+function refreshAuthSessionSingleFlight(baseUrl: string): Promise<boolean> {
+  if (authRefreshPromise) return authRefreshPromise;
+  authRefreshPromise = tryRefreshAuthSession(baseUrl).finally(() => {
+    authRefreshPromise = null;
+  });
+  return authRefreshPromise;
 }
 
 async function tryRefreshAuthSession(baseUrl: string): Promise<boolean> {

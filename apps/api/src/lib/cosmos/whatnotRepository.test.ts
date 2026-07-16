@@ -50,6 +50,7 @@ import {
   initializeWhatnotConfirmationPlan,
   markWhatnotImportBatchRecoverable,
   renewWhatnotImportConfirmationLease,
+  replaceWhatnotConnectionIfUnchanged,
   releaseClaimedWhatnotImportBatch,
   getWhatnotTargetMappingByMatchKeyHash,
   upsertWhatnotConnection,
@@ -405,6 +406,43 @@ test("upsertWhatnotSaleImportMapping strips externalSaleKeyHash before persistin
   assert.equal(result.id, "whatnot_sale_import_mapping:user-1:ext-hash-1");
   assert.equal(result.scopeKey, "user-1");
   assert.equal("externalSaleKeyHash" in (syncSnapshots.items.upsert.mock.calls[0]?.[0] as object), false);
+});
+
+test("replaceWhatnotConnectionIfUnchanged cannot recreate a concurrently disconnected connection", async () => {
+  const entitlements = createEntitlementsContainer();
+  const connection = {
+    id: "whatnot_connection:user-1",
+    docType: "whatnot_connection",
+    userId: "user-1",
+    scopeKey: "user-1",
+    scopeType: "user",
+    scopeId: "user-1",
+    provider: "whatnot",
+    externalAccountId: "seller-1",
+    externalDisplayName: "Seller One",
+    scopes: ["orders:read"],
+    accessTokenCiphertext: "access-old",
+    refreshTokenCiphertext: "refresh-old",
+    tokenExpiresAt: "2026-04-11T12:00:00.000Z",
+    connectedByUserId: "user-a",
+    updatedAt: "2026-04-11T12:00:00.000Z",
+    status: "active",
+    _etag: "etag-old"
+  } satisfies WhatnotConnectionDocument & { _etag: string };
+  const replace = vi.fn().mockRejectedValue({ statusCode: 412 });
+  entitlements.item.mockReturnValue({ replace });
+  getContainersMock.mockReturnValue({ entitlements, syncSnapshots: createSyncSnapshotsContainer() });
+
+  const result = await replaceWhatnotConnectionIfUnchanged(createConfig(), connection, {
+    ...connection,
+    accessTokenCiphertext: "access-new"
+  });
+
+  assert.equal(result, null);
+  assert.deepEqual(replace.mock.calls[0]?.[1], {
+    accessCondition: { type: "IfMatch", condition: "etag-old" }
+  });
+  assert.equal(entitlements.items.upsert.mock.calls.length, 0);
 });
 
 test("claimPendingWhatnotImportBatch atomically moves a pending batch to processing", async () => {

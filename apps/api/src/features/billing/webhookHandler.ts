@@ -174,7 +174,7 @@ export async function billingWebhook(
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   const config = getConfig();
-  const guardResponse = maybeHandleHttpGuards(request, config);
+  const guardResponse = await maybeHandleHttpGuards(request, config);
   if (guardResponse) return guardResponse;
 
   const signatureHeader = readString(request.headers.get("stripe-signature"));
@@ -213,22 +213,6 @@ export async function billingWebhook(
 
   try {
     const updatedAt = new Date().toISOString();
-    const claimed = await claimStripeWebhookEvent(config, {
-      userId: entitlementUpdate.userId,
-      stripeEventId: event.id,
-      eventType: event.type,
-      processedAt: updatedAt
-    });
-    if (!claimed) {
-      return createResponse(200, {
-        received: true,
-        eventId: event.id,
-        handled: true,
-        duplicate: true,
-        updated: false
-      });
-    }
-
     const changedFact = await upsertStripeEntitlementFact(config, {
       id: stripeEntitlementFactId(
         entitlementUpdate.userId,
@@ -266,6 +250,23 @@ export async function billingWebhook(
       purchaseSource: derivedState.purchaseSource,
       updatedAt: derivedState.updatedAt
     });
+    // Completion is recorded last. All preceding writes are deterministic, so
+    // replay is safe, while a failed write remains eligible for Stripe retry.
+    const claimed = await claimStripeWebhookEvent(config, {
+      userId: entitlementUpdate.userId,
+      stripeEventId: event.id,
+      eventType: event.type,
+      processedAt: updatedAt
+    });
+    if (!claimed) {
+      return createResponse(200, {
+        received: true,
+        eventId: event.id,
+        handled: true,
+        duplicate: true,
+        updated: false
+      });
+    }
   } catch (error) {
     context.error("Stripe webhook entitlement update failed", error);
     return createResponse(500, {

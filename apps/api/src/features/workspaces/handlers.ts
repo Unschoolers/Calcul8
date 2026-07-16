@@ -74,7 +74,7 @@ export async function workspacesCreate(
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   const config = getConfig();
-  const guardResponse = maybeHandleHttpGuards(request, config);
+  const guardResponse = await maybeHandleHttpGuards(request, config);
   if (guardResponse) return guardResponse;
 
   try {
@@ -118,7 +118,7 @@ export async function workspacesMe(
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   const config = getConfig();
-  const guardResponse = maybeHandleHttpGuards(request, config);
+  const guardResponse = await maybeHandleHttpGuards(request, config);
   if (guardResponse) return guardResponse;
 
   try {
@@ -154,7 +154,7 @@ export async function workspaceMembersList(
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   const config = getConfig();
-  const guardResponse = maybeHandleHttpGuards(request, config);
+  const guardResponse = await maybeHandleHttpGuards(request, config);
   if (guardResponse) return guardResponse;
 
   try {
@@ -180,7 +180,7 @@ export async function workspaceMembersAdd(
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   const config = getConfig();
-  const guardResponse = maybeHandleHttpGuards(request, config);
+  const guardResponse = await maybeHandleHttpGuards(request, config);
   if (guardResponse) return guardResponse;
 
   try {
@@ -230,7 +230,7 @@ export async function workspaceMembersRemove(
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   const config = getConfig();
-  const guardResponse = maybeHandleHttpGuards(request, config);
+  const guardResponse = await maybeHandleHttpGuards(request, config);
   if (guardResponse) return guardResponse;
 
   try {
@@ -261,7 +261,7 @@ export async function workspaceLeave(
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   const config = getConfig();
-  const guardResponse = maybeHandleHttpGuards(request, config);
+  const guardResponse = await maybeHandleHttpGuards(request, config);
   if (guardResponse) return guardResponse;
 
   try {
@@ -292,7 +292,7 @@ export async function workspaceJoinLinksList(
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   const config = getConfig();
-  const guardResponse = maybeHandleHttpGuards(request, config);
+  const guardResponse = await maybeHandleHttpGuards(request, config);
   if (guardResponse) return guardResponse;
 
   try {
@@ -318,7 +318,7 @@ export async function workspaceJoinLinksCreate(
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   const config = getConfig();
-  const guardResponse = maybeHandleHttpGuards(request, config);
+  const guardResponse = await maybeHandleHttpGuards(request, config);
   if (guardResponse) return guardResponse;
 
   try {
@@ -368,7 +368,7 @@ export async function workspaceJoinLinksRemove(
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   const config = getConfig();
-  const guardResponse = maybeHandleHttpGuards(request, config);
+  const guardResponse = await maybeHandleHttpGuards(request, config);
   if (guardResponse) return guardResponse;
 
   try {
@@ -400,7 +400,7 @@ export async function joinAccept(
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   const config = getConfig();
-  const guardResponse = maybeHandleHttpGuards(request, config);
+  const guardResponse = await maybeHandleHttpGuards(request, config);
   if (guardResponse) return guardResponse;
 
   try {

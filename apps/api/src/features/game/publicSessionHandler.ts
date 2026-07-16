@@ -24,6 +24,7 @@ import {
     requireRequestBodyRecord,
     requireRouteParam
 } from "../../lib/httpRequest";
+import { assertGamePublicSessionControlAccess } from "./publicSessionAuthorization";
 
 function buildRealtimeTokenExpiryEpochSeconds(ttlSeconds = 60): number {
   return Math.floor(Date.now() / 1000) + ttlSeconds;
@@ -82,7 +83,7 @@ export async function gamePublicSessionCreate(
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   const config = getConfig();
-  const guardResponse = maybeHandleHttpGuards(request, config);
+  const guardResponse = await maybeHandleHttpGuards(request, config);
   if (guardResponse) return guardResponse;
 
   try {
@@ -123,7 +124,7 @@ export async function gamePublicSessionPublish(
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   const config = getConfig();
-  const guardResponse = maybeHandleHttpGuards(request, config);
+  const guardResponse = await maybeHandleHttpGuards(request, config);
   if (guardResponse) return guardResponse;
 
   try {
@@ -135,6 +136,11 @@ export async function gamePublicSessionPublish(
       }
     });
     const body = parsePublishBody(await readRequestJsonOrThrow(request));
+    const existing = await getGamePublicSession(config, body.publicSessionId);
+    if (!existing) {
+      throw new HttpError(404, "Public game session was not found.");
+    }
+    await assertGamePublicSessionControlAccess(config, actorUserId, existing);
     const updated = await updateGamePublicSession(config, {
       publicSessionId: body.publicSessionId,
       ownerUserId: actorUserId,
@@ -180,7 +186,7 @@ export async function gamePublicSessionGet(
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   const config = getConfig();
-  const guardResponse = maybeHandleHttpGuards(request, config);
+  const guardResponse = await maybeHandleHttpGuards(request, config);
   if (guardResponse) return guardResponse;
 
   try {
@@ -205,7 +211,7 @@ export async function gamePublicSessionRealtimeTokenGet(
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   const config = getConfig();
-  const guardResponse = maybeHandleHttpGuards(request, config);
+  const guardResponse = await maybeHandleHttpGuards(request, config);
   if (guardResponse) return guardResponse;
 
   try {
@@ -244,7 +250,7 @@ export async function gamePublicSessionSpectatorCountGet(
   context: InvocationContext
 ): Promise<HttpResponseInit> {
   const config = getConfig();
-  const guardResponse = maybeHandleHttpGuards(request, config);
+  const guardResponse = await maybeHandleHttpGuards(request, config);
   if (guardResponse) return guardResponse;
 
   try {
@@ -257,9 +263,10 @@ export async function gamePublicSessionSpectatorCountGet(
     });
     const publicSessionId = requireRouteParam(request, "publicSessionId").toLowerCase();
     const document = await getGamePublicSession(config, publicSessionId);
-    if (!document || document.ownerUserId !== actorUserId) {
+    if (!document) {
       throw new HttpError(404, "Public game session was not found.");
     }
+    await assertGamePublicSessionControlAccess(config, actorUserId, document);
 
     const room = buildGamePublicSessionRealtimeRoom(publicSessionId);
     const countStatus = await getRealtimeRoomMemberCountStatus(config, {

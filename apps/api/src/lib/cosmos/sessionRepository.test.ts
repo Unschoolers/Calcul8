@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { beforeEach, test, vi } from "vitest";
-import type { ApiConfig, RefreshSessionDocument } from "../../types";
+import type { ApiConfig, RefreshSessionDocument, SessionDocument } from "../../types";
 
 const {
   getContainersMock,
@@ -24,7 +24,7 @@ vi.mock("./core", () => ({
   withCosmosRetry: withCosmosRetryMock
 }));
 
-import { RefreshSessionConflictError, rotateRefreshSession } from "./sessionRepository";
+import { RefreshSessionConflictError, rotateRefreshSession, touchSession } from "./sessionRepository";
 
 function createConfig(): ApiConfig {
   return {
@@ -155,4 +155,63 @@ test("rotateRefreshSession translates an If-Match race into a refresh conflict",
     }),
     RefreshSessionConflictError
   );
+});
+
+test("touchSession conditionally replaces the session so logout cannot be undone", async () => {
+  const existing: SessionDocument & { _etag: string } = {
+    id: "session-1",
+    docType: "session",
+    userId: "user-1",
+    createdAt: "2026-07-01T00:00:00.000Z",
+    lastSeenAt: "2026-07-01T00:00:00.000Z",
+    idleExpiresAt: "2026-07-08T00:00:00.000Z",
+    absoluteExpiresAt: "2026-08-01T00:00:00.000Z",
+    _etag: "etag-session-1"
+  };
+  const replace = vi.fn(async (document: SessionDocument, _options?: unknown) => ({ resource: document }));
+  const upsert = vi.fn();
+  const item = vi.fn().mockReturnValue({
+    read: vi.fn().mockResolvedValue({ resource: existing }),
+    replace
+  });
+  getContainersMock.mockReturnValue({ sessions: { items: { upsert }, item } });
+
+  await touchSession(createConfig(), {
+    sessionId: "session-1",
+    lastSeenAt: "2026-07-16T12:00:00.000Z",
+    idleExpiresAt: "2026-07-23T12:00:00.000Z"
+  });
+
+  assert.equal(upsert.mock.calls.length, 0);
+  assert.deepEqual(replace.mock.calls[0]?.[1], {
+    accessCondition: { type: "IfMatch", condition: "etag-session-1" }
+  });
+});
+
+test("touchSession treats a logout race as a completed no-op", async () => {
+  const existing = {
+    id: "session-1",
+    docType: "session",
+    userId: "user-1",
+    createdAt: "2026-07-01T00:00:00.000Z",
+    lastSeenAt: "2026-07-01T00:00:00.000Z",
+    idleExpiresAt: "2026-07-08T00:00:00.000Z",
+    absoluteExpiresAt: "2026-08-01T00:00:00.000Z",
+    _etag: "etag-session-1"
+  } satisfies SessionDocument & { _etag: string };
+  getContainersMock.mockReturnValue({
+    sessions: {
+      items: { upsert: vi.fn() },
+      item: vi.fn().mockReturnValue({
+        read: vi.fn().mockResolvedValue({ resource: existing }),
+        replace: vi.fn().mockRejectedValue({ statusCode: 412 })
+      })
+    }
+  });
+
+  await touchSession(createConfig(), {
+    sessionId: "session-1",
+    lastSeenAt: "2026-07-16T12:00:00.000Z",
+    idleExpiresAt: "2026-07-23T12:00:00.000Z"
+  });
 });

@@ -387,6 +387,39 @@ test("fetchAuthenticatedApiResponse refreshes an expired session once before exp
   });
 });
 
+test("fetchAuthenticatedApiResponse shares one refresh across concurrent 401 responses", async () => {
+  await withMockedLocalStorage(async () => {
+    vi.stubEnv("VITE_API_BASE_URL", "https://api.example.test");
+    let protectedCalls = 0;
+    let refreshCalls = 0;
+    const fetchMock = vi.fn<typeof fetch>(async (input) => {
+      const url = String(input);
+      if (url.endsWith("/auth/refresh")) {
+        refreshCalls += 1;
+        await Promise.resolve();
+        return new Response(JSON.stringify({ userId: "user-1" }), {
+          status: 200,
+          headers: { "Content-Type": "application/json", "x-csrf-token": "csrf-next" }
+        });
+      }
+      protectedCalls += 1;
+      return new Response("{}", { status: protectedCalls <= 2 ? 401 : 200 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const app = { googleAuthEpoch: 0, hasProAccess: false };
+
+    const [first, second] = await Promise.all([
+      fetchAuthenticatedApiResponse(app as never, "/sync/pull", { method: "POST", body: "{}" }),
+      fetchAuthenticatedApiResponse(app as never, "/workspaces/me", { method: "GET" })
+    ]);
+
+    assert.equal(first.status, 200);
+    assert.equal(second.status, 200);
+    assert.equal(refreshCalls, 1);
+    assert.equal(app.googleAuthEpoch, 0);
+  });
+});
+
 test("fetchAuthenticatedApiResponse expires auth when refresh cannot recover the session", async () => {
   await withMockedLocalStorage(async () => {
     vi.stubEnv("VITE_API_BASE_URL", "https://api.example.test");

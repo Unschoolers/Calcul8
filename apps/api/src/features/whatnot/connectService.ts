@@ -123,6 +123,17 @@ export async function handleWhatnotOAuthCallback(
   }
 
   const oauthState = await createOrConsumeValidOAuthState(config, state);
+  if (oauthState.scopeType === "workspace") {
+    const authorizedScope = await resolveWhatnotScope(
+      config,
+      oauthState.createdByUserId,
+      oauthState.scopeId,
+      true
+    );
+    if (authorizedScope.connectionScopeKey !== oauthState.scopeKey) {
+      throw new HttpError(403, "Workspace authorization changed during Whatnot connection.");
+    }
+  }
   const tokens = await exchangeWhatnotAuthorizationCode(config, code);
   const identity = await fetchWhatnotSellerIdentity(config, tokens.accessToken);
   await upsertWhatnotConnection(config, {

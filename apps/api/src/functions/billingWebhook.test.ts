@@ -166,8 +166,33 @@ test("billingWebhook ignores duplicate Stripe events after the event claim alrea
     duplicate: true,
     updated: false
   });
-  assert.equal(upsertStripeEntitlementFactMock.mock.calls.length, 0);
-  assert.equal(upsertEntitlementMock.mock.calls.length, 0);
+  assert.equal(upsertStripeEntitlementFactMock.mock.calls.length, 1);
+  assert.equal(upsertEntitlementMock.mock.calls.length, 1);
+});
+
+test("billingWebhook does not mark an event processed before entitlement writes succeed", async () => {
+  const request = createRequest("{\"id\":\"evt_retry\"}", {
+    "stripe-signature": "t=1700000000,v1=good"
+  });
+  const context = createInvocationContext();
+  verifyStripeWebhookEventMock.mockReturnValue({
+    id: "evt_retry",
+    type: "checkout.session.completed",
+    data: {
+      object: {
+        id: "cs_retry",
+        mode: "payment",
+        payment_status: "paid",
+        client_reference_id: "user-1"
+      }
+    }
+  });
+  upsertEntitlementMock.mockRejectedValueOnce(new Error("Cosmos unavailable"));
+
+  const response = await billingWebhook(request as never, context as never);
+
+  assert.equal(response.status, 500);
+  assert.equal(claimStripeWebhookEventMock.mock.calls.length, 0);
 });
 
 test("billingWebhook keeps Play access when a Stripe subscription cancellation is inactive", async () => {

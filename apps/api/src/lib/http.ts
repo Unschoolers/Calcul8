@@ -1,7 +1,7 @@
 import type { HttpRequest, HttpResponseInit } from "@azure/functions";
 import type { ApiConfig } from "../types";
 import { consumeAuthResponseCookies, consumeAuthResponseHeaders, HttpError } from "./auth";
-import { checkGlobalRateLimit } from "./rateLimit";
+import { checkDistributedGlobalRateLimit, checkGlobalRateLimit } from "./rateLimit";
 
 function isAllowedOrigin(origin: string, allowedOrigins: string[]): boolean {
   if (allowedOrigins.includes("*")) return true;
@@ -39,14 +39,22 @@ export function maybeHandleCorsPreflight(
   return handleCorsPreflight(request, config);
 }
 
-export function maybeHandleGlobalRateLimit(
+export async function maybeHandleGlobalRateLimit(
   request: HttpRequest,
   config: ApiConfig
-): HttpResponseInit | null {
+): Promise<HttpResponseInit | null> {
   if (process.env.NODE_ENV === "test") return null;
   if (config.apiEnv !== "prod") return null;
 
-  const decision = checkGlobalRateLimit(request);
+  let decision;
+  try {
+    decision = await checkDistributedGlobalRateLimit(request, config);
+  } catch (error) {
+    // Preserve API availability during a Cosmos incident while retaining
+    // per-instance protection. Production telemetry captures the degradation.
+    console.error("Distributed rate limiter unavailable; using local fallback.", error);
+    decision = checkGlobalRateLimit(request);
+  }
   if (decision.allowed) return null;
 
   return jsonResponse(
@@ -65,14 +73,14 @@ export function maybeHandleGlobalRateLimit(
   );
 }
 
-export function maybeHandleHttpGuards(
+export async function maybeHandleHttpGuards(
   request: HttpRequest,
   config: ApiConfig
-): HttpResponseInit | null {
+): Promise<HttpResponseInit | null> {
   const preflightResponse = maybeHandleCorsPreflight(request, config);
   if (preflightResponse) return preflightResponse;
 
-  return maybeHandleGlobalRateLimit(request, config);
+  return await maybeHandleGlobalRateLimit(request, config);
 }
 
 export function jsonResponse(

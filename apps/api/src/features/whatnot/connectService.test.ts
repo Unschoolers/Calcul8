@@ -316,6 +316,30 @@ test("handleWhatnotOAuthCallback exchanges code, stores the seller connection, a
   assert.equal(result.redirectUrl, "https://app.example/settings?whatnot=connected&scope=user");
 });
 
+test("handleWhatnotOAuthCallback rechecks workspace ownership before storing credentials", async () => {
+  createOrConsumeValidOAuthStateMock.mockResolvedValue({
+    provider: "whatnot",
+    state: "oauth-state-1",
+    scopeKey: "ws:team-42",
+    scopeType: "workspace",
+    scopeId: "team-42",
+    createdByUserId: "user-a",
+    expiresAt: "2026-05-16T12:10:00.000Z",
+    createdAt: "2026-05-16T12:00:00.000Z",
+    updatedAt: "2026-05-16T12:00:00.000Z"
+  });
+  resolveWhatnotScopeMock.mockRejectedValueOnce(Object.assign(new Error("Owner access required."), { status: 403 }));
+
+  await assert.rejects(
+    () => handleWhatnotOAuthCallback(createApiConfig(), { state: "oauth-state-1", code: "code-1" }),
+    (error: { status?: number }) => error.status === 403
+  );
+
+  assert.deepEqual(resolveWhatnotScopeMock.mock.calls[0]?.slice(1), ["user-a", "team-42", true]);
+  assert.equal(exchangeWhatnotAuthorizationCodeMock.mock.calls.length, 0);
+  assert.equal(upsertWhatnotConnectionMock.mock.calls.length, 0);
+});
+
 test("disconnectWhatnotForActor requires workspace owner scope when disconnecting a workspace integration", async () => {
   resolveWhatnotScopeMock.mockResolvedValue(workspaceScope());
 

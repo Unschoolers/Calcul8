@@ -12,9 +12,7 @@ const {
   getConfigMock,
   resolveUserIdMock,
   clearSessionCookieMock,
-  deleteEntitlementMock,
-  deleteUserProfileMock,
-  deletePlayPurchasesForUserMock,
+  deleteAllEntitlementDataForUserMock,
   deleteAllSyncDataMock,
   eraseAccountDataMock,
   revokeAllSessionsForUserMock,
@@ -23,9 +21,7 @@ const {
   getConfigMock: vi.fn(),
   resolveUserIdMock: vi.fn(),
   clearSessionCookieMock: vi.fn(),
-  deleteEntitlementMock: vi.fn(),
-  deleteUserProfileMock: vi.fn(),
-  deletePlayPurchasesForUserMock: vi.fn(),
+  deleteAllEntitlementDataForUserMock: vi.fn(),
   deleteAllSyncDataMock: vi.fn(),
   eraseAccountDataMock: vi.fn(),
   revokeAllSessionsForUserMock: vi.fn(),
@@ -52,9 +48,7 @@ vi.mock("../lib/auth", () => ({
 }));
 
 vi.mock("../lib/cosmos/entitlementRepository", () => ({
-  deleteEntitlement: deleteEntitlementMock,
-  deleteUserProfile: deleteUserProfileMock,
-  deletePlayPurchasesForUser: deletePlayPurchasesForUserMock
+  deleteAllEntitlementDataForUser: deleteAllEntitlementDataForUserMock
 }));
 
 vi.mock("../lib/cosmos/syncSnapshotRepository", () => ({
@@ -77,9 +71,7 @@ beforeEach(() => {
   getConfigMock.mockReturnValue(createApiConfig());
   resolveUserIdMock.mockResolvedValue("user-1");
   clearSessionCookieMock.mockResolvedValue(undefined);
-  deleteEntitlementMock.mockResolvedValue(undefined);
-  deleteUserProfileMock.mockResolvedValue(undefined);
-  deletePlayPurchasesForUserMock.mockResolvedValue(undefined);
+  deleteAllEntitlementDataForUserMock.mockResolvedValue(undefined);
   deleteAllSyncDataMock.mockResolvedValue(undefined);
   eraseAccountDataMock.mockResolvedValue(undefined);
   revokeAllSessionsForUserMock.mockResolvedValue(2);
@@ -92,9 +84,7 @@ test("accountDelete clears personal account data, revokes sessions and refresh t
 
   const response = await accountDelete(request as never, context as never);
 
-  assert.equal(deleteEntitlementMock.mock.calls[0]?.[1], "user-1");
-  assert.equal(deleteUserProfileMock.mock.calls[0]?.[1], "user-1");
-  assert.equal(deletePlayPurchasesForUserMock.mock.calls[0]?.[1], "user-1");
+  assert.equal(deleteAllEntitlementDataForUserMock.mock.calls[0]?.[1], "user-1");
   assert.equal(deleteAllSyncDataMock.mock.calls[0]?.[1], "user-1");
   assert.equal(eraseAccountDataMock.mock.calls[0]?.[1], "user-1");
   assert.equal(revokeAllSessionsForUserMock.mock.calls[0]?.[1], "user-1");
@@ -103,4 +93,17 @@ test("accountDelete clears personal account data, revokes sessions and refresh t
   assert.equal(response.status, 200);
   assert.equal((response.jsonBody as { ok?: boolean; userId?: string }).ok, true);
   assert.equal((response.jsonBody as { ok?: boolean; userId?: string }).userId, "user-1");
+});
+
+test("accountDelete keeps sessions active when erasure fails so the user can retry", async () => {
+  const request = createHttpRequest({ method: "POST" });
+  const context = createInvocationContext();
+  deleteAllSyncDataMock.mockRejectedValueOnce(new Error("Cosmos unavailable"));
+
+  const response = await accountDelete(request as never, context as never);
+
+  assert.equal(response.status, 500);
+  assert.equal(revokeAllSessionsForUserMock.mock.calls.length, 0);
+  assert.equal(revokeAllRefreshSessionsForUserMock.mock.calls.length, 0);
+  assert.equal(clearSessionCookieMock.mock.calls.length, 0);
 });
