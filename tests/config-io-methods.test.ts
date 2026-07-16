@@ -414,8 +414,8 @@ test("importLotsFromUserId applies the imported overwrite snapshot before any fa
   assert.equal(ctx.currentLotId, 1780489007286);
   assert.equal(ctx.activeWheelConfigId, 42);
   assert.equal(ctx.systemPricingDefaults.targetProfitPercent, 20);
-  assert.equal(ctx.saveLotsToStorage.mock.calls.length, 2);
-  assert.equal(ctx.saveSystemPricingDefaultsToStorage.mock.calls.length, 2);
+  assert.equal(ctx.saveLotsToStorage.mock.calls.length, 0);
+  assert.equal(ctx.saveSystemPricingDefaultsToStorage.mock.calls.length, 0);
 });
 
 test("importLotsFromUserId overwrites the personal presets storage key from the imported snapshot", async () => {

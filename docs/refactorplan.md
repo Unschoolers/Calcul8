@@ -1,6 +1,6 @@
 # Calcul8 Refactor Plan
 
-Updated on 2026-07-16 after enforcing generated release artifact hygiene. Completed UI, bilingual contract, realtime recovery, system configuration, bracket battle, singles-image work, personal Whatnot credential erasure, production CORS wildcard rejection, release-gate coverage, generated artifact hygiene, and the two cross-document recovery workflows are intentionally removed from this plan.
+Updated on 2026-07-16 after the critical reliability audit. Completed UI, bilingual contract, realtime recovery, system configuration, bracket battle, singles-image work, complete account erasure, production CORS and distributed rate-limit hardening, release-gate coverage, generated artifact hygiene, billing/session/Whatnot concurrency fixes, atomic local snapshot application, public-session access revalidation, and the two cross-document recovery workflows are intentionally removed from this plan.
 
 This is the active technical and security backlog, plus a staged test-maintenance follow-up discovered while promoting all tests into `verify:all`. Each item should be implemented TDD-style, verified against the affected package, and deleted from this file once the repo proves it is done.
 

@@ -11,10 +11,10 @@ functionEntryPoints = component "Function Entry Points" "Azure Functions route b
 httpBoundary = component "HTTP Boundary" "Shared HTTP and auth guard layer." "apps/api/src/lib/http.ts, apps/api/src/lib/auth" {
     tags "API Component", "Security Boundary", "Validation Boundary"
     properties {
-        "Owns" "CORS, JSON response shaping, unsafe-method CSRF checks, auth resolution, shared HTTP errors, and telemetry outcomes."
+        "Owns" "CORS, JSON response shaping, unsafe-method CSRF checks, auth resolution, shared distributed rate limiting, shared HTTP errors, and telemetry outcomes."
         "Must not own" "Feature-specific persistence, provider token exchange, sync snapshot mutation, or billing entitlement decisions."
-        "Boundary data" "Headers, cookies, auth tokens, CSRF tokens, normalized user ids, HTTP errors, and response envelopes."
-        "Failure recovery" "Fail closed on auth/CSRF ambiguity and return consistent 4xx/5xx JSON without leaking secrets."
+        "Boundary data" "Headers, proxy-appended client addresses, cookies, auth tokens, CSRF tokens, normalized user ids, rate-limit decisions, HTTP errors, and response envelopes."
+        "Failure recovery" "Fail closed on auth/CSRF ambiguity, use a bounded local limiter if shared counters are unavailable, and return consistent 4xx/5xx JSON without leaking secrets."
     }
 }
 
@@ -44,7 +44,7 @@ salesGameServices = component "Sales And Game Services" "Sales, pricing, and gam
         "Owns" "Sales CRUD, live pricing updates, public game sessions, wheel fairness verification, and game-session publish triggers."
         "Must not own" "Frontend rendering, local inventory calculations, WebSocket connection state, or provider billing/import credentials."
         "Boundary data" "Sale records, lot ids, optimistic versions, live pricing payloads, public session ids, fairness proofs, and publish events."
-        "Failure recovery" "Use optimistic concurrency for cloud-authoritative records and emit enough version data for clients to refresh after conflicts."
+        "Failure recovery" "Use optimistic concurrency for cloud-authoritative records, revalidate workspace control access, and emit enough version data for clients to refresh after conflicts."
     }
 }
 
@@ -54,7 +54,7 @@ billingEntitlementServices = component "Billing Entitlement Services" "Billing f
         "Owns" "Stripe checkout sessions, Play purchase verification, provider fact ingestion, entitlement projection, and access summaries."
         "Must not own" "Profile identity, workspace membership, local UI gating state, or unrelated feature authorization policy."
         "Boundary data" "Provider customer ids, purchase tokens, subscription/payment facts, entitlement ids, projected access, and webhook events."
-        "Failure recovery" "Derive access from provider facts, keep idempotent provider updates, and avoid granting access from unverified client claims."
+        "Failure recovery" "Write versioned provider facts with optimistic concurrency, project access idempotently, record webhook completion last, and avoid granting access from unverified client claims."
     }
 }
 
@@ -64,14 +64,14 @@ whatnotImportServices = component "Whatnot Import Services" "Whatnot OAuth and i
         "Owns" "Whatnot OAuth connection lifecycle, token refresh, order import, import batches, mapping persistence, and sale-import metadata."
         "Must not own" "Frontend review layout, seller-authored local notes, billing access projection, or workspace ownership inference for credentials."
         "Boundary data" "OAuth codes/tokens, imported orders, normalized rows, review decisions, external ids, sale mappings, and import audit records."
-        "Failure recovery" "Freeze reviewed decisions and planned sale identities, lease each attempt, checkpoint logical sale operations, recover sales by mutation or provider identity, and expose partial failures for deterministic user-triggered retry."
+        "Failure recovery" "Freeze reviewed decisions and planned sale identities, lease each attempt, checkpoint logical sale operations, recover sales by mutation or provider identity, reject stale workspace callbacks, prevent token refresh from recreating disconnected credentials, and expose partial failures for deterministic user-triggered retry."
     }
 }
 
 cosmosRepositories = component "Cosmos Repositories" "Cosmos persistence boundary." "apps/api/src/lib/cosmos" {
     tags "API Component", "Database Boundary"
     properties {
-        "Owns" "Cosmos ids, partition keys, retries, ETag/precondition handling, conflict translation, and document shape persistence."
+        "Owns" "Cosmos ids, partition keys, retries, ETag/precondition handling, conflict translation, shared rate-limit counters, and document shape persistence."
         "Must not own" "HTTP response formatting, feature-level authorization choices, frontend scope fallback, or provider API calls."
         "Boundary data" "Cosmos documents, partition keys, ETags, versions, conflict/not-found errors, and repository DTOs."
         "Failure recovery" "Translate Cosmos races into explicit conflicts and avoid silent destructive overwrites across partitions."

@@ -533,7 +533,8 @@ test("upsertStripeEntitlementFact does not regress a newer provider fact with an
     sourceEventCreated: 20,
     status: "active",
     createdAt: "2026-03-18T00:00:00.000Z",
-    updatedAt: "2026-03-18T00:00:00.000Z"
+    updatedAt: "2026-03-18T00:00:00.000Z",
+    _etag: "etag-new"
   };
   entitlements.item.mockReturnValue({
     read: vi.fn().mockResolvedValue({ resource: existingFact })
@@ -561,7 +562,7 @@ test("upsertStripeEntitlementFact does not regress a newer provider fact with an
 
 test("upsertStripeEntitlementFact preserves createdAt when updating an older fact", async () => {
   const entitlements = createEntitlementsContainer();
-  const existingFact: StripeEntitlementFactDocument = {
+  const existingFact: StripeEntitlementFactDocument & { _etag: string } = {
     id: "stripe_entitlement:user-1:subscription:sub_1",
     docType: "stripe_entitlement_fact",
     userId: "user-1",

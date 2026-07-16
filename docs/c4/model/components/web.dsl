@@ -44,7 +44,7 @@ syncCoordinator = component "Sync Coordinator" "Scoped snapshot sync orchestrati
         "Owns" "Queued pull/push orchestration, local dirty-state decisions, stale-version handling, snapshot apply, and sync status display."
         "Must not own" "API membership checks, Cosmos conflict translation, component rendering, or provider auth verification."
         "Boundary data" "Sync payloads, client versions, payload signatures, scope keys, push/pull responses, and conflict notifications."
-        "Failure recovery" "Isolate failed queued operations, auto-pull clean stale conflicts, preserve dirty local edits, and surface explicit recovery when needed."
+        "Failure recovery" "Isolate failed queued operations, apply pulled snapshots with rollback-safe grouped storage writes before committing live state, auto-pull clean stale conflicts, preserve dirty local edits, and surface explicit recovery when needed."
     }
 }
 

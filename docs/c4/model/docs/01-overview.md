@@ -27,4 +27,4 @@ The C4 model intentionally highlights the same areas tracked in `docs/refactorpl
 - Shared test fixtures need builders so strict `verify:all` typechecking catches real contract drift without forcing every test to copy full schemas.
 - Recorded sales, sales history, and portfolio metrics must stay distinct from what-if forecasts and projection-only UI.
 - Realtime production must remain authenticated and single-replica until it has a backplane.
-- Public game sessions need optimistic concurrency around stale publishes.
+- Public game sessions use optimistic concurrency for stale publishes and revalidate current workspace membership before control operations.

@@ -86,7 +86,9 @@ test("applyCloudSnapshotToLocal restores system pricing defaults before normaliz
     loadLot: vi.fn()
   };
   vi.stubGlobal("localStorage", {
-    setItem: vi.fn()
+    getItem: vi.fn(() => null),
+    setItem: vi.fn(),
+    removeItem: vi.fn()
   });
 
   applyCloudSnapshotToLocal(context as never, snapshot);
@@ -97,5 +99,5 @@ test("applyCloudSnapshotToLocal restores system pricing defaults before normaliz
   assert.equal(context.lots[0]?.sellingCurrency, "USD");
   assert.equal(context.lots[0]?.sellingTaxPercent, 8);
   assert.equal(context.lots[0]?.targetProfitPercent, 21);
-  assert.equal(context.saveSystemPricingDefaultsToStorage.mock.calls.length, 1);
+  assert.equal(context.saveSystemPricingDefaultsToStorage.mock.calls.length, 0);
 });

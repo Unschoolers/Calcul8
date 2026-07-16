@@ -169,8 +169,8 @@ test("pullCloudSync applies newer cloud snapshot and stores version", async () =
   assert.equal((ctx.wheelConfigs as Array<{ id: number }>)[0]?.id, 91);
   assert.equal(ctx.activeWheelConfigId, 91);
   assert.equal(ctx.currentLotId, 2);
-  assert.equal(ctx.saveLotsToStorage.mock.calls.length, 1);
-  assert.equal(ctx.saveWheelConfigsToStorage.mock.calls.length, 1);
+  assert.equal(ctx.saveLotsToStorage.mock.calls.length, 0);
+  assert.equal(ctx.saveWheelConfigsToStorage.mock.calls.length, 0);
   assert.equal(ctx.loadLot.mock.calls.length, 1);
   assert.equal(ctx.notify.mock.calls.length, 1);
   assert.equal(storage.getItem("whatfees_sync_client_version"), "3");
@@ -207,7 +207,7 @@ test("pullCloudSync force-applies cloud snapshot even when version gating would 
 
   assert.equal((ctx.wheelConfigs as Array<{ id: number }>)[0]?.id, 91);
   assert.equal(ctx.activeWheelConfigId, 91);
-  assert.equal(ctx.saveWheelConfigsToStorage.mock.calls.length, 1);
+  assert.equal(ctx.saveWheelConfigsToStorage.mock.calls.length, 0);
 });
 
 test("pullCloudSync defaults missing current lot tax fields before applying cloud snapshot", async () => {

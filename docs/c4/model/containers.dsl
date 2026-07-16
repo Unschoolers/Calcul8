@@ -36,7 +36,7 @@ calcul8 = softwareSystem "Calcul8" "Local-first PWA for live selling, profitabil
         !include components/realtime.dsl
     }
 
-    cosmos = container "Cosmos DB" "Cloud-authoritative storage for profiles, workspaces, sync snapshots, sales, billing facts, Whatnot connections, and public game sessions." "Azure Cosmos DB" {
+    cosmos = container "Cosmos DB" "Cloud-authoritative storage for profiles, workspaces, sync snapshots, sales, billing facts, Whatnot connections, public game sessions, and shared API rate-limit counters." "Azure Cosmos DB" {
         tags "Database", "Microsoft Azure - Azure Cosmos DB"
     }
 
