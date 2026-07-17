@@ -1,8 +1,7 @@
 import { type HttpRequest, type HttpResponseInit, type InvocationContext } from "@azure/functions";
 import { resolveUserId } from "../../lib/auth";
-import { getConfig } from "../../lib/config";
 import { createStripeCheckoutSession, type StripeCheckoutUiMode } from "../../lib/stripe";
-import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../../lib/http";
+import { executeHttpHandler, jsonResponse } from "../../lib/http";
 
 async function resolveStripeUiMode(request: HttpRequest): Promise<StripeCheckoutUiMode> {
   if (typeof request.json !== "function") {
@@ -21,11 +20,10 @@ export async function billingCheckoutSession(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
-  const config = getConfig();
-  const guardResponse = await maybeHandleHttpGuards(request, config);
-  if (guardResponse) return guardResponse;
-
-  try {
+  return executeHttpHandler(request, context, {
+    errorLogMessage: "POST /billing/checkout-session failed",
+    fallbackErrorMessage: "Failed to create Stripe checkout session.",
+    operation: async ({ config }) => {
     const uiMode = await resolveStripeUiMode(request);
     const userId = await resolveUserId(request, config);
     const session = await createStripeCheckoutSession({
@@ -51,8 +49,6 @@ export async function billingCheckoutSession(
       checkoutUrl: session.url || null,
       clientSecret: session.client_secret || null
     });
-  } catch (error) {
-    context.error("POST /billing/checkout-session failed", error);
-    return errorResponse(request, config, error, "Failed to create Stripe checkout session.");
-  }
+    }
+  });
 }

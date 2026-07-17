@@ -11,7 +11,7 @@ functionEntryPoints = component "Function Entry Points" "Azure Functions route b
 httpBoundary = component "HTTP Boundary" "Shared HTTP and auth guard layer." "apps/api/src/lib/http.ts, apps/api/src/lib/auth" {
     tags "API Component", "Security Boundary", "Validation Boundary"
     properties {
-        "Owns" "CORS, JSON response shaping, unsafe-method CSRF checks, auth resolution, shared distributed rate limiting, shared HTTP errors, and telemetry outcomes."
+        "Owns" "The executeHttpHandler lifecycle for config resolution, CORS and CSRF guards, shared distributed rate limiting, consistent error responses, and route failure logging."
         "Must not own" "Feature-specific persistence, provider token exchange, sync snapshot mutation, or billing entitlement decisions."
         "Boundary data" "Headers, proxy-appended client addresses, cookies, auth tokens, CSRF tokens, normalized user ids, rate-limit decisions, HTTP errors, and response envelopes."
         "Failure recovery" "Fail closed on auth/CSRF ambiguity, use a bounded local limiter if shared counters are unavailable, and return consistent 4xx/5xx JSON without leaking secrets."

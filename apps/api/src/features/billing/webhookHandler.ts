@@ -1,5 +1,4 @@
 import { type HttpRequest, type HttpResponseInit, type InvocationContext } from "@azure/functions";
-import { getConfig } from "../../lib/config";
 import {
   claimStripeWebhookEvent,
   listPlayPurchasesForUser,
@@ -9,7 +8,7 @@ import {
 } from "../../lib/cosmos/entitlementRepository";
 import { stripeEntitlementFactId } from "../../lib/cosmos/ids";
 import { deriveEntitlementState } from "../../lib/entitlementFacts";
-import { maybeHandleHttpGuards } from "../../lib/http";
+import { executeHttpHandler } from "../../lib/http";
 import { buildLegacyUserEntitlementDocumentId } from "../../lib/scopeKeys";
 import { verifyStripeWebhookEvent, type StripeWebhookEvent } from "../../lib/stripe";
 import type {
@@ -173,10 +172,10 @@ export async function billingWebhook(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
-  const config = getConfig();
-  const guardResponse = await maybeHandleHttpGuards(request, config);
-  if (guardResponse) return guardResponse;
-
+  return executeHttpHandler(request, context, {
+    errorLogMessage: "POST /billing/webhook failed",
+    fallbackErrorMessage: "Failed to process Stripe webhook.",
+    operation: async ({ config }) => {
   const signatureHeader = readString(request.headers.get("stripe-signature"));
   if (!signatureHeader) {
     return createResponse(400, {
@@ -282,5 +281,7 @@ export async function billingWebhook(
     eventId: event.id,
     handled: true,
     updated: true
+  });
+    }
   });
 }

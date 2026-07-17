@@ -1,7 +1,6 @@
 import { type HttpRequest, type HttpResponseInit, type InvocationContext } from "@azure/functions";
 import { HttpError, resolveUserId } from "../../lib/auth";
-import { getConfig } from "../../lib/config";
-import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../../lib/http";
+import { errorResponse, executeHttpHandler, jsonResponse } from "../../lib/http";
 import { parseOptionalWorkspaceId } from "../../lib/syncScope";
 import { logApiTelemetry } from "../../lib/telemetry";
 import {
@@ -233,49 +232,42 @@ export async function whatnotStatus(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
-  const config = getConfig();
-  const guardResponse = await maybeHandleHttpGuards(request, config);
-  if (guardResponse) return guardResponse;
-
-  try {
+  return executeHttpHandler(request, context, {
+    errorLogMessage: "GET /integrations/whatnot/status failed",
+    fallbackErrorMessage: "Failed to load Whatnot status.",
+    operation: async ({ config }) => {
     const actorUserId = await resolveUserId(request, config);
     const workspaceId = await parseWorkspaceIdFromBody(request);
     const status = await getWhatnotStatusForActor(config, actorUserId, workspaceId);
     return jsonResponse(request, config, 200, status);
-  } catch (error) {
-    context.error("GET /integrations/whatnot/status failed", error);
-    return errorResponse(request, config, error, "Failed to load Whatnot status.");
-  }
+    }
+  });
 }
 
 export async function whatnotConnectStart(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
-  const config = getConfig();
-  const guardResponse = await maybeHandleHttpGuards(request, config);
-  if (guardResponse) return guardResponse;
-
-  try {
+  return executeHttpHandler(request, context, {
+    errorLogMessage: "POST /integrations/whatnot/connect/start failed",
+    fallbackErrorMessage: "Failed to start Whatnot connection.",
+    operation: async ({ config }) => {
     const actorUserId = await resolveUserId(request, config);
     const { workspaceId, appReturnUrl } = await parseWhatnotConnectStartBody(request);
     const authorizeUrl = await createWhatnotConnectUrlForActor(config, actorUserId, workspaceId, appReturnUrl);
     return jsonResponse(request, config, 200, { authorizeUrl });
-  } catch (error) {
-    context.error("POST /integrations/whatnot/connect/start failed", error);
-    return errorResponse(request, config, error, "Failed to start Whatnot connection.");
-  }
+    }
+  });
 }
 
 export async function whatnotConnectCallback(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
-  const config = getConfig();
-  const guardResponse = await maybeHandleHttpGuards(request, config);
-  if (guardResponse) return guardResponse;
-
-  try {
+  return executeHttpHandler(request, context, {
+    errorLogMessage: "GET /integrations/whatnot/connect/callback failed",
+    fallbackErrorMessage: "Failed to complete Whatnot connection.",
+    operation: async ({ config }) => {
     const result = await handleWhatnotOAuthCallback(config, {
       code: getQueryParam(request, "code") ?? undefined,
       state: getQueryParam(request, "state") ?? undefined,
@@ -288,40 +280,34 @@ export async function whatnotConnectCallback(
         Location: result.redirectUrl
       }
     };
-  } catch (error) {
-    context.error("GET /integrations/whatnot/connect/callback failed", error);
-    return errorResponse(request, config, error, "Failed to complete Whatnot connection.");
-  }
+    }
+  });
 }
 
 export async function whatnotDisconnect(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
-  const config = getConfig();
-  const guardResponse = await maybeHandleHttpGuards(request, config);
-  if (guardResponse) return guardResponse;
-
-  try {
+  return executeHttpHandler(request, context, {
+    errorLogMessage: "POST /integrations/whatnot/disconnect failed",
+    fallbackErrorMessage: "Failed to disconnect Whatnot.",
+    operation: async ({ config }) => {
     const actorUserId = await resolveUserId(request, config);
     const workspaceId = await parseWorkspaceIdFromBody(request);
     await disconnectWhatnotForActor(config, actorUserId, workspaceId);
     return jsonResponse(request, config, 200, { ok: true });
-  } catch (error) {
-    context.error("POST /integrations/whatnot/disconnect failed", error);
-    return errorResponse(request, config, error, "Failed to disconnect Whatnot.");
-  }
+    }
+  });
 }
 
 export async function whatnotSync(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
-  const config = getConfig();
-  const guardResponse = await maybeHandleHttpGuards(request, config);
-  if (guardResponse) return guardResponse;
-
-  try {
+  return executeHttpHandler(request, context, {
+    errorLogMessage: "POST /integrations/whatnot/sync failed",
+    fallbackErrorMessage: "Failed to sync Whatnot orders.",
+    operation: async ({ config }) => {
     const actorUserId = await resolveUserId(request, config);
     const workspaceId = await parseWorkspaceIdFromBody(request);
     const batch = await syncWhatnotOrdersForActor(config, actorUserId, workspaceId);
@@ -330,21 +316,18 @@ export async function whatnotSync(
       pendingReviewCount: batch.rows.length,
       rows: batch.rows
     });
-  } catch (error) {
-    context.error("POST /integrations/whatnot/sync failed", error);
-    return errorResponse(request, config, error, "Failed to sync Whatnot orders.");
-  }
+    }
+  });
 }
 
 export async function whatnotImport(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
-  const config = getConfig();
-  const guardResponse = await maybeHandleHttpGuards(request, config);
-  if (guardResponse) return guardResponse;
-
-  try {
+  return executeHttpHandler(request, context, {
+    errorLogMessage: "POST /integrations/whatnot/import failed",
+    fallbackErrorMessage: "Failed to stage Whatnot import rows.",
+    operation: async ({ config }) => {
     const actorUserId = await resolveUserId(request, config);
     const body = parseImportRowsBody(await readRequestJsonOrThrow(request));
     const batch = await createWhatnotImportBatchFromRowsForActor(config, actorUserId, body);
@@ -353,21 +336,18 @@ export async function whatnotImport(
       pendingReviewCount: batch.rows.length,
       rows: batch.rows
     });
-  } catch (error) {
-    context.error("POST /integrations/whatnot/import failed", error);
-    return errorResponse(request, config, error, "Failed to stage Whatnot import rows.");
-  }
+    }
+  });
 }
 
 export async function whatnotReviewGet(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
-  const config = getConfig();
-  const guardResponse = await maybeHandleHttpGuards(request, config);
-  if (guardResponse) return guardResponse;
-
-  try {
+  return executeHttpHandler(request, context, {
+    errorLogMessage: "GET /integrations/whatnot/review failed",
+    fallbackErrorMessage: "Failed to load Whatnot review batch.",
+    operation: async ({ config }) => {
     const actorUserId = await resolveUserId(request, config);
     const { workspaceId, batchId } = await parseReviewLookupFromRequest(request);
     const batch = await getWhatnotReviewBatchForActor(config, actorUserId, workspaceId, batchId);
@@ -376,21 +356,18 @@ export async function whatnotReviewGet(
       rows: batch?.rows ?? [],
       confirmationDecisions: batch?.confirmationDecisions ?? null
     });
-  } catch (error) {
-    context.error("GET /integrations/whatnot/review failed", error);
-    return errorResponse(request, config, error, "Failed to load Whatnot review batch.");
-  }
+    }
+  });
 }
 
 export async function whatnotReviewConfirm(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
-  const config = getConfig();
-  const guardResponse = await maybeHandleHttpGuards(request, config);
-  if (guardResponse) return guardResponse;
-
-  try {
+  return executeHttpHandler(request, context, {
+    errorLogMessage: "POST /integrations/whatnot/review/confirm failed",
+    fallbackErrorMessage: "Failed to confirm Whatnot import.",
+    operation: async ({ config }) => {
     const actorUserId = await resolveUserId(request, config);
     const body = parseConfirmBody(await readRequestJsonOrNull(request));
     const result = await confirmWhatnotImportBatchForActor(config, actorUserId, body);
@@ -398,32 +375,33 @@ export async function whatnotReviewConfirm(
       ok: true,
       ...result
     });
-  } catch (error) {
-    if (error instanceof HttpError && error.code) {
-      logApiTelemetry({
-        logger: context,
-        level: "warn",
-        request,
-        config,
-        route: "whatnot_review_confirm",
-        workspaceScope: "unknown",
-        outcome: error.code.toLowerCase()
-      });
+    },
+    handleError: (error, { config }) => {
+      if (error instanceof HttpError && error.code) {
+        logApiTelemetry({
+          logger: context,
+          level: "warn",
+          request,
+          config,
+          route: "whatnot_review_confirm",
+          workspaceScope: "unknown",
+          outcome: error.code.toLowerCase()
+        });
+      }
+      context.error("POST /integrations/whatnot/review/confirm failed", error);
+      return errorResponse(request, config, error, "Failed to confirm Whatnot import.");
     }
-    context.error("POST /integrations/whatnot/review/confirm failed", error);
-    return errorResponse(request, config, error, "Failed to confirm Whatnot import.");
-  }
+  });
 }
 
 export async function whatnotReviewDiscard(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
-  const config = getConfig();
-  const guardResponse = await maybeHandleHttpGuards(request, config);
-  if (guardResponse) return guardResponse;
-
-  try {
+  return executeHttpHandler(request, context, {
+    errorLogMessage: "POST /integrations/whatnot/review/discard failed",
+    fallbackErrorMessage: "Failed to discard Whatnot review batch.",
+    operation: async ({ config }) => {
     const actorUserId = await resolveUserId(request, config);
     const { workspaceId, batchId } = await parseReviewLookupFromRequest(request);
     const result = await discardWhatnotImportBatchForActor(config, actorUserId, {
@@ -434,8 +412,6 @@ export async function whatnotReviewDiscard(
       ok: true,
       ...result
     });
-  } catch (error) {
-    context.error("POST /integrations/whatnot/review/discard failed", error);
-    return errorResponse(request, config, error, "Failed to discard Whatnot review batch.");
-  }
+    }
+  });
 }

@@ -1,7 +1,6 @@
 import { type HttpRequest, type HttpResponseInit, type InvocationContext } from "@azure/functions";
 import { HttpError } from "../../lib/auth";
-import { getConfig } from "../../lib/config";
-import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../../lib/http";
+import { executeHttpHandler, jsonResponse } from "../../lib/http";
 import { assertMigrationAdminAccess, resolveMigrationActor } from "../../lib/migrations/adminAuth";
 import { getMigrationById } from "../../lib/migrations/registry";
 import { runMigration } from "../../lib/migrations/runner";
@@ -55,11 +54,10 @@ export async function migrationRun(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
-  const config = getConfig();
-  const guardResponse = await maybeHandleHttpGuards(request, config);
-  if (guardResponse) return guardResponse;
-
-  try {
+  return executeHttpHandler(request, context, {
+    errorLogMessage: "POST /migrations/run failed",
+    fallbackErrorMessage: "Failed to run migration.",
+    operation: async ({ config }) => {
     assertMigrationAdminAccess(request, config.migrationsAdminKey, config.apiEnv);
     const actor = resolveMigrationActor(request);
 
@@ -93,8 +91,6 @@ export async function migrationRun(
       },
       run
     });
-  } catch (error) {
-    context.error("POST /migrations/run failed", error);
-    return errorResponse(request, config, error, "Failed to run migration.");
-  }
+    }
+  });
 }

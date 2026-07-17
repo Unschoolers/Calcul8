@@ -10,10 +10,11 @@ import {
   listWorkspacesForUser,
   upsertWorkspaceMembership
 } from "../../lib/cosmos/workspaceRepository";
-import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../../lib/http";
+import { executeHttpHandler, jsonResponse } from "../../lib/http";
 import { logApiTelemetry } from "../../lib/telemetry";
 import { parseRequiredWorkspaceId } from "../../lib/syncScope";
 import type {
+  ApiConfig,
   WorkspaceJoinLinkDocument,
 } from "../../types";
 import {
@@ -47,11 +48,11 @@ import { acceptWorkspaceJoinLinkForActor } from "./joinAcceptService";
 function logWorkspaceTelemetry(
   request: HttpRequest,
   context: InvocationContext,
+  config: ApiConfig,
   route: string,
   error: unknown,
   workspaceScope: "personal" | "workspace" | "unknown" = "workspace"
 ): void {
-  const config = getConfig();
   const status = typeof error === "object" && error && "status" in error ? Number((error as { status?: unknown }).status) : null;
   const errorCode = typeof error === "object" && error && "code" in error
     ? String((error as { code?: unknown }).code ?? "").trim().toLowerCase()
@@ -69,15 +70,23 @@ function logWorkspaceTelemetry(
   }
 }
 
+function normalizeWorkspaceCreationError(error: unknown): unknown {
+  return error instanceof Error && error.name === "WorkspaceCreationConflictError"
+    ? new HttpError(409, error.message, "IDEMPOTENCY_MISMATCH")
+    : error instanceof Error && error.name === "WorkspaceCreationInProgressError"
+      ? new HttpError(409, error.message, "OPERATION_IN_PROGRESS")
+      : error;
+}
+
 export async function workspacesCreate(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
-  const config = getConfig();
-  const guardResponse = await maybeHandleHttpGuards(request, config);
-  if (guardResponse) return guardResponse;
-
-  try {
+  return executeHttpHandler(request, context, {
+    errorLogMessage: "POST /workspaces failed",
+    fallbackErrorMessage: "Failed to create workspace.",
+    mapError: normalizeWorkspaceCreationError,
+    operation: async ({ config }) => {
     const ownerUserId = await resolveUserId(request, config, {
       telemetry: {
         logger: context,
@@ -101,27 +110,19 @@ export async function workspacesCreate(
       workspace: created.workspace,
       membership: created.ownerMembership
     });
-  } catch (error) {
-    const responseError = error instanceof Error && error.name === "WorkspaceCreationConflictError"
-      ? new HttpError(409, error.message, "IDEMPOTENCY_MISMATCH")
-      : error instanceof Error && error.name === "WorkspaceCreationInProgressError"
-        ? new HttpError(409, error.message, "OPERATION_IN_PROGRESS")
-        : error;
-    logWorkspaceTelemetry(request, context, "workspaces_create", responseError, "personal");
-    context.error("POST /workspaces failed", error);
-    return errorResponse(request, config, responseError, "Failed to create workspace.");
-  }
+    },
+    onError: (error, { config }) => logWorkspaceTelemetry(request, context, config, "workspaces_create", error, "personal")
+  });
 }
 
 export async function workspacesMe(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
-  const config = getConfig();
-  const guardResponse = await maybeHandleHttpGuards(request, config);
-  if (guardResponse) return guardResponse;
-
-  try {
+  return executeHttpHandler(request, context, {
+    errorLogMessage: "GET /workspaces/me failed",
+    fallbackErrorMessage: "Failed to list workspaces.",
+    operation: async ({ config }) => {
     const actorUserId = await resolveUserId(request, config, {
       telemetry: {
         logger: context,
@@ -142,22 +143,19 @@ export async function workspacesMe(
     return jsonResponse(request, config, 200, {
       workspaces
     });
-  } catch (error) {
-    logWorkspaceTelemetry(request, context, "workspaces_me", error, "personal");
-    context.error("GET /workspaces/me failed", error);
-    return errorResponse(request, config, error, "Failed to list workspaces.");
-  }
+    },
+    onError: (error, { config }) => logWorkspaceTelemetry(request, context, config, "workspaces_me", error, "personal")
+  });
 }
 
 export async function workspaceMembersList(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
-  const config = getConfig();
-  const guardResponse = await maybeHandleHttpGuards(request, config);
-  if (guardResponse) return guardResponse;
-
-  try {
+  return executeHttpHandler(request, context, {
+    errorLogMessage: "GET /workspaces/{workspaceId}/members failed",
+    fallbackErrorMessage: "Failed to list workspace members.",
+    operation: async ({ config }) => {
     const actorUserId = await resolveUserId(request, config, {
       telemetry: {
         logger: context,
@@ -168,22 +166,19 @@ export async function workspaceMembersList(
     const workspaceId = parseRequiredWorkspaceId(requireRouteParam(request, "workspaceId"));
     const responseBody = await listWorkspaceMembersForActor(config, actorUserId, workspaceId);
     return jsonResponse(request, config, 200, responseBody);
-  } catch (error) {
-    logWorkspaceTelemetry(request, context, "workspace_members", error);
-    context.error("GET /workspaces/{workspaceId}/members failed", error);
-    return errorResponse(request, config, error, "Failed to list workspace members.");
-  }
+    },
+    onError: (error, { config }) => logWorkspaceTelemetry(request, context, config, "workspace_members", error)
+  });
 }
 
 export async function workspaceMembersAdd(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
-  const config = getConfig();
-  const guardResponse = await maybeHandleHttpGuards(request, config);
-  if (guardResponse) return guardResponse;
-
-  try {
+  return executeHttpHandler(request, context, {
+    errorLogMessage: "POST /workspaces/{workspaceId}/members failed",
+    fallbackErrorMessage: "Failed to add workspace member.",
+    operation: async ({ config }) => {
     const actorUserId = await resolveUserId(request, config, {
       telemetry: {
         logger: context,
@@ -200,11 +195,9 @@ export async function workspaceMembersAdd(
       workspaceId: result.workspaceId,
       membership: result.membership
     });
-  } catch (error) {
-    logWorkspaceTelemetry(request, context, "workspace_members", error);
-    context.error("POST /workspaces/{workspaceId}/members failed", error);
-    return errorResponse(request, config, error, "Failed to add workspace member.");
-  }
+    },
+    onError: (error, { config }) => logWorkspaceTelemetry(request, context, config, "workspace_members", error)
+  });
 }
 
 export async function workspaceMembers(
@@ -229,11 +222,10 @@ export async function workspaceMembersRemove(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
-  const config = getConfig();
-  const guardResponse = await maybeHandleHttpGuards(request, config);
-  if (guardResponse) return guardResponse;
-
-  try {
+  return executeHttpHandler(request, context, {
+    errorLogMessage: "DELETE /workspaces/{workspaceId}/members/{memberUserId} failed",
+    fallbackErrorMessage: "Failed to remove workspace member.",
+    operation: async ({ config }) => {
     const actorUserId = await resolveUserId(request, config, {
       telemetry: {
         logger: context,
@@ -249,22 +241,19 @@ export async function workspaceMembersRemove(
       workspaceId: result.workspaceId,
       memberUserId: result.memberUserId
     });
-  } catch (error) {
-    logWorkspaceTelemetry(request, context, "workspace_members_remove", error);
-    context.error("DELETE /workspaces/{workspaceId}/members/{memberUserId} failed", error);
-    return errorResponse(request, config, error, "Failed to remove workspace member.");
-  }
+    },
+    onError: (error, { config }) => logWorkspaceTelemetry(request, context, config, "workspace_members_remove", error)
+  });
 }
 
 export async function workspaceLeave(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
-  const config = getConfig();
-  const guardResponse = await maybeHandleHttpGuards(request, config);
-  if (guardResponse) return guardResponse;
-
-  try {
+  return executeHttpHandler(request, context, {
+    errorLogMessage: "POST /workspaces/{workspaceId}/leave failed",
+    fallbackErrorMessage: "Failed to leave workspace.",
+    operation: async ({ config }) => {
     const actorUserId = await resolveUserId(request, config, {
       telemetry: {
         logger: context,
@@ -280,22 +269,19 @@ export async function workspaceLeave(
       ok: true,
       ...result
     });
-  } catch (error) {
-    logWorkspaceTelemetry(request, context, "workspace_leave", error);
-    context.error("POST /workspaces/{workspaceId}/leave failed", error);
-    return errorResponse(request, config, error, "Failed to leave workspace.");
-  }
+    },
+    onError: (error, { config }) => logWorkspaceTelemetry(request, context, config, "workspace_leave", error)
+  });
 }
 
 export async function workspaceJoinLinksList(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
-  const config = getConfig();
-  const guardResponse = await maybeHandleHttpGuards(request, config);
-  if (guardResponse) return guardResponse;
-
-  try {
+  return executeHttpHandler(request, context, {
+    errorLogMessage: "GET /workspaces/{workspaceId}/join-links failed",
+    fallbackErrorMessage: "Failed to list workspace join links.",
+    operation: async ({ config }) => {
     const actorUserId = await resolveUserId(request, config, {
       telemetry: {
         logger: context,
@@ -306,22 +292,19 @@ export async function workspaceJoinLinksList(
     const workspaceId = parseRequiredWorkspaceId(requireRouteParam(request, "workspaceId"));
     const responseBody = await listWorkspaceJoinLinksForActor(config, actorUserId, workspaceId);
     return jsonResponse(request, config, 200, responseBody);
-  } catch (error) {
-    logWorkspaceTelemetry(request, context, "workspace_join_links", error);
-    context.error("GET /workspaces/{workspaceId}/join-links failed", error);
-    return errorResponse(request, config, error, "Failed to list workspace join links.");
-  }
+    },
+    onError: (error, { config }) => logWorkspaceTelemetry(request, context, config, "workspace_join_links", error)
+  });
 }
 
 export async function workspaceJoinLinksCreate(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
-  const config = getConfig();
-  const guardResponse = await maybeHandleHttpGuards(request, config);
-  if (guardResponse) return guardResponse;
-
-  try {
+  return executeHttpHandler(request, context, {
+    errorLogMessage: "POST /workspaces/{workspaceId}/join-links failed",
+    fallbackErrorMessage: "Failed to create workspace join link.",
+    operation: async ({ config }) => {
     const actorUserId = await resolveUserId(request, config, {
       telemetry: {
         logger: context,
@@ -338,11 +321,9 @@ export async function workspaceJoinLinksCreate(
       inviteUrl: result.inviteUrl,
       expiresAt: result.expiresAt
     });
-  } catch (error) {
-    logWorkspaceTelemetry(request, context, "workspace_join_links", error);
-    context.error("POST /workspaces/{workspaceId}/join-links failed", error);
-    return errorResponse(request, config, error, "Failed to create workspace join link.");
-  }
+    },
+    onError: (error, { config }) => logWorkspaceTelemetry(request, context, config, "workspace_join_links", error)
+  });
 }
 
 export async function workspaceJoinLinks(
@@ -367,11 +348,10 @@ export async function workspaceJoinLinksRemove(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
-  const config = getConfig();
-  const guardResponse = await maybeHandleHttpGuards(request, config);
-  if (guardResponse) return guardResponse;
-
-  try {
+  return executeHttpHandler(request, context, {
+    errorLogMessage: "DELETE /workspaces/{workspaceId}/join-links/{inviteId} failed",
+    fallbackErrorMessage: "Failed to revoke workspace join link.",
+    operation: async ({ config }) => {
     const actorUserId = await resolveUserId(request, config, {
       telemetry: {
         logger: context,
@@ -388,22 +368,19 @@ export async function workspaceJoinLinksRemove(
       inviteId: result.inviteId,
       workspaceId: result.workspaceId
     });
-  } catch (error) {
-    logWorkspaceTelemetry(request, context, "workspace_join_links_remove", error);
-    context.error("DELETE /workspaces/{workspaceId}/join-links/{inviteId} failed", error);
-    return errorResponse(request, config, error, "Failed to revoke workspace join link.");
-  }
+    },
+    onError: (error, { config }) => logWorkspaceTelemetry(request, context, config, "workspace_join_links_remove", error)
+  });
 }
 
 export async function joinAccept(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
-  const config = getConfig();
-  const guardResponse = await maybeHandleHttpGuards(request, config);
-  if (guardResponse) return guardResponse;
-
-  try {
+  return executeHttpHandler(request, context, {
+    errorLogMessage: "POST /join/accept failed",
+    fallbackErrorMessage: "Failed to accept workspace join link.",
+    operation: async ({ config }) => {
     const actorUserId = await resolveUserId(request, config, {
       telemetry: {
         logger: context,
@@ -414,9 +391,7 @@ export async function joinAccept(
     const payload = parseJoinAcceptBody(await request.json());
     const responseBody = await acceptWorkspaceJoinLinkForActor(config, actorUserId, payload);
     return jsonResponse(request, config, 200, responseBody);
-  } catch (error) {
-    logWorkspaceTelemetry(request, context, "join_accept", error, "unknown");
-    context.error("POST /join/accept failed", error);
-    return errorResponse(request, config, error, "Failed to accept workspace join link.");
-  }
+    },
+    onError: (error, { config }) => logWorkspaceTelemetry(request, context, config, "join_accept", error, "unknown")
+  });
 }

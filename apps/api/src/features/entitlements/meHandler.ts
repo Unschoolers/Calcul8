@@ -6,20 +6,18 @@ import {
   listStripeEntitlementFactsForUser,
   upsertEntitlement
 } from "../../lib/cosmos/entitlementRepository";
-import { getConfig } from "../../lib/config";
 import { deriveEntitlementState, entitlementStateMatches } from "../../lib/entitlementFacts";
-import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../../lib/http";
+import { executeHttpHandler, jsonResponse } from "../../lib/http";
 import { buildLegacyUserEntitlementDocumentId } from "../../lib/scopeKeys";
 
 export async function entitlementsMe(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
-  const config = getConfig();
-  const guardResponse = await maybeHandleHttpGuards(request, config);
-  if (guardResponse) return guardResponse;
-
-  try {
+  return executeHttpHandler(request, context, {
+    errorLogMessage: "GET /entitlements/me failed",
+    fallbackErrorMessage: "Failed to load entitlements.",
+    operation: async ({ config }) => {
     const userId = await resolveUserId(request, config);
     const existingEntitlement = await getEntitlement(config, userId);
     let entitlement = existingEntitlement
@@ -59,8 +57,6 @@ export async function entitlementsMe(
       updatedAt: entitlement?.updatedAt ?? null,
       purchaseSource: entitlement?.purchaseSource ?? null
     });
-  } catch (error) {
-    context.error("GET /entitlements/me failed", error);
-    return errorResponse(request, config, error, "Failed to load entitlements.");
-  }
+    }
+  });
 }

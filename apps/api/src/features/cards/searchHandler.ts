@@ -1,8 +1,7 @@
 import { type HttpRequest, type HttpResponseInit, type InvocationContext } from "@azure/functions";
 import { HttpError } from "../../lib/auth";
 import { searchCardCatalog } from "../../lib/cosmos/cardCatalogRepository";
-import { getConfig } from "../../lib/config";
-import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../../lib/http";
+import { executeHttpHandler, jsonResponse } from "../../lib/http";
 
 function getQueryParam(request: HttpRequest, key: string): string | null {
   if (request.query && typeof request.query.get === "function") {
@@ -34,11 +33,10 @@ export async function cardsSearch(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
-  const config = getConfig();
-  const guardResponse = await maybeHandleHttpGuards(request, config);
-  if (guardResponse) return guardResponse;
-
-  try {
+  return executeHttpHandler(request, context, {
+    errorLogMessage: "GET /cards/search failed",
+    fallbackErrorMessage: "Failed to search cards.",
+    operation: async ({ config }) => {
     const game = (getQueryParam(request, "game") ?? "").trim().toLowerCase();
     const q = (getQueryParam(request, "q") ?? "").trim();
     const limit = parseLimit(getQueryParam(request, "limit"));
@@ -64,8 +62,6 @@ export async function cardsSearch(
       count: items.length,
       items
     });
-  } catch (error) {
-    context.error("GET /cards/search failed", error);
-    return errorResponse(request, config, error, "Failed to search cards.");
-  }
+    }
+  });
 }

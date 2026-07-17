@@ -10,12 +10,11 @@ import {
   replaceSyncScopeEntityDocuments,
   upsertSyncSnapshotIncremental
 } from "../../lib/cosmos/syncSnapshotRepository";
-import { getConfig } from "../../lib/config";
 import { syncSnapshotId } from "../../lib/cosmos/ids";
 import { parseOptionalWorkspaceId } from "../../lib/syncScope";
 import { assertSyncScopeAccess, resolveSyncScope } from "../../lib/syncScopeResolution";
 import type { ApiConfig } from "../../types";
-import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../../lib/http";
+import { executeHttpHandler, jsonResponse } from "../../lib/http";
 
 const SYNC_IMPORT_ADMIN_USER_ID = "107850224060485991888";
 
@@ -69,11 +68,10 @@ export async function syncImportUser(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
-  const config = getConfig();
-  const guardResponse = await maybeHandleHttpGuards(request, config);
-  if (guardResponse) return guardResponse;
-
-  try {
+  return executeHttpHandler(request, context, {
+    errorLogMessage: "POST /ops/sync/import-user failed",
+    fallbackErrorMessage: "Failed to import sync data from source user.",
+    operation: async ({ config }) => {
     const actorUserId = await resolveUserId(request, config);
     if (actorUserId !== SYNC_IMPORT_ADMIN_USER_ID) {
       throw new HttpError(403, "Forbidden.");
@@ -169,8 +167,6 @@ export async function syncImportUser(
       livePricingMode: sourceMeta?.livePricingMode === "entity" ? "entity" : "lot_defaults",
       snapshot: importedSnapshot
     });
-  } catch (error) {
-    context.error("POST /ops/sync/import-user failed", error);
-    return errorResponse(request, config, error, "Failed to import sync data from source user.");
-  }
+    }
+  });
 }

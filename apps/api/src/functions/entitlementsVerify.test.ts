@@ -34,7 +34,8 @@ vi.mock("../lib/config", () => ({
   getConfig: getConfigMock
 }));
 
-vi.mock("../lib/http", () => ({
+vi.mock("../lib/http", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../lib/http")>()),
   maybeHandleHttpGuards: maybeHandleHttpGuardsMock,
   jsonResponse: jsonResponseMock,
   errorResponse: errorResponseMock

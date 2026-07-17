@@ -3,7 +3,7 @@ import { afterEach, beforeEach, test, vi } from "vitest";
 import type { HttpRequest } from "@azure/functions";
 import type { ApiConfig } from "../types";
 
-const { consumeAuthResponseCookiesMock, consumeAuthResponseHeadersMock, checkGlobalRateLimitMock, checkDistributedGlobalRateLimitMock } = vi.hoisted(() => ({
+const { consumeAuthResponseCookiesMock, consumeAuthResponseHeadersMock, checkGlobalRateLimitMock, checkDistributedGlobalRateLimitMock, getConfigMock } = vi.hoisted(() => ({
   consumeAuthResponseCookiesMock: vi.fn(() => []),
   consumeAuthResponseHeadersMock: vi.fn(() => ({})),
   checkGlobalRateLimitMock: vi.fn(() => ({
@@ -19,7 +19,12 @@ const { consumeAuthResponseCookiesMock, consumeAuthResponseHeadersMock, checkGlo
     remaining: 29,
     windowSeconds: 10,
     retryAfterSeconds: null as number | null
-  }))
+  })),
+  getConfigMock: vi.fn()
+}));
+
+vi.mock("./config", () => ({
+  getConfig: getConfigMock
 }));
 
 vi.mock("./auth", () => ({
@@ -84,6 +89,7 @@ const originalNodeEnv = process.env.NODE_ENV;
 
 beforeEach(() => {
   vi.clearAllMocks();
+  getConfigMock.mockReturnValue(makeConfig());
   process.env.NODE_ENV = "development";
 });
 
@@ -173,4 +179,88 @@ test("returns 429 payload and headers when global limit is exceeded", async () =
   assert.equal(headers["X-RateLimit-Limit"], "30");
   assert.equal(headers["X-RateLimit-Remaining"], "0");
   assert.equal(headers["X-RateLimit-Window-Seconds"], "10");
+});
+
+test("executeHttpHandler short-circuits guarded requests before running feature code", async () => {
+  const httpModule = await import("./http");
+  const executeHttpHandler = (httpModule as unknown as {
+    executeHttpHandler?: (
+      request: HttpRequest,
+      context: { error: (...args: unknown[]) => void },
+      options: {
+        errorLogMessage: string;
+        fallbackErrorMessage: string;
+        operation: (input: { config: ApiConfig }) => Promise<unknown>;
+      }
+    ) => Promise<{ status?: number }>;
+  }).executeHttpHandler;
+  assert.equal(typeof executeHttpHandler, "function");
+
+  const operation = vi.fn();
+  const response = await executeHttpHandler!(
+    makeRequest("OPTIONS", { origin: "https://example.app" }),
+    { error: vi.fn() },
+    {
+      errorLogMessage: "Feature failed.",
+      fallbackErrorMessage: "Feature failed.",
+      operation
+    }
+  );
+
+  assert.equal(response.status, 204);
+  assert.equal(operation.mock.calls.length, 0);
+});
+
+test("executeHttpHandler delegates feature-specific error translation when configured", async () => {
+  const httpModule = await import("./http");
+  const executeHttpHandler = (httpModule as unknown as {
+    executeHttpHandler: (...args: any[]) => Promise<{ status?: number; jsonBody?: unknown }>;
+  }).executeHttpHandler;
+  const translatedResponse = { status: 418, jsonBody: { error: "translated" } };
+  const featureError = new Error("feature failure");
+  const handleError = vi.fn((_error: unknown, _input: { config: ApiConfig }) => translatedResponse);
+
+  const response = await executeHttpHandler(
+    makeRequest("GET"),
+    { error: vi.fn() },
+    {
+      errorLogMessage: "Feature failed.",
+      fallbackErrorMessage: "Feature failed.",
+      operation: async () => { throw featureError; },
+      handleError
+    }
+  );
+
+  assert.equal(response, translatedResponse);
+  assert.equal(handleError.mock.calls[0]?.[0], featureError);
+  assert.equal(handleError.mock.calls[0]?.[1].config, getConfigMock.mock.results[0]?.value);
+});
+
+test("executeHttpHandler runs feature telemetry before its standard error response", async () => {
+  const { executeHttpHandler } = await import("./http");
+  const featureError = new Error("feature failure");
+  const onError = vi.fn();
+  const context = { error: vi.fn() };
+
+  const response = await executeHttpHandler(makeRequest("GET"), context, {
+    errorLogMessage: "GET /feature failed",
+    fallbackErrorMessage: "Feature failed.",
+    operation: async () => { throw featureError; },
+    onError
+  } as never);
+
+  assert.equal(onError.mock.calls[0]?.[0], featureError);
+  assert.equal(response.status, 500);
+  assert.equal(context.error.mock.calls.length, 1);
+});
+
+test("executeHttpHandler supports routes that intentionally have no invocation logger", async () => {
+  const { executeHttpHandler } = await import("./http");
+  const response = await executeHttpHandler(makeRequest("GET"), null as never, {
+    errorLogMessage: "Feature failed.",
+    fallbackErrorMessage: "Feature failed.",
+    operation: async () => { throw new Error("failure"); }
+  });
+
+  assert.equal(response.status, 500);
 });

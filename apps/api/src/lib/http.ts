@@ -1,6 +1,7 @@
-import type { HttpRequest, HttpResponseInit } from "@azure/functions";
+import type { HttpRequest, HttpResponseInit, InvocationContext } from "@azure/functions";
 import type { ApiConfig } from "../types";
 import { consumeAuthResponseCookies, consumeAuthResponseHeaders, HttpError } from "./auth";
+import { getConfig } from "./config";
 import { checkDistributedGlobalRateLimit, checkGlobalRateLimit } from "./rateLimit";
 
 function isAllowedOrigin(origin: string, allowedOrigins: string[]): boolean {
@@ -81,6 +82,41 @@ export async function maybeHandleHttpGuards(
   if (preflightResponse) return preflightResponse;
 
   return await maybeHandleGlobalRateLimit(request, config);
+}
+
+export interface HttpHandlerOptions {
+  errorLogMessage: string;
+  fallbackErrorMessage: string;
+  operation: (input: { config: ApiConfig }) => Promise<HttpResponseInit>;
+  mapError?: (error: unknown) => unknown;
+  handleError?: (error: unknown, input: { config: ApiConfig }) => HttpResponseInit;
+  onError?: (error: unknown, input: { config: ApiConfig }) => void;
+}
+
+/**
+ * Owns the HTTP lifecycle shared by every feature handler. Authentication,
+ * input parsing, authorization, and response payloads remain feature policy.
+ */
+export async function executeHttpHandler(
+  request: HttpRequest,
+  context: Pick<InvocationContext, "error"> | null,
+  options: HttpHandlerOptions
+): Promise<HttpResponseInit> {
+  const config = getConfig();
+  const guardResponse = await maybeHandleHttpGuards(request, config);
+  if (guardResponse) return guardResponse;
+
+  try {
+    return await options.operation({ config });
+  } catch (error) {
+    if (options.handleError) {
+      return options.handleError(error, { config });
+    }
+    const handledError = options.mapError?.(error) ?? error;
+    options.onError?.(handledError, { config });
+    context?.error(options.errorLogMessage, handledError);
+    return errorResponse(request, config, handledError, options.fallbackErrorMessage);
+  }
 }
 
 export function jsonResponse(

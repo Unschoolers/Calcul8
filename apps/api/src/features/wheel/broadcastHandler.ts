@@ -1,8 +1,7 @@
 import { type HttpRequest, type HttpResponseInit, type InvocationContext } from "@azure/functions";
 import { HttpError, resolveUserId } from "../../lib/auth";
-import { getConfig } from "../../lib/config";
 import { hasWorkspaceMembership } from "../../lib/cosmos/workspaceRepository";
-import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../../lib/http";
+import { executeHttpHandler, jsonResponse } from "../../lib/http";
 import { readRequestJsonOrThrow, requireRequestBodyRecord } from "../../lib/httpRequest";
 import { publishWorkspaceWheelRealtimeEventBestEffort } from "../../lib/realtime";
 import { parseOptionalWorkspaceId } from "../../lib/syncScope";
@@ -38,11 +37,10 @@ export async function wheelBroadcast(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
-  const config = getConfig();
-  const guardResponse = await maybeHandleHttpGuards(request, config);
-  if (guardResponse) return guardResponse;
-
-  try {
+  return executeHttpHandler(request, context, {
+    errorLogMessage: "Failed to broadcast wheel session.",
+    fallbackErrorMessage: "Failed to broadcast wheel session.",
+    operation: async ({ config }) => {
     const actorUserId = await resolveUserId(request, config, {
       telemetry: {
         logger: context,
@@ -67,8 +65,6 @@ export async function wheelBroadcast(
     });
 
     return jsonResponse(request, config, 200, { ok: true });
-  } catch (error) {
-    context.error("Failed to broadcast wheel session.", error);
-    return errorResponse(request, config, error, "Failed to broadcast wheel session.");
-  }
+    }
+  });
 }

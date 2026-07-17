@@ -1,8 +1,7 @@
 import { type HttpRequest, type HttpResponseInit, type InvocationContext } from "@azure/functions";
 import { HttpError } from "../../lib/auth";
 import { listMigrationRuns } from "../../lib/cosmos/migrationRepository";
-import { getConfig } from "../../lib/config";
-import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../../lib/http";
+import { executeHttpHandler, jsonResponse } from "../../lib/http";
 import { assertMigrationAdminAccess, resolveMigrationActor } from "../../lib/migrations/adminAuth";
 
 function getQueryParam(request: HttpRequest, key: string): string | null {
@@ -35,11 +34,10 @@ export async function migrationRunsList(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
-  const config = getConfig();
-  const guardResponse = await maybeHandleHttpGuards(request, config);
-  if (guardResponse) return guardResponse;
-
-  try {
+  return executeHttpHandler(request, context, {
+    errorLogMessage: "GET /migrations/runs failed",
+    fallbackErrorMessage: "Failed to list migration runs.",
+    operation: async ({ config }) => {
     assertMigrationAdminAccess(request, config.migrationsAdminKey, config.apiEnv);
     const requestedBy = resolveMigrationActor(request);
     const migrationId = (getQueryParam(request, "migrationId") ?? "").trim() || undefined;
@@ -54,8 +52,6 @@ export async function migrationRunsList(
       count: runs.length,
       runs
     });
-  } catch (error) {
-    context.error("GET /migrations/runs failed", error);
-    return errorResponse(request, config, error, "Failed to list migration runs.");
-  }
+    }
+  });
 }

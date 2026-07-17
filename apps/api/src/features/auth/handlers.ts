@@ -6,18 +6,18 @@ import {
   resolveUserId,
   revokeSessionFromRequest
 } from "../../lib/auth";
-import { getConfig } from "../../lib/config";
 import { revokeAllRefreshSessionsForUser, revokeAllSessionsForUser } from "../../lib/cosmos/sessionRepository";
-import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../../lib/http";
+import { executeHttpHandler, jsonResponse } from "../../lib/http";
 import { logApiTelemetry } from "../../lib/telemetry";
+import type { ApiConfig } from "../../types";
 
 function logAuthRouteFailure(
   request: HttpRequest,
   context: InvocationContext,
+  config: ApiConfig,
   route: string,
   error: unknown
 ): void {
-  const config = getConfig();
   if (error instanceof HttpError && (error.status === 401 || error.status === 403 || error.status === 409)) {
     logApiTelemetry({
       logger: context,
@@ -36,11 +36,10 @@ export async function authMe(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
-  const config = getConfig();
-  const guardResponse = await maybeHandleHttpGuards(request, config);
-  if (guardResponse) return guardResponse;
-
-  try {
+  return executeHttpHandler(request, context, {
+    errorLogMessage: "GET /auth/me failed",
+    fallbackErrorMessage: "Failed to resolve auth session.",
+    operation: async ({ config }) => {
     const userId = await resolveUserId(request, config, {
       allowBearerAuth: true,
       telemetry: {
@@ -53,22 +52,19 @@ export async function authMe(
       ok: true,
       userId
     });
-  } catch (error) {
-    logAuthRouteFailure(request, context, "auth_me", error);
-    context.error("GET /auth/me failed", error);
-    return errorResponse(request, config, error, "Failed to resolve auth session.");
-  }
+    },
+    onError: (error, { config }) => logAuthRouteFailure(request, context, config, "auth_me", error)
+  });
 }
 
 export async function authLogout(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
-  const config = getConfig();
-  const guardResponse = await maybeHandleHttpGuards(request, config);
-  if (guardResponse) return guardResponse;
-
-  try {
+  return executeHttpHandler(request, context, {
+    errorLogMessage: "POST /auth/logout failed",
+    fallbackErrorMessage: "Failed to logout.",
+    operation: async ({ config }) => {
     // Keep this endpoint idempotent: missing auth still clears cookie client-side.
     try {
       await resolveUserId(request, config, {
@@ -88,22 +84,19 @@ export async function authLogout(
       ok: true,
       revokedCurrentSession
     });
-  } catch (error) {
-    logAuthRouteFailure(request, context, "auth_logout", error);
-    context.error("POST /auth/logout failed", error);
-    return errorResponse(request, config, error, "Failed to logout.");
-  }
+    },
+    onError: (error, { config }) => logAuthRouteFailure(request, context, config, "auth_logout", error)
+  });
 }
 
 export async function authRefresh(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
-  const config = getConfig();
-  const guardResponse = await maybeHandleHttpGuards(request, config);
-  if (guardResponse) return guardResponse;
-
-  try {
+  return executeHttpHandler(request, context, {
+    errorLogMessage: "POST /auth/refresh failed",
+    fallbackErrorMessage: "Failed to refresh auth session.",
+    operation: async ({ config }) => {
     const userId = await refreshSessionFromRequest(request, config);
     logApiTelemetry({
       logger: context,
@@ -118,22 +111,19 @@ export async function authRefresh(
       ok: true,
       userId
     });
-  } catch (error) {
-    logAuthRouteFailure(request, context, "auth_refresh", error);
-    context.error("POST /auth/refresh failed", error);
-    return errorResponse(request, config, error, "Failed to refresh auth session.");
-  }
+    },
+    onError: (error, { config }) => logAuthRouteFailure(request, context, config, "auth_refresh", error)
+  });
 }
 
 export async function authLogoutAll(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
-  const config = getConfig();
-  const guardResponse = await maybeHandleHttpGuards(request, config);
-  if (guardResponse) return guardResponse;
-
-  try {
+  return executeHttpHandler(request, context, {
+    errorLogMessage: "POST /auth/logout-all failed",
+    fallbackErrorMessage: "Failed to logout all sessions.",
+    operation: async ({ config }) => {
     const userId = await resolveUserId(request, config, {
       issueSessionCookie: false,
       telemetry: {
@@ -152,9 +142,7 @@ export async function authLogoutAll(
       revokedSessionCount,
       revokedRefreshSessionCount
     });
-  } catch (error) {
-    logAuthRouteFailure(request, context, "auth_logout_all", error);
-    context.error("POST /auth/logout-all failed", error);
-    return errorResponse(request, config, error, "Failed to logout all sessions.");
-  }
+    },
+    onError: (error, { config }) => logAuthRouteFailure(request, context, config, "auth_logout_all", error)
+  });
 }

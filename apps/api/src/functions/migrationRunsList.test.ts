@@ -36,7 +36,8 @@ vi.mock("../lib/config", () => ({
   getConfig: getConfigMock
 }));
 
-vi.mock("../lib/auth", () => ({
+vi.mock("../lib/auth", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../lib/auth")>()),
   HttpError: class HttpError extends Error {
     readonly status: number;
 
@@ -47,7 +48,8 @@ vi.mock("../lib/auth", () => ({
   }
 }));
 
-vi.mock("../lib/http", () => ({
+vi.mock("../lib/http", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../lib/http")>()),
   maybeHandleHttpGuards: maybeHandleHttpGuardsMock,
   jsonResponse: jsonResponseMock,
   errorResponse: errorResponseMock

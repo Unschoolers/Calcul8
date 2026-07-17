@@ -5,8 +5,7 @@ import {
   isSyncSnapshotConflictError,
   upsertSyncSnapshotIncremental
 } from "../../lib/cosmos/syncSnapshotRepository";
-import { getConfig } from "../../lib/config";
-import { jsonResponse, maybeHandleHttpGuards } from "../../lib/http";
+import { executeHttpHandler, jsonResponse } from "../../lib/http";
 import { publishWorkspaceLotRealtimeEventBestEffort } from "../../lib/realtime";
 import { parseOptionalWorkspaceId } from "../../lib/syncScope";
 import { parseSyncLotsShape, parseSyncWheelConfigs } from "../../lib/syncShape";
@@ -116,12 +115,11 @@ export async function syncPush(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
-  const config = getConfig();
   let workspaceId: string | undefined;
-  const guardResponse = await maybeHandleHttpGuards(request, config);
-  if (guardResponse) return guardResponse;
-
-  try {
+  return executeHttpHandler(request, context, {
+    errorLogMessage: "POST /sync/push failed",
+    fallbackErrorMessage: "Failed to save cloud sync data.",
+    operation: async ({ config }) => {
     const payload = await parseSyncPushPayload(request);
     workspaceId = payload.workspaceId;
     const { userId, syncScope } = await resolveAuthorizedSyncScope({
@@ -205,8 +203,8 @@ export async function syncPush(
       upsertedCount: syncResult.upsertedCount,
       deletedCount: syncResult.deletedCount
     });
-  } catch (error) {
-    return handleSyncFunctionError({
+    },
+    handleError: (error, { config }) => handleSyncFunctionError({
       request,
       context,
       config,
@@ -215,6 +213,6 @@ export async function syncPush(
       error,
       failureMessage: "Failed to save cloud sync data.",
       logMessage: "POST /sync/push failed"
-    });
-  }
+    })
+  });
 }

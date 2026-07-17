@@ -1,6 +1,5 @@
 import { type HttpRequest, type HttpResponseInit, type InvocationContext } from "@azure/functions";
 import { HttpError, resolveUserId } from "../../lib/auth";
-import { getConfig } from "../../lib/config";
 import {
     createGamePublicSession,
     GamePublicSessionConflictError,
@@ -8,7 +7,7 @@ import {
     updateGamePublicSession
 } from "../../lib/cosmos/gamePublicSessionRepository";
 import { hasWorkspaceMembership } from "../../lib/cosmos/workspaceRepository";
-import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../../lib/http";
+import { executeHttpHandler, jsonResponse } from "../../lib/http";
 import {
     buildGamePublicSessionRealtimeRoom,
     getRealtimeRoomMemberCountStatus,
@@ -82,11 +81,10 @@ export async function gamePublicSessionCreate(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
-  const config = getConfig();
-  const guardResponse = await maybeHandleHttpGuards(request, config);
-  if (guardResponse) return guardResponse;
-
-  try {
+  return executeHttpHandler(request, context, {
+    errorLogMessage: "Failed to create game public session.",
+    fallbackErrorMessage: "Failed to create game public session.",
+    operation: async ({ config }) => {
     const actorUserId = await resolveUserId(request, config, {
       telemetry: {
         logger: context,
@@ -113,21 +111,19 @@ export async function gamePublicSessionCreate(
       publicSessionId: document.publicSessionId,
       snapshot: sanitizeGamePublicSessionSnapshot(document.snapshot)
     });
-  } catch (error) {
-    context.error("Failed to create game public session.", error);
-    return errorResponse(request, config, error, "Failed to create game public session.");
-  }
+    }
+  });
 }
 
 export async function gamePublicSessionPublish(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
-  const config = getConfig();
-  const guardResponse = await maybeHandleHttpGuards(request, config);
-  if (guardResponse) return guardResponse;
-
-  try {
+  return executeHttpHandler(request, context, {
+    errorLogMessage: "Failed to publish game public session.",
+    fallbackErrorMessage: "Failed to publish game public session.",
+    mapError: normalizePublicSessionPublishError,
+    operation: async ({ config }) => {
     const actorUserId = await resolveUserId(request, config, {
       telemetry: {
         logger: context,
@@ -174,22 +170,18 @@ export async function gamePublicSessionPublish(
       publicSessionId: updated.publicSessionId,
       snapshot
     });
-  } catch (error) {
-    const handledError = normalizePublicSessionPublishError(error);
-    context.error("Failed to publish game public session.", handledError);
-    return errorResponse(request, config, handledError, "Failed to publish game public session.");
-  }
+    }
+  });
 }
 
 export async function gamePublicSessionGet(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
-  const config = getConfig();
-  const guardResponse = await maybeHandleHttpGuards(request, config);
-  if (guardResponse) return guardResponse;
-
-  try {
+  return executeHttpHandler(request, context, {
+    errorLogMessage: "Failed to load game public session.",
+    fallbackErrorMessage: "Failed to load game public session.",
+    operation: async ({ config }) => {
     const publicSessionId = requireRouteParam(request, "publicSessionId").toLowerCase();
     const document = await getGamePublicSession(config, publicSessionId);
     if (!document) {
@@ -200,21 +192,18 @@ export async function gamePublicSessionGet(
       publicSessionId: document.publicSessionId,
       snapshot: sanitizeGamePublicSessionSnapshot(document.snapshot)
     });
-  } catch (error) {
-    context.error("Failed to load game public session.", error);
-    return errorResponse(request, config, error, "Failed to load game public session.");
-  }
+    }
+  });
 }
 
 export async function gamePublicSessionRealtimeTokenGet(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
-  const config = getConfig();
-  const guardResponse = await maybeHandleHttpGuards(request, config);
-  if (guardResponse) return guardResponse;
-
-  try {
+  return executeHttpHandler(request, context, {
+    errorLogMessage: "Failed to mint game public session realtime token.",
+    fallbackErrorMessage: "Failed to mint game public session realtime token.",
+    operation: async ({ config }) => {
     const publicSessionId = requireRouteParam(request, "publicSessionId").toLowerCase();
     const document = await getGamePublicSession(config, publicSessionId);
     if (!document) {
@@ -239,21 +228,18 @@ export async function gamePublicSessionRealtimeTokenGet(
       }) : null,
       expiresAt
     });
-  } catch (error) {
-    context.error("Failed to mint game public session realtime token.", error);
-    return errorResponse(request, config, error, "Failed to mint game public session realtime token.");
-  }
+    }
+  });
 }
 
 export async function gamePublicSessionSpectatorCountGet(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
-  const config = getConfig();
-  const guardResponse = await maybeHandleHttpGuards(request, config);
-  if (guardResponse) return guardResponse;
-
-  try {
+  return executeHttpHandler(request, context, {
+    errorLogMessage: "Failed to load game public session spectator count.",
+    fallbackErrorMessage: "Failed to load game public session spectator count.",
+    operation: async ({ config }) => {
     const actorUserId = await resolveUserId(request, config, {
       telemetry: {
         logger: context,
@@ -285,8 +271,6 @@ export async function gamePublicSessionSpectatorCountGet(
         ...(typeof countStatus.status === "number" ? { countHttpStatus: countStatus.status } : {})
       })
     });
-  } catch (error) {
-    context.error("Failed to load game public session spectator count.", error);
-    return errorResponse(request, config, error, "Failed to load game public session spectator count.");
-  }
+    }
+  });
 }

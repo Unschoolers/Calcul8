@@ -1,7 +1,6 @@
 import { type HttpRequest, type HttpResponseInit, type InvocationContext } from "@azure/functions";
 import { getEffectiveSyncSnapshot } from "../../lib/cosmos/syncSnapshotRepository";
-import { getConfig } from "../../lib/config";
-import { jsonResponse, maybeHandleHttpGuards } from "../../lib/http";
+import { executeHttpHandler, jsonResponse } from "../../lib/http";
 import { parseOptionalWorkspaceId } from "../../lib/syncScope";
 import {
   assertAuthorizedSyncScopeStillActive,
@@ -40,12 +39,11 @@ export async function syncPull(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
-  const config = getConfig();
   let workspaceId: string | undefined;
-  const guardResponse = await maybeHandleHttpGuards(request, config);
-  if (guardResponse) return guardResponse;
-
-  try {
+  return executeHttpHandler(request, context, {
+    errorLogMessage: "POST /sync/pull failed",
+    fallbackErrorMessage: "Failed to load cloud sync data.",
+    operation: async ({ config }) => {
     const payload = await parseSyncPullPayload(request);
     workspaceId = payload.workspaceId;
     const { userId, syncScope } = await resolveAuthorizedSyncScope({
@@ -62,8 +60,8 @@ export async function syncPull(
       userId,
       snapshot: snapshot ?? EMPTY_SYNC_SNAPSHOT
     });
-  } catch (error) {
-    return handleSyncFunctionError({
+    },
+    handleError: (error, { config }) => handleSyncFunctionError({
       request,
       context,
       config,
@@ -72,6 +70,6 @@ export async function syncPull(
       error,
       failureMessage: "Failed to load cloud sync data.",
       logMessage: "POST /sync/pull failed"
-    });
-  }
+    })
+  });
 }

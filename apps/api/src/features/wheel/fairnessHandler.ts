@@ -1,11 +1,10 @@
 import { type HttpRequest, type HttpResponseInit } from "@azure/functions";
 import { HttpError } from "../../lib/auth";
-import { getConfig } from "../../lib/config";
 import {
   createWheelFairnessProof,
   getWheelFairnessProof
 } from "../../lib/cosmos/wheelFairnessProofRepository";
-import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../../lib/http";
+import { executeHttpHandler, jsonResponse } from "../../lib/http";
 import type { ApiConfig } from "../../types";
 import {
   getQueryParam,
@@ -79,11 +78,10 @@ async function readRequestJsonOrThrow(request: HttpRequest): Promise<unknown> {
 export async function wheelFairnessCommit(
   request: HttpRequest
 ): Promise<HttpResponseInit> {
-  const config = getConfig();
-  const guardResponse = await maybeHandleHttpGuards(request, config);
-  if (guardResponse) return guardResponse;
-
-  try {
+  return executeHttpHandler(request, null, {
+    errorLogMessage: "Failed to create wheel fairness commit.",
+    fallbackErrorMessage: "Failed to create wheel fairness commit.",
+    operation: async ({ config }) => {
     const body = requireBodyRecord(await readRequestJsonOrThrow(request));
     const slotCount = parseSlotCount(body.slotCount);
     const layoutHash = parseLayoutHash(body.layoutHash);
@@ -109,19 +107,17 @@ export async function wheelFairnessCommit(
       committedAt: payload.committedAt,
       expiresAt: payload.expiresAt
     });
-  } catch (error) {
-    return errorResponse(request, config, error, "Failed to create wheel fairness commit.");
-  }
+    }
+  });
 }
 
 export async function wheelFairnessReveal(
   request: HttpRequest
 ): Promise<HttpResponseInit> {
-  const config = getConfig();
-  const guardResponse = await maybeHandleHttpGuards(request, config);
-  if (guardResponse) return guardResponse;
-
-  try {
+  return executeHttpHandler(request, null, {
+    errorLogMessage: "Failed to reveal wheel fairness result.",
+    fallbackErrorMessage: "Failed to reveal wheel fairness result.",
+    operation: async ({ config }) => {
     const body = requireBodyRecord(await readRequestJsonOrThrow(request));
     const commitToken = String(body.commitToken ?? "").trim();
     if (!commitToken) {
@@ -147,19 +143,17 @@ export async function wheelFairnessReveal(
       revealedAt: Date.now(),
       verificationUrl: buildVerificationUrl(request, payload.serverSeed, clientSeed, payload.slotCount, payload.layoutHash)
     });
-  } catch (error) {
-    return errorResponse(request, config, error, "Failed to reveal wheel fairness result.");
-  }
+    }
+  });
 }
 
 export async function wheelFairnessVerify(
   request: HttpRequest
 ): Promise<HttpResponseInit> {
-  const config = getConfig();
-  const guardResponse = await maybeHandleHttpGuards(request, config);
-  if (guardResponse) return guardResponse;
-
-  try {
+  return executeHttpHandler(request, null, {
+    errorLogMessage: "Failed to verify wheel fairness proof.",
+    fallbackErrorMessage: "Failed to verify wheel fairness proof.",
+    operation: async ({ config }) => {
     const {
       serverSeed,
       clientSeed,
@@ -223,19 +217,17 @@ export async function wheelFairnessVerify(
       summary,
       proofHash
     });
-  } catch (error) {
-    return errorResponse(request, config, error, "Failed to verify wheel fairness proof.");
-  }
+    }
+  });
 }
 
 export async function wheelFairnessProof(
   request: HttpRequest
 ): Promise<HttpResponseInit> {
-  const config = getConfig();
-  const guardResponse = await maybeHandleHttpGuards(request, config);
-  if (guardResponse) return guardResponse;
-
-  try {
+  return executeHttpHandler(request, null, {
+    errorLogMessage: "Failed to create wheel fairness proof link.",
+    fallbackErrorMessage: "Failed to create wheel fairness proof link.",
+    operation: async ({ config }) => {
     const body = requireBodyRecord(await readRequestJsonOrThrow(request));
     const proofRequest = parseProofCreationRequest(body);
     const proofDocument = await createWheelFairnessProof(config, proofRequest);
@@ -244,25 +236,22 @@ export async function wheelFairnessProof(
       verificationUrl: buildStoredProofVerificationUrl(request, proofDocument.proofId, "html"),
       jsonUrl: buildStoredProofVerificationUrl(request, proofDocument.proofId, "json")
     });
-  } catch (error) {
-    return errorResponse(request, config, error, "Failed to create wheel fairness proof link.");
-  }
+    }
+  });
 }
 
 export async function wheelFairnessHash(
   request: HttpRequest
 ): Promise<HttpResponseInit> {
-  const config = getConfig();
-  const guardResponse = await maybeHandleHttpGuards(request, config);
-  if (guardResponse) return guardResponse;
-
-  try {
+  return executeHttpHandler(request, null, {
+    errorLogMessage: "Failed to hash wheel fairness seed.",
+    fallbackErrorMessage: "Failed to hash wheel fairness seed.",
+    operation: async ({ config }) => {
     const seed = parseSeed(getQueryParam(request, "seed"), "seed");
     return jsonResponse(request, config, 200, {
       hash: hashSeed(seed),
       algorithm: "sha256"
     });
-  } catch (error) {
-    return errorResponse(request, config, error, "Failed to hash wheel fairness seed.");
-  }
+    }
+  });
 }

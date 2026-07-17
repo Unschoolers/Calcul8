@@ -41,7 +41,8 @@ vi.mock("../lib/config", () => ({
   getConfig: getConfigMock
 }));
 
-vi.mock("../lib/auth", () => ({
+vi.mock("../lib/auth", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../lib/auth")>()),
   HttpError: class HttpError extends Error {
     readonly status: number;
 
@@ -52,7 +53,8 @@ vi.mock("../lib/auth", () => ({
   }
 }));
 
-vi.mock("../lib/http", () => ({
+vi.mock("../lib/http", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../lib/http")>()),
   maybeHandleHttpGuards: maybeHandleHttpGuardsMock,
   jsonResponse: jsonResponseMock,
   errorResponse: errorResponseMock
@@ -135,6 +137,6 @@ test("migrationRun returns a 400-style error for invalid body fields", async () 
 
   assert.equal(response.status, 400);
   assert.equal(runMigrationMock.mock.calls.length, 0);
-  assert.equal((response.jsonBody as { error: string }).error, "Failed to run migration.");
+  assert.equal((response.jsonBody as { error: string }).error, "Field 'dryRun' must be a boolean when provided.");
   assert.equal(context.error.mock.calls.length, 1);
 });

@@ -1,6 +1,5 @@
 import { type HttpRequest, type HttpResponseInit, type InvocationContext } from "@azure/functions";
-import { getConfig } from "../../lib/config";
-import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../../lib/http";
+import { executeHttpHandler, jsonResponse } from "../../lib/http";
 import { getSupportedPurchaseProviders, resolvePurchaseVerifier } from "./purchaseVerifiers";
 
 function resolveProvider(request: HttpRequest): string {
@@ -11,11 +10,10 @@ export async function entitlementsVerify(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
-  const config = getConfig();
-  const guardResponse = await maybeHandleHttpGuards(request, config);
-  if (guardResponse) return guardResponse;
-
-  try {
+  return executeHttpHandler(request, context, {
+    errorLogMessage: "POST /entitlements/verify/{provider} failed",
+    fallbackErrorMessage: "Failed to verify purchase.",
+    operation: async ({ config }) => {
     const provider = resolveProvider(request);
     const verifier = resolvePurchaseVerifier(provider);
 
@@ -27,8 +25,6 @@ export async function entitlementsVerify(
       error: `Purchase provider '${provider || "unknown"}' is not supported.`,
       supportedProviders: getSupportedPurchaseProviders()
     });
-  } catch (error) {
-    context.error("POST /entitlements/verify/{provider} failed", error);
-    return errorResponse(request, config, error, "Failed to verify purchase.");
-  }
+    }
+  });
 }

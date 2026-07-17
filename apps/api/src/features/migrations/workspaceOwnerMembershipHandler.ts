@@ -1,11 +1,10 @@
 import { type HttpRequest, type HttpResponseInit, type InvocationContext } from "@azure/functions";
 import { HttpError } from "../../lib/auth";
-import { getConfig } from "../../lib/config";
 import {
   auditWorkspaceOwnerMemberships,
   repairWorkspaceOwnerMembership
 } from "../../lib/cosmos/workspaceRepository";
-import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../../lib/http";
+import { executeHttpHandler, jsonResponse } from "../../lib/http";
 import { readRequestJsonOrThrow, requireRequestBodyRecord } from "../../lib/httpRequest";
 import { assertMigrationAdminAccess, resolveMigrationActor } from "../../lib/migrations/adminAuth";
 import { logApiTelemetry } from "../../lib/telemetry";
@@ -31,11 +30,10 @@ export async function workspaceOwnerMembershipRepair(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
-  const config = getConfig();
-  const guardResponse = await maybeHandleHttpGuards(request, config);
-  if (guardResponse) return guardResponse;
-
-  try {
+  return executeHttpHandler(request, context, {
+    errorLogMessage: "POST /migrations/workspace-owner-memberships failed",
+    fallbackErrorMessage: "Failed to audit workspace owner memberships.",
+    operation: async ({ config }) => {
     assertMigrationAdminAccess(request, config.migrationsAdminKey, config.apiEnv);
     const requestedBy = resolveMigrationActor(request);
     const payload = parseRequest(await readRequestJsonOrThrow(request));
@@ -66,8 +64,6 @@ export async function workspaceOwnerMembershipRepair(
       findings,
       repairedWorkspaceIds
     });
-  } catch (error) {
-    context.error("POST /migrations/workspace-owner-memberships failed", error);
-    return errorResponse(request, config, error, "Failed to audit workspace owner memberships.");
-  }
+    }
+  });
 }

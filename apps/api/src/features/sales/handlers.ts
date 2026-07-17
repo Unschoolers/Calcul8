@@ -5,7 +5,7 @@ import {
 } from "../../lib/cosmos/salesRepository";
 import { hasWorkspaceMembership } from "../../lib/cosmos/workspaceRepository";
 import { getConfig } from "../../lib/config";
-import { errorResponse, jsonResponse, maybeHandleHttpGuards } from "../../lib/http";
+import { errorResponse, executeHttpHandler, jsonResponse } from "../../lib/http";
 import { publishWorkspaceLotRealtimeEventBestEffort } from "../../lib/realtime";
 import { parseOptionalWorkspaceId, parseRequiredWorkspaceId } from "../../lib/syncScope";
 import { assertSyncScopeAccess, resolveSyncScope } from "../../lib/syncScopeResolution";
@@ -213,12 +213,11 @@ export async function lotSalesList(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
-  const config = getConfig();
   const workspaceId = parseWorkspaceIdFromRequest(request, null);
-  const guardResponse = await maybeHandleHttpGuards(request, config);
-  if (guardResponse) return guardResponse;
-
-  try {
+  return executeHttpHandler(request, context, {
+    errorLogMessage: "Failed to load lot sales.",
+    fallbackErrorMessage: "Failed to load lot sales.",
+    operation: async ({ config }) => {
     const actorUserId = await resolveUserId(request, config, {
       telemetry: {
         logger: context,
@@ -234,21 +233,20 @@ export async function lotSalesList(
     const lotId = requireRouteParam(request, "lotId");
     const responseBody = await listLotSalesForActor(config, actorUserId, workspaceId, lotId);
     return jsonResponse(request, config, 200, responseBody);
-  } catch (error) {
-    return handleEntityError(request, context, error, "Failed to load lot sales.", "lot_sales_list", workspaceId);
-  }
+    },
+    handleError: (error) => handleEntityError(request, context, error, "Failed to load lot sales.", "lot_sales_list", workspaceId)
+  });
 }
 
 export async function allSalesList(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
-  const config = getConfig();
   const workspaceId = parseWorkspaceIdFromRequest(request, null);
-  const guardResponse = await maybeHandleHttpGuards(request, config);
-  if (guardResponse) return guardResponse;
-
-  try {
+  return executeHttpHandler(request, context, {
+    errorLogMessage: "Failed to load sales.",
+    fallbackErrorMessage: "Failed to load sales.",
+    operation: async ({ config }) => {
     const actorUserId = await resolveUserId(request, config, {
       telemetry: {
         logger: context,
@@ -258,21 +256,20 @@ export async function allSalesList(
     });
     const responseBody = await listAllSalesForActor(config, actorUserId, workspaceId, parseOptionalLotIds(request));
     return jsonResponse(request, config, 200, responseBody);
-  } catch (error) {
-    return handleEntityError(request, context, error, "Failed to load sales.", "all_sales_list", workspaceId);
-  }
+    },
+    handleError: (error) => handleEntityError(request, context, error, "Failed to load sales.", "all_sales_list", workspaceId)
+  });
 }
 
 export async function lotSalesMetaGet(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
-  const config = getConfig();
   const workspaceId = parseWorkspaceIdFromRequest(request, null);
-  const guardResponse = await maybeHandleHttpGuards(request, config);
-  if (guardResponse) return guardResponse;
-
-  try {
+  return executeHttpHandler(request, context, {
+    errorLogMessage: "Failed to load lot sales metadata.",
+    fallbackErrorMessage: "Failed to load lot sales metadata.",
+    operation: async ({ config }) => {
     const actorUserId = await resolveUserId(request, config, {
       telemetry: {
         logger: context,
@@ -288,21 +285,20 @@ export async function lotSalesMetaGet(
     const lotId = requireRouteParam(request, "lotId");
     const responseBody = await getLotSalesSyncMetaForActor(config, actorUserId, workspaceId, lotId);
     return jsonResponse(request, config, 200, responseBody);
-  } catch (error) {
-    return handleEntityError(request, context, error, "Failed to load lot sales metadata.", "lot_sales_meta_get", workspaceId);
-  }
+    },
+    handleError: (error) => handleEntityError(request, context, error, "Failed to load lot sales metadata.", "lot_sales_meta_get", workspaceId)
+  });
 }
 
 export async function lotSalesUpsert(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
-  const config = getConfig();
   let workspaceId: string | undefined;
-  const guardResponse = await maybeHandleHttpGuards(request, config);
-  if (guardResponse) return guardResponse;
-
-  try {
+  return executeHttpHandler(request, context, {
+    errorLogMessage: "Failed to save sale.",
+    fallbackErrorMessage: "Failed to save sale.",
+    operation: async ({ config }) => {
     const actorUserId = await resolveUserId(request, config, {
       telemetry: {
         logger: context,
@@ -337,21 +333,20 @@ export async function lotSalesUpsert(
       lotId: result.lotId,
       sale: result.sale
     });
-  } catch (error) {
-    return handleEntityError(request, context, error, "Failed to save sale.", "lot_sales_upsert", workspaceId);
-  }
+    },
+    handleError: (error) => handleEntityError(request, context, error, "Failed to save sale.", "lot_sales_upsert", workspaceId)
+  });
 }
 
 export async function lotSalesDelete(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
-  const config = getConfig();
   let workspaceId: string | undefined;
-  const guardResponse = await maybeHandleHttpGuards(request, config);
-  if (guardResponse) return guardResponse;
-
-  try {
+  return executeHttpHandler(request, context, {
+    errorLogMessage: "Failed to delete sale.",
+    fallbackErrorMessage: "Failed to delete sale.",
+    operation: async ({ config }) => {
     const actorUserId = await resolveUserId(request, config, {
       telemetry: {
         logger: context,
@@ -387,9 +382,9 @@ export async function lotSalesDelete(
       lotId: result.lotId,
       saleId: result.saleId
     });
-  } catch (error) {
-    return handleEntityError(request, context, error, "Failed to delete sale.", "lot_sales_delete", workspaceId);
-  }
+    },
+    handleError: (error) => handleEntityError(request, context, error, "Failed to delete sale.", "lot_sales_delete", workspaceId)
+  });
 }
 
 export async function lotSalesRoute(
@@ -424,12 +419,11 @@ export async function lotLivePricingGet(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
-  const config = getConfig();
   const workspaceId = parseWorkspaceIdFromRequest(request, null);
-  const guardResponse = await maybeHandleHttpGuards(request, config);
-  if (guardResponse) return guardResponse;
-
-  try {
+  return executeHttpHandler(request, context, {
+    errorLogMessage: "Failed to load live pricing.",
+    fallbackErrorMessage: "Failed to load live pricing.",
+    operation: async ({ config }) => {
     const actorUserId = await resolveUserId(request, config, {
       telemetry: {
         logger: context,
@@ -446,21 +440,20 @@ export async function lotLivePricingGet(
     const lotId = requireRouteParam(request, "lotId");
     const responseBody = await getLotLivePricingForActor(config, actorUserId, workspaceId, lotId);
     return jsonResponse(request, config, 200, responseBody);
-  } catch (error) {
-    return handleEntityError(request, context, error, "Failed to load live pricing.", "lot_live_pricing_get", workspaceId);
-  }
+    },
+    handleError: (error) => handleEntityError(request, context, error, "Failed to load live pricing.", "lot_live_pricing_get", workspaceId)
+  });
 }
 
 export async function lotLivePricingSave(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
-  const config = getConfig();
   let workspaceId: string | undefined;
-  const guardResponse = await maybeHandleHttpGuards(request, config);
-  if (guardResponse) return guardResponse;
-
-  try {
+  return executeHttpHandler(request, context, {
+    errorLogMessage: "Failed to save live pricing.",
+    fallbackErrorMessage: "Failed to save live pricing.",
+    operation: async ({ config }) => {
     const actorUserId = await resolveUserId(request, config, {
       telemetry: {
         logger: context,
@@ -497,21 +490,20 @@ export async function lotLivePricingSave(
       lotId: result.lotId,
       livePricing: result.livePricing
     });
-  } catch (error) {
-    return handleEntityError(request, context, error, "Failed to save live pricing.", "lot_live_pricing_save", workspaceId);
-  }
+    },
+    handleError: (error) => handleEntityError(request, context, error, "Failed to save live pricing.", "lot_live_pricing_save", workspaceId)
+  });
 }
 
 export async function lotRealtimeTokenGet(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
-  const config = getConfig();
   const workspaceId = parseWorkspaceIdFromRequest(request, null);
-  const guardResponse = await maybeHandleHttpGuards(request, config);
-  if (guardResponse) return guardResponse;
-
-  try {
+  return executeHttpHandler(request, context, {
+    errorLogMessage: "Failed to mint realtime subscribe token.",
+    fallbackErrorMessage: "Failed to mint realtime subscribe token.",
+    operation: async ({ config }) => {
     const actorUserId = await resolveUserId(request, config, {
       telemetry: {
         logger: context,
@@ -522,28 +514,27 @@ export async function lotRealtimeTokenGet(
     const lotId = requireRouteParam(request, "lotId");
     const responseBody = await mintLotRealtimeTokenForActor(config, actorUserId, workspaceId, lotId);
     return jsonResponse(request, config, 200, responseBody);
-  } catch (error) {
-    return handleEntityError(
+    },
+    handleError: (error) => handleEntityError(
       request,
       context,
       error,
       "Failed to mint realtime subscribe token.",
       "lot_realtime_token_get",
       workspaceId
-    );
-  }
+    )
+  });
 }
 
 export async function workspaceRealtimeTokenGet(
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> {
-  const config = getConfig();
   let workspaceId: string | undefined;
-  const guardResponse = await maybeHandleHttpGuards(request, config);
-  if (guardResponse) return guardResponse;
-
-  try {
+  return executeHttpHandler(request, context, {
+    errorLogMessage: "Failed to mint workspace realtime subscribe token.",
+    fallbackErrorMessage: "Failed to mint workspace realtime subscribe token.",
+    operation: async ({ config }) => {
     const actorUserId = await resolveUserId(request, config, {
       telemetry: {
         logger: context,
@@ -554,16 +545,16 @@ export async function workspaceRealtimeTokenGet(
     workspaceId = parseRequiredWorkspaceId(requireRouteParam(request, "workspaceId"));
     const responseBody = await mintWorkspaceRealtimeTokenForActor(config, actorUserId, workspaceId);
     return jsonResponse(request, config, 200, responseBody);
-  } catch (error) {
-    return handleEntityError(
+    },
+    handleError: (error) => handleEntityError(
       request,
       context,
       error,
       "Failed to mint workspace realtime subscribe token.",
       "workspace_realtime_token_get",
       workspaceId
-    );
-  }
+    )
+  });
 }
 
 export async function lotLivePricingRoute(
