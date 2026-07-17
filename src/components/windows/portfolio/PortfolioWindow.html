@@ -157,16 +157,7 @@
                 </app-toolbar-card>
 
                 <portfolio-pulse-panel
-                  :title="portfolioCopy('portfolioPulseTitle', 'Portfolio pulse')"
-                  :profit-label="portfolioCopy('portfolioPulseCurrentProfitLabel', 'Current P/L')"
-                  :profit-value="portfolioSignedCurrency(portfolioTotals?.totalProfit ?? 0)"
-                  :profit-tone="portfolioPulseProfitTone()"
-                  :scope-label="portfolioPulseScopeLabel()"
-                  :profitable-summary="portfolioPulseProfitableSummary()"
-                  :summary-label="portfolioCopy('portfolioPulseSummaryLabel', 'Portfolio summary')"
-                  :stats="portfolioPulseStats()"
-                  :insights-title="portfolioCopy('portfolioPulseInsightsTitle', 'Seller insights')"
-                  :insights="portfolioPulseInsights()"
+                  :model="portfolioPulsePanelModel()"
                 ></portfolio-pulse-panel>
 
                 <v-row class="mt-4">
@@ -385,35 +376,7 @@
                   <v-col cols="12">
                     <portfolio-performance-sheet
                       v-model:view="portfolioPerformanceView"
-                      :title="portfolioCopy('portfolioPerformanceSheetTitle', 'Performance sheet')"
-                      :view-mode-label="portfolioCopy('portfolioPerformanceViewModeLabel', 'View')"
-                      :lots-view-label="portfolioCopy('portfolioPerformanceLotsViewLabel', 'Lot performance')"
-                      :customers-view-label="portfolioCopy('portfolioPerformanceCustomersViewLabel', 'Customer performance')"
-                      :has-portfolio-data="hasPortfolioData"
-                      :lot-title="portfolioCopy('portfolioPerformanceTitle', 'Lot performance')"
-                      :customer-title="portfolioCopy('portfolioCustomerPerformanceTitle', 'Customer performance')"
-                      :loss-label="portfolioCopy('portfolioPerformanceLossLabel', 'Loss')"
-                      :loss-amount="portfolioLotPerformanceUnderAmount()"
-                      :gain-label="portfolioCopy('portfolioPerformanceGainLabel', 'Gain')"
-                      :gain-amount="portfolioLotPerformanceOverAmount()"
-                      :customer-count-label="portfolioCopy('portfolioCustomerCountLabel', 'Customers')"
-                      :customer-count="customerPerformanceSummary().customerCount"
-                      :repeat-customer-label="portfolioCopy('portfolioCustomerRepeatLabel', 'Repeat')"
-                      :repeat-customer-count="customerPerformanceSummary().repeatBuyerCount"
-                      :sort-label="portfolioCopy('portfolioPerformanceSortLabel', 'Sort by')"
-                      :lot-columns="portfolioLotPerformanceGridColumns()"
-                      :lot-sort-options="portfolioLotPerformanceSortOptions()"
-                      :lot-sort-key="portfolioLotPerformanceSortKey"
-                      :lot-sort-direction="portfolioLotPerformanceSortDirection"
-                      :customer-columns="portfolioCustomerPerformanceGridColumns()"
-                      :customer-sort-options="portfolioCustomerPerformanceSortOptions()"
-                      :customer-sort-key="portfolioCustomerPerformanceSortKey"
-                      :customer-sort-direction="portfolioCustomerPerformanceSortDirection"
-                      :customer-row-count="customerPerformanceRows().length"
-                      :lot-empty-title="portfolioCopy('portfolioPerformanceEmptyTitle', 'No lot performance yet')"
-                      :lot-empty-body="portfolioCopy('portfolioPerformanceEmptyBody', 'Create lots and add sales to see which lots are ahead or behind.')"
-                      :customer-empty-title="portfolioCopy('portfolioCustomerPerformanceEmptyTitle', 'No customer performance yet')"
-                      :customer-empty-body="portfolioCopy('portfolioCustomerPerformanceEmptyBody', 'Add named customers to sales to see buyer performance here.')"
+                      :model="portfolioPerformanceSheetModel()"
                       @sort-lot="setPortfolioLotPerformanceSort"
                       @sort-customer="setPortfolioCustomerPerformanceSort"
                     >

@@ -9,6 +9,39 @@ import "./PortfolioPerformanceSheet.css";
 
 export type PortfolioPerformanceSheetView = "lots" | "customers";
 
+/** A coherent display contract keeps the sheet independent of window state. */
+export type PortfolioPerformanceSheetModel = {
+  title: string;
+  viewModeLabel: string;
+  lotsViewLabel: string;
+  customersViewLabel: string;
+  hasPortfolioData: boolean;
+  lotTitle: string;
+  customerTitle: string;
+  lossLabel: string;
+  lossAmount: string;
+  gainLabel: string;
+  gainAmount: string;
+  customerCountLabel: string;
+  customerCount: number;
+  repeatCustomerLabel: string;
+  repeatCustomerCount: number;
+  sortLabel: string;
+  lotColumns: Array<PortfolioPerformanceGridColumn>;
+  lotSortOptions: Array<PortfolioSortOption<string>>;
+  lotSortKey: string;
+  lotSortDirection: PortfolioSortDirection;
+  customerColumns: Array<PortfolioPerformanceGridColumn>;
+  customerSortOptions: Array<PortfolioSortOption<string>>;
+  customerSortKey: string;
+  customerSortDirection: PortfolioSortDirection;
+  customerRowCount: number;
+  lotEmptyTitle: string;
+  lotEmptyBody: string;
+  customerEmptyTitle: string;
+  customerEmptyBody: string;
+};
+
 export const PortfolioPerformanceSheet = defineComponent({
   name: "PortfolioPerformanceSheet",
   components: {
@@ -22,120 +55,8 @@ export const PortfolioPerformanceSheet = defineComponent({
       type: String as PropType<PortfolioPerformanceSheetView>,
       required: true
     },
-    title: {
-      type: String,
-      required: true
-    },
-    viewModeLabel: {
-      type: String,
-      required: true
-    },
-    lotsViewLabel: {
-      type: String,
-      required: true
-    },
-    customersViewLabel: {
-      type: String,
-      required: true
-    },
-    hasPortfolioData: {
-      type: Boolean,
-      required: true
-    },
-    lotTitle: {
-      type: String,
-      required: true
-    },
-    customerTitle: {
-      type: String,
-      required: true
-    },
-    lossLabel: {
-      type: String,
-      required: true
-    },
-    lossAmount: {
-      type: String,
-      required: true
-    },
-    gainLabel: {
-      type: String,
-      required: true
-    },
-    gainAmount: {
-      type: String,
-      required: true
-    },
-    customerCountLabel: {
-      type: String,
-      required: true
-    },
-    customerCount: {
-      type: Number,
-      required: true
-    },
-    repeatCustomerLabel: {
-      type: String,
-      required: true
-    },
-    repeatCustomerCount: {
-      type: Number,
-      required: true
-    },
-    sortLabel: {
-      type: String,
-      required: true
-    },
-    lotColumns: {
-      type: Array as PropType<Array<PortfolioPerformanceGridColumn>>,
-      required: true
-    },
-    lotSortOptions: {
-      type: Array as PropType<Array<PortfolioSortOption<string>>>,
-      required: true
-    },
-    lotSortKey: {
-      type: String,
-      required: true
-    },
-    lotSortDirection: {
-      type: String as PropType<PortfolioSortDirection>,
-      required: true
-    },
-    customerColumns: {
-      type: Array as PropType<Array<PortfolioPerformanceGridColumn>>,
-      required: true
-    },
-    customerSortOptions: {
-      type: Array as PropType<Array<PortfolioSortOption<string>>>,
-      required: true
-    },
-    customerSortKey: {
-      type: String,
-      required: true
-    },
-    customerSortDirection: {
-      type: String as PropType<PortfolioSortDirection>,
-      required: true
-    },
-    customerRowCount: {
-      type: Number,
-      required: true
-    },
-    lotEmptyTitle: {
-      type: String,
-      required: true
-    },
-    lotEmptyBody: {
-      type: String,
-      required: true
-    },
-    customerEmptyTitle: {
-      type: String,
-      required: true
-    },
-    customerEmptyBody: {
-      type: String,
+    model: {
+      type: Object as PropType<PortfolioPerformanceSheetModel>,
       required: true
     }
   },
@@ -155,7 +76,7 @@ export const PortfolioPerformanceSheet = defineComponent({
     },
 
     currentTitle(): string {
-      return this.view === "customers" ? this.customerTitle : this.lotTitle;
+      return this.view === "customers" ? this.model.customerTitle : this.model.lotTitle;
     }
   }
 });

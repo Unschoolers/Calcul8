@@ -22,6 +22,12 @@ export type PortfolioLotPerformanceRow = Record<string, unknown> & {
   forecastProfitAverage?: number | null;
 };
 
+export type PortfolioLotPrimaryProfit = {
+  value: number;
+  projected: boolean;
+  tone: "success" | "error";
+};
+
 function compareText(left: unknown, right: unknown): number {
   return String(left ?? "").localeCompare(String(right ?? ""), undefined, { sensitivity: "base" });
 }
@@ -46,6 +52,23 @@ function timestampOrStart(value: unknown): number {
 export function normalizePortfolioSortDirection(value: unknown, fallback: PortfolioSortDirection = "asc"): PortfolioSortDirection {
   if (value === "asc" || value === "desc") return value;
   return fallback;
+}
+
+/** Chooses the profit signal displayed for a lot consistently across the UI. */
+export function getPortfolioLotPrimaryProfit(row: PortfolioLotPerformanceRow): PortfolioLotPrimaryProfit {
+  const projected = Number(row.soldPacks ?? 0) < Number(row.totalPacks ?? 0)
+    && typeof row.forecastProfitAverage === "number";
+  const value = projected
+    ? Number(row.forecastProfitAverage)
+    : Number(row.salesCount ?? 0) > 0
+      ? Number(row.realizedProfit ?? 0)
+      : Number(row.totalProfit ?? 0);
+  const normalized = Number.isFinite(value) ? value : 0;
+  return {
+    value: normalized,
+    projected,
+    tone: normalized >= 0 ? "success" : "error"
+  };
 }
 
 export function sortPortfolioLotPerformanceRows<T extends PortfolioLotPerformanceRow>(

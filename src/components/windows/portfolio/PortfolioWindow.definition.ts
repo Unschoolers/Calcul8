@@ -11,6 +11,7 @@ import {
 } from "../../../app-core/computed/customer-performance.ts";
 import {
   getPortfolioCustomerPerformanceSortOptions,
+  getPortfolioLotPrimaryProfit,
   getPortfolioLotPerformanceSortOptions,
   getPortfolioPerformanceSortButtonClass,
   getPortfolioPerformanceSortIcon,
@@ -31,11 +32,14 @@ import {
 import {
   buildPortfolioPulseInsights,
   buildPortfolioSalesByUserLegendItems,
+  getPortfolioCopy,
   getNextPortfolioChartView,
   getPortfolioChartAriaLabel,
   getPortfolioChartSubtitle,
   getPortfolioChartToggleIcon,
   getPortfolioChartToggleTitle,
+  getPortfolioSalesByUserChartSeries,
+  getPortfolioSalesByUserChartWeeks,
   getPortfolioSalesByUserAriaLabel,
   getPortfolioSalesByUserBestWeek,
   getPortfolioSalesByUserLeader,
@@ -46,8 +50,10 @@ import {
   type PortfolioPulseInsight
 } from "./portfolio-window-helpers.ts";
 import type { PortfolioPerformanceGridColumn } from "./PortfolioPerformanceGrid.ts";
+import type { PortfolioPerformanceSheetModel } from "./PortfolioPerformanceSheet.ts";
 import type {
   PortfolioPulseDisplayInsight,
+  PortfolioPulsePanelModel,
   PortfolioPulseStat,
   PortfolioPulseTone
 } from "./PortfolioPulsePanel.ts";
@@ -175,6 +181,50 @@ export const PortfolioWindowDefinition = {
       this.portfolioCustomerPerformanceSortDirection = key === "customer" || key === "topLot" ? "asc" : "desc";
     },
 
+    portfolioPerformanceSheetModel(this: Record<string, unknown>): PortfolioPerformanceSheetModel {
+      const copy = getPortfolioCopy(this);
+      const customerSummary = (this.customerPerformanceSummary as (() => CustomerPerformanceSummary) | undefined)?.call(this)
+        ?? buildCustomerPerformanceSummary([]);
+      const customerRows = (this.customerPerformanceRows as (() => CustomerPerformanceRow[]) | undefined)?.call(this) ?? [];
+      const lotColumns = (this.portfolioLotPerformanceGridColumns as (() => Array<PortfolioPerformanceGridColumn>) | undefined)?.call(this) ?? [];
+      const lotSortOptions = (this.portfolioLotPerformanceSortOptions as (() => Array<PortfolioSortOption<PortfolioLotPerformanceSortKey>>) | undefined)?.call(this) ?? [];
+      const customerColumns = (this.portfolioCustomerPerformanceGridColumns as (() => Array<PortfolioPerformanceGridColumn>) | undefined)?.call(this) ?? [];
+      const customerSortOptions = (this.portfolioCustomerPerformanceSortOptions as (() => Array<PortfolioSortOption<PortfolioCustomerPerformanceSortKey>>) | undefined)?.call(this) ?? [];
+      const underAmount = (this.portfolioLotPerformanceUnderAmount as (() => string) | undefined)?.call(this) ?? "0";
+      const overAmount = (this.portfolioLotPerformanceOverAmount as (() => string) | undefined)?.call(this) ?? "0";
+      return {
+        title: copy("portfolioPerformanceSheetTitle", "Performance sheet"),
+        viewModeLabel: copy("portfolioPerformanceViewModeLabel", "View"),
+        lotsViewLabel: copy("portfolioPerformanceLotsViewLabel", "Lot performance"),
+        customersViewLabel: copy("portfolioPerformanceCustomersViewLabel", "Customer performance"),
+        hasPortfolioData: Boolean(this.hasPortfolioData),
+        lotTitle: copy("portfolioPerformanceTitle", "Lot performance"),
+        customerTitle: copy("portfolioCustomerPerformanceTitle", "Customer performance"),
+        lossLabel: copy("portfolioPerformanceLossLabel", "Loss"),
+        lossAmount: underAmount,
+        gainLabel: copy("portfolioPerformanceGainLabel", "Gain"),
+        gainAmount: overAmount,
+        customerCountLabel: copy("portfolioCustomerCountLabel", "Customers"),
+        customerCount: customerSummary.customerCount,
+        repeatCustomerLabel: copy("portfolioCustomerRepeatLabel", "Repeat"),
+        repeatCustomerCount: customerSummary.repeatBuyerCount,
+        sortLabel: copy("portfolioPerformanceSortLabel", "Sort by"),
+        lotColumns,
+        lotSortOptions,
+        lotSortKey: String(this.portfolioLotPerformanceSortKey || "source"),
+        lotSortDirection: normalizePortfolioSortDirection(this.portfolioLotPerformanceSortDirection),
+        customerColumns,
+        customerSortOptions,
+        customerSortKey: String(this.portfolioCustomerPerformanceSortKey || "spent"),
+        customerSortDirection: normalizePortfolioSortDirection(this.portfolioCustomerPerformanceSortDirection, "desc"),
+        customerRowCount: customerRows.length,
+        lotEmptyTitle: copy("portfolioPerformanceEmptyTitle", "No lot performance yet"),
+        lotEmptyBody: copy("portfolioPerformanceEmptyBody", "Create lots and add sales to see which lots are ahead or behind."),
+        customerEmptyTitle: copy("portfolioCustomerPerformanceEmptyTitle", "No customer performance yet"),
+        customerEmptyBody: copy("portfolioCustomerPerformanceEmptyBody", "Add named customers to sales to see buyer performance here.")
+      };
+    },
+
     sortedPortfolioLotPerformanceRows(this: Record<string, unknown>): Array<Record<string, unknown>> {
       const rows = Array.isArray(this.allLotPerformance)
         ? this.allLotPerformance as Array<Record<string, unknown>>
@@ -210,11 +260,7 @@ export const PortfolioWindowDefinition = {
     },
 
     portfolioLotPerformanceSortOptions(this: Record<string, unknown>): Array<PortfolioSortOption<PortfolioLotPerformanceSortKey>> {
-      const copy = this.portfolioCopy as ((key: string, fallback: string) => string) | undefined;
-      const getCopy = (key: string, fallback: string): string => (
-        typeof copy === "function" ? copy.call(this, key, fallback) : fallback
-      );
-      return getPortfolioLotPerformanceSortOptions(getCopy);
+      return getPortfolioLotPerformanceSortOptions(getPortfolioCopy(this));
     },
 
     portfolioLotPerformanceGridColumns(this: Record<string, unknown>): Array<PortfolioPerformanceGridColumn<PortfolioLotPerformanceSortKey>> {
@@ -227,11 +273,7 @@ export const PortfolioWindowDefinition = {
     },
 
     portfolioCustomerPerformanceSortOptions(this: Record<string, unknown>): Array<PortfolioSortOption<PortfolioCustomerPerformanceSortKey>> {
-      const copy = this.portfolioCopy as ((key: string, fallback: string) => string) | undefined;
-      const getCopy = (key: string, fallback: string): string => (
-        typeof copy === "function" ? copy.call(this, key, fallback) : fallback
-      );
-      return getPortfolioCustomerPerformanceSortOptions(getCopy);
+      return getPortfolioCustomerPerformanceSortOptions(getPortfolioCopy(this));
     },
 
     portfolioCustomerPerformanceGridColumns(this: Record<string, unknown>): Array<PortfolioPerformanceGridColumn<PortfolioCustomerPerformanceSortKey>> {
@@ -283,10 +325,7 @@ export const PortfolioWindowDefinition = {
     customerPerformanceHighlights(this: Record<string, unknown>): Array<{ key: string; label: string; value: string; meta: string; icon: string }> {
       const summary = (this.customerPerformanceSummary as (() => CustomerPerformanceSummary) | undefined)?.call(this)
         ?? buildCustomerPerformanceSummary([]);
-      const copy = this.portfolioCopy as ((key: string, fallback: string) => string) | undefined;
-      const getCopy = (key: string, fallback: string): string => (
-        typeof copy === "function" ? copy.call(this, key, fallback) : fallback
-      );
+      const getCopy = getPortfolioCopy(this);
       const format = this.fmtCurrency as ((value: number | null | undefined, decimals?: number) => string) | undefined;
       const formatMoney = (value: number): string => `$${typeof format === "function" ? format.call(this, value) : value.toFixed(2)}`;
       const formatPercent = (value: number): string => `${typeof format === "function" ? format.call(this, value, 1) : value.toFixed(1)}%`;
@@ -361,10 +400,7 @@ export const PortfolioWindowDefinition = {
     },
 
     portfolioDashboardPresetItems(this: Record<string, unknown>): PortfolioDashboardPresetDisplayItem[] {
-      const copy = this.portfolioCopy as ((key: string, fallback: string) => string) | undefined;
-      const getCopy = (key: string, fallback: string) => (
-        typeof copy === "function" ? copy.call(this, key, fallback) : fallback
-      );
+      const getCopy = getPortfolioCopy(this);
       return [
         {
           value: "all",
@@ -431,10 +467,7 @@ export const PortfolioWindowDefinition = {
     portfolioPulseScopeLabel(this: Record<string, unknown>): string {
       const getVisibleSelected = this.portfolioVisibleLotFilterIds as (() => number[]) | undefined;
       const selected = typeof getVisibleSelected === "function" ? getVisibleSelected.call(this) : [];
-      const copy = this.portfolioCopy as ((key: string, fallback: string) => string) | undefined;
-      const getCopy = (key: string, fallback: string): string => (
-        typeof copy === "function" ? copy.call(this, key, fallback) : fallback
-      );
+      const getCopy = getPortfolioCopy(this);
 
       if (selected.length > 0) {
         const primaryLabel = this.portfolioLotFilterPrimaryLabel as (() => string) | undefined;
@@ -458,9 +491,9 @@ export const PortfolioWindowDefinition = {
       const totals = this.portfolioTotals as { profitableLotCount?: number; lotCount?: number } | undefined;
       const profitable = Number(totals?.profitableLotCount ?? 0);
       const lotCount = Number(totals?.lotCount ?? 0);
-      const copy = this.portfolioCopy as ((key: string, fallback: string) => string) | undefined;
-      const lotLabel = typeof copy === "function" ? copy.call(this, "portfolioLotCountLabel", "lot") : "lot";
-      const profitableLabel = typeof copy === "function" ? copy.call(this, "portfolioKpiProfitableLabel", "profitable") : "profitable";
+      const getCopy = getPortfolioCopy(this);
+      const lotLabel = getCopy("portfolioLotCountLabel", "lot");
+      const profitableLabel = getCopy("portfolioKpiProfitableLabel", "profitable");
       return `${profitable} / ${lotCount} ${lotLabel}${lotCount === 1 ? "" : "s"} ${profitableLabel}`;
     },
 
@@ -476,10 +509,7 @@ export const PortfolioWindowDefinition = {
         label?: string;
         modeCount?: number;
       } | null | undefined;
-      const copy = this.portfolioCopy as ((key: string, fallback: string) => string) | undefined;
-      const getCopy = (key: string, fallback: string): string => (
-        typeof copy === "function" ? copy.call(this, key, fallback) : fallback
-      );
+      const getCopy = getPortfolioCopy(this);
       const signedCurrency = this.portfolioSignedCurrency as ((value: number | null | undefined, includePositiveSign?: boolean) => string) | undefined;
       const formatSigned = (value: number, includePositiveSign = true): string => (
         typeof signedCurrency === "function" ? signedCurrency.call(this, value, includePositiveSign) : `${value >= 0 ? "+" : "-"}$${Math.abs(value).toFixed(2)}`
@@ -519,6 +549,25 @@ export const PortfolioWindowDefinition = {
       ];
     },
 
+    portfolioPulsePanelModel(this: Record<string, unknown>): PortfolioPulsePanelModel {
+      const copy = getPortfolioCopy(this);
+      const formatSigned = this.portfolioSignedCurrency as ((value: number | null | undefined) => string) | undefined;
+      const totals = this.portfolioTotals as { totalProfit?: number } | undefined;
+      const profit = Number(totals?.totalProfit ?? 0);
+      return {
+        title: copy("portfolioPulseTitle", "Portfolio pulse"),
+        profitLabel: copy("portfolioPulseCurrentProfitLabel", "Current P/L"),
+        profitValue: typeof formatSigned === "function" ? formatSigned.call(this, profit) : `${profit >= 0 ? "+" : "-"}$${Math.abs(profit).toFixed(2)}`,
+        profitTone: (this.portfolioPulseProfitTone as (() => PortfolioPulseTone) | undefined)?.call(this) ?? "neutral",
+        scopeLabel: (this.portfolioPulseScopeLabel as (() => string) | undefined)?.call(this) ?? "",
+        profitableSummary: (this.portfolioPulseProfitableSummary as (() => string) | undefined)?.call(this) ?? "",
+        summaryLabel: copy("portfolioPulseSummaryLabel", "Portfolio summary"),
+        stats: (this.portfolioPulseStats as (() => PortfolioPulseStat[]) | undefined)?.call(this) ?? [],
+        insightsTitle: copy("portfolioPulseInsightsTitle", "Seller insights"),
+        insights: (this.portfolioPulseInsights as (() => PortfolioPulseDisplayInsight[]) | undefined)?.call(this) ?? []
+      };
+    },
+
     portfolioPulseInsights(this: Record<string, unknown>): PortfolioPulseDisplayInsight[] {
       const rows = Array.isArray(this.allLotPerformance)
         ? this.allLotPerformance as Array<{
@@ -531,10 +580,7 @@ export const PortfolioWindowDefinition = {
           totalPacks: number;
         }>
         : [];
-      const copy = this.portfolioCopy as ((key: string, fallback: string) => string) | undefined;
-      const getCopy = (key: string, fallback: string): string => (
-        typeof copy === "function" ? copy.call(this, key, fallback) : fallback
-      );
+      const getCopy = getPortfolioCopy(this);
       const signedCurrency = this.portfolioSignedCurrency as ((value: number | null | undefined, includePositiveSign?: boolean) => string) | undefined;
       const formatSigned = (value: number, includePositiveSign = true): string => (
         typeof signedCurrency === "function" ? signedCurrency.call(this, value, includePositiveSign) : `${value >= 0 ? "+" : "-"}$${Math.abs(value).toFixed(2)}`
@@ -654,10 +700,10 @@ export const PortfolioWindowDefinition = {
 
     portfolioLotFilterDefaultLabel(this: Record<string, unknown>): string {
       const filter = String(this.portfolioLotTypeFilter || "both");
-      const translate = this.portfolioCopy as ((key: string, fallback: string) => string) | undefined;
-      if (filter === "bulk") return typeof translate === "function" ? translate.call(this, "portfolioLotFilterBulkLabel", "All bulk lots") : "All bulk lots";
-      if (filter === "singles") return typeof translate === "function" ? translate.call(this, "portfolioLotFilterSinglesLabel", "All singles lots") : "All singles lots";
-      return typeof translate === "function" ? translate.call(this, "portfolioLotFilterAllLabel", "All lots") : "All lots";
+      const getCopy = getPortfolioCopy(this);
+      if (filter === "bulk") return getCopy("portfolioLotFilterBulkLabel", "All bulk lots");
+      if (filter === "singles") return getCopy("portfolioLotFilterSinglesLabel", "All singles lots");
+      return getCopy("portfolioLotFilterAllLabel", "All lots");
     },
 
     portfolioLotFilterPrimaryLabel(this: Record<string, unknown>): string {
@@ -702,11 +748,8 @@ export const PortfolioWindowDefinition = {
       soldPacks?: number;
       totalPacks?: number;
     }): string {
-      const copy = this.portfolioCopy as ((key: string, fallback: string) => string) | undefined;
       const format = this.fmtCurrency as ((value: number | null | undefined, decimals?: number) => string) | undefined;
-      const getCopy = (key: string, fallback: string): string => (
-        typeof copy === "function" ? copy.call(this, key, fallback) : fallback
-      );
+      const getCopy = getPortfolioCopy(this);
       const formatCount = (value: number): string => (
         typeof format === "function" ? format.call(this, value, 0) : String(Math.round(value))
       );
@@ -743,26 +786,12 @@ export const PortfolioWindowDefinition = {
       totalPacks?: number;
       totalProfit?: number;
     }): string {
-      const isIncomplete = this.portfolioLotIsIncomplete as ((r: typeof row) => boolean) | undefined;
-      const incomplete = typeof isIncomplete === "function" ? isIncomplete.call(this, row) : false;
+      const profit = getPortfolioLotPrimaryProfit(row);
       const format = this.fmtCurrency as ((value: number | null | undefined, decimals?: number) => string) | undefined;
-      const formatSigned = (value: number, approximate = false): string => {
-        const normalized = Number.isFinite(value) ? value : 0;
-        const formatted = typeof format === "function"
-          ? format.call(this, Math.abs(normalized), 0)
-          : String(Math.round(Math.abs(normalized)));
-        return `${approximate ? "~" : ""}${normalized >= 0 ? "+" : "-"}$${formatted}`;
-      };
-
-      if (incomplete && typeof row?.forecastProfitAverage === "number") {
-        return formatSigned(row.forecastProfitAverage, true);
-      }
-
-      if ((row?.salesCount ?? 0) > 0) {
-        return formatSigned(Number(row?.realizedProfit ?? 0));
-      }
-
-      return formatSigned(Number(row?.totalProfit ?? 0));
+      const formatted = typeof format === "function"
+        ? format.call(this, Math.abs(profit.value), 0)
+        : String(Math.round(Math.abs(profit.value)));
+      return `${profit.projected ? "~" : ""}${profit.value >= 0 ? "+" : "-"}$${formatted}`;
     },
 
     portfolioLotPrimaryProfitTone(this: Record<string, unknown>, row: {
@@ -773,15 +802,7 @@ export const PortfolioWindowDefinition = {
       totalPacks?: number;
       totalProfit?: number;
     }): "success" | "error" {
-      const isIncomplete = this.portfolioLotIsIncomplete as ((r: typeof row) => boolean) | undefined;
-      const incomplete = typeof isIncomplete === "function" ? isIncomplete.call(this, row) : false;
-      if (incomplete && typeof row?.forecastProfitAverage === "number") {
-        return row.forecastProfitAverage >= 0 ? "success" : "error";
-      }
-      if ((row?.salesCount ?? 0) > 0) {
-        return Number(row?.realizedProfit ?? 0) >= 0 ? "success" : "error";
-      }
-      return Number(row?.totalProfit ?? 0) >= 0 ? "success" : "error";
+      return getPortfolioLotPrimaryProfit(row).tone;
     },
 
     portfolioLotPrimaryProfitValueClass(this: Record<string, unknown>, row: {
@@ -792,16 +813,11 @@ export const PortfolioWindowDefinition = {
       totalPacks?: number;
       totalProfit?: number;
     }): Record<string, boolean> {
-      const getTone = this.portfolioLotPrimaryProfitTone as ((r: typeof row) => "success" | "error") | undefined;
-      const tone = typeof getTone === "function"
-        ? getTone.call(this, row)
-        : PortfolioWindowDefinition.methods.portfolioLotPrimaryProfitTone.call(this, row);
-      const isIncomplete = this.portfolioLotIsIncomplete as ((r: typeof row) => boolean) | undefined;
-      const incomplete = typeof isIncomplete === "function" ? isIncomplete.call(this, row) : false;
+      const profit = getPortfolioLotPrimaryProfit(row);
       return {
-        "is-positive": tone === "success",
-        "is-negative": tone === "error",
-        "is-projected": incomplete && typeof row?.forecastProfitAverage === "number"
+        "is-positive": profit.tone === "success",
+        "is-negative": profit.tone === "error",
+        "is-projected": profit.projected
       };
     },
 
@@ -849,7 +865,7 @@ export const PortfolioWindowDefinition = {
     portfolioChartToggleTitle(this: Record<string, unknown>): string {
       const nextView = this.nextPortfolioChartView as (() => "breakdown" | "trend" | "sellthrough" | "margin") | undefined;
       const next = typeof nextView === "function" ? nextView.call(this) : "trend";
-      return getPortfolioChartToggleTitle(next, this.portfolioCopy as ((key: string, fallback: string) => string) | undefined);
+      return getPortfolioChartToggleTitle(next, getPortfolioCopy(this));
     },
 
     portfolioChartToggleIcon(this: Record<string, unknown>): string {
@@ -861,47 +877,38 @@ export const PortfolioWindowDefinition = {
     portfolioChartSubtitle(this: Record<string, unknown>): string {
       return getPortfolioChartSubtitle(
         this.portfolioChartView,
-        this.portfolioCopy as ((key: string, fallback: string) => string) | undefined
+        getPortfolioCopy(this)
       );
     },
 
     portfolioChartAriaLabel(this: Record<string, unknown>): string {
       return getPortfolioChartAriaLabel(
         this.portfolioChartView,
-        this.portfolioCopy as ((key: string, fallback: string) => string) | undefined
+        getPortfolioCopy(this)
       );
     },
 
     portfolioSalesByUserMetricLabel(this: Record<string, unknown>): string {
       return getPortfolioSalesByUserMetricLabel(
         this.portfolioSalesByUserMetric,
-        this.portfolioCopy as ((key: string, fallback: string) => string) | undefined
+        getPortfolioCopy(this)
       );
     },
 
     portfolioSalesByUserTotalValue(this: Record<string, unknown>): number {
-      const series = Array.isArray((this as { portfolioSalesByUserChartData?: { series?: Array<{ total?: number }> } }).portfolioSalesByUserChartData?.series)
-        ? (this as { portfolioSalesByUserChartData: { series: Array<{ total?: number }> } }).portfolioSalesByUserChartData.series
-        : [];
+      const series = getPortfolioSalesByUserChartSeries<{ total?: number }>(this.portfolioSalesByUserChartData);
       return getPortfolioSalesByUserTotalValue(series);
     },
 
     portfolioSalesByUserLeader(this: Record<string, unknown>) {
-      const series = Array.isArray((this as { portfolioSalesByUserChartData?: { series?: Array<{ key: string; label: string; color: string; total: number }> } }).portfolioSalesByUserChartData?.series)
-        ? (this as { portfolioSalesByUserChartData: { series: Array<{ key: string; label: string; color: string; total: number }> } }).portfolioSalesByUserChartData.series
-        : [];
+      const series = getPortfolioSalesByUserChartSeries<{ key: string; label: string; color: string; total: number }>(this.portfolioSalesByUserChartData);
       return getPortfolioSalesByUserLeader(series);
     },
 
     portfolioSalesByUserBestWeek(this: Record<string, unknown>) {
-      const chartData = (this as {
-        portfolioSalesByUserChartData?: {
-          weeks?: Array<{ label: string }>;
-          series?: Array<{ values: number[] }>;
-        };
-      }).portfolioSalesByUserChartData;
-      const weeks = Array.isArray(chartData?.weeks) ? chartData!.weeks : [];
-      const series = Array.isArray(chartData?.series) ? chartData!.series : [];
+      const chartData = this.portfolioSalesByUserChartData;
+      const weeks = getPortfolioSalesByUserChartWeeks<{ label: string }>(chartData);
+      const series = getPortfolioSalesByUserChartSeries<{ values: number[] }>(chartData);
       return getPortfolioSalesByUserBestWeek(weeks, series);
     },
 
@@ -915,8 +922,7 @@ export const PortfolioWindowDefinition = {
         googleProfilePicture?: string;
         googleAvatarLoadFailed?: boolean;
       };
-      const chartData = state.portfolioSalesByUserChartData;
-      const series = Array.isArray(chartData?.series) ? chartData.series : [];
+      const series = getPortfolioSalesByUserChartSeries<{ key: string; label: string; color: string; total: number }>(state.portfolioSalesByUserChartData);
       const workspaceMembers = Array.isArray(state.workspaceMembers) ? state.workspaceMembers : [];
       const getPresence = typeof state.getWorkspaceMemberPresenceState === "function"
         ? state.getWorkspaceMemberPresenceState
@@ -933,14 +939,9 @@ export const PortfolioWindowDefinition = {
     },
 
     portfolioSalesByUserWeekTotals(this: Record<string, unknown>) {
-      const chartData = (this as {
-        portfolioSalesByUserChartData?: {
-          weeks?: Array<{ key?: string; label: string }>;
-          series?: Array<{ values: number[] }>;
-        };
-      }).portfolioSalesByUserChartData;
-      const weeks = Array.isArray(chartData?.weeks) ? chartData!.weeks : [];
-      const series = Array.isArray(chartData?.series) ? chartData!.series : [];
+      const chartData = this.portfolioSalesByUserChartData;
+      const weeks = getPortfolioSalesByUserChartWeeks<{ key?: string; label: string }>(chartData);
+      const series = getPortfolioSalesByUserChartSeries<{ values: number[] }>(chartData);
       return getPortfolioSalesByUserWeekTotals(weeks, series);
     },
 
@@ -968,12 +969,7 @@ export const PortfolioWindowDefinition = {
     portfolioSalesByUserSelectedDrilldownWeekLabel(this: Record<string, unknown>): string {
       const selectedWeekKey = String(this.portfolioSalesByUserDrilldownWeekKey || "").trim();
       if (!selectedWeekKey) return "";
-      const chartData = (this as {
-        portfolioSalesByUserChartData?: {
-          weeks?: Array<{ key?: string; label: string }>;
-        };
-      }).portfolioSalesByUserChartData;
-      const weeks = Array.isArray(chartData?.weeks) ? chartData!.weeks : [];
+      const weeks = getPortfolioSalesByUserChartWeeks<{ key?: string; label: string }>(this.portfolioSalesByUserChartData);
       const week = weeks.find((candidate) => String(candidate.key || "") === selectedWeekKey);
       if (week?.label) return week.label;
       const rows = this.portfolioSalesByUserSelectedDrilldownRows as (() => PortfolioSalesByUserDrilldownRow[]) | undefined;
@@ -985,22 +981,16 @@ export const PortfolioWindowDefinition = {
     },
 
     portfolioSalesByUserDrilldownTitle(this: Record<string, unknown>): string {
-      const copy = this.portfolioCopy as ((key: string, fallback: string) => string) | undefined;
       const getWeekLabel = this.portfolioSalesByUserSelectedDrilldownWeekLabel as (() => string) | undefined;
       const weekLabel = typeof getWeekLabel === "function"
         ? getWeekLabel.call(this)
         : PortfolioWindowDefinition.methods.portfolioSalesByUserSelectedDrilldownWeekLabel.call(this);
-      const template = typeof copy === "function"
-        ? copy.call(this, "portfolioSalesByUserDrilldownTitle", "Sales for {{week}}")
-        : "Sales for {{week}}";
+      const template = getPortfolioCopy(this)("portfolioSalesByUserDrilldownTitle", "Sales for {{week}}");
       return template.replace(/\{\{week\}\}/g, weekLabel);
     },
 
     portfolioSalesByUserWeekDrilldownLabel(this: Record<string, unknown>, week: { label?: string } | null | undefined): string {
-      const copy = this.portfolioCopy as ((key: string, fallback: string) => string) | undefined;
-      const template = typeof copy === "function"
-        ? copy.call(this, "portfolioSalesByUserOpenWeekDrilldownLabel", "View sales for {{week}}")
-        : "View sales for {{week}}";
+      const template = getPortfolioCopy(this)("portfolioSalesByUserOpenWeekDrilldownLabel", "View sales for {{week}}");
       return template.replace(/\{\{week\}\}/g, String(week?.label || ""));
     },
 
@@ -1009,10 +999,7 @@ export const PortfolioWindowDefinition = {
       const rows = typeof getRows === "function"
         ? getRows.call(this)
         : PortfolioWindowDefinition.methods.portfolioSalesByUserSelectedDrilldownRows.call(this);
-      const copy = this.portfolioCopy as ((key: string, fallback: string) => string) | undefined;
-      const getCopy = (key: string, fallback: string): string => (
-        typeof copy === "function" ? copy.call(this, key, fallback) : fallback
-      );
+      const getCopy = getPortfolioCopy(this);
       const format = this.fmtCurrency as ((value: number | null | undefined, decimals?: number) => string) | undefined;
       const formatCurrency = (value: number): string => `$${typeof format === "function" ? format.call(this, value) : value.toFixed(2)}`;
       const formatSigned = this.portfolioSignedCurrency as ((value: number | null | undefined, includePositiveSign?: boolean) => string) | undefined;
@@ -1031,13 +1018,13 @@ export const PortfolioWindowDefinition = {
     },
 
     portfolioSalesByUserSubtitle(): string {
-      return getPortfolioSalesByUserSubtitle(this.portfolioCopy as ((key: string, fallback: string) => string) | undefined);
+      return getPortfolioSalesByUserSubtitle(getPortfolioCopy(this));
     },
 
     portfolioSalesByUserAriaLabel(this: Record<string, unknown>): string {
       return getPortfolioSalesByUserAriaLabel(
         this.portfolioSalesByUserMetric,
-        this.portfolioCopy as ((key: string, fallback: string) => string) | undefined
+        getPortfolioCopy(this)
       );
     },
 

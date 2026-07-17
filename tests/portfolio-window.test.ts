@@ -122,9 +122,10 @@ test("PortfolioWindow lot filter item slot does not depend on the old Vuetify ra
 
 test("PortfolioWindow uses one profit-led pulse panel instead of duplicate KPI strips", () => {
   const template = readFileSync("src/components/windows/portfolio/PortfolioWindow.html", "utf8");
+  const definition = readFileSync("src/components/windows/portfolio/PortfolioWindow.definition.ts", "utf8");
 
   assert.match(template, /<portfolio-pulse-panel/);
-  assert.match(template, /portfolioPulseCurrentProfitLabel/);
+  assert.match(definition, /portfolioPulseCurrentProfitLabel/);
   assert.doesNotMatch(template, /portfolio-kpi-carousel-shell/);
   assert.doesNotMatch(template, /<portfolio-kpi-card/);
 });

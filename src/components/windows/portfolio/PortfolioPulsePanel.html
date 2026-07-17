@@ -1,25 +1,25 @@
-<section class="portfolio-pulse-panel" :class="`is-${profitTone}`">
+<section class="portfolio-pulse-panel" :class="`is-${model.profitTone}`">
   <div class="portfolio-pulse-main">
     <div class="portfolio-pulse-eyebrow">
       <v-icon size="16">mdi-pulse</v-icon>
-      <span>{{ title }}</span>
+      <span>{{ model.title }}</span>
     </div>
 
     <div class="portfolio-pulse-profit">
-      <div class="portfolio-pulse-profit__label">{{ profitLabel }}</div>
-      <div class="portfolio-pulse-profit__value" :class="`is-${profitTone}`">
-        {{ profitValue }}
+      <div class="portfolio-pulse-profit__label">{{ model.profitLabel }}</div>
+      <div class="portfolio-pulse-profit__value" :class="`is-${model.profitTone}`">
+        {{ model.profitValue }}
       </div>
       <div class="portfolio-pulse-profit__meta">
-        <span>{{ scopeLabel }}</span>
+        <span>{{ model.scopeLabel }}</span>
         <span aria-hidden="true">•</span>
-        <span>{{ profitableSummary }}</span>
+        <span>{{ model.profitableSummary }}</span>
       </div>
     </div>
 
-    <div class="portfolio-pulse-stats portfolio-pulse-stat-rail" :aria-label="summaryLabel">
+    <div class="portfolio-pulse-stats portfolio-pulse-stat-rail" :aria-label="model.summaryLabel">
       <div
-        v-for="stat in stats"
+        v-for="stat in model.stats"
         :key="stat.key"
         class="portfolio-pulse-stat"
         :class="[`is-${stat.tone}`, `is-${stat.key}`]"
@@ -36,10 +36,10 @@
     </div>
   </div>
 
-  <aside class="portfolio-pulse-insights portfolio-pulse-insights--actions" :aria-label="insightsTitle">
+  <aside class="portfolio-pulse-insights portfolio-pulse-insights--actions" :aria-label="model.insightsTitle">
     <div class="portfolio-pulse-insights__head">
       <v-icon size="16">mdi-lightbulb-on-outline</v-icon>
-      <span>{{ insightsTitle }}</span>
+      <span>{{ model.insightsTitle }}</span>
     </div>
     <div
       v-if="primaryInsight"

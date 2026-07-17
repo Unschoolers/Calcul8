@@ -21,57 +21,35 @@ export type PortfolioPulseDisplayInsight = {
   tone: PortfolioPulseTone;
 };
 
+/** The pulse panel receives one display model instead of window-state fragments. */
+export type PortfolioPulsePanelModel = {
+  title: string;
+  profitLabel: string;
+  profitValue: string;
+  profitTone: PortfolioPulseTone;
+  scopeLabel: string;
+  profitableSummary: string;
+  summaryLabel: string;
+  stats: PortfolioPulseStat[];
+  insightsTitle: string;
+  insights: PortfolioPulseDisplayInsight[];
+};
+
 export const PortfolioPulsePanel = defineComponent({
   name: "PortfolioPulsePanel",
   props: {
-    title: {
-      type: String,
+    model: {
+      type: Object as PropType<PortfolioPulsePanelModel>,
       required: true
-    },
-    profitLabel: {
-      type: String,
-      required: true
-    },
-    profitValue: {
-      type: String,
-      required: true
-    },
-    profitTone: {
-      type: String as PropType<PortfolioPulseTone>,
-      required: true
-    },
-    scopeLabel: {
-      type: String,
-      required: true
-    },
-    profitableSummary: {
-      type: String,
-      required: true
-    },
-    summaryLabel: {
-      type: String,
-      required: true
-    },
-    stats: {
-      type: Array as PropType<PortfolioPulseStat[]>,
-      default: () => []
-    },
-    insightsTitle: {
-      type: String,
-      required: true
-    },
-    insights: {
-      type: Array as PropType<PortfolioPulseDisplayInsight[]>,
-      default: () => []
     }
   },
   computed: {
     primaryInsight(): PortfolioPulseDisplayInsight | null {
-      return this.insights[0] ?? null;
+      return this.model.insights[0] ?? null;
     },
 
     secondaryInsights(): PortfolioPulseDisplayInsight[] {
-      return this.insights.slice(1);
+      return this.model.insights.slice(1);
     }
   }
 });

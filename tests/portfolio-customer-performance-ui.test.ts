@@ -12,22 +12,23 @@ describe("portfolio customer performance UI", () => {
     assert.match(definition, /portfolioPerformanceView/);
     assert.match(definition, /portfolioLotPerformanceSortKey/);
     assert.match(definition, /portfolioCustomerPerformanceSortKey/);
-    assert.match(template, /portfolioPerformanceSheetTitle/);
+    assert.match(definition, /portfolioPerformanceSheetTitle/);
     assert.match(template, /<portfolio-performance-sheet/);
     assert.match(sheetTemplate, /portfolio-performance-sheet-switch/);
     assert.match(sheetTemplate, /portfolio-performance-sheet-switch__summary/);
     assert.match(sheetTemplate, /portfolio-performance-mode-toggle/);
     assert.match(sheetTemplate, /viewModeLabel/);
-    assert.match(template, /portfolioPerformanceLotsViewLabel/);
-    assert.match(template, /portfolioPerformanceCustomersViewLabel/);
+    assert.match(definition, /portfolioPerformanceLotsViewLabel/);
+    assert.match(definition, /portfolioPerformanceCustomersViewLabel/);
     assert.match(template, /portfolio-customer-performance/);
-    assert.match(template, /customerPerformanceRows/);
+    assert.match(definition, /customerPerformanceRows/);
     assert.match(template, /<buyer-quick-view-modal/);
     assert.match(component, /BuyerQuickViewModal/);
   });
 
   test("lot performance uses the same responsive grid contract as customer performance", () => {
     const template = readFileSync("src/components/windows/portfolio/PortfolioWindow.html", "utf8");
+    const definition = readFileSync("src/components/windows/portfolio/PortfolioWindow.definition.ts", "utf8");
     const sheetTemplate = readFileSync("src/components/windows/portfolio/PortfolioPerformanceSheet.html", "utf8");
     const gridTemplate = readFileSync("src/components/windows/portfolio/PortfolioPerformanceGrid.html", "utf8");
     const gridComponent = readFileSync("src/components/windows/portfolio/PortfolioPerformanceGrid.ts", "utf8");
@@ -37,8 +38,8 @@ describe("portfolio customer performance UI", () => {
 
     assert.match(template, /portfolio-lot-performance/);
     assert.match(sheetTemplate, /<portfolio-performance-grid/);
-    assert.match(template, /portfolioLotPerformanceGridColumns\(\)/);
-    assert.match(template, /portfolioCustomerPerformanceGridColumns\(\)/);
+    assert.match(definition, /portfolioLotPerformanceGridColumns/);
+    assert.match(definition, /portfolioCustomerPerformanceGridColumns/);
     assert.match(gridTemplate, /portfolio-performance-grid__head/);
     assert.match(template, /portfolio-performance-grid__row/);
     assert.match(template, /portfolioLotColumnNameLabel/);
@@ -46,7 +47,7 @@ describe("portfolio customer performance UI", () => {
     assert.match(template, /portfolioLotColumnSoldMarginLabel/);
     assert.match(template, /portfolioLotColumnRiskLabel/);
     assert.match(template, /portfolioLotColumnProfitLabel/);
-    assert.match(template, /portfolioPerformanceSortLabel/);
+    assert.match(definition, /portfolioPerformanceSortLabel/);
     assert.match(gridTemplate, /portfolio-performance-grid__sort-button/);
     assert.match(gridTemplate, /portfolio-performance-grid__sort-label/);
     assert.doesNotMatch(template, /class="sr-only"/);

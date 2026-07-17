@@ -12,3 +12,4 @@ export const configMethods: ConfigMethods = {
   ...configIoMethods,
   ...configPricingMethods
 };
+  

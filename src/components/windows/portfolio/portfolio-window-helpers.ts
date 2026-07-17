@@ -1,5 +1,5 @@
 type PortfolioChartView = "breakdown" | "trend" | "sellthrough" | "margin";
-type PortfolioCopyFn = (key: string, fallback: string) => string;
+export type PortfolioCopyFn = (key: string, fallback: string) => string;
 
 type PortfolioPulseRow = {
   lotId?: number;
@@ -34,6 +34,18 @@ function resolvePortfolioCopy(
   } catch {
     return fallback;
   }
+}
+
+/**
+ * Adapts the window's optional translation method once at the boundary so
+ * individual portfolio view methods can stay focused on their own data.
+ */
+export function getPortfolioCopy(context: Record<string, unknown>): PortfolioCopyFn {
+  const copy = context.portfolioCopy;
+  if (typeof copy !== "function") {
+    return (_key, fallback) => fallback;
+  }
+  return (key, fallback) => (copy as PortfolioCopyFn).call(context, key, fallback);
 }
 
 export function getNextPortfolioChartView(current: unknown): PortfolioChartView {
@@ -101,6 +113,23 @@ export function getPortfolioSalesByUserMetricLabel(metric: unknown, translate?: 
     return resolvePortfolioCopy(translate, "portfolioSalesByUserMetricCountLabel", "Count");
   }
   return resolvePortfolioCopy(translate, "portfolioSalesByUserMetricRevenueLabel", "Revenue");
+}
+
+function getPortfolioSalesByUserChartItems<T>(
+  chartData: unknown,
+  key: "series" | "weeks"
+): T[] {
+  if (!chartData || typeof chartData !== "object") return [];
+  const items = (chartData as Record<string, unknown>)[key];
+  return Array.isArray(items) ? items as T[] : [];
+}
+
+export function getPortfolioSalesByUserChartSeries<T>(chartData: unknown): T[] {
+  return getPortfolioSalesByUserChartItems<T>(chartData, "series");
+}
+
+export function getPortfolioSalesByUserChartWeeks<T>(chartData: unknown): T[] {
+  return getPortfolioSalesByUserChartItems<T>(chartData, "weeks");
 }
 
 export function getPortfolioSalesByUserTotalValue(

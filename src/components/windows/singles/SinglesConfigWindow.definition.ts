@@ -198,6 +198,33 @@ type SinglesWindowThis = {
   [key: string]: unknown;
 };
 
+/** Resolves the computed list in both Vue and direct controller-method tests. */
+function getMobileSortedSinglesRows(context: SinglesWindowThis): SinglesPurchaseEntry[] {
+  const source = context.mobileSortedSinglesPurchases as (() => SinglesPurchaseEntry[]) | SinglesPurchaseEntry[] | undefined;
+  const rows = typeof source === "function" ? source.call(context) : source ?? context.visibleSinglesPurchases;
+  return Array.isArray(rows) ? rows as SinglesPurchaseEntry[] : [];
+}
+
+function getSinglesTotalQuantity(entry: SinglesPurchaseEntry): number {
+  const quantity = Number(entry.quantity);
+  return Number.isFinite(quantity) && quantity > 0 ? Math.floor(quantity) : 0;
+}
+
+function getDesktopSinglesSortValue(
+  context: SinglesWindowThis,
+  entry: SinglesPurchaseEntry,
+  sortBy: SinglesDesktopSortKeyWithMeta
+): string | number {
+  if (sortBy === "item" || sortBy === "cardNumber" || sortBy === "condition" || sortBy === "language") {
+    const field = sortBy === "item" ? "item" : sortBy;
+    return String(entry[field] || "").trim();
+  }
+  const quantity = getSinglesTotalQuantity(entry);
+  if (sortBy === "cost") return Math.max(0, (Number(entry.cost) || 0) * quantity);
+  if (sortBy === "quantity") return quantity;
+  return context.getSinglesEntryMarketTotalInSellingCurrency(entry, quantity);
+}
+
 export const singlesConfigWindowDefinition = {
   name: "SinglesConfigWindow",
   props: {
@@ -286,15 +313,8 @@ export const singlesConfigWindowDefinition = {
     },
 
     mobileRenderedSinglesPurchases(this: SinglesWindowThis): SinglesPurchaseEntry[] {
-      const getSortedRows = this.mobileSortedSinglesPurchases as (() => SinglesPurchaseEntry[]) | SinglesPurchaseEntry[] | undefined;
-      const resolvedRows = typeof getSortedRows === "function"
-        ? getSortedRows.call(this)
-        : (getSortedRows ?? this.visibleSinglesPurchases);
-      const rows = Array.isArray(resolvedRows)
-        ? resolvedRows as SinglesPurchaseEntry[]
-        : [];
       const cappedCount = Math.max(0, Math.floor(Number(this.mobileRenderCount) || 0));
-      return rows.slice(0, cappedCount);
+      return getMobileSortedSinglesRows(this).slice(0, cappedCount);
     },
 
     mobileSortedSinglesPurchases(this: SinglesWindowThis): SinglesPurchaseEntry[] {
@@ -327,37 +347,19 @@ export const singlesConfigWindowDefinition = {
     },
 
     hasMoreMobileSinglesRows(this: SinglesWindowThis): boolean {
-      const getSortedRows = this.mobileSortedSinglesPurchases as (() => SinglesPurchaseEntry[]) | SinglesPurchaseEntry[] | undefined;
-      const resolvedRows = typeof getSortedRows === "function"
-        ? getSortedRows.call(this)
-        : (getSortedRows ?? this.visibleSinglesPurchases);
-      const totalRows = Array.isArray(resolvedRows)
-        ? resolvedRows.length
-        : 0;
+      const totalRows = getMobileSortedSinglesRows(this).length;
       const renderedCount = Math.max(0, Math.floor(Number(this.mobileRenderCount) || 0));
       return totalRows > renderedCount;
     },
 
     remainingMobileSinglesRows(this: SinglesWindowThis): number {
-      const getSortedRows = this.mobileSortedSinglesPurchases as (() => SinglesPurchaseEntry[]) | SinglesPurchaseEntry[] | undefined;
-      const resolvedRows = typeof getSortedRows === "function"
-        ? getSortedRows.call(this)
-        : (getSortedRows ?? this.visibleSinglesPurchases);
-      const totalRows = Array.isArray(resolvedRows)
-        ? resolvedRows.length
-        : 0;
+      const totalRows = getMobileSortedSinglesRows(this).length;
       const renderedCount = Math.max(0, Math.floor(Number(this.mobileRenderCount) || 0));
       return Math.max(0, totalRows - renderedCount);
     },
 
     nextMobileSinglesBatchCount(this: SinglesWindowThis): number {
-      const getSortedRows = this.mobileSortedSinglesPurchases as (() => SinglesPurchaseEntry[]) | SinglesPurchaseEntry[] | undefined;
-      const resolvedRows = typeof getSortedRows === "function"
-        ? getSortedRows.call(this)
-        : (getSortedRows ?? this.visibleSinglesPurchases);
-      const totalRows = Array.isArray(resolvedRows)
-        ? resolvedRows.length
-        : 0;
+      const totalRows = getMobileSortedSinglesRows(this).length;
       const renderedCount = Math.max(0, Math.floor(Number(this.mobileRenderCount) || 0));
       const remainingRows = Math.max(0, totalRows - renderedCount);
       return Math.min(MOBILE_RENDER_BATCH_COUNT, remainingRows);
@@ -373,56 +375,18 @@ export const singlesConfigWindowDefinition = {
       const sortBy = this.desktopSortBy;
       const direction = this.desktopSortDesc ? -1 : 1;
       const withIndex = rows.map((entry, index) => ({ entry, index }));
-      const getTotalQuantity = (entry: SinglesPurchaseEntry): number => {
-        const totalQuantity = Number(entry.quantity);
-        if (!Number.isFinite(totalQuantity) || totalQuantity <= 0) return 0;
-        return Math.floor(totalQuantity);
-      };
 
       withIndex.sort((a, b) => {
-        const entryA = a.entry;
-        const entryB = b.entry;
-
-        if (sortBy === "item" || sortBy === "cardNumber" || sortBy === "condition" || sortBy === "language") {
-          const valueA = String(
-            sortBy === "item"
-              ? entryA.item
-              : sortBy === "cardNumber"
-                ? entryA.cardNumber || ""
-                : sortBy === "condition"
-                  ? entryA.condition || ""
-                  : entryA.language || ""
-          ).trim();
-          const valueB = String(
-            sortBy === "item"
-              ? entryB.item
-              : sortBy === "cardNumber"
-                ? entryB.cardNumber || ""
-                : sortBy === "condition"
-                  ? entryB.condition || ""
-                  : entryB.language || ""
-          ).trim();
+        const valueA = getDesktopSinglesSortValue(this, a.entry, sortBy);
+        const valueB = getDesktopSinglesSortValue(this, b.entry, sortBy);
+        if (typeof valueA === "string" && typeof valueB === "string") {
           const compare = compareLocalizedText(valueA, valueB, this?.preferredLanguage || "");
           if (compare !== 0) return compare * direction;
           return a.index - b.index;
         }
-
-        const valueA = sortBy === "cost"
-          ? Math.max(0, (Number(entryA.cost) || 0) * getTotalQuantity(entryA))
-          : sortBy === "quantity"
-            ? getTotalQuantity(entryA)
-            : sortBy === "marketValue"
-              ? this.getSinglesEntryMarketTotalInSellingCurrency(entryA, getTotalQuantity(entryA))
-              : 0;
-        const valueB = sortBy === "cost"
-          ? Math.max(0, (Number(entryB.cost) || 0) * getTotalQuantity(entryB))
-          : sortBy === "quantity"
-            ? getTotalQuantity(entryB)
-            : sortBy === "marketValue"
-              ? this.getSinglesEntryMarketTotalInSellingCurrency(entryB, getTotalQuantity(entryB))
-              : 0;
-
-        if (valueA !== valueB) return (valueA - valueB) * direction;
+        const numericA = Number(valueA);
+        const numericB = Number(valueB);
+        if (numericA !== numericB) return (numericA - numericB) * direction;
         return a.index - b.index;
       });
 
@@ -584,13 +548,7 @@ export const singlesConfigWindowDefinition = {
 
     loadMoreMobileRows(this: SinglesWindowThis): void {
       const nextCount = this.mobileRenderCount + MOBILE_RENDER_BATCH_COUNT;
-      const getSortedRows = this.mobileSortedSinglesPurchases as (() => SinglesPurchaseEntry[]) | SinglesPurchaseEntry[] | undefined;
-      const resolvedRows = typeof getSortedRows === "function"
-        ? getSortedRows.call(this)
-        : (getSortedRows ?? this.visibleSinglesPurchases);
-      const maxCount = Array.isArray(resolvedRows)
-        ? resolvedRows.length
-        : 0;
+      const maxCount = getMobileSortedSinglesRows(this).length;
       this.mobileRenderCount = Math.min(nextCount, maxCount);
     },
 
