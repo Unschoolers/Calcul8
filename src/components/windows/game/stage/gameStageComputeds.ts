@@ -1,280 +1,264 @@
 import { translateAppMessage } from "../../../../app-core/i18n/index.ts";
-import type { WheelConfig } from "../../../../types/app.ts";
+import type { GameWindowThis } from "../coordinator/gameControllerState.ts";
 import { getWheelDisplaySlots } from "../coordinator/gameComputedShared.ts";
-import type { WheelSlot } from "../services/wheelSlots.ts";
 import { getTierPrizeGameAdapter } from "../services/gameAdapters.ts";
 
+type GameStageContext = Omit<Partial<GameWindowThis>, "gameSpectatorSessionStatus"> & {
+  gameSpectatorSessionStatus?: string;
+  preferredLanguage?: string;
+  isWorkspaceScopeActive?: boolean;
+  isCurrentWorkspaceOwner?: boolean;
+  wheelSessionRevenue?: number;
+  wheelSessionProfitDisplay?: string;
+  wheelSessionCost?: number;
+  wheelSessionProfitClass?: string;
+  wheelSessionMarginHint?: string;
+  expectedMarginHint?: string;
+  canApplyWheelConfig?: boolean;
+};
+
+interface StageSummaryCard {
+  id: string;
+  label: string;
+  value: string | number;
+  meta: string;
+  valueClass?: string;
+  valueStyle?: string;
+}
+
+function adapterContext(context: GameStageContext): Record<string, unknown> {
+  return context as unknown as Record<string, unknown>;
+}
+
+function translate(
+  context: GameStageContext,
+  key: string,
+  params?: Record<string, string | number>
+): string {
+  return translateAppMessage(String(context.preferredLanguage ?? ""), key, params);
+}
+
 export const gameStageComputeds = {
-  wheelStageTitle(this: Record<string, unknown>): string {
-    const displayConfig = (this as Record<string, unknown>).wheelDisplayConfig as WheelConfig | null;
-    return displayConfig?.name || translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelStageTitleFallback");
+  wheelStageTitle(this: GameStageContext): string {
+    return this.wheelDisplayConfig?.name || translate(this, "wheelStageTitleFallback");
   },
 
-  wheelStageModeLabel(this: Record<string, unknown>): string {
-    return (this as Record<string, unknown>).wheelMode === "config"
-      ? translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelStageModeConfigLabel")
-      : translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelStageModeLiveLabel");
+  wheelStageModeLabel(this: GameStageContext): string {
+    return translate(this, this.wheelMode === "config" ? "wheelStageModeConfigLabel" : "wheelStageModeLiveLabel");
   },
 
-  wheelStageSlotsLabel(this: Record<string, unknown>): string {
-    const config = (this as Record<string, unknown>).wheelDisplayConfig as WheelConfig | null;
-    return getTierPrizeGameAdapter(config).stageSlotsLabel(this as Record<string, unknown>, config);
+  wheelStageSlotsLabel(this: GameStageContext): string {
+    const config = this.wheelDisplayConfig ?? null;
+    return getTierPrizeGameAdapter(config).stageSlotsLabel(adapterContext(this), config);
   },
 
-  wheelStageSpinPriceLabel(this: Record<string, unknown>): string {
-    const displayConfig = (this as Record<string, unknown>).wheelDisplayConfig as WheelConfig | null;
-    return translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelStageSpinPriceValue", {
-      amount: Number(displayConfig?.spinPrice || 0).toFixed(2)
+  wheelStageSpinPriceLabel(this: GameStageContext): string {
+    return translate(this, "wheelStageSpinPriceValue", {
+      amount: Number(this.wheelDisplayConfig?.spinPrice || 0).toFixed(2)
     });
   },
 
-  wheelPresentationToggleTitle(this: Record<string, unknown>): string {
-    return (this as Record<string, unknown>).wheelPresentationMode
-      ? translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelPresentationToggleLabel")
-      : translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelPresentationModeLabel");
+  wheelPresentationToggleTitle(this: GameStageContext): string {
+    return translate(this, this.wheelPresentationMode ? "wheelPresentationToggleLabel" : "wheelPresentationModeLabel");
   },
 
-  wheelSoundToggleTitle(this: Record<string, unknown>): string {
-    return (this as Record<string, unknown>).wheelSoundEnabled === false
-      ? translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelSoundEnableLabel")
-      : translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelSoundDisableLabel");
+  wheelSoundToggleTitle(this: GameStageContext): string {
+    return translate(this, this.wheelSoundEnabled === false ? "wheelSoundEnableLabel" : "wheelSoundDisableLabel");
   },
 
-  wheelMotionToggleTitle(this: Record<string, unknown>): string {
-    return (this as Record<string, unknown>).wheelReducedMotion === true
-      ? translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelMotionEnableLabel")
-      : translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelMotionReduceLabel");
+  wheelMotionToggleTitle(this: GameStageContext): string {
+    return translate(this, this.wheelReducedMotion ? "wheelMotionEnableLabel" : "wheelMotionReduceLabel");
   },
 
-  gameSpectatorActionLabel(this: Record<string, unknown>): string {
-    const preferredLanguage = String((this as Record<string, unknown>).preferredLanguage ?? "");
-    if ((this as Record<string, unknown>).gameSpectatorSessionStatus === "ended") {
-      return translateAppMessage(preferredLanguage, "gameSpectatorActionEnded");
+  gameSpectatorActionLabel(this: GameStageContext): string {
+    if (this.gameSpectatorSessionStatus === "ended") {
+      return translate(this, "gameSpectatorActionEnded");
     }
-    const baseLabel = translateAppMessage(preferredLanguage, "gameSpectatorAction");
-    const count = Math.max(0, Math.floor(Number((this as Record<string, unknown>).gameSpectatorConnectedCount) || 0));
-    return count > 0 ? `${count} ${baseLabel}` : baseLabel;
+    const label = translate(this, "gameSpectatorAction");
+    const count = Math.max(0, Math.floor(Number(this.gameSpectatorConnectedCount) || 0));
+    return count > 0 ? `${count} ${label}` : label;
   },
 
-  gameSpectatorDialogHint(this: Record<string, unknown>): string {
-    const preferredLanguage = String((this as Record<string, unknown>).preferredLanguage ?? "");
-    return (this as Record<string, unknown>).gameSpectatorSessionStatus === "ended"
-      ? translateAppMessage(preferredLanguage, "gameSpectatorDialogEndedBody")
-      : translateAppMessage(preferredLanguage, "gameSpectatorDialogBody");
+  gameSpectatorDialogHint(this: GameStageContext): string {
+    return translate(this, this.gameSpectatorSessionStatus === "ended"
+      ? "gameSpectatorDialogEndedBody"
+      : "gameSpectatorDialogBody");
   },
 
-  gameSpectatorStartButtonLabel(this: Record<string, unknown>): string {
-    const preferredLanguage = String((this as Record<string, unknown>).preferredLanguage ?? "");
-    return (this as Record<string, unknown>).gameSpectatorSessionStatus === "ended"
-      ? translateAppMessage(preferredLanguage, "gameSpectatorRestartAction")
-      : translateAppMessage(preferredLanguage, "gameSpectatorStartAction");
+  gameSpectatorStartButtonLabel(this: GameStageContext): string {
+    return translate(this, this.gameSpectatorSessionStatus === "ended"
+      ? "gameSpectatorRestartAction"
+      : "gameSpectatorStartAction");
   },
 
-  wheelSpinButtonIcon(this: Record<string, unknown>): string {
-    const config = (this as Record<string, unknown>).wheelDisplayConfig as WheelConfig | null;
-    return getTierPrizeGameAdapter(config).primaryActionIcon(this as Record<string, unknown>, config);
+  wheelSpinButtonIcon(this: GameStageContext): string {
+    const config = this.wheelDisplayConfig ?? null;
+    return getTierPrizeGameAdapter(config).primaryActionIcon(adapterContext(this), config);
   },
 
-  wheelSpinButtonLabel(this: Record<string, unknown>): string {
-    const config = (this as Record<string, unknown>).wheelDisplayConfig as WheelConfig | null;
-    return getTierPrizeGameAdapter(config).primaryActionLabel(this as Record<string, unknown>, config);
+  wheelSpinButtonLabel(this: GameStageContext): string {
+    const config = this.wheelDisplayConfig ?? null;
+    return getTierPrizeGameAdapter(config).primaryActionLabel(adapterContext(this), config);
   },
 
-  wheelAutospinButtonIcon(this: Record<string, unknown>): string {
-    return (this as Record<string, unknown>).wheelAutospinEnabled ? "mdi-stop-circle-outline" : "mdi-autorenew";
+  wheelAutospinButtonIcon(this: GameStageContext): string {
+    return this.wheelAutospinEnabled ? "mdi-stop-circle-outline" : "mdi-autorenew";
   },
 
-  wheelAutospinButtonLabel(this: Record<string, unknown>): string {
-    return (this as Record<string, unknown>).wheelAutospinEnabled
-      ? translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelAutospinStopAction")
-      : translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelAutospinStartAction");
+  wheelAutospinButtonLabel(this: GameStageContext): string {
+    return translate(this, this.wheelAutospinEnabled ? "wheelAutospinStopAction" : "wheelAutospinStartAction");
   },
 
-  wheelAutospinCompactLabel(this: Record<string, unknown>): string {
-    return (this as Record<string, unknown>).wheelAutospinEnabled
-      ? translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelAutospinCompactStopAction")
-      : translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelAutospinCompactAction");
+  wheelAutospinCompactLabel(this: GameStageContext): string {
+    return translate(this, this.wheelAutospinEnabled ? "wheelAutospinCompactStopAction" : "wheelAutospinCompactAction");
   },
 
-  wheelAutospinToggleDisabled(this: Record<string, unknown>): boolean {
-    if ((this as Record<string, unknown>).wheelMode !== "config") return true;
-    if ((this as Record<string, unknown>).wheelAutospinEnabled) return false;
-    return Boolean(
-      (this as Record<string, unknown>).wheelConfigSyncPending
-      ||
-      !(((this as Record<string, unknown>).wheelDisplaySlots || []) as WheelSlot[]).length
-      || (this as Record<string, unknown>).wheelEndingSession
-    );
+  wheelAutospinToggleDisabled(this: GameStageContext): boolean {
+    if (this.wheelMode !== "config") return true;
+    if (this.wheelAutospinEnabled) return false;
+    return this.wheelConfigSyncPending === true || !(this.wheelDisplaySlots?.length) || this.wheelEndingSession === true;
   },
 
-  wheelResetButtonLabel(this: Record<string, unknown>): string {
-    return translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelResetSessionAction");
+  wheelResetButtonLabel(this: GameStageContext): string {
+    return translate(this, "wheelResetSessionAction");
   },
 
-  wheelResetShortcutDisabled(this: Record<string, unknown>): boolean {
-    const isConfigMode = (this as Record<string, unknown>).wheelMode === "config";
-    return Boolean(
-      !(this as Record<string, unknown>).wheelDisplayConfig
-      || (this as Record<string, unknown>).wheelSpinning
-      || (this as Record<string, unknown>).wheelGridRevealAnimating
-      || (this as Record<string, unknown>).wheelGridResetAnimating
-      || (this as Record<string, unknown>).wheelEndingSession
-      || (this as Record<string, unknown>).wheelChaseDialog
-      || (!isConfigMode && (this as Record<string, unknown>).isWorkspaceScopeActive && !(this as Record<string, unknown>).isCurrentWorkspaceOwner)
-    );
+  wheelResetShortcutDisabled(this: GameStageContext): boolean {
+    const lacksWorkspaceControl = this.wheelMode !== "config"
+      && this.isWorkspaceScopeActive === true
+      && this.isCurrentWorkspaceOwner !== true;
+    return !this.wheelDisplayConfig
+      || this.wheelSpinning
+      || this.wheelGridRevealAnimating
+      || this.wheelGridResetAnimating
+      || this.wheelEndingSession
+      || this.wheelChaseDialog
+      || lacksWorkspaceControl;
   },
 
-  wheelPrimarySpinDisabled(this: Record<string, unknown>): boolean {
-    const isConfigMode = (this as Record<string, unknown>).wheelMode === "config";
-    return Boolean(
-      (this as Record<string, unknown>).wheelSpinning
-      || (this as Record<string, unknown>).wheelGridRevealAnimating
-      || (isConfigMode && (this as Record<string, unknown>).wheelConfigSyncPending)
-      || (isConfigMode && (this as Record<string, unknown>).wheelAutospinEnabled)
-      || !(((this as Record<string, unknown>).wheelDisplaySlots || []) as WheelSlot[]).length
-      || (this as Record<string, unknown>).wheelEndingSession
-      || (this as Record<string, unknown>).wheelChaseDialog
-      || (!isConfigMode && (this as Record<string, unknown>).wheelSpinBlockedReason)
-      || (!isConfigMode && (this as Record<string, unknown>).isWorkspaceScopeActive && !(this as Record<string, unknown>).isCurrentWorkspaceOwner)
-    );
+  wheelPrimarySpinDisabled(this: GameStageContext): boolean {
+    const isConfigMode = this.wheelMode === "config";
+    const lacksWorkspaceControl = !isConfigMode
+      && this.isWorkspaceScopeActive === true
+      && this.isCurrentWorkspaceOwner !== true;
+    return this.wheelSpinning
+      || this.wheelGridRevealAnimating
+      || (isConfigMode && this.wheelConfigSyncPending)
+      || (isConfigMode && this.wheelAutospinEnabled)
+      || !(this.wheelDisplaySlots?.length)
+      || this.wheelEndingSession
+      || this.wheelChaseDialog
+      || (!isConfigMode && Boolean(this.wheelSpinBlockedReason))
+      || lacksWorkspaceControl;
   },
 
-  wheelStageCaption(this: Record<string, unknown>): string {
-    const config = (this as Record<string, unknown>).wheelDisplayConfig as WheelConfig | null;
-    return getTierPrizeGameAdapter(config).stageCaption(this as Record<string, unknown>, config);
+  wheelStageCaption(this: GameStageContext): string {
+    const config = this.wheelDisplayConfig ?? null;
+    return getTierPrizeGameAdapter(config).stageCaption(adapterContext(this), config);
   },
 
-  wheelCelebrationKicker(this: Record<string, unknown>): string {
-    return (this as Record<string, unknown>).wheelCelebrationPreview
-      ? translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelCelebrationPreviewKicker")
-      : translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelCelebrationLiveKicker");
+  wheelCelebrationKicker(this: GameStageContext): string {
+    return translate(this, this.wheelCelebrationPreview
+      ? "wheelCelebrationPreviewKicker"
+      : "wheelCelebrationLiveKicker");
   },
 
-  wheelConfirmTitle(this: Record<string, unknown>): string {
-    const action = (this as Record<string, unknown>).wheelConfirmAction as "reset" | "delete" | "end" | "";
-    if (action === "reset") return translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelConfirmResetTitle");
-    if (action === "end") return translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelConfirmEndTitle");
-    if (action === "delete") return translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelConfirmDeleteTitle");
+  wheelConfirmTitle(this: GameStageContext): string {
+    if (this.wheelConfirmAction === "reset") return translate(this, "wheelConfirmResetTitle");
+    if (this.wheelConfirmAction === "end") return translate(this, "wheelConfirmEndTitle");
+    if (this.wheelConfirmAction === "delete") return translate(this, "wheelConfirmDeleteTitle");
     return "";
   },
 
-  wheelConfirmBody(this: Record<string, unknown>): string {
-    const action = (this as Record<string, unknown>).wheelConfirmAction as "reset" | "delete" | "end" | "";
-    const wheelMode = (this as Record<string, unknown>).wheelMode as "config" | "live";
-    if (action === "reset") {
-      return wheelMode === "config"
-        ? translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelConfirmResetConfigBody")
-        : translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelConfirmResetLiveBody");
+  wheelConfirmBody(this: GameStageContext): string {
+    if (this.wheelConfirmAction === "reset") {
+      return translate(this, this.wheelMode === "config" ? "wheelConfirmResetConfigBody" : "wheelConfirmResetLiveBody");
     }
-    if (action === "end") {
-      return translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelConfirmEndBody");
-    }
-    if (action === "delete") {
-      return translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelConfirmDeleteBody");
-    }
+    if (this.wheelConfirmAction === "end") return translate(this, "wheelConfirmEndBody");
+    if (this.wheelConfirmAction === "delete") return translate(this, "wheelConfirmDeleteBody");
     return "";
   },
 
-  wheelConfirmButtonColor(this: Record<string, unknown>): string {
-    const action = (this as Record<string, unknown>).wheelConfirmAction as "reset" | "delete" | "end" | "";
-    return action === "reset" || action === "delete" || action === "end" ? "error" : "primary";
+  wheelConfirmButtonColor(this: GameStageContext): string {
+    return ["reset", "delete", "end"].includes(this.wheelConfirmAction ?? "") ? "error" : "primary";
   },
 
-  wheelConfirmButtonLabel(this: Record<string, unknown>): string {
-    const action = (this as Record<string, unknown>).wheelConfirmAction as "reset" | "delete" | "end" | "";
-    if (action === "reset") return translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "commonReset");
-    if (action === "end") return translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelEndSessionAction");
-    if (action === "delete") return translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "commonDelete");
+  wheelConfirmButtonLabel(this: GameStageContext): string {
+    if (this.wheelConfirmAction === "reset") return translate(this, "commonReset");
+    if (this.wheelConfirmAction === "end") return translate(this, "wheelEndSessionAction");
+    if (this.wheelConfirmAction === "delete") return translate(this, "commonDelete");
     return "";
   },
 
-  wheelLiveConfirmSummaryName(this: Record<string, unknown>): string {
-    const activeConfig = (this as Record<string, unknown>).activeWheelConfig as WheelConfig | null;
-    return activeConfig?.name || translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelStageTitleFallback");
+  wheelLiveConfirmSummaryName(this: GameStageContext): string {
+    return this.activeWheelConfig?.name || translate(this, "wheelStageTitleFallback");
   },
 
-  wheelLiveConfirmSummarySlots(this: Record<string, unknown>): number {
-    return getWheelDisplaySlots(this as Record<string, unknown>).length;
+  wheelLiveConfirmSummarySlots(this: GameStageContext): number {
+    return getWheelDisplaySlots(adapterContext(this)).length;
   },
 
-  wheelLiveConfirmSummarySpinPrice(this: Record<string, unknown>): string {
-    const activeConfig = (this as Record<string, unknown>).activeWheelConfig as WheelConfig | null;
-    return Number(activeConfig?.spinPrice || 0).toFixed(2);
+  wheelLiveConfirmSummarySpinPrice(this: GameStageContext): string {
+    return Number(this.activeWheelConfig?.spinPrice || 0).toFixed(2);
   },
 
-  wheelPendingInventoryIssuesTitle(this: Record<string, unknown>): string {
-    const issueCount = (((this as Record<string, unknown>).wheelPendingInventoryIssues || []) as unknown[]).length;
-    return translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelPendingInventoryIssuesTitle", {
-      count: issueCount,
-      suffix: issueCount === 1 ? "" : "s"
+  wheelPendingInventoryIssuesTitle(this: GameStageContext): string {
+    const count = this.wheelPendingInventoryIssues?.length ?? 0;
+    return translate(this, "wheelPendingInventoryIssuesTitle", {
+      count,
+      suffix: count === 1 ? "" : "s"
     });
   },
 
-  wheelHasRequiredLotSelection(this: Record<string, unknown>): boolean {
-    const issues = (((this as Record<string, unknown>).wheelPendingInventoryIssues || []) as Array<{
-      requiresLotSelection?: boolean;
-    }>);
-    return issues.some((entry) => entry.requiresLotSelection === true);
+  wheelHasRequiredLotSelection(this: GameStageContext): boolean {
+    return (this.wheelPendingInventoryIssues ?? []).some((entry) => entry.requiresLotSelection === true);
   },
 
-  wheelStageSummaryCards(this: Record<string, unknown>): Array<{
-    id: string;
-    label: string;
-    value: string | number;
-    meta: string;
-    valueClass?: string;
-    valueStyle?: string;
-  }> {
-    const preferredLanguage = String((this as Record<string, unknown>).preferredLanguage ?? "");
-    const mode = String((this as Record<string, unknown>).wheelMode || "config");
-    if (mode === "live") {
+  wheelStageSummaryCards(this: GameStageContext): StageSummaryCard[] {
+    if (this.wheelMode === "live") {
       return [
         {
           id: "spins",
-          label: translateAppMessage(preferredLanguage, "wheelSpinsLabel"),
-          value: Number((this as Record<string, unknown>).wheelTotalSpins || 0),
-          meta: translateAppMessage(preferredLanguage, "wheelLiveRevenueMeta", {
-            amount: Number((this as Record<string, unknown>).wheelSessionRevenue || 0).toFixed(2)
+          label: translate(this, "wheelSpinsLabel"),
+          value: Number(this.wheelTotalSpins || 0),
+          meta: translate(this, "wheelLiveRevenueMeta", {
+            amount: Number(this.wheelSessionRevenue || 0).toFixed(2)
           })
         },
         {
           id: "profit",
-          label: translateAppMessage(preferredLanguage, "wheelGrossProfitLabel"),
-          value: String((this as Record<string, unknown>).wheelSessionProfitDisplay || ""),
-          meta: translateAppMessage(preferredLanguage, "wheelLivePrizeCostMeta", {
-            amount: Number((this as Record<string, unknown>).wheelSessionCost || 0).toFixed(2)
+          label: translate(this, "wheelGrossProfitLabel"),
+          value: String(this.wheelSessionProfitDisplay || ""),
+          meta: translate(this, "wheelLivePrizeCostMeta", {
+            amount: Number(this.wheelSessionCost || 0).toFixed(2)
           }),
-          valueClass: String((this as Record<string, unknown>).wheelSessionProfitClass || "")
+          valueClass: String(this.wheelSessionProfitClass || "")
         },
         {
           id: "margin",
-          label: translateAppMessage(preferredLanguage, "wheelSessionMarginLabel"),
-          value: String((this as Record<string, unknown>).wheelSessionMarginDisplay || "—"),
-          meta: String((this as Record<string, unknown>).wheelSessionMarginHint || ""),
-          valueStyle: String((this as Record<string, unknown>).wheelSessionMarginColor || "")
+          label: translate(this, "wheelSessionMarginLabel"),
+          value: String(this.wheelSessionMarginDisplay || "—"),
+          meta: String(this.wheelSessionMarginHint || ""),
+          valueStyle: String(this.wheelSessionMarginColor || "")
         }
       ];
     }
 
+    const builderReady = this.canApplyWheelConfig === true;
     return [
       {
         id: "expected-margin",
-        label: translateAppMessage(preferredLanguage, "wheelStageExpectedMarginLabel"),
-        value: String((this as Record<string, unknown>).expectedMarginDisplay || "—"),
-        meta: String((this as Record<string, unknown>).expectedMarginHint || ""),
-        valueStyle: String((this as Record<string, unknown>).expectedMarginColor || "")
+        label: translate(this, "wheelStageExpectedMarginLabel"),
+        value: String(this.expectedMarginDisplay || "—"),
+        meta: String(this.expectedMarginHint || ""),
+        valueStyle: String(this.expectedMarginColor || "")
       },
       {
         id: "builder-status",
-        label: translateAppMessage(preferredLanguage, "wheelBuilderLabel"),
-        value: Boolean((this as Record<string, unknown>).canApplyWheelConfig)
-          ? translateAppMessage(preferredLanguage, "wheelBuilderReadyLabel")
-          : translateAppMessage(preferredLanguage, "wheelBuilderPendingLabel"),
-        meta: Boolean((this as Record<string, unknown>).canApplyWheelConfig)
-          ? translateAppMessage(preferredLanguage, "wheelBuilderReadyHelp")
-          : translateAppMessage(preferredLanguage, "wheelBuilderPendingHelp")
+        label: translate(this, "wheelBuilderLabel"),
+        value: translate(this, builderReady ? "wheelBuilderReadyLabel" : "wheelBuilderPendingLabel"),
+        meta: translate(this, builderReady ? "wheelBuilderReadyHelp" : "wheelBuilderPendingHelp")
       }
     ];
   }
 };
-

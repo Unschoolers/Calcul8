@@ -9,7 +9,7 @@ import type { GameWindowThis } from "../coordinator/gameControllerState.ts";
 
 const GAME_SPECTATOR_COUNT_POLL_MS = 10_000;
 
-type GameSpectatorVm = GameWindowThis & {
+type GameSpectatorVm = Record<string, unknown> & Partial<GameWindowThis> & {
   notify?: (message: string, color?: string) => void;
 };
 
@@ -19,12 +19,12 @@ function notifyGameSpectator(vm: GameSpectatorVm, message: string, color: string
   }
 }
 
-function isGameSpectatorConfigMode(vm: Record<string, unknown>): boolean {
+function isGameSpectatorConfigMode(vm: GameSpectatorVm): boolean {
   return String(vm.wheelMode || "") === "config";
 }
 
-function clearGameSpectatorCountPolling(vm: Record<string, unknown>): void {
-  const intervalId = vm._gameSpectatorCountPollIntervalId as number | undefined;
+function clearGameSpectatorCountPolling(vm: GameSpectatorVm): void {
+  const intervalId = vm._gameSpectatorCountPollIntervalId;
   if (intervalId != null) {
     clearInterval(intervalId);
     vm._gameSpectatorCountPollIntervalId = undefined;
@@ -33,13 +33,13 @@ function clearGameSpectatorCountPolling(vm: Record<string, unknown>): void {
 }
 
 function disableStaleGameSpectatorSession(vm: GameSpectatorVm): void {
-  clearGameSpectatorCountPolling(vm as unknown as Record<string, unknown>);
-  (vm as Record<string, unknown>).gameSpectatorSessionId = "";
-  (vm as Record<string, unknown>).gameSpectatorSessionStatus = "inactive";
-  (vm as Record<string, unknown>).gameSpectatorSessionUrl = "";
-  (vm as Record<string, unknown>).gameSpectatorSessionQrUrl = "";
-  (vm as Record<string, unknown>).gameSpectatorConnectedCount = 0;
-  vm.saveWheelSession();
+  clearGameSpectatorCountPolling(vm);
+  vm.gameSpectatorSessionId = "";
+  vm.gameSpectatorSessionStatus = "inactive";
+  vm.gameSpectatorSessionUrl = "";
+  vm.gameSpectatorSessionQrUrl = "";
+  vm.gameSpectatorConnectedCount = 0;
+  vm.saveWheelSession?.();
   notifyGameSpectator(vm, "Spectator session expired. Start spectator mode again to create a new link.", "warning");
 }
 
@@ -53,7 +53,7 @@ function mergeQueuedSpectatorStatusOverride(
 }
 
 function resolveNextSpectatorStatus(
-  vm: Record<string, unknown>,
+  vm: GameSpectatorVm,
   override?: "starting" | "live" | "ended",
   options: { preserveEnded?: boolean } = {}
 ): "starting" | "live" | "ended" {
@@ -81,12 +81,12 @@ function fallbackCopyText(value: string): boolean {
 }
 
 export const gameSpectatorMethods = {
-  openGameSpectatorDialog(this: Record<string, unknown>): void {
-    (this as Record<string, unknown>).gameSpectatorDialog = true;
+  openGameSpectatorDialog(this: GameSpectatorVm): void {
+    this.gameSpectatorDialog = true;
   },
 
-  closeGameSpectatorDialog(this: Record<string, unknown>): void {
-    (this as Record<string, unknown>).gameSpectatorDialog = false;
+  closeGameSpectatorDialog(this: GameSpectatorVm): void {
+    this.gameSpectatorDialog = false;
   },
 
   async copyGameSpectatorLink(this: GameSpectatorVm): Promise<void> {
@@ -115,29 +115,29 @@ export const gameSpectatorMethods = {
   },
 
   async startGameSpectatorMode(this: GameSpectatorVm): Promise<void> {
-    if (isGameSpectatorConfigMode(this as Record<string, unknown>)) {
+    if (isGameSpectatorConfigMode(this)) {
       notifyGameSpectator(this, "Switch to live mode before starting spectator mode.", "warning");
       return;
     }
     if ((this.gameSpectatorPublishPending as boolean) === true) return;
-    (this as Record<string, unknown>).gameSpectatorPublishPending = true;
+    this.gameSpectatorPublishPending = true;
 
     try {
-      const status = resolveNextSpectatorStatus(this as Record<string, unknown>, undefined, { preserveEnded: false });
-      const snapshot = buildGameSpectatorSnapshot(this as Record<string, unknown>, status);
+      const status = resolveNextSpectatorStatus(this, undefined, { preserveEnded: false });
+      const snapshot = buildGameSpectatorSnapshot(this, status);
       const { publicSessionId } = await createGameSpectatorSession(this as never, snapshot);
       const publicUrl = buildGameSpectatorSessionUrl(publicSessionId);
-      (this as Record<string, unknown>).gameSpectatorSessionId = publicSessionId;
-      (this as Record<string, unknown>).gameSpectatorSessionStatus = status;
-      (this as Record<string, unknown>).gameSpectatorSessionUrl = publicUrl;
-      (this as Record<string, unknown>).gameSpectatorSessionQrUrl = buildGameSpectatorQrImageUrl(publicUrl);
-      (this as Record<string, unknown>).gameSpectatorConnectedCount = 0;
+      this.gameSpectatorSessionId = publicSessionId;
+      this.gameSpectatorSessionStatus = status;
+      this.gameSpectatorSessionUrl = publicUrl;
+      this.gameSpectatorSessionQrUrl = buildGameSpectatorQrImageUrl(publicUrl);
+      this.gameSpectatorConnectedCount = 0;
       notifyGameSpectator(this, "Spectator mode is live.", "success");
     } catch (error) {
       console.warn("Failed to start spectator mode:", error);
       notifyGameSpectator(this, "Could not start spectator mode right now.", "error");
     } finally {
-      (this as Record<string, unknown>).gameSpectatorPublishPending = false;
+      this.gameSpectatorPublishPending = false;
     }
   },
 
@@ -148,25 +148,25 @@ export const gameSpectatorMethods = {
     const publicSessionId = String(this.gameSpectatorSessionId || "").trim();
     if (!publicSessionId) return;
     if (this.gameSpectatorSessionStatus === "inactive") return;
-    if (isGameSpectatorConfigMode(this as Record<string, unknown>) && statusOverride !== "ended") return;
+    if (isGameSpectatorConfigMode(this) && statusOverride !== "ended") return;
     if ((this.gameSpectatorPublishPending as boolean) === true) {
-      (this as Record<string, unknown>)._gameSpectatorPublishQueued = true;
-      (this as Record<string, unknown>)._gameSpectatorQueuedStatusOverride = mergeQueuedSpectatorStatusOverride(
-        (this as Record<string, unknown>)._gameSpectatorQueuedStatusOverride as "starting" | "live" | "ended" | undefined,
+      this._gameSpectatorPublishQueued = true;
+      this._gameSpectatorQueuedStatusOverride = mergeQueuedSpectatorStatusOverride(
+        this._gameSpectatorQueuedStatusOverride,
         statusOverride
       );
       return;
     }
 
-    (this as Record<string, unknown>).gameSpectatorPublishPending = true;
-    (this as Record<string, unknown>)._gameSpectatorPublishQueued = false;
-    (this as Record<string, unknown>)._gameSpectatorQueuedStatusOverride = undefined;
+    this.gameSpectatorPublishPending = true;
+    this._gameSpectatorPublishQueued = false;
+    this._gameSpectatorQueuedStatusOverride = undefined;
 
     try {
-      const status = resolveNextSpectatorStatus(this as Record<string, unknown>, statusOverride);
-      const snapshot = buildGameSpectatorSnapshot(this as Record<string, unknown>, status);
+      const status = resolveNextSpectatorStatus(this, statusOverride);
+      const snapshot = buildGameSpectatorSnapshot(this, status);
       await publishGameSpectatorSession(this as never, publicSessionId, snapshot);
-      (this as Record<string, unknown>).gameSpectatorSessionStatus = status;
+      this.gameSpectatorSessionStatus = status;
     } catch (error) {
       if (isGameSpectatorSessionNotFoundError(error)) {
         disableStaleGameSpectatorSession(this);
@@ -174,13 +174,14 @@ export const gameSpectatorMethods = {
       }
       console.warn("Failed to publish spectator snapshot:", error);
     } finally {
-      (this as Record<string, unknown>).gameSpectatorPublishPending = false;
+      this.gameSpectatorPublishPending = false;
     }
 
-    const queuedPublish = (this as Record<string, unknown>)._gameSpectatorPublishQueued === true;
-    const queuedStatusOverride = (this as Record<string, unknown>)._gameSpectatorQueuedStatusOverride as "starting" | "live" | "ended" | undefined;
-    (this as Record<string, unknown>)._gameSpectatorPublishQueued = false;
-    (this as Record<string, unknown>)._gameSpectatorQueuedStatusOverride = undefined;
+    // The awaited publisher may queue another snapshot through this same VM.
+    const queuedPublish = Reflect.get(this, "_gameSpectatorPublishQueued") === true;
+    const queuedStatusOverride = this._gameSpectatorQueuedStatusOverride;
+    this._gameSpectatorPublishQueued = false;
+    this._gameSpectatorQueuedStatusOverride = undefined;
     const replayPublish = this.publishGameSpectatorSessionSnapshot;
     if (queuedPublish && typeof replayPublish === "function") {
       await replayPublish.call(this, queuedStatusOverride);
@@ -197,16 +198,14 @@ export const gameSpectatorMethods = {
     const publicSessionId = String(this.gameSpectatorSessionId || "").trim();
     if (!publicSessionId) return;
     try {
-      (this as Record<string, unknown>).gameSpectatorSessionStatus = "ended";
-      (this as Record<string, unknown>).gameSpectatorConnectedCount = 0;
-      await (this as Record<string, unknown> & {
-        publishGameSpectatorSessionSnapshot: (statusOverride?: "starting" | "live" | "ended") => Promise<void>;
-      }).publishGameSpectatorSessionSnapshot("ended");
+      this.gameSpectatorSessionStatus = "ended";
+      this.gameSpectatorConnectedCount = 0;
+      await this.publishGameSpectatorSessionSnapshot?.("ended");
       if (options.notifyOnSuccess !== false) {
         notifyGameSpectator(this, "Spectator mode ended. The public page is now a recap.", "success");
       }
       if (options.closeDialog !== false) {
-        (this as Record<string, unknown>).gameSpectatorDialog = false;
+        this.gameSpectatorDialog = false;
       }
     } catch (error) {
       console.warn("Failed to end spectator mode:", error);
@@ -214,31 +213,31 @@ export const gameSpectatorMethods = {
     }
   },
 
-  syncGameSpectatorLinks(this: Record<string, unknown>): void {
+  syncGameSpectatorLinks(this: GameSpectatorVm): void {
     const publicSessionId = String(this.gameSpectatorSessionId || "").trim();
     if (!publicSessionId) {
-      (this as Record<string, unknown>).gameSpectatorSessionUrl = "";
-      (this as Record<string, unknown>).gameSpectatorSessionQrUrl = "";
+      this.gameSpectatorSessionUrl = "";
+      this.gameSpectatorSessionQrUrl = "";
       return;
     }
     const publicUrl = buildGameSpectatorSessionUrl(publicSessionId);
-    (this as Record<string, unknown>).gameSpectatorSessionUrl = publicUrl;
-    (this as Record<string, unknown>).gameSpectatorSessionQrUrl = buildGameSpectatorQrImageUrl(publicUrl);
+    this.gameSpectatorSessionUrl = publicUrl;
+    this.gameSpectatorSessionQrUrl = buildGameSpectatorQrImageUrl(publicUrl);
   },
 
   async refreshGameSpectatorCount(this: GameSpectatorVm): Promise<void> {
     const publicSessionId = String(this.gameSpectatorSessionId || "").trim();
     if (!publicSessionId || this.gameSpectatorSessionStatus === "ended") {
-      (this as Record<string, unknown>).gameSpectatorConnectedCount = 0;
+      this.gameSpectatorConnectedCount = 0;
       return;
     }
-    if ((this as Record<string, unknown>)._gameSpectatorCountRequestPending === true) {
+    if (this._gameSpectatorCountRequestPending === true) {
       return;
     }
 
-    (this as Record<string, unknown>)._gameSpectatorCountRequestPending = true;
+    this._gameSpectatorCountRequestPending = true;
     try {
-      (this as Record<string, unknown>).gameSpectatorConnectedCount = await fetchGameSpectatorCount(this as never, publicSessionId);
+      this.gameSpectatorConnectedCount = await fetchGameSpectatorCount(this as never, publicSessionId);
     } catch (error) {
       if (isGameSpectatorSessionNotFoundError(error)) {
         disableStaleGameSpectatorSession(this);
@@ -246,34 +245,34 @@ export const gameSpectatorMethods = {
       }
       // Keep the last known count on transient failures.
     } finally {
-      (this as Record<string, unknown>)._gameSpectatorCountRequestPending = false;
+      this._gameSpectatorCountRequestPending = false;
     }
   },
 
-  stopGameSpectatorCountPolling(this: Record<string, unknown>): void {
-    clearGameSpectatorCountPolling(this as Record<string, unknown>);
+  stopGameSpectatorCountPolling(this: GameSpectatorVm): void {
+    clearGameSpectatorCountPolling(this);
   },
 
-  syncGameSpectatorCountPolling(this: Record<string, unknown>): void {
-    const publicSessionId = String((this as Record<string, unknown>).gameSpectatorSessionId || "").trim();
-    const sessionStatus = String((this as Record<string, unknown>).gameSpectatorSessionStatus || "inactive");
+  syncGameSpectatorCountPolling(this: GameSpectatorVm): void {
+    const publicSessionId = String(this.gameSpectatorSessionId || "").trim();
+    const sessionStatus = String(this.gameSpectatorSessionStatus || "inactive");
     const shouldPoll = publicSessionId.length > 0 && sessionStatus !== "inactive" && sessionStatus !== "ended";
 
     if (!shouldPoll) {
-      (this as Record<string, unknown> & { stopGameSpectatorCountPolling: () => void }).stopGameSpectatorCountPolling();
-      (this as Record<string, unknown>).gameSpectatorConnectedCount = 0;
+      this.stopGameSpectatorCountPolling?.();
+      this.gameSpectatorConnectedCount = 0;
       return;
     }
 
-    void ((this as Record<string, unknown> & { refreshGameSpectatorCount: () => Promise<void> }).refreshGameSpectatorCount());
+    void this.refreshGameSpectatorCount?.();
 
-    const existingIntervalId = (this as Record<string, unknown>)._gameSpectatorCountPollIntervalId as number | undefined;
+    const existingIntervalId = this._gameSpectatorCountPollIntervalId;
     if (existingIntervalId != null) {
       return;
     }
 
-    (this as Record<string, unknown>)._gameSpectatorCountPollIntervalId = window.setInterval(() => {
-      void ((this as Record<string, unknown> & { refreshGameSpectatorCount: () => Promise<void> }).refreshGameSpectatorCount());
+    this._gameSpectatorCountPollIntervalId = window.setInterval(() => {
+      void this.refreshGameSpectatorCount?.();
     }, GAME_SPECTATOR_COUNT_POLL_MS);
   }
 };

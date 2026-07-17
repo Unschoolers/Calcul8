@@ -1,10 +1,12 @@
 import { translateAppMessage } from "../../../../app-core/i18n/index.ts";
+import { selectGameSessionTrack, type GameSessionTrack } from "../../../../app-core/shared/game-session-aggregate.ts";
 import type { Lot, WheelConfig, WheelFairnessEntry } from "../../../../types/app.ts";
 import { getWheelController } from "./gameControllerState.ts";
 import type { WheelSlot } from "../services/wheelSlots.ts";
 import {
   calculateWheelSessionNetRevenue
 } from "../services/wheelPricing.ts";
+import { readGameSessionAggregate } from "../services/gameSessionAggregateAdapter.ts";
 
 function isWheelOwnerContext(vm: Record<string, unknown>): boolean {
   return Reflect.has(vm, "wheelController")
@@ -55,28 +57,26 @@ export function getWheelDisplaySlots(vm: Record<string, unknown>): WheelSlot[] {
     : controller.activeSlots) || []) as WheelSlot[]);
 }
 
-export function getWheelDisplaySpinCounts(vm: Record<string, unknown>): number[] {
+function getWheelDisplaySessionTrack(vm: Record<string, unknown>): GameSessionTrack {
   const source = resolveWheelSource(vm);
   const controller = getWheelController(source);
-  return ((isWheelPreviewMode(vm)
-    ? controller.previewSpinCounts
-    : source.wheelSpinCounts || []) as number[]);
+  const aggregate = readGameSessionAggregate({
+    wheelSpinCounts: Array.isArray(source.wheelSpinCounts) ? source.wheelSpinCounts as number[] : [],
+    wheelTotalSpins: Number(source.wheelTotalSpins || 0)
+  }, controller);
+  return selectGameSessionTrack(aggregate, isWheelPreviewMode(vm) ? "preview" : "live");
+}
+
+export function getWheelDisplaySpinCounts(vm: Record<string, unknown>): number[] {
+  return getWheelDisplaySessionTrack(vm).spinCounts;
 }
 
 export function getWheelDisplayTotalSpins(vm: Record<string, unknown>): number {
-  const source = resolveWheelSource(vm);
-  const controller = getWheelController(source);
-  return Number((isWheelPreviewMode(vm)
-    ? controller.previewTotalSpins
-    : source.wheelTotalSpins) || 0);
+  return getWheelDisplaySessionTrack(vm).totalSpins;
 }
 
 export function getWheelDisplayFairnessHistory(vm: Record<string, unknown>): WheelFairnessEntry[] {
-  const source = resolveWheelSource(vm);
-  const controller = getWheelController(source);
-  return (((isWheelPreviewMode(vm)
-    ? controller.previewFairnessHistory
-    : controller.fairnessHistory) || []) as WheelFairnessEntry[]);
+  return getWheelDisplaySessionTrack(vm).fairnessHistory;
 }
 
 export function getWheelDisplayFairnessHistoryEntries(vm: Record<string, unknown>): WheelFairnessEntry[] {

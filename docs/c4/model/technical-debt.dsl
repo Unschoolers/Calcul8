@@ -46,7 +46,7 @@
 !element calcul8.web.gameWorkflows {
     perspectives {
         perspective "Technical Debt" {
-            description "Medium debt: wheel, grid, public session, stage, and spectator behavior has been split, but game surfaces still carry complex UI/runtime coupling."
+            description "Medium debt: preview/live session state now shares typed transitions and injected effects, and configuration/spectator adapters are typed, but inspector surfaces still carry complex UI/runtime coupling."
             value "Medium"
         }
     }

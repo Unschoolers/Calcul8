@@ -2,6 +2,7 @@ import { translateAppMessage } from "../../../../app-core/i18n/index.ts";
 import { getLotType } from "../../../../app-core/shared/lot-types.ts";
 import { getTierChancePercent } from "../../../../app-core/shared/wheel-odds.ts";
 import type { Lot, WheelConfig } from "../../../../types/app.ts";
+import type { GameWindowThis } from "../coordinator/gameControllerState.ts";
 import {
   calculateWheelSessionMarginPercent,
   getWheelDisplayChaseTallyHistory,
@@ -17,60 +18,76 @@ import {
   getRemainingPacksForWheelLot
 } from "../services/wheelSaleSupport.ts";
 
+type TierTally = { tierId: string; label: string; color: string; count: number };
+type SessionSourceGroup = {
+  key: string;
+  label: string;
+  detail: string;
+  remainingText: string;
+  warning: boolean;
+  tiers: Array<TierTally & { warning: boolean }>;
+};
+type WheelSessionComputedContext = Record<string, unknown> & Partial<GameWindowThis> & {
+  preferredLanguage?: string;
+  wheelSessionProfit?: number;
+  wheelTallyByTier?: TierTally[];
+  wheelSessionSourceGroups?: SessionSourceGroup[];
+};
+
 export const wheelSessionComputeds = {
-  wheelSessionRevenue(this: Record<string, unknown>): number {
-    return getWheelSessionRevenue(this as Record<string, unknown>);
+  wheelSessionRevenue(this: WheelSessionComputedContext): number {
+    return getWheelSessionRevenue(this);
   },
 
-  wheelSessionCost(this: Record<string, unknown>): number {
-    return getWheelSessionCost(this as Record<string, unknown>);
+  wheelSessionCost(this: WheelSessionComputedContext): number {
+    return getWheelSessionCost(this);
   },
 
-  wheelSessionProfit(this: Record<string, unknown>): number {
-    return getWheelSessionProfit(this as Record<string, unknown>);
+  wheelSessionProfit(this: WheelSessionComputedContext): number {
+    return getWheelSessionProfit(this);
   },
 
-  wheelSessionProfitClass(this: Record<string, unknown>): string {
-    const profit = (this as Record<string, unknown>).wheelSessionProfit as number;
+  wheelSessionProfitClass(this: WheelSessionComputedContext): string {
+    const profit = this.wheelSessionProfit ?? 0;
     return profit >= 0 ? "text-success" : "text-error";
   },
 
-  wheelSessionProfitDisplay(this: Record<string, unknown>): string {
-    const profit = (this as Record<string, unknown>).wheelSessionProfit as number;
+  wheelSessionProfitDisplay(this: WheelSessionComputedContext): string {
+    const profit = this.wheelSessionProfit ?? 0;
     return `${profit >= 0 ? "$" : "-$"}${Math.abs(profit).toFixed(2)}`;
   },
 
-  wheelSessionMarginDisplay(this: Record<string, unknown>): string {
-    const margin = calculateWheelSessionMarginPercent(this as Record<string, unknown>);
+  wheelSessionMarginDisplay(this: WheelSessionComputedContext): string {
+    const margin = calculateWheelSessionMarginPercent(this);
     if (margin === null) return "—";
     return margin.toFixed(1) + "%";
   },
 
-  wheelSessionMarginColor(this: Record<string, unknown>): string {
-    const config = (this as Record<string, unknown>).wheelDisplayConfig as WheelConfig | null;
-    const margin = calculateWheelSessionMarginPercent(this as Record<string, unknown>);
+  wheelSessionMarginColor(this: WheelSessionComputedContext): string {
+    const config = this.wheelDisplayConfig;
+    const margin = calculateWheelSessionMarginPercent(this);
     if (margin === null) return "";
     if (margin >= (config?.targetMargin || 0)) return "rgb(var(--v-theme-success))";
     if (margin >= 0) return "rgb(var(--v-theme-warning))";
     return "rgb(var(--v-theme-error))";
   },
 
-  wheelSessionMarginBarWidth(this: Record<string, unknown>): string {
-    const margin = calculateWheelSessionMarginPercent(this as Record<string, unknown>);
+  wheelSessionMarginBarWidth(this: WheelSessionComputedContext): string {
+    const margin = calculateWheelSessionMarginPercent(this);
     if (margin === null) return "0%";
     return Math.min(Math.max(margin, 0), 100) + "%";
   },
 
-  wheelTargetMarginBarLeft(this: Record<string, unknown>): string {
-    const config = (this as Record<string, unknown>).wheelDisplayConfig as WheelConfig | null;
+  wheelTargetMarginBarLeft(this: WheelSessionComputedContext): string {
+    const config = this.wheelDisplayConfig;
     return Math.min(config?.targetMargin || 40, 99) + "%";
   },
 
-  wheelSessionMarginHint(this: Record<string, unknown>): string {
-    const preferredLanguage = String((this as Record<string, unknown>).preferredLanguage ?? "");
-    const margin = calculateWheelSessionMarginPercent(this as Record<string, unknown>);
+  wheelSessionMarginHint(this: WheelSessionComputedContext): string {
+    const preferredLanguage = this.preferredLanguage ?? "";
+    const margin = calculateWheelSessionMarginPercent(this);
     if (margin === null) return translateAppMessage(preferredLanguage, "wheelSessionNoSpinsHint");
-    const config = (this as Record<string, unknown>).wheelDisplayConfig as WheelConfig | null;
+    const config = this.wheelDisplayConfig;
     const diff = margin - (config?.targetMargin || 0);
     return diff >= 0
       ? translateAppMessage(preferredLanguage, "wheelSessionAboveTarget", {
@@ -83,21 +100,21 @@ export const wheelSessionComputeds = {
       });
   },
 
-  wheelTallyByTier(this: Record<string, unknown>): Array<{ tierId: string; label: string; color: string; count: number }> {
-    const config = (this as Record<string, unknown>).wheelDisplayConfig as WheelConfig | null;
+  wheelTallyByTier(this: WheelSessionComputedContext): TierTally[] {
+    const config = this.wheelDisplayConfig;
     if (!config) return [];
-    const slots = getWheelDisplaySlots(this as Record<string, unknown>);
-    const counts = getWheelDisplaySpinCounts(this as Record<string, unknown>);
+    const slots = getWheelDisplaySlots(this);
+    const counts = getWheelDisplaySpinCounts(this);
     const tierTotals: Record<string, number> = {};
     slots.forEach((slot, i) => {
       tierTotals[slot.tier] = (tierTotals[slot.tier] || 0) + (counts[i] || 0);
     });
-    const history = getWheelDisplayChaseTallyHistory(this as Record<string, unknown>);
+    const history = getWheelDisplayChaseTallyHistory(this);
     const historicalByTier: Record<string, number> = {};
     for (const h of history) {
       historicalByTier[h.tierId] = (historicalByTier[h.tierId] || 0) + h.count;
     }
-    const result: Array<{ tierId: string; label: string; color: string; count: number }> = [];
+    const result: TierTally[] = [];
     for (const t of config.tiers) {
       if (getTierChancePercent(t) <= 0) continue;
       for (const h of history) {
@@ -111,36 +128,17 @@ export const wheelSessionComputeds = {
     return result;
   },
 
-  wheelSessionSourceGroups(this: Record<string, unknown>): Array<{
-    key: string;
-    label: string;
-    detail: string;
-    remainingText: string;
-    warning: boolean;
-    tiers: Array<{ tierId: string; label: string; color: string; count: number; warning: boolean }>;
-  }> {
-    const config = (this as Record<string, unknown>).wheelDisplayConfig as WheelConfig | null;
+  wheelSessionSourceGroups(this: WheelSessionComputedContext): SessionSourceGroup[] {
+    const config = this.wheelDisplayConfig;
     const lots = (this.lots || []) as Lot[];
     if (!config) return [];
 
-    const tally = (((this as Record<string, unknown>).wheelTallyByTier || []) as Array<{
-      tierId: string;
-      label: string;
-      color: string;
-      count: number;
-    }>).reduce<Record<string, { tierId: string; label: string; color: string; count: number }>>((acc, entry) => {
+    const tally = (this.wheelTallyByTier ?? []).reduce<Record<string, TierTally>>((acc, entry) => {
       acc[entry.tierId] = entry;
       return acc;
     }, {});
 
-    const rows: Array<{
-      key: string;
-      label: string;
-      detail: string;
-      remainingText: string;
-      warning: boolean;
-      tiers: Array<{ tierId: string; label: string; color: string; count: number; warning: boolean }>;
-    }> = [];
+    const rows: SessionSourceGroup[] = [];
 
     for (const tier of config.tiers) {
       if (getTierChancePercent(tier) <= 0 || tier.boundLotId == null) continue;
@@ -176,8 +174,8 @@ export const wheelSessionComputeds = {
           rows.push({
             key: rowKey,
             label: lot.name,
-            detail: translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelSourceDetailSingles"),
-            remainingText: translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelSourceItemsLeft", {
+            detail: translateAppMessage(this.preferredLanguage ?? "", "wheelSourceDetailSingles"),
+            remainingText: translateAppMessage(this.preferredLanguage ?? "", "wheelSourceItemsLeft", {
               count: remainingForLot,
               suffix: remainingForLot === 1 ? "" : "s"
             }),
@@ -195,7 +193,7 @@ export const wheelSessionComputeds = {
         warning: remainingPacks <= Math.max(1, tier.packsCount || 1)
       };
       if (existing) {
-        existing.detail = `${existing.detail} • ${translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelPerSpinSuffix", {
+        existing.detail = `${existing.detail} • ${translateAppMessage(this.preferredLanguage ?? "", "wheelPerSpinSuffix", {
           count: tier.packsCount || 0
         })}`;
         existing.tiers.push(tierEntry);
@@ -203,10 +201,10 @@ export const wheelSessionComputeds = {
         rows.push({
           key: rowKey,
           label: lot.name,
-          detail: translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelSourceDetailItem", {
+          detail: translateAppMessage(this.preferredLanguage ?? "", "wheelSourceDetailItem", {
             count: tier.packsCount || 0
           }),
-          remainingText: translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelSourceItemsLeft", {
+          remainingText: translateAppMessage(this.preferredLanguage ?? "", "wheelSourceItemsLeft", {
             count: remainingPacks,
             suffix: remainingPacks === 1 ? "" : "s"
           }),
@@ -219,8 +217,8 @@ export const wheelSessionComputeds = {
     return rows;
   },
 
-  wheelTrackerInventory(this: Record<string, unknown>) {
-    return (this as Record<string, unknown>).wheelSessionSourceGroups;
+  wheelTrackerInventory(this: WheelSessionComputedContext): SessionSourceGroup[] {
+    return this.wheelSessionSourceGroups ?? [];
   }
 };
 

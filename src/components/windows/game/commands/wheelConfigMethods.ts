@@ -19,7 +19,7 @@ import {
 import { getActiveStorageScope } from "../../../../app-core/workspace-scope.ts";
 import { calculateTotalCaseCost } from "../../../../domain/calculations-fees.ts";
 import type { Lot, LuckGameType, WheelConfig, WheelTier } from "../../../../types/app.ts";
-import { getWheelController } from "../coordinator/gameControllerState.ts";
+import { getWheelController, type GameWindowThis } from "../coordinator/gameControllerState.ts";
 import { remapSpinCountsByTier } from "../services/wheelCountRemapping.ts";
 import { createTierPrizeGameConfigFromTemplate } from "../services/gameConfigTemplates.ts";
 import {
@@ -34,22 +34,24 @@ import {
     getWheelTierInventoryMeta
 } from "../services/wheelSaleSupport.ts";
 
-function clearQueuedWheelConfigSync(context: Record<string, unknown>): void {
-  const timeoutId = context._wheelDraftSaveTimeoutId as number | undefined;
+type GameConfigContext = Record<string, unknown> & Partial<GameWindowThis>;
+
+function clearQueuedWheelConfigSync(context: GameConfigContext): void {
+  const timeoutId = context._wheelDraftSaveTimeoutId;
   if (timeoutId != null) {
     globalThis.clearTimeout(timeoutId);
     context._wheelDraftSaveTimeoutId = undefined;
   }
 }
 
-function getWheelDraftStorageKey(context: Record<string, unknown>, wheelConfigId: number | null | undefined): string {
+function getWheelDraftStorageKey(context: GameConfigContext, wheelConfigId: number | null | undefined): string {
   return getScopedWheelConfigDraftStorageKey(getActiveStorageScope(context as {
     activeScopeType: "personal" | "workspace";
     activeWorkspaceId: string | null;
   }), wheelConfigId);
 }
 
-function getActiveWheelConfigStorageKey(context: Record<string, unknown>): string {
+function getActiveWheelConfigStorageKey(context: GameConfigContext): string {
   return getScopedActiveWheelConfigStorageKey(getActiveStorageScope(context as {
     activeScopeType: "personal" | "workspace";
     activeWorkspaceId: string | null;
@@ -74,7 +76,7 @@ function normalizeOptionalNumericId(value: unknown): number | null {
 }
 
 export const wheelConfigMethods = {
-  persistLastWheelConfigSelection(this: Record<string, unknown>): void {
+  persistLastWheelConfigSelection(this: GameConfigContext): void {
     const activeId = normalizeStoredWheelConfigId(this.activeWheelConfigId);
     const storageKey = getActiveWheelConfigStorageKey(this);
     try {
@@ -88,7 +90,7 @@ export const wheelConfigMethods = {
     }
   },
 
-  restoreLastWheelConfigSelection(this: Record<string, unknown>): void {
+  restoreLastWheelConfigSelection(this: GameConfigContext): void {
     const configs = (this.wheelConfigs || []) as WheelConfig[];
     const firstConfigId = configs[0]?.id ?? null;
     const storageKey = getActiveWheelConfigStorageKey(this);
@@ -119,15 +121,15 @@ export const wheelConfigMethods = {
     }
   },
 
-  openWheelCreateDialog(this: Record<string, unknown>): void {
+  openWheelCreateDialog(this: GameConfigContext): void {
     this.wheelCreateDialog = true;
   },
 
-  closeWheelCreateDialog(this: Record<string, unknown>): void {
+  closeWheelCreateDialog(this: GameConfigContext): void {
     this.wheelCreateDialog = false;
   },
 
-  createNewGameConfig(this: Record<string, unknown>, gameType: LuckGameType): void {
+  createNewGameConfig(this: GameConfigContext, gameType: LuckGameType): void {
     const configs = (this.wheelConfigs || []) as WheelConfig[];
     const activeId = this.activeWheelConfigId as number | null;
     const existing = activeId != null ? configs.find((c) => c.id === activeId) : null;
@@ -136,17 +138,17 @@ export const wheelConfigMethods = {
     configs.push(newConfig);
     this.wheelConfigs = [...configs];
     this.activeWheelConfigId = newConfig.id;
-    (this as Record<string, unknown> & { persistLastWheelConfigSelection?: () => void }).persistLastWheelConfigSelection?.();
+    this.persistLastWheelConfigSelection?.();
     this.editingWheelConfig = JSON.parse(JSON.stringify(newConfig)) as WheelConfig;
     this.wheelCreateDialog = false;
     queueCloudConfigSyncPush(this as Parameters<typeof queueCloudConfigSyncPush>[0]);
   },
 
-  createNewWheelConfig(this: Record<string, unknown>): void {
+  createNewWheelConfig(this: GameConfigContext): void {
     this.wheelCreateDialog = true;
   },
 
-  loadWheelConfig(this: Record<string, unknown>, options: { preserveLiveWheelState?: boolean } = {}): void {
+  loadWheelConfig(this: GameConfigContext, options: { preserveLiveWheelState?: boolean } = {}): void {
     const configs = (this.wheelConfigs || []) as WheelConfig[];
     const activeId = this.activeWheelConfigId as number | null;
     const config = activeId != null ? configs.find((c) => c.id === activeId) : null;
@@ -166,28 +168,24 @@ export const wheelConfigMethods = {
         draftConfig = null;
       }
     }
-    (this as Record<string, unknown>).editingWheelConfig = draftConfig
+    this.editingWheelConfig = draftConfig
       ? JSON.parse(JSON.stringify(draftConfig)) as WheelConfig
       : (sanitizedConfig ? JSON.parse(JSON.stringify(sanitizedConfig)) as WheelConfig : null);
     if (!sanitizedConfig) {
-      (this as Record<string, unknown>).appliedWheelConfigSnapshot = null;
-      resetLoadedTierPrizeGameState(this as Record<string, unknown>);
-      nextTick(() => (this as Record<string, unknown> & { drawWheel: (offset?: number) => void }).drawWheel(
-        (this.wheelCurrentAngle as number) || 0
-      ));
+      this.appliedWheelConfigSnapshot = null;
+      resetLoadedTierPrizeGameState(this);
+      nextTick(() => this.drawWheel?.(this.wheelCurrentAngle || 0));
       return;
     }
     if (options.preserveLiveWheelState === true) {
       return;
     }
-    (this as Record<string, unknown>).appliedWheelConfigSnapshot =
+    this.appliedWheelConfigSnapshot =
       JSON.parse(JSON.stringify(sanitizedConfig)) as WheelConfig;
     const loadController = getWheelController(this as Record<string, unknown>);
     if (sanitizedConfig.gameType === "bracket") {
-      resetLoadedTierPrizeGameState(this as Record<string, unknown>);
-      nextTick(() => (this as Record<string, unknown> & { drawWheel: (offset?: number) => void }).drawWheel(
-        (this as Record<string, unknown>).wheelCurrentAngle as number || 0
-      ));
+      resetLoadedTierPrizeGameState(this);
+      nextTick(() => this.drawWheel?.(this.wheelCurrentAngle || 0));
       return;
     }
     if (sanitizedConfig.gameType === "grid") {
@@ -199,21 +197,19 @@ export const wheelConfigMethods = {
     });
     loadController.activeSlots = builtSlots;
     loadController.previewSlots = [...builtSlots];
-    const restored = (this as Record<string, unknown> & { loadWheelFromSession: () => boolean }).loadWheelFromSession();
+    const restored = this.loadWheelFromSession?.() ?? false;
     if (!restored) {
-      resetLoadedTierPrizeGameSessionState(this as Record<string, unknown>);
+      resetLoadedTierPrizeGameSessionState(this);
       this.wheelSpinCounts = new Array(builtSlots.length).fill(0);
       loadController.previewSpinCounts = new Array(builtSlots.length).fill(0);
       loadController.previewTotalSpins = 0;
       loadController.previewChaseTallyHistory = [];
       loadController.previewFairnessHistory = [];
     }
-    nextTick(() => (this as Record<string, unknown> & { drawWheel: (offset?: number) => void }).drawWheel(
-      (this as Record<string, unknown>).wheelCurrentAngle as number || 0
-    ));
+    nextTick(() => this.drawWheel?.(this.wheelCurrentAngle || 0));
   },
 
-  deleteWheelConfig(this: Record<string, unknown>): void {
+  deleteWheelConfig(this: GameConfigContext): void {
     const configs = (this.wheelConfigs || []) as WheelConfig[];
     const activeId = this.activeWheelConfigId as number | null;
     const idx = configs.findIndex((c) => c.id === activeId);
@@ -224,19 +220,19 @@ export const wheelConfigMethods = {
     } catch { /* ignore */ }
     this.wheelConfigs = [...configs];
     this.activeWheelConfigId = configs.length > 0 ? configs[0]!.id : null;
-    (this as Record<string, unknown> & { persistLastWheelConfigSelection?: () => void }).persistLastWheelConfigSelection?.();
+    this.persistLastWheelConfigSelection?.();
     queueCloudConfigSyncPush(this as Parameters<typeof queueCloudConfigSyncPush>[0]);
     void broadcastWheelSession(this as Parameters<typeof broadcastWheelSession>[0]);
   },
 
-  applyWheelConfig(this: Record<string, unknown>): void {
-    const editing = (this as Record<string, unknown>).editingWheelConfig as WheelConfig | null;
+  applyWheelConfig(this: GameConfigContext): void {
+    const editing = this.editingWheelConfig;
     if (!editing) {
-      (this as Record<string, unknown>).wheelConfigSyncPending = false;
+      this.wheelConfigSyncPending = false;
       return;
     }
     clearQueuedWheelConfigSync(this);
-    (this as Record<string, unknown>).wheelConfigSyncPending = true;
+    this.wheelConfigSyncPending = true;
     stopWorkspaceConfigSyncPush(this as object);
     try {
       const configs = (this.wheelConfigs || []) as WheelConfig[];
@@ -251,23 +247,18 @@ export const wheelConfigMethods = {
       }
       const applyController = getWheelController(this as Record<string, unknown>);
       if (sanitizedUpdated.gameType === "bracket") {
-        (this as Record<string, unknown>)._wheelSkipConfigReload = true;
+        this._wheelSkipConfigReload = true;
         this.wheelConfigs = [...configs];
         try {
           localStorage.removeItem(getWheelDraftStorageKey(this, updated.id));
         } catch { /* ignore */ }
         this.activeWheelConfigId = sanitizedUpdated.id;
-        (this as Record<string, unknown> & { persistLastWheelConfigSelection?: () => void }).persistLastWheelConfigSelection?.();
-        (this as Record<string, unknown>).editingWheelConfig = JSON.parse(JSON.stringify(sanitizedUpdated)) as WheelConfig;
-        (this as Record<string, unknown>).appliedWheelConfigSnapshot = JSON.parse(JSON.stringify(sanitizedUpdated)) as WheelConfig;
-        resetLoadedTierPrizeGameState(this as Record<string, unknown>);
+        this.persistLastWheelConfigSelection?.();
+        this.editingWheelConfig = JSON.parse(JSON.stringify(sanitizedUpdated)) as WheelConfig;
+        this.appliedWheelConfigSnapshot = JSON.parse(JSON.stringify(sanitizedUpdated)) as WheelConfig;
+        resetLoadedTierPrizeGameState(this);
         queueCloudConfigSyncPush(this as Parameters<typeof queueCloudConfigSyncPush>[0]);
-        const showWheelConfigSaved = (this as Record<string, unknown> & {
-          showWheelConfigSaved?: () => void;
-        }).showWheelConfigSaved;
-        if (typeof showWheelConfigSaved === "function") {
-          showWheelConfigSaved();
-        }
+        this.showWheelConfigSaved?.();
         return;
       }
       const oldSlots = ((applyController.activeSlots || []) as WheelSlot[]);
@@ -289,15 +280,15 @@ export const wheelConfigMethods = {
       }, {});
       const previousTierCosts = new Map((previousConfig?.tiers || []).map((tier) => [tier.id, tier.costPerTier]));
 
-      (this as Record<string, unknown>)._wheelSkipConfigReload = true;
+      this._wheelSkipConfigReload = true;
       this.wheelConfigs = [...configs];
       try {
         localStorage.removeItem(getWheelDraftStorageKey(this, updated.id));
       } catch { /* ignore */ }
       this.activeWheelConfigId = sanitizedUpdated.id;
-      (this as Record<string, unknown> & { persistLastWheelConfigSelection?: () => void }).persistLastWheelConfigSelection?.();
-      (this as Record<string, unknown>).editingWheelConfig = JSON.parse(JSON.stringify(sanitizedUpdated)) as WheelConfig;
-      (this as Record<string, unknown>).appliedWheelConfigSnapshot = JSON.parse(JSON.stringify(sanitizedUpdated)) as WheelConfig;
+      this.persistLastWheelConfigSelection?.();
+      this.editingWheelConfig = JSON.parse(JSON.stringify(sanitizedUpdated)) as WheelConfig;
+      this.appliedWheelConfigSnapshot = JSON.parse(JSON.stringify(sanitizedUpdated)) as WheelConfig;
       applyController.activeSlots = newSlots;
       applyController.previewSlots = [...newSlots];
       this.wheelSpinCounts = remapSpinCountsByTier(oldTierIds, oldCounts, newSlots);
@@ -340,61 +331,54 @@ export const wheelConfigMethods = {
           (entry) => newTierIds.has(entry.slotTier)
         ) as typeof this.wheelPendingInventoryIssues
       );
-      (this as Record<string, unknown>).wheelEndingSession = false;
-      (this as Record<string, unknown>).wheelChaseDialog = false;
-      (this as Record<string, unknown>).wheelChaseReplacementSinglesId = null;
-      (this as Record<string, unknown>).wheelChasePendingTierId = "";
-      (this as Record<string, unknown>).wheelSessionUpdatedAt = Date.now();
-      (this as Record<string, unknown> & { saveWheelSession: () => void }).saveWheelSession();
+      this.wheelEndingSession = false;
+      this.wheelChaseDialog = false;
+      this.wheelChaseReplacementSinglesId = null;
+      this.wheelChasePendingTierId = "";
+      this.wheelSessionUpdatedAt = Date.now();
+      this.saveWheelSession?.();
       queueCloudConfigSyncPush(this as Parameters<typeof queueCloudConfigSyncPush>[0]);
       void broadcastWheelSession(this as Parameters<typeof broadcastWheelSession>[0]);
-      nextTick(() => (this as Record<string, unknown> & { drawWheel: (offset?: number) => void }).drawWheel(
-        (this.wheelCurrentAngle as number) || 0
-      ));
+      nextTick(() => this.drawWheel?.(this.wheelCurrentAngle || 0));
       // Show the saved snackbar
-      const showWheelConfigSaved = (this as Record<string, unknown> & {
-        showWheelConfigSaved?: () => void;
-      }).showWheelConfigSaved;
-      if (typeof showWheelConfigSaved === "function") {
-        showWheelConfigSaved();
-      }
+      this.showWheelConfigSaved?.();
     } finally {
-      (this as Record<string, unknown>).wheelConfigSyncPending = false;
+      this.wheelConfigSyncPending = false;
     }
   },
 
-  queueWheelConfigSync(this: Record<string, unknown>): void {
-    const editing = (this as Record<string, unknown>).editingWheelConfig as WheelConfig | null;
-    const hasPendingChanges = ((this as Record<string, unknown>).hasPendingWheelChanges as boolean) === true;
+  queueWheelConfigSync(this: GameConfigContext): void {
+    const editing = this.editingWheelConfig;
+    const hasPendingChanges = this.hasPendingWheelChanges === true;
     clearQueuedWheelConfigSync(this);
     if (!editing) {
-      (this as Record<string, unknown>).wheelConfigSyncPending = false;
+      this.wheelConfigSyncPending = false;
       return;
     }
     if (!hasPendingChanges) {
-      (this as Record<string, unknown>).wheelConfigSyncPending = false;
-      (this as Record<string, unknown> & { clearWheelDraft: (wheelConfigId?: number | null) => void }).clearWheelDraft(editing.id);
+      this.wheelConfigSyncPending = false;
+      this.clearWheelDraft?.(editing.id);
       return;
     }
-    (this as Record<string, unknown>).wheelConfigSyncPending = true;
-    (this as Record<string, unknown>)._wheelDraftSaveTimeoutId = globalThis.setTimeout(() => {
-      (this as Record<string, unknown>)._wheelDraftSaveTimeoutId = undefined;
+    this.wheelConfigSyncPending = true;
+    this._wheelDraftSaveTimeoutId = globalThis.setTimeout(() => {
+      this._wheelDraftSaveTimeoutId = undefined;
       try {
-        if (((this as Record<string, unknown>).canApplyWheelConfig as boolean) === true) {
-          (this as Record<string, unknown> & { applyWheelConfig: () => void }).applyWheelConfig();
+        if (this.canApplyWheelConfig === true) {
+          this.applyWheelConfig?.();
           return;
         }
-        (this as Record<string, unknown> & { saveWheelDraft: () => void }).saveWheelDraft();
+        this.saveWheelDraft?.();
       } finally {
-        (this as Record<string, unknown>).wheelConfigSyncPending = false;
+        this.wheelConfigSyncPending = false;
       }
     }, 900);
   },
 
-  saveWheelDraft(this: Record<string, unknown>): void {
-    const editing = (this as Record<string, unknown>).editingWheelConfig as WheelConfig | null;
+  saveWheelDraft(this: GameConfigContext): void {
+    const editing = this.editingWheelConfig;
     if (!editing?.id) {
-      (this as Record<string, unknown>).wheelConfigSyncPending = false;
+      this.wheelConfigSyncPending = false;
       return;
     }
     const configs = (this.wheelConfigs || []) as WheelConfig[];
@@ -404,7 +388,7 @@ export const wheelConfigMethods = {
       updatedAt: new Date().toISOString()
     }, (this.lots || []) as Lot[]);
     if (!persisted) {
-      (this as Record<string, unknown>).wheelConfigSyncPending = false;
+      this.wheelConfigSyncPending = false;
       return;
     }
     if (idx >= 0) {
@@ -412,26 +396,26 @@ export const wheelConfigMethods = {
     } else {
       configs.push(persisted);
     }
-    (this as Record<string, unknown>)._wheelSkipConfigReload = true;
+    this._wheelSkipConfigReload = true;
     this.wheelConfigs = [...configs];
     try {
       localStorage.removeItem(getWheelDraftStorageKey(this, editing.id));
     } catch { /* ignore */ }
-    (this as Record<string, unknown>).wheelConfigSyncPending = false;
+    this.wheelConfigSyncPending = false;
   },
 
-  clearWheelDraft(this: Record<string, unknown>, wheelConfigId?: number | null): void {
-    const targetId = wheelConfigId ?? (((this as Record<string, unknown>).editingWheelConfig as WheelConfig | null)?.id ?? null);
+  clearWheelDraft(this: GameConfigContext, wheelConfigId?: number | null): void {
+    const targetId = wheelConfigId ?? (this.editingWheelConfig?.id ?? null);
     if (targetId == null) return;
     try {
       localStorage.removeItem(getWheelDraftStorageKey(this, targetId));
     } catch { /* ignore */ }
   },
 
-  addTier(this: Record<string, unknown>): void {
-    const config = (this as Record<string, unknown>).editingWheelConfig as WheelConfig | null;
+  addTier(this: GameConfigContext): void {
+    const config = this.editingWheelConfig;
     if (!config) return;
-    const costPerPack = (this as Record<string, unknown>).currentLotCostPerPack as number;
+    const costPerPack = this.currentLotCostPerPack ?? 0;
     const usedColors = config.tiers.map((t) => t.color);
     const tier = createDefaultTier(config.tiers.length, usedColors);
     if (config.tiers.length === 0) {
@@ -456,21 +440,21 @@ export const wheelConfigMethods = {
     config.tiers.push(tier);
   },
 
-  removeTier(this: Record<string, unknown>, index: number): void {
-    const config = (this as Record<string, unknown>).editingWheelConfig as WheelConfig | null;
+  removeTier(this: GameConfigContext, index: number): void {
+    const config = this.editingWheelConfig;
     if (!config) return;
     config.tiers.splice(index, 1);
   },
 
-  onTierPacksChange(this: Record<string, unknown>, tier: WheelTier): void {
-    if (!(this as Record<string, unknown>).wheelConfigReady) return;
-    const costPerPack = (this as Record<string, unknown> & { getCostPerPackForTier: (t: WheelTier) => number }).getCostPerPackForTier(tier);
+  onTierPacksChange(this: GameConfigContext, tier: WheelTier): void {
+    if (!this.wheelConfigReady) return;
+    const costPerPack = this.getCostPerPackForTier?.(tier) ?? 0;
     if (costPerPack > 0) {
       tier.costPerTier = Math.round(tier.packsCount * costPerPack * 1000) / 1000;
     }
   },
 
-  getCostPerPackForTier(this: Record<string, unknown>, tier: WheelTier): number {
+  getCostPerPackForTier(this: GameConfigContext, tier: WheelTier): number {
     if (isWheelTierMultiLot(tier)) {
       const lots = (this.lots || []) as Lot[];
       const costs = getWheelTierSourceLotIds(tier)
@@ -516,10 +500,10 @@ export const wheelConfigMethods = {
         }
       }
     }
-    return (this as Record<string, unknown>).currentLotCostPerPack as number;
+    return this.currentLotCostPerPack ?? 0;
   },
 
-  getSinglesItemsForTier(this: Record<string, unknown>, tier: WheelTier): Array<{ title: string; value: number | null; image?: string; cardNumber?: string; stockLabel?: string }> {
+  getSinglesItemsForTier(this: GameConfigContext, tier: WheelTier): Array<{ title: string; value: number | null; image?: string; cardNumber?: string; stockLabel?: string }> {
     if (tier.boundLotId == null) return [];
     const lots = (this.lots || []) as Lot[];
     const lot = lots.find((l) => l.id === tier.boundLotId);
@@ -541,11 +525,11 @@ export const wheelConfigMethods = {
     return items;
   },
 
-  getTierInventoryMeta(this: Record<string, unknown>, tier: WheelTier): { text: string; warning: boolean } | null {
+  getTierInventoryMeta(this: GameConfigContext, tier: WheelTier): { text: string; warning: boolean } | null {
     return getWheelTierInventoryMeta(this, tier);
   },
 
-  isBoundLotSingles(this: Record<string, unknown>, tier: WheelTier): boolean {
+  isBoundLotSingles(this: GameConfigContext, tier: WheelTier): boolean {
     if (isWheelTierMultiLot(tier)) return false;
     if (tier.boundLotId == null) return false;
     const lots = (this.lots || []) as Lot[];
@@ -553,7 +537,7 @@ export const wheelConfigMethods = {
     return isSinglesLot(lot) && (lot.singlesPurchases?.length ?? 0) > 0;
   },
 
-  onTierLotChange(this: Record<string, unknown>, tier: WheelTier, lotId: unknown): void {
+  onTierLotChange(this: GameConfigContext, tier: WheelTier, lotId: unknown): void {
     const normalizedLotId = normalizeOptionalNumericId(lotId);
     tier.boundLotId = normalizedLotId;
     tier.boundLotIds = normalizedLotId == null ? [] : [normalizedLotId];
@@ -561,7 +545,7 @@ export const wheelConfigMethods = {
     tier.isChase = false;
     if (normalizedLotId == null) {
       tier.deductionType = "packs";
-      const costPerPack = (this as Record<string, unknown>).currentLotCostPerPack as number;
+      const costPerPack = this.currentLotCostPerPack ?? 0;
       if (costPerPack > 0) {
         tier.costPerTier = Math.round(tier.packsCount * costPerPack * 1000) / 1000;
       }
@@ -575,28 +559,27 @@ export const wheelConfigMethods = {
       tier.costPerTier = 0;
     } else {
       tier.deductionType = "packs";
-      const vm = this as Record<string, unknown> & { getCostPerPackForTier: (t: WheelTier) => number };
-      const costPerPack = vm.getCostPerPackForTier(tier);
+      const costPerPack = this.getCostPerPackForTier?.(tier) ?? 0;
       if (costPerPack > 0) {
         tier.costPerTier = Math.round(tier.packsCount * costPerPack * 1000) / 1000;
       }
     }
   },
 
-  onTierMultiLotChange(this: Record<string, unknown>, tier: WheelTier, lotIds: unknown): void {
+  onTierMultiLotChange(this: GameConfigContext, tier: WheelTier, lotIds: unknown): void {
     tier.boundLotIds = Array.isArray(lotIds)
       ? lotIds
         .map((id) => normalizeOptionalNumericId(id))
         .filter((id): id is number => id != null)
       : [];
     normalizeWheelTierSources(tier, (this.lots || []) as Lot[]);
-    const costPerPack = (this as Record<string, unknown> & { getCostPerPackForTier: (t: WheelTier) => number }).getCostPerPackForTier(tier);
+    const costPerPack = this.getCostPerPackForTier?.(tier) ?? 0;
     if (costPerPack > 0) {
       tier.costPerTier = Math.round(tier.packsCount * costPerPack * 1000) / 1000;
     }
   },
 
-  onTierSinglesChange(this: Record<string, unknown>, tier: WheelTier, singlesId: unknown): void {
+  onTierSinglesChange(this: GameConfigContext, tier: WheelTier, singlesId: unknown): void {
     const normalizedSinglesId = normalizeOptionalNumericId(singlesId);
     tier.boundSinglesId = normalizedSinglesId;
     if (tier.deductionType === "singles") {
@@ -617,13 +600,12 @@ export const wheelConfigMethods = {
     }
   },
 
-  canTierBeChase(this: Record<string, unknown>, tier: WheelTier): boolean {
+  canTierBeChase(this: GameConfigContext, tier: WheelTier): boolean {
     return tier.deductionType === "singles" && tier.boundLotId != null && tier.boundSinglesId != null;
   },
 
-  toggleTierChase(this: Record<string, unknown>, tier: WheelTier): void {
-    const vm = this as Record<string, unknown> & { canTierBeChase: (tier: WheelTier) => boolean };
-    if (!vm.canTierBeChase(tier)) {
+  toggleTierChase(this: GameConfigContext, tier: WheelTier): void {
+    if (this.canTierBeChase?.(tier) !== true) {
       tier.isChase = false;
       return;
     }

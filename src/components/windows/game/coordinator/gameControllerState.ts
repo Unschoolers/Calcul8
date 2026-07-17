@@ -1,5 +1,6 @@
 import { reactive } from "vue";
-import type { Lot, MysteryGridReveal, PendingWheelInventoryIssue, Sale, WheelConfig, WheelFairnessEntry, WorkspaceScopeType } from "../../../../types/app.ts";
+import type { AppContext } from "../../../../app-core/context-app.ts";
+import type { MysteryGridReveal, PendingWheelInventoryIssue, WheelConfig, WheelFairnessEntry } from "../../../../types/app.ts";
 import { unwrapWindowBridgeContext } from "../../shared/contextBridge.ts";
 import type { WheelSlot } from "../services/wheelSlots.ts";
 import type { GameStageOverlayCommand } from "../overlay/gameStageOverlayTypes.ts";
@@ -15,108 +16,23 @@ import { GAME_CONTROLLER_LEGACY_ALIAS_MAP } from "./gameControllerLegacyAliases.
  * verbose `(this as Record<string, unknown>).prop` access casts throughout
  * those files.
  */
-export type GameWindowThis = {
-  // ===== Local window state (from createGameWindowState) =====
-  editingWheelConfig: WheelConfig | null;
-  appliedWheelConfigSnapshot: WheelConfig | null;
-  wheelConfigSyncPending: boolean;
-  wheelController: WheelControllerState;
-  wheelAutospinEnabled: boolean;
-  wheelSoundEnabled: boolean;
-  wheelReducedMotion: boolean;
-  wheelMobileInspectorOpen: boolean;
-  wheelCelebrationVisible: boolean;
-  wheelCelebrationLabel: string;
-  wheelCelebrationColor: string;
-  wheelCelebrationImage: string;
-  wheelCelebrationEmoji: string;
-  wheelCelebrationPreview: boolean;
-  wheelCelebrationNonce: number;
-  wheelSpinning: boolean;
-  wheelGridRevealAnimating: boolean;
-  wheelGridResetAnimating: boolean;
-  wheelGridHighlightCellIndex: number;
-  wheelCurrentAngle: number;
-  wheelCanvasSize: number;
-  wheelConfigReady: boolean;
-  wheelViewportWidth: number;
-  wheelMode: "config" | "live";
-  wheelInspectorTab: "config" | "session" | "history";
-  wheelEndingSession: boolean;
-  wheelEndSessionReviewActive: boolean;
-  wheelPresentationMode: boolean;
-  wheelConfirmDialog: boolean;
-  wheelConfirmAction: "reset" | "delete" | "apply" | "end" | "";
-  wheelLiveConfirmDialog: boolean;
-  wheelRequestedMode: "config" | "live" | null;
-  wheelPendingMenuOpen: boolean;
-  wheelChaseDialog: boolean;
-  wheelChasePreviewMode: boolean;
-  wheelChaseReplacementSinglesId: number | null;
-  wheelChasePendingTierId: string;
-  wheelCreateDialog: boolean;
-  wheelManageDialog: boolean;
-  wheelManageName: string;
-  gameSpectatorDialog: boolean;
-  gameSpectatorSessionId: string;
-  gameSpectatorSessionStatus: "inactive" | "starting" | "live" | "ended";
-  gameSpectatorSessionUrl: string;
-  gameSpectatorSessionQrUrl: string;
-  gameSpectatorPublishPending: boolean;
-  gameSpectatorConnectedCount: number;
-  gameStageOverlayEnabled: boolean;
-  gameStageOverlayMounted: boolean;
-  gameStageOverlayActiveCommand: GameStageOverlayCommand | null;
-  gameStageOverlayLastResolvedAt: number;
-  bracketBattleSession: BracketBattleSession | null;
-  bracketBattleLastRolls: BracketBattleRoll[];
-  bracketBattleRolling: boolean;
-  bracketBattleShowcaseMatchId: string | null;
+type GameControllerAliases = {
+  [Key in keyof typeof GAME_CONTROLLER_LEGACY_ALIAS_MAP]:
+    WheelControllerState[(typeof GAME_CONTROLLER_LEGACY_ALIAS_MAP)[Key]];
+};
 
-  // ===== WheelControllerState alias properties =====
-  activeWheelSlots: WheelSlot[];
-  wheelPreviewSlots: WheelSlot[];
-  wheelInventoryWarning: string;
-  wheelLastResultColor: string;
-  wheelPreviewSpinCounts: number[];
-  wheelPreviewTotalSpins: number;
-  wheelSpinSeed: string;
-  wheelSpinHash: string;
-  wheelSpinClientSeed: string;
-  wheelSpinVerificationUrl: string;
-  wheelSpinAlgorithm: string;
-  wheelShowSeed: boolean;
-  wheelFairnessHistoryOpen: boolean;
-  wheelSessionNetRevenue: number | null;
-  wheelSessionCostAdjustment: number;
-  wheelPreviewFairnessHistory: WheelFairnessEntry[];
-  wheelFairnessHistory: WheelFairnessEntry[];
-  wheelPreviewChaseTallyHistory: Array<{ tierId: string; label: string; color: string; count: number }>;
-  wheelChaseTallyHistory: Array<{ tierId: string; label: string; color: string; count: number }>;
-  wheelGridReveals: MysteryGridReveal[];
-  wheelPreviewGridReveals: MysteryGridReveal[];
-  wheelGridLayoutSeed: string;
-  wheelPreviewGridLayoutSeed: string;
-  wheelHighlightedSlotIndex: number;
+type GameAppContext = Pick<AppContext,
+  | "currentTab" | "wheelConfigs" | "activeWheelConfigId"
+  | "wheelSpinCounts" | "wheelTotalSpins" | "lots" | "currentLotId"
+  | "activeScopeType" | "activeWorkspaceId" | "googleAuthEpoch" | "hasProAccess"
+  | "wheelLastResult" | "wheelSessionUpdatedAt" | "wheelPendingInventoryIssues"
+  | "wheelSkippedDeductions" | "wheelSessionLotSelections" | "addWheelSaleToLot"
+>;
 
-  // ===== AppContext bridge properties =====
-  currentTab: string;
-  wheelConfigs: WheelConfig[];
-  activeWheelConfigId: number | null;
-  wheelSpinCounts: number[];
-  wheelTotalSpins: number;
-  lots: Lot[];
-  currentLotId: number | null;
-  activeScopeType: WorkspaceScopeType;
-  activeWorkspaceId: string | null;
-  googleAuthEpoch: number;
-  hasProAccess: boolean;
-  wheelLastResult: string;
-  wheelSessionUpdatedAt: number;
-  wheelPendingInventoryIssues: PendingWheelInventoryIssue[];
-  wheelSkippedDeductions: PendingWheelInventoryIssue[];
-  wheelSessionLotSelections: Record<string, number | null>;
-
+export type GameWindowThis = ReturnType<typeof createGameWindowBaseState>
+  & GameControllerAliases
+  & GameAppContext
+  & {
   // ===== Computed properties =====
   activeWheelConfig: WheelConfig | null;
   wheelDisplayConfig: WheelConfig | null;
@@ -133,6 +49,9 @@ export type GameWindowThis = {
   wheelHasRequiredLotSelection: boolean;
   wheelIsMysteryGrid: boolean;
   wheelIsBracketBattle: boolean;
+  currentLotCostPerPack: number;
+  hasPendingWheelChanges: boolean;
+  canApplyWheelConfig: boolean;
 
   // ===== Private internal state =====
   _wheelSkipConfigReload?: boolean;
@@ -143,7 +62,9 @@ export type GameWindowThis = {
   _gameSpectatorPublishQueued?: boolean;
   _gameSpectatorQueuedStatusOverride?: "starting" | "live" | "ended";
   _gameSpectatorSpinAnimation?: import("../../../../types/app.ts").GameSpectatorSpinAnimation | null;
-  _wheelDraftSaveTimeoutId?: number;
+  _gameSpectatorCountPollIntervalId?: number;
+  _gameSpectatorCountRequestPending?: boolean;
+  _wheelDraftSaveTimeoutId?: ReturnType<typeof globalThis.setTimeout>;
   _wheelResizeObserver?: ResizeObserver;
   _wheelViewportResizeHandler?: () => void;
   _wheelStaticRenderCache?: unknown;
@@ -153,12 +74,13 @@ export type GameWindowThis = {
   _wheelCanvasRefreshTimeoutId?: number;
 
   // ===== Vue instance =====
-  $refs: Record<string, unknown>;
+  $refs?: Record<string, unknown>;
 
   // ===== Methods from spread method objects =====
   drawWheel(offset?: number): void;
   testSpinWheel(): Promise<void>;
   spinWheel(): Promise<void>;
+  spinWheelInternal(recordSession?: boolean): Promise<void>;
   runWheelAutoPreviewAnimation(): Promise<void>;
   saveWheelSession(): void;
   recordChaseSale(tierId: string): void;
@@ -166,6 +88,13 @@ export type GameWindowThis = {
   resetWheelSession(): void;
   startEndWheelSession(): void;
   loadWheelConfig(options?: { preserveLiveWheelState?: boolean }): void;
+  loadWheelFromSession(): boolean;
+  applyWheelConfig(): void;
+  saveWheelDraft(): void;
+  clearWheelDraft(wheelConfigId?: number | null): void;
+  showWheelConfigSaved?(): void;
+  getCostPerPackForTier(tier: import("../../../../types/app.ts").WheelTier): number;
+  canTierBeChase(tier: import("../../../../types/app.ts").WheelTier): boolean;
   persistLastWheelConfigSelection(): void;
   restoreLastWheelConfigSelection(): void;
   openWheelCreateDialog(): void;
@@ -176,6 +105,7 @@ export type GameWindowThis = {
   deleteWheelConfig(): void;
   syncGameSpectatorCountPolling(): void;
   stopGameSpectatorCountPolling(): void;
+  refreshGameSpectatorCount(): Promise<void>;
   syncGameSpectatorLinks(): void;
   stopWheelAutospin(): void;
   toggleWheelSound(): void;
@@ -191,6 +121,7 @@ export type GameWindowThis = {
   recordPreviewSpinResult(slotIndex: number): void;
   recordSpinResult(slotIndex: number): void;
   landOnSlot(slotIndex: number, options?: { recordSession?: boolean }): void;
+  animateMysteryGridRandomSelection(cellIndex: number): Promise<void>;
   revealMysteryGridRandomCell(recordSession?: boolean): Promise<void>;
   runMysteryGridAutoPreviewAnimation(): Promise<void>;
   revealMysteryGridCell(cellIndex: number, recordSession?: boolean): Promise<void>;
@@ -210,8 +141,7 @@ export type GameWindowThis = {
   requestWheelSessionEnd(): void;
   requestWheelReset(): void;
 
-  // ===== Optional AppContext bridge methods =====
-  addWheelSaleToLot(lotId: number, sale: Sale): void;
+  // ===== Optional effect ports =====
   triggerWheelCelebration?(payload: { label: string; color: string; image?: string; emoji?: string; preview?: boolean }): void;
   endGameSpectatorMode?(options?: { notifyOnSuccess?: boolean; closeDialog?: boolean }): Promise<void>;
   publishGameSpectatorSessionSnapshot?(statusOverride?: "starting" | "live" | "ended"): Promise<void>;
@@ -415,8 +345,8 @@ export function getGameWindowLocalKeys(): string[] {
   ];
 }
 
-export function createGameWindowState() {
-  const state = {
+function createGameWindowBaseState() {
+  return {
     editingWheelConfig: null as WheelConfig | null,
     appliedWheelConfigSnapshot: null as WheelConfig | null,
     wheelConfigSyncPending: false,
@@ -471,8 +401,12 @@ export function createGameWindowState() {
     bracketBattleSession: null as BracketBattleSession | null,
     bracketBattleLastRolls: [] as BracketBattleRoll[],
     bracketBattleRolling: false,
-    bracketBattleShowcaseMatchId: null
-  } as Record<string, unknown>;
+    bracketBattleShowcaseMatchId: null as string | null
+  };
+}
+
+export function createGameWindowState(): ReturnType<typeof createGameWindowBaseState> & GameControllerAliases {
+  const state = createGameWindowBaseState();
   for (const [legacyKey, controllerKey] of Object.entries(GAME_CONTROLLER_LEGACY_ALIAS_MAP)) {
     Object.defineProperty(state, legacyKey, {
       enumerable: true,
@@ -486,7 +420,7 @@ export function createGameWindowState() {
     });
   }
 
-  return state;
+  return state as ReturnType<typeof createGameWindowBaseState> & GameControllerAliases;
 }
 
 export type WheelWindowThis = GameWindowThis;

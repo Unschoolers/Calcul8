@@ -177,55 +177,50 @@ function appendGridReveal(
 }
 
 export const mysteryGridMethods = {
-  async animateMysteryGridRandomSelection(this: Record<string, unknown>, targetCellIndex: number): Promise<void> {
-    const cells = buildMysteryGridCells(this);
+  async animateMysteryGridRandomSelection(this: GameWindowThis | Record<string, unknown>, targetCellIndex: number): Promise<void> {
+    const vm = this as GameWindowThis;
+    const context = this as Record<string, unknown>;
+    const cells = buildMysteryGridCells(context);
     const unrevealedCells = cells.filter((cell) => !cell.revealed);
     if (!unrevealedCells.length || targetCellIndex < 0) return;
-    const reducedMotion = shouldReduceMotion(this);
+    const reducedMotion = shouldReduceMotion(context);
     const steps = reducedMotion ? [targetCellIndex] : Array.from({ length: 18 }, (_, index) => {
       const progress = index / 17;
       const randomCell = unrevealedCells[Math.floor(Math.random() * unrevealedCells.length)];
       return index === 17 ? targetCellIndex : (randomCell?.index ?? targetCellIndex);
     });
-    this.wheelGridRevealAnimating = true;
-    const surfacePreview = getMysteryGridSurfacePreviewController(this);
+    vm.wheelGridRevealAnimating = true;
+    const surfacePreview = getMysteryGridSurfacePreviewController(context);
     try {
       for (let index = 0; index < steps.length; index += 1) {
         const highlightCellIndex = steps[index] ?? targetCellIndex;
         if (surfacePreview?.previewMysteryGridSelection) {
           surfacePreview.previewMysteryGridSelection(highlightCellIndex);
         } else {
-          this.wheelGridHighlightCellIndex = highlightCellIndex;
+          vm.wheelGridHighlightCellIndex = highlightCellIndex;
         }
         const progress = steps.length <= 1 ? 1 : index / (steps.length - 1);
-        if (!reducedMotion && shouldPlayWheelSounds(this)) {
+        if (!reducedMotion && shouldPlayWheelSounds(context)) {
           playMysteryGridShuffleTick(progress);
         }
         const delayMs = reducedMotion ? 0 : 32 + Math.round(progress * progress * 58);
         await waitForMysteryGridAnimationFrame(delayMs);
       }
     } finally {
-      this.wheelGridHighlightCellIndex = targetCellIndex;
-      this.wheelGridRevealAnimating = false;
+      vm.wheelGridHighlightCellIndex = targetCellIndex;
+      vm.wheelGridRevealAnimating = false;
       surfacePreview?.clearMysteryGridSelectionPreview?.();
     }
   },
 
-  async revealMysteryGridRandomCell(this: Record<string, unknown>, recordSession = true): Promise<void> {
-    const cells = buildMysteryGridCells(this);
+  async revealMysteryGridRandomCell(this: GameWindowThis | Record<string, unknown>, recordSession = true): Promise<void> {
+    const vm = this as GameWindowThis;
+    const context = this as Record<string, unknown>;
+    const cells = buildMysteryGridCells(context);
     const cellIndex = pickRandomMysteryGridCellIndex(cells);
     if (cellIndex < 0) return Promise.resolve();
-    const animate = (this as Record<string, unknown> & {
-      animateMysteryGridRandomSelection?: (cellIndex: number) => Promise<void>;
-    }).animateMysteryGridRandomSelection;
-    if (typeof animate === "function") {
-      await animate.call(this, cellIndex);
-    } else {
-      await mysteryGridMethods.animateMysteryGridRandomSelection.call(this, cellIndex);
-    }
-    const reveal = (this as Record<string, unknown> & {
-      revealMysteryGridCell?: (cellIndex: number, recordSession?: boolean) => Promise<void>;
-    }).revealMysteryGridCell;
+    await vm.animateMysteryGridRandomSelection(cellIndex);
+    const reveal = vm.revealMysteryGridCell;
     if (typeof reveal === "function") {
       await reveal.call(this, cellIndex, recordSession);
       return;
@@ -233,27 +228,23 @@ export const mysteryGridMethods = {
     await mysteryGridMethods.revealMysteryGridCell.call(this, cellIndex, recordSession);
   },
 
-  async runMysteryGridAutoPreviewAnimation(this: Record<string, unknown>): Promise<void> {
-    if (this.wheelGridRevealAnimating || this.wheelSpinning) return;
-    const cells = buildMysteryGridCells(this);
+  async runMysteryGridAutoPreviewAnimation(this: GameWindowThis | Record<string, unknown>): Promise<void> {
+    const vm = this as GameWindowThis;
+    if (vm.wheelGridRevealAnimating || vm.wheelSpinning) return;
+    const cells = buildMysteryGridCells(this as Record<string, unknown>);
     const cellIndex = pickRandomMysteryGridCellIndex(cells);
     if (cellIndex < 0) return;
-    await mysteryGridMethods.animateMysteryGridRandomSelection.call(this, cellIndex);
-    if ((this as Record<string, unknown>).wheelAutospinEnabled) {
-      ((this as Record<string, unknown>).scheduleNextWheelAutospin as ((delayMs?: number) => void) | undefined)?.();
+    await vm.animateMysteryGridRandomSelection(cellIndex);
+    if (vm.wheelAutospinEnabled) {
+      vm.scheduleNextWheelAutospin?.();
     }
   },
 
-  async revealMysteryGridCell(this: Record<string, unknown>, cellIndex: number, recordSession = true): Promise<void> {
-    const vm = this as Record<string, unknown> & {
-      recordSpinResult: (index: number) => void;
-      recordPreviewSpinResult: (index: number) => void;
-      appendWheelFairnessHistory: (entry: WheelFairnessEntry, options?: { preview?: boolean }) => void;
-      landOnSlot: (index: number, options?: { recordSession?: boolean }) => void;
-      saveWheelSession: () => void;
-    };
+  async revealMysteryGridCell(this: GameWindowThis | Record<string, unknown>, cellIndex: number, recordSession = true): Promise<void> {
+    const vm = this as GameWindowThis;
+    const context = this as Record<string, unknown>;
     const slots = getWheelSpinSlots(vm);
-    const config = ((vm.wheelDisplayConfig || getWheelDisplayConfig(vm)) as WheelConfig | null);
+    const config = vm.wheelDisplayConfig || getWheelDisplayConfig(context);
     const gridCellCount = getMysteryGridCellCount(config);
     const targetCellIndex = Math.floor(Number(cellIndex));
     const shouldRecordLiveSession = shouldRecordWheelLiveSession(vm, recordSession);
@@ -261,9 +252,9 @@ export const mysteryGridMethods = {
 
     if (vm.wheelSpinning || vm.wheelGridRevealAnimating || !slots.length) return;
     if (!Number.isFinite(targetCellIndex) || targetCellIndex < 0 || targetCellIndex >= gridCellCount) return;
-    if (getGridReveals(vm, preview).some((entry) => entry.cellIndex === targetCellIndex)) return;
-    if (shouldRecordLiveSession && (vm.wheelSpinBlockedReason as string)) {
-      applyWheelSpinBlockedReason(vm, vm.wheelSpinBlockedReason as string);
+    if (getGridReveals(context, preview).some((entry) => entry.cellIndex === targetCellIndex)) return;
+    if (shouldRecordLiveSession && vm.wheelSpinBlockedReason) {
+      applyWheelSpinBlockedReason(vm, vm.wheelSpinBlockedReason);
       return;
     }
 
@@ -280,7 +271,7 @@ export const mysteryGridMethods = {
       algorithm: "whatfees-grid-v1"
     };
 
-    await playMysteryGridRevealAnimation(vm, targetCellIndex);
+    await playMysteryGridRevealAnimation(context, targetCellIndex);
     beginWheelSpin(vm, fairnessResult);
 
     if (shouldRecordLiveSession) {
@@ -293,14 +284,14 @@ export const mysteryGridMethods = {
     const spinNumber = Number(shouldRecordLiveSession
       ? (vm.wheelTotalSpins || 0)
       : (spinController.previewTotalSpins || 0));
-    appendGridReveal(vm, {
+    appendGridReveal(context, {
       preview,
       cellIndex: targetCellIndex,
       slotIndex: targetIndex,
       slots,
       spinNumber
     });
-    if (shouldPlayWheelSounds(vm)) {
+    if (shouldPlayWheelSounds(context)) {
       playMysteryGridRevealDing();
     }
 
@@ -314,11 +305,11 @@ export const mysteryGridMethods = {
     vm.wheelSpinning = false;
     vm.wheelGridHighlightCellIndex = targetCellIndex;
     vm.wheelGridRevealAnimating = false;
-    getMysteryGridSurfacePreviewController(vm)?.clearMysteryGridSelectionPreview?.();
+    getMysteryGridSurfacePreviewController(context)?.clearMysteryGridSelectionPreview?.();
     vm.saveWheelSession();
     vm.landOnSlot(targetIndex, { recordSession: shouldRecordLiveSession });
-    if (getGridReveals(vm, preview).length >= gridCellCount) {
-      scheduleMysteryGridAutoReset(vm, {
+    if (getGridReveals(context, preview).length >= gridCellCount) {
+      scheduleMysteryGridAutoReset(context, {
         preview,
         gridCellCount
       });

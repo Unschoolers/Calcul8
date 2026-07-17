@@ -1,6 +1,8 @@
 import type { Lot, MysteryGridReveal, PendingWheelInventoryIssue, WheelConfig, WheelFairnessEntry } from "../../../../types/app.ts";
 import type { WheelControllerState } from "../coordinator/gameControllerState.ts";
 import type { WheelSlot } from "./wheelSlots.ts";
+import type { GameSessionEffect } from "../../../../app-core/shared/game-session-aggregate.ts";
+import { dispatchGameSessionCommand } from "./gameSessionAggregateAdapter.ts";
 import { writeGameSpectatorSessionStorageState } from "./gameSpectatorSessionStorage.ts";
 import { buildSlotsFromConfig, createWheelGridLayoutSeed } from "./wheelSlots.ts";
 
@@ -131,7 +133,7 @@ export function applyWheelPreviewReset(
   context: WheelSessionContext,
   controller: WheelControllerState,
   previewSlots: WheelSlot[]
-): void {
+): GameSessionEffect[] {
   const config = getWheelTargetConfig(context, { preview: true });
   let nextPreviewSlots = previewSlots;
   if (config?.gameType === "grid") {
@@ -139,9 +141,11 @@ export function applyWheelPreviewReset(
     nextPreviewSlots = buildSlotsFromConfig(config, { layoutSeed: controller.previewGridLayoutSeed });
     controller.previewSlots = nextPreviewSlots;
   }
-  controller.previewSpinCounts = new Array(nextPreviewSlots.length).fill(0);
-  controller.previewTotalSpins = 0;
-  controller.previewFairnessHistory = [];
+  const effects = dispatchGameSessionCommand(context, controller, {
+    type: "session-reset",
+    execution: "preview",
+    slotCount: nextPreviewSlots.length
+  });
   controller.previewChaseTallyHistory = [];
   controller.previewGridReveals = [];
   controller.inventoryWarning = "";
@@ -153,13 +157,14 @@ export function applyWheelPreviewReset(
   context.wheelGridRevealAnimating = false;
   context.wheelGridResetAnimating = false;
   context.wheelLastResult = "";
+  return effects;
 }
 
 export function applyWheelLiveReset(
   context: WheelSessionContext,
   controller: WheelControllerState,
   slots: WheelSlot[]
-): void {
+): GameSessionEffect[] {
   const config = getWheelTargetConfig(context);
   if (config?.gameType === "grid") {
     controller.gridLayoutSeed = createWheelGridLayoutSeed();
@@ -167,10 +172,13 @@ export function applyWheelLiveReset(
     controller.activeSlots = slots;
     controller.previewGridLayoutSeed = controller.gridLayoutSeed;
   }
-  context.wheelTotalSpins = 0;
-  context.wheelSpinCounts = new Array(slots.length).fill(0);
+  const effects = dispatchGameSessionCommand(context, controller, {
+    type: "session-reset",
+    execution: "live",
+    slotCount: slots.length
+  });
   controller.previewSlots = [...slots];
-  applyWheelPreviewReset(context, controller, slots);
+  effects.push(...applyWheelPreviewReset(context, controller, slots));
   controller.sessionNetRevenue = 0;
   controller.sessionCostAdjustment = 0;
   controller.fairnessHistory = [];
@@ -179,6 +187,7 @@ export function applyWheelLiveReset(
   context.wheelEndingSession = false;
   context.wheelEndSessionReviewActive = false;
   context.gameSpectatorPublishPending = false;
+  return effects;
 }
 
 export function mergeWheelSessionRootFallback(

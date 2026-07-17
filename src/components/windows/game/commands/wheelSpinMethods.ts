@@ -12,7 +12,7 @@ import {
     resolveWheelPreviewExtraRotations
 } from "../../../../app-core/shared/game-spin.ts";
 import { assignWheelPendingInventoryIssues, normalizeWheelPendingInventoryIssues } from "../../../../app-core/shared/wheel-session-compat.ts";
-import type { Lot, Sale, WheelConfig, WheelFairnessEntry } from "../../../../types/app.ts";
+import type { Lot, Sale, WheelFairnessEntry } from "../../../../types/app.ts";
 import {
     ensureWheelCanvasSize,
     getStaticWheelRender,
@@ -38,6 +38,7 @@ import {
     getWheelSpinSlots,
     shouldRecordWheelLiveSession
 } from "../services/wheelSpinState.ts";
+import { dispatchGameSessionCommand } from "../services/gameSessionAggregateAdapter.ts";
 
 function queuePendingInventoryIssue(
   context: GameWindowThis,
@@ -84,35 +85,34 @@ const MOBILE_SPIN_FRAME_INTERVAL_MS = 33;
 const DESKTOP_CELEBRATION_FRAME_INTERVAL_MS = 33;
 const MOBILE_CELEBRATION_FRAME_INTERVAL_MS = 50;
 
-function isCompactWheelPerformanceMode(context: Record<string, unknown>): boolean {
+function isCompactWheelPerformanceMode(context: GameWindowThis): boolean {
   const viewportWidth = Number(context.wheelViewportWidth || 0);
   const isCompactLayout = context.wheelIsCompactLayout === true || (viewportWidth > 0 && viewportWidth <= 720);
   const navigatorLike = (globalThis as { navigator?: { maxTouchPoints?: number } }).navigator;
   return isCompactLayout || Number(navigatorLike?.maxTouchPoints || 0) > 0;
 }
 
-function getSpinFrameIntervalMs(context: Record<string, unknown>): number {
+function getSpinFrameIntervalMs(context: GameWindowThis): number {
   return isCompactWheelPerformanceMode(context) ? MOBILE_SPIN_FRAME_INTERVAL_MS : 0;
 }
 
-function shouldPlayWheelSounds(context: Record<string, unknown>): boolean {
+function shouldPlayWheelSounds(context: GameWindowThis): boolean {
   return context.wheelSoundEnabled !== false;
 }
 
-function getCelebrationFrameIntervalMs(context: Record<string, unknown>): number {
+function getCelebrationFrameIntervalMs(context: GameWindowThis): number {
   return isCompactWheelPerformanceMode(context)
     ? MOBILE_CELEBRATION_FRAME_INTERVAL_MS
     : DESKTOP_CELEBRATION_FRAME_INTERVAL_MS;
 }
 
-function getWheelCenterIcon(context: Record<string, unknown>): HTMLElement | null {
-  const refs = (context.$refs || {}) as Record<string, unknown>;
-  return (refs.wheelOuter as HTMLElement | null)
+function getWheelCenterIcon(context: GameWindowThis): HTMLElement | null {
+  return (context.$refs?.wheelOuter as HTMLElement | null)
     ?.querySelector(".wheel-center-cap__icon") as HTMLElement | null;
 }
 
 function setWheelAnimatedAngle(
-  context: Record<string, unknown>,
+  context: GameWindowThis,
   angle: number,
   centerIcon: HTMLElement | null
 ): void {
@@ -122,19 +122,19 @@ function setWheelAnimatedAngle(
   }
 }
 
-function clearWheelAnimatedAngle(context: Record<string, unknown>): void {
+function clearWheelAnimatedAngle(context: GameWindowThis): void {
   context._wheelAnimationAngle = undefined;
 }
 
 export const wheelSpinMethods = {
   drawWheel(this: GameWindowThis, offset = 0): void {
-    const canvasEl = this.$refs.wheelCanvas as HTMLCanvasElement | null;
+    const canvasEl = this.$refs?.wheelCanvas as HTMLCanvasElement | null;
     if (!canvasEl) return;
     const ctx = canvasEl.getContext("2d");
     if (!ctx) return;
 
     const drawController = getWheelController(this);
-    const slots = getWheelSpinSlots(this as unknown as Record<string, unknown>);
+    const slots = getWheelSpinSlots(this);
     const size = Math.max(20, this.wheelCanvasSize);
     const dpr = getWheelCanvasDpr();
 
@@ -146,7 +146,7 @@ export const wheelSpinMethods = {
     ctx.clearRect(0, 0, size, size);
 
     if (!slots.length) {
-      (this as Record<string, unknown>)._wheelStaticRenderCache = undefined;
+      this._wheelStaticRenderCache = undefined;
       const cx = Math.round(size / 2);
       const cy = Math.round(size / 2);
       const r = Math.round(size / 2 - 10);
@@ -164,7 +164,7 @@ export const wheelSpinMethods = {
 
     const highlightedSlotIndex = Number(drawController.highlightedSlotIndex ?? -1);
     if (highlightedSlotIndex < 0) {
-      const staticWheel = getStaticWheelRender(this as Record<string, unknown>, canvasEl, slots, size, dpr);
+      const staticWheel = getStaticWheelRender(this as unknown as Record<string, unknown>, canvasEl, slots, size, dpr);
       if (staticWheel) {
         const cx = Math.round(size / 2);
         const cy = Math.round(size / 2);
@@ -177,31 +177,22 @@ export const wheelSpinMethods = {
       }
     }
 
-    const highlightTime = Number((this as Record<string, unknown>)._wheelHighlightTime ?? 0);
+    const highlightTime = Number(this._wheelHighlightTime ?? 0);
 
     renderWheelSurface(ctx, slots, size, offset, highlightedSlotIndex, highlightTime);
   },
 
-  async spinWheel(this: Record<string, unknown>): Promise<void> {
-    const vm = this as Record<string, unknown> & {
-      spinWheelInternal: (recordSession?: boolean) => Promise<void>;
-    };
-    await vm.spinWheelInternal(true);
+  async spinWheel(this: GameWindowThis): Promise<void> {
+    await this.spinWheelInternal(true);
   },
 
-  async testSpinWheel(this: Record<string, unknown>): Promise<void> {
-    const vm = this as Record<string, unknown> & {
-      spinWheelInternal: (recordSession?: boolean) => Promise<void>;
-    };
-    await vm.spinWheelInternal(false);
+  async testSpinWheel(this: GameWindowThis): Promise<void> {
+    await this.spinWheelInternal(false);
   },
 
-  async runWheelAutoPreviewAnimation(this: Record<string, unknown>): Promise<void> {
-    const vm = this as Record<string, unknown> & {
-      drawWheel: (offset: number) => void;
-      scheduleNextWheelAutospin?: (delayMs?: number) => void;
-    };
-    const slots = getWheelSpinSlots(vm as Record<string, unknown>);
+  async runWheelAutoPreviewAnimation(this: GameWindowThis | Record<string, unknown>): Promise<void> {
+    const vm = this as GameWindowThis;
+    const slots = getWheelSpinSlots(vm);
     if (vm.wheelSpinning || !slots.length) return;
 
     const currentAngle = (vm.wheelCurrentAngle || 0) as number;
@@ -217,8 +208,8 @@ export const wheelSpinMethods = {
     if (!plan) return;
     const { endAngle, durationMs: duration, startAngle } = plan;
     const startTime = performance.now();
-    const centerIcon = getWheelCenterIcon(vm as Record<string, unknown>);
-    const spinFrameIntervalMs = getSpinFrameIntervalMs(vm as Record<string, unknown>);
+    const centerIcon = getWheelCenterIcon(vm);
+    const spinFrameIntervalMs = getSpinFrameIntervalMs(vm);
     let lastSpinFrameTime = startTime - spinFrameIntervalMs;
 
     vm.wheelSpinning = true;
@@ -237,7 +228,7 @@ export const wheelSpinMethods = {
       const shouldDrawFrame = t >= 1 || spinFrameIntervalMs <= 0 || now - lastSpinFrameTime >= spinFrameIntervalMs;
       if (shouldDrawFrame) {
         lastSpinFrameTime = now;
-        setWheelAnimatedAngle(vm as Record<string, unknown>, currentOffset, centerIcon);
+        setWheelAnimatedAngle(vm, currentOffset, centerIcon);
         vm.drawWheel(currentOffset);
       }
 
@@ -247,7 +238,7 @@ export const wheelSpinMethods = {
       }
 
       vm.wheelCurrentAngle = endAngle;
-      clearWheelAnimatedAngle(vm as Record<string, unknown>);
+      clearWheelAnimatedAngle(vm);
       vm.drawWheel(endAngle);
       vm.wheelSpinning = false;
       if (vm.wheelAutospinEnabled) {
@@ -258,30 +249,20 @@ export const wheelSpinMethods = {
     requestAnimationFrame(tick);
   },
 
-  async spinWheelInternal(this: Record<string, unknown>, recordSession = true): Promise<void> {
-    const vm = this as Record<string, unknown> & {
-      drawWheel: (offset: number) => void;
-      landOnSlot: (index: number, options?: { recordSession?: boolean }) => void;
-      recordSpinResult: (index: number) => void;
-      recordPreviewSpinResult: (index: number) => void;
-      appendWheelFairnessHistory: (entry: WheelFairnessEntry, options?: { preview?: boolean }) => void;
-      saveWheelSession: () => void;
-    };
-    const spinController = getWheelController(vm as Record<string, unknown>);
-    const slots = getWheelSpinSlots(vm as Record<string, unknown>);
-    const shouldRecordLiveSession = shouldRecordWheelLiveSession(vm as Record<string, unknown>, recordSession);
+  async spinWheelInternal(this: GameWindowThis | Record<string, unknown>, recordSession = true): Promise<void> {
+    const vm = this as GameWindowThis;
+    const spinController = getWheelController(vm);
+    const slots = getWheelSpinSlots(vm);
+    const shouldRecordLiveSession = shouldRecordWheelLiveSession(vm, recordSession);
     if (vm.wheelSpinning || !slots.length) return;
-    if (shouldRecordLiveSession && ((vm as Record<string, unknown>).wheelSpinBlockedReason as string)) {
-      applyWheelSpinBlockedReason(
-        vm as Record<string, unknown>,
-        (vm as Record<string, unknown>).wheelSpinBlockedReason as string
-      );
+    if (shouldRecordLiveSession && vm.wheelSpinBlockedReason) {
+      applyWheelSpinBlockedReason(vm, vm.wheelSpinBlockedReason);
       return;
     }
 
     const fairnessResult = await resolveWheelFairnessSpin(slots.length, slots);
 
-    beginWheelSpin(vm as Record<string, unknown>, fairnessResult);
+    beginWheelSpin(vm, fairnessResult);
 
     const targetIndex = fairnessResult.resultIndex;
     const currentAngle = (vm.wheelCurrentAngle || 0) as number;
@@ -308,11 +289,10 @@ export const wheelSpinMethods = {
 
     // Pointer wobble: detect when slice dividers cross the pointer position
     let prevBoundaryCount = 0;
-    const refs = (vm.$refs || {}) as Record<string, unknown>;
-    const pointerEl = (refs.wheelOuter as HTMLElement | null)
+    const pointerEl = (vm.$refs?.wheelOuter as HTMLElement | null)
       ?.querySelector(".wheel-pointer") as HTMLElement | null;
-    const centerIcon = getWheelCenterIcon(vm as Record<string, unknown>);
-    const spinFrameIntervalMs = getSpinFrameIntervalMs(vm as Record<string, unknown>);
+    const centerIcon = getWheelCenterIcon(vm);
+    const spinFrameIntervalMs = getSpinFrameIntervalMs(vm);
     let lastSpinFrameTime = startTime - spinFrameIntervalMs;
     let spinFrameId: number | undefined;
     let spinCompleted = false;
@@ -335,7 +315,7 @@ export const wheelSpinMethods = {
       const shouldDrawFrame = t >= 1 || spinFrameIntervalMs <= 0 || now - lastSpinFrameTime >= spinFrameIntervalMs;
       if (shouldDrawFrame) {
         lastSpinFrameTime = now;
-        setWheelAnimatedAngle(vm as Record<string, unknown>, currentOffset, centerIcon);
+        setWheelAnimatedAngle(vm, currentOffset, centerIcon);
         vm.drawWheel(currentOffset);
       }
 
@@ -350,7 +330,7 @@ export const wheelSpinMethods = {
           pointerEl.classList.add("wheel-pointer--tick");
           // Tick volume fades as the wheel slows down
           const tickVolume = 0.04 + 0.06 * (1 - t);
-          if (shouldPlayWheelSounds(vm as Record<string, unknown>)) {
+          if (shouldPlayWheelSounds(vm)) {
             playWheelTick(tickVolume);
           }
         }
@@ -363,14 +343,13 @@ export const wheelSpinMethods = {
 
       cleanupSpinLoop();
       vm.wheelCurrentAngle = endAngle;
-      clearWheelAnimatedAngle(vm as Record<string, unknown>);
+      clearWheelAnimatedAngle(vm);
       vm.drawWheel(endAngle);
       vm.wheelSpinning = false;
       pointerEl?.classList.remove("wheel-pointer--tick");
-      const config = (((vm as Record<string, unknown>).wheelDisplayConfig
-        || (vm as Record<string, unknown>).activeWheelConfig)) as WheelConfig | null;
+      const config = vm.wheelDisplayConfig || vm.activeWheelConfig;
       const spinNumber = Number(shouldRecordLiveSession
-        ? ((vm as Record<string, unknown>).wheelTotalSpins || 0)
+        ? (vm.wheelTotalSpins || 0)
         : (spinController.previewTotalSpins || 0));
       let verificationUrl = buildWheelReadableVerificationUrl(fairnessResult.verificationUrl, {
         slotLabel: slots[targetIndex]?.name,
@@ -400,8 +379,8 @@ export const wheelSpinMethods = {
         verificationUrl
       };
       vm._gameSpectatorSpinAnimation = null;
-      finalizeWheelSpinProof(vm as Record<string, unknown>, readableFairnessResult);
-      vm.appendWheelFairnessHistory(buildWheelSpinFairnessEntry(vm as Record<string, unknown>, {
+      finalizeWheelSpinProof(vm, readableFairnessResult);
+      vm.appendWheelFairnessHistory(buildWheelSpinFairnessEntry(vm, {
         fairnessResult: readableFairnessResult,
         slots,
         targetIndex,
@@ -428,29 +407,30 @@ export const wheelSpinMethods = {
 
   recordPreviewSpinResult(this: GameWindowThis, slotIndex: number): void {
     const controller = getWheelController(this);
-    const slots = getWheelSpinSlots(this as unknown as Record<string, unknown>);
-    if (!slots[slotIndex]) return;
-    const counts = (controller.previewSpinCounts || []) as number[];
-    const nextCounts = counts.length === slots.length ? [...counts] : new Array(slots.length).fill(0);
-    nextCounts[slotIndex] = (nextCounts[slotIndex] || 0) + 1;
-    controller.previewSpinCounts = nextCounts;
-    controller.previewTotalSpins = (controller.previewTotalSpins || 0) + 1;
+    const slots = getWheelSpinSlots(this);
+    dispatchGameSessionCommand(this, controller, {
+      type: "spin-recorded",
+      execution: "preview",
+      slotIndex,
+      slotCount: slots.length
+    });
   },
 
   recordSpinResult(this: GameWindowThis, slotIndex: number): void {
     const recordController = getWheelController(this);
-    const slots = getWheelSpinSlots(this as unknown as Record<string, unknown>);
+    const slots = getWheelSpinSlots(this);
     const slot = slots[slotIndex];
     if (!slot) return;
 
-    const counts = (this.wheelSpinCounts || []) as number[];
-    counts[slotIndex] = (counts[slotIndex] || 0) + 1;
-    this.wheelSpinCounts = [...counts];
-    this.wheelTotalSpins = ((this.wheelTotalSpins as number) || 0) + 1;
+    dispatchGameSessionCommand(this, recordController, {
+      type: "spin-recorded",
+      execution: "live",
+      slotIndex,
+      slotCount: slots.length
+    });
 
     if (!slot.isChase) {
-      const config = (((this as Record<string, unknown>).wheelDisplayConfig
-        || (this as Record<string, unknown>).activeWheelConfig)) as WheelConfig | null;
+      const config = this.wheelDisplayConfig || this.activeWheelConfig;
       const tier = config?.tiers.find((t) => t.id === slot.tier);
       if (tier && isWheelTierMultiLot(tier)) {
         const candidateLotIds = getWheelTierSourceLotIds(tier)
@@ -471,7 +451,7 @@ export const wheelSpinMethods = {
       if (tier?.boundLotId) {
         if (slot.deductionType === "none" || (slot.packsCount || 0) <= 0) {
           recordController.inventoryWarning = "";
-          (this as Record<string, unknown> & { saveWheelSession: () => void }).saveWheelSession();
+          this.saveWheelSession();
           return;
         }
 
@@ -513,79 +493,74 @@ export const wheelSpinMethods = {
           label: slot.name, lotId: tier.boundLotId, lots,
           singlesEntryId: tier.boundSinglesId
         });
-        const addWheelSale = (this as Record<string, unknown>).addWheelSaleToLot as
-          ((lotId: number, sale: Sale) => void) | undefined;
-        if (typeof addWheelSale === "function") {
-          addWheelSale(tier.boundLotId, sale);
-        }
+        this.addWheelSaleToLot?.(tier.boundLotId, sale);
         appendWheelSessionNetRevenue(this, sale);
       }
     }
-    (this as Record<string, unknown> & { saveWheelSession: () => void }).saveWheelSession();
+    this.saveWheelSession();
   },
 
   landOnSlot(this: GameWindowThis, slotIndex: number, options: { recordSession?: boolean } = {}): void {
     const landController = getWheelController(this);
-    const slots = getWheelSpinSlots(this as unknown as Record<string, unknown>);
+    const slots = getWheelSpinSlots(this);
     const slot = slots[slotIndex];
     if (!slot) return;
     const recordSession = options.recordSession ?? true;
 
     // Cancel any existing celebration animation
-    const existingHighlightTimeoutId = (this as Record<string, unknown>)._wheelHighlightTimeoutId as number | undefined;
+    const existingHighlightTimeoutId = this._wheelHighlightTimeoutId;
     if (existingHighlightTimeoutId != null) {
       clearTimeout(existingHighlightTimeoutId);
     }
     const hasRAF = typeof requestAnimationFrame === "function";
-    const existingAnimationId = (this as Record<string, unknown>)._wheelCelebrationAnimId as number | undefined;
+    const existingAnimationId = this._wheelCelebrationAnimId;
     if (existingAnimationId != null && hasRAF) {
       cancelAnimationFrame(existingAnimationId);
     }
 
     landController.highlightedSlotIndex = slotIndex;
-    const redraw = (this as Record<string, unknown>).drawWheel as ((offset?: number) => void) | undefined;
-    const getAngle = () => ((this as Record<string, unknown>).wheelCurrentAngle as number) || 0;
+    const redraw = this.drawWheel;
+    const getAngle = () => this.wheelCurrentAngle || 0;
 
     // Animated celebration loop — chaser lights + pulsing glow
     const celebrationDuration = 5000;
 
     if (hasRAF) {
       const celebrationStart = performance.now();
-      const celebrationFrameIntervalMs = getCelebrationFrameIntervalMs(this as unknown as Record<string, unknown>);
+      const celebrationFrameIntervalMs = getCelebrationFrameIntervalMs(this);
       let lastCelebrationFrameTime = celebrationStart - celebrationFrameIntervalMs;
       const celebrateTick = (now: number) => {
         const elapsed = now - celebrationStart;
         if (elapsed >= celebrationDuration) {
           landController.highlightedSlotIndex = -1;
-          (this as Record<string, unknown>)._wheelHighlightTime = 0;
-          (this as Record<string, unknown>)._wheelCelebrationAnimId = undefined;
+          this._wheelHighlightTime = 0;
+          this._wheelCelebrationAnimId = undefined;
           redraw?.(getAngle());
           return;
         }
         if (now - lastCelebrationFrameTime >= celebrationFrameIntervalMs) {
           lastCelebrationFrameTime = now;
           const t = elapsed / 1000;
-          (this as Record<string, unknown>)._wheelHighlightTime = t;
+          this._wheelHighlightTime = t;
           redraw?.(getAngle());
         }
-        (this as Record<string, unknown>)._wheelCelebrationAnimId = requestAnimationFrame(celebrateTick);
+        this._wheelCelebrationAnimId = requestAnimationFrame(celebrateTick);
       };
-      (this as Record<string, unknown>)._wheelCelebrationAnimId = requestAnimationFrame(celebrateTick);
+      this._wheelCelebrationAnimId = requestAnimationFrame(celebrateTick);
     } else {
       // Fallback for non-browser environments
       redraw?.(getAngle());
-      (this as Record<string, unknown>)._wheelHighlightTimeoutId = globalThis.setTimeout(() => {
+      this._wheelHighlightTimeoutId = globalThis.setTimeout(() => {
         landController.highlightedSlotIndex = -1;
-        (this as Record<string, unknown>)._wheelHighlightTimeoutId = undefined;
+        this._wheelHighlightTimeoutId = undefined;
         redraw?.(getAngle());
-      }, celebrationDuration);
+      }, celebrationDuration) as unknown as number;
     }
 
     this.wheelLastResult = "🎉 " + slot.name;
     landController.lastResultColor = slot.color;
     {
-      const config = (((this as Record<string, unknown>).wheelDisplayConfig
-        || (this as Record<string, unknown>).activeWheelConfig)) as WheelConfig | null;
+      const config = this.wheelDisplayConfig || this.activeWheelConfig;
       const tier = config?.tiers.find((entry) => entry.id === slot.tier);
       const emoji = slot.celebrationEmoji || tier?.celebrationEmoji || undefined;
       const lot = tier?.boundLotId != null
@@ -594,9 +569,7 @@ export const wheelSpinMethods = {
       const image = slot.isChase && tier?.boundSinglesId != null
         ? lot?.singlesPurchases?.find((entry) => entry.id === tier.boundSinglesId)?.image
         : undefined;
-      (this as Record<string, unknown> & {
-        triggerWheelCelebration?: (payload: { label: string; color: string; image?: string; emoji?: string; preview?: boolean }) => void;
-      }).triggerWheelCelebration?.({
+      this.triggerWheelCelebration?.({
         label: slot.name,
         color: slot.color,
         image,
@@ -607,31 +580,31 @@ export const wheelSpinMethods = {
 
     if (!recordSession) {
       if (slot.isChase) {
-        (this as Record<string, unknown> & { stopWheelAutospin?: () => void }).stopWheelAutospin?.();
-        (this as Record<string, unknown>).wheelChasePendingTierId = slot.tier;
-        (this as Record<string, unknown>).wheelChaseReplacementSinglesId = null;
-        (this as Record<string, unknown>).wheelChasePreviewMode = true;
-        (this as Record<string, unknown>).wheelChaseDialog = true;
-        (this as Record<string, unknown> & { saveWheelSession: () => void }).saveWheelSession();
+        this.stopWheelAutospin?.();
+        this.wheelChasePendingTierId = slot.tier;
+        this.wheelChaseReplacementSinglesId = null;
+        this.wheelChasePreviewMode = true;
+        this.wheelChaseDialog = true;
+        this.saveWheelSession();
         return;
       }
-      (this as Record<string, unknown>).wheelChaseDialog = false;
-      (this as Record<string, unknown>).wheelChaseReplacementSinglesId = null;
-      (this as Record<string, unknown>).wheelChasePendingTierId = "";
-      (this as Record<string, unknown> & { saveWheelSession: () => void }).saveWheelSession();
-      if ((this as Record<string, unknown>).wheelAutospinEnabled) {
-        (this as Record<string, unknown> & { scheduleNextWheelAutospin?: (delayMs?: number) => void }).scheduleNextWheelAutospin?.();
+      this.wheelChaseDialog = false;
+      this.wheelChaseReplacementSinglesId = null;
+      this.wheelChasePendingTierId = "";
+      this.saveWheelSession();
+      if (this.wheelAutospinEnabled) {
+        this.scheduleNextWheelAutospin?.();
       }
       return;
     }
 
     if (slot.isChase) {
-      (this as Record<string, unknown>).wheelChasePreviewMode = false;
-      (this as Record<string, unknown>).wheelChasePendingTierId = slot.tier;
-      (this as Record<string, unknown>).wheelChaseReplacementSinglesId = null;
-      (this as Record<string, unknown>).wheelChaseDialog = true;
+      this.wheelChasePreviewMode = false;
+      this.wheelChasePendingTierId = slot.tier;
+      this.wheelChaseReplacementSinglesId = null;
+      this.wheelChaseDialog = true;
     }
-    (this as Record<string, unknown> & { saveWheelSession: () => void }).saveWheelSession();
+    this.saveWheelSession();
     void broadcastWheelSession(this as Parameters<typeof broadcastWheelSession>[0]);
   }
 };

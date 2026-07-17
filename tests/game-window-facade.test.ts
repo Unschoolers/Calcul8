@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { test } from "vitest";
 import { GameWindow } from "../src/components/windows/game/GameWindow.ts";
 
@@ -19,6 +19,13 @@ test("app shell renders the generic game window with the existing wheel ref", ()
 
   assert.match(template, /<game-window ref="wheelWindow"/);
   assert.doesNotMatch(template, /<wheel-window ref="wheelWindow"/);
+});
+
+test("legacy WheelWindow module facades are removed", () => {
+  assert.equal(existsSync("src/components/windows/game/WheelWindow.ts"), false);
+  assert.equal(existsSync("src/components/windows/game/WheelWindow.vue"), false);
+  assert.equal(existsSync("src/components/windows/wheel/WheelWindow.ts"), false);
+  assert.equal(existsSync("src/components/windows/wheel/WheelWindow.vue"), false);
 });
 
 test("game window children use the game context without the wheelCtx compatibility bridge", () => {

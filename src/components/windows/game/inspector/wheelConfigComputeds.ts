@@ -7,7 +7,7 @@ import {
   isWheelTierMultiLot
 } from "../../../../app-core/shared/wheel-tier-sources.ts";
 import type { Lot, WheelConfig } from "../../../../types/app.ts";
-import { getWheelController } from "../coordinator/gameControllerState.ts";
+import { getWheelController, type GameWindowThis } from "../coordinator/gameControllerState.ts";
 import {
   getWheelDisplayConfig,
   getWheelDisplaySlots,
@@ -21,40 +21,56 @@ import {
   getRemainingPacksForWheelLot
 } from "../services/wheelSaleSupport.ts";
 
+type TierSourceItem = { title: string; value: number; lotType?: string; groupLabel?: string | null };
+type InvalidLiveTier = { tierId: string; label: string; reason: string };
+type WheelConfigComputedContext = Record<string, unknown> & Partial<GameWindowThis> & {
+  preferredLanguage?: string;
+  wheelInvalidLiveTiers?: InvalidLiveTier[];
+  tierSourceItems?: TierSourceItem[];
+  boxesPurchased?: number;
+  packsPerBox?: number;
+  boxPriceCost?: number;
+  purchaseShippingCost?: number;
+  purchaseTaxPercent?: number;
+  platformFeePercent?: number;
+  includeTax?: boolean;
+  currency?: "CAD" | "USD";
+};
+
 export const wheelConfigComputeds = {
-  hasPendingWheelChanges(this: Record<string, unknown>): boolean {
-    const editing = (this as Record<string, unknown>).editingWheelConfig as WheelConfig | null;
-    const active = (this as Record<string, unknown>).activeWheelConfig as WheelConfig | null;
+  hasPendingWheelChanges(this: WheelConfigComputedContext): boolean {
+    const editing = this.editingWheelConfig;
+    const active = this.activeWheelConfig;
     if (!editing || !active) return false;
     return JSON.stringify(editing) !== JSON.stringify(active);
   },
 
-  wheelDisplayConfig(this: Record<string, unknown>): WheelConfig | null {
-    return getWheelDisplayConfig(this as Record<string, unknown>);
+  wheelDisplayConfig(this: WheelConfigComputedContext): WheelConfig | null {
+    return getWheelDisplayConfig(this);
   },
 
-  wheelDisplaySlots(this: Record<string, unknown>): WheelSlot[] {
-    return getWheelDisplaySlots(this as Record<string, unknown>);
+  wheelDisplaySlots(this: WheelConfigComputedContext): WheelSlot[] {
+    return getWheelDisplaySlots(this);
   },
 
-  wheelDisplayInventoryWarning(this: Record<string, unknown>): string {
-    return String(getWheelController(this as Record<string, unknown>).inventoryWarning || "");
+  wheelDisplayInventoryWarning(this: WheelConfigComputedContext): string {
+    return String(getWheelController(this).inventoryWarning || "");
   },
 
-  wheelDisplaySpinCounts(this: Record<string, unknown>): number[] {
-    return getWheelDisplaySpinCounts(this as Record<string, unknown>);
+  wheelDisplaySpinCounts(this: WheelConfigComputedContext): number[] {
+    return getWheelDisplaySpinCounts(this);
   },
 
-  wheelDisplayTotalSpins(this: Record<string, unknown>): number {
-    return getWheelDisplayTotalSpins(this as Record<string, unknown>);
+  wheelDisplayTotalSpins(this: WheelConfigComputedContext): number {
+    return getWheelDisplayTotalSpins(this);
   },
 
-  wheelConfigItems(this: Record<string, unknown>): Array<{ title: string; value: number }> {
+  wheelConfigItems(this: WheelConfigComputedContext): Array<{ title: string; value: number }> {
     const configs = (this.wheelConfigs || []) as WheelConfig[];
     return configs.map((c) => ({ title: c.name, value: c.id }));
   },
 
-  lotItems(this: Record<string, unknown>): Array<{ title: string; value: number; lotType?: string }> {
+  lotItems(this: WheelConfigComputedContext): Array<{ title: string; value: number; lotType?: string }> {
     const lots = (this.lots || []) as Array<{ id: number; name: string; lotType?: string }>;
     return lots.map((lot) => ({
       title: lot.name,
@@ -63,17 +79,17 @@ export const wheelConfigComputeds = {
     }));
   },
 
-  activeWheelConfig(this: Record<string, unknown>): WheelConfig | null {
+  activeWheelConfig(this: WheelConfigComputedContext): WheelConfig | null {
     const activeId = this.activeWheelConfigId as number | null;
     if (activeId == null) return null;
-    const appliedSnapshot = ((this as Record<string, unknown>).appliedWheelConfigSnapshot as WheelConfig | null);
+    const appliedSnapshot = this.appliedWheelConfigSnapshot;
     if (appliedSnapshot?.id === activeId) return appliedSnapshot;
     const configs = (this.wheelConfigs || []) as WheelConfig[];
     return configs.find((c) => c.id === activeId) || null;
   },
 
-  canApplyWheelConfig(this: Record<string, unknown>): boolean {
-    const config = (this as Record<string, unknown>).editingWheelConfig as WheelConfig | null;
+  canApplyWheelConfig(this: WheelConfigComputedContext): boolean {
+    const config = this.editingWheelConfig;
     if (!config) return false;
     if (config.gameType === "bracket") return true;
     if (!config.tiers.length) return false;
@@ -81,13 +97,13 @@ export const wheelConfigComputeds = {
     return activeTiers.length > 0 && activeTiers.every((tier) => getWheelTierSourceLotIds(tier).length > 0);
   },
 
-  wheelInvalidLiveTiers(this: Record<string, unknown>): Array<{ tierId: string; label: string; reason: string }> {
-    const config = (this as Record<string, unknown>).activeWheelConfig as WheelConfig | null;
+  wheelInvalidLiveTiers(this: WheelConfigComputedContext): InvalidLiveTier[] {
+    const config = this.activeWheelConfig;
     const lots = (this.lots || []) as Lot[];
-    const preferredLanguage = String((this as Record<string, unknown>).preferredLanguage ?? "");
+    const preferredLanguage = this.preferredLanguage ?? "";
     if (!config) return [];
 
-    const invalid: Array<{ tierId: string; label: string; reason: string }> = [];
+    const invalid: InvalidLiveTier[] = [];
     for (const tier of config.tiers) {
       if (getTierChancePercent(tier) <= 0) continue;
       const sourceLotIds = getWheelTierSourceLotIds(tier);
@@ -171,50 +187,48 @@ export const wheelConfigComputeds = {
     return invalid;
   },
 
-  wheelSpinBlockedReason(this: Record<string, unknown>): string {
-    if ((this as Record<string, unknown>).wheelMode === "config") return "";
-    const pendingIssues = ((this as Record<string, unknown>).wheelPendingInventoryIssues || []) as Array<{
-      requiresLotSelection?: boolean;
-    }>;
+  wheelSpinBlockedReason(this: WheelConfigComputedContext): string {
+    if (this.wheelMode === "config") return "";
+    const pendingIssues = this.wheelPendingInventoryIssues ?? [];
     if (pendingIssues.some((entry) => entry.requiresLotSelection === true)) {
-      return translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelResolvePendingLotSelectionBeforeSpin");
+      return translateAppMessage(this.preferredLanguage ?? "", "wheelResolvePendingLotSelectionBeforeSpin");
     }
-    const invalid = ((this as Record<string, unknown>).wheelInvalidLiveTiers || []) as Array<{ label: string; reason: string }>;
+    const invalid = this.wheelInvalidLiveTiers ?? [];
     if (!invalid.length) return "";
     const first = invalid[0];
-    return translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelRepairBeforeLive", {
-      label: first?.label || translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelStageTierFallbackLabel"),
-      reason: first?.reason || translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelInvalidInventoryFallback")
+    return translateAppMessage(this.preferredLanguage ?? "", "wheelRepairBeforeLive", {
+      label: first?.label || translateAppMessage(this.preferredLanguage ?? "", "wheelStageTierFallbackLabel"),
+      reason: first?.reason || translateAppMessage(this.preferredLanguage ?? "", "wheelInvalidInventoryFallback")
     });
   },
 
-  expectedMarginDisplay(this: Record<string, unknown>): string {
-    const config = (this as Record<string, unknown>).editingWheelConfig as WheelConfig | null;
+  expectedMarginDisplay(this: WheelConfigComputedContext): string {
+    const config = this.editingWheelConfig;
     if (!config) return "—";
-    const { margin } = computeExpectedMargin(config, this as Record<string, unknown>, ((this as Record<string, unknown>).lots || []) as Lot[]);
+    const { margin } = computeExpectedMargin(config, this, (this.lots || []) as Lot[]);
     return margin !== null ? margin.toFixed(1) + "%" : "—";
   },
 
-  expectedMarginColor(this: Record<string, unknown>): string {
-    const config = (this as Record<string, unknown>).editingWheelConfig as WheelConfig | null;
+  expectedMarginColor(this: WheelConfigComputedContext): string {
+    const config = this.editingWheelConfig;
     if (!config) return "";
-    const { margin } = computeExpectedMargin(config, this as Record<string, unknown>, ((this as Record<string, unknown>).lots || []) as Lot[]);
+    const { margin } = computeExpectedMargin(config, this, (this.lots || []) as Lot[]);
     if (margin === null) return "";
     return margin >= 0 ? "rgb(var(--v-theme-success))" : "rgb(var(--v-theme-error))";
   },
 
-  expectedMarginHint(this: Record<string, unknown>): string {
-    const preferredLanguage = String((this as Record<string, unknown>).preferredLanguage ?? "");
-    const config = (this as Record<string, unknown>).editingWheelConfig as WheelConfig | null;
+  expectedMarginHint(this: WheelConfigComputedContext): string {
+    const preferredLanguage = this.preferredLanguage ?? "";
+    const config = this.editingWheelConfig;
     if (!config) return translateAppMessage(preferredLanguage, "wheelExpectedMarginNoTiers");
-    const { margin } = computeExpectedMargin(config, this as Record<string, unknown>, ((this as Record<string, unknown>).lots || []) as Lot[]);
+    const { margin } = computeExpectedMargin(config, this, (this.lots || []) as Lot[]);
     if (margin === null) return translateAppMessage(preferredLanguage, "wheelExpectedMarginNoSlots");
     return margin >= 0
       ? translateAppMessage(preferredLanguage, "wheelExpectedMarginPositive")
       : translateAppMessage(preferredLanguage, "wheelExpectedMarginNegative");
   },
 
-  currentLotCostPerPack(this: Record<string, unknown>): number {
+  currentLotCostPerPack(this: WheelConfigComputedContext): number {
     const boxes = Number(this.boxesPurchased) || 0;
     const packsPerBox = Number(this.packsPerBox) || 16;
     const totalPacks = boxes * packsPerBox;
@@ -230,7 +244,7 @@ export const wheelConfigComputeds = {
     return totalCost / totalPacks;
   },
 
-  tierSourceItems(this: Record<string, unknown>): Array<{ title: string; value: number; lotType?: string; groupLabel?: string | null }> {
+  tierSourceItems(this: WheelConfigComputedContext): TierSourceItem[] {
     const lots = (this.lots || []) as Lot[];
     const selectableLots = lots.filter((lot) => {
       if (isSinglesLot(lot)) {
@@ -243,7 +257,7 @@ export const wheelConfigComputeds = {
     const bulkLots = selectableLots.filter((lot) => !isSinglesLot(lot));
     const singlesLots = selectableLots.filter((lot) => isSinglesLot(lot));
     const sorted = [...bulkLots, ...singlesLots];
-    const items: Array<{ title: string; value: number; lotType?: string; groupLabel?: string | null }> = [];
+    const items: TierSourceItem[] = [];
     let prevType: string | null = null;
     for (const lot of sorted) {
       const type = getLotType(lot);
@@ -253,7 +267,7 @@ export const wheelConfigComputeds = {
         lotType: type,
         groupLabel: prevType !== type
           ? translateAppMessage(
-            String((this as Record<string, unknown>).preferredLanguage || ""),
+            this.preferredLanguage || "",
             type === "singles" ? "lotOptionSinglesLotsLabel" : "lotOptionBulkLotsLabel"
           )
           : null
@@ -263,13 +277,13 @@ export const wheelConfigComputeds = {
     return items;
   },
 
-  bulkTierSourceItems(this: Record<string, unknown>): Array<{ title: string; value: number; lotType?: string; groupLabel?: string | null }> {
-    return (((this as Record<string, unknown>).tierSourceItems || []) as Array<{ title: string; value: number; lotType?: string; groupLabel?: string | null }>)
+  bulkTierSourceItems(this: WheelConfigComputedContext): TierSourceItem[] {
+    return (this.tierSourceItems ?? [])
       .filter((item) => !isSinglesLot(item))
       .map((item, index) => ({
         ...item,
         groupLabel: index === 0
-          ? translateAppMessage(String((this as Record<string, unknown>).preferredLanguage || ""), "lotOptionBulkLotsLabel")
+          ? translateAppMessage(this.preferredLanguage || "", "lotOptionBulkLotsLabel")
           : null
       }));
   }

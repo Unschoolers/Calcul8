@@ -13,26 +13,36 @@ export type WheelFairnessResult = {
   algorithm?: string;
 };
 
-export function getWheelSpinSlots(context: Record<string, unknown>): WheelSlot[] {
+export interface WheelSpinContext {
+  wheelDisplaySlots?: WheelSlot[];
+  wheelMode?: unknown;
+  wheelSpinning?: boolean;
+  wheelLastResult?: string;
+  wheelTotalSpins?: number;
+}
+
+type WheelSpinContextLike = WheelSpinContext | Record<string, unknown>;
+
+export function getWheelSpinSlots(context: WheelSpinContextLike): WheelSlot[] {
   if (Array.isArray(context.wheelDisplaySlots)) {
-    return context.wheelDisplaySlots as WheelSlot[];
+    return context.wheelDisplaySlots;
   }
-  return getWheelDisplaySlots(context);
+  return getWheelDisplaySlots(context as unknown as Record<string, unknown>);
 }
 
 export function shouldRecordWheelLiveSession(
-  context: Record<string, unknown>,
+  context: WheelSpinContextLike,
   recordSession: boolean
 ): boolean {
-  return recordSession && !isWheelPreviewMode(context);
+  return recordSession && !isWheelPreviewMode(context as unknown as Record<string, unknown>);
 }
 
-export function applyWheelSpinBlockedReason(context: Record<string, unknown>, blockedReason: string): void {
+export function applyWheelSpinBlockedReason(context: WheelSpinContextLike, blockedReason: string): void {
   getWheelController(context).inventoryWarning = blockedReason;
 }
 
 export function beginWheelSpin(
-  context: Record<string, unknown>,
+  context: WheelSpinContextLike,
   fairnessResult: Pick<WheelFairnessResult, "hash" | "clientSeed" | "algorithm">
 ): void {
   const controller = getWheelController(context);
@@ -50,7 +60,7 @@ export function beginWheelSpin(
 }
 
 export function finalizeWheelSpinProof(
-  context: Record<string, unknown>,
+  context: WheelSpinContextLike,
   fairnessResult: Pick<WheelFairnessResult, "seed" | "clientSeed" | "verificationUrl" | "algorithm">
 ): void {
   const controller = getWheelController(context);
@@ -92,7 +102,7 @@ export function buildWheelReadableVerificationUrl(
 }
 
 export function buildWheelSpinFairnessEntry(
-  context: Record<string, unknown>,
+  context: WheelSpinContextLike,
   params: {
     fairnessResult: WheelFairnessResult;
     slots: WheelSlot[];
