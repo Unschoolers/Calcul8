@@ -87,6 +87,12 @@ export function getWheelDisplayChaseTallyHistory(
   vm: Record<string, unknown>
 ): Array<{ tierId: string; label: string; color: string; count: number }> {
   const source = resolveWheelSource(vm);
+  const legacyHistory = source[isWheelPreviewMode(vm)
+    ? "wheelPreviewChaseTallyHistory"
+    : "wheelChaseTallyHistory"];
+  if (Array.isArray(legacyHistory)) {
+    return legacyHistory as Array<{ tierId: string; label: string; color: string; count: number }>;
+  }
   const controller = getWheelController(source);
   return ((isWheelPreviewMode(vm)
     ? controller.previewChaseTallyHistory

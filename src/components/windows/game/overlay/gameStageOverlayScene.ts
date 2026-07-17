@@ -68,10 +68,6 @@ export function getOverlayRendererPixelRatio(devicePixelRatio: number | undefine
   return Math.min(ratio, 3);
 }
 
-export function getOverlayRendererSizeUpdateStyle(): boolean {
-  return true;
-}
-
 function shouldReduceOverlayMotion(): boolean {
   return typeof window !== "undefined"
     && typeof window.matchMedia === "function"
@@ -81,7 +77,7 @@ function shouldReduceOverlayMotion(): boolean {
 function ensureRendererSize(renderer: THREE.WebGLRenderer, camera: THREE.PerspectiveCamera, mountEl: HTMLElement): void {
   const width = Math.max(mountEl.clientWidth || 0, 1);
   const height = Math.max(mountEl.clientHeight || 0, 1);
-  renderer.setSize(width, height, getOverlayRendererSizeUpdateStyle());
+  renderer.setSize(width, height, true);
   camera.aspect = width / height;
   camera.updateProjectionMatrix();
 }
@@ -573,70 +569,51 @@ export function createGameStageOverlayScene(mountEl: HTMLElement): GameStageOver
     animationFrameId = requestAnimationFrame(animateFinalExit);
   }
 
-  function animateStageEnter(now: number): void {
+  function animateStageTransition(now: number, entering: boolean): void {
     const progress = Math.min(1, (now - stageTransitionStartedAt) / STAGE_TRANSITION_MS);
-    const eased = 1 - (1 - progress) ** 3;
+    const offset = entering ? (1 - (1 - progress) ** 3) : progress ** 3;
+    const transition = entering ? 1 - offset : offset;
 
     prepareSceneFrame();
     applyIdlePose(leftVisual, null, "left");
     applyIdlePose(rightVisual, null, "right");
 
-    leftVisual.root.position.x += (1 - eased) * -2.4;
-    leftVisual.root.position.y += (1 - eased) * 0.72;
-    leftVisual.root.position.z -= (1 - eased) * 1.15;
-    rightVisual.root.position.x += (1 - eased) * 2.4;
-    rightVisual.root.position.y += (1 - eased) * 0.72;
-    rightVisual.root.position.z -= (1 - eased) * 1.15;
+    leftVisual.root.position.x += transition * -2.4;
+    leftVisual.root.position.y += transition * 0.72;
+    leftVisual.root.position.z -= transition * 1.15;
+    rightVisual.root.position.x += transition * 2.4;
+    rightVisual.root.position.y += transition * 0.72;
+    rightVisual.root.position.z -= transition * 1.15;
 
-    leftVisual.root.rotation.x += (1 - eased) * Math.PI * 1.6;
-    leftVisual.root.rotation.y += (1 - eased) * Math.PI * 0.8;
-    rightVisual.root.rotation.x += (1 - eased) * Math.PI * 1.6;
-    rightVisual.root.rotation.y -= (1 - eased) * Math.PI * 0.8;
+    leftVisual.root.rotation.x += transition * Math.PI * 1.6;
+    leftVisual.root.rotation.y += transition * Math.PI * 0.8;
+    rightVisual.root.rotation.x += transition * Math.PI * 1.6;
+    rightVisual.root.rotation.y -= transition * Math.PI * 0.8;
 
-    leftVisual.root.scale.setScalar(leftVisual.scale * (0.82 + eased * 0.18));
-    rightVisual.root.scale.setScalar(rightVisual.scale * (0.82 + eased * 0.18));
+    const scale = 1 - transition * 0.18;
+    leftVisual.root.scale.setScalar(leftVisual.scale * scale);
+    rightVisual.root.scale.setScalar(rightVisual.scale * scale);
 
     renderScene();
 
     if (progress >= 1) {
-      renderIdleState();
+      if (entering) {
+        renderIdleState();
+      } else {
+        clearScene();
+      }
       return;
     }
 
-    animationFrameId = requestAnimationFrame(animateStageEnter);
+    animationFrameId = requestAnimationFrame(entering ? animateStageEnter : animateStageExit);
+  }
+
+  function animateStageEnter(now: number): void {
+    animateStageTransition(now, true);
   }
 
   function animateStageExit(now: number): void {
-    const progress = Math.min(1, (now - stageTransitionStartedAt) / STAGE_TRANSITION_MS);
-    const eased = progress ** 3;
-
-    prepareSceneFrame();
-    applyIdlePose(leftVisual, null, "left");
-    applyIdlePose(rightVisual, null, "right");
-
-    leftVisual.root.position.x += eased * -2.4;
-    leftVisual.root.position.y += eased * 0.72;
-    leftVisual.root.position.z -= eased * 1.15;
-    rightVisual.root.position.x += eased * 2.4;
-    rightVisual.root.position.y += eased * 0.72;
-    rightVisual.root.position.z -= eased * 1.15;
-
-    leftVisual.root.rotation.x += eased * Math.PI * 1.6;
-    leftVisual.root.rotation.y += eased * Math.PI * 0.8;
-    rightVisual.root.rotation.x += eased * Math.PI * 1.6;
-    rightVisual.root.rotation.y -= eased * Math.PI * 0.8;
-
-    leftVisual.root.scale.setScalar(leftVisual.scale * (1 - eased * 0.18));
-    rightVisual.root.scale.setScalar(rightVisual.scale * (1 - eased * 0.18));
-
-    renderScene();
-
-    if (progress >= 1) {
-      clearScene();
-      return;
-    }
-
-    animationFrameId = requestAnimationFrame(animateStageExit);
+    animateStageTransition(now, false);
   }
 
   leftVisual.value = 3;

@@ -11,6 +11,7 @@ import {
   type GameWindowThis
 } from "./gameControllerState.ts";
 import { buildSlotsFromConfig, createWheelGridLayoutSeed } from "../services/wheelSlots.ts";
+import { cloneGameConfig } from "../services/gameConfigTemplates.ts";
 import {
   WHEEL_COMPACT_LAYOUT_BREAKPOINT,
   isWheelCompactViewport,
@@ -60,6 +61,14 @@ function getWheelInspectorScrollTarget(source: unknown): { scrollIntoView: (opti
 
 function getCurrentViewportWidth(): number {
   return typeof window !== "undefined" ? window.innerWidth : WHEEL_COMPACT_LAYOUT_BREAKPOINT + 1;
+}
+
+function clearGameWindowTimeout(context: GameWindowThis, key: string): void {
+  const state = context as Record<string, unknown>;
+  const timeoutId = state[key] as number | undefined;
+  if (timeoutId == null) return;
+  window.clearTimeout(timeoutId);
+  state[key] = undefined;
 }
 
 const WHEEL_AUTOSPIN_DELAY_MS = 650;
@@ -308,8 +317,7 @@ export const gameWindowDefinition = {
 
       const editing = this.editingWheelConfig as WheelConfig | null;
       if (!editing || editing.id !== activeConfig.id) {
-        this.editingWheelConfig =
-          JSON.parse(JSON.stringify(activeConfig)) as WheelConfig;
+        this.editingWheelConfig = cloneGameConfig(activeConfig);
         repaired = true;
       }
 
@@ -397,10 +405,7 @@ export const gameWindowDefinition = {
           const canvas = (this.$refs as Record<string, unknown>).wheelCanvas as HTMLCanvasElement | null;
           if (this.wheelIsMysteryGrid) {
             this._wheelCanvasRefreshRetryCount = 0;
-            if (this._wheelCanvasRefreshTimeoutId != null) {
-              window.clearTimeout(this._wheelCanvasRefreshTimeoutId);
-              this._wheelCanvasRefreshTimeoutId = undefined;
-            }
+            clearGameWindowTimeout(this, "_wheelCanvasRefreshTimeoutId");
             return;
           }
           if (!panel || !canvas) {
@@ -413,10 +418,7 @@ export const gameWindowDefinition = {
             return;
           }
           this._wheelCanvasRefreshRetryCount = 0;
-          if (this._wheelCanvasRefreshTimeoutId != null) {
-            window.clearTimeout(this._wheelCanvasRefreshTimeoutId);
-            this._wheelCanvasRefreshTimeoutId = undefined;
-          }
+          clearGameWindowTimeout(this, "_wheelCanvasRefreshTimeoutId");
           const targetWidth = getWheelCanvasTargetSize(
             panel,
             Boolean(this.wheelPresentationMode)
@@ -599,31 +601,11 @@ export const gameWindowDefinition = {
       window.removeEventListener("resize", resizeHandler);
       this._wheelViewportResizeHandler = undefined;
     }
-    const celebrationTimeoutId = this._wheelCelebrationTimeoutId as number | undefined;
-    if (celebrationTimeoutId != null) {
-      clearTimeout(celebrationTimeoutId);
-      this._wheelCelebrationTimeoutId = undefined;
-    }
-    const highlightTimeoutId = this._wheelHighlightTimeoutId as number | undefined;
-    if (highlightTimeoutId != null) {
-      clearTimeout(highlightTimeoutId);
-      this._wheelHighlightTimeoutId = undefined;
-    }
-    const autospinTimeoutId = this._wheelAutospinTimeoutId as number | undefined;
-    if (autospinTimeoutId != null) {
-      clearTimeout(autospinTimeoutId);
-      this._wheelAutospinTimeoutId = undefined;
-    }
-    const draftTimeoutId = this._wheelDraftSaveTimeoutId as number | undefined;
-    if (draftTimeoutId != null) {
-      clearTimeout(draftTimeoutId);
-      this._wheelDraftSaveTimeoutId = undefined;
-    }
-    const canvasRefreshTimeoutId = this._wheelCanvasRefreshTimeoutId as number | undefined;
-    if (canvasRefreshTimeoutId != null) {
-      clearTimeout(canvasRefreshTimeoutId);
-      this._wheelCanvasRefreshTimeoutId = undefined;
-    }
+    clearGameWindowTimeout(this, "_wheelCelebrationTimeoutId");
+    clearGameWindowTimeout(this, "_wheelHighlightTimeoutId");
+    clearGameWindowTimeout(this, "_wheelAutospinTimeoutId");
+    clearGameWindowTimeout(this, "_wheelDraftSaveTimeoutId");
+    clearGameWindowTimeout(this, "_wheelCanvasRefreshTimeoutId");
     this.stopGameSpectatorCountPolling();
   },
   setup(props: { ctx: Record<string, unknown> }) {

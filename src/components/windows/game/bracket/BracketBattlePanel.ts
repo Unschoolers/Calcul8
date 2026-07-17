@@ -1,7 +1,7 @@
-import { inject, nextTick, type PropType } from "vue";
+import { nextTick, type PropType } from "vue";
 import { createDefaultBracketBattleConfig } from "../../../../app-core/shared/bracket-battle-config.ts";
 import type { BracketBattleConfig, Lot, WheelConfig, WorkspaceScopeType } from "../../../../types/app.ts";
-import { createNestedWindowContextBridge } from "../../shared/contextBridge.ts";
+import { useGameNestedWindowContextBridge } from "../../shared/contextBridge.ts";
 import type { GameStageOverlayAnchor, GameStageOverlayCommand } from "../overlay/gameStageOverlayTypes.ts";
 import { createBracketBattleOverlayAnchor } from "./bracketBattleOverlayAnchors.ts";
 import {
@@ -49,7 +49,6 @@ type BracketBattleIntervalHandle = ReturnType<typeof globalThis.setInterval>;
 type BracketBattleTimeoutHandle = ReturnType<typeof globalThis.setTimeout>;
 
 type BracketBattlePanelThis = Record<string, unknown> & {
-  bracketBattleParentCtx?: Record<string, unknown> | null;
   bracketDraft: BracketBattleDraft;
   bracketSession: BracketBattleSession | null;
   bracketLastRolls: BracketBattleRoll[];
@@ -624,31 +623,6 @@ export const BracketBattlePanel = {
     }
   },
   setup(props: { ctx: Record<string, unknown> }) {
-    const injectedGameCtx = inject<Record<string, unknown> | null>("gameCtx", null);
-    const injectedCtx = inject<Record<string, unknown> | null>("appCtx", null);
-    const source = (injectedGameCtx ?? props.ctx ?? injectedCtx) as Record<string, unknown>;
-    const bridge = createNestedWindowContextBridge(source);
-    return new Proxy(bridge, {
-      get(target, key, receiver) {
-        if (key === "bracketBattleParentCtx") {
-          return source;
-        }
-        return Reflect.get(target, key, receiver);
-      },
-      has(target, key) {
-        return key === "bracketBattleParentCtx" || Reflect.has(target, key);
-      },
-      getOwnPropertyDescriptor(target, key) {
-        if (key === "bracketBattleParentCtx") {
-          return {
-            enumerable: true,
-            configurable: true,
-            writable: false,
-            value: source
-          };
-        }
-        return Reflect.getOwnPropertyDescriptor(target, key);
-      }
-    });
+    return useGameNestedWindowContextBridge(props);
   }
 };

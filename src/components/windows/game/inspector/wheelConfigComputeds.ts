@@ -1,6 +1,5 @@
 import { translateAppMessage } from "../../../../app-core/i18n/index.ts";
 import { getLotType, isSinglesLot } from "../../../../app-core/shared/lot-types.ts";
-import { calculateTotalCaseCost } from "../../../../domain/calculations-fees.ts";
 import { getTierChancePercent } from "../../../../app-core/shared/wheel-odds.ts";
 import {
   getWheelTierSourceLotIds,
@@ -14,7 +13,7 @@ import {
   getWheelDisplaySpinCounts,
   getWheelDisplayTotalSpins
 } from "../coordinator/gameComputedShared.ts";
-import { computeExpectedMargin } from "../services/wheelPricing.ts";
+import { calculateWheelLotCostPerPack, computeExpectedMargin } from "../services/wheelPricing.ts";
 import type { WheelSlot } from "../services/wheelSlots.ts";
 import {
   getAvailableSinglesQuantityForWheelTier,
@@ -36,6 +35,22 @@ type WheelConfigComputedContext = Record<string, unknown> & Partial<GameWindowTh
   includeTax?: boolean;
   currency?: "CAD" | "USD";
 };
+
+function getExpectedMargin(context: WheelConfigComputedContext): { config: WheelConfig | null; margin: number | null } {
+  const config = context.editingWheelConfig ?? null;
+  return {
+    config,
+    margin: config ? computeExpectedMargin(config, context, (context.lots || []) as Lot[]).margin : null
+  };
+}
+
+function getNeededItemsReason(language: string, needed: number, remaining: number): string {
+  return translateAppMessage(language, "wheelInvalidNeedsItems", {
+    needed,
+    neededSuffix: needed === 1 ? "" : "s",
+    remaining: Math.max(0, remaining)
+  });
+}
 
 export const wheelConfigComputeds = {
   hasPendingWheelChanges(this: WheelConfigComputedContext): boolean {
@@ -126,11 +141,7 @@ export const wheelConfigComputeds = {
           invalid.push({
             tierId: tier.id,
             label: tier.label,
-            reason: translateAppMessage(preferredLanguage, "wheelInvalidNeedsItems", {
-              needed,
-              neededSuffix: needed === 1 ? "" : "s",
-              remaining: Math.max(0, bestRemaining)
-            })
+            reason: getNeededItemsReason(preferredLanguage, needed, bestRemaining)
           });
         }
         continue;
@@ -157,11 +168,7 @@ export const wheelConfigComputeds = {
               label: tier.label,
               reason: remaining <= 0
                 ? translateAppMessage(preferredLanguage, "wheelInvalidSinglesOutOfStock")
-                : translateAppMessage(preferredLanguage, "wheelInvalidNeedsItems", {
-                  needed,
-                  neededSuffix: needed === 1 ? "" : "s",
-                  remaining
-                })
+                : getNeededItemsReason(preferredLanguage, needed, remaining)
             });
           }
         }
@@ -171,11 +178,7 @@ export const wheelConfigComputeds = {
           invalid.push({
             tierId: tier.id,
             label: tier.label,
-            reason: translateAppMessage(preferredLanguage, "wheelInvalidNeedsItems", {
-              needed: tier.packsCount || 0,
-              neededSuffix: (tier.packsCount || 0) === 1 ? "" : "s",
-              remaining: remainingPacks
-            })
+            reason: getNeededItemsReason(preferredLanguage, tier.packsCount || 0, remainingPacks)
           });
         }
       }
@@ -203,25 +206,22 @@ export const wheelConfigComputeds = {
   },
 
   expectedMarginDisplay(this: WheelConfigComputedContext): string {
-    const config = this.editingWheelConfig;
+    const { config, margin } = getExpectedMargin(this);
     if (!config) return "—";
-    const { margin } = computeExpectedMargin(config, this, (this.lots || []) as Lot[]);
     return margin !== null ? margin.toFixed(1) + "%" : "—";
   },
 
   expectedMarginColor(this: WheelConfigComputedContext): string {
-    const config = this.editingWheelConfig;
+    const { config, margin } = getExpectedMargin(this);
     if (!config) return "";
-    const { margin } = computeExpectedMargin(config, this, (this.lots || []) as Lot[]);
     if (margin === null) return "";
     return margin >= 0 ? "rgb(var(--v-theme-success))" : "rgb(var(--v-theme-error))";
   },
 
   expectedMarginHint(this: WheelConfigComputedContext): string {
     const preferredLanguage = this.preferredLanguage ?? "";
-    const config = this.editingWheelConfig;
+    const { config, margin } = getExpectedMargin(this);
     if (!config) return translateAppMessage(preferredLanguage, "wheelExpectedMarginNoTiers");
-    const { margin } = computeExpectedMargin(config, this, (this.lots || []) as Lot[]);
     if (margin === null) return translateAppMessage(preferredLanguage, "wheelExpectedMarginNoSlots");
     return margin >= 0
       ? translateAppMessage(preferredLanguage, "wheelExpectedMarginPositive")
@@ -229,19 +229,7 @@ export const wheelConfigComputeds = {
   },
 
   currentLotCostPerPack(this: WheelConfigComputedContext): number {
-    const boxes = Number(this.boxesPurchased) || 0;
-    const packsPerBox = Number(this.packsPerBox) || 16;
-    const totalPacks = boxes * packsPerBox;
-    if (totalPacks <= 0) return 0;
-    const totalCost = calculateTotalCaseCost({
-      boxesPurchased: boxes,
-      pricePerBoxCad: Number(this.boxPriceCost) || 0,
-      purchaseShippingCad: Number(this.purchaseShippingCost) || 0,
-      purchaseTaxPercent: Number(this.purchaseTaxPercent) || 0,
-      includeTax: (this.includeTax as boolean) ?? false,
-      currency: (this.currency as "CAD" | "USD") || "CAD"
-    });
-    return totalCost / totalPacks;
+    return calculateWheelLotCostPerPack(this);
   },
 
   tierSourceItems(this: WheelConfigComputedContext): TierSourceItem[] {

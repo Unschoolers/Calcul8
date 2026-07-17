@@ -15,8 +15,7 @@ import {
   getOverlayDieFaceTextureSpec,
 } from "../src/components/windows/game/overlay/gameStageOverlayDieMaterials.ts";
 import {
-  getOverlayRendererPixelRatio,
-  getOverlayRendererSizeUpdateStyle
+  getOverlayRendererPixelRatio
 } from "../src/components/windows/game/overlay/gameStageOverlayScene.ts";
 
 test("dice pip layouts use standard d6 counts", () => {
@@ -72,7 +71,6 @@ test("overlay dice use high-DPI face textures and renderer sizing", () => {
   assert.equal(getOverlayRendererPixelRatio(1), 1);
   assert.equal(getOverlayRendererPixelRatio(2.5), 2.5);
   assert.equal(getOverlayRendererPixelRatio(4), 3);
-  assert.equal(getOverlayRendererSizeUpdateStyle(), true);
 });
 
 test("overlay die visual spec keeps dice compact and pips inset", () => {

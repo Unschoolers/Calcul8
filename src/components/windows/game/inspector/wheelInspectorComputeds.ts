@@ -1,122 +1,78 @@
 import { translateAppMessage } from "../../../../app-core/i18n/index.ts";
 
+type InspectorTab = "config" | "session" | "history";
+type InspectorPanelMeta = { icon: string; titleKey: string; subtitleKey: string };
+type CompactAction = {
+  id: "history" | "session" | "builder" | "end";
+  icon: string;
+  color: string;
+  titleKey: string;
+  actionType: "inspector" | "end";
+  targetTab?: InspectorTab;
+  mode?: "config" | "live";
+};
+
+const INSPECTOR_PANEL_META: Record<InspectorTab | "grid", InspectorPanelMeta> = {
+  config: { icon: "mdi-cog-outline", titleKey: "wheelInspectorConfigTitle", subtitleKey: "wheelInspectorConfigSubtitle" },
+  grid: { icon: "mdi-grid", titleKey: "wheelInspectorGridConfigTitle", subtitleKey: "wheelInspectorGridConfigSubtitle" },
+  session: { icon: "mdi-chart-box-outline", titleKey: "wheelInspectorSessionTitle", subtitleKey: "wheelInspectorSessionSubtitle" },
+  history: { icon: "mdi-history", titleKey: "wheelInspectorHistoryTitle", subtitleKey: "wheelInspectorHistorySubtitle" }
+};
+
+const INSPECTOR_TABS: Array<{ id: InspectorTab; icon: string; labelKey: string }> = [
+  { id: "config", icon: "mdi-tune", labelKey: "wheelInspectorBuilderTabLabel" },
+  { id: "session", icon: "mdi-chart-box-outline", labelKey: "wheelInspectorSessionTabLabel" },
+  { id: "history", icon: "mdi-history", labelKey: "wheelInspectorHistoryTabLabel" }
+];
+
+const COMPACT_ACTIONS: CompactAction[] = [
+  { id: "history", icon: "mdi-history", color: "surface", titleKey: "wheelInspectorHistoryTabLabel", actionType: "inspector", targetTab: "history" },
+  { id: "session", icon: "mdi-chart-box-outline", color: "secondary", titleKey: "wheelInspectorSessionTabLabel", actionType: "inspector", targetTab: "session" },
+  { id: "builder", icon: "mdi-tune", color: "secondary", titleKey: "wheelInspectorBuilderTabLabel", actionType: "inspector", targetTab: "config", mode: "config" },
+  { id: "end", icon: "mdi-flag-checkered", color: "error", titleKey: "wheelEndSessionAction", actionType: "end", mode: "live" }
+];
+
+function translate(language: string, key: string): string {
+  return translateAppMessage(language, key);
+}
+
 export const wheelInspectorComputeds = {
   wheelInspectorPanelMeta(this: Record<string, unknown>): { icon: string; title: string; subtitle: string } {
-    const preferredLanguage = String((this as Record<string, unknown>).preferredLanguage ?? "");
-    const tab = String((this as Record<string, unknown>).wheelInspectorTab || "config");
-    if (tab === "session") {
-      return {
-        icon: "mdi-chart-box-outline",
-        title: translateAppMessage(preferredLanguage, "wheelInspectorSessionTitle"),
-        subtitle: translateAppMessage(preferredLanguage, "wheelInspectorSessionSubtitle")
-      };
-    }
-    if (tab === "history") {
-      return {
-        icon: "mdi-history",
-        title: translateAppMessage(preferredLanguage, "wheelInspectorHistoryTitle"),
-        subtitle: translateAppMessage(preferredLanguage, "wheelInspectorHistorySubtitle")
-      };
-    }
-    const config = (this as Record<string, unknown>).wheelDisplayConfig as { gameType?: string } | null;
-    if (config?.gameType === "grid") {
-      return {
-        icon: "mdi-grid",
-        title: translateAppMessage(preferredLanguage, "wheelInspectorGridConfigTitle"),
-        subtitle: translateAppMessage(preferredLanguage, "wheelInspectorGridConfigSubtitle")
-      };
-    }
+    const language = String(this.preferredLanguage ?? "");
+    const tab = String(this.wheelInspectorTab || "config") as InspectorTab;
+    const config = this.wheelDisplayConfig as { gameType?: string } | null;
+    const meta = tab === "config" && config?.gameType === "grid"
+      ? INSPECTOR_PANEL_META.grid
+      : INSPECTOR_PANEL_META[tab] ?? INSPECTOR_PANEL_META.config;
     return {
-      icon: "mdi-cog-outline",
-      title: translateAppMessage(preferredLanguage, "wheelInspectorConfigTitle"),
-      subtitle: translateAppMessage(preferredLanguage, "wheelInspectorConfigSubtitle")
+      icon: meta.icon,
+      title: translate(language, meta.titleKey),
+      subtitle: translate(language, meta.subtitleKey)
     };
   },
 
-  wheelInspectorTabItems(this: Record<string, unknown>): Array<{ id: "config" | "session" | "history"; icon: string; label: string }> {
-    const preferredLanguage = String((this as Record<string, unknown>).preferredLanguage ?? "");
-    const mode = String((this as Record<string, unknown>).wheelMode || "config");
-    const items: Array<{ id: "config" | "session" | "history"; icon: string; label: string }> = [];
-    if (mode === "config") {
-      items.push({
-        id: "config",
-        icon: "mdi-tune",
-        label: translateAppMessage(preferredLanguage, "wheelInspectorBuilderTabLabel")
-      });
-    }
-    items.push({
-      id: "session",
-      icon: "mdi-chart-box-outline",
-      label: translateAppMessage(preferredLanguage, "wheelInspectorSessionTabLabel")
-    });
-    items.push({
-      id: "history",
-      icon: "mdi-history",
-      label: translateAppMessage(preferredLanguage, "wheelInspectorHistoryTabLabel")
-    });
-    return items;
+  wheelInspectorTabItems(this: Record<string, unknown>): Array<{ id: InspectorTab; icon: string; label: string }> {
+    const language = String(this.preferredLanguage ?? "");
+    const mode = String(this.wheelMode || "config");
+    return INSPECTOR_TABS
+      .filter((item) => item.id !== "config" || mode === "config")
+      .map((item) => ({ id: item.id, icon: item.icon, label: translate(language, item.labelKey) }));
   },
 
-  wheelCompactFabActions(this: Record<string, unknown>): Array<{
-    id: "history" | "session" | "builder" | "end";
-    icon: string;
-    color: string;
-    title: string;
-    actionType: "inspector" | "end";
-    targetTab?: "config" | "session" | "history";
-    disabled: boolean;
-  }> {
-    const preferredLanguage = String((this as Record<string, unknown>).preferredLanguage ?? "");
-    const mode = String((this as Record<string, unknown>).wheelMode || "config");
-    const hasLotSelected = Boolean((this as Record<string, unknown>).hasLotSelected);
-    const actions: Array<{
-      id: "history" | "session" | "builder" | "end";
-      icon: string;
-      color: string;
-      title: string;
-      actionType: "inspector" | "end";
-      targetTab?: "config" | "session" | "history";
-      disabled: boolean;
-    }> = [
-      {
-        id: "history",
-        icon: "mdi-history",
-        color: "surface",
-        title: translateAppMessage(preferredLanguage, "wheelInspectorHistoryTabLabel"),
-        actionType: "inspector",
-        targetTab: "history",
-        disabled: !hasLotSelected
-      },
-      {
-        id: "session",
-        icon: "mdi-chart-box-outline",
-        color: "secondary",
-        title: translateAppMessage(preferredLanguage, "wheelInspectorSessionTabLabel"),
-        actionType: "inspector",
-        targetTab: "session",
-        disabled: !hasLotSelected
-      }
-    ];
-    if (mode === "config") {
-      actions.push({
-        id: "builder",
-        icon: "mdi-tune",
-        color: "secondary",
-        title: translateAppMessage(preferredLanguage, "wheelInspectorBuilderTabLabel"),
-        actionType: "inspector",
-        targetTab: "config",
-        disabled: !hasLotSelected
-      });
-    } else {
-      actions.push({
-        id: "end",
-        icon: "mdi-flag-checkered",
-        color: "error",
-        title: translateAppMessage(preferredLanguage, "wheelEndSessionAction"),
-        actionType: "end",
-        disabled: !hasLotSelected || Boolean((this as Record<string, unknown>).wheelEndingSession)
-      });
-    }
-    return actions;
+  wheelCompactFabActions(this: Record<string, unknown>) {
+    const language = String(this.preferredLanguage ?? "");
+    const mode = String(this.wheelMode || "config") as "config" | "live";
+    const hasLotSelected = Boolean(this.hasLotSelected);
+    return COMPACT_ACTIONS
+      .filter((action) => !action.mode || action.mode === mode)
+      .map((action) => ({
+        id: action.id,
+        icon: action.icon,
+        color: action.color,
+        title: translate(language, action.titleKey),
+        actionType: action.actionType,
+        targetTab: action.targetTab,
+        disabled: !hasLotSelected || (action.id === "end" && Boolean(this.wheelEndingSession))
+      }));
   }
 };

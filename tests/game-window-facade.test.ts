@@ -28,6 +28,19 @@ test("legacy WheelWindow module facades are removed", () => {
   assert.equal(existsSync("src/components/windows/wheel/WheelWindow.vue"), false);
 });
 
+test("the unused wheelHelpers barrel is removed", () => {
+  assert.equal(existsSync("src/components/windows/game/services/wheelHelpers.ts"), false);
+});
+
+test("game modules do not expose unused legacy and pricing APIs", () => {
+  const controllerState = readFileSync("src/components/windows/game/coordinator/gameControllerState.ts", "utf8");
+  const pricing = readFileSync("src/components/windows/game/services/wheelPricing.ts", "utf8");
+  const grid = readFileSync("src/components/windows/game/commands/mysteryGridMethods.ts", "utf8");
+  assert.doesNotMatch(controllerState, /WheelWindowThis|getWheelWindowLocalKeys|createWheelWindowState/);
+  assert.doesNotMatch(pricing, /calculateAverageWheelBuyerShippingPerSpin|calculateAverageWheelSellingTaxPercent|calculateWheelBuyerShippingTotal/);
+  assert.doesNotMatch(grid, /resolveMysteryGridCellSlotIndex/);
+});
+
 test("game window children use the game context without the wheelCtx compatibility bridge", () => {
   const definition = readFileSync("src/components/windows/game/coordinator/GameWindow.definition.ts", "utf8");
   const contextConsumers = [

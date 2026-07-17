@@ -280,67 +280,9 @@ export function getWheelController(context: object): WheelControllerState {
   return controller;
 }
 
-const WHEEL_LOCAL_TOP_LEVEL_KEYS = [
-  "editingWheelConfig",
-  "appliedWheelConfigSnapshot",
-  "wheelConfigSyncPending",
-  "wheelAutospinEnabled",
-  "wheelSoundEnabled",
-  "wheelReducedMotion",
-  "wheelMode",
-  "wheelInspectorTab",
-  "wheelMobileInspectorOpen",
-  "wheelCelebrationVisible",
-  "wheelCelebrationLabel",
-  "wheelCelebrationColor",
-  "wheelCelebrationImage",
-  "wheelCelebrationEmoji",
-  "wheelCelebrationPreview",
-  "wheelCelebrationNonce",
-  "wheelSpinning",
-  "wheelGridRevealAnimating",
-  "wheelGridResetAnimating",
-  "wheelGridHighlightCellIndex",
-  "wheelCurrentAngle",
-  "wheelCanvasSize",
-  "wheelConfigReady",
-  "wheelViewportWidth",
-  "wheelEndingSession",
-  "wheelEndSessionReviewActive",
-  "wheelPresentationMode",
-  "wheelConfirmDialog",
-  "wheelConfirmAction",
-  "wheelLiveConfirmDialog",
-  "wheelRequestedMode",
-  "wheelPendingMenuOpen",
-  "wheelChaseDialog",
-  "wheelChasePreviewMode",
-  "wheelChaseReplacementSinglesId",
-  "wheelChasePendingTierId",
-  "wheelCreateDialog",
-  "wheelManageDialog",
-  "wheelManageName",
-  "gameSpectatorDialog",
-  "gameSpectatorSessionId",
-  "gameSpectatorSessionStatus",
-  "gameSpectatorSessionUrl",
-  "gameSpectatorSessionQrUrl",
-  "gameSpectatorPublishPending",
-  "gameSpectatorConnectedCount",
-  "gameStageOverlayEnabled",
-  "gameStageOverlayMounted",
-  "gameStageOverlayActiveCommand",
-  "gameStageOverlayLastResolvedAt",
-  "bracketBattleSession",
-  "bracketBattleLastRolls",
-  "bracketBattleRolling",
-  "bracketBattleShowcaseMatchId"
-] as const;
-
 export function getGameWindowLocalKeys(): string[] {
   return [
-    "wheelController",
-    ...WHEEL_LOCAL_TOP_LEVEL_KEYS,
+    ...Object.keys(createGameWindowBaseState()),
     ...Object.keys(GAME_CONTROLLER_LEGACY_ALIAS_MAP)
   ];
 }
@@ -423,7 +365,4 @@ export function createGameWindowState(): ReturnType<typeof createGameWindowBaseS
   return state as ReturnType<typeof createGameWindowBaseState> & GameControllerAliases;
 }
 
-export type WheelWindowThis = GameWindowThis;
-export const getWheelWindowLocalKeys = getGameWindowLocalKeys;
-export const createWheelWindowState = createGameWindowState;
 

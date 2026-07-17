@@ -40,8 +40,8 @@ test("wheelHistoryPanelEntries returns full live history in reverse order", () =
     })
   };
 
-  const entries = WheelHistoryPanel.computed!.wheelHistoryPanelEntries.call(vm as never);
-  assert.deepEqual(entries.map((entry: { spinNumber: number }) => entry.spinNumber), [3, 2, 1]);
+  const model = WheelHistoryPanel.computed!.wheelHistoryPanelModel.call(vm as never);
+  assert.deepEqual(model.entries.map((entry: { spinNumber: number }) => entry.spinNumber), [3, 2, 1]);
 });
 
 test("wheelHistoryPanelLatestEntry uses current preview proof fields in config mode", () => {
@@ -63,7 +63,7 @@ test("wheelHistoryPanelLatestEntry uses current preview proof fields in config m
     })
   };
 
-  const latest = WheelHistoryPanel.computed!.wheelHistoryPanelLatestEntry.call(vm as never);
+  const latest = WheelHistoryPanel.computed!.wheelHistoryPanelModel.call(vm as never).latestEntry;
   assert.equal(latest?.spinNumber, 3);
   assert.equal(latest?.label, "Preview Prize");
   assert.equal(latest?.hash, "current-hash");

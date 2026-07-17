@@ -1,4 +1,4 @@
-import { getCurrentInstance } from "vue";
+import { getCurrentInstance, inject } from "vue";
 
 type WindowContext = Record<string, unknown>;
 type MaybeWindowContext = WindowContext | null | undefined;
@@ -54,6 +54,17 @@ export function createWindowContextBridge(ctx: WindowContext, options: BridgeOpt
 
 export function createNestedWindowContextBridge(ctx: WindowContext, options: BridgeOptions = {}): Record<string, unknown> {
   return createBridgeFromSource(ctx, options);
+}
+
+/**
+ * Gives nested game components one consistent source of truth. Game-local
+ * context wins, followed by the explicit prop and finally the application
+ * context used by standalone component mounts.
+ */
+export function useGameNestedWindowContextBridge(props: { ctx: WindowContext }): Record<string, unknown> {
+  const gameContext = inject<WindowContext | null>("gameCtx", null);
+  const appContext = inject<WindowContext | null>("appCtx", null);
+  return createNestedWindowContextBridge(gameContext ?? props.ctx ?? appContext ?? {});
 }
 
 export function unwrapWindowBridgeContext(ctx: WindowContext): WindowContext {

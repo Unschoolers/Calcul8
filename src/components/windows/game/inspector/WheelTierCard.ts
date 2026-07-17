@@ -1,4 +1,4 @@
-import { inject, type PropType } from "vue";
+import { type PropType } from "vue";
 import { countGameOutcomeSlotsByTier } from "../../../../app-core/shared/game-domain.ts";
 import { isSinglesLot } from "../../../../app-core/shared/lot-types.ts";
 import {
@@ -8,7 +8,8 @@ import {
 import { setWheelTierChancePercent } from "../../../../app-core/shared/wheel-odds.ts";
 import { getWheelTierSourceLotIds, isWheelTierMultiLot } from "../../../../app-core/shared/wheel-tier-sources.ts";
 import type { WheelConfig, WheelTier } from "../../../../types/app.ts";
-import { createNestedWindowContextBridge } from "../../shared/contextBridge.ts";
+import { useGameNestedWindowContextBridge } from "../../shared/contextBridge.ts";
+import { cloneGameConfig } from "../services/gameConfigTemplates.ts";
 
 const TIER_CELEBRATION_EMOJI_OPTIONS = [
   "✨", "🎉", "🔥", "💎", "⭐", "🏆",
@@ -153,7 +154,7 @@ export const WheelTierCard = {
       this.setTierChance(tier, target?.value);
     },
     openTierEditor(this: { editorOpen: boolean; editorDraft: WheelTier | null; tier: WheelTier }): void {
-      this.editorDraft = JSON.parse(JSON.stringify(this.tier)) as WheelTier;
+      this.editorDraft = cloneGameConfig(this.tier);
       this.editorOpen = true;
     },
     cancelTierEditor(this: { editorOpen: boolean; editorDraft: WheelTier | null }): void {
@@ -211,10 +212,7 @@ export const WheelTierCard = {
     }
   },
   setup(props: { ctx: Record<string, unknown> }) {
-    const injectedGameCtx = inject<Record<string, unknown> | null>("gameCtx", null);
-    const injectedCtx = inject<Record<string, unknown> | null>("appCtx", null);
-    const source = (injectedGameCtx ?? props.ctx ?? injectedCtx) as Record<string, unknown>;
-    return createNestedWindowContextBridge(source);
+    return useGameNestedWindowContextBridge(props);
   }
 };
 

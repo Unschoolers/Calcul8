@@ -67,10 +67,6 @@ export function pickRandomMysteryGridCellIndex(
   return pickUnrevealedMysteryGridCellIndex(cells, random);
 }
 
-export function resolveMysteryGridCellSlotIndex(cellIndex: number, slots: WheelSlot[]): number {
-  return resolveMysteryGridSlotIndex(cellIndex, slots);
-}
-
 function waitForMysteryGridAnimationFrame(delayMs: number): Promise<void> {
   if (delayMs <= 0) return Promise.resolve();
   return new Promise((resolve) => {

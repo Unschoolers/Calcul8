@@ -1,6 +1,6 @@
-import { inject, type PropType } from "vue";
+import { type PropType } from "vue";
 import AppActionButton from "../../../ui/AppActionButton.vue";
-import { createNestedWindowContextBridge } from "../../shared/contextBridge.ts";
+import { useGameNestedWindowContextBridge } from "../../shared/contextBridge.ts";
 
 export const GameSpectatorDialog = {
   name: "GameSpectatorDialog",
@@ -14,10 +14,7 @@ export const GameSpectatorDialog = {
     }
   },
   setup(props: { ctx: Record<string, unknown> }) {
-    const injectedGameCtx = inject<Record<string, unknown> | null>("gameCtx", null);
-    const injectedCtx = inject<Record<string, unknown> | null>("appCtx", null);
-    const source = (injectedGameCtx ?? props.ctx ?? injectedCtx) as Record<string, unknown>;
-    return createNestedWindowContextBridge(source);
+    return useGameNestedWindowContextBridge(props);
   }
 };
 

@@ -13,6 +13,8 @@ function writeAsset(root: string, fileName: string, source: string): string {
   return filePath;
 }
 
+// This is an end-to-end CLI check. Loading javascript-obfuscator in the child
+// process can exceed Vitest's default timeout when CI workers contend for CPU.
 test("release obfuscation skips third-party chunks but obfuscates app chunks", () => {
   const tempRoot = mkdtempSync(path.join(tmpdir(), "whatfees-obfuscate-"));
   const assetsDir = path.join(tempRoot, "dist", "assets");
@@ -45,4 +47,4 @@ test("release obfuscation skips third-party chunks but obfuscates app chunks", (
   } finally {
     rmSync(tempRoot, { recursive: true, force: true });
   }
-});
+}, 15_000);

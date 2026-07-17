@@ -1,5 +1,6 @@
 import { assignWheelPendingInventoryIssues } from "../../../../app-core/shared/wheel-session-compat.ts";
 import { getWheelController } from "../coordinator/gameControllerState.ts";
+import { clearWheelProofState } from "./wheelSessionState.ts";
 
 export function resetLoadedTierPrizeGameSessionState(context: Record<string, unknown>): void {
   const controller = getWheelController(context);
@@ -24,12 +25,7 @@ export function resetLoadedTierPrizeGameSessionState(context: Record<string, unk
   controller.previewFairnessHistory = [];
   controller.previewChaseTallyHistory = [];
   controller.previewGridReveals = [];
-  controller.spinHash = "";
-  controller.spinSeed = "";
-  controller.spinClientSeed = "";
-  controller.spinVerificationUrl = "";
-  controller.spinAlgorithm = "";
-  controller.showSeed = false;
+  clearWheelProofState(controller);
   controller.fairnessHistoryOpen = false;
   controller.highlightedSlotIndex = -1;
   context.gameSpectatorDialog = false;

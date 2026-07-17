@@ -17,16 +17,17 @@ import {
     normalizeWheelTierSources
 } from "../../../../app-core/shared/wheel-tier-sources.ts";
 import { getActiveStorageScope } from "../../../../app-core/workspace-scope.ts";
-import { calculateTotalCaseCost } from "../../../../domain/calculations-fees.ts";
 import type { Lot, LuckGameType, WheelConfig, WheelTier } from "../../../../types/app.ts";
 import { getWheelController, type GameWindowThis } from "../coordinator/gameControllerState.ts";
 import { remapSpinCountsByTier } from "../services/wheelCountRemapping.ts";
-import { createTierPrizeGameConfigFromTemplate } from "../services/gameConfigTemplates.ts";
+import { cloneGameConfig, createTierPrizeGameConfigFromTemplate } from "../services/gameConfigTemplates.ts";
 import {
   resetLoadedTierPrizeGameSessionState,
   resetLoadedTierPrizeGameState
 } from "../services/gameSessionReset.ts";
+import { clearWheelProofState } from "../services/wheelSessionState.ts";
 import { createDefaultTier } from "../services/wheelDefaults.ts";
+import { calculateWheelLotCostPerPack } from "../services/wheelPricing.ts";
 import { buildSlotsFromConfig, createWheelGridLayoutSeed, type WheelSlot } from "../services/wheelSlots.ts";
 import {
     getAvailableSinglesQuantityForWheelTier,
@@ -139,7 +140,7 @@ export const wheelConfigMethods = {
     this.wheelConfigs = [...configs];
     this.activeWheelConfigId = newConfig.id;
     this.persistLastWheelConfigSelection?.();
-    this.editingWheelConfig = JSON.parse(JSON.stringify(newConfig)) as WheelConfig;
+    this.editingWheelConfig = cloneGameConfig(newConfig);
     this.wheelCreateDialog = false;
     queueCloudConfigSyncPush(this as Parameters<typeof queueCloudConfigSyncPush>[0]);
   },
@@ -169,8 +170,8 @@ export const wheelConfigMethods = {
       }
     }
     this.editingWheelConfig = draftConfig
-      ? JSON.parse(JSON.stringify(draftConfig)) as WheelConfig
-      : (sanitizedConfig ? JSON.parse(JSON.stringify(sanitizedConfig)) as WheelConfig : null);
+      ? cloneGameConfig(draftConfig)
+      : (sanitizedConfig ? cloneGameConfig(sanitizedConfig) : null);
     if (!sanitizedConfig) {
       this.appliedWheelConfigSnapshot = null;
       resetLoadedTierPrizeGameState(this);
@@ -180,8 +181,7 @@ export const wheelConfigMethods = {
     if (options.preserveLiveWheelState === true) {
       return;
     }
-    this.appliedWheelConfigSnapshot =
-      JSON.parse(JSON.stringify(sanitizedConfig)) as WheelConfig;
+    this.appliedWheelConfigSnapshot = cloneGameConfig(sanitizedConfig);
     const loadController = getWheelController(this as Record<string, unknown>);
     if (sanitizedConfig.gameType === "bracket") {
       resetLoadedTierPrizeGameState(this);
@@ -238,7 +238,7 @@ export const wheelConfigMethods = {
       const configs = (this.wheelConfigs || []) as WheelConfig[];
       const idx = configs.findIndex((c) => c.id === editing.id);
       const previousConfig = idx >= 0 ? configs[idx] : null;
-      const updated = { ...(JSON.parse(JSON.stringify(editing)) as WheelConfig), updatedAt: new Date().toISOString() };
+      const updated = { ...cloneGameConfig(editing), updatedAt: new Date().toISOString() };
       const sanitizedUpdated = normalizeWheelConfig(updated, (this.lots || []) as Lot[]) ?? updated;
       if (idx >= 0) {
         configs[idx] = sanitizedUpdated;
@@ -254,8 +254,8 @@ export const wheelConfigMethods = {
         } catch { /* ignore */ }
         this.activeWheelConfigId = sanitizedUpdated.id;
         this.persistLastWheelConfigSelection?.();
-        this.editingWheelConfig = JSON.parse(JSON.stringify(sanitizedUpdated)) as WheelConfig;
-        this.appliedWheelConfigSnapshot = JSON.parse(JSON.stringify(sanitizedUpdated)) as WheelConfig;
+        this.editingWheelConfig = cloneGameConfig(sanitizedUpdated);
+        this.appliedWheelConfigSnapshot = cloneGameConfig(sanitizedUpdated);
         resetLoadedTierPrizeGameState(this);
         queueCloudConfigSyncPush(this as Parameters<typeof queueCloudConfigSyncPush>[0]);
         this.showWheelConfigSaved?.();
@@ -287,8 +287,8 @@ export const wheelConfigMethods = {
       } catch { /* ignore */ }
       this.activeWheelConfigId = sanitizedUpdated.id;
       this.persistLastWheelConfigSelection?.();
-      this.editingWheelConfig = JSON.parse(JSON.stringify(sanitizedUpdated)) as WheelConfig;
-      this.appliedWheelConfigSnapshot = JSON.parse(JSON.stringify(sanitizedUpdated)) as WheelConfig;
+      this.editingWheelConfig = cloneGameConfig(sanitizedUpdated);
+      this.appliedWheelConfigSnapshot = cloneGameConfig(sanitizedUpdated);
       applyController.activeSlots = newSlots;
       applyController.previewSlots = [...newSlots];
       this.wheelSpinCounts = remapSpinCountsByTier(oldTierIds, oldCounts, newSlots);
@@ -301,12 +301,7 @@ export const wheelConfigMethods = {
       applyController.previewChaseTallyHistory = [];
       applyController.previewGridReveals = [];
       applyController.lastResultColor = "rgb(var(--v-theme-primary))";
-      applyController.spinHash = "";
-      applyController.spinSeed = "";
-      applyController.spinClientSeed = "";
-      applyController.spinVerificationUrl = "";
-      applyController.spinAlgorithm = "";
-      applyController.showSeed = false;
+      clearWheelProofState(applyController);
       applyController.fairnessHistoryOpen = false;
       applyController.highlightedSlotIndex = -1;
       if (hadTierShapeChange) {
@@ -384,7 +379,7 @@ export const wheelConfigMethods = {
     const configs = (this.wheelConfigs || []) as WheelConfig[];
     const idx = configs.findIndex((entry) => entry.id === editing.id);
     const persisted = normalizeWheelConfig({
-      ...(JSON.parse(JSON.stringify(editing)) as WheelConfig),
+      ...cloneGameConfig(editing),
       updatedAt: new Date().toISOString()
     }, (this.lots || []) as Lot[]);
     if (!persisted) {
@@ -455,50 +450,20 @@ export const wheelConfigMethods = {
   },
 
   getCostPerPackForTier(this: GameConfigContext, tier: WheelTier): number {
+    const lots = (this.lots || []) as Lot[];
     if (isWheelTierMultiLot(tier)) {
-      const lots = (this.lots || []) as Lot[];
       const costs = getWheelTierSourceLotIds(tier)
         .map((id) => lots.find((l) => l.id === id))
         .filter((lot): lot is Lot => lot != null && !isSinglesLot(lot))
-        .map((lot) => {
-          const boxes = lot.boxesPurchased || 0;
-          const packsPerBox = lot.packsPerBox || 16;
-          const totalPacks = boxes * packsPerBox;
-          if (totalPacks <= 0) return 0;
-          const totalCost = calculateTotalCaseCost({
-            boxesPurchased: boxes,
-            pricePerBoxCad: lot.boxPriceCost || 0,
-            purchaseShippingCad: lot.purchaseShippingCost || 0,
-            purchaseTaxPercent: lot.purchaseTaxPercent || 0,
-            includeTax: lot.includeTax ?? false,
-            currency: lot.currency || "CAD"
-          });
-          return totalCost / totalPacks;
-        })
+        .map(calculateWheelLotCostPerPack)
         .filter((cost) => cost > 0);
       if (costs.length > 0) {
         return costs.reduce((sum, cost) => sum + cost, 0) / costs.length;
       }
     }
     if (tier.boundLotId != null) {
-      const lots = (this.lots || []) as Lot[];
-      const lot = lots.find((l) => l.id === tier.boundLotId);
-      if (lot) {
-        const boxes = lot.boxesPurchased || 0;
-        const packsPerBox = lot.packsPerBox || 16;
-        const totalPacks = boxes * packsPerBox;
-        if (totalPacks > 0) {
-          const totalCost = calculateTotalCaseCost({
-            boxesPurchased: boxes,
-            pricePerBoxCad: lot.boxPriceCost || 0,
-            purchaseShippingCad: lot.purchaseShippingCost || 0,
-            purchaseTaxPercent: lot.purchaseTaxPercent || 0,
-            includeTax: lot.includeTax ?? false,
-            currency: lot.currency || "CAD"
-          });
-          return totalCost / totalPacks;
-        }
-      }
+      const costPerPack = calculateWheelLotCostPerPack(lots.find((lot) => lot.id === tier.boundLotId) ?? {});
+      if (costPerPack > 0) return costPerPack;
     }
     return this.currentLotCostPerPack ?? 0;
   },

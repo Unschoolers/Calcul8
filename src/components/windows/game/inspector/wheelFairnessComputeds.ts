@@ -1,60 +1,49 @@
-import { translateAppMessage } from "../../../../app-core/i18n/index.ts";
 import { getWheelController } from "../coordinator/gameControllerState.ts";
 import {
-  getWheelCurrentProofState,
-  getWheelDisplayFairnessHistoryEntries,
-  getWheelLatestFairnessEntry
-} from "../coordinator/gameComputedShared.ts";
+  buildWheelFairnessViewModel,
+  type WheelFairnessViewModel
+} from "../services/wheelFairnessViewModel.ts";
+
+type FairnessComputedContext = Record<string, unknown> & {
+  wheelFairnessModel?: WheelFairnessViewModel;
+};
+
+function model(context: FairnessComputedContext): WheelFairnessViewModel {
+  return context.wheelFairnessModel ?? buildWheelFairnessViewModel(context);
+}
 
 export const wheelFairnessComputeds = {
-  wheelFairnessIcon(this: Record<string, unknown>): string {
-    return (this as Record<string, unknown>).wheelSpinning ? "mdi-lock" : "mdi-shield-check";
+  wheelFairnessModel(this: FairnessComputedContext): WheelFairnessViewModel {
+    return buildWheelFairnessViewModel(this);
   },
 
-  wheelFairnessIconColor(this: Record<string, unknown>): string {
-    return (this as Record<string, unknown>).wheelSpinning ? "warning" : "success";
+  wheelFairnessIcon(this: FairnessComputedContext): string {
+    return model(this).icon;
   },
 
-  wheelFairnessTitle(this: Record<string, unknown>): string {
-    const preferredLanguage = String((this as Record<string, unknown>).preferredLanguage ?? "");
-    if ((this as Record<string, unknown>).wheelSpinning) {
-      return translateAppMessage(preferredLanguage, "wheelFairnessResultLockedTitle");
-    }
-    return getWheelCurrentProofState(this as Record<string, unknown>).spinVerificationUrl.trim()
-      ? translateAppMessage(preferredLanguage, "wheelFairnessServerVerifiedTitle")
-      : translateAppMessage(preferredLanguage, "wheelFairnessLocalVerifiedTitle");
+  wheelFairnessIconColor(this: FairnessComputedContext): string {
+    return model(this).iconColor;
   },
 
-  wheelFairnessChevron(this: Record<string, unknown>): string {
-    const controller = getWheelController(this as Record<string, unknown>);
+  wheelFairnessTitle(this: FairnessComputedContext): string {
+    return model(this).title;
+  },
+
+  wheelFairnessChevron(this: FairnessComputedContext): string {
+    const controller = getWheelController(this);
     return controller.showSeed ? "mdi-chevron-up" : "mdi-chevron-down";
   },
 
-  wheelDisplayFairnessHistory(this: Record<string, unknown>): Array<{
-    spinNumber: number;
-    label: string;
-    color: string;
-    hash: string;
-    seed: string;
-    clientSeed?: string;
-    verificationUrl?: string;
-    algorithm?: string;
-    timestamp: number;
-  }> {
-    return getWheelDisplayFairnessHistoryEntries(this as Record<string, unknown>);
+  wheelDisplayFairnessHistory(this: FairnessComputedContext) {
+    return model(this).entries;
   },
 
-  wheelFairnessHistorySummary(this: Record<string, unknown>): string {
-    const count = (((this as Record<string, unknown>).wheelDisplayFairnessHistory || []) as unknown[]).length;
-    if (!count) return translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelNoSpinsYetLabel");
-    return translateAppMessage(String((this as Record<string, unknown>).preferredLanguage ?? ""), "wheelFairnessRecentSpins", {
-      count,
-      suffix: count === 1 ? "" : "s"
-    });
+  wheelFairnessHistorySummary(this: FairnessComputedContext): string {
+    return model(this).summary;
   },
 
-  wheelLatestFairnessEntry(this: Record<string, unknown>) {
-    return getWheelLatestFairnessEntry(this as Record<string, unknown>);
+  wheelLatestFairnessEntry(this: FairnessComputedContext) {
+    return model(this).latestEntry;
   }
 };
 

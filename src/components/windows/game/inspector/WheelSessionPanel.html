@@ -1,19 +1,19 @@
 <section class="wheel-panel-section">
   <div class="wheel-stats-grid">
     <v-card variant="tonal" class="text-center pa-2">
-      <div class="text-h6">{{ wheelSessionPanelDisplayTotalSpins }}</div>
+      <div class="text-h6">{{ wheelSessionPanelModel.totalSpins }}</div>
       <div class="text-caption text-medium-emphasis">{{ t('wheelSpinsLabel') }}</div>
     </v-card>
     <v-card variant="tonal" class="text-center pa-2">
-      <div class="text-h6">${{ wheelSessionPanelRevenue.toFixed(2) }}</div>
+      <div class="text-h6">${{ wheelSessionPanelModel.revenue.toFixed(2) }}</div>
       <div class="text-caption text-medium-emphasis">{{ t('wheelRevenueLabel') }}</div>
     </v-card>
     <v-card variant="tonal" class="text-center pa-2">
-      <div class="text-h6 text-error">${{ wheelSessionPanelCost.toFixed(2) }}</div>
+      <div class="text-h6 text-error">${{ wheelSessionPanelModel.cost.toFixed(2) }}</div>
       <div class="text-caption text-medium-emphasis">{{ t('wheelPrizeCostLabel') }}</div>
     </v-card>
     <v-card variant="tonal" class="text-center pa-2">
-      <div class="text-h6" :class="wheelSessionPanelProfitClass">{{ wheelSessionPanelProfitDisplay }}</div>
+      <div class="text-h6" :class="wheelSessionPanelModel.profitClass">{{ wheelSessionPanelModel.profitDisplay }}</div>
       <div class="text-caption text-medium-emphasis">{{ t('wheelGrossProfitLabel') }}</div>
     </v-card>
   </div>
@@ -21,22 +21,22 @@
   <v-card variant="tonal" class="pa-3">
     <div class="d-flex justify-space-between align-center mb-1">
       <span class="text-caption text-medium-emphasis text-uppercase">{{ t('wheelSessionMarginLabel') }}</span>
-      <span class="text-h6 font-weight-bold" :style="{ color: wheelSessionPanelMarginColor }">
-        {{ wheelSessionPanelMarginDisplay }}
+      <span class="text-h6 font-weight-bold" :style="{ color: wheelSessionPanelModel.marginColor }">
+        {{ wheelSessionPanelModel.marginDisplay }}
       </span>
     </div>
     <div class="wheel-margin-bar-track">
       <div class="wheel-margin-bar-fill"
-        :style="{ width: wheelSessionPanelMarginBarWidth, background: wheelSessionPanelMarginColor }"></div>
-      <div class="wheel-margin-bar-target" :style="{ left: wheelSessionPanelTargetMarginBarLeft }"></div>
+        :style="{ width: wheelSessionPanelModel.marginBarWidth, background: wheelSessionPanelModel.marginColor }"></div>
+      <div class="wheel-margin-bar-target" :style="{ left: wheelSessionPanelModel.targetMarginBarLeft }"></div>
     </div>
-    <div class="text-caption text-medium-emphasis mt-1">{{ wheelSessionPanelMarginHint }}</div>
+    <div class="text-caption text-medium-emphasis mt-1">{{ wheelSessionPanelModel.marginHint }}</div>
   </v-card>
 
   <div class="mb-3">
     <div class="wheel-panel-subsection-title">{{ t('wheelSourceInventoryTitle') }}</div>
-    <div v-if="wheelSessionPanelSourceGroups.length" class="wheel-tracker-inventory-list">
-      <div v-for="entry in wheelSessionPanelSourceGroups" :key="entry.key" class="wheel-tracker-inventory-row">
+    <div v-if="wheelSessionPanelModel.sourceGroups.length" class="wheel-tracker-inventory-list">
+      <div v-for="entry in wheelSessionPanelModel.sourceGroups" :key="entry.key" class="wheel-tracker-inventory-row">
         <div class="wheel-tracker-inventory-copy">
           <div class="wheel-tracker-inventory-label">{{ entry.label }}</div>
           <div class="wheel-tracker-inventory-detail">{{ entry.detail }}</div>

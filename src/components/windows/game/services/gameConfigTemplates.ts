@@ -6,12 +6,8 @@ export type GameConfigTemplateContext = {
   currentLotId?: number | null;
 };
 
-function cloneWheelConfig(config: WheelConfig): WheelConfig {
-  return JSON.parse(JSON.stringify(config)) as WheelConfig;
-}
-
-function cloneBracketBattleConfig(config: NonNullable<WheelConfig["bracketBattle"]>): NonNullable<WheelConfig["bracketBattle"]> {
-  return JSON.parse(JSON.stringify(config)) as NonNullable<WheelConfig["bracketBattle"]>;
+export function cloneGameConfig<T>(config: T): T {
+  return JSON.parse(JSON.stringify(config)) as T;
 }
 
 function bindDefaultTierSources(context: GameConfigTemplateContext, config: WheelConfig): void {
@@ -28,7 +24,7 @@ export function createTierPrizeGameConfigFromTemplate(
   template?: WheelConfig | null
 ): WheelConfig {
   const existing = template ?? null;
-  const newConfig = existing ? cloneWheelConfig(existing) : createDefaultWheelConfig();
+  const newConfig = existing ? cloneGameConfig(existing) : createDefaultWheelConfig();
   newConfig.id = Date.now();
   newConfig.gameType = gameType;
   newConfig.name = existing
@@ -47,7 +43,7 @@ export function createTierPrizeGameConfigFromTemplate(
     newConfig.gridCellCount = 0;
     newConfig.tiers = [];
     newConfig.bracketBattle = existing?.bracketBattle
-      ? cloneBracketBattleConfig(existing.bracketBattle)
+      ? cloneGameConfig(existing.bracketBattle)
       : createDefaultBracketBattleConfig(4);
   } else {
     delete newConfig.bracketBattle;

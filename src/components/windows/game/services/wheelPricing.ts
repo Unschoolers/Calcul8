@@ -1,37 +1,32 @@
 import { getTierChancePercent, normalizeWheelTierChances } from "../../../../app-core/shared/wheel-odds.ts";
 import { getWheelTierSourceLotIds, isWheelTierMultiLot } from "../../../../app-core/shared/wheel-tier-sources.ts";
 import { calculateNetFromGross, type FeeProfileInput } from "../../../../domain/calculations.ts";
+import { calculateTotalCaseCost } from "../../../../domain/calculations-fees.ts";
 import type { Lot, WheelConfig, WheelTier } from "../../../../types/app.ts";
 import type { WheelSlot } from "./wheelSlots.ts";
 
-function getLotShippingPerOrder(lotId: number | null | undefined, lots: Lot[]): number {
-  if (lotId == null) return 0;
-  const lot = lots.find((entry) => entry.id === lotId);
-  return Number(lot?.sellingShippingPerOrder) || 0;
-}
+export type WheelPackCostInput = {
+  boxesPurchased?: number;
+  packsPerBox?: number;
+  boxPriceCost?: number;
+  purchaseShippingCost?: number;
+  purchaseTaxPercent?: number;
+  includeTax?: boolean;
+  currency?: "CAD" | "USD";
+};
 
-function getLotSellingTaxPercent(lotId: number | null | undefined, lots: Lot[]): number {
-  if (lotId == null) return 0;
-  const lot = lots.find((entry) => entry.id === lotId);
-  return Number(lot?.sellingTaxPercent) || 0;
-}
-
-function getTierShippingPerOrder(tier: WheelTier, lots: Lot[]): number {
-  if (isWheelTierMultiLot(tier)) {
-    const ids = getWheelTierSourceLotIds(tier);
-    if (!ids.length) return 0;
-    return ids.reduce((sum, id) => sum + getLotShippingPerOrder(id, lots), 0) / ids.length;
-  }
-  return getLotShippingPerOrder(tier.boundLotId, lots);
-}
-
-function getTierSellingTaxPercent(tier: WheelTier, lots: Lot[]): number {
-  if (isWheelTierMultiLot(tier)) {
-    const ids = getWheelTierSourceLotIds(tier);
-    if (!ids.length) return 0;
-    return ids.reduce((sum, id) => sum + getLotSellingTaxPercent(id, lots), 0) / ids.length;
-  }
-  return getLotSellingTaxPercent(tier.boundLotId, lots);
+export function calculateWheelLotCostPerPack(input: WheelPackCostInput): number {
+  const boxesPurchased = Number(input.boxesPurchased) || 0;
+  const totalPacks = boxesPurchased * (Number(input.packsPerBox) || 16);
+  if (totalPacks <= 0) return 0;
+  return calculateTotalCaseCost({
+    boxesPurchased,
+    pricePerBoxCad: Number(input.boxPriceCost) || 0,
+    purchaseShippingCad: Number(input.purchaseShippingCost) || 0,
+    purchaseTaxPercent: Number(input.purchaseTaxPercent) || 0,
+    includeTax: input.includeTax ?? false,
+    currency: input.currency || "CAD"
+  }) / totalPacks;
 }
 
 function calculateAverageTierNetRevenue(
@@ -140,57 +135,6 @@ export function calculateWheelSaleNetRevenue(config: WheelConfig, lot: Lot | und
     1,
     getLotFeeProfileInput(lot)
   );
-}
-
-export function calculateAverageWheelBuyerShippingPerSpin(
-  config: WheelConfig,
-  lots: Lot[] = []
-): number {
-  let shippingTotal = 0;
-  let totalChance = 0;
-
-  for (const tier of getNormalizedChanceTiers(config)) {
-    const chance = getTierChancePercent(tier);
-    if (chance <= 0) continue;
-    shippingTotal += chance * getTierShippingPerOrder(tier, lots);
-    totalChance += chance;
-  }
-
-  return totalChance > 0 ? shippingTotal / totalChance : 0;
-}
-
-export function calculateAverageWheelSellingTaxPercent(
-  config: WheelConfig,
-  lots: Lot[] = []
-): number {
-  let taxTotal = 0;
-  let totalChance = 0;
-
-  for (const tier of getNormalizedChanceTiers(config)) {
-    const chance = getTierChancePercent(tier);
-    if (chance <= 0) continue;
-    taxTotal += chance * getTierSellingTaxPercent(tier, lots);
-    totalChance += chance;
-  }
-
-  return totalChance > 0 ? taxTotal / totalChance : 0;
-}
-
-export function calculateWheelBuyerShippingTotal(
-  config: WheelConfig | null,
-  slots: WheelSlot[],
-  spinCounts: number[],
-  lots: Lot[] = []
-): number {
-  if (!config) return 0;
-
-  const shippingByTier = new Map(
-    config.tiers.map((tier) => [tier.id, getTierShippingPerOrder(tier, lots)] as const)
-  );
-
-  return slots.reduce((sum, slot, index) => (
-    sum + ((Number(spinCounts[index]) || 0) * (shippingByTier.get(slot.tier) ?? 0))
-  ), 0);
 }
 
 export function computeExpectedMargin(

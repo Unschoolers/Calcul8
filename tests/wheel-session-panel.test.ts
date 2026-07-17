@@ -55,8 +55,8 @@ test("wheelSessionPanelProfit falls back to fee calculation when live session ne
     fixedFeePerOrder: 0.3
   };
 
-  const result = WheelSessionPanel.computed!.wheelSessionPanelProfit.call(vm as never);
-  assert.ok(Math.abs(result - 56.1) < 0.001);
+  const result = WheelSessionPanel.computed!.wheelSessionPanelModel.call(vm as never);
+  assert.ok(Math.abs(result.profit - 56.1) < 0.001);
 });
 
 test("wheelSessionPanelProfit uses stored live session net revenue when present", () => {
@@ -107,7 +107,7 @@ test("wheelSessionPanelProfit uses stored live session net revenue when present"
     }
   };
 
-  const result = WheelSessionPanel.computed!.wheelSessionPanelProfit.call(vm as never);
-  assert.ok(Math.abs(result - 54.65) < 0.001);
+  const result = WheelSessionPanel.computed!.wheelSessionPanelModel.call(vm as never);
+  assert.ok(Math.abs(result.profit - 54.65) < 0.001);
 });
 
