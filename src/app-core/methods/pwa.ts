@@ -1,5 +1,5 @@
 import type { BeforeInstallPromptEvent } from "../../types/app.ts";
-import type { AppContext, AppMethodState } from "../context-app.ts";
+import type { AppMethodImplementation } from "../context-app.ts";
 
 const DISMISSED_APP_UPDATE_SESSION_KEY = "whatfees_dismissed_app_update_worker";
 const APP_UPDATE_NAVIGATION_FALLBACK_MS = 4000;
@@ -64,17 +64,7 @@ function buildUpdateRefreshUrl(): string {
   }
 }
 
-export const pwaMethods: ThisType<AppContext> & Pick<
-  AppMethodState,
-  | "setupPwaUiHandlers"
-  | "startOfflineReconnectScheduler"
-  | "stopOfflineReconnectScheduler"
-  | "promptInstall"
-  | "applyAppUpdate"
-  | "dismissAppUpdate"
-  | "unregisterServiceWorkersForDev"
-  | "registerServiceWorker"
-> = {
+export const pwaMethods = {
   setupPwaUiHandlers(): void {
     if (this.hasPwaUiHandlersBound) return;
 
@@ -266,5 +256,5 @@ export const pwaMethods: ThisType<AppContext> & Pick<
     };
     window.addEventListener("load", this.serviceWorkerLoadListener, { once: true });
   }
-};
+} satisfies AppMethodImplementation;
 

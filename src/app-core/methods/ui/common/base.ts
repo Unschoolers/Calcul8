@@ -1,6 +1,6 @@
 import { calculateSaleProfit as calculateSaleProfitValue, getSaleProfitPreview as getSaleProfitPreviewValue } from "../../../../domain/calculations.ts";
 import type { Sale, SaleType, UiColor } from "../../../../types/app.ts";
-import type { AppContext, AppMethodState } from "../../../context-app.ts";
+import type { AppMethodImplementation } from "../../../context-app.ts";
 import { STORAGE_KEYS } from "../../../storageKeys.ts";
 import {
   formatLocalizedDate,
@@ -9,28 +9,7 @@ import {
   translateAppMessage
 } from "../../../i18n/index.ts";
 
-export const uiBaseMethods: ThisType<AppContext> & Pick<
-  AppMethodState,
-  | "t"
-  | "setPreferredLanguage"
-  | "toggleTheme"
-  | "notify"
-  | "askConfirmation"
-  | "runConfirmAction"
-  | "cancelConfirmAction"
-  | "formatCurrency"
-  | "safeFixed"
-  | "toggleChartView"
-  | "togglePortfolioChartView"
-  | "togglePortfolioReportLot"
-  | "accessProFeature"
-  | "requestPurchaseUiMode"
-  | "calculateSaleProfit"
-  | "getSaleProfitPreview"
-  | "getSaleColor"
-  | "getSaleIcon"
-  | "formatDate"
-> = {
+export const uiBaseMethods = {
   t(key, params) {
     return translateAppMessage(this.preferredLanguage, key, params);
   },
@@ -190,5 +169,5 @@ export const uiBaseMethods: ThisType<AppContext> & Pick<
   formatDate(dateStr: string): string {
     return formatLocalizedDate(dateStr, this.preferredLanguage);
   }
-};
+} satisfies AppMethodImplementation;
 

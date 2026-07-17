@@ -1,4 +1,4 @@
-import type { AppContext, AppMethodState } from "../../../context-app.ts";
+import type { AppMethodImplementation } from "../../../context-app.ts";
 import {
   clearInviteQueryParam,
   resetPendingWorkspaceInviteState,
@@ -7,13 +7,7 @@ import {
 } from "./workspace-ui-helpers.ts";
 import { fetchWorkspaceJson } from "./workspace-api.ts";
 
-export const uiWorkspaceInviteMethods: ThisType<AppContext> & Pick<
-  AppMethodState,
-  | "createWorkspaceJoinLink"
-  | "previewPendingWorkspaceInvite"
-  | "acceptPendingWorkspaceInvite"
-  | "dismissPendingWorkspaceInvite"
-> = {
+export const uiWorkspaceInviteMethods = {
   async createWorkspaceJoinLink(): Promise<void> {
     if (!this.activeWorkspaceId) {
       this.notify("Switch to a shared workspace first.", "warning");
@@ -138,4 +132,4 @@ export const uiWorkspaceInviteMethods: ThisType<AppContext> & Pick<
     resetPendingWorkspaceInviteState(this);
     clearInviteQueryParam();
   }
-};
+} satisfies AppMethodImplementation;

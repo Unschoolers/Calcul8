@@ -1,11 +1,8 @@
-import type { AppContext, AppMethodState } from "../../../context-app.ts";
+import type { AppMethodImplementation } from "../../../context-app.ts";
 import { runWorkspaceRealtimeCatchUp } from "./workspace-realtime-recovery.ts";
 
-export const uiWorkspaceRealtimeMethods: ThisType<AppContext> & Pick<
-  AppMethodState,
-  "recoverWorkspaceRealtimeNow"
-> = {
+export const uiWorkspaceRealtimeMethods = {
   async recoverWorkspaceRealtimeNow(): Promise<void> {
     await runWorkspaceRealtimeCatchUp(this, { reason: "manual" });
   }
-};
+} satisfies AppMethodImplementation;

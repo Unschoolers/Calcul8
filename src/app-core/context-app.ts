@@ -414,3 +414,9 @@ export interface AppVueContext {
 
 export type AppContext = AppState & AppComputedState & AppMethodState & AppVueContext;
 
+/**
+ * Leaf method modules validate only the methods they implement. The aggregate
+ * remains typed as AppMethodState, so completeness is still enforced once.
+ */
+export type AppMethodImplementation = ThisType<AppContext> & Partial<AppMethodState>;
+

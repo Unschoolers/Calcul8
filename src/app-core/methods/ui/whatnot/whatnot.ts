@@ -1,4 +1,4 @@
-import type { AppContext, AppMethodState } from "../../../context-app.ts";
+import type { AppMethodImplementation } from "../../../context-app.ts";
 import type { WhatnotCsvPreparedRowInput } from "../../../../types/app.ts";
 import { translateAppMessage } from "../../../i18n/index.ts";
 import { normalizeWhatnotReviewRows } from "../../../shared/whatnot-csv.ts";
@@ -10,20 +10,7 @@ import { applyWhatnotStatus } from "./whatnot-status.ts";
 
 export { resetWhatnotSignedOutState, resetWhatnotTransientUiState } from "./whatnot-state.ts";
 
-export const uiWhatnotMethods: ThisType<AppContext> & Pick<
-  AppMethodState,
-  | "refreshWhatnotStatus"
-  | "connectWhatnot"
-  | "disconnectWhatnot"
-  | "syncWhatnotSales"
-  | "openWhatnotCsvImportDialog"
-  | "closeWhatnotCsvImportDialog"
-  | "prepareWhatnotCsvImport"
-  | "openWhatnotReviewDialog"
-  | "closeWhatnotReviewDialog"
-  | "discardWhatnotReviewBatch"
-  | "confirmWhatnotImportBatch"
-> = {
+export const uiWhatnotMethods = {
   async refreshWhatnotStatus(): Promise<void> {
     const result = await fetchWhatnotJson(
       this,
@@ -342,7 +329,7 @@ export const uiWhatnotMethods: ThisType<AppContext> & Pick<
       this.isConfirmingWhatnotImport = false;
     }
   }
-};
+} satisfies AppMethodImplementation;
 
 
 

@@ -5,7 +5,7 @@ import type {
     PendingWheelInventoryIssue,
     WheelConfig
 } from "../../types/app.ts";
-import type { AppContext, AppMethodState } from "../context-app.ts";
+import type { AppMethodImplementation } from "../context-app.ts";
 import {
     getScopedWheelConfigSessionStorageKey,
     getScopedWheelConfigsStorageKey,
@@ -58,32 +58,7 @@ import {
   markStorageWriteFailure
 } from "../storage-health.ts";
 
-export const salesMethods: ThisType<AppContext> & Pick<
-  AppMethodState,
-  | "loadSalesFromStorage"
-  | "saveSalesToStorage"
-  | "getAllSalesByLotId"
-  | "openAddSaleModal"
-  | "openConvertLiveSinglesSaleModal"
-  | "onNewSaleTypeChange"
-  | "onSinglesSaleCardSelectionChange"
-  | "addSinglesSaleLine"
-  | "removeSinglesSaleLine"
-  | "onSinglesSaleLineCardSelectionChange"
-  | "onSinglesSaleLineQuantityChange"
-  | "onSinglesSaleLinePriceChange"
-  | "getSinglesSaleLineMaxQuantity"
-  | "saveSale"
-  | "editSale"
-  | "deleteSale"
-  | "cancelSale"
-  | "initSalesChart"
-  | "initPortfolioChart"
-  | "addWheelSaleToLot"
-  | "loadWheelFromStorage"
-  | "saveWheelConfigsToStorage"
-  | "saveWheelSessionToStorage"
-> = {
+export const salesMethods = {
   loadSalesFromStorage(): void {
     if (!this.currentLotId) return;
 
@@ -387,5 +362,5 @@ export const salesMethods: ThisType<AppContext> & Pick<
       }
     }
   }
-};
+} satisfies AppMethodImplementation;
 

@@ -1,4 +1,4 @@
-import type { AppContext, AppMethodState } from "../../../context-app.ts";
+import type { AppMethodImplementation } from "../../../context-app.ts";
 import {
   runCloudSyncPull,
   runCloudSyncPush,
@@ -6,13 +6,7 @@ import {
   stopCloudSyncScheduler as stopCloudSyncSchedulerService
 } from "./sync-service.ts";
 
-export const uiSyncMethods: ThisType<AppContext> & Pick<
-  AppMethodState,
-  | "pullCloudSync"
-  | "startCloudSyncScheduler"
-  | "stopCloudSyncScheduler"
-  | "pushCloudSync"
-> = {
+export const uiSyncMethods = {
   async pullCloudSync(forceApply = false): Promise<void> {
     await runCloudSyncPull(this, {}, { forceApply });
   },
@@ -31,5 +25,5 @@ export const uiSyncMethods: ThisType<AppContext> & Pick<
   ): Promise<void> {
     await runCloudSyncPush(this, force, {}, options);
   }
-};
+} satisfies AppMethodImplementation;
 

@@ -1,4 +1,4 @@
-import type { AppContext, AppMethodState } from "../../../context-app.ts";
+import type { AppContext, AppMethodImplementation } from "../../../context-app.ts";
 import { clearEntitlementCache, fetchWithRetry, handleExpiredAuth, resolveApiBaseUrl } from "../common/shared.ts";
 import {
   disableGoogleAutoSignIn,
@@ -127,10 +127,7 @@ async function postAccountAction(
   return response;
 }
 
-export const uiAccountMethods: ThisType<AppContext> & Pick<
-  AppMethodState,
-  "logoutCurrentSession" | "clearPersonalAccountData"
-> = {
+export const uiAccountMethods = {
   async logoutCurrentSession(): Promise<void> {
     const response = await postAccountAction(this, "/auth/logout", "Failed to sign out.", {
       returnFailureResponse: true
@@ -166,5 +163,5 @@ export const uiAccountMethods: ThisType<AppContext> & Pick<
     this.notify("Your personal cloud and local app data were cleared.", "success");
     reloadAppSoon();
   }
-};
+} satisfies AppMethodImplementation;
 

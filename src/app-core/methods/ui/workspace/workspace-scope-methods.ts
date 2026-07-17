@@ -1,4 +1,4 @@
-import type { AppContext, AppMethodState } from "../../../context-app.ts";
+import type { AppMethodImplementation } from "../../../context-app.ts";
 import { createSyncPayload } from "../sync/sync-payload.ts";
 import { runCloudSyncPush } from "../sync/sync-service.ts";
 import { resolveApiBaseUrl } from "../common/shared.ts";
@@ -18,14 +18,7 @@ function createWorkspaceIdempotencyKey(): string {
   return `workspace-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 14)}`;
 }
 
-export const uiWorkspaceScopeMethods: ThisType<AppContext> & Pick<
-  AppMethodState,
-  | "refreshWorkspaces"
-  | "switchToPersonalWorkspace"
-  | "switchToWorkspace"
-  | "createWorkspace"
-  | "handleWorkspaceAccessLost"
-> = {
+export const uiWorkspaceScopeMethods = {
   async refreshWorkspaces(): Promise<boolean> {
     const googleIdToken = getGoogleIdToken();
     if (!googleIdToken) {
@@ -215,4 +208,4 @@ export const uiWorkspaceScopeMethods: ThisType<AppContext> & Pick<
 
     this.notify("You no longer have access to that workspace. Switched back to Personal.", "warning");
   }
-};
+} satisfies AppMethodImplementation;

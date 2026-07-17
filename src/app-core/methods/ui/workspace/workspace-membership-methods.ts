@@ -1,4 +1,4 @@
-import type { AppContext, AppMethodState } from "../../../context-app.ts";
+import type { AppMethodImplementation } from "../../../context-app.ts";
 import type { WorkspaceMember } from "../../../../types/app.ts";
 import {
   formatRelativeLastSeen,
@@ -12,15 +12,7 @@ import {
 } from "./workspace-ui-helpers.ts";
 import { fetchWorkspaceJson, getGoogleIdToken } from "./workspace-api.ts";
 
-export const uiWorkspaceMembershipMethods: ThisType<AppContext> & Pick<
-  AppMethodState,
-  | "openWorkspaceMembersModal"
-  | "openLeaveWorkspaceModal"
-  | "leaveCurrentWorkspace"
-  | "removeWorkspaceMember"
-  | "getWorkspaceMemberPresenceState"
-  | "getWorkspaceMemberPresenceLabel"
-> = {
+export const uiWorkspaceMembershipMethods = {
   async openWorkspaceMembersModal(): Promise<void> {
     if (!this.activeWorkspaceId) {
       this.notify("Switch to a shared workspace first.", "warning");
@@ -145,4 +137,4 @@ export const uiWorkspaceMembershipMethods: ThisType<AppContext> & Pick<
 
     return "Offline";
   }
-};
+} satisfies AppMethodImplementation;

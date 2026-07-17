@@ -1,6 +1,6 @@
 import { driver, type DriveStep, type Driver } from "driver.js";
 import type { LotType } from "../../../../types/app.ts";
-import type { AppContext, AppMethodState } from "../../../context-app.ts";
+import type { AppContext, AppMethodImplementation } from "../../../context-app.ts";
 import {
   normalizePersistedOnboardingStatus,
   shouldOfferFirstRunOnboarding
@@ -196,14 +196,7 @@ function startPostCreateTour(context: AppContext, lotType: LotType): void {
   });
 }
 
-export const uiOnboardingMethods: ThisType<AppContext> & Pick<
-  AppMethodState,
-  | "syncGuidedOnboarding"
-  | "startGuidedOnboarding"
-  | "dismissGuidedOnboarding"
-  | "stopGuidedOnboarding"
-  | "handleGuidedOnboardingLotCreated"
-> = {
+export const uiOnboardingMethods = {
   syncGuidedOnboarding(): void {
     if (this.guidedOnboardingStatus === "running") {
       return;
@@ -295,5 +288,5 @@ export const uiOnboardingMethods: ThisType<AppContext> & Pick<
       startPostCreateTour(this, lotType);
     });
   }
-};
+} satisfies AppMethodImplementation;
 
