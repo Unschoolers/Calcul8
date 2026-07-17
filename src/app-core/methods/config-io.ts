@@ -1,7 +1,6 @@
-import type { AppContext } from "../context-app.ts";
+import type { AppContext, AppMethodImplementation } from "../context-app.ts";
 import { canUseAuthoritativeSalesLiveApi } from "./entity-api-shared.ts";
 import { fetchAuthoritativeAllSales, fetchAuthoritativeSales } from "./lot-sales-api.ts";
-import { type ConfigMethodSubset } from "./config-shared.ts";
 import {
   fetchWithRetry,
   handleExpiredAuth,
@@ -133,15 +132,7 @@ async function hydrateImportedAuthoritativeSales(context: AppContext): Promise<v
   }
 }
 
-export const configIoMethods: ConfigMethodSubset<
-  | "canUseAdminLotSyncTools"
-  | "importLotsFromUserId"
-  | "exportSales"
-  | "exportPortfolioReport"
-  | "openPortfolioReportModal"
-  | "copyPortfolioReportTable"
-  | "savePortfolioReportTable"
-> = {
+export const configIoMethods = {
   canUseAdminLotSyncTools(): boolean {
     if (!isAdminSyncImportEnabled()) return false;
     const cached = readEntitlementCache();
@@ -321,5 +312,5 @@ export const configIoMethods: ConfigMethodSubset<
         URL.revokeObjectURL(url);
       }
     }
-  };
+  } satisfies AppMethodImplementation;
 

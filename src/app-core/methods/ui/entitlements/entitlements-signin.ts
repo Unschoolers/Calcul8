@@ -1,14 +1,12 @@
+import type { AppMethodImplementation } from "../../../context-app.ts";
 import {
   initGoogleAutoLoginFlow,
   openVerifyPurchaseModalFlow,
   promptGoogleSignInFlow,
   renderGoogleSignInButtonFlow
 } from "./entitlements-signin-service.ts";
-import { type UiEntitlementMethodSubset } from "./entitlements-shared.ts";
 
-export const uiEntitlementSignInMethods: UiEntitlementMethodSubset<
-  "initGoogleAutoLogin" | "renderGoogleSignInButton" | "promptGoogleSignIn" | "openVerifyPurchaseModal"
-> = {
+export const uiEntitlementSignInMethods = {
   initGoogleAutoLogin(): void {
     initGoogleAutoLoginFlow(this);
   },
@@ -24,4 +22,4 @@ export const uiEntitlementSignInMethods: UiEntitlementMethodSubset<
   openVerifyPurchaseModal(): void {
     openVerifyPurchaseModalFlow(this);
   }
-};
+} satisfies AppMethodImplementation;

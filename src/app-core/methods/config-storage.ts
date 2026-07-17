@@ -1,4 +1,5 @@
 import { DEFAULT_VALUES } from "../../constants.ts";
+import type { AppMethodImplementation } from "../context-app.ts";
 import { calculateNetFromGross } from "../../domain/calculations.ts";
 import type { Lot, LotSalesCacheEntry, Sale } from "../../types/app.ts";
 import {
@@ -8,7 +9,7 @@ import {
   getSalesStorageKey as getWhatfeesSalesStorageKey,
   STORAGE_KEYS
 } from "../storageKeys.ts";
-import { type ConfigMethodSubset, getTodayDate } from "./config-shared.ts";
+import { getTodayDate } from "./config-shared.ts";
 import { resolveWorkspaceScopeContext } from "../workspace-scope.ts";
 import { normalizeStoredLot } from "../shared/normalize-lot.ts";
 import { applySystemPricingDefaultsToLot, normalizeSystemPricingDefaults } from "../shared/system-pricing-defaults.ts";
@@ -52,17 +53,7 @@ function writeExchangeRateCache(cadRate: number, fetchedAt: number): void {
   }
 }
 
-export const configStorageMethods: ConfigMethodSubset<
-  | "getSalesStorageKey"
-  | "getSalesCacheEntry"
-  | "loadSalesForLotId"
-  | "netFromGross"
-  | "getExchangeRate"
-  | "loadLotsFromStorage"
-  | "saveLotsToStorage"
-  | "loadSystemPricingDefaultsFromStorage"
-  | "saveSystemPricingDefaultsToStorage"
-> = {
+export const configStorageMethods = {
   getSalesStorageKey(lotId: number): string {
     return getWhatfeesSalesStorageKey(lotId, resolveWorkspaceScopeContext(this));
   },
@@ -257,4 +248,4 @@ export const configStorageMethods: ConfigMethodSubset<
       this.notify("Could not save system configuration. Storage may be full.", "error");
     }
   }
-};
+} satisfies AppMethodImplementation;

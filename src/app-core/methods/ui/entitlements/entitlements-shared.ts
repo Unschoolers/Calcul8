@@ -1,25 +1,9 @@
-import type { AppContext, AppMethodState } from "../../../context-app.ts";
 import { initGoogleAutoLoginWithRetry, requestGoogleIdentityPrompt } from "../../../utils/googleAutoLogin.ts";
 import { getPlayBillingService } from "../../../utils/playBilling.ts";
 export {
   applyTargetProfitAccessDefaults,
   type TargetProfitAccessApp
 } from "./entitlement-access-defaults.ts";
-
-export type UiEntitlementMethodKeys =
-  | "initGoogleAutoLogin"
-  | "renderGoogleSignInButton"
-  | "promptGoogleSignIn"
-  | "openVerifyPurchaseModal"
-  | "startProPurchase"
-  | "verifyProPurchase"
-  | "closeStripeCheckoutModal"
-  | "startPlayPurchase"
-  | "verifyPlayPurchase"
-  | "debugLogEntitlement";
-
-export type UiEntitlementMethodSubset<K extends UiEntitlementMethodKeys> =
-  ThisType<AppContext> & Pick<AppMethodState, K>;
 
 interface GoogleProfileClaims {
   name?: string;

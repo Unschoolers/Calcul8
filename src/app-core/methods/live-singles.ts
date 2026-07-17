@@ -1,5 +1,5 @@
 import type { LiveSinglesSelectionMode, LiveSinglesSelectionSource } from "../../types/app.ts";
-import { type ConfigMethodSubset } from "./config-shared.ts";
+import type { AppMethodImplementation } from "../context-app.ts";
 import { normalizeUniquePositiveIntIds } from "../shared/singles-normalizers.ts";
 
 function mergeLiveSinglesIds(baseIds: number[], incomingIds: number[]): number[] {
@@ -28,14 +28,7 @@ function resolveLiveWindowVm(context: unknown): LiveWindowVm | null {
   return liveWindow as LiveWindowVm;
 }
 
-export const liveSinglesMethods: ConfigMethodSubset<
-  | "setLiveSinglesSelection"
-  | "addLiveSinglesSelection"
-  | "removeLiveSinglesSelection"
-  | "clearLiveSinglesSelection"
-  | "applyLiveSinglesSuggestedPricing"
-  | "resetLiveSinglesPricing"
-> = {
+export const liveSinglesMethods = {
   setLiveSinglesSelection(
     ids: number[],
     opts?: { source?: LiveSinglesSelectionSource; mode?: LiveSinglesSelectionMode }
@@ -113,4 +106,4 @@ export const liveSinglesMethods: ConfigMethodSubset<
     }
     this.notify("Open the Live tab to reset singles prices", "info");
   }
-};
+} satisfies AppMethodImplementation;

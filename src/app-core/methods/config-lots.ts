@@ -1,4 +1,5 @@
 import type { LotSetup, SinglesCatalogSource } from "../../types/app.ts";
+import type { AppContext, AppMethodImplementation } from "../context-app.ts";
 import { replaceRootLotSales } from "../shared/sales-root-state.ts";
 import { getLotType, isSinglesLot, normalizeLotType } from "../shared/lot-types.ts";
 import { normalizeSinglesCatalogSource } from "../shared/singles-catalog-source.ts";
@@ -27,7 +28,7 @@ import {
 import {
   resetSinglesCsvImportState
 } from "./config-lots-state.ts";
-import { type ConfigMethodSubset, getTodayDate } from "./config-shared.ts";
+import { getTodayDate } from "./config-shared.ts";
 import {
   hydrateAuthoritativeLotSalesWithSyncMeta,
   refreshPersonalLotSalesIfStale
@@ -36,7 +37,7 @@ import { canUseAuthoritativeSalesLiveApi } from "./entity-api-shared.ts";
 import { fetchAuthoritativeSales } from "./lot-sales-api.ts";
 import { markLivePricingPollingBaseline } from "./ui/sync/lot-entity-polling.ts";
 import { queueWorkspaceConfigSyncPush } from "./ui/workspace/workspace-config-sync.ts";
-type AuthoritativeLotHydrationContext = Pick<ConfigMethodSubset<"getSalesCacheEntry">, "getSalesCacheEntry"> & {
+type AuthoritativeLotHydrationContext = Pick<AppContext, "getSalesCacheEntry"> & {
   activeScopeType?: string;
   activeWorkspaceId?: string | null;
 };
@@ -53,27 +54,7 @@ function shouldHydrateAuthoritativeSales(
   return context.getSalesCacheEntry(lotId).status !== "loaded";
 }
 
-export const configLotMethods: ConfigMethodSubset<
-  | "getCurrentSetup"
-  | "autoSaveSetup"
-  | "syncLivePricesFromDefaults"
-  | "resetLivePrices"
-  | "applyLivePricesToDefaults"
-  | "addSinglesPurchaseRow"
-  | "removeSinglesPurchaseRow"
-  | "clearSinglesPurchases"
-  | "onSinglesPurchaseRowsChange"
-  | "importSinglesPurchasesCsv"
-  | "confirmSinglesPurchasesCsvImport"
-  | "cancelSinglesPurchasesCsvImport"
-  | "createNewLot"
-  | "selectLot"
-  | "setCurrentLotCatalogSource"
-  | "openRenameLotModal"
-  | "renameCurrentLot"
-  | "loadLot"
-  | "deleteCurrentLot"
-> = {
+export const configLotMethods = {
   getCurrentSetup(): LotSetup {
     return {
       boxPriceCost: this.boxPriceCost,
@@ -438,4 +419,4 @@ export const configLotMethods: ConfigMethodSubset<
       this.syncGuidedOnboarding();
     }
   }
-};
+} satisfies AppMethodImplementation;

@@ -1,10 +1,10 @@
+import type { AppMethodImplementation } from "../../../context-app.ts";
 import {
   syncEntitlementStatus
 } from "./entitlements-status-service.ts";
-import { type UiEntitlementMethodSubset } from "./entitlements-shared.ts";
 
-export const uiEntitlementStatusMethods: UiEntitlementMethodSubset<"debugLogEntitlement"> = {
+export const uiEntitlementStatusMethods = {
   async debugLogEntitlement(forceRefresh = false): Promise<void> {
     await syncEntitlementStatus(this, forceRefresh);
   }
-};
+} satisfies AppMethodImplementation;

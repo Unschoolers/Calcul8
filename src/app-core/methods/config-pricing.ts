@@ -1,4 +1,5 @@
 import { DEFAULT_VALUES } from "../../constants.ts";
+import type { AppMethodImplementation } from "../context-app.ts";
 import {
   calculateDefaultSellingPrices,
   calculatePriceForUnits as calculateUnitPrice,
@@ -12,21 +13,10 @@ import {
   normalizeSystemPricingDefaults,
   pickSystemPricingFieldsForLot
 } from "../shared/system-pricing-defaults.ts";
-import { type ConfigMethodSubset, getTodayDate, toDateOnly } from "./config-shared.ts";
+import { getTodayDate, toDateOnly } from "./config-shared.ts";
 import { queueWorkspaceConfigSyncPush } from "./ui/workspace/workspace-config-sync.ts";
 
-export const configPricingMethods: ConfigMethodSubset<
-  | "calculateProfit"
-  | "recalculateDefaultPrices"
-  | "calculateOptimalPrices"
-  | "setFeeProfilePreset"
-  | "setSystemFeeProfilePreset"
-  | "onSystemPricingDefaultsChange"
-  | "setCurrentLotSystemPricingDefaultsMode"
-  | "updatePurchaseCostInput"
-  | "onPurchaseConfigChange"
-  | "calculatePriceForUnits"
-> = {
+export const configPricingMethods = {
   calculateProfit(units: number, pricePerUnit: number): number {
     return calculateProfitForListing(
       units,
@@ -176,4 +166,4 @@ export const configPricingMethods: ConfigMethodSubset<
   calculatePriceForUnits(units: number, targetNetRevenue: number): number {
     return calculateUnitPrice(units, targetNetRevenue, this.sellingTaxPercent, this.sellingShippingPerOrder, this);
   }
-};
+} satisfies AppMethodImplementation;
