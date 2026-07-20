@@ -1,4 +1,8 @@
-import type { AppMethodImplementation } from "../../../context-app.ts";
+import type {
+  EntitlementMethodState,
+  PurchaseRoutingContext
+} from "../../../context/entitlements.ts";
+import type { FeatureMethodImplementation } from "../../../context/runtime.ts";
 import {
   closeStripeCheckoutFlow,
   startPlayPurchaseFlow,
@@ -27,4 +31,14 @@ export const uiEntitlementPurchaseMethods = {
   async verifyPlayPurchase(): Promise<void> {
     await verifyPlayPurchaseFlow(this);
   }
-} satisfies AppMethodImplementation;
+} satisfies FeatureMethodImplementation<
+  PurchaseRoutingContext,
+  Pick<
+    EntitlementMethodState,
+    | "startProPurchase"
+    | "verifyProPurchase"
+    | "closeStripeCheckoutModal"
+    | "startPlayPurchase"
+    | "verifyPlayPurchase"
+  >
+>;

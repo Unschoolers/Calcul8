@@ -5,7 +5,7 @@ import {
 import { hasPlayPurchaseSupport } from "./entitlements-shared.ts";
 import type {
   PurchaseProvider,
-  PurchaseRoutingApp
+  PurchaseRoutingContext
 } from "./entitlements-purchase-types.ts";
 
 export type PurchaseProviderDeps = {
@@ -31,7 +31,7 @@ export async function resolveEffectivePurchaseProvider(
 }
 
 export function notifyUnsupportedPurchaseProvider(
-  app: Pick<PurchaseRoutingApp, "notify">,
+  app: Pick<PurchaseRoutingContext, "notify">,
   provider: PurchaseProvider,
   capabilityLabel: "purchases" | "verification",
   deps: Pick<PurchaseProviderDeps, "getSupportedPurchaseProviders">

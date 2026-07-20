@@ -1,4 +1,8 @@
-import type { AppContext } from "../../../context-app.ts";
+import type { AuthSessionContext } from "../../../context/auth.ts";
+import type {
+  EntitlementStatusContext,
+  TargetProfitAccessContext
+} from "../../../context/entitlements.ts";
 import {
   applyEntitlementState,
   type EntitlementApiResponse,
@@ -14,7 +18,6 @@ import {
   hasAuthSignal,
   hasServerSession
 } from "../../../auth/index.ts";
-import { type TargetProfitAccessApp } from "./entitlements-shared.ts";
 import {
   bootstrapServerSessionStatus,
   type ServerSessionBootstrapResult
@@ -26,18 +29,6 @@ interface ParsedEntitlementPayload {
   updatedAt: string | null;
 }
 
-export type EntitlementMutationApp = Pick<AppContext, "hasProAccess"> & TargetProfitAccessApp;
-export type EntitlementStatusApp = Pick<
-  AppContext,
-  | "googleAuthEpoch"
-  | "hasProAccess"
-  | "isAuthSessionResolving"
-  | "isOffline"
-  | "pullCloudSync"
-  | "notify"
-  | "startOfflineReconnectScheduler"
-> & TargetProfitAccessApp;
-
 type EntitlementStatusDeps = {
   resolveApiBaseUrl: () => string;
   getGoogleIdToken: () => string;
@@ -46,7 +37,7 @@ type EntitlementStatusDeps = {
   getEntitlementTtlMs: typeof getEntitlementTtlMs;
   fetchWithRetry: typeof fetchWithRetry;
   bootstrapServerSession: (
-    app: Pick<EntitlementStatusApp, "googleAuthEpoch">,
+    app: AuthSessionContext,
     baseUrl: string
   ) => Promise<boolean | ServerSessionBootstrapResult>;
   hasServerSession: () => boolean;
@@ -70,7 +61,7 @@ export function shouldUseCachedEntitlement(params: {
   return Date.now() - Number(params.cachedAt) < params.ttlMs;
 }
 
-export function applyCachedEntitlement(app: EntitlementMutationApp, payload: ParsedEntitlementPayload): void {
+export function applyCachedEntitlement(app: TargetProfitAccessContext, payload: ParsedEntitlementPayload): void {
   applyEntitlementState(app, payload, {
     persistSessionUserId: false,
     writeCache: false
@@ -85,7 +76,7 @@ export function parseEntitlementPayload(data: EntitlementApiResponse): ParsedEnt
   };
 }
 
-export function applyFetchedEntitlement(app: EntitlementMutationApp, payload: ParsedEntitlementPayload): void {
+export function applyFetchedEntitlement(app: TargetProfitAccessContext, payload: ParsedEntitlementPayload): void {
   applyEntitlementState(app, payload, {
     cacheAt: Date.now(),
     persistSessionUserId: true,
@@ -110,7 +101,7 @@ const defaultDeps: EntitlementStatusDeps = {
   isOnline: () => navigator.onLine
 };
 
-function markAuthSessionResolved(app: Pick<EntitlementStatusApp, "isAuthSessionResolving">): void {
+function markAuthSessionResolved(app: Pick<EntitlementStatusContext, "isAuthSessionResolving">): void {
   app.isAuthSessionResolving = false;
 }
 
@@ -119,7 +110,7 @@ function normalizeBootstrapResult(result: boolean | ServerSessionBootstrapResult
 }
 
 export async function syncEntitlementStatus(
-  app: EntitlementStatusApp,
+  app: EntitlementStatusContext,
   forceRefresh = false,
   deps: Partial<EntitlementStatusDeps> = {}
 ): Promise<void> {

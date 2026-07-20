@@ -4,13 +4,38 @@ export type {
   AppVueContext,
   AppContext
 } from "./context-app.ts";
-export type { AuthComputedState, AuthMethodState } from "./context/auth.ts";
+export type {
+  AuthAccountContext,
+  AuthComputedState,
+  AuthMethodState,
+  AuthProfileContext,
+  AuthSessionBootstrapContext,
+  AuthSessionContext
+} from "./context/auth.ts";
 export type { ScopedApiContext } from "./context/api.ts";
 export type {
   CommerceComputedState,
   CommerceMethodState,
   SalesEntityContext
 } from "./context/commerce.ts";
+export type {
+  AuthEntitlementSessionContext,
+  EntitlementMethodState,
+  EntitlementMutationContext,
+  EntitlementSignInContext,
+  EntitlementStateContext,
+  EntitlementStatusContext,
+  EntitlementUiContext,
+  PlayPurchaseContext,
+  ProFeatureAccessContext,
+  PurchaseRoutingContext,
+  PurchaseVerificationContext,
+  StripeCheckoutContext,
+  StripePurchaseContext,
+  StripeVerificationContext,
+  TargetProfitAccessContext,
+  VerifyPurchaseModalContext
+} from "./context/entitlements.ts";
 export type {
   PortfolioComputedObject,
   PortfolioComputedState,

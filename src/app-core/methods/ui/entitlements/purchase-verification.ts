@@ -1,4 +1,4 @@
-import type { AppContext } from "../../../context-app.ts";
+import type { PurchaseVerificationContext } from "../../../context/entitlements.ts";
 import { fetchWithRetry } from "../common/api-client.ts";
 import {
   applyEntitlementState,
@@ -92,13 +92,8 @@ async function postPurchaseVerification(
   });
 }
 
-export type PurchaseVerificationApp = Pick<
-  AppContext,
-  "googleAuthEpoch" | "hasProAccess" | "notify" | "debugLogEntitlement"
->;
-
 export async function submitPlayPurchaseVerification(
-  app: PurchaseVerificationApp,
+  app: PurchaseVerificationContext,
   payload: VerifyPlayPurchaseRequest
 ): Promise<boolean> {
   const productId = (payload.productId ?? "").trim();

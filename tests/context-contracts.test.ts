@@ -10,6 +10,15 @@ function readSource(relativePath: string): string {
 interface TypeScriptSource {
   file: string;
   source: string;
+  searchableSource: string;
+}
+
+function createTypeScriptSource(file: string, source: string): TypeScriptSource {
+  return {
+    file,
+    source,
+    searchableSource: withoutTypeScriptComments(source)
+  };
 }
 
 function readTypeScriptSources(relativeDirectory: string): TypeScriptSource[] {
@@ -22,7 +31,7 @@ function readTypeScriptSources(relativeDirectory: string): TypeScriptSource[] {
       if (entry.isDirectory()) {
         visit(entryPath);
       } else if (entry.isFile() && entry.name.endsWith(".ts")) {
-        sources.push({ file: entryPath, source: readSource(entryPath) });
+        sources.push(createTypeScriptSource(entryPath, readSource(entryPath)));
       }
     }
   }
@@ -61,24 +70,24 @@ function findSourceConsumers(
   allowedFiles: ReadonlySet<string>
 ): string[] {
   return sources
-    .filter(({ file, source }) => pattern.test(withoutTypeScriptComments(source)) && !allowedFiles.has(file))
+    .filter(({ file, searchableSource }) => pattern.test(searchableSource) && !allowedFiles.has(file))
     .map(({ file }) => file);
 }
 
 test("source scanning keeps comment markers inside TypeScript literals", () => {
   const sources: TypeScriptSource[] = [
-    {
-      file: "src/string-literal.ts",
-      source: 'const endpoint = "https://host"; type Context = AppContext;'
-    },
-    {
-      file: "src/template-literal.ts",
-      source: "const marker = `/*`; type Context = AppContext; const closer = `*/`;"
-    },
-    {
-      file: "src/regex-literal.ts",
-      source: 'const marker = /[/*]{2}/; type Context = AppContext; const closer = "*/";'
-    }
+    createTypeScriptSource(
+      "src/string-literal.ts",
+      'const endpoint = "https://host"; type Context = AppContext;'
+    ),
+    createTypeScriptSource(
+      "src/template-literal.ts",
+      "const marker = `/*`; type Context = AppContext; const closer = `*/`;"
+    ),
+    createTypeScriptSource(
+      "src/regex-literal.ts",
+      'const marker = /[/*]{2}/; type Context = AppContext; const closer = "*/";'
+    )
   ];
 
   assert.deepEqual(
@@ -93,7 +102,6 @@ test("aggregate app context dependencies cannot spread to new source files", () 
   // its files until only the declaration and barrel remain for AppContext, and the
   // implementation helpers and casts have no remaining consumers.
   const allowedAppContextFiles = new Set([
-    "src/app-core/auth/session.ts",
     "src/app-core/context-app.ts",
     "src/app-core/context-contracts.ts",
     "src/app-core/context.ts",
@@ -105,18 +113,9 @@ test("aggregate app context dependencies cannot spread to new source files", () 
     "src/app-core/methods/sales-charts.ts",
     "src/app-core/methods/sales-freshness.ts",
     "src/app-core/methods/sales-persistence.ts",
-    "src/app-core/methods/ui/auth/account.ts",
-    "src/app-core/methods/ui/auth/auth-session.ts",
     "src/app-core/methods/ui/buyers/buyer-profile-api.ts",
     "src/app-core/methods/ui/common/api-client.ts",
     "src/app-core/methods/ui/common/onboarding.ts",
-    "src/app-core/methods/ui/entitlements/entitlement-access-defaults.ts",
-    "src/app-core/methods/ui/entitlements/entitlement-cache.ts",
-    "src/app-core/methods/ui/entitlements/entitlements-purchase-types.ts",
-    "src/app-core/methods/ui/entitlements/entitlements-signin-service.ts",
-    "src/app-core/methods/ui/entitlements/entitlements-status-service.ts",
-    "src/app-core/methods/ui/entitlements/entitlements-stripe.ts",
-    "src/app-core/methods/ui/entitlements/purchase-verification.ts",
     "src/app-core/methods/ui/spectator/game-spectator.ts",
     "src/app-core/methods/ui/spectator/wheel-broadcast.ts",
     "src/app-core/methods/ui/sync/lot-entity-polling.ts",
@@ -143,14 +142,9 @@ test("aggregate app context dependencies cannot spread to new source files", () 
     "src/app-core/methods/live-singles.ts",
     "src/app-core/methods/pwa.ts",
     "src/app-core/methods/sales.ts",
-    "src/app-core/methods/ui/auth/account.ts",
     "src/app-core/methods/ui/buyers/buyer-profiles.ts",
     "src/app-core/methods/ui/common/base.ts",
     "src/app-core/methods/ui/common/onboarding.ts",
-    "src/app-core/methods/ui/entitlements/entitlements-purchase.ts",
-    "src/app-core/methods/ui/entitlements/entitlements-signin.ts",
-    "src/app-core/methods/ui/entitlements/entitlements-status.ts",
-    "src/app-core/methods/ui/entitlements/entitlements.ts",
     "src/app-core/methods/ui/sync/sync.ts",
     "src/app-core/methods/ui/whatnot/whatnot.ts",
     "src/app-core/methods/ui/workspace/workspace-invite-methods.ts",
@@ -190,6 +184,26 @@ test("aggregate app context dependencies cannot spread to new source files", () 
   }
 });
 
+test("identity and entitlement domains use only focused context contracts", () => {
+  const domainSources = [
+    ...readTypeScriptSources("src/app-core/auth"),
+    ...readTypeScriptSources("src/app-core/methods/ui/auth"),
+    ...readTypeScriptSources("src/app-core/methods/ui/entitlements")
+  ];
+
+  for (const dependency of [
+    { name: "AppContext", pattern: /\bAppContext\b/ },
+    { name: "AppMethodImplementation", pattern: /\bAppMethodImplementation\b/ },
+    { name: "as AppContext", pattern: /\bas\s+AppContext\b/ }
+  ]) {
+    assert.deepEqual(
+      findSourceConsumers(domainSources, dependency.pattern, new Set()),
+      [],
+      `${dependency.name} must not be consumed by identity or entitlement modules`
+    );
+  }
+});
+
 test("the app context is composed from focused feature contracts", () => {
   const aggregate = readSource("src/app-core/context-app.ts");
   const featureContractFiles = [
@@ -197,6 +211,7 @@ test("the app context is composed from focused feature contracts", () => {
     "src/app-core/context/api.ts",
     "src/app-core/context/auth.ts",
     "src/app-core/context/commerce.ts",
+    "src/app-core/context/entitlements.ts",
     "src/app-core/context/portfolio.ts",
     "src/app-core/context/workspace.ts"
   ];
@@ -217,6 +232,7 @@ test("the app context is composed from focused feature contracts", () => {
     "RuntimeMethodState",
     "AuthMethodState",
     "CommerceMethodState",
+    "EntitlementMethodState",
     "PortfolioMethodState",
     "WorkspaceMethodState",
     "WhatnotMethodState",
@@ -255,14 +271,35 @@ test("feature computed modules use feature-scoped computed contracts", () => {
   }
 });
 
-test("auth and commerce contracts own only their feature capabilities", () => {
+test("auth, entitlement, and commerce contracts own only their feature capabilities", () => {
   const auth = readSource("src/app-core/context/auth.ts");
+  const baseMethods = readSource("src/app-core/methods/ui/common/base.ts");
   const commerce = readSource("src/app-core/context/commerce.ts");
+  const entitlements = readSource("src/app-core/context/entitlements.ts");
+  const entitlementMethods = readSource("src/app-core/methods/ui/entitlements/entitlements.ts");
 
-  assert.doesNotMatch(auth, /lotNameDraft|newLotName|canUsePaidActions/);
+  assert.doesNotMatch(
+    auth,
+    /lotNameDraft|newLotName|canUsePaidActions|accessProFeature|requestPurchaseUiMode|openVerifyPurchaseModal|startProPurchase|verifyProPurchase|closeStripeCheckoutModal|startPlayPurchase|verifyPlayPurchase|debugLogEntitlement/
+  );
   assert.doesNotMatch(commerce, /from "\.\/auth\.ts"/);
   assert.match(commerce, /lotNameDraft/);
   assert.match(commerce, /canUsePaidActions/);
+  assert.doesNotMatch(baseMethods, /accessProFeature|requestPurchaseUiMode/);
+  assert.match(entitlementMethods, /uiEntitlementAccessMethods/);
+  for (const method of [
+    "accessProFeature",
+    "requestPurchaseUiMode",
+    "openVerifyPurchaseModal",
+    "startProPurchase",
+    "verifyProPurchase",
+    "closeStripeCheckoutModal",
+    "startPlayPurchase",
+    "verifyPlayPurchase",
+    "debugLogEntitlement"
+  ]) {
+    assert.match(entitlements, new RegExp(`\\b${method}\\b`));
+  }
 });
 
 test("generic scoped API transport does not require sales cache capabilities", () => {

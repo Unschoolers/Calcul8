@@ -14,7 +14,7 @@ import {
   formatPlayPurchaseError,
   isAlreadyOwnedPurchaseError
 } from "./entitlements-shared.ts";
-import type { PlayPurchaseApp } from "./entitlements-purchase-types.ts";
+import type { PlayPurchaseContext } from "./entitlements-purchase-types.ts";
 
 const PLAY_PURCHASE_RECOVERY_MAX_ATTEMPTS = 10;
 const PLAY_PURCHASE_RECOVERY_BASE_DELAY_MS = 250;
@@ -54,7 +54,7 @@ export const defaultPlayPurchaseDeps: PlayPurchaseDeps = {
   })
 };
 
-function resetPlayPurchaseInputs(app: PlayPurchaseApp): void {
+function resetPlayPurchaseInputs(app: PlayPurchaseContext): void {
   app.purchaseTokenInput = "";
   app.purchaseProductIdInput = "";
   app.purchasePackageNameInput = "";
@@ -62,7 +62,7 @@ function resetPlayPurchaseInputs(app: PlayPurchaseApp): void {
 }
 
 async function verifyPlayPurchaseToken(
-  app: PlayPurchaseApp,
+  app: PlayPurchaseContext,
   deps: PlayPurchaseDeps,
   params: {
     baseUrl: string;
@@ -88,7 +88,7 @@ async function verifyPlayPurchaseToken(
 }
 
 async function tryRecoverExistingPurchase(
-  app: PlayPurchaseApp,
+  app: PlayPurchaseContext,
   deps: PlayPurchaseDeps,
   params: {
     playBilling: DigitalGoodsService | null;
@@ -139,7 +139,7 @@ async function tryRecoverExistingPurchase(
 }
 
 export async function startPlayPurchaseFlow(
-  app: PlayPurchaseApp,
+  app: PlayPurchaseContext,
   deps: Partial<PlayPurchaseDeps> = {}
 ): Promise<void> {
   const resolvedDeps = { ...defaultPlayPurchaseDeps, ...deps } satisfies PlayPurchaseDeps;
@@ -257,7 +257,7 @@ export async function startPlayPurchaseFlow(
 }
 
 export async function verifyPlayPurchaseFlow(
-  app: PlayPurchaseApp,
+  app: PlayPurchaseContext,
   deps: Partial<PlayPurchaseDeps> = {}
 ): Promise<void> {
   const resolvedDeps = { ...defaultPlayPurchaseDeps, ...deps } satisfies PlayPurchaseDeps;

@@ -1,11 +1,15 @@
 import {
   closeStripeEmbeddedCheckout,
   runStripePurchaseFlow,
-  runStripeVerificationFlow,
-  type StripeCheckoutApp,
-  type StripePurchaseApp,
-  type StripeVerificationApp
+  runStripeVerificationFlow
 } from "./entitlements-stripe.ts";
+import type {
+  PlayPurchaseContext,
+  PurchaseRoutingContext,
+  StripeCheckoutContext,
+  StripePurchaseContext,
+  StripeVerificationContext
+} from "../../../context/entitlements.ts";
 import {
   defaultPurchaseProviderDeps,
   notifyUnsupportedPurchaseProvider,
@@ -18,17 +22,12 @@ import {
   verifyPlayPurchaseFlow as verifyPlayPurchaseFlowInternal,
   type PlayPurchaseDeps
 } from "./entitlements-purchase-play.ts";
-import type {
-  PlayPurchaseApp,
-  PurchaseRoutingApp
-} from "./entitlements-purchase-types.ts";
-
 type PurchaseServiceDeps = PurchaseProviderDeps & {
-  startPlayPurchase: (app: PlayPurchaseApp) => Promise<void>;
-  verifyPlayPurchase: (app: PlayPurchaseApp) => Promise<void>;
-  runStripePurchaseFlow: (app: StripePurchaseApp) => Promise<void>;
-  runStripeVerificationFlow: (app: StripeVerificationApp) => Promise<void>;
-  closeStripeEmbeddedCheckout: (app: StripeCheckoutApp, options?: { notifyCanceled?: boolean }) => Promise<void>;
+  startPlayPurchase: (app: PlayPurchaseContext) => Promise<void>;
+  verifyPlayPurchase: (app: PlayPurchaseContext) => Promise<void>;
+  runStripePurchaseFlow: (app: StripePurchaseContext) => Promise<void>;
+  runStripeVerificationFlow: (app: StripeVerificationContext) => Promise<void>;
+  closeStripeEmbeddedCheckout: (app: StripeCheckoutContext, options?: { notifyCanceled?: boolean }) => Promise<void>;
 };
 
 const defaultDeps: PurchaseServiceDeps = {
@@ -41,7 +40,7 @@ const defaultDeps: PurchaseServiceDeps = {
 };
 
 export async function startProPurchaseFlow(
-  app: PurchaseRoutingApp,
+  app: PurchaseRoutingContext,
   deps: Partial<PurchaseServiceDeps> = {}
 ): Promise<void> {
   const resolvedDeps = { ...defaultDeps, ...deps } satisfies PurchaseServiceDeps;
@@ -61,7 +60,7 @@ export async function startProPurchaseFlow(
 }
 
 export async function verifyProPurchaseFlow(
-  app: PurchaseRoutingApp,
+  app: PurchaseRoutingContext,
   deps: Partial<PurchaseServiceDeps> = {}
 ): Promise<void> {
   const resolvedDeps = { ...defaultDeps, ...deps } satisfies PurchaseServiceDeps;
@@ -81,7 +80,7 @@ export async function verifyProPurchaseFlow(
 }
 
 export async function closeStripeCheckoutFlow(
-  app: StripeCheckoutApp,
+  app: StripeCheckoutContext,
   deps: Partial<PurchaseServiceDeps> = {}
 ): Promise<void> {
   const resolvedDeps = { ...defaultDeps, ...deps } satisfies PurchaseServiceDeps;
@@ -89,14 +88,14 @@ export async function closeStripeCheckoutFlow(
 }
 
 export async function startPlayPurchaseFlow(
-  app: PlayPurchaseApp,
+  app: PlayPurchaseContext,
   deps: Partial<PlayPurchaseDeps> = {}
 ): Promise<void> {
   await startPlayPurchaseFlowInternal(app, deps);
 }
 
 export async function verifyPlayPurchaseFlow(
-  app: PlayPurchaseApp,
+  app: PlayPurchaseContext,
   deps: Partial<PlayPurchaseDeps> = {}
 ): Promise<void> {
   await verifyPlayPurchaseFlowInternal(app, deps);

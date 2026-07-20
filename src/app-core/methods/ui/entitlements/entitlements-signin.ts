@@ -1,4 +1,9 @@
-import type { AppMethodImplementation } from "../../../context-app.ts";
+import type { AuthMethodState } from "../../../context/auth.ts";
+import type {
+  EntitlementMethodState,
+  EntitlementSignInContext
+} from "../../../context/entitlements.ts";
+import type { FeatureMethodImplementation } from "../../../context/runtime.ts";
 import {
   initGoogleAutoLoginFlow,
   openVerifyPurchaseModalFlow,
@@ -22,4 +27,8 @@ export const uiEntitlementSignInMethods = {
   openVerifyPurchaseModal(): void {
     openVerifyPurchaseModalFlow(this);
   }
-} satisfies AppMethodImplementation;
+} satisfies FeatureMethodImplementation<
+  EntitlementSignInContext,
+  Pick<AuthMethodState, "initGoogleAutoLogin" | "renderGoogleSignInButton" | "promptGoogleSignIn"> &
+    Pick<EntitlementMethodState, "openVerifyPurchaseModal">
+>;

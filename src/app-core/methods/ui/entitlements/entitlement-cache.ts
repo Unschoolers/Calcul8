@@ -3,11 +3,14 @@ import {
     handleExpiredAuthState,
     setStoredSessionUserId
 } from "../../../auth/index.ts";
-import type { AppContext } from "../../../context-app.ts";
+import type {
+  AuthEntitlementSessionContext,
+  EntitlementStateContext,
+  TargetProfitAccessContext
+} from "../../../context/entitlements.ts";
 import { removeStorage, STORAGE_KEYS } from "../../../storageKeys.ts";
 import {
-  applyTargetProfitAccessDefaults,
-  type TargetProfitAccessApp
+  applyTargetProfitAccessDefaults
 } from "./entitlement-access-defaults.ts";
 
 export interface EntitlementApiResponse {
@@ -36,10 +39,6 @@ export interface ApplyEntitlementStateOptions {
   persistSessionUserId?: boolean;
   writeCache?: boolean;
 }
-
-export type EntitlementStateApp =
-  & Pick<AppContext, "hasProAccess">
-  & Partial<TargetProfitAccessApp>;
 
 export const ENTITLEMENT_CACHE_KEY = STORAGE_KEYS.ENTITLEMENT_CACHE;
 export const PRO_ACCESS_KEY = STORAGE_KEYS.PRO_ACCESS;
@@ -91,16 +90,14 @@ export function clearEntitlementCache(): void {
   removeStorage(ENTITLEMENT_CACHE_KEY);
 }
 
-export type AuthSessionApp = Pick<AppContext, "googleAuthEpoch" | "hasProAccess">;
-
-function canApplyTargetProfitDefaults(app: EntitlementStateApp): app is TargetProfitAccessApp {
+function canApplyTargetProfitDefaults(app: EntitlementStateContext): app is TargetProfitAccessContext {
   return typeof app.hasLotSelected === "boolean"
     && "targetProfitPercent" in app
     && typeof app.autoSaveSetup === "function";
 }
 
 export function applyEntitlementState(
-  app: EntitlementStateApp,
+  app: EntitlementStateContext,
   payload: EntitlementStatePayload,
   options: ApplyEntitlementStateOptions = {}
 ): void {
@@ -132,7 +129,7 @@ export function applyEntitlementState(
   }
 }
 
-export function handleExpiredAuth(app: AuthSessionApp): void {
+export function handleExpiredAuth(app: AuthEntitlementSessionContext): void {
   handleExpiredAuthState(app);
   const cached = readEntitlementCache();
   if (cached) {

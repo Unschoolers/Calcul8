@@ -1,11 +1,6 @@
-import type { AppContext } from "../../../context-app.ts";
+import type { TargetProfitAccessContext } from "../../../context/entitlements.ts";
 
-export type TargetProfitAccessApp = Pick<
-  AppContext,
-  "hasLotSelected" | "hasProAccess" | "targetProfitPercent" | "autoSaveSetup"
->;
-
-export function applyTargetProfitAccessDefaults(app: TargetProfitAccessApp): void {
+export function applyTargetProfitAccessDefaults(app: TargetProfitAccessContext): void {
   if (!app.hasLotSelected) return;
 
   if (!app.hasProAccess) {

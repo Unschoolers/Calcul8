@@ -1,4 +1,5 @@
 import type { AppState } from "../../types/app.ts";
+import type { RuntimeMethodState } from "./runtime.ts";
 
 export interface AuthComputedState {
   isGoogleSignedIn: boolean;
@@ -10,6 +11,26 @@ export interface AuthComputedState {
 
 export type AuthProfileContext = Pick<AppState, "googleAuthEpoch">;
 
+/** Mutable identity state needed when an authenticated session expires. */
+export type AuthSessionContext = Pick<AppState, "googleAuthEpoch">;
+
+/** Identity state used while reconciling a server session with the local profile cache. */
+export type AuthSessionBootstrapContext = AuthSessionContext &
+  Partial<Pick<AppState, "googleAvatarLoadFailed">>;
+
+/** Account cleanup crosses local identity, entitlement, and workspace state by design. */
+export type AuthAccountContext = Pick<
+  AppState,
+  | "googleAuthEpoch"
+  | "hasProAccess"
+  | "availableWorkspaces"
+  | "workspaceMembers"
+  | "showWorkspaceMembersModal"
+  | "showLeaveWorkspaceModal"
+  | "activeScopeType"
+  | "activeWorkspaceId"
+> & Pick<RuntimeMethodState, "notify">;
+
 export type AuthProfileComputedObject = {
   isGoogleSignedIn(this: AuthProfileContext): AuthComputedState["isGoogleSignedIn"];
   googleProfileUserId(this: AuthProfileContext): AuthComputedState["googleProfileUserId"];
@@ -19,18 +40,9 @@ export type AuthProfileComputedObject = {
 };
 
 export interface AuthMethodState {
-  accessProFeature(target: "autoCalculate" | "portfolioReport" | "salesTracking" | "expertMode"): Promise<void>;
-  requestPurchaseUiMode(mode: "simple" | "expert"): Promise<void>;
   initGoogleAutoLogin(): void;
   renderGoogleSignInButton(): void;
   promptGoogleSignIn(): void;
-  openVerifyPurchaseModal(): void;
-  startProPurchase(): Promise<void>;
-  verifyProPurchase(): Promise<void>;
-  closeStripeCheckoutModal(): Promise<void>;
-  startPlayPurchase(): Promise<void>;
-  verifyPlayPurchase(): Promise<void>;
-  debugLogEntitlement(forceRefresh?: boolean): Promise<void>;
   logoutCurrentSession(): Promise<void>;
   clearPersonalAccountData(): Promise<void>;
 }

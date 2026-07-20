@@ -15,11 +15,13 @@ export {
 } from "../entitlements/entitlement-cache.ts";
 export type {
     ApplyEntitlementStateOptions,
-    AuthSessionApp,
     EntitlementApiResponse,
-    EntitlementStateApp,
     EntitlementStatePayload
 } from "../entitlements/entitlement-cache.ts";
+export type {
+    AuthEntitlementSessionContext,
+    EntitlementStateContext
+} from "../../../context/entitlements.ts";
 export {
     getSupportedPurchaseProviders,
     resolvePurchaseProvider,
@@ -27,6 +29,6 @@ export {
 } from "../entitlements/purchase-verification.ts";
 export type {
     PurchaseProvider,
-    PurchaseVerificationApp,
     VerifyPlayPurchaseRequest
 } from "../entitlements/purchase-verification.ts";
+export type { PurchaseVerificationContext } from "../../../context/entitlements.ts";

@@ -1,4 +1,8 @@
-import type { AppContext } from "../../../context-app.ts";
+import type {
+  StripeCheckoutContext,
+  StripePurchaseContext,
+  StripeVerificationContext
+} from "../../../context/entitlements.ts";
 import {
   fetchWithRetry,
   handleExpiredAuth,
@@ -40,13 +44,6 @@ declare global {
 let activeEmbeddedCheckout: StripeEmbeddedCheckout | null = null;
 let activeEmbeddedCheckoutVersion = 0;
 
-export type StripeVerificationApp = Pick<AppContext, "hasProAccess" | "notify" | "debugLogEntitlement">;
-export type StripeCheckoutApp = Pick<AppContext, "showStripeCheckoutModal" | "stripeCheckoutClientSecret" | "notify">;
-export type StripePurchaseApp =
-  & StripeVerificationApp
-  & StripeCheckoutApp
-  & Pick<AppContext, "isVerifyingPurchase" | "googleAuthEpoch" | "$nextTick">;
-
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => {
     globalThis.setTimeout(resolve, ms);
@@ -87,7 +84,7 @@ async function teardownEmbeddedCheckout(): Promise<void> {
   }
 }
 
-async function mountEmbeddedCheckout(app: StripePurchaseApp, clientSecret: string): Promise<boolean> {
+async function mountEmbeddedCheckout(app: StripePurchaseContext, clientSecret: string): Promise<boolean> {
   const currentWindow = (globalThis as { window?: Window }).window;
   const stripeFactory = currentWindow?.Stripe;
   const publishableKey = resolveStripePublishableKey();
@@ -134,7 +131,7 @@ async function mountEmbeddedCheckout(app: StripePurchaseApp, clientSecret: strin
   return true;
 }
 
-async function refreshStripeEntitlement(app: StripeVerificationApp): Promise<boolean> {
+async function refreshStripeEntitlement(app: StripeVerificationContext): Promise<boolean> {
   for (let attempt = 0; attempt < STRIPE_RETURN_POLL_DELAYS_MS.length; attempt += 1) {
     const delayMs = STRIPE_RETURN_POLL_DELAYS_MS[attempt] || 0;
     if (delayMs > 0) {
@@ -212,7 +209,7 @@ function cleanStripeCheckoutReturnUrl(cleanedPath: string | null): void {
 }
 
 async function startStripeCheckout(
-  app: StripePurchaseApp,
+  app: StripePurchaseContext,
   baseUrl: string,
   uiMode: "embedded" | "hosted" = "embedded"
 ): Promise<StripeCheckoutPayload | null> {
@@ -257,7 +254,7 @@ async function startStripeCheckout(
   return checkoutPayload;
 }
 
-export async function runStripePurchaseFlow(app: StripePurchaseApp): Promise<void> {
+export async function runStripePurchaseFlow(app: StripePurchaseContext): Promise<void> {
   if (app.isVerifyingPurchase) {
     return;
   }
@@ -314,7 +311,7 @@ export async function runStripePurchaseFlow(app: StripePurchaseApp): Promise<voi
   }
 }
 
-export async function runStripeVerificationFlow(app: StripeVerificationApp): Promise<void> {
+export async function runStripeVerificationFlow(app: StripeVerificationContext): Promise<void> {
   const hasAccess = await refreshStripeEntitlement(app);
   if (hasAccess) {
     app.notify("Purchase verified. Pro features unlocked.", "success");
@@ -324,7 +321,7 @@ export async function runStripeVerificationFlow(app: StripeVerificationApp): Pro
 }
 
 export async function closeStripeEmbeddedCheckout(
-  app: StripeCheckoutApp,
+  app: StripeCheckoutContext,
   options: {
     notifyCanceled?: boolean;
   } = {}
@@ -339,7 +336,7 @@ export async function closeStripeEmbeddedCheckout(
   }
 }
 
-export async function handleStripeCheckoutReturn(app: StripeVerificationApp): Promise<StripeCheckoutReturnState> {
+export async function handleStripeCheckoutReturn(app: StripeVerificationContext): Promise<StripeCheckoutReturnState> {
   const parsed = parseStripeCheckoutReturn();
   if (parsed.state === "none") {
     return "none";

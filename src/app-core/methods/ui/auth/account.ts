@@ -1,4 +1,8 @@
-import type { AppContext, AppMethodImplementation } from "../../../context-app.ts";
+import type {
+  AuthAccountContext,
+  AuthMethodState
+} from "../../../context/auth.ts";
+import type { FeatureMethodImplementation } from "../../../context/runtime.ts";
 import { clearEntitlementCache, fetchWithRetry, handleExpiredAuth, resolveApiBaseUrl } from "../common/shared.ts";
 import {
   disableGoogleAutoSignIn,
@@ -9,19 +13,6 @@ import {
   clearStoredSessionUserId
 } from "../../../auth/index.ts";
 import { STORAGE_KEYS } from "../../../storageKeys.ts";
-
-type AccountActionApp = Pick<
-  AppContext,
-  | "googleAuthEpoch"
-  | "hasProAccess"
-  | "availableWorkspaces"
-  | "workspaceMembers"
-  | "showWorkspaceMembersModal"
-  | "showLeaveWorkspaceModal"
-  | "activeScopeType"
-  | "activeWorkspaceId"
-  | "notify"
->;
 
 function clearAppLocalStorage(): void {
   try {
@@ -42,7 +33,7 @@ function clearAppLocalStorage(): void {
   }
 }
 
-function clearLocalAuthState(app: AccountActionApp): void {
+function clearLocalAuthState(app: AuthAccountContext): void {
   clearStoredGoogleIdToken();
   clearStoredGoogleProfileCache();
   clearStoredSessionUserId();
@@ -94,7 +85,7 @@ function disableGoogleIdentityAutoSelect(): void {
 }
 
 async function postAccountAction(
-  app: AccountActionApp,
+  app: AuthAccountContext,
   path: string,
   fallbackMessage: string,
   options: { returnFailureResponse?: boolean } = {}
@@ -163,5 +154,8 @@ export const uiAccountMethods = {
     this.notify("Your personal cloud and local app data were cleared.", "success");
     reloadAppSoon();
   }
-} satisfies AppMethodImplementation;
+} satisfies FeatureMethodImplementation<
+  AuthAccountContext,
+  Pick<AuthMethodState, "logoutCurrentSession" | "clearPersonalAccountData">
+>;
 

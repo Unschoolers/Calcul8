@@ -2,9 +2,9 @@ import { initGoogleAutoLoginWithRetry, requestGoogleIdentityPrompt } from "../..
 import { getPlayBillingService } from "../../../utils/playBilling.ts";
 import { cacheAuthProfile } from "../../../auth/index.ts";
 export {
-  applyTargetProfitAccessDefaults,
-  type TargetProfitAccessApp
+  applyTargetProfitAccessDefaults
 } from "./entitlement-access-defaults.ts";
+export type { TargetProfitAccessContext } from "../../../context/entitlements.ts";
 
 interface GoogleProfileClaims {
   name?: string;

@@ -1,4 +1,7 @@
-import type { AppContext } from "../../../context-app.ts";
+import type {
+  EntitlementSignInContext,
+  VerifyPurchaseModalContext
+} from "../../../context/entitlements.ts";
 import {
   GOOGLE_INIT_RETRY_COUNT,
   GOOGLE_INIT_RETRY_DELAY_MS,
@@ -36,24 +39,6 @@ interface GoogleIdentityInitState {
   clientId: string;
   callback: (response: GoogleCredentialResponse) => void;
 }
-
-export type SignInApp = Pick<
-  AppContext,
-  | "hasProAccess"
-  | "hasLotSelected"
-  | "isAuthSessionResolving"
-  | "isDark"
-  | "preferredLanguage"
-  | "showGoogleSignInFallback"
-  | "targetProfitPercent"
-  | "autoSaveSetup"
-  | "showManualPurchaseVerify"
-  | "showVerifyPurchaseModal"
-  | "googleAuthEpoch"
-  | "googleAvatarLoadFailed"
-  | "notify"
-  | "debugLogEntitlement"
->;
 
 type SignInDeps = {
   readEntitlementCache: typeof readEntitlementCache;
@@ -128,7 +113,7 @@ function isAuthGateVisible(documentRef: Document | undefined): boolean {
   return !!documentRef?.getElementById(GOOGLE_SIGN_IN_BUTTON_CONTAINER_ID);
 }
 
-function createGoogleCredentialCallback(app: SignInApp, deps: SignInDeps) {
+function createGoogleCredentialCallback(app: EntitlementSignInContext, deps: SignInDeps) {
   return (response: GoogleCredentialResponse) => {
     const idToken = response.credential?.trim();
     if (!idToken) {
@@ -147,7 +132,7 @@ function createGoogleCredentialCallback(app: SignInApp, deps: SignInDeps) {
 }
 
 async function finalizeGoogleCredentialSignIn(
-  app: SignInApp,
+  app: EntitlementSignInContext,
   deps: SignInDeps,
   idToken: string,
   options: {
@@ -212,7 +197,7 @@ function normalizeGoogleButtonLocale(language: string): string | undefined {
   return normalized;
 }
 
-export function initGoogleAutoLoginFlow(app: SignInApp, deps: Partial<SignInDeps> = {}): void {
+export function initGoogleAutoLoginFlow(app: EntitlementSignInContext, deps: Partial<SignInDeps> = {}): void {
   const resolvedDeps = { ...defaultDeps, ...deps } satisfies SignInDeps;
   const currentWindow = resolvedDeps.getWindow();
   const currentDocument = resolvedDeps.getDocument();
@@ -286,7 +271,7 @@ export function initGoogleAutoLoginFlow(app: SignInApp, deps: Partial<SignInDeps
 }
 
 export function renderGoogleSignInButtonFlow(
-  app: SignInApp,
+  app: EntitlementSignInContext,
   deps: Partial<SignInDeps> = {},
   attemptsLeft = GOOGLE_INIT_RETRY_COUNT
 ): void {
@@ -345,7 +330,7 @@ export function renderGoogleSignInButtonFlow(
   }
 }
 
-export function promptGoogleSignInFlow(app: SignInApp, deps: Partial<SignInDeps> = {}): void {
+export function promptGoogleSignInFlow(app: EntitlementSignInContext, deps: Partial<SignInDeps> = {}): void {
   const resolvedDeps = { ...defaultDeps, ...deps } satisfies SignInDeps;
   const currentWindow = resolvedDeps.getWindow();
   const origin = currentWindow?.location?.origin ?? "(unknown)";
@@ -410,7 +395,7 @@ export function promptGoogleSignInFlow(app: SignInApp, deps: Partial<SignInDeps>
   }
 }
 
-export function openVerifyPurchaseModalFlow(app: Pick<SignInApp, "showManualPurchaseVerify" | "showVerifyPurchaseModal" | "notify">, deps: Partial<SignInDeps> = {}): void {
+export function openVerifyPurchaseModalFlow(app: VerifyPurchaseModalContext, deps: Partial<SignInDeps> = {}): void {
   const resolvedDeps = { ...defaultDeps, ...deps } satisfies SignInDeps;
   if (!app.showManualPurchaseVerify) {
     return;

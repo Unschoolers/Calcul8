@@ -5,6 +5,7 @@ import { appLifecycle } from "../src/app-core/lifecycle.ts";
 import { configMethods } from "../src/app-core/methods/config.ts";
 import { salesMethods } from "../src/app-core/methods/sales.ts";
 import { uiBaseMethods } from "../src/app-core/methods/ui/common/base.ts";
+import { uiEntitlementAccessMethods } from "../src/app-core/methods/ui/entitlements/entitlements-access.ts";
 import { STORAGE_KEYS } from "../src/app-core/storageKeys.ts";
 import { appWatch } from "../src/app-core/watch.ts";
 import {
@@ -2450,9 +2451,9 @@ test("accessProFeature routes locked users into purchase flow", async () => {
     }
   } as any;
 
-  await uiBaseMethods.accessProFeature.call(context, "autoCalculate");
-  await uiBaseMethods.accessProFeature.call(context, "portfolioReport");
-  await uiBaseMethods.accessProFeature.call(context, "salesTracking");
+  await uiEntitlementAccessMethods.accessProFeature.call(context, "autoCalculate");
+  await uiEntitlementAccessMethods.accessProFeature.call(context, "portfolioReport");
+  await uiEntitlementAccessMethods.accessProFeature.call(context, "salesTracking");
 
   assert.equal(purchaseStarted, 3);
   assert.equal(context.showProfitCalculator, false);
@@ -2475,10 +2476,10 @@ test("accessProFeature opens unlocked features directly", async () => {
     }
   } as any;
 
-  await uiBaseMethods.accessProFeature.call(context, "autoCalculate");
-  await uiBaseMethods.accessProFeature.call(context, "portfolioReport");
-  await uiBaseMethods.accessProFeature.call(context, "salesTracking");
-  await uiBaseMethods.accessProFeature.call(context, "expertMode");
+  await uiEntitlementAccessMethods.accessProFeature.call(context, "autoCalculate");
+  await uiEntitlementAccessMethods.accessProFeature.call(context, "portfolioReport");
+  await uiEntitlementAccessMethods.accessProFeature.call(context, "salesTracking");
+  await uiEntitlementAccessMethods.accessProFeature.call(context, "expertMode");
 
   assert.equal(context.showProfitCalculator, true);
   assert.equal(reportOpened, 1);
@@ -2498,7 +2499,7 @@ test("requestPurchaseUiMode upgrades locked expert requests and applies allowed 
     }
   } as any;
 
-  await uiBaseMethods.requestPurchaseUiMode.call(lockedContext, "expert");
+  await uiEntitlementAccessMethods.requestPurchaseUiMode.call(lockedContext, "expert");
   assert.equal(requestedUpgrade, 1);
   assert.equal(lockedContext.purchaseUiMode, "simple");
 
@@ -2510,10 +2511,10 @@ test("requestPurchaseUiMode upgrades locked expert requests and applies allowed 
     }
   } as any;
 
-  await uiBaseMethods.requestPurchaseUiMode.call(unlockedContext, "expert");
+  await uiEntitlementAccessMethods.requestPurchaseUiMode.call(unlockedContext, "expert");
   assert.equal(unlockedContext.purchaseUiMode, "expert");
 
-  await uiBaseMethods.requestPurchaseUiMode.call(unlockedContext, "simple");
+  await uiEntitlementAccessMethods.requestPurchaseUiMode.call(unlockedContext, "simple");
   assert.equal(unlockedContext.purchaseUiMode, "simple");
 });
 

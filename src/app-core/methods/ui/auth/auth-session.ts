@@ -1,4 +1,4 @@
-import type { AppContext } from "../../../context-app.ts";
+import type { AuthSessionBootstrapContext } from "../../../context/auth.ts";
 import {
   buildAuthenticatedHeaders,
   cacheAuthProfile,
@@ -27,7 +27,7 @@ function normalizeUserId(value: unknown): string {
 }
 
 export async function bootstrapServerSessionStatus(
-  app: Pick<AppContext, "googleAuthEpoch"> & Partial<Pick<AppContext, "googleAvatarLoadFailed">>,
+  app: AuthSessionBootstrapContext,
   baseUrl: string
 ): Promise<ServerSessionBootstrapResult> {
   const normalizedBaseUrl = String(baseUrl || "").trim().replace(/\/+$/, "");
@@ -87,7 +87,7 @@ export async function bootstrapServerSessionStatus(
 }
 
 export async function bootstrapServerSession(
-  app: Pick<AppContext, "googleAuthEpoch"> & Partial<Pick<AppContext, "googleAvatarLoadFailed">>,
+  app: AuthSessionBootstrapContext,
   baseUrl: string
 ): Promise<boolean> {
   const result = await bootstrapServerSessionStatus(app, baseUrl);
