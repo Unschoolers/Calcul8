@@ -19,7 +19,7 @@ function buildCorsHeaders(request: HttpRequest, config: ApiConfig): HeadersInit 
     "Access-Control-Allow-Credentials": "true",
     "Access-Control-Allow-Headers": "Content-Type, Authorization, x-csrf-token, x-user-id, x-migration-key, x-admin-id",
     "Access-Control-Expose-Headers": "x-csrf-token",
-    "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
+    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
     "Access-Control-Max-Age": "86400",
     Vary: "Origin"
   };

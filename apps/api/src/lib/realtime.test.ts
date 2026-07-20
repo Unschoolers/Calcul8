@@ -12,6 +12,7 @@ import {
   publishWheelPublicSessionRealtimeEvent,
   publishWorkspaceLotRealtimeEvent,
   publishWorkspaceLotRealtimeEventBestEffort,
+  publishWorkspacePresenceRealtimeEvent,
   publishWorkspaceWheelRealtimeEvent,
   signRealtimeSubscribeToken
 } from "./realtime";
@@ -160,6 +161,28 @@ test("publishWorkspaceWheelRealtimeEvent uses default prod url and logs thrown p
   });
   assert.equal(logger.warn.mock.calls.length, 1);
   assert.match(String(logger.warn.mock.calls[0]?.[0]), /workspace team-42 wheel: network down/);
+});
+
+test("publishWorkspacePresenceRealtimeEvent posts identity-safe workspace events", async () => {
+  const fetchMock = vi.fn().mockResolvedValue({ ok: true });
+  globalThis.fetch = fetchMock as typeof fetch;
+
+  const result = await publishWorkspacePresenceRealtimeEvent(createApiConfig({
+    realtimePublishUrl: "https://ws.example/internal/publish",
+    realtimeInternalApiKey: "internal-key"
+  }), {
+    workspaceId: "team-42",
+    eventType: "buyer.profile.changed",
+    data: { profileId: "buyer_profile:abc", version: 2, deleted: false }
+  });
+
+  assert.equal(result, true);
+  const requestInit = fetchMock.mock.calls[0]?.[1] as { body: string };
+  assert.deepEqual(JSON.parse(requestInit.body), {
+    room: "workspace:team-42:presence",
+    eventType: "buyer.profile.changed",
+    data: { profileId: "buyer_profile:abc", version: 2, deleted: false }
+  });
 });
 
 test("publishWheelPublicSessionRealtimeEvent posts spectator updates to the configured publish url", async () => {

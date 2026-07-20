@@ -18,3 +18,4 @@ import "./functions/auth";
 import "./functions/syncImportUser";
 import "./functions/billingCheckoutSession";
 import "./functions/billingWebhook";
+import "./functions/buyerProfiles";

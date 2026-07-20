@@ -265,6 +265,33 @@ export function publishWorkspaceLotRealtimeEventBestEffort(
   void publishWorkspaceLotRealtimeEvent(config, args).catch(() => false);
 }
 
+export async function publishWorkspacePresenceRealtimeEvent(
+  config: ApiConfig,
+  args: {
+    workspaceId?: string;
+    eventType: string;
+    data?: unknown;
+    logger?: RealtimeLogger;
+  }
+): Promise<boolean> {
+  const workspaceId = String(args.workspaceId ?? "").trim();
+  if (!workspaceId) return false;
+  return publishRealtimeRoomEvent(config, {
+    room: buildWorkspacePresenceRealtimeRoom(workspaceId),
+    eventType: args.eventType,
+    data: args.data,
+    logger: args.logger,
+    warningLabel: `workspace ${workspaceId} presence`
+  });
+}
+
+export function publishWorkspacePresenceRealtimeEventBestEffort(
+  config: ApiConfig,
+  args: Parameters<typeof publishWorkspacePresenceRealtimeEvent>[1]
+): void {
+  void publishWorkspacePresenceRealtimeEvent(config, args).catch(() => false);
+}
+
 export async function publishWorkspaceWheelRealtimeEvent(
   config: ApiConfig,
   args: {
