@@ -19,6 +19,7 @@ export type {
 } from "./context/portfolio.ts";
 export type {
   FeatureComputedObject,
+  FeatureMethodImplementation,
   RuntimeComputedContext,
   RuntimeComputedObject,
   RuntimeComputedState,

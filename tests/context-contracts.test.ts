@@ -6,6 +6,149 @@ function readSource(relativePath: string): string {
   return readFileSync(new URL(`../${relativePath}`, import.meta.url), "utf8");
 }
 
+interface TypeScriptSource {
+  file: string;
+  source: string;
+}
+
+function readTypeScriptSources(relativeDirectory: string): TypeScriptSource[] {
+  const sources: TypeScriptSource[] = [];
+
+  function visit(relativePath: string): void {
+    const directory = new URL(`../${relativePath}/`, import.meta.url);
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      const entryPath = `${relativePath}/${entry.name}`;
+      if (entry.isDirectory()) {
+        visit(entryPath);
+      } else if (entry.isFile() && entry.name.endsWith(".ts")) {
+        sources.push({ file: entryPath, source: readSource(entryPath) });
+      }
+    }
+  }
+
+  visit(relativeDirectory);
+  return sources.sort((left, right) => left.file.localeCompare(right.file));
+}
+
+function withoutTypeScriptComments(source: string): string {
+  return source
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/\/\/.*$/gm, "");
+}
+
+function findSourceConsumers(
+  sources: TypeScriptSource[],
+  pattern: RegExp,
+  allowedFiles: ReadonlySet<string>
+): string[] {
+  return sources
+    .filter(({ file, source }) => pattern.test(withoutTypeScriptComments(source)) && !allowedFiles.has(file))
+    .map(({ file }) => file);
+}
+
+test("aggregate app context dependencies cannot spread to new source files", () => {
+  const sources = readTypeScriptSources("src");
+  // This migration ledger is intentionally explicit. Each domain migration removes
+  // its files until only the declaration and barrel remain for AppContext, and the
+  // implementation helpers and casts have no remaining consumers.
+  const allowedAppContextFiles = new Set([
+    "src/app-core/auth/session.ts",
+    "src/app-core/context-app.ts",
+    "src/app-core/context-contracts.ts",
+    "src/app-core/context.ts",
+    "src/app-core/lifecycle.ts",
+    "src/app-core/methods/config-io.ts",
+    "src/app-core/methods/config-live-pricing.ts",
+    "src/app-core/methods/config-lots.ts",
+    "src/app-core/methods/lot-live-pricing-api.ts",
+    "src/app-core/methods/sales-charts.ts",
+    "src/app-core/methods/sales-freshness.ts",
+    "src/app-core/methods/sales-persistence.ts",
+    "src/app-core/methods/ui/auth/account.ts",
+    "src/app-core/methods/ui/auth/auth-session.ts",
+    "src/app-core/methods/ui/buyers/buyer-profile-api.ts",
+    "src/app-core/methods/ui/common/api-client.ts",
+    "src/app-core/methods/ui/common/onboarding.ts",
+    "src/app-core/methods/ui/entitlements/entitlement-access-defaults.ts",
+    "src/app-core/methods/ui/entitlements/entitlement-cache.ts",
+    "src/app-core/methods/ui/entitlements/entitlements-purchase-types.ts",
+    "src/app-core/methods/ui/entitlements/entitlements-signin-service.ts",
+    "src/app-core/methods/ui/entitlements/entitlements-status-service.ts",
+    "src/app-core/methods/ui/entitlements/entitlements-stripe.ts",
+    "src/app-core/methods/ui/entitlements/purchase-verification.ts",
+    "src/app-core/methods/ui/spectator/game-spectator.ts",
+    "src/app-core/methods/ui/spectator/wheel-broadcast.ts",
+    "src/app-core/methods/ui/sync/lot-entity-polling.ts",
+    "src/app-core/methods/ui/sync/sync-apply.ts",
+    "src/app-core/methods/ui/sync/sync-payload.ts",
+    "src/app-core/methods/ui/sync/sync-service.ts",
+    "src/app-core/methods/ui/sync/sync-status.ts",
+    "src/app-core/methods/ui/whatnot/whatnot-http.ts",
+    "src/app-core/methods/ui/whatnot/whatnot-types.ts",
+    "src/app-core/methods/ui/workspace/workspace-api.ts",
+    "src/app-core/methods/ui/workspace/workspace-members.ts",
+    "src/app-core/methods/ui/workspace/workspace-realtime-state.ts",
+    "src/app-core/methods/ui/workspace/workspace-ui-helpers.ts",
+    "src/app-core/watch.ts",
+    "src/components/windows/game/coordinator/gameControllerState.ts"
+  ]);
+  const allowedAppMethodImplementationFiles = new Set([
+    "src/app-core/context-app.ts",
+    "src/app-core/methods/config-io.ts",
+    "src/app-core/methods/config-lots.ts",
+    "src/app-core/methods/config-pricing.ts",
+    "src/app-core/methods/config-storage.ts",
+    "src/app-core/methods/config.ts",
+    "src/app-core/methods/live-singles.ts",
+    "src/app-core/methods/pwa.ts",
+    "src/app-core/methods/sales.ts",
+    "src/app-core/methods/ui/auth/account.ts",
+    "src/app-core/methods/ui/buyers/buyer-profiles.ts",
+    "src/app-core/methods/ui/common/base.ts",
+    "src/app-core/methods/ui/common/onboarding.ts",
+    "src/app-core/methods/ui/entitlements/entitlements-purchase.ts",
+    "src/app-core/methods/ui/entitlements/entitlements-signin.ts",
+    "src/app-core/methods/ui/entitlements/entitlements-status.ts",
+    "src/app-core/methods/ui/entitlements/entitlements.ts",
+    "src/app-core/methods/ui/sync/sync.ts",
+    "src/app-core/methods/ui/whatnot/whatnot.ts",
+    "src/app-core/methods/ui/workspace/workspace-invite-methods.ts",
+    "src/app-core/methods/ui/workspace/workspace-membership-methods.ts",
+    "src/app-core/methods/ui/workspace/workspace-realtime-methods.ts",
+    "src/app-core/methods/ui/workspace/workspace-scope-methods.ts",
+    "src/app-core/methods/ui/workspace/workspaces.ts",
+    "src/app-core/methods/ui.ts"
+  ]);
+  const allowedAppComputedObjectFiles = new Set([
+    "src/app-core/computed.ts",
+    "src/app-core/context-contracts.ts",
+    "src/app-core/context.ts"
+  ]);
+  const allowedAppContextCastFiles = new Set([
+    "src/app-core/methods/config-live-pricing.ts",
+    "src/app-core/methods/ui/spectator/game-spectator.ts",
+    "src/app-core/methods/ui/workspace/workspace-members.ts"
+  ]);
+  const aggregateDependencies = [
+    { name: "AppContext", pattern: /\bAppContext\b/, allowedFiles: allowedAppContextFiles },
+    {
+      name: "AppMethodImplementation",
+      pattern: /\bAppMethodImplementation\b/,
+      allowedFiles: allowedAppMethodImplementationFiles
+    },
+    { name: "AppComputedObject", pattern: /\bAppComputedObject\b/, allowedFiles: allowedAppComputedObjectFiles },
+    { name: "as AppContext", pattern: /\bas\s+AppContext\b/, allowedFiles: allowedAppContextCastFiles }
+  ];
+
+  for (const dependency of aggregateDependencies) {
+    assert.deepEqual(
+      findSourceConsumers(sources, dependency.pattern, dependency.allowedFiles),
+      [],
+      `${dependency.name} consumers must stay within the explicit migration allow-list`
+    );
+  }
+});
+
 test("the app context is composed from focused feature contracts", () => {
   const aggregate = readSource("src/app-core/context-app.ts");
   const featureContractFiles = [

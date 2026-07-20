@@ -59,6 +59,9 @@ export interface AppVueContext {
 
 export type RuntimeComputedContext = Pick<AppVueContext, "$vuetify">;
 
+export type FeatureMethodImplementation<Context, Methods> =
+  ThisType<Context> & Methods;
+
 export type RuntimeComputedObject = FeatureComputedObject<
   Pick<RuntimeComputedState, "isDark">,
   RuntimeComputedContext
