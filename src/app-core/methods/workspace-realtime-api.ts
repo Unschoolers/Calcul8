@@ -3,7 +3,7 @@ import {
   canUseAuthoritativeSalesLiveApi,
   getScopeQuery,
   requestJson,
-  type SalesLiveApiApp
+  type ScopedApiApp
 } from "./entity-api-shared.ts";
 
 type RealtimeTokenResponse = {
@@ -38,7 +38,7 @@ function normalizeRealtimeSubscribeToken(body: RealtimeTokenResponse | null): Wo
 }
 
 export async function fetchWorkspaceRealtimeSubscribeToken(
-  app: SalesLiveApiApp,
+  app: ScopedApiApp,
   lotId: number
 ): Promise<WorkspaceRealtimeSubscribeToken | null> {
   if (!canUseAuthoritativeSalesLiveApi()) return null;
@@ -61,7 +61,7 @@ export async function fetchWorkspaceRealtimeSubscribeToken(
 }
 
 export async function fetchWorkspacePresenceRealtimeSubscribeToken(
-  app: SalesLiveApiApp
+  app: ScopedApiApp
 ): Promise<WorkspaceRealtimeSubscribeToken | null> {
   if (!canUseAuthoritativeSalesLiveApi()) return null;
   const scope = resolveWorkspaceScopeContext(app);

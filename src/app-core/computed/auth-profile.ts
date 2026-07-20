@@ -1,4 +1,4 @@
-import type { AppComputedObject } from "../context-contracts.ts";
+import type { AuthProfileComputedObject } from "../context/auth.ts";
 import {
   getStoredGoogleIdToken,
   getStoredSessionUserId,
@@ -49,20 +49,7 @@ function resolveGoogleProfile(idToken: string): GoogleJwtPayload {
   };
 }
 
-export const authProfileComputed: Pick<
-  AppComputedObject,
-  "isDark" |
-  "isGoogleSignedIn" |
-  "googleProfileUserId" |
-  "googleProfileName" |
-  "googleProfileEmail" |
-  "googleProfilePicture" |
-  "lotNameDraft"
-> = {
-  isDark(): boolean {
-    return this.$vuetify.theme.global.name === "unionArenaDark";
-  },
-
+export const authProfileComputed: AuthProfileComputedObject = {
   isGoogleSignedIn(): boolean {
     void this.googleAuthEpoch;
     if (isDevNoLoginRoute()) return true;
@@ -98,15 +85,6 @@ export const authProfileComputed: Pick<
     if (isDevNoLoginRoute()) return "";
     if (!hasAuthSignal()) return "";
     return resolveGoogleProfile(getStoredGoogleIdToken()).picture || "";
-  },
-
-  lotNameDraft: {
-    get() {
-      return this.newLotName;
-    },
-    set(newValue) {
-      this.newLotName = String(newValue ?? "");
-    }
   }
 };
 

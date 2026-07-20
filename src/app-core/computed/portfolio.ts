@@ -5,7 +5,7 @@ import {
   calculateSaleProfit
 } from "../../domain/calculations.ts";
 import type { Lot, LotPerformanceSummary, PortfolioDashboardPreset, Sale } from "../../types/app.ts";
-import type { AppComputedObject } from "../context-contracts.ts";
+import type { PortfolioComputedObject } from "../context/portfolio.ts";
 import { buildLotOptionItems } from "../shared/lot-option-items.ts";
 import { getLotType } from "../shared/lot-types.ts";
 import {
@@ -91,20 +91,7 @@ function getPortfolioPerformanceSummaries(
   ] as const));
 }
 
-export const portfolioComputed: Pick<
-  AppComputedObject,
-  "portfolioLotFilterItems" |
-  "portfolioSelectedLotIds" |
-  "portfolioForecastScenarios" |
-  "averagePortfolioForecastScenario" |
-  "bestPortfolioForecastScenario" |
-  "portfolioSalesByUserChartData" |
-  "portfolioSalesByUserDrilldownRows" |
-  "hasPortfolioSalesByUserData" |
-  "allLotPerformance" |
-  "portfolioTotals" |
-  "hasPortfolioData"
-> = {
+export const portfolioComputed: PortfolioComputedObject = {
   portfolioLotFilterItems() {
     void this.salesCacheEpoch;
     const filter = this.portfolioLotTypeFilter === "bulk" || this.portfolioLotTypeFilter === "singles"

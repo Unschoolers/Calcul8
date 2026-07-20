@@ -1,4 +1,4 @@
-import type { AppContext } from "../context-app.ts";
+import type { ScopedApiContext } from "../context/api.ts";
 import { hasAuthSignal } from "../auth/index.ts";
 import { parseApiErrorMessage } from "../shared/api-error-message.ts";
 import { getActiveWorkspaceId } from "../workspace-scope.ts";
@@ -14,15 +14,7 @@ export class SalesLiveApiError extends Error {
   }
 }
 
-export type SalesLiveApiApp = Pick<
-  AppContext,
-  | "activeScopeType"
-  | "activeWorkspaceId"
-  | "getSalesStorageKey"
-  | "googleAuthEpoch"
-  | "hasProAccess"
-  | "notify"
->;
+export type ScopedApiApp = ScopedApiContext;
 
 function isSignedInForEntityApis(): boolean {
   try {
@@ -32,13 +24,13 @@ function isSignedInForEntityApis(): boolean {
   }
 }
 
-export function getScopeQuery(app: Pick<AppContext, "activeScopeType" | "activeWorkspaceId">): string {
+export function getScopeQuery(app: Pick<ScopedApiContext, "activeScopeType" | "activeWorkspaceId">): string {
   const workspaceId = getActiveWorkspaceId(app);
   if (!workspaceId) return "";
   return `?workspaceId=${encodeURIComponent(workspaceId)}`;
 }
 
-export function getScopeBody(app: Pick<AppContext, "activeScopeType" | "activeWorkspaceId">): { workspaceId?: string } {
+export function getScopeBody(app: Pick<ScopedApiContext, "activeScopeType" | "activeWorkspaceId">): { workspaceId?: string } {
   const workspaceId = getActiveWorkspaceId(app);
   if (!workspaceId) {
     return {};
@@ -49,7 +41,7 @@ export function getScopeBody(app: Pick<AppContext, "activeScopeType" | "activeWo
 }
 
 export async function requestJson(
-  app: Pick<AppContext, "googleAuthEpoch" | "hasProAccess" | "notify">,
+  app: Pick<ScopedApiContext, "googleAuthEpoch" | "hasProAccess" | "notify">,
   path: string,
   init: RequestInit,
   fallbackMessage: string,

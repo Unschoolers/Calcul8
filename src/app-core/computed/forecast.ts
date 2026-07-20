@@ -14,7 +14,7 @@ import {
   calculateTotalRevenue,
   getSinglesEntryUnitMarketValueInSellingCurrency
 } from "../../domain/calculations.ts";
-import type { AppComputedObject } from "../context-contracts.ts";
+import type { CommerceComputedObject } from "../context/commerce.ts";
 import {
   getSinglesEntryUnitCostInSellingCurrency,
   getSinglesRemainingQuantity,
@@ -63,7 +63,7 @@ function buildLiveForecastScenario(
 }
 
 export const forecastComputed: Pick<
-  AppComputedObject,
+  CommerceComputedObject,
   "totalPacks" |
   "singlesTrackedSoldCount" |
   "singlesTrackedTotalCount" |

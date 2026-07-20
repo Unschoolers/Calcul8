@@ -1,5 +1,7 @@
 import type { AppComputedObject } from "./context-contracts.ts";
 import { authProfileComputed } from "./computed/auth-profile.ts";
+import { commerceProxyComputed } from "./computed/commerce-proxies.ts";
+import { runtimeComputed } from "./computed/runtime.ts";
 import { singlesComputed } from "./computed/singles.ts";
 import { forecastComputed } from "./computed/forecast.ts";
 import { portfolioComputed } from "./computed/portfolio.ts";
@@ -219,7 +221,9 @@ function formatProfitTargetBadgeLabel(value: number): string {
 }
 
 export const appComputed: AppComputedObject = {
+  ...runtimeComputed,
   ...authProfileComputed,
+  ...commerceProxyComputed,
   liveProfitTargetBadgeVisible() {
     return this.hasLotSelected && (Number(this.targetProfitPercent) || 0) > 0;
   },

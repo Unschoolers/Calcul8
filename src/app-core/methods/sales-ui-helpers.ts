@@ -1,9 +1,14 @@
-import type { SaleType } from "../../types/app.ts";
-import type { AppContext } from "../context-app.ts";
+import type { AppState, SaleType } from "../../types/app.ts";
+import type { CommerceMethodState } from "../context/commerce.ts";
+import type { PortfolioMethodState } from "../context/portfolio.ts";
+import type { AppVueContext } from "../context/runtime.ts";
 import { formatLocalizedCompactDate } from "../i18n/index.ts";
 
 type ChartRefreshTargetTab = "sales" | "portfolio";
-type TabChartRefreshContext = Pick<AppContext, "currentTab" | "initSalesChart" | "initPortfolioChart" | "$nextTick">;
+type TabChartRefreshContext = Pick<AppState, "currentTab"> &
+  Pick<CommerceMethodState, "initSalesChart"> &
+  Pick<PortfolioMethodState, "initPortfolioChart"> &
+  Pick<AppVueContext, "$nextTick">;
 
 const pendingTabChartRefreshes = new WeakMap<object, number>();
 
@@ -18,7 +23,7 @@ export function firstFiniteNonNegative(...values: Array<number | null | undefine
 }
 
 export function resolveDefaultSaleUnitPrice(
-  context: Pick<AppContext, "liveBoxPriceSell" | "boxPriceSell" | "liveSpotPrice" | "spotPrice" | "livePackPrice" | "packPrice">,
+  context: Pick<AppState, "liveBoxPriceSell" | "boxPriceSell" | "liveSpotPrice" | "spotPrice" | "livePackPrice" | "packPrice">,
   type: SaleType
 ): number {
   if (type === "box") {
@@ -40,7 +45,7 @@ export function safeDestroyChart(chart: { stop: () => void; destroy: () => void 
   }
 }
 
-export function isSmallDisplay(context: Pick<AppContext, "$vuetify">): boolean {
+export function isSmallDisplay(context: Pick<AppVueContext, "$vuetify">): boolean {
   const vuetify = (context as unknown as { $vuetify?: { display?: { smAndDown?: boolean } } }).$vuetify;
   return Boolean(vuetify?.display?.smAndDown);
 }
@@ -58,7 +63,7 @@ export function formatCompactChartDate(value: string, preferredLanguage?: string
 }
 
 export function refreshChartsForCurrentTab(
-  context: Pick<AppContext, "currentTab" | "initSalesChart" | "initPortfolioChart" | "$nextTick">
+  context: TabChartRefreshContext
 ): void {
   const runRefresh = () => {
     if (context.currentTab === "sales") {
@@ -70,7 +75,7 @@ export function refreshChartsForCurrentTab(
     }
   };
 
-  const scheduleNextTick = (context as Partial<AppContext>).$nextTick;
+  const scheduleNextTick = (context as Partial<Pick<AppVueContext, "$nextTick">>).$nextTick;
   if (typeof scheduleNextTick === "function") {
     void scheduleNextTick.call(context, runRefresh);
     return;
@@ -118,8 +123,8 @@ export function queueTabChartRefreshAfterSettle(
   pendingTabChartRefreshes.set(context as object, timeoutId);
 }
 
-export function focusSaleQuantityInput(context: Pick<AppContext, "$refs" | "$nextTick">): void {
-  const scheduleNextTick = (context as Partial<AppContext>).$nextTick;
+export function focusSaleQuantityInput(context: Pick<AppVueContext, "$refs" | "$nextTick">): void {
+  const scheduleNextTick = (context as Partial<Pick<AppVueContext, "$nextTick">>).$nextTick;
   const runFocus = () => {
     if (!context.$refs) return;
     const refs = context.$refs as {
@@ -153,7 +158,7 @@ export function focusSaleQuantityInput(context: Pick<AppContext, "$refs" | "$nex
 }
 
 export function resolveCanvasRef(
-  context: Pick<AppContext, "$refs">,
+  context: Pick<AppVueContext, "$refs">,
   windowRefName: "salesWindow" | "portfolioWindow",
   canvasRefName: string
 ): HTMLCanvasElement | null {

@@ -1,10 +1,10 @@
 import type { Sale } from "../../types/app.ts";
-import type { AppContext } from "../context-app.ts";
+import type { SalesEntityContext } from "../context/commerce.ts";
 import { getSalesCacheStatusKey } from "../storageKeys.ts";
 import { getActiveStorageScope } from "../workspace-scope.ts";
 
 export type SalesCacheStorageContext = Pick<
-  AppContext,
+  SalesEntityContext,
   "getSalesStorageKey" | "activeScopeType" | "activeWorkspaceId"
 >;
 

@@ -9,7 +9,7 @@ import {
     calculateSinglesSaleProfitPreview,
     getSinglesEntryUnitMarketValueInSellingCurrency
 } from "../../domain/calculations.ts";
-import type { AppComputedObject } from "../context-contracts.ts";
+import type { SinglesComputedObject } from "../context/commerce.ts";
 import { buildLotOptionItems, filterLotOptionItems } from "../shared/lot-option-items.ts";
 import { getLotType, isSinglesLot } from "../shared/lot-types.ts";
 import {
@@ -121,27 +121,7 @@ function getSaleEditorLineProfitPreviews(context: {
   });
 }
 
-export const singlesComputed: Pick<
-  AppComputedObject,
-  "currentLotType" |
-  "currentLotCatalogSource" |
-  "currentLotUsesSystemPricingDefaults" |
-  "hasLotSelected" |
-  "isLiveTabDisabled" |
-  "canUsePaidActions" |
-  "lotItems" |
-  "visibleLotItems" |
-  "singlesPurchaseTotalQuantity" |
-  "singlesPurchaseTotalCost" |
-  "singlesPurchaseTotalMarketValue" |
-  "singlesSoldCountByPurchaseId" |
-  "effectiveLiveSinglesIds" |
-  "effectiveLiveSinglesEntries" |
-  "singlesSaleCardOptions" |
-  "selectedSinglesSaleMaxQuantity" |
-  "saleEditorLineProfitPreviews" |
-  "saleEditorProfitPreview"
-> = {
+export const singlesComputed: SinglesComputedObject = {
   currentLotType() {
     if (!this.currentLotId) return "bulk";
     const currentLot = this.lots.find((lot) => lot.id === this.currentLotId);

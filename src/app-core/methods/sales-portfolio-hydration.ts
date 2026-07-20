@@ -1,5 +1,5 @@
 import type { Sale } from "../../types/app.ts";
-import type { AppContext } from "../context-app.ts";
+import type { PortfolioContext } from "../context/portfolio.ts";
 import {
   cacheAuthoritativeSales,
   fetchAuthoritativeAllSales,
@@ -15,10 +15,10 @@ type PortfolioSalesHydrationState = {
 
 type HydrationDeps = {
   canUseAuthoritativeApi(): boolean;
-  fetchSales(context: AppContext, lotId: number): Promise<Sale[] | null>;
-  fetchSalesByLot?(context: AppContext, lotIds: number[]): Promise<Map<number, Sale[]> | null>;
-  cacheSales(context: AppContext, lotId: number, sales: Sale[]): void;
-  refreshCharts(context: AppContext): void;
+  fetchSales(context: PortfolioContext, lotId: number): Promise<Sale[] | null>;
+  fetchSalesByLot?(context: PortfolioContext, lotIds: number[]): Promise<Map<number, Sale[]> | null>;
+  cacheSales(context: PortfolioContext, lotId: number, sales: Sale[]): void;
+  refreshCharts(context: PortfolioContext): void;
 };
 
 const portfolioSalesHydrationStateByContext = new WeakMap<object, PortfolioSalesHydrationState>();
@@ -42,12 +42,12 @@ export function cancelQueuedPortfolioSalesHydration(context: object): void {
   state.queuedHydrationTimeoutId = null;
 }
 
-function hasPersistedSalesCache(context: Pick<AppContext, "getSalesCacheEntry">, lotId: number): boolean {
+function hasPersistedSalesCache(context: Pick<PortfolioContext, "getSalesCacheEntry">, lotId: number): boolean {
   return context.getSalesCacheEntry(lotId).status === "loaded";
 }
 
 export function queuePortfolioSalesHydration(
-  context: AppContext,
+  context: PortfolioContext,
   options: {
     force?: boolean;
   } = {},
@@ -69,7 +69,7 @@ export function queuePortfolioSalesHydration(
 }
 
 export function hydrateMissingPortfolioSales(
-  context: AppContext,
+  context: PortfolioContext,
   options: {
     force?: boolean;
   } = {},

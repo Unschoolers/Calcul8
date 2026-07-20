@@ -2,7 +2,7 @@ export {
   canUseAuthoritativeSalesLiveApi,
   createMutationId,
   SalesLiveApiError,
-  type SalesLiveApiApp
+  type ScopedApiApp
 } from "./entity-api-shared.ts";
 export {
   cacheAuthoritativeSales,

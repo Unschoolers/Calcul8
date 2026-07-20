@@ -7,7 +7,7 @@ import {
   getScopeQuery,
   requestJson,
   SalesLiveApiError,
-  type SalesLiveApiApp
+  type ScopedApiApp
 } from "./entity-api-shared.ts";
 
 type LivePricingResponse = {
@@ -39,7 +39,7 @@ export function normalizeLivePricing(value: unknown): LotLivePricingRecord | nul
 }
 
 export async function fetchAuthoritativeLivePricing(
-  app: SalesLiveApiApp,
+  app: ScopedApiApp,
   lotId: number
 ): Promise<LotLivePricingRecord | null> {
   if (!canUseAuthoritativeSalesLiveApi()) return null;
@@ -57,7 +57,7 @@ export async function fetchAuthoritativeLivePricing(
 }
 
 export async function saveAuthoritativeLivePricing(
-  app: SalesLiveApiApp,
+  app: ScopedApiApp,
   lotId: number,
   pricing: Pick<AppContext, "livePackPrice" | "liveBoxPriceSell" | "liveSpotPrice" | "currentLivePricingVersion">
 ): Promise<LotLivePricingRecord> {

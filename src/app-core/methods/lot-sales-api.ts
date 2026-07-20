@@ -1,5 +1,5 @@
 import type { LotSalesSyncMeta, Sale } from "../../types/app.ts";
-import type { AppContext } from "../context-app.ts";
+import type { SalesEntityContext } from "../context/commerce.ts";
 import { persistSalesCacheToStorage } from "../shared/sales-cache-storage.ts";
 import { replaceRootLotSales } from "../shared/sales-root-state.ts";
 import { normalizeSyncSaleDto } from "./ui/sync/sync-contracts.ts";
@@ -10,7 +10,7 @@ import {
   getScopeQuery,
   requestJson,
   SalesLiveApiError,
-  type SalesLiveApiApp
+  type ScopedApiApp
 } from "./entity-api-shared.ts";
 
 type SaleResponse = {
@@ -98,7 +98,7 @@ export function normalizeLotSalesSyncMeta(value: unknown): LotSalesSyncMeta | nu
 }
 
 function persistSalesCache(
-  app: Pick<AppContext, "getSalesStorageKey" | "activeScopeType" | "activeWorkspaceId">,
+  app: Pick<SalesEntityContext, "getSalesStorageKey" | "activeScopeType" | "activeWorkspaceId">,
   lotId: number,
   sales: Sale[]
 ): void {
@@ -111,7 +111,7 @@ function persistSalesCache(
 }
 
 export async function fetchAuthoritativeSales(
-  app: SalesLiveApiApp,
+  app: SalesEntityContext,
   lotId: number
 ): Promise<Sale[] | null> {
   if (!canUseAuthoritativeSalesLiveApi()) return null;
@@ -131,7 +131,7 @@ export async function fetchAuthoritativeSales(
 }
 
 export async function fetchAuthoritativeLotSalesSyncMeta(
-  app: SalesLiveApiApp,
+  app: ScopedApiApp,
   lotId: number
 ): Promise<LotSalesSyncMeta | null> {
   if (!canUseAuthoritativeSalesLiveApi()) return null;
@@ -149,7 +149,7 @@ export async function fetchAuthoritativeLotSalesSyncMeta(
 }
 
 export async function fetchAuthoritativeAllSales(
-  app: SalesLiveApiApp,
+  app: SalesEntityContext,
   lotIds: number[] | null = null
 ): Promise<Map<number, Sale[]> | null> {
   if (!canUseAuthoritativeSalesLiveApi()) return null;
@@ -185,7 +185,7 @@ export async function fetchAuthoritativeAllSales(
 }
 
 export async function saveAuthoritativeSale(
-  app: SalesLiveApiApp,
+  app: ScopedApiApp,
   lotId: number,
   sale: Sale,
   baseVersion: number
@@ -216,7 +216,7 @@ export async function saveAuthoritativeSale(
 }
 
 export async function deleteAuthoritativeSale(
-  app: SalesLiveApiApp,
+  app: ScopedApiApp,
   lotId: number,
   saleId: number,
   baseVersion: number
@@ -240,7 +240,7 @@ export async function deleteAuthoritativeSale(
 }
 
 export function cacheAuthoritativeSales(
-  app: Pick<AppContext, "getSalesStorageKey" | "activeScopeType" | "activeWorkspaceId">,
+  app: Pick<SalesEntityContext, "getSalesStorageKey" | "activeScopeType" | "activeWorkspaceId">,
   lotId: number,
   sales: Sale[]
 ): void {

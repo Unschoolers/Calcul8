@@ -4,6 +4,7 @@ appShell = component "App Shell" "Main Vue/Vuetify application frame." "src/App.
         "Owns" "Top-level app composition, navigation chrome, active window hosting, global dialogs, and shared shell zones."
         "Must not own" "Lot math, sync conflict policy, provider API details, or screen-specific business rules."
         "Boundary data" "Active tab/window ids, authenticated profile display state, workspace selection, theme/layout state, and dialog commands."
+        "Context composition" "The root may assemble the aggregate AppContext, while feature modules consume focused auth, commerce, portfolio, workspace, Whatnot, game, or runtime capability contracts."
         "Failure recovery" "Keep the app navigable when auth, workspace, or child-window loading fails; route users to the owning workflow surface."
     }
 }
