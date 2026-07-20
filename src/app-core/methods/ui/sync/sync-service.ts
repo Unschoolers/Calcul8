@@ -63,8 +63,6 @@ const defaultDeps: SyncServiceDeps = {
   createSyncPayload: (app, clientVersion, scope) => createSyncPayload({
     lots: app.lots,
     currentLotId: app.currentLotId,
-    sales: app.sales,
-    loadSalesForLotId: app.loadSalesForLotId,
     wheelConfigs: app.wheelConfigs,
     activeWheelConfigId: app.activeWheelConfigId,
     systemPricingDefaults: app.systemPricingDefaults,

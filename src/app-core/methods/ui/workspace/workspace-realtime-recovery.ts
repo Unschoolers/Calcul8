@@ -24,8 +24,6 @@ export function isWorkspaceRealtimeSyncClean(app: WorkspaceRealtimeContext): boo
   const currentSignature = getSyncPayloadSignature(createSyncPayload({
     lots: app.lots,
     currentLotId: app.currentLotId,
-    sales: app.sales,
-    loadSalesForLotId: app.loadSalesForLotId,
     wheelConfigs: app.wheelConfigs,
     activeWheelConfigId: app.activeWheelConfigId,
     systemPricingDefaults: app.systemPricingDefaults,

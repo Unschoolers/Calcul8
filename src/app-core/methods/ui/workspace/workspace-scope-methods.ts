@@ -153,8 +153,6 @@ export const uiWorkspaceScopeMethods = {
       const seedPayload = createSyncPayload({
         lots: this.lots,
         currentLotId: this.currentLotId,
-        sales: this.sales,
-        loadSalesForLotId: this.loadSalesForLotId,
         wheelConfigs: this.wheelConfigs,
         activeWheelConfigId: this.activeWheelConfigId,
         systemPricingDefaults: this.systemPricingDefaults,

@@ -794,8 +794,6 @@ test("runCloudSyncPull applies newer cloud snapshot and stores version", async (
       target.wheelConfigs = parsed.wheelConfigs as typeof target.wheelConfigs;
       target.activeWheelConfigId = parsed.activeWheelConfigId;
       target.currentLotId = 2;
-      target.saveLotsToStorage();
-      target.saveWheelConfigsToStorage();
       target.loadLot();
       localStorage.setItem("whatfees_sync_client_version", String(parsed.version));
     },
@@ -815,8 +813,6 @@ test("runCloudSyncPull applies newer cloud snapshot and stores version", async (
   assert.equal((app.wheelConfigs as Array<{ id: number }>)[0]?.id, 91);
   assert.equal(app.activeWheelConfigId, 91);
   assert.equal(app.currentLotId, 2);
-  assert.equal(app.saveLotsToStorage.mock.calls.length, 1);
-  assert.equal(app.saveWheelConfigsToStorage.mock.calls.length, 1);
   assert.equal(app.loadLot.mock.calls.length, 1);
   assert.equal(app.notify.mock.calls.length, 1);
   assert.equal(storage.getItem("whatfees_sync_client_version"), "3");

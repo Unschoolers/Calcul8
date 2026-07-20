@@ -18,8 +18,6 @@ test("createSyncPayload includes system pricing defaults in the synced signature
   const payload = createSyncPayload({
     lots: [],
     currentLotId: null,
-    loadSalesForLotId: () => [],
-    sales: [],
     wheelConfigs: [],
     activeWheelConfigId: null,
     systemPricingDefaults

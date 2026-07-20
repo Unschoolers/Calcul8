@@ -208,6 +208,31 @@ test("workspace and sync domains use only focused context contracts", () => {
   }
 });
 
+test("sync workflow contexts expose only the capabilities their workflows consume", () => {
+  const sync = readSource("src/app-core/context/sync.ts");
+  const payloadContext = sync.slice(
+    sync.indexOf("export type SyncPayloadContext"),
+    sync.indexOf("export interface SyncParsedSnapshot")
+  );
+  const snapshotApplyContext = sync.slice(
+    sync.indexOf("export type SyncSnapshotApplyContext"),
+    sync.indexOf("export type SyncStatusContext")
+  );
+  const serviceContext = sync.slice(
+    sync.indexOf("export type SyncServiceContext"),
+    sync.indexOf("export type SyncMethodImplementation")
+  );
+
+  assert.doesNotMatch(payloadContext, /"sales"|loadSalesForLotId/);
+  assert.doesNotMatch(
+    snapshotApplyContext,
+    /saveLotsToStorage|saveWheelConfigsToStorage|saveSystemPricingDefaultsToStorage/
+  );
+  assert.match(serviceContext, /loadSalesForLotId/);
+  assert.doesNotMatch(serviceContext, /saveSystemPricingDefaultsToStorage/);
+  assert.doesNotMatch(sync, /GameMethodState/);
+});
+
 test("the app context is composed from focused feature contracts", () => {
   const aggregate = readSource("src/app-core/context-app.ts");
   const featureContractFiles = [

@@ -5,7 +5,6 @@ import type {
   SyncWheelConfigDto
 } from "../../../shared/sync-contracts.mjs";
 import type { CommerceMethodState } from "./commerce.ts";
-import type { GameMethodState } from "./game.ts";
 import type { RuntimeMethodState, FeatureMethodImplementation } from "./runtime.ts";
 import type { WorkspaceMethodState } from "./workspace.ts";
 
@@ -29,9 +28,8 @@ export interface SyncMethodState {
 
 export type SyncPayloadContext = Pick<
   AppState,
-  "lots" | "currentLotId" | "sales" | "wheelConfigs" | "activeWheelConfigId"
+  "lots" | "currentLotId" | "wheelConfigs" | "activeWheelConfigId"
 > &
-  Pick<CommerceMethodState, "loadSalesForLotId"> &
   Partial<Pick<AppState, "systemPricingDefaults">> & {
     workspaceId?: unknown;
   };
@@ -56,12 +54,8 @@ export type SyncSnapshotApplyContext = Pick<
   | "activeScopeType"
   | "activeWorkspaceId"
 > &
-  Pick<CommerceMethodState, "saveLotsToStorage" | "getSalesStorageKey" | "loadLot"> &
-  Pick<GameMethodState, "saveWheelConfigsToStorage"> &
-  Partial<
-    Pick<AppState, "systemPricingDefaults" | "salesByLotId"> &
-    Pick<CommerceMethodState, "saveSystemPricingDefaultsToStorage">
-  >;
+  Pick<CommerceMethodState, "getSalesStorageKey" | "loadLot"> &
+  Partial<Pick<AppState, "systemPricingDefaults" | "salesByLotId">>;
 
 export type SyncStatusContext = Pick<AppState, "syncStatus" | "syncStatusResetTimeoutId">;
 
@@ -88,7 +82,7 @@ export type SyncServiceContext = SyncPayloadContext &
   SyncStatusContext &
   SyncSessionContext &
   Pick<AppState, "cloudSyncIntervalId" | "isOffline" | "lastSyncedPayloadHash" | "systemPricingDefaults"> &
-  Pick<CommerceMethodState, "saveSystemPricingDefaultsToStorage">;
+  Pick<CommerceMethodState, "loadSalesForLotId">;
 
 export type SyncMethodImplementation = FeatureMethodImplementation<
   SyncServiceContext,

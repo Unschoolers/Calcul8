@@ -186,8 +186,6 @@ function createCurrentWorkspaceSignature(app: any): string {
   return getSyncPayloadSignature(createSyncPayload({
     lots: app.lots,
     currentLotId: app.currentLotId,
-    sales: app.sales,
-    loadSalesForLotId: app.loadSalesForLotId,
     wheelConfigs: app.wheelConfigs,
     activeWheelConfigId: app.activeWheelConfigId,
     workspaceId: app.activeWorkspaceId
@@ -854,8 +852,6 @@ test("workspace realtime connects on config tab and pulls cloud sync for clean c
   app.lastSyncedPayloadHash = getSyncPayloadSignature(createSyncPayload({
     lots: app.lots,
     currentLotId: app.currentLotId,
-    sales: app.sales,
-    loadSalesForLotId: app.loadSalesForLotId,
     wheelConfigs: app.wheelConfigs,
     activeWheelConfigId: app.activeWheelConfigId,
     workspaceId: app.activeWorkspaceId
