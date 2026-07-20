@@ -610,6 +610,23 @@ export interface SaleDocument {
   deletedAt?: string | null;
 }
 
+export interface BuyerProfileDocument {
+  id: string;
+  docType: "buyer_profile";
+  userId: string;
+  username: string;
+  normalizedUsername: string;
+  preferredName?: string;
+  tags: string[];
+  createdAt: string;
+  updatedAt: string;
+  updatedBy: string;
+  mutationId: string;
+  version: number;
+  deletedAt?: string | null;
+  _etag?: string;
+}
+
 export interface LotLivePricingDocument {
   id: string;
   docType: "lot_live_pricing";

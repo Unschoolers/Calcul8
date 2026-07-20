@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { buildLegacyUserEntitlementDocumentId, buildSyncScopePartitionKey } from "../scopeKeys";
 
 export function entitlementId(userId: string): string {
@@ -78,6 +79,14 @@ export function saleDocumentId(scopeKey: string, lotId: string, saleId: string):
 
 export function lotLivePricingDocumentId(scopeKey: string, lotId: string): string {
   return `lot_live_pricing:${scopeKey}:${lotId}`;
+}
+
+export function buyerProfileDocumentId(normalizedUsername: string): string {
+  const digest = createHash("sha256")
+    .update(String(normalizedUsername ?? "").trim().toLocaleLowerCase(), "utf8")
+    .digest("hex")
+    .slice(0, 32);
+  return `buyer_profile:${digest}`;
 }
 
 export function migrationMarkerId(migrationId: string): string {
