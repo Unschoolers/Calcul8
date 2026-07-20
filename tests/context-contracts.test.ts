@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
+import ts from "typescript";
 import { test } from "vitest";
 
 function readSource(relativePath: string): string {
@@ -31,9 +32,27 @@ function readTypeScriptSources(relativeDirectory: string): TypeScriptSource[] {
 }
 
 function withoutTypeScriptComments(source: string): string {
-  return source
-    .replace(/\/\*[\s\S]*?\*\//g, "")
-    .replace(/\/\/.*$/gm, "");
+  const sourceFile = ts.createSourceFile(
+    "context-source.ts",
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS
+  );
+  const tokenTexts: string[] = [];
+
+  function collectTokens(node: ts.Node): void {
+    if (node.kind >= ts.SyntaxKind.FirstToken && node.kind <= ts.SyntaxKind.LastToken) {
+      tokenTexts.push(node.getText(sourceFile));
+      return;
+    }
+    for (const child of node.getChildren(sourceFile)) {
+      collectTokens(child);
+    }
+  }
+
+  collectTokens(sourceFile);
+  return tokenTexts.join(" ");
 }
 
 function findSourceConsumers(
@@ -45,6 +64,28 @@ function findSourceConsumers(
     .filter(({ file, source }) => pattern.test(withoutTypeScriptComments(source)) && !allowedFiles.has(file))
     .map(({ file }) => file);
 }
+
+test("source scanning keeps comment markers inside TypeScript literals", () => {
+  const sources: TypeScriptSource[] = [
+    {
+      file: "src/string-literal.ts",
+      source: 'const endpoint = "https://host"; type Context = AppContext;'
+    },
+    {
+      file: "src/template-literal.ts",
+      source: "const marker = `/*`; type Context = AppContext; const closer = `*/`;"
+    },
+    {
+      file: "src/regex-literal.ts",
+      source: 'const marker = /[/*]{2}/; type Context = AppContext; const closer = "*/";'
+    }
+  ];
+
+  assert.deepEqual(
+    findSourceConsumers(sources, /\bAppContext\b/, new Set()),
+    sources.map(({ file }) => file)
+  );
+});
 
 test("aggregate app context dependencies cannot spread to new source files", () => {
   const sources = readTypeScriptSources("src");
