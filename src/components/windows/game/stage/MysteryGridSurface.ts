@@ -1,14 +1,10 @@
-import { type PropType } from "vue";
 import type { MysteryGridCell } from "../commands/mysteryGridMethods.ts";
-import { useGameNestedWindowContextBridge } from "../../shared/contextBridge.ts";
+import { gameContextProp, setupGameContext } from "../../shared/contextBridge.ts";
 
 export const MysteryGridSurface = {
   name: "MysteryGridSurface",
   props: {
-    ctx: {
-      type: Object as PropType<Record<string, unknown>>,
-      required: true
-    }
+    ctx: gameContextProp
   },
   data() {
     return {
@@ -56,8 +52,6 @@ export const MysteryGridSurface = {
       return isAnimating && highlightIndex === cell.index;
     }
   },
-  setup(props: { ctx: Record<string, unknown> }) {
-    return useGameNestedWindowContextBridge(props);
-  }
+  setup: setupGameContext
 };
 

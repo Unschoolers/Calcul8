@@ -8,7 +8,7 @@ import {
 import { setWheelTierChancePercent } from "../../../../app-core/shared/wheel-odds.ts";
 import { getWheelTierSourceLotIds, isWheelTierMultiLot } from "../../../../app-core/shared/wheel-tier-sources.ts";
 import type { WheelConfig, WheelTier } from "../../../../types/app.ts";
-import { useGameNestedWindowContextBridge } from "../../shared/contextBridge.ts";
+import { gameContextProp, setupGameContext } from "../../shared/contextBridge.ts";
 import { cloneGameConfig } from "../services/gameConfigTemplates.ts";
 
 const TIER_CELEBRATION_EMOJI_OPTIONS = [
@@ -27,10 +27,7 @@ function getTierOutcomeLabel(config: WheelConfig | null, tier: WheelTier): strin
 export const WheelTierCard = {
   name: "WheelTierCard",
   props: {
-    ctx: {
-      type: Object as PropType<Record<string, unknown>>,
-      required: true
-    },
+    ctx: gameContextProp,
     tier: {
       type: Object as PropType<WheelTier>,
       required: true
@@ -211,8 +208,6 @@ export const WheelTierCard = {
       }
     }
   },
-  setup(props: { ctx: Record<string, unknown> }) {
-    return useGameNestedWindowContextBridge(props);
-  }
+  setup: setupGameContext
 };
 

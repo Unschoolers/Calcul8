@@ -1,5 +1,5 @@
-import { type PropType } from "vue";
 import { translateAppMessage } from "../../../../app-core/i18n/index.ts";
+import { gameContextProp, getGameContextSource, setupGameContext } from "../../shared/contextBridge.ts";
 import {
   buildWheelSessionViewModel,
   type WheelSessionViewModel
@@ -7,54 +7,46 @@ import {
 
 type PanelContext = Record<string, unknown>;
 
-function getSource(vm: PanelContext): PanelContext {
-  return vm.ctx && typeof vm.ctx === "object" ? vm.ctx as PanelContext : vm;
-}
-
 export const WheelSessionPanel = {
   name: "WheelSessionPanel",
   props: {
-    ctx: {
-      type: Object as PropType<PanelContext>,
-      required: true
-    }
+    ctx: gameContextProp
   },
   methods: {
     t(this: PanelContext, key: string, params?: Record<string, string | number | null | undefined>): string {
-      const source = getSource(this);
+      const source = getGameContextSource(this);
       return typeof source.t === "function"
         ? (source.t as (translationKey: string, values?: typeof params) => string)(key, params)
         : translateAppMessage(String(source.preferredLanguage ?? ""), key, params);
     },
     openWheelResetDialog(this: PanelContext): void {
-      const source = getSource(this);
-      if (typeof source.requestWheelReset === "function") {
-        (source.requestWheelReset as () => void).call(source);
+      if (typeof this.requestWheelReset === "function") {
+        (this.requestWheelReset as () => void)();
       } else {
-        source.wheelConfirmAction = "reset";
-        source.wheelConfirmDialog = true;
+        this.wheelConfirmAction = "reset";
+        this.wheelConfirmDialog = true;
       }
     },
     requestWheelSessionEnd(this: PanelContext): void {
-      const source = getSource(this);
-      if (typeof source.requestWheelSessionEnd === "function") {
-        (source.requestWheelSessionEnd as () => void).call(source);
+      if (typeof this.requestWheelSessionEnd === "function") {
+        (this.requestWheelSessionEnd as () => void)();
       }
     }
   },
   computed: {
     wheelSessionPanelModel(this: PanelContext): WheelSessionViewModel {
-      return buildWheelSessionViewModel(getSource(this));
+      return buildWheelSessionViewModel(this);
     },
     wheelSessionPanelMode(this: PanelContext): string {
-      return String(getSource(this).wheelMode || "config");
+      return String(this.wheelMode || "config");
     },
     wheelSessionPanelEndingSession(this: PanelContext): boolean {
-      return Boolean(getSource(this).wheelEndingSession);
+      return Boolean(this.wheelEndingSession);
     },
     wheelSessionPanelPendingIssueCount(this: PanelContext): number {
-      const issues = getSource(this).wheelPendingInventoryIssues;
+      const issues = this.wheelPendingInventoryIssues;
       return Array.isArray(issues) ? issues.length : 0;
     }
-  }
+  },
+  setup: setupGameContext
 };

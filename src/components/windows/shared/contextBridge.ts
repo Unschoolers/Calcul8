@@ -1,6 +1,7 @@
-import { getCurrentInstance, inject } from "vue";
+import { getCurrentInstance, inject, type PropType } from "vue";
 
-type WindowContext = Record<string, unknown>;
+export type WindowContext = Record<string, unknown>;
+export type GameContextProps = { ctx: WindowContext };
 type MaybeWindowContext = WindowContext | null | undefined;
 type BridgeOptions = {
   blockedKeys?: Array<string | symbol>;
@@ -65,6 +66,23 @@ export function useGameNestedWindowContextBridge(props: { ctx: WindowContext }):
   const gameContext = inject<WindowContext | null>("gameCtx", null);
   const appContext = inject<WindowContext | null>("appCtx", null);
   return createNestedWindowContextBridge(gameContext ?? props.ctx ?? appContext ?? {});
+}
+
+/** Shared Vue contract for every child hosted by the game window. */
+export const gameContextProp = {
+  type: Object as PropType<WindowContext>,
+  required: true
+} as const;
+
+export function setupGameContext(props: GameContextProps): Record<string, unknown> {
+  return useGameNestedWindowContextBridge(props);
+}
+
+export function getGameContextSource(context: WindowContext): WindowContext {
+  const explicitContext = context.ctx;
+  return explicitContext && typeof explicitContext === "object"
+    ? explicitContext as WindowContext
+    : context;
 }
 
 export function unwrapWindowBridgeContext(ctx: WindowContext): WindowContext {

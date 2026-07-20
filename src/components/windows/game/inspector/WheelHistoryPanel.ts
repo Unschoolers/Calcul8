@@ -1,5 +1,5 @@
-import { type PropType } from "vue";
 import { translateAppMessage } from "../../../../app-core/i18n/index.ts";
+import { gameContextProp, getGameContextSource, setupGameContext } from "../../shared/contextBridge.ts";
 import { getWheelController } from "../coordinator/gameControllerState.ts";
 import {
   buildWheelFairnessViewModel,
@@ -8,21 +8,17 @@ import {
 
 type PanelContext = Record<string, unknown>;
 
-function getSource(vm: PanelContext): PanelContext {
-  return vm.ctx && typeof vm.ctx === "object" ? vm.ctx as PanelContext : vm;
-}
-
 export const WheelHistoryPanel = {
   name: "WheelHistoryPanel",
   props: {
-    ctx: { type: Object as PropType<PanelContext>, required: true },
+    ctx: gameContextProp,
     latestOnly: { type: Boolean, default: false },
     presentation: { type: Boolean, default: false },
     showEmptyState: { type: Boolean, default: true }
   },
   methods: {
     t(this: PanelContext, key: string, params?: Record<string, string | number | null | undefined>): string {
-      const source = getSource(this);
+      const source = getGameContextSource(this);
       return typeof source.t === "function"
         ? (source.t as (translationKey: string, values?: typeof params) => string)(key, params)
         : translateAppMessage(String(source.preferredLanguage ?? ""), key, params);
@@ -30,15 +26,16 @@ export const WheelHistoryPanel = {
   },
   computed: {
     wheelHistoryPanelModel(this: PanelContext): WheelFairnessViewModel {
-      return buildWheelFairnessViewModel(getSource(this));
+      return buildWheelFairnessViewModel(this);
     },
     wheelHistoryPanelHistoryOpen: {
       get(this: PanelContext): boolean {
-        return getWheelController(getSource(this)).fairnessHistoryOpen;
+        return getWheelController(this).fairnessHistoryOpen;
       },
       set(this: PanelContext, value: boolean): void {
-        getWheelController(getSource(this)).fairnessHistoryOpen = value;
+        getWheelController(this).fairnessHistoryOpen = value;
       }
     }
-  }
+  },
+  setup: setupGameContext
 };

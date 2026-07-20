@@ -1,7 +1,7 @@
-import { nextTick, type PropType } from "vue";
+import { nextTick } from "vue";
 import { createDefaultBracketBattleConfig } from "../../../../app-core/shared/bracket-battle-config.ts";
 import type { BracketBattleConfig, Lot, WheelConfig, WorkspaceScopeType } from "../../../../types/app.ts";
-import { useGameNestedWindowContextBridge } from "../../shared/contextBridge.ts";
+import { gameContextProp, setupGameContext } from "../../shared/contextBridge.ts";
 import type { GameStageOverlayAnchor, GameStageOverlayCommand } from "../overlay/gameStageOverlayTypes.ts";
 import { createBracketBattleOverlayAnchor } from "./bracketBattleOverlayAnchors.ts";
 import {
@@ -133,10 +133,7 @@ function randomRollValue(min: number, max: number): number {
 export const BracketBattlePanel = {
   name: "BracketBattlePanel",
   props: {
-    ctx: {
-      type: Object as PropType<Record<string, unknown>>,
-      required: true
-    }
+    ctx: gameContextProp
   },
   emits: ["overlay-command", "session-state"],
   watch: {
@@ -622,7 +619,5 @@ export const BracketBattlePanel = {
       this.emitBracketBattleSessionState(false);
     }
   },
-  setup(props: { ctx: Record<string, unknown> }) {
-    return useGameNestedWindowContextBridge(props);
-  }
+  setup: setupGameContext
 };

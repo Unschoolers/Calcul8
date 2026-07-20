@@ -1,16 +1,10 @@
-import { type PropType } from "vue";
-import { useGameNestedWindowContextBridge } from "../../shared/contextBridge.ts";
+import { gameContextProp, setupGameContext } from "../../shared/contextBridge.ts";
 
 export const WheelStageTopbar = {
   name: "WheelStageTopbar",
   props: {
-    ctx: {
-      type: Object as PropType<Record<string, unknown>>,
-      required: true
-    }
+    ctx: gameContextProp
   },
-  setup(props: { ctx: Record<string, unknown> }) {
-    return useGameNestedWindowContextBridge(props);
-  }
+  setup: setupGameContext
 };
 

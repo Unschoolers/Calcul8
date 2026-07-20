@@ -1,4 +1,3 @@
-import { type PropType } from "vue";
 import {
   createDefaultBracketBattleConfig,
   resizeBracketBattleConfig
@@ -7,7 +6,7 @@ import {
   resolveVuetifySlotString
 } from "../../../../app-core/shared/vuetify-slot-items.ts";
 import type { BracketBattleConfig, BracketBattleConfigPrize, Lot, WheelConfig } from "../../../../types/app.ts";
-import { useGameNestedWindowContextBridge } from "../../shared/contextBridge.ts";
+import { gameContextProp, setupGameContext } from "../../shared/contextBridge.ts";
 import {
   applyBracketBattlePrizeCatalogSelection,
   buildBracketBattlePrizeCatalog,
@@ -33,10 +32,7 @@ function getBracketConfig(context: BracketBattleBuilderThis): BracketBattleConfi
 export const BracketBattleBuilder = {
   name: "BracketBattleBuilder",
   props: {
-    ctx: {
-      type: Object as PropType<Record<string, unknown>>,
-      required: true
-    }
+    ctx: gameContextProp
   },
   computed: {
     bracketConfig(this: BracketBattleBuilderThis): BracketBattleConfig {
@@ -77,7 +73,5 @@ export const BracketBattleBuilder = {
       applyBracketBattlePrizeCatalogSelection(prize, String(value || ""), this.bracketPrizeCatalog as BracketBattlePrizeCatalogItem[]);
     }
   },
-  setup(props: { ctx: Record<string, unknown> }) {
-    return useGameNestedWindowContextBridge(props);
-  }
+  setup: setupGameContext
 };
