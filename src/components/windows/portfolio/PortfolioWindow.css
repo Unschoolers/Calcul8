@@ -642,3 +642,14 @@
     font-size: 0.74rem;
   }
 }
+.portfolio-customer-search {
+  max-width: 420px;
+  margin: 0 0 12px auto;
+}
+
+@media (max-width: 599px) {
+  .portfolio-customer-search {
+    max-width: none;
+    margin-inline: 0;
+  }
+}

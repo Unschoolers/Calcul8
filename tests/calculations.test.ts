@@ -3157,6 +3157,7 @@ test("mounted restores persisted portfolio lot type filter", () => {
       loadLotsFromStorage() {
         this.lots = [];
       },
+      hydrateBuyerProfiles: vi.fn(async () => undefined),
       loadLot() {
         // noop
       },
@@ -3201,6 +3202,7 @@ test("mounted restores persisted portfolio lot type filter", () => {
     appLifecycle.mounted.call(context);
 
     assert.equal(context.portfolioLotTypeFilter, "bulk");
+    assert.equal(context.hydrateBuyerProfiles.mock.calls.length, 1);
   });
 });
 
@@ -3242,6 +3244,7 @@ test("mounted continues when local storage access is denied", () => {
     loadLotsFromStorage() {
       this.lots = [];
     },
+    hydrateBuyerProfiles: vi.fn(async () => undefined),
     loadLot: vi.fn(),
     getExchangeRate: vi.fn(),
     loadSalesFromStorage: vi.fn(),
@@ -3288,6 +3291,7 @@ test("mounted restores persisted portfolio dashboard preset", () => {
       loadLotsFromStorage() {
         this.lots = [];
       },
+      hydrateBuyerProfiles: vi.fn(async () => undefined),
       loadLot() {
         // noop
       },
@@ -3377,6 +3381,7 @@ test("mounted restores persisted theme", () => {
       loadLotsFromStorage() {
         this.lots = [];
       },
+      hydrateBuyerProfiles: vi.fn(async () => undefined),
       loadLot() {
         // noop
       },

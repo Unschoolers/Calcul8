@@ -85,6 +85,9 @@ export const appLifecycle: AppLifecycleObject = {
     }
 
     this.loadLotsFromStorage();
+    // Show the last scoped customer labels immediately, then reconcile with the
+    // authoritative API once the auth session is available.
+    void this.hydrateBuyerProfiles();
 
     const storageScope = getActiveStorageScope(this);
     const scopedLastLotKey = getScopedLastLotStorageKey(storageScope);

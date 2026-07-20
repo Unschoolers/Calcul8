@@ -25,6 +25,8 @@ import {
 } from "../../../app-core/computed/portfolio-performance.ts";
 import { createWindowContextBridge } from "../shared/contextBridge.ts";
 import { filterLotOptionItems } from "../../../app-core/shared/lot-option-items.ts";
+import { matchesBuyerProfileSearch } from "../../../app-core/buyer-profile.ts";
+import type { BuyerProfile } from "../../../types/app.ts";
 import {
   resolveVuetifySlotString,
   resolveVuetifySlotValue
@@ -128,6 +130,7 @@ export const PortfolioWindowDefinition = {
       portfolioLotPerformanceSortDirection: "asc" as PortfolioSortDirection,
       portfolioCustomerPerformanceSortKey: "spent" as PortfolioCustomerPerformanceSortKey,
       portfolioCustomerPerformanceSortDirection: "desc" as PortfolioSortDirection,
+      portfolioCustomerSearchQuery: "",
       buyerQuickViewOpen: false,
       buyerQuickViewName: ""
     };
@@ -167,9 +170,16 @@ export const PortfolioWindowDefinition = {
 
     sortedCustomerPerformanceRows(this: Record<string, unknown>): CustomerPerformanceRow[] {
       const rows = (this.customerPerformanceRows as (() => CustomerPerformanceRow[]) | undefined)?.call(this) ?? [];
+      const query = String(this.portfolioCustomerSearchQuery || "");
+      const getProfile = this.getBuyerProfile as ((username: string) => BuyerProfile | null) | undefined;
+      const filteredRows = rows.filter((row) => matchesBuyerProfileSearch(
+        row.username,
+        typeof getProfile === "function" ? getProfile.call(this, row.username) : null,
+        query
+      ));
       const key = String(this.portfolioCustomerPerformanceSortKey || "spent") as PortfolioCustomerPerformanceSortKey;
       const direction = normalizePortfolioSortDirection(this.portfolioCustomerPerformanceSortDirection, "desc");
-      return sortCustomerPerformanceRows(rows, key, direction);
+      return sortCustomerPerformanceRows(filteredRows, key, direction);
     },
 
     setPortfolioCustomerPerformanceSort(this: Record<string, unknown>, key: PortfolioCustomerPerformanceSortKey): void {
@@ -185,7 +195,7 @@ export const PortfolioWindowDefinition = {
       const copy = getPortfolioCopy(this);
       const customerSummary = (this.customerPerformanceSummary as (() => CustomerPerformanceSummary) | undefined)?.call(this)
         ?? buildCustomerPerformanceSummary([]);
-      const customerRows = (this.customerPerformanceRows as (() => CustomerPerformanceRow[]) | undefined)?.call(this) ?? [];
+      const customerRows = (this.sortedCustomerPerformanceRows as (() => CustomerPerformanceRow[]) | undefined)?.call(this) ?? [];
       const lotColumns = (this.portfolioLotPerformanceGridColumns as (() => Array<PortfolioPerformanceGridColumn>) | undefined)?.call(this) ?? [];
       const lotSortOptions = (this.portfolioLotPerformanceSortOptions as (() => Array<PortfolioSortOption<PortfolioLotPerformanceSortKey>>) | undefined)?.call(this) ?? [];
       const customerColumns = (this.portfolioCustomerPerformanceGridColumns as (() => Array<PortfolioPerformanceGridColumn>) | undefined)?.call(this) ?? [];

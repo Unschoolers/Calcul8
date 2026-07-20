@@ -532,6 +532,28 @@ export interface BeforeInstallPromptEvent extends Event {
 
 export type LivePricingHydrationStatus = "idle" | "loading" | "hydrated" | "missing" | "error";
 
+export interface BuyerProfile {
+  username: string;
+  preferredName?: string;
+  tags: string[];
+  createdAt: string;
+  updatedAt: string;
+  version: number;
+}
+
+export type BuyerProfileSaveState = "idle" | "pending" | "saving" | "conflict" | "error";
+export type BuyerProfilesLoadStatus = "idle" | "loading" | "loaded" | "error";
+
+export interface BuyerProfilePendingMutation {
+  mutationId: string;
+  operation: "upsert" | "delete";
+  username: string;
+  preferredName?: string;
+  tags: string[];
+  baseVersion: number;
+  queuedAt: string;
+}
+
 export interface AppState extends LotSetup {
   hasProAccess: boolean;
   preferredLanguage: string;
@@ -564,6 +586,11 @@ export interface AppState extends LotSetup {
   showWorkspaceMembersModal: boolean;
   workspaceMembers: WorkspaceMember[];
   workspacePresenceByUserId: Record<string, WorkspacePresenceEntry>;
+  buyerProfilesByKey: Record<string, BuyerProfile>;
+  buyerProfilesScopeKey: string;
+  buyerProfilesLoadStatus: BuyerProfilesLoadStatus;
+  buyerProfileSaveStates: Record<string, BuyerProfileSaveState>;
+  buyerProfilePendingMutations: BuyerProfilePendingMutation[];
   isWorkspaceMembersLoading: boolean;
   isCreatingWorkspaceJoinLink: boolean;
   showLeaveWorkspaceModal: boolean;

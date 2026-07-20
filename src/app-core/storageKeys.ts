@@ -30,6 +30,9 @@ export const STORAGE_KEYS = {
   BRACKET_BATTLE_SESSION: "whatfees_bracket_battle_session"
 } as const;
 
+const BUYER_PROFILES_CACHE_KEY = "whatfees_buyer_profiles_v1";
+const BUYER_PROFILE_OUTBOX_KEY = "whatfees_buyer_profile_outbox_v1";
+
 const SALES_PREFIX = "whatfees_sales_";
 const SALES_STATUS_PREFIX = "whatfees_sales_status_";
 const SALES_SYNC_META_PREFIX = "whatfees_sales_sync_meta_";
@@ -187,6 +190,14 @@ export function getScopedSyncClientVersionKey(scope: AppStorageScope): string {
 
 export function getScopedLastSyncedPayloadHashKey(scope: AppStorageScope): string {
   return buildScopedStorageKey(STORAGE_KEYS.LAST_SYNCED_PAYLOAD_HASH, scope);
+}
+
+export function getScopedBuyerProfilesCacheKey(scope: AppStorageScope): string {
+  return buildScopedStorageKey(BUYER_PROFILES_CACHE_KEY, scope);
+}
+
+export function getScopedBuyerProfileOutboxKey(scope: AppStorageScope): string {
+  return buildScopedStorageKey(BUYER_PROFILE_OUTBOX_KEY, scope);
 }
 
 export function readStorage(newKey: string): string | null {

@@ -7,6 +7,8 @@ describe("buyer quick view UI contract", () => {
     assert.equal(existsSync("src/components/customers/BuyerQuickViewModal.vue"), true);
     assert.equal(existsSync("src/components/customers/BuyerQuickViewModal.ts"), true);
     assert.equal(existsSync("src/components/customers/BuyerQuickViewModal.html"), true);
+    assert.equal(existsSync("src/components/customers/BuyerQuickViewHost.vue"), true);
+    assert.equal(existsSync("src/components/customers/BuyerIdentityLabel.vue"), true);
 
     const template = readFileSync("src/components/customers/BuyerQuickViewModal.html", "utf8");
     assert.match(template, /<v-dialog/);
@@ -22,7 +24,7 @@ describe("buyer quick view UI contract", () => {
     assert.match(definition, /"open-buyer"/);
     assert.match(template, /\$emit\('open-buyer',\s*saleCustomerLabel\(sale\)\)/);
     assert.match(template, /sales-history-ledger__customer-button/);
-    assert.match(windowTemplate, /<buyer-quick-view-modal/);
+    assert.match(windowTemplate, /<buyer-quick-view-host/);
     assert.match(windowTemplate, /@open-buyer="openBuyerQuickView"/);
   });
 });

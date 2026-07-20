@@ -153,6 +153,13 @@ export function applyRealtimeMessage(app: RealtimeApp, room: string, eventType: 
     return;
   }
 
+  if (eventType === "buyer.profile.changed") {
+    // The event intentionally carries no customer data. Refetching keeps profile
+    // details scoped to the authenticated HTTP boundary and avoids PII on realtime.
+    void app.hydrateBuyerProfiles();
+    return;
+  }
+
   const payload = parseRealtimeEventPayload(app, data);
   if (!payload) return;
 

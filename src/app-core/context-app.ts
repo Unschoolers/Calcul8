@@ -24,6 +24,7 @@ import type {
     SinglesSaleLine,
     UiColor,
     WorkspaceMember,
+    BuyerProfile,
     WorkspacePresenceState,
     WorkspaceScopeType,
     WorkspaceSummary
@@ -391,6 +392,18 @@ export interface AppMethodState {
   recoverWorkspaceRealtimeNow(): Promise<void>;
   getWorkspaceMemberPresenceState(member: Pick<WorkspaceMember, "userId">): WorkspacePresenceState;
   getWorkspaceMemberPresenceLabel(member: Pick<WorkspaceMember, "userId">): string;
+  hydrateBuyerProfiles(): Promise<void>;
+  getBuyerProfile(username: string): BuyerProfile | null;
+  saveBuyerProfile(draft: {
+    username: string;
+    preferredName?: string;
+    tags: string[];
+  }): Promise<"saved" | "pending" | "conflict" | "error">;
+  retryPendingBuyerProfiles(): Promise<void>;
+  resolveBuyerProfileConflict(
+    username: string,
+    strategy: "retry" | "reload"
+  ): Promise<"saved" | "pending" | "error" | "reloaded">;
   unregisterServiceWorkersForDev(): Promise<void>;
   registerServiceWorker(): void;
 }

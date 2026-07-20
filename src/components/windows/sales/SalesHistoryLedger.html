@@ -115,7 +115,10 @@
           :aria-label="t('buyerQuickViewOpenLabel')"
           @click.stop="$emit('open-buyer', saleCustomerLabel(sale))"
         >
-          {{ saleCustomerLabel(sale) }}
+          <buyer-identity-label
+            :username="saleCustomerLabel(sale)"
+            :profile="saleBuyerProfile(sale)"
+          ></buyer-identity-label>
         </button>
         <span v-else>{{ saleCustomerLabel(sale) }}</span>
       </div>

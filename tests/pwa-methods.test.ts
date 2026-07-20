@@ -35,6 +35,7 @@ function createContext(overrides: PwaContext = {}): PwaContext {
     notify: vi.fn(),
     debugLogEntitlement: vi.fn(async () => undefined),
     pushCloudSync: vi.fn(async () => undefined),
+    retryPendingBuyerProfiles: vi.fn(async () => undefined),
     startOfflineReconnectScheduler: vi.fn(),
     stopOfflineReconnectScheduler: vi.fn(),
     ...overrides
@@ -124,6 +125,7 @@ test("setupPwaUiHandlers wires listeners and handles online/offline/install even
   assert.equal((context.stopOfflineReconnectScheduler as ReturnType<typeof vi.fn>).mock.calls.length, 1);
   assert.equal((context.debugLogEntitlement as ReturnType<typeof vi.fn>).mock.calls.length, 1);
   assert.equal((context.pushCloudSync as ReturnType<typeof vi.fn>).mock.calls.length, 1);
+  assert.equal((context.retryPendingBuyerProfiles as ReturnType<typeof vi.fn>).mock.calls.length, 1);
 
   (context.offlineListener as () => void)();
   assert.equal(context.isOffline, true);
@@ -170,6 +172,7 @@ test("setupPwaUiHandlers does not push cloud sync while signed out", () => {
 
   assert.equal((context.debugLogEntitlement as ReturnType<typeof vi.fn>).mock.calls.length, 1);
   assert.equal((context.pushCloudSync as ReturnType<typeof vi.fn>).mock.calls.length, 0);
+  assert.equal((context.retryPendingBuyerProfiles as ReturnType<typeof vi.fn>).mock.calls.length, 0);
 });
 
 test("startOfflineReconnectScheduler no-ops when already running and reconnects when online", () => {

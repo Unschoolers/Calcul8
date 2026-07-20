@@ -174,6 +174,7 @@ function createApp(overrides: Record<string, any> = {}): any {
     wheelCurrentAngle: 0,
     wheelLastResultColor: "",
     pullCloudSync: vi.fn(async () => undefined),
+    hydrateBuyerProfiles: vi.fn(async () => undefined),
     handleWorkspaceAccessLost: vi.fn(async () => undefined),
     getSalesStorageKey: (lotId: number) => `sales:${lotId}`,
     loadSalesForLotId: vi.fn(() => []),
@@ -493,6 +494,30 @@ test("workspace realtime applies incoming sale and live pricing events for the a
     "owner-1": { userId: "owner-1", isOnline: true, lastSeenAt: "2026-03-20T18:00:00.000Z" },
     "member-2": { userId: "member-2", isOnline: false, lastSeenAt: "2026-03-20T17:58:00.000Z" }
   });
+});
+
+test("workspace realtime refreshes buyer profiles from a scoped profile invalidation", async () => {
+  const app = createApp();
+
+  refreshWorkspaceRealtime(app as never);
+  const socket = FakeWebSocket.instances[0]!;
+  socket.triggerOpen();
+  await flushMicrotasks();
+
+  socket.triggerMessage({
+    type: "event",
+    room: "workspace:ws_dcb4d6f021637411:presence",
+    eventType: "buyer.profile.changed",
+    data: {
+      profileId: "buyer-profile-1",
+      version: 3,
+      deleted: false
+    }
+  });
+
+  await flushMicrotasks();
+
+  assert.equal(app.hydrateBuyerProfiles.mock.calls.length, 1);
 });
 
 test("workspace realtime applies wheel updates including resets when revision is newer", async () => {

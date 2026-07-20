@@ -26,6 +26,7 @@ export type RealtimeApp = Pick<
   | "currentLivePricingVersion"
   | "loadSalesForLotId"
   | "pullCloudSync"
+  | "hydrateBuyerProfiles"
   | "handleWorkspaceAccessLost"
   | "getSalesStorageKey"
   | "googleAuthEpoch"

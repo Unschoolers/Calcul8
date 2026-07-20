@@ -15,6 +15,7 @@ describe("frontend UI method domain layout", () => {
     expect(rootFiles).toEqual([]);
     expect(folders).toEqual([
       "auth",
+      "buyers",
       "common",
       "entitlements",
       "spectator",

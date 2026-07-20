@@ -115,6 +115,7 @@
                         :calculate-sale-profit="calculateSaleProfit"
                         :get-sale-profit-preview="getSaleProfitPreview"
                         :is-unlinked-singles-sale="isUnlinkedSinglesSale"
+                        :get-buyer-profile="getBuyerProfile"
                         @edit="editSale"
                         @delete="deleteSale"
                         @load-more="loadMoreSalesHistory"
@@ -290,10 +291,11 @@
                   </v-col>
                 </v-row>
 
-                <buyer-quick-view-modal
+                <buyer-quick-view-host
                   v-model="buyerQuickViewOpen"
                   :summary="buyerQuickViewSummary"
+                  :ctx="ctx"
                   :t="t"
                   :format-date="formatDate"
                   :fmt-currency="fmtCurrency"
-                ></buyer-quick-view-modal>
+                ></buyer-quick-view-host>

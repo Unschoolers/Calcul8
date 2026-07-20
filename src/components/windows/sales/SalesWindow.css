@@ -493,6 +493,9 @@
 }
 
 .sales-history-ledger__customer-button {
+  display: block;
+  width: 100%;
+  min-width: 0;
   max-width: 100%;
   overflow: hidden;
   border: 0;
@@ -507,6 +510,10 @@
   white-space: nowrap;
   background: transparent;
   cursor: pointer;
+}
+
+.sales-history-ledger__customer-button .buyer-identity {
+  width: 100%;
 }
 
 .sales-history-ledger__customer-button:hover,

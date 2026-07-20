@@ -1,5 +1,6 @@
 import { defineComponent, type PropType } from "vue";
-import type { Sale } from "../../../types/app.ts";
+import type { BuyerProfile, Sale } from "../../../types/app.ts";
+import BuyerIdentityLabel from "../../customers/BuyerIdentityLabel.vue";
 import AppActionButton from "../../ui/AppActionButton.vue";
 import AppMetricValue from "../../ui/AppMetricValue.vue";
 
@@ -43,7 +44,8 @@ export const SalesHistoryLedgerDefinition = defineComponent({
   name: "SalesHistoryLedger",
   components: {
     AppActionButton,
-    AppMetricValue
+    AppMetricValue,
+    BuyerIdentityLabel
   },
   props: {
     sales: {
@@ -97,6 +99,10 @@ export const SalesHistoryLedgerDefinition = defineComponent({
     isUnlinkedSinglesSale: {
       type: Function as PropType<(sale: Sale) => boolean>,
       required: true
+    },
+    getBuyerProfile: {
+      type: Function as PropType<(username: string) => BuyerProfile | null>,
+      default: () => null
     }
   },
   emits: ["edit", "delete", "load-more", "open-buyer"],
@@ -189,6 +195,9 @@ export const SalesHistoryLedgerDefinition = defineComponent({
     },
     hasNamedCustomer(sale: Sale): boolean {
       return String(sale.customer || "").trim().length > 0;
+    },
+    saleBuyerProfile(sale: Sale): BuyerProfile | null {
+      return this.getBuyerProfile(this.saleCustomerLabel(sale));
     },
     saleRevenueLabel(sale: Sale): string {
       return `$${this.fmtCurrency(Number(sale.price) || 0)}`;

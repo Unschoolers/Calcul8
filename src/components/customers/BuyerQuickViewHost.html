@@ -1,0 +1,14 @@
+<buyer-quick-view-modal
+  :model-value="modelValue"
+  :summary="summary"
+  :profile="profile"
+  :save-state="saveState"
+  :tag-suggestions="tagSuggestions"
+  :t="t"
+  :format-date="formatDate"
+  :fmt-currency="fmtCurrency"
+  @update:model-value="$emit('update:modelValue', $event)"
+  @save-profile="saveProfile"
+  @retry-profile="resolveConflict('retry')"
+  @reload-profile="resolveConflict('reload')"
+></buyer-quick-view-modal>

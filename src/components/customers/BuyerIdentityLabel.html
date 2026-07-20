@@ -1,0 +1,12 @@
+<span class="buyer-identity" :aria-label="accessibleLabel">
+  <span class="buyer-identity__labels">
+    <span class="buyer-identity__primary">{{ identity.primaryLabel }}</span>
+    <span v-if="identity.secondaryLabel" class="buyer-identity__secondary">
+      {{ identity.secondaryLabel }}
+    </span>
+  </span>
+  <span v-if="visibleTags.length" class="buyer-identity__tags" aria-hidden="true">
+    <span v-for="tag in visibleTags" :key="tag" class="buyer-identity__tag">{{ tag }}</span>
+    <span v-if="hiddenTagCount" class="buyer-identity__tag buyer-identity__tag--more">+{{ hiddenTagCount }}</span>
+  </span>
+</span>

@@ -75,6 +75,7 @@ export const pwaMethods = {
       void this.debugLogEntitlement(true);
       if (this.isGoogleSignedIn) {
         void this.pushCloudSync();
+        void this.retryPendingBuyerProfiles();
       }
     };
     this.offlineListener = () => {
@@ -120,6 +121,7 @@ export const pwaMethods = {
       void this.debugLogEntitlement(true);
       if (this.isGoogleSignedIn) {
         void this.pushCloudSync();
+        void this.retryPendingBuyerProfiles();
       }
     }, 60 * 1000);
   },

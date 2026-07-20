@@ -133,6 +133,8 @@
   "portfolioCustomerPerformanceEmptyBody": "Add named customers to sales to see buyer performance here.",
   "portfolioCustomerPerformanceEmptyTitle": "No customer performance yet",
   "portfolioCustomerPerformanceTitle": "Customer performance",
+  "portfolioCustomerSearchLabel": "Search customers",
+  "portfolioCustomerSearchPlaceholder": "Username, preferred name, or tag",
   "portfolioCustomerRepeatLabel": "Repeat",
   "portfolioBuyerContextTitle": "Buyer context",
   "portfolioLotContextTitle": "Lot context",

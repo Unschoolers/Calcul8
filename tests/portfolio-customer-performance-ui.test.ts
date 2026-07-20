@@ -22,8 +22,9 @@ describe("portfolio customer performance UI", () => {
     assert.match(definition, /portfolioPerformanceCustomersViewLabel/);
     assert.match(template, /portfolio-customer-performance/);
     assert.match(definition, /customerPerformanceRows/);
-    assert.match(template, /<buyer-quick-view-modal/);
-    assert.match(component, /BuyerQuickViewModal/);
+    assert.match(template, /<buyer-quick-view-host/);
+    assert.match(template, /<buyer-identity-label/);
+    assert.match(component, /BuyerQuickViewHost/);
   });
 
   test("lot performance uses the same responsive grid contract as customer performance", () => {

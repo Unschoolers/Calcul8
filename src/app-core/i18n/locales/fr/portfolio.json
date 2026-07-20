@@ -133,6 +133,8 @@
   "portfolioCustomerPerformanceEmptyBody": "Ajoutez des clients nommés aux ventes pour voir la performance par client ici.",
   "portfolioCustomerPerformanceEmptyTitle": "Pas encore de performance client",
   "portfolioCustomerPerformanceTitle": "Performance client",
+  "portfolioCustomerSearchLabel": "Rechercher des clients",
+  "portfolioCustomerSearchPlaceholder": "Nom d'utilisateur, nom préféré ou étiquette",
   "portfolioCustomerRepeatLabel": "Récurrents",
   "portfolioBuyerContextTitle": "Contexte acheteurs",
   "portfolioLotContextTitle": "Contexte lots",

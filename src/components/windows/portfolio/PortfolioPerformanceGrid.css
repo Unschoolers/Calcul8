@@ -192,6 +192,14 @@
   color: rgba(var(--v-theme-secondary), 0.92);
 }
 
+.portfolio-customer-performance__name {
+  min-width: 0;
+}
+
+.portfolio-customer-performance__name .buyer-identity {
+  flex: 1 1 auto;
+}
+
 .portfolio-lot-status-icon.is-positive {
   color: rgb(var(--v-theme-success));
 }

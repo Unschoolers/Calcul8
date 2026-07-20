@@ -85,6 +85,7 @@ function queueCurrentLotSalesFreshnessCheckAfterTabSettle(
 export const appWatch: AppWatchObject = {
   activeScopeType() {
     if (isDevNoLoginRoute()) return;
+    void this.hydrateBuyerProfiles();
     refreshWorkspaceRealtime(this);
     resetWhatnotTransientUiState(this);
     if (this.isGoogleSignedIn) {
@@ -94,6 +95,7 @@ export const appWatch: AppWatchObject = {
 
   activeWorkspaceId() {
     if (isDevNoLoginRoute()) return;
+    void this.hydrateBuyerProfiles();
     refreshWorkspaceRealtime(this);
     resetWhatnotTransientUiState(this);
     if (this.isGoogleSignedIn) {
@@ -217,6 +219,10 @@ export const appWatch: AppWatchObject = {
       this.availableWorkspaces = [];
       this.workspaceMembers = [];
       this.workspacePresenceByUserId = {};
+      this.buyerProfilesByKey = {};
+      this.buyerProfilesScopeKey = "";
+      this.buyerProfilesLoadStatus = "idle";
+      this.buyerProfileSaveStates = {};
       this.showWorkspaceMembersModal = false;
       resetWhatnotSignedOutState(this);
       this.$nextTick(() => this.renderGoogleSignInButton());
@@ -231,6 +237,8 @@ export const appWatch: AppWatchObject = {
       return;
     }
     this.startCloudSyncScheduler();
+    void this.hydrateBuyerProfiles();
+    void this.retryPendingBuyerProfiles();
     refreshWorkspaceRealtime(this);
     queueCurrentLotSalesFreshnessCheck(this);
     hydrateCurrentLotLivePricing(this);

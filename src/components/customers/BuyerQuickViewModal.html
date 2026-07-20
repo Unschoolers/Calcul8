@@ -12,9 +12,13 @@
         </v-avatar>
         <div class="buyer-quick-view-title__copy">
           <div class="buyer-quick-view-eyebrow">{{ t('buyerQuickViewTitle') }}</div>
-          <div class="buyer-quick-view-name">
-            {{ summary?.username || t('buyerQuickViewUnknownBuyerLabel') }}
-          </div>
+          <buyer-identity-label
+            v-if="summary"
+            class="buyer-quick-view-name"
+            :username="summary.username"
+            :profile="profile"
+            :max-visible-tags="3"
+          ></buyer-identity-label>
         </div>
       </div>
       <v-btn
@@ -30,6 +34,62 @@
     </v-card-title>
 
     <v-card-text v-if="summary" class="buyer-quick-view-content">
+      <section class="buyer-quick-view-profile" :aria-label="t('buyerQuickViewEditProfileLabel')">
+        <div v-if="!isEditingProfile" class="buyer-quick-view-profile__summary">
+          <v-btn
+            variant="tonal"
+            size="small"
+            prepend-icon="mdi-account-edit-outline"
+            :aria-label="t('buyerQuickViewEditProfileLabel')"
+            @click="startProfileEdit"
+          >{{ t('buyerQuickViewEditProfileLabel') }}</v-btn>
+        </div>
+        <div v-else class="buyer-quick-view-profile__editor">
+          <v-text-field
+            v-model="preferredNameDraft"
+            :label="t('buyerQuickViewPreferredNameLabel')"
+            maxlength="80"
+            variant="outlined"
+            density="comfortable"
+            hide-details
+          ></v-text-field>
+          <v-combobox
+            v-model="tagsDraft"
+            :label="t('buyerQuickViewTagsLabel')"
+            :items="tagSuggestions"
+            multiple
+            chips
+            closable-chips
+            maxlength="32"
+            variant="outlined"
+            density="comfortable"
+            hide-details
+          ></v-combobox>
+          <div class="buyer-quick-view-profile__actions">
+            <v-btn variant="text" :disabled="isProfileSaving" @click="cancelProfileEdit">
+              {{ t('buyerQuickViewCancelEditLabel') }}
+            </v-btn>
+            <v-btn color="primary" :loading="isProfileSaving" @click="saveProfile">
+              {{ t('buyerQuickViewSaveProfileLabel') }}
+            </v-btn>
+          </div>
+        </div>
+
+        <v-alert v-if="saveState === 'conflict'" type="warning" variant="tonal" density="compact">
+          <div>{{ t('buyerQuickViewConflictMessage') }}</div>
+          <div class="buyer-quick-view-profile__actions">
+            <v-btn size="small" variant="text" @click="$emit('reload-profile')">{{ t('buyerQuickViewReloadLabel') }}</v-btn>
+            <v-btn size="small" variant="tonal" @click="$emit('retry-profile')">{{ t('buyerQuickViewRetryLabel') }}</v-btn>
+          </div>
+        </v-alert>
+        <v-alert v-else-if="saveState === 'pending'" type="info" variant="tonal" density="compact">
+          {{ t('buyerQuickViewPendingMessage') }}
+        </v-alert>
+        <v-alert v-else-if="saveState === 'error'" type="error" variant="tonal" density="compact">
+          {{ t('buyerQuickViewErrorMessage') }}
+        </v-alert>
+      </section>
+
       <div class="buyer-quick-view-metrics">
         <div class="buyer-quick-view-metric">
           <span class="buyer-quick-view-metric__label">{{ t('buyerQuickViewTotalLotLabel') }}</span>
