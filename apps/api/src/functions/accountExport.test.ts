@@ -14,6 +14,7 @@ const {
   getEntitlementMock,
   listPlayPurchasesForUserMock,
   getEffectiveSyncSnapshotMock,
+  listBuyerProfilesForActorMock,
   maybeHandleHttpGuardsMock,
   jsonResponseMock,
   errorResponseMock
@@ -23,6 +24,7 @@ const {
   getEntitlementMock: vi.fn(),
   listPlayPurchasesForUserMock: vi.fn(),
   getEffectiveSyncSnapshotMock: vi.fn(),
+  listBuyerProfilesForActorMock: vi.fn(),
   maybeHandleHttpGuardsMock: vi.fn(),
   jsonResponseMock: vi.fn((request: unknown, config: unknown, status: number, body: unknown) => ({
     status,
@@ -52,6 +54,10 @@ vi.mock("../lib/cosmos/syncSnapshotRepository", () => ({
   getEffectiveSyncSnapshot: getEffectiveSyncSnapshotMock
 }));
 
+vi.mock("../features/buyerProfiles/services", () => ({
+  listBuyerProfilesForActor: listBuyerProfilesForActorMock
+}));
+
 vi.mock("../lib/http", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../lib/http")>()),
   maybeHandleHttpGuards: maybeHandleHttpGuardsMock,
@@ -69,9 +75,17 @@ beforeEach(() => {
   getEntitlementMock.mockResolvedValue({ userId: "user-1", hasProAccess: true });
   getEffectiveSyncSnapshotMock.mockResolvedValue({ userId: "user-1", version: 3 });
   listPlayPurchasesForUserMock.mockResolvedValue([{ id: "play-1" }]);
+  listBuyerProfilesForActorMock.mockResolvedValue([{
+    username: "cardking27",
+    preferredName: "Marc",
+    tags: ["VIP"],
+    createdAt: "2026-07-20T10:00:00.000Z",
+    updatedAt: "2026-07-20T11:00:00.000Z",
+    version: 2
+  }]);
 });
 
-test("accountExport returns entitlement, purchases, and sync snapshot", async () => {
+test("accountExport returns entitlement, purchases, sync snapshot, and personal buyer profiles", async () => {
   const response = await accountExport(
     createHttpRequest({ method: "POST" }) as never,
     createInvocationContext() as never
@@ -81,8 +95,17 @@ test("accountExport returns entitlement, purchases, and sync snapshot", async ()
   assert.equal(getEntitlementMock.mock.calls[0]?.[1], "user-1");
   assert.equal(getEffectiveSyncSnapshotMock.mock.calls[0]?.[1], "user-1");
   assert.equal(listPlayPurchasesForUserMock.mock.calls[0]?.[1], "user-1");
+  assert.equal(listBuyerProfilesForActorMock.mock.calls[0]?.[1], "user-1");
   assert.equal((response.jsonBody as { userId?: string }).userId, "user-1");
   assert.equal(Array.isArray((response.jsonBody as { playPurchases?: unknown[] }).playPurchases), true);
+  assert.deepEqual((response.jsonBody as { buyerProfiles?: unknown[] }).buyerProfiles, [{
+    username: "cardking27",
+    preferredName: "Marc",
+    tags: ["VIP"],
+    createdAt: "2026-07-20T10:00:00.000Z",
+    updatedAt: "2026-07-20T11:00:00.000Z",
+    version: 2
+  }]);
 });
 
 test("accountExport returns an error response when export loading fails", async () => {
