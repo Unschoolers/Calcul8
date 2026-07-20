@@ -48,6 +48,16 @@ salesGameServices = component "Sales And Game Services" "Sales, pricing, and gam
     }
 }
 
+buyerProfileServices = component "Buyer Profile Services" "Scoped buyer identity metadata APIs." "apps/api/src/features/buyerProfiles" {
+    tags "API Component", "Validation Boundary"
+    properties {
+        "Owns" "Personal/workspace buyer-profile authorization, strict input validation, public DTO mapping, and conflict responses."
+        "Must not own" "Cosmos ids or partition behavior, sales-derived analytics, frontend drafts, or raw identity telemetry."
+        "Boundary data" "Username, preferred name, tags, expected version, mutation id, scope type, and public profile DTOs."
+        "Failure recovery" "Reject non-members and stale versions, keep handlers thin, and publish only PII-free workspace invalidations after durable writes."
+    }
+}
+
 billingEntitlementServices = component "Billing Entitlement Services" "Billing facts and access projection." "apps/api/src/features/billing, apps/api/src/features/entitlements, apps/api/src/lib/entitlementFacts.ts" {
     tags "API Component", "Security Boundary"
     properties {
@@ -102,6 +112,7 @@ functionEntryPoints -> httpBoundary "Delegates." "Calls"
 httpBoundary -> authSessions "Authenticates." "Calls"
 httpBoundary -> syncWorkspaceServices "Dispatches." "Calls"
 httpBoundary -> salesGameServices "Dispatches." "Calls"
+httpBoundary -> buyerProfileServices "Dispatches." "Calls"
 httpBoundary -> billingEntitlementServices "Dispatches." "Calls"
 httpBoundary -> whatnotImportServices "Dispatches." "Calls"
 
@@ -110,6 +121,8 @@ authSessions -> cosmosRepositories "Persists." "Repository"
 syncWorkspaceServices -> cosmosRepositories "Persists." "Repository"
 salesGameServices -> cosmosRepositories "Persists." "Repository"
 salesGameServices -> realtimePublisher "Publishes." "Calls"
+buyerProfileServices -> cosmosRepositories "Persists." "Repository"
+buyerProfileServices -> realtimePublisher "Publishes safe invalidations." "Calls"
 billingEntitlementServices -> providerClients "Verifies." "HTTPS"
 billingEntitlementServices -> cosmosRepositories "Persists." "Repository"
 whatnotImportServices -> providerClients "Imports." "HTTPS"

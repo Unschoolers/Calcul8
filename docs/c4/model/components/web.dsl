@@ -58,6 +58,16 @@ salesWorkflows = component "Sales And Lot Workflows" "Selling and inventory work
     }
 }
 
+buyerProfileStore = component "Buyer Profile Store" "Scoped local-first buyer identity state." "src/app-core/methods/ui/buyers, src/app-core/buyer-profile.ts, src/components/customers" {
+    tags "Web Component", "Local State", "Shared Contract"
+    properties {
+        "Owns" "Profile normalization, scope-specific cache/outbox state, optimistic writes, conflict recovery, identity composition, and reusable buyer UI."
+        "Must not own" "Sales-derived financial metrics, server authorization, Cosmos document behavior, or screen-specific customer analytics."
+        "Boundary data" "Username, preferred name, tags, versions, pending mutations, save states, and display-safe identities."
+        "Failure recovery" "Ignore stale-scope responses, retain offline/auth-expired drafts, rebase explicit retries, and clear in-memory identity data at sign-out."
+    }
+}
+
 uiContracts = component "Shared UI Contracts" "Reusable mobile-first UI contracts." "src/styles, src/components/shared, src/app-core/ui" {
     tags "Web Component", "Shared Contract"
     properties {
@@ -121,6 +131,7 @@ i18nDisplay = component "I18n And Display Helpers" "Bilingual display helpers." 
 appShell -> authClient "Loads session." "Calls"
 appShell -> workspaceState "Reads scope." "Calls"
 appShell -> salesWorkflows "Hosts." "Vue"
+appShell -> buyerProfileStore "Hosts shared buyer identity UI." "Vue"
 appShell -> gameWorkflows "Hosts." "Vue"
 appShell -> whatnotWorkflows "Hosts." "Vue"
 appShell -> uiContracts "Composes." "Vue"
@@ -130,5 +141,9 @@ workspaceState -> localStateStore "Scopes." "Keys"
 syncCoordinator -> localStateStore "Applies sync." "Cache"
 salesWorkflows -> localStateStore "Reads/writes." "Cache"
 salesWorkflows -> uiContracts "Composes." "Vue"
+salesWorkflows -> buyerProfileStore "Composes buyer metadata with derived sales analytics." "Vue"
+buyerProfileStore -> localStateStore "Caches scoped profiles and outbox." "Cache"
+buyerProfileStore -> apiClient "Lists and mutates profiles." "HTTPS JSON"
+realtimeClient -> buyerProfileStore "Invalidates changed workspace profiles." "Calls"
 gameWorkflows -> localStateStore "Reads/writes." "Cache"
 whatnotWorkflows -> localStateStore "Maps imports." "Cache"

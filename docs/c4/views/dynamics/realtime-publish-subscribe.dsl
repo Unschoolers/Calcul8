@@ -9,6 +9,7 @@ dynamic calcul8.realtime "RealtimePublishSubscribeFlow" {
     calcul8.realtime.gateway -> calcul8.realtime.roomStore "Broadcasts the event to room members."
     calcul8.realtime.roomStore -> calcul8.realtime.httpHelpers "Serializes event payload to WebSocket clients."
     calcul8.realtime.gateway -> calcul8.web "Delivers the workspace event."
+    calcul8.web.realtimeClient -> calcul8.web.buyerProfileStore "Applies a PII-free buyer-profile invalidation."
+    calcul8.web.buyerProfileStore -> calcul8.web.apiClient "Refetches authoritative scoped profiles after invalidation."
     autoLayout lr
 }
-

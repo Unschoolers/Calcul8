@@ -1,90 +1,54 @@
 # Buyer CRM
 
-Updated: 2026-06-09
+Updated: 2026-07-20
 
-## Seller Problem
+## Current Capability
 
-Sellers need to know who buys repeatedly, who drives margin, who responds to certain categories, and where revenue is concentrated. Calcul8 already records customer/buyer names and has portfolio sales-by-person analytics, but it does not yet provide buyer profiles, notes, tags, or CRM-style follow-up memory.
+Calcul8 combines sales-derived buyer analytics with a lightweight, seller-managed identity layer. A buyer profile stores only:
 
-## Current Repo Capabilities
+- the marketplace username;
+- an optional preferred name;
+- up to 10 tags;
+- server-managed creation, update, audit, and version fields.
 
-- `Sale` already has an optional customer field.
-- Whatnot import rows already preserve buyer name.
-- Portfolio already has sales-by-person chart data, seller labels, week buckets, totals, and drilldown rows.
-- Sales and Portfolio already calculate revenue, profit, margin, sell-through, and lot performance.
-- Workspace presence/member concepts exist, but they represent app users/team members, not buyers.
+Revenue, profit, order count, recency, lot history, repeat-buyer metrics, and concentration remain derived from sales. They are not copied into buyer profile documents.
 
-## V1 Behavior
+## Seller Experience
 
-Buyer CRM v1 should be deterministic and derived from existing sales first:
+- Sales history and Portfolio customer performance show the same reusable two-line identity: preferred name first, original username second.
+- Selecting a buyer opens the existing quick view with sales-derived metrics and profile editing in one place.
+- Customer search matches username, preferred name, and tags without requiring exact accents or casing.
+- Tag entry suggests tags already used in the active scope while still allowing new tags.
+- Dense rows limit visible tags and show a stable `+N` overflow count.
+- Long values truncate on mobile, tablet, and desktop while the complete identity remains available to assistive technology and in the quick view.
+- English and French copy covers editing, offline pending state, errors, and conflicts.
 
-- Create buyer profiles from normalized customer/buyer names.
-- Show total revenue, total profit, order count, last purchase date, average order value, favorite lots/categories when available, and recent items.
-- Let the seller add local notes and tags such as VIP, bundle buyer, payment issue, prefers singles, or giveaway winner.
-- Show buyer concentration warnings in Portfolio: top buyer share, top five share, and repeat buyer rate.
-- Link from Sales history and Fulfillment buyer bins into the buyer profile.
-- Keep buyers scoped by personal/workspace state; buyers from one workspace must not bleed into another.
+## Scope, Storage, And Collaboration
 
-## Data Model Implications
+- Personal profiles belong only to the authenticated personal scope.
+- Workspace profiles are shared and editable by every active workspace member.
+- The API resolves the authoritative scope; clients never supply a trusted `scopeKey`.
+- Profiles are independently versioned Cosmos documents behind thin scoped API handlers and a focused repository.
+- Optimistic concurrency and stable mutation IDs prevent silent last-write-wins overwrites and duplicate retry writes.
+- Workspace writes publish a PII-free realtime invalidation; other clients refetch through the authenticated API.
+- Personal account export and deletion include personal buyer profiles. Workspace retention follows workspace ownership semantics.
 
-V1 can derive metrics from sales and persist only seller-authored CRM metadata:
+## Local-First Recovery
 
-- buyer profile key from normalized buyer name plus scope;
-- display name;
-- notes;
-- tags;
-- optional manual aliases for merged buyer names;
-- audit/version metadata if stored in cloud.
+The web app caches profiles per personal/workspace scope and keeps pending edits in a scope-specific outbox. Cached labels remain readable offline. Offline or authentication-expired writes remain visible and retry after reconnection or session recovery. A teammate conflict preserves the local mutation and exposes explicit reload/retry choices.
 
-Do not duplicate derived revenue/profit totals into storage unless a later performance issue requires cached projections.
+Late requests from a previous workspace are ignored, and in-memory profile data is cleared at sign-out to prevent scope or identity bleed.
 
-## Frontend Surfaces
+## Deferred Capabilities
 
-- Add buyer profile access from Portfolio sales-by-person, Sales history, and Fulfillment.
-- Add a Buyer CRM section or filter inside Portfolio before adding a new top-level tab.
-- Use compact buyer cards on mobile and richer tables/charts on desktop.
-- Make notes/tags editable with clear save/cancel states and offline-safe behavior.
-- Add French/English i18n for CRM labels and empty states.
+The following remain intentionally out of scope:
 
-## API, Storage, And Sync Implications
+- buyer notes or pronunciation;
+- shipping-label, address, email, phone, or legal-name ingestion;
+- provider-specific profile fields;
+- username aliases, merges, or a cross-marketplace identity graph;
+- messaging, campaigns, follow-up automation, or AI segmentation;
+- persisted revenue/profit/history projections;
+- a separate top-level CRM dashboard.
 
-- Derived buyer metrics can run in the browser from loaded sales.
-- Persisted notes/tags need scoped storage and account export/delete coverage.
-- Workspace-backed buyer metadata needs conflict handling when two members edit notes/tags.
-- If cloud-backed, API handlers should be thin and repository code should own ids/partition keys.
-
-## Edge Cases
-
-- Buyer name is missing on manual sales.
-- Same buyer appears with capitalization, spacing, or username changes.
-- Two buyers share a similar display name.
-- Seller wants to merge aliases but later undo the merge.
-- Buyer asks for deletion/export coverage.
-- Sales are imported after notes already exist for the buyer.
-
-## Tests
-
-- Normalization tests for buyer keys, blank buyers, casing, spacing, and aliases.
-- Derived metric tests for revenue, profit, order count, average order value, repeat rate, and top buyer share.
-- UI tests for buyer profile opening from Portfolio and Sales.
-- Persistence tests for notes/tags across personal/workspace scopes.
-- Conflict tests if notes/tags are cloud-backed.
-- i18n tests for new buyer CRM copy.
-
-## C4 Updates Needed
-
-Required only if buyer metadata becomes durable cloud state:
-
-- Update Web/API components with buyer CRM responsibilities.
-- Add an ADR for buyer identity, aliases, and deletion/export semantics.
-- Add a dynamic flow for buyer profile update if the API boundary is introduced.
-
-Not required for derived-only buyer analytics.
-
-## Out Of Scope For V1
-
-- Messaging buyers.
-- Scraping Whatnot followers or chat.
-- Automated marketing campaigns.
-- Cross-marketplace identity graph.
-- AI buyer segmentation.
+These should be added only when a concrete seller workflow justifies the extra data and privacy surface.

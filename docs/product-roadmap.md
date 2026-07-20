@@ -30,7 +30,7 @@ By the end of 12 weeks, a Whatnot seller should be able to:
 | 2 | [Live Show Command Center](product/features/live-show-command-center.md) | Weeks 3-6 | Detail ready | A seller can run a show from one screen without switching between setup, live pricing, sales, and game tools. |
 | 3 | [Inventory Intake](product/features/inventory-intake.md) | Weeks 7-8 | Detail ready | A seller can add sourced singles or bulk lots quickly on mobile with cost, SKU, image, and target pricing captured. |
 | 4 | [Fulfillment And Bin Packing](product/features/fulfillment-bin-packing.md) | Weeks 8-9 | Detail ready | A seller can move from imported/recorded sales to a buyer-level packing checklist with unresolved items visible. |
-| 5 | [Buyer CRM](product/features/buyer-crm.md) | Weeks 10-12 | Detail ready | A seller can identify top buyers, repeat buyers, risky concentration, and notes from existing sale history. |
+| 5 | [Buyer CRM](product/features/buyer-crm.md) | Weeks 10-12 | Identity v1 implemented | A seller can recognize buyers by preferred name and tags while retaining the marketplace username and sales-derived history. |
 | 6 | AI Show Planner | Future | Future detail file needed | Calcul8 suggests a show order and target actions from inventory and prior sales. |
 | 7 | Stream Overlay And Spectator Toolkit | Future | Future detail file needed | Sellers can publish buyer-facing proof, game state, and show stats to a stream/browser source. |
 | 8 | Tax And Accountant Reports | Future | Future detail file needed | Sellers can export monthly/yearly revenue, COGS, fees, shipping, refunds, and remaining inventory. |
@@ -70,13 +70,13 @@ Dependencies:
 
 ### Weeks 10-12: Buyer Intelligence And Retention
 
-Add buyer CRM on top of recorded/imported sales before attempting AI planning. The useful v1 is deterministic: buyer totals, repeat behavior, notes, tags, and warnings about concentration.
+Buyer CRM identity v1 now adds shared preferred names and tags on top of recorded/imported sales. Buyer totals, repeat behavior, recency, and concentration stay deterministic and sales-derived; notes and other sensitive profile fields are intentionally deferred.
 
 Dependencies:
 
 - Existing portfolio sales-by-person chart data.
 - Existing sales customer/buyer fields.
-- Fulfillment data if buyer bins and order grouping are already available.
+- Existing scoped API, local-first outbox, and workspace realtime foundations for shared profile metadata.
 
 ## Future Feature File Backlog
 

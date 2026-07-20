@@ -5,6 +5,7 @@ component calcul8.api "ApiComponents" {
     include calcul8.api.authSessions
     include calcul8.api.syncWorkspaceServices
     include calcul8.api.salesGameServices
+    include calcul8.api.buyerProfileServices
     include calcul8.api.billingEntitlementServices
     include calcul8.api.whatnotImportServices
     include calcul8.api.cosmosRepositories

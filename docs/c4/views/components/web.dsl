@@ -5,6 +5,7 @@ component calcul8.web "WebPwaComponents" {
     include calcul8.web.workspaceState
     include calcul8.web.syncCoordinator
     include calcul8.web.salesWorkflows
+    include calcul8.web.buyerProfileStore
     include calcul8.web.uiContracts
     include calcul8.web.gameWorkflows
     include calcul8.web.whatnotWorkflows
