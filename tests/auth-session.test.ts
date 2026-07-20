@@ -5,6 +5,7 @@ import {
   getStoredCsrfToken,
   getStoredGoogleIdToken,
   getStoredSessionUserId,
+  GOOGLE_PROFILE_CACHE_KEY,
   setStoredCsrfToken,
   setStoredGoogleIdToken
 } from "../src/app-core/auth/index.ts";
@@ -130,6 +131,44 @@ test("bootstrapServerSession sends bearer only to the auth bootstrap endpoint", 
   const headers = new Headers(requestInit.headers);
   assert.equal(fetchMock.mock.calls[0]?.[0], "https://api.example.test/auth/me");
   assert.equal(headers.get("Authorization"), "Bearer google-token");
+});
+
+test("bootstrapServerSession restores the public profile used by the account avatar", async () => {
+  vi.stubGlobal("window", {
+    location: {
+      origin: "https://app.example.test"
+    },
+    setTimeout: globalThis.setTimeout,
+    clearTimeout: globalThis.clearTimeout
+  });
+  const fetchMock = vi.fn<typeof fetch>(async () =>
+    new Response(JSON.stringify({
+      userId: "user-1",
+      profile: {
+        displayName: "Alice Example",
+        photoUrl: "https://images.example.test/alice.jpg"
+      }
+    }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" }
+    })
+  );
+  vi.stubGlobal("fetch", fetchMock);
+  const app = {
+    googleAuthEpoch: 4,
+    googleAvatarLoadFailed: true
+  };
+
+  const bootstrapped = await bootstrapServerSession(app, "https://api.example.test/");
+
+  assert.equal(bootstrapped, true);
+  assert.deepEqual(JSON.parse(localStorage.getItem(GOOGLE_PROFILE_CACHE_KEY) || "null"), {
+    name: "Alice Example",
+    email: "",
+    picture: "https://images.example.test/alice.jpg"
+  });
+  assert.equal(app.googleAvatarLoadFailed, false);
+  assert.equal(app.googleAuthEpoch, 5);
 });
 
 test("bootstrapServerSessionStatus marks only explicit 401 responses as expired", async () => {

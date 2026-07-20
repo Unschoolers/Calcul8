@@ -14,6 +14,7 @@ const {
   refreshSessionFromRequestMock,
   revokeSessionFromRequestMock,
   clearSessionCookieMock,
+  getUserProfileMock,
   revokeAllSessionsForUserMock,
   revokeAllRefreshSessionsForUserMock
 } = vi.hoisted(() => ({
@@ -22,6 +23,7 @@ const {
   refreshSessionFromRequestMock: vi.fn(),
   revokeSessionFromRequestMock: vi.fn(),
   clearSessionCookieMock: vi.fn(),
+  getUserProfileMock: vi.fn(),
   revokeAllSessionsForUserMock: vi.fn(),
   revokeAllRefreshSessionsForUserMock: vi.fn()
 }));
@@ -52,6 +54,10 @@ vi.mock("../lib/cosmos/sessionRepository", () => ({
   revokeAllRefreshSessionsForUser: revokeAllRefreshSessionsForUserMock
 }));
 
+vi.mock("../lib/cosmos/entitlementRepository", () => ({
+  getUserProfile: getUserProfileMock
+}));
+
 import { authLogout, authLogoutAll, authMe, authRefresh } from "./auth";
 
 beforeEach(() => {
@@ -61,6 +67,15 @@ beforeEach(() => {
   refreshSessionFromRequestMock.mockResolvedValue("user-1");
   revokeSessionFromRequestMock.mockResolvedValue(true);
   clearSessionCookieMock.mockResolvedValue(undefined);
+  getUserProfileMock.mockResolvedValue({
+    id: "profile:user-1",
+    docType: "user_profile",
+    userId: "user-1",
+    displayName: "Alice Example",
+    displayNameSource: "provider",
+    photoUrl: "https://images.example.test/alice.jpg",
+    updatedAt: "2026-07-20T12:00:00.000Z"
+  });
   revokeAllSessionsForUserMock.mockResolvedValue(3);
   revokeAllRefreshSessionsForUserMock.mockResolvedValue(4);
 });
@@ -73,7 +88,26 @@ test("authMe resolves user and returns payload", async () => {
   assert.equal(response.status, 200);
   assert.deepEqual(response.jsonBody, {
     ok: true,
-    userId: "user-1"
+    userId: "user-1",
+    profile: {
+      displayName: "Alice Example",
+      photoUrl: "https://images.example.test/alice.jpg"
+    }
+  });
+});
+
+test("authMe keeps a valid session usable when the optional profile lookup fails", async () => {
+  const request = createHttpRequest({ method: "GET" });
+  const context = createInvocationContext();
+  getUserProfileMock.mockRejectedValueOnce(new Error("profile storage unavailable"));
+
+  const response = await authMe(request as never, context as never);
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(response.jsonBody, {
+    ok: true,
+    userId: "user-1",
+    profile: null
   });
 });
 

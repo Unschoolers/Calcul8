@@ -1,5 +1,6 @@
 import { initGoogleAutoLoginWithRetry, requestGoogleIdentityPrompt } from "../../../utils/googleAutoLogin.ts";
 import { getPlayBillingService } from "../../../utils/playBilling.ts";
+import { cacheAuthProfile } from "../../../auth/index.ts";
 export {
   applyTargetProfitAccessDefaults,
   type TargetProfitAccessApp
@@ -39,25 +40,7 @@ export function cacheGoogleProfileFromToken(idToken: string, cacheKey: string): 
   const email = typeof claims.email === "string" ? claims.email.trim() : "";
   const picture = typeof claims.picture === "string" ? claims.picture.trim() : "";
 
-  if (!name && !email && !picture) return;
-
-  let previous: GoogleProfileClaims | null = null;
-  try {
-    const raw = localStorage.getItem(cacheKey);
-    if (raw) {
-      previous = JSON.parse(raw) as GoogleProfileClaims;
-    }
-  } catch {
-    previous = null;
-  }
-
-  const merged: GoogleProfileClaims = {
-    name: name || previous?.name || "",
-    email: email || previous?.email || "",
-    picture: picture || previous?.picture || ""
-  };
-
-  localStorage.setItem(cacheKey, JSON.stringify(merged));
+  cacheAuthProfile({ name, email, picture }, cacheKey);
 }
 
 export function formatPlayPurchaseError(error: unknown): string {

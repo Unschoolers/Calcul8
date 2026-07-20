@@ -1,9 +1,9 @@
-import { GOOGLE_PROFILE_CACHE_KEY } from "../methods/ui/common/shared.ts";
 import type { AppComputedObject } from "../context-contracts.ts";
 import {
   getStoredGoogleIdToken,
   getStoredSessionUserId,
-  hasAuthSignal
+  hasAuthSignal,
+  readCachedAuthProfile
 } from "../auth/index.ts";
 import { isDevNoLoginRoute } from "../dev-nologin.ts";
 
@@ -34,23 +34,13 @@ function decodeGoogleJwtPayload(idToken: string): GoogleJwtPayload | null {
   }
 }
 
-function readCachedGoogleProfile(): GoogleJwtPayload | null {
-  try {
-    const raw = localStorage.getItem(GOOGLE_PROFILE_CACHE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as unknown;
-    if (parsed && typeof parsed === "object") {
-      return parsed as GoogleJwtPayload;
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
 function resolveGoogleProfile(idToken: string): GoogleJwtPayload {
   const fromToken = decodeGoogleJwtPayload(idToken) ?? {};
-  const fromCache = readCachedGoogleProfile() ?? {};
+  const fromCache = readCachedAuthProfile() ?? {
+    name: "",
+    email: "",
+    picture: ""
+  };
   return {
     sub: (fromToken.sub || "").trim(),
     name: (fromToken.name || fromCache.name || "").trim(),

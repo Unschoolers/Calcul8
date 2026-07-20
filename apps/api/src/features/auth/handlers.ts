@@ -7,6 +7,7 @@ import {
   revokeSessionFromRequest
 } from "../../lib/auth";
 import { revokeAllRefreshSessionsForUser, revokeAllSessionsForUser } from "../../lib/cosmos/sessionRepository";
+import { getUserProfile } from "../../lib/cosmos/entitlementRepository";
 import { executeHttpHandler, jsonResponse } from "../../lib/http";
 import { logApiTelemetry } from "../../lib/telemetry";
 import type { ApiConfig } from "../../types";
@@ -48,9 +49,29 @@ export async function authMe(
         workspaceScope: "unknown"
       }
     });
+    // Display identity is optional. A transient profile read must not invalidate
+    // an otherwise healthy authenticated session.
+    const storedProfile = await getUserProfile(config, userId).catch(() => {
+      logApiTelemetry({
+        logger: context,
+        level: "warn",
+        request,
+        config,
+        route: "auth_me",
+        workspaceScope: "unknown",
+        outcome: "profile_lookup_failed"
+      });
+      return null;
+    });
     return jsonResponse(request, config, 200, {
       ok: true,
-      userId
+      userId,
+      profile: storedProfile
+        ? {
+            displayName: storedProfile.displayName,
+            photoUrl: storedProfile.photoUrl
+          }
+        : null
     });
     },
     onError: (error, { config }) => logAuthRouteFailure(request, context, config, "auth_me", error)

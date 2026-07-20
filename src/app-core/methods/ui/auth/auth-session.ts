@@ -1,6 +1,7 @@
 import type { AppContext } from "../../../context-app.ts";
 import {
   buildAuthenticatedHeaders,
+  cacheAuthProfile,
   clearStoredCsrfToken,
   clearStoredSessionUserId,
   hasAuthSignal,
@@ -10,6 +11,10 @@ import { fetchWithRetry } from "../common/api-client.ts";
 
 interface AuthMeResponse {
   userId?: unknown;
+  profile?: {
+    displayName?: unknown;
+    photoUrl?: unknown;
+  } | null;
 }
 
 export interface ServerSessionBootstrapResult {
@@ -22,7 +27,7 @@ function normalizeUserId(value: unknown): string {
 }
 
 export async function bootstrapServerSessionStatus(
-  app: Pick<AppContext, "googleAuthEpoch">,
+  app: Pick<AppContext, "googleAuthEpoch"> & Partial<Pick<AppContext, "googleAvatarLoadFailed">>,
   baseUrl: string
 ): Promise<ServerSessionBootstrapResult> {
   const normalizedBaseUrl = String(baseUrl || "").trim().replace(/\/+$/, "");
@@ -64,8 +69,15 @@ export async function bootstrapServerSessionStatus(
       return { ok: false, authExpired: false };
     }
 
+    const profileChanged = cacheAuthProfile({
+      name: payload?.profile?.displayName,
+      picture: payload?.profile?.photoUrl
+    });
     setStoredSessionUserId(userId);
-    if (!hadAuthSignal) {
+    if (profileChanged && typeof app.googleAvatarLoadFailed === "boolean") {
+      app.googleAvatarLoadFailed = false;
+    }
+    if (!hadAuthSignal || profileChanged) {
       app.googleAuthEpoch += 1;
     }
     return { ok: true, authExpired: false };
@@ -75,7 +87,7 @@ export async function bootstrapServerSessionStatus(
 }
 
 export async function bootstrapServerSession(
-  app: Pick<AppContext, "googleAuthEpoch">,
+  app: Pick<AppContext, "googleAuthEpoch"> & Partial<Pick<AppContext, "googleAvatarLoadFailed">>,
   baseUrl: string
 ): Promise<boolean> {
   const result = await bootstrapServerSessionStatus(app, baseUrl);
