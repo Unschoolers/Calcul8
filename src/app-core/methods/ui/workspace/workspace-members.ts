@@ -1,4 +1,4 @@
-import type { AppContext } from "../../../context-app.ts";
+import type { WorkspaceMembershipContext } from "../../../context/workspace.ts";
 import type { WorkspaceMember } from "../../../../types/app.ts";
 import { hasAuthSignal } from "../../../auth/index.ts";
 import { fetchAuthenticatedApiResponse, resolveApiBaseUrl } from "../common/shared.ts";
@@ -51,7 +51,7 @@ export function normalizeWorkspaceMembers(value: unknown): WorkspaceMember[] {
 }
 
 export function getTransferCandidates(
-  app: Pick<AppContext, "workspaceMembers">
+  app: Pick<WorkspaceMembershipContext, "workspaceMembers">
 ): WorkspaceMember[] {
   return app.workspaceMembers.filter(
     (member) => member.status === "active" && member.role === "member"
@@ -59,22 +59,15 @@ export function getTransferCandidates(
 }
 
 export function upsertWorkspaceMembersState(
-  app: Pick<AppContext, "workspaceMembers" | "leaveWorkspaceTransferMemberUserId">,
+  app: Pick<WorkspaceMembershipContext, "workspaceMembers" | "leaveWorkspaceTransferMemberUserId">,
   members: WorkspaceMember[]
 ): void {
   app.workspaceMembers = members;
-  app.leaveWorkspaceTransferMemberUserId = getTransferCandidates(app as AppContext)[0]?.userId ?? "";
+  app.leaveWorkspaceTransferMemberUserId = getTransferCandidates(app)[0]?.userId ?? "";
 }
 
 export async function loadWorkspaceMembers(
-  app: Pick<
-    AppContext,
-    | "activeWorkspaceId"
-    | "workspaceMembers"
-    | "isWorkspaceMembersLoading"
-    | "leaveWorkspaceTransferMemberUserId"
-    | "notify"
-  >,
+  app: WorkspaceMembershipContext,
   options: {
     resetBeforeLoad?: boolean;
     setLoadingState?: boolean;
@@ -106,7 +99,7 @@ export async function loadWorkspaceMembers(
       return false;
     }
 
-    const response = await fetchAuthenticatedApiResponse(app as AppContext, `/workspaces/${encodeURIComponent(activeWorkspaceId)}/members`, {
+    const response = await fetchAuthenticatedApiResponse(app, `/workspaces/${encodeURIComponent(activeWorkspaceId)}/members`, {
       method: "GET"
     }, {
       expireAuthOn401: options.expireAuthOn401
@@ -139,7 +132,7 @@ export async function loadWorkspaceMembers(
 }
 
 export function getWorkspaceMemberPresenceStateFromApp(
-  app: Pick<AppContext, "workspacePresenceByUserId" | "workspaceRealtimeStatus" | "googleProfileUserId">,
+  app: Pick<WorkspaceMembershipContext, "workspacePresenceByUserId" | "workspaceRealtimeStatus" | "googleProfileUserId">,
   member: Pick<WorkspaceMember, "userId">
 ): "online" | "recent" | "offline" {
   const memberUserId = String(member.userId || "").trim();

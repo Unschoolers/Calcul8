@@ -1,4 +1,4 @@
-import type { AppContext } from "../../../context-app.ts";
+import type { WorkspaceUiHelperContext } from "../../../context/workspace.ts";
 import type { WorkspaceSummary } from "../../../../types/app.ts";
 import { getScopedLastLotStorageKey, getScopedLastSyncedPayloadHashKey, STORAGE_KEYS } from "../../../storageKeys.ts";
 import { resolveWorkspaceScopeContext, sortWorkspacesByName } from "../../../workspace-scope.ts";
@@ -99,7 +99,7 @@ export function clearInviteQueryParam(): void {
 }
 
 export function resetPendingWorkspaceInviteState(app: Pick<
-  AppContext,
+  WorkspaceUiHelperContext,
   | "pendingWorkspaceInviteToken"
   | "pendingWorkspaceInviteWorkspaceId"
   | "pendingWorkspaceInviteWorkspaceName"
@@ -111,7 +111,7 @@ export function resetPendingWorkspaceInviteState(app: Pick<
   app.showWorkspaceJoinDialog = false;
 }
 
-export function persistActiveScopeSelection(app: Pick<AppContext, "activeScopeType" | "activeWorkspaceId">): void {
+export function persistActiveScopeSelection(app: Pick<WorkspaceUiHelperContext, "activeScopeType" | "activeWorkspaceId">): void {
   try {
     const scope = resolveWorkspaceScopeContext(app);
     localStorage.setItem(STORAGE_KEYS.ACTIVE_SCOPE_TYPE, scope.scopeType);
@@ -125,7 +125,7 @@ export function persistActiveScopeSelection(app: Pick<AppContext, "activeScopeTy
   }
 }
 
-export function loadScopedAppState(app: AppContext): void {
+export function loadScopedAppState(app: WorkspaceUiHelperContext): void {
   const scope = resolveWorkspaceScopeContext(app);
   const lastLotStorageKey = getScopedLastLotStorageKey(scope);
   const storedLastLotId = localStorage.getItem(lastLotStorageKey);
@@ -162,7 +162,7 @@ export function loadScopedAppState(app: AppContext): void {
 }
 
 export async function applyWorkspaceScope(
-  app: AppContext,
+  app: WorkspaceUiHelperContext,
   scopeType: "personal" | "workspace",
   workspaceId: string | null,
   options: {

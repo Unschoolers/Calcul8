@@ -2,6 +2,7 @@ import {
   fetchWorkspacePresenceRealtimeSubscribeToken,
   fetchWorkspaceRealtimeSubscribeToken
 } from "../../workspace-realtime-api.ts";
+import type { WorkspaceRealtimeContext } from "../../../context/workspace.ts";
 import { applyRealtimeMessage } from "./workspace-realtime-events.ts";
 import { runWorkspaceRealtimeCatchUp } from "./workspace-realtime-recovery.ts";
 import {
@@ -14,7 +15,6 @@ import {
   setWorkspaceRealtimeStatus,
   shouldKeepRealtimeSocket,
   shouldReconnectSocket,
-  type RealtimeApp,
   type RealtimeEnvelope,
   type RealtimeSocketState
 } from "./workspace-realtime-state.ts";
@@ -22,7 +22,7 @@ import {
 const WORKSPACE_REALTIME_SUBSCRIBE_FAILED_CLOSE_CODE = 4001;
 const WORKSPACE_REALTIME_SERVER_ERROR_CLOSE_CODE = 4002;
 
-function scheduleRealtimeReconnect(app: RealtimeApp): void {
+function scheduleRealtimeReconnect(app: WorkspaceRealtimeContext): void {
   const state = getRealtimeSocketState(app as object);
   if (state.reconnectTimeoutId != null) return;
 
@@ -36,7 +36,7 @@ function scheduleRealtimeReconnect(app: RealtimeApp): void {
 }
 
 function tryScheduleRealtimeReconnect(
-  app: RealtimeApp,
+  app: WorkspaceRealtimeContext,
   state: RealtimeSocketState,
   desiredRooms: string[]
 ): void {
@@ -52,7 +52,7 @@ function readErrorStatus(error: unknown): number | null {
 }
 
 async function subscribeRealtimeSocket(
-  app: RealtimeApp,
+  app: WorkspaceRealtimeContext,
   state: RealtimeSocketState,
   socket: WebSocket,
   subscribeAttemptId: number,
@@ -62,8 +62,8 @@ async function subscribeRealtimeSocket(
 
   try {
     const subscribeToken = app.currentLotId
-      ? await fetchWorkspaceRealtimeSubscribeToken(app as never, app.currentLotId)
-      : await fetchWorkspacePresenceRealtimeSubscribeToken(app as never);
+      ? await fetchWorkspaceRealtimeSubscribeToken(app, app.currentLotId)
+      : await fetchWorkspacePresenceRealtimeSubscribeToken(app);
     if (
       state.socket !== socket
       || state.subscribeAttemptId !== subscribeAttemptId
@@ -93,7 +93,7 @@ async function subscribeRealtimeSocket(
 }
 
 function attachRealtimeSocketListeners(
-  app: RealtimeApp,
+  app: WorkspaceRealtimeContext,
   state: RealtimeSocketState,
   socket: WebSocket,
   desiredRooms: string[],
@@ -148,7 +148,7 @@ function attachRealtimeSocketListeners(
   });
 }
 
-export function refreshWorkspaceRealtime(app: RealtimeApp): void {
+export function refreshWorkspaceRealtime(app: WorkspaceRealtimeContext): void {
   const realtimeSession = createWorkspaceRealtimeSession(app);
   if (!realtimeSession.desiredSubscription || !realtimeSession.socketUrl) {
     closeRealtimeSocket(app);
@@ -181,7 +181,7 @@ export function refreshWorkspaceRealtime(app: RealtimeApp): void {
   attachRealtimeSocketListeners(app, state, socket, desiredSubscription.rooms, subscribeAttemptId, desiredWorkspaceId);
 }
 
-export function stopWorkspaceRealtime(app: RealtimeApp): void {
+export function stopWorkspaceRealtime(app: WorkspaceRealtimeContext): void {
   closeRealtimeSocket(app);
   resetRealtimeReconnectAttempts(getRealtimeSocketState(app as object));
   app.workspacePresenceByUserId = {};

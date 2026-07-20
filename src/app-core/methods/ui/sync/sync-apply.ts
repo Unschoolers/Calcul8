@@ -1,5 +1,8 @@
 import type { Sale } from "../../../../types/app.ts";
-import type { AppContext } from "../../../context-app.ts";
+import type {
+  SyncParsedSnapshot,
+  SyncSnapshotApplyContext
+} from "../../../context/sync.ts";
 import {
   getSalesCacheStatusKey,
   getScopedPresetsStorageKey,
@@ -14,21 +17,10 @@ import { normalizeWheelConfigs } from "../../../shared/normalize-wheel-config.ts
 import { clearStorageReadFailuresForScope } from "../../../storage-health.ts";
 import { commitLocalStorageWrites, type LocalStorageWrite } from "../../../shared/local-storage-transaction.ts";
 import {
-  parseSyncSnapshotDto,
-  type SyncLotDto,
-  type SyncSalesByLotDto,
-  type SyncWheelConfigDto
+  parseSyncSnapshotDto
 } from "./sync-contracts.ts";
 
-export interface ParsedCloudSnapshot {
-  lots: SyncLotDto[];
-  salesByLot: SyncSalesByLotDto;
-  wheelConfigs: SyncWheelConfigDto[];
-  activeWheelConfigId: number | null;
-  systemPricingDefaults?: AppContext["systemPricingDefaults"];
-  version: number;
-  hasData: boolean;
-}
+export interface ParsedCloudSnapshot extends SyncParsedSnapshot {}
 
 function hasSalesDataByLot(value: Record<string, unknown[]>): boolean {
   return Object.values(value).some((sales) => Array.isArray(sales) && sales.length > 0);
@@ -67,22 +59,7 @@ export function shouldApplyCloudSnapshot(params: {
   return !params.localHasData && params.cloudHasData;
 }
 
-export type SyncApplyApp = Pick<
-  AppContext,
-  | "lots"
-  | "wheelConfigs"
-  | "activeWheelConfigId"
-  | "saveLotsToStorage"
-  | "saveWheelConfigsToStorage"
-  | "getSalesStorageKey"
-  | "currentLotId"
-  | "loadLot"
-  | "sales"
-  | "activeScopeType"
-  | "activeWorkspaceId"
-> & Partial<Pick<AppContext, "systemPricingDefaults" | "saveSystemPricingDefaultsToStorage" | "salesByLotId">>;
-
-export function applyCloudSnapshotToLocal(context: SyncApplyApp, snapshot: ParsedCloudSnapshot): void {
+export function applyCloudSnapshotToLocal(context: SyncSnapshotApplyContext, snapshot: ParsedCloudSnapshot): void {
   const storageScope = getActiveStorageScope(context);
   const todayDate = new Date().toISOString().slice(0, 10);
   const systemPricingDefaults = snapshot.systemPricingDefaults ?? context.systemPricingDefaults;

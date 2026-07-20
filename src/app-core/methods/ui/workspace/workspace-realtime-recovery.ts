@@ -1,12 +1,12 @@
 import { fetchAuthoritativeLivePricing } from "../../lot-live-pricing-api.ts";
 import { fetchAuthoritativeSales } from "../../lot-sales-api.ts";
+import type { WorkspaceRealtimeContext } from "../../../context/workspace.ts";
 import { reconcileIncomingLivePricingSnapshot } from "../sync/lot-entity-polling.ts";
 import { createSyncPayload, getSyncPayloadSignature } from "../sync/sync-payload.ts";
 import {
   clearRealtimeRecoveredTimeout,
   getRealtimeSocketState,
-  setWorkspaceRealtimeStatus,
-  type RealtimeApp
+  setWorkspaceRealtimeStatus
 } from "./workspace-realtime-state.ts";
 
 export type WorkspaceRealtimeCatchUpReason =
@@ -17,7 +17,7 @@ export type WorkspaceRealtimeCatchUpReason =
 
 const RECOVERED_STATUS_MS = 2500;
 
-export function isWorkspaceRealtimeSyncClean(app: RealtimeApp): boolean {
+export function isWorkspaceRealtimeSyncClean(app: WorkspaceRealtimeContext): boolean {
   const expectedSignature = String(app.lastSyncedPayloadHash ?? "").trim();
   if (!expectedSignature) return false;
 
@@ -35,7 +35,7 @@ export function isWorkspaceRealtimeSyncClean(app: RealtimeApp): boolean {
   return currentSignature === expectedSignature;
 }
 
-function markRecoveredThenConnected(app: RealtimeApp): void {
+function markRecoveredThenConnected(app: WorkspaceRealtimeContext): void {
   const state = getRealtimeSocketState(app as object);
   clearRealtimeRecoveredTimeout(state);
   setWorkspaceRealtimeStatus(app, "recovered");
@@ -47,7 +47,7 @@ function markRecoveredThenConnected(app: RealtimeApp): void {
   }, RECOVERED_STATUS_MS));
 }
 
-async function refreshActiveLotState(app: RealtimeApp, lotId: number): Promise<void> {
+async function refreshActiveLotState(app: WorkspaceRealtimeContext, lotId: number): Promise<void> {
   const [sales, livePricing] = await Promise.all([
     fetchAuthoritativeSales(app, lotId),
     fetchAuthoritativeLivePricing(app, lotId)
@@ -62,7 +62,7 @@ async function refreshActiveLotState(app: RealtimeApp, lotId: number): Promise<v
   }
 }
 
-async function performWorkspaceRealtimeCatchUp(app: RealtimeApp): Promise<void> {
+async function performWorkspaceRealtimeCatchUp(app: WorkspaceRealtimeContext): Promise<void> {
   const lotId = Math.floor(Number(app.currentLotId));
   const broadSyncAllowed = isWorkspaceRealtimeSyncClean(app);
 
@@ -84,7 +84,7 @@ async function performWorkspaceRealtimeCatchUp(app: RealtimeApp): Promise<void> 
 }
 
 export async function runWorkspaceRealtimeCatchUp(
-  app: RealtimeApp,
+  app: WorkspaceRealtimeContext,
   _options: { reason: WorkspaceRealtimeCatchUpReason }
 ): Promise<void> {
   const state = getRealtimeSocketState(app as object);

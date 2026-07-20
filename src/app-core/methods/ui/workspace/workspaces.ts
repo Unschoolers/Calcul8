@@ -1,4 +1,4 @@
-import type { AppMethodImplementation } from "../../../context-app.ts";
+import type { WorkspaceMethodImplementation } from "../../../context/workspace.ts";
 import { uiWorkspaceInviteMethods } from "./workspace-invite-methods.ts";
 import { uiWorkspaceMembershipMethods } from "./workspace-membership-methods.ts";
 import { uiWorkspaceRealtimeMethods } from "./workspace-realtime-methods.ts";
@@ -9,4 +9,4 @@ export const uiWorkspaceMethods = {
   ...uiWorkspaceInviteMethods,
   ...uiWorkspaceMembershipMethods,
   ...uiWorkspaceRealtimeMethods
-} satisfies AppMethodImplementation;
+} satisfies WorkspaceMethodImplementation;

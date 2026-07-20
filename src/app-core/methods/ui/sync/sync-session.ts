@@ -1,11 +1,12 @@
 import type { SyncCoordinatorState } from "./sync-coordinator.ts";
 import { getSyncCoordinatorState } from "./sync-coordinator.ts";
-import type { SyncPushOptions, SyncServiceDeps, SyncApp } from "./sync-service.ts";
+import type { SyncServiceContext } from "../../../context/sync.ts";
+import type { SyncPushOptions, SyncServiceDeps } from "./sync-service.ts";
 import { resolveSyncScopeContext, toSyncScopeContext, type SyncScopeContext } from "./sync-scope.ts";
 import type { SyncPayload } from "./sync-payload.ts";
 
 export type SyncSession = {
-  app: SyncApp;
+  app: SyncServiceContext;
   deps: SyncServiceDeps;
   scope: SyncScopeContext;
   state: SyncCoordinatorState;
@@ -23,7 +24,7 @@ export type SyncSession = {
 };
 
 export function createSyncSession(
-  app: SyncApp,
+  app: SyncServiceContext,
   deps: SyncServiceDeps,
   options: SyncPushOptions = {}
 ): SyncSession {

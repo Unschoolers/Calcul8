@@ -4,6 +4,7 @@ import type { CommerceComputedState, CommerceMethodState } from "./context/comme
 import type { EntitlementMethodState } from "./context/entitlements.ts";
 import type { GameMethodState } from "./context/game.ts";
 import type { PortfolioComputedState, PortfolioMethodState } from "./context/portfolio.ts";
+import type { SyncComputedState, SyncMethodState } from "./context/sync.ts";
 import type {
   AppVueContext,
   RuntimeComputedState,
@@ -21,6 +22,7 @@ export interface AppComputedState extends
   AuthComputedState,
   CommerceComputedState,
   PortfolioComputedState,
+  SyncComputedState,
   WorkspaceComputedState,
   WhatnotComputedState {}
 
@@ -30,6 +32,7 @@ export interface AppMethodState extends
   EntitlementMethodState,
   CommerceMethodState,
   PortfolioMethodState,
+  SyncMethodState,
   WorkspaceMethodState,
   WhatnotMethodState,
   GameMethodState {}

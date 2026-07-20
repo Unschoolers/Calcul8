@@ -51,7 +51,34 @@ export type {
   RuntimeMethodState
 } from "./context/runtime.ts";
 export type { WhatnotComputedState, WhatnotMethodState } from "./context/whatnot.ts";
-export type { WorkspaceComputedState, WorkspaceMethodState } from "./context/workspace.ts";
+export type {
+  SyncComputedState,
+  SyncMethodImplementation,
+  SyncMethodState,
+  SyncParsedSnapshot,
+  SyncPayloadContext,
+  SyncPollingContext,
+  SyncServiceContext,
+  SyncSessionContext,
+  SyncSnapshotApplyContext,
+  SyncStatusContext
+} from "./context/sync.ts";
+export type {
+  WorkspaceApiContext,
+  WorkspaceComputedState,
+  WorkspaceInviteContext,
+  WorkspaceInviteMethodImplementation,
+  WorkspaceMembershipContext,
+  WorkspaceMembershipMethodContext,
+  WorkspaceMembershipMethodImplementation,
+  WorkspaceMethodImplementation,
+  WorkspaceMethodState,
+  WorkspaceRealtimeContext,
+  WorkspaceRealtimeMethodImplementation,
+  WorkspaceScopeMethodContext,
+  WorkspaceScopeMethodImplementation,
+  WorkspaceUiHelperContext
+} from "./context/workspace.ts";
 export type {
   AppWatchObject,
   PurchaseCostInputComputed,

@@ -1,4 +1,4 @@
-import type { AppMethodImplementation } from "../../../context-app.ts";
+import type { WorkspaceScopeMethodImplementation } from "../../../context/workspace.ts";
 import { createSyncPayload } from "../sync/sync-payload.ts";
 import { runCloudSyncPush } from "../sync/sync-service.ts";
 import { resolveApiBaseUrl } from "../common/shared.ts";
@@ -208,4 +208,4 @@ export const uiWorkspaceScopeMethods = {
 
     this.notify("You no longer have access to that workspace. Switched back to Personal.", "warning");
   }
-} satisfies AppMethodImplementation;
+} satisfies WorkspaceScopeMethodImplementation;

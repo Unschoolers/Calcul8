@@ -118,17 +118,8 @@ test("aggregate app context dependencies cannot spread to new source files", () 
     "src/app-core/methods/ui/common/onboarding.ts",
     "src/app-core/methods/ui/spectator/game-spectator.ts",
     "src/app-core/methods/ui/spectator/wheel-broadcast.ts",
-    "src/app-core/methods/ui/sync/lot-entity-polling.ts",
-    "src/app-core/methods/ui/sync/sync-apply.ts",
-    "src/app-core/methods/ui/sync/sync-payload.ts",
-    "src/app-core/methods/ui/sync/sync-service.ts",
-    "src/app-core/methods/ui/sync/sync-status.ts",
     "src/app-core/methods/ui/whatnot/whatnot-http.ts",
     "src/app-core/methods/ui/whatnot/whatnot-types.ts",
-    "src/app-core/methods/ui/workspace/workspace-api.ts",
-    "src/app-core/methods/ui/workspace/workspace-members.ts",
-    "src/app-core/methods/ui/workspace/workspace-realtime-state.ts",
-    "src/app-core/methods/ui/workspace/workspace-ui-helpers.ts",
     "src/app-core/watch.ts",
     "src/components/windows/game/coordinator/gameControllerState.ts"
   ]);
@@ -145,13 +136,7 @@ test("aggregate app context dependencies cannot spread to new source files", () 
     "src/app-core/methods/ui/buyers/buyer-profiles.ts",
     "src/app-core/methods/ui/common/base.ts",
     "src/app-core/methods/ui/common/onboarding.ts",
-    "src/app-core/methods/ui/sync/sync.ts",
     "src/app-core/methods/ui/whatnot/whatnot.ts",
-    "src/app-core/methods/ui/workspace/workspace-invite-methods.ts",
-    "src/app-core/methods/ui/workspace/workspace-membership-methods.ts",
-    "src/app-core/methods/ui/workspace/workspace-realtime-methods.ts",
-    "src/app-core/methods/ui/workspace/workspace-scope-methods.ts",
-    "src/app-core/methods/ui/workspace/workspaces.ts",
     "src/app-core/methods/ui.ts"
   ]);
   const allowedAppComputedObjectFiles = new Set([
@@ -161,8 +146,7 @@ test("aggregate app context dependencies cannot spread to new source files", () 
   ]);
   const allowedAppContextCastFiles = new Set([
     "src/app-core/methods/config-live-pricing.ts",
-    "src/app-core/methods/ui/spectator/game-spectator.ts",
-    "src/app-core/methods/ui/workspace/workspace-members.ts"
+    "src/app-core/methods/ui/spectator/game-spectator.ts"
   ]);
   const aggregateDependencies = [
     { name: "AppContext", pattern: /\bAppContext\b/, allowedFiles: allowedAppContextFiles },
@@ -204,6 +188,26 @@ test("identity and entitlement domains use only focused context contracts", () =
   }
 });
 
+test("workspace and sync domains use only focused context contracts", () => {
+  const domainSources = [
+    ...readTypeScriptSources("src/app-core/methods/ui/workspace"),
+    ...readTypeScriptSources("src/app-core/methods/ui/sync")
+  ];
+
+  for (const dependency of [
+    { name: "AppContext", pattern: /\bAppContext\b/ },
+    { name: "AppMethodImplementation", pattern: /\bAppMethodImplementation\b/ },
+    { name: "AppComputedObject", pattern: /\bAppComputedObject\b/ },
+    { name: "as AppContext", pattern: /\bas\s+AppContext\b/ }
+  ]) {
+    assert.deepEqual(
+      findSourceConsumers(domainSources, dependency.pattern, new Set()),
+      [],
+      `${dependency.name} must not be consumed by workspace or sync modules`
+    );
+  }
+});
+
 test("the app context is composed from focused feature contracts", () => {
   const aggregate = readSource("src/app-core/context-app.ts");
   const featureContractFiles = [
@@ -213,6 +217,7 @@ test("the app context is composed from focused feature contracts", () => {
     "src/app-core/context/commerce.ts",
     "src/app-core/context/entitlements.ts",
     "src/app-core/context/portfolio.ts",
+    "src/app-core/context/sync.ts",
     "src/app-core/context/workspace.ts"
   ];
 
@@ -227,6 +232,7 @@ test("the app context is composed from focused feature contracts", () => {
     "AuthComputedState",
     "CommerceComputedState",
     "PortfolioComputedState",
+    "SyncComputedState",
     "WorkspaceComputedState",
     "WhatnotComputedState",
     "RuntimeMethodState",
@@ -234,6 +240,7 @@ test("the app context is composed from focused feature contracts", () => {
     "CommerceMethodState",
     "EntitlementMethodState",
     "PortfolioMethodState",
+    "SyncMethodState",
     "WorkspaceMethodState",
     "WhatnotMethodState",
     "GameMethodState"

@@ -1,4 +1,4 @@
-import type { AppContext } from "../../../context-app.ts";
+import type { SyncServiceContext } from "../../../context/sync.ts";
 import {
   getScopedLastSyncedPayloadHashKey,
   getScopedSyncClientVersionKey,
@@ -23,51 +23,21 @@ import { createSyncSession } from "./sync-session.ts";
 import type { SyncScopeContext } from "./sync-scope.ts";
 import { setSyncStatusError, setSyncStatusSuccess, startSyncStatus } from "./sync-status.ts";
 
-export type SyncApp = Pick<
-  AppContext,
-  | "lots"
-  | "sales"
-  | "wheelConfigs"
-  | "activeWheelConfigId"
-  | "currentLotId"
-  | "cloudSyncIntervalId"
-  | "syncStatusResetTimeoutId"
-  | "syncStatus"
-  | "isOffline"
-  | "lastSyncedPayloadHash"
-  | "systemPricingDefaults"
-  | "googleAuthEpoch"
-  | "hasProAccess"
-  | "activeScopeType"
-  | "activeWorkspaceId"
-  | "loadSalesForLotId"
-  | "getSalesStorageKey"
-  | "saveLotsToStorage"
-  | "saveWheelConfigsToStorage"
-  | "saveSystemPricingDefaultsToStorage"
-  | "loadLot"
-  | "notify"
-  | "startOfflineReconnectScheduler"
-  | "pullCloudSync"
-  | "stopCloudSyncScheduler"
-  | "handleWorkspaceAccessLost"
->;
-
 export type SyncServiceDeps = {
   resolveApiBaseUrl: () => string;
   isOnline: () => boolean;
   requestCloudSyncPull: typeof requestCloudSyncPull;
   requestCloudSyncPush: typeof requestCloudSyncPush;
-  createSyncPayload: (app: SyncApp, clientVersion?: number, scope?: SyncScopeContext) => SyncPayload;
+  createSyncPayload: (app: SyncServiceContext, clientVersion?: number, scope?: SyncScopeContext) => SyncPayload;
   getSyncPayloadSignature: (payload: SyncPayload) => string;
   parseCloudSnapshot: (snapshot: unknown) => ParsedCloudSnapshot;
   shouldApplyCloudSnapshot: typeof shouldApplyCloudSnapshot;
-  applyCloudSnapshotToLocal: (app: SyncApp, snapshot: ParsedCloudSnapshot) => void;
-  startSyncStatus: (app: SyncApp) => void;
-  setSyncStatusSuccess: (app: SyncApp) => void;
-  setSyncStatusError: (app: SyncApp) => void;
+  applyCloudSnapshotToLocal: (app: SyncServiceContext, snapshot: ParsedCloudSnapshot) => void;
+  startSyncStatus: (app: SyncServiceContext) => void;
+  setSyncStatusSuccess: (app: SyncServiceContext) => void;
+  setSyncStatusError: (app: SyncServiceContext) => void;
   handlePushConflict: typeof handleSyncPushConflict;
-  handleExpiredAuth: (app: Pick<SyncApp, "googleAuthEpoch" | "hasProAccess">) => void;
+  handleExpiredAuth: (app: Pick<SyncServiceContext, "googleAuthEpoch" | "hasProAccess">) => void;
   getStoredClientVersion: (scope: AppStorageScope) => number;
   setStoredClientVersion: (scope: AppStorageScope, version: number) => void;
   setStoredLastSyncedPayloadHash: (scope: AppStorageScope, signature: string | null) => void;
@@ -135,7 +105,7 @@ const defaultDeps: SyncServiceDeps = {
 };
 
 export async function runCloudSyncPull(
-  app: SyncApp,
+  app: SyncServiceContext,
   deps: Partial<SyncServiceDeps> = {},
   options: SyncPullOptions = {}
 ): Promise<void> {
@@ -155,21 +125,21 @@ export async function runCloudSyncPull(
   return scheduleSyncDrain(session);
 }
 
-export function startCloudSyncScheduler(app: SyncApp, deps: Partial<SyncServiceDeps> = {}): void {
+export function startCloudSyncScheduler(app: SyncServiceContext, deps: Partial<SyncServiceDeps> = {}): void {
   if (app.cloudSyncIntervalId != null) return;
   app.cloudSyncIntervalId = window.setInterval(() => {
     void runCloudSyncPush(app, false, deps);
   }, CLOUD_SYNC_INTERVAL_MS);
 }
 
-export function stopCloudSyncScheduler(app: Pick<SyncApp, "cloudSyncIntervalId">): void {
+export function stopCloudSyncScheduler(app: Pick<SyncServiceContext, "cloudSyncIntervalId">): void {
   if (app.cloudSyncIntervalId == null) return;
   window.clearInterval(app.cloudSyncIntervalId);
   app.cloudSyncIntervalId = null;
 }
 
 export async function runCloudSyncPush(
-  app: SyncApp,
+  app: SyncServiceContext,
   force = false,
   deps: Partial<SyncServiceDeps> = {},
   options: SyncPushOptions = {}

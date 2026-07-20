@@ -1,9 +1,10 @@
-import type { SyncApp, SyncPushOptions } from "./sync-service.ts";
+import type { SyncServiceContext } from "../../../context/sync.ts";
+import type { SyncPushOptions } from "./sync-service.ts";
 import type { SyncServiceDeps } from "./sync-service.ts";
 import type { SyncScopeContext } from "./sync-scope.ts";
 
 export type SyncPushConflictPolicyArgs = {
-  app: SyncApp;
+  app: SyncServiceContext;
   deps: SyncServiceDeps;
   scope: SyncScopeContext;
   options: SyncPushOptions;

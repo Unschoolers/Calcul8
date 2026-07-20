@@ -1,7 +1,6 @@
-import type { AppContext } from "../../../context-app.ts";
-export type SyncStatusApp = Pick<AppContext, "syncStatus" | "syncStatusResetTimeoutId">;
+import type { SyncStatusContext } from "../../../context/sync.ts";
 
-export function startSyncStatus(context: SyncStatusApp): void {
+export function startSyncStatus(context: SyncStatusContext): void {
   context.syncStatus = "syncing";
   if (context.syncStatusResetTimeoutId != null) {
     window.clearTimeout(context.syncStatusResetTimeoutId);
@@ -9,7 +8,7 @@ export function startSyncStatus(context: SyncStatusApp): void {
   }
 }
 
-export function setSyncStatusSuccess(context: SyncStatusApp): void {
+export function setSyncStatusSuccess(context: SyncStatusContext): void {
   context.syncStatus = "success";
   if (context.syncStatusResetTimeoutId != null) {
     window.clearTimeout(context.syncStatusResetTimeoutId);
@@ -17,7 +16,7 @@ export function setSyncStatusSuccess(context: SyncStatusApp): void {
   }
 }
 
-export function setSyncStatusError(context: SyncStatusApp): void {
+export function setSyncStatusError(context: SyncStatusContext): void {
   context.syncStatus = "error";
   if (context.syncStatusResetTimeoutId != null) {
     window.clearTimeout(context.syncStatusResetTimeoutId);

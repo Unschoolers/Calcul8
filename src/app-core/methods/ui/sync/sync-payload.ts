@@ -1,4 +1,4 @@
-import type { AppContext } from "../../../context-app.ts";
+import type { SyncPayloadContext } from "../../../context/sync.ts";
 import { normalizeSystemPricingDefaults } from "../../../shared/system-pricing-defaults.ts";
 import {
   normalizeOptionalSyncId,
@@ -8,11 +8,6 @@ import {
 } from "./sync-contracts.ts";
 
 export type SyncPayload = SyncPayloadDto;
-
-export type SyncPayloadContext = Pick<
-  AppContext,
-  "lots" | "currentLotId" | "sales" | "loadSalesForLotId" | "wheelConfigs" | "activeWheelConfigId"
-> & Partial<Pick<AppContext, "systemPricingDefaults">> & { workspaceId?: unknown };
 
 export function createSyncPayload(context: SyncPayloadContext, clientVersion?: number): SyncPayload {
   const payload: SyncPayload = {

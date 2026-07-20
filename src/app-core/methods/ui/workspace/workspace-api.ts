@@ -1,4 +1,4 @@
-import type { AppContext } from "../../../context-app.ts";
+import type { WorkspaceApiContext } from "../../../context/workspace.ts";
 import { fetchWithRetry, handleExpiredAuth, resolveApiBaseUrl } from "../common/shared.ts";
 import {
   buildAuthenticatedHeaders,
@@ -15,7 +15,7 @@ export function getGoogleIdToken(): string {
 }
 
 export async function fetchWorkspaceJson(
-  app: AppContext,
+  app: WorkspaceApiContext,
   path: string,
   init: RequestInit,
   fallbackMessage: string,

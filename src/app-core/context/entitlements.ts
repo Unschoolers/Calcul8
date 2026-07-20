@@ -7,7 +7,7 @@ import type {
   RuntimeComputedState,
   RuntimeMethodState
 } from "./runtime.ts";
-import type { WorkspaceMethodState } from "./workspace.ts";
+import type { SyncMethodState } from "./sync.ts";
 
 export interface EntitlementMethodState {
   accessProFeature(target: "autoCalculate" | "portfolioReport" | "salesTracking" | "expertMode"): Promise<void>;
@@ -75,7 +75,7 @@ export type EntitlementStatusContext = Pick<
 > &
   TargetProfitAccessContext &
   Pick<RuntimeMethodState, "notify" | "startOfflineReconnectScheduler"> &
-  Pick<WorkspaceMethodState, "pullCloudSync">;
+  Pick<SyncMethodState, "pullCloudSync">;
 
 export type PurchaseVerificationContext = AuthEntitlementSessionContext &
   Pick<RuntimeMethodState, "notify"> &

@@ -1,10 +1,10 @@
 import type { Sale } from "../../../../types/app.ts";
+import type { WorkspaceRealtimeContext } from "../../../context/workspace.ts";
 import { getActiveWorkspaceId, resolveWorkspaceScopeContext } from "../../../workspace-scope.ts";
 import { removeById, upsertById } from "../../../shared/collection-updaters.ts";
 import { normalizeWheelConfigs } from "../../../shared/normalize-wheel-config.ts";
 import {
   applyRootWheelSessionSnapshot,
-  type RootWheelSessionStateContext
 } from "../../../shared/wheel-root-session-state.ts";
 import {
   cacheAuthoritativeSales,
@@ -20,29 +20,28 @@ import {
 } from "./workspace-realtime-recovery.ts";
 import {
   getDesiredRealtimeSubscription,
-  type RealtimeApp,
   type RealtimeEventPayload
 } from "./workspace-realtime-state.ts";
 
-function upsertRealtimeSale(app: RealtimeApp, lotId: number, nextSale: Sale): void {
+function upsertRealtimeSale(app: WorkspaceRealtimeContext, lotId: number, nextSale: Sale): void {
   if (app.currentLotId !== lotId) return;
 
   app.sales = upsertById(app.sales, nextSale);
-  cacheAuthoritativeSales(app as never, lotId, app.sales);
+  cacheAuthoritativeSales(app, lotId, app.sales);
 }
 
-function deleteRealtimeSale(app: RealtimeApp, lotId: number, saleId: number): void {
+function deleteRealtimeSale(app: WorkspaceRealtimeContext, lotId: number, saleId: number): void {
   if (app.currentLotId !== lotId) return;
 
   const nextSales = removeById(app.sales, saleId);
   if (nextSales.length === app.sales.length) return;
 
   app.sales = nextSales;
-  cacheAuthoritativeSales(app as never, lotId, nextSales);
+  cacheAuthoritativeSales(app, lotId, nextSales);
 }
 
 function applyWorkspacePresenceSnapshot(
-  app: RealtimeApp,
+  app: WorkspaceRealtimeContext,
   data: unknown
 ): void {
   const raw = typeof data === "object" && data !== null && !Array.isArray(data)
@@ -70,7 +69,7 @@ function applyWorkspacePresenceSnapshot(
   app.workspacePresenceByUserId = nextPresenceByUserId;
 }
 
-function parseRealtimeEventPayload(app: RealtimeApp, data: unknown): RealtimeEventPayload | null {
+function parseRealtimeEventPayload(app: WorkspaceRealtimeContext, data: unknown): RealtimeEventPayload | null {
   const raw = typeof data === "object" && data !== null && !Array.isArray(data)
     ? data as Record<string, unknown>
     : {};
@@ -82,33 +81,33 @@ function parseRealtimeEventPayload(app: RealtimeApp, data: unknown): RealtimeEve
   };
 }
 
-function handleSaleUpsertEvent(app: RealtimeApp, payload: RealtimeEventPayload): void {
+function handleSaleUpsertEvent(app: WorkspaceRealtimeContext, payload: RealtimeEventPayload): void {
   const sale = normalizeSale(payload.raw.sale);
   if (sale) {
     upsertRealtimeSale(app, payload.lotId, sale);
   }
 }
 
-function handleSaleDeletedEvent(app: RealtimeApp, payload: RealtimeEventPayload): void {
+function handleSaleDeletedEvent(app: WorkspaceRealtimeContext, payload: RealtimeEventPayload): void {
   const saleId = Number(payload.raw.saleId);
   if (Number.isFinite(saleId) && saleId > 0) {
     deleteRealtimeSale(app, payload.lotId, Math.floor(saleId));
   }
 }
 
-function handleLivePricingUpdatedEvent(app: RealtimeApp, payload: RealtimeEventPayload): void {
+function handleLivePricingUpdatedEvent(app: WorkspaceRealtimeContext, payload: RealtimeEventPayload): void {
   const livePricing = normalizeLivePricing(payload.raw.livePricing);
   if (livePricing && app.currentLotId === payload.lotId) {
     reconcileIncomingLivePricingSnapshot(app, livePricing);
   }
 }
 
-function handleLotConfigUpdatedEvent(app: RealtimeApp, payload: RealtimeEventPayload): void {
+function handleLotConfigUpdatedEvent(app: WorkspaceRealtimeContext, payload: RealtimeEventPayload): void {
   if (app.currentLotId !== payload.lotId) return;
   void runWorkspaceRealtimeCatchUp(app, { reason: "uncertain-event" });
 }
 
-function handleWheelSessionUpdatedEvent(app: RealtimeApp, data: unknown): void {
+function handleWheelSessionUpdatedEvent(app: WorkspaceRealtimeContext, data: unknown): void {
   const scope = resolveWorkspaceScopeContext(app);
   if (!scope.isWorkspace) return;
 
@@ -133,13 +132,13 @@ function handleWheelSessionUpdatedEvent(app: RealtimeApp, data: unknown): void {
     return;
   }
 
-  applyRootWheelSessionSnapshot(app as unknown as RootWheelSessionStateContext, {
+  applyRootWheelSessionSnapshot(app, {
     ...session,
     wheelSessionUpdatedAt: incomingUpdatedAt > 0 ? incomingUpdatedAt : Date.now()
   });
 }
 
-export function applyRealtimeMessage(app: RealtimeApp, room: string, eventType: string, data: unknown): void {
+export function applyRealtimeMessage(app: WorkspaceRealtimeContext, room: string, eventType: string, data: unknown): void {
   const desiredSubscription = getDesiredRealtimeSubscription(app);
   if (!desiredSubscription || !desiredSubscription.rooms.includes(room)) return;
 

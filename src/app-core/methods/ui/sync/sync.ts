@@ -1,4 +1,4 @@
-import type { AppMethodImplementation } from "../../../context-app.ts";
+import type { SyncMethodImplementation } from "../../../context/sync.ts";
 import {
   runCloudSyncPull,
   runCloudSyncPush,
@@ -25,5 +25,5 @@ export const uiSyncMethods = {
   ): Promise<void> {
     await runCloudSyncPush(this, force, {}, options);
   }
-} satisfies AppMethodImplementation;
+} satisfies SyncMethodImplementation;
 

@@ -1,9 +1,16 @@
 import type {
+  AppState,
   BuyerProfile,
   WorkspaceMember,
   WorkspacePresenceState,
   WorkspaceSummary
 } from "../../types/app.ts";
+import type { AuthComputedState, AuthSessionBootstrapContext } from "./auth.ts";
+import type { CommerceMethodState } from "./commerce.ts";
+import type { GameMethodState } from "./game.ts";
+import type { RuntimeMethodState, FeatureMethodImplementation } from "./runtime.ts";
+import type { SyncMethodState, SyncServiceContext } from "./sync.ts";
+import type { RootWheelSessionStateContext } from "../shared/wheel-root-session-state.ts";
 
 export interface WorkspaceComputedState {
   isWorkspaceScopeActive: boolean;
@@ -15,29 +22,17 @@ export interface WorkspaceComputedState {
   isCurrentWorkspaceOwner: boolean;
   activeWorkspaceVisibleMembers: WorkspaceMember[];
   activeWorkspaceOverflowMemberCount: number;
-  accountSyncBadgeVisible: boolean;
-  accountSyncBadgeClass: string;
-  accountSyncIcon: string;
-  accountSyncIconSize: number;
-  accountSyncIconClass: string;
   workspaceRealtimeTitle: string;
   workspaceRealtimeSubtitle: string;
   workspaceRealtimeIcon: string;
   workspaceRealtimeManualRefreshVisible: boolean;
   workspaceRealtimeManualRefreshLabel: string;
-  syncStatusTitle: string;
-  syncStatusSubtitle: string;
-  syncStatusIcon: string;
   pendingWorkspaceInviteTargetName: string;
   authGateTitle: string;
   authGateSubtitle: string;
 }
 
 export interface WorkspaceMethodState {
-  pullCloudSync(forceApply?: boolean): Promise<void>;
-  pushCloudSync(force?: boolean, options?: { allowEmptyOverwrite?: boolean }): Promise<void>;
-  startCloudSyncScheduler(): void;
-  stopCloudSyncScheduler(): void;
   refreshWorkspaces(): Promise<boolean>;
   switchToPersonalWorkspace(): Promise<void>;
   switchToWorkspace(workspaceId: string): Promise<void>;
@@ -60,3 +55,175 @@ export interface WorkspaceMethodState {
   retryPendingBuyerProfiles(): Promise<void>;
   resolveBuyerProfileConflict(username: string, strategy: "retry" | "reload"): Promise<"saved" | "pending" | "error" | "reloaded">;
 }
+
+/** Capabilities used by authenticated workspace HTTP requests. */
+export type WorkspaceApiContext = AuthSessionBootstrapContext &
+  Pick<AppState, "hasProAccess"> &
+  Pick<RuntimeMethodState, "notify">;
+
+export type WorkspaceMembershipContext = WorkspaceApiContext &
+  Pick<
+    AppState,
+    | "activeWorkspaceId"
+    | "workspaceMembers"
+    | "workspacePresenceByUserId"
+    | "workspaceRealtimeStatus"
+    | "isWorkspaceMembersLoading"
+    | "leaveWorkspaceTransferMemberUserId"
+  > &
+  Pick<AuthComputedState, "googleProfileUserId">;
+
+export type WorkspaceInviteContext = WorkspaceApiContext &
+  Pick<
+    AppState,
+    | "activeWorkspaceId"
+    | "isCreatingWorkspaceJoinLink"
+    | "isResolvingWorkspaceInvite"
+    | "isAcceptingWorkspaceInvite"
+    | "pendingWorkspaceInviteToken"
+    | "pendingWorkspaceInviteWorkspaceId"
+    | "pendingWorkspaceInviteWorkspaceName"
+    | "showWorkspaceJoinDialog"
+  > &
+  Pick<WorkspaceMethodState, "refreshWorkspaces" | "switchToWorkspace">;
+
+export type WorkspaceUiHelperContext = Pick<
+  AppState,
+  | "pendingWorkspaceInviteToken"
+  | "pendingWorkspaceInviteWorkspaceId"
+  | "pendingWorkspaceInviteWorkspaceName"
+  | "showWorkspaceJoinDialog"
+  | "activeScopeType"
+  | "activeWorkspaceId"
+  | "workspaceMembers"
+  | "workspacePresenceByUserId"
+  | "lots"
+  | "currentLotId"
+  | "sales"
+  | "singlesPurchases"
+  | "currentTab"
+  | "lastSyncedPayloadHash"
+> &
+  Pick<CommerceMethodState, "loadLotsFromStorage" | "loadLot" | "clearLiveSinglesSelection"> &
+  Pick<GameMethodState, "loadWheelFromStorage"> &
+  Pick<RuntimeMethodState, "syncGuidedOnboarding"> &
+  Pick<SyncMethodState, "pullCloudSync">;
+
+export type WorkspaceScopeMethodContext = WorkspaceApiContext &
+  WorkspaceUiHelperContext &
+  WorkspaceMembershipContext &
+  SyncServiceContext &
+  Pick<
+    AppState,
+    | "availableWorkspaces"
+    | "isWorkspaceLoading"
+    | "isCreatingWorkspace"
+    | "newWorkspaceName"
+    | "newWorkspaceIdempotencyKey"
+    | "newWorkspaceIdempotencyName"
+    | "showCreateWorkspaceModal"
+    | "preferredLanguage"
+  > &
+  Pick<WorkspaceMethodState, "refreshWorkspaces" | "switchToWorkspace">;
+
+export type WorkspaceMembershipMethodContext = WorkspaceMembershipContext &
+  WorkspaceUiHelperContext &
+  Pick<
+    AppState,
+    | "showWorkspaceMembersModal"
+    | "showLeaveWorkspaceModal"
+    | "leaveWorkspaceDeleteConfirmation"
+    | "isLeavingWorkspace"
+  > &
+  Pick<WorkspaceComputedState, "isCurrentWorkspaceOwner"> &
+  Pick<WorkspaceMethodState, "openWorkspaceMembersModal" | "refreshWorkspaces">;
+
+export type WorkspaceRealtimeContext = Pick<
+  AppState,
+  | "activeScopeType"
+  | "activeWorkspaceId"
+  | "currentLotId"
+  | "currentTab"
+  | "isOffline"
+  | "lots"
+  | "lastSyncedPayloadHash"
+  | "systemPricingDefaults"
+  | "sales"
+  | "liveSpotPrice"
+  | "liveBoxPriceSell"
+  | "livePackPrice"
+  | "currentLivePricingVersion"
+  | "workspaceRealtimeStatus"
+  | "workspacePresenceByUserId"
+  | "wheelConfigs"
+  | "activeWheelConfigId"
+> &
+  Pick<CommerceMethodState, "loadSalesForLotId" | "getSalesStorageKey"> &
+  Pick<SyncMethodState, "pullCloudSync"> &
+  Pick<WorkspaceMethodState, "hydrateBuyerProfiles" | "handleWorkspaceAccessLost"> &
+  WorkspaceApiContext &
+  RootWheelSessionStateContext;
+
+export type WorkspaceScopeMethodImplementation = FeatureMethodImplementation<
+  WorkspaceScopeMethodContext,
+  Pick<
+    WorkspaceMethodState,
+    | "refreshWorkspaces"
+    | "switchToPersonalWorkspace"
+    | "switchToWorkspace"
+    | "createWorkspace"
+    | "handleWorkspaceAccessLost"
+  >
+>;
+
+export type WorkspaceInviteMethodImplementation = FeatureMethodImplementation<
+  WorkspaceInviteContext,
+  Pick<
+    WorkspaceMethodState,
+    | "createWorkspaceJoinLink"
+    | "previewPendingWorkspaceInvite"
+    | "acceptPendingWorkspaceInvite"
+    | "dismissPendingWorkspaceInvite"
+  >
+>;
+
+export type WorkspaceMembershipMethodImplementation = FeatureMethodImplementation<
+  WorkspaceMembershipMethodContext,
+  Pick<
+    WorkspaceMethodState,
+    | "openWorkspaceMembersModal"
+    | "openLeaveWorkspaceModal"
+    | "leaveCurrentWorkspace"
+    | "removeWorkspaceMember"
+    | "getWorkspaceMemberPresenceState"
+    | "getWorkspaceMemberPresenceLabel"
+  >
+>;
+
+export type WorkspaceRealtimeMethodImplementation = FeatureMethodImplementation<
+  WorkspaceRealtimeContext,
+  Pick<WorkspaceMethodState, "recoverWorkspaceRealtimeNow">
+>;
+
+export type WorkspaceMethodImplementation = FeatureMethodImplementation<
+  WorkspaceScopeMethodContext & WorkspaceInviteContext & WorkspaceMembershipMethodContext & WorkspaceRealtimeContext,
+  Pick<
+    WorkspaceMethodState,
+    | "refreshWorkspaces"
+    | "switchToPersonalWorkspace"
+    | "switchToWorkspace"
+    | "createWorkspace"
+    | "handleWorkspaceAccessLost"
+    | "createWorkspaceJoinLink"
+    | "previewPendingWorkspaceInvite"
+    | "acceptPendingWorkspaceInvite"
+    | "dismissPendingWorkspaceInvite"
+    | "openWorkspaceMembersModal"
+    | "openLeaveWorkspaceModal"
+    | "leaveCurrentWorkspace"
+    | "removeWorkspaceMember"
+    | "getWorkspaceMemberPresenceState"
+    | "getWorkspaceMemberPresenceLabel"
+    | "recoverWorkspaceRealtimeNow"
+  >
+>;

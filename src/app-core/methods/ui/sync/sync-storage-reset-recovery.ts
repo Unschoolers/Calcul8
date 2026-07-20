@@ -3,7 +3,8 @@ import {
   getSalesStorageKey as getScopedSalesStorageKey
 } from "../../../storageKeys.ts";
 import type { SyncSession } from "./sync-session.ts";
-import type { SyncApp, SyncServiceDeps } from "./sync-service.ts";
+import type { SyncServiceContext } from "../../../context/sync.ts";
+import type { SyncServiceDeps } from "./sync-service.ts";
 import type { SyncScopeContext } from "./sync-scope.ts";
 import { hasStorageReadFailure } from "../../../storage-health.ts";
 
@@ -13,7 +14,7 @@ type SyncRecoveryState = {
   __syncStorageResetRecoveryAtMs?: number;
 };
 
-export function isLocalSyncCacheReset(app: SyncApp, deps: SyncServiceDeps, scope: SyncScopeContext): boolean {
+export function isLocalSyncCacheReset(app: SyncServiceContext, deps: SyncServiceDeps, scope: SyncScopeContext): boolean {
   if (hasStorageReadFailure(app, scope)) return true;
   if (!app.lastSyncedPayloadHash) return false;
   if (!Array.isArray(app.lots) || app.lots.length === 0) return false;
@@ -29,8 +30,8 @@ export function isLocalSyncCacheReset(app: SyncApp, deps: SyncServiceDeps, scope
   }
 }
 
-export function shouldAttemptStorageResetRecovery(app: SyncApp, deps: SyncServiceDeps): boolean {
-  const state = app as SyncApp & SyncRecoveryState;
+export function shouldAttemptStorageResetRecovery(app: SyncServiceContext, deps: SyncServiceDeps): boolean {
+  const state = app as SyncServiceContext & SyncRecoveryState;
   const nowMs = deps.now();
   const lastAttemptMs = Number(state.__syncStorageResetRecoveryAtMs ?? 0);
   if (Number.isFinite(lastAttemptMs) && lastAttemptMs > 0 && nowMs - lastAttemptMs < STORAGE_RESET_RECOVERY_COOLDOWN_MS) {

@@ -1,4 +1,4 @@
-import type { AppMethodImplementation } from "../../../context-app.ts";
+import type { WorkspaceInviteMethodImplementation } from "../../../context/workspace.ts";
 import {
   clearInviteQueryParam,
   resetPendingWorkspaceInviteState,
@@ -132,4 +132,4 @@ export const uiWorkspaceInviteMethods = {
     resetPendingWorkspaceInviteState(this);
     clearInviteQueryParam();
   }
-} satisfies AppMethodImplementation;
+} satisfies WorkspaceInviteMethodImplementation;

@@ -4,45 +4,9 @@ import {
   buildWorkspaceWheelRealtimeRoom
 } from "../../../../../shared/workspace-realtime-rooms.mjs";
 import type { WorkspaceRealtimeStatus } from "../../../../types/app.ts";
-import type { AppContext } from "../../../context-app.ts";
-import type { RootWheelSessionStateContext } from "../../../shared/wheel-root-session-state.ts";
+import type { WorkspaceRealtimeContext } from "../../../context/workspace.ts";
 import { resolveWorkspaceScopeContext, type WorkspaceScopeContext } from "../../../workspace-scope.ts";
 import { canUseAuthoritativeSalesLiveApi } from "../../entity-api-shared.ts";
-
-export type RealtimeApp = Pick<
-  AppContext,
-  | "activeScopeType"
-  | "activeWorkspaceId"
-  | "currentLotId"
-  | "currentTab"
-  | "isOffline"
-  | "lots"
-  | "lastSyncedPayloadHash"
-  | "systemPricingDefaults"
-  | "sales"
-  | "liveSpotPrice"
-  | "liveBoxPriceSell"
-  | "livePackPrice"
-  | "currentLivePricingVersion"
-  | "loadSalesForLotId"
-  | "pullCloudSync"
-  | "hydrateBuyerProfiles"
-  | "handleWorkspaceAccessLost"
-  | "getSalesStorageKey"
-  | "googleAuthEpoch"
-  | "hasProAccess"
-  | "notify"
-  | "workspaceRealtimeStatus"
-  | "workspacePresenceByUserId"
-  | "wheelConfigs"
-  | "activeWheelConfigId"
-  | "wheelTotalSpins"
-  | "wheelSpinCounts"
-  | "wheelLastResult"
-  | "wheelSessionUpdatedAt"
-  | "wheelPendingInventoryIssues"
-  | "wheelSkippedDeductions"
-> & RootWheelSessionStateContext;
 
 export type RealtimeSocketState = {
   socket: WebSocket | null;
@@ -106,11 +70,11 @@ export function getRealtimeSocketState(app: object): RealtimeSocketState {
   return state;
 }
 
-export function setWorkspaceRealtimeStatus(app: RealtimeApp, status: WorkspaceRealtimeStatus): void {
+export function setWorkspaceRealtimeStatus(app: WorkspaceRealtimeContext, status: WorkspaceRealtimeStatus): void {
   app.workspaceRealtimeStatus = status;
 }
 
-function shouldUseWorkspaceRealtime(app: RealtimeApp, scope: WorkspaceScopeContext): boolean {
+function shouldUseWorkspaceRealtime(app: WorkspaceRealtimeContext, scope: WorkspaceScopeContext): boolean {
   if (app.isOffline || !scope.isWorkspace || !scope.workspaceId) {
     return false;
   }
@@ -123,7 +87,7 @@ function shouldUseWorkspaceRealtime(app: RealtimeApp, scope: WorkspaceScopeConte
 }
 
 export function getDesiredRealtimeSubscription(
-  app: RealtimeApp,
+  app: WorkspaceRealtimeContext,
   scope: WorkspaceScopeContext = resolveWorkspaceScopeContext(app)
 ): WorkspaceRealtimeDesiredSubscription | null {
   if (!shouldUseWorkspaceRealtime(app, scope) || !scope.workspaceId) return null;
@@ -158,7 +122,7 @@ export function resolveRealtimeSocketUrl(): string {
   return FALLBACK_REALTIME_SOCKET_URL;
 }
 
-export function createWorkspaceRealtimeSession(app: RealtimeApp): WorkspaceRealtimeSession {
+export function createWorkspaceRealtimeSession(app: WorkspaceRealtimeContext): WorkspaceRealtimeSession {
   const scope = resolveWorkspaceScopeContext(app);
   const desiredSubscription = getDesiredRealtimeSubscription(app, scope);
   return {
@@ -193,7 +157,7 @@ export function getRealtimeReconnectDelayMs(state: RealtimeSocketState): number 
   return Math.max(250, Math.round(baseDelayMs * jitterFactor));
 }
 
-export function closeRealtimeSocket(app: RealtimeApp): void {
+export function closeRealtimeSocket(app: WorkspaceRealtimeContext): void {
   const state = getRealtimeSocketState(app as object);
   clearReconnectTimeout(state);
   clearRealtimeRecoveredTimeout(state);
@@ -225,7 +189,7 @@ export function shouldKeepRealtimeSocket(
 }
 
 export function shouldReconnectSocket(
-  app: RealtimeApp,
+  app: WorkspaceRealtimeContext,
   state: RealtimeSocketState,
   desiredRooms: string[]
 ): boolean {

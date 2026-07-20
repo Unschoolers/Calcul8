@@ -1,17 +1,10 @@
-import type { AppContext } from "../../../context-app.ts";
+import type { SyncPollingContext } from "../../../context/sync.ts";
 import { type LotLivePricingRecord } from "../../lot-live-pricing-api.ts";
 
-type LotEntityPollingApp = Pick<
-  AppContext,
-  | "liveSpotPrice"
-  | "liveBoxPriceSell"
-  | "livePackPrice"
-  | "currentLivePricingVersion"
->;
 const livePricingBaselineHashes = new WeakMap<object, string | null>();
 
 export function createLivePricingPollingHash(
-  pricing: Pick<LotEntityPollingApp, "liveSpotPrice" | "liveBoxPriceSell" | "livePackPrice" | "currentLivePricingVersion">
+  pricing: SyncPollingContext
 ): string {
   return JSON.stringify({
     liveSpotPrice: Number(pricing.liveSpotPrice) || 0,
@@ -23,12 +16,12 @@ export function createLivePricingPollingHash(
 
 export function markLivePricingPollingBaseline(
   app: object,
-  pricing: Pick<LotEntityPollingApp, "liveSpotPrice" | "liveBoxPriceSell" | "livePackPrice" | "currentLivePricingVersion"> | null
+  pricing: SyncPollingContext | null
 ): void {
   livePricingBaselineHashes.set(app, pricing ? createLivePricingPollingHash(pricing) : null);
 }
 
-function applyLivePricingSnapshot(app: LotEntityPollingApp, livePricing: LotLivePricingRecord): void {
+function applyLivePricingSnapshot(app: SyncPollingContext, livePricing: LotLivePricingRecord): void {
   app.liveSpotPrice = livePricing.liveSpotPrice;
   app.liveBoxPriceSell = livePricing.liveBoxPriceSell;
   app.livePackPrice = livePricing.livePackPrice;
@@ -36,7 +29,7 @@ function applyLivePricingSnapshot(app: LotEntityPollingApp, livePricing: LotLive
 }
 
 export function reconcileIncomingLivePricingSnapshot(
-  app: LotEntityPollingApp,
+  app: SyncPollingContext,
   latestLivePricing: LotLivePricingRecord
 ): boolean {
   const currentLiveHash = createLivePricingPollingHash(app);

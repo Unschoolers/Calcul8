@@ -1,4 +1,4 @@
-import type { AppMethodImplementation } from "../../../context-app.ts";
+import type { WorkspaceMembershipMethodImplementation } from "../../../context/workspace.ts";
 import type { WorkspaceMember } from "../../../../types/app.ts";
 import {
   formatRelativeLastSeen,
@@ -137,4 +137,4 @@ export const uiWorkspaceMembershipMethods = {
 
     return "Offline";
   }
-} satisfies AppMethodImplementation;
+} satisfies WorkspaceMembershipMethodImplementation;
