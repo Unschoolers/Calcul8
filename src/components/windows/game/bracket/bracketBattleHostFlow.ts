@@ -9,7 +9,7 @@ import {
   type GameSessionStorage
 } from "../services/gameSessionStore.ts";
 import {
-  runGameSessionReset,
+  runGameSessionLifecycle,
   type GameExecution,
   type GameSessionEnginePorts
 } from "../services/gameSessionEngine.ts";
@@ -35,15 +35,24 @@ export type BracketBattleSessionStatePayload = {
   publishLive: boolean;
 };
 
-const bracketBattleResetAdapter = {
-  reset: (state: BracketBattleSessionStatePayload): BracketBattleSessionStatePayload => ({
-    ...state,
-    session: null,
-    lastRolls: [],
-    rolling: false,
-    showcaseMatchId: null
-  }),
-  shouldPublish: (execution: GameExecution) => execution === "live"
+type BracketBattleLifecycleEvent =
+  | { type: "reset"; execution: GameExecution }
+  | { type: "match-settled"; execution: GameExecution; session: BracketBattleSession; lastRolls: BracketBattleRoll[] };
+
+const bracketBattleLifecycleAdapter = {
+  transition(state: BracketBattleSessionStatePayload, event: BracketBattleLifecycleEvent): BracketBattleSessionStatePayload {
+    if (event.type === "reset") {
+      return { ...state, session: null, lastRolls: [], rolling: false, showcaseMatchId: null };
+    }
+    return {
+      ...state,
+      session: event.session,
+      lastRolls: event.lastRolls,
+      rolling: false,
+      showcaseMatchId: event.session.status === "complete" ? null : state.showcaseMatchId
+    };
+  },
+  shouldPublish: (event: BracketBattleLifecycleEvent) => event.execution === "live"
 };
 
 export function runBracketBattleSessionReset(
@@ -51,7 +60,27 @@ export function runBracketBattleSessionReset(
   execution: GameExecution,
   ports: GameSessionEnginePorts<BracketBattleSessionStatePayload>
 ): Promise<BracketBattleSessionStatePayload> {
-  return runGameSessionReset(state, execution, bracketBattleResetAdapter, ports);
+  return runGameSessionLifecycle(
+    state,
+    { type: "reset", execution },
+    bracketBattleLifecycleAdapter,
+    ports
+  );
+}
+
+export function runBracketBattleMatchSettlement(
+  state: BracketBattleSessionStatePayload,
+  execution: GameExecution,
+  session: BracketBattleSession,
+  lastRolls: BracketBattleRoll[],
+  ports: GameSessionEnginePorts<BracketBattleSessionStatePayload>
+): Promise<BracketBattleSessionStatePayload> {
+  return runGameSessionLifecycle(
+    state,
+    { type: "match-settled", execution, session, lastRolls },
+    bracketBattleLifecycleAdapter,
+    ports
+  );
 }
 
 export type BracketBattleLoadedSessionState = {

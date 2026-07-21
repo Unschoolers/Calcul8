@@ -10,6 +10,25 @@ export interface GameSessionEnginePorts<TState> {
   publish(state: TState): void | Promise<void>;
 }
 
+export interface GameSessionLifecycleAdapter<TState, TEvent> {
+  transition(state: TState, event: TEvent): TState;
+  shouldPublish(event: TEvent): boolean;
+}
+
+export async function runGameSessionLifecycle<TState, TEvent>(
+  state: TState,
+  event: TEvent,
+  adapter: GameSessionLifecycleAdapter<TState, TEvent>,
+  ports: GameSessionEnginePorts<TState>
+): Promise<TState> {
+  const next = adapter.transition(state, event);
+  const persisted = ports.persist(next);
+  const published = adapter.shouldPublish(event) ? ports.publish(next) : undefined;
+  await persisted;
+  await published;
+  return next;
+}
+
 /** Runs one session reset and owns its ordered persistence/publication effects. */
 export async function runGameSessionReset<TState>(
   state: TState,
@@ -17,10 +36,8 @@ export async function runGameSessionReset<TState>(
   adapter: GameSessionEngineAdapter<TState>,
   ports: GameSessionEnginePorts<TState>
 ): Promise<TState> {
-  const next = adapter.reset(state, execution);
-  const persisted = ports.persist(next);
-  const published = adapter.shouldPublish(execution) ? ports.publish(next) : undefined;
-  await persisted;
-  await published;
-  return next;
+  return runGameSessionLifecycle(state, execution, {
+    transition: adapter.reset,
+    shouldPublish: adapter.shouldPublish
+  }, ports);
 }

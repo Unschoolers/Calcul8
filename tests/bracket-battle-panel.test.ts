@@ -627,6 +627,41 @@ test("BracketBattlePanel keeps separate preview and live storage and publishes s
   assert.equal(published.filter((entry) => entry === true).length, 2);
 });
 
+test("BracketBattlePanel preview reset synchronizes cleared parent state without publication", async () => {
+  const draft = createBracketBattleDraft(4);
+  draft.participants = ["Alex", "Bri", "Cam", "Dev"];
+  const session = createBracketBattleSessionFromDraft(draft);
+  const states: Array<{ session: unknown; publishLive: boolean }> = [];
+  const vm = {
+    bracketSession: session,
+    bracketLastRolls: session.rolls,
+    bracketRolling: false,
+    bracketShowcaseMatchId: session.matches[0]!.id,
+    bracketResetDialog: true,
+    bracketRollPreview: [],
+    bracketRollIntervalId: null,
+    bracketRollResolveTimeoutId: null,
+    wheelMode: "config",
+    clearBracketRollAnimation: BracketBattlePanel.methods!.clearBracketRollAnimation,
+    emitBracketBattleSessionState: BracketBattlePanel.methods!.emitBracketBattleSessionState,
+    syncBracketBattleParentState: BracketBattlePanel.methods!.syncBracketBattleParentState,
+    publishLiveBracketSpectatorSnapshot: BracketBattlePanel.methods!.publishLiveBracketSpectatorSnapshot,
+    persistBracketSession() {},
+    getBracketBattleRollSlotAnchors() { return {}; },
+    getBracketBattleActionDiceAnchors() { return {}; },
+    getBracketBattleChampionWinnerSide() { return null; },
+    $emit(eventName: string, payload: unknown) {
+      if (eventName === "session-state") states.push(payload as { session: unknown; publishLive: boolean });
+    }
+  };
+
+  BracketBattlePanel.methods!.resetBracketBattle.call(vm as never);
+  await Promise.resolve();
+
+  assert.equal(states.at(-1)?.session, null);
+  assert.equal(states.some((state) => state.publishLive), false);
+});
+
 test("BracketBattlePanel keeps the showcased match latched until the next roll begins", () => {
   const draft = createBracketBattleDraft(4);
   draft.participants = ["Alex", "Bri", "Cam", "Dev"];

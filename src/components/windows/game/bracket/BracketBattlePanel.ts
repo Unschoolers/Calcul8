@@ -16,6 +16,7 @@ import {
   groupBracketBattleRounds,
   loadBracketBattleSessionState,
   persistBracketBattleSessionState,
+  runBracketBattleMatchSettlement,
   runBracketBattleSessionReset,
   resolveBracketBattleActiveMatch,
   resolveBracketBattleQueuedMatch,
@@ -131,6 +132,18 @@ function randomRollValue(min: number, max: number): number {
   return Math.floor(Math.random() * (upper - lower + 1)) + lower;
 }
 
+function commitBracketBattleLifecycleState(
+  panel: BracketBattlePanelThis,
+  state: BracketBattleSessionStatePayload
+): void {
+  panel.bracketSession = state.session;
+  panel.bracketLastRolls = state.lastRolls;
+  panel.bracketRolling = state.rolling;
+  panel.bracketShowcaseMatchId = state.showcaseMatchId;
+  panel.persistBracketSession();
+  panel.syncBracketBattleParentState?.();
+}
+
 export const BracketBattlePanel = {
   name: "BracketBattlePanel",
   props: {
@@ -205,9 +218,6 @@ export const BracketBattlePanel = {
       }
     },
     publishLiveBracketSpectatorSnapshot(this: BracketBattlePanelThis): void {
-      if (typeof this.syncBracketBattleParentState === "function") {
-        this.syncBracketBattleParentState();
-      }
       if (typeof this.emitBracketBattleSessionState === "function") {
         this.emitBracketBattleSessionState(true);
       }
@@ -408,7 +418,6 @@ export const BracketBattlePanel = {
       this.clearBracketRollAnimation();
       this.bracketShowcaseMatchId = match.id;
       this.bracketRolling = true;
-      this.syncBracketBattleParentState?.();
       this.publishLiveBracketSpectatorSnapshot?.();
       this.bracketRollPreview = [
         {
@@ -445,14 +454,18 @@ export const BracketBattlePanel = {
               this.bracketRollIntervalId = null;
             }
             const result = resolveBracketBattleMatchRoll(session, match.id);
-            this.bracketLastRolls = result.rolls;
             const decidingRolls = result.rolls.slice(-2);
             const leftRoll = decidingRolls.find((entry) => entry.participantId === match.participantAId);
             const rightRoll = decidingRolls.find((entry) => entry.participantId === match.participantBId);
-            if (session.status === "complete") {
-              this.bracketShowcaseMatchId = null;
-            }
-            this.persistBracketSession();
+            void runBracketBattleMatchSettlement(buildBracketBattleSessionStatePayload({
+              session: this.bracketSession,
+              lastRolls: this.bracketLastRolls,
+              rolling: this.bracketRolling,
+              showcaseMatchId: this.bracketShowcaseMatchId
+            }), this.wheelMode === "live" ? "live" : "preview", session, result.rolls, {
+              persist: (next) => commitBracketBattleLifecycleState(this, next),
+              publish: () => this.publishLiveBracketSpectatorSnapshot?.()
+            });
             if (leftRoll && rightRoll) {
               const emitResolve = (resolvedLeftAnchor?: GameStageOverlayAnchor, resolvedRightAnchor?: GameStageOverlayAnchor) => {
                 this.$emit("overlay-command", {
@@ -477,9 +490,6 @@ export const BracketBattlePanel = {
             }
           } finally {
             this.bracketRollPreview = [];
-            this.bracketRolling = false;
-            this.syncBracketBattleParentState?.();
-            this.publishLiveBracketSpectatorSnapshot?.();
             this.bracketRollResolveTimeoutId = null;
           }
         }, BRACKET_ROLL_RESOLVE_DELAY_MS);
@@ -502,13 +512,7 @@ export const BracketBattlePanel = {
         rolling: this.bracketRolling,
         showcaseMatchId: this.bracketShowcaseMatchId
       }), this.wheelMode === "live" ? "live" : "preview", {
-        persist: (next) => {
-          this.bracketSession = next.session;
-          this.bracketLastRolls = next.lastRolls;
-          this.bracketRolling = next.rolling;
-          this.bracketShowcaseMatchId = next.showcaseMatchId;
-          this.persistBracketSession();
-        },
+        persist: (next) => commitBracketBattleLifecycleState(this, next),
         publish: () => this.publishLiveBracketSpectatorSnapshot?.()
       });
       this.$emit("overlay-command", {

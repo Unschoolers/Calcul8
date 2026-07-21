@@ -23,8 +23,7 @@ import { remapSpinCountsByTier } from "../services/wheelCountRemapping.ts";
 import { cloneGameConfig, createTierPrizeGameConfigFromTemplate } from "../services/gameConfigTemplates.ts";
 import {
   clearWheelProofState,
-  resetLoadedTierPrizeGameState,
-  type WheelSessionContext
+  resetLoadedTierPrizeGameState
 } from "../services/wheelSessionState.ts";
 import { createDefaultTier } from "../services/wheelDefaults.ts";
 import { calculateWheelLotCostPerPack } from "../services/wheelPricing.ts";
@@ -39,7 +38,7 @@ type GameConfigContext = Record<string, unknown> & Partial<GameWindowThis>;
 
 function resetLoadedGame(context: GameConfigContext, clearSlots: boolean): void {
   resetLoadedTierPrizeGameState(
-    context as unknown as WheelSessionContext,
+    context,
     getWheelController(context),
     clearSlots
   );

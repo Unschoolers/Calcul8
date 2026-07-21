@@ -40,6 +40,8 @@ export interface WheelSessionContext extends Record<string, unknown> {
   gameSpectatorDialog?: boolean;
 }
 
+export type WheelSessionResetContext = Record<string, unknown> & Partial<WheelSessionContext>;
+
 type WheelTallyHistoryEntry = { tierId: string; label: string; color: string; count: number };
 export type WheelSessionTrack = {
   spinCounts: number[];
@@ -56,7 +58,7 @@ export function clearWheelProofState(controller: WheelControllerState): void {
   controller.showSeed = false;
 }
 
-export function clearWheelChaseDialogState(context: WheelSessionContext): void {
+export function clearWheelChaseDialogState(context: WheelSessionResetContext): void {
   context.wheelChaseDialog = false;
   context.wheelChasePreviewMode = false;
   context.wheelChaseReplacementSinglesId = null;
@@ -74,7 +76,7 @@ export function setWheelResultState(
 }
 
 export function getWheelTargetConfig(
-  context: WheelSessionContext,
+  context: WheelSessionResetContext,
   options: { preview?: boolean } = {}
 ): WheelConfig | null {
   const configs = (context.wheelConfigs || []) as WheelConfig[];
@@ -159,7 +161,7 @@ export function readWheelSessionTrack(
 }
 
 function writeWheelSessionTrack(
-  context: WheelSessionContext,
+  context: WheelSessionResetContext,
   controller: WheelControllerState,
   execution: GameExecution,
   track: WheelSessionTrack
@@ -213,7 +215,7 @@ function emptyWheelSessionTrack(slotCount: number): WheelSessionTrack {
 }
 
 type WheelResetState = {
-  context: WheelSessionContext;
+  context: WheelSessionResetContext;
   controller: WheelControllerState;
   slots: WheelSlot[];
   reseedGrid: boolean;
@@ -222,8 +224,8 @@ type WheelResetState = {
 function resetWheelPreview(state: WheelResetState): WheelResetState {
   const { context, controller } = state;
   let previewSlots = state.slots;
-  const config = getWheelTargetConfig(context, { preview: true });
-  if (state.reseedGrid && config?.gameType === "grid") {
+  const config = state.reseedGrid ? getWheelTargetConfig(context, { preview: true }) : null;
+  if (config?.gameType === "grid") {
     controller.previewGridLayoutSeed = createWheelGridLayoutSeed();
     previewSlots = buildSlotsFromConfig(config, { layoutSeed: controller.previewGridLayoutSeed });
     controller.previewSlots = previewSlots;
@@ -246,8 +248,8 @@ function resetWheelPreview(state: WheelResetState): WheelResetState {
 function resetWheelLive(state: WheelResetState): WheelResetState {
   const { context, controller } = state;
   let { slots } = state;
-  const config = getWheelTargetConfig(context);
-  if (state.reseedGrid && config?.gameType === "grid") {
+  const config = state.reseedGrid ? getWheelTargetConfig(context) : null;
+  if (config?.gameType === "grid") {
     controller.gridLayoutSeed = createWheelGridLayoutSeed();
     slots = buildSlotsFromConfig(config, { layoutSeed: controller.gridLayoutSeed });
     controller.activeSlots = slots;
@@ -290,7 +292,7 @@ export function runWheelSessionReset(
 }
 
 export function resetLoadedTierPrizeGameState(
-  context: WheelSessionContext,
+  context: WheelSessionResetContext,
   controller: WheelControllerState,
   clearSlots: boolean
 ): void {
