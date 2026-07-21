@@ -22,10 +22,10 @@ import { getWheelController, type GameWindowThis } from "../coordinator/gameCont
 import { remapSpinCountsByTier } from "../services/wheelCountRemapping.ts";
 import { cloneGameConfig, createTierPrizeGameConfigFromTemplate } from "../services/gameConfigTemplates.ts";
 import {
-  resetLoadedTierPrizeGameSessionState,
-  resetLoadedTierPrizeGameState
-} from "../services/gameSessionReset.ts";
-import { clearWheelProofState } from "../services/wheelSessionState.ts";
+  clearWheelProofState,
+  resetLoadedTierPrizeGameState,
+  type WheelSessionContext
+} from "../services/wheelSessionState.ts";
 import { createDefaultTier } from "../services/wheelDefaults.ts";
 import { calculateWheelLotCostPerPack } from "../services/wheelPricing.ts";
 import { buildSlotsFromConfig, createWheelGridLayoutSeed, type WheelSlot } from "../services/wheelSlots.ts";
@@ -36,6 +36,14 @@ import {
 } from "../services/wheelSaleSupport.ts";
 
 type GameConfigContext = Record<string, unknown> & Partial<GameWindowThis>;
+
+function resetLoadedGame(context: GameConfigContext, clearSlots: boolean): void {
+  resetLoadedTierPrizeGameState(
+    context as unknown as WheelSessionContext,
+    getWheelController(context),
+    clearSlots
+  );
+}
 
 function clearQueuedWheelConfigSync(context: GameConfigContext): void {
   const timeoutId = context._wheelDraftSaveTimeoutId;
@@ -174,7 +182,7 @@ export const wheelConfigMethods = {
       : (sanitizedConfig ? cloneGameConfig(sanitizedConfig) : null);
     if (!sanitizedConfig) {
       this.appliedWheelConfigSnapshot = null;
-      resetLoadedTierPrizeGameState(this);
+      resetLoadedGame(this, true);
       nextTick(() => this.drawWheel?.(this.wheelCurrentAngle || 0));
       return;
     }
@@ -184,7 +192,7 @@ export const wheelConfigMethods = {
     this.appliedWheelConfigSnapshot = cloneGameConfig(sanitizedConfig);
     const loadController = getWheelController(this as Record<string, unknown>);
     if (sanitizedConfig.gameType === "bracket") {
-      resetLoadedTierPrizeGameState(this);
+      resetLoadedGame(this, true);
       nextTick(() => this.drawWheel?.(this.wheelCurrentAngle || 0));
       return;
     }
@@ -199,7 +207,7 @@ export const wheelConfigMethods = {
     loadController.previewSlots = [...builtSlots];
     const restored = this.loadWheelFromSession?.() ?? false;
     if (!restored) {
-      resetLoadedTierPrizeGameSessionState(this);
+      resetLoadedGame(this, false);
       this.wheelSpinCounts = new Array(builtSlots.length).fill(0);
       loadController.previewSpinCounts = new Array(builtSlots.length).fill(0);
       loadController.previewTotalSpins = 0;
@@ -256,7 +264,7 @@ export const wheelConfigMethods = {
         this.persistLastWheelConfigSelection?.();
         this.editingWheelConfig = cloneGameConfig(sanitizedUpdated);
         this.appliedWheelConfigSnapshot = cloneGameConfig(sanitizedUpdated);
-        resetLoadedTierPrizeGameState(this);
+        resetLoadedGame(this, true);
         queueCloudConfigSyncPush(this as Parameters<typeof queueCloudConfigSyncPush>[0]);
         this.showWheelConfigSaved?.();
         return;

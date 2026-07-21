@@ -9,6 +9,11 @@ import {
   type GameSessionStorage
 } from "../services/gameSessionStore.ts";
 import {
+  runGameSessionReset,
+  type GameExecution,
+  type GameSessionEnginePorts
+} from "../services/gameSessionEngine.ts";
+import {
   normalizeBracketBattleSessionDice,
   type BracketBattleMatch,
   type BracketBattleRoll,
@@ -29,6 +34,25 @@ export type BracketBattleSessionStatePayload = {
   showcaseMatchId: string | null;
   publishLive: boolean;
 };
+
+const bracketBattleResetAdapter = {
+  reset: (state: BracketBattleSessionStatePayload): BracketBattleSessionStatePayload => ({
+    ...state,
+    session: null,
+    lastRolls: [],
+    rolling: false,
+    showcaseMatchId: null
+  }),
+  shouldPublish: (execution: GameExecution) => execution === "live"
+};
+
+export function runBracketBattleSessionReset(
+  state: BracketBattleSessionStatePayload,
+  execution: GameExecution,
+  ports: GameSessionEnginePorts<BracketBattleSessionStatePayload>
+): Promise<BracketBattleSessionStatePayload> {
+  return runGameSessionReset(state, execution, bracketBattleResetAdapter, ports);
+}
 
 export type BracketBattleLoadedSessionState = {
   storageKey: string;

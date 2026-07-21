@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import {
-  resetLoadedTierPrizeGameSessionState,
-  resetLoadedTierPrizeGameState
-} from "../src/components/windows/game/services/gameSessionReset.ts";
-import { createGameWindowState } from "../src/components/windows/game/coordinator/gameControllerState.ts";
+  resetLoadedTierPrizeGameState,
+  type WheelSessionContext
+} from "../src/components/windows/game/services/wheelSessionState.ts";
+import { createGameWindowState, getWheelController } from "../src/components/windows/game/coordinator/gameControllerState.ts";
 
 test("resetLoadedTierPrizeGameSessionState clears session and spectator state without dropping slots", () => {
   const state = createGameWindowState() as Record<string, any>;
@@ -20,7 +20,7 @@ test("resetLoadedTierPrizeGameSessionState clears session and spectator state wi
   state.gameSpectatorSessionQrUrl = "qr";
   state.gameSpectatorPublishPending = true;
 
-  resetLoadedTierPrizeGameSessionState(state);
+  resetLoadedTierPrizeGameState(state as WheelSessionContext, getWheelController(state), false);
 
   assert.deepEqual(state.wheelController.activeSlots, [{ tier: "t1" }]);
   assert.deepEqual(state.wheelSpinCounts, []);
@@ -43,7 +43,7 @@ test("resetLoadedTierPrizeGameState clears loaded slots plus session state", () 
   state.wheelController.previewGridLayoutSeed = "preview-seed";
   state.wheelSpinCounts = [1];
 
-  resetLoadedTierPrizeGameState(state);
+  resetLoadedTierPrizeGameState(state as WheelSessionContext, getWheelController(state), true);
 
   assert.deepEqual(state.wheelController.activeSlots, []);
   assert.deepEqual(state.wheelController.previewSlots, []);

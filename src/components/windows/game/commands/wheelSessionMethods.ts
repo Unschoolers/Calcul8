@@ -21,19 +21,15 @@ import {
   hasAnyAvailableSinglesForWheelTier
 } from "../services/wheelSaleSupport.ts";
 import {
-  applyWheelLiveReset,
-  applyWheelPreviewReset,
   clearWheelChaseDialogState,
   createWheelSessionSnapshot,
   getWheelTargetConfig,
   getWheelTierLotContext,
   mergeWheelSessionRootFallback,
+  recordWheelSessionFairness,
+  runWheelSessionReset,
   setWheelResultState
 } from "../services/wheelSessionState.ts";
-import {
-  dispatchGameSessionCommand,
-  executeGameSessionEffects
-} from "../services/gameSessionAggregateAdapter.ts";
 
 type WheelTallyHistoryEntry = { tierId: string; label: string; color: string; count: number };
 type WheelSessionSnapshot = ReturnType<typeof createWheelSessionSnapshot>;
@@ -140,19 +136,14 @@ export const wheelSessionMethods = {
     options: { preview?: boolean } = {}
   ): void {
     const controller = getWheelController(this);
-    dispatchGameSessionCommand(this, controller, {
-      type: "fairness-recorded",
-      execution: options.preview === true ? "preview" : "live",
-      entry
-    });
+    recordWheelSessionFairness(this, controller, options.preview === true ? "preview" : "live", entry);
   },
 
   resetPreviewSession(this: GameWindowThis): void {
     this.stopWheelAutospin?.();
     const controller = getWheelController(this);
     const previewSlots = ((controller.previewSlots || controller.activeSlots) as WheelSlot[]);
-    const effects = applyWheelPreviewReset(this, controller, previewSlots);
-    void executeGameSessionEffects(effects, {
+    void runWheelSessionReset(this, controller, "preview", previewSlots, {
       persist: () => this.saveWheelSession?.(),
       publish: () => this.publishGameSpectatorSessionSnapshot?.()
     });
@@ -350,10 +341,8 @@ export const wheelSessionMethods = {
   resetWheelSession(this: GameWindowThis): void {
     const resetController = getWheelController(this);
     const slots = resetController.activeSlots as WheelSlot[];
-    const effects = applyWheelLiveReset(this, resetController, slots);
-    assignWheelPendingInventoryIssues(this, []);
     this.wheelSessionUpdatedAt = Date.now();
-    void executeGameSessionEffects(effects, {
+    void runWheelSessionReset(this, resetController, "live", slots, {
       persist: () => this.saveWheelSession(),
       publish: async () => {
         await Promise.all([

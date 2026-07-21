@@ -16,6 +16,7 @@ import {
   groupBracketBattleRounds,
   loadBracketBattleSessionState,
   persistBracketBattleSessionState,
+  runBracketBattleSessionReset,
   resolveBracketBattleActiveMatch,
   resolveBracketBattleQueuedMatch,
   type BracketBattleSessionStatePayload
@@ -494,12 +495,22 @@ export const BracketBattlePanel = {
         : this.getBracketBattleRollSlotAnchors();
       const winnerSide = this.getBracketBattleChampionWinnerSide();
       this.clearBracketRollAnimation();
-      this.bracketSession = null;
-      this.bracketLastRolls = [];
-      this.bracketShowcaseMatchId = null;
       this.bracketResetDialog = false;
-      this.persistBracketSession();
-      this.publishLiveBracketSpectatorSnapshot?.();
+      void runBracketBattleSessionReset(buildBracketBattleSessionStatePayload({
+        session: this.bracketSession,
+        lastRolls: this.bracketLastRolls,
+        rolling: this.bracketRolling,
+        showcaseMatchId: this.bracketShowcaseMatchId
+      }), this.wheelMode === "live" ? "live" : "preview", {
+        persist: (next) => {
+          this.bracketSession = next.session;
+          this.bracketLastRolls = next.lastRolls;
+          this.bracketRolling = next.rolling;
+          this.bracketShowcaseMatchId = next.showcaseMatchId;
+          this.persistBracketSession();
+        },
+        publish: () => this.publishLiveBracketSpectatorSnapshot?.()
+      });
       this.$emit("overlay-command", {
         type: "stageExit",
         effect: "dice",

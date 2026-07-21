@@ -38,7 +38,7 @@ import {
     getWheelSpinSlots,
     shouldRecordWheelLiveSession
 } from "../services/wheelSpinState.ts";
-import { dispatchGameSessionCommand } from "../services/gameSessionAggregateAdapter.ts";
+import { recordWheelSessionSpin } from "../services/wheelSessionState.ts";
 
 function queuePendingInventoryIssue(
   context: GameWindowThis,
@@ -400,12 +400,7 @@ export const wheelSpinMethods = {
   recordPreviewSpinResult(this: GameWindowThis, slotIndex: number): void {
     const controller = getWheelController(this);
     const slots = getWheelSpinSlots(this);
-    dispatchGameSessionCommand(this, controller, {
-      type: "spin-recorded",
-      execution: "preview",
-      slotIndex,
-      slotCount: slots.length
-    });
+    recordWheelSessionSpin(this, controller, "preview", slotIndex, slots.length);
   },
 
   recordSpinResult(this: GameWindowThis, slotIndex: number): void {
@@ -414,12 +409,7 @@ export const wheelSpinMethods = {
     const slot = slots[slotIndex];
     if (!slot) return;
 
-    dispatchGameSessionCommand(this, recordController, {
-      type: "spin-recorded",
-      execution: "live",
-      slotIndex,
-      slotCount: slots.length
-    });
+    recordWheelSessionSpin(this, recordController, "live", slotIndex, slots.length);
 
     if (!slot.isChase) {
       const config = this.wheelDisplayConfig || this.activeWheelConfig;

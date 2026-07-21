@@ -1,12 +1,11 @@
 import { translateAppMessage } from "../../../../app-core/i18n/index.ts";
-import { selectGameSessionTrack, type GameSessionTrack } from "../../../../app-core/shared/game-session-aggregate.ts";
 import type { Lot, WheelConfig, WheelFairnessEntry } from "../../../../types/app.ts";
 import { getWheelController } from "./gameControllerState.ts";
 import type { WheelSlot } from "../services/wheelSlots.ts";
 import {
   calculateWheelSessionNetRevenue
 } from "../services/wheelPricing.ts";
-import { readGameSessionAggregate } from "../services/gameSessionAggregateAdapter.ts";
+import { readWheelSessionTrack, type WheelSessionTrack } from "../services/wheelSessionState.ts";
 
 function isWheelOwnerContext(vm: Record<string, unknown>): boolean {
   return Reflect.has(vm, "wheelController")
@@ -57,14 +56,13 @@ export function getWheelDisplaySlots(vm: Record<string, unknown>): WheelSlot[] {
     : controller.activeSlots) || []) as WheelSlot[]);
 }
 
-function getWheelDisplaySessionTrack(vm: Record<string, unknown>): GameSessionTrack {
+function getWheelDisplaySessionTrack(vm: Record<string, unknown>): WheelSessionTrack {
   const source = resolveWheelSource(vm);
   const controller = getWheelController(source);
-  const aggregate = readGameSessionAggregate({
-    wheelSpinCounts: Array.isArray(source.wheelSpinCounts) ? source.wheelSpinCounts as number[] : [],
+  return readWheelSessionTrack({
+    wheelSpinCounts: Array.isArray(source.wheelSpinCounts) ? source.wheelSpinCounts : [],
     wheelTotalSpins: Number(source.wheelTotalSpins || 0)
-  }, controller);
-  return selectGameSessionTrack(aggregate, isWheelPreviewMode(vm) ? "preview" : "live");
+  }, controller, isWheelPreviewMode(vm) ? "preview" : "live");
 }
 
 export function getWheelDisplaySpinCounts(vm: Record<string, unknown>): number[] {

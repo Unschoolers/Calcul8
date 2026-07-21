@@ -72,7 +72,6 @@ test("game spectator host state keeps wheel-named fields inside the storage comp
     "src/components/windows/game/commands/mysteryGridMethods.ts",
     "src/components/windows/game/commands/wheelSessionMethods.ts",
     "src/components/windows/game/commands/wheelSpinMethods.ts",
-    "src/components/windows/game/services/gameSessionReset.ts",
     "src/components/windows/game/services/gameSpectator.ts",
     "src/components/windows/game/services/wheelSessionState.ts",
     "src/components/windows/game/stage/gameStageComputeds.ts",

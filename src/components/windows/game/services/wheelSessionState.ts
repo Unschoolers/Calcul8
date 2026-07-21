@@ -1,13 +1,18 @@
 import type { Lot, MysteryGridReveal, PendingWheelInventoryIssue, WheelConfig, WheelFairnessEntry } from "../../../../types/app.ts";
+import { assignWheelPendingInventoryIssues } from "../../../../app-core/shared/wheel-session-compat.ts";
 import type { WheelControllerState } from "../coordinator/gameControllerState.ts";
 import type { WheelSlot } from "./wheelSlots.ts";
-import type { GameSessionEffect } from "../../../../app-core/shared/game-session-aggregate.ts";
-import { dispatchGameSessionCommand } from "./gameSessionAggregateAdapter.ts";
+import {
+  runGameSessionReset,
+  type GameExecution,
+  type GameSessionEngineAdapter,
+  type GameSessionEnginePorts
+} from "./gameSessionEngine.ts";
 import { writeGameSpectatorSessionStorageState } from "./gameSpectatorSessionStorage.ts";
 import { buildSlotsFromConfig, createWheelGridLayoutSeed } from "./wheelSlots.ts";
 
 /** Minimal context interface shared by wheel session helpers. */
-export interface WheelSessionContext {
+export interface WheelSessionContext extends Record<string, unknown> {
   wheelConfigs: WheelConfig[];
   activeWheelConfigId: number | null;
   editingWheelConfig: WheelConfig | null;
@@ -32,9 +37,15 @@ export interface WheelSessionContext {
   wheelChasePreviewMode: boolean;
   wheelChaseReplacementSinglesId: number | null;
   wheelChasePendingTierId: string;
+  gameSpectatorDialog?: boolean;
 }
 
 type WheelTallyHistoryEntry = { tierId: string; label: string; color: string; count: number };
+export type WheelSessionTrack = {
+  spinCounts: number[];
+  totalSpins: number;
+  fairnessHistory: WheelFairnessEntry[];
+};
 
 export function clearWheelProofState(controller: WheelControllerState): void {
   controller.spinHash = "";
@@ -129,23 +140,95 @@ export function createWheelSessionSnapshot(
   return snapshot;
 }
 
-export function applyWheelPreviewReset(
+export function readWheelSessionTrack(
+  context: Pick<WheelSessionContext, "wheelSpinCounts" | "wheelTotalSpins">,
+  controller: WheelControllerState,
+  execution: GameExecution
+): WheelSessionTrack {
+  return execution === "preview"
+    ? {
+        spinCounts: controller.previewSpinCounts,
+        totalSpins: controller.previewTotalSpins,
+        fairnessHistory: controller.previewFairnessHistory
+      }
+    : {
+        spinCounts: context.wheelSpinCounts,
+        totalSpins: context.wheelTotalSpins,
+        fairnessHistory: controller.fairnessHistory
+      };
+}
+
+function writeWheelSessionTrack(
   context: WheelSessionContext,
   controller: WheelControllerState,
-  previewSlots: WheelSlot[]
-): GameSessionEffect[] {
-  const config = getWheelTargetConfig(context, { preview: true });
-  let nextPreviewSlots = previewSlots;
-  if (config?.gameType === "grid") {
-    controller.previewGridLayoutSeed = createWheelGridLayoutSeed();
-    nextPreviewSlots = buildSlotsFromConfig(config, { layoutSeed: controller.previewGridLayoutSeed });
-    controller.previewSlots = nextPreviewSlots;
+  execution: GameExecution,
+  track: WheelSessionTrack
+): void {
+  if (execution === "preview") {
+    controller.previewSpinCounts = track.spinCounts;
+    controller.previewTotalSpins = track.totalSpins;
+    controller.previewFairnessHistory = track.fairnessHistory;
+    return;
   }
-  const effects = dispatchGameSessionCommand(context, controller, {
-    type: "session-reset",
-    execution: "preview",
-    slotCount: nextPreviewSlots.length
+  context.wheelSpinCounts = track.spinCounts;
+  context.wheelTotalSpins = track.totalSpins;
+  controller.fairnessHistory = track.fairnessHistory;
+}
+
+export function recordWheelSessionSpin(
+  context: WheelSessionContext,
+  controller: WheelControllerState,
+  execution: GameExecution,
+  slotIndex: number,
+  slotCount: number
+): void {
+  const track = readWheelSessionTrack(context, controller, execution);
+  const count = Math.max(0, Math.floor(Number(slotCount) || 0));
+  const index = Math.floor(Number(slotIndex));
+  if (!Number.isFinite(index) || index < 0 || index >= count) return;
+  const spinCounts = track.spinCounts.length === count ? [...track.spinCounts] : new Array(count).fill(0);
+  spinCounts[index] = (spinCounts[index] || 0) + 1;
+  writeWheelSessionTrack(context, controller, execution, {
+    ...track,
+    spinCounts,
+    totalSpins: track.totalSpins + 1
   });
+}
+
+export function recordWheelSessionFairness(
+  context: WheelSessionContext,
+  controller: WheelControllerState,
+  execution: GameExecution,
+  entry: WheelFairnessEntry
+): void {
+  const track = readWheelSessionTrack(context, controller, execution);
+  writeWheelSessionTrack(context, controller, execution, {
+    ...track,
+    fairnessHistory: [...track.fairnessHistory, entry].slice(-20)
+  });
+}
+
+function emptyWheelSessionTrack(slotCount: number): WheelSessionTrack {
+  return { spinCounts: new Array(slotCount).fill(0), totalSpins: 0, fairnessHistory: [] };
+}
+
+type WheelResetState = {
+  context: WheelSessionContext;
+  controller: WheelControllerState;
+  slots: WheelSlot[];
+  reseedGrid: boolean;
+};
+
+function resetWheelPreview(state: WheelResetState): WheelResetState {
+  const { context, controller } = state;
+  let previewSlots = state.slots;
+  const config = getWheelTargetConfig(context, { preview: true });
+  if (state.reseedGrid && config?.gameType === "grid") {
+    controller.previewGridLayoutSeed = createWheelGridLayoutSeed();
+    previewSlots = buildSlotsFromConfig(config, { layoutSeed: controller.previewGridLayoutSeed });
+    controller.previewSlots = previewSlots;
+  }
+  writeWheelSessionTrack(context, controller, "preview", emptyWheelSessionTrack(previewSlots.length));
   controller.previewChaseTallyHistory = [];
   controller.previewGridReveals = [];
   controller.inventoryWarning = "";
@@ -157,28 +240,22 @@ export function applyWheelPreviewReset(
   context.wheelGridRevealAnimating = false;
   context.wheelGridResetAnimating = false;
   context.wheelLastResult = "";
-  return effects;
+  return { ...state, slots: previewSlots };
 }
 
-export function applyWheelLiveReset(
-  context: WheelSessionContext,
-  controller: WheelControllerState,
-  slots: WheelSlot[]
-): GameSessionEffect[] {
+function resetWheelLive(state: WheelResetState): WheelResetState {
+  const { context, controller } = state;
+  let { slots } = state;
   const config = getWheelTargetConfig(context);
-  if (config?.gameType === "grid") {
+  if (state.reseedGrid && config?.gameType === "grid") {
     controller.gridLayoutSeed = createWheelGridLayoutSeed();
     slots = buildSlotsFromConfig(config, { layoutSeed: controller.gridLayoutSeed });
     controller.activeSlots = slots;
     controller.previewGridLayoutSeed = controller.gridLayoutSeed;
   }
-  const effects = dispatchGameSessionCommand(context, controller, {
-    type: "session-reset",
-    execution: "live",
-    slotCount: slots.length
-  });
+  writeWheelSessionTrack(context, controller, "live", emptyWheelSessionTrack(slots.length));
   controller.previewSlots = [...slots];
-  effects.push(...applyWheelPreviewReset(context, controller, slots));
+  resetWheelPreview({ ...state, slots });
   controller.sessionNetRevenue = 0;
   controller.sessionCostAdjustment = 0;
   controller.fairnessHistory = [];
@@ -187,22 +264,65 @@ export function applyWheelLiveReset(
   context.wheelEndingSession = false;
   context.wheelEndSessionReviewActive = false;
   context.gameSpectatorPublishPending = false;
-  return effects;
+  assignWheelPendingInventoryIssues(context, []);
+  return { ...state, slots };
+}
+
+const wheelSessionEngineAdapter: GameSessionEngineAdapter<WheelResetState> = {
+  reset: (state, execution) => execution === "preview" ? resetWheelPreview(state) : resetWheelLive(state),
+  shouldPublish: (execution) => execution === "live"
+};
+
+export function runWheelSessionReset(
+  context: WheelSessionContext,
+  controller: WheelControllerState,
+  execution: GameExecution,
+  slots: WheelSlot[],
+  ports: GameSessionEnginePorts<WheelResetState>,
+  reseedGrid = true
+): Promise<WheelResetState> {
+  return runGameSessionReset(
+    { context, controller, slots, reseedGrid },
+    execution,
+    wheelSessionEngineAdapter,
+    ports
+  );
+}
+
+export function resetLoadedTierPrizeGameState(
+  context: WheelSessionContext,
+  controller: WheelControllerState,
+  clearSlots: boolean
+): void {
+  resetWheelLive({ context, controller, slots: [], reseedGrid: false });
+  controller.sessionNetRevenue = null;
+  controller.highlightedSlotIndex = -1;
+  context.gameSpectatorDialog = false;
+  context.gameSpectatorSessionId = "";
+  context.gameSpectatorSessionStatus = "inactive";
+  context.gameSpectatorSessionUrl = "";
+  context.gameSpectatorSessionQrUrl = "";
+  if (clearSlots) {
+    controller.activeSlots = [];
+    controller.previewSlots = [];
+    controller.gridLayoutSeed = "";
+    controller.previewGridLayoutSeed = "";
+  }
 }
 
 export function mergeWheelSessionRootFallback(
   session: Record<string, unknown>,
   rootForActiveConfig: Record<string, unknown> | null
 ): void {
-  const useRootValue = <T>(currentValue: T, fallbackValue: T): T => {
+  const useRootValue = (currentValue: unknown, fallbackValue: unknown): unknown => {
     if (Array.isArray(currentValue)) {
-      return (currentValue.length > 0 ? currentValue : fallbackValue) as T;
+      return currentValue.length > 0 ? currentValue : fallbackValue;
     }
     if (typeof currentValue === "string") {
-      return ((currentValue.trim() ? currentValue : fallbackValue) as T);
+      return currentValue.trim() ? currentValue : fallbackValue;
     }
     if (typeof currentValue === "number") {
-      return (((currentValue !== 0 && Number.isFinite(currentValue)) ? currentValue : fallbackValue) as T);
+      return currentValue !== 0 && Number.isFinite(currentValue) ? currentValue : fallbackValue;
     }
     if (currentValue == null) {
       return fallbackValue;
@@ -211,21 +331,15 @@ export function mergeWheelSessionRootFallback(
   };
 
   if (!rootForActiveConfig) return;
-  session.wheelPreviewSpinCounts = useRootValue(session.wheelPreviewSpinCounts as number[] | undefined, rootForActiveConfig.wheelPreviewSpinCounts as number[] | undefined);
-  session.wheelPreviewTotalSpins = useRootValue(session.wheelPreviewTotalSpins as number | undefined, rootForActiveConfig.wheelPreviewTotalSpins as number | undefined);
-  session.wheelPreviewFairnessHistory = useRootValue(session.wheelPreviewFairnessHistory as WheelFairnessEntry[] | undefined, rootForActiveConfig.wheelPreviewFairnessHistory as WheelFairnessEntry[] | undefined);
-  session.wheelPreviewChaseTallyHistory = useRootValue(session.wheelPreviewChaseTallyHistory as WheelTallyHistoryEntry[] | undefined, rootForActiveConfig.wheelPreviewChaseTallyHistory as WheelTallyHistoryEntry[] | undefined);
-  session.wheelPreviewGridReveals = useRootValue(session.wheelPreviewGridReveals as MysteryGridReveal[] | undefined, rootForActiveConfig.wheelPreviewGridReveals as MysteryGridReveal[] | undefined);
-  session.wheelPreviewGridLayoutSeed = useRootValue(session.wheelPreviewGridLayoutSeed as string | undefined, rootForActiveConfig.wheelPreviewGridLayoutSeed as string | undefined);
-  session.wheelGridReveals = useRootValue(session.wheelGridReveals as MysteryGridReveal[] | undefined, rootForActiveConfig.wheelGridReveals as MysteryGridReveal[] | undefined);
-  session.wheelGridLayoutSeed = useRootValue(session.wheelGridLayoutSeed as string | undefined, rootForActiveConfig.wheelGridLayoutSeed as string | undefined);
-  session.wheelSpinHash = useRootValue(session.wheelSpinHash as string | undefined, rootForActiveConfig.wheelSpinHash as string | undefined);
-  session.wheelSpinSeed = useRootValue(session.wheelSpinSeed as string | undefined, rootForActiveConfig.wheelSpinSeed as string | undefined);
-  session.wheelSpinClientSeed = useRootValue(session.wheelSpinClientSeed as string | undefined, rootForActiveConfig.wheelSpinClientSeed as string | undefined);
-  session.wheelSpinVerificationUrl = useRootValue(session.wheelSpinVerificationUrl as string | undefined, rootForActiveConfig.wheelSpinVerificationUrl as string | undefined);
-  session.wheelSpinAlgorithm = useRootValue(session.wheelSpinAlgorithm as string | undefined, rootForActiveConfig.wheelSpinAlgorithm as string | undefined);
-  session.wheelLastResult = useRootValue(session.wheelLastResult as string | undefined, rootForActiveConfig.wheelLastResult as string | undefined);
-  session.wheelLastResultColor = useRootValue(session.wheelLastResultColor as string | undefined, rootForActiveConfig.wheelLastResultColor as string | undefined);
-  session.wheelCurrentAngle = useRootValue(session.wheelCurrentAngle as number | undefined, rootForActiveConfig.wheelCurrentAngle as number | undefined);
+  const fallbackFields = [
+    "wheelPreviewSpinCounts", "wheelPreviewTotalSpins", "wheelPreviewFairnessHistory",
+    "wheelPreviewChaseTallyHistory", "wheelPreviewGridReveals", "wheelPreviewGridLayoutSeed",
+    "wheelGridReveals", "wheelGridLayoutSeed", "wheelSpinHash", "wheelSpinSeed",
+    "wheelSpinClientSeed", "wheelSpinVerificationUrl", "wheelSpinAlgorithm", "wheelLastResult",
+    "wheelLastResultColor", "wheelCurrentAngle"
+  ] as const;
+  for (const field of fallbackFields) {
+    session[field] = useRootValue(session[field], rootForActiveConfig[field]);
+  }
 }
 

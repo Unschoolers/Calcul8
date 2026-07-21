@@ -6,6 +6,7 @@ import {
   getBracketBattleSessionStorageKey,
   loadBracketBattleSessionState,
   persistBracketBattleSessionState,
+  runBracketBattleSessionReset,
   resolveBracketBattleActiveMatch,
   resolveBracketBattleQueuedMatch,
   resolveBracketBattleShowcaseMatchId
@@ -170,5 +171,28 @@ test("bracket host flow builds and applies host session state with publish inten
   assert.equal(host.bracketBattleSession, session);
   assert.equal(host.bracketBattleRolling, true);
   assert.equal(host.bracketBattleShowcaseMatchId, session.matches[0]!.id);
+  assert.equal(publish.mock.calls.length, 1);
+});
+
+test("bracket host reset clears dice state and publishes only for live execution", async () => {
+  const persist = vi.fn();
+  const publish = vi.fn();
+  const live = await runBracketBattleSessionReset({
+    session: createSession(),
+    lastRolls: [{ id: "roll-1" }] as any,
+    rolling: true,
+    showcaseMatchId: "match-1",
+    publishLive: false
+  }, "live", { persist, publish });
+
+  assert.equal(live.session, null);
+  assert.deepEqual(live.lastRolls, []);
+  assert.equal(live.rolling, false);
+  assert.equal(live.showcaseMatchId, null);
+  assert.equal(persist.mock.calls.length, 1);
+  assert.equal(publish.mock.calls.length, 1);
+
+  await runBracketBattleSessionReset(live, "preview", { persist, publish });
+  assert.equal(persist.mock.calls.length, 2);
   assert.equal(publish.mock.calls.length, 1);
 });
