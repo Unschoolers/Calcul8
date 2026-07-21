@@ -7,6 +7,11 @@ import { getActiveStorageScope } from "../../../../app-core/workspace-scope.ts";
 import type { Lot, PendingWheelInventoryIssue, Sale, WheelConfig, WheelFairnessEntry } from "../../../../types/app.ts";
 import type { GameWindowThis } from "../coordinator/gameControllerState.ts";
 import { getWheelController } from "../coordinator/gameControllerState.ts";
+import {
+  readGameSession,
+  writeGameSession,
+  type GameSessionCodec
+} from "../services/gameSessionStore.ts";
 import { remapSpinCountsByTier } from "../services/wheelCountRemapping.ts";
 import { readGameSpectatorSessionStorageState } from "../services/gameSpectatorSessionStorage.ts";
 import { createWheelSale } from "../services/wheelSales.ts";
@@ -31,6 +36,15 @@ import {
 } from "../services/gameSessionAggregateAdapter.ts";
 
 type WheelTallyHistoryEntry = { tierId: string; label: string; color: string; count: number };
+type StoredWheelSession = ReturnType<typeof createWheelSessionSnapshot>;
+
+const wheelSessionCodec: GameSessionCodec<StoredWheelSession> = {
+  decode: (value) => value && typeof value === "object" && !Array.isArray(value)
+    ? value as StoredWheelSession
+    : null,
+  encode: (value) => value
+};
+
 function snapshotCurrentTierLabelToHistory(
   tierId: string,
   tierLabel: string,
@@ -458,23 +472,22 @@ export const wheelSessionMethods = {
     if (activeId == null) return;
     const controller = getWheelController(this);
     const session = createWheelSessionSnapshot(this, controller);
-    try {
-      const storageScope = getActiveStorageScope(this as {
-        activeScopeType: "personal" | "workspace";
-        activeWorkspaceId: string | null;
-      });
-      localStorage.setItem(
-        getScopedWheelConfigSessionStorageKey(storageScope, activeId),
-        JSON.stringify(session)
-      );
-      localStorage.setItem(
-        getScopedWheelSessionStorageKey(storageScope),
-        JSON.stringify({
-          activeWheelConfigId: activeId,
-          ...session
-        })
-      );
-    } catch { /* quota exceeded — non-critical */ }
+    const storageScope = getActiveStorageScope(this as {
+      activeScopeType: "personal" | "workspace";
+      activeWorkspaceId: string | null;
+    });
+    writeGameSession(
+      localStorage,
+      getScopedWheelConfigSessionStorageKey(storageScope, activeId),
+      session,
+      wheelSessionCodec
+    );
+    writeGameSession(
+      localStorage,
+      getScopedWheelSessionStorageKey(storageScope),
+      { activeWheelConfigId: activeId, ...session },
+      wheelSessionCodec
+    );
     if (
       String(this.gameSpectatorSessionId || "").trim()
       && this.gameSpectatorSessionStatus !== "ended"
@@ -493,14 +506,18 @@ export const wheelSessionMethods = {
       activeScopeType: "personal" | "workspace";
       activeWorkspaceId: string | null;
     });
-    const configRaw = localStorage.getItem(
-      getScopedWheelConfigSessionStorageKey(storageScope, activeId)
+    const configSession = readGameSession(
+      localStorage,
+      getScopedWheelConfigSessionStorageKey(storageScope, activeId),
+      wheelSessionCodec
     );
-    const rootRaw = localStorage.getItem(getScopedWheelSessionStorageKey(storageScope));
-    if (!configRaw && !rootRaw) return false;
+    const rootSession = readGameSession(
+      localStorage,
+      getScopedWheelSessionStorageKey(storageScope),
+      wheelSessionCodec
+    );
+    if (!configSession && !rootSession) return false;
     try {
-      const configSession = configRaw ? JSON.parse(configRaw) as Record<string, unknown> : null;
-      const rootSession = rootRaw ? JSON.parse(rootRaw) as Record<string, unknown> : null;
       if (
         rootSession?.activeWheelConfigId != null
         && Number(rootSession.activeWheelConfigId) !== activeId
@@ -510,7 +527,7 @@ export const wheelSessionMethods = {
       const session = {
         ...(rootSession && Number(rootSession.activeWheelConfigId) === activeId ? rootSession : {}),
         ...(configSession || {})
-      } as Record<string, unknown>;
+      };
       const rootForActiveConfig = rootSession && Number(rootSession.activeWheelConfigId) === activeId ? rootSession : null;
       mergeWheelSessionRootFallback(session, rootForActiveConfig);
       if (session.activeWheelConfigId != null && Number(session.activeWheelConfigId) !== activeId) {

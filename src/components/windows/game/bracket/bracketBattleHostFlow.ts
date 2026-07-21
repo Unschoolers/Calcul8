@@ -2,6 +2,13 @@ import { getScopedBracketBattleSessionStorageKey } from "../../../../app-core/st
 import { getActiveStorageScope } from "../../../../app-core/workspace-scope.ts";
 import type { WorkspaceScopeType } from "../../../../types/app.ts";
 import {
+  readGameSession,
+  removeGameSession,
+  writeGameSession,
+  type GameSessionCodec,
+  type GameSessionStorage
+} from "../services/gameSessionStore.ts";
+import {
   normalizeBracketBattleSessionDice,
   type BracketBattleMatch,
   type BracketBattleRoll,
@@ -31,7 +38,7 @@ export type BracketBattleLoadedSessionState = {
   shouldClearDice: boolean;
 };
 
-export type BracketBattleStorage = Pick<Storage, "getItem" | "setItem" | "removeItem">;
+export type BracketBattleStorage = GameSessionStorage;
 
 export type BracketBattleHostStateTarget = {
   bracketBattleSession: BracketBattleSession | null;
@@ -54,6 +61,11 @@ export function isBracketBattleSession(value: unknown): value is BracketBattleSe
     && Array.isArray(candidate.awards)
   );
 }
+
+const bracketBattleSessionCodec: GameSessionCodec<BracketBattleSession> = {
+  decode: (value) => isBracketBattleSession(value) ? value : null,
+  encode: (value) => value
+};
 
 export function getBracketBattleSessionStorageKey(context: BracketBattleHostFlowContext): string {
   const modeSuffix = context.wheelMode === "live" ? "live" : "preview";
@@ -104,36 +116,8 @@ export function loadBracketBattleSessionState(
   context: BracketBattleHostFlowContext
 ): BracketBattleLoadedSessionState {
   const storageKey = getBracketBattleSessionStorageKey(context);
-  try {
-    const raw = storage.getItem(storageKey);
-    if (!raw) {
-      return {
-        storageKey,
-        session: null,
-        lastRolls: [],
-        showcaseMatchId: null,
-        shouldClearDice: true
-      };
-    }
-    const parsed = JSON.parse(raw) as unknown;
-    if (!isBracketBattleSession(parsed)) {
-      return {
-        storageKey,
-        session: null,
-        lastRolls: [],
-        showcaseMatchId: null,
-        shouldClearDice: true
-      };
-    }
-    const session = normalizeBracketBattleSessionDice(parsed);
-    return {
-      storageKey,
-      session,
-      lastRolls: [],
-      showcaseMatchId: resolveBracketBattleShowcaseMatchId(session),
-      shouldClearDice: !session.rolls.length
-    };
-  } catch {
+  const storedSession = readGameSession(storage, storageKey, bracketBattleSessionCodec);
+  if (!storedSession) {
     return {
       storageKey,
       session: null,
@@ -142,6 +126,14 @@ export function loadBracketBattleSessionState(
       shouldClearDice: true
     };
   }
+  const session = normalizeBracketBattleSessionDice(storedSession);
+  return {
+    storageKey,
+    session,
+    lastRolls: [],
+    showcaseMatchId: resolveBracketBattleShowcaseMatchId(session),
+    shouldClearDice: !session.rolls.length
+  };
 }
 
 export function persistBracketBattleSessionState(
@@ -149,15 +141,11 @@ export function persistBracketBattleSessionState(
   storageKey: string,
   session: BracketBattleSession | null
 ): void {
-  try {
-    if (!session) {
-      storage.removeItem(storageKey);
-      return;
-    }
-    storage.setItem(storageKey, JSON.stringify(session));
-  } catch {
-    // Local host play should continue even when browser storage is unavailable.
+  if (!session) {
+    removeGameSession(storage, storageKey);
+    return;
   }
+  writeGameSession(storage, storageKey, session, bracketBattleSessionCodec);
 }
 
 export function buildBracketBattleSessionStatePayload(input: {
