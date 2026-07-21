@@ -39,8 +39,9 @@ type WheelTallyHistoryEntry = { tierId: string; label: string; color: string; co
 type WheelSessionSnapshot = ReturnType<typeof createWheelSessionSnapshot>;
 type StoredWheelSpectatorField = `gameSpectatorSession${"Id" | "Status" | "Url" | "QrUrl"}`
   | `wheelSpectatorSession${"Id" | "Status" | "Url" | "QrUrl"}`;
-type StoredWheelConfigSession = Partial<WheelSessionSnapshot>
-  & Pick<WheelSessionSnapshot, "wheelSpinCounts"> & Partial<Record<StoredWheelSpectatorField, unknown>>;
+type StoredWheelConfigSession = { [K in keyof WheelSessionSnapshot]?: unknown }
+  & { wheelSpinCounts: number[]; wheelPreviewSpinCounts?: number[]; wheelSlotTiers?: string[]; wheelPreviewSlotTiers?: string[] }
+  & Partial<Record<StoredWheelSpectatorField, unknown>>;
 type StoredWheelRootSession = StoredWheelConfigSession & { activeWheelConfigId: number };
 type UnknownFields = { [key: string]: unknown };
 
@@ -57,7 +58,7 @@ function decodeStoredWheelConfigSession(value: unknown): StoredWheelConfigSessio
   const normalizeCounts = (raw: unknown): number[] | null => {
     if (!Array.isArray(raw)) return null;
     const counts = raw.map((entry) => typeof entry === "number" || (typeof entry === "string" && entry.trim()) ? Number(entry) : NaN);
-    return counts.every(Number.isFinite) ? counts : null;
+    return counts.every((count) => Number.isInteger(count) && count >= 0) ? counts : null;
   };
   const spinCounts = normalizeCounts(rawSpinCounts);
   if (!spinCounts) return null;
@@ -605,7 +606,8 @@ export const wheelSessionMethods = {
         return false;
       }
       this.wheelTotalSpins = (this.wheelSpinCounts as number[]).reduce((sum, count) => sum + count, 0);
-      this.wheelSessionUpdatedAt = (session.wheelSessionUpdatedAt as number) || 0;
+      const sessionUpdatedAt = Number(session.wheelSessionUpdatedAt);
+      this.wheelSessionUpdatedAt = Number.isFinite(sessionUpdatedAt) ? sessionUpdatedAt : 0;
       controller.sessionNetRevenue =
         Number.isFinite(Number(session.wheelSessionNetRevenue))
           ? (Number(session.wheelSessionNetRevenue) || 0)
@@ -647,8 +649,9 @@ export const wheelSessionMethods = {
         ? (session.wheelPreviewGridReveals as typeof controller.previewGridReveals)
         : [];
       assignWheelPendingInventoryIssues(this, session.wheelPendingInventoryIssues || session.wheelSkippedDeductions || []);
-      this.wheelCurrentAngle = (session.wheelCurrentAngle as number) || 0;
-      this.wheelLastResult = (session.wheelLastResult as string) || "";
+      const currentAngle = Number(session.wheelCurrentAngle);
+      this.wheelCurrentAngle = Number.isFinite(currentAngle) ? currentAngle : 0;
+      this.wheelLastResult = typeof session.wheelLastResult === "string" ? session.wheelLastResult : "";
       controller.lastResultColor = String(session.wheelLastResultColor || "rgb(var(--v-theme-primary))");
       controller.spinHash = String(session.wheelSpinHash ?? "");
       controller.spinSeed = String(session.wheelSpinSeed ?? "");

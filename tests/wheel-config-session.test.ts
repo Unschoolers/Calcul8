@@ -1993,6 +1993,77 @@ test("loadWheelFromSession rejects malformed spin counts at the storage boundary
   Object.defineProperty(globalThis, "localStorage", { value: origLocalStorage, writable: true, configurable: true });
 });
 
+test("loadWheelFromSession rejects negative and fractional spin counts", () => {
+  const scope = { scopeType: "personal" as const, workspaceId: null };
+  const configKey = getScopedWheelConfigSessionStorageKey(scope, 42);
+  const origLocalStorage = globalThis.localStorage;
+  for (const wheelSpinCounts of [[1, -1], [1, 0.5]]) {
+    Object.defineProperty(globalThis, "localStorage", {
+      value: {
+        getItem: vi.fn((key: string) => key === configKey ? JSON.stringify({ wheelSpinCounts }) : null)
+      },
+      writable: true,
+      configurable: true
+    });
+    const vm = createSessionRestoreVm();
+
+    assert.equal(GameWindow.methods!.loadWheelFromSession.call(vm as never), false);
+    assert.deepEqual(vm.wheelSpinCounts, [0, 0]);
+  }
+  Object.defineProperty(globalThis, "localStorage", { value: origLocalStorage, writable: true, configurable: true });
+});
+
+test("loadWheelFromSession contains malformed scalar session fields", () => {
+  const scope = { scopeType: "personal" as const, workspaceId: null };
+  const configKey = getScopedWheelConfigSessionStorageKey(scope, 42);
+  const origLocalStorage = globalThis.localStorage;
+  Object.defineProperty(globalThis, "localStorage", {
+    value: {
+      getItem: vi.fn((key: string) => key === configKey ? JSON.stringify({
+        wheelSpinCounts: [0, 0],
+        wheelCurrentAngle: { invalid: true },
+        wheelSessionUpdatedAt: "yesterday",
+        wheelLastResult: { label: "invalid" }
+      }) : null)
+    },
+    writable: true,
+    configurable: true
+  });
+  const vm = createSessionRestoreVm();
+
+  assert.equal(GameWindow.methods!.loadWheelFromSession.call(vm as never), true);
+  assert.equal(vm.wheelCurrentAngle, 0);
+  assert.equal(vm.wheelSessionUpdatedAt, 0);
+  assert.equal(vm.wheelLastResult, "");
+  Object.defineProperty(globalThis, "localStorage", { value: origLocalStorage, writable: true, configurable: true });
+});
+
+test("loadWheelFromSession keeps valid legacy scalar and numeric-string hydration", () => {
+  const scope = { scopeType: "personal" as const, workspaceId: null };
+  const configKey = getScopedWheelConfigSessionStorageKey(scope, 42);
+  const origLocalStorage = globalThis.localStorage;
+  Object.defineProperty(globalThis, "localStorage", {
+    value: {
+      getItem: vi.fn((key: string) => key === configKey ? JSON.stringify({
+        wheelSpinCounts: ["2", "1"],
+        wheelCurrentAngle: 1.25,
+        wheelSessionUpdatedAt: 123,
+        wheelLastResult: "Legacy prize"
+      }) : null)
+    },
+    writable: true,
+    configurable: true
+  });
+  const vm = createSessionRestoreVm();
+
+  assert.equal(GameWindow.methods!.loadWheelFromSession.call(vm as never), true);
+  assert.deepEqual(vm.wheelSpinCounts, [2, 1]);
+  assert.equal(vm.wheelCurrentAngle, 1.25);
+  assert.equal(vm.wheelSessionUpdatedAt, 123);
+  assert.equal(vm.wheelLastResult, "Legacy prize");
+  Object.defineProperty(globalThis, "localStorage", { value: origLocalStorage, writable: true, configurable: true });
+});
+
 test("loadWheelFromSession returns false when slot count mismatches", () => {
   const session = {
     wheelSpinCounts: [1, 2, 3], // 3 counts
