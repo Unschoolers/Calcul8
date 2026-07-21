@@ -94,7 +94,7 @@ export function getWheelTierLotContext(
 export function createWheelSessionSnapshot(
   context: WheelSessionContext,
   controller: WheelControllerState
-): Record<string, unknown> {
+) {
   const slots = ((controller.activeSlots || []) as WheelSlot[]);
   const snapshot = {
     wheelSpinCounts: context.wheelSpinCounts,

@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { test, vi } from "vitest";
 import {
     getScopedWheelConfigDraftStorageKey,
-    getScopedWheelConfigSessionStorageKey
+    getScopedWheelConfigSessionStorageKey,
+    getScopedWheelSessionStorageKey
 } from "../src/app-core/storageKeys.ts";
 import { normalizeWheelConfig } from "../src/app-core/shared/normalize-wheel-config.ts";
 import { createNestedWindowContextBridge } from "../src/components/windows/shared/contextBridge.ts";
@@ -1618,6 +1619,35 @@ test("normalizeWheelCompactInspectorState keeps the mobile sheet closed in prese
 
 // ── Session persistence ─────────────────────────────────────────
 
+function createSessionRestoreVm(): Record<string, unknown> {
+  return {
+    activeWheelConfigId: 42,
+    activeScopeType: "personal",
+    activeWorkspaceId: null,
+    activeWheelSlots: [{}, {}],
+    wheelPreviewSlots: [{}, {}],
+    wheelSpinCounts: [0, 0],
+    wheelPreviewSpinCounts: [0, 0],
+    wheelPreviewTotalSpins: 0,
+    wheelTotalSpins: 0,
+    wheelSessionNetRevenue: 0,
+    wheelSessionCostAdjustment: 0,
+    wheelFairnessHistory: [],
+    wheelPreviewFairnessHistory: [],
+    wheelChaseTallyHistory: [],
+    wheelPreviewChaseTallyHistory: [],
+    wheelSkippedDeductions: [],
+    wheelCurrentAngle: 0,
+    wheelLastResult: "",
+    wheelLastResultColor: "",
+    wheelSpinHash: "",
+    wheelSpinSeed: "",
+    wheelSpinClientSeed: "",
+    wheelSpinVerificationUrl: "",
+    wheelSpinAlgorithm: ""
+  };
+}
+
 test("saveWheelSession stores session to localStorage", () => {
   const store: Record<string, string> = {};
   const mockStorage = { setItem: vi.fn((k: string, v: string) => { store[k] = v; }) };
@@ -1832,6 +1862,134 @@ test("loadWheelFromSession falls back to the scoped root session snapshot when t
   assert.equal(vm.wheelSessionNetRevenue, 25.83);
   assert.equal(vm.wheelCurrentAngle, 1.25);
 
+  Object.defineProperty(globalThis, "localStorage", { value: origLocalStorage, writable: true, configurable: true });
+});
+
+test("loadWheelFromSession supplements empty per-config fields from a matching root snapshot", () => {
+  const scope = { scopeType: "personal" as const, workspaceId: null };
+  const configKey = getScopedWheelConfigSessionStorageKey(scope, 42);
+  const rootKey = getScopedWheelSessionStorageKey(scope);
+  const values = {
+    [configKey]: JSON.stringify({
+      wheelSpinCounts: [1, 0],
+      wheelPreviewSpinCounts: [],
+      wheelCurrentAngle: 0,
+      wheelSpinHash: ""
+    }),
+    [rootKey]: JSON.stringify({
+      activeWheelConfigId: 42,
+      wheelSpinCounts: [9, 9],
+      wheelPreviewSpinCounts: [4, 2],
+      wheelCurrentAngle: 1.5,
+      wheelSpinHash: "root-hash",
+      wheelSpectatorSessionId: "legacy-root-session"
+    })
+  };
+  const origLocalStorage = globalThis.localStorage;
+  Object.defineProperty(globalThis, "localStorage", {
+    value: { getItem: vi.fn((key: string) => values[key as keyof typeof values] ?? null) },
+    writable: true,
+    configurable: true
+  });
+  const vm = createSessionRestoreVm();
+
+  const result = GameWindow.methods!.loadWheelFromSession.call(vm as never);
+
+  assert.equal(result, true);
+  assert.deepEqual(vm.wheelSpinCounts, [1, 0]);
+  assert.deepEqual(vm.wheelPreviewSpinCounts, [4, 2]);
+  assert.equal(vm.wheelCurrentAngle, 1.5);
+  assert.equal(vm.wheelSpinHash, "root-hash");
+  assert.equal(vm.gameSpectatorSessionId, "legacy-root-session");
+  Object.defineProperty(globalThis, "localStorage", { value: origLocalStorage, writable: true, configurable: true });
+});
+
+test("loadWheelFromSession keeps per-config values ahead of a matching root snapshot", () => {
+  const scope = { scopeType: "personal" as const, workspaceId: null };
+  const configKey = getScopedWheelConfigSessionStorageKey(scope, 42);
+  const rootKey = getScopedWheelSessionStorageKey(scope);
+  const values = {
+    [configKey]: JSON.stringify({
+      wheelSpinCounts: [3, 1],
+      wheelPreviewSpinCounts: [2, 1],
+      wheelCurrentAngle: 2.5,
+      wheelSpinHash: "config-hash"
+    }),
+    [rootKey]: JSON.stringify({
+      activeWheelConfigId: 42,
+      wheelSpinCounts: [9, 9],
+      wheelPreviewSpinCounts: [8, 8],
+      wheelCurrentAngle: 8.5,
+      wheelSpinHash: "root-hash"
+    })
+  };
+  const origLocalStorage = globalThis.localStorage;
+  Object.defineProperty(globalThis, "localStorage", {
+    value: { getItem: vi.fn((key: string) => values[key as keyof typeof values] ?? null) },
+    writable: true,
+    configurable: true
+  });
+  const vm = createSessionRestoreVm();
+
+  const result = GameWindow.methods!.loadWheelFromSession.call(vm as never);
+
+  assert.equal(result, true);
+  assert.deepEqual(vm.wheelSpinCounts, [3, 1]);
+  assert.deepEqual(vm.wheelPreviewSpinCounts, [2, 1]);
+  assert.equal(vm.wheelCurrentAngle, 2.5);
+  assert.equal(vm.wheelSpinHash, "config-hash");
+  Object.defineProperty(globalThis, "localStorage", { value: origLocalStorage, writable: true, configurable: true });
+});
+
+test("loadWheelFromSession rejects supplementation from a mismatched root snapshot", () => {
+  const scope = { scopeType: "personal" as const, workspaceId: null };
+  const configKey = getScopedWheelConfigSessionStorageKey(scope, 42);
+  const rootKey = getScopedWheelSessionStorageKey(scope);
+  const values = {
+    [configKey]: JSON.stringify({ wheelSpinCounts: [2, 0] }),
+    [rootKey]: JSON.stringify({
+      activeWheelConfigId: 99,
+      wheelSpinCounts: [9, 9],
+      wheelPreviewSpinCounts: [8, 8],
+      wheelSpinHash: "unrelated-root-hash"
+    })
+  };
+  const origLocalStorage = globalThis.localStorage;
+  Object.defineProperty(globalThis, "localStorage", {
+    value: { getItem: vi.fn((key: string) => values[key as keyof typeof values] ?? null) },
+    writable: true,
+    configurable: true
+  });
+  const vm = createSessionRestoreVm();
+
+  const result = GameWindow.methods!.loadWheelFromSession.call(vm as never);
+
+  assert.equal(result, true);
+  assert.deepEqual(vm.wheelSpinCounts, [2, 0]);
+  assert.deepEqual(vm.wheelPreviewSpinCounts, [0, 0]);
+  assert.equal(vm.wheelSpinHash, "");
+  Object.defineProperty(globalThis, "localStorage", { value: origLocalStorage, writable: true, configurable: true });
+});
+
+test("loadWheelFromSession rejects malformed spin counts at the storage boundary", () => {
+  const scope = { scopeType: "personal" as const, workspaceId: null };
+  const configKey = getScopedWheelConfigSessionStorageKey(scope, 42);
+  const origLocalStorage = globalThis.localStorage;
+  Object.defineProperty(globalThis, "localStorage", {
+    value: {
+      getItem: vi.fn((key: string) => key === configKey
+        ? JSON.stringify({ wheelSpinCounts: [1, "not-a-count"] })
+        : null)
+    },
+    writable: true,
+    configurable: true
+  });
+  const vm = createSessionRestoreVm();
+
+  const result = GameWindow.methods!.loadWheelFromSession.call(vm as never);
+
+  assert.equal(result, false);
+  assert.deepEqual(vm.wheelSpinCounts, [0, 0]);
   Object.defineProperty(globalThis, "localStorage", { value: origLocalStorage, writable: true, configurable: true });
 });
 

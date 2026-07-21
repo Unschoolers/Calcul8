@@ -36,12 +36,57 @@ import {
 } from "../services/gameSessionAggregateAdapter.ts";
 
 type WheelTallyHistoryEntry = { tierId: string; label: string; color: string; count: number };
-type StoredWheelSession = ReturnType<typeof createWheelSessionSnapshot>;
+type WheelSessionSnapshot = ReturnType<typeof createWheelSessionSnapshot>;
+type StoredWheelSpectatorField = `gameSpectatorSession${"Id" | "Status" | "Url" | "QrUrl"}`
+  | `wheelSpectatorSession${"Id" | "Status" | "Url" | "QrUrl"}`;
+type StoredWheelConfigSession = Partial<WheelSessionSnapshot>
+  & Pick<WheelSessionSnapshot, "wheelSpinCounts"> & Partial<Record<StoredWheelSpectatorField, unknown>>;
+type StoredWheelRootSession = StoredWheelConfigSession & { activeWheelConfigId: number };
+type UnknownFields = { [key: string]: unknown };
 
-const wheelSessionCodec: GameSessionCodec<StoredWheelSession> = {
-  decode: (value) => value && typeof value === "object" && !Array.isArray(value)
-    ? value as StoredWheelSession
-    : null,
+function decodeStoredWheelConfigSession(value: unknown): StoredWheelConfigSession | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const {
+    activeWheelConfigId: _rootOnly,
+    wheelSpinCounts: rawSpinCounts,
+    wheelPreviewSpinCounts: rawPreviewSpinCounts,
+    wheelSlotTiers: rawSlotTiers,
+    wheelPreviewSlotTiers: rawPreviewSlotTiers,
+    ...legacyFields
+  } = value as UnknownFields;
+  const normalizeCounts = (raw: unknown): number[] | null => {
+    if (!Array.isArray(raw)) return null;
+    const counts = raw.map((entry) => typeof entry === "number" || (typeof entry === "string" && entry.trim()) ? Number(entry) : NaN);
+    return counts.every(Number.isFinite) ? counts : null;
+  };
+  const spinCounts = normalizeCounts(rawSpinCounts);
+  if (!spinCounts) return null;
+  const previewSpinCounts = normalizeCounts(rawPreviewSpinCounts);
+  const normalizeTiers = (raw: unknown): string[] | null => Array.isArray(raw) && raw.every((entry) => typeof entry === "string")
+    ? raw
+    : null;
+  const slotTiers = normalizeTiers(rawSlotTiers);
+  const previewSlotTiers = normalizeTiers(rawPreviewSlotTiers);
+  return {
+    ...legacyFields,
+    wheelSpinCounts: spinCounts,
+    ...(previewSpinCounts ? { wheelPreviewSpinCounts: previewSpinCounts } : {}),
+    ...(slotTiers ? { wheelSlotTiers: slotTiers } : {}),
+    ...(previewSlotTiers ? { wheelPreviewSlotTiers: previewSlotTiers } : {})
+  } as StoredWheelConfigSession;
+}
+
+const wheelConfigSessionCodec: GameSessionCodec<StoredWheelConfigSession> = {
+  decode: decodeStoredWheelConfigSession,
+  encode: (value) => value
+};
+
+const wheelRootSessionCodec: GameSessionCodec<StoredWheelRootSession> = {
+  decode: (value) => {
+    const session = decodeStoredWheelConfigSession(value);
+    const activeWheelConfigId = Number((value as UnknownFields | null)?.activeWheelConfigId);
+    return session && Number.isFinite(activeWheelConfigId) ? { ...session, activeWheelConfigId } : null;
+  },
   encode: (value) => value
 };
 
@@ -476,17 +521,17 @@ export const wheelSessionMethods = {
       activeScopeType: "personal" | "workspace";
       activeWorkspaceId: string | null;
     });
-    writeGameSession(
+    writeGameSession<StoredWheelConfigSession>(
       localStorage,
       getScopedWheelConfigSessionStorageKey(storageScope, activeId),
       session,
-      wheelSessionCodec
+      wheelConfigSessionCodec
     );
-    writeGameSession(
+    writeGameSession<StoredWheelRootSession>(
       localStorage,
       getScopedWheelSessionStorageKey(storageScope),
       { activeWheelConfigId: activeId, ...session },
-      wheelSessionCodec
+      wheelRootSessionCodec
     );
     if (
       String(this.gameSpectatorSessionId || "").trim()
@@ -509,30 +554,20 @@ export const wheelSessionMethods = {
     const configSession = readGameSession(
       localStorage,
       getScopedWheelConfigSessionStorageKey(storageScope, activeId),
-      wheelSessionCodec
+      wheelConfigSessionCodec
     );
     const rootSession = readGameSession(
       localStorage,
       getScopedWheelSessionStorageKey(storageScope),
-      wheelSessionCodec
+      wheelRootSessionCodec
     );
-    if (!configSession && !rootSession) return false;
+    const rootForActiveConfig = rootSession?.activeWheelConfigId === activeId ? rootSession : null;
+    if (!configSession && !rootForActiveConfig) return false;
     try {
-      if (
-        rootSession?.activeWheelConfigId != null
-        && Number(rootSession.activeWheelConfigId) !== activeId
-      ) {
-        // Ignore unrelated root snapshot when a different wheel config is active.
-      }
-      const session = {
-        ...(rootSession && Number(rootSession.activeWheelConfigId) === activeId ? rootSession : {}),
-        ...(configSession || {})
-      };
-      const rootForActiveConfig = rootSession && Number(rootSession.activeWheelConfigId) === activeId ? rootSession : null;
+      const session: StoredWheelConfigSession = configSession
+        ? { ...(rootForActiveConfig ?? {}), ...configSession }
+        : { ...rootForActiveConfig! };
       mergeWheelSessionRootFallback(session, rootForActiveConfig);
-      if (session.activeWheelConfigId != null && Number(session.activeWheelConfigId) !== activeId) {
-        return false;
-      }
       const controller = getWheelController(this);
       const activeConfig = getWheelTargetConfig(this);
       if (activeConfig?.gameType === "grid") {
