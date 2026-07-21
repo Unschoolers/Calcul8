@@ -1,4 +1,3 @@
-import type { AppMethodImplementation } from "../context-app.ts";
 import { uiAccountMethods } from "./ui/auth/account.ts";
 import { uiBaseMethods } from "./ui/common/base.ts";
 import { uiEntitlementMethods } from "./ui/entitlements/entitlements.ts";
@@ -17,5 +16,5 @@ export const uiMethods = {
   ...uiSyncMethods,
   ...uiWorkspaceMethods,
   ...uiBuyerProfileMethods
-} satisfies AppMethodImplementation;
+};
 

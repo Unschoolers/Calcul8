@@ -129,7 +129,7 @@ type SinglesWindowThis = {
     marketValueCurrency: "CAD" | "USD";
   };
 
-  // ===== AppContext bridge =====
+  // ===== Root window context bridge =====
   singlesPurchases: SinglesPurchaseEntry[];
   singlesSoldCountByPurchaseId: Record<number, number>;
   sellingCurrency: CurrencyCode;

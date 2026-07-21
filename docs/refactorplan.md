@@ -23,23 +23,6 @@ This is the active technical and security backlog, plus a staged test-maintenanc
 
 **Done when:** Normal frontend API calls no longer read or send the stored Google ID token after session bootstrap; tests prove unsafe cookie-authenticated requests include CSRF; tests prove normal calls do not use bearer fallback; legacy `localStorage` auth keys are still cleared safely during hydration.
 
-### 2. Finish The Feature-Scoped Frontend Context Migration
-
-**Priority:** High maintainability and change-isolation hardening.
-
-**Scan finding:** The aggregate declarations have been split out of `src/app-core/context-app.ts` into focused contracts under `src/app-core/context`. Portfolio computed behavior, Portfolio sales hydration, shared sales API helpers, and all feature-computed modules now consume narrow contracts. The compatibility `AppContext` and `AppMethodImplementation` aggregates remain necessary at the Vue composition root, but older method, lifecycle, watcher, auth, workspace, sync, Whatnot, and game modules still import them directly.
-
-**Risk:** If new leaf modules continue depending on the aggregate, unrelated state and methods remain visible everywhere and future features will gradually rebuild the original god-context coupling. That makes local refactors noisy and weakens TypeScript's ability to identify true feature dependencies.
-
-**Implementation direction:**
-
-- Keep `AppContext` and `AppMethodState` only for root assembly and completeness validation.
-- Define explicit state, computed, method, and runtime capabilities in the owning feature contract.
-- Migrate leaf services and method implementations feature by feature, starting with auth/session, workspace/sync, Whatnot, and game workflows.
-- Extend `tests/context-contracts.test.ts` whenever a feature boundary is migrated so aggregate dependencies cannot return.
-
-**Done when:** Only composition-root modules import `AppContext`, all leaf method objects use feature-specific implementation types, and strict test typechecking proves the aggregate still implements every focused contract.
-
 ## Planned Test-Maintenance Follow-Up
 
 ### Standardize Test Fixtures With Shared Builders

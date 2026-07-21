@@ -1,6 +1,9 @@
 import { driver, type DriveStep, type Driver } from "driver.js";
 import type { LotType } from "../../../../types/app.ts";
-import type { AppContext, AppMethodImplementation } from "../../../context-app.ts";
+import type {
+  OnboardingContext,
+  OnboardingMethodImplementation
+} from "../../../context/shell.ts";
 import {
   normalizePersistedOnboardingStatus,
   shouldOfferFirstRunOnboarding
@@ -39,7 +42,9 @@ function writePersistedOnboardingStatus(status: "pending" | "completed" | "dismi
   }
 }
 
-function shouldOfferGuidedOnboarding(context: Pick<AppContext, "isGoogleSignedIn" | "activeScopeType" | "lots">): boolean {
+function shouldOfferGuidedOnboarding(
+  context: Pick<OnboardingContext, "isGoogleSignedIn" | "activeScopeType" | "lots">
+): boolean {
   return shouldOfferFirstRunOnboarding({
     isGoogleSignedIn: context.isGoogleSignedIn,
     activeScopeType: context.activeScopeType,
@@ -61,7 +66,10 @@ function destroyDriver(): void {
   }
 }
 
-function resetGuidedOnboardingRuntimeState(context: AppContext, status: "idle" | "available" | "completed" | "dismissed"): void {
+function resetGuidedOnboardingRuntimeState(
+  context: OnboardingContext,
+  status: "idle" | "available" | "completed" | "dismissed"
+): void {
   context.guidedOnboardingStatus = status;
   context.guidedOnboardingLotType = null;
   context.guidedOnboardingTargetLotId = null;
@@ -96,12 +104,12 @@ function waitForElement(
   }, 60);
 }
 
-function completeGuidedOnboarding(context: AppContext): void {
+function completeGuidedOnboarding(context: OnboardingContext): void {
   writePersistedOnboardingStatus("completed");
   resetGuidedOnboardingRuntimeState(context, "completed");
 }
 
-function buildDriverSteps(context: AppContext, lotType: LotType): DriveStep[] {
+function buildDriverSteps(context: OnboardingContext, lotType: LotType): DriveStep[] {
   if (lotType === "singles") {
     return [
       {
@@ -142,7 +150,7 @@ function buildDriverSteps(context: AppContext, lotType: LotType): DriveStep[] {
 }
 
 function startConfiguredDriver(
-  context: AppContext,
+  context: OnboardingContext,
   steps: DriveStep[],
   onComplete?: () => void
 ): void {
@@ -183,7 +191,7 @@ function startConfiguredDriver(
   activeDriver.drive();
 }
 
-function startPostCreateTour(context: AppContext, lotType: LotType): void {
+function startPostCreateTour(context: OnboardingContext, lotType: LotType): void {
   const targetToWaitFor = lotType === "singles"
     ? TOUR_TARGETS.singlesPurchasing
     : TOUR_TARGETS.bulkPurchase;
@@ -288,5 +296,5 @@ export const uiOnboardingMethods = {
       startPostCreateTour(this, lotType);
     });
   }
-} satisfies AppMethodImplementation;
+} satisfies OnboardingMethodImplementation;
 

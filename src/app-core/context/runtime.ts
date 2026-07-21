@@ -7,8 +7,6 @@ import type { AppTranslationKey } from "../i18n/index.ts";
 
 export interface RuntimeComputedState {
   isDark: boolean;
-  liveProfitTargetBadgeVisible: boolean;
-  liveProfitTargetBadgeLabel: string;
 }
 
 export interface RuntimeMethodState {

@@ -6,7 +6,7 @@ import type {
 } from "../../../shared/sync-contracts.mjs";
 import type { CommerceMethodState } from "./commerce.ts";
 import type { RuntimeMethodState, FeatureMethodImplementation } from "./runtime.ts";
-import type { WorkspaceMethodState } from "./workspace.ts";
+import type { WorkspaceComputedState, WorkspaceMethodState } from "./workspace.ts";
 
 export interface SyncComputedState {
   accountSyncBadgeVisible: boolean;
@@ -18,6 +18,15 @@ export interface SyncComputedState {
   syncStatusSubtitle: string;
   syncStatusIcon: string;
 }
+
+export type SyncComputedContext = Pick<
+  AppState,
+  "syncStatus" | "workspaceRealtimeStatus" | "preferredLanguage"
+> & Pick<WorkspaceComputedState, "isWorkspaceScopeActive">;
+
+export type SyncComputedObject = {
+  [Key in keyof SyncComputedState]: (this: SyncComputedContext) => SyncComputedState[Key];
+};
 
 export interface SyncMethodState {
   pullCloudSync(forceApply?: boolean): Promise<void>;

@@ -13,6 +13,21 @@ export interface WhatnotComputedState {
   whatnotSyncActionTitle: string;
 }
 
+export type WhatnotComputedContext = Pick<
+  AppState,
+  | "activeScopeType"
+  | "preferredLanguage"
+  | "whatnotConnectionStatus"
+  | "whatnotConnectionSummary"
+  | "whatnotSyncStatus"
+>;
+
+export type WhatnotComputedObject = {
+  [Key in keyof WhatnotComputedState]: (
+    this: WhatnotComputedContext
+  ) => WhatnotComputedState[Key];
+};
+
 export interface WhatnotMethodState {
   refreshWhatnotStatus(): Promise<void>;
   connectWhatnot(): Promise<void>;

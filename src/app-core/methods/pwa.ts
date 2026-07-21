@@ -1,5 +1,5 @@
 import type { BeforeInstallPromptEvent } from "../../types/app.ts";
-import type { AppMethodImplementation } from "../context-app.ts";
+import type { PwaMethodImplementation } from "../context/shell.ts";
 
 const DISMISSED_APP_UPDATE_SESSION_KEY = "whatfees_dismissed_app_update_worker";
 const APP_UPDATE_NAVIGATION_FALLBACK_MS = 4000;
@@ -258,5 +258,5 @@ export const pwaMethods = {
     };
     window.addEventListener("load", this.serviceWorkerLoadListener, { once: true });
   }
-} satisfies AppMethodImplementation;
+} satisfies PwaMethodImplementation;
 

@@ -1,4 +1,10 @@
-import type { AppComputedObject } from "./context-contracts.ts";
+import type { AuthProfileComputedObject } from "./context/auth.ts";
+import type { CommerceComputedObject } from "./context/commerce.ts";
+import type { PortfolioComputedObject } from "./context/portfolio.ts";
+import type { RuntimeComputedObject } from "./context/runtime.ts";
+import type { SyncComputedObject } from "./context/sync.ts";
+import type { WhatnotComputedObject } from "./context/whatnot.ts";
+import type { WorkspaceComputedObject } from "./context/workspace.ts";
 import { authProfileComputed } from "./computed/auth-profile.ts";
 import { commerceProxyComputed } from "./computed/commerce-proxies.ts";
 import { runtimeComputed } from "./computed/runtime.ts";
@@ -220,7 +226,15 @@ function formatProfitTargetBadgeLabel(value: number): string {
   return `${displayValue}%`;
 }
 
-export const appComputed: AppComputedObject = {
+type AppComputedComposition = RuntimeComputedObject &
+  AuthProfileComputedObject &
+  CommerceComputedObject &
+  PortfolioComputedObject &
+  SyncComputedObject &
+  WhatnotComputedObject &
+  WorkspaceComputedObject;
+
+export const appComputed: AppComputedComposition = {
   ...runtimeComputed,
   ...authProfileComputed,
   ...commerceProxyComputed,

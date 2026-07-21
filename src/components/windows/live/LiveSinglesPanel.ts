@@ -62,7 +62,7 @@ type LiveSinglesPanelThis = {
   liveSinglesImagePreviewSrc: string;
   liveSinglesImagePreviewTitle: string;
 
-  // ===== AppContext bridge =====
+  // ===== Root window context bridge =====
   ctx: Record<string, unknown> | undefined;
   $root: Record<string, unknown> | undefined;
   currentLotType: string;

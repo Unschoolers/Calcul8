@@ -98,40 +98,19 @@ test("source scanning keeps comment markers inside TypeScript literals", () => {
 
 test("aggregate app context dependencies cannot spread to new source files", () => {
   const sources = readTypeScriptSources("src");
-  // This migration ledger is intentionally explicit. Each domain migration removes
-  // its files until only the declaration and barrel remain for AppContext, and the
-  // implementation helpers and casts have no remaining consumers.
   const allowedAppContextFiles = new Set([
     "src/app-core/context-app.ts",
-    "src/app-core/context-contracts.ts",
-    "src/app-core/context.ts",
-    "src/app-core/lifecycle.ts",
-    "src/app-core/methods/ui/common/api-client.ts",
-    "src/app-core/methods/ui/common/onboarding.ts",
-    "src/app-core/watch.ts"
-  ]);
-  const allowedAppMethodImplementationFiles = new Set([
-    "src/app-core/context-app.ts",
-    "src/app-core/methods/pwa.ts",
-    "src/app-core/methods/ui/common/base.ts",
-    "src/app-core/methods/ui/common/onboarding.ts",
-    "src/app-core/methods/ui.ts"
-  ]);
-  const allowedAppComputedObjectFiles = new Set([
-    "src/app-core/computed.ts",
-    "src/app-core/context-contracts.ts",
     "src/app-core/context.ts"
   ]);
-  const allowedAppContextCastFiles = new Set<string>();
   const aggregateDependencies = [
     { name: "AppContext", pattern: /\bAppContext\b/, allowedFiles: allowedAppContextFiles },
     {
       name: "AppMethodImplementation",
       pattern: /\bAppMethodImplementation\b/,
-      allowedFiles: allowedAppMethodImplementationFiles
+      allowedFiles: new Set<string>()
     },
-    { name: "AppComputedObject", pattern: /\bAppComputedObject\b/, allowedFiles: allowedAppComputedObjectFiles },
-    { name: "as AppContext", pattern: /\bas\s+AppContext\b/, allowedFiles: allowedAppContextCastFiles }
+    { name: "AppComputedObject", pattern: /\bAppComputedObject\b/, allowedFiles: new Set<string>() },
+    { name: "as AppContext", pattern: /\bas\s+AppContext\b/, allowedFiles: new Set<string>() }
   ];
 
   for (const dependency of aggregateDependencies) {

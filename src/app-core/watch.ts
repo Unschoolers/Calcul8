@@ -1,5 +1,8 @@
-import type { AppContext } from "./context-app.ts";
-import type { AppWatchObject } from "./context-contracts.ts";
+import type {
+  LivePricingHydrationContext,
+  SalesFreshnessContext
+} from "./context/commerce.ts";
+import type { AppWatchObject, TabSalesFreshnessContext } from "./context/watch.ts";
 import { isDevNoLoginRoute } from "./dev-nologin.ts";
 import { hydrateAuthoritativeLivePricingForLot } from "./methods/config-live-pricing.ts";
 import { refreshPersonalLotSalesIfStale } from "./methods/sales-freshness.ts";
@@ -15,18 +18,7 @@ const TAB_CHART_SETTLE_DELAY_MS = 250;
 const pendingTabSalesFreshnessTimeouts = new WeakMap<object, number>();
 
 function queueCurrentLotSalesFreshnessCheck(
-  context: Pick<
-    AppContext,
-    | "currentTab"
-    | "currentLotId"
-    | "activeScopeType"
-    | "activeWorkspaceId"
-    | "getSalesCacheEntry"
-    | "getSalesStorageKey"
-    | "googleAuthEpoch"
-    | "hasProAccess"
-    | "notify"
-  > & Partial<Pick<AppContext, "sales" | "salesByLotId">>,
+  context: SalesFreshnessContext,
   lotIdOverride?: number | null
 ): void {
   const currentLotId = Number(lotIdOverride ?? context.currentLotId);
@@ -36,7 +28,10 @@ function queueCurrentLotSalesFreshnessCheck(
   });
 }
 
-function hydrateCurrentLotLivePricing(context: AppContext, lotIdOverride?: number | null): void {
+function hydrateCurrentLotLivePricing(
+  context: LivePricingHydrationContext,
+  lotIdOverride?: number | null
+): void {
   const currentLotId = Number(lotIdOverride ?? context.currentLotId);
   if (!Number.isFinite(currentLotId) || currentLotId <= 0) return;
   void hydrateAuthoritativeLivePricingForLot(context, currentLotId).catch((error) => {
@@ -52,18 +47,7 @@ function cancelQueuedTabSalesFreshnessCheck(context: object): void {
 }
 
 function queueCurrentLotSalesFreshnessCheckAfterTabSettle(
-  context: Pick<
-    AppContext,
-    | "currentTab"
-    | "currentLotId"
-    | "activeScopeType"
-    | "activeWorkspaceId"
-    | "getSalesCacheEntry"
-    | "getSalesStorageKey"
-    | "googleAuthEpoch"
-    | "hasProAccess"
-    | "notify"
-  > & Partial<Pick<AppContext, "sales" | "salesByLotId">>,
+  context: TabSalesFreshnessContext,
   targetTab: "sales" | "portfolio"
 ): void {
   const currentLotId = Number(context.currentLotId);

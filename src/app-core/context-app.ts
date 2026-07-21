@@ -42,9 +42,3 @@ export interface AppMethodState extends
 export type { AppVueContext } from "./context/runtime.ts";
 
 export type AppContext = AppState & AppComputedState & AppMethodState & AppVueContext;
-
-/**
- * Legacy aggregate implementation typing remains at the composition boundary.
- * New leaf modules should expose a feature-specific implementation contract.
- */
-export type AppMethodImplementation = ThisType<AppContext> & Partial<AppMethodState>;

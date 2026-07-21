@@ -23,6 +23,7 @@ export type {
 } from "./context/buyers.ts";
 export type {
   CommerceComputedState,
+  CommerceComputedObject,
   CommerceMethodState,
   SalesEntityContext
 } from "./context/commerce.ts";
@@ -66,6 +67,8 @@ export type {
   RuntimeMethodState
 } from "./context/runtime.ts";
 export type {
+  WhatnotComputedContext,
+  WhatnotComputedObject,
   WhatnotComputedState,
   WhatnotConnectionContext,
   WhatnotCsvStateContext,
@@ -82,6 +85,8 @@ export type {
 } from "./context/whatnot.ts";
 export type {
   SyncComputedState,
+  SyncComputedContext,
+  SyncComputedObject,
   SyncMethodImplementation,
   SyncMethodState,
   SyncParsedSnapshot,
@@ -94,6 +99,8 @@ export type {
 } from "./context/sync.ts";
 export type {
   WorkspaceApiContext,
+  WorkspaceComputedContext,
+  WorkspaceComputedObject,
   WorkspaceComputedState,
   WorkspaceInviteContext,
   WorkspaceInviteMethodImplementation,
@@ -109,16 +116,33 @@ export type {
   WorkspaceUiHelperContext
 } from "./context/workspace.ts";
 export type {
-  AppWatchObject,
-  PurchaseCostInputComputed,
-  NullableNumberProxyComputed,
-  BooleanProxyComputed,
-  StringProxyComputed,
-  NumberArrayProxyComputed,
-  AppComputedObject,
-  AppLifecycleObject,
   ThemeName,
   PromptResult,
   BeforeInstallPromptHandler,
   ChangeCostModePayload
 } from "./context-contracts.ts";
+export type { AppLifecycleObject, AppMountContext, AppUnmountContext } from "./context/lifecycle.ts";
+export type {
+  BaseUiContext,
+  BaseUiMethodImplementation,
+  BaseUiMethodState,
+  OnboardingContext,
+  OnboardingMethodImplementation,
+  OnboardingMethodState,
+  PwaContext,
+  PwaMethodImplementation,
+  PwaMethodState
+} from "./context/shell.ts";
+export type {
+  AppWatchObject,
+  AuthWatchContext,
+  CommerceConfigWatchContext,
+  CurrentLotWatchContext,
+  GameWatchContext,
+  LanguageWatchContext,
+  PortfolioWatchContext,
+  SalesWatchContext,
+  ScopeWatchContext,
+  TabSalesFreshnessContext,
+  TabWatchContext
+} from "./context/watch.ts";

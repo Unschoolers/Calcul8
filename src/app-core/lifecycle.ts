@@ -1,7 +1,7 @@
 import type { AppTab, PortfolioDashboardPreset, PortfolioLotTypeFilter } from "../types/app.ts";
 import { primeStoredAuthSecretsFromStorage } from "./auth/index.ts";
-import type { AppContext } from "./context-app.ts";
-import type { AppLifecycleObject } from "./context-contracts.ts";
+import type { LivePricingHydrationContext, SalesFreshnessContext } from "./context/commerce.ts";
+import type { AppLifecycleObject } from "./context/lifecycle.ts";
 import { isDevNoLoginRoute } from "./dev-nologin.ts";
 import { hydrateAuthoritativeLivePricingForLot } from "./methods/config-live-pricing.ts";
 import { refreshPersonalLotSalesIfStale } from "./methods/sales-freshness.ts";
@@ -33,17 +33,7 @@ function isPortfolioDashboardPreset(value: unknown): value is PortfolioDashboard
     || value === "finished";
 }
 
-function refreshForegroundLotSales(context: Pick<
-  AppContext,
-  | "activeScopeType"
-  | "activeWorkspaceId"
-  | "currentLotId"
-  | "getSalesCacheEntry"
-  | "getSalesStorageKey"
-  | "googleAuthEpoch"
-  | "hasProAccess"
-  | "notify"
-> & Partial<Pick<AppContext, "sales" | "salesByLotId">>): void {
+function refreshForegroundLotSales(context: SalesFreshnessContext): void {
   const currentLotId = Number(context.currentLotId);
   if (!Number.isFinite(currentLotId) || currentLotId <= 0) return;
 
@@ -56,7 +46,7 @@ function canBindForegroundSalesListeners(): boolean {
   return typeof window !== "undefined" && typeof document !== "undefined";
 }
 
-function hydrateForegroundLivePricing(context: AppContext): void {
+function hydrateForegroundLivePricing(context: LivePricingHydrationContext): void {
   const currentLotId = Number(context.currentLotId);
   if (!Number.isFinite(currentLotId) || currentLotId <= 0) return;
 

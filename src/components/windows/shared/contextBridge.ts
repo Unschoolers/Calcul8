@@ -18,7 +18,7 @@ function getInternalCtx(ctx: MaybeWindowContext): WindowContext | undefined {
   return (ctx as { $?: { ctx?: Record<string, unknown> } }).$?.ctx as WindowContext | undefined;
 }
 
-function looksLikeAppContext(ctx: MaybeWindowContext): ctx is WindowContext {
+function looksLikeRootWindowContext(ctx: MaybeWindowContext): ctx is WindowContext {
   if (!ctx || typeof ctx !== "object") return false;
   return (
     Reflect.has(ctx, "currentTab") &&
@@ -40,7 +40,7 @@ export function resolveWindowContext(ctx: WindowContext): WindowContext {
   ];
 
   for (const candidate of candidates) {
-    if (looksLikeAppContext(candidate)) {
+    if (looksLikeRootWindowContext(candidate)) {
       return candidate;
     }
   }

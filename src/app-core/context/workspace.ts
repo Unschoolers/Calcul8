@@ -32,6 +32,28 @@ export interface WorkspaceComputedState {
   authGateSubtitle: string;
 }
 
+export type WorkspaceComputedContext = Pick<
+  AppState,
+  | "activeScopeType"
+  | "activeWorkspaceId"
+  | "availableWorkspaces"
+  | "pendingWorkspaceInviteToken"
+  | "pendingWorkspaceInviteWorkspaceId"
+  | "pendingWorkspaceInviteWorkspaceName"
+  | "preferredLanguage"
+  | "workspaceMembers"
+  | "workspacePresenceByUserId"
+  | "workspaceRealtimeStatus"
+> &
+  Pick<AuthComputedState, "googleProfileUserId"> &
+  Pick<WorkspaceComputedState, "currentWorkspaceName" | "currentWorkspaceSummary" | "isWorkspaceScopeActive">;
+
+export type WorkspaceComputedObject = {
+  [Key in keyof WorkspaceComputedState]: (
+    this: WorkspaceComputedContext
+  ) => WorkspaceComputedState[Key];
+};
+
 export interface WorkspaceMethodState {
   refreshWorkspaces(): Promise<boolean>;
   switchToPersonalWorkspace(): Promise<void>;

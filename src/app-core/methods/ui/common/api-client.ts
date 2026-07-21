@@ -4,7 +4,7 @@ import {
     setStoredSessionUserId,
     setStoredCsrfToken
 } from "../../../auth/index.ts";
-import type { AppContext } from "../../../context-app.ts";
+import type { AuthEntitlementSessionContext } from "../../../context/entitlements.ts";
 import { STORAGE_KEYS } from "../../../storageKeys.ts";
 import { handleExpiredAuth } from "../entitlements/entitlement-cache.ts";
 
@@ -168,7 +168,7 @@ export async function fetchWithRetry(
 }
 
 export async function fetchAuthenticatedApiResponse(
-  app: Pick<AppContext, "googleAuthEpoch" | "hasProAccess">,
+  app: AuthEntitlementSessionContext,
   path: string,
   init: RequestInit,
   options: {

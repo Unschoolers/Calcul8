@@ -26,6 +26,8 @@ import type { SyncMethodState } from "./sync.ts";
 import type { RootWheelSessionStateContext } from "../shared/wheel-root-session-state.ts";
 
 export interface CommerceComputedState {
+  liveProfitTargetBadgeVisible: boolean;
+  liveProfitTargetBadgeLabel: string;
   lotNameDraft: string;
   canUsePaidActions: boolean;
   currentLotType: LotType;
