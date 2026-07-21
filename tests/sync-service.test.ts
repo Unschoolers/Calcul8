@@ -742,7 +742,7 @@ test("runCloudSyncPush forwards intentional empty-overwrite flag for confirmed d
     activeWheelConfigId: null,
     allowEmptyOverwrite: true
   });
-  assert.equal(requestCloudSyncPush.mock.calls[0]?.[2], "session-preferred");
+  assert.equal(requestCloudSyncPush.mock.calls[0]?.length, 2);
 });
 
 test("runCloudSyncPull applies newer cloud snapshot and stores version", async () => {
@@ -1127,5 +1127,5 @@ test("runCloudSyncPull passes workspaceId for shared scopes", async () => {
   });
 
   assert.equal(requestCloudSyncPull.mock.calls[0]?.[1], "team-42");
-  assert.equal(requestCloudSyncPull.mock.calls[0]?.[2], "session-preferred");
+  assert.equal(requestCloudSyncPull.mock.calls[0]?.length, 2);
 });

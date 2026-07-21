@@ -1,10 +1,11 @@
 import type { AuthSessionBootstrapContext } from "../../../context/auth.ts";
 import {
-  buildAuthenticatedHeaders,
+  buildBootstrapBearerHeaders,
   cacheAuthProfile,
   clearStoredCsrfToken,
   clearStoredSessionUserId,
   hasAuthSignal,
+  getStoredGoogleIdToken,
   setStoredSessionUserId
 } from "../../../auth/index.ts";
 import { fetchWithRetry } from "../common/api-client.ts";
@@ -43,7 +44,7 @@ export async function bootstrapServerSessionStatus(
     const requestUrl = `${normalizedBaseUrl}/auth/me`;
     const response = await fetchWithRetry(requestUrl, {
       method: "GET",
-      headers: buildAuthenticatedHeaders("bearer-required", {}, requestUrl)
+      headers: buildBootstrapBearerHeaders(getStoredGoogleIdToken())
     });
 
     if (response.status === 401) {

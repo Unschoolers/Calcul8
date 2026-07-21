@@ -1,7 +1,7 @@
 import type { WorkspaceApiContext } from "../../../context/workspace.ts";
 import { fetchWithRetry, handleExpiredAuth, resolveApiBaseUrl } from "../common/shared.ts";
 import {
-  buildAuthenticatedHeaders,
+  buildSessionHeaders,
   getStoredGoogleIdToken,
   hasAuthSignal
 } from "../../../auth/index.ts";
@@ -35,11 +35,7 @@ export async function fetchWorkspaceJson(
   const requestUrl = `${baseUrl}${path}`;
   const buildRequestInit = (): RequestInit => ({
     ...init,
-    headers: buildAuthenticatedHeaders(
-      "session-preferred",
-      init.headers as Record<string, string> | undefined,
-      requestUrl
-    )
+    headers: buildSessionHeaders(init.headers as Record<string, string> | undefined)
   });
 
   let response: Response;

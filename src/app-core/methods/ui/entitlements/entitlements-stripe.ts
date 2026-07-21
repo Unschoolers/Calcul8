@@ -8,7 +8,7 @@ import {
   handleExpiredAuth,
   resolveApiBaseUrl
 } from "../common/shared.ts";
-import { buildAuthenticatedHeaders } from "../../../auth/index.ts";
+import { buildSessionHeaders } from "../../../auth/index.ts";
 
 const STRIPE_RETURN_POLL_DELAYS_MS = [0, 800, 1400, 2200];
 const STRIPE_EMBEDDED_CHECKOUT_MOUNT_ID = "stripe-embedded-checkout";
@@ -216,9 +216,9 @@ async function startStripeCheckout(
   const requestUrl = `${baseUrl}/billing/checkout-session`;
   const response = await fetchWithRetry(requestUrl, {
     method: "POST",
-    headers: buildAuthenticatedHeaders("session-preferred", {
+    headers: buildSessionHeaders({
       "Content-Type": "application/json"
-    }, requestUrl),
+    }),
     body: JSON.stringify({
       uiMode
     })

@@ -64,12 +64,11 @@ export function createSyncSession(
     requestPull(): Promise<Response> {
       return deps.requestCloudSyncPull(
         baseUrl,
-        scope.scopeType === "workspace" ? scope.workspaceId ?? undefined : undefined,
-        "session-preferred"
+        scope.scopeType === "workspace" ? scope.workspaceId ?? undefined : undefined
       );
     },
     requestPush(payload: SyncPayload): Promise<Response> {
-      return deps.requestCloudSyncPush(baseUrl, payload, "session-preferred");
+      return deps.requestCloudSyncPush(baseUrl, payload);
     },
     handleWorkspaceAccessLost(): Promise<void> {
       if (scope.scopeType !== "workspace") {

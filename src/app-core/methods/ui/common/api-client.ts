@@ -1,5 +1,5 @@
 import {
-    buildAuthenticatedHeaders,
+    buildSessionHeaders,
     getStoredCsrfToken,
     setStoredSessionUserId,
     setStoredCsrfToken
@@ -183,11 +183,7 @@ export async function fetchAuthenticatedApiResponse(
 
   const buildRequestInit = (): RequestInit => ({
     ...init,
-    headers: buildAuthenticatedHeaders(
-      "session-preferred",
-      init.headers as Record<string, string> | undefined,
-      requestUrl
-    )
+    headers: buildSessionHeaders(init.headers as Record<string, string> | undefined)
   });
 
   const response = await fetchWithRetry(requestUrl, buildRequestInit());

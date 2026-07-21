@@ -6,7 +6,7 @@ import type { FeatureMethodImplementation } from "../../../context/runtime.ts";
 import { clearEntitlementCache, fetchWithRetry, handleExpiredAuth, resolveApiBaseUrl } from "../common/shared.ts";
 import {
   disableGoogleAutoSignIn,
-  buildAuthenticatedHeaders,
+  buildSessionHeaders,
   clearStoredCsrfToken,
   clearStoredGoogleIdToken,
   clearStoredGoogleProfileCache,
@@ -99,7 +99,7 @@ async function postAccountAction(
   const requestUrl = `${baseUrl}${path}`;
   const response = await fetchWithRetry(requestUrl, {
     method: "POST",
-    headers: buildAuthenticatedHeaders("session-preferred", {}, requestUrl)
+    headers: buildSessionHeaders()
   });
 
   if (response.status === 401) {

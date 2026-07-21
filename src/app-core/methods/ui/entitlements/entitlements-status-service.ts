@@ -13,7 +13,7 @@ import {
   resolveApiBaseUrl
 } from "../common/shared.ts";
 import {
-  buildAuthenticatedHeaders,
+  buildSessionHeaders,
   getStoredGoogleIdToken,
   hasAuthSignal,
   hasServerSession
@@ -175,7 +175,7 @@ export async function syncEntitlementStatus(
     try {
       const requestUrl = `${base}/entitlements/me`;
       const response = await resolvedDeps.fetchWithRetry(requestUrl, {
-        headers: buildAuthenticatedHeaders("session-preferred", {}, requestUrl)
+        headers: buildSessionHeaders()
       });
 
       if (response.status === 401) {

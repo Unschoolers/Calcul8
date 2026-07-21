@@ -11,7 +11,7 @@ import {
   readEntitlementCache,
   resolveApiBaseUrl
 } from "./ui/common/shared.ts";
-import { buildAuthenticatedHeaders } from "../auth/index.ts";
+import { buildSessionHeaders } from "../auth/index.ts";
 import { clearScopedSyncDataStorage, getScopedSyncClientVersionKey } from "../storageKeys.ts";
 import { getActiveStorageScope } from "../workspace-scope.ts";
 import { replaceRootLotSales } from "../shared/sales-root-state.ts";
@@ -188,9 +188,9 @@ export const configIoMethods = {
       const requestUrl = `${baseUrl}/ops/sync/import-user`;
       const response = await fetchWithRetry(requestUrl, {
         method: "POST",
-        headers: buildAuthenticatedHeaders("session-preferred", {
+        headers: buildSessionHeaders({
           "Content-Type": "application/json"
-        }, requestUrl),
+        }),
         body: JSON.stringify(requestPayload)
       });
 
