@@ -1,30 +1,28 @@
 import type { AuthSessionContext } from "../context/auth.ts";
 import {
   clearStoredCsrfToken,
-  clearStoredSessionUserId,
-  getStoredGoogleIdToken
+  clearStoredSessionUserId
 } from "./storage.ts";
 import {
   clearStoredGoogleIdToken,
   clearStoredGoogleProfileCache
 } from "./providers/google.ts";
 
-export type FrontendAuthMode = "session-preferred" | "bearer-required";
-
-export function buildAuthenticatedHeaders(
-  mode: FrontendAuthMode,
-  extraHeaders: Record<string, string> = {},
-  requestUrl?: string
+export function buildSessionHeaders(
+  extraHeaders: Record<string, string> = {}
 ): Record<string, string> {
-  const headers: Record<string, string> = { ...extraHeaders };
-  const googleIdToken = getStoredGoogleIdToken();
-  void requestUrl;
-  const shouldAttachBearer = mode === "bearer-required";
+  return { ...extraHeaders };
+}
 
-  if (googleIdToken && shouldAttachBearer) {
-    headers.Authorization = `Bearer ${googleIdToken}`;
+export function buildBootstrapBearerHeaders(
+  googleIdToken: string,
+  extraHeaders: Record<string, string> = {}
+): Record<string, string> {
+  const headers = { ...extraHeaders };
+  const token = googleIdToken.trim();
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
   }
-
   return headers;
 }
 

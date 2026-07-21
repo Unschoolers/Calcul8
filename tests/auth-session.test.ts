@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test, vi } from "vitest";
 import {
-  buildAuthenticatedHeaders,
+  buildBootstrapBearerHeaders,
+  buildSessionHeaders,
   getStoredCsrfToken,
   getStoredGoogleIdToken,
   getStoredSessionUserId,
@@ -48,59 +49,25 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-test("buildAuthenticatedHeaders sends bearer token for bearer-required requests", () => {
+test("buildSessionHeaders preserves caller headers without reading or attaching Google auth", () => {
   setStoredGoogleIdToken("google-token");
+  const headers = buildSessionHeaders({ "Content-Type": "application/json" });
+  assert.deepEqual(headers, { "Content-Type": "application/json" });
+});
 
-  const headers = buildAuthenticatedHeaders("bearer-required", {
+test("buildBootstrapBearerHeaders attaches only an explicitly supplied token", () => {
+  setStoredGoogleIdToken("stored-token-that-must-not-be-read");
+  const headers = buildBootstrapBearerHeaders("bootstrap-token", {
     "Content-Type": "application/json"
   });
-
-  assert.equal(headers.Authorization, "Bearer google-token");
-  assert.equal(headers["Content-Type"], "application/json");
-});
-
-test("buildAuthenticatedHeaders omits bearer token for session-preferred requests without server session", () => {
-  setStoredGoogleIdToken("google-token");
-
-  const headers = buildAuthenticatedHeaders("session-preferred");
-
-  assert.equal("Authorization" in headers, false);
-});
-
-test("buildAuthenticatedHeaders omits bearer token for session-preferred requests when a server session exists", () => {
-  setStoredGoogleIdToken("google-token");
-  setStoredCsrfToken("csrf-token");
-
-  const headers = buildAuthenticatedHeaders("session-preferred");
-
-  assert.equal("Authorization" in headers, false);
-});
-
-test("buildAuthenticatedHeaders keeps bearer token for bearer-required requests even when a server session exists", () => {
-  setStoredGoogleIdToken("google-token");
-  setStoredCsrfToken("csrf-token");
-
-  const headers = buildAuthenticatedHeaders("bearer-required");
-
-  assert.equal(headers.Authorization, "Bearer google-token");
-});
-
-test("buildAuthenticatedHeaders omits bearer token for cross-origin session-preferred requests", () => {
-  vi.stubGlobal("window", {
-    location: {
-      origin: "https://app.example.test"
-    }
+  assert.deepEqual(headers, {
+    "Content-Type": "application/json",
+    Authorization: "Bearer bootstrap-token"
   });
-  setStoredGoogleIdToken("google-token");
-  setStoredCsrfToken("csrf-token");
+});
 
-  const headers = buildAuthenticatedHeaders(
-    "session-preferred",
-    {},
-    "https://api.example.test/entitlements/me"
-  );
-
-  assert.equal("Authorization" in headers, false);
+test("buildBootstrapBearerHeaders omits authorization for an empty token", () => {
+  assert.deepEqual(buildBootstrapBearerHeaders("   "), {});
 });
 
 test("bootstrapServerSession sends bearer only to the auth bootstrap endpoint", async () => {
