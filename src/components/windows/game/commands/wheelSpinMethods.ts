@@ -12,7 +12,7 @@ import {
     resolveWheelPreviewExtraRotations
 } from "../../../../app-core/shared/game-spin.ts";
 import { assignWheelPendingInventoryIssues, normalizeWheelPendingInventoryIssues } from "../../../../app-core/shared/wheel-session-compat.ts";
-import type { Lot, Sale, WheelFairnessEntry } from "../../../../types/app.ts";
+import type { Lot, WheelFairnessEntry } from "../../../../types/app.ts";
 import {
     ensureWheelCanvasSize,
     getStaticWheelRender,
@@ -21,7 +21,7 @@ import {
 } from "../stage/wheelCanvasRender.ts";
 import { playWheelTick } from "../services/wheelAudio.ts";
 import { getWheelController, type GameWindowThis } from "../coordinator/gameControllerState.ts";
-import { createWheelSale } from "../services/wheelSales.ts";
+import { settleSessionGameOutcomeSale } from "../services/gameOutcomeSettlement.ts";
 import type { WheelSlot } from "../services/wheelSlots.ts";
 import { serializeWheelLayoutForFairness } from "../services/wheelFairnessLayout.ts";
 import {
@@ -71,14 +71,6 @@ function queuePendingInventoryIssue(
   const issueController = getWheelController(context);
   issueController.inventoryWarning = params.warningText || "";
   context.saveWheelSession();
-}
-
-function appendWheelSessionNetRevenue(context: GameWindowThis, sale: Pick<Sale, "netRevenue">): void {
-  const netRevenue = Number(sale.netRevenue);
-  if (!Number.isFinite(netRevenue)) return;
-  const revenueController = getWheelController(context);
-  const currentNetRevenue = Number(revenueController.sessionNetRevenue ?? 0) || 0;
-  revenueController.sessionNetRevenue = currentNetRevenue + Math.max(0, netRevenue);
 }
 
 const MOBILE_SPIN_FRAME_INTERVAL_MS = 33;
@@ -487,14 +479,12 @@ export const wheelSpinMethods = {
             return;
           }
         }
-        const sale = createWheelSale({
-          config: config!, tier: slot.tier, cost: slot.cost,
+        settleSessionGameOutcomeSale({
+          config: config!, tierId: slot.tier, cost: slot.cost,
           packsCount: slot.packsCount, deductionType: slot.deductionType,
           label: slot.name, lotId: tier.boundLotId, lots,
           singlesEntryId: tier.boundSinglesId
-        });
-        this.addWheelSaleToLot?.(tier.boundLotId, sale);
-        appendWheelSessionNetRevenue(this, sale);
+        }, this, recordController);
       }
     }
     this.saveWheelSession();

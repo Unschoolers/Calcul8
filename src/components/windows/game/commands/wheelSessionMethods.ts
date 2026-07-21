@@ -4,7 +4,7 @@ import { assignWheelPendingInventoryIssues } from "../../../../app-core/shared/w
 import { isSinglesLot } from "../../../../app-core/shared/lot-types.ts";
 import { getScopedWheelConfigSessionStorageKey, getScopedWheelSessionStorageKey } from "../../../../app-core/storageKeys.ts";
 import { getActiveStorageScope } from "../../../../app-core/workspace-scope.ts";
-import type { Lot, PendingWheelInventoryIssue, Sale, WheelConfig, WheelFairnessEntry } from "../../../../types/app.ts";
+import type { Lot, PendingWheelInventoryIssue, WheelConfig, WheelFairnessEntry } from "../../../../types/app.ts";
 import type { GameWindowThis } from "../coordinator/gameControllerState.ts";
 import { getWheelController } from "../coordinator/gameControllerState.ts";
 import {
@@ -14,7 +14,7 @@ import {
 } from "../services/gameSessionStore.ts";
 import { remapSpinCountsByTier } from "../services/wheelCountRemapping.ts";
 import { readGameSpectatorSessionStorageState } from "../services/gameSpectatorSessionStorage.ts";
-import { createWheelSale } from "../services/wheelSales.ts";
+import { settleSessionGameOutcomeSale } from "../services/gameOutcomeSettlement.ts";
 import { buildSlotsFromConfig, createWheelGridLayoutSeed, type WheelSlot } from "../services/wheelSlots.ts";
 import {
   getAvailableSinglesQuantityForWheelTier,
@@ -131,14 +131,6 @@ function applyReplacementToTier(
   tier.label = newLabel;
   tier.boundSinglesId = selectedId;
   tier.costPerTier = newCost;
-}
-
-function appendWheelSessionNetRevenue(context: object, sale: Pick<Sale, "netRevenue">): void {
-  const netRevenue = Number(sale.netRevenue);
-  if (!Number.isFinite(netRevenue)) return;
-  const controller = getWheelController(context);
-  const currentNetRevenue = Number((controller.sessionNetRevenue as number | null | undefined) ?? 0) || 0;
-  controller.sessionNetRevenue = currentNetRevenue + Math.max(0, netRevenue);
 }
 
 export const wheelSessionMethods = {
@@ -327,31 +319,21 @@ export const wheelSessionMethods = {
     const config = activeId != null ? configs.find((c) => c.id === activeId) : null;
     if (!config) return;
     const tier = config.tiers.find((t) => t.id === tierId);
-    if (!tier?.boundLotId) return;
-    if (tier.deductionType === "none" || (tier.packsCount || 0) <= 0) return;
+    if (!tier?.boundLotId || tier.deductionType === "none" || (tier.packsCount || 0) <= 0) return;
     if (tier.deductionType === "singles") {
-      if (tier.boundSinglesId) {
-        if (getAvailableSinglesQuantityForWheelTier(this, tier.boundLotId, tier.boundSinglesId) <= 0) {
-          return;
-        }
-      } else if (!hasAnyAvailableSinglesForWheelTier(this, tier)) {
+      if (tier.boundSinglesId
+        ? getAvailableSinglesQuantityForWheelTier(this, tier.boundLotId, tier.boundSinglesId) <= 0
+        : !hasAnyAvailableSinglesForWheelTier(this, tier)) {
         return;
       }
     }
 
-    const lots = (this.lots || []) as Lot[];
-    const sale = createWheelSale({
-      config, tier: tier.id, cost: tier.costPerTier,
+    settleSessionGameOutcomeSale({
+      config, tierId: tier.id, cost: tier.costPerTier,
       packsCount: tier.packsCount, deductionType: tier.deductionType,
-      label: tier.label, lotId: tier.boundLotId, lots,
+      label: tier.label, lotId: tier.boundLotId, lots: (this.lots || []) as Lot[],
       singlesEntryId: tier.boundSinglesId
-    });
-    const addWheelSale = this.addWheelSaleToLot as
-      ((lotId: number, sale: Sale) => void) | undefined;
-    if (typeof addWheelSale === "function") {
-      addWheelSale(tier.boundLotId, sale);
-    }
-    appendWheelSessionNetRevenue(this, sale);
+    }, this, getWheelController(this));
   },
 
   canKeepChase(this: GameWindowThis): boolean {
@@ -448,20 +430,13 @@ export const wheelSessionMethods = {
     const config = this.activeWheelConfig as WheelConfig | null;
     if (!config) return;
 
-    const lots = (this.lots || []) as Lot[];
-    const sale = createWheelSale({
-      config, tier: entry.slotTier, cost: entry.slotCost,
+    settleSessionGameOutcomeSale({
+      config, tierId: entry.slotTier, cost: entry.slotCost,
       packsCount: entry.slotPacksCount, deductionType: entry.slotDeductionType,
-      label: entry.slotName, lotId: entry.selectedLotId, lots,
+      label: entry.slotName, lotId: entry.selectedLotId, lots: (this.lots || []) as Lot[],
       singlesEntryId: entry.slotSinglesId,
       spinNumber: entry.spinNumber
-    });
-    const addWheelSale = this.addWheelSaleToLot as
-      ((lotId: number, sale: Sale) => void) | undefined;
-    if (typeof addWheelSale === "function") {
-      addWheelSale(entry.selectedLotId, sale);
-    }
-    appendWheelSessionNetRevenue(this, sale);
+    }, this, getWheelController(this));
 
     pendingIssues.splice(index, 1);
     assignWheelPendingInventoryIssues(this, pendingIssues);

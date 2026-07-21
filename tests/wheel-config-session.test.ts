@@ -8,13 +8,23 @@ import {
 import { normalizeWheelConfig } from "../src/app-core/shared/normalize-wheel-config.ts";
 import { createNestedWindowContextBridge } from "../src/components/windows/shared/contextBridge.ts";
 import { getWheelController, getGameWindowLocalKeys } from "../src/components/windows/game/coordinator/gameControllerState.ts";
-import { createWheelSale } from "../src/components/windows/game/services/wheelSales.ts";
+import {
+    settleGameOutcomeSale,
+    type GameOutcomeSaleInput
+} from "../src/components/windows/game/services/gameOutcomeSettlement.ts";
 import { buildSlotsFromConfig } from "../src/components/windows/game/services/wheelSlots.ts";
 import {
     GameWindow
 } from "../src/components/windows/game/GameWindow.ts";
 import type { WheelConfig } from "../src/types/app.ts";
 
+function settleTestGameOutcome(input: GameOutcomeSaleInput) {
+  return settleGameOutcomeSale(input, {
+    now: () => new Date(),
+    nextId: (spinNumber) => Date.now() + (spinNumber ?? 0),
+    recordSale: () => undefined
+  })!;
+}
 
 test("loadWheelFromSession remaps saved spin counts by tier after rebuild", () => {
   const sessionKey = getScopedWheelConfigSessionStorageKey({ scopeType: "personal", workspaceId: null }, 99);
@@ -1169,7 +1179,7 @@ test("resetWheelSession clears cost adjustment", () => {
   assert.equal((vm.publishGameSpectatorSessionSnapshot as ReturnType<typeof vi.fn>).mock.calls.length, 1);
 });
 
-test("createWheelSale builds a sale with lot shipping", () => {
+test("game outcome settlement builds a sale with lot shipping", () => {
   const config = { id: 1, spinPrice: 10, tiers: [] } as never;
   const lots = [{
     id: 42,
@@ -1180,8 +1190,8 @@ test("createWheelSale builds a sale with lot shipping", () => {
     additionalFeeAppliesTo: "sale_plus_shipping",
     fixedFeePerOrder: 0.3
   }] as never;
-  const sale = createWheelSale({
-    config, tier: "t1", cost: 5, packsCount: 2, deductionType: "packs",
+  const sale = settleTestGameOutcome({
+    config, tierId: "t1", cost: 5, packsCount: 2, deductionType: "packs",
     label: "Prize", lotId: 42, lots
   });
   assert.equal(sale.type, "wheel");
@@ -1195,39 +1205,39 @@ test("createWheelSale builds a sale with lot shipping", () => {
   assert.ok(Math.abs((sale.netRevenue ?? 0) - 8.5085) < 0.001);
 });
 
-test("createWheelSale uses spinNumber in memo when provided", () => {
+test("game outcome settlement uses spinNumber in memo when provided", () => {
   const config = { id: 1, spinPrice: 10, tiers: [] } as never;
   const lots = [{ id: 42, name: "My Lot", sellingShippingPerOrder: 0 }] as never;
-  const sale = createWheelSale({
-    config, tier: "t1", cost: 5, packsCount: 1, deductionType: "packs",
+  const sale = settleTestGameOutcome({
+    config, tierId: "t1", cost: 5, packsCount: 1, deductionType: "packs",
     label: "Prize", lotId: 42, lots, spinNumber: 7
   });
   assert.equal(sale.memo, "Wheel spin #7: Prize");
 });
 
-test("createWheelSale defaults buyerShipping to 0 when lot not found", () => {
+test("game outcome settlement defaults buyerShipping to 0 when lot not found", () => {
   const config = { id: 1, spinPrice: 10, tiers: [] } as never;
-  const sale = createWheelSale({
-    config, tier: "t1", cost: 5, packsCount: 1, deductionType: "packs",
+  const sale = settleTestGameOutcome({
+    config, tierId: "t1", cost: 5, packsCount: 1, deductionType: "packs",
     label: "Prize", lotId: 99, lots: []
   });
   assert.equal(sale.buyerShipping, 0);
 });
 
-test("createWheelSale quantity is 1 for singles deduction type and sets singlesPurchaseEntryId", () => {
+test("game outcome settlement uses one item and links singles inventory", () => {
   const config = { id: 1, spinPrice: 10, tiers: [] } as never;
-  const sale = createWheelSale({
-    config, tier: "t1", cost: 25, packsCount: 3, deductionType: "singles",
+  const sale = settleTestGameOutcome({
+    config, tierId: "t1", cost: 25, packsCount: 3, deductionType: "singles",
     label: "Chase Card", lotId: 42, lots: [], singlesEntryId: 777
   });
   assert.equal(sale.quantity, 1);
   assert.equal(sale.singlesPurchaseEntryId, 777);
 });
 
-test("createWheelSale omits singlesPurchaseEntryId when not provided", () => {
+test("game outcome settlement omits singlesPurchaseEntryId when not provided", () => {
   const config = { id: 1, spinPrice: 10, tiers: [] } as never;
-  const sale = createWheelSale({
-    config, tier: "t1", cost: 5, packsCount: 2, deductionType: "packs",
+  const sale = settleTestGameOutcome({
+    config, tierId: "t1", cost: 5, packsCount: 2, deductionType: "packs",
     label: "Prize", lotId: 42, lots: []
   });
   assert.equal(sale.singlesPurchaseEntryId, undefined);

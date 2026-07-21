@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test, vi } from "vitest";
 import { createDefaultTier, createDefaultWheelConfig } from "../src/components/windows/game/services/wheelDefaults.ts";
-import { createWheelSale } from "../src/components/windows/game/services/wheelSales.ts";
+import { settleGameOutcomeSale } from "../src/components/windows/game/services/gameOutcomeSettlement.ts";
 import { remapSpinCountsByTier } from "../src/components/windows/game/services/wheelCountRemapping.ts";
 import { buildSlotsFromConfig } from "../src/components/windows/game/services/wheelSlots.ts";
 import {
@@ -65,9 +65,9 @@ test("game boundary modules keep sales creation separate from pricing math", () 
   vi.spyOn(Date, "now").mockReturnValue(1000);
   vi.setSystemTime(new Date("2026-05-01T12:00:00Z"));
 
-  const sale = createWheelSale({
+  const sale = settleGameOutcomeSale({
     config: createSingleTierConfig(),
-    tier: "tier-a",
+    tierId: "tier-a",
     cost: 4,
     packsCount: 1,
     deductionType: "packs",
@@ -85,13 +85,17 @@ test("game boundary modules keep sales creation separate from pricing math", () 
       fixedFeePerOrder: 0
     })],
     spinNumber: 7
+  }, {
+    now: () => new Date(),
+    nextId: (spinNumber) => Date.now() + (spinNumber ?? 0),
+    recordSale: () => undefined
   });
 
-  assert.equal(sale.type, "wheel");
-  assert.equal(sale.date, "2026-05-01");
-  assert.equal(sale.memo, "Wheel spin #7: Prize");
-  assert.equal(sale.buyerShipping, 3);
-  assert.equal(sale.netRevenue, 10);
+  assert.equal(sale?.type, "wheel");
+  assert.equal(sale?.date, "2026-05-01");
+  assert.equal(sale?.memo, "Wheel spin #7: Prize");
+  assert.equal(sale?.buyerShipping, 3);
+  assert.equal(sale?.netRevenue, 10);
 });
 
 test("game boundary modules keep expected and realized wheel revenue in pricing helpers", () => {
