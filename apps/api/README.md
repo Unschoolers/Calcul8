@@ -70,7 +70,7 @@ npm run start:build
 
 ## Auth behavior
 
-- API supports session cookies + bearer token fallback.
+- Normal authenticated API routes use the server session cookie. They do not accept a Google bearer token as a general fallback.
 - Session cookie:
   - `HttpOnly`
   - `SameSite=Lax` in `dev`, `SameSite=None; Secure` in `prod`
@@ -78,11 +78,9 @@ npm run start:build
 - CSRF protection for cookie-authenticated unsafe methods (`POST`/`DELETE`):
   - client must send header `x-csrf-token`
   - API returns/refreshes this token in response header `x-csrf-token` on authenticated responses
-  - if `Authorization: Bearer ...` is used, bearer auth path remains accepted as fallback
-- Bearer fallback:
-  - `Authorization: Bearer <google-id-token>`
-  - API validates token via Google token info endpoint and uses `sub` as `userId`.
-  - Valid bearer auth can bootstrap/refresh the session cookie.
+- Google bearer authentication is limited to explicit provider boundaries:
+  - `GET /api/auth/me` validates `Authorization: Bearer <google-id-token>`, uses `sub` as `userId`, and bootstraps or refreshes the session cookie.
+  - `POST /api/entitlements/verify/play` may validate the Google ID token while verifying a Google Play purchase.
 - Missing/invalid auth returns `401`.
 - Frontend requests should use `credentials: include` so cookie auth works cross-origin.
 

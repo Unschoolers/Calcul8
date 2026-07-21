@@ -1,27 +1,8 @@
 # Calcul8 Refactor Plan
 
-Updated on 2026-07-16 after the critical reliability audit. Completed UI, bilingual contract, realtime recovery, system configuration, bracket battle, singles-image work, complete account erasure, production CORS and distributed rate-limit hardening, release-gate coverage, generated artifact hygiene, billing/session/Whatnot concurrency fixes, atomic local snapshot application, public-session access revalidation, and the two cross-document recovery workflows are intentionally removed from this plan.
+Updated on 2026-07-21 after completing the session-first authentication boundary. Completed UI, bilingual contract, realtime recovery, system configuration, bracket battle, singles-image work, complete account erasure, production CORS and distributed rate-limit hardening, release-gate coverage, generated artifact hygiene, billing/session/Whatnot concurrency fixes, atomic local snapshot application, public-session access revalidation, session-first frontend authentication, and the two cross-document recovery workflows are intentionally removed from this plan.
 
 This is the active technical and security backlog, plus a staged test-maintenance follow-up discovered while promoting all tests into `verify:all`. Each item should be implemented TDD-style, verified against the affected package, and deleted from this file once the repo proves it is done.
-
-## Top Priorities
-
-### 1. Finish Session-First Auth By Removing Normal-Flow Bearer Fallback
-
-**Priority:** Critical auth boundary hardening.
-
-**Scan finding:** `src/app-core/auth/storage.ts` has moved Google ID token and CSRF handling out of persistent `localStorage`, but it still exposes module-level Google ID token state. Normal app helpers such as `src/app-core/methods/ui/workspace/workspace-api.ts` still use session-preferred authenticated headers that can fall back to bearer-style auth after the session bootstrap path. The API side already has cookie-backed sessions and CSRF support in `apps/api/src/lib/auth/sessions.ts`, `apps/api/src/lib/auth/csrf.ts`, and `apps/api/src/lib/auth/resolveUser.ts`.
-
-**Risk:** Keeping provider ID tokens available to normal app API calls leaves more browser-side auth material in play than the session-first design needs. It also makes auth behavior harder to reason about across personal, workspace, sync, and Whatnot flows.
-
-**Implementation direction:**
-
-- Centralize the final auth-mode decision in the frontend auth/API client helpers instead of allowing feature helpers to choose bearer fallback ad hoc.
-- Limit Google ID token use to explicit sign-in/session-bootstrap or re-auth flows; normal app, workspace, sync, and Whatnot API calls should use session cookies plus CSRF where required.
-- Keep legacy token hydration only as a cleanup path that clears old persistent keys without re-persisting secrets.
-- Preserve provider-neutral server auth and require CSRF for unsafe cookie-authenticated requests.
-
-**Done when:** Normal frontend API calls no longer read or send the stored Google ID token after session bootstrap; tests prove unsafe cookie-authenticated requests include CSRF; tests prove normal calls do not use bearer fallback; legacy `localStorage` auth keys are still cleared safely during hydration.
 
 ## Planned Test-Maintenance Follow-Up
 
