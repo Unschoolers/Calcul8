@@ -1,5 +1,5 @@
 import type { LotSalesSyncMeta, Sale } from "../../types/app.ts";
-import type { AppContext } from "../context-app.ts";
+import type { SalesFreshnessContext } from "../context/commerce.ts";
 import { getSalesSyncMetaKey } from "../storageKeys.ts";
 import { getActiveStorageScope } from "../workspace-scope.ts";
 import {
@@ -7,21 +7,9 @@ import {
   fetchAuthoritativeSales
 } from "./lot-sales-api.ts";
 
-type SalesFreshnessContext = Pick<
-  AppContext,
-  | "activeScopeType"
-  | "activeWorkspaceId"
-  | "currentLotId"
-  | "getSalesCacheEntry"
-  | "getSalesStorageKey"
-  | "googleAuthEpoch"
-  | "hasProAccess"
-  | "notify"
-> & Partial<Pick<AppContext, "sales" | "salesByLotId">>;
-
 const inFlightSalesFreshnessChecks = new WeakMap<object, Map<number, Promise<boolean>>>();
 
-function isPersonalScope(context: Pick<AppContext, "activeScopeType" | "activeWorkspaceId">): boolean {
+function isPersonalScope(context: Pick<SalesFreshnessContext, "activeScopeType" | "activeWorkspaceId">): boolean {
   return context.activeScopeType !== "workspace" || !context.activeWorkspaceId;
 }
 
@@ -52,7 +40,7 @@ export function buildLotSalesSyncMetaFromSales(sales: Sale[]): LotSalesSyncMeta 
 }
 
 export function readStoredLotSalesSyncMeta(
-  context: Pick<AppContext, "activeScopeType" | "activeWorkspaceId">,
+  context: Pick<SalesFreshnessContext, "activeScopeType" | "activeWorkspaceId">,
   lotId: number
 ): LotSalesSyncMeta | null {
   try {
@@ -76,7 +64,7 @@ export function readStoredLotSalesSyncMeta(
 }
 
 export function persistStoredLotSalesSyncMeta(
-  context: Pick<AppContext, "activeScopeType" | "activeWorkspaceId">,
+  context: Pick<SalesFreshnessContext, "activeScopeType" | "activeWorkspaceId">,
   lotId: number,
   meta: LotSalesSyncMeta
 ): void {

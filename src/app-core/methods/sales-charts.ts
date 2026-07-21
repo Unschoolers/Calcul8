@@ -1,5 +1,6 @@
 import Chart from "chart.js/auto";
-import type { AppContext } from "../context-app.ts";
+import type { SalesChartContext } from "../context/commerce.ts";
+import type { PortfolioChartContext } from "../context/portfolio.ts";
 import {
   buildPortfolioBreakdownChartConfig,
   buildPortfolioHistoryChartConfig,
@@ -41,7 +42,7 @@ function isCanvasReady(canvas: HTMLCanvasElement): boolean {
   return Number(rect.width) > 0 && Number(rect.height) > 0;
 }
 
-function queueSalesChartInitRetry(context: AppContext): void {
+function queueSalesChartInitRetry(context: SalesChartContext): void {
   if (context.currentTab !== "sales") return;
   if (pendingSalesChartInitRetries.has(context)) return;
 
@@ -49,7 +50,7 @@ function queueSalesChartInitRetry(context: AppContext): void {
   if (attempt > SALES_CHART_MAX_INIT_RETRIES) return;
   salesChartInitRetryCounts.set(context, attempt);
 
-  const timeoutId = globalThis.setTimeout(() => {
+  const timeoutId = Number(globalThis.setTimeout(() => {
     pendingSalesChartInitRetries.delete(context);
     if (context.currentTab !== "sales") return;
     const runRetry = () => context.initSalesChart();
@@ -58,11 +59,11 @@ function queueSalesChartInitRetry(context: AppContext): void {
       return;
     }
     runRetry();
-  }, SALES_CHART_RETRY_DELAY_MS) as unknown as number;
+  }, SALES_CHART_RETRY_DELAY_MS));
   pendingSalesChartInitRetries.set(context, timeoutId);
 }
 
-function queueSalesChartResizeRetry(context: AppContext, canvas: HTMLCanvasElement): void {
+function queueSalesChartResizeRetry(context: SalesChartContext, canvas: HTMLCanvasElement): void {
   if (context.currentTab !== "sales") return;
   if (pendingSalesChartResizeObservers.has(context)) return;
 
@@ -84,7 +85,9 @@ function queueSalesChartResizeRetry(context: AppContext, canvas: HTMLCanvasEleme
 }
 
 function getPortfolioSalesByLotId(
-  context: Pick<AppContext, "currentLotId" | "sales" | "loadSalesForLotId"> & Partial<Pick<AppContext, "getAllSalesByLotId">>,
+  context: Pick<PortfolioChartContext,
+    "currentLotId" | "sales" | "loadSalesForLotId" | "getAllSalesByLotId"
+  >,
   lotIds: number[]
 ) {
   if (typeof context.getAllSalesByLotId === "function") {
@@ -98,7 +101,7 @@ function getPortfolioSalesByLotId(
   );
 }
 
-export function initSalesChartDisplay(context: AppContext): void {
+export function initSalesChartDisplay(context: SalesChartContext): void {
   safeDestroyChart(context.salesChart);
   context.salesChart = null;
 
@@ -168,7 +171,7 @@ export function initSalesChartDisplay(context: AppContext): void {
   }));
 }
 
-export function initPortfolioCharts(context: AppContext): void {
+export function initPortfolioCharts(context: PortfolioChartContext): void {
   safeDestroyChart(context.portfolioChart);
   context.portfolioChart = null;
   safeDestroyChart(context.portfolioSalesByUserChart);

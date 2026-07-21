@@ -1,4 +1,7 @@
-import type { AppContext } from "../context-app.ts";
+import type {
+  LivePricingHydrationContext,
+  QueuedLivePricingContext
+} from "../context/commerce.ts";
 import { canUseAuthoritativeSalesLiveApi, SalesLiveApiError } from "./entity-api-shared.ts";
 import { fetchAuthoritativeLivePricing, saveAuthoritativeLivePricing } from "./lot-live-pricing-api.ts";
 import { markLivePricingPollingBaseline } from "./ui/sync/lot-entity-polling.ts";
@@ -10,23 +13,6 @@ type QueuedLivePricingSnapshot = {
   livePackPrice: number;
   baseVersion: number;
 };
-
-type LivePricingHydrationContext = Pick<
-  AppContext,
-  | "currentLotId"
-  | "liveSpotPrice"
-  | "liveBoxPriceSell"
-  | "livePackPrice"
-  | "currentLivePricingVersion"
-  | "livePricingHydrationStatus"
-  | "livePricingHydratedLotId"
-  | "activeScopeType"
-  | "activeWorkspaceId"
-  | "getSalesStorageKey"
-  | "googleAuthEpoch"
-  | "hasProAccess"
-  | "notify"
->;
 
 type LivePricingQueueState = {
   timeoutId: number | null;
@@ -63,7 +49,7 @@ function createLivePricingHash(snapshot: QueuedLivePricingSnapshot): string {
 }
 
 export function shouldHydrateAuthoritativeLivePricing(
-  context: Pick<AppContext, "livePricingHydrationStatus" | "livePricingHydratedLotId">,
+  context: Pick<LivePricingHydrationContext, "livePricingHydrationStatus" | "livePricingHydratedLotId">,
   lotId: number
 ): boolean {
   if (context.livePricingHydrationStatus === "loading") return false;
@@ -85,9 +71,9 @@ export async function hydrateAuthoritativeLivePricingForLot(
     const latest = await fetchAuthoritativeLivePricing(context, lotId);
     if (Number(context.currentLotId) !== lotId) return;
     if (latest) {
-      applyAuthoritativeLivePricingSnapshot(context as AppContext, lotId, latest);
+      applyAuthoritativeLivePricingSnapshot(context, lotId, latest);
     } else {
-      resetAuthoritativeLivePricingState(context as AppContext, lotId);
+      resetAuthoritativeLivePricingState(context, lotId);
     }
   } catch (error) {
     if (Number(context.currentLotId) === lotId) {
@@ -98,7 +84,7 @@ export async function hydrateAuthoritativeLivePricingForLot(
   }
 }
 
-async function flushQueuedLivePricingSave(context: AppContext, notifySuccess = true): Promise<void> {
+async function flushQueuedLivePricingSave(context: QueuedLivePricingContext, notifySuccess = true): Promise<void> {
   const state = getLivePricingQueueState(context as object);
   if (state.inFlight || !state.queuedSnapshot) {
     return;
@@ -173,7 +159,7 @@ async function flushQueuedLivePricingSave(context: AppContext, notifySuccess = t
   }
 }
 
-export function queueAuthoritativeLivePricingSave(context: AppContext, lotId: number): void {
+export function queueAuthoritativeLivePricingSave(context: QueuedLivePricingContext, lotId: number): void {
   const state = getLivePricingQueueState(context as object);
   const nextSnapshot: QueuedLivePricingSnapshot = {
     lotId,
@@ -198,7 +184,7 @@ export function queueAuthoritativeLivePricingSave(context: AppContext, lotId: nu
 }
 
 export function applyAuthoritativeLivePricingSnapshot(
-  context: AppContext,
+  context: QueuedLivePricingContext,
   lotId: number,
   latest: {
     liveSpotPrice: number;
@@ -229,7 +215,7 @@ export function applyAuthoritativeLivePricingSnapshot(
   });
 }
 
-export function resetAuthoritativeLivePricingState(context: AppContext, lotId?: number): void {
+export function resetAuthoritativeLivePricingState(context: QueuedLivePricingContext, lotId?: number): void {
   context.currentLivePricingVersion = null;
   context.livePricingHydrationStatus = typeof lotId === "number" ? "missing" : "idle";
   context.livePricingHydratedLotId = typeof lotId === "number" ? lotId : null;

@@ -1,5 +1,10 @@
 import type { Sale } from "../../types/app.ts";
-import type { AppContext } from "../context-app.ts";
+import type {
+  SalesAuthoritativePersistenceContext,
+  SalesChartRefreshContext,
+  SalesLocalMutationContext,
+  SalesPersistenceContext
+} from "../context/commerce.ts";
 import { removeById, upsertById } from "../shared/collection-updaters.ts";
 import { canUseAuthoritativeSalesLiveApi, SalesLiveApiError } from "./entity-api-shared.ts";
 import { cacheAuthoritativeSales, deleteAuthoritativeSale, fetchAuthoritativeSales, saveAuthoritativeSale } from "./lot-sales-api.ts";
@@ -13,18 +18,18 @@ type SaleMutationState = {
 
 type SaveAuthoritativeSaleDeps = {
   canUseAuthoritativeApi(): boolean;
-  saveSale(context: AppContext, lotId: number, sale: Sale, baseVersion: number): Promise<Sale>;
-  fetchSales(context: AppContext, lotId: number): Promise<Sale[] | null>;
-  cacheSales(context: AppContext, lotId: number, sales: Sale[]): void;
-  refreshCharts(context: AppContext): void;
+  saveSale(context: SalesAuthoritativePersistenceContext, lotId: number, sale: Sale, baseVersion: number): Promise<Sale>;
+  fetchSales(context: SalesAuthoritativePersistenceContext, lotId: number): Promise<Sale[] | null>;
+  cacheSales(context: SalesAuthoritativePersistenceContext, lotId: number, sales: Sale[]): void;
+  refreshCharts(context: SalesChartRefreshContext): void;
 };
 
 type DeleteAuthoritativeSaleDeps = {
   canUseAuthoritativeApi(): boolean;
-  deleteSale(context: AppContext, lotId: number, saleId: number, version: number): Promise<void>;
-  fetchSales(context: AppContext, lotId: number): Promise<Sale[] | null>;
-  cacheSales(context: AppContext, lotId: number, sales: Sale[]): void;
-  refreshCharts(context: AppContext): void;
+  deleteSale(context: SalesAuthoritativePersistenceContext, lotId: number, saleId: number, version: number): Promise<void>;
+  fetchSales(context: SalesAuthoritativePersistenceContext, lotId: number): Promise<Sale[] | null>;
+  cacheSales(context: SalesAuthoritativePersistenceContext, lotId: number, sales: Sale[]): void;
+  refreshCharts(context: SalesChartRefreshContext): void;
 };
 
 const saleMutationStateByContext = new WeakMap<object, SaleMutationState>();
@@ -42,7 +47,7 @@ function getSaleMutationState(context: object): SaleMutationState {
 }
 
 export function persistSaleLocally(
-  context: Pick<AppContext, "sales" | "editingSale" | "cancelSale">,
+  context: SalesLocalMutationContext,
   sale: Sale,
   editingIndex: number
 ): void {
@@ -58,7 +63,7 @@ export function persistSaleLocally(
 }
 
 export function saveSaleAuthoritatively(
-  context: AppContext,
+  context: SalesPersistenceContext,
   params: {
     lotId: number | null;
     pendingSale: Sale;
@@ -119,7 +124,7 @@ export function saveSaleAuthoritatively(
 }
 
 export function saveSaleWithPersistence(
-  context: AppContext,
+  context: SalesPersistenceContext,
   params: {
     lotId: number | null;
     pendingSale: Sale;
@@ -129,9 +134,9 @@ export function saveSaleWithPersistence(
   },
   deps: {
     canUseAuthoritativeApi(): boolean;
-    persistLocally(context: Pick<AppContext, "sales" | "editingSale" | "cancelSale">, sale: Sale, editingIndex: number): void;
-    refreshCharts(context: AppContext): void;
-    saveAuthoritatively(context: AppContext, request: {
+    persistLocally(context: SalesLocalMutationContext, sale: Sale, editingIndex: number): void;
+    refreshCharts(context: SalesChartRefreshContext): void;
+    saveAuthoritatively(context: SalesPersistenceContext, request: {
       lotId: number | null;
       pendingSale: Sale;
       editingSaleId: number | null;
@@ -159,7 +164,7 @@ export function saveSaleWithPersistence(
 }
 
 export function deleteSaleWithPersistence(
-  context: AppContext,
+  context: SalesPersistenceContext,
   saleId: number,
   deps: DeleteAuthoritativeSaleDeps = {
     canUseAuthoritativeApi: canUseAuthoritativeSalesLiveApi,

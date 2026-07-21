@@ -2,10 +2,9 @@ import type {
     Sale,
     SaleType,
     SinglesSaleLine,
-    PendingWheelInventoryIssue,
     WheelConfig
 } from "../../types/app.ts";
-import type { AppMethodImplementation } from "../context-app.ts";
+import type { SalesMethodImplementation } from "../context/commerce.ts";
 import {
     getScopedWheelConfigSessionStorageKey,
     getScopedWheelConfigsStorageKey,
@@ -46,8 +45,7 @@ import { normalizeWheelConfigs } from "../shared/normalize-wheel-config.ts";
 import {
     applyRootWheelSessionSnapshot,
     buildRootWheelSessionSnapshot,
-    resetRootWheelSessionState,
-    type RootWheelSessionStateContext
+    resetRootWheelSessionState
 } from "../shared/wheel-root-session-state.ts";
 import { persistSalesCacheToStorage } from "../shared/sales-cache-storage.ts";
 import { cacheRootLotSales, replaceRootLotSales } from "../shared/sales-root-state.ts";
@@ -57,6 +55,8 @@ import {
   markStorageReadFailure,
   markStorageWriteFailure
 } from "../storage-health.ts";
+
+type StoredWheelSessionSnapshot = Parameters<typeof applyRootWheelSessionSnapshot>[1];
 
 export const salesMethods = {
   loadSalesFromStorage(): void {
@@ -148,7 +148,7 @@ export const salesMethods = {
     applySinglesSaleLineCardSelection(this, lineIndex, value);
   },
 
-  onSinglesSaleLineQuantityChange(lineIndex: number, value?: unknown): void {
+  onSinglesSaleLineQuantityChange(lineIndex: number, value?: number | string | null): void {
     if (this.currentLotType !== "singles") return;
     applySinglesSaleLineQuantityChange(this, lineIndex, value);
   },
@@ -266,7 +266,7 @@ export const salesMethods = {
     try {
       const raw = localStorage.getItem(configsStorageKey);
       if (raw) {
-        const parsed = JSON.parse(raw) as unknown;
+        const parsed = JSON.parse(raw) as WheelConfig[];
         if (!Array.isArray(parsed)) {
           throw new Error("Stored wheel configuration must be an array.");
         }
@@ -282,21 +282,21 @@ export const salesMethods = {
       }
     }
 
-    resetRootWheelSessionState(this as unknown as RootWheelSessionStateContext);
+    resetRootWheelSessionState(this);
 
     const sessionStorageKey = getScopedWheelSessionStorageKey(storageScope);
     try {
       const rawSession = localStorage.getItem(sessionStorageKey);
       if (rawSession) {
-        const parsedSession = JSON.parse(rawSession) as unknown;
+        const parsedSession = JSON.parse(rawSession) as StoredWheelSessionSnapshot;
         if (!parsedSession || typeof parsedSession !== "object" || Array.isArray(parsedSession)) {
           throw new Error("Stored wheel session must be an object.");
         }
-        const session = parsedSession as Record<string, unknown>;
-        if (session.activeWheelConfigId != null) {
-          this.activeWheelConfigId = session.activeWheelConfigId as number;
+        const session = parsedSession;
+        if (typeof session.activeWheelConfigId === "number") {
+          this.activeWheelConfigId = session.activeWheelConfigId;
         }
-        applyRootWheelSessionSnapshot(this as unknown as RootWheelSessionStateContext, session);
+        applyRootWheelSessionSnapshot(this, session);
       }
       clearStorageReadFailure(this, storageScope, sessionStorageKey);
     } catch {
@@ -326,11 +326,11 @@ export const salesMethods = {
     const storageScope = getActiveStorageScope(this);
     const storageKey = getScopedWheelSessionStorageKey(storageScope);
     try {
-      let preserved: Record<string, unknown> = {};
+      let preserved: StoredWheelSessionSnapshot = {};
       try {
         const raw = localStorage.getItem(storageKey);
         if (raw) {
-          const parsed = JSON.parse(raw) as Record<string, unknown>;
+          const parsed = JSON.parse(raw) as StoredWheelSessionSnapshot;
           if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
             preserved = parsed;
           }
@@ -341,7 +341,7 @@ export const salesMethods = {
       const session = {
         activeWheelConfigId: this.activeWheelConfigId,
         ...buildRootWheelSessionSnapshot(
-          this as unknown as RootWheelSessionStateContext,
+          this,
           preserved
         )
       };
@@ -362,5 +362,5 @@ export const salesMethods = {
       }
     }
   }
-} satisfies AppMethodImplementation;
+} satisfies SalesMethodImplementation;
 

@@ -1,4 +1,4 @@
-import type { AppMethodImplementation } from "../context-app.ts";
+import type { ConfigurationMethodImplementation } from "../context/portfolio.ts";
 import { configIoMethods } from "./config-io.ts";
 import { configLotMethods } from "./config-lots.ts";
 import { configPricingMethods } from "./config-pricing.ts";
@@ -11,4 +11,4 @@ export const configMethods = {
   ...configLotMethods,
   ...configIoMethods,
   ...configPricingMethods
-} satisfies AppMethodImplementation;
+} satisfies ConfigurationMethodImplementation;

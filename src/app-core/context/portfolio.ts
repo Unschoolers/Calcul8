@@ -5,8 +5,20 @@ import type {
   PortfolioSalesByUserDrilldownRow,
   PortfolioTotals
 } from "../../types/app.ts";
-import type { CommerceMethodState, SalesEntityContext } from "./commerce.ts";
-import type { AppVueContext, FeatureComputedObject } from "./runtime.ts";
+import type {
+  CommerceMethodState,
+  LotConfigurationContext,
+  LotIoContext,
+  LotStorageContext,
+  PricingWorkflowContext,
+  SalesEntityContext
+} from "./commerce.ts";
+import type {
+  AppVueContext,
+  FeatureComputedObject,
+  FeatureMethodImplementation,
+  RuntimeMethodState
+} from "./runtime.ts";
 
 export interface PortfolioComputedState {
   portfolioLotFilterItems: Array<{
@@ -105,3 +117,104 @@ export type PortfolioContext = PortfolioState &
   SalesEntityContext;
 
 export type PortfolioComputedObject = FeatureComputedObject<PortfolioComputedState, PortfolioContext>;
+
+export type PortfolioReportContext = Pick<
+  AppState,
+  "portfolioReportExpandedLotIds" | "sales" | "showPortfolioReportModal" | "currentLotId"
+> &
+  Pick<PortfolioComputedState, "allLotPerformance" | "hasPortfolioData" | "portfolioTotals"> &
+  Pick<PortfolioMethodState, "openPortfolioReportModal"> &
+  Pick<RuntimeMethodState, "formatCurrency" | "notify"> &
+  Pick<CommerceMethodState, "formatDate">;
+
+export type PortfolioChartContext = PortfolioContext &
+  Pick<
+    AppState,
+    | "portfolioChart"
+    | "portfolioChartView"
+    | "portfolioSalesByUserChart"
+    | "portfolioSalesByUserMetric"
+    | "preferredLanguage"
+  > &
+  Pick<CommerceMethodState, "formatDate"> &
+  Pick<RuntimeMethodState, "formatCurrency"> &
+  Pick<AppVueContext, "$refs" | "$vuetify">;
+
+export type ConfigIoMethodImplementation = FeatureMethodImplementation<
+  LotIoContext & PortfolioReportContext,
+  Pick<CommerceMethodState,
+    "canUseAdminLotSyncTools" | "importLotsFromUserId" | "exportSales"
+  > & Pick<PortfolioMethodState,
+    | "exportPortfolioReport"
+    | "openPortfolioReportModal"
+    | "copyPortfolioReportTable"
+    | "savePortfolioReportTable"
+  >
+>;
+
+export type ConfigurationMethodContext = LotStorageContext &
+  PricingWorkflowContext &
+  LotConfigurationContext &
+  LotIoContext &
+  PortfolioReportContext;
+
+type ConfigurationCommerceMethods = Pick<CommerceMethodState,
+  | "getSalesStorageKey"
+  | "getSalesCacheEntry"
+  | "loadSalesForLotId"
+  | "netFromGross"
+  | "loadLotsFromStorage"
+  | "saveLotsToStorage"
+  | "loadSystemPricingDefaultsFromStorage"
+  | "saveSystemPricingDefaultsToStorage"
+  | "setLiveSinglesSelection"
+  | "addLiveSinglesSelection"
+  | "removeLiveSinglesSelection"
+  | "clearLiveSinglesSelection"
+  | "applyLiveSinglesSuggestedPricing"
+  | "resetLiveSinglesPricing"
+  | "getCurrentSetup"
+  | "autoSaveSetup"
+  | "syncLivePricesFromDefaults"
+  | "resetLivePrices"
+  | "applyLivePricesToDefaults"
+  | "addSinglesPurchaseRow"
+  | "removeSinglesPurchaseRow"
+  | "clearSinglesPurchases"
+  | "onSinglesPurchaseRowsChange"
+  | "importSinglesPurchasesCsv"
+  | "confirmSinglesPurchasesCsvImport"
+  | "cancelSinglesPurchasesCsvImport"
+  | "createNewLot"
+  | "selectLot"
+  | "setCurrentLotCatalogSource"
+  | "openRenameLotModal"
+  | "renameCurrentLot"
+  | "loadLot"
+  | "deleteCurrentLot"
+  | "canUseAdminLotSyncTools"
+  | "importLotsFromUserId"
+  | "exportSales"
+  | "calculateProfit"
+  | "recalculateDefaultPrices"
+  | "calculateOptimalPrices"
+  | "setFeeProfilePreset"
+  | "setSystemFeeProfilePreset"
+  | "onSystemPricingDefaultsChange"
+  | "setCurrentLotSystemPricingDefaultsMode"
+  | "updatePurchaseCostInput"
+  | "onPurchaseConfigChange"
+  | "calculatePriceForUnits"
+>;
+
+type ConfigurationPortfolioMethods = Pick<PortfolioMethodState,
+  | "exportPortfolioReport"
+  | "openPortfolioReportModal"
+  | "copyPortfolioReportTable"
+  | "savePortfolioReportTable"
+>;
+
+export type ConfigurationMethodImplementation = FeatureMethodImplementation<
+  ConfigurationMethodContext,
+  ConfigurationCommerceMethods & ConfigurationPortfolioMethods & Pick<RuntimeMethodState, "getExchangeRate">
+>;

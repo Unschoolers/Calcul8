@@ -1,5 +1,5 @@
 import { DEFAULT_VALUES } from "../../constants.ts";
-import type { AppMethodImplementation } from "../context-app.ts";
+import type { ConfigPricingMethodImplementation } from "../context/commerce.ts";
 import {
   calculateDefaultSellingPrices,
   calculatePriceForUnits as calculateUnitPrice,
@@ -125,7 +125,7 @@ export const configPricingMethods = {
     queueWorkspaceConfigSyncPush(this);
   },
 
-  updatePurchaseCostInput(value: unknown): void {
+  updatePurchaseCostInput(value: number | string | null): void {
     const normalized = typeof value === "number" ? value : Number(value);
     this.purchaseCostInputValue = Number.isFinite(normalized) ? normalized : 0;
     this.onPurchaseConfigChange();
@@ -166,4 +166,4 @@ export const configPricingMethods = {
   calculatePriceForUnits(units: number, targetNetRevenue: number): number {
     return calculateUnitPrice(units, targetNetRevenue, this.sellingTaxPercent, this.sellingShippingPerOrder, this);
   }
-} satisfies AppMethodImplementation;
+} satisfies ConfigPricingMethodImplementation;

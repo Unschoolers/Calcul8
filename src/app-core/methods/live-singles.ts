@@ -1,5 +1,8 @@
 import type { LiveSinglesSelectionMode, LiveSinglesSelectionSource } from "../../types/app.ts";
-import type { AppMethodImplementation } from "../context-app.ts";
+import type {
+  LiveSinglesContext,
+  LiveSinglesMethodImplementation
+} from "../context/commerce.ts";
 import { normalizeUniquePositiveIntIds } from "../shared/singles-normalizers.ts";
 
 function mergeLiveSinglesIds(baseIds: number[], incomingIds: number[]): number[] {
@@ -19,13 +22,9 @@ type LiveWindowVm = {
   resetSinglesPricing?: () => void;
 };
 
-function resolveLiveWindowVm(context: unknown): LiveWindowVm | null {
-  if (context == null || typeof context !== "object") return null;
-  const refs = (context as { $refs?: Record<string, unknown> }).$refs;
-  if (!refs || typeof refs !== "object") return null;
-  const liveWindow = refs.liveWindow;
-  if (!liveWindow || typeof liveWindow !== "object") return null;
-  return liveWindow as LiveWindowVm;
+function resolveLiveWindowVm(context: LiveSinglesContext): LiveWindowVm | null {
+  const liveWindow = context.$refs?.liveWindow;
+  return liveWindow ?? null;
 }
 
 export const liveSinglesMethods = {
@@ -106,4 +105,4 @@ export const liveSinglesMethods = {
     }
     this.notify("Open the Live tab to reset singles prices", "info");
   }
-} satisfies AppMethodImplementation;
+} satisfies LiveSinglesMethodImplementation;

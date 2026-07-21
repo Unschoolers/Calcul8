@@ -1,4 +1,4 @@
-import type { AppContext } from "../context-app.ts";
+import type { LivePricingPayload } from "../context/commerce.ts";
 import { normalizeSyncLivePricingDto } from "./ui/sync/sync-contracts.ts";
 import {
   canUseAuthoritativeSalesLiveApi,
@@ -11,7 +11,7 @@ import {
 } from "./entity-api-shared.ts";
 
 type LivePricingResponse = {
-  livePricing?: unknown;
+  livePricing?: object | null;
 };
 
 export type LotLivePricingRecord = {
@@ -24,7 +24,7 @@ export type LotLivePricingRecord = {
   mutationId?: string;
 };
 
-export function normalizeLivePricing(value: unknown): LotLivePricingRecord | null {
+export function normalizeLivePricing<Value>(value: Value): LotLivePricingRecord | null {
   const livePricing = normalizeSyncLivePricingDto(value);
   if (!livePricing) return null;
   return {
@@ -59,7 +59,7 @@ export async function fetchAuthoritativeLivePricing(
 export async function saveAuthoritativeLivePricing(
   app: ScopedApiApp,
   lotId: number,
-  pricing: Pick<AppContext, "livePackPrice" | "liveBoxPriceSell" | "liveSpotPrice" | "currentLivePricingVersion">
+  pricing: LivePricingPayload
 ): Promise<LotLivePricingRecord> {
   const body = await requestJson(
     app,

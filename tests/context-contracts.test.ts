@@ -106,13 +106,6 @@ test("aggregate app context dependencies cannot spread to new source files", () 
     "src/app-core/context-contracts.ts",
     "src/app-core/context.ts",
     "src/app-core/lifecycle.ts",
-    "src/app-core/methods/config-io.ts",
-    "src/app-core/methods/config-live-pricing.ts",
-    "src/app-core/methods/config-lots.ts",
-    "src/app-core/methods/lot-live-pricing-api.ts",
-    "src/app-core/methods/sales-charts.ts",
-    "src/app-core/methods/sales-freshness.ts",
-    "src/app-core/methods/sales-persistence.ts",
     "src/app-core/methods/ui/buyers/buyer-profile-api.ts",
     "src/app-core/methods/ui/common/api-client.ts",
     "src/app-core/methods/ui/common/onboarding.ts",
@@ -125,14 +118,7 @@ test("aggregate app context dependencies cannot spread to new source files", () 
   ]);
   const allowedAppMethodImplementationFiles = new Set([
     "src/app-core/context-app.ts",
-    "src/app-core/methods/config-io.ts",
-    "src/app-core/methods/config-lots.ts",
-    "src/app-core/methods/config-pricing.ts",
-    "src/app-core/methods/config-storage.ts",
-    "src/app-core/methods/config.ts",
-    "src/app-core/methods/live-singles.ts",
     "src/app-core/methods/pwa.ts",
-    "src/app-core/methods/sales.ts",
     "src/app-core/methods/ui/buyers/buyer-profiles.ts",
     "src/app-core/methods/ui/common/base.ts",
     "src/app-core/methods/ui/common/onboarding.ts",
@@ -145,7 +131,6 @@ test("aggregate app context dependencies cannot spread to new source files", () 
     "src/app-core/context.ts"
   ]);
   const allowedAppContextCastFiles = new Set([
-    "src/app-core/methods/config-live-pricing.ts",
     "src/app-core/methods/ui/spectator/game-spectator.ts"
   ]);
   const aggregateDependencies = [
@@ -204,6 +189,38 @@ test("workspace and sync domains use only focused context contracts", () => {
       findSourceConsumers(domainSources, dependency.pattern, new Set()),
       [],
       `${dependency.name} must not be consumed by workspace or sync modules`
+    );
+  }
+});
+
+test("commerce, configuration, sales, and portfolio domains use only focused context contracts", () => {
+  const domainSources = [
+    "src/app-core/methods/config-io.ts",
+    "src/app-core/methods/config-live-pricing.ts",
+    "src/app-core/methods/config-lots.ts",
+    "src/app-core/methods/config-pricing.ts",
+    "src/app-core/methods/config-storage.ts",
+    "src/app-core/methods/config.ts",
+    "src/app-core/methods/live-singles.ts",
+    "src/app-core/methods/lot-live-pricing-api.ts",
+    "src/app-core/methods/sales-charts.ts",
+    "src/app-core/methods/sales-freshness.ts",
+    "src/app-core/methods/sales-persistence.ts",
+    "src/app-core/methods/sales.ts"
+  ].map((file) => createTypeScriptSource(file, readSource(file)));
+
+  for (const dependency of [
+    { name: "AppContext", pattern: /\bAppContext\b/ },
+    { name: "AppMethodImplementation", pattern: /\bAppMethodImplementation\b/ },
+    { name: "AppComputedObject", pattern: /\bAppComputedObject\b/ },
+    { name: "as AppContext", pattern: /\bas\s+AppContext\b/ },
+    { name: "any", pattern: /\bany\b/ },
+    { name: "unknown", pattern: /\bunknown\b/ }
+  ]) {
+    assert.deepEqual(
+      findSourceConsumers(domainSources, dependency.pattern, new Set()),
+      [],
+      `${dependency.name} must not be consumed by commerce, configuration, sales, or portfolio modules`
     );
   }
 });

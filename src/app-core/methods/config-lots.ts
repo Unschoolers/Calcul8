@@ -1,5 +1,8 @@
 import type { LotSetup, SinglesCatalogSource } from "../../types/app.ts";
-import type { AppContext, AppMethodImplementation } from "../context-app.ts";
+import type {
+  ConfigLotMethodImplementation,
+  LotConfigurationContext
+} from "../context/commerce.ts";
 import { replaceRootLotSales } from "../shared/sales-root-state.ts";
 import { getLotType, isSinglesLot, normalizeLotType } from "../shared/lot-types.ts";
 import { normalizeSinglesCatalogSource } from "../shared/singles-catalog-source.ts";
@@ -37,7 +40,7 @@ import { canUseAuthoritativeSalesLiveApi } from "./entity-api-shared.ts";
 import { fetchAuthoritativeSales } from "./lot-sales-api.ts";
 import { markLivePricingPollingBaseline } from "./ui/sync/lot-entity-polling.ts";
 import { queueWorkspaceConfigSyncPush } from "./ui/workspace/workspace-config-sync.ts";
-type AuthoritativeLotHydrationContext = Pick<AppContext, "getSalesCacheEntry"> & {
+type AuthoritativeLotHydrationContext = Pick<LotConfigurationContext, "getSalesCacheEntry"> & {
   activeScopeType?: string;
   activeWorkspaceId?: string | null;
 };
@@ -419,4 +422,4 @@ export const configLotMethods = {
       this.syncGuidedOnboarding();
     }
   }
-} satisfies AppMethodImplementation;
+} satisfies ConfigLotMethodImplementation;

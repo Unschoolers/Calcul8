@@ -1,5 +1,5 @@
 import { DEFAULT_VALUES } from "../../constants.ts";
-import type { AppMethodImplementation } from "../context-app.ts";
+import type { ConfigStorageMethodImplementation } from "../context/commerce.ts";
 import { calculateNetFromGross } from "../../domain/calculations.ts";
 import type { Lot, LotSalesCacheEntry, Sale } from "../../types/app.ts";
 import {
@@ -24,9 +24,13 @@ type ExchangeRateCacheRecord = {
 const EXCHANGE_RATE_CACHE_KEY = STORAGE_KEYS.EXCHANGE_RATE_CACHE;
 const EXCHANGE_RATE_CACHE_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
 
-function isExchangeRateCacheRecord(value: unknown): value is ExchangeRateCacheRecord {
+type StoredJsonObject = Record<string, string | number | boolean | object | null | undefined>;
+
+function isExchangeRateCacheRecord(
+  value: object | string | number | boolean | null
+): value is ExchangeRateCacheRecord {
   if (!value || typeof value !== "object") return false;
-  const candidate = value as { cadRate?: unknown; fetchedAt?: unknown };
+  const candidate = value as StoredJsonObject;
   const cadRate = Number(candidate.cadRate);
   const fetchedAt = Number(candidate.fetchedAt);
   return Number.isFinite(cadRate) && cadRate > 0 && Number.isFinite(fetchedAt) && fetchedAt > 0;
@@ -36,7 +40,7 @@ function readExchangeRateCache(): ExchangeRateCacheRecord | null {
   try {
     const raw = localStorage.getItem(EXCHANGE_RATE_CACHE_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as unknown;
+    const parsed = JSON.parse(raw) as object | string | number | boolean | null;
     if (!isExchangeRateCacheRecord(parsed)) return null;
     return parsed;
   } catch {
@@ -224,9 +228,9 @@ export const configStorageMethods = {
         this.systemPricingDefaults = normalizeSystemPricingDefaults(this.systemPricingDefaults);
         return;
       }
-      const parsed = JSON.parse(stored) as unknown;
+      const parsed = JSON.parse(stored) as object | string | number | boolean | null;
       this.systemPricingDefaults = normalizeSystemPricingDefaults(
-        parsed && typeof parsed === "object" ? parsed as Record<string, unknown> : null,
+        parsed && typeof parsed === "object" ? parsed as StoredJsonObject : null,
         this.systemPricingDefaults
       );
     } catch (error) {
@@ -248,4 +252,4 @@ export const configStorageMethods = {
       this.notify("Could not save system configuration. Storage may be full.", "error");
     }
   }
-} satisfies AppMethodImplementation;
+} satisfies ConfigStorageMethodImplementation;

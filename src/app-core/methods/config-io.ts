@@ -1,4 +1,8 @@
-import type { AppContext, AppMethodImplementation } from "../context-app.ts";
+import type { LotIoContext } from "../context/commerce.ts";
+import type {
+  ConfigIoMethodImplementation,
+  PortfolioReportContext
+} from "../context/portfolio.ts";
 import { canUseAuthoritativeSalesLiveApi } from "./entity-api-shared.ts";
 import { fetchAuthoritativeAllSales, fetchAuthoritativeSales } from "./lot-sales-api.ts";
 import {
@@ -47,7 +51,7 @@ function fallbackCopyToClipboard(text: string): boolean {
   return success;
 }
 
-function buildPortfolioReportTsv(context: AppContext): string {
+function buildPortfolioReportTsv(context: PortfolioReportContext): string {
   const exportedAt = new Date().toISOString();
   const exportedDateOnly = exportedAt.slice(0, 10);
   const totals = context.portfolioTotals;
@@ -85,7 +89,7 @@ function buildPortfolioReportTsv(context: AppContext): string {
   return lines.join("\n");
 }
 
-async function hydrateImportedAuthoritativeSales(context: AppContext): Promise<void> {
+async function hydrateImportedAuthoritativeSales(context: LotIoContext): Promise<void> {
   if (!canUseAuthoritativeSalesLiveApi()) return;
 
   const lotIds = Array.from(
@@ -196,9 +200,9 @@ export const configIoMethods = {
         return;
       }
 
-      let responsePayload: { error?: string; version?: number; snapshot?: unknown } | null = null;
+      let responsePayload: { error?: string; version?: number; snapshot?: object | null } | null = null;
       try {
-        responsePayload = (await response.json()) as { error?: string; version?: number; snapshot?: unknown };
+        responsePayload = (await response.json()) as { error?: string; version?: number; snapshot?: object | null };
       } catch {
         responsePayload = null;
       }
@@ -312,5 +316,5 @@ export const configIoMethods = {
         URL.revokeObjectURL(url);
       }
     }
-  } satisfies AppMethodImplementation;
+  } satisfies ConfigIoMethodImplementation;
 
