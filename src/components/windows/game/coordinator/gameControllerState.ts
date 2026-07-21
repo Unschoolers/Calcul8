@@ -1,5 +1,5 @@
 import { reactive } from "vue";
-import type { AppContext } from "../../../../app-core/context-app.ts";
+import type { GameCoordinatorContext } from "../../../../app-core/context/game.ts";
 import type { MysteryGridReveal, PendingWheelInventoryIssue, WheelConfig, WheelFairnessEntry } from "../../../../types/app.ts";
 import { unwrapWindowBridgeContext } from "../../shared/contextBridge.ts";
 import type { WheelSlot } from "../services/wheelSlots.ts";
@@ -21,17 +21,9 @@ type GameControllerAliases = {
     WheelControllerState[(typeof GAME_CONTROLLER_LEGACY_ALIAS_MAP)[Key]];
 };
 
-type GameAppContext = Pick<AppContext,
-  | "currentTab" | "wheelConfigs" | "activeWheelConfigId"
-  | "wheelSpinCounts" | "wheelTotalSpins" | "lots" | "currentLotId"
-  | "activeScopeType" | "activeWorkspaceId" | "googleAuthEpoch" | "hasProAccess"
-  | "wheelLastResult" | "wheelSessionUpdatedAt" | "wheelPendingInventoryIssues"
-  | "wheelSkippedDeductions" | "wheelSessionLotSelections" | "addWheelSaleToLot"
->;
-
 export type GameWindowThis = ReturnType<typeof createGameWindowBaseState>
   & GameControllerAliases
-  & GameAppContext
+  & GameCoordinatorContext
   & {
   // ===== Computed properties =====
   activeWheelConfig: WheelConfig | null;

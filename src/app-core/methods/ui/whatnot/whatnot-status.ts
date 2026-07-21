@@ -1,8 +1,8 @@
 import type { WhatnotConnectionSummary } from "../../../../types/app.ts";
-import type { WhatnotApp } from "./whatnot-types.ts";
+import type { WhatnotStatusContext } from "../../../context/whatnot.ts";
 
 export function applyWhatnotStatus(
-  app: WhatnotApp,
+  app: WhatnotStatusContext,
   payload: unknown
 ): void {
   const body = (payload && typeof payload === "object" && !Array.isArray(payload))

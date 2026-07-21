@@ -1,9 +1,11 @@
 import type {
   BuyerProfile,
-  BuyerProfilePendingMutation,
-  BuyerProfilesLoadStatus,
-  BuyerProfileSaveState
+  BuyerProfilePendingMutation
 } from "../../../../types/app.ts";
+import type {
+  BuyerProfileApiContext,
+  BuyerProfileStoreContext
+} from "../../../context/buyers.ts";
 import { buildBuyerProfileIndex, normalizeBuyerProfileTags } from "../../../buyer-profile.ts";
 import type { AppStorageScope } from "../../../storageKeys.ts";
 import { getActiveStorageScope } from "../../../workspace-scope.ts";
@@ -14,7 +16,6 @@ import {
   deleteBuyerProfileFromApi,
   fetchBuyerProfilesFromApi,
   upsertBuyerProfileToApi,
-  type BuyerProfileApiApp,
   type BuyerProfileMutationRequest
 } from "./buyer-profile-api.ts";
 import {
@@ -24,14 +25,7 @@ import {
   writeCachedBuyerProfiles
 } from "./buyer-profile-cache.ts";
 
-export interface BuyerProfileStoreApp extends BuyerProfileApiApp {
-  buyerProfilesByKey: Record<string, BuyerProfile>;
-  buyerProfilesScopeKey: string;
-  buyerProfilesLoadStatus: BuyerProfilesLoadStatus;
-  buyerProfileSaveStates: Record<string, BuyerProfileSaveState>;
-  buyerProfilePendingMutations: BuyerProfilePendingMutation[];
-  isOffline: boolean;
-}
+export type BuyerProfileStoreApp = BuyerProfileStoreContext;
 
 export interface BuyerProfileDraft {
   username: string;
@@ -45,10 +39,10 @@ export interface BuyerProfileStoreDependencies {
   readOutbox(scope: AppStorageScope): BuyerProfilePendingMutation[];
   writeOutbox(scope: AppStorageScope, mutations: BuyerProfilePendingMutation[]): void;
   canUseApi(): boolean;
-  fetchProfiles(app: BuyerProfileApiApp): Promise<BuyerProfile[]>;
-  upsertProfile(app: BuyerProfileApiApp, input: BuyerProfileMutationRequest): Promise<BuyerProfile>;
+  fetchProfiles(app: BuyerProfileApiContext): Promise<BuyerProfile[]>;
+  upsertProfile(app: BuyerProfileApiContext, input: BuyerProfileMutationRequest): Promise<BuyerProfile>;
   deleteProfile(
-    app: BuyerProfileApiApp,
+    app: BuyerProfileApiContext,
     input: Pick<BuyerProfileMutationRequest, "username" | "baseVersion" | "mutationId">
   ): Promise<{ version: number }>;
   createMutationId(prefix: string): string;

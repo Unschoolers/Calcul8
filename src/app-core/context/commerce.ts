@@ -561,16 +561,10 @@ export type SalesMethodContext = SalesChartContext &
   PortfolioChartContext &
   Pick<
   AppState,
-  | "activeScopeType"
-  | "activeWorkspaceId"
   | "activeWheelConfigId"
-  | "currentLotId"
   | "editingSale"
-  | "isOffline"
-  | "lots"
   | "newSale"
   | "packsPerBox"
-  | "sales"
   | "salesByLotId"
   | "showAddSaleModal"
   | "singlesPurchases"
@@ -578,24 +572,17 @@ export type SalesMethodContext = SalesChartContext &
   | "currency"
   | "sellingCurrency"
   | "exchangeRate"
-  | "sellingShippingPerOrder"
   | "wheelConfigs"
 > &
   RootWheelSessionStateContext &
-  ScopedApiContext &
   Pick<CommerceComputedState,
-    "canUsePaidActions" | "currentLotType" | "singlesSoldCountByPurchaseId"
+    "canUsePaidActions" | "singlesSoldCountByPurchaseId"
   > &
   Pick<CommerceMethodState,
     | "calculatePriceForUnits"
     | "cancelSale"
-    | "getSalesStorageKey"
-    | "initSalesChart"
-    | "loadSalesForLotId"
   > &
-  Pick<PortfolioMethodState, "initPortfolioChart"> &
-  Pick<RuntimeMethodState, "askConfirmation" | "formatCurrency" | "notify"> &
-  Pick<AppVueContext, "$nextTick" | "$refs" | "$vuetify">;
+  Pick<RuntimeMethodState, "askConfirmation">;
 
 export type ConfigStorageMethodImplementation = FeatureMethodImplementation<
   LotStorageContext,

@@ -1,28 +1,8 @@
-import type { AppContext } from "../../../context-app.ts";
+import type { GameBroadcastContext } from "../../../context/game.ts";
 import { fetchAuthenticatedApiResponse } from "../common/shared.ts";
-import {
-  buildRootWheelSessionSnapshot,
-  type RootWheelSessionStateContext
-} from "../../../shared/wheel-root-session-state.ts";
+import { buildRootWheelSessionSnapshot } from "../../../shared/wheel-root-session-state.ts";
 
-type BroadcastApp = Pick<
-  AppContext,
-  | "activeScopeType"
-  | "activeWorkspaceId"
-  | "wheelConfigs"
-  | "activeWheelConfigId"
-  | "wheelTotalSpins"
-  | "wheelSpinCounts"
-  | "wheelLastResult"
-  | "wheelSessionUpdatedAt"
-  | "wheelSessionLotSelections"
-  | "wheelPendingInventoryIssues"
-  | "wheelSkippedDeductions"
-  | "googleAuthEpoch"
-  | "hasProAccess"
-> & RootWheelSessionStateContext;
-
-export async function broadcastWheelSession(app: BroadcastApp): Promise<void> {
+export async function broadcastWheelSession(app: GameBroadcastContext): Promise<void> {
   if (app.activeScopeType !== "workspace" || !app.activeWorkspaceId) return;
   const sentAt = Date.now();
   app.wheelSessionUpdatedAt = sentAt;

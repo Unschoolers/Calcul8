@@ -1,5 +1,5 @@
-import type { AppMethodImplementation } from "../../../context-app.ts";
 import type { WhatnotCsvPreparedRowInput } from "../../../../types/app.ts";
+import type { WhatnotMethodImplementation } from "../../../context/whatnot.ts";
 import { translateAppMessage } from "../../../i18n/index.ts";
 import { normalizeWhatnotReviewRows } from "../../../shared/whatnot-csv.ts";
 import { buildWhatnotReviewDecisions, validateWhatnotReviewRowsForImport } from "./whatnot-review-decisions.ts";
@@ -329,7 +329,7 @@ export const uiWhatnotMethods = {
       this.isConfirmingWhatnotImport = false;
     }
   }
-} satisfies AppMethodImplementation;
+} satisfies WhatnotMethodImplementation;
 
 
 

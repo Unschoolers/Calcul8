@@ -106,23 +106,15 @@ test("aggregate app context dependencies cannot spread to new source files", () 
     "src/app-core/context-contracts.ts",
     "src/app-core/context.ts",
     "src/app-core/lifecycle.ts",
-    "src/app-core/methods/ui/buyers/buyer-profile-api.ts",
     "src/app-core/methods/ui/common/api-client.ts",
     "src/app-core/methods/ui/common/onboarding.ts",
-    "src/app-core/methods/ui/spectator/game-spectator.ts",
-    "src/app-core/methods/ui/spectator/wheel-broadcast.ts",
-    "src/app-core/methods/ui/whatnot/whatnot-http.ts",
-    "src/app-core/methods/ui/whatnot/whatnot-types.ts",
-    "src/app-core/watch.ts",
-    "src/components/windows/game/coordinator/gameControllerState.ts"
+    "src/app-core/watch.ts"
   ]);
   const allowedAppMethodImplementationFiles = new Set([
     "src/app-core/context-app.ts",
     "src/app-core/methods/pwa.ts",
-    "src/app-core/methods/ui/buyers/buyer-profiles.ts",
     "src/app-core/methods/ui/common/base.ts",
     "src/app-core/methods/ui/common/onboarding.ts",
-    "src/app-core/methods/ui/whatnot/whatnot.ts",
     "src/app-core/methods/ui.ts"
   ]);
   const allowedAppComputedObjectFiles = new Set([
@@ -130,9 +122,7 @@ test("aggregate app context dependencies cannot spread to new source files", () 
     "src/app-core/context-contracts.ts",
     "src/app-core/context.ts"
   ]);
-  const allowedAppContextCastFiles = new Set([
-    "src/app-core/methods/ui/spectator/game-spectator.ts"
-  ]);
+  const allowedAppContextCastFiles = new Set<string>();
   const aggregateDependencies = [
     { name: "AppContext", pattern: /\bAppContext\b/, allowedFiles: allowedAppContextFiles },
     {
@@ -225,6 +215,28 @@ test("commerce, configuration, sales, and portfolio domains use only focused con
   }
 });
 
+test("buyer, Whatnot, spectator, and game coordinator domains use only focused context contracts", () => {
+  const domainSources = [
+    ...readTypeScriptSources("src/app-core/methods/ui/buyers"),
+    ...readTypeScriptSources("src/app-core/methods/ui/whatnot"),
+    ...readTypeScriptSources("src/app-core/methods/ui/spectator"),
+    ...readTypeScriptSources("src/components/windows/game/coordinator")
+  ];
+
+  for (const dependency of [
+    { name: "AppContext", pattern: /\bAppContext\b/ },
+    { name: "AppMethodImplementation", pattern: /\bAppMethodImplementation\b/ },
+    { name: "AppComputedObject", pattern: /\bAppComputedObject\b/ },
+    { name: "as AppContext", pattern: /\bas\s+AppContext\b/ }
+  ]) {
+    assert.deepEqual(
+      findSourceConsumers(domainSources, dependency.pattern, new Set()),
+      [],
+      `${dependency.name} must not be consumed by buyer, Whatnot, spectator, or game coordinator modules`
+    );
+  }
+});
+
 test("sync workflow contexts expose only the capabilities their workflows consume", () => {
   const sync = readSource("src/app-core/context/sync.ts");
   const payloadContext = sync.slice(
@@ -256,10 +268,13 @@ test("the app context is composed from focused feature contracts", () => {
     "src/app-core/context/runtime.ts",
     "src/app-core/context/api.ts",
     "src/app-core/context/auth.ts",
+    "src/app-core/context/buyers.ts",
     "src/app-core/context/commerce.ts",
     "src/app-core/context/entitlements.ts",
+    "src/app-core/context/game.ts",
     "src/app-core/context/portfolio.ts",
     "src/app-core/context/sync.ts",
+    "src/app-core/context/whatnot.ts",
     "src/app-core/context/workspace.ts"
   ];
 
@@ -279,6 +294,7 @@ test("the app context is composed from focused feature contracts", () => {
     "WhatnotComputedState",
     "RuntimeMethodState",
     "AuthMethodState",
+    "BuyerMethodState",
     "CommerceMethodState",
     "EntitlementMethodState",
     "PortfolioMethodState",
@@ -296,14 +312,14 @@ test("the app context is composed from focused feature contracts", () => {
   );
 });
 
-test("Portfolio leaf modules depend on the Portfolio context", () => {
+test("Portfolio leaf modules depend on focused Portfolio contexts", () => {
   const computed = readSource("src/app-core/computed/portfolio.ts");
   const hydration = readSource("src/app-core/methods/sales-portfolio-hydration.ts");
 
   assert.match(computed, /PortfolioComputedObject/);
   assert.doesNotMatch(computed, /AppComputedObject/);
   assert.doesNotMatch(computed, /AppContext/);
-  assert.match(hydration, /PortfolioContext/);
+  assert.match(hydration, /PortfolioSalesHydrationContext/);
   assert.doesNotMatch(hydration, /AppContext/);
 });
 

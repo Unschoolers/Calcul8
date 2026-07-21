@@ -58,6 +58,15 @@ import {
 
 type StoredWheelSessionSnapshot = Parameters<typeof applyRootWheelSessionSnapshot>[1];
 
+function normalizeStoredActiveWheelConfigId<Value>(value: Value): number | null {
+  if (typeof value !== "number" && typeof value !== "string") return null;
+  if (typeof value === "string" && !value.trim()) return null;
+
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) return null;
+  return Math.floor(parsed);
+}
+
 export const salesMethods = {
   loadSalesFromStorage(): void {
     if (!this.currentLotId) return;
@@ -293,8 +302,10 @@ export const salesMethods = {
           throw new Error("Stored wheel session must be an object.");
         }
         const session = parsedSession;
-        if (typeof session.activeWheelConfigId === "number") {
-          this.activeWheelConfigId = session.activeWheelConfigId;
+        const activeWheelConfigId = normalizeStoredActiveWheelConfigId(session.activeWheelConfigId);
+        if (activeWheelConfigId != null) {
+          // Older local sessions may persist numeric ids as JSON strings.
+          this.activeWheelConfigId = activeWheelConfigId;
         }
         applyRootWheelSessionSnapshot(this, session);
       }

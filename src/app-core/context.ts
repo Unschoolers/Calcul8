@@ -14,6 +14,14 @@ export type {
 } from "./context/auth.ts";
 export type { ScopedApiContext } from "./context/api.ts";
 export type {
+  BuyerMethodContext,
+  BuyerMethodImplementation,
+  BuyerMethodState,
+  BuyerProfileApiContext,
+  BuyerProfileCacheContext,
+  BuyerProfileStoreContext
+} from "./context/buyers.ts";
+export type {
   CommerceComputedState,
   CommerceMethodState,
   SalesEntityContext
@@ -37,6 +45,13 @@ export type {
   VerifyPurchaseModalContext
 } from "./context/entitlements.ts";
 export type {
+  GameAuthenticatedContext,
+  GameBroadcastContext,
+  GameCoordinatorContext,
+  GameMethodState,
+  GamePublicSessionContext
+} from "./context/game.ts";
+export type {
   PortfolioComputedObject,
   PortfolioComputedState,
   PortfolioContext,
@@ -50,7 +65,21 @@ export type {
   RuntimeComputedState,
   RuntimeMethodState
 } from "./context/runtime.ts";
-export type { WhatnotComputedState, WhatnotMethodState } from "./context/whatnot.ts";
+export type {
+  WhatnotComputedState,
+  WhatnotConnectionContext,
+  WhatnotCsvStateContext,
+  WhatnotHttpContext,
+  WhatnotMethodContext,
+  WhatnotMethodImplementation,
+  WhatnotMethodState,
+  WhatnotReviewContext,
+  WhatnotReviewStateContext,
+  WhatnotSalesRefreshContext,
+  WhatnotScopeContext,
+  WhatnotStatusContext,
+  WhatnotTransientStateContext
+} from "./context/whatnot.ts";
 export type {
   SyncComputedState,
   SyncMethodImplementation,

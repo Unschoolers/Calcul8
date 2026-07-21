@@ -1,11 +1,11 @@
 import type {
   AppState,
-  BuyerProfile,
   WorkspaceMember,
   WorkspacePresenceState,
   WorkspaceSummary
 } from "../../types/app.ts";
 import type { AuthComputedState, AuthSessionBootstrapContext } from "./auth.ts";
+import type { BuyerMethodState } from "./buyers.ts";
 import type { CommerceMethodState } from "./commerce.ts";
 import type { GameMethodState } from "./game.ts";
 import type { RuntimeMethodState, FeatureMethodImplementation } from "./runtime.ts";
@@ -49,11 +49,6 @@ export interface WorkspaceMethodState {
   recoverWorkspaceRealtimeNow(): Promise<void>;
   getWorkspaceMemberPresenceState(member: Pick<WorkspaceMember, "userId">): WorkspacePresenceState;
   getWorkspaceMemberPresenceLabel(member: Pick<WorkspaceMember, "userId">): string;
-  hydrateBuyerProfiles(): Promise<void>;
-  getBuyerProfile(username: string): BuyerProfile | null;
-  saveBuyerProfile(draft: { username: string; preferredName?: string; tags: string[] }): Promise<"saved" | "pending" | "conflict" | "error">;
-  retryPendingBuyerProfiles(): Promise<void>;
-  resolveBuyerProfileConflict(username: string, strategy: "retry" | "reload"): Promise<"saved" | "pending" | "error" | "reloaded">;
 }
 
 /** Capabilities used by authenticated workspace HTTP requests. */
@@ -160,7 +155,8 @@ export type WorkspaceRealtimeContext = Pick<
 > &
   Pick<CommerceMethodState, "loadSalesForLotId" | "getSalesStorageKey"> &
   Pick<SyncMethodState, "pullCloudSync"> &
-  Pick<WorkspaceMethodState, "hydrateBuyerProfiles" | "handleWorkspaceAccessLost"> &
+  Pick<BuyerMethodState, "hydrateBuyerProfiles"> &
+  Pick<WorkspaceMethodState, "handleWorkspaceAccessLost"> &
   WorkspaceApiContext &
   RootWheelSessionStateContext;
 

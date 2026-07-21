@@ -127,7 +127,17 @@ export type PortfolioReportContext = Pick<
   Pick<RuntimeMethodState, "formatCurrency" | "notify"> &
   Pick<CommerceMethodState, "formatDate">;
 
-export type PortfolioChartContext = PortfolioContext &
+export type PortfolioSalesHydrationContext = Pick<
+  AppState,
+  "currentLotId" | "currentTab" | "isOffline" | "lots" | "salesCacheEpoch"
+> &
+  Pick<PortfolioComputedState, "portfolioSelectedLotIds"> &
+  SalesEntityContext &
+  Pick<CommerceMethodState, "getSalesCacheEntry" | "initSalesChart"> &
+  Pick<PortfolioMethodState, "initPortfolioChart"> &
+  Pick<AppVueContext, "$nextTick">;
+
+export type PortfolioChartContext = PortfolioSalesHydrationContext &
   Pick<
     AppState,
     | "portfolioChart"
@@ -135,8 +145,14 @@ export type PortfolioChartContext = PortfolioContext &
     | "portfolioSalesByUserChart"
     | "portfolioSalesByUserMetric"
     | "preferredLanguage"
+    | "sales"
   > &
-  Pick<CommerceMethodState, "formatDate"> &
+  Pick<
+    PortfolioComputedState,
+    "allLotPerformance" | "portfolioSalesByUserChartData"
+  > &
+  Pick<CommerceMethodState, "formatDate" | "loadSalesForLotId"> &
+  Partial<Pick<CommerceMethodState, "getAllSalesByLotId">> &
   Pick<RuntimeMethodState, "formatCurrency"> &
   Pick<AppVueContext, "$refs" | "$vuetify">;
 

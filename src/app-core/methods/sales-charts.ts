@@ -86,8 +86,8 @@ function queueSalesChartResizeRetry(context: SalesChartContext, canvas: HTMLCanv
 
 function getPortfolioSalesByLotId(
   context: Pick<PortfolioChartContext,
-    "currentLotId" | "sales" | "loadSalesForLotId" | "getAllSalesByLotId"
-  >,
+    "currentLotId" | "sales" | "loadSalesForLotId"
+  > & Partial<Pick<PortfolioChartContext, "getAllSalesByLotId">>,
   lotIds: number[]
 ) {
   if (typeof context.getAllSalesByLotId === "function") {

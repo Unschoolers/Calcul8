@@ -1,5 +1,6 @@
 import type { AppState } from "../types/app.ts";
 import type { AuthComputedState, AuthMethodState } from "./context/auth.ts";
+import type { BuyerMethodState } from "./context/buyers.ts";
 import type { CommerceComputedState, CommerceMethodState } from "./context/commerce.ts";
 import type { EntitlementMethodState } from "./context/entitlements.ts";
 import type { GameMethodState } from "./context/game.ts";
@@ -29,6 +30,7 @@ export interface AppComputedState extends
 export interface AppMethodState extends
   RuntimeMethodState,
   AuthMethodState,
+  BuyerMethodState,
   EntitlementMethodState,
   CommerceMethodState,
   PortfolioMethodState,

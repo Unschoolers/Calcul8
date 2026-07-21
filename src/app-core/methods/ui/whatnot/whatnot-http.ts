@@ -1,12 +1,17 @@
-import type { AppContext } from "../../../context-app.ts";
+import type {
+  WhatnotConnectionContext,
+  WhatnotHttpContext,
+  WhatnotScopeContext
+} from "../../../context/whatnot.ts";
 import { fetchAuthenticatedApiResponse, handleExpiredAuth, resolveApiBaseUrl } from "../common/shared.ts";
-import type { WhatnotApp } from "./whatnot-types.ts";
 
-export function canManageWhatnot(app: Pick<AppContext, "activeScopeType" | "isCurrentWorkspaceOwner">): boolean {
+export function canManageWhatnot(
+  app: Pick<WhatnotConnectionContext, "activeScopeType" | "isCurrentWorkspaceOwner">
+): boolean {
   return app.activeScopeType === "personal" || app.isCurrentWorkspaceOwner;
 }
 
-export function buildWhatnotScopeBody(app: Pick<AppContext, "activeScopeType" | "activeWorkspaceId">): Record<string, string> {
+export function buildWhatnotScopeBody(app: WhatnotScopeContext): Record<string, string> {
   return {
     ...(app.activeScopeType === "workspace" && app.activeWorkspaceId
       ? { workspaceId: app.activeWorkspaceId }
@@ -16,7 +21,7 @@ export function buildWhatnotScopeBody(app: Pick<AppContext, "activeScopeType" | 
 }
 
 export async function fetchWhatnotJson(
-  app: WhatnotApp,
+  app: WhatnotHttpContext,
   path: string,
   init: RequestInit,
   fallbackMessage: string,

@@ -1,9 +1,9 @@
 import { canUseAuthoritativeSalesLiveApi } from "../../entity-api-shared.ts";
 import { cacheAuthoritativeSales, fetchAuthoritativeSales } from "../../lot-sales-api.ts";
-import type { WhatnotApp } from "./whatnot-types.ts";
+import type { WhatnotReviewStateContext, WhatnotSalesRefreshContext } from "../../../context/whatnot.ts";
 import { resolveWhatnotSelectedImportAction } from "./whatnot-review-decisions.ts";
 
-export function getAffectedWhatnotLotIds(rows: WhatnotApp["whatnotReviewRows"]): number[] {
+export function getAffectedWhatnotLotIds(rows: WhatnotReviewStateContext["whatnotReviewRows"]): number[] {
   const lotIds = new Set<number>();
   for (const row of rows) {
     const selectedImportAction = resolveWhatnotSelectedImportAction(row);
@@ -18,7 +18,10 @@ export function getAffectedWhatnotLotIds(rows: WhatnotApp["whatnotReviewRows"]):
   return [...lotIds];
 }
 
-export async function refreshAffectedWhatnotSales(app: WhatnotApp, lotIds: number[]): Promise<void> {
+export async function refreshAffectedWhatnotSales(
+  app: WhatnotSalesRefreshContext,
+  lotIds: number[]
+): Promise<void> {
   if (!canUseAuthoritativeSalesLiveApi() || lotIds.length === 0) {
     return;
   }

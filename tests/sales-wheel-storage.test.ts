@@ -195,6 +195,34 @@ test("loadWheelFromStorage reads workspace-scoped wheel state without falling ba
   });
 });
 
+test("loadWheelFromStorage normalizes a persisted numeric-string active wheel id", async () => {
+  await withMockedLocalStorage(async (data) => {
+    data.set(
+      getScopedWheelConfigsStorageKey({ scopeType: "personal" }),
+      JSON.stringify([
+        { id: 7, name: "Fallback Wheel", spinPrice: 10, targetMargin: 40, createdAt: "", tiers: [] },
+        { id: 42, name: "Legacy Wheel", spinPrice: 12, targetMargin: 35, createdAt: "", tiers: [] }
+      ])
+    );
+    data.set(
+      getScopedWheelSessionStorageKey({ scopeType: "personal" }),
+      JSON.stringify({
+        activeWheelConfigId: "42",
+        wheelTotalSpins: 2,
+        wheelSpinCounts: [2]
+      })
+    );
+    const context = createContext();
+
+    salesMethods.loadWheelFromStorage.call(context as never);
+
+    assert.equal(context.activeWheelConfigId, 42);
+    assert.equal(typeof context.activeWheelConfigId, "number");
+    assert.equal(context.wheelTotalSpins, 2);
+    assert.deepEqual((context.notify as ReturnType<typeof vi.fn>).mock.calls, []);
+  });
+});
+
 test("loadWheelFromStorage marks corrupt wheel data for recovery", async () => {
   await withMockedLocalStorage(async (data) => {
     data.set(getScopedWheelConfigsStorageKey({ scopeType: "personal" }), "not-json");

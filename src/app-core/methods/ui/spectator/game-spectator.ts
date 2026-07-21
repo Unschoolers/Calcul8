@@ -1,5 +1,8 @@
 import type { GameSpectatorSnapshot } from "../../../../types/app.ts";
-import type { AppContext } from "../../../context-app.ts";
+import type {
+  GameAuthenticatedContext,
+  GamePublicSessionContext
+} from "../../../context/game.ts";
 import type { WorkspaceRealtimeSubscribeToken } from "../../workspace-realtime-api.ts";
 import { fetchAuthenticatedApiResponse } from "../common/shared.ts";
 import { normalizeGameSpectatorSnapshot } from "./game-spectator-contract.ts";
@@ -48,10 +51,10 @@ function buildGamePublicSessionPath(publicSessionId?: string, suffix = ""): stri
 }
 
 export async function createGameSpectatorSession(
-  app: Pick<AppContext, "activeScopeType" | "activeWorkspaceId" | "googleAuthEpoch" | "hasProAccess">,
+  app: GamePublicSessionContext,
   snapshot: GameSpectatorSnapshot
 ): Promise<{ publicSessionId: string }> {
-  const response = await fetchAuthenticatedApiResponse(app as AppContext, buildGamePublicSessionPath(), {
+  const response = await fetchAuthenticatedApiResponse(app, buildGamePublicSessionPath(), {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
@@ -76,11 +79,11 @@ export async function createGameSpectatorSession(
 }
 
 export async function publishGameSpectatorSession(
-  app: Pick<AppContext, "googleAuthEpoch" | "hasProAccess">,
+  app: GameAuthenticatedContext,
   publicSessionId: string,
   snapshot: GameSpectatorSnapshot
 ): Promise<void> {
-  const response = await fetchAuthenticatedApiResponse(app as AppContext, buildGamePublicSessionPath(undefined, "/publish"), {
+  const response = await fetchAuthenticatedApiResponse(app, buildGamePublicSessionPath(undefined, "/publish"), {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
@@ -161,11 +164,11 @@ export async function fetchGameSpectatorRealtimeSubscribeToken(
 }
 
 export async function fetchGameSpectatorCount(
-  app: Pick<AppContext, "googleAuthEpoch" | "hasProAccess">,
+  app: GameAuthenticatedContext,
   publicSessionId: string
 ): Promise<number> {
   const response = await fetchAuthenticatedApiResponse(
-    app as AppContext,
+    app,
     buildGamePublicSessionPath(publicSessionId, "/spectator-count"),
     {
       method: "GET"

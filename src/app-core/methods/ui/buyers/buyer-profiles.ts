@@ -1,5 +1,5 @@
-import type { AppMethodImplementation } from "../../../context-app.ts";
 import type { BuyerProfile } from "../../../../types/app.ts";
+import type { BuyerMethodImplementation } from "../../../context/buyers.ts";
 import { normalizeBuyerKey } from "../../../computed/buyer-quick-view.ts";
 import {
   hydrateBuyerProfilesForActiveScope,
@@ -38,4 +38,4 @@ export const uiBuyerProfileMethods = {
   ): Promise<"saved" | "pending" | "error" | "reloaded"> {
     return resolveBuyerProfileConflictForApp(this, username, strategy);
   }
-} satisfies AppMethodImplementation;
+} satisfies BuyerMethodImplementation;

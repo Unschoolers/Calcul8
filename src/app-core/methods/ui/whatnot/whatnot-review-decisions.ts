@@ -5,7 +5,7 @@ import type {
   WhatnotMappedSaleType,
   WhatnotReviewImportAction
 } from "../../../../types/app.ts";
-import type { WhatnotApp } from "./whatnot-types.ts";
+import type { WhatnotReviewContext } from "../../../context/whatnot.ts";
 
 export interface WhatnotReviewDecision {
   rowId: string;
@@ -62,7 +62,9 @@ function getWhatnotReviewRowLabel(row: WhatnotImportReviewRow): string {
   return String(row.title || row.externalOrderId || row.rowId || "unknown").trim();
 }
 
-export function validateWhatnotReviewRowsForImport(app: Pick<WhatnotApp, "whatnotReviewRows" | "notify">): boolean {
+export function validateWhatnotReviewRowsForImport(
+  app: Pick<WhatnotReviewContext, "whatnotReviewRows" | "notify">
+): boolean {
   for (const row of app.whatnotReviewRows) {
     const selectedImportAction = resolveWhatnotSelectedImportAction(row);
     const shouldSkip = row.skipImport || selectedImportAction === "skip";

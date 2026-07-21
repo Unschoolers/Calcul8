@@ -1,7 +1,11 @@
-import type { WhatnotApp } from "./whatnot-types.ts";
+import type {
+  WhatnotCsvStateContext,
+  WhatnotReviewStateContext,
+  WhatnotTransientStateContext
+} from "../../../context/whatnot.ts";
 
 const EMPTY_WHATNOT_CSV_IMPORT_STATE: Pick<
-  WhatnotApp,
+  WhatnotCsvStateContext,
   | "whatnotCsvRawInput"
   | "whatnotCsvSellerAccountId"
   | "whatnotCsvHeaders"
@@ -46,7 +50,7 @@ const EMPTY_WHATNOT_CSV_IMPORT_STATE: Pick<
 };
 
 const EMPTY_WHATNOT_REVIEW_STATE: Pick<
-  WhatnotApp,
+  WhatnotReviewStateContext,
   | "whatnotReviewBatchId"
   | "whatnotReviewRows"
   | "isConfirmingWhatnotImport"
@@ -58,22 +62,22 @@ const EMPTY_WHATNOT_REVIEW_STATE: Pick<
   whatnotConfirmationRetryPayload: null
 };
 
-export function resetWhatnotCsvImportState(app: WhatnotApp): void {
+export function resetWhatnotCsvImportState(app: WhatnotCsvStateContext): void {
   Object.assign(app, EMPTY_WHATNOT_CSV_IMPORT_STATE);
 }
 
-export function resetWhatnotReviewState(app: WhatnotApp): void {
+export function resetWhatnotReviewState(app: WhatnotReviewStateContext): void {
   Object.assign(app, EMPTY_WHATNOT_REVIEW_STATE);
 }
 
-export function resetWhatnotTransientUiState(app: WhatnotApp): void {
+export function resetWhatnotTransientUiState(app: WhatnotTransientStateContext): void {
   app.showWhatnotCsvImportDialog = false;
   app.showWhatnotReviewDialog = false;
   resetWhatnotCsvImportState(app);
   resetWhatnotReviewState(app);
 }
 
-export function resetWhatnotSignedOutState(app: WhatnotApp): void {
+export function resetWhatnotSignedOutState(app: WhatnotTransientStateContext): void {
   app.whatnotConnectionStatus = "unconfigured";
   app.whatnotSyncStatus = "idle";
   app.whatnotConnectionSummary = null;

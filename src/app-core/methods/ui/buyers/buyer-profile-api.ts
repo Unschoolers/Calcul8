@@ -1,4 +1,4 @@
-import type { AppContext } from "../../../context-app.ts";
+import type { BuyerProfileApiContext } from "../../../context/buyers.ts";
 import type { BuyerProfile } from "../../../../types/app.ts";
 import { normalizeBuyerProfileDto } from "../../../buyer-profile.ts";
 import {
@@ -8,10 +8,7 @@ import {
   requestJson
 } from "../../entity-api-shared.ts";
 
-export type BuyerProfileApiApp = Pick<
-  AppContext,
-  "activeScopeType" | "activeWorkspaceId" | "googleAuthEpoch" | "hasProAccess" | "notify"
->;
+export type BuyerProfileApiApp = BuyerProfileApiContext;
 
 export interface BuyerProfileMutationRequest {
   username: string;

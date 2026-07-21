@@ -1,5 +1,5 @@
 import type { Sale } from "../../types/app.ts";
-import type { PortfolioContext } from "../context/portfolio.ts";
+import type { PortfolioSalesHydrationContext } from "../context/portfolio.ts";
 import {
   cacheAuthoritativeSales,
   fetchAuthoritativeAllSales,
@@ -15,10 +15,10 @@ type PortfolioSalesHydrationState = {
 
 type HydrationDeps = {
   canUseAuthoritativeApi(): boolean;
-  fetchSales(context: PortfolioContext, lotId: number): Promise<Sale[] | null>;
-  fetchSalesByLot?(context: PortfolioContext, lotIds: number[]): Promise<Map<number, Sale[]> | null>;
-  cacheSales(context: PortfolioContext, lotId: number, sales: Sale[]): void;
-  refreshCharts(context: PortfolioContext): void;
+  fetchSales(context: PortfolioSalesHydrationContext, lotId: number): Promise<Sale[] | null>;
+  fetchSalesByLot?(context: PortfolioSalesHydrationContext, lotIds: number[]): Promise<Map<number, Sale[]> | null>;
+  cacheSales(context: PortfolioSalesHydrationContext, lotId: number, sales: Sale[]): void;
+  refreshCharts(context: PortfolioSalesHydrationContext): void;
 };
 
 const portfolioSalesHydrationStateByContext = new WeakMap<object, PortfolioSalesHydrationState>();
@@ -42,12 +42,15 @@ export function cancelQueuedPortfolioSalesHydration(context: object): void {
   state.queuedHydrationTimeoutId = null;
 }
 
-function hasPersistedSalesCache(context: Pick<PortfolioContext, "getSalesCacheEntry">, lotId: number): boolean {
+function hasPersistedSalesCache(
+  context: Pick<PortfolioSalesHydrationContext, "getSalesCacheEntry">,
+  lotId: number
+): boolean {
   return context.getSalesCacheEntry(lotId).status === "loaded";
 }
 
 export function queuePortfolioSalesHydration(
-  context: PortfolioContext,
+  context: PortfolioSalesHydrationContext,
   options: {
     force?: boolean;
   } = {},
@@ -69,7 +72,7 @@ export function queuePortfolioSalesHydration(
 }
 
 export function hydrateMissingPortfolioSales(
-  context: PortfolioContext,
+  context: PortfolioSalesHydrationContext,
   options: {
     force?: boolean;
   } = {},
