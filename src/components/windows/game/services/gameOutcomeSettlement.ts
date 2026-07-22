@@ -49,7 +49,7 @@ export function settleGameOutcomeSale(
 export function settleSessionGameOutcomeSale(
   input: GameOutcomeSaleInput,
   recorder: { addWheelSaleToLot?(lotId: number, sale: Sale): void },
-  revenue: { sessionNetRevenue: number | null }
+  revenue: { wheelSessionNetRevenue: number | null }
 ): Sale | null {
   const sale = settleGameOutcomeSale(input, {
     now: () => new Date(),
@@ -58,6 +58,6 @@ export function settleSessionGameOutcomeSale(
   });
   const netRevenue = Number(sale?.netRevenue);
   if (sale && Number.isFinite(netRevenue))
-    revenue.sessionNetRevenue = (Number(revenue.sessionNetRevenue) || 0) + Math.max(0, netRevenue);
+    revenue.wheelSessionNetRevenue = (Number(revenue.wheelSessionNetRevenue) || 0) + Math.max(0, netRevenue);
   return sale;
 }

@@ -4,26 +4,26 @@ import { WheelHistoryPanel } from "../src/components/windows/game/inspector/Whee
 
 function createController(overrides: Record<string, unknown> = {}) {
   return {
-    activeSlots: [],
-    previewSlots: [],
-    inventoryWarning: "",
-    lastResultColor: "#e74c3c",
-    previewSpinCounts: [],
-    previewTotalSpins: 0,
-    spinSeed: "",
-    spinHash: "",
-    spinClientSeed: "",
-    spinVerificationUrl: "",
-    spinAlgorithm: "",
-    showSeed: false,
-    fairnessHistoryOpen: false,
-    sessionNetRevenue: null,
-    sessionCostAdjustment: 0,
-    previewFairnessHistory: [],
-    fairnessHistory: [],
-    previewChaseTallyHistory: [],
-    chaseTallyHistory: [],
-    highlightedSlotIndex: -1,
+    activeWheelSlots: [],
+    wheelPreviewSlots: [],
+    wheelInventoryWarning: "",
+    wheelLastResultColor: "#e74c3c",
+    wheelPreviewSpinCounts: [],
+    wheelPreviewTotalSpins: 0,
+    wheelSpinSeed: "",
+    wheelSpinHash: "",
+    wheelSpinClientSeed: "",
+    wheelSpinVerificationUrl: "",
+    wheelSpinAlgorithm: "",
+    wheelShowSeed: false,
+    wheelFairnessHistoryOpen: false,
+    wheelSessionNetRevenue: null,
+    wheelSessionCostAdjustment: 0,
+    wheelPreviewFairnessHistory: [],
+    wheelFairnessHistory: [],
+    wheelPreviewChaseTallyHistory: [],
+    wheelChaseTallyHistory: [],
+    wheelHighlightedSlotIndex: -1,
     ...overrides
   };
 }
@@ -31,8 +31,8 @@ function createController(overrides: Record<string, unknown> = {}) {
 test("wheelHistoryPanelEntries returns full live history in reverse order", () => {
   const vm = {
     wheelMode: "live",
-    wheelController: createController({
-      fairnessHistory: [
+    ...createController({
+      wheelFairnessHistory: [
         { spinNumber: 1, label: "A", color: "#f00", hash: "h1", seed: "s1", timestamp: 1 },
         { spinNumber: 2, label: "B", color: "#0f0", hash: "h2", seed: "s2", timestamp: 2 },
         { spinNumber: 3, label: "C", color: "#00f", hash: "h3", seed: "s3", timestamp: 3 }
@@ -52,14 +52,14 @@ test("wheelHistoryPanelLatestEntry uses current preview proof fields in config m
     wheelHistoryPanelEntries: [
       { spinNumber: 2, label: "Older", color: "#0f0", hash: "older-hash", seed: "older-seed", timestamp: 2 }
     ],
-    wheelController: createController({
-      previewTotalSpins: 3,
-      spinHash: "current-hash",
-      spinSeed: "current-seed",
-      spinClientSeed: "current-client-seed",
-      spinVerificationUrl: "https://example.com/verify",
-      spinAlgorithm: "whatfees-wheel-v1",
-      lastResultColor: "#ff9900"
+    ...createController({
+      wheelPreviewTotalSpins: 3,
+      wheelSpinHash: "current-hash",
+      wheelSpinSeed: "current-seed",
+      wheelSpinClientSeed: "current-client-seed",
+      wheelSpinVerificationUrl: "https://example.com/verify",
+      wheelSpinAlgorithm: "whatfees-wheel-v1",
+      wheelLastResultColor: "#ff9900"
     })
   };
 

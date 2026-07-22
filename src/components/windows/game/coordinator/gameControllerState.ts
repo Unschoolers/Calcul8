@@ -1,11 +1,9 @@
-import { reactive } from "vue";
-import type { GameCoordinatorContext } from "../../../../app-core/context/game.ts";
-import type { MysteryGridReveal, PendingWheelInventoryIssue, WheelConfig, WheelFairnessEntry } from "../../../../types/app.ts";
+import type { GameCoordinatorContext, GameSessionStateContext } from "../../../../app-core/context/game.ts";
+import type { PendingWheelInventoryIssue, WheelConfig, WheelFairnessEntry } from "../../../../types/app.ts";
 import { unwrapWindowBridgeContext } from "../../shared/contextBridge.ts";
 import type { WheelSlot } from "../services/wheelSlots.ts";
 import type { GameStageOverlayCommand } from "../overlay/gameStageOverlayTypes.ts";
 import type { BracketBattleRoll, BracketBattleSession } from "../bracket/bracketBattleDomain.ts";
-import { GAME_CONTROLLER_LEGACY_ALIAS_MAP } from "./gameControllerLegacyAliases.ts";
 
 /**
  * Typed `this` context shared across GameWindow computed properties, watchers,
@@ -16,13 +14,8 @@ import { GAME_CONTROLLER_LEGACY_ALIAS_MAP } from "./gameControllerLegacyAliases.
  * verbose `(this as Record<string, unknown>).prop` access casts throughout
  * those files.
  */
-type GameControllerAliases = {
-  [Key in keyof typeof GAME_CONTROLLER_LEGACY_ALIAS_MAP]:
-    WheelControllerState[(typeof GAME_CONTROLLER_LEGACY_ALIAS_MAP)[Key]];
-};
-
 export type GameWindowThis = ReturnType<typeof createGameWindowBaseState>
-  & GameControllerAliases
+  & WheelControllerState
   & GameCoordinatorContext
   & {
   // ===== Computed properties =====
@@ -142,141 +135,31 @@ export type GameWindowThis = ReturnType<typeof createGameWindowBaseState>
   wheelConfigSavedSnackbar: boolean;
 };
 
-export type WheelControllerState = {
-  activeSlots: WheelSlot[];
-  previewSlots: WheelSlot[];
-  inventoryWarning: string;
-  lastResultColor: string;
-  previewSpinCounts: number[];
-  previewTotalSpins: number;
-  spinSeed: string;
-  spinHash: string;
-  spinClientSeed: string;
-  spinVerificationUrl: string;
-  spinAlgorithm: string;
-  showSeed: boolean;
-  fairnessHistoryOpen: boolean;
-  sessionNetRevenue: number | null;
-  sessionCostAdjustment: number;
-  previewFairnessHistory: WheelFairnessEntry[];
-  fairnessHistory: WheelFairnessEntry[];
-  previewChaseTallyHistory: Array<{ tierId: string; label: string; color: string; count: number }>;
-  chaseTallyHistory: Array<{ tierId: string; label: string; color: string; count: number }>;
-  gridReveals: MysteryGridReveal[];
-  previewGridReveals: MysteryGridReveal[];
-  gridLayoutSeed: string;
-  previewGridLayoutSeed: string;
-  highlightedSlotIndex: number;
-};
+export type WheelControllerState = GameSessionStateContext;
 
-function createDefaultWheelControllerState(): WheelControllerState {
+export function createWheelControllerState(): WheelControllerState {
   return {
-    activeSlots: [],
-    previewSlots: [],
-    inventoryWarning: "",
-    lastResultColor: "rgb(var(--v-theme-primary))",
-    previewSpinCounts: [],
-    previewTotalSpins: 0,
-    spinSeed: "",
-    spinHash: "",
-    spinClientSeed: "",
-    spinVerificationUrl: "",
-    spinAlgorithm: "",
-    showSeed: false,
-    fairnessHistoryOpen: false,
-    sessionNetRevenue: null,
-    sessionCostAdjustment: 0,
-    previewFairnessHistory: [],
-    fairnessHistory: [],
-    previewChaseTallyHistory: [],
-    chaseTallyHistory: [],
-    gridReveals: [],
-    previewGridReveals: [],
-    gridLayoutSeed: "",
-    previewGridLayoutSeed: "",
-    highlightedSlotIndex: -1
+    wheelSpinning: false, wheelCurrentAngle: 0, wheelSpinCounts: [], wheelTotalSpins: 0, wheelLastResult: "",
+    wheelSessionUpdatedAt: 0, wheelSessionLotSelections: {}, wheelPendingInventoryIssues: [],
+    activeWheelSlots: [], wheelPreviewSlots: [], wheelInventoryWarning: "", wheelLastResultColor: "rgb(var(--v-theme-primary))",
+    wheelPreviewSpinCounts: [], wheelPreviewTotalSpins: 0, wheelShowSeed: false, wheelFairnessHistoryOpen: false,
+    wheelSpinSeed: "", wheelSpinHash: "", wheelSpinClientSeed: "", wheelSpinVerificationUrl: "", wheelSpinAlgorithm: "",
+    wheelSessionNetRevenue: null, wheelSessionCostAdjustment: 0, wheelPreviewFairnessHistory: [], wheelFairnessHistory: [],
+    wheelPreviewChaseTallyHistory: [], wheelChaseTallyHistory: [], wheelGridReveals: [], wheelPreviewGridReveals: [],
+    wheelGridLayoutSeed: "", wheelPreviewGridLayoutSeed: "",
+    wheelHighlightedSlotIndex: -1
   };
 }
 
-function getInternalWheelContext(context: object): Record<string, unknown> | null {
-  const internal = (context as { $?: { ctx?: Record<string, unknown> } }).$?.ctx;
-  return internal && typeof internal === "object" ? internal : null;
-}
-
-function getExistingWheelController(context: object): WheelControllerState | null {
-  const ctx = context as Record<string, unknown>;
-  const direct = ctx.wheelController;
-  if (direct && typeof direct === "object") {
-    return direct as WheelControllerState;
-  }
-
-  const internal = getInternalWheelContext(context);
-  const internalController = internal?.wheelController;
-  if (internalController && typeof internalController === "object") {
-    return internalController as WheelControllerState;
-  }
-
-  return null;
-}
-
-function canAttachWheelControllerToContext(context: object): boolean {
-  if (!context || typeof context !== "object") return false;
-
-  const internal = getInternalWheelContext(context);
-  if (internal && internal !== context) {
-    return false;
-  }
-
-  if (Reflect.ownKeys(context).length === 0) {
-    return false;
-  }
-
-  return true;
-}
-
 export function getWheelController(context: object): WheelControllerState {
-  const resolvedContext = unwrapWindowBridgeContext(context as Record<string, unknown>);
-  const existing = getExistingWheelController(resolvedContext);
-  if (existing) {
-    return existing;
-  }
-
-  const controller = reactive(createDefaultWheelControllerState());
-  for (const [legacyKey, controllerKey] of Object.entries(GAME_CONTROLLER_LEGACY_ALIAS_MAP)) {
-    if (Object.prototype.hasOwnProperty.call(resolvedContext, legacyKey)) {
-      (controller as Record<string, unknown>)[controllerKey] = resolvedContext[legacyKey];
-    }
-  }
-
-  if (!canAttachWheelControllerToContext(resolvedContext)) {
-    return controller;
-  }
-
-  resolvedContext.wheelController = controller;
-
-  for (const [legacyKey, controllerKey] of Object.entries(GAME_CONTROLLER_LEGACY_ALIAS_MAP)) {
-    const descriptor = Object.getOwnPropertyDescriptor(resolvedContext, legacyKey);
-    if (descriptor?.get || descriptor?.set) continue;
-    Object.defineProperty(resolvedContext, legacyKey, {
-      enumerable: true,
-      configurable: true,
-      get() {
-        return (controller as Record<string, unknown>)[controllerKey];
-      },
-      set(value: unknown) {
-        (controller as Record<string, unknown>)[controllerKey] = value;
-      }
-    });
-  }
-
-  return controller;
+  const owner = unwrapWindowBridgeContext(context as Record<string, unknown>);
+  const defaults = createWheelControllerState() as unknown as Record<string, unknown>;
+  for (const [key, value] of Object.entries(defaults)) if (!(key in owner)) owner[key] = value;
+  return owner as unknown as WheelControllerState;
 }
 
 export function getGameWindowLocalKeys(): string[] {
-  return [
-    ...Object.keys(createGameWindowBaseState()),
-    ...Object.keys(GAME_CONTROLLER_LEGACY_ALIAS_MAP)
-  ];
+  return Object.keys(createGameWindowBaseState());
 }
 
 function createGameWindowBaseState() {
@@ -284,7 +167,6 @@ function createGameWindowBaseState() {
     editingWheelConfig: null as WheelConfig | null,
     appliedWheelConfigSnapshot: null as WheelConfig | null,
     wheelConfigSyncPending: false,
-    wheelController: createDefaultWheelControllerState(),
     wheelAutospinEnabled: false,
     wheelSoundEnabled: true,
     wheelReducedMotion: false,
@@ -296,11 +178,9 @@ function createGameWindowBaseState() {
     wheelCelebrationEmoji: "",
     wheelCelebrationPreview: false,
     wheelCelebrationNonce: 0,
-    wheelSpinning: false,
     wheelGridRevealAnimating: false,
     wheelGridResetAnimating: false,
     wheelGridHighlightCellIndex: -1,
-    wheelCurrentAngle: 0,
     wheelCanvasSize: 360,
     wheelConfigReady: false,
     wheelViewportWidth: 0,
@@ -339,22 +219,8 @@ function createGameWindowBaseState() {
   };
 }
 
-export function createGameWindowState(): ReturnType<typeof createGameWindowBaseState> & GameControllerAliases {
-  const state = createGameWindowBaseState();
-  for (const [legacyKey, controllerKey] of Object.entries(GAME_CONTROLLER_LEGACY_ALIAS_MAP)) {
-    Object.defineProperty(state, legacyKey, {
-      enumerable: true,
-      configurable: true,
-      get() {
-        return (state.wheelController as WheelControllerState)[controllerKey];
-      },
-      set(value: unknown) {
-        (state.wheelController as Record<string, unknown>)[controllerKey] = value;
-      }
-    });
-  }
-
-  return state as ReturnType<typeof createGameWindowBaseState> & GameControllerAliases;
+export function createGameWindowState(): ReturnType<typeof createGameWindowBaseState> {
+  return createGameWindowBaseState();
 }
 
 

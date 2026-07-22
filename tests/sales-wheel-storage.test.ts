@@ -88,7 +88,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-test("loadWheelFromStorage clears stale wheel config and session state when scoped storage is empty", async () => {
+test("loadWheelFromStorage clears scoped configs without mutating the GameWindow-owned session", async () => {
   await withMockedLocalStorage(async () => {
     const context = createContext({
       activeScopeType: "workspace",
@@ -107,12 +107,9 @@ test("loadWheelFromStorage clears stale wheel config and session state when scop
 
     assert.deepEqual(context.wheelConfigs, []);
     assert.equal(context.activeWheelConfigId, null);
-    assert.equal(context.wheelTotalSpins, 0);
-    assert.deepEqual(context.wheelSpinCounts, []);
-    assert.equal(context.wheelLastResult, "");
-    assert.equal(context.wheelSessionUpdatedAt, 0);
-    assert.deepEqual(context.wheelSessionLotSelections, {});
-    assert.deepEqual(context.wheelSkippedDeductions, []);
+    assert.equal(context.wheelTotalSpins, 7);
+    assert.deepEqual(context.wheelSpinCounts, [7]);
+    assert.equal(context.wheelLastResult, "Old result");
   });
 });
 
@@ -171,31 +168,11 @@ test("loadWheelFromStorage reads workspace-scoped wheel state without falling ba
     assert.equal((context.wheelConfigs as Array<{ id: number; name: string }>)[0]?.id, 42);
     assert.equal((context.wheelConfigs as Array<{ id: number; name: string }>)[0]?.name, "Workspace Wheel");
     assert.equal(context.activeWheelConfigId, 42);
-    assert.equal(context.wheelTotalSpins, 3);
-    assert.deepEqual(context.wheelSpinCounts, [3]);
-    assert.equal(context.wheelLastResult, "Workspace result");
-    assert.equal(context.wheelSessionUpdatedAt, 456);
-    assert.equal(context.wheelSessionNetRevenue, 24.5);
-    assert.equal(context.wheelSessionCostAdjustment, 5);
-    assert.equal((context.wheelFairnessHistory as Array<{ spinNumber: number }>)[0]?.spinNumber, 1);
-    assert.equal((context.wheelChaseTallyHistory as Array<{ tierId: string }>)[0]?.tierId, "t2");
-    assert.deepEqual(context.wheelPreviewSpinCounts, [2, 1]);
-    assert.equal(context.wheelPreviewTotalSpins, 3);
-    assert.equal((context.wheelPreviewFairnessHistory as Array<{ spinNumber: number }>)[0]?.spinNumber, 3);
-    assert.equal((context.wheelPreviewChaseTallyHistory as Array<{ tierId: string }>)[0]?.tierId, "pt1");
-    assert.deepEqual(context.wheelSessionLotSelections, { t2: 77 });
-    assert.deepEqual(context.wheelSkippedDeductions, [{ tierId: "t2" }]);
-    assert.equal(context.wheelCurrentAngle, 1.25);
-    assert.equal(context.wheelLastResultColor, "#f00");
-    assert.equal(context.wheelSpinHash, "hash-current");
-    assert.equal(context.wheelSpinSeed, "seed-current");
-    assert.equal(context.wheelSpinClientSeed, "client-current");
-    assert.match(String(context.wheelSpinVerificationUrl || ""), /wheel\/fairness\/verify/);
-    assert.equal(context.wheelSpinAlgorithm, "whatfees-wheel-v1");
+    assert.deepEqual(context.wheelSpinCounts, []);
   });
 });
 
-test("loadWheelFromStorage normalizes a persisted numeric-string active wheel id", async () => {
+test("loadWheelFromStorage leaves legacy root-session selection to the GameWindow decoder", async () => {
   await withMockedLocalStorage(async (data) => {
     data.set(
       getScopedWheelConfigsStorageKey({ scopeType: "personal" }),
@@ -216,9 +193,9 @@ test("loadWheelFromStorage normalizes a persisted numeric-string active wheel id
 
     salesMethods.loadWheelFromStorage.call(context as never);
 
-    assert.equal(context.activeWheelConfigId, 42);
+    assert.equal(context.activeWheelConfigId, 7);
     assert.equal(typeof context.activeWheelConfigId, "number");
-    assert.equal(context.wheelTotalSpins, 2);
+    assert.equal(context.wheelTotalSpins, 0);
     assert.deepEqual((context.notify as ReturnType<typeof vi.fn>).mock.calls, []);
   });
 });
@@ -232,8 +209,7 @@ test("loadWheelFromStorage marks corrupt wheel data for recovery", async () => {
     salesMethods.loadWheelFromStorage.call(context as never);
 
     assert.deepEqual((context.notify as ReturnType<typeof vi.fn>).mock.calls, [
-      ["Local wheel configuration is damaged. Cloud recovery will be attempted.", "warning"],
-      ["Local wheel session is damaged. Cloud recovery will be attempted.", "warning"]
+      ["Local wheel configuration is damaged. Cloud recovery will be attempted.", "warning"]
     ]);
   });
 });
@@ -246,65 +222,7 @@ test("loadWheelFromStorage rejects structurally invalid wheel data", async () =>
 
     salesMethods.loadWheelFromStorage.call(context as never);
 
-    assert.equal((context.notify as ReturnType<typeof vi.fn>).mock.calls.length, 2);
-  });
-});
-
-test("saveWheelSessionToStorage preserves richer wheel session fields already mirrored by the wheel window", async () => {
-  await withMockedLocalStorage(async (data) => {
-    data.set(
-      getScopedWheelSessionStorageKey({
-        scopeType: "personal"
-      }),
-      JSON.stringify({
-        activeWheelConfigId: 42,
-        wheelSessionNetRevenue: 24.5,
-        wheelSessionCostAdjustment: 5,
-        wheelFairnessHistory: [{ spinNumber: 1, label: "Prize", color: "#f00", hash: "h", seed: "s", timestamp: 1 }],
-        wheelChaseTallyHistory: [{ tierId: "t2", label: "Prize", color: "#f00", count: 1 }],
-        wheelPreviewSpinCounts: [2, 1],
-        wheelPreviewTotalSpins: 3,
-        wheelPreviewFairnessHistory: [{ spinNumber: 3, label: "Preview Prize", color: "#0f0", hash: "ph", seed: "ps", timestamp: 3 }],
-        wheelPreviewChaseTallyHistory: [{ tierId: "pt1", label: "Preview Prize", color: "#0f0", count: 2 }],
-        wheelCurrentAngle: 1.25,
-        wheelLastResultColor: "#f00",
-        wheelSpinHash: "hash-preserved",
-        wheelSpinSeed: "seed-preserved",
-        wheelSpinClientSeed: "client-preserved",
-        wheelSpinVerificationUrl: "https://api.example.test/wheel/fairness/verify?serverSeed=seed-preserved&clientSeed=client-preserved&slotCount=1",
-        wheelSpinAlgorithm: "whatfees-wheel-v1"
-      })
-    );
-
-    const context = createContext({
-      activeWheelConfigId: 42,
-      wheelTotalSpins: 3,
-      wheelSpinCounts: [3],
-      wheelLastResult: "Workspace result",
-      wheelSessionUpdatedAt: 456,
-      wheelSessionLotSelections: { t2: 77 },
-      wheelSkippedDeductions: [{ tierId: "t2" }]
-    });
-
-    salesMethods.saveWheelSessionToStorage.call(context as never);
-
-    const saved = JSON.parse(data.get(getScopedWheelSessionStorageKey({ scopeType: "personal" })) || "{}");
-    assert.equal(saved.activeWheelConfigId, 42);
-    assert.equal(saved.wheelSessionNetRevenue, 24.5);
-    assert.equal(saved.wheelSessionCostAdjustment, 5);
-    assert.equal(saved.wheelCurrentAngle, 1.25);
-    assert.equal(saved.wheelLastResultColor, "#f00");
-    assert.equal(saved.wheelLastResult, "Workspace result");
-    assert.deepEqual(saved.wheelSessionLotSelections, { t2: 77 });
-    assert.deepEqual(saved.wheelPreviewSpinCounts, [2, 1]);
-    assert.equal(saved.wheelPreviewTotalSpins, 3);
-    assert.equal(saved.wheelPreviewFairnessHistory[0]?.spinNumber, 3);
-    assert.equal(saved.wheelPreviewChaseTallyHistory[0]?.tierId, "pt1");
-    assert.equal(saved.wheelSpinHash, "hash-preserved");
-    assert.equal(saved.wheelSpinSeed, "seed-preserved");
-    assert.equal(saved.wheelSpinClientSeed, "client-preserved");
-    assert.match(String(saved.wheelSpinVerificationUrl || ""), /wheel\/fairness\/verify/);
-    assert.equal(saved.wheelSpinAlgorithm, "whatfees-wheel-v1");
+    assert.equal((context.notify as ReturnType<typeof vi.fn>).mock.calls.length, 1);
   });
 });
 
@@ -352,23 +270,6 @@ test("saveWheelConfigsToStorage reports storage failures", () => {
 
   assert.deepEqual((context.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1), [
     "Could not save wheel configuration. Storage may be full.",
-    "error"
-  ]);
-});
-
-test("saveWheelSessionToStorage reports storage failures", () => {
-  vi.stubGlobal("localStorage", {
-    getItem: vi.fn(() => null),
-    setItem: vi.fn(() => {
-      throw new Error("quota exceeded");
-    })
-  });
-  const context = createContext();
-
-  salesMethods.saveWheelSessionToStorage.call(context as never);
-
-  assert.deepEqual((context.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1), [
-    "Could not save wheel session. Storage may be full.",
     "error"
   ]);
 });

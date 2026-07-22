@@ -724,6 +724,12 @@ export interface AppState extends LotSetup {
   // Wheel
   wheelConfigs: WheelConfig[];
   activeWheelConfigId: number | null;
+  activeWheelSlots: import("../components/windows/game/services/wheelSlots.ts").WheelSlot[];
+  wheelPreviewSlots: import("../components/windows/game/services/wheelSlots.ts").WheelSlot[];
+  wheelInventoryWarning: string;
+  wheelShowSeed: boolean;
+  wheelFairnessHistoryOpen: boolean;
+  wheelHighlightedSlotIndex: number;
   wheelSpinning: boolean;
   wheelCurrentAngle: number;
   wheelTotalSpins: number;
@@ -732,7 +738,6 @@ export interface AppState extends LotSetup {
   wheelSessionUpdatedAt: number;
   wheelSessionLotSelections: Record<string, number | null>;
   wheelPendingInventoryIssues: PendingWheelInventoryIssue[];
-  wheelSkippedDeductions: PendingWheelInventoryIssue[];
   wheelSessionNetRevenue: number | null;
   wheelSessionCostAdjustment: number;
   wheelFairnessHistory: WheelFairnessEntry[];

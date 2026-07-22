@@ -31,15 +31,15 @@ type MysteryGridSurfacePreviewController = {
 
 function getGridReveals(context: Record<string, unknown>, preview: boolean): MysteryGridReveal[] {
   const controller = getWheelController(context);
-  return ((preview ? controller.previewGridReveals : controller.gridReveals) || []) as MysteryGridReveal[];
+  return ((preview ? controller.wheelPreviewGridReveals : controller.wheelGridReveals) || []) as MysteryGridReveal[];
 }
 
 function setGridReveals(context: Record<string, unknown>, preview: boolean, reveals: MysteryGridReveal[]): void {
   const controller = getWheelController(context);
   if (preview) {
-    controller.previewGridReveals = reveals;
+    controller.wheelPreviewGridReveals = reveals;
   } else {
-    controller.gridReveals = reveals;
+    controller.wheelGridReveals = reveals;
   }
 }
 
@@ -279,7 +279,7 @@ export const mysteryGridMethods = {
     const spinController = getWheelController(vm);
     const spinNumber = Number(shouldRecordLiveSession
       ? (vm.wheelTotalSpins || 0)
-      : (spinController.previewTotalSpins || 0));
+      : (spinController.wheelPreviewTotalSpins || 0));
     appendGridReveal(context, {
       preview,
       cellIndex: targetCellIndex,

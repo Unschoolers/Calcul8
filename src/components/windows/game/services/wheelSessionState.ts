@@ -50,12 +50,12 @@ export type WheelSessionTrack = {
 };
 
 export function clearWheelProofState(controller: WheelControllerState): void {
-  controller.spinHash = "";
-  controller.spinSeed = "";
-  controller.spinClientSeed = "";
-  controller.spinVerificationUrl = "";
-  controller.spinAlgorithm = "";
-  controller.showSeed = false;
+  controller.wheelSpinHash = "";
+  controller.wheelSpinSeed = "";
+  controller.wheelSpinClientSeed = "";
+  controller.wheelSpinVerificationUrl = "";
+  controller.wheelSpinAlgorithm = "";
+  controller.wheelShowSeed = false;
 }
 
 export function clearWheelChaseDialogState(context: WheelSessionResetContext): void {
@@ -72,7 +72,7 @@ export function setWheelResultState(
   color: string
 ): void {
   context.wheelLastResult = resultLabel;
-  controller.lastResultColor = color;
+  controller.wheelLastResultColor = color;
 }
 
 export function getWheelTargetConfig(
@@ -108,35 +108,34 @@ export function createWheelSessionSnapshot(
   context: WheelSessionContext,
   controller: WheelControllerState
 ) {
-  const slots = ((controller.activeSlots || []) as WheelSlot[]);
+  const slots = ((controller.activeWheelSlots || []) as WheelSlot[]);
   const snapshot = {
     wheelSpinCounts: context.wheelSpinCounts,
     wheelSlotTiers: slots.map((slot) => slot.tier),
     wheelTotalSpins: context.wheelTotalSpins,
-    wheelPreviewSpinCounts: controller.previewSpinCounts,
-    wheelPreviewSlotTiers: ((controller.previewSlots || []) as WheelSlot[]).map((slot) => slot.tier),
-    wheelPreviewTotalSpins: controller.previewTotalSpins,
-    wheelPreviewFairnessHistory: controller.previewFairnessHistory,
-    wheelPreviewChaseTallyHistory: controller.previewChaseTallyHistory,
-    wheelPreviewGridReveals: controller.previewGridReveals,
-    wheelPreviewGridLayoutSeed: controller.previewGridLayoutSeed,
+    wheelPreviewSpinCounts: controller.wheelPreviewSpinCounts,
+    wheelPreviewSlotTiers: ((controller.wheelPreviewSlots || []) as WheelSlot[]).map((slot) => slot.tier),
+    wheelPreviewTotalSpins: controller.wheelPreviewTotalSpins,
+    wheelPreviewFairnessHistory: controller.wheelPreviewFairnessHistory,
+    wheelPreviewChaseTallyHistory: controller.wheelPreviewChaseTallyHistory,
+    wheelPreviewGridReveals: controller.wheelPreviewGridReveals,
+    wheelPreviewGridLayoutSeed: controller.wheelPreviewGridLayoutSeed,
     wheelSessionUpdatedAt: context.wheelSessionUpdatedAt,
-    wheelSessionNetRevenue: controller.sessionNetRevenue,
-    wheelSessionCostAdjustment: controller.sessionCostAdjustment,
-    wheelFairnessHistory: controller.fairnessHistory,
-    wheelChaseTallyHistory: controller.chaseTallyHistory,
-    wheelGridReveals: controller.gridReveals,
-    wheelGridLayoutSeed: controller.gridLayoutSeed,
+    wheelSessionNetRevenue: controller.wheelSessionNetRevenue,
+    wheelSessionCostAdjustment: controller.wheelSessionCostAdjustment,
+    wheelFairnessHistory: controller.wheelFairnessHistory,
+    wheelChaseTallyHistory: controller.wheelChaseTallyHistory,
+    wheelGridReveals: controller.wheelGridReveals,
+    wheelGridLayoutSeed: controller.wheelGridLayoutSeed,
     wheelPendingInventoryIssues: context.wheelPendingInventoryIssues,
-    wheelSkippedDeductions: context.wheelPendingInventoryIssues,
     wheelCurrentAngle: context.wheelCurrentAngle,
     wheelLastResult: context.wheelLastResult,
-    wheelLastResultColor: controller.lastResultColor,
-    wheelSpinHash: controller.spinHash,
-    wheelSpinSeed: controller.spinSeed,
-    wheelSpinClientSeed: controller.spinClientSeed,
-    wheelSpinVerificationUrl: controller.spinVerificationUrl,
-    wheelSpinAlgorithm: controller.spinAlgorithm
+    wheelLastResultColor: controller.wheelLastResultColor,
+    wheelSpinHash: controller.wheelSpinHash,
+    wheelSpinSeed: controller.wheelSpinSeed,
+    wheelSpinClientSeed: controller.wheelSpinClientSeed,
+    wheelSpinVerificationUrl: controller.wheelSpinVerificationUrl,
+    wheelSpinAlgorithm: controller.wheelSpinAlgorithm
   };
   writeGameSpectatorSessionStorageState(snapshot, context);
   return snapshot;
@@ -149,14 +148,14 @@ export function readWheelSessionTrack(
 ): WheelSessionTrack {
   return execution === "preview"
     ? {
-        spinCounts: controller.previewSpinCounts,
-        totalSpins: controller.previewTotalSpins,
-        fairnessHistory: controller.previewFairnessHistory
+        spinCounts: controller.wheelPreviewSpinCounts,
+        totalSpins: controller.wheelPreviewTotalSpins,
+        fairnessHistory: controller.wheelPreviewFairnessHistory
       }
     : {
         spinCounts: context.wheelSpinCounts,
         totalSpins: context.wheelTotalSpins,
-        fairnessHistory: controller.fairnessHistory
+        fairnessHistory: controller.wheelFairnessHistory
       };
 }
 
@@ -167,14 +166,14 @@ function writeWheelSessionTrack(
   track: WheelSessionTrack
 ): void {
   if (execution === "preview") {
-    controller.previewSpinCounts = track.spinCounts;
-    controller.previewTotalSpins = track.totalSpins;
-    controller.previewFairnessHistory = track.fairnessHistory;
+    controller.wheelPreviewSpinCounts = track.spinCounts;
+    controller.wheelPreviewTotalSpins = track.totalSpins;
+    controller.wheelPreviewFairnessHistory = track.fairnessHistory;
     return;
   }
   context.wheelSpinCounts = track.spinCounts;
   context.wheelTotalSpins = track.totalSpins;
-  controller.fairnessHistory = track.fairnessHistory;
+  controller.wheelFairnessHistory = track.fairnessHistory;
 }
 
 export function recordWheelSessionSpin(
@@ -226,16 +225,16 @@ function resetWheelPreview(state: WheelResetState): WheelResetState {
   let previewSlots = state.slots;
   const config = state.reseedGrid ? getWheelTargetConfig(context, { preview: true }) : null;
   if (config?.gameType === "grid") {
-    controller.previewGridLayoutSeed = createWheelGridLayoutSeed();
-    previewSlots = buildSlotsFromConfig(config, { layoutSeed: controller.previewGridLayoutSeed });
-    controller.previewSlots = previewSlots;
+    controller.wheelPreviewGridLayoutSeed = createWheelGridLayoutSeed();
+    previewSlots = buildSlotsFromConfig(config, { layoutSeed: controller.wheelPreviewGridLayoutSeed });
+    controller.wheelPreviewSlots = previewSlots;
   }
   writeWheelSessionTrack(context, controller, "preview", emptyWheelSessionTrack(previewSlots.length));
-  controller.previewChaseTallyHistory = [];
-  controller.previewGridReveals = [];
-  controller.inventoryWarning = "";
-  controller.lastResultColor = "rgb(var(--v-theme-primary))";
-  controller.fairnessHistoryOpen = false;
+  controller.wheelPreviewChaseTallyHistory = [];
+  controller.wheelPreviewGridReveals = [];
+  controller.wheelInventoryWarning = "";
+  controller.wheelLastResultColor = "rgb(var(--v-theme-primary))";
+  controller.wheelFairnessHistoryOpen = false;
   clearWheelProofState(controller);
   clearWheelChaseDialogState(context);
   context.wheelGridHighlightCellIndex = -1;
@@ -250,19 +249,19 @@ function resetWheelLive(state: WheelResetState): WheelResetState {
   let { slots } = state;
   const config = state.reseedGrid ? getWheelTargetConfig(context) : null;
   if (config?.gameType === "grid") {
-    controller.gridLayoutSeed = createWheelGridLayoutSeed();
-    slots = buildSlotsFromConfig(config, { layoutSeed: controller.gridLayoutSeed });
-    controller.activeSlots = slots;
-    controller.previewGridLayoutSeed = controller.gridLayoutSeed;
+    controller.wheelGridLayoutSeed = createWheelGridLayoutSeed();
+    slots = buildSlotsFromConfig(config, { layoutSeed: controller.wheelGridLayoutSeed });
+    controller.activeWheelSlots = slots;
+    controller.wheelPreviewGridLayoutSeed = controller.wheelGridLayoutSeed;
   }
   writeWheelSessionTrack(context, controller, "live", emptyWheelSessionTrack(slots.length));
-  controller.previewSlots = [...slots];
+  controller.wheelPreviewSlots = [...slots];
   resetWheelPreview({ ...state, slots });
-  controller.sessionNetRevenue = 0;
-  controller.sessionCostAdjustment = 0;
-  controller.fairnessHistory = [];
-  controller.chaseTallyHistory = [];
-  controller.gridReveals = [];
+  controller.wheelSessionNetRevenue = 0;
+  controller.wheelSessionCostAdjustment = 0;
+  controller.wheelFairnessHistory = [];
+  controller.wheelChaseTallyHistory = [];
+  controller.wheelGridReveals = [];
   context.wheelEndingSession = false;
   context.wheelEndSessionReviewActive = false;
   context.gameSpectatorPublishPending = false;
@@ -297,18 +296,18 @@ export function resetLoadedTierPrizeGameState(
   clearSlots: boolean
 ): void {
   resetWheelLive({ context, controller, slots: [], reseedGrid: false });
-  controller.sessionNetRevenue = null;
-  controller.highlightedSlotIndex = -1;
+  controller.wheelSessionNetRevenue = null;
+  controller.wheelHighlightedSlotIndex = -1;
   context.gameSpectatorDialog = false;
   context.gameSpectatorSessionId = "";
   context.gameSpectatorSessionStatus = "inactive";
   context.gameSpectatorSessionUrl = "";
   context.gameSpectatorSessionQrUrl = "";
   if (clearSlots) {
-    controller.activeSlots = [];
-    controller.previewSlots = [];
-    controller.gridLayoutSeed = "";
-    controller.previewGridLayoutSeed = "";
+    controller.activeWheelSlots = [];
+    controller.wheelPreviewSlots = [];
+    controller.wheelGridLayoutSeed = "";
+    controller.wheelPreviewGridLayoutSeed = "";
   }
 }
 

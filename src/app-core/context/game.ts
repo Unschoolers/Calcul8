@@ -1,13 +1,22 @@
 import type { AppState, Sale } from "../../types/app.ts";
-import type { RootWheelSessionStateContext } from "../shared/wheel-root-session-state.ts";
 import type { ScopedApiContext } from "./api.ts";
 
 export interface GameMethodState {
   addWheelSaleToLot(lotId: number, sale: Sale): void;
   loadWheelFromStorage(): void;
   saveWheelConfigsToStorage(): void;
-  saveWheelSessionToStorage(): void;
 }
+
+export type GameSessionStateContext = Pick<AppState,
+  | "wheelSpinning" | "activeWheelSlots" | "wheelPreviewSlots" | "wheelInventoryWarning"
+  | "wheelShowSeed" | "wheelFairnessHistoryOpen" | "wheelHighlightedSlotIndex" | "wheelCurrentAngle"
+  | "wheelTotalSpins" | "wheelSpinCounts" | "wheelLastResult" | "wheelSessionUpdatedAt"
+  | "wheelSessionLotSelections" | "wheelPendingInventoryIssues" | "wheelSessionNetRevenue" | "wheelSessionCostAdjustment"
+  | "wheelFairnessHistory" | "wheelChaseTallyHistory" | "wheelGridLayoutSeed" | "wheelPreviewGridLayoutSeed"
+  | "wheelGridReveals" | "wheelPreviewGridReveals" | "wheelPreviewSpinCounts" | "wheelPreviewTotalSpins"
+  | "wheelPreviewFairnessHistory" | "wheelPreviewChaseTallyHistory" | "wheelLastResultColor" | "wheelSpinHash"
+  | "wheelSpinSeed" | "wheelSpinClientSeed" | "wheelSpinVerificationUrl" | "wheelSpinAlgorithm"
+>;
 
 export type GameAuthenticatedContext = Pick<
   ScopedApiContext,
@@ -18,7 +27,7 @@ export type GamePublicSessionContext = GameAuthenticatedContext &
   Pick<AppState, "activeScopeType" | "activeWorkspaceId">;
 
 export type GameBroadcastContext = GameAuthenticatedContext &
-  RootWheelSessionStateContext &
+  GameSessionStateContext &
   Pick<
     AppState,
     "activeScopeType" | "activeWorkspaceId" | "wheelConfigs" | "activeWheelConfigId"
@@ -30,17 +39,10 @@ export type GameCoordinatorContext = Pick<
   | "currentTab"
   | "wheelConfigs"
   | "activeWheelConfigId"
-  | "wheelSpinCounts"
-  | "wheelTotalSpins"
   | "lots"
   | "currentLotId"
   | "activeScopeType"
   | "activeWorkspaceId"
   | "googleAuthEpoch"
   | "hasProAccess"
-  | "wheelLastResult"
-  | "wheelSessionUpdatedAt"
-  | "wheelPendingInventoryIssues"
-  | "wheelSkippedDeductions"
-  | "wheelSessionLotSelections"
-> & Pick<GameMethodState, "addWheelSaleToLot">;
+> & GameSessionStateContext & Pick<GameMethodState, "addWheelSaleToLot">;

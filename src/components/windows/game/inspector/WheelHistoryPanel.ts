@@ -30,10 +30,10 @@ export const WheelHistoryPanel = {
     },
     wheelHistoryPanelHistoryOpen: {
       get(this: PanelContext): boolean {
-        return getWheelController(this).fairnessHistoryOpen;
+        return getWheelController(this).wheelFairnessHistoryOpen;
       },
       set(this: PanelContext, value: boolean): void {
-        getWheelController(this).fairnessHistoryOpen = value;
+        getWheelController(this).wheelFairnessHistoryOpen = value;
       }
     }
   },

@@ -8,8 +8,7 @@ import {
 import { readWheelSessionTrack, type WheelSessionTrack } from "../services/wheelSessionState.ts";
 
 function isWheelOwnerContext(vm: Record<string, unknown>): boolean {
-  return Reflect.has(vm, "wheelController")
-    || Reflect.has(vm, "wheelMode")
+  return Reflect.has(vm, "wheelMode")
     || Reflect.has(vm, "editingWheelConfig")
     || Reflect.has(vm, "wheelInspectorTab")
     || Reflect.has(vm, "wheelPresentationMode");
@@ -52,8 +51,8 @@ export function getWheelDisplaySlots(vm: Record<string, unknown>): WheelSlot[] {
   const source = resolveWheelSource(vm);
   const controller = getWheelController(source);
   return (((isWheelPreviewMode(vm)
-    ? controller.previewSlots
-    : controller.activeSlots) || []) as WheelSlot[]);
+    ? controller.wheelPreviewSlots
+    : controller.activeWheelSlots) || []) as WheelSlot[]);
 }
 
 function getWheelDisplaySessionTrack(vm: Record<string, unknown>): WheelSessionTrack {
@@ -93,8 +92,8 @@ export function getWheelDisplayChaseTallyHistory(
   }
   const controller = getWheelController(source);
   return ((isWheelPreviewMode(vm)
-    ? controller.previewChaseTallyHistory
-    : controller.chaseTallyHistory) || []) as Array<{ tierId: string; label: string; color: string; count: number }>;
+    ? controller.wheelPreviewChaseTallyHistory
+    : controller.wheelChaseTallyHistory) || []) as Array<{ tierId: string; label: string; color: string; count: number }>;
 }
 
 export function getWheelCurrentProofState(vm: Record<string, unknown>): {
@@ -108,12 +107,12 @@ export function getWheelCurrentProofState(vm: Record<string, unknown>): {
   const source = resolveWheelSource(vm);
   const controller = getWheelController(source);
   return {
-    spinHash: String(controller.spinHash || ""),
-    spinSeed: String(controller.spinSeed || ""),
-    spinClientSeed: String(controller.spinClientSeed || ""),
-    spinVerificationUrl: String(controller.spinVerificationUrl || ""),
-    spinAlgorithm: String(controller.spinAlgorithm || ""),
-    lastResultColor: String(controller.lastResultColor || "rgb(var(--v-theme-primary))")
+    spinHash: String(controller.wheelSpinHash || ""),
+    spinSeed: String(controller.wheelSpinSeed || ""),
+    spinClientSeed: String(controller.wheelSpinClientSeed || ""),
+    spinVerificationUrl: String(controller.wheelSpinVerificationUrl || ""),
+    spinAlgorithm: String(controller.wheelSpinAlgorithm || ""),
+    lastResultColor: String(controller.wheelLastResultColor || "rgb(var(--v-theme-primary))")
   };
 }
 
@@ -159,7 +158,7 @@ export function getWheelSessionCost(vm: Record<string, unknown>): number {
   const base = counts.reduce((sum, count, i) => sum + count * (slots[i]?.cost || 0), 0);
   const adjustment = (isWheelPreviewMode(vm)
     ? 0
-    : Number(controller.sessionCostAdjustment || 0));
+    : Number(controller.wheelSessionCostAdjustment || 0));
   return base + adjustment;
 }
 
@@ -167,7 +166,7 @@ export function getWheelSessionProfit(vm: Record<string, unknown>): number {
   const source = resolveWheelSource(vm);
   const controller = getWheelController(source);
   if (!isWheelPreviewMode(vm)) {
-    const storedNetRevenue = controller.sessionNetRevenue as number | null | undefined;
+    const storedNetRevenue = controller.wheelSessionNetRevenue as number | null | undefined;
     if (storedNetRevenue != null && Number.isFinite(Number(storedNetRevenue))) {
       return Number(storedNetRevenue) - getWheelSessionCost(vm);
     }

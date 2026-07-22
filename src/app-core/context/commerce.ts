@@ -14,7 +14,7 @@ import type {
   SinglesSaleCardOption,
   SinglesSaleLine
 } from "../../types/app.ts";
-import type { GameMethodState } from "./game.ts";
+import type { GameMethodState, GameSessionStateContext } from "./game.ts";
 import type { PortfolioChartContext, PortfolioMethodState } from "./portfolio.ts";
 import type {
   AppVueContext,
@@ -23,7 +23,6 @@ import type {
 } from "./runtime.ts";
 import type { ScopedApiContext } from "./api.ts";
 import type { SyncMethodState } from "./sync.ts";
-import type { RootWheelSessionStateContext } from "../shared/wheel-root-session-state.ts";
 
 export interface CommerceComputedState {
   liveProfitTargetBadgeVisible: boolean;
@@ -576,7 +575,7 @@ export type SalesMethodContext = SalesChartContext &
   | "exchangeRate"
   | "wheelConfigs"
 > &
-  RootWheelSessionStateContext &
+  GameSessionStateContext &
   Pick<CommerceComputedState,
     "canUsePaidActions" | "singlesSoldCountByPurchaseId"
   > &

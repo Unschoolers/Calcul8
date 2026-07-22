@@ -31,7 +31,7 @@ export const wheelFairnessComputeds = {
 
   wheelFairnessChevron(this: FairnessComputedContext): string {
     const controller = getWheelController(this);
-    return controller.showSeed ? "mdi-chevron-up" : "mdi-chevron-down";
+    return controller.wheelShowSeed ? "mdi-chevron-up" : "mdi-chevron-down";
   },
 
   wheelDisplayFairnessHistory(this: FairnessComputedContext) {

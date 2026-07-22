@@ -362,27 +362,5 @@ export const appWatch: AppWatchObject = {
       this.saveWheelConfigsToStorage();
     },
     deep: true
-  },
-
-  wheelTotalSpins() {
-    this.saveWheelSessionToStorage();
-  },
-
-  wheelSpinCounts: {
-    handler() {
-      this.saveWheelSessionToStorage();
-    },
-    deep: true
-  },
-
-  activeWheelConfigId() {
-    this.saveWheelSessionToStorage();
-  },
-
-  wheelPendingInventoryIssues: {
-    handler() {
-      this.saveWheelSessionToStorage();
-    },
-    deep: true
   }
 };

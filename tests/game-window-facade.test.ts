@@ -41,6 +41,24 @@ test("game modules do not expose unused legacy and pricing APIs", () => {
   assert.doesNotMatch(grid, /resolveMysteryGridCellSlotIndex/);
 });
 
+test("game state has one owner without legacy controller aliases", () => {
+  assert.equal(
+    existsSync("src/components/windows/game/coordinator/gameControllerLegacyAliases.ts"),
+    false
+  );
+  assert.equal(existsSync("src/app-core/shared/wheel-root-session-state.ts"), false);
+  const controller = readFileSync(
+    "src/components/windows/game/coordinator/gameControllerState.ts",
+    "utf8"
+  );
+  const commands = [
+    "src/components/windows/game/commands/wheelSessionMethods.ts",
+    "src/components/windows/game/commands/wheelSpinMethods.ts"
+  ].map((file) => readFileSync(file, "utf8")).join("\n");
+  assert.doesNotMatch(controller, /GAME_CONTROLLER_LEGACY_ALIAS_MAP/);
+  assert.doesNotMatch(commands, /wheelSkippedDeductions/);
+});
+
 test("game window children use the game context without the wheelCtx compatibility bridge", () => {
   const definition = readFileSync("src/components/windows/game/coordinator/GameWindow.definition.ts", "utf8");
   const contextConsumers = [

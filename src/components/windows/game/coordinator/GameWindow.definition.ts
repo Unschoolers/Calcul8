@@ -325,22 +325,22 @@ export const gameWindowDefinition = {
         return;
       }
 
-      if (!Array.isArray(controller.activeSlots) || controller.activeSlots.length === 0) {
-        if (activeConfig.gameType === "grid" && !controller.gridLayoutSeed) {
-          controller.gridLayoutSeed = createWheelGridLayoutSeed();
+      if (!Array.isArray(controller.activeWheelSlots) || controller.activeWheelSlots.length === 0) {
+        if (activeConfig.gameType === "grid" && !controller.wheelGridLayoutSeed) {
+          controller.wheelGridLayoutSeed = createWheelGridLayoutSeed();
         }
-        controller.activeSlots = buildSlotsFromConfig(activeConfig, {
-          layoutSeed: activeConfig.gameType === "grid" ? controller.gridLayoutSeed : undefined
+        controller.activeWheelSlots = buildSlotsFromConfig(activeConfig, {
+          layoutSeed: activeConfig.gameType === "grid" ? controller.wheelGridLayoutSeed : undefined
         });
         repaired = true;
       }
 
-      if (!Array.isArray(controller.previewSlots) || controller.previewSlots.length === 0) {
+      if (!Array.isArray(controller.wheelPreviewSlots) || controller.wheelPreviewSlots.length === 0) {
         if (activeConfig.gameType === "grid") {
-          controller.previewGridLayoutSeed = controller.previewGridLayoutSeed || controller.gridLayoutSeed || createWheelGridLayoutSeed();
-          controller.previewSlots = buildSlotsFromConfig(activeConfig, { layoutSeed: controller.previewGridLayoutSeed });
+          controller.wheelPreviewGridLayoutSeed = controller.wheelPreviewGridLayoutSeed || controller.wheelGridLayoutSeed || createWheelGridLayoutSeed();
+          controller.wheelPreviewSlots = buildSlotsFromConfig(activeConfig, { layoutSeed: controller.wheelPreviewGridLayoutSeed });
         } else {
-          controller.previewSlots = [...controller.activeSlots];
+          controller.wheelPreviewSlots = [...controller.activeWheelSlots];
         }
         repaired = true;
       }
@@ -348,19 +348,19 @@ export const gameWindowDefinition = {
       if (
         (!Array.isArray(this.wheelSpinCounts)
           || (this.wheelSpinCounts as number[]).length === 0)
-        && controller.activeSlots.length > 0
+        && controller.activeWheelSlots.length > 0
         && !Number(this.wheelTotalSpins || 0)
       ) {
-        this.wheelSpinCounts = new Array(controller.activeSlots.length).fill(0);
+        this.wheelSpinCounts = new Array(controller.activeWheelSlots.length).fill(0);
         repaired = true;
       }
 
       if (
-        (!Array.isArray(controller.previewSpinCounts) || controller.previewSpinCounts.length === 0)
-        && controller.previewSlots.length > 0
-        && !Number(controller.previewTotalSpins || 0)
+        (!Array.isArray(controller.wheelPreviewSpinCounts) || controller.wheelPreviewSpinCounts.length === 0)
+        && controller.wheelPreviewSlots.length > 0
+        && !Number(controller.wheelPreviewTotalSpins || 0)
       ) {
-        controller.previewSpinCounts = new Array(controller.previewSlots.length).fill(0);
+        controller.wheelPreviewSpinCounts = new Array(controller.wheelPreviewSlots.length).fill(0);
         repaired = true;
       }
 

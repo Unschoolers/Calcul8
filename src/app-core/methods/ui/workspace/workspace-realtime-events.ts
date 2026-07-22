@@ -4,9 +4,6 @@ import { getActiveWorkspaceId, resolveWorkspaceScopeContext } from "../../../wor
 import { removeById, upsertById } from "../../../shared/collection-updaters.ts";
 import { normalizeWheelConfigs } from "../../../shared/normalize-wheel-config.ts";
 import {
-  applyRootWheelSessionSnapshot,
-} from "../../../shared/wheel-root-session-state.ts";
-import {
   cacheAuthoritativeSales,
   normalizeSale
 } from "../../lot-sales-api.ts";
@@ -132,9 +129,24 @@ function handleWheelSessionUpdatedEvent(app: WorkspaceRealtimeContext, data: unk
     return;
   }
 
-  applyRootWheelSessionSnapshot(app, {
-    ...session,
-    wheelSessionUpdatedAt: incomingUpdatedAt > 0 ? incomingUpdatedAt : Date.now()
+  const {
+    wheelConfigs: _normalizedConfigs,
+    activeWheelConfigId: _normalizedConfigId,
+    wheelSkippedDeductions: _legacyPendingIssues,
+    ...sessionState
+  } = session;
+  Object.assign(app, sessionState, {
+    wheelSessionUpdatedAt: incomingUpdatedAt > 0 ? incomingUpdatedAt : Date.now(),
+    wheelPreviewSpinCounts: [],
+    wheelPreviewTotalSpins: 0,
+    wheelPreviewFairnessHistory: [],
+    wheelPreviewChaseTallyHistory: [],
+    wheelSessionLotSelections: {},
+    wheelSpinHash: "",
+    wheelSpinSeed: "",
+    wheelSpinClientSeed: "",
+    wheelSpinVerificationUrl: "",
+    wheelSpinAlgorithm: ""
   });
 }
 

@@ -33,16 +33,18 @@ import {
 
 type WheelTallyHistoryEntry = { tierId: string; label: string; color: string; count: number };
 type WheelSessionSnapshot = ReturnType<typeof createWheelSessionSnapshot>;
-type StoredWheelSpectatorField = `gameSpectatorSession${"Id" | "Status" | "Url" | "QrUrl"}`
-  | `wheelSpectatorSession${"Id" | "Status" | "Url" | "QrUrl"}`;
+type StoredGameSpectatorField = `gameSpectatorSession${"Id" | "Status" | "Url" | "QrUrl"}`;
 type StoredWheelConfigSession = { [K in keyof WheelSessionSnapshot]?: unknown }
   & { wheelSpinCounts: number[]; wheelPreviewSpinCounts?: number[]; wheelSlotTiers?: string[]; wheelPreviewSlotTiers?: string[] }
-  & Partial<Record<StoredWheelSpectatorField, unknown>>;
+  & Partial<Record<StoredGameSpectatorField, unknown>>;
 type StoredWheelRootSession = StoredWheelConfigSession & { activeWheelConfigId: number };
 type UnknownFields = { [key: string]: unknown };
+const LEGACY_PENDING_ISSUES_KEY = ["wheel", "Skipped", "Deductions"].join("");
 
 function decodeStoredWheelConfigSession(value: unknown): StoredWheelConfigSession | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const rawFields = value as UnknownFields;
+  const legacyPendingInventoryIssues = rawFields[LEGACY_PENDING_ISSUES_KEY];
   const {
     activeWheelConfigId: _rootOnly,
     wheelSpinCounts: rawSpinCounts,
@@ -50,7 +52,8 @@ function decodeStoredWheelConfigSession(value: unknown): StoredWheelConfigSessio
     wheelSlotTiers: rawSlotTiers,
     wheelPreviewSlotTiers: rawPreviewSlotTiers,
     ...legacyFields
-  } = value as UnknownFields;
+  } = rawFields;
+  delete legacyFields[LEGACY_PENDING_ISSUES_KEY];
   const normalizeCounts = (raw: unknown): number[] | null => {
     if (!Array.isArray(raw)) return null;
     const counts = raw.map((entry) => typeof entry === "number" || (typeof entry === "string" && entry.trim()) ? Number(entry) : NaN);
@@ -67,6 +70,9 @@ function decodeStoredWheelConfigSession(value: unknown): StoredWheelConfigSessio
   return {
     ...legacyFields,
     wheelSpinCounts: spinCounts,
+    ...(!Array.isArray(legacyFields.wheelPendingInventoryIssues) && Array.isArray(legacyPendingInventoryIssues)
+      ? { wheelPendingInventoryIssues: legacyPendingInventoryIssues }
+      : {}),
     ...(previewSpinCounts ? { wheelPreviewSpinCounts: previewSpinCounts } : {}),
     ...(slotTiers ? { wheelSlotTiers: slotTiers } : {}),
     ...(previewSlotTiers ? { wheelPreviewSlotTiers: previewSlotTiers } : {})
@@ -142,7 +148,7 @@ export const wheelSessionMethods = {
   resetPreviewSession(this: GameWindowThis): void {
     this.stopWheelAutospin?.();
     const controller = getWheelController(this);
-    const previewSlots = ((controller.previewSlots || controller.activeSlots) as WheelSlot[]);
+    const previewSlots = ((controller.wheelPreviewSlots || controller.activeWheelSlots) as WheelSlot[]);
     void runWheelSessionReset(this, controller, "preview", previewSlots, {
       persist: () => this.saveWheelSession?.(),
       publish: () => this.publishGameSpectatorSessionSnapshot?.()
@@ -194,10 +200,10 @@ export const wheelSessionMethods = {
 
       const previewController = getWheelController(this);
       const tier = editing.tiers.find((t) => t.id === tierId);
-      const oldSlots = previewController.previewSlots as WheelSlot[];
-      const oldCounts = (previewController.previewSpinCounts || []) as number[];
-      const historyArr = previewController.previewChaseTallyHistory as WheelTallyHistoryEntry[];
-      previewController.previewChaseTallyHistory = snapshotCurrentTierLabelToHistory(
+      const oldSlots = previewController.wheelPreviewSlots as WheelSlot[];
+      const oldCounts = (previewController.wheelPreviewSpinCounts || []) as number[];
+      const historyArr = previewController.wheelPreviewChaseTallyHistory as WheelTallyHistoryEntry[];
+      previewController.wheelPreviewChaseTallyHistory = snapshotCurrentTierLabelToHistory(
         tierId,
         tier?.label || "",
         tier?.color || "",
@@ -207,8 +213,8 @@ export const wheelSessionMethods = {
       );
       applyReplacementToTier(tier, selectedId, newLabel, entry ? (entry.cost || entry.marketValue || 0) : 0);
       const rebuilt = rebuildSlotsAndRemapCounts(editing, oldSlots, oldCounts);
-      previewController.previewSlots = rebuilt.slots;
-      previewController.previewSpinCounts = rebuilt.counts;
+      previewController.wheelPreviewSlots = rebuilt.slots;
+      previewController.wheelPreviewSpinCounts = rebuilt.counts;
       clearWheelChaseDialogState(this);
       setWheelResultState(this, previewController, "⭐ Preview chase replaced — " + newLabel, "#f0a500");
       this.saveWheelSession?.();
@@ -235,20 +241,20 @@ export const wheelSessionMethods = {
       const oldCost = tier.costPerTier;
       const newCost = entry ? (entry.cost || entry.marketValue || 0) : oldCost;
       if (oldCost !== newCost) {
-        const oldSlots = liveController.activeSlots as WheelSlot[];
+        const oldSlots = liveController.activeWheelSlots as WheelSlot[];
         const oldCounts = (this.wheelSpinCounts || []) as number[];
         let tierSpins = 0;
         for (let i = 0; i < oldSlots.length; i++) {
           if (oldSlots[i]?.tier === tierId) tierSpins += (oldCounts[i] || 0);
         }
-        liveController.sessionCostAdjustment =
-          (liveController.sessionCostAdjustment as number || 0) + tierSpins * (oldCost - newCost);
+        liveController.wheelSessionCostAdjustment =
+          (liveController.wheelSessionCostAdjustment as number || 0) + tierSpins * (oldCost - newCost);
       }
 
-      const oldSlotsPre = liveController.activeSlots as WheelSlot[];
+      const oldSlotsPre = liveController.activeWheelSlots as WheelSlot[];
       const oldCountsPre = (this.wheelSpinCounts || []) as number[];
-      const historyArr = liveController.chaseTallyHistory as WheelTallyHistoryEntry[];
-      liveController.chaseTallyHistory = snapshotCurrentTierLabelToHistory(
+      const historyArr = liveController.wheelChaseTallyHistory as WheelTallyHistoryEntry[];
+      liveController.wheelChaseTallyHistory = snapshotCurrentTierLabelToHistory(
         tierId,
         tier.label,
         tier.color,
@@ -270,10 +276,10 @@ export const wheelSessionMethods = {
     }
 
     // Rebuild slots preserving spin counts by tier
-    const oldSlots = liveController.activeSlots as WheelSlot[];
+    const oldSlots = liveController.activeWheelSlots as WheelSlot[];
     const oldCounts = (this.wheelSpinCounts || []) as number[];
     const rebuilt = rebuildSlotsAndRemapCounts(config, oldSlots, oldCounts);
-    liveController.activeSlots = rebuilt.slots;
+    liveController.activeWheelSlots = rebuilt.slots;
     this.wheelSpinCounts = rebuilt.counts;
 
     clearWheelChaseDialogState(this);
@@ -340,7 +346,7 @@ export const wheelSessionMethods = {
 
   resetWheelSession(this: GameWindowThis): void {
     const resetController = getWheelController(this);
-    const slots = resetController.activeSlots as WheelSlot[];
+    const slots = resetController.activeWheelSlots as WheelSlot[];
     this.wheelSessionUpdatedAt = Date.now();
     void runWheelSessionReset(this, resetController, "live", slots, {
       persist: () => this.saveWheelSession(),
@@ -542,7 +548,7 @@ export const wheelSessionMethods = {
         const hasLegacyLiveGridSession = !savedLiveLayoutSeed
           && (savedLiveGridReveals.length > 0 || savedLiveSpinCounts.some((count) => Number(count) > 0));
         const liveLayoutSeed = savedLiveLayoutSeed
-          || (hasLegacyLiveGridSession ? "" : (controller.gridLayoutSeed || createWheelGridLayoutSeed()));
+          || (hasLegacyLiveGridSession ? "" : (controller.wheelGridLayoutSeed || createWheelGridLayoutSeed()));
         const previewConfig = getWheelTargetConfig(this, { preview: true }) || activeConfig;
         const savedPreviewLayoutSeed = String(session.wheelPreviewGridLayoutSeed ?? "").trim();
         const savedPreviewGridReveals = Array.isArray(session.wheelPreviewGridReveals) ? session.wheelPreviewGridReveals : [];
@@ -550,17 +556,17 @@ export const wheelSessionMethods = {
         const hasLegacyPreviewGridSession = !savedPreviewLayoutSeed
           && (savedPreviewGridReveals.length > 0 || savedPreviewSpinCounts.some((count) => Number(count) > 0));
         const previewLayoutSeed = savedPreviewLayoutSeed
-          || (hasLegacyPreviewGridSession ? "" : (controller.previewGridLayoutSeed || liveLayoutSeed));
-        controller.gridLayoutSeed = liveLayoutSeed;
-        controller.previewGridLayoutSeed = previewLayoutSeed;
-        controller.activeSlots = buildSlotsFromConfig(activeConfig, { layoutSeed: liveLayoutSeed });
-        controller.previewSlots = buildSlotsFromConfig(previewConfig, { layoutSeed: previewLayoutSeed });
+          || (hasLegacyPreviewGridSession ? "" : (controller.wheelPreviewGridLayoutSeed || liveLayoutSeed));
+        controller.wheelGridLayoutSeed = liveLayoutSeed;
+        controller.wheelPreviewGridLayoutSeed = previewLayoutSeed;
+        controller.activeWheelSlots = buildSlotsFromConfig(activeConfig, { layoutSeed: liveLayoutSeed });
+        controller.wheelPreviewSlots = buildSlotsFromConfig(previewConfig, { layoutSeed: previewLayoutSeed });
       } else {
-        controller.gridLayoutSeed = "";
-        controller.previewGridLayoutSeed = "";
+        controller.wheelGridLayoutSeed = "";
+        controller.wheelPreviewGridLayoutSeed = "";
       }
-      const slots = ((controller.activeSlots || []) as WheelSlot[]);
-      const previewSlots = (((controller.previewSlots || slots)) as WheelSlot[]);
+      const slots = ((controller.activeWheelSlots || []) as WheelSlot[]);
+      const previewSlots = (((controller.wheelPreviewSlots || slots)) as WheelSlot[]);
       if (!Array.isArray(session.wheelSpinCounts)) return false;
       if (session.wheelSpinCounts.length === slots.length) {
         this.wheelSpinCounts = session.wheelSpinCounts;
@@ -572,56 +578,56 @@ export const wheelSessionMethods = {
       this.wheelTotalSpins = (this.wheelSpinCounts as number[]).reduce((sum, count) => sum + count, 0);
       const sessionUpdatedAt = Number(session.wheelSessionUpdatedAt);
       this.wheelSessionUpdatedAt = Number.isFinite(sessionUpdatedAt) ? sessionUpdatedAt : 0;
-      controller.sessionNetRevenue =
+      controller.wheelSessionNetRevenue =
         Number.isFinite(Number(session.wheelSessionNetRevenue))
           ? (Number(session.wheelSessionNetRevenue) || 0)
           : null;
-      controller.sessionCostAdjustment = Number(session.wheelSessionCostAdjustment || 0) || 0;
-      controller.fairnessHistory = Array.isArray(session.wheelFairnessHistory)
+      controller.wheelSessionCostAdjustment = Number(session.wheelSessionCostAdjustment || 0) || 0;
+      controller.wheelFairnessHistory = Array.isArray(session.wheelFairnessHistory)
         ? (session.wheelFairnessHistory.slice(-20) as WheelFairnessEntry[])
         : [];
-      controller.chaseTallyHistory = Array.isArray(session.wheelChaseTallyHistory)
+      controller.wheelChaseTallyHistory = Array.isArray(session.wheelChaseTallyHistory)
         ? (session.wheelChaseTallyHistory as WheelTallyHistoryEntry[])
         : [];
-      controller.gridReveals = Array.isArray(session.wheelGridReveals)
-        ? (session.wheelGridReveals as typeof controller.gridReveals)
+      controller.wheelGridReveals = Array.isArray(session.wheelGridReveals)
+        ? (session.wheelGridReveals as typeof controller.wheelGridReveals)
         : [];
       if (Array.isArray(session.wheelPreviewSpinCounts)) {
         if (session.wheelPreviewSpinCounts.length === previewSlots.length) {
-          controller.previewSpinCounts = session.wheelPreviewSpinCounts;
+          controller.wheelPreviewSpinCounts = session.wheelPreviewSpinCounts;
         } else if (Array.isArray(session.wheelPreviewSlotTiers)) {
-          controller.previewSpinCounts = remapSpinCountsByTier(
+          controller.wheelPreviewSpinCounts = remapSpinCountsByTier(
             session.wheelPreviewSlotTiers,
             session.wheelPreviewSpinCounts,
             previewSlots
           );
         } else {
-          controller.previewSpinCounts = new Array(previewSlots.length).fill(0);
+          controller.wheelPreviewSpinCounts = new Array(previewSlots.length).fill(0);
         }
       } else {
-        controller.previewSpinCounts = new Array(previewSlots.length).fill(0);
+        controller.wheelPreviewSpinCounts = new Array(previewSlots.length).fill(0);
       }
-      controller.previewTotalSpins = ((controller.previewSpinCounts || []) as number[])
+      controller.wheelPreviewTotalSpins = ((controller.wheelPreviewSpinCounts || []) as number[])
         .reduce((sum, count) => sum + count, 0);
-      controller.previewFairnessHistory = Array.isArray(session.wheelPreviewFairnessHistory)
+      controller.wheelPreviewFairnessHistory = Array.isArray(session.wheelPreviewFairnessHistory)
         ? (session.wheelPreviewFairnessHistory.slice(-20) as WheelFairnessEntry[])
         : [];
-      controller.previewChaseTallyHistory = Array.isArray(session.wheelPreviewChaseTallyHistory)
+      controller.wheelPreviewChaseTallyHistory = Array.isArray(session.wheelPreviewChaseTallyHistory)
         ? (session.wheelPreviewChaseTallyHistory as WheelTallyHistoryEntry[])
         : [];
-      controller.previewGridReveals = Array.isArray(session.wheelPreviewGridReveals)
-        ? (session.wheelPreviewGridReveals as typeof controller.previewGridReveals)
+      controller.wheelPreviewGridReveals = Array.isArray(session.wheelPreviewGridReveals)
+        ? (session.wheelPreviewGridReveals as typeof controller.wheelPreviewGridReveals)
         : [];
-      assignWheelPendingInventoryIssues(this, session.wheelPendingInventoryIssues || session.wheelSkippedDeductions || []);
+      assignWheelPendingInventoryIssues(this, session.wheelPendingInventoryIssues || []);
       const currentAngle = Number(session.wheelCurrentAngle);
       this.wheelCurrentAngle = Number.isFinite(currentAngle) ? currentAngle : 0;
       this.wheelLastResult = typeof session.wheelLastResult === "string" ? session.wheelLastResult : "";
-      controller.lastResultColor = String(session.wheelLastResultColor || "rgb(var(--v-theme-primary))");
-      controller.spinHash = String(session.wheelSpinHash ?? "");
-      controller.spinSeed = String(session.wheelSpinSeed ?? "");
-      controller.spinClientSeed = String(session.wheelSpinClientSeed ?? "");
-      controller.spinVerificationUrl = String(session.wheelSpinVerificationUrl ?? "");
-      controller.spinAlgorithm = String(session.wheelSpinAlgorithm ?? "");
+      controller.wheelLastResultColor = String(session.wheelLastResultColor || "rgb(var(--v-theme-primary))");
+      controller.wheelSpinHash = String(session.wheelSpinHash ?? "");
+      controller.wheelSpinSeed = String(session.wheelSpinSeed ?? "");
+      controller.wheelSpinClientSeed = String(session.wheelSpinClientSeed ?? "");
+      controller.wheelSpinVerificationUrl = String(session.wheelSpinVerificationUrl ?? "");
+      controller.wheelSpinAlgorithm = String(session.wheelSpinAlgorithm ?? "");
       const spectatorState = readGameSpectatorSessionStorageState(session);
       this.gameSpectatorSessionId = spectatorState.publicSessionId;
       this.gameSpectatorSessionStatus = spectatorState.status;

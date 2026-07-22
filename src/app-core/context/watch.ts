@@ -113,10 +113,7 @@ export type GameWatchContext = Pick<
   AppState,
   | "activeWheelConfigId"
   | "wheelConfigs"
-  | "wheelPendingInventoryIssues"
-  | "wheelSpinCounts"
-  | "wheelTotalSpins"
-> & Pick<GameMethodState, "saveWheelConfigsToStorage" | "saveWheelSessionToStorage">;
+> & Pick<GameMethodState, "saveWheelConfigsToStorage">;
 
 export interface AppWatchObject {
   activeScopeType(this: ScopeWatchContext, newValue: WorkspaceScopeType): void;
@@ -135,8 +132,4 @@ export interface AppWatchObject {
   portfolioLotFilterIds: { handler(this: PortfolioWatchContext): void; deep: true };
   sales: { handler(this: SalesWatchContext): void; deep: true };
   wheelConfigs: { handler(this: GameWatchContext): void; deep: true };
-  wheelTotalSpins(this: GameWatchContext): void;
-  wheelSpinCounts: { handler(this: GameWatchContext): void; deep: true };
-  activeWheelConfigId(this: GameWatchContext): void;
-  wheelPendingInventoryIssues: { handler(this: GameWatchContext): void; deep: true };
 }

@@ -1,6 +1,6 @@
 import type { GameBroadcastContext } from "../../../context/game.ts";
 import { fetchAuthenticatedApiResponse } from "../common/shared.ts";
-import { buildRootWheelSessionSnapshot } from "../../../shared/wheel-root-session-state.ts";
+import { normalizeSyncGameSessionDto } from "../sync/sync-contracts.ts";
 
 export async function broadcastWheelSession(app: GameBroadcastContext): Promise<void> {
   if (app.activeScopeType !== "workspace" || !app.activeWorkspaceId) return;
@@ -8,7 +8,6 @@ export async function broadcastWheelSession(app: GameBroadcastContext): Promise<
   app.wheelSessionUpdatedAt = sentAt;
 
   try {
-    const rootSession = buildRootWheelSessionSnapshot(app);
     await fetchAuthenticatedApiResponse(
       app,
       "/wheel/broadcast",
@@ -18,9 +17,9 @@ export async function broadcastWheelSession(app: GameBroadcastContext): Promise<
         body: JSON.stringify({
           workspaceId: app.activeWorkspaceId,
           session: {
+            ...normalizeSyncGameSessionDto(app, sentAt),
             wheelConfigs: app.wheelConfigs,
             activeWheelConfigId: app.activeWheelConfigId,
-            ...rootSession,
             wheelSessionUpdatedAt: sentAt
           }
         })

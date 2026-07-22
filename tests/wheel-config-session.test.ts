@@ -160,30 +160,9 @@ test("requestWheelReset opens the shared reset confirmation and stops preview au
   assert.equal(vm.wheelConfirmDialog, true);
 });
 
-test("getWheelController does not attach reactive aliases onto bridge-style proxy contexts", () => {
+test("getWheelController resolves the bridge's canonical root owner", () => {
   const source = {
-    wheelController: {
-      activeSlots: [],
-      previewSlots: [],
-      inventoryWarning: "",
-      lastResultColor: "rgb(var(--v-theme-primary))",
-      previewSpinCounts: [],
-      previewTotalSpins: 0,
-      spinSeed: "",
-      spinHash: "seed-hash",
-      spinClientSeed: "",
-      spinVerificationUrl: "",
-      spinAlgorithm: "",
-      showSeed: false,
-      fairnessHistoryOpen: false,
-      sessionNetRevenue: null,
-      sessionCostAdjustment: 0,
-      previewFairnessHistory: [],
-      fairnessHistory: [],
-      previewChaseTallyHistory: [],
-      chaseTallyHistory: [],
-      highlightedSlotIndex: -1
-    }
+    wheelSpinHash: "seed-hash"
   } as Record<string, unknown>;
   const bridge = createNestedWindowContextBridge(source);
 
@@ -191,8 +170,8 @@ test("getWheelController does not attach reactive aliases onto bridge-style prox
   const controllerB = getWheelController(bridge);
 
   assert.equal(controllerA, controllerB);
-  assert.equal(controllerA.spinHash, "seed-hash");
-  assert.equal(Object.getOwnPropertyDescriptor(source, "wheelSpinHash"), undefined);
+  assert.equal(controllerA.wheelSpinHash, "seed-hash");
+  assert.equal(controllerA, source);
 });
 
 test("loadWheelConfig restores autosaved draft without mutating the live config", () => {
@@ -342,7 +321,7 @@ test("loadWheelConfig clears rendered wheel state when no active config exists",
   assert.equal(vm.wheelLastResult, "");
   assert.equal(vm.wheelInventoryWarning, "");
   assert.equal(vm.wheelSessionCostAdjustment, 0);
-  assert.deepEqual(vm.wheelSkippedDeductions, []);
+  assert.deepEqual(vm.wheelPendingInventoryIssues, []);
   assert.equal(vm.wheelEndingSession, false);
   assert.equal(vm.wheelChaseDialog, false);
   assert.equal(vm.wheelChaseReplacementSinglesId, null);
@@ -351,18 +330,18 @@ test("loadWheelConfig clears rendered wheel state when no active config exists",
   assert.deepEqual(vm.wheelPreviewSpinCounts, []);
   assert.equal(vm.wheelPreviewTotalSpins, 0);
   assert.deepEqual(vm.wheelPreviewChaseTallyHistory, []);
-  assert.deepEqual(controller.fairnessHistory, []);
-  assert.deepEqual(controller.previewFairnessHistory, []);
-  assert.equal(controller.spinHash, "");
-  assert.equal(controller.spinSeed, "");
-  assert.equal(controller.spinClientSeed, "");
-  assert.equal(controller.spinVerificationUrl, "");
-  assert.equal(controller.spinAlgorithm, "");
-  assert.equal(controller.showSeed, false);
-  assert.equal(controller.fairnessHistoryOpen, false);
-  assert.equal(controller.highlightedSlotIndex, -1);
-  assert.equal(controller.sessionNetRevenue, null);
-  assert.equal(controller.lastResultColor, "rgb(var(--v-theme-primary))");
+  assert.deepEqual(controller.wheelFairnessHistory, []);
+  assert.deepEqual(controller.wheelPreviewFairnessHistory, []);
+  assert.equal(controller.wheelSpinHash, "");
+  assert.equal(controller.wheelSpinSeed, "");
+  assert.equal(controller.wheelSpinClientSeed, "");
+  assert.equal(controller.wheelSpinVerificationUrl, "");
+  assert.equal(controller.wheelSpinAlgorithm, "");
+  assert.equal(controller.wheelShowSeed, false);
+  assert.equal(controller.wheelFairnessHistoryOpen, false);
+  assert.equal(controller.wheelHighlightedSlotIndex, -1);
+  assert.equal(controller.wheelSessionNetRevenue, null);
+  assert.equal(controller.wheelLastResultColor, "rgb(var(--v-theme-primary))");
 });
 
 test("ensureWheelEditorState rebuilds local editing and slot state from the active config", () => {
@@ -729,7 +708,7 @@ test("recordSpinResult auto-skips singles with quantity 0", () => {
   // Should NOT record sale
   assert.equal(addSaleFn.mock.calls.length, 0);
   // Should add to skipped deductions
-  assert.equal((vm.wheelSkippedDeductions as unknown[]).length, 1);
+  assert.equal((vm.wheelPendingInventoryIssues as unknown[]).length, 1);
 });
 
 test("recordSpinResult skips sold-out singles when linked entry has no remaining stock", () => {
@@ -765,7 +744,7 @@ test("recordSpinResult skips sold-out singles when linked entry has no remaining
 
   GameWindow.methods!.recordSpinResult.call(vm as never, 0);
   assert.equal(addSaleFn.mock.calls.length, 0);
-  assert.equal((vm.wheelSkippedDeductions as unknown[]).length, 1);
+  assert.equal((vm.wheelPendingInventoryIssues as unknown[]).length, 1);
 });
 
 test("recordSpinResult skips pack sale when bound lot lacks remaining packs", () => {
@@ -792,7 +771,7 @@ test("recordSpinResult skips pack sale when bound lot lacks remaining packs", ()
 
   GameWindow.methods!.recordSpinResult.call(vm as never, 0);
   assert.equal(addSaleFn.mock.calls.length, 0);
-  assert.equal((vm.wheelSkippedDeductions as unknown[]).length, 1);
+  assert.equal((vm.wheelPendingInventoryIssues as unknown[]).length, 1);
   assert.match(String(vm.wheelInventoryWarning), /only 2 remain/i);
 });
 
@@ -1505,7 +1484,7 @@ test("wheelCompactFabActions expose live-mode history, session, end ordering", (
 test("wheel window local keys include top-level mode and inspector state", () => {
   const localKeys = getGameWindowLocalKeys();
 
-  assert.ok(localKeys.includes("wheelController"));
+  assert.ok(!localKeys.includes("activeWheelSlots"));
   assert.ok(localKeys.includes("wheelMode"));
   assert.ok(localKeys.includes("wheelInspectorTab"));
   assert.ok(localKeys.includes("wheelMobileInspectorOpen"));

@@ -69,7 +69,7 @@ function queuePendingInventoryIssue(
   });
   assignWheelPendingInventoryIssues(context as unknown as Record<string, unknown>, pendingIssues);
   const issueController = getWheelController(context);
-  issueController.inventoryWarning = params.warningText || "";
+  issueController.wheelInventoryWarning = params.warningText || "";
   context.saveWheelSession();
 }
 
@@ -154,7 +154,7 @@ export const wheelSpinMethods = {
       return;
     }
 
-    const highlightedSlotIndex = Number(drawController.highlightedSlotIndex ?? -1);
+    const highlightedSlotIndex = Number(drawController.wheelHighlightedSlotIndex ?? -1);
     if (highlightedSlotIndex < 0) {
       const staticWheel = getStaticWheelRender(this as unknown as Record<string, unknown>, canvasEl, slots, size, dpr);
       if (staticWheel) {
@@ -342,7 +342,7 @@ export const wheelSpinMethods = {
       const config = vm.wheelDisplayConfig || vm.activeWheelConfig;
       const spinNumber = Number(shouldRecordLiveSession
         ? (vm.wheelTotalSpins || 0)
-        : (spinController.previewTotalSpins || 0));
+        : (spinController.wheelPreviewTotalSpins || 0));
       let verificationUrl = buildWheelReadableVerificationUrl(fairnessResult.verificationUrl, {
         slotLabel: slots[targetIndex]?.name,
         wheelName: config?.name,
@@ -432,7 +432,7 @@ export const wheelSpinMethods = {
       }
       if (tier?.boundLotId) {
         if (slot.deductionType === "none" || (slot.packsCount || 0) <= 0) {
-          recordController.inventoryWarning = "";
+          recordController.wheelInventoryWarning = "";
           this.saveWheelSession();
           return;
         }
@@ -498,7 +498,7 @@ export const wheelSpinMethods = {
       cancelAnimationFrame(existingAnimationId);
     }
 
-    landController.highlightedSlotIndex = slotIndex;
+    landController.wheelHighlightedSlotIndex = slotIndex;
     const redraw = this.drawWheel;
     const getAngle = () => this.wheelCurrentAngle || 0;
 
@@ -512,7 +512,7 @@ export const wheelSpinMethods = {
       const celebrateTick = (now: number) => {
         const elapsed = now - celebrationStart;
         if (elapsed >= celebrationDuration) {
-          landController.highlightedSlotIndex = -1;
+          landController.wheelHighlightedSlotIndex = -1;
           this._wheelHighlightTime = 0;
           this._wheelCelebrationAnimId = undefined;
           redraw?.(getAngle());
@@ -531,14 +531,14 @@ export const wheelSpinMethods = {
       // Fallback for non-browser environments
       redraw?.(getAngle());
       this._wheelHighlightTimeoutId = globalThis.setTimeout(() => {
-        landController.highlightedSlotIndex = -1;
+        landController.wheelHighlightedSlotIndex = -1;
         this._wheelHighlightTimeoutId = undefined;
         redraw?.(getAngle());
       }, celebrationDuration) as unknown as number;
     }
 
     this.wheelLastResult = "🎉 " + slot.name;
-    landController.lastResultColor = slot.color;
+    landController.wheelLastResultColor = slot.color;
     {
       const config = this.wheelDisplayConfig || this.activeWheelConfig;
       const tier = config?.tiers.find((entry) => entry.id === slot.tier);

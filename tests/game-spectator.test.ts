@@ -116,7 +116,7 @@ test("buildGameSpectatorSnapshot includes mystery grid cells without wheel-prefi
   const activeSlots = buildSlotsFromConfig(config);
   vm.activeWheelConfig = config;
   vm.wheelMode = "live";
-  vm.wheelController.activeSlots = activeSlots;
+  vm.activeWheelSlots = activeSlots;
   vm.wheelSpinCounts = new Array(activeSlots.length).fill(0);
   vm.wheelTotalSpins = 1;
   vm.wheelGridReveals = [{
@@ -174,7 +174,7 @@ test("buildGameSpectatorSnapshot prefers displayed grid config over stale active
   vm.activeWheelConfig = activeConfig;
   vm.wheelDisplayConfig = displayedGridConfig;
   vm.wheelMode = "live";
-  vm.wheelController.activeSlots = activeSlots;
+  vm.activeWheelSlots = activeSlots;
   vm.wheelSpinCounts = new Array(activeSlots.length).fill(0);
 
   const snapshot = buildGameSpectatorSnapshot(vm, "live");
@@ -210,8 +210,8 @@ test("buildGameSpectatorSnapshot keeps preview grid reveals in spectator mode", 
   vm.editingWheelConfig = config;
   vm.activeWheelConfig = config;
   vm.wheelMode = "config";
-  vm.wheelController.previewSlots = previewSlots;
-  vm.wheelController.previewSpinCounts = new Array(previewSlots.length).fill(0);
+  vm.wheelPreviewSlots = previewSlots;
+  vm.wheelPreviewSpinCounts = new Array(previewSlots.length).fill(0);
   vm.wheelPreviewTotalSpins = 1;
   vm.wheelPreviewGridReveals = [{
     cellIndex: 3,

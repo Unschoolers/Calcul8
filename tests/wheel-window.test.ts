@@ -213,30 +213,30 @@ test("wheelDisplaySlots prefers GameWindow local state over parent ctx prop", ()
         { id: "tier-1", label: "1 Pack", color: "#e74c3c", slots: 2, costPerTier: 3, packsCount: 1, deductionType: "packs", sets: [] }
       ]
     },
-    wheelController: {
-      activeSlots: [],
-      previewSlots: [
+    ...{
+      activeWheelSlots: [],
+      wheelPreviewSlots: [
         { tier: "tier-1", name: "1 Pack", color: "#e74c3c", cost: 3 },
         { tier: "tier-1", name: "1 Pack", color: "#e74c3c", cost: 3 }
       ],
-      inventoryWarning: "",
-      lastResultColor: "rgb(var(--v-theme-primary))",
-      previewSpinCounts: [0, 0],
-      previewTotalSpins: 0,
-      spinSeed: "",
-      spinHash: "",
-      spinClientSeed: "",
-      spinVerificationUrl: "",
-      spinAlgorithm: "",
-      showSeed: false,
-      fairnessHistoryOpen: false,
-      sessionNetRevenue: null,
-      sessionCostAdjustment: 0,
-      previewFairnessHistory: [],
-      fairnessHistory: [],
-      previewChaseTallyHistory: [],
-      chaseTallyHistory: [],
-      highlightedSlotIndex: -1
+      wheelInventoryWarning: "",
+      wheelLastResultColor: "rgb(var(--v-theme-primary))",
+      wheelPreviewSpinCounts: [0, 0],
+      wheelPreviewTotalSpins: 0,
+      wheelSpinSeed: "",
+      wheelSpinHash: "",
+      wheelSpinClientSeed: "",
+      wheelSpinVerificationUrl: "",
+      wheelSpinAlgorithm: "",
+      wheelShowSeed: false,
+      wheelFairnessHistoryOpen: false,
+      wheelSessionNetRevenue: null,
+      wheelSessionCostAdjustment: 0,
+      wheelPreviewFairnessHistory: [],
+      wheelFairnessHistory: [],
+      wheelPreviewChaseTallyHistory: [],
+      wheelChaseTallyHistory: [],
+      wheelHighlightedSlotIndex: -1
     }
   };
 
@@ -244,10 +244,10 @@ test("wheelDisplaySlots prefers GameWindow local state over parent ctx prop", ()
   assert.equal(slots.length, 2);
 });
 
-test("GameWindow data initializes spin state needed by the template", () => {
+test("GameWindow data does not duplicate root-owned spin state", () => {
   const data = GameWindow.data.call({}) as Record<string, unknown>;
-  assert.equal(data.wheelSpinning, false);
-  assert.equal(data.wheelCurrentAngle, 0);
+  assert.equal("wheelSpinning" in data, false);
+  assert.equal("wheelCurrentAngle" in data, false);
 });
 
 test("refreshWheelCanvas retries when the wheel tab activates before refs are ready", async () => {
@@ -313,8 +313,8 @@ test("wheelSessionRevenue uses preview spins in config mode", () => {
 test("wheelSessionCost sums slot costs by spin counts", () => {
   const vm = {
     wheelMode: "live",
-    wheelController: {
-      activeSlots: [
+    ...{
+      activeWheelSlots: [
         { cost: 3 },
         { cost: 7 }
       ]
@@ -329,12 +329,12 @@ test("wheelSessionCost sums slot costs by spin counts", () => {
 test("wheelSessionCost includes cost adjustment from chase replacements", () => {
   const vm = {
     wheelMode: "live",
-    wheelController: {
-      activeSlots: [
+    ...{
+      activeWheelSlots: [
         { cost: 10 }, // was 50, replaced → new slot cost is 10
         { cost: 5 }
       ],
-      sessionCostAdjustment: 40
+      wheelSessionCostAdjustment: 40
     },
     wheelSpinCounts: [1, 2]
   };
@@ -358,10 +358,10 @@ test("wheelSessionProfit deducts Whatnot fees and cost", () => {
     },
     wheelTotalSpins: 10,
     wheelSpinCounts: [10],
-    wheelController: {
-      activeSlots: [{ tier: "tier-1", label: "1 Pack", color: "#e74c3c", cost: 3 }],
-      sessionNetRevenue: null,
-      sessionCostAdjustment: 0
+    ...{
+      activeWheelSlots: [{ tier: "tier-1", label: "1 Pack", color: "#e74c3c", cost: 3 }],
+      wheelSessionNetRevenue: null,
+      wheelSessionCostAdjustment: 0
     },
     lots: [],
     platformFeePercent: 8,
@@ -388,12 +388,12 @@ test("wheelSessionProfit includes buyer shipping from bound lots in fee math", (
         { id: "t1", label: "Tier 1", color: "#f00", slots: 1, costPerTier: 3, packsCount: 1, deductionType: "packs", boundLotId: 42, sets: [] }
       ]
     },
-    wheelController: {
-      activeSlots: [
+    ...{
+      activeWheelSlots: [
         { name: "Prize A", color: "#f00", cost: 3, tier: "t1", packsCount: 1, deductionType: "packs", isChase: false }
       ],
-      sessionNetRevenue: null,
-      sessionCostAdjustment: 0
+      wheelSessionNetRevenue: null,
+      wheelSessionCostAdjustment: 0
     },
     wheelSpinCounts: [10],
     wheelTotalSpins: 10,
@@ -429,10 +429,10 @@ test("wheelSessionProfit prefers stored session net revenue in live mode", () =>
       ]
     },
     wheelSpinCounts: [10],
-    wheelController: {
-      activeSlots: [{ tier: "tier-1", label: "1 Pack", color: "#e74c3c", cost: 3 }],
-      sessionNetRevenue: 84.65,
-      sessionCostAdjustment: 0
+    ...{
+      activeWheelSlots: [{ tier: "tier-1", label: "1 Pack", color: "#e74c3c", cost: 3 }],
+      wheelSessionNetRevenue: 84.65,
+      wheelSessionCostAdjustment: 0
     }
   };
 
@@ -444,10 +444,10 @@ test("wheelSessionMarginDisplay shows dash when no cost", () => {
   const vm = {
     wheelMode: "live",
     wheelSpinCounts: [],
-    wheelController: {
-      activeSlots: [],
-      sessionNetRevenue: 0,
-      sessionCostAdjustment: 0
+    ...{
+      activeWheelSlots: [],
+      wheelSessionNetRevenue: 0,
+      wheelSessionCostAdjustment: 0
     }
   };
   assert.equal(GameWindow.computed!.wheelSessionMarginDisplay.call(vm as never), "—");
@@ -459,12 +459,12 @@ test("wheelSessionMarginDisplay shows profit relative to cost", () => {
     wheelSpinCounts: [1],
     wheelTotalSpins: 1,
     activeWheelConfig: { spinPrice: 100, targetMargin: 15 },
-    wheelController: {
-      activeSlots: [
+    ...{
+      activeWheelSlots: [
         { cost: 80 }
       ],
-      sessionNetRevenue: 100,
-      sessionCostAdjustment: 0
+      wheelSessionNetRevenue: 100,
+      wheelSessionCostAdjustment: 0
     }
   };
   assert.equal(GameWindow.computed!.wheelSessionMarginDisplay.call(vm as never), "25.0%");
@@ -514,13 +514,13 @@ test("wheelSessionMarginDisplay fallback uses fee settings from tier-bound lots"
     },
     wheelTotalSpins: 2,
     wheelSpinCounts: [1, 1],
-    wheelController: {
-      activeSlots: [
+    ...{
+      activeWheelSlots: [
         { tier: "cash", label: "No fee", color: "#0f0", cost: 4, packsCount: 1, deductionType: "packs" },
         { tier: "whatnot", label: "Whatnot fee", color: "#f00", cost: 6, packsCount: 1, deductionType: "packs" }
       ],
-      sessionNetRevenue: null,
-      sessionCostAdjustment: 0
+      wheelSessionNetRevenue: null,
+      wheelSessionCostAdjustment: 0
     },
     lots: [
       {

@@ -116,7 +116,7 @@ function stubFinishedAnimation(): void {
 function createWheelWorkflowVm(): any {
   const state = createGameWindowState() as Record<string, any>;
   const controller = getWheelController(state);
-  controller.activeSlots = [{
+  controller.activeWheelSlots = [{
     name: "1 Pack",
     color: "#e74c3c",
     cost: 6.125,
@@ -125,7 +125,7 @@ function createWheelWorkflowVm(): any {
     deductionType: "packs",
     isChase: false
   }];
-  controller.previewSlots = [...controller.activeSlots];
+  controller.wheelPreviewSlots = [...controller.activeWheelSlots];
   state.activeWheelConfigId = 42;
   state.activeScopeType = "personal";
   state.activeWorkspaceId = null;
@@ -135,7 +135,7 @@ function createWheelWorkflowVm(): any {
   state.wheelLastResult = "";
   state.wheelSpinning = false;
   state.wheelPendingInventoryIssues = [];
-  state.wheelDisplaySlots = controller.previewSlots;
+  state.wheelDisplaySlots = controller.wheelPreviewSlots;
   state.drawWheel = vi.fn();
   state.landOnSlot = vi.fn();
   state.saveWheelSession = vi.fn(function (this: Record<string, any>) {
@@ -322,24 +322,24 @@ test("workflow: wheel preview and live sessions keep separate full histories acr
     const controller = getWheelController(vm);
 
     vm.wheelMode = "config";
-    vm.wheelDisplaySlots = controller.previewSlots;
+    vm.wheelDisplaySlots = controller.wheelPreviewSlots;
     await wheelSpinMethods.spinWheelInternal.call(vm, true);
     await wheelSpinMethods.spinWheelInternal.call(vm, true);
 
-    assert.equal(controller.previewTotalSpins, 2);
-    assert.equal(controller.previewFairnessHistory.length, 2);
+    assert.equal(controller.wheelPreviewTotalSpins, 2);
+    assert.equal(controller.wheelPreviewFairnessHistory.length, 2);
     assert.equal(vm.wheelTotalSpins, 0);
-    assert.equal(controller.fairnessHistory.length, 0);
+    assert.equal(controller.wheelFairnessHistory.length, 0);
 
     vm.wheelMode = "live";
-    vm.wheelDisplaySlots = controller.activeSlots;
+    vm.wheelDisplaySlots = controller.activeWheelSlots;
     await wheelSpinMethods.spinWheelInternal.call(vm, true);
     await wheelSpinMethods.spinWheelInternal.call(vm, true);
     await wheelSpinMethods.spinWheelInternal.call(vm, true);
 
     assert.equal(vm.wheelTotalSpins, 3);
-    assert.equal(controller.fairnessHistory.length, 3);
-    assert.equal(controller.previewFairnessHistory.length, 2);
+    assert.equal(controller.wheelFairnessHistory.length, 3);
+    assert.equal(controller.wheelPreviewFairnessHistory.length, 2);
 
     wheelSessionMethods.saveWheelSession.call(vm);
 
@@ -355,25 +355,25 @@ test("workflow: wheel preview and live sessions keep separate full histories acr
 
     const reloadedVm = createWheelWorkflowVm();
     const reloadedController = getWheelController(reloadedVm);
-    reloadedController.activeSlots = controller.activeSlots;
-    reloadedController.previewSlots = controller.previewSlots;
+    reloadedController.activeWheelSlots = controller.activeWheelSlots;
+    reloadedController.wheelPreviewSlots = controller.wheelPreviewSlots;
 
     const restored = wheelSessionMethods.loadWheelFromSession.call(reloadedVm);
 
     assert.equal(restored, true);
     assert.equal(reloadedVm.wheelTotalSpins, 3);
     assert.deepEqual(reloadedVm.wheelSpinCounts, [3]);
-    assert.equal(reloadedController.previewTotalSpins, 2);
-    assert.deepEqual(reloadedController.previewSpinCounts, [2]);
+    assert.equal(reloadedController.wheelPreviewTotalSpins, 2);
+    assert.deepEqual(reloadedController.wheelPreviewSpinCounts, [2]);
     assert.deepEqual(
-      reloadedController.previewFairnessHistory.map((entry) => entry.spinNumber),
+      reloadedController.wheelPreviewFairnessHistory.map((entry) => entry.spinNumber),
       [1, 2]
     );
     assert.deepEqual(
-      reloadedController.fairnessHistory.map((entry) => entry.spinNumber),
+      reloadedController.wheelFairnessHistory.map((entry) => entry.spinNumber),
       [1, 2, 3]
     );
-    assert.match(String(reloadedController.fairnessHistory[2]?.verificationUrl || ""), /wheel\/fairness\/verify/);
+    assert.match(String(reloadedController.wheelFairnessHistory[2]?.verificationUrl || ""), /wheel\/fairness\/verify/);
   });
 });
 

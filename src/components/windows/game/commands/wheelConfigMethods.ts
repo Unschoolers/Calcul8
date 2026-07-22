@@ -196,22 +196,22 @@ export const wheelConfigMethods = {
       return;
     }
     if (sanitizedConfig.gameType === "grid") {
-      loadController.gridLayoutSeed = createWheelGridLayoutSeed();
-      loadController.previewGridLayoutSeed = loadController.gridLayoutSeed;
+      loadController.wheelGridLayoutSeed = createWheelGridLayoutSeed();
+      loadController.wheelPreviewGridLayoutSeed = loadController.wheelGridLayoutSeed;
     }
     const builtSlots = buildSlotsFromConfig(sanitizedConfig, {
-      layoutSeed: sanitizedConfig.gameType === "grid" ? loadController.gridLayoutSeed : undefined
+      layoutSeed: sanitizedConfig.gameType === "grid" ? loadController.wheelGridLayoutSeed : undefined
     });
-    loadController.activeSlots = builtSlots;
-    loadController.previewSlots = [...builtSlots];
+    loadController.activeWheelSlots = builtSlots;
+    loadController.wheelPreviewSlots = [...builtSlots];
     const restored = this.loadWheelFromSession?.() ?? false;
     if (!restored) {
       resetLoadedGame(this, false);
       this.wheelSpinCounts = new Array(builtSlots.length).fill(0);
-      loadController.previewSpinCounts = new Array(builtSlots.length).fill(0);
-      loadController.previewTotalSpins = 0;
-      loadController.previewChaseTallyHistory = [];
-      loadController.previewFairnessHistory = [];
+      loadController.wheelPreviewSpinCounts = new Array(builtSlots.length).fill(0);
+      loadController.wheelPreviewTotalSpins = 0;
+      loadController.wheelPreviewChaseTallyHistory = [];
+      loadController.wheelPreviewFairnessHistory = [];
     }
     nextTick(() => this.drawWheel?.(this.wheelCurrentAngle || 0));
   },
@@ -268,15 +268,15 @@ export const wheelConfigMethods = {
         this.showWheelConfigSaved?.();
         return;
       }
-      const oldSlots = ((applyController.activeSlots || []) as WheelSlot[]);
+      const oldSlots = ((applyController.activeWheelSlots || []) as WheelSlot[]);
       const oldCounts = ((this.wheelSpinCounts || []) as number[]);
       const oldTierIds = oldSlots.map((slot) => slot.tier);
-      if (sanitizedUpdated.gameType === "grid" && !applyController.gridLayoutSeed) {
-        applyController.gridLayoutSeed = createWheelGridLayoutSeed();
-        applyController.previewGridLayoutSeed = applyController.gridLayoutSeed;
+      if (sanitizedUpdated.gameType === "grid" && !applyController.wheelGridLayoutSeed) {
+        applyController.wheelGridLayoutSeed = createWheelGridLayoutSeed();
+        applyController.wheelPreviewGridLayoutSeed = applyController.wheelGridLayoutSeed;
       }
       const newSlots = buildSlotsFromConfig(sanitizedUpdated, {
-        layoutSeed: sanitizedUpdated.gameType === "grid" ? applyController.gridLayoutSeed : undefined
+        layoutSeed: sanitizedUpdated.gameType === "grid" ? applyController.wheelGridLayoutSeed : undefined
       });
       const newTierIds = new Set(sanitizedUpdated.tiers.map((tier) => tier.id));
       const hadTierShapeChange = oldTierIds.some((tierId) => !newTierIds.has(tierId))
@@ -296,27 +296,27 @@ export const wheelConfigMethods = {
       this.persistLastWheelConfigSelection?.();
       this.editingWheelConfig = cloneGameConfig(sanitizedUpdated);
       this.appliedWheelConfigSnapshot = cloneGameConfig(sanitizedUpdated);
-      applyController.activeSlots = newSlots;
-      applyController.previewSlots = [...newSlots];
+      applyController.activeWheelSlots = newSlots;
+      applyController.wheelPreviewSlots = [...newSlots];
       this.wheelSpinCounts = remapSpinCountsByTier(oldTierIds, oldCounts, newSlots);
       this.wheelTotalSpins = (this.wheelSpinCounts as number[]).reduce((sum, count) => sum + count, 0);
       this.wheelLastResult = "";
-      applyController.inventoryWarning = "";
-      applyController.previewSpinCounts = new Array(newSlots.length).fill(0);
-      applyController.previewTotalSpins = 0;
-      applyController.previewFairnessHistory = [];
-      applyController.previewChaseTallyHistory = [];
-      applyController.previewGridReveals = [];
-      applyController.lastResultColor = "rgb(var(--v-theme-primary))";
+      applyController.wheelInventoryWarning = "";
+      applyController.wheelPreviewSpinCounts = new Array(newSlots.length).fill(0);
+      applyController.wheelPreviewTotalSpins = 0;
+      applyController.wheelPreviewFairnessHistory = [];
+      applyController.wheelPreviewChaseTallyHistory = [];
+      applyController.wheelPreviewGridReveals = [];
+      applyController.wheelLastResultColor = "rgb(var(--v-theme-primary))";
       clearWheelProofState(applyController);
-      applyController.fairnessHistoryOpen = false;
-      applyController.highlightedSlotIndex = -1;
+      applyController.wheelFairnessHistoryOpen = false;
+      applyController.wheelHighlightedSlotIndex = -1;
       if (hadTierShapeChange) {
-        applyController.sessionCostAdjustment = 0;
-        applyController.chaseTallyHistory = [];
-        applyController.gridReveals = [];
+        applyController.wheelSessionCostAdjustment = 0;
+        applyController.wheelChaseTallyHistory = [];
+        applyController.wheelGridReveals = [];
       } else {
-        let costAdjustment = (applyController.sessionCostAdjustment as number) || 0;
+        let costAdjustment = (applyController.wheelSessionCostAdjustment as number) || 0;
         for (const tier of sanitizedUpdated.tiers) {
           const previousCost = previousTierCosts.get(tier.id);
           if (previousCost == null || previousCost === tier.costPerTier) continue;
@@ -325,7 +325,7 @@ export const wheelConfigMethods = {
             costAdjustment += priorSpins * (previousCost - tier.costPerTier);
           }
         }
-        applyController.sessionCostAdjustment = costAdjustment;
+        applyController.wheelSessionCostAdjustment = costAdjustment;
       }
       assignWheelPendingInventoryIssues(
         this,

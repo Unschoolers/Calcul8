@@ -536,8 +536,8 @@ test("recordPreviewSpinResult updates preview tracker only", () => {
 
   GameWindow.methods!.recordPreviewSpinResult.call(vm as never, 0);
   const controller = getWheelController(vm);
-  assert.deepEqual(controller.previewSpinCounts, [1]);
-  assert.equal(controller.previewTotalSpins, 1);
+  assert.deepEqual(controller.wheelPreviewSpinCounts, [1]);
+  assert.equal(controller.wheelPreviewTotalSpins, 1);
   assert.deepEqual(vm.wheelSpinCounts, [0]);
   assert.equal(vm.wheelTotalSpins, 0);
 });
@@ -552,13 +552,13 @@ test("recordPreviewSpinResult updates controller when wheelDisplaySlots is a com
     wheelTotalSpins: 0
   };
   const controller = getWheelController(vm);
-  controller.previewSlots = [slot] as never;
-  controller.previewSpinCounts = [0];
-  controller.previewTotalSpins = 0;
+  controller.wheelPreviewSlots = [slot] as never;
+  controller.wheelPreviewSpinCounts = [0];
+  controller.wheelPreviewTotalSpins = 0;
 
   GameWindow.methods!.recordPreviewSpinResult.call(vm as never, 0);
-  assert.deepEqual(controller.previewSpinCounts, [1]);
-  assert.equal(controller.previewTotalSpins, 1);
+  assert.deepEqual(controller.wheelPreviewSpinCounts, [1]);
+  assert.equal(controller.wheelPreviewTotalSpins, 1);
 });
 
 test("appendWheelFairnessHistory caps the log to the last 20 entries", () => {
@@ -682,10 +682,10 @@ test("config mode session cost updates after preview spin", () => {
     wheelTotalSpins: 0
   };
   const controller = getWheelController(vm);
-  controller.previewSlots = [slot] as never;
-  controller.activeSlots = [slot] as never;
-  controller.previewSpinCounts = [0];
-  controller.previewTotalSpins = 0;
+  controller.wheelPreviewSlots = [slot] as never;
+  controller.activeWheelSlots = [slot] as never;
+  controller.wheelPreviewSpinCounts = [0];
+  controller.wheelPreviewTotalSpins = 0;
 
   // Simulate what the real computeds produce
   const getDisplaySlots = () => GameWindow.computed!.wheelDisplaySlots.call(vm as never);
@@ -704,8 +704,8 @@ test("config mode session cost updates after preview spin", () => {
 
   // After spin: cost should reflect the new spin
   assert.equal(getCost(), 5);
-  assert.deepEqual(controller.previewSpinCounts, [1]);
-  assert.equal(controller.previewTotalSpins, 1);
+  assert.deepEqual(controller.wheelPreviewSpinCounts, [1]);
+  assert.equal(controller.wheelPreviewTotalSpins, 1);
 });
 
 test("live mode session cost updates after recording a spin result", () => {
@@ -717,8 +717,8 @@ test("live mode session cost updates after recording a spin result", () => {
     saveWheelSession: () => {}
   };
   const controller = getWheelController(vm);
-  controller.activeSlots = [slot] as never;
-  controller.previewSlots = [slot] as never;
+  controller.activeWheelSlots = [slot] as never;
+  controller.wheelPreviewSlots = [slot] as never;
 
   const getDisplaySlots = () => GameWindow.computed!.wheelDisplaySlots.call(vm as never);
   const getDisplayCounts = () => GameWindow.computed!.wheelDisplaySpinCounts.call(vm as never);

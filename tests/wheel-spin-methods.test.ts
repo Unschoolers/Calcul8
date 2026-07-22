@@ -86,10 +86,10 @@ test("config spins always record preview session data even if spinWheelInternal 
   const controller = getWheelController(vm);
   assert.equal(vm.recordSpinResult.mock.calls.length, 0);
   assert.equal(vm.recordPreviewSpinResult.mock.calls.length, 1);
-  assert.equal(Number(controller.previewTotalSpins), 1);
+  assert.equal(Number(controller.wheelPreviewTotalSpins), 1);
   assert.equal(Number(vm.wheelTotalSpins), 0);
-  assert.equal(controller.previewFairnessHistory.length, 1);
-  assert.equal(controller.fairnessHistory.length, 0);
+  assert.equal(controller.wheelPreviewFairnessHistory.length, 1);
+  assert.equal(controller.wheelFairnessHistory.length, 0);
   assert.deepEqual(vm.appendWheelFairnessHistory.mock.calls[0]?.[1], { preview: true });
   assert.deepEqual(vm.landOnSlot.mock.calls[0]?.[1], { recordSession: false });
 });
@@ -104,9 +104,9 @@ test("live spins keep recording live session data", async () => {
   assert.equal(vm.recordSpinResult.mock.calls.length, 1);
   assert.equal(vm.recordPreviewSpinResult.mock.calls.length, 0);
   assert.equal(Number(vm.wheelTotalSpins), 1);
-  assert.equal(Number(controller.previewTotalSpins), 0);
-  assert.equal(controller.fairnessHistory.length, 1);
-  assert.equal(controller.previewFairnessHistory.length, 0);
+  assert.equal(Number(controller.wheelPreviewTotalSpins), 0);
+  assert.equal(controller.wheelFairnessHistory.length, 1);
+  assert.equal(controller.wheelPreviewFairnessHistory.length, 0);
   assert.deepEqual(vm.appendWheelFairnessHistory.mock.calls[0]?.[1], { preview: false });
   assert.deepEqual(vm.landOnSlot.mock.calls[0]?.[1], { recordSession: true });
 });
@@ -152,9 +152,9 @@ test("runWheelAutoPreviewAnimation spins visually without recording preview proo
   assert.equal(vm.recordPreviewSpinResult.mock.calls.length, 0);
   assert.equal(vm.appendWheelFairnessHistory.mock.calls.length, 0);
   assert.equal(vm.landOnSlot.mock.calls.length, 0);
-  assert.equal(controller.previewFairnessHistory.length, 0);
-  assert.equal(controller.fairnessHistory.length, 0);
-  assert.equal(Number(controller.previewTotalSpins), 0);
+  assert.equal(controller.wheelPreviewFairnessHistory.length, 0);
+  assert.equal(controller.wheelFairnessHistory.length, 0);
+  assert.equal(Number(controller.wheelPreviewTotalSpins), 0);
   assert.equal(Number(vm.wheelTotalSpins), 0);
   assert.equal(vm.wheelSpinning, false);
   assert.equal((vm.scheduleNextWheelAutospin as ReturnType<typeof vi.fn>).mock.calls.length, 1);
@@ -196,7 +196,6 @@ test("recordSpinResult initializes pending inventory issues when older wheel sta
   }];
   state.saveWheelSession = vi.fn();
   delete state.wheelPendingInventoryIssues;
-  delete state.wheelSkippedDeductions;
 
   wheelSpinMethods.recordSpinResult.call(state as never, 0);
 
@@ -212,7 +211,6 @@ test("recordSpinResult initializes pending inventory issues when older wheel sta
     spinNumber: 1,
     slotSinglesId: null
   }]);
-  assert.deepEqual(state.wheelSkippedDeductions, state.wheelPendingInventoryIssues);
 });
 
 test("recordSpinResult queues required lot selection for multi-lot bulk tiers without creating a sale", () => {

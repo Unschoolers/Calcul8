@@ -38,7 +38,7 @@ export function shouldRecordWheelLiveSession(
 }
 
 export function applyWheelSpinBlockedReason(context: WheelSpinContextLike, blockedReason: string): void {
-  getWheelController(context).inventoryWarning = blockedReason;
+  getWheelController(context).wheelInventoryWarning = blockedReason;
 }
 
 export function beginWheelSpin(
@@ -46,15 +46,15 @@ export function beginWheelSpin(
   fairnessResult: Pick<WheelFairnessResult, "hash" | "clientSeed" | "algorithm">
 ): void {
   const controller = getWheelController(context);
-  controller.spinSeed = "";
-  controller.spinHash = fairnessResult.hash;
-  controller.spinClientSeed = fairnessResult.clientSeed || "";
-  controller.spinVerificationUrl = "";
-  controller.spinAlgorithm = fairnessResult.algorithm || "";
-  controller.showSeed = false;
-  controller.inventoryWarning = "";
-  controller.highlightedSlotIndex = -1;
-  controller.lastResultColor = "rgb(var(--v-theme-primary))";
+  controller.wheelSpinSeed = "";
+  controller.wheelSpinHash = fairnessResult.hash;
+  controller.wheelSpinClientSeed = fairnessResult.clientSeed || "";
+  controller.wheelSpinVerificationUrl = "";
+  controller.wheelSpinAlgorithm = fairnessResult.algorithm || "";
+  controller.wheelShowSeed = false;
+  controller.wheelInventoryWarning = "";
+  controller.wheelHighlightedSlotIndex = -1;
+  controller.wheelLastResultColor = "rgb(var(--v-theme-primary))";
   context.wheelSpinning = true;
   context.wheelLastResult = "Spinning\u2026";
 }
@@ -64,11 +64,11 @@ export function finalizeWheelSpinProof(
   fairnessResult: Pick<WheelFairnessResult, "seed" | "clientSeed" | "verificationUrl" | "algorithm">
 ): void {
   const controller = getWheelController(context);
-  controller.spinSeed = fairnessResult.seed;
-  controller.spinClientSeed = fairnessResult.clientSeed || "";
-  controller.spinVerificationUrl = fairnessResult.verificationUrl || "";
-  controller.spinAlgorithm = fairnessResult.algorithm || "";
-  controller.showSeed = true;
+  controller.wheelSpinSeed = fairnessResult.seed;
+  controller.wheelSpinClientSeed = fairnessResult.clientSeed || "";
+  controller.wheelSpinVerificationUrl = fairnessResult.verificationUrl || "";
+  controller.wheelSpinAlgorithm = fairnessResult.algorithm || "";
+  controller.wheelShowSeed = true;
 }
 
 export function buildWheelReadableVerificationUrl(
@@ -114,7 +114,7 @@ export function buildWheelSpinFairnessEntry(
   return {
     spinNumber: Number(params.shouldRecordLiveSession
       ? (context.wheelTotalSpins || 0)
-      : (controller.previewTotalSpins || 0)),
+      : (controller.wheelPreviewTotalSpins || 0)),
     label: params.slots[params.targetIndex]?.name || "Unknown result",
     color: params.slots[params.targetIndex]?.color || "rgb(var(--v-theme-primary))",
     hash: params.fairnessResult.hash,

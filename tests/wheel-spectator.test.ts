@@ -67,7 +67,7 @@ test("buildGameSpectatorSnapshot returns a viewer-safe wheel summary with chase 
   const activeSlots = buildSlotsFromConfig(config);
   vm.activeWheelConfig = config;
   vm.wheelMode = "live";
-  vm.wheelController.activeSlots = activeSlots;
+  vm.activeWheelSlots = activeSlots;
   vm.wheelSpinCounts = new Array(activeSlots.length).fill(0);
   const regularIndex = activeSlots.findIndex((slot) => slot.tier === "regular");
   const chaseIndex = activeSlots.findIndex((slot) => slot.tier === "chase-live");
@@ -166,7 +166,7 @@ test("buildGameSpectatorSnapshot carries active spin animation metadata", () => 
   vm.activeWheelConfig = config;
   vm.wheelMode = "live";
   vm.wheelSpinning = true;
-  vm.wheelController.activeSlots = buildSlotsFromConfig(config);
+  vm.activeWheelSlots = buildSlotsFromConfig(config);
   vm.wheelSpinCounts = [1];
   vm.wheelTotalSpins = 1;
   vm._gameSpectatorSpinAnimation = {
@@ -228,7 +228,7 @@ test("buildGameSpectatorSnapshot falls back to the lowest-profit live tier when 
   const activeSlots = buildSlotsFromConfig(config);
   vm.activeWheelConfig = config;
   vm.wheelMode = "live";
-  vm.wheelController.activeSlots = activeSlots;
+  vm.activeWheelSlots = activeSlots;
   vm.wheelSpinCounts = new Array(activeSlots.length).fill(0);
   vm.wheelTotalSpins = 0;
   vm.wheelFairnessHistory = [];
@@ -289,7 +289,7 @@ test("buildGameSpectatorSnapshot ramps fallback heat when the sweat tier is unde
   const activeSlots = buildSlotsFromConfig(config);
   vm.activeWheelConfig = config;
   vm.wheelMode = "live";
-  vm.wheelController.activeSlots = activeSlots;
+  vm.activeWheelSlots = activeSlots;
   vm.wheelSpinCounts = activeSlots.map((slot) => slot.tier === "filler" ? 1 : 0);
   vm.wheelTotalSpins = 16;
   vm.wheelFairnessHistory = [];
@@ -348,7 +348,7 @@ test("buildGameSpectatorSnapshot cools fallback heat after the sweat tier just l
   const activeSlots = buildSlotsFromConfig(config);
   vm.activeWheelConfig = config;
   vm.wheelMode = "live";
-  vm.wheelController.activeSlots = activeSlots;
+  vm.activeWheelSlots = activeSlots;
   vm.wheelSpinCounts = activeSlots.map((slot) => slot.tier === "filler" ? 1 : 0);
   const sweatIndex = activeSlots.findIndex((slot) => slot.tier === "sweat");
   vm.wheelSpinCounts[sweatIndex] = 1;

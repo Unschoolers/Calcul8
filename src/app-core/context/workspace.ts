@@ -7,10 +7,9 @@ import type {
 import type { AuthComputedState, AuthSessionBootstrapContext } from "./auth.ts";
 import type { BuyerMethodState } from "./buyers.ts";
 import type { CommerceMethodState } from "./commerce.ts";
-import type { GameMethodState } from "./game.ts";
+import type { GameMethodState, GameSessionStateContext } from "./game.ts";
 import type { RuntimeMethodState, FeatureMethodImplementation } from "./runtime.ts";
 import type { SyncMethodState, SyncServiceContext } from "./sync.ts";
-import type { RootWheelSessionStateContext } from "../shared/wheel-root-session-state.ts";
 
 export interface WorkspaceComputedState {
   isWorkspaceScopeActive: boolean;
@@ -180,7 +179,7 @@ export type WorkspaceRealtimeContext = Pick<
   Pick<BuyerMethodState, "hydrateBuyerProfiles"> &
   Pick<WorkspaceMethodState, "handleWorkspaceAccessLost"> &
   WorkspaceApiContext &
-  RootWheelSessionStateContext;
+  GameSessionStateContext;
 
 export type WorkspaceScopeMethodImplementation = FeatureMethodImplementation<
   WorkspaceScopeMethodContext,

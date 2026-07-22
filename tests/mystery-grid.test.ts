@@ -117,9 +117,9 @@ function createGridVm(mode: "config" | "live", config = createGridConfig()) {
   state.activeWheelConfig = config;
   state.editingWheelConfig = config;
   state.wheelDisplaySlots = slots;
-  controller.activeSlots = slots;
-  controller.previewSlots = slots;
-  controller.previewSpinCounts = new Array(slots.length).fill(0);
+  controller.activeWheelSlots = slots;
+  controller.wheelPreviewSlots = slots;
+  controller.wheelPreviewSpinCounts = new Array(slots.length).fill(0);
   state.saveWheelSession = vi.fn();
   state.recordSpinResult = vi.fn((slotIndex: number) => wheelSpinMethods.recordSpinResult.call(state as never, slotIndex));
   state.recordPreviewSpinResult = vi.fn((slotIndex: number) => wheelSpinMethods.recordPreviewSpinResult.call(state as never, slotIndex));
@@ -397,10 +397,10 @@ test("config grid reveal records preview session state and keeps live wheel coun
   const controller = getWheelController(vm);
   assert.equal(vm.recordSpinResult.mock.calls.length, 0);
   assert.equal(vm.recordPreviewSpinResult.mock.calls.length, 1);
-  assert.equal(Number(controller.previewTotalSpins), 1);
+  assert.equal(Number(controller.wheelPreviewTotalSpins), 1);
   assert.equal(Number(vm.wheelTotalSpins), 0);
-  assert.equal(controller.previewFairnessHistory.length, 1);
-  assert.equal(controller.fairnessHistory.length, 0);
+  assert.equal(controller.wheelPreviewFairnessHistory.length, 1);
+  assert.equal(controller.wheelFairnessHistory.length, 0);
   assert.deepEqual(vm.appendWheelFairnessHistory.mock.calls[0]?.[1], { preview: true });
   assert.equal((vm.wheelPreviewGridReveals as unknown[]).length, 1);
   assert.equal((vm.wheelGridReveals as unknown[]).length, 0);
@@ -531,9 +531,9 @@ test("live grid reveal reuses wheel result recording and fairness history", asyn
   assert.equal(vm.recordSpinResult.mock.calls.length, 1);
   assert.equal(vm.recordPreviewSpinResult.mock.calls.length, 0);
   assert.equal(Number(vm.wheelTotalSpins), 1);
-  assert.equal(Number(controller.previewTotalSpins), 0);
-  assert.equal(controller.fairnessHistory.length, 1);
-  assert.equal(controller.previewFairnessHistory.length, 0);
+  assert.equal(Number(controller.wheelPreviewTotalSpins), 0);
+  assert.equal(controller.wheelFairnessHistory.length, 1);
+  assert.equal(controller.wheelPreviewFairnessHistory.length, 0);
   assert.equal((vm.wheelGridReveals as unknown[]).length, 1);
   assert.equal((vm.wheelPreviewGridReveals as unknown[]).length, 0);
   assert.equal(vm.landOnSlot.mock.calls[0]?.[0], 7);
@@ -553,12 +553,12 @@ test("resetting a live mystery grid session rerolls hidden hit placement", async
     .mockReturnValueOnce(0.999);
   const vm = createGridVm("live");
   const controller = getWheelController(vm);
-  const initialLayout = (controller.activeSlots as Array<{ tier: string }>).map((slot) => slot.tier);
+  const initialLayout = (controller.activeWheelSlots as Array<{ tier: string }>).map((slot) => slot.tier);
 
   await mysteryGridMethods.revealMysteryGridCell.call(vm, 0, true);
   wheelSessionMethods.resetWheelSession.call(vm as never);
 
-  const rerolledLayout = (controller.activeSlots as Array<{ tier: string }>).map((slot) => slot.tier);
+  const rerolledLayout = (controller.activeWheelSlots as Array<{ tier: string }>).map((slot) => slot.tier);
 
   assert.equal((vm.wheelGridReveals as unknown[]).length, 0);
   assert.equal(rerolledLayout.length, initialLayout.length);
@@ -602,8 +602,8 @@ test("completing a live mystery grid session starts a fresh shuffled board", asy
     ]
   }));
   const controller = getWheelController(vm);
-  const initialSeed = controller.gridLayoutSeed;
-  const initialSlots = controller.activeSlots;
+  const initialSeed = controller.wheelGridLayoutSeed;
+  const initialSlots = controller.activeWheelSlots;
 
   for (let cellIndex = 0; cellIndex < 4; cellIndex += 1) {
     await mysteryGridMethods.revealMysteryGridCell.call(vm, cellIndex, true);
@@ -614,10 +614,10 @@ test("completing a live mystery grid session starts a fresh shuffled board", asy
 
   assert.equal((vm.wheelGridReveals as unknown[]).length, 0);
   assert.equal(Number(vm.wheelTotalSpins), 0);
-  assert.equal(controller.activeSlots.length, initialSlots.length);
-  assert.notEqual(controller.activeSlots, initialSlots);
-  assert.notEqual(controller.gridLayoutSeed, initialSeed);
-  assert.notEqual(controller.gridLayoutSeed, "");
+  assert.equal(controller.activeWheelSlots.length, initialSlots.length);
+  assert.notEqual(controller.activeWheelSlots, initialSlots);
+  assert.notEqual(controller.wheelGridLayoutSeed, initialSeed);
+  assert.notEqual(controller.wheelGridLayoutSeed, "");
 });
 
 

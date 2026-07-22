@@ -703,7 +703,7 @@ test("workspace realtime applies wheel updates including resets when revision is
   assert.equal(sanitizedTier?.isChase, true);
   assert.equal(app.activeWheelConfigId, 91);
   assert.equal(app.wheelSessionUpdatedAt, 200);
-  assert.equal((app.wheelSkippedDeductions as Array<{ spinNumber?: number }>)[0]?.spinNumber, 2);
+  assert.equal((app.wheelPendingInventoryIssues as Array<{ spinNumber?: number }>)[0]?.spinNumber, 2);
 });
 
 test("workspace realtime normalizes wheel config updates through the shared sync contract", async () => {

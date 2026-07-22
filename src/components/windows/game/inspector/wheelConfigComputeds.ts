@@ -69,7 +69,7 @@ export const wheelConfigComputeds = {
   },
 
   wheelDisplayInventoryWarning(this: WheelConfigComputedContext): string {
-    return String(getWheelController(this).inventoryWarning || "");
+    return String(getWheelController(this).wheelInventoryWarning || "");
   },
 
   wheelDisplaySpinCounts(this: WheelConfigComputedContext): number[] {

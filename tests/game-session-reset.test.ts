@@ -8,7 +8,7 @@ import { createGameWindowState, getWheelController } from "../src/components/win
 
 test("resetLoadedTierPrizeGameSessionState clears session and spectator state without dropping slots", () => {
   const state = createGameWindowState() as Record<string, any>;
-  state.wheelController.activeSlots = [{ tier: "t1" }];
+  state.activeWheelSlots = [{ tier: "t1" }];
   state.wheelSpinCounts = [2];
   state.wheelTotalSpins = 2;
   state.wheelLastResult = "Prize";
@@ -22,7 +22,7 @@ test("resetLoadedTierPrizeGameSessionState clears session and spectator state wi
 
   resetLoadedTierPrizeGameState(state as WheelSessionContext, getWheelController(state), false);
 
-  assert.deepEqual(state.wheelController.activeSlots, [{ tier: "t1" }]);
+  assert.deepEqual(state.activeWheelSlots, [{ tier: "t1" }]);
   assert.deepEqual(state.wheelSpinCounts, []);
   assert.equal(state.wheelTotalSpins, 0);
   assert.equal(state.wheelLastResult, "");
@@ -37,17 +37,17 @@ test("resetLoadedTierPrizeGameSessionState clears session and spectator state wi
 
 test("resetLoadedTierPrizeGameState clears loaded slots plus session state", () => {
   const state = createGameWindowState() as Record<string, any>;
-  state.wheelController.activeSlots = [{ tier: "t1" }];
-  state.wheelController.previewSlots = [{ tier: "t1" }];
-  state.wheelController.gridLayoutSeed = "live-seed";
-  state.wheelController.previewGridLayoutSeed = "preview-seed";
+  state.activeWheelSlots = [{ tier: "t1" }];
+  state.wheelPreviewSlots = [{ tier: "t1" }];
+  state.wheelGridLayoutSeed = "live-seed";
+  state.wheelPreviewGridLayoutSeed = "preview-seed";
   state.wheelSpinCounts = [1];
 
   resetLoadedTierPrizeGameState(state as WheelSessionContext, getWheelController(state), true);
 
-  assert.deepEqual(state.wheelController.activeSlots, []);
-  assert.deepEqual(state.wheelController.previewSlots, []);
-  assert.equal(state.wheelController.gridLayoutSeed, "");
-  assert.equal(state.wheelController.previewGridLayoutSeed, "");
+  assert.deepEqual(state.activeWheelSlots, []);
+  assert.deepEqual(state.wheelPreviewSlots, []);
+  assert.equal(state.wheelGridLayoutSeed, "");
+  assert.equal(state.wheelPreviewGridLayoutSeed, "");
   assert.deepEqual(state.wheelSpinCounts, []);
 });
