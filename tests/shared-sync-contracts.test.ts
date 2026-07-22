@@ -1,5 +1,10 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import { test } from "vitest";
+import type { SyncGameSessionDto as CanonicalSyncGameSessionDto } from "../shared/sync-contracts";
+import type { SyncGameSessionDto as EsmSyncGameSessionDto } from "../shared/sync-contracts.mjs";
+import type { SyncGameSessionDto as CommonJsSyncGameSessionDto } from "../shared/sync-contracts.cjs";
+import type { SyncGameSessionDto as ApiSyncGameSessionDto } from "../apps/api/src/shared/sync-contracts";
 import {
   normalizeSyncMetadataDto,
   normalizeSyncSaleDto,
@@ -7,6 +12,30 @@ import {
   normalizeSyncWheelConfigDto,
   toSyncLotDtos
 } from "../shared/sync-contracts.mjs";
+
+type Equal<Left, Right> =
+  (<Value>() => Value extends Left ? 1 : 2) extends
+    (<Value>() => Value extends Right ? 1 : 2)
+    ? true
+    : false;
+type Expect<Value extends true> = Value;
+type SyncContractParity = [
+  Expect<Equal<CanonicalSyncGameSessionDto, EsmSyncGameSessionDto>>,
+  Expect<Equal<CanonicalSyncGameSessionDto, CommonJsSyncGameSessionDto>>,
+  Expect<Equal<CanonicalSyncGameSessionDto, ApiSyncGameSessionDto>>
+];
+
+void (0 as unknown as SyncContractParity);
+
+test("sync declarations use one canonical contract body", async () => {
+  const apiDeclarationUrl = new URL("../apps/api/src/shared/sync-contracts.d.ts", import.meta.url);
+  const lines = (await readFile(apiDeclarationUrl, "utf8"))
+    .split(/\r?\n/u)
+    .filter((line) => line.trim().length > 0);
+
+  assert.equal(lines.length, 1, "the API sync declaration must be a thin re-export");
+  assert.match(lines[0] ?? "", /^export \* from /u);
+});
 
 test("shared sync contracts normalize sale DTOs for frontend and API boundaries", () => {
   assert.deepEqual(normalizeSyncSaleDto({

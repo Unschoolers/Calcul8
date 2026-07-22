@@ -1,9 +1,58 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import { test } from "vitest";
+import type {
+  GamePublicSessionSnapshot as CanonicalGamePublicSessionSnapshot
+} from "../shared/game-public-session-contracts";
+import type {
+  GamePublicSessionSnapshot as EsmGamePublicSessionSnapshot
+} from "../shared/game-public-session-contracts.mjs";
+import type {
+  GamePublicSessionSnapshot as CommonJsGamePublicSessionSnapshot
+} from "../shared/game-public-session-contracts.cjs";
+import type {
+  GamePublicSessionSnapshot as ApiGamePublicSessionSnapshot
+} from "../apps/api/src/shared/game-public-session-contracts";
+import type {
+  GamePublicSessionSnapshot as ApiCommonJsGamePublicSessionSnapshot
+} from "../apps/api/src/shared/game-public-session-contracts.cjs";
 import {
   CURRENT_GAME_PUBLIC_SESSION_SNAPSHOT_VERSION,
   normalizeGamePublicSessionSnapshot
 } from "../shared/game-public-session-contracts.mjs";
+
+type Equal<Left, Right> =
+  (<Value>() => Value extends Left ? 1 : 2) extends
+    (<Value>() => Value extends Right ? 1 : 2)
+    ? true
+    : false;
+type Expect<Value extends true> = Value;
+type GamePublicSessionContractParity = [
+  Expect<Equal<CanonicalGamePublicSessionSnapshot, EsmGamePublicSessionSnapshot>>,
+  Expect<Equal<CanonicalGamePublicSessionSnapshot, CommonJsGamePublicSessionSnapshot>>,
+  Expect<Equal<CanonicalGamePublicSessionSnapshot, ApiGamePublicSessionSnapshot>>,
+  Expect<Equal<CanonicalGamePublicSessionSnapshot, ApiCommonJsGamePublicSessionSnapshot>>
+];
+
+void (0 as unknown as GamePublicSessionContractParity);
+
+test("game public session declarations use one canonical contract body", async () => {
+  const declarationUrls = [
+    new URL("../shared/game-public-session-contracts.d.mts", import.meta.url),
+    new URL("../shared/game-public-session-contracts.d.cts", import.meta.url),
+    new URL("../apps/api/src/shared/game-public-session-contracts.d.ts", import.meta.url),
+    new URL("../apps/api/src/shared/game-public-session-contracts.d.cts", import.meta.url)
+  ];
+
+  for (const declarationUrl of declarationUrls) {
+    const lines = (await readFile(declarationUrl, "utf8"))
+      .split(/\r?\n/u)
+      .filter((line) => line.trim().length > 0);
+
+    assert.equal(lines.length, 1, `${declarationUrl.pathname} must be a thin re-export`);
+    assert.match(lines[0] ?? "", /^export \* from /u);
+  }
+});
 
 test("game public session contracts upgrade legacy wheel snapshots into v2 game fields", () => {
   const snapshot = normalizeGamePublicSessionSnapshot({
