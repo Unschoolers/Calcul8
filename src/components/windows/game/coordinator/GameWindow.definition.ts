@@ -1,13 +1,13 @@
-import { inject, nextTick, type PropType } from "vue";
+import { nextTick } from "vue";
 import {
   resolveVuetifySlotString
 } from "../../../../app-core/shared/vuetify-slot-items.ts";
 import type { WheelConfig } from "../../../../types/app.ts";
-import { createWindowContextBridge } from "../../shared/contextBridge.ts";
+import { useGameCoordinatorPorts } from "./gameCoordinatorPorts.ts";
 import { gameComputeds } from "./gameComputeds.ts";
 import { wheelConfigMethods } from "../commands/wheelConfigMethods.ts";
 import {
-  createGameWindowState, getWheelController, getGameWindowLocalKeys,
+  createGameWindowState, getWheelController,
   type GameWindowThis
 } from "./gameControllerState.ts";
 import { buildSlotsFromConfig, createWheelGridLayoutSeed } from "../services/wheelSlots.ts";
@@ -83,12 +83,6 @@ type GameWindowOverlayThis = GameWindowThis & {
 
 export const gameWindowDefinition = {
   name: "GameWindow",
-  props: {
-    ctx: {
-      type: Object as PropType<Record<string, unknown>>,
-      required: true
-    }
-  },
   data() {
     return {
       ...createGameWindowState(),
@@ -638,12 +632,8 @@ export const gameWindowDefinition = {
     clearGameWindowTimeout(this, "_wheelCanvasRefreshTimeoutId");
     this.stopGameSpectatorCountPolling();
   },
-  setup(props: { ctx: Record<string, unknown> }) {
-    const injectedCtx = inject<Record<string, unknown> | null>("appCtx", null);
-    const source = (injectedCtx ?? props.ctx) as Record<string, unknown>;
-    return createWindowContextBridge(source, {
-      blockedKeys: getGameWindowLocalKeys()
-    });
+  setup() {
+    return useGameCoordinatorPorts();
   }
 };
 

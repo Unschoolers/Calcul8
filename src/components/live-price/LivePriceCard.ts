@@ -7,9 +7,13 @@ type PriceProfitEstimator = (price: number) => number | null;
 export const LivePriceCard = defineComponent({
   name: "LivePriceCard",
   props: {
-    ctx: {
-      type: Object as PropType<Record<string, unknown>>,
-      default: (): undefined => undefined
+    translateText: {
+      type: Function as PropType<(key: string) => string>,
+      default: null
+    },
+    formatCurrencyValue: {
+      type: Function as PropType<(value: number | null | undefined, decimals?: number) => string>,
+      default: null
     },
     helperText: {
       type: String,
@@ -90,8 +94,7 @@ export const LivePriceCard = defineComponent({
       return this.translate(key, fallback);
     },
     translate(key: string, fallback: string): string {
-      const ctx = (this.ctx || this.$root) as Record<string, unknown> | undefined;
-      const t = ctx?.t as ((messageKey: string) => string) | undefined;
+      const t = this.translateText;
       if (typeof t === "function") {
         const translated = t(key);
         if (
@@ -105,8 +108,7 @@ export const LivePriceCard = defineComponent({
       return fallback;
     },
     formatCurrency(value: number, decimals = 2): string {
-      const ctx = (this.ctx || this.$root) as Record<string, unknown> | undefined;
-      const formatter = ctx?.formatCurrency as ((nextValue: number | null | undefined, nextDecimals?: number) => string) | undefined;
+      const formatter = this.formatCurrencyValue;
       if (typeof formatter === "function") {
         return formatter(value, decimals);
       }

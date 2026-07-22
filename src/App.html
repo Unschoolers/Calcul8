@@ -1,6 +1,6 @@
 <v-app>
       <template v-if="isGoogleSignedIn">
-        <app-shell-top-bar :ctx="this"></app-shell-top-bar>
+        <app-shell-top-bar></app-shell-top-bar>
 
         <v-main id="app-main" class="app-shell-root" tabindex="-1">
           <v-container fluid class="pa-4 app-shell app-shell-content-zone fill-height">
@@ -8,7 +8,7 @@
               {{ t('shellOfflineNotice') }}
             </v-alert>
 
-            <lot-selector-onboarding-block :ctx="this"></lot-selector-onboarding-block>
+            <lot-selector-onboarding-block></lot-selector-onboarding-block>
 
 
             <!-- Tab Content -->
@@ -18,24 +18,23 @@
                 transition="tab-slide-fast" reverse-transition="tab-slide-fast-reverse">
                 <!-- CONFIG -->
                 <v-window-item key="config" value="config" eager>
-                  <singles-config-window v-if="hasLotSelected && currentLotType === 'singles'" ref="singlesConfigWindow"
-                    :ctx="$root"></singles-config-window>
-                  <config-window v-else :ctx="$root"></config-window>
+                  <singles-config-window v-if="hasLotSelected && currentLotType === 'singles'" ref="singlesConfigWindow"></singles-config-window>
+                  <config-window v-else></config-window>
                 </v-window-item>
 
                 <!-- LIVE -->
                 <v-window-item key="live" value="live" eager>
-                  <live-window ref="liveWindow" :ctx="$root"></live-window>
+                  <live-window ref="liveWindow"></live-window>
                 </v-window-item>
 
                 <!-- SALES -->
                 <v-window-item key="sales" value="sales" eager>
-                  <sales-window ref="salesWindow" :ctx="$root"></sales-window>
+                  <sales-window ref="salesWindow"></sales-window>
                 </v-window-item>
 
                 <!-- WHEEL -->
                 <v-window-item key="wheel" value="wheel" eager>
-                  <game-window ref="wheelWindow" :ctx="$root"></game-window>
+                  <game-window ref="wheelWindow"></game-window>
                 </v-window-item>
 
                 <!-- PORTFOLIO -->
@@ -192,8 +191,8 @@
           class="app-context-action app-context-action--slot-1"></v-fab>
         </div>
 
-        <workspace-modals :ctx="this"></workspace-modals>
-        <system-configuration-dialog :ctx="this"></system-configuration-dialog>
+        <workspace-modals></workspace-modals>
+        <system-configuration-dialog></system-configuration-dialog>
 
         <!-- New Lot Modal -->
         <v-dialog v-model="showNewLotModal" max-width="400">
@@ -303,11 +302,11 @@
         </v-dialog>
 
         <!-- Profit Calculator Modal -->
-        <auto-calculate-modal :ctx="this"></auto-calculate-modal>
+        <auto-calculate-modal></auto-calculate-modal>
 
-        <sale-editor-modal :ctx="this"></sale-editor-modal>
+        <sale-editor-modal></sale-editor-modal>
 
-        <portfolio-report-modal :ctx="this"></portfolio-report-modal>
+        <portfolio-report-modal></portfolio-report-modal>
 
         <v-dialog v-model="confirmDialog" max-width="420">
           <v-card>
@@ -321,8 +320,8 @@
           </v-card>
         </v-dialog>
 
-        <whatnot-csv-import-dialog :ctx="this"></whatnot-csv-import-dialog>
-        <whatnot-review-dialog :ctx="this"></whatnot-review-dialog>
+        <whatnot-csv-import-dialog></whatnot-csv-import-dialog>
+        <whatnot-review-dialog></whatnot-review-dialog>
 
         <div class="app-shell-snackbar-zone" aria-live="polite">
           <v-snackbar v-model="showAppUpdatePrompt" color="secondary" location="top" :timeout="-1" role="status"
@@ -370,6 +369,6 @@
       </template>
 
       <template v-else>
-        <auth-gate-card :ctx="this"></auth-gate-card>
+        <auth-gate-card></auth-gate-card>
       </template>
     </v-app>

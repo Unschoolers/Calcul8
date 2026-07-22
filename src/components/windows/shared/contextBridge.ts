@@ -18,54 +18,17 @@ function getInternalCtx(ctx: MaybeWindowContext): WindowContext | undefined {
   return (ctx as { $?: { ctx?: Record<string, unknown> } }).$?.ctx as WindowContext | undefined;
 }
 
-function looksLikeRootWindowContext(ctx: MaybeWindowContext): ctx is WindowContext {
-  if (!ctx || typeof ctx !== "object") return false;
-  return (
-    Reflect.has(ctx, "currentTab") &&
-    Reflect.has(ctx, "boxesPurchased") &&
-    Reflect.has(ctx, "sellingCurrency") &&
-    Reflect.has(ctx, "lots") &&
-    Reflect.has(ctx, "sales") &&
-    Reflect.has(ctx, "formatCurrency") &&
-    Reflect.has(ctx, "onPurchaseConfigChange")
-  );
-}
-
-export function resolveWindowContext(ctx: WindowContext): WindowContext {
-  const candidates: MaybeWindowContext[] = [
-    ctx,
-    (ctx as { $root?: unknown }).$root as MaybeWindowContext,
-    getInternalCtx(ctx),
-    getCurrentInstance()?.proxy?.$root as unknown as MaybeWindowContext
-  ];
-
-  for (const candidate of candidates) {
-    if (looksLikeRootWindowContext(candidate)) {
-      return candidate;
-    }
-  }
-
-  return ctx;
-}
-
-export function createWindowContextBridge(ctx: WindowContext, options: BridgeOptions = {}): Record<string, unknown> {
-  const sourceCtx = resolveWindowContext(ctx);
-  return createBridgeFromSource(sourceCtx, options);
-}
-
 export function createNestedWindowContextBridge(ctx: WindowContext, options: BridgeOptions = {}): Record<string, unknown> {
   return createBridgeFromSource(ctx, options);
 }
 
 /**
  * Gives nested game components one consistent source of truth. Game-local
- * context wins, followed by the explicit prop and finally the application
- * context used by standalone component mounts.
+ * context wins, followed by the required explicit parent prop.
  */
 export function useGameNestedWindowContextBridge(props: { ctx: WindowContext }): Record<string, unknown> {
   const gameContext = inject<WindowContext | null>("gameCtx", null);
-  const appContext = inject<WindowContext | null>("appCtx", null);
-  return createNestedWindowContextBridge(gameContext ?? props.ctx ?? appContext ?? {});
+  return createNestedWindowContextBridge(gameContext ?? props.ctx);
 }
 
 /** Shared Vue contract for every child hosted by the game window. */

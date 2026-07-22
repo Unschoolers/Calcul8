@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { createLotSelectorContextBridge } from "../src/components/shell/LotSelectorOnboardingBlock.ts";
 import { resolveLotSelectorDisplayItem } from "../src/components/shell/lotSelectorDisplay.ts";
 
 const lotItem = {
@@ -29,21 +28,4 @@ test("lot selector returns empty display fields for malformed slot items", () =>
     groupLabel: "",
     lotType: ""
   });
-});
-
-test("lot selector setup bridge exposes display resolver without hiding app context", () => {
-  const source = {
-    currentLotId: "lot-1",
-    selectLot(value: string) {
-      this.currentLotId = value;
-    }
-  };
-
-  const bridge = createLotSelectorContextBridge(source);
-  assert.equal(bridge.currentLotId, "lot-1");
-  assert.equal(typeof bridge.resolveLotSelectorDisplayItem, "function");
-
-  const selectLot = bridge.selectLot as (value: string) => void;
-  selectLot("lot-2");
-  assert.equal(source.currentLotId, "lot-2");
 });

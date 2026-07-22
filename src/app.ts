@@ -30,6 +30,51 @@ import {
   portfolioWindowPortsKey,
   type PortfolioWindowPorts
 } from "./components/windows/portfolio/portfolioWindowPorts.ts";
+import {
+  configWindowPortsKey,
+  createConfigWindowPorts,
+  type ConfigWindowPorts
+} from "./components/windows/config/configWindowPorts.ts";
+import {
+  createSinglesConfigPorts,
+  singlesConfigPortsKey,
+  type SinglesConfigPorts
+} from "./components/windows/singles/singlesConfigPorts.ts";
+import {
+  createGameCoordinatorPorts,
+  gameCoordinatorPortsKey,
+  type GameCoordinatorPorts
+} from "./components/windows/game/coordinator/gameCoordinatorPorts.ts";
+import {
+  createLiveWindowPorts,
+  liveWindowPortsKey,
+  type LiveWindowSource
+} from "./components/windows/live/liveWindowPorts.ts";
+import {
+  createSalesWindowPorts,
+  salesWindowPortsKey,
+  type SalesWindowPorts
+} from "./components/windows/sales/salesWindowPorts.ts";
+import {
+  createShellPorts,
+  shellPortsKey,
+  type ShellPortSource
+} from "./components/shell/shellPorts.ts";
+import {
+  commerceDialogPortsKey,
+  createCommerceDialogPorts,
+  type CommerceDialogPorts
+} from "./components/modals/commerceDialogPorts.ts";
+import {
+  createWorkspaceDialogPorts,
+  workspaceDialogPortsKey,
+  type WorkspaceDialogPorts
+} from "./components/shell/workspaceDialogPorts.ts";
+import {
+  createWhatnotDialogPorts,
+  whatnotDialogPortsKey,
+  type WhatnotDialogPorts
+} from "./components/windows/whatnot/whatnotDialogPorts.ts";
 
 export const appOptions = {
   components: {
@@ -52,11 +97,19 @@ export const appOptions = {
     WhatnotReviewDialog
   },
   data: createInitialState,
-  provide(this: BuyerProfilePorts & PortfolioWindowPorts) {
+  provide(this: BuyerProfilePorts & CommerceDialogPorts & ConfigWindowPorts & GameCoordinatorPorts & LiveWindowSource & PortfolioWindowPorts & SalesWindowPorts & ShellPortSource & SinglesConfigPorts & WhatnotDialogPorts & WorkspaceDialogPorts) {
     return {
-      appCtx: this,
       [buyerProfilePortsKey]: createBuyerProfilePorts(this),
-      [portfolioWindowPortsKey]: createPortfolioWindowPorts(this)
+      [commerceDialogPortsKey]: createCommerceDialogPorts(this),
+      [configWindowPortsKey]: createConfigWindowPorts(this),
+      [gameCoordinatorPortsKey]: createGameCoordinatorPorts(this),
+      [liveWindowPortsKey]: createLiveWindowPorts(this),
+      [portfolioWindowPortsKey]: createPortfolioWindowPorts(this),
+      [salesWindowPortsKey]: createSalesWindowPorts(this),
+      [shellPortsKey]: createShellPorts(this),
+      [singlesConfigPortsKey]: createSinglesConfigPorts(this),
+      [whatnotDialogPortsKey]: createWhatnotDialogPorts(this),
+      [workspaceDialogPortsKey]: createWorkspaceDialogPorts(this)
     };
   },
   mounted: appLifecycle.mounted,

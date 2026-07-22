@@ -1,5 +1,5 @@
-import { inject, type PropType } from "vue";
-import { createWindowContextBridge } from "../shared/contextBridge.ts";
+import { type PropType } from "vue";
+import type { SinglesWindowThis } from "./SinglesConfigWindow.definition.ts";
 import { singlesImportComputed, singlesImportMethods } from "./useSinglesImport.ts";
 
 export const SinglesCsvImportDialog = {
@@ -12,14 +12,11 @@ export const SinglesCsvImportDialog = {
   },
   props: {
     ctx: {
-      type: Object as PropType<Record<string, unknown> | null>,
-      required: false,
-      default: (): null => null
+      type: Object as PropType<SinglesWindowThis>,
+      required: true
     }
   },
-  setup(props: { ctx: Record<string, unknown> | null }) {
-    const injectedCtx = inject<Record<string, unknown> | null>("appCtx", null);
-    const source = (injectedCtx ?? props.ctx ?? {}) as Record<string, unknown>;
-    return createWindowContextBridge(source);
+  setup(props: { ctx: SinglesWindowThis }) {
+    return props.ctx;
   }
 };

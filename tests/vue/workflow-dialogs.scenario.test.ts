@@ -6,7 +6,21 @@ import SaleEditorModal from "../../src/components/shell/SaleEditorModal.vue";
 import WorkspaceModals from "../../src/components/shell/WorkspaceModals.vue";
 import WheelCreateGameDialog from "../../src/components/windows/game/dialogs/WheelCreateGameDialog.vue";
 import WhatnotCsvImportDialog from "../../src/components/windows/whatnot/WhatnotCsvImportDialog.vue";
+import { commerceDialogPortsKey } from "../../src/components/modals/commerceDialogPorts.ts";
+import { shellPortsKey } from "../../src/components/shell/shellPorts.ts";
+import { workspaceDialogPortsKey } from "../../src/components/shell/workspaceDialogPorts.ts";
+import { whatnotDialogPortsKey } from "../../src/components/windows/whatnot/whatnotDialogPorts.ts";
 import { renderWithApp } from "./render.ts";
+
+function renderWithCapabilities(
+  component: Parameters<typeof renderWithApp>[0],
+  key: symbol,
+  capabilities: Record<string, unknown>
+) {
+  return renderWithApp(component, {
+    global: { provide: { [key]: capabilities } }
+  });
+}
 
 function translate(key: string): string {
   return ({
@@ -72,9 +86,9 @@ function translate(key: string): string {
 describe("workflow dialog scenarios", () => {
   test("starts Google fallback sign-in from the authentication gate", async () => {
     const promptGoogleSignIn = vi.fn();
-    renderWithApp(AuthGateCard, { props: { ctx: {
+    renderWithCapabilities(AuthGateCard, shellPortsKey, {
       authGateTitle: "Welcome", authGateSubtitle: "Sign in to continue", showGoogleSignInFallback: true, t: translate, promptGoogleSignIn
-    } } });
+    });
 
     await fireEvent.click(screen.getByRole("button", { name: "Continue with Google" }));
 
@@ -82,17 +96,17 @@ describe("workflow dialog scenarios", () => {
   });
 
   test("does not show the fallback action while Google sign-in is available", () => {
-    renderWithApp(AuthGateCard, { props: { ctx: {
+    renderWithCapabilities(AuthGateCard, shellPortsKey, {
       authGateTitle: "Welcome", authGateSubtitle: "Sign in to continue", showGoogleSignInFallback: false, t: translate, promptGoogleSignIn: vi.fn()
-    } } });
+    });
     expect(screen.queryByRole("button", { name: "Continue with Google" })).toBeNull();
   });
 
   test("keeps protected profit calculation disabled while offering an upgrade", () => {
-    renderWithApp(AutoCalculateModal, { props: { ctx: {
+    renderWithCapabilities(AutoCalculateModal, commerceDialogPortsKey, {
       showProfitCalculator: true, targetProfitPercent: 15, canUsePaidActions: false, hasLotSelected: true, hasProAccess: false,
       isVerifyingPurchase: false, showManualPurchaseVerify: false, t: translate, startProPurchase: vi.fn(), calculateOptimalPrices: vi.fn()
-    } } });
+    });
 
     expect(screen.getByRole("button", { name: "Unlock Pro" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Apply" })).toBeDisabled();
@@ -100,20 +114,20 @@ describe("workflow dialog scenarios", () => {
 
   test("starts the upgrade flow when a locked calculator user asks to unlock", async () => {
     const startProPurchase = vi.fn();
-    renderWithApp(AutoCalculateModal, { props: { ctx: {
+    renderWithCapabilities(AutoCalculateModal, commerceDialogPortsKey, {
       showProfitCalculator: true, targetProfitPercent: 15, canUsePaidActions: false, hasLotSelected: true, hasProAccess: false,
       isVerifyingPurchase: false, showManualPurchaseVerify: false, t: translate, startProPurchase, calculateOptimalPrices: vi.fn()
-    } } });
+    });
     await fireEvent.click(screen.getByRole("button", { name: "Unlock Pro" }));
     expect(startProPurchase).toHaveBeenCalledOnce();
   });
 
   test("applies a permitted profit calculation", async () => {
     const calculateOptimalPrices = vi.fn();
-    renderWithApp(AutoCalculateModal, { props: { ctx: {
+    renderWithCapabilities(AutoCalculateModal, commerceDialogPortsKey, {
       showProfitCalculator: true, targetProfitPercent: 15, canUsePaidActions: true, hasLotSelected: true, hasProAccess: true,
       isVerifyingPurchase: false, showManualPurchaseVerify: false, t: translate, startProPurchase: vi.fn(), calculateOptimalPrices
-    } } });
+    });
     await fireEvent.click(screen.getByRole("button", { name: "Apply" }));
     expect(calculateOptimalPrices).toHaveBeenCalledOnce();
   });
@@ -129,7 +143,7 @@ describe("workflow dialog scenarios", () => {
       leaveWorkspaceTransferMemberUserId: null, leaveWorkspaceDeleteConfirmation: false, showWorkspaceJoinDialog: false,
       pendingWorkspaceInviteTargetName: "", isAcceptingWorkspaceInvite: false, dismissPendingWorkspaceInvite: vi.fn(), acceptPendingWorkspaceInvite: vi.fn()
     };
-    renderWithApp(WorkspaceModals, { props: { ctx } });
+    renderWithCapabilities(WorkspaceModals, workspaceDialogPortsKey, ctx);
 
     await fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
@@ -139,7 +153,7 @@ describe("workflow dialog scenarios", () => {
 
   test("does not allow workspace creation while already in a shared workspace", () => {
     const ctx = workspaceContext("workspace");
-    renderWithApp(WorkspaceModals, { props: { ctx } });
+    renderWithCapabilities(WorkspaceModals, workspaceDialogPortsKey, ctx);
     expect(screen.getByRole("button", { name: "Create workspace" })).toBeDisabled();
   });
 
@@ -167,7 +181,7 @@ describe("workflow dialog scenarios", () => {
   });
 
   test("renders a ready Whatnot preflight and enables review preparation", () => {
-    renderWithApp(WhatnotCsvImportDialog, { props: { ctx: whatnotContext(true) } });
+    renderWithCapabilities(WhatnotCsvImportDialog, whatnotDialogPortsKey, whatnotContext(true));
 
     expect(screen.getByText("Ready to import")).toBeVisible();
     expect(screen.getByRole("button", { name: "Prepare review" })).toBeEnabled();
@@ -175,14 +189,14 @@ describe("workflow dialog scenarios", () => {
 
   test("prepares a ready Whatnot import for review", async () => {
     const ctx = whatnotContext(true);
-    renderWithApp(WhatnotCsvImportDialog, { props: { ctx } });
+    renderWithCapabilities(WhatnotCsvImportDialog, whatnotDialogPortsKey, ctx);
     await fireEvent.click(screen.getByRole("button", { name: "Prepare review" }));
     expect(ctx.confirmWhatnotCsvImport).toHaveBeenCalledOnce();
   });
 
   test("keeps incomplete Whatnot mapping disabled and lets the seller close the dialog", async () => {
     const ctx = whatnotContext(false);
-    renderWithApp(WhatnotCsvImportDialog, { props: { ctx } });
+    renderWithCapabilities(WhatnotCsvImportDialog, whatnotDialogPortsKey, ctx);
 
     expect(screen.getByRole("button", { name: "Prepare review" })).toBeDisabled();
     await fireEvent.click(screen.getByRole("button", { name: "Close import" }));
@@ -192,11 +206,11 @@ describe("workflow dialog scenarios", () => {
   test("cancels a sale editor without saving the current draft", async () => {
     const cancelSale = vi.fn();
     const saveSale = vi.fn();
-    renderWithApp(SaleEditorModal, { props: { ctx: {
+    renderWithCapabilities(SaleEditorModal, commerceDialogPortsKey, {
       showAddSaleModal: true, editingSale: null, currentLotType: "pack", hasLotSelected: true, hasProAccess: true, canUsePaidActions: true,
       newSale: { type: "pack", quantity: 1, price: 20, customer: "", buyerShipping: 0, date: "2026-07-15", memo: "" },
       t: translate, cancelSale, saveSale, onNewSaleTypeChange: vi.fn(), formatCurrency: (value: number) => value.toFixed(2)
-    } } });
+    });
 
     await fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
@@ -205,12 +219,12 @@ describe("workflow dialog scenarios", () => {
   });
 
   test("does not allow a locked seller to save a sale", () => {
-    renderWithApp(SaleEditorModal, { props: { ctx: {
+    renderWithCapabilities(SaleEditorModal, commerceDialogPortsKey, {
       showAddSaleModal: true, editingSale: null, currentLotType: "pack", hasLotSelected: true, hasProAccess: false, canUsePaidActions: false,
       newSale: { type: "pack", quantity: 1, price: 20, customer: "", buyerShipping: 0, date: "2026-07-15", memo: "" },
       t: translate, cancelSale: vi.fn(), saveSale: vi.fn(), startProPurchase: vi.fn(), isVerifyingPurchase: false, showManualPurchaseVerify: false,
       onNewSaleTypeChange: vi.fn(), formatCurrency: (value: number) => value.toFixed(2)
-    } } });
+    });
     expect(screen.getByRole("button", { name: "Add sale" })).toBeDisabled();
   });
 });

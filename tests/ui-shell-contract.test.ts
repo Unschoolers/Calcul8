@@ -29,7 +29,7 @@ test("auth shell waits for session bootstrap before showing the sign-in gate", (
   assert.match(template, /v-else-if="isAuthSessionResolving"/);
   assert.match(template, /authCheckingSessionTitle/);
   assert.match(template, /authCheckingSessionSubtitle/);
-  assert.match(template, /v-else[\s\S]*<auth-gate-card :ctx="this"><\/auth-gate-card>/);
+  assert.match(template, /v-else[\s\S]*<auth-gate-card><\/auth-gate-card>/);
 });
 
 test("auth startup renders the sign-in button before retrying auto-login", () => {

@@ -6,7 +6,8 @@
   <v-row v-else density="comfortable" class="live-pricing-grid">
     <v-col cols="12" lg="4" class="live-pricing-grid__col">
       <live-price-card
-        :ctx="ctx"
+        :translate-text="t"
+        :format-currency-value="formatCurrency"
         v-model="livePackPrice"
         :label="t('livePriceCardItemLabel', 'Item')"
         icon="mdi-tag-outline"
@@ -29,7 +30,8 @@
 
     <v-col cols="12" lg="4" class="live-pricing-grid__col">
       <live-price-card
-        :ctx="ctx"
+        :translate-text="t"
+        :format-currency-value="formatCurrency"
         v-model="liveBoxPriceSell"
         :label="t('livePriceCardBoxLabel', 'Box')"
         icon="mdi-cube-outline"
@@ -52,7 +54,8 @@
 
     <v-col cols="12" lg="4" class="live-pricing-grid__col">
       <live-price-card
-        :ctx="ctx"
+        :translate-text="t"
+        :format-currency-value="formatCurrency"
         v-model="liveSpotPrice"
         :label="t('livePriceCardRandomHitLabel', 'Random hit')"
         icon="mdi-cards-playing-outline"

@@ -1,11 +1,10 @@
-import { inject, type PropType } from "vue";
 import {
   buildBuyerQuickViewSummary,
   type BuyerQuickViewSummary
 } from "../../../app-core/computed/buyer-quick-view.ts";
 import type { Lot, Sale, SinglesPurchaseEntry } from "../../../types/app.ts";
 import type { AppKpiItem } from "../../ui/AppKpiGrid.ts";
-import { createWindowContextBridge } from "../shared/contextBridge.ts";
+import { useSalesWindowPorts } from "./salesWindowPorts.ts";
 
 const SALES_HISTORY_INITIAL_RENDER_COUNT = 80;
 const SALES_HISTORY_RENDER_BATCH_SIZE = 80;
@@ -100,12 +99,6 @@ function salesProgressPercent(vm: Record<string, unknown>): number {
 
 export const SalesWindowDefinition = {
   name: "SalesWindow",
-  props: {
-    ctx: {
-      type: Object as PropType<Record<string, unknown>>,
-      required: true
-    }
-  },
   data() {
     return {
       salesHistoryRenderCount: SALES_HISTORY_INITIAL_RENDER_COUNT,
@@ -550,9 +543,7 @@ export const SalesWindowDefinition = {
     const vm = this as Record<string, unknown> & { resetSalesHistoryRenderCount?: () => void };
     vm.resetSalesHistoryRenderCount?.();
   },
-  setup(props: { ctx: Record<string, unknown> }) {
-    const injectedCtx = inject<Record<string, unknown> | null>("appCtx", null);
-    const source = (injectedCtx ?? props.ctx) as Record<string, unknown>;
-    return createWindowContextBridge(source);
+  setup() {
+    return useSalesWindowPorts();
   }
 };

@@ -1,4 +1,3 @@
-import { inject, type PropType } from "vue";
 import { compareLocalizedText } from "../../../app-core/i18n/index.ts";
 import { resolveDefaultSinglesMarketValueCurrency } from "../../../app-core/shared/singles-market-value-currency.ts";
 import {
@@ -8,8 +7,8 @@ import {
 } from "../../../app-core/shared/vuetify-slot-items.ts";
 import { getSinglesEntryUnitMarketValueInSellingCurrency } from "../../../domain/calculations.ts";
 import type { CurrencyCode, SinglesCatalogSource, SinglesPurchaseEntry } from "../../../types/app.ts";
-import { createWindowContextBridge } from "../shared/contextBridge.ts";
 import { normalizeSinglesSearchTokens } from "./singlesCatalogSearch.ts";
+import { useSinglesConfigPorts } from "./singlesConfigPorts.ts";
 import {
     createSinglesCatalogSearchState,
     singlesCatalogSearchComputed,
@@ -97,7 +96,7 @@ type SinglesDesktopSortKeyWithMeta =
   | "condition"
   | "language";
 
-type SinglesWindowThis = {
+export type SinglesWindowThis = {
   // ===== Local data =====
   showSinglesInfoNotice: boolean;
   showSinglesRowEditor: boolean;
@@ -180,7 +179,7 @@ type SinglesWindowThis = {
   toggleShowFullySoldSingles(): void;
   resetDesktopRowsScroll(): void;
   setDesktopRowsScrollerRef(element: unknown): void;
-  getWindowComponentContext(): Record<string, unknown>;
+  getWindowComponentContext(): SinglesWindowThis;
   toggleDesktopSelectMode(): void;
   clearDesktopSelection(): void;
   isDesktopRowSelected(rowId: number): boolean;
@@ -227,12 +226,6 @@ function getDesktopSinglesSortValue(
 
 export const singlesConfigWindowDefinition = {
   name: "SinglesConfigWindow",
-  props: {
-    ctx: {
-      type: Object as PropType<Record<string, unknown>>,
-      required: true
-    }
-  },
   data() {
     return {
       ...createSinglesCatalogSearchState(),
@@ -586,8 +579,8 @@ export const singlesConfigWindowDefinition = {
         : null;
     },
 
-    getWindowComponentContext(this: SinglesWindowThis): Record<string, unknown> {
-      return this as Record<string, unknown>;
+    getWindowComponentContext(this: SinglesWindowThis): SinglesWindowThis {
+      return this;
     },
 
     toggleDesktopSelectMode(this: SinglesWindowThis): void {
@@ -706,9 +699,7 @@ export const singlesConfigWindowDefinition = {
   beforeUnmount(this: SinglesWindowThis) {
     this.cancelSinglesItemSearch();
   },
-  setup(props: { ctx: Record<string, unknown> }) {
-    const injectedCtx = inject<Record<string, unknown> | null>("appCtx", null);
-    const source = (injectedCtx ?? props.ctx) as Record<string, unknown>;
-    return createWindowContextBridge(source);
+  setup() {
+    return useSinglesConfigPorts();
   }
 };

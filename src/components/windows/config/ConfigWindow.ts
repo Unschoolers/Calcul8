@@ -1,18 +1,11 @@
 import "./ConfigWindow.css";
-import { inject, type PropType } from "vue";
-import { createWindowContextBridge } from "../shared/contextBridge.ts";
 import AdminSyncImportCard from "./AdminSyncImportCard.vue";
+import { useConfigWindowPorts } from "./configWindowPorts.ts";
 
 export const ConfigWindow = {
   name: "ConfigWindow",
   components: {
     AdminSyncImportCard
-  },
-  props: {
-    ctx: {
-      type: Object as PropType<Record<string, unknown>>,
-      required: true
-    }
   },
   methods: {
     fmtCurrency(value: number | null | undefined, decimals = 2): string {
@@ -30,9 +23,7 @@ export const ConfigWindow = {
       }).format(Number(value));
     }
   },
-  setup(props: { ctx: Record<string, unknown> }) {
-    const injectedCtx = inject<Record<string, unknown> | null>("appCtx", null);
-    const source = (injectedCtx ?? props.ctx) as Record<string, unknown>;
-    return createWindowContextBridge(source);
+  setup() {
+    return useConfigWindowPorts();
   }
 };

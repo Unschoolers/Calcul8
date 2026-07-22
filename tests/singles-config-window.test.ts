@@ -1483,10 +1483,4 @@ test("desktop selection, scroll, icons, watcher, and lifecycle branches execute"
   (singlesConfigWindowDefinition.beforeUnmount as unknown as (this: AnyContext) => void).call(context);
   assert.equal((context.cancelSinglesItemSearch as ReturnType<typeof vi.fn>).mock.calls.length, 1);
 
-  const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-  const bridge = (singlesConfigWindowDefinition.setup as (props: { ctx: Record<string, unknown> }) => Record<string, unknown>)({
-    ctx: { testValue: 123 }
-  });
-  warnSpy.mockRestore();
-  assert.equal(bridge.testValue, 123);
 });

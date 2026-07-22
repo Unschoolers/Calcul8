@@ -10,73 +10,31 @@ vi.mock("vue", () => ({
 }));
 
 import {
-  createWindowContextBridge,
-  resolveWindowContext
+  createNestedWindowContextBridge
 } from "../src/components/windows/shared/contextBridge.ts";
 
 type AppCtxLike = Record<string, unknown>;
-
-function createAppLikeContext(overrides: AppCtxLike = {}): AppCtxLike {
-  return {
-    currentTab: "config",
-    boxesPurchased: 1,
-    sellingCurrency: "CAD",
-    lots: [],
-    sales: [],
-    formatCurrency: (value: number) => `$${value.toFixed(2)}`,
-    onPurchaseConfigChange: () => {},
-    ...overrides
-  };
-}
 
 beforeEach(() => {
   getCurrentInstanceMock.mockReset();
 });
 
-test("resolveWindowContext returns direct app-like context", () => {
-  const ctx = createAppLikeContext();
-  const resolved = resolveWindowContext(ctx);
-  assert.equal(resolved, ctx);
-});
-
-test("resolveWindowContext falls back to $root and then internal ctx", () => {
-  const root = createAppLikeContext({ currentTab: "sales" });
-  const internal = createAppLikeContext({ currentTab: "live" });
-
-  const fromRoot = resolveWindowContext({ $root: root });
-  const fromInternal = resolveWindowContext({ $: { ctx: internal } });
-
-  assert.equal(fromRoot, root);
-  assert.equal(fromInternal, internal);
-});
-
-test("resolveWindowContext falls back to Vue current instance root", () => {
-  const fallbackRoot = createAppLikeContext({ currentTab: "portfolio" });
-  getCurrentInstanceMock.mockReturnValue({
-    proxy: {
-      $root: fallbackRoot
-    }
-  });
-
-  const resolved = resolveWindowContext({ random: true });
-  assert.equal(resolved, fallbackRoot);
-});
-
-test("createWindowContextBridge proxies reads/writes and binds methods", () => {
-  const source = createAppLikeContext({
+test("nested game context bridge proxies reads, writes, and bound methods", () => {
+  const source: AppCtxLike = {
+    currentTab: "config",
     valueOnSource: "source-only",
     callCount: 0,
     bump(this: AppCtxLike) {
       this.callCount = Number(this.callCount ?? 0) + 1;
       return this.currentTab;
     }
-  });
+  };
   const internal = {
     internalOnly: 10
   };
   source.$ = { ctx: internal };
 
-  const bridge = createWindowContextBridge(source);
+  const bridge = createNestedWindowContextBridge(source);
 
   assert.equal(bridge.valueOnSource, "source-only");
   assert.equal(bridge.internalOnly, 10);

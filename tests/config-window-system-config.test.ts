@@ -44,7 +44,7 @@ test("System configuration is opened from the global app menu", () => {
 
   assert.match(shellTemplate, /configSystemConfigurationAction/);
   assert.match(shellTemplate, /showSystemConfigurationDialog = true/);
-  assert.match(appTemplate, /<system-configuration-dialog :ctx="this"><\/system-configuration-dialog>/);
+  assert.match(appTemplate, /<system-configuration-dialog><\/system-configuration-dialog>/);
 });
 
 test("SystemConfigurationDialog keeps random-hit spots scoped to bulk lots", () => {

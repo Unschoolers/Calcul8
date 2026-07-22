@@ -1,4 +1,3 @@
-import { inject, type PropType } from "vue";
 import AppActionButton from "../../ui/AppActionButton.vue";
 import AppMetricValue from "../../ui/AppMetricValue.vue";
 import { compareLocalizedText } from "../../../app-core/i18n/index.ts";
@@ -16,7 +15,7 @@ import { STORAGE_KEYS } from "../../../app-core/storageKeys.ts";
 import { DEFAULT_VALUES } from "../../../constants.ts";
 import { calculateBoxPriceCostCad, getSinglesEntryUnitMarketValueInSellingCurrency } from "../../../domain/calculations.ts";
 import type { CurrencyCode, SinglesPurchaseEntry, SinglesSaleLine } from "../../../types/app.ts";
-import { createWindowContextBridge } from "../shared/contextBridge.ts";
+import { useLiveWindowPorts } from "./liveWindowPorts.ts";
 import "./LiveSinglesPanel.css";
 
 type LiveSinglesAutocompleteItem = {
@@ -63,8 +62,6 @@ type LiveSinglesPanelThis = {
   liveSinglesImagePreviewTitle: string;
 
   // ===== Root window context bridge =====
-  ctx: Record<string, unknown> | undefined;
-  $root: Record<string, unknown> | undefined;
   currentLotType: string;
   singlesPurchases: SinglesPurchaseEntry[];
   singlesSoldCountByPurchaseId: Record<number, number>;
@@ -80,6 +77,8 @@ type LiveSinglesPanelThis = {
   netFromGross: ((price: number, shipping: number, units: number) => number) | unknown;
   formatCurrency: ((value: number | null | undefined, decimals?: number) => string) | unknown;
   safeFixed: ((value: number | null | undefined, decimals?: number) => string) | unknown;
+  rootTranslate: (key: string) => string;
+  rootFormatCurrency: (value: number | null | undefined, decimals?: number) => string;
 
   // ===== Computed =====
   liveSinglesAutocompleteItems: LiveSinglesAutocompleteItem[];
@@ -138,13 +137,6 @@ export const LiveSinglesPanel = {
   components: {
     AppActionButton,
     AppMetricValue
-  },
-  props: {
-    ctx: {
-      type: Object as PropType<Record<string, unknown>>,
-      required: false,
-      default: (): undefined => undefined
-    }
   },
   data() {
     return {
@@ -327,8 +319,7 @@ export const LiveSinglesPanel = {
     resolveVuetifySlotString,
     resolveVuetifySlotValue,
     t(this: LiveSinglesPanelThis, key: string, fallback = ""): string {
-      const context = (this.ctx || this.$root) as Record<string, unknown> | undefined;
-      const translator = context?.t as ((messageKey: string) => string) | undefined;
+      const translator = this.rootTranslate;
       if (typeof translator === "function") {
         const translated = translator(key);
         if (typeof translated === "string" && translated.trim()) {
@@ -338,8 +329,7 @@ export const LiveSinglesPanel = {
       return fallback;
     },
     fmtCurrency(this: LiveSinglesPanelThis, value: number | null | undefined, decimals = 2): string {
-      const context = (this.ctx || this.$root) as Record<string, unknown> | undefined;
-      const formatCurrency = context?.formatCurrency as ((nextValue: number | null | undefined, nextDecimals?: number) => string) | undefined;
+      const formatCurrency = this.rootFormatCurrency;
       if (typeof formatCurrency === "function") {
         return formatCurrency(value, decimals);
       }
@@ -729,9 +719,7 @@ export const LiveSinglesPanel = {
   mounted(this: LiveSinglesPanelThis) {
     this.loadLiveSinglesModeFromStorage();
   },
-  setup(props: { ctx?: Record<string, unknown> }) {
-    const injectedCtx = inject<Record<string, unknown> | null>("appCtx", null);
-    const source = (injectedCtx ?? props.ctx ?? {}) as Record<string, unknown>;
-    return createWindowContextBridge(source);
+  setup() {
+    return useLiveWindowPorts();
   }
 };

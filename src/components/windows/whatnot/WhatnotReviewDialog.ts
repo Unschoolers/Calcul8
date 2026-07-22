@@ -1,5 +1,4 @@
-import { inject, type PropType } from "vue";
-import { createWindowContextBridge } from "../shared/contextBridge.ts";
+import { useWhatnotDialogPorts } from "./whatnotDialogPorts.ts";
 import AppActionButton from "../../ui/AppActionButton.vue";
 import AppEmptyState from "../../ui/AppEmptyState.vue";
 import { translateAppMessage } from "../../../app-core/i18n/index.ts";
@@ -258,17 +257,8 @@ export const WhatnotReviewDialog = {
     AppActionButton,
     AppEmptyState
   },
-  props: {
-    ctx: {
-      type: Object as PropType<Record<string, unknown> | null>,
-      required: false,
-      default: (): null => null
-    }
-  },
-  setup(props: { ctx: Record<string, unknown> | null }) {
-    const injectedCtx = inject<Record<string, unknown> | null>("appCtx", null);
-    const source = (injectedCtx ?? props.ctx ?? {}) as Record<string, unknown>;
-    return createWindowContextBridge(source);
+  setup() {
+    return useWhatnotDialogPorts();
   },
   computed: {
     whatnotReviewGroups(this: any): Array<{

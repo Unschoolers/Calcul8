@@ -5,6 +5,10 @@ import { applyRealtimeMessage } from "../../src/app-core/methods/ui/workspace/wo
 import { getScopedWheelConfigSessionStorageKey } from "../../src/app-core/storageKeys.ts";
 import { createInitialState } from "../../src/app-core/state.ts";
 import { gameWindowDefinition } from "../../src/components/windows/game/coordinator/GameWindow.definition.ts";
+import {
+  createGameCoordinatorPorts,
+  gameCoordinatorPortsKey
+} from "../../src/components/windows/game/coordinator/gameCoordinatorPorts.ts";
 import { buildSlotsFromConfig } from "../../src/components/windows/game/services/wheelSlots.ts";
 import type { WheelConfig } from "../../src/types/app.ts";
 
@@ -13,7 +17,6 @@ vi.mock("../../src/app-core/methods/entity-api-shared.ts", () => ({
 }));
 
 const GameWindowWatcherHarness = defineComponent({
-  props: gameWindowDefinition.props,
   data: gameWindowDefinition.data,
   computed: gameWindowDefinition.computed,
   watch: gameWindowDefinition.watch,
@@ -92,7 +95,13 @@ test("mounted GameWindow watchers preserve an authoritative realtime session ove
     getScopedWheelConfigSessionStorageKey({ scopeType: "workspace", workspaceId: "team-42" }, 91),
     JSON.stringify({ wheelSpinCounts: staleCounts, wheelPreviewSpinCounts: new Array(100).fill(0), wheelSessionUpdatedAt: 90 })
   );
-  render(GameWindowWatcherHarness, { props: { ctx } });
+  render(GameWindowWatcherHarness, {
+    global: {
+      provide: {
+        [gameCoordinatorPortsKey as symbol]: createGameCoordinatorPorts(ctx as never)
+      }
+    }
+  });
 
   applyRealtimeMessage(ctx as never, "workspace:team-42:wheel", "wheel.session.updated", {
     wheelConfigs: [remoteConfig],

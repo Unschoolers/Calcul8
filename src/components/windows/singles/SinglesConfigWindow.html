@@ -1,7 +1,7 @@
 <v-row class="config-layout">
   <singles-purchasing-card :ctx="getWindowComponentContext()"></singles-purchasing-card>
 
-  <admin-sync-import-card :ctx="ctx"></admin-sync-import-card>
+  <admin-sync-import-card></admin-sync-import-card>
 
   <v-bottom-sheet v-model="showSinglesRowEditor" inset class="singles-editor-sheet-dialog">
     <app-section-card card-class="singles-editor-sheet" content-class="singles-editor-form" divider>
@@ -445,5 +445,5 @@
     </div>
   </v-dialog>
 
-  <singles-csv-import-dialog :ctx="ctx"></singles-csv-import-dialog>
+  <singles-csv-import-dialog :ctx="getWindowComponentContext()"></singles-csv-import-dialog>
 </v-row>

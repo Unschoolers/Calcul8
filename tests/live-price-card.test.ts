@@ -296,15 +296,13 @@ test("shouldShowTargetDecision only returns true when there is meaningful drift 
 
 test("translate falls back when the i18n layer returns the raw key", () => {
   const context = createContext({
-    ctx: {
-      t: (key: string) => key
-    }
-  } as Partial<CardCtx> & { ctx: { t: (key: string) => string } });
+    translateText: (key: string) => key
+  } as Partial<CardCtx> & { translateText: (key: string) => string });
 
-  const translate = getMethod<(this: CardCtx & { ctx?: { t: (key: string) => string } }, key: string, fallback: string) => string>("translate");
+  const translate = getMethod<(this: CardCtx & { translateText?: (key: string) => string }, key: string, fallback: string) => string>("translate");
 
   assert.equal(
-    translate.call(context as CardCtx & { ctx?: { t: (key: string) => string } }, "missingKey", "Fallback copy"),
+    translate.call(context as CardCtx & { translateText?: (key: string) => string }, "missingKey", "Fallback copy"),
     "Fallback copy"
   );
 });

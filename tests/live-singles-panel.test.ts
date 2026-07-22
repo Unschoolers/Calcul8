@@ -405,16 +405,6 @@ test("guard paths and setup paths behave safely for live singles panel", () => {
   getMethod<(this: PanelCtx) => void>("persistLiveSinglesMode").call(context);
   assert.equal(context.liveSinglesPricingMode, "bundle");
 
-  const defaultCtxFactory = (LiveSinglesPanel.props as Record<string, { default?: () => unknown }>).ctx.default;
-  assert.equal(typeof defaultCtxFactory, "function");
-  assert.equal(defaultCtxFactory?.(), undefined);
-
-  const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-  const bridge = (LiveSinglesPanel.setup as (props: { ctx?: Record<string, unknown> }) => Record<string, unknown>)({
-    ctx: { sampleValue: 42 }
-  });
-  warnSpy.mockRestore();
-  assert.equal(bridge.sampleValue, 42);
 });
 
 test("quantity affects selected count, basis, suggested price, and profit totals", () => {

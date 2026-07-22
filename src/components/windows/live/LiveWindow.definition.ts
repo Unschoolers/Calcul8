@@ -1,14 +1,7 @@
-import { inject, type PropType } from "vue";
-import { createWindowContextBridge } from "../shared/contextBridge.ts";
+import { useLiveWindowPorts } from "./liveWindowPorts.ts";
 
 export const liveWindowDefinition = {
   name: "LiveWindow",
-  props: {
-    ctx: {
-      type: Object as PropType<Record<string, unknown>>,
-      required: true
-    }
-  },
   methods: {
     getLiveSinglesPanelVm(this: any): Record<string, unknown> | null {
       const refs = this?.$refs as Record<string, unknown> | undefined;
@@ -143,9 +136,7 @@ export const liveWindowDefinition = {
       }).format(value == null || Number.isNaN(Number(value)) ? 0 : Number(value));
     }
   },
-  setup(props: { ctx: Record<string, unknown> }) {
-    const injectedCtx = inject<Record<string, unknown> | null>("appCtx", null);
-    const source = (injectedCtx ?? props.ctx) as Record<string, unknown>;
-    return createWindowContextBridge(source);
+  setup() {
+    return useLiveWindowPorts();
   }
 };

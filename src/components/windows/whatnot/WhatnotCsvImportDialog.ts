@@ -1,5 +1,4 @@
-import { inject, type PropType } from "vue";
-import { createWindowContextBridge } from "../shared/contextBridge.ts";
+import { useWhatnotDialogPorts } from "./whatnotDialogPorts.ts";
 import AppActionButton from "../../ui/AppActionButton.vue";
 import AppErrorState from "../../ui/AppErrorState.vue";
 import AppMetricValue from "../../ui/AppMetricValue.vue";
@@ -87,17 +86,8 @@ export const WhatnotCsvImportDialog = {
     AppErrorState,
     AppMetricValue
   },
-  props: {
-    ctx: {
-      type: Object as PropType<Record<string, unknown> | null>,
-      required: false,
-      default: (): null => null
-    }
-  },
-  setup(props: { ctx: Record<string, unknown> | null }) {
-    const injectedCtx = inject<Record<string, unknown> | null>("appCtx", null);
-    const source = (injectedCtx ?? props.ctx ?? {}) as Record<string, unknown>;
-    return createWindowContextBridge(source);
+  setup() {
+    return useWhatnotDialogPorts();
   },
   computed: {
     whatnotCsvColumnOptions(this: any): Array<{ title: string; value: number }> {
