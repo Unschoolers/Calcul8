@@ -156,7 +156,6 @@ export function createWheelControllerState(): WheelControllerState {
 export function getWheelController(context: object): WheelControllerState {
   const input = context as Record<string, unknown>;
   const owner = unwrapWindowBridgeContext(input);
-  if (owner === input) return ensureWheelControllerState(input);
   const missing = Object.keys(createWheelControllerState()).find((key) => !(key in owner));
   if (missing) throw new Error(`Missing game session field: ${missing}`);
   return owner as unknown as WheelControllerState;

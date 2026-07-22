@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import { buildWheelFairnessViewModel } from "../src/components/windows/game/services/wheelFairnessViewModel.ts";
+import { buildWheelFairnessViewModel as buildProductionWheelFairnessViewModel } from "../src/components/windows/game/services/wheelFairnessViewModel.ts";
+import { ensureWheelControllerState } from "../src/components/windows/game/coordinator/gameControllerState.ts";
+
+function buildWheelFairnessViewModel(context: Record<string, unknown>) {
+  ensureWheelControllerState(context);
+  return buildProductionWheelFairnessViewModel(context as never);
+}
 
 test("buildWheelFairnessViewModel derives current proof and history presentation", () => {
   const model = buildWheelFairnessViewModel({

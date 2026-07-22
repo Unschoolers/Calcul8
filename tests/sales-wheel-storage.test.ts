@@ -3,6 +3,7 @@ import { afterEach, beforeEach, test, vi } from "vitest";
 
 import { salesMethods } from "../src/app-core/methods/sales.ts";
 import { getRootLotSales } from "../src/app-core/shared/sales-root-state.ts";
+import { restoreStoredWheelConfigSelection } from "../src/app-core/shared/wheel-config-selection.ts";
 import {
   getScopedActiveWheelConfigStorageKey,
   getScopedWheelConfigsStorageKey,
@@ -200,6 +201,24 @@ test("loadWheelFromStorage migrates a valid personal legacy root-session selecti
     assert.equal(context.wheelTotalSpins, 0);
     assert.deepEqual((context.notify as ReturnType<typeof vi.fn>).mock.calls, []);
   });
+});
+
+test("legacy wheel selection survives a failed migration write", () => {
+  const selectionKey = getScopedActiveWheelConfigStorageKey({ scopeType: "personal" });
+  const sessionKey = getScopedWheelSessionStorageKey({ scopeType: "personal" });
+  const selectedId = restoreStoredWheelConfigSelection({
+    getItem: (key) => key === sessionKey ? JSON.stringify({ activeWheelConfigId: 42 }) : null,
+    setItem: (key) => {
+      assert.equal(key, selectionKey);
+      throw new Error("quota exceeded");
+    },
+    removeItem: vi.fn()
+  }, { scopeType: "personal" }, [
+    { id: 7, name: "Fallback", spinPrice: 10, targetMargin: 40, createdAt: "", tiers: [] },
+    { id: 42, name: "Selected", spinPrice: 10, targetMargin: 40, createdAt: "", tiers: [] }
+  ]);
+
+  assert.equal(selectedId, 42);
 });
 
 test("loadWheelFromStorage marks corrupt wheel data for recovery", async () => {

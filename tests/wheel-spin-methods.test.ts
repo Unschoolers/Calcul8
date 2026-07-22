@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { afterEach, test, vi } from "vitest";
-import { createGameWindowState, getWheelController } from "../src/components/windows/game/coordinator/gameControllerState.ts";
+import { createGameWindowState, ensureWheelControllerState, getWheelController } from "../src/components/windows/game/coordinator/gameControllerState.ts";
 import { wheelSessionMethods } from "../src/components/windows/game/commands/wheelSessionMethods.ts";
 import { wheelSpinMethods } from "../src/components/windows/game/commands/wheelSpinMethods.ts";
 import { wheelConfigComputeds } from "../src/components/windows/game/inspector/wheelConfigComputeds.ts";
@@ -37,6 +37,11 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+function completeGameSession<T extends Record<string, unknown>>(context: T): T {
+  ensureWheelControllerState(context);
+  return context;
+}
+
 function stubFinishedAnimation(): void {
   vi.spyOn(performance, "now").mockReturnValue(0);
   vi.stubGlobal("requestAnimationFrame", ((callback: FrameRequestCallback) => {
@@ -47,6 +52,7 @@ function stubFinishedAnimation(): void {
 
 function createSpinVm(mode: "config" | "live") {
   const state = createGameWindowState() as Record<string, unknown>;
+  ensureWheelControllerState(state);
   state.wheelMode = mode;
   state.wheelSpinning = false;
   state.wheelCurrentAngle = 0;
@@ -197,7 +203,7 @@ test("recordSpinResult initializes pending inventory issues when older wheel sta
   state.saveWheelSession = vi.fn();
   delete state.wheelPendingInventoryIssues;
 
-  wheelSpinMethods.recordSpinResult.call(state as never, 0);
+  wheelSpinMethods.recordSpinResult.call(completeGameSession(state) as never, 0);
 
   assert.deepEqual(state.wheelPendingInventoryIssues, [{
     slotName: "1 Pack",
@@ -249,7 +255,7 @@ test("recordSpinResult queues required lot selection for multi-lot bulk tiers wi
   state.addWheelSaleToLot = vi.fn();
   state.saveWheelSession = vi.fn();
 
-  wheelSpinMethods.recordSpinResult.call(state as never, 0);
+  wheelSpinMethods.recordSpinResult.call(completeGameSession(state) as never, 0);
 
   assert.equal((state.addWheelSaleToLot as ReturnType<typeof vi.fn>).mock.calls.length, 0);
   assert.deepEqual(state.wheelPendingInventoryIssues, [{
@@ -336,7 +342,7 @@ test("confirmBatchSale records a required multi-lot hit against the selected lot
   state.addWheelSaleToLot = vi.fn();
   state.saveWheelSession = vi.fn();
 
-  wheelSessionMethods.confirmBatchSale.call(state as never, 0);
+  wheelSessionMethods.confirmBatchSale.call(completeGameSession(state) as never, 0);
 
   assert.equal((state.addWheelSaleToLot as ReturnType<typeof vi.fn>).mock.calls[0]?.[0], 20);
   assert.equal(((state.addWheelSaleToLot as ReturnType<typeof vi.fn>).mock.calls[0]?.[1] as { buyerShipping?: number }).buyerShipping, 2);

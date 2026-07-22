@@ -11,7 +11,7 @@ import {
     getScopedWheelConfigSessionStorageKey,
     getScopedWheelSessionStorageKey
 } from "../src/app-core/storageKeys.ts";
-import { createGameWindowState, getWheelController } from "../src/components/windows/game/coordinator/gameControllerState.ts";
+import { createGameWindowState, ensureWheelControllerState, getWheelController } from "../src/components/windows/game/coordinator/gameControllerState.ts";
 import { wheelSessionMethods } from "../src/components/windows/game/commands/wheelSessionMethods.ts";
 import { wheelSpinMethods } from "../src/components/windows/game/commands/wheelSpinMethods.ts";
 import {
@@ -115,7 +115,7 @@ function stubFinishedAnimation(): void {
 
 function createWheelWorkflowVm(): any {
   const state = createGameWindowState() as Record<string, any>;
-  const controller = getWheelController(state);
+  const controller = ensureWheelControllerState(state);
   controller.activeWheelSlots = [{
     name: "1 Pack",
     color: "#e74c3c",

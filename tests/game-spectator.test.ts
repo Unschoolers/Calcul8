@@ -5,7 +5,7 @@ import {
   buildGameSpectatorSnapshot,
   normalizeGamePublicSessionId
 } from "../src/components/windows/game/services/gameSpectator.ts";
-import { createGameWindowState } from "../src/components/windows/game/coordinator/gameControllerState.ts";
+import { createGameWindowState, ensureWheelControllerState } from "../src/components/windows/game/coordinator/gameControllerState.ts";
 import {
   createBracketBattleSession,
   resolveBracketBattleMatchRoll
@@ -70,6 +70,7 @@ test("buildGameSpectatorSnapshot publishes a viewer-safe bracket snapshot", () =
     () => 2_000
   );
   const vm = createGameWindowState() as Record<string, any>;
+  ensureWheelControllerState(vm);
   vm.activeWheelConfig = config;
   vm.wheelDisplayConfig = config;
   vm.wheelMode = "live";
@@ -113,6 +114,7 @@ test("buildGameSpectatorSnapshot includes mystery grid cells without wheel-prefi
     }]
   };
   const vm = createGameWindowState() as Record<string, any>;
+  ensureWheelControllerState(vm);
   const activeSlots = buildSlotsFromConfig(config);
   vm.activeWheelConfig = config;
   vm.wheelMode = "live";
@@ -170,6 +172,7 @@ test("buildGameSpectatorSnapshot prefers displayed grid config over stale active
     }]
   };
   const vm = createGameWindowState() as Record<string, any>;
+  ensureWheelControllerState(vm);
   const activeSlots = buildSlotsFromConfig(displayedGridConfig);
   vm.activeWheelConfig = activeConfig;
   vm.wheelDisplayConfig = displayedGridConfig;
@@ -206,6 +209,7 @@ test("buildGameSpectatorSnapshot keeps preview grid reveals in spectator mode", 
     }]
   };
   const vm = createGameWindowState() as Record<string, any>;
+  ensureWheelControllerState(vm);
   const previewSlots = buildSlotsFromConfig(config);
   vm.editingWheelConfig = config;
   vm.activeWheelConfig = config;

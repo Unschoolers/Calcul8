@@ -213,6 +213,18 @@ export const gameWindowDefinition = {
       const config = this.activeWheelConfig as WheelConfig | null;
       this.editingWheelConfig = config ? cloneGameConfig(config) : null;
       this.appliedWheelConfigSnapshot = config ? cloneGameConfig(config) : null;
+      const controller = getWheelController(this);
+      if (config?.gameType === "grid") {
+        controller.wheelGridLayoutSeed ||= createWheelGridLayoutSeed();
+        controller.wheelPreviewGridLayoutSeed ||= controller.wheelGridLayoutSeed;
+      }
+      const canRender = config != null && config.gameType !== "bracket";
+      controller.activeWheelSlots = canRender
+        ? buildSlotsFromConfig(config, { layoutSeed: config.gameType === "grid" ? controller.wheelGridLayoutSeed : undefined })
+        : [];
+      controller.wheelPreviewSlots = canRender
+        ? buildSlotsFromConfig(config, { layoutSeed: config.gameType === "grid" ? controller.wheelPreviewGridLayoutSeed : undefined })
+        : [];
       this.persistLastWheelConfigSelection();
       this.ensureWheelEditorState();
       this.syncGameStageOverlayState();

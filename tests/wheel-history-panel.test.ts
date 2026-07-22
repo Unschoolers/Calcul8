@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { WheelHistoryPanel } from "../src/components/windows/game/inspector/WheelHistoryPanel.ts";
+import { ensureWheelControllerState } from "../src/components/windows/game/coordinator/gameControllerState.ts";
 
 function createController(overrides: Record<string, unknown> = {}) {
   return {
@@ -40,6 +41,7 @@ test("wheelHistoryPanelEntries returns full live history in reverse order", () =
     })
   };
 
+  ensureWheelControllerState(vm);
   const model = WheelHistoryPanel.computed!.wheelHistoryPanelModel.call(vm as never);
   assert.deepEqual(model.entries.map((entry: { spinNumber: number }) => entry.spinNumber), [3, 2, 1]);
 });
@@ -63,6 +65,7 @@ test("wheelHistoryPanelLatestEntry uses current preview proof fields in config m
     })
   };
 
+  ensureWheelControllerState(vm);
   const latest = WheelHistoryPanel.computed!.wheelHistoryPanelModel.call(vm as never).latestEntry;
   assert.equal(latest?.spinNumber, 3);
   assert.equal(latest?.label, "Preview Prize");

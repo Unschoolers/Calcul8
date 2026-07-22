@@ -6,7 +6,7 @@ import {
   recordWheelSessionFairness,
   recordWheelSessionSpin
 } from "../src/components/windows/game/services/wheelSessionState.ts";
-import { createGameWindowState, getWheelController } from "../src/components/windows/game/coordinator/gameControllerState.ts";
+import { createGameWindowState, ensureWheelControllerState } from "../src/components/windows/game/coordinator/gameControllerState.ts";
 
 const fairnessEntry = {
   spinNumber: 1,
@@ -23,7 +23,7 @@ const fairnessEntry = {
 
 test("game session track records a valid spin", () => {
   const state = createGameWindowState() as Record<string, any>;
-  const controller = getWheelController(state);
+  const controller = ensureWheelControllerState(state);
   controller.previewSpinCounts = [0, 0];
   recordWheelSessionSpin(state, controller, "preview", 1, 2);
   const recorded = readWheelSessionTrack(state, controller, "preview");
@@ -34,7 +34,7 @@ test("game session track records a valid spin", () => {
 
 test("game session track records bounded fairness history", () => {
   const state = createGameWindowState() as Record<string, any>;
-  const controller = getWheelController(state);
+  const controller = ensureWheelControllerState(state);
   for (let spinNumber = 1; spinNumber <= 21; spinNumber += 1) {
     recordWheelSessionFairness(state, controller, "live", { ...fairnessEntry, spinNumber });
   }
@@ -46,7 +46,7 @@ test("game session track records bounded fairness history", () => {
 
 test("game session track rejects an invalid spin", () => {
   const state = createGameWindowState() as Record<string, any>;
-  const controller = getWheelController(state);
+  const controller = ensureWheelControllerState(state);
   controller.previewSpinCounts = [0, 0];
   recordWheelSessionSpin(state, controller, "preview", 4, 2);
   assert.deepEqual(controller.previewSpinCounts, [0, 0]);

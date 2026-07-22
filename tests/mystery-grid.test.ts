@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { afterEach, test, vi } from "vitest";
 import { normalizeWheelConfig } from "../src/app-core/shared/normalize-wheel-config.ts";
-import { createGameWindowState, getWheelController } from "../src/components/windows/game/coordinator/gameControllerState.ts";
+import { createGameWindowState, ensureWheelControllerState, getWheelController } from "../src/components/windows/game/coordinator/gameControllerState.ts";
 import { createDefaultWheelConfig } from "../src/components/windows/game/services/wheelDefaults.ts";
 import { buildSlotsFromConfig } from "../src/components/windows/game/services/wheelSlots.ts";
 import {
@@ -61,6 +61,11 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+function completeGameSession<T extends Record<string, unknown>>(context: T): T {
+  ensureWheelControllerState(context);
+  return context;
+}
+
 function createGridConfig(overrides: Partial<WheelConfig> = {}): WheelConfig {
   return {
     id: 1,
@@ -102,7 +107,7 @@ function createGridConfig(overrides: Partial<WheelConfig> = {}): WheelConfig {
 
 function createGridVm(mode: "config" | "live", config = createGridConfig()) {
   const state = createGameWindowState() as Record<string, unknown>;
-  const controller = getWheelController(state);
+  const controller = ensureWheelControllerState(state);
   const slots = buildSlotsFromConfig(config);
   state.wheelMode = mode;
   state.wheelSpinning = false;
@@ -343,7 +348,7 @@ test("mystery grid cells expose reveal state without changing the configured out
   });
   assert.equal(getMysteryGridCellCount(config), 100);
 
-  const cells = buildMysteryGridCells({
+  const context = completeGameSession({
     wheelDisplayConfig: config,
     wheelMode: "live",
     wheelGridReveals: [
@@ -359,6 +364,7 @@ test("mystery grid cells expose reveal state without changing the configured out
     ],
     wheelPreviewGridReveals: []
   });
+  const cells = buildMysteryGridCells(context);
 
   assert.equal(cells.length, 100);
   assert.equal(cells[2]?.revealed, true);
@@ -367,7 +373,7 @@ test("mystery grid cells expose reveal state without changing the configured out
 });
 
 test("random mystery grid reveal picks from unrevealed cells instead of revealing sequentially", () => {
-  const cells = buildMysteryGridCells({
+  const context = completeGameSession({
     wheelDisplayConfig: createGridConfig(),
     wheelMode: "live",
     wheelGridReveals: [
@@ -383,6 +389,7 @@ test("random mystery grid reveal picks from unrevealed cells instead of revealin
     ],
     wheelPreviewGridReveals: []
   });
+  const cells = buildMysteryGridCells(context);
 
   assert.equal(pickRandomMysteryGridCellIndex(cells, () => 0), 1);
   assert.equal(pickRandomMysteryGridCellIndex(cells, () => 0.5), 50);

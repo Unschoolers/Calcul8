@@ -15,6 +15,7 @@ vi.mock("../../src/app-core/methods/entity-api-shared.ts", () => ({
 const GameWindowWatcherHarness = defineComponent({
   props: gameWindowDefinition.props,
   data: gameWindowDefinition.data,
+  computed: gameWindowDefinition.computed,
   watch: gameWindowDefinition.watch,
   methods: gameWindowDefinition.methods,
   setup: gameWindowDefinition.setup,
@@ -51,7 +52,19 @@ test("mounted GameWindow watchers preserve an authoritative realtime session ove
     removeItem: (key: string) => stored.delete(key)
   });
   const oldConfig = config("Old wheel");
-  const remoteConfig = config("Remote wheel");
+  const remoteConfig: WheelConfig = {
+    ...config("Remote grid"),
+    gameType: "grid",
+    outcomeCount: 100,
+    gridCellCount: 100,
+    tiers: [{
+      ...config("unused").tiers[0]!,
+      id: "remote-tier",
+      label: "Remote prize",
+      chancePercent: 100,
+      slots: 100
+    }]
+  };
   const remoteCounts = [3, ...new Array(99).fill(0)];
   const staleCounts = [9, ...new Array(99).fill(0)];
   const ctx = reactive({
@@ -91,8 +104,12 @@ test("mounted GameWindow watchers preserve an authoritative realtime session ove
   await nextTick();
   await nextTick();
 
-  expect(ctx.wheelConfigs[0]?.name).toBe("Remote wheel");
+  expect(ctx.wheelConfigs[0]?.name).toBe("Remote grid");
   expect(ctx.activeWheelConfigId).toBe(91);
+  expect(ctx.activeWheelSlots).toHaveLength(100);
+  expect(ctx.activeWheelSlots.every((slot) => slot.tier === "remote-tier")).toBe(true);
+  expect(ctx.wheelPreviewSlots).toHaveLength(100);
+  expect(ctx.wheelPreviewSlots.every((slot) => slot.tier === "remote-tier")).toBe(true);
   expect(ctx.wheelSpinCounts).toEqual(remoteCounts);
   expect(ctx.wheelTotalSpins).toBe(3);
 });

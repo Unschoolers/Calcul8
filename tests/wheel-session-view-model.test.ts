@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import { buildWheelSessionViewModel } from "../src/components/windows/game/services/wheelSessionViewModel.ts";
+import { ensureWheelControllerState } from "../src/components/windows/game/coordinator/gameControllerState.ts";
 
 test("buildWheelSessionViewModel derives financial and inventory presentation once", () => {
   const context = {
@@ -52,6 +53,7 @@ test("buildWheelSessionViewModel derives financial and inventory presentation on
     }
   };
 
+  ensureWheelControllerState(context);
   const model = buildWheelSessionViewModel(context);
 
   assert.equal(model.totalSpins, 2);

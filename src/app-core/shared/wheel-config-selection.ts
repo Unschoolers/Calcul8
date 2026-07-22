@@ -24,11 +24,15 @@ export function restoreStoredWheelConfigSelection(
       const legacy = JSON.parse(storage.getItem(getScopedWheelSessionStorageKey(scope)) || "null") as { activeWheelConfigId?: unknown } | null;
       selectedId = validConfigId(configs, legacy?.activeWheelConfigId);
     }
-    selectedId ??= configs[0]?.id ?? null;
+  } catch {
+    // A malformed/unreadable legacy value cannot be used; retain the safe fallback below.
+  }
+  selectedId ??= configs[0]?.id ?? null;
+  try {
     if (selectedId == null) storage.removeItem(selectionKey);
     else storage.setItem(selectionKey, String(selectedId));
   } catch {
-    selectedId = configs[0]?.id ?? null;
+    // Selection is still valid in memory when best-effort migration persistence fails.
   }
   return selectedId;
 }

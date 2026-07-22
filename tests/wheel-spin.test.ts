@@ -1,10 +1,15 @@
 import assert from "node:assert/strict";
 import { test, vi } from "vitest";
-import { getWheelController } from "../src/components/windows/game/coordinator/gameControllerState.ts";
+import { ensureWheelControllerState } from "../src/components/windows/game/coordinator/gameControllerState.ts";
 import { buildWheelReadableVerificationUrl } from "../src/components/windows/game/services/wheelSpinState.ts";
 import {
     GameWindow
 } from "../src/components/windows/game/GameWindow.ts";
+
+function completeGameSession<T extends Record<string, unknown>>(context: T): T {
+  ensureWheelControllerState(context);
+  return context;
+}
 
 test("buildWheelReadableVerificationUrl targets the public proof view", () => {
   const url = buildWheelReadableVerificationUrl(
@@ -57,7 +62,7 @@ test("recordSpinResult increments spin counts", () => {
     saveWheelSession: vi.fn()
   };
 
-  GameWindow.methods!.recordSpinResult.call(vm as never, 0);
+  GameWindow.methods!.recordSpinResult.call(completeGameSession(vm) as never, 0);
   assert.equal(vm.wheelTotalSpins, 1);
   assert.deepEqual(vm.wheelSpinCounts, [1, 0]);
   assert.ok(Math.abs((vm.wheelSessionNetRevenue as number) - 8.61) < 0.001);
@@ -76,7 +81,7 @@ test("landOnSlot sets result text and color", () => {
     saveWheelSession: vi.fn()
   };
 
-  GameWindow.methods!.landOnSlot.call(vm as never, 0);
+  GameWindow.methods!.landOnSlot.call(completeGameSession(vm) as never, 0);
   assert.equal(vm.wheelLastResult, "🎉 Prize A");
   assert.equal(vm.wheelLastResultColor, "#f00");
   assert.deepEqual(triggerWheelCelebration.mock.calls, [[{
@@ -101,7 +106,7 @@ test("landOnSlot triggers the result reveal for regular tiers without an emoji",
     saveWheelSession: vi.fn()
   };
 
-  GameWindow.methods!.landOnSlot.call(vm as never, 0);
+  GameWindow.methods!.landOnSlot.call(completeGameSession(vm) as never, 0);
 
   assert.deepEqual(triggerWheelCelebration.mock.calls, [[{
     label: "Prize B",
@@ -140,7 +145,7 @@ test("landOnSlot preview mode opens preview chase flow and persists the preview 
     saveWheelSession
   };
 
-  GameWindow.methods!.landOnSlot.call(vm as never, 0, { recordSession: false });
+  GameWindow.methods!.landOnSlot.call(completeGameSession(vm) as never, 0, { recordSession: false });
   assert.equal(vm.wheelLastResult, "🎉 Chase Card");
   assert.equal(vm.wheelLastResultColor, "#ff0");
   assert.equal(vm.wheelChaseDialog, true);
@@ -208,7 +213,7 @@ test("preview spin persists updated preview session state through completion", a
     });
 
   try {
-    await GameWindow.methods!.spinWheelInternal.call(vm as never, false);
+    await GameWindow.methods!.spinWheelInternal.call(completeGameSession(vm) as never, false);
   } finally {
     vi.unstubAllGlobals();
   }
@@ -275,7 +280,7 @@ test("spinWheelInternal avoids reactive angle updates between mobile animation f
   });
 
   try {
-    await GameWindow.methods!.spinWheelInternal.call(vm as never, false);
+    await GameWindow.methods!.spinWheelInternal.call(completeGameSession(vm) as never, false);
     assert.equal(rafCallbacks.length, 1);
 
     rafCallbacks.shift()?.(16);
@@ -301,7 +306,7 @@ test("testSpinWheel delegates to non-recording spin path", async () => {
     spinWheelInternal
   };
 
-  await GameWindow.methods!.testSpinWheel.call(vm as never);
+  await GameWindow.methods!.testSpinWheel.call(completeGameSession(vm) as never);
   assert.deepEqual(spinWheelInternal.mock.calls, [[false]]);
 });
 
@@ -314,7 +319,7 @@ test("runWheelPrimarySpin uses test spin in config mode", () => {
     spinWheel
   };
 
-  GameWindow.methods!.runWheelPrimarySpin.call(vm as never);
+  GameWindow.methods!.runWheelPrimarySpin.call(completeGameSession(vm) as never);
 
   assert.equal(testSpinWheel.mock.calls.length, 1);
   assert.equal(spinWheel.mock.calls.length, 0);
@@ -329,7 +334,7 @@ test("runWheelPrimarySpin uses live spin in live mode", () => {
     spinWheel
   };
 
-  GameWindow.methods!.runWheelPrimarySpin.call(vm as never);
+  GameWindow.methods!.runWheelPrimarySpin.call(completeGameSession(vm) as never);
 
   assert.equal(testSpinWheel.mock.calls.length, 0);
   assert.equal(spinWheel.mock.calls.length, 1);
@@ -351,7 +356,7 @@ test("wheelPrimarySpinDisabled blocks config spin while config sync is pending",
     isCurrentWorkspaceOwner: true
   };
 
-  assert.equal(GameWindow.computed!.wheelPrimarySpinDisabled.call(vm as never), true);
+  assert.equal(GameWindow.computed!.wheelPrimarySpinDisabled.call(completeGameSession(vm) as never), true);
 });
 
 test("toggleWheelAutospin enables config autospin and starts visual preview animation immediately", () => {
@@ -375,7 +380,7 @@ test("toggleWheelAutospin enables config autospin and starts visual preview anim
     scheduleNextWheelAutospin: GameWindow.methods!.scheduleNextWheelAutospin
   };
 
-  GameWindow.methods!.toggleWheelAutospin.call(vm as never);
+  GameWindow.methods!.toggleWheelAutospin.call(completeGameSession(vm) as never);
   vi.runAllTimers();
 
   assert.equal(vm.wheelAutospinEnabled, true);
@@ -401,7 +406,7 @@ test("landOnSlot preview mode schedules the next autospin when enabled", () => {
   };
 
   try {
-    GameWindow.methods!.landOnSlot.call(vm as never, 0, { recordSession: false });
+    GameWindow.methods!.landOnSlot.call(completeGameSession(vm) as never, 0, { recordSession: false });
   } finally {
     vi.unstubAllGlobals();
   }
@@ -441,7 +446,7 @@ test("landOnSlot preview chase hit stops autospin before opening the chase flow"
   };
 
   try {
-    GameWindow.methods!.landOnSlot.call(vm as never, 0, { recordSession: false });
+    GameWindow.methods!.landOnSlot.call(completeGameSession(vm) as never, 0, { recordSession: false });
   } finally {
     vi.unstubAllGlobals();
   }
@@ -515,8 +520,8 @@ test("drawWheel reuses a cached static wheel render when slots and size do not c
     _wheelStaticRenderCache: undefined
   };
 
-  GameWindow.methods!.drawWheel.call(vm as never, 0);
-  GameWindow.methods!.drawWheel.call(vm as never, Math.PI / 4);
+  GameWindow.methods!.drawWheel.call(completeGameSession(vm) as never, 0);
+  GameWindow.methods!.drawWheel.call(completeGameSession(vm) as never, Math.PI / 4);
 
   assert.equal(createElement.mock.calls.length, 1);
   assert.equal(mainCtx.drawImage.mock.calls.length, 2);
@@ -534,8 +539,8 @@ test("recordPreviewSpinResult updates preview tracker only", () => {
     wheelTotalSpins: 0
   };
 
-  GameWindow.methods!.recordPreviewSpinResult.call(vm as never, 0);
-  const controller = getWheelController(vm);
+  GameWindow.methods!.recordPreviewSpinResult.call(completeGameSession(vm) as never, 0);
+  const controller = ensureWheelControllerState(vm);
   assert.deepEqual(controller.wheelPreviewSpinCounts, [1]);
   assert.equal(controller.wheelPreviewTotalSpins, 1);
   assert.deepEqual(vm.wheelSpinCounts, [0]);
@@ -551,12 +556,12 @@ test("recordPreviewSpinResult updates controller when wheelDisplaySlots is a com
     wheelSpinCounts: [0],
     wheelTotalSpins: 0
   };
-  const controller = getWheelController(vm);
+  const controller = ensureWheelControllerState(vm);
   controller.wheelPreviewSlots = [slot] as never;
   controller.wheelPreviewSpinCounts = [0];
   controller.wheelPreviewTotalSpins = 0;
 
-  GameWindow.methods!.recordPreviewSpinResult.call(vm as never, 0);
+  GameWindow.methods!.recordPreviewSpinResult.call(completeGameSession(vm) as never, 0);
   assert.deepEqual(controller.wheelPreviewSpinCounts, [1]);
   assert.equal(controller.wheelPreviewTotalSpins, 1);
 });
@@ -567,7 +572,7 @@ test("appendWheelFairnessHistory caps the log to the last 20 entries", () => {
   };
 
   for (let i = 1; i <= 22; i++) {
-    GameWindow.methods!.appendWheelFairnessHistory.call(vm as never, {
+    GameWindow.methods!.appendWheelFairnessHistory.call(completeGameSession(vm) as never, {
       spinNumber: i,
       label: `Prize ${i}`,
       color: "#f00",
@@ -588,7 +593,7 @@ test("appendWheelFairnessHistory keeps preview history separate", () => {
     wheelPreviewFairnessHistory: []
   };
 
-  GameWindow.methods!.appendWheelFairnessHistory.call(vm as never, {
+  GameWindow.methods!.appendWheelFairnessHistory.call(completeGameSession(vm) as never, {
     spinNumber: 1,
     label: "Live Prize",
     color: "#f00",
@@ -596,7 +601,7 @@ test("appendWheelFairnessHistory keeps preview history separate", () => {
     seed: "live-seed",
     timestamp: 1
   });
-  GameWindow.methods!.appendWheelFairnessHistory.call(vm as never, {
+  GameWindow.methods!.appendWheelFairnessHistory.call(completeGameSession(vm) as never, {
     spinNumber: 1,
     label: "Preview Prize",
     color: "#0f0",
@@ -610,7 +615,7 @@ test("appendWheelFairnessHistory keeps preview history separate", () => {
 });
 
 test("wheelLatestFairnessEntry exposes proof details for the current verified spin", () => {
-  const entry = GameWindow.computed!.wheelLatestFairnessEntry.call({
+  const context = completeGameSession({
     preferredLanguage: "en",
     wheelDisplayFairnessHistory: [{
       spinNumber: 4,
@@ -631,7 +636,8 @@ test("wheelLatestFairnessEntry exposes proof details for the current verified sp
     wheelLastResult: "🎉 1 Pack",
     wheelLastResultColor: "#f00",
     wheelDisplayTotalSpins: 4
-  } as never);
+  });
+  const entry = GameWindow.computed!.wheelLatestFairnessEntry.call(context as never);
 
   assert.equal(entry?.clientSeed, "client-seed");
   assert.equal(entry?.algorithm, "whatfees-wheel-v1");
@@ -639,17 +645,19 @@ test("wheelLatestFairnessEntry exposes proof details for the current verified sp
 });
 
 test("wheelFairnessTitle differentiates server and local verification modes", () => {
-  assert.equal(GameWindow.computed!.wheelFairnessTitle.call({
+  const serverContext = completeGameSession({
     preferredLanguage: "en",
     wheelSpinning: false,
     wheelSpinVerificationUrl: "https://api.example.test/wheel/fairness/verify?serverSeed=s&clientSeed=c&slotCount=1"
-  } as never), "Server verified");
+  });
+  assert.equal(GameWindow.computed!.wheelFairnessTitle.call(serverContext as never), "Server verified");
 
-  assert.equal(GameWindow.computed!.wheelFairnessTitle.call({
+  const localContext = completeGameSession({
     preferredLanguage: "en",
     wheelSpinning: false,
     wheelSpinVerificationUrl: ""
-  } as never), "Local verified");
+  });
+  assert.equal(GameWindow.computed!.wheelFairnessTitle.call(localContext as never), "Local verified");
 });
 
 test("canTierBeChase requires a concrete singles item", () => {
@@ -681,26 +689,26 @@ test("config mode session cost updates after preview spin", () => {
     wheelSpinCounts: [0],
     wheelTotalSpins: 0
   };
-  const controller = getWheelController(vm);
+  const controller = ensureWheelControllerState(vm);
   controller.wheelPreviewSlots = [slot] as never;
   controller.activeWheelSlots = [slot] as never;
   controller.wheelPreviewSpinCounts = [0];
   controller.wheelPreviewTotalSpins = 0;
 
   // Simulate what the real computeds produce
-  const getDisplaySlots = () => GameWindow.computed!.wheelDisplaySlots.call(vm as never);
-  const getDisplayCounts = () => GameWindow.computed!.wheelDisplaySpinCounts.call(vm as never);
+  const getDisplaySlots = () => GameWindow.computed!.wheelDisplaySlots.call(completeGameSession(vm) as never);
+  const getDisplayCounts = () => GameWindow.computed!.wheelDisplaySpinCounts.call(completeGameSession(vm) as never);
   const getCost = () => {
     vm.wheelDisplaySlots = getDisplaySlots();
     vm.wheelDisplaySpinCounts = getDisplayCounts();
-    return GameWindow.computed!.wheelSessionCost.call(vm as never);
+    return GameWindow.computed!.wheelSessionCost.call(completeGameSession(vm) as never);
   };
 
   // Before spin: cost should be 0
   assert.equal(getCost(), 0);
 
   // Record a preview spin
-  GameWindow.methods!.recordPreviewSpinResult.call(vm as never, 0);
+  GameWindow.methods!.recordPreviewSpinResult.call(completeGameSession(vm) as never, 0);
 
   // After spin: cost should reflect the new spin
   assert.equal(getCost(), 5);
@@ -716,23 +724,23 @@ test("live mode session cost updates after recording a spin result", () => {
     wheelTotalSpins: 0,
     saveWheelSession: () => {}
   };
-  const controller = getWheelController(vm);
+  const controller = ensureWheelControllerState(vm);
   controller.activeWheelSlots = [slot] as never;
   controller.wheelPreviewSlots = [slot] as never;
 
-  const getDisplaySlots = () => GameWindow.computed!.wheelDisplaySlots.call(vm as never);
-  const getDisplayCounts = () => GameWindow.computed!.wheelDisplaySpinCounts.call(vm as never);
+  const getDisplaySlots = () => GameWindow.computed!.wheelDisplaySlots.call(completeGameSession(vm) as never);
+  const getDisplayCounts = () => GameWindow.computed!.wheelDisplaySpinCounts.call(completeGameSession(vm) as never);
   const getCost = () => {
     vm.wheelDisplaySlots = getDisplaySlots();
     vm.wheelDisplaySpinCounts = getDisplayCounts();
-    return GameWindow.computed!.wheelSessionCost.call(vm as never);
+    return GameWindow.computed!.wheelSessionCost.call(completeGameSession(vm) as never);
   };
 
   // Before spin: cost should be 0
   assert.equal(getCost(), 0);
 
   // Record a live spin
-  GameWindow.methods!.recordSpinResult.call(vm as never, 0);
+  GameWindow.methods!.recordSpinResult.call(completeGameSession(vm) as never, 0);
 
   // After spin: cost should reflect the new spin
   assert.equal(getCost(), 5);
