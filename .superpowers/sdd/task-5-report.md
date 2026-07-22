@@ -8,6 +8,7 @@
 - Preserved the existing runtime `.mjs` and `.cjs` implementations, frontend bundler resolution, API NodeNext resolution, API `rootDir`, and all exported public shapes.
 - Added architecture checks that prevent declaration bodies from being copied back into module-mode shims or the API package.
 - Added compile-time exact-type parity checks across canonical extensionless, `.mjs`, `.cjs`, API extensionless, and API CommonJS consumers.
+- Added an isolated NodeNext fixture with ESM and CommonJS consumers so Bundler resolution cannot hide invalid declaration specifiers.
 
 ## TDD Evidence
 
@@ -31,14 +32,14 @@ Exited 0: 2 files and 13 tests passed.
 
 Compared with Task 5 base `789f6d3`:
 
-- Added: 4 lines
-- Deleted: 725 lines
+- Added: 5 lines
+- Deleted: 726 lines
 - Net: **721 production TypeScript lines deleted**
 
 Cumulative shared-game-engine delta compared with `adc6473`:
 
-- Added: 933 lines
-- Deleted: 1,971 lines
+- Added: 934 lines
+- Deleted: 1,972 lines
 - Net: **1,038 production TypeScript lines deleted**
 
 The counts include production `.ts`, `.mts`, and `.cts` declarations and exclude tests and `.superpowers` artifacts.
@@ -55,3 +56,27 @@ The counts include production `.ts`, `.mts`, and `.cts` declarations and exclude
 - `git diff --check` passed (line-ending conversion warnings only).
 
 No generated declaration copies, checked-in build outputs, runtime package, or secondary contract source was introduced. `.superpowers/sdd/progress.md` was not modified.
+
+## Review Correction: NodeNext Module Specifiers
+
+Review found that the original one-line `.d.mts` re-exports used extensionless specifiers. Frontend Bundler resolution accepted those specifiers, but a true NodeNext ESM consumer rejected them with `TS2835` and could not see the exported contract types.
+
+Correction RED:
+
+```text
+node node_modules/typescript/bin/tsc --project tests/fixtures/shared-contracts-nodenext/tsconfig.json
+```
+
+Exited 1 with `TS2835` for both `game-public-session-contracts.d.mts` and `sync-contracts.d.mts`, followed by missing-export errors in the ESM fixture consumer.
+
+Correction implementation:
+
+- Changed only the two `.d.mts` re-exports to explicit `.js` specifiers.
+- TypeScript's NodeNext extension substitution resolves those specifiers to the canonical `.d.ts` declarations without creating a circular `.mjs` declaration reference.
+- Kept the CommonJS `.d.cts` shims extensionless because NodeNext permits extensionless CommonJS resolution.
+
+Correction GREEN:
+
+- Isolated NodeNext ESM/CommonJS fixture compile passed with `skipLibCheck: false`.
+- Focused shared contract suites passed: 2 files / 14 tests.
+- The production LOC delta remains **721 lines deleted** for Task 5 and **1,038 lines deleted** cumulatively versus `adc6473`.

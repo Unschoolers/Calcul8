@@ -1,1 +1,1 @@
-export * from "./sync-contracts";
+export * from "./sync-contracts.js";

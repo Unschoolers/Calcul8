@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { readFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 import { test } from "vitest";
 import type {
   GamePublicSessionSnapshot as CanonicalGamePublicSessionSnapshot
@@ -35,6 +37,21 @@ type GamePublicSessionContractParity = [
 ];
 
 void (0 as unknown as GamePublicSessionContractParity);
+
+test("game and sync declarations compile for isolated NodeNext module consumers", () => {
+  const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
+
+  const compile = spawnSync(process.execPath, [
+    "node_modules/typescript/bin/tsc",
+    "--project",
+    "tests/fixtures/shared-contracts-nodenext/tsconfig.json"
+  ], {
+    cwd: repositoryRoot,
+    encoding: "utf8"
+  });
+
+  assert.equal(compile.status, 0, `${compile.stdout}${compile.stderr}`);
+});
 
 test("game public session declarations use one canonical contract body", async () => {
   const declarationUrls = [
