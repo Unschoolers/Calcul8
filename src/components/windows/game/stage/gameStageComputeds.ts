@@ -1,21 +1,29 @@
 import { translateAppMessage } from "../../../../app-core/i18n/index.ts";
-import type { GameWindowThis } from "../coordinator/gameControllerState.ts";
+import type { GameSessionStateContext } from "../../../../app-core/context/game.ts";
+import type { AppState, WheelConfig } from "../../../../types/app.ts";
 import { getWheelDisplaySlots } from "../coordinator/gameComputedShared.ts";
-import { getTierPrizeGameAdapter } from "../services/gameAdapters.ts";
+import { getTierPrizeGameAdapter, type GameAdapterContext } from "../services/gameAdapters.ts";
+import type { GameHostState } from "../services/gameHostState.ts";
 
-type GameStageContext = Omit<Partial<GameWindowThis>, "gameSpectatorSessionStatus"> & {
-  gameSpectatorSessionStatus?: string;
-  preferredLanguage?: string;
-  isWorkspaceScopeActive?: boolean;
-  isCurrentWorkspaceOwner?: boolean;
-  wheelSessionRevenue?: number;
-  wheelSessionProfitDisplay?: string;
-  wheelSessionCost?: number;
-  wheelSessionProfitClass?: string;
-  wheelSessionMarginHint?: string;
-  expectedMarginHint?: string;
-  canApplyWheelConfig?: boolean;
-};
+type GameStageContext = GameSessionStateContext
+  & Pick<AppState, "preferredLanguage">
+  & Pick<GameHostState,
+    | "gameSpectatorConnectedCount" | "gameSpectatorSessionStatus" | "wheelAutospinEnabled" | "wheelCelebrationPreview"
+    | "wheelChaseDialog" | "wheelConfigSyncPending" | "wheelConfirmAction" | "wheelEndingSession"
+    | "wheelGridResetAnimating" | "wheelGridRevealAnimating" | "wheelMode" | "wheelPresentationMode"
+    | "wheelReducedMotion" | "wheelSoundEnabled"
+  >
+  & {
+    activeWheelConfig: WheelConfig | null; wheelDisplayConfig: WheelConfig | null; wheelDisplaySlots: unknown[];
+    canApplyWheelConfig: boolean; expectedMarginColor: string; expectedMarginDisplay: string; expectedMarginHint: string;
+    isWorkspaceScopeActive: boolean; isCurrentWorkspaceOwner: boolean; wheelSpinBlockedReason: string;
+    wheelSessionRevenue: number; wheelSessionProfitDisplay: string; wheelSessionCost: number; wheelSessionProfitClass: string;
+    wheelSessionMarginDisplay: string; wheelSessionMarginColor: string; wheelSessionMarginHint: string;
+  };
+type TranslationContext = Pick<AppState, "preferredLanguage">;
+type SpectatorStageContext = TranslationContext & Pick<GameHostState,
+  "gameSpectatorConnectedCount" | "gameSpectatorSessionStatus"
+>;
 
 interface StageSummaryCard {
   id: string;
@@ -26,12 +34,12 @@ interface StageSummaryCard {
   valueStyle?: string;
 }
 
-function adapterContext(context: GameStageContext): Record<string, unknown> {
-  return context as unknown as Record<string, unknown>;
+function adapterContext(context: GameStageContext): GameAdapterContext {
+  return context;
 }
 
 function translate(
-  context: GameStageContext,
+  context: TranslationContext,
   key: string,
   params?: Record<string, string | number>
 ): string {
@@ -70,7 +78,7 @@ export const gameStageComputeds = {
     return translate(this, this.wheelReducedMotion ? "wheelMotionEnableLabel" : "wheelMotionReduceLabel");
   },
 
-  gameSpectatorActionLabel(this: GameStageContext): string {
+  gameSpectatorActionLabel(this: SpectatorStageContext): string {
     if (this.gameSpectatorSessionStatus === "ended") {
       return translate(this, "gameSpectatorActionEnded");
     }
@@ -79,13 +87,13 @@ export const gameStageComputeds = {
     return count > 0 ? `${count} ${label}` : label;
   },
 
-  gameSpectatorDialogHint(this: GameStageContext): string {
+  gameSpectatorDialogHint(this: SpectatorStageContext): string {
     return translate(this, this.gameSpectatorSessionStatus === "ended"
       ? "gameSpectatorDialogEndedBody"
       : "gameSpectatorDialogBody");
   },
 
-  gameSpectatorStartButtonLabel(this: GameStageContext): string {
+  gameSpectatorStartButtonLabel(this: SpectatorStageContext): string {
     return translate(this, this.gameSpectatorSessionStatus === "ended"
       ? "gameSpectatorRestartAction"
       : "gameSpectatorStartAction");

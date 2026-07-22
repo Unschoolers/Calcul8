@@ -283,7 +283,7 @@ test("new game creation fixes game type at creation time", () => {
     hasProAccess: true
   };
 
-  wheelConfigMethods.createNewGameConfig.call(vm, "grid");
+  wheelConfigMethods.createNewGameConfig.call(vm as never, "grid");
 
   const created = (vm.wheelConfigs as WheelConfig[])[0]!;
   assert.equal(created.gameType, "grid");
@@ -306,7 +306,7 @@ test("new bracket battle creation adds a config and selects it like other games"
     hasProAccess: true
   };
 
-  wheelConfigMethods.createNewGameConfig.call(vm, "bracket");
+  wheelConfigMethods.createNewGameConfig.call(vm as never, "bracket");
 
   const created = (vm.wheelConfigs as WheelConfig[])[0]!;
   assert.equal(created.gameType, "bracket");

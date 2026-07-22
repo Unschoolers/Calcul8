@@ -46,7 +46,7 @@
 !element calcul8.web.gameWorkflows {
     perspectives {
         perspective "Technical Debt" {
-            description "Medium debt: preview/live session state now shares typed transitions and injected effects, and configuration/spectator adapters are typed, but inspector surfaces still carry complex UI/runtime coupling."
+            description "Medium debt: Wheel, Grid, and Bracket now share one canonical session owner, scoped persistence, typed lifecycle/settlement effects, and narrow leaf capability contracts. Remaining debt is concentrated in large command and inspector presentation surfaces, which should be changed only for proven reuse or product needs."
             value "Medium"
         }
     }

@@ -1,19 +1,12 @@
 import { getSinglesSoldQuantityForEntry } from "../../../../app-core/methods/sales-core.ts";
+import type { CommerceContext, CommerceMethodState } from "../../../../app-core/context/commerce.ts";
 import { translateAppMessage } from "../../../../app-core/i18n/index.ts";
 import { isSinglesLot } from "../../../../app-core/shared/lot-types.ts";
 import { getRootLotSales } from "../../../../app-core/shared/sales-root-state.ts";
 import { getWheelTierSourceLotIds, isWheelTierMultiLot } from "../../../../app-core/shared/wheel-tier-sources.ts";
 import type { Lot, Sale, SinglesPurchaseEntry, WheelTier } from "../../../../types/app.ts";
 
-type WheelSalesContext = Record<string, unknown> & {
-  currentLotId?: number | null;
-  sales?: Sale[];
-  lots?: Lot[];
-  singlesSoldCountByPurchaseId?: Record<number, number>;
-  getSalesCacheEntry?: (lotId: number) => { sales: Sale[] };
-  loadSalesForLotId?: (lotId: number) => Sale[];
-  preferredLanguage?: string;
-};
+type WheelSalesContext = Partial<CommerceContext & Pick<CommerceMethodState, "getSalesCacheEntry" | "loadSalesForLotId">>;
 
 function getLotSales(context: WheelSalesContext, lotId: number): Sale[] {
   if (context.currentLotId === lotId && Array.isArray(context.sales)) {

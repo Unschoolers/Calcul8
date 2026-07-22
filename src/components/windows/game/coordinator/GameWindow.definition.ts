@@ -102,7 +102,7 @@ export const gameWindowDefinition = {
       return resolveWheelLayoutMode(this.wheelViewportWidth as number) === "compact";
     },
     wheelCompactStageSummaryLabel(this: GameWindowThis): string {
-      return this.wheelMode === "live" ? "Margin" : "Margin";
+      return "Margin";
     },
     wheelCompactStageSummaryValue(this: GameWindowThis): string {
       return this.wheelMode === "live"

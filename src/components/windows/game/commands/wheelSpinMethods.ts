@@ -12,7 +12,8 @@ import {
     resolveWheelPreviewExtraRotations
 } from "../../../../app-core/shared/game-spin.ts";
 import { assignWheelPendingInventoryIssues, normalizeWheelPendingInventoryIssues } from "../../../../app-core/shared/wheel-session-compat.ts";
-import type { Lot, WheelFairnessEntry } from "../../../../types/app.ts";
+import type { GameCoordinatorContext, GameSessionStateContext } from "../../../../app-core/context/game.ts";
+import type { Lot, WheelConfig, WheelFairnessEntry } from "../../../../types/app.ts";
 import {
     ensureWheelCanvasSize,
     getStaticWheelRender,
@@ -20,7 +21,8 @@ import {
     renderWheelSurface
 } from "../stage/wheelCanvasRender.ts";
 import { playWheelTick } from "../services/wheelAudio.ts";
-import { getWheelController, type GameWindowThis } from "../coordinator/gameControllerState.ts";
+import type { GameHostState } from "../services/gameHostState.ts";
+import { getWheelController } from "../services/gameSessionState.ts";
 import { settleSessionGameOutcomeSale } from "../services/gameOutcomeSettlement.ts";
 import type { WheelSlot } from "../services/wheelSlots.ts";
 import { serializeWheelLayoutForFairness } from "../services/wheelFairnessLayout.ts";
@@ -40,8 +42,41 @@ import {
 } from "../services/wheelSpinState.ts";
 import { recordWheelSessionSpin } from "../services/wheelSessionState.ts";
 
+type WheelSpinCommandContext = GameSessionStateContext
+  & Pick<GameCoordinatorContext,
+    | "lots" | "addWheelSaleToLot" | "wheelConfigs" | "activeWheelConfigId"
+    | "activeScopeType" | "activeWorkspaceId" | "googleAuthEpoch" | "hasProAccess"
+  >
+  & Pick<GameHostState,
+    | "wheelAutospinEnabled" | "wheelSoundEnabled" | "wheelCanvasSize" | "wheelChaseDialog"
+    | "wheelChasePendingTierId" | "wheelChasePreviewMode" | "wheelChaseReplacementSinglesId" | "wheelViewportWidth"
+  >
+  & {
+    activeWheelConfig: WheelConfig | null;
+    wheelDisplayConfig: WheelConfig | null;
+    wheelIsCompactLayout: boolean;
+    wheelSpinBlockedReason: string;
+    _gameSpectatorSpinAnimation?: import("../../../../types/app.ts").GameSpectatorSpinAnimation | null;
+    _wheelAnimationAngle?: number;
+    _wheelCelebrationAnimId?: number;
+    _wheelHighlightTime?: number;
+    _wheelHighlightTimeoutId?: number;
+    _wheelStaticRenderCache?: unknown;
+    $refs?: Record<string, unknown>;
+    appendWheelFairnessHistory(entry: WheelFairnessEntry, options?: { preview?: boolean }): void;
+    drawWheel(offset?: number): void;
+    landOnSlot(slotIndex: number, options?: { recordSession?: boolean }): void;
+    recordPreviewSpinResult(slotIndex: number): void;
+    recordSpinResult(slotIndex: number): void;
+    saveWheelSession(): void;
+    scheduleNextWheelAutospin(delayMs?: number): void;
+    spinWheelInternal(recordSession?: boolean): Promise<void>;
+    stopWheelAutospin(): void;
+    triggerWheelCelebration?(payload: { label: string; color: string; image?: string; emoji?: string; preview?: boolean }): void;
+  };
+
 function queuePendingInventoryIssue(
-  context: GameWindowThis,
+  context: WheelSpinCommandContext,
   params: {
     slot: WheelSlot;
     slotIndex: number;
@@ -77,34 +112,34 @@ const MOBILE_SPIN_FRAME_INTERVAL_MS = 33;
 const DESKTOP_CELEBRATION_FRAME_INTERVAL_MS = 33;
 const MOBILE_CELEBRATION_FRAME_INTERVAL_MS = 50;
 
-function isCompactWheelPerformanceMode(context: GameWindowThis): boolean {
+function isCompactWheelPerformanceMode(context: WheelSpinCommandContext): boolean {
   const viewportWidth = Number(context.wheelViewportWidth || 0);
   const isCompactLayout = context.wheelIsCompactLayout === true || (viewportWidth > 0 && viewportWidth <= 720);
   const navigatorLike = (globalThis as { navigator?: { maxTouchPoints?: number } }).navigator;
   return isCompactLayout || Number(navigatorLike?.maxTouchPoints || 0) > 0;
 }
 
-function getSpinFrameIntervalMs(context: GameWindowThis): number {
+function getSpinFrameIntervalMs(context: WheelSpinCommandContext): number {
   return isCompactWheelPerformanceMode(context) ? MOBILE_SPIN_FRAME_INTERVAL_MS : 0;
 }
 
-function shouldPlayWheelSounds(context: GameWindowThis): boolean {
+function shouldPlayWheelSounds(context: WheelSpinCommandContext): boolean {
   return context.wheelSoundEnabled !== false;
 }
 
-function getCelebrationFrameIntervalMs(context: GameWindowThis): number {
+function getCelebrationFrameIntervalMs(context: WheelSpinCommandContext): number {
   return isCompactWheelPerformanceMode(context)
     ? MOBILE_CELEBRATION_FRAME_INTERVAL_MS
     : DESKTOP_CELEBRATION_FRAME_INTERVAL_MS;
 }
 
-function getWheelCenterIcon(context: GameWindowThis): HTMLElement | null {
+function getWheelCenterIcon(context: WheelSpinCommandContext): HTMLElement | null {
   return (context.$refs?.wheelOuter as HTMLElement | null)
     ?.querySelector(".wheel-center-cap__icon") as HTMLElement | null;
 }
 
 function setWheelAnimatedAngle(
-  context: GameWindowThis,
+  context: WheelSpinCommandContext,
   angle: number,
   centerIcon: HTMLElement | null
 ): void {
@@ -114,12 +149,12 @@ function setWheelAnimatedAngle(
   }
 }
 
-function clearWheelAnimatedAngle(context: GameWindowThis): void {
+function clearWheelAnimatedAngle(context: WheelSpinCommandContext): void {
   context._wheelAnimationAngle = undefined;
 }
 
 export const wheelSpinMethods = {
-  drawWheel(this: GameWindowThis, offset = 0): void {
+  drawWheel(this: WheelSpinCommandContext, offset = 0): void {
     const canvasEl = this.$refs?.wheelCanvas as HTMLCanvasElement | null;
     if (!canvasEl) return;
     const ctx = canvasEl.getContext("2d");
@@ -174,16 +209,16 @@ export const wheelSpinMethods = {
     renderWheelSurface(ctx, slots, size, offset, highlightedSlotIndex, highlightTime);
   },
 
-  async spinWheel(this: GameWindowThis): Promise<void> {
+  async spinWheel(this: WheelSpinCommandContext): Promise<void> {
     await this.spinWheelInternal(true);
   },
 
-  async testSpinWheel(this: GameWindowThis): Promise<void> {
+  async testSpinWheel(this: WheelSpinCommandContext): Promise<void> {
     await this.spinWheelInternal(false);
   },
 
-  async runWheelAutoPreviewAnimation(this: GameWindowThis | Record<string, unknown>): Promise<void> {
-    const vm = this as GameWindowThis;
+  async runWheelAutoPreviewAnimation(this: WheelSpinCommandContext | Record<string, unknown>): Promise<void> {
+    const vm = this as WheelSpinCommandContext;
     const slots = getWheelSpinSlots(vm);
     if (vm.wheelSpinning || !slots.length) return;
 
@@ -241,8 +276,8 @@ export const wheelSpinMethods = {
     requestAnimationFrame(tick);
   },
 
-  async spinWheelInternal(this: GameWindowThis | Record<string, unknown>, recordSession = true): Promise<void> {
-    const vm = this as GameWindowThis;
+  async spinWheelInternal(this: WheelSpinCommandContext | Record<string, unknown>, recordSession = true): Promise<void> {
+    const vm = this as WheelSpinCommandContext;
     const spinController = getWheelController(vm);
     const slots = getWheelSpinSlots(vm);
     const shouldRecordLiveSession = shouldRecordWheelLiveSession(vm, recordSession);
@@ -397,13 +432,13 @@ export const wheelSpinMethods = {
     scheduleSpinFrame();
   },
 
-  recordPreviewSpinResult(this: GameWindowThis, slotIndex: number): void {
+  recordPreviewSpinResult(this: WheelSpinCommandContext, slotIndex: number): void {
     const controller = getWheelController(this);
     const slots = getWheelSpinSlots(this);
     recordWheelSessionSpin(this, controller, "preview", slotIndex, slots.length);
   },
 
-  recordSpinResult(this: GameWindowThis, slotIndex: number): void {
+  recordSpinResult(this: WheelSpinCommandContext, slotIndex: number): void {
     const recordController = getWheelController(this);
     const slots = getWheelSpinSlots(this);
     const slot = slots[slotIndex];
@@ -480,7 +515,7 @@ export const wheelSpinMethods = {
     this.saveWheelSession();
   },
 
-  landOnSlot(this: GameWindowThis, slotIndex: number, options: { recordSession?: boolean } = {}): void {
+  landOnSlot(this: WheelSpinCommandContext, slotIndex: number, options: { recordSession?: boolean } = {}): void {
     const landController = getWheelController(this);
     const slots = getWheelSpinSlots(this);
     const slot = slots[slotIndex];
@@ -585,7 +620,7 @@ export const wheelSpinMethods = {
       this.wheelChaseDialog = true;
     }
     this.saveWheelSession();
-    void broadcastWheelSession(this as Parameters<typeof broadcastWheelSession>[0]);
+    void broadcastWheelSession(this);
   }
 };
 

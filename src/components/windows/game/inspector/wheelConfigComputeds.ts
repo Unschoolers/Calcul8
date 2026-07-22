@@ -1,40 +1,44 @@
 import { translateAppMessage } from "../../../../app-core/i18n/index.ts";
+import type { GameSessionStateContext } from "../../../../app-core/context/game.ts";
 import { getLotType, isSinglesLot } from "../../../../app-core/shared/lot-types.ts";
 import { getTierChancePercent } from "../../../../app-core/shared/wheel-odds.ts";
 import {
   getWheelTierSourceLotIds,
   isWheelTierMultiLot
 } from "../../../../app-core/shared/wheel-tier-sources.ts";
-import type { Lot, WheelConfig } from "../../../../types/app.ts";
-import { getWheelController, type GameWindowThis } from "../coordinator/gameControllerState.ts";
+import type { AppState, Lot, WheelConfig } from "../../../../types/app.ts";
+import type { FeeProfileInput } from "../../../../domain/calculations.ts";
+import { getWheelController } from "../services/gameSessionState.ts";
 import {
   getWheelDisplayConfig,
   getWheelDisplaySlots,
   getWheelDisplaySpinCounts,
   getWheelDisplayTotalSpins
 } from "../coordinator/gameComputedShared.ts";
-import { calculateWheelLotCostPerPack, computeExpectedMargin } from "../services/wheelPricing.ts";
+import {
+  calculateWheelLotCostPerPack,
+  computeExpectedMargin,
+  type WheelPackCostInput
+} from "../services/wheelPricing.ts";
 import type { WheelSlot } from "../services/wheelSlots.ts";
 import {
   getAvailableSinglesQuantityForWheelTier,
   getRemainingPacksForWheelLot
 } from "../services/wheelSaleSupport.ts";
+import type { GameHostState } from "../services/gameHostState.ts";
 
 type TierSourceItem = { title: string; value: number; lotType?: string; groupLabel?: string | null };
 type InvalidLiveTier = { tierId: string; label: string; reason: string };
-type WheelConfigComputedContext = Record<string, unknown> & Partial<GameWindowThis> & {
-  preferredLanguage?: string;
-  wheelInvalidLiveTiers?: InvalidLiveTier[];
-  tierSourceItems?: TierSourceItem[];
-  boxesPurchased?: number;
-  packsPerBox?: number;
-  boxPriceCost?: number;
-  purchaseShippingCost?: number;
-  purchaseTaxPercent?: number;
-  platformFeePercent?: number;
-  includeTax?: boolean;
-  currency?: "CAD" | "USD";
-};
+type WheelConfigComputedContext = FeeProfileInput
+  & WheelPackCostInput
+  & GameSessionStateContext
+  & Pick<AppState, "lots" | "preferredLanguage" | "wheelConfigs" | "activeWheelConfigId">
+  & Pick<GameHostState, "appliedWheelConfigSnapshot" | "editingWheelConfig" | "wheelMode">
+  & {
+    activeWheelConfig: WheelConfig | null;
+    wheelInvalidLiveTiers: InvalidLiveTier[];
+    tierSourceItems: TierSourceItem[];
+  };
 
 function getExpectedMargin(context: WheelConfigComputedContext): { config: WheelConfig | null; margin: number | null } {
   const config = context.editingWheelConfig ?? null;

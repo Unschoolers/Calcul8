@@ -1,6 +1,7 @@
+import type { GameSessionStateContext } from "../../../../app-core/context/game.ts";
 import type { WheelFairnessEntry } from "../../../../types/app.ts";
 import { getWheelDisplaySlots, isWheelPreviewMode } from "../coordinator/gameComputedShared.ts";
-import { getWheelController } from "../coordinator/gameControllerState.ts";
+import { getWheelController } from "./gameSessionState.ts";
 import type { WheelSlot } from "./wheelSlots.ts";
 
 export type WheelFairnessResult = {
@@ -13,15 +14,7 @@ export type WheelFairnessResult = {
   algorithm?: string;
 };
 
-export interface WheelSpinContext {
-  wheelDisplaySlots?: WheelSlot[];
-  wheelMode?: unknown;
-  wheelSpinning?: boolean;
-  wheelLastResult?: string;
-  wheelTotalSpins?: number;
-}
-
-type WheelSpinContextLike = WheelSpinContext | Record<string, unknown>;
+type WheelSpinContextLike = GameSessionStateContext & { wheelDisplaySlots?: WheelSlot[]; wheelMode?: "config" | "live" };
 
 export function getWheelSpinSlots(context: WheelSpinContextLike): WheelSlot[] {
   if (Array.isArray(context.wheelDisplaySlots)) {

@@ -4,13 +4,29 @@ import {
     isGameSpectatorSessionNotFoundError,
     publishGameSpectatorSession
 } from "../../../../app-core/methods/ui/spectator/game-spectator.ts";
+import type { GamePublicSessionContext, GameSessionStateContext } from "../../../../app-core/context/game.ts";
 import { buildGameSpectatorQrImageUrl, buildGameSpectatorSessionUrl, buildGameSpectatorSnapshot } from "../services/gameSpectator.ts";
-import type { GameWindowThis } from "../coordinator/gameControllerState.ts";
+import type { GameHostState } from "../services/gameHostState.ts";
 
 const GAME_SPECTATOR_COUNT_POLL_MS = 10_000;
 
-type GameSpectatorVm = Record<string, unknown> & Partial<GameWindowThis> & {
+type GameSpectatorVm = GamePublicSessionContext
+  & GameSessionStateContext
+  & Pick<GameHostState,
+    | "gameSpectatorConnectedCount" | "gameSpectatorDialog" | "gameSpectatorPublishPending"
+    | "gameSpectatorSessionId" | "gameSpectatorSessionQrUrl" | "gameSpectatorSessionStatus"
+    | "gameSpectatorSessionUrl" | "wheelMode"
+  >
+  & {
+  _gameSpectatorCountPollIntervalId?: number;
+  _gameSpectatorCountRequestPending?: boolean;
+  _gameSpectatorPublishQueued?: boolean;
+  _gameSpectatorQueuedStatusOverride?: "starting" | "live" | "ended";
   notify?: (message: string, color?: string) => void;
+  publishGameSpectatorSessionSnapshot(statusOverride?: "starting" | "live" | "ended"): Promise<void>;
+  refreshGameSpectatorCount(): Promise<void>;
+  saveWheelSession(): void;
+  stopGameSpectatorCountPolling(): void;
 };
 
 function notifyGameSpectator(vm: GameSpectatorVm, message: string, color: string = "info"): void {

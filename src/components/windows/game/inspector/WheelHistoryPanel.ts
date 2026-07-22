@@ -1,6 +1,6 @@
 import { translateAppMessage } from "../../../../app-core/i18n/index.ts";
 import { gameContextProp, getGameContextSource, setupGameContext } from "../../shared/contextBridge.ts";
-import { getWheelController } from "../coordinator/gameControllerState.ts";
+import { getWheelController } from "../services/gameSessionState.ts";
 import {
   buildWheelFairnessViewModel,
   type WheelFairnessViewModel

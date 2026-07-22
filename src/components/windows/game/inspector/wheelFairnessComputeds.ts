@@ -1,4 +1,4 @@
-import { getWheelController } from "../coordinator/gameControllerState.ts";
+import { getWheelController } from "../services/gameSessionState.ts";
 import {
   buildWheelFairnessViewModel,
   type WheelFairnessViewModel
@@ -12,38 +12,28 @@ function model(context: FairnessComputedContext): WheelFairnessViewModel {
   return context.wheelFairnessModel ?? buildWheelFairnessViewModel(context);
 }
 
+function field<K extends keyof WheelFairnessViewModel>(key: K) {
+  return function (this: FairnessComputedContext): WheelFairnessViewModel[K] {
+    return model(this)[key];
+  };
+}
+
 export const wheelFairnessComputeds = {
   wheelFairnessModel(this: FairnessComputedContext): WheelFairnessViewModel {
     return buildWheelFairnessViewModel(this);
   },
 
-  wheelFairnessIcon(this: FairnessComputedContext): string {
-    return model(this).icon;
-  },
-
-  wheelFairnessIconColor(this: FairnessComputedContext): string {
-    return model(this).iconColor;
-  },
-
-  wheelFairnessTitle(this: FairnessComputedContext): string {
-    return model(this).title;
-  },
+  wheelFairnessIcon: field("icon"),
+  wheelFairnessIconColor: field("iconColor"),
+  wheelFairnessTitle: field("title"),
 
   wheelFairnessChevron(this: FairnessComputedContext): string {
     const controller = getWheelController(this);
     return controller.wheelShowSeed ? "mdi-chevron-up" : "mdi-chevron-down";
   },
 
-  wheelDisplayFairnessHistory(this: FairnessComputedContext) {
-    return model(this).entries;
-  },
-
-  wheelFairnessHistorySummary(this: FairnessComputedContext): string {
-    return model(this).summary;
-  },
-
-  wheelLatestFairnessEntry(this: FairnessComputedContext) {
-    return model(this).latestEntry;
-  }
+  wheelDisplayFairnessHistory: field("entries"),
+  wheelFairnessHistorySummary: field("summary"),
+  wheelLatestFairnessEntry: field("latestEntry")
 };
 

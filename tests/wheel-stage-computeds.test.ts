@@ -5,12 +5,12 @@ import { gameStageComputeds } from "../src/components/windows/game/stage/gameSta
 test("wheel spectator labels explain recap restart flow", () => {
   const endedVm = {
     preferredLanguage: "en",
-    gameSpectatorSessionStatus: "ended",
+    gameSpectatorSessionStatus: "ended" as const,
     gameSpectatorConnectedCount: 0
   };
   const liveVm = {
     preferredLanguage: "en",
-    gameSpectatorSessionStatus: "live",
+    gameSpectatorSessionStatus: "live" as const,
     gameSpectatorConnectedCount: 3
   };
 

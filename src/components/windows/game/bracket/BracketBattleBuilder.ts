@@ -13,9 +13,10 @@ import {
   type BracketBattlePrizeCatalogItem
 } from "./bracketBattlePanelModel.ts";
 
-type BracketBattleBuilderThis = Record<string, unknown> & {
+type BracketBattleBuilderThis = {
   editingWheelConfig: WheelConfig | null;
   lots: Lot[];
+  bracketPrizeCatalog: BracketBattlePrizeCatalogItem[];
 };
 
 function getBracketConfig(context: BracketBattleBuilderThis): BracketBattleConfig {

@@ -1,3 +1,4 @@
+import type { GameSessionStateContext } from "../../../../app-core/context/game.ts";
 import type { MysteryGridReveal, WheelConfig, WheelFairnessEntry } from "../../../../types/app.ts";
 import {
   buildMysteryGridCellStates,
@@ -9,7 +10,8 @@ import {
   type MysteryGridCellState
 } from "../../../../app-core/shared/game-domain.ts";
 import { getWheelDisplayConfig } from "../coordinator/gameComputedShared.ts";
-import { getWheelController, type GameWindowThis } from "../coordinator/gameControllerState.ts";
+import type { GameHostState } from "../services/gameHostState.ts";
+import { getWheelController } from "../services/gameSessionState.ts";
 import { hashSeed, hashWheelLayoutForFairness } from "../services/wheelFairnessLayout.ts";
 import type { WheelSlot } from "../services/wheelSlots.ts";
 import { playMysteryGridRevealDing, playMysteryGridShuffleTick } from "../services/wheelAudio.ts";
@@ -23,6 +25,25 @@ import {
 } from "../services/wheelSpinState.ts";
 
 export type MysteryGridCell = MysteryGridCellState;
+
+type MysteryGridCommandContext = GameSessionStateContext
+  & Pick<GameHostState,
+    | "wheelAutospinEnabled" | "wheelGridHighlightCellIndex" | "wheelGridResetAnimating"
+    | "wheelGridRevealAnimating" | "wheelMode" | "wheelSoundEnabled"
+  >
+  & {
+    wheelDisplayConfig: WheelConfig | null;
+    wheelSpinBlockedReason: string;
+    $refs?: { mysteryGridSurface?: MysteryGridSurfacePreviewController };
+    animateMysteryGridRandomSelection(cellIndex: number): Promise<void>;
+    appendWheelFairnessHistory(entry: WheelFairnessEntry, options?: { preview?: boolean }): void;
+    landOnSlot(slotIndex: number, options?: { recordSession?: boolean }): void;
+    recordPreviewSpinResult(slotIndex: number): void;
+    recordSpinResult(slotIndex: number): void;
+    revealMysteryGridCell(cellIndex: number, recordSession?: boolean): Promise<void>;
+    saveWheelSession(): void;
+    scheduleNextWheelAutospin(delayMs?: number): void;
+  };
 
 type MysteryGridSurfacePreviewController = {
   previewMysteryGridSelection?: (cellIndex: number) => void;
@@ -173,8 +194,8 @@ function appendGridReveal(
 }
 
 export const mysteryGridMethods = {
-  async animateMysteryGridRandomSelection(this: GameWindowThis | Record<string, unknown>, targetCellIndex: number): Promise<void> {
-    const vm = this as GameWindowThis;
+  async animateMysteryGridRandomSelection(this: MysteryGridCommandContext | Record<string, unknown>, targetCellIndex: number): Promise<void> {
+    const vm = this as MysteryGridCommandContext;
     const context = this as Record<string, unknown>;
     const cells = buildMysteryGridCells(context);
     const unrevealedCells = cells.filter((cell) => !cell.revealed);
@@ -209,8 +230,8 @@ export const mysteryGridMethods = {
     }
   },
 
-  async revealMysteryGridRandomCell(this: GameWindowThis | Record<string, unknown>, recordSession = true): Promise<void> {
-    const vm = this as GameWindowThis;
+  async revealMysteryGridRandomCell(this: MysteryGridCommandContext | Record<string, unknown>, recordSession = true): Promise<void> {
+    const vm = this as MysteryGridCommandContext;
     const context = this as Record<string, unknown>;
     const cells = buildMysteryGridCells(context);
     const cellIndex = pickRandomMysteryGridCellIndex(cells);
@@ -224,8 +245,8 @@ export const mysteryGridMethods = {
     await mysteryGridMethods.revealMysteryGridCell.call(this, cellIndex, recordSession);
   },
 
-  async runMysteryGridAutoPreviewAnimation(this: GameWindowThis | Record<string, unknown>): Promise<void> {
-    const vm = this as GameWindowThis;
+  async runMysteryGridAutoPreviewAnimation(this: MysteryGridCommandContext | Record<string, unknown>): Promise<void> {
+    const vm = this as MysteryGridCommandContext;
     if (vm.wheelGridRevealAnimating || vm.wheelSpinning) return;
     const cells = buildMysteryGridCells(this as Record<string, unknown>);
     const cellIndex = pickRandomMysteryGridCellIndex(cells);
@@ -236,8 +257,8 @@ export const mysteryGridMethods = {
     }
   },
 
-  async revealMysteryGridCell(this: GameWindowThis | Record<string, unknown>, cellIndex: number, recordSession = true): Promise<void> {
-    const vm = this as GameWindowThis;
+  async revealMysteryGridCell(this: MysteryGridCommandContext | Record<string, unknown>, cellIndex: number, recordSession = true): Promise<void> {
+    const vm = this as MysteryGridCommandContext;
     const context = this as Record<string, unknown>;
     const slots = getWheelSpinSlots(vm);
     const config = vm.wheelDisplayConfig || getWheelDisplayConfig(context);
@@ -312,7 +333,7 @@ export const mysteryGridMethods = {
     }
   },
 
-  clearMysteryGridReveals(this: GameWindowThis, options: { preview?: boolean } = {}): void {
+  clearMysteryGridReveals(this: MysteryGridCommandContext, options: { preview?: boolean } = {}): void {
     setGridReveals(this as unknown as Record<string, unknown>, options.preview === true, []);
   }
 };

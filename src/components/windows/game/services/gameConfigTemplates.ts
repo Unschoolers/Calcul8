@@ -1,10 +1,8 @@
 import { createDefaultBracketBattleConfig } from "../../../../app-core/shared/bracket-battle-config.ts";
-import type { LuckGameType, WheelConfig } from "../../../../types/app.ts";
+import type { AppState, LuckGameType, WheelConfig } from "../../../../types/app.ts";
 import { createDefaultWheelConfig, generateTierId } from "./wheelDefaults.ts";
 
-export type GameConfigTemplateContext = {
-  currentLotId?: number | null;
-};
+export type GameConfigTemplateContext = Pick<AppState, "currentLotId">;
 
 export function cloneGameConfig<T>(config: T): T {
   return JSON.parse(JSON.stringify(config)) as T;

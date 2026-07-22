@@ -1,13 +1,12 @@
 import { translateAppMessage } from "../../../../app-core/i18n/index.ts";
 import type { LuckGameType, WheelConfig } from "../../../../types/app.ts";
 import { getMysteryGridCellCount } from "../commands/mysteryGridMethods.ts";
-import type { WheelSlot } from "./wheelSlots.ts";
 
-export interface GameAdapterContext {
+export type GameAdapterContext = {
   preferredLanguage?: unknown;
-  wheelMode?: unknown;
-  wheelDisplaySlots?: WheelSlot[];
-}
+  wheelMode?: "config" | "live";
+  wheelDisplaySlots?: readonly unknown[];
+};
 
 export interface TierPrizeGameAdapter {
   gameType: LuckGameType;

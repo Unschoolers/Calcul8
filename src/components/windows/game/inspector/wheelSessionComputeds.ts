@@ -21,6 +21,12 @@ function model(context: SessionComputedContext): WheelSessionViewModel {
   return context.wheelSessionModel ?? buildWheelSessionViewModel(context);
 }
 
+function field<K extends keyof WheelSessionViewModel>(key: K) {
+  return function (this: SessionComputedContext): WheelSessionViewModel[K] {
+    return model(this)[key];
+  };
+}
+
 /** Compatibility aliases for consumers that still read individual session fields. */
 export const wheelSessionComputeds = {
   wheelSessionModel(this: SessionComputedContext): WheelSessionViewModel {
@@ -35,37 +41,21 @@ export const wheelSessionComputeds = {
   wheelSessionProfit(this: SessionComputedContext): number {
     return getWheelSessionProfit(this);
   },
-  wheelSessionProfitClass(this: SessionComputedContext): string {
-    return model(this).profitClass;
-  },
-  wheelSessionProfitDisplay(this: SessionComputedContext): string {
-    return model(this).profitDisplay;
-  },
+  wheelSessionProfitClass: field("profitClass"),
+  wheelSessionProfitDisplay: field("profitDisplay"),
   wheelSessionMarginDisplay(this: SessionComputedContext): string {
     const margin = calculateWheelSessionMarginPercent(this);
     return margin == null ? "—" : `${margin.toFixed(1)}%`;
   },
-  wheelSessionMarginColor(this: SessionComputedContext): string {
-    return model(this).marginColor;
-  },
-  wheelSessionMarginBarWidth(this: SessionComputedContext): string {
-    return model(this).marginBarWidth;
-  },
-  wheelTargetMarginBarLeft(this: SessionComputedContext): string {
-    return model(this).targetMarginBarLeft;
-  },
-  wheelSessionMarginHint(this: SessionComputedContext): string {
-    return model(this).marginHint;
-  },
-  wheelTallyByTier(this: SessionComputedContext): WheelTierTally[] {
-    return model(this).tallyByTier;
-  },
+  wheelSessionMarginColor: field("marginColor"),
+  wheelSessionMarginBarWidth: field("marginBarWidth"),
+  wheelTargetMarginBarLeft: field("targetMarginBarLeft"),
+  wheelSessionMarginHint: field("marginHint"),
+  wheelTallyByTier: field("tallyByTier"),
   wheelSessionSourceGroups(this: SessionComputedContext): WheelSessionSourceGroup[] {
     const config = (this.wheelDisplayConfig || null) as WheelConfig | null;
     const tally = (this.wheelTallyByTier || []) as WheelTierTally[];
     return buildWheelSessionSourceGroups(this, config, tally);
   },
-  wheelTrackerInventory(this: SessionComputedContext): WheelSessionSourceGroup[] {
-    return model(this).sourceGroups;
-  }
+  wheelTrackerInventory: field("sourceGroups")
 };

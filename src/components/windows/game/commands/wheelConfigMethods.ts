@@ -18,13 +18,16 @@ import {
     normalizeWheelTierSources
 } from "../../../../app-core/shared/wheel-tier-sources.ts";
 import { getActiveStorageScope } from "../../../../app-core/workspace-scope.ts";
+import type { GameCoordinatorContext } from "../../../../app-core/context/game.ts";
 import type { Lot, LuckGameType, WheelConfig, WheelTier } from "../../../../types/app.ts";
-import { getWheelController, type GameWindowThis } from "../coordinator/gameControllerState.ts";
+import type { GameHostState } from "../services/gameHostState.ts";
+import { getWheelController } from "../services/gameSessionState.ts";
 import { remapSpinCountsByTier } from "../services/wheelCountRemapping.ts";
 import { cloneGameConfig, createTierPrizeGameConfigFromTemplate } from "../services/gameConfigTemplates.ts";
 import {
   clearWheelProofState,
-  resetLoadedTierPrizeGameState
+  resetLoadedTierPrizeGameState,
+  type WheelSessionContext
 } from "../services/wheelSessionState.ts";
 import { createDefaultTier } from "../services/wheelDefaults.ts";
 import { calculateWheelLotCostPerPack } from "../services/wheelPricing.ts";
@@ -35,7 +38,33 @@ import {
     getWheelTierInventoryMeta
 } from "../services/wheelSaleSupport.ts";
 
-type GameConfigContext = Record<string, unknown> & Partial<GameWindowThis>;
+type GameConfigContext = WheelSessionContext
+  & Pick<GameCoordinatorContext,
+    "activeScopeType" | "activeWorkspaceId" | "currentLotId" | "googleAuthEpoch" | "hasProAccess"
+  >
+  & Pick<GameHostState,
+    | "appliedWheelConfigSnapshot" | "editingWheelConfig" | "wheelConfigReady" | "wheelConfigSyncPending"
+    | "wheelCreateDialog" | "wheelEndingSession" | "_wheelDraftSaveTimeoutId"
+  >
+  & {
+    isGoogleSignedIn?: boolean;
+    isOffline: boolean;
+    pushCloudSync(force?: boolean, options?: { allowEmptyOverwrite?: boolean }): Promise<void>;
+    canApplyWheelConfig: boolean;
+    currentLotCostPerPack: number;
+    hasPendingWheelChanges: boolean;
+    _wheelSkipConfigReload?: boolean;
+    applyWheelConfig(): void;
+    canTierBeChase(tier: WheelTier): boolean;
+    clearWheelDraft(wheelConfigId?: number | null): void;
+    drawWheel(offset?: number): void;
+    getCostPerPackForTier(tier: WheelTier): number;
+    loadWheelFromSession(): boolean;
+    persistLastWheelConfigSelection(): void;
+    saveWheelDraft(): void;
+    saveWheelSession(): void;
+    showWheelConfigSaved?(): void;
+  };
 
 function resetLoadedGame(context: GameConfigContext, clearSlots: boolean): void {
   resetLoadedTierPrizeGameState(
@@ -128,7 +157,7 @@ export const wheelConfigMethods = {
     this.persistLastWheelConfigSelection?.();
     this.editingWheelConfig = cloneGameConfig(newConfig);
     this.wheelCreateDialog = false;
-    queueCloudConfigSyncPush(this as Parameters<typeof queueCloudConfigSyncPush>[0]);
+    queueCloudConfigSyncPush(this);
   },
 
   createNewWheelConfig(this: GameConfigContext): void {
@@ -207,8 +236,8 @@ export const wheelConfigMethods = {
     this.wheelConfigs = [...configs];
     this.activeWheelConfigId = configs.length > 0 ? configs[0]!.id : null;
     this.persistLastWheelConfigSelection?.();
-    queueCloudConfigSyncPush(this as Parameters<typeof queueCloudConfigSyncPush>[0]);
-    void broadcastWheelSession(this as Parameters<typeof broadcastWheelSession>[0]);
+    queueCloudConfigSyncPush(this);
+    void broadcastWheelSession(this);
   },
 
   applyWheelConfig(this: GameConfigContext): void {
@@ -243,7 +272,7 @@ export const wheelConfigMethods = {
         this.editingWheelConfig = cloneGameConfig(sanitizedUpdated);
         this.appliedWheelConfigSnapshot = cloneGameConfig(sanitizedUpdated);
         resetLoadedGame(this, true);
-        queueCloudConfigSyncPush(this as Parameters<typeof queueCloudConfigSyncPush>[0]);
+        queueCloudConfigSyncPush(this);
         this.showWheelConfigSaved?.();
         return;
       }
@@ -318,8 +347,8 @@ export const wheelConfigMethods = {
       this.wheelChasePendingTierId = "";
       this.wheelSessionUpdatedAt = Date.now();
       this.saveWheelSession?.();
-      queueCloudConfigSyncPush(this as Parameters<typeof queueCloudConfigSyncPush>[0]);
-      void broadcastWheelSession(this as Parameters<typeof broadcastWheelSession>[0]);
+      queueCloudConfigSyncPush(this);
+      void broadcastWheelSession(this);
       nextTick(() => this.drawWheel?.(this.wheelCurrentAngle || 0));
       // Show the saved snackbar
       this.showWheelConfigSaved?.();

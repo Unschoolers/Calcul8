@@ -1,6 +1,6 @@
 # Calcul8 Refactor Plan
 
-Updated on 2026-07-21 after completing the session-first authentication boundary and rescanning the repository for consolidation opportunities. Completed UI, bilingual contract, realtime recovery, system configuration, bracket battle, singles-image work, complete account erasure, production CORS and distributed rate-limit hardening, release-gate coverage, generated artifact hygiene, billing/session/Whatnot concurrency fixes, atomic local snapshot application, public-session access revalidation, session-first frontend authentication, and the two cross-document recovery workflows are intentionally removed from this plan.
+Updated on 2026-07-22 after completing the shared game-engine consolidation. Completed UI, bilingual contract, realtime recovery, system configuration, bracket battle, singles-image work, complete account erasure, production CORS and distributed rate-limit hardening, release-gate coverage, generated artifact hygiene, billing/session/Whatnot concurrency fixes, atomic local snapshot application, public-session access revalidation, session-first frontend authentication, the two cross-document recovery workflows, and the shared game engine are intentionally removed from the active priorities.
 
 This is the active technical and security backlog, plus a staged test-maintenance follow-up discovered while promoting all tests into `verify:all`. The production priorities below target real net deletion through shared services, typed dependency injection, reusable domain contracts, and focused generic helpers. Moving the same code into more files does not count as a successful refactor. Each item should be implemented TDD-style, verified against the affected package, and deleted from this file once the repo proves it is done.
 
@@ -10,44 +10,32 @@ Production line estimates are planning ranges from the 2026-07-21 scan. They exc
 
 | Priority | Refactor | Current production footprint | Target net reduction |
 | --- | --- | ---: | ---: |
-| 1 | Finish the shared game engine | About 11,051 TypeScript lines | 1,200-1,800 lines |
-| 2 | Replace untyped component context bridges with typed dependency injection | 431 `Record<string, unknown>` occurrences | 500-900 lines |
-| 3 | Build a typed Cosmos repository kernel | About 2,538 lines across four large repositories | 450-750 lines |
-| 4 | Unify Whatnot CSV and OAuth import pipelines | About 6,223 frontend and API lines | 450-800 lines |
-| 5 | Extract reusable window and dashboard controllers | About 4,925 lines across the major windows | 350-650 lines |
+| 1 | Replace untyped component context bridges with typed dependency injection | 431 `Record<string, unknown>` occurrences at the 2026-07-21 scan | 500-900 lines |
+| 2 | Build a typed Cosmos repository kernel | About 2,538 lines across four large repositories | 450-750 lines |
+| 3 | Unify Whatnot CSV and OAuth import pipelines | About 6,223 frontend and API lines | 450-800 lines |
+| 4 | Extract reusable window and dashboard controllers | About 4,925 lines across the major windows | 350-650 lines |
 
-The combined planning target is approximately 2,950-4,900 net production lines. This is not a quota: correctness, explicit boundaries, strict typing, scope safety, and maintainability take precedence over deleting a line that still expresses necessary domain behavior.
+The remaining combined planning target is approximately 1,750-3,100 net production lines. This is not a quota: correctness, explicit boundaries, strict typing, scope safety, and maintainability take precedence over deleting a line that still expresses necessary domain behavior.
 
-### 1. Finish The Shared Game Engine
+## Completed Production Refactors
 
-**Priority:** Highest consolidation leverage and largest realistic production-line reduction.
+### Shared Game Engine
 
-**Scan finding:** The frontend game area under `src/components/windows/game` plus its shared contracts contains about 9,529 production TypeScript lines, while the game and wheel API features contain another 1,522. The existing adapter seam in `src/components/windows/game/services/gameAdapters.ts` is a good foundation, but reusable lifecycle and side-effect behavior is still spread across wheel-named command, state, inventory, sale, fairness, and spectator helpers. Large concentration points include `wheelSessionMethods.ts`, `wheelSpinMethods.ts`, `wheelConfigMethods.ts`, `wheelSessionState.ts`, `GameWindow.definition.ts`, and the stage/overlay coordinators.
+**Completed:** 2026-07-22.
 
-**Risk:** Wheel, Mystery Grid, and Bracket can drift into separate implementations of starting, restoring, publishing, settling, and ending a game. Repeated orchestration also makes inventory loss, duplicate sales, stale spectator snapshots, and inconsistent recovery more likely. Merely renaming wheel files or introducing a universal base class would hide the duplication without removing it.
+The completed slice introduced one scoped session-storage boundary, deterministic outcome settlement, an adapter-driven lifecycle for Wheel, Grid, and Bracket, one canonical root-owned session state, strict leaf capability contracts, canonical shared public-session/sync declarations, and table-driven generic/legacy API route registration. Reflective controller aliases, the duplicate root-session projection, root autosave projection watchers, old aggregate/effect/reset layers, and copied declaration bodies were deleted.
 
-**Implementation direction:**
+Realtime application now preserves authoritative counts and rebuilds slot topology without restoring stale local storage. Personal legacy selection survives storage migration and quota failures. Runtime session owners are strict; partial completion is confined to an explicit test/legacy compatibility helper.
 
-1. Define a small game-session engine around explicit ports for persistence, spectator publication, inventory reservation/settlement, sale recording, fairness proof storage, time, and id generation.
-2. Move shared preview/live lifecycle transitions, start/reset/end orchestration, session restoration, and stale-operation protection into the engine.
-3. Represent Wheel, Mystery Grid, and Bracket behavior through typed adapters that supply their outcome rules, configuration validation, inventory requirements, settlement payloads, and spectator snapshot projection.
-4. Reuse one inventory and sale settlement pipeline for every game that consumes inventory or records a sale, while keeping stable mutation ids and optimistic-concurrency behavior.
-5. Reuse one spectator-session publisher and status lifecycle across game types.
-6. Keep canvas rendering, grid layout, dice animation, bracket resolution, and other genuinely game-specific algorithms outside the generic engine.
-7. Remove compatibility adapters and wheel-prefixed generic helpers only after all three game flows use the replacement boundary.
+**Measured result:** Direct comparison with the implementation base removes 1,101 net production TypeScript lines across `.ts`, `.mts`, and `.cts` files, excluding tests/specs and JSON. The stricter plain-`.ts` view removes 815 net lines. The original 1,200-line planning range was deliberately not forced: keeping narrow required leaf contracts instead of an optional coordinator mega-context is more maintainable than deleting another arbitrary 99 lines.
 
-**Architecture guardrails:**
+Game-specific rendering, grid layout, dice animation, Bracket resolution, fairness algorithms, and inventory rules remain explicit. Further game cleanup should be driven by a concrete behavior change or proven reuse case, not a line quota.
 
-- Do not build a base class that depends on the root Vue context.
-- Domain adapters must be pure where practical; browser, network, storage, and clock access belong behind injected ports.
-- A failed settlement must leave enough stable state to retry without duplicating sales or inventory deductions.
-- Mobile, desktop, and spectator experiences must consume the same underlying session state.
+**Verification:** Focused lifecycle, settlement, persistence, realtime, spectator, contract, and Vue scenario suites pass with strict frontend/API typechecking. The final repository-wide verification result is recorded with the implementation handoff.
 
-**Target net reduction:** 1,200-1,800 production TypeScript lines.
+## Active Production Refactors
 
-**Done when:** All three games use the same session lifecycle, persistence, spectator, inventory, and sale orchestration boundaries; game-specific files contain rules and rendering rather than duplicated infrastructure; existing fairness, inventory, sales, recovery, and spectator tests remain green; new adapter-contract tests prove each game supplies the required behavior; and the measured production TypeScript footprint is reduced within the target range or the final report explains which necessary domain behavior prevented it.
-
-### 2. Replace Untyped Component Context Bridges With Typed Dependency Injection
+### 1. Replace Untyped Component Context Bridges With Typed Dependency Injection
 
 **Priority:** Critical frontend architecture cleanup that enables the remaining window and game refactors.
 
@@ -76,7 +64,7 @@ The combined planning target is approximately 2,950-4,900 net production lines. 
 
 **Done when:** Major windows no longer inject or accept the aggregate `appCtx`; domain components use typed injection keys or explicit typed props; root methods are not discovered dynamically; component tests use small domain fakes instead of partial AppState objects; strict frontend and test typechecks pass; and an architecture test prevents new aggregate-context dependencies from spreading.
 
-### 3. Build A Typed Cosmos Repository Kernel
+### 2. Build A Typed Cosmos Repository Kernel
 
 **Priority:** High backend reuse, consistency, and concurrency safety.
 
@@ -105,7 +93,7 @@ The combined planning target is approximately 2,950-4,900 net production lines. 
 
 **Done when:** The four large repositories share one tested implementation of Cosmos mechanics; duplicated ETag, retry, query, and conflict boilerplate is removed; domain-specific state transitions remain explicit; repository tests cover not-found, create conflict, stale ETag, retry, and partition-key behavior; API typecheck and tests pass; and the four-repository net footprint falls within the target range or retained differences are documented as domain-specific.
 
-### 4. Unify Whatnot CSV And OAuth Import Pipelines
+### 3. Unify Whatnot CSV And OAuth Import Pipelines
 
 **Priority:** High-value domain consolidation around a revenue-critical workflow.
 
@@ -135,7 +123,7 @@ The combined planning target is approximately 2,950-4,900 net production lines. 
 
 **Done when:** CSV and OAuth imports emit one validated candidate model; review and confirmation contracts are shared rather than duplicated; grouping, type inference, duplicate-candidate, and external-reference rules have one source of truth; memo preservation and scope isolation tests remain green; raw provider access and durable recovery remain server-side; and combined Whatnot production lines are reduced within the target range without weakening recovery behavior.
 
-### 5. Extract Reusable Window And Dashboard Controllers
+### 4. Extract Reusable Window And Dashboard Controllers
 
 **Priority:** High frontend maintainability and practical line reduction after typed DI is established.
 
@@ -165,11 +153,10 @@ The combined planning target is approximately 2,950-4,900 net production lines. 
 
 ## Recommended Execution Order
 
-1. Finish the shared game engine, using the existing adapter seam and preserving game-specific rendering.
-2. Introduce typed dependency-injection ports domain by domain, starting with the dependencies needed by Game and Portfolio.
-3. Build and migrate the Cosmos repository kernel one repository slice at a time.
-4. Unify Whatnot import contracts and pure normalization before changing durable confirmation execution.
-5. Extract window/dashboard controllers after typed ports remove their dependency on aggregate application context.
+1. Introduce typed dependency-injection ports domain by domain, starting with Portfolio and other remaining aggregate-context consumers.
+2. Build and migrate the Cosmos repository kernel one repository slice at a time.
+3. Unify Whatnot import contracts and pure normalization before changing durable confirmation execution.
+4. Extract window/dashboard controllers after typed ports remove their dependency on aggregate application context.
 
 Each slice must report production TypeScript lines before and after, including the shared infrastructure it added. A slice that only moves lines, increases casts, weakens types, or replaces explicit domain behavior with an opaque generic framework does not satisfy this plan.
 

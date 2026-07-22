@@ -82,10 +82,10 @@ uiContracts = component "Shared UI Contracts" "Reusable mobile-first UI contract
 gameWorkflows = component "Game Workflows" "Wheel, grid, and public game workflows." "src/components/windows/game, src/components/windows/wheel" {
     tags "Web Component"
     properties {
-        "Owns" "Typed preview/live game-session transitions, wheel/grid configuration, staged hits, live controls, fairness proof links, and spectator publishing effects."
+        "Owns" "One canonical root-owned game session, scoped persistence, typed preview/live lifecycle transitions, deterministic outcome settlement, wheel/grid configuration, Bracket lifecycle, fairness proof links, and spectator publishing effects."
         "Must not own" "Realtime socket infrastructure, API token validation, shared room naming contracts, or unrelated sales import behavior."
-        "Boundary data" "Game-session commands and effects, configs, spin outcomes, pending inventory issues, public session ids, fairness tokens, and staged display state."
-        "Failure recovery" "Keep preview and live transitions on one reducer path, inject persistence/publishing effects, block unsafe actions until lot selections resolve, and recover public-session display after realtime gaps."
+        "Boundary data" "Narrow game capability ports, canonical session snapshots, configs, spin outcomes, pending inventory issues, public session ids, fairness tokens, and staged display state."
+        "Failure recovery" "Preserve authoritative realtime session topology, restore scoped and personal legacy selections safely, contain corrupt storage, block unsafe actions until lot selections resolve, and recover public-session display after realtime gaps."
     }
 }
 

@@ -1,4 +1,4 @@
-import { type PropType } from "vue";
+import { defineComponent, type PropType } from "vue";
 
 import { createGameStageOverlayController } from "./gameStageOverlayController.ts";
 import { createGameStageOverlayScene } from "./gameStageOverlayScene.ts";
@@ -6,18 +6,7 @@ import type { GameStageOverlayCommand } from "./gameStageOverlayTypes.ts";
 
 type GameStageOverlayControllerHandle = ReturnType<typeof createGameStageOverlayController>;
 
-type GameStageOverlayShellThis = {
-  enabled: boolean;
-  command: GameStageOverlayCommand | null;
-  overlayController: GameStageOverlayControllerHandle | null;
-  overlayMounted: boolean;
-  $refs: Record<string, unknown>;
-  $emit: (event: "mounted-change", mounted: boolean) => void;
-  ensureOverlayMounted(): void;
-  teardownOverlay(): void;
-};
-
-export const GameStageOverlayShell = {
+export const GameStageOverlayShell = defineComponent({
   name: "GameStageOverlayShell",
   props: {
     enabled: {
@@ -37,14 +26,14 @@ export const GameStageOverlayShell = {
     };
   },
   watch: {
-    enabled(this: GameStageOverlayShellThis, enabled: boolean) {
+    enabled(enabled: boolean) {
       if (enabled) {
         this.ensureOverlayMounted();
         return;
       }
       this.teardownOverlay();
     },
-    command(this: GameStageOverlayShellThis, command: GameStageOverlayCommand | null) {
+    command(command: GameStageOverlayCommand | null) {
       if (!command) {
         return;
       }
@@ -58,7 +47,7 @@ export const GameStageOverlayShell = {
     }
   },
   methods: {
-    ensureOverlayMounted(this: GameStageOverlayShellThis): void {
+    ensureOverlayMounted(): void {
       if (!this.enabled || this.overlayController) {
         return;
       }
@@ -82,7 +71,7 @@ export const GameStageOverlayShell = {
         controller.dispatch(this.command);
       }
     },
-    teardownOverlay(this: GameStageOverlayShellThis): void {
+    teardownOverlay(): void {
       const controller = this.overlayController;
       this.overlayController = null;
       controller?.unmount();
@@ -93,12 +82,12 @@ export const GameStageOverlayShell = {
       this.$emit("mounted-change", false);
     }
   },
-  mounted(this: GameStageOverlayShellThis) {
+  mounted() {
     if (this.enabled) {
       this.ensureOverlayMounted();
     }
   },
-  beforeUnmount(this: GameStageOverlayShellThis) {
+  beforeUnmount() {
     this.teardownOverlay();
   }
-};
+});

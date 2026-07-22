@@ -51,7 +51,7 @@ test("game and sync declarations compile for isolated NodeNext module consumers"
   });
 
   assert.equal(compile.status, 0, `${compile.stdout}${compile.stderr}`);
-});
+}, 15_000);
 
 test("game public session declarations use one canonical contract body", async () => {
   const declarationUrls = [

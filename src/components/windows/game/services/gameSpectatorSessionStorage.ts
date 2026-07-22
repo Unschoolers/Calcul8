@@ -1,3 +1,5 @@
+import type { GameHostState } from "./gameHostState.ts";
+
 export type StoredGameSpectatorSessionStatus = "inactive" | "starting" | "live" | "ended";
 
 export type StoredGameSpectatorSessionState = {
@@ -7,12 +9,9 @@ export type StoredGameSpectatorSessionState = {
   qrUrl: string;
 };
 
-type GameSpectatorSessionContext = {
-  gameSpectatorSessionId?: unknown;
-  gameSpectatorSessionStatus?: unknown;
-  gameSpectatorSessionUrl?: unknown;
-  gameSpectatorSessionQrUrl?: unknown;
-};
+type GameSpectatorSessionContext = Pick<GameHostState,
+  "gameSpectatorSessionId" | "gameSpectatorSessionStatus" | "gameSpectatorSessionUrl" | "gameSpectatorSessionQrUrl"
+>;
 
 const LEGACY_WHEEL_SPECTATOR_FIELDS = {
   publicSessionId: "wheelSpectatorSessionId",

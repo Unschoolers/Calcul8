@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { test } from "vitest";
 import { GameWindow } from "../src/components/windows/game/GameWindow.ts";
 
@@ -57,6 +57,38 @@ test("game state has one owner without legacy controller aliases", () => {
   ].map((file) => readFileSync(file, "utf8")).join("\n");
   assert.doesNotMatch(controller, /GAME_CONTROLLER_LEGACY_ALIAS_MAP/);
   assert.doesNotMatch(commands, /wheelSkippedDeductions/);
+});
+
+test("game coordinators derive context contracts instead of duplicating host state", () => {
+  const controller = readFileSync(
+    "src/components/windows/game/coordinator/gameControllerState.ts",
+    "utf8"
+  );
+  const bracketPanel = readFileSync(
+    "src/components/windows/game/bracket/BracketBattlePanel.ts",
+    "utf8"
+  );
+
+  assert.doesNotMatch(controller, /type GameWindowThis[\s\S]*?Methods from spread method objects/);
+  assert.doesNotMatch(bracketPanel, /type BracketBattlePanelThis = Record<string, unknown> & \{/);
+});
+
+test("game leaf modules do not depend on the coordinator host context", () => {
+  const gameRoot = "src/components/windows/game";
+  const visit = (directory: string): string[] => readdirSync(directory, { withFileTypes: true })
+    .flatMap((entry) => {
+      const path = `${directory}/${entry.name}`;
+      if (entry.isDirectory()) return entry.name === "coordinator" ? [] : visit(path);
+      return entry.isFile() && entry.name.endsWith(".ts") ? [path] : [];
+    });
+
+  for (const file of visit(gameRoot)) {
+    assert.doesNotMatch(
+      readFileSync(file, "utf8"),
+      /(?:from\s+["'][^"']*\/coordinator\/gameControllerState\.ts["']|GameCommandContext|GameWindowThis)/,
+      `${file} must depend on focused game ports, not the coordinator host context`
+    );
+  }
 });
 
 test("game window children use the game context without the wheelCtx compatibility bridge", () => {

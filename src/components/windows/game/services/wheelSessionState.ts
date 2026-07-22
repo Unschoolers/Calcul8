@@ -1,6 +1,8 @@
-import type { Lot, MysteryGridReveal, PendingWheelInventoryIssue, WheelConfig, WheelFairnessEntry } from "../../../../types/app.ts";
+import type { GameCoordinatorContext, GameSessionStateContext } from "../../../../app-core/context/game.ts";
+import type { Lot, MysteryGridReveal, WheelConfig, WheelFairnessEntry } from "../../../../types/app.ts";
 import { assignWheelPendingInventoryIssues } from "../../../../app-core/shared/wheel-session-compat.ts";
-import type { WheelControllerState } from "../coordinator/gameControllerState.ts";
+import type { GameHostState } from "./gameHostState.ts";
+import type { WheelControllerState } from "./gameSessionState.ts";
 import type { WheelSlot } from "./wheelSlots.ts";
 import {
   runGameSessionReset,
@@ -11,36 +13,15 @@ import {
 import { writeGameSpectatorSessionStorageState } from "./gameSpectatorSessionStorage.ts";
 import { buildSlotsFromConfig, createWheelGridLayoutSeed } from "./wheelSlots.ts";
 
-/** Minimal context interface shared by wheel session helpers. */
-export interface WheelSessionContext extends Record<string, unknown> {
-  wheelConfigs: WheelConfig[];
-  activeWheelConfigId: number | null;
-  editingWheelConfig: WheelConfig | null;
-  lots: Lot[];
-  wheelSpinCounts: number[];
-  wheelTotalSpins: number;
-  wheelLastResult: string;
-  wheelCurrentAngle: number;
-  wheelSessionUpdatedAt: number;
-  wheelPendingInventoryIssues: PendingWheelInventoryIssue[];
-  wheelEndingSession: boolean;
-  wheelEndSessionReviewActive: boolean;
-  gameSpectatorPublishPending: boolean;
-  gameSpectatorSessionId: string;
-  gameSpectatorSessionStatus: string;
-  gameSpectatorSessionUrl: string;
-  gameSpectatorSessionQrUrl: string;
-  wheelGridHighlightCellIndex: number;
-  wheelGridRevealAnimating: boolean;
-  wheelGridResetAnimating: boolean;
-  wheelChaseDialog: boolean;
-  wheelChasePreviewMode: boolean;
-  wheelChaseReplacementSinglesId: number | null;
-  wheelChasePendingTierId: string;
-  gameSpectatorDialog?: boolean;
-}
-
-export type WheelSessionResetContext = Record<string, unknown> & Partial<WheelSessionContext>;
+export type WheelSessionContext = GameSessionStateContext
+  & Pick<GameCoordinatorContext, "wheelConfigs" | "activeWheelConfigId" | "lots">
+  & Pick<GameHostState,
+    | "editingWheelConfig" | "wheelChaseDialog" | "wheelChasePreviewMode" | "wheelChaseReplacementSinglesId"
+    | "wheelChasePendingTierId" | "wheelGridHighlightCellIndex" | "wheelGridRevealAnimating" | "wheelGridResetAnimating"
+    | "wheelEndingSession" | "wheelEndSessionReviewActive" | "gameSpectatorDialog" | "gameSpectatorPublishPending"
+    | "gameSpectatorSessionId" | "gameSpectatorSessionStatus" | "gameSpectatorSessionUrl" | "gameSpectatorSessionQrUrl"
+  >;
+export type WheelSessionResetContext = WheelSessionContext;
 
 type WheelTallyHistoryEntry = { tierId: string; label: string; color: string; count: number };
 export type WheelSessionTrack = {
@@ -48,6 +29,7 @@ export type WheelSessionTrack = {
   totalSpins: number;
   fairnessHistory: WheelFairnessEntry[];
 };
+type WheelSessionTrackContext = Pick<GameSessionStateContext, "wheelSpinCounts" | "wheelTotalSpins">;
 
 export function clearWheelProofState(controller: WheelControllerState): void {
   controller.wheelSpinHash = "";
@@ -142,7 +124,7 @@ export function createWheelSessionSnapshot(
 }
 
 export function readWheelSessionTrack(
-  context: Pick<WheelSessionContext, "wheelSpinCounts" | "wheelTotalSpins">,
+  context: WheelSessionTrackContext,
   controller: WheelControllerState,
   execution: GameExecution
 ): WheelSessionTrack {
@@ -160,7 +142,7 @@ export function readWheelSessionTrack(
 }
 
 function writeWheelSessionTrack(
-  context: WheelSessionResetContext,
+  context: WheelSessionTrackContext,
   controller: WheelControllerState,
   execution: GameExecution,
   track: WheelSessionTrack
@@ -177,7 +159,7 @@ function writeWheelSessionTrack(
 }
 
 export function recordWheelSessionSpin(
-  context: WheelSessionContext,
+  context: WheelSessionTrackContext,
   controller: WheelControllerState,
   execution: GameExecution,
   slotIndex: number,
@@ -197,7 +179,7 @@ export function recordWheelSessionSpin(
 }
 
 export function recordWheelSessionFairness(
-  context: WheelSessionContext,
+  context: WheelSessionTrackContext,
   controller: WheelControllerState,
   execution: GameExecution,
   entry: WheelFairnessEntry
