@@ -4,6 +4,7 @@ import { afterEach, beforeEach, test, vi } from "vitest";
 import { salesMethods } from "../src/app-core/methods/sales.ts";
 import { getRootLotSales } from "../src/app-core/shared/sales-root-state.ts";
 import {
+  getScopedActiveWheelConfigStorageKey,
   getScopedWheelConfigsStorageKey,
   getScopedWheelSessionStorageKey,
   STORAGE_KEYS
@@ -172,7 +173,7 @@ test("loadWheelFromStorage reads workspace-scoped wheel state without falling ba
   });
 });
 
-test("loadWheelFromStorage leaves legacy root-session selection to the GameWindow decoder", async () => {
+test("loadWheelFromStorage migrates a valid personal legacy root-session selection", async () => {
   await withMockedLocalStorage(async (data) => {
     data.set(
       getScopedWheelConfigsStorageKey({ scopeType: "personal" }),
@@ -193,8 +194,9 @@ test("loadWheelFromStorage leaves legacy root-session selection to the GameWindo
 
     salesMethods.loadWheelFromStorage.call(context as never);
 
-    assert.equal(context.activeWheelConfigId, 7);
+    assert.equal(context.activeWheelConfigId, 42);
     assert.equal(typeof context.activeWheelConfigId, "number");
+    assert.equal(data.get(getScopedActiveWheelConfigStorageKey({ scopeType: "personal" })), "42");
     assert.equal(context.wheelTotalSpins, 0);
     assert.deepEqual((context.notify as ReturnType<typeof vi.fn>).mock.calls, []);
   });

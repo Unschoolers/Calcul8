@@ -11,6 +11,7 @@ import {
     getScopedActiveWheelConfigStorageKey,
     getScopedWheelConfigDraftStorageKey
 } from "../../../../app-core/storageKeys.ts";
+import { restoreStoredWheelConfigSelection } from "../../../../app-core/shared/wheel-config-selection.ts";
 import {
     getWheelTierSourceLotIds,
     isWheelTierMultiLot,
@@ -100,33 +101,11 @@ export const wheelConfigMethods = {
 
   restoreLastWheelConfigSelection(this: GameConfigContext): void {
     const configs = (this.wheelConfigs || []) as WheelConfig[];
-    const firstConfigId = configs[0]?.id ?? null;
-    const storageKey = getActiveWheelConfigStorageKey(this);
-    let storedId: number | null = null;
-
-    try {
-      storedId = normalizeStoredWheelConfigId(localStorage.getItem(storageKey));
-    } catch {
-      storedId = null;
-    }
-
-    if (configIdExists(configs, storedId)) {
-      this.activeWheelConfigId = storedId;
-      return;
-    }
-
-    const currentId = normalizeStoredWheelConfigId(this.activeWheelConfigId);
-    this.activeWheelConfigId = configIdExists(configs, currentId) ? currentId : firstConfigId;
-
-    try {
-      if (this.activeWheelConfigId == null) {
-        localStorage.removeItem(storageKey);
-      } else {
-        localStorage.setItem(storageKey, String(this.activeWheelConfigId));
-      }
-    } catch {
-      // Ignore unavailable storage.
-    }
+    this.activeWheelConfigId = restoreStoredWheelConfigSelection(
+      localStorage,
+      getActiveStorageScope(this as never),
+      configs
+    );
   },
 
   openWheelCreateDialog(this: GameConfigContext): void {

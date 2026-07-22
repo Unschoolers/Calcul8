@@ -7,7 +7,7 @@ import {
 } from "../src/app-core/storageKeys.ts";
 import { normalizeWheelConfig } from "../src/app-core/shared/normalize-wheel-config.ts";
 import { createNestedWindowContextBridge } from "../src/components/windows/shared/contextBridge.ts";
-import { getWheelController, getGameWindowLocalKeys } from "../src/components/windows/game/coordinator/gameControllerState.ts";
+import { ensureWheelControllerState, getWheelController, getGameWindowLocalKeys } from "../src/components/windows/game/coordinator/gameControllerState.ts";
 import {
     settleGameOutcomeSale,
     type GameOutcomeSaleInput
@@ -164,6 +164,7 @@ test("getWheelController resolves the bridge's canonical root owner", () => {
   const source = {
     wheelSpinHash: "seed-hash"
   } as Record<string, unknown>;
+  ensureWheelControllerState(source);
   const bridge = createNestedWindowContextBridge(source);
 
   const controllerA = getWheelController(bridge);

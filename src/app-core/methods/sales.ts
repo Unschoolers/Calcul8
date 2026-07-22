@@ -38,6 +38,7 @@ import {
     refreshChartsForCurrentTab
 } from "./sales-ui-helpers.ts";
 import { normalizeWheelConfigs } from "../shared/normalize-wheel-config.ts";
+import { restoreStoredWheelConfigSelection } from "../shared/wheel-config-selection.ts";
 import { persistSalesCacheToStorage } from "../shared/sales-cache-storage.ts";
 import { cacheRootLotSales, replaceRootLotSales } from "../shared/sales-root-state.ts";
 import {
@@ -261,7 +262,7 @@ export const salesMethods = {
         }
         if (parsed.length > 0) {
           this.wheelConfigs = normalizeWheelConfigs(parsed, this.lots);
-          this.activeWheelConfigId = this.wheelConfigs[0]?.id ?? null;
+          this.activeWheelConfigId = restoreStoredWheelConfigSelection(localStorage, storageScope, this.wheelConfigs);
         }
       }
       clearStorageReadFailure(this, storageScope, configsStorageKey);

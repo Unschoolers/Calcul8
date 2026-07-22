@@ -9,6 +9,8 @@ import { buildSlotsFromConfig } from "../src/components/windows/game/services/wh
 import {
     GameWindow
 } from "../src/components/windows/game/GameWindow.ts";
+import { getWheelController } from "../src/components/windows/game/coordinator/gameControllerState.ts";
+import { createNestedWindowContextBridge } from "../src/components/windows/shared/contextBridge.ts";
 import type { WheelConfig } from "../src/types/app.ts";
 
 // ── Pure functions ──────────────────────────────────────────────
@@ -248,6 +250,13 @@ test("GameWindow data does not duplicate root-owned spin state", () => {
   const data = GameWindow.data.call({}) as Record<string, unknown>;
   assert.equal("wheelSpinning" in data, false);
   assert.equal("wheelCurrentAngle" in data, false);
+});
+
+test("the production controller resolver rejects incomplete session owners", () => {
+  assert.throws(
+    () => getWheelController(createNestedWindowContextBridge({ wheelSpinCounts: [] })),
+    /missing game session field/i
+  );
 });
 
 test("refreshWheelCanvas retries when the wheel tab activates before refs are ready", async () => {

@@ -148,6 +148,7 @@ function handleWheelSessionUpdatedEvent(app: WorkspaceRealtimeContext, data: unk
     wheelSpinVerificationUrl: "",
     wheelSpinAlgorithm: ""
   });
+  app.wheelRealtimeApplyRevision += 1;
 }
 
 export function applyRealtimeMessage(app: WorkspaceRealtimeContext, room: string, eventType: string, data: unknown): void {

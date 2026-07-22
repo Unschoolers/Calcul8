@@ -39,6 +39,7 @@ export type GameCoordinatorContext = Pick<
   | "currentTab"
   | "wheelConfigs"
   | "activeWheelConfigId"
+  | "wheelRealtimeApplyRevision"
   | "lots"
   | "currentLotId"
   | "activeScopeType"

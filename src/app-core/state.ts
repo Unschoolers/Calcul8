@@ -276,6 +276,7 @@ export function createInitialState(): AppState {
     // Wheel
     wheelConfigs: [],
     activeWheelConfigId: null,
+    wheelRealtimeApplyRevision: 0,
     activeWheelSlots: [],
     wheelPreviewSlots: [],
     wheelInventoryWarning: "",

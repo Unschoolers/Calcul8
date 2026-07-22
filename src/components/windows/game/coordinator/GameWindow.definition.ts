@@ -138,6 +138,7 @@ export const gameWindowDefinition = {
     },
     wheelConfigs: {
       handler(this: GameWindowOverlayThis) {
+        if (this.wheelRealtimeApplyRevision > this._wheelAppliedRealtimeRevision) return;
         if (this._wheelSkipConfigReload === true) {
           this._wheelSkipConfigReload = false;
           return;
@@ -148,10 +149,14 @@ export const gameWindowDefinition = {
       deep: true
     },
     activeWheelConfigId(this: GameWindowOverlayThis) {
+      if (this.wheelRealtimeApplyRevision > this._wheelAppliedRealtimeRevision) return;
       this.persistLastWheelConfigSelection();
       this.loadWheelConfig();
       this.ensureWheelEditorState();
       this.syncGameStageOverlayState();
+    },
+    wheelRealtimeApplyRevision(this: GameWindowOverlayThis) {
+      this.applyRealtimeWheelSession();
     },
     wheelDisplaySlots: {
       handler(this: GameWindowThis) {
@@ -203,6 +208,15 @@ export const gameWindowDefinition = {
     ...wheelSessionMethods,
     ...gameSpectatorMethods,
     ...mysteryGridMethods,
+    applyRealtimeWheelSession(this: GameWindowOverlayThis): void {
+      this._wheelAppliedRealtimeRevision = this.wheelRealtimeApplyRevision;
+      const config = this.activeWheelConfig as WheelConfig | null;
+      this.editingWheelConfig = config ? cloneGameConfig(config) : null;
+      this.appliedWheelConfigSnapshot = config ? cloneGameConfig(config) : null;
+      this.persistLastWheelConfigSelection();
+      this.ensureWheelEditorState();
+      this.syncGameStageOverlayState();
+    },
     handleGameStageOverlayMountedChange(this: GameWindowOverlayThis, mounted: boolean): void {
       this.gameStageOverlayMounted = mounted;
     },
@@ -534,8 +548,12 @@ export const gameWindowDefinition = {
   mounted(this: GameWindowOverlayThis) {
     const configs = (this.wheelConfigs || []) as WheelConfig[];
     if (configs.length > 0) {
-      this.restoreLastWheelConfigSelection();
-      this.loadWheelConfig();
+      if (this.wheelRealtimeApplyRevision > this._wheelAppliedRealtimeRevision) {
+        this.applyRealtimeWheelSession();
+      } else {
+        this.restoreLastWheelConfigSelection();
+        this.loadWheelConfig();
+      }
       this.ensureWheelEditorState();
     }
     this.syncGameStageOverlayState();

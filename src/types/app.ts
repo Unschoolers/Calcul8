@@ -724,6 +724,7 @@ export interface AppState extends LotSetup {
   // Wheel
   wheelConfigs: WheelConfig[];
   activeWheelConfigId: number | null;
+  wheelRealtimeApplyRevision: number;
   activeWheelSlots: import("../components/windows/game/services/wheelSlots.ts").WheelSlot[];
   wheelPreviewSlots: import("../components/windows/game/services/wheelSlots.ts").WheelSlot[];
   wheelInventoryWarning: string;

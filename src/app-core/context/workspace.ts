@@ -173,6 +173,7 @@ export type WorkspaceRealtimeContext = Pick<
   | "workspacePresenceByUserId"
   | "wheelConfigs"
   | "activeWheelConfigId"
+  | "wheelRealtimeApplyRevision"
 > &
   Pick<CommerceMethodState, "loadSalesForLotId" | "getSalesStorageKey"> &
   Pick<SyncMethodState, "pullCloudSync"> &

@@ -40,6 +40,7 @@ export type GameWindowThis = ReturnType<typeof createGameWindowBaseState>
 
   // ===== Private internal state =====
   _wheelSkipConfigReload?: boolean;
+  _wheelAppliedRealtimeRevision: number;
   _wheelAutospinTimeoutId?: number;
   _wheelCelebrationTimeoutId?: number;
   _wheelHighlightTimeoutId?: number;
@@ -73,6 +74,7 @@ export type GameWindowThis = ReturnType<typeof createGameWindowBaseState>
   resetWheelSession(): void;
   startEndWheelSession(): void;
   loadWheelConfig(options?: { preserveLiveWheelState?: boolean }): void;
+  applyRealtimeWheelSession(): void;
   loadWheelFromSession(): boolean;
   applyWheelConfig(): void;
   saveWheelDraft(): void;
@@ -152,9 +154,18 @@ export function createWheelControllerState(): WheelControllerState {
 }
 
 export function getWheelController(context: object): WheelControllerState {
+  const input = context as Record<string, unknown>;
+  const owner = unwrapWindowBridgeContext(input);
+  if (owner === input) return ensureWheelControllerState(input);
+  const missing = Object.keys(createWheelControllerState()).find((key) => !(key in owner));
+  if (missing) throw new Error(`Missing game session field: ${missing}`);
+  return owner as unknown as WheelControllerState;
+}
+
+/** Explicit compatibility boundary for isolated tests and legacy partial hosts. */
+export function ensureWheelControllerState(context: object): WheelControllerState {
   const owner = unwrapWindowBridgeContext(context as Record<string, unknown>);
-  const defaults = createWheelControllerState() as unknown as Record<string, unknown>;
-  for (const [key, value] of Object.entries(defaults)) if (!(key in owner)) owner[key] = value;
+  for (const [key, value] of Object.entries(createWheelControllerState())) if (!(key in owner)) owner[key] = value;
   return owner as unknown as WheelControllerState;
 }
 
@@ -215,7 +226,8 @@ function createGameWindowBaseState() {
     bracketBattleSession: null as BracketBattleSession | null,
     bracketBattleLastRolls: [] as BracketBattleRoll[],
     bracketBattleRolling: false,
-    bracketBattleShowcaseMatchId: null as string | null
+    bracketBattleShowcaseMatchId: null as string | null,
+    _wheelAppliedRealtimeRevision: 0
   };
 }
 
