@@ -1,4 +1,3 @@
-import { inject, type PropType } from "vue";
 import {
   buildBuyerQuickViewSummary,
   type BuyerQuickViewSummary
@@ -23,7 +22,7 @@ import {
   type PortfolioSortDirection,
   type PortfolioSortOption
 } from "../../../app-core/computed/portfolio-performance.ts";
-import { createWindowContextBridge } from "../shared/contextBridge.ts";
+import { usePortfolioWindowPorts } from "./portfolioWindowPorts.ts";
 import { filterLotOptionItems } from "../../../app-core/shared/lot-option-items.ts";
 import { matchesBuyerProfileSearch } from "../../../app-core/buyer-profile.ts";
 import type { BuyerProfile } from "../../../types/app.ts";
@@ -113,12 +112,6 @@ function resolvePortfolioDashboardPresetDisplayItem(item: unknown): PortfolioDas
 
 export const PortfolioWindowDefinition = {
   name: "PortfolioWindow",
-  props: {
-    ctx: {
-      type: Object as PropType<Record<string, unknown>>,
-      required: true
-    }
-  },
   data() {
     return {
       portfolioLotFilterSearchQuery: "",
@@ -1060,10 +1053,8 @@ export const PortfolioWindowDefinition = {
       }).format(value == null || Number.isNaN(Number(value)) ? 0 : Number(value));
     }
   },
-  setup(props: { ctx: Record<string, unknown> }) {
-    const injectedCtx = inject<Record<string, unknown> | null>("appCtx", null);
-    const source = (injectedCtx ?? props.ctx) as Record<string, unknown>;
-    return createWindowContextBridge(source);
+  setup() {
+    return usePortfolioWindowPorts();
   }
 };
 

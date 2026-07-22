@@ -41,6 +41,8 @@ Game-specific rendering, grid layout, dice animation, Bracket resolution, fairne
 
 **Scan finding:** Production frontend code contains 431 `Record<string, unknown>` occurrences, including 353 under window components, plus about 60 repeated `ctx` prop, `inject("appCtx")`, and setup-bridge patterns. Portfolio, Singles, Sales, Live, and Game frequently receive the root application object and recover dependencies through casts, runtime property access, or very large `Pick<AppState, ...>` context types.
 
+**Progress (2026-07-22):** The Portfolio boundary now uses `PortfolioWindowPorts` through a typed injection key, with an explicit composition-root whitelist rather than a root-context prop or catch-all proxy. Buyer quick view uses its own `BuyerProfilePorts` in both Portfolio and Sales, and its runtime method discovery has been removed. The shared `createCapabilityPorts` adapter preserves reactive reads, bound commands, and `v-model` writes while exposing only declared capabilities; focused unit, architecture, Vue scenario, and strict test typechecks cover the slice. The remaining Portfolio controller methods still need typed read-model extraction, and Config, Live, Sales, Game, and shell aggregate-context boundaries remain active work under this item.
+
 **Risk:** Components can compile while depending on undeclared root methods, tests must construct large partial application objects, and a root-state rename can break unrelated windows at runtime. The pattern also works against the earlier AppContext breakup because aggregate context still crosses component boundaries indirectly.
 
 **Implementation direction:**

@@ -1,7 +1,12 @@
 import { fireEvent, screen } from "@testing-library/vue";
 import { describe, expect, test, vi } from "vitest";
 import BuyerIdentityLabel from "../../src/components/customers/BuyerIdentityLabel.vue";
+import BuyerQuickViewHost from "../../src/components/customers/BuyerQuickViewHost.vue";
 import BuyerQuickViewModal from "../../src/components/customers/BuyerQuickViewModal.vue";
+import {
+  buyerProfilePortsKey,
+  type BuyerProfilePorts
+} from "../../src/components/customers/buyerProfilePorts.ts";
 import type { BuyerProfile } from "../../src/types/app.ts";
 import { renderWithApp } from "./render.ts";
 
@@ -53,6 +58,34 @@ const summary = {
 };
 
 describe("buyer profile scenarios", () => {
+  test("loads and saves through the injected buyer capability port", async () => {
+    const saveBuyerProfile = vi.fn(async () => "saved" as const);
+    const ports: BuyerProfilePorts = {
+      buyerProfilesByKey: { cardking27: profile },
+      buyerProfileSaveStates: {},
+      getBuyerProfile: (username) => username === profile.username ? profile : null,
+      saveBuyerProfile,
+      resolveBuyerProfileConflict: vi.fn(async () => "reloaded" as const)
+    };
+
+    renderWithApp(BuyerQuickViewHost, {
+      props: {
+        modelValue: true,
+        summary,
+        t,
+        formatDate: (value: string) => value,
+        fmtCurrency: (value: number) => value.toFixed(2)
+      },
+      global: { provide: { [buyerProfilePortsKey as symbol]: ports } }
+    });
+
+    expect(screen.getByText("Marc")).toBeVisible();
+    await fireEvent.click(screen.getByRole("button", { name: "Edit buyer" }));
+    await fireEvent.update(screen.getByLabelText("Preferred name"), "Marcel");
+    await fireEvent.click(screen.getByRole("button", { name: "Save profile" }));
+    expect(saveBuyerProfile).toHaveBeenCalledWith(expect.objectContaining({ preferredName: "Marcel" }));
+  });
+
   test("renders preferred name, username, and compact tag overflow accessibly", () => {
     renderWithApp(BuyerIdentityLabel, { props: { username: profile.username, profile, maxVisibleTags: 2 } });
 

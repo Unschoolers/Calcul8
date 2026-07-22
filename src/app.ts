@@ -20,6 +20,16 @@ import SinglesConfigWindow from "./components/windows/singles/SinglesConfigWindo
 import GameWindow from "./components/windows/game/GameWindow.vue";
 import WhatnotCsvImportDialog from "./components/windows/whatnot/WhatnotCsvImportDialog.vue";
 import WhatnotReviewDialog from "./components/windows/whatnot/WhatnotReviewDialog.vue";
+import {
+  buyerProfilePortsKey,
+  createBuyerProfilePorts,
+  type BuyerProfilePorts
+} from "./components/customers/buyerProfilePorts.ts";
+import {
+  createPortfolioWindowPorts,
+  portfolioWindowPortsKey,
+  type PortfolioWindowPorts
+} from "./components/windows/portfolio/portfolioWindowPorts.ts";
 
 export const appOptions = {
   components: {
@@ -42,9 +52,11 @@ export const appOptions = {
     WhatnotReviewDialog
   },
   data: createInitialState,
-  provide() {
+  provide(this: BuyerProfilePorts & PortfolioWindowPorts) {
     return {
-      appCtx: this
+      appCtx: this,
+      [buyerProfilePortsKey]: createBuyerProfilePorts(this),
+      [portfolioWindowPortsKey]: createPortfolioWindowPorts(this)
     };
   },
   mounted: appLifecycle.mounted,

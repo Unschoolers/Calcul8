@@ -4,8 +4,7 @@ import { buildBuyerProfileTagSuggestions } from "../../app-core/buyer-profile.ts
 import type { BuyerQuickViewSummary } from "../../app-core/computed/buyer-quick-view.ts";
 import type { BuyerProfile, BuyerProfileSaveState } from "../../types/app.ts";
 import BuyerQuickViewModal from "./BuyerQuickViewModal.vue";
-
-type BuyerProfileHostContext = Record<string, unknown>;
+import { useBuyerProfilePorts } from "./buyerProfilePorts.ts";
 
 export const BuyerQuickViewHost = defineComponent({
   name: "BuyerQuickViewHost",
@@ -13,7 +12,6 @@ export const BuyerQuickViewHost = defineComponent({
   props: {
     modelValue: { type: Boolean, default: false },
     summary: { type: Object as PropType<BuyerQuickViewSummary | null>, default: null },
-    ctx: { type: Object as PropType<BuyerProfileHostContext>, required: true },
     t: { type: Function as PropType<(key: string) => string>, required: true },
     formatDate: { type: Function as PropType<(date: string) => string>, required: true },
     fmtCurrency: {
@@ -22,24 +20,26 @@ export const BuyerQuickViewHost = defineComponent({
     }
   },
   emits: ["update:modelValue"],
+  setup() {
+    return {
+      buyerProfilePorts: useBuyerProfilePorts()
+    };
+  },
   computed: {
     username(): string {
       return String(this.summary?.username || "").trim();
     },
     profile(): BuyerProfile | null {
-      const getter = this.ctx.getBuyerProfile;
-      return typeof getter === "function"
-        ? (getter as (username: string) => BuyerProfile | null).call(this.ctx, this.username)
-        : null;
+      return this.buyerProfilePorts.getBuyerProfile(this.username);
     },
     saveState(): BuyerProfileSaveState {
-      const states = this.ctx.buyerProfileSaveStates;
+      const states = this.buyerProfilePorts.buyerProfileSaveStates;
       if (!states || typeof states !== "object") return "idle";
       const value = (states as Record<string, BuyerProfileSaveState>)[normalizeBuyerKey(this.username)];
       return value || "idle";
     },
     tagSuggestions(): string[] {
-      const profiles = this.ctx.buyerProfilesByKey;
+      const profiles = this.buyerProfilePorts.buyerProfilesByKey;
       return profiles && typeof profiles === "object"
         ? buildBuyerProfileTagSuggestions(Object.values(profiles as Record<string, BuyerProfile>))
         : [];
@@ -47,16 +47,11 @@ export const BuyerQuickViewHost = defineComponent({
   },
   methods: {
     saveProfile(draft: { username: string; preferredName?: string; tags: string[] }): void {
-      const save = this.ctx.saveBuyerProfile;
-      if (typeof save === "function") {
-        void (save as (value: typeof draft) => Promise<unknown>).call(this.ctx, draft);
-      }
+      void this.buyerProfilePorts.saveBuyerProfile(draft);
     },
     resolveConflict(strategy: "retry" | "reload"): void {
-      const resolve = this.ctx.resolveBuyerProfileConflict;
-      if (typeof resolve === "function" && this.username) {
-        void (resolve as (username: string, action: typeof strategy) => Promise<unknown>)
-          .call(this.ctx, this.username, strategy);
+      if (this.username) {
+        void this.buyerProfilePorts.resolveBuyerProfileConflict(this.username, strategy);
       }
     }
   }

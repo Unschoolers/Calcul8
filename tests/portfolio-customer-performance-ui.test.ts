@@ -3,6 +3,25 @@ import { readFileSync } from "node:fs";
 import { describe, test } from "vitest";
 
 describe("portfolio customer performance UI", () => {
+  test("portfolio and buyer quick view use typed capability injection instead of root context props", () => {
+    const appTemplate = readFileSync("src/App.html", "utf8");
+    const portfolioTemplate = readFileSync("src/components/windows/portfolio/PortfolioWindow.html", "utf8");
+    const portfolioDefinition = readFileSync("src/components/windows/portfolio/PortfolioWindow.definition.ts", "utf8");
+    const buyerHost = readFileSync("src/components/customers/BuyerQuickViewHost.ts", "utf8");
+    const compositionRoot = readFileSync("src/app.ts", "utf8");
+
+    assert.doesNotMatch(appTemplate, /<portfolio-window[^>]*:ctx=/);
+    assert.doesNotMatch(portfolioTemplate, /<buyer-quick-view-host[^>]*:ctx=/);
+    assert.doesNotMatch(portfolioDefinition, /PropType<Record<string, unknown>>/);
+    assert.doesNotMatch(portfolioDefinition, /inject<Record<string, unknown>/);
+    assert.doesNotMatch(portfolioDefinition, /createWindowContextBridge/);
+    assert.doesNotMatch(buyerHost, /BuyerProfileHostContext = Record<string, unknown>/);
+    assert.match(portfolioDefinition, /usePortfolioWindowPorts\(\)/);
+    assert.match(buyerHost, /useBuyerProfilePorts\(\)/);
+    assert.match(compositionRoot, /portfolioWindowPortsKey/);
+    assert.match(compositionRoot, /buyerProfilePortsKey/);
+  });
+
   test("portfolio owns a local lots/customers performance switch", () => {
     const template = readFileSync("src/components/windows/portfolio/PortfolioWindow.html", "utf8");
     const sheetTemplate = readFileSync("src/components/windows/portfolio/PortfolioPerformanceSheet.html", "utf8");
