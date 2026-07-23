@@ -38,6 +38,11 @@
     "verify:local": "npm run verify:all",
     "smoke:realtime": "node scripts/smoke-realtime.mjs",
     "assetlinks": "node scripts/generate-assetlinks.mjs",
+    "android:sync": "npm run build && cap sync android",
+    "android:test": "node scripts/run-android-gradle.mjs testDebugUnitTest",
+    "android:lint": "node scripts/run-android-gradle.mjs lintRelease",
+    "android:bundle": "node scripts/run-android-gradle.mjs bundleRelease",
+    "verify:android": "node scripts/verify-android-compliance.mjs && npm run android:test && npm run android:lint",
     "release:play": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/release-google-play.ps1",
     "api:install": "npm --prefix apps/api install",
     "api:build": "npm --prefix apps/api run build",
@@ -61,6 +66,8 @@
   },
   "homepage": "https://github.com/Unschoolers/WhatFees#readme",
   "dependencies": {
+    "@capacitor/android": "8.4.0",
+    "@capacitor/core": "8.4.0",
     "@vueuse/core": "^14.3.0",
     "chart.js": "^4.5.1",
     "driver.js": "^1.4.0",
@@ -69,6 +76,7 @@
     "vuetify": "^4.0.6"
   },
   "devDependencies": {
+    "@capacitor/cli": "8.4.0",
     "@playwright/test": "^1.61.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/vue": "^8.1.0",

@@ -4,11 +4,13 @@ import { afterEach, beforeEach, test, vi } from "vitest";
 const {
   fetchWithRetryMock,
   handleExpiredAuthMock,
-  resolveApiBaseUrlMock
+  resolveApiBaseUrlMock,
+  clearCredentialStateMock
 } = vi.hoisted(() => ({
   fetchWithRetryMock: vi.fn(),
   handleExpiredAuthMock: vi.fn(),
-  resolveApiBaseUrlMock: vi.fn()
+  resolveApiBaseUrlMock: vi.fn(),
+  clearCredentialStateMock: vi.fn(async () => undefined)
 }));
 
 vi.mock("../src/app-core/methods/ui/common/shared.ts", async () => {
@@ -20,6 +22,12 @@ vi.mock("../src/app-core/methods/ui/common/shared.ts", async () => {
     resolveApiBaseUrl: resolveApiBaseUrlMock
   };
 });
+
+vi.mock("../src/app-core/platform/identity/resolveIdentityCredential.ts", () => ({
+  resolveIdentityCredential: () => ({
+    clearCredentialState: clearCredentialStateMock
+  })
+}));
 
 import { uiAccountMethods } from "../src/app-core/methods/ui/auth/account.ts";
 import {
@@ -151,6 +159,7 @@ test("logoutCurrentSession signs out, clears local auth state, and reloads", asy
   assert.equal(ctx.googleAuthEpoch, 1);
   assert.equal(getGoogleIdentityMock().cancel.mock.calls.length, 1);
   assert.equal(getGoogleIdentityMock().disableAutoSelect.mock.calls.length, 1);
+  assert.equal(clearCredentialStateMock.mock.calls.length, 1);
   assert.equal((window.location.reload as ReturnType<typeof vi.fn>).mock.calls.length, 1);
 });
 

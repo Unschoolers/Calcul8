@@ -1,5 +1,14 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test, vi } from "vitest";
+
+const { getAppRuntimeMock } = vi.hoisted(() => ({
+  getAppRuntimeMock: vi.fn(() => "web")
+}));
+
+vi.mock("../src/app-core/platform/runtime.ts", () => ({
+  getAppRuntime: getAppRuntimeMock
+}));
+
 import { pwaMethods } from "../src/app-core/methods/pwa.ts";
 import type { BeforeInstallPromptEvent } from "../src/types/app.ts";
 
@@ -88,6 +97,7 @@ function stubWindow(overrides: Record<string, any> = {}): Record<string, any> {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  getAppRuntimeMock.mockReturnValue("web");
 });
 
 afterEach(() => {
@@ -173,6 +183,28 @@ test("setupPwaUiHandlers does not push cloud sync while signed out", () => {
   assert.equal((context.debugLogEntitlement as ReturnType<typeof vi.fn>).mock.calls.length, 1);
   assert.equal((context.pushCloudSync as ReturnType<typeof vi.fn>).mock.calls.length, 0);
   assert.equal((context.retryPendingBuyerProfiles as ReturnType<typeof vi.fn>).mock.calls.length, 0);
+});
+
+test("Android runtime keeps connectivity listeners but skips install and service-worker hooks", () => {
+  getAppRuntimeMock.mockReturnValue("android");
+  const windowMock = stubWindow();
+  stubDocument({ readyState: "complete" });
+  const register = vi.fn();
+  vi.stubGlobal("navigator", {
+    onLine: true,
+    serviceWorker: { register }
+  });
+  const context = createContext();
+
+  pwa.setupPwaUiHandlers.call(context as never);
+  pwa.registerServiceWorker.call(context as never);
+
+  assert.deepEqual(
+    windowMock.addEventListener.mock.calls.map((call: unknown[]) => call[0]),
+    ["online", "offline"]
+  );
+  assert.equal(register.mock.calls.length, 0);
+  assert.equal(context.hasRegisteredServiceWorkerLifecycle, false);
 });
 
 test("startOfflineReconnectScheduler no-ops when already running and reconnects when online", () => {

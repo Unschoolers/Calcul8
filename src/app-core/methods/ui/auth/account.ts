@@ -13,6 +13,7 @@ import {
   clearStoredSessionUserId
 } from "../../../auth/index.ts";
 import { STORAGE_KEYS } from "../../../storageKeys.ts";
+import { resolveIdentityCredential } from "../../../platform/identity/resolveIdentityCredential.ts";
 
 function clearAppLocalStorage(): void {
   try {
@@ -84,6 +85,15 @@ function disableGoogleIdentityAutoSelect(): void {
   }
 }
 
+async function clearProviderCredentialState(): Promise<void> {
+  try {
+    await resolveIdentityCredential()?.clearCredentialState();
+  } catch (error) {
+    // Server revocation remains authoritative; provider cleanup is best effort.
+    console.warn("[whatfees][auth] provider credential cleanup failed", error);
+  }
+}
+
 async function postAccountAction(
   app: AuthAccountContext,
   path: string,
@@ -127,6 +137,7 @@ export const uiAccountMethods = {
 
     disableGoogleAutoSignIn();
     disableGoogleIdentityAutoSelect();
+    await clearProviderCredentialState();
     clearLocalAuthState(this);
     if (response.ok) {
       this.notify("Signed out.", "success");
@@ -150,6 +161,7 @@ export const uiAccountMethods = {
     clearAppLocalStorage();
     disableGoogleAutoSignIn();
     disableGoogleIdentityAutoSelect();
+    await clearProviderCredentialState();
     clearLocalAuthState(this);
     this.notify("Your personal cloud and local app data were cleared.", "success");
     reloadAppSoon();

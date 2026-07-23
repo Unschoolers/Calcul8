@@ -1,14 +1,11 @@
 [CmdletBinding()]
 param(
   [string]$PackageId = "io.whatfees",
-  [string]$KeystorePath = "whatfees-upload.jks",
-  [string]$KeyAlias = "whatfees-upload",
   [string]$PlaySigningFingerprint = "",
-  [string]$ManifestUrl = "https://app.whatfees.ca/manifest.webmanifest",
   [string]$PagesAssetlinksUrl = "https://app.whatfees.ca/.well-known/assetlinks.json",
   [switch]$SkipVerify,
   [switch]$SkipWebBuild,
-  [switch]$SkipTwaVersionSync,
+  [switch]$SkipVersionSync,
   [switch]$SkipBuild,
   [switch]$SkipDeployCheck
 )
@@ -23,73 +20,181 @@ function Write-Step {
 }
 
 function Require-Command {
-  param(
-    [string]$Name,
-    [string]$InstallHint
-  )
+  param([string]$Name, [string]$InstallHint)
   if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) {
     throw "Required command '$Name' not found. $InstallHint"
   }
 }
 
-function Convert-SecureToPlainText {
-  param([Security.SecureString]$SecureString)
-  $ptr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($SecureString)
-  try {
-    return [Runtime.InteropServices.Marshal]::PtrToStringBSTR($ptr)
-  } finally {
-    [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ptr)
-  }
-}
-
 function Invoke-Checked {
-  param(
-    [string]$Exe,
-    [string[]]$CmdArgs
-  )
-  if (-not $CmdArgs) {
-    $CmdArgs = @()
-  }
+  param([string]$Exe, [string[]]$CmdArgs)
   & $Exe @CmdArgs
   if ($LASTEXITCODE -ne 0) {
-    $joined = if ($CmdArgs.Count -gt 0) { $CmdArgs -join " " } else { "<no-args>" }
-    throw "Command failed (exit $LASTEXITCODE): $Exe $joined"
+    throw "Command failed (exit $LASTEXITCODE): $Exe $($CmdArgs -join ' ')"
   }
 }
 
-function Read-JsonFile {
+function Assert-BundleSignature {
   param([string]$Path)
-  if (-not (Test-Path -LiteralPath $Path)) {
-    return $null
+
+  $previousErrorPreference = $ErrorActionPreference
+  try {
+    # Android upload keys are intentionally self-signed. jarsigner -strict
+    # reports that expected trust-chain condition as exit 4 on JDK 21.
+    $ErrorActionPreference = "Continue"
+    $verificationOutput = (& jarsigner -verify -strict $Path 2>&1 | Out-String)
+    $verificationExitCode = $LASTEXITCODE
+  } finally {
+    $ErrorActionPreference = $previousErrorPreference
   }
 
-  $content = Get-Content -LiteralPath $Path -Raw
-  if ([string]::IsNullOrWhiteSpace($content)) {
-    return $null
+  $isExpectedUploadKeyWarning = (
+    $verificationExitCode -eq 4 -and
+    $verificationOutput -match "signer certificate is self-signed" -and
+    $verificationOutput -match "jar verified, with signer errors"
+  )
+  if ($verificationExitCode -ne 0 -and -not $isExpectedUploadKeyWarning) {
+    throw "App Bundle signature verification failed (jarsigner exit $verificationExitCode). Re-run with -verbose and -certs for details."
+  }
+  if ($verificationOutput -notmatch "jar verified") {
+    throw "jarsigner did not confirm that the App Bundle is signed."
   }
 
-  return $content | ConvertFrom-Json
+  Write-Host "App Bundle signature verified." -ForegroundColor Green
+}
+
+function Test-Java21Home {
+  param([string]$Path)
+  if ([string]::IsNullOrWhiteSpace($Path)) {
+    return $false
+  }
+  $javaExe = Join-Path $Path "bin/java.exe"
+  if (-not (Test-Path -LiteralPath $javaExe -PathType Leaf)) {
+    return $false
+  }
+  $previousErrorPreference = $ErrorActionPreference
+  try {
+    # Windows PowerShell surfaces java -version's stderr as NativeCommandError
+    # under Stop even though the process succeeds, so inspect its exit code.
+    $ErrorActionPreference = "Continue"
+    $versionOutput = (& $javaExe -version 2>&1 | Out-String)
+    $javaExitCode = $LASTEXITCODE
+  } finally {
+    $ErrorActionPreference = $previousErrorPreference
+  }
+  return $javaExitCode -eq 0 -and $versionOutput -match 'version "21(?:\.|")'
+}
+
+function Initialize-AndroidBuildEnvironment {
+  param([string]$RepoRoot)
+
+  $sdkCandidates = @(
+    $env:ANDROID_HOME,
+    $env:ANDROID_SDK_ROOT,
+    (Join-Path $RepoRoot ".android-sdk")
+  )
+  if (-not [string]::IsNullOrWhiteSpace($env:LOCALAPPDATA)) {
+    $sdkCandidates += Join-Path $env:LOCALAPPDATA "Android/Sdk"
+  }
+
+  $sdkPath = $null
+  foreach ($candidate in $sdkCandidates) {
+    if ([string]::IsNullOrWhiteSpace($candidate)) {
+      continue
+    }
+    $apiMarker = Join-Path $candidate "platforms/android-36/android.jar"
+    if (Test-Path -LiteralPath $apiMarker -PathType Leaf) {
+      $sdkPath = (Resolve-Path -LiteralPath $candidate).Path
+      break
+    }
+  }
+  if ([string]::IsNullOrWhiteSpace($sdkPath)) {
+    throw "Android SDK Platform 36 was not found. Set ANDROID_HOME or install it in .android-sdk."
+  }
+  $env:ANDROID_HOME = $sdkPath
+  $env:ANDROID_SDK_ROOT = $sdkPath
+
+  $javaCandidates = @($env:JAVA_HOME)
+  $javaRoots = @(
+    (Join-Path $env:ProgramFiles "Amazon Corretto"),
+    (Join-Path $env:ProgramFiles "Eclipse Adoptium"),
+    (Join-Path $env:ProgramFiles "Microsoft")
+  )
+  foreach ($root in $javaRoots) {
+    if (-not (Test-Path -LiteralPath $root -PathType Container)) {
+      continue
+    }
+    $javaCandidates += Get-ChildItem -LiteralPath $root -Directory |
+      Where-Object { $_.Name -match '^jdk-?21' } |
+      ForEach-Object { $_.FullName }
+  }
+
+  $javaHome = $javaCandidates | Where-Object { Test-Java21Home $_ } | Select-Object -First 1
+  if ([string]::IsNullOrWhiteSpace($javaHome)) {
+    throw "Java 21 was not found. Install JDK 21 or set JAVA_HOME to its installation directory."
+  }
+  $javaHome = (Resolve-Path -LiteralPath $javaHome).Path
+  $env:JAVA_HOME = $javaHome
+  $env:Path = "$(Join-Path $javaHome 'bin');$env:Path"
+
+  Write-Host "Android SDK: $sdkPath"
+  Write-Host "Java 21: $javaHome"
 }
 
 function Assert-Sha256Fingerprint {
   param([string]$Fingerprint)
   if ($Fingerprint -notmatch "^(?:[0-9A-F]{2}:){31}[0-9A-F]{2}$") {
-    throw "Invalid SHA-256 fingerprint format: '$Fingerprint'. Expected AA:BB:...:ZZ"
+    throw "Invalid SHA-256 fingerprint format."
   }
 }
 
-function Get-BubblewrapCommand {
-  if (Get-Command bubblewrap -ErrorAction SilentlyContinue) {
-    return @{
-      Exe = "bubblewrap"
-      Prefix = @()
+function Read-VersionProperties {
+  param([string]$Path)
+  $values = @{}
+  foreach ($line in Get-Content -LiteralPath $Path) {
+    if ($line -match "^([^=]+)=(.*)$") {
+      $values[$matches[1].Trim()] = $matches[2].Trim()
     }
   }
+  return $values
+}
 
-  Require-Command "npx" "Install Node.js/npm."
-  return @{
-    Exe = "npx"
-    Prefix = @("@bubblewrap/cli")
+function Assert-SigningConfiguration {
+  param([string]$RepoRoot)
+  $propertiesPath = Join-Path $RepoRoot "apps/android/keystore.properties"
+  if (Test-Path -LiteralPath $propertiesPath) {
+    $properties = Read-VersionProperties $propertiesPath
+    $requiredProperties = @("storeFile", "storePassword", "keyAlias", "keyPassword")
+    $missingProperties = @(
+      $requiredProperties | Where-Object {
+        -not $properties.ContainsKey($_) -or [string]::IsNullOrWhiteSpace($properties[$_])
+      }
+    )
+    if ($missingProperties.Count -gt 0) {
+      throw "Missing Android signing properties: $($missingProperties -join ', ')."
+    }
+    $storeFile = $properties.storeFile
+    if (-not [System.IO.Path]::IsPathRooted($storeFile)) {
+      $storeFile = Join-Path $RepoRoot "apps/android/app/$storeFile"
+    }
+    if (-not (Test-Path -LiteralPath $storeFile -PathType Leaf)) {
+      throw "Android signing keystore was not found: $storeFile"
+    }
+    return
+  }
+  $required = @(
+    "WHATFEES_ANDROID_KEYSTORE_FILE",
+    "WHATFEES_ANDROID_KEYSTORE_PASSWORD",
+    "WHATFEES_ANDROID_KEY_ALIAS",
+    "WHATFEES_ANDROID_KEY_PASSWORD"
+  )
+  $missing = @($required | Where-Object { [string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($_)) })
+  if ($missing.Count -gt 0) {
+    throw "Missing Android signing configuration. Add ignored apps/android/keystore.properties or set: $($missing -join ', ')."
+  }
+  $environmentStoreFile = [Environment]::GetEnvironmentVariable("WHATFEES_ANDROID_KEYSTORE_FILE")
+  if (-not (Test-Path -LiteralPath $environmentStoreFile -PathType Leaf)) {
+    throw "Android signing keystore was not found: $environmentStoreFile"
   }
 }
 
@@ -100,10 +205,9 @@ try {
   Write-Step "Pre-flight checks"
   Require-Command "npm" "Install Node.js/npm."
   Require-Command "node" "Install Node.js."
-  Require-Command "keytool" "Install JDK and ensure keytool is in PATH."
-
-  if (-not $SkipBuild) {
-    $null = Get-BubblewrapCommand
+  Initialize-AndroidBuildEnvironment $repoRoot
+  if ([string]::IsNullOrWhiteSpace($env:VITE_GOOGLE_CLIENT_ID)) {
+    throw "VITE_GOOGLE_CLIENT_ID is required for native Google identity."
   }
 
   if (-not $SkipVerify) {
@@ -116,156 +220,66 @@ try {
   if (-not $SkipWebBuild) {
     Write-Step "Running npm run build:prod"
     Invoke-Checked "npm" @("run", "build:prod")
-  } else {
-    Write-Host "Skipping build:prod step by request." -ForegroundColor Yellow
   }
 
-  if (-not $SkipTwaVersionSync) {
-    Write-Step "Syncing TWA version from package.json"
-    Invoke-Checked "node" @("scripts/sync-twa-version.mjs")
-
-    $twaManifestPath = Join-Path $repoRoot "twa-manifest.json"
-    $twaManifest = Read-JsonFile -Path $twaManifestPath
-    if ($null -ne $twaManifest) {
-      Write-Host "TWA version synced -> name: $($twaManifest.appVersionName), code: $($twaManifest.appVersionCode)" -ForegroundColor Green
-      if ($twaManifest.packageId -and $twaManifest.packageId -ne $PackageId) {
-        Write-Host "Warning: PackageId argument '$PackageId' differs from twa-manifest packageId '$($twaManifest.packageId)'." -ForegroundColor Yellow
-      }
-    }
-  } else {
-    Write-Host "Skipping TWA version sync by request." -ForegroundColor Yellow
+  if (-not $SkipVersionSync) {
+    Write-Step "Syncing Capacitor Android version"
+    Invoke-Checked "node" @("scripts/sync-capacitor-version.mjs")
   }
 
-  $resolvedKeystorePath = Resolve-Path -LiteralPath $KeystorePath -ErrorAction SilentlyContinue
-  if (-not $resolvedKeystorePath) {
-    Write-Step "Generating Android upload key ($KeystorePath)"
+  Write-Step "Syncing bundled web assets"
+  Invoke-Checked "npx" @("cap", "sync", "android")
 
-    $defaultDname = "CN=whatfees, OU=Mobile, O=Unschoolers, L=Montreal, ST=Quebec, C=CA"
-    $dname = Read-Host "Distinguished Name (DN) [`"$defaultDname`"]"
-    if ([string]::IsNullOrWhiteSpace($dname)) {
-      $dname = $defaultDname
-    }
+  Write-Step "Verifying Android API and Billing compliance"
+  Invoke-Checked "node" @("scripts/verify-android-compliance.mjs")
 
-    $storePassSecure = Read-Host "Keystore password" -AsSecureString
-    $storePassConfirmSecure = Read-Host "Confirm keystore password" -AsSecureString
-    $storePass = Convert-SecureToPlainText $storePassSecure
-    $storePassConfirm = Convert-SecureToPlainText $storePassConfirmSecure
-    if ($storePass -ne $storePassConfirm) {
-      throw "Keystore password confirmation mismatch."
-    }
-
-    $keyPassSecure = Read-Host "Key password (leave empty to reuse keystore password)" -AsSecureString
-    $keyPass = Convert-SecureToPlainText $keyPassSecure
-    if ([string]::IsNullOrWhiteSpace($keyPass)) {
-      $keyPass = $storePass
-    }
-
-    Invoke-Checked "keytool" @(
-      "-genkeypair",
-      "-v",
-      "-keystore", $KeystorePath,
-      "-alias", $KeyAlias,
-      "-keyalg", "RSA",
-      "-keysize", "2048",
-      "-validity", "10000",
-      "-dname", $dname,
-      "-storepass", $storePass,
-      "-keypass", $keyPass
-    )
-
-    $resolvedKeystorePath = Resolve-Path -LiteralPath $KeystorePath
-  } else {
-    Write-Step "Using existing keystore: $($resolvedKeystorePath.Path)"
-  }
-
-  Write-Step "Selecting SHA-256 fingerprint for Digital Asset Links"
-  $fingerprint = ""
   if (-not [string]::IsNullOrWhiteSpace($PlaySigningFingerprint)) {
     $fingerprint = $PlaySigningFingerprint.Trim().ToUpperInvariant()
-    Assert-Sha256Fingerprint -Fingerprint $fingerprint
-    Write-Host "Using -PlaySigningFingerprint value (recommended)." -ForegroundColor Green
+    Assert-Sha256Fingerprint $fingerprint
+    Write-Step "Generating Digital Asset Links file"
+    Invoke-Checked "npm" @("run", "assetlinks", "--", "--package=$PackageId", "--fingerprint=$fingerprint")
   } else {
-    $manualFingerprint = Read-Host "Play App Signing SHA-256 fingerprint from Play Console (recommended). Press Enter to fallback to upload key fingerprint"
-    if (-not [string]::IsNullOrWhiteSpace($manualFingerprint)) {
-      $fingerprint = $manualFingerprint.Trim().ToUpperInvariant()
-      Assert-Sha256Fingerprint -Fingerprint $fingerprint
-      Write-Host "Using Play App Signing fingerprint entered manually." -ForegroundColor Green
-    } else {
-      Write-Host "No Play App Signing fingerprint provided. Falling back to upload key fingerprint (may break TWA trust in production)." -ForegroundColor Yellow
-      $storePassForListSecure = Read-Host "Keystore password for upload-key fingerprint lookup" -AsSecureString
-      $storePassForList = Convert-SecureToPlainText $storePassForListSecure
-      $listOutput = & keytool -list -v -keystore $resolvedKeystorePath.Path -alias $KeyAlias -storepass $storePassForList 2>&1
-      if ($LASTEXITCODE -ne 0) {
-        throw "keytool fingerprint lookup failed."
-      }
-
-      $listText = ($listOutput | Out-String)
-      $fingerprintMatch = [regex]::Match($listText, "SHA256:\s*([0-9A-F:]+)")
-      if (-not $fingerprintMatch.Success) {
-        throw "Could not parse SHA-256 fingerprint from keytool output."
-      }
-      $fingerprint = $fingerprintMatch.Groups[1].Value.Trim().ToUpperInvariant()
-      Assert-Sha256Fingerprint -Fingerprint $fingerprint
-      Write-Host "Detected upload-key SHA-256 fingerprint: $fingerprint" -ForegroundColor Yellow
-    }
+    Write-Host "No Play signing fingerprint supplied; existing assetlinks.json is preserved." -ForegroundColor Yellow
   }
-
-  Write-Step "Generating Digital Asset Links file"
-  Invoke-Checked "npm" @("run", "assetlinks", "--", "--package=$PackageId", "--fingerprint=$fingerprint")
-
-  $assetlinksPath = Join-Path $repoRoot "public/.well-known/assetlinks.json"
-  if (-not (Test-Path -LiteralPath $assetlinksPath)) {
-    throw "Expected file was not created: $assetlinksPath"
-  }
-  Write-Host "Updated: $assetlinksPath" -ForegroundColor Green
 
   if (-not $SkipDeployCheck) {
-    Write-Step "GitHub Pages deploy check"
-    Write-Host "This script does not auto-deploy your repo (workflow depends on your branch setup)." -ForegroundColor Yellow
-    $shouldCheck = Read-Host "Check published URL now? (y/N)"
-    if ($shouldCheck -match "^(y|yes)$") {
-      try {
-        $response = Invoke-WebRequest -Uri $PagesAssetlinksUrl -Method GET -TimeoutSec 20
-        if ($response.StatusCode -eq 200) {
-          Write-Host "URL is reachable: $PagesAssetlinksUrl" -ForegroundColor Green
-        } else {
-          Write-Host "URL responded with status $($response.StatusCode): $PagesAssetlinksUrl" -ForegroundColor Yellow
-        }
-      } catch {
-        Write-Host "URL not reachable yet. Deploy, wait a minute, then retry:" -ForegroundColor Yellow
-        Write-Host "  $PagesAssetlinksUrl"
+    Write-Step "Checking published Digital Asset Links"
+    try {
+      $response = Invoke-WebRequest -Uri $PagesAssetlinksUrl -Method GET -TimeoutSec 20
+      if ($response.StatusCode -ne 200) {
+        throw "Digital Asset Links returned HTTP $($response.StatusCode)."
       }
+    } catch {
+      throw "Digital Asset Links deployment check failed: $($_.Exception.Message)"
     }
-  } else {
-    Write-Host "Skipping deploy URL check by request." -ForegroundColor Yellow
   }
 
   if (-not $SkipBuild) {
-    Write-Step "Building TWA with Bubblewrap"
-    $bubblewrap = Get-BubblewrapCommand
-
-    $hasBubblewrapConfig = (Test-Path -LiteralPath (Join-Path $repoRoot "twa-manifest.json")) -or
-      (Test-Path -LiteralPath (Join-Path $repoRoot ".bubblewrap"))
-
-    if (-not $hasBubblewrapConfig) {
-      Write-Host "Bubblewrap config not found. Running init first..." -ForegroundColor Yellow
-      Invoke-Checked $bubblewrap.Exe ($bubblewrap.Prefix + @("init", "--manifest=$ManifestUrl"))
+    Assert-SigningConfiguration $repoRoot
+    Require-Command "jarsigner" "Install JDK 21 and make its bin directory available."
+    Write-Step "Building signed Capacitor Android App Bundle"
+    Push-Location (Join-Path $repoRoot "apps/android")
+    try {
+      Invoke-Checked ".\gradlew.bat" @("bundleRelease")
+    } finally {
+      Pop-Location
     }
 
-    Invoke-Checked $bubblewrap.Exe ($bubblewrap.Prefix + @("build"))
-
-    $bundlePath = Join-Path $repoRoot "app-release-bundle.aab"
-    if (Test-Path -LiteralPath $bundlePath) {
-      Write-Host "Generated Android App Bundle: $bundlePath" -ForegroundColor Green
-    } else {
-      Write-Host "Warning: app-release-bundle.aab not found at repo root." -ForegroundColor Yellow
+    $version = Read-VersionProperties (Join-Path $repoRoot "apps/android/version.properties")
+    $bundlePath = Join-Path $repoRoot "apps/android/app/build/outputs/bundle/release/app-release.aab"
+    if (-not (Test-Path -LiteralPath $bundlePath)) {
+      throw "Expected Android App Bundle was not produced: $bundlePath"
     }
-  } else {
-    Write-Host "Skipping Bubblewrap build by request." -ForegroundColor Yellow
+    Write-Step "Verifying App Bundle signature"
+    Assert-BundleSignature $bundlePath
+    $outputDirectory = Join-Path $repoRoot "release-output"
+    New-Item -ItemType Directory -Force -Path $outputDirectory | Out-Null
+    $outputPath = Join-Path $outputDirectory "whatfees-$($version.VERSION_NAME).aab"
+    Copy-Item -LiteralPath $bundlePath -Destination $outputPath -Force
+    Write-Host "Generated Android App Bundle: $outputPath" -ForegroundColor Green
   }
 
   Write-Step "Done"
-  Write-Host "Next: commit + push public/.well-known/assetlinks.json and your release changes." -ForegroundColor Green
 }
 finally {
   Pop-Location

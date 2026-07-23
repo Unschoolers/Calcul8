@@ -7,7 +7,12 @@ const IGNORE_DIRS = new Set([
   ".git",
   "node_modules",
   "dist",
-  "android",
+  "build",
+  ".gradle",
+  ".idea",
+  "release-output",
+  ".android-sdk",
+  ".android-sdk-download",
   ".bubblewrap"
 ]);
 
@@ -20,6 +25,7 @@ const MAX_FILE_SIZE_BYTES = 1024 * 1024; // 1 MB
 const FORBIDDEN_TRACKED_ARTIFACT_PATTERNS = [
   /\.(?:apk|aab|idsig|jks|keystore|p12|pem|key)$/i,
   /(?:^|\/)keystore\.properties$/i,
+  /(?:^|\/)local\.properties$/i,
   /(?:^|\/)play-credentials\.json$/i,
   /(?:^|\/)service-account[^/]*\.json$/i
 ];
@@ -72,6 +78,13 @@ function walk(dir, results) {
     if (entry.name.startsWith(".DS_Store")) continue;
     const fullPath = path.join(dir, entry.name);
     const relPath = path.relative(ROOT, fullPath).replaceAll("\\", "/");
+
+    if (
+      relPath.startsWith("apps/android/app/src/main/assets/public/")
+      || relPath.startsWith("apps/android/capacitor-cordova-android-plugins/")
+    ) {
+      continue;
+    }
 
     if (entry.isDirectory()) {
       if (IGNORE_DIRS.has(entry.name)) continue;

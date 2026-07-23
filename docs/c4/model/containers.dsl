@@ -14,6 +14,10 @@ calcul8 = softwareSystem "Calcul8" "Local-first PWA for live selling, profitabil
         !include components/web.dsl
     }
 
+    android = container "Android App" "Source-controlled Capacitor shell hosting the shared web application and narrow Kotlin adapters for Google Identity and Play Billing." "Capacitor, Kotlin, Android WebView" {
+        tags "Mobile App", "Boundary"
+    }
+
     spectator = container "Spectator Page" "Public read-only bilingual browser entry for game sessions and live audience displays." "TypeScript, Vite" {
         tags "Web App", "Public Surface", "Microsoft Azure - Static Apps"
     }
@@ -46,9 +50,13 @@ calcul8 = softwareSystem "Calcul8" "Local-first PWA for live selling, profitabil
 }
 
 buyer -> calcul8.spectator "Views public game-session state." "HTTPS"
+seller -> calcul8.android "Uses the installed mobile app." "Android"
 
 calcul8.api -> azureHosting "Runs inside managed hosting and deployment infrastructure." "Azure Functions"
 calcul8.realtime -> azureHosting "Runs as the deployed realtime process." "Container/App Service"
+calcul8.android -> googleIdentity "Obtains a Google ID token through Credential Manager." "Native API"
+calcul8.android -> googlePlay "Queries products, launches purchases, and restores purchases." "BillingClient"
+calcul8.android -> calcul8.api "Bootstraps cookie sessions and submits purchase tokens for verification." "HTTPS JSON"
 
 !include components/web-relationships.dsl
 !include components/api-relationships.dsl

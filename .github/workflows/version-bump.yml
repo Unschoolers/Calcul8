@@ -8,7 +8,7 @@ on:
       - "package-lock.json"
       - "apps/api/package.json"
       - "apps/api/package-lock.json"
-      - "twa-manifest.json"
+      - "apps/android/version.properties"
   workflow_dispatch:
 
 permissions:
@@ -40,14 +40,14 @@ jobs:
       - name: Bump API version (patch)
         run: npm --prefix apps/api version patch --no-git-tag-version
 
-      - name: Sync TWA version fields
-        run: node scripts/sync-twa-version.mjs
+      - name: Sync Capacitor Android version fields
+        run: node scripts/sync-capacitor-version.mjs
 
       - name: Commit and push version changes
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add package.json package-lock.json apps/api/package.json apps/api/package-lock.json twa-manifest.json
+          git add package.json package-lock.json apps/api/package.json apps/api/package-lock.json apps/android/version.properties
           if git diff --cached --quiet; then
             echo "No version changes to commit."
             exit 0

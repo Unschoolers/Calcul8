@@ -19,6 +19,16 @@ authClient = component "Auth Client" "Browser session and entitlement state." "s
     }
 }
 
+platformAdapters = component "Platform Adapters" "Typed web/native ports for identity, billing, runtime, and install behavior." "src/app-core/platform" {
+    tags "Web Component", "Boundary", "Shared Contract"
+    properties {
+        "Owns" "Runtime selection and typed calls into browser providers or Capacitor Kotlin plugins."
+        "Must not own" "Entitlement projection, API session policy, UI state, or provider secrets."
+        "Boundary data" "Google ID tokens, Play product ids, purchase tokens and states, stable provider errors, and runtime kind."
+        "Failure recovery" "Normalize native failures, guard repeated purchases, preserve browser parity, and leave access decisions to the server."
+    }
+}
+
 workspaceState = component "Workspace State" "Personal and workspace scope state." "src/app-core/workspace-scope.ts, src/app-core/methods/ui/workspace" {
     tags "Web Component", "Shared Contract"
     properties {
@@ -130,6 +140,7 @@ i18nDisplay = component "I18n And Display Helpers" "Bilingual display helpers." 
 }
 
 appShell -> authClient "Loads session." "Calls"
+appShell -> platformAdapters "Selects browser or Android capabilities." "Calls"
 appShell -> workspaceState "Reads scope." "Calls"
 appShell -> salesWorkflows "Hosts." "Vue"
 appShell -> buyerProfileStore "Hosts shared buyer identity UI." "Vue"
@@ -145,6 +156,7 @@ salesWorkflows -> uiContracts "Composes." "Vue"
 salesWorkflows -> buyerProfileStore "Composes buyer metadata with derived sales analytics." "Vue"
 buyerProfileStore -> localStateStore "Caches scoped profiles and outbox." "Cache"
 buyerProfileStore -> apiClient "Lists and mutates profiles." "HTTPS JSON"
+authClient -> platformAdapters "Requests identity credentials and Play purchase operations." "Typed port"
 realtimeClient -> buyerProfileStore "Invalidates changed workspace profiles." "Calls"
 gameWorkflows -> localStateStore "Reads/writes." "Cache"
 whatnotWorkflows -> localStateStore "Maps imports." "Cache"

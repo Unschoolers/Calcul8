@@ -24,6 +24,7 @@ function renderWithCapabilities(
 
 function translate(key: string): string {
   return ({
+    authContinueWithGoogleAction: "Continue with Google",
     authGoogleFallbackHint: "Use Google to continue.",
     authGoogleFallbackAction: "Continue with Google",
     priceCalculatorTitle: "Profit calculator",
@@ -84,10 +85,26 @@ function translate(key: string): string {
 }
 
 describe("workflow dialog scenarios", () => {
+  test("starts native Google sign-in from the primary Android action", async () => {
+    const promptGoogleSignIn = vi.fn();
+    renderWithCapabilities(AuthGateCard, shellPortsKey, {
+      authGateTitle: "Welcome", authGateSubtitle: "Sign in to continue",
+      showNativeGoogleSignInAction: true, showGoogleSignInFallback: false,
+      t: translate, promptGoogleSignIn
+    });
+
+    await fireEvent.click(screen.getByRole("button", { name: "Continue with Google" }));
+
+    expect(promptGoogleSignIn).toHaveBeenCalledOnce();
+    expect(screen.queryByText("Use Google to continue.")).toBeNull();
+  });
+
   test("starts Google fallback sign-in from the authentication gate", async () => {
     const promptGoogleSignIn = vi.fn();
     renderWithCapabilities(AuthGateCard, shellPortsKey, {
-      authGateTitle: "Welcome", authGateSubtitle: "Sign in to continue", showGoogleSignInFallback: true, t: translate, promptGoogleSignIn
+      authGateTitle: "Welcome", authGateSubtitle: "Sign in to continue",
+      showNativeGoogleSignInAction: false, showGoogleSignInFallback: true,
+      t: translate, promptGoogleSignIn
     });
 
     await fireEvent.click(screen.getByRole("button", { name: "Continue with Google" }));
@@ -97,7 +114,9 @@ describe("workflow dialog scenarios", () => {
 
   test("does not show the fallback action while Google sign-in is available", () => {
     renderWithCapabilities(AuthGateCard, shellPortsKey, {
-      authGateTitle: "Welcome", authGateSubtitle: "Sign in to continue", showGoogleSignInFallback: false, t: translate, promptGoogleSignIn: vi.fn()
+      authGateTitle: "Welcome", authGateSubtitle: "Sign in to continue",
+      showNativeGoogleSignInAction: false, showGoogleSignInFallback: false,
+      t: translate, promptGoogleSignIn: vi.fn()
     });
     expect(screen.queryByRole("button", { name: "Continue with Google" })).toBeNull();
   });

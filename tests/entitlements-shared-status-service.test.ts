@@ -9,6 +9,15 @@ vi.mock("../src/app-core/utils/playBilling.ts", () => ({
   getPlayBillingService: getPlayBillingServiceMock
 }));
 
+vi.mock("../src/app-core/platform/play-billing/resolvePlayBilling.ts", () => ({
+  resolvePlayBillingPort: async () => {
+    const service = await getPlayBillingServiceMock();
+    return service
+      ? { isAvailable: async () => true }
+      : null;
+  }
+}));
+
 import {
   ENTITLEMENT_CACHE_KEY,
   PRO_ACCESS_KEY

@@ -42,6 +42,7 @@ export type EntitlementSignInContext = Pick<
   | "isAuthSessionResolving"
   | "preferredLanguage"
   | "showGoogleSignInFallback"
+  | "showNativeGoogleSignInAction"
   | "showManualPurchaseVerify"
   | "showVerifyPurchaseModal"
   | "googleAuthEpoch"

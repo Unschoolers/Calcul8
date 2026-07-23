@@ -119,6 +119,30 @@ test("returns preflight response without CORS headers for disallowed origins", a
   assert.equal(checkGlobalRateLimitMock.mock.calls.length, 0);
 });
 
+test("allows only the configured HTTPS native app origin", async () => {
+  const config = makeConfig({ allowedOrigins: ["https://app.whatfees.ca"] });
+  const accepted = await maybeHandleHttpGuards(
+    makeRequest("OPTIONS", { origin: "https://app.whatfees.ca" }),
+    config
+  );
+  assert.equal(
+    (accepted?.headers as Record<string, string>)["Access-Control-Allow-Origin"],
+    "https://app.whatfees.ca"
+  );
+
+  for (const origin of [
+    "capacitor://localhost",
+    "http://app.whatfees.ca",
+    "https://hostile.example"
+  ]) {
+    const rejected = await maybeHandleHttpGuards(
+      makeRequest("OPTIONS", { origin }),
+      config
+    );
+    assert.deepEqual(rejected?.headers, {});
+  }
+});
+
 test("allows deliberate dev wildcard preflight origins", async () => {
   const request = makeRequest("OPTIONS", { origin: "https://local-tool.example" });
   const response = await maybeHandleHttpGuards(request, makeConfig({ allowedOrigins: ["*"] }));

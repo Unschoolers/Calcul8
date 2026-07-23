@@ -22,6 +22,7 @@ jobs:
       web: ${{ steps.filter.outputs.web }}
       api: ${{ steps.filter.outputs.api }}
       realtime: ${{ steps.filter.outputs.realtime }}
+      android: ${{ steps.filter.outputs.android }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -37,6 +38,7 @@ jobs:
           web=false
           api=false
           realtime=false
+          android=false
 
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             base_sha="${{ github.event.pull_request.base.sha }}"
@@ -72,6 +74,12 @@ jobs:
                 realtime=true
                 ;;
             esac
+
+            case "${file}" in
+              apps/android/*|capacitor.config.ts|package.json|package-lock.json|src/app-core/platform/*|src/app-core/methods/ui/entitlements/*|src/app-core/methods/ui/auth/*|scripts/release-google-play.ps1|scripts/sync-capacitor-version.mjs|scripts/verify-android-compliance.mjs|.github/workflows/ci.yml)
+                android=true
+                ;;
+            esac
           done <<EOF
           ${changed_files}
           EOF
@@ -79,6 +87,7 @@ jobs:
           echo "web=${web}" >> "${GITHUB_OUTPUT}"
           echo "api=${api}" >> "${GITHUB_OUTPUT}"
           echo "realtime=${realtime}" >> "${GITHUB_OUTPUT}"
+          echo "android=${android}" >> "${GITHUB_OUTPUT}"
 
   validate-web:
     name: Validate web
@@ -148,3 +157,45 @@ jobs:
       - name: Realtime verification
         working-directory: apps/realtime
         run: npm run verify
+
+  validate-android:
+    name: Validate Android
+    needs: changes
+    if: ${{ needs.changes.outputs.android == 'true' }}
+    runs-on: ubuntu-latest
+    env:
+      VITE_GOOGLE_CLIENT_ID: ci-test.apps.googleusercontent.com
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+
+      - name: Install Android API 36
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build bundled web application
+        run: npm run build
+
+      - name: Synchronize Capacitor Android
+        run: npx cap sync android
+
+      - name: Verify Android compliance and tests
+        run: npm run verify:android
+
+      - name: Build unsigned release bundle
+        run: npm run android:bundle

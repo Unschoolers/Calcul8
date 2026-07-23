@@ -1,11 +1,9 @@
-import {
-  extractPurchaseTokenFromResult,
-  getPlayBillingService,
-  isPlayBillingPaymentRequestSupported,
-  purchasePlayProduct,
-  type DigitalGoodsService
-} from "../../../utils/playBilling.ts";
 import { getStoredGoogleIdToken } from "../../../auth/index.ts";
+import { resolvePlayBillingPort } from "../../../platform/play-billing/resolvePlayBilling.ts";
+import {
+  PlayBillingError,
+  type PlayBillingPort
+} from "../../../platform/play-billing/types.ts";
 import {
   resolveApiBaseUrl,
   submitPlayPurchaseVerification
@@ -28,10 +26,7 @@ export type PlayPurchaseDeps = {
   resolveApiBaseUrl: typeof resolveApiBaseUrl;
   getGoogleIdToken: () => string;
   getConfiguredPlayProductId: () => string;
-  getPlayBillingService: typeof getPlayBillingService;
-  isPlayBillingPaymentRequestSupported: typeof isPlayBillingPaymentRequestSupported;
-  purchasePlayProduct: typeof purchasePlayProduct;
-  extractPurchaseTokenFromResult: typeof extractPurchaseTokenFromResult;
+  resolvePlayBillingPort: typeof resolvePlayBillingPort;
   submitPlayPurchaseVerification: typeof submitPlayPurchaseVerification;
   isAlreadyOwnedPurchaseError: typeof isAlreadyOwnedPurchaseError;
   formatPlayPurchaseError: typeof formatPlayPurchaseError;
@@ -42,10 +37,7 @@ export const defaultPlayPurchaseDeps: PlayPurchaseDeps = {
   resolveApiBaseUrl,
   getGoogleIdToken: () => getStoredGoogleIdToken(),
   getConfiguredPlayProductId: () => (import.meta.env.VITE_PLAY_PRO_PRODUCT_ID as string | undefined)?.trim() || "",
-  getPlayBillingService,
-  isPlayBillingPaymentRequestSupported,
-  purchasePlayProduct,
-  extractPurchaseTokenFromResult,
+  resolvePlayBillingPort,
   submitPlayPurchaseVerification,
   isAlreadyOwnedPurchaseError,
   formatPlayPurchaseError,
@@ -91,7 +83,7 @@ async function tryRecoverExistingPurchase(
   app: PlayPurchaseContext,
   deps: PlayPurchaseDeps,
   params: {
-    playBilling: DigitalGoodsService | null;
+    playBilling: PlayBillingPort | null;
     baseUrl: string;
     googleIdToken: string;
     productId: string;
@@ -99,15 +91,17 @@ async function tryRecoverExistingPurchase(
     successMessage: string;
   }
 ): Promise<boolean> {
-  if (!params.playBilling || typeof params.playBilling.listPurchases !== "function") {
+  if (!params.playBilling) {
     return false;
   }
 
   for (let attempt = 0; attempt < params.attempts; attempt += 1) {
     try {
       const listedPurchases = await params.playBilling.listPurchases();
-      const existing = deps.extractPurchaseTokenFromResult(listedPurchases, params.productId);
-      if (existing.purchaseToken) {
+      const existing = listedPurchases.find(
+        (purchase) => purchase.productId === params.productId && purchase.state === "purchased"
+      );
+      if (existing) {
         return verifyPlayPurchaseToken(app, deps, {
           baseUrl: params.baseUrl,
           googleIdToken: params.googleIdToken,
@@ -166,30 +160,32 @@ export async function startPlayPurchaseFlow(
   }
 
   app.isVerifyingPurchase = true;
-  let playBilling: DigitalGoodsService | null = null;
+  let playBilling: PlayBillingPort | null = null;
 
   try {
-    playBilling = await resolvedDeps.getPlayBillingService();
-    if (!playBilling && !resolvedDeps.isPlayBillingPaymentRequestSupported()) {
+    playBilling = await resolvedDeps.resolvePlayBillingPort();
+    if (!playBilling || !(await playBilling.isAvailable())) {
       app.notify("Google Play billing is not available in this environment.", "warning");
       return;
     }
 
-    if (playBilling && typeof playBilling.listPurchases === "function") {
-      const preCheckRecovered = await tryRecoverExistingPurchase(app, resolvedDeps, {
-        playBilling,
-        baseUrl: base,
-        googleIdToken,
-        productId,
-        attempts: PLAY_PURCHASE_PRECHECK_ATTEMPTS,
-        successMessage: VERIFIED_EXISTING_PURCHASE_MESSAGE
-      });
-      if (preCheckRecovered) {
-        return;
-      }
+    const preCheckRecovered = await tryRecoverExistingPurchase(app, resolvedDeps, {
+      playBilling,
+      baseUrl: base,
+      googleIdToken,
+      productId,
+      attempts: PLAY_PURCHASE_PRECHECK_ATTEMPTS,
+      successMessage: VERIFIED_EXISTING_PURCHASE_MESSAGE
+    });
+    if (preCheckRecovered) {
+      return;
     }
 
-    const purchase = await resolvedDeps.purchasePlayProduct(playBilling, productId);
+    const purchase = await playBilling.purchase(productId);
+    if (purchase.state === "pending") {
+      app.notify("Google Play purchase is pending. Pro access will unlock after payment completes.", "info");
+      return;
+    }
     if (!purchase.purchaseToken) {
       const postPurchaseRecovered = await tryRecoverExistingPurchase(app, resolvedDeps, {
         playBilling,
@@ -217,12 +213,10 @@ export async function startPlayPurchaseFlow(
     resetPlayPurchaseInputs(app);
     app.notify(VERIFIED_PURCHASE_MESSAGE, "success");
   } catch (error) {
-    const name = error instanceof Error ? error.name : "";
-    const isAbortError = name === "AbortError";
+    const isAbortError = (error instanceof Error && error.name === "AbortError")
+      || (error instanceof PlayBillingError && error.code === "cancelled");
     const isAlreadyOwnedError = resolvedDeps.isAlreadyOwnedPurchaseError(error);
-    const canTryRecovery = !!playBilling
-      && typeof playBilling.listPurchases === "function"
-      && (!isAbortError || isAlreadyOwnedError);
+    const canTryRecovery = !!playBilling && (!isAbortError || isAlreadyOwnedError);
 
     if (canTryRecovery) {
       const recovered = await tryRecoverExistingPurchase(app, resolvedDeps, {

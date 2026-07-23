@@ -1,5 +1,5 @@
 import { initGoogleAutoLoginWithRetry, requestGoogleIdentityPrompt } from "../../../utils/googleAutoLogin.ts";
-import { getPlayBillingService } from "../../../utils/playBilling.ts";
+import { resolvePlayBillingPort } from "../../../platform/play-billing/resolvePlayBilling.ts";
 import { cacheAuthProfile } from "../../../auth/index.ts";
 export {
   applyTargetProfitAccessDefaults
@@ -125,12 +125,8 @@ export function isAlreadyOwnedPurchaseError(error: unknown): boolean {
 }
 
 export async function hasPlayPurchaseSupport(): Promise<boolean> {
-  if (typeof window.getDigitalGoodsService !== "function") {
-    return false;
-  }
-
-  const service = await getPlayBillingService();
-  return !!service;
+  const billing = await resolvePlayBillingPort();
+  return billing ? billing.isAvailable() : false;
 }
 
 export { initGoogleAutoLoginWithRetry, requestGoogleIdentityPrompt };

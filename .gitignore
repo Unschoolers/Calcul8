@@ -2,18 +2,34 @@ node_modules
 dist
 .cache/
 .bubblewrap
-android
-# Bubblewrap / TWA generated Android project artifacts
-.gradle/
-app/
-build/
-gradle/
-gradlew
-gradlew.bat
-build.gradle
-settings.gradle
-gradle.properties
-local.properties
+# Legacy Bubblewrap output remains generated at the repository root.
+/.gradle/
+/android/
+/app/
+/build/
+/gradle/
+/gradlew
+/gradlew.bat
+/build.gradle
+/settings.gradle
+/gradle.properties
+/local.properties
+# Android source is committed; generated output and local secrets are not.
+apps/android/.gradle/
+apps/android/.idea/
+apps/android/local.properties
+apps/android/**/build/
+apps/android/**/*.apk
+apps/android/**/*.aab
+apps/android/**/*.idsig
+apps/android/keystore.properties
+apps/android/app/src/main/assets/public/
+apps/android/app/src/main/assets/capacitor.config.json
+apps/android/app/src/main/assets/capacitor.plugins.json
+apps/android/capacitor-cordova-android-plugins/
+release-output/
+.android-sdk/
+.android-sdk-download/
 manifest-checksum.txt
 store_icon.png
 *.apk

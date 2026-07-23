@@ -110,6 +110,7 @@ export function createInitialState(): AppState {
     showInstallPrompt: false,
     isAuthSessionResolving: true,
     showGoogleSignInFallback: false,
+    showNativeGoogleSignInAction: false,
     googleAuthEpoch: 0,
     googleAvatarLoadFailed: false,
     onlineListener: null,

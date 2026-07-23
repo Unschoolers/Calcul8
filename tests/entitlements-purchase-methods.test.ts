@@ -53,6 +53,36 @@ vi.mock("../src/app-core/utils/playBilling.ts", () => ({
   extractPurchaseTokenFromResult: extractPurchaseTokenFromResultMock
 }));
 
+vi.mock("../src/app-core/platform/play-billing/resolvePlayBilling.ts", () => ({
+  resolvePlayBillingPort: async () => {
+    const service = await getPlayBillingServiceMock();
+    if (!service && !isPlayBillingPaymentRequestSupportedMock()) return null;
+    return {
+      isAvailable: async () => true,
+      listPurchases: async () => {
+        if (!service || typeof service.listPurchases !== "function") return [];
+        const raw = await service.listPurchases();
+        const purchase = extractPurchaseTokenFromResultMock(raw, "pro_access");
+        return purchase.purchaseToken
+          ? [{
+              productId: purchase.itemId ?? "pro_access",
+              purchaseToken: purchase.purchaseToken,
+              state: "purchased"
+            }]
+          : [];
+      },
+      purchase: async (productId: string) => {
+        const purchase = await purchasePlayProductMock(service, productId);
+        return {
+          productId: purchase.itemId ?? productId,
+          purchaseToken: purchase.purchaseToken ?? "",
+          state: "purchased"
+        };
+      }
+    };
+  }
+}));
+
 import { uiEntitlementPurchaseMethods } from "../src/app-core/methods/ui/entitlements/entitlements-purchase.ts";
 
 type MockStorage = {

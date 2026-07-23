@@ -613,6 +613,7 @@ export interface AppState extends LotSetup {
   showInstallPrompt: boolean;
   isAuthSessionResolving: boolean;
   showGoogleSignInFallback: boolean;
+  showNativeGoogleSignInAction: boolean;
   googleAuthEpoch: number;
   googleAvatarLoadFailed: boolean;
   onlineListener: (() => void) | null;

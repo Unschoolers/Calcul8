@@ -2,6 +2,7 @@ seller -> calcul8.web.appShell "Uses the authenticated app shell for sales, lots
 admin -> calcul8.web.appShell "Uses admin-facing diagnostics and import tooling." "Browser"
 
 calcul8.web.authClient -> calcul8.web.apiClient "Calls auth, profile, account deletion, billing, and entitlement endpoints." "HTTPS JSON"
+calcul8.web.platformAdapters -> calcul8.android "Invokes Kotlin identity and billing plugins when running in the installed app." "Capacitor bridge"
 calcul8.web.workspaceState -> calcul8.web.apiClient "Calls workspace membership, join-link, and leave endpoints." "HTTPS JSON"
 calcul8.web.workspaceState -> calcul8.web.realtimeClient "Starts or stops workspace realtime subscriptions for active scope." "In-process calls"
 calcul8.web.syncCoordinator -> calcul8.web.apiClient "Pushes and pulls scoped cloud snapshots." "HTTPS JSON"

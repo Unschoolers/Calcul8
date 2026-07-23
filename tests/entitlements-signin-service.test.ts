@@ -134,6 +134,7 @@ function createContext(overrides: Record<string, unknown> = {}): Record<string, 
     preferredLanguage: "en",
     isAuthSessionResolving: false,
     showGoogleSignInFallback: false,
+    showNativeGoogleSignInAction: false,
     targetProfitPercent: 0,
     autoSaveSetup: vi.fn(),
     showManualPurchaseVerify: true,
@@ -419,6 +420,24 @@ test("renderGoogleSignInButtonFlow exposes fallback after GIS button render exha
     renderGoogleSignInButtonFlow(context as never, {}, 0);
 
     assert.equal(context.showGoogleSignInFallback, true);
+  });
+});
+
+test("renderGoogleSignInButtonFlow exposes the native action without waiting for GIS", async () => {
+  await withMockedLocalStorage(async () => {
+    stubWindow();
+    stubDocumentWithButtonContainer();
+    const schedule = vi.fn();
+    const context = createContext();
+
+    renderGoogleSignInButtonFlow(context as never, {
+      isNativeAndroid: () => true,
+      schedule
+    });
+
+    assert.equal(context.showNativeGoogleSignInAction, true);
+    assert.equal(context.showGoogleSignInFallback, false);
+    assert.equal(schedule.mock.calls.length, 0);
   });
 });
 

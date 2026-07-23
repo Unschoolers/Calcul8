@@ -209,7 +209,7 @@ async function purchaseViaPaymentRequest(
 export async function purchasePlayProduct(
   service: DigitalGoodsService | null,
   productId: string,
-  win: DigitalGoodsWindow = window
+  win: DigitalGoodsWindow = typeof window === "undefined" ? {} : window
 ): Promise<PlayPurchaseTokenResult> {
   const purchaseResult = service && typeof service.purchase === "function"
     ? await service.purchase(productId)

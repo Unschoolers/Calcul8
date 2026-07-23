@@ -1,5 +1,6 @@
 import type { BeforeInstallPromptEvent } from "../../types/app.ts";
 import type { PwaMethodImplementation } from "../context/shell.ts";
+import { getAppRuntime } from "../platform/runtime.ts";
 
 const DISMISSED_APP_UPDATE_SESSION_KEY = "whatfees_dismissed_app_update_worker";
 const APP_UPDATE_NAVIGATION_FALLBACK_MS = 4000;
@@ -95,8 +96,10 @@ export const pwaMethods = {
 
     window.addEventListener("online", this.onlineListener);
     window.addEventListener("offline", this.offlineListener);
-    window.addEventListener("beforeinstallprompt", this.beforeInstallPromptListener);
-    window.addEventListener("appinstalled", this.appInstalledListener);
+    if (getAppRuntime() === "web") {
+      window.addEventListener("beforeinstallprompt", this.beforeInstallPromptListener);
+      window.addEventListener("appinstalled", this.appInstalledListener);
+    }
     this.hasPwaUiHandlersBound = true;
 
     if (this.isOffline) {
@@ -133,6 +136,7 @@ export const pwaMethods = {
   },
 
   async promptInstall(): Promise<void> {
+    if (getAppRuntime() === "android") return;
     if (!this.deferredInstallPrompt) return;
 
     this.deferredInstallPrompt.prompt();
@@ -146,6 +150,7 @@ export const pwaMethods = {
   },
 
   applyAppUpdate(): void {
+    if (getAppRuntime() === "android") return;
     if (!this.appUpdateWorker) return;
     this.isApplyingAppUpdate = true;
     this.showAppUpdatePrompt = false;
@@ -159,11 +164,13 @@ export const pwaMethods = {
   },
 
   dismissAppUpdate(): void {
+    if (getAppRuntime() === "android") return;
     this.showAppUpdatePrompt = false;
     dismissAppUpdateForWorker(this.appUpdateWorker);
   },
 
   async unregisterServiceWorkersForDev(): Promise<void> {
+    if (getAppRuntime() === "android") return;
     if (!("serviceWorker" in navigator)) return;
     try {
       const registrations = await navigator.serviceWorker.getRegistrations();
@@ -178,6 +185,7 @@ export const pwaMethods = {
   },
 
   registerServiceWorker(): void {
+    if (getAppRuntime() === "android") return;
     if (!("serviceWorker" in navigator)) return;
     if (this.hasRegisteredServiceWorkerLifecycle) return;
 

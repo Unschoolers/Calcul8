@@ -15,6 +15,7 @@ const shellPortKeys = [
   "preferredLanguage", "showCreateWorkspaceModal", "showInstallPrompt", "showSystemConfigurationDialog",
   "whatnotConnectionStatus", "whatnotConnectionSummary", "whatnotReviewBatchId", "whatnotSyncStatus",
   "currentTab", "currentLotId", "guidedOnboardingStatus", "showNewLotModal", "showGoogleSignInFallback",
+  "showNativeGoogleSignInAction",
   "googleProfileName", "googleProfileEmail", "googleProfilePicture", "isDark", "accountSyncBadgeVisible",
   "accountSyncBadgeClass", "accountSyncIcon", "accountSyncIconSize", "accountSyncIconClass", "syncStatusTitle",
   "syncStatusSubtitle", "syncStatusIcon", "currentWorkspaceName", "scopeChipClass", "scopeChipIcon", "scopeChipLabel",

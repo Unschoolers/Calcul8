@@ -15,6 +15,13 @@ import {
   isGoogleAutoSignInDisabled,
   setStoredGoogleIdToken
 } from "../../../auth/index.ts";
+import { cacheAuthProfile } from "../../../auth/index.ts";
+import { resolveIdentityCredential } from "../../../platform/identity/resolveIdentityCredential.ts";
+import type {
+  IdentityCredential,
+  IdentityCredentialMode
+} from "../../../platform/identity/types.ts";
+import { getAppRuntime } from "../../../platform/runtime.ts";
 import {
   applyTargetProfitAccessDefaults,
   cacheGoogleProfileFromToken,
@@ -53,6 +60,10 @@ type SignInDeps = {
   isGoogleAutoSignInDisabled: () => boolean;
   enableGoogleAutoSignIn: () => void;
   setGoogleIdToken: (token: string) => void;
+  isNativeAndroid: () => boolean;
+  requestNativeCredential: (mode: IdentityCredentialMode) => Promise<IdentityCredential>;
+  cacheProfile: (profile: { name?: unknown; picture?: unknown }) => boolean;
+  bootstrapSession: (app: EntitlementSignInContext) => Promise<void>;
   schedule: (callback: () => void, delayMs: number) => void;
 };
 
@@ -100,6 +111,16 @@ const defaultDeps: SignInDeps = {
   setGoogleIdToken: (token) => {
     setStoredGoogleIdToken(token);
   },
+  isNativeAndroid: () => getAppRuntime() === "android",
+  requestNativeCredential: async (mode) => {
+    const port = resolveIdentityCredential();
+    if (!port) throw new Error("Native Google identity is unavailable.");
+    return port.requestCredential(mode);
+  },
+  cacheProfile: (profile) => cacheAuthProfile(profile, GOOGLE_PROFILE_CACHE_KEY),
+  bootstrapSession: async (app) => {
+    await app.debugLogEntitlement(true);
+  },
   schedule: (callback, delayMs) => {
     const currentWindow = (globalThis as { window?: Window }).window;
     (currentWindow?.setTimeout ?? globalThis.setTimeout)(callback, delayMs);
@@ -125,16 +146,17 @@ function createGoogleCredentialCallback(app: EntitlementSignInContext, deps: Sig
     logAuthDebug("signin:manual:credential_received", {
       tokenLength: idToken.length
     });
-    void finalizeGoogleCredentialSignIn(app, deps, idToken, {
+    void acceptGoogleCredential(app, idToken, undefined, deps, {
       notifySuccess: true
     });
   };
 }
 
-async function finalizeGoogleCredentialSignIn(
+export async function acceptGoogleCredential(
   app: EntitlementSignInContext,
-  deps: SignInDeps,
   idToken: string,
+  profile: { displayName?: string | null; photoUrl?: string | null } | undefined,
+  deps: SignInDeps,
   options: {
     notifySuccess: boolean;
   }
@@ -143,6 +165,12 @@ async function finalizeGoogleCredentialSignIn(
   deps.setGoogleIdToken(idToken);
   app.googleAvatarLoadFailed = false;
   deps.cacheGoogleProfileFromToken(idToken, GOOGLE_PROFILE_CACHE_KEY);
+  if (profile?.displayName || profile?.photoUrl) {
+    deps.cacheProfile({
+      name: profile.displayName,
+      picture: profile.photoUrl
+    });
+  }
 
   // Make the accepted credential reactive immediately so the auth gate does
   // not remain visible while entitlement and cloud-sync work finishes. The
@@ -152,7 +180,7 @@ async function finalizeGoogleCredentialSignIn(
   app.googleAuthEpoch += 1;
 
   try {
-    await app.debugLogEntitlement(true);
+    await deps.bootstrapSession(app);
   } catch (error) {
     logAuthWarn("signin:session_bootstrap_failed", {
       error: error instanceof Error ? error.message : String(error)
@@ -167,6 +195,34 @@ async function finalizeGoogleCredentialSignIn(
   if (options.notifySuccess) {
     app.notify("Signed in with Google.", "success");
   }
+}
+
+function identityErrorCode(error: unknown): string {
+  return typeof error === "object" && error !== null && "code" in error
+    ? String((error as { code?: unknown }).code)
+    : "";
+}
+
+function requestNativeAutoCredential(
+  app: EntitlementSignInContext,
+  deps: SignInDeps
+): void {
+  void deps.requestNativeCredential("automatic")
+    .then((credential) => acceptGoogleCredential(
+      app,
+      credential.idToken,
+      credential,
+      deps,
+      { notifySuccess: false }
+    ))
+    .catch((error: unknown) => {
+      const code = identityErrorCode(error);
+      // No authorized credential is a normal signed-out startup state.
+      if (code === "cancelled" || code === "no_credential") return;
+      logAuthWarn("signin:native:auto_failed", {
+        error: error instanceof Error ? error.message : String(error)
+      });
+    });
 }
 
 function initializeGoogleIdentityOnce(googleId: GoogleAccountsApi, config: GoogleIdentityInitConfig): void {
@@ -248,6 +304,11 @@ export function initGoogleAutoLoginFlow(app: EntitlementSignInContext, deps: Par
     return;
   }
 
+  if (resolvedDeps.isNativeAndroid()) {
+    requestNativeAutoCredential(app, resolvedDeps);
+    return;
+  }
+
   if (isAuthGateVisible(currentDocument)) {
     logAuthDebug("init:auto:skip_prompt_auth_gate_visible");
     return;
@@ -260,7 +321,7 @@ export function initGoogleAutoLoginFlow(app: EntitlementSignInContext, deps: Par
       logAuthDebug("init:auto:credential_received", {
         tokenLength: idToken.length
       });
-      void finalizeGoogleCredentialSignIn(app, resolvedDeps, idToken, {
+      void acceptGoogleCredential(app, idToken, undefined, resolvedDeps, {
         notifySuccess: false
       });
     },
@@ -276,6 +337,14 @@ export function renderGoogleSignInButtonFlow(
   attemptsLeft = GOOGLE_INIT_RETRY_COUNT
 ): void {
   const resolvedDeps = { ...defaultDeps, ...deps } satisfies SignInDeps;
+
+  if (resolvedDeps.isNativeAndroid()) {
+    app.showNativeGoogleSignInAction = !resolvedDeps.getGoogleIdToken();
+    app.showGoogleSignInFallback = false;
+    return;
+  }
+
+  app.showNativeGoogleSignInAction = false;
   const currentDocument = resolvedDeps.getDocument();
   const container = currentDocument?.getElementById(GOOGLE_SIGN_IN_BUTTON_CONTAINER_ID) as HTMLElement | null;
   if (!container) {
@@ -330,7 +399,10 @@ export function renderGoogleSignInButtonFlow(
   }
 }
 
-export function promptGoogleSignInFlow(app: EntitlementSignInContext, deps: Partial<SignInDeps> = {}): void {
+export async function promptGoogleSignInFlow(
+  app: EntitlementSignInContext,
+  deps: Partial<SignInDeps> = {}
+): Promise<void> {
   const resolvedDeps = { ...defaultDeps, ...deps } satisfies SignInDeps;
   const currentWindow = resolvedDeps.getWindow();
   const origin = currentWindow?.location?.origin ?? "(unknown)";
@@ -345,7 +417,31 @@ export function promptGoogleSignInFlow(app: EntitlementSignInContext, deps: Part
       tokenLength: existingToken.length
     });
     app.googleAuthEpoch += 1;
-    void app.debugLogEntitlement(true);
+    await resolvedDeps.bootstrapSession(app);
+    return;
+  }
+
+  if (resolvedDeps.isNativeAndroid()) {
+    try {
+      const credential = await resolvedDeps.requestNativeCredential("interactive");
+      await acceptGoogleCredential(
+        app,
+        credential.idToken,
+        credential,
+        resolvedDeps,
+        { notifySuccess: true }
+      );
+    } catch (error) {
+      const code = identityErrorCode(error);
+      if (code === "cancelled" || code === "no_credential") {
+        app.notify("Google sign-in was cancelled.", "info");
+      } else {
+        logAuthWarn("signin:native:exception", {
+          error: error instanceof Error ? error.message : String(error)
+        });
+        app.notify("Google sign-in is not available yet. Please try again.", "warning");
+      }
+    }
     return;
   }
 

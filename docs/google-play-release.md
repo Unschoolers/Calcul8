@@ -1,173 +1,154 @@
-# WhatFees Google Play Release Guide (TWA)
+# WhatFees Google Play release guide
 
-Google Play requires an Android package (`.aab`).  
-For this project, the standard path is **TWA (Trusted Web Activity)** using Bubblewrap.
+WhatFees ships its Android app from the source-controlled Capacitor 8.4.0 project in
+`apps/android`. Kotlin plugins own Google Play Billing and Google Identity, while the
+Vue application and API remain the shared product implementation.
 
-## 1) Pre-flight (web app)
+The release baseline is:
 
-Run locally:
+- Android 16 with `compileSdkVersion 36` and `targetSdkVersion 36`
+- Google Play Billing 8.3.0
+- Capacitor 8.4.0
+- Kotlin 2.2.21 and Java 21 bytecode
+- package id `io.whatfees`
 
-```bash
+Bubblewrap is not part of the active build or release path. Its old inputs remain only
+as rollback material until the Capacitor build passes internal testing.
+
+## 1. Workstation requirements
+
+Install Node.js 22, JDK 21, and Android SDK Platform 36, Build-Tools 36.0.0,
+Platform-Tools, and Command-line Tools. Set `ANDROID_HOME` or create the ignored
+`apps/android/local.properties`:
+
+```properties
+sdk.dir=C\:\\Users\\you\\AppData\\Local\\Android\\Sdk
+```
+
+On Windows, `npm run release:play` also discovers the ignored workspace
+`.android-sdk` installation and an installed JDK 21 automatically. It prints the
+resolved SDK and Java paths during preflight.
+
+No keystore, signing password, `local.properties`, `.aab`, or generated Gradle output
+may be committed.
+
+## 2. Build configuration
+
+The frontend build requires the public Google web OAuth client id:
+
+```powershell
+$env:VITE_GOOGLE_CLIENT_ID="<google-web-client-id>"
+```
+
+It is compiled into Android resources for Credential Manager. This identifier is not
+a secret; an OAuth client secret must never be added to the app.
+
+Production frontend settings also include:
+
+- `VITE_API_BASE_URL=https://<api-host>/api`
+- `VITE_REALTIME_SOCKET_URL=wss://ws.whatfees.ca/socket`
+- `VITE_PLAY_PRO_PRODUCT_ID=<active Play product id>`
+
+The API retains the private provider configuration:
+
+- `GOOGLE_PLAY_PACKAGE_NAME=io.whatfees`
+- `GOOGLE_PLAY_PRO_PRODUCT_IDS=<allowed product ids>`
+- `GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL=<service-account-email>`
+- `GOOGLE_PLAY_SERVICE_ACCOUNT_PRIVATE_KEY=<private key>`
+
+## 3. Verification
+
+```powershell
 npm ci
 npm run verify:all
 npm run build:prod
+npm run android:sync
+npm run verify:android
 ```
 
-Notes:
+`npm run verify:android` runs native unit tests, lint, and a dependency-insight
+compliance guard. The guard rejects a target SDK below 36, Billing below 8, a resolved
+Billing version other than 8.3.0, or Android Browser Helper billing.
 
-- `npm run verify` covers the frontend security scan, frontend tests, typecheck, and a web build.
-- `npm run verify:api` covers API tests, typecheck, and build.
-- `npm run verify:realtime` covers realtime tests, typecheck, and build.
-- `npm run verify:all` runs the frontend, API, and realtime verification gates together.
+For an explicit dependency audit:
 
-Or run the automated PowerShell flow (recommended on Windows):
+```powershell
+Set-Location apps/android
+.\gradlew.bat app:dependencyInsight --configuration releaseRuntimeClasspath --dependency com.android.billingclient
+```
+
+The result must resolve `com.android.billingclient:billing:8.3.0`.
+
+## 4. Versioning
+
+The root `package.json` owns the public version. Android keeps its monotonic Play
+version code in `apps/android/version.properties`.
+
+```powershell
+node scripts/sync-capacitor-version.mjs
+npx cap sync android
+```
+
+The sync is idempotent for the same public version and increments `VERSION_CODE` only
+when that version changes. Review both values before uploading to Play.
+
+## 5. Signing
+
+Create an upload key once and store it outside source control:
+
+```powershell
+keytool -genkeypair -v -keystore whatfees-upload.jks -alias whatfees-upload -keyalg RSA -keysize 2048 -validity 10000
+```
+
+Provide signing through the ignored `apps/android/keystore.properties`:
+
+```properties
+storeFile=C\:\\secure\\whatfees-upload.jks
+storePassword=<password>
+keyAlias=whatfees-upload
+keyPassword=<password>
+```
+
+CI may instead provide `WHATFEES_ANDROID_KEYSTORE_FILE`,
+`WHATFEES_ANDROID_KEYSTORE_PASSWORD`, `WHATFEES_ANDROID_KEY_ALIAS`, and
+`WHATFEES_ANDROID_KEY_PASSWORD`. Never print them in release logs.
+
+## 6. Produce the bundle
 
 ```powershell
 npm run release:play
 ```
 
-`release:play` now does this automatically:
+This verifies every runtime, builds the production web bundle, synchronizes Capacitor
+and its version, enforces Android compliance, requires signing, and builds the signed
+bundle. The ignored output is `release-output/whatfees-<version>.aab`.
 
-- `npm run verify:all` (unless skipped)
-- `npm run build:prod` (unless skipped)
-- syncs `twa-manifest.json` version fields from root `package.json`
-- generates `public/.well-known/assetlinks.json`
-- builds the TWA `.aab` with Bubblewrap
+Use `-SkipVerify` only when an equivalent reviewed CI run is attached to the release.
+Use `-SkipWebBuild` only when `dist` came from the exact source revision being
+released. Neither option bypasses Android compliance or signing.
 
-Use `-SkipVerify` only after running and reviewing the equivalent frontend, API, and realtime checks for the release.
+## 7. Internal testing acceptance
 
-Useful flags:
+Upload the `.aab` to Google Play Internal testing first. Test with a licensed account
+on Android 16 and one supported older Android version.
 
-```powershell
-.\scripts\release-google-play.ps1 -SkipVerify
-.\scripts\release-google-play.ps1 -SkipWebBuild
-.\scripts\release-google-play.ps1 -SkipTwaVersionSync
-.\scripts\release-google-play.ps1 -SkipBuild
-.\scripts\release-google-play.ps1 -SkipDeployCheck
-.\scripts\release-google-play.ps1 -PackageId io.whatfees
-.\scripts\release-google-play.ps1 -PlaySigningFingerprint AA:BB:CC:...:ZZ
-```
+Required cases include cold/returning/offline start, automatic and explicit Google
+sign-in, one-step session entry, profile-image fallback, purchase success/cancel/
+pending/restore, duplicate-tap protection, server-side entitlement verification,
+sign-out, navigation, app-used file/media paths, and phone/tablet light/dark layouts.
 
-Deploy your latest web build to:
+Record results in `docs/testing/capacitor-android-internal-test.md`. Remove the
+Bubblewrap rollback files only after the matrix passes and Play accepts the artifact.
 
-- `https://app.whatfees.ca/`
+## 8. Play Console checklist
 
-Then validate:
+- App signing and upload certificate are valid
+- Internal artifact reports target API 36
+- Billing products match the API allowlist
+- Android OAuth client uses package `io.whatfees` and the Play signing SHA-1
+- Data safety, privacy policy, content rating, audience, and ads declarations are current
+- Store assets and release notes are current
+- The pre-launch report has no blocking crash, ANR, login, or billing issue
 
-- `https://app.whatfees.ca/manifest.webmanifest`
-- `https://app.whatfees.ca/sw.js`
-- `https://app.whatfees.ca/.well-known/assetlinks.json`
-
-## 2) Create Android signing key (one-time)
-
-```bash
-keytool -genkeypair -v -keystore whatfees-upload.jks -alias whatfees-upload -keyalg RSA -keysize 2048 -validity 10000
-```
-
-Get SHA-256 fingerprint for the upload key (useful for signing/debug only):
-
-```bash
-keytool -list -v -keystore whatfees-upload.jks -alias whatfees-upload
-```
-
-For production `assetlinks.json`, use the **Play App Signing** SHA-256 fingerprint from:
-
-- Google Play Console -> App integrity -> App signing key certificate
-
-## 3) Generate `assetlinks.json`
-
-From this repo:
-
-```bash
-npm run assetlinks -- --package=io.whatfees --fingerprint=AA:BB:CC:...:ZZ
-```
-
-Important:
-
-- Use the **Play App Signing** SHA-256 for released builds.
-- Using the upload key fingerprint can cause TWA trust verification to fail (URL bar may appear).
-
-This updates:
-
-- `public/.well-known/assetlinks.json`
-
-Commit and deploy this file to GitHub Pages before building the final Android release.
-
-## 4) Build TWA wrapper with Bubblewrap
-
-Install Bubblewrap (one-time):
-
-```bash
-npm i -g @bubblewrap/cli
-```
-
-Initialize:
-
-```bash
-bubblewrap init --manifest=https://app.whatfees.ca/manifest.webmanifest
-```
-
-When prompted, use:
-
-- Start URL: `https://app.whatfees.ca/`
-- Application ID/package: `io.whatfees` (or your final package)
-- Keystore: your `whatfees-upload.jks`
-
-Build Android App Bundle:
-
-```bash
-bubblewrap build
-```
-
-Output will include an `.aab` suitable for Play upload.
-
-## 5) Play Console checklist
-
-- App name, short description, full description
-- 512x512 app icon
-- Feature graphic (1024x500)
-- Phone screenshots
-- Privacy policy URL
-- Data safety form
-- Content rating questionnaire
-- Target audience + ads declaration (if applicable)
-- Upload the `.aab` to Internal testing first
-- In-app product configured and active (for example `pro_access`) if you use Pro unlock
-
-## 6) Pro purchase wiring (production)
-
-Set frontend build env:
-
-- `VITE_API_BASE_URL=https://<your-function-app>.azurewebsites.net/api`
-- `VITE_REALTIME_SOCKET_URL=wss://ws.whatfees.ca/socket`
-- `VITE_GOOGLE_CLIENT_ID=<google web client id>`
-- `VITE_PLAY_PRO_PRODUCT_ID=<play in-app product id>`
-- `VITE_PURCHASE_PROVIDER` (optional debug override: `auto` default, `play` supported today)
-- `VITE_ENABLE_ADMIN_SYNC_IMPORT` (optional, default `false`; set `true` only for admin/debug sessions)
-
-Set backend Function App settings:
-
-- `GOOGLE_PLAY_PACKAGE_NAME=io.whatfees`
-- `GOOGLE_PLAY_PRO_PRODUCT_IDS=pro_access`
-- `GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL=<service-account-email>`
-- `GOOGLE_PLAY_SERVICE_ACCOUNT_PRIVATE_KEY=<full private key with \n>`
-
-Required workspace realtime backend settings:
-
-- `REALTIME_PUBLISH_URL=https://ws.whatfees.ca/internal/publish`
-- `REALTIME_INTERNAL_API_KEY=<shared internal publish key>`
-- `REALTIME_TOKEN_SECRET=<shared subscribe token secret>`
-
-Production frontend builds must also set `VITE_REALTIME_SOCKET_URL=wss://ws.whatfees.ca/socket`. Keep `VITE_REALTIME_SOCKET_URL`, `REALTIME_PUBLISH_URL`, `REALTIME_INTERNAL_API_KEY`, and `REALTIME_TOKEN_SECRET` aligned so workspace subscribe tokens and server-side publish calls target the same realtime environment.
-
-## 7) Update flow note
-
-This repo is configured so that:
-
-- Service worker checks updates frequently
-- New SW activates quickly
-- Client reloads on `controllerchange`
-
-For each release, bump root `package.json` version before deploy.
-`__APP_VERSION__` is injected from `package.json` at build time, and
-`release:play` also syncs TWA version fields via `scripts/sync-twa-version.mjs`.
+Promote the exact tested artifact; do not rebuild between internal testing and a
+staged production rollout.
