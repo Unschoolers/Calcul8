@@ -116,11 +116,8 @@ test("ci validates Android source, API 36, and Billing dependencies", async () =
   assert.match(workflow, /apps\/android\/\*/);
   assert.match(workflow, /java-version:\s*["']21["']/);
   assert.match(workflow, /uses:\s*android-actions\/setup-android@v4/);
-  assert.ok(
-    workflow.indexOf("android-actions/setup-android@v4")
-      < workflow.indexOf('sdkmanager "platforms;android-36" "build-tools;36.0.0"'),
-    "Android command-line tools must be configured before sdkmanager is invoked"
-  );
+  assert.match(workflow, /packages:[\s\S]*platforms;android-36[\s\S]*build-tools;36\.0\.0/);
+  assert.doesNotMatch(workflow, /run:\s*sdkmanager/);
   assert.match(workflow, /npm run verify:android/);
   assert.match(workflow, /npm run android:bundle/);
 });
