@@ -11,10 +11,10 @@ if (unsafeArgument) {
 
 const command = process.platform === "win32"
   ? (process.env.ComSpec || "cmd.exe")
-  : wrapper;
+  : "bash";
 const commandArgs = process.platform === "win32"
   ? ["/d", "/s", "/c", wrapper, ...gradleArgs]
-  : gradleArgs;
+  : [wrapper, ...gradleArgs];
 let buildEnvironment;
 try {
   buildEnvironment = resolveAndroidBuildEnvironment();
@@ -31,4 +31,7 @@ const result = spawnSync(command, commandArgs, {
   env: buildEnvironment.environment
 });
 
+if (result.error) {
+  console.error(`Gradle could not start: ${result.error.message}`);
+}
 process.exit(result.status ?? 1);

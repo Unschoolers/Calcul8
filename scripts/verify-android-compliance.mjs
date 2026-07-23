@@ -61,10 +61,10 @@ if (!skipDependencyInsight) {
   ];
   const command = process.platform === "win32"
     ? (process.env.ComSpec || "cmd.exe")
-    : wrapper;
+    : "bash";
   const commandArgs = process.platform === "win32"
     ? ["/d", "/s", "/c", wrapper, ...gradleArgs]
-    : gradleArgs;
+    : [wrapper, ...gradleArgs];
   const result = spawnSync(
     command,
     commandArgs,
@@ -75,6 +75,9 @@ if (!skipDependencyInsight) {
       env: buildEnvironment.environment
     }
   );
+  if (result.error) {
+    fail(`Gradle dependency inspection could not start: ${result.error.message}`);
+  }
   if (result.status !== 0) {
     process.stderr.write(result.stderr || result.stdout || "Gradle dependency inspection failed.\n");
     process.exit(result.status ?? 1);

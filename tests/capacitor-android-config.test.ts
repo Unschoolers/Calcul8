@@ -30,6 +30,9 @@ test("Android Gradle commands resolve the repository SDK and Java 21 consistentl
 
   assert.match(runner, /resolveAndroidBuildEnvironment/);
   assert.match(compliance, /resolveAndroidBuildEnvironment/);
+  assert.match(runner, /process\.platform === "win32"[\s\S]*:\s*"bash"/);
+  assert.match(compliance, /process\.platform === "win32"[\s\S]*:\s*"bash"/);
+  assert.match(compliance, /result\.error/);
   assert.match(environment, /\.android-sdk/);
   assert.match(environment, /android-36/);
   assert.match(environment, /JAVA_HOME_21/);
