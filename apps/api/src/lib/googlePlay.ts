@@ -83,6 +83,16 @@ interface NormalizedProductsV2Purchase {
 
 let cachedToken: CachedToken | null = null;
 
+export function clearGooglePlayAccessTokenCache(): void {
+  cachedToken = null;
+}
+
+function assertGooglePlayConfiguration(config: ApiConfig): void {
+  if (!config.googlePlayServiceAccountEmail || !config.googlePlayServiceAccountPrivateKey) {
+    throw new HttpError(500, "Google Play verification is not configured.");
+  }
+}
+
 function asTrimmedString(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
@@ -201,9 +211,7 @@ function signJwt(unsignedToken: string, privateKeyPem: string): string {
 }
 
 function createServiceAccountJwtAssertion(config: ApiConfig): string {
-  if (!config.googlePlayServiceAccountEmail || !config.googlePlayServiceAccountPrivateKey) {
-    throw new HttpError(500, "Google Play verification is not configured.");
-  }
+  assertGooglePlayConfiguration(config);
 
   const issuedAt = Math.floor(Date.now() / 1000);
   const expiresAt = issuedAt + (60 * 60);
@@ -223,6 +231,9 @@ function createServiceAccountJwtAssertion(config: ApiConfig): string {
 }
 
 async function getGoogleApiAccessToken(config: ApiConfig): Promise<string> {
+  // Validate before consulting the cache so stale process state can never
+  // make an incomplete or rotated service-account configuration appear valid.
+  assertGooglePlayConfiguration(config);
   if (cachedToken && Date.now() < cachedToken.expiresAtMs - 60_000) {
     return cachedToken.accessToken;
   }

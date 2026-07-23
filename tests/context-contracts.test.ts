@@ -41,26 +41,20 @@ function readTypeScriptSources(relativeDirectory: string): TypeScriptSource[] {
 }
 
 function withoutTypeScriptComments(source: string): string {
-  const sourceFile = ts.createSourceFile(
-    "context-source.ts",
-    source,
+  const scanner = ts.createScanner(
     ts.ScriptTarget.Latest,
     true,
-    ts.ScriptKind.TS
+    ts.LanguageVariant.Standard,
+    source
   );
   const tokenTexts: string[] = [];
-
-  function collectTokens(node: ts.Node): void {
-    if (node.kind >= ts.SyntaxKind.FirstToken && node.kind <= ts.SyntaxKind.LastToken) {
-      tokenTexts.push(node.getText(sourceFile));
-      return;
-    }
-    for (const child of node.getChildren(sourceFile)) {
-      collectTokens(child);
-    }
+  for (
+    let token = scanner.scan();
+    token !== ts.SyntaxKind.EndOfFileToken;
+    token = scanner.scan()
+  ) {
+    tokenTexts.push(scanner.getTokenText());
   }
-
-  collectTokens(sourceFile);
   return tokenTexts.join(" ");
 }
 

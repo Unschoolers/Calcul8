@@ -2,6 +2,11 @@ import assert from "node:assert/strict";
 import { afterEach, beforeEach, test, vi } from "vitest";
 import { createApiConfig } from "../test-support/function-test-helpers";
 import type { ApiConfig } from "../types";
+import {
+  acknowledgePlayProductPurchase,
+  clearGooglePlayAccessTokenCache,
+  verifyPlayProductPurchase
+} from "./googlePlay";
 
 const { fetchWithRetryMock, signJwtMock } = vi.hoisted(() => ({
   fetchWithRetryMock: vi.fn(),
@@ -60,13 +65,9 @@ function queueAccessToken(accessToken = "google-access-token"): void {
   }));
 }
 
-async function importGooglePlay() {
-  return import("./googlePlay");
-}
-
 beforeEach(() => {
-  vi.resetModules();
   vi.clearAllMocks();
+  clearGooglePlayAccessTokenCache();
   vi.useFakeTimers();
   vi.setSystemTime(new Date("2026-05-16T12:00:00.000Z"));
 });
@@ -76,8 +77,6 @@ afterEach(() => {
 });
 
 test("verifyPlayProductPurchase rejects missing service account configuration before network calls", async () => {
-  const { verifyPlayProductPurchase } = await importGooglePlay();
-
   await assert.rejects(
     () => verifyPlayProductPurchase(
       createApiConfig({
@@ -97,7 +96,6 @@ test("verifyPlayProductPurchase rejects missing service account configuration be
 });
 
 test("verifyPlayProductPurchase surfaces token exchange failures and invalid token payloads", async () => {
-  const { verifyPlayProductPurchase } = await importGooglePlay();
   const input = {
     packageName: "io.whatfees",
     purchaseToken: "purchase-token",
@@ -123,7 +121,6 @@ test("verifyPlayProductPurchase surfaces token exchange failures and invalid tok
 });
 
 test("verifyPlayProductPurchase returns valid product data and reuses a fresh cached access token", async () => {
-  const { verifyPlayProductPurchase } = await importGooglePlay();
   queueAccessToken("cached-access-token");
   fetchWithRetryMock
     .mockResolvedValueOnce(createJsonResponse({
@@ -185,8 +182,6 @@ test("verifyPlayProductPurchase returns valid product data and reuses a fresh ca
 });
 
 test("verifyPlayProductPurchase treats 404 and disallowed products as invalid purchases", async () => {
-  const { verifyPlayProductPurchase } = await importGooglePlay();
-
   queueAccessToken();
   fetchWithRetryMock.mockResolvedValueOnce(createTextResponse("", 404));
   const missingPurchase = await verifyPlayProductPurchase(createGooglePlayConfig(), {
@@ -217,7 +212,6 @@ test("verifyPlayProductPurchase treats 404 and disallowed products as invalid pu
 });
 
 test("verifyPlayProductPurchase includes sanitized Google API error details", async () => {
-  const { verifyPlayProductPurchase } = await importGooglePlay();
   queueAccessToken();
   fetchWithRetryMock.mockResolvedValueOnce(createJsonResponse({
     error: {
@@ -242,7 +236,6 @@ test("verifyPlayProductPurchase includes sanitized Google API error details", as
 });
 
 test("acknowledgePlayProductPurchase accepts ok and already-acknowledged responses then rejects failures", async () => {
-  const { acknowledgePlayProductPurchase } = await importGooglePlay();
   queueAccessToken("ack-access-token");
   fetchWithRetryMock
     .mockResolvedValueOnce(createTextResponse("", 200))

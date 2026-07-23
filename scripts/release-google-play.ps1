@@ -217,14 +217,17 @@ try {
     Write-Host "Skipping full release preflight by request." -ForegroundColor Yellow
   }
 
+  if (-not $SkipVersionSync) {
+    Write-Step "Bumping release version"
+    Invoke-Checked "npm" @("version", "patch", "--no-git-tag-version")
+
+    Write-Step "Syncing Capacitor Android version"
+    Invoke-Checked "node" @("scripts/sync-capacitor-version.mjs")
+  }
+
   if (-not $SkipWebBuild) {
     Write-Step "Running npm run build:prod"
     Invoke-Checked "npm" @("run", "build:prod")
-  }
-
-  if (-not $SkipVersionSync) {
-    Write-Step "Syncing Capacitor Android version"
-    Invoke-Checked "node" @("scripts/sync-capacitor-version.mjs")
   }
 
   Write-Step "Syncing bundled web assets"

@@ -22,3 +22,16 @@ test("Android pins Google Play Billing 8.3.0", async () => {
   assert.match(appGradle, /com\.android\.billingclient:billing:8\.3\.0/);
   assert.doesNotMatch(appGradle, /com\.google\.androidbrowserhelper:billing/);
 });
+
+test("Android Gradle commands resolve the repository SDK and Java 21 consistently", async () => {
+  const runner = await readFile("scripts/run-android-gradle.mjs", "utf8");
+  const compliance = await readFile("scripts/verify-android-compliance.mjs", "utf8");
+  const environment = await readFile("scripts/android-build-env.mjs", "utf8");
+
+  assert.match(runner, /resolveAndroidBuildEnvironment/);
+  assert.match(compliance, /resolveAndroidBuildEnvironment/);
+  assert.match(environment, /\.android-sdk/);
+  assert.match(environment, /android-36/);
+  assert.match(environment, /JAVA_HOME_21/);
+  assert.match(environment, /Java 21/);
+});

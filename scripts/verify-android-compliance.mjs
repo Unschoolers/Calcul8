@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { resolveAndroidBuildEnvironment } from "./android-build-env.mjs";
 
 const args = process.argv.slice(2);
 const rootIndex = args.indexOf("--root");
@@ -44,6 +45,12 @@ if (/com\.google\.androidbrowserhelper:billing/.test(appGradle)) {
 }
 
 if (!skipDependencyInsight) {
+  let buildEnvironment;
+  try {
+    buildEnvironment = resolveAndroidBuildEnvironment({ root });
+  } catch (error) {
+    fail(error instanceof Error ? error.message : String(error));
+  }
   const wrapper = process.platform === "win32" ? "gradlew.bat" : "./gradlew";
   const gradleArgs = [
     ":app:dependencyInsight",
@@ -64,7 +71,8 @@ if (!skipDependencyInsight) {
     {
       cwd: androidRoot,
       encoding: "utf8",
-      shell: false
+      shell: false,
+      env: buildEnvironment.environment
     }
   );
   if (result.status !== 0) {

@@ -35,6 +35,7 @@ test("play release runs the full release preflight unless explicitly skipped", a
   assert.match(script, /Java 21/);
   assert.match(script, /Write-Step "Running npm run verify:all"/);
   assert.match(script, /Invoke-Checked "npm" @\("run", "verify:all"\)/);
+  assert.match(script, /Invoke-Checked "npm" @\("version", "patch", "--no-git-tag-version"\)/);
   assert.match(script, /Skipping full release preflight by request\./);
 });
 
