@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
 import { readFile } from "node:fs/promises";
+import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "vitest";
+import ts from "typescript";
 import type {
   GamePublicSessionSnapshot as CanonicalGamePublicSessionSnapshot
 } from "../shared/game-public-session-contracts";
@@ -38,20 +39,43 @@ type GamePublicSessionContractParity = [
 
 void (0 as unknown as GamePublicSessionContractParity);
 
-test("game and sync declarations compile for isolated NodeNext module consumers", () => {
-  const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
+test("game and sync declarations resolve for isolated NodeNext module consumers", () => {
+  const configPath = fileURLToPath(
+    new URL("./fixtures/shared-contracts-nodenext/tsconfig.json", import.meta.url)
+  );
+  const configFile = ts.readConfigFile(configPath, ts.sys.readFile);
+  assert.equal(configFile.error, undefined);
 
-  const compile = spawnSync(process.execPath, [
-    "node_modules/typescript/bin/tsc",
-    "--project",
-    "tests/fixtures/shared-contracts-nodenext/tsconfig.json"
-  ], {
-    cwd: repositoryRoot,
-    encoding: "utf8"
-  });
+  const parsedConfig = ts.parseJsonConfigFileContent(
+    configFile.config,
+    ts.sys,
+    path.dirname(configPath),
+    undefined,
+    configPath
+  );
+  assert.deepEqual(parsedConfig.errors, []);
 
-  assert.equal(compile.status, 0, `${compile.stdout}${compile.stderr}`);
-}, 15_000);
+  for (const consumerPath of parsedConfig.fileNames) {
+    const source = ts.sys.readFile(consumerPath);
+    assert.ok(source, `Missing NodeNext fixture: ${consumerPath}`);
+
+    const declarationSuffix = consumerPath.endsWith(".mts") ? ".d.mts" : ".d.cts";
+    for (const importedFile of ts.preProcessFile(source).importedFiles) {
+      const resolved = ts.resolveModuleName(
+        importedFile.fileName,
+        consumerPath,
+        parsedConfig.options,
+        ts.sys
+      ).resolvedModule;
+
+      assert.ok(resolved, `${importedFile.fileName} must resolve from ${consumerPath}`);
+      assert.ok(
+        resolved.resolvedFileName.endsWith(declarationSuffix),
+        `${importedFile.fileName} resolved to ${resolved.resolvedFileName}`
+      );
+    }
+  }
+});
 
 test("game public session declarations use one canonical contract body", async () => {
   const declarationUrls = [
