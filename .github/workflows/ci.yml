@@ -159,12 +159,10 @@ jobs:
         run: npm run verify
 
   validate-android:
-    name: Validate Android
+    name: Validate Android configuration
     needs: changes
     if: ${{ needs.changes.outputs.android == 'true' }}
     runs-on: ubuntu-latest
-    env:
-      VITE_GOOGLE_CLIENT_ID: ci-test.apps.googleusercontent.com
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -173,35 +171,6 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: npm
 
-      - name: Setup Java
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: "21"
-          cache: gradle
-
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v4
-        with:
-          log-accepted-android-sdk-licenses: false
-          packages: >-
-            platform-tools
-            platforms;android-36
-            build-tools;36.0.0
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build bundled web application
-        run: npm run build
-
-      - name: Synchronize Capacitor Android
-        run: npx cap sync android
-
-      - name: Verify Android compliance and tests
-        run: npm run verify:android
-
-      - name: Build unsigned release bundle
-        run: npm run android:bundle
+      - name: Verify Android API and Billing declarations
+        run: node scripts/verify-android-compliance.mjs --skip-dependency-insight

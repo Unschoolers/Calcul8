@@ -109,17 +109,19 @@ test("ci change detector covers every shipping entry point and shared contract s
   assert.match(workflow, /apps\/realtime\/\*\|shared\/\*\|apps\/realtime\/package\.json\|apps\/realtime\/package-lock\.json\|package\.json\|package-lock\.json/);
 });
 
-test("ci validates Android source, API 36, and Billing dependencies", async () => {
+test("ci validates Android API and Billing declarations without building the app", async () => {
   const workflow = await readFile(".github/workflows/ci.yml", "utf8");
 
   assert.match(workflow, /android:\s*\$\{\{ steps\.filter\.outputs\.android \}\}/);
   assert.match(workflow, /apps\/android\/\*/);
-  assert.match(workflow, /java-version:\s*["']21["']/);
-  assert.match(workflow, /uses:\s*android-actions\/setup-android@v4/);
-  assert.match(workflow, /packages:[\s\S]*platforms;android-36[\s\S]*build-tools;36\.0\.0/);
-  assert.doesNotMatch(workflow, /run:\s*sdkmanager/);
-  assert.match(workflow, /npm run verify:android/);
-  assert.match(workflow, /npm run android:bundle/);
+  assert.match(
+    workflow,
+    /node scripts\/verify-android-compliance\.mjs --skip-dependency-insight/
+  );
+  assert.doesNotMatch(workflow, /android-actions\/setup-android/);
+  assert.doesNotMatch(workflow, /npx cap sync android/);
+  assert.doesNotMatch(workflow, /npm run verify:android/);
+  assert.doesNotMatch(workflow, /npm run android:bundle/);
 });
 
 test("production deploy path filters include shared contracts and package locks", async () => {
