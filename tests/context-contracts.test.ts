@@ -48,12 +48,34 @@ function withoutTypeScriptComments(source: string): string {
     source
   );
   const tokenTexts: string[] = [];
-  for (
-    let token = scanner.scan();
-    token !== ts.SyntaxKind.EndOfFileToken;
-    token = scanner.scan()
-  ) {
+  const regexPrefixTokens = new Set<ts.SyntaxKind>([
+    ts.SyntaxKind.OpenParenToken,
+    ts.SyntaxKind.OpenBracketToken,
+    ts.SyntaxKind.OpenBraceToken,
+    ts.SyntaxKind.CommaToken,
+    ts.SyntaxKind.ColonToken,
+    ts.SyntaxKind.SemicolonToken,
+    ts.SyntaxKind.EqualsToken,
+    ts.SyntaxKind.EqualsGreaterThanToken,
+    ts.SyntaxKind.ExclamationToken,
+    ts.SyntaxKind.QuestionToken,
+    ts.SyntaxKind.ReturnKeyword,
+    ts.SyntaxKind.CaseKeyword,
+    ts.SyntaxKind.ThrowKeyword
+  ]);
+  let previousToken: ts.SyntaxKind | undefined;
+  for (let token = scanner.scan(); token !== ts.SyntaxKind.EndOfFileToken; token = scanner.scan()) {
+    // The standalone scanner lacks the parser's lexical goal. Rescan a slash
+    // as a regex only where an expression can begin, preserving comment-like
+    // text inside regex literals without swallowing division expressions.
+    if (
+      token === ts.SyntaxKind.SlashToken
+      && (previousToken === undefined || regexPrefixTokens.has(previousToken))
+    ) {
+      token = scanner.reScanSlashToken();
+    }
     tokenTexts.push(scanner.getTokenText());
+    previousToken = token;
   }
   return tokenTexts.join(" ");
 }

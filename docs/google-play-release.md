@@ -29,6 +29,11 @@ On Windows, `npm run release:play` also discovers the ignored workspace
 `.android-sdk` installation and an installed JDK 21 automatically. It prints the
 resolved SDK and Java paths during preflight.
 
+Every normal release run also applies `npm version patch --no-git-tag-version`
+and synchronizes that version into the Android project before building. The
+diagnostic `-SkipVersionSync` switch skips both the automatic bump and Android
+version synchronization.
+
 No keystore, signing password, `local.properties`, `.aab`, or generated Gradle output
 may be committed.
 
@@ -119,9 +124,10 @@ CI may instead provide `WHATFEES_ANDROID_KEYSTORE_FILE`,
 npm run release:play
 ```
 
-This verifies every runtime, builds the production web bundle, synchronizes Capacitor
-and its version, enforces Android compliance, requires signing, and builds the signed
-bundle. The ignored output is `release-output/whatfees-<version>.aab`.
+This verifies every runtime, bumps the patch version, builds the production web
+bundle, synchronizes Capacitor and its version, enforces Android compliance, requires
+signing, and builds the signed bundle. The ignored output is
+`release-output/whatfees-<version>.aab`.
 
 Use `-SkipVerify` only when an equivalent reviewed CI run is attached to the release.
 Use `-SkipWebBuild` only when `dist` came from the exact source revision being
