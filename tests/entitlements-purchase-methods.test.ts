@@ -179,10 +179,13 @@ afterEach(() => {
 
 test("startProPurchase routes to Play flow when provider is auto and Play supported", async () => {
   await withMockedLocalStorage(async () => {
+    vi.useFakeTimers();
     const ctx = createContext();
     hasPlayPurchaseSupportMock.mockResolvedValue(true);
 
-    await uiEntitlementPurchaseMethods.startProPurchase.call(ctx as never);
+    const purchasePromise = uiEntitlementPurchaseMethods.startProPurchase.call(ctx as never);
+    await vi.runAllTimersAsync();
+    await purchasePromise;
 
     assert.equal(purchasePlayProductMock.mock.calls.length, 1);
     assert.equal(submitPlayPurchaseVerificationMock.mock.calls.length, 1);
@@ -265,10 +268,13 @@ test("startProPurchase routes to Stripe checkout when provider is stripe", async
 
 test("startPlayPurchase can proceed without local Google token (cookie-first)", async () => {
   await withMockedLocalStorage(async () => {
+    vi.useFakeTimers();
     const ctx = createContext();
     resolveApiBaseUrlMock.mockReturnValue("https://api.example.test");
 
-    await uiEntitlementPurchaseMethods.startPlayPurchase.call(ctx as never);
+    const purchasePromise = uiEntitlementPurchaseMethods.startPlayPurchase.call(ctx as never);
+    await vi.runAllTimersAsync();
+    await purchasePromise;
 
     assert.equal(submitPlayPurchaseVerificationMock.mock.calls.length, 1);
     assert.equal((ctx.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0], "Purchase verified. Pro features unlocked.");
