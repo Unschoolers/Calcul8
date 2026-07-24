@@ -39,6 +39,32 @@ test("play release runs the full release preflight unless explicitly skipped", a
   assert.match(script, /Skipping full release preflight by request\./);
 });
 
+test("play release derives the Web OAuth audience from tracked configuration", async () => {
+  const script = await readFile("scripts/release-google-play.ps1", "utf8");
+  const oauthConfig = JSON.parse(
+    await readFile("config/google-oauth.json", "utf8")
+  ) as { type?: unknown; clientId?: unknown };
+
+  assert.equal(oauthConfig.type, "web");
+  assert.equal(
+    oauthConfig.clientId,
+    "718293345043-ddbenv1fv8ee7erh6af7stbajjuhua80.apps.googleusercontent.com"
+  );
+  assert.match(
+    String(oauthConfig.clientId),
+    /^[0-9]+-[a-z0-9_-]+\.apps\.googleusercontent\.com$/
+  );
+  assert.match(script, /config\/google-oauth\.json/);
+  assert.match(script, /Resolve-GoogleWebClientId/);
+  assert.match(script, /\$env:VITE_GOOGLE_CLIENT_ID = \$googleWebClientId/);
+  assert.match(script, /Assert-GeneratedGoogleWebClientId/);
+  assert.match(script, /Generated Android Google OAuth audience does not match tracked configuration/);
+  assert.doesNotMatch(
+    script,
+    /VITE_GOOGLE_CLIENT_ID is required for native Google identity/
+  );
+});
+
 test("play release builds the source-controlled Capacitor bundle", async () => {
   const script = await readFile("scripts/release-google-play.ps1", "utf8");
 

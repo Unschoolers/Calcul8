@@ -148,6 +148,58 @@ function Assert-Sha256Fingerprint {
   }
 }
 
+function Resolve-GoogleWebClientId {
+  param([string]$RepoRoot)
+
+  $configPath = Join-Path $RepoRoot "config/google-oauth.json"
+  if (-not (Test-Path -LiteralPath $configPath -PathType Leaf)) {
+    throw "Missing tracked Google OAuth configuration: $configPath"
+  }
+
+  try {
+    $config = Get-Content -LiteralPath $configPath -Raw | ConvertFrom-Json
+  } catch {
+    throw "Google OAuth configuration is not valid JSON: $($_.Exception.Message)"
+  }
+
+  if ([string]$config.type -cne "web") {
+    throw "Google OAuth configuration must declare type 'web'."
+  }
+
+  $clientId = [string]$config.clientId
+  if ($clientId -cnotmatch "^[0-9]+-[a-z0-9_-]+\.apps\.googleusercontent\.com$") {
+    throw "Google OAuth configuration contains an invalid Web client ID."
+  }
+
+  return $clientId
+}
+
+function Assert-GeneratedGoogleWebClientId {
+  param(
+    [string]$RepoRoot,
+    [string]$ExpectedClientId
+  )
+
+  $resourcePath = Join-Path $RepoRoot "apps/android/app/build/generated/res/resValues/release/values/gradleResValues.xml"
+  if (-not (Test-Path -LiteralPath $resourcePath -PathType Leaf)) {
+    throw "Generated Android Google OAuth resource was not found: $resourcePath"
+  }
+
+  try {
+    [xml]$resources = Get-Content -LiteralPath $resourcePath -Raw
+  } catch {
+    throw "Generated Android Google OAuth resource is not valid XML: $($_.Exception.Message)"
+  }
+
+  $clientIdResource = @($resources.resources.string) |
+    Where-Object { $_.name -eq "google_web_client_id" } |
+    Select-Object -First 1
+  $generatedClientId = ([string]$clientIdResource.'#text').Trim().Trim('"')
+  if ($generatedClientId -cne $ExpectedClientId) {
+    throw "Generated Android Google OAuth audience does not match tracked configuration."
+  }
+}
+
 function Read-VersionProperties {
   param([string]$Path)
   $values = @{}
@@ -205,10 +257,11 @@ try {
   Write-Step "Pre-flight checks"
   Require-Command "npm" "Install Node.js/npm."
   Require-Command "node" "Install Node.js."
+  $googleWebClientId = Resolve-GoogleWebClientId $repoRoot
+  # One release-scoped value feeds both Vite and Gradle, preventing audience drift.
+  $env:VITE_GOOGLE_CLIENT_ID = $googleWebClientId
   Initialize-AndroidBuildEnvironment $repoRoot
-  if ([string]::IsNullOrWhiteSpace($env:VITE_GOOGLE_CLIENT_ID)) {
-    throw "VITE_GOOGLE_CLIENT_ID is required for native Google identity."
-  }
+  Write-Host "Google OAuth audience: $googleWebClientId"
 
   if (-not $SkipVerify) {
     Write-Step "Running npm run verify:all"
@@ -267,6 +320,7 @@ try {
     } finally {
       Pop-Location
     }
+    Assert-GeneratedGoogleWebClientId $repoRoot $googleWebClientId
 
     $version = Read-VersionProperties (Join-Path $repoRoot "apps/android/version.properties")
     $bundlePath = Join-Path $repoRoot "apps/android/app/build/outputs/bundle/release/app-release.aab"
