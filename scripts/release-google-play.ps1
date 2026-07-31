@@ -1,6 +1,8 @@
 [CmdletBinding()]
 param(
   [string]$PackageId = "io.whatfees",
+  [string]$ApiBaseUrl = "https://api.whatfees.ca/api",
+  [string]$RealtimeSocketUrl = "wss://ws.whatfees.ca/socket",
   [string]$PlaySigningFingerprint = "",
   [string]$PagesAssetlinksUrl = "https://app.whatfees.ca/.well-known/assetlinks.json",
   [switch]$SkipVerify,
@@ -260,8 +262,20 @@ try {
   $googleWebClientId = Resolve-GoogleWebClientId $repoRoot
   # One release-scoped value feeds both Vite and Gradle, preventing audience drift.
   $env:VITE_GOOGLE_CLIENT_ID = $googleWebClientId
+  $normalizedApiBaseUrl = $ApiBaseUrl.Trim().TrimEnd('/')
+  if ($normalizedApiBaseUrl -notmatch '^https://[^/]+/api$') {
+    throw "ApiBaseUrl must use https:// and end with /api. Received: $ApiBaseUrl"
+  }
+  $env:VITE_API_BASE_URL = $normalizedApiBaseUrl
+  $normalizedRealtimeSocketUrl = $RealtimeSocketUrl.Trim().TrimEnd('/')
+  if ($normalizedRealtimeSocketUrl -notmatch '^wss://[^/]+/socket$') {
+    throw "RealtimeSocketUrl must use wss:// and end with /socket. Received: $RealtimeSocketUrl"
+  }
+  $env:VITE_REALTIME_SOCKET_URL = $normalizedRealtimeSocketUrl
   Initialize-AndroidBuildEnvironment $repoRoot
   Write-Host "Google OAuth audience: $googleWebClientId"
+  Write-Host "Production API: $normalizedApiBaseUrl"
+  Write-Host "Production realtime: $normalizedRealtimeSocketUrl"
 
   if (-not $SkipVerify) {
     Write-Step "Running npm run verify:all"

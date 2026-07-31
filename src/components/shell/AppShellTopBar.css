@@ -1,3 +1,7 @@
+.v-app-bar {
+  padding-top: var(--app-safe-area-top);
+}
+
 .app-bar-title-wrap {
   display: flex;
   align-items: center;
