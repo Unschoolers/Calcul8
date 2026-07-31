@@ -23,8 +23,10 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode versionProperties.getProperty("VERSION_CODE").toInteger()
         versionName versionProperties.getProperty("VERSION_NAME")
-        resValue "string", "google_web_client_id", "\"${googleWebClientId}\""
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        if (googleWebClientId && googleWebClientId.trim().length() > 0) {
+            resValue "string", "google_web_client_id", googleWebClientId
+        }
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
              // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61

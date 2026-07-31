@@ -325,6 +325,44 @@ test("promptGoogleSignInFlow initializes, prompts, and handles credential callba
   });
 });
 
+test("promptGoogleSignInFlow uses native Android credential flow when runtime is android", async () => {
+  await withMockedLocalStorage(async () => {
+    const requestNativeCredential = vi.fn(async (_mode: "automatic" | "interactive") => ({
+      idToken: "native-token",
+      displayName: "Android User",
+      photoUrl: "https://example.test/avatar.png"
+    }));
+    const bootstrapSession = vi.fn(async () => undefined);
+    const setGoogleIdToken = vi.fn((token: string) => {
+      setStoredGoogleIdToken(token);
+    });
+    const context = createContext({
+      googleAvatarLoadFailed: true,
+      notify: vi.fn(),
+      debugLogEntitlement: vi.fn(async () => undefined)
+    });
+
+    await promptGoogleSignInFlow(context as never, {
+      isNativeAndroid: () => true,
+      requestNativeCredential,
+      bootstrapSession,
+      getGoogleIdToken: () => "",
+      getGoogleClientId: () => "test-google-client-id",
+      enableGoogleAutoSignIn: vi.fn(),
+      setGoogleIdToken,
+      cacheGoogleProfileFromToken: vi.fn(),
+      cacheProfile: vi.fn()
+    });
+
+    assert.equal(requestNativeCredential.mock.calls.length, 1);
+    assert.equal(bootstrapSession.mock.calls.length, 1);
+    assert.equal(getStoredGoogleIdToken(), "native-token");
+    assert.equal(setGoogleIdToken.mock.calls.length, 1);
+    assert.equal((context.notify as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0], "Signed in with Google.");
+    assert.equal(requestGoogleIdentityPromptMock.mock.calls.length, 0);
+  });
+});
+
 test("renderGoogleSignInButtonFlow initializes GIS button and handles credential callback", async () => {
   await withMockedLocalStorage(async (data) => {
     let callback: (response: { credential?: string }) => void = () => {

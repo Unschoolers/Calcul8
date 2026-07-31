@@ -312,6 +312,32 @@ try {
 
   if (-not $SkipBuild) {
     Assert-SigningConfiguration $repoRoot
+    # Debug: print resolved keystore path and SHA-1 to help verify which keystore Gradle will use
+    try {
+      $debugPropertiesPath = Join-Path $repoRoot "apps/android/keystore.properties"
+      if (Test-Path -LiteralPath $debugPropertiesPath) {
+        $debugProps = Read-VersionProperties $debugPropertiesPath
+        $debugStoreFile = $debugProps.storeFile
+        if (-not [System.IO.Path]::IsPathRooted($debugStoreFile)) {
+          $debugStoreFile = Join-Path $repoRoot "apps/android/app/$debugStoreFile"
+        }
+        Write-Host "Resolved keystore file:" $debugStoreFile -ForegroundColor Cyan
+        if (Test-Path -LiteralPath $debugStoreFile) {
+          try {
+            & keytool -list -v -keystore $debugStoreFile -alias $debugProps.keyAlias -storepass $debugProps.storePassword -keypass $debugProps.keyPassword 2>&1 | Select-String -Pattern "SHA1:|SHA-1:" | ForEach-Object { Write-Host $_.ToString() -ForegroundColor Yellow }
+          } catch {
+            Write-Host "Could not run keytool against:" $debugStoreFile -ForegroundColor Yellow
+            Write-Host "  error:" $($_.Exception.Message) -ForegroundColor Yellow
+          }
+        } else {
+          Write-Host "Keystore file not found at resolved path:" $debugStoreFile -ForegroundColor Yellow
+        }
+      } else {
+        Write-Host "No apps/android/keystore.properties found for debug output." -ForegroundColor Yellow
+      }
+    } catch {
+      Write-Host "Signing debug step failed: $($_.Exception.Message)" -ForegroundColor Yellow
+    }
     Require-Command "jarsigner" "Install JDK 21 and make its bin directory available."
     Write-Step "Building signed Capacitor Android App Bundle"
     Push-Location (Join-Path $repoRoot "apps/android")
