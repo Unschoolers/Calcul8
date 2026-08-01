@@ -203,6 +203,7 @@
       width: 100%;
     }
     .app-shell-content-zone {
+      padding-top: var(--app-space-4) !important;
       padding-bottom: var(--app-shell-content-bottom-padding) !important;
     }
     .app-shell-tab-zone {
@@ -1280,9 +1281,10 @@
     }
     .app-shell-root {
       min-height: 100dvh;
+      padding-top: calc(var(--v-layout-top) + var(--app-safe-area-top)) !important;
     }
     .app-shell-bottom-nav {
-      height: var(--app-bottom-nav-height) !important;
+      height: calc(var(--app-bottom-nav-height) + var(--app-safe-area-bottom)) !important;
       padding-bottom: var(--app-safe-area-bottom);
     }
     .app-shell-action-zone {

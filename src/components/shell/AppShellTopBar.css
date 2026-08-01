@@ -1,5 +1,6 @@
 .v-app-bar {
-  padding-top: var(--app-safe-area-top);
+  box-sizing: border-box;
+  padding-top: max(var(--app-safe-area-top), env(safe-area-inset-top, 0px), 24px);
 }
 
 .app-bar-title-wrap {

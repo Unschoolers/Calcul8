@@ -21,6 +21,7 @@ const ADMIN_SYNC_USER_ID = "107850224060485991888";
 const ADMIN_SYNC_WORKSPACE_ID_REGEX = /^[A-Za-z0-9:_-]{1,128}$/;
 
 function isAdminSyncImportEnabled(): boolean {
+  if (!import.meta.env.DEV) return false;
   return String(import.meta.env.VITE_ENABLE_ADMIN_SYNC_IMPORT || "").trim().toLowerCase() === "true";
 }
 

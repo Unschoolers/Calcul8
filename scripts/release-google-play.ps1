@@ -272,6 +272,7 @@ try {
     throw "RealtimeSocketUrl must use wss:// and end with /socket. Received: $RealtimeSocketUrl"
   }
   $env:VITE_REALTIME_SOCKET_URL = $normalizedRealtimeSocketUrl
+  $env:VITE_ENABLE_ADMIN_SYNC_IMPORT = "false"
   Initialize-AndroidBuildEnvironment $repoRoot
   Write-Host "Google OAuth audience: $googleWebClientId"
   Write-Host "Production API: $normalizedApiBaseUrl"
