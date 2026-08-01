@@ -1,8 +1,12 @@
+import { buildSessionHeaders } from "../auth/index.ts";
 import type { LotIoContext } from "../context/commerce.ts";
 import type {
   ConfigIoMethodImplementation,
   PortfolioReportContext
 } from "../context/portfolio.ts";
+import { replaceRootLotSales } from "../shared/sales-root-state.ts";
+import { clearScopedSyncDataStorage, getScopedSyncClientVersionKey } from "../storageKeys.ts";
+import { getActiveStorageScope } from "../workspace-scope.ts";
 import { canUseAuthoritativeSalesLiveApi } from "./entity-api-shared.ts";
 import { fetchAuthoritativeAllSales, fetchAuthoritativeSales } from "./lot-sales-api.ts";
 import {
@@ -11,10 +15,6 @@ import {
   readEntitlementCache,
   resolveApiBaseUrl
 } from "./ui/common/shared.ts";
-import { buildSessionHeaders } from "../auth/index.ts";
-import { clearScopedSyncDataStorage, getScopedSyncClientVersionKey } from "../storageKeys.ts";
-import { getActiveStorageScope } from "../workspace-scope.ts";
-import { replaceRootLotSales } from "../shared/sales-root-state.ts";
 import { applyCloudSnapshotToLocal, parseCloudSnapshot } from "./ui/sync/sync-apply.ts";
 
 const ADMIN_SYNC_USER_ID = "107850224060485991888";
