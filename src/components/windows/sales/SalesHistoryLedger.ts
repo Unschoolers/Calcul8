@@ -145,6 +145,9 @@ export const SalesHistoryLedgerDefinition = defineComponent({
     }
   },
   methods: {
+    emitEdit(sale: Sale): void {
+      this.$emit("edit", sale);
+    },
     setSort(this: { sortKey: SortKey; sortDirection: SortDirection }, key: SortKey): void {
       if (this.sortKey === key) {
         this.sortDirection = this.sortDirection === "asc" ? "desc" : "asc";

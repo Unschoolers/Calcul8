@@ -582,10 +582,10 @@
 }
 
 .sales-history-action-btn {
-  width: 24px !important;
-  min-width: 24px !important;
-  height: 24px !important;
-  min-height: 24px !important;
+  width: 30px !important;
+  min-width: 30px !important;
+  height: 30px !important;
+  min-height: 30px !important;
   border-radius: var(--app-radius-lg);
   color: rgba(var(--v-theme-on-surface), 0.38) !important;
   background: transparent;
@@ -1064,9 +1064,9 @@
   }
 
   .sales-history-action-btn {
-    width: 32px !important;
-    min-width: 32px !important;
-    height: 32px !important;
-    min-height: 32px !important;
+    width: 34px !important;
+    min-width: 34px !important;
+    height: 34px !important;
+    min-height: 34px !important;
   }
 }

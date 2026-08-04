@@ -202,13 +202,15 @@
   .sale-editor-dialog .v-overlay__content {
     width: 100vw !important;
     max-width: none !important;
+    top: var(--app-dialog-mobile-top-inset) !important;
+    height: var(--app-dialog-mobile-height) !important;
     margin: 0 !important;
-    max-height: 100dvh !important;
+    max-height: var(--app-dialog-mobile-height) !important;
   }
 
   .sale-editor-card {
-    height: 100dvh;
-    max-height: 100dvh;
+    height: var(--app-dialog-mobile-height);
+    max-height: var(--app-dialog-mobile-height);
     border-radius: 0 !important;
   }
 

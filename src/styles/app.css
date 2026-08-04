@@ -1009,6 +1009,8 @@
     width: var(--app-dialog-mobile-width) !important;
     max-width: var(--app-dialog-mobile-max-width) !important;
     margin: var(--app-dialog-mobile-margin) !important;
+    top: var(--app-dialog-mobile-top-inset) !important;
+    height: var(--app-dialog-mobile-height) !important;
     max-height: var(--app-dialog-mobile-height) !important;
   }
 

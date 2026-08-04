@@ -1,8 +1,9 @@
+import "driver.js/dist/driver.css";
 import { createApp } from "vue";
 import "vuetify/styles";
-import "driver.js/dist/driver.css";
-import "./styles/app.css";
 import App from "./App.vue";
+import { getAppRuntime } from "./app-core/platform/runtime.ts";
+import "./styles/app.css";
 import { vuetify } from "./vuetify.ts";
 
 type RuntimeDebugEntry = {
@@ -118,6 +119,7 @@ function installRuntimeDebugHooks(app: ReturnType<typeof createApp>): void {
 }
 
 const splashShownAt = performance.now();
+document.documentElement.classList.toggle("app-runtime-android", getAppRuntime() === "android");
 const app = createApp(App);
 installRuntimeDebugHooks(app);
 try {

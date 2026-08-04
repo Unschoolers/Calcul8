@@ -49,8 +49,9 @@
       class="sales-history-ledger__row"
       role="row"
       tabindex="0"
-      @click="$emit('edit', sale)"
-      @keydown.enter="$emit('edit', sale)"
+      @click="emitEdit(sale)"
+      @keydown.enter.prevent="emitEdit(sale)"
+      @keydown.space.prevent="emitEdit(sale)"
     >
       <div class="sales-history-ledger__cell sales-history-ledger__type-icon" role="cell">
         <v-avatar class="sales-history-type-token" size="28">
@@ -123,15 +124,16 @@
         <span v-else>{{ saleCustomerLabel(sale) }}</span>
       </div>
       <div class="sales-history-ledger__actions" role="cell">
-        <app-action-button
-          action="delete"
-          icon-only
+        <v-btn
+          icon="mdi-trash-can-outline"
+          variant="text"
+          color="error"
           class="sales-history-action-btn"
           size="small"
-          :label="t('salesHistoryDeleteSaleLabel')"
+          :title="t('salesHistoryDeleteSaleLabel')"
           :aria-label="t('salesHistoryDeleteSaleLabel')"
           @click.stop="$emit('delete', sale.id)"
-        ></app-action-button>
+        ></v-btn>
       </div>
     </div>
   </div>

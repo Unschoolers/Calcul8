@@ -85,9 +85,10 @@
   --app-dialog-actions-padding: var(--app-space-3) var(--app-space-5) var(--app-space-4);
   --app-section-title-padding: var(--app-space-4) var(--app-space-5) 0.35rem;
   --app-dialog-mobile-width: 100vw;
-  --app-dialog-mobile-height: 100dvh;
+  --app-dialog-mobile-top-inset: max(var(--app-safe-area-top), env(safe-area-inset-top, 0px), 24px);
+  --app-dialog-mobile-height: calc(100dvh - var(--app-dialog-mobile-top-inset) - var(--app-safe-area-bottom));
   --app-dialog-mobile-max-width: none;
-  --app-dialog-mobile-margin: 0;
+  --app-dialog-mobile-margin: var(--app-dialog-mobile-top-inset) 0 var(--app-safe-area-bottom);
   --app-dialog-mobile-radius: 0;
   --app-empty-state-min-height: 8rem;
   --app-empty-state-compact-min-height: 5rem;
