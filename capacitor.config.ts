@@ -10,6 +10,7 @@ const config: CapacitorConfig = {
     backgroundColor: "#000000"
   },
   server: {
+    url: "https://app.whatfees.ca",
     hostname: "app.whatfees.ca",
     androidScheme: "https",
     cleartext: false

@@ -9,9 +9,9 @@ test("Capacitor Android is source controlled and targets API 36", async () => {
   assert.match(config, /appId:\s*["']io\.whatfees["']/);
   assert.match(config, /webDir:\s*["']dist["']/);
   assert.match(config, /path:\s*["']apps\/android["']/);
+  assert.match(config, /url:\s*["']https:\/\/app\.whatfees\.ca["']/);
   assert.match(config, /hostname:\s*["']app\.whatfees\.ca["']/);
   assert.match(config, /androidScheme:\s*["']https["']/);
-  assert.doesNotMatch(config, /server:\s*\{[^}]*url:/s);
   assert.match(variables, /minSdkVersion\s*=\s*24/);
   assert.match(variables, /compileSdkVersion\s*=\s*36/);
   assert.match(variables, /targetSdkVersion\s*=\s*36/);
