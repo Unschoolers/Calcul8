@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
-import { test } from "vitest";
+import { test, vi } from "vitest";
 import { GameWindow } from "../src/components/windows/game/GameWindow.ts";
 import { createGameCoordinatorPorts } from "../src/components/windows/game/coordinator/gameCoordinatorPorts.ts";
 
@@ -261,6 +261,27 @@ test("GameWindow overlay state follows bracket host availability and clears stal
   assert.equal(vm.gameStageOverlayEnabled, false);
   assert.equal(vm.gameStageOverlayMounted, false);
   assert.equal(vm.gameStageOverlayActiveCommand, null);
+});
+
+test("confirming live mode starts spectator mode when requested from the spectator dialog", async () => {
+  const startGameSpectatorMode = vi.fn(() => Promise.resolve());
+  const vm = {
+    wheelRequestedMode: "live",
+    wheelMode: "config",
+    wheelLiveConfirmDialog: true,
+    gameSpectatorStartAfterLiveConfirm: true,
+    gameSpectatorDialog: false,
+    wheelInspectorTab: "config",
+    startGameSpectatorMode
+  };
+
+  GameWindow.methods!.confirmWheelModeChange.call(vm as never);
+  await Promise.resolve();
+
+  assert.equal(vm.wheelMode, "live");
+  assert.equal(vm.gameSpectatorDialog, true);
+  assert.equal(vm.gameSpectatorStartAfterLiveConfirm, false);
+  assert.equal(startGameSpectatorMode.mock.calls.length, 1);
 });
 
 test("selecting an existing Wheel or Mystery Grid config exits Bracket Battle", () => {

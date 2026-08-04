@@ -272,6 +272,9 @@ export const gameWindowDefinition = {
     },
     confirmWheelModeChange(this: GameWindowThis): void {
       const requestedMode = this.wheelRequestedMode as "config" | "live" | null;
+      const startSpectatorAfterConfirm = requestedMode === "live"
+        && this.gameSpectatorStartAfterLiveConfirm === true;
+      this.gameSpectatorStartAfterLiveConfirm = false;
       if (requestedMode) {
         if (requestedMode !== "config") {
           this.stopWheelAutospin?.();
@@ -281,6 +284,10 @@ export const gameWindowDefinition = {
       }
       this.wheelRequestedMode = null;
       this.wheelLiveConfirmDialog = false;
+      if (startSpectatorAfterConfirm) {
+        this.gameSpectatorDialog = true;
+        void this.startGameSpectatorMode();
+      }
     },
     cancelWheelModeChange(this: GameWindowThis): void {
       this.wheelRequestedMode = null;

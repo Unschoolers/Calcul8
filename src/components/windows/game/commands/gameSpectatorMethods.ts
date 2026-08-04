@@ -13,7 +13,7 @@ const GAME_SPECTATOR_COUNT_POLL_MS = 10_000;
 type GameSpectatorVm = GamePublicSessionContext
   & GameSessionStateContext
   & Pick<GameHostState,
-    | "gameSpectatorConnectedCount" | "gameSpectatorDialog" | "gameSpectatorPublishPending"
+    | "gameSpectatorConnectedCount" | "gameSpectatorStartAfterLiveConfirm" | "gameSpectatorDialog" | "gameSpectatorPublishPending"
     | "gameSpectatorSessionId" | "gameSpectatorSessionQrUrl" | "gameSpectatorSessionStatus"
     | "gameSpectatorSessionUrl" | "wheelMode"
   >
@@ -25,6 +25,7 @@ type GameSpectatorVm = GamePublicSessionContext
   notify?: (message: string, color?: string) => void;
   publishGameSpectatorSessionSnapshot(statusOverride?: "starting" | "live" | "ended"): Promise<void>;
   refreshGameSpectatorCount(): Promise<void>;
+  handleWheelModeChange?(nextMode: "config" | "live"): void;
   saveWheelSession(): void;
   stopGameSpectatorCountPolling(): void;
 };
@@ -132,7 +133,14 @@ export const gameSpectatorMethods = {
 
   async startGameSpectatorMode(this: GameSpectatorVm): Promise<void> {
     if (isGameSpectatorConfigMode(this)) {
-      notifyGameSpectator(this, "Switch to live mode before starting spectator mode.", "warning");
+      this.gameSpectatorStartAfterLiveConfirm = true;
+      this.gameSpectatorDialog = false;
+      if (typeof this.handleWheelModeChange === "function") {
+        this.handleWheelModeChange("live");
+      } else {
+        this.gameSpectatorStartAfterLiveConfirm = false;
+        notifyGameSpectator(this, "Switch to live mode before starting spectator mode.", "warning");
+      }
       return;
     }
     if ((this.gameSpectatorPublishPending as boolean) === true) return;

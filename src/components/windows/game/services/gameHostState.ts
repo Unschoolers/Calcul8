@@ -19,7 +19,7 @@ export function createGameHostState() {
     wheelRequestedMode: null as "config" | "live" | null, wheelPendingMenuOpen: false, wheelChaseDialog: false,
     wheelChasePreviewMode: false, wheelChaseReplacementSinglesId: null as number | null,
     wheelChasePendingTierId: "", wheelCreateDialog: false, wheelManageDialog: false, wheelManageName: "",
-    gameSpectatorDialog: false, gameSpectatorSessionId: "", gameSpectatorSessionStatus: "inactive" as "inactive" | "starting" | "live" | "ended",
+    gameSpectatorDialog: false, gameSpectatorStartAfterLiveConfirm: false, gameSpectatorSessionId: "", gameSpectatorSessionStatus: "inactive" as "inactive" | "starting" | "live" | "ended",
     gameSpectatorSessionUrl: "", gameSpectatorSessionQrUrl: "", gameSpectatorPublishPending: false,
     gameSpectatorConnectedCount: 0, gameStageOverlayEnabled: false, gameStageOverlayMounted: false,
     gameStageOverlayActiveCommand: null as GameStageOverlayCommand | null, gameStageOverlayLastResolvedAt: 0,

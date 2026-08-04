@@ -103,14 +103,16 @@ test("startGameSpectatorMode restarts an ended spectator session as active", asy
   assert.equal(vm.gameSpectatorConnectedCount, 0);
 });
 
-test("startGameSpectatorMode refuses config mode", async () => {
+test("startGameSpectatorMode requests live confirmation from config mode", async () => {
   const vm = {
     wheelMode: "config",
     wheelTotalSpins: 0,
     gameSpectatorSessionId: "",
     gameSpectatorSessionStatus: "inactive",
+    gameSpectatorDialog: true,
+    gameSpectatorStartAfterLiveConfirm: false,
     gameSpectatorPublishPending: false,
-    notify: vi.fn()
+    handleWheelModeChange: vi.fn()
   };
 
   await gameSpectatorMethods.startGameSpectatorMode.call(vm as never);
@@ -118,10 +120,9 @@ test("startGameSpectatorMode refuses config mode", async () => {
   assert.equal(createGameSpectatorSessionMock.mock.calls.length, 0);
   assert.equal(vm.gameSpectatorSessionId, "");
   assert.equal(vm.gameSpectatorSessionStatus, "inactive");
-  assert.deepEqual(vm.notify.mock.calls[0], [
-    "Switch to live mode before starting spectator mode.",
-    "warning"
-  ]);
+  assert.equal(vm.gameSpectatorDialog, false);
+  assert.equal(vm.gameSpectatorStartAfterLiveConfirm, true);
+  assert.deepEqual(vm.handleWheelModeChange.mock.calls, [["live"]]);
 });
 
 test("publishGameSpectatorSessionSnapshot ignores config mode preview updates", async () => {
