@@ -52,7 +52,7 @@ describe("live price card scenarios", () => {
   test("applies the recommended target price from the adjustment link", async () => {
     const { onUpdate } = renderLivePriceCard({ avgPriceNeeded: 14, remainingUnits: 2 });
 
-    await fireEvent.click(screen.getByRole("button", { name: "Adjust from current $14" }));
+    await fireEvent.click(screen.getByRole("button", { name: "Adjust from current $14.00" }));
 
     expect(onUpdate).toHaveBeenCalledWith(14);
   });
