@@ -10,7 +10,7 @@ const salesWindowPortKeys = [
   "salesProgress", "salesStatus", "soldPacksCount", "totalCaseCost", "totalPacks", "singlesTrackedSoldCount",
   "singlesTrackedTotalCount", "sortedSales", "liveForecastScenarios", "calculateSaleProfit", "getSaleProfitPreview",
   "getSaleColor", "getSaleIcon", "formatDate", "toggleChartView", "getBuyerProfile", "formatCurrency", "t", "editSale",
-  "deleteSale", "$vuetify"
+  "deleteSale"
 ] as const;
 
 type SalesCapabilitySource = AppState & CommerceComputedState & CommerceMethodState & BuyerMethodState & RuntimeMethodState & AppVueContext;

@@ -6,17 +6,17 @@ import type { RuntimeMethodState } from "../../../app-core/context/runtime.ts";
 import type { WorkspaceComputedState } from "../../../app-core/context/workspace.ts";
 import type { AppState } from "../../../types/app.ts";
 
+type ConfigCapabilitySource = AppState & CommerceComputedState & CommerceMethodState & EntitlementMethodState & RuntimeMethodState & WorkspaceComputedState;
+export type ConfigWindowPorts = Pick<ConfigCapabilitySource, typeof configWindowPortKeys[number]>;
+
 const configWindowPortKeys = [
   "activeScopeType", "activeWorkspaceId", "adminImportSourceUserId", "adminImportSourceWorkspaceId",
   "boxesPurchased", "costInputMode", "currency", "hasProAccess", "includeTax", "isAdminImportInProgress",
-  "packsPerBox", "purchaseDate", "purchaseShippingCost", "purchaseShippingCostCAD", "purchaseTaxPercent", "purchaseUiMode",
+  "packsPerBox", "purchaseDate", "purchaseShippingCost", "purchaseShippingCostCAD", "purchaseTaxPercent", "purchaseUiMode", "purchaseCostInputLabel",
   "sellingCurrency", "conversionInfo", "currentWorkspaceName", "purchaseCostInputValue", "totalCaseCost", "totalPacks",
   "canUseAdminLotSyncTools", "formatDate", "importLotsFromUserId", "formatCurrency", "t",
   "onPurchaseConfigChange", "updatePurchaseCostInput", "requestPurchaseUiMode"
-] as const;
-
-type ConfigCapabilitySource = AppState & CommerceComputedState & CommerceMethodState & EntitlementMethodState & RuntimeMethodState & WorkspaceComputedState;
-export type ConfigWindowPorts = Pick<ConfigCapabilitySource, typeof configWindowPortKeys[number]>;
+] as const satisfies readonly (keyof ConfigCapabilitySource)[];
 
 export const configWindowPortsKey: InjectionKey<ConfigWindowPorts> = Symbol("configWindowPorts");
 

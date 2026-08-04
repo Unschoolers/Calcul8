@@ -14,7 +14,7 @@ const commerceDialogPortKeys = [
   "getSinglesSaleLineMaxQuantity", "onSinglesSaleLineQuantityChange", "onSinglesSaleLinePriceChange", "removeSinglesSaleLine",
   "addSinglesSaleLine", "onNewSaleTypeChange", "cancelSale", "saveSale", "togglePortfolioReportLot",
   "copyPortfolioReportTable", "savePortfolioReportTable", "startProPurchase", "openVerifyPurchaseModal",
-  "formatCurrency", "formatDate", "t", "$vuetify"
+  "formatCurrency", "formatDate", "t"
 ] as const;
 
 type CommerceDialogCapabilitySource = AppState & CommerceComputedState & CommerceMethodState & EntitlementMethodState

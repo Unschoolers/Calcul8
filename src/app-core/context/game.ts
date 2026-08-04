@@ -1,5 +1,7 @@
 import type { AppState, Sale } from "../../types/app.ts";
 import type { ScopedApiContext } from "./api.ts";
+import type { CommerceComputedState, CommerceMethodState } from "./commerce.ts";
+import type { RuntimeMethodState } from "./runtime.ts";
 
 export interface GameMethodState {
   addWheelSaleToLot(lotId: number, sale: Sale): void;
@@ -37,13 +39,20 @@ export type GameBroadcastContext = GameAuthenticatedContext &
 export type GameCoordinatorContext = Pick<
   AppState,
   | "currentTab"
+  | "preferredLanguage"
   | "wheelConfigs"
   | "activeWheelConfigId"
   | "wheelRealtimeApplyRevision"
   | "lots"
   | "currentLotId"
+  | "sales"
+  | "salesByLotId"
   | "activeScopeType"
   | "activeWorkspaceId"
   | "googleAuthEpoch"
   | "hasProAccess"
-> & GameSessionStateContext & Pick<GameMethodState, "addWheelSaleToLot">;
+> & GameSessionStateContext
+  & Pick<CommerceComputedState, "singlesSoldCountByPurchaseId">
+  & Pick<CommerceMethodState, "getSalesCacheEntry" | "loadSalesForLotId">
+  & Pick<GameMethodState, "addWheelSaleToLot">
+  & Pick<RuntimeMethodState, "t">;

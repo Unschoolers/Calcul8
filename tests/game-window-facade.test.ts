@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { test } from "vitest";
 import { GameWindow } from "../src/components/windows/game/GameWindow.ts";
+import { createGameCoordinatorPorts } from "../src/components/windows/game/coordinator/gameCoordinatorPorts.ts";
 
 test("GameWindow owns the tier-prize game shell behavior", () => {
   assert.equal(GameWindow.name, "GameWindow");
@@ -12,6 +13,14 @@ test("GameWindow owns the tier-prize game shell behavior", () => {
   assert.ok(GameWindow.components?.WheelActionRail);
   assert.notEqual(typeof GameWindow.methods?.createNewGameConfig, "undefined");
   assert.equal(typeof (GameWindow.methods as Record<string, unknown> | undefined)?.selectBracketBattleGame, "undefined");
+});
+
+test("game coordinator ports expose translation to nested game children", () => {
+  const translate = () => "translated";
+  const ports = createGameCoordinatorPorts({ t: translate } as never);
+
+  assert.equal(typeof ports.t, "function");
+  assert.equal(ports.t("wheelSpinsLabel"), "translated");
 });
 
 test("app shell renders the generic game window with the existing wheel ref", () => {

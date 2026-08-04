@@ -34,7 +34,7 @@
       density="comfortable"
       variant="outlined"
       class="wheel-inspector-toggle"
-      @update:model-value="wheelInspectorTab = $event"
+      @update:model-value="setWheelInspectorTab($event)"
     >
       <v-btn v-for="tab in wheelInspectorTabItems" :key="tab.id" :value="tab.id" size="small">
         <v-icon start size="small">{{ tab.icon }}</v-icon>

@@ -3,7 +3,7 @@ import { createCapabilityPorts } from "../../../../app-core/context/capabilityPo
 import type { GameCoordinatorContext } from "../../../../app-core/context/game.ts";
 
 const gameCoordinatorPortKeys = [
-  "currentTab", "wheelConfigs", "activeWheelConfigId", "wheelRealtimeApplyRevision", "lots", "currentLotId",
+  "currentTab", "preferredLanguage", "t", "wheelConfigs", "activeWheelConfigId", "wheelRealtimeApplyRevision", "lots", "currentLotId", "sales", "salesByLotId",
   "activeScopeType", "activeWorkspaceId", "googleAuthEpoch", "hasProAccess", "wheelSpinning", "activeWheelSlots",
   "wheelPreviewSlots", "wheelInventoryWarning", "wheelShowSeed", "wheelFairnessHistoryOpen",
   "wheelHighlightedSlotIndex", "wheelCurrentAngle", "wheelTotalSpins", "wheelSpinCounts", "wheelLastResult",
@@ -11,9 +11,10 @@ const gameCoordinatorPortKeys = [
   "wheelSessionCostAdjustment", "wheelFairnessHistory", "wheelChaseTallyHistory", "wheelGridLayoutSeed",
   "wheelPreviewGridLayoutSeed", "wheelGridReveals", "wheelPreviewGridReveals", "wheelPreviewSpinCounts",
   "wheelPreviewTotalSpins", "wheelPreviewFairnessHistory", "wheelPreviewChaseTallyHistory", "wheelLastResultColor",
-  "wheelSpinHash", "wheelSpinSeed", "wheelSpinClientSeed", "wheelSpinVerificationUrl", "wheelSpinAlgorithm",
+  "wheelSpinHash", "wheelSpinSeed", "wheelSpinClientSeed", "wheelSpinVerificationUrl", "wheelSpinAlgorithm", "singlesSoldCountByPurchaseId",
+  "getSalesCacheEntry", "loadSalesForLotId",
   "addWheelSaleToLot"
-] as const;
+] as const satisfies readonly (keyof GameCoordinatorContext)[];
 
 export type GameCoordinatorPorts = Pick<GameCoordinatorContext, typeof gameCoordinatorPortKeys[number]>;
 export const gameCoordinatorPortsKey: InjectionKey<GameCoordinatorPorts> = Symbol("gameCoordinatorPorts");

@@ -1,18 +1,18 @@
-import { gameContextProp, setupGameContext } from "../../shared/contextBridge.ts";
 import { translateAppMessage } from "../../../../app-core/i18n/index.ts";
 import { isSinglesLot } from "../../../../app-core/shared/lot-types.ts";
 import { getWheelChanceTotal } from "../../../../app-core/shared/wheel-odds.ts";
 import { getWheelTierSourceLotIds, isWheelTierMultiLot } from "../../../../app-core/shared/wheel-tier-sources.ts";
-import AppSectionCard from "../../../ui/AppSectionCard.vue";
-import WheelHistoryPanel from "./WheelHistoryPanel.vue";
-import WheelTierCard from "./WheelTierCard.vue";
-import WheelSessionPanel from "./WheelSessionPanel.vue";
-import BracketBattleBuilder from "../bracket/BracketBattleBuilder.vue";
 import type { Lot, WheelConfig, WheelTier } from "../../../../types/app.ts";
+import AppSectionCard from "../../../ui/AppSectionCard.vue";
+import { gameContextProp, getGameContextSource, setupGameContext } from "../../shared/contextBridge.ts";
+import BracketBattleBuilder from "../bracket/BracketBattleBuilder.vue";
 import {
-  getAvailableSinglesQuantityForWheelTier,
-  getRemainingPacksForWheelLot
+    getAvailableSinglesQuantityForWheelTier,
+    getRemainingPacksForWheelLot
 } from "../services/wheelSaleSupport.ts";
+import WheelHistoryPanel from "./WheelHistoryPanel.vue";
+import WheelSessionPanel from "./WheelSessionPanel.vue";
+import WheelTierCard from "./WheelTierCard.vue";
 
 type WheelBuilderTierGroup = {
   key: string;
@@ -36,6 +36,18 @@ export const WheelInspector = {
   methods: {
     getWindowComponentContext(this: Record<string, unknown>): Record<string, unknown> {
       return this as Record<string, unknown>;
+    },
+    setWheelInspectorTab(this: Record<string, unknown>, tab: unknown): void {
+      if (typeof tab !== "string") return;
+      const context = this.ctx;
+      const source = context && typeof context === "object"
+        ? getGameContextSource(context as Record<string, unknown>)
+        : this;
+      if (typeof source.focusWheelInspector === "function") {
+        (source.focusWheelInspector as (targetTab: string) => void)(tab);
+        return;
+      }
+      source.wheelInspectorTab = tab;
     }
   },
   computed: {

@@ -1,5 +1,12 @@
+import { gameContextProp, getGameContextSource, setupGameContext, type WindowContext } from "../../shared/contextBridge.ts";
 import type { MysteryGridCell } from "../commands/mysteryGridMethods.ts";
-import { gameContextProp, setupGameContext } from "../../shared/contextBridge.ts";
+
+function getSurfaceSource(context: Record<string, unknown>): Record<string, unknown> {
+  const explicitContext = context.ctx;
+  return explicitContext && typeof explicitContext === "object"
+    ? getGameContextSource(explicitContext as WindowContext)
+    : context;
+}
 
 export const MysteryGridSurface = {
   name: "MysteryGridSurface",
@@ -13,6 +20,18 @@ export const MysteryGridSurface = {
     };
   },
   computed: {
+    wheelSpinning(this: Record<string, unknown>): boolean {
+      return getSurfaceSource(this).wheelSpinning === true;
+    },
+    wheelGridRevealAnimating(this: Record<string, unknown>): boolean {
+      return getSurfaceSource(this).wheelGridRevealAnimating === true;
+    },
+    wheelEndingSession(this: Record<string, unknown>): boolean {
+      return getSurfaceSource(this).wheelEndingSession === true;
+    },
+    wheelChaseDialog(this: Record<string, unknown>): boolean {
+      return getSurfaceSource(this).wheelChaseDialog === true;
+    },
     mysteryGridSurfaceStyle(this: Record<string, unknown>): Record<string, string> {
       const cells = Array.isArray(this.mysteryGridCells) ? this.mysteryGridCells : [];
       const cellCount = Math.max(1, cells.length);
@@ -42,13 +61,15 @@ export const MysteryGridSurface = {
     isMysteryGridCellHighlighted(this: Record<string, unknown> & {
       localGridSelectorAnimating: boolean;
       localGridHighlightCellIndex: number;
+      ctx?: Record<string, unknown>;
     }, cell: MysteryGridCell): boolean {
       if (cell.revealed) return false;
       const isLocalAnimation = this.localGridSelectorAnimating === true;
+      const source = getSurfaceSource(this);
       const highlightIndex = isLocalAnimation
         ? this.localGridHighlightCellIndex
-        : Math.floor(Number(this.wheelGridHighlightCellIndex));
-      const isAnimating = isLocalAnimation || this.wheelGridRevealAnimating === true;
+        : Math.floor(Number(source.wheelGridHighlightCellIndex));
+      const isAnimating = isLocalAnimation || source.wheelGridRevealAnimating === true;
       return isAnimating && highlightIndex === cell.index;
     }
   },
