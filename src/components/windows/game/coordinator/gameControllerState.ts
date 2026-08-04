@@ -1,13 +1,13 @@
 import type { GameCoordinatorContext } from "../../../../app-core/context/game.ts";
 import type { WheelConfig } from "../../../../types/app.ts";
-import type { WheelSlot } from "../services/wheelSlots.ts";
-import {
-  createWheelControllerState,
-  ensureWheelControllerState,
-  getWheelController,
-  type WheelControllerState
-} from "../services/gameSessionState.ts";
 import { createGameHostState, type GameHostState } from "../services/gameHostState.ts";
+import {
+    createWheelControllerState,
+    ensureWheelControllerState,
+    getWheelController,
+    type WheelControllerState
+} from "../services/gameSessionState.ts";
+import type { WheelSlot } from "../services/wheelSlots.ts";
 
 /**
  * Typed `this` context shared across GameWindow computed properties, watchers,
@@ -106,6 +106,7 @@ export type GameCommandPorts = {
   canTierBeChase(tier: import("../../../../types/app.ts").WheelTier): boolean;
   stopGameSpectatorCountPolling(): void;
   refreshGameSpectatorCount(): Promise<void>;
+  startGameSpectatorMode(): Promise<void>;
   syncGameSpectatorLinks(): void;
   syncGameSpectatorCountPolling(): void;
   applyRealtimeWheelSession(): void;

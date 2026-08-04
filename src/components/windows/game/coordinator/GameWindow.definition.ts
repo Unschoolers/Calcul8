@@ -1,38 +1,38 @@
 import { nextTick } from "vue";
 import {
-  resolveVuetifySlotString
+    resolveVuetifySlotString
 } from "../../../../app-core/shared/vuetify-slot-items.ts";
 import type { WheelConfig } from "../../../../types/app.ts";
-import { useGameCoordinatorPorts } from "./gameCoordinatorPorts.ts";
-import { gameComputeds } from "./gameComputeds.ts";
-import { wheelConfigMethods } from "../commands/wheelConfigMethods.ts";
 import {
-  createGameWindowState, getWheelController,
-  type GameWindowThis
-} from "./gameControllerState.ts";
-import { buildSlotsFromConfig, createWheelGridLayoutSeed } from "../services/wheelSlots.ts";
-import { cloneGameConfig } from "../services/gameConfigTemplates.ts";
-import {
-  WHEEL_COMPACT_LAYOUT_BREAKPOINT,
-  isWheelCompactViewport,
-  resolveWheelCanvasTargetSize,
-  resolveWheelLayoutMode
-} from "./gameLayoutPolicy.ts";
-import { wheelSessionMethods } from "../commands/wheelSessionMethods.ts";
+    applyBracketBattleHostState,
+    type BracketBattleSessionStatePayload
+} from "../bracket/bracketBattleHostFlow.ts";
 import { gameSpectatorMethods } from "../commands/gameSpectatorMethods.ts";
+import {
+    buildMysteryGridCells,
+    isMysteryGridConfig,
+    mysteryGridMethods
+} from "../commands/mysteryGridMethods.ts";
+import { wheelConfigMethods } from "../commands/wheelConfigMethods.ts";
+import { wheelSessionMethods } from "../commands/wheelSessionMethods.ts";
 import { wheelSpinMethods } from "../commands/wheelSpinMethods.ts";
 import {
-  buildMysteryGridCells,
-  isMysteryGridConfig,
-  mysteryGridMethods
-} from "../commands/mysteryGridMethods.ts";
-import {
-  type GameStageOverlayCommand
+    type GameStageOverlayCommand
 } from "../overlay/gameStageOverlayTypes.ts";
+import { cloneGameConfig } from "../services/gameConfigTemplates.ts";
+import { buildSlotsFromConfig, createWheelGridLayoutSeed } from "../services/wheelSlots.ts";
+import { gameComputeds } from "./gameComputeds.ts";
 import {
-  applyBracketBattleHostState,
-  type BracketBattleSessionStatePayload
-} from "../bracket/bracketBattleHostFlow.ts";
+    createGameWindowState, getWheelController,
+    type GameWindowThis
+} from "./gameControllerState.ts";
+import { useGameCoordinatorPorts } from "./gameCoordinatorPorts.ts";
+import {
+    WHEEL_COMPACT_LAYOUT_BREAKPOINT,
+    isWheelCompactViewport,
+    resolveWheelCanvasTargetSize,
+    resolveWheelLayoutMode
+} from "./gameLayoutPolicy.ts";
 
 function getWheelCanvasTargetSize(panel: HTMLElement | null, presentationMode: boolean): number {
   return resolveWheelCanvasTargetSize({
