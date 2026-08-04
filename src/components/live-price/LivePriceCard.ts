@@ -197,6 +197,11 @@ export const LivePriceCard = defineComponent({
       if (gap == null || !Number.isFinite(gap)) return null;
       return -gap;
     },
+    applyTargetPrice(): void {
+      const targetPrice = Number(this.avgPriceNeeded);
+      if (!Number.isFinite(targetPrice) || targetPrice < 0) return;
+      this.$emit("update:modelValue", targetPrice);
+    },
     shouldShowTargetDecision(): boolean {
       const remainingUnits = Number(this.remainingUnits);
       if (Number.isFinite(remainingUnits) && remainingUnits <= 0) return false;

@@ -49,6 +49,14 @@ describe("live price card scenarios", () => {
     expect(screen.getByText("Back to target")).toBeVisible();
   });
 
+  test("applies the recommended target price from the adjustment link", async () => {
+    const { onUpdate } = renderLivePriceCard({ avgPriceNeeded: 14, remainingUnits: 2 });
+
+    await fireEvent.click(screen.getByRole("button", { name: "Adjust from current $14" }));
+
+    expect(onUpdate).toHaveBeenCalledWith(14);
+  });
+
   test("explains when no target price is available", () => {
     renderLivePriceCard({ avgPriceNeeded: null });
     expect(screen.getByText("Set a profit target to see the average price you still need from here.")).toBeVisible();

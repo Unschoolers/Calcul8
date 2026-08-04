@@ -209,6 +209,29 @@
   line-height: 1.2;
 }
 
+.live-pricing-card__target-adjust-link {
+  padding: 0;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.live-pricing-card__target-adjust-link:hover,
+.live-pricing-card__target-adjust-link:focus-visible {
+  color: currentColor;
+  text-decoration-thickness: 2px;
+}
+
+.live-pricing-card__target-adjust-link:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
 .live-pricing-card__decision-price {
   font-size: 1.22rem;
   font-weight: var(--app-font-weight-display);

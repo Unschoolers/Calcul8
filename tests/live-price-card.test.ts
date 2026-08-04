@@ -64,6 +64,15 @@ test("selectScenarioPrice emits update:modelValue with the scenario price", () =
   assert.deepEqual(context.$emit.mock.calls, [["update:modelValue", 16]]);
 });
 
+test("applyTargetPrice emits the recommended target price", () => {
+  const context = createContext({ avgPriceNeeded: 14 });
+  const applyTargetPrice = getMethod<(this: CardCtx) => void>("applyTargetPrice");
+
+  applyTargetPrice.call(context);
+
+  assert.deepEqual(context.$emit.mock.calls, [["update:modelValue", 14]]);
+});
+
 test("profitAt and formatAt handle function and fallback branches", () => {
   const context = createContext({
     units: 2,

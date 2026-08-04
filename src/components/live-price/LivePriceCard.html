@@ -68,7 +68,12 @@
               class="live-pricing-card__decision-gap"
               :class="(adjustmentNeeded() || 0) >= 0 ? 'text-success' : 'text-error'"
             >
-              {{ targetDecisionAdjustmentLabel() }}
+              <button
+                type="button"
+                class="live-pricing-card__target-adjust-link"
+                :aria-label="`${targetDecisionAdjustmentLabel()} $${formatCurrency(avgPriceNeeded)}`"
+                @click="applyTargetPrice"
+              >{{ targetDecisionAdjustmentLabel() }}</button>
               {{ (adjustmentNeeded() || 0) >= 0 ? '+' : '' }}${{ formatAt(adjustmentNeeded() || 0) }} 
             </div>
           </div>
