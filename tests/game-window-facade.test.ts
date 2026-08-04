@@ -23,6 +23,20 @@ test("game coordinator ports expose translation to nested game children", () => 
   assert.equal(ports.t("wheelSpinsLabel"), "translated");
 });
 
+test("game coordinator ports expose lot selection to compact wheel actions", () => {
+  const ports = createGameCoordinatorPorts({
+    hasLotSelected: true,
+    preferredLanguage: "en",
+    wheelMode: "config",
+    wheelEndingSession: false
+  } as never);
+  const wheelCompactFabActions = (GameWindow.computed as Record<string, unknown>).wheelCompactFabActions as
+    (this: Record<string, unknown>) => Array<{ disabled: boolean }>;
+
+  assert.equal(ports.hasLotSelected, true);
+  assert.equal(wheelCompactFabActions.call(ports).every((action) => action.disabled === false), true);
+});
+
 test("app shell renders the generic game window with the existing wheel ref", () => {
   const template = readFileSync("src/App.html", "utf8");
 

@@ -52,7 +52,7 @@ export type GameCoordinatorContext = Pick<
   | "googleAuthEpoch"
   | "hasProAccess"
 > & GameSessionStateContext
-  & Pick<CommerceComputedState, "singlesSoldCountByPurchaseId">
+  & Pick<CommerceComputedState, "hasLotSelected" | "singlesSoldCountByPurchaseId">
   & Pick<CommerceMethodState, "getSalesCacheEntry" | "loadSalesForLotId">
   & Pick<GameMethodState, "addWheelSaleToLot">
   & Pick<RuntimeMethodState, "t">;

@@ -75,6 +75,9 @@
       outline: var(--app-focus-ring-size) solid var(--app-focus-ring-color) !important;
       outline-offset: var(--app-focus-ring-offset) !important;
     }
+    #app-main:focus {
+      outline: none;
+    }
     #startup-splash {
       position: fixed;
       inset: 0;

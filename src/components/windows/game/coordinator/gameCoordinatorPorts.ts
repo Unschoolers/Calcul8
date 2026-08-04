@@ -3,7 +3,7 @@ import { createCapabilityPorts } from "../../../../app-core/context/capabilityPo
 import type { GameCoordinatorContext } from "../../../../app-core/context/game.ts";
 
 const gameCoordinatorPortKeys = [
-  "currentTab", "preferredLanguage", "t", "wheelConfigs", "activeWheelConfigId", "wheelRealtimeApplyRevision", "lots", "currentLotId", "sales", "salesByLotId",
+  "currentTab", "preferredLanguage", "t", "wheelConfigs", "activeWheelConfigId", "wheelRealtimeApplyRevision", "lots", "currentLotId", "hasLotSelected", "sales", "salesByLotId",
   "activeScopeType", "activeWorkspaceId", "googleAuthEpoch", "hasProAccess", "wheelSpinning", "activeWheelSlots",
   "wheelPreviewSlots", "wheelInventoryWarning", "wheelShowSeed", "wheelFairnessHistoryOpen",
   "wheelHighlightedSlotIndex", "wheelCurrentAngle", "wheelTotalSpins", "wheelSpinCounts", "wheelLastResult",
