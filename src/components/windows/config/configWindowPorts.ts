@@ -9,7 +9,7 @@ import type { AppState } from "../../../types/app.ts";
 const configWindowPortKeys = [
   "activeScopeType", "activeWorkspaceId", "adminImportSourceUserId", "adminImportSourceWorkspaceId",
   "boxesPurchased", "costInputMode", "currency", "hasProAccess", "includeTax", "isAdminImportInProgress",
-  "packsPerBox", "purchaseDate", "purchaseShippingCostCAD", "purchaseTaxPercent", "purchaseUiMode",
+  "packsPerBox", "purchaseDate", "purchaseShippingCost", "purchaseShippingCostCAD", "purchaseTaxPercent", "purchaseUiMode",
   "sellingCurrency", "conversionInfo", "currentWorkspaceName", "purchaseCostInputValue", "totalCaseCost", "totalPacks",
   "canUseAdminLotSyncTools", "formatDate", "importLotsFromUserId", "formatCurrency", "t",
   "onPurchaseConfigChange", "updatePurchaseCostInput", "requestPurchaseUiMode"
