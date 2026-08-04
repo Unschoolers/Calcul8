@@ -10,7 +10,8 @@ vi.mock("vue", () => ({
 }));
 
 import {
-  createNestedWindowContextBridge
+    createNestedWindowContextBridge,
+    getGameContextSource
 } from "../src/components/windows/shared/contextBridge.ts";
 
 type AppCtxLike = Record<string, unknown>;
@@ -53,4 +54,12 @@ test("nested game context bridge proxies reads, writes, and bound methods", () =
 
   const keys = Reflect.ownKeys(bridge);
   assert.equal(Array.isArray(keys), true);
+});
+
+test("game context source resolves a child context through one nested bridge", () => {
+  const gameContext: AppCtxLike = { wheelSpinning: true };
+  const bridgedChild: AppCtxLike = { ctx: gameContext };
+  const childComponent: AppCtxLike = { ctx: bridgedChild };
+
+  assert.equal(getGameContextSource(childComponent), gameContext);
 });

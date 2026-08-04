@@ -1,6 +1,7 @@
 import { fireEvent, screen } from "@testing-library/vue";
 import { describe, expect, test, vi } from "vitest";
 import { defineComponent, h, nextTick, provide, reactive } from "vue";
+import WheelHistoryPanel from "../../src/components/windows/game/inspector/WheelHistoryPanel.vue";
 import WheelInspector from "../../src/components/windows/game/inspector/WheelInspector.vue";
 import WheelSessionPanel from "../../src/components/windows/game/inspector/WheelSessionPanel.vue";
 import { createWheelControllerState } from "../../src/components/windows/game/services/gameSessionState.ts";
@@ -97,7 +98,7 @@ describe("game inspector scenarios", () => {
     expect(context.wheelInspectorTab).toBe("session");
   });
 
-  test("clicking a Mystery Grid tile does not emit a WheelSessionPanel render warning", async () => {
+  test("clicking a Mystery Grid tile does not emit an inspector render warning", async () => {
     const config = {
       id: 8,
       name: "Mystery Grid",
@@ -124,6 +125,20 @@ describe("game inspector scenarios", () => {
       wheelMode: "config" as const,
       wheelDisplayConfig: config,
       editingWheelConfig: config,
+      wheelTotalSpins: 1,
+      wheelSpinCounts: [1],
+      wheelLastResult: "Prize",
+      wheelLastResultColor: "#f0a500",
+      wheelFairnessHistory: [{
+        spinNumber: 1,
+        label: "Prize",
+        color: "#f0a500",
+        hash: "hash-1",
+        seed: "seed-1",
+        timestamp: 1
+      }],
+      wheelSpinHash: "hash-1",
+      wheelSpinSeed: "seed-1",
       mysteryGridCells: Array.from({ length: 9 }, (_unused, index) => ({
         index,
         label: "",
@@ -166,7 +181,8 @@ describe("game inspector scenarios", () => {
         provide("gameCtx", context);
         return () => h("div", [
           h(MysteryGridSurface, { ctx: context }),
-          h(WheelSessionPanel, { ctx: context })
+          h(WheelSessionPanel, { ctx: context }),
+          h(WheelHistoryPanel, { ctx: context })
         ]);
       },
     });
@@ -174,7 +190,7 @@ describe("game inspector scenarios", () => {
     const rendered = renderWithApp(Harness, {
       global: {
         config: {
-          warnHandler: (message: string) => warnings.push(message)
+          warnHandler: (message: string, _instance: unknown, trace: string) => warnings.push(`${message}\n${trace}`)
         }
       }
     });

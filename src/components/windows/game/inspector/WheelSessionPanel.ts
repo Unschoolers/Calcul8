@@ -1,18 +1,11 @@
 import { translateAppMessage } from "../../../../app-core/i18n/index.ts";
 import { gameContextProp, getGameContextSource, setupGameContext } from "../../shared/contextBridge.ts";
 import {
-    buildWheelSessionViewModel,
-    type WheelSessionViewModel
+  buildWheelSessionViewModel,
+  type WheelSessionViewModel
 } from "../services/wheelSessionViewModel.ts";
 
 type PanelContext = Record<string, unknown>;
-
-function getPanelSource(context: PanelContext): PanelContext {
-  const explicitContext = context.ctx;
-  return explicitContext && typeof explicitContext === "object"
-    ? getGameContextSource(explicitContext as PanelContext)
-    : context;
-}
 
 export const WheelSessionPanel = {
   name: "WheelSessionPanel",
@@ -21,13 +14,13 @@ export const WheelSessionPanel = {
   },
   methods: {
     t(this: PanelContext, key: string, params?: Record<string, string | number | null | undefined>): string {
-      const source = getPanelSource(this);
+      const source = getGameContextSource(this);
       return typeof source.t === "function"
         ? (source.t as (translationKey: string, values?: typeof params) => string)(key, params)
         : translateAppMessage(String(source.preferredLanguage ?? ""), key, params);
     },
     openWheelResetDialog(this: PanelContext): void {
-      const source = getPanelSource(this);
+      const source = getGameContextSource(this);
       if (typeof source.requestWheelReset === "function") {
         (source.requestWheelReset as () => void)();
       } else {
@@ -36,7 +29,7 @@ export const WheelSessionPanel = {
       }
     },
     requestWheelSessionEnd(this: PanelContext): void {
-      const source = getPanelSource(this);
+      const source = getGameContextSource(this);
       if (typeof source.requestWheelSessionEnd === "function") {
         (source.requestWheelSessionEnd as () => void)();
       }
@@ -44,16 +37,16 @@ export const WheelSessionPanel = {
   },
   computed: {
     wheelSessionPanelModel(this: PanelContext): WheelSessionViewModel {
-      return buildWheelSessionViewModel(getPanelSource(this));
+      return buildWheelSessionViewModel(getGameContextSource(this));
     },
     wheelSessionPanelMode(this: PanelContext): string {
-      return String(getPanelSource(this).wheelMode || "config");
+      return String(getGameContextSource(this).wheelMode || "config");
     },
     wheelSessionPanelEndingSession(this: PanelContext): boolean {
-      return Boolean(getPanelSource(this).wheelEndingSession);
+      return Boolean(getGameContextSource(this).wheelEndingSession);
     },
     wheelSessionPanelPendingIssueCount(this: PanelContext): number {
-      const issues = getPanelSource(this).wheelPendingInventoryIssues;
+      const issues = getGameContextSource(this).wheelPendingInventoryIssues;
       return Array.isArray(issues) ? issues.length : 0;
     }
   },

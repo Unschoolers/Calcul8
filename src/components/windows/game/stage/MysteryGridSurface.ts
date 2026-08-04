@@ -1,12 +1,5 @@
-import { gameContextProp, getGameContextSource, setupGameContext, type WindowContext } from "../../shared/contextBridge.ts";
+import { gameContextProp, getGameContextSource, setupGameContext } from "../../shared/contextBridge.ts";
 import type { MysteryGridCell } from "../commands/mysteryGridMethods.ts";
-
-function getSurfaceSource(context: Record<string, unknown>): Record<string, unknown> {
-  const explicitContext = context.ctx;
-  return explicitContext && typeof explicitContext === "object"
-    ? getGameContextSource(explicitContext as WindowContext)
-    : context;
-}
 
 export const MysteryGridSurface = {
   name: "MysteryGridSurface",
@@ -21,16 +14,16 @@ export const MysteryGridSurface = {
   },
   computed: {
     wheelSpinning(this: Record<string, unknown>): boolean {
-      return getSurfaceSource(this).wheelSpinning === true;
+      return getGameContextSource(this).wheelSpinning === true;
     },
     wheelGridRevealAnimating(this: Record<string, unknown>): boolean {
-      return getSurfaceSource(this).wheelGridRevealAnimating === true;
+      return getGameContextSource(this).wheelGridRevealAnimating === true;
     },
     wheelEndingSession(this: Record<string, unknown>): boolean {
-      return getSurfaceSource(this).wheelEndingSession === true;
+      return getGameContextSource(this).wheelEndingSession === true;
     },
     wheelChaseDialog(this: Record<string, unknown>): boolean {
-      return getSurfaceSource(this).wheelChaseDialog === true;
+      return getGameContextSource(this).wheelChaseDialog === true;
     },
     mysteryGridSurfaceStyle(this: Record<string, unknown>): Record<string, string> {
       const cells = Array.isArray(this.mysteryGridCells) ? this.mysteryGridCells : [];
@@ -65,7 +58,7 @@ export const MysteryGridSurface = {
     }, cell: MysteryGridCell): boolean {
       if (cell.revealed) return false;
       const isLocalAnimation = this.localGridSelectorAnimating === true;
-      const source = getSurfaceSource(this);
+      const source = getGameContextSource(this);
       const highlightIndex = isLocalAnimation
         ? this.localGridHighlightCellIndex
         : Math.floor(Number(source.wheelGridHighlightCellIndex));

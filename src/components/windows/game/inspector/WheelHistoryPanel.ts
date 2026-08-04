@@ -26,14 +26,14 @@ export const WheelHistoryPanel = {
   },
   computed: {
     wheelHistoryPanelModel(this: PanelContext): WheelFairnessViewModel {
-      return buildWheelFairnessViewModel(this);
+      return buildWheelFairnessViewModel(getGameContextSource(this));
     },
     wheelHistoryPanelHistoryOpen: {
       get(this: PanelContext): boolean {
-        return getWheelController(this).wheelFairnessHistoryOpen;
+        return getWheelController(getGameContextSource(this)).wheelFairnessHistoryOpen;
       },
       set(this: PanelContext, value: boolean): void {
-        getWheelController(this).wheelFairnessHistoryOpen = value;
+        getWheelController(getGameContextSource(this)).wheelFairnessHistoryOpen = value;
       }
     }
   },

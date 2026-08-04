@@ -43,9 +43,12 @@ export function setupGameContext(props: GameContextProps): Record<string, unknow
 
 export function getGameContextSource(context: WindowContext): WindowContext {
   const explicitContext = context.ctx;
-  return explicitContext && typeof explicitContext === "object"
-    ? explicitContext as WindowContext
-    : context;
+  if (!explicitContext || typeof explicitContext !== "object") return context;
+  const nestedContext = explicitContext as WindowContext;
+  const nestedExplicitContext = nestedContext.ctx;
+  return nestedExplicitContext && typeof nestedExplicitContext === "object"
+    ? nestedExplicitContext as WindowContext
+    : nestedContext;
 }
 
 export function unwrapWindowBridgeContext(ctx: WindowContext): WindowContext {
