@@ -31,12 +31,18 @@ describe("typed component capability injection", () => {
     const csvDialog = read("src/components/windows/singles/SinglesCsvImportDialog.ts");
 
     assert.doesNotMatch(appTemplate, /<singles-config-window[^>]*:ctx=/);
-    assert.match(singlesTemplate, /<singles-csv-import-dialog\s+:ctx="getWindowComponentContext\(\)"/);
+    assert.match(singlesTemplate, /<singles-purchasing-card\s*><\/singles-purchasing-card>/);
+    assert.match(singlesTemplate, /<singles-csv-import-dialog\s*><\/singles-csv-import-dialog>/);
+    assert.doesNotMatch(singlesTemplate, /getWindowComponentContext/);
     assert.match(singlesWindow, /useSinglesConfigPorts\(\)/);
+    assert.match(singlesWindow, /createSinglesPurchasingPorts\(this\)/);
+    assert.match(purchasingCard, /useSinglesPurchasingPorts\(\)/);
+    assert.match(csvDialog, /useSinglesConfigPorts\(\)/);
     for (const source of [singlesWindow, purchasingCard, csvDialog]) {
       assert.doesNotMatch(source, /inject<Record<string, unknown>/);
       assert.doesNotMatch(source, /createWindowContextBridge/);
       assert.doesNotMatch(source, /PropType<Record<string, unknown>/);
+      assert.doesNotMatch(source, /\bctx\s*:/);
     }
   });
 
