@@ -1,14 +1,18 @@
 import { compareLocalizedText } from "../../../app-core/i18n/index.ts";
 import { resolveDefaultSinglesMarketValueCurrency } from "../../../app-core/shared/singles-market-value-currency.ts";
 import {
-  resolveVuetifySlotNumber,
-  resolveVuetifySlotString,
-  resolveVuetifySlotValue
+    resolveVuetifySlotNumber,
+    resolveVuetifySlotString,
+    resolveVuetifySlotValue
 } from "../../../app-core/shared/vuetify-slot-items.ts";
 import { getSinglesEntryUnitMarketValueInSellingCurrency } from "../../../domain/calculations.ts";
 import type { CurrencyCode, SinglesCatalogSource, SinglesPurchaseEntry } from "../../../types/app.ts";
 import { normalizeSinglesSearchTokens } from "./singlesCatalogSearch.ts";
-import { useSinglesConfigPorts } from "./singlesConfigPorts.ts";
+import {
+    createSinglesPurchasingPorts,
+    singlesPurchasingPortsKey,
+    useSinglesConfigPorts
+} from "./singlesConfigPorts.ts";
 import {
     createSinglesCatalogSearchState,
     singlesCatalogSearchComputed,
@@ -179,7 +183,6 @@ export type SinglesWindowThis = {
   toggleShowFullySoldSingles(): void;
   resetDesktopRowsScroll(): void;
   setDesktopRowsScrollerRef(element: unknown): void;
-  getWindowComponentContext(): SinglesWindowThis;
   toggleDesktopSelectMode(): void;
   clearDesktopSelection(): void;
   isDesktopRowSelected(rowId: number): boolean;
@@ -579,10 +582,6 @@ export const singlesConfigWindowDefinition = {
         : null;
     },
 
-    getWindowComponentContext(this: SinglesWindowThis): SinglesWindowThis {
-      return this;
-    },
-
     toggleDesktopSelectMode(this: SinglesWindowThis): void {
       this.isDesktopSelectMode = !this.isDesktopSelectMode;
       if (!this.isDesktopSelectMode) {
@@ -698,6 +697,11 @@ export const singlesConfigWindowDefinition = {
   },
   beforeUnmount(this: SinglesWindowThis) {
     this.cancelSinglesItemSearch();
+  },
+  provide(this: SinglesWindowThis) {
+    return {
+      [singlesPurchasingPortsKey]: createSinglesPurchasingPorts(this)
+    };
   },
   setup() {
     return useSinglesConfigPorts();

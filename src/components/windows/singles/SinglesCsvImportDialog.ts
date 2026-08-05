@@ -1,5 +1,4 @@
-import { type PropType } from "vue";
-import type { SinglesWindowThis } from "./SinglesConfigWindow.definition.ts";
+import { useSinglesConfigPorts } from "./singlesConfigPorts.ts";
 import { singlesImportComputed, singlesImportMethods } from "./useSinglesImport.ts";
 
 export const SinglesCsvImportDialog = {
@@ -10,13 +9,7 @@ export const SinglesCsvImportDialog = {
   methods: {
     ...singlesImportMethods
   },
-  props: {
-    ctx: {
-      type: Object as PropType<SinglesWindowThis>,
-      required: true
-    }
-  },
-  setup(props: { ctx: SinglesWindowThis }) {
-    return props.ctx;
+  setup() {
+    return useSinglesConfigPorts();
   }
 };

@@ -3,6 +3,7 @@ import { createCapabilityPorts } from "../../../app-core/context/capabilityPorts
 import type { CommerceComputedState, CommerceMethodState } from "../../../app-core/context/commerce.ts";
 import type { RuntimeMethodState } from "../../../app-core/context/runtime.ts";
 import type { AppState } from "../../../types/app.ts";
+import type { SinglesWindowThis } from "./SinglesConfigWindow.definition.ts";
 
 const singlesConfigPortKeys = [
   "currentLotId", "lots", "currentLotCatalogSource", "singlesPurchases", "singlesSoldCountByPurchaseId",
@@ -28,5 +29,34 @@ export function createSinglesConfigPorts(source: SinglesConfigPorts): SinglesCon
 export function useSinglesConfigPorts(): SinglesConfigPorts {
   const ports = inject(singlesConfigPortsKey, null);
   if (!ports) throw new Error("Singles configuration capabilities were not provided.");
+  return ports;
+}
+
+const singlesPurchasingPortKeys = [
+  "currency", "sellingCurrency", "exchangeRate", "conversionInfo", "onPurchaseConfigChange", "t",
+  "showCatalogSuggestions", "showSinglesInfoNotice", "dismissSinglesInfoNotice", "singlesSearchQuery",
+  "onSinglesSearchInput", "importSinglesPurchasesCsv", "showFullySoldSingles", "toggleShowFullySoldSingles",
+  "isDesktopSelectMode", "toggleDesktopSelectMode", "visibleSinglesPurchases", "singlesPurchases",
+  "hasSinglesSearchQuery", "singlesPurchaseTotalCost", "singlesPurchaseTotalMarketValue", "fmtCurrency",
+  "selectedDesktopRowIds", "deleteSelectedDesktopRows", "onDesktopRowsScroll", "setDesktopRowsScrollerRef",
+  "useDesktopVirtualization", "desktopTopSpacerPx", "desktopRenderedRows", "desktopBottomSpacerPx",
+  "desktopSortBy", "sortIconFor", "toggleDesktopSort", "isDesktopRowSelected", "handleDesktopRowClick",
+  "conditionShortLabel", "languageShortLabel", "openSinglesImagePreview", "getSinglesEntryPreviewImage",
+  "isSinglesEntryFullySold", "getSinglesEntryStockLabel", "getSinglesEntryMarketTotalInSellingCurrency",
+  "getSinglesEntryMarketValueInSellingCurrency", "confirmRemoveSinglesPurchaseRow", "mobileRenderedSinglesPurchases",
+  "openSinglesRowEditor", "hasMoreMobileSinglesRows", "loadMoreMobileRows", "nextMobileSinglesBatchCount",
+  "remainingMobileSinglesRows", "mobileSortLabel", "cycleMobileSort"
+] as const satisfies readonly (keyof SinglesWindowThis)[];
+
+export type SinglesPurchasingPorts = Pick<SinglesWindowThis, typeof singlesPurchasingPortKeys[number]>;
+export const singlesPurchasingPortsKey: InjectionKey<SinglesPurchasingPorts> = Symbol("singlesPurchasingPorts");
+
+export function createSinglesPurchasingPorts(source: SinglesWindowThis): SinglesPurchasingPorts {
+  return createCapabilityPorts(source, singlesPurchasingPortKeys);
+}
+
+export function useSinglesPurchasingPorts(): SinglesPurchasingPorts {
+  const ports = inject(singlesPurchasingPortsKey, null);
+  if (!ports) throw new Error("Singles purchasing capabilities were not provided.");
   return ports;
 }
