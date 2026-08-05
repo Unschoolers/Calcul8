@@ -10,6 +10,7 @@ vi.mock("../src/app-core/platform/runtime.ts", () => ({
 }));
 
 import { pwaMethods } from "../src/app-core/methods/pwa.ts";
+import { APP_VERSION } from "../src/constants.ts";
 import type { BeforeInstallPromptEvent } from "../src/types/app.ts";
 
 type PwaContext = Record<string, any>;
@@ -47,6 +48,7 @@ function createContext(overrides: PwaContext = {}): PwaContext {
     retryPendingBuyerProfiles: vi.fn(async () => undefined),
     startOfflineReconnectScheduler: vi.fn(),
     stopOfflineReconnectScheduler: vi.fn(),
+    checkForAndroidAppUpdate: vi.fn(async () => undefined),
     ...overrides
   };
 }
@@ -199,12 +201,74 @@ test("Android runtime keeps connectivity listeners but skips install and service
   pwa.setupPwaUiHandlers.call(context as never);
   pwa.registerServiceWorker.call(context as never);
 
+  assert.equal((context.checkForAndroidAppUpdate as ReturnType<typeof vi.fn>).mock.calls.length, 1);
   assert.deepEqual(
     windowMock.addEventListener.mock.calls.map((call: unknown[]) => call[0]),
     ["online", "offline"]
   );
   assert.equal(register.mock.calls.length, 0);
   assert.equal(context.hasRegisteredServiceWorkerLifecycle, false);
+});
+
+test("Android version check shows the update prompt when the remote bundle differs", async () => {
+  getAppRuntimeMock.mockReturnValue("android");
+  stubWindow();
+  const fetchMock = vi.fn(async () => ({
+    ok: true,
+    json: async () => ({ version: "1.0.447" })
+  }));
+  vi.stubGlobal("fetch", fetchMock);
+
+  const context = createContext();
+  await pwa.checkForAndroidAppUpdate.call(context as never);
+
+  assert.equal(context.showAppUpdatePrompt, true);
+  const fetchCalls = fetchMock.mock.calls as unknown as Array<[unknown, unknown]>;
+  assert.match(String(fetchCalls[0]?.[0] ?? ""), /app-version\.json\?t=/);
+  assert.deepEqual(fetchCalls[0]?.[1], { cache: "no-store" });
+});
+
+test("Android version check ignores matching, malformed, and unavailable responses", async () => {
+  getAppRuntimeMock.mockReturnValue("android");
+  stubWindow();
+  const fetchMock = vi.fn();
+  vi.stubGlobal("fetch", fetchMock);
+  const context = createContext();
+
+  fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ version: APP_VERSION }) });
+  await pwa.checkForAndroidAppUpdate.call(context as never);
+  assert.equal(context.showAppUpdatePrompt, false);
+
+  fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ version: 123 }) });
+  await pwa.checkForAndroidAppUpdate.call(context as never);
+  assert.equal(context.showAppUpdatePrompt, false);
+
+  fetchMock.mockResolvedValueOnce({ ok: false, json: async () => ({ version: "1.0.447" }) });
+  await pwa.checkForAndroidAppUpdate.call(context as never);
+  assert.equal(context.showAppUpdatePrompt, false);
+
+  fetchMock.mockRejectedValueOnce(new Error("offline"));
+  await pwa.checkForAndroidAppUpdate.call(context as never);
+  assert.equal(context.showAppUpdatePrompt, false);
+});
+
+test("Android update actions reuse the prompt with a direct cache-busted refresh", () => {
+  getAppRuntimeMock.mockReturnValue("android");
+  const windowMock = stubWindow();
+  const context = createContext({ showAppUpdatePrompt: true });
+
+  pwa.applyAppUpdate.call(context as never);
+
+  assert.equal(context.isApplyingAppUpdate, true);
+  assert.equal(context.showAppUpdatePrompt, false);
+  assert.equal(windowMock.location.replace.mock.calls.length, 1);
+  const refreshUrl = String(windowMock.location.replace.mock.calls[0]?.[0] ?? "");
+  assert.match(refreshUrl, /app-updated=/);
+  assert.match(refreshUrl, /app-update-source=android-version/);
+
+  context.showAppUpdatePrompt = true;
+  pwa.dismissAppUpdate.call(context as never);
+  assert.equal(context.showAppUpdatePrompt, false);
 });
 
 test("startOfflineReconnectScheduler no-ops when already running and reconnects when online", () => {

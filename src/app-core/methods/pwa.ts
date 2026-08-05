@@ -1,3 +1,4 @@
+import { APP_VERSION } from "../../constants.ts";
 import type { BeforeInstallPromptEvent } from "../../types/app.ts";
 import type { PwaMethodImplementation } from "../context/shell.ts";
 import { getAppRuntime } from "../platform/runtime.ts";
@@ -54,11 +55,11 @@ function dismissAppUpdateForWorker(worker: ServiceWorker | null | undefined): vo
   }
 }
 
-function buildUpdateRefreshUrl(): string {
+function buildUpdateRefreshUrl(source = "sw"): string {
   try {
     const url = new URL(window.location.href);
     url.searchParams.set("app-updated", String(Date.now()));
-    url.searchParams.set("app-update-source", "sw");
+    url.searchParams.set("app-update-source", source);
     return url.toString();
   } catch {
     return window.location.href;
@@ -102,8 +103,33 @@ export const pwaMethods = {
     }
     this.hasPwaUiHandlersBound = true;
 
+    if (getAppRuntime() === "android") {
+      void this.checkForAndroidAppUpdate();
+    }
+
     if (this.isOffline) {
       this.startOfflineReconnectScheduler();
+    }
+  },
+
+  async checkForAndroidAppUpdate(): Promise<void> {
+    if (getAppRuntime() !== "android") return;
+
+    try {
+      const versionUrl = new URL("/app-version.json", window.location.href);
+      versionUrl.searchParams.set("t", String(Date.now()));
+      const response = await fetch(versionUrl.toString(), { cache: "no-store" });
+      if (!response.ok) return;
+
+      const payload = await response.json() as unknown;
+      if (!payload || typeof payload !== "object") return;
+      const remoteVersion = (payload as { version?: unknown }).version;
+      if (typeof remoteVersion !== "string" || !remoteVersion.trim()) return;
+      if (remoteVersion.trim() !== APP_VERSION) {
+        this.showAppUpdatePrompt = true;
+      }
+    } catch {
+      // Version checks are best-effort and must not interrupt app startup.
     }
   },
 
@@ -150,7 +176,13 @@ export const pwaMethods = {
   },
 
   applyAppUpdate(): void {
-    if (getAppRuntime() === "android") return;
+    if (getAppRuntime() === "android") {
+      this.isApplyingAppUpdate = true;
+      this.showAppUpdatePrompt = false;
+      this.notify("Refreshing to update WhatFees…", "info");
+      window.location.replace(buildUpdateRefreshUrl("android-version"));
+      return;
+    }
     if (!this.appUpdateWorker) return;
     this.isApplyingAppUpdate = true;
     this.showAppUpdatePrompt = false;
@@ -164,7 +196,10 @@ export const pwaMethods = {
   },
 
   dismissAppUpdate(): void {
-    if (getAppRuntime() === "android") return;
+    if (getAppRuntime() === "android") {
+      this.showAppUpdatePrompt = false;
+      return;
+    }
     this.showAppUpdatePrompt = false;
     dismissAppUpdateForWorker(this.appUpdateWorker);
   },

@@ -199,11 +199,13 @@ export const appLifecycle: AppLifecycleObject = {
     if (canBindForegroundSalesListeners() && !isDevNoLoginRoute()) {
       this.windowFocusListener = () => {
         refreshForegroundLotSales(this);
+        void this.checkForAndroidAppUpdate();
       };
       window.addEventListener("focus", this.windowFocusListener);
       this.documentVisibilityListener = () => {
         if (document.visibilityState !== "visible") return;
         refreshForegroundLotSales(this);
+        void this.checkForAndroidAppUpdate();
       };
       document.addEventListener("visibilitychange", this.documentVisibilityListener);
     }

@@ -49,3 +49,10 @@ test("bootstrap patch clears update and retry params after the refreshed app loa
   assert.match(patchSource, /cleanUrl\.searchParams\.delete\(retryParamName\);/);
   assert.match(patchSource, /cleanUrl\.searchParams\.delete\(retryReasonParamName\);/);
 });
+
+test("production stamping emits the Android web-version manifest", () => {
+  const stampSource = readRepoFile("scripts/stamp-sw-version.mjs");
+
+  assert.match(stampSource, /app-version\.json/);
+  assert.match(stampSource, /JSON\.stringify\(\{ version: appVersion \}/);
+});

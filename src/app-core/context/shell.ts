@@ -106,7 +106,9 @@ export type PwaMethodState = Pick<
   | "dismissAppUpdate"
   | "unregisterServiceWorkersForDev"
   | "registerServiceWorker"
->;
+> & {
+  checkForAndroidAppUpdate(): Promise<void>;
+};
 
 export type PwaContext = Pick<
   AppState,
@@ -131,6 +133,7 @@ export type PwaContext = Pick<
   Pick<BuyerMethodState, "retryPendingBuyerProfiles"> &
   Pick<EntitlementMethodState, "debugLogEntitlement"> &
   Pick<SyncMethodState, "pushCloudSync"> &
+  Pick<PwaMethodState, "checkForAndroidAppUpdate"> &
   Pick<RuntimeMethodState, "notify" | "startOfflineReconnectScheduler" | "stopOfflineReconnectScheduler">;
 
 export type PwaMethodImplementation = FeatureMethodImplementation<
