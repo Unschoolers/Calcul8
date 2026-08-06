@@ -3,6 +3,10 @@ type BoundFunction = {
   value: (...args: never[]) => unknown;
 };
 
+export type CapabilityPortOptions<TSource extends object> = {
+  requiredFunctions?: readonly (keyof TSource)[];
+};
+
 /**
  * Builds a small live view over an application context. Only declared keys are
  * exposed, commands retain their owning `this`, and writes flow back to the
@@ -11,7 +15,17 @@ type BoundFunction = {
 export function createCapabilityPorts<
   TSource extends object,
   const TKeys extends readonly (keyof TSource)[]
->(source: TSource, keys: TKeys): Pick<TSource, TKeys[number]> {
+>(
+  source: TSource,
+  keys: TKeys,
+  options: CapabilityPortOptions<TSource> = {}
+): Pick<TSource, TKeys[number]> {
+  for (const key of options.requiredFunctions ?? []) {
+    if (typeof Reflect.get(source, key) !== "function") {
+      throw new TypeError(`Capability port "${String(key)}" must be a function.`);
+    }
+  }
+
   const ports = {} as Pick<TSource, TKeys[number]>;
   const boundFunctions = new Map<keyof TSource, BoundFunction>();
 

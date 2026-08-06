@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, test } from "vitest";
+import {
+  singlesConfigPortKeys,
+  singlesPurchasingPortKeys
+} from "../src/components/windows/singles/singlesConfigPorts.ts";
 
 const read = (path: string): string => readFileSync(path, "utf8");
 
@@ -43,6 +47,39 @@ describe("typed component capability injection", () => {
       assert.doesNotMatch(source, /createWindowContextBridge/);
       assert.doesNotMatch(source, /PropType<Record<string, unknown>/);
       assert.doesNotMatch(source, /\bctx\s*:/);
+    }
+  });
+
+  test("singles port contracts cover every template capability", () => {
+    const configCapabilities = new Set<string>(singlesConfigPortKeys);
+    const purchasingCapabilities = new Set<string>(singlesPurchasingPortKeys);
+    const requiredConfigCapabilities = [
+      "showSinglesCsvMapperModal", "singlesCsvImportHeaders", "singlesCsvImportRows", "singlesCsvImportCurrency",
+      "singlesCsvImportMode", "singlesCsvMapItem", "singlesCsvMapCardNumber", "singlesCsvMapCondition",
+      "singlesCsvMapLanguage", "singlesCsvMapCost", "singlesCsvMapQuantity", "singlesCsvMapMarketValue",
+      "t", "cancelSinglesPurchasesCsvImport", "confirmSinglesPurchasesCsvImport"
+    ];
+    const requiredPurchasingCapabilities = [
+      "currency", "sellingCurrency", "exchangeRate", "conversionInfo", "onPurchaseConfigChange", "t",
+      "showCatalogSuggestions", "showSinglesInfoNotice", "dismissSinglesInfoNotice", "singlesSearchQuery",
+      "onSinglesSearchInput", "importSinglesPurchasesCsv", "showFullySoldSingles", "toggleShowFullySoldSingles",
+      "isDesktopSelectMode", "toggleDesktopSelectMode", "visibleSinglesPurchases", "singlesPurchases",
+      "hasSinglesSearchQuery", "singlesPurchaseTotalCost", "singlesPurchaseTotalMarketValue", "fmtCurrency",
+      "selectedDesktopRowIds", "deleteSelectedDesktopRows", "onDesktopRowsScroll", "setDesktopRowsScrollerRef",
+      "useDesktopVirtualization", "desktopTopSpacerPx", "desktopRenderedRows", "desktopBottomSpacerPx",
+      "desktopSortBy", "sortIconFor", "toggleDesktopSort", "isDesktopRowSelected", "handleDesktopRowClick",
+      "conditionShortLabel", "languageShortLabel", "openSinglesImagePreview", "getSinglesEntryPreviewImage",
+      "isSinglesEntryFullySold", "getSinglesEntryStockLabel", "getSinglesEntryMarketTotalInSellingCurrency",
+      "getSinglesEntryMarketValueInSellingCurrency", "confirmRemoveSinglesPurchaseRow", "mobileRenderedSinglesPurchases",
+      "openSinglesRowEditor", "hasMoreMobileSinglesRows", "loadMoreMobileRows", "nextMobileSinglesBatchCount",
+      "remainingMobileSinglesRows", "mobileSortLabel", "cycleMobileSort"
+    ];
+
+    for (const capability of requiredConfigCapabilities) {
+      assert.ok(configCapabilities.has(capability), `missing CSV capability: ${capability}`);
+    }
+    for (const capability of requiredPurchasingCapabilities) {
+      assert.ok(purchasingCapabilities.has(capability), `missing purchasing capability: ${capability}`);
     }
   });
 

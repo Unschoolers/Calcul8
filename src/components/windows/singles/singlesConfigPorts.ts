@@ -5,7 +5,7 @@ import type { RuntimeMethodState } from "../../../app-core/context/runtime.ts";
 import type { AppState } from "../../../types/app.ts";
 import type { SinglesWindowThis } from "./SinglesConfigWindow.definition.ts";
 
-const singlesConfigPortKeys = [
+export const singlesConfigPortKeys = [
   "currentLotId", "lots", "currentLotCatalogSource", "singlesPurchases", "singlesSoldCountByPurchaseId",
   "sellingCurrency", "exchangeRate", "preferredLanguage", "currency", "conversionInfo",
   "singlesPurchaseTotalCost", "singlesPurchaseTotalMarketValue",
@@ -23,7 +23,13 @@ export type SinglesConfigPorts = Pick<SinglesConfigCapabilitySource, typeof sing
 export const singlesConfigPortsKey: InjectionKey<SinglesConfigPorts> = Symbol("singlesConfigPorts");
 
 export function createSinglesConfigPorts(source: SinglesConfigPorts): SinglesConfigPorts {
-  return createCapabilityPorts(source, singlesConfigPortKeys);
+  return createCapabilityPorts(source, singlesConfigPortKeys, {
+    requiredFunctions: [
+      "saveLotsToStorage", "removeSinglesPurchaseRow", "onSinglesPurchaseRowsChange",
+      "importSinglesPurchasesCsv", "confirmSinglesPurchasesCsvImport", "cancelSinglesPurchasesCsvImport",
+      "formatCurrency", "t", "notify", "askConfirmation"
+    ]
+  });
 }
 
 export function useSinglesConfigPorts(): SinglesConfigPorts {
@@ -32,7 +38,7 @@ export function useSinglesConfigPorts(): SinglesConfigPorts {
   return ports;
 }
 
-const singlesPurchasingPortKeys = [
+export const singlesPurchasingPortKeys = [
   "currency", "sellingCurrency", "exchangeRate", "conversionInfo", "onPurchaseConfigChange", "t",
   "showCatalogSuggestions", "showSinglesInfoNotice", "dismissSinglesInfoNotice", "singlesSearchQuery",
   "onSinglesSearchInput", "importSinglesPurchasesCsv", "showFullySoldSingles", "toggleShowFullySoldSingles",
@@ -48,11 +54,24 @@ const singlesPurchasingPortKeys = [
   "remainingMobileSinglesRows", "mobileSortLabel", "cycleMobileSort"
 ] as const satisfies readonly (keyof SinglesWindowThis)[];
 
+const singlesPurchasingRequiredFunctionKeys = [
+  "onPurchaseConfigChange", "t", "dismissSinglesInfoNotice", "onSinglesSearchInput",
+  "importSinglesPurchasesCsv", "toggleShowFullySoldSingles", "toggleDesktopSelectMode",
+  "deleteSelectedDesktopRows", "onDesktopRowsScroll", "setDesktopRowsScrollerRef",
+  "sortIconFor", "toggleDesktopSort", "isDesktopRowSelected", "handleDesktopRowClick",
+  "conditionShortLabel", "languageShortLabel", "openSinglesImagePreview", "getSinglesEntryPreviewImage",
+  "isSinglesEntryFullySold", "getSinglesEntryStockLabel", "getSinglesEntryMarketTotalInSellingCurrency",
+  "getSinglesEntryMarketValueInSellingCurrency", "confirmRemoveSinglesPurchaseRow", "openSinglesRowEditor",
+  "loadMoreMobileRows", "cycleMobileSort", "fmtCurrency"
+] as const satisfies readonly (keyof SinglesWindowThis)[];
+
 export type SinglesPurchasingPorts = Pick<SinglesWindowThis, typeof singlesPurchasingPortKeys[number]>;
 export const singlesPurchasingPortsKey: InjectionKey<SinglesPurchasingPorts> = Symbol("singlesPurchasingPorts");
 
 export function createSinglesPurchasingPorts(source: SinglesWindowThis): SinglesPurchasingPorts {
-  return createCapabilityPorts(source, singlesPurchasingPortKeys);
+  return createCapabilityPorts(source, singlesPurchasingPortKeys, {
+    requiredFunctions: singlesPurchasingRequiredFunctionKeys
+  });
 }
 
 export function useSinglesPurchasingPorts(): SinglesPurchasingPorts {

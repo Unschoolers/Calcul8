@@ -24,4 +24,13 @@ describe("capability ports", () => {
     ports.count = 8;
     assert.equal(source.count, 8);
   });
+
+  test("fails fast when a required capability is not callable", () => {
+    const source = { t: "missing" };
+
+    assert.throws(
+      () => createCapabilityPorts(source, ["t"] as const, { requiredFunctions: ["t"] }),
+      /Capability port "t" must be a function/
+    );
+  });
 });
