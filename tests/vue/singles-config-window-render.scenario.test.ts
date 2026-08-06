@@ -35,6 +35,7 @@ test("singles window renders its purchasing view through injected ports", () => 
     cancelSinglesPurchasesCsvImport: vi.fn(),
     formatCurrency: (value: number | null | undefined) => String(value ?? 0),
     t: (key: string) => key,
+    onPurchaseConfigChange: vi.fn(),
     notify: vi.fn(),
     askConfirmation: vi.fn()
   };

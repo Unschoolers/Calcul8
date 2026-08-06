@@ -141,6 +141,7 @@ export type SinglesWindowThis = {
   currentSinglesCatalogSource: SinglesCatalogSource | undefined;
   formatCurrency?: ((value: number | null | undefined, decimals?: number) => string);
   t?: (key: string) => string;
+  onPurchaseConfigChange(): void;
   notify?(message: string, type?: string): void;
   askConfirmation?(options: { title: string; text: string; color?: string }, confirm: () => void): void;
   onSinglesPurchaseRowsChange?(): void;

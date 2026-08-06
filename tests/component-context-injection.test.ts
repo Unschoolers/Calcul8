@@ -57,7 +57,7 @@ describe("typed component capability injection", () => {
       "showSinglesCsvMapperModal", "singlesCsvImportHeaders", "singlesCsvImportRows", "singlesCsvImportCurrency",
       "singlesCsvImportMode", "singlesCsvMapItem", "singlesCsvMapCardNumber", "singlesCsvMapCondition",
       "singlesCsvMapLanguage", "singlesCsvMapCost", "singlesCsvMapQuantity", "singlesCsvMapMarketValue",
-      "t", "cancelSinglesPurchasesCsvImport", "confirmSinglesPurchasesCsvImport"
+      "t", "onPurchaseConfigChange", "cancelSinglesPurchasesCsvImport", "confirmSinglesPurchasesCsvImport"
     ];
     const requiredPurchasingCapabilities = [
       "currency", "sellingCurrency", "exchangeRate", "conversionInfo", "onPurchaseConfigChange", "t",

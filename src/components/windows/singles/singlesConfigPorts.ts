@@ -13,7 +13,7 @@ export const singlesConfigPortKeys = [
   "singlesCsvImportMode", "singlesCsvMapItem", "singlesCsvMapCardNumber", "singlesCsvMapCondition",
   "singlesCsvMapLanguage", "singlesCsvMapCost", "singlesCsvMapQuantity", "singlesCsvMapMarketValue",
   "saveLotsToStorage", "removeSinglesPurchaseRow", "onSinglesPurchaseRowsChange", "importSinglesPurchasesCsv",
-  "confirmSinglesPurchasesCsvImport", "cancelSinglesPurchasesCsvImport", "formatCurrency", "t", "notify",
+  "confirmSinglesPurchasesCsvImport", "cancelSinglesPurchasesCsvImport", "formatCurrency", "t", "onPurchaseConfigChange", "notify",
   "askConfirmation"
 ] as const;
 
@@ -27,7 +27,7 @@ export function createSinglesConfigPorts(source: SinglesConfigPorts): SinglesCon
     requiredFunctions: [
       "saveLotsToStorage", "removeSinglesPurchaseRow", "onSinglesPurchaseRowsChange",
       "importSinglesPurchasesCsv", "confirmSinglesPurchasesCsvImport", "cancelSinglesPurchasesCsvImport",
-      "formatCurrency", "t", "notify", "askConfirmation"
+      "formatCurrency", "t", "onPurchaseConfigChange", "notify", "askConfirmation"
     ]
   });
 }
