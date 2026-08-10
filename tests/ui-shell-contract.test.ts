@@ -108,6 +108,18 @@ test("contextual shell exposes only one persistent action slot", () => {
   }
 });
 
+test("bottom navigation uses one active surface instead of a nested pill", () => {
+  const template = read("src/App.html");
+  const styles = read("src/styles/app.css");
+
+  assert.match(template, /class="app-shell-bottom-nav" color="primary"/);
+  assert.doesNotMatch(
+    styles,
+    /\.app-shell-bottom-nav \.v-btn\.v-btn--active \.v-btn__content\s*\{/,
+    "active navigation must not combine the selected tab surface with an inner pill"
+  );
+});
+
 test("no-lot blocking state uses the shared error state surface", () => {
   const script = read("src/components/shell/LotSelectorOnboardingBlock.ts");
   const template = read("src/components/shell/LotSelectorOnboardingBlock.html");

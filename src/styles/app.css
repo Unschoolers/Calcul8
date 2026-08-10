@@ -1285,11 +1285,6 @@
         background-color var(--app-motion-standard) var(--app-ease-standard),
         color var(--app-motion-standard) var(--app-ease-standard);
     }
-    .app-shell-bottom-nav .v-btn.v-btn--active .v-btn__content {
-      background: var(--app-bottom-nav-active-surface);
-      color: var(--app-bottom-nav-active-text);
-      box-shadow: inset 0 0 0 var(--app-stroke-hairline) rgba(var(--v-theme-primary), 0.18);
-    }
     .app-shell-nav-item--unavailable:not(.v-btn--active) {
       opacity: 0.48;
     }
