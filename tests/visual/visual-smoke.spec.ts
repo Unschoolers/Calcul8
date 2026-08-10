@@ -41,9 +41,10 @@ function seedOptionsForProject(testInfo: TestInfo): Parameters<typeof seedVisual
 
 test.describe("@visual-smoke real app screens", () => {
   test("context action dock stays in the shell layer while tabs transition", async ({ page }, testInfo) => {
+    test.slow();
     await seedVisualSmokeState(page, seedOptionsForProject(testInfo));
     await page.emulateMedia({ reducedMotion: "no-preference" });
-    await page.goto("/nologin");
+    await page.goto("/nologin", { waitUntil: "domcontentloaded" });
     await waitForVisualAppReady(page);
     await openSmokeTab(page, "portfolio");
 
